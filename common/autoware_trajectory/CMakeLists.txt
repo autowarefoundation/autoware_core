@@ -28,9 +28,11 @@ if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   find_package(autoware_pyplot REQUIRED)
   find_package(range-v3 REQUIRED)
+  find_package(autoware_test_utils REQUIRED)
   ament_lint_auto_find_test_dependencies()
   find_package(pybind11 REQUIRED)
   include_directories(${autoware_pyplot_INCLUDE_DIRS})
+  include_directories(${autoware_test_utils_INCLUDE_DIRS})
   foreach(example_file ${example_files})
     get_filename_component(example_name ${example_file} NAME_WE)
     ament_auto_add_executable(${example_name}
@@ -41,6 +43,7 @@ if(BUILD_TESTING)
       ${autoware_pyplot_LIBRARIES}
       range-v3::range-v3
       pybind11::embed
+      ${autoware_test_utils_LIBRARIES}
     )
   endforeach()
 endif()
