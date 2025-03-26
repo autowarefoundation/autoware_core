@@ -12,7 +12,7 @@
         "NVIDIA_DRIVER_CAPABILITIES": "${localEnv:NVIDIA_DRIVER_CAPABILITIES:all}",
         "ROS_DOMAIN_ID": "${localEnv:ROS_DOMAIN_ID:0}"
     },
-    "postCreateCommand": "mkdir -p /autoware/src && chmod -R 777 /autoware",
+    "postCreateCommand": "mkdir -p /autoware/src && chmod 755 /autoware/src",
     "customizations": {
         "vscode": {
             "extensions": [
