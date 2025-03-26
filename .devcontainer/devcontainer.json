@@ -6,7 +6,7 @@
         "--privileged"
     ],
     "workspaceMount": "source=${localWorkspaceFolder},target=/autoware/src/core/autoware_core,type=bind,consistency=cached",
-    "workspaceFolder": "/autoware/src/core/autoware_core",
+    "workspaceFolder": "/autoware",
     "containerEnv": {
         "ROS_DOMAIN_ID": "${localEnv:ROS_DOMAIN_ID:0}"
     },
