@@ -1,6 +1,6 @@
 {
     "name": "Autoware Core Development",
-    "image": "ghcr.io/autowarefoundation/autoware:core-common-devel",
+    "image": "ghcr.io/autowarefoundation/autoware:coren-devel",
     "runArgs": [
         "--net=host",
         "--privileged"
