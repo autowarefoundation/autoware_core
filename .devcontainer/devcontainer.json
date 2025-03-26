@@ -1,0 +1,31 @@
+{
+    "name": "Autoware Core Development",
+    "image": "ghcr.io/autowarefoundation/autoware:core-common-devel",
+    "remoteUser": "autoware",
+    "runArgs": [
+        "--net=host",
+        "--privileged"
+    ],
+    "mounts": [
+        "source=${localWorkspaceFolder},target=/autoware/src/core/autoware_core,type=bind"
+    ],
+    "containerEnv": {
+        "ROS_DOMAIN_ID": "${localEnv:ROS_DOMAIN_ID:0}"
+    },
+    "postCreateCommand": "sudo chown -R autoware:autoware /autoware",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-vscode.cpptools",
+                "ms-python.python",
+                "redhat.vscode-yaml",
+                "ms-vscode.cmake-tools",
+                "twxs.cmake",
+                "ms-iot.vscode-ros"
+            ],
+            "settings": {
+                "terminal.integrated.defaultProfile.linux": "bash"
+            }
+        }
+    }
+}

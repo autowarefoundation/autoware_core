@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  autoware-dev:
+    image: ghcr.io/autowarefoundation/autoware:core-common-devel
+    container_name: autoware_core_dev
+    volumes:
+      - ..:/autoware/src/core/autoware_core:rw
+    network_mode: host
+    environment:
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
+    privileged: true
+    tty: true
+    user: autoware
