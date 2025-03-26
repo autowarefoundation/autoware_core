@@ -55,6 +55,8 @@ public:
 
   const detail::InterpolatedArray<LaneIdType> & lane_ids() const { return *lane_ids_; }
 
+  [[nodiscard]] std::vector<int64_t> get_contained_lane_ids() const;
+
   /**
    * @brief Build the trajectory from the points
    * @param points Vector of points
