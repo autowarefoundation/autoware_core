@@ -11,4 +11,3 @@ services:
       - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
     privileged: true
     tty: true
-    user: autoware

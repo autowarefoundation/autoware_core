@@ -1,7 +1,6 @@
 {
     "name": "Autoware Core Development",
     "image": "ghcr.io/autowarefoundation/autoware:core-common-devel",
-    "remoteUser": "autoware",
     "runArgs": [
         "--net=host",
         "--privileged"
@@ -12,7 +11,7 @@
     "containerEnv": {
         "ROS_DOMAIN_ID": "${localEnv:ROS_DOMAIN_ID:0}"
     },
-    "postCreateCommand": "sudo chown -R autoware:autoware /autoware",
+    "postCreateCommand": "mkdir -p /autoware/src && chmod -R 777 /autoware",
     "customizations": {
         "vscode": {
             "extensions": [
