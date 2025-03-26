@@ -19,7 +19,8 @@
                 "redhat.vscode-yaml",
                 "ms-vscode.cmake-tools",
                 "twxs.cmake",
-                "ms-iot.vscode-ros"
+                "ms-iot.vscode-ros",
+                "ms-vscode.cpptools-extension-pack"
             ],
             "settings": {
                 "terminal.integrated.defaultProfile.linux": "bash"
