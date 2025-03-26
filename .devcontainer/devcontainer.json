@@ -8,8 +8,6 @@
     "workspaceMount": "source=${localWorkspaceFolder},target=/autoware/src/core/autoware_core,type=bind,consistency=cached",
     "workspaceFolder": "/autoware/src/core/autoware_core",
     "containerEnv": {
-        "NVIDIA_VISIBLE_DEVICES": "${localEnv:NVIDIA_VISIBLE_DEVICES:all}",
-        "NVIDIA_DRIVER_CAPABILITIES": "${localEnv:NVIDIA_DRIVER_CAPABILITIES:all}",
         "ROS_DOMAIN_ID": "${localEnv:ROS_DOMAIN_ID:0}"
     },
     "postCreateCommand": "mkdir -p /autoware/src && chmod 755 /autoware/src",
