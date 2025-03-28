@@ -16,7 +16,6 @@
 
 #include <gtest/gtest.h>
 
-
 using namespace autoware::localization_util;
 
 class CovarianceEllipseTest : public ::testing::Test
