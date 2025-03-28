@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "autoware/trajectory/pose.hpp"
+#include "autoware_utils_geometry/geometry.hpp"
 
 #include <autoware/pyplot/pyplot.hpp>
+#include <range/v3/all.hpp>
 #include <tf2/LinearMath/Quaternion.hpp>
 #include <tf2/LinearMath/Vector3.hpp>
 
@@ -23,6 +25,8 @@
 #include <pybind11/embed.h>
 #include <pybind11/stl.h>
 
+#include <algorithm>
+#include <string>
 #include <vector>
 
 geometry_msgs::msg::Pose pose(double x, double y)
@@ -34,11 +38,37 @@ geometry_msgs::msg::Pose pose(double x, double y)
   return p;
 }
 
+using autoware::trajectory::Trajectory;
+using ranges::to;
+using ranges::views::transform;
+
+void plot_trajectory_base_with_orientation(
+  const Trajectory<geometry_msgs::msg::Pose> & trajectory, const std::string & label,
+  autoware::pyplot::Axes & ax)
+{
+  const auto s = trajectory.get_underlying_bases();
+  const auto c = trajectory.compute(s);
+  const auto x =
+    c | transform([](const auto & point) { return point.position.x; }) | to<std::vector>();
+  const auto y =
+    c | transform([](const auto & point) { return point.position.y; }) | to<std::vector>();
+  const auto th =
+    c | transform([](const auto & quat) { return autoware_utils_geometry::get_rpy(quat).z; }) |
+    to<std::vector>();
+  const auto cos_th = th | transform([](const auto v) { return std::cos(v); }) | to<std::vector>();
+  const auto sin_th = th | transform([](const auto v) { return std::sin(v); }) | to<std::vector>();
+  ax.scatter(Args(x, y), Kwargs("color"_a = "red", "marker"_a = "o", "label"_a = "underlying"));
+  ax.quiver(Args(x, y, cos_th, sin_th), Kwargs("color"_a = "green", "label"_a = label));
+}
+
 int main()
 {
   pybind11::scoped_interpreter guard{};
 
   auto plt = autoware::pyplot::import();
+  auto [fig, axes] = plt.subplots(1, 2);
+  auto & ax1 = axes[0];
+  auto & ax2 = axes[1];
 
   std::vector<geometry_msgs::msg::Pose> poses = {
     pose(0.49, 0.59), pose(0.61, 1.22), pose(0.86, 1.93), pose(1.20, 2.56), pose(1.51, 3.17),
@@ -47,11 +77,12 @@ int main()
     pose(6.88, 3.54), pose(7.51, 4.25), pose(7.85, 4.93), pose(8.03, 5.73), pose(8.16, 6.52),
     pose(8.31, 7.28), pose(8.45, 7.93), pose(8.68, 8.45), pose(8.96, 8.96), pose(9.32, 9.36)};
 
-  using autoware::trajectory::Trajectory;
-
   auto trajectory = Trajectory<geometry_msgs::msg::Pose>::Builder{}.build(poses);
 
+  plot_trajectory_base_with_orientation(*trajectory, "before", ax1);
   trajectory->align_orientation_with_trajectory_direction();
+  plot_trajectory_base_with_orientation(
+    *trajectory, "after align_orientation_with_trajectory_direction()", ax2);
 
   {
     std::vector<double> x;
@@ -63,34 +94,15 @@ int main()
       y.push_back(p.position.y);
     }
 
-    plt.plot(Args(x, y), Kwargs("label"_a = "Trajectory", "color"_a = "blue"));
+    ax1.plot(Args(x, y), Kwargs("label"_a = "Trajectory", "color"_a = "blue"));
+    ax2.plot(Args(x, y), Kwargs("label"_a = "Trajectory", "color"_a = "blue"));
   }
 
-  {
-    std::vector<double> x;
-    std::vector<double> y;
-    std::vector<double> dx;
-    std::vector<double> dy;
-
-    for (double i = 0.0; i <= trajectory->length(); i += 1.0) {
-      auto p = trajectory->compute(i);
-      x.push_back(p.position.x);
-      y.push_back(p.position.y);
-
-      tf2::Vector3 x_axis(1.0, 0.0, 0.0);
-      tf2::Quaternion q(p.orientation.x, p.orientation.y, p.orientation.z, p.orientation.w);
-      tf2::Vector3 direction = tf2::quatRotate(q, x_axis);
-      dx.push_back(direction.x());
-      dy.push_back(direction.y());
-      // double azimuth = trajectory->azimuth(i);
-      // dx.push_back(std::cos(azimuth));
-      // dy.push_back(std::sin(azimuth));
-    }
-    plt.quiver(Args(x, y, dx, dy), Kwargs("label"_a = "Direction", "color"_a = "green"));
+  fig.tight_layout();
+  for (auto & ax : axes) {
+    ax.set_aspect(Args("equal"));
+    ax.grid();
+    ax.legend();
   }
-
-  plt.axis(Args("equal"));
-  plt.grid();
-  plt.legend();
   plt.show();
 }

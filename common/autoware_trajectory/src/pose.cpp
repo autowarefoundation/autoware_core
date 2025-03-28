@@ -94,7 +94,7 @@ PointType Trajectory<PointType>::compute(const double s) const
   PointType result;
   result.position = BaseClass::compute(s);
   const auto s_clamp = clamp(s);
-  // NOTE(soblin): Ideally azimuth() should be used? But okay if the interpolation is not rough
+  // NOTE(soblin): azimuth() should be not used here to serve as interpolator
   result.orientation = orientation_interpolator_->compute(s_clamp);
   return result;
 }
