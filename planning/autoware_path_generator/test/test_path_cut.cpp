@@ -62,43 +62,35 @@ INSTANTIATE_TEST_SUITE_P(
   , GetFirstIntersectionArcLengthTest,
   ::testing::Values(
     GetFirstIntersectionArcLengthTestParam{
-      "UTurnWithGap", {12200, 12214, 12199}, 0.0, std::numeric_limits<double>::max(), std::nullopt},
+      "UTurnWithGap", {601, 602, 600}, 0.0, std::numeric_limits<double>::max(), std::nullopt},
     GetFirstIntersectionArcLengthTestParam{
       "UTurnWithFullCrossing",
-      {16652, 16655, 12996, 12997, 12995, 16665, 16662},
+      {615, 616, 604, 605, 603, 618, 617},
       0.0,
       std::numeric_limits<double>::max(),
       194.477},
     GetFirstIntersectionArcLengthTestParam{
       "UTurnWithHalfCrossing",
-      {16698, 16702, 13129, 13130, 13128, 16705, 16699},
+      {619, 621, 607, 608, 606, 622, 620},
       0.0,
       std::numeric_limits<double>::max(),
       195.507},
     GetFirstIntersectionArcLengthTestParam{
-      "Overpass",
-      {13744, 13745, 13747, 13746, 13805},
-      0.0,
-      std::numeric_limits<double>::max(),
-      311.068},
+      "Overpass", {609, 610, 612, 611, 613}, 0.0, std::numeric_limits<double>::max(), 311.068},
     GetFirstIntersectionArcLengthTestParam{
       "OverpassWithStartEdgeIntersection",
-      {13744, 13745, 13747, 13746, 13805},
+      {609, 610, 612, 611, 613},
       36.0,
       std::numeric_limits<double>::max(),
       325.376},
     GetFirstIntersectionArcLengthTestParam{
       "OverpassWithIntersectionBehind",
-      {13744, 13745, 13747, 13746, 13805},
+      {609, 610, 612, 611, 613},
       76.0,
       std::numeric_limits<double>::max(),
       std::nullopt},
     GetFirstIntersectionArcLengthTestParam{
-      "OverpassWithIntersectionAhead",
-      {13744, 13745, 13747, 13746, 13805},
-      0.0,
-      16.0,
-      std::nullopt}),
+      "OverpassWithIntersectionAhead", {609, 610, 612, 611, 613}, 0.0, 16.0, std::nullopt}),
   ::testing::PrintToStringParamName{});
 
 TEST_F(UtilsTest, getFirstSelfIntersectionArcLength)
