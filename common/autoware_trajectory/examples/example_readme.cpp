@@ -12,17 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "autoware/motion_utils/resample/resample.hpp"
+#include "autoware/motion_utils/trajectory/trajectory.hpp"
 #include "autoware/trajectory/interpolator/akima_spline.hpp"
 #include "autoware/trajectory/interpolator/cubic_spline.hpp"
 #include "autoware/trajectory/interpolator/linear.hpp"
 #include "autoware/trajectory/interpolator/stairstep.hpp"
 #include "autoware/trajectory/pose.hpp"
+#include "autoware_utils_geometry/geometry.hpp"
 
 #include <autoware/pyplot/pyplot.hpp>
 #include <range/v3/all.hpp>
 #include <tf2/LinearMath/Quaternion.hpp>
 #include <tf2/LinearMath/Vector3.hpp>
 
+#include <autoware_internal_planning_msgs/msg/path_point_with_lane_id.hpp>
 #include <autoware_planning_msgs/msg/path_point.hpp>
 #include <geometry_msgs/msg/point.hpp>
 
@@ -525,7 +529,9 @@ int main_trajectory_overview()
 {
   using autoware::trajectory::Trajectory;
   using ranges::to;
+  using ranges::views::drop;
   using ranges::views::stride;
+  using ranges::views::take;
   using ranges::views::transform;
 
   auto plt = autoware::pyplot::import();
@@ -568,6 +574,28 @@ int main_trajectory_overview()
     Kwargs("color"_a = "green", "label"_a = "azimuth", "alpha"_a = 0.5));
 
   ax1.plot(Args(s, trajectory.curvature(s)), Kwargs("color"_a = "purple", "label"_a = "curvature"));
+
+  // compare curvature with discrete version
+  autoware_internal_planning_msgs::msg::PathWithLaneId discrete_path;
+  for (unsigned i = 0; i < underlying_points.size(); ++i) {
+    const auto & point = underlying_points.at(i);
+    const auto s = trajectory.get_underlying_bases().at(i);
+    autoware_internal_planning_msgs::msg::PathPointWithLaneId point_with_lane_id;
+    point_with_lane_id.point.pose.position = point;
+    point_with_lane_id.point.pose.orientation =
+      autoware_utils_geometry::create_quaternion_from_yaw(trajectory.azimuth(s));
+    discrete_path.points.push_back(point_with_lane_id);
+  }
+  const auto discrete_interpolated_path =
+    autoware::motion_utils::resamplePath(discrete_path, s /* arc lengths for this interpolation */);
+  const auto discrete_curvature =
+    autoware::motion_utils::calcCurvature(discrete_interpolated_path.points);
+  const auto discrete_curvature_bases = s | drop(1) | take(s.size() - 2) | to<std::vector>();
+  ax1.plot(
+    Args(s, discrete_curvature),
+    Kwargs(
+      "color"_a = "blue",
+      "label"_a = "discrete approximation using menger curvature"));  // # cspell: ignore menger
 
   const auto points_x = underlying_points |
                         ranges::views::transform([&](const auto & p) { return p.x; }) |
