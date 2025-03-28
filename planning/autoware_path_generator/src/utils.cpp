@@ -435,6 +435,13 @@ std::vector<geometry_msgs::msg::Point> crop_line_string(
 PathRange<double> get_arc_length_on_bounds(
   const lanelet::LaneletSequence & lanelet_sequence, const double s_centerline)
 {
+  if (s_centerline < 0.) {
+    RCLCPP_WARN(
+      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+      "Input arc length is negative, returning 0.");
+    return {0., 0.};
+  }
+
   auto s = 0.;
   auto s_left = 0.;
   auto s_right = 0.;
@@ -470,6 +477,19 @@ PathRange<std::optional<double>> get_arc_length_on_centerline(
 {
   std::optional<double> s_left_centerline = std::nullopt;
   std::optional<double> s_right_centerline = std::nullopt;
+
+  if (s_left_bound && *s_left_bound < 0.) {
+    RCLCPP_WARN(
+      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+      "Input left arc length is negative, returning 0.");
+    s_left_centerline = 0.;
+  }
+  if (s_right_bound && *s_right_bound < 0.) {
+    RCLCPP_WARN(
+      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+      "Input right arc length is negative, returning 0.");
+    s_right_centerline = 0.;
+  }
 
   auto s = 0.;
   auto s_left = 0.;
