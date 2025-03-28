@@ -16,8 +16,8 @@
 
 #include <gtest/gtest.h>
 
-using namespace autoware::localization_util;
-
+namespace autoware::localization_util
+{
 class CovarianceEllipseTest : public ::testing::Test
 {
 public:
@@ -120,3 +120,4 @@ TEST_F(CovarianceEllipseTest, create_ellipse_marker)
   Ellipse ellipse = calculate_xy_ellipse(pose_, 1.0);
   EXPECT_NO_THROW(create_ellipse_marker(ellipse, header_, pose_));
 }
+}  // namespace autoware::localization_util

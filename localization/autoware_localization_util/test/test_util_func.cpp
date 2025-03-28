@@ -25,8 +25,8 @@
 #include <memory>
 #include <vector>
 
-using namespace autoware::localization_util;
-
+namespace autoware::localization_util
+{
 TEST(UtilFuncTest, ExchangeColorCRC)
 {
   {
@@ -363,3 +363,4 @@ int main(int argc, char ** argv)
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
+}  // namespace autoware::localization_util
