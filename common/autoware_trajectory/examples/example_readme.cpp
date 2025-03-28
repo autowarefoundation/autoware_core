@@ -513,7 +513,7 @@ int main_curvature()
 
   ax1.plot(Args(s, cubic.curvature(s)), Kwargs("color"_a = "navy", "label"_a = "curvature"));
   ax.quiver(
-    Args(points_x, points_y, cos_yaw, sin_yaw), Kwargs("color"_a = "green", "label"_a = "yaw"));
+    Args(points_x, points_y, cos_yaw, sin_yaw), Kwargs("color"_a = "green", "label"_a = "azimuth"));
 
   fig.tight_layout();
   for (auto & a : axes) {
