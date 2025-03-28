@@ -218,6 +218,10 @@ std::optional<double> get_first_intersection_arc_length(
   const lanelet::LaneletSequence & lanelet_sequence, const double s_start, const double s_end,
   const double vehicle_length)
 {
+  if (lanelet_sequence.empty()) {
+    return std::nullopt;
+  }
+
   std::optional<double> s_intersection{std::nullopt};
 
   const auto s_start_on_bounds = get_arc_length_on_bounds(lanelet_sequence, s_start);
@@ -235,6 +239,10 @@ std::optional<double> get_first_intersection_arc_length(
     to_geometry_msgs_points(
       lanelet_sequence.rightBound2d().begin(), lanelet_sequence.rightBound2d().end()),
     s_start_on_bounds.right, s_end_on_bounds.right)));
+
+  if (cropped_centerline.empty() || cropped_left_bound.empty() || cropped_right_bound.empty()) {
+    return std::nullopt;
+  }
 
   const lanelet::BasicLineString2d start_edge{
     cropped_left_bound.front(), cropped_right_bound.front()};
@@ -395,6 +403,10 @@ std::optional<double> get_first_self_intersection_arc_length(
 PathRange<std::vector<geometry_msgs::msg::Point>> get_path_bounds(
   const lanelet::LaneletSequence & lanelet_sequence, const double s_start, const double s_end)
 {
+  if (lanelet_sequence.empty()) {
+    return {};
+  }
+
   const auto [s_left_start, s_right_start] = get_arc_length_on_bounds(lanelet_sequence, s_start);
   const auto [s_left_end, s_right_end] = get_arc_length_on_bounds(lanelet_sequence, s_end);
 
