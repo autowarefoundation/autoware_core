@@ -6,21 +6,18 @@ This package provides classes to manage/manipulate Trajectory.
 
 ### Interpolators
 
-The _Trajectory_ class provides mathematical continuous representation and object oriented interface for discrete array of following point types
+The interpolator class interpolates given `bases` and `values`. Following interpolators are implemented.
 
-- [x] `geometry_msgs::Point`
-- [x] `geometry_msgs::Pose`
-- [x] `autoware_planning_msgs::PathPoint`
-- [x] `autoware_planning_msgs::PathPointWithLaneId`
-- [x] `autoware_planning_msgs::TrajectoryPoint`
-- [ ] `lanelet::ConstPoint3d`
+- Linear
+- AkimaSpline
+- CubicSpline
+- NearestNeighbor
+- Stairstep
 
-by interpolating the given _underlying_ points. Once built, arbitrary point on the curve is continuously parametrized by a single `s` coordinate.
+![interpolators](./images/overview/interpolators.drawio.svg)
+[View in Drawio]({{ drawio("/common/autoware_trajectory/images/overview/interpolators.drawio.svg") }})
 
-![interpolators](./images/interpolators.drawio.svg)
-[View in Drawio]({{ drawio("/common/autoware_trajectory/images/interpolators.drawio.svg") }})
-
-Given `bases` and `values`, the builder internally executes interpolation and return the result in the form of `expected<T, E>`. If successful, it contains the interpolator object.
+The builder internally executes interpolation and return the result in the form of `expected<T, E>`. If successful, it contains the interpolator object.
 
 ```cpp title="./examples/example_readme.cpp:48:67"
 --8<--
@@ -37,6 +34,28 @@ common/autoware_trajectory/examples/example_readme.cpp:109:119
 ```
 
 In such cases the result `expected` object contains `InterpolationFailure` type with an error message like **"base size 3 is less than minimum required 4"**.
+
+### Trajectory class
+
+The _Trajectory_ class provides mathematical continuous representation and object oriented interface for discrete array of following point types
+
+- [x] `geometry_msgs::Point`
+- [x] `geometry_msgs::Pose`
+- [x] `autoware_planning_msgs::PathPoint`
+- [x] `autoware_planning_msgs::PathPointWithLaneId`
+- [x] `autoware_planning_msgs::TrajectoryPoint`
+- [ ] `lanelet::ConstPoint3d`
+
+by interpolating the given _underlying_ points. Once built, arbitrary point on the curve is continuously parametrized by a single `s` coordinate.
+
+```cpp title="./examples/example_readme.cpp:547:562"
+--8<--
+common/autoware_trajectory/examples/example_readme.cpp:547:562
+--8<--
+```
+
+![overview_trajectory](./images/overview/trajectory.drawio.svg)
+[View in Drawio]({{ drawio("/common/autoware_trajectory/images/overview/trajectory.drawio.svg") }})
 
 ## Nomenclature
 
@@ -106,27 +125,31 @@ common/autoware_trajectory/examples/example_readme.cpp:291:300
 ![stairstep](./images/stairstep.drawio.svg)
 [View in Drawio]({{ drawio("/common/autoware_trajectory/images/stairstep.drawio.svg") }})
 
+### Trajectory class
+
+Several `Trajectory<T>` are defined in the following inheritance hierarchy according to the sub object relationships.
+
+![hierarchy](./images/nomenclature/trajectory_hierarchy.drawio.svg)
+[View in Drawio]({{ drawio("/common/autoware_trajectory/images/nomenclature/trajectory_hierarchy.drawio.svg") }})
+
+Each derived class in the diagram inherits the methods of all of its descending subclasses. For example, all of the classes have the methods like `length()`, `curvature()` in common.
+
+| Header/Class                                                                                            | method                                    | description                                                                                                                                        | illustration                                                                                                                                                                                                                             |
+| ------------------------------------------------------------------------------------------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<autoware/trajectory/point.hpp>`<br><ul><li>`Trajectory<geometry_msgs::msg::Point>::Builder`</li></ul> | `Builder()`                               | set default interpolator setting as follows.<br><ul><li>`x, y`: Cubic</li><li>`z`: Linear</li></ul>                                                |                                                                                                                                                                                                                                          |
+|                                                                                                         | `set_xy_interpolator<InterpolatorType>()` | set custom interpolator for `x, y`.                                                                                                                |                                                                                                                                                                                                                                          |
+|                                                                                                         | `set_z_interpolator<InterpolatorType>()`  | set custom interpolator for `z`.                                                                                                                   |                                                                                                                                                                                                                                          |
+|                                                                                                         | `build(const vector<Point> &)`            | return `expected<Trajectory<Point>, InterpolationFailure>` object.                                                                                 |                                                                                                                                                                                                                                          |
+| <ul><li>`Trajectory<Point>`</li></ul>                                                                   | `base_arange(const double step)`          | return vector of `s` values starting from `start`, with the interval of `step`, including `end`. Thus the return value has at least the size of 2. |                                                                                                                                                                                                                                          |
+|                                                                                                         | `length()`                                | return the total `arc length` of the trajectory.                                                                                                   | ![curve](./images/nomenclature/curve.drawio.svg)<br>[View in Drawio]({{ drawio("/common/autoware_trajectory/images/nomenclature/curve.drawio.svg") }})<br>`length()` is $5.0$ because it computes the sum of the length of dotted lines. |
+|                                                                                                         | `azimuth(const double s)`                 | return the tangent angle at given `s` coordinate using `std::atan2`.                                                                               | ![azimuth_angle](./images/overview/trajectory.drawio.svg)<br>[View in Drawio]({{ drawio("/common/autoware_trajectory/images/overview/trajectory.drawio.svg") }})                                                                         |
+|                                                                                                         | `curvature(const double s)`               | return the `curvature` at given `s` coordinate.                                                                                                    | See above                                                                                                                                                                                                                                |
+
 ## Example Usage
 
 This section describes Example Usage of `Trajectory<autoware_planning_msgs::msg::PathPoint>`
 
-- Load Trajectory from point array
-
-  ```cpp
-  #include "autoware/trajectory/path_point.hpp"
-
-  ...
-
-  std::vector<autoware_planning_msgs::msg::PathPoint> points = ... // Load points from somewhere
-
-  using autoware::trajectory::Trajectory;
-
-  std::optional<Trajectory<autoware_planning_msgs::msg::PathPoint>> trajectory =
-    Trajectory<autoware_planning_msgs::msg::PathPoint>::Builder{}
-      .build(points);
-  ```
-
-- You can also specify interpolation method
+- You can also specify interpolation method to `Builder{}` before calling `.build(points)`
 
   ```cpp
   using autoware::trajectory::interpolator::CubicSpline;
@@ -135,18 +158,6 @@ This section describes Example Usage of `Trajectory<autoware_planning_msgs::msg:
     Trajectory<autoware_planning_msgs::msg::PathPoint>::Builder{}
       .set_xy_interpolator<CubicSpline>()  // Set interpolator for x-y plane
       .build(points);
-  ```
-
-- Access point on Trajectory
-
-  ```cpp
-  autoware_planning_msgs::msg::PathPoint point = trajectory->compute(1.0);  // Get point at s=0.0. s is distance from start point on Trajectory.
-  ```
-
-- Get length of Trajectory
-
-  ```cpp
-  double length = trajectory->length();
   ```
 
 - Set 3.0[m] ~ 5.0[m] part of velocity to 0.0

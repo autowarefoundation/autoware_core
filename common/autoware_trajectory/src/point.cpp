@@ -162,6 +162,16 @@ double Trajectory<PointType>::azimuth(const double s) const
   return std::atan2(dy, dx);
 }
 
+std::vector<double> Trajectory<PointType>::azimuth(const std::vector<double> & ss) const
+{
+  std::vector<double> a;
+  a.reserve(ss.size());
+  for (const auto s : ss) {
+    a.push_back(azimuth(s));
+  }
+  return a;
+}
+
 double Trajectory<PointType>::elevation(const double s) const
 {
   const auto s_clamp = clamp(s, true);

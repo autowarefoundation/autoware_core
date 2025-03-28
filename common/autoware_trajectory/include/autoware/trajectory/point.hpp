@@ -109,6 +109,13 @@ public:
   double azimuth(const double s) const;
 
   /**
+   * @brief Get the azimuth angles at given s values
+   * @param ss Arc lengths
+   * @return Azimuth in radians
+   */
+  std::vector<double> azimuth(const std::vector<double> & ss) const;
+
+  /**
    * @brief Get the elevation angle at a given s value
    * @param s Arc length
    * @return Elevation in radians

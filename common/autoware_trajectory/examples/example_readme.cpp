@@ -521,6 +521,73 @@ int main_curvature()
   return 0;
 }
 
+int main_trajectory_overview()
+{
+  using autoware::trajectory::Trajectory;
+  using ranges::to;
+  using ranges::views::stride;
+  using ranges::views::transform;
+
+  auto plt = autoware::pyplot::import();
+  auto [fig, axes] = plt.subplots(1, 2);
+  auto &ax = axes[0], ax1 = axes[1];
+
+  auto pose = [](double x, double y) -> geometry_msgs::msg::Point {
+    geometry_msgs::msg::Point p;
+    p.x = x;
+    p.y = y;
+    p.z = 0.0;
+    return p;
+  };
+
+  std::vector<geometry_msgs::msg::Point> underlying_points = {
+    pose(0.49, 0.59), pose(1.20, 2.56), pose(1.51, 3.17), pose(1.85, 3.76),
+    pose(2.60, 4.56), pose(3.61, 4.30), pose(3.95, 4.01), pose(4.90, 3.25),
+    pose(5.54, 3.10), pose(6.88, 3.54), pose(7.85, 4.93), pose(8.03, 5.73),
+    pose(8.16, 6.52), pose(8.68, 8.45), pose(8.96, 8.96), pose(9.32, 9.36)};
+  auto result = Trajectory<geometry_msgs::msg::Point>::Builder{}.build(underlying_points);
+  if (!result) {
+    std::cout << result.error().what << std::endl;
+    return 0;
+  }
+  auto & trajectory = result.value();
+  const auto s = trajectory.base_arange(0.05);  // like numpy.arange
+  const auto C = trajectory.compute(s);
+  const auto Cx = C | transform([&](const auto & p) { return p.x; }) | to<std::vector>();
+  const auto Cy = C | transform([&](const auto & p) { return p.y; }) | to<std::vector>();
+  const auto th = trajectory.azimuth(s);
+  const auto cos_th =
+    th | transform([&](const auto s) { return 1.5 * std::cos(s); }) | to<std::vector>();
+  const auto sin_th =
+    th | transform([&](const auto s) { return 1.5 * std::sin(s); }) | to<std::vector>();
+  ax.plot(Args(Cx, Cy), Kwargs("color"_a = "purple", "label"_a = "Point interpolation"));
+  ax.quiver(
+    Args(
+      Cx | stride(10) | to<std::vector>(), Cy | stride(10) | to<std::vector>(),
+      cos_th | stride(10) | to<std::vector>(), sin_th | stride(10) | to<std::vector>()),
+    Kwargs("color"_a = "green", "label"_a = "azimuth", "alpha"_a = 0.5));
+
+  ax1.plot(Args(s, trajectory.curvature(s)), Kwargs("color"_a = "purple", "label"_a = "curvature"));
+
+  const auto points_x = underlying_points |
+                        ranges::views::transform([&](const auto & p) { return p.x; }) |
+                        ranges::to<std::vector>();
+  const auto points_y = underlying_points |
+                        ranges::views::transform([&](const auto & p) { return p.y; }) |
+                        ranges::to<std::vector>();
+  ax.scatter(
+    Args(points_x, points_y),
+    Kwargs("color"_a = "red", "marker"_a = "o", "label"_a = "underlying"));
+
+  ax.legend();
+  ax.grid();
+  ax.set_aspect(Args("equal"));
+  ax1.legend();
+  ax1.grid();
+  plt.show();
+  return 0;
+}
+
 int main()
 {
   pybind11::scoped_interpreter guard{};
@@ -534,6 +601,7 @@ int main()
   main_stairstep();
   */
   // main_coordinate_approximation();
-  main_curvature();
+  // main_curvature();
+  main_trajectory_overview();
 }
 // NOLINTEND
