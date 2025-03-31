@@ -15,6 +15,7 @@
 #include <autoware/lanelet2_utils/intersection.hpp>
 
 #include <lanelet2_core/primitives/Lanelet.h>
+
 #include <cstring>
 namespace autoware::lanelet2_utils
 {
