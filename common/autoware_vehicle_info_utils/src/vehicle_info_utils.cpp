@@ -19,7 +19,7 @@
 namespace
 {
 template <class T>
-[[nodiscard]] T getParameter(rclcpp::Node & node, const std::string & name)
+T getParameter(rclcpp::Node & node, const std::string & name)
 {
   if (node.has_parameter(name)) {
     return node.get_parameter(name).get_value<T>();
@@ -68,7 +68,7 @@ VehicleInfoUtils::VehicleInfoUtils(rclcpp::Node & node)
     left_overhang_m, right_overhang_m, vehicle_height_m, max_steer_angle_rad);
 }
 
-[[nodiscard]] VehicleInfo VehicleInfoUtils::getVehicleInfo() const
+VehicleInfo VehicleInfoUtils::getVehicleInfo() const
 {
   return vehicle_info_;
 }
