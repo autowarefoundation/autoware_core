@@ -25,7 +25,8 @@ namespace autoware::geography_utils
 {
 using MapProjectorInfo = autoware_map_msgs::msg::MapProjectorInfo;
 
-[[nodiscard]] std::unique_ptr<lanelet::Projector> get_lanelet2_projector(const MapProjectorInfo & projector_info);
+[[nodiscard]] std::unique_ptr<lanelet::Projector> get_lanelet2_projector(
+  const MapProjectorInfo & projector_info);
 
 }  // namespace autoware::geography_utils
 

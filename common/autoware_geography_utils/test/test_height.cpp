@@ -75,8 +75,8 @@ TEST(GeographyUtils, InvalidSourceDatum)
   const double longitude = 139.0;
 
   try {
-    [[maybe_unused]] auto retval = autoware::geography_utils::convert_height(
-      height, latitude, longitude, "INVALID1", "WGS84");
+    [[maybe_unused]] auto retval =
+      autoware::geography_utils::convert_height(height, latitude, longitude, "INVALID1", "WGS84");
     FAIL() << "Expected std::invalid_argument to be thrown";
   } catch (const std::invalid_argument & e) {
     SUCCEED();
@@ -93,8 +93,8 @@ TEST(GeographyUtils, InvalidTargetDatum)
   const double longitude = 139.0;
 
   try {
-    [[maybe_unused]] auto retval = autoware::geography_utils::convert_height(
-      height, latitude, longitude, "WGS84", "INVALID2");
+    [[maybe_unused]] auto retval =
+      autoware::geography_utils::convert_height(height, latitude, longitude, "WGS84", "INVALID2");
     FAIL() << "Expected std::invalid_argument to be thrown";
   } catch (const std::invalid_argument & e) {
     SUCCEED();

@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <GeographicLib/Geoid.hpp>
 #include "autoware/geography_utils/height.hpp"
+
+#include <GeographicLib/Geoid.hpp>
 
 #include <map>
 #include <stdexcept>
@@ -56,8 +57,10 @@ double convert_height(
     return it->second(height, latitude, longitude);
   }
 
-  throw std::invalid_argument(
-    std::string{"Invalid conversion types: "}.append(source_vertical_datum).append(" to ").append(target_vertical_datum));
+  throw std::invalid_argument(std::string{"Invalid conversion types: "}
+                                .append(source_vertical_datum)
+                                .append(" to ")
+                                .append(target_vertical_datum));
 }
 
 }  // namespace autoware::geography_utils
