@@ -75,7 +75,8 @@ public:
   /// @brief create markers for the stored virtual walls
   /// @details also create DELETE markers for the namespace+ids that are no longer used
   /// @param now current time to be used for displaying the markers
-  visualization_msgs::msg::MarkerArray create_markers(const rclcpp::Time & now = rclcpp::Time());
+  [[nodiscard]] visualization_msgs::msg::MarkerArray create_markers(
+    const rclcpp::Time & now = rclcpp::Time());
 };
 }  // namespace autoware::motion_utils
 
