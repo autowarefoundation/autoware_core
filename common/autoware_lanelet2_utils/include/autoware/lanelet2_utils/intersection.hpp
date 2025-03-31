@@ -66,7 +66,8 @@ enum TurnDirection : int { Straight = 0, Left, Right };
  * @return valid TurnDirection value if `lanelet` has valid "turn_direction" value, otherwise null
  * "right"
  */
-[[nodiscard]] std::optional<TurnDirection> get_turn_direction(const lanelet::ConstLanelet & lanelet);
+[[nodiscard]] std::optional<TurnDirection> get_turn_direction(
+  const lanelet::ConstLanelet & lanelet);
 
 }  // namespace autoware::lanelet2_utils
 #endif  // AUTOWARE__LANELET2_UTILS__INTERSECTION_HPP_
