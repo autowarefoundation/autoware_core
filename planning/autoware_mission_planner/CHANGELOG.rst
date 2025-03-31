@@ -2,8 +2,8 @@
 Changelog for package autoware_mission_planner
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.0 (2025-03-31)
+------------------
 * chore: update version in package.xml
 * feat: port simplified version of autoware_mission_planner from Autoware Universe  (`#329 <https://github.com/autowarefoundation/autoware_core/issues/329>`_)
   * feat: port autoware_mission_planner from Autoware Universe

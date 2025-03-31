@@ -2,8 +2,8 @@
 Changelog for package autoware_ground_filter
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.0 (2025-03-31)
+------------------
 * chore: update version in package.xml
 * feat: re-implementation autoware_ground_filter as alpha quality from universe (`#311 <https://github.com/autowarefoundation/autoware_core/issues/311>`_)
   * add: `scan_ground_filter` from Autoware Universe

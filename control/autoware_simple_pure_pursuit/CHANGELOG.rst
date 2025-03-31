@@ -2,8 +2,8 @@
 Changelog for package autoware_simple_pure_pursuit
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.0 (2025-03-31)
+------------------
 * fix(autoware_simple_pure_pursuit): make control command output transient local (`#328 <https://github.com/autowarefoundation/autoware_core/issues/328>`_)
   * fix(autoware_simple_pure_pursuit): change control command topic to transient local
   * style(pre-commit): autofix

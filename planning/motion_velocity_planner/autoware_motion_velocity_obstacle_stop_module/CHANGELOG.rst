@@ -2,8 +2,8 @@
 Changelog for package autoware_motion_velocity_obstacle_stop_module
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.0 (2025-03-31)
+------------------
 * chore: update version in package.xml
 * fix(motion_velocity_obstacle_stop_module): fix debug topic name (`#341 <https://github.com/autowarefoundation/autoware_core/issues/341>`_)
   fix(motion_velocity_obstacle_xxx_module): fix debug topic name

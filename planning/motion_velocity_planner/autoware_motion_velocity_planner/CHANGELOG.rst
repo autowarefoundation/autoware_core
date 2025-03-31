@@ -2,8 +2,8 @@
 Changelog for package autoware_motion_velocity_planner
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.0 (2025-03-31)
+------------------
 * chore: update version in package.xml
 * feat: autoware_motion_velocity_planner and autoware_motion_velocity_planner_common to core (`#242 <https://github.com/autowarefoundation/autoware_core/issues/242>`_)
   * feat: modify autoware_universe_utils to autoware_utils

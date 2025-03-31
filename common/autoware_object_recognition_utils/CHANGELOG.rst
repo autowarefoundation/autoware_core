@@ -2,8 +2,8 @@
 Changelog for package autoware_object_recognition_utils
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.0 (2025-03-31)
+------------------
 * fix(autoware_object_recognition_utils): add missing include cstdint for std::uint8_t (`#314 <https://github.com/autowarefoundation/autoware_core/issues/314>`_)
 * Contributors: Shane Loretz
 

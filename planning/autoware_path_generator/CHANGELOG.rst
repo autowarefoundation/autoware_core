@@ -2,8 +2,8 @@
 Changelog for package autoware_path_generator
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.0 (2025-03-31)
+------------------
 * test(autoware_path_generator): add turn signal RequiredEndPoint position test (`#323 <https://github.com/autowarefoundation/autoware_core/issues/323>`_)
   test(autoware_path_generator): add RequiredEndPoint position test
 * test(path_generator): add tests for turn signal activation feature (`#253 <https://github.com/autowarefoundation/autoware_core/issues/253>`_)
