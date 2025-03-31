@@ -62,8 +62,8 @@ std::unique_ptr<lanelet::Projector> get_lanelet2_projector(const MapProjectorInf
   }
 
   throw std::invalid_argument(
-    "Invalid map projector type: " + projector_info.projector_type +
-    ". Currently supported types: MGRS, LocalCartesianUTM, LocalCartesian and TransverseMercator");
+    std::string{"Invalid map projector type: "}.append(projector_info.projector_type).append(
+      ". Currently supported types: MGRS, LocalCartesianUTM, LocalCartesian and TransverseMercator"));
 }
 
 }  // namespace autoware::geography_utils
