@@ -519,8 +519,8 @@ TEST(trajectory, calcLongitudinalOffsetToSegment_StraightTrajectory)
     const auto invalid_traj = generateTestTrajectory<Trajectory>(10, 0.0);
     const auto p = create_point(3.0, 0.0, 0.0);
     try {
-      [[maybe_unused]] auto retval = calcLongitudinalOffsetToSegment(
-        invalid_traj.points, 3, p, throw_exception);
+      [[maybe_unused]] auto retval =
+        calcLongitudinalOffsetToSegment(invalid_traj.points, 3, p, throw_exception);
       FAIL() << "Expected std::runtime_error exception, but no exception was thrown.";
     } catch (const std::runtime_error &) {
       SUCCEED();
@@ -597,8 +597,7 @@ TEST(trajectory, calcLateralOffset)
     const auto invalid_traj = generateTestTrajectory<Trajectory>(10, 0.0);
     const auto p = create_point(3.0, 0.0, 0.0);
     try {
-      [[maybe_unused]] auto retval =
-        calcLateralOffset(invalid_traj.points, p, throw_exception);
+      [[maybe_unused]] auto retval = calcLateralOffset(invalid_traj.points, p, throw_exception);
       FAIL() << "Expected std::runtime_error exception, but no exception was thrown.";
     } catch (const std::runtime_error &) {
       SUCCEED();
@@ -644,10 +643,9 @@ TEST(trajectory, calcLateralOffset_without_segment_idx)
   {
     const auto one_point_traj = generateTestTrajectory<Trajectory>(1, 1.0);
     try {
-      [[maybe_unused]] auto retval =
-        calcLateralOffset(
-          one_point_traj.points, geometry_msgs::msg::Point{}, static_cast<size_t>(0),
-          throw_exception);
+      [[maybe_unused]] auto retval = calcLateralOffset(
+        one_point_traj.points, geometry_msgs::msg::Point{}, static_cast<size_t>(0),
+        throw_exception);
       FAIL() << "Expected std::runtime_error exception, but no exception was thrown.";
     } catch (const std::runtime_error &) {
       // Expected exception, test passes
@@ -732,8 +730,7 @@ TEST(trajectory, calcSignedArcLengthFromIndexToIndex)
 
   // Out of range
   try {
-    [[maybe_unused]] auto retval =
-      calcSignedArcLength(traj.points, -1, 1);
+    [[maybe_unused]] auto retval = calcSignedArcLength(traj.points, -1, 1);
     FAIL() << "Expected std::out_of_range exception, but no exception was thrown.";
   } catch (const std::out_of_range &) {
     SUCCEED();
@@ -742,8 +739,7 @@ TEST(trajectory, calcSignedArcLengthFromIndexToIndex)
   }
 
   try {
-    [[maybe_unused]] auto retval =
-      calcSignedArcLength(traj.points, 0, traj.points.size() + 1);
+    [[maybe_unused]] auto retval = calcSignedArcLength(traj.points, 0, traj.points.size() + 1);
     FAIL() << "Expected std::out_of_range exception, but no exception was thrown.";
   } catch (const std::out_of_range &) {
     SUCCEED();
@@ -5616,5 +5612,3 @@ TEST(trajectory, isTargetPointFront)
     }
   }
 }
-
-

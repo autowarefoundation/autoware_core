@@ -248,7 +248,8 @@ searchZeroVelocityIndex<std::vector<autoware_planning_msgs::msg::TrajectoryPoint
  * @return first matching index of a zero velocity point inside the points container.
  */
 template <class T>
-[[nodiscard]] std::optional<size_t> searchZeroVelocityIndex(const T & points_with_twist, const size_t src_idx)
+[[nodiscard]] std::optional<size_t> searchZeroVelocityIndex(
+  const T & points_with_twist, const size_t src_idx)
 {
   try {
     validateNonEmpty(points_with_twist);
