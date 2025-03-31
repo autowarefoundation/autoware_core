@@ -20,16 +20,16 @@ namespace autoware::lanelet2_utils
 {
 bool is_road_lane(const lanelet::ConstLanelet & lanelet)
 {
-  return lanelet.attributeOr(lanelet::AttributeName::Subtype, "none") == k_road_lane_type;
+  return lanelet.attributeOr(lanelet::AttributeName::Subtype, "none").compare(k_road_lane_type) == 0;
 }
 
 bool is_shoulder_lane(const lanelet::ConstLanelet & lanelet)
 {
-  return lanelet.attributeOr(lanelet::AttributeName::Subtype, "none") == k_shoulder_lane_type;
+  return lanelet.attributeOr(lanelet::AttributeName::Subtype, "none").compare(k_shoulder_lane_type) == 0;
 }
 
 bool is_bicycle_lane(const lanelet::ConstLanelet & lanelet)
 {
-  return lanelet.attributeOr(lanelet::AttributeName::Subtype, "none") == k_bicycle_lane_type;
+  return lanelet.attributeOr(lanelet::AttributeName::Subtype, "none").compare(k_bicycle_lane_type) == 0;
 }
 }  // namespace autoware::lanelet2_utils
