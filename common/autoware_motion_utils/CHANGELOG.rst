@@ -2,6 +2,9 @@
 Changelog for package autoware_motion_utils
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 0.3.0 (2025-03-21)
 ------------------
 * chore: fix versions in package.xml
