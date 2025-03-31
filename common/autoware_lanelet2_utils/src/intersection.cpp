@@ -15,7 +15,7 @@
 #include <autoware/lanelet2_utils/intersection.hpp>
 
 #include <lanelet2_core/primitives/Lanelet.h>
-
+#include <cstring>
 namespace autoware::lanelet2_utils
 {
 
@@ -26,17 +26,17 @@ bool is_intersection_lanelet(const lanelet::ConstLanelet & lanelet)
 
 bool is_straight_direction(const lanelet::ConstLanelet & lanelet)
 {
-  return lanelet.attributeOr(k_turn_direction, "else").compare(k_turn_direction_straight) == 0;
+  return std::strcmp(lanelet.attributeOr(k_turn_direction, "else"), k_turn_direction_straight) == 0;
 }
 
 bool is_left_direction(const lanelet::ConstLanelet & lanelet)
 {
-  return lanelet.attributeOr(k_turn_direction, "else").compare(k_turn_direction_left) == 0;
+  return std::strcmp(lanelet.attributeOr(k_turn_direction, "else"), k_turn_direction_left) == 0;
 }
 
 bool is_right_direction(const lanelet::ConstLanelet & lanelet)
 {
-  return lanelet.attributeOr(k_turn_direction, "else").compare(k_turn_direction_right) == 0;
+  return std::strcmp(lanelet.attributeOr(k_turn_direction, "else"), k_turn_direction_right) == 0;
 }
 
 std::optional<TurnDirection> get_turn_direction(const lanelet::ConstLanelet & lanelet)
