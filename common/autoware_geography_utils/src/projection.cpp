@@ -22,7 +22,7 @@
 namespace autoware::geography_utils
 {
 
-Eigen::Vector3d to_basic_point_3d_pt(const LocalPoint src)
+[[nodiscard]] Eigen::Vector3d to_basic_point_3d_pt(const LocalPoint src)
 {
   return Eigen::Vector3d{src.x, src.y, src.z};
 }
