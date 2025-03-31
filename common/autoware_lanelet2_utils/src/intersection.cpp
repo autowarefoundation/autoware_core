@@ -26,17 +26,17 @@ bool is_intersection_lanelet(const lanelet::ConstLanelet & lanelet)
 
 bool is_straight_direction(const lanelet::ConstLanelet & lanelet)
 {
-  return strcmp(lanelet.attributeOr(k_turn_direction, "else"), k_turn_direction_straight) == 0;
+  return lanelet.attributeOr(k_turn_direction, "else") == k_turn_direction_straight;
 }
 
 bool is_left_direction(const lanelet::ConstLanelet & lanelet)
 {
-  return strcmp(lanelet.attributeOr(k_turn_direction, "else"), k_turn_direction_left) == 0;
+  return lanelet.attributeOr(k_turn_direction, "else") == k_turn_direction_left;
 }
 
 bool is_right_direction(const lanelet::ConstLanelet & lanelet)
 {
-  return strcmp(lanelet.attributeOr(k_turn_direction, "else"), k_turn_direction_right) == 0;
+  return lanelet.attributeOr(k_turn_direction, "else") == k_turn_direction_right;
 }
 
 std::optional<TurnDirection> get_turn_direction(const lanelet::ConstLanelet & lanelet)

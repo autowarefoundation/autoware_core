@@ -30,7 +30,7 @@ namespace autoware::lanelet2_utils
  * @param participant [in, opt, lanelet::Participants::Vehicle] participant value
  * @return RoutingGraph object without road_shoulder and bicycle_lane
  */
-lanelet::routing::RoutingGraphConstPtr instantiate_routing_graph(
+[[nodiscard]] lanelet::routing::RoutingGraphConstPtr instantiate_routing_graph(
   lanelet::LaneletMapConstPtr lanelet_map, const char * location = lanelet::Locations::Germany,
   const char * participant = lanelet::Participants::Vehicle);
 
@@ -41,7 +41,7 @@ lanelet::routing::RoutingGraphConstPtr instantiate_routing_graph(
  * @param [in] routing_graph routing_graph containing `lanelet`
  * @return optional of left adjacent lanelet(nullopt if there is no such adjacent lanelet)
  */
-std::optional<lanelet::ConstLanelet> left_lanelet(
+[[nodiscard]] std::optional<lanelet::ConstLanelet> left_lanelet(
   const lanelet::ConstLanelet & lanelet,
   const lanelet::routing::RoutingGraphConstPtr routing_graph);
 
@@ -51,7 +51,7 @@ std::optional<lanelet::ConstLanelet> left_lanelet(
  * @param [in] routing_graph routing_graph containing `lanelet`
  * @return optional of right adjacent lanelet(nullopt if there is no such adjacent lanelet)
  */
-std::optional<lanelet::ConstLanelet> right_lanelet(
+[[nodiscard]] std::optional<lanelet::ConstLanelet> right_lanelet(
   const lanelet::ConstLanelet & lanelet,
   const lanelet::routing::RoutingGraphConstPtr routing_graph);
 
@@ -87,7 +87,7 @@ const lanelet::routing::RoutingGraphConstPtr routing_graph);
  * @param [in] lanelet_map lanelet_map containing `lanelet`
  * @return optional of the left opposite lanelet(nullopt if there is not such opposite lanelet)
  */
-std::optional<lanelet::ConstLanelet> left_opposite_lanelet(
+[[nodiscard]] std::optional<lanelet::ConstLanelet> left_opposite_lanelet(
   const lanelet::ConstLanelet & lanelet, const lanelet::LaneletMapConstPtr lanelet_map);
 
 /**
@@ -96,7 +96,7 @@ std::optional<lanelet::ConstLanelet> left_opposite_lanelet(
  * @param [in] routing_graph routing_graph containing `lanelet`
  * @return optional of the right opposite lanelet(nullopt if there is no such opposite lanelet)
  */
-std::optional<lanelet::ConstLanelet> right_opposite_lanelet(
+[[nodiscard]] std::optional<lanelet::ConstLanelet> right_opposite_lanelet(
   const lanelet::ConstLanelet & lanelet, const lanelet::LaneletMapConstPtr lanelet_map);
 
 /**
@@ -105,11 +105,11 @@ std::optional<lanelet::ConstLanelet> right_opposite_lanelet(
  * @param [in] routing_graph routing_graph containing `lanelet`
  * @return optional of such lanelet(nullopt if there is no such adjacent lanelet)
  */
-std::optional<lanelet::ConstLanelet> leftmost_lanelet(
+[[nodiscard]] std::optional<lanelet::ConstLanelet> leftmost_lanelet(
   const lanelet::ConstLanelet & lanelet,
   const lanelet::routing::RoutingGraphConstPtr routing_graph);
 
-std::optional<lanelet::ConstLanelet> rightmost_lanelet(
+[[nodiscard]] std::optional<lanelet::ConstLanelet> rightmost_lanelet(
   const lanelet::ConstLanelet & lanelet,
   const lanelet::routing::RoutingGraphConstPtr routing_graph);
 
@@ -123,7 +123,7 @@ std::optional<lanelet::ConstLanelet> rightmost_lanelet(
  * @return the list of lanelets excluding `lanelet` which is ordered in the *hopping* number from
  * `lanelet`
  */
-lanelet::ConstLanelets left_lanelets(
+[[nodiscard]] lanelet::ConstLanelets left_lanelets(
   const lanelet::ConstLanelet & lanelet, const lanelet::LaneletMapConstPtr lanelet_map,
   const lanelet::routing::RoutingGraphConstPtr routing_graph, const bool include_opposite = false,
   const bool invert_opposite_lane = false);
@@ -138,7 +138,7 @@ lanelet::ConstLanelets left_lanelets(
  * @return the list of lanelets excluding `lanelet` which is ordered in the *hopping* number from
  * `lanelet`
  */
-lanelet::ConstLanelets right_lanelets(
+[[nodiscard]] lanelet::ConstLanelets right_lanelets(
   const lanelet::ConstLanelet & lanelet, const lanelet::LaneletMapConstPtr lanelet_map,
   const lanelet::routing::RoutingGraphConstPtr routing_graph, const bool include_opposite = false,
   const bool invert_opposite_lane = false);
@@ -149,7 +149,7 @@ lanelet::ConstLanelets right_lanelets(
  * @param [in] routing_graph routing_graph containing `lanelet`
  * @return the following lanelets
  */
-lanelet::ConstLanelets following_lanelets(
+[[nodiscard]] lanelet::ConstLanelets following_lanelets(
   const lanelet::ConstLanelet & lanelet,
   const lanelet::routing::RoutingGraphConstPtr routing_graph);
 
@@ -159,7 +159,7 @@ lanelet::ConstLanelets following_lanelets(
  * @param [in] routing_graph routing_graph containing `lanelet`
  * @return the previous lanelets
  */
-lanelet::ConstLanelets previous_lanelets(
+[[nodiscard]] lanelet::ConstLanelets previous_lanelets(
   const lanelet::ConstLanelet & lanelet,
   const lanelet::routing::RoutingGraphConstPtr routing_graph);
 
@@ -169,7 +169,7 @@ lanelet::ConstLanelets previous_lanelets(
  * @param [in] routing_graph routing_graph containing `lanelet`
  * @return the sibling lanelets excluding `lanelet`
  */
-lanelet::ConstLanelets sibling_lanelets(
+[[nodiscard]] lanelet::ConstLanelets sibling_lanelets(
   const lanelet::ConstLanelet & lanelet,
   const lanelet::routing::RoutingGraphConstPtr routing_graph);
 
@@ -179,7 +179,7 @@ lanelet::ConstLanelets sibling_lanelets(
  * @param [in] routing_graph routing_graph containing `lanelet`
  * @return the list of Lanelets in the same order as `ids`
  */
-lanelet::ConstLanelets from_ids(
+[[nodiscard]] lanelet::ConstLanelets from_ids(
   const lanelet::LaneletMapConstPtr lanelet_map, const std::vector<lanelet::Id> & ids);
 }  // namespace autoware::lanelet2_utils
 
