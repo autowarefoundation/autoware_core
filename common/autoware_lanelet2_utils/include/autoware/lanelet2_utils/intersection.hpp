@@ -34,7 +34,7 @@ enum TurnDirection : int { Straight = 0, Left, Right };
  * @param [in] input lanelet
  * @return true if and only if the given lanelet has "turn_direction" attribute
  */
-[[nodiscard]] bool is_intersection_lanelet(const lanelet::ConstLanelet & lanelet);
+bool is_intersection_lanelet(const lanelet::ConstLanelet & lanelet);
 
 /**
  * @brief check if given lanelet has "turn_direction" attribute and the value is "straight"
@@ -42,7 +42,7 @@ enum TurnDirection : int { Straight = 0, Left, Right };
  * @return true if and only if the given lanelet has "turn_direction" attribute and the value is
  * "straight"
  */
-[[nodiscard]] bool is_straight_direction(const lanelet::ConstLanelet & lanelet);
+bool is_straight_direction(const lanelet::ConstLanelet & lanelet);
 
 /**
  * @brief check if given lanelet has "turn_direction" attribute and the value is "left"
@@ -50,7 +50,7 @@ enum TurnDirection : int { Straight = 0, Left, Right };
  * @return true if and only if the given lanelet has "turn_direction" attribute and the value is
  * "left"
  */
-[[nodiscard]] bool is_left_direction(const lanelet::ConstLanelet & lanelet);
+bool is_left_direction(const lanelet::ConstLanelet & lanelet);
 
 /**
  * @brief check if given lanelet has "turn_direction" attribute and the value is "right"
@@ -58,7 +58,7 @@ enum TurnDirection : int { Straight = 0, Left, Right };
  * @return true if and only if the given lanelet has "turn_direction" attribute and the value is
  * "right"
  */
-[[nodiscard]] bool is_right_direction(const lanelet::ConstLanelet & lanelet);
+bool is_right_direction(const lanelet::ConstLanelet & lanelet);
 
 /**
  * @brief get the turn_direction value
@@ -66,8 +66,7 @@ enum TurnDirection : int { Straight = 0, Left, Right };
  * @return valid TurnDirection value if `lanelet` has valid "turn_direction" value, otherwise null
  * "right"
  */
-[[nodiscard]] std::optional<TurnDirection> get_turn_direction(
-  const lanelet::ConstLanelet & lanelet);
+std::optional<TurnDirection> get_turn_direction(const lanelet::ConstLanelet & lanelet);
 
 }  // namespace autoware::lanelet2_utils
 #endif  // AUTOWARE__LANELET2_UTILS__INTERSECTION_HPP_

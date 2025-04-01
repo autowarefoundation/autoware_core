@@ -43,20 +43,20 @@ class BicycleLane : public lanelet::ConstLanelet
  * @param [in] lanelet input lanelet
  * @return if the lanelet is road or not
  */
-[[nodiscard]] bool is_road_lane(const lanelet::ConstLanelet & lanelet);
+bool is_road_lane(const lanelet::ConstLanelet & lanelet);
 
 /**
  * @brief check if the given lanelet type has "road_shoulder" subtype
  * @param [in] lanelet input lanelet
  * @return if the lanelet is road_shoulder or not
  */
-[[nodiscard]] bool is_shoulder_lane(const lanelet::ConstLanelet & lanelet);
+bool is_shoulder_lane(const lanelet::ConstLanelet & lanelet);
 
 /**
  * @brief check if the given lanelet type has "bicycle_lane" subtype
  * @param [in] lanelet input lanelet
  * @return if the lanelet is bicycle_lane or not
  */
-[[nodiscard]] bool is_bicycle_lane(const lanelet::ConstLanelet & lanelet);
+bool is_bicycle_lane(const lanelet::ConstLanelet & lanelet);
 }  // namespace autoware::lanelet2_utils
 #endif  // AUTOWARE__LANELET2_UTILS__KIND_HPP_
