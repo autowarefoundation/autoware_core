@@ -58,7 +58,7 @@ struct VehicleInfo
    * polygon
    * @param margin the longitudinal and lateral inflation margin
    */
-  autoware_utils::LinearRing2d createFootprint(const double margin = 0.0) const;
+  [[nodiscard]] autoware_utils::LinearRing2d createFootprint(const double margin = 0.0) const;
 
   /**
    * @brief calculate the vehicle footprint in clockwise manner starting from the front-left edge,
@@ -66,16 +66,16 @@ struct VehicleInfo
    * polygon
    * @param margin the longitudinal and lateral inflation margin
    */
-  autoware_utils::LinearRing2d createFootprint(
+  [[nodiscard]] autoware_utils::LinearRing2d createFootprint(
     const double lat_margin, const double lon_margin) const;
 
-  double calcMaxCurvature() const;
-  double calcCurvatureFromSteerAngle(const double steer_angle) const;
-  double calcSteerAngleFromCurvature(const double curvature) const;
+  [[nodiscard]] double calcMaxCurvature() const;
+  [[nodiscard]] double calcCurvatureFromSteerAngle(const double steer_angle) const;
+  [[nodiscard]] double calcSteerAngleFromCurvature(const double curvature) const;
 };
 
 /// Create vehicle info from base parameters
-VehicleInfo createVehicleInfo(
+[[nodiscard]] VehicleInfo createVehicleInfo(
   const double wheel_radius_m, const double wheel_width_m, const double wheel_base_m,
   const double wheel_tread_m, const double front_overhang_m, const double rear_overhang_m,
   const double left_overhang_m, const double right_overhang_m, const double vehicle_height_m,

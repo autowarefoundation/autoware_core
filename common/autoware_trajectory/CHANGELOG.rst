@@ -2,6 +2,20 @@
 Changelog for package autoware_trajectory
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.0.0 (2025-03-31)
+------------------
+* feat(trajectory): remove default ctor and collect default setting in Builder (`#287 <https://github.com/autowarefoundation/autoware_core/issues/287>`_)
+* fix(autoware_trajectory): fix linking issue with pybind11, and use non-deprecated tf2 headers (`#316 <https://github.com/autowarefoundation/autoware_core/issues/316>`_)
+  * Fix linking issue with pybind11, and use non-deprecated tf2 headers
+  * Use .hpp includes only
+  * style(pre-commit): autofix
+  * Remove redundant find_package(pybind11_vendor ...)
+  * Undo whitespace change
+  * Make pybind11 a test_depend
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* Contributors: Mamoru Sobue, Shane Loretz
+
 0.3.0 (2025-03-21)
 ------------------
 * chore: fix versions in package.xml
