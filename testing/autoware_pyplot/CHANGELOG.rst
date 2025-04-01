@@ -2,6 +2,11 @@
 Changelog for package autoware_pyplot
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.0.0 (2025-03-31)
+------------------
+* feat(trajectory): remove default ctor and collect default setting in Builder (`#287 <https://github.com/autowarefoundation/autoware_core/issues/287>`_)
+* Contributors: Mamoru Sobue
+
 0.3.0 (2025-03-21)
 ------------------
 * chore: fix versions in package.xml

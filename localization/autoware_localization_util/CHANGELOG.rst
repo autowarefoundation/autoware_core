@@ -2,6 +2,13 @@
 Changelog for package autoware_localization_util
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.0.0 (2025-03-31)
+------------------
+* fix(autoware_localization_util): add missing test dependencies to autoware_localization_util (`#293 <https://github.com/autowarefoundation/autoware_core/issues/293>`_)
+  Add missing test dependencies ament_index_cpp and rcl_yaml_param_parser
+  Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
+* Contributors: Shane Loretz
+
 0.3.0 (2025-03-21)
 ------------------
 * chore: rename from `autoware.core` to `autoware_core` (`#290 <https://github.com/autowarefoundation/autoware.core/issues/290>`_)
