@@ -23,10 +23,8 @@ namespace autoware::geography_utils
 {
 using HeightConversionFunction = std::function<double(double, double, double)>;
 
-double convert_wgs84_to_egm2008(
-  const double height, const double latitude, const double longitude);
-double convert_egm2008_to_wgs84(
-  const double height, const double latitude, const double longitude);
+double convert_wgs84_to_egm2008(const double height, const double latitude, const double longitude);
+double convert_egm2008_to_wgs84(const double height, const double latitude, const double longitude);
 double convert_height(
   const double height, const double latitude, const double longitude,
   std::string_view source_vertical_datum, std::string_view target_vertical_datum);
