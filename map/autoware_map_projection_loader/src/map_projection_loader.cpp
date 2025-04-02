@@ -65,21 +65,24 @@ autoware_map_msgs::msg::MapProjectorInfo load_info_from_yaml(const std::string &
       "TransverseMercator, and local");
   }
 
+
   // set scale factor
+  static constexpr double scale_factor_for_utm = 0.9996;
+  static constexpr double scale_factor_for_local = 1.0;
   if (msg.projector_type == autoware_map_msgs::msg::MapProjectorInfo::TRANSVERSE_MERCATOR) {
     if (data["scale_factor"]) {
       msg.scale_factor = data["scale_factor"].as<double>();
     } else {
-      msg.scale_factor = 0.9996;
+      msg.scale_factor = scale_factor_for_utm;
     }
   } else if (
     msg.projector_type == autoware_map_msgs::msg::MapProjectorInfo::MGRS ||
     msg.projector_type == autoware_map_msgs::msg::MapProjectorInfo::LOCAL_CARTESIAN_UTM) {
-    msg.scale_factor = 0.9996;
+    msg.scale_factor = scale_factor_for_utm;
   } else if (
     msg.projector_type == autoware_map_msgs::msg::MapProjectorInfo::LOCAL ||
     msg.projector_type == autoware_map_msgs::msg::MapProjectorInfo::LOCAL_CARTESIAN) {
-    msg.scale_factor = 1.0;
+    msg.scale_factor = scale_factor_for_local;
   }
 
   if (msg.scale_factor <= 0.0) {
