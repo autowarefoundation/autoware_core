@@ -32,7 +32,7 @@ There are three types of transformations from latitude and longitude to XYZ coor
 projector_type: Local
 ```
 
-※ Even if you input scale_factor, it will be overwritten to 1.0.
+Note that even if you input scale_factor, it will be overwritten to 1.0.
 
 #### Limitation
 
