@@ -65,7 +65,6 @@ autoware_map_msgs::msg::MapProjectorInfo load_info_from_yaml(const std::string &
       "TransverseMercator, and local");
   }
 
-
   // set scale factor
   static constexpr double scale_factor_for_utm = 0.9996;
   static constexpr double scale_factor_for_local = 1.0;
