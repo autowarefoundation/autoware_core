@@ -54,7 +54,7 @@ vertical_datum: WGS84
 mgrs_grid: 54SUE
 ```
 
-※ Even if you input scale_factor, it will be overwritten to 0.9996.
+Note that even if you input scale_factor, it will be overwritten to 0.9996.
 
 #### Limitation
 
@@ -73,7 +73,7 @@ map_origin:
   longitude: 139.6503 # [deg]
 ```
 
-※ Even if you input scale_factor, it will be overwritten to 0.9996.
+Note that even if you input scale_factor, it will be overwritten to 0.9996.
 
 ### Using LocalCartesian
 
@@ -90,7 +90,7 @@ map_origin:
   longitude: 139.6503 # [deg]
 ```
 
-※ Even if you input scale_factor, it will be overwritten to 1.0.
+Note that even if you input scale_factor, it will be overwritten to 1.0.
 
 ### Using TransverseMercator
 
