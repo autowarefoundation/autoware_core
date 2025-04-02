@@ -93,6 +93,11 @@ quiver::Quiver Axes::quiver(const pybind11::tuple & args, const pybind11::dict &
   return Quiver{quiver_attr(*args, **kwargs)};
 }
 
+PyObjectWrapper Axes::scatter(const pybind11::tuple & args, const pybind11::dict & kwargs) const
+{
+  return PyObjectWrapper{scatter_attr(*args, **kwargs)};
+}
+
 PyObjectWrapper Axes::set_aspect(const pybind11::tuple & args, const pybind11::dict & kwargs) const
 {
   return PyObjectWrapper{set_aspect_attr(*args, **kwargs)};

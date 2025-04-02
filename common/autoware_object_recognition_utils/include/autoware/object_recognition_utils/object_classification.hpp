@@ -17,6 +17,7 @@
 
 #include "autoware_perception_msgs/msg/object_classification.hpp"
 
+#include <cstdint>
 #include <string>
 #include <vector>
 

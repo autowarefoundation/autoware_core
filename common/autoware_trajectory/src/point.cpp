@@ -34,10 +34,8 @@ namespace autoware::trajectory
 using PointType = geometry_msgs::msg::Point;
 
 Trajectory<PointType>::Trajectory()
-: x_interpolator_(std::make_shared<interpolator::CubicSpline>()),
-  y_interpolator_(std::make_shared<interpolator::CubicSpline>()),
-  z_interpolator_(std::make_shared<interpolator::Linear>())
 {
+  Builder::defaults(this);
 }
 
 Trajectory<PointType>::Trajectory(const Trajectory & rhs)
@@ -181,6 +179,30 @@ void Trajectory<PointType>::crop(const double start, const double length)
 {
   start_ = std::clamp(start_ + start, start_, end_);
   end_ = std::clamp(start_ + length, start_, end_);
+}
+
+Trajectory<PointType>::Builder::Builder() : trajectory_(std::make_unique<Trajectory<PointType>>())
+{
+  defaults(trajectory_.get());
+}
+
+void Trajectory<PointType>::Builder::defaults(Trajectory<PointType> * trajectory)
+{
+  trajectory->x_interpolator_ = std::make_shared<interpolator::CubicSpline>();
+  trajectory->y_interpolator_ = std::make_shared<interpolator::CubicSpline>();
+  trajectory->z_interpolator_ = std::make_shared<interpolator::Linear>();
+}
+
+tl::expected<Trajectory<PointType>, interpolator::InterpolationFailure>
+Trajectory<PointType>::Builder::build(const std::vector<PointType> & points)
+{
+  auto trajectory_result = trajectory_->build(points);
+  if (trajectory_result) {
+    auto result = Trajectory(std::move(*trajectory_));
+    trajectory_.reset();
+    return result;
+  }
+  return tl::unexpected(trajectory_result.error());
 }
 
 }  // namespace autoware::trajectory

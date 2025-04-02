@@ -118,4 +118,11 @@ TEST(TestSphericalLinearInterpolator, compute)
   EXPECT_NEAR(result.x, expected_x, 1e-6);
   EXPECT_NEAR(result.y, expected_y, 1e-6);
   EXPECT_NEAR(result.z, expected_z, 1e-6);
+
+  const std::vector<double> ss = {0.5, 0.75};
+  const auto results = interpolator->compute(ss);
+  EXPECT_NEAR(results[0].w, expected_w, 1e-6);
+  EXPECT_NEAR(results[0].x, expected_x, 1e-6);
+  EXPECT_NEAR(results[0].y, expected_y, 1e-6);
+  EXPECT_NEAR(results[0].z, expected_z, 1e-6);
 }

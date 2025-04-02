@@ -38,13 +38,14 @@ autoware_utils::LinearRing2d VehicleInfo::createFootprint(
   const double y_right = -(wheel_tread_m / 2.0 + right_overhang_m + lat_margin);
 
   LinearRing2d footprint;
-  footprint.push_back(Point2d{x_front, y_left});
-  footprint.push_back(Point2d{x_front, y_right});
-  footprint.push_back(Point2d{x_center, y_right});
-  footprint.push_back(Point2d{x_rear, y_right});
-  footprint.push_back(Point2d{x_rear, y_left});
-  footprint.push_back(Point2d{x_center, y_left});
-  footprint.push_back(Point2d{x_front, y_left});
+  footprint.reserve(7);
+  footprint.emplace_back(x_front, y_left);
+  footprint.emplace_back(x_front, y_right);
+  footprint.emplace_back(x_center, y_right);
+  footprint.emplace_back(x_rear, y_right);
+  footprint.emplace_back(x_rear, y_left);
+  footprint.emplace_back(x_center, y_left);
+  footprint.emplace_back(x_front, y_left);
 
   return footprint;
 }
@@ -55,14 +56,15 @@ VehicleInfo createVehicleInfo(
   const double left_overhang_m, const double right_overhang_m, const double vehicle_height_m,
   const double max_steer_angle_rad_arg)
 {
-  double wheel_base_m = wheel_base_m_arg;
   static constexpr double MIN_WHEEL_BASE_M = 1e-6;
+  double wheel_base_m = wheel_base_m_arg;
   if (std::abs(wheel_base_m) < MIN_WHEEL_BASE_M) {
     RCLCPP_ERROR(
       rclcpp::get_logger("vehicle_info"), "wheel_base_m %f is almost 0.0, clamping to %f",
       wheel_base_m, MIN_WHEEL_BASE_M);
     wheel_base_m = MIN_WHEEL_BASE_M;
   }
+
   double max_steer_angle_rad = max_steer_angle_rad_arg;
   static constexpr double MAX_STEER_ANGLE_RAD = 1e-6;
   if (std::abs(max_steer_angle_rad) < MAX_STEER_ANGLE_RAD) {
@@ -72,10 +74,15 @@ VehicleInfo createVehicleInfo(
     max_steer_angle_rad = MAX_STEER_ANGLE_RAD;
   }
 
-  if (
-    wheel_radius_m <= 0 || wheel_width_m <= 0 || wheel_base_m <= 0 || wheel_tread_m <= 0 ||
-    front_overhang_m <= 0 || rear_overhang_m <= 0 || left_overhang_m <= 0 ||
-    right_overhang_m <= 0 || vehicle_height_m <= 0 || max_steer_angle_rad <= 0) {
+  static constexpr double MIN_POSITIVE_VALUE = 0.0;
+  const bool has_non_positive_values =
+    wheel_radius_m <= MIN_POSITIVE_VALUE || wheel_width_m <= MIN_POSITIVE_VALUE ||
+    wheel_base_m <= MIN_POSITIVE_VALUE || wheel_tread_m <= MIN_POSITIVE_VALUE ||
+    front_overhang_m <= MIN_POSITIVE_VALUE || rear_overhang_m <= MIN_POSITIVE_VALUE ||
+    left_overhang_m <= MIN_POSITIVE_VALUE || right_overhang_m <= MIN_POSITIVE_VALUE ||
+    vehicle_height_m <= MIN_POSITIVE_VALUE || max_steer_angle_rad <= MIN_POSITIVE_VALUE;
+
+  if (has_non_positive_values) {
     RCLCPP_ERROR(
       rclcpp::get_logger("vehicle_info"), "given parameters contain non positive values");
   }
@@ -117,27 +124,33 @@ VehicleInfo createVehicleInfo(
 double VehicleInfo::calcMaxCurvature() const
 {
   const double radius = wheel_base_m / std::tan(max_steer_angle_rad);
-  const double curvature = 1.0 / radius;
-  return curvature;
+  return 1.0 / radius;
 }
+
 double VehicleInfo::calcCurvatureFromSteerAngle(const double steer_angle) const
 {
-  if (std::abs(steer_angle) < 1e-6) {
-    return std::numeric_limits<double>::max();
+  static constexpr double MIN_WHEEL_BASE_M = 1e-6;
+  if (wheel_base_m < MIN_WHEEL_BASE_M) {
+    RCLCPP_ERROR(
+      rclcpp::get_logger("vehicle_info"), "wheel_base_m %f should not be 0 or negative",
+      wheel_base_m);
+    return std::numeric_limits<double>::quiet_NaN();
   }
-  const double radius = wheel_base_m / std::tan(steer_angle);
-  const double curvature = 1.0 / radius;
-  return curvature;
+
+  // radius = wheel_base_m / std::tan(steer_angle)
+  // curvature = 1.0 / radius;
+  // Merge formulas and eliminate variable "radius" to avoid division by zero operations.
+  return std::tan(steer_angle) / wheel_base_m;
 }
 
 double VehicleInfo::calcSteerAngleFromCurvature(const double curvature) const
 {
-  if (std::abs(curvature) < 1e-6) {
+  static constexpr double MIN_CURVATURE = 1e-6;
+  if (std::abs(curvature) < MIN_CURVATURE) {
     return 0.0;
   }
 
   const double radius = 1.0 / curvature;
-  const double steer_angle = std::atan2(wheel_base_m, radius);
-  return steer_angle;
+  return std::atan2(wheel_base_m, radius);
 }
 }  // namespace autoware::vehicle_info_utils

@@ -33,7 +33,8 @@ class Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>
   using PointType = autoware_internal_planning_msgs::msg::PathPointWithLaneId;
   using LaneIdType = std::vector<int64_t>;
 
-  std::shared_ptr<detail::InterpolatedArray<LaneIdType>> lane_ids_;  //!< Lane ID
+protected:
+  std::shared_ptr<detail::InterpolatedArray<LaneIdType>> lane_ids_{nullptr};  //!< Lane ID
 
 public:
   Trajectory();
@@ -70,13 +71,19 @@ public:
    */
   std::vector<PointType> restore(const size_t min_points = 4) const;
 
-  class Builder
+  class Builder : public BaseClass::Builder
   {
   private:
     std::unique_ptr<Trajectory> trajectory_;
 
   public:
-    Builder() : trajectory_(std::make_unique<Trajectory>()) {}
+    Builder();
+
+    /**
+     * @brief create the default interpolator setting
+     * @note In addition to the base class, Stairstep for lane_ids
+     */
+    static void defaults(Trajectory * trajectory);
 
     template <class InterpolatorType, class... Args>
     Builder & set_xy_interpolator(Args &&... args)
@@ -137,16 +144,7 @@ public:
     }
 
     tl::expected<Trajectory, interpolator::InterpolationFailure> build(
-      const std::vector<PointType> & points)
-    {
-      auto trajectory_result = trajectory_->build(points);
-      if (trajectory_result) {
-        auto result = Trajectory(std::move(*trajectory_));
-        trajectory_.reset();
-        return result;
-      }
-      return tl::unexpected(trajectory_result.error());
-    }
+      const std::vector<PointType> & points);
   };
 };
 }  // namespace autoware::trajectory

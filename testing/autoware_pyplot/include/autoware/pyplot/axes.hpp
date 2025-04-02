@@ -83,6 +83,10 @@ public:
     const pybind11::tuple & args = pybind11::tuple(),
     const pybind11::dict & kwargs = pybind11::dict()) const;
 
+  PyObjectWrapper scatter(
+    const pybind11::tuple & args = pybind11::tuple(),
+    const pybind11::dict & kwargs = pybind11::dict()) const;
+
   PyObjectWrapper set_aspect(
     const pybind11::tuple & args = pybind11::tuple(),
     const pybind11::dict & kwargs = pybind11::dict()) const;

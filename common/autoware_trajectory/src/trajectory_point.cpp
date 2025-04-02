@@ -32,19 +32,8 @@ namespace autoware::trajectory
 using PointType = autoware_planning_msgs::msg::TrajectoryPoint;
 
 Trajectory<PointType>::Trajectory()
-: longitudinal_velocity_mps_(std::make_shared<detail::InterpolatedArray<double>>(
-    std::make_shared<interpolator::Stairstep<double>>())),
-  lateral_velocity_mps_(std::make_shared<detail::InterpolatedArray<double>>(
-    std::make_shared<interpolator::Stairstep<double>>())),
-  heading_rate_rps_(std::make_shared<detail::InterpolatedArray<double>>(
-    std::make_shared<interpolator::Stairstep<double>>())),
-  acceleration_mps2_(std::make_shared<detail::InterpolatedArray<double>>(
-    std::make_shared<interpolator::Stairstep<double>>())),
-  front_wheel_angle_rad_(std::make_shared<detail::InterpolatedArray<double>>(
-    std::make_shared<interpolator::Stairstep<double>>())),
-  rear_wheel_angle_rad_(std::make_shared<detail::InterpolatedArray<double>>(
-    std::make_shared<interpolator::Stairstep<double>>()))
 {
+  Builder::defaults(this);
 }
 
 Trajectory<PointType>::Trajectory(const Trajectory & rhs)
@@ -79,6 +68,14 @@ Trajectory<PointType> & Trajectory<PointType>::operator=(const Trajectory & rhs)
 interpolator::InterpolationResult Trajectory<PointType>::build(
   const std::vector<PointType> & points)
 {
+  if (
+    !longitudinal_velocity_mps_ || !lateral_velocity_mps_ || !heading_rate_rps_ ||
+    !acceleration_mps2_ || !front_wheel_angle_rad_ || !rear_wheel_angle_rad_) {
+    return tl::unexpected(interpolator::InterpolationFailure{
+      "longitudinal_velocity_mps/lateral_velocity_mps/heading_rate_rps/acceleration_mps2/"
+      "front_wheel_angle_rad/rear_wheel_angle_rad interpolator are nullptr! check Builder usage"});
+  }
+
   std::vector<geometry_msgs::msg::Pose> poses;
   std::vector<double> longitudinal_velocity_mps_values;
   std::vector<double> lateral_velocity_mps_values;
@@ -186,6 +183,40 @@ std::vector<PointType> Trajectory<PointType>::restore(const size_t min_points) c
     points.emplace_back(compute(s));
   }
   return points;
+}
+
+Trajectory<PointType>::Builder::Builder() : trajectory_(std::make_unique<Trajectory>())
+{
+  defaults(trajectory_.get());
+}
+
+void Trajectory<PointType>::Builder::defaults(Trajectory<PointType> * trajectory)
+{
+  BaseClass::Builder::defaults(trajectory);
+  trajectory->longitudinal_velocity_mps_ = std::make_shared<detail::InterpolatedArray<double>>(
+    std::make_shared<interpolator::Stairstep<double>>());
+  trajectory->lateral_velocity_mps_ = std::make_shared<detail::InterpolatedArray<double>>(
+    std::make_shared<interpolator::Stairstep<double>>());
+  trajectory->heading_rate_rps_ = std::make_shared<detail::InterpolatedArray<double>>(
+    std::make_shared<interpolator::Stairstep<double>>());
+  trajectory->acceleration_mps2_ = std::make_shared<detail::InterpolatedArray<double>>(
+    std::make_shared<interpolator::Stairstep<double>>());
+  trajectory->front_wheel_angle_rad_ = std::make_shared<detail::InterpolatedArray<double>>(
+    std::make_shared<interpolator::Stairstep<double>>());
+  trajectory->rear_wheel_angle_rad_ = std::make_shared<detail::InterpolatedArray<double>>(
+    std::make_shared<interpolator::Stairstep<double>>());
+}
+
+tl::expected<Trajectory<PointType>, interpolator::InterpolationFailure>
+Trajectory<PointType>::Builder::build(const std::vector<PointType> & points)
+{
+  auto trajectory_result = trajectory_->build(points);
+  if (trajectory_result) {
+    auto result = Trajectory(std::move(*trajectory_));
+    trajectory_.reset();
+    return result;
+  }
+  return tl::unexpected(trajectory_result.error());
 }
 
 }  // namespace autoware::trajectory

@@ -18,19 +18,19 @@
 #include "autoware/trajectory/forward.hpp"
 #include "autoware/trajectory/interpolator/spherical_linear.hpp"
 
-#include <tf2/LinearMath/Quaternion.h>
-#include <tf2/LinearMath/Vector3.h>
+#include <tf2/LinearMath/Quaternion.hpp>
+#include <tf2/LinearMath/Vector3.hpp>
 
+#include <memory>
 #include <utility>
 #include <vector>
-
 namespace autoware::trajectory
 {
 using PointType = geometry_msgs::msg::Pose;
 
 Trajectory<PointType>::Trajectory()
-: orientation_interpolator_(std::make_shared<interpolator::SphericalLinear>())
 {
+  Builder::defaults(this);
 }
 
 Trajectory<PointType>::Trajectory(const Trajectory & rhs)
@@ -45,32 +45,6 @@ Trajectory<PointType> & Trajectory<PointType>::operator=(const Trajectory & rhs)
     orientation_interpolator_ = rhs.orientation_interpolator_->clone();
   }
   return *this;
-}
-
-Trajectory<PointType>::Trajectory(const Trajectory<geometry_msgs::msg::Point> & point_trajectory)
-: Trajectory()
-{
-  x_interpolator_ = point_trajectory.x_interpolator_->clone();
-  y_interpolator_ = point_trajectory.y_interpolator_->clone();
-  z_interpolator_ = point_trajectory.z_interpolator_->clone();
-  bases_ = point_trajectory.get_internal_bases();
-  start_ = point_trajectory.start_;
-  end_ = point_trajectory.end_;
-
-  // build mock orientations
-  std::vector<geometry_msgs::msg::Quaternion> orientations(bases_.size());
-  for (size_t i = 0; i < bases_.size(); ++i) {
-    orientations[i].w = 1.0;
-  }
-  const auto success = orientation_interpolator_->build(bases_, std::move(orientations));
-
-  if (!success) {
-    throw std::runtime_error(
-      "Failed to build orientation interpolator.");  // This Exception should not be thrown.
-  }
-
-  // align orientation with trajectory direction
-  align_orientation_with_trajectory_direction();
 }
 
 interpolator::InterpolationResult Trajectory<PointType>::build(
@@ -183,6 +157,29 @@ std::vector<PointType> Trajectory<PointType>::restore(const size_t min_points) c
     points.emplace_back(compute(s));
   }
   return points;
+}
+
+Trajectory<PointType>::Builder::Builder() : trajectory_(std::make_unique<Trajectory<PointType>>())
+{
+  defaults(trajectory_.get());
+}
+
+void Trajectory<PointType>::Builder::defaults(Trajectory<PointType> * trajectory)
+{
+  BaseClass::Builder::defaults(trajectory);
+  trajectory->orientation_interpolator_ = std::make_shared<interpolator::SphericalLinear>();
+}
+
+tl::expected<Trajectory<PointType>, interpolator::InterpolationFailure>
+Trajectory<PointType>::Builder::build(const std::vector<PointType> & points)
+{
+  auto trajectory_result = trajectory_->build(points);
+  if (trajectory_result) {
+    auto result = Trajectory(std::move(*trajectory_));
+    trajectory_.reset();
+    return result;
+  }
+  return tl::unexpected(trajectory_result.error());
 }
 
 }  // namespace autoware::trajectory

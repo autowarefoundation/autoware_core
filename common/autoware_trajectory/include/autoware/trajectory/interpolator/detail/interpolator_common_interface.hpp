@@ -183,6 +183,39 @@ public:
     const double clamped_s = validate_compute_input(s);
     return compute_impl(clamped_s);
   }
+
+  /**
+   * @brief Compute the interpolated value at the given point.
+   *
+   * @param s The point at which to compute the interpolated value.
+   * @return The interpolated value.
+   * @throw std::runtime_error if the interpolator has not been built.
+   */
+  std::vector<T> compute(const std::vector<double> & ss) const
+  {
+    std::vector<T> ret;
+    for (const auto s : ss) {
+      ret.push_back(compute(s));
+    }
+    return ret;
+  }
+
+  /**
+   * @brief return the list of base values from start() to end() with the given interval
+   * @param tick the length of interval
+   * @return array of double from start() to end() including the end()
+   */
+  std::vector<double> base_arange(const double tick) const
+  {
+    std::vector<double> x;
+    for (double s = start(); s < end(); s += tick) {
+      x.push_back(s);
+    }
+    if (x.back() != end()) {
+      x.push_back(end());
+    }
+    return x;
+  }
 };
 }  // namespace autoware::trajectory::interpolator::detail
 

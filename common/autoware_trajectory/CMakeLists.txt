@@ -28,6 +28,7 @@ if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   find_package(autoware_pyplot REQUIRED)
   ament_lint_auto_find_test_dependencies()
+  find_package(pybind11 REQUIRED)
   include_directories(${autoware_pyplot_INCLUDE_DIRS})
   foreach(example_file ${example_files})
     get_filename_component(example_name ${example_file} NAME_WE)
@@ -37,6 +38,7 @@ if(BUILD_TESTING)
     target_link_libraries(${example_name}
       autoware_trajectory
       ${autoware_pyplot_LIBRARIES}
+      pybind11::embed
     )
   endforeach()
 endif()

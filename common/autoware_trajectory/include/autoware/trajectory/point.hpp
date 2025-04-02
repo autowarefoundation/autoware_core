@@ -24,7 +24,6 @@
 
 #include <cstddef>
 #include <memory>
-#include <optional>
 #include <utility>
 #include <vector>
 
@@ -36,18 +35,15 @@ namespace autoware::trajectory
 template <>
 class Trajectory<geometry_msgs::msg::Point>
 {
-  template <class PointType>
-  friend class Trajectory;
-
   using PointType = geometry_msgs::msg::Point;
 
 protected:
-  std::shared_ptr<interpolator::InterpolatorInterface<double>>
-    x_interpolator_;  //!< Interpolator for x
-  std::shared_ptr<interpolator::InterpolatorInterface<double>>
-    y_interpolator_;  //!< Interpolator for y
-  std::shared_ptr<interpolator::InterpolatorInterface<double>>
-    z_interpolator_;  //!< Interpolator for z
+  std::shared_ptr<interpolator::InterpolatorInterface<double>> x_interpolator_{
+    nullptr};  //!< Interpolator for x
+  std::shared_ptr<interpolator::InterpolatorInterface<double>> y_interpolator_{
+    nullptr};  //!< Interpolator for y
+  std::shared_ptr<interpolator::InterpolatorInterface<double>> z_interpolator_{
+    nullptr};  //!< Interpolator for z
 
   std::vector<double> bases_;  //!< Axis of the trajectory
 
@@ -128,7 +124,13 @@ public:
     std::unique_ptr<Trajectory> trajectory_;
 
   public:
-    Builder() : trajectory_(std::make_unique<Trajectory>()) {}
+    Builder();
+
+    /**
+     * @brief create the default interpolator setting
+     * @note CubicSpline for x, y and Linear for z
+     */
+    static void defaults(Trajectory * trajectory);
 
     template <class InterpolatorType, class... Args>
     Builder & set_xy_interpolator(Args &&... args)
@@ -149,16 +151,7 @@ public:
     }
 
     tl::expected<Trajectory, interpolator::InterpolationFailure> build(
-      const std::vector<PointType> & points)
-    {
-      auto trajectory_result = trajectory_->build(points);
-      if (trajectory_result) {
-        auto result = Trajectory(std::move(*trajectory_));
-        trajectory_.reset();
-        return result;
-      }
-      return tl::unexpected(trajectory_result.error());
-    }
+      const std::vector<PointType> & points);
   };
 };
 

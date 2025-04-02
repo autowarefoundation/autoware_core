@@ -1,0 +1,21 @@
+<launch>
+  <!-- map files -->
+  <arg name="lanelet2_map_path"/>
+  <arg name="map_projector_info_path"/>
+
+  <!-- Parameter files -->
+  <arg name="lanelet2_map_loader_param_path" default="$(find-pkg-share autoware_core_map)/config/lanelet2_map_loader.param.yaml"/>
+  <arg name="map_projection_loader_param_path" default="$(find-pkg-share autoware_core_map)/config/map_projection_loader.param.yaml"/>
+
+  <group>
+    <push-ros-namespace namespace="map"/>
+
+    <node pkg="autoware_map_loader" exec="autoware_lanelet2_map_loader" name="lanelet2_map_loader">
+      <param from="$(var lanelet2_map_loader_param_path)" allow_substs="true"/>
+    </node>
+
+    <node pkg="autoware_map_projection_loader" exec="autoware_map_projection_loader_node" name="map_projection_loader">
+      <param from="$(var map_projection_loader_param_path)" allow_substs="true"/>
+    </node>
+  </group>
+</launch>

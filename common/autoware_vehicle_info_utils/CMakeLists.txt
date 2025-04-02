@@ -16,6 +16,7 @@ if(BUILD_TESTING)
 
   target_link_libraries(test_${PROJECT_NAME}
     vehicle_info_utils
+    ament_index_cpp::ament_index_cpp
   )
 endif()
 

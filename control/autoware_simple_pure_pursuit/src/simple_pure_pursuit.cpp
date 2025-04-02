@@ -27,8 +27,8 @@ using autoware::motion_utils::findNearestIndex;
 
 SimplePurePursuitNode::SimplePurePursuitNode(const rclcpp::NodeOptions & node_options)
 : Node("simple_pure_pursuit", node_options),
-  pub_control_command_(
-    create_publisher<autoware_control_msgs::msg::Control>("~/output/control_command", 1)),
+  pub_control_command_(create_publisher<autoware_control_msgs::msg::Control>(
+    "~/output/control_command", rclcpp::QoS(1).transient_local())),
   vehicle_info_(autoware::vehicle_info_utils::VehicleInfoUtils(*this).getVehicleInfo()),
   lookahead_gain_(declare_parameter<float>("lookahead_gain")),
   lookahead_min_distance_(declare_parameter<float>("lookahead_min_distance")),
@@ -69,9 +69,10 @@ autoware_control_msgs::msg::Control SimplePurePursuitNode::create_control_comman
   // when the ego reaches the goal
   if (closest_traj_point_idx == traj.points.size() - 1 || traj.points.size() <= 5) {
     autoware_control_msgs::msg::Control control_command;
-    control_command.stamp = get_clock()->now();
+    control_command.stamp = odom.header.stamp;
     control_command.longitudinal.velocity = 0.0;
     control_command.longitudinal.acceleration = -10.0;
+    control_command.longitudinal.is_defined_acceleration = true;
     RCLCPP_DEBUG_THROTTLE(get_logger(), *get_clock(), 5000, "reached to the goal");
     return control_command;
   }
@@ -83,6 +84,7 @@ autoware_control_msgs::msg::Control SimplePurePursuitNode::create_control_comman
 
   // calculate control command
   autoware_control_msgs::msg::Control control_command;
+  control_command.stamp = odom.header.stamp;
   control_command.longitudinal = calc_longitudinal_control(odom, target_longitudinal_vel);
   control_command.lateral =
     calc_lateral_control(odom, traj, target_longitudinal_vel, closest_traj_point_idx);
