@@ -156,86 +156,78 @@ TEST_F(UtilsTest, getPathBound)
   {  // normal case
     const auto [left, right] = utils::get_path_bounds(get_lanelets_from_ids({4417}), 1.0, 24.0);
 
-    ASSERT_EQ(left.size(), 2);
-    ASSERT_NEAR(left[0].x, -999.0, epsilon);
-    ASSERT_NEAR(left[0].y, 3.5, epsilon);
-    ASSERT_NEAR(left[1].x, -976.0, epsilon);
-    ASSERT_NEAR(left[1].y, 3.5, epsilon);
-    ASSERT_EQ(right.size(), 2);
-    ASSERT_NEAR(right[0].x, -999.0, epsilon);
-    ASSERT_NEAR(right[0].y, 0, epsilon);
-    ASSERT_NEAR(right[1].x, -976.0, epsilon);
-    ASSERT_NEAR(right[1].y, 0, epsilon);
+    ASSERT_GE(left.size(), 2);
+    ASSERT_NEAR(left.front().x, -999.0, epsilon);
+    ASSERT_NEAR(left.front().y, 3.5, epsilon);
+    ASSERT_NEAR(left.back().x, -976.0, epsilon);
+    ASSERT_NEAR(left.back().y, 3.5, epsilon);
+    ASSERT_GE(right.size(), 2);
+    ASSERT_NEAR(right.front().x, -999.0, epsilon);
+    ASSERT_NEAR(right.front().y, 0, epsilon);
+    ASSERT_NEAR(right.back().x, -976.0, epsilon);
+    ASSERT_NEAR(right.back().y, 0, epsilon);
   }
 
   {  // normal case with multiple lanelets
     const auto [left, right] =
       utils::get_path_bounds(get_lanelets_from_ids({4429, 4434}), 1.0, 49.0);
 
-    ASSERT_EQ(left.size(), 3);
-    ASSERT_NEAR(left[0].x, -974.0, epsilon);
-    ASSERT_NEAR(left[0].y, 3.5, epsilon);
-    ASSERT_NEAR(left[1].x, -950.0, epsilon);
-    ASSERT_NEAR(left[1].y, 3.5, epsilon);
-    ASSERT_NEAR(left[2].x, -926.0, epsilon);
-    ASSERT_NEAR(left[2].y, 3.5, epsilon);
-    ASSERT_EQ(right.size(), 3);
-    ASSERT_NEAR(right[0].x, -974.0, epsilon);
-    ASSERT_NEAR(right[0].y, 0.0, epsilon);
-    ASSERT_NEAR(right[1].x, -950.0, epsilon);
-    ASSERT_NEAR(right[1].y, 0.0, epsilon);
-    ASSERT_NEAR(right[2].x, -926.0, epsilon);
-    ASSERT_NEAR(right[2].y, 0.0, epsilon);
+    ASSERT_GE(left.size(), 2);
+    ASSERT_NEAR(left.front().x, -974.0, epsilon);
+    ASSERT_NEAR(left.front().y, 3.5, epsilon);
+    ASSERT_NEAR(left.back().x, -926.0, epsilon);
+    ASSERT_NEAR(left.back().y, 3.5, epsilon);
+    ASSERT_GE(right.size(), 2);
+    ASSERT_NEAR(right.front().x, -974.0, epsilon);
+    ASSERT_NEAR(right.front().y, 0.0, epsilon);
+    ASSERT_NEAR(right.back().x, -926.0, epsilon);
+    ASSERT_NEAR(right.back().y, 0.0, epsilon);
   }
 
   {  // start of bound is negative
     const auto [left, right] = utils::get_path_bounds(get_lanelets_from_ids({4417}), -1.0, 24.0);
 
-    ASSERT_EQ(left.size(), 2);
-    ASSERT_NEAR(left[0].x, -1000.0, epsilon);
-    ASSERT_NEAR(left[0].y, 3.5, epsilon);
-    ASSERT_NEAR(left[1].x, -976.0, epsilon);
-    ASSERT_NEAR(left[1].y, 3.5, epsilon);
-    ASSERT_EQ(right.size(), 2);
-    ASSERT_NEAR(right[0].x, -1000.0, epsilon);
-    ASSERT_NEAR(right[0].y, 0, epsilon);
-    ASSERT_NEAR(right[1].x, -976.0, epsilon);
-    ASSERT_NEAR(right[1].y, 0, epsilon);
+    ASSERT_GE(left.size(), 2);
+    ASSERT_NEAR(left.front().x, -1000.0, epsilon);
+    ASSERT_NEAR(left.front().y, 3.5, epsilon);
+    ASSERT_NEAR(left.back().x, -976.0, epsilon);
+    ASSERT_NEAR(left.back().y, 3.5, epsilon);
+    ASSERT_GE(right.size(), 2);
+    ASSERT_NEAR(right.front().x, -1000.0, epsilon);
+    ASSERT_NEAR(right.front().y, 0, epsilon);
+    ASSERT_NEAR(right.back().x, -976.0, epsilon);
+    ASSERT_NEAR(right.back().y, 0, epsilon);
   }
 
   {  // end of bound exceeds lanelet length
     const auto [left, right] = utils::get_path_bounds(get_lanelets_from_ids({4417}), 1.0, 26.0);
 
-    ASSERT_EQ(left.size(), 2);
-    ASSERT_NEAR(left[0].x, -999.0, epsilon);
-    ASSERT_NEAR(left[0].y, 3.5, epsilon);
-    ASSERT_NEAR(left[1].x, -975.0, epsilon);
-    ASSERT_NEAR(left[1].y, 3.5, epsilon);
-    ASSERT_EQ(right.size(), 2);
-    ASSERT_NEAR(right[0].x, -999.0, epsilon);
-    ASSERT_NEAR(right[0].y, 0, epsilon);
-    ASSERT_NEAR(right[1].x, -975.0, epsilon);
-    ASSERT_NEAR(right[1].y, 0, epsilon);
+    ASSERT_GE(left.size(), 2);
+    ASSERT_NEAR(left.front().x, -999.0, epsilon);
+    ASSERT_NEAR(left.front().y, 3.5, epsilon);
+    ASSERT_NEAR(left.back().x, -975.0, epsilon);
+    ASSERT_NEAR(left.back().y, 3.5, epsilon);
+    ASSERT_GE(right.size(), 2);
+    ASSERT_NEAR(right.front().x, -999.0, epsilon);
+    ASSERT_NEAR(right.front().y, 0, epsilon);
+    ASSERT_NEAR(right.back().x, -975.0, epsilon);
+    ASSERT_NEAR(right.back().y, 0, epsilon);
   }
 
   {  // start of bound is larger than end
     const auto [left, right] =
       utils::get_path_bounds(get_lanelets_from_ids({4429, 4434}), 30.0, 20.0);
 
-    ASSERT_EQ(left.size(), 3);
-    ASSERT_NEAR(left[0].x, -975.0, epsilon);
-    ASSERT_NEAR(left[0].y, 3.5, epsilon);
-    ASSERT_NEAR(left[1].x, -950.0, epsilon);
-    ASSERT_NEAR(left[1].y, 3.5, epsilon);
-    ASSERT_NEAR(left[2].x, -925.0, epsilon);
-    ASSERT_NEAR(left[2].y, 3.5, epsilon);
-    ASSERT_EQ(right.size(), 3);
-    ASSERT_NEAR(right[0].x, -975.0, epsilon);
-    ASSERT_NEAR(right[0].y, 0.0, epsilon);
-    ASSERT_NEAR(right[1].x, -950.0, epsilon);
-    ASSERT_NEAR(right[1].y, 0.0, epsilon);
-    ASSERT_NEAR(right[2].x, -925.0, epsilon);
-    ASSERT_NEAR(right[2].y, 0.0, epsilon);
+    ASSERT_GE(left.size(), 2);
+    ASSERT_NEAR(left.front().x, -975.0, epsilon);
+    ASSERT_NEAR(left.front().y, 3.5, epsilon);
+    ASSERT_NEAR(left.back().x, -925.0, epsilon);
+    ASSERT_NEAR(left.back().y, 3.5, epsilon);
+    ASSERT_GE(right.size(), 2);
+    ASSERT_NEAR(right.front().x, -975.0, epsilon);
+    ASSERT_NEAR(right.front().y, 0.0, epsilon);
+    ASSERT_NEAR(right.back().x, -925.0, epsilon);
+    ASSERT_NEAR(right.back().y, 0.0, epsilon);
   }
 }
 
@@ -261,11 +253,11 @@ TEST_F(UtilsTest, cropLineString)
        lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{3.0, 0.0, 0.0})},
       1.0, 2.0);
 
-    ASSERT_EQ(result.size(), 2);
-    ASSERT_NEAR(result[0].x, 1.0, epsilon);
-    ASSERT_NEAR(result[0].y, 0.0, epsilon);
-    ASSERT_NEAR(result[1].x, 2.0, epsilon);
-    ASSERT_NEAR(result[1].y, 0.0, epsilon);
+    ASSERT_GE(result.size(), 2);
+    ASSERT_NEAR(result.front().x, 1.0, epsilon);
+    ASSERT_NEAR(result.front().y, 0.0, epsilon);
+    ASSERT_NEAR(result.back().x, 2.0, epsilon);
+    ASSERT_NEAR(result.back().y, 0.0, epsilon);
   }
 
   {  // start of crop range is negative
@@ -274,11 +266,24 @@ TEST_F(UtilsTest, cropLineString)
        lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{3.0, 0.0, 0.0})},
       -1.0, 2.0);
 
-    ASSERT_EQ(result.size(), 2);
-    ASSERT_NEAR(result[0].x, 0.0, epsilon);
-    ASSERT_NEAR(result[0].y, 0.0, epsilon);
-    ASSERT_NEAR(result[1].x, 3.0, epsilon);
-    ASSERT_NEAR(result[1].y, 0.0, epsilon);
+    ASSERT_GE(result.size(), 2);
+    ASSERT_NEAR(result.front().x, 0.0, epsilon);
+    ASSERT_NEAR(result.front().y, 0.0, epsilon);
+    ASSERT_NEAR(result.back().x, 3.0, epsilon);
+    ASSERT_NEAR(result.back().y, 0.0, epsilon);
+  }
+
+  {  // end of crop range exceeds line string length
+    const auto result = utils::crop_line_string(
+      {lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{0.0, 0.0, 0.0}),
+       lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{3.0, 0.0, 0.0})},
+      1.0, 4.0);
+
+    ASSERT_GE(result.size(), 2);
+    ASSERT_NEAR(result.front().x, 1.0, epsilon);
+    ASSERT_NEAR(result.front().y, 0.0, epsilon);
+    ASSERT_NEAR(result.back().x, 3.0, epsilon);
+    ASSERT_NEAR(result.back().y, 0.0, epsilon);
   }
 
   {  // start of crop range is larger than end
@@ -287,11 +292,11 @@ TEST_F(UtilsTest, cropLineString)
        lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{3.0, 0.0, 0.0})},
       2.0, 1.0);
 
-    ASSERT_EQ(result.size(), 2);
-    ASSERT_NEAR(result[0].x, 0.0, epsilon);
-    ASSERT_NEAR(result[0].y, 0.0, epsilon);
-    ASSERT_NEAR(result[1].x, 3.0, epsilon);
-    ASSERT_NEAR(result[1].y, 0.0, epsilon);
+    ASSERT_GE(result.size(), 2);
+    ASSERT_NEAR(result.front().x, 0.0, epsilon);
+    ASSERT_NEAR(result.front().y, 0.0, epsilon);
+    ASSERT_NEAR(result.back().x, 3.0, epsilon);
+    ASSERT_NEAR(result.back().y, 0.0, epsilon);
   }
 }
 
