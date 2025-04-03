@@ -227,7 +227,7 @@ std::optional<PathWithLaneId> PathGenerator::plan_path(
 std::optional<PathWithLaneId> PathGenerator::generate_path(
   const geometry_msgs::msg::Pose & current_pose, const Params & params)
 {
-  if (!update_current_lanelet(current_pose)) {
+  if (!update_current_lanelet(current_pose, params)) {
     return std::nullopt;
   }
 
@@ -452,7 +452,8 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
   return finalized_path_with_lane_id;
 }
 
-bool PathGenerator::update_current_lanelet(const geometry_msgs::msg::Pose & current_pose)
+bool PathGenerator::update_current_lanelet(
+  const geometry_msgs::msg::Pose & current_pose, const Params & params)
 {
   if (!current_lanelet_) {
     lanelet::ConstLanelet current_lanelet;
@@ -477,7 +478,9 @@ bool PathGenerator::update_current_lanelet(const geometry_msgs::msg::Pose & curr
     candidates.push_back(*next_lanelet);
   }
 
-  if (lanelet::utils::query::getClosestLanelet(candidates, current_pose, &*current_lanelet_)) {
+  if (lanelet::utils::query::getClosestLaneletWithConstrains(
+        candidates, current_pose, &*current_lanelet_, params.ego_nearest_dist_threshold,
+        params.ego_nearest_yaw_threshold)) {
     return true;
   }
 
