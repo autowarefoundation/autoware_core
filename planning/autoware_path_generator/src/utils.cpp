@@ -425,6 +425,27 @@ std::vector<geometry_msgs::msg::Point> crop_line_string(
   const std::vector<geometry_msgs::msg::Point> & line_string, const double s_start,
   const double s_end)
 {
+  if (line_string.size() < 2) {
+    RCLCPP_WARN(
+      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+      "Input line string has less than 2 points, returning input as is");
+    return line_string;
+  }
+
+  if (s_start < 0.) {
+    RCLCPP_WARN(
+      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+      "Start of crop range is negative, returning input as is");
+    return line_string;
+  }
+
+  if (s_start > s_end) {
+    RCLCPP_WARN(
+      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+      "Start of crop range is larger than end, returning input as is");
+    return line_string;
+  }
+
   auto trajectory = autoware::trajectory::Trajectory<geometry_msgs::msg::Point>::Builder()
                       .set_xy_interpolator<trajectory::interpolator::Linear>()
                       .build(line_string);
