@@ -70,37 +70,6 @@ lanelet::BasicPoints3d to_lanelet_points(
 }
 }  // namespace
 
-std::optional<lanelet::ConstLanelets> get_lanelets_within_route(
-  const lanelet::ConstLanelet & lanelet, const PlannerData & planner_data,
-  const geometry_msgs::msg::Pose & current_pose, const double backward_distance,
-  const double forward_distance)
-{
-  if (!exists(planner_data.route_lanelets, lanelet)) {
-    return std::nullopt;
-  }
-
-  const auto arc_coordinates = lanelet::utils::getArcCoordinates({lanelet}, current_pose);
-  const auto lanelet_length = lanelet::utils::getLaneletLength2d(lanelet);
-
-  const auto backward_lanelets = get_lanelets_within_route_up_to(
-    lanelet, planner_data, backward_distance - arc_coordinates.length);
-  if (!backward_lanelets) {
-    return std::nullopt;
-  }
-
-  const auto forward_lanelets = get_lanelets_within_route_after(
-    lanelet, planner_data, forward_distance - (lanelet_length - arc_coordinates.length));
-  if (!forward_lanelets) {
-    return std::nullopt;
-  }
-
-  lanelet::ConstLanelets lanelets(*backward_lanelets);
-  lanelets.push_back(lanelet);
-  std::move(forward_lanelets->begin(), forward_lanelets->end(), std::back_inserter(lanelets));
-
-  return lanelets;
-}
-
 std::optional<lanelet::ConstLanelets> get_lanelets_within_route_up_to(
   const lanelet::ConstLanelet & lanelet, const PlannerData & planner_data, const double distance)
 {
