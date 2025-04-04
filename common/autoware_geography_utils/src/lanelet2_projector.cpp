@@ -48,7 +48,8 @@ std::unique_ptr<lanelet::Projector> get_lanelet2_projector(const MapProjectorInf
       projector_info.map_origin.latitude, projector_info.map_origin.longitude,
       projector_info.map_origin.altitude};
     const lanelet::Origin origin{position};
-    const lanelet::projection::TransverseMercatorProjector projector{origin};
+    const lanelet::projection::TransverseMercatorProjector projector{
+      origin, projector_info.scale_factor};
     return std::make_unique<lanelet::projection::TransverseMercatorProjector>(projector);
   }
 
