@@ -38,7 +38,8 @@ protected:
       "sample_map";
     const auto road_shoulder_highway_map_path = sample_map_dir / "road_shoulder" / "highway.osm";
 
-    lanelet_map_ptr_ = load_mgrs_coordinate_map(road_shoulder_highway_map_path.string());
+    lanelet_map_ptr_ = load_mgrs_coordinate_map<lanelet::LaneletMapConstPtr>(
+      road_shoulder_highway_map_path.string());
   }
 };
 
@@ -54,7 +55,8 @@ protected:
       "sample_map";
     const auto road_shoulder_highway_map_path = sample_map_dir / "intersection" / "crossing.osm";
 
-    lanelet_map_ptr_ = load_mgrs_coordinate_map(road_shoulder_highway_map_path.string());
+    lanelet_map_ptr_ = load_mgrs_coordinate_map<lanelet::LaneletMapConstPtr>(
+      road_shoulder_highway_map_path.string());
   }
 };
 

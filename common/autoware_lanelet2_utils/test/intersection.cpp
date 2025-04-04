@@ -38,7 +38,8 @@ protected:
       "sample_map";
     const auto intersection_crossing_map_path = sample_map_dir / "intersection" / "crossing.osm";
 
-    lanelet_map_ptr_ = load_mgrs_coordinate_map(intersection_crossing_map_path.string());
+    lanelet_map_ptr_ = load_mgrs_coordinate_map<lanelet::LaneletMapConstPtr>(
+      intersection_crossing_map_path.string());
   }
 };
 
