@@ -242,6 +242,10 @@ std::optional<double> get_first_intersection_arc_length(
   const lanelet::LaneletSequence & lanelet_sequence, const double s_start, const double s_end,
   const double vehicle_length)
 {
+  if (lanelet_sequence.empty()) {
+    return std::nullopt;
+  }
+
   std::optional<double> s_intersection{std::nullopt};
 
   const auto s_start_bounds = get_arc_length_on_bounds(lanelet_sequence, s_start);
@@ -264,6 +268,10 @@ std::optional<double> get_first_intersection_arc_length(
     to_geometry_msgs_points(
       lanelet_sequence.rightBound2d().begin(), lanelet_sequence.rightBound2d().end()),
     s_start_right_bound, s_end_right_bound)));
+
+  if (cropped_centerline.empty() || cropped_left_bound.empty() || cropped_right_bound.empty()) {
+    return std::nullopt;
+  }
 
   const lanelet::BasicLineString2d start_edge{
     cropped_left_bound.front(), cropped_right_bound.front()};
@@ -411,7 +419,7 @@ std::optional<double> get_first_self_intersection_arc_length(
     std::nullopt;
   double s = 0.;
 
-  for (size_t i = 1; i < line_string.size() - 1; ++i) {
+  for (size_t i = 1; i < line_string.size(); ++i) {
     if (first_self_intersection_long && i == first_self_intersection_long->idx + 1) {
       return s + first_self_intersection_long->s;
     }
@@ -430,6 +438,10 @@ std::optional<double> get_first_self_intersection_arc_length(
 std::array<std::vector<geometry_msgs::msg::Point>, 2> get_path_bounds(
   const lanelet::LaneletSequence & lanelet_sequence, const double s_start, const double s_end)
 {
+  if (lanelet_sequence.empty()) {
+    return {};
+  }
+
   const auto [s_left_start, s_right_start] = get_arc_length_on_bounds(lanelet_sequence, s_start);
   const auto [s_left_end, s_right_end] = get_arc_length_on_bounds(lanelet_sequence, s_end);
 
@@ -448,9 +460,27 @@ std::vector<geometry_msgs::msg::Point> crop_line_string(
   const std::vector<geometry_msgs::msg::Point> & line_string, const double s_start,
   const double s_end)
 {
+  if (s_start < 0.) {
+    RCLCPP_WARN(
+      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+      "Start of crop range is negative, returning input as is");
+    return line_string;
+  }
+
+  if (s_start > s_end) {
+    RCLCPP_WARN(
+      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+      "Start of crop range is larger than end, returning input as is");
+    return line_string;
+  }
+
   auto trajectory = autoware::trajectory::Trajectory<geometry_msgs::msg::Point>::Builder()
                       .set_xy_interpolator<trajectory::interpolator::Linear>()
                       .build(line_string);
+  if (!trajectory) {
+    return {};
+  }
+
   trajectory->crop(s_start, s_end - s_start);
   return trajectory->restore();
 }
@@ -458,6 +488,13 @@ std::vector<geometry_msgs::msg::Point> crop_line_string(
 std::array<double, 2> get_arc_length_on_bounds(
   const lanelet::LaneletSequence & lanelet_sequence, const double s_centerline)
 {
+  if (s_centerline < 0.) {
+    RCLCPP_WARN(
+      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+      "Input arc length is negative, returning 0.");
+    return {0., 0.};
+  }
+
   auto s = 0.;
   auto s_left = 0.;
   auto s_right = 0.;
@@ -493,6 +530,19 @@ std::array<std::optional<double>, 2> get_arc_length_on_centerline(
 {
   std::optional<double> s_left_centerline = std::nullopt;
   std::optional<double> s_right_centerline = std::nullopt;
+
+  if (s_left_bound && *s_left_bound < 0.) {
+    RCLCPP_WARN(
+      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+      "Input left arc length is negative, returning 0.");
+    s_left_centerline = 0.;
+  }
+  if (s_right_bound && *s_right_bound < 0.) {
+    RCLCPP_WARN(
+      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+      "Input right arc length is negative, returning 0.");
+    s_right_centerline = 0.;
+  }
 
   auto s = 0.;
   auto s_left = 0.;
