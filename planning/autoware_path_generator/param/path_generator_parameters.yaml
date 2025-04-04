@@ -34,3 +34,9 @@ path_generator:
 
   search_radius_decrement:
     type: double
+
+  ego_nearest_dist_threshold:
+    type: double
+
+  ego_nearest_yaw_threshold:
+    type: double

@@ -42,21 +42,6 @@ const std::unordered_map<std::string, uint8_t> turn_signal_command_map = {
 namespace utils
 {
 /**
- * @brief get lanelets within route that are in specified distance forward or backward from
- * current position
- * @param lanelet lanelet where ego vehicle is on
- * @param planner_data planner data
- * @param current_pose current pose of ego vehicle
- * @param backward_distance backward distance from ego vehicle
- * @param forward_distance forward distance from ego vehicle
- * @return lanelets in range (std::nullopt if target lanelet is not within route)
- */
-std::optional<lanelet::ConstLanelets> get_lanelets_within_route(
-  const lanelet::ConstLanelet & lanelet, const PlannerData & planner_data,
-  const geometry_msgs::msg::Pose & current_pose, const double backward_distance,
-  const double forward_distance);
-
-/**
  * @brief get lanelets within route that are in specified distance backward from target
  * lanelet
  * @param lanelet target lanelet
