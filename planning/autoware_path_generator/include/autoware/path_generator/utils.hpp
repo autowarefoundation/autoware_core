@@ -23,8 +23,6 @@
 #include <limits>
 #include <memory>
 #include <optional>
-#include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -34,10 +32,12 @@ using autoware_internal_planning_msgs::msg::PathPointWithLaneId;
 using autoware_internal_planning_msgs::msg::PathWithLaneId;
 using autoware_vehicle_msgs::msg::TurnIndicatorsCommand;
 
-const std::unordered_map<std::string, uint8_t> turn_signal_command_map = {
-  {"left", TurnIndicatorsCommand::ENABLE_LEFT},
-  {"right", TurnIndicatorsCommand::ENABLE_RIGHT},
-  {"straight", TurnIndicatorsCommand::DISABLE}};
+template <typename T>
+struct PathRange
+{
+  T left;
+  T right;
+};
 
 namespace utils
 {
@@ -142,7 +142,7 @@ std::optional<double> get_first_self_intersection_arc_length(
  * @param s_end longitudinal distance of end of bound on centerline
  * @return cropped bounds (left / right)
  */
-std::array<std::vector<geometry_msgs::msg::Point>, 2> get_path_bounds(
+PathRange<std::vector<geometry_msgs::msg::Point>> get_path_bounds(
   const lanelet::LaneletSequence & lanelet_sequence, const double s_start, const double s_end);
 
 /**
@@ -162,7 +162,7 @@ std::vector<geometry_msgs::msg::Point> crop_line_string(
  * @param s_centerline longitudinal distance of point on centerline
  * @return longitudinal distance of projected point (left / right)
  */
-std::array<double, 2> get_arc_length_on_bounds(
+PathRange<double> get_arc_length_on_bounds(
   const lanelet::LaneletSequence & lanelet_sequence, const double s_centerline);
 
 /**
@@ -172,7 +172,7 @@ std::array<double, 2> get_arc_length_on_bounds(
  * @param s_right_bound longitudinal distance of point on left bound
  * @return longitudinal distance of projected point (left / right)
  */
-std::array<std::optional<double>, 2> get_arc_length_on_centerline(
+PathRange<std::optional<double>> get_arc_length_on_centerline(
   const lanelet::LaneletSequence & lanelet_sequence, const std::optional<double> & s_left_bound,
   const std::optional<double> & s_right_bound);
 

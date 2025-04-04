@@ -31,6 +31,8 @@
 #include <algorithm>
 #include <limits>
 #include <memory>
+#include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -40,6 +42,11 @@ namespace utils
 {
 namespace
 {
+const std::unordered_map<std::string, uint8_t> turn_signal_command_map = {
+  {"left", TurnIndicatorsCommand::ENABLE_LEFT},
+  {"right", TurnIndicatorsCommand::ENABLE_RIGHT},
+  {"straight", TurnIndicatorsCommand::DISABLE}};
+
 template <typename T>
 bool exists(const std::vector<T> & vec, const T & item)
 {
@@ -244,13 +251,11 @@ std::optional<double> get_first_intersection_arc_length(
 {
   std::optional<double> s_intersection{std::nullopt};
 
-  const auto s_start_bounds = get_arc_length_on_bounds(lanelet_sequence, s_start);
-  const double s_start_left_bound = s_start_bounds.at(0);
-  const double s_start_right_bound = s_start_bounds.at(1);
+  const auto [s_start_left_bound, s_start_right_bound] =
+    get_arc_length_on_bounds(lanelet_sequence, s_start);
 
-  const auto s_end_bound = get_arc_length_on_bounds(lanelet_sequence, s_end);
-  const double s_end_left_bound = s_end_bound.at(0);
-  const double s_end_right_bound = s_end_bound.at(1);
+  const auto [s_end_left_bound, s_end_right_bound] =
+    get_arc_length_on_bounds(lanelet_sequence, s_end);
 
   const auto cropped_centerline = lanelet::utils::to2D(to_lanelet_points(crop_line_string(
     to_geometry_msgs_points(
@@ -285,10 +290,8 @@ std::optional<double> get_first_intersection_arc_length(
       return s;
     }();
 
-    const auto s_bounds_on_centerline =
+    const auto [s_left, s_right] =
       get_arc_length_on_centerline(lanelet_sequence, s_left_bound, s_right_bound);
-    const auto s_left = s_bounds_on_centerline.at(0);
-    const auto s_right = s_bounds_on_centerline.at(1);
 
     if (s_left && s_right) {
       s_intersection = std::min(s_left, s_right);
@@ -302,14 +305,12 @@ std::optional<double> get_first_intersection_arc_length(
     lanelet::BasicPoints2d intersections;
     boost::geometry::intersection(cropped_left_bound, cropped_right_bound, intersections);
     for (const auto & intersection : intersections) {
-      const auto s_bounds_on_centerline = get_arc_length_on_centerline(
+      const auto [s_left, s_right] = get_arc_length_on_centerline(
         lanelet_sequence,
         s_start_left_bound +
           lanelet::geometry::toArcCoordinates(cropped_left_bound, intersection).length,
         s_start_right_bound +
           lanelet::geometry::toArcCoordinates(cropped_right_bound, intersection).length);
-      const auto s_left = s_bounds_on_centerline.at(0);
-      const auto s_right = s_bounds_on_centerline.at(1);
       const auto s_mutual = [&]() {
         if (s_left && s_right) {
           return std::max(s_left, s_right);
@@ -358,10 +359,8 @@ std::optional<double> get_first_intersection_arc_length(
       return s;
     }();
 
-    const auto s_bounds_on_centerline =
+    const auto [s_left, s_right] =
       get_arc_length_on_centerline(lanelet_sequence, s_left_bound, s_right_bound);
-    const auto s_left = s_bounds_on_centerline.at(0);
-    const auto s_right = s_bounds_on_centerline.at(1);
 
     const auto s_start_edge = [&]() {
       if (s_left && s_right) {
@@ -427,7 +426,7 @@ std::optional<double> get_first_self_intersection_arc_length(
   return std::nullopt;
 }
 
-std::array<std::vector<geometry_msgs::msg::Point>, 2> get_path_bounds(
+PathRange<std::vector<geometry_msgs::msg::Point>> get_path_bounds(
   const lanelet::LaneletSequence & lanelet_sequence, const double s_start, const double s_end)
 {
   const auto [s_left_start, s_right_start] = get_arc_length_on_bounds(lanelet_sequence, s_start);
@@ -455,7 +454,7 @@ std::vector<geometry_msgs::msg::Point> crop_line_string(
   return trajectory->restore();
 }
 
-std::array<double, 2> get_arc_length_on_bounds(
+PathRange<double> get_arc_length_on_bounds(
   const lanelet::LaneletSequence & lanelet_sequence, const double s_centerline)
 {
   auto s = 0.;
@@ -487,7 +486,7 @@ std::array<double, 2> get_arc_length_on_bounds(
   return {s_centerline, s_centerline};
 }
 
-std::array<std::optional<double>, 2> get_arc_length_on_centerline(
+PathRange<std::optional<double>> get_arc_length_on_centerline(
   const lanelet::LaneletSequence & lanelet_sequence, const std::optional<double> & s_left_bound,
   const std::optional<double> & s_right_bound)
 {
