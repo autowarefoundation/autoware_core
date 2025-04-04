@@ -139,6 +139,11 @@ interpolator::InterpolationResult Trajectory<PointType>::build(
   return interpolator::InterpolationSuccess{};
 }
 
+std::vector<double> Trajectory<PointType>::get_internal_bases() const
+{
+  return get_underlying_bases();
+}
+
 std::vector<double> Trajectory<PointType>::get_underlying_bases() const
 {
   auto get_bases = [](const auto & interpolated_array) {

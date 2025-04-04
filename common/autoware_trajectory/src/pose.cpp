@@ -76,6 +76,11 @@ interpolator::InterpolationResult Trajectory<PointType>::build(
   return interpolator::InterpolationSuccess{};
 }
 
+std::vector<double> Trajectory<PointType>::get_internal_bases() const
+{
+  return get_underlying_bases();
+}
+
 std::vector<double> Trajectory<PointType>::get_underlying_bases() const
 {
   auto bases = detail::crop_bases(bases_, start_, end_);
