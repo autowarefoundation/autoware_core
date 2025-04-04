@@ -557,7 +557,7 @@ int main_trajectory_overview()
     return 0;
   }
   auto & trajectory = result.value();
-  const auto s = trajectory.base_arange(0.05);  // like numpy.arange
+  const auto s = trajectory.base_arange(0.05);  // cppcheck-suppress shadowVariable
   const auto C = trajectory.compute(s);
   const auto Cx = C | transform([&](const auto & p) { return p.x; }) | to<std::vector>();
   const auto Cy = C | transform([&](const auto & p) { return p.y; }) | to<std::vector>();
@@ -579,7 +579,7 @@ int main_trajectory_overview()
   autoware_internal_planning_msgs::msg::PathWithLaneId discrete_path;
   for (unsigned i = 0; i < underlying_points.size(); ++i) {
     const auto & point = underlying_points.at(i);
-    const auto s = trajectory.get_underlying_bases().at(i);
+    const auto s = trajectory.get_underlying_bases().at(i);  // cppcheck-suppress shadowVariable
     autoware_internal_planning_msgs::msg::PathPointWithLaneId point_with_lane_id;
     point_with_lane_id.point.pose.position = point;
     point_with_lane_id.point.pose.orientation =

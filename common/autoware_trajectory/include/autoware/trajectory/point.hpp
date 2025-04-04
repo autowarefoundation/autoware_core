@@ -22,6 +22,7 @@
 
 #include <geometry_msgs/msg/point.hpp>
 
+#include <algorithm>
 #include <cstddef>
 #include <memory>
 #include <utility>
@@ -79,6 +80,11 @@ public:
    * @return Vector of bases(arc lengths)
    */
   virtual std::vector<double> get_underlying_bases() const;
+
+  double start() const { return start_; }
+
+  double end() const { return end_; }
+
   /**
    * @brief Get the length of the trajectory
    * @return Length of the trajectory
@@ -152,17 +158,42 @@ public:
 
   /**
    * @brief return the list of base values from start_ to end_ with the given interval
-   * @param tick the length of interval
+   * @param tick the tick of interval
    * @return array of double from start_ to end_ including the end_
    */
   std::vector<double> base_arange(const double tick) const
   {
     std::vector<double> ss;
-    for (double s = start_; s < end_; s += tick) {
+    for (double s = start_; s <= end_; s += tick) {
       ss.push_back(s);
     }
     if (ss.back() != end_) {
       ss.push_back(end_);
+    }
+    return ss;
+  }
+
+  /**
+   * @brief return the list of base values from start_ to end_ with the given interval
+   * @param interval the interval indicating start and end
+   * @param tick the tick of interval
+   * @param end_inclusive flag to include the interval end even if it is not exactly on the last
+   * tick step does not match
+   * @return array of double within [start_ to end_ ] and given interval
+   */
+  std::vector<double> base_arange(
+    const std::pair<double, double> interval, const double tick,
+    const bool end_inclusive = true) const
+  {
+    const auto & [start_input, end_input] = interval;
+    const auto start = std::max<double>(start_, start_input);
+    const auto end = std::min<double>(end_, end_input);
+    std::vector<double> ss;
+    for (double s = start; s <= end; s += tick) {
+      ss.push_back(s);
+    }
+    if (end_inclusive && ss.back() != end) {
+      ss.push_back(end);
     }
     return ss;
   }

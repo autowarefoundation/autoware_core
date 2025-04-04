@@ -166,32 +166,114 @@ Each derived class in the diagram inherits the methods of all of its descending 
 | <ul><li>`Trajectory<PathPointWithLaneId>`</li></ul>                                                                                                       | derives all of the above methods of `Trajectory<PathPoint>`      |                                                                                                                                                                                                                                             |                                                                                                                                                                                                                                                            |
 |                                                                                                                                                           | `lane_ids()`                                                     | return reference to `lane_ids`                                                                                                                                                                                                              |                                                                                                                                                                                                                                                            |
 
+### Utility functions
+
+| Header / function                                                                                                                     | description                                                                                                                                                                                                                           | detail                                                                                                                                                                                                                                                                                                                                        |
+| ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<autoware/trajectory/utils/shift.hpp`                                                                                                |                                                                                                                                                                                                                                       | ![shift](./images/utils/shift/shift.drawio.svg)<br>[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/shift/shift.drawio.svg") }})<br>This is the case where $a_{\mathrm{max}}^{\mathrm{lat}} > a_{\mathrm{lim}}^{\mathrm{lat}}$ because newly 4 points are inserted in the shift interval.                                 |
+| <ul><li>`struct ShiftedTrajectory`</li></ul>                                                                                          | contains<br><ul><li>`trajectory: Trajectory`</li><li>`shift_start_s: double`</li><li>`shift_end_s: double`</li></ul>                                                                                                                  | Returns the shifted trajectory as well the `s` values indicating where the shift starts and completes on the new shifted trajectory.<br>![shift_interval](./images/utils/shift/shift_interval.drawio.svg)[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/shift/shift_interval.drawio.svg") }})                           |
+| <ul><li>`struct ShiftInterval`</li></ul>                                                                                              | contains<br><ul><li>`start: double`</li><li>`end: double`</li><li>`lateral_offset: double`</li></ul>                                                                                                                                  | <ul><li>`start < end` is required.</li><li>If `lateral_offset` is positive, the path is shifted on the right side, otherwise on the left side.</li></ul><br>![shift_left_right](./images/utils/shift/shift_left_right.drawio.svg)[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/shift/shift_left_right.drawio.svg") }}) |
+| <ul><li>`struct ShiftParameters`</li></ul>                                                                                            | contains<br><ul><li>`velocity: double`</li><li>`lateral_acc_limit: double`</li><li>`longitudinal_acc: double`</li></ul>                                                                                                               | <ul><li>`velocity` needs to be positive.</li></ul>                                                                                                                                                                                                                                                                                            |
+| <ul><li>`shift(const &Trajectory, const &ShiftInterval, const &ShiftParameters) -> expected<ShiftedTrajectory, ShiftError>`</li></ul> | Following [formulation](#derivation-of-shift), return a shifted `Trajectory` object if the parameters are feasible, otherwise return `Error` object indicating error reason(i.e. $T_j$ becomes negative, $j$ becomes negative, etc.). | For derivation, see [formulation](#derivation-of-shift).<br>The example code for this plot is found [example](#shift-trajectory)                                                                                                                                                                                                              |
+
+#### Derivation of `shift`
+
+`shift` function laterally offsets given curve by $l(s)$ in normal direction at each point following the lateral time-jerk profile as shown bellow.
+
+![jerk_profile](./images/utils/shift/path_shifter.png)
+
+Starting from the initial longitudinal velocity of $v_{0}^{\mathrm{lon}}$ and longitudinal acceleration of $a^{\mathrm{lon}}$, at each time $t_{1}, \cdots, t_{7}$, the lateral offset $l_{i}$ at the corresponding longitudinal position $s_{i}$(with the longitudinal velocity $v_{i}$) is expressed as follows.
+
+$$
+\begin{align}
+& t_{1}: & s_{1} &= v^{\rm lon}_0 T_j + \frac{1}{2} a^{\rm lon} T_j^2, & v_{1} &= v^{\rm lon}_0 + a^{\rm lon} T_j, & l_{1} &= \frac{1}{6}jT_j^3 \\
+& t_{2}: & s_{2} &= v^{\rm lon}_1 T_a + \frac{1}{2} a^{\rm lon} T_a^2, & v_{2} &= v^{\rm lon}_1 + a^{\rm lon} T_a, & l_{2} &= \frac{1}{6}j T_j^3 + \frac{1}{2} j T_a T_j^2 + \frac{1}{2} j T_a^2 T_j \\
+& t_{3}: & s_{3} &= v^{\rm lon}_2 T_j + \frac{1}{2} a^{\rm lon} T_j^2, & v_{3} &= v^{\rm lon}_2 + a^{\rm lon} T_j, & l_{3} &= j  T_j^3 + \frac{3}{2} j T_a T_j^2 + \frac{1}{2} j T_a^2 T_j \\
+& t_{4}: & s_{4} &= v^{\rm lon}_3 T_v + \frac{1}{2} a^{\rm lon} T_v^2, & v_{4} &= v^{\rm lon}_3 + a^{\rm lon} T_v, & l_{4} &= j T_j^3 + \frac{3}{2} j T_a T_j^2 + \frac{1}{2} j T_a^2 T_j + j(T_a + T_j)T_j T_v \\
+& t_{5}: & s_{5} &= v^{\rm lon}_4 T_j + \frac{1}{2} a^{\rm lon} T_j^2, & v_{5} &= v^{\rm lon}_4 + a^{\rm lon} T_j, & l_{5} &= \frac{11}{6} j T_j^3 + \frac{5}{2} j T_a T_j^2 + \frac{1}{2} j T_a^2 T_j + j(T_a + T_j)T_j T_v \\
+& t_{6}: & s_{6} &= v^{\rm lon}_5 T_a + \frac{1}{2} a^{\rm lon} T_a^2, & v_{6} &= v^{\rm lon}_5 + a^{\rm lon} T_a, & l_{6} &= \frac{11}{6} j T_j^3 + 3 j T_a T_j^2 + j T_a^2 T_j + j(T_a + T_j)T_j T_v \\
+& t_{7}: & s_{7} &= v^{\rm lon}_6 T_j + \frac{1}{2} a^{\rm lon} T_j^2, & v_{7} &= v^{\rm lon}_6 + a^{\rm lon} T_j, & l_{7} &= 2 j T_j^3 + 3 j T_a T_j^2 + j T_a^2 T_j + j(T_a + T_j)T_j T_v
+\end{align}
+$$
+
+Given following inputs,
+
+- desired longitudinal distance $L_{\mathrm{lon}}$
+- desired lateral shift distance $L$
+- longitudinal initial velocity $v_{\mathrm{lon}}$
+- longitudinal acceleration $a_{\mathrm{lon}}$
+- lateral acceleration limit $a_{\mathrm{lim}}^{\mathrm{lat}}$
+
+`shift` internally computes
+
+- total time of shift $T_{\mathrm{total}}$
+- maximum lateral acceleration $a_{\mathrm{max}}^{\mathrm{lat}}$ during the shift
+- constant/zero jerk time $T_{\mathrm{j}}, T_{\mathrm{a}}$ respectively
+- required jerk $j$
+
+as following
+
+$$
+\begin{align}
+T_{\mathrm{total}} &= \text{(time to travel $L_{\mathrm{lon}}$ from $v_{\mathrm{lon}}$ under $a_{\mathrm{lon}}$)} \\
+a_{\rm max}^{\rm lat}  &= \frac{8L}{T_{\rm total}^2} \\
+T_j&=\frac{T_{\rm total}}{2} - \frac{2L}{a_{\rm lim}^{\rm lat} T_{\rm total}}\\
+T_a&=\frac{4L}{a_{\rm lim}^{\rm lat} T_{\rm total}} - \frac{T_{\rm total}}{2}\\
+j&=\frac{2a_{\rm lim} ^{\mathrm{lat} 2}T_{\rm total}}{a_{\rm lim}^{\rm lat} T_{\rm total}^2-4L}
+\end{align}
+$$
+
+to obtain $(s_{i}, l_{i})$ respectively. Note that $l_{7} == L$.
+
+If $a_{\mathrm{max}}^{\mathrm{lat}} > a_{\mathrm{lim}}^{\mathrm{lat}}$, then $l_{i}$ is simply
+
+$$
+\begin{align}
+t &= \frac{T_{\mathrm{total}}}{4} \\
+s_{1} &= v_{\mathrm{lon}}t + \frac{1}{2} a_{\mathrm{lon}}t^2, & l_{1} &= \frac{L}{12} \\
+s_{2} &= s_{1} + 2 (v_{0} + a_{\mathrm{lon}}t)t + 2a_{\mathrm{lon}}t^2, & l_{2} &= \frac{11L}{12} \\
+s_{3} &= L_{\mathrm{lon}}, & l_{3} &= L
+\end{align}
+$$
+
 ## Example Usage
 
-This section describes Example Usage of `Trajectory<autoware_planning_msgs::msg::PathPoint>`
+### use custom Interpolator
 
-- You can also specify interpolation method to `Builder{}` before calling `.build(points)`
+You can also specify interpolation method to `Builder{}` before calling `.build(points)`
 
-  ```cpp
-  using autoware::trajectory::interpolator::CubicSpline;
+```cpp
+using autoware::trajectory::interpolator::CubicSpline;
 
-  std::optional<Trajectory<autoware_planning_msgs::msg::PathPoint>> trajectory =
-    Trajectory<autoware_planning_msgs::msg::PathPoint>::Builder{}
-      .set_xy_interpolator<CubicSpline>()  // Set interpolator for x-y plane
-      .build(points);
-  ```
+std::optional<Trajectory<autoware_planning_msgs::msg::PathPoint>> trajectory =
+  Trajectory<autoware_planning_msgs::msg::PathPoint>::Builder{}
+  .set_xy_interpolator<CubicSpline>()  // Set interpolator for x-y plane
+  .build(points);
+```
 
-- Set 3.0[m] ~ 5.0[m] part of velocity to 0.0
+### crop/shorten Trajectory
 
-  ```cpp
-  trajectory->longitudinal_velocity_mps(3.0, 5.0) = 0.0;
-  ```
+```cpp
+trajectory->crop(1.0, 2.0);
+```
 
-- Crop Trajectory from 1.0[m] to 2.0[m]
+### `shift` Trajectory
 
-  ```cpp
-  trajectory->crop(1.0, 2.0);
-  ```
+```cpp title="./examples/example_shift.cpp:97:117"
+--8<--
+common/autoware_trajectory/examples/example_shift.cpp:97:117
+--8<--
+```
+
+![shift](./images/utils/shift/shift_num_points.drawio.svg)[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/shift/shift_num_points.drawio.svg") }})
+
+### Insert and set velocity profile
+
+Set 3.0[m] ~ 5.0[m] part of velocity to 0.0
+
+```cpp
+trajectory->longitudinal_velocity_mps(3.0, 5.0) = 0.0;
+```
 
 - Restore points
 
