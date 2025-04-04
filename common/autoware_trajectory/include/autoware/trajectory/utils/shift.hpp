@@ -18,6 +18,10 @@
 #include "autoware/trajectory/detail/types.hpp"
 #include "autoware/trajectory/forward.hpp"
 
+#include <range/v3/view/zip.hpp>
+#include <tl_expected/expected.hpp>
+
+#include <string>
 #include <vector>
 
 namespace autoware::trajectory
@@ -29,9 +33,9 @@ namespace autoware::trajectory
  */
 struct ShiftInterval
 {
-  double start{0.0};           ///< Start position of the shift interval.
-  double end{0.0};             ///< End position of the shift interval.
-  double lateral_offset{0.0};  ///< Length of the shift to be applied.
+  const double start;           ///< Start position of the shift interval.
+  const double end;             ///< End position of the shift interval.
+  const double lateral_offset;  ///< Length of the shift to be applied.
 };
 
 /**
@@ -40,63 +44,39 @@ struct ShiftInterval
  */
 struct ShiftParameters
 {
-  double velocity{0.0};            ///< Velocity parameter for the shift.
-  double longitudinal_acc{0.0};    ///< Longitudinal acceleration parameter for the shift.
-  double lateral_acc_limit{-1.0};  ///< Lateral acceleration limit for the shift.
+  ShiftParameters(
+    const double velocity_, const double lateral_acc_limit_, const double longitudinal_acc_ = 0.0)
+  : velocity(velocity_), lateral_acc_limit(lateral_acc_limit_), longitudinal_acc(longitudinal_acc_)
+  {
+  }
+  const double velocity;           ///< Velocity parameter for the shift.
+  const double lateral_acc_limit;  ///< Lateral acceleration limit for the shift.
+  const double longitudinal_acc;   ///< Longitudinal acceleration parameter for the shift.
 };
 
-namespace detail::impl
+struct ShiftError
+{
+  const std::string what;
+};
+
+namespace detail
 {
 
 /**
  * @brief Internal implementation to apply a shift to a trajectory.
- * @param bases A vector of double values representing the sequence of bases for the trajectory.
- * @param shift_lengths A pointer to a vector of double values representing the shift lengths to be
- * applied.
+ * @param reference_bases A vector of double values representing the sequence of bases for the
+ * trajectory.
  * @param shift_interval The interval over which the shift is applied.
  * @param shift_parameters The parameters for the shift.
+ * @return pair of two vector<double> indicating the new base (original base + additional shift
+ * base) and shift value at each base if feasible, otherwise ShiftError type
+ * @post
  */
-void shift_impl(
-  const std::vector<double> & bases, std::vector<double> * shift_lengths,
-  const ShiftInterval & shift_interval, const ShiftParameters & shift_parameters);
+tl::expected<std::pair<std::vector<double>, std::vector<double>>, ShiftError> shift_impl(
+  const std::vector<double> & reference_bases, const ShiftInterval & shift_interval,
+  const ShiftParameters & shift_parameters);
 
-}  // namespace detail::impl
-
-/**
- * @brief Shifts a trajectory based on the provided shift intervals and parameters.
- * @tparam PointType The type of points in the trajectory.
- * @param reference_trajectory The reference trajectory to be shifted.
- * @param shift_intervals A vector of ShiftInterval objects representing the intervals for shifting.
- * @param shift_parameters The parameters for the shift.
- * @return The shifted trajectory.
- */
-template <class PointType>
-trajectory::Trajectory<PointType> shift(
-  const trajectory::Trajectory<PointType> & reference_trajectory,
-  const std::vector<ShiftInterval> & shift_intervals, const ShiftParameters & shift_parameters = {})
-{
-  auto bases = reference_trajectory.get_underlying_bases();
-  std::vector<double> shift_lengths(bases.size(), 0.0);
-  for (const auto & shift_interval : shift_intervals) {
-    detail::impl::shift_impl(bases, &shift_lengths, shift_interval, shift_parameters);
-  }
-  // Apply shift.
-  std::vector<PointType> shifted_points;
-  for (size_t i = 0; i < bases.size(); ++i) {
-    shifted_points.emplace_back(reference_trajectory.compute(bases.at(i)));
-    double azimuth = reference_trajectory.azimuth(bases.at(i));
-    const double shift_length = shift_lengths.at(i);
-    detail::to_point(shifted_points.back()).x += std::sin(azimuth) * shift_length;
-    detail::to_point(shifted_points.back()).y -= std::cos(azimuth) * shift_length;
-  }
-  auto shifted_trajectory = reference_trajectory;
-  const auto valid = shifted_trajectory.build(shifted_points);
-  if (!valid) {
-    throw std::runtime_error(
-      "Failed to build shifted trajectory");  // This Exception should not be thrown.
-  }
-  return shifted_trajectory;
-}
+}  // namespace detail
 
 /**
  * @brief Shifts a trajectory based on a single shift interval and parameters.
@@ -107,11 +87,34 @@ trajectory::Trajectory<PointType> shift(
  * @return The shifted trajectory.
  */
 template <class PointType>
-trajectory::Trajectory<PointType> shift(
+tl::expected<trajectory::Trajectory<PointType>, ShiftError> shift(
   const trajectory::Trajectory<PointType> & reference_trajectory,
-  const ShiftInterval & shift_interval, const ShiftParameters & shift_parameters = {})
+  const ShiftInterval & shift_interval, const ShiftParameters & shift_parameters)
 {
-  return shift(reference_trajectory, std::vector{shift_interval}, shift_parameters);
+  const auto try_shift_bases = detail::shift_impl(
+    reference_trajectory.get_underlying_bases(), shift_interval, shift_parameters);
+  if (!try_shift_bases) {
+    return tl::unexpected{try_shift_bases.error()};
+  }
+  const auto & [shift_bases, shift_values] = try_shift_bases.value();
+
+  // Apply shift.
+  std::vector<PointType> shifted_points;
+  shifted_points.reserve(shift_bases.size());
+  for (const auto [base, shift_length] : ranges::views::zip(shift_bases, shift_values)) {
+    shifted_points.emplace_back(reference_trajectory.compute(base));
+    const double azimuth = reference_trajectory.azimuth(base);
+    detail::to_point(shifted_points.back()).x += std::sin(azimuth) * shift_length;
+    detail::to_point(shifted_points.back()).y -= std::cos(azimuth) * shift_length;
+  }
+  auto shifted_trajectory = reference_trajectory;
+  const auto valid = shifted_trajectory.build(shifted_points);
+  if (!valid) {
+    // This Exception is never thrown, because `shifted_bases` contains at least 4 or 7 new bases in
+    // addition to reference_bases, which is enough for cubic spline
+    return tl::unexpected{ShiftError{"Failed to build cubic spline for shift calculation."}};
+  }
+  return shifted_trajectory;
 }
 
 }  // namespace autoware::trajectory

@@ -29,9 +29,20 @@ namespace autoware::trajectory
 
 using PointType = autoware_planning_msgs::msg::PathPoint;
 
+void Trajectory<PointType>::add_base_addition_callback()
+{
+  longitudinal_velocity_mps_->connect_base_addition_callback(
+    [&](const double s) { return this->update_bases(s); });
+  lateral_velocity_mps_->connect_base_addition_callback(
+    [&](const double s) { return this->update_bases(s); });
+  heading_rate_rps_->connect_base_addition_callback(
+    [&](const double s) { return this->update_bases(s); });
+}
+
 Trajectory<PointType>::Trajectory()
 {
   Builder::defaults(this);
+  add_base_addition_callback();
 }
 
 Trajectory<PointType>::Trajectory(const Trajectory & rhs)
@@ -42,6 +53,7 @@ Trajectory<PointType>::Trajectory(const Trajectory & rhs)
     std::make_shared<detail::InterpolatedArray<double>>(*rhs.lateral_velocity_mps_)),
   heading_rate_rps_(std::make_shared<detail::InterpolatedArray<double>>(*rhs.heading_rate_rps_))
 {
+  add_base_addition_callback();
 }
 
 Trajectory<PointType> & Trajectory<PointType>::operator=(const Trajectory & rhs)
@@ -52,6 +64,7 @@ Trajectory<PointType> & Trajectory<PointType>::operator=(const Trajectory & rhs)
     *lateral_velocity_mps_ = *rhs.lateral_velocity_mps_;
     *heading_rate_rps_ = *rhs.heading_rate_rps_;
   }
+  add_base_addition_callback();
   return *this;
 }
 
@@ -103,16 +116,7 @@ std::vector<double> Trajectory<PointType>::get_internal_bases() const
 
 std::vector<double> Trajectory<PointType>::get_underlying_bases() const
 {
-  auto get_bases = [](const auto & interpolated_array) {
-    auto [bases, values] = interpolated_array.get_data();
-    return bases;
-  };
-
-  auto bases = detail::merge_vectors(
-    bases_, get_bases(this->longitudinal_velocity_mps()), get_bases(this->lateral_velocity_mps()),
-    get_bases(this->heading_rate_rps()));
-
-  bases = detail::crop_bases(bases, start_, end_);
+  auto bases = detail::crop_bases(bases_, start_, end_);
   std::transform(
     bases.begin(), bases.end(), bases.begin(), [this](const double & s) { return s - start_; });
   return bases;

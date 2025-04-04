@@ -15,13 +15,14 @@
 #include "autoware/trajectory/utils/closest.hpp"
 
 #include <algorithm>
+#include <limits>
 #include <vector>
 
 namespace autoware::trajectory::detail::impl
 {
 std::optional<double> closest_with_constraint_impl(
-  const std::function<Eigen::Vector2d(const double & s)> & trajectory_compute,
-  const std::vector<double> & bases, const Eigen::Vector2d & point,
+  const std::function<Eigen::Vector3d(const double & s)> & trajectory_compute,
+  const std::vector<double> & bases, const Eigen::Vector3d & point,
   const std::function<bool(const double &)> & constraint)
 {
   using trajectory::detail::to_point;
@@ -29,15 +30,15 @@ std::optional<double> closest_with_constraint_impl(
   std::vector<double> lengths_from_start_points;
 
   for (size_t i = 1; i < bases.size(); ++i) {
-    const Eigen::Vector2d p0 = trajectory_compute(bases.at(i - 1));
-    const Eigen::Vector2d p1 = trajectory_compute(bases.at(i));
+    const Eigen::Vector3d p0 = trajectory_compute(bases.at(i - 1));
+    const Eigen::Vector3d p1 = trajectory_compute(bases.at(i));
 
-    const Eigen::Vector2d v = p1 - p0;
-    const Eigen::Vector2d w = point - p0;
+    const Eigen::Vector3d v = p1 - p0;
+    const Eigen::Vector3d w = point - p0;
     const double c1 = w.dot(v);
     const double c2 = v.dot(v);
-    double length_from_start_point = NAN;
-    double distance_from_segment = NAN;
+    double length_from_start_point = std::numeric_limits<double>::infinity();
+    double distance_from_segment = std::numeric_limits<double>::infinity();
     if (c1 <= 0) {
       length_from_start_point = bases.at(i - 1);
       distance_from_segment = (point - p0).norm();

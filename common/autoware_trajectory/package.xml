@@ -16,6 +16,7 @@
 
   <depend>autoware_internal_planning_msgs</depend>
   <depend>autoware_planning_msgs</depend>
+  <depend>autoware_utils_geometry</depend>
   <depend>geometry_msgs</depend>
   <depend>lanelet2_core</depend>
   <depend>rclcpp</depend>
@@ -26,7 +27,10 @@
   <test_depend>ament_cmake_ros</test_depend>
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>autoware_lint_common</test_depend>
+  <test_depend>autoware_motion_utils</test_depend>
   <test_depend>autoware_pyplot</test_depend>
+  <test_depend>autoware_test_utils</test_depend>
+  <test_depend>autoware_utils_geometry</test_depend>
   <test_depend>pybind11_vendor</test_depend>
   <test_depend>range-v3</test_depend>
 

@@ -18,10 +18,10 @@
 #include "autoware/trajectory/detail/types.hpp"
 #include "autoware/trajectory/forward.hpp"
 
-#include <Eigen/Core>
-
 #include <functional>
+#include <utility>
 #include <vector>
+
 namespace autoware::trajectory
 {
 
@@ -31,8 +31,8 @@ namespace autoware::trajectory
  */
 struct Interval
 {
-  double start;  ///< Start value of the interval.
-  double end;    ///< End value of the interval.
+  const double start;  ///< Start value of the interval.
+  const double end;    ///< End value of the interval.
 };
 
 namespace detail::impl
@@ -62,13 +62,15 @@ std::vector<Interval> find_intervals_impl(
  */
 template <class TrajectoryPointType, class Constraint>
 std::vector<Interval> find_intervals(
-  const Trajectory<TrajectoryPointType> & trajectory, const Constraint & constraint)
+  const Trajectory<TrajectoryPointType> & trajectory, Constraint && constraint)
 {
   using autoware::trajectory::detail::to_point;
 
   return detail::impl::find_intervals_impl(
     trajectory.get_underlying_bases(),
-    [&constraint, &trajectory](const double & s) { return constraint(trajectory.compute(s)); });
+    [constraint = std::forward<Constraint>(constraint), &trajectory](const double & s) {
+      return constraint(trajectory.compute(s));
+    });
 }
 
 }  // namespace autoware::trajectory
