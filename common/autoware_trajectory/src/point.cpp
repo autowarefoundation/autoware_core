@@ -129,6 +129,20 @@ std::vector<double> Trajectory<PointType>::get_underlying_bases() const
   return bases;
 }
 
+void Trajectory<PointType>::update_bases(const double s)
+{
+  const auto it = std::lower_bound(bases_.begin(), bases_.end(), s);
+  if (it == bases_.end()) {
+    // NOTE(soblin): the extension of base(or extrapolation) will be supported by other API.
+    return;
+  }
+  if (*it == s) {
+    // already inserted
+    return;
+  }
+  bases_.insert(it, s);
+}
+
 double Trajectory<PointType>::length() const
 {
   return end_ - start_;
