@@ -36,6 +36,13 @@ class Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>
 protected:
   std::shared_ptr<detail::InterpolatedArray<LaneIdType>> lane_ids_{nullptr};  //!< Lane ID
 
+  /**
+   * @brief add the event function to lane_ids additionally
+   * @note when a new base is added to lane_ids for example, the addition is also
+   * notified and update_base() is triggered.
+   */
+  void add_base_addition_callback() override;
+
 public:
   Trajectory();
   ~Trajectory() override = default;

@@ -50,6 +50,11 @@ protected:
   double start_{0.0}, end_{0.0};  //!< Start and end of the arc length of the trajectory
 
   /**
+   * @brief add the input s if it is not contained in bases_
+   */
+  void update_bases(const double s);
+
+  /**
    * @brief Validate the arc length is within the trajectory
    * @param s Arc length
    */
