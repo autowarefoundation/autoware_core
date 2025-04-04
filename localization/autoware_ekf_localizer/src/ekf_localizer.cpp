@@ -90,7 +90,7 @@ EKFLocalizer::EKFLocalizer(const rclcpp::NodeOptions & node_options)
     "trigger_node_srv",
     std::bind(
       &EKFLocalizer::service_trigger_node, this, std::placeholders::_1, std::placeholders::_2),
-    rclcpp::ServicesQoS().get_rmw_qos_profile());
+    rclcpp::ServicesQoS());
 
   tf_br_ = std::make_shared<tf2_ros::TransformBroadcaster>(
     std::shared_ptr<rclcpp::Node>(this, [](auto) {}));
