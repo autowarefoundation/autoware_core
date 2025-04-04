@@ -14,6 +14,7 @@
 
 #include "autoware/path_generator/utils.hpp"
 
+#include "autoware/trajectory/interpolator/linear.hpp"
 #include "autoware/trajectory/utils/find_intervals.hpp"
 
 #include <autoware/motion_utils/constants.hpp>
@@ -447,32 +448,11 @@ std::vector<geometry_msgs::msg::Point> crop_line_string(
   const std::vector<geometry_msgs::msg::Point> & line_string, const double s_start,
   const double s_end)
 {
-  // TODO(mitukou1109): use autoware_trajectory
-  const auto lanelet_line_string = to_lanelet_points(line_string);
-  std::vector<geometry_msgs::msg::Point> cropped_line_string;
-  auto s = 0.;
-
-  for (auto it = std::next(lanelet_line_string.begin()); it != lanelet_line_string.end(); ++it) {
-    const lanelet::BasicLineString3d segment{*std::prev(it), *it};
-    const auto segment_length = lanelet::geometry::length(segment);
-    if (s <= s_start) {
-      if (s + segment_length < s_start) {
-        s += segment_length;
-        continue;
-      }
-      cropped_line_string.push_back(lanelet::utils::conversion::toGeomMsgPt(
-        lanelet::geometry::interpolatedPointAtDistance(segment, s_start - s)));
-    }
-    s += segment_length;
-    if (s >= s_end) {
-      cropped_line_string.push_back(lanelet::utils::conversion::toGeomMsgPt(
-        lanelet::geometry::interpolatedPointAtDistance(segment, s_end - s)));
-      break;
-    }
-    cropped_line_string.push_back(lanelet::utils::conversion::toGeomMsgPt(*it));
-  }
-
-  return cropped_line_string;
+  auto trajectory = autoware::trajectory::Trajectory<geometry_msgs::msg::Point>::Builder()
+                      .set_xy_interpolator<trajectory::interpolator::Linear>()
+                      .build(line_string);
+  trajectory->crop(s_start, s_end - s_start);
+  return trajectory->restore();
 }
 
 std::array<double, 2> get_arc_length_on_bounds(

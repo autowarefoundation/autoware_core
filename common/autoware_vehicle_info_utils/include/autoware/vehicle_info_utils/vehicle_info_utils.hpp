@@ -32,7 +32,7 @@ public:
   explicit VehicleInfoUtils(rclcpp::Node & node);
 
   /// Get vehicle info
-  VehicleInfo getVehicleInfo() const;
+  [[nodiscard]] VehicleInfo getVehicleInfo() const;
 
 private:
   /// Buffer for base parameters

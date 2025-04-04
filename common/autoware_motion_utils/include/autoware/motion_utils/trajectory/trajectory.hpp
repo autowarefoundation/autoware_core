@@ -100,7 +100,7 @@ void validateNonSharpAngle(
  * @return (forward / backward) driving (true / false)
  */
 template <class T>
-std::optional<bool> isDrivingForward(const T & points)
+[[nodiscard]] std::optional<bool> isDrivingForward(const T & points)
 {
   if (points.size() < 2) {
     return std::nullopt;
@@ -130,7 +130,7 @@ isDrivingForward<std::vector<autoware_planning_msgs::msg::TrajectoryPoint>>(
  * @return (forward / backward) driving (true, false, none "if velocity is zero")
  */
 template <class T>
-std::optional<bool> isDrivingForwardWithTwist(const T & points_with_twist)
+[[nodiscard]] std::optional<bool> isDrivingForwardWithTwist(const T & points_with_twist)
 {
   if (points_with_twist.empty()) {
     return std::nullopt;
@@ -168,7 +168,7 @@ isDrivingForwardWithTwist<std::vector<autoware_planning_msgs::msg::TrajectoryPoi
  * @return points container without overlapping points
  */
 template <class T>
-T removeOverlapPoints(const T & points, const size_t start_idx = 0)
+[[nodiscard]] T removeOverlapPoints(const T & points, const size_t start_idx = 0)
 {
   if (points.size() < start_idx + 1) {
     return points;
@@ -215,7 +215,7 @@ removeOverlapPoints<std::vector<autoware_planning_msgs::msg::TrajectoryPoint>>(
  * @return first matching index of a zero velocity point inside the points container.
  */
 template <class T>
-std::optional<size_t> searchZeroVelocityIndex(
+[[nodiscard]] std::optional<size_t> searchZeroVelocityIndex(
   const T & points_with_twist, const size_t src_idx, const size_t dst_idx)
 {
   try {
@@ -248,7 +248,8 @@ searchZeroVelocityIndex<std::vector<autoware_planning_msgs::msg::TrajectoryPoint
  * @return first matching index of a zero velocity point inside the points container.
  */
 template <class T>
-std::optional<size_t> searchZeroVelocityIndex(const T & points_with_twist, const size_t src_idx)
+[[nodiscard]] std::optional<size_t> searchZeroVelocityIndex(
+  const T & points_with_twist, const size_t src_idx)
 {
   try {
     validateNonEmpty(points_with_twist);
@@ -272,7 +273,7 @@ searchZeroVelocityIndex<std::vector<autoware_planning_msgs::msg::TrajectoryPoint
  * @return first matching index of a zero velocity point inside the points container.
  */
 template <class T>
-std::optional<size_t> searchZeroVelocityIndex(const T & points_with_twist)
+[[nodiscard]] std::optional<size_t> searchZeroVelocityIndex(const T & points_with_twist)
 {
   return searchZeroVelocityIndex(points_with_twist, 0, points_with_twist.size());
 }
@@ -292,7 +293,7 @@ searchZeroVelocityIndex<std::vector<autoware_planning_msgs::msg::TrajectoryPoint
  * @return index of nearest point
  */
 template <class T>
-size_t findNearestIndex(const T & points, const geometry_msgs::msg::Point & point)
+[[nodiscard]] size_t findNearestIndex(const T & points, const geometry_msgs::msg::Point & point)
 {
   validateNonEmpty(points);
 
@@ -753,7 +754,7 @@ calcSignedArcLength<std::vector<autoware_planning_msgs::msg::TrajectoryPoint>>(
  * @return partial sums container
  */
 template <class T>
-std::vector<double> calcSignedArcLengthPartialSum(
+[[nodiscard]] std::vector<double> calcSignedArcLengthPartialSum(
   const T & points, const size_t src_idx, const size_t dst_idx)
 {
   try {
@@ -925,7 +926,7 @@ calcSignedArcLength<std::vector<autoware_planning_msgs::msg::TrajectoryPoint>>(
  * @return length of 2D distance for points container
  */
 template <class T>
-double calcArcLength(const T & points)
+[[nodiscard]] double calcArcLength(const T & points)
 {
   try {
     validateNonEmpty(points);
@@ -955,7 +956,7 @@ extern template double calcArcLength<std::vector<autoware_planning_msgs::msg::Tr
  * @return calculated curvature container through points container
  */
 template <class T>
-std::vector<double> calcCurvature(const T & points)
+[[nodiscard]] std::vector<double> calcCurvature(const T & points)
 {
   std::vector<double> curvature_vec(points.size(), 0.0);
   if (points.size() < 3) {
@@ -963,10 +964,10 @@ std::vector<double> calcCurvature(const T & points)
   }
 
   for (size_t i = 1; i < points.size() - 1; ++i) {
-    const auto p1 = autoware_utils::get_point(points.at(i - 1));
-    const auto p2 = autoware_utils::get_point(points.at(i));
-    const auto p3 = autoware_utils::get_point(points.at(i + 1));
-    curvature_vec.at(i) = (autoware_utils::calc_curvature(p1, p2, p3));
+    const auto & p1 = autoware_utils::get_point(points.at(i - 1));
+    const auto & p2 = autoware_utils::get_point(points.at(i));
+    const auto & p3 = autoware_utils::get_point(points.at(i + 1));
+    curvature_vec.at(i) = autoware_utils::calc_curvature(p1, p2, p3);
   }
   curvature_vec.at(0) = curvature_vec.at(1);
   curvature_vec.at(curvature_vec.size() - 1) = curvature_vec.at(curvature_vec.size() - 2);

@@ -15,19 +15,19 @@
 #ifndef AUTOWARE__GEOGRAPHY_UTILS__HEIGHT_HPP_
 #define AUTOWARE__GEOGRAPHY_UTILS__HEIGHT_HPP_
 
+#include <functional>
 #include <string>
+#include <string_view>
 
 namespace autoware::geography_utils
 {
-
-using HeightConversionFunction =
-  double (*)(const double height, const double latitude, const double longitude);
+using HeightConversionFunction = std::function<double(double, double, double)>;
 
 double convert_wgs84_to_egm2008(const double height, const double latitude, const double longitude);
 double convert_egm2008_to_wgs84(const double height, const double latitude, const double longitude);
 double convert_height(
   const double height, const double latitude, const double longitude,
-  const std::string & source_vertical_datum, const std::string & target_vertical_datum);
+  std::string_view source_vertical_datum, std::string_view target_vertical_datum);
 
 }  // namespace autoware::geography_utils
 

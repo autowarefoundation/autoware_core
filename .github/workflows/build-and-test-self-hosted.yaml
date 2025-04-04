@@ -17,7 +17,6 @@ jobs:
         include:
           - rosdistro: humble
             container: ros:humble
-            build-depends-repos: build_depends.repos
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -35,7 +34,6 @@ jobs:
         with:
           rosdistro: ${{ matrix.rosdistro }}
           target-packages: ${{ steps.get-self-packages.outputs.self-packages }}
-          build-depends-repos: ${{ matrix.build-depends-repos }}
           underlay-workspace: /opt/autoware
 
       - name: Test
@@ -44,5 +42,4 @@ jobs:
         with:
           rosdistro: ${{ matrix.rosdistro }}
           target-packages: ${{ steps.get-self-packages.outputs.self-packages }}
-          build-depends-repos: ${{ matrix.build-depends-repos }}
           underlay-workspace: /opt/autoware

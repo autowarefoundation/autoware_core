@@ -2,6 +2,9 @@
 Changelog for package autoware_testing
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.0.0 (2025-03-31)
+------------------
+
 0.3.0 (2025-03-21)
 ------------------
 * chore: fix versions in package.xml

@@ -36,7 +36,7 @@ public:
   VehicleStopCheckerBase(rclcpp::Node * node, double buffer_duration);
   rclcpp::Logger getLogger() { return logger_; }
   void addTwist(const TwistStamped & twist);
-  bool isVehicleStopped(const double stop_duration = 0.0) const;
+  [[nodiscard]] bool isVehicleStopped(const double stop_duration = 0.0) const;
 
 protected:
   rclcpp::Clock::SharedPtr clock_;
@@ -66,7 +66,7 @@ class VehicleArrivalChecker : public VehicleStopChecker
 public:
   explicit VehicleArrivalChecker(rclcpp::Node * node);
 
-  bool isVehicleStoppedAtStopPoint(const double stop_duration = 0.0) const;
+  [[nodiscard]] bool isVehicleStoppedAtStopPoint(const double stop_duration = 0.0) const;
 
 private:
   static constexpr double th_arrived_distance_m = 1.0;
