@@ -67,6 +67,17 @@ You can easily launch planning_simulator by
 ros2 launch autoware_test_utils psim_intersection.launch.xml vehicle_model:=<> sensor_model:=<> use_sim_time:=true
 ```
 
+### overlap
+
+The overlap lanelet map includes
+
+- U-turn with a gap
+- U-turn with full crossing
+- U-turn with half crossing
+- overpass
+
+![overlap_test](./images/overlap_test_map.png)
+
 ## Example use cases
 
 ### Autoware Planning Test Manager
