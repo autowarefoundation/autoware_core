@@ -92,7 +92,7 @@ template <class TrajectoryPointType, class LineStringType, class Constraint>
   }
 
   return detail::impl::crossed_with_constraint_impl(
-    trajectory_compute, trajectory.get_internal_bases(), linestring_eigen,
+    trajectory_compute, trajectory.get_underlying_bases(), linestring_eigen,
     [&constraint, &trajectory](const double & s) { return constraint(trajectory.compute(s)); });
 }
 

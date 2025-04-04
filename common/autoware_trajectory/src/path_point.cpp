@@ -98,6 +98,11 @@ interpolator::InterpolationResult Trajectory<PointType>::build(
 
 std::vector<double> Trajectory<PointType>::get_internal_bases() const
 {
+  return get_underlying_bases();
+}
+
+std::vector<double> Trajectory<PointType>::get_underlying_bases() const
+{
   auto get_bases = [](const auto & interpolated_array) {
     auto [bases, values] = interpolated_array.get_data();
     return bases;
@@ -125,9 +130,19 @@ PointType Trajectory<PointType>::compute(const double s) const
   return result;
 }
 
+std::vector<PointType> Trajectory<PointType>::compute(const std::vector<double> & ss) const
+{
+  std::vector<PointType> points;
+  points.reserve(ss.size());
+  for (const auto s : ss) {
+    points.emplace_back(compute(s));
+  }
+  return points;
+}
+
 std::vector<PointType> Trajectory<PointType>::restore(const size_t min_points) const
 {
-  std::vector<double> bases = get_internal_bases();
+  std::vector<double> bases = get_underlying_bases();
   bases = detail::fill_bases(bases, min_points);
 
   std::vector<PointType> points;

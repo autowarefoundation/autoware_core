@@ -128,9 +128,23 @@ PyObjectWrapper Axes::set_ylim(const pybind11::tuple & args, const pybind11::dic
   return PyObjectWrapper{set_ylim_attr(*args, **kwargs)};
 }
 
+void Axes::set_zlim(const pybind11::tuple & args, const pybind11::dict & kwargs) const
+{
+  if (projection_3d_) {
+    (void)PyObjectWrapper{set_zlim_attr(*args, **kwargs)};
+  }
+}
+
 PyObjectWrapper Axes::text(const pybind11::tuple & args, const pybind11::dict & kwargs) const
 {
   return PyObjectWrapper{text_attr(*args, **kwargs)};
+}
+
+void Axes::view_init(const pybind11::tuple & args, const pybind11::dict & kwargs) const
+{
+  if (projection_3d_) {
+    (void)PyObjectWrapper{view_init_attr(*args, **kwargs)};
+  }
 }
 
 void Axes::load_attrs()
@@ -156,6 +170,15 @@ void Axes::load_attrs()
   LOAD_FUNC_ATTR(set_ylabel, self_);
   LOAD_FUNC_ATTR(set_ylim, self_);
   LOAD_FUNC_ATTR(text, self_);
+
+  try {
+    // NOTE: these properties are not loaded if not called with projection = 3d
+    LOAD_FUNC_ATTR(set_zlim, self_);
+    LOAD_FUNC_ATTR(view_init, self_);
+    projection_3d_ = true;
+  } catch (...) {
+    projection_3d_ = false;
+  }
 }
 }  // namespace axes
 }  // namespace autoware::pyplot

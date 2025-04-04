@@ -75,7 +75,7 @@ trajectory::Trajectory<PointType> shift(
   const trajectory::Trajectory<PointType> & reference_trajectory,
   const std::vector<ShiftInterval> & shift_intervals, const ShiftParameters & shift_parameters = {})
 {
-  auto bases = reference_trajectory.get_internal_bases();
+  auto bases = reference_trajectory.get_underlying_bases();
   std::vector<double> shift_lengths(bases.size(), 0.0);
   for (const auto & shift_interval : shift_intervals) {
     detail::impl::shift_impl(bases, &shift_lengths, shift_interval, shift_parameters);

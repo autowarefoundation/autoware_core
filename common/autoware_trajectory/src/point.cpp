@@ -80,7 +80,8 @@ interpolator::InterpolationResult Trajectory<PointType>::build(
   zs.emplace_back(points[0].z);
 
   for (size_t i = 1; i < points.size(); ++i) {
-    const auto dist = std::hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
+    const auto dist = std::hypot(
+      points[i].x - points[i - 1].x, points[i].y - points[i - 1].y, points[i].z - points[i - 1].z);
     bases_.emplace_back(bases_.back() + dist);
     xs.emplace_back(points[i].x);
     ys.emplace_back(points[i].y);
@@ -117,6 +118,11 @@ double Trajectory<PointType>::clamp(const double s, bool show_warning) const
 
 std::vector<double> Trajectory<PointType>::get_internal_bases() const
 {
+  return get_underlying_bases();
+}
+
+std::vector<double> Trajectory<PointType>::get_underlying_bases() const
+{
   auto bases = detail::crop_bases(bases_, start_, end_);
   std::transform(
     bases.begin(), bases.end(), bases.begin(), [this](const double s) { return s - start_; });
@@ -136,6 +142,16 @@ PointType Trajectory<PointType>::compute(const double s) const
   result.y = y_interpolator_->compute(s_clamp);
   result.z = z_interpolator_->compute(s_clamp);
   return result;
+}
+
+std::vector<PointType> Trajectory<PointType>::compute(const std::vector<double> & ss) const
+{
+  std::vector<PointType> points;
+  points.reserve(ss.size());
+  for (const auto s : ss) {
+    points.emplace_back(compute(s));
+  }
+  return points;
 }
 
 double Trajectory<PointType>::azimuth(const double s) const
@@ -160,12 +176,22 @@ double Trajectory<PointType>::curvature(const double s) const
   const double ddx = x_interpolator_->compute_second_derivative(s_clamp);
   const double dy = y_interpolator_->compute_first_derivative(s_clamp);
   const double ddy = y_interpolator_->compute_second_derivative(s_clamp);
-  return std::abs(dx * ddy - dy * ddx) / std::pow(dx * dx + dy * dy, 1.5);
+  return (dx * ddy - dy * ddx) / std::pow(dx * dx + dy * dy, 1.5);
+}
+
+std::vector<double> Trajectory<PointType>::curvature(const std::vector<double> & ss) const
+{
+  std::vector<double> ks;
+  ks.reserve(ss.size());
+  for (const auto s : ss) {
+    ks.push_back(curvature(s));
+  }
+  return ks;
 }
 
 std::vector<PointType> Trajectory<PointType>::restore(const size_t min_points) const
 {
-  auto bases = get_internal_bases();
+  auto bases = get_underlying_bases();
   bases = detail::fill_bases(bases, min_points);
   std::vector<PointType> points;
   points.reserve(bases.size());

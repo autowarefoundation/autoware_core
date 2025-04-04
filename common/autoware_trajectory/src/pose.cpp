@@ -21,6 +21,10 @@
 #include <tf2/LinearMath/Quaternion.hpp>
 #include <tf2/LinearMath/Vector3.hpp>
 
+#include <tf2_geometry_msgs/tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+
+#include <tf2/utils.h>
+
 #include <memory>
 #include <utility>
 #include <vector>
@@ -74,6 +78,11 @@ interpolator::InterpolationResult Trajectory<PointType>::build(
 
 std::vector<double> Trajectory<PointType>::get_internal_bases() const
 {
+  return get_underlying_bases();
+}
+
+std::vector<double> Trajectory<PointType>::get_underlying_bases() const
+{
   auto bases = detail::crop_bases(bases_, start_, end_);
   std::transform(
     bases.begin(), bases.end(), bases.begin(), [this](const double s) { return s - start_; });
@@ -87,6 +96,16 @@ PointType Trajectory<PointType>::compute(const double s) const
   const auto s_clamp = clamp(s);
   result.orientation = orientation_interpolator_->compute(s_clamp);
   return result;
+}
+
+std::vector<PointType> Trajectory<PointType>::compute(const std::vector<double> & ss) const
+{
+  std::vector<PointType> points;
+  points.reserve(ss.size());
+  for (const auto s : ss) {
+    points.emplace_back(compute(s));
+  }
+  return points;
 }
 
 void Trajectory<PointType>::align_orientation_with_trajectory_direction()
@@ -149,7 +168,7 @@ void Trajectory<PointType>::align_orientation_with_trajectory_direction()
 
 std::vector<PointType> Trajectory<PointType>::restore(const size_t min_points) const
 {
-  auto bases = get_internal_bases();
+  auto bases = get_underlying_bases();
   bases = detail::fill_bases(bases, min_points);
   std::vector<PointType> points;
   points.reserve(bases.size());

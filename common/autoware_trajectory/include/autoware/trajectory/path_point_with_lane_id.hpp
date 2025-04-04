@@ -55,7 +55,9 @@ public:
    */
   interpolator::InterpolationResult build(const std::vector<PointType> & points);
 
-  std::vector<double> get_internal_bases() const override;
+  [[deprecated]] std::vector<double> get_internal_bases() const override;
+
+  std::vector<double> get_underlying_bases() const override;
 
   /**
    * @brief Compute the point on the trajectory at a given s value
@@ -63,6 +65,13 @@ public:
    * @return Point on the trajectory
    */
   PointType compute(const double s) const;
+
+  /**
+   * @brief Compute the points on the trajectory at given s values
+   * @param ss Arc lengths
+   * @return Points on the trajectory
+   */
+  std::vector<PointType> compute(const std::vector<double> & ss) const;
 
   /**
    * @brief Restore the trajectory points

@@ -36,6 +36,8 @@ public:
     const pybind11::tuple & args = pybind11::tuple(),
     const pybind11::dict & kwargs = pybind11::dict()) const;
 
+  axes::Axes add_subplot(const pybind11::dict & kwargs = pybind11::dict()) const;
+
   PyObjectWrapper colorbar(
     const pybind11::tuple & args = pybind11::tuple(),
     const pybind11::dict & kwargs = pybind11::dict()) const;

@@ -50,7 +50,9 @@ public:
   Trajectory & operator=(const Trajectory & rhs);
   Trajectory & operator=(Trajectory && rhs) = default;
 
-  std::vector<double> get_internal_bases() const override;
+  [[deprecated]] std::vector<double> get_internal_bases() const override;
+
+  std::vector<double> get_underlying_bases() const override;
 
   detail::InterpolatedArray<double> & longitudinal_velocity_mps()
   {
@@ -86,6 +88,13 @@ public:
    * @return Point on the trajectory
    */
   PointType compute(const double s) const;
+
+  /**
+   * @brief Compute the points on the trajectory at given s values
+   * @param s Arc lengths
+   * @return Points on the trajectory
+   */
+  std::vector<PointType> compute(const std::vector<double> & ss) const;
 
   /**
    * @brief Restore the trajectory points

@@ -64,10 +64,16 @@ public:
   Trajectory & operator=(Trajectory && rhs) = default;
 
   /**
-   * @brief Get the internal bases(arc lengths) of the trajectory
+   * @brief Get the underlying arc lengths of the trajectory
    * @return Vector of bases(arc lengths)
    */
-  virtual std::vector<double> get_internal_bases() const;
+  [[deprecated]] virtual std::vector<double> get_internal_bases() const;
+
+  /**
+   * @brief Get the underlying arc lengths of the trajectory
+   * @return Vector of bases(arc lengths)
+   */
+  virtual std::vector<double> get_underlying_bases() const;
   /**
    * @brief Get the length of the trajectory
    * @return Length of the trajectory
@@ -80,6 +86,13 @@ public:
    * @return Point on the trajectory
    */
   PointType compute(const double s) const;
+
+  /**
+   * @brief Compute the points on the trajectory at given s values
+   * @param ss Arc lengths
+   * @return Points on the trajectory
+   */
+  std::vector<PointType> compute(const std::vector<double> & ss) const;
 
   /**
    * @brief Build the trajectory from the points
@@ -110,6 +123,13 @@ public:
   double curvature(const double s) const;
 
   /**
+   * @brief Get the curvature at a given s values
+   * @param ss Arc lengths
+   * @return Curvature
+   */
+  std::vector<double> curvature(const std::vector<double> & ss) const;
+
+  /**
    * @brief Restore the trajectory points
    * @param min_points Minimum number of points
    * @return Vector of points
@@ -117,6 +137,23 @@ public:
   std::vector<PointType> restore(const size_t min_points = 4) const;
 
   void crop(const double start, const double length);
+
+  /**
+   * @brief return the list of base values from start_ to end_ with the given interval
+   * @param tick the length of interval
+   * @return array of double from start_ to end_ including the end_
+   */
+  std::vector<double> base_arange(const double tick) const
+  {
+    std::vector<double> ss;
+    for (double s = start_; s < end_; s += tick) {
+      ss.push_back(s);
+    }
+    if (ss.back() != end_) {
+      ss.push_back(end_);
+    }
+    return ss;
+  }
 
   class Builder
   {
