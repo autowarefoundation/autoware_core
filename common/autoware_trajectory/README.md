@@ -166,6 +166,32 @@ Each derived class in the diagram inherits the methods of all of its descending 
 | <ul><li>`Trajectory<PathPointWithLaneId>`</li></ul>                                                                                                       | derives all of the above methods of `Trajectory<PathPoint>`      |                                                                                                                                                                                                                                             |                                                                                                                                                                                                                                                            |
 |                                                                                                                                                           | `lane_ids()`                                                     | return reference to `lane_ids`                                                                                                                                                                                                              |                                                                                                                                                                                                                                                            |
 
+### Utility functions
+
+| Header / function | description | illustration |
+| ----------------- | ----------- | ------------ |
+|                   |             |              |
+
+#### Derivation of `shift`
+
+`shift` function laterally offsets given curve by $l(s)` in normal direction at each point following the lateral time-jerk profile as shown bellow.
+
+![jerk_profile](./images/utils/shift/path_shifter.png)
+
+Starting from the initial longitudinal velocity of $v_{0}^{\mathrm{lon}}$ and longitudinal acceleration of $a^{\mathrm{lon}}$, at each time $t_{1}, \cdots, t_{7}$, the lateral offset $l_{i}$ at the corresponding longitudinal position $s_{i}$(with the longitudinal velocity $v_{i}$) is expressesd as follows.
+
+$$
+\begin{align}
+& t_{1}: & s_{1} &= v^{\rm lon}_0 T_j + \frac{1}{2} a^{\rm lon} T_j^2 & v_{1} &= v^{\rm lon}_0 + a^{\rm lon} T_j & l_{1} &= \frac{1}{6}jT_j^3 \\
+& t_{2}: & s_{2} &= v^{\rm lon}_1 T_a + \frac{1}{2} a^{\rm lon} T_a^2 & v_{2} &= v^{\rm lon}_1 + a^{\rm lon} T_a & l_{2} &= \frac{1}{6}j T_j^3 + \frac{1}{2} j T_a T_j^2 + \frac{1}{2} j T_a^2 T_j \\
+& t_{3}: & s_{3} &= v^{\rm lon}_2 T_j + \frac{1}{2} a^{\rm lon} T_j^2 & v_{3} &= v^{\rm lon}_2 + a^{\rm lon} T_j & l_{3} &= j  T_j^3 + \frac{3}{2} j T_a T_j^2 + \frac{1}{2} j T_a^2 T_j \\
+& t_{4}: & s_{4} &= v^{\rm lon}_3 T_v + \frac{1}{2} a^{\rm lon} T_v^2 & v_{4} &= v^{\rm lon}_3 + a^{\rm lon} T_v & l_{4} &= j T_j^3 + \frac{3}{2} j T_a T_j^2 + \frac{1}{2} j T_a^2 T_j + j(T_a + T_j)T_j T_v \\
+& t_{5}: & s_{5} &= v^{\rm lon}_4 T_j + \frac{1}{2} a^{\rm lon} T_j^2 & v_{5} &= v^{\rm lon}_4 + a^{\rm lon} T_j & l_{5} &= \frac{11}{6} j T_j^3 + \frac{5}{2} j T_a T_j^2 + \frac{1}{2} j T_a^2 T_j + j(T_a + T_j)T_j T_v \\
+& t_{6}: & s_{6} &= v^{\rm lon}_5 T_a + \frac{1}{2} a^{\rm lon} T_a^2 & v_{6} &= v^{\rm lon}_5 + a^{\rm lon} T_a & l_{6} &= \frac{11}{6} j T_j^3 + 3 j T_a T_j^2 + j T_a^2 T_j + j(T_a + T_j)T_j T_v \\
+& t_{7}: & s_{7} &= v^{\rm lon}_6 T_j + \frac{1}{2} a^{\rm lon} T_j^2 & v_{7} &= v^{\rm lon}_6 + a^{\rm lon} T_j & l_{7} &= 2 j T_j^3 + 3 j T_a T_j^2 + j T_a^2 T_j + j(T_a + T_j)T_j T_v
+\end{align}
+$$
+
 ## Example Usage
 
 This section describes Example Usage of `Trajectory<autoware_planning_msgs::msg::PathPoint>`

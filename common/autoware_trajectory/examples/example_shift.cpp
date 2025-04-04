@@ -16,10 +16,12 @@
 #include "autoware/trajectory/utils/shift.hpp"
 
 #include <autoware/pyplot/pyplot.hpp>
+#include <range/v3/all.hpp>
 
 #include <pybind11/embed.h>
 #include <pybind11/stl.h>
 
+#include <algorithm>
 #include <iostream>
 #include <vector>
 
@@ -35,6 +37,8 @@ int main()
 {
   pybind11::scoped_interpreter guard{};
   auto plt = autoware::pyplot::import();
+  using ranges::to;
+  using ranges::views::transform;
 
   std::vector<geometry_msgs::msg::Point> points = {
     point(0.49, 0.59), point(0.61, 1.22), point(0.86, 1.93), point(1.20, 2.56), point(1.51, 3.17),
@@ -53,139 +57,32 @@ int main()
   std::cout << "length: " << trajectory->length() << std::endl;
 
   {
-    std::vector<double> x;
-    std::vector<double> y;
-    for (double s = 0.0; s < trajectory->length(); s += 0.01) {
-      auto p = trajectory->compute(s);
-      x.push_back(p.x);
-      y.push_back(p.y);
+    {
+      const auto s = trajectory->base_arange(0.01);
+      const auto c = trajectory->compute(s);
+      const auto x = c | transform([](const auto & p) { return p.x; }) | to<std::vector>();
+      const auto y = c | transform([](const auto & p) { return p.y; }) | to<std::vector>();
+      plt.plot(Args(x, y), Kwargs("label"_a = "original"));
     }
-    plt.plot(Args(x, y), Kwargs("label"_a = "original"));
-
-    x.clear();
-    y.clear();
-
-    autoware::trajectory::ShiftInterval shift_interval;
-    shift_interval.end = -1.0;
-    shift_interval.lateral_offset = 0.5;
-
-    auto shifted_trajectory = autoware::trajectory::shift(*trajectory, shift_interval);
-
-    for (double s = 0.0; s < shifted_trajectory.length(); s += 0.01) {
-      auto p = shifted_trajectory.compute(s);
-      x.push_back(p.x);
-      y.push_back(p.y);
-    }
-
-    plt.plot(Args(x, y), Kwargs("label"_a = "shifted"));
-    plt.axis(Args("equal"));
-    plt.grid();
-    plt.legend();
-    plt.show();
-  }
-
-  {
-    std::vector<double> x;
-    std::vector<double> y;
-    for (double s = 0.0; s < trajectory->length(); s += 0.01) {
-      auto p = trajectory->compute(s);
-      x.push_back(p.x);
-      y.push_back(p.y);
-    }
-    plt.plot(Args(x, y), Kwargs("label"_a = "original"));
-
-    x.clear();
-    y.clear();
-
-    autoware::trajectory::ShiftInterval shift_interval;
-    shift_interval.start = trajectory->length() / 4.0;
-    shift_interval.end = trajectory->length() * 3.0 / 4.0;
-    shift_interval.lateral_offset = 0.5;
-    auto shifted_trajectory = autoware::trajectory::shift(*trajectory, shift_interval);
-
-    for (double s = 0.0; s < shifted_trajectory.length(); s += 0.01) {
-      auto p = shifted_trajectory.compute(s);
-      x.push_back(p.x);
-      y.push_back(p.y);
-    }
-
-    plt.plot(Args(x, y), Kwargs("label"_a = "shifted"));
-    plt.axis(Args("equal"));
-    plt.grid();
-    plt.legend();
-    plt.show();
-  }
-
-  {
-    std::vector<double> x;
-    std::vector<double> y;
-    for (double s = 0.0; s < trajectory->length(); s += 0.01) {
-      auto p = trajectory->compute(s);
-      x.push_back(p.x);
-      y.push_back(p.y);
-    }
-    plt.plot(Args(x, y), Kwargs("label"_a = "original"));
-
-    x.clear();
-    y.clear();
-
-    autoware::trajectory::ShiftInterval shift_interval;
-    shift_interval.start = trajectory->length() * 3.0 / 4.0;
-    shift_interval.end = trajectory->length() / 4.0;
-    shift_interval.lateral_offset = 0.5;
-    auto shifted_trajectory = autoware::trajectory::shift(*trajectory, shift_interval);
-
-    for (double s = 0.0; s < shifted_trajectory.length(); s += 0.01) {
-      auto p = shifted_trajectory.compute(s);
-      x.push_back(p.x);
-      y.push_back(p.y);
-    }
-
-    plt.plot(Args(x, y), Kwargs("label"_a = "shifted"));
-    plt.axis(Args("equal"));
-    plt.grid();
-    plt.legend();
-    plt.show();
-  }
-
-  {
-    std::vector<double> x;
-    std::vector<double> y;
-    for (double s = 0.0; s < trajectory->length(); s += 0.01) {
-      auto p = trajectory->compute(s);
-      x.push_back(p.x);
-      y.push_back(p.y);
-    }
-    plt.plot(Args(x, y), Kwargs("label"_a = "original"));
-
-    x.clear();
-    y.clear();
-
-    autoware::trajectory::ShiftInterval shift_interval1;
-    shift_interval1.start = trajectory->length() / 4.0;
-    shift_interval1.end = trajectory->length() * 2.0 / 4.0;
-    shift_interval1.lateral_offset = 0.5;
-
-    autoware::trajectory::ShiftInterval shift_interval2;
-    shift_interval2.start = trajectory->length() * 2.0 / 4.0;
-    shift_interval2.end = trajectory->length() * 3.0 / 4.0;
-    shift_interval2.lateral_offset = -0.5;
-
+    autoware::trajectory::ShiftInterval shift_interval{
+      trajectory->length() / 2.0, trajectory->length() * 8.0 / 10, 0.5};
+    autoware::trajectory::ShiftParameters shift_parameter{5.555, 2.0};
     auto shifted_trajectory =
-      autoware::trajectory::shift(*trajectory, {shift_interval1, shift_interval2});
+      autoware::trajectory::shift(*trajectory, shift_interval, shift_parameter);
+    if (shifted_trajectory) {
+      const auto s = shifted_trajectory->base_arange(0.01);
+      const auto c = shifted_trajectory->compute(s);
+      const auto x = c | transform([](const auto & p) { return p.x; }) | to<std::vector>();
+      const auto y = c | transform([](const auto & p) { return p.y; }) | to<std::vector>();
 
-    for (double s = 0.0; s < shifted_trajectory.length(); s += 0.01) {
-      auto p = shifted_trajectory.compute(s);
-      x.push_back(p.x);
-      y.push_back(p.y);
+      plt.plot(Args(x, y), Kwargs("label"_a = "shifted"));
+      plt.axis(Args("equal"));
+      plt.grid();
+      plt.legend();
+      plt.show();
+    } else {
+      std::cout << shifted_trajectory.error().what << std::endl;
     }
-
-    plt.plot(Args(x, y), Kwargs("label"_a = "shifted"));
-    plt.axis(Args("equal"));
-    plt.grid();
-    plt.legend();
-    plt.show();
   }
-
   return 0;
 }
