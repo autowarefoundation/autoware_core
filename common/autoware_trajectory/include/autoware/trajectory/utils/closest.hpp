@@ -72,7 +72,7 @@ std::optional<double> closest_with_constraint(
       result << to_point(point).x, to_point(point).y;
       return result;
     },
-    trajectory.get_internal_bases(), {to_point(point).x, to_point(point).y},
+    trajectory.get_underlying_bases(), {to_point(point).x, to_point(point).y},
     [&constraint, &trajectory](const double & s) { return constraint(trajectory.compute(s)); });
 }
 

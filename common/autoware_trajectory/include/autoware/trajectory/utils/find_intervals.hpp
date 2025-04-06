@@ -67,7 +67,7 @@ std::vector<Interval> find_intervals(
   using autoware::trajectory::detail::to_point;
 
   return detail::impl::find_intervals_impl(
-    trajectory.get_internal_bases(),
+    trajectory.get_underlying_bases(),
     [&constraint, &trajectory](const double & s) { return constraint(trajectory.compute(s)); });
 }
 

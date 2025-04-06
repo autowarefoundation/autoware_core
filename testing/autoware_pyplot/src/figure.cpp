@@ -47,6 +47,11 @@ axes::Axes Figure::add_subplot(const pybind11::tuple & args, const pybind11::dic
   return axes::Axes{add_subplot_attr(*args, **kwargs)};
 }
 
+axes::Axes Figure::add_subplot(const pybind11::dict & kwargs) const
+{
+  return axes::Axes{add_subplot_attr(**kwargs)};
+}
+
 PyObjectWrapper Figure::colorbar(const pybind11::tuple & args, const pybind11::dict & kwargs) const
 {
   return PyObjectWrapper{colorbar_attr(*args, **kwargs)};
