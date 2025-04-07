@@ -47,6 +47,15 @@ protected:
   std::shared_ptr<detail::InterpolatedArray<double>> rear_wheel_angle_rad_{
     nullptr};  //!< Rear wheel angle in rad} Warning, this is not used
 
+  /**
+   * @brief add the event function to
+   * longitudinal_velocity_mps/lateral_velocity_mps/heading_rate_mps/acceleration_mps2/front_wheel_angle_rad/rear_wheel_angle_rad
+   * interpolator
+   * @note when a new base is added to longitudinal_velocity_mps for example, the addition is also
+   * notified and update_base() is triggered.
+   */
+  virtual void add_base_addition_callback();
+
 public:
   Trajectory();
   ~Trajectory() override = default;

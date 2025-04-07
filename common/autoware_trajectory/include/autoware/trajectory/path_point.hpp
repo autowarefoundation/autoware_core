@@ -42,6 +42,15 @@ protected:
   std::shared_ptr<detail::InterpolatedArray<double>> heading_rate_rps_{
     nullptr};  //!< Heading rate in rad/s;
 
+  /**
+   * @brief add the event function to
+   * longitudinal_velocity_mps/lateral_velocity_mps/heading_rate_mps interpolator using observer
+   * pattern
+   * @note when a new base is added to longitudinal_velocity_mps for example, the addition is also
+   * notified and update_base() is triggered.
+   */
+  virtual void add_base_addition_callback();
+
 public:
   Trajectory();
   ~Trajectory() override = default;
