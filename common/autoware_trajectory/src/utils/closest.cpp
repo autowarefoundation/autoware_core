@@ -37,17 +37,27 @@ std::optional<double> closest_with_constraint_impl(
     const Eigen::Vector3d w = point - p0;
     const double c1 = w.dot(v);
     const double c2 = v.dot(v);
-    double length_from_start_point = std::numeric_limits<double>::infinity();
-    double distance_from_segment = std::numeric_limits<double>::infinity();
-    if (c1 <= 0) {
-      length_from_start_point = bases.at(i - 1);
-      distance_from_segment = (point - p0).norm();
-    } else if (c2 <= c1) {
-      length_from_start_point = bases.at(i);
-      distance_from_segment = (point - p1).norm();
-    } else {
-      length_from_start_point = bases.at(i - 1) + c1 / c2 * (p1 - p0).norm();
-      distance_from_segment = (point - (p0 + (c1 / c2) * v)).norm();
+    const auto length_from_start_point = [&]() {
+      if (c1 <= 0) {
+        return bases.at(i - 1);
+      }
+      if (c2 <= c1) {
+        return bases.at(i);
+      }
+      return bases.at(i - 1) + c1 / c2 * (p1 - p0).norm();
+    }();
+    const auto distance_from_segment = [&]() {
+      if (c1 <= 0) {
+        return (point - p0).norm();
+      }
+      if (c2 <= c1) {
+        return (point - p1).norm();
+      }
+      return (point - (p0 + (c1 / c2) * v)).norm();
+    }();
+    if (constraint(length_from_start_point)) {
+      distances_from_segments.push_back(distance_from_segment);
+      lengths_from_start_points.push_back(length_from_start_point);
     }
     if (constraint(length_from_start_point)) {
       distances_from_segments.push_back(distance_from_segment);
