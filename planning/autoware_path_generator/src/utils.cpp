@@ -220,11 +220,8 @@ std::optional<double> get_first_intersection_arc_length(
 {
   std::optional<double> s_intersection{std::nullopt};
 
-  const auto [s_start_left_bound, s_start_right_bound] =
-    get_arc_length_on_bounds(lanelet_sequence, s_start);
-
-  const auto [s_end_left_bound, s_end_right_bound] =
-    get_arc_length_on_bounds(lanelet_sequence, s_end);
+  const auto s_start_on_bounds = get_arc_length_on_bounds(lanelet_sequence, s_start);
+  const auto s_end_on_bounds = get_arc_length_on_bounds(lanelet_sequence, s_end);
 
   const auto cropped_centerline = lanelet::utils::to2D(to_lanelet_points(crop_line_string(
     to_geometry_msgs_points(
@@ -233,11 +230,11 @@ std::optional<double> get_first_intersection_arc_length(
   const auto cropped_left_bound = lanelet::utils::to2D(to_lanelet_points(crop_line_string(
     to_geometry_msgs_points(
       lanelet_sequence.leftBound2d().begin(), lanelet_sequence.leftBound2d().end()),
-    s_start_left_bound, s_end_left_bound)));
+    s_start_on_bounds.left, s_end_on_bounds.left)));
   const auto cropped_right_bound = lanelet::utils::to2D(to_lanelet_points(crop_line_string(
     to_geometry_msgs_points(
       lanelet_sequence.rightBound2d().begin(), lanelet_sequence.rightBound2d().end()),
-    s_start_right_bound, s_end_right_bound)));
+    s_start_on_bounds.right, s_end_on_bounds.right)));
 
   const lanelet::BasicLineString2d start_edge{
     cropped_left_bound.front(), cropped_right_bound.front()};
@@ -247,14 +244,14 @@ std::optional<double> get_first_intersection_arc_length(
     const auto s_left_bound = [&]() {
       auto s = get_first_self_intersection_arc_length(cropped_left_bound);
       if (s) {
-        *s += s_start_left_bound;
+        *s += s_start_on_bounds.left;
       }
       return s;
     }();
     const auto s_right_bound = [&]() {
       auto s = get_first_self_intersection_arc_length(cropped_right_bound);
       if (s) {
-        *s += s_start_right_bound;
+        *s += s_start_on_bounds.right;
       }
       return s;
     }();
@@ -274,17 +271,17 @@ std::optional<double> get_first_intersection_arc_length(
     lanelet::BasicPoints2d intersections;
     boost::geometry::intersection(cropped_left_bound, cropped_right_bound, intersections);
     for (const auto & intersection : intersections) {
-      const auto [s_left, s_right] = get_arc_length_on_centerline(
+      const auto s_on_centerline = get_arc_length_on_centerline(
         lanelet_sequence,
-        s_start_left_bound +
+        s_start_on_bounds.left +
           lanelet::geometry::toArcCoordinates(cropped_left_bound, intersection).length,
-        s_start_right_bound +
+        s_start_on_bounds.right +
           lanelet::geometry::toArcCoordinates(cropped_right_bound, intersection).length);
       const auto s_mutual = [&]() {
-        if (s_left && s_right) {
-          return std::max(s_left, s_right);
+        if (s_on_centerline.left && s_on_centerline.right) {
+          return std::max(s_on_centerline.left, s_on_centerline.right);
         }
-        return s_left ? s_left : s_right;
+        return s_on_centerline.left ? s_on_centerline.left : s_on_centerline.right;
       }();
       if (s_intersection && s_mutual) {
         s_intersection = std::min(s_intersection, s_mutual);
@@ -316,26 +313,26 @@ std::optional<double> get_first_intersection_arc_length(
     const auto s_left_bound = [&]() {
       auto s = get_start_edge_intersection_arc_length(cropped_left_bound);
       if (s) {
-        *s += s_start_left_bound;
+        *s += s_start_on_bounds.left;
       }
       return s;
     }();
     const auto s_right_bound = [&]() {
       auto s = get_start_edge_intersection_arc_length(cropped_right_bound);
       if (s) {
-        *s += s_start_right_bound;
+        *s += s_start_on_bounds.right;
       }
       return s;
     }();
 
-    const auto [s_left, s_right] =
+    const auto s_on_centerline =
       get_arc_length_on_centerline(lanelet_sequence, s_left_bound, s_right_bound);
 
     const auto s_start_edge = [&]() {
-      if (s_left && s_right) {
-        return std::min(s_left, s_right);
+      if (s_on_centerline.left && s_on_centerline.right) {
+        return std::min(s_on_centerline.left, s_on_centerline.right);
       }
-      return s_left ? s_left : s_right;
+      return s_on_centerline.left ? s_on_centerline.left : s_on_centerline.right;
     }();
     if (s_intersection && s_start_edge) {
       s_intersection = std::min(s_intersection, s_start_edge);
