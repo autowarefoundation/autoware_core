@@ -19,7 +19,6 @@
 #include "autoware/ground_filter/ground_filter.hpp"
 
 #include <autoware_utils/system/time_keeper.hpp>
-#include <autoware_utils_tf/transform_listener.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info.hpp>
 
 #include <sensor_msgs/msg/point_cloud2.hpp>
