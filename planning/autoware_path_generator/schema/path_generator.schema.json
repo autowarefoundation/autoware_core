@@ -12,37 +12,79 @@
           "default": "10.0",
           "minimum": 0.0
         },
-        "backward_path_length": {
+        "path_length.backward": {
           "type": "number",
           "description": "Length of generated path behind vehicle [m]",
           "default": "5.0",
           "minimum": 0.0
         },
-        "forward_path_length": {
+        "path_length.forward": {
           "type": "number",
           "description": "Length of generated path in front of vehicle [m]",
           "default": "300.0",
           "minimum": 0.0
         },
-        "waypoint_group_separation_threshold": {
+        "waypoint_group.separation_threshold": {
           "type": "number",
           "description": "Maximum distance at which consecutive waypoints are considered to belong to the same group [m]",
           "default": "1.0",
           "minimum": 0.0
         },
-        "waypoint_group_interval_margin_ratio": {
+        "waypoint_group.interval_margin_ratio": {
           "type": "number",
           "description": "Ratio for determining length of switching section from centerline to waypoints",
           "default": "10.0",
+          "minimum": 0.0
+        },
+        "turn_signal.search_time": {
+          "type": "number",
+          "description": "Time to search for start point of desired section [s]",
+          "default": "3.0",
+          "minimum": 0.0
+        },
+        "turn_signal.search_distance": {
+          "type": "number",
+          "description": "Distance to search for start point of desired section [m]",
+          "default": "30.0",
+          "minimum": 0.0
+        },
+        "turn_signal.resampling_interval": {
+          "type": "number",
+          "description": "Resampling interval for section start point interpolation [m]",
+          "default": "1.0",
+          "minimum": 0.0
+        },
+        "turn_signal.angle_threshold_deg": {
+          "type": "number",
+          "description": "Threshold for determining end point of required section [deg]",
+          "default": "15.0",
+          "minimum": 0.0
+        },
+        "refine_goal_search_radius_range": {
+          "type": "number",
+          "description": "Search radius for goal point refinement [m]",
+          "default": "7.5",
+          "minimum": 0.0
+        },
+        "search_radius_decrement": {
+          "type": "number",
+          "description": "Decrement value for search radius [m]",
+          "default": "1.0",
           "minimum": 0.0
         }
       },
       "required": [
         "planning_hz",
-        "backward_path_length",
-        "forward_path_length",
-        "waypoint_group_separation_threshold",
-        "waypoint_group_interval_margin_ratio"
+        "path_length.backward",
+        "path_length.forward",
+        "waypoint_group.separation_threshold",
+        "waypoint_group.interval_margin_ratio",
+        "turn_signal.search_time",
+        "turn_signal.search_distance",
+        "turn_signal.resampling_interval",
+        "turn_signal.angle_threshold_deg",
+        "refine_goal_search_radius_range",
+        "search_radius_decrement"
       ],
       "additionalProperties": false
     }
