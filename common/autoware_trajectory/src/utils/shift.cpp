@@ -239,7 +239,7 @@ void shift_impl(
   const double shift_arc_length = std::abs(shift_interval.end - shift_interval.start);
   const bool shift_direction = shift_interval.end > shift_interval.start;
   // Calculate base lengths
-  auto [base_lon, base_lat] = calc_base_lengths(
+  const auto [base_lon, base_lat] = calc_base_lengths(
     shift_arc_length,               //
     shift_interval.lateral_offset,  //
     shift_parameters);
@@ -249,8 +249,10 @@ void shift_impl(
 
   if (!cubic_spline) {
     throw std::runtime_error(
-      "Failed to build cubic spline for shift calculation.");  // This Exception should not be
-                                                               // thrown.
+      "Failed to build cubic spline for shift calculation.");  // This Exception is never
+                                                               // thrown, because the implementation
+                                                               // passes 7 points, which is enough
+                                                               // for cubic spline
   }
   for (size_t i = 0; i < bases.size(); ++i) {
     // Calculate the shift length at the current base

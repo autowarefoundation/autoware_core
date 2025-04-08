@@ -152,3 +152,5 @@ Please see [autoware_map_msgs/msg/MapProjectorInfo.msg](https://github.com/autow
 
 `use_waypoints` decides how to handle a centerline.
 This flag enables to use the `overwriteLaneletsCenterlineWithWaypoints` function instead of `overwriteLaneletsCenterline`. Please see [the document of the autoware_lanelet2_extension package](https://github.com/autowarefoundation/autoware_lanelet2_extension/blob/main/autoware_lanelet2_extension/docs/lanelet2_format_extension.md#centerline) in detail.
+
+![overwrite_lanelets_centerline](docs/overwrite_lanelets_centerline.drawio.svg)

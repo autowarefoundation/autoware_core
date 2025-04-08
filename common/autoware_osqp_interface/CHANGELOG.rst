@@ -2,6 +2,9 @@
 Changelog for package autoware_osqp_interface
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.0.0 (2025-03-31)
+------------------
+
 0.3.0 (2025-03-21)
 ------------------
 * chore: rename from `autoware.core` to `autoware_core` (`#290 <https://github.com/autowarefoundation/autoware.core/issues/290>`_)

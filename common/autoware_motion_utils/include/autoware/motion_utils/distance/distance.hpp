@@ -24,7 +24,7 @@
 
 namespace autoware::motion_utils
 {
-std::optional<double> calcDecelDistWithJerkAndAccConstraints(
+[[nodiscard]] std::optional<double> calcDecelDistWithJerkAndAccConstraints(
   const double current_vel, const double target_vel, const double current_acc, const double acc_min,
   const double jerk_acc, const double jerk_dec);
 

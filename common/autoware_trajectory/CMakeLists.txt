@@ -27,6 +27,7 @@ if(BUILD_TESTING)
   add_definitions("-Wno-attributes")
   find_package(ament_lint_auto REQUIRED)
   find_package(autoware_pyplot REQUIRED)
+  find_package(range-v3 REQUIRED)
   ament_lint_auto_find_test_dependencies()
   find_package(pybind11 REQUIRED)
   include_directories(${autoware_pyplot_INCLUDE_DIRS})
@@ -38,6 +39,7 @@ if(BUILD_TESTING)
     target_link_libraries(${example_name}
       autoware_trajectory
       ${autoware_pyplot_LIBRARIES}
+      range-v3::range-v3
       pybind11::embed
     )
   endforeach()

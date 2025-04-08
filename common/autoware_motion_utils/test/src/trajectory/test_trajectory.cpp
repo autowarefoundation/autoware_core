@@ -313,8 +313,15 @@ TEST(trajectory, findNearestIndex_Pos_StraightTrajectory)
   const auto traj = generateTestTrajectory<Trajectory>(10, 1.0);
 
   // Empty
-  EXPECT_THROW(
-    findNearestIndex(Trajectory{}.points, geometry_msgs::msg::Point{}), std::invalid_argument);
+  try {
+    [[maybe_unused]] auto retval =
+      findNearestIndex(Trajectory{}.points, geometry_msgs::msg::Point{});
+    FAIL() << "Expected std::invalid_argument exception, but no exception was thrown.";
+  } catch (const std::invalid_argument &) {
+    SUCCEED();
+  } catch (...) {
+    FAIL() << "Expected std::invalid_argument exception, but a different exception was thrown.";
+  }
 
   // Start point
   EXPECT_EQ(findNearestIndex(traj.points, create_point(0.0, 0.0, 0.0)), 0U);
@@ -429,9 +436,15 @@ TEST(trajectory, findNearestSegmentIndex)
   const auto traj = generateTestTrajectory<Trajectory>(10, 1.0);
 
   // Empty
-  EXPECT_THROW(
-    findNearestSegmentIndex(Trajectory{}.points, geometry_msgs::msg::Point{}),
-    std::invalid_argument);
+  try {
+    [[maybe_unused]] auto retval =
+      findNearestSegmentIndex(Trajectory{}.points, geometry_msgs::msg::Point{});
+    FAIL() << "Expected std::invalid_argument exception, but no exception was thrown.";
+  } catch (const std::invalid_argument &) {
+    SUCCEED();
+  } catch (...) {
+    FAIL() << "Expected std::invalid_argument exception, but a different exception was thrown.";
+  }
 
   // Start point
   EXPECT_EQ(findNearestSegmentIndex(traj.points, create_point(0.0, 0.0, 0.0)), 0U);
@@ -470,27 +483,50 @@ TEST(trajectory, calcLongitudinalOffsetToSegment_StraightTrajectory)
   const bool throw_exception = true;
 
   // Empty
-  EXPECT_THROW(
-    calcLongitudinalOffsetToSegment(
-      Trajectory{}.points, {}, geometry_msgs::msg::Point{}, throw_exception),
-    std::invalid_argument);
+  try {
+    [[maybe_unused]] auto retval = calcLongitudinalOffsetToSegment(
+      Trajectory{}.points, {}, geometry_msgs::msg::Point{}, throw_exception);
+    FAIL() << "Expected std::invalid_argument exception, but no exception was thrown.";
+  } catch (const std::invalid_argument &) {
+    SUCCEED();
+  } catch (...) {
+    FAIL() << "Expected std::invalid_argument exception, but a different exception was thrown.";
+  }
 
   // Out of range
-  EXPECT_THROW(
-    calcLongitudinalOffsetToSegment(traj.points, -1, geometry_msgs::msg::Point{}, throw_exception),
-    std::out_of_range);
-  EXPECT_THROW(
-    calcLongitudinalOffsetToSegment(
-      traj.points, traj.points.size() - 1, geometry_msgs::msg::Point{}, throw_exception),
-    std::out_of_range);
+  try {
+    [[maybe_unused]] auto retval = calcLongitudinalOffsetToSegment(
+      traj.points, -1, geometry_msgs::msg::Point{}, throw_exception);
+    FAIL() << "Expected std::out_of_range exception, but no exception was thrown.";
+  } catch (const std::out_of_range &) {
+    SUCCEED();
+  } catch (...) {
+    FAIL() << "Expected std::out_of_range exception, but a different exception was thrown.";
+  }
+
+  try {
+    [[maybe_unused]] auto retval = calcLongitudinalOffsetToSegment(
+      traj.points, traj.points.size() - 1, geometry_msgs::msg::Point{}, throw_exception);
+    FAIL() << "Expected std::out_of_range exception, but no exception was thrown.";
+  } catch (const std::out_of_range &) {
+    SUCCEED();
+  } catch (...) {
+    FAIL() << "Expected std::out_of_range exception, but a different exception was thrown.";
+  }
 
   // Same close points in trajectory
   {
     const auto invalid_traj = generateTestTrajectory<Trajectory>(10, 0.0);
     const auto p = create_point(3.0, 0.0, 0.0);
-    EXPECT_THROW(
-      calcLongitudinalOffsetToSegment(invalid_traj.points, 3, p, throw_exception),
-      std::runtime_error);
+    try {
+      [[maybe_unused]] auto retval =
+        calcLongitudinalOffsetToSegment(invalid_traj.points, 3, p, throw_exception);
+      FAIL() << "Expected std::runtime_error exception, but no exception was thrown.";
+    } catch (const std::runtime_error &) {
+      SUCCEED();
+    } catch (...) {
+      FAIL() << "Expected std::runtime_error exception, but a different exception was thrown.";
+    }
   }
 
   // Same point
@@ -532,23 +568,42 @@ TEST(trajectory, calcLateralOffset)
   const bool throw_exception = true;
 
   // Empty
-  EXPECT_THROW(
-    calcLateralOffset(Trajectory{}.points, geometry_msgs::msg::Point{}, throw_exception),
-    std::invalid_argument);
+  try {
+    [[maybe_unused]] auto retval =
+      calcLateralOffset(Trajectory{}.points, geometry_msgs::msg::Point{}, throw_exception);
+    FAIL() << "Expected std::invalid_argument exception, but no exception was thrown.";
+  } catch (const std::invalid_argument &) {
+    SUCCEED();
+  } catch (...) {
+    FAIL() << "Expected std::invalid_argument exception, but a different exception was thrown.";
+  }
 
   // Trajectory size is 1
   {
     const auto one_point_traj = generateTestTrajectory<Trajectory>(1, 1.0);
-    EXPECT_THROW(
-      calcLateralOffset(one_point_traj.points, geometry_msgs::msg::Point{}, throw_exception),
-      std::runtime_error);
+    try {
+      [[maybe_unused]] auto retval =
+        calcLateralOffset(one_point_traj.points, geometry_msgs::msg::Point{}, throw_exception);
+      FAIL() << "Expected std::runtime_error exception, but no exception was thrown.";
+    } catch (const std::runtime_error &) {
+      SUCCEED();
+    } catch (...) {
+      FAIL() << "Expected std::runtime_error exception, but a different exception was thrown.";
+    }
   }
 
   // Same close points in trajectory
   {
     const auto invalid_traj = generateTestTrajectory<Trajectory>(10, 0.0);
     const auto p = create_point(3.0, 0.0, 0.0);
-    EXPECT_THROW(calcLateralOffset(invalid_traj.points, p, throw_exception), std::runtime_error);
+    try {
+      [[maybe_unused]] auto retval = calcLateralOffset(invalid_traj.points, p, throw_exception);
+      FAIL() << "Expected std::runtime_error exception, but no exception was thrown.";
+    } catch (const std::runtime_error &) {
+      SUCCEED();
+    } catch (...) {
+      FAIL() << "Expected std::runtime_error exception, but a different exception was thrown.";
+    }
   }
 
   // Point on trajectory
@@ -573,30 +628,57 @@ TEST(trajectory, calcLateralOffset_without_segment_idx)
   const bool throw_exception = true;
 
   // Empty
-  EXPECT_THROW(
-    calcLateralOffset(Trajectory{}.points, geometry_msgs::msg::Point{}, throw_exception),
-    std::invalid_argument);
+  try {
+    [[maybe_unused]] auto retval =
+      calcLateralOffset(Trajectory{}.points, geometry_msgs::msg::Point{}, throw_exception);
+    FAIL() << "Expected std::invalid_argument exception, but no exception was thrown.";
+  } catch (const std::invalid_argument &) {
+    // Expected exception, test passes
+  } catch (...) {
+    // Unexpected exception type, test fails
+    FAIL() << "Expected std::invalid_argument exception, but a different exception was thrown.";
+  }
 
   // Trajectory size is 1
   {
     const auto one_point_traj = generateTestTrajectory<Trajectory>(1, 1.0);
-    EXPECT_THROW(
-      calcLateralOffset(
+    try {
+      [[maybe_unused]] auto retval = calcLateralOffset(
         one_point_traj.points, geometry_msgs::msg::Point{}, static_cast<size_t>(0),
-        throw_exception),
-      std::runtime_error);
+        throw_exception);
+      FAIL() << "Expected std::runtime_error exception, but no exception was thrown.";
+    } catch (const std::runtime_error &) {
+      // Expected exception, test passes
+    } catch (...) {
+      // Unexpected exception type, test fails
+      FAIL() << "Expected std::runtime_error exception, but a different exception was thrown.";
+    }
   }
 
   // Same close points in trajectory
   {
     const auto invalid_traj = generateTestTrajectory<Trajectory>(10, 0.0);
     const auto p = create_point(3.0, 0.0, 0.0);
-    EXPECT_THROW(
-      calcLateralOffset(invalid_traj.points, p, static_cast<size_t>(2), throw_exception),
-      std::runtime_error);
-    EXPECT_THROW(
-      calcLateralOffset(invalid_traj.points, p, static_cast<size_t>(3), throw_exception),
-      std::runtime_error);
+    try {
+      [[maybe_unused]] auto retval =
+        calcLateralOffset(invalid_traj.points, p, static_cast<size_t>(2), throw_exception);
+      FAIL() << "Expected std::runtime_error exception, but no exception was thrown.";
+    } catch (const std::runtime_error &) {
+      // Expected exception, test passes
+    } catch (...) {
+      // Unexpected exception type, test fails
+      FAIL() << "Expected std::runtime_error exception, but a different exception was thrown.";
+    }
+    try {
+      [[maybe_unused]] auto retval =
+        calcLateralOffset(invalid_traj.points, p, static_cast<size_t>(3), throw_exception);
+      FAIL() << "Expected std::runtime_error exception, but no exception was thrown.";
+    } catch (const std::runtime_error &) {
+      // Expected exception, test passes
+    } catch (...) {
+      // Unexpected exception type, test fails
+      FAIL() << "Expected std::runtime_error exception, but a different exception was thrown.";
+    }
   }
 
   // Point on trajectory
@@ -647,8 +729,23 @@ TEST(trajectory, calcSignedArcLengthFromIndexToIndex)
   EXPECT_DOUBLE_EQ(calcSignedArcLength(Trajectory{}.points, {}, {}), 0.0);
 
   // Out of range
-  EXPECT_THROW(calcSignedArcLength(traj.points, -1, 1), std::out_of_range);
-  EXPECT_THROW(calcSignedArcLength(traj.points, 0, traj.points.size() + 1), std::out_of_range);
+  try {
+    [[maybe_unused]] auto retval = calcSignedArcLength(traj.points, -1, 1);
+    FAIL() << "Expected std::out_of_range exception, but no exception was thrown.";
+  } catch (const std::out_of_range &) {
+    SUCCEED();
+  } catch (...) {
+    FAIL() << "Expected std::out_of_range exception, but a different exception was thrown.";
+  }
+
+  try {
+    [[maybe_unused]] auto retval = calcSignedArcLength(traj.points, 0, traj.points.size() + 1);
+    FAIL() << "Expected std::out_of_range exception, but no exception was thrown.";
+  } catch (const std::out_of_range &) {
+    SUCCEED();
+  } catch (...) {
+    FAIL() << "Expected std::out_of_range exception, but a different exception was thrown.";
+  }
 
   // Same point
   EXPECT_NEAR(calcSignedArcLength(traj.points, 3, 3), 0, epsilon);

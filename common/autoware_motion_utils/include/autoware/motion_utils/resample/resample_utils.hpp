@@ -34,20 +34,21 @@ static inline rclcpp::Logger get_logger()
 }
 
 template <class T>
-bool validate_size(const T & points)
+[[nodiscard]] bool validate_size(const T & points)
 {
   return points.size() >= 2;
 }
 
 template <class T>
-bool validate_resampling_range(const T & points, const std::vector<double> & resampling_intervals)
+[[nodiscard]] bool validate_resampling_range(
+  const T & points, const std::vector<double> & resampling_intervals)
 {
   const double points_length = autoware::motion_utils::calcArcLength(points);
   return points_length >= resampling_intervals.back();
 }
 
 template <class T>
-bool validate_points_duplication(const T & points)
+[[nodiscard]] bool validate_points_duplication(const T & points)
 {
   for (size_t i = 0; i < points.size() - 1; ++i) {
     const auto & curr_pt = autoware_utils::get_point(points.at(i));
@@ -62,7 +63,8 @@ bool validate_points_duplication(const T & points)
 }
 
 template <class T>
-bool validate_arguments(const T & input_points, const std::vector<double> & resampling_intervals)
+[[nodiscard]] bool validate_arguments(
+  const T & input_points, const std::vector<double> & resampling_intervals)
 {
   // Check size of the arguments
   if (!validate_size(input_points)) {
@@ -95,7 +97,7 @@ bool validate_arguments(const T & input_points, const std::vector<double> & resa
 }
 
 template <class T>
-bool validate_arguments(const T & input_points, const double resampling_interval)
+[[nodiscard]] bool validate_arguments(const T & input_points, const double resampling_interval)
 {
   // Check size of the arguments
   if (!validate_size(input_points)) {

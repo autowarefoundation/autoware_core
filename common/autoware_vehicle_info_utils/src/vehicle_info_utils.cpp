@@ -28,10 +28,11 @@ T getParameter(rclcpp::Node & node, const std::string & name)
   try {
     return node.declare_parameter<T>(name);
   } catch (const rclcpp::ParameterTypeException & ex) {
-    RCLCPP_ERROR(
-      node.get_logger(), "Failed to get parameter `%s`, please set it when you launch the node.",
-      name.c_str());
-    throw(ex);
+    static constexpr const char * ERROR_MESSAGE =
+      "Failed to get parameter `%s`, please set it when you launch the node.";
+
+    RCLCPP_ERROR(node.get_logger(), ERROR_MESSAGE, name.c_str());
+    throw;
   }
 }
 }  // namespace
@@ -40,16 +41,28 @@ namespace autoware::vehicle_info_utils
 {
 VehicleInfoUtils::VehicleInfoUtils(rclcpp::Node & node)
 {
-  const auto wheel_radius_m = getParameter<double>(node, "wheel_radius");
-  const auto wheel_width_m = getParameter<double>(node, "wheel_width");
-  const auto wheel_base_m = getParameter<double>(node, "wheel_base");
-  const auto wheel_tread_m = getParameter<double>(node, "wheel_tread");
-  const auto front_overhang_m = getParameter<double>(node, "front_overhang");
-  const auto rear_overhang_m = getParameter<double>(node, "rear_overhang");
-  const auto left_overhang_m = getParameter<double>(node, "left_overhang");
-  const auto right_overhang_m = getParameter<double>(node, "right_overhang");
-  const auto vehicle_height_m = getParameter<double>(node, "vehicle_height");
-  const auto max_steer_angle_rad = getParameter<double>(node, "max_steer_angle");
+  static constexpr const char * WHEEL_RADIUS = "wheel_radius";
+  static constexpr const char * WHEEL_WIDTH = "wheel_width";
+  static constexpr const char * WHEEL_BASE = "wheel_base";
+  static constexpr const char * WHEEL_TREAD = "wheel_tread";
+  static constexpr const char * FRONT_OVERHANG = "front_overhang";
+  static constexpr const char * REAR_OVERHANG = "rear_overhang";
+  static constexpr const char * LEFT_OVERHANG = "left_overhang";
+  static constexpr const char * RIGHT_OVERHANG = "right_overhang";
+  static constexpr const char * VEHICLE_HEIGHT = "vehicle_height";
+  static constexpr const char * MAX_STEER_ANGLE = "max_steer_angle";
+
+  const auto wheel_radius_m = getParameter<double>(node, WHEEL_RADIUS);
+  const auto wheel_width_m = getParameter<double>(node, WHEEL_WIDTH);
+  const auto wheel_base_m = getParameter<double>(node, WHEEL_BASE);
+  const auto wheel_tread_m = getParameter<double>(node, WHEEL_TREAD);
+  const auto front_overhang_m = getParameter<double>(node, FRONT_OVERHANG);
+  const auto rear_overhang_m = getParameter<double>(node, REAR_OVERHANG);
+  const auto left_overhang_m = getParameter<double>(node, LEFT_OVERHANG);
+  const auto right_overhang_m = getParameter<double>(node, RIGHT_OVERHANG);
+  const auto vehicle_height_m = getParameter<double>(node, VEHICLE_HEIGHT);
+  const auto max_steer_angle_rad = getParameter<double>(node, MAX_STEER_ANGLE);
+
   vehicle_info_ = createVehicleInfo(
     wheel_radius_m, wheel_width_m, wheel_base_m, wheel_tread_m, front_overhang_m, rear_overhang_m,
     left_overhang_m, right_overhang_m, vehicle_height_m, max_steer_angle_rad);
