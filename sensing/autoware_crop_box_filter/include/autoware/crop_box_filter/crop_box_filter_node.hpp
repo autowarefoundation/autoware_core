@@ -19,13 +19,15 @@
 
 #include <autoware/point_types/types.hpp>
 #include <autoware_utils/ros/debug_publisher.hpp>
-#include <autoware_utils/ros/managed_transform_buffer.hpp>
 #include <autoware_utils/ros/published_time_publisher.hpp>
+#include <autoware_utils/ros/transform_listener.hpp>
 #include <autoware_utils/system/stop_watch.hpp>
 
 #include <geometry_msgs/msg/polygon_stamped.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
+
+#include <pcl_conversions/pcl_conversions.h>
 
 #include <memory>
 #include <string>
@@ -48,7 +50,7 @@ private:
   // member variable declaration & definitions *************************************
 
   /** \brief The managed transform buffer. */
-  std::unique_ptr<autoware_utils::ManagedTransformBuffer> managed_tf_buffer_{nullptr};
+  std::unique_ptr<autoware_utils::TransformListener> transform_listener_{nullptr};
 
   /** \brief The input TF frame the data should be transformed into,
    * if input.header.frame_id is different. */
