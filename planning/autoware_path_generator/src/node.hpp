@@ -78,6 +78,8 @@ private:
   autoware::vehicle_info_utils::VehicleInfo vehicle_info_;
   PlannerData planner_data_;
 
+  std::optional<lanelet::ConstLanelet> current_lanelet_{std::nullopt};
+
   void run();
 
   InputData take_data();
@@ -91,15 +93,13 @@ private:
   std::optional<PathWithLaneId> plan_path(const InputData & input_data, const Params & params);
 
   std::optional<PathWithLaneId> generate_path(
-    const geometry_msgs::msg::Pose & current_pose, const Params & params) const;
-
-  std::optional<PathWithLaneId> generate_path(
-    const lanelet::LaneletSequence & lanelet_sequence,
-    const geometry_msgs::msg::Pose & current_pose, const Params & params) const;
+    const geometry_msgs::msg::Pose & current_pose, const Params & params);
 
   std::optional<PathWithLaneId> generate_path(
     const lanelet::LaneletSequence & lanelet_sequence, const double s_start, const double s_end,
     const Params & params) const;
+
+  bool update_current_lanelet(const geometry_msgs::msg::Pose & current_pose, const Params & params);
 };
 }  // namespace autoware::path_generator
 

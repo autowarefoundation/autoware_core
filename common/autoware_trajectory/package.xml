@@ -20,6 +20,7 @@
   <depend>lanelet2_core</depend>
   <depend>rclcpp</depend>
   <depend>tf2</depend>
+  <depend>tf2_geometry_msgs</depend>
   <depend>tl_expected</depend>
 
   <test_depend>ament_cmake_ros</test_depend>
@@ -27,6 +28,7 @@
   <test_depend>autoware_lint_common</test_depend>
   <test_depend>autoware_pyplot</test_depend>
   <test_depend>pybind11_vendor</test_depend>
+  <test_depend>range-v3</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

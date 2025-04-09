@@ -12,12 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "autoware/geography_utils/height.hpp"
+
 #include <GeographicLib/Geoid.hpp>
-#include <autoware/geography_utils/height.hpp>
 
 #include <map>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 
 namespace autoware::geography_utils
@@ -39,12 +41,12 @@ double convert_egm2008_to_wgs84(const double height, const double latitude, cons
 
 double convert_height(
   const double height, const double latitude, const double longitude,
-  const std::string & source_vertical_datum, const std::string & target_vertical_datum)
+  std::string_view source_vertical_datum, std::string_view target_vertical_datum)
 {
   if (source_vertical_datum == target_vertical_datum) {
     return height;
   }
-  static const std::map<std::pair<std::string, std::string>, HeightConversionFunction>
+  static const std::map<std::pair<std::string_view, std::string_view>, HeightConversionFunction>
     conversion_map{
       {{"WGS84", "EGM2008"}, convert_wgs84_to_egm2008},
       {{"EGM2008", "WGS84"}, convert_egm2008_to_wgs84},
@@ -55,8 +57,10 @@ double convert_height(
     return it->second(height, latitude, longitude);
   }
 
-  throw std::invalid_argument(
-    "Invalid conversion types: " + source_vertical_datum + " to " + target_vertical_datum);
+  throw std::invalid_argument(std::string{"Invalid conversion types: "}
+                                .append(source_vertical_datum)
+                                .append(" to ")
+                                .append(target_vertical_datum));
 }
 
 }  // namespace autoware::geography_utils

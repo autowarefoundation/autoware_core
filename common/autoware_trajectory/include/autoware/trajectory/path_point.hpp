@@ -42,6 +42,15 @@ protected:
   std::shared_ptr<detail::InterpolatedArray<double>> heading_rate_rps_{
     nullptr};  //!< Heading rate in rad/s;
 
+  /**
+   * @brief add the event function to
+   * longitudinal_velocity_mps/lateral_velocity_mps/heading_rate_mps interpolator using observer
+   * pattern
+   * @note when a new base is added to longitudinal_velocity_mps for example, the addition is also
+   * notified and update_base() is triggered.
+   */
+  virtual void add_base_addition_callback();
+
 public:
   Trajectory();
   ~Trajectory() override = default;
@@ -50,7 +59,9 @@ public:
   Trajectory & operator=(const Trajectory & rhs);
   Trajectory & operator=(Trajectory && rhs) = default;
 
-  std::vector<double> get_internal_bases() const override;
+  [[deprecated]] std::vector<double> get_internal_bases() const override;
+
+  std::vector<double> get_underlying_bases() const override;
 
   detail::InterpolatedArray<double> & longitudinal_velocity_mps()
   {
@@ -86,6 +97,13 @@ public:
    * @return Point on the trajectory
    */
   PointType compute(const double s) const;
+
+  /**
+   * @brief Compute the points on the trajectory at given s values
+   * @param s Arc lengths
+   * @return Points on the trajectory
+   */
+  std::vector<PointType> compute(const std::vector<double> & ss) const;
 
   /**
    * @brief Restore the trajectory points

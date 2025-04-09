@@ -75,7 +75,7 @@ trajectory::Trajectory<PointType> shift(
   const trajectory::Trajectory<PointType> & reference_trajectory,
   const std::vector<ShiftInterval> & shift_intervals, const ShiftParameters & shift_parameters = {})
 {
-  auto bases = reference_trajectory.get_internal_bases();
+  auto bases = reference_trajectory.get_underlying_bases();
   std::vector<double> shift_lengths(bases.size(), 0.0);
   for (const auto & shift_interval : shift_intervals) {
     detail::impl::shift_impl(bases, &shift_lengths, shift_interval, shift_parameters);
@@ -84,7 +84,7 @@ trajectory::Trajectory<PointType> shift(
   std::vector<PointType> shifted_points;
   for (size_t i = 0; i < bases.size(); ++i) {
     shifted_points.emplace_back(reference_trajectory.compute(bases.at(i)));
-    double azimuth = reference_trajectory.azimuth(bases.at(i));
+    const double azimuth = reference_trajectory.azimuth(bases.at(i));
     const double shift_length = shift_lengths.at(i);
     detail::to_point(shifted_points.back()).x += std::sin(azimuth) * shift_length;
     detail::to_point(shifted_points.back()).y -= std::cos(azimuth) * shift_length;

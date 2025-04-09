@@ -11,7 +11,7 @@ ament_auto_add_library(autoware_test_utils SHARED
 
 ament_auto_add_executable(topic_snapshot_saver src/topic_snapshot_saver.cpp)
 
-target_link_libraries(topic_snapshot_saver autoware_test_utils)
+target_link_libraries(topic_snapshot_saver autoware_test_utils yaml-cpp)
 
 if(BUILD_TESTING)
   ament_auto_add_gtest(test_autoware_test_utils
