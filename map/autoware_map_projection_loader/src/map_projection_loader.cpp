@@ -66,11 +66,11 @@ autoware_map_msgs::msg::MapProjectorInfo load_info_from_yaml(const std::string &
   }
 
   // set scale factor
-  static constexpr double scale_factor_for_utm = 0.9996;
-  static constexpr double scale_factor_for_local = 1.0;
+  static constexpr float scale_factor_for_utm = 0.9996;
+  static constexpr float scale_factor_for_local = 1.0;
   if (msg.projector_type == autoware_map_msgs::msg::MapProjectorInfo::TRANSVERSE_MERCATOR) {
     if (data["scale_factor"]) {
-      msg.scale_factor = data["scale_factor"].as<double>();
+      msg.scale_factor = data["scale_factor"].as<float>();
     } else {
       msg.scale_factor = scale_factor_for_utm;
     }
@@ -130,7 +130,7 @@ MapProjectionLoader::MapProjectionLoader(const rclcpp::NodeOptions & options)
   // Publish the message
   MapProjectorInfo map_projector_info_specs;
   publisher_ = this->create_publisher<MapProjectorInfo::Message>(
-    map_projector_info_specs.name,
+    MapProjectorInfo::name,
     autoware::component_interface_specs::get_qos(map_projector_info_specs));
   publisher_->publish(msg);
 }
