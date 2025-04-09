@@ -239,11 +239,14 @@ tl::expected<ShiftElementWithInterval, ShiftError> shift_impl(
     return tl::unexpected(try_calc_base_length.error());
   }
   // base_lon starts from 0.0
+  // NOTE(soblin): calc_base_length may be like [s0, s1, L_lon, L_lon, L_lon], in which case it
+  // causes zero division in interpolator
   const auto [base_lon, base_lat] = sanitize_same_base(try_calc_base_length.value());
 
   auto cubic_spline =
     interpolator::CubicSpline::Builder{}.set_bases(base_lon).set_values(base_lat).build();
 
+  // for above zero division reason, cubic spline may fail
   if (!cubic_spline) {
     return tl::unexpected{ShiftError{
       "Failed to build cubic spline for shift calculation because " +
