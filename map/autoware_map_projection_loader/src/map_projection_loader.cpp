@@ -128,9 +128,8 @@ MapProjectionLoader::MapProjectionLoader(const rclcpp::NodeOptions & options)
     load_map_projector_info(yaml_filename, lanelet2_map_filename);
 
   // Publish the message
-  MapProjectorInfo map_projector_info_specs;
   publisher_ = this->create_publisher<MapProjectorInfo::Message>(
-    MapProjectorInfo::name, autoware::component_interface_specs::get_qos(map_projector_info_specs));
+    MapProjectorInfo::name, autoware::component_interface_specs::get_qos(MapProjectorInfo));
   publisher_->publish(msg);
 }
 }  // namespace autoware::map_projection_loader
