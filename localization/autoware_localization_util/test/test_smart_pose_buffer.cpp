@@ -99,6 +99,202 @@ TEST(TestSmartPoseBuffer, interpolate_pose)  // NOLINT
   EXPECT_NEAR(rpy.z * 180 / M_PI, 45.0, 1e-6);
 }
 
+TEST(TestSmartPoseBuffer, empty_buffer)  // NOLINT
+{
+  rclcpp::Logger logger = rclcpp::get_logger("test_logger");
+  SmartPoseBuffer smart_pose_buffer(logger, 1.0, 1.0);
+
+  builtin_interfaces::msg::Time target_time;
+  target_time.sec = 0;
+  target_time.nanosec = 0;
+
+  // Test empty buffer
+  auto result = smart_pose_buffer.interpolate(target_time);
+  EXPECT_FALSE(result.has_value());
+
+  // Test buffer with only one element
+  auto pose_ptr = std::make_shared<PoseWithCovarianceStamped>();
+  pose_ptr->header.stamp = target_time;
+  smart_pose_buffer.push_back(pose_ptr);
+
+  result = smart_pose_buffer.interpolate(target_time);
+  EXPECT_FALSE(result.has_value());
+}
+
+TEST(TestSmartPoseBuffer, timeout_validation)  // NOLINT
+{
+  rclcpp::Logger logger = rclcpp::get_logger("test_logger");
+  const double timeout = 1.0;  // 1 second timeout
+  SmartPoseBuffer smart_pose_buffer(logger, timeout, 100.0);
+
+  // Add two poses with 0.5 sec difference
+  auto pose1 = std::make_shared<PoseWithCovarianceStamped>();
+  pose1->header.stamp.sec = 0;
+  pose1->header.stamp.nanosec = 0;
+  smart_pose_buffer.push_back(pose1);
+
+  auto pose2 = std::make_shared<PoseWithCovarianceStamped>();
+  pose2->header.stamp.sec = 0;
+  pose2->header.stamp.nanosec = 500000000;  // 0.5 sec
+  smart_pose_buffer.push_back(pose2);
+
+  // Test target time within timeout
+  builtin_interfaces::msg::Time target_time1;
+  target_time1.sec = 0;
+  target_time1.nanosec = 250000000;  // 0.25 sec
+  auto result1 = smart_pose_buffer.interpolate(target_time1);
+  EXPECT_TRUE(result1.has_value());
+
+  // Test target time beyond timeout
+  builtin_interfaces::msg::Time target_time2;
+  target_time2.sec = 2;  // 2 sec (beyond 1 sec timeout)
+  target_time2.nanosec = 0;
+  auto result2 = smart_pose_buffer.interpolate(target_time2);
+  EXPECT_FALSE(result2.has_value());
+}
+
+TEST(TestSmartPoseBuffer, position_tolerance_validation)  // NOLINT
+{
+  rclcpp::Logger logger = rclcpp::get_logger("test_logger");
+  const double tolerance = 1.0;  // 1 meter tolerance
+  SmartPoseBuffer smart_pose_buffer(logger, 10.0, tolerance);
+
+  // Add two poses within tolerance
+  auto pose1 = std::make_shared<PoseWithCovarianceStamped>();
+  pose1->header.stamp.sec = 0;
+  pose1->pose.pose.position.x = 0;
+  pose1->pose.pose.position.y = 0;
+  smart_pose_buffer.push_back(pose1);
+
+  auto pose2 = std::make_shared<PoseWithCovarianceStamped>();
+  pose2->header.stamp.sec = 1;
+  pose2->pose.pose.position.x = 0.5;  // 0.5m distance
+  pose2->pose.pose.position.y = 0;
+  smart_pose_buffer.push_back(pose2);
+
+  builtin_interfaces::msg::Time target_time;
+  target_time.sec = 0;
+  target_time.nanosec = 500000000;  // 0.5 sec
+  auto result1 = smart_pose_buffer.interpolate(target_time);
+  EXPECT_TRUE(result1.has_value());
+
+  // Add a pose beyond tolerance
+  auto pose3 = std::make_shared<PoseWithCovarianceStamped>();
+  pose3->header.stamp.sec = 2;
+  pose3->pose.pose.position.x = 2.0;  // 2m distance (beyond 1m tolerance)
+  pose3->pose.pose.position.y = 0;
+  smart_pose_buffer.push_back(pose3);
+
+  target_time.sec = 1;
+  auto result2 = smart_pose_buffer.interpolate(target_time);
+  EXPECT_FALSE(result2.has_value());
+}
+
+TEST(TestSmartPoseBuffer, buffer_operations)  // NOLINT
+{
+  rclcpp::Logger logger = rclcpp::get_logger("test_logger");
+  SmartPoseBuffer smart_pose_buffer(logger, 10.0, 10.0);
+
+  // Test pop_old
+  for (int i = 0; i < 5; ++i) {
+    auto pose = std::make_shared<PoseWithCovarianceStamped>();
+    pose->header.stamp.sec = i;
+    smart_pose_buffer.push_back(pose);
+  }
+
+  builtin_interfaces::msg::Time pop_time;
+  pop_time.sec = 2;
+  smart_pose_buffer.pop_old(pop_time);
+
+  builtin_interfaces::msg::Time target_time;
+  target_time.sec = 1;
+  auto result1 = smart_pose_buffer.interpolate(target_time);
+  EXPECT_FALSE(result1.has_value());  // Should fail because we popped too much
+
+  target_time.sec = 3;
+  auto result2 = smart_pose_buffer.interpolate(target_time);
+  EXPECT_TRUE(result2.has_value());
+
+  // Test clear
+  smart_pose_buffer.clear();
+  auto result3 = smart_pose_buffer.interpolate(target_time);
+  EXPECT_FALSE(result3.has_value());
+}
+
+TEST(TestSmartPoseBuffer, non_chronological_timestamps)  // NOLINT
+{
+  rclcpp::Logger logger = rclcpp::get_logger("test_logger");
+  SmartPoseBuffer smart_pose_buffer(logger, 10.0, 10.0);
+
+  // Add poses in order
+  for (int i = 0; i < 3; ++i) {
+    auto pose = std::make_shared<PoseWithCovarianceStamped>();
+    pose->header.stamp.sec = i;
+    smart_pose_buffer.push_back(pose);
+  }
+
+  // Add pose with older timestamp (should clear buffer)
+  auto old_pose = std::make_shared<PoseWithCovarianceStamped>();
+  old_pose->header.stamp.sec = 0;
+  smart_pose_buffer.push_back(old_pose);
+
+  // Buffer should now only contain the old_pose
+  builtin_interfaces::msg::Time target_time;
+  target_time.sec = 1;
+  auto result = smart_pose_buffer.interpolate(target_time);
+  EXPECT_FALSE(result.has_value());  // Not enough poses in buffer
+}
+
+TEST(TestSmartPoseBuffer, target_time_before_first_pose)  // NOLINT
+{
+  rclcpp::Logger logger = rclcpp::get_logger("test_logger");
+  SmartPoseBuffer smart_pose_buffer(logger, 10.0, 10.0);
+
+  // Add two poses
+  auto pose1 = std::make_shared<PoseWithCovarianceStamped>();
+  pose1->header.stamp.sec = 10;
+  smart_pose_buffer.push_back(pose1);
+
+  auto pose2 = std::make_shared<PoseWithCovarianceStamped>();
+  pose2->header.stamp.sec = 20;
+  smart_pose_buffer.push_back(pose2);
+
+  // Test target time before first pose
+  builtin_interfaces::msg::Time target_time;
+  target_time.sec = 5;
+  auto result = smart_pose_buffer.interpolate(target_time);
+  EXPECT_FALSE(result.has_value());
+}
+
+TEST(TestSmartPoseBuffer, target_time_after_last_pose)  // NOLINT
+{
+  rclcpp::Logger logger = rclcpp::get_logger("test_logger");
+  const double timeout = 1.0;
+  SmartPoseBuffer smart_pose_buffer(logger, timeout, 10.0);
+
+  // Add two poses
+  auto pose1 = std::make_shared<PoseWithCovarianceStamped>();
+  pose1->header.stamp.sec = 10;
+  smart_pose_buffer.push_back(pose1);
+
+  auto pose2 = std::make_shared<PoseWithCovarianceStamped>();
+  pose2->header.stamp.sec = 11;
+  smart_pose_buffer.push_back(pose2);
+
+  // Test target time slightly after last pose (within timeout)
+  builtin_interfaces::msg::Time target_time1;
+  target_time1.sec = 11;
+  target_time1.nanosec = 500000000;  // 11.5 sec
+  auto result1 = smart_pose_buffer.interpolate(target_time1);
+  EXPECT_TRUE(result1.has_value());
+
+  // Test target time well after last pose (beyond timeout)
+  builtin_interfaces::msg::Time target_time2;
+  target_time2.sec = 12;  // 12 sec (beyond 1 sec timeout)
+  auto result2 = smart_pose_buffer.interpolate(target_time2);
+  EXPECT_FALSE(result2.has_value());
+}
+
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);

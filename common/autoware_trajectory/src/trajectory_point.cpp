@@ -31,9 +31,26 @@ namespace autoware::trajectory
 
 using PointType = autoware_planning_msgs::msg::TrajectoryPoint;
 
+void Trajectory<PointType>::add_base_addition_callback()
+{
+  longitudinal_velocity_mps_->connect_base_addition_callback(
+    [&](const double s) { return this->update_bases(s); });
+  lateral_velocity_mps_->connect_base_addition_callback(
+    [&](const double s) { return this->update_bases(s); });
+  heading_rate_rps_->connect_base_addition_callback(
+    [&](const double s) { return this->update_bases(s); });
+  acceleration_mps2_->connect_base_addition_callback(
+    [&](const double s) { return this->update_bases(s); });
+  front_wheel_angle_rad_->connect_base_addition_callback(
+    [&](const double s) { return this->update_bases(s); });
+  rear_wheel_angle_rad_->connect_base_addition_callback(
+    [&](const double s) { return this->update_bases(s); });
+}
+
 Trajectory<PointType>::Trajectory()
 {
   Builder::defaults(this);
+  add_base_addition_callback();
 }
 
 Trajectory<PointType>::Trajectory(const Trajectory & rhs)
@@ -49,6 +66,7 @@ Trajectory<PointType>::Trajectory(const Trajectory & rhs)
   rear_wheel_angle_rad_(
     std::make_shared<detail::InterpolatedArray<double>>(*rhs.rear_wheel_angle_rad_))
 {
+  add_base_addition_callback();
 }
 
 Trajectory<PointType> & Trajectory<PointType>::operator=(const Trajectory & rhs)
@@ -62,6 +80,7 @@ Trajectory<PointType> & Trajectory<PointType>::operator=(const Trajectory & rhs)
     *front_wheel_angle_rad_ = *rhs.front_wheel_angle_rad_;
     *rear_wheel_angle_rad_ = *rhs.rear_wheel_angle_rad_;
   }
+  add_base_addition_callback();
   return *this;
 }
 
@@ -141,17 +160,12 @@ interpolator::InterpolationResult Trajectory<PointType>::build(
 
 std::vector<double> Trajectory<PointType>::get_internal_bases() const
 {
-  auto get_bases = [](const auto & interpolated_array) {
-    auto [bases, values] = interpolated_array.get_data();
-    return bases;
-  };
+  return get_underlying_bases();
+}
 
-  auto bases = detail::merge_vectors(
-    bases_, get_bases(this->longitudinal_velocity_mps()), get_bases(this->lateral_velocity_mps()),
-    get_bases(this->heading_rate_rps()), get_bases(this->acceleration_mps2()),
-    get_bases(this->front_wheel_angle_rad()), get_bases(this->rear_wheel_angle_rad()));
-
-  bases = detail::crop_bases(bases, start_, end_);
+std::vector<double> Trajectory<PointType>::get_underlying_bases() const
+{
+  auto bases = detail::crop_bases(bases_, start_, end_);
   std::transform(
     bases.begin(), bases.end(), bases.begin(), [this](const double & s) { return s - start_; });
   return bases;
@@ -172,9 +186,19 @@ PointType Trajectory<PointType>::compute(const double s) const
   return result;
 }
 
+std::vector<PointType> Trajectory<PointType>::compute(const std::vector<double> & ss) const
+{
+  std::vector<PointType> points;
+  points.reserve(ss.size());
+  for (const auto s : ss) {
+    points.emplace_back(compute(s));
+  }
+  return points;
+}
+
 std::vector<PointType> Trajectory<PointType>::restore(const size_t min_points) const
 {
-  std::vector<double> bases = get_internal_bases();
+  std::vector<double> bases = get_underlying_bases();
   bases = detail::fill_bases(bases, min_points);
 
   std::vector<PointType> points;

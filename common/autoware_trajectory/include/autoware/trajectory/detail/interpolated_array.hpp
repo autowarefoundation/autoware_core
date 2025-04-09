@@ -18,7 +18,6 @@
 #include "autoware/trajectory/detail/logging.hpp"
 #include "autoware/trajectory/interpolator/interpolator.hpp"
 
-#include <Eigen/Core>
 #include <rclcpp/logging.hpp>
 
 #include <algorithm>
@@ -42,6 +41,7 @@ private:
   std::vector<double> bases_;
   std::vector<T> values_;
   std::shared_ptr<interpolator::InterpolatorInterface<T>> interpolator_;
+  std::function<void(const double s)> base_addition_callback_slot_{nullptr};
 
 public:
   /**
@@ -97,12 +97,21 @@ public:
       bases_ = other.bases_;
       values_ = other.values_;
       interpolator_ = other.interpolator_->clone();
+      base_addition_callback_slot_ = other.base_addition_callback_slot_;
     }
     return *this;
   }
 
   // Destructor
   ~InterpolatedArray() = default;
+
+  /**
+   * @brief add the callback function to be executed when a new base is added to this class
+   */
+  void connect_base_addition_callback(std::function<void(const double s)> && signal)
+  {
+    base_addition_callback_slot_ = std::move(signal);
+  }
 
   /**
    * @brief Get the start value of the base.
@@ -143,6 +152,12 @@ public:
           return index;
         }  // Insert into bases
         bases.insert(it, val);
+
+        // execute the callback to notify that a new base has been added
+        if (parent_.base_addition_callback_slot_) {
+          std::invoke(parent_.base_addition_callback_slot_, value);
+        }
+
         // Insert into values at the corresponding position
         values.insert(values.begin() + index, value);
         return index;
@@ -211,12 +226,6 @@ public:
    * @return The interpolated value.
    */
   T compute(const double x) const { return interpolator_->compute(x); }
-
-  /**
-   * @brief Get the underlying data of the array.
-   * @return A pair containing the axis and values.
-   */
-  std::pair<std::vector<double>, std::vector<T>> get_data() const { return {bases_, values_}; }
 };
 
 }  // namespace autoware::trajectory::detail
