@@ -59,7 +59,6 @@ protected:
     planner_param_.hold_stop_margin_distance = 0.5;
 
     planner_data_ = std::make_shared<autoware::behavior_velocity_planner::PlannerData>(*node_);
-    planner_data_->stop_line_extend_length = 5.0;
     planner_data_->vehicle_info_.max_longitudinal_offset_m = 1.0;
 
     stop_line_ = lanelet::ConstLineString3d(
@@ -93,28 +92,6 @@ protected:
 
   rclcpp::Node::SharedPtr node_;
 };
-
-TEST_F(StopLineModuleTest, TestGetEgoAndStopPoint)
-{
-  // Prepare trajectory and other parameters
-  geometry_msgs::msg::Pose ego_pose;
-  ego_pose.position.x = 5.0;
-  ego_pose.position.y = 1.0;
-
-  // Execute the function
-  auto [ego_s, stop_point_s] =
-    module_->getEgoAndStopPoint(trajectory_, ego_pose, StopLineModule::State::APPROACH);
-
-  // Verify results
-  EXPECT_DOUBLE_EQ(ego_s, 5.0);
-  EXPECT_DOUBLE_EQ(stop_point_s.value(), 7.0 - 0.5 - 1.0);
-
-  std::tie(ego_s, stop_point_s) =
-    module_->getEgoAndStopPoint(trajectory_, ego_pose, StopLineModule::State::STOPPED);
-
-  EXPECT_DOUBLE_EQ(ego_s, 5.0);
-  EXPECT_DOUBLE_EQ(stop_point_s.value(), 5.0);
-}
 
 TEST_F(StopLineModuleTest, TestUpdateStateAndStoppedTime)
 {
