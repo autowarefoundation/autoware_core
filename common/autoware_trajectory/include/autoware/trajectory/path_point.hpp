@@ -55,9 +55,10 @@ public:
   Trajectory();
   ~Trajectory() override = default;
   Trajectory(const Trajectory & rhs);
-  Trajectory(Trajectory && rhs) = default;
+  Trajectory(
+    Trajectory && rhs) noexcept;  // NOTE(soblin): to avoid lifetime expiration in addition_callback
   Trajectory & operator=(const Trajectory & rhs);
-  Trajectory & operator=(Trajectory && rhs) = default;
+  Trajectory & operator=(Trajectory && rhs) noexcept;
 
   [[deprecated]] std::vector<double> get_internal_bases() const override;
 

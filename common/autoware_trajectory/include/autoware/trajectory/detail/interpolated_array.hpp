@@ -58,7 +58,10 @@ public:
    * @param other The InterpolatedArray to copy from.
    */
   InterpolatedArray(const InterpolatedArray & other)
-  : bases_(other.bases_), values_(other.values_), interpolator_(other.interpolator_->clone())
+  : bases_(other.bases_),
+    values_(other.values_),
+    interpolator_(other.interpolator_->clone()),
+    base_addition_callback_slot_(other.base_addition_callback_slot_)
   {
   }
 
@@ -143,19 +146,19 @@ public:
       std::vector<double> & bases = parent_.bases_;
       std::vector<T> & values = parent_.values_;
 
-      auto insert_if_not_present = [&](const double val) -> size_t {
-        auto it = std::lower_bound(bases.begin(), bases.end(), val);
+      auto insert_new_base_if_not_present = [&](const double new_base) -> size_t {
+        auto it = std::lower_bound(bases.begin(), bases.end(), new_base);
         size_t index = std::distance(bases.begin(), it);
 
-        if (it != bases.end() && *it == val) {
+        if (it != bases.end() && *it == new_base) {
           // Return the index if the value already exists
           return index;
         }  // Insert into bases
-        bases.insert(it, val);
+        bases.insert(it, new_base);
 
         // execute the callback to notify that a new base has been added
         if (parent_.base_addition_callback_slot_) {
-          std::invoke(parent_.base_addition_callback_slot_, value);
+          std::invoke(parent_.base_addition_callback_slot_, new_base);
         }
 
         // Insert into values at the corresponding position
@@ -164,10 +167,10 @@ public:
       };
 
       // Insert the start value if not present
-      size_t start_index = insert_if_not_present(start_);
+      size_t start_index = insert_new_base_if_not_present(start_);
 
       // Insert the end value if not present
-      size_t end_index = insert_if_not_present(end_);
+      size_t end_index = insert_new_base_if_not_present(end_);
 
       // Ensure the indices are in ascending order
       if (start_index > end_index) {

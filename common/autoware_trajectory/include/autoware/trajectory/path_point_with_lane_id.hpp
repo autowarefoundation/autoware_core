@@ -46,10 +46,10 @@ protected:
 public:
   Trajectory();
   ~Trajectory() override = default;
-  Trajectory(const Trajectory & rhs) = default;
-  Trajectory(Trajectory && rhs) = default;
+  Trajectory(const Trajectory & rhs);
+  Trajectory(Trajectory && rhs) noexcept;
   Trajectory & operator=(const Trajectory & rhs);
-  Trajectory & operator=(Trajectory && rhs) = default;
+  Trajectory & operator=(Trajectory && rhs) noexcept;
 
   detail::InterpolatedArray<LaneIdType> & lane_ids() { return *lane_ids_; }
 

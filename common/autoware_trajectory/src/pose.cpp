@@ -195,9 +195,7 @@ Trajectory<PointType>::Builder::build(const std::vector<PointType> & points)
 {
   auto trajectory_result = trajectory_->build(points);
   if (trajectory_result) {
-    auto result = Trajectory(std::move(*trajectory_));
-    trajectory_.reset();
-    return result;
+    return std::move(*trajectory_);
   }
   return tl::unexpected(trajectory_result.error());
 }

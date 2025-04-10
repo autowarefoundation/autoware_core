@@ -56,6 +56,15 @@ Trajectory<PointType>::Trajectory(const Trajectory & rhs)
   add_base_addition_callback();
 }
 
+Trajectory<PointType>::Trajectory(Trajectory && rhs) noexcept
+: BaseClass(std::forward<Trajectory>(rhs)),
+  longitudinal_velocity_mps_(std::move(rhs.longitudinal_velocity_mps_)),
+  lateral_velocity_mps_(std::move(rhs.lateral_velocity_mps_)),
+  heading_rate_rps_(std::move(rhs.heading_rate_rps_))
+{
+  add_base_addition_callback();
+}
+
 Trajectory<PointType> & Trajectory<PointType>::operator=(const Trajectory & rhs)
 {
   if (this != &rhs) {
@@ -63,8 +72,20 @@ Trajectory<PointType> & Trajectory<PointType>::operator=(const Trajectory & rhs)
     *longitudinal_velocity_mps_ = *rhs.longitudinal_velocity_mps_;
     *lateral_velocity_mps_ = *rhs.lateral_velocity_mps_;
     *heading_rate_rps_ = *rhs.heading_rate_rps_;
+    add_base_addition_callback();
   }
-  add_base_addition_callback();
+  return *this;
+}
+
+Trajectory<PointType> & Trajectory<PointType>::operator=(Trajectory && rhs) noexcept
+{
+  if (this != &rhs) {
+    BaseClass::operator=(std::forward<Trajectory>(rhs));
+    longitudinal_velocity_mps_ = std::move(rhs.longitudinal_velocity_mps_);
+    lateral_velocity_mps_ = std::move(rhs.lateral_velocity_mps_);
+    heading_rate_rps_ = std::move(rhs.heading_rate_rps_);
+    add_base_addition_callback();
+  }
   return *this;
 }
 
@@ -178,9 +199,7 @@ Trajectory<PointType>::Builder::build(const std::vector<PointType> & points)
 {
   auto trajectory_result = trajectory_->build(points);
   if (trajectory_result) {
-    auto result = Trajectory(std::move(*trajectory_));
-    trajectory_.reset();
-    return result;
+    return std::move(*trajectory_);
   }
   return tl::unexpected(trajectory_result.error());
 }
