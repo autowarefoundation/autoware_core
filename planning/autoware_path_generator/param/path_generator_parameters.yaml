@@ -32,9 +32,6 @@ path_generator:
   refine_goal_search_radius_range:
     type: double
 
-  search_radius_decrement:
-    type: double
-
   ego_nearest_dist_threshold:
     type: double
 

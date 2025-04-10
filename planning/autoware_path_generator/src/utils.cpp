@@ -596,18 +596,53 @@ const geometry_msgs::msg::Pose refine_goal(
 // To perform smooth goal connection, we need to prepare the point before the goal point.
 // This function prepares the point before the goal point.
 // See the link below for more details:
-//   https://autowarefoundation.github.io/autoware_universe/main/planning/behavior_path_planner/autoware_behavior_path_goal_planner_module/#fixed_goal_planner
-PathPointWithLaneId prepare_pre_goal(
-  const geometry_msgs::msg::Pose & goal, const lanelet::ConstLanelets & lanes)
+//   https://autowarefoundation.github.io/autoware.universe/main/planning/behavior_path_planner/autoware_behavior_path_goal_planner_module/#fixed_goal_planner
+std::optional<PathPointWithLaneId> prepare_pre_goal(
+  const PathWithLaneId & input, const geometry_msgs::msg::Pose & goal,
+  const lanelet::ConstLanelets & lanes, const geometry_msgs::msg::Pose & current_ego_pose)
 {
   PathPointWithLaneId pre_refined_goal{};
 
-  // -1.0 is to prepare the point before the goal point. See the link above for more details.
-  constexpr double goal_to_pre_goal_distance = -1.0;
+  // Calculate the distance from the current ego pose to the pre_goal point
+  const double distance_to_goal = autoware_utils::calc_distance2d(goal, current_ego_pose);
+  const bool is_goal_over =
+    autoware_utils::inverse_transform_point(goal.position, current_ego_pose).x < 0;
 
-  // First, calculate the pose of the pre_goal point
-  pre_refined_goal.point.pose =
-    autoware_utils::calc_offset_pose(goal, goal_to_pre_goal_distance, 0.0, 0.0);
+  // Offset from the goal to the pre_goal point
+  constexpr double offset_from_goal_to_pre_goal = 1.0;
+
+  if (is_goal_over) {
+    // Since the goal has been passed, there's no need to prepare a pre-goal point.
+    // Adding a pre-goal point in this situation could cause the path to twist near the goal.
+    return std::nullopt;
+  } else {
+    if (distance_to_goal < offset_from_goal_to_pre_goal) {
+      // As we are almost at the goal, there's no need to prepare a pre-goal point.
+      return std::nullopt;
+    } else {
+      // Calculate the pose of the pre-goal point using the specified offset from the goal.
+      pre_refined_goal.point.pose =
+        autoware_utils::calc_offset_pose(goal, -offset_from_goal_to_pre_goal, 0.0, 0.0);
+    }
+  }
+
+  // Check if the input path has the point
+  if (input.points.empty()) {
+    // Really hard to interpolate the velocity of the pre_goal point
+    return std::nullopt;
+  } else {
+    // First, find the nearest index of the point that is the closest to the pre_goal point
+    const auto nearest_index =
+      autoware::motion_utils::findNearestIndex(input.points, pre_refined_goal.point.pose);
+
+    if (!nearest_index.has_value()) {
+      return std::nullopt;
+    }
+
+    // Set the velocity of the pre_goal to the velocity
+    pre_refined_goal.point.longitudinal_velocity_mps =
+      input.points.at(nearest_index.value()).point.longitudinal_velocity_mps;
+  }
 
   // Second, find and set the lane_id that the pre_goal point belongs to
   for (const auto & lane : lanes) {
@@ -702,7 +737,8 @@ std::optional<PathWithLaneId> get_path_up_to_just_before_pre_goal(
 // Function to refine the path for the goal
 PathWithLaneId refine_path_for_goal(
   const PathWithLaneId & input, const geometry_msgs::msg::Pose & goal,
-  const PlannerData & planner_data, const double refine_goal_search_radius_range)
+  const PlannerData & planner_data, const double refine_goal_search_radius_range,
+  const geometry_msgs::msg::Pose & current_ego_pose)
 {
   PathWithLaneId filtered_path = input;
 
@@ -713,27 +749,24 @@ PathWithLaneId refine_path_for_goal(
     filtered_path, goal, planner_data.preferred_lanelets.back().id(),
     refine_goal_search_radius_range);
 
-  if (!path_up_to_just_before_pre_goal_opt) {
-    // It seems we are almost at the goal and no need to clean up. Lets use the original path.
-    return input;
+  PathWithLaneId final_path;
+  if (!path_up_to_just_before_pre_goal_opt.has_value()) {
+    // It seems we are almost at the goal
+    // For now we no nothing here
+  } else {
+    final_path = path_up_to_just_before_pre_goal_opt.value();
   }
-
-  // Get the value from the optional
-  auto final_path = path_up_to_just_before_pre_goal_opt.value();
-
-  // Reserve the size of the path + pre_goal + goal
-  final_path.points.reserve(final_path.points.size() + 2);
 
   // Prepare lanes only for pre_goal. Maybe we can simplify without using this.
   const auto lanes_opt = extract_lanelets_from_path(filtered_path, planner_data);
-  if (!lanes_opt) {
+  if (!lanes_opt.has_value()) {
     // It might be better to use the original path when the lanelets are not found
     return input;
   }
   const auto lanes = lanes_opt.value();
 
   // Prepare pre_goal which is just before the goal
-  PathPointWithLaneId pre_goal = prepare_pre_goal(goal, lanes);
+  const auto pre_goal_opt = prepare_pre_goal(input, goal, lanes, current_ego_pose);
 
   // Insert pre_goal to the path. As this pre_goal has the role that of the point just before the
   // goal, we set the velocity that of the point just before the tail of the input path (size - 2).
@@ -745,21 +778,25 @@ PathWithLaneId refine_path_for_goal(
   // final: 0, 1, 2, 3, ........., out_of_circle_index                   , pre_goal, goal
   // ------------------------------------------------------------------------------------------
 
-  // Check if the input path has the point just before the goal
-  if (input.points.size() < 2) {
-    // But not empty?
-    if (input.points.empty()) {
-      return input;
-    }
-    // Set the velocity of the pre_goal to the velocity of the last point
-    pre_goal.point.longitudinal_velocity_mps = input.points.back().point.longitudinal_velocity_mps;
-  } else {
-    // Set the velocity of the pre_goal to the velocity of the point just before the goal
-    pre_goal.point.longitudinal_velocity_mps =
-      input.points.at(input.points.size() - 2).point.longitudinal_velocity_mps;
-  }
+  // We need to pay attention when the goal is almost there.
+  // Let's handle if the pre_goal is found and not
+  if (pre_goal_opt.has_value()) {
+    PathPointWithLaneId pre_goal = pre_goal_opt.value();
 
-  final_path.points.push_back(pre_goal);
+    // Ensure that the direction is not inverted
+    if (final_path.points.size() >= 1) {
+      // Check if the direction is inverted
+      const bool is_pre_goal_inverted =
+        autoware_utils::inverse_transform_point(
+          pre_goal.point.pose.position, final_path.points.back().point.pose)
+          .x < 0;
+      if (!is_pre_goal_inverted) {
+        final_path.points.push_back(pre_goal);
+      }
+    }
+  } else {
+    // Nothing to do when the pre_goal is not found
+  }
 
   // Insert goal (obtained from the tail of input path) to the cleaned up path
   final_path.points.push_back(input.points.back());
@@ -769,6 +806,9 @@ PathWithLaneId refine_path_for_goal(
 
   // Set zero velocity at the goal
   final_path.points.back().point.longitudinal_velocity_mps = 0.0;
+
+  // TODO(sasakisasaki): Ask if this is problematic
+  // final_path.points.back().point.lateral_velocity_mps = 0.0;
 
   // Also set the left/right bound
   final_path.left_bound = input.left_bound;
@@ -833,15 +873,15 @@ bool is_path_valid(const PathWithLaneId & refined_path, const PlannerData & plan
 
 PathWithLaneId modify_path_for_smooth_goal_connection(
   const PathWithLaneId & path, const PlannerData & planner_data,
-  const double refine_goal_search_radius_range)
+  const double refine_goal_search_radius_range, const geometry_msgs::msg::Pose & current_ego_pose)
 {
   const auto goal = planner_data.goal_pose;
 
   const geometry_msgs::msg::Pose refined_goal =
     refine_goal(goal, planner_data.preferred_lanelets.back());
 
-  const PathWithLaneId refined_path =
-    refine_path_for_goal(path, refined_goal, planner_data, refine_goal_search_radius_range);
+  const PathWithLaneId refined_path = refine_path_for_goal(
+    path, refined_goal, planner_data, refine_goal_search_radius_range, current_ego_pose);
   return is_path_valid(refined_path, planner_data) ? refined_path : path;
 }
 
