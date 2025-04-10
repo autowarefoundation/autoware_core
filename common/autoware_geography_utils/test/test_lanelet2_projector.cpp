@@ -77,6 +77,7 @@ TEST(GeographyUtilsLanelet2Projector, GetTransverseMercatorProjector)
   projector_info.map_origin.latitude = 35.62426;
   projector_info.map_origin.longitude = 139.74252;
   projector_info.map_origin.altitude = 0.0;
+  projector_info.scale_factor = 0.9996;
 
   std::unique_ptr<lanelet::Projector> projector =
     autoware::geography_utils::get_lanelet2_projector(projector_info);
