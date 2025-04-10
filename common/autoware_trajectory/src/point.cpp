@@ -74,18 +74,21 @@ interpolator::InterpolationResult Trajectory<PointType>::build(
   ys.reserve(points.size() + 1);
   zs.reserve(points.size() + 1);
 
-  bases_.emplace_back(0.0);
-  xs.emplace_back(points[0].x);
-  ys.emplace_back(points[0].y);
-  zs.emplace_back(points[0].z);
+  if (points.size() > 0) {
+    bases_.emplace_back(0.0);
+    xs.emplace_back(points[0].x);
+    ys.emplace_back(points[0].y);
+    zs.emplace_back(points[0].z);
 
-  for (size_t i = 1; i < points.size(); ++i) {
-    const auto dist = std::hypot(
-      points[i].x - points[i - 1].x, points[i].y - points[i - 1].y, points[i].z - points[i - 1].z);
-    bases_.emplace_back(bases_.back() + dist);
-    xs.emplace_back(points[i].x);
-    ys.emplace_back(points[i].y);
-    zs.emplace_back(points[i].z);
+    for (size_t i = 1; i < points.size(); ++i) {
+      const auto dist = std::hypot(
+        points[i].x - points[i - 1].x, points[i].y - points[i - 1].y,
+        points[i].z - points[i - 1].z);
+      bases_.emplace_back(bases_.back() + dist);
+      xs.emplace_back(points[i].x);
+      ys.emplace_back(points[i].y);
+      zs.emplace_back(points[i].z);
+    }
   }
 
   start_ = bases_.front();
