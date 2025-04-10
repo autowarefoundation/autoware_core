@@ -15,7 +15,10 @@
 #include "autoware/trajectory/point.hpp"
 #include "autoware/trajectory/utils/frenet_utils.hpp"
 
-#include <matplotlibcpp17/pyplot.h>
+#include <autoware/pyplot/pyplot.hpp>
+
+#include <pybind11/embed.h>
+#include <pybind11/stl.h>
 
 #include <iostream>
 #include <vector>
@@ -31,7 +34,7 @@ geometry_msgs::msg::Point point(double x, double y)
 int main()
 {
   pybind11::scoped_interpreter guard{};
-  auto plt = matplotlibcpp17::pyplot::import();
+  auto plt = autoware::pyplot::import();
 
   std::vector<geometry_msgs::msg::Point> points = {
     point(0.49, 0.59), point(0.61, 1.22), point(0.86, 1.93), point(1.20, 2.56), point(1.51, 3.17),

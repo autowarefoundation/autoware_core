@@ -19,20 +19,39 @@
 #include "autoware/trajectory/forward.hpp"
 #include "autoware/trajectory/utils/closest.hpp"
 
-#include <optional>
+#include <tl_expected/expected.hpp>
+
+#include <fmt/format.h>
+
+#include <string>
 #include <utility>
 
 namespace autoware::trajectory
 {
 
+struct FrenetUtilsUnexpected
+{
+  const std::string what;
+};
+
 template <class PointType, class InputPointType>
-[[nodiscard]] std::optional<std::pair<double, double>> compute_frenet_coordinate(
+[[nodiscard]] tl::expected<std::pair<double, double>, FrenetUtilsUnexpected>
+compute_frenet_coordinate(
   const Trajectory<PointType> & trajectory,  //
   const InputPointType & point)
 {
   double closest_s = closest(trajectory, point);
-  if (closest_s == 0.0 || closest_s == trajectory.length()) {
-    return std::nullopt;
+
+  if (closest_s < 0.0) {
+    return tl::unexpected<FrenetUtilsUnexpected>{{fmt::format(
+      "point (x = {}, y = {}) is before the start of the trajectory", detail::to_point(point).x,
+      detail::to_point(point).y)}};
+  }
+
+  if (closest_s > trajectory.length()) {
+    return tl::unexpected<FrenetUtilsUnexpected>{{fmt::format(
+      "point (x = {}, y = {}) is after the end of the trajectory", detail::to_point(point).x,
+      detail::to_point(point).y)}};
   }
 
   const auto point_xy = detail::to_point(point);
@@ -51,7 +70,7 @@ template <class PointType, class InputPointType>
 }
 
 template <class PointType>
-[[nodiscard]] std::optional<PointType> move_point_along_frenet_coordinate(
+[[nodiscard]] tl::expected<PointType, FrenetUtilsUnexpected> move_point_along_frenet_coordinate(
   const Trajectory<PointType> & trajectory,  //
   const PointType & point,                   //
   const double & longitude,                  //
@@ -59,11 +78,21 @@ template <class PointType>
 {
   auto frenet_coordinate = compute_frenet_coordinate(trajectory, point);
   if (!frenet_coordinate) {
-    return std::nullopt;
+    return tl::unexpected<FrenetUtilsUnexpected>{
+      {"Failed to compute_frenet_coordinate. " + frenet_coordinate.error().what}};
   }
+
   double longitudinal_moved_s = frenet_coordinate->first + longitude;
-  if (longitudinal_moved_s < 0.0 || longitudinal_moved_s > trajectory.length()) {
-    return std::nullopt;
+  if (longitudinal_moved_s < 0.0) {
+    return tl::unexpected<FrenetUtilsUnexpected>{{fmt::format(
+      "Moved point (x = {}, y = {}) is before the start of the trajectory",
+      detail::to_point(point).x, detail::to_point(point).y)}};
+  }
+
+  if (longitudinal_moved_s > trajectory.length()) {
+    return tl::unexpected<FrenetUtilsUnexpected>{{fmt::format(
+      "Moved point (x = {}, y = {}) is after the end of the trajectory", detail::to_point(point).x,
+      detail::to_point(point).y)}};
   }
 
   auto moved_point = trajectory.compute(longitudinal_moved_s);
