@@ -64,7 +64,7 @@ Trajectory<PointType> & Trajectory<PointType>::operator=(const Trajectory & rhs)
 interpolator::InterpolationResult Trajectory<PointType>::build(
   const std::vector<PointType> & points)
 {
-  if (points.size() < 1) {
+  if (points.empty()) {
     return tl::unexpected(interpolator::InterpolationFailure{"cannot interpolate 0 size points"});
   }
   std::vector<double> xs;
