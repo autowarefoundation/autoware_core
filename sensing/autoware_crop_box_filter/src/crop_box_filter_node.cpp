@@ -16,6 +16,9 @@
 
 #include "autoware/crop_box_filter/crop_box_filter_node.hpp"
 
+#include <autoware_utils_tf/transform_listener.hpp>
+#include <tf2_eigen/tf2_eigen.hpp>
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -47,28 +50,21 @@ CropBoxFilter::CropBoxFilter(const rclcpp::NodeOptions & node_options)
     tf_input_frame_ = static_cast<std::string>(declare_parameter("input_frame", "base_link"));
     tf_output_frame_ = static_cast<std::string>(declare_parameter("output_frame", "base_link"));
 
-    // Always consider static TF if in & out frames are same
-    bool has_static_tf_only = false;
-    if (tf_input_frame_ == tf_output_frame_) {
-      RCLCPP_INFO(
-        this->get_logger(),
-        "Input and output frames are the same. Overriding has_static_tf_only to true.");
-
-      has_static_tf_only = true;
-    }
-    managed_tf_buffer_ =
-      std::make_unique<autoware_utils::ManagedTransformBuffer>(this, has_static_tf_only);
+    transform_listener_ = std::make_unique<autoware_utils::TransformListener>(this);
 
     if (tf_input_orig_frame_ == tf_input_frame_) {
       need_preprocess_transform_ = false;
       eigen_transform_preprocess_ = Eigen::Matrix4f::Identity(4, 4);
     } else {
-      if (!managed_tf_buffer_->get_transform(
-            tf_input_frame_, tf_input_orig_frame_, eigen_transform_preprocess_)) {
+      auto tf_ptr = transform_listener_->get_transform(
+        tf_input_frame_, tf_input_orig_frame_, this->now(), rclcpp::Duration::from_seconds(1.0));
+      if (!tf_ptr) {
         RCLCPP_ERROR(
           this->get_logger(), "Cannot get transform from %s to %s. Please check your TF tree.",
           tf_input_orig_frame_.c_str(), tf_input_frame_.c_str());
       } else {
+        auto eigen_tf = tf2::transformToEigen(*tf_ptr);
+        eigen_transform_preprocess_ = eigen_tf.matrix().cast<float>();
         need_preprocess_transform_ = true;
       }
     }
@@ -77,12 +73,15 @@ CropBoxFilter::CropBoxFilter(const rclcpp::NodeOptions & node_options)
       need_postprocess_transform_ = false;
       eigen_transform_postprocess_ = Eigen::Matrix4f::Identity(4, 4);
     } else {
-      if (!managed_tf_buffer_->get_transform(
-            tf_output_frame_, tf_input_frame_, eigen_transform_postprocess_)) {
+      auto tf_ptr = transform_listener_->get_transform(
+        tf_output_frame_, tf_input_frame_, this->now(), rclcpp::Duration::from_seconds(1.0));
+      if (!tf_ptr) {
         RCLCPP_ERROR(
           this->get_logger(), "Cannot get transform from %s to %s. Please check your TF tree.",
           tf_input_frame_.c_str(), tf_output_frame_.c_str());
       } else {
+        auto eigen_tf = tf2::transformToEigen(*tf_ptr);
+        eigen_transform_postprocess_ = eigen_tf.matrix().cast<float>();
         need_postprocess_transform_ = true;
       }
     }

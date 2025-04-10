@@ -2149,6 +2149,38 @@ size_t findFirstNearestIndexWithSoftConstraints(
     }
   }
 
+  {  // with yaw threshold
+    double min_squared_dist = std::numeric_limits<double>::max();
+    size_t min_idx = 0;
+    bool is_within_constraints = false;
+    for (size_t i = 0; i < points.size(); ++i) {
+      const auto yaw =
+        autoware_utils::calc_yaw_deviation(autoware_utils::get_pose(points.at(i)), pose);
+
+      if (yaw_threshold < std::abs(yaw)) {
+        if (is_within_constraints) {
+          break;
+        }
+        continue;
+      }
+
+      const auto squared_dist =
+        autoware_utils::calc_squared_distance2d(points.at(i), pose.position);
+      if (min_squared_dist <= squared_dist) {
+        continue;
+      }
+
+      min_squared_dist = squared_dist;
+      min_idx = i;
+      is_within_constraints = true;
+    }
+
+    // nearest index is found
+    if (is_within_constraints) {
+      return min_idx;
+    }
+  }
+
   // without any threshold
   return findNearestIndex(points, pose.position);
 }

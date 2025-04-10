@@ -129,7 +129,7 @@ MapProjectionLoader::MapProjectionLoader(const rclcpp::NodeOptions & options)
 
   // Publish the message
   publisher_ = this->create_publisher<MapProjectorInfo::Message>(
-    MapProjectorInfo::name, autoware::component_interface_specs::get_qos(MapProjectorInfo{}));
+    MapProjectorInfo::name, autoware::component_interface_specs::get_qos<MapProjectorInfo>());
   publisher_->publish(msg);
 }
 }  // namespace autoware::map_projection_loader

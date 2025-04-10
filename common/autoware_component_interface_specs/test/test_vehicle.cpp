@@ -19,13 +19,12 @@ TEST(vehicle, interface)
 {
   {
     using autoware::component_interface_specs::vehicle::SteeringStatus;
-    SteeringStatus status;
     size_t depth = 1;
-    EXPECT_EQ(status.depth, depth);
-    EXPECT_EQ(status.reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
-    EXPECT_EQ(status.durability, RMW_QOS_POLICY_DURABILITY_VOLATILE);
+    EXPECT_EQ(SteeringStatus::depth, depth);
+    EXPECT_EQ(SteeringStatus::reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
+    EXPECT_EQ(SteeringStatus::durability, RMW_QOS_POLICY_DURABILITY_VOLATILE);
 
-    const auto qos = autoware::component_interface_specs::get_qos(status);
+    const auto qos = autoware::component_interface_specs::get_qos<SteeringStatus>();
     EXPECT_EQ(qos.depth(), depth);
     EXPECT_EQ(qos.reliability(), rclcpp::ReliabilityPolicy::Reliable);
     EXPECT_EQ(qos.durability(), rclcpp::DurabilityPolicy::Volatile);
@@ -33,13 +32,12 @@ TEST(vehicle, interface)
 
   {
     using autoware::component_interface_specs::vehicle::GearStatus;
-    GearStatus status;
     size_t depth = 1;
-    EXPECT_EQ(status.depth, depth);
-    EXPECT_EQ(status.reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
-    EXPECT_EQ(status.durability, RMW_QOS_POLICY_DURABILITY_VOLATILE);
+    EXPECT_EQ(GearStatus::depth, depth);
+    EXPECT_EQ(GearStatus::reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
+    EXPECT_EQ(GearStatus::durability, RMW_QOS_POLICY_DURABILITY_VOLATILE);
 
-    const auto qos = autoware::component_interface_specs::get_qos(status);
+    const auto qos = autoware::component_interface_specs::get_qos<GearStatus>();
     EXPECT_EQ(qos.depth(), depth);
     EXPECT_EQ(qos.reliability(), rclcpp::ReliabilityPolicy::Reliable);
     EXPECT_EQ(qos.durability(), rclcpp::DurabilityPolicy::Volatile);
@@ -47,13 +45,12 @@ TEST(vehicle, interface)
 
   {
     using autoware::component_interface_specs::vehicle::TurnIndicatorStatus;
-    TurnIndicatorStatus status;
     size_t depth = 1;
-    EXPECT_EQ(status.depth, depth);
-    EXPECT_EQ(status.reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
-    EXPECT_EQ(status.durability, RMW_QOS_POLICY_DURABILITY_VOLATILE);
+    EXPECT_EQ(TurnIndicatorStatus::depth, depth);
+    EXPECT_EQ(TurnIndicatorStatus::reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
+    EXPECT_EQ(TurnIndicatorStatus::durability, RMW_QOS_POLICY_DURABILITY_VOLATILE);
 
-    const auto qos = autoware::component_interface_specs::get_qos(status);
+    const auto qos = autoware::component_interface_specs::get_qos<TurnIndicatorStatus>();
     EXPECT_EQ(qos.depth(), depth);
     EXPECT_EQ(qos.reliability(), rclcpp::ReliabilityPolicy::Reliable);
     EXPECT_EQ(qos.durability(), rclcpp::DurabilityPolicy::Volatile);
@@ -61,13 +58,12 @@ TEST(vehicle, interface)
 
   {
     using autoware::component_interface_specs::vehicle::HazardLightStatus;
-    HazardLightStatus status;
     size_t depth = 1;
-    EXPECT_EQ(status.depth, depth);
-    EXPECT_EQ(status.reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
-    EXPECT_EQ(status.durability, RMW_QOS_POLICY_DURABILITY_VOLATILE);
+    EXPECT_EQ(HazardLightStatus::depth, depth);
+    EXPECT_EQ(HazardLightStatus::reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
+    EXPECT_EQ(HazardLightStatus::durability, RMW_QOS_POLICY_DURABILITY_VOLATILE);
 
-    const auto qos = autoware::component_interface_specs::get_qos(status);
+    const auto qos = autoware::component_interface_specs::get_qos<HazardLightStatus>();
     EXPECT_EQ(qos.depth(), depth);
     EXPECT_EQ(qos.reliability(), rclcpp::ReliabilityPolicy::Reliable);
     EXPECT_EQ(qos.durability(), rclcpp::DurabilityPolicy::Volatile);

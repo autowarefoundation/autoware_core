@@ -19,13 +19,12 @@ TEST(perception, interface)
 {
   {
     using autoware::component_interface_specs::perception::ObjectRecognition;
-    ObjectRecognition object_recognition;
     size_t depth = 1;
-    EXPECT_EQ(object_recognition.depth, depth);
-    EXPECT_EQ(object_recognition.reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
-    EXPECT_EQ(object_recognition.durability, RMW_QOS_POLICY_DURABILITY_VOLATILE);
+    EXPECT_EQ(ObjectRecognition::depth, depth);
+    EXPECT_EQ(ObjectRecognition::reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
+    EXPECT_EQ(ObjectRecognition::durability, RMW_QOS_POLICY_DURABILITY_VOLATILE);
 
-    const auto qos = autoware::component_interface_specs::get_qos(object_recognition);
+    const auto qos = autoware::component_interface_specs::get_qos<ObjectRecognition>();
     EXPECT_EQ(qos.depth(), depth);
     EXPECT_EQ(qos.reliability(), rclcpp::ReliabilityPolicy::Reliable);
     EXPECT_EQ(qos.durability(), rclcpp::DurabilityPolicy::Volatile);
