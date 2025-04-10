@@ -69,11 +69,12 @@ compute_frenet_coordinate(
   return std::make_pair(closest_s, w_x * n_x + w_y * n_y);
 }
 
-template <class PointType>
-[[nodiscard]] tl::expected<PointType, FrenetUtilsUnexpected> move_point_along_frenet_coordinate(
-  const Trajectory<PointType> & trajectory,  //
-  const PointType & point,                   //
-  const double & longitude,                  //
+template <class PointType, class InputPointType>
+[[nodiscard]] tl::expected<InputPointType, FrenetUtilsUnexpected>
+move_point_along_frenet_coordinate(
+  const Trajectory<InputPointType> & trajectory,  //
+  const PointType & point,                        //
+  const double & longitude,                       //
   const double & lateral)
 {
   auto frenet_coordinate = compute_frenet_coordinate(trajectory, point);
