@@ -126,15 +126,16 @@ TEST_F(UtilsTest, getFirstSelfIntersectionArcLength)
   }
 
   {  // line string has overlap
-    const auto result = utils::get_first_self_intersection_arc_length(lanelet::BasicLineString2d{
-      {0.0, 0.0},
-      {1.0, 0.0},
-      {1.0, -1.0},
-      {2.0, -1.0},
-      {2.0, 1.0},
-      {1.0, 1.0},
-      {1.0, 0.0},
-      {0.0, 0.0}});
+    const auto result = utils::get_first_self_intersection_arc_length(
+      lanelet::BasicLineString2d{
+        {0.0, 0.0},
+        {1.0, 0.0},
+        {1.0, -1.0},
+        {2.0, -1.0},
+        {2.0, 1.0},
+        {1.0, 1.0},
+        {1.0, 0.0},
+        {0.0, 0.0}});
 
     ASSERT_TRUE(result);
     ASSERT_NEAR(*result, 7.0, epsilon);
@@ -244,7 +245,7 @@ TEST_F(UtilsTest, cropLineString)
   {  // line string has only 1 point
     const auto result = utils::crop_line_string({geometry_msgs::msg::Point{}}, {}, {});
 
-    ASSERT_EQ(result.size(), 1);
+    ASSERT_TRUE(result.empty());
   }
 
   {  // normal case
