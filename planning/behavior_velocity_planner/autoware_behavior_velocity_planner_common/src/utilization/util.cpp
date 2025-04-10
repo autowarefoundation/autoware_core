@@ -23,6 +23,8 @@
 #include <autoware_planning_msgs/msg/path_point.hpp>
 
 #include <boost/geometry/algorithms/correct.hpp>
+#include <boost/geometry/algorithms/detail/make/make.hpp>
+#include <boost/geometry/arithmetic/infinite_line_functions.hpp>
 
 #include <lanelet2_core/geometry/Polygon.h>
 #include <lanelet2_routing/RoutingGraph.h>
@@ -493,15 +495,57 @@ std::vector<geometry_msgs::msg::Point> toRosPoints(const PredictedObjects & obje
   return points;
 }
 
-LineString2d extendLine(
+LineString2d extendLineToPathBound(
   const lanelet::ConstPoint3d & lanelet_point1, const lanelet::ConstPoint3d & lanelet_point2,
-  const double & length)
+  const PathWithLaneId & path)
 {
-  const Eigen::Vector2d p1(lanelet_point1.x(), lanelet_point1.y());
-  const Eigen::Vector2d p2(lanelet_point2.x(), lanelet_point2.y());
-  const Eigen::Vector2d t = (p2 - p1).normalized();
-  return {
-    {(p1 - length * t).x(), (p1 - length * t).y()}, {(p2 + length * t).x(), (p2 + length * t).y()}};
+  constexpr double epsilon = 1e-3;
+
+  const auto line =
+    boost::geometry::detail::make::make_infinite_line<double, lanelet::BasicPoint2d>(
+      lanelet_point1.basicPoint2d(), lanelet_point2.basicPoint2d());
+
+  const auto find_intersection_point =
+    [&](const std::vector<geometry_msgs::msg::Point> & bound) -> std::optional<Point2d> {
+    std::optional<Point2d> intersection_point = std::nullopt;
+    auto min_distance = std::numeric_limits<double>::max();
+    for (auto it = std::next(bound.begin()); it != bound.end(); ++it) {
+      const LineString2d segment{
+        autoware_utils_geometry::from_msg(*std::prev(it)).to_2d(),
+        autoware_utils_geometry::from_msg(*it).to_2d()};
+      const auto segment_line =
+        boost::geometry::detail::make::make_infinite_line<double, Point2d>(segment[0], segment[1]);
+      Point2d ip;
+      if (!boost::geometry::arithmetic::intersection_point(line, segment_line, ip)) {
+        continue;
+      }
+      if (boost::geometry::distance(ip, segment) > epsilon) {
+        continue;
+      }
+      const auto distance = std::min(
+        boost::geometry::distance(ip, lanelet_point1.basicPoint2d()),
+        boost::geometry::distance(ip, lanelet_point2.basicPoint2d()));
+      if (!intersection_point || distance <= min_distance) {
+        intersection_point = ip;
+        min_distance = distance;
+      }
+    }
+    return intersection_point;
+  };
+
+  const auto left_intersection = find_intersection_point(path.left_bound);
+  const auto right_intersection = find_intersection_point(path.right_bound);
+
+  if (!left_intersection || !right_intersection) {
+    std::cerr << "[behavior_velocity](extendLineToPathBound): "
+                 "line does not intersect either of path bounds"
+              << std::endl;
+    return LineString2d{
+      Point2d{lanelet_point1.x(), lanelet_point1.y()},
+      Point2d{lanelet_point2.x(), lanelet_point2.y()}};
+  }
+
+  return LineString2d{*left_intersection, *right_intersection};
 }
 
 std::optional<int64_t> getNearestLaneId(
