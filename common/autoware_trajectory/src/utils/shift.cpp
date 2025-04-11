@@ -248,9 +248,16 @@ tl::expected<ShiftElementWithInterval, ShiftError> shift_impl(
 
   // for above zero division reason, cubic spline may fail
   if (!cubic_spline) {
-    return tl::unexpected{ShiftError{
-      "Failed to build cubic spline for shift calculation because " +
-      std::string(cubic_spline.error().what)}};
+    std::stringstream ss;
+    ss << "Failed to build cubic spline for shift calculation because interval [s0, ... ,s7] "
+          "reached L_lon: " +
+            cubic_spline.error().what
+       << std::endl;
+    ss << "L_lon = " << (shift_interval.end - shift_interval.start)
+       << ", L = " << shift_interval.lateral_offset << std::endl;
+    ss << "v_lon = " << shift_parameters.velocity
+       << ", lat_acc_limit = " << shift_parameters.lateral_acc_limit << std::endl;
+    return tl::unexpected{ShiftError{ss.str()}};
   }
 
   std::set<double> merged_bases{bases.begin(), bases.end()};
