@@ -23,6 +23,7 @@
 #include <autoware_utils/ros/wait_for_param.hpp>
 #include <autoware_utils/system/stop_watch.hpp>
 #include <autoware_utils/transform/transforms.hpp>
+#include <autoware_utils_geometry/boost_geometry.hpp>
 #include <tf2_eigen/tf2_eigen.hpp>
 
 #include <autoware_planning_msgs/msg/trajectory_point.hpp>
@@ -37,6 +38,8 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace
@@ -94,20 +97,6 @@ MotionVelocityPlannerNode::MotionVelocityPlannerNode(const rclcpp::NodeOptions &
 
   // Parameters
   smooth_velocity_before_planning_ = declare_parameter<bool>("smooth_velocity_before_planning");
-  // nearest search
-  planner_data_.ego_nearest_dist_threshold =
-    declare_parameter<double>("ego_nearest_dist_threshold");
-  planner_data_.ego_nearest_yaw_threshold = declare_parameter<double>("ego_nearest_yaw_threshold");
-
-  planner_data_.trajectory_polygon_collision_check.decimate_trajectory_step_length =
-    declare_parameter<double>("trajectory_polygon_collision_check.decimate_trajectory_step_length");
-  planner_data_.trajectory_polygon_collision_check.goal_extended_trajectory_length =
-    declare_parameter<double>("trajectory_polygon_collision_check.goal_extended_trajectory_length");
-  planner_data_.trajectory_polygon_collision_check.enable_to_consider_current_pose =
-    declare_parameter<bool>(
-      "trajectory_polygon_collision_check.consider_current_pose.enable_to_consider_current_pose");
-  planner_data_.trajectory_polygon_collision_check.time_to_convergence = declare_parameter<double>(
-    "trajectory_polygon_collision_check.consider_current_pose.time_to_convergence");
 
   // set velocity smoother param
   set_velocity_smoother_params();
@@ -178,11 +167,14 @@ bool MotionVelocityPlannerNode::update_planner_data(
 
   const auto no_ground_pointcloud_ptr = sub_no_ground_pointcloud_.take_data();
   if (check_with_log(no_ground_pointcloud_ptr, "Waiting for pointcloud")) {
-    const auto no_ground_pointcloud = process_no_ground_pointcloud(no_ground_pointcloud_ptr);
-    if (no_ground_pointcloud)
-      planner_data_.no_ground_pointcloud = PlannerData::Pointcloud(*no_ground_pointcloud);
+    auto no_ground_pointcloud = process_no_ground_pointcloud(no_ground_pointcloud_ptr);
+    processing_times["update_planner_data.pcl.process_no_ground_pointcloud"] = sw.toc(true);
+    if (no_ground_pointcloud) {
+      planner_data_.no_ground_pointcloud = PlannerData::Pointcloud(
+        std::move(*no_ground_pointcloud), trajectory_points_, planner_data_.vehicle_info_,
+        planner_data_.pointcloud_obstacle_filtering_param, planner_data_.mask_lat_margin);
+    }
   }
-  processing_times["update_planner_data.pcd"] = sw.toc(true);
 
   const auto occupancy_grid_ptr = sub_occupancy_grid_.take_data();
   if (check_with_log(occupancy_grid_ptr, "Waiting for the occupancy grid"))
@@ -310,6 +302,7 @@ void MotionVelocityPlannerNode::on_trajectory(
 
   autoware::motion_velocity_planner::TrajectoryPoints input_trajectory_points{
     input_trajectory_msg->points.begin(), input_trajectory_msg->points.end()};
+  trajectory_points_ = input_trajectory_points;
   auto output_trajectory_msg = generate_trajectory(input_trajectory_points, processing_times);
   output_trajectory_msg.header = input_trajectory_msg->header;
   processing_times["generate_trajectory"] = stop_watch.toc(true);

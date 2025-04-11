@@ -37,6 +37,12 @@
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
 
+#include <pcl/common/transforms.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/segmentation/euclidean_cluster_comparator.h>
+#include <pcl/segmentation/extract_clusters.h>
+#include <pcl_conversions/pcl_conversions.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
 
@@ -44,6 +50,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace autoware::motion_velocity_planner
@@ -55,6 +62,8 @@ using autoware_motion_velocity_planner::srv::LoadPlugin;
 using autoware_motion_velocity_planner::srv::UnloadPlugin;
 using autoware_planning_msgs::msg::Trajectory;
 using TrajectoryPoints = std::vector<autoware_planning_msgs::msg::TrajectoryPoint>;
+using Point2d = autoware_utils_geometry::Point2d;
+using Polygon2d = boost::geometry::model::polygon<Point2d>;
 
 class MotionVelocityPlannerNode : public rclcpp::Node
 {
@@ -88,6 +97,12 @@ private:
     const autoware_planning_msgs::msg::Trajectory::ConstSharedPtr input_trajectory_msg);
   std::optional<pcl::PointCloud<pcl::PointXYZ>> process_no_ground_pointcloud(
     const sensor_msgs::msg::PointCloud2::ConstSharedPtr msg);
+  void search_pointcloud_near_trajectory(
+    const std::vector<TrajectoryPoint> & trajectory,
+    const pcl::PointCloud<pcl::PointXYZ>::Ptr & input_points_ptr,
+    pcl::PointCloud<pcl::PointXYZ>::Ptr output_points_ptr,
+    const autoware::vehicle_info_utils::VehicleInfo & vehicle_info,
+    const double mask_lat_margin) const;
   void on_lanelet_map(const autoware_map_msgs::msg::LaneletMapBin::ConstSharedPtr msg);
   void process_traffic_signals(
     const autoware_perception_msgs::msg::TrafficLightGroupArray::ConstSharedPtr msg);
@@ -114,6 +129,7 @@ private:
   MotionVelocityPlannerManager planner_manager_;
   LaneletMapBin::ConstSharedPtr map_ptr_{nullptr};
   bool has_received_map_ = false;
+  autoware::motion_velocity_planner::TrajectoryPoints trajectory_points_;
 
   rclcpp::Service<LoadPlugin>::SharedPtr srv_load_plugin_;
   rclcpp::Service<UnloadPlugin>::SharedPtr srv_unload_plugin_;
