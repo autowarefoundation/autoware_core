@@ -1940,8 +1940,9 @@ bool RouteHandler::planPathLaneletsBetweenCheckpoints(
   lanelet::routing::LaneletPath shortest_path;
   bool is_route_found = false;
 
-  double smallest_angle_diff = std::numeric_limits<double>::max();
+  double min_route_cost = std::numeric_limits<double>::max();
   constexpr double yaw_threshold = M_PI / 2.0;
+  constexpr double angle_diff_weight = 1000.0;
 
   for (const auto & st_llt : start_lanelets) {
     // check if the angle difference between start_checkpoint and start lanelet center line
@@ -1972,8 +1973,13 @@ bool RouteHandler::planPathLaneletsBetweenCheckpoints(
         break;
       }
     }
-    if (angle_diff < smallest_angle_diff) {
-      smallest_angle_diff = angle_diff;
+    const double optional_route_length = optional_route->length2d();
+    const double optional_route_cost = optional_route_length + angle_diff_weight * angle_diff;
+    RCLCPP_DEBUG(
+      logger_, "Lanelet ID %ld: Route length = %.1f, Angle Diff = %.4f rad, Route cost = %.2f",
+      st_llt.id(), optional_route_length, angle_diff, optional_route_cost);
+    if (optional_route_cost < min_route_cost) {
+      min_route_cost = optional_route_cost;
       shortest_path = optional_route->shortestPath();
       start_lanelet = st_llt;
     }
