@@ -37,7 +37,14 @@ public:
   /**
    * @brief No initialization constructor.
    */
-  TimeDelayKalmanFilter();
+  TimeDelayKalmanFilter() = default;
+
+  ~TimeDelayKalmanFilter() = default;
+
+  TimeDelayKalmanFilter(const TimeDelayKalmanFilter &) = delete;
+  TimeDelayKalmanFilter & operator=(const TimeDelayKalmanFilter &) = delete;
+  TimeDelayKalmanFilter(TimeDelayKalmanFilter &&) noexcept = default;
+  TimeDelayKalmanFilter & operator=(TimeDelayKalmanFilter &&) noexcept = default;
 
   /**
    * @brief initialization of kalman filter
@@ -64,6 +71,7 @@ public:
    * @param x_next predicted state by prediction model
    * @param A coefficient matrix of x for process model
    * @param Q covariance matrix for process model
+   * @return bool to check matrix operations are being performed properly
    */
   bool predictWithDelay(
     const Eigen::MatrixXd & x_next, const Eigen::MatrixXd & A, const Eigen::MatrixXd & Q);
@@ -75,15 +83,16 @@ public:
    * @param C coefficient matrix of x for measurement model
    * @param R covariance matrix for measurement model
    * @param delay_step measurement delay
+   * @return bool to check matrix operations are being performed properly
    */
   bool updateWithDelay(
     const Eigen::MatrixXd & y, const Eigen::MatrixXd & C, const Eigen::MatrixXd & R,
     const int delay_step);
 
 private:
-  int max_delay_step_;  //!< @brief maximum number of delay steps
-  int dim_x_;           //!< @brief dimension of latest state
-  int dim_x_ex_;        //!< @brief dimension of extended state with dime delay
+  int max_delay_step_{0};  //!< @brief maximum number of delay steps
+  int dim_x_{0};           //!< @brief dimension of latest state
+  int dim_x_ex_{0};        //!< @brief dimension of extended state with dime delay
 };
 }  // namespace autoware::kalman_filter
 #endif  // AUTOWARE__KALMAN_FILTER__TIME_DELAY_KALMAN_FILTER_HPP_
