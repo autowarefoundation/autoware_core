@@ -134,6 +134,7 @@ double calc_time_to_reach_collision_point(
 }
 }  // namespace
 
+
 void ObstacleStopModule::init(rclcpp::Node & node, const std::string & module_name)
 {
   module_name_ = module_name;
@@ -225,7 +226,8 @@ VelocityPlanningResult ObstacleStopModule::plan(
   // 4. filter obstacles of point cloud
   auto stop_obstacles_for_point_cloud = filter_stop_obstacle_for_point_cloud(
     planner_data->current_odometry, raw_trajectory_points, decimated_traj_points,
-    planner_data->no_ground_pointcloud, planner_data->vehicle_info_, dist_to_bumper,
+    planner_data->no_ground_pointcloud, planner_data->use_pointcloud,
+    planner_data->vehicle_info_, dist_to_bumper,
     planner_data->trajectory_polygon_collision_check,
     planner_data->find_index(raw_trajectory_points, planner_data->current_odometry.pose.pose));
 
@@ -264,28 +266,8 @@ std::vector<geometry_msgs::msg::Point> ObstacleStopModule::convert_point_cloud_t
 
   std::vector<geometry_msgs::msg::Point> stop_collision_points;
 
-  pcl::PointCloud<pcl::PointXYZ>::Ptr pointcloud_ptr =
-    std::make_shared<pcl::PointCloud<pcl::PointXYZ>>(pointcloud.pointcloud);
-  // 1. downsample & cluster pointcloud
-  PointCloud::Ptr filtered_points_ptr(new PointCloud);
-  pcl::VoxelGrid<pcl::PointXYZ> filter;
-  filter.setInputCloud(pointcloud_ptr);
-  filter.setLeafSize(
-    p.pointcloud_obstacle_filtering_param.pointcloud_voxel_grid_x,
-    p.pointcloud_obstacle_filtering_param.pointcloud_voxel_grid_y,
-    p.pointcloud_obstacle_filtering_param.pointcloud_voxel_grid_z);
-  filter.filter(*filtered_points_ptr);
-
-  pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
-  tree->setInputCloud(filtered_points_ptr);
-  std::vector<pcl::PointIndices> clusters;
-  pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
-  ec.setClusterTolerance(p.pointcloud_obstacle_filtering_param.pointcloud_cluster_tolerance);
-  ec.setMinClusterSize(p.pointcloud_obstacle_filtering_param.pointcloud_min_cluster_size);
-  ec.setMaxClusterSize(p.pointcloud_obstacle_filtering_param.pointcloud_max_cluster_size);
-  ec.setSearchMethod(tree);
-  ec.setInputCloud(filtered_points_ptr);
-  ec.extract(clusters);
+  const PointCloud::Ptr filtered_points_ptr = pointcloud.get_filtered_pointcloud_ptr();
+  std::vector<pcl::PointIndices> clusters = pointcloud.get_cluster_indices();
 
   // 2. convert clusters to obstacles
   for (const auto & cluster_indices : clusters) {
@@ -435,13 +417,14 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_predicted
 std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_point_cloud(
   const Odometry & odometry, const std::vector<TrajectoryPoint> & traj_points,
   const std::vector<TrajectoryPoint> & decimated_traj_points,
-  const PlannerData::Pointcloud & point_cloud, const VehicleInfo & vehicle_info,
+  const PlannerData::Pointcloud & point_cloud, 
+  const bool use_pointcloud, const VehicleInfo & vehicle_info,
   const double dist_to_bumper,
   const TrajectoryPolygonCollisionCheck & trajectory_polygon_collision_check, size_t ego_idx)
 {
   autoware_utils::ScopedTimeTrack st(__func__, *time_keeper_);
 
-  if (!obstacle_filtering_param_.use_pointcloud) {
+  if (!use_pointcloud) {
     return std::vector<StopObstacle>{};
   }
 
@@ -1212,7 +1195,7 @@ double ObstacleStopModule::calc_margin_from_obstacle_on_curve(
   const double dist_to_bumper, const double default_stop_margin) const
 {
   if (
-    !stop_planning_param_.enable_approaching_on_curve || obstacle_filtering_param_.use_pointcloud) {
+    !stop_planning_param_.enable_approaching_on_curve || planner_data->use_pointcloud) {
     return default_stop_margin;
   }
 

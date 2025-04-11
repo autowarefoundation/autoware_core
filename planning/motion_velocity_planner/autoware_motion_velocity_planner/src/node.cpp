@@ -19,6 +19,7 @@
 #include <autoware/velocity_smoother/smoother/analytical_jerk_constrained_smoother/analytical_jerk_constrained_smoother.hpp>
 #include <autoware/velocity_smoother/trajectory_utils.hpp>
 #include <autoware_utils/geometry/geometry.hpp>
+#include <autoware_utils_geometry/boost_geometry.hpp>
 #include <autoware_utils/ros/update_param.hpp>
 #include <autoware_utils/ros/wait_for_param.hpp>
 #include <autoware_utils/system/stop_watch.hpp>
@@ -94,20 +95,6 @@ MotionVelocityPlannerNode::MotionVelocityPlannerNode(const rclcpp::NodeOptions &
 
   // Parameters
   smooth_velocity_before_planning_ = declare_parameter<bool>("smooth_velocity_before_planning");
-  // nearest search
-  planner_data_.ego_nearest_dist_threshold =
-    declare_parameter<double>("ego_nearest_dist_threshold");
-  planner_data_.ego_nearest_yaw_threshold = declare_parameter<double>("ego_nearest_yaw_threshold");
-
-  planner_data_.trajectory_polygon_collision_check.decimate_trajectory_step_length =
-    declare_parameter<double>("trajectory_polygon_collision_check.decimate_trajectory_step_length");
-  planner_data_.trajectory_polygon_collision_check.goal_extended_trajectory_length =
-    declare_parameter<double>("trajectory_polygon_collision_check.goal_extended_trajectory_length");
-  planner_data_.trajectory_polygon_collision_check.enable_to_consider_current_pose =
-    declare_parameter<bool>(
-      "trajectory_polygon_collision_check.consider_current_pose.enable_to_consider_current_pose");
-  planner_data_.trajectory_polygon_collision_check.time_to_convergence = declare_parameter<double>(
-    "trajectory_polygon_collision_check.consider_current_pose.time_to_convergence");
 
   // set velocity smoother param
   set_velocity_smoother_params();
@@ -177,12 +164,14 @@ bool MotionVelocityPlannerNode::update_planner_data(
   processing_times["update_planner_data.pred_obj"] = sw.toc(true);
 
   const auto no_ground_pointcloud_ptr = sub_no_ground_pointcloud_.take_data();
-  if (check_with_log(no_ground_pointcloud_ptr, "Waiting for pointcloud")) {
-    const auto no_ground_pointcloud = process_no_ground_pointcloud(no_ground_pointcloud_ptr);
-    if (no_ground_pointcloud)
-      planner_data_.no_ground_pointcloud = PlannerData::Pointcloud(*no_ground_pointcloud);
+  if (check_with_log(no_ground_pointcloud_ptr, "Waiting for pointcloud") && planner_data_.use_pointcloud) {
+    auto no_ground_pointcloud = process_no_ground_pointcloud(no_ground_pointcloud_ptr);
+    processing_times["update_planner_data.pcl.process_no_ground_pointcloud"] = sw.toc(true);
+    if (no_ground_pointcloud) {
+      auto pair = filter_and_cluster_point_clouds(*no_ground_pointcloud, sw, processing_times);
+      planner_data_.no_ground_pointcloud = PlannerData::Pointcloud(std::move(*no_ground_pointcloud), std::move(pair.first), std::move(pair.second));
+    }
   }
-  processing_times["update_planner_data.pcd"] = sw.toc(true);
 
   const auto occupancy_grid_ptr = sub_occupancy_grid_.take_data();
   if (check_with_log(occupancy_grid_ptr, "Waiting for the occupancy grid"))
@@ -231,6 +220,129 @@ MotionVelocityPlannerNode::process_no_ground_pointcloud(
   pcl::PointCloud<pcl::PointXYZ>::Ptr pc_transformed(new pcl::PointCloud<pcl::PointXYZ>);
   if (!pc.empty()) autoware_utils::transform_pointcloud(pc, *pc_transformed, affine);
   return *pc_transformed;
+}
+void MotionVelocityPlannerNode::search_pointcloud_near_trajectory(
+  const std::vector<TrajectoryPoint> & trajectory,
+  const pcl::PointCloud<pcl::PointXYZ>::Ptr & input_points_ptr,
+  pcl::PointCloud<pcl::PointXYZ>::Ptr output_points_ptr,
+  const autoware::vehicle_info_utils::VehicleInfo & vehicle_info,
+  const double mask_lat_margin) const
+{
+  const double front_length = vehicle_info.max_longitudinal_offset_m;
+  const double rear_length = vehicle_info.rear_overhang_m;
+  const double vehicle_width = vehicle_info.vehicle_width_m;
+
+  output_points_ptr->header = input_points_ptr->header;
+
+  // Build footprints from trajectory
+  std::vector<Polygon2d> footprints;
+  footprints.reserve(trajectory.size());
+
+  std::transform(trajectory.begin(), trajectory.end(), std::back_inserter(footprints),
+    [&](const TrajectoryPoint & trajectory_point) {
+      return autoware_utils::to_footprint(
+        trajectory_point.pose, front_length, rear_length, vehicle_width + mask_lat_margin * 2.0);
+    });
+
+  // Define types for Boost.Geometry
+  namespace bg = boost::geometry;
+  namespace bgi = boost::geometry::index;
+  using BoostPoint2D = bg::model::point<double, 2, bg::cs::cartesian>;
+  using BoostValue = std::pair<BoostPoint2D, size_t>; // point + index
+
+  // Build R-tree from input points
+  std::vector<BoostValue> rtree_data;
+  rtree_data.reserve(input_points_ptr->points.size());
+
+  {
+    std::transform(
+      input_points_ptr->points.begin(),
+      input_points_ptr->points.end(),
+      std::back_inserter(rtree_data),
+      [i = 0](const pcl::PointXYZ & pt) mutable {
+        return std::make_pair(BoostPoint2D(pt.x, pt.y), i++);
+      });
+  }
+
+  bgi::rtree<BoostValue, bgi::quadratic<16>> rtree(rtree_data.begin(), rtree_data.end());
+
+  std::unordered_set<size_t> selected_indices;
+
+  std::for_each(footprints.begin(), footprints.end(), [&](const Polygon2d & footprint) {
+    bg::model::box<BoostPoint2D> bbox;
+    bg::envelope(footprint, bbox);
+  
+    std::vector<BoostValue> result_s;
+    rtree.query(bgi::intersects(bbox), std::back_inserter(result_s));
+  
+    for (const auto & val : result_s) {
+      const BoostPoint2D & pt = val.first;
+      if (bg::within(pt, footprint)) {
+        selected_indices.insert(val.second);
+      }
+    }
+  });
+
+  output_points_ptr->points.reserve(selected_indices.size());
+  std::transform(
+    selected_indices.begin(),
+    selected_indices.end(),
+    std::back_inserter(output_points_ptr->points),
+    [&] (const size_t idx) {
+      return input_points_ptr->points[idx];
+    }
+  );
+}
+
+std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, std::vector<pcl::PointIndices>>
+MotionVelocityPlannerNode::filter_and_cluster_point_clouds(
+  pcl::PointCloud<pcl::PointXYZ> pointcloud,
+  autoware_utils::StopWatch<std::chrono::milliseconds> sw,
+  std::map<std::string, double> & processing_times)
+{
+  if (pointcloud.empty()) {
+    return {};
+  }
+
+  const auto & vehicle_info = planner_data_.vehicle_info_; 
+  const auto & p = planner_data_.pointcloud_obstacle_filtering_param;
+
+  // 1. transform pointcloud
+  pcl::PointCloud<pcl::PointXYZ>::Ptr pointcloud_ptr =
+    std::make_shared<pcl::PointCloud<pcl::PointXYZ>>(pointcloud);
+  
+  // 2. filter-out points far-away from trajectory
+  pcl::PointCloud<pcl::PointXYZ>::Ptr far_away_pointcloud_ptr(new pcl::PointCloud<pcl::PointXYZ>);
+  search_pointcloud_near_trajectory(trajectory_points_, pointcloud_ptr, far_away_pointcloud_ptr, vehicle_info, planner_data_.mask_lat_margin);
+  processing_times["update_planner_data.pcl.mask_far_away_points"] = sw.toc(true);
+
+  // 3. downsample & cluster pointcloud
+  pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_points_ptr(new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::VoxelGrid<pcl::PointXYZ> filter;
+
+  filter.setInputCloud(far_away_pointcloud_ptr);
+  filter.setLeafSize(
+    p.pointcloud_voxel_grid_x,
+    p.pointcloud_voxel_grid_y,
+    p.pointcloud_voxel_grid_z);
+  filter.filter(*filtered_points_ptr);
+
+  processing_times["update_planner_data.pcl.pcd_filter"] = sw.toc(true);
+
+  pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
+  tree->setInputCloud(filtered_points_ptr);
+  std::vector<pcl::PointIndices> clusters;
+  pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
+  ec.setClusterTolerance(p.pointcloud_cluster_tolerance);
+  ec.setMinClusterSize(p.pointcloud_min_cluster_size);
+  ec.setMaxClusterSize(p.pointcloud_max_cluster_size);
+  ec.setSearchMethod(tree);
+  ec.setInputCloud(filtered_points_ptr);
+  ec.extract(clusters);
+
+  processing_times["update_planner_data.pcl.filtered_pcd_cluster"] = sw.toc(true);
+
+  return std::make_pair(filtered_points_ptr, clusters);
 }
 
 void MotionVelocityPlannerNode::set_velocity_smoother_params()
@@ -310,6 +422,7 @@ void MotionVelocityPlannerNode::on_trajectory(
 
   autoware::motion_velocity_planner::TrajectoryPoints input_trajectory_points{
     input_trajectory_msg->points.begin(), input_trajectory_msg->points.end()};
+  trajectory_points_ = input_trajectory_points;
   auto output_trajectory_msg = generate_trajectory(input_trajectory_points, processing_times);
   output_trajectory_msg.header = input_trajectory_msg->header;
   processing_times["generate_trajectory"] = stop_watch.toc(true);
