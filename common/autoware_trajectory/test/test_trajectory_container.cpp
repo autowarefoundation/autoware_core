@@ -20,6 +20,7 @@
 
 #include <gtest/gtest.h>
 
+#include <utility>
 #include <vector>
 
 using Trajectory =
@@ -90,7 +91,7 @@ TEST_F(TrajectoryTest, compute)
   EXPECT_EQ(1, point.lane_ids[0]);
 }
 
-TEST_F(TrajectoryTest, manipulate_velocity)
+TEST_F(TrajectoryTest, manipulate_longitudinal_velocity)
 {
   trajectory->longitudinal_velocity_mps() = 10.0;
   trajectory->longitudinal_velocity_mps()
@@ -100,9 +101,342 @@ TEST_F(TrajectoryTest, manipulate_velocity)
   auto point2 = trajectory->compute(trajectory->length() / 2.0);
   auto point3 = trajectory->compute(trajectory->length());
 
-  EXPECT_EQ(10.0, point1.point.longitudinal_velocity_mps);
-  EXPECT_EQ(5.0, point2.point.longitudinal_velocity_mps);
-  EXPECT_EQ(10.0, point3.point.longitudinal_velocity_mps);
+  EXPECT_FLOAT_EQ(10.0, point1.point.longitudinal_velocity_mps);
+  EXPECT_FLOAT_EQ(5.0, point2.point.longitudinal_velocity_mps);
+  EXPECT_FLOAT_EQ(10.0, point3.point.longitudinal_velocity_mps);
+}
+
+TEST_F(TrajectoryTest, manipulate_lateral_velocity)
+{
+  trajectory->lateral_velocity_mps()
+    .range(trajectory->length() / 3, 2.0 * trajectory->length() / 3)
+    .set(5.0);
+  trajectory->lateral_velocity_mps()
+    .range(trajectory->length() * 0.75, trajectory->length() * 0.9)
+    .set(10.0);
+  auto point1 = trajectory->compute(0.0);
+  auto point2 = trajectory->compute(trajectory->length() / 2.0);
+  auto point3 = trajectory->compute(trajectory->length() * 0.8);
+  auto point4 = trajectory->compute(trajectory->length());
+
+  EXPECT_FLOAT_EQ(0.0, point1.point.lateral_velocity_mps);
+  EXPECT_FLOAT_EQ(5.0, point2.point.lateral_velocity_mps);
+  EXPECT_FLOAT_EQ(10.0, point3.point.lateral_velocity_mps);
+  EXPECT_FLOAT_EQ(0.0, point4.point.lateral_velocity_mps);
+}
+
+TEST_F(TrajectoryTest, manipulate_velocities)
+{
+  // longitudinal velocity = 1.0 [0.3, 0.7]
+  trajectory->longitudinal_velocity_mps()
+    .range(trajectory->length() * 0.3, trajectory->length() * 0.7)
+    .set(1.0);
+
+  // lateral velocity = 0.5 [0.1, 0.8]
+  trajectory->lateral_velocity_mps()
+    .range(trajectory->length() * 0.1, trajectory->length() * 0.8)
+    .set(0.5);
+
+  // heading rate = 1.0 [0.2, 0.9]
+  trajectory->heading_rate_rps()
+    .range(trajectory->length() * 0.2, trajectory->length() * 0.9)
+    .set(1.0);
+
+  auto point1 = trajectory->compute(0.05);
+  auto point2 = trajectory->compute(trajectory->length() * 0.15);
+  auto point3 = trajectory->compute(trajectory->length() * 0.25);
+  auto point4 = trajectory->compute(trajectory->length() * 0.35);
+  auto point5 = trajectory->compute(trajectory->length() * 0.75);
+  auto point6 = trajectory->compute(trajectory->length() * 0.85);
+  auto point7 = trajectory->compute(trajectory->length() * 0.95);
+
+  {
+    EXPECT_FLOAT_EQ(0.0, point1.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.0, point1.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(0.0, point1.point.heading_rate_rps);
+  }
+  {
+    EXPECT_FLOAT_EQ(0.0, point2.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.5, point2.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(0.0, point2.point.heading_rate_rps);
+  }
+  {
+    EXPECT_FLOAT_EQ(0.0, point3.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.5, point3.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(1.0, point3.point.heading_rate_rps);
+  }
+  {
+    EXPECT_FLOAT_EQ(1.0, point4.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.5, point4.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(1.0, point4.point.heading_rate_rps);
+  }
+  {
+    EXPECT_FLOAT_EQ(0.0, point5.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.5, point5.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(1.0, point5.point.heading_rate_rps);
+  }
+  {
+    EXPECT_FLOAT_EQ(0.0, point6.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.0, point6.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(1.0, point6.point.heading_rate_rps);
+  }
+  {
+    EXPECT_FLOAT_EQ(0.0, point7.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.0, point7.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(0.0, point7.point.heading_rate_rps);
+  }
+}
+
+TEST_F(TrajectoryTest, manipulate_velocities_with_copy_ctor)
+{
+  Trajectory trajectory2(*trajectory);
+  // longitudinal velocity = 1.0 [0.3, 0.7]
+  trajectory2.longitudinal_velocity_mps()
+    .range(trajectory2.length() * 0.3, trajectory2.length() * 0.7)
+    .set(1.0);
+
+  // lateral velocity = 0.5 [0.1, 0.8]
+  trajectory2.lateral_velocity_mps()
+    .range(trajectory2.length() * 0.1, trajectory2.length() * 0.8)
+    .set(0.5);
+
+  // heading rate = 1.0 [0.2, 0.9]
+  trajectory2.heading_rate_rps()
+    .range(trajectory2.length() * 0.2, trajectory2.length() * 0.9)
+    .set(1.0);
+
+  auto point1 = trajectory2.compute(0.05);
+  auto point2 = trajectory2.compute(trajectory2.length() * 0.15);
+  auto point3 = trajectory2.compute(trajectory2.length() * 0.25);
+  auto point4 = trajectory2.compute(trajectory2.length() * 0.35);
+  auto point5 = trajectory2.compute(trajectory2.length() * 0.75);
+  auto point6 = trajectory2.compute(trajectory2.length() * 0.85);
+  auto point7 = trajectory2.compute(trajectory2.length() * 0.95);
+
+  {
+    EXPECT_FLOAT_EQ(0.0, point1.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.0, point1.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(0.0, point1.point.heading_rate_rps);
+  }
+  {
+    EXPECT_FLOAT_EQ(0.0, point2.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.5, point2.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(0.0, point2.point.heading_rate_rps);
+  }
+  {
+    EXPECT_FLOAT_EQ(0.0, point3.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.5, point3.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(1.0, point3.point.heading_rate_rps);
+  }
+  {
+    EXPECT_FLOAT_EQ(1.0, point4.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.5, point4.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(1.0, point4.point.heading_rate_rps);
+  }
+  {
+    EXPECT_FLOAT_EQ(0.0, point5.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.5, point5.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(1.0, point5.point.heading_rate_rps);
+  }
+  {
+    EXPECT_FLOAT_EQ(0.0, point6.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.0, point6.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(1.0, point6.point.heading_rate_rps);
+  }
+  {
+    EXPECT_FLOAT_EQ(0.0, point7.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.0, point7.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(0.0, point7.point.heading_rate_rps);
+  }
+}
+
+TEST_F(TrajectoryTest, manipulate_velocities_with_copy_assignment)
+{
+  auto trajectory2 = *trajectory;
+  // longitudinal velocity = 1.0 [0.3, 0.7]
+  trajectory2.longitudinal_velocity_mps()
+    .range(trajectory2.length() * 0.3, trajectory2.length() * 0.7)
+    .set(1.0);
+
+  // lateral velocity = 0.5 [0.1, 0.8]
+  trajectory2.lateral_velocity_mps()
+    .range(trajectory2.length() * 0.1, trajectory2.length() * 0.8)
+    .set(0.5);
+
+  // heading rate = 1.0 [0.2, 0.9]
+  trajectory2.heading_rate_rps()
+    .range(trajectory2.length() * 0.2, trajectory2.length() * 0.9)
+    .set(1.0);
+
+  auto point1 = trajectory2.compute(0.05);
+  auto point2 = trajectory2.compute(trajectory2.length() * 0.15);
+  auto point3 = trajectory2.compute(trajectory2.length() * 0.25);
+  auto point4 = trajectory2.compute(trajectory2.length() * 0.35);
+  auto point5 = trajectory2.compute(trajectory2.length() * 0.75);
+  auto point6 = trajectory2.compute(trajectory2.length() * 0.85);
+  auto point7 = trajectory2.compute(trajectory2.length() * 0.95);
+
+  {
+    EXPECT_FLOAT_EQ(0.0, point1.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.0, point1.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(0.0, point1.point.heading_rate_rps);
+  }
+  {
+    EXPECT_FLOAT_EQ(0.0, point2.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.5, point2.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(0.0, point2.point.heading_rate_rps);
+  }
+  {
+    EXPECT_FLOAT_EQ(0.0, point3.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.5, point3.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(1.0, point3.point.heading_rate_rps);
+  }
+  {
+    EXPECT_FLOAT_EQ(1.0, point4.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.5, point4.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(1.0, point4.point.heading_rate_rps);
+  }
+  {
+    EXPECT_FLOAT_EQ(0.0, point5.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.5, point5.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(1.0, point5.point.heading_rate_rps);
+  }
+  {
+    EXPECT_FLOAT_EQ(0.0, point6.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.0, point6.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(1.0, point6.point.heading_rate_rps);
+  }
+  {
+    EXPECT_FLOAT_EQ(0.0, point7.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.0, point7.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(0.0, point7.point.heading_rate_rps);
+  }
+}
+
+TEST_F(TrajectoryTest, manipulate_velocities_with_move_ctor)
+{
+  auto trajectory2(std::move(*trajectory));
+  // longitudinal velocity = 1.0 [0.3, 0.7]
+  trajectory2.longitudinal_velocity_mps()
+    .range(trajectory2.length() * 0.3, trajectory2.length() * 0.7)
+    .set(1.0);
+
+  // lateral velocity = 0.5 [0.1, 0.8]
+  trajectory2.lateral_velocity_mps()
+    .range(trajectory2.length() * 0.1, trajectory2.length() * 0.8)
+    .set(0.5);
+
+  // heading rate = 1.0 [0.2, 0.9]
+  trajectory2.heading_rate_rps()
+    .range(trajectory2.length() * 0.2, trajectory2.length() * 0.9)
+    .set(1.0);
+
+  auto point1 = trajectory2.compute(0.05);
+  auto point2 = trajectory2.compute(trajectory2.length() * 0.15);
+  auto point3 = trajectory2.compute(trajectory2.length() * 0.25);
+  auto point4 = trajectory2.compute(trajectory2.length() * 0.35);
+  auto point5 = trajectory2.compute(trajectory2.length() * 0.75);
+  auto point6 = trajectory2.compute(trajectory2.length() * 0.85);
+  auto point7 = trajectory2.compute(trajectory2.length() * 0.95);
+
+  {
+    EXPECT_FLOAT_EQ(0.0, point1.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.0, point1.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(0.0, point1.point.heading_rate_rps);
+  }
+  {
+    EXPECT_FLOAT_EQ(0.0, point2.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.5, point2.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(0.0, point2.point.heading_rate_rps);
+  }
+  {
+    EXPECT_FLOAT_EQ(0.0, point3.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.5, point3.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(1.0, point3.point.heading_rate_rps);
+  }
+  {
+    EXPECT_FLOAT_EQ(1.0, point4.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.5, point4.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(1.0, point4.point.heading_rate_rps);
+  }
+  {
+    EXPECT_FLOAT_EQ(0.0, point5.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.5, point5.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(1.0, point5.point.heading_rate_rps);
+  }
+  {
+    EXPECT_FLOAT_EQ(0.0, point6.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.0, point6.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(1.0, point6.point.heading_rate_rps);
+  }
+  {
+    EXPECT_FLOAT_EQ(0.0, point7.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.0, point7.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(0.0, point7.point.heading_rate_rps);
+  }
+}
+
+TEST_F(TrajectoryTest, manipulate_velocities_with_move_assignment)
+{
+  auto trajectory2 = std::move(*trajectory);
+  // longitudinal velocity = 1.0 [0.3, 0.7]
+  trajectory2.longitudinal_velocity_mps()
+    .range(trajectory2.length() * 0.3, trajectory2.length() * 0.7)
+    .set(1.0);
+
+  // lateral velocity = 0.5 [0.1, 0.8]
+  trajectory2.lateral_velocity_mps()
+    .range(trajectory2.length() * 0.1, trajectory2.length() * 0.8)
+    .set(0.5);
+
+  // heading rate = 1.0 [0.2, 0.9]
+  trajectory2.heading_rate_rps()
+    .range(trajectory2.length() * 0.2, trajectory2.length() * 0.9)
+    .set(1.0);
+
+  auto point1 = trajectory2.compute(0.05);
+  auto point2 = trajectory2.compute(trajectory2.length() * 0.15);
+  auto point3 = trajectory2.compute(trajectory2.length() * 0.25);
+  auto point4 = trajectory2.compute(trajectory2.length() * 0.35);
+  auto point5 = trajectory2.compute(trajectory2.length() * 0.75);
+  auto point6 = trajectory2.compute(trajectory2.length() * 0.85);
+  auto point7 = trajectory2.compute(trajectory2.length() * 0.95);
+
+  {
+    EXPECT_FLOAT_EQ(0.0, point1.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.0, point1.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(0.0, point1.point.heading_rate_rps);
+  }
+  {
+    EXPECT_FLOAT_EQ(0.0, point2.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.5, point2.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(0.0, point2.point.heading_rate_rps);
+  }
+  {
+    EXPECT_FLOAT_EQ(0.0, point3.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.5, point3.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(1.0, point3.point.heading_rate_rps);
+  }
+  {
+    EXPECT_FLOAT_EQ(1.0, point4.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.5, point4.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(1.0, point4.point.heading_rate_rps);
+  }
+  {
+    EXPECT_FLOAT_EQ(0.0, point5.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.5, point5.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(1.0, point5.point.heading_rate_rps);
+  }
+  {
+    EXPECT_FLOAT_EQ(0.0, point6.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.0, point6.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(1.0, point6.point.heading_rate_rps);
+  }
+  {
+    EXPECT_FLOAT_EQ(0.0, point7.point.longitudinal_velocity_mps);
+    EXPECT_FLOAT_EQ(0.0, point7.point.lateral_velocity_mps);
+    EXPECT_FLOAT_EQ(0.0, point7.point.heading_rate_rps);
+  }
 }
 
 TEST_F(TrajectoryTest, direction)
@@ -164,17 +498,19 @@ TEST_F(TrajectoryTest, crop)
 
   trajectory->crop(length / 3.0, 1.0);
 
-  EXPECT_EQ(trajectory->length(), 1.0);
+  EXPECT_FLOAT_EQ(trajectory->length(), 1.0);
 
   auto start_point_actual = trajectory->compute(0.0);
   auto end_point_actual = trajectory->compute(trajectory->length());
 
-  EXPECT_EQ(start_point_expect.point.pose.position.x, start_point_actual.point.pose.position.x);
-  EXPECT_EQ(start_point_expect.point.pose.position.y, start_point_actual.point.pose.position.y);
-  EXPECT_EQ(start_point_expect.lane_ids[0], start_point_actual.lane_ids[0]);
+  EXPECT_FLOAT_EQ(
+    start_point_expect.point.pose.position.x, start_point_actual.point.pose.position.x);
+  EXPECT_FLOAT_EQ(
+    start_point_expect.point.pose.position.y, start_point_actual.point.pose.position.y);
+  EXPECT_FLOAT_EQ(start_point_expect.lane_ids[0], start_point_actual.lane_ids[0]);
 
-  EXPECT_EQ(end_point_expect.point.pose.position.x, end_point_actual.point.pose.position.x);
-  EXPECT_EQ(end_point_expect.point.pose.position.y, end_point_actual.point.pose.position.y);
+  EXPECT_FLOAT_EQ(end_point_expect.point.pose.position.x, end_point_actual.point.pose.position.x);
+  EXPECT_FLOAT_EQ(end_point_expect.point.pose.position.y, end_point_actual.point.pose.position.y);
   EXPECT_EQ(end_point_expect.lane_ids[0], end_point_actual.lane_ids[0]);
 }
 
