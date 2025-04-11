@@ -28,7 +28,7 @@
 
 namespace fs = std::filesystem;
 
-namespace autoware
+namespace autoware::experimental
 {
 
 class TestWithIntersectionCrossingMap : public ::testing::Test
@@ -289,7 +289,7 @@ TEST_F(TestWithIntersectionCrossingInverseMap, left_lanelets_with_opposite_witho
   EXPECT_EQ(lefts[0].id(), 2252);
 }
 
-}  // namespace autoware
+}  // namespace autoware::experimental
 
 int main(int argc, char ** argv)
 {

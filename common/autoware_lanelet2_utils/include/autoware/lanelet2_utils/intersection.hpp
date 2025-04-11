@@ -19,7 +19,7 @@
 
 #include <optional>
 
-namespace autoware::lanelet2_utils
+namespace autoware::experimental::lanelet2_utils
 {
 
 static constexpr const char * k_turn_direction = "turn_direction";
@@ -68,5 +68,5 @@ bool is_right_direction(const lanelet::ConstLanelet & lanelet);
  */
 std::optional<TurnDirection> get_turn_direction(const lanelet::ConstLanelet & lanelet);
 
-}  // namespace autoware::lanelet2_utils
+}  // namespace autoware::experimental::lanelet2_utils
 #endif  // AUTOWARE__LANELET2_UTILS__INTERSECTION_HPP_

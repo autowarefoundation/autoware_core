@@ -17,7 +17,7 @@
 #include <lanelet2_core/primitives/Lanelet.h>
 
 #include <cstring>
-namespace autoware::lanelet2_utils
+namespace autoware::experimental::lanelet2_utils
 {
 bool is_road_lane(const lanelet::ConstLanelet & lanelet)
 {
@@ -36,4 +36,4 @@ bool is_bicycle_lane(const lanelet::ConstLanelet & lanelet)
   return std::strcmp(
            lanelet.attributeOr(lanelet::AttributeName::Subtype, "none"), k_bicycle_lane_type) == 0;
 }
-}  // namespace autoware::lanelet2_utils
+}  // namespace autoware::experimental::lanelet2_utils

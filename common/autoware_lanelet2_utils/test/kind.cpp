@@ -24,7 +24,7 @@
 
 namespace fs = std::filesystem;
 
-namespace autoware
+namespace autoware::experimental
 {
 class TestWithRoadShoulderHighwayMap : public ::testing::Test
 {
@@ -88,7 +88,7 @@ TEST_F(TestWithIntersectionCrossingMap, is_shoulder_lane)
   EXPECT_EQ(lanelet2_utils::is_shoulder_lane(ll), false);
   EXPECT_EQ(lanelet2_utils::is_bicycle_lane(ll), true);
 }
-}  // namespace autoware
+}  // namespace autoware::experimental
 
 int main(int argc, char ** argv)
 {

@@ -21,7 +21,7 @@
 
 #include <vector>
 
-namespace autoware::lanelet2_utils
+namespace autoware::experimental::lanelet2_utils
 {
 
 static constexpr size_t k_normal_bundle_max_size = 10;
@@ -262,4 +262,4 @@ lanelet::ConstLanelets from_ids(
          }) |
          ranges::to<std::vector>();
 }
-}  // namespace autoware::lanelet2_utils
+}  // namespace autoware::experimental::lanelet2_utils

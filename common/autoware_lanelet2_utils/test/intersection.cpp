@@ -24,7 +24,7 @@
 
 namespace fs = std::filesystem;
 
-namespace autoware
+namespace autoware::experimental
 {
 class TestWithIntersectionCrossingMap : public ::testing::Test
 {
@@ -110,7 +110,7 @@ TEST_F(TestWithIntersectionCrossingMap, get_turn_direction)
   }
 }
 
-}  // namespace autoware
+}  // namespace autoware::experimental
 
 int main(int argc, char ** argv)
 {

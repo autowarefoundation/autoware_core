@@ -22,7 +22,7 @@
 #include <optional>
 #include <vector>
 
-namespace autoware::lanelet2_utils
+namespace autoware::experimental::lanelet2_utils
 {
 /**
  * @brief instantiate RoutingGraph from given LaneletMap only from "road" lanes
@@ -181,6 +181,6 @@ lanelet::ConstLanelets sibling_lanelets(
  */
 lanelet::ConstLanelets from_ids(
   const lanelet::LaneletMapConstPtr lanelet_map, const std::vector<lanelet::Id> & ids);
-}  // namespace autoware::lanelet2_utils
+}  // namespace autoware::experimental::lanelet2_utils
 
 #endif  // AUTOWARE__LANELET2_UTILS__TOPOLOGY_HPP_

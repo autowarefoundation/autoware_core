@@ -17,7 +17,7 @@
 
 #include <lanelet2_core/Forward.h>
 
-namespace autoware::lanelet2_utils
+namespace autoware::experimental::lanelet2_utils
 {
 static constexpr const char * k_road_lane_type = "road";
 static constexpr const char * k_shoulder_lane_type = "road_shoulder";
@@ -58,5 +58,5 @@ bool is_shoulder_lane(const lanelet::ConstLanelet & lanelet);
  * @return if the lanelet is bicycle_lane or not
  */
 bool is_bicycle_lane(const lanelet::ConstLanelet & lanelet);
-}  // namespace autoware::lanelet2_utils
+}  // namespace autoware::experimental::lanelet2_utils
 #endif  // AUTOWARE__LANELET2_UTILS__KIND_HPP_
