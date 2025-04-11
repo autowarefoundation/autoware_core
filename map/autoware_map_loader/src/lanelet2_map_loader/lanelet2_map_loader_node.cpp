@@ -62,10 +62,8 @@ Lanelet2MapLoaderNode::Lanelet2MapLoaderNode(const rclcpp::NodeOptions & options
 : Node("lanelet2_map_loader", options)
 {
   // subscription
-  MapProjectorInfo map_projector_info_specs;
   sub_map_projector_info_ = this->create_subscription<MapProjectorInfo::Message>(
-    map_projector_info_specs.name,
-    autoware::component_interface_specs::get_qos(map_projector_info_specs),
+    MapProjectorInfo::name, autoware::component_interface_specs::get_qos<MapProjectorInfo>(),
     [this](const MapProjectorInfo::Message::ConstSharedPtr msg) { on_map_projector_info(msg); });
 
   declare_parameter<bool>("allow_unsupported_version");
@@ -129,9 +127,8 @@ void Lanelet2MapLoaderNode::on_map_projector_info(
   const auto map_bin_msg = create_map_bin_msg(map, lanelet2_filename, now());
 
   // create publisher and publish
-  VectorMap vector_map_specs;
   pub_map_bin_ =
-    create_publisher<VectorMap::Message>(vector_map_specs.name, rclcpp::QoS{1}.transient_local());
+    create_publisher<VectorMap::Message>(VectorMap::name, rclcpp::QoS{1}.transient_local());
   pub_map_bin_->publish(map_bin_msg);
   RCLCPP_INFO(get_logger(), "Succeeded to load lanelet2_map. Map is published.");
 }

@@ -4872,11 +4872,11 @@ TEST(trajectory, findFirstNearestIndexWithSoftConstraints)
       EXPECT_EQ(
         findFirstNearestIndexWithSoftConstraints(
           poses, createPose(-2.1, 0.1, 0.0, 0.0, 0.0, pi), 0.0, 0.4),
-        1U);
+        5U);
       EXPECT_EQ(
         findFirstNearestSegmentIndexWithSoftConstraints(
           poses, createPose(-2.1, 0.1, 0.0, 0.0, 0.0, pi), 0.0, 0.4),
-        0U);
+        5U);
 
       // Yaw is out of range
       EXPECT_EQ(

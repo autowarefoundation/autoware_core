@@ -25,11 +25,9 @@ namespace autoware::component_interface_specs
 {
 
 template <typename T>
-rclcpp::QoS get_qos(T interface)
+rclcpp::QoS get_qos()
 {
-  return rclcpp::QoS{interface.depth}
-    .reliability(interface.reliability)
-    .durability(interface.durability);
+  return rclcpp::QoS{T::depth}.reliability(T::reliability).durability(T::durability);
 }
 
 }  // namespace autoware::component_interface_specs

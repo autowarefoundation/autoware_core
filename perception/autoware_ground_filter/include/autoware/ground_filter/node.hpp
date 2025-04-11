@@ -44,8 +44,8 @@
 
 // Include tier4 autoware utils
 #include <autoware_utils/ros/debug_publisher.hpp>
-#include <autoware_utils/ros/managed_transform_buffer.hpp>
 #include <autoware_utils/ros/published_time_publisher.hpp>
+#include <autoware_utils/ros/transform_listener.hpp>
 #include <autoware_utils/system/stop_watch.hpp>
 #include <tf2_eigen/tf2_eigen.hpp>
 
@@ -183,9 +183,6 @@ private:
     [[maybe_unused]] const pcl::IndicesPtr & indices, sensor_msgs::msg::PointCloud2 & output,
     [[maybe_unused]] const TransformInfo & transform_info);
 
-  tf2_ros::Buffer tf_buffer_{get_clock()};
-  tf2_ros::TransformListener tf_listener_{tf_buffer_};
-
   // data accessor
   PclDataAccessor data_accessor_;
 
@@ -227,7 +224,6 @@ private:
   // pointcloud parameters
   std::string tf_input_frame_;
   std::string tf_output_frame_;
-  bool has_static_tf_only_;
   std::size_t max_queue_size_;
   bool use_indices_;
   bool latched_indices_;
@@ -339,7 +335,7 @@ protected:
   /** \brief The message filter subscriber for PointIndices. */
   message_filters::Subscriber<pcl_msgs::msg::PointIndices> sub_indices_filter_;
 
-  std::unique_ptr<autoware_utils::ManagedTransformBuffer> managed_tf_buffer_{nullptr};
+  std::unique_ptr<autoware_utils::TransformListener> transform_listener_{nullptr};
 
   std::unique_ptr<autoware_utils::PublishedTimePublisher> published_time_publisher_;
 

@@ -19,13 +19,12 @@ TEST(planning, interface)
 {
   {
     using autoware::component_interface_specs::planning::LaneletRoute;
-    LaneletRoute route;
     size_t depth = 1;
-    EXPECT_EQ(route.depth, depth);
-    EXPECT_EQ(route.reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
-    EXPECT_EQ(route.durability, RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
+    EXPECT_EQ(LaneletRoute::depth, depth);
+    EXPECT_EQ(LaneletRoute::reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
+    EXPECT_EQ(LaneletRoute::durability, RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
 
-    const auto qos = autoware::component_interface_specs::get_qos(route);
+    const auto qos = autoware::component_interface_specs::get_qos<LaneletRoute>();
     EXPECT_EQ(qos.depth(), depth);
     EXPECT_EQ(qos.reliability(), rclcpp::ReliabilityPolicy::Reliable);
     EXPECT_EQ(qos.durability(), rclcpp::DurabilityPolicy::TransientLocal);
@@ -33,13 +32,12 @@ TEST(planning, interface)
 
   {
     using autoware::component_interface_specs::planning::Trajectory;
-    Trajectory trajectory;
     size_t depth = 1;
-    EXPECT_EQ(trajectory.depth, depth);
-    EXPECT_EQ(trajectory.reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
-    EXPECT_EQ(trajectory.durability, RMW_QOS_POLICY_DURABILITY_VOLATILE);
+    EXPECT_EQ(Trajectory::depth, depth);
+    EXPECT_EQ(Trajectory::reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
+    EXPECT_EQ(Trajectory::durability, RMW_QOS_POLICY_DURABILITY_VOLATILE);
 
-    const auto qos = autoware::component_interface_specs::get_qos(trajectory);
+    const auto qos = autoware::component_interface_specs::get_qos<Trajectory>();
     EXPECT_EQ(qos.depth(), depth);
     EXPECT_EQ(qos.reliability(), rclcpp::ReliabilityPolicy::Reliable);
     EXPECT_EQ(qos.durability(), rclcpp::DurabilityPolicy::Volatile);
