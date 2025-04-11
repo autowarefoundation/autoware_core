@@ -64,6 +64,7 @@ Trajectory<PointType> & Trajectory<PointType>::operator=(Trajectory && rhs) noex
 {
   if (this != &rhs) {
     BaseClass::operator=(std::forward<Trajectory>(rhs));
+    // cppcheck-suppress accessForwarded
     lane_ids_ = std::move(rhs.lane_ids_);
     add_base_addition_callback();
   }

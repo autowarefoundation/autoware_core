@@ -100,11 +100,17 @@ Trajectory<PointType> & Trajectory<PointType>::operator=(Trajectory && rhs) noex
 {
   if (this != &rhs) {
     BaseClass::operator=(std::forward<Trajectory>(rhs));
+    // cppcheck-suppress accessForwarded
     longitudinal_velocity_mps_ = std::move(rhs.longitudinal_velocity_mps_);
+    // cppcheck-suppress accessForwarded
     lateral_velocity_mps_ = std::move(rhs.lateral_velocity_mps_);
+    // cppcheck-suppress accessForwarded
     heading_rate_rps_ = std::move(rhs.heading_rate_rps_);
+    // cppcheck-suppress accessForwarded
     acceleration_mps2_ = std::move(rhs.acceleration_mps2_);
+    // cppcheck-suppress accessForwarded
     front_wheel_angle_rad_ = std::move(rhs.front_wheel_angle_rad_);
+    // cppcheck-suppress accessForwarded
     rear_wheel_angle_rad_ = std::move(rhs.rear_wheel_angle_rad_);
     add_base_addition_callback();
   }
