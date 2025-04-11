@@ -39,7 +39,7 @@ using ranges::to;
 using ranges::views::transform;
 
 void plot_trajectory_with_underlying(
-  const autoware::trajectory::Trajectory<geometry_msgs::msg::Point> & trajectory,
+  const autoware::experimental::trajectory::Trajectory<geometry_msgs::msg::Point> & trajectory,
   const std::string & color, const std::string & label, autoware::pyplot::PyPlot & plt)
 {
   const auto s = trajectory.base_arange(0.05);
@@ -64,8 +64,8 @@ void plot_trajectory_with_underlying(
 
 int main()
 {
-  using autoware::trajectory::ShiftInterval;
-  using autoware::trajectory::ShiftParameters;
+  using autoware::experimental::trajectory::ShiftInterval;
+  using autoware::experimental::trajectory::ShiftParameters;
 
   pybind11::scoped_interpreter guard{};
   auto plt = autoware::pyplot::import();
@@ -75,7 +75,8 @@ int main()
                                                    point(12.0, 0.0), point(18.0, 0.0)};
 
   auto trajectory =
-    autoware::trajectory::Trajectory<geometry_msgs::msg::Point>::Builder{}.build(points);
+    autoware::experimental::trajectory::Trajectory<geometry_msgs::msg::Point>::Builder{}.build(
+      points);
 
   if (!trajectory) {
     return 1;
@@ -109,7 +110,7 @@ int main()
   };
 
   auto shifted_trajectory_info =
-    autoware::trajectory::shift(*trajectory, shift_interval, shift_parameter);
+    autoware::experimental::trajectory::shift(*trajectory, shift_interval, shift_parameter);
   if (!shifted_trajectory_info) {
     std::cout << shifted_trajectory_info.error().what << std::endl;
     return 1;
@@ -143,7 +144,7 @@ int main()
 
   const ShiftInterval shift_left_interval{start_s, start_s + longitudinal_dist, -lateral_shift};
   auto shifted_trajectory_left_info =
-    autoware::trajectory::shift(*trajectory, shift_left_interval, shift_parameter);
+    autoware::experimental::trajectory::shift(*trajectory, shift_left_interval, shift_parameter);
   if (!shifted_trajectory_info) {
     std::cout << shifted_trajectory_info.error().what << std::endl;
     return 1;

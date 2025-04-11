@@ -24,7 +24,7 @@
 #include <string>
 #include <vector>
 
-namespace autoware::trajectory
+namespace autoware::experimental::trajectory
 {
 
 /**
@@ -149,6 +149,6 @@ tl::expected<ShiftedTrajectory<PointType>, ShiftError> shift(
     shifted_trajectory_bases.at(shift_end_index)};
 }
 
-}  // namespace autoware::trajectory
+}  // namespace autoware::experimental::trajectory
 
 #endif  // AUTOWARE__TRAJECTORY__UTILS__SHIFT_HPP_

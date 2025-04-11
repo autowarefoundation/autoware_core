@@ -26,7 +26,7 @@
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/pose.hpp>
 
-namespace autoware::trajectory::detail
+namespace autoware::experimental::trajectory::detail
 {
 
 struct MutablePoint2d
@@ -76,6 +76,6 @@ ImmutablePoint3d to_point(const autoware_planning_msgs::msg::TrajectoryPoint & p
 ImmutablePoint3d to_point(const autoware_internal_planning_msgs::msg::PathPointWithLaneId & p);
 ImmutablePoint2d to_point(const lanelet::BasicPoint2d & p);
 
-}  // namespace autoware::trajectory::detail
+}  // namespace autoware::experimental::trajectory::detail
 
 #endif  // AUTOWARE__TRAJECTORY__DETAIL__TYPES_HPP_

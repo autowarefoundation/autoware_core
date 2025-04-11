@@ -47,8 +47,8 @@ int main_cubic_normal()
   auto plt = autoware::pyplot::import();
   auto [fig, ax] = plt.subplots();
 
-  using autoware::trajectory::interpolator::CubicSpline;
-  using autoware::trajectory::interpolator::InterpolationFailure;
+  using autoware::experimental::trajectory::interpolator::CubicSpline;
+  using autoware::experimental::trajectory::interpolator::InterpolationFailure;
 
   std::vector<double> xs = {0.0, 1.0, 2.0, 3.0, 4.0, 5.0};
   std::vector<double> ys = {0.0 + noise(), 1.0 + noise(), 2.0 + noise(),
@@ -103,8 +103,8 @@ int main_cubic_error()
   std::uniform_real_distribution<> dis(-0.3, 0.3);
   auto noise = [&]() { return dis(gen); };
 
-  using autoware::trajectory::interpolator::CubicSpline;
-  using autoware::trajectory::interpolator::InterpolationFailure;
+  using autoware::experimental::trajectory::interpolator::CubicSpline;
+  using autoware::experimental::trajectory::interpolator::InterpolationFailure;
 
   // Give only 3 points for CubicSpline, which is infeasible
   std::vector<double> xs = {0.0, 1.0, 2.0};
@@ -136,8 +136,8 @@ int main_akima()
   auto & ax1 = axes[0];
   auto & ax2 = axes[1];
 
-  using autoware::trajectory::interpolator::AkimaSpline;
-  using autoware::trajectory::interpolator::InterpolationFailure;
+  using autoware::experimental::trajectory::interpolator::AkimaSpline;
+  using autoware::experimental::trajectory::interpolator::InterpolationFailure;
 
   std::vector<double> xs = {0.0, 1.0, 2.0, 3.0, 4.0, 5.0};
   std::vector<double> ys = {0.0 + noise(), 1.0 + noise(), 2.0 + noise(),
@@ -186,8 +186,8 @@ int main_cubic()
   auto & ax1 = axes[0];
   auto & ax2 = axes[1];
 
-  using autoware::trajectory::interpolator::CubicSpline;
-  using autoware::trajectory::interpolator::InterpolationFailure;
+  using autoware::experimental::trajectory::interpolator::CubicSpline;
+  using autoware::experimental::trajectory::interpolator::InterpolationFailure;
 
   std::vector<double> xs = {0.0, 1.0, 2.0, 3.0, 4.0, 5.0};
   std::vector<double> ys = {0.0 + noise(), 1.0 + noise(), 2.0 + noise(),
@@ -236,8 +236,8 @@ int main_linear()
   auto & ax1 = axes[0];
   auto & ax2 = axes[1];
 
-  using autoware::trajectory::interpolator::InterpolationFailure;
-  using autoware::trajectory::interpolator::Linear;
+  using autoware::experimental::trajectory::interpolator::InterpolationFailure;
+  using autoware::experimental::trajectory::interpolator::Linear;
 
   std::vector<double> xs = {0.0, 1.0, 2.0, 3.0, 4.0, 5.0};
   std::vector<double> ys = {0.0 + noise(), 1.0 + noise(), 2.0 + noise(),
@@ -285,8 +285,8 @@ int main_stairstep()
   auto & ax1 = axes[0];
   auto & ax2 = axes[1];
 
-  using autoware::trajectory::interpolator::InterpolationFailure;
-  using autoware::trajectory::interpolator::Stairstep;
+  using autoware::experimental::trajectory::interpolator::InterpolationFailure;
+  using autoware::experimental::trajectory::interpolator::Stairstep;
 
   std::vector<double> xs = {0.0, 1.0, 2.0, 3.0, 4.0, 5.0};
   std::vector<double> ys = {0.0 + noise(), 1.0 + noise(), 2.0 + noise(),
@@ -338,10 +338,10 @@ int main_coordinate_approximation()
     return p;
   };
 
-  using autoware::trajectory::Trajectory;
-  using autoware::trajectory::interpolator::CubicSpline;
-  using autoware::trajectory::interpolator::InterpolationFailure;
-  using autoware::trajectory::interpolator::Linear;
+  using autoware::experimental::trajectory::Trajectory;
+  using autoware::experimental::trajectory::interpolator::CubicSpline;
+  using autoware::experimental::trajectory::interpolator::InterpolationFailure;
+  using autoware::experimental::trajectory::interpolator::Linear;
 
   const double root2 = std::sqrt(2.0);
   const double root3 = std::sqrt(3.0);
@@ -435,10 +435,10 @@ int main_curvature()
     return p;
   };
 
-  using autoware::trajectory::Trajectory;
-  using autoware::trajectory::interpolator::CubicSpline;
-  using autoware::trajectory::interpolator::InterpolationFailure;
-  using autoware::trajectory::interpolator::Linear;
+  using autoware::experimental::trajectory::Trajectory;
+  using autoware::experimental::trajectory::interpolator::CubicSpline;
+  using autoware::experimental::trajectory::interpolator::InterpolationFailure;
+  using autoware::experimental::trajectory::interpolator::Linear;
 
   const double root2 = std::sqrt(2.0);
   const double root3 = std::sqrt(3.0);
@@ -527,7 +527,7 @@ int main_curvature()
 
 int main_trajectory_overview()
 {
-  using autoware::trajectory::Trajectory;
+  using autoware::experimental::trajectory::Trajectory;
   using ranges::to;
   using ranges::views::drop;
   using ranges::views::stride;

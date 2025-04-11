@@ -439,9 +439,10 @@ std::vector<geometry_msgs::msg::Point> crop_line_string(
     return line_string;
   }
 
-  auto trajectory = autoware::trajectory::Trajectory<geometry_msgs::msg::Point>::Builder()
-                      .set_xy_interpolator<trajectory::interpolator::Linear>()
-                      .build(line_string);
+  auto trajectory =
+    autoware::experimental::trajectory::Trajectory<geometry_msgs::msg::Point>::Builder()
+      .set_xy_interpolator<autoware::experimental::trajectory::interpolator::Linear>()
+      .build(line_string);
   if (!trajectory) {
     return {};
   }
@@ -953,12 +954,13 @@ std::optional<lanelet::ConstPoint2d> get_turn_signal_required_end_point(
   }
 
   auto centerline =
-    autoware::trajectory::Trajectory<geometry_msgs::msg::Pose>::Builder{}.build(centerline_poses);
+    autoware::experimental::trajectory::Trajectory<geometry_msgs::msg::Pose>::Builder{}.build(
+      centerline_poses);
   if (!centerline) return std::nullopt;
   centerline->align_orientation_with_trajectory_direction();
 
   const auto terminal_yaw = tf2::getYaw(centerline->compute(centerline->length()).orientation);
-  const auto intervals = autoware::trajectory::find_intervals(
+  const auto intervals = autoware::experimental::trajectory::find_intervals(
     centerline.value(),
     [terminal_yaw, angle_threshold_deg](const geometry_msgs::msg::Pose & point) {
       const auto yaw = tf2::getYaw(point.orientation);

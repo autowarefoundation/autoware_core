@@ -22,8 +22,8 @@
 
 #include <vector>
 
-using Trajectory =
-  autoware::trajectory::Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>;
+using Trajectory = autoware::experimental::trajectory::Trajectory<
+  autoware_internal_planning_msgs::msg::PathPointWithLaneId>;
 
 autoware_internal_planning_msgs::msg::PathPointWithLaneId path_point_with_lane_id(
   double x, double y, uint8_t lane_id)
@@ -58,7 +58,7 @@ int main()
     return 1;
   }
 
-  const auto intervals = autoware::trajectory::find_intervals(
+  const auto intervals = autoware::experimental::trajectory::find_intervals(
     *trajectory, [](const autoware_internal_planning_msgs::msg::PathPointWithLaneId & point) {
       return point.lane_ids[0] == 1;
     });

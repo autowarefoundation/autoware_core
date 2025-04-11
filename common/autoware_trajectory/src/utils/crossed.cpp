@@ -17,7 +17,7 @@
 #include <optional>
 #include <vector>
 
-namespace autoware::trajectory::detail::impl
+namespace autoware::experimental::trajectory::detail::impl
 {
 
 std::optional<double> crossed_with_constraint_impl(
@@ -83,4 +83,4 @@ std::vector<double> crossed_with_constraint_impl(
   return intersections;
 }
 
-}  // namespace autoware::trajectory::detail::impl
+}  // namespace autoware::experimental::trajectory::detail::impl

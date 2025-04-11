@@ -24,7 +24,7 @@
 #include <utility>
 #include <vector>
 
-namespace autoware::trajectory::detail
+namespace autoware::experimental::trajectory::detail
 {
 
 // This function calculates base longitudinal and lateral lengths
@@ -301,4 +301,4 @@ tl::expected<ShiftElementWithInterval, ShiftError> shift_impl(
     static_cast<size_t>(shift_end_index)};
 }
 
-}  // namespace autoware::trajectory::detail
+}  // namespace autoware::experimental::trajectory::detail

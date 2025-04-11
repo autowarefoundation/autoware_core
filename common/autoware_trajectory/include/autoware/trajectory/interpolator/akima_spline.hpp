@@ -21,7 +21,7 @@
 
 #include <vector>
 
-namespace autoware::trajectory::interpolator
+namespace autoware::experimental::trajectory::interpolator
 {
 
 /**
@@ -99,6 +99,6 @@ public:
   size_t minimum_required_points() const override { return 5; }
 };
 
-}  // namespace autoware::trajectory::interpolator
+}  // namespace autoware::experimental::trajectory::interpolator
 
 #endif  // AUTOWARE__TRAJECTORY__INTERPOLATOR__AKIMA_SPLINE_HPP_

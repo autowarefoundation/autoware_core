@@ -19,7 +19,7 @@
 
 #include <utility>
 #include <vector>
-namespace autoware::trajectory::interpolator
+namespace autoware::experimental::trajectory::interpolator
 {
 
 template <typename T>
@@ -94,6 +94,6 @@ public:
 };
 
 }  // namespace detail
-}  // namespace autoware::trajectory::interpolator
+}  // namespace autoware::experimental::trajectory::interpolator
 
 #endif  // AUTOWARE__TRAJECTORY__INTERPOLATOR__DETAIL__NEAREST_NEIGHBOR_COMMON_IMPL_HPP_

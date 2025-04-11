@@ -45,10 +45,10 @@ int main()
   // Scatter Data
   plt.scatter(Args(bases, values));
 
-  using autoware::trajectory::interpolator::InterpolatorInterface;
+  using autoware::experimental::trajectory::interpolator::InterpolatorInterface;
   // Linear Interpolator
   {
-    using autoware::trajectory::interpolator::Linear;
+    using autoware::experimental::trajectory::interpolator::Linear;
     auto interpolator = *Linear::Builder{}.set_bases(bases).set_values(values).build();
     std::vector<double> x;
     std::vector<double> y;
@@ -61,7 +61,7 @@ int main()
 
   // AkimaSpline Interpolator
   {
-    using autoware::trajectory::interpolator::AkimaSpline;
+    using autoware::experimental::trajectory::interpolator::AkimaSpline;
 
     auto interpolator = *AkimaSpline::Builder{}.set_bases(bases).set_values(values).build();
     std::vector<double> x;
@@ -75,7 +75,7 @@ int main()
 
   // CubicSpline Interpolator
   {
-    using autoware::trajectory::interpolator::CubicSpline;
+    using autoware::experimental::trajectory::interpolator::CubicSpline;
     auto interpolator = *CubicSpline::Builder{}.set_bases(bases).set_values(values).build();
     std::vector<double> x;
     std::vector<double> y;
@@ -88,7 +88,7 @@ int main()
 
   // NearestNeighbor Interpolator
   {
-    using autoware::trajectory::interpolator::NearestNeighbor;
+    using autoware::experimental::trajectory::interpolator::NearestNeighbor;
     auto interpolator =
       *NearestNeighbor<double>::Builder{}.set_bases(bases).set_values(values).build();
     std::vector<double> x;
@@ -102,7 +102,7 @@ int main()
 
   // Stairstep Interpolator
   {
-    using autoware::trajectory::interpolator::Stairstep;
+    using autoware::experimental::trajectory::interpolator::Stairstep;
     auto interpolator = *Stairstep<double>::Builder{}.set_bases(bases).set_values(values).build();
     std::vector<double> x;
     std::vector<double> y;

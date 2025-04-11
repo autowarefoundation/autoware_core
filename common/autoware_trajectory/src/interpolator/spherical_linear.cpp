@@ -19,7 +19,7 @@
 #include <utility>
 #include <vector>
 
-namespace autoware::trajectory::interpolator
+namespace autoware::experimental::trajectory::interpolator
 {
 
 bool SphericalLinear::build_impl(
@@ -71,4 +71,4 @@ size_t SphericalLinear::minimum_required_points() const
 {
   return 2;
 }
-}  // namespace autoware::trajectory::interpolator
+}  // namespace autoware::experimental::trajectory::interpolator

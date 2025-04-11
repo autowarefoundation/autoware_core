@@ -38,7 +38,7 @@ geometry_msgs::msg::Pose pose(double x, double y)
   return p;
 }
 
-using autoware::trajectory::Trajectory;
+using autoware::experimental::trajectory::Trajectory;
 using ranges::to;
 using ranges::views::transform;
 
@@ -76,6 +76,8 @@ int main()
     pose(3.95, 4.01), pose(4.29, 3.68), pose(4.90, 3.25), pose(5.54, 3.10), pose(6.24, 3.18),
     pose(6.88, 3.54), pose(7.51, 4.25), pose(7.85, 4.93), pose(8.03, 5.73), pose(8.16, 6.52),
     pose(8.31, 7.28), pose(8.45, 7.93), pose(8.68, 8.45), pose(8.96, 8.96), pose(9.32, 9.36)};
+
+  using autoware::experimental::trajectory::Trajectory;
 
   auto trajectory = Trajectory<geometry_msgs::msg::Pose>::Builder{}.build(poses);
 

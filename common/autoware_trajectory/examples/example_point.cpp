@@ -62,8 +62,8 @@ int main()
     plt.scatter(Args(x, y), Kwargs("label"_a = "Original", "color"_a = "red"));
   }
 
-  using autoware::trajectory::Trajectory;
-  using autoware::trajectory::interpolator::CubicSpline;
+  using autoware::experimental::trajectory::Trajectory;
+  using autoware::experimental::trajectory::interpolator::CubicSpline;
 
   auto trajectory = Trajectory<geometry_msgs::msg::Point>::Builder()
                       .set_xy_interpolator<CubicSpline>()
@@ -93,7 +93,7 @@ int main()
     p.x = 5.37;
     p.y = 6.0;
 
-    double s = autoware::trajectory::closest(*trajectory, p);
+    double s = autoware::experimental::trajectory::closest(*trajectory, p);
 
     auto closest = trajectory->compute(s);
 
@@ -110,7 +110,7 @@ int main()
     line_string.push_back(lanelet::Point3d(lanelet::InvalId, 6.97, 6.36, 0.0));
     line_string.push_back(lanelet::Point3d(lanelet::InvalId, 9.23, 5.92, 0.0));
 
-    auto s = autoware::trajectory::crossed(*trajectory, line_string);
+    auto s = autoware::experimental::trajectory::crossed(*trajectory, line_string);
     if (s.empty()) {
       std::cerr << "Failed to find a crossing point" << std::endl;
       return 1;
@@ -138,7 +138,7 @@ int main()
     plt.scatter(Args(x, y), Kwargs("label"_a = "Restored", "color"_a = "orange", "marker"_a = "x"));
   }
   {
-    auto max_curvature = autoware::trajectory::max_curvature(*trajectory);
+    auto max_curvature = autoware::experimental::trajectory::max_curvature(*trajectory);
     std::cout << "Max curvature: " << max_curvature << std::endl;
   }
 

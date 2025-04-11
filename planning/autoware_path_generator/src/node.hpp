@@ -41,7 +41,7 @@ using autoware_vehicle_msgs::msg::HazardLightsCommand;
 using autoware_vehicle_msgs::msg::TurnIndicatorsCommand;
 using nav_msgs::msg::Odometry;
 using ::path_generator::Params;
-using Trajectory = autoware::trajectory::Trajectory<PathPointWithLaneId>;
+using Trajectory = autoware::experimental::trajectory::Trajectory<PathPointWithLaneId>;
 
 class PathGenerator : public rclcpp::Node
 {

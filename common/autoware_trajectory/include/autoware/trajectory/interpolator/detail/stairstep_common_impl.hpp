@@ -20,7 +20,7 @@
 #include <utility>
 #include <vector>
 
-namespace autoware::trajectory::interpolator
+namespace autoware::experimental::trajectory::interpolator
 {
 
 template <typename T>
@@ -93,6 +93,6 @@ public:
   [[nodiscard]] size_t minimum_required_points() const override { return 2; }
 };
 }  // namespace detail
-}  // namespace autoware::trajectory::interpolator
+}  // namespace autoware::experimental::trajectory::interpolator
 
 #endif  // AUTOWARE__TRAJECTORY__INTERPOLATOR__DETAIL__STAIRSTEP_COMMON_IMPL_HPP_

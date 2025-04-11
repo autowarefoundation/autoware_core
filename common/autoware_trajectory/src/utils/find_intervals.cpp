@@ -18,7 +18,7 @@
 #include <optional>
 #include <vector>
 
-namespace autoware::trajectory::detail::impl
+namespace autoware::experimental::trajectory::detail::impl
 {
 
 std::vector<Interval> find_intervals_impl(
@@ -39,4 +39,4 @@ std::vector<Interval> find_intervals_impl(
   return intervals;
 }
 
-}  // namespace autoware::trajectory::detail::impl
+}  // namespace autoware::experimental::trajectory::detail::impl
