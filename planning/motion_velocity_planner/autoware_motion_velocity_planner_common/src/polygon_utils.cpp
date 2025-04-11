@@ -244,17 +244,17 @@ std::vector<Polygon2d> create_one_step_polygons(
           idx_poly,
           autoware_utils::to_footprint(pose, front_length, rear_length, vehicle_width).outer());
         boost::geometry::append(
-          idx_poly,
-          autoware_utils::from_msg(autoware_utils::calc_offset_pose(
-                                     pose, front_length, vehicle_width * 0.5 + lat_margin, 0.0)
-                                     .position)
-            .to_2d());
+          idx_poly, autoware_utils::from_msg(
+                      autoware_utils::calc_offset_pose(
+                        pose, front_length, vehicle_width * 0.5 + lat_margin, 0.0)
+                        .position)
+                      .to_2d());
         boost::geometry::append(
-          idx_poly,
-          autoware_utils::from_msg(autoware_utils::calc_offset_pose(
-                                     pose, front_length, -vehicle_width * 0.5 - lat_margin, 0.0)
-                                     .position)
-            .to_2d());
+          idx_poly, autoware_utils::from_msg(
+                      autoware_utils::calc_offset_pose(
+                        pose, front_length, -vehicle_width * 0.5 - lat_margin, 0.0)
+                        .position)
+                      .to_2d());
       } else {
         boost::geometry::append(
           idx_poly, autoware_utils::to_footprint(

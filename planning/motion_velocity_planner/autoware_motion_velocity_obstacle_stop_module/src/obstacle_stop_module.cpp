@@ -126,8 +126,9 @@ double calc_time_to_reach_collision_point(
   const double min_velocity_to_reach_collision_point)
 {
   const double dist_from_ego_to_obstacle =
-    std::abs(autoware::motion_utils::calcSignedArcLength(
-      traj_points, odometry.pose.pose.position, collision_point)) -
+    std::abs(
+      autoware::motion_utils::calcSignedArcLength(
+        traj_points, odometry.pose.pose.position, collision_point)) -
     dist_to_bumper;
   return dist_from_ego_to_obstacle /
          std::max(min_velocity_to_reach_collision_point, std::abs(odometry.twist.twist.linear.x));
