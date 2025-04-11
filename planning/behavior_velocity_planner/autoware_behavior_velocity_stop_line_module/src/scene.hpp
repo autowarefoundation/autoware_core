@@ -85,8 +85,8 @@ public:
    * @return Pair of ego position and optional stop point.
    */
   std::pair<double, std::optional<double>> getEgoAndStopPoint(
-    const Trajectory & trajectory, const geometry_msgs::msg::Pose & ego_pose,
-    const State & state) const;
+    const Trajectory & trajectory, const PathWithLaneId & path,
+    const geometry_msgs::msg::Pose & ego_pose, const State & state) const;
 
   /**
    * @brief Update the state and stopped time of the module.

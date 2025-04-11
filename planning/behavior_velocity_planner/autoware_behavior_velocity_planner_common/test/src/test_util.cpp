@@ -278,24 +278,6 @@ TEST(PlanningUtilsTest, ToRosPoints)
   EXPECT_EQ(points[1].z, 6.0);
 }
 
-// Test for extendLine
-TEST(PlanningUtilsTest, ExtendLine)
-{
-  lanelet::ConstPoint3d point1(lanelet::InvalId, 0.0, 0.0, 0.0);
-  lanelet::ConstPoint3d point2(lanelet::InvalId, 1.0, 1.0, 0.0);
-  double length = 1.0;
-
-  auto extended_line = extendLine(point1, point2, length);
-
-  ASSERT_EQ(extended_line.size(), 2);  // Verify the line has two points
-
-  // Check the extended line coordinates
-  EXPECT_NEAR(extended_line[0].x(), -0.707, 0.001);  // Extended in the reverse direction
-  EXPECT_NEAR(extended_line[0].y(), -0.707, 0.001);
-  EXPECT_NEAR(extended_line[1].x(), 1.707, 0.001);  // Extended in the forward direction
-  EXPECT_NEAR(extended_line[1].y(), 1.707, 0.001);
-}
-
 TEST(PlanningUtilsTest, getConstLaneletsFromIds)
 {
   const auto package_dir = ament_index_cpp::get_package_share_directory("autoware_test_utils");
