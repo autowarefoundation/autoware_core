@@ -24,12 +24,18 @@
 #include <string>
 #include <utility>
 
-inline lanelet::LaneletMapConstPtr load_mgrs_coordinate_map(const std::string & path)
+template <typename LaneletMapPtrType>
+LaneletMapPtrType load_mgrs_coordinate_map(const std::string & path)
 {
   lanelet::ErrorMessages errors{};
   lanelet::projection::MGRSProjector projector;
-  auto lanelet_map_ptr_mut = lanelet::load(path, projector, &errors);
-  return lanelet::LaneletMapConstPtr{std::move(lanelet_map_ptr_mut)};
+  auto lanelet_map_ptr = lanelet::load(path, projector, &errors);
+
+  if constexpr (std::is_const_v<std::remove_pointer_t<typename LaneletMapPtrType::element_type>>) {
+    return lanelet::LaneletMapConstPtr{std::move(lanelet_map_ptr)};
+  } else {
+    return lanelet::LaneletMapPtr{std::move(lanelet_map_ptr)};
+  }
 }
 
 #endif  // MAP_LOADER_HPP_

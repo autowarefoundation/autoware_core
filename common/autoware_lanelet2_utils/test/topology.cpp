@@ -44,7 +44,8 @@ protected:
       "sample_map";
     const auto intersection_crossing_map_path = sample_map_dir / "intersection" / "crossing.osm";
 
-    lanelet_map_ptr_ = load_mgrs_coordinate_map(intersection_crossing_map_path.string());
+    lanelet_map_ptr_ = load_mgrs_coordinate_map<lanelet::LaneletMapConstPtr>(
+      intersection_crossing_map_path.string());
     routing_graph_ptr_ = lanelet2_utils::instantiate_routing_graph(lanelet_map_ptr_);
   }
 };
@@ -251,7 +252,8 @@ protected:
     const auto intersection_crossing_map_path =
       sample_map_dir / "intersection" / "crossing_inverse.osm";
 
-    lanelet_map_ptr_ = load_mgrs_coordinate_map(intersection_crossing_map_path.string());
+    lanelet_map_ptr_ = load_mgrs_coordinate_map<lanelet::LaneletMapConstPtr>(
+      intersection_crossing_map_path.string());
     routing_graph_ptr_ = lanelet2_utils::instantiate_routing_graph(lanelet_map_ptr_);
   }
 };
