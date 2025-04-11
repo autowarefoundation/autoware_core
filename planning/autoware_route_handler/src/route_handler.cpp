@@ -1702,8 +1702,9 @@ void RouteHandler::removeOverlappedCenterlineWithWaypoints(
   int target_lanelet_sequence_index = static_cast<int>(piecewise_waypoints_lanelet_sequence_index);
   while (isIndexWithinVector(lanelet_sequence, target_lanelet_sequence_index)) {
     auto & target_piecewise_ref_points = piecewise_ref_points_vec.at(target_lanelet_sequence_index);
-    const double target_lanelet_arc_length = boost::geometry::length(lanelet::utils::to2D(
-      lanelet_sequence.at(target_lanelet_sequence_index).centerline().basicLineString()));
+    const double target_lanelet_arc_length = boost::geometry::length(
+      lanelet::utils::to2D(
+        lanelet_sequence.at(target_lanelet_sequence_index).centerline().basicLineString()));
 
     // search overlapped ref points in the target lanelet
     std::vector<size_t> overlapped_ref_points_indices{};

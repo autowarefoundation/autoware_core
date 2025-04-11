@@ -146,14 +146,16 @@ public:
     InterpolationResult>
   {
     if (bases.size() != values.size()) {
-      return tl::unexpected(InterpolationFailure{
-        "base size " + std::to_string(bases.size()) + " and value size " +
-        std::to_string(values.size()) + " are different"});
+      return tl::unexpected(
+        InterpolationFailure{
+          "base size " + std::to_string(bases.size()) + " and value size " +
+          std::to_string(values.size()) + " are different"});
     }
     if (const auto minimum_required = minimum_required_points(); bases.size() < minimum_required) {
-      return tl::unexpected(InterpolationFailure{
-        "base size " + std::to_string(bases.size()) + " is less than minimum required " +
-        std::to_string(minimum_required)});
+      return tl::unexpected(
+        InterpolationFailure{
+          "base size " + std::to_string(bases.size()) + " is less than minimum required " +
+          std::to_string(minimum_required)});
     }
     if (!build_impl(std::forward<BaseVectorT>(bases), std::forward<ValueVectorT>(values))) {
       return tl::unexpected(

@@ -27,8 +27,9 @@ using autoware::motion_utils::findNearestIndex;
 
 SimplePurePursuitNode::SimplePurePursuitNode(const rclcpp::NodeOptions & node_options)
 : Node("simple_pure_pursuit", node_options),
-  pub_control_command_(create_publisher<autoware_control_msgs::msg::Control>(
-    "~/output/control_command", rclcpp::QoS(1).transient_local())),
+  pub_control_command_(
+    create_publisher<autoware_control_msgs::msg::Control>(
+      "~/output/control_command", rclcpp::QoS(1).transient_local())),
   vehicle_info_(autoware::vehicle_info_utils::VehicleInfoUtils(*this).getVehicleInfo()),
   lookahead_gain_(declare_parameter<float>("lookahead_gain")),
   lookahead_min_distance_(declare_parameter<float>("lookahead_min_distance")),
