@@ -20,7 +20,7 @@
 #include <memory>
 #include <vector>
 
-namespace autoware::trajectory::interpolator
+namespace autoware::experimental::trajectory::interpolator
 {
 /**
  * @brief Template class for interpolation.
@@ -125,6 +125,6 @@ public:
   virtual std::shared_ptr<InterpolatorInterface<double>> clone() const = 0;
 };
 
-}  // namespace autoware::trajectory::interpolator
+}  // namespace autoware::experimental::trajectory::interpolator
 
 #endif  // AUTOWARE__TRAJECTORY__INTERPOLATOR__INTERPOLATOR_HPP_

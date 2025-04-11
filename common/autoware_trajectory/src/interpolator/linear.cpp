@@ -19,7 +19,7 @@
 #include <utility>
 #include <vector>
 
-namespace autoware::trajectory::interpolator
+namespace autoware::experimental::trajectory::interpolator
 {
 
 bool Linear::build_impl(const std::vector<double> & bases, const std::vector<double> & values)
@@ -67,4 +67,4 @@ size_t Linear::minimum_required_points() const
 {
   return 2;
 }
-}  // namespace autoware::trajectory::interpolator
+}  // namespace autoware::experimental::trajectory::interpolator

@@ -45,9 +45,7 @@ StopLineModule::StopLineModule(
 
 bool StopLineModule::modifyPathVelocity(PathWithLaneId * path)
 {
-  auto trajectory =
-    trajectory::Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>::Builder{}
-      .build(path->points);
+  auto trajectory = Trajectory::Builder{}.build(path->points);
 
   if (!trajectory) {
     return true;
@@ -86,7 +84,7 @@ std::pair<double, std::optional<double>> StopLineModule::getEgoAndStopPoint(
   const Trajectory & trajectory, const geometry_msgs::msg::Pose & ego_pose,
   const State & state) const
 {
-  const double ego_s = autoware::trajectory::closest(trajectory, ego_pose);
+  const double ego_s = autoware::experimental::trajectory::closest(trajectory, ego_pose);
   std::optional<double> stop_point_s;
 
   switch (state) {
@@ -97,7 +95,7 @@ std::pair<double, std::optional<double>> StopLineModule::getEgoAndStopPoint(
 
       // Calculate intersection with stop line
       const auto trajectory_stop_line_intersection =
-        autoware::trajectory::crossed(trajectory, stop_line);
+        autoware::experimental::trajectory::crossed(trajectory, stop_line);
 
       // If no collision found, do nothing
       if (trajectory_stop_line_intersection.size() == 0) {

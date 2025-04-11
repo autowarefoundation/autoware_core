@@ -22,7 +22,7 @@
 #include <utility>
 #include <vector>
 
-namespace autoware::trajectory::interpolator::detail
+namespace autoware::experimental::trajectory::interpolator::detail
 {
 /**
  * @brief Base class for interpolation implementations.
@@ -217,6 +217,6 @@ public:
     return x;
   }
 };
-}  // namespace autoware::trajectory::interpolator::detail
+}  // namespace autoware::experimental::trajectory::interpolator::detail
 
 #endif  // AUTOWARE__TRAJECTORY__INTERPOLATOR__DETAIL__INTERPOLATOR_COMMON_INTERFACE_HPP_

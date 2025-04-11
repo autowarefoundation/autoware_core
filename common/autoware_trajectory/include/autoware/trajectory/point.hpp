@@ -28,7 +28,7 @@
 #include <utility>
 #include <vector>
 
-namespace autoware::trajectory
+namespace autoware::experimental::trajectory
 {
 /**
  * @brief Trajectory class for geometry_msgs::msg::Point
@@ -235,6 +235,6 @@ public:
   };
 };
 
-}  // namespace autoware::trajectory
+}  // namespace autoware::experimental::trajectory
 
 #endif  // AUTOWARE__TRAJECTORY__POINT_HPP_

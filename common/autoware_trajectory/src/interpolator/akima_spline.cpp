@@ -19,7 +19,7 @@
 #include <cmath>
 #include <utility>
 #include <vector>
-namespace autoware::trajectory::interpolator
+namespace autoware::experimental::trajectory::interpolator
 {
 
 void AkimaSpline::compute_parameters(
@@ -99,4 +99,4 @@ double AkimaSpline::compute_second_derivative_impl(const double s) const
   return 2 * c_[i] + 6 * d_[i] * dx;
 }
 
-}  // namespace autoware::trajectory::interpolator
+}  // namespace autoware::experimental::trajectory::interpolator

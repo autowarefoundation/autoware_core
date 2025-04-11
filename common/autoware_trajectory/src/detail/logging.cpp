@@ -14,7 +14,7 @@
 
 #include "autoware/trajectory/detail/logging.hpp"
 
-namespace autoware::trajectory
+namespace autoware::experimental::trajectory
 {
 
 rclcpp::Logger & get_logger()
@@ -29,4 +29,4 @@ rclcpp::Clock & get_clock()
   return clock;
 }
 
-}  // namespace autoware::trajectory
+}  // namespace autoware::experimental::trajectory

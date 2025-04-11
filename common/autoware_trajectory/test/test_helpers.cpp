@@ -20,7 +20,7 @@
 
 TEST(TestHelpers, fill_bases_with_new_points)
 {
-  using autoware::trajectory::detail::fill_bases;
+  using autoware::experimental::trajectory::detail::fill_bases;
 
   std::vector<double> x = {0.0, 1.0, 2.0, 3.0};
   size_t min_points = 9;
@@ -37,7 +37,7 @@ TEST(TestHelpers, fill_bases_with_new_points)
 
 TEST(TestHelpers, fill_bases_as_is_1)
 {
-  using autoware::trajectory::detail::fill_bases;
+  using autoware::experimental::trajectory::detail::fill_bases;
 
   std::vector<double> x = {0.0, 1.0, 2.0, 3.0};
   size_t min_points = 4;
@@ -53,7 +53,7 @@ TEST(TestHelpers, fill_bases_as_is_1)
 
 TEST(TestHelpers, fill_bases_as_is_2)
 {
-  using autoware::trajectory::detail::fill_bases;
+  using autoware::experimental::trajectory::detail::fill_bases;
 
   std::vector<double> x = {0.0, 1.0, 2.0, 3.0};
   size_t min_points = 3;
@@ -69,7 +69,7 @@ TEST(TestHelpers, fill_bases_as_is_2)
 
 TEST(TestHelpers, crop_bases)
 {
-  using autoware::trajectory::detail::crop_bases;
+  using autoware::experimental::trajectory::detail::crop_bases;
 
   std::vector<double> x = {0.0, 1.0, 2.0, 3.0, 4.0};
   double start = 1.5;

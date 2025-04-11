@@ -242,8 +242,8 @@ $$
 
 You can also specify interpolation method to `Builder{}` before calling `.build(points)`
 
-```cpp
-using autoware::trajectory::interpolator::CubicSpline;
+  ```cpp
+  using autoware::experimental::trajectory::interpolator::CubicSpline;
 
 std::optional<Trajectory<autoware_planning_msgs::msg::PathPoint>> trajectory =
   Trajectory<autoware_planning_msgs::msg::PathPoint>::Builder{}

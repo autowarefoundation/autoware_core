@@ -17,7 +17,7 @@
 
 #include "autoware/trajectory/interpolator/detail/nearest_neighbor_common_impl.hpp"
 
-namespace autoware::trajectory::interpolator
+namespace autoware::experimental::trajectory::interpolator
 {
 
 /**
@@ -73,6 +73,6 @@ public:
   NearestNeighbor() = default;
 };
 
-}  // namespace autoware::trajectory::interpolator
+}  // namespace autoware::experimental::trajectory::interpolator
 
 #endif  // AUTOWARE__TRAJECTORY__INTERPOLATOR__NEAREST_NEIGHBOR_HPP_

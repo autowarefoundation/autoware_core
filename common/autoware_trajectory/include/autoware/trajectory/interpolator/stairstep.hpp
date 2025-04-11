@@ -17,7 +17,7 @@
 
 #include "autoware/trajectory/interpolator/detail/stairstep_common_impl.hpp"
 
-namespace autoware::trajectory::interpolator
+namespace autoware::experimental::trajectory::interpolator
 {
 
 /**
@@ -73,6 +73,6 @@ public:
   Stairstep() = default;
 };
 
-}  // namespace autoware::trajectory::interpolator
+}  // namespace autoware::experimental::trajectory::interpolator
 
 #endif  // AUTOWARE__TRAJECTORY__INTERPOLATOR__STAIRSTEP_HPP_
