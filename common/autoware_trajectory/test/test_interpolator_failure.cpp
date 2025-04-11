@@ -30,7 +30,7 @@ TEST(Point, PointFailure)
 
   std::vector<geometry_msgs::msg::Point> points = {pose(0.49, 0.59), pose(0.61, 1.22)};
 
-  using autoware::trajectory::Trajectory;
+  using autoware::experimental::trajectory::Trajectory;
 
   auto trajectory = Trajectory<geometry_msgs::msg::Point>();
   const auto result = trajectory.build(points);
@@ -49,7 +49,7 @@ TEST(Pose, PoseFailure)
 
   std::vector<geometry_msgs::msg::Pose> points = {pose(0.49, 0.59), pose(0.61, 1.22)};
 
-  using autoware::trajectory::Trajectory;
+  using autoware::experimental::trajectory::Trajectory;
 
   auto trajectory = Trajectory<geometry_msgs::msg::Pose>();
   const auto result = trajectory.build(points);
@@ -68,7 +68,7 @@ TEST(PathPoint, PathPointFailure)
 
   std::vector<autoware_planning_msgs::msg::PathPoint> points = {pose(0.49, 0.59), pose(0.61, 1.22)};
 
-  using autoware::trajectory::Trajectory;
+  using autoware::experimental::trajectory::Trajectory;
 
   auto trajectory = Trajectory<autoware_planning_msgs::msg::PathPoint>();
   const auto result = trajectory.build(points);
@@ -89,7 +89,7 @@ TEST(PathPointWithLaneId, PathPointWithLaneIdFailure)
   std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points = {
     pose(0.49, 0.59), pose(0.61, 1.22)};
 
-  using autoware::trajectory::Trajectory;
+  using autoware::experimental::trajectory::Trajectory;
 
   auto trajectory = Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>();
   const auto result = trajectory.build(points);
@@ -108,7 +108,7 @@ TEST(TrajectoryPoint, TrajectoryPointFailure)
   std::vector<autoware_planning_msgs::msg::TrajectoryPoint> points = {
     pose(0.49, 0.59), pose(0.61, 1.22)};
 
-  using autoware::trajectory::Trajectory;
+  using autoware::experimental::trajectory::Trajectory;
 
   auto trajectory = Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>();
   const auto result = trajectory.build(points);

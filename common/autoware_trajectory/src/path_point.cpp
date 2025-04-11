@@ -24,7 +24,7 @@
 #include <memory>
 #include <utility>
 #include <vector>
-namespace autoware::trajectory
+namespace autoware::experimental::trajectory
 {
 
 using PointType = autoware_planning_msgs::msg::PathPoint;
@@ -207,4 +207,4 @@ Trajectory<PointType>::Builder::build(const std::vector<PointType> & points)
   return tl::unexpected(trajectory_result.error());
 }
 
-}  // namespace autoware::trajectory
+}  // namespace autoware::experimental::trajectory

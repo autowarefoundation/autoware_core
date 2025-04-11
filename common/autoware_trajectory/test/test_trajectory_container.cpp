@@ -23,8 +23,8 @@
 #include <utility>
 #include <vector>
 
-using Trajectory =
-  autoware::trajectory::Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>;
+using Trajectory = autoware::experimental::trajectory::Trajectory<
+  autoware_internal_planning_msgs::msg::PathPointWithLaneId>;
 
 autoware_internal_planning_msgs::msg::PathPointWithLaneId path_point_with_lane_id(
   double x, double y, uint8_t lane_id)
@@ -455,7 +455,7 @@ TEST_F(TrajectoryTest, curvature)
 
 TEST_F(TrajectoryTest, restore)
 {
-  using autoware::trajectory::Trajectory;
+  using autoware::experimental::trajectory::Trajectory;
   trajectory->longitudinal_velocity_mps().range(4.0, trajectory->length()).set(5.0);
   auto points = trajectory->restore(0);
   EXPECT_EQ(11, points.size());
@@ -467,7 +467,7 @@ TEST_F(TrajectoryTest, crossed)
   line_string.push_back(lanelet::Point3d(lanelet::InvalId, 0.0, 10.0, 0.0));
   line_string.push_back(lanelet::Point3d(lanelet::InvalId, 10.0, 0.0, 0.0));
 
-  auto crossed_point = autoware::trajectory::crossed(*trajectory, line_string);
+  auto crossed_point = autoware::experimental::trajectory::crossed(*trajectory, line_string);
   ASSERT_EQ(crossed_point.size(), 1);
 
   EXPECT_LT(0.0, crossed_point.at(0));
@@ -480,7 +480,8 @@ TEST_F(TrajectoryTest, closest)
   pose.position.x = 5.0;
   pose.position.y = 5.0;
 
-  auto closest_pose = trajectory->compute(autoware::trajectory::closest(*trajectory, pose));
+  auto closest_pose =
+    trajectory->compute(autoware::experimental::trajectory::closest(*trajectory, pose));
 
   double distance = std::hypot(
     closest_pose.point.pose.position.x - pose.position.x,
@@ -516,7 +517,7 @@ TEST_F(TrajectoryTest, crop)
 
 TEST_F(TrajectoryTest, find_interval)
 {
-  auto intervals = autoware::trajectory::find_intervals(
+  auto intervals = autoware::experimental::trajectory::find_intervals(
     *trajectory, [](const autoware_internal_planning_msgs::msg::PathPointWithLaneId & point) {
       return point.lane_ids[0] == 1;
     });
@@ -528,6 +529,6 @@ TEST_F(TrajectoryTest, find_interval)
 
 TEST_F(TrajectoryTest, max_curvature)
 {
-  double max_curvature = autoware::trajectory::max_curvature(*trajectory);
+  double max_curvature = autoware::experimental::trajectory::max_curvature(*trajectory);
   EXPECT_LT(0, max_curvature);
 }
