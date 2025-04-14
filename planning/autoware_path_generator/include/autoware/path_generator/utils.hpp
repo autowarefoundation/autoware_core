@@ -174,12 +174,15 @@ const geometry_msgs::msg::Pose refine_goal(
 
 /**
  * @brief Prepare the point before the goal point.
+ * @param input Input path.
  * @param goal Goal pose.
  * @param lanes Lanelets.
- * @return Pre-goal point.
+ * @param current_ego_pose Current pose of ego vehicle.
+ * @return Pre-goal point (std::nullopt if no pre-goal point is found).
  */
-PathPointWithLaneId prepare_pre_goal(
-  const geometry_msgs::msg::Pose & goal, const lanelet::ConstLanelets & lanes);
+std::optional<PathPointWithLaneId> prepare_pre_goal(
+  const PathWithLaneId & input, const geometry_msgs::msg::Pose & goal,
+  const lanelet::ConstLanelets & lanes, const geometry_msgs::msg::Pose & current_ego_pose);
 
 /**
  * @brief Get the index of the point closest to the circumference of the circle whose center is the
@@ -210,11 +213,12 @@ std::optional<PathWithLaneId> get_path_up_to_just_before_pre_goal(
  * @param input Input path.
  * @param refined_goal Goal pose.
  * @param planner_data Planner data.
+ * @param current_ego_pose Current pose of ego vehicle.
  * @return Recreated path
  */
 PathWithLaneId refine_path_for_goal(
   const PathWithLaneId & input, const geometry_msgs::msg::Pose & goal,
-  const PlannerData & planner_data);
+  const PlannerData & planner_data, const geometry_msgs::msg::Pose & current_ego_pose);
 
 /**
  * @brief Extract lanelets from the path.
@@ -246,11 +250,12 @@ bool is_path_valid(const PathWithLaneId & refined_path, const PlannerData & plan
  * @param path Input path.
  * @param planner_data Planner data.
  * @param refine_goal_search_radius_range Refine goal search radius range.
+ * @param current_ego_pose Current pose of ego vehicle.
  * @return Modified path
  */
 PathWithLaneId modify_path_for_smooth_goal_connection(
   const PathWithLaneId & path, const PlannerData & planner_data,
-  const double refine_goal_search_radius_range);
+  const double refine_goal_search_radius_range, const geometry_msgs::msg::Pose & current_ego_pose);
 
 /**
  * @brief get earliest turn signal based on turn direction specified for lanelets

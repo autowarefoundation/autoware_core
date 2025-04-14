@@ -60,10 +60,9 @@ PathGenerator::PathGenerator(const rclcpp::NodeOptions & node_options)
 
   const auto params = param_listener_->get_params();
 
-  // Ensure that the refine_goal_search_radius_range and search_radius_decrement must be positive
-  if (params.refine_goal_search_radius_range <= 0 || params.search_radius_decrement <= 0) {
-    throw std::runtime_error(
-      "refine_goal_search_radius_range and search_radius_decrement must be positive");
+  // Ensure that the refine_goal_search_radius_range must be positive
+  if (params.refine_goal_search_radius_range <= 0) {
+    throw std::runtime_error("refine_goal_search_radius_range must be positive");
   }
 
   timer_ = rclcpp::create_timer(
@@ -280,12 +279,12 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
     return s_end;
   }();
 
-  return generate_path(lanelets, s_start, s_end, params);
+  return generate_path(lanelets, s_start, s_end, current_pose, params);
 }
 
 std::optional<PathWithLaneId> PathGenerator::generate_path(
   const lanelet::LaneletSequence & lanelet_sequence, const double s_start, const double s_end,
-  const Params & params) const
+  const geometry_msgs::msg::Pose & current_pose, const Params & params) const
 {
   std::vector<PathPointWithLaneId> path_points_with_lane_id{};
 
@@ -405,7 +404,7 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
   // Attach orientation for all the points
   trajectory->align_orientation_with_trajectory_direction();
 
-  // Refine the trajectory by cropping
+  // Crop the path to the goal point: center line after the goal points are removed
   trajectory->crop(
     s_offset + s_start -
       get_arc_length_along_centerline(
@@ -417,21 +416,25 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
   PathWithLaneId preprocessed_path{};
   preprocessed_path.points = trajectory->restore();
 
-  PathWithLaneId finalized_path_with_lane_id{};
-
   // Check if the goal point is in the search range
   // Note: We only see if the goal is approaching the tail of the path.
-  const auto distance_to_goal = autoware_utils::calc_distance2d(
+  const auto distance_between_goal_and_path_end = autoware_utils::calc_distance2d(
     preprocessed_path.points.back().point.pose, planner_data_.goal_pose);
 
-  if (distance_to_goal < params.refine_goal_search_radius_range) {
+  // Check if the ego vehicle is over the goal point
+  const bool is_goal_over =
+    autoware_utils::inverse_transform_point(planner_data_.goal_pose.position, current_pose).x < 0;
+
+  PathWithLaneId finalized_path_with_lane_id{};
+
+  // Check if the goal is approaching the tail of the path and the goal is not over the path
+  if (
+    distance_between_goal_and_path_end < params.refine_goal_search_radius_range && !is_goal_over) {
     // Perform smooth goal connection
     const auto params = param_listener_->get_params();
-
     finalized_path_with_lane_id = utils::modify_path_for_smooth_goal_connection(
-      std::move(preprocessed_path), planner_data_, params.refine_goal_search_radius_range);
-  } else {
-    finalized_path_with_lane_id = std::move(preprocessed_path);
+      std::move(preprocessed_path), planner_data_, params.refine_goal_search_radius_range,
+      current_pose);
   }
 
   // check if the path is empty
