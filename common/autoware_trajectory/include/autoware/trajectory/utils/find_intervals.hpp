@@ -22,7 +22,7 @@
 #include <utility>
 #include <vector>
 
-namespace autoware::trajectory
+namespace autoware::experimental::trajectory
 {
 
 /**
@@ -64,7 +64,7 @@ template <class TrajectoryPointType, class Constraint>
 std::vector<Interval> find_intervals(
   const Trajectory<TrajectoryPointType> & trajectory, Constraint && constraint)
 {
-  using autoware::trajectory::detail::to_point;
+  using autoware::experimental::trajectory::detail::to_point;
 
   return detail::impl::find_intervals_impl(
     trajectory.get_underlying_bases(),
@@ -73,6 +73,6 @@ std::vector<Interval> find_intervals(
     });
 }
 
-}  // namespace autoware::trajectory
+}  // namespace autoware::experimental::trajectory
 
 #endif  // AUTOWARE__TRAJECTORY__UTILS__FIND_INTERVALS_HPP_

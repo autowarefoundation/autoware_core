@@ -17,7 +17,7 @@
 
 #include "autoware/trajectory/forward.hpp"
 
-namespace autoware::trajectory
+namespace autoware::experimental::trajectory
 {
 
 template <class PointType>
@@ -28,6 +28,6 @@ trajectory::Trajectory<PointType> crop(
   return trajectory;
 }
 
-}  // namespace autoware::trajectory
+}  // namespace autoware::experimental::trajectory
 
 #endif  // AUTOWARE__TRAJECTORY__UTILS__CROP_HPP_

@@ -18,7 +18,7 @@
 #include <cstddef>
 #include <vector>
 
-namespace autoware::trajectory::detail
+namespace autoware::experimental::trajectory::detail
 {
 inline namespace helpers
 {
@@ -42,6 +42,6 @@ std::vector<double> fill_bases(const std::vector<double> & x, const size_t outpu
 
 std::vector<double> crop_bases(const std::vector<double> & x, const double start, const double end);
 }  // namespace helpers
-}  // namespace autoware::trajectory::detail
+}  // namespace autoware::experimental::trajectory::detail
 
 #endif  // AUTOWARE__TRAJECTORY__DETAIL__HELPERS_HPP_

@@ -21,7 +21,7 @@
 
 #include <vector>
 
-namespace autoware::trajectory::interpolator
+namespace autoware::experimental::trajectory::interpolator
 {
 
 /**
@@ -102,6 +102,6 @@ public:
   size_t minimum_required_points() const override { return 4; }
 };
 
-}  // namespace autoware::trajectory::interpolator
+}  // namespace autoware::experimental::trajectory::interpolator
 
 #endif  // AUTOWARE__TRAJECTORY__INTERPOLATOR__CUBIC_SPLINE_HPP_

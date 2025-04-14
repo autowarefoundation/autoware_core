@@ -22,7 +22,7 @@
 #include <utility>
 #include <vector>
 
-namespace autoware::trajectory
+namespace autoware::experimental::trajectory
 {
 namespace detail::impl
 {
@@ -64,7 +64,7 @@ template <class TrajectoryPointType, class LineStringType, class Constraint>
   const trajectory::Trajectory<TrajectoryPointType> & trajectory, const LineStringType & linestring,
   const Constraint & constraint)
 {
-  using autoware::trajectory::detail::to_point;
+  using autoware::experimental::trajectory::detail::to_point;
 
   std::function<Eigen::Vector2d(const double & s)> trajectory_compute =
     [&trajectory](const double & s) {
@@ -113,6 +113,6 @@ template <class TrajectoryPointType, class LineStringType>
     trajectory, linestring, [](const TrajectoryPointType &) { return true; });
 }
 
-}  // namespace autoware::trajectory
+}  // namespace autoware::experimental::trajectory
 
 #endif  // AUTOWARE__TRAJECTORY__UTILS__CROSSED_HPP_
