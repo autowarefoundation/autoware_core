@@ -53,6 +53,26 @@ TEST(TrajectoryCreatorTest, create)
   }
 }
 
+TEST(TrajectoryCreatorTest, almost_same_points_are_given)
+{
+  const double nano_meter = 1e-9;
+  std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points{
+    path_point_with_lane_id(0.00, 0.00, 0), path_point_with_lane_id(0.81, 1.68, 0),
+    path_point_with_lane_id(1.65, 2.98, 0),
+    path_point_with_lane_id(1.65 + nano_meter, 2.98 + nano_meter, 1),
+    path_point_with_lane_id(1.65 + 2 * nano_meter, 2.98 + 2 * nano_meter, 1)};
+  auto trajectory = Trajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory);
+  {
+    const auto restored = trajectory->restore(3);
+    EXPECT_EQ(restored.size(), 3);
+  }
+  {
+    const auto restored = trajectory->restore(4);
+    EXPECT_EQ(restored.size(), 4);
+  }
+}
+
 class TrajectoryTest : public ::testing::Test
 {
 public:
