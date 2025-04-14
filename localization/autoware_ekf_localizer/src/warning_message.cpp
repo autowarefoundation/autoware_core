@@ -57,4 +57,16 @@ std::string mahalanobis_warning_message(const double distance, const double max_
   return fmt::format(s, distance, max_distance);
 }
 
+std::string large_ekf_dt_waring_message(const double ekf_dt)
+{
+  const std::string s = "Large ekf_dt_ detected!! ({:.4f} sec) Capped to 10.0 seconds";
+  return fmt::format(s, ekf_dt);
+}
+
+std::string too_slow_ekf_dt_waring_message(const double ekf_dt)
+{
+  const std::string s = "EKF period may be too slow to finish pose smoothing!! ({:.4f} sec)";
+  return fmt::format(s, ekf_dt);
+}
+
 }  // namespace autoware::ekf_localizer
