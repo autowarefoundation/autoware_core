@@ -331,14 +331,9 @@ void MotionVelocityPlannerNode::insert_stop(
   autoware_planning_msgs::msg::Trajectory & trajectory,
   const geometry_msgs::msg::Point & stop_point) const
 {
-  const auto seg_idx =
-    autoware::motion_utils::findNearestSegmentIndex(trajectory.points, stop_point);
-  const auto insert_idx =
-    autoware::motion_utils::insertTargetPoint(seg_idx, stop_point, trajectory.points);
-  if (insert_idx) {
-    for (auto idx = *insert_idx; idx < trajectory.points.size(); ++idx)
-      trajectory.points[idx].longitudinal_velocity_mps = 0.0;
-  } else {
+  const auto length = motion_utils::calcSignedArcLength(trajectory.points, 0, stop_point);
+  const auto inserted_idx = motion_utils::insertStopPoint(length, trajectory.points);
+  if (!inserted_idx) {
     RCLCPP_WARN(get_logger(), "Failed to insert stop point");
   }
 }
