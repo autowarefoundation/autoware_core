@@ -19,9 +19,9 @@ The interpolator class interpolates given `bases` and `values`. Following interp
 
 The builder internally executes interpolation and return the result in the form of `expected<T, E>`. If successful, it contains the interpolator object.
 
-```cpp title="./examples/example_readme.cpp:48:67"
+```cpp title="./examples/example_readme.cpp:53:68"
 --8<--
-common/autoware_trajectory/examples/example_readme.cpp:48:67
+common/autoware_trajectory/examples/example_readme.cpp:53:68
 --8<--
 ```
 
@@ -287,8 +287,8 @@ Set 3.0[m] ~ 5.0[m] part of velocity to 0.0
 trajectory->longitudinal_velocity_mps(3.0, 5.0) = 0.0;
 ```
 
-- Restore points
+### Restore points
 
-  ```cpp
-  std::vector<autoware_planning_msgs::msg::PathPoint> points = trajectory->restore();
-  ```
+```cpp
+std::vector<autoware_planning_msgs::msg::PathPoint> points = trajectory->restore();
+```
