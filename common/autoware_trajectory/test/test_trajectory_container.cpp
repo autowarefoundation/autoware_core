@@ -532,3 +532,11 @@ TEST_F(TrajectoryTest, max_curvature)
   double max_curvature = autoware::experimental::trajectory::max_curvature(*trajectory);
   EXPECT_LT(0, max_curvature);
 }
+
+TEST_F(TrajectoryTest, get_contained_lane_ids)
+{
+  auto contained_lane_ids = trajectory->get_contained_lane_ids();
+  EXPECT_EQ(2, contained_lane_ids.size());
+  EXPECT_EQ(0, contained_lane_ids[0]);
+  EXPECT_EQ(1, contained_lane_ids[1]);
+}
