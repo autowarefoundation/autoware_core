@@ -229,6 +229,12 @@ public:
    * @return The interpolated value.
    */
   T compute(const double x) const { return interpolator_->compute(x); }
+
+  /**
+   * @brief Get the underlying data of the array.
+   * @return A pair containing the axis and values.
+   */
+  std::pair<std::vector<double>, std::vector<T>> get_data() const { return {bases_, values_}; }
 };
 
 }  // namespace autoware::experimental::trajectory::detail
