@@ -278,6 +278,72 @@ TEST(PlanningUtilsTest, ToRosPoints)
   EXPECT_EQ(points[1].z, 6.0);
 }
 
+// Test for extendLine
+TEST(PlanningUtilsTest, ExtendSegmentToBounds)
+{
+  constexpr auto epsilon = 1e-3;
+  constexpr auto make_bound = [](const Point2d & start, const Point2d & end) {
+    return std::vector{
+      geometry_msgs::msg::Point{}.set__x(start.x()).set__y(start.y()),
+      geometry_msgs::msg::Point{}.set__x(end.x()).set__y(end.y())};
+  };
+
+  const auto bound1 = make_bound({-1.0, -1.0}, {1.0, -1.0});
+  const auto bound2 = make_bound({1.0, 2.0}, {2.0, 1.0});
+
+  {  // normal case
+    const lanelet::BasicLineString2d segment{{0.0, 0.0}, {1.0, 1.0}};
+
+    const auto result = extendSegmentToBounds(segment, bound1, bound2);
+
+    ASSERT_EQ(result.size(), 2);  // Verify the segment has two points
+
+    // Check the output segment coordinates
+    EXPECT_NEAR(result[0].x(), -1.0, epsilon);
+    EXPECT_NEAR(result[0].y(), -1.0, epsilon);
+    EXPECT_NEAR(result[1].x(), 1.5, epsilon);
+    EXPECT_NEAR(result[1].y(), 1.5, epsilon);
+  }
+
+  {  // input segment is empty
+    const lanelet::BasicLineString2d segment{};
+
+    const auto result = extendSegmentToBounds(segment, bound1, bound2);
+
+    ASSERT_EQ(result.size(), 0);  // Verify the segment is empty
+  }
+
+  {  // input segment has more than 2 points
+    const lanelet::BasicLineString2d segment{{0.0, 0.0}, {1.0, 1.0}, {2.0, 2.0}};
+
+    const auto result = extendSegmentToBounds(segment, bound1, bound2);
+
+    ASSERT_EQ(result.size(), 3);  // Verify the segment is returned as is
+
+    // Check the output segment coordinates
+    EXPECT_NEAR(result[0].x(), segment[0].x(), epsilon);
+    EXPECT_NEAR(result[0].y(), segment[0].y(), epsilon);
+    EXPECT_NEAR(result[1].x(), segment[1].x(), epsilon);
+    EXPECT_NEAR(result[1].y(), segment[1].y(), epsilon);
+    EXPECT_NEAR(result[2].x(), segment[2].x(), epsilon);
+    EXPECT_NEAR(result[2].y(), segment[2].y(), epsilon);
+  }
+
+  {  // input segment does not intersect bounds
+    const lanelet::BasicLineString2d segment{{-1.0, 0.0}, {1.0, 0.0}};
+
+    const auto result = extendSegmentToBounds(segment, bound1, bound2);
+
+    ASSERT_EQ(result.size(), 2);  // Verify the segment is returned as is
+
+    // Check the output segment coordinates
+    EXPECT_NEAR(result[0].x(), segment[0].x(), epsilon);
+    EXPECT_NEAR(result[0].y(), segment[0].y(), epsilon);
+    EXPECT_NEAR(result[1].x(), segment[1].x(), epsilon);
+    EXPECT_NEAR(result[1].y(), segment[1].y(), epsilon);
+  }
+}
+
 TEST(PlanningUtilsTest, getConstLaneletsFromIds)
 {
   const auto package_dir = ament_index_cpp::get_package_share_directory("autoware_test_utils");
