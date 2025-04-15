@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef NODE_HPP_
-#define NODE_HPP_
+#ifndef AUTOWARE__PATH_GENERATOR__NODE_HPP_
+#define AUTOWARE__PATH_GENERATOR__NODE_HPP_
 
 #include "autoware/path_generator/common_structs.hpp"
 
@@ -91,7 +91,7 @@ private:
   InputData take_data();
 
   void set_route(const LaneletRoute::ConstSharedPtr & route_ptr);
-  
+
   std::optional<PathWithLaneId> plan_path(const InputData & input_data, const Params & params);
 
   std::optional<PathWithLaneId> generate_path(
@@ -106,4 +106,4 @@ private:
 };
 }  // namespace autoware::path_generator
 
-#endif  // NODE_HPP_
+#endif  // AUTOWARE__PATH_GENERATOR__NODE_HPP_
