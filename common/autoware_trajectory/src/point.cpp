@@ -28,7 +28,7 @@
 #include <utility>
 #include <vector>
 
-namespace autoware::trajectory
+namespace autoware::experimental::trajectory
 {
 
 using PointType = geometry_msgs::msg::Point;
@@ -258,4 +258,4 @@ Trajectory<PointType>::Builder::build(const std::vector<PointType> & points)
   return tl::unexpected(trajectory_result.error());
 }
 
-}  // namespace autoware::trajectory
+}  // namespace autoware::experimental::trajectory

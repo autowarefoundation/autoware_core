@@ -23,7 +23,7 @@
 #include <utility>
 #include <vector>
 
-namespace autoware::trajectory
+namespace autoware::experimental::trajectory
 {
 template <>
 class Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>
@@ -163,6 +163,6 @@ public:
       const std::vector<PointType> & points);
   };
 };
-}  // namespace autoware::trajectory
+}  // namespace autoware::experimental::trajectory
 
 #endif  // AUTOWARE__TRAJECTORY__PATH_POINT_WITH_LANE_ID_HPP_

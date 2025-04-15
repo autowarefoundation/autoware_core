@@ -19,7 +19,7 @@
 
 #include <algorithm>
 
-namespace autoware::trajectory
+namespace autoware::experimental::trajectory
 {
 template <class PointType>
 double max_curvature(const Trajectory<PointType> & trajectory)
@@ -32,6 +32,6 @@ double max_curvature(const Trajectory<PointType> & trajectory)
   return max_curvature;
 }
 
-}  // namespace autoware::trajectory
+}  // namespace autoware::experimental::trajectory
 
 #endif  // AUTOWARE__TRAJECTORY__UTILS__CURVATURE_UTILS_HPP_

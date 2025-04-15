@@ -24,7 +24,7 @@
 #include <utility>
 #include <vector>
 
-namespace autoware::trajectory
+namespace autoware::experimental::trajectory
 {
 template <>
 class Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>
@@ -232,6 +232,6 @@ public:
   };
 };
 
-}  // namespace autoware::trajectory
+}  // namespace autoware::experimental::trajectory
 
 #endif  // AUTOWARE__TRAJECTORY__TRAJECTORY_POINT_HPP_

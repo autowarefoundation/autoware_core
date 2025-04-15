@@ -25,7 +25,7 @@
 #include <utility>
 #include <vector>
 
-namespace autoware::trajectory::detail
+namespace autoware::experimental::trajectory::detail
 {
 
 /**
@@ -231,6 +231,6 @@ public:
   T compute(const double x) const { return interpolator_->compute(x); }
 };
 
-}  // namespace autoware::trajectory::detail
+}  // namespace autoware::experimental::trajectory::detail
 
 #endif  // AUTOWARE__TRAJECTORY__DETAIL__INTERPOLATED_ARRAY_HPP_
