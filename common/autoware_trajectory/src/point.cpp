@@ -111,7 +111,7 @@ interpolator::InterpolationResult Trajectory<PointType>::build(
 
 double Trajectory<PointType>::clamp(const double s, bool show_warning) const
 {
-  if (show_warning && (s < 0 || s > length())) {
+  if (show_warning && (s < -1e-5 || s > length() + 1e-5)) {
     RCLCPP_WARN(
       rclcpp::get_logger("Trajectory"), "The arc length %f is out of the trajectory length %f", s,
       length());
