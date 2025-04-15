@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/trajectory/utils/pretty_trajectory.hpp"
+#include "autoware/trajectory/utils/pretty_build.hpp"
 
 #include <string>
 #include <vector>
 
-namespace autoware::trajectory
+namespace autoware::experimental::trajectory
 {
 
 namespace detail
@@ -188,14 +188,14 @@ populate5(const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & inpu
 
 //
 template std::optional<Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>>
-pretty_trajectory(
+pretty_build(
   const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & points,
   const bool use_akima = false);
 
-template std::optional<Trajectory<autoware_planning_msgs::msg::PathPoint>> pretty_trajectory(
+template std::optional<Trajectory<autoware_planning_msgs::msg::PathPoint>> pretty_build(
   const std::vector<autoware_planning_msgs::msg::PathPoint> & points, const bool use_akima = false);
-template std::optional<Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>> pretty_trajectory(
+template std::optional<Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>> pretty_build(
   const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points,
   const bool use_akima = false);
 
-}  // namespace autoware::trajectory
+}  // namespace autoware::experimental::trajectory

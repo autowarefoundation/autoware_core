@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/trajectory/utils/pretty_trajectory.hpp"
+#include "autoware/trajectory/utils/pretty_build.hpp"
 #include "autoware_utils_geometry/geometry.hpp"
 
 #include <autoware/pyplot/pyplot.hpp>
@@ -90,7 +90,7 @@ int main1()
     point.lane_ids = std::vector<std::int64_t>{1};
     points.push_back(point);
   }
-  auto trajectory_opt = autoware::trajectory::pretty_trajectory(points);
+  auto trajectory_opt = autoware::experimental::trajectory::pretty_build(points);
   if (!trajectory_opt) {
     return 1;
   }
@@ -101,43 +101,44 @@ int main1()
   auto & ax2 = axes[1];
 
   // NOLINTBEGIN
-  const auto plot = [&](
-                      const autoware::trajectory::Trajectory<PathPointWithLaneId> & traj,
-                      autoware::pyplot::Axes & axes) {
-    const auto s = traj.base_arange(0.05);
-    const auto C =
-      s | transform([&](const double s) { return traj.compute(s); }) | to<std::vector>();
-    const auto Cx =
-      C | transform([](const auto & p) { return p.point.pose.position.x; }) | to<std::vector>();
-    const auto Cy =
-      C | transform([](const auto & p) { return p.point.pose.position.y; }) | to<std::vector>();
-    const auto th = traj.azimuth(s);
-    const auto cos_th =
-      th | transform([&](const double s) { return std::cos(s); }) | to<std::vector>();
-    const auto sin_th =
-      th | transform([&](const double s) { return std::sin(s); }) | to<std::vector>();
+  const auto plot =
+    [&](
+      const autoware::experimental::trajectory::Trajectory<PathPointWithLaneId> & traj,
+      autoware::pyplot::Axes & axes) {
+      const auto s = traj.base_arange(0.05);
+      const auto C =
+        s | transform([&](const double s) { return traj.compute(s); }) | to<std::vector>();
+      const auto Cx =
+        C | transform([](const auto & p) { return p.point.pose.position.x; }) | to<std::vector>();
+      const auto Cy =
+        C | transform([](const auto & p) { return p.point.pose.position.y; }) | to<std::vector>();
+      const auto th = traj.azimuth(s);
+      const auto cos_th =
+        th | transform([&](const double s) { return std::cos(s); }) | to<std::vector>();
+      const auto sin_th =
+        th | transform([&](const double s) { return std::sin(s); }) | to<std::vector>();
 
-    const auto yaw =
-      s |
-      transform([&](const double s) { return get_rpy(traj.compute(s).point.pose.orientation).z; }) |
-      to<std::vector>();
-    const auto cos_yaw =
-      yaw | transform([&](const double s) { return std::cos(s); }) | to<std::vector>();
-    const auto sin_yaw =
-      yaw | transform([&](const double s) { return std::sin(s); }) | to<std::vector>();
+      const auto yaw = s | transform([&](const double s) {
+                         return get_rpy(traj.compute(s).point.pose.orientation).z;
+                       }) |
+                       to<std::vector>();
+      const auto cos_yaw =
+        yaw | transform([&](const double s) { return std::cos(s); }) | to<std::vector>();
+      const auto sin_yaw =
+        yaw | transform([&](const double s) { return std::sin(s); }) | to<std::vector>();
 
-    axes.plot(Args(Cx, Cy), Kwargs("label"_a = "interpolated", "color"_a = "magenta"));
-    axes.quiver(
-      Args(Cx, Cy, cos_th, sin_th),
-      Kwargs(
-        "color"_a = "green", "scale"_a = 8.0, "angles"_a = "xy", "scale_units"_a = "xy",
-        "label"_a = "azimuth", "alpha"_a = 0.5));
-    axes.quiver(
-      Args(Cx, Cy, cos_yaw, sin_yaw),
-      Kwargs(
-        "color"_a = "orange", "scale"_a = 11.0, "angles"_a = "xy", "scale_units"_a = "xy",
-        "label"_a = "orientation", "alpha"_a = 0.5));
-  };
+      axes.plot(Args(Cx, Cy), Kwargs("label"_a = "interpolated", "color"_a = "magenta"));
+      axes.quiver(
+        Args(Cx, Cy, cos_th, sin_th),
+        Kwargs(
+          "color"_a = "green", "scale"_a = 8.0, "angles"_a = "xy", "scale_units"_a = "xy",
+          "label"_a = "azimuth", "alpha"_a = 0.5));
+      axes.quiver(
+        Args(Cx, Cy, cos_yaw, sin_yaw),
+        Kwargs(
+          "color"_a = "orange", "scale"_a = 11.0, "angles"_a = "xy", "scale_units"_a = "xy",
+          "label"_a = "orientation", "alpha"_a = 0.5));
+    };
 
   plot(trajectory, ax1);
   plot_original_point(points[0], "input 1", ax1);
@@ -211,50 +212,51 @@ int main2()
     points.push_back(point);
   }
 
-  auto trajectory = *autoware::trajectory::pretty_trajectory(points);
+  auto trajectory = *autoware::experimental::trajectory::pretty_build(points);
 
   auto [fig, axes] = plt.subplots(1, 2);
   auto & ax1 = axes[0];
   auto & ax2 = axes[1];
 
   // NOLINTBEGIN
-  const auto plot = [&](
-                      const autoware::trajectory::Trajectory<PathPointWithLaneId> & traj,
-                      autoware::pyplot::Axes & axes) {
-    const auto s = traj.base_arange(0.05);
-    const auto C =
-      s | transform([&](const double s) { return traj.compute(s); }) | to<std::vector>();
-    const auto Cx =
-      C | transform([](const auto & p) { return p.point.pose.position.x; }) | to<std::vector>();
-    const auto Cy =
-      C | transform([](const auto & p) { return p.point.pose.position.y; }) | to<std::vector>();
-    const auto th = traj.azimuth(s);
-    const auto cos_th =
-      th | transform([&](const double s) { return std::cos(s); }) | to<std::vector>();
-    const auto sin_th =
-      th | transform([&](const double s) { return std::sin(s); }) | to<std::vector>();
+  const auto plot =
+    [&](
+      const autoware::experimental::trajectory::Trajectory<PathPointWithLaneId> & traj,
+      autoware::pyplot::Axes & axes) {
+      const auto s = traj.base_arange(0.05);
+      const auto C =
+        s | transform([&](const double s) { return traj.compute(s); }) | to<std::vector>();
+      const auto Cx =
+        C | transform([](const auto & p) { return p.point.pose.position.x; }) | to<std::vector>();
+      const auto Cy =
+        C | transform([](const auto & p) { return p.point.pose.position.y; }) | to<std::vector>();
+      const auto th = traj.azimuth(s);
+      const auto cos_th =
+        th | transform([&](const double s) { return std::cos(s); }) | to<std::vector>();
+      const auto sin_th =
+        th | transform([&](const double s) { return std::sin(s); }) | to<std::vector>();
 
-    const auto yaw =
-      s |
-      transform([&](const double s) { return get_rpy(traj.compute(s).point.pose.orientation).z; }) |
-      to<std::vector>();
-    const auto cos_yaw =
-      yaw | transform([&](const double s) { return std::cos(s); }) | to<std::vector>();
-    const auto sin_yaw =
-      yaw | transform([&](const double s) { return std::sin(s); }) | to<std::vector>();
+      const auto yaw = s | transform([&](const double s) {
+                         return get_rpy(traj.compute(s).point.pose.orientation).z;
+                       }) |
+                       to<std::vector>();
+      const auto cos_yaw =
+        yaw | transform([&](const double s) { return std::cos(s); }) | to<std::vector>();
+      const auto sin_yaw =
+        yaw | transform([&](const double s) { return std::sin(s); }) | to<std::vector>();
 
-    axes.plot(Args(Cx, Cy), Kwargs("label"_a = "interpolated", "color"_a = "magenta"));
-    axes.quiver(
-      Args(Cx, Cy, cos_th, sin_th),
-      Kwargs(
-        "color"_a = "green", "scale"_a = 8.0, "angles"_a = "xy", "scale_units"_a = "xy",
-        "label"_a = "azimuth", "alpha"_a = 0.5));
-    axes.quiver(
-      Args(Cx, Cy, cos_yaw, sin_yaw),
-      Kwargs(
-        "color"_a = "orange", "scale"_a = 11.0, "angles"_a = "xy", "scale_units"_a = "xy",
-        "label"_a = "orientation", "alpha"_a = 0.5));
-  };
+      axes.plot(Args(Cx, Cy), Kwargs("label"_a = "interpolated", "color"_a = "magenta"));
+      axes.quiver(
+        Args(Cx, Cy, cos_th, sin_th),
+        Kwargs(
+          "color"_a = "green", "scale"_a = 8.0, "angles"_a = "xy", "scale_units"_a = "xy",
+          "label"_a = "azimuth", "alpha"_a = 0.5));
+      axes.quiver(
+        Args(Cx, Cy, cos_yaw, sin_yaw),
+        Kwargs(
+          "color"_a = "orange", "scale"_a = 11.0, "angles"_a = "xy", "scale_units"_a = "xy",
+          "label"_a = "orientation", "alpha"_a = 0.5));
+    };
 
   plot(trajectory, ax1);
   plot_original_point(points[0], "input 1", ax1);

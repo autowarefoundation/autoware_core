@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__TRAJECTORY__UTILS__PRETTY_TRAJECTORY_HPP_
-#define AUTOWARE__TRAJECTORY__UTILS__PRETTY_TRAJECTORY_HPP_
+#ifndef AUTOWARE__TRAJECTORY__UTILS__PRETTY_BUILD_HPP_
+#define AUTOWARE__TRAJECTORY__UTILS__PRETTY_BUILD_HPP_
 
 #include "autoware/trajectory/forward.hpp"
 #include "autoware/trajectory/interpolator/akima_spline.hpp"
@@ -39,7 +39,7 @@
 #include <string>
 #include <vector>
 
-namespace autoware::trajectory
+namespace autoware::experimental::trajectory
 {
 
 namespace detail
@@ -60,7 +60,7 @@ tl::expected<std::vector<PointType>, std::string> populate5(const std::vector<Po
  * @return return nullopt if the input point size is 0 or 1, otherwise return Trajectory class
  */
 template <typename PointType>
-std::optional<Trajectory<PointType>> pretty_trajectory(
+std::optional<Trajectory<PointType>> pretty_build(
   const std::vector<PointType> & points, const bool use_akima = false)
 {
   if (use_akima) {
@@ -267,17 +267,17 @@ populate5(const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & inpu
 }  // namespace detail
 
 extern template std::optional<Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>>
-pretty_trajectory(
+pretty_build(
   const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & points,
   const bool use_akima = false);
 
-extern template std::optional<Trajectory<autoware_planning_msgs::msg::PathPoint>> pretty_trajectory(
+extern template std::optional<Trajectory<autoware_planning_msgs::msg::PathPoint>> pretty_build(
   const std::vector<autoware_planning_msgs::msg::PathPoint> & points, const bool use_akima = false);
 
 extern template std::optional<Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>>
-pretty_trajectory(
+pretty_build(
   const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points,
   const bool use_akima = false);
 
-}  // namespace autoware::trajectory
-#endif  // AUTOWARE__TRAJECTORY__UTILS__PRETTY_TRAJECTORY_HPP_
+}  // namespace autoware::experimental::trajectory
+#endif  // AUTOWARE__TRAJECTORY__UTILS__PRETTY_BUILD_HPP_

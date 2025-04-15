@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/trajectory/utils/pretty_trajectory.hpp"
+#include "autoware/trajectory/utils/pretty_build.hpp"
 #include "autoware_utils_geometry/geometry.hpp"
 
 #include <gtest/gtest.h>
@@ -52,7 +52,7 @@ TEST(populate3, succeed_and_middle_point_is_linearly_interpolated)
     point.lane_ids = std::vector<std::int64_t>{2};
     points.push_back(point);
   }
-  const auto points3_result = autoware::trajectory::detail::populate3(points);
+  const auto points3_result = autoware::experimental::trajectory::detail::populate3(points);
   EXPECT_TRUE(points3_result);
   const auto & points3 = points3_result.value();
   EXPECT_EQ(points3.size(), 3);
@@ -128,7 +128,7 @@ TEST(populate3, succeed_skip_because_3_points_are_given)
     point.lane_ids = std::vector<std::int64_t>{2};
     points.push_back(point);
   }
-  const auto points_result = autoware::trajectory::detail::populate3(points);
+  const auto points_result = autoware::experimental::trajectory::detail::populate3(points);
   EXPECT_TRUE(points_result);
   EXPECT_EQ(points_result.value().size(), 3);
 }
@@ -147,7 +147,7 @@ TEST(populate3, fail_if_only_1_point_is_given)
     point.lane_ids = std::vector<std::int64_t>{1};
     points.push_back(point);
   }
-  const auto points_result = autoware::trajectory::detail::populate3(points);
+  const auto points_result = autoware::experimental::trajectory::detail::populate3(points);
   EXPECT_TRUE(!points_result);
 }
 
@@ -176,7 +176,7 @@ TEST(populate4, succeed_from_2_point_and_middle_is_linearly_interpolated)
     point.lane_ids = std::vector<std::int64_t>{2};
     points.push_back(point);
   }
-  const auto points4_result = autoware::trajectory::detail::populate4(points);
+  const auto points4_result = autoware::experimental::trajectory::detail::populate4(points);
   EXPECT_TRUE(points4_result);
   const auto & points4 = points4_result.value();
   EXPECT_EQ(points4.size(), 4);
@@ -261,7 +261,7 @@ TEST(populate4, succeed_from_3_points_and_insertion_is_on_the_second_interval)
     point.lane_ids = std::vector<std::int64_t>{2};
     points.push_back(point);
   }
-  const auto points4_result = autoware::trajectory::detail::populate4(points);
+  const auto points4_result = autoware::experimental::trajectory::detail::populate4(points);
   EXPECT_TRUE(points4_result);
   const auto & points4 = points4_result.value();
   EXPECT_EQ(points4.size(), 4);
@@ -346,7 +346,7 @@ TEST(populate4, succeed_from_3_points_and_insertion_is_on_the_first_interval)
     point.lane_ids = std::vector<std::int64_t>{2};
     points.push_back(point);
   }
-  const auto points4_result = autoware::trajectory::detail::populate4(points);
+  const auto points4_result = autoware::experimental::trajectory::detail::populate4(points);
   EXPECT_TRUE(points4_result);
   const auto & points4 = points4_result.value();
   EXPECT_EQ(points4.size(), 4);
@@ -442,7 +442,7 @@ TEST(populate4, succeed_because_4_points_are_given)
     point.lane_ids = std::vector<std::int64_t>{2};
     points.push_back(point);
   }
-  const auto points_result = autoware::trajectory::detail::populate4(points);
+  const auto points_result = autoware::experimental::trajectory::detail::populate4(points);
   EXPECT_TRUE(points_result);
   EXPECT_EQ(points_result.value().size(), 4);
 }
@@ -461,11 +461,11 @@ TEST(populate4, fail_because_only_1_point_is_given)
     point.lane_ids = std::vector<std::int64_t>{1};
     points.push_back(point);
   }
-  const auto points_result = autoware::trajectory::detail::populate4(points);
+  const auto points_result = autoware::experimental::trajectory::detail::populate4(points);
   EXPECT_TRUE(!points_result);
 }
 
-TEST(pretty_trajectory, from_2_cubic)
+TEST(pretty_build, from_2_cubic)
 {
   std::vector<PathPointWithLaneId> points;
   {
@@ -490,7 +490,7 @@ TEST(pretty_trajectory, from_2_cubic)
     point.lane_ids = std::vector<std::int64_t>{1};
     points.push_back(point);
   }
-  auto trajectory_opt = autoware::trajectory::pretty_trajectory(points);
+  auto trajectory_opt = autoware::experimental::trajectory::pretty_build(points);
   EXPECT_EQ(trajectory_opt.has_value(), true);
   auto & trajectory = trajectory_opt.value();
   EXPECT_EQ(trajectory.get_underlying_bases().size(), 4);
@@ -503,7 +503,7 @@ TEST(pretty_trajectory, from_2_cubic)
   }
 }
 
-TEST(pretty_trajectory, from_2_cubic_orientation_matches_with_azimuth_after_align)
+TEST(pretty_build, from_2_cubic_orientation_matches_with_azimuth_after_align)
 {
   std::vector<PathPointWithLaneId> points;
   {
@@ -528,7 +528,7 @@ TEST(pretty_trajectory, from_2_cubic_orientation_matches_with_azimuth_after_alig
     point.lane_ids = std::vector<std::int64_t>{1};
     points.push_back(point);
   }
-  auto trajectory_opt = autoware::trajectory::pretty_trajectory(points);
+  auto trajectory_opt = autoware::experimental::trajectory::pretty_build(points);
   auto & trajectory = trajectory_opt.value();
 
   trajectory.align_orientation_with_trajectory_direction();
@@ -538,7 +538,7 @@ TEST(pretty_trajectory, from_2_cubic_orientation_matches_with_azimuth_after_alig
   }
 }
 
-TEST(pretty_trajectory, from_3_cubic)
+TEST(pretty_build, from_3_cubic)
 {
   std::vector<PathPointWithLaneId> points;
   {
@@ -574,7 +574,7 @@ TEST(pretty_trajectory, from_3_cubic)
     point.lane_ids = std::vector<std::int64_t>{1};
     points.push_back(point);
   }
-  auto trajectory_opt = autoware::trajectory::pretty_trajectory(points);
+  auto trajectory_opt = autoware::experimental::trajectory::pretty_build(points);
   EXPECT_EQ(trajectory_opt.has_value(), true);
 
   auto & trajectory = trajectory_opt.value();
@@ -586,7 +586,7 @@ TEST(pretty_trajectory, from_3_cubic)
   }
 }
 
-TEST(pretty_trajectory, from_4_akima)
+TEST(pretty_build, from_4_akima)
 {
   std::vector<PathPointWithLaneId> points;
   {
@@ -633,7 +633,7 @@ TEST(pretty_trajectory, from_4_akima)
     point.lane_ids = std::vector<std::int64_t>{1};
     points.push_back(point);
   }
-  auto trajectory_opt = autoware::trajectory::pretty_trajectory(points, true);
+  auto trajectory_opt = autoware::experimental::trajectory::pretty_build(points, true);
   EXPECT_EQ(trajectory_opt.has_value(), true);
 
   auto & trajectory = trajectory_opt.value();
@@ -645,7 +645,7 @@ TEST(pretty_trajectory, from_4_akima)
   }
 }
 
-TEST(pretty_trajectory, from_3_cubic_fail_because_points_are_too_few)
+TEST(pretty_build, from_3_cubic_fail_because_points_are_too_few)
 {
   std::vector<PathPointWithLaneId> points;
   {
@@ -659,11 +659,11 @@ TEST(pretty_trajectory, from_3_cubic_fail_because_points_are_too_few)
     point.lane_ids = std::vector<std::int64_t>{1};
     points.push_back(point);
   }
-  auto trajectory_opt = autoware::trajectory::pretty_trajectory(points);
+  auto trajectory_opt = autoware::experimental::trajectory::pretty_build(points);
   EXPECT_EQ(trajectory_opt.has_value(), false);
 }
 
-TEST(pretty_trajectory, from_4_akima_fail_because_points_are_too_few)
+TEST(pretty_build, from_4_akima_fail_because_points_are_too_few)
 {
   std::vector<PathPointWithLaneId> points;
   {
@@ -677,6 +677,6 @@ TEST(pretty_trajectory, from_4_akima_fail_because_points_are_too_few)
     point.lane_ids = std::vector<std::int64_t>{1};
     points.push_back(point);
   }
-  auto trajectory_opt = autoware::trajectory::pretty_trajectory(points, true);
+  auto trajectory_opt = autoware::experimental::trajectory::pretty_build(points, true);
   EXPECT_EQ(trajectory_opt.has_value(), false);
 }
