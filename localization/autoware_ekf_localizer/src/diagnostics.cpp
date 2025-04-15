@@ -60,6 +60,26 @@ diagnostic_msgs::msg::DiagnosticStatus check_set_initialpose(const bool is_set_i
   return stat;
 }
 
+diagnostic_msgs::msg::DiagnosticStatus check_ekf_period(
+  const bool is_ekf_period_too_slow, const double ekf_dt)
+{
+  diagnostic_msgs::msg::DiagnosticStatus stat;
+
+  diagnostic_msgs::msg::KeyValue key_value;
+  key_value.key = "ekf_period";
+  key_value.value = std::to_string(ekf_dt);
+  stat.values.push_back(key_value);
+
+  stat.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+  stat.message = "OK";
+  if (!is_ekf_period_too_slow) {
+    stat.level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
+    stat.message = "[WARN]EKF period may be too slow to finish pose smoothing";
+  }
+
+  return stat;
+}
+
 diagnostic_msgs::msg::DiagnosticStatus check_measurement_updated(
   const std::string & measurement_type, const size_t no_update_count,
   const size_t no_update_count_threshold_warn, const size_t no_update_count_threshold_error)

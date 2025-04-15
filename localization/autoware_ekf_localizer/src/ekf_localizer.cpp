@@ -57,6 +57,7 @@ EKFLocalizer::EKFLocalizer(const rclcpp::NodeOptions & node_options)
 {
   is_activated_ = false;
   is_set_initialpose_ = false;
+  is_ekf_period_too_slow_ = false;
 
   /* initialize ros system */
   timer_control_ = rclcpp::create_timer(
@@ -113,10 +114,13 @@ void EKFLocalizer::update_predict_frequency(const rclcpp::Time & current_time)
       DEBUG_INFO(
         get_logger(), "[EKF] update ekf_dt_ to %f seconds (= %f hz)", ekf_dt_, 1 / ekf_dt_);
 
+      is_ekf_period_too_slow_ =
+        (ekf_dt_ > static_cast<double>(params_.pose_smoothing_steps) / params_.ekf_rate);
+
       if (ekf_dt_ > 10.0) {
         ekf_dt_ = 10.0;
         warning_->warn(large_ekf_dt_waring_message(ekf_dt_));
-      } else if (ekf_dt_ > static_cast<double>(params_.pose_smoothing_steps) / params_.ekf_rate) {
+      } else if (is_ekf_period_too_slow_) {
         warning_->warn_throttle(too_slow_ekf_dt_waring_message(ekf_dt_), 2000);
       }
 
@@ -370,6 +374,7 @@ void EKFLocalizer::publish_diagnostics(
 
   diag_status_array.push_back(check_process_activated(is_activated_));
   diag_status_array.push_back(check_set_initialpose(is_set_initialpose_));
+  diag_status_array.push_back(check_ekf_period(is_ekf_period_too_slow_, ekf_dt_));
 
   if (is_activated_ && is_set_initialpose_) {
     diag_status_array.push_back(check_measurement_updated(

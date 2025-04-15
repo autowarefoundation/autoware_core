@@ -121,6 +121,7 @@ private:
 
   bool is_activated_;
   bool is_set_initialpose_;
+  bool is_ekf_period_too_slow_;
 
   EKFDiagnosticInfo pose_diag_info_;
   EKFDiagnosticInfo twist_diag_info_;
