@@ -20,16 +20,16 @@
 
 namespace autoware::vehicle_info_utils
 {
-autoware_utils::LinearRing2d VehicleInfo::createFootprint(const double margin) const
+autoware_utils_geometry::LinearRing2d VehicleInfo::createFootprint(const double margin) const
 {
   return createFootprint(margin, margin);
 }
 
-autoware_utils::LinearRing2d VehicleInfo::createFootprint(
+autoware_utils_geometry::LinearRing2d VehicleInfo::createFootprint(
   const double lat_margin, const double lon_margin) const
 {
-  using autoware_utils::LinearRing2d;
-  using autoware_utils::Point2d;
+  using autoware_utils_geometry::LinearRing2d;
+  using autoware_utils_geometry::Point2d;
 
   const double x_front = front_overhang_m + wheel_base_m + lon_margin;
   const double x_center = wheel_base_m / 2.0;

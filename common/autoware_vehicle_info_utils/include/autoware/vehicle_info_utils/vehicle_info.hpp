@@ -15,7 +15,7 @@
 #ifndef AUTOWARE__VEHICLE_INFO_UTILS__VEHICLE_INFO_HPP_
 #define AUTOWARE__VEHICLE_INFO_UTILS__VEHICLE_INFO_HPP_
 
-#include "autoware_utils/geometry/boost_geometry.hpp"
+#include <autoware_utils_geometry/boost_geometry.hpp>
 
 namespace autoware::vehicle_info_utils
 {
@@ -58,7 +58,8 @@ struct VehicleInfo
    * polygon
    * @param margin the longitudinal and lateral inflation margin
    */
-  [[nodiscard]] autoware_utils::LinearRing2d createFootprint(const double margin = 0.0) const;
+  [[nodiscard]] autoware_utils_geometry::LinearRing2d createFootprint(
+    const double margin = 0.0) const;
 
   /**
    * @brief calculate the vehicle footprint in clockwise manner starting from the front-left edge,
@@ -66,7 +67,7 @@ struct VehicleInfo
    * polygon
    * @param margin the longitudinal and lateral inflation margin
    */
-  [[nodiscard]] autoware_utils::LinearRing2d createFootprint(
+  [[nodiscard]] autoware_utils_geometry::LinearRing2d createFootprint(
     const double lat_margin, const double lon_margin) const;
 
   [[nodiscard]] double calcMaxCurvature() const;
