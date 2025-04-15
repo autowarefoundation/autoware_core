@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef NODE_HPP_
-#define NODE_HPP_
+#ifndef AUTOWARE__PATH_GENERATOR__NODE_HPP_
+#define AUTOWARE__PATH_GENERATOR__NODE_HPP_
 
 #include "autoware/path_generator/common_structs.hpp"
 
@@ -48,14 +48,20 @@ class PathGenerator : public rclcpp::Node
 public:
   explicit PathGenerator(const rclcpp::NodeOptions & node_options);
 
-private:
+  // NOTE: This is for the static_centerline_generator package which utilizes the following
+  // instance.
   struct InputData
   {
     LaneletRoute::ConstSharedPtr route_ptr{nullptr};
     LaneletMapBin::ConstSharedPtr lanelet_map_bin_ptr{nullptr};
     Odometry::ConstSharedPtr odometry_ptr{nullptr};
   };
+  bool is_data_ready(const InputData & input_data);
+  void set_planner_data(const InputData & input_data);
+  std::optional<PathWithLaneId> generate_path(
+    const geometry_msgs::msg::Pose & current_pose, const Params & params);
 
+private:
   // subscriber
   autoware_utils::InterProcessPollingSubscriber<
     LaneletRoute, autoware_utils::polling_policy::Newest>
@@ -84,16 +90,9 @@ private:
 
   InputData take_data();
 
-  void set_planner_data(const InputData & input_data);
-
   void set_route(const LaneletRoute::ConstSharedPtr & route_ptr);
 
-  bool is_data_ready(const InputData & input_data);
-
   std::optional<PathWithLaneId> plan_path(const InputData & input_data, const Params & params);
-
-  std::optional<PathWithLaneId> generate_path(
-    const geometry_msgs::msg::Pose & current_pose, const Params & params);
 
   std::optional<PathWithLaneId> generate_path(
     const lanelet::LaneletSequence & lanelet_sequence, const double s_start, const double s_end,
@@ -103,4 +102,4 @@ private:
 };
 }  // namespace autoware::path_generator
 
-#endif  // NODE_HPP_
+#endif  // AUTOWARE__PATH_GENERATOR__NODE_HPP_
