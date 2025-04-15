@@ -83,8 +83,9 @@ interpolator::InterpolationResult Trajectory<PointType>::build(
   zs.emplace_back(points[0].z);
 
   for (size_t i = 1; i < points.size(); ++i) {
-    const auto dist = std::hypot(
+    double dist = std::hypot(
       points[i].x - points[i - 1].x, points[i].y - points[i - 1].y, points[i].z - points[i - 1].z);
+    dist = std::max(dist, 1e-3);  // Avoid division by zero
     bases_.emplace_back(bases_.back() + dist);
     xs.emplace_back(points[i].x);
     ys.emplace_back(points[i].y);
