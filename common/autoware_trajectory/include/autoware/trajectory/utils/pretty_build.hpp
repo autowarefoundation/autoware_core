@@ -195,7 +195,7 @@ tl::expected<std::vector<PointType>, std::string> populate4(const std::vector<Po
 
   const auto & interpolation = input3_interpolation_result.value();
 
-  const auto new_bases = insert_middle_into_largest_interval(interpolation.get_internal_bases());
+  const auto new_bases = insert_middle_into_largest_interval(interpolation.get_underlying_bases());
   return new_bases |
          ranges::views::transform([&](const double s) { return interpolation.compute(s); }) |
          ranges::to<std::vector>();
