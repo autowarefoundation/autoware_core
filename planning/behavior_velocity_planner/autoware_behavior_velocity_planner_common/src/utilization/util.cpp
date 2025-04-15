@@ -39,6 +39,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <limits>
 #include <set>
 #include <string>
 #include <vector>
@@ -495,57 +496,71 @@ std::vector<geometry_msgs::msg::Point> toRosPoints(const PredictedObjects & obje
   return points;
 }
 
-LineString2d extendLineToPathBound(
-  const lanelet::ConstPoint3d & lanelet_point1, const lanelet::ConstPoint3d & lanelet_point2,
-  const PathWithLaneId & path)
+LineString2d extendSegmentToBounds(
+  const lanelet::BasicLineString2d & segment, const std::vector<geometry_msgs::msg::Point> & bound1,
+  const std::vector<geometry_msgs::msg::Point> & bound2)
 {
   constexpr double epsilon = 1e-3;
+  constexpr auto to_autoware_line_string = [](const auto & line_string) {
+    LineString2d autoware_line_string;
+    std::transform(
+      line_string.begin(), line_string.end(), std::back_inserter(autoware_line_string),
+      [](const auto & point) { return Point2d{point.x(), point.y()}; });
+    return autoware_line_string;
+  };
+
+  if (segment.size() != 2) {
+    std::cerr << "[behavior_velocity](extendLineStringUntilIntersection) input segment must "
+                 "have exactly 2 points"
+              << std::endl;
+    return to_autoware_line_string(segment);
+  }
+
+  if (bound1.size() < 2 || bound2.size() < 2) {
+    std::cerr << "[behavior_velocity](extendLineStringUntilIntersection) input bounds must "
+                 "have at least 2 points"
+              << std::endl;
+    return to_autoware_line_string(segment);
+  }
 
   const auto line =
-    boost::geometry::detail::make::make_infinite_line<double, lanelet::BasicPoint2d>(
-      lanelet_point1.basicPoint2d(), lanelet_point2.basicPoint2d());
+    boost::geometry::detail::make::make_infinite_line<double>(segment[0], segment[1]);
 
   const auto find_intersection_point =
     [&](const std::vector<geometry_msgs::msg::Point> & bound) -> std::optional<Point2d> {
     std::optional<Point2d> intersection_point = std::nullopt;
-    auto min_distance = std::numeric_limits<double>::max();
+    auto min_distance_to_bound = std::numeric_limits<double>::max();
     for (auto it = std::next(bound.begin()); it != bound.end(); ++it) {
-      const LineString2d segment{
+      const LineString2d target_segment{
         autoware_utils_geometry::from_msg(*std::prev(it)).to_2d(),
         autoware_utils_geometry::from_msg(*it).to_2d()};
-      const auto segment_line =
-        boost::geometry::detail::make::make_infinite_line<double, Point2d>(segment[0], segment[1]);
+      const auto target_line = boost::geometry::detail::make::make_infinite_line<double>(
+        target_segment[0], target_segment[1]);
       Point2d ip;
-      if (!boost::geometry::arithmetic::intersection_point(line, segment_line, ip)) {
+      if (!boost::geometry::arithmetic::intersection_point(line, target_line, ip)) {
         continue;
       }
-      if (boost::geometry::distance(ip, segment) > epsilon) {
+      if (boost::geometry::distance(ip, target_segment) > epsilon) {
         continue;
       }
       const auto distance = std::min(
-        boost::geometry::distance(ip, lanelet_point1.basicPoint2d()),
-        boost::geometry::distance(ip, lanelet_point2.basicPoint2d()));
-      if (!intersection_point || distance <= min_distance) {
+        boost::geometry::distance(ip, segment[0]), boost::geometry::distance(ip, segment[1]));
+      if (!intersection_point || distance <= min_distance_to_bound) {
         intersection_point = ip;
-        min_distance = distance;
+        min_distance_to_bound = distance;
       }
     }
     return intersection_point;
   };
 
-  const auto left_intersection = find_intersection_point(path.left_bound);
-  const auto right_intersection = find_intersection_point(path.right_bound);
+  const auto intersection1 = find_intersection_point(bound1);
+  const auto intersection2 = find_intersection_point(bound2);
 
-  if (!left_intersection || !right_intersection) {
-    std::cerr << "[behavior_velocity](extendLineToPathBound): "
-                 "line does not intersect either of path bounds"
-              << std::endl;
-    return LineString2d{
-      Point2d{lanelet_point1.x(), lanelet_point1.y()},
-      Point2d{lanelet_point2.x(), lanelet_point2.y()}};
+  if (!intersection1 || !intersection2) {
+    return to_autoware_line_string(segment);
   }
 
-  return LineString2d{*left_intersection, *right_intersection};
+  return LineString2d{*intersection1, *intersection2};
 }
 
 std::optional<int64_t> getNearestLaneId(

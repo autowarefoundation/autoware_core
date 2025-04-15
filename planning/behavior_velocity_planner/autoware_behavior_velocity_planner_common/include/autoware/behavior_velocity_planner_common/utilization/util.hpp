@@ -126,9 +126,9 @@ double findReachTime(
 
 std::vector<geometry_msgs::msg::Point> toRosPoints(const PredictedObjects & object);
 
-LineString2d extendLineToPathBound(
-  const lanelet::ConstPoint3d & lanelet_point1, const lanelet::ConstPoint3d & lanelet_point2,
-  const PathWithLaneId & path);
+LineString2d extendSegmentToBounds(
+  const lanelet::BasicLineString2d & segment, const std::vector<geometry_msgs::msg::Point> & bound1,
+  const std::vector<geometry_msgs::msg::Point> & bound2);
 
 template <class T>
 std::vector<T> concatVector(const std::vector<T> & vec1, const std::vector<T> & vec2)
