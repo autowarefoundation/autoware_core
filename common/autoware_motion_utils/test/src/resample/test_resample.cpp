@@ -14,10 +14,11 @@
 
 #include "autoware/motion_utils/constants.hpp"
 #include "autoware/motion_utils/resample/resample.hpp"
-#include "autoware_utils/geometry/boost_geometry.hpp"
-#include "autoware_utils/geometry/geometry.hpp"
-#include "autoware_utils/math/constants.hpp"
-#include "autoware_utils/math/unit_conversion.hpp"
+
+#include <autoware_utils_geometry/boost_geometry.hpp>
+#include <autoware_utils_geometry/geometry.hpp>
+#include <autoware_utils_math/constants.hpp>
+#include <autoware_utils_math/unit_conversion.hpp>
 
 #include <gtest/gtest.h>
 #include <gtest/internal/gtest-port.h>
@@ -34,9 +35,9 @@ using autoware_planning_msgs::msg::Path;
 using autoware_planning_msgs::msg::PathPoint;
 using autoware_planning_msgs::msg::Trajectory;
 using autoware_planning_msgs::msg::TrajectoryPoint;
-using autoware_utils::create_point;
-using autoware_utils::create_quaternion_from_rpy;
-using autoware_utils::transform_point;
+using autoware_utils_geometry::create_point;
+using autoware_utils_geometry::create_quaternion_from_rpy;
+using autoware_utils_geometry::transform_point;
 
 constexpr double epsilon = 1e-6;
 
@@ -270,7 +271,7 @@ TEST(resample_path_with_lane_id, resample_path_by_vector)
 
     // Change the last point orientation
     path.points.back() = generateTestPathPointWithLaneId(
-      9.0, 0.0, 0.0, autoware_utils::pi / 3.0, 3.0, 1.0, 0.01, true, {9});
+      9.0, 0.0, 0.0, autoware_utils_math::pi / 3.0, 3.0, 1.0, 0.01, true, {9});
     {
       const auto resampled_path = resamplePath(path, resampled_arclength);
       for (size_t i = 0; i < resampled_path.points.size() - 1; ++i) {
@@ -295,7 +296,7 @@ TEST(resample_path_with_lane_id, resample_path_by_vector)
 
       const auto p = resampled_path.points.back();
       const auto ans_p = path.points.back();
-      const auto ans_quat = autoware_utils::create_quaternion(0.0, 0.0, 0.0, 1.0);
+      const auto ans_quat = autoware_utils_geometry::create_quaternion(0.0, 0.0, 0.0, 1.0);
       EXPECT_NEAR(p.point.pose.position.x, ans_p.point.pose.position.x, epsilon);
       EXPECT_NEAR(p.point.pose.position.y, ans_p.point.pose.position.y, epsilon);
       EXPECT_NEAR(p.point.pose.position.z, ans_p.point.pose.position.z, epsilon);
@@ -566,7 +567,7 @@ TEST(resample_path_with_lane_id, resample_path_by_vector_backward)
     path.points.resize(10);
     for (size_t i = 0; i < 10; ++i) {
       path.points.at(i) = generateTestPathPointWithLaneId(
-        i * 1.0, 0.0, 0.0, autoware_utils::pi, i * 1.0, i * 0.5, i * 0.1, false,
+        i * 1.0, 0.0, 0.0, autoware_utils_math::pi, i * 1.0, i * 0.5, i * 0.1, false,
         {static_cast<int64_t>(i)});
     }
     path.points.back().point.is_final = true;
@@ -658,7 +659,7 @@ TEST(resample_path_with_lane_id, resample_path_by_vector_backward)
       }
     }
 
-    const auto ans_quat = autoware_utils::create_quaternion_from_yaw(M_PI);
+    const auto ans_quat = autoware_utils_geometry::create_quaternion_from_yaw(M_PI);
     for (size_t i = 0; i < resampled_path.points.size(); ++i) {
       const auto p = resampled_path.points.at(i).point;
       EXPECT_NEAR(p.pose.orientation.x, ans_quat.x, epsilon);
@@ -678,7 +679,7 @@ TEST(resample_path_with_lane_id, resample_path_by_vector_backward)
     }
     path.points.back().point.is_final = true;
     path.points.at(0).point.pose.orientation =
-      autoware_utils::create_quaternion_from_yaw(M_PI + M_PI / 3.0);
+      autoware_utils_geometry::create_quaternion_from_yaw(M_PI + M_PI / 3.0);
     std::vector<double> resampled_arclength = {0.0, 1.2, 1.5, 5.3, 7.5, 9.0};
 
     const auto resampled_path = resamplePath(path, resampled_arclength);
@@ -769,7 +770,7 @@ TEST(resample_path_with_lane_id, resample_path_by_vector_backward)
 
     // Initial Orientation
     {
-      const auto ans_quat = autoware_utils::create_quaternion_from_yaw(M_PI + M_PI / 3.0);
+      const auto ans_quat = autoware_utils_geometry::create_quaternion_from_yaw(M_PI + M_PI / 3.0);
       const auto p = resampled_path.points.at(0).point;
       EXPECT_NEAR(p.pose.orientation.x, ans_quat.x, epsilon);
       EXPECT_NEAR(p.pose.orientation.y, ans_quat.y, epsilon);
@@ -777,7 +778,7 @@ TEST(resample_path_with_lane_id, resample_path_by_vector_backward)
       EXPECT_NEAR(p.pose.orientation.w, ans_quat.w, epsilon);
     }
 
-    const auto ans_quat = autoware_utils::create_quaternion_from_yaw(M_PI);
+    const auto ans_quat = autoware_utils_geometry::create_quaternion_from_yaw(M_PI);
     for (size_t i = 1; i < resampled_path.points.size(); ++i) {
       const auto p = resampled_path.points.at(i).point;
       EXPECT_NEAR(p.pose.orientation.x, ans_quat.x, epsilon);
@@ -938,7 +939,7 @@ TEST(resample_path_with_lane_id, resample_path_by_vector_non_default)
     }
 
     const double pitch = std::atan(1.0);
-    const auto ans_quat = autoware_utils::create_quaternion_from_rpy(0.0, pitch, 0.0);
+    const auto ans_quat = autoware_utils_geometry::create_quaternion_from_rpy(0.0, pitch, 0.0);
     for (size_t i = 0; i < resampled_path.points.size(); ++i) {
       const auto p = resampled_path.points.at(i).point;
       EXPECT_NEAR(p.pose.orientation.x, ans_quat.x, epsilon);
@@ -1064,7 +1065,7 @@ TEST(resample_path_with_lane_id, resample_path_by_same_interval)
     }
     // Change the last point orientation
     path.points.back() = generateTestPathPointWithLaneId(
-      9.0, 0.0, 0.0, autoware_utils::pi / 3.0, 3.0, 1.0, 0.01, true, {9});
+      9.0, 0.0, 0.0, autoware_utils_math::pi / 3.0, 3.0, 1.0, 0.01, true, {9});
     {
       const auto resampled_path = resamplePath(path, 1.0);
       for (size_t i = 0; i < resampled_path.points.size() - 1; ++i) {
@@ -1089,7 +1090,7 @@ TEST(resample_path_with_lane_id, resample_path_by_same_interval)
 
       const auto p = resampled_path.points.back();
       const auto ans_p = path.points.back();
-      const auto ans_quat = autoware_utils::create_quaternion_from_yaw(0.0);
+      const auto ans_quat = autoware_utils_geometry::create_quaternion_from_yaw(0.0);
       EXPECT_NEAR(p.point.pose.position.x, ans_p.point.pose.position.x, epsilon);
       EXPECT_NEAR(p.point.pose.position.y, ans_p.point.pose.position.y, epsilon);
       EXPECT_NEAR(p.point.pose.position.z, ans_p.point.pose.position.z, epsilon);
@@ -1609,7 +1610,7 @@ TEST(resample_path, resample_path_by_vector)
 
     // Change the last point orientation
     path.points.back() =
-      generateTestPathPoint(9.0, 0.0, 0.0, autoware_utils::pi / 3.0, 3.0, 1.0, 0.01);
+      generateTestPathPoint(9.0, 0.0, 0.0, autoware_utils_math::pi / 3.0, 3.0, 1.0, 0.01);
     {
       const auto resampled_path = resamplePath(path, resampled_arclength);
       for (size_t i = 0; i < resampled_path.points.size() - 1; ++i) {
@@ -1629,7 +1630,7 @@ TEST(resample_path, resample_path_by_vector)
 
       const auto p = resampled_path.points.back();
       const auto ans_p = path.points.back();
-      const auto ans_quat = autoware_utils::create_quaternion(0.0, 0.0, 0.0, 1.0);
+      const auto ans_quat = autoware_utils_geometry::create_quaternion(0.0, 0.0, 0.0, 1.0);
       EXPECT_NEAR(p.pose.position.x, ans_p.pose.position.x, epsilon);
       EXPECT_NEAR(p.pose.position.y, ans_p.pose.position.y, epsilon);
       EXPECT_NEAR(p.pose.position.z, ans_p.pose.position.z, epsilon);
@@ -1903,7 +1904,7 @@ TEST(resample_path, resample_path_by_vector_backward)
       EXPECT_NEAR(p.heading_rate_rps, 0.9, epsilon);
     }
 
-    const auto ans_quat = autoware_utils::create_quaternion_from_yaw(M_PI);
+    const auto ans_quat = autoware_utils_geometry::create_quaternion_from_yaw(M_PI);
     for (size_t i = 0; i < resampled_path.points.size(); ++i) {
       const auto p = resampled_path.points.at(i);
       EXPECT_NEAR(p.pose.orientation.x, ans_quat.x, epsilon);
@@ -1921,7 +1922,7 @@ TEST(resample_path, resample_path_by_vector_backward)
       path.points.at(i) = generateTestPathPoint(i * 1.0, 0.0, 0.0, M_PI, i * 1.0, i * 0.5, i * 0.1);
     }
     path.points.at(0).pose.orientation =
-      autoware_utils::create_quaternion_from_yaw(M_PI + M_PI / 3.0);
+      autoware_utils_geometry::create_quaternion_from_yaw(M_PI + M_PI / 3.0);
     std::vector<double> resampled_arclength = {0.0, 1.2, 1.5, 5.3, 7.5, 9.0};
 
     const auto resampled_path = resamplePath(path, resampled_arclength);
@@ -1988,7 +1989,7 @@ TEST(resample_path, resample_path_by_vector_backward)
 
     // Initial Orientation
     {
-      const auto ans_quat = autoware_utils::create_quaternion_from_yaw(M_PI + M_PI / 3.0);
+      const auto ans_quat = autoware_utils_geometry::create_quaternion_from_yaw(M_PI + M_PI / 3.0);
       const auto p = resampled_path.points.at(0);
       EXPECT_NEAR(p.pose.orientation.x, ans_quat.x, epsilon);
       EXPECT_NEAR(p.pose.orientation.y, ans_quat.y, epsilon);
@@ -1996,7 +1997,7 @@ TEST(resample_path, resample_path_by_vector_backward)
       EXPECT_NEAR(p.pose.orientation.w, ans_quat.w, epsilon);
     }
 
-    const auto ans_quat = autoware_utils::create_quaternion_from_yaw(M_PI);
+    const auto ans_quat = autoware_utils_geometry::create_quaternion_from_yaw(M_PI);
     for (size_t i = 1; i < resampled_path.points.size(); ++i) {
       const auto p = resampled_path.points.at(i);
       EXPECT_NEAR(p.pose.orientation.x, ans_quat.x, epsilon);
@@ -2122,7 +2123,7 @@ TEST(resample_path, resample_path_by_vector_non_default)
     }
 
     const double pitch = std::atan(1.0);
-    const auto ans_quat = autoware_utils::create_quaternion_from_rpy(0.0, pitch, 0.0);
+    const auto ans_quat = autoware_utils_geometry::create_quaternion_from_rpy(0.0, pitch, 0.0);
     for (size_t i = 0; i < resampled_path.points.size(); ++i) {
       const auto p = resampled_path.points.at(i);
       EXPECT_NEAR(p.pose.orientation.x, ans_quat.x, epsilon);
@@ -2224,7 +2225,7 @@ TEST(resample_path, resample_path_by_same_interval)
 
     // Change the last point orientation
     path.points.back() =
-      generateTestPathPoint(9.0, 0.0, 0.0, autoware_utils::pi / 3.0, 3.0, 1.0, 0.01);
+      generateTestPathPoint(9.0, 0.0, 0.0, autoware_utils_math::pi / 3.0, 3.0, 1.0, 0.01);
     {
       const auto resampled_path = resamplePath(path, 1.0);
       for (size_t i = 0; i < resampled_path.points.size() - 1; ++i) {
@@ -2244,7 +2245,7 @@ TEST(resample_path, resample_path_by_same_interval)
 
       const auto p = resampled_path.points.back();
       const auto ans_p = path.points.back();
-      const auto ans_quat = autoware_utils::create_quaternion(0.0, 0.0, 0.0, 1.0);
+      const auto ans_quat = autoware_utils_geometry::create_quaternion(0.0, 0.0, 0.0, 1.0);
       EXPECT_NEAR(p.pose.position.x, ans_p.pose.position.x, epsilon);
       EXPECT_NEAR(p.pose.position.y, ans_p.pose.position.y, epsilon);
       EXPECT_NEAR(p.pose.position.z, ans_p.pose.position.z, epsilon);
@@ -2678,8 +2679,8 @@ TEST(resample_trajectory, resample_trajectory_by_vector)
     }
 
     // Change the last point orientation
-    traj.points.back() =
-      generateTestTrajectoryPoint(9.0, 0.0, 0.0, autoware_utils::pi / 3.0, 3.0, 1.0, 0.01, 0.5);
+    traj.points.back() = generateTestTrajectoryPoint(
+      9.0, 0.0, 0.0, autoware_utils_math::pi / 3.0, 3.0, 1.0, 0.01, 0.5);
     {
       const auto resampled_path = resampleTrajectory(traj, resampled_arclength);
       for (size_t i = 0; i < resampled_path.points.size() - 1; ++i) {
@@ -2700,7 +2701,7 @@ TEST(resample_trajectory, resample_trajectory_by_vector)
 
       const auto p = resampled_path.points.back();
       const auto ans_p = setZeroVelocityAfterStop(traj.points).back();
-      const auto ans_quat = autoware_utils::create_quaternion(0.0, 0.0, 0.0, 1.0);
+      const auto ans_quat = autoware_utils_geometry::create_quaternion(0.0, 0.0, 0.0, 1.0);
       EXPECT_NEAR(p.pose.position.x, ans_p.pose.position.x, epsilon);
       EXPECT_NEAR(p.pose.position.y, ans_p.pose.position.y, epsilon);
       EXPECT_NEAR(p.pose.position.z, ans_p.pose.position.z, epsilon);
@@ -3032,7 +3033,7 @@ TEST(resample_trajectory, resample_trajectory_by_vector_non_default)
     }
 
     const double pitch = std::atan(1.0);
-    const auto ans_quat = autoware_utils::create_quaternion_from_rpy(0.0, pitch, 0.0);
+    const auto ans_quat = autoware_utils_geometry::create_quaternion_from_rpy(0.0, pitch, 0.0);
     for (size_t i = 0; i < resampled_traj.points.size(); ++i) {
       const auto p = resampled_traj.points.at(i);
       EXPECT_NEAR(p.pose.orientation.x, ans_quat.x, epsilon);
@@ -3140,8 +3141,8 @@ TEST(resample_trajectory, resample_trajectory_by_same_interval)
     }
 
     // Change the last point orientation
-    traj.points.back() =
-      generateTestTrajectoryPoint(9.0, 0.0, 0.0, autoware_utils::pi / 3.0, 3.0, 1.0, 0.01, 0.5);
+    traj.points.back() = generateTestTrajectoryPoint(
+      9.0, 0.0, 0.0, autoware_utils_math::pi / 3.0, 3.0, 1.0, 0.01, 0.5);
     {
       const auto resampled_path = resampleTrajectory(traj, 1.0);
       for (size_t i = 0; i < resampled_path.points.size() - 1; ++i) {
@@ -3162,7 +3163,7 @@ TEST(resample_trajectory, resample_trajectory_by_same_interval)
 
       const auto p = resampled_path.points.back();
       const auto ans_p = setZeroVelocityAfterStop(traj.points).back();
-      const auto ans_quat = autoware_utils::create_quaternion(0.0, 0.0, 0.0, 1.0);
+      const auto ans_quat = autoware_utils_geometry::create_quaternion(0.0, 0.0, 0.0, 1.0);
       EXPECT_NEAR(p.pose.position.x, ans_p.pose.position.x, epsilon);
       EXPECT_NEAR(p.pose.position.y, ans_p.pose.position.y, epsilon);
       EXPECT_NEAR(p.pose.position.z, ans_p.pose.position.z, epsilon);
