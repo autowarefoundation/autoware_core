@@ -48,14 +48,20 @@ class PathGenerator : public rclcpp::Node
 public:
   explicit PathGenerator(const rclcpp::NodeOptions & node_options);
 
-private:
+  // NOTE: This is for the static_centerline_generator package which utilizes the following
+  // instance.
   struct InputData
   {
     LaneletRoute::ConstSharedPtr route_ptr{nullptr};
     LaneletMapBin::ConstSharedPtr lanelet_map_bin_ptr{nullptr};
     Odometry::ConstSharedPtr odometry_ptr{nullptr};
   };
+  bool is_data_ready(const InputData & input_data);
+  void set_planner_data(const InputData & input_data);
+  std::optional<PathWithLaneId> generate_path(
+    const geometry_msgs::msg::Pose & current_pose, const Params & params) const;
 
+private:
   // subscriber
   autoware_utils::InterProcessPollingSubscriber<
     LaneletRoute, autoware_utils::polling_policy::Newest>
@@ -84,16 +90,13 @@ private:
 
   InputData take_data();
 
-  void set_planner_data(const InputData & input_data);
-
   void set_route(const LaneletRoute::ConstSharedPtr & route_ptr);
-
-  bool is_data_ready(const InputData & input_data);
-
+  
   std::optional<PathWithLaneId> plan_path(const InputData & input_data, const Params & params);
 
   std::optional<PathWithLaneId> generate_path(
-    const geometry_msgs::msg::Pose & current_pose, const Params & params);
+    const lanelet::LaneletSequence & lanelet_sequence,
+    const geometry_msgs::msg::Pose & current_pose, const Params & params) const;
 
   std::optional<PathWithLaneId> generate_path(
     const lanelet::LaneletSequence & lanelet_sequence, const double s_start, const double s_end,
