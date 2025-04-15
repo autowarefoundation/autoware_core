@@ -59,7 +59,7 @@ public:
   bool is_data_ready(const InputData & input_data);
   void set_planner_data(const InputData & input_data);
   std::optional<PathWithLaneId> generate_path(
-    const geometry_msgs::msg::Pose & current_pose, const Params & params) const;
+    const geometry_msgs::msg::Pose & current_pose, const Params & params);
 
 private:
   // subscriber
@@ -93,10 +93,6 @@ private:
   void set_route(const LaneletRoute::ConstSharedPtr & route_ptr);
 
   std::optional<PathWithLaneId> plan_path(const InputData & input_data, const Params & params);
-
-  std::optional<PathWithLaneId> generate_path(
-    const lanelet::LaneletSequence & lanelet_sequence,
-    const geometry_msgs::msg::Pose & current_pose, const Params & params) const;
 
   std::optional<PathWithLaneId> generate_path(
     const lanelet::LaneletSequence & lanelet_sequence, const double s_start, const double s_end,

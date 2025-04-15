@@ -12,9 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "../include/autoware/path_generator/node.hpp"
-
 #include <ament_index_cpp/get_package_share_directory.hpp>
+#include <autoware/path_generator/node.hpp>
 #include <autoware/planning_test_manager/autoware_planning_test_manager.hpp>
 #include <autoware_test_utils/autoware_test_utils.hpp>
 
