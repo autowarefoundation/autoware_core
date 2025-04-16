@@ -19,13 +19,12 @@ TEST(map, interface)
 {
   {
     using autoware::component_interface_specs::map::MapProjectorInfo;
-    MapProjectorInfo map_projector;
     size_t depth = 1;
-    EXPECT_EQ(map_projector.depth, depth);
-    EXPECT_EQ(map_projector.reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
-    EXPECT_EQ(map_projector.durability, RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
+    EXPECT_EQ(MapProjectorInfo::depth, depth);
+    EXPECT_EQ(MapProjectorInfo::reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
+    EXPECT_EQ(MapProjectorInfo::durability, RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
 
-    const auto qos = autoware::component_interface_specs::get_qos(map_projector);
+    const auto qos = autoware::component_interface_specs::get_qos<MapProjectorInfo>();
     EXPECT_EQ(qos.depth(), depth);
     EXPECT_EQ(qos.reliability(), rclcpp::ReliabilityPolicy::Reliable);
     EXPECT_EQ(qos.durability(), rclcpp::DurabilityPolicy::TransientLocal);
@@ -33,13 +32,12 @@ TEST(map, interface)
 
   {
     using autoware::component_interface_specs::map::PointCloudMap;
-    PointCloudMap point_cloud_map;
     size_t depth = 1;
-    EXPECT_EQ(point_cloud_map.depth, depth);
-    EXPECT_EQ(point_cloud_map.reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
-    EXPECT_EQ(point_cloud_map.durability, RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
+    EXPECT_EQ(PointCloudMap::depth, depth);
+    EXPECT_EQ(PointCloudMap::reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
+    EXPECT_EQ(PointCloudMap::durability, RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
 
-    const auto qos = autoware::component_interface_specs::get_qos(point_cloud_map);
+    const auto qos = autoware::component_interface_specs::get_qos<PointCloudMap>();
     EXPECT_EQ(qos.depth(), depth);
     EXPECT_EQ(qos.reliability(), rclcpp::ReliabilityPolicy::Reliable);
     EXPECT_EQ(qos.durability(), rclcpp::DurabilityPolicy::TransientLocal);
@@ -47,13 +45,12 @@ TEST(map, interface)
 
   {
     using autoware::component_interface_specs::map::VectorMap;
-    VectorMap vector_map;
     size_t depth = 1;
-    EXPECT_EQ(vector_map.depth, depth);
-    EXPECT_EQ(vector_map.reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
-    EXPECT_EQ(vector_map.durability, RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
+    EXPECT_EQ(VectorMap::depth, depth);
+    EXPECT_EQ(VectorMap::reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
+    EXPECT_EQ(VectorMap::durability, RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
 
-    const auto qos = autoware::component_interface_specs::get_qos(vector_map);
+    const auto qos = autoware::component_interface_specs::get_qos<VectorMap>();
     EXPECT_EQ(qos.depth(), depth);
     EXPECT_EQ(qos.reliability(), rclcpp::ReliabilityPolicy::Reliable);
     EXPECT_EQ(qos.durability(), rclcpp::DurabilityPolicy::TransientLocal);

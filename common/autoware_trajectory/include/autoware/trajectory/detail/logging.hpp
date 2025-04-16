@@ -18,13 +18,13 @@
 #include <rclcpp/clock.hpp>
 #include <rclcpp/logging.hpp>
 
-namespace autoware::trajectory
+namespace autoware::experimental::trajectory
 {
 
 rclcpp::Logger & get_logger();
 
 rclcpp::Clock & get_clock();
 
-}  // namespace autoware::trajectory
+}  // namespace autoware::experimental::trajectory
 
 #endif  // AUTOWARE__TRAJECTORY__DETAIL__LOGGING_HPP_

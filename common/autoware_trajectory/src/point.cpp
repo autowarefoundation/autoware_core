@@ -28,7 +28,7 @@
 #include <utility>
 #include <vector>
 
-namespace autoware::trajectory
+namespace autoware::experimental::trajectory
 {
 
 using PointType = geometry_msgs::msg::Point;
@@ -64,6 +64,9 @@ Trajectory<PointType> & Trajectory<PointType>::operator=(const Trajectory & rhs)
 interpolator::InterpolationResult Trajectory<PointType>::build(
   const std::vector<PointType> & points)
 {
+  if (points.empty()) {
+    return tl::unexpected(interpolator::InterpolationFailure{"cannot interpolate 0 size points"});
+  }
   std::vector<double> xs;
   std::vector<double> ys;
   std::vector<double> zs;
@@ -255,4 +258,4 @@ Trajectory<PointType>::Builder::build(const std::vector<PointType> & points)
   return tl::unexpected(trajectory_result.error());
 }
 
-}  // namespace autoware::trajectory
+}  // namespace autoware::experimental::trajectory

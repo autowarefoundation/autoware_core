@@ -15,7 +15,7 @@
 #ifndef AUTOWARE__TRAJECTORY__FORWARD_HPP_
 #define AUTOWARE__TRAJECTORY__FORWARD_HPP_
 
-namespace autoware::trajectory
+namespace autoware::experimental::trajectory
 {
 
 template <typename PointType>
@@ -23,6 +23,6 @@ class Trajectory
 {
 };
 
-}  // namespace autoware::trajectory
+}  // namespace autoware::experimental::trajectory
 
 #endif  // AUTOWARE__TRAJECTORY__FORWARD_HPP_

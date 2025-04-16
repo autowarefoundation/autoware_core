@@ -25,7 +25,7 @@
 #include <utility>
 #include <vector>
 
-namespace autoware::trajectory
+namespace autoware::experimental::trajectory
 {
 template <>
 class Trajectory<autoware_planning_msgs::msg::PathPoint>
@@ -55,9 +55,10 @@ public:
   Trajectory();
   ~Trajectory() override = default;
   Trajectory(const Trajectory & rhs);
-  Trajectory(Trajectory && rhs) = default;
+  Trajectory(
+    Trajectory && rhs) noexcept;  // NOTE(soblin): to avoid lifetime expiration in addition_callback
   Trajectory & operator=(const Trajectory & rhs);
-  Trajectory & operator=(Trajectory && rhs) = default;
+  Trajectory & operator=(Trajectory && rhs) noexcept;
 
   [[deprecated]] std::vector<double> get_internal_bases() const override;
 
@@ -182,6 +183,6 @@ public:
   };
 };
 
-}  // namespace autoware::trajectory
+}  // namespace autoware::experimental::trajectory
 
 #endif  // AUTOWARE__TRAJECTORY__PATH_POINT_HPP_
