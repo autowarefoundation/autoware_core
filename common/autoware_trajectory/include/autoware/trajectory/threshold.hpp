@@ -32,31 +32,31 @@ static constexpr double k_points_minimum_dist_threshold = 0.005;
 bool is_almost_same(const double s1, const double s2);
 
 /**
- * @brief check if two poins are almost-same
+ * @brief check if two points are almost-same
  */
 bool is_almost_same(const geometry_msgs::msg::Point & p1, const geometry_msgs::msg::Point & p2);
 
 /**
- * @brief check if two poins are almost-same
+ * @brief check if two points are almost-same
  */
 bool is_almost_same(const geometry_msgs::msg::Pose & p1, const geometry_msgs::msg::Pose & p2);
 
 /**
- * @brief check if two poins are almost-same
+ * @brief check if two points are almost-same
  */
 bool is_almost_same(
   const autoware_planning_msgs::msg::PathPoint & p1,
   const autoware_planning_msgs::msg::PathPoint & p2);
 
 /**
- * @brief check if two poins are almost-same
+ * @brief check if two points are almost-same
  */
 bool is_almost_same(
   const autoware_planning_msgs::msg::TrajectoryPoint & p1,
   const autoware_planning_msgs::msg::TrajectoryPoint & p2);
 
 /**
- * @brief check if two poins are almost-same
+ * @brief check if two points are almost-same
  */
 bool is_almost_same(
   const autoware_internal_planning_msgs::msg::PathPointWithLaneId & p1,
