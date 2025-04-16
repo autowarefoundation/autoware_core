@@ -17,7 +17,6 @@
 #include "autoware/trajectory/detail/helpers.hpp"
 #include "autoware/trajectory/interpolator/stairstep.hpp"
 
-#include <cassert>
 #include <cstddef>
 #include <memory>
 #include <utility>
@@ -101,8 +100,6 @@ std::vector<int64_t> Trajectory<PointType>::get_contained_lane_ids() const
 {
   std::vector<int64_t> contained_lane_ids;
   const auto & [bases, values] = lane_ids_->get_data();
-
-  assert(bases.size() == values.size());
 
   for (size_t i = 0; i < bases.size(); i++) {
     if (start_ <= bases[i] && bases[i] <= end_) {
