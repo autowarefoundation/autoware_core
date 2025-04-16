@@ -13,7 +13,8 @@
 
   <depend>autoware_interpolation</depend>
   <depend>autoware_perception_msgs</depend>
-  <depend>autoware_utils</depend>
+  <depend>autoware_utils_geometry</depend>
+  <depend>autoware_utils_math</depend>
   <depend>geometry_msgs</depend>
   <depend>libboost-dev</depend>
   <depend>pcl_conversions</depend>
