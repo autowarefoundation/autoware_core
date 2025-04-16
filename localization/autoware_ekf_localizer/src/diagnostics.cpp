@@ -72,7 +72,7 @@ diagnostic_msgs::msg::DiagnosticStatus check_ekf_period(
 
   stat.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
   stat.message = "OK";
-  if (!is_ekf_period_too_slow) {
+  if (is_ekf_period_too_slow) {
     stat.level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
     stat.message = "[WARN]EKF period may be too slow to finish pose smoothing";
   }
