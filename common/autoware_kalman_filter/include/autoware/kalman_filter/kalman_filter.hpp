@@ -56,8 +56,9 @@ public:
    */
   ~KalmanFilter() = default;
 
-  KalmanFilter(const KalmanFilter &) = delete;
-  KalmanFilter & operator=(const KalmanFilter &) = delete;
+  // TODO(youtalk): Delete copy constructor and assignment operator
+  KalmanFilter(const KalmanFilter &) = default;
+  KalmanFilter & operator=(const KalmanFilter &) = default;
   KalmanFilter(KalmanFilter &&) noexcept = default;
   KalmanFilter & operator=(KalmanFilter &&) noexcept = default;
 
