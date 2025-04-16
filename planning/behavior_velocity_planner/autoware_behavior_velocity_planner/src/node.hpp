@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__BEHAVIOR_VELOCITY_PLANNER__NODE_HPP_
-#define AUTOWARE__BEHAVIOR_VELOCITY_PLANNER__NODE_HPP_
+#ifndef NODE_HPP_
+#define NODE_HPP_
 
-#include "autoware/behavior_velocity_planner/planner_manager.hpp"
+#include "planner_manager.hpp"
 
 #include <autoware/behavior_velocity_planner_common/planner_data.hpp>
 #include <autoware_utils/ros/logger_level_configure.hpp>
@@ -142,4 +142,4 @@ private:
 };
 }  // namespace autoware::behavior_velocity_planner
 
-#endif  // AUTOWARE__BEHAVIOR_VELOCITY_PLANNER__NODE_HPP_
+#endif  // NODE_HPP_

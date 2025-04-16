@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__BEHAVIOR_VELOCITY_PLANNER__TEST_UTILS_HPP_
-#define AUTOWARE__BEHAVIOR_VELOCITY_PLANNER__TEST_UTILS_HPP_
+#ifndef TEST_UTILS_HPP_
+#define TEST_UTILS_HPP_
 
-#include "autoware/behavior_velocity_planner/node.hpp"
+#include "node.hpp"
 
 #include <autoware/planning_test_manager/autoware_planning_test_manager.hpp>
 
@@ -44,4 +44,4 @@ void publishMandatoryTopics(
   std::shared_ptr<BehaviorVelocityPlannerNode> test_target_node);
 }  // namespace autoware::behavior_velocity_planner
 
-#endif  // AUTOWARE__BEHAVIOR_VELOCITY_PLANNER__TEST_UTILS_HPP_
+#endif  // TEST_UTILS_HPP_

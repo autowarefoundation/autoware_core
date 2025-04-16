@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/behavior_velocity_planner/test_utils.hpp"
+#include "../src/test_utils.hpp"
 
 #include <gtest/gtest.h>
 
