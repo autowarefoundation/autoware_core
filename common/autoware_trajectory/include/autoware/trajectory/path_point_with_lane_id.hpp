@@ -23,7 +23,7 @@
 #include <utility>
 #include <vector>
 
-namespace autoware::trajectory
+namespace autoware::experimental::trajectory
 {
 template <>
 class Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>
@@ -46,10 +46,10 @@ protected:
 public:
   Trajectory();
   ~Trajectory() override = default;
-  Trajectory(const Trajectory & rhs) = default;
-  Trajectory(Trajectory && rhs) = default;
+  Trajectory(const Trajectory & rhs);
+  Trajectory(Trajectory && rhs) noexcept;
   Trajectory & operator=(const Trajectory & rhs);
-  Trajectory & operator=(Trajectory && rhs) = default;
+  Trajectory & operator=(Trajectory && rhs) noexcept;
 
   detail::InterpolatedArray<LaneIdType> & lane_ids() { return *lane_ids_; }
 
@@ -163,6 +163,6 @@ public:
       const std::vector<PointType> & points);
   };
 };
-}  // namespace autoware::trajectory
+}  // namespace autoware::experimental::trajectory
 
 #endif  // AUTOWARE__TRAJECTORY__PATH_POINT_WITH_LANE_ID_HPP_

@@ -15,13 +15,16 @@
 #include "autoware/trajectory/utils/closest.hpp"
 #include "autoware/trajectory/utils/crossed.hpp"
 #include "autoware/trajectory/utils/curvature_utils.hpp"
+#include "autoware/trajectory/utils/pretty_build.hpp"
+#include "autoware_utils_geometry/geometry.hpp"
 #include "lanelet2_core/primitives/LineString.h"
 
 #include <gtest/gtest.h>
 
 #include <vector>
 
-using Trajectory = autoware::trajectory::Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>;
+using Trajectory =
+  autoware::experimental::trajectory::Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>;
 
 autoware_planning_msgs::msg::TrajectoryPoint trajectory_point(double x, double y)
 {
@@ -113,7 +116,7 @@ TEST_F(TrajectoryTestForTrajectoryPoint, curvature)
 
 TEST_F(TrajectoryTestForTrajectoryPoint, restore)
 {
-  using autoware::trajectory::Trajectory;
+  using autoware::experimental::trajectory::Trajectory;
   trajectory->longitudinal_velocity_mps().range(4.0, trajectory->length()).set(5.0);
   auto points = trajectory->restore(0);
   EXPECT_EQ(11, points.size());
@@ -125,7 +128,7 @@ TEST_F(TrajectoryTestForTrajectoryPoint, crossed)
   line_string.push_back(lanelet::Point3d(lanelet::InvalId, 0.0, 10.0, 0.0));
   line_string.push_back(lanelet::Point3d(lanelet::InvalId, 10.0, 0.0, 0.0));
 
-  auto crossed_point = autoware::trajectory::crossed(*trajectory, line_string);
+  auto crossed_point = autoware::experimental::trajectory::crossed(*trajectory, line_string);
   ASSERT_EQ(crossed_point.size(), 1);
 
   EXPECT_LT(0.0, crossed_point.at(0));
@@ -138,7 +141,8 @@ TEST_F(TrajectoryTestForTrajectoryPoint, closest)
   pose.position.x = 5.0;
   pose.position.y = 5.0;
 
-  auto closest_pose = trajectory->compute(autoware::trajectory::closest(*trajectory, pose));
+  auto closest_pose =
+    trajectory->compute(autoware::experimental::trajectory::closest(*trajectory, pose));
 
   double distance = std::hypot(
     closest_pose.pose.position.x - pose.position.x, closest_pose.pose.position.y - pose.position.y);
@@ -169,6 +173,24 @@ TEST_F(TrajectoryTestForTrajectoryPoint, crop)
 
 TEST_F(TrajectoryTestForTrajectoryPoint, max_curvature)
 {
-  double max_curvature = autoware::trajectory::max_curvature(*trajectory);
+  double max_curvature = autoware::experimental::trajectory::max_curvature(*trajectory);
   EXPECT_LT(0, max_curvature);
+}
+
+TEST_F(TrajectoryTestForTrajectoryPoint, pretty_build_from_3_cubic)
+{
+  using autoware_utils_geometry::get_rpy;
+
+  std::vector<autoware_planning_msgs::msg::TrajectoryPoint> points{
+    trajectory_point(1.0, 1.0), trajectory_point(2.0, 2.0)};
+  auto trajectory_opt = autoware::experimental::trajectory::pretty_build(points);
+  EXPECT_EQ(trajectory_opt.has_value(), true);
+
+  auto & trajectory = trajectory_opt.value();
+  EXPECT_EQ(trajectory.get_underlying_bases().size(), 4);
+
+  trajectory.align_orientation_with_trajectory_direction();
+  for (const auto s : trajectory.get_underlying_bases()) {
+    EXPECT_FLOAT_EQ(trajectory.azimuth(s), get_rpy(trajectory.compute(s).pose.orientation).z);
+  }
 }

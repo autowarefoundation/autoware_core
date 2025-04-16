@@ -21,7 +21,7 @@
 #include <utility>
 #include <vector>
 
-namespace autoware::trajectory
+namespace autoware::experimental::trajectory
 {
 
 using PointType = autoware_internal_planning_msgs::msg::PathPointWithLaneId;
@@ -38,13 +38,36 @@ Trajectory<PointType>::Trajectory()
   add_base_addition_callback();
 }
 
+Trajectory<PointType>::Trajectory(const Trajectory & rhs)
+: BaseClass(rhs), lane_ids_(std::make_shared<detail::InterpolatedArray<LaneIdType>>(*rhs.lane_ids_))
+{
+  add_base_addition_callback();
+}
+
+Trajectory<PointType>::Trajectory(Trajectory && rhs) noexcept
+: BaseClass(std::forward<Trajectory>(rhs)), lane_ids_(std::move(rhs.lane_ids_))
+{
+  add_base_addition_callback();
+}
+
 Trajectory<PointType> & Trajectory<PointType>::operator=(const Trajectory & rhs)
 {
   if (this != &rhs) {
     BaseClass::operator=(rhs);
     lane_ids_ = std::make_shared<detail::InterpolatedArray<LaneIdType>>(this->lane_ids());
+    add_base_addition_callback();
   }
-  add_base_addition_callback();
+  return *this;
+}
+
+Trajectory<PointType> & Trajectory<PointType>::operator=(Trajectory && rhs) noexcept
+{
+  if (this != &rhs) {
+    BaseClass::operator=(std::forward<Trajectory>(rhs));
+    // cppcheck-suppress accessForwarded
+    lane_ids_ = std::move(rhs.lane_ids_);
+    add_base_addition_callback();
+  }
   return *this;
 }
 
@@ -135,11 +158,9 @@ Trajectory<PointType>::Builder::build(const std::vector<PointType> & points)
 {
   auto trajectory_result = trajectory_->build(points);
   if (trajectory_result) {
-    auto result = Trajectory(std::move(*trajectory_));
-    trajectory_.reset();
-    return result;
+    return std::move(*trajectory_);
   }
   return tl::unexpected(trajectory_result.error());
 }
 
-}  // namespace autoware::trajectory
+}  // namespace autoware::experimental::trajectory

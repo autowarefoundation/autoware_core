@@ -51,10 +51,11 @@ public:
 };
 
 using Interpolators = testing::Types<
-  autoware::trajectory::interpolator::CubicSpline, autoware::trajectory::interpolator::AkimaSpline,
-  autoware::trajectory::interpolator::Linear,
-  autoware::trajectory::interpolator::NearestNeighbor<double>,
-  autoware::trajectory::interpolator::Stairstep<double>>;
+  autoware::experimental::trajectory::interpolator::CubicSpline,
+  autoware::experimental::trajectory::interpolator::AkimaSpline,
+  autoware::experimental::trajectory::interpolator::Linear,
+  autoware::experimental::trajectory::interpolator::NearestNeighbor<double>,
+  autoware::experimental::trajectory::interpolator::Stairstep<double>>;
 
 TYPED_TEST_SUITE(TestInterpolator, Interpolators, );
 
@@ -68,11 +69,13 @@ TYPED_TEST(TestInterpolator, compute)
 }
 
 // Instantiate test cases for all interpolators
-template class TestInterpolator<autoware::trajectory::interpolator::CubicSpline>;
-template class TestInterpolator<autoware::trajectory::interpolator::AkimaSpline>;
-template class TestInterpolator<autoware::trajectory::interpolator::Linear>;
-template class TestInterpolator<autoware::trajectory::interpolator::NearestNeighbor<double>>;
-template class TestInterpolator<autoware::trajectory::interpolator::Stairstep<double>>;
+template class TestInterpolator<autoware::experimental::trajectory::interpolator::CubicSpline>;
+template class TestInterpolator<autoware::experimental::trajectory::interpolator::AkimaSpline>;
+template class TestInterpolator<autoware::experimental::trajectory::interpolator::Linear>;
+template class TestInterpolator<
+  autoware::experimental::trajectory::interpolator::NearestNeighbor<double>>;
+template class TestInterpolator<
+  autoware::experimental::trajectory::interpolator::Stairstep<double>>;
 
 /*
  * Test SphericalLinear interpolator
@@ -90,13 +93,13 @@ geometry_msgs::msg::Quaternion create_quaternion(double w, double x, double y, d
 
 TEST(TestSphericalLinearInterpolator, compute)
 {
-  using autoware::trajectory::interpolator::SphericalLinear;
+  using autoware::experimental::trajectory::interpolator::SphericalLinear;
 
   std::vector<double> bases = {0.0, 1.0};
   std::vector<geometry_msgs::msg::Quaternion> quaternions = {
     create_quaternion(1.0, 0.0, 0.0, 0.0), create_quaternion(0.0, 1.0, 0.0, 0.0)};
 
-  auto interpolator = autoware::trajectory::interpolator::SphericalLinear::Builder()
+  auto interpolator = autoware::experimental::trajectory::interpolator::SphericalLinear::Builder()
                         .set_bases(bases)
                         .set_values(quaternions)
                         .build();

@@ -28,7 +28,7 @@
 #include <memory>
 #include <utility>
 #include <vector>
-namespace autoware::trajectory
+namespace autoware::experimental::trajectory
 {
 using PointType = geometry_msgs::msg::Pose;
 
@@ -94,7 +94,7 @@ PointType Trajectory<PointType>::compute(const double s) const
   PointType result;
   result.position = BaseClass::compute(s);
   const auto s_clamp = clamp(s);
-  // NOTE(soblin): Ideally azimuth() should be used? But okay if the interpolation is not rough
+  // NOTE(soblin): azimuth() should not be used here to serve as interpolator
   result.orientation = orientation_interpolator_->compute(s_clamp);
   return result;
 }
@@ -195,11 +195,9 @@ Trajectory<PointType>::Builder::build(const std::vector<PointType> & points)
 {
   auto trajectory_result = trajectory_->build(points);
   if (trajectory_result) {
-    auto result = Trajectory(std::move(*trajectory_));
-    trajectory_.reset();
-    return result;
+    return std::move(*trajectory_);
   }
   return tl::unexpected(trajectory_result.error());
 }
 
-}  // namespace autoware::trajectory
+}  // namespace autoware::experimental::trajectory

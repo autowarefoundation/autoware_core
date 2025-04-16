@@ -16,7 +16,7 @@
 
 #include <autoware_planning_msgs/msg/detail/trajectory_point__struct.hpp>
 
-namespace autoware::trajectory::detail
+namespace autoware::experimental::trajectory::detail
 {
 MutablePoint3d to_point(geometry_msgs::msg::Point & p)
 {
@@ -77,4 +77,4 @@ ImmutablePoint2d to_point(const lanelet::BasicPoint2d & p)
 {
   return {p.x(), p.y()};
 }
-}  // namespace autoware::trajectory::detail
+}  // namespace autoware::experimental::trajectory::detail

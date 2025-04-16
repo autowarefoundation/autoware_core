@@ -25,7 +25,7 @@
 #include <utility>
 #include <vector>
 
-namespace autoware::trajectory
+namespace autoware::experimental::trajectory
 {
 namespace detail::impl
 {
@@ -64,7 +64,7 @@ std::optional<double> closest_with_constraint(
   const trajectory::Trajectory<TrajectoryPointType> & trajectory, const ArgPointType & point,
   Constraint && constraint)
 {
-  using autoware::trajectory::detail::to_point;
+  using autoware::experimental::trajectory::detail::to_point;
 
   return detail::impl::closest_with_constraint_impl(
     [&trajectory](const double & s) {
@@ -98,6 +98,6 @@ double closest(
   }
   return *s;
 }
-}  // namespace autoware::trajectory
+}  // namespace autoware::experimental::trajectory
 
 #endif  // AUTOWARE__TRAJECTORY__UTILS__CLOSEST_HPP_
