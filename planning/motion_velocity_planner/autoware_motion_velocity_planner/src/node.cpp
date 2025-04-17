@@ -331,8 +331,8 @@ void MotionVelocityPlannerNode::insert_stop(
   autoware_planning_msgs::msg::Trajectory & trajectory,
   const geometry_msgs::msg::Point & stop_point) const
 {
-  const auto length = motion_utils::calcSignedArcLength(trajectory.points, 0, stop_point);
-  const auto inserted_idx = motion_utils::insertStopPoint(length, trajectory.points);
+  const auto length = autoware::motion_utils::calcSignedArcLength(trajectory.points, 0, stop_point);
+  const auto inserted_idx = autoware::motion_utils::insertStopPoint(length, trajectory.points);
   if (!inserted_idx) {
     RCLCPP_WARN(get_logger(), "Failed to insert stop point");
   }
