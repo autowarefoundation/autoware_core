@@ -17,6 +17,7 @@
 #include "autoware/trajectory/detail/helpers.hpp"
 #include "autoware/trajectory/interpolator/stairstep.hpp"
 
+#include <cstddef>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -93,6 +94,29 @@ interpolator::InterpolationResult Trajectory<PointType>::build(
   }
 
   return interpolator::InterpolationSuccess{};
+}
+
+std::vector<int64_t> Trajectory<PointType>::get_contained_lane_ids() const
+{
+  std::vector<int64_t> contained_lane_ids;
+  const auto & [bases, values] = lane_ids_->get_data();
+
+  for (size_t i = 0; i < bases.size(); i++) {
+    if (start_ <= bases[i] && bases[i] <= end_) {
+      for (const auto & lane_id : values[i]) {
+        if (contained_lane_ids.empty()) {
+          contained_lane_ids.emplace_back(lane_id);
+        } else {
+          int64_t last_lane_id = contained_lane_ids.back();
+
+          if (last_lane_id != lane_id) {
+            contained_lane_ids.emplace_back(lane_id);
+          }
+        }
+      }
+    }
+  }
+  return contained_lane_ids;
 }
 
 std::vector<double> Trajectory<PointType>::get_internal_bases() const
