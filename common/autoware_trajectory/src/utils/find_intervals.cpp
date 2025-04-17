@@ -26,7 +26,7 @@ double binary_search_start(
   double low, double high, const std::function<bool(const double &)> & constraint, int max_iter)
 {
   for (int i = 0; i < max_iter; ++i) {
-    double mid = 0.5 * (low + high);
+    const double mid = 0.5 * (low + high);
     if (constraint(mid)) {
       high = mid;  // Mid is valid → move end closer
     } else {
