@@ -17,8 +17,9 @@
 #include "autoware/trajectory/detail/helpers.hpp"
 #include "autoware/trajectory/interpolator/cubic_spline.hpp"
 #include "autoware/trajectory/interpolator/linear.hpp"
+#include "autoware/trajectory/threshold.hpp"
+#include "autoware_utils_geometry/geometry.hpp"
 
-#include <Eigen/Core>
 #include <rclcpp/logging.hpp>
 
 #include <algorithm>
@@ -83,8 +84,16 @@ interpolator::InterpolationResult Trajectory<PointType>::build(
   zs.emplace_back(points[0].z);
 
   for (size_t i = 1; i < points.size(); ++i) {
-    const auto dist = std::hypot(
-      points[i].x - points[i - 1].x, points[i].y - points[i - 1].y, points[i].z - points[i - 1].z);
+    /**
+       NOTE:
+       this sanitization is essential for avoiding zero division and NaN in later interpolation.
+
+       if there are 100 points with the interval of 1nm, then they are treated as 100 points with
+       the interval of k_points_minimum_dist_threshold and interpolation is continued.
+    */
+    const auto dist = std::max<double>(
+      autoware_utils_geometry::calc_distance3d(points[i], points[i - 1]),
+      k_points_minimum_dist_threshold);
     bases_.emplace_back(bases_.back() + dist);
     xs.emplace_back(points[i].x);
     ys.emplace_back(points[i].y);
@@ -218,12 +227,33 @@ std::vector<double> Trajectory<PointType>::curvature(const std::vector<double> &
 
 std::vector<PointType> Trajectory<PointType>::restore(const size_t min_points) const
 {
-  auto bases = get_underlying_bases();
-  bases = detail::fill_bases(bases, min_points);
+  std::vector<double> sanitized_bases{};
+  {
+    const auto bases = detail::fill_bases(get_underlying_bases(), min_points);
+    std::vector<PointType> points;
+
+    points.reserve(bases.size());
+    for (const auto & s : bases) {
+      const auto point = compute(s);
+      if (points.empty() || !is_almost_same(point, points.back())) {
+        points.push_back(point);
+        sanitized_bases.push_back(s);
+      }
+    }
+    if (points.size() >= min_points) {
+      return points;
+    }
+  }
+
+  // retry to satisfy min_point requirement as much as possible
+  const auto bases = detail::fill_bases(sanitized_bases, min_points);
   std::vector<PointType> points;
   points.reserve(bases.size());
   for (const auto & s : bases) {
-    points.emplace_back(compute(s));
+    const auto point = compute(s);
+    if (points.empty() || !is_almost_same(point, points.back())) {
+      points.push_back(point);
+    }
   }
   return points;
 }
