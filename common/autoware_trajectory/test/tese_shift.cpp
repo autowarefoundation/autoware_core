@@ -28,7 +28,7 @@ geometry_msgs::msg::Point point(double x, double y)
   return p;
 }
 
-namespace autoware::trajectory
+namespace autoware::experimental::trajectory
 {
 
 TEST(ShiftInvalid, error_shift_start_is_less_than_end)
@@ -48,8 +48,7 @@ TEST(ShiftInvalid, error_shift_start_is_less_than_end)
     lateral_acc_limit,
   };
 
-  auto shifted_trajectory_info =
-    autoware::trajectory::shift(*trajectory, shift_interval, shift_parameter);
+  auto shifted_trajectory_info = shift(*trajectory, shift_interval, shift_parameter);
   ASSERT_TRUE(!shifted_trajectory_info);
 }
 
@@ -70,8 +69,7 @@ TEST(ShiftInvalid, error_shift_end_is_less_than_end)
     lateral_acc_limit,
   };
 
-  auto shifted_trajectory_info =
-    autoware::trajectory::shift(*trajectory, shift_interval, shift_parameter);
+  auto shifted_trajectory_info = shift(*trajectory, shift_interval, shift_parameter);
   ASSERT_TRUE(!shifted_trajectory_info);
 }
 
@@ -92,8 +90,7 @@ TEST(ShiftInvalid, error_interval_is_backward)
     lateral_acc_limit,
   };
 
-  auto shifted_trajectory_info =
-    autoware::trajectory::shift(*trajectory, shift_interval, shift_parameter);
+  auto shifted_trajectory_info = shift(*trajectory, shift_interval, shift_parameter);
   ASSERT_TRUE(!shifted_trajectory_info);
 }
 
@@ -114,8 +111,7 @@ TEST(ShiftInvalid, error_longitudinal_velocity_is_negative)
     lateral_acc_limit,
   };
 
-  auto shifted_trajectory_info =
-    autoware::trajectory::shift(*trajectory, shift_interval, shift_parameter);
+  auto shifted_trajectory_info = shift(*trajectory, shift_interval, shift_parameter);
   ASSERT_TRUE(!shifted_trajectory_info);
 }
 
@@ -140,8 +136,7 @@ TEST(ShiftSuccess, shift_end_meets_given_lateral_longitudinal_distance_4points)
     lateral_acc_limit,
   };
 
-  auto shifted_trajectory_info =
-    autoware::trajectory::shift(*trajectory, shift_interval, shift_parameter);
+  auto shifted_trajectory_info = shift(*trajectory, shift_interval, shift_parameter);
   ASSERT_TRUE(shifted_trajectory_info);
 
   const auto & [shifted_trajectory, shift_start_s, shift_end_s] = shifted_trajectory_info.value();
@@ -173,8 +168,7 @@ TEST(ShiftSuccess, shift_end_meets_given_lateral_longitudinal_distance_6points)
     lateral_acc_limit,
   };
 
-  auto shifted_trajectory_info =
-    autoware::trajectory::shift(*trajectory, shift_interval, shift_parameter);
+  auto shifted_trajectory_info = shift(*trajectory, shift_interval, shift_parameter);
   ASSERT_TRUE(shifted_trajectory_info);
 
   const auto & [shifted_trajectory, shift_start_s, shift_end_s] = shifted_trajectory_info.value();
@@ -185,4 +179,4 @@ TEST(ShiftSuccess, shift_end_meets_given_lateral_longitudinal_distance_6points)
   EXPECT_FLOAT_EQ(shifted_trajectory.compute(shift_end_s).y, -lateral_shift);
 }
 
-}  // namespace autoware::trajectory
+}  // namespace autoware::experimental::trajectory

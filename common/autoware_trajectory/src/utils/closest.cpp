@@ -18,7 +18,7 @@
 #include <limits>
 #include <vector>
 
-namespace autoware::trajectory::detail::impl
+namespace autoware::experimental::trajectory::detail::impl
 {
 std::optional<double> closest_with_constraint_impl(
   const std::function<Eigen::Vector3d(const double & s)> & trajectory_compute,
@@ -72,4 +72,4 @@ std::optional<double> closest_with_constraint_impl(
 
   return lengths_from_start_points[std::distance(distances_from_segments.begin(), min_it)];
 }
-}  // namespace autoware::trajectory::detail::impl
+}  // namespace autoware::experimental::trajectory::detail::impl

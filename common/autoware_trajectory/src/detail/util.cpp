@@ -17,7 +17,7 @@
 #include <algorithm>
 #include <vector>
 
-namespace autoware::trajectory::detail
+namespace autoware::experimental::trajectory::detail
 {
 inline namespace helpers
 {
@@ -81,4 +81,4 @@ std::vector<double> crop_bases(const std::vector<double> & x, const double start
   return result;
 }
 }  // namespace helpers
-}  // namespace autoware::trajectory::detail
+}  // namespace autoware::experimental::trajectory::detail
