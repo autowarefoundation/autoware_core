@@ -16,18 +16,12 @@
 
 namespace autoware::kalman_filter
 {
-KalmanFilter::KalmanFilter()
-{
-}
 KalmanFilter::KalmanFilter(
   const Eigen::MatrixXd & x, const Eigen::MatrixXd & A, const Eigen::MatrixXd & B,
   const Eigen::MatrixXd & C, const Eigen::MatrixXd & Q, const Eigen::MatrixXd & R,
   const Eigen::MatrixXd & P)
 {
   init(x, A, B, C, Q, R, P);
-}
-KalmanFilter::~KalmanFilter()
-{
 }
 bool KalmanFilter::init(
   const Eigen::MatrixXd & x, const Eigen::MatrixXd & A, const Eigen::MatrixXd & B,
@@ -136,7 +130,7 @@ bool KalmanFilter::update(
   const Eigen::MatrixXd PCT = P_ * C.transpose();
   const Eigen::MatrixXd K = PCT * ((R + C * PCT).inverse());
 
-  if (isnan(K.array()).any() || isinf(K.array()).any()) {
+  if (K.array().isNaN().any() || K.array().isInf().any()) {
     return false;
   }
 
