@@ -132,9 +132,8 @@ void Trajectory<PointType>::align_orientation_with_trajectory_direction()
       std::cos(elevation) * std::cos(azimuth), std::cos(elevation) * std::sin(azimuth),
       std::sin(elevation));
 
-    constexpr double eps = 1e-6;
     const double dot_product =
-      std::clamp(current_x_axis.dot(desired_x_axis), -1.0 + eps, 1.0 - eps);  // Clamp to avoid NaN
+      std::clamp(current_x_axis.dot(desired_x_axis), -1.0, 1.0);  // Clamp to avoid NaN
     const double rotation_angle = std::acos(dot_product);
 
     const tf2::Vector3 rotation_axis = [&]() {
