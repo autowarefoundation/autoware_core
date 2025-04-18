@@ -160,12 +160,12 @@ std::vector<T> forEachMatchInMultiMap(const MapT& map, const KeyT& key, Func&& f
 
 All of the maps are in `MGRS` coordinate. In each map, an anchor point is set to an origin point $(100.0, 100.0)$ for simplicity.
 
-| Map name                    | Origin point id | Image                                               |
-| --------------------------- | --------------- | --------------------------------------------------- |
-| `road_shoulder/highway.osm` | `1`             | ![highway](./media/maps/road_shoulder/highway.png)  |
-| `road_shoulder/pudo.osm`    | `140`           | ![pudo](./media/maps/road_shoulder/pudo.png)        |
-| `intersection/crossing.osm` | `1791`          | ![crossing](./media/maps/intersection/crossing.png) |
-| `dense_centerline/lanelet2_map.osm` | `16`    | ![lanelet2_map](./media/maps/dense_centerline/lanelet2_map.png) |
+| Map name                            | Origin point id | Image                                                           |
+| ----------------------------------- | --------------- | --------------------------------------------------------------- |
+| `road_shoulder/highway.osm`         | `1`             | ![highway](./media/maps/road_shoulder/highway.png)              |
+| `road_shoulder/pudo.osm`            | `140`           | ![pudo](./media/maps/road_shoulder/pudo.png)                    |
+| `intersection/crossing.osm`         | `1791`          | ![crossing](./media/maps/intersection/crossing.png)             |
+| `dense_centerline/lanelet2_map.osm` | `16`            | ![lanelet2_map](./media/maps/dense_centerline/lanelet2_map.png) |
 
 ### How to craft test map
 
