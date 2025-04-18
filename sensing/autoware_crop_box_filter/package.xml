@@ -21,7 +21,9 @@
   <buildtool_depend>autoware_cmake</buildtool_depend>
 
   <depend>autoware_point_types</depend>
-  <depend>autoware_utils</depend>
+  <depend>autoware_utils_debug</depend>
+  <depend>autoware_utils_system</depend>
+  <depend>autoware_utils_tf</depend>
   <depend>geometry_msgs</depend>
   <depend>pcl_conversions</depend>
   <depend>rclcpp</depend>
