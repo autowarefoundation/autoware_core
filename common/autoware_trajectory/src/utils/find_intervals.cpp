@@ -40,15 +40,7 @@ double binary_search_start(
 double binary_search_end(
   double low, double high, const std::function<bool(const double &)> & constraint, int max_iter)
 {
-  for (int i = 0; i < max_iter; ++i) {
-    double mid = 0.5 * (low + high);
-    if (constraint(mid)) {
-      low = mid;  // Mid is still valid → move start forward
-    } else {
-      high = mid;  // Mid is invalid → move end backward
-    }
-  }
-  return low;
+  return binary_search_start(high, low, constraint, max_iter);
 }
 
 std::vector<Interval> find_intervals_impl(
