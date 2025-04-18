@@ -15,9 +15,9 @@
 #ifndef AUTOWARE__GROUND_FILTER__GRID_HPP_
 #define AUTOWARE__GROUND_FILTER__GRID_HPP_
 
+#include <autoware_utils_debug/time_keeper.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_utils_math/normalization.hpp>
-#include <autoware_utils_debug/time_keeper.hpp>
 
 #include <algorithm>
 #include <cmath>

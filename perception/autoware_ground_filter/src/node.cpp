@@ -54,11 +54,11 @@ using PointCloud2 = sensor_msgs::msg::PointCloud2;
 using PointCloud2ConstPtr = sensor_msgs::msg::PointCloud2::ConstSharedPtr;
 
 using autoware::vehicle_info_utils::VehicleInfoUtils;
+using autoware_utils_debug::ScopedTimeTrack;
 using autoware_utils_geometry::calc_distance3d;
 using autoware_utils_math::deg2rad;
 using autoware_utils_math::normalize_degree;
 using autoware_utils_math::normalize_radian;
-using autoware_utils_debug::ScopedTimeTrack;
 
 GroundFilterComponent::GroundFilterComponent(const rclcpp::NodeOptions & options)
 : rclcpp::Node("GroundFilter", options)
@@ -140,8 +140,10 @@ GroundFilterComponent::GroundFilterComponent(const rclcpp::NodeOptions & options
 
   // initialize debug tool
   {
-    stop_watch_ptr_ = std::make_unique<autoware_utils_system::StopWatch<std::chrono::milliseconds>>();
-    debug_publisher_ptr_ = std::make_unique<autoware_utils_debug::DebugPublisher>(this, "ground_filter");
+    stop_watch_ptr_ =
+      std::make_unique<autoware_utils_system::StopWatch<std::chrono::milliseconds>>();
+    debug_publisher_ptr_ =
+      std::make_unique<autoware_utils_debug::DebugPublisher>(this, "ground_filter");
     stop_watch_ptr_->tic("cyclic_time");
     stop_watch_ptr_->tic("processing_time");
 
@@ -410,8 +412,8 @@ void GroundFilterComponent::convertPointcloud(
   {  // grouping pointcloud by its azimuth angle
     std::unique_ptr<autoware_utils_debug::ScopedTimeTrack> inner_st_ptr;
     if (time_keeper_)
-      inner_st_ptr =
-        std::make_unique<autoware_utils_debug::ScopedTimeTrack>("azimuth_angle_grouping", *time_keeper_);
+      inner_st_ptr = std::make_unique<autoware_utils_debug::ScopedTimeTrack>(
+        "azimuth_angle_grouping", *time_keeper_);
 
     pcl::PointXYZ input_point;
     for (size_t data_index = 0; data_index + in_cloud_point_step <= in_cloud_data_size;

@@ -45,8 +45,8 @@
 // Include tier4 autoware utils
 #include <autoware_utils_debug/debug_publisher.hpp>
 #include <autoware_utils_debug/published_time_publisher.hpp>
-#include <autoware_utils_tf/transform_listener.hpp>
 #include <autoware_utils_system/stop_watch.hpp>
+#include <autoware_utils_tf/transform_listener.hpp>
 #include <tf2_eigen/tf2_eigen.hpp>
 
 #include <tf2_ros/transform_listener.h>
@@ -292,7 +292,8 @@ private:
     const std::vector<rclcpp::Parameter> & param);
 
   // debugger
-  std::unique_ptr<autoware_utils_system::StopWatch<std::chrono::milliseconds>> stop_watch_ptr_{nullptr};
+  std::unique_ptr<autoware_utils_system::StopWatch<std::chrono::milliseconds>> stop_watch_ptr_{
+    nullptr};
   std::unique_ptr<autoware_utils_debug::DebugPublisher> debug_publisher_ptr_{nullptr};
 
   // For pointcloud
