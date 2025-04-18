@@ -49,7 +49,10 @@ std::vector<Interval> find_intervals_impl(
 {
   std::vector<Interval> intervals;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
   std::optional<double> start = std::nullopt;
+#pragma GCC diagnostic pop
   for (size_t i = 0; i < bases.size(); ++i) {
     if (!start && constraint(bases.at(i))) {
       if (i > 0) {
