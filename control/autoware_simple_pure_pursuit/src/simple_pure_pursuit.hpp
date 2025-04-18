@@ -37,8 +37,10 @@ public:
 
 private:
   // subscribers
-  autoware_utils_rclcpp::InterProcessPollingSubscriber<Odometry> odom_sub_{this, "~/input/odometry"};
-  autoware_utils_rclcpp::InterProcessPollingSubscriber<Trajectory> traj_sub_{this, "~/input/trajectory"};
+  autoware_utils_rclcpp::InterProcessPollingSubscriber<Odometry> odom_sub_{
+    this, "~/input/odometry"};
+  autoware_utils_rclcpp::InterProcessPollingSubscriber<Trajectory> traj_sub_{
+    this, "~/input/trajectory"};
 
   // publishers
   rclcpp::Publisher<autoware_control_msgs::msg::Control>::SharedPtr pub_control_command_;
