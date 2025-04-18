@@ -49,27 +49,29 @@ std::vector<Interval> find_intervals_impl(
 {
   std::vector<Interval> intervals;
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-  std::optional<double> start = std::nullopt;
-#pragma GCC diagnostic pop
+  double start = -1.0;
+  bool is_started = false;
+
   for (size_t i = 0; i < bases.size(); ++i) {
-    if (!start && constraint(bases.at(i))) {
+    if (!is_started && constraint(bases.at(i))) {
       if (i > 0) {
         start = binary_search_start(bases.at(i - 1), bases.at(i), constraint, max_iter);
       } else {
         start = bases.at(i);  // Start a new interval}
       }
-    } else if (start && !constraint(bases.at(i))) {
+      is_started = true;  // Set the flag to indicate the interval has started
+    } else if (is_started && !constraint(bases.at(i))) {
       // End the current interval if the constraint fails or it's the last element
       double end = binary_search_end(bases.at(i - 1), bases.at(i), constraint, max_iter);
-      intervals.emplace_back(Interval{start.value(), end});
-      start = std::nullopt;  // Reset the start
-    } else if (start && i == bases.size() - 1) {
+      intervals.emplace_back(Interval{start, end});
+      start = -1.0;        // Reset the start
+      is_started = false;  // Reset the flag
+    } else if (is_started && i == bases.size() - 1) {
       // If the last element is valid, end the interval
       double end = bases.at(i);
-      intervals.emplace_back(Interval{start.value(), end});
-      start = std::nullopt;  // Reset the start
+      intervals.emplace_back(Interval{start, end});
+      start = -1.0;        // Reset the start
+      is_started = false;  // Reset the flag
     }
   }
   return intervals;
