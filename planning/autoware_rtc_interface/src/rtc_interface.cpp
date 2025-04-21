@@ -19,7 +19,7 @@
 
 namespace
 {
-using tier4_rtc_msgs::msg::Module;
+using autoware_internal_rtc_msgs::msg::Module;
 
 std::string uuid_to_string(const unique_identifier_msgs::msg::UUID & uuid)
 {
@@ -32,10 +32,10 @@ std::string uuid_to_string(const unique_identifier_msgs::msg::UUID & uuid)
 
 std::string command_to_string(const uint8_t type)
 {
-  if (type == tier4_rtc_msgs::msg::Command::ACTIVATE) {
+  if (type == autoware_internal_rtc_msgs::msg::Command::ACTIVATE) {
     return "ACTIVATE";
   }
-  if (type == tier4_rtc_msgs::msg::Command::DEACTIVATE) {
+  if (type == autoware_internal_rtc_msgs::msg::Command::DEACTIVATE) {
     return "DEACTIVATE";
   }
 
@@ -44,19 +44,19 @@ std::string command_to_string(const uint8_t type)
 
 std::string state_to_string(const uint8_t type)
 {
-  if (type == tier4_rtc_msgs::msg::State::WAITING_FOR_EXECUTION) {
+  if (type == autoware_internal_rtc_msgs::msg::State::WAITING_FOR_EXECUTION) {
     return "WAITING_FOR_EXECUTION";
   }
-  if (type == tier4_rtc_msgs::msg::State::RUNNING) {
+  if (type == autoware_internal_rtc_msgs::msg::State::RUNNING) {
     return "RUNNING";
   }
-  if (type == tier4_rtc_msgs::msg::State::ABORTING) {
+  if (type == autoware_internal_rtc_msgs::msg::State::ABORTING) {
     return "ABORTING";
   }
-  if (type == tier4_rtc_msgs::msg::State::SUCCEEDED) {
+  if (type == autoware_internal_rtc_msgs::msg::State::SUCCEEDED) {
     return "SUCCEEDED";
   }
-  if (type == tier4_rtc_msgs::msg::State::FAILED) {
+  if (type == autoware_internal_rtc_msgs::msg::State::FAILED) {
     return "FAILED";
   }
 

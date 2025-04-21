@@ -17,16 +17,16 @@
 
 #include "rclcpp/rclcpp.hpp"
 
-#include "tier4_rtc_msgs/msg/auto_mode_status.hpp"
-#include "tier4_rtc_msgs/msg/command.hpp"
-#include "tier4_rtc_msgs/msg/cooperate_command.hpp"
-#include "tier4_rtc_msgs/msg/cooperate_response.hpp"
-#include "tier4_rtc_msgs/msg/cooperate_status.hpp"
-#include "tier4_rtc_msgs/msg/cooperate_status_array.hpp"
-#include "tier4_rtc_msgs/msg/module.hpp"
-#include "tier4_rtc_msgs/msg/state.hpp"
-#include "tier4_rtc_msgs/srv/auto_mode.hpp"
-#include "tier4_rtc_msgs/srv/cooperate_commands.hpp"
+#include "autoware_internal_rtc_msgs/msg/auto_mode_status.hpp"
+#include "autoware_internal_rtc_msgs/msg/command.hpp"
+#include "autoware_internal_rtc_msgs/msg/cooperate_command.hpp"
+#include "autoware_internal_rtc_msgs/msg/cooperate_response.hpp"
+#include "autoware_internal_rtc_msgs/msg/cooperate_status.hpp"
+#include "autoware_internal_rtc_msgs/msg/cooperate_status_array.hpp"
+#include "autoware_internal_rtc_msgs/msg/module.hpp"
+#include "autoware_internal_rtc_msgs/msg/state.hpp"
+#include "autoware_internal_rtc_msgs/srv/auto_mode.hpp"
+#include "autoware_internal_rtc_msgs/srv/cooperate_commands.hpp"
 #include <unique_identifier_msgs/msg/uuid.hpp>
 
 #include <mutex>
@@ -35,16 +35,16 @@
 
 namespace autoware::rtc_interface
 {
-using tier4_rtc_msgs::msg::AutoModeStatus;
-using tier4_rtc_msgs::msg::Command;
-using tier4_rtc_msgs::msg::CooperateCommand;
-using tier4_rtc_msgs::msg::CooperateResponse;
-using tier4_rtc_msgs::msg::CooperateStatus;
-using tier4_rtc_msgs::msg::CooperateStatusArray;
-using tier4_rtc_msgs::msg::Module;
-using tier4_rtc_msgs::msg::State;
-using tier4_rtc_msgs::srv::AutoMode;
-using tier4_rtc_msgs::srv::CooperateCommands;
+using autoware_internal_rtc_msgs::msg::AutoModeStatus;
+using autoware_internal_rtc_msgs::msg::Command;
+using autoware_internal_rtc_msgs::msg::CooperateCommand;
+using autoware_internal_rtc_msgs::msg::CooperateResponse;
+using autoware_internal_rtc_msgs::msg::CooperateStatus;
+using autoware_internal_rtc_msgs::msg::CooperateStatusArray;
+using autoware_internal_rtc_msgs::msg::Module;
+using autoware_internal_rtc_msgs::msg::State;
+using autoware_internal_rtc_msgs::srv::AutoMode;
+using autoware_internal_rtc_msgs::srv::CooperateCommands;
 using unique_identifier_msgs::msg::UUID;
 
 class RTCInterface

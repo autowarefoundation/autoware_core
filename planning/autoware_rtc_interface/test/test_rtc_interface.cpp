@@ -18,14 +18,14 @@
 #include <rclcpp/node.hpp>
 #include <rclcpp/time.hpp>
 
-#include "tier4_rtc_msgs/msg/detail/command__struct.hpp"
+#include "autoware_internal_rtc_msgs/msg/detail/command__struct.hpp"
 
 #include <gtest/gtest.h>
 
 #include <memory>
 #include <vector>
 
-using tier4_rtc_msgs::msg::State;
+using autoware_internal_rtc_msgs::msg::State;
 
 namespace autoware::rtc_interface
 {
@@ -94,7 +94,7 @@ TEST_F(RTCInterfaceTest, uuid_to_string)
   std::vector<CooperateCommand> commands;
   CooperateCommand command;
   command.uuid = uuid;
-  command.command.type = tier4_rtc_msgs::msg::Command::ACTIVATE;
+  command.command.type = autoware_internal_rtc_msgs::msg::Command::ACTIVATE;
   commands.push_back(command);
   rtc_interface_->updateCooperateStatus(uuid, false, State::RUNNING, 10.0, 100.0, stamp);
   update_cooperate_command_status(commands);
@@ -120,7 +120,7 @@ TEST_F(RTCInterfaceTest, uuid_to_string)
   EXPECT_TRUE(get_stored_command().empty());
 
   // Condition: update uuid as force deactivated
-  commands.front().command.type = tier4_rtc_msgs::msg::Command::DEACTIVATE;
+  commands.front().command.type = autoware_internal_rtc_msgs::msg::Command::DEACTIVATE;
   rtc_interface_->updateCooperateStatus(
     uuid, true, State::WAITING_FOR_EXECUTION, 10.0, 100.0, stamp);
   rtc_interface_->updateCooperateStatus(uuid, true, State::RUNNING, 10.0, 100.0, stamp);
@@ -165,7 +165,7 @@ TEST_F(RTCInterfaceTest, uuid_to_string)
   EXPECT_FALSE(rtc_interface_->isTerminated(uuid));
 
   // Condition: update uuid cooperate command
-  commands.front().command.type = tier4_rtc_msgs::msg::Command::ACTIVATE;
+  commands.front().command.type = autoware_internal_rtc_msgs::msg::Command::ACTIVATE;
   update_cooperate_command_status(commands);
   EXPECT_TRUE(rtc_interface_->isRegistered(uuid));
   EXPECT_TRUE(rtc_interface_->isActivated(uuid));
