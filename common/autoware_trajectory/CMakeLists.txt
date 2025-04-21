@@ -24,6 +24,7 @@ ament_auto_add_library(autoware_trajectory SHARED
   src/utils/closest.cpp
   src/utils/crossed.cpp
   src/utils/find_intervals.cpp
+  src/utils/frenet_utils.cpp
   src/utils/pretty_build.cpp
   src/utils/shift.cpp
 )
@@ -53,6 +54,7 @@ if(BUILD_TESTING)
   # Examples
   set(example_files
     examples/example_find_intervals.cpp
+    examples/example_frenet_utils.cpp
     examples/example_interpolator.cpp
     examples/example_path_point.cpp
     examples/example_point.cpp
