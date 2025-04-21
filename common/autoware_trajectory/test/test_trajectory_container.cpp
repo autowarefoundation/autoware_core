@@ -615,43 +615,15 @@ TEST_F(TrajectoryTest, compute_frenet_coordinate)
 
   auto frenet_coordinate =
     autoware::experimental::trajectory::compute_frenet_coordinate(*trajectory, pose);
-  if (!frenet_coordinate) {
-    FAIL() << "Failed to compute frenet coordinate: " << frenet_coordinate.error().what;
+  if (frenet_coordinate.empty()) {
+    FAIL() << "Out of range trajectory";
   }
 
-  auto [s, w] = frenet_coordinate.value();
+  EXPECT_EQ(1, frenet_coordinate.size());
+  auto [s, w] = frenet_coordinate.front();
 
   EXPECT_LT(0.0, s);
   EXPECT_LT(s, trajectory->length());
   EXPECT_LT(-1.0, w);
   EXPECT_LT(w, 1.0);
-}
-
-TEST_F(TrajectoryTest, move_point_along_frenet_coordinate)
-{
-  geometry_msgs::msg::Pose pose;
-  pose.position.x = 5.0;
-  pose.position.y = 5.0;
-
-  auto frenet_coordinate =
-    autoware::experimental::trajectory::compute_frenet_coordinate(*trajectory, pose);
-  if (!frenet_coordinate) {
-    FAIL() << "Failed to compute frenet coordinate: " << frenet_coordinate.error().what;
-  }
-
-  auto moved_point = autoware::experimental::trajectory::move_point_along_frenet_coordinate(
-    *trajectory, pose, 1.0, 1.0);
-  if (!moved_point) {
-    FAIL() << "Failed to move point along frenet coordinate: " << moved_point.error().what;
-  }
-
-  auto moved_frenet_coordinate =
-    autoware::experimental::trajectory::compute_frenet_coordinate(*trajectory, moved_point.value());
-
-  if (!moved_frenet_coordinate) {
-    FAIL() << "Failed to compute moved frenet coordinate: " << moved_frenet_coordinate.error().what;
-  }
-  auto [s, w] = moved_frenet_coordinate.value();
-  EXPECT_NEAR(s, frenet_coordinate->first + 1.0, 0.1);
-  EXPECT_NEAR(w, frenet_coordinate->second + 1.0, 0.1);
 }

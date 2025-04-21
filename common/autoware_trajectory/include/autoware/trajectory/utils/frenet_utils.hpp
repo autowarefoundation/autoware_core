@@ -17,91 +17,47 @@
 
 #include "autoware/trajectory/detail/types.hpp"
 #include "autoware/trajectory/forward.hpp"
-#include "autoware/trajectory/utils/closest.hpp"
 
-#include <tl_expected/expected.hpp>
+#include <Eigen/Core>
 
-#include <fmt/core.h>
-
-#include <string>
-#include <utility>
+#include <vector>
 
 namespace autoware::experimental::trajectory
 {
 
-struct FrenetUtilsUnexpected
+struct FrenetCoordinate
 {
-  const std::string what;
+  double longitudinal;
+  double lateral;
+
+  FrenetCoordinate(const double longitudinal, const double lateral)
+  : longitudinal(longitudinal), lateral(lateral)
+  {
+  }
 };
 
+namespace detail::impl
+{
+
+std::vector<FrenetCoordinate> compute_frenet_coordinate_impl(
+  const std::function<Eigen::Vector2d(const double & s)> & trajectory_compute,
+  const std::vector<double> & bases, const Eigen::Vector2d & point);
+
+}  // namespace detail::impl
+
 template <class PointType, class InputPointType>
-[[nodiscard]] tl::expected<std::pair<double, double>, FrenetUtilsUnexpected>
-compute_frenet_coordinate(
+[[nodiscard]] std::vector<FrenetCoordinate> compute_frenet_coordinate(
   const Trajectory<PointType> & trajectory,  //
   const InputPointType & point)
 {
-  double closest_s = closest(trajectory, point);
-
-  if (closest_s < 0.0) {
-    return tl::unexpected<FrenetUtilsUnexpected>{
-      {"point (x = " + std::to_string(detail::to_point(point).x) + ", y = " +
-       std::to_string(detail::to_point(point).y) + ") is before the start of the trajectory"}};
-  }
-
-  if (closest_s > trajectory.length()) {
-    return tl::unexpected<FrenetUtilsUnexpected>{
-      {"point (x = " + std::to_string(detail::to_point(point).x) + ", y = " +
-       std::to_string(detail::to_point(point).y) + ") is after the end of the trajectory"}};
-  }
-
-  const auto point_xy = detail::to_point(point);
-  const auto closest_point_xy = detail::to_point(trajectory.compute(closest_s));
-
-  const double azimuth = trajectory.azimuth(closest_s);
-
-  const double w_x = point_xy.x - closest_point_xy.x;
-  const double w_y = point_xy.y - closest_point_xy.y;
-
-  // Normal vector perpendicular to azimuth direction
-  const double n_x = -std::sin(azimuth);
-  const double n_y = std::cos(azimuth);
-
-  return std::make_pair(closest_s, w_x * n_x + w_y * n_y);
+  return detail::impl::compute_frenet_coordinate_impl(
+    [&trajectory](const double & s) {
+      auto point = detail::to_point(trajectory.compute(s));
+      Eigen::Vector2d p;
+      p << point.x, point.y;
+      return p;
+    },
+    trajectory.get_underlying_bases(), {detail::to_point(point).x, detail::to_point(point).y});
 }
-
-template <class PointType, class InputPointType>
-[[nodiscard]] tl::expected<InputPointType, FrenetUtilsUnexpected>
-move_point_along_frenet_coordinate(
-  const Trajectory<InputPointType> & trajectory,  //
-  const PointType & point,                        //
-  const double & longitude,                       //
-  const double & lateral)
-{
-  auto frenet_coordinate = compute_frenet_coordinate(trajectory, point);
-  if (!frenet_coordinate) {
-    return tl::unexpected<FrenetUtilsUnexpected>{
-      {"Failed to compute_frenet_coordinate. " + frenet_coordinate.error().what}};
-  }
-
-  double longitudinal_moved_s = frenet_coordinate->first + longitude;
-  if (longitudinal_moved_s < 0.0) {
-    return tl::unexpected<FrenetUtilsUnexpected>{
-      {"Moved point (x = " + std::to_string(detail::to_point(point).x) + ", y = " +
-       std::to_string(detail::to_point(point).y) + ") is before the start of the trajectory"}};
-  }
-
-  if (longitudinal_moved_s > trajectory.length()) {
-    return tl::unexpected<FrenetUtilsUnexpected>{
-      {"Moved point (x = " + std::to_string(detail::to_point(point).x) + ", y = " +
-       std::to_string(detail::to_point(point).y) + ") is after the end of the trajectory"}};
-  }
-
-  auto moved_point = trajectory.compute(longitudinal_moved_s);
-  const double azimuth = trajectory.azimuth(longitudinal_moved_s);
-  detail::to_point(moved_point).x -= (frenet_coordinate->second + lateral) * std::sin(azimuth);
-  detail::to_point(moved_point).y += (frenet_coordinate->second + lateral) * std::cos(azimuth);
-  return moved_point;
-}
-
 }  // namespace autoware::experimental::trajectory
 #endif  // AUTOWARE__TRAJECTORY__UTILS__FRENET_UTILS_HPP_

@@ -37,11 +37,9 @@ int main()
   auto plt = autoware::pyplot::import();
 
   std::vector<geometry_msgs::msg::Point> points = {
-    point(0.49, 0.59), point(0.61, 1.22), point(0.86, 1.93), point(1.20, 2.56), point(1.51, 3.17),
-    point(1.85, 3.76), point(2.14, 4.26), point(2.60, 4.56), point(3.07, 4.55), point(3.61, 4.30),
-    point(3.95, 4.01), point(4.29, 3.68), point(4.90, 3.25), point(5.54, 3.10), point(6.24, 3.18),
-    point(6.88, 3.54), point(7.51, 4.25), point(7.85, 4.93), point(8.03, 5.73), point(8.16, 6.52),
-    point(8.31, 7.28), point(8.45, 7.93), point(8.68, 8.45), point(8.96, 8.96), point(9.32, 9.36)};
+    point(0.42, 0.36), point(1.56, 0.53), point(3.13, 0.80), point(5.15, 1.28), point(6.85, 2.01),
+    point(7.85, 2.83), point(8.18, 4.12), point(8.25, 5.28), point(8.10, 6.33), point(7.37, 7.57),
+    point(5.98, 8.15), point(4.86, 8.65), point(3.59, 8.83), point(2.05, 9.04), point(0.52, 9.15)};
 
   auto trajectory =
     autoware::experimental::trajectory::Trajectory<geometry_msgs::msg::Point>::Builder{}.build(
@@ -51,60 +49,57 @@ int main()
     return 1;
   }
 
-  std::cout << "length: " << trajectory->length() << std::endl;
+  geometry_msgs::msg::Point base;
+  base.x = 5.0;
+  base.y = 5.0;
+  auto frenet_coordinates =
+    autoware::experimental::trajectory::compute_frenet_coordinate(*trajectory, base);
 
-  {
-    std::vector<double> x;
-    std::vector<double> y;
-    for (double s = 0.0; s < trajectory->length(); s += 0.01) {
-      auto p = trajectory->compute(s);
-      x.push_back(p.x);
-      y.push_back(p.y);
-    }
-    plt.plot(Args(x, y), Kwargs("label"_a = "original"));
-
-    geometry_msgs::msg::Point p1;
-    p1.x = 7.2;
-    p1.y = 6.2;
-
-    geometry_msgs::msg::Point p2;
-    p2.x = 8.9;
-    p2.y = 5.9;
-
-    auto frenet_coordinate1 =
-      autoware::experimental::trajectory::compute_frenet_coordinate(*trajectory, p1);
-    auto frenet_coordinate2 =
-      autoware::experimental::trajectory::compute_frenet_coordinate(*trajectory, p2);
-
-    if (!frenet_coordinate1 || !frenet_coordinate2) {
-      return 1;
-    }
-
-    std::cout << "frenet coordinate1: " << frenet_coordinate1->first << ", "
-              << frenet_coordinate1->second << std::endl;
-
-    std::cout << "frenet coordinate2: " << frenet_coordinate2->first << ", "
-              << frenet_coordinate2->second << std::endl;
-
-    plt.scatter(Args(p1.x, p1.y), Kwargs("label"_a = "point1"));
-    plt.scatter(Args(p2.x, p2.y), Kwargs("label"_a = "point2"));
-
-    auto moved_point1 = autoware::experimental::trajectory::move_point_along_frenet_coordinate(
-      *trajectory, p1, 1.0, 0.0);
-    auto moved_point2 = autoware::experimental::trajectory::move_point_along_frenet_coordinate(
-      *trajectory, p2, 1.0, 0.0);
-
-    if (!moved_point1 || !moved_point2) {
-      return 1;
-    }
-
-    plt.scatter(Args(moved_point1->x, moved_point1->y), Kwargs("label"_a = "moved_point1"));
-    plt.scatter(Args(moved_point2->x, moved_point2->y), Kwargs("label"_a = "moved_point2"));
-
-    plt.axis(Args("equal"));
-    plt.legend();
-    plt.show();
+  std::cout << "Frenet coordinates: " << std::endl;
+  for (const auto & frenet_coordinate : frenet_coordinates) {
+    std::cout << "Longitudinal: " << frenet_coordinate.longitudinal
+              << ", Lateral: " << frenet_coordinate.lateral << std::endl;
   }
+
+  plt.scatter(
+    Args(std::vector<double>{base.x}, std::vector<double>{base.y}), Kwargs("color"_a = "red"));
+
+  std::vector<double> x_points;
+  std::vector<double> y_points;
+
+  for (const auto & point : points) {
+    x_points.push_back(point.x);
+    y_points.push_back(point.y);
+  }
+  plt.scatter(Args(x_points, y_points), Kwargs("color"_a = "green"));
+
+  std::vector<double> x_interpolated;
+  std::vector<double> y_interpolated;
+
+  for (double s = 0; s < trajectory->length(); s += 0.1) {
+    auto p = trajectory->compute(s);
+    x_interpolated.push_back(p.x);
+    y_interpolated.push_back(p.y);
+  }
+  plt.plot(Args(x_interpolated, y_interpolated), Kwargs("color"_a = "blue"));
+
+  for (const auto & frenet_coordinate : frenet_coordinates) {
+    auto p = trajectory->compute(frenet_coordinate.longitudinal);
+    plt.scatter(
+      Args(std::vector<double>{p.x}, std::vector<double>{p.y}), Kwargs("color"_a = "blue"));
+    const double azimuth = trajectory->azimuth(frenet_coordinate.longitudinal);
+
+    plt.quiver(
+      Args(p.x, p.y, std::cos(azimuth), std::sin(azimuth)),
+      Kwargs("color"_a = "blue", "label"_a = "Frenet direction"));
+
+    plt.plot(
+      Args(std::vector<double>{base.x, p.x}, std::vector<double>{base.y, p.y}),
+      Kwargs("color"_a = "blue", "label"_a = "Frenet direction"));
+  }
+
+  plt.axis(Args("equal"));
+  plt.show();
 
   return 0;
 }
