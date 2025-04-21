@@ -25,10 +25,13 @@
 namespace autoware::experimental::trajectory
 {
 
+/**
+ * @brief Structure representing a 2D Frenet coordinate
+ */
 struct FrenetCoordinate
 {
-  double longitudinal;
-  double lateral;
+  double longitudinal;  ///< Longitudinal coordinate along the trajectory
+  double lateral;       ///< Lateral coordinate perpendicular to the trajectory
 
   FrenetCoordinate(const double longitudinal, const double lateral)
   : longitudinal(longitudinal), lateral(lateral)
@@ -45,6 +48,15 @@ std::vector<FrenetCoordinate> compute_frenet_coordinate_impl(
 
 }  // namespace detail::impl
 
+/**
+ * @brief Compute Frenet coordinates of a given point with respect to a trajectory
+ *
+ * @tparam PointType The type used by the trajectory for its points
+ * @tparam InputPointType The type of the input point to project
+ * @param trajectory The trajectory with respect to which the Frenet coordinates are computed
+ * @param point The input point to project onto the trajectory
+ * @return Vector of Frenet coordinates where the projection is valid
+ */
 template <class PointType, class InputPointType>
 [[nodiscard]] std::vector<FrenetCoordinate> compute_frenet_coordinate(
   const Trajectory<PointType> & trajectory,  //
