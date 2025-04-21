@@ -74,11 +74,10 @@ std::optional<geometry_msgs::msg::Pose> get_predicted_object_pose_from_predicted
 }  // namespace
 
 PlannerData::PlannerData(rclcpp::Node & node)
-  : vehicle_info_(autoware::vehicle_info_utils::VehicleInfoUtils(node).getVehicleInfo())
+: vehicle_info_(autoware::vehicle_info_utils::VehicleInfoUtils(node).getVehicleInfo())
 {
   // nearest search
-  ego_nearest_dist_threshold =
-    get_or_declare_parameter<double>(node, "ego_nearest_dist_threshold");
+  ego_nearest_dist_threshold = get_or_declare_parameter<double>(node, "ego_nearest_dist_threshold");
   ego_nearest_yaw_threshold = get_or_declare_parameter<double>(node, "ego_nearest_yaw_threshold");
 
   trajectory_polygon_collision_check.decimate_trajectory_step_length =
@@ -289,8 +288,8 @@ std::vector<StopPoint> PlannerData::calculate_map_stop_points(
 }
 
 const pcl::PointCloud<pcl::PointXYZ>::Ptr PlannerData::Pointcloud::get_filtered_pointcloud_ptr(
-  const autoware::motion_velocity_planner::TrajectoryPoints& trajectory_points,
-  const autoware::vehicle_info_utils::VehicleInfo& vehicle_info) const
+  const autoware::motion_velocity_planner::TrajectoryPoints & trajectory_points,
+  const autoware::vehicle_info_utils::VehicleInfo & vehicle_info) const
 {
   if (!filtered_pointcloud_ptr) {
     auto pair = filter_and_cluster_point_clouds(trajectory_points, vehicle_info);
@@ -301,8 +300,8 @@ const pcl::PointCloud<pcl::PointXYZ>::Ptr PlannerData::Pointcloud::get_filtered_
 }
 
 const std::vector<pcl::PointIndices> PlannerData::Pointcloud::get_cluster_indices(
-  const autoware::motion_velocity_planner::TrajectoryPoints& trajectory_points,
-  const autoware::vehicle_info_utils::VehicleInfo& vehicle_info) const
+  const autoware::motion_velocity_planner::TrajectoryPoints & trajectory_points,
+  const autoware::vehicle_info_utils::VehicleInfo & vehicle_info) const
 {
   if (!cluster_indices) {
     auto pair = filter_and_cluster_point_clouds(trajectory_points, vehicle_info);
@@ -314,9 +313,9 @@ const std::vector<pcl::PointIndices> PlannerData::Pointcloud::get_cluster_indice
 
 void PlannerData::Pointcloud::search_pointcloud_near_trajectory(
   const std::vector<TrajectoryPoint> & trajectory,
-  const autoware::vehicle_info_utils::VehicleInfo& vehicle_info,
+  const autoware::vehicle_info_utils::VehicleInfo & vehicle_info,
   const pcl::PointCloud<pcl::PointXYZ>::Ptr & input_points_ptr,
-  pcl::PointCloud<pcl::PointXYZ>::Ptr& output_points_ptr) const
+  pcl::PointCloud<pcl::PointXYZ>::Ptr & output_points_ptr) const
 {
   const double front_length = vehicle_info.max_longitudinal_offset_m;
   const double rear_length = vehicle_info.rear_overhang_m;
@@ -380,8 +379,8 @@ void PlannerData::Pointcloud::search_pointcloud_near_trajectory(
 
 std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, std::vector<pcl::PointIndices>>
 PlannerData::Pointcloud::filter_and_cluster_point_clouds(
-  const autoware::motion_velocity_planner::TrajectoryPoints& trajectory_points,
-  const autoware::vehicle_info_utils::VehicleInfo& vehicle_info) const
+  const autoware::motion_velocity_planner::TrajectoryPoints & trajectory_points,
+  const autoware::vehicle_info_utils::VehicleInfo & vehicle_info) const
 {
   if (pointcloud.empty()) {
     return {};
@@ -393,7 +392,8 @@ PlannerData::Pointcloud::filter_and_cluster_point_clouds(
 
   // 2. filter-out points far-away from trajectory
   pcl::PointCloud<pcl::PointXYZ>::Ptr far_away_pointcloud_ptr(new pcl::PointCloud<pcl::PointXYZ>);
-  search_pointcloud_near_trajectory(trajectory_points, vehicle_info, pointcloud_ptr, far_away_pointcloud_ptr);
+  search_pointcloud_near_trajectory(
+    trajectory_points, vehicle_info, pointcloud_ptr, far_away_pointcloud_ptr);
 
   // 3. downsample & cluster pointcloud
   pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_points_ptr(new pcl::PointCloud<pcl::PointXYZ>);

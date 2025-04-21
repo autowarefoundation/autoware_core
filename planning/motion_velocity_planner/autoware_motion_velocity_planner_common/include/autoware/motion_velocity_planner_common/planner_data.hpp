@@ -134,19 +134,26 @@ public:
   public:
     Pointcloud() = default;
     explicit Pointcloud(
-      const PointcloudObstacleFilteringParam& pointcloud_obstacle_filtering_param,
+      const PointcloudObstacleFilteringParam & pointcloud_obstacle_filtering_param,
       double mask_lat_margin)
 
     : pointcloud_obstacle_filtering_param_(pointcloud_obstacle_filtering_param),
       mask_lat_margin_(mask_lat_margin)
     {
     }
-    void set_pointcloud(pcl::PointCloud<pcl::PointXYZ> && arg_pointcloud) { pointcloud = arg_pointcloud; }
+    void set_pointcloud(pcl::PointCloud<pcl::PointXYZ> && arg_pointcloud)
+    {
+      pointcloud = arg_pointcloud;
+    }
 
     pcl::PointCloud<pcl::PointXYZ> pointcloud;
 
-    const pcl::PointCloud<pcl::PointXYZ>::Ptr get_filtered_pointcloud_ptr(const autoware::motion_velocity_planner::TrajectoryPoints& trajectory_points, const autoware::vehicle_info_utils::VehicleInfo& vehicle_info) const;
-    const std::vector<pcl::PointIndices> get_cluster_indices(const autoware::motion_velocity_planner::TrajectoryPoints& trajectory_points, const autoware::vehicle_info_utils::VehicleInfo& vehicle_info) const;
+    const pcl::PointCloud<pcl::PointXYZ>::Ptr get_filtered_pointcloud_ptr(
+      const autoware::motion_velocity_planner::TrajectoryPoints & trajectory_points,
+      const autoware::vehicle_info_utils::VehicleInfo & vehicle_info) const;
+    const std::vector<pcl::PointIndices> get_cluster_indices(
+      const autoware::motion_velocity_planner::TrajectoryPoints & trajectory_points,
+      const autoware::vehicle_info_utils::VehicleInfo & vehicle_info) const;
 
   private:
     mutable std::optional<pcl::PointCloud<pcl::PointXYZ>::Ptr> filtered_pointcloud_ptr;
@@ -157,14 +164,14 @@ public:
 
     void search_pointcloud_near_trajectory(
       const std::vector<TrajectoryPoint> & trajectory,
-      const autoware::vehicle_info_utils::VehicleInfo& vehicle_info,
+      const autoware::vehicle_info_utils::VehicleInfo & vehicle_info,
       const pcl::PointCloud<pcl::PointXYZ>::Ptr & input_points_ptr,
-      pcl::PointCloud<pcl::PointXYZ>::Ptr& output_points_ptr) const;
+      pcl::PointCloud<pcl::PointXYZ>::Ptr & output_points_ptr) const;
 
     std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, std::vector<pcl::PointIndices>>
     filter_and_cluster_point_clouds(
-      const autoware::motion_velocity_planner::TrajectoryPoints& trajectory_points,
-      const autoware::vehicle_info_utils::VehicleInfo& vehicle_info) const;
+      const autoware::motion_velocity_planner::TrajectoryPoints & trajectory_points,
+      const autoware::vehicle_info_utils::VehicleInfo & vehicle_info) const;
   };
 
   void process_predicted_objects(

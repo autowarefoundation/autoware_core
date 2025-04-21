@@ -271,8 +271,10 @@ std::vector<geometry_msgs::msg::Point> ObstacleStopModule::convert_point_cloud_t
 
   std::vector<geometry_msgs::msg::Point> stop_collision_points;
 
-  const PointCloud::Ptr filtered_points_ptr = pointcloud.get_filtered_pointcloud_ptr(traj_points, vehicle_info);
-  const std::vector<pcl::PointIndices> clusters = pointcloud.get_cluster_indices(traj_points, vehicle_info);
+  const PointCloud::Ptr filtered_points_ptr =
+    pointcloud.get_filtered_pointcloud_ptr(traj_points, vehicle_info);
+  const std::vector<pcl::PointIndices> clusters =
+    pointcloud.get_cluster_indices(traj_points, vehicle_info);
 
   // 2. convert clusters to obstacles
   for (const auto & cluster_indices : clusters) {
