@@ -625,3 +625,31 @@ TEST_F(TrajectoryTest, compute_frenet_coordinate)
   EXPECT_LT(-1.0, w);
   EXPECT_LT(w, 1.0);
 }
+
+TEST_F(TrajectoryTest, move_point_along_frenet_coordinate)
+{
+  geometry_msgs::msg::Pose pose;
+  pose.position.x = 5.0;
+  pose.position.y = 5.0;
+
+  auto frenet_coordinate = autoware::trajectory::compute_frenet_coordinate(*trajectory, pose);
+  if (!frenet_coordinate) {
+    FAIL() << "Failed to compute frenet coordinate: " << frenet_coordinate.error().what;
+  }
+
+  auto moved_point =
+    autoware::trajectory::move_point_along_frenet_coordinate(*trajectory, pose, 1.0, 1.0);
+  if (!moved_point) {
+    FAIL() << "Failed to move point along frenet coordinate: " << moved_point.error().what;
+  }
+
+  auto moved_frenet_coordinate =
+    autoware::trajectory::compute_frenet_coordinate(*trajectory, moved_point.value());
+
+  if (!moved_frenet_coordinate) {
+    FAIL() << "Failed to compute moved frenet coordinate: " << moved_frenet_coordinate.error().what;
+  }
+  auto [s, w] = moved_frenet_coordinate.value();
+  EXPECT_NEAR(s, frenet_coordinate->first + 1.0, 0.1);
+  EXPECT_NEAR(w, frenet_coordinate->second + 1.0, 0.1);
+}
