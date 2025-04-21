@@ -227,8 +227,8 @@ bool calcStopVelocityWithConstantJerkAccLimit(
   std::vector<double> distances;
   distances.push_back(distance);
   for (size_t i = start_index; i < output_trajectory.size() - 1; ++i) {
-    distance +=
-      autoware_utils_geometry::calc_distance2d(output_trajectory.at(i), output_trajectory.at(i + 1));
+    distance += autoware_utils_geometry::calc_distance2d(
+      output_trajectory.at(i), output_trajectory.at(i + 1));
     if (distance > xs.back()) {
       break;
     }

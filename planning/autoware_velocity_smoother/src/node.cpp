@@ -49,8 +49,8 @@ VelocitySmootherNode::VelocitySmootherNode(const rclcpp::NodeOptions & node_opti
 
   // create time_keeper and its publisher
   // NOTE: This has to be called before setupSmoother to pass the time_keeper to the smoother.
-  debug_processing_time_detail_ =
-    create_publisher<autoware_utils_debug::ProcessingTimeDetail>("~/debug/processing_time_detail_ms", 1);
+  debug_processing_time_detail_ = create_publisher<autoware_utils_debug::ProcessingTimeDetail>(
+    "~/debug/processing_time_detail_ms", 1);
   time_keeper_ = std::make_shared<autoware_utils_debug::TimeKeeper>(debug_processing_time_detail_);
 
   // create smoother
@@ -1072,7 +1072,8 @@ double VelocitySmootherNode::calcTravelDistance() const
   const auto closest_point = calcProjectedTrajectoryPointFromEgo(prev_output_);
 
   if (prev_closest_point_) {
-    const double travel_dist = autoware_utils_geometry::calc_distance2d(*prev_closest_point_, closest_point);
+    const double travel_dist =
+      autoware_utils_geometry::calc_distance2d(*prev_closest_point_, closest_point);
     return travel_dist;
   }
 
