@@ -6,14 +6,14 @@
 
 ## Design
 
- `autoware_gyro_odometer` is part of the perception or localization stack, providing reliable motion estimates for navigation and control. It is designed to estimate the robot's motion by combining vehicle twist data (linear and angular velocities) with angular velocity measurements from an IMU (Inertial Measurement Unit). 
+`autoware_gyro_odometer` is part of the perception or localization stack, providing reliable motion estimates for navigation and control. It is designed to estimate the robot's motion by combining vehicle twist data (linear and angular velocities) with angular velocity measurements from an IMU (Inertial Measurement Unit).
 
- **Data Handling and Synchronization:**
+**Data Handling and Synchronization:**
 
 - Message Queues: Uses queues to store vehicle twist and gyro messages to ensure data synchronization.
 - Message Timeouts: Checks for message timeouts to discard stale data, preventing incorrect estimations.
 
- **Error Checks and Logging:**
+  **Error Checks and Logging:**
 
 - Timeout Handling: Logs errors and clears queues if messages exceed a defined time threshold.
 - Transformation Checks: Verifies that TF transforms between IMU and base frames are available; logs errors if not.
