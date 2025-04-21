@@ -1,5 +1,5 @@
 repositories:
-  autoware_universe:
+  autoware/autoware_universe:
     type: git
     url: https://github.com/autowarefoundation/autoware_universe.git
     version: main
