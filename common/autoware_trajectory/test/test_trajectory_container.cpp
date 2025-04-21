@@ -16,10 +16,14 @@
 #include "autoware/trajectory/utils/crossed.hpp"
 #include "autoware/trajectory/utils/curvature_utils.hpp"
 #include "autoware/trajectory/utils/find_intervals.hpp"
+#include "autoware_utils_geometry/geometry.hpp"
 #include "lanelet2_core/primitives/LineString.h"
+
+#include <geometry_msgs/msg/point.hpp>
 
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <utility>
 #include <vector>
 
@@ -545,6 +549,47 @@ TEST_F(TrajectoryTest, find_interval)
   EXPECT_LT(0, intervals[0].start);
   EXPECT_LT(intervals[0].start, intervals[0].end);
   EXPECT_NEAR(intervals[0].end, trajectory->length(), 0.1);
+}
+
+TEST_F(TrajectoryTest, find_interval_with_binary_search)
+{
+  geometry_msgs::msg::Point base_point;
+  base_point.x = 6.0;
+  base_point.y = 2.0;
+  const double radius = 3.0;
+
+  auto intervals_0 = autoware::experimental::trajectory::find_intervals(
+    *trajectory, [&](const autoware_internal_planning_msgs::msg::PathPointWithLaneId & point) {
+      return autoware_utils_geometry::calc_distance2d(point.point.pose.position, base_point) <
+             radius;
+    });
+  EXPECT_EQ(intervals_0.size(), 1);
+
+  auto intervals_1 = autoware::experimental::trajectory::find_intervals(
+    *trajectory,
+    [&](const autoware_internal_planning_msgs::msg::PathPointWithLaneId & point) {
+      return autoware_utils_geometry::calc_distance2d(point.point.pose.position, base_point) <
+             radius;
+    },
+    10);
+
+  EXPECT_EQ(intervals_1.size(), 1);
+
+  // interval_1 should be accurate than interval_0
+  double interval_0_start_distance = autoware_utils_geometry::calc_distance2d(
+    trajectory->compute(intervals_0[0].start).point.pose.position, base_point);
+  double interval_0_end_distance = autoware_utils_geometry::calc_distance2d(
+    trajectory->compute(intervals_0[0].end).point.pose.position, base_point);
+  double interval_1_start_distance = autoware_utils_geometry::calc_distance2d(
+    trajectory->compute(intervals_1[0].start).point.pose.position, base_point);
+  double interval_1_end_distance = autoware_utils_geometry::calc_distance2d(
+    trajectory->compute(intervals_1[0].end).point.pose.position, base_point);
+  double interval_0_start_error_decrease =
+    std::fabs(interval_0_start_distance - radius) - std::fabs(interval_1_start_distance - radius);
+  double interval_0_end_error_decrease =
+    std::fabs(interval_0_end_distance - radius) - std::fabs(interval_1_end_distance - radius);
+  EXPECT_GT(interval_0_start_error_decrease, 0);
+  EXPECT_GT(interval_0_end_error_decrease, 0);
 }
 
 TEST_F(TrajectoryTest, max_curvature)

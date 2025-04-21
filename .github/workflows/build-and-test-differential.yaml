@@ -86,3 +86,33 @@ jobs:
 
       - name: Show disk space after the tasks
         run: df -h
+
+  build-and-test-packages-above-differential:
+    needs: require-label
+    if: ${{ needs.require-label.outputs.result == 'true' }}
+    runs-on: ubuntu-24.04
+    container: ghcr.io/autowarefoundation/autoware:core-common-devel
+    steps:
+      - name: Set PR fetch depth
+        run: echo "PR_FETCH_DEPTH=$(( ${{ github.event.pull_request.commits }} + 1 ))" >> "${GITHUB_ENV}"
+
+      - name: Checkout PR branch and all PR commits
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: ${{ env.PR_FETCH_DEPTH }}
+
+      - name: Clone above dependency packages
+        run: |
+          mkdir -p dependency_ws
+          vcs import dependency_ws < packages_above.repos
+        shell: bash
+
+      - name: Remove exec_depend
+        uses: autowarefoundation/autoware-github-actions/remove-exec-depend@v1
+
+      - name: Run build-and-test-differential action
+        uses: ./.github/actions/build-and-test-differential
+        with:
+          rosdistro: humble
+          codecov-token: ${{ secrets.CODECOV_TOKEN }}
