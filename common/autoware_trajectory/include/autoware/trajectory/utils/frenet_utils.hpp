@@ -21,7 +21,7 @@
 
 #include <tl_expected/expected.hpp>
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 
 #include <string>
 #include <utility>
@@ -43,15 +43,15 @@ compute_frenet_coordinate(
   double closest_s = closest(trajectory, point);
 
   if (closest_s < 0.0) {
-    return tl::unexpected<FrenetUtilsUnexpected>{{fmt::format(
-      "point (x = {}, y = {}) is before the start of the trajectory", detail::to_point(point).x,
-      detail::to_point(point).y)}};
+    return tl::unexpected<FrenetUtilsUnexpected>{
+      {"point (x = " + std::to_string(detail::to_point(point).x) + ", y = " +
+       std::to_string(detail::to_point(point).y) + ") is before the start of the trajectory"}};
   }
 
   if (closest_s > trajectory.length()) {
-    return tl::unexpected<FrenetUtilsUnexpected>{{fmt::format(
-      "point (x = {}, y = {}) is after the end of the trajectory", detail::to_point(point).x,
-      detail::to_point(point).y)}};
+    return tl::unexpected<FrenetUtilsUnexpected>{
+      {"point (x = " + std::to_string(detail::to_point(point).x) + ", y = " +
+       std::to_string(detail::to_point(point).y) + ") is after the end of the trajectory"}};
   }
 
   const auto point_xy = detail::to_point(point);
@@ -84,15 +84,15 @@ template <class PointType>
 
   double longitudinal_moved_s = frenet_coordinate->first + longitude;
   if (longitudinal_moved_s < 0.0) {
-    return tl::unexpected<FrenetUtilsUnexpected>{{fmt::format(
-      "Moved point (x = {}, y = {}) is before the start of the trajectory",
-      detail::to_point(point).x, detail::to_point(point).y)}};
+    return tl::unexpected<FrenetUtilsUnexpected>{
+      {"Moved point (x = " + std::to_string(detail::to_point(point).x) + ", y = " +
+       std::to_string(detail::to_point(point).y) + ") is before the start of the trajectory"}};
   }
 
   if (longitudinal_moved_s > trajectory.length()) {
-    return tl::unexpected<FrenetUtilsUnexpected>{{fmt::format(
-      "Moved point (x = {}, y = {}) is after the end of the trajectory", detail::to_point(point).x,
-      detail::to_point(point).y)}};
+    return tl::unexpected<FrenetUtilsUnexpected>{
+      {"Moved point (x = " + std::to_string(detail::to_point(point).x) + ", y = " +
+       std::to_string(detail::to_point(point).y) + ") is after the end of the trajectory"}};
   }
 
   auto moved_point = trajectory.compute(longitudinal_moved_s);
