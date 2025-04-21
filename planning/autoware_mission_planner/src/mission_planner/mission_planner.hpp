@@ -67,7 +67,8 @@ class MissionPlanner : public rclcpp::Node
 {
 public:
   explicit MissionPlanner(const rclcpp::NodeOptions & options);
-  void publish_processing_time(autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch);
+  void publish_processing_time(
+    autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch);
 
 private:
   ArrivalChecker arrival_checker_;

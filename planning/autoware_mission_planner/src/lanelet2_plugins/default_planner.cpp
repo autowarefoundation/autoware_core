@@ -108,8 +108,10 @@ PlannerPlugin::MarkerArray DefaultPlanner::visualize(const LaneletRoute & route)
     autoware_utils_visualization::create_marker_color(0.8, 0.99, 0.8, 0.15);
   const std_msgs::msg::ColorRGBA cl_ll_borders =
     autoware_utils_visualization::create_marker_color(1.0, 1.0, 1.0, 0.999);
-  const std_msgs::msg::ColorRGBA cl_end = autoware_utils_visualization::create_marker_color(0.2, 0.2, 0.4, 0.05);
-  const std_msgs::msg::ColorRGBA cl_goal = autoware_utils_visualization::create_marker_color(0.2, 0.4, 0.4, 0.05);
+  const std_msgs::msg::ColorRGBA cl_end =
+    autoware_utils_visualization::create_marker_color(0.2, 0.2, 0.4, 0.05);
+  const std_msgs::msg::ColorRGBA cl_goal =
+    autoware_utils_visualization::create_marker_color(0.2, 0.4, 0.4, 0.05);
 
   visualization_msgs::msg::MarkerArray route_marker_array;
   insert_marker_array(
@@ -264,8 +266,8 @@ bool DefaultPlanner::is_goal_valid(
   }
 
   const auto local_vehicle_footprint = vehicle_info_.createFootprint();
-  autoware_utils_geometry::LinearRing2d goal_footprint =
-    autoware_utils_geometry::transform_vector(local_vehicle_footprint, autoware_utils_geometry::pose2transform(goal));
+  autoware_utils_geometry::LinearRing2d goal_footprint = autoware_utils_geometry::transform_vector(
+    local_vehicle_footprint, autoware_utils_geometry::pose2transform(goal));
   pub_goal_footprint_marker_->publish(visualize_debug_footprint(goal_footprint));
   const auto polygon_footprint = convert_linear_ring_to_polygon(goal_footprint);
 
