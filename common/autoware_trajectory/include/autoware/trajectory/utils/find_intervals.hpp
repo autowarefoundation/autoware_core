@@ -47,7 +47,8 @@ namespace detail::impl
  * satisfied.
  */
 std::vector<Interval> find_intervals_impl(
-  const std::vector<double> & bases, const std::function<bool(const double &)> & constraint);
+  const std::vector<double> & bases, const std::function<bool(const double &)> & constraint,
+  int max_iter = 0);
 
 }  // namespace detail::impl
 
@@ -62,7 +63,7 @@ std::vector<Interval> find_intervals_impl(
  */
 template <class TrajectoryPointType, class Constraint>
 std::vector<Interval> find_intervals(
-  const Trajectory<TrajectoryPointType> & trajectory, Constraint && constraint)
+  const Trajectory<TrajectoryPointType> & trajectory, Constraint && constraint, int max_iter = 0)
 {
   using autoware::experimental::trajectory::detail::to_point;
 
@@ -70,7 +71,8 @@ std::vector<Interval> find_intervals(
     trajectory.get_underlying_bases(),
     [constraint = std::forward<Constraint>(constraint), &trajectory](const double & s) {
       return constraint(trajectory.compute(s));
-    });
+    },
+    max_iter);
 }
 
 }  // namespace autoware::experimental::trajectory
