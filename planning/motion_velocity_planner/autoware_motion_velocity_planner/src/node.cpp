@@ -23,7 +23,6 @@
 #include <autoware_utils/ros/wait_for_param.hpp>
 #include <autoware_utils/system/stop_watch.hpp>
 #include <autoware_utils/transform/transforms.hpp>
-#include <autoware_utils_geometry/boost_geometry.hpp>
 #include <tf2_eigen/tf2_eigen.hpp>
 
 #include <autoware_planning_msgs/msg/trajectory_point.hpp>
@@ -170,9 +169,7 @@ bool MotionVelocityPlannerNode::update_planner_data(
     auto no_ground_pointcloud = process_no_ground_pointcloud(no_ground_pointcloud_ptr);
     processing_times["update_planner_data.pcl.process_no_ground_pointcloud"] = sw.toc(true);
     if (no_ground_pointcloud) {
-      planner_data_.no_ground_pointcloud = PlannerData::Pointcloud(
-        std::move(*no_ground_pointcloud), trajectory_points_, planner_data_.vehicle_info_,
-        planner_data_.pointcloud_obstacle_filtering_param, planner_data_.mask_lat_margin);
+      planner_data_.no_ground_pointcloud.set_pointcloud(std::move(*no_ground_pointcloud));
     }
   }
 
@@ -302,7 +299,6 @@ void MotionVelocityPlannerNode::on_trajectory(
 
   autoware::motion_velocity_planner::TrajectoryPoints input_trajectory_points{
     input_trajectory_msg->points.begin(), input_trajectory_msg->points.end()};
-  trajectory_points_ = input_trajectory_points;
   auto output_trajectory_msg = generate_trajectory(input_trajectory_points, processing_times);
   output_trajectory_msg.header = input_trajectory_msg->header;
   processing_times["generate_trajectory"] = stop_watch.toc(true);
