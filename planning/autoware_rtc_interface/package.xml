@@ -16,9 +16,9 @@
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
   <buildtool_depend>autoware_cmake</buildtool_depend>
 
+  <depend>autoware_internal_rtc_msgs</depend>
   <depend>autoware_utils</depend>
   <depend>rclcpp</depend>
-  <depend>autoware_internal_rtc_msgs</depend>
   <depend>unique_identifier_msgs</depend>
 
   <test_depend>ament_cmake_ros</test_depend>
