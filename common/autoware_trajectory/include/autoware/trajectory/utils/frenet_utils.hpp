@@ -26,7 +26,7 @@
 #include <string>
 #include <utility>
 
-namespace autoware::trajectory
+namespace autoware::experimental::trajectory
 {
 
 struct FrenetUtilsUnexpected
@@ -103,5 +103,5 @@ move_point_along_frenet_coordinate(
   return moved_point;
 }
 
-}  // namespace autoware::trajectory
+}  // namespace autoware::experimental::trajectory
 #endif  // AUTOWARE__TRAJECTORY__UTILS__FRENET_UTILS_HPP_

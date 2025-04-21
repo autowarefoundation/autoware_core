@@ -44,7 +44,8 @@ int main()
     point(8.31, 7.28), point(8.45, 7.93), point(8.68, 8.45), point(8.96, 8.96), point(9.32, 9.36)};
 
   auto trajectory =
-    autoware::trajectory::Trajectory<geometry_msgs::msg::Point>::Builder{}.build(points);
+    autoware::experimental::trajectory::Trajectory<geometry_msgs::msg::Point>::Builder{}.build(
+      points);
 
   if (!trajectory) {
     return 1;
@@ -70,8 +71,10 @@ int main()
     p2.x = 8.9;
     p2.y = 5.9;
 
-    auto frenet_coordinate1 = autoware::trajectory::compute_frenet_coordinate(*trajectory, p1);
-    auto frenet_coordinate2 = autoware::trajectory::compute_frenet_coordinate(*trajectory, p2);
+    auto frenet_coordinate1 =
+      autoware::experimental::trajectory::compute_frenet_coordinate(*trajectory, p1);
+    auto frenet_coordinate2 =
+      autoware::experimental::trajectory::compute_frenet_coordinate(*trajectory, p2);
 
     if (!frenet_coordinate1 || !frenet_coordinate2) {
       return 1;
@@ -86,10 +89,10 @@ int main()
     plt.scatter(Args(p1.x, p1.y), Kwargs("label"_a = "point1"));
     plt.scatter(Args(p2.x, p2.y), Kwargs("label"_a = "point2"));
 
-    auto moved_point1 =
-      autoware::trajectory::move_point_along_frenet_coordinate(*trajectory, p1, 1.0, 0.0);
-    auto moved_point2 =
-      autoware::trajectory::move_point_along_frenet_coordinate(*trajectory, p2, 1.0, 0.0);
+    auto moved_point1 = autoware::experimental::trajectory::move_point_along_frenet_coordinate(
+      *trajectory, p1, 1.0, 0.0);
+    auto moved_point2 = autoware::experimental::trajectory::move_point_along_frenet_coordinate(
+      *trajectory, p2, 1.0, 0.0);
 
     if (!moved_point1 || !moved_point2) {
       return 1;
