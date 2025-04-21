@@ -16,8 +16,8 @@
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <autoware_test_utils/autoware_test_utils.hpp>
-#include <autoware_utils/geometry/boost_geometry.hpp>
-#include <autoware_utils/geometry/geometry.hpp>
+#include <autoware_utils_geometry/boost_geometry.hpp>
+#include <autoware_utils_geometry/geometry.hpp>
 
 #include <boost/geometry/io/wkt/write.hpp>
 
@@ -35,8 +35,8 @@
 #include <vector>
 
 using autoware_planning_msgs::msg::LaneletRoute;
-using autoware_utils::calc_offset_pose;
-using autoware_utils::create_quaternion_from_rpy;
+using autoware_utils_geometry::calc_offset_pose;
+using autoware_utils_geometry::create_quaternion_from_rpy;
 using geometry_msgs::msg::Pose;
 using RoutePoints = std::vector<geometry_msgs::msg::Pose>;
 
@@ -48,7 +48,7 @@ struct DefaultPlanner : public autoware::mission_planner::lanelet2::DefaultPlann
   [[nodiscard]] bool check_goal_inside_lanes(
     const lanelet::ConstLanelet & closest_lanelet_to_goal,
     const lanelet::ConstLanelets & path_lanelets,
-    const autoware_utils::Polygon2d & goal_footprint) const
+    const autoware_utils_geometry::Polygon2d & goal_footprint) const
   {
     return check_goal_footprint_inside_lanes(
       closest_lanelet_to_goal, path_lanelets, goal_footprint);
@@ -119,7 +119,7 @@ TEST_F(DefaultPlannerTest, checkGoalInsideLane)
   lanelet::ConstLanelet goal_lanelet{lanelet::InvalId, left_bound, right_bound};
 
   // simple case where the footprint is completely inside the lane
-  autoware_utils::Polygon2d goal_footprint;
+  autoware_utils_geometry::Polygon2d goal_footprint;
   goal_footprint.outer().emplace_back(0, 0);
   goal_footprint.outer().emplace_back(0, 0.5);
   goal_footprint.outer().emplace_back(0.5, 0.5);
@@ -404,7 +404,7 @@ TEST_F(DefaultPlannerTest, visualizeDebugFootprint)
   DefaultPlanner planner;
   planner_.set_default_test_map();
 
-  autoware_utils::LinearRing2d footprint;
+  autoware_utils_geometry::LinearRing2d footprint;
   footprint.push_back({1.0, 1.0});
   footprint.push_back({1.0, -1.0});
   footprint.push_back({0.0, -1.0});
