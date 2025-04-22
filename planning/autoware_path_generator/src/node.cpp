@@ -323,7 +323,7 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
   }
 
   for (const auto & [waypoints, interval] : waypoint_groups) {
-    if (s_offset + interval.first > 0.) {
+    if (s_offset + interval.start > 0.) {
       continue;
     }
     const auto prev_lanelet =
@@ -362,7 +362,7 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
 
       if (overlapping_waypoint_group_index) {
         const auto & [waypoints, interval] = waypoint_groups[*overlapping_waypoint_group_index];
-        if (s >= interval.first + s_offset && s <= interval.second + s_offset) {
+        if (s >= interval.start + s_offset && s <= interval.end + s_offset) {
           continue;
         }
         overlapping_waypoint_group_index = std::nullopt;
@@ -370,7 +370,7 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
 
       for (size_t i = 0; i < waypoint_groups.size(); ++i) {
         const auto & [waypoints, interval] = waypoint_groups[i];
-        if (s < interval.first + s_offset || s > interval.second + s_offset) {
+        if (s < interval.start + s_offset || s > interval.end + s_offset) {
           continue;
         }
         for (const auto & waypoint : waypoints) {

@@ -31,6 +31,16 @@ using autoware_internal_planning_msgs::msg::PathPointWithLaneId;
 using autoware_internal_planning_msgs::msg::PathWithLaneId;
 using autoware_vehicle_msgs::msg::TurnIndicatorsCommand;
 
+struct WaypointGroup
+{
+  lanelet::ConstPoints3d waypoints;
+  struct Interval
+  {
+    double start;
+    double end;
+  } interval;
+};
+
 template <typename T>
 struct PathRange
 {
@@ -90,9 +100,9 @@ std::optional<lanelet::ConstLanelet> get_next_lanelet_within_route(
  * group (see figure in README)
  * @param interval_margin_ratio ratio to expand interval bound of group according to the
  * lateral distance of first and last point of group
- * @return waypoint groups (each group is a pair of points and its interval)
+ * @return waypoint groups
  */
-std::vector<std::pair<lanelet::ConstPoints3d, std::pair<double, double>>> get_waypoint_groups(
+std::vector<WaypointGroup> get_waypoint_groups(
   const lanelet::LaneletSequence & lanelet_sequence, const lanelet::LaneletMap & lanelet_map,
   const double group_separation_threshold, const double interval_margin_ratio);
 

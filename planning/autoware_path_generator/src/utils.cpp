@@ -183,11 +183,11 @@ std::optional<lanelet::ConstLanelet> get_next_lanelet_within_route(
   return *next_lanelet_itr;
 }
 
-std::vector<std::pair<lanelet::ConstPoints3d, std::pair<double, double>>> get_waypoint_groups(
+std::vector<WaypointGroup> get_waypoint_groups(
   const lanelet::LaneletSequence & lanelet_sequence, const lanelet::LaneletMap & lanelet_map,
   const double group_separation_threshold, const double interval_margin_ratio)
 {
-  std::vector<std::pair<lanelet::ConstPoints3d, std::pair<double, double>>> waypoint_groups{};
+  std::vector<WaypointGroup> waypoint_groups{};
 
   const auto get_interval_bound =
     [&](const lanelet::ConstPoint3d & point, const double lateral_distance_factor) {
@@ -206,16 +206,16 @@ std::vector<std::pair<lanelet::ConstPoints3d, std::pair<double, double>>> get_wa
 
     if (
       waypoint_groups.empty() ||
-      lanelet::geometry::distance2d(waypoint_groups.back().first.back(), waypoints.front()) >
+      lanelet::geometry::distance2d(waypoint_groups.back().waypoints.back(), waypoints.front()) >
         group_separation_threshold) {
-      waypoint_groups.emplace_back().second.first =
+      waypoint_groups.emplace_back().interval.start =
         get_interval_bound(waypoints.front(), -interval_margin_ratio);
     }
-    waypoint_groups.back().second.second =
+    waypoint_groups.back().interval.end =
       get_interval_bound(waypoints.back(), interval_margin_ratio);
 
-    waypoint_groups.back().first.insert(
-      waypoint_groups.back().first.end(), waypoints.begin(), waypoints.end());
+    waypoint_groups.back().waypoints.insert(
+      waypoint_groups.back().waypoints.end(), waypoints.begin(), waypoints.end());
   }
 
   return waypoint_groups;
