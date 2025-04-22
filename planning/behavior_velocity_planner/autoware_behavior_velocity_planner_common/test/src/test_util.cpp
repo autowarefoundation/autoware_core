@@ -278,7 +278,7 @@ TEST(PlanningUtilsTest, ToRosPoints)
   EXPECT_EQ(points[1].z, 6.0);
 }
 
-// Test for extendLine
+// Test for extendSegmentToBounds
 TEST(PlanningUtilsTest, ExtendSegmentToBounds)
 {
   constexpr auto epsilon = 1e-3;

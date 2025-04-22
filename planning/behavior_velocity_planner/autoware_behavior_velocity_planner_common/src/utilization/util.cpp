@@ -23,8 +23,6 @@
 #include <autoware_planning_msgs/msg/path_point.hpp>
 
 #include <boost/geometry/algorithms/correct.hpp>
-#include <boost/geometry/algorithms/detail/make/make.hpp>
-#include <boost/geometry/arithmetic/infinite_line_functions.hpp>
 
 #include <lanelet2_core/geometry/Polygon.h>
 #include <lanelet2_routing/RoutingGraph.h>
@@ -500,7 +498,7 @@ LineString2d extendSegmentToBounds(
   const lanelet::BasicLineString2d & segment, const std::vector<geometry_msgs::msg::Point> & bound1,
   const std::vector<geometry_msgs::msg::Point> & bound2)
 {
-  constexpr double epsilon = 1e-3;
+  constexpr double epsilon = 1e-6;
   constexpr auto to_autoware_line_string = [](const auto & line_string) {
     LineString2d autoware_line_string;
     std::transform(
@@ -523,30 +521,29 @@ LineString2d extendSegmentToBounds(
     return to_autoware_line_string(segment);
   }
 
-  const auto line =
-    boost::geometry::detail::make::make_infinite_line<double>(segment[0], segment[1]);
-
   const auto find_intersection_point =
     [&](const std::vector<geometry_msgs::msg::Point> & bound) -> std::optional<Point2d> {
     std::optional<Point2d> intersection_point = std::nullopt;
     auto min_distance_to_bound = std::numeric_limits<double>::max();
     for (auto it = std::next(bound.begin()); it != bound.end(); ++it) {
-      const LineString2d target_segment{
-        autoware_utils_geometry::from_msg(*std::prev(it)).to_2d(),
-        autoware_utils_geometry::from_msg(*it).to_2d()};
-      const auto target_line = boost::geometry::detail::make::make_infinite_line<double>(
-        target_segment[0], target_segment[1]);
-      Point2d ip;
-      if (!boost::geometry::arithmetic::intersection_point(line, target_line, ip)) {
+      const auto p2 = autoware_utils_geometry::from_msg(*std::prev(it)).to_2d();
+      const auto p3 = autoware_utils_geometry::from_msg(*it).to_2d();
+      const Eigen::Vector2d v01 = segment[1] - segment[0];
+      const Eigen::Vector2d v23 = p3 - p2;
+      const auto c = v23.x() * v01.y() - v23.y() * v01.x();
+      if (std::abs(c) < epsilon) {  // parallel
         continue;
       }
-      if (boost::geometry::distance(ip, target_segment) > epsilon) {
+      const Eigen::Vector2d v20 = segment[0] - p2;
+      const auto t = (v20.x() * v01.y() - v20.y() * v01.x()) / c;
+      if (t < 0.0 || t > 1.0) {  // intersection is outside segment
         continue;
       }
+      const Eigen::Vector2d pi = p2 + t * v23;
       const auto distance = std::min(
-        boost::geometry::distance(ip, segment[0]), boost::geometry::distance(ip, segment[1]));
+        boost::geometry::distance(pi, segment[0]), boost::geometry::distance(pi, segment[1]));
       if (!intersection_point || distance <= min_distance_to_bound) {
-        intersection_point = ip;
+        intersection_point = {pi.x(), pi.y()};
         min_distance_to_bound = distance;
       }
     }
@@ -560,6 +557,9 @@ LineString2d extendSegmentToBounds(
     return to_autoware_line_string(segment);
   }
 
+  if ((*intersection2 - *intersection1).dot(segment[1] - segment[0]) < 0.0) {
+    return LineString2d{*intersection2, *intersection1};
+  }
   return LineString2d{*intersection1, *intersection2};
 }
 
