@@ -21,7 +21,7 @@
 #include <autoware/route_handler/route_handler.hpp>
 #include <autoware/velocity_smoother/smoother/smoother_base.hpp>
 #include <autoware_utils/geometry/boost_polygon_utils.hpp>
-#include <autoware_utils/ros/parameter.hpp>
+#include <autoware_utils_rclcpp/parameter.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
 
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
