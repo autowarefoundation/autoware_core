@@ -56,7 +56,7 @@
 namespace autoware::motion_velocity_planner
 {
 using autoware_planning_msgs::msg::TrajectoryPoint;
-using autoware_utils::get_or_declare_parameter;
+using autoware_utils_rclcpp::get_or_declare_parameter;
 using TrajectoryPoints = std::vector<autoware_planning_msgs::msg::TrajectoryPoint>;
 using Point2d = autoware_utils_geometry::Point2d;
 using Polygon2d = boost::geometry::model::polygon<Point2d>;
