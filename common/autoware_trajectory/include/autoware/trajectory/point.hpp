@@ -38,6 +38,9 @@ class Trajectory<geometry_msgs::msg::Point>
 {
   using PointType = geometry_msgs::msg::Point;
 
+  template <class PointType>
+  friend class Trajectory;
+
 protected:
   std::shared_ptr<interpolator::InterpolatorInterface<double>> x_interpolator_{
     nullptr};  //!< Interpolator for x

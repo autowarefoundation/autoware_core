@@ -44,6 +44,7 @@ protected:
 public:
   Trajectory();
   ~Trajectory() override = default;
+  explicit Trajectory(const Trajectory<geometry_msgs::msg::Point> & point_trajectory);
   Trajectory(const Trajectory & rhs);
   Trajectory(Trajectory && rhs) = default;
   Trajectory & operator=(const Trajectory & rhs);

@@ -44,6 +44,32 @@ Trajectory<PointType>::Trajectory(const Trajectory & rhs)
 {
 }
 
+Trajectory<PointType>::Trajectory(const Trajectory<geometry_msgs::msg::Point> & point_trajectory)
+: Trajectory()
+{
+  x_interpolator_ = point_trajectory.x_interpolator_->clone();
+  y_interpolator_ = point_trajectory.y_interpolator_->clone();
+  z_interpolator_ = point_trajectory.z_interpolator_->clone();
+  bases_ = point_trajectory.get_underlying_bases();
+  start_ = point_trajectory.start_;
+  end_ = point_trajectory.end_;
+
+  // build mock orientations
+  std::vector<geometry_msgs::msg::Quaternion> orientations(bases_.size());
+  for (size_t i = 0; i < bases_.size(); ++i) {
+    orientations[i].w = 1.0;
+  }
+  auto success = orientation_interpolator_->build(bases_, orientations);
+
+  if (!success) {
+    throw std::runtime_error(
+      "Failed to build orientation interpolator.");  // This Exception should not be thrown.
+  }
+
+  // align orientation with trajectory direction
+  align_orientation_with_trajectory_direction();
+}
+
 Trajectory<PointType> & Trajectory<PointType>::operator=(const Trajectory & rhs)
 {
   if (this != &rhs) {
