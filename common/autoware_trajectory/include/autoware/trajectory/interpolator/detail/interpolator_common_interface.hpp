@@ -90,7 +90,8 @@ protected:
    */
   double validate_compute_input(const double s) const
   {
-    if (s < start() || s > end()) {
+    constexpr double eps = 1e-5;
+    if (eps < start() - s || s - end() > eps) {
       RCLCPP_WARN(
         rclcpp::get_logger("Interpolator"),
         "Input value %f is outside the range of the interpolator [%f, %f].", s, start(), end());

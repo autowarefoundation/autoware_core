@@ -7,7 +7,25 @@ find_package(autoware_cmake REQUIRED)
 autoware_package()
 
 ament_auto_add_library(autoware_trajectory SHARED
-  DIRECTORY src
+  src/threshold.cpp
+  src/point.cpp
+  src/pose.cpp
+  src/path_point.cpp
+  src/path_point_with_lane_id.cpp
+  src/trajectory_point.cpp
+  src/detail/logging.cpp
+  src/detail/types.cpp
+  src/detail/util.cpp
+  src/interpolator/akima_spline.cpp
+  src/interpolator/cubic_spline.cpp
+  src/interpolator/linear.cpp
+  src/interpolator/result.cpp
+  src/interpolator/spherical_linear.cpp
+  src/utils/closest.cpp
+  src/utils/crossed.cpp
+  src/utils/find_intervals.cpp
+  src/utils/pretty_build.cpp
+  src/utils/shift.cpp
 )
 
 if(BUILD_TESTING)
@@ -15,6 +33,14 @@ if(BUILD_TESTING)
   find_package(autoware_motion_utils REQUIRED)
   include_directories(${autoware_motion_utils_INCLUDE_DIRS})
 
+  set(test_files
+    test/test_shift.cpp
+    test/test_helpers.cpp
+    test/test_interpolator.cpp
+    test/test_pretty_build.cpp
+    test/test_trajectory_container.cpp
+    test/test_trajectory_container_trajectory_point.cpp
+  )
   file(GLOB_RECURSE test_files test/*.cpp)
 
   ament_add_ros_isolated_gtest(test_autoware_trajectory ${test_files})
@@ -25,7 +51,16 @@ if(BUILD_TESTING)
   )
 
   # Examples
-  file(GLOB_RECURSE example_files examples/*.cpp)
+  set(example_files
+    examples/example_find_intervals.cpp
+    examples/example_interpolator.cpp
+    examples/example_path_point.cpp
+    examples/example_point.cpp
+    examples/example_pose.cpp
+    examples/example_pretty_build.cpp
+    examples/example_readme.cpp
+    examples/example_shift.cpp
+  )
 
   add_definitions("-Wno-attributes")
   find_package(ament_lint_auto REQUIRED)

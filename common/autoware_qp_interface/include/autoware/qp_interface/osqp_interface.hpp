@@ -17,7 +17,8 @@
 
 #include "autoware/qp_interface/osqp_csc_matrix_conv.hpp"
 #include "autoware/qp_interface/qp_interface.hpp"
-#include "osqp/osqp.h"
+
+#include <osqp/osqp.h>
 
 #include <limits>
 #include <memory>
@@ -55,7 +56,7 @@ public:
     const std::vector<double> & l, const std::vector<double> & u,
     const bool enable_warm_start = false,
     const c_float eps_abs = std::numeric_limits<c_float>::epsilon());
-  ~OSQPInterface();
+  ~OSQPInterface() override;
 
   static void OSQPWorkspaceDeleter(OSQPWorkspace * ptr) noexcept;
 
