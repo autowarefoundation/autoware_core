@@ -22,8 +22,8 @@
 #include "autoware/ekf_localizer/state_transition.hpp"
 #include "autoware/ekf_localizer/warning_message.hpp"
 
-#include <autoware_utils/geometry/geometry.hpp>
-#include <autoware_utils/ros/msg_covariance.hpp>
+#include <autoware_utils_geometry/geometry.hpp>
+#include <autoware_utils_geometry/msg/covariance.hpp>
 
 #include <fmt/core.h>
 #include <tf2/LinearMath/Quaternion.h>
@@ -75,7 +75,7 @@ void EKFModule::initialize(
   x(IDX::VX) = 0.0;
   x(IDX::WZ) = 0.0;
 
-  using COV_IDX = autoware_utils::xyzrpy_covariance_index::XYZRPY_COV_IDX;
+  using COV_IDX = autoware_utils_geometry::xyzrpy_covariance_index::XYZRPY_COV_IDX;
   p(IDX::X, IDX::X) = initial_pose.pose.covariance[COV_IDX::X_X];
   p(IDX::Y, IDX::Y) = initial_pose.pose.covariance[COV_IDX::Y_Y];
   p(IDX::YAW, IDX::YAW) = initial_pose.pose.covariance[COV_IDX::YAW_YAW];
@@ -90,7 +90,7 @@ void EKFModule::initialize(
 
   const double z = initial_pose.pose.pose.position.z;
 
-  const auto rpy = autoware_utils::get_rpy(initial_pose.pose.pose.orientation);
+  const auto rpy = autoware_utils_geometry::get_rpy(initial_pose.pose.pose.orientation);
 
   const double z_var = initial_pose.pose.covariance[COV_IDX::Z_Z];
   const double roll_var = initial_pose.pose.covariance[COV_IDX::ROLL_ROLL];
@@ -122,13 +122,13 @@ geometry_msgs::msg::PoseStamped EKFModule::get_current_pose(
   Pose current_ekf_pose;
   current_ekf_pose.header.frame_id = params_.pose_frame_id;
   current_ekf_pose.header.stamp = current_time;
-  current_ekf_pose.pose.position = autoware_utils::create_point(x, y, z);
+  current_ekf_pose.pose.position = autoware_utils_geometry::create_point(x, y, z);
   if (get_biased_yaw) {
     current_ekf_pose.pose.orientation =
-      autoware_utils::create_quaternion_from_rpy(roll, pitch, biased_yaw);
+      autoware_utils_geometry::create_quaternion_from_rpy(roll, pitch, biased_yaw);
   } else {
     current_ekf_pose.pose.orientation =
-      autoware_utils::create_quaternion_from_rpy(roll, pitch, yaw);
+      autoware_utils_geometry::create_quaternion_from_rpy(roll, pitch, yaw);
   }
   return current_ekf_pose;
 }
@@ -152,7 +152,7 @@ std::array<double, 36> EKFModule::get_current_pose_covariance() const
   std::array<double, 36> cov =
     ekf_covariance_to_pose_message_covariance(kalman_filter_.getLatestP());
 
-  using COV_IDX = autoware_utils::xyzrpy_covariance_index::XYZRPY_COV_IDX;
+  using COV_IDX = autoware_utils_geometry::xyzrpy_covariance_index::XYZRPY_COV_IDX;
   cov[COV_IDX::Z_Z] = z_filter_.get_var();
   cov[COV_IDX::ROLL_ROLL] = roll_filter_.get_var();
   cov[COV_IDX::PITCH_PITCH] = pitch_filter_.get_var();
@@ -350,7 +350,7 @@ geometry_msgs::msg::PoseWithCovarianceStamped EKFModule::compensate_rph_with_del
   pose_with_delay.pose.pose.orientation.z = curr_orientation.z();
   pose_with_delay.pose.pose.orientation.w = curr_orientation.w();
 
-  const auto rpy = autoware_utils::get_rpy(pose_with_delay.pose.pose.orientation);
+  const auto rpy = autoware_utils_geometry::get_rpy(pose_with_delay.pose.pose.orientation);
   const double delta_z = kalman_filter_.getXelement(IDX::VX) * delay_time * std::sin(-rpy.y);
   pose_with_delay.pose.pose.position.z += delta_z;
 
@@ -443,9 +443,9 @@ void EKFModule::update_simple_1d_filters(
 {
   double z = pose.pose.pose.position.z;
 
-  const auto rpy = autoware_utils::get_rpy(pose.pose.pose.orientation);
+  const auto rpy = autoware_utils_geometry::get_rpy(pose.pose.pose.orientation);
 
-  using COV_IDX = autoware_utils::xyzrpy_covariance_index::XYZRPY_COV_IDX;
+  using COV_IDX = autoware_utils_geometry::xyzrpy_covariance_index::XYZRPY_COV_IDX;
   double z_var = pose.pose.covariance[COV_IDX::Z_Z] * static_cast<double>(smoothing_step);
   double roll_var = pose.pose.covariance[COV_IDX::ROLL_ROLL] * static_cast<double>(smoothing_step);
   double pitch_var =

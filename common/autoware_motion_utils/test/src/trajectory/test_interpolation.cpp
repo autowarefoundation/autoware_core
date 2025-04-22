@@ -15,8 +15,9 @@
 #include "autoware/motion_utils/trajectory/conversion.hpp"
 #include "autoware/motion_utils/trajectory/interpolation.hpp"
 #include "autoware/motion_utils/trajectory/trajectory.hpp"
-#include "autoware_utils/geometry/boost_geometry.hpp"
-#include "autoware_utils/math/unit_conversion.hpp"
+
+#include <autoware_utils_geometry/boost_geometry.hpp>
+#include <autoware_utils_math/unit_conversion.hpp>
 
 #include <gtest/gtest.h>
 #include <gtest/internal/gtest-port.h>
@@ -31,9 +32,9 @@ using autoware_internal_planning_msgs::msg::PathPointWithLaneId;
 using autoware_internal_planning_msgs::msg::PathWithLaneId;
 using autoware_planning_msgs::msg::Trajectory;
 using autoware_planning_msgs::msg::TrajectoryPoint;
-using autoware_utils::create_point;
-using autoware_utils::create_quaternion_from_rpy;
-using autoware_utils::transform_point;
+using autoware_utils_geometry::create_point;
+using autoware_utils_geometry::create_quaternion_from_rpy;
+using autoware_utils_geometry::transform_point;
 
 constexpr double epsilon = 1e-6;
 
