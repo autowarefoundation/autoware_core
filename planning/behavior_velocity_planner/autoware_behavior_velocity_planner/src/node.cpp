@@ -249,20 +249,16 @@ bool BehaviorVelocityPlannerNode::processData(rclcpp::Clock clock)
   is_ready &= getData(planner_data_.predicted_objects, sub_predicted_objects_, "predicted_objects");
   is_ready &= getData(planner_data_.occupancy_grid, sub_occupancy_grid_, "occupancy_grid");
 
-  const auto odometry = sub_vehicle_odometry_.take_data();
+  nav_msgs::msg::Odometry::ConstSharedPtr odometry;
+  is_ready &= getData(odometry, sub_vehicle_odometry_, "odometry");
   if (odometry) {
     processOdometry(odometry);
-  } else {
-    logData("odometry");
-    is_ready = false;
   }
 
-  const auto no_ground_pointcloud = sub_no_ground_pointcloud_.take_data();
+  sensor_msgs::msg::PointCloud2::ConstSharedPtr no_ground_pointcloud;
+  is_ready &= getData(no_ground_pointcloud, sub_no_ground_pointcloud_, "pointcloud");
   if (no_ground_pointcloud) {
     processNoGroundPointCloud(no_ground_pointcloud);
-  } else {
-    logData("pointcloud");
-    is_ready = false;
   }
 
   const auto map_data = sub_lanelet_map_.take_data();
@@ -277,7 +273,9 @@ bool BehaviorVelocityPlannerNode::processData(rclcpp::Clock clock)
   }
 
   const auto traffic_signals = sub_traffic_signals_.take_data();
-  if (traffic_signals) processTrafficSignals(traffic_signals);
+  if (traffic_signals) {
+    processTrafficSignals(traffic_signals);
+  }
 
   return is_ready;
 }
