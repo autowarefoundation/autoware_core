@@ -16,7 +16,6 @@
 
 #include "autoware/crop_box_filter/crop_box_filter_node.hpp"
 
-#include <autoware_utils_tf/transform_listener.hpp>
 #include <tf2_eigen/tf2_eigen.hpp>
 
 #include <memory>
@@ -31,14 +30,15 @@ CropBoxFilter::CropBoxFilter(const rclcpp::NodeOptions & node_options)
 {
   // initialize debug tool
   {
-    using autoware_utils::DebugPublisher;
-    using autoware_utils::StopWatch;
+    using autoware_utils_debug::DebugPublisher;
+    using autoware_utils_system::StopWatch;
     stop_watch_ptr_ = std::make_unique<StopWatch<std::chrono::milliseconds>>();
     debug_publisher_ = std::make_unique<DebugPublisher>(this, this->get_name());
     stop_watch_ptr_->tic("cyclic_time");
     stop_watch_ptr_->tic("processing_time");
 
-    published_time_publisher_ = std::make_unique<autoware_utils::PublishedTimePublisher>(this);
+    published_time_publisher_ =
+      std::make_unique<autoware_utils_debug::PublishedTimePublisher>(this);
   }
 
   max_queue_size_ = static_cast<int64_t>(declare_parameter("max_queue_size", 5));
@@ -50,7 +50,7 @@ CropBoxFilter::CropBoxFilter(const rclcpp::NodeOptions & node_options)
     tf_input_frame_ = static_cast<std::string>(declare_parameter("input_frame", "base_link"));
     tf_output_frame_ = static_cast<std::string>(declare_parameter("output_frame", "base_link"));
 
-    transform_listener_ = std::make_unique<autoware_utils::TransformListener>(this);
+    transform_listener_ = std::make_unique<autoware_utils_tf::TransformListener>(this);
 
     if (tf_input_orig_frame_ == tf_input_frame_) {
       need_preprocess_transform_ = false;

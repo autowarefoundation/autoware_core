@@ -289,16 +289,6 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
 {
   std::vector<PathPointWithLaneId> path_points_with_lane_id{};
 
-  const auto add_path_point = [&](const auto & path_point, const lanelet::ConstLanelet & lanelet) {
-    PathPointWithLaneId path_point_with_lane_id{};
-    path_point_with_lane_id.lane_ids.push_back(lanelet.id());
-    path_point_with_lane_id.point.pose.position =
-      lanelet::utils::conversion::toGeomMsgPt(path_point);
-    path_point_with_lane_id.point.longitudinal_velocity_mps =
-      planner_data_.traffic_rules_ptr->speedLimit(lanelet).speedLimit.value();
-    path_points_with_lane_id.push_back(std::move(path_point_with_lane_id));
-  };
-
   const auto s_bound_start = s_start - vehicle_info_.max_longitudinal_offset_m;
   const auto s_bound_end = s_end + vehicle_info_.max_longitudinal_offset_m;
 
@@ -343,6 +333,16 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
     extended_lanelets.insert(extended_lanelets.begin(), *prev_lanelet);
     s_offset += lanelet::geometry::length2d(*prev_lanelet);
   }
+
+  const auto add_path_point = [&](const auto & path_point, const lanelet::ConstLanelet & lanelet) {
+    PathPointWithLaneId path_point_with_lane_id{};
+    path_point_with_lane_id.lane_ids.push_back(lanelet.id());
+    path_point_with_lane_id.point.pose.position =
+      lanelet::utils::conversion::toGeomMsgPt(path_point);
+    path_point_with_lane_id.point.longitudinal_velocity_mps =
+      planner_data_.traffic_rules_ptr->speedLimit(lanelet).speedLimit.value();
+    path_points_with_lane_id.push_back(std::move(path_point_with_lane_id));
+  };
 
   const lanelet::LaneletSequence extended_lanelet_sequence(extended_lanelets);
   std::optional<size_t> overlapping_waypoint_group_index = std::nullopt;
@@ -389,11 +389,22 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
         overlapping_waypoint_group_index = i;
         break;
       }
-
       if (overlapping_waypoint_group_index) {
         continue;
       }
+
       add_path_point(*point_it, *lanelet_it);
+      if (
+        point_it == std::prev(centerline.end()) &&
+        lanelet_it != std::prev(extended_lanelet_sequence.end())) {
+        if (
+          lanelet_it != extended_lanelet_sequence.begin() ||
+          lanelet_it->id() == lanelet_sequence.begin()->id()) {
+          path_points_with_lane_id.back().lane_ids.push_back(std::next(lanelet_it)->id());
+        } else {
+          path_points_with_lane_id.back().lane_ids = {std::next(lanelet_it)->id()};
+        }
+      }
     }
   }
 

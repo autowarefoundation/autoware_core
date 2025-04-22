@@ -42,6 +42,46 @@
             }
           },
           "required": ["decimate_trajectory_step_length", "goal_extended_trajectory_length"]
+        },
+        "pointcloud": {
+          "type": "object",
+          "properties": {
+            "voxel_grid_x": {
+              "type": "number",
+              "description": "voxel grid x parameter for filtering pointcloud [m]",
+              "default": "0.05"
+            },
+            "voxel_grid_y": {
+              "type": "number",
+              "description": "voxel grid y parameter for filtering pointcloud [m]",
+              "default": "0.05"
+            },
+            "voxel_grid_z": {
+              "type": "number",
+              "description": "voxel grid z parameter for filtering pointcloud [m]",
+              "default": "100000.0"
+            },
+            "pointcloud_cluster_tolerance": {
+              "type": "number",
+              "description": "pointcloud cluster tolerance parameter for clustering pointcloud [voxel]",
+              "default": "1.0"
+            },
+            "pointcloud_min_cluster_size": {
+              "type": "number",
+              "description": "pointcloud min cluster size parameter for clustering pointcloud [voxel]",
+              "default": "1"
+            },
+            "pointcloud_max_cluster_size": {
+              "type": "number",
+              "description": "pointcloud max cluster size parameter for clustering pointcloud [voxel]",
+              "default": "100000"
+            },
+            "mask_lat_margin": {
+              "type": "number",
+              "description": "lat margin from the input trajectory to mask-out pointcloud points [m]",
+              "default": "0.3"
+            }
+          }
         }
       },
       "required": ["smooth_velocity_before_planning"],

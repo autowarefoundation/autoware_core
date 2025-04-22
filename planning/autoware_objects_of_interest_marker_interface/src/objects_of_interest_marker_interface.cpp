@@ -55,6 +55,9 @@ void ObjectsOfInterestMarkerInterface::insertObjectDataWithCustomColor(
 
 void ObjectsOfInterestMarkerInterface::publishMarkerArray()
 {
+  if (pub_marker_->get_subscription_count() == 0) {
+    return;
+  }
   MarkerArray marker_array;
   for (size_t i = 0; i < obj_marker_data_array_.size(); ++i) {
     const auto data = obj_marker_data_array_.at(i);
