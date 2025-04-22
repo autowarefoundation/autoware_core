@@ -235,7 +235,13 @@ bool BehaviorVelocityPlannerNode::processData(rclcpp::Clock clock)
     RCLCPP_INFO_THROTTLE(get_logger(), clock, logger_throttle_interval, "%s", msg.c_str());
   };
 
-  const auto & getData = [&logData](auto & dest, auto & sub, const std::string & data_type = "") {
+  const auto & getData = [&logData](
+                           auto & dest, auto & sub, const std::string & data_type = "",
+                           const bool is_required = true) {
+    if (!is_required) {
+      return true;
+    }
+
     const auto temp = sub.take_data();
     if (temp) {
       dest = temp;
@@ -245,9 +251,15 @@ bool BehaviorVelocityPlannerNode::processData(rclcpp::Clock clock)
     return false;
   };
 
+  const auto required_subscriptions = planner_manager_.getRequiredSubscriptions();
+
   is_ready &= getData(planner_data_.current_acceleration, sub_acceleration_, "acceleration");
-  is_ready &= getData(planner_data_.predicted_objects, sub_predicted_objects_, "predicted_objects");
-  is_ready &= getData(planner_data_.occupancy_grid, sub_occupancy_grid_, "occupancy_grid");
+  is_ready &= getData(
+    planner_data_.predicted_objects, sub_predicted_objects_, "predicted_objects",
+    required_subscriptions.predicted_objects);
+  is_ready &= getData(
+    planner_data_.occupancy_grid, sub_occupancy_grid_, "occupancy_grid",
+    required_subscriptions.occupancy_grid_map);
 
   nav_msgs::msg::Odometry::ConstSharedPtr odometry;
   is_ready &= getData(odometry, sub_vehicle_odometry_, "odometry");
@@ -256,7 +268,9 @@ bool BehaviorVelocityPlannerNode::processData(rclcpp::Clock clock)
   }
 
   sensor_msgs::msg::PointCloud2::ConstSharedPtr no_ground_pointcloud;
-  is_ready &= getData(no_ground_pointcloud, sub_no_ground_pointcloud_, "pointcloud");
+  is_ready &= getData(
+    no_ground_pointcloud, sub_no_ground_pointcloud_, "pointcloud",
+    required_subscriptions.no_ground_pointcloud);
   if (no_ground_pointcloud) {
     processNoGroundPointCloud(no_ground_pointcloud);
   }
@@ -274,6 +288,7 @@ bool BehaviorVelocityPlannerNode::processData(rclcpp::Clock clock)
 
   const auto traffic_signals = sub_traffic_signals_.take_data();
   if (traffic_signals) {
+    // NOTE: required_subscriptions.traffic_signals is not used since is_ready is not updated here.
     processTrafficSignals(traffic_signals);
   }
 
