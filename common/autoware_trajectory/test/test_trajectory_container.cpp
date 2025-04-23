@@ -29,7 +29,8 @@
 #include <cmath>
 #include <utility>
 #include <vector>
-
+namespace
+{
 using Trajectory = autoware::experimental::trajectory::Trajectory<
   autoware_internal_planning_msgs::msg::PathPointWithLaneId>;
 
@@ -50,7 +51,7 @@ geometry_msgs::msg::Point point(double x, double y)
   p.y = y;
   return p;
 }
-
+}  // namespace
 TEST(TrajectoryCreatorTest, constructor)
 {
   std::vector<geometry_msgs::msg::Point> points{
@@ -58,7 +59,7 @@ TEST(TrajectoryCreatorTest, constructor)
   auto trajectory =
     autoware::experimental::trajectory::Trajectory<geometry_msgs::msg::Point>::Builder{}.build(
       points);
-  ASSERT_TRUE(!trajectory);
+  ASSERT_TRUE(trajectory);
   autoware::experimental::trajectory::Trajectory<geometry_msgs::msg::Pose> trj_pose(*trajectory);
 }
 
