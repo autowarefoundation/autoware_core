@@ -40,7 +40,7 @@ autoware_planning_msgs::msg::PathPoint path_point(double x, double y)
 
 int main()
 {
-  using autoware::trajectory::Trajectory;
+  using autoware::experimental::trajectory::Trajectory;
 
   pybind11::scoped_interpreter guard{};
 
@@ -80,7 +80,7 @@ int main()
   line_string.push_back(lanelet::Point3d(lanelet::InvalId, 7.5, 8.6, 0.0));
   line_string.push_back(lanelet::Point3d(lanelet::InvalId, 10.2, 7.7, 0.0));
 
-  auto s = autoware::trajectory::crossed(*trajectory, line_string);
+  auto s = autoware::experimental::trajectory::crossed(*trajectory, line_string);
   auto crossed = trajectory->compute(s.at(0));
 
   plt.plot(

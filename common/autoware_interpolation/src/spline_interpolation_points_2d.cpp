@@ -89,7 +89,8 @@ geometry_msgs::msg::Pose SplineInterpolationPoints2d::getSplineInterpolatedPose(
 {
   geometry_msgs::msg::Pose pose;
   pose.position = getSplineInterpolatedPoint(idx, s);
-  pose.orientation = autoware_utils::create_quaternion_from_yaw(getSplineInterpolatedYaw(idx, s));
+  pose.orientation =
+    autoware_utils_geometry::create_quaternion_from_yaw(getSplineInterpolatedYaw(idx, s));
   return pose;
 }
 

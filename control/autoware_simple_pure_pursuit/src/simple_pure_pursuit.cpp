@@ -15,7 +15,6 @@
 #include "simple_pure_pursuit.hpp"
 
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
-#include <autoware_utils/geometry/pose_deviation.hpp>
 
 #include <tf2/utils.h>
 

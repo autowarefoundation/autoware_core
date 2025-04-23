@@ -22,7 +22,7 @@
 #include <utility>
 #include <vector>
 
-namespace autoware::trajectory::interpolator::detail
+namespace autoware::experimental::trajectory::interpolator::detail
 {
 /**
  * @brief Base class for interpolation implementations.
@@ -90,7 +90,8 @@ protected:
    */
   double validate_compute_input(const double s) const
   {
-    if (s < start() || s > end()) {
+    constexpr double eps = 1e-5;
+    if (eps < start() - s || s - end() > eps) {
       RCLCPP_WARN(
         rclcpp::get_logger("Interpolator"),
         "Input value %f is outside the range of the interpolator [%f, %f].", s, start(), end());
@@ -217,6 +218,6 @@ public:
     return x;
   }
 };
-}  // namespace autoware::trajectory::interpolator::detail
+}  // namespace autoware::experimental::trajectory::interpolator::detail
 
 #endif  // AUTOWARE__TRAJECTORY__INTERPOLATOR__DETAIL__INTERPOLATOR_COMMON_INTERFACE_HPP_

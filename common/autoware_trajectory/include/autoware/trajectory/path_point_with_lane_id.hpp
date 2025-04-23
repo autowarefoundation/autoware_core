@@ -23,7 +23,7 @@
 #include <utility>
 #include <vector>
 
-namespace autoware::trajectory
+namespace autoware::experimental::trajectory
 {
 template <>
 class Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>
@@ -54,6 +54,8 @@ public:
   detail::InterpolatedArray<LaneIdType> & lane_ids() { return *lane_ids_; }
 
   const detail::InterpolatedArray<LaneIdType> & lane_ids() const { return *lane_ids_; }
+
+  [[nodiscard]] std::vector<int64_t> get_contained_lane_ids() const;
 
   /**
    * @brief Build the trajectory from the points
@@ -163,6 +165,6 @@ public:
       const std::vector<PointType> & points);
   };
 };
-}  // namespace autoware::trajectory
+}  // namespace autoware::experimental::trajectory
 
 #endif  // AUTOWARE__TRAJECTORY__PATH_POINT_WITH_LANE_ID_HPP_

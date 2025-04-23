@@ -19,7 +19,7 @@
 
 #include <string>
 
-namespace autoware::trajectory::interpolator
+namespace autoware::experimental::trajectory::interpolator
 {
 struct InterpolationSuccess
 {
@@ -35,5 +35,5 @@ InterpolationFailure operator+(
 
 using InterpolationResult = tl::expected<InterpolationSuccess, InterpolationFailure>;
 
-}  // namespace autoware::trajectory::interpolator
+}  // namespace autoware::experimental::trajectory::interpolator
 #endif  // AUTOWARE__TRAJECTORY__INTERPOLATOR__RESULT_HPP_

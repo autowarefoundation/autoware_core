@@ -17,7 +17,7 @@
 #include <lanelet2_core/primitives/Lanelet.h>
 
 #include <cstring>
-namespace autoware::lanelet2_utils
+namespace autoware::experimental::lanelet2_utils
 {
 
 bool is_intersection_lanelet(const lanelet::ConstLanelet & lanelet)
@@ -54,4 +54,4 @@ std::optional<TurnDirection> get_turn_direction(const lanelet::ConstLanelet & la
   return std::nullopt;
 }
 
-}  // namespace autoware::lanelet2_utils
+}  // namespace autoware::experimental::lanelet2_utils

@@ -16,15 +16,19 @@
 #include "autoware/trajectory/utils/crossed.hpp"
 #include "autoware/trajectory/utils/curvature_utils.hpp"
 #include "autoware/trajectory/utils/find_intervals.hpp"
+#include "autoware_utils_geometry/geometry.hpp"
 #include "lanelet2_core/primitives/LineString.h"
+
+#include <geometry_msgs/msg/point.hpp>
 
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <utility>
 #include <vector>
 
-using Trajectory =
-  autoware::trajectory::Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>;
+using Trajectory = autoware::experimental::trajectory::Trajectory<
+  autoware_internal_planning_msgs::msg::PathPointWithLaneId>;
 
 autoware_internal_planning_msgs::msg::PathPointWithLaneId path_point_with_lane_id(
   double x, double y, uint8_t lane_id)
@@ -50,6 +54,26 @@ TEST(TrajectoryCreatorTest, create)
       path_point_with_lane_id(1.65, 2.98, 0), path_point_with_lane_id(3.30, 4.01, 1)};
     auto trajectory = Trajectory::Builder{}.build(points);
     ASSERT_TRUE(trajectory);
+  }
+}
+
+TEST(TrajectoryCreatorTest, almost_same_points_are_given)
+{
+  const double nano_meter = 1e-9;
+  std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points{
+    path_point_with_lane_id(0.00, 0.00, 0), path_point_with_lane_id(0.81, 1.68, 0),
+    path_point_with_lane_id(1.65, 2.98, 0),
+    path_point_with_lane_id(1.65 + nano_meter, 2.98 + nano_meter, 1),
+    path_point_with_lane_id(1.65 + 2 * nano_meter, 2.98 + 2 * nano_meter, 1)};
+  auto trajectory = Trajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory);
+  {
+    const auto restored = trajectory->restore(3);
+    EXPECT_EQ(restored.size(), 3);
+  }
+  {
+    const auto restored = trajectory->restore(4);
+    EXPECT_EQ(restored.size(), 4);
   }
 }
 
@@ -455,7 +479,7 @@ TEST_F(TrajectoryTest, curvature)
 
 TEST_F(TrajectoryTest, restore)
 {
-  using autoware::trajectory::Trajectory;
+  using autoware::experimental::trajectory::Trajectory;
   trajectory->longitudinal_velocity_mps().range(4.0, trajectory->length()).set(5.0);
   auto points = trajectory->restore(0);
   EXPECT_EQ(11, points.size());
@@ -467,7 +491,7 @@ TEST_F(TrajectoryTest, crossed)
   line_string.push_back(lanelet::Point3d(lanelet::InvalId, 0.0, 10.0, 0.0));
   line_string.push_back(lanelet::Point3d(lanelet::InvalId, 10.0, 0.0, 0.0));
 
-  auto crossed_point = autoware::trajectory::crossed(*trajectory, line_string);
+  auto crossed_point = autoware::experimental::trajectory::crossed(*trajectory, line_string);
   ASSERT_EQ(crossed_point.size(), 1);
 
   EXPECT_LT(0.0, crossed_point.at(0));
@@ -480,7 +504,8 @@ TEST_F(TrajectoryTest, closest)
   pose.position.x = 5.0;
   pose.position.y = 5.0;
 
-  auto closest_pose = trajectory->compute(autoware::trajectory::closest(*trajectory, pose));
+  auto closest_pose =
+    trajectory->compute(autoware::experimental::trajectory::closest(*trajectory, pose));
 
   double distance = std::hypot(
     closest_pose.point.pose.position.x - pose.position.x,
@@ -516,7 +541,7 @@ TEST_F(TrajectoryTest, crop)
 
 TEST_F(TrajectoryTest, find_interval)
 {
-  auto intervals = autoware::trajectory::find_intervals(
+  auto intervals = autoware::experimental::trajectory::find_intervals(
     *trajectory, [](const autoware_internal_planning_msgs::msg::PathPointWithLaneId & point) {
       return point.lane_ids[0] == 1;
     });
@@ -526,8 +551,57 @@ TEST_F(TrajectoryTest, find_interval)
   EXPECT_NEAR(intervals[0].end, trajectory->length(), 0.1);
 }
 
+TEST_F(TrajectoryTest, find_interval_with_binary_search)
+{
+  geometry_msgs::msg::Point base_point;
+  base_point.x = 6.0;
+  base_point.y = 2.0;
+  const double radius = 3.0;
+
+  auto intervals_0 = autoware::experimental::trajectory::find_intervals(
+    *trajectory, [&](const autoware_internal_planning_msgs::msg::PathPointWithLaneId & point) {
+      return autoware_utils_geometry::calc_distance2d(point.point.pose.position, base_point) <
+             radius;
+    });
+  EXPECT_EQ(intervals_0.size(), 1);
+
+  auto intervals_1 = autoware::experimental::trajectory::find_intervals(
+    *trajectory,
+    [&](const autoware_internal_planning_msgs::msg::PathPointWithLaneId & point) {
+      return autoware_utils_geometry::calc_distance2d(point.point.pose.position, base_point) <
+             radius;
+    },
+    10);
+
+  EXPECT_EQ(intervals_1.size(), 1);
+
+  // interval_1 should be accurate than interval_0
+  double interval_0_start_distance = autoware_utils_geometry::calc_distance2d(
+    trajectory->compute(intervals_0[0].start).point.pose.position, base_point);
+  double interval_0_end_distance = autoware_utils_geometry::calc_distance2d(
+    trajectory->compute(intervals_0[0].end).point.pose.position, base_point);
+  double interval_1_start_distance = autoware_utils_geometry::calc_distance2d(
+    trajectory->compute(intervals_1[0].start).point.pose.position, base_point);
+  double interval_1_end_distance = autoware_utils_geometry::calc_distance2d(
+    trajectory->compute(intervals_1[0].end).point.pose.position, base_point);
+  double interval_0_start_error_decrease =
+    std::fabs(interval_0_start_distance - radius) - std::fabs(interval_1_start_distance - radius);
+  double interval_0_end_error_decrease =
+    std::fabs(interval_0_end_distance - radius) - std::fabs(interval_1_end_distance - radius);
+  EXPECT_GT(interval_0_start_error_decrease, 0);
+  EXPECT_GT(interval_0_end_error_decrease, 0);
+}
+
 TEST_F(TrajectoryTest, max_curvature)
 {
-  double max_curvature = autoware::trajectory::max_curvature(*trajectory);
+  double max_curvature = autoware::experimental::trajectory::max_curvature(*trajectory);
   EXPECT_LT(0, max_curvature);
+}
+
+TEST_F(TrajectoryTest, get_contained_lane_ids)
+{
+  auto contained_lane_ids = trajectory->get_contained_lane_ids();
+  EXPECT_EQ(2, contained_lane_ids.size());
+  EXPECT_EQ(0, contained_lane_ids[0]);
+  EXPECT_EQ(1, contained_lane_ids[1]);
 }
