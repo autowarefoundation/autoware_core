@@ -16,12 +16,14 @@
 
 #include "autoware/trajectory/detail/helpers.hpp"
 #include "autoware/trajectory/interpolator/stairstep.hpp"
+#include "autoware/trajectory/threshold.hpp"
 
+#include <cstddef>
 #include <memory>
 #include <utility>
 #include <vector>
 
-namespace autoware::trajectory
+namespace autoware::experimental::trajectory
 {
 
 using PointType = autoware_internal_planning_msgs::msg::PathPointWithLaneId;
@@ -95,6 +97,29 @@ interpolator::InterpolationResult Trajectory<PointType>::build(
   return interpolator::InterpolationSuccess{};
 }
 
+std::vector<int64_t> Trajectory<PointType>::get_contained_lane_ids() const
+{
+  std::vector<int64_t> contained_lane_ids;
+  const auto & [bases, values] = lane_ids_->get_data();
+
+  for (size_t i = 0; i < bases.size(); i++) {
+    if (start_ <= bases[i] && bases[i] <= end_) {
+      for (const auto & lane_id : values[i]) {
+        if (contained_lane_ids.empty()) {
+          contained_lane_ids.emplace_back(lane_id);
+        } else {
+          int64_t last_lane_id = contained_lane_ids.back();
+
+          if (last_lane_id != lane_id) {
+            contained_lane_ids.emplace_back(lane_id);
+          }
+        }
+      }
+    }
+  }
+  return contained_lane_ids;
+}
+
 std::vector<double> Trajectory<PointType>::get_internal_bases() const
 {
   return get_underlying_bases();
@@ -130,13 +155,33 @@ std::vector<PointType> Trajectory<PointType>::compute(const std::vector<double> 
 
 std::vector<PointType> Trajectory<PointType>::restore(const size_t min_points) const
 {
-  auto bases = get_underlying_bases();
-  bases = detail::fill_bases(bases, min_points);
+  std::vector<double> sanitized_bases{};
+  {
+    const auto bases = detail::fill_bases(get_underlying_bases(), min_points);
+    std::vector<PointType> points;
 
+    points.reserve(bases.size());
+    for (const auto & s : bases) {
+      const auto point = compute(s);
+      if (points.empty() || !is_almost_same(point, points.back())) {
+        points.push_back(point);
+        sanitized_bases.push_back(s);
+      }
+    }
+    if (points.size() >= min_points) {
+      return points;
+    }
+  }
+
+  // retry to satisfy min_point requirement as much as possible
+  const auto bases = detail::fill_bases(sanitized_bases, min_points);
   std::vector<PointType> points;
   points.reserve(bases.size());
   for (const auto & s : bases) {
-    points.emplace_back(compute(s));
+    const auto point = compute(s);
+    if (points.empty() || !is_almost_same(point, points.back())) {
+      points.push_back(point);
+    }
   }
   return points;
 }
@@ -163,4 +208,4 @@ Trajectory<PointType>::Builder::build(const std::vector<PointType> & points)
   return tl::unexpected(trajectory_result.error());
 }
 
-}  // namespace autoware::trajectory
+}  // namespace autoware::experimental::trajectory

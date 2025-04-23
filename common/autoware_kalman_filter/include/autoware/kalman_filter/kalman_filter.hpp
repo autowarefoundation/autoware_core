@@ -34,7 +34,7 @@ public:
   /**
    * @brief No initialization constructor.
    */
-  KalmanFilter();
+  KalmanFilter() = default;
 
   /**
    * @brief constructor with initialization
@@ -54,7 +54,13 @@ public:
   /**
    * @brief destructor
    */
-  ~KalmanFilter();
+  ~KalmanFilter() = default;
+
+  // TODO(youtalk): Delete copy constructor and assignment operator
+  KalmanFilter(const KalmanFilter &) = default;
+  KalmanFilter & operator=(const KalmanFilter &) = default;
+  KalmanFilter(KalmanFilter &&) noexcept = default;
+  KalmanFilter & operator=(KalmanFilter &&) noexcept = default;
 
   /**
    * @brief initialization of kalman filter
@@ -172,7 +178,7 @@ public:
    * @brief calculate kalman filter state by measurement model with y_pred, C and R matrix. This is
    * mainly for EKF with variable matrix.
    * @param y measured values
-   * @param y output values expected from measurement model
+   * @param y_pred output values expected from measurement model
    * @param C coefficient matrix of x for measurement model
    * @param R covariance matrix for measurement model
    * @return bool to check matrix operations are being performed properly

@@ -24,7 +24,7 @@
 #include <utility>
 #include <vector>
 
-namespace autoware::trajectory::interpolator::detail
+namespace autoware::experimental::trajectory::interpolator::detail
 {
 
 /**
@@ -95,6 +95,6 @@ struct InterpolatorMixin : public InterpolatorInterface<T>
   };
 };
 
-}  // namespace autoware::trajectory::interpolator::detail
+}  // namespace autoware::experimental::trajectory::interpolator::detail
 
 #endif  // AUTOWARE__TRAJECTORY__INTERPOLATOR__DETAIL__INTERPOLATOR_MIXIN_HPP_

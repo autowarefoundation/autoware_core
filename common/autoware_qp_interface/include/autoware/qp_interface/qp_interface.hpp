@@ -27,6 +27,7 @@ class QPInterface
 {
 public:
   explicit QPInterface(const bool enable_warm_start) : enable_warm_start_(enable_warm_start) {}
+  virtual ~QPInterface() = default;
 
   std::vector<double> optimize(
     const Eigen::MatrixXd & P, const Eigen::MatrixXd & A, const std::vector<double> & q,

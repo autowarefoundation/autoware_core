@@ -19,7 +19,7 @@
 #include <autoware_lanelet2_extension/utility/utilities.hpp>
 #include <autoware_test_utils/autoware_test_utils.hpp>
 #include <autoware_test_utils/mock_data_parser.hpp>
-#include <autoware_utils/geometry/geometry.hpp>
+#include <autoware_utils_geometry/geometry.hpp>
 #include <rclcpp/node.hpp>
 
 #include <lanelet2_core/geometry/LineString.h>
@@ -33,8 +33,8 @@
 namespace autoware::test_utils
 {
 
-using autoware_utils::create_point;
-using autoware_utils::create_quaternion_from_rpy;
+using autoware_utils_geometry::create_point;
+using autoware_utils_geometry::create_quaternion_from_rpy;
 using geometry_msgs::msg::TransformStamped;
 
 geometry_msgs::msg::Pose createPose(
