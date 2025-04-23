@@ -81,6 +81,22 @@ struct PlannerData
   std::optional<TrafficSignalStamped> getTrafficSignal(
     const lanelet::Id id, const bool keep_last_observation = false) const;
 };
+
+struct RequiredSubscriptionInfo
+{
+  bool traffic_signals{false};
+  bool predicted_objects{false};
+  bool occupancy_grid_map{false};
+  bool no_ground_pointcloud{false};
+
+  void concat(const RequiredSubscriptionInfo & required_subscriptions)
+  {
+    traffic_signals |= required_subscriptions.traffic_signals;
+    predicted_objects |= required_subscriptions.predicted_objects;
+    occupancy_grid_map |= required_subscriptions.occupancy_grid_map;
+    no_ground_pointcloud |= required_subscriptions.no_ground_pointcloud;
+  }
+};
 }  // namespace autoware::behavior_velocity_planner
 
 #endif  // AUTOWARE__BEHAVIOR_VELOCITY_PLANNER_COMMON__PLANNER_DATA_HPP_

@@ -40,7 +40,10 @@ public:
 
   const char * getModuleName() override { return "stop_line"; }
 
-  SubscriptionData getRequiredSubscriptions() const override { return SubscriptionData{}; }
+  RequiredSubscriptionInfo getRequiredSubscriptions() const override
+  {
+    return RequiredSubscriptionInfo{};
+  }
 
 private:
   StopLineModule::PlannerParam planner_param_;

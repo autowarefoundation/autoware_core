@@ -166,7 +166,7 @@ public:
     modifyPathVelocity(path);
   }
 
-  virtual SubscriptionData getRequiredSubscriptions() const = 0;
+  virtual RequiredSubscriptionInfo getRequiredSubscriptions() const = 0;
 
 protected:
   virtual void modifyPathVelocity(autoware_internal_planning_msgs::msg::PathWithLaneId * path)

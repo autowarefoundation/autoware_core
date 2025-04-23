@@ -36,22 +36,6 @@
 
 namespace autoware::behavior_velocity_planner
 {
-struct SubscriptionData
-{
-  bool traffic_signals{false};
-  bool predicted_objects{false};
-  bool occupancy_grid_map{false};
-  bool no_ground_pointcloud{false};
-
-  void concat(const SubscriptionData & required_subscriptions)
-  {
-    traffic_signals |= required_subscriptions.traffic_signals;
-    predicted_objects |= required_subscriptions.predicted_objects;
-    occupancy_grid_map |= required_subscriptions.occupancy_grid_map;
-    no_ground_pointcloud |= required_subscriptions.no_ground_pointcloud;
-  }
-};
-
 /**
  * @brief Represents detection range parameters.
  */
