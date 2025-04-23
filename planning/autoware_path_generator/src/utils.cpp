@@ -15,22 +15,29 @@
 #include "autoware/path_generator/utils.hpp"
 
 #include "autoware/trajectory/interpolator/linear.hpp"
+#include "autoware/trajectory/utils/closest.hpp"
+#include "autoware/trajectory/utils/crop.hpp"
 #include "autoware/trajectory/utils/find_intervals.hpp"
 
 #include <autoware/motion_utils/constants.hpp>
 #include <autoware/motion_utils/resample/resample.hpp>
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
+#include <autoware/trajectory/forward.hpp>
 #include <autoware/trajectory/path_point_with_lane_id.hpp>
 #include <autoware_lanelet2_extension/utility/message_conversion.hpp>
 #include <autoware_lanelet2_extension/utility/utilities.hpp>
 #include <autoware_utils/geometry/geometry.hpp>
 #include <autoware_utils/math/unit_conversion.hpp>
 
+#include <autoware_internal_planning_msgs/msg/path_point_with_lane_id.hpp>
+
+#include <lanelet2_core/Forward.h>
 #include <lanelet2_core/geometry/Lanelet.h>
 
 #include <algorithm>
 #include <limits>
-#include <memory>
+#include <optional>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -549,7 +556,7 @@ PathRange<std::optional<double>> get_arc_length_on_centerline(
     s_right_centerline ? s_right_centerline : s_right_bound};
 }
 
-const geometry_msgs::msg::Pose refine_goal(
+geometry_msgs::msg::Pose refine_goal(
   const geometry_msgs::msg::Pose & goal, const lanelet::ConstLanelet & goal_lanelet)
 {
   const auto goal_point_on_lanelet = lanelet::utils::conversion::toLaneletPoint(goal.position);
@@ -701,104 +708,88 @@ std::optional<PathWithLaneId> get_path_up_to_just_before_pre_goal(
 }
 
 // Function to refine the path for the goal
-PathWithLaneId refine_path_for_goal(
-  const PathWithLaneId & input, const geometry_msgs::msg::Pose & goal,
-  const PlannerData & planner_data, const double refine_goal_search_radius_range)
+experimental::trajectory::Trajectory<PathPointWithLaneId> refine_path_for_goal(
+  const experimental::trajectory::Trajectory<PathPointWithLaneId> & input,  //
+  const geometry_msgs::msg::Pose & goal_pose,                               //
+  const lanelet::Id goal_lane_id,                                           //
+  const double refine_goal_search_radius_range)
 {
-  PathWithLaneId filtered_path = input;
+  auto contain_goal_lane_id = [&](const PathPointWithLaneId & point) {
+    const auto & lane_ids = point.lane_ids;
+    const bool is_goal_lane_id_in_point =
+      std::find(lane_ids.begin(), lane_ids.end(), goal_lane_id) != lane_ids.end();
+    return is_goal_lane_id_in_point;
+  };
 
-  filtered_path.points = autoware::motion_utils::removeOverlapPoints(filtered_path.points);
+  auto outside_circle = [&](const PathPointWithLaneId & point) {
+    const double dist = autoware_utils::calc_distance2d(point.point.pose, goal_pose);
+    return dist > refine_goal_search_radius_range;
+  };
 
-  // Clean up points around the goal for smooth goal connection
-  auto path_up_to_just_before_pre_goal_opt = get_path_up_to_just_before_pre_goal(
-    filtered_path, goal, planner_data.preferred_lanelets.back().id(),
-    refine_goal_search_radius_range);
+  auto closest_to_goal = autoware::experimental::trajectory::closest_with_constraint(
+    input, goal_pose, contain_goal_lane_id);
 
-  if (!path_up_to_just_before_pre_goal_opt) {
-    // It seems we are almost at the goal and no need to clean up. Lets use the original path.
+  if (!closest_to_goal) {
     return input;
   }
 
-  // Get the value from the optional
-  auto final_path = path_up_to_just_before_pre_goal_opt.value();
+  auto cropped_path = autoware::experimental::trajectory::crop(input, 0, *closest_to_goal);
 
-  // Reserve the size of the path + pre_goal + goal
-  final_path.points.reserve(final_path.points.size() + 2);
+  auto intervals =
+    autoware::experimental::trajectory::find_intervals(cropped_path, outside_circle, 10);
 
-  // Prepare lanes only for pre_goal. Maybe we can simplify without using this.
-  const auto lanes_opt = extract_lanelets_from_path(filtered_path, planner_data);
-  if (!lanes_opt) {
-    // It might be better to use the original path when the lanelets are not found
-    return input;
+  std::vector<PathPointWithLaneId> goal_connected_trajectory_points;
+
+  if (!intervals.empty()) {
+    auto cropped = autoware::experimental::trajectory::crop(cropped_path, 0, intervals.back().end);
+    goal_connected_trajectory_points = cropped.restore(2);
   }
-  const auto lanes = lanes_opt.value();
 
-  // Prepare pre_goal which is just before the goal
-  PathPointWithLaneId pre_goal = prepare_pre_goal(goal, lanes);
+  auto goal = input.compute(autoware::experimental::trajectory::closest(input, goal_pose));
 
-  // Insert pre_goal to the path. As this pre_goal has the role that of the point just before the
-  // goal, we set the velocity that of the point just before the tail of the input path (size - 2).
-  // ------------------------------------------------------------------------------------------
-  //       <-- path_up_to_just_before_pre_goal_opt -->  <-- cleaned up by range -->  goal
-  // input: 0, 1, 2, 3, ........., out_of_circle_index, ................., size - 2, size - 1
-  // ------------------------------------------------------------------------------------------
-  //       <-- path_up_to_just_before_pre_goal_opt -->                     # We add these points
-  // final: 0, 1, 2, 3, ........., out_of_circle_index                   , pre_goal, goal
-  // ------------------------------------------------------------------------------------------
+  goal.point.pose = goal_pose;
 
-  // Check if the input path has the point just before the goal
-  if (input.points.size() < 2) {
-    // But not empty?
-    if (input.points.empty()) {
-      return input;
+  goal.point.longitudinal_velocity_mps = 0.0;
+
+  auto pre_goal_pose = autoware_utils_geometry::calc_offset_pose(goal_pose, -1.0, 0.0, 0.0);
+
+  auto pre_goal = input.compute(autoware::experimental::trajectory::closest(input, pre_goal_pose));
+
+  pre_goal.point.pose = pre_goal_pose;
+
+  goal_connected_trajectory_points.emplace_back(pre_goal);
+  goal_connected_trajectory_points.emplace_back(goal);
+
+  if (goal_connected_trajectory_points.size() < 4) {  // 4 points are required for spline
+                                                      // interpolation
+    auto output = experimental::trajectory::Trajectory<PathPointWithLaneId>::Builder{}
+                    .set_xy_interpolator<experimental::trajectory::interpolator::Linear>()
+                    .build(goal_connected_trajectory_points);
+    if (output) {
+      return output.value();
     }
-    // Set the velocity of the pre_goal to the velocity of the last point
-    pre_goal.point.longitudinal_velocity_mps = input.points.back().point.longitudinal_velocity_mps;
   } else {
-    // Set the velocity of the pre_goal to the velocity of the point just before the goal
-    pre_goal.point.longitudinal_velocity_mps =
-      input.points.at(input.points.size() - 2).point.longitudinal_velocity_mps;
+    auto output = experimental::trajectory::Trajectory<PathPointWithLaneId>::Builder{}.build(
+      goal_connected_trajectory_points);
+    if (output) {
+      return output.value();
+    }
   }
-
-  final_path.points.push_back(pre_goal);
-
-  // Insert goal (obtained from the tail of input path) to the cleaned up path
-  final_path.points.push_back(input.points.back());
-
-  // Finally, replace the goal point with the refined one
-  final_path.points.back().point.pose = goal;
-
-  // Set zero velocity at the goal
-  final_path.points.back().point.longitudinal_velocity_mps = 0.0;
-
-  // Also set the left/right bound
-  final_path.left_bound = input.left_bound;
-  final_path.right_bound = input.right_bound;
-
-  // If necessary, do more fine tuning for goal connection here
-
-  return final_path;
+  return input;
 }
 
-std::optional<lanelet::ConstLanelets> extract_lanelets_from_path(
-  const PathWithLaneId & refined_path, const PlannerData & planner_data)
+lanelet::ConstLanelets extract_lanelets_from_trajectory(
+  const experimental::trajectory::Trajectory<PathPointWithLaneId> & trajectory,
+  const PlannerData & planner_data)
 {
-  lanelet::ConstLanelets refined_path_lanelets;
-  for (size_t i = 0; i < refined_path.points.size(); ++i) {
-    try {
-      const auto & path_point = refined_path.points.at(i);
-      const int64_t lane_id = path_point.lane_ids.at(0);
-      lanelet::ConstLanelet lanelet = planner_data.lanelet_map_ptr->laneletLayer.get(lane_id);
-
-      if (!exists(refined_path_lanelets, lanelet)) {
-        refined_path_lanelets.push_back(lanelet);
-      }
-    } catch (const std::out_of_range & e) {
-      RCLCPP_ERROR(rclcpp::get_logger("path_generator"), "Out of range error: %s", e.what());
-      return std::nullopt;
-    }
+  lanelet::ConstLanelets lanelets{};
+  const auto lane_ids = trajectory.get_contained_lane_ids();
+  const auto lane_ids_set = std::set(lane_ids.begin(), lane_ids.end());
+  for (const auto & lane_id : lane_ids_set) {
+    const auto lanelet = planner_data.lanelet_map_ptr->laneletLayer.get(lane_id);
+    lanelets.push_back(lanelet);
   }
-  return refined_path_lanelets;
+  return lanelets;
 }
 
 bool is_in_lanelets(const geometry_msgs::msg::Pose & pose, const lanelet::ConstLanelets & lanes)
@@ -811,39 +802,44 @@ bool is_in_lanelets(const geometry_msgs::msg::Pose & pose, const lanelet::ConstL
   return false;
 }
 
-bool is_path_valid(const PathWithLaneId & refined_path, const PlannerData & planner_data)
+bool is_trajectory_inside_lanelets(
+  const experimental::trajectory::Trajectory<PathPointWithLaneId> & refined_path,
+  const lanelet::ConstLanelets & lanelets)
 {
-  // Extract lanelets from the refined path
-  const auto lanelets_opt = extract_lanelets_from_path(refined_path, planner_data);
-  if (!lanelets_opt) {
-    RCLCPP_ERROR(rclcpp::get_logger("path_generator"), "Failed to extract lanelets from path");
-    return false;
+  for (double s = 0.0; s < refined_path.length(); s += 0.1) {
+    const auto point = refined_path.compute(s);
+    if (!is_in_lanelets(point.point.pose, lanelets)) {
+      return false;
+    }
   }
-  const auto & lanelets = lanelets_opt.value();
-
-  // std::any_of detects whether any point lies outside lanelets
-  const bool has_points_outside_lanelet = std::any_of(
-    refined_path.points.begin(), refined_path.points.end(),
-    [&lanelets](const auto & refined_path_point) {
-      return !is_in_lanelets(refined_path_point.point.pose, lanelets);
-    });
-
-  // Return true if no points lie outside the extracted lanelets
-  return !has_points_outside_lanelet;
+  return true;
 }
 
-PathWithLaneId modify_path_for_smooth_goal_connection(
-  const PathWithLaneId & path, const PlannerData & planner_data,
-  const double refine_goal_search_radius_range)
+std::optional<experimental::trajectory::Trajectory<PathPointWithLaneId>>
+modify_path_for_smooth_goal_connection(
+  const experimental::trajectory::Trajectory<PathPointWithLaneId> & trajectory,
+  const PlannerData & planner_data, const double refine_goal_search_radius_range)
 {
-  const auto goal = planner_data.goal_pose;
+  if (planner_data.preferred_lanelets.empty()) {
+    return std::nullopt;
+  }
+  const auto lanelets = extract_lanelets_from_trajectory(trajectory, planner_data);
+  auto goal_pose =
+    utils::refine_goal(planner_data.goal_pose, planner_data.preferred_lanelets.back());
 
-  const geometry_msgs::msg::Pose refined_goal =
-    refine_goal(goal, planner_data.preferred_lanelets.back());
-
-  const PathWithLaneId refined_path =
-    refine_path_for_goal(path, refined_goal, planner_data, refine_goal_search_radius_range);
-  return is_path_valid(refined_path, planner_data) ? refined_path : path;
+  // This process is to fit the trajectory inside the lanelets. By reducing
+  // refine_goal_search_radius_range, we can fit the trajectory inside lanelets even if the
+  // trajectory has a high curvature.
+  for (double s = refine_goal_search_radius_range; s > 0; s -= 0.1) {
+    const auto refined_trajectory = refine_path_for_goal(
+      trajectory, goal_pose, planner_data.preferred_lanelets.back().id(),
+      refine_goal_search_radius_range);
+    const bool is_inside = is_trajectory_inside_lanelets(refined_trajectory, lanelets);
+    if (is_inside) {
+      return refined_trajectory;
+    }
+  }
+  return std::nullopt;
 }
 
 TurnIndicatorsCommand get_turn_signal(

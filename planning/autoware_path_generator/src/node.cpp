@@ -216,7 +216,8 @@ std::optional<PathWithLaneId> PathGenerator::plan_path(
   if (!path) {
     RCLCPP_ERROR_THROTTLE(get_logger(), *get_clock(), 5000, "output path is invalid");
     return std::nullopt;
-  } else if (path->points.empty()) {
+  }
+  if (path->points.empty()) {
     RCLCPP_ERROR_THROTTLE(get_logger(), *get_clock(), 5000, "output path is empty");
     return std::nullopt;
   }
@@ -416,36 +417,43 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
   // Attach orientation for all the points
   trajectory->align_orientation_with_trajectory_direction();
 
-  // Refine the trajectory by cropping
-  trajectory->crop(
+  double start =
     s_offset + s_start -
-      get_arc_length_along_centerline(
-        extended_lanelet_sequence, lanelet::utils::conversion::toLaneletPoint(
-                                     path_points_with_lane_id.front().point.pose.position)),
-    s_end - s_start);
+    get_arc_length_along_centerline(
+      extended_lanelet_sequence, lanelet::utils::conversion::toLaneletPoint(
+                                   path_points_with_lane_id.front().point.pose.position));
+
+  const double length = std::max(0.1, s_end - s_start);
+
+  // Refine the trajectory by cropping
+  trajectory->crop(0, start + length);
 
   // Compose the polished path
-  PathWithLaneId preprocessed_path{};
-  preprocessed_path.points = trajectory->restore();
 
   PathWithLaneId finalized_path_with_lane_id{};
+
+  finalized_path_with_lane_id.points = trajectory->restore();
 
   // Check if the goal point is in the search range
   // Note: We only see if the goal is approaching the tail of the path.
   const auto distance_to_goal = autoware_utils::calc_distance2d(
-    preprocessed_path.points.back().point.pose, planner_data_.goal_pose);
+    trajectory->compute(trajectory->length()), planner_data_.goal_pose);
 
   if (distance_to_goal < params.refine_goal_search_radius_range) {
-    // Perform smooth goal connection
-    const auto params = param_listener_->get_params();
+    auto refined_path = utils::modify_path_for_smooth_goal_connection(
+      *trajectory, planner_data_, params.refine_goal_search_radius_range);
 
-    finalized_path_with_lane_id = utils::modify_path_for_smooth_goal_connection(
-      std::move(preprocessed_path), planner_data_, params.refine_goal_search_radius_range);
-  } else {
-    finalized_path_with_lane_id = std::move(preprocessed_path);
+    if (refined_path) {
+      refined_path->align_orientation_with_trajectory_direction();
+      *trajectory = *refined_path;
+    }
   }
 
-  // check if the path is empty
+  if (!(trajectory->length() - start < 0)) {
+    trajectory->crop(start, trajectory->length() - start);
+  }
+  finalized_path_with_lane_id.points = trajectory->restore();
+
   if (finalized_path_with_lane_id.points.empty()) {
     return std::nullopt;
   }

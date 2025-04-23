@@ -16,12 +16,11 @@
 #define AUTOWARE__PATH_GENERATOR__UTILS_HPP_
 
 #include "autoware/path_generator/common_structs.hpp"
+#include "autoware/trajectory/path_point_with_lane_id.hpp"
 
 #include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
 #include <autoware_vehicle_msgs/msg/turn_indicators_command.hpp>
 
-#include <limits>
-#include <memory>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -169,7 +168,7 @@ PathRange<std::optional<double>> get_arc_length_on_centerline(
  * @param [in] goal original goal pose
  * @param [in] goal_lanelet lanelet containing the goal pose
  */
-const geometry_msgs::msg::Pose refine_goal(
+geometry_msgs::msg::Pose refine_goal(
   const geometry_msgs::msg::Pose & goal, const lanelet::ConstLanelet & goal_lanelet);
 
 /**
@@ -233,24 +232,10 @@ std::optional<lanelet::ConstLanelets> extract_lanelets_from_path(
  */
 bool is_in_lanelets(const geometry_msgs::msg::Pose & pose, const lanelet::ConstLanelets & lanes);
 
-/**
- * @brief Check if the path is valid.
- * @param refined_path Input path.
- * @param planner_data Planner data.
- * @return True if the path is valid, false otherwise
- */
-bool is_path_valid(const PathWithLaneId & refined_path, const PlannerData & planner_data);
-
-/**
- * @brief Modify the path to connect smoothly to the goal.
- * @param path Input path.
- * @param planner_data Planner data.
- * @param refine_goal_search_radius_range Refine goal search radius range.
- * @return Modified path
- */
-PathWithLaneId modify_path_for_smooth_goal_connection(
-  const PathWithLaneId & path, const PlannerData & planner_data,
-  const double refine_goal_search_radius_range);
+std::optional<experimental::trajectory::Trajectory<PathPointWithLaneId>>
+modify_path_for_smooth_goal_connection(
+  const experimental::trajectory::Trajectory<PathPointWithLaneId> & trajectory,
+  const PlannerData & planner_data, const double refine_goal_search_radius_range);
 
 /**
  * @brief get earliest turn signal based on turn direction specified for lanelets
