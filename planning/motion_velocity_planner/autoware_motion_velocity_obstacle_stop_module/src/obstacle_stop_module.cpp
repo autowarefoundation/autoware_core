@@ -156,6 +156,16 @@ void ObstacleStopModule::init(rclcpp::Node & node, const std::string & module_na
     throw std::invalid_argument("point-cloud mask narrower than stop margin");
   }
 
+  const double update_distance_th =
+    get_or_declare_parameter<double>(node, "obstacle_stop.stop_planning.update_distance_th");
+  const double min_off_duration =
+    get_or_declare_parameter<double>(node, "obstacle_stop.stop_planning.min_off_duration");
+  const double min_on_duration =
+    get_or_declare_parameter<double>(node, "obstacle_stop.stop_planning.min_on_duration");
+
+  path_length_buffer_ = autoware::motion_velocity_planner::utils::PathLengthBuffer(
+    update_distance_th, min_off_duration, min_on_duration);
+
   // common publisher
   processing_time_publisher_ =
     node.create_publisher<Float64Stamped>("~/debug/obstacle_stop/processing_time_ms", 1);
@@ -839,10 +849,16 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::plan_stop(
       autoware::motion_utils::calcSignedArcLength(traj_points, 0, ego_segment_idx) +
       stop_obstacle.dist_to_collide_on_decimated_traj;
 
-    // calculate desired stop margin
-    const double desired_stop_margin = calc_desired_stop_margin(
+    const double new_desired_stop_margin = calc_desired_stop_margin(
       planner_data, traj_points, stop_obstacle, dist_to_bumper, ego_segment_idx,
       dist_to_collide_on_ref_traj);
+
+    path_length_buffer_.update_buffer(new_desired_stop_margin, clock_);
+    // calculate desired stop margin
+    const std::optional<double> buffered_stop_margin =
+      path_length_buffer_.get_nearest_active_item();
+    const double desired_stop_margin =
+      buffered_stop_margin ? *buffered_stop_margin : new_desired_stop_margin;
 
     // calculate stop point against the obstacle
     const auto candidate_zero_vel_dist = calc_candidate_zero_vel_dist(
@@ -897,11 +913,35 @@ double ObstacleStopModule::calc_desired_stop_margin(
 {
   // calculate default stop margin
   const double default_stop_margin = [&]() {
+    const double v_ego = planner_data->current_odometry.twist.twist.linear.x;
+    const double v_obs = stop_obstacle.velocity;
+
     const auto ref_traj_length =
       autoware::motion_utils::calcSignedArcLength(traj_points, 0, traj_points.size() - 1);
     if (dist_to_collide_on_ref_traj > ref_traj_length) {
       // Use terminal margin (terminal_stop_margin) for obstacle stop
       return stop_planning_param_.terminal_stop_margin;
+    } else if ((v_obs * v_ego < 0)) {
+      const double a_ego = common_param_.limit_max_accel;
+      const double bumper_to_bumper_distance = (dist_to_collide_on_ref_traj - dist_to_bumper);
+
+      const double braking_distance = v_ego * v_ego / (2 * a_ego);
+      const double stopping_time = v_ego / a_ego;
+      const double distance_obs_ego_braking = std::abs(v_obs * stopping_time);
+
+      const double ego_stop_margin = stop_planning_param_.additional_stop_margin_opposing_traffic;
+
+      const double T_coast = std::max(
+        (bumper_to_bumper_distance - ego_stop_margin - braking_distance +
+         distance_obs_ego_braking) /
+          (v_ego - v_obs),
+        0.0);
+
+      const double stopping_distance = v_ego * T_coast + braking_distance;
+
+      const double stop_margin = bumper_to_bumper_distance - stopping_distance;
+
+      return std::max(stop_margin, stop_planning_param_.stop_margin);
     }
     return stop_planning_param_.stop_margin;
   }();
