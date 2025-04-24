@@ -126,7 +126,7 @@ double findReachTime(
 
 std::vector<geometry_msgs::msg::Point> toRosPoints(const PredictedObjects & object);
 
-[[deprecated]] LineString2d extendLine(
+LineString2d extendLine(
   const lanelet::ConstPoint3d & lanelet_point1, const lanelet::ConstPoint3d & lanelet_point2,
   const double & length);
 
