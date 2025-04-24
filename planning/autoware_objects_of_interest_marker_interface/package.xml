@@ -16,7 +16,9 @@
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
 
   <depend>autoware_perception_msgs</depend>
-  <depend>autoware_utils</depend>
+  <depend>autoware_utils_geometry</depend>
+  <depend>autoware_utils_math</depend>
+  <depend>autoware_utils_visualization</depend>
   <depend>geometry_msgs</depend>
   <depend>rclcpp</depend>
   <depend>std_msgs</depend>
