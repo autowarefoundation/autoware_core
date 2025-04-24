@@ -18,7 +18,6 @@
 #include "autoware_vehicle_info_utils/vehicle_info_utils.hpp"
 
 #include <autoware_utils_geometry/boost_geometry.hpp>
-
 #include <rclcpp/time.hpp>
 
 #include "autoware_perception_msgs/msg/predicted_path.hpp"

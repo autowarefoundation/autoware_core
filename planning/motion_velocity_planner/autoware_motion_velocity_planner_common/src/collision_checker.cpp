@@ -27,7 +27,8 @@ CollisionChecker::CollisionChecker(autoware_utils_geometry::MultiPolygon2d traje
   nodes.reserve(trajectory_footprints_.size());
   for (auto i = 0UL; i < trajectory_footprints_.size(); ++i) {
     nodes.emplace_back(
-      boost::geometry::return_envelope<autoware_utils_geometry::Box2d>(trajectory_footprints_[i]), i);
+      boost::geometry::return_envelope<autoware_utils_geometry::Box2d>(trajectory_footprints_[i]),
+      i);
   }
   rtree_ = std::make_shared<Rtree>(nodes.begin(), nodes.end());
 }
@@ -57,14 +58,17 @@ template std::vector<Collision> CollisionChecker::get_collisions<autoware_utils_
   const autoware_utils_geometry::Point2d & geometry) const;
 template std::vector<Collision> CollisionChecker::get_collisions<autoware_utils_geometry::Line2d>(
   const autoware_utils_geometry::Line2d & geometry) const;
-template std::vector<Collision> CollisionChecker::get_collisions<autoware_utils_geometry::MultiPolygon2d>(
+template std::vector<Collision>
+CollisionChecker::get_collisions<autoware_utils_geometry::MultiPolygon2d>(
   const autoware_utils_geometry::MultiPolygon2d & geometry) const;
 
 // @warn Multi geometries usually lead to very inefficient queries
-template std::vector<Collision> CollisionChecker::get_collisions<autoware_utils_geometry::MultiPoint2d>(
+template std::vector<Collision>
+CollisionChecker::get_collisions<autoware_utils_geometry::MultiPoint2d>(
   const autoware_utils_geometry::MultiPoint2d & geometry) const;
-template std::vector<Collision> CollisionChecker::get_collisions<autoware_utils_geometry::MultiLineString2d>(
+template std::vector<Collision>
+CollisionChecker::get_collisions<autoware_utils_geometry::MultiLineString2d>(
   const autoware_utils_geometry::MultiLineString2d & geometry) const;
-template std::vector<Collision> CollisionChecker::get_collisions<autoware_utils_geometry::Polygon2d>(
-  const autoware_utils_geometry::Polygon2d & geometry) const;
+template std::vector<Collision> CollisionChecker::get_collisions<
+  autoware_utils_geometry::Polygon2d>(const autoware_utils_geometry::Polygon2d & geometry) const;
 }  // namespace autoware::motion_velocity_planner
