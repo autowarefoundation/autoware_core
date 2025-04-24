@@ -15,6 +15,8 @@
 #include "autoware/behavior_velocity_planner_common/utilization/trajectory_utils.hpp"
 #include "autoware/velocity_smoother/smoother/jerk_filtered_smoother.hpp"
 
+#include <autoware_utils/system/time_keeper.hpp>
+
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <rclcpp/node.hpp>
 
