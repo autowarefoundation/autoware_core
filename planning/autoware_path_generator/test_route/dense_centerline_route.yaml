@@ -24,59 +24,60 @@ goal_pose:
     z: 0.005101284732717293
     w: 0.9999869883623865
 segments:
-- preferred_primitive:
-    id: 140
-    primitive_type: ''
-  primitives:
-  - id: 140
-    primitive_type: lane
-- preferred_primitive:
-    id: 137
-    primitive_type: ''
-  primitives:
-  - id: 137
-    primitive_type: lane
-- preferred_primitive:
-    id: 136
-    primitive_type: ''
-  primitives:
-  - id: 136
-    primitive_type: lane
-- preferred_primitive:
-    id: 138
-    primitive_type: ''
-  primitives:
-  - id: 138
-    primitive_type: lane
-- preferred_primitive:
-    id: 139
-    primitive_type: ''
-  primitives:
-  - id: 139
-    primitive_type: lane
-- preferred_primitive:
-    id: 135
-    primitive_type: ''
-  primitives:
-  - id: 135
-    primitive_type: lane
+  - preferred_primitive:
+      id: 140
+      primitive_type: ""
+    primitives:
+      - id: 140
+        primitive_type: lane
+  - preferred_primitive:
+      id: 137
+      primitive_type: ""
+    primitives:
+      - id: 137
+        primitive_type: lane
+  - preferred_primitive:
+      id: 136
+      primitive_type: ""
+    primitives:
+      - id: 136
+        primitive_type: lane
+  - preferred_primitive:
+      id: 138
+      primitive_type: ""
+    primitives:
+      - id: 138
+        primitive_type: lane
+  - preferred_primitive:
+      id: 139
+      primitive_type: ""
+    primitives:
+      - id: 139
+        primitive_type: lane
+  - preferred_primitive:
+      id: 135
+      primitive_type: ""
+    primitives:
+      - id: 135
+        primitive_type: lane
 uuid:
   uuid:
-  - 20
-  - 188
-  - 165
-  - 231
-  - 244
-  - 168
-  - 166
-  - 247
-  - 190
-  - 40
-  - 71
-  - 52
-  - 47
-  - 33
-  - 27
-  - 182
+    - 20
+    - 188
+    - 165
+    - 231
+    - 244
+    - 168
+    - 166
+    - 247
+    - 190
+    - 40
+    - 71
+    - 52
+    - 47
+    - 33
+    - 27
+    - 182
 allow_modification: false
 ---
+
