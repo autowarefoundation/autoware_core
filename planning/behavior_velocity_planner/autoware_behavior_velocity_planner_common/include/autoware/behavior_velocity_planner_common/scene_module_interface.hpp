@@ -264,7 +264,8 @@ protected:
 
   std::shared_ptr<DebugPublisher> processing_time_publisher_;
 
-  rclcpp::Publisher<autoware_utils_debug::ProcessingTimeDetail>::SharedPtr pub_processing_time_detail_;
+  rclcpp::Publisher<autoware_utils_debug::ProcessingTimeDetail>::SharedPtr
+    pub_processing_time_detail_;
 
   std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper_;
 

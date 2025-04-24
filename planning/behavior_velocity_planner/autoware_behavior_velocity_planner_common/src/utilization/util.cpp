@@ -50,8 +50,10 @@ size_t calcPointIndexFromSegmentIndex(
   const size_t prev_point_idx = seg_idx;
   const size_t next_point_idx = seg_idx + 1;
 
-  const double prev_dist = autoware_utils_geometry::calc_distance2d(point, points.at(prev_point_idx));
-  const double next_dist = autoware_utils_geometry::calc_distance2d(point, points.at(next_point_idx));
+  const double prev_dist =
+    autoware_utils_geometry::calc_distance2d(point, points.at(prev_point_idx));
+  const double next_dist =
+    autoware_utils_geometry::calc_distance2d(point, points.at(next_point_idx));
 
   if (prev_dist < next_dist) {
     return prev_point_idx;
