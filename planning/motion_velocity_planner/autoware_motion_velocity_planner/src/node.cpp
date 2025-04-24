@@ -414,8 +414,8 @@ autoware_planning_msgs::msg::Trajectory MotionVelocityPlannerNode::generate_traj
     constexpr auto min_interval_squared = 0.5 * 0.5;  // TODO(Maxime): change to a parameter
     for (auto i = 1UL; i < smoothed_trajectory_points.size(); ++i) {
       const auto & p = smoothed_trajectory_points[i];
-      const auto dist_to_prev_point =
-        autoware_utils_geometry::calc_squared_distance2d(resampled_smoothed_trajectory_points.back(), p);
+      const auto dist_to_prev_point = autoware_utils_geometry::calc_squared_distance2d(
+        resampled_smoothed_trajectory_points.back(), p);
       if (dist_to_prev_point > min_interval_squared) {
         resampled_smoothed_trajectory_points.push_back(p);
       }

@@ -68,17 +68,19 @@ private:
 
   // subscriber
   rclcpp::Subscription<autoware_planning_msgs::msg::Trajectory>::SharedPtr sub_trajectory_;
-  autoware_utils_rclcpp::InterProcessPollingSubscriber<autoware_perception_msgs::msg::PredictedObjects>
+  autoware_utils_rclcpp::InterProcessPollingSubscriber<
+    autoware_perception_msgs::msg::PredictedObjects>
     sub_predicted_objects_{this, "~/input/dynamic_objects"};
   autoware_utils_rclcpp::InterProcessPollingSubscriber<sensor_msgs::msg::PointCloud2>
     sub_no_ground_pointcloud_{
       this, "~/input/no_ground_pointcloud", autoware_utils_rclcpp::single_depth_sensor_qos()};
-  autoware_utils_rclcpp::InterProcessPollingSubscriber<nav_msgs::msg::Odometry> sub_vehicle_odometry_{
-    this, "~/input/vehicle_odometry"};
-  autoware_utils_rclcpp::InterProcessPollingSubscriber<geometry_msgs::msg::AccelWithCovarianceStamped>
+  autoware_utils_rclcpp::InterProcessPollingSubscriber<nav_msgs::msg::Odometry>
+    sub_vehicle_odometry_{this, "~/input/vehicle_odometry"};
+  autoware_utils_rclcpp::InterProcessPollingSubscriber<
+    geometry_msgs::msg::AccelWithCovarianceStamped>
     sub_acceleration_{this, "~/input/accel"};
-  autoware_utils_rclcpp::InterProcessPollingSubscriber<nav_msgs::msg::OccupancyGrid> sub_occupancy_grid_{
-    this, "~/input/occupancy_grid"};
+  autoware_utils_rclcpp::InterProcessPollingSubscriber<nav_msgs::msg::OccupancyGrid>
+    sub_occupancy_grid_{this, "~/input/occupancy_grid"};
   autoware_utils_rclcpp::InterProcessPollingSubscriber<
     autoware_perception_msgs::msg::TrafficLightGroupArray>
     sub_traffic_signals_{this, "~/input/traffic_signals"};
