@@ -277,6 +277,10 @@ public:
     const lanelet::ConstLanelet & lanelet, const Pose & pose,
     const double backward_distance = std::numeric_limits<double>::max(),
     const double forward_distance = std::numeric_limits<double>::max()) const;
+  lanelet::ConstLanelets get_shoulder_lanelet_sequence(
+    const lanelet::ConstLanelet & lanelet,
+    const double backward_distance = std::numeric_limits<double>::max(),
+    const double forward_distance = std::numeric_limits<double>::max()) const;
   bool isShoulderLanelet(const lanelet::ConstLanelet & lanelet) const;
   bool isRouteLanelet(const lanelet::ConstLanelet & lanelet) const;
   bool isRoadLanelet(const lanelet::ConstLanelet & lanelet) const;

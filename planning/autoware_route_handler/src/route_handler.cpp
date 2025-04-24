@@ -904,6 +904,47 @@ lanelet::ConstLanelets RouteHandler::getShoulderLaneletSequence(
   return lanelet_sequence;
 }
 
+lanelet::ConstLanelets RouteHandler::get_shoulder_lanelet_sequence(
+  const lanelet::ConstLanelet & lanelet, const double backward_distance,
+  const double forward_distance) const
+{
+  lanelet::ConstLanelets lanelet_sequence;
+  if (!isShoulderLanelet(lanelet)) {
+    return lanelet_sequence;
+  }
+
+  Pose current_pose{};
+  current_pose.orientation.w = 1;
+  if (!lanelet.centerline().empty()) {
+    current_pose.position = lanelet::utils::conversion::toGeomMsgPt(lanelet.centerline().front());
+  }
+
+  lanelet::ConstLanelets lanelet_sequence_forward =
+    getShoulderLaneletSequenceAfter(lanelet, forward_distance);
+  const lanelet::ConstLanelets lanelet_sequence_backward = std::invoke([&]() {
+    const auto arc_coordinate = lanelet::utils::getArcCoordinates({lanelet}, current_pose);
+    if (arc_coordinate.length < backward_distance) {
+      return getShoulderLaneletSequenceUpTo(lanelet, backward_distance);
+    }
+    return lanelet::ConstLanelets{};
+  });
+
+  // loop check
+  if (!lanelet_sequence_forward.empty() && !lanelet_sequence_backward.empty()) {
+    if (lanelet_sequence_backward.back().id() == lanelet_sequence_forward.front().id()) {
+      return lanelet_sequence_forward;
+    }
+  }
+  lanelet_sequence.insert(
+    lanelet_sequence.end(), lanelet_sequence_backward.begin(), lanelet_sequence_backward.end());
+
+  lanelet_sequence.push_back(lanelet);
+  lanelet_sequence.insert(
+    lanelet_sequence.end(), lanelet_sequence_forward.begin(), lanelet_sequence_forward.end());
+
+  return lanelet_sequence;
+}
+
 bool RouteHandler::getClosestLaneletWithinRoute(
   const Pose & search_pose, lanelet::ConstLanelet * closest_lanelet) const
 {
