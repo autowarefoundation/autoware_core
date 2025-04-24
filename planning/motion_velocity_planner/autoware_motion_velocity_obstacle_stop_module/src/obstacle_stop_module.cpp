@@ -19,9 +19,9 @@
 #include <autoware/motion_utils/trajectory/conversion.hpp>
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
-#include <autoware_utils_visualization/marker_helper.hpp>
 #include <autoware_utils_rclcpp/parameter.hpp>
 #include <autoware_utils_uuid/uuid_helper.hpp>
+#include <autoware_utils_visualization/marker_helper.hpp>
 
 #include <autoware_perception_msgs/msg/detail/shape__struct.hpp>
 
@@ -1235,7 +1235,8 @@ double ObstacleStopModule::calc_margin_from_obstacle_on_curve(
       return boost::geometry::distance(ego_straight_segment, object_polygon);
     };
   const auto resampled_short_traj_points = resample_trajectory_points(short_traj_points, 0.5);
-  const auto object_polygon = autoware_utils_geometry::to_polygon2d(stop_obstacle.pose, stop_obstacle.shape);
+  const auto object_polygon =
+    autoware_utils_geometry::to_polygon2d(stop_obstacle.pose, stop_obstacle.shape);
   const auto collision_idx = [&]() -> std::optional<size_t> {
     for (size_t i = 0; i < resampled_short_traj_points.size(); ++i) {
       const double dist_to_obj = calculate_distance_from_straight_ego_path(
