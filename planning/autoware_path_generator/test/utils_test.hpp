@@ -39,8 +39,8 @@ protected:
       0.383, 0.235, 2.79, 1.64, 1.0, 1.1, 0.128, 0.128, 2.5, 0.70);
 
     set_map("autoware_test_utils", "lanelet2_map.osm");
-    set_route("autoware_path_generator", "route_data.yaml");
-    set_path("autoware_path_generator", "path_data.yaml");
+    set_route("autoware_path_generator", "common_route.yaml");
+    set_path("autoware_path_generator", "common_path.yaml");
   }
 
   void set_map(const std::string & package_name, const std::string & map_filename)
