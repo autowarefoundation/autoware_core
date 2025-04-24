@@ -126,6 +126,13 @@ double findReachTime(
 
 std::vector<geometry_msgs::msg::Point> toRosPoints(const PredictedObjects & object);
 
+/**
+ * @brief Extend segment until it intersects with two bounds
+ * @param segment Segment to extend
+ * @param bound1 First bound
+ * @param bound2 Second bound
+ * @return Extended segment (direction is the same as original)
+ */
 LineString2d extendSegmentToBounds(
   const lanelet::BasicLineString2d & segment, const std::vector<geometry_msgs::msg::Point> & bound1,
   const std::vector<geometry_msgs::msg::Point> & bound2);
