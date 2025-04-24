@@ -28,7 +28,9 @@
 
 TEST(PlanningModuleInterfaceTest, NodeTestWithExceptionTrajectory)
 {
-  rclcpp::init(0, nullptr);
+  if (!rclcpp::ok()) {
+    rclcpp::init(0, nullptr);
+  }
 
   auto test_manager =
     std::make_shared<autoware::planning_test_manager::PlanningInterfaceTestManager>();
