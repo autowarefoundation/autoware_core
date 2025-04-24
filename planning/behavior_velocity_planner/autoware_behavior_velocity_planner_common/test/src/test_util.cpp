@@ -305,6 +305,20 @@ TEST(PlanningUtilsTest, ExtendSegmentToBounds)
     EXPECT_NEAR(result[1].y(), 1.5, epsilon);
   }
 
+  {  // input segment is reversed
+    const lanelet::BasicLineString2d segment{{1.0, 1.0}, {0.0, 0.0}};
+
+    const auto result = extendSegmentToBounds(segment, bound1, bound2);
+
+    ASSERT_EQ(result.size(), 2);  // Verify the segment has two points
+
+    // Check the output segment coordinates
+    EXPECT_NEAR(result[0].x(), 1.5, epsilon);
+    EXPECT_NEAR(result[0].y(), 1.5, epsilon);
+    EXPECT_NEAR(result[1].x(), -1.0, epsilon);
+    EXPECT_NEAR(result[1].y(), -1.0, epsilon);
+  }
+
   {  // input segment is empty
     const lanelet::BasicLineString2d segment{};
 
