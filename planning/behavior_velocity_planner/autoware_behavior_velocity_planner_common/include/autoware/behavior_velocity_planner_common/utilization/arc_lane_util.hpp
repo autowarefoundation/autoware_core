@@ -50,7 +50,7 @@ double calcSignedDistance(
 
 // calculate one collision point between the line (from p1 to p2) and the line (from p3 to p4)
 [[deprecated(
-  "Please use autoware_utils_geometry::intersects")]] std::optional<geometry_msgs::msg::Point>
+  "Please use autoware_utils_geometry::intersect")]] std::optional<geometry_msgs::msg::Point>
 checkCollision(
   const geometry_msgs::msg::Point & p1, const geometry_msgs::msg::Point & p2,
   const geometry_msgs::msg::Point & p3, const geometry_msgs::msg::Point & p4);
