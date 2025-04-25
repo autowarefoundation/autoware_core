@@ -885,21 +885,27 @@ double ObstacleStopModule::calc_desired_stop_margin(
     } else if ((v_obs > 0 && v_ego < 0) || (v_obs < 0 && v_ego > 0)) {
       const double a_ego = common_param_.limit_max_accel;
       const double bumper_to_bumper_distance = (dist_to_collide_on_ref_traj - dist_to_bumper);
-      
-      const double braking_distance = v_ego*v_ego/(2*a_ego);
-      const double stopping_time = v_ego/a_ego;
+
+      const double braking_distance = v_ego * v_ego / (2 * a_ego);
+      const double stopping_time = v_ego / a_ego;
       const double distance_obs_ego_braking = std::abs(v_obs * stopping_time);
 
       const double ego_stop_margin = stop_planning_param_.additional_stop_margin_opposing_traffic;
 
-      const double T_coast =  std::max((bumper_to_bumper_distance - ego_stop_margin - braking_distance + distance_obs_ego_braking)/(v_ego-v_obs), 0.0);
+      const double T_coast = std::max(
+        (bumper_to_bumper_distance - ego_stop_margin - braking_distance +
+         distance_obs_ego_braking) /
+          (v_ego - v_obs),
+        0.0);
 
       const double stopping_distance = v_ego * T_coast + braking_distance;
 
       const double stop_margin = bumper_to_bumper_distance - stopping_distance;
 
       std::cout << "v_obs: " << v_obs << ", v_ego: " << v_ego << "\n";
-      std::cout << "T_coast: " << T_coast << "stopping_distance: " << stopping_distance << ", stop_margin: " << stop_margin << ", dist to obs: " << bumper_to_bumper_distance << "\n";
+      std::cout << "T_coast: " << T_coast << "stopping_distance: " << stopping_distance
+                << ", stop_margin: " << stop_margin
+                << ", dist to obs: " << bumper_to_bumper_distance << "\n";
 
       return std::max(stop_margin, stop_planning_param_.stop_margin);
     }
@@ -972,7 +978,7 @@ std::optional<double> ObstacleStopModule::calc_candidate_zero_vel_dist(
   }
   return candidate_zero_vel_dist;
 }
- 
+
 void ObstacleStopModule::hold_previous_stop_if_necessary(
   const std::shared_ptr<const PlannerData> planner_data,
   const std::vector<TrajectoryPoint> & traj_points,
