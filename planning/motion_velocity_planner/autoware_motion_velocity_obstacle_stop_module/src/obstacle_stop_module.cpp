@@ -883,7 +883,7 @@ double ObstacleStopModule::calc_desired_stop_margin(
       // Use terminal margin (terminal_stop_margin) for obstacle stop
       return stop_planning_param_.terminal_stop_margin;
     } else if ((v_obs > 0 && v_ego < 0) || (v_obs < 0 && v_ego > 0)) {
-      const double a_ego = common_param_.limit_min_accel;
+      const double a_ego = common_param_.limit_max_accel;
       const double bumper_to_bumper_distance = (dist_to_collide_on_ref_traj - dist_to_bumper);
       
       const double braking_distance = v_ego*v_ego/(2*a_ego);
@@ -894,7 +894,7 @@ double ObstacleStopModule::calc_desired_stop_margin(
 
       const double T_coast =  std::max((bumper_to_bumper_distance - ego_stop_margin - braking_distance + distance_obs_ego_braking)/(v_ego-v_obs), 0.0);
 
-      const double stopping_distance = v_ego * T_coast + distance_obs_ego_braking;
+      const double stopping_distance = v_ego * T_coast + braking_distance;
 
       const double stop_margin = bumper_to_bumper_distance - stopping_distance;
 
