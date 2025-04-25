@@ -130,6 +130,17 @@ LineString2d extendLine(
   const lanelet::ConstPoint3d & lanelet_point1, const lanelet::ConstPoint3d & lanelet_point2,
   const double & length);
 
+/**
+ * @brief Extend segment until it intersects with two bounds
+ * @param segment Segment to extend
+ * @param bound1 First bound
+ * @param bound2 Second bound
+ * @return Extended segment (direction is the same as original)
+ */
+LineString2d extendSegmentToBounds(
+  const lanelet::BasicLineString2d & segment, const std::vector<geometry_msgs::msg::Point> & bound1,
+  const std::vector<geometry_msgs::msg::Point> & bound2);
+
 template <class T>
 std::vector<T> concatVector(const std::vector<T> & vec1, const std::vector<T> & vec2)
 {

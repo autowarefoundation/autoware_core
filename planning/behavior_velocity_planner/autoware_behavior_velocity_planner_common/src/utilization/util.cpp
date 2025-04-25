@@ -37,6 +37,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <limits>
 #include <set>
 #include <string>
 #include <vector>
@@ -502,6 +503,75 @@ LineString2d extendLine(
   const Eigen::Vector2d t = (p2 - p1).normalized();
   return {
     {(p1 - length * t).x(), (p1 - length * t).y()}, {(p2 + length * t).x(), (p2 + length * t).y()}};
+}
+
+LineString2d extendSegmentToBounds(
+  const lanelet::BasicLineString2d & segment, const std::vector<geometry_msgs::msg::Point> & bound1,
+  const std::vector<geometry_msgs::msg::Point> & bound2)
+{
+  constexpr double epsilon = 1e-6;
+  constexpr auto to_autoware_line_string = [](const auto & line_string) {
+    LineString2d autoware_line_string;
+    std::transform(
+      line_string.begin(), line_string.end(), std::back_inserter(autoware_line_string),
+      [](const auto & point) { return Point2d{point.x(), point.y()}; });
+    return autoware_line_string;
+  };
+
+  if (segment.size() != 2) {
+    std::cerr << "[behavior_velocity](extendLineStringUntilIntersection) input segment must "
+                 "have exactly 2 points"
+              << std::endl;
+    return to_autoware_line_string(segment);
+  }
+
+  if (bound1.size() < 2 || bound2.size() < 2) {
+    std::cerr << "[behavior_velocity](extendLineStringUntilIntersection) input bounds must "
+                 "have at least 2 points"
+              << std::endl;
+    return to_autoware_line_string(segment);
+  }
+
+  const auto find_intersection_point =
+    [&](const std::vector<geometry_msgs::msg::Point> & bound) -> std::optional<Point2d> {
+    std::optional<Point2d> intersection_point = std::nullopt;
+    auto min_distance_to_bound = std::numeric_limits<double>::max();
+    for (auto it = std::next(bound.begin()); it != bound.end(); ++it) {
+      const auto p2 = autoware_utils_geometry::from_msg(*std::prev(it)).to_2d();
+      const auto p3 = autoware_utils_geometry::from_msg(*it).to_2d();
+      const Eigen::Vector2d v01 = segment[1] - segment[0];
+      const Eigen::Vector2d v23 = p3 - p2;
+      const auto c = v23.x() * v01.y() - v23.y() * v01.x();
+      if (std::abs(c) < epsilon) {  // parallel
+        continue;
+      }
+      const Eigen::Vector2d v20 = segment[0] - p2;
+      const auto t = (v20.x() * v01.y() - v20.y() * v01.x()) / c;
+      if (t < 0.0 || t > 1.0) {  // intersection is outside segment
+        continue;
+      }
+      const Eigen::Vector2d pi = p2 + t * v23;
+      const auto distance = std::min(
+        boost::geometry::distance(pi, segment[0]), boost::geometry::distance(pi, segment[1]));
+      if (!intersection_point || distance <= min_distance_to_bound) {
+        intersection_point = {pi.x(), pi.y()};
+        min_distance_to_bound = distance;
+      }
+    }
+    return intersection_point;
+  };
+
+  const auto intersection1 = find_intersection_point(bound1);
+  const auto intersection2 = find_intersection_point(bound2);
+
+  if (!intersection1 || !intersection2) {
+    return to_autoware_line_string(segment);
+  }
+
+  if ((*intersection2 - *intersection1).dot(segment[1] - segment[0]) < 0.0) {
+    return LineString2d{*intersection2, *intersection1};
+  }
+  return LineString2d{*intersection1, *intersection2};
 }
 
 std::optional<int64_t> getNearestLaneId(
