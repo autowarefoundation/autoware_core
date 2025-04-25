@@ -114,10 +114,10 @@ autoware_control_msgs::msg::Lateral SimplePurePursuitNode::calc_lateral_control(
 
   // calculate center coordinate of rear wheel
   const double vehicle_heading = tf2::getYaw(odom.pose.pose.orientation);
-  const double rear_x = odom.pose.pose.position.x -
-                        vehicle_info_.wheel_base_m / 2.0 * std::cos(vehicle_heading);
-  const double rear_y = odom.pose.pose.position.y -
-                        vehicle_info_.wheel_base_m / 2.0 * std::sin(vehicle_heading);
+  const double rear_x =
+    odom.pose.pose.position.x - vehicle_info_.wheel_base_m / 2.0 * std::cos(vehicle_heading);
+  const double rear_y =
+    odom.pose.pose.position.y - vehicle_info_.wheel_base_m / 2.0 * std::sin(vehicle_heading);
 
   // search lookahead point
   auto lookahead_point_itr = std::find_if(
