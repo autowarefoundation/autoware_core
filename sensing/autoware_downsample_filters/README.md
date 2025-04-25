@@ -1,4 +1,4 @@
-# downsample_filter
+# downsample_filters
 
 ## Purpose
 
@@ -36,19 +36,19 @@ These implementations inherit `autoware::pointcloud_preprocessor::Filter` class,
 
 #### Approximate Downsample Filter
 
-{{ json_to_markdown("sensing/autoware_pointcloud_preprocessor/schema/approximate_downsample_filter_node.schema.json") }}
+{{ json_to_markdown("sensing/autoware_downsample_filters/schema/approximate_downsample_filter_node.schema.json") }}
 
 ### Random Downsample Filter
 
-{{ json_to_markdown("sensing/autoware_pointcloud_preprocessor/schema/random_downsample_filter_node.schema.json") }}
+{{ json_to_markdown("sensing/autoware_downsample_filters/schema/random_downsample_filter_node.schema.json") }}
 
 ### Voxel Grid Downsample Filter
 
-{{ json_to_markdown("sensing/autoware_pointcloud_preprocessor/schema/voxel_grid_downsample_filter_node.schema.json") }}
+{{ json_to_markdown("sensing/autoware_downsample_filters/schema/voxel_grid_downsample_filter_node.schema.json") }}
 
 ### Pickup Based Voxel Grid Downsample Filter
 
-{{ json_to_markdown("sensing/autoware_pointcloud_preprocessor/schema/pickup_based_voxel_grid_downsample_filter_node.schema.json") }}
+{{ json_to_markdown("sensing/autoware_downsample_filters/schema/pickup_based_voxel_grid_downsample_filter_node.schema.json") }}
 
 ## Assumptions / Known limits
 
