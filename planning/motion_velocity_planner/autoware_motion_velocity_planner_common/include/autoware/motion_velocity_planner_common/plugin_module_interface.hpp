@@ -19,6 +19,7 @@
 #include "velocity_planning_result.hpp"
 
 #include <autoware/planning_factor_interface/planning_factor_interface.hpp>
+#include <autoware_utils_debug/processing_time_publisher.hpp>
 #include <autoware_utils_debug/published_time_publisher.hpp>
 #include <rclcpp/rclcpp.hpp>
 
