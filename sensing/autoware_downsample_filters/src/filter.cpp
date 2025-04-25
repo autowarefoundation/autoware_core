@@ -49,9 +49,9 @@
  *
  */
 
-#include "autoware/pointcloud_preprocessor/filter.hpp"
+#include "autoware/downsample_filters/filter.hpp"
 
-#include "autoware/pointcloud_preprocessor/utility/memory.hpp"
+#include "autoware/downsample_filters/memory.hpp"
 
 #include <pcl_ros/transforms.hpp>
 
@@ -64,7 +64,7 @@
 #include <vector>
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-autoware::pointcloud_preprocessor::Filter::Filter(
+autoware::downsample_filters::Filter::Filter(
   const std::string & filter_name, const rclcpp::NodeOptions & options)
 : Node(filter_name, options), filter_field_name_(filter_name)
 {
@@ -111,19 +111,19 @@ autoware::pointcloud_preprocessor::Filter::Filter(
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void autoware::pointcloud_preprocessor::Filter::setupTF()
+void autoware::downsample_filters::Filter::setupTF()
 {
   managed_tf_buffer_ = std::make_unique<managed_transform_buffer::ManagedTransformBuffer>();
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void autoware::pointcloud_preprocessor::Filter::subscribe()
+void autoware::downsample_filters::Filter::subscribe()
 {
   std::string filter_name = "";
   subscribe(filter_name);
 }
 
-void autoware::pointcloud_preprocessor::Filter::subscribe(const std::string & filter_name)
+void autoware::downsample_filters::Filter::subscribe(const std::string & filter_name)
 {
   // TODO(sykwer): Change the corresponding node to subscribe to `faster_input_indices_callback`
   // each time a child class supports the faster version.
@@ -164,7 +164,7 @@ void autoware::pointcloud_preprocessor::Filter::subscribe(const std::string & fi
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void autoware::pointcloud_preprocessor::Filter::unsubscribe()
+void autoware::downsample_filters::Filter::unsubscribe()
 {
   if (use_indices_) {
     sub_input_filter_.unsubscribe();
@@ -182,7 +182,7 @@ void autoware::pointcloud_preprocessor::Filter::unsubscribe()
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // TODO(sykwer): Temporary Implementation: Delete this function definition when all the filter nodes
 // conform to new API.
-void autoware::pointcloud_preprocessor::Filter::computePublish(
+void autoware::downsample_filters::Filter::computePublish(
   const PointCloud2ConstPtr & input, const IndicesPtr & indices)
 {
   auto output = std::make_unique<PointCloud2>();
@@ -202,7 +202,7 @@ void autoware::pointcloud_preprocessor::Filter::computePublish(
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 rcl_interfaces::msg::SetParametersResult
-autoware::pointcloud_preprocessor::Filter::filterParamCallback(
+autoware::downsample_filters::Filter::filterParamCallback(
   const std::vector<rclcpp::Parameter> & p)
 {
   std::scoped_lock lock(mutex_);
@@ -224,7 +224,7 @@ autoware::pointcloud_preprocessor::Filter::filterParamCallback(
 //////////////////////////////////////////////////////////////////////////////////////////////
 // TODO(sykwer): Temporary Implementation: Delete this function definition when all the filter nodes
 // conform to new API.
-void autoware::pointcloud_preprocessor::Filter::input_indices_callback(
+void autoware::downsample_filters::Filter::input_indices_callback(
   const PointCloud2ConstPtr cloud, const PointIndicesConstPtr indices)
 {
   // If cloud is given, check if it's valid
@@ -288,7 +288,7 @@ void autoware::pointcloud_preprocessor::Filter::input_indices_callback(
 }
 
 // Returns false in error cases
-bool autoware::pointcloud_preprocessor::Filter::calculate_transform_matrix(
+bool autoware::downsample_filters::Filter::calculate_transform_matrix(
   const std::string & target_frame, const sensor_msgs::msg::PointCloud2 & from,
   TransformInfo & transform_info /*output*/)
 {
@@ -313,7 +313,7 @@ bool autoware::pointcloud_preprocessor::Filter::calculate_transform_matrix(
 }
 
 // Returns false in error cases
-bool autoware::pointcloud_preprocessor::Filter::convert_output_costly(
+bool autoware::downsample_filters::Filter::convert_output_costly(
   std::unique_ptr<PointCloud2> & output)
 {
   // In terms of performance, we should avoid using pcl_ros library function,
@@ -363,7 +363,7 @@ bool autoware::pointcloud_preprocessor::Filter::convert_output_costly(
 // TODO(sykwer): Temporary Implementation: Rename this function to `input_indices_callback()` when
 // all the filter nodes conform to new API. Then delete the old `input_indices_callback()` defined
 // above.
-void autoware::pointcloud_preprocessor::Filter::faster_input_indices_callback(
+void autoware::downsample_filters::Filter::faster_input_indices_callback(
   const PointCloud2ConstPtr cloud, const PointIndicesConstPtr indices)
 {
   if (
@@ -446,7 +446,7 @@ void autoware::pointcloud_preprocessor::Filter::faster_input_indices_callback(
 // TODO(sykwer): Temporary Implementation: Remove this interface when all the filter nodes conform
 // to new API. It's not a pure virtual function so that a child class does not have to implement
 // this function.
-void autoware::pointcloud_preprocessor::Filter::faster_filter(
+void autoware::downsample_filters::Filter::faster_filter(
   const PointCloud2ConstPtr & input, const IndicesPtr & indices, PointCloud2 & output,
   const TransformInfo & transform_info)
 {

@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/pointcloud_preprocessor/downsample_filter/faster_voxel_grid_downsample_filter.hpp"
+#include "autoware/downsample_filters/faster_voxel_grid_downsample_filter.hpp"
 
 #include <cfloat>
 #include <unordered_map>
 
-namespace autoware::pointcloud_preprocessor
+namespace autoware::downsample_filters
 {
 
 FasterVoxelGridDownsampleFilter::FasterVoxelGridDownsampleFilter()
@@ -198,4 +198,4 @@ void FasterVoxelGridDownsampleFilter::copy_centroids_to_output(
   }
 }
 
-}  // namespace autoware::pointcloud_preprocessor
+}  // namespace autoware::downsample_filters

@@ -19,7 +19,7 @@
 
 #include <vector>
 
-namespace autoware::pointcloud_preprocessor::utils
+namespace autoware::downsample_filters::utils
 {
 /** \brief Return whether the input data has the same layout than PointXYZI. That is to
  * say whether you can memcpy from the data buffer to a PointXYZI */
@@ -57,6 +57,6 @@ bool is_data_layout_compatible_with_point_xyzircaedt(
  * is to say whether you can memcpy from the PointCloud2 data buffer to a PointXYZIRCAEDT */
 bool is_data_layout_compatible_with_point_xyzircaedt(const sensor_msgs::msg::PointCloud2 & input);
 
-}  // namespace autoware::pointcloud_preprocessor::utils
+}  // namespace autoware::downsample_filters::utils
 
 #endif  // AUTOWARE__POINTCLOUD_PREPROCESSOR__UTILITY__MEMORY_HPP_

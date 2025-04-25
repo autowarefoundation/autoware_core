@@ -48,9 +48,9 @@
  *
  */
 
-#include "autoware/pointcloud_preprocessor/downsample_filter/voxel_grid_downsample_filter_node.hpp"
+#include "autoware/downsample_filters/voxel_grid_downsample_filter_node.hpp"
 
-#include "autoware/pointcloud_preprocessor/downsample_filter/faster_voxel_grid_downsample_filter.hpp"
+#include "autoware/downsample_filters/faster_voxel_grid_downsample_filter.hpp"
 
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/search/kdtree.h>
@@ -58,9 +58,9 @@
 
 #include <vector>
 
-namespace autoware::pointcloud_preprocessor
+namespace autoware::downsample_filters
 {
-VoxelGridDownsampleFilterComponent::VoxelGridDownsampleFilterComponent(
+VoxelGridDownsampleFilter::VoxelGridDownsampleFilter(
   const rclcpp::NodeOptions & options)
 : Filter("VoxelGridDownsampleFilter", options)
 {
@@ -73,12 +73,12 @@ VoxelGridDownsampleFilterComponent::VoxelGridDownsampleFilterComponent(
 
   using std::placeholders::_1;
   set_param_res_ = this->add_on_set_parameters_callback(
-    std::bind(&VoxelGridDownsampleFilterComponent::paramCallback, this, _1));
+    std::bind(&VoxelGridDownsampleFilter::paramCallback, this, _1));
 }
 
 // TODO(atsushi421): Temporary Implementation: Delete this function definition when all the filter
 // nodes conform to new API.
-void VoxelGridDownsampleFilterComponent::filter(
+void VoxelGridDownsampleFilter::filter(
   const PointCloud2ConstPtr & input, const IndicesPtr & indices, PointCloud2 & output)
 {
   std::scoped_lock lock(mutex_);
@@ -101,7 +101,7 @@ void VoxelGridDownsampleFilterComponent::filter(
 
 // TODO(atsushi421): Temporary Implementation: Rename this function to `filter()` when all the
 // filter nodes conform to new API. Then delete the old `filter()` defined above.
-void VoxelGridDownsampleFilterComponent::faster_filter(
+void VoxelGridDownsampleFilter::faster_filter(
   const PointCloud2ConstPtr & input, [[maybe_unused]] const IndicesPtr & indices,
   PointCloud2 & output, const TransformInfo & transform_info)
 {
@@ -112,7 +112,7 @@ void VoxelGridDownsampleFilterComponent::faster_filter(
   faster_voxel_filter.filter(input, output, transform_info, this->get_logger());
 }
 
-rcl_interfaces::msg::SetParametersResult VoxelGridDownsampleFilterComponent::paramCallback(
+rcl_interfaces::msg::SetParametersResult VoxelGridDownsampleFilter::paramCallback(
   const std::vector<rclcpp::Parameter> & p)
 {
   std::scoped_lock lock(mutex_);
@@ -133,8 +133,8 @@ rcl_interfaces::msg::SetParametersResult VoxelGridDownsampleFilterComponent::par
 
   return result;
 }
-}  // namespace autoware::pointcloud_preprocessor
+}  // namespace autoware::downsample_filters
 
 #include <rclcpp_components/register_node_macro.hpp>
 RCLCPP_COMPONENTS_REGISTER_NODE(
-  autoware::pointcloud_preprocessor::VoxelGridDownsampleFilterComponent)
+  autoware::downsample_filters::VoxelGridDownsampleFilter)

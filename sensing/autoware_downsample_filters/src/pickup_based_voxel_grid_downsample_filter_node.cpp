@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/pointcloud_preprocessor/downsample_filter/pickup_based_voxel_grid_downsample_filter_node.hpp"
+#include "autoware/downsample_filters/pickup_based_voxel_grid_downsample_filter_node.hpp"
 
 #include "robin_hood.h"
 
 #include <memory>
 #include <vector>
 
-namespace
+namespace autoware::downsample_filters
 {
 /**
  * @brief Hash function for voxel keys.
@@ -52,11 +52,11 @@ struct VoxelKeyEqual
 };
 }  // namespace
 
-namespace autoware::pointcloud_preprocessor
+namespace autoware::downsample_filters
 {
-PickupBasedVoxelGridDownsampleFilterComponent::PickupBasedVoxelGridDownsampleFilterComponent(
+PickupBasedVoxelGridDownsampleFilter::PickupBasedVoxelGridDownsampleFilter(
   const rclcpp::NodeOptions & options)
-: Filter("PickupBasedVoxelGridDownsampleFilterComponent", options)
+: Filter("PickupBasedVoxelGridDownsampleFilter", options)
 {
   // initialize debug tool
   {
@@ -75,10 +75,10 @@ PickupBasedVoxelGridDownsampleFilterComponent::PickupBasedVoxelGridDownsampleFil
 
   using std::placeholders::_1;
   set_param_res_ = this->add_on_set_parameters_callback(
-    std::bind(&PickupBasedVoxelGridDownsampleFilterComponent::paramCallback, this, _1));
+    std::bind(&PickupBasedVoxelGridDownsampleFilter::paramCallback, this, _1));
 }
 
-void PickupBasedVoxelGridDownsampleFilterComponent::filter(
+void PickupBasedVoxelGridDownsampleFilter::filter(
   const PointCloud2ConstPtr & input, [[maybe_unused]] const IndicesPtr & indices,
   PointCloud2 & output)
 {
@@ -159,7 +159,7 @@ void PickupBasedVoxelGridDownsampleFilterComponent::filter(
 }
 
 rcl_interfaces::msg::SetParametersResult
-PickupBasedVoxelGridDownsampleFilterComponent::paramCallback(
+PickupBasedVoxelGridDownsampleFilter::paramCallback(
   const std::vector<rclcpp::Parameter> & p)
 {
   std::scoped_lock lock(mutex_);
@@ -182,8 +182,8 @@ PickupBasedVoxelGridDownsampleFilterComponent::paramCallback(
   return result;
 }
 
-}  // namespace autoware::pointcloud_preprocessor
+}  // namespace autoware::downsample_filters
 
 #include <rclcpp_components/register_node_macro.hpp>
 RCLCPP_COMPONENTS_REGISTER_NODE(
-  autoware::pointcloud_preprocessor::PickupBasedVoxelGridDownsampleFilterComponent)
+  autoware::downsample_filters::PickupBasedVoxelGridDownsampleFilter)

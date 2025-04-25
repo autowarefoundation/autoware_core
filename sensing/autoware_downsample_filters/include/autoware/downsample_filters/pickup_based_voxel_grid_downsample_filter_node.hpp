@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__POINTCLOUD_PREPROCESSOR__DOWNSAMPLE_FILTER__PICKUP_BASED_VOXEL_GRID_DOWNSAMPLE_FILTER_NODE_HPP_  // NOLINT
-#define AUTOWARE__POINTCLOUD_PREPROCESSOR__DOWNSAMPLE_FILTER__PICKUP_BASED_VOXEL_GRID_DOWNSAMPLE_FILTER_NODE_HPP_  // NOLINT
+#ifndef AUTOWARE__DOWNSAMPLE_FILTERS__PICKUP_BASED_VOXEL_GRID_DOWNSAMPLE_FILTER_NODE_HPP_  // NOLINT
+#define AUTOWARE__DOWNSAMPLE_FILTERS__PICKUP_BASED_VOXEL_GRID_DOWNSAMPLE_FILTER_NODE_HPP_  // NOLINT
 
-#include "autoware/pointcloud_preprocessor/filter.hpp"
+#include "autoware/downsample_filters/filter.hpp"
 
 #include <Eigen/Core>
 
@@ -26,18 +26,17 @@
 #include <cmath>
 #include <vector>
 
-namespace autoware::pointcloud_preprocessor
+namespace autoware::downsample_filters
 {
 /**
- * @class PickupBasedVoxelGridDownsampleFilterComponent
+ * @class PickupBasedVoxelGridDownsampleFilter
  * @brief A filter component for downsampling point clouds using a voxel grid approach.
  *
  * This component reduces the number of points in a point cloud by grouping them into voxels
  * and picking a representative point for each voxel. It's useful for reducing computational
  * load when processing large point clouds.
  */
-class PickupBasedVoxelGridDownsampleFilterComponent
-: public autoware::pointcloud_preprocessor::Filter
+class PickupBasedVoxelGridDownsampleFilter : public autoware::downsample_filters::Filter
 {
 protected:
   void filter(
@@ -56,10 +55,10 @@ private:
 
 public:
   PCL_MAKE_ALIGNED_OPERATOR_NEW
-  explicit PickupBasedVoxelGridDownsampleFilterComponent(const rclcpp::NodeOptions & options);
+  explicit PickupBasedVoxelGridDownsampleFilter(const rclcpp::NodeOptions & options);
 };
-}  // namespace autoware::pointcloud_preprocessor
+}  // namespace autoware::downsample_filters
 
 // clang-format off
-#endif  // AUTOWARE__POINTCLOUD_PREPROCESSOR__DOWNSAMPLE_FILTER__PICKUP_BASED_VOXEL_GRID_DOWNSAMPLE_FILTER_NODE_HPP_  // NOLINT
+#endif  // AUTOWARE__DOWNSAMPLE_FILTERS__PICKUP_BASED_VOXEL_GRID_DOWNSAMPLE_FILTER_NODE_HPP_  // NOLINT
 // clang-format on

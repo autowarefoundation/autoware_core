@@ -48,20 +48,20 @@
  *
  */
 
-#ifndef AUTOWARE__POINTCLOUD_PREPROCESSOR__DOWNSAMPLE_FILTER__VOXEL_GRID_DOWNSAMPLE_FILTER_NODE_HPP_  // NOLINT
-#define AUTOWARE__POINTCLOUD_PREPROCESSOR__DOWNSAMPLE_FILTER__VOXEL_GRID_DOWNSAMPLE_FILTER_NODE_HPP_  // NOLINT
+#ifndef AUTOWARE__DOWNSAMPLE_FILTERS__VOXEL_GRID_DOWNSAMPLE_FILTER_NODE_HPP_  // NOLINT
+#define AUTOWARE__DOWNSAMPLE_FILTERS__VOXEL_GRID_DOWNSAMPLE_FILTER_NODE_HPP_  // NOLINT
 
-#include "autoware/pointcloud_preprocessor/filter.hpp"
-#include "autoware/pointcloud_preprocessor/transform_info.hpp"
+#include "autoware/downsample_filters/filter.hpp"
+#include "autoware/downsample_filters/transform_info.hpp"
 
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/search/pcl_search.h>
 
 #include <vector>
 
-namespace autoware::pointcloud_preprocessor
+namespace autoware::downsample_filters
 {
-class VoxelGridDownsampleFilterComponent : public autoware::pointcloud_preprocessor::Filter
+class VoxelGridDownsampleFilter : public autoware::downsample_filters::Filter
 {
 protected:
   void filter(
@@ -86,10 +86,10 @@ private:
 
 public:
   PCL_MAKE_ALIGNED_OPERATOR_NEW
-  explicit VoxelGridDownsampleFilterComponent(const rclcpp::NodeOptions & options);
+  explicit VoxelGridDownsampleFilter(const rclcpp::NodeOptions & options);
 };
-}  // namespace autoware::pointcloud_preprocessor
+}  // namespace autoware::downsample_filters
 
 // clang-format off
-#endif  // AUTOWARE__POINTCLOUD_PREPROCESSOR__DOWNSAMPLE_FILTER__VOXEL_GRID_DOWNSAMPLE_FILTER_NODE_HPP_  // NOLINT
+#endif  // AUTOWARE__DOWNSAMPLE_FILTERS__VOXEL_GRID_DOWNSAMPLE_FILTER_NODE_HPP_  // NOLINT
 // clang-format on

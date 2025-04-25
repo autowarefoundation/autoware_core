@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/pointcloud_preprocessor/utility/memory.hpp"
+#include "autoware/downsample_filters/memory.hpp"
 
 #include <autoware/point_types/types.hpp>
 
 #include <vector>
 
-namespace autoware::pointcloud_preprocessor::utils
+namespace autoware::downsample_filters::utils
 {
 bool is_data_layout_compatible_with_point_xyzi(
   const std::vector<sensor_msgs::msg::PointField> & fields)
@@ -234,4 +234,4 @@ bool is_data_layout_compatible_with_point_xyzircaedt(const sensor_msgs::msg::Poi
   return is_data_layout_compatible_with_point_xyzircaedt(input.fields);
 }
 
-}  // namespace autoware::pointcloud_preprocessor::utils
+}  // namespace autoware::downsample_filters::utils

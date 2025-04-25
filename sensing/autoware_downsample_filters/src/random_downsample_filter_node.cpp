@@ -46,13 +46,13 @@
  *
  */
 
-#include "autoware/pointcloud_preprocessor/downsample_filter/random_downsample_filter_node.hpp"
+#include "autoware/downsample_filters/random_downsample_filter_node.hpp"
 
 #include <vector>
 
-namespace autoware::pointcloud_preprocessor
+namespace autoware::downsample_filters
 {
-RandomDownsampleFilterComponent::RandomDownsampleFilterComponent(
+RandomDownsampleFilter::RandomDownsampleFilter(
   const rclcpp::NodeOptions & options)
 : Filter("RandomDownsampleFilter", options)
 {
@@ -63,10 +63,10 @@ RandomDownsampleFilterComponent::RandomDownsampleFilterComponent(
 
   using std::placeholders::_1;
   set_param_res_ = this->add_on_set_parameters_callback(
-    std::bind(&RandomDownsampleFilterComponent::paramCallback, this, _1));
+    std::bind(&RandomDownsampleFilter::paramCallback, this, _1));
 }
 
-void RandomDownsampleFilterComponent::filter(
+void RandomDownsampleFilter::filter(
   const PointCloud2ConstPtr & input, const IndicesPtr & indices, PointCloud2 & output)
 {
   std::scoped_lock lock(mutex_);
@@ -87,7 +87,7 @@ void RandomDownsampleFilterComponent::filter(
   output.header = input->header;
 }
 
-rcl_interfaces::msg::SetParametersResult RandomDownsampleFilterComponent::paramCallback(
+rcl_interfaces::msg::SetParametersResult RandomDownsampleFilter::paramCallback(
   const std::vector<rclcpp::Parameter> & p)
 {
   std::scoped_lock lock(mutex_);
@@ -103,6 +103,6 @@ rcl_interfaces::msg::SetParametersResult RandomDownsampleFilterComponent::paramC
   return result;
 }
 
-}  // namespace autoware::pointcloud_preprocessor
+}  // namespace autoware::downsample_filters
 #include <rclcpp_components/register_node_macro.hpp>
-RCLCPP_COMPONENTS_REGISTER_NODE(autoware::pointcloud_preprocessor::RandomDownsampleFilterComponent)
+RCLCPP_COMPONENTS_REGISTER_NODE(autoware::downsample_filters::RandomDownsampleFilter)
