@@ -17,8 +17,6 @@
 
 #include "autoware/trajectory/interpolator/interpolator.hpp"
 
-#include <Eigen/Dense>
-
 #include <memory>
 #include <optional>
 #include <utility>
@@ -50,12 +48,6 @@ struct InterpolatorMixin : public InterpolatorInterface<T>
     std::vector<T> values_;
 
   public:
-    [[nodiscard]] Builder & set_bases(const Eigen::Ref<const Eigen::VectorXd> & bases)
-    {
-      bases_ = std::vector<double>(bases.begin(), bases.end());
-      return *this;
-    }
-
     [[nodiscard]] Builder & set_bases(const std::vector<double> & bases)
     {
       bases_ = bases;

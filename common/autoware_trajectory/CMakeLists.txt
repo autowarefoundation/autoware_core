@@ -13,6 +13,8 @@ ament_auto_add_library(autoware_trajectory SHARED
   src/path_point.cpp
   src/path_point_with_lane_id.cpp
   src/trajectory_point.cpp
+  src/lanelet_point.cpp
+  src/reference_path.cpp
   src/detail/logging.cpp
   src/detail/types.cpp
   src/detail/util.cpp
