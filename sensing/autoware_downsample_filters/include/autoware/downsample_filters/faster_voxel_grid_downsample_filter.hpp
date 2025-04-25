@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#ifndef AUTOWARE__DOWNSAMPLE_FILTERS__FASTER_VOXEL_GRID_DOWNSAMPLE_FILTER_NODE_HPP_
+#define AUTOWARE__DOWNSAMPLE_FILTERS__FASTER_VOXEL_GRID_DOWNSAMPLE_FILTER_NODE_HPP_
 
-#include "autoware/pointcloud_preprocessor/transform_info.hpp"
+#include "autoware/downsample_filters/transform_info.hpp"
 
 #include <pcl/filters/voxel_grid.h>
 #include <pcl_conversions/pcl_conversions.h>
@@ -23,7 +24,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace autoware::pointcloud_preprocessor
+namespace autoware::downsample_filters
 {
 
 class FasterVoxelGridDownsampleFilter
@@ -96,4 +97,6 @@ private:
     const TransformInfo & transform_info);
 };
 
-}  // namespace autoware::pointcloud_preprocessor
+}  // namespace autoware::downsample_filters
+#endif  // AUTOWARE__DOWNSAMPLE_FILTERS__FASTER_VOXEL_GRID_DOWNSAMPLE_FILTER_NODE_HPP_  // NOLINT
+
