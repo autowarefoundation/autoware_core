@@ -288,7 +288,7 @@ std::vector<geometry_msgs::msg::Point> ObstacleStopModule::convert_point_cloud_t
       const auto current_lat_dist_from_obstacle_to_traj =
         autoware::motion_utils::calcLateralOffset(traj_points, obstacle_point);
       const auto min_lat_dist_to_traj_poly =
-        std::abs(current_lat_dist_from_obstacle_to_traj) - vehicle_info.vehicle_width_m;
+        std::abs(current_lat_dist_from_obstacle_to_traj) - vehicle_info.vehicle_width_m/2;
 
       if (min_lat_dist_to_traj_poly >= p.max_lat_margin) {
         continue;
@@ -472,7 +472,7 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_point_clo
     const auto lat_dist_from_obstacle_to_traj =
       autoware::motion_utils::calcLateralOffset(traj_points, itr->collision_point);
     const auto min_lat_dist_to_traj_poly =
-      std::abs(lat_dist_from_obstacle_to_traj) - vehicle_info.vehicle_width_m;
+      std::abs(lat_dist_from_obstacle_to_traj) - vehicle_info.vehicle_width_m/2;
 
     if (min_lat_dist_to_traj_poly < obstacle_filtering_param_.max_lat_margin) {
       auto stop_obstacle = *itr;
