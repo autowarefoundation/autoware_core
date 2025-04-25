@@ -16,7 +16,7 @@
 
 #include <Eigen/Eigen>
 
-namespace autoware::pointcloud_preprocessor
+namespace autoware::downsample_filters
 {
 
 /**
@@ -40,4 +40,4 @@ struct TransformInfo
   bool need_transform;
 };
 
-}  // namespace autoware::pointcloud_preprocessor
+}  // namespace autoware::downsample_filters

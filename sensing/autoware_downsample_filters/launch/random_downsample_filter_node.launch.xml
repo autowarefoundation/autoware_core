@@ -3,9 +3,9 @@
   <arg name="output_topic_name" default="/sensing/lidar/top/random_downsample_filter/pointcloud"/>
   <arg name="input_frame" default=""/>
   <arg name="output_frame" default=""/>
-  <arg name="random_downsample_filter_param_file" default="$(find-pkg-share autoware_pointcloud_preprocessor)/config/random_downsample_filter_node.param.yaml"/>
+  <arg name="random_downsample_filter_param_file" default="$(find-pkg-share autoware_downsample_filters)/config/random_downsample_filter_node.param.yaml"/>
 
-  <node pkg="autoware_pointcloud_preprocessor" exec="random_downsample_filter_node" name="random_downsample_filter_node">
+  <node pkg="autoware_downsample_filters" exec="random_downsample_filter_node" name="random_downsample_filter_node">
     <param from="$(var random_downsample_filter_param_file)"/>
     <remap from="input" to="$(var input_topic_name)"/>
     <remap from="output" to="$(var output_topic_name)"/>

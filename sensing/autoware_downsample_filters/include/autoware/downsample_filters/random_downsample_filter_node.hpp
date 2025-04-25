@@ -48,19 +48,25 @@
  *
  */
 
-#ifndef AUTOWARE__POINTCLOUD_PREPROCESSOR__DOWNSAMPLE_FILTER__RANDOM_DOWNSAMPLE_FILTER_NODE_HPP_
-#define AUTOWARE__POINTCLOUD_PREPROCESSOR__DOWNSAMPLE_FILTER__RANDOM_DOWNSAMPLE_FILTER_NODE_HPP_
+#ifndef AUTOWARE__DOWNSAMPLE_FILTERS__RANDOM_DOWNSAMPLE_FILTER_NODE_HPP_
+#define AUTOWARE__DOWNSAMPLE_FILTERS__RANDOM_DOWNSAMPLE_FILTER_NODE_HPP_
 
-#include "autoware/pointcloud_preprocessor/filter.hpp"
+#include "autoware/downsample_filters/filter.hpp"
 
 #include <pcl/filters/random_sample.h>
 
 #include <vector>
 
-namespace autoware::pointcloud_preprocessor
+namespace autoware::downsample_filters
 {
-class RandomDownsampleFilterComponent : public autoware::pointcloud_preprocessor::Filter
+class RandomDownsampleFilter : public autoware::downsample_filters::Filter
+// class RandomDownsampleFilter : public rclcpp::Node
 {
+  // using PointCloud2 = sensor_msgs::msg::PointCloud2;
+  // using PointCloud2ConstPtr = sensor_msgs::msg::PointCloud2::ConstSharedPtr;
+
+  // using IndicesPtr = pcl::IndicesPtr;
+
 protected:
   void filter(
     const PointCloud2ConstPtr & input, const IndicesPtr & indices, PointCloud2 & output) override;
@@ -76,10 +82,10 @@ private:
 
 public:
   PCL_MAKE_ALIGNED_OPERATOR_NEW
-  explicit RandomDownsampleFilterComponent(const rclcpp::NodeOptions & options);
+  explicit RandomDownsampleFilter(const rclcpp::NodeOptions & options);
 };
-}  // namespace autoware::pointcloud_preprocessor
+}  // namespace autoware::downsample_filters
 
 // clang-format off
-#endif  // AUTOWARE__POINTCLOUD_PREPROCESSOR__DOWNSAMPLE_FILTER__RANDOM_DOWNSAMPLE_FILTER_NODE_HPP_  // NOLINT
+#endif  // AUTOWARE__DOWNSAMPLE_FILTERS__RANDOM_DOWNSAMPLE_FILTER_NODE_HPP_  // NOLINT
 // clang-format on

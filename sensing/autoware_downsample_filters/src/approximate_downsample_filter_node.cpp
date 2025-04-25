@@ -49,7 +49,7 @@
  *
  */
 
-#include "autoware/pointcloud_preprocessor/downsample_filter/approximate_downsample_filter_node.hpp"
+#include "autoware/downsample_filters/approximate_downsample_filter_node.hpp"
 
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/search/kdtree.h>
@@ -57,9 +57,9 @@
 
 #include <vector>
 
-namespace autoware::pointcloud_preprocessor
+namespace autoware::downsample_filters
 {
-ApproximateDownsampleFilterComponent::ApproximateDownsampleFilterComponent(
+ApproximateDownsampleFilter::ApproximateDownsampleFilter(
   const rclcpp::NodeOptions & options)
 : Filter("ApproximateDownsampleFilter", options)
 {
@@ -71,10 +71,10 @@ ApproximateDownsampleFilterComponent::ApproximateDownsampleFilterComponent(
 
   using std::placeholders::_1;
   set_param_res_ = this->add_on_set_parameters_callback(
-    std::bind(&ApproximateDownsampleFilterComponent::paramCallback, this, _1));
+    std::bind(&ApproximateDownsampleFilter::paramCallback, this, _1));
 }
 
-void ApproximateDownsampleFilterComponent::filter(
+void ApproximateDownsampleFilter::filter(
   const PointCloud2ConstPtr & input, const IndicesPtr & indices, PointCloud2 & output)
 {
   std::scoped_lock lock(mutex_);
@@ -94,7 +94,7 @@ void ApproximateDownsampleFilterComponent::filter(
   output.header = input->header;
 }
 
-rcl_interfaces::msg::SetParametersResult ApproximateDownsampleFilterComponent::paramCallback(
+rcl_interfaces::msg::SetParametersResult ApproximateDownsampleFilter::paramCallback(
   const std::vector<rclcpp::Parameter> & p)
 {
   std::scoped_lock lock(mutex_);
@@ -117,8 +117,8 @@ rcl_interfaces::msg::SetParametersResult ApproximateDownsampleFilterComponent::p
   return result;
 }
 
-}  // namespace autoware::pointcloud_preprocessor
+}  // namespace autoware::downsample_filters
 
 #include <rclcpp_components/register_node_macro.hpp>
 RCLCPP_COMPONENTS_REGISTER_NODE(
-  autoware::pointcloud_preprocessor::ApproximateDownsampleFilterComponent)
+  autoware::downsample_filters::ApproximateDownsampleFilter)

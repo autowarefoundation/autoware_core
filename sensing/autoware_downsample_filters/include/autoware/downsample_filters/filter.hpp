@@ -49,10 +49,10 @@
  *
  */
 
-#ifndef AUTOWARE__POINTCLOUD_PREPROCESSOR__FILTER_HPP_
-#define AUTOWARE__POINTCLOUD_PREPROCESSOR__FILTER_HPP_
+#ifndef AUTOWARE__DOWNSAMPLE_FILTERS__FILTER_HPP_
+#define AUTOWARE__DOWNSAMPLE_FILTERS__FILTER_HPP_
 
-#include "autoware/pointcloud_preprocessor/transform_info.hpp"
+#include "autoware/downsample_filters/transform_info.hpp"
 
 #include <memory>
 #include <string>
@@ -80,7 +80,7 @@
 #include <autoware_utils/system/stop_watch.hpp>
 #include <managed_transform_buffer/managed_transform_buffer.hpp>
 
-namespace autoware::pointcloud_preprocessor
+namespace autoware::downsample_filters
 {
 namespace sync_policies = message_filters::sync_policies;
 
@@ -292,6 +292,6 @@ private:
 
   void setupTF();
 };
-}  // namespace autoware::pointcloud_preprocessor
+}  // namespace autoware::downsample_filters
 
-#endif  // AUTOWARE__POINTCLOUD_PREPROCESSOR__FILTER_HPP_
+#endif  // AUTOWARE__DOWNSAMPLE_FILTERS__FILTER_HPP_
