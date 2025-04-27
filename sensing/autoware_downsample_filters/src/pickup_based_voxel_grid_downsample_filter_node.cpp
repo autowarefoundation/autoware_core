@@ -60,8 +60,8 @@ PickupBasedVoxelGridDownsampleFilter::PickupBasedVoxelGridDownsampleFilter(
 {
   // initialize debug tool
   {
-    using autoware_utils::DebugPublisher;
-    using autoware_utils::StopWatch;
+    using autoware_utils_debug::DebugPublisher;
+    using autoware_utils_system::StopWatch;
     stop_watch_ptr_ = std::make_unique<StopWatch<std::chrono::milliseconds>>();
     debug_publisher_ = std::make_unique<DebugPublisher>(this, this->get_name());
     stop_watch_ptr_->tic("cyclic_time");

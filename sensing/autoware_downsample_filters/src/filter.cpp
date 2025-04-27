@@ -106,7 +106,7 @@ autoware::downsample_filters::Filter::Filter(
   set_param_res_filter_ = this->add_on_set_parameters_callback(
     std::bind(&Filter::filterParamCallback, this, std::placeholders::_1));
 
-  published_time_publisher_ = std::make_unique<autoware_utils::PublishedTimePublisher>(this);
+  published_time_publisher_ = std::make_unique<autoware_utils_debug::PublishedTimePublisher>(this);
   RCLCPP_DEBUG(this->get_logger(), "[Filter Constructor] successfully created.");
 }
 
@@ -424,7 +424,7 @@ void autoware::downsample_filters::Filter::faster_input_indices_callback(
   // Do not use pcl_ros::transformPointCloud(). It's too slow due to the unnecessary copy.
   TransformInfo transform_info;
   if (!calculate_transform_matrix(tf_input_frame_, *cloud, transform_info)) return;
-
+  
   // Need setInputCloud() here because we have to extract x/y/z
   IndicesPtr vindices;
   if (indices) {

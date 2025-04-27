@@ -75,9 +75,9 @@
 #include <pcl_msgs/msg/point_indices.h>
 
 // Include tier4 autoware utils
-#include <autoware_utils/ros/debug_publisher.hpp>
-#include <autoware_utils/ros/published_time_publisher.hpp>
-#include <autoware_utils/system/stop_watch.hpp>
+#include <autoware_utils_debug/debug_publisher.hpp>
+#include <autoware_utils_debug/published_time_publisher.hpp>
+#include <autoware_utils_system/stop_watch.hpp>
 #include <managed_transform_buffer/managed_transform_buffer.hpp>
 
 namespace autoware::downsample_filters
@@ -173,9 +173,9 @@ protected:
   std::mutex mutex_;
 
   /** \brief processing time publisher. **/
-  std::unique_ptr<autoware_utils::StopWatch<std::chrono::milliseconds>> stop_watch_ptr_;
-  std::unique_ptr<autoware_utils::DebugPublisher> debug_publisher_;
-  std::unique_ptr<autoware_utils::PublishedTimePublisher> published_time_publisher_;
+  std::unique_ptr<autoware_utils_system::StopWatch<std::chrono::milliseconds>> stop_watch_ptr_;
+  std::unique_ptr<autoware_utils_debug::DebugPublisher> debug_publisher_;
+  std::unique_ptr<autoware_utils_debug::PublishedTimePublisher> published_time_publisher_;
 
   /** \brief Virtual abstract filter method. To be implemented by every child.
    * \param input the input point cloud dataset.
