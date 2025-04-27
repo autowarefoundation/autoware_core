@@ -24,7 +24,8 @@ target_include_directories(${COMMON} PUBLIC
 ament_target_dependencies(${COMMON}
   pcl_conversions
   rclcpp
-  autoware_utils
+  autoware_utils_debug
+  autoware_utils_system
   autoware_point_types
   managed_transform_buffer
 )
