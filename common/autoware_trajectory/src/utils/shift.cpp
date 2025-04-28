@@ -257,7 +257,7 @@ tl::expected<ShiftElement, ShiftError> shift_impl(
                                  .build();
 
   if (!cubic_spline_original) {
-    return tl::unexpected(ShiftError{"Failed to build cubic spline of orignal"});
+    return tl::unexpected(ShiftError{"Failed to build cubic spline of original"});
   }
 
   const double shift_arc_length = std::abs(shift_interval.end - shift_interval.start);
