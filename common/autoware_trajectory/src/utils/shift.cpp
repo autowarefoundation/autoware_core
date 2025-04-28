@@ -240,7 +240,6 @@ tl::expected<ShiftElement, ShiftError> shift_impl(
   const ShiftParameters & shift_parameters)
 {
   if (std::max(shift_interval.start, shift_interval.end) <= shift_element.lon_bases.front()) {
-    std::vector<double> shift_values(shift_element.size(), 0.0);
     for (auto & lateral_shift : shift_element.lat_shifts) {
       lateral_shift += shift_interval.lateral_offset;
     }
