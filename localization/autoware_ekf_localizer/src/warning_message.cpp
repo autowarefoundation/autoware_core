@@ -16,7 +16,7 @@
 
 #include <fmt/core.h>
 
-#include <string>
+#include <string_view>
 
 namespace autoware::ekf_localizer
 {
