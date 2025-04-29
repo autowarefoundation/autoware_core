@@ -66,7 +66,7 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 autoware::downsample_filters::Filter::Filter(
   const std::string & filter_name, const rclcpp::NodeOptions & options)
-: Node(filter_name, options), filter_field_name_(filter_name)
+: Node(filter_name, options)
 {
   // Set parameters (moved from NodeletLazy onInit)
   {
@@ -76,7 +76,6 @@ autoware::downsample_filters::Filter::Filter(
 
     // ---[ Optional parameters
     use_indices_ = static_cast<bool>(declare_parameter("use_indices", false));
-    latched_indices_ = static_cast<bool>(declare_parameter("latched_indices", false));
     approximate_sync_ = static_cast<bool>(declare_parameter("approximate_sync", false));
 
     RCLCPP_DEBUG_STREAM(
@@ -85,7 +84,6 @@ autoware::downsample_filters::Filter::Filter(
         << std::endl
         << " - approximate_sync : " << (approximate_sync_ ? "true" : "false") << std::endl
         << " - use_indices      : " << (use_indices_ ? "true" : "false") << std::endl
-        << " - latched_indices  : " << (latched_indices_ ? "true" : "false") << std::endl
         << " - max_queue_size   : " << max_queue_size_);
   }
 
@@ -114,13 +112,6 @@ autoware::downsample_filters::Filter::Filter(
 void autoware::downsample_filters::Filter::setupTF()
 {
   managed_tf_buffer_ = std::make_unique<managed_transform_buffer::ManagedTransformBuffer>();
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void autoware::downsample_filters::Filter::subscribe()
-{
-  std::string filter_name = "";
-  subscribe(filter_name);
 }
 
 void autoware::downsample_filters::Filter::subscribe(const std::string & filter_name)
