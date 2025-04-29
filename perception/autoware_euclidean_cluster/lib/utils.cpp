@@ -63,22 +63,6 @@ void convertPointCloudClusters2Msg(
   }
 }
 
-void convertPointCloudClusters2Msg(
-  const std_msgs::msg::Header & header, const std::vector<sensor_msgs::msg::PointCloud2> & clusters,
-  autoware_perception_msgs::msg::DetectedObjects & msg)
-{
-  msg.header = header;
-  for (const auto & ros_pointcloud : clusters) {
-    autoware_perception_msgs::msg::DetectedObject object;
-    object.kinematics.pose_with_covariance.pose.position = getCentroid(ros_pointcloud);
-    autoware_perception_msgs::msg::ObjectClassification classification;
-    classification.label = autoware_perception_msgs::msg::ObjectClassification::UNKNOWN;
-    classification.probability = 1.0f;
-    object.classification.emplace_back(classification);
-    msg.objects.push_back(object);
-  }
-}
-
 void convertClusters2SensorMsg(
   const std_msgs::msg::Header & header,
   const std::vector<pcl::PointCloud<pcl::PointXYZ>> & input,
