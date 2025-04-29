@@ -87,7 +87,6 @@ BehaviorVelocityPlannerNode::BehaviorVelocityPlannerNode(const rclcpp::NodeOptio
   forward_path_length_ = declare_parameter<double>("forward_path_length");
   backward_path_length_ = declare_parameter<double>("backward_path_length");
   behavior_output_path_interval_ = declare_parameter<double>("behavior_output_path_interval");
-  planner_data_.stop_line_extend_length = declare_parameter<double>("stop_line_extend_length");
 
   // nearest search
   planner_data_.ego_nearest_dist_threshold =
