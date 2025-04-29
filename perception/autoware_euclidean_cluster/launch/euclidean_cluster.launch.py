@@ -44,7 +44,7 @@ def launch_setup(context, *args, **kwargs):
             ("input", LaunchConfiguration("input_pointcloud")),
             ("output", "low_height/pointcloud"),
         ],
-        parameters=[load_composable_node_param("voxel_grid_based_euclidean_param_path")],
+        parameters=[load_composable_node_param("euclidean_param_path")],
     )
 
     use_low_height_euclidean_component = ComposableNode(

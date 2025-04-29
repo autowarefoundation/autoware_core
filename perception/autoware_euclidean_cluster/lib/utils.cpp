@@ -16,8 +16,6 @@
 #include <autoware_perception_msgs/msg/object_classification.hpp>
 #include <sensor_msgs/msg/point_field.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
-#include <tier4_perception_msgs/msg/detected_object_with_feature.hpp>
-#include <tier4_perception_msgs/msg/detected_objects_with_feature.hpp>
 
 #include <vector>
 
@@ -29,14 +27,16 @@ geometry_msgs::msg::Point getCentroid(const sensor_msgs::msg::PointCloud2 & poin
   centroid.x = 0.0f;
   centroid.y = 0.0f;
   centroid.z = 0.0f;
+  size_t size = 0;
   for (sensor_msgs::PointCloud2ConstIterator<float> iter_x(pointcloud, "x"),
        iter_y(pointcloud, "y"), iter_z(pointcloud, "z");
        iter_x != iter_x.end(); ++iter_x, ++iter_y, ++iter_z) {
     centroid.x += *iter_x;
     centroid.y += *iter_y;
     centroid.z += *iter_z;
+    size ++;
   }
-  const size_t size = pointcloud.width * pointcloud.height;
+  // const size_t size = pointcloud.width * pointcloud.height;
   centroid.x = centroid.x / static_cast<float>(size);
   centroid.y = centroid.y / static_cast<float>(size);
   centroid.z = centroid.z / static_cast<float>(size);
@@ -46,52 +46,49 @@ geometry_msgs::msg::Point getCentroid(const sensor_msgs::msg::PointCloud2 & poin
 void convertPointCloudClusters2Msg(
   const std_msgs::msg::Header & header,
   const std::vector<pcl::PointCloud<pcl::PointXYZ>> & clusters,
-  tier4_perception_msgs::msg::DetectedObjectsWithFeature & msg)
+  autoware_perception_msgs::msg::DetectedObjects & msg)
 {
   msg.header = header;
   for (const auto & cluster : clusters) {
     sensor_msgs::msg::PointCloud2 ros_pointcloud;
-    tier4_perception_msgs::msg::DetectedObjectWithFeature feature_object;
+    autoware_perception_msgs::msg::DetectedObject object;
     pcl::toROSMsg(cluster, ros_pointcloud);
     ros_pointcloud.header = header;
-    feature_object.feature.cluster = ros_pointcloud;
-    feature_object.object.kinematics.pose_with_covariance.pose.position =
-      getCentroid(ros_pointcloud);
+    object.kinematics.pose_with_covariance.pose.position = getCentroid(ros_pointcloud);
     autoware_perception_msgs::msg::ObjectClassification classification;
     classification.label = autoware_perception_msgs::msg::ObjectClassification::UNKNOWN;
     classification.probability = 1.0f;
-    feature_object.object.classification.emplace_back(classification);
-    msg.feature_objects.push_back(feature_object);
+    object.classification.emplace_back(classification);
+    msg.objects.push_back(object);
   }
 }
 
 void convertPointCloudClusters2Msg(
   const std_msgs::msg::Header & header, const std::vector<sensor_msgs::msg::PointCloud2> & clusters,
-  tier4_perception_msgs::msg::DetectedObjectsWithFeature & msg)
+  autoware_perception_msgs::msg::DetectedObjects & msg)
 {
   msg.header = header;
   for (const auto & ros_pointcloud : clusters) {
-    tier4_perception_msgs::msg::DetectedObjectWithFeature feature_object;
-    feature_object.feature.cluster = ros_pointcloud;
-    feature_object.object.kinematics.pose_with_covariance.pose.position =
-      getCentroid(ros_pointcloud);
+    autoware_perception_msgs::msg::DetectedObject object;
+    object.kinematics.pose_with_covariance.pose.position = getCentroid(ros_pointcloud);
     autoware_perception_msgs::msg::ObjectClassification classification;
     classification.label = autoware_perception_msgs::msg::ObjectClassification::UNKNOWN;
     classification.probability = 1.0f;
-    feature_object.object.classification.emplace_back(classification);
-    msg.feature_objects.push_back(feature_object);
+    object.classification.emplace_back(classification);
+    msg.objects.push_back(object);
   }
 }
 
-void convertObjectMsg2SensorMsg(
-  const tier4_perception_msgs::msg::DetectedObjectsWithFeature & input,
+void convertClusters2SensorMsg(
+  const std_msgs::msg::Header & header,
+  const std::vector<pcl::PointCloud<pcl::PointXYZ>> & input,
   sensor_msgs::msg::PointCloud2 & output)
 {
-  output.header = input.header;
+  output.header = header;
 
   size_t pointcloud_size = 0;
-  for (const auto & feature_object : input.feature_objects) {
-    pointcloud_size += feature_object.feature.cluster.width * feature_object.feature.cluster.height;
+  for (const auto & clutser : input) {
+    pointcloud_size += clutser.size();
   }
 
   sensor_msgs::PointCloud2Modifier modifier(output);
@@ -109,17 +106,16 @@ void convertObjectMsg2SensorMsg(
 
   constexpr uint8_t color_data[] = {200, 0,   0, 0,   200, 0,   0, 0,   200,
                                     200, 200, 0, 200, 0,   200, 0, 200, 200};  // 6 pattern
-  for (size_t i = 0; i < input.feature_objects.size(); ++i) {
-    const auto & feature_object = input.feature_objects.at(i);
-    sensor_msgs::PointCloud2ConstIterator<float> iter_in_x(feature_object.feature.cluster, "x");
-    sensor_msgs::PointCloud2ConstIterator<float> iter_in_y(feature_object.feature.cluster, "y");
-    sensor_msgs::PointCloud2ConstIterator<float> iter_in_z(feature_object.feature.cluster, "z");
-    for (; iter_in_x != iter_in_x.end(); ++iter_in_x, ++iter_in_y, ++iter_in_z, ++iter_out_x,
-                                         ++iter_out_y, ++iter_out_z, ++iter_out_r, ++iter_out_g,
-                                         ++iter_out_b) {
-      *iter_out_x = *iter_in_x;
-      *iter_out_y = *iter_in_y;
-      *iter_out_z = *iter_in_z;
+  size_t clusters_size = input.size();
+  for (size_t i = 0; i < clusters_size; ++i) {
+    const auto & cluster = input.at(i);
+    size_t cluster_size = cluster.size();
+    for (size_t j = 0; j < cluster_size; ++iter_out_x,++iter_out_y, ++iter_out_z, 
+                                            ++iter_out_r, ++iter_out_g, ++iter_out_b, j++) 
+    {
+      *iter_out_x = cluster.points[j].x;
+      *iter_out_y = cluster.points[j].y;
+      *iter_out_z = cluster.points[j].z;
       *iter_out_r = color_data[3 * (i % 6) + 0];
       *iter_out_g = color_data[3 * (i % 6) + 1];
       *iter_out_b = color_data[3 * (i % 6) + 2];

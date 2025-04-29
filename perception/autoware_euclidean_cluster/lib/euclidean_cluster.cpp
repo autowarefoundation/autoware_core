@@ -38,9 +38,20 @@ EuclideanCluster::EuclideanCluster(
 // TODO(badai-nguyen): implement input field copy for euclidean_cluster.cpp
 bool EuclideanCluster::cluster(
   const sensor_msgs::msg::PointCloud2::ConstSharedPtr & pointcloud_msg,
-  tier4_perception_msgs::msg::DetectedObjectsWithFeature & clusters)
+  autoware_perception_msgs::msg::DetectedObjects & clusters)
 {
   (void)pointcloud_msg;
+  (void)clusters;
+  return false;
+}
+
+bool EuclideanCluster::cluster(
+    const sensor_msgs::msg::PointCloud2::ConstSharedPtr & input_msg,
+    autoware_perception_msgs::msg::DetectedObjects & objects,
+    std::vector<pcl::PointCloud<pcl::PointXYZ>> & clusters)
+{
+  (void)input_msg;
+  (void)objects;
   (void)clusters;
   return false;
 }

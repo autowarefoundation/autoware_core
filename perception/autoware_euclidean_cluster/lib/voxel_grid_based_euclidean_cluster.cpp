@@ -82,8 +82,18 @@ bool VoxelGridBasedEuclideanCluster::cluster(
 }
 
 bool VoxelGridBasedEuclideanCluster::cluster(
+    const sensor_msgs::msg::PointCloud2::ConstSharedPtr & input_msg,
+    autoware_perception_msgs::msg::DetectedObjects & output_clusters)
+{
+  (void)input_msg;
+  (void)output_clusters;
+  return false;
+}
+
+bool VoxelGridBasedEuclideanCluster::cluster(
   const sensor_msgs::msg::PointCloud2::ConstSharedPtr & pointcloud_msg,
-  tier4_perception_msgs::msg::DetectedObjectsWithFeature & objects)
+  autoware_perception_msgs::msg::DetectedObjects & objects,
+  std::vector<pcl::PointCloud<pcl::PointXYZ>> & clusters)
 {
   // TODO(Saito) implement use_height is false version
 
@@ -127,7 +137,8 @@ bool VoxelGridBasedEuclideanCluster::cluster(
   std::vector<sensor_msgs::msg::PointCloud2> temporary_clusters;  // no check about cluster size
   std::vector<size_t> clusters_data_size;
   temporary_clusters.resize(cluster_indices.size());
-  for (size_t cluster_idx = 0; cluster_idx < cluster_indices.size(); ++cluster_idx) {
+  size_t clusters_size = cluster_indices.size();
+  for (size_t cluster_idx = 0; cluster_idx < clusters_size; ++cluster_idx) {
     const auto & cluster = cluster_indices.at(cluster_idx);
     auto & temporary_cluster = temporary_clusters.at(cluster_idx);
     for (const auto & point_idx : cluster.indices) {
@@ -141,7 +152,8 @@ bool VoxelGridBasedEuclideanCluster::cluster(
   }
 
   // create vector of point cloud cluster. vector index is voxel grid index.
-  for (size_t i = 0; i < pointcloud->points.size(); ++i) {
+  size_t pointcloud_size = pointcloud->points.size();
+  for (size_t i = 0; i < pointcloud_size; ++i) {
     const auto & point = pointcloud->points.at(i);
     const int index =
       voxel_grid_.getCentroidIndexAt(voxel_grid_.getGridCoordinates(point.x, point.y, point.z));
@@ -166,7 +178,8 @@ bool VoxelGridBasedEuclideanCluster::cluster(
   // build output and check cluster size
   {
     size_t skipped_cluster_count = 0;  // Count the skipped clusters
-    for (size_t i = 0; i < temporary_clusters.size(); ++i) {
+    size_t temporary_clusters_size = temporary_clusters.size();
+    for (size_t i = 0; i < temporary_clusters_size; ++i) {
       auto & i_cluster_data_size = clusters_data_size.at(i);
       int cluster_size = static_cast<int>(i_cluster_data_size / point_step);
       if (cluster_size < min_cluster_size_) {
@@ -179,25 +192,41 @@ bool VoxelGridBasedEuclideanCluster::cluster(
         continue;
       }
       const auto & cluster = temporary_clusters.at(i);
-      tier4_perception_msgs::msg::DetectedObjectWithFeature feature_object;
-      feature_object.feature.cluster = cluster;
-      feature_object.feature.cluster.data.resize(i_cluster_data_size);
-      feature_object.feature.cluster.header = pointcloud_msg->header;
-      feature_object.feature.cluster.is_bigendian = pointcloud_msg->is_bigendian;
-      feature_object.feature.cluster.is_dense = pointcloud_msg->is_dense;
-      feature_object.feature.cluster.point_step = point_step;
-      feature_object.feature.cluster.row_step = i_cluster_data_size / pointcloud_msg->height;
-      feature_object.feature.cluster.width =
-        i_cluster_data_size / point_step / pointcloud_msg->height;
 
-      feature_object.object.kinematics.pose_with_covariance.pose.position =
-        getCentroid(feature_object.feature.cluster);
+      // Create a temporary cluster with correct size for getting the centroid
+      sensor_msgs::msg::PointCloud2 temp_cluster = cluster;
+      temp_cluster.data.resize(i_cluster_data_size);
+      // temp_cluster.header = pointcloud_msg->header;
+      // temp_cluster.is_bigendian = pointcloud_msg->is_bigendian;
+      // temp_cluster.is_dense = pointcloud_msg->is_dense;
+      // temp_cluster.point_step = point_step;
+      // temp_cluster.row_step = i_cluster_data_size / pointcloud_msg->height;
+      // temp_cluster.width = i_cluster_data_size / point_step / pointcloud_msg->height;
+
+      autoware_perception_msgs::msg::DetectedObject object;
+      object.kinematics.pose_with_covariance.pose.position = getCentroid(temp_cluster);
+
       autoware_perception_msgs::msg::ObjectClassification classification;
       classification.label = autoware_perception_msgs::msg::ObjectClassification::UNKNOWN;
       classification.probability = 1.0f;
-      feature_object.object.classification.emplace_back(classification);
+      object.classification.emplace_back(classification);
 
-      objects.feature_objects.push_back(feature_object);
+      objects.objects.push_back(object);
+
+      pcl::PointCloud<pcl::PointXYZ> cluster_point_cloud;
+
+      for (sensor_msgs::PointCloud2ConstIterator<float> iter_x(cluster, "x"),
+           iter_y(cluster, "y"), iter_z(cluster, "z");
+           iter_x != iter_x.end(); ++iter_x, ++iter_y, ++iter_z) 
+      {
+        pcl::PointXYZ point;
+        point.x = *iter_x;
+        point.y = *iter_y;
+        point.z = *iter_z;
+        cluster_point_cloud.push_back(point);
+      }
+      clusters.push_back(cluster_point_cloud);
+
     }
     objects.header = pointcloud_msg->header;
     // Publish the diagnostics summary.

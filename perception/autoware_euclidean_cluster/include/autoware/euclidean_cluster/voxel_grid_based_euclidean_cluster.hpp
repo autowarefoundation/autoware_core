@@ -22,6 +22,8 @@
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/point_types.h>
 
+#include <sensor_msgs/point_cloud2_iterator.hpp>
+
 #include <vector>
 
 namespace autoware::euclidean_cluster
@@ -38,8 +40,12 @@ public:
     const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & pointcloud,
     std::vector<pcl::PointCloud<pcl::PointXYZ>> & clusters) override;
   bool cluster(
-    const sensor_msgs::msg::PointCloud2::ConstSharedPtr & pointcloud,
-    tier4_perception_msgs::msg::DetectedObjectsWithFeature & clusters) override;
+    const sensor_msgs::msg::PointCloud2::ConstSharedPtr & input_msg,
+    autoware_perception_msgs::msg::DetectedObjects & output_clusters) override;
+  bool cluster(
+    const sensor_msgs::msg::PointCloud2::ConstSharedPtr & input_msg,
+    autoware_perception_msgs::msg::DetectedObjects & objects,
+    std::vector<pcl::PointCloud<pcl::PointXYZ>> & clusters) override;
   void setVoxelLeafSize(float voxel_leaf_size) { voxel_leaf_size_ = voxel_leaf_size; }
   void setTolerance(float tolerance) { tolerance_ = tolerance; }
   void setMinPointsNumberPerVoxel(int min_points_number_per_voxel)
