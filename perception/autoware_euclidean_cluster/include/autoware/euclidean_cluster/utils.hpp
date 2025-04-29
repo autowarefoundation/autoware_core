@@ -16,7 +16,7 @@
 
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
-#include <tier4_perception_msgs/msg/detected_objects_with_feature.hpp>
+#include <autoware_perception_msgs/msg/detected_objects.hpp>
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -30,11 +30,12 @@ geometry_msgs::msg::Point getCentroid(const sensor_msgs::msg::PointCloud2 & poin
 void convertPointCloudClusters2Msg(
   const std_msgs::msg::Header & header,
   const std::vector<pcl::PointCloud<pcl::PointXYZ>> & clusters,
-  tier4_perception_msgs::msg::DetectedObjectsWithFeature & msg);
+  autoware_perception_msgs::msg::DetectedObjects & msg);
 void convertPointCloudClusters2Msg(
   const std_msgs::msg::Header & header, const std::vector<sensor_msgs::msg::PointCloud2> & clusters,
-  tier4_perception_msgs::msg::DetectedObjectsWithFeature & msg);
-void convertObjectMsg2SensorMsg(
-  const tier4_perception_msgs::msg::DetectedObjectsWithFeature & input,
+  autoware_perception_msgs::msg::DetectedObjects & msg);
+void convertClusters2SensorMsg(
+  const std_msgs::msg::Header & header,
+  const std::vector<pcl::PointCloud<pcl::PointXYZ>> & input,
   sensor_msgs::msg::PointCloud2 & output);
 }  // namespace autoware::euclidean_cluster

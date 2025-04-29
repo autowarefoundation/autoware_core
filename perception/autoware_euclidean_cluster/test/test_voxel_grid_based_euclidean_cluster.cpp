@@ -19,7 +19,7 @@
 
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
-#include <tier4_perception_msgs/msg/detected_objects_with_feature.hpp>
+#include <autoware_perception_msgs/msg/detected_objects.hpp>
 
 #include <gtest/gtest.h>
 
@@ -84,7 +84,7 @@ TEST(VoxelGridBasedEuclideanClusterTest, testcase1)
 
   const sensor_msgs::msg::PointCloud2::ConstSharedPtr pointcloud_msg =
     std::make_shared<sensor_msgs::msg::PointCloud2>(pointcloud);
-  tier4_perception_msgs::msg::DetectedObjectsWithFeature output;
+  autoware_perception_msgs::msg::DetectedObjects output;
   std::shared_ptr<autoware::euclidean_cluster::VoxelGridBasedEuclideanCluster> cluster_;
   float tolerance = 0.7;
   float voxel_leaf_size = 0.3;
@@ -95,17 +95,16 @@ TEST(VoxelGridBasedEuclideanClusterTest, testcase1)
   cluster_ = std::make_shared<autoware::euclidean_cluster::VoxelGridBasedEuclideanCluster>(
     use_height, min_cluster_size, max_cluster_size, tolerance, voxel_leaf_size,
     min_points_number_per_voxel);
-  if (cluster_->cluster(pointcloud_msg, output)) {
+  std::vector<pcl::PointCloud<pcl::PointXYZ>> clusters;
+  if (cluster_->cluster(pointcloud_msg, output, clusters)) {
     std::cout << "cluster success" << std::endl;
   } else {
     std::cout << "cluster failed" << std::endl;
   }
-  std::cout << "number of output clusters " << output.feature_objects.size() << std::endl;
-  std::cout << "number points of first cluster: " << output.feature_objects[0].feature.cluster.width
-            << std::endl;
+  std::cout << "number of output objects " << output.objects.size() << std::endl;
+  
   // the output clusters should has only one cluster with nb_generated_points points
-  EXPECT_EQ(output.feature_objects.size(), 1);
-  EXPECT_EQ(output.feature_objects[0].feature.cluster.width, nb_generated_points);
+  EXPECT_EQ(output.objects.size(), 1);
 }
 
 // Test case 2: Test case when the input pointcloud has only one cluster with points number less
@@ -118,7 +117,7 @@ TEST(VoxelGridBasedEuclideanClusterTest, testcase2)
 
   const sensor_msgs::msg::PointCloud2::ConstSharedPtr pointcloud_msg =
     std::make_shared<sensor_msgs::msg::PointCloud2>(pointcloud);
-  tier4_perception_msgs::msg::DetectedObjectsWithFeature output;
+  autoware_perception_msgs::msg::DetectedObjects output;
   std::shared_ptr<autoware::euclidean_cluster::VoxelGridBasedEuclideanCluster> cluster_;
   float tolerance = 0.7;
   float voxel_leaf_size = 0.3;
@@ -129,14 +128,15 @@ TEST(VoxelGridBasedEuclideanClusterTest, testcase2)
   cluster_ = std::make_shared<autoware::euclidean_cluster::VoxelGridBasedEuclideanCluster>(
     use_height, min_cluster_size, max_cluster_size, tolerance, voxel_leaf_size,
     min_points_number_per_voxel);
-  if (cluster_->cluster(pointcloud_msg, output)) {
+  std::vector<pcl::PointCloud<pcl::PointXYZ>> clusters;
+  if (cluster_->cluster(pointcloud_msg, output, clusters)) {
     std::cout << "cluster success" << std::endl;
   } else {
     std::cout << "cluster failed" << std::endl;
   }
-  std::cout << "number of output clusters " << output.feature_objects.size() << std::endl;
+  std::cout << "number of output clusters " << output.objects.size() << std::endl;
   // the output clusters should be empty
-  EXPECT_EQ(output.feature_objects.size(), 0);
+  EXPECT_EQ(output.objects.size(), 0);
 }
 
 // Test case 3: Test case when the input pointcloud has two clusters with points number greater to
@@ -148,7 +148,7 @@ TEST(VoxelGridBasedEuclideanClusterTest, testcase3)
 
   const sensor_msgs::msg::PointCloud2::ConstSharedPtr pointcloud_msg =
     std::make_shared<sensor_msgs::msg::PointCloud2>(pointcloud);
-  tier4_perception_msgs::msg::DetectedObjectsWithFeature output;
+  autoware_perception_msgs::msg::DetectedObjects output;
   std::shared_ptr<autoware::euclidean_cluster::VoxelGridBasedEuclideanCluster> cluster_;
   float tolerance = 0.7;
   float voxel_leaf_size = 0.3;
@@ -159,14 +159,15 @@ TEST(VoxelGridBasedEuclideanClusterTest, testcase3)
   cluster_ = std::make_shared<autoware::euclidean_cluster::VoxelGridBasedEuclideanCluster>(
     use_height, min_cluster_size, max_cluster_size, tolerance, voxel_leaf_size,
     min_points_number_per_voxel);
-  if (cluster_->cluster(pointcloud_msg, output)) {
+  std::vector<pcl::PointCloud<pcl::PointXYZ>> clusters;
+  if (cluster_->cluster(pointcloud_msg, output, clusters)) {
     std::cout << "cluster success" << std::endl;
   } else {
     std::cout << "cluster failed" << std::endl;
   }
-  std::cout << "number of output clusters " << output.feature_objects.size() << std::endl;
+  std::cout << "number of output clusters " << output.objects.size() << std::endl;
   // the output clusters should be emtpy
-  EXPECT_EQ(output.feature_objects.size(), 0);
+  EXPECT_EQ(output.objects.size(), 0);
 }
 
 int main(int argc, char ** argv)
