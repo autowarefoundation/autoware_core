@@ -494,17 +494,6 @@ std::vector<geometry_msgs::msg::Point> toRosPoints(const PredictedObjects & obje
   return points;
 }
 
-LineString2d extendLine(
-  const lanelet::ConstPoint3d & lanelet_point1, const lanelet::ConstPoint3d & lanelet_point2,
-  const double & length)
-{
-  const Eigen::Vector2d p1(lanelet_point1.x(), lanelet_point1.y());
-  const Eigen::Vector2d p2(lanelet_point2.x(), lanelet_point2.y());
-  const Eigen::Vector2d t = (p2 - p1).normalized();
-  return {
-    {(p1 - length * t).x(), (p1 - length * t).y()}, {(p2 + length * t).x(), (p2 + length * t).y()}};
-}
-
 LineString2d extendSegmentToBounds(
   const lanelet::BasicLineString2d & segment, const std::vector<geometry_msgs::msg::Point> & bound1,
   const std::vector<geometry_msgs::msg::Point> & bound2)
