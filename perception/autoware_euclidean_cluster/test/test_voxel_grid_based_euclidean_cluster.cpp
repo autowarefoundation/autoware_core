@@ -25,6 +25,7 @@
 
 #include <iostream>
 #include <memory>
+#include <vector>
 
 using autoware::point_types::PointXYZI;
 void setPointCloud2Fields(sensor_msgs::msg::PointCloud2 & pointcloud)
