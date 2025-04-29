@@ -1,5 +1,5 @@
 <launch>
-  <arg name="input_topic_name" default="/sensing/lidar/top/pointcloud_raw"/>
+  <arg name="input_topic_name" default="/sensing/lidar/top/pointcloud_raw_ex"/>
   <arg name="output_topic_name" default="/sensing/lidar/top/voxel_grid_downsample_filter/pointcloud"/>
   <arg name="input_frame" default="base_link"/>
   <arg name="output_frame" default="base_link"/>
