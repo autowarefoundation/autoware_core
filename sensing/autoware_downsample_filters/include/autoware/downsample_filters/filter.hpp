@@ -145,19 +145,6 @@ protected:
   /** \brief The message filter subscriber for PointIndices. */
   message_filters::Subscriber<PointIndices> sub_indices_filter_;
 
-  /** \brief The desired user filter field name. */
-  std::string filter_field_name_;
-
-  /** \brief The minimum allowed filter value a point will be considered from. */
-  double filter_limit_min_;
-
-  /** \brief The maximum allowed filter value a point will be considered from. */
-  double filter_limit_max_;
-
-  /** \brief Set to true if we want to return the data outside (\a filter_limit_min_;\a
-   * filter_limit_max_). Default: false. */
-  bool filter_limit_negative_;
-
   /** \brief The input TF frame the data should be transformed into,
    * if input.header.frame_id is different. */
   std::string tf_input_frame_;
@@ -194,7 +181,6 @@ protected:
 
   /** \brief Lazy transport subscribe routine. */
   virtual void subscribe(const std::string & filter_name);
-  virtual void subscribe();
 
   /** \brief Lazy transport unsubscribe routine. */
   virtual void unsubscribe();
@@ -223,14 +209,6 @@ protected:
    * specified jitter. See also @ref latched_indices_ and approximate_sync.
    **/
   bool use_indices_ = false;
-  /** \brief Set to true if the indices topic is latched.
-   *
-   * If use_indices_ is true, the ~input and ~indices topics generally must
-   * be synchronised in time. By setting this flag to true, the most recent
-   * value from ~indices can be used instead of requiring a synchronised
-   * message.
-   **/
-  bool latched_indices_ = false;
 
   /** \brief The maximum queue size (default: 3). */
   size_t max_queue_size_ = 3;
