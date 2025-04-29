@@ -71,8 +71,8 @@ void convertClusters2SensorMsg(
   output.header = header;
 
   size_t pointcloud_size = 0;
-  for (const auto & clutser : input) {
-    pointcloud_size += clutser.size();
+  for (const auto & cluster : input) {
+    pointcloud_size += cluster.size();
   }
 
   sensor_msgs::PointCloud2Modifier modifier(output);
