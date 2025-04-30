@@ -50,8 +50,8 @@
 // cspell: ignore ilist
 // cspell: ignore nonheap
 
-#ifndef DOWNSAMPLE_FILTER__ROBIN_HOOD_H_
-#define DOWNSAMPLE_FILTER__ROBIN_HOOD_H_
+#ifndef ROBIN_HOOD_H_
+#define ROBIN_HOOD_H_
 
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 3   // for incompatible API changes
@@ -2622,4 +2622,4 @@ using unordered_set = detail::Table<
 
 }  // namespace robin_hood
 
-#endif  // DOWNSAMPLE_FILTER__ROBIN_HOOD_H_
+#endif  // ROBIN_HOOD_H_

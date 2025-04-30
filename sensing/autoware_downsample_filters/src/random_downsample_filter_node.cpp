@@ -52,8 +52,7 @@
 
 namespace autoware::downsample_filters
 {
-RandomDownsampleFilter::RandomDownsampleFilter(
-  const rclcpp::NodeOptions & options)
+RandomDownsampleFilter::RandomDownsampleFilter(const rclcpp::NodeOptions & options)
 : Filter("RandomDownsampleFilter", options)
 {
   // set initial parameters
