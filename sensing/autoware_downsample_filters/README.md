@@ -10,10 +10,6 @@ The `autoware_downsample_filters` is implemented for reducing the computational 
 
 ## Inner-workings / Algorithms
 
-### Approximate Downsample Filter
-
-`pcl::VoxelGridNearestCentroid` is used. The algorithm is described in [autoware_pcl_extensions](../../autoware_pcl_extensions/README.md)
-
 ### Random Downsample Filter
 
 `pcl::RandomSample` is used, which points are sampled with uniform probability.
@@ -54,14 +50,6 @@ This algorithm samples a single actual point existing within the voxel, not the 
 | `approximate_sync`     | bool   | false         | schema used for synchronizing topic `input` and `indices`   |
 
 ### Node Parameters
-
-#### approximate_downsample_filter_node
-
-| Name              | Type   | Default Value | Description             |
-| ----------------- | ------ | ------------- | ----------------------- |
-| `voxel_size_x`    | double | 0.3           | x value of the voxel    |
-| `voxel_size_y`    | double | 0.3           | y value of the voxel    |
-| `voxel_size_z`    | double | 0.1           | z value of the voxel    |
 
 #### pickup_based_voxel_grid_downsample_filter_node
 

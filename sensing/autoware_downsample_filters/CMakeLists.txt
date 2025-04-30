@@ -31,7 +31,6 @@ ament_target_dependencies(${COMMON}
 )
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
-  src/approximate_downsample_filter_node.cpp
   src/pickup_based_voxel_grid_downsample_filter_node.cpp
   src/random_downsample_filter_node.cpp
   src/faster_voxel_grid_downsample_filter.cpp
@@ -41,10 +40,6 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
 target_link_libraries(${PROJECT_NAME}
   ${COMMON}
 )
-
-rclcpp_components_register_node(${PROJECT_NAME}
-  PLUGIN "autoware::downsample_filters::ApproximateDownsampleFilter"
-  EXECUTABLE ${APPROXIMATE}_node)
 
 rclcpp_components_register_node(${PROJECT_NAME}
   PLUGIN "autoware::downsample_filters::PickupBasedVoxelGridDownsampleFilter"
