@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `autoware_downsample_filters` is a package that that reduces the number of points of the pointcloud. 
+The `autoware_downsample_filters` is a package that that reduces the number of points of the pointcloud.
 
 ## Design
 
@@ -26,56 +26,56 @@ This algorithm samples a single actual point existing within the voxel, not the 
 
 ### Input
 
-| Name             | Type                            | Description       |
-| ---------------- | ------------------------------- | ----------------  |
-| `input`          | `sensor_msgs::msg::PointCloud2` | reference points  |
-| `indices`        | `pcl_msgs::msg::PointIndices`   | reference indices |
+| Name      | Type                            | Description       |
+| --------- | ------------------------------- | ----------------- |
+| `input`   | `sensor_msgs::msg::PointCloud2` | reference points  |
+| `indices` | `pcl_msgs::msg::PointIndices`   | reference indices |
 
 ### Output
 
-| Name             | Type                                 | Description          |
-| ---------------- | ------------------------------------ | -------------------- |
-| `output`         | `sensor_msgs::msg::PointCloud2`      | downsampled points   |
+| Name     | Type                            | Description        |
+| -------- | ------------------------------- | ------------------ |
+| `output` | `sensor_msgs::msg::PointCloud2` | downsampled points |
 
 ## Parameters
 
 ### Launch file Parameters
 
-| Name                   | Type   | Default Value | Description                                                 |
-| ---------------------- | ------ | ------------- | ----------------------------------------------------------- |
-| `input_frame`          | string | " "           | the frame id in which filtering is performed                |
-| `output_frame`         | string | " "           | output frame id of the filtered points                      |
-| `max_queue_size`       | size_t | 5             | max buffer size of input/output topics                      |
-| `use_indices`          | bool   | false         | whether specifying the subset of the point cloud by indices |
-| `approximate_sync`     | bool   | false         | schema used for synchronizing topic `input` and `indices`   |
+| Name               | Type   | Default Value | Description                                                 |
+| ------------------ | ------ | ------------- | ----------------------------------------------------------- |
+| `input_frame`      | string | " "           | the frame id in which filtering is performed                |
+| `output_frame`     | string | " "           | output frame id of the filtered points                      |
+| `max_queue_size`   | size_t | 5             | max buffer size of input/output topics                      |
+| `use_indices`      | bool   | false         | whether specifying the subset of the point cloud by indices |
+| `approximate_sync` | bool   | false         | schema used for synchronizing topic `input` and `indices`   |
 
 ### Node Parameters
 
 #### pickup_based_voxel_grid_downsample_filter_node
 
-| Name              | Type   | Default Value | Description             |
-| ----------------- | ------ | ------------- | ----------------------- |
-| `voxel_size_x`    | double | 1.0           | x value of the voxel    |
-| `voxel_size_y`    | double | 1.0           | y value of the voxel    |
-| `voxel_size_z`    | double | 1.0           | z value of the voxel    |
+| Name           | Type   | Default Value | Description          |
+| -------------- | ------ | ------------- | -------------------- |
+| `voxel_size_x` | double | 1.0           | x value of the voxel |
+| `voxel_size_y` | double | 1.0           | y value of the voxel |
+| `voxel_size_z` | double | 1.0           | z value of the voxel |
 
 #### random_downsample_filter_node
 
-| Name              | Type   | Default Value | Description             |
-| ----------------- | ------ | ------------- | ----------------------- |
-| `sample_num`      | size_t | 1500          | random sample number    |
+| Name         | Type   | Default Value | Description          |
+| ------------ | ------ | ------------- | -------------------- |
+| `sample_num` | size_t | 1500          | random sample number |
 
 #### voxel_grid_downsample_filter_node
 
-| Name              | Type   | Default Value | Description             |
-| ----------------- | ------ | ------------- | ----------------------- |
-| `voxel_size_x`    | double | 0.3           | x value of the voxel    |
-| `voxel_size_y`    | double | 0.3           | y value of the voxel    |
-| `voxel_size_z`    | double | 0.1           | z value of the voxel    |
+| Name           | Type   | Default Value | Description          |
+| -------------- | ------ | ------------- | -------------------- |
+| `voxel_size_x` | double | 0.3           | x value of the voxel |
+| `voxel_size_y` | double | 0.3           | y value of the voxel |
+| `voxel_size_z` | double | 0.1           | z value of the voxel |
 
 ## Usage
 
-### 1.publish static tf from input pointcloud to target frame that is used for filtering, e.g.
+### 1.publish static tf from input pointcloud to target frame that is used for filtering, e.g
 
 ```cpp
 ros2 run tf2_ros static_transform_publisher 2.0 3.2 1.3 0 0 0 1  velodyne_top_base_link  base_link
@@ -88,7 +88,6 @@ ros2 launch autoware_downsample_filters random_downsample_filter_node.launch.xml
 ```
 
 ### 3. launch rviz2 and AWSIM to check the downsample result
-
 
 ## Assumptions / Known limits
 

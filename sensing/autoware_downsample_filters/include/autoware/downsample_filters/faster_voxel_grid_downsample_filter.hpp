@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__DOWNSAMPLE_FILTERS__FASTER_VOXEL_GRID_DOWNSAMPLE_FILTER_NODE_HPP_
-#define AUTOWARE__DOWNSAMPLE_FILTERS__FASTER_VOXEL_GRID_DOWNSAMPLE_FILTER_NODE_HPP_
+#ifndef AUTOWARE__DOWNSAMPLE_FILTERS__FASTER_VOXEL_GRID_DOWNSAMPLE_FILTER_HPP_
+#define AUTOWARE__DOWNSAMPLE_FILTERS__FASTER_VOXEL_GRID_DOWNSAMPLE_FILTER_HPP_
 
 #include "autoware/downsample_filters/transform_info.hpp"
 
@@ -98,5 +98,4 @@ private:
 };
 
 }  // namespace autoware::downsample_filters
-#endif  // AUTOWARE__DOWNSAMPLE_FILTERS__FASTER_VOXEL_GRID_DOWNSAMPLE_FILTER_NODE_HPP_  // NOLINT
-
+#endif  // AUTOWARE__DOWNSAMPLE_FILTERS__FASTER_VOXEL_GRID_DOWNSAMPLE_FILTER_HPP_  // NOLINT
