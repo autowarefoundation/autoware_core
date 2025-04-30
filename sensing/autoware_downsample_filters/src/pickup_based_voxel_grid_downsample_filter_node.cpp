@@ -50,7 +50,7 @@ struct VoxelKeyEqual
     return a == b;
   }
 };
-}  // namespace
+}  // namespace autoware::downsample_filters
 
 namespace autoware::downsample_filters
 {
@@ -158,8 +158,7 @@ void PickupBasedVoxelGridDownsampleFilter::filter(
   }
 }
 
-rcl_interfaces::msg::SetParametersResult
-PickupBasedVoxelGridDownsampleFilter::paramCallback(
+rcl_interfaces::msg::SetParametersResult PickupBasedVoxelGridDownsampleFilter::paramCallback(
   const std::vector<rclcpp::Parameter> & p)
 {
   std::scoped_lock lock(mutex_);
@@ -185,5 +184,4 @@ PickupBasedVoxelGridDownsampleFilter::paramCallback(
 }  // namespace autoware::downsample_filters
 
 #include <rclcpp_components/register_node_macro.hpp>
-RCLCPP_COMPONENTS_REGISTER_NODE(
-  autoware::downsample_filters::PickupBasedVoxelGridDownsampleFilter)
+RCLCPP_COMPONENTS_REGISTER_NODE(autoware::downsample_filters::PickupBasedVoxelGridDownsampleFilter)

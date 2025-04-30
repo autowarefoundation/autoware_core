@@ -190,8 +190,7 @@ void autoware::downsample_filters::Filter::computePublish(
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////
-rcl_interfaces::msg::SetParametersResult
-autoware::downsample_filters::Filter::filterParamCallback(
+rcl_interfaces::msg::SetParametersResult autoware::downsample_filters::Filter::filterParamCallback(
   const std::vector<rclcpp::Parameter> & p)
 {
   std::scoped_lock lock(mutex_);
@@ -413,7 +412,7 @@ void autoware::downsample_filters::Filter::faster_input_indices_callback(
   // Do not use pcl_ros::transformPointCloud(). It's too slow due to the unnecessary copy.
   TransformInfo transform_info;
   if (!calculate_transform_matrix(tf_input_frame_, *cloud, transform_info)) return;
-  
+
   // Need setInputCloud() here because we have to extract x/y/z
   IndicesPtr vindices;
   if (indices) {

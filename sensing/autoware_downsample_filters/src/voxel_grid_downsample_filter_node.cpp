@@ -60,8 +60,7 @@
 
 namespace autoware::downsample_filters
 {
-VoxelGridDownsampleFilter::VoxelGridDownsampleFilter(
-  const rclcpp::NodeOptions & options)
+VoxelGridDownsampleFilter::VoxelGridDownsampleFilter(const rclcpp::NodeOptions & options)
 : Filter("VoxelGridDownsampleFilter", options)
 {
   // set initial parameters
@@ -136,5 +135,4 @@ rcl_interfaces::msg::SetParametersResult VoxelGridDownsampleFilter::paramCallbac
 }  // namespace autoware::downsample_filters
 
 #include <rclcpp_components/register_node_macro.hpp>
-RCLCPP_COMPONENTS_REGISTER_NODE(
-  autoware::downsample_filters::VoxelGridDownsampleFilter)
+RCLCPP_COMPONENTS_REGISTER_NODE(autoware::downsample_filters::VoxelGridDownsampleFilter)
