@@ -176,6 +176,16 @@ lanelet::ArcCoordinates calcArcCoordinates(
     to2D(lanelet.centerline()),
     to2D(lanelet::utils::conversion::toLaneletPoint(point)).basicPoint());
 }
+
+std::string convertLaneletsIdToString(const lanelet::ConstLanelets & lanelets)
+{
+  std::string str{"{"};
+  for (const auto & lanelet : lanelets) {
+    str += std::to_string(lanelet.id()) + ",";
+  }
+  str += "}";
+  return str;
+}
 }  // namespace
 
 RouteHandler::RouteHandler(const LaneletMapBin & map_msg)
@@ -1955,7 +1965,7 @@ bool RouteHandler::planPathLaneletsBetweenCheckpoints(
 
     optional_route = routing_graph_ptr_->getRoute(st_llt, goal_lanelet, 0);
     if (!optional_route || !is_proper_angle) {
-      RCLCPP_ERROR_STREAM(
+      RCLCPP_DEBUG_STREAM(
         logger_, "Failed to find a proper route!"
                    << std::endl
                    << " - start checkpoint: " << toString(start_checkpoint) << std::endl
@@ -1999,6 +2009,14 @@ bool RouteHandler::planPathLaneletsBetweenCheckpoints(
     for (const auto & llt : path) {
       path_lanelets->push_back(llt);
     }
+  } else {
+    RCLCPP_ERROR_STREAM(
+      logger_, "Failed to find a proper route!"
+                 << std::endl
+                 << " - start checkpoint: " << toString(start_checkpoint) << std::endl
+                 << " - goal checkpoint: " << toString(goal_checkpoint) << std::endl
+                 << " - start lane ids: " << convertLaneletsIdToString(start_lanelets) << std::endl
+                 << " - goal lane id: " << goal_lanelet.id() << std::endl);
   }
 
   return is_route_found;
