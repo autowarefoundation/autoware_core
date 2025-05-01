@@ -409,6 +409,26 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
     }
   }
 
+  lanelet::BasicLineString2d path_line_string;
+  path_line_string.reserve(path_points_with_lane_id.size());
+  std::transform(
+    path_points_with_lane_id.begin(), path_points_with_lane_id.end(),
+    std::back_inserter(path_line_string), [](const PathPointWithLaneId & path_point) {
+      return lanelet::utils::conversion::toLaneletPoint(path_point.point.pose.position)
+        .basicPoint2d();
+    });
+
+  const auto path_start_arc_length =
+    lanelet::geometry::toArcCoordinates(
+      path_line_string,
+      lanelet::geometry::interpolatedPointAtDistance(lanelet_sequence.centerline2d(), s_start))
+      .length;
+  const auto path_end_arc_length =
+    lanelet::geometry::toArcCoordinates(
+      path_line_string,
+      lanelet::geometry::interpolatedPointAtDistance(lanelet_sequence.centerline2d(), s_end))
+      .length;
+
   auto trajectory = Trajectory::Builder().build(path_points_with_lane_id);
   if (!trajectory) {
     return std::nullopt;
@@ -417,22 +437,8 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
   // Attach orientation for all the points
   trajectory->align_orientation_with_trajectory_direction();
 
-  double start =
-    s_offset + s_start -
-    get_arc_length_along_centerline(
-      extended_lanelet_sequence, lanelet::utils::conversion::toLaneletPoint(
-                                   path_points_with_lane_id.front().point.pose.position));
-
-  const double length = std::max(0.1, s_end - s_start);
-
   // Refine the trajectory by cropping
-  trajectory->crop(0, start + length);
-
-  // Compose the polished path
-
-  PathWithLaneId finalized_path_with_lane_id{};
-
-  finalized_path_with_lane_id.points = trajectory->restore();
+  trajectory->crop(path_start_arc_length, path_end_arc_length - path_start_arc_length);
 
   // Check if the goal point is in the search range
   // Note: We only see if the goal is approaching the tail of the path.
@@ -449,9 +455,7 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
     }
   }
 
-  if (!(trajectory->length() - start < 0)) {
-    trajectory->crop(start, trajectory->length() - start);
-  }
+  PathWithLaneId finalized_path_with_lane_id{};
   finalized_path_with_lane_id.points = trajectory->restore();
 
   if (finalized_path_with_lane_id.points.empty()) {
