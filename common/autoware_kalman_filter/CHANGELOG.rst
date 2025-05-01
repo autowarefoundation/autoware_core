@@ -2,8 +2,8 @@
 Changelog for package autoware_kalman_filter
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.1.0 (2025-05-01)
+------------------
 * fix(autoware_kalman_filter): fixed clang-tidy error (`#379 <https://github.com/youtalk/autoware_core/issues/379>`_)
   * fix(autoware_kalman_filter): fixed clang-tidy error
   * remove comment

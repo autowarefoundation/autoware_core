@@ -2,8 +2,8 @@
 Changelog for package autoware_trajectory
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.1.0 (2025-05-01)
+------------------
 * fix(autoware_trajectory): avoid nan in align_orientation_with_trajectory_direction (`#398 <https://github.com/youtalk/autoware_core/issues/398>`_)
   * fix(autoware_trajectory): avoid nan in align_orientation_with_trajectory_direction
   * tidy

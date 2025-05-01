@@ -2,8 +2,8 @@
 Changelog for package autoware_behavior_velocity_stop_line_module
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.1.0 (2025-05-01)
+------------------
 * refactor(autoware_trajectory)!: move everything to namespace experimetal (`#371 <https://github.com/youtalk/autoware_core/issues/371>`_)
   refactor(autoware_trajectory)!: move everything to namespace experimental
 * Contributors: Mamoru Sobue

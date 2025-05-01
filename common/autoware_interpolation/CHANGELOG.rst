@@ -2,8 +2,8 @@
 Changelog for package autoware_interpolation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.1.0 (2025-05-01)
+------------------
 * refactor(interpolation): use `autoware_utils\_*` instead of `autoware_utils` (`#382 <https://github.com/youtalk/autoware_core/issues/382>`_)
   feat(interpolation): use split autoware utils
 * fix(autoware_path_optimizer): incorrect application of input velocity due to badly mapping output trajectory to input trajectory (`#355 <https://github.com/youtalk/autoware_core/issues/355>`_)

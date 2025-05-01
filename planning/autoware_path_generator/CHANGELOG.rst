@@ -2,8 +2,8 @@
 Changelog for package autoware_path_generator
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.1.0 (2025-05-01)
+------------------
 * fix(path_generator): set both lane IDs to point on border of adjacent lanes (`#384 <https://github.com/youtalk/autoware_core/issues/384>`_)
   set both lane IDs to point on border of adjacent lanes
 * feat(path_generator): move generate_path public (`#380 <https://github.com/youtalk/autoware_core/issues/380>`_)

@@ -2,8 +2,8 @@
 Changelog for package autoware_motion_utils
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.1.0 (2025-05-01)
+------------------
 * fix(autoware_path_optimizer): incorrect application of input velocity due to badly mapping output trajectory to input trajectory (`#355 <https://github.com/youtalk/autoware_core/issues/355>`_)
   * changes to avoid improper mapping
   * Update common/autoware_motion_utils/include/autoware/motion_utils/trajectory/trajectory.hpp

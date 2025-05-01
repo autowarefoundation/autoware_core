@@ -2,8 +2,8 @@
 Changelog for package autoware_component_interface_specs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.1.0 (2025-05-01)
+------------------
 * feat(component_interface_specs): use template type in get_qos function (`#364 <https://github.com/youtalk/autoware_core/issues/364>`_)
   Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
 * docs(autoware_component_interface_specs): fix `README.md` (`#363 <https://github.com/youtalk/autoware_core/issues/363>`_)

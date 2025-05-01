@@ -2,8 +2,8 @@
 Changelog for package autoware_test_utils
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.1.0 (2025-05-01)
+------------------
 * test(path_generator): add tests for path cut feature (`#268 <https://github.com/youtalk/autoware_core/issues/268>`_)
   * add map for test
   * add overpass map

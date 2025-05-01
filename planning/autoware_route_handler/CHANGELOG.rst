@@ -2,8 +2,8 @@
 Changelog for package autoware_route_handler
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.1.0 (2025-05-01)
+------------------
 * feat(route_handler): use a cost metric to select start lane (`#357 <https://github.com/youtalk/autoware_core/issues/357>`_)
   * feat(route_handler): use a cost metric to select start lane
   * style(pre-commit): autofix

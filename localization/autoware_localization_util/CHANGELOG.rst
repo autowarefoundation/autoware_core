@@ -2,8 +2,8 @@
 Changelog for package autoware_localization_util
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.1.0 (2025-05-01)
+------------------
 * test(autoware_localization_util): add tests (`#308 <https://github.com/youtalk/autoware_core/issues/308>`_)
   * test(autoware_localization_util): add tests for missed lines
   * style(pre-commit): autofix
