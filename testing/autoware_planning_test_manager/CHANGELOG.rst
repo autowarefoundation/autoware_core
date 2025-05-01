@@ -2,6 +2,9 @@
 Changelog for package autoware_planning_test_manager
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 1.0.0 (2025-03-31)
 ------------------
 

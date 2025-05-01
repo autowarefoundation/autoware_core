@@ -2,6 +2,9 @@
 Changelog for package autoware_node
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 1.0.0 (2025-03-31)
 ------------------
 * refactor(autoware_test_node): move to `testing` directory (`#297 <https://github.com/autowarefoundation/autoware_core/issues/297>`_)

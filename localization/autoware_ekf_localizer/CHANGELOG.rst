@@ -2,6 +2,9 @@
 Changelog for package autoware_ekf_localizer
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 1.0.0 (2025-03-31)
 ------------------
 
