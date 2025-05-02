@@ -4,8 +4,8 @@ Changelog for package autoware_lanelet2_utils
 
 1.1.0 (2025-05-01)
 ------------------
-* refactor(autoware_lanelet2_utils)!: move everything to namespace experimental (`#372 <https://github.com/youtalk/autoware_core/issues/372>`_)
-* refactor(autoware_lanelet2_utils): rewrite using modern C++ without API breakage (`#347 <https://github.com/youtalk/autoware_core/issues/347>`_)
+* refactor(autoware_lanelet2_utils)!: move everything to namespace experimental (`#372 <https://github.com/autowarefoundation/autoware_core/issues/372>`_)
+* refactor(autoware_lanelet2_utils): rewrite using modern C++ without API breakage (`#347 <https://github.com/autowarefoundation/autoware_core/issues/347>`_)
   * refactor using modern c++
   * precommit
   * fix

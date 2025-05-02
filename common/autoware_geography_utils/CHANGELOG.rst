@@ -4,8 +4,8 @@ Changelog for package autoware_geography_utils
 
 1.1.0 (2025-05-01)
 ------------------
-* feat(map_projection_loader): add scale_factor and remove altitude (`#340 <https://github.com/youtalk/autoware_core/issues/340>`_)
-* refactor(autoware_geography_utils): rewrite using modern C++ without API breakage (`#345 <https://github.com/youtalk/autoware_core/issues/345>`_)
+* feat(map_projection_loader): add scale_factor and remove altitude (`#340 <https://github.com/autowarefoundation/autoware_core/issues/340>`_)
+* refactor(autoware_geography_utils): rewrite using modern C++ without API breakage (`#345 <https://github.com/autowarefoundation/autoware_core/issues/345>`_)
   * refactor using modern c++
   * precommit
   * revert

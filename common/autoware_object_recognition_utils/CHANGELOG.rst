@@ -4,7 +4,7 @@ Changelog for package autoware_object_recognition_utils
 
 1.1.0 (2025-05-01)
 ------------------
-* refactor(autoware_object_recognition_utils): use `autoware_utils\_*` instead of `autoware_utils` (`#385 <https://github.com/youtalk/autoware_core/issues/385>`_)
+* refactor(autoware_object_recognition_utils): use `autoware_utils\_*` instead of `autoware_utils` (`#385 <https://github.com/autowarefoundation/autoware_core/issues/385>`_)
   use autoware_utils\_*
 * Contributors: Yutaka Kondo
 

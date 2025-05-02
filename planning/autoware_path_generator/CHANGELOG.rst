@@ -4,9 +4,9 @@ Changelog for package autoware_path_generator
 
 1.1.0 (2025-05-01)
 ------------------
-* fix(path_generator): set both lane IDs to point on border of adjacent lanes (`#384 <https://github.com/youtalk/autoware_core/issues/384>`_)
+* fix(path_generator): set both lane IDs to point on border of adjacent lanes (`#384 <https://github.com/autowarefoundation/autoware_core/issues/384>`_)
   set both lane IDs to point on border of adjacent lanes
-* feat(path_generator): move generate_path public (`#380 <https://github.com/youtalk/autoware_core/issues/380>`_)
+* feat(path_generator): move generate_path public (`#380 <https://github.com/autowarefoundation/autoware_core/issues/380>`_)
   * feat(path_generator): move generate_path public
   * style(pre-commit): autofix
   * fix pre-commit
@@ -14,9 +14,9 @@ Changelog for package autoware_path_generator
   ---------
   Co-authored-by: t4-adc <grp-rd-1-adc-admin@tier4.jp>
   Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
-* refactor(autoware_trajectory)!: move everything to namespace experimetal (`#371 <https://github.com/youtalk/autoware_core/issues/371>`_)
+* refactor(autoware_trajectory)!: move everything to namespace experimetal (`#371 <https://github.com/autowarefoundation/autoware_core/issues/371>`_)
   refactor(autoware_trajectory)!: move everything to namespace experimental
-* test(path_generator): add tests for path cut feature (`#268 <https://github.com/youtalk/autoware_core/issues/268>`_)
+* test(path_generator): add tests for path cut feature (`#268 <https://github.com/autowarefoundation/autoware_core/issues/268>`_)
   * add map for test
   * add overpass map
   * refactor & enhance base test class
@@ -36,19 +36,19 @@ Changelog for package autoware_path_generator
   Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
   Co-authored-by: Kosuke Takeuchi <kosuke.tnp@gmail.com>
   Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
-* fix(path_generator): deal with unintended input (`#336 <https://github.com/youtalk/autoware_core/issues/336>`_)
+* fix(path_generator): deal with unintended input (`#336 <https://github.com/autowarefoundation/autoware_core/issues/336>`_)
   * prevent segfault
   * fix self-intersection search range
   * define behavior for unintended input
   * prevent segfault
   * check builder output instead of input size
   ---------
-* refactor(path_generator): avoid using fixed-size array (`#353 <https://github.com/youtalk/autoware_core/issues/353>`_)
+* refactor(path_generator): avoid using fixed-size array (`#353 <https://github.com/autowarefoundation/autoware_core/issues/353>`_)
   * avoid using fixed-size array
   * include necessary headers
   * avoid capturing structured bindings in lambdas
   ---------
-* docs(path_generator): add description of path cut & turn signal feature (`#359 <https://github.com/youtalk/autoware_core/issues/359>`_)
+* docs(path_generator): add description of path cut & turn signal feature (`#359 <https://github.com/autowarefoundation/autoware_core/issues/359>`_)
   * add diagrams of path cut feature
   * add diagrams of turn signal feature
   * update parameter list
@@ -56,11 +56,11 @@ Changelog for package autoware_path_generator
   * style(pre-commit): autofix
   ---------
   Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
-* fix(path_generator): avoid shortcuts at overlaps (`#352 <https://github.com/youtalk/autoware_core/issues/352>`_)
+* fix(path_generator): avoid shortcuts at overlaps (`#352 <https://github.com/autowarefoundation/autoware_core/issues/352>`_)
   * track current lane to avoid shortcut
   * add constraints for current lane search
   ---------
-* feat(autoware_path_generator): use autoware_trajectory for cropping bounds (`#349 <https://github.com/youtalk/autoware_core/issues/349>`_)
+* feat(autoware_path_generator): use autoware_trajectory for cropping bounds (`#349 <https://github.com/autowarefoundation/autoware_core/issues/349>`_)
 * Contributors: Kazunori-Nakajima, Mamoru Sobue, Mitsuhiro Sakamoto, Yukinari Hisaki
 
 1.0.0 (2025-03-31)

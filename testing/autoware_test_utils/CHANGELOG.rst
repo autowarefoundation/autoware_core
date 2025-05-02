@@ -4,7 +4,7 @@ Changelog for package autoware_test_utils
 
 1.1.0 (2025-05-01)
 ------------------
-* test(path_generator): add tests for path cut feature (`#268 <https://github.com/youtalk/autoware_core/issues/268>`_)
+* test(path_generator): add tests for path cut feature (`#268 <https://github.com/autowarefoundation/autoware_core/issues/268>`_)
   * add map for test
   * add overpass map
   * refactor & enhance base test class
@@ -24,7 +24,7 @@ Changelog for package autoware_test_utils
   Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
   Co-authored-by: Kosuke Takeuchi <kosuke.tnp@gmail.com>
   Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
-* chore: include iostream and link yaml-cpp for Jazzy (`#351 <https://github.com/youtalk/autoware_core/issues/351>`_)
+* chore: include iostream and link yaml-cpp for Jazzy (`#351 <https://github.com/autowarefoundation/autoware_core/issues/351>`_)
 * Contributors: Mitsuhiro Sakamoto, Tim Clephas
 
 1.0.0 (2025-03-31)
