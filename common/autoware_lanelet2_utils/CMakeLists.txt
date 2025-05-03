@@ -8,6 +8,7 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/kind.cpp
   src/topology.cpp
   src/intersection.cpp
+  src/geometry.cpp
 )
 
 if(BUILD_TESTING)
@@ -18,6 +19,7 @@ if(BUILD_TESTING)
     test/kind.cpp
     test/topology.cpp
     test/intersection.cpp
+    test/geometry.cpp
   )
 
   foreach (test_file IN LISTS test_files)
