@@ -19,10 +19,10 @@
 #include <autoware_utils/ros/diagnostics_interface.hpp>
 #include <rclcpp/node.hpp>
 
+#include <sensor_msgs/point_cloud2_iterator.hpp>
+
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/point_types.h>
-
-#include <sensor_msgs/point_cloud2_iterator.hpp>
 
 #include <vector>
 
