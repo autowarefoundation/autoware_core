@@ -471,8 +471,19 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_point_clo
 
     const auto lat_dist_from_obstacle_to_traj =
       autoware::motion_utils::calcLateralOffset(traj_points, itr->collision_point);
-    const auto min_lat_dist_to_traj_poly =
+    auto min_lat_dist_to_traj_poly =
       std::abs(lat_dist_from_obstacle_to_traj) - vehicle_info.vehicle_width_m/2;
+
+    if (min_lat_dist_to_traj_poly >= obstacle_filtering_param_.max_lat_margin) {
+      continue;
+    }
+
+    min_lat_dist_to_traj_poly =
+      utils::get_dist_to_traj_poly(itr->collision_point, decimated_traj_polys);
+
+    if (min_lat_dist_to_traj_poly >= obstacle_filtering_param_.max_lat_margin) {
+      continue;
+    }
 
     if (min_lat_dist_to_traj_poly < obstacle_filtering_param_.max_lat_margin) {
       auto stop_obstacle = *itr;
