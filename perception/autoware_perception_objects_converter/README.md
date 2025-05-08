@@ -12,15 +12,15 @@ This node converts `DetectedObjects` messages to `PredictedObjects` messages.
 
 #### Input
 
-| Name                  | Type                                              | Description                   |
-|:----------------------|:--------------------------------------------------|:------------------------------|
-| `input/detected_objects` | autoware_perception_msgs::msg::DetectedObjects | Input detected objects        |
+| Name                     | Type                                           | Description            |
+| :----------------------- | :--------------------------------------------- | :--------------------- |
+| `input/detected_objects` | autoware_perception_msgs::msg::DetectedObjects | Input detected objects |
 
 #### Output
 
-| Name                   | Type                                               | Description                    |
-|:-----------------------|:---------------------------------------------------|:-------------------------------|
-| `output/predicted_objects` | autoware_perception_msgs::msg::PredictedObjects | Output predicted objects       |
+| Name                       | Type                                            | Description              |
+| :------------------------- | :---------------------------------------------- | :----------------------- |
+| `output/predicted_objects` | autoware_perception_msgs::msg::PredictedObjects | Output predicted objects |
 
 #### Parameters
 
@@ -30,4 +30,4 @@ None
 
 ```bash
 ros2 launch autoware_perception_objects_converter detected_to_predicted_objects.launch.xml
-``` 
+```
