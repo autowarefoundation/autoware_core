@@ -157,9 +157,12 @@ void ObstacleStopModule::init(rclcpp::Node & node, const std::string & module_na
     throw std::invalid_argument("point-cloud mask narrower than stop margin");
   }
 
-  const double update_distance_th = get_or_declare_parameter<double>(node, "out_of_lane.action.update_distance_th");
-  const double min_off_duration = get_or_declare_parameter<double>(node, "out_of_lane.action.min_off_duration");
-  const double min_on_duration = get_or_declare_parameter<double>(node, "out_of_lane.action.min_on_duration");
+  const double update_distance_th =
+    get_or_declare_parameter<double>(node, "out_of_lane.action.update_distance_th");
+  const double min_off_duration =
+    get_or_declare_parameter<double>(node, "out_of_lane.action.min_off_duration");
+  const double min_on_duration =
+    get_or_declare_parameter<double>(node, "out_of_lane.action.min_on_duration");
 
   path_length_buffer_ = PathLengthBuffer(update_distance_th, min_off_duration, min_on_duration);
 
@@ -825,7 +828,7 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::plan_stop(
     const double new_desired_stop_margin = calc_desired_stop_margin(
       planner_data, traj_points, stop_obstacle, dist_to_bumper, ego_segment_idx,
       dist_to_collide_on_ref_traj);
-    
+
     path_length_buffer_.update_buffer(new_desired_stop_margin, clock_);
     // calculate desired stop margin
     const double desired_stop_margin = path_length_buffer_.get_nearest_active_item();
@@ -891,7 +894,7 @@ double ObstacleStopModule::calc_desired_stop_margin(
     if (dist_to_collide_on_ref_traj > ref_traj_length) {
       // Use terminal margin (terminal_stop_margin) for obstacle stop
       return stop_planning_param_.terminal_stop_margin;
-    } else if ((v_obs*v_ego < 0)) {
+    } else if ((v_obs * v_ego < 0)) {
       const double a_ego = common_param_.limit_max_accel;
       const double bumper_to_bumper_distance = (dist_to_collide_on_ref_traj - dist_to_bumper);
 
