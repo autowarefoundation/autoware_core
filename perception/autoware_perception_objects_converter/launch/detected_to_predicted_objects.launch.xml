@@ -7,4 +7,4 @@
     <remap from="input/detected_objects" to="$(var input_topic)"/>
     <remap from="output/predicted_objects" to="$(var output_topic)"/>
   </node>
-</launch> 
+</launch>

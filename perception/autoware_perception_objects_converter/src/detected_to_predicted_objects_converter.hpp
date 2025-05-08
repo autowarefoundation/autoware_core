@@ -33,11 +33,14 @@ public:
   explicit DetectedToPredictedObjectsConverter(const rclcpp::NodeOptions & options);
 
 private:
-  void detected_objects_callback(const autoware_perception_msgs::msg::DetectedObjects::SharedPtr detected_objects_msg);
+  void detected_objects_callback(
+    const autoware_perception_msgs::msg::DetectedObjects::SharedPtr detected_objects_msg);
 
-  rclcpp::Subscription<autoware_perception_msgs::msg::DetectedObjects>::SharedPtr detected_objects_sub_;
-  rclcpp::Publisher<autoware_perception_msgs::msg::PredictedObjects>::SharedPtr predicted_objects_pub_;
+  rclcpp::Subscription<autoware_perception_msgs::msg::DetectedObjects>::SharedPtr
+    detected_objects_sub_;
+  rclcpp::Publisher<autoware_perception_msgs::msg::PredictedObjects>::SharedPtr
+    predicted_objects_pub_;
 };
 }  // namespace autoware::perception_objects_converter
 
-#endif  // DETECTED_TO_PREDICTED_OBJECTS_CONVERTER_HPP_ 
+#endif  // DETECTED_TO_PREDICTED_OBJECTS_CONVERTER_HPP_

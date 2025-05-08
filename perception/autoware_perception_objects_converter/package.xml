@@ -3,9 +3,7 @@
 <package format="3">
   <name>autoware_perception_objects_converter</name>
   <version>1.0.0</version>
-  <description>
-    ROS 2 node for converting between different perception object message types
-  </description>
+  <description>ROS 2 node for converting between different perception object message types</description>
   <maintainer email="maintainer@example.com">Maintainer</maintainer>
   <license>Apache License 2.0</license>
 
@@ -13,10 +11,10 @@
   <buildtool_depend>autoware_cmake</buildtool_depend>
 
   <depend>autoware_perception_msgs</depend>
+  <depend>boost</depend>
   <depend>geometry_msgs</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
-  <depend>boost</depend>
   <depend>unique_identifier_msgs</depend>
 
   <test_depend>ament_lint_auto</test_depend>
@@ -25,4 +23,4 @@
   <export>
     <build_type>ament_cmake</build_type>
   </export>
-</package> 
+</package>
