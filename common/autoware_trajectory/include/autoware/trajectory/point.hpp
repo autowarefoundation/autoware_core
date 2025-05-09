@@ -18,8 +18,6 @@
 #include "autoware/trajectory/forward.hpp"
 #include "autoware/trajectory/interpolator/interpolator.hpp"
 
-#include <Eigen/Dense>
-
 #include <geometry_msgs/msg/point.hpp>
 
 #include <algorithm>
