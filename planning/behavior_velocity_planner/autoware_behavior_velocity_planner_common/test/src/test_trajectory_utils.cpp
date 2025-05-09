@@ -16,7 +16,7 @@
 #include "autoware/velocity_smoother/smoother/jerk_filtered_smoother.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
-#include <autoware_utils/system/time_keeper.hpp>
+#include <autoware_utils_debug/time_keeper.hpp>
 #include <rclcpp/node.hpp>
 
 #include <geometry_msgs/msg/accel_stamped.hpp>
@@ -77,7 +77,7 @@ TEST(smoothPath, nominal)
 
   planner_data->velocity_smoother_ =
     std::make_shared<autoware::velocity_smoother::JerkFilteredSmoother>(
-      *node, std::make_shared<autoware_utils::TimeKeeper>());
+      *node, std::make_shared<autoware_utils_debug::TimeKeeper>());
 
   // Input path
   PathWithLaneId in_path;
