@@ -22,8 +22,8 @@ using geometry_msgs::msg::Point;
 
 using std_msgs::msg::ColorRGBA;
 
-using autoware_utils::create_default_marker;
-using autoware_utils::create_marker_scale;
+using autoware_utils_visualization::create_default_marker;
+using autoware_utils_visualization::create_marker_scale;
 
 using visualization_msgs::msg::Marker;
 using visualization_msgs::msg::MarkerArray;
@@ -68,9 +68,9 @@ Marker createCircleMarker(
   for (size_t i = 0; i < num_points; ++i) {
     Point point;
     const double ratio = static_cast<double>(i) / static_cast<double>(num_points);
-    const double theta = 2 * autoware_utils::pi * ratio;
-    point.x = data.pose.position.x + radius * autoware_utils::cos(theta);
-    point.y = data.pose.position.y + radius * autoware_utils::sin(theta);
+    const double theta = 2 * autoware_utils_math::pi * ratio;
+    point.x = data.pose.position.x + radius * autoware_utils_math::cos(theta);
+    point.y = data.pose.position.y + radius * autoware_utils_math::sin(theta);
     point.z = data.pose.position.z + height + height_offset;
     marker.points.push_back(point);
   }
