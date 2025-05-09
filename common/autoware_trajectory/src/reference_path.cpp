@@ -44,8 +44,6 @@ struct WaypointsGroupChunk
   double end_s{};
 };
 
-std::vector<WaypointsGroupChunk> waypoints_chunks_;
-
 static std::optional<UserDefinedWaypoints> get_user_defined_waypoint(
   const lanelet::ConstLanelet & lanelet, const lanelet::LaneletMapConstPtr & lanelet_map)
 {
@@ -125,6 +123,7 @@ private:
 
   const lanelet::ConstLanelets & lanelet_sequence_;  // lifetime: <'a>
   const lanelet::LaneletSequence lanelet_sequence_merged_;
+  std::vector<WaypointsGroupChunk> waypoints_chunks_;
 
 public:
   explicit UserDefinedWaypointsGroup(const lanelet::ConstLanelets & lanelet_sequence /* <'a> */)
