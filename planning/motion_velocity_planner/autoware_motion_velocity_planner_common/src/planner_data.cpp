@@ -16,9 +16,10 @@
 
 #include "autoware/object_recognition_utils/predicted_path_utils.hpp"
 #include "autoware_lanelet2_extension/utility/query.hpp"
-#include "autoware_utils/geometry/boost_polygon_utils.hpp"
 
 #include <autoware/motion_utils/trajectory/interpolation.hpp>
+#include <autoware_utils_geometry/boost_polygon_utils.hpp>
+#include <autoware_utils_math/normalization.hpp>
 
 #include <boost/geometry.hpp>
 
@@ -131,11 +132,11 @@ std::optional<double> PlannerData::calculate_min_deceleration_distance(
 }
 
 double PlannerData::Object::get_dist_to_traj_poly(
-  const std::vector<autoware_utils::Polygon2d> & decimated_traj_polys) const
+  const std::vector<autoware_utils_geometry::Polygon2d> & decimated_traj_polys) const
 {
   if (!dist_to_traj_poly) {
     const auto & obj_pose = predicted_object.kinematics.initial_pose_with_covariance.pose;
-    const auto obj_poly = autoware_utils::to_polygon2d(obj_pose, predicted_object.shape);
+    const auto obj_poly = autoware_utils_geometry::to_polygon2d(obj_pose, predicted_object.shape);
     dist_to_traj_poly = std::numeric_limits<double>::max();
     for (const auto & traj_poly : decimated_traj_polys) {
       const double current_dist_to_traj_poly = bg::distance(traj_poly, obj_poly);
@@ -196,7 +197,8 @@ void PlannerData::Object::calc_vel_relative_to_traj(
 
   const double traj_yaw = tf2::getYaw(nearest_traj_point.pose.orientation);
   const double obj_yaw = tf2::getYaw(obj_pose.orientation);
-  const Eigen::Rotation2Dd R_ego_to_obstacle(autoware_utils::normalize_radian(obj_yaw - traj_yaw));
+  const Eigen::Rotation2Dd R_ego_to_obstacle(
+    autoware_utils_math::normalize_radian(obj_yaw - traj_yaw));
 
   // Calculate the trajectory direction and the vector from the trajectory to the obstacle
   const Eigen::Vector2d traj_direction(std::cos(traj_yaw), std::sin(traj_yaw));
@@ -255,7 +257,7 @@ std::vector<StopPoint> PlannerData::calculate_map_stop_points(
   if (!route_handler) {
     return stop_points;
   }
-  autoware_utils::LineString2d trajectory_ls;
+  autoware_utils_geometry::LineString2d trajectory_ls;
   for (const auto & p : trajectory) {
     trajectory_ls.emplace_back(p.pose.position.x, p.pose.position.y);
   }
@@ -265,7 +267,7 @@ std::vector<StopPoint> PlannerData::calculate_map_stop_points(
     const auto stop_lines = lanelet::utils::query::stopLinesLanelet(candidate);
     for (const auto & stop_line : stop_lines) {
       const auto stop_line_2d = lanelet::utils::to2D(stop_line).basicLineString();
-      autoware_utils::MultiPoint2d intersections;
+      autoware_utils_geometry::MultiPoint2d intersections;
       boost::geometry::intersection(trajectory_ls, stop_line_2d, intersections);
       for (const auto & intersection : intersections) {
         const auto p =
@@ -330,7 +332,7 @@ void PlannerData::Pointcloud::search_pointcloud_near_trajectory(
   std::transform(
     trajectory.begin(), trajectory.end(), std::back_inserter(footprints),
     [&](const TrajectoryPoint & trajectory_point) {
-      return autoware_utils::to_footprint(
+      return autoware_utils_geometry::to_footprint(
         trajectory_point.pose, front_length, rear_length, vehicle_width + mask_lat_margin_ * 2.0);
     });
 
