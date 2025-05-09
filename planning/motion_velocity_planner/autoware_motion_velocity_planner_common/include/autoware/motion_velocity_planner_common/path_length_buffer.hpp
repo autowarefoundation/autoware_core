@@ -64,7 +64,7 @@ public:
       });
 
     if (!nearest_item->is_active) {
-      return {};
+      return std::nullopt;
     }
 
     return nearest_item->arc_length;
@@ -128,7 +128,7 @@ public:
   }
 
 private:
-  std::vector<BufferedStopDistance> buffer_{};
+  std::vector<BufferedStopDistance> buffer_;
   double min_off_duration_;
   double min_on_duration_;
   double update_distance_th_;

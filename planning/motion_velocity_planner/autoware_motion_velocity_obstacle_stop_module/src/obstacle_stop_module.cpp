@@ -158,11 +158,11 @@ void ObstacleStopModule::init(rclcpp::Node & node, const std::string & module_na
   }
 
   const double update_distance_th =
-    get_or_declare_parameter<double>(node, "out_of_lane.action.update_distance_th");
+    get_or_declare_parameter<double>(node, "obstacle_stop.stop_planning.update_distance_th");
   const double min_off_duration =
-    get_or_declare_parameter<double>(node, "out_of_lane.action.min_off_duration");
+    get_or_declare_parameter<double>(node, "obstacle_stop.stop_planning.min_off_duration");
   const double min_on_duration =
-    get_or_declare_parameter<double>(node, "out_of_lane.action.min_on_duration");
+    get_or_declare_parameter<double>(node, "obstacle_stop.stop_planning.min_on_duration");
 
   path_length_buffer_ = autoware::motion_velocity_planner::utils::PathLengthBuffer(update_distance_th, min_off_duration, min_on_duration);
 
