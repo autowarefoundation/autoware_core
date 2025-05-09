@@ -14,7 +14,7 @@
 
 #include <autoware/motion_utils/trajectory/conversion.hpp>
 #include <autoware/planning_topic_converter/path_to_trajectory.hpp>
-#include <autoware_utils/geometry/geometry.hpp>
+#include <autoware_utils_geometry/geometry.hpp>
 
 #include <vector>
 
@@ -25,7 +25,7 @@ namespace
 TrajectoryPoint convertToTrajectoryPoint(const PathPoint & point)
 {
   TrajectoryPoint traj_point;
-  traj_point.pose = autoware_utils::get_pose(point);
+  traj_point.pose = autoware_utils_geometry::get_pose(point);
   traj_point.longitudinal_velocity_mps = point.longitudinal_velocity_mps;
   traj_point.lateral_velocity_mps = point.lateral_velocity_mps;
   traj_point.heading_rate_rps = point.heading_rate_rps;
