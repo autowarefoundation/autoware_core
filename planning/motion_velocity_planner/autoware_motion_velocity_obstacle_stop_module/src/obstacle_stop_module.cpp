@@ -914,11 +914,6 @@ double ObstacleStopModule::calc_desired_stop_margin(
 
       const double stop_margin = bumper_to_bumper_distance - stopping_distance;
 
-      std::cout << "v_obs: " << v_obs << ", v_ego: " << v_ego << "\n";
-      std::cout << "T_coast: " << T_coast << "stopping_distance: " << stopping_distance
-                << ", stop_margin: " << stop_margin
-                << ", dist to obs: " << bumper_to_bumper_distance << "\n";
-
       return std::max(stop_margin, stop_planning_param_.stop_margin);
     }
     return stop_planning_param_.stop_margin;
