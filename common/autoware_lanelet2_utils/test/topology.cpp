@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "map_loader.hpp"
-
 #include <ament_index_cpp/get_package_share_directory.hpp>
+#include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/lanelet2_utils/topology.hpp>
 #include <range/v3/all.hpp>
 
 #include <gtest/gtest.h>
+#include <lanelet2_core/LaneletMap.h>
 #include <lanelet2_io/Io.h>
 
 #include <filesystem>
@@ -44,8 +44,10 @@ protected:
       "sample_map";
     const auto intersection_crossing_map_path = sample_map_dir / "intersection" / "crossing.osm";
 
-    lanelet_map_ptr_ = load_mgrs_coordinate_map(intersection_crossing_map_path.string());
-    routing_graph_ptr_ = lanelet2_utils::instantiate_routing_graph(lanelet_map_ptr_);
+    lanelet_map_ptr_ =
+      lanelet2_utils::load_mgrs_coordinate_map(intersection_crossing_map_path.string());
+    routing_graph_ptr_ =
+      lanelet2_utils::instantiate_routing_graph_and_traffic_rules(lanelet_map_ptr_).first;
   }
 };
 
@@ -251,8 +253,10 @@ protected:
     const auto intersection_crossing_map_path =
       sample_map_dir / "intersection" / "crossing_inverse.osm";
 
-    lanelet_map_ptr_ = load_mgrs_coordinate_map(intersection_crossing_map_path.string());
-    routing_graph_ptr_ = lanelet2_utils::instantiate_routing_graph(lanelet_map_ptr_);
+    lanelet_map_ptr_ =
+      lanelet2_utils::load_mgrs_coordinate_map(intersection_crossing_map_path.string());
+    routing_graph_ptr_ =
+      lanelet2_utils::instantiate_routing_graph_and_traffic_rules(lanelet_map_ptr_).first;
   }
 };
 

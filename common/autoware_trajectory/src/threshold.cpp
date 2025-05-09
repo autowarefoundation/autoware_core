@@ -16,6 +16,7 @@
 
 #include "autoware_utils_geometry/geometry.hpp"
 
+#include <lanelet2_core/primitives/Point.h>
 namespace autoware::experimental::trajectory
 {
 
@@ -55,4 +56,9 @@ bool is_almost_same(
   return autoware_utils_geometry::calc_distance3d(p1, p2) < k_points_minimum_dist_threshold;
 }
 
+bool is_almost_same(const lanelet::ConstPoint3d & p1, const lanelet::ConstPoint3d & p2)
+{
+  return std::hypot(p1.x() - p2.x(), p1.y() - p2.y(), p1.z() - p2.z()) <
+         k_points_minimum_dist_threshold;
+}
 }  // namespace autoware::experimental::trajectory

@@ -89,7 +89,6 @@ std::optional<Trajectory<PointType>> pretty_build(
   if (!try_trajectory) {
     return std::nullopt;
   }
-
   return try_trajectory.value();
 }
 

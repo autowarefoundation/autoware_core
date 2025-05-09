@@ -20,6 +20,8 @@
 #include <autoware_planning_msgs/msg/trajectory_point.hpp>
 #include <geometry_msgs/msg/point.hpp>
 
+#include <lanelet2_core/Forward.h>
+
 namespace autoware::experimental::trajectory
 {
 
@@ -62,6 +64,10 @@ bool is_almost_same(
   const autoware_internal_planning_msgs::msg::PathPointWithLaneId & p1,
   const autoware_internal_planning_msgs::msg::PathPointWithLaneId & p2);
 
+/**
+ * @brief check if two points are almost-same
+ */
+bool is_almost_same(const lanelet::ConstPoint3d & p1, const lanelet::ConstPoint3d & p2);
 }  // namespace autoware::experimental::trajectory
 
 #endif  // AUTOWARE__TRAJECTORY__THRESHOLD_HPP_

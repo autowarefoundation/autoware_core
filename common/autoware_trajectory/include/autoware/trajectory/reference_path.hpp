@@ -29,11 +29,12 @@ namespace autoware::experimental::trajectory
 {
 std::optional<Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>>
 build_reference_path(
-  const lanelet::ConstLanelets & lanelet_sequence_in, const lanelet::LaneletMapConstPtr lanelet_map,
+  const lanelet::ConstLanelets & route_lanelets, const lanelet::ConstLanelet & current_lanelet,
+  const geometry_msgs::msg::Pose & ego_pose, const lanelet::LaneletMapConstPtr lanelet_map,
   const lanelet::routing::RoutingGraphConstPtr routing_graph,
-  lanelet::traffic_rules::TrafficRulesPtr traffic_rules, const double s_start_in,
-  const double s_end_in, const double group_separation_distance,
-  const double connection_from_default_point_gradient);
+  lanelet::traffic_rules::TrafficRulesPtr traffic_rules, const double group_separation_distance,
+  const double connection_from_default_point_gradient, const double forward_length,
+  const double backward_length);
 
 }  // namespace autoware::experimental::trajectory
 

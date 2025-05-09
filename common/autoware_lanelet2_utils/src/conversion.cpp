@@ -12,19 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MAP_LOADER_HPP_
-#define MAP_LOADER_HPP_
-
+#include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware_lanelet2_extension/projection/mgrs_projector.hpp>
 
 #include <lanelet2_core/LaneletMap.h>
+#include <lanelet2_core/primitives/Lanelet.h>
 #include <lanelet2_io/Io.h>
 #include <lanelet2_io/Projection.h>
+#include <lanelet2_routing/RoutingGraph.h>
 
 #include <string>
 #include <utility>
 
-inline lanelet::LaneletMapConstPtr load_mgrs_coordinate_map(const std::string & path)
+namespace autoware::experimental::lanelet2_utils
+{
+
+lanelet::LaneletMapConstPtr load_mgrs_coordinate_map(const std::string & path)
 {
   lanelet::ErrorMessages errors{};
   lanelet::projection::MGRSProjector projector;
@@ -32,4 +35,13 @@ inline lanelet::LaneletMapConstPtr load_mgrs_coordinate_map(const std::string & 
   return lanelet::LaneletMapConstPtr{std::move(lanelet_map_ptr_mut)};
 }
 
-#endif  // MAP_LOADER_HPP_
+std::pair<lanelet::routing::RoutingGraphConstPtr, lanelet::traffic_rules::TrafficRulesPtr>
+instantiate_routing_graph_and_traffic_rules(
+  lanelet::LaneletMapConstPtr lanelet_map, const char * location, const char * participant)
+{
+  auto traffic_rules = lanelet::traffic_rules::TrafficRulesFactory::create(location, participant);
+  return {
+    lanelet::routing::RoutingGraph::build(*lanelet_map, *traffic_rules), std::move(traffic_rules)};
+}
+
+}  // namespace autoware::experimental::lanelet2_utils

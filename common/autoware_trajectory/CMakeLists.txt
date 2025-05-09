@@ -13,7 +13,6 @@ ament_auto_add_library(autoware_trajectory SHARED
   src/path_point.cpp
   src/path_point_with_lane_id.cpp
   src/trajectory_point.cpp
-  src/lanelet_point.cpp
   src/reference_path.cpp
   src/detail/logging.cpp
   src/detail/types.cpp
@@ -40,6 +39,7 @@ if(BUILD_TESTING)
     test/test_helpers.cpp
     test/test_interpolator.cpp
     test/test_pretty_build.cpp
+    test/test_reference_path.cpp
     test/test_trajectory_container.cpp
     test/test_trajectory_container_trajectory_point.cpp
   )
@@ -61,10 +61,12 @@ if(BUILD_TESTING)
     examples/example_pose.cpp
     examples/example_pretty_build.cpp
     examples/example_readme.cpp
+    examples/example_reference_path.cpp
     examples/example_shift.cpp
   )
 
   add_definitions("-Wno-attributes")
+  find_package(ament_index_cpp REQUIRED)
   find_package(ament_lint_auto REQUIRED)
   find_package(autoware_pyplot REQUIRED)
   find_package(autoware_utils_geometry REQUIRED)
@@ -72,6 +74,7 @@ if(BUILD_TESTING)
   find_package(autoware_test_utils REQUIRED)
   ament_lint_auto_find_test_dependencies()
   find_package(pybind11 REQUIRED)
+  include_directories(${autoware_index_cpp_INCLUDE_DIRS})
   include_directories(${autoware_pyplot_INCLUDE_DIRS})
   include_directories(${autoware_test_utils_INCLUDE_DIRS})
   include_directories(${autoware_utils_geometry_INCLUDE_DIRS})
@@ -82,6 +85,7 @@ if(BUILD_TESTING)
     )
     target_link_libraries(${example_name}
       autoware_trajectory
+      ${autoware_index_cpp_LIBRARIES}
       ${autoware_utils_geometry_LIBRARIES}
       ${autoware_motion_utils_LIBRARIES}
       ${autoware_pyplot_LIBRARIES}

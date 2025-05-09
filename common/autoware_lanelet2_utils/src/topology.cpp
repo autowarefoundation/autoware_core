@@ -26,14 +26,6 @@ namespace autoware::experimental::lanelet2_utils
 
 static constexpr size_t k_normal_bundle_max_size = 10;
 
-lanelet::routing::RoutingGraphConstPtr instantiate_routing_graph(
-  lanelet::LaneletMapConstPtr lanelet_map, const char * location, const char * participant)
-{
-  const auto traffic_rules =
-    lanelet::traffic_rules::TrafficRulesFactory::create(location, participant);
-  return lanelet::routing::RoutingGraph::build(*lanelet_map, *traffic_rules);
-}
-
 std::optional<lanelet::ConstLanelet> left_lanelet(
   const lanelet::ConstLanelet & lanelet, const lanelet::routing::RoutingGraphConstPtr routing_graph)
 {

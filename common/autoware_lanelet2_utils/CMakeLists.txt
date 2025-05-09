@@ -8,6 +8,7 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/kind.cpp
   src/topology.cpp
   src/intersection.cpp
+  src/conversion.cpp
 )
 
 if(BUILD_TESTING)
