@@ -30,8 +30,7 @@ struct BufferedStopDistance
   rclcpp::Time start_time;
   bool is_active;
 
-  BufferedStopDistance(
-    double arc, rclcpp::Time time, bool active = false)
+  BufferedStopDistance(double arc, rclcpp::Time time, bool active = false)
   : arc_length(arc), start_time(time), is_active(active)
   {
   }
@@ -108,8 +107,7 @@ public:
         const auto dist_a = std::abs(a.arc_length - pose_arc_length);
         const auto dist_b = std::abs(b.arc_length - pose_arc_length);
         return dist_a < dist_b;
-      }
-    );
+      });
 
     if (nearest_prev_pose_it == buffer_.end()) {
       buffer_.emplace_back(pose_arc_length, clock_now, min_on_duration_ < eps);
