@@ -15,6 +15,7 @@
 #ifndef TYPE_ALIAS_HPP_
 #define TYPE_ALIAS_HPP_
 
+#include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
 
 #include <autoware_internal_debug_msgs/msg/float32_stamped.hpp>
@@ -50,8 +51,8 @@ using sensor_msgs::msg::PointCloud2;
 using visualization_msgs::msg::Marker;
 using visualization_msgs::msg::MarkerArray;
 namespace bg = boost::geometry;
-using autoware_utils::Point2d;
-using autoware_utils::Polygon2d;
+using autoware_utils_geometry::Point2d;
+using autoware_utils_geometry::Polygon2d;
 using PointCloud = pcl::PointCloud<pcl::PointXYZ>;
 using autoware_internal_planning_msgs::msg::PlanningFactor;
 using autoware_internal_planning_msgs::msg::SafetyFactorArray;

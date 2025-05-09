@@ -23,9 +23,7 @@
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
 #include <autoware/object_recognition_utils/predicted_path_utils.hpp>
 #include <autoware/objects_of_interest_marker_interface/objects_of_interest_marker_interface.hpp>
-#include <autoware_utils/ros/parameter.hpp>
-#include <autoware_utils/ros/update_param.hpp>
-#include <autoware_utils/system/stop_watch.hpp>
+#include <autoware_utils_rclcpp/parameter.hpp>
 
 #include <algorithm>
 #include <memory>
@@ -36,7 +34,7 @@
 
 namespace autoware::motion_velocity_planner
 {
-using autoware_utils::get_or_declare_parameter;
+using autoware_utils_rclcpp::get_or_declare_parameter;
 
 struct CommonParam
 {
