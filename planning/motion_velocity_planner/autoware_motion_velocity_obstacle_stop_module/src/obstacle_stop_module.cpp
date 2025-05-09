@@ -164,7 +164,7 @@ void ObstacleStopModule::init(rclcpp::Node & node, const std::string & module_na
   const double min_on_duration =
     get_or_declare_parameter<double>(node, "out_of_lane.action.min_on_duration");
 
-  path_length_buffer_ = PathLengthBuffer(update_distance_th, min_off_duration, min_on_duration);
+  path_length_buffer_ = autoware::motion_velocity_planner::utils::PathLengthBuffer(update_distance_th, min_off_duration, min_on_duration);
 
   // common publisher
   processing_time_publisher_ =
@@ -831,7 +831,8 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::plan_stop(
 
     path_length_buffer_.update_buffer(new_desired_stop_margin, clock_);
     // calculate desired stop margin
-    const double desired_stop_margin = path_length_buffer_.get_nearest_active_item();
+    const std::optional<double> buffered_stop_margin = path_length_buffer_.get_nearest_active_item();
+    const double desired_stop_margin = buffered_stop_margin ? *buffered_stop_margin : new_desired_stop_margin;
 
     // calculate stop point against the obstacle
     const auto candidate_zero_vel_dist = calc_candidate_zero_vel_dist(

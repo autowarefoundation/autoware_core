@@ -85,7 +85,7 @@ private:
   std::vector<StopObstacle> prev_closest_stop_obstacles_{};
   std::vector<StopObstacle> prev_stop_obstacles_{};
 
-  PathLengthBuffer path_length_buffer_;
+  autoware::motion_velocity_planner::utils::PathLengthBuffer path_length_buffer_;
 
   // PointCloud-based stop obstacle history
   std::vector<StopObstacle> stop_pointcloud_obstacle_history_;
