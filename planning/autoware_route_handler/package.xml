@@ -27,7 +27,8 @@
   <depend>autoware_lanelet2_extension</depend>
   <depend>autoware_map_msgs</depend>
   <depend>autoware_planning_msgs</depend>
-  <depend>autoware_utils</depend>
+  <depend>autoware_utils_geometry</depend>
+  <depend>autoware_utils_math</depend>
   <depend>geometry_msgs</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
