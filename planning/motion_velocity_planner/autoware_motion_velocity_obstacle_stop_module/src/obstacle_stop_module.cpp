@@ -259,7 +259,8 @@ VelocityPlanningResult ObstacleStopModule::plan(
 
 std::vector<geometry_msgs::msg::Point> ObstacleStopModule::convert_point_cloud_to_stop_points(
   const PlannerData::Pointcloud & pointcloud, const std::vector<TrajectoryPoint> & traj_points,
-  const VehicleInfo & vehicle_info, size_t ego_idx)
+  const std::vector<Polygon2d> & decimated_traj_polys, const VehicleInfo & vehicle_info,
+  size_t ego_idx)
 {
   autoware_utils::ScopedTimeTrack st(__func__, *time_keeper_);
 
@@ -288,11 +289,19 @@ std::vector<geometry_msgs::msg::Point> ObstacleStopModule::convert_point_cloud_t
       const auto current_lat_dist_from_obstacle_to_traj =
         autoware::motion_utils::calcLateralOffset(traj_points, obstacle_point);
       const auto min_lat_dist_to_traj_poly =
-        std::abs(current_lat_dist_from_obstacle_to_traj) - vehicle_info.vehicle_width_m;
+        std::abs(current_lat_dist_from_obstacle_to_traj) - vehicle_info.max_longitudinal_offset_m;
 
       if (min_lat_dist_to_traj_poly >= p.max_lat_margin) {
         continue;
       }
+
+      const double precise_min_lat_dist_to_traj_poly =
+        utils::get_dist_to_traj_poly(obstacle_point, decimated_traj_polys);
+
+      if (precise_min_lat_dist_to_traj_poly >= obstacle_filtering_param_.max_lat_margin) {
+        continue;
+      }
+
       const auto current_ego_to_obstacle_distance =
         autoware::motion_velocity_planner::utils::calc_distance_to_front_object(
           traj_points, ego_idx, obstacle_point);
@@ -436,13 +445,13 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_point_clo
 
   const auto & tp = trajectory_polygon_collision_check;
 
-  const std::vector<geometry_msgs::msg::Point> stop_points =
-    convert_point_cloud_to_stop_points(point_cloud, traj_points, vehicle_info, ego_idx);
-
   // calculated decimated trajectory points and trajectory polygon
   const auto decimated_traj_polys = polygon_utils::create_one_step_polygons(
     decimated_traj_points, vehicle_info, odometry.pose.pose, 0.0,
     tp.enable_to_consider_current_pose, tp.time_to_convergence, tp.decimate_trajectory_step_length);
+
+  const std::vector<geometry_msgs::msg::Point> stop_points = convert_point_cloud_to_stop_points(
+    point_cloud, traj_points, decimated_traj_polys, vehicle_info, ego_idx);
 
   debug_data_ptr_->decimated_traj_polys = decimated_traj_polys;
 
@@ -471,17 +480,26 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_point_clo
 
     const auto lat_dist_from_obstacle_to_traj =
       autoware::motion_utils::calcLateralOffset(traj_points, itr->collision_point);
-    const auto min_lat_dist_to_traj_poly =
-      std::abs(lat_dist_from_obstacle_to_traj) - vehicle_info.vehicle_width_m;
+    const double min_lat_dist_to_traj_poly =
+      std::abs(lat_dist_from_obstacle_to_traj) - vehicle_info.max_longitudinal_offset_m;
 
-    if (min_lat_dist_to_traj_poly < obstacle_filtering_param_.max_lat_margin) {
-      auto stop_obstacle = *itr;
-      stop_obstacle.dist_to_collide_on_decimated_traj =
-        autoware::motion_utils::calcSignedArcLength(
-          decimated_traj_points, 0, stop_obstacle.collision_point) -
-        dist_to_bumper;
-      past_stop_obstacles.push_back(stop_obstacle);
+    if (min_lat_dist_to_traj_poly >= obstacle_filtering_param_.max_lat_margin) {
+      continue;
     }
+
+    const double precise_min_lat_dist_to_traj_poly =
+      utils::get_dist_to_traj_poly(itr->collision_point, decimated_traj_polys);
+
+    if (precise_min_lat_dist_to_traj_poly >= obstacle_filtering_param_.max_lat_margin) {
+      continue;
+    }
+
+    auto stop_obstacle = *itr;
+    stop_obstacle.dist_to_collide_on_decimated_traj =
+      autoware::motion_utils::calcSignedArcLength(
+        decimated_traj_points, 0, stop_obstacle.collision_point) -
+      dist_to_bumper;
+    past_stop_obstacles.push_back(stop_obstacle);
 
     ++itr;
   }
