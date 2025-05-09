@@ -204,18 +204,17 @@ double calc_possible_min_dist_from_obj_to_traj_poly(
 }
 
 double get_dist_to_traj_poly (
-  const geometry_msgs::msg::Point point,
+  const geometry_msgs::msg::Point& point,
   const std::vector<autoware_utils::Polygon2d> & decimated_traj_polys)
 {
-  double dist_to_traj_poly = std::numeric_limits<double>::max();
-
   const auto boost_point = bg::model::d2::point_xy<double>(point.x, point.y);
 
-  for (const auto & traj_poly : decimated_traj_polys) {
-    const double current_dist_to_traj_poly = bg::distance(traj_poly, boost_point);
-    dist_to_traj_poly = std::min(dist_to_traj_poly, current_dist_to_traj_poly);
-  }
-
+  const double dist_to_traj_poly = std::min_element(decimated_traj_polys.begin(), decimated_traj_polys.end(), [](const autoware_utils::Polygon2d& polygon_1, const autoware_utils::Polygon2d& polygon_2) {
+    const double dist_to_traj_polygon_1 = bg::distance(polygon_1, boost_point);
+    const double dist_to_traj_polygon_2 = bg::distance(polygon_2, boost_point);
+    
+    return dist_to_traj_polygon_1 < dist_to_traj_polygon_2;
+  });
   return dist_to_traj_poly;
 }
 
