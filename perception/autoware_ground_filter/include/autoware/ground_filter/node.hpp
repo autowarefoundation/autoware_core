@@ -37,10 +37,17 @@
 #include <tf2/transform_datatypes.h>
 
 // PCL includes
+#if __has_include(<message_filters/subscriber.hpp>)
+#include <message_filters/subscriber.hpp>
+#include <message_filters/sync_policies/approximate_time.hpp>
+#include <message_filters/sync_policies/exact_time.hpp>
+#include <message_filters/synchronizer.hpp>
+#else
 #include <message_filters/subscriber.h>
 #include <message_filters/sync_policies/approximate_time.h>
 #include <message_filters/sync_policies/exact_time.h>
 #include <message_filters/synchronizer.h>
+#endif
 
 // Include tier4 autoware utils
 #include <autoware_utils_debug/debug_publisher.hpp>
@@ -82,7 +89,7 @@ class GroundFilterComponent : public rclcpp::Node
 private:
   // classified point label
   // (0: not classified, 1: ground, 2: not ground, 3: follow previous point,
-  //  4: unkown(currently not used), 5: virtual ground)
+  //  4: unknown(currently not used), 5: virtual ground)
   enum class PointLabel : uint16_t {
     INIT = 0,
     GROUND,

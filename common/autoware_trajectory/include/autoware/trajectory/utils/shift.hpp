@@ -22,11 +22,13 @@
 #include <tl_expected/expected.hpp>
 
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace autoware::experimental::trajectory
 {
 
+// TODO(yhisaki): Add InverseShiftInterval which represents the shift from backward to forward.
 /**
  * @struct ShiftInterval
  * @brief Represents an interval for shifting a trajectory.
@@ -45,10 +47,7 @@ struct ShiftInterval
 struct ShiftParameters
 {
   ShiftParameters(
-    const double velocity_, const double lateral_acc_limit_, const double longitudinal_acc_ = 0.0)
-  : velocity(velocity_), lateral_acc_limit(lateral_acc_limit_), longitudinal_acc(longitudinal_acc_)
-  {
-  }
+    const double velocity, const double lateral_acc_limit, const double longitudinal_acc = 0.0);
   const double velocity;           ///< Velocity parameter for the shift.
   const double lateral_acc_limit;  ///< Lateral acceleration limit for the shift.
   const double longitudinal_acc;   ///< Longitudinal acceleration parameter for the shift.
@@ -62,12 +61,17 @@ struct ShiftError
 namespace detail
 {
 
-struct ShiftElementWithInterval
+struct ShiftElement
 {
-  const std::vector<double> lon_bases;
-  const std::vector<double> lat_shifts;
-  const size_t shift_start_index;
-  const size_t shift_end_index;
+  std::vector<double> lon_bases;
+  std::vector<double> lat_shifts;
+
+  // Constructor
+  explicit ShiftElement(const std::vector<double> & lon_bases)
+  : lon_bases(lon_bases), lat_shifts(lon_bases.size(), 0.0)
+  {
+  }
+  size_t size() const { return lon_bases.size(); }
 };
 
 /**
@@ -79,19 +83,11 @@ struct ShiftElementWithInterval
  * @return pair of two vector<double> indicating the new base (original base + additional shift
  * base) and shift value at each base if feasible, otherwise ShiftError type
  */
-tl::expected<ShiftElementWithInterval, ShiftError> shift_impl(
-  const std::vector<double> & reference_bases, const ShiftInterval & shift_interval,
+tl::expected<ShiftElement, ShiftError> shift_impl(
+  ShiftElement shift_element, const ShiftInterval & shift_interval,
   const ShiftParameters & shift_parameters);
 
 }  // namespace detail
-
-template <typename PointType>
-struct ShiftedTrajectory
-{
-  trajectory::Trajectory<PointType> trajectory;
-  const double shift_start_s;
-  const double shift_end_s;
-};
 
 /**
  * @brief Shifts a trajectory based on a single shift interval and parameters.
@@ -102,35 +98,29 @@ struct ShiftedTrajectory
  * @return The shifted trajectory.
  */
 template <typename PointType>
-tl::expected<ShiftedTrajectory<PointType>, ShiftError> shift(
+tl::expected<trajectory::Trajectory<PointType>, ShiftError> shift(
   const trajectory::Trajectory<PointType> & reference_trajectory,
-  const ShiftInterval & shift_interval, const ShiftParameters & shift_parameters)
+  const std::vector<ShiftInterval> & shift_intervals, const ShiftParameters & shift_parameters)
 {
-  if (shift_parameters.velocity <= 0.0) {
-    return tl::unexpected{ShiftError{"only positive longitudinal velocity is supported"}};
-  }
-  if (
-    reference_trajectory.start() > shift_interval.start ||
-    reference_trajectory.end() < shift_interval.end) {
-    return tl::unexpected{ShiftError{"given shift interval is out of trajectory range"}};
-  }
-  const double shift_arc_length = std::abs(shift_interval.end - shift_interval.start);
-  if (shift_arc_length <= 0.0) {
-    return tl::unexpected{ShiftError{"only forward shift is supported"}};
+  if (shift_parameters.velocity < 0.0) {
+    return tl::unexpected{ShiftError{"Longitudinal velocity must be positive."}};
   }
 
-  const auto try_shift_bases = detail::shift_impl(
-    reference_trajectory.get_underlying_bases(), shift_interval, shift_parameters);
-  if (!try_shift_bases) {
-    return tl::unexpected{try_shift_bases.error()};
+  detail::ShiftElement shift_element{reference_trajectory.get_underlying_bases()};
+
+  for (const ShiftInterval & shift_interval : shift_intervals) {
+    auto try_shift = detail::shift_impl(shift_element, shift_interval, shift_parameters);
+    if (!try_shift) {
+      return tl::unexpected{try_shift.error()};
+    }
+    shift_element = std::move(try_shift.value());
   }
-  const auto & [shift_bases, shift_values, shift_start_index, shift_end_index] =
-    try_shift_bases.value();
 
   // Apply shift.
   std::vector<PointType> shifted_points;
-  shifted_points.reserve(shift_bases.size());
-  for (const auto [base, shift_length] : ranges::views::zip(shift_bases, shift_values)) {
+  shifted_points.reserve(shift_element.lon_bases.size());
+  for (const auto [base, shift_length] :
+       ranges::views::zip(shift_element.lon_bases, shift_element.lat_shifts)) {
     shifted_points.emplace_back(reference_trajectory.compute(base));
     const double azimuth = reference_trajectory.azimuth(base);
     detail::to_point(shifted_points.back()).x += std::sin(azimuth) * shift_length;
@@ -143,10 +133,23 @@ tl::expected<ShiftedTrajectory<PointType>, ShiftError> shift(
     // addition to reference_bases, which is enough for cubic spline
     return tl::unexpected{ShiftError{"Failed to build cubic spline for shift calculation."}};
   }
-  const auto shifted_trajectory_bases = shifted_trajectory.get_underlying_bases();
-  return ShiftedTrajectory<PointType>{
-    shifted_trajectory, shifted_trajectory_bases.at(shift_start_index),
-    shifted_trajectory_bases.at(shift_end_index)};
+  return shifted_trajectory;
+}
+
+/**
+ * @brief Shifts a trajectory based on a single shift interval and parameters.
+ * @tparam PointType The type of points in the trajectory.
+ * @param reference_trajectory The reference trajectory to be shifted.
+ * @param shift_interval The interval for shifting.
+ * @param shift_parameters The parameters for the shift.
+ * @return The shifted trajectory.
+ */
+template <typename PointType>
+tl::expected<trajectory::Trajectory<PointType>, ShiftError> shift(
+  const trajectory::Trajectory<PointType> & reference_trajectory,
+  const ShiftInterval & shift_interval, const ShiftParameters & shift_parameters)
+{
+  return shift(reference_trajectory, std::vector<ShiftInterval>{shift_interval}, shift_parameters);
 }
 
 }  // namespace autoware::experimental::trajectory
