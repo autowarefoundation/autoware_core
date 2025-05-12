@@ -2,6 +2,22 @@
 Changelog for package autoware_lanelet2_utils
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.1.0 (2025-05-01)
+------------------
+* refactor(autoware_lanelet2_utils)!: move everything to namespace experimental (`#372 <https://github.com/autowarefoundation/autoware_core/issues/372>`_)
+* refactor(autoware_lanelet2_utils): rewrite using modern C++ without API breakage (`#347 <https://github.com/autowarefoundation/autoware_core/issues/347>`_)
+  * refactor using modern c++
+  * precommit
+  * fix
+  * fix
+  * precommit
+  * use std::strcmp
+  * precommit
+  * Revert "refactor using modern c++"
+  This reverts commit 3f7e4953c08f5237dc3bc75db3d896cc9c0640a3.
+  ---------
+* Contributors: Mamoru Sobue, Yutaka Kondo
+
 1.0.0 (2025-03-31)
 ------------------
 

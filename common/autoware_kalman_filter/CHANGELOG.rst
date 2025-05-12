@@ -2,6 +2,28 @@
 Changelog for package autoware_kalman_filter
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.1.0 (2025-05-01)
+------------------
+* fix(autoware_kalman_filter): fixed clang-tidy error (`#379 <https://github.com/autowarefoundation/autoware_core/issues/379>`_)
+  * fix(autoware_kalman_filter): fixed clang-tidy error
+  * remove comment
+  ---------
+* refactor(autoware_kalman_filter): rewrite using modern C++ without API breakage (`#346 <https://github.com/autowarefoundation/autoware_core/issues/346>`_)
+  * refactor using modern c++
+  * remove ctor/dtor
+  * precommit
+  * use eigen methods
+  * Update common/autoware_kalman_filter/include/autoware/kalman_filter/kalman_filter.hpp
+  ---------
+* chore(autoware_kalman_filter): add maintainer (`#381 <https://github.com/autowarefoundation/autoware_core/issues/381>`_)
+  * chore(autoware_kalman_filter): add maintainer
+  * removed the maintainer with an invalid email address.
+  * added members of the Localization / Mapping team as maintainers.
+  * removed the duplicate entry.
+  * fixed the deletion as the wrong entry was removed
+  ---------
+* Contributors: RyuYamamoto, Yutaka Kondo
+
 1.0.0 (2025-03-31)
 ------------------
 

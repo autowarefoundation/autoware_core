@@ -52,7 +52,7 @@ bool StopLineModule::modifyPathVelocity(PathWithLaneId * path)
   }
 
   auto [ego_s, stop_point] =
-    getEgoAndStopPoint(*trajectory, planner_data_->current_odometry->pose, state_);
+    getEgoAndStopPoint(*trajectory, *path, planner_data_->current_odometry->pose, state_);
 
   if (!stop_point) {
     return true;
@@ -81,8 +81,8 @@ bool StopLineModule::modifyPathVelocity(PathWithLaneId * path)
 }
 
 std::pair<double, std::optional<double>> StopLineModule::getEgoAndStopPoint(
-  const Trajectory & trajectory, const geometry_msgs::msg::Pose & ego_pose,
-  const State & state) const
+  const Trajectory & trajectory, const PathWithLaneId & path,
+  const geometry_msgs::msg::Pose & ego_pose, const State & state) const
 {
   const double ego_s = autoware::experimental::trajectory::closest(trajectory, ego_pose);
   std::optional<double> stop_point_s;
@@ -90,8 +90,8 @@ std::pair<double, std::optional<double>> StopLineModule::getEgoAndStopPoint(
   switch (state) {
     case State::APPROACH: {
       const double base_link2front = planner_data_->vehicle_info_.max_longitudinal_offset_m;
-      const LineString2d stop_line = planning_utils::extendLine(
-        stop_line_[0], stop_line_[1], planner_data_->stop_line_extend_length);
+      const LineString2d stop_line = planning_utils::extendSegmentToBounds(
+        lanelet::utils::to2D(stop_line_).basicLineString(), path.left_bound, path.right_bound);
 
       // Calculate intersection with stop line
       const auto trajectory_stop_line_intersection =
