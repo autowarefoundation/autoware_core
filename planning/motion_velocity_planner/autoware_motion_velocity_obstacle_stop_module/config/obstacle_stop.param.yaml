@@ -11,7 +11,7 @@
         min_behavior_stop_margin: 3.0 # [m]
 
         hold_stop_velocity_threshold: 0.01 # The maximum ego velocity to hold stopping [m/s]
-        hold_stop_distance_threshold: 0.3 # The ego keeps stopping if the distance to stop changes within the threshold [m]
+        hold_stop_distance_threshold: 1.0 # The ego keeps stopping if the distance to stop changes within the threshold [m]
 
         stop_on_curve:
           enable_approaching: false
