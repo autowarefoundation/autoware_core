@@ -16,7 +16,7 @@
 #define AUTOWARE__BEHAVIOR_VELOCITY_PLANNER_COMMON__UTILIZATION__ARC_LANE_UTIL_HPP_
 
 #include <autoware/behavior_velocity_planner_common/utilization/boost_geometry_helper.hpp>
-#include <autoware_utils/geometry/geometry.hpp>
+#include <autoware_utils_geometry/geometry.hpp>
 
 #include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
 
@@ -49,7 +49,9 @@ double calcSignedDistance(
   const geometry_msgs::msg::Pose & p1, const geometry_msgs::msg::Point & p2);
 
 // calculate one collision point between the line (from p1 to p2) and the line (from p3 to p4)
-std::optional<geometry_msgs::msg::Point> checkCollision(
+[[deprecated(
+  "Please use autoware_utils_geometry::intersect")]] std::optional<geometry_msgs::msg::Point>
+checkCollision(
   const geometry_msgs::msg::Point & p1, const geometry_msgs::msg::Point & p2,
   const geometry_msgs::msg::Point & p3, const geometry_msgs::msg::Point & p4);
 
@@ -63,7 +65,8 @@ std::optional<PathIndexWithPoint> findCollisionSegment(
     const auto & p2 =
       autoware_utils::get_point(path.points.at(i + 1));  // Point after collision point
 
-    const auto collision_point = checkCollision(p1, p2, stop_line_p1, stop_line_p2);
+    const auto collision_point =
+      autoware_utils_geometry::intersect(p1, p2, stop_line_p1, stop_line_p2);
 
     if (collision_point) {
       return std::make_pair(i, collision_point.value());
