@@ -17,6 +17,7 @@
 #include <autoware/motion_utils/distance/distance.hpp>
 #include <autoware/motion_utils/marker/virtual_wall_marker_creator.hpp>
 #include <autoware/motion_utils/trajectory/conversion.hpp>
+#include <autoware/motion_utils/trajectory/interpolation.hpp>
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_utils_rclcpp/parameter.hpp>
@@ -853,7 +854,19 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::plan_stop(
       planner_data, traj_points, stop_obstacle, dist_to_bumper, ego_segment_idx,
       dist_to_collide_on_ref_traj);
 
-    path_length_buffer_.update_buffer(new_desired_stop_margin, clock_);
+    const auto arc_length_along_trajectory = [&] (const geometry_msgs::msg::Pose pose) {
+      const auto pose_segment_idx =
+        planner_data->find_segment_index(traj_points, pose);
+      const double pose_arc_length = 
+        autoware::motion_utils::calcSignedArcLength(traj_points, 0, pose_segment_idx);
+
+      return pose_arc_length;
+    };
+
+    const geometry_msgs::msg::Pose new_desired_stop_pose = 
+          autoware::motion_utils::calcInterpolatedPose(traj_points, new_desired_stop_margin);
+
+    path_length_buffer_.update_buffer(new_desired_stop_pose, new_desired_stop_margin, arc_length_along_trajectory, clock_);
     // calculate desired stop margin
     const std::optional<double> buffered_stop_margin =
       path_length_buffer_.get_nearest_active_item();
@@ -922,7 +935,7 @@ double ObstacleStopModule::calc_desired_stop_margin(
       // Use terminal margin (terminal_stop_margin) for obstacle stop
       return stop_planning_param_.terminal_stop_margin;
     } else if ((v_obs * v_ego < 0)) {
-      const double a_ego = common_param_.limit_max_accel;
+      const double a_ego = stop_planning_param_.effective_deceleration_opposing_traffic;
       const double bumper_to_bumper_distance = (dist_to_collide_on_ref_traj - dist_to_bumper);
 
       const double braking_distance = v_ego * v_ego / (2 * a_ego);

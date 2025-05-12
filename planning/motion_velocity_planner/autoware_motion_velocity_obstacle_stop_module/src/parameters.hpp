@@ -127,6 +127,7 @@ struct StopPlanningParam
   double stop_margin{};
   double terminal_stop_margin{};
   double min_behavior_stop_margin{};
+  double effective_deceleration_opposing_traffic{};
   double additional_stop_margin_opposing_traffic{};
   double hold_stop_velocity_threshold{};
   double hold_stop_distance_threshold{};
@@ -156,6 +157,8 @@ struct StopPlanningParam
       get_or_declare_parameter<double>(node, "obstacle_stop.stop_planning.terminal_stop_margin");
     min_behavior_stop_margin = get_or_declare_parameter<double>(
       node, "obstacle_stop.stop_planning.min_behavior_stop_margin");
+    effective_deceleration_opposing_traffic = get_or_declare_parameter<double>(
+      node, "obstacle_stop.stop_planning.effective_deceleration_opposing_traffic");
     additional_stop_margin_opposing_traffic = get_or_declare_parameter<double>(
       node, "obstacle_stop.stop_planning.additional_stop_margin_opposing_traffic");
     hold_stop_velocity_threshold = get_or_declare_parameter<double>(

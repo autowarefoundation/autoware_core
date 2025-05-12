@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include "autoware_utils/geometry/geometry.hpp"
+
 #include <chrono>
 #include <cmath>
 #include <functional>
@@ -26,12 +28,13 @@ namespace autoware::motion_velocity_planner::utils
 
 struct BufferedStopDistance
 {
+  geometry_msgs::msg::Pose stop_pose;
   double arc_length;
   rclcpp::Time start_time;
   bool is_active;
 
-  BufferedStopDistance(double arc, rclcpp::Time time, bool active = false)
-  : arc_length(arc), start_time(time), is_active(active)
+  BufferedStopDistance(geometry_msgs::msg::Pose pose, double arc, rclcpp::Time time, bool active = false)
+  : stop_pose(pose), arc_length(arc), start_time(time), is_active(active)
   {
   }
 };
@@ -69,9 +72,9 @@ public:
     return nearest_item->arc_length;
   }
 
-  void update_buffer(const double pose_arc_length, const rclcpp::Clock::SharedPtr & clock)
+  void update_buffer(const geometry_msgs::msg::Pose& stop_pose, const double stop_pose_arc_length, std::function<double(const geometry_msgs::msg::Pose&)> arc_length_lambda, const rclcpp::Clock::SharedPtr & clock)
   {
-    rclcpp::Time clock_now = clock->now();
+    const rclcpp::Time clock_now = clock->now();
 
     // Remove items that should be removed
     buffer_.erase(
@@ -79,20 +82,25 @@ public:
         buffer_.begin(), buffer_.end(),
         [&](const BufferedStopDistance & buffered_item) {
           const auto duration = (clock_now - buffered_item.start_time).seconds();
+
+          const double buffered_item_arc_length = arc_length_lambda(buffered_item.stop_pose);
+
           return (buffered_item.is_active && duration > min_off_duration_) ||
                  (!buffered_item.is_active &&
-                  std::abs(buffered_item.arc_length - pose_arc_length) > update_distance_th_);
+                  std::abs(buffered_item_arc_length - stop_pose_arc_length) > update_distance_th_);
         }),
       buffer_.end());
 
     static constexpr double eps = 1e-3;
     if (buffer_.empty()) {
-      buffer_.emplace_back(pose_arc_length, clock_now, min_on_duration_ < eps);
+      buffer_.emplace_back(stop_pose, stop_pose_arc_length, clock_now, min_on_duration_ < eps);
       return;
     }
 
     // Update the state of remaining items
     for (auto & buffered_item : buffer_) {
+      const double buffered_item_arc_length = arc_length_lambda(buffered_item.stop_pose);
+      buffered_item.arc_length = buffered_item_arc_length;
       if (
         !buffered_item.is_active &&
         (clock_now - buffered_item.start_time).seconds() > min_on_duration_) {
@@ -104,20 +112,20 @@ public:
     auto nearest_prev_pose_it = std::min_element(
       buffer_.begin(), buffer_.end(),
       [&](const BufferedStopDistance & a, const BufferedStopDistance & b) {
-        const auto dist_a = std::abs(a.arc_length - pose_arc_length);
-        const auto dist_b = std::abs(b.arc_length - pose_arc_length);
+        const auto dist_a = std::abs(a.arc_length - stop_pose_arc_length);
+        const auto dist_b = std::abs(b.arc_length - stop_pose_arc_length);
         return dist_a < dist_b;
       });
 
     if (nearest_prev_pose_it == buffer_.end()) {
-      buffer_.emplace_back(pose_arc_length, clock_now, min_on_duration_ < eps);
+      buffer_.emplace_back(stop_pose, stop_pose_arc_length, clock_now, min_on_duration_ < eps);
       return;
     }
 
-    const double min_relative_dist = nearest_prev_pose_it->arc_length - pose_arc_length;
+    const double min_relative_dist = nearest_prev_pose_it->arc_length - stop_pose_arc_length;
 
     if (min_relative_dist > 0) {
-      nearest_prev_pose_it->arc_length = pose_arc_length;
+      nearest_prev_pose_it->arc_length = stop_pose_arc_length;
     }
 
     if (nearest_prev_pose_it->is_active) {
