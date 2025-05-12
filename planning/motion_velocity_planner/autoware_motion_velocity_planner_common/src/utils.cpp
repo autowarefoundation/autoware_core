@@ -210,7 +210,6 @@ double get_dist_to_traj_poly(
   const auto boost_point = bg::model::d2::point_xy<double>(point.x, point.y);
 
   double dist_to_traj_poly = std::numeric_limits<double>::infinity();
-  ;
 
   for (const auto & decimated_traj_poly : decimated_traj_polys) {
     const double current_dist_to_traj_poly = bg::distance(decimated_traj_poly, boost_point);
