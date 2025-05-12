@@ -2,6 +2,9 @@
 Changelog for package autoware_planning_factor_interface
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.1.0 (2025-05-01)
+------------------
+
 1.0.0 (2025-03-31)
 ------------------
 * fix(planning_factor_interface): set control point data independently (`#291 <https://github.com/autowarefoundation/autoware_core/issues/291>`_)

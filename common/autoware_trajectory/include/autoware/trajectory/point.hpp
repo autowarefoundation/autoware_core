@@ -84,10 +84,6 @@ public:
    */
   virtual std::vector<double> get_underlying_bases() const;
 
-  double start() const { return start_; }
-
-  double end() const { return end_; }
-
   /**
    * @brief Get the length of the trajectory
    * @return Length of the trajectory
