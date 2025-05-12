@@ -2,6 +2,17 @@
 Changelog for package autoware_localization_util
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.1.0 (2025-05-01)
+------------------
+* test(autoware_localization_util): add tests (`#308 <https://github.com/autowarefoundation/autoware_core/issues/308>`_)
+  * test(autoware_localization_util): add tests for missed lines
+  * style(pre-commit): autofix
+  * fix(autoware_localization_util): fix pre-commit failure
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* Contributors: NorahXiong
+
 1.0.0 (2025-03-31)
 ------------------
 * fix(autoware_localization_util): add missing test dependencies to autoware_localization_util (`#293 <https://github.com/autowarefoundation/autoware_core/issues/293>`_)
