@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include "autoware/trajectory/forward.hpp"
 #include "autoware/trajectory/path_point_with_lane_id.hpp"
 #include "autoware/trajectory/utils/closest.hpp"
 #include "autoware/trajectory/utils/crossed.hpp"
@@ -19,6 +20,8 @@
 #include "autoware_utils_geometry/geometry.hpp"
 #include "lanelet2_core/primitives/LineString.h"
 
+#include <geometry_msgs/msg/detail/point__struct.hpp>
+#include <geometry_msgs/msg/detail/pose__struct.hpp>
 #include <geometry_msgs/msg/point.hpp>
 
 #include <gtest/gtest.h>
@@ -26,7 +29,8 @@
 #include <cmath>
 #include <utility>
 #include <vector>
-
+namespace
+{
 using Trajectory = autoware::experimental::trajectory::Trajectory<
   autoware_internal_planning_msgs::msg::PathPointWithLaneId>;
 
@@ -38,6 +42,25 @@ autoware_internal_planning_msgs::msg::PathPointWithLaneId path_point_with_lane_i
   point.point.pose.position.y = y;
   point.lane_ids.emplace_back(lane_id);
   return point;
+}
+
+geometry_msgs::msg::Point point(double x, double y)
+{
+  geometry_msgs::msg::Point p;
+  p.x = x;
+  p.y = y;
+  return p;
+}
+}  // namespace
+TEST(TrajectoryCreatorTest, constructor)
+{
+  std::vector<geometry_msgs::msg::Point> points{
+    point(0.00, 0.00), point(0.81, 1.68), point(1.65, 2.98), point(3.30, 4.01)};
+  auto trajectory =
+    autoware::experimental::trajectory::Trajectory<geometry_msgs::msg::Point>::Builder{}.build(
+      points);
+  ASSERT_TRUE(trajectory);
+  autoware::experimental::trajectory::Trajectory<geometry_msgs::msg::Pose> trj_pose(*trajectory);
 }
 
 TEST(TrajectoryCreatorTest, create)

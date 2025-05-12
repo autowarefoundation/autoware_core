@@ -16,6 +16,8 @@
 #include "autoware/trajectory/point.hpp"
 #include "autoware/trajectory/utils/shift.hpp"
 
+#include "geometry_msgs/msg/detail/point__struct.hpp"
+
 #include <gtest/gtest.h>
 
 #include <vector>
@@ -48,8 +50,14 @@ TEST(ShiftInvalid, error_shift_start_is_less_than_end)
     lateral_acc_limit,
   };
 
-  auto shifted_trajectory_info = shift(*trajectory, shift_interval, shift_parameter);
-  ASSERT_TRUE(!shifted_trajectory_info);
+  auto shifted_trajectory = shift(*trajectory, shift_interval, shift_parameter);
+  ASSERT_TRUE(shifted_trajectory);
+
+  geometry_msgs::msg::Point start_point = shifted_trajectory->compute(0.0);
+  geometry_msgs::msg::Point end_point = shifted_trajectory->compute(shifted_trajectory->length());
+
+  EXPECT_LT(start_point.y, 0.0);
+  EXPECT_NEAR(end_point.y, -lateral_shift, 1e-3);
 }
 
 TEST(ShiftInvalid, error_shift_end_is_less_than_end)
@@ -69,8 +77,14 @@ TEST(ShiftInvalid, error_shift_end_is_less_than_end)
     lateral_acc_limit,
   };
 
-  auto shifted_trajectory_info = shift(*trajectory, shift_interval, shift_parameter);
-  ASSERT_TRUE(!shifted_trajectory_info);
+  auto shifted_trajectory = shift(*trajectory, shift_interval, shift_parameter);
+  ASSERT_TRUE(shifted_trajectory);
+
+  geometry_msgs::msg::Point start_point = shifted_trajectory->compute(0.0);
+  geometry_msgs::msg::Point end_point = shifted_trajectory->compute(shifted_trajectory->length());
+
+  EXPECT_NEAR(start_point.y, 0.0, 1e-3);
+  EXPECT_GT(end_point.y, -lateral_shift);
 }
 
 TEST(ShiftInvalid, error_interval_is_backward)
@@ -90,8 +104,8 @@ TEST(ShiftInvalid, error_interval_is_backward)
     lateral_acc_limit,
   };
 
-  auto shifted_trajectory_info = shift(*trajectory, shift_interval, shift_parameter);
-  ASSERT_TRUE(!shifted_trajectory_info);
+  auto shifted_trajectory = shift(*trajectory, shift_interval, shift_parameter);
+  ASSERT_TRUE(!shifted_trajectory);
 }
 
 TEST(ShiftInvalid, error_longitudinal_velocity_is_negative)
@@ -139,12 +153,10 @@ TEST(ShiftSuccess, shift_end_meets_given_lateral_longitudinal_distance_4points)
   auto shifted_trajectory_info = shift(*trajectory, shift_interval, shift_parameter);
   ASSERT_TRUE(shifted_trajectory_info);
 
-  const auto & [shifted_trajectory, shift_start_s, shift_end_s] = shifted_trajectory_info.value();
+  const auto & shifted_trajectory = shifted_trajectory_info.value();
 
-  EXPECT_FLOAT_EQ(shifted_trajectory.compute(shift_start_s).x, start_s);
-  EXPECT_FLOAT_EQ(shifted_trajectory.compute(shift_start_s).y, 0.0);
-  EXPECT_FLOAT_EQ(shifted_trajectory.compute(shift_end_s).x, shift_start_s + longitudinal_dist);
-  EXPECT_FLOAT_EQ(shifted_trajectory.compute(shift_end_s).y, -lateral_shift);
+  EXPECT_FLOAT_EQ(shifted_trajectory.compute(0.0).y, 0.0);
+  EXPECT_FLOAT_EQ(shifted_trajectory.compute(shifted_trajectory.length()).y, -lateral_shift);
 }
 
 TEST(ShiftSuccess, shift_end_meets_given_lateral_longitudinal_distance_6points)
@@ -170,13 +182,37 @@ TEST(ShiftSuccess, shift_end_meets_given_lateral_longitudinal_distance_6points)
 
   auto shifted_trajectory_info = shift(*trajectory, shift_interval, shift_parameter);
   ASSERT_TRUE(shifted_trajectory_info);
+}
 
-  const auto & [shifted_trajectory, shift_start_s, shift_end_s] = shifted_trajectory_info.value();
+TEST(ShiftInvalid, multiple_shift)
+{
+  std::vector<geometry_msgs::msg::Point> points = {point(0.0, 0.0),  point(3.0, 0.0),
+                                                   point(6.0, 0.0),  point(9.0, 0.0),
+                                                   point(12.0, 0.0), point(18.0, 0.0)};
+  auto trajectory = Trajectory<geometry_msgs::msg::Point>::Builder{}.build(points);
 
-  EXPECT_FLOAT_EQ(shifted_trajectory.compute(shift_start_s).x, start_s);
-  EXPECT_FLOAT_EQ(shifted_trajectory.compute(shift_start_s).y, 0.0);
-  EXPECT_FLOAT_EQ(shifted_trajectory.compute(shift_end_s).x, shift_start_s + longitudinal_dist);
-  EXPECT_FLOAT_EQ(shifted_trajectory.compute(shift_end_s).y, -lateral_shift);
+  const double longitudinal_velocity = 2.77;
+  const double lateral_shift = 2.5;
+  const double lateral_acc_limit = 5.0;
+
+  const ShiftInterval shift_interval1{1.0, 9.0, lateral_shift};
+  const ShiftInterval shift_interval2{9.0, 17.0, -lateral_shift};
+  const ShiftParameters shift_parameter{
+    longitudinal_velocity,
+    lateral_acc_limit,
+  };
+
+  auto shifted_trajectory = shift(*trajectory, {shift_interval1, shift_interval2}, shift_parameter);
+  ASSERT_TRUE(shifted_trajectory);
+
+  geometry_msgs::msg::Point start_point = shifted_trajectory->compute(0.0);
+  geometry_msgs::msg::Point middle_point =
+    shifted_trajectory->compute(shifted_trajectory->length() / 2.0);
+  geometry_msgs::msg::Point end_point = shifted_trajectory->compute(shifted_trajectory->length());
+
+  EXPECT_NEAR(start_point.y, 0.0, 1e-3);
+  EXPECT_NEAR(middle_point.y, -lateral_shift, 1e-3);
+  EXPECT_NEAR(end_point.y, 0.0, 1e-3);
 }
 
 }  // namespace autoware::experimental::trajectory

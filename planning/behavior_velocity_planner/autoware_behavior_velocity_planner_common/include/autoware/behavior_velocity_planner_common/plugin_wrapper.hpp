@@ -28,6 +28,10 @@ class PluginWrapper : public PluginInterface
 {
 public:
   void init(rclcpp::Node & node) override { scene_manager_ = std::make_unique<T>(node); }
+  RequiredSubscriptionInfo getRequiredSubscriptions() override
+  {
+    return scene_manager_->getRequiredSubscriptions();
+  };
   void plan(autoware_internal_planning_msgs::msg::PathWithLaneId * path) override
   {
     scene_manager_->plan(path);

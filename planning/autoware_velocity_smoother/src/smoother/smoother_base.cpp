@@ -19,8 +19,9 @@
 #include "autoware/motion_utils/trajectory/trajectory.hpp"
 #include "autoware/velocity_smoother/resample.hpp"
 #include "autoware/velocity_smoother/trajectory_utils.hpp"
-#include "autoware_utils/geometry/geometry.hpp"
-#include "autoware_utils/math/unit_conversion.hpp"
+
+#include <autoware_utils_geometry/geometry.hpp>
+#include <autoware_utils_math/unit_conversion.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -63,7 +64,7 @@ TrajectoryPoints applyPreProcess(
 }  // namespace
 
 SmootherBase::SmootherBase(
-  rclcpp::Node & node, const std::shared_ptr<autoware_utils::TimeKeeper> time_keeper)
+  rclcpp::Node & node, const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper)
 : time_keeper_(time_keeper)
 {
   auto & p = base_param_;
@@ -144,7 +145,7 @@ TrajectoryPoints SmootherBase::applyLateralAccelerationFilter(
   [[maybe_unused]] const double a0, [[maybe_unused]] const bool enable_smooth_limit,
   const bool use_resampling, const double input_points_interval) const
 {
-  autoware_utils::ScopedTimeTrack st(__func__, *time_keeper_);
+  autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
 
   if (input.size() < 3) {
     return input;  // cannot calculate lateral acc. do nothing.
@@ -214,7 +215,7 @@ TrajectoryPoints SmootherBase::applySteeringRateLimit(
   const TrajectoryPoints & input, const bool use_resampling,
   const double input_points_interval) const
 {
-  autoware_utils::ScopedTimeTrack st(__func__, *time_keeper_);
+  autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
 
   if (input.size() < 3) {
     return input;  // cannot calculate the desired velocity. do nothing.
@@ -267,14 +268,14 @@ TrajectoryPoints SmootherBase::applySteeringRateLimit(
     }
 
     const auto steer_rate = steer_rate_arr.at(i);
-    if (steer_rate < autoware_utils::deg2rad(base_param_.max_steering_angle_rate)) {
+    if (steer_rate < autoware_utils_math::deg2rad(base_param_.max_steering_angle_rate)) {
       continue;
     }
 
     const auto mean_vel =
       (output.at(i).longitudinal_velocity_mps + output.at(i + 1).longitudinal_velocity_mps) / 2.0;
     const auto target_mean_vel =
-      mean_vel * (autoware_utils::deg2rad(base_param_.max_steering_angle_rate) / steer_rate);
+      mean_vel * (autoware_utils_math::deg2rad(base_param_.max_steering_angle_rate) / steer_rate);
 
     for (size_t k = 0; k < 2; k++) {
       auto & velocity = output.at(i + k).longitudinal_velocity_mps;
