@@ -33,7 +33,8 @@ struct BufferedStopDistance
   rclcpp::Time start_time;
   bool is_active;
 
-  BufferedStopDistance(geometry_msgs::msg::Pose pose, double arc, rclcpp::Time time, bool active = false)
+  BufferedStopDistance(
+    geometry_msgs::msg::Pose pose, double arc, rclcpp::Time time, bool active = false)
   : stop_pose(pose), arc_length(arc), start_time(time), is_active(active)
   {
   }
@@ -72,7 +73,10 @@ public:
     return nearest_item->arc_length;
   }
 
-  void update_buffer(const geometry_msgs::msg::Pose& stop_pose, const double stop_pose_arc_length, std::function<double(const geometry_msgs::msg::Pose&)> arc_length_lambda, const rclcpp::Clock::SharedPtr & clock)
+  void update_buffer(
+    const geometry_msgs::msg::Pose & stop_pose, const double stop_pose_arc_length,
+    std::function<double(const geometry_msgs::msg::Pose &)> arc_length_lambda,
+    const rclcpp::Clock::SharedPtr & clock)
   {
     const rclcpp::Time clock_now = clock->now();
 
