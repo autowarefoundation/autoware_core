@@ -31,7 +31,7 @@ namespace autoware::object_recognition_utils
 {
 using autoware_utils_geometry::Polygon2d;
 // minimum area to avoid division by zero
-static const double MIN_AREA = 1e-6;
+static constexpr double MIN_AREA = 1e-6;
 
 inline double getConvexShapeArea(const Polygon2d & source_polygon, const Polygon2d & target_polygon)
 {
@@ -66,7 +66,8 @@ inline double getUnionArea(const Polygon2d & source_polygon, const Polygon2d & t
 }
 
 template <class T1, class T2>
-double get2dIoU(const T1 source_object, const T2 target_object, const double min_union_area = 0.01)
+double get2dIoU(
+  const T1 & source_object, const T2 & target_object, const double min_union_area = 0.01)
 {
   const auto source_polygon = autoware_utils_geometry::to_polygon2d(source_object);
   if (boost::geometry::area(source_polygon) < MIN_AREA) return 0.0;
@@ -99,7 +100,7 @@ double get2dGeneralizedIoU(const T1 & source_object, const T2 & target_object)
 }
 
 template <class T1, class T2>
-double get2dPrecision(const T1 source_object, const T2 target_object)
+double get2dPrecision(const T1 & source_object, const T2 & target_object)
 {
   const auto source_polygon = autoware_utils_geometry::to_polygon2d(source_object);
   const double source_area = boost::geometry::area(source_polygon);
@@ -114,7 +115,7 @@ double get2dPrecision(const T1 source_object, const T2 target_object)
 }
 
 template <class T1, class T2>
-double get2dRecall(const T1 source_object, const T2 target_object)
+double get2dRecall(const T1 & source_object, const T2 & target_object)
 {
   const auto source_polygon = autoware_utils_geometry::to_polygon2d(source_object);
   if (boost::geometry::area(source_polygon) < MIN_AREA) return 0.0;
