@@ -2,6 +2,54 @@
 Changelog for package autoware_trajectory
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.1.0 (2025-05-01)
+------------------
+* fix(autoware_trajectory): avoid nan in align_orientation_with_trajectory_direction (`#398 <https://github.com/autowarefoundation/autoware_core/issues/398>`_)
+  * fix(autoware_trajectory): avoid nan in align_orientation_with_trajectory_direction
+  * tidy
+  * remove eps
+  ---------
+* chore(autoware_trajectory): relax the warning condition of boundary check (`#393 <https://github.com/autowarefoundation/autoware_core/issues/393>`_)
+  * chore(autoware_trajectory): relax the warning condition of boundary check
+  * tidy
+  ---------
+* feat(trajectory): define distance threshold and refine restore() without API breakage(in experimental) (`#376 <https://github.com/autowarefoundation/autoware_core/issues/376>`_)
+  * feat(trajectory): define distance threshold and refine restore
+  * fix spell
+  ---------
+* feat(autoware_trajectory): add get_contained_lane_ids function (`#369 <https://github.com/autowarefoundation/autoware_core/issues/369>`_)
+  * add get_contained_lane_ids
+  * add unit test
+  * remove assert
+  ---------
+* feat(trajectory): add pretty_build() function for Planning/Control component node (`#332 <https://github.com/autowarefoundation/autoware_core/issues/332>`_)
+* refactor(autoware_trajectory)!: move everything to namespace experimetal (`#371 <https://github.com/autowarefoundation/autoware_core/issues/371>`_)
+  refactor(autoware_trajectory)!: move everything to namespace experimental
+* feat(trajectory): improve shift function and their documents (`#337 <https://github.com/autowarefoundation/autoware_core/issues/337>`_)
+  * feat(trajectory): add populate function
+  * update curvature figure for approximation desc
+  * update align_orientation_with_trajectory_direction fig
+  * finished trajectory classes
+  * refactored shift
+  * add comment
+  * update error message
+  ---------
+* fix(autoware_trajectory): fix base_addition callback to work when Trajectory is moved (`#370 <https://github.com/autowarefoundation/autoware_core/issues/370>`_)
+* fix(autoware_trajectory): check vector size check before accessing (`#365 <https://github.com/autowarefoundation/autoware_core/issues/365>`_)
+  * fix(autoware_trajectory): check vector size check before accessing
+  * update
+  * minor fix
+  ---------
+  Co-authored-by: Mamoru Sobue <hilo.soblin@gmail.com>
+* feat(autoware_trajectory): improve performance of get_underlying_base  (`#298 <https://github.com/autowarefoundation/autoware_core/issues/298>`_)
+* feat(trajectory): add API documentation for trajectory class, add some utillity (`#295 <https://github.com/autowarefoundation/autoware_core/issues/295>`_)
+* feat(trajectory): add API description, nomenclature, illustration, rename functions to align with nomenclature (`#292 <https://github.com/autowarefoundation/autoware_core/issues/292>`_)
+  * feat(trajectory): add API description, nomenclature, illustration, rename functions to align with nomenclature
+  * resurrect get_internal_base
+  ---------
+* chore: include iostream and link yaml-cpp for Jazzy (`#351 <https://github.com/autowarefoundation/autoware_core/issues/351>`_)
+* Contributors: Mamoru Sobue, Tim Clephas, Yukinari Hisaki
+
 1.0.0 (2025-03-31)
 ------------------
 * feat(trajectory): remove default ctor and collect default setting in Builder (`#287 <https://github.com/autowarefoundation/autoware_core/issues/287>`_)
