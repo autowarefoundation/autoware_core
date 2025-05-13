@@ -24,6 +24,7 @@
 
 #include <boost/geometry/algorithms/correct.hpp>
 
+#include <lanelet2_core/Forward.h>
 #include <lanelet2_core/geometry/Polygon.h>
 #include <lanelet2_routing/RoutingGraph.h>
 #include <tf2/utils.h>
@@ -38,6 +39,7 @@
 #include <cmath>
 #include <iostream>
 #include <limits>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -753,6 +755,28 @@ lanelet::ConstLanelets getConstLaneletsFromIds(
     ret.push_back(ll);
   }
   return ret;
+}
+
+lanelet::Ids collectAdjacentLaneIds(
+  const int64_t lane_id, const std::shared_ptr<route_handler::RouteHandler> & route_handler)
+{
+  lanelet::Ids lane_ids;
+  lane_ids.push_back(lane_id);  // No cast needed since lane_id is already int64_t
+
+  const auto lanelet_map = route_handler->getLaneletMapPtr();
+  if (lanelet_map && lanelet_map->laneletLayer.exists(lane_id)) {
+    const auto current_lanelet = lanelet_map->laneletLayer.get(lane_id);
+    const auto next_lanelets = route_handler->getNextLanelets(current_lanelet);
+    const auto prev_lanelets = route_handler->getPreviousLanelets(current_lanelet);
+
+    for (const auto & next_lanelet : next_lanelets) {
+      lane_ids.push_back(next_lanelet.id());
+    }
+    for (const auto & prev_lanelet : prev_lanelets) {
+      lane_ids.push_back(prev_lanelet.id());
+    }
+  }
+  return lane_ids;
 }
 
 }  // namespace autoware::behavior_velocity_planner::planning_utils
