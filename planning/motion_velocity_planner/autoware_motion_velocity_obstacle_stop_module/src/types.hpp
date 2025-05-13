@@ -67,6 +67,7 @@ struct DebugData
   std::vector<std::shared_ptr<PlannerData::Object>> intentionally_ignored_obstacles;
   std::vector<StopObstacle> obstacles_to_stop;
   std::vector<Polygon2d> decimated_traj_polys;
+  std::vector<Polygon2d> object_polygons;
   MarkerArray stop_wall_marker;
 };
 
