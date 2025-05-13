@@ -35,23 +35,6 @@
 namespace autoware::behavior_velocity_planner
 {
 
-std::set<lanelet::Id> getConnectedLaneletIds(
-  const lanelet::Id & lanelet_id, const route_handler::RouteHandler & route_handler)
-{
-  std::set<lanelet::Id> connected_lanelet_ids;
-  const auto lanelet = route_handler.getLaneletsFromIds({lanelet_id}).front();
-  const auto next_lanelets = route_handler.getNextLanelets(lanelet);
-  const auto prev_lanelets = route_handler.getPreviousLanelets(lanelet);
-  connected_lanelet_ids.insert(lanelet_id);
-  for (const auto & next_lanelet : next_lanelets) {
-    connected_lanelet_ids.insert(next_lanelet.id());
-  }
-  for (const auto & prev_lanelet : prev_lanelets) {
-    connected_lanelet_ids.insert(prev_lanelet.id());
-  }
-  return connected_lanelet_ids;
-}
-
 bool hasIntersection(const std::set<lanelet::Id> & a, const std::set<lanelet::Id> & b)
 {
   for (const auto & id : a) {
