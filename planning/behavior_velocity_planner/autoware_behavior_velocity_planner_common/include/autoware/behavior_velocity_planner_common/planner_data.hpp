@@ -74,12 +74,27 @@ struct PlannerData
   double max_stop_jerk_threshold;
   double system_delay;
   double delay_response_time;
-  double stop_line_extend_length;
 
   bool isVehicleStopped(const double stop_duration = 0.0) const;
 
   std::optional<TrafficSignalStamped> getTrafficSignal(
     const lanelet::Id id, const bool keep_last_observation = false) const;
+};
+
+struct RequiredSubscriptionInfo
+{
+  bool traffic_signals{false};
+  bool predicted_objects{false};
+  bool occupancy_grid_map{false};
+  bool no_ground_pointcloud{false};
+
+  void concat(const RequiredSubscriptionInfo & required_subscriptions)
+  {
+    traffic_signals |= required_subscriptions.traffic_signals;
+    predicted_objects |= required_subscriptions.predicted_objects;
+    occupancy_grid_map |= required_subscriptions.occupancy_grid_map;
+    no_ground_pointcloud |= required_subscriptions.no_ground_pointcloud;
+  }
 };
 }  // namespace autoware::behavior_velocity_planner
 

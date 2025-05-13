@@ -15,9 +15,9 @@
 #ifndef AUTOWARE__MOTION_VELOCITY_PLANNER_COMMON__POLYGON_UTILS_HPP_
 #define AUTOWARE__MOTION_VELOCITY_PLANNER_COMMON__POLYGON_UTILS_HPP_
 
-#include "autoware_utils/geometry/boost_geometry.hpp"
 #include "autoware_vehicle_info_utils/vehicle_info_utils.hpp"
 
+#include <autoware_utils_geometry/boost_geometry.hpp>
 #include <rclcpp/time.hpp>
 
 #include "autoware_perception_msgs/msg/predicted_path.hpp"
@@ -39,8 +39,8 @@ namespace autoware::motion_velocity_planner
 namespace polygon_utils
 {
 namespace bg = boost::geometry;
-using autoware_utils::Point2d;
-using autoware_utils::Polygon2d;
+using autoware_utils_geometry::Point2d;
+using autoware_utils_geometry::Polygon2d;
 
 using autoware_perception_msgs::msg::PredictedPath;
 using autoware_perception_msgs::msg::Shape;

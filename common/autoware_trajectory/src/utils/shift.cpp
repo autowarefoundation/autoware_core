@@ -17,16 +17,26 @@
 #include "autoware/trajectory/detail/logging.hpp"
 #include "autoware/trajectory/interpolator/cubic_spline.hpp"
 
+#include <rclcpp/logging.hpp>
+
 #include <algorithm>
 #include <cmath>
 #include <set>
-#include <string>
+#include <sstream>
 #include <utility>
 #include <vector>
 
-namespace autoware::experimental::trajectory::detail
+namespace autoware::experimental::trajectory
 {
 
+ShiftParameters::ShiftParameters(
+  const double velocity, const double lateral_acc_limit, const double longitudinal_acc)
+: velocity(velocity), lateral_acc_limit(lateral_acc_limit), longitudinal_acc(longitudinal_acc)
+{
+}
+
+namespace detail
+{
 // This function calculates base longitudinal and lateral lengths
 // when acceleration limit is not considered (simple division approach).
 std::pair<std::vector<double>, std::vector<double>> get_base_lengths_without_accel_limit(
@@ -94,8 +104,8 @@ tl::expected<std::pair<std::vector<double>, std::vector<double>>, ShiftError> ca
 
   // If there is no need to consider acceleration limit
   if (v_0_lon < 1.0e-5 && a_lon < acc_threshold) {
-    RCLCPP_INFO(
-      get_logger(),
+    RCLCPP_DEBUG_THROTTLE(
+      get_logger(), get_clock(), 3000,
       "Velocity is effectively zero. "
       "No lateral acceleration limit will be applied.");
     return get_base_lengths_without_accel_limit(arc_length, shift_length);
@@ -117,7 +127,7 @@ tl::expected<std::pair<std::vector<double>, std::vector<double>>, ShiftError> ca
   // If the max_lateral_acc is already below the limit, no need to reduce it
   const double a_lim_lat = shift_parameters.lateral_acc_limit;
   if (max_lateral_acc < a_lim_lat) {
-    RCLCPP_INFO_THROTTLE(
+    RCLCPP_DEBUG_THROTTLE(
       get_logger(), get_clock(), 3000, "No need to consider lateral acc limit. max: %f, limit: %f",
       max_lateral_acc, shift_parameters.lateral_acc_limit);
     return get_base_lengths_without_accel_limit(L_lon, shift_length, v_0_lon, a_lon, T_total);
@@ -225,10 +235,30 @@ static std::pair<std::vector<double>, std::vector<double>> sanitize_same_base(
   return {base_lon, base_lat};
 }
 
-tl::expected<ShiftElementWithInterval, ShiftError> shift_impl(
-  const std::vector<double> & bases, const ShiftInterval & shift_interval,
+tl::expected<ShiftElement, ShiftError> shift_impl(
+  ShiftElement shift_element, const ShiftInterval & shift_interval,
   const ShiftParameters & shift_parameters)
 {
+  if (std::max(shift_interval.start, shift_interval.end) <= shift_element.lon_bases.front()) {
+    for (auto & lateral_shift : shift_element.lat_shifts) {
+      lateral_shift += shift_interval.lateral_offset;
+    }
+    return shift_element;
+  }
+
+  if (std::min(shift_interval.start, shift_interval.end) >= shift_element.lon_bases.back()) {
+    return shift_element;
+  }
+
+  auto cubic_spline_original = interpolator::CubicSpline::Builder{}
+                                 .set_bases(shift_element.lon_bases)
+                                 .set_values(shift_element.lat_shifts)
+                                 .build();
+
+  if (!cubic_spline_original) {
+    return tl::unexpected(ShiftError{"Failed to build cubic spline of original"});
+  }
+
   const double shift_arc_length = std::abs(shift_interval.end - shift_interval.start);
   // Calculate base lengths
   const auto try_calc_base_length = calc_base_lengths(
@@ -243,15 +273,15 @@ tl::expected<ShiftElementWithInterval, ShiftError> shift_impl(
   // causes zero division in interpolator
   const auto [base_lon, base_lat] = sanitize_same_base(try_calc_base_length.value());
 
-  auto cubic_spline =
+  auto cubic_spline_shift =
     interpolator::CubicSpline::Builder{}.set_bases(base_lon).set_values(base_lat).build();
 
   // for above zero division reason, cubic spline may fail
-  if (!cubic_spline) {
+  if (!cubic_spline_shift) {
     std::stringstream ss;
     ss << "Failed to build cubic spline for shift calculation because interval [s0, ... ,s7] "
           "reached L_lon: " +
-            cubic_spline.error().what
+            cubic_spline_shift.error().what
        << std::endl;
     ss << "L_lon = " << (shift_interval.end - shift_interval.start)
        << ", L = " << shift_interval.lateral_offset << std::endl;
@@ -260,7 +290,7 @@ tl::expected<ShiftElementWithInterval, ShiftError> shift_impl(
     return tl::unexpected{ShiftError{ss.str()}};
   }
 
-  std::set<double> merged_bases{bases.begin(), bases.end()};
+  std::set<double> merged_bases{shift_element.lon_bases.begin(), shift_element.lon_bases.end()};
   for (const auto new_base : base_lon) {
     merged_bases.insert(new_base + shift_interval.start);
   }
@@ -273,8 +303,16 @@ tl::expected<ShiftElementWithInterval, ShiftError> shift_impl(
   if (shift_end_it == merged_bases.end()) {
     return tl::unexpected(ShiftError{"could not find shift end base in shift_impl"});
   }
-  const auto shift_start_index = std::distance(merged_bases.begin(), shift_start_it);
-  const auto shift_end_index = std::distance(merged_bases.begin(), shift_end_it);
+
+  // Erase elements from merged_bases that are less than shift_element.lon_bases.front() or greater
+  // than shift_element.lon_bases.back().
+  for (auto it = merged_bases.begin(); it != merged_bases.end();) {
+    if (*it < shift_element.lon_bases.front() || *it > shift_element.lon_bases.back()) {
+      it = merged_bases.erase(it);  // erase returns the next iterator
+    } else {
+      ++it;
+    }
+  }
 
   std::vector<double> new_bases;
   std::vector<double> shift_values;
@@ -284,21 +322,23 @@ tl::expected<ShiftElementWithInterval, ShiftError> shift_impl(
   for (const auto s : merged_bases) {
     // Calculate the shift length at the current base
     new_bases.push_back(s);
+    double original = cubic_spline_original->compute(s);
     if (s < shift_interval.start) {
       // before shifted
-      shift_values.push_back(0.0);
+      shift_values.push_back(original);
     } else if (s <= shift_interval.end) {
       // middle
-      shift_values.push_back(cubic_spline->compute(s - shift_interval.start));
+      shift_values.push_back(original + cubic_spline_shift->compute(s - shift_interval.start));
     } else {
       // after shifted
-      shift_values.push_back(cubic_spline->compute(shift_arc_length));
+      shift_values.push_back(original + cubic_spline_shift->compute(shift_arc_length));
     }
   }
 
-  return ShiftElementWithInterval{
-    std::move(new_bases), std::move(shift_values), static_cast<size_t>(shift_start_index),
-    static_cast<size_t>(shift_end_index)};
-}
+  shift_element.lon_bases = std::move(new_bases);
+  shift_element.lat_shifts = std::move(shift_values);
 
-}  // namespace autoware::experimental::trajectory::detail
+  return shift_element;
+}
+}  // namespace detail
+}  // namespace autoware::experimental::trajectory

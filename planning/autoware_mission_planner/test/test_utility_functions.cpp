@@ -15,7 +15,7 @@
 #include "../src/lanelet2_plugins/utility_functions.hpp"
 
 #include <autoware_test_utils/autoware_test_utils.hpp>
-#include <autoware_utils/geometry/boost_geometry.hpp>
+#include <autoware_utils_geometry/boost_geometry.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info.hpp>
 
 #include <gtest/gtest.h>
@@ -44,7 +44,7 @@ TEST(TestUtilityFunctions, convertLinearRingToPolygon)
 {
   // clockwise
   {
-    autoware_utils::LinearRing2d footprint;
+    autoware_utils_geometry::LinearRing2d footprint;
     footprint.push_back({1.0, 1.0});
     footprint.push_back({1.0, -1.0});
     footprint.push_back({0.0, -1.0});
@@ -52,7 +52,7 @@ TEST(TestUtilityFunctions, convertLinearRingToPolygon)
     footprint.push_back({-1.0, 1.0});
     footprint.push_back({0.0, 1.0});
     footprint.push_back({1.0, 1.0});
-    autoware_utils::Polygon2d polygon = convert_linear_ring_to_polygon(footprint);
+    autoware_utils_geometry::Polygon2d polygon = convert_linear_ring_to_polygon(footprint);
 
     ASSERT_EQ(polygon.outer().size(), footprint.size());
     for (std::size_t i = 0; i < footprint.size(); ++i) {
@@ -70,7 +70,7 @@ TEST(TestUtilityFunctions, convertLinearRingToPolygon)
 
   // counterclockwise
   {
-    autoware_utils::LinearRing2d footprint;
+    autoware_utils_geometry::LinearRing2d footprint;
     footprint.push_back({1.0, 1.0});
     footprint.push_back({0.0, 1.0});
     footprint.push_back({-1.0, 1.0});
@@ -78,7 +78,7 @@ TEST(TestUtilityFunctions, convertLinearRingToPolygon)
     footprint.push_back({0.0, -1.0});
     footprint.push_back({1.0, -1.0});
     footprint.push_back({1.0, 1.0});
-    autoware_utils::Polygon2d polygon = convert_linear_ring_to_polygon(footprint);
+    autoware_utils_geometry::Polygon2d polygon = convert_linear_ring_to_polygon(footprint);
 
     ASSERT_EQ(polygon.outer().size(), footprint.size());
 

@@ -15,7 +15,7 @@
 #ifndef AUTOWARE__OBJECT_RECOGNITION_UTILS__OBJECT_CLASSIFICATION_HPP_
 #define AUTOWARE__OBJECT_RECOGNITION_UTILS__OBJECT_CLASSIFICATION_HPP_
 
-#include "autoware_perception_msgs/msg/object_classification.hpp"
+#include <autoware_perception_msgs/msg/object_classification.hpp>
 
 #include <cstdint>
 #include <string>
@@ -39,8 +39,7 @@ inline ObjectClassification getHighestProbClassification(
 inline std::uint8_t getHighestProbLabel(
   const std::vector<ObjectClassification> & object_classifications)
 {
-  auto classification = getHighestProbClassification(object_classifications);
-  return classification.label;
+  return getHighestProbClassification(object_classifications).label;
 }
 
 inline bool isVehicle(const uint8_t label)
@@ -57,8 +56,7 @@ inline bool isVehicle(const ObjectClassification & object_classification)
 
 inline bool isVehicle(const std::vector<ObjectClassification> & object_classifications)
 {
-  auto highest_prob_label = getHighestProbLabel(object_classifications);
-  return isVehicle(highest_prob_label);
+  return isVehicle(getHighestProbLabel(object_classifications));
 }
 
 inline bool isCarLikeVehicle(const uint8_t label)
@@ -74,8 +72,7 @@ inline bool isCarLikeVehicle(const ObjectClassification & object_classification)
 
 inline bool isCarLikeVehicle(const std::vector<ObjectClassification> & object_classifications)
 {
-  auto highest_prob_label = getHighestProbLabel(object_classifications);
-  return isCarLikeVehicle(highest_prob_label);
+  return isCarLikeVehicle(getHighestProbLabel(object_classifications));
 }
 
 inline bool isLargeVehicle(const uint8_t label)
@@ -91,8 +88,7 @@ inline bool isLargeVehicle(const ObjectClassification & object_classification)
 
 inline bool isLargeVehicle(const std::vector<ObjectClassification> & object_classifications)
 {
-  auto highest_prob_label = getHighestProbLabel(object_classifications);
-  return isLargeVehicle(highest_prob_label);
+  return isLargeVehicle(getHighestProbLabel(object_classifications));
 }
 
 inline uint8_t toLabel(const std::string & class_name)
@@ -130,9 +126,7 @@ inline ObjectClassification toObjectClassification(
 inline std::vector<ObjectClassification> toObjectClassifications(
   const std::string & class_name, float probability)
 {
-  std::vector<ObjectClassification> classifications;
-  classifications.push_back(toObjectClassification(class_name, probability));
-  return classifications;
+  return {toObjectClassification(class_name, probability)};
 }
 
 inline std::string convertLabelToString(const uint8_t label)
@@ -158,16 +152,15 @@ inline std::string convertLabelToString(const uint8_t label)
   }
 }
 
-inline std::string convertLabelToString(const ObjectClassification object_classification)
+inline std::string convertLabelToString(const ObjectClassification & object_classification)
 {
   return convertLabelToString(object_classification.label);
 }
 
 inline std::string convertLabelToString(
-  const std::vector<ObjectClassification> object_classifications)
+  const std::vector<ObjectClassification> & object_classifications)
 {
-  auto highest_prob_label = getHighestProbLabel(object_classifications);
-  return convertLabelToString(highest_prob_label);
+  return convertLabelToString(getHighestProbLabel(object_classifications));
 }
 
 }  // namespace autoware::object_recognition_utils

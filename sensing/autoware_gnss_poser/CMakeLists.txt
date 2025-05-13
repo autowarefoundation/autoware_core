@@ -21,6 +21,15 @@ rclcpp_components_register_node(gnss_poser_node
   EXECUTABLE gnss_poser
 )
 
+if(BUILD_TESTING)
+  set(TEST_SOURCES
+    test/test_gnss_poser_node.cpp
+  )
+  set(TEST_GNSS_POSER_EXE test_gnss_poser)
+  ament_add_ros_isolated_gtest(test_${PROJECT_NAME} ${TEST_SOURCES})
+  target_link_libraries(test_${PROJECT_NAME} gnss_poser_node)
+endif()
+
 ament_auto_package(INSTALL_TO_SHARE
   config
   launch

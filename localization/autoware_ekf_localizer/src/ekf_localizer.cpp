@@ -19,9 +19,8 @@
 #include "autoware/ekf_localizer/warning_message.hpp"
 #include "autoware/localization_util/covariance_ellipse.hpp"
 
-#include <autoware_utils/geometry/geometry.hpp>
-#include <autoware_utils/math/unit_conversion.hpp>
-#include <autoware_utils/ros/msg_covariance.hpp>
+#include <autoware_utils_geometry/geometry.hpp>
+#include <autoware_utils_logging/logger_level_configure.hpp>
 #include <rclcpp/duration.hpp>
 #include <rclcpp/logging.hpp>
 
@@ -96,7 +95,7 @@ EKFLocalizer::EKFLocalizer(const rclcpp::NodeOptions & node_options)
     std::shared_ptr<rclcpp::Node>(this, [](auto) {}));
 
   ekf_module_ = std::make_unique<EKFModule>(warning_, params_);
-  logger_configure_ = std::make_unique<autoware_utils::LoggerLevelConfigure>(this);
+  logger_configure_ = std::make_unique<autoware_utils_logging::LoggerLevelConfigure>(this);
 }
 
 /*
@@ -115,11 +114,9 @@ void EKFLocalizer::update_predict_frequency(const rclcpp::Time & current_time)
 
       if (ekf_dt_ > 10.0) {
         ekf_dt_ = 10.0;
-        RCLCPP_WARN(
-          get_logger(), "Large ekf_dt_ detected!! (%f sec) Capped to 10.0 seconds", ekf_dt_);
+        warning_->warn(large_ekf_dt_waring_message(ekf_dt_));
       } else if (ekf_dt_ > static_cast<double>(params_.pose_smoothing_steps) / params_.ekf_rate) {
-        RCLCPP_WARN(
-          get_logger(), "EKF period may be too slow to finish pose smoothing!! (%f sec) ", ekf_dt_);
+        warning_->warn_throttle(too_slow_ekf_dt_waring_message(ekf_dt_), 2000);
       }
 
       /* Register dt and accumulate time delay */
@@ -361,7 +358,7 @@ void EKFLocalizer::publish_estimate_result(
 
   /* publish tf */
   const geometry_msgs::msg::TransformStamped transform_stamped =
-    autoware_utils::pose2transform(current_ekf_pose, "base_link");
+    autoware_utils_geometry::pose2transform(current_ekf_pose, "base_link");
   tf_br_->sendTransform(transform_stamped);
 }
 

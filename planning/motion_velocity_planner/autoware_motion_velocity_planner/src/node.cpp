@@ -18,11 +18,10 @@
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
 #include <autoware/velocity_smoother/smoother/analytical_jerk_constrained_smoother/analytical_jerk_constrained_smoother.hpp>
 #include <autoware/velocity_smoother/trajectory_utils.hpp>
-#include <autoware_utils/geometry/geometry.hpp>
-#include <autoware_utils/ros/update_param.hpp>
-#include <autoware_utils/ros/wait_for_param.hpp>
-#include <autoware_utils/system/stop_watch.hpp>
-#include <autoware_utils/transform/transforms.hpp>
+#include <autoware_utils_geometry/geometry.hpp>
+#include <autoware_utils_pcl/transforms.hpp>
+#include <autoware_utils_rclcpp/parameter.hpp>
+#include <autoware_utils_system/stop_watch.hpp>
 #include <tf2_eigen/tf2_eigen.hpp>
 
 #include <autoware_planning_msgs/msg/trajectory_point.hpp>
@@ -37,6 +36,8 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace
@@ -94,20 +95,6 @@ MotionVelocityPlannerNode::MotionVelocityPlannerNode(const rclcpp::NodeOptions &
 
   // Parameters
   smooth_velocity_before_planning_ = declare_parameter<bool>("smooth_velocity_before_planning");
-  // nearest search
-  planner_data_.ego_nearest_dist_threshold =
-    declare_parameter<double>("ego_nearest_dist_threshold");
-  planner_data_.ego_nearest_yaw_threshold = declare_parameter<double>("ego_nearest_yaw_threshold");
-
-  planner_data_.trajectory_polygon_collision_check.decimate_trajectory_step_length =
-    declare_parameter<double>("trajectory_polygon_collision_check.decimate_trajectory_step_length");
-  planner_data_.trajectory_polygon_collision_check.goal_extended_trajectory_length =
-    declare_parameter<double>("trajectory_polygon_collision_check.goal_extended_trajectory_length");
-  planner_data_.trajectory_polygon_collision_check.enable_to_consider_current_pose =
-    declare_parameter<bool>(
-      "trajectory_polygon_collision_check.consider_current_pose.enable_to_consider_current_pose");
-  planner_data_.trajectory_polygon_collision_check.time_to_convergence = declare_parameter<double>(
-    "trajectory_polygon_collision_check.consider_current_pose.time_to_convergence");
 
   // set velocity smoother param
   set_velocity_smoother_params();
@@ -124,7 +111,7 @@ MotionVelocityPlannerNode::MotionVelocityPlannerNode(const rclcpp::NodeOptions &
   set_param_callback_ = this->add_on_set_parameters_callback(
     std::bind(&MotionVelocityPlannerNode::on_set_param, this, std::placeholders::_1));
 
-  logger_configure_ = std::make_unique<autoware_utils::LoggerLevelConfigure>(this);
+  logger_configure_ = std::make_unique<autoware_utils_logging::LoggerLevelConfigure>(this);
 }
 
 void MotionVelocityPlannerNode::on_load_plugin(
@@ -160,7 +147,7 @@ bool MotionVelocityPlannerNode::update_planner_data(
     return true;
   };
 
-  autoware_utils::StopWatch<std::chrono::milliseconds> sw;
+  autoware_utils_system::StopWatch<std::chrono::milliseconds> sw;
   const auto ego_state_ptr = sub_vehicle_odometry_.take_data();
   if (check_with_log(ego_state_ptr, "Waiting for current odometry"))
     planner_data_.current_odometry = *ego_state_ptr;
@@ -178,11 +165,12 @@ bool MotionVelocityPlannerNode::update_planner_data(
 
   const auto no_ground_pointcloud_ptr = sub_no_ground_pointcloud_.take_data();
   if (check_with_log(no_ground_pointcloud_ptr, "Waiting for pointcloud")) {
-    const auto no_ground_pointcloud = process_no_ground_pointcloud(no_ground_pointcloud_ptr);
-    if (no_ground_pointcloud)
-      planner_data_.no_ground_pointcloud = PlannerData::Pointcloud(*no_ground_pointcloud);
+    auto no_ground_pointcloud = process_no_ground_pointcloud(no_ground_pointcloud_ptr);
+    processing_times["update_planner_data.pcl.process_no_ground_pointcloud"] = sw.toc(true);
+    if (no_ground_pointcloud) {
+      planner_data_.no_ground_pointcloud.set_pointcloud(std::move(*no_ground_pointcloud));
+    }
   }
-  processing_times["update_planner_data.pcd"] = sw.toc(true);
 
   const auto occupancy_grid_ptr = sub_occupancy_grid_.take_data();
   if (check_with_log(occupancy_grid_ptr, "Waiting for the occupancy grid"))
@@ -229,7 +217,7 @@ MotionVelocityPlannerNode::process_no_ground_pointcloud(
 
   Eigen::Affine3f affine = tf2::transformToEigen(transform.transform).cast<float>();
   pcl::PointCloud<pcl::PointXYZ>::Ptr pc_transformed(new pcl::PointCloud<pcl::PointXYZ>);
-  if (!pc.empty()) autoware_utils::transform_pointcloud(pc, *pc_transformed, affine);
+  if (!pc.empty()) autoware_utils_pcl::transform_pointcloud(pc, *pc_transformed, affine);
   return *pc_transformed;
 }
 
@@ -288,7 +276,7 @@ void MotionVelocityPlannerNode::on_trajectory(
 {
   std::unique_lock<std::mutex> lk(mutex_);
 
-  autoware_utils::StopWatch<std::chrono::milliseconds> stop_watch;
+  autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch;
   std::map<std::string, double> processing_times;
   stop_watch.tic("Total");
 
@@ -405,7 +393,7 @@ autoware_planning_msgs::msg::Trajectory MotionVelocityPlannerNode::generate_traj
   const autoware::motion_velocity_planner::TrajectoryPoints & input_trajectory_points,
   std::map<std::string, double> & processing_times)
 {
-  autoware_utils::StopWatch<std::chrono::milliseconds> stop_watch;
+  autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch;
   autoware_planning_msgs::msg::Trajectory output_trajectory_msg;
   output_trajectory_msg.points = {input_trajectory_points.begin(), input_trajectory_points.end()};
 
@@ -426,8 +414,8 @@ autoware_planning_msgs::msg::Trajectory MotionVelocityPlannerNode::generate_traj
     constexpr auto min_interval_squared = 0.5 * 0.5;  // TODO(Maxime): change to a parameter
     for (auto i = 1UL; i < smoothed_trajectory_points.size(); ++i) {
       const auto & p = smoothed_trajectory_points[i];
-      const auto dist_to_prev_point =
-        autoware_utils::calc_squared_distance2d(resampled_smoothed_trajectory_points.back(), p);
+      const auto dist_to_prev_point = autoware_utils_geometry::calc_squared_distance2d(
+        resampled_smoothed_trajectory_points.back(), p);
       if (dist_to_prev_point > min_interval_squared) {
         resampled_smoothed_trajectory_points.push_back(p);
       }
@@ -463,7 +451,7 @@ autoware_planning_msgs::msg::Trajectory MotionVelocityPlannerNode::generate_traj
 rcl_interfaces::msg::SetParametersResult MotionVelocityPlannerNode::on_set_param(
   const std::vector<rclcpp::Parameter> & parameters)
 {
-  using autoware_utils::update_param;
+  using autoware_utils_rclcpp::update_param;
 
   {
     std::unique_lock<std::mutex> lk(mutex_);  // for planner_manager_

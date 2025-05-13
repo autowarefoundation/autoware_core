@@ -14,18 +14,17 @@
 
 #include "autoware/motion_utils/marker/marker_helper.hpp"
 
-#include "autoware_utils/ros/marker_helper.hpp"
-
-#include <autoware_utils/geometry/geometry.hpp>
+#include <autoware_utils_geometry/geometry.hpp>
+#include <autoware_utils_visualization/marker_helper.hpp>
 
 #include <visualization_msgs/msg/marker_array.hpp>
 
 #include <string>
 
-using autoware_utils::create_default_marker;
-using autoware_utils::create_deleted_default_marker;
-using autoware_utils::create_marker_color;
-using autoware_utils::create_marker_scale;
+using autoware_utils_visualization::create_default_marker;
+using autoware_utils_visualization::create_deleted_default_marker;
+using autoware_utils_visualization::create_marker_color;
+using autoware_utils_visualization::create_marker_scale;
 using visualization_msgs::msg::MarkerArray;
 
 namespace
@@ -129,7 +128,7 @@ visualization_msgs::msg::MarkerArray createStopVirtualWallMarker(
   const int32_t id, const double longitudinal_offset, const std::string & ns_prefix,
   const bool is_driving_forward)
 {
-  const auto pose_with_offset = autoware_utils::calc_offset_pose(
+  const auto pose_with_offset = autoware_utils_geometry::calc_offset_pose(
     pose, longitudinal_offset * (is_driving_forward ? 1.0 : -1.0), 0.0, 0.0);
   return createVirtualWallMarkerArray(
     pose_with_offset, module_name, ns_prefix + "stop_", now, id,
@@ -141,7 +140,7 @@ visualization_msgs::msg::MarkerArray createSlowDownVirtualWallMarker(
   const int32_t id, const double longitudinal_offset, const std::string & ns_prefix,
   const bool is_driving_forward)
 {
-  const auto pose_with_offset = autoware_utils::calc_offset_pose(
+  const auto pose_with_offset = autoware_utils_geometry::calc_offset_pose(
     pose, longitudinal_offset * (is_driving_forward ? 1.0 : -1.0), 0.0, 0.0);
   return createVirtualWallMarkerArray(
     pose_with_offset, module_name, ns_prefix + "slow_down_", now, id,
@@ -153,7 +152,7 @@ visualization_msgs::msg::MarkerArray createDeadLineVirtualWallMarker(
   const int32_t id, const double longitudinal_offset, const std::string & ns_prefix,
   const bool is_driving_forward)
 {
-  const auto pose_with_offset = autoware_utils::calc_offset_pose(
+  const auto pose_with_offset = autoware_utils_geometry::calc_offset_pose(
     pose, longitudinal_offset * (is_driving_forward ? 1.0 : -1.0), 0.0, 0.0);
   return createVirtualWallMarkerArray(
     pose_with_offset, module_name, ns_prefix + "dead_line_", now, id,
@@ -165,7 +164,7 @@ visualization_msgs::msg::MarkerArray createIntendedPassVirtualMarker(
   const int32_t id, const double longitudinal_offset, const std::string & ns_prefix,
   const bool is_driving_forward)
 {
-  const auto pose_with_offset = autoware_utils::calc_offset_pose(
+  const auto pose_with_offset = autoware_utils_geometry::calc_offset_pose(
     pose, longitudinal_offset * (is_driving_forward ? 1.0 : -1.0), 0.0, 0.0);
   return createIntendedPassArrowMarkerArray(
     pose_with_offset, module_name, ns_prefix + "intended_pass_", now, id,

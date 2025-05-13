@@ -15,11 +15,10 @@
 #ifndef AUTOWARE__MOTION_UTILS__RESAMPLE__RESAMPLE_UTILS_HPP_
 #define AUTOWARE__MOTION_UTILS__RESAMPLE__RESAMPLE_UTILS_HPP_
 
-#include "autoware_utils/system/backtrace.hpp"
-
 #include <autoware/motion_utils/constants.hpp>
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
-#include <autoware_utils/geometry/geometry.hpp>
+#include <autoware_utils_geometry/geometry.hpp>
+#include <autoware_utils_system/backtrace.hpp>
 
 #include <vector>
 
@@ -51,9 +50,9 @@ template <class T>
 [[nodiscard]] bool validate_points_duplication(const T & points)
 {
   for (size_t i = 0; i < points.size() - 1; ++i) {
-    const auto & curr_pt = autoware_utils::get_point(points.at(i));
-    const auto & next_pt = autoware_utils::get_point(points.at(i + 1));
-    const double ds = autoware_utils::calc_distance2d(curr_pt, next_pt);
+    const auto & curr_pt = autoware_utils_geometry::get_point(points.at(i));
+    const auto & next_pt = autoware_utils_geometry::get_point(points.at(i + 1));
+    const double ds = autoware_utils_geometry::calc_distance2d(curr_pt, next_pt);
     if (ds < close_s_threshold) {
       return false;
     }
@@ -69,27 +68,27 @@ template <class T>
   // Check size of the arguments
   if (!validate_size(input_points)) {
     RCLCPP_DEBUG(get_logger(), "invalid argument: The number of input points is less than 2");
-    autoware_utils::print_backtrace();
+    autoware_utils_system::print_backtrace();
     return false;
   }
   if (!validate_size(resampling_intervals)) {
     RCLCPP_DEBUG(
       get_logger(), "invalid argument: The number of resampling intervals is less than 2");
-    autoware_utils::print_backtrace();
+    autoware_utils_system::print_backtrace();
     return false;
   }
 
   // Check resampling range
   if (!validate_resampling_range(input_points, resampling_intervals)) {
     RCLCPP_DEBUG(get_logger(), "invalid argument: resampling interval is longer than input points");
-    autoware_utils::print_backtrace();
+    autoware_utils_system::print_backtrace();
     return false;
   }
 
   // Check duplication
   if (!validate_points_duplication(input_points)) {
     RCLCPP_DEBUG(get_logger(), "invalid argument: input points has some duplicated points");
-    autoware_utils::print_backtrace();
+    autoware_utils_system::print_backtrace();
     return false;
   }
 
@@ -102,7 +101,7 @@ template <class T>
   // Check size of the arguments
   if (!validate_size(input_points)) {
     RCLCPP_DEBUG(get_logger(), "invalid argument: The number of input points is less than 2");
-    autoware_utils::print_backtrace();
+    autoware_utils_system::print_backtrace();
     return false;
   }
 
@@ -111,14 +110,14 @@ template <class T>
     RCLCPP_DEBUG(
       get_logger(), "invalid argument: resampling interval is less than %f",
       autoware::motion_utils::overlap_threshold);
-    autoware_utils::print_backtrace();
+    autoware_utils_system::print_backtrace();
     return false;
   }
 
   // Check duplication
   if (!validate_points_duplication(input_points)) {
     RCLCPP_DEBUG(get_logger(), "invalid argument: input points has some duplicated points");
-    autoware_utils::print_backtrace();
+    autoware_utils_system::print_backtrace();
     return false;
   }
 

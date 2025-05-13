@@ -19,7 +19,6 @@
 #include <autoware_utils_geometry/msg/covariance.hpp>
 #include <autoware_utils_logging/logger_level_configure.hpp>
 #include <autoware_utils_tf/transform_listener.hpp>
-
 #include <rclcpp/rclcpp.hpp>
 
 #include <geometry_msgs/msg/twist_stamped.hpp>
@@ -27,11 +26,8 @@
 #include <sensor_msgs/msg/imu.hpp>
 
 #include <tf2/transform_datatypes.h>
-#ifdef ROS_DISTRO_GALACTIC
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-#else
+
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
-#endif
 
 #include <deque>
 #include <memory>
