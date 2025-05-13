@@ -496,18 +496,16 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_point_clo
 
     const auto lat_dist_from_obstacle_to_traj =
       autoware::motion_utils::calcLateralOffset(traj_points, itr->collision_point);
-    const double min_lat_dist_to_traj_poly =
-      std::abs(lat_dist_from_obstacle_to_traj) - vehicle_info.max_longitudinal_offset_m;
+    const auto min_lat_dist_to_traj_poly =
+      std::abs(lat_dist_from_obstacle_to_traj) - vehicle_info.vehicle_width_m;
 
-    if (min_lat_dist_to_traj_poly >= obstacle_filtering_param_.max_lat_margin) {
-      continue;
-    }
-
-    const double precise_min_lat_dist_to_traj_poly =
-      utils::get_dist_to_traj_poly(itr->collision_point, decimated_traj_polys);
-
-    if (precise_min_lat_dist_to_traj_poly >= obstacle_filtering_param_.max_lat_margin) {
-      continue;
+    if (min_lat_dist_to_traj_poly < obstacle_filtering_param_.max_lat_margin) {
+      auto stop_obstacle = *itr;
+      stop_obstacle.dist_to_collide_on_decimated_traj =
+        autoware::motion_utils::calcSignedArcLength(
+          traj_points, 0, stop_obstacle.collision_point) -
+        dist_to_bumper;
+      past_stop_obstacles.push_back(stop_obstacle);
     }
 
     auto stop_obstacle = *itr;
@@ -839,6 +837,11 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::plan_stop(
   std::optional<StopObstacle> determined_stop_obstacle{};
   std::optional<double> determined_zero_vel_dist{};
   std::optional<double> determined_desired_stop_margin{};
+  std::optional<geometry_msgs::msg::Pose> determined_desired_stop_pose{};
+
+  std::optional<StopObstacle> new_determined_stop_obstacle{};
+  std::optional<double> new_determined_zero_vel_dist{};
+  std::optional<double> new_determined_desired_stop_margin{};
 
   const auto closest_stop_obstacles = get_closest_stop_obstacles(stop_obstacles);
   for (const auto & stop_obstacle : closest_stop_obstacles) {
@@ -850,28 +853,9 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::plan_stop(
       autoware::motion_utils::calcSignedArcLength(traj_points, 0, ego_segment_idx) +
       stop_obstacle.dist_to_collide_on_decimated_traj;
 
-    const double new_desired_stop_margin = calc_desired_stop_margin(
+    const double desired_stop_margin = calc_desired_stop_margin(
       planner_data, traj_points, stop_obstacle, dist_to_bumper, ego_segment_idx,
       dist_to_collide_on_ref_traj);
-
-    const auto arc_length_along_trajectory = [&](const geometry_msgs::msg::Pose pose) {
-      const auto pose_segment_idx = planner_data->find_segment_index(traj_points, pose);
-      const double pose_arc_length =
-        autoware::motion_utils::calcSignedArcLength(traj_points, 0, pose_segment_idx);
-
-      return pose_arc_length;
-    };
-
-    const geometry_msgs::msg::Pose new_desired_stop_pose =
-      autoware::motion_utils::calcInterpolatedPose(traj_points, new_desired_stop_margin);
-
-    path_length_buffer_.update_buffer(
-      new_desired_stop_pose, new_desired_stop_margin, arc_length_along_trajectory, clock_);
-    // calculate desired stop margin
-    const std::optional<double> buffered_stop_margin =
-      path_length_buffer_.get_nearest_active_item();
-    const double desired_stop_margin =
-      buffered_stop_margin ? *buffered_stop_margin : new_desired_stop_margin;
 
     // calculate stop point against the obstacle
     const auto candidate_zero_vel_dist = calc_candidate_zero_vel_dist(
@@ -890,12 +874,14 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::plan_stop(
         continue;
       }
     }
-    determined_zero_vel_dist = *candidate_zero_vel_dist;
-    determined_stop_obstacle = stop_obstacle;
-    determined_desired_stop_margin = desired_stop_margin;
+    new_determined_zero_vel_dist = *candidate_zero_vel_dist;
+    new_determined_stop_obstacle = stop_obstacle;
+    new_determined_desired_stop_margin = desired_stop_margin;
   }
 
-  if (!determined_zero_vel_dist) {
+  std::cout << "new_determined_zero_vel_dist: " << *new_determined_zero_vel_dist << std::endl;
+
+  if (!(new_determined_zero_vel_dist && new_determined_stop_obstacle && new_determined_desired_stop_margin)) {
     // delete marker
     const auto markers =
       autoware::motion_utils::createDeletedStopVirtualWallMarker(clock_->now(), 0);
@@ -905,12 +891,45 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::plan_stop(
     return std::nullopt;
   }
 
+  determined_zero_vel_dist = new_determined_zero_vel_dist;
+  determined_stop_obstacle = new_determined_stop_obstacle;
+  determined_desired_stop_margin = new_determined_desired_stop_margin;
+  determined_desired_stop_pose = autoware::motion_utils::calcInterpolatedPose(traj_points, *determined_zero_vel_dist);
+
+  const auto arc_length_along_trajectory = [&](const geometry_msgs::msg::Pose pose) {
+    const auto pose_segment_idx = planner_data->find_segment_index(traj_points, pose);
+    const double pose_arc_length =
+      autoware::motion_utils::calcSignedArcLength(traj_points, 0, pose_segment_idx);
+
+    return pose_arc_length;
+  };
+
+  path_length_buffer_.update_buffer(
+  *determined_zero_vel_dist,
+  *determined_stop_obstacle,
+  *determined_desired_stop_margin,
+  *determined_desired_stop_pose,
+  arc_length_along_trajectory,
+  clock_);
+
+  // calculate desired stop margin
+  const auto buffered_determined_stop_distance_item =
+    path_length_buffer_.get_nearest_active_item();
+
+  determined_zero_vel_dist = (buffered_determined_stop_distance_item && buffered_determined_stop_distance_item->zero_vel_dist >= buffered_determined_stop_distance_item->stop_obstacle.dist_to_collide_on_decimated_traj)?
+    buffered_determined_stop_distance_item->zero_vel_dist : *determined_zero_vel_dist;
+
+  determined_stop_obstacle = buffered_determined_stop_distance_item ?
+    buffered_determined_stop_distance_item->stop_obstacle : *determined_stop_obstacle;
+
   // Hold previous stop distance if necessary
   hold_previous_stop_if_necessary(planner_data, traj_points, determined_zero_vel_dist);
 
   // Insert stop point
   const auto stop_point = calc_stop_point(
     planner_data, traj_points, dist_to_bumper, determined_stop_obstacle, determined_zero_vel_dist);
+
+  std::cout << "stop_point: " << stop_point->x << " " << stop_point->y << std::endl << std::endl << std::endl;
 
   // set stop_planning_debug_info
   set_stop_planning_debug_info(determined_stop_obstacle, determined_desired_stop_margin);
@@ -931,12 +950,10 @@ double ObstacleStopModule::calc_desired_stop_margin(
 
     const auto ref_traj_length =
       autoware::motion_utils::calcSignedArcLength(traj_points, 0, traj_points.size() - 1);
-    if (dist_to_collide_on_ref_traj > ref_traj_length) {
-      // Use terminal margin (terminal_stop_margin) for obstacle stop
-      return stop_planning_param_.terminal_stop_margin;
-    } else if ((v_obs * v_ego < 0)) {
+    std::cout << "v_obs: " << v_obs << std::endl;
+    if (v_obs < stop_planning_param_.max_negative_velocity) {
       const double a_ego = stop_planning_param_.effective_deceleration_opposing_traffic;
-      const double bumper_to_bumper_distance = (dist_to_collide_on_ref_traj - dist_to_bumper);
+      const double& bumper_to_bumper_distance = stop_obstacle.dist_to_collide_on_decimated_traj;
 
       const double braking_distance = v_ego * v_ego / (2 * a_ego);
       const double stopping_time = v_ego / a_ego;
@@ -954,7 +971,13 @@ double ObstacleStopModule::calc_desired_stop_margin(
 
       const double stop_margin = bumper_to_bumper_distance - stopping_distance;
 
-      return std::max(stop_margin, stop_planning_param_.stop_margin);
+      std::cout << "bumper_to_bumper_distance: " << bumper_to_bumper_distance << std::endl;
+      std::cout << "stopping_distance: " << stopping_distance << std::endl;
+      std::cout << "stop_margin: " << stop_margin << std::endl;
+
+      return stop_margin;//std::max(stop_margin, stop_planning_param_.stop_margin);
+    } else if (dist_to_collide_on_ref_traj > ref_traj_length) {
+      return stop_planning_param_.terminal_stop_margin;
     }
     return stop_planning_param_.stop_margin;
   }();

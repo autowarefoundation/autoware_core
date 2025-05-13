@@ -127,8 +127,9 @@ struct StopPlanningParam
   double stop_margin{};
   double terminal_stop_margin{};
   double min_behavior_stop_margin{};
-  double effective_deceleration_opposing_traffic{};
+  double max_negative_velocity{};
   double additional_stop_margin_opposing_traffic{};
+  double effective_deceleration_opposing_traffic{};
   double hold_stop_velocity_threshold{};
   double hold_stop_distance_threshold{};
   bool enable_approaching_on_curve{};
@@ -157,10 +158,12 @@ struct StopPlanningParam
       get_or_declare_parameter<double>(node, "obstacle_stop.stop_planning.terminal_stop_margin");
     min_behavior_stop_margin = get_or_declare_parameter<double>(
       node, "obstacle_stop.stop_planning.min_behavior_stop_margin");
-    effective_deceleration_opposing_traffic = get_or_declare_parameter<double>(
-      node, "obstacle_stop.stop_planning.effective_deceleration_opposing_traffic");
+    max_negative_velocity = get_or_declare_parameter<double>(
+      node, "obstacle_stop.stop_planning.max_negative_velocity");
     additional_stop_margin_opposing_traffic = get_or_declare_parameter<double>(
       node, "obstacle_stop.stop_planning.additional_stop_margin_opposing_traffic");
+    effective_deceleration_opposing_traffic = get_or_declare_parameter<double>(
+      node, "obstacle_stop.stop_planning.effective_deceleration_opposing_traffic");
     hold_stop_velocity_threshold = get_or_declare_parameter<double>(
       node, "obstacle_stop.stop_planning.hold_stop_velocity_threshold");
     hold_stop_distance_threshold = get_or_declare_parameter<double>(

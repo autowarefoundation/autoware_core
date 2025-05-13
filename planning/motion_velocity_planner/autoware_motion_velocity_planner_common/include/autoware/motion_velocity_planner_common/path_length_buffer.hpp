@@ -26,16 +26,29 @@
 namespace autoware::motion_velocity_planner::utils
 {
 
-struct BufferedStopDistance
+struct BufferedStopDistanceItem
 {
+  double zero_vel_dist;
+  StopObstacle stop_obstacle;
+  double desired_stop_margin;
   geometry_msgs::msg::Pose stop_pose;
-  double arc_length;
+  
   rclcpp::Time start_time;
   bool is_active;
 
-  BufferedStopDistance(
-    geometry_msgs::msg::Pose pose, double arc, rclcpp::Time time, bool active = false)
-  : stop_pose(pose), arc_length(arc), start_time(time), is_active(active)
+  BufferedStopDistanceItem(
+    const double zero_vel_dist,
+    const StopObstacle & obstacle,
+    const double margin,
+    const geometry_msgs::msg::Pose & pose,
+    const rclcpp::Time & time,
+    bool active = false)
+  : zero_vel_dist(zero_vel_dist),
+    stop_obstacle(obstacle),
+    desired_stop_margin(margin),
+    stop_pose(pose),
+    start_time(time),
+    is_active(active)
   {
   }
 };
@@ -52,84 +65,107 @@ public:
   {
   }
 
-  std::optional<double> get_nearest_active_item() const
+  std::optional<BufferedStopDistanceItem> get_nearest_active_item() const
   {
     if (buffer_.empty()) {
       return {};
     }
+    std::cout << "Buffer items being considered for min element:" << std::endl;
+    for (const auto & item : buffer_) {
+      std::cout << "    stop_pose: [" << item.stop_pose.position.x << ", " 
+                << item.stop_pose.position.y << ", " << item.stop_pose.position.z << "], "
+                << "zero_vel_dist: " << item.zero_vel_dist << ", "
+                << "start_time: " << item.start_time.nanoseconds() << ", "
+                << "is_active: " << std::boolalpha << item.is_active << std::endl;
+    }
 
     auto nearest_item = std::min_element(
       buffer_.begin(), buffer_.end(),
-      [](const BufferedStopDistance & a, const BufferedStopDistance & b) {
+      [](const BufferedStopDistanceItem & a, const BufferedStopDistanceItem & b) {
         if (!a.is_active) return false;
         if (!b.is_active) return true;
-        return a.arc_length < b.arc_length;
+        return a.zero_vel_dist < b.zero_vel_dist;
       });
 
     if (!nearest_item->is_active) {
       return std::nullopt;
     }
 
-    return nearest_item->arc_length;
+    return *nearest_item;
   }
 
   void update_buffer(
-    const geometry_msgs::msg::Pose & stop_pose, const double stop_pose_arc_length,
+    const double zero_vel_dist,
+    const StopObstacle & stop_obstacle,
+    const double desired_stop_margin,
+    const geometry_msgs::msg::Pose & stop_pose,
     std::function<double(const geometry_msgs::msg::Pose &)> arc_length_lambda,
     const rclcpp::Clock::SharedPtr & clock)
   {
     const rclcpp::Time clock_now = clock->now();
 
+    std::cout << "    Checking buffered stop pose:" << std::endl;
+    std::cout << "      stop_pose: [" << stop_pose.position.x << ", " 
+              << stop_pose.position.y << ", " << stop_pose.position.z << "]" << std::endl;
+    std::cout << "      zero_vel_dist: " << zero_vel_dist << std::endl << std::endl;
+
     // Remove items that should be removed
     buffer_.erase(
       std::remove_if(
         buffer_.begin(), buffer_.end(),
-        [&](const BufferedStopDistance & buffered_item) {
+        [&](const BufferedStopDistanceItem & buffered_item) {
           const auto duration = (clock_now - buffered_item.start_time).seconds();
 
           const double buffered_item_arc_length = arc_length_lambda(buffered_item.stop_pose);
+          std::cout << "    Checking removal for item:" << std::endl;
+          std::cout << "      stop_pose: [" << buffered_item.stop_pose.position.x << ", " 
+                    << buffered_item.stop_pose.position.y << ", " << buffered_item.stop_pose.position.z << "]" << std::endl;
+          std::cout << "      zero_vel_dist: " << buffered_item_arc_length << std::endl;
+          std::cout << "      duration: " << duration << std::endl;
+          std::cout << "      is_active: " << std::boolalpha << buffered_item.is_active << std::endl;
+          std::cout << "      distance_diff: " << std::abs(buffered_item_arc_length - zero_vel_dist) << std::endl << std::endl;
 
           return (buffered_item.is_active && duration > min_off_duration_) ||
                  (!buffered_item.is_active &&
-                  std::abs(buffered_item_arc_length - stop_pose_arc_length) > update_distance_th_);
+                  std::abs(buffered_item_arc_length - zero_vel_dist) > update_distance_th_);
         }),
       buffer_.end());
 
     static constexpr double eps = 1e-3;
     if (buffer_.empty()) {
-      buffer_.emplace_back(stop_pose, stop_pose_arc_length, clock_now, min_on_duration_ < eps);
+      buffer_.emplace_back(zero_vel_dist, stop_obstacle, desired_stop_margin, stop_pose, clock_now, min_on_duration_ < eps);
       return;
     }
 
     // Update the state of remaining items
     for (auto & buffered_item : buffer_) {
-      const double buffered_item_arc_length = arc_length_lambda(buffered_item.stop_pose);
-      buffered_item.arc_length = buffered_item_arc_length;
-      if (
-        !buffered_item.is_active &&
-        (clock_now - buffered_item.start_time).seconds() > min_on_duration_) {
+      buffered_item.zero_vel_dist = arc_length_lambda(buffered_item.stop_pose);
+      if (!buffered_item.is_active && (clock_now - buffered_item.start_time).seconds() > min_on_duration_) {
         buffered_item.is_active = true;
         buffered_item.start_time = clock_now;
       }
     }
 
-    auto nearest_prev_pose_it = std::min_element(
-      buffer_.begin(), buffer_.end(),
-      [&](const BufferedStopDistance & a, const BufferedStopDistance & b) {
-        const auto dist_a = std::abs(a.arc_length - stop_pose_arc_length);
-        const auto dist_b = std::abs(b.arc_length - stop_pose_arc_length);
-        return dist_a < dist_b;
-      });
+    auto nearest_prev_pose_it = buffer_.end();
+    auto min_relative_dist = std::numeric_limits<double>::max();
+    for (auto it = buffer_.begin(); it < buffer_.end(); ++it) {
+      const auto rel_dist = it->zero_vel_dist - zero_vel_dist;
+      if (std::abs(rel_dist) < update_distance_th_ && rel_dist < min_relative_dist) {
+        nearest_prev_pose_it = it;
+        min_relative_dist = rel_dist;
+      }
+    }
 
     if (nearest_prev_pose_it == buffer_.end()) {
-      buffer_.emplace_back(stop_pose, stop_pose_arc_length, clock_now, min_on_duration_ < eps);
+      buffer_.emplace_back(zero_vel_dist, stop_obstacle, desired_stop_margin, stop_pose, clock_now, min_on_duration_ < eps);
       return;
     }
 
-    const double min_relative_dist = nearest_prev_pose_it->arc_length - stop_pose_arc_length;
-
     if (min_relative_dist > 0) {
-      nearest_prev_pose_it->arc_length = stop_pose_arc_length;
+      nearest_prev_pose_it->zero_vel_dist = zero_vel_dist;
+      nearest_prev_pose_it->stop_obstacle = stop_obstacle;
+      nearest_prev_pose_it->desired_stop_margin = desired_stop_margin;
+      nearest_prev_pose_it->stop_pose = stop_pose;
     }
 
     if (nearest_prev_pose_it->is_active) {
@@ -138,7 +174,7 @@ public:
   }
 
 private:
-  std::vector<BufferedStopDistance> buffer_;
+  std::vector<BufferedStopDistanceItem> buffer_;
   double min_off_duration_;
   double min_on_duration_;
   double update_distance_th_;
