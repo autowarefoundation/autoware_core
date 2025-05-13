@@ -41,6 +41,7 @@
 #include <memory>
 #include <optional>
 #include <set>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -184,12 +185,14 @@ lanelet::ArcCoordinates calcArcCoordinates(
 
 std::string convertLaneletsIdToString(const lanelet::ConstLanelets & lanelets)
 {
-  std::string str{"{"};
+  std::stringstream ss;
+  ss << "{";
   for (const auto & lanelet : lanelets) {
-    str += std::to_string(lanelet.id()) + ",";
+    ss << lanelet.id() << ",";
   }
-  str += "}";
-  return str;
+  ss << "}";
+
+  return ss.str();
 }
 }  // namespace
 
