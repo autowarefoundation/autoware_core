@@ -102,7 +102,7 @@ std::optional<PathIndexWithOffset> findOffsetSegment(
 
 std::optional<PathIndexWithPose> createTargetPoint(
   const autoware_internal_planning_msgs::msg::PathWithLaneId & path, const LineString2d & stop_line,
-  const double margin, const double vehicle_offset, const std::vector<size_t> & lane_ids)
+  const double margin, const double vehicle_offset, const lanelet::Ids & lane_ids)
 {
   // Find collision segment
   const auto collision_segment = findCollisionSegment(path, stop_line, lane_ids);

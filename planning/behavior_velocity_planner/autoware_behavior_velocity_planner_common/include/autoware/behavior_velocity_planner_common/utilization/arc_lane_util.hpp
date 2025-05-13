@@ -20,6 +20,8 @@
 
 #include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
 
+#include <lanelet2_core/Forward.h>
+
 #include <optional>
 #include <utility>
 #include <vector>
@@ -59,7 +61,7 @@ checkCollision(
 template <class T>
 std::optional<PathIndexWithPoint> findCollisionSegment(
   const T & path, const geometry_msgs::msg::Point & stop_line_p1,
-  const geometry_msgs::msg::Point & stop_line_p2, const std::vector<size_t> & target_lane_ids = {})
+  const geometry_msgs::msg::Point & stop_line_p2, const lanelet::Ids & target_lane_ids = {})
 {
   for (size_t i = 0; i < path.points.size() - 1; ++i) {
     const auto & prev_lane_ids = path.points.at(i).lane_ids;
@@ -98,7 +100,7 @@ std::optional<PathIndexWithPoint> findCollisionSegment(
 
 template <class T>
 std::optional<PathIndexWithPoint> findCollisionSegment(
-  const T & path, const LineString2d & stop_line, const std::vector<size_t> & target_lane_ids = {})
+  const T & path, const LineString2d & stop_line, const lanelet::Ids & target_lane_ids = {})
 {
   const auto stop_line_p1 = convertToGeomPoint(stop_line.at(0));
   const auto stop_line_p2 = convertToGeomPoint(stop_line.at(1));
@@ -213,7 +215,7 @@ geometry_msgs::msg::Pose calcTargetPose(const T & path, const PathIndexWithOffse
 
 std::optional<PathIndexWithPose> createTargetPoint(
   const autoware_internal_planning_msgs::msg::PathWithLaneId & path, const LineString2d & stop_line,
-  const double margin, const double vehicle_offset, const std::vector<size_t> & lane_ids = {});
+  const double margin, const double vehicle_offset, const lanelet::Ids & lane_ids = {});
 
 }  // namespace arc_lane_utils
 }  // namespace autoware::behavior_velocity_planner
