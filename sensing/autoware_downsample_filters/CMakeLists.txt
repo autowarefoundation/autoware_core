@@ -26,8 +26,8 @@ ament_target_dependencies(${COMMON}
   rclcpp
   autoware_utils_debug
   autoware_utils_system
+  autoware_utils_tf
   autoware_point_types
-  managed_transform_buffer
 )
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
