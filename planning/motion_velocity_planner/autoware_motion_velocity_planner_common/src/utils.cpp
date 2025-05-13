@@ -32,7 +32,6 @@
 
 namespace autoware::motion_velocity_planner::utils
 {
-namespace bg = boost::geometry;
 namespace
 {
 TrajectoryPoint extend_trajectory_point(
@@ -207,12 +206,12 @@ double get_dist_to_traj_poly(
   const geometry_msgs::msg::Point & point,
   const std::vector<autoware_utils::Polygon2d> & decimated_traj_polys)
 {
-  const auto boost_point = bg::model::d2::point_xy<double>(point.x, point.y);
+  const auto boost_point = autoware_utils_geometry::Point2d(point.x, point.y);
 
   double dist_to_traj_poly = std::numeric_limits<double>::infinity();
 
   for (const auto & decimated_traj_poly : decimated_traj_polys) {
-    const double current_dist_to_traj_poly = bg::distance(decimated_traj_poly, boost_point);
+    const double current_dist_to_traj_poly = boost::geometry::distance(decimated_traj_poly, boost_point);
 
     dist_to_traj_poly = std::min(dist_to_traj_poly, current_dist_to_traj_poly);
   }
