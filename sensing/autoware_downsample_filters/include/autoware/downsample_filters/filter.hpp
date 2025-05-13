@@ -78,8 +78,7 @@
 #include <autoware_utils_debug/debug_publisher.hpp>
 #include <autoware_utils_debug/published_time_publisher.hpp>
 #include <autoware_utils_system/stop_watch.hpp>
-#include <managed_transform_buffer/managed_transform_buffer.hpp>
-
+#include <autoware_utils_tf/transform_listener.hpp>
 namespace autoware::downsample_filters
 {
 namespace sync_policies = message_filters::sync_policies;
@@ -217,7 +216,7 @@ protected:
    * versus an exact one (false by default). */
   bool approximate_sync_ = false;
 
-  std::unique_ptr<managed_transform_buffer::ManagedTransformBuffer> managed_tf_buffer_{nullptr};
+  std::unique_ptr<autoware_utils_tf::TransformListener> transform_listener_{nullptr};
 
   inline bool isValid(
     const PointCloud2ConstPtr & cloud, const std::string & /*topic_name*/ = "input")
