@@ -70,8 +70,8 @@ public:
    */
   StopLineModule(
     const int64_t module_id,                                          //
-    lanelet::ConstLineString3d stop_line,                             //
-    lanelet::Id linked_lanelet_id,                                    //
+    const lanelet::ConstLineString3d & stop_line,                     //
+    const lanelet::Id & linked_lanelet_id,                            //
     const PlannerParam & planner_param,                               //
     const rclcpp::Logger & logger,                                    //
     const rclcpp::Clock::SharedPtr clock,                             //

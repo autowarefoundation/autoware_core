@@ -254,7 +254,7 @@ lanelet::ConstLanelets getConstLaneletsFromIds(
  * @return Vector of lane IDs including the target lane ID and IDs of adjacent (next and previous)
  * lanes
  */
-lanelet::Ids collectAdjacentLaneIds(
+lanelet::Ids collectConnectedLaneIds(
   const int64_t lane_id, const std::shared_ptr<route_handler::RouteHandler> & route_handler);
 
 }  // namespace planning_utils

@@ -21,7 +21,6 @@
 #include <autoware/route_handler/route_handler.hpp>
 #include <rclcpp/logging.hpp>
 
-#include <autoware_internal_planning_msgs/msg/detail/path_point_with_lane_id__struct.hpp>
 #include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
 
 #include <lanelet2_core/Forward.h>
@@ -47,8 +46,8 @@ bool hasIntersection(const std::set<lanelet::Id> & a, const std::set<lanelet::Id
 
 StopLineModule::StopLineModule(
   const int64_t module_id,                                          //
-  lanelet::ConstLineString3d stop_line,                             //
-  lanelet::Id linked_lanelet_id,                                    //
+  const lanelet::ConstLineString3d & stop_line,                     //
+  const lanelet::Id & linked_lanelet_id,                            //
   const PlannerParam & planner_param,                               //
   const rclcpp::Logger & logger,                                    //
   const rclcpp::Clock::SharedPtr clock,                             //
@@ -56,7 +55,7 @@ StopLineModule::StopLineModule(
   const std::shared_ptr<planning_factor_interface::PlanningFactorInterface> &
     planning_factor_interface)
 : SceneModuleInterface(module_id, logger, clock, time_keeper, planning_factor_interface),
-  stop_line_(std::move(stop_line)),
+  stop_line_(stop_line),
   linked_lanelet_id_(linked_lanelet_id),
   planner_param_(planner_param),
   state_(State::APPROACH),
@@ -117,8 +116,8 @@ std::pair<double, std::optional<double>> StopLineModule::getEgoAndStopPoint(
       lanelet::Ids connected_lanelet_ids;
 
       if (planner_data_->route_handler_) {
-        connected_lanelet_ids =
-          planning_utils::collectAdjacentLaneIds(linked_lanelet_id_, planner_data_->route_handler_);
+        connected_lanelet_ids = planning_utils::collectConnectedLaneIds(
+          linked_lanelet_id_, planner_data_->route_handler_);
       } else {
         connected_lanelet_ids = {linked_lanelet_id_};
       }

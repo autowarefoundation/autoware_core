@@ -17,6 +17,7 @@
 #include "autoware/behavior_velocity_planner_common/utilization/boost_geometry_helper.hpp"
 #include "autoware/motion_utils/trajectory/trajectory.hpp"
 
+#include <autoware/lanelet2_utils/topology.hpp>
 #include <autoware_lanelet2_extension/utility/query.hpp>
 #include <autoware_utils/geometry/geometry.hpp>
 
@@ -757,7 +758,7 @@ lanelet::ConstLanelets getConstLaneletsFromIds(
   return ret;
 }
 
-lanelet::Ids collectAdjacentLaneIds(
+lanelet::Ids collectConnectedLaneIds(
   const int64_t lane_id, const std::shared_ptr<route_handler::RouteHandler> & route_handler)
 {
   lanelet::Ids lane_ids;
@@ -766,10 +767,12 @@ lanelet::Ids collectAdjacentLaneIds(
   const auto lanelet_map = route_handler->getLaneletMapPtr();
   if (lanelet_map && lanelet_map->laneletLayer.exists(lane_id)) {
     const auto current_lanelet = lanelet_map->laneletLayer.get(lane_id);
-    const auto next_lanelets = route_handler->getNextLanelets(current_lanelet);
-    const auto prev_lanelets = route_handler->getPreviousLanelets(current_lanelet);
+    const auto following_lanelets = experimental::lanelet2_utils::following_lanelets(
+      current_lanelet, route_handler->getRoutingGraphPtr());
+    const auto prev_lanelets = experimental::lanelet2_utils::previous_lanelets(
+      current_lanelet, route_handler->getRoutingGraphPtr());
 
-    for (const auto & next_lanelet : next_lanelets) {
+    for (const auto & next_lanelet : following_lanelets) {
       lane_ids.push_back(next_lanelet.id());
     }
     for (const auto & prev_lanelet : prev_lanelets) {
