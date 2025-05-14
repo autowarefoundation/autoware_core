@@ -17,6 +17,7 @@
 #include "autoware/trajectory/utils/crossed.hpp"
 #include "autoware/trajectory/utils/curvature_utils.hpp"
 #include "autoware/trajectory/utils/find_intervals.hpp"
+#include "autoware/trajectory/utils/frenet_utils.hpp"
 #include "autoware_utils_geometry/geometry.hpp"
 #include "lanelet2_core/primitives/LineString.h"
 
@@ -627,4 +628,25 @@ TEST_F(TrajectoryTest, get_contained_lane_ids)
   EXPECT_EQ(2, contained_lane_ids.size());
   EXPECT_EQ(0, contained_lane_ids[0]);
   EXPECT_EQ(1, contained_lane_ids[1]);
+}
+
+TEST_F(TrajectoryTest, compute_frenet_coordinate)
+{
+  geometry_msgs::msg::Pose pose;
+  pose.position.x = 5.0;
+  pose.position.y = 5.0;
+
+  auto frenet_coordinate =
+    autoware::experimental::trajectory::compute_frenet_coordinate(*trajectory, pose);
+  if (frenet_coordinate.empty()) {
+    FAIL() << "Out of range trajectory";
+  }
+
+  EXPECT_EQ(1, frenet_coordinate.size());
+  auto [s, w] = frenet_coordinate.front();
+
+  EXPECT_LT(0.0, s);
+  EXPECT_LT(s, trajectory->length());
+  EXPECT_LT(-1.0, w);
+  EXPECT_LT(w, 1.0);
 }
