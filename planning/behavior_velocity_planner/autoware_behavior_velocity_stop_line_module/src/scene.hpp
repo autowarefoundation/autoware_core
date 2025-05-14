@@ -61,6 +61,7 @@ public:
    * @brief Constructor for StopLineModule.
    * @param module_id Unique ID for the module.
    * @param stop_line Stop line data.
+   * @param linked_lanelet_id ID of the linked lanelet.
    * @param planner_param Planning parameters.
    * @param logger Logger for output messages.
    * @param clock Shared clock instance.
@@ -68,10 +69,13 @@ public:
    * @param planning_factor_interface Planning factor interface.
    */
   StopLineModule(
-    const int64_t module_id, lanelet::ConstLineString3d stop_line,
-    const PlannerParam & planner_param, const rclcpp::Logger & logger,
-    const rclcpp::Clock::SharedPtr clock,
-    const std::shared_ptr<autoware_utils::TimeKeeper> & time_keeper,
+    const int64_t module_id,                                          //
+    const lanelet::ConstLineString3d & stop_line,                     //
+    const lanelet::Id & linked_lanelet_id,                            //
+    const PlannerParam & planner_param,                               //
+    const rclcpp::Logger & logger,                                    //
+    const rclcpp::Clock::SharedPtr clock,                             //
+    const std::shared_ptr<autoware_utils::TimeKeeper> & time_keeper,  //
     const std::shared_ptr<planning_factor_interface::PlanningFactorInterface> &
       planning_factor_interface);
 
@@ -111,6 +115,7 @@ public:
 
 private:
   const lanelet::ConstLineString3d stop_line_;  ///< Stop line geometry.
+  const lanelet::Id linked_lanelet_id_;         ///< ID of the linked lanelet.
   const PlannerParam planner_param_;            ///< Parameters for the planner.
   State state_;                                 ///< Current state of the module.
   std::optional<rclcpp::Time> stopped_time_;    ///< Time when the vehicle stopped.

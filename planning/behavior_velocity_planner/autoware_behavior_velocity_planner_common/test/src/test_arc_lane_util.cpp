@@ -20,6 +20,7 @@
 #include <gtest/gtest.h>
 
 #include <utility>
+#include <vector>
 
 using PathIndexWithPoint2d =
   autoware::behavior_velocity_planner::arc_lane_utils::PathIndexWithPoint2d;
@@ -49,11 +50,14 @@ TEST(findCollisionSegment, nominal)
    *
    **/
   auto path = test::generatePath(0.0, 0.0, 5.0, 0.0, 6);
+  for (auto & point : path.points) {
+    point.lane_ids.push_back(100);
+  }
 
   LineString2d stop_line;
   stop_line.emplace_back(Point2d(3.5, 3.0));
   stop_line.emplace_back(Point2d(3.5, -3.0));
-  auto segment = arc_lane_utils::findCollisionSegment(path, stop_line);
+  auto segment = arc_lane_utils::findCollisionSegment(path, stop_line, std::vector<size_t>{100});
   EXPECT_EQ(segment->first, static_cast<size_t>(3));
   EXPECT_DOUBLE_EQ(segment->second.x, 3.5);
   EXPECT_DOUBLE_EQ(segment->second.y, 0.0);
