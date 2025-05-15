@@ -37,7 +37,7 @@ VoxelGridBasedEuclideanClusterNode::VoxelGridBasedEuclideanClusterNode(
     min_points_number_per_voxel);
   // Pass the diagnostics interface pointer from the node to the cluster
   diagnostics_interface_ptr_ =
-    std::make_unique<autoware_utils::DiagnosticsInterface>(this, "euclidean_cluster");
+    std::make_unique<autoware_utils_diagnostics::DiagnosticsInterface>(this, "euclidean_cluster");
   cluster_->setDiagnosticsInterface(diagnostics_interface_ptr_.get());
 
   using std::placeholders::_1;
@@ -48,9 +48,9 @@ VoxelGridBasedEuclideanClusterNode::VoxelGridBasedEuclideanClusterNode(
   cluster_pub_ = this->create_publisher<autoware_perception_msgs::msg::DetectedObjects>(
     "output", rclcpp::QoS{1});
   debug_pub_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("debug/clusters", 1);
-  stop_watch_ptr_ = std::make_unique<autoware_utils::StopWatch<std::chrono::milliseconds>>();
+  stop_watch_ptr_ = std::make_unique<autoware_utils_system::StopWatch<std::chrono::milliseconds>>();
   debug_publisher_ =
-    std::make_unique<autoware_utils::DebugPublisher>(this, "voxel_grid_based_euclidean_cluster");
+    std::make_unique<autoware_utils_debug::DebugPublisher>(this, "voxel_grid_based_euclidean_cluster");
   stop_watch_ptr_->tic("cyclic_time");
   stop_watch_ptr_->tic("processing_time");
 }
