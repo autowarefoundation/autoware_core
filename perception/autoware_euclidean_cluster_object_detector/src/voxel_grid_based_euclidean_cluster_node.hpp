@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "autoware/euclidean_cluster/voxel_grid_based_euclidean_cluster.hpp"
+#include "autoware/euclidean_cluster_object_detector/voxel_grid_based_euclidean_cluster.hpp"
 
 #include <autoware_utils/ros/debug_publisher.hpp>
 #include <autoware_utils/ros/diagnostics_interface.hpp>
