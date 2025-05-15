@@ -16,7 +16,7 @@
 #include "autoware/euclidean_cluster_object_detector/euclidean_cluster_interface.hpp"
 #include "autoware/euclidean_cluster_object_detector/utils.hpp"
 
-#include <autoware_utils/ros/diagnostics_interface.hpp>
+#include <autoware_utils_diagnostics/diagnostics_interface.hpp>
 #include <rclcpp/node.hpp>
 
 #include <pcl/filters/voxel_grid.h>
@@ -52,7 +52,7 @@ public:
   {
     min_points_number_per_voxel_ = min_points_number_per_voxel;
   }
-  void setDiagnosticsInterface(autoware_utils::DiagnosticsInterface * diag_ptr)
+  void setDiagnosticsInterface(autoware_utils_diagnostics::DiagnosticsInterface * diag_ptr)
   {
     diagnostics_interface_ptr_ = diag_ptr;
   }
@@ -66,7 +66,7 @@ private:
   void publishDiagnosticsSummary(
     size_t skipped_cluster_count,
     const sensor_msgs::msg::PointCloud2::ConstSharedPtr & pointcloud_msg);
-  autoware_utils::DiagnosticsInterface * diagnostics_interface_ptr_{nullptr};
+  autoware_utils_diagnostics::DiagnosticsInterface * diagnostics_interface_ptr_{nullptr};
 };
 
 }  // namespace autoware::euclidean_cluster
