@@ -28,13 +28,25 @@
 
 using autoware::behavior_velocity_planner::StopLineModule;
 
-autoware_internal_planning_msgs::msg::PathPointWithLaneId path_point(double x, double y)
+namespace
 {
-  autoware_internal_planning_msgs::msg::PathPointWithLaneId p;
-  p.point.pose.position.x = x;
-  p.point.pose.position.y = y;
-  return p;
+geometry_msgs::msg::Point make_geom_point(const double x, const double y)
+{
+  geometry_msgs::msg::Point point;
+  point.x = x;
+  point.y = y;
+  return point;
 }
+
+autoware_internal_planning_msgs::msg::PathPointWithLaneId make_path_point(
+  const double x, const double y)
+{
+  autoware_internal_planning_msgs::msg::PathPointWithLaneId point;
+  point.point.pose.position = make_geom_point(x, y);
+  point.lane_ids = {0};
+  return point;
+}
+}  // namespace
 
 class StopLineModuleTest : public ::testing::Test
 {
@@ -59,22 +71,25 @@ protected:
     planner_param_.hold_stop_margin_distance = 0.5;
 
     planner_data_ = std::make_shared<autoware::behavior_velocity_planner::PlannerData>(*node_);
-    planner_data_->stop_line_extend_length = 5.0;
     planner_data_->vehicle_info_.max_longitudinal_offset_m = 1.0;
 
     stop_line_ = lanelet::ConstLineString3d(
       lanelet::utils::getId(), {lanelet::Point3d(lanelet::utils::getId(), 7.0, -1.0, 0.0),
                                 lanelet::Point3d(lanelet::utils::getId(), 7.0, 1.0, 0.0)});
 
-    trajectory_ = *StopLineModule::Trajectory::Builder{}.build(
-      {path_point(0.0, 0.0), path_point(1.0, 0.0), path_point(2.0, 0.0), path_point(3.0, 0.0),
-       path_point(4.0, 0.0), path_point(5.0, 0.0), path_point(6.0, 0.0), path_point(7.0, 0.0),
-       path_point(8.0, 0.0), path_point(9.0, 0.0), path_point(10.0, 0.0)});
+    path_.points = {make_path_point(0.0, 0.0), make_path_point(1.0, 0.0), make_path_point(2.0, 0.0),
+                    make_path_point(3.0, 0.0), make_path_point(4.0, 0.0), make_path_point(5.0, 0.0),
+                    make_path_point(6.0, 0.0), make_path_point(7.0, 0.0), make_path_point(8.0, 0.0),
+                    make_path_point(9.0, 0.0), make_path_point(10.0, 0.0)};
+    path_.left_bound = {make_geom_point(0.0, 1.0), make_geom_point(10.0, 1.0)};
+    path_.right_bound = {make_geom_point(0.0, -1.0), make_geom_point(10.0, -1.0)};
+
+    trajectory_ = *StopLineModule::Trajectory::Builder{}.build(path_.points);
 
     clock_ = std::make_shared<rclcpp::Clock>();
 
     module_ = std::make_shared<StopLineModule>(
-      1, stop_line_, planner_param_, rclcpp::get_logger("test_logger"), clock_,
+      1, stop_line_, 0, planner_param_, rclcpp::get_logger("test_logger"), clock_,
       std::make_shared<autoware_utils::TimeKeeper>(),
       std::make_shared<autoware::planning_factor_interface::PlanningFactorInterface>(
         node_.get(), "test_stopline"));
@@ -84,6 +99,7 @@ protected:
 
   void TearDown() override { rclcpp::shutdown(); }
 
+  autoware_internal_planning_msgs::msg::PathWithLaneId path_;
   StopLineModule::Trajectory trajectory_;
   StopLineModule::PlannerParam planner_param_{};
   lanelet::ConstLineString3d stop_line_;
@@ -96,24 +112,30 @@ protected:
 
 TEST_F(StopLineModuleTest, TestGetEgoAndStopPoint)
 {
-  // Prepare trajectory and other parameters
+  // Prepare parameters
+
   geometry_msgs::msg::Pose ego_pose;
   ego_pose.position.x = 5.0;
   ego_pose.position.y = 1.0;
 
-  // Execute the function
-  auto [ego_s, stop_point_s] =
-    module_->getEgoAndStopPoint(trajectory_, ego_pose, StopLineModule::State::APPROACH);
+  {  // Test for APPROACH state
+    // Execute the function
+    const auto [ego_s, stop_point_s] =
+      module_->getEgoAndStopPoint(trajectory_, path_, ego_pose, StopLineModule::State::APPROACH);
 
-  // Verify results
-  EXPECT_DOUBLE_EQ(ego_s, 5.0);
-  EXPECT_DOUBLE_EQ(stop_point_s.value(), 7.0 - 0.5 - 1.0);
+    // Verify results
+    EXPECT_DOUBLE_EQ(ego_s, 5.0);
+    EXPECT_DOUBLE_EQ(stop_point_s.value(), 7.0 - 0.5 - 1.0);
+  }
 
-  std::tie(ego_s, stop_point_s) =
-    module_->getEgoAndStopPoint(trajectory_, ego_pose, StopLineModule::State::STOPPED);
+  {  // Test for STOPPED state
+    const auto [ego_s, stop_point_s] =
+      module_->getEgoAndStopPoint(trajectory_, path_, ego_pose, StopLineModule::State::STOPPED);
 
-  EXPECT_DOUBLE_EQ(ego_s, 5.0);
-  EXPECT_DOUBLE_EQ(stop_point_s.value(), 5.0);
+    EXPECT_TRUE(stop_point_s.has_value());
+    EXPECT_DOUBLE_EQ(ego_s, 5.0);
+    EXPECT_DOUBLE_EQ(stop_point_s.value(), 5.0);
+  }
 }
 
 TEST_F(StopLineModuleTest, TestUpdateStateAndStoppedTime)

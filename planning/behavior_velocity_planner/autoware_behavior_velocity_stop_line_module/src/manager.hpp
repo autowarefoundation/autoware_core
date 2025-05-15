@@ -23,6 +23,8 @@
 
 #include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
 
+#include <lanelet2_core/Forward.h>
+
 #include <functional>
 #include <memory>
 #include <set>
@@ -31,7 +33,7 @@
 
 namespace autoware::behavior_velocity_planner
 {
-using StopLineWithLaneId = std::pair<lanelet::ConstLineString3d, int64_t>;
+using StopLineWithLaneId = std::pair<lanelet::ConstLineString3d, lanelet::Id>;
 
 class StopLineModuleManager : public SceneModuleManagerInterface<>
 {
@@ -40,6 +42,11 @@ public:
 
   const char * getModuleName() override { return "stop_line"; }
 
+  RequiredSubscriptionInfo getRequiredSubscriptions() const override
+  {
+    return RequiredSubscriptionInfo{};
+  }
+
 private:
   StopLineModule::PlannerParam planner_param_;
 
@@ -47,7 +54,7 @@ private:
     const autoware_internal_planning_msgs::msg::PathWithLaneId & path,
     const lanelet::LaneletMapPtr lanelet_map);
 
-  std::set<int64_t> getStopLineIdSetOnPath(
+  std::set<lanelet::Id> getStopLineIdSetOnPath(
     const autoware_internal_planning_msgs::msg::PathWithLaneId & path,
     const lanelet::LaneletMapPtr lanelet_map);
 

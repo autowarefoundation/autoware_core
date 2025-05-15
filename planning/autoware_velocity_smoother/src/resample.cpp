@@ -58,6 +58,9 @@ TrajectoryPoints resampleTrajectory(
   for (double ds = 0.0; ds <= front_arclength_value; ds += front_ds) {
     out_arclength.push_back(ds);
   }
+  if (out_arclength.empty()) {
+    return input;
+  }
   if (std::fabs(out_arclength.back() - front_arclength_value) < 1e-3) {
     out_arclength.back() = front_arclength_value;
   } else {
@@ -182,6 +185,9 @@ TrajectoryPoints resampleTrajectory(
   const auto front_arclength_value = std::fabs(negative_front_arclength_value);
   for (double s = 0.0; s <= front_arclength_value; s += nominal_ds) {
     out_arclength.push_back(s);
+  }
+  if (out_arclength.empty()) {
+    return input;
   }
   if (std::fabs(out_arclength.back() - front_arclength_value) < 1e-3) {
     out_arclength.back() = front_arclength_value;
