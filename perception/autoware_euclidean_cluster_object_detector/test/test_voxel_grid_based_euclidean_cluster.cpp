@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/euclidean_cluster_object_detector/voxel_grid_based_euclidean_cluster.hpp"
+#include <autoware/euclidean_cluster_object_detector/voxel_grid_based_euclidean_cluster.hpp>
 
 #include <autoware/point_types/types.hpp>
 #include <experimental/random>
 
+#include <autoware_perception_msgs/msg/detected_objects.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
-#include <autoware_perception_msgs/msg/detected_objects.hpp>
 
 #include <gtest/gtest.h>
 
@@ -103,7 +103,7 @@ TEST(VoxelGridBasedEuclideanClusterTest, testcase1)
     std::cout << "cluster failed" << std::endl;
   }
   std::cout << "number of output objects " << output.objects.size() << std::endl;
-  
+
   // the output clusters should has only one cluster with nb_generated_points points
   EXPECT_EQ(output.objects.size(), 1);
 }

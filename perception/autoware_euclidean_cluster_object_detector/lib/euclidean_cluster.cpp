@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/euclidean_cluster_object_detector/euclidean_cluster.hpp"
+#include <autoware/euclidean_cluster_object_detector/euclidean_cluster.hpp>
 
 #include <pcl/kdtree/kdtree.h>
 #include <pcl/segmentation/extract_clusters.h>
@@ -46,9 +46,9 @@ bool EuclideanCluster::cluster(
 }
 
 bool EuclideanCluster::cluster(
-    const sensor_msgs::msg::PointCloud2::ConstSharedPtr & input_msg,
-    autoware_perception_msgs::msg::DetectedObjects & objects,
-    std::vector<pcl::PointCloud<pcl::PointXYZ>> & clusters)
+  const sensor_msgs::msg::PointCloud2::ConstSharedPtr & input_msg,
+  autoware_perception_msgs::msg::DetectedObjects & objects,
+  std::vector<pcl::PointCloud<pcl::PointXYZ>> & clusters)
 {
   (void)input_msg;
   (void)objects;

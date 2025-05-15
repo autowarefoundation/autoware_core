@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "autoware/euclidean_cluster_object_detector/utils.hpp"
+#include <autoware/euclidean_cluster_object_detector/utils.hpp>
 
 #include <autoware_perception_msgs/msg/object_classification.hpp>
 #include <sensor_msgs/msg/point_field.hpp>
@@ -34,7 +34,7 @@ geometry_msgs::msg::Point getCentroid(const sensor_msgs::msg::PointCloud2 & poin
     centroid.x += *iter_x;
     centroid.y += *iter_y;
     centroid.z += *iter_z;
-    size ++;
+    size++;
   }
   // const size_t size = pointcloud.width * pointcloud.height;
   centroid.x = centroid.x / static_cast<float>(size);
@@ -64,8 +64,7 @@ void convertPointCloudClusters2Msg(
 }
 
 void convertClusters2SensorMsg(
-  const std_msgs::msg::Header & header,
-  const std::vector<pcl::PointCloud<pcl::PointXYZ>> & input,
+  const std_msgs::msg::Header & header, const std::vector<pcl::PointCloud<pcl::PointXYZ>> & input,
   sensor_msgs::msg::PointCloud2 & output)
 {
   output.header = header;
@@ -94,9 +93,8 @@ void convertClusters2SensorMsg(
   for (size_t i = 0; i < clusters_size; ++i) {
     const auto & cluster = input.at(i);
     size_t cluster_size = cluster.size();
-    for (size_t j = 0; j < cluster_size; ++iter_out_x,++iter_out_y, ++iter_out_z, 
-                                            ++iter_out_r, ++iter_out_g, ++iter_out_b, j++) 
-    {
+    for (size_t j = 0; j < cluster_size;
+         ++iter_out_x, ++iter_out_y, ++iter_out_z, ++iter_out_r, ++iter_out_g, ++iter_out_b, j++) {
       *iter_out_x = cluster.points[j].x;
       *iter_out_y = cluster.points[j].y;
       *iter_out_z = cluster.points[j].z;

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/euclidean_cluster_object_detector/voxel_grid_based_euclidean_cluster.hpp"
+#include <autoware/euclidean_cluster_object_detector/voxel_grid_based_euclidean_cluster.hpp>
 
 #include <rclcpp/node.hpp>
 
@@ -82,8 +82,8 @@ bool VoxelGridBasedEuclideanCluster::cluster(
 }
 
 bool VoxelGridBasedEuclideanCluster::cluster(
-    const sensor_msgs::msg::PointCloud2::ConstSharedPtr & input_msg,
-    autoware_perception_msgs::msg::DetectedObjects & output_clusters)
+  const sensor_msgs::msg::PointCloud2::ConstSharedPtr & input_msg,
+  autoware_perception_msgs::msg::DetectedObjects & output_clusters)
 {
   (void)input_msg;
   (void)output_clusters;
@@ -215,10 +215,9 @@ bool VoxelGridBasedEuclideanCluster::cluster(
 
       pcl::PointCloud<pcl::PointXYZ> cluster_point_cloud;
 
-      for (sensor_msgs::PointCloud2ConstIterator<float> iter_x(cluster, "x"),
-           iter_y(cluster, "y"), iter_z(cluster, "z");
-           iter_x != iter_x.end(); ++iter_x, ++iter_y, ++iter_z) 
-      {
+      for (sensor_msgs::PointCloud2ConstIterator<float> iter_x(cluster, "x"), iter_y(cluster, "y"),
+           iter_z(cluster, "z");
+           iter_x != iter_x.end(); ++iter_x, ++iter_y, ++iter_z) {
         pcl::PointXYZ point;
         point.x = *iter_x;
         point.y = *iter_y;
@@ -226,7 +225,6 @@ bool VoxelGridBasedEuclideanCluster::cluster(
         cluster_point_cloud.push_back(point);
       }
       clusters.push_back(cluster_point_cloud);
-
     }
     objects.header = pointcloud_msg->header;
     // Publish the diagnostics summary.

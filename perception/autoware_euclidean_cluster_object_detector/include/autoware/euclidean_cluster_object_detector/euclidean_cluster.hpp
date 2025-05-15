@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "autoware/euclidean_cluster_object_detector/euclidean_cluster_interface.hpp"
-#include "autoware/euclidean_cluster_object_detector/utils.hpp"
+#include <autoware/euclidean_cluster_object_detector/euclidean_cluster_interface.hpp>
+#include <autoware/euclidean_cluster_object_detector/utils.hpp>
 
 #include <pcl/point_types.h>
 
@@ -41,7 +41,7 @@ public:
     const sensor_msgs::msg::PointCloud2::ConstSharedPtr & input_msg,
     autoware_perception_msgs::msg::DetectedObjects & objects,
     std::vector<pcl::PointCloud<pcl::PointXYZ>> & clusters) override;
-    
+
   void setTolerance(float tolerance) { tolerance_ = tolerance; }
 
 private:

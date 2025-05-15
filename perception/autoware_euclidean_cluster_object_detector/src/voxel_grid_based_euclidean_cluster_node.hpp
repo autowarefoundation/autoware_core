@@ -20,9 +20,9 @@
 #include <autoware_utils_diagnostics/diagnostics_interface.hpp>
 #include <autoware_utils_system/stop_watch.hpp>
 
+#include <autoware_perception_msgs/msg/detected_objects.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
-#include <autoware_perception_msgs/msg/detected_objects.hpp>
 
 #include <memory>
 

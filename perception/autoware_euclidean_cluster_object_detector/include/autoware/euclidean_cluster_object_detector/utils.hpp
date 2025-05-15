@@ -14,9 +14,9 @@
 
 #pragma once
 
+#include <autoware_perception_msgs/msg/detected_objects.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
-#include <autoware_perception_msgs/msg/detected_objects.hpp>
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -33,7 +33,6 @@ void convertPointCloudClusters2Msg(
   autoware_perception_msgs::msg::DetectedObjects & msg);
 
 void convertClusters2SensorMsg(
-  const std_msgs::msg::Header & header,
-  const std::vector<pcl::PointCloud<pcl::PointXYZ>> & input,
+  const std_msgs::msg::Header & header, const std::vector<pcl::PointCloud<pcl::PointXYZ>> & input,
   sensor_msgs::msg::PointCloud2 & output);
 }  // namespace autoware::euclidean_cluster

@@ -13,16 +13,16 @@
 // limitations under the License.
 
 #pragma once
-#include "autoware/euclidean_cluster_object_detector/euclidean_cluster_interface.hpp"
-#include "autoware/euclidean_cluster_object_detector/utils.hpp"
+#include <autoware/euclidean_cluster_object_detector/euclidean_cluster_interface.hpp>
+#include <autoware/euclidean_cluster_object_detector/utils.hpp>
 
 #include <autoware_utils_diagnostics/diagnostics_interface.hpp>
 #include <rclcpp/node.hpp>
 
+#include <sensor_msgs/point_cloud2_iterator.hpp>
+
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/point_types.h>
-
-#include <sensor_msgs/point_cloud2_iterator.hpp>
 
 #include <vector>
 
