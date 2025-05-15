@@ -20,7 +20,8 @@
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
   <depend>sensor_msgs</depend>
-  <depend>autoware_crop_box_filter</depend>
+
+  <exec_depend>autoware_crop_box_filter</exec_depend>
 
   <test_depend>ament_cmake_gtest</test_depend>
   <test_depend>ament_lint_auto</test_depend>
