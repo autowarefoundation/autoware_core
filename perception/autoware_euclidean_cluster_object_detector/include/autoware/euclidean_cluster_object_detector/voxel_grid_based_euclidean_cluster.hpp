@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #pragma once
-#include "autoware/euclidean_cluster/euclidean_cluster_interface.hpp"
-#include "autoware/euclidean_cluster/utils.hpp"
+#include "autoware/euclidean_cluster_object_detector/euclidean_cluster_interface.hpp"
+#include "autoware/euclidean_cluster_object_detector/utils.hpp"
 
 #include <autoware_utils/ros/diagnostics_interface.hpp>
 #include <rclcpp/node.hpp>

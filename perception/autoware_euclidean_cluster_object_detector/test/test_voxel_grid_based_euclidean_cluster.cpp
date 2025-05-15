@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/euclidean_cluster/voxel_grid_based_euclidean_cluster.hpp"
+#include "autoware/euclidean_cluster_object_detector/voxel_grid_based_euclidean_cluster.hpp"
 
 #include <autoware/point_types/types.hpp>
 #include <experimental/random>
