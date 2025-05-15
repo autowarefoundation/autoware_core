@@ -41,7 +41,7 @@ public:
     const sensor_msgs::msg::PointCloud2::ConstSharedPtr & input_msg,
     autoware_perception_msgs::msg::DetectedObjects & objects,
     std::vector<pcl::PointCloud<pcl::PointXYZ>> & clusters) override;
-    
+
   void setTolerance(float tolerance) { tolerance_ = tolerance; }
 
 private:

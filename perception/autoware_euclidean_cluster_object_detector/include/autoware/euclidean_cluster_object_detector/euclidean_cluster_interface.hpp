@@ -16,8 +16,8 @@
 
 #include <rclcpp/rclcpp.hpp>
 
-#include <sensor_msgs/msg/point_cloud2.hpp>
 #include <autoware_perception_msgs/msg/detected_objects.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
