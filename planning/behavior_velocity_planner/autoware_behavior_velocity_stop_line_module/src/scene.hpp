@@ -20,10 +20,9 @@
 #include "autoware/behavior_velocity_planner_common/utilization/util.hpp"
 #include "autoware/trajectory/path_point_with_lane_id.hpp"
 
-#include <autoware_utils_debug/time_keeper.hpp>
-
 #include <Eigen/Core>
 #include <Eigen/Geometry>
+#include <autoware_utils_debug/time_keeper.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/time.hpp>
 
@@ -71,12 +70,12 @@ public:
    * @param planning_factor_interface Planning factor interface.
    */
   StopLineModule(
-    const int64_t module_id,                                          //
-    const lanelet::ConstLineString3d & stop_line,                     //
-    const lanelet::Id & linked_lanelet_id,                            //
-    const PlannerParam & planner_param,                               //
-    const rclcpp::Logger & logger,                                    //
-    const rclcpp::Clock::SharedPtr clock,                             //
+    const int64_t module_id,                                                //
+    const lanelet::ConstLineString3d & stop_line,                           //
+    const lanelet::Id & linked_lanelet_id,                                  //
+    const PlannerParam & planner_param,                                     //
+    const rclcpp::Logger & logger,                                          //
+    const rclcpp::Clock::SharedPtr clock,                                   //
     const std::shared_ptr<autoware_utils_debug::TimeKeeper> & time_keeper,  //
     const std::shared_ptr<planning_factor_interface::PlanningFactorInterface> &
       planning_factor_interface);
