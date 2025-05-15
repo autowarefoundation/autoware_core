@@ -1613,7 +1613,7 @@ PathWithLaneId RouteHandler::getCenterLinePath(
                                       : piecewise_ref_points.at(ref_point_idx);
 
       const double distance =
-        autoware_utils::calc_distance2d(ref_point.point, next_ref_point.point);
+        autoware_utils_geometry::calc_distance2d(ref_point.point, next_ref_point.point);
 
       if (s < s_start && s + distance > s_start) {
         const auto p =
