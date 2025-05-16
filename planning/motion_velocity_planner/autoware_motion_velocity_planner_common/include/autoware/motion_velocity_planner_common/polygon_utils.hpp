@@ -29,6 +29,7 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
+#include <functional>
 #include <limits>
 #include <optional>
 #include <utility>

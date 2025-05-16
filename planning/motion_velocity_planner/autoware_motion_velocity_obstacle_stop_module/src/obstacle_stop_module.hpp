@@ -20,6 +20,7 @@
 #include "type_alias.hpp"
 #include "types.hpp"
 
+#include <autoware/motion_velocity_planner_common/path_length_buffer.hpp>
 #include <autoware/motion_velocity_planner_common/plugin_module_interface.hpp>
 #include <autoware/motion_velocity_planner_common/polygon_utils.hpp>
 #include <autoware/motion_velocity_planner_common/velocity_planning_result.hpp>
@@ -84,6 +85,8 @@ private:
   mutable std::shared_ptr<DebugData> debug_data_ptr_{};
   std::vector<StopObstacle> prev_closest_stop_obstacles_{};
   std::vector<StopObstacle> prev_stop_obstacles_{};
+
+  autoware::motion_velocity_planner::utils::PathLengthBuffer path_length_buffer_;
 
   // PointCloud-based stop obstacle history
   std::vector<StopObstacle> stop_pointcloud_obstacle_history_;

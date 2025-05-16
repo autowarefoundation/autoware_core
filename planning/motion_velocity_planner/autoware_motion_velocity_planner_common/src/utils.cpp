@@ -221,4 +221,17 @@ double get_dist_to_traj_poly(
   return dist_to_traj_poly;
 }
 
+double calc_diff_angle_against_trajectory(
+  const std::vector<TrajectoryPoint> & traj_points, const geometry_msgs::msg::Pose & target_pose)
+{
+  const size_t nearest_idx =
+    autoware::motion_utils::findNearestIndex(traj_points, target_pose.position);
+  const double traj_yaw = tf2::getYaw(traj_points.at(nearest_idx).pose.orientation);
+
+  const double target_yaw = tf2::getYaw(target_pose.orientation);
+
+  const double diff_yaw = autoware_utils::normalize_radian(target_yaw - traj_yaw);
+  return diff_yaw;
+}
+
 }  // namespace autoware::motion_velocity_planner::utils
