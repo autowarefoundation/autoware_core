@@ -72,4 +72,4 @@ def generate_test_description():
 class TestProcessOutput(unittest.TestCase):
     def test_exit_code(self, proc_info):
         # Check that process exits with code 0: no error
-        launch_testing.asserts.assertExitCodes(proc_info) 
+        launch_testing.asserts.assertExitCodes(proc_info)

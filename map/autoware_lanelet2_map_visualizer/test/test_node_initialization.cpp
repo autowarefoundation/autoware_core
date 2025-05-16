@@ -15,6 +15,7 @@
 #include "../src/lanelet2_map_visualization_node.hpp"
 
 #include <rclcpp/rclcpp.hpp>
+
 #include <gtest/gtest.h>
 
 #include <memory>
@@ -24,15 +25,9 @@ using autoware::lanelet2_map_visualizer::Lanelet2MapVisualizationNode;
 class TestNodeInitialization : public ::testing::Test
 {
 protected:
-  void SetUp() override
-  {
-    rclcpp::init(0, nullptr);
-  }
+  void SetUp() override { rclcpp::init(0, nullptr); }
 
-  void TearDown() override
-  {
-    rclcpp::shutdown();
-  }
+  void TearDown() override { rclcpp::shutdown(); }
 };
 
 TEST_F(TestNodeInitialization, InitializationTest)
@@ -41,7 +36,7 @@ TEST_F(TestNodeInitialization, InitializationTest)
   rclcpp::NodeOptions options;
   std::shared_ptr<Lanelet2MapVisualizationNode> node =
     std::make_shared<Lanelet2MapVisualizationNode>(options);
-  
+
   // Check that the node is not null
   ASSERT_NE(node, nullptr);
 }
@@ -50,4 +45,4 @@ int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
-} 
+}
