@@ -35,6 +35,8 @@ runs:
 
     - name: Create ccache directory
       run: |
+        apt-get update
+        apt-get install -y ccache
         mkdir -p ${CCACHE_DIR}
         du -sh ${CCACHE_DIR} && ccache -s
       shell: bash
