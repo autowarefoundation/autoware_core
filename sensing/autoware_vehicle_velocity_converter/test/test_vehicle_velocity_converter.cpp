@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "../src/vehicle_velocity_converter.hpp"
+#include "rclcpp/publisher.hpp"
+#include "rclcpp/rclcpp.hpp"
+#include "rclcpp/subscription.hpp"
+
+#include "autoware_vehicle_msgs/msg/velocity_report.hpp"
+#include "geometry_msgs/msg/twist_with_covariance_stamped.hpp"
+
 #include <gtest/gtest.h>
 
 #include <memory>
 #include <string>
 #include <vector>
-
-#include "rclcpp/rclcpp.hpp"
-#include "rclcpp/publisher.hpp"
-#include "rclcpp/subscription.hpp"
-
-#include "../src/vehicle_velocity_converter.hpp"
-#include "autoware_vehicle_msgs/msg/velocity_report.hpp"
-#include "geometry_msgs/msg/twist_with_covariance_stamped.hpp"
 
 using autoware::vehicle_velocity_converter::VehicleVelocityConverter;
 using autoware_vehicle_msgs::msg::VelocityReport;
@@ -65,12 +65,10 @@ protected:
   rclcpp::Subscription<TwistWithCovarianceStamped>::SharedPtr twist_sub_{nullptr};
   TwistWithCovarianceStamped::SharedPtr received_twist_{nullptr};
 
-  void spinSome()
-  {
-    rclcpp::spin_some(node_ptr_);
-  }
+  void spinSome() { rclcpp::spin_some(node_ptr_); }
 
-  bool waitForTwistMessage(const std::chrono::milliseconds & timeout = std::chrono::milliseconds(1000))
+  bool waitForTwistMessage(
+    const std::chrono::milliseconds & timeout = std::chrono::milliseconds(1000))
   {
     const auto start_time = system_clock::now();
     received_twist_ = nullptr;
@@ -109,7 +107,7 @@ TEST_F(TestVehicleVelocityConverter, MessageConversion)
   options.parameter_overrides().push_back(rclcpp::Parameter("speed_scale_factor", 1.5));
 
   auto vehicle_velocity_converter = std::make_shared<VehicleVelocityConverter>(options);
-  
+
   // Create and publish a velocity report message
   auto velocity_msg = std::make_shared<VelocityReport>();
   velocity_msg->header.frame_id = "base_link";
@@ -127,22 +125,22 @@ TEST_F(TestVehicleVelocityConverter, MessageConversion)
       executor.spin_some(std::chrono::milliseconds(100));
     }
   });
-  
+
   // Wait a moment for the executor to set up
   std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
   // Publish the message
   velocity_pub_->publish(*velocity_msg);
-  
+
   // Wait for the converted message
   EXPECT_TRUE(waitForTwistMessage());
-  
+
   // Check that the conversion was correct
   EXPECT_EQ(received_twist_->header.frame_id, velocity_msg->header.frame_id);
   EXPECT_EQ(received_twist_->twist.twist.linear.x, velocity_msg->longitudinal_velocity * 1.5);
   EXPECT_EQ(received_twist_->twist.twist.linear.y, velocity_msg->lateral_velocity);
   EXPECT_EQ(received_twist_->twist.twist.angular.z, velocity_msg->heading_rate);
-  
+
   // Check covariance values
   EXPECT_EQ(received_twist_->twist.covariance[0], 0.2 * 0.2);
   EXPECT_EQ(received_twist_->twist.covariance[7], 10000.0);
@@ -150,7 +148,7 @@ TEST_F(TestVehicleVelocityConverter, MessageConversion)
   EXPECT_EQ(received_twist_->twist.covariance[21], 10000.0);
   EXPECT_EQ(received_twist_->twist.covariance[28], 10000.0);
   EXPECT_EQ(received_twist_->twist.covariance[35], 0.1 * 0.1);
-  
+
   // Join the executor thread
   executor_thread.join();
 }
@@ -165,7 +163,7 @@ TEST_F(TestVehicleVelocityConverter, DifferentFrameId)
   options.parameter_overrides().push_back(rclcpp::Parameter("speed_scale_factor", 1.0));
 
   auto vehicle_velocity_converter = std::make_shared<VehicleVelocityConverter>(options);
-  
+
   // Create and publish a velocity report message with a different frame_id
   auto velocity_msg = std::make_shared<VelocityReport>();
   velocity_msg->header.frame_id = "different_frame";  // Not base_link
@@ -183,22 +181,22 @@ TEST_F(TestVehicleVelocityConverter, DifferentFrameId)
       executor.spin_some(std::chrono::milliseconds(100));
     }
   });
-  
+
   // Wait a moment for the executor to set up
   std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
   // Publish the message
   velocity_pub_->publish(*velocity_msg);
-  
+
   // Wait for the converted message
   EXPECT_TRUE(waitForTwistMessage());
-  
+
   // Even with different frame_id, the conversion should still work
   EXPECT_EQ(received_twist_->header.frame_id, velocity_msg->header.frame_id);
   EXPECT_EQ(received_twist_->twist.twist.linear.x, velocity_msg->longitudinal_velocity);
   EXPECT_EQ(received_twist_->twist.twist.linear.y, velocity_msg->lateral_velocity);
   EXPECT_EQ(received_twist_->twist.twist.angular.z, velocity_msg->heading_rate);
-  
+
   // Join the executor thread
   executor_thread.join();
 }
@@ -210,4 +208,4 @@ int main(int argc, char ** argv)
   int result = RUN_ALL_TESTS();
   rclcpp::shutdown();
   return result;
-} 
+}
