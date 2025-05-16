@@ -48,6 +48,14 @@ jobs:
         id: get-self-packages
         uses: autowarefoundation/autoware-github-actions/get-self-packages@v1
 
+      - name: Use ros2-testing packages
+        run: |
+          if [ "${{ matrix.rosdistro }}" = "jazzy" ]; then
+            sed -i 's|http://packages.ros.org/ros2/ubuntu|http://packages.ros.org/ros2-testing/ubuntu|g' /etc/apt/sources.list.d/ros2.list
+            apt-get update
+          fi
+        shell: bash
+
       - name: Create ccache directory
         run: |
           if [ -z "${CCACHE_DIR}" ]; then
