@@ -37,6 +37,7 @@ runs:
       run: |
         apt-get update
         apt-get install -y ccache
+        export CCACHE_DIR=/root/.ccache
         mkdir -p ${CCACHE_DIR}
         du -sh ${CCACHE_DIR} && ccache -s
       shell: bash
