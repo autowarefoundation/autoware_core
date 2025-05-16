@@ -50,6 +50,11 @@ jobs:
 
       - name: Create ccache directory
         run: |
+          if [ -z "${CCACHE_DIR}" ]; then
+            apt-get update
+            apt-get install -y ccache
+            export CCACHE_DIR=/root/.ccache
+          fi
           mkdir -p ${CCACHE_DIR}
           du -sh ${CCACHE_DIR} && ccache -s
         shell: bash
