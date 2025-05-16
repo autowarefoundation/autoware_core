@@ -96,7 +96,8 @@ public:
         buffer_.begin(), buffer_.end(),
         [&](const BufferedStopDistanceItem & buffered_item) {
           const auto duration = (clock_now - buffered_item.start_time).seconds();
-          const auto buffered_item_zero_vel_dist = calc_zero_vel_dist(buffered_item.stop_obstacle, buffered_item.desired_stop_margin);
+          const auto buffered_item_zero_vel_dist =
+            calc_zero_vel_dist(buffered_item.stop_obstacle, buffered_item.desired_stop_margin);
 
           if (!buffered_item_zero_vel_dist) {
             return true;
@@ -105,8 +106,7 @@ public:
           const double rel_dist = std::abs(*buffered_item_zero_vel_dist - zero_vel_dist);
 
           const bool is_remove = (buffered_item.is_active && (duration > min_off_duration_)) ||
-                 (!buffered_item.is_active &&
-                  rel_dist > update_distance_th_);
+                                 (!buffered_item.is_active && rel_dist > update_distance_th_);
 
           return is_remove;
         }),
@@ -122,7 +122,8 @@ public:
 
     // Update the state of remaining items
     for (auto & buffered_item : buffer_) {
-      const auto candidate_zero_vel_dist = calc_zero_vel_dist(buffered_item.stop_obstacle, buffered_item.desired_stop_margin);
+      const auto candidate_zero_vel_dist =
+        calc_zero_vel_dist(buffered_item.stop_obstacle, buffered_item.desired_stop_margin);
       if (!candidate_zero_vel_dist) {
         buffered_item.is_active = false;
         continue;
@@ -140,10 +141,10 @@ public:
     auto min_relative_dist = std::numeric_limits<double>::max();
     for (auto it = buffer_.begin(); it < buffer_.end(); ++it) {
       const auto rel_dist = it->zero_vel_dist - zero_vel_dist;
-      
+
       if (std::abs(rel_dist) < update_distance_th_ && rel_dist < min_relative_dist) {
-          nearest_prev_pose_it = it;
-          min_relative_dist = rel_dist;
+        nearest_prev_pose_it = it;
+        min_relative_dist = rel_dist;
       }
     }
 

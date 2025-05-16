@@ -627,8 +627,11 @@ bool ObstacleStopModule::is_crossing_transient_obstacle(
   const double diff_angle = utils::calc_diff_angle_against_trajectory(
     traj_points, object->predicted_object.kinematics.initial_pose_with_covariance.pose);
   // If angle is small, the obstacle is moving in roughly the same direction
-  if (std::abs(diff_angle) < obstacle_filtering_param_.crossing_obstacle_traj_angle_threshold ||
-      ((std::abs(diff_angle) > obstacle_filtering_param_.crossing_obstacle_traj_angle_threshold + M_PI/2) && (std::abs(diff_angle) < M_PI))) {
+  if (
+    std::abs(diff_angle) < obstacle_filtering_param_.crossing_obstacle_traj_angle_threshold ||
+    ((std::abs(diff_angle) >
+      obstacle_filtering_param_.crossing_obstacle_traj_angle_threshold + M_PI / 2) &&
+     (std::abs(diff_angle) < M_PI))) {
     return false;  // Not a crossing obstacle since it's moving in the same direction
   }
 
@@ -851,17 +854,17 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::plan_stop(
   std::optional<double> new_determined_zero_vel_dist{};
   std::optional<double> new_determined_desired_stop_margin{};
 
-  const auto closest_stop_obstacles = get_closest_stop_obstacles(stop_obstacles);    
-  
+  const auto closest_stop_obstacles = get_closest_stop_obstacles(stop_obstacles);
+
   const auto ego_segment_idx =
     planner_data->find_segment_index(traj_points, planner_data->current_odometry.pose.pose);
-  const double ego_arc_length = autoware::motion_utils::calcSignedArcLength(traj_points, 0, ego_segment_idx);
+  const double ego_arc_length =
+    autoware::motion_utils::calcSignedArcLength(traj_points, 0, ego_segment_idx);
 
   for (const auto & stop_obstacle : closest_stop_obstacles) {
     // calculate dist to collide
     const double dist_to_collide_on_ref_traj =
-      ego_arc_length +
-      stop_obstacle.dist_to_collide_on_decimated_traj;
+      ego_arc_length + stop_obstacle.dist_to_collide_on_decimated_traj;
 
     const double desired_stop_margin = calc_desired_stop_margin(
       planner_data, traj_points, stop_obstacle, dist_to_bumper, ego_segment_idx,
@@ -906,15 +909,13 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::plan_stop(
   determined_desired_stop_pose =
     autoware::motion_utils::calcInterpolatedPose(traj_points, *determined_zero_vel_dist);
 
-  auto calc_zero_vel_dist = [&](const StopObstacle& stop_obstacle, const double desired_stop_margin) -> std::optional<double> {
-    const double dist_to_collide_on_ref_traj = ego_arc_length + stop_obstacle.dist_to_collide_on_decimated_traj;
+  auto calc_zero_vel_dist = [&](
+                              const StopObstacle & stop_obstacle,
+                              const double desired_stop_margin) -> std::optional<double> {
+    const double dist_to_collide_on_ref_traj =
+      ego_arc_length + stop_obstacle.dist_to_collide_on_decimated_traj;
     return calc_candidate_zero_vel_dist(
-        planner_data,
-        traj_points,
-        stop_obstacle,
-        dist_to_collide_on_ref_traj,
-        desired_stop_margin
-    );
+      planner_data, traj_points, stop_obstacle, dist_to_collide_on_ref_traj, desired_stop_margin);
   };
 
   path_length_buffer_.update_buffer(
@@ -972,8 +973,12 @@ double ObstacleStopModule::calc_desired_stop_margin(
       const double ego_stop_margin = stop_planning_param_.stop_margin_opposing_traffic;
 
       const double rel_vel = v_ego - v_obs;
-      const double epsilon = std::numeric_limits<double>::epsilon();  // Standard machine epsilon for double
-      assert(std::abs(rel_vel) > epsilon && "Relative velocity too close to zero - should not happen as the obstacle and ego are moving in the opposite direction");
+      const double epsilon =
+        std::numeric_limits<double>::epsilon();  // Standard machine epsilon for double
+      assert(
+        std::abs(rel_vel) > epsilon &&
+        "Relative velocity too close to zero - should not happen as the obstacle and ego are "
+        "moving in the opposite direction");
 
       const double T_coast = std::max(
         (bumper_to_bumper_distance - ego_stop_margin - braking_distance +

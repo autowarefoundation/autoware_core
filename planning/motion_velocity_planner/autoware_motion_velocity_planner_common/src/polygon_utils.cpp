@@ -60,11 +60,12 @@ std::optional<std::pair<size_t, std::vector<PointWithStamp>>> get_collision_inde
   const Shape & object_shape, const double max_dist = std::numeric_limits<double>::max())
 {
   const auto obj_polygon = autoware_utils_geometry::to_polygon2d(object_pose, object_shape);
-  
+
   for (size_t i = 0; i < traj_polygons.size(); ++i) {
     const double approximated_dist =
       autoware_utils_geometry::calc_distance2d(traj_points.at(i).pose, object_pose);
-    if (approximated_dist > max_dist) {;
+    if (approximated_dist > max_dist) {
+      ;
       continue;
     }
 
@@ -105,9 +106,8 @@ std::optional<std::pair<geometry_msgs::msg::Point, double>> get_collision_point(
   const geometry_msgs::msg::Pose obj_pose, const rclcpp::Time obj_stamp, const Shape & obj_shape,
   const double dist_to_bumper)
 {
-  const auto collision_info =
-    get_collision_index(traj_points, traj_polygons, obj_pose, obj_stamp, obj_shape, 
-                       std::numeric_limits<double>::max());
+  const auto collision_info = get_collision_index(
+    traj_points, traj_polygons, obj_pose, obj_stamp, obj_shape, std::numeric_limits<double>::max());
   if (!collision_info) {
     return std::nullopt;
   }

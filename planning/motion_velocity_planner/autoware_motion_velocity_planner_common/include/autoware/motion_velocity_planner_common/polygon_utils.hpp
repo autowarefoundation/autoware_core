@@ -29,11 +29,11 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
+#include <functional>
 #include <limits>
 #include <optional>
 #include <utility>
 #include <vector>
-#include <functional>
 
 namespace autoware::motion_velocity_planner
 {
