@@ -27,6 +27,7 @@
   <depend>autoware_motion_utils</depend>
   <depend>autoware_route_handler</depend>
   <depend>autoware_trajectory</depend>
+  <depend>autoware_utils_debug</depend>
   <depend>eigen</depend>
   <depend>geometry_msgs</depend>
   <depend>pluginlib</depend>
