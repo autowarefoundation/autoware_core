@@ -28,24 +28,39 @@ autoware_utils::LinearRing2d VehicleInfo::createFootprint(const double margin) c
 autoware_utils::LinearRing2d VehicleInfo::createFootprint(
   const double lat_margin, const double lon_margin) const
 {
+  return createFootprint(lat_margin, lat_margin, lat_margin, lon_margin, lon_margin);
+}
+
+autoware_utils::LinearRing2d VehicleInfo::createFootprint(
+  const double front_lat_margin, const double center_lat_margin, const double rear_lat_margin,
+  const double front_lon_margin, const double rear_lon_margin, const bool center_at_base_link) const
+{
   using autoware_utils::LinearRing2d;
   using autoware_utils::Point2d;
 
-  const double x_front = front_overhang_m + wheel_base_m + lon_margin;
-  const double x_center = wheel_base_m / 2.0;
-  const double x_rear = -(rear_overhang_m + lon_margin);
-  const double y_left = wheel_tread_m / 2.0 + left_overhang_m + lat_margin;
-  const double y_right = -(wheel_tread_m / 2.0 + right_overhang_m + lat_margin);
+  // Longitudinal positions
+  const double x_front = front_overhang_m + wheel_base_m + front_lon_margin;
+  const double x_center = center_at_base_link ? 0.0 : (wheel_base_m / 2.0);
+  const double x_rear = -(rear_overhang_m + rear_lon_margin);
+
+  const double y_left_front = wheel_tread_m * 0.5 + left_overhang_m + front_lat_margin;
+  const double y_right_front = -(wheel_tread_m * 0.5 + right_overhang_m + front_lat_margin);
+
+  const double y_left_center = wheel_tread_m * 0.5 + left_overhang_m + center_lat_margin;
+  const double y_right_center = -(wheel_tread_m * 0.5 + right_overhang_m + center_lat_margin);
+
+  const double y_left_rear = wheel_tread_m * 0.5 + left_overhang_m + rear_lat_margin;
+  const double y_right_rear = -(wheel_tread_m * 0.5 + right_overhang_m + rear_lat_margin);
 
   LinearRing2d footprint;
   footprint.reserve(7);
-  footprint.emplace_back(x_front, y_left);
-  footprint.emplace_back(x_front, y_right);
-  footprint.emplace_back(x_center, y_right);
-  footprint.emplace_back(x_rear, y_right);
-  footprint.emplace_back(x_rear, y_left);
-  footprint.emplace_back(x_center, y_left);
-  footprint.emplace_back(x_front, y_left);
+  footprint.emplace_back(x_front, y_left_front);
+  footprint.emplace_back(x_front, y_right_front);
+  footprint.emplace_back(x_center, y_right_center);
+  footprint.emplace_back(x_rear, y_right_rear);
+  footprint.emplace_back(x_rear, y_left_rear);
+  footprint.emplace_back(x_center, y_left_center);
+  footprint.emplace_back(x_front, y_left_front);
 
   return footprint;
 }
