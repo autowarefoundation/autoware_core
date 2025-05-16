@@ -426,8 +426,6 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_predicted
     if (inside_stop_obstacle) {
       stop_obstacles.push_back(*inside_stop_obstacle);
       continue;
-    } else {
-      std::cout << "inside_stop_obstacle is null" << std::endl;
     }
 
     // 2.2 filter target object outside trajectory
@@ -498,15 +496,18 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_point_clo
 
     const auto lat_dist_from_obstacle_to_traj =
       autoware::motion_utils::calcLateralOffset(traj_points, itr->collision_point);
-    const auto min_lat_dist_to_traj_poly =
-      std::abs(lat_dist_from_obstacle_to_traj) - vehicle_info.vehicle_width_m;
+    const double min_lat_dist_to_traj_poly =
+      std::abs(lat_dist_from_obstacle_to_traj) - vehicle_info.max_longitudinal_offset_m;
 
-    if (min_lat_dist_to_traj_poly < obstacle_filtering_param_.max_lat_margin) {
-      auto stop_obstacle = *itr;
-      stop_obstacle.dist_to_collide_on_decimated_traj =
-        autoware::motion_utils::calcSignedArcLength(traj_points, 0, stop_obstacle.collision_point) -
-        dist_to_bumper;
-      past_stop_obstacles.push_back(stop_obstacle);
+    if (min_lat_dist_to_traj_poly >= obstacle_filtering_param_.max_lat_margin) {
+      continue;
+    }
+
+    const double precise_min_lat_dist_to_traj_poly =
+      utils::get_dist_to_traj_poly(itr->collision_point, decimated_traj_polys);
+
+    if (precise_min_lat_dist_to_traj_poly >= obstacle_filtering_param_.max_lat_margin) {
+      continue;
     }
 
     auto stop_obstacle = *itr;
@@ -550,13 +551,11 @@ std::optional<StopObstacle> ObstacleStopModule::filter_inside_stop_obstacle_for_
   const double max_lat_margin = get_max_lat_margin(obj_label);
   // NOTE: max_lat_margin can be negative, so apply std::max with 1e-3.
   if (std::max(max_lat_margin, 1e-3) <= dist_from_obj_poly_to_traj_poly) {
-    std::cout << "filtered by lateral distance" << std::endl;
     return std::nullopt;
   }
 
   // 3. filter by velocity
   if (!is_inside_stop_obstacle_velocity(object, traj_points)) {
-    std::cout << "filtered by velocity" << std::endl;
     return std::nullopt;
   }
 
@@ -568,14 +567,9 @@ std::optional<StopObstacle> ObstacleStopModule::filter_inside_stop_obstacle_for_
   debug_data_ptr_->decimated_traj_polys = decimated_traj_polys_with_lat_margin;
 
   // 4. check if the obstacle really collides with the trajectory
-  Polygon2d object_polygon;
   const auto collision_point = polygon_utils::get_collision_point(
     decimated_traj_points, decimated_traj_polys_with_lat_margin, obj_pose, clock_->now(),
-    predicted_object.shape, dist_to_bumper, std::ref(object_polygon));
-    
-  if (collision_point) {
-    debug_data_ptr_->object_polygons.push_back(object_polygon);
-  }
+    predicted_object.shape, dist_to_bumper);
 
   // 5. filter if the obstacle will cross and go out of trajectory soon
   if (
@@ -583,7 +577,6 @@ std::optional<StopObstacle> ObstacleStopModule::filter_inside_stop_obstacle_for_
     is_crossing_transient_obstacle(
       odometry, traj_points, decimated_traj_points, object, dist_to_bumper,
       decimated_traj_polys_with_lat_margin, collision_point)) {
-    std::cout << "filtered by crossing obstacle" << std::endl;
     return std::nullopt;
   }
 
@@ -630,6 +623,15 @@ bool ObstacleStopModule::is_crossing_transient_obstacle(
   const std::vector<Polygon2d> & decimated_traj_polys_with_lat_margin,
   const std::optional<std::pair<geometry_msgs::msg::Point, double>> & collision_point) const
 {
+  // Check if obstacle is moving in the same direction as the trajectory
+  const double diff_angle = utils::calc_diff_angle_against_trajectory(
+    traj_points, object->predicted_object.kinematics.initial_pose_with_covariance.pose);
+  // If angle is small, the obstacle is moving in roughly the same direction
+  if (std::abs(diff_angle) < obstacle_filtering_param_.crossing_obstacle_traj_angle_threshold ||
+      ((std::abs(diff_angle) > obstacle_filtering_param_.crossing_obstacle_traj_angle_threshold + M_PI/2) && (std::abs(diff_angle) < M_PI))) {
+    return false;  // Not a crossing obstacle since it's moving in the same direction
+  }
+
   // calculate the time to reach the collision point
   const double time_to_reach_stop_point = calc_time_to_reach_collision_point(
     odometry, collision_point->first, traj_points,
@@ -831,8 +833,6 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::plan_stop(
 {
   autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
 
-  std::cout << "stop_obstacles.size(): " << stop_obstacles.size() << std::endl;
-
   if (stop_obstacles.empty()) {
     const auto markers =
       autoware::motion_utils::createDeletedStopVirtualWallMarker(clock_->now(), 0);
@@ -889,8 +889,6 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::plan_stop(
     new_determined_desired_stop_margin = desired_stop_margin;
   }
 
-  // std::cout << "new_determined_zero_vel_dist: " << *new_determined_zero_vel_dist << std::endl;
-
   if (!(new_determined_zero_vel_dist && new_determined_stop_obstacle &&
         new_determined_desired_stop_margin)) {
     // delete marker
@@ -944,15 +942,6 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::plan_stop(
   const auto stop_point = calc_stop_point(
     planner_data, traj_points, dist_to_bumper, determined_stop_obstacle, determined_zero_vel_dist);
 
-  // if (stop_point && determined_zero_vel_dist) {
-  //   std::cout << "determined_zero_vel_dist: " << *determined_zero_vel_dist << std::endl;
-
-  //   std::cout << "stop_point: " << stop_point->x << " " << stop_point->y << std::endl
-  //             << std::endl
-  //             << std::endl;
-  // }
-
-
   // set stop_planning_debug_info
   set_stop_planning_debug_info(determined_stop_obstacle, determined_desired_stop_margin);
 
@@ -972,7 +961,6 @@ double ObstacleStopModule::calc_desired_stop_margin(
 
     const auto ref_traj_length =
       autoware::motion_utils::calcSignedArcLength(traj_points, 0, traj_points.size() - 1);
-    // std::cout << "v_obs: " << v_obs << std::endl;
     if (v_obs < stop_planning_param_.max_negative_velocity) {
       const double a_ego = stop_planning_param_.effective_deceleration_opposing_traffic;
       const double & bumper_to_bumper_distance = stop_obstacle.dist_to_collide_on_decimated_traj;
@@ -981,23 +969,23 @@ double ObstacleStopModule::calc_desired_stop_margin(
       const double stopping_time = v_ego / a_ego;
       const double distance_obs_ego_braking = std::abs(v_obs * stopping_time);
 
-      const double ego_stop_margin = stop_planning_param_.additional_stop_margin_opposing_traffic;
+      const double ego_stop_margin = stop_planning_param_.stop_margin_opposing_traffic;
+
+      const double rel_vel = v_ego - v_obs;
+      const double epsilon = std::numeric_limits<double>::epsilon();  // Standard machine epsilon for double
+      assert(std::abs(rel_vel) > epsilon && "Relative velocity too close to zero - should not happen as the obstacle and ego are moving in the opposite direction");
 
       const double T_coast = std::max(
         (bumper_to_bumper_distance - ego_stop_margin - braking_distance +
          distance_obs_ego_braking) /
-          (v_ego - v_obs),
+          rel_vel,
         0.0);
 
       const double stopping_distance = v_ego * T_coast + braking_distance;
 
       const double stop_margin = bumper_to_bumper_distance - stopping_distance;
 
-      // std::cout << "bumper_to_bumper_distance: " << bumper_to_bumper_distance << std::endl;
-      // std::cout << "stopping_distance: " << stopping_distance << std::endl;
-      // std::cout << "stop_margin: " << stop_margin << std::endl;
-
-      return stop_margin;  // std::max(stop_margin, stop_planning_param_.stop_margin);
+      return stop_margin;
     } else if (dist_to_collide_on_ref_traj > ref_traj_length) {
       return stop_planning_param_.terminal_stop_margin;
     }
@@ -1180,26 +1168,7 @@ void ObstacleStopModule::publish_debug_info()
     debug_marker.markers.push_back(marker);
   }
 
-  // 1.3. object polygons
-  auto object_polygons_marker = autoware_utils_visualization::create_default_marker(
-    "map", clock_->now(), "object_polygons", 0, Marker::LINE_LIST,
-    autoware_utils_visualization::create_marker_scale(0.05, 0.0, 0.0),
-    autoware_utils_visualization::create_marker_color(1.0, 0.0, 1.0, 0.8));
-  
-  for (const auto & polygon : debug_data_ptr_->object_polygons) {
-    for (size_t i = 0; i < polygon.outer().size(); ++i) {
-      const auto & current_point = polygon.outer().at(i);
-      const auto & next_point = polygon.outer().at((i + 1) % polygon.outer().size());
-      
-      object_polygons_marker.points.push_back(
-        autoware_utils_geometry::create_point(current_point.x(), current_point.y(), 0.0));
-      object_polygons_marker.points.push_back(
-        autoware_utils_geometry::create_point(next_point.x(), next_point.y(), 0.0));
-    }
-  }
-  debug_marker.markers.push_back(object_polygons_marker);
-
-  // 1.4. detection area
+  // 1.3. detection area
   auto decimated_traj_polys_marker = autoware_utils_visualization::create_default_marker(
     "map", clock_->now(), "detection_area", 0, Marker::LINE_LIST,
     autoware_utils_visualization::create_marker_scale(0.01, 0.0, 0.0),

@@ -82,6 +82,7 @@ struct ObstacleFilteringParam
   double outside_bicycle_deceleration_rate{};
 
   double crossing_obstacle_collision_time_margin{};
+  double crossing_obstacle_traj_angle_threshold{};
 
   ObstacleFilteringParam() = default;
   explicit ObstacleFilteringParam(rclcpp::Node & node)
@@ -116,6 +117,8 @@ struct ObstacleFilteringParam
 
     crossing_obstacle_collision_time_margin = get_or_declare_parameter<double>(
       node, "obstacle_stop.obstacle_filtering.crossing_obstacle.collision_time_margin");
+    crossing_obstacle_traj_angle_threshold = get_or_declare_parameter<double>(
+      node, "obstacle_stop.obstacle_filtering.crossing_obstacle.traj_angle_threshold");
 
     use_pointcloud = get_or_declare_parameter<bool>(
       node, "obstacle_stop.obstacle_filtering.object_type.pointcloud");
@@ -128,7 +131,7 @@ struct StopPlanningParam
   double terminal_stop_margin{};
   double min_behavior_stop_margin{};
   double max_negative_velocity{};
-  double additional_stop_margin_opposing_traffic{};
+  double stop_margin_opposing_traffic{};
   double effective_deceleration_opposing_traffic{};
   double hold_stop_velocity_threshold{};
   double hold_stop_distance_threshold{};
@@ -160,8 +163,8 @@ struct StopPlanningParam
       node, "obstacle_stop.stop_planning.min_behavior_stop_margin");
     max_negative_velocity =
       get_or_declare_parameter<double>(node, "obstacle_stop.stop_planning.max_negative_velocity");
-    additional_stop_margin_opposing_traffic = get_or_declare_parameter<double>(
-      node, "obstacle_stop.stop_planning.additional_stop_margin_opposing_traffic");
+    stop_margin_opposing_traffic = get_or_declare_parameter<double>(
+      node, "obstacle_stop.stop_planning.stop_margin_opposing_traffic");
     effective_deceleration_opposing_traffic = get_or_declare_parameter<double>(
       node, "obstacle_stop.stop_planning.effective_deceleration_opposing_traffic");
     hold_stop_velocity_threshold = get_or_declare_parameter<double>(

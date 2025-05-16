@@ -57,34 +57,25 @@ PointWithStamp calc_nearest_collision_point(
 std::optional<std::pair<size_t, std::vector<PointWithStamp>>> get_collision_index(
   const std::vector<TrajectoryPoint> & traj_points, const std::vector<Polygon2d> & traj_polygons,
   const geometry_msgs::msg::Pose & object_pose, const rclcpp::Time & object_time,
-  const Shape & object_shape, const double max_dist = std::numeric_limits<double>::max(),
-  std::optional<std::reference_wrapper<Polygon2d>> debug_object_polygon = std::nullopt)
+  const Shape & object_shape, const double max_dist = std::numeric_limits<double>::max())
 {
   const auto obj_polygon = autoware_utils_geometry::to_polygon2d(object_pose, object_shape);
-  
-  // Set debug polygon if requested
-  if (debug_object_polygon) {
-    debug_object_polygon->get() = obj_polygon;
-  }
   
   for (size_t i = 0; i < traj_polygons.size(); ++i) {
     const double approximated_dist =
       autoware_utils_geometry::calc_distance2d(traj_points.at(i).pose, object_pose);
-    if (approximated_dist > max_dist) {
-      std::cout << "approximated_dist > max_dist" << std::endl;
+    if (approximated_dist > max_dist) {;
       continue;
     }
 
     std::vector<Polygon2d> collision_polygons;
     boost::geometry::intersection(traj_polygons.at(i), obj_polygon, collision_polygons);
 
-    std::cout << "collision_polygons.size(): " << collision_polygons.size() << std::endl;
-    std::cout << "distance : " << boost::geometry::distance(traj_polygons.at(i), obj_polygon) << std::endl;
-
     std::vector<PointWithStamp> collision_geom_points;
     bool has_collision = false;
     for (const auto & collision_polygon : collision_polygons) {
-      if (boost::geometry::area(collision_polygon) > 0.0) {
+      const double collision_polygon_area = boost::geometry::area(collision_polygon);
+      if (collision_polygon_area > 0.0) {
         has_collision = true;
 
         for (const auto & collision_point : collision_polygon.outer()) {
@@ -112,14 +103,12 @@ std::optional<std::pair<size_t, std::vector<PointWithStamp>>> get_collision_inde
 std::optional<std::pair<geometry_msgs::msg::Point, double>> get_collision_point(
   const std::vector<TrajectoryPoint> & traj_points, const std::vector<Polygon2d> & traj_polygons,
   const geometry_msgs::msg::Pose obj_pose, const rclcpp::Time obj_stamp, const Shape & obj_shape,
-  const double dist_to_bumper, 
-  std::optional<std::reference_wrapper<Polygon2d>> debug_object_polygon)
+  const double dist_to_bumper)
 {
   const auto collision_info =
     get_collision_index(traj_points, traj_polygons, obj_pose, obj_stamp, obj_shape, 
-                       std::numeric_limits<double>::max(), debug_object_polygon);
+                       std::numeric_limits<double>::max());
   if (!collision_info) {
-    std::cout << "collision_info is null" << std::endl;
     return std::nullopt;
   }
 

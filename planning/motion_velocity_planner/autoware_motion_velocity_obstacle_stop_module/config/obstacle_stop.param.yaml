@@ -10,7 +10,7 @@
         terminal_stop_margin : 3.0 # Stop margin at the goal. This value cannot exceed stop margin. [m]
         min_behavior_stop_margin: 3.0 # [m]
 
-        additional_stop_margin_opposing_traffic: 10.0 # Ideal stop-margin from moving opposing obstacle when ego comes to a stop
+        stop_margin_opposing_traffic: 10.0 # Ideal stop-margin from moving opposing obstacle when ego comes to a stop
         effective_deceleration_opposing_traffic: 4.0 # Setting a higher value brings the actual stop-margin closer to the ideal value above
 
         min_on_duration: 0.3  # [s] minimum duration needed before a decision can be triggered
