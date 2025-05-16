@@ -24,9 +24,12 @@ jobs:
       matrix:
         rosdistro:
           - humble
+          - jazzy
         include:
           - rosdistro: humble
             container: ros:humble
+          - rosdistro: jazzy
+            container: ros:jazzy
     steps:
       - name: Check out repository
         uses: actions/checkout@v4

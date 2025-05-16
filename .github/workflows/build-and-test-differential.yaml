@@ -26,7 +26,18 @@ jobs:
     needs: require-label
     if: ${{ needs.require-label.outputs.result == 'true' }}
     runs-on: ubuntu-24.04
-    container: ghcr.io/autowarefoundation/autoware:core-common-devel
+    container: ${{ matrix.container }}
+    strategy:
+      fail-fast: false
+      matrix:
+        rosdistro:
+          - humble
+          - jazzy
+        include:
+          - rosdistro: humble
+            container: ghcr.io/autowarefoundation/autoware:core-common-devel
+          - rosdistro: jazzy
+            container: ros:jazzy
     steps:
       - name: Set PR fetch depth
         run: echo "PR_FETCH_DEPTH=$(( ${{ github.event.pull_request.commits }} + 1 ))" >> "${GITHUB_ENV}"
@@ -41,7 +52,7 @@ jobs:
       - name: Run build-and-test-differential action
         uses: ./.github/actions/build-and-test-differential
         with:
-          rosdistro: humble
+          rosdistro: ${{ matrix.rosdistro }}
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
 
   clang-tidy-differential:

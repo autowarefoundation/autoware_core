@@ -8,7 +8,18 @@ on:
 jobs:
   build-and-test-daily:
     runs-on: ubuntu-24.04
-    container: ghcr.io/autowarefoundation/autoware:core-common-devel
+    container: ${{ matrix.container }}
+    strategy:
+      fail-fast: false
+      matrix:
+        rosdistro:
+          - humble
+          - jazzy
+        include:
+          - rosdistro: humble
+            container: ghcr.io/autowarefoundation/autoware:core-common-devel
+          - rosdistro: jazzy
+            container: ros:jazzy
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -29,7 +40,7 @@ jobs:
         if: ${{ steps.get-self-packages.outputs.self-packages != '' }}
         uses: autowarefoundation/autoware-github-actions/colcon-build@v1
         with:
-          rosdistro: humble
+          rosdistro: ${{ matrix.rosdistro }}
           target-packages: ${{ steps.get-self-packages.outputs.self-packages }}
           underlay-workspace: /opt/autoware
 
@@ -38,7 +49,7 @@ jobs:
         id: test
         uses: autowarefoundation/autoware-github-actions/colcon-test@v1
         with:
-          rosdistro: humble
+          rosdistro: ${{ matrix.rosdistro }}
           target-packages: ${{ steps.get-self-packages.outputs.self-packages }}
           underlay-workspace: /opt/autoware
 
