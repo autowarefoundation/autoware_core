@@ -51,7 +51,7 @@ jobs:
       - name: Use ros2-testing packages
         run: |
           if [ "${{ matrix.rosdistro }}" = "jazzy" ]; then
-            sed -i 's|http://packages.ros.org/ros2/ubuntu|http://packages.ros.org/ros2-testing/ubuntu|g' /etc/apt/sources.list.d/ros2.list
+            sed -i 's|http://packages.ros.org/ros2/ubuntu|http://packages.ros.org/ros2-testing/ubuntu|g' /etc/apt/sources.list.d/ros2-latest.list
             apt-get update
           fi
         shell: bash
