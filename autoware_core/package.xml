@@ -17,8 +17,11 @@
   <exec_depend>autoware_core_control</exec_depend>
   <exec_depend>autoware_core_localization</exec_depend>
   <exec_depend>autoware_core_map</exec_depend>
+  <exec_depend>autoware_core_perception</exec_depend>
   <exec_depend>autoware_core_planning</exec_depend>
   <exec_depend>autoware_core_sensing</exec_depend>
+  <exec_depend>autoware_core_vehicle</exec_depend>
+  <exec_depend>autoware_global_parameter_loader</exec_depend>
   <exec_depend>rviz2</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
