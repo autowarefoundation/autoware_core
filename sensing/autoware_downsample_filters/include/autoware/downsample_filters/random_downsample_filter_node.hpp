@@ -67,9 +67,6 @@ protected:
 private:
   size_t sample_num_;
 
-  /** \brief Parameter service callback result : needed to be hold */
-  OnSetParametersCallbackHandle::SharedPtr set_param_res_;
-
 public:
   PCL_MAKE_ALIGNED_OPERATOR_NEW
   explicit RandomDownsampleFilter(const rclcpp::NodeOptions & options);

@@ -75,20 +75,6 @@
 #include <autoware_utils_tf/transform_listener.hpp>
 namespace autoware::downsample_filters
 {
-/** \brief For parameter service callback */
-template <typename T>
-bool get_param(const std::vector<rclcpp::Parameter> & p, const std::string & name, T & value)
-{
-  auto it = std::find_if(p.cbegin(), p.cend(), [&name](const rclcpp::Parameter & parameter) {
-    return parameter.get_name() == name;
-  });
-  if (it != p.cend()) {
-    value = it->template get_value<T>();
-    return true;
-  }
-  return false;
-}
-
 /** \brief @b Filter represents the base filter class. Some generic 3D operations that are
  * applicable to all filters are defined here as static methods. \author Radu Bogdan Rusu
  */
