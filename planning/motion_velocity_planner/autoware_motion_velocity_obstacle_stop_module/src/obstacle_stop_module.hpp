@@ -25,8 +25,8 @@
 #include <autoware/motion_velocity_planner_common/velocity_planning_result.hpp>
 #include <autoware/object_recognition_utils/predicted_path_utils.hpp>
 #include <autoware/objects_of_interest_marker_interface/objects_of_interest_marker_interface.hpp>
-#include <autoware_utils/system/stop_watch.hpp>
-#include <autoware_utils/system/time_keeper.hpp>
+#include <autoware_utils_debug/time_keeper.hpp>
+#include <autoware_utils_system/stop_watch.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <tf2_eigen/tf2_eigen.hpp>
 
@@ -72,7 +72,8 @@ private:
 
   // module publisher
   rclcpp::Publisher<Float32MultiArrayStamped>::SharedPtr debug_stop_planning_info_pub_{};
-  rclcpp::Publisher<autoware_utils::ProcessingTimeDetail>::SharedPtr processing_time_detail_pub_{};
+  rclcpp::Publisher<autoware_utils_debug::ProcessingTimeDetail>::SharedPtr
+    processing_time_detail_pub_{};
 
   // interface publisher
   std::unique_ptr<autoware::objects_of_interest_marker_interface::ObjectsOfInterestMarkerInterface>
@@ -92,15 +93,16 @@ private:
   // crossing lanes.
   std::optional<std::pair<std::vector<TrajectoryPoint>, double>> prev_stop_distance_info_{
     std::nullopt};
-  autoware_utils::StopWatch<std::chrono::milliseconds> stop_watch_{};
+  autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_{};
   mutable std::unordered_map<double, std::vector<Polygon2d>> trajectory_polygon_for_inside_map_{};
   mutable std::optional<std::vector<Polygon2d>> trajectory_polygon_for_outside_{std::nullopt};
   mutable std::optional<std::vector<Polygon2d>> decimated_traj_polys_{std::nullopt};
-  mutable std::shared_ptr<autoware_utils::TimeKeeper> time_keeper_{};
+  mutable std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper_{};
 
   std::vector<geometry_msgs::msg::Point> convert_point_cloud_to_stop_points(
     const PlannerData::Pointcloud & pointcloud, const std::vector<TrajectoryPoint> & traj_points,
-    const VehicleInfo & vehicle_info, size_t ego_idx);
+    const std::vector<Polygon2d> & decimated_traj_polys, const VehicleInfo & vehicle_info,
+    size_t ego_idx);
 
   std::vector<Polygon2d> get_trajectory_polygon_for_inside(
     const std::vector<TrajectoryPoint> & decimated_traj_points, const VehicleInfo & vehicle_info,

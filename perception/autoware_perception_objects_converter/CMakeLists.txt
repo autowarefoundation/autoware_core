@@ -22,4 +22,4 @@ rclcpp_components_register_node(detected_to_predicted_objects_converter
 ament_auto_package(
   INSTALL_TO_SHARE
     launch
-) 
+)

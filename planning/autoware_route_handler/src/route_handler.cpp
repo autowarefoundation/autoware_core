@@ -41,6 +41,7 @@
 #include <memory>
 #include <optional>
 #include <set>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -79,7 +80,7 @@ bool exists(const lanelet::ConstLanelets & vectors, const lanelet::ConstLanelet 
   return false;
 }
 
-lanelet::ConstPoint3d get3DPointFrom2DArcLength(
+geometry_msgs::msg::Point getGeometryPointFrom2DArcLength(
   const lanelet::ConstLanelets & lanelet_sequence, const double s)
 {
   double accumulated_distance2d = 0;
@@ -94,14 +95,19 @@ lanelet::ConstPoint3d get3DPointFrom2DArcLength(
       if (accumulated_distance2d + distance2d > s) {
         const double ratio = (s - accumulated_distance2d) / distance2d;
         const auto interpolated_pt = prev_pt.basicPoint() * (1 - ratio) + pt.basicPoint() * ratio;
-        return lanelet::ConstPoint3d{
-          lanelet::InvalId, interpolated_pt.x(), interpolated_pt.y(), interpolated_pt.z()};
+
+        geometry_msgs::msg::Point p;
+        p.x = interpolated_pt.x();
+        p.y = interpolated_pt.y();
+        p.z = interpolated_pt.z();
+        return p;
       }
       accumulated_distance2d += distance2d;
       prev_pt = pt;
     }
   }
-  return lanelet::ConstPoint3d{};
+
+  return geometry_msgs::msg::Point{};
 }
 
 PathWithLaneId removeOverlappingPoints(const PathWithLaneId & input_path)
@@ -175,6 +181,18 @@ lanelet::ArcCoordinates calcArcCoordinates(
   return lanelet::geometry::toArcCoordinates(
     to2D(lanelet.centerline()),
     to2D(lanelet::utils::conversion::toLaneletPoint(point)).basicPoint());
+}
+
+std::string convertLaneletsIdToString(const lanelet::ConstLanelets & lanelets)
+{
+  std::stringstream ss;
+  ss << "{";
+  for (const auto & lanelet : lanelets) {
+    ss << lanelet.id() << ",";
+  }
+  ss << "}";
+
+  return ss.str();
 }
 }  // namespace
 
@@ -1504,33 +1522,13 @@ PathWithLaneId RouteHandler::getCenterLinePath(
   // 1. calculate reference points by lanelets' centerline
   // NOTE: This vector aligns the vector lanelet_sequence.
   std::vector<PiecewiseReferencePoints> piecewise_ref_points_vec;
-  const auto add_ref_point = [&](const auto & pt) {
-    piecewise_ref_points_vec.back().push_back(
-      ReferencePoint{false, lanelet::utils::conversion::toGeomMsgPt(pt)});
-  };
-  double s = 0;
   for (const auto & llt : lanelet_sequence) {
-    piecewise_ref_points_vec.push_back(std::vector<ReferencePoint>{});
-
     const lanelet::ConstLineString3d centerline = llt.centerline();
-    for (size_t i = 0; i < centerline.size(); i++) {
-      const auto & pt = centerline[i];
-      const lanelet::ConstPoint3d next_pt =
-        (i + 1 < centerline.size()) ? centerline[i + 1] : centerline[i];
-      const double distance = lanelet::geometry::distance2d(to2D(pt), to2D(next_pt));
 
-      if (s < s_start && s + distance > s_start) {
-        const auto p = use_exact ? get3DPointFrom2DArcLength(lanelet_sequence, s_start) : pt;
-        add_ref_point(p);
-      }
-      if (s >= s_start && s <= s_end) {
-        add_ref_point(pt);
-      }
-      if (s < s_end && s + distance > s_end) {
-        const auto p = use_exact ? get3DPointFrom2DArcLength(lanelet_sequence, s_end) : next_pt;
-        add_ref_point(p);
-      }
-      s += distance;
+    piecewise_ref_points_vec.push_back(std::vector<ReferencePoint>{});
+    for (const auto & center_point : centerline) {
+      piecewise_ref_points_vec.back().push_back(
+        ReferencePoint{false, lanelet::utils::conversion::toGeomMsgPt(center_point)});
     }
   }
 
@@ -1601,20 +1599,47 @@ PathWithLaneId RouteHandler::getCenterLinePath(
     }
   }
 
-  // 4. convert to PathPointsWithLaneIds
   PathWithLaneId reference_path{};
+  const auto add_path_point =
+    [&](const auto & point, const auto & lanelet, const auto & speed_limit) {
+      PathPointWithLaneId p{};
+      p.point.pose.position = point;
+      p.lane_ids.push_back(lanelet.id());
+      p.point.longitudinal_velocity_mps = speed_limit;
+      reference_path.points.push_back(p);
+    };
+
+  // 4. convert to PathPointsWithLaneIds with cropping
+  double s = 0.0;
   for (size_t lanelet_idx = 0; lanelet_idx < lanelet_sequence.size(); ++lanelet_idx) {
     const auto & lanelet = lanelet_sequence.at(lanelet_idx);
     const float speed_limit =
       static_cast<float>(traffic_rules_ptr_->speedLimit(lanelet).speedLimit.value());
 
     const auto & piecewise_ref_points = piecewise_ref_points_vec.at(lanelet_idx);
-    for (const auto & ref_point : piecewise_ref_points) {
-      PathPointWithLaneId p{};
-      p.point.pose.position = ref_point.point;
-      p.lane_ids.push_back(lanelet.id());
-      p.point.longitudinal_velocity_mps = speed_limit;
-      reference_path.points.push_back(p);
+    for (size_t ref_point_idx = 0; ref_point_idx < piecewise_ref_points.size(); ++ref_point_idx) {
+      const auto & ref_point = piecewise_ref_points.at(ref_point_idx);
+      const auto & next_ref_point = (ref_point_idx + 1 < piecewise_ref_points.size())
+                                      ? piecewise_ref_points.at(ref_point_idx + 1)
+                                      : piecewise_ref_points.at(ref_point_idx);
+
+      const double distance =
+        autoware_utils::calc_distance2d(ref_point.point, next_ref_point.point);
+
+      if (s < s_start && s + distance > s_start) {
+        const auto p =
+          use_exact ? getGeometryPointFrom2DArcLength(lanelet_sequence, s_start) : ref_point.point;
+        add_path_point(p, lanelet, speed_limit);
+      }
+      if (s >= s_start && s <= s_end) {
+        add_path_point(ref_point.point, lanelet, speed_limit);
+      }
+      if (s < s_end && s + distance > s_end) {
+        const auto p =
+          use_exact ? getGeometryPointFrom2DArcLength(lanelet_sequence, s_end) : ref_point.point;
+        add_path_point(p, lanelet, speed_limit);
+      }
+      s += distance;
     }
   }
   reference_path = removeOverlappingPoints(reference_path);
@@ -1975,7 +2000,7 @@ bool RouteHandler::planPathLaneletsBetweenCheckpoints(
 
     optional_route = routing_graph_ptr_->getRoute(st_llt, goal_lanelet, 0);
     if (!optional_route || !is_proper_angle) {
-      RCLCPP_ERROR_STREAM(
+      RCLCPP_DEBUG_STREAM(
         logger_, "Failed to find a proper route!"
                    << std::endl
                    << " - start checkpoint: " << toString(start_checkpoint) << std::endl
@@ -2019,6 +2044,14 @@ bool RouteHandler::planPathLaneletsBetweenCheckpoints(
     for (const auto & llt : path) {
       path_lanelets->push_back(llt);
     }
+  } else {
+    RCLCPP_ERROR_STREAM(
+      logger_, "Failed to find a proper route!"
+                 << std::endl
+                 << " - start checkpoint: " << toString(start_checkpoint) << std::endl
+                 << " - goal checkpoint: " << toString(goal_checkpoint) << std::endl
+                 << " - start lane ids: " << convertLaneletsIdToString(start_lanelets) << std::endl
+                 << " - goal lane id: " << goal_lanelet.id() << std::endl);
   }
 
   return is_route_found;

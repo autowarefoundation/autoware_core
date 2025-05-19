@@ -18,25 +18,45 @@
 #include "autoware/trajectory/utils/closest.hpp"
 #include "autoware/trajectory/utils/crossed.hpp"
 
+#include <autoware/route_handler/route_handler.hpp>
 #include <rclcpp/logging.hpp>
 
 #include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
 
+#include <lanelet2_core/Forward.h>
+#include <lanelet2_core/primitives/Lanelet.h>
+
 #include <memory>
 #include <optional>
+#include <set>
 #include <utility>
 
 namespace autoware::behavior_velocity_planner
 {
 
+bool hasIntersection(const std::set<lanelet::Id> & a, const std::set<lanelet::Id> & b)
+{
+  for (const auto & id : a) {
+    if (b.find(id) != b.end()) {
+      return true;
+    }
+  }
+  return false;
+}
+
 StopLineModule::StopLineModule(
-  const int64_t module_id, lanelet::ConstLineString3d stop_line, const PlannerParam & planner_param,
-  const rclcpp::Logger & logger, const rclcpp::Clock::SharedPtr clock,
-  const std::shared_ptr<autoware_utils::TimeKeeper> & time_keeper,
+  const int64_t module_id,                                          //
+  const lanelet::ConstLineString3d & stop_line,                     //
+  const lanelet::Id & linked_lanelet_id,                            //
+  const PlannerParam & planner_param,                               //
+  const rclcpp::Logger & logger,                                    //
+  const rclcpp::Clock::SharedPtr clock,                             //
+  const std::shared_ptr<autoware_utils::TimeKeeper> & time_keeper,  //
   const std::shared_ptr<planning_factor_interface::PlanningFactorInterface> &
     planning_factor_interface)
 : SceneModuleInterface(module_id, logger, clock, time_keeper, planning_factor_interface),
-  stop_line_(std::move(stop_line)),
+  stop_line_(stop_line),
+  linked_lanelet_id_(linked_lanelet_id),
   planner_param_(planner_param),
   state_(State::APPROACH),
   debug_data_()
@@ -93,9 +113,24 @@ std::pair<double, std::optional<double>> StopLineModule::getEgoAndStopPoint(
       const LineString2d stop_line = planning_utils::extendSegmentToBounds(
         lanelet::utils::to2D(stop_line_).basicLineString(), path.left_bound, path.right_bound);
 
+      lanelet::Ids connected_lanelet_ids;
+
+      if (planner_data_->route_handler_) {
+        connected_lanelet_ids = planning_utils::collectConnectedLaneIds(
+          linked_lanelet_id_, planner_data_->route_handler_);
+      } else {
+        connected_lanelet_ids = {linked_lanelet_id_};
+      }
+
       // Calculate intersection with stop line
       const auto trajectory_stop_line_intersection =
-        autoware::experimental::trajectory::crossed(trajectory, stop_line);
+        autoware::experimental::trajectory::crossed_with_constraint(
+          trajectory, stop_line,
+          [&](const autoware_internal_planning_msgs::msg::PathPointWithLaneId & point) {
+            return hasIntersection(
+              {connected_lanelet_ids.begin(), connected_lanelet_ids.end()},
+              {point.lane_ids.begin(), point.lane_ids.end()});
+          });
 
       // If no collision found, do nothing
       if (trajectory_stop_line_intersection.size() == 0) {

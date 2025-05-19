@@ -17,6 +17,7 @@
 #include "autoware/behavior_velocity_planner_common/utilization/boost_geometry_helper.hpp"
 #include "autoware/motion_utils/trajectory/trajectory.hpp"
 
+#include <autoware/lanelet2_utils/topology.hpp>
 #include <autoware_lanelet2_extension/utility/query.hpp>
 #include <autoware_utils/geometry/geometry.hpp>
 
@@ -24,6 +25,7 @@
 
 #include <boost/geometry/algorithms/correct.hpp>
 
+#include <lanelet2_core/Forward.h>
 #include <lanelet2_core/geometry/Polygon.h>
 #include <lanelet2_routing/RoutingGraph.h>
 #include <tf2/utils.h>
@@ -38,6 +40,7 @@
 #include <cmath>
 #include <iostream>
 #include <limits>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -494,17 +497,6 @@ std::vector<geometry_msgs::msg::Point> toRosPoints(const PredictedObjects & obje
   return points;
 }
 
-LineString2d extendLine(
-  const lanelet::ConstPoint3d & lanelet_point1, const lanelet::ConstPoint3d & lanelet_point2,
-  const double & length)
-{
-  const Eigen::Vector2d p1(lanelet_point1.x(), lanelet_point1.y());
-  const Eigen::Vector2d p2(lanelet_point2.x(), lanelet_point2.y());
-  const Eigen::Vector2d t = (p2 - p1).normalized();
-  return {
-    {(p1 - length * t).x(), (p1 - length * t).y()}, {(p2 + length * t).x(), (p2 + length * t).y()}};
-}
-
 LineString2d extendSegmentToBounds(
   const lanelet::BasicLineString2d & segment, const std::vector<geometry_msgs::msg::Point> & bound1,
   const std::vector<geometry_msgs::msg::Point> & bound2)
@@ -764,6 +756,30 @@ lanelet::ConstLanelets getConstLaneletsFromIds(
     ret.push_back(ll);
   }
   return ret;
+}
+
+lanelet::Ids collectConnectedLaneIds(
+  const int64_t lane_id, const std::shared_ptr<route_handler::RouteHandler> & route_handler)
+{
+  lanelet::Ids lane_ids;
+  lane_ids.push_back(lane_id);  // No cast needed since lane_id is already int64_t
+
+  const auto lanelet_map = route_handler->getLaneletMapPtr();
+  if (lanelet_map && lanelet_map->laneletLayer.exists(lane_id)) {
+    const auto current_lanelet = lanelet_map->laneletLayer.get(lane_id);
+    const auto following_lanelets = experimental::lanelet2_utils::following_lanelets(
+      current_lanelet, route_handler->getRoutingGraphPtr());
+    const auto prev_lanelets = experimental::lanelet2_utils::previous_lanelets(
+      current_lanelet, route_handler->getRoutingGraphPtr());
+
+    for (const auto & next_lanelet : following_lanelets) {
+      lane_ids.push_back(next_lanelet.id());
+    }
+    for (const auto & prev_lanelet : prev_lanelets) {
+      lane_ids.push_back(prev_lanelet.id());
+    }
+  }
+  return lane_ids;
 }
 
 }  // namespace autoware::behavior_velocity_planner::planning_utils
