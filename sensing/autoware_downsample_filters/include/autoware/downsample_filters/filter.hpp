@@ -147,8 +147,8 @@ protected:
    * \param input the input point cloud dataset.
    */
   virtual void compute_publish(const PointCloud2ConstPtr & input);
-  /** \brief PointCloud2 + Indices data callback. */
-  virtual void input_indices_callback(const PointCloud2ConstPtr cloud);
+  /** \brief PointCloud2 data callback. */
+  virtual void input_callback(const PointCloud2ConstPtr cloud);
   virtual bool convert_output_costly(std::unique_ptr<PointCloud2> & output);
 
   /** \brief The maximum queue size (default: 3). */
@@ -179,7 +179,7 @@ private:
 
   // TODO(sykwer): Temporary Implementation: Remove this interface when all the filter nodes conform
   // to new API.
-  void faster_input_indices_callback(const PointCloud2ConstPtr cloud);
+  void faster_input_callback(const PointCloud2ConstPtr cloud);
 
   void setupTF();
 };

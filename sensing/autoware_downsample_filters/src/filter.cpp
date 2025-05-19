@@ -91,13 +91,13 @@ autoware::downsample_filters::Filter::Filter(
       "output", rclcpp::SensorDataQoS().keep_last(max_queue_size_), pub_options);
   }
 
-  // TODO(sykwer): Change the corresponding node to subscribe to `faster_input_indices_callback`
+  // TODO(sykwer): Change the corresponding node to subscribe to `faster_input_callback`
   // each time a child class supports the faster version.
   // When all the child classes support the faster version, this workaround is deleted.
   std::set<std::string> supported_nodes = {"VoxelGridDownsampleFilter"};
   auto callback = supported_nodes.find(filter_name) != supported_nodes.end()
-                    ? &Filter::faster_input_indices_callback
-                    : &Filter::input_indices_callback;
+                    ? &Filter::faster_input_callback
+                    : &Filter::input_callback;
 
   // Subscribe in an old fashion to input only (no filters)
   // CAN'T use auto-type here.
@@ -143,19 +143,19 @@ void autoware::downsample_filters::Filter::compute_publish(
 //////////////////////////////////////////////////////////////////////////////////////////////
 // TODO(sykwer): Temporary Implementation: Delete this function definition when all the filter nodes
 // conform to new API.
-void autoware::downsample_filters::Filter::input_indices_callback(
+void autoware::downsample_filters::Filter::input_callback(
   const PointCloud2ConstPtr cloud)
 {
   // If cloud is given, check if it's valid
   if (!isValid(cloud)) {
-    RCLCPP_ERROR(this->get_logger(), "[input_indices_callback] Invalid input!");
+    RCLCPP_ERROR(this->get_logger(), "[input_callback] Invalid input!");
     return;
   }
 
   /// DEBUG
   RCLCPP_DEBUG(
     this->get_logger(),
-    "[input_indices_callback] PointCloud with %d data points and frame %s on input topic "
+    "[input_callback] PointCloud with %d data points and frame %s on input topic "
     "received.",
     cloud->width * cloud->height, cloud->header.frame_id.c_str());
   ///
@@ -165,7 +165,7 @@ void autoware::downsample_filters::Filter::input_indices_callback(
   PointCloud2ConstPtr cloud_tf;
   if (!tf_input_frame_.empty() && cloud->header.frame_id != tf_input_frame_) {
     RCLCPP_DEBUG(
-      this->get_logger(), "[input_indices_callback] Transforming input dataset from %s to %s.",
+      this->get_logger(), "[input_callback] Transforming input dataset from %s to %s.",
       cloud->header.frame_id.c_str(), tf_input_frame_.c_str());
 
     // Save the original frame ID
@@ -275,10 +275,10 @@ bool autoware::downsample_filters::Filter::convert_output_costly(
   return true;
 }
 
-// TODO(sykwer): Temporary Implementation: Rename this function to `input_indices_callback()` when
-// all the filter nodes conform to new API. Then delete the old `input_indices_callback()` defined
+// TODO(sykwer): Temporary Implementation: Rename this function to `input_callback()` when
+// all the filter nodes conform to new API. Then delete the old `input_callback()` defined
 // above.
-void autoware::downsample_filters::Filter::faster_input_indices_callback(
+void autoware::downsample_filters::Filter::faster_input_callback(
   const PointCloud2ConstPtr cloud)
 {
   if (
@@ -306,13 +306,13 @@ void autoware::downsample_filters::Filter::faster_input_indices_callback(
   }
 
   if (!isValid(cloud)) {
-    RCLCPP_ERROR(this->get_logger(), "[input_indices_callback] Invalid input!");
+    RCLCPP_ERROR(this->get_logger(), "[input_callback] Invalid input!");
     return;
   }
 
   RCLCPP_DEBUG(
     this->get_logger(),
-    "[input_indices_callback] PointCloud with %d data points and frame %s on input topic "
+    "[input_callback] PointCloud with %d data points and frame %s on input topic "
     "received.",
     cloud->width * cloud->height, cloud->header.frame_id.c_str());
 
