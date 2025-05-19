@@ -4,7 +4,10 @@
   <name>autoware_perception_objects_converter</name>
   <version>1.0.0</version>
   <description>ROS 2 node for converting between different perception object message types</description>
-  <maintainer email="maintainer@example.com">Maintainer</maintainer>
+  <maintainer email="yoshi.ri@tier4.jp">Yoshi Ri</maintainer>
+  <maintainer email="ryohsuke.mitsudome@tier4.jp">Ryohsuke Mitsudome</maintainer>
+  <maintainer email="storm.su@autocore.ai">Su Chang</maintainer>
+
   <license>Apache License 2.0</license>
 
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
