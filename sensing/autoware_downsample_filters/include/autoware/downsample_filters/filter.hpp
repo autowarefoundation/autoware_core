@@ -54,19 +54,19 @@
 
 #include "autoware/downsample_filters/transform_info.hpp"
 
+#include <boost/thread/mutex.hpp>
+
 #include <memory>
 #include <string>
 #include <vector>
 
-#include <boost/thread/mutex.hpp>
-
 // PCL includes
 #include <pcl/filters/filter.h>
-#include <sensor_msgs/msg/point_cloud2.h>
 #include <pcl/pcl_base.h>
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_msgs/msg/model_coefficients.h>
+#include <sensor_msgs/msg/point_cloud2.h>
 
 // Include tier4 autoware utils
 #include <autoware_utils_debug/debug_publisher.hpp>
@@ -133,8 +133,7 @@ protected:
    * \param input the input point cloud dataset.
    * \param output the resultant filtered PointCloud2
    */
-  virtual void filter(
-    const PointCloud2ConstPtr & input, PointCloud2 & output) = 0;
+  virtual void filter(const PointCloud2ConstPtr & input, PointCloud2 & output) = 0;
 
   // TODO(sykwer): Temporary Implementation: Remove this interface when all the filter nodes conform
   // to new API. It's not pure virtual function so that a child class does not have to implement

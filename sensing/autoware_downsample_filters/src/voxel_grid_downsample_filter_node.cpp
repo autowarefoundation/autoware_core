@@ -73,8 +73,7 @@ VoxelGridDownsampleFilter::VoxelGridDownsampleFilter(const rclcpp::NodeOptions &
 
 // TODO(atsushi421): Temporary Implementation: Delete this function definition when all the filter
 // nodes conform to new API.
-void VoxelGridDownsampleFilter::filter(
-  const PointCloud2ConstPtr & input, PointCloud2 & output)
+void VoxelGridDownsampleFilter::filter(const PointCloud2ConstPtr & input, PointCloud2 & output)
 {
   std::scoped_lock lock(mutex_);
   pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_input(new pcl::PointCloud<pcl::PointXYZ>);

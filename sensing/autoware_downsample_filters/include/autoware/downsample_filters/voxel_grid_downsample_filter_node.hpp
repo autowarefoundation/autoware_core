@@ -64,13 +64,13 @@ namespace autoware::downsample_filters
 class VoxelGridDownsampleFilter : public autoware::downsample_filters::Filter
 {
 protected:
-  void filter(
-    const PointCloud2ConstPtr & input, PointCloud2 & output) override;
+  void filter(const PointCloud2ConstPtr & input, PointCloud2 & output) override;
 
   // TODO(atsushi421): Temporary Implementation: Remove this interface when all the filter nodes
   // conform to new API
   void faster_filter(
-    const PointCloud2ConstPtr & input, PointCloud2 & output, const TransformInfo & transform_info) override;
+    const PointCloud2ConstPtr & input, PointCloud2 & output,
+    const TransformInfo & transform_info) override;
 
 private:
   float voxel_size_x_;

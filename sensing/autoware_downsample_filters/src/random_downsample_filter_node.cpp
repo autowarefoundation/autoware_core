@@ -61,8 +61,7 @@ RandomDownsampleFilter::RandomDownsampleFilter(const rclcpp::NodeOptions & optio
   }
 }
 
-void RandomDownsampleFilter::filter(
-  const PointCloud2ConstPtr & input, PointCloud2 & output)
+void RandomDownsampleFilter::filter(const PointCloud2ConstPtr & input, PointCloud2 & output)
 {
   std::scoped_lock lock(mutex_);
   pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_input(new pcl::PointCloud<pcl::PointXYZ>);

@@ -39,8 +39,7 @@ namespace autoware::downsample_filters
 class PickupBasedVoxelGridDownsampleFilter : public autoware::downsample_filters::Filter
 {
 protected:
-  void filter(
-    const PointCloud2ConstPtr & input, PointCloud2 & output) override;
+  void filter(const PointCloud2ConstPtr & input, PointCloud2 & output) override;
 
 private:
   float voxel_size_x_;  ///< The size of the voxel in the x dimension.

@@ -26,9 +26,9 @@ This algorithm samples a single actual point existing within the voxel, not the 
 
 ### Input
 
-| Name      | Type                            | Description       |
-| --------- | ------------------------------- | ----------------- |
-| `input`   | `sensor_msgs::msg::PointCloud2` | reference points  |
+| Name    | Type                            | Description      |
+| ------- | ------------------------------- | ---------------- |
+| `input` | `sensor_msgs::msg::PointCloud2` | reference points |
 
 ### Output
 
@@ -40,11 +40,11 @@ This algorithm samples a single actual point existing within the voxel, not the 
 
 ### Launch file Parameters
 
-| Name               | Type   | Default Value | Description                                                 |
-| ------------------ | ------ | ------------- | ----------------------------------------------------------- |
-| `input_frame`      | string | " "           | the frame id in which filtering is performed                |
-| `output_frame`     | string | " "           | output frame id of the filtered points                      |
-| `max_queue_size`   | size_t | 5             | max buffer size of input/output topics                      |
+| Name             | Type   | Default Value | Description                                  |
+| ---------------- | ------ | ------------- | -------------------------------------------- |
+| `input_frame`    | string | " "           | the frame id in which filtering is performed |
+| `output_frame`   | string | " "           | output frame id of the filtered points       |
+| `max_queue_size` | size_t | 5             | max buffer size of input/output topics       |
 
 ### Node Parameters
 

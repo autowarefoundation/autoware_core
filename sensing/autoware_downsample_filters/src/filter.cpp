@@ -122,8 +122,7 @@ void autoware::downsample_filters::Filter::setupTF()
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // TODO(sykwer): Temporary Implementation: Delete this function definition when all the filter nodes
 // conform to new API.
-void autoware::downsample_filters::Filter::compute_publish(
-  const PointCloud2ConstPtr & input)
+void autoware::downsample_filters::Filter::compute_publish(const PointCloud2ConstPtr & input)
 {
   auto output = std::make_unique<PointCloud2>();
 
@@ -143,8 +142,7 @@ void autoware::downsample_filters::Filter::compute_publish(
 //////////////////////////////////////////////////////////////////////////////////////////////
 // TODO(sykwer): Temporary Implementation: Delete this function definition when all the filter nodes
 // conform to new API.
-void autoware::downsample_filters::Filter::input_callback(
-  const PointCloud2ConstPtr cloud)
+void autoware::downsample_filters::Filter::input_callback(const PointCloud2ConstPtr cloud)
 {
   // If cloud is given, check if it's valid
   if (!isValid(cloud)) {
@@ -278,8 +276,7 @@ bool autoware::downsample_filters::Filter::convert_output_costly(
 // TODO(sykwer): Temporary Implementation: Rename this function to `input_callback()` when
 // all the filter nodes conform to new API. Then delete the old `input_callback()` defined
 // above.
-void autoware::downsample_filters::Filter::faster_input_callback(
-  const PointCloud2ConstPtr cloud)
+void autoware::downsample_filters::Filter::faster_input_callback(const PointCloud2ConstPtr cloud)
 {
   if (
     !utils::is_data_layout_compatible_with_point_xyzircaedt(*cloud) &&
@@ -315,7 +312,6 @@ void autoware::downsample_filters::Filter::faster_input_callback(
     "[input_callback] PointCloud with %d data points and frame %s on input topic "
     "received.",
     cloud->width * cloud->height, cloud->header.frame_id.c_str());
-
 
   tf_input_orig_frame_ = cloud->header.frame_id;
 
