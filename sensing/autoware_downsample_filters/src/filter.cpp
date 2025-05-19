@@ -169,7 +169,7 @@ void autoware::downsample_filters::Filter::unsubscribe()
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // TODO(sykwer): Temporary Implementation: Delete this function definition when all the filter nodes
 // conform to new API.
-void autoware::downsample_filters::Filter::computePublish(
+void autoware::downsample_filters::Filter::compute_publish(
   const PointCloud2ConstPtr & input, const IndicesPtr & indices)
 {
   auto output = std::make_unique<PointCloud2>();
@@ -260,7 +260,7 @@ void autoware::downsample_filters::Filter::input_indices_callback(
     vindices.reset(new std::vector<int>(indices->indices));
   }
 
-  computePublish(cloud_tf, vindices);
+  compute_publish(cloud_tf, vindices);
 }
 
 // Returns false in error cases

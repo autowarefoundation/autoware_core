@@ -188,7 +188,7 @@ protected:
    * \param input the input point cloud dataset.
    * \param indices a pointer to the vector of point indices to use.
    */
-  virtual void computePublish(const PointCloud2ConstPtr & input, const IndicesPtr & indices);
+  virtual void compute_publish(const PointCloud2ConstPtr & input, const IndicesPtr & indices);
   /** \brief PointCloud2 + Indices data callback. */
   virtual void input_indices_callback(
     const PointCloud2ConstPtr cloud, const PointIndicesConstPtr indices);
