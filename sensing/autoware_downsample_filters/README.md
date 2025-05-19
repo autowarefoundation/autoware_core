@@ -29,7 +29,6 @@ This algorithm samples a single actual point existing within the voxel, not the 
 | Name      | Type                            | Description       |
 | --------- | ------------------------------- | ----------------- |
 | `input`   | `sensor_msgs::msg::PointCloud2` | reference points  |
-| `indices` | `pcl_msgs::msg::PointIndices`   | reference indices |
 
 ### Output
 
@@ -46,8 +45,6 @@ This algorithm samples a single actual point existing within the voxel, not the 
 | `input_frame`      | string | " "           | the frame id in which filtering is performed                |
 | `output_frame`     | string | " "           | output frame id of the filtered points                      |
 | `max_queue_size`   | size_t | 5             | max buffer size of input/output topics                      |
-| `use_indices`      | bool   | false         | whether specifying the subset of the point cloud by indices |
-| `approximate_sync` | bool   | false         | schema used for synchronizing topic `input` and `indices`   |
 
 ### Node Parameters
 

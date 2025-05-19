@@ -58,21 +58,15 @@
 #include <string>
 #include <vector>
 
-// PCL includes
 #include <boost/thread/mutex.hpp>
 
+// PCL includes
 #include <pcl/filters/filter.h>
 #include <sensor_msgs/msg/point_cloud2.h>
-// PCL includes
-#include <message_filters/subscriber.h>
-#include <message_filters/sync_policies/approximate_time.h>
-#include <message_filters/sync_policies/exact_time.h>
-#include <message_filters/synchronizer.h>
 #include <pcl/pcl_base.h>
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_msgs/msg/model_coefficients.h>
-#include <pcl_msgs/msg/point_indices.h>
 
 // Include tier4 autoware utils
 #include <autoware_utils_debug/debug_publisher.hpp>
@@ -81,8 +75,6 @@
 #include <autoware_utils_tf/transform_listener.hpp>
 namespace autoware::downsample_filters
 {
-namespace sync_policies = message_filters::sync_policies;
-
 /** \brief For parameter service callback */
 template <typename T>
 bool get_param(const std::vector<rclcpp::Parameter> & p, const std::string & name, T & value)
@@ -106,26 +98,6 @@ public:
   using PointCloud2 = sensor_msgs::msg::PointCloud2;
   using PointCloud2ConstPtr = sensor_msgs::msg::PointCloud2::ConstSharedPtr;
 
-  using PointCloud = pcl::PointCloud<pcl::PointXYZ>;
-  using PointCloudPtr = PointCloud::Ptr;
-  using PointCloudConstPtr = PointCloud::ConstPtr;
-
-  using PointIndices = pcl_msgs::msg::PointIndices;
-  using PointIndicesPtr = PointIndices::SharedPtr;
-  using PointIndicesConstPtr = PointIndices::ConstSharedPtr;
-
-  using ModelCoefficients = pcl_msgs::msg::ModelCoefficients;
-  using ModelCoefficientsPtr = ModelCoefficients::SharedPtr;
-  using ModelCoefficientsConstPtr = ModelCoefficients::ConstSharedPtr;
-
-  using IndicesPtr = pcl::IndicesPtr;
-  using IndicesConstPtr = pcl::IndicesConstPtr;
-
-  using ExactTimeSyncPolicy =
-    message_filters::Synchronizer<sync_policies::ExactTime<PointCloud2, PointIndices>>;
-  using ApproximateTimeSyncPolicy =
-    message_filters::Synchronizer<sync_policies::ApproximateTime<PointCloud2, PointIndices>>;
-
   PCL_MAKE_ALIGNED_OPERATOR_NEW
   explicit Filter(
     const std::string & filter_name = "autoware_downsample_filter",
@@ -137,12 +109,6 @@ protected:
 
   /** \brief The output PointCloud2 publisher. */
   rclcpp::Publisher<PointCloud2>::SharedPtr pub_output_;
-
-  /** \brief The message filter subscriber for PointCloud2. */
-  message_filters::Subscriber<PointCloud2> sub_input_filter_;
-
-  /** \brief The message filter subscriber for PointIndices. */
-  message_filters::Subscriber<PointIndices> sub_indices_filter_;
 
   /** \brief The input TF frame the data should be transformed into,
    * if input.header.frame_id is different. */
@@ -165,56 +131,28 @@ protected:
 
   /** \brief Virtual abstract filter method. To be implemented by every child.
    * \param input the input point cloud dataset.
-   * \param indices a pointer to the vector of point indices to use.
    * \param output the resultant filtered PointCloud2
    */
   virtual void filter(
-    const PointCloud2ConstPtr & input, const IndicesPtr & indices, PointCloud2 & output) = 0;
+    const PointCloud2ConstPtr & input, PointCloud2 & output) = 0;
 
   // TODO(sykwer): Temporary Implementation: Remove this interface when all the filter nodes conform
   // to new API. It's not pure virtual function so that a child class does not have to implement
   // this function.
   virtual void faster_filter(
-    const PointCloud2ConstPtr & input, const IndicesPtr & indices, PointCloud2 & output,
+    const PointCloud2ConstPtr & input, PointCloud2 & output,
     const TransformInfo & transform_info);  // != 0
-
-  /** \brief Lazy transport subscribe routine. */
-  virtual void subscribe(const std::string & filter_name);
-
-  /** \brief Lazy transport unsubscribe routine. */
-  virtual void unsubscribe();
 
   /** \brief Call the child filter () method, optionally transform the result, and publish it.
    * \param input the input point cloud dataset.
-   * \param indices a pointer to the vector of point indices to use.
    */
-  virtual void compute_publish(const PointCloud2ConstPtr & input, const IndicesPtr & indices);
+  virtual void compute_publish(const PointCloud2ConstPtr & input);
   /** \brief PointCloud2 + Indices data callback. */
-  virtual void input_indices_callback(
-    const PointCloud2ConstPtr cloud, const PointIndicesConstPtr indices);
+  virtual void input_indices_callback(const PointCloud2ConstPtr cloud);
   virtual bool convert_output_costly(std::unique_ptr<PointCloud2> & output);
-
-  //////////////////////
-  // from PCLNodelet //
-  //////////////////////
-  /** \brief Set to true if point indices are used.
-   *
-   * When receiving a point cloud, if use_indices_ is false, the entire
-   * point cloud is processed for the given operation. If use_indices_ is
-   * true, then the ~indices topic is read to get the vector of point
-   * indices specifying the subset of the point cloud that will be used for
-   * the operation. In the case where use_indices_ is true, the ~input and
-   * ~indices topics must be synchronised in time, either exact or within a
-   * specified jitter. See also @ref latched_indices_ and approximate_sync.
-   **/
-  bool use_indices_ = false;
 
   /** \brief The maximum queue size (default: 3). */
   size_t max_queue_size_ = 3;
-
-  /** \brief True if we use an approximate time synchronizer
-   * versus an exact one (false by default). */
-  bool approximate_sync_ = false;
 
   std::unique_ptr<autoware_utils_tf::TransformListener> transform_listener_{nullptr};
 
@@ -233,23 +171,7 @@ protected:
     return true;
   }
 
-  inline bool isValid(
-    const PointIndicesConstPtr & /*indices*/, const std::string & /*topic_name*/ = "indices")
-  {
-    return true;
-  }
-
-  inline bool isValid(
-    const ModelCoefficientsConstPtr & /*model*/, const std::string & /*topic_name*/ = "model")
-  {
-    return true;
-  }
-
 private:
-  /** \brief Synchronized input, and indices.*/
-  std::shared_ptr<ExactTimeSyncPolicy> sync_input_indices_e_;
-  std::shared_ptr<ApproximateTimeSyncPolicy> sync_input_indices_a_;
-
   /** \brief Get a matrix for conversion from the original frame to the target frame */
   bool calculate_transform_matrix(
     const std::string & target_frame, const sensor_msgs::msg::PointCloud2 & from,
@@ -257,8 +179,7 @@ private:
 
   // TODO(sykwer): Temporary Implementation: Remove this interface when all the filter nodes conform
   // to new API.
-  void faster_input_indices_callback(
-    const PointCloud2ConstPtr cloud, const PointIndicesConstPtr indices);
+  void faster_input_indices_callback(const PointCloud2ConstPtr cloud);
 
   void setupTF();
 };

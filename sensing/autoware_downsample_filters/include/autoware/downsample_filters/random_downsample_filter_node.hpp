@@ -63,7 +63,7 @@ class RandomDownsampleFilter : public autoware::downsample_filters::Filter
 {
 protected:
   void filter(
-    const PointCloud2ConstPtr & input, const IndicesPtr & indices, PointCloud2 & output) override;
+    const PointCloud2ConstPtr & input, PointCloud2 & output) override;
 
 private:
   size_t sample_num_;

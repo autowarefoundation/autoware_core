@@ -75,8 +75,7 @@ PickupBasedVoxelGridDownsampleFilter::PickupBasedVoxelGridDownsampleFilter(
 }
 
 void PickupBasedVoxelGridDownsampleFilter::filter(
-  const PointCloud2ConstPtr & input, [[maybe_unused]] const IndicesPtr & indices,
-  PointCloud2 & output)
+  const PointCloud2ConstPtr & input, PointCloud2 & output)
 {
   std::scoped_lock lock(mutex_);
 

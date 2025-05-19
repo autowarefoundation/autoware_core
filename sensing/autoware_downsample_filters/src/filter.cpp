@@ -76,16 +76,10 @@ autoware::downsample_filters::Filter::Filter(
     tf_output_frame_ = static_cast<std::string>(declare_parameter("output_frame", ""));
     max_queue_size_ = static_cast<std::size_t>(declare_parameter("max_queue_size", 5));
 
-    // ---[ Optional parameters
-    use_indices_ = static_cast<bool>(declare_parameter("use_indices", false));
-    approximate_sync_ = static_cast<bool>(declare_parameter("approximate_sync", false));
-
     RCLCPP_DEBUG_STREAM(
       this->get_logger(),
       "Filter (as Component) successfully created with the following parameters:"
         << std::endl
-        << " - approximate_sync : " << (approximate_sync_ ? "true" : "false") << std::endl
-        << " - use_indices      : " << (use_indices_ ? "true" : "false") << std::endl
         << " - max_queue_size   : " << max_queue_size_);
   }
 
@@ -97,7 +91,20 @@ autoware::downsample_filters::Filter::Filter(
       "output", rclcpp::SensorDataQoS().keep_last(max_queue_size_), pub_options);
   }
 
-  subscribe(filter_name);
+  // TODO(sykwer): Change the corresponding node to subscribe to `faster_input_indices_callback`
+  // each time a child class supports the faster version.
+  // When all the child classes support the faster version, this workaround is deleted.
+  std::set<std::string> supported_nodes = {"VoxelGridDownsampleFilter"};
+  auto callback = supported_nodes.find(filter_name) != supported_nodes.end()
+                    ? &Filter::faster_input_indices_callback
+                    : &Filter::input_indices_callback;
+
+  // Subscribe in an old fashion to input only (no filters)
+  // CAN'T use auto-type here.
+  std::function<void(const PointCloud2ConstPtr msg)> cb =
+    std::bind(callback, this, std::placeholders::_1);
+  sub_input_ = create_subscription<PointCloud2>(
+    "input", rclcpp::SensorDataQoS().keep_last(max_queue_size_), cb);
 
   // Set tf_listener, tf_buffer.
   setupTF();
@@ -112,70 +119,16 @@ void autoware::downsample_filters::Filter::setupTF()
   transform_listener_ = std::make_unique<autoware_utils_tf::TransformListener>(this);
 }
 
-void autoware::downsample_filters::Filter::subscribe(const std::string & filter_name)
-{
-  // TODO(sykwer): Change the corresponding node to subscribe to `faster_input_indices_callback`
-  // each time a child class supports the faster version.
-  // When all the child classes support the faster version, this workaround is deleted.
-  std::set<std::string> supported_nodes = {"VoxelGridDownsampleFilter"};
-  auto callback = supported_nodes.find(filter_name) != supported_nodes.end()
-                    ? &Filter::faster_input_indices_callback
-                    : &Filter::input_indices_callback;
-
-  if (use_indices_) {
-    // Subscribe to the input using a filter
-    sub_input_filter_.subscribe(
-      this, "input", rclcpp::SensorDataQoS().keep_last(max_queue_size_).get_rmw_qos_profile());
-    sub_indices_filter_.subscribe(
-      this, "indices", rclcpp::SensorDataQoS().keep_last(max_queue_size_).get_rmw_qos_profile());
-
-    if (approximate_sync_) {
-      sync_input_indices_a_ = std::make_shared<ApproximateTimeSyncPolicy>(max_queue_size_);
-      sync_input_indices_a_->connectInput(sub_input_filter_, sub_indices_filter_);
-      sync_input_indices_a_->registerCallback(
-        std::bind(callback, this, std::placeholders::_1, std::placeholders::_2));
-    } else {
-      sync_input_indices_e_ = std::make_shared<ExactTimeSyncPolicy>(max_queue_size_);
-      sync_input_indices_e_->connectInput(sub_input_filter_, sub_indices_filter_);
-      sync_input_indices_e_->registerCallback(
-        std::bind(callback, this, std::placeholders::_1, std::placeholders::_2));
-    }
-  } else {
-    // Subscribe in an old fashion to input only (no filters)
-    // CAN'T use auto-type here.
-    std::function<void(const PointCloud2ConstPtr msg)> cb =
-      std::bind(callback, this, std::placeholders::_1, PointIndicesConstPtr());
-    sub_input_ = create_subscription<PointCloud2>(
-      "input", rclcpp::SensorDataQoS().keep_last(max_queue_size_), cb);
-  }
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void autoware::downsample_filters::Filter::unsubscribe()
-{
-  if (use_indices_) {
-    sub_input_filter_.unsubscribe();
-    sub_indices_filter_.unsubscribe();
-    if (approximate_sync_) {
-      sync_input_indices_a_.reset();
-    } else {
-      sync_input_indices_e_.reset();
-    }
-  } else {
-    sub_input_.reset();
-  }
-}
-
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // TODO(sykwer): Temporary Implementation: Delete this function definition when all the filter nodes
 // conform to new API.
 void autoware::downsample_filters::Filter::compute_publish(
-  const PointCloud2ConstPtr & input, const IndicesPtr & indices)
+  const PointCloud2ConstPtr & input)
 {
   auto output = std::make_unique<PointCloud2>();
 
   // Call the virtual method in the child
-  filter(input, indices, *output);
+  filter(input, *output);
 
   if (!convert_output_costly(output)) return;
 
@@ -191,37 +144,20 @@ void autoware::downsample_filters::Filter::compute_publish(
 // TODO(sykwer): Temporary Implementation: Delete this function definition when all the filter nodes
 // conform to new API.
 void autoware::downsample_filters::Filter::input_indices_callback(
-  const PointCloud2ConstPtr cloud, const PointIndicesConstPtr indices)
+  const PointCloud2ConstPtr cloud)
 {
   // If cloud is given, check if it's valid
   if (!isValid(cloud)) {
     RCLCPP_ERROR(this->get_logger(), "[input_indices_callback] Invalid input!");
     return;
   }
-  // If indices are given, check if they are valid
-  if (indices && !isValid(indices)) {
-    RCLCPP_ERROR(this->get_logger(), "[input_indices_callback] Invalid indices!");
-    return;
-  }
 
   /// DEBUG
-  if (indices) {
-    RCLCPP_DEBUG(
-      this->get_logger(),
-      "[input_indices_callback]\n"
-      "   - PointCloud with %d data points (%s), stamp %f, and frame %s on input topic received.\n"
-      "   - PointIndices with %zu values, stamp %f, and frame %s on indices topic received.",
-      cloud->width * cloud->height, pcl::getFieldsList(*cloud).c_str(),
-      rclcpp::Time(cloud->header.stamp).seconds(), cloud->header.frame_id.c_str(),
-      indices->indices.size(), rclcpp::Time(indices->header.stamp).seconds(),
-      indices->header.frame_id.c_str());
-  } else {
-    RCLCPP_DEBUG(
-      this->get_logger(),
-      "[input_indices_callback] PointCloud with %d data points and frame %s on input topic "
-      "received.",
-      cloud->width * cloud->height, cloud->header.frame_id.c_str());
-  }
+  RCLCPP_DEBUG(
+    this->get_logger(),
+    "[input_indices_callback] PointCloud with %d data points and frame %s on input topic "
+    "received.",
+    cloud->width * cloud->height, cloud->header.frame_id.c_str());
   ///
 
   // Check whether the user has given a different input TF frame
@@ -254,13 +190,8 @@ void autoware::downsample_filters::Filter::input_indices_callback(
   } else {
     cloud_tf = cloud;
   }
-  // Need setInputCloud () here because we have to extract x/y/z
-  IndicesPtr vindices;
-  if (indices) {
-    vindices.reset(new std::vector<int>(indices->indices));
-  }
 
-  compute_publish(cloud_tf, vindices);
+  compute_publish(cloud_tf);
 }
 
 // Returns false in error cases
@@ -348,7 +279,7 @@ bool autoware::downsample_filters::Filter::convert_output_costly(
 // all the filter nodes conform to new API. Then delete the old `input_indices_callback()` defined
 // above.
 void autoware::downsample_filters::Filter::faster_input_indices_callback(
-  const PointCloud2ConstPtr cloud, const PointIndicesConstPtr indices)
+  const PointCloud2ConstPtr cloud)
 {
   if (
     !utils::is_data_layout_compatible_with_point_xyzircaedt(*cloud) &&
@@ -379,28 +310,12 @@ void autoware::downsample_filters::Filter::faster_input_indices_callback(
     return;
   }
 
-  if (indices && !isValid(indices)) {
-    RCLCPP_ERROR(this->get_logger(), "[input_indices_callback] Invalid indices!");
-    return;
-  }
+  RCLCPP_DEBUG(
+    this->get_logger(),
+    "[input_indices_callback] PointCloud with %d data points and frame %s on input topic "
+    "received.",
+    cloud->width * cloud->height, cloud->header.frame_id.c_str());
 
-  if (indices) {
-    RCLCPP_DEBUG(
-      this->get_logger(),
-      "[input_indices_callback]\n"
-      "   - PointCloud with %d data points (%s), stamp %f, and frame %s on input topic received.\n"
-      "   - PointIndices with %zu values, stamp %f, and frame %s on indices topic received.",
-      cloud->width * cloud->height, pcl::getFieldsList(*cloud).c_str(),
-      rclcpp::Time(cloud->header.stamp).seconds(), cloud->header.frame_id.c_str(),
-      indices->indices.size(), rclcpp::Time(indices->header.stamp).seconds(),
-      indices->header.frame_id.c_str());
-  } else {
-    RCLCPP_DEBUG(
-      this->get_logger(),
-      "[input_indices_callback] PointCloud with %d data points and frame %s on input topic "
-      "received.",
-      cloud->width * cloud->height, cloud->header.frame_id.c_str());
-  }
 
   tf_input_orig_frame_ = cloud->header.frame_id;
 
@@ -409,16 +324,10 @@ void autoware::downsample_filters::Filter::faster_input_indices_callback(
   TransformInfo transform_info;
   if (!calculate_transform_matrix(tf_input_frame_, *cloud, transform_info)) return;
 
-  // Need setInputCloud() here because we have to extract x/y/z
-  IndicesPtr vindices;
-  if (indices) {
-    vindices.reset(new std::vector<int>(indices->indices));
-  }
-
   auto output = std::make_unique<PointCloud2>();
 
   // TODO(sykwer): Change to `filter()` call after when the filter nodes conform to new API.
-  faster_filter(cloud, vindices, *output, transform_info);
+  faster_filter(cloud, *output, transform_info);
 
   if (!convert_output_costly(output)) return;
 
@@ -431,11 +340,9 @@ void autoware::downsample_filters::Filter::faster_input_indices_callback(
 // to new API. It's not a pure virtual function so that a child class does not have to implement
 // this function.
 void autoware::downsample_filters::Filter::faster_filter(
-  const PointCloud2ConstPtr & input, const IndicesPtr & indices, PointCloud2 & output,
-  const TransformInfo & transform_info)
+  const PointCloud2ConstPtr & input, PointCloud2 & output, const TransformInfo & transform_info)
 {
   (void)input;
-  (void)indices;
   (void)output;
   (void)transform_info;
 }

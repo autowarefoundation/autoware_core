@@ -74,12 +74,9 @@ VoxelGridDownsampleFilter::VoxelGridDownsampleFilter(const rclcpp::NodeOptions &
 // TODO(atsushi421): Temporary Implementation: Delete this function definition when all the filter
 // nodes conform to new API.
 void VoxelGridDownsampleFilter::filter(
-  const PointCloud2ConstPtr & input, const IndicesPtr & indices, PointCloud2 & output)
+  const PointCloud2ConstPtr & input, PointCloud2 & output)
 {
   std::scoped_lock lock(mutex_);
-  if (indices) {
-    RCLCPP_WARN(get_logger(), "Indices are not supported and will be ignored");
-  }
   pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_input(new pcl::PointCloud<pcl::PointXYZ>);
   pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_output(new pcl::PointCloud<pcl::PointXYZ>);
   pcl::fromROSMsg(*input, *pcl_input);
@@ -97,8 +94,7 @@ void VoxelGridDownsampleFilter::filter(
 // TODO(atsushi421): Temporary Implementation: Rename this function to `filter()` when all the
 // filter nodes conform to new API. Then delete the old `filter()` defined above.
 void VoxelGridDownsampleFilter::faster_filter(
-  const PointCloud2ConstPtr & input, [[maybe_unused]] const IndicesPtr & indices,
-  PointCloud2 & output, const TransformInfo & transform_info)
+  const PointCloud2ConstPtr & input, PointCloud2 & output, const TransformInfo & transform_info)
 {
   std::scoped_lock lock(mutex_);
   FasterVoxelGridDownsampleFilter faster_voxel_filter;
