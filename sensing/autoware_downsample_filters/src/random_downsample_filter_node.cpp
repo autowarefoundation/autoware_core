@@ -59,10 +59,6 @@ RandomDownsampleFilter::RandomDownsampleFilter(const rclcpp::NodeOptions & optio
   {
     sample_num_ = static_cast<size_t>(declare_parameter<int64_t>("sample_num"));
   }
-
-  using std::placeholders::_1;
-  set_param_res_ = this->add_on_set_parameters_callback(
-    std::bind(&RandomDownsampleFilter::paramCallback, this, _1));
 }
 
 void RandomDownsampleFilter::filter(
@@ -85,23 +81,6 @@ void RandomDownsampleFilter::filter(
   pcl::toROSMsg(*pcl_output, output);
   output.header = input->header;
 }
-
-rcl_interfaces::msg::SetParametersResult RandomDownsampleFilter::paramCallback(
-  const std::vector<rclcpp::Parameter> & p)
-{
-  std::scoped_lock lock(mutex_);
-
-  if (get_param(p, "sample_num", sample_num_)) {
-    RCLCPP_DEBUG(get_logger(), "Setting new sample num to: %zu.", sample_num_);
-  }
-
-  rcl_interfaces::msg::SetParametersResult result;
-  result.successful = true;
-  result.reason = "success";
-
-  return result;
-}
-
 }  // namespace autoware::downsample_filters
 #include <rclcpp_components/register_node_macro.hpp>
 RCLCPP_COMPONENTS_REGISTER_NODE(autoware::downsample_filters::RandomDownsampleFilter)

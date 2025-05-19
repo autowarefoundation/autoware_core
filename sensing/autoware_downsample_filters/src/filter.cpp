@@ -102,10 +102,6 @@ autoware::downsample_filters::Filter::Filter(
   // Set tf_listener, tf_buffer.
   setupTF();
 
-  // Set parameter service callback
-  set_param_res_filter_ = this->add_on_set_parameters_callback(
-    std::bind(&Filter::filterParamCallback, this, std::placeholders::_1));
-
   published_time_publisher_ = std::make_unique<autoware_utils_debug::PublishedTimePublisher>(this);
   RCLCPP_DEBUG(this->get_logger(), "[Filter Constructor] successfully created.");
 }
@@ -189,26 +185,6 @@ void autoware::downsample_filters::Filter::computePublish(
   // Publish a boost shared ptr
   pub_output_->publish(std::move(output));
   published_time_publisher_->publish_if_subscribed(pub_output_, input->header.stamp);
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////
-rcl_interfaces::msg::SetParametersResult autoware::downsample_filters::Filter::filterParamCallback(
-  const std::vector<rclcpp::Parameter> & p)
-{
-  std::scoped_lock lock(mutex_);
-
-  if (get_param(p, "input_frame", tf_input_frame_)) {
-    RCLCPP_DEBUG(get_logger(), "Setting the input TF frame to: %s.", tf_input_frame_.c_str());
-  }
-  if (get_param(p, "output_frame", tf_output_frame_)) {
-    RCLCPP_DEBUG(get_logger(), "Setting the output TF frame to: %s.", tf_output_frame_.c_str());
-  }
-
-  rcl_interfaces::msg::SetParametersResult result;
-  result.successful = true;
-  result.reason = "success";
-
-  return result;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////

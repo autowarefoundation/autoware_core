@@ -69,10 +69,6 @@ VoxelGridDownsampleFilter::VoxelGridDownsampleFilter(const rclcpp::NodeOptions &
     voxel_size_y_ = declare_parameter<float>("voxel_size_y");
     voxel_size_z_ = declare_parameter<float>("voxel_size_z");
   }
-
-  using std::placeholders::_1;
-  set_param_res_ = this->add_on_set_parameters_callback(
-    std::bind(&VoxelGridDownsampleFilter::paramCallback, this, _1));
 }
 
 // TODO(atsushi421): Temporary Implementation: Delete this function definition when all the filter
@@ -109,28 +105,6 @@ void VoxelGridDownsampleFilter::faster_filter(
   faster_voxel_filter.set_voxel_size(voxel_size_x_, voxel_size_y_, voxel_size_z_);
   faster_voxel_filter.set_field_offsets(input, this->get_logger());
   faster_voxel_filter.filter(input, output, transform_info, this->get_logger());
-}
-
-rcl_interfaces::msg::SetParametersResult VoxelGridDownsampleFilter::paramCallback(
-  const std::vector<rclcpp::Parameter> & p)
-{
-  std::scoped_lock lock(mutex_);
-
-  if (get_param(p, "voxel_size_x", voxel_size_x_)) {
-    RCLCPP_DEBUG(get_logger(), "Setting new distance threshold to: %f.", voxel_size_x_);
-  }
-  if (get_param(p, "voxel_size_y", voxel_size_y_)) {
-    RCLCPP_DEBUG(get_logger(), "Setting new distance threshold to: %f.", voxel_size_y_);
-  }
-  if (get_param(p, "voxel_size_z", voxel_size_z_)) {
-    RCLCPP_DEBUG(get_logger(), "Setting new distance threshold to: %f.", voxel_size_z_);
-  }
-
-  rcl_interfaces::msg::SetParametersResult result;
-  result.successful = true;
-  result.reason = "success";
-
-  return result;
 }
 }  // namespace autoware::downsample_filters
 

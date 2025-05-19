@@ -72,10 +72,6 @@ PickupBasedVoxelGridDownsampleFilter::PickupBasedVoxelGridDownsampleFilter(
   voxel_size_x_ = declare_parameter<float>("voxel_size_x");
   voxel_size_y_ = declare_parameter<float>("voxel_size_y");
   voxel_size_z_ = declare_parameter<float>("voxel_size_z");
-
-  using std::placeholders::_1;
-  set_param_res_ = this->add_on_set_parameters_callback(
-    std::bind(&PickupBasedVoxelGridDownsampleFilter::paramCallback, this, _1));
 }
 
 void PickupBasedVoxelGridDownsampleFilter::filter(
@@ -157,30 +153,6 @@ void PickupBasedVoxelGridDownsampleFilter::filter(
       "debug/pipeline_latency_ms", pipeline_latency_ms);
   }
 }
-
-rcl_interfaces::msg::SetParametersResult PickupBasedVoxelGridDownsampleFilter::paramCallback(
-  const std::vector<rclcpp::Parameter> & p)
-{
-  std::scoped_lock lock(mutex_);
-
-  // Handling dynamic updates for the voxel sizes
-  if (get_param(p, "voxel_size_x", voxel_size_x_)) {
-    RCLCPP_DEBUG(get_logger(), "Setting new distance threshold to: %f.", voxel_size_x_);
-  }
-  if (get_param(p, "voxel_size_y", voxel_size_y_)) {
-    RCLCPP_DEBUG(get_logger(), "Setting new distance threshold to: %f.", voxel_size_y_);
-  }
-  if (get_param(p, "voxel_size_z", voxel_size_z_)) {
-    RCLCPP_DEBUG(get_logger(), "Setting new distance threshold to: %f.", voxel_size_z_);
-  }
-
-  rcl_interfaces::msg::SetParametersResult result;
-  result.successful = true;
-  result.reason = "success";
-
-  return result;
-}
-
 }  // namespace autoware::downsample_filters
 
 #include <rclcpp_components/register_node_macro.hpp>

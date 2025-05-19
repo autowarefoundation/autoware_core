@@ -50,9 +50,6 @@ private:
   /** \brief Parameter service callback result : needed to be hold */
   OnSetParametersCallbackHandle::SharedPtr set_param_res_;
 
-  /** \brief Parameter service callback */
-  rcl_interfaces::msg::SetParametersResult paramCallback(const std::vector<rclcpp::Parameter> & p);
-
 public:
   PCL_MAKE_ALIGNED_OPERATOR_NEW
   explicit PickupBasedVoxelGridDownsampleFilter(const rclcpp::NodeOptions & options);
