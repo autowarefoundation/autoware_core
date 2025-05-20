@@ -26,7 +26,7 @@
         },
         "use_external_target_vel": {
           "type": "boolean",
-          "description": "Whether to use external target velocity"
+          "description": "Whether to use external target velocity",
           "default": false
         },
         "external_target_vel": {
