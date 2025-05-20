@@ -17,8 +17,7 @@
 #include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_utils_math/normalization.hpp>
 #include <autoware_utils_math/unit_conversion.hpp>
-
-#include <tf2/utils.h>
+#include <tf2/utils.hpp>
 
 namespace autoware::mission_planner
 {

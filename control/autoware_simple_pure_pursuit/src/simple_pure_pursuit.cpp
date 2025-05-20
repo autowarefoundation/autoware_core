@@ -15,8 +15,7 @@
 #include "simple_pure_pursuit.hpp"
 
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
-
-#include <tf2/utils.h>
+#include <tf2/utils.hpp>
 
 #include <algorithm>
 

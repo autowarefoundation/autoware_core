@@ -15,11 +15,11 @@
 #ifndef UTILS_HPP_
 #define UTILS_HPP_
 
+#include <tf2/utils.hpp>
+
 #include <autoware_internal_planning_msgs/msg/path_point_with_lane_id.hpp>
 #include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
-
-#include <tf2/utils.h>
 
 namespace test
 {

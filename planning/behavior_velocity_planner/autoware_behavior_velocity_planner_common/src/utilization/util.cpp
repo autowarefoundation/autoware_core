@@ -20,6 +20,7 @@
 #include <autoware/lanelet2_utils/topology.hpp>
 #include <autoware_lanelet2_extension/utility/query.hpp>
 #include <autoware_utils/geometry/geometry.hpp>
+#include <tf2/utils.hpp>
 
 #include <autoware_planning_msgs/msg/path_point.hpp>
 
@@ -28,7 +29,6 @@
 #include <lanelet2_core/Forward.h>
 #include <lanelet2_core/geometry/Polygon.h>
 #include <lanelet2_routing/RoutingGraph.h>
-#include <tf2/utils.h>
 
 #ifdef ROS_DISTRO_GALACTIC
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
@@ -737,8 +737,8 @@ std::set<lanelet::Id> getAssociativeIntersectionLanelets(
   associative_intersection_lanelets.insert(lane.id());
   for (const auto & parent_neighbor_id : parent_neighbors) {
     const auto parent_neighbor = lanelet_map->laneletLayer.get(parent_neighbor_id);
-    const auto followings = routing_graph->following(parent_neighbor);
-    for (const auto & following : followings) {
+    const auto following = routing_graph->following(parent_neighbor);
+    for (const auto & following : following) {
       if (following.attributeOr("turn_direction", "else") == turn_direction) {
         associative_intersection_lanelets.insert(following.id());
       }

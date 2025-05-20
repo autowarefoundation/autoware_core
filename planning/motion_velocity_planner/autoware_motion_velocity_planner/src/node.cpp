@@ -22,6 +22,7 @@
 #include <autoware_utils_pcl/transforms.hpp>
 #include <autoware_utils_rclcpp/parameter.hpp>
 #include <autoware_utils_system/stop_watch.hpp>
+#include <tf2/time.hpp>
 #include <tf2_eigen/tf2_eigen.hpp>
 
 #include <autoware_planning_msgs/msg/trajectory_point.hpp>
@@ -29,7 +30,6 @@
 
 #include <pcl/common/transforms.h>
 #include <pcl_conversions/pcl_conversions.h>
-#include <tf2/time.h>
 
 #include <chrono>
 #include <functional>

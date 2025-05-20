@@ -19,11 +19,10 @@
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
 #include <autoware/velocity_smoother/trajectory_utils.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <tf2/utils.hpp>
 
 #include <autoware_internal_planning_msgs/msg/path_point_with_lane_id.hpp>
 #include <geometry_msgs/msg/quaternion.hpp>
-
-#include <tf2/utils.h>
 
 #include <iostream>
 #include <utility>

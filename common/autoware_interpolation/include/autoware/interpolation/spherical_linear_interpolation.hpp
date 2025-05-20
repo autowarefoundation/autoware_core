@@ -17,9 +17,9 @@
 
 #include "autoware/interpolation/interpolation_utils.hpp"
 
-#include <geometry_msgs/msg/quaternion.hpp>
+#include <tf2/utils.hpp>
 
-#include <tf2/utils.h>
+#include <geometry_msgs/msg/quaternion.hpp>
 
 #ifdef ROS_DISTRO_GALACTIC
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
