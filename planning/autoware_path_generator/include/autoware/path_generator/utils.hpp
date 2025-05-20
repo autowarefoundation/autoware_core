@@ -33,12 +33,20 @@ using autoware_vehicle_msgs::msg::TurnIndicatorsCommand;
 
 struct WaypointGroup
 {
-  lanelet::ConstPoints3d waypoints;
+  struct Waypoint
+  {
+    lanelet::ConstPoint3d point;
+    lanelet::Id lane_id;
+  };
+
   struct Interval
   {
     double start;
     double end;
-  } interval;
+  };
+
+  std::vector<Waypoint> waypoints;
+  Interval interval;
 };
 
 template <typename T>
@@ -128,6 +136,17 @@ std::optional<double> get_first_intersection_arc_length(
  */
 std::optional<double> get_first_self_intersection_arc_length(
   const lanelet::BasicLineString2d & line_string);
+
+/**
+ * @brief get position of given point on centerline projected to path in arc length
+ * @param lanelet_sequence lanelet sequence
+ * @param path target path
+ * @param s_centerline longitudinal distance of point on centerline
+ * @return longitudinal distance of projected point
+ */
+double get_arc_length_on_path(
+  const lanelet::LaneletSequence & lanelet_sequence, const std::vector<PathPointWithLaneId> & path,
+  const double s_centerline);
 
 /**
  * @brief get path bounds for PathWithLaneId cropped within specified range
