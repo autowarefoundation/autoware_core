@@ -619,6 +619,21 @@ template bool isTargetPointFront<std::vector<autoware_planning_msgs::msg::Trajec
   const geometry_msgs::msg::Point & base_point, const geometry_msgs::msg::Point & target_point,
   const double threshold);
 
+//
+double calc_diff_angle_against_trajectory(
+  const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & traj_points,
+  const geometry_msgs::msg::Pose & target_pose)
+{
+  const size_t nearest_idx =
+    autoware::motion_utils::findNearestIndex(traj_points, target_pose.position);
+  const double traj_yaw = tf2::getYaw(traj_points.at(nearest_idx).pose.orientation);
+
+  const double target_yaw = tf2::getYaw(target_pose.orientation);
+
+  const double diff_yaw = autoware_utils_math::normalize_radian(target_yaw - traj_yaw);
+  return diff_yaw;
+}
+
 void calculate_time_from_start(
   std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & trajectory,
   const geometry_msgs::msg::Point & current_ego_point, const float min_velocity)
