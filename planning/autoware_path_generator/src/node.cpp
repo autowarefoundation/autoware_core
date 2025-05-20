@@ -256,12 +256,12 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
       break;
     }
     lanelets.insert(lanelets.begin(), prev_lanelets.front());
-    backward_lanelets_length += lanelet::utils::getLaneletLength2d(prev_lanelets.front());
+    backward_lanelets_length += lanelet::geometry::length2d(prev_lanelets.front());
   }
 
   const auto forward_length = std::max(
     0., params.path_length.forward + vehicle_info_.max_longitudinal_offset_m -
-          (lanelet::utils::getLaneletLength2d(*current_lanelet_) - s_on_current_lanelet));
+          (lanelet::geometry::length2d(*current_lanelet_) - s_on_current_lanelet));
   const auto forward_lanelets_within_route =
     utils::get_lanelets_within_route_after(*current_lanelet_, planner_data_, forward_length);
   if (!forward_lanelets_within_route) {
@@ -277,7 +277,7 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
       break;
     }
     lanelets.insert(lanelets.end(), next_lanelets.front());
-    forward_lanelets_length += lanelet::utils::getLaneletLength2d(next_lanelets.front());
+    forward_lanelets_length += lanelet::geometry::length2d(next_lanelets.front());
   }
 
   const auto s = s_on_current_lanelet + backward_lanelets_length;
@@ -289,12 +289,16 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
       s_end = std::min(s_end, lanelet::utils::getLaneletLength2d(lanelets));
     }
 
-    if (std::any_of(
-          planner_data_.goal_lanelets.begin(), planner_data_.goal_lanelets.end(),
-          [&](const auto & goal_lanelet) { return lanelets.back().id() == goal_lanelet.id(); })) {
-      const auto goal_arc_coordinates =
-        lanelet::utils::getArcCoordinates(lanelets, planner_data_.goal_pose);
-      s_end = std::min(s_end, goal_arc_coordinates.length);
+    for (auto [it, goal_arc_length] = std::make_tuple(lanelets.begin(), 0.); it != lanelets.end();
+         ++it) {
+      if (std::any_of(
+            planner_data_.goal_lanelets.begin(), planner_data_.goal_lanelets.end(),
+            [&](const auto & goal_lanelet) { return it->id() == goal_lanelet.id(); })) {
+        goal_arc_length += lanelet::utils::getArcCoordinates({*it}, planner_data_.goal_pose).length;
+        s_end = std::min(s_end, goal_arc_length);
+        break;
+      }
+      goal_arc_length += lanelet::geometry::length2d(*it);
     }
 
     if (
@@ -421,7 +425,7 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
     extended_lanelet_sequence, path_points_with_lane_id, extended_arc_length + s_start);
   const auto s_path_end = utils::get_arc_length_on_path(
     extended_lanelet_sequence, path_points_with_lane_id, extended_arc_length + s_end);
-  trajectory->crop(s_path_start, s_path_end - s_path_start);
+  trajectory->crop(s_path_start, std::min(s_path_end, trajectory->length()) - s_path_start);
 
   // Check if the goal point is in the search range
   // Note: We only see if the goal is approaching the tail of the path.
