@@ -737,8 +737,8 @@ std::set<lanelet::Id> getAssociativeIntersectionLanelets(
   associative_intersection_lanelets.insert(lane.id());
   for (const auto & parent_neighbor_id : parent_neighbors) {
     const auto parent_neighbor = lanelet_map->laneletLayer.get(parent_neighbor_id);
-    const auto following = routing_graph->following(parent_neighbor);
-    for (const auto & following : following) {
+    const auto followings = routing_graph->following(parent_neighbor);
+    for (const auto & following : followings) {
       if (following.attributeOr("turn_direction", "else") == turn_direction) {
         associative_intersection_lanelets.insert(following.id());
       }
