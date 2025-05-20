@@ -30,8 +30,4 @@ None
 
 ```bash
 ros2 launch autoware_perception_objects_converter detected_to_predicted_objects.launch.xml
-<<<<<<< HEAD
-``` 
-=======
 ```
->>>>>>> 5ae8ec8e316966fcdd9fe23b78c79282b3995d47
