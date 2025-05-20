@@ -300,17 +300,14 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
   auto extended_lanelets = lanelet_sequence.lanelets();
   auto s_offset = 0.;
 
-  {
-    auto extended_lanelets_length = lanelet::geometry::length2d(lanelet_sequence);
-    while (extended_lanelets_length < s_bound_end) {
-      const auto next_lanelets =
-        planner_data_.routing_graph_ptr->following(extended_lanelets.back());
-      if (next_lanelets.empty()) {
-        break;
-      }
-      extended_lanelets.push_back(next_lanelets.front());
-      extended_lanelets_length += lanelet::geometry::length2d(next_lanelets.front());
+  for (auto extended_lanelets_length = lanelet::geometry::length2d(lanelet_sequence);
+       extended_lanelets_length < s_bound_end;) {
+    const auto next_lanelets = planner_data_.routing_graph_ptr->following(extended_lanelets.back());
+    if (next_lanelets.empty()) {
+      break;
     }
+    extended_lanelets.push_back(next_lanelets.front());
+    extended_lanelets_length += lanelet::geometry::length2d(next_lanelets.front());
   }
 
   while (s_offset + s_bound_start < 0.) {
@@ -335,23 +332,25 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
     s_offset += lanelet::geometry::length2d(*prev_lanelet);
   }
 
-  const auto add_path_point = [&](const auto & path_point, const lanelet::ConstLanelet & lanelet) {
-    PathPointWithLaneId path_point_with_lane_id{};
-    path_point_with_lane_id.lane_ids.push_back(lanelet.id());
-    path_point_with_lane_id.point.pose.position =
-      lanelet::utils::conversion::toGeomMsgPt(path_point);
-    path_point_with_lane_id.point.longitudinal_velocity_mps =
-      planner_data_.traffic_rules_ptr->speedLimit(lanelet).speedLimit.value();
-    path_points_with_lane_id.push_back(std::move(path_point_with_lane_id));
-  };
+  const auto add_path_point =
+    [&](const lanelet::ConstPoint3d & path_point, const lanelet::Id & lane_id) {
+      PathPointWithLaneId path_point_with_lane_id{};
+      path_point_with_lane_id.lane_ids.push_back(lane_id);
+      path_point_with_lane_id.point.pose.position =
+        lanelet::utils::conversion::toGeomMsgPt(path_point);
+      path_point_with_lane_id.point.longitudinal_velocity_mps =
+        planner_data_.traffic_rules_ptr
+          ->speedLimit(planner_data_.lanelet_map_ptr->laneletLayer.get(lane_id))
+          .speedLimit.value();
+      path_points_with_lane_id.push_back(std::move(path_point_with_lane_id));
+    };
 
   const lanelet::LaneletSequence extended_lanelet_sequence(extended_lanelets);
   std::optional<size_t> overlapping_waypoint_group_index = std::nullopt;
 
-  for (auto lanelet_it = extended_lanelet_sequence.begin();
+  for (auto [lanelet_it, s] = std::make_tuple(extended_lanelet_sequence.begin(), 0.);
        lanelet_it != extended_lanelet_sequence.end(); ++lanelet_it) {
     const auto & centerline = lanelet_it->centerline();
-    auto s = get_arc_length_along_centerline(extended_lanelet_sequence, centerline.front());
 
     for (auto point_it = centerline.begin(); point_it != centerline.end(); ++point_it) {
       if (point_it != centerline.begin()) {
@@ -374,18 +373,7 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
           continue;
         }
         for (const auto & waypoint : waypoints) {
-          const auto s_waypoint =
-            get_arc_length_along_centerline(extended_lanelet_sequence, waypoint);
-          for (auto waypoint_lanelet_it = extended_lanelet_sequence.begin();
-               waypoint_lanelet_it != extended_lanelet_sequence.end(); ++waypoint_lanelet_it) {
-            if (
-              s_waypoint > get_arc_length_along_centerline(
-                             extended_lanelet_sequence, waypoint_lanelet_it->centerline().back())) {
-              continue;
-            }
-            add_path_point(waypoint, *waypoint_lanelet_it);
-            break;
-          }
+          add_path_point(waypoint.point, waypoint.lane_id);
         }
         overlapping_waypoint_group_index = i;
         break;
@@ -394,7 +382,7 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
         continue;
       }
 
-      add_path_point(*point_it, *lanelet_it);
+      add_path_point(*point_it, lanelet_it->id());
       if (
         point_it == std::prev(centerline.end()) &&
         lanelet_it != std::prev(extended_lanelet_sequence.end())) {
@@ -409,26 +397,6 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
     }
   }
 
-  lanelet::BasicLineString2d path_line_string;
-  path_line_string.reserve(path_points_with_lane_id.size());
-  std::transform(
-    path_points_with_lane_id.begin(), path_points_with_lane_id.end(),
-    std::back_inserter(path_line_string), [](const PathPointWithLaneId & path_point) {
-      return lanelet::utils::conversion::toLaneletPoint(path_point.point.pose.position)
-        .basicPoint2d();
-    });
-
-  const auto path_start_arc_length =
-    lanelet::geometry::toArcCoordinates(
-      path_line_string,
-      lanelet::geometry::interpolatedPointAtDistance(lanelet_sequence.centerline2d(), s_start))
-      .length;
-  const auto path_end_arc_length =
-    lanelet::geometry::toArcCoordinates(
-      path_line_string,
-      lanelet::geometry::interpolatedPointAtDistance(lanelet_sequence.centerline2d(), s_end))
-      .length;
-
   auto trajectory = Trajectory::Builder().build(path_points_with_lane_id);
   if (!trajectory) {
     return std::nullopt;
@@ -438,7 +406,11 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
   trajectory->align_orientation_with_trajectory_direction();
 
   // Refine the trajectory by cropping
-  trajectory->crop(path_start_arc_length, path_end_arc_length - path_start_arc_length);
+  const auto s_path_start = utils::get_arc_length_on_path(
+    extended_lanelet_sequence, path_points_with_lane_id, s_offset + s_start);
+  const auto s_path_end = utils::get_arc_length_on_path(
+    extended_lanelet_sequence, path_points_with_lane_id, s_offset + s_end);
+  trajectory->crop(s_path_start, s_path_end - s_path_start);
 
   // Check if the goal point is in the search range
   // Note: We only see if the goal is approaching the tail of the path.
