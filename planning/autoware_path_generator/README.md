@@ -99,7 +99,7 @@ group get_turn_signal
     if (turn direction is set to corresponding lanelet?) then (yes)
       if (ego is in front of lanelet?) then (yes)
         if (distance to lanelet < turn_signal_distance?) then (yes)
-          :return turn signal; 
+          :return turn signal;
         endif
       else (no)
         if (ego passed required section?) then (yes)
