@@ -15,7 +15,7 @@
 #include "autoware/interpolation/spline_interpolation.hpp"
 #include "autoware/interpolation/spline_interpolation_points_2d.hpp"
 
-#include <autoware_utils/geometry/geometry.hpp>
+#include <autoware_utils_geometry/geometry.hpp>
 
 #include <gtest/gtest.h>
 
@@ -28,7 +28,7 @@ using autoware::interpolation::SplineInterpolationPoints2d;
 
 TEST(spline_interpolation, splineYawFromPoints)
 {
-  using autoware_utils::create_point;
+  using autoware_utils_geometry::create_point;
 
   {  // straight
     std::vector<geometry_msgs::msg::Point> points;
@@ -98,7 +98,7 @@ TEST(spline_interpolation, splineYawFromPoints)
 
 TEST(spline_interpolation, SplineInterpolationPoints2d)
 {
-  using autoware_utils::create_point;
+  using autoware_utils_geometry::create_point;
 
   // curve
   std::vector<geometry_msgs::msg::Point> points;
@@ -202,7 +202,7 @@ TEST(spline_interpolation, SplineInterpolationPoints2d)
 TEST(spline_interpolation, SplineInterpolationPoints2dPolymorphism)
 {
   using autoware_planning_msgs::msg::TrajectoryPoint;
-  using autoware_utils::create_point;
+  using autoware_utils_geometry::create_point;
 
   std::vector<geometry_msgs::msg::Point> points;
   points.push_back(create_point(-2.0, -10.0, 0.0));

@@ -16,8 +16,9 @@
 #define AUTOWARE__VELOCITY_SMOOTHER__SMOOTHER__SMOOTHER_BASE_HPP_
 
 #include "autoware/velocity_smoother/resample.hpp"
-#include "autoware_utils/system/time_keeper.hpp"
 #include "rclcpp/rclcpp.hpp"
+
+#include <autoware_utils_debug/time_keeper.hpp>
 
 #include "autoware_planning_msgs/msg/trajectory_point.hpp"
 
@@ -57,7 +58,7 @@ public:
   };
 
   explicit SmootherBase(
-    rclcpp::Node & node, const std::shared_ptr<autoware_utils::TimeKeeper> time_keeper);
+    rclcpp::Node & node, const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper);
   virtual ~SmootherBase() = default;
   virtual bool apply(
     const double initial_vel, const double initial_acc, const TrajectoryPoints & input,
@@ -91,7 +92,7 @@ public:
 
 protected:
   BaseParam base_param_;
-  mutable std::shared_ptr<autoware_utils::TimeKeeper> time_keeper_{nullptr};
+  mutable std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper_{nullptr};
 };
 }  // namespace autoware::velocity_smoother
 

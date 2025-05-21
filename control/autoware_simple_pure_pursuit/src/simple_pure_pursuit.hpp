@@ -15,7 +15,7 @@
 #ifndef SIMPLE_PURE_PURSUIT_HPP_
 #define SIMPLE_PURE_PURSUIT_HPP_
 
-#include <autoware_utils/ros/polling_subscriber.hpp>
+#include <autoware_utils_rclcpp/polling_subscriber.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
 #include <rclcpp/rclcpp.hpp>
 
@@ -37,8 +37,10 @@ public:
 
 private:
   // subscribers
-  autoware_utils::InterProcessPollingSubscriber<Odometry> odom_sub_{this, "~/input/odometry"};
-  autoware_utils::InterProcessPollingSubscriber<Trajectory> traj_sub_{this, "~/input/trajectory"};
+  autoware_utils_rclcpp::InterProcessPollingSubscriber<Odometry> odom_sub_{
+    this, "~/input/odometry"};
+  autoware_utils_rclcpp::InterProcessPollingSubscriber<Trajectory> traj_sub_{
+    this, "~/input/trajectory"};
 
   // publishers
   rclcpp::Publisher<autoware_control_msgs::msg::Control>::SharedPtr pub_control_command_;

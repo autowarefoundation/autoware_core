@@ -2,6 +2,17 @@
 Changelog for package autoware_motion_utils
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.1.0 (2025-05-01)
+------------------
+* fix(autoware_path_optimizer): incorrect application of input velocity due to badly mapping output trajectory to input trajectory (`#355 <https://github.com/autowarefoundation/autoware_core/issues/355>`_)
+  * changes to avoid improper mapping
+  * Update common/autoware_motion_utils/include/autoware/motion_utils/trajectory/trajectory.hpp
+  Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
+  ---------
+  Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
+* refactor(autoware_motion_utils): rewrite using modern C++ without API breakage (`#348 <https://github.com/autowarefoundation/autoware_core/issues/348>`_)
+* Contributors: Arjun Jagdish Ram, Yutaka Kondo
+
 1.0.0 (2025-03-31)
 ------------------
 

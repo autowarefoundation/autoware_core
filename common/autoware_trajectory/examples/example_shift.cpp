@@ -115,25 +115,10 @@ int main()
     std::cout << shifted_trajectory_info.error().what << std::endl;
     return 1;
   }
-  const auto & [shifted_trajectory, shift_start_s, shift_end_s] = shifted_trajectory_info.value();
+  const auto & shifted_trajectory = shifted_trajectory_info.value();
 
   plot_trajectory_with_underlying(*trajectory, "blue", "original", plt);
   plot_trajectory_with_underlying(shifted_trajectory, "red", "shifted", plt);
-
-  // draw shifted part
-  {
-    const auto s = shifted_trajectory.base_arange({shift_start_s, shift_end_s}, 0.05);
-    const auto c = shifted_trajectory.compute(s);
-    const auto x = c | transform([](const auto & p) { return p.x; }) | to<std::vector>();
-    const auto y = c | transform([](const auto & p) { return p.y; }) | to<std::vector>();
-    std::stringstream ss;
-    ss << "shift part [" << shift_start_s << ", " << shift_end_s << "]("
-       << R"($L_{\mathrm{lon}} = )" << shift_interval.end - shift_interval.start << "$)";
-
-    plt.plot(
-      Args(x, y),
-      Kwargs("label"_a = ss.str(), "color"_a = "gray", "linewidth"_a = 5.0, "alpha"_a = 0.7));
-  }
 
   plt.axis(Args("equal"));
   plt.grid();
@@ -149,8 +134,7 @@ int main()
     std::cout << shifted_trajectory_info.error().what << std::endl;
     return 1;
   }
-  const auto & [shifted_trajectory_left, shift_start_left_s, shift_end_left_s] =
-    shifted_trajectory_left_info.value();
+  const auto & shifted_trajectory_left = shifted_trajectory_left_info.value();
 
   plot_trajectory_with_underlying(*trajectory, "black", "original", plt);
   plot_trajectory_with_underlying(shifted_trajectory, "red", "lateral_offset = +2.5", plt);

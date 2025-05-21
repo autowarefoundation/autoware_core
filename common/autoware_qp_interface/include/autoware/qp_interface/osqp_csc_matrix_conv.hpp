@@ -15,9 +15,9 @@
 #ifndef AUTOWARE__QP_INTERFACE__OSQP_CSC_MATRIX_CONV_HPP_
 #define AUTOWARE__QP_INTERFACE__OSQP_CSC_MATRIX_CONV_HPP_
 
-#include "osqp/glob_opts.h"
-
 #include <Eigen/Core>
+
+#include <osqp/glob_opts.h>
 
 #include <vector>
 

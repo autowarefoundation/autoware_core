@@ -63,8 +63,6 @@ std::vector<double> QPInterface::optimize(
   const std::vector<double> & l, const std::vector<double> & u)
 {
   initializeProblem(P, A, q, l, u);
-  const auto result = optimizeImpl();
-
-  return result;
+  return optimizeImpl();
 }
 }  // namespace autoware::qp_interface

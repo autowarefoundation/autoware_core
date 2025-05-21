@@ -17,16 +17,18 @@
 #include "autoware/behavior_velocity_planner_common/utilization/boost_geometry_helper.hpp"
 #include "autoware/motion_utils/trajectory/trajectory.hpp"
 
+#include <autoware/lanelet2_utils/topology.hpp>
 #include <autoware_lanelet2_extension/utility/query.hpp>
 #include <autoware_utils/geometry/geometry.hpp>
+#include <tf2/utils.hpp>
 
 #include <autoware_planning_msgs/msg/path_point.hpp>
 
 #include <boost/geometry/algorithms/correct.hpp>
 
+#include <lanelet2_core/Forward.h>
 #include <lanelet2_core/geometry/Polygon.h>
 #include <lanelet2_routing/RoutingGraph.h>
-#include <tf2/utils.h>
 
 #ifdef ROS_DISTRO_GALACTIC
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
@@ -37,6 +39,8 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <limits>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -493,15 +497,73 @@ std::vector<geometry_msgs::msg::Point> toRosPoints(const PredictedObjects & obje
   return points;
 }
 
-LineString2d extendLine(
-  const lanelet::ConstPoint3d & lanelet_point1, const lanelet::ConstPoint3d & lanelet_point2,
-  const double & length)
+LineString2d extendSegmentToBounds(
+  const lanelet::BasicLineString2d & segment, const std::vector<geometry_msgs::msg::Point> & bound1,
+  const std::vector<geometry_msgs::msg::Point> & bound2)
 {
-  const Eigen::Vector2d p1(lanelet_point1.x(), lanelet_point1.y());
-  const Eigen::Vector2d p2(lanelet_point2.x(), lanelet_point2.y());
-  const Eigen::Vector2d t = (p2 - p1).normalized();
-  return {
-    {(p1 - length * t).x(), (p1 - length * t).y()}, {(p2 + length * t).x(), (p2 + length * t).y()}};
+  constexpr double epsilon = 1e-6;
+  constexpr auto to_autoware_line_string = [](const auto & line_string) {
+    LineString2d autoware_line_string;
+    std::transform(
+      line_string.begin(), line_string.end(), std::back_inserter(autoware_line_string),
+      [](const auto & point) { return Point2d{point.x(), point.y()}; });
+    return autoware_line_string;
+  };
+
+  if (segment.size() != 2) {
+    std::cerr << "[behavior_velocity](extendLineStringUntilIntersection) input segment must "
+                 "have exactly 2 points"
+              << std::endl;
+    return to_autoware_line_string(segment);
+  }
+
+  if (bound1.size() < 2 || bound2.size() < 2) {
+    std::cerr << "[behavior_velocity](extendLineStringUntilIntersection) input bounds must "
+                 "have at least 2 points"
+              << std::endl;
+    return to_autoware_line_string(segment);
+  }
+
+  const auto find_intersection_point =
+    [&](const std::vector<geometry_msgs::msg::Point> & bound) -> std::optional<Point2d> {
+    std::optional<Point2d> intersection_point = std::nullopt;
+    auto min_distance_to_bound = std::numeric_limits<double>::max();
+    for (auto it = std::next(bound.begin()); it != bound.end(); ++it) {
+      const auto p2 = autoware_utils_geometry::from_msg(*std::prev(it)).to_2d();
+      const auto p3 = autoware_utils_geometry::from_msg(*it).to_2d();
+      const Eigen::Vector2d v01 = segment[1] - segment[0];
+      const Eigen::Vector2d v23 = p3 - p2;
+      const auto c = v23.x() * v01.y() - v23.y() * v01.x();
+      if (std::abs(c) < epsilon) {  // parallel
+        continue;
+      }
+      const Eigen::Vector2d v20 = segment[0] - p2;
+      const auto t = (v20.x() * v01.y() - v20.y() * v01.x()) / c;
+      if (t < 0.0 || t > 1.0) {  // intersection is outside segment
+        continue;
+      }
+      const Eigen::Vector2d pi = p2 + t * v23;
+      const auto distance = std::min(
+        boost::geometry::distance(pi, segment[0]), boost::geometry::distance(pi, segment[1]));
+      if (!intersection_point || distance <= min_distance_to_bound) {
+        intersection_point = {pi.x(), pi.y()};
+        min_distance_to_bound = distance;
+      }
+    }
+    return intersection_point;
+  };
+
+  const auto intersection1 = find_intersection_point(bound1);
+  const auto intersection2 = find_intersection_point(bound2);
+
+  if (!intersection1 || !intersection2) {
+    return to_autoware_line_string(segment);
+  }
+
+  if ((*intersection2 - *intersection1).dot(segment[1] - segment[0]) < 0.0) {
+    return LineString2d{*intersection2, *intersection1};
+  }
+  return LineString2d{*intersection1, *intersection2};
 }
 
 std::optional<int64_t> getNearestLaneId(
@@ -694,6 +756,30 @@ lanelet::ConstLanelets getConstLaneletsFromIds(
     ret.push_back(ll);
   }
   return ret;
+}
+
+lanelet::Ids collectConnectedLaneIds(
+  const int64_t lane_id, const std::shared_ptr<route_handler::RouteHandler> & route_handler)
+{
+  lanelet::Ids lane_ids;
+  lane_ids.push_back(lane_id);  // No cast needed since lane_id is already int64_t
+
+  const auto lanelet_map = route_handler->getLaneletMapPtr();
+  if (lanelet_map && lanelet_map->laneletLayer.exists(lane_id)) {
+    const auto current_lanelet = lanelet_map->laneletLayer.get(lane_id);
+    const auto following_lanelets = experimental::lanelet2_utils::following_lanelets(
+      current_lanelet, route_handler->getRoutingGraphPtr());
+    const auto prev_lanelets = experimental::lanelet2_utils::previous_lanelets(
+      current_lanelet, route_handler->getRoutingGraphPtr());
+
+    for (const auto & next_lanelet : following_lanelets) {
+      lane_ids.push_back(next_lanelet.id());
+    }
+    for (const auto & prev_lanelet : prev_lanelets) {
+      lane_ids.push_back(prev_lanelet.id());
+    }
+  }
+  return lane_ids;
 }
 
 }  // namespace autoware::behavior_velocity_planner::planning_utils

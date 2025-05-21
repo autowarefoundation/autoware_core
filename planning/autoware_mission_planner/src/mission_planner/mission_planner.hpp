@@ -19,8 +19,8 @@
 
 #include <autoware/mission_planner/mission_planner_plugin.hpp>
 #include <autoware/route_handler/route_handler.hpp>
-#include <autoware_utils/ros/logger_level_configure.hpp>
-#include <autoware_utils/system/stop_watch.hpp>
+#include <autoware_utils_logging/logger_level_configure.hpp>
+#include <autoware_utils_system/stop_watch.hpp>
 #include <pluginlib/class_loader.hpp>
 #include <rclcpp/rclcpp.hpp>
 
@@ -67,7 +67,8 @@ class MissionPlanner : public rclcpp::Node
 {
 public:
   explicit MissionPlanner(const rclcpp::NodeOptions & options);
-  void publish_processing_time(autoware_utils::StopWatch<std::chrono::milliseconds> stop_watch);
+  void publish_processing_time(
+    autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch);
 
 private:
   ArrivalChecker arrival_checker_;
@@ -136,7 +137,7 @@ private:
   bool allow_reroute_in_autonomous_mode_;
   bool check_reroute_safety(const LaneletRoute & original_route, const LaneletRoute & target_route);
 
-  std::unique_ptr<autoware_utils::LoggerLevelConfigure> logger_configure_;
+  std::unique_ptr<autoware_utils_logging::LoggerLevelConfigure> logger_configure_;
   rclcpp::Publisher<autoware_internal_debug_msgs::msg::Float64Stamped>::SharedPtr
     pub_processing_time_;
 };

@@ -18,9 +18,9 @@
 #include "autoware/behavior_velocity_planner/planner_manager.hpp"
 
 #include <autoware/behavior_velocity_planner_common/planner_data.hpp>
-#include <autoware_utils/ros/logger_level_configure.hpp>
-#include <autoware_utils/ros/polling_subscriber.hpp>
-#include <autoware_utils/ros/published_time_publisher.hpp>
+#include <autoware_utils_debug/published_time_publisher.hpp>
+#include <autoware_utils_logging/logger_level_configure.hpp>
+#include <autoware_utils_rclcpp/polling_subscriber.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <autoware_internal_debug_msgs/srv/string.hpp>
@@ -62,31 +62,33 @@ private:
     trigger_sub_path_with_lane_id_;
 
   // polling subscribers
-  autoware_utils::InterProcessPollingSubscriber<autoware_perception_msgs::msg::PredictedObjects>
+  autoware_utils_rclcpp::InterProcessPollingSubscriber<
+    autoware_perception_msgs::msg::PredictedObjects>
     sub_predicted_objects_{this, "~/input/dynamic_objects"};
 
-  autoware_utils::InterProcessPollingSubscriber<sensor_msgs::msg::PointCloud2>
+  autoware_utils_rclcpp::InterProcessPollingSubscriber<sensor_msgs::msg::PointCloud2>
     sub_no_ground_pointcloud_{
-      this, "~/input/no_ground_pointcloud", autoware_utils::single_depth_sensor_qos()};
+      this, "~/input/no_ground_pointcloud", autoware_utils_rclcpp::single_depth_sensor_qos()};
 
-  autoware_utils::InterProcessPollingSubscriber<nav_msgs::msg::Odometry> sub_vehicle_odometry_{
-    this, "~/input/vehicle_odometry"};
+  autoware_utils_rclcpp::InterProcessPollingSubscriber<nav_msgs::msg::Odometry>
+    sub_vehicle_odometry_{this, "~/input/vehicle_odometry"};
 
-  autoware_utils::InterProcessPollingSubscriber<geometry_msgs::msg::AccelWithCovarianceStamped>
+  autoware_utils_rclcpp::InterProcessPollingSubscriber<
+    geometry_msgs::msg::AccelWithCovarianceStamped>
     sub_acceleration_{this, "~/input/accel"};
 
-  autoware_utils::InterProcessPollingSubscriber<
+  autoware_utils_rclcpp::InterProcessPollingSubscriber<
     autoware_perception_msgs::msg::TrafficLightGroupArray>
     sub_traffic_signals_{this, "~/input/traffic_signals"};
 
-  autoware_utils::InterProcessPollingSubscriber<nav_msgs::msg::OccupancyGrid> sub_occupancy_grid_{
-    this, "~/input/occupancy_grid"};
+  autoware_utils_rclcpp::InterProcessPollingSubscriber<nav_msgs::msg::OccupancyGrid>
+    sub_occupancy_grid_{this, "~/input/occupancy_grid"};
 
-  autoware_utils::InterProcessPollingSubscriber<
-    LaneletMapBin, autoware_utils::polling_policy::Newest>
+  autoware_utils_rclcpp::InterProcessPollingSubscriber<
+    LaneletMapBin, autoware_utils_rclcpp::polling_policy::Newest>
     sub_lanelet_map_{this, "~/input/vector_map", rclcpp::QoS{1}.transient_local()};
 
-  autoware_utils::InterProcessPollingSubscriber<VelocityLimit> sub_external_velocity_limit_{
+  autoware_utils_rclcpp::InterProcessPollingSubscriber<VelocityLimit> sub_external_velocity_limit_{
     this, "~/input/external_velocity_limit_mps", rclcpp::QoS{1}.transient_local()};
 
   void onTrigger(
@@ -134,9 +136,9 @@ private:
     const autoware_internal_planning_msgs::msg::PathWithLaneId::ConstSharedPtr input_path_msg,
     const PlannerData & planner_data);
 
-  std::unique_ptr<autoware_utils::LoggerLevelConfigure> logger_configure_;
+  std::unique_ptr<autoware_utils_logging::LoggerLevelConfigure> logger_configure_;
 
-  std::unique_ptr<autoware_utils::PublishedTimePublisher> published_time_publisher_;
+  std::unique_ptr<autoware_utils_debug::PublishedTimePublisher> published_time_publisher_;
 
   static constexpr int logger_throttle_interval = 3000;
 };

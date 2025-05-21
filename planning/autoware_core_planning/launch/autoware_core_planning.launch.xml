@@ -47,6 +47,7 @@
       <push-ros-namespace namespace="scenario_planning/lane_driving/behavior_planning"/>
       <node pkg="autoware_path_generator" exec="path_generator_node" name="path_generator">
         <param from="$(find-pkg-share autoware_path_generator)/config/path_generator.param.yaml"/>
+        <param from="$(find-pkg-share autoware_core_planning)/config/nearest_search.param.yaml"/>
         <remap from="~/input/route" to="/planning/mission_planning/route"/>
         <remap from="~/input/vector_map" to="$(var map_topic_name)"/>
         <remap from="~/input/odometry" to="/localization/kinematic_state"/>

@@ -14,17 +14,18 @@
 
 #include "autoware/motion_utils/trajectory/trajectory.hpp"
 
+#include <tf2/LinearMath/Quaternion.hpp>
+
 #include <gtest/gtest.h>
 #include <gtest/internal/gtest-port.h>
-#include <tf2/LinearMath/Quaternion.h>
 
 #include <random>
 
 namespace
 {
 using autoware_planning_msgs::msg::Trajectory;
-using autoware_utils::create_point;
-using autoware_utils::create_quaternion_from_rpy;
+using autoware_utils_geometry::create_point;
+using autoware_utils_geometry::create_quaternion_from_rpy;
 
 geometry_msgs::msg::Pose createPose(
   double x, double y, double z, double roll, double pitch, double yaw)

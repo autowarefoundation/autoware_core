@@ -27,9 +27,10 @@
 
 namespace autoware::mission_planner::lanelet2
 {
-autoware_utils::Polygon2d convert_linear_ring_to_polygon(autoware_utils::LinearRing2d footprint)
+autoware_utils_geometry::Polygon2d convert_linear_ring_to_polygon(
+  autoware_utils_geometry::LinearRing2d footprint)
 {
-  autoware_utils::Polygon2d footprint_polygon;
+  autoware_utils_geometry::Polygon2d footprint_polygon;
   boost::geometry::append(footprint_polygon.outer(), footprint[0]);
   boost::geometry::append(footprint_polygon.outer(), footprint[1]);
   boost::geometry::append(footprint_polygon.outer(), footprint[2]);
@@ -68,7 +69,7 @@ geometry_msgs::msg::Pose convertBasicPoint3dToPose(
   pose.position.y = point.y();
   pose.position.z = point.z();
 
-  pose.orientation = autoware_utils::create_quaternion_from_yaw(lane_yaw);
+  pose.orientation = autoware_utils_geometry::create_quaternion_from_yaw(lane_yaw);
 
   return pose;
 }

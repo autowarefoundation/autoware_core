@@ -18,7 +18,7 @@
 #include "autoware/interpolation/interpolation_utils.hpp"
 
 #include <Eigen/Core>
-#include <autoware_utils/geometry/geometry.hpp>
+#include <autoware_utils_geometry/geometry.hpp>
 
 #include <algorithm>
 #include <cmath>

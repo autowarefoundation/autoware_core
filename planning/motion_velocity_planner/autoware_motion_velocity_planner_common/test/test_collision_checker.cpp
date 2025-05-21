@@ -24,12 +24,12 @@
 #include <random>
 
 using autoware::motion_velocity_planner::CollisionChecker;
-using autoware_utils::Line2d;
-using autoware_utils::MultiLineString2d;
-using autoware_utils::MultiPoint2d;
-using autoware_utils::MultiPolygon2d;
-using autoware_utils::Point2d;
-using autoware_utils::Polygon2d;
+using autoware_utils_geometry::Line2d;
+using autoware_utils_geometry::MultiLineString2d;
+using autoware_utils_geometry::MultiPoint2d;
+using autoware_utils_geometry::MultiPolygon2d;
+using autoware_utils_geometry::Point2d;
+using autoware_utils_geometry::Polygon2d;
 
 Point2d random_point()
 {

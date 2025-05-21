@@ -15,6 +15,8 @@
 #include "autoware/trajectory/utils/closest.hpp"
 #include "autoware/trajectory/utils/crossed.hpp"
 #include "autoware/trajectory/utils/curvature_utils.hpp"
+#include "autoware/trajectory/utils/pretty_build.hpp"
+#include "autoware_utils_geometry/geometry.hpp"
 #include "lanelet2_core/primitives/LineString.h"
 
 #include <gtest/gtest.h>
@@ -173,4 +175,22 @@ TEST_F(TrajectoryTestForTrajectoryPoint, max_curvature)
 {
   double max_curvature = autoware::experimental::trajectory::max_curvature(*trajectory);
   EXPECT_LT(0, max_curvature);
+}
+
+TEST_F(TrajectoryTestForTrajectoryPoint, pretty_build_from_3_cubic)
+{
+  using autoware_utils_geometry::get_rpy;
+
+  std::vector<autoware_planning_msgs::msg::TrajectoryPoint> points{
+    trajectory_point(1.0, 1.0), trajectory_point(2.0, 2.0)};
+  auto trajectory_opt = autoware::experimental::trajectory::pretty_build(points);
+  EXPECT_EQ(trajectory_opt.has_value(), true);
+
+  auto & trajectory = trajectory_opt.value();
+  EXPECT_EQ(trajectory.get_underlying_bases().size(), 4);
+
+  trajectory.align_orientation_with_trajectory_direction();
+  for (const auto s : trajectory.get_underlying_bases()) {
+    EXPECT_FLOAT_EQ(trajectory.azimuth(s), get_rpy(trajectory.compute(s).pose.orientation).z);
+  }
 }

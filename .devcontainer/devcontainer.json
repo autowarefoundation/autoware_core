@@ -1,0 +1,27 @@
+{
+  "name": "Autoware Core Development",
+  "image": "ghcr.io/autowarefoundation/autoware:core-devel",
+  "runArgs": ["--net=host", "--privileged"],
+  "workspaceMount": "source=${localWorkspaceFolder},target=/autoware/src/core/autoware_core,type=bind,consistency=cached",
+  "workspaceFolder": "/autoware/src/core/autoware_core",
+  "containerEnv": {
+    "ROS_DOMAIN_ID": "${localEnv:ROS_DOMAIN_ID:0}"
+  },
+  "postCreateCommand": "mkdir -p /autoware/src && chmod 755 /autoware/src",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools",
+        "ms-python.python",
+        "redhat.vscode-yaml",
+        "ms-vscode.cmake-tools",
+        "twxs.cmake",
+        "ms-iot.vscode-ros",
+        "ms-vscode.cpptools-extension-pack"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  }
+}

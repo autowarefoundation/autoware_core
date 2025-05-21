@@ -13,7 +13,8 @@
 // limitations under the License.
 
 #include "autoware/object_recognition_utils/conversion.hpp"
-#include "autoware_utils/geometry/geometry.hpp"
+
+#include <autoware_utils_geometry/geometry.hpp>
 
 #include <gtest/gtest.h>
 

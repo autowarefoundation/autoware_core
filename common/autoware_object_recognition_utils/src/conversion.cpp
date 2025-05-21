@@ -43,11 +43,12 @@ DetectedObject toDetectedObject(const TrackedObject & tracked_object)
 
 DetectedObjects toDetectedObjects(const TrackedObjects & tracked_objects)
 {
-  autoware_perception_msgs::msg::DetectedObjects detected_objects;
+  DetectedObjects detected_objects;
   detected_objects.header = tracked_objects.header;
 
+  detected_objects.objects.reserve(tracked_objects.objects.size());
   for (const auto & tracked_object : tracked_objects.objects) {
-    detected_objects.objects.push_back(toDetectedObject(tracked_object));
+    detected_objects.objects.emplace_back(toDetectedObject(tracked_object));
   }
   return detected_objects;
 }

@@ -85,13 +85,13 @@ MissionPlanner::MissionPlanner(const rclcpp::NodeOptions & options)
   data_check_timer_ = create_wall_timer(period, [this] { check_initialization(); });
   is_mission_planner_ready_ = false;
 
-  logger_configure_ = std::make_unique<autoware_utils::LoggerLevelConfigure>(this);
+  logger_configure_ = std::make_unique<autoware_utils_logging::LoggerLevelConfigure>(this);
   pub_processing_time_ = this->create_publisher<autoware_internal_debug_msgs::msg::Float64Stamped>(
     "~/debug/processing_time_ms", 1);
 }
 
 void MissionPlanner::publish_processing_time(
-  autoware_utils::StopWatch<std::chrono::milliseconds> stop_watch)
+  autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch)
 {
   autoware_internal_debug_msgs::msg::Float64Stamped processing_time_msg;
   processing_time_msg.stamp = get_clock()->now();

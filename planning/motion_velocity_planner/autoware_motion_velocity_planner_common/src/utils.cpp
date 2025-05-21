@@ -18,10 +18,12 @@
 #include "autoware/motion_utils/trajectory/conversion.hpp"
 #include "autoware/motion_utils/trajectory/trajectory.hpp"
 #include "autoware/motion_velocity_planner_common/planner_data.hpp"
-#include "autoware_utils/ros/marker_helper.hpp"
+
+#include <autoware_utils_visualization/marker_helper.hpp>
 
 #include <boost/geometry.hpp>
 
+#include <algorithm>
 #include <limits>
 #include <memory>
 #include <string>
@@ -37,7 +39,7 @@ TrajectoryPoint extend_trajectory_point(
   const double extend_distance, const TrajectoryPoint & goal_point, const bool is_driving_forward)
 {
   TrajectoryPoint extended_trajectory_point;
-  extended_trajectory_point.pose = autoware_utils::calc_offset_pose(
+  extended_trajectory_point.pose = autoware_utils_geometry::calc_offset_pose(
     goal_point.pose, extend_distance * (is_driving_forward ? 1.0 : -1.0), 0.0, 0.0);
   extended_trajectory_point.longitudinal_velocity_mps = goal_point.longitudinal_velocity_mps;
   extended_trajectory_point.lateral_velocity_mps = goal_point.lateral_velocity_mps;
@@ -118,7 +120,7 @@ geometry_msgs::msg::Point to_geometry_point(const pcl::PointXYZ & point)
   return geom_point;
 }
 
-geometry_msgs::msg::Point to_geometry_point(const autoware_utils::Point2d & point)
+geometry_msgs::msg::Point to_geometry_point(const autoware_utils_geometry::Point2d & point)
 {
   geometry_msgs::msg::Point geom_point;
   geom_point.x = point.x();
@@ -179,10 +181,10 @@ visualization_msgs::msg::Marker get_object_marker(
 {
   const auto current_time = rclcpp::Clock().now();
 
-  auto marker = autoware_utils::create_default_marker(
+  auto marker = autoware_utils_visualization::create_default_marker(
     "map", current_time, ns, idx, visualization_msgs::msg::Marker::SPHERE,
-    autoware_utils::create_marker_scale(2.0, 2.0, 2.0),
-    autoware_utils::create_marker_color(r, g, b, 0.8));
+    autoware_utils_visualization::create_marker_scale(2.0, 2.0, 2.0),
+    autoware_utils_visualization::create_marker_color(r, g, b, 0.8));
 
   marker.pose = obj_pose;
 
@@ -200,4 +202,23 @@ double calc_possible_min_dist_from_obj_to_traj_poly(
     object_possible_max_dist;
   return possible_min_dist_to_traj_poly;
 }
+
+double get_dist_to_traj_poly(
+  const geometry_msgs::msg::Point & point,
+  const std::vector<autoware_utils::Polygon2d> & decimated_traj_polys)
+{
+  const auto point_2d = autoware_utils_geometry::Point2d(point.x, point.y);
+
+  double dist_to_traj_poly = std::numeric_limits<double>::infinity();
+
+  for (const auto & decimated_traj_poly : decimated_traj_polys) {
+    const double current_dist_to_traj_poly =
+      boost::geometry::distance(decimated_traj_poly, point_2d);
+
+    dist_to_traj_poly = std::min(dist_to_traj_poly, current_dist_to_traj_poly);
+  }
+
+  return dist_to_traj_poly;
+}
+
 }  // namespace autoware::motion_velocity_planner::utils

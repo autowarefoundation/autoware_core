@@ -23,9 +23,7 @@
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
 #include <autoware/object_recognition_utils/predicted_path_utils.hpp>
 #include <autoware/objects_of_interest_marker_interface/objects_of_interest_marker_interface.hpp>
-#include <autoware_utils/ros/parameter.hpp>
-#include <autoware_utils/ros/update_param.hpp>
-#include <autoware_utils/system/stop_watch.hpp>
+#include <autoware_utils_rclcpp/parameter.hpp>
 
 #include <algorithm>
 #include <memory>
@@ -36,7 +34,7 @@
 
 namespace autoware::motion_velocity_planner
 {
-using autoware_utils::get_or_declare_parameter;
+using autoware_utils_rclcpp::get_or_declare_parameter;
 
 struct CommonParam
 {
@@ -65,18 +63,6 @@ struct CommonParam
 
 struct ObstacleFilteringParam
 {
-  struct PointcloudObstacleFilteringParam
-  {
-    double pointcloud_voxel_grid_x{};
-    double pointcloud_voxel_grid_y{};
-    double pointcloud_voxel_grid_z{};
-    double pointcloud_cluster_tolerance{};
-    int pointcloud_min_cluster_size{};
-    int pointcloud_max_cluster_size{};
-  };
-
-  PointcloudObstacleFilteringParam pointcloud_obstacle_filtering_param;
-
   bool use_pointcloud{false};
   std::vector<uint8_t> inside_stop_object_types{};
   std::vector<uint8_t> outside_stop_object_types{};
@@ -104,22 +90,6 @@ struct ObstacleFilteringParam
     outside_stop_object_types(
       utils::get_target_object_type(node, "obstacle_stop.obstacle_filtering.object_type.outside."))
   {
-    pointcloud_obstacle_filtering_param.pointcloud_voxel_grid_x = get_or_declare_parameter<double>(
-      node, "obstacle_stop.obstacle_filtering.pointcloud.pointcloud_voxel_grid_x");
-    pointcloud_obstacle_filtering_param.pointcloud_voxel_grid_y = get_or_declare_parameter<double>(
-      node, "obstacle_stop.obstacle_filtering.pointcloud.pointcloud_voxel_grid_y");
-    pointcloud_obstacle_filtering_param.pointcloud_voxel_grid_z = get_or_declare_parameter<double>(
-      node, "obstacle_stop.obstacle_filtering.pointcloud.pointcloud_voxel_grid_z");
-    pointcloud_obstacle_filtering_param.pointcloud_cluster_tolerance =
-      get_or_declare_parameter<double>(
-        node, "obstacle_stop.obstacle_filtering.pointcloud.pointcloud_cluster_tolerance");
-    pointcloud_obstacle_filtering_param.pointcloud_min_cluster_size = get_or_declare_parameter<int>(
-      node, "obstacle_stop.obstacle_filtering.pointcloud.pointcloud_min_cluster_size");
-    pointcloud_obstacle_filtering_param.pointcloud_max_cluster_size = get_or_declare_parameter<int>(
-      node, "obstacle_stop.obstacle_filtering.pointcloud.pointcloud_max_cluster_size");
-    use_pointcloud = get_or_declare_parameter<bool>(
-      node, "obstacle_stop.obstacle_filtering.object_type.pointcloud");
-
     obstacle_velocity_threshold_to_stop = get_or_declare_parameter<double>(
       node, "obstacle_stop.obstacle_filtering.obstacle_velocity_threshold_to_stop");
     obstacle_velocity_threshold_from_stop = get_or_declare_parameter<double>(
@@ -146,6 +116,9 @@ struct ObstacleFilteringParam
 
     crossing_obstacle_collision_time_margin = get_or_declare_parameter<double>(
       node, "obstacle_stop.obstacle_filtering.crossing_obstacle.collision_time_margin");
+
+    use_pointcloud = get_or_declare_parameter<bool>(
+      node, "obstacle_stop.obstacle_filtering.object_type.pointcloud");
   }
 };
 

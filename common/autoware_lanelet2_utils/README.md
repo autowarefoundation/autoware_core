@@ -160,18 +160,19 @@ std::vector<T> forEachMatchInMultiMap(const MapT& map, const KeyT& key, Func&& f
 
 All of the maps are in `MGRS` coordinate. In each map, an anchor point is set to an origin point $(100.0, 100.0)$ for simplicity.
 
-| Map name                    | Origin point id | Image                                               |
-| --------------------------- | --------------- | --------------------------------------------------- |
-| `road_shoulder/highway.osm` | `1`             | ![highway](./media/maps/road_shoulder/highway.png)  |
-| `road_shoulder/pudo.osm`    | `140`           | ![pudo](./media/maps/road_shoulder/pudo.png)        |
-| `intersection/crossing.osm` | `1791`          | ![crossing](./media/maps/intersection/crossing.png) |
+| Map name                            | Origin point id | Image                                                           |
+| ----------------------------------- | --------------- | --------------------------------------------------------------- |
+| `road_shoulder/highway.osm`         | `1`             | ![highway](./media/maps/road_shoulder/highway.png)              |
+| `road_shoulder/pudo.osm`            | `140`           | ![pudo](./media/maps/road_shoulder/pudo.png)                    |
+| `intersection/crossing.osm`         | `1791`          | ![crossing](./media/maps/intersection/crossing.png)             |
+| `dense_centerline/lanelet2_map.osm` | `16`            | ![lanelet2_map](./media/maps/dense_centerline/lanelet2_map.png) |
 
 ### How to craft test map
 
 On the VMB, create the map in MGRS system and save the file as `<input_map.osm>`. Next, select the point to set as origin, get its `<ID>` and run
 
 ```bash
-ros2 run autoware_lanelet2_utility lanelet_anonymizer.py <input_map.osm> <output_map.osm> <ID>
+ros2 run autoware_lanelet2_utils lanelet_anonymizer.py <input_map.osm> <output_map.osm> <ID>
 ```
 
 Then the coordinate of the specified point is (100, 100) on the loaded map(NOTE: not exactly (0, 0) because MGRS does not any point to have negative coordinate value).
@@ -179,5 +180,5 @@ Then the coordinate of the specified point is (100, 100) on the loaded map(NOTE:
 By applying `lanelet_id_aligner.py`, the primitive ids are aligned to start from 1 and increase one-by-one.
 
 ```bash
-ros2 run autoware_lanelet2_utility lanelet_id_aligner.py <input_map.osm>
+ros2 run autoware_lanelet2_utils lanelet_id_aligner.py <input_map.osm>
 ```

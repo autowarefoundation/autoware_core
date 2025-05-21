@@ -149,8 +149,9 @@ std::vector<double> ProxQPInterface::optimizeImpl()
   qp_ptr_->solve();
 
   std::vector<double> result;
+  result.reserve(qp_ptr_->results.x.size());
   for (Eigen::Index i = 0; i < qp_ptr_->results.x.size(); ++i) {
-    result.push_back(qp_ptr_->results.x[i]);
+    result.emplace_back(qp_ptr_->results.x[i]);
   }
   return result;
 }

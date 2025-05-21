@@ -18,7 +18,7 @@
 #include "autoware/ground_filter/data.hpp"
 #include "autoware/ground_filter/ground_filter.hpp"
 
-#include <autoware_utils/system/time_keeper.hpp>
+#include <autoware_utils_debug/time_keeper.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info.hpp>
 
 #include <sensor_msgs/msg/point_cloud2.hpp>
@@ -26,6 +26,8 @@
 #include <boost/thread/mutex.hpp>
 
 // PCL includes
+#include <tf2/transform_datatypes.hpp>
+
 #include <pcl_msgs/msg/point_indices.hpp>
 
 #include <pcl/filters/extract_indices.h>
@@ -34,19 +36,25 @@
 #include <pcl/pcl_base.h>
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
-#include <tf2/transform_datatypes.h>
 
 // PCL includes
+#if __has_include(<message_filters/subscriber.hpp>)
+#include <message_filters/subscriber.hpp>
+#include <message_filters/sync_policies/approximate_time.hpp>
+#include <message_filters/sync_policies/exact_time.hpp>
+#include <message_filters/synchronizer.hpp>
+#else
 #include <message_filters/subscriber.h>
 #include <message_filters/sync_policies/approximate_time.h>
 #include <message_filters/sync_policies/exact_time.h>
 #include <message_filters/synchronizer.h>
+#endif
 
 // Include tier4 autoware utils
-#include <autoware_utils/ros/debug_publisher.hpp>
-#include <autoware_utils/ros/published_time_publisher.hpp>
-#include <autoware_utils/ros/transform_listener.hpp>
-#include <autoware_utils/system/stop_watch.hpp>
+#include <autoware_utils_debug/debug_publisher.hpp>
+#include <autoware_utils_debug/published_time_publisher.hpp>
+#include <autoware_utils_system/stop_watch.hpp>
+#include <autoware_utils_tf/transform_listener.hpp>
 #include <tf2_eigen/tf2_eigen.hpp>
 
 #include <tf2_ros/transform_listener.h>
@@ -82,7 +90,7 @@ class GroundFilterComponent : public rclcpp::Node
 private:
   // classified point label
   // (0: not classified, 1: ground, 2: not ground, 3: follow previous point,
-  //  4: unkown(currently not used), 5: virtual ground)
+  //  4: unknown(currently not used), 5: virtual ground)
   enum class PointLabel : uint16_t {
     INIT = 0,
     GROUND,
@@ -233,9 +241,9 @@ private:
   std::unique_ptr<GroundFilter> ground_filter_ptr_;
 
   // time keeper related
-  rclcpp::Publisher<autoware_utils::ProcessingTimeDetail>::SharedPtr
+  rclcpp::Publisher<autoware_utils_debug::ProcessingTimeDetail>::SharedPtr
     detailed_processing_time_publisher_;
-  std::shared_ptr<autoware_utils::TimeKeeper> time_keeper_;
+  std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper_;
 
   /*!
    * Output transformed PointCloud from in_cloud_ptr->header.frame_id to in_target_frame
@@ -292,8 +300,9 @@ private:
     const std::vector<rclcpp::Parameter> & param);
 
   // debugger
-  std::unique_ptr<autoware_utils::StopWatch<std::chrono::milliseconds>> stop_watch_ptr_{nullptr};
-  std::unique_ptr<autoware_utils::DebugPublisher> debug_publisher_ptr_{nullptr};
+  std::unique_ptr<autoware_utils_system::StopWatch<std::chrono::milliseconds>> stop_watch_ptr_{
+    nullptr};
+  std::unique_ptr<autoware_utils_debug::DebugPublisher> debug_publisher_ptr_{nullptr};
 
   // For pointcloud
 
@@ -335,9 +344,9 @@ protected:
   /** \brief The message filter subscriber for PointIndices. */
   message_filters::Subscriber<pcl_msgs::msg::PointIndices> sub_indices_filter_;
 
-  std::unique_ptr<autoware_utils::TransformListener> transform_listener_{nullptr};
+  std::unique_ptr<autoware_utils_tf::TransformListener> transform_listener_{nullptr};
 
-  std::unique_ptr<autoware_utils::PublishedTimePublisher> published_time_publisher_;
+  std::unique_ptr<autoware_utils_debug::PublishedTimePublisher> published_time_publisher_;
 
   // To validate if the pointcloud is valid
   inline bool isValid(

@@ -38,6 +38,9 @@ class Trajectory<geometry_msgs::msg::Point>
 {
   using PointType = geometry_msgs::msg::Point;
 
+  template <class PointType>
+  friend class Trajectory;
+
 protected:
   std::shared_ptr<interpolator::InterpolatorInterface<double>> x_interpolator_{
     nullptr};  //!< Interpolator for x
@@ -80,10 +83,6 @@ public:
    * @return Vector of bases(arc lengths)
    */
   virtual std::vector<double> get_underlying_bases() const;
-
-  double start() const { return start_; }
-
-  double end() const { return end_; }
 
   /**
    * @brief Get the length of the trajectory

@@ -33,8 +33,21 @@ runs:
       id: get-modified-packages
       uses: autowarefoundation/autoware-github-actions/get-modified-packages@v1
 
+    - name: Use ros2-testing packages
+      run: |
+        if [ "${{ inputs.rosdistro }}" = "jazzy" ]; then
+          sed -i 's|http://packages.ros.org/ros2/ubuntu|http://packages.ros.org/ros2-testing/ubuntu|g' /etc/apt/sources.list.d/ros2-latest.list
+          apt-get update
+        fi
+      shell: bash
+
     - name: Create ccache directory
       run: |
+        if [ -z "${CCACHE_DIR}" ]; then
+          apt-get update
+          apt-get install -y ccache
+          export CCACHE_DIR=/root/.ccache
+        fi
         mkdir -p ${CCACHE_DIR}
         du -sh ${CCACHE_DIR} && ccache -s
       shell: bash

@@ -19,7 +19,7 @@
 
 #include <autoware/pyplot/patches.hpp>
 #include <autoware/pyplot/pyplot.hpp>
-#include <autoware_utils/geometry/geometry.hpp>
+#include <autoware_utils_geometry/geometry.hpp>
 
 #include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
 
@@ -269,7 +269,7 @@ inline void plot_autoware_object(
   for (const auto & point : path.points) {
     xs.push_back(point.point.pose.position.x);
     ys.push_back(point.point.pose.position.y);
-    const auto th = autoware_utils::get_rpy(point.point.pose.orientation).z;
+    const auto th = autoware_utils_geometry::get_rpy(point.point.pose.orientation).z;
     yaw_cos.push_back(std::cos(th));
     yaw_sin.push_back(std::sin(th));
     if (plot_lane_id) {

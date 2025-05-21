@@ -30,6 +30,7 @@ class PluginInterface
 public:
   virtual ~PluginInterface() = default;
   virtual void init(rclcpp::Node & node) = 0;
+  virtual RequiredSubscriptionInfo getRequiredSubscriptions() = 0;
   virtual void plan(autoware_internal_planning_msgs::msg::PathWithLaneId * path) = 0;
   virtual void updateSceneModuleInstances(
     const std::shared_ptr<const PlannerData> & planner_data,

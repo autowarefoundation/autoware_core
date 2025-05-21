@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>autoware_interpolation</name>
-  <version>1.0.0</version>
+  <version>1.1.0</version>
   <description>The spline interpolation package</description>
   <maintainer email="fumiya.watanabe@tier4.jp">Fumiya Watanabe</maintainer>
   <maintainer email="takayuki.murooka@tier4.jp">Takayuki Murooka</maintainer>
@@ -11,7 +11,7 @@
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
   <buildtool_depend>autoware_cmake</buildtool_depend>
 
-  <depend>autoware_utils</depend>
+  <depend>autoware_utils_geometry</depend>
   <depend>eigen</depend>
   <depend>geometry_msgs</depend>
   <depend>tf2</depend>

@@ -51,9 +51,12 @@ public:
     const std::shared_ptr<const PlannerData> & planner_data,
     const autoware_internal_planning_msgs::msg::PathWithLaneId & input_path_msg);
 
+  RequiredSubscriptionInfo getRequiredSubscriptions() const { return required_subscriptions_; }
+
 private:
   pluginlib::ClassLoader<PluginInterface> plugin_loader_;
   std::vector<std::shared_ptr<PluginInterface>> scene_manager_plugins_;
+  RequiredSubscriptionInfo required_subscriptions_;
 };
 }  // namespace autoware::behavior_velocity_planner
 

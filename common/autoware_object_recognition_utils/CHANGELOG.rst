@@ -2,6 +2,12 @@
 Changelog for package autoware_object_recognition_utils
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.1.0 (2025-05-01)
+------------------
+* refactor(autoware_object_recognition_utils): use `autoware_utils\_*` instead of `autoware_utils` (`#385 <https://github.com/autowarefoundation/autoware_core/issues/385>`_)
+  use autoware_utils\_*
+* Contributors: Yutaka Kondo
+
 1.0.0 (2025-03-31)
 ------------------
 * fix(autoware_object_recognition_utils): add missing include cstdint for std::uint8_t (`#314 <https://github.com/autowarefoundation/autoware_core/issues/314>`_)

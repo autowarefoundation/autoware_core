@@ -1,6 +1,6 @@
 {
   "_comment": "configuration file for spell-check workflow",
-  "ignorePaths": [],
+  "ignorePaths": [".devcontainer/**"],
   "ignoreRegExpList": [],
   "words": ["makeIndexedSegmenTree"]
 }

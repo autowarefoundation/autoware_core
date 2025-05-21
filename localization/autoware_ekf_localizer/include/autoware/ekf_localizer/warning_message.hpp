@@ -27,6 +27,8 @@ std::string twist_delay_step_warning_message(
 std::string pose_delay_time_warning_message(const double delay_time);
 std::string twist_delay_time_warning_message(const double delay_time);
 std::string mahalanobis_warning_message(const double distance, const double max_distance);
+std::string large_ekf_dt_waring_message(const double ekf_dt);
+std::string too_slow_ekf_dt_waring_message(const double ekf_dt);
 
 }  // namespace autoware::ekf_localizer
 

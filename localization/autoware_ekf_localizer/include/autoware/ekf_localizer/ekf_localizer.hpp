@@ -20,10 +20,11 @@
 #include "autoware/ekf_localizer/hyper_parameters.hpp"
 #include "autoware/ekf_localizer/warning.hpp"
 
-#include <autoware_utils/geometry/geometry.hpp>
-#include <autoware_utils/ros/logger_level_configure.hpp>
-#include <autoware_utils/system/stop_watch.hpp>
+#include <autoware_utils_logging/logger_level_configure.hpp>
+#include <autoware_utils_system/stop_watch.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <tf2/LinearMath/Quaternion.hpp>
+#include <tf2/utils.hpp>
 
 #include <autoware_internal_debug_msgs/msg/float64_multi_array_stamped.hpp>
 #include <autoware_internal_debug_msgs/msg/float64_stamped.hpp>
@@ -37,8 +38,6 @@
 #include <nav_msgs/msg/odometry.hpp>
 #include <std_srvs/srv/set_bool.hpp>
 
-#include <tf2/LinearMath/Quaternion.h>
-#include <tf2/utils.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_ros/transform_listener.h>
@@ -110,7 +109,7 @@ private:
   tf2_ros::TransformListener tf2_listener_;
 
   //!< @brief logger configure module
-  std::unique_ptr<autoware_utils::LoggerLevelConfigure> logger_configure_;
+  std::unique_ptr<autoware_utils_logging::LoggerLevelConfigure> logger_configure_;
 
   //!< @brief  extended kalman filter instance.
   std::unique_ptr<EKFModule> ekf_module_;
@@ -188,8 +187,8 @@ private:
     const std_srvs::srv::SetBool::Request::SharedPtr req,
     std_srvs::srv::SetBool::Response::SharedPtr res);
 
-  autoware_utils::StopWatch<std::chrono::milliseconds> stop_watch_;
-  autoware_utils::StopWatch<std::chrono::milliseconds> stop_watch_timer_cb_;
+  autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_;
+  autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_timer_cb_;
 
   friend class EKFLocalizerTestSuite;  // for test code
 };

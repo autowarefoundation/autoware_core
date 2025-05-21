@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>autoware_ground_filter</name>
-  <version>1.0.0</version>
+  <version>1.1.0</version>
   <description>The ROS 2 autoware_ground_filter package</description>
   <maintainer email="abrahammonrroy@yahoo.com">amc-nu</maintainer>
   <maintainer email="yukihiro.saito@tier4.jp">Yukihiro Saito</maintainer>
@@ -21,7 +21,11 @@
 
   <depend>ament_index_cpp</depend>
   <depend>autoware_point_types</depend>
-  <depend>autoware_utils</depend>
+  <depend>autoware_utils_debug</depend>
+  <depend>autoware_utils_geometry</depend>
+  <depend>autoware_utils_math</depend>
+  <depend>autoware_utils_system</depend>
+  <depend>autoware_utils_tf</depend>
   <depend>autoware_vehicle_info_utils</depend>
   <depend>message_filters</depend>
   <depend>pcl_conversions</depend>

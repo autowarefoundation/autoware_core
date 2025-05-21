@@ -18,7 +18,8 @@
 #include "autoware/motion_utils/trajectory/conversion.hpp"
 #include "autoware/motion_utils/trajectory/trajectory.hpp"
 #include "autoware/velocity_smoother/trajectory_utils.hpp"
-#include "autoware_utils/geometry/geometry.hpp"
+
+#include <autoware_utils_geometry/geometry.hpp>
 
 #include <algorithm>
 #include <vector>
@@ -56,6 +57,9 @@ TrajectoryPoints resampleTrajectory(
   constexpr double front_ds = 0.1;
   for (double ds = 0.0; ds <= front_arclength_value; ds += front_ds) {
     out_arclength.push_back(ds);
+  }
+  if (out_arclength.empty()) {
+    return input;
   }
   if (std::fabs(out_arclength.back() - front_arclength_value) < 1e-3) {
     out_arclength.back() = front_arclength_value;
@@ -136,7 +140,7 @@ TrajectoryPoints resampleTrajectory(
   // add end point directly to consider the endpoint velocity.
   if (is_endpoint_included) {
     constexpr double ep_dist = 1.0E-3;
-    if (autoware_utils::calc_distance2d(output.back(), input.back()) < ep_dist) {
+    if (autoware_utils_geometry::calc_distance2d(output.back(), input.back()) < ep_dist) {
       output.back() = input.back();
     } else {
       output.push_back(input.back());
@@ -181,6 +185,9 @@ TrajectoryPoints resampleTrajectory(
   const auto front_arclength_value = std::fabs(negative_front_arclength_value);
   for (double s = 0.0; s <= front_arclength_value; s += nominal_ds) {
     out_arclength.push_back(s);
+  }
+  if (out_arclength.empty()) {
+    return input;
   }
   if (std::fabs(out_arclength.back() - front_arclength_value) < 1e-3) {
     out_arclength.back() = front_arclength_value;
@@ -256,7 +263,7 @@ TrajectoryPoints resampleTrajectory(
   // add end point directly to consider the endpoint velocity.
   if (is_endpoint_included) {
     constexpr double ep_dist = 1.0E-3;
-    if (autoware_utils::calc_distance2d(output.back(), input.back()) < ep_dist) {
+    if (autoware_utils_geometry::calc_distance2d(output.back(), input.back()) < ep_dist) {
       output.back() = input.back();
     } else {
       output.push_back(input.back());
