@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.14)
 project(autoware_pyplot)
 
 find_package(autoware_cmake REQUIRED)
+find_package(ament_cmake_python REQUIRED)
 
 find_package(
   Python3
