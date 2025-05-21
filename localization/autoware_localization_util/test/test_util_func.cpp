@@ -16,9 +16,9 @@
 #include "autoware/localization_util/util_func.hpp"
 
 #include <rclcpp/rclcpp.hpp>
+#include <tf2/LinearMath/Quaternion.hpp>
 
 #include <gtest/gtest.h>
-#include <tf2/LinearMath/Quaternion.h>
 
 #include <cmath>
 #include <iostream>

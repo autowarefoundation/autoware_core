@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="input_topic" default="input/detected_objects"/>
+  <arg name="output_topic" default="output/predicted_objects"/>
+
+  <node pkg="autoware_perception_objects_converter" exec="detected_to_predicted_objects_converter_node" name="detected_to_predicted_objects_converter_node" output="screen">
+    <remap from="input/detected_objects" to="$(var input_topic)"/>
+    <remap from="output/predicted_objects" to="$(var output_topic)"/>
+  </node>
+</launch>

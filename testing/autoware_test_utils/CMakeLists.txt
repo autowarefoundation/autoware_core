@@ -4,9 +4,14 @@ project(autoware_test_utils)
 find_package(autoware_cmake REQUIRED)
 autoware_package()
 
+find_package(yaml-cpp REQUIRED)
+
 ament_auto_add_library(autoware_test_utils SHARED
   src/autoware_test_utils.cpp
   src/mock_data_parser.cpp
+)
+target_link_libraries(autoware_test_utils
+  yaml-cpp
 )
 
 ament_auto_add_executable(topic_snapshot_saver src/topic_snapshot_saver.cpp)

@@ -22,6 +22,7 @@
 #include <autoware_utils/geometry/geometry.hpp>
 #include <autoware_utils/math/normalization.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <tf2/utils.hpp>
 
 #include <autoware_internal_planning_msgs/msg/path_point_with_lane_id.hpp>
 #include <autoware_planning_msgs/msg/lanelet_primitive.hpp>
@@ -32,7 +33,6 @@
 #include <lanelet2_routing/Route.h>
 #include <lanelet2_routing/RoutingGraph.h>
 #include <lanelet2_routing/RoutingGraphContainer.h>
-#include <tf2/utils.h>
 
 #include <algorithm>
 #include <functional>

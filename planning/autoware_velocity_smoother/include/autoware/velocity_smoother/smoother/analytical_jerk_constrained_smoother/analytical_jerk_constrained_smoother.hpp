@@ -19,7 +19,7 @@
 #include "autoware/velocity_smoother/smoother/analytical_jerk_constrained_smoother/velocity_planning_utils.hpp"
 #include "autoware/velocity_smoother/smoother/smoother_base.hpp"
 #include "rclcpp/rclcpp.hpp"
-#include "tf2/utils.h"
+#include "tf2/utils.hpp"
 
 #include <autoware_utils_debug/time_keeper.hpp>
 

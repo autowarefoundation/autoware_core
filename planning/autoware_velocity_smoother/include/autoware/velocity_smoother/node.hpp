@@ -26,7 +26,7 @@
 #include "autoware/velocity_smoother/smoother/smoother_base.hpp"
 #include "autoware/velocity_smoother/trajectory_utils.hpp"
 #include "rclcpp/rclcpp.hpp"
-#include "tf2/utils.h"
+#include "tf2/utils.hpp"
 #include "tf2_ros/transform_listener.h"
 
 #include <autoware_utils_debug/published_time_publisher.hpp>

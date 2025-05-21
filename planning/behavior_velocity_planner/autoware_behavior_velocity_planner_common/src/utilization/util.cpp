@@ -20,6 +20,7 @@
 #include <autoware/lanelet2_utils/topology.hpp>
 #include <autoware_lanelet2_extension/utility/query.hpp>
 #include <autoware_utils/geometry/geometry.hpp>
+#include <tf2/utils.hpp>
 
 #include <autoware_planning_msgs/msg/path_point.hpp>
 
@@ -28,7 +29,6 @@
 #include <lanelet2_core/Forward.h>
 #include <lanelet2_core/geometry/Polygon.h>
 #include <lanelet2_routing/RoutingGraph.h>
-#include <tf2/utils.h>
 
 #ifdef ROS_DISTRO_GALACTIC
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
