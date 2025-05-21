@@ -44,13 +44,12 @@ The _Trajectory_ class provides mathematical continuous representation and objec
 - [x] `autoware_planning_msgs::PathPoint`
 - [x] `autoware_planning_msgs::PathPointWithLaneId`
 - [x] `autoware_planning_msgs::TrajectoryPoint`
-- [ ] `lanelet::ConstPoint3d`
 
 by interpolating the given _underlying_ points. Once built, arbitrary point on the curve is continuously parametrized by a single `s` coordinate.
 
-```cpp title="./examples/example_readme.cpp:547:562"
+```cpp title="./examples/example_readme.cpp:549:561"
 --8<--
-common/autoware_trajectory/examples/example_readme.cpp:547:562
+common/autoware_trajectory/examples/example_readme.cpp:549:561
 --8<--
 ```
 
@@ -85,9 +84,9 @@ This section introduces strict definition of several words used in this package 
 
 `AkimaSpline` requires at least **5** points to interpolate.
 
-```cpp title="./examples/example_readme.cpp:137:151"
+```cpp title="./examples/example_readme.cpp:142:152"
 --8<--
-common/autoware_trajectory/examples/example_readme.cpp:137:151
+common/autoware_trajectory/examples/example_readme.cpp:142:152
 --8<--
 ```
 
@@ -179,6 +178,8 @@ Each derived class in the diagram inherits the methods of all of its descending 
 | <ul><li>`shift(const &Trajectory, const &ShiftInterval, const &ShiftParameters) -> expected<ShiftedTrajectory, ShiftError>`</li></ul> | Following [formulation](#derivation-of-shift), return a shifted `Trajectory` object if the parameters are feasible, otherwise return `Error` object indicating error reason(i.e. $T_j$ becomes negative, $j$ becomes negative, etc.).                                                                                                                                                                                                                                                                                                                                                        | For derivation, see [formulation](#derivation-of-shift).<br>The example code for this plot is found [example](#shift-trajectory)                                                                                                                                                                                                              |
 | `<autoware/trajectory/utils/pretty_build.hpp>`                                                                                        |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |                                                                                                                                                                                                                                                                                                                                               |
 | <ul><li>`pretty_build`</li></ul>                                                                                                      | A convenient function that will **almost surely succeed** in constructing a Trajectory class unless the given points size is 0 or 1.<br>Input points are interpolated to 3 points using `Linear` and to 4 points using `Cubic` so that it returns<br><ul><li>`Cubic` interpolated Trajectory class(by default), or</li><li>`Akima` interpolated class if the parameter `use_akima = true`</li></ul>All of the properties are interpolated by `default` interpolators setting.<br>You may need to call `align_orientation_with_trajectory_direction` if you did not give desired orientation. | ![pretty_trajectory](./images/utils/pretty_trajectory.drawio.svg)[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/pretty_trajectory.drawio.svg") }})                                                                                                                                                                      |
+| `<autoware/trajectory/utils/reference_path.hpp>`                                                                                      |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |                                                                                                                                                                                                                                                                                                                                               |
+| <ul><li>`build_reference_path`</li></ul>                                                                                              | A convenient function that generates Trajectory class from given Lanelets and specified length before/after given position.<br>Input `lanelet_sequence` must be consecutive.<br>If `lanelet_sequence` have self-intersection ego position gets ambiguous, so both `current_lanelet` and `current_pose` need to be given.<br>`forward/backward_length` is measured in terms of lane coordinate from `current_pose`. Thus, if and only if the Lanelets contained waypoint, the output trajectory length does not equal to `forward_length + backward_length`.                                  | ![build_reference_path](./images/utils/reference_path.drawio.svg)[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/reference_path.drawio.svg") }})                                                                                                                                                                         |
 
 #### Derivation of `shift`
 
@@ -294,3 +295,13 @@ trajectory->longitudinal_velocity_mps(3.0, 5.0) = 0.0;
 ```cpp
 std::vector<autoware_planning_msgs::msg::PathPoint> points = trajectory->restore();
 ```
+
+### Generate reference path from Lanelets
+
+```cpp title="./examples/example_reference_path.cpp:74:80"
+--8<--
+common/autoware_trajectory/examples/example_reference_path.cpp:74:80
+--8<--
+```
+
+![reference_path](./images/utils/reference_path_dense_centerline.drawio.svg)[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/reference_path_dense_centerline.drawio.svg") }})

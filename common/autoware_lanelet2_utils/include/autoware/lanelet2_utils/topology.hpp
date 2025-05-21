@@ -25,16 +25,6 @@
 namespace autoware::experimental::lanelet2_utils
 {
 /**
- * @brief instantiate RoutingGraph from given LaneletMap only from "road" lanes
- * @param location [in, opt, lanelet::Locations::Germany] location value
- * @param participant [in, opt, lanelet::Participants::Vehicle] participant value
- * @return RoutingGraph object without road_shoulder and bicycle_lane
- */
-lanelet::routing::RoutingGraphConstPtr instantiate_routing_graph(
-  lanelet::LaneletMapConstPtr lanelet_map, const char * location = lanelet::Locations::Germany,
-  const char * participant = lanelet::Participants::Vehicle);
-
-/**
  * @brief get the left adjacent and same_direction lanelet on the routing graph if exists regardless
  * of lane change permission
  * @param [in] lanelet input lanelet
