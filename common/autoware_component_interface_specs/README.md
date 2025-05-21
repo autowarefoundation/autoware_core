@@ -38,10 +38,10 @@ To use these interface specifications in your component:
    rclcpp::Publisher<KinematicState::Message>::SharedPtr publisher_ =
    create_publisher<KinematicState::Message>(
    KinematicState::name,
-   autoware::component_interface_specs::get_qos(KinematicState));
+   autoware::component_interface_specs::get_qos<KinematicState>());
    // Example: Creating a subscription using the interface specs
    auto subscriber_ = create_subscription<KinematicState::Message>(
    KinematicState::name,
-   autoware::component_interface_specs::get_qos(KinematicState),
+   autoware::component_interface_specs::get_qos<KinematicState>(),
    std::bind(&YourClass::callback, this, std::placeholders::1));
    ```

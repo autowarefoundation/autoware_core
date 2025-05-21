@@ -2,6 +2,95 @@
 Changelog for package autoware_path_generator
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.1.0 (2025-05-01)
+------------------
+* fix(path_generator): set both lane IDs to point on border of adjacent lanes (`#384 <https://github.com/autowarefoundation/autoware_core/issues/384>`_)
+  set both lane IDs to point on border of adjacent lanes
+* feat(path_generator): move generate_path public (`#380 <https://github.com/autowarefoundation/autoware_core/issues/380>`_)
+  * feat(path_generator): move generate_path public
+  * style(pre-commit): autofix
+  * fix pre-commit
+  * fix test include path
+  ---------
+  Co-authored-by: t4-adc <grp-rd-1-adc-admin@tier4.jp>
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* refactor(autoware_trajectory)!: move everything to namespace experimetal (`#371 <https://github.com/autowarefoundation/autoware_core/issues/371>`_)
+  refactor(autoware_trajectory)!: move everything to namespace experimental
+* test(path_generator): add tests for path cut feature (`#268 <https://github.com/autowarefoundation/autoware_core/issues/268>`_)
+  * add map for test
+  * add overpass map
+  * refactor & enhance base test class
+  * add tests
+  * style(pre-commit): autofix
+  * fix year created
+  Co-authored-by: Kosuke Takeuchi <kosuke.tnp@gmail.com>
+  * anonymize test map
+  * style(pre-commit): autofix
+  * add test map info to README
+  * style(pre-commit): autofix
+  * make tests work with autoware_trajectory
+  * include necessary header
+  * fix test case
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Kosuke Takeuchi <kosuke.tnp@gmail.com>
+  Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
+* fix(path_generator): deal with unintended input (`#336 <https://github.com/autowarefoundation/autoware_core/issues/336>`_)
+  * prevent segfault
+  * fix self-intersection search range
+  * define behavior for unintended input
+  * prevent segfault
+  * check builder output instead of input size
+  ---------
+* refactor(path_generator): avoid using fixed-size array (`#353 <https://github.com/autowarefoundation/autoware_core/issues/353>`_)
+  * avoid using fixed-size array
+  * include necessary headers
+  * avoid capturing structured bindings in lambdas
+  ---------
+* docs(path_generator): add description of path cut & turn signal feature (`#359 <https://github.com/autowarefoundation/autoware_core/issues/359>`_)
+  * add diagrams of path cut feature
+  * add diagrams of turn signal feature
+  * update parameter list
+  * update README
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* fix(path_generator): avoid shortcuts at overlaps (`#352 <https://github.com/autowarefoundation/autoware_core/issues/352>`_)
+  * track current lane to avoid shortcut
+  * add constraints for current lane search
+  ---------
+* feat(autoware_path_generator): use autoware_trajectory for cropping bounds (`#349 <https://github.com/autowarefoundation/autoware_core/issues/349>`_)
+* Contributors: Kazunori-Nakajima, Mamoru Sobue, Mitsuhiro Sakamoto, Yukinari Hisaki
+
+1.0.0 (2025-03-31)
+------------------
+* test(autoware_path_generator): add turn signal RequiredEndPoint position test (`#323 <https://github.com/autowarefoundation/autoware_core/issues/323>`_)
+  test(autoware_path_generator): add RequiredEndPoint position test
+* test(path_generator): add tests for turn signal activation feature (`#253 <https://github.com/autowarefoundation/autoware_core/issues/253>`_)
+  * add tests
+  * style(pre-commit): autofix
+  * Update planning/autoware_path_generator/test/test_turn_signal.cpp
+  Co-authored-by: Kosuke Takeuchi <kosuke.tnp@gmail.com>
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
+  Co-authored-by: Kosuke Takeuchi <kosuke.tnp@gmail.com>
+* fix(autoware_path_generator): remove redundant move (`#318 <https://github.com/autowarefoundation/autoware_core/issues/318>`_)
+  Remove redundant move
+* fix(path_generator): fix path bound generation for overlapped lanes (`#285 <https://github.com/autowarefoundation/autoware_core/issues/285>`_)
+  * fix path bound generation for overlapped lanes
+  * check for intersection between start edge of drivable area and path bounds
+  * fix start edge intersection search
+  * temporarily disuse autoware_trajectory
+  * check intersection between start edge of drivable area and center line
+  * fix get_first_self_intersection_arc_length idx
+  * fix redundantInitialization
+  * fix structure bindings for clang-tidy
+  ---------
+  Co-authored-by: kosuke55 <kosuke.tnp@gmail.com>
+* Contributors: Kosuke Takeuchi, Mitsuhiro Sakamoto, Shane Loretz
+
 0.3.0 (2025-03-21)
 ------------------
 * chore: fix versions in package.xml

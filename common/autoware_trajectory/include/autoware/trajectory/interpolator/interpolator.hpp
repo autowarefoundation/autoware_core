@@ -18,8 +18,9 @@
 #include "autoware/trajectory/interpolator/detail/interpolator_common_interface.hpp"
 
 #include <memory>
+#include <vector>
 
-namespace autoware::trajectory::interpolator
+namespace autoware::experimental::trajectory::interpolator
 {
 /**
  * @brief Template class for interpolation.
@@ -78,6 +79,22 @@ public:
   }
 
   /**
+   * @brief Compute the first derivative at the given points.
+   *
+   * @param s The points at which to compute the first derivative.
+   * @return The first derivatives.
+   */
+  std::vector<double> compute_first_derivative(const std::vector<double> & ss) const
+  {
+    std::vector<double> d;
+    for (const auto s : ss) {
+      const double clamped_s = this->validate_compute_input(s);
+      d.push_back(compute_first_derivative_impl(clamped_s));
+    }
+    return d;
+  }
+
+  /**
    * @brief Compute the second derivative at the given point.
    *
    * @param s The point at which to compute the second derivative.
@@ -89,9 +106,25 @@ public:
     return compute_second_derivative_impl(clamped_s);
   }
 
+  /**
+   * @brief Compute the second derivative at the given points.
+   *
+   * @param s The points at which to compute the second derivative.
+   * @return The second derivatives.
+   */
+  std::vector<double> compute_second_derivative(const std::vector<double> & ss) const
+  {
+    std::vector<double> d;
+    for (const auto s : ss) {
+      const double clamped_s = this->validate_compute_input(s);
+      d.push_back(compute_second_derivative_impl(clamped_s));
+    }
+    return d;
+  }
+
   virtual std::shared_ptr<InterpolatorInterface<double>> clone() const = 0;
 };
 
-}  // namespace autoware::trajectory::interpolator
+}  // namespace autoware::experimental::trajectory::interpolator
 
 #endif  // AUTOWARE__TRAJECTORY__INTERPOLATOR__INTERPOLATOR_HPP_

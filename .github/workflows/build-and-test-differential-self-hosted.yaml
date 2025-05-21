@@ -24,10 +24,12 @@ jobs:
       matrix:
         rosdistro:
           - humble
+          - jazzy
         include:
           - rosdistro: humble
             container: ros:humble
-            build-depends-repos: build_depends.repos
+          - rosdistro: jazzy
+            container: ros:jazzy
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -47,7 +49,6 @@ jobs:
         with:
           rosdistro: ${{ matrix.rosdistro }}
           target-packages: ${{ steps.get-modified-packages.outputs.modified-packages }}
-          build-depends-repos: ${{ matrix.build-depends-repos }}
           underlay-workspace: /opt/autoware
 
       - name: Test
@@ -56,5 +57,4 @@ jobs:
         with:
           rosdistro: ${{ matrix.rosdistro }}
           target-packages: ${{ steps.get-modified-packages.outputs.modified-packages }}
-          build-depends-repos: ${{ matrix.build-depends-repos }}
           underlay-workspace: /opt/autoware

@@ -1,0 +1,65 @@
+<launch>
+  <arg name="gnss_input_topic" default="/sensing/gnss/pose_with_covariance"/>
+  <arg name="vehicle_twist_input_topic" default="/sensing/vehicle_velocity_converter/twist_with_covariance"/>
+
+  <arg name="ekf_localizer_param_path" default="$(find-pkg-share autoware_core_localization)/config/ekf_localizer.param.yaml"/>
+  <arg name="stop_filter_param_path" default="$(find-pkg-share autoware_core_localization)/config/stop_filter.param.yaml"/>
+  <arg name="twist2accel_param_path" default="$(find-pkg-share autoware_core_localization)/config/twist2accel.param.yaml"/>
+
+  <group>
+    <push-ros-namespace namespace="localization"/>
+    <group>
+      <push-ros-namespace namespace="pose_estimator"/>
+      <!-- place holder for pose_estimator-->
+      <node pkg="topic_tools" exec="relay" name="pose_estimator_relay" output="log">
+        <param name="input_topic" value="$(var gnss_input_topic)"/>
+        <param name="output_topic" value="/localization/pose_estimator/pose_with_covariance"/>
+        <param name="type" value="geometry_msgs/msg/PoseWithCovarianceStamped"/>
+        <param name="reliability" value="reliable"/>
+      </node>
+    </group>
+
+    <group>
+      <push-ros-namespace namespace="twist_estimator"/>
+      <!-- place holder for twist_estimator-->
+      <node pkg="topic_tools" exec="relay" name="twist_estimator_relay" output="log">
+        <param name="input_topic" value="$(var vehicle_twist_input_topic)"/>
+        <param name="output_topic" value="/localization/twist_estimator/twist_with_covariance"/>
+        <param name="type" value="geometry_msgs/msg/TwistWithCovarianceStamped"/>
+        <param name="reliability" value="reliable"/>
+      </node>
+    </group>
+
+    <group>
+      <push-ros-namespace namespace="pose_twist_fusion_filter"/>
+      <include file="$(find-pkg-share autoware_ekf_localizer)/launch/ekf_localizer.launch.xml">
+        <arg name="input_initial_pose_name" value="/initialpose3d"/>
+        <arg name="input_pose_with_cov_name" value="/localization/pose_estimator/pose_with_covariance"/>
+        <arg name="input_twist_with_cov_name" value="/localization/twist_estimator/twist_with_covariance"/>
+        <arg name="output_odom_name" value="/localization/kinematic_state"/>
+        <arg name="output_pose_name" value="pose"/>
+        <arg name="output_pose_with_covariance_name" value="/localization/pose_with_covariance"/>
+        <arg name="output_biased_pose_name" value="biased_pose"/>
+        <arg name="output_biased_pose_with_covariance_name" value="biased_pose_with_covariance"/>
+        <arg name="output_twist_name" value="twist"/>
+        <arg name="output_twist_with_covariance_name" value="twist_with_covariance"/>
+        <arg name="param_file" value="$(var ekf_localizer_param_path)"/>
+      </include>
+
+      <include file="$(find-pkg-share autoware_stop_filter)/launch/stop_filter.launch.xml">
+        <arg name="use_twist_with_covariance" value="True"/>
+        <arg name="input_odom_name" value="/localization/pose_twist_fusion_filter/kinematic_state"/>
+        <arg name="input_twist_with_covariance_name" value="/localization/pose_twist_fusion_filter/twist_with_covariance"/>
+        <arg name="output_odom_name" value="/localization/kinematic_state"/>
+        <arg name="param_path" value="$(var stop_filter_param_path)"/>
+      </include>
+
+      <include file="$(find-pkg-share autoware_twist2accel)/launch/twist2accel.launch.xml">
+        <arg name="in_odom" value="/localization/kinematic_state"/>
+        <arg name="in_twist" value="/localization/twist_estimator/twist_with_covariance"/>
+        <arg name="out_accel" value="/localization/acceleration"/>
+        <arg name="param_file" value="$(var twist2accel_param_path)"/>
+      </include>
+    </group>
+  </group>
+</launch>

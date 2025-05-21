@@ -18,14 +18,16 @@
 #define AUTOWARE__CROP_BOX_FILTER__CROP_BOX_FILTER_NODE_HPP_
 
 #include <autoware/point_types/types.hpp>
-#include <autoware_utils/ros/debug_publisher.hpp>
-#include <autoware_utils/ros/managed_transform_buffer.hpp>
-#include <autoware_utils/ros/published_time_publisher.hpp>
-#include <autoware_utils/system/stop_watch.hpp>
+#include <autoware_utils_debug/debug_publisher.hpp>
+#include <autoware_utils_debug/published_time_publisher.hpp>
+#include <autoware_utils_system/stop_watch.hpp>
+#include <autoware_utils_tf/transform_listener.hpp>
 
 #include <geometry_msgs/msg/polygon_stamped.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
+
+#include <pcl_conversions/pcl_conversions.h>
 
 #include <memory>
 #include <string>
@@ -48,7 +50,7 @@ private:
   // member variable declaration & definitions *************************************
 
   /** \brief The managed transform buffer. */
-  std::unique_ptr<autoware_utils::ManagedTransformBuffer> managed_tf_buffer_{nullptr};
+  std::unique_ptr<autoware_utils_tf::TransformListener> transform_listener_{nullptr};
 
   /** \brief The input TF frame the data should be transformed into,
    * if input.header.frame_id is different. */
@@ -96,9 +98,9 @@ private:
   rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr crop_box_polygon_pub_;
 
   /** \brief processing time publisher. **/
-  std::unique_ptr<autoware_utils::StopWatch<std::chrono::milliseconds>> stop_watch_ptr_;
-  std::unique_ptr<autoware_utils::DebugPublisher> debug_publisher_;
-  std::unique_ptr<autoware_utils::PublishedTimePublisher> published_time_publisher_;
+  std::unique_ptr<autoware_utils_system::StopWatch<std::chrono::milliseconds>> stop_watch_ptr_;
+  std::unique_ptr<autoware_utils_debug::DebugPublisher> debug_publisher_;
+  std::unique_ptr<autoware_utils_debug::PublishedTimePublisher> published_time_publisher_;
 
   // function declaration *************************************
 

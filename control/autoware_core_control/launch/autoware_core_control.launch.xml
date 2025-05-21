@@ -1,0 +1,15 @@
+<launch>
+  <arg name="vehicle_info_param_file" default="$(find-pkg-share $(var vehicle_model)_description)/config/vehicle_info.param.yaml"/>
+
+  <group>
+    <push-ros-namespace namespace="control"/>
+    <node pkg="autoware_simple_pure_pursuit" exec="autoware_simple_pure_pursuit_exe" name="simple_pure_pursuit" output="screen">
+      <param from="$(find-pkg-share autoware_core_control)/config/simple_pure_pursuit.param.yaml"/>
+      <param from="$(var vehicle_info_param_file)"/>
+
+      <remap from="~/input/odometry" to="/localization/kinematic_state"/>
+      <remap from="~/input/trajectory" to="/planning/scenario_planning/trajectory"/>
+      <remap from="~/output/control_command" to="/control/command/control_cmd"/>
+    </node>
+  </group>
+</launch>

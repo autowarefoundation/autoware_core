@@ -19,19 +19,19 @@
 
 #include <algorithm>
 
-namespace autoware::trajectory
+namespace autoware::experimental::trajectory
 {
 template <class PointType>
 double max_curvature(const Trajectory<PointType> & trajectory)
 {
   double max_curvature = 0.0;
-  for (const auto & base : trajectory.get_internal_bases()) {
+  for (const auto & base : trajectory.get_underlying_bases()) {
     const auto curvature = trajectory.curvature(base);
     max_curvature = std::max(max_curvature, curvature);
   }
   return max_curvature;
 }
 
-}  // namespace autoware::trajectory
+}  // namespace autoware::experimental::trajectory
 
 #endif  // AUTOWARE__TRAJECTORY__UTILS__CURVATURE_UTILS_HPP_

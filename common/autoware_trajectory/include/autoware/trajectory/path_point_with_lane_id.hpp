@@ -23,7 +23,7 @@
 #include <utility>
 #include <vector>
 
-namespace autoware::trajectory
+namespace autoware::experimental::trajectory
 {
 template <>
 class Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>
@@ -33,19 +33,29 @@ class Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>
   using PointType = autoware_internal_planning_msgs::msg::PathPointWithLaneId;
   using LaneIdType = std::vector<int64_t>;
 
-  std::shared_ptr<detail::InterpolatedArray<LaneIdType>> lane_ids_;  //!< Lane ID
+protected:
+  std::shared_ptr<detail::InterpolatedArray<LaneIdType>> lane_ids_{nullptr};  //!< Lane ID
+
+  /**
+   * @brief add the event function to lane_ids additionally
+   * @note when a new base is added to lane_ids for example, the addition is also
+   * notified and update_base() is triggered.
+   */
+  void add_base_addition_callback() override;
 
 public:
   Trajectory();
   ~Trajectory() override = default;
-  Trajectory(const Trajectory & rhs) = default;
-  Trajectory(Trajectory && rhs) = default;
+  Trajectory(const Trajectory & rhs);
+  Trajectory(Trajectory && rhs) noexcept;
   Trajectory & operator=(const Trajectory & rhs);
-  Trajectory & operator=(Trajectory && rhs) = default;
+  Trajectory & operator=(Trajectory && rhs) noexcept;
 
   detail::InterpolatedArray<LaneIdType> & lane_ids() { return *lane_ids_; }
 
   const detail::InterpolatedArray<LaneIdType> & lane_ids() const { return *lane_ids_; }
+
+  [[nodiscard]] std::vector<int64_t> get_contained_lane_ids() const;
 
   /**
    * @brief Build the trajectory from the points
@@ -54,7 +64,9 @@ public:
    */
   interpolator::InterpolationResult build(const std::vector<PointType> & points);
 
-  std::vector<double> get_internal_bases() const override;
+  [[deprecated]] std::vector<double> get_internal_bases() const override;
+
+  std::vector<double> get_underlying_bases() const override;
 
   /**
    * @brief Compute the point on the trajectory at a given s value
@@ -64,19 +76,32 @@ public:
   PointType compute(const double s) const;
 
   /**
+   * @brief Compute the points on the trajectory at given s values
+   * @param ss Arc lengths
+   * @return Points on the trajectory
+   */
+  std::vector<PointType> compute(const std::vector<double> & ss) const;
+
+  /**
    * @brief Restore the trajectory points
    * @param min_points Minimum number of points
    * @return Vector of points
    */
   std::vector<PointType> restore(const size_t min_points = 4) const;
 
-  class Builder
+  class Builder : public BaseClass::Builder
   {
   private:
     std::unique_ptr<Trajectory> trajectory_;
 
   public:
-    Builder() : trajectory_(std::make_unique<Trajectory>()) {}
+    Builder();
+
+    /**
+     * @brief create the default interpolator setting
+     * @note In addition to the base class, Stairstep for lane_ids
+     */
+    static void defaults(Trajectory * trajectory);
 
     template <class InterpolatorType, class... Args>
     Builder & set_xy_interpolator(Args &&... args)
@@ -137,18 +162,9 @@ public:
     }
 
     tl::expected<Trajectory, interpolator::InterpolationFailure> build(
-      const std::vector<PointType> & points)
-    {
-      auto trajectory_result = trajectory_->build(points);
-      if (trajectory_result) {
-        auto result = Trajectory(std::move(*trajectory_));
-        trajectory_.reset();
-        return result;
-      }
-      return tl::unexpected(trajectory_result.error());
-    }
+      const std::vector<PointType> & points);
   };
 };
-}  // namespace autoware::trajectory
+}  // namespace autoware::experimental::trajectory
 
 #endif  // AUTOWARE__TRAJECTORY__PATH_POINT_WITH_LANE_ID_HPP_

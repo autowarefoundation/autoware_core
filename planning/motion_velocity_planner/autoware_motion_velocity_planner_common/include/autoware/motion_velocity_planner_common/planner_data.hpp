@@ -20,7 +20,8 @@
 #include <autoware/motion_velocity_planner_common/collision_checker.hpp>
 #include <autoware/route_handler/route_handler.hpp>
 #include <autoware/velocity_smoother/smoother/smoother_base.hpp>
-#include <autoware_utils/geometry/boost_polygon_utils.hpp>
+#include <autoware_utils_geometry/boost_polygon_utils.hpp>
+#include <autoware_utils_rclcpp/parameter.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
 
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
@@ -35,17 +36,30 @@
 #include <std_msgs/msg/header.hpp>
 
 #include <lanelet2_core/Forward.h>
+#include <pcl/common/transforms.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+#include <pcl/segmentation/euclidean_cluster_comparator.h>
+#include <pcl/segmentation/extract_clusters.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_listener.h>
 
 #include <map>
 #include <memory>
 #include <optional>
+#include <utility>
 #include <vector>
 
 namespace autoware::motion_velocity_planner
 {
 using autoware_planning_msgs::msg::TrajectoryPoint;
+using autoware_utils_rclcpp::get_or_declare_parameter;
+using TrajectoryPoints = std::vector<autoware_planning_msgs::msg::TrajectoryPoint>;
+using Point2d = autoware_utils_geometry::Point2d;
+using Polygon2d = boost::geometry::model::polygon<Point2d>;
 
 struct TrafficSignalStamped
 {
@@ -68,13 +82,20 @@ struct TrajectoryPolygonCollisionCheck
   double time_to_convergence;
 };
 
+struct PointcloudObstacleFilteringParam
+{
+  double pointcloud_voxel_grid_x{};
+  double pointcloud_voxel_grid_y{};
+  double pointcloud_voxel_grid_z{};
+  double pointcloud_cluster_tolerance{};
+  size_t pointcloud_min_cluster_size{};
+  size_t pointcloud_max_cluster_size{};
+};
+
 struct PlannerData
 {
-  explicit PlannerData(rclcpp::Node & node)
-  : vehicle_info_(autoware::vehicle_info_utils::VehicleInfoUtils(node).getVehicleInfo())
-  {
-  }
-
+public:
+  explicit PlannerData(rclcpp::Node & node);
   class Object
   {
   public:
@@ -87,7 +108,7 @@ struct PlannerData
     autoware_perception_msgs::msg::PredictedObject predicted_object;
 
     double get_dist_to_traj_poly(
-      const std::vector<autoware_utils::Polygon2d> & decimated_traj_polys) const;
+      const std::vector<autoware_utils_geometry::Polygon2d> & decimated_traj_polys) const;
     double get_dist_to_traj_lateral(const std::vector<TrajectoryPoint> & traj_points) const;
     double get_dist_from_ego_longitudinal(
       const std::vector<TrajectoryPoint> & traj_points,
@@ -108,19 +129,49 @@ struct PlannerData
     mutable std::optional<geometry_msgs::msg::Pose> predicted_pose;
   };
 
-  struct Pointcloud
+  class Pointcloud
   {
   public:
     Pointcloud() = default;
-    explicit Pointcloud(const pcl::PointCloud<pcl::PointXYZ> & arg_pointcloud)
-    : pointcloud(arg_pointcloud)
+    explicit Pointcloud(
+      const PointcloudObstacleFilteringParam & pointcloud_obstacle_filtering_param,
+      double mask_lat_margin)
+
+    : pointcloud_obstacle_filtering_param_(pointcloud_obstacle_filtering_param),
+      mask_lat_margin_(mask_lat_margin)
     {
+    }
+    void set_pointcloud(pcl::PointCloud<pcl::PointXYZ> && arg_pointcloud)
+    {
+      pointcloud = arg_pointcloud;
     }
 
     pcl::PointCloud<pcl::PointXYZ> pointcloud;
 
+    const pcl::PointCloud<pcl::PointXYZ>::Ptr get_filtered_pointcloud_ptr(
+      const autoware::motion_velocity_planner::TrajectoryPoints & trajectory_points,
+      const autoware::vehicle_info_utils::VehicleInfo & vehicle_info) const;
+    const std::vector<pcl::PointIndices> get_cluster_indices(
+      const autoware::motion_velocity_planner::TrajectoryPoints & trajectory_points,
+      const autoware::vehicle_info_utils::VehicleInfo & vehicle_info) const;
+
   private:
-    // NOTE: clustered result will be added.
+    mutable std::optional<pcl::PointCloud<pcl::PointXYZ>::Ptr> filtered_pointcloud_ptr;
+    mutable std::optional<std::vector<pcl::PointIndices>> cluster_indices;
+
+    PointcloudObstacleFilteringParam pointcloud_obstacle_filtering_param_;
+    double mask_lat_margin_{};
+
+    void search_pointcloud_near_trajectory(
+      const std::vector<TrajectoryPoint> & trajectory,
+      const autoware::vehicle_info_utils::VehicleInfo & vehicle_info,
+      const pcl::PointCloud<pcl::PointXYZ>::Ptr & input_points_ptr,
+      pcl::PointCloud<pcl::PointXYZ>::Ptr & output_points_ptr) const;
+
+    std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, std::vector<pcl::PointIndices>>
+    filter_and_cluster_point_clouds(
+      const autoware::motion_velocity_planner::TrajectoryPoints & trajectory_points,
+      const autoware::vehicle_info_utils::VehicleInfo & vehicle_info) const;
   };
 
   void process_predicted_objects(
@@ -139,7 +190,10 @@ struct PlannerData
   double ego_nearest_dist_threshold{};
   double ego_nearest_yaw_threshold{};
 
+  PointcloudObstacleFilteringParam pointcloud_obstacle_filtering_param{};
   TrajectoryPolygonCollisionCheck trajectory_polygon_collision_check{};
+
+  double mask_lat_margin{};
 
   // other internal data
   // traffic_light_id_map_raw is the raw observation, while traffic_light_id_map_keep_last keeps the

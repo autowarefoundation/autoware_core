@@ -39,8 +39,8 @@ class StopLineModule : public SceneModuleInterface
 {
 public:
   using StopLineWithLaneId = std::pair<lanelet::ConstLineString3d, int64_t>;
-  using Trajectory =
-    autoware::trajectory::Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>;
+  using Trajectory = autoware::experimental::trajectory::Trajectory<
+    autoware_internal_planning_msgs::msg::PathPointWithLaneId>;
   enum class State { APPROACH, STOPPED, START };
 
   struct DebugData
@@ -61,6 +61,7 @@ public:
    * @brief Constructor for StopLineModule.
    * @param module_id Unique ID for the module.
    * @param stop_line Stop line data.
+   * @param linked_lanelet_id ID of the linked lanelet.
    * @param planner_param Planning parameters.
    * @param logger Logger for output messages.
    * @param clock Shared clock instance.
@@ -68,10 +69,13 @@ public:
    * @param planning_factor_interface Planning factor interface.
    */
   StopLineModule(
-    const int64_t module_id, lanelet::ConstLineString3d stop_line,
-    const PlannerParam & planner_param, const rclcpp::Logger & logger,
-    const rclcpp::Clock::SharedPtr clock,
-    const std::shared_ptr<autoware_utils::TimeKeeper> & time_keeper,
+    const int64_t module_id,                                          //
+    const lanelet::ConstLineString3d & stop_line,                     //
+    const lanelet::Id & linked_lanelet_id,                            //
+    const PlannerParam & planner_param,                               //
+    const rclcpp::Logger & logger,                                    //
+    const rclcpp::Clock::SharedPtr clock,                             //
+    const std::shared_ptr<autoware_utils::TimeKeeper> & time_keeper,  //
     const std::shared_ptr<planning_factor_interface::PlanningFactorInterface> &
       planning_factor_interface);
 
@@ -85,8 +89,8 @@ public:
    * @return Pair of ego position and optional stop point.
    */
   std::pair<double, std::optional<double>> getEgoAndStopPoint(
-    const Trajectory & trajectory, const geometry_msgs::msg::Pose & ego_pose,
-    const State & state) const;
+    const Trajectory & trajectory, const PathWithLaneId & path,
+    const geometry_msgs::msg::Pose & ego_pose, const State & state) const;
 
   /**
    * @brief Update the state and stopped time of the module.
@@ -111,6 +115,7 @@ public:
 
 private:
   const lanelet::ConstLineString3d stop_line_;  ///< Stop line geometry.
+  const lanelet::Id linked_lanelet_id_;         ///< ID of the linked lanelet.
   const PlannerParam planner_param_;            ///< Parameters for the planner.
   State state_;                                 ///< Current state of the module.
   std::optional<rclcpp::Time> stopped_time_;    ///< Time when the vehicle stopped.

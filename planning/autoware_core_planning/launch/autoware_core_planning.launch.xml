@@ -1,0 +1,142 @@
+<launch>
+  <!-- map topic names -->
+  <arg name="map_topic_name" default="/map/vector_map"/>
+  <arg name="visualization_topic_name" default="/planning/mission_planning/route_marker"/>
+  <arg name="mission_planner_param_path" default="$(find-pkg-share autoware_mission_planner)/config/mission_planner.param.yaml"/>
+
+  <!-- common parameters -->
+  <arg name="common_param_path" default="$(find-pkg-share autoware_core_planning)/config/common.param.yaml"/>
+  <arg name="vehicle_param_file" default="$(find-pkg-share $(var vehicle_model)_description)/config/vehicle_info.param.yaml"/>
+  <arg name="nearest_search_param_path" default="$(find-pkg-share autoware_core_planning)/config/nearest_search.param.yaml"/>
+
+  <!-- behavior planning module config path -->
+  <arg name="velocity_smoother_param_path" default="$(find-pkg-share autoware_core_planning)/config/autoware_velocity_smoother/velocity_smoother.param.yaml"/>
+  <arg name="behavior_velocity_smoother_type_param_path" default="$(find-pkg-share autoware_core_planning)/config/autoware_velocity_smoother/Analytical.param.yaml"/>
+  <arg name="behavior_velocity_planner_param_path" default="$(find-pkg-share autoware_core_planning)/config/behavior_velocity_planner/behavior_velocity_planner.param.yaml"/>
+  <arg name="behavior_velocity_planner_common_param_path" default="$(find-pkg-share autoware_core_planning)/config/behavior_velocity_planner/behavior_velocity_planner_common.param.yaml"/>
+  <arg name="behavior_velocity_planner_stop_line_module_param_path" default="$(find-pkg-share autoware_core_planning)/config/behavior_velocity_planner/stop_line.param.yaml"/>
+
+  <!-- motion velocity planner module config path -->
+  <arg name="motion_velocity_planner_launch_modules" default="[autoware::motion_velocity_planner::ObstacleStopModule]"/>
+  <arg name="motion_velocity_planner_param_path" default="$(find-pkg-share autoware_core_planning)/config/motion_velocity_planner/motion_velocity_planner.param.yaml"/>
+  <arg name="motion_velocity_planner_velocity_smoother_type_param_path" default="$(find-pkg-share autoware_core_planning)/config/autoware_velocity_smoother/Analytical.param.yaml"/>
+  <arg name="motion_velocity_planner_obstacle_stop_module_param_path" default="$(find-pkg-share autoware_core_planning)/config/motion_velocity_planner/obstacle_stop.param.yaml"/>
+
+  <!-- velocity smoother -->
+  <arg name="velocity_smoother_type" default="JerkFiltered"/>
+  <arg name="velocity_smoother_type_param_path" default="$(find-pkg-share autoware_core_planning)/config/autoware_velocity_smoother/$(var velocity_smoother_type).param.yaml"/>
+
+  <arg name="enable_all_modules_auto_mode" default="true"/>
+  <arg name="is_simulation" default="false"/>
+
+  <group>
+    <push-ros-namespace namespace="planning"/>
+
+    <node pkg="autoware_mission_planner" exec="mission_planner" name="mission_planner" namespace="mission_planning">
+      <param from="$(var mission_planner_param_path)"/>
+      <remap from="~/input/vector_map" to="$(var map_topic_name)"/>
+      <remap from="~/input/odometry" to="/localization/kinematic_state"/>
+      <remap from="~/input/operation_mode_state" to="/system/operation_mode/state"/>
+      <remap from="~/route" to="/planning/mission_planning/route"/>
+      <remap from="~/state" to="/planning/mission_planning/state"/>
+      <remap from="~/debug/route_marker" to="$(var visualization_topic_name)"/>
+    </node>
+
+    <!-- Behavior Planning -->
+    <group>
+      <push-ros-namespace namespace="scenario_planning/lane_driving/behavior_planning"/>
+      <node pkg="autoware_path_generator" exec="path_generator_node" name="path_generator">
+        <param from="$(find-pkg-share autoware_path_generator)/config/path_generator.param.yaml"/>
+        <param from="$(find-pkg-share autoware_core_planning)/config/nearest_search.param.yaml"/>
+        <remap from="~/input/route" to="/planning/mission_planning/route"/>
+        <remap from="~/input/vector_map" to="$(var map_topic_name)"/>
+        <remap from="~/input/odometry" to="/localization/kinematic_state"/>
+        <remap from="~/output/path" to="/planning/scenario_planning/lane_driving/behavior_planning/path_with_lane_id"/>
+      </node>
+
+      <node pkg="autoware_behavior_velocity_planner" exec="autoware_behavior_velocity_planner_node" name="behavior_velocity_planner">
+        <!-- topic remap -->
+        <remap from="~/input/path_with_lane_id" to="/planning/scenario_planning/lane_driving/behavior_planning/path_with_lane_id"/>
+        <remap from="~/input/vector_map" to="/map/vector_map"/>
+        <remap from="~/input/vehicle_odometry" to="/localization/kinematic_state"/>
+        <remap from="~/input/accel" to="/localization/acceleration"/>
+        <remap from="~/input/dynamic_objects" to="/perception/object_recognition/objects"/>
+        <remap from="~/input/no_ground_pointcloud" to="/perception/obstacle_segmentation/pointcloud"/>
+        <remap from="~/input/external_velocity_limit_mps" to="/planning/scenario_planning/max_velocity_default"/>
+        <remap from="~/input/traffic_signals" to="/perception/traffic_light_recognition/traffic_signals"/>
+        <remap from="~/input/occupancy_grid" to="/perception/occupancy_grid_map/map"/>
+        <remap from="~/output/path" to="/planning/scenario_planning/lane_driving/behavior_planning/path"/>
+        <remap from="~/output/stop_reasons" to="/planning/scenario_planning/status/stop_reasons"/>
+        <!-- params -->
+        <param name="launch_modules" value="[autoware::behavior_velocity_planner::StopLineModulePlugin]"/>
+        <param name="enable_all_modules_auto_mode" value="$(var enable_all_modules_auto_mode)"/>
+        <param name="is_simulation" value="$(var is_simulation)"/>
+        <!-- load config -->
+        <param from="$(var common_param_path)"/>
+        <param from="$(var vehicle_param_file)"/>
+        <param from="$(var nearest_search_param_path)"/>
+        <param from="$(var velocity_smoother_param_path)"/>
+        <param from="$(var behavior_velocity_smoother_type_param_path)"/>
+        <param from="$(var behavior_velocity_planner_param_path)"/>
+        <param from="$(var behavior_velocity_planner_common_param_path)"/>
+        <param from="$(var behavior_velocity_planner_stop_line_module_param_path)"/>
+      </node>
+    </group>
+
+    <!-- Motion Planning -->
+    <group>
+      <push-ros-namespace namespace="scenario_planning/lane_driving/motion_planning"/>
+      <node pkg="autoware_planning_topic_converter" exec="path_to_trajectory_converter" name="path_to_trajectory_converter">
+        <!-- params -->
+        <param name="input_topic" value="/planning/scenario_planning/lane_driving/behavior_planning/path"/>
+        <param name="output_topic" value="path_optimizer/trajectory"/>
+      </node>
+
+      <node pkg="autoware_motion_velocity_planner" exec="autoware_motion_velocity_planner_node" name="motion_velocity_planner">
+        <!-- topic remap -->
+        <remap from="~/input/trajectory" to="path_optimizer/trajectory"/>
+        <remap from="~/input/vector_map" to="/map/vector_map"/>
+        <remap from="~/input/vehicle_odometry" to="/localization/kinematic_state"/>
+        <remap from="~/input/accel" to="/localization/acceleration"/>
+        <remap from="~/input/dynamic_objects" to="/perception/object_recognition/objects"/>
+        <remap from="~/input/no_ground_pointcloud" to="/perception/obstacle_segmentation/pointcloud"/>
+        <remap from="~/input/traffic_signals" to="/perception/traffic_light_recognition/traffic_signals"/>
+        <remap from="~/input/virtual_traffic_light_states" to="/perception/virtual_traffic_light_states"/>
+        <remap from="~/input/occupancy_grid" to="/perception/occupancy_grid_map/map"/>
+        <remap from="~/output/trajectory" to="motion_velocity_planner/trajectory"/>
+        <remap from="~/output/velocity_limit" to="/planning/scenario_planning/max_velocity_candidates"/>
+        <remap from="~/output/clear_velocity_limit" to="/planning/scenario_planning/clear_velocity_limit"/>
+        <remap from="~/output/stop_reasons" to="/planning/scenario_planning/status/stop_reasons"/>
+        <remap from="~/output/velocity_factors" to="/planning/velocity_factors/motion_velocity_planner"/>
+        <!-- params -->
+        <param name="launch_modules" value="$(var motion_velocity_planner_launch_modules)"/>
+        <param from="$(var common_param_path)"/>
+        <param from="$(var vehicle_param_file)"/>
+        <param from="$(var nearest_search_param_path)"/>
+        <param from="$(var velocity_smoother_param_path)"/>
+        <param from="$(var motion_velocity_planner_velocity_smoother_type_param_path)"/>
+        <param from="$(var motion_velocity_planner_param_path)"/>
+        <param from="$(var motion_velocity_planner_obstacle_stop_module_param_path)"/>
+      </node>
+    </group>
+
+    <!-- Velocity Smoothing -->
+    <node pkg="autoware_velocity_smoother" exec="velocity_smoother_node" name="velocity_smoother" namespace="scenario_planning">
+      <param name="algorithm_type" value="$(var velocity_smoother_type)"/>
+      <param from="$(var common_param_path)"/>
+      <param from="$(var nearest_search_param_path)"/>
+      <param from="$(var velocity_smoother_param_path)"/>
+      <param from="$(var velocity_smoother_type_param_path)"/>
+
+      <param name="publish_debug_trajs" value="false"/>
+      <remap from="~/input/trajectory" to="/planning/scenario_planning/lane_driving/motion_planning/motion_velocity_planner/trajectory"/>
+      <remap from="~/output/trajectory" to="/planning/scenario_planning/trajectory"/>
+
+      <remap from="~/input/external_velocity_limit_mps" to="/planning/scenario_planning/max_velocity"/>
+      <remap from="~/input/acceleration" to="/localization/acceleration"/>
+      <remap from="~/input/operation_mode_state" to="/system/operation_mode/state"/>
+      <remap from="~/output/current_velocity_limit_mps" to="/planning/scenario_planning/current_max_velocity"/>
+    </node>
+  </group>
+  <!--planning -->
+</launch>

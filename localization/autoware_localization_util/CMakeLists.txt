@@ -26,6 +26,17 @@ if(BUILD_TESTING)
     test/test_tpe.cpp
     src/tree_structured_parzen_estimator.cpp
   )
+
+  ament_auto_add_gtest(test_covariance_ellipse
+    test/test_covariance_ellipse.cpp
+    src/covariance_ellipse.cpp
+  )
+
+  ament_auto_add_gtest(test_util_func
+    test/test_util_func.cpp
+    src/util_func.cpp
+  )
+
 endif()
 
 ament_auto_package(

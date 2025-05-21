@@ -17,7 +17,7 @@
 #include <iostream>
 #include <sstream>
 
-namespace autoware::trajectory::interpolator
+namespace autoware::experimental::trajectory::interpolator
 {
 
 InterpolationFailure operator+(
@@ -28,4 +28,4 @@ InterpolationFailure operator+(
   return InterpolationFailure{ss.str()};
 }
 
-}  // namespace autoware::trajectory::interpolator
+}  // namespace autoware::experimental::trajectory::interpolator

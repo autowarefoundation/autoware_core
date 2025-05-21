@@ -15,13 +15,14 @@
 #include "autoware/trajectory/utils/closest.hpp"
 
 #include <algorithm>
+#include <limits>
 #include <vector>
 
-namespace autoware::trajectory::detail::impl
+namespace autoware::experimental::trajectory::detail::impl
 {
 std::optional<double> closest_with_constraint_impl(
-  const std::function<Eigen::Vector2d(const double & s)> & trajectory_compute,
-  const std::vector<double> & bases, const Eigen::Vector2d & point,
+  const std::function<Eigen::Vector3d(const double & s)> & trajectory_compute,
+  const std::vector<double> & bases, const Eigen::Vector3d & point,
   const std::function<bool(const double &)> & constraint)
 {
   using trajectory::detail::to_point;
@@ -29,24 +30,34 @@ std::optional<double> closest_with_constraint_impl(
   std::vector<double> lengths_from_start_points;
 
   for (size_t i = 1; i < bases.size(); ++i) {
-    const Eigen::Vector2d p0 = trajectory_compute(bases.at(i - 1));
-    const Eigen::Vector2d p1 = trajectory_compute(bases.at(i));
+    const Eigen::Vector3d p0 = trajectory_compute(bases.at(i - 1));
+    const Eigen::Vector3d p1 = trajectory_compute(bases.at(i));
 
-    const Eigen::Vector2d v = p1 - p0;
-    const Eigen::Vector2d w = point - p0;
+    const Eigen::Vector3d v = p1 - p0;
+    const Eigen::Vector3d w = point - p0;
     const double c1 = w.dot(v);
     const double c2 = v.dot(v);
-    double length_from_start_point = NAN;
-    double distance_from_segment = NAN;
-    if (c1 <= 0) {
-      length_from_start_point = bases.at(i - 1);
-      distance_from_segment = (point - p0).norm();
-    } else if (c2 <= c1) {
-      length_from_start_point = bases.at(i);
-      distance_from_segment = (point - p1).norm();
-    } else {
-      length_from_start_point = bases.at(i - 1) + c1 / c2 * (p1 - p0).norm();
-      distance_from_segment = (point - (p0 + (c1 / c2) * v)).norm();
+    const auto length_from_start_point = [&]() {
+      if (c1 <= 0) {
+        return bases.at(i - 1);
+      }
+      if (c2 <= c1) {
+        return bases.at(i);
+      }
+      return bases.at(i - 1) + c1 / c2 * (p1 - p0).norm();
+    }();
+    const auto distance_from_segment = [&]() {
+      if (c1 <= 0) {
+        return (point - p0).norm();
+      }
+      if (c2 <= c1) {
+        return (point - p1).norm();
+      }
+      return (point - (p0 + (c1 / c2) * v)).norm();
+    }();
+    if (constraint(length_from_start_point)) {
+      distances_from_segments.push_back(distance_from_segment);
+      lengths_from_start_points.push_back(length_from_start_point);
     }
     if (constraint(length_from_start_point)) {
       distances_from_segments.push_back(distance_from_segment);
@@ -61,4 +72,4 @@ std::optional<double> closest_with_constraint_impl(
 
   return lengths_from_start_points[std::distance(distances_from_segments.begin(), min_it)];
 }
-}  // namespace autoware::trajectory::detail::impl
+}  // namespace autoware::experimental::trajectory::detail::impl

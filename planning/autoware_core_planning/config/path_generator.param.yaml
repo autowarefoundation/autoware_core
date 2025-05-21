@@ -1,0 +1,16 @@
+/**:
+  ros__parameters:
+    planning_hz: 10.0
+    path_length:
+      backward: 5.0
+      forward: 300.0
+    waypoint_group:
+      separation_threshold: 1.0
+      interval_margin_ratio: 10.0
+    turn_signal:
+      search_time: 3.0
+      search_distance: 30.0
+      resampling_interval: 1.0
+      angle_threshold_deg: 15.0
+    refine_goal_search_radius_range: 7.5  # [m]
+    search_radius_decrement: 1.0

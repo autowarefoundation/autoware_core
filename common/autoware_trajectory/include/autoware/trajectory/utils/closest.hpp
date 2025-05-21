@@ -22,9 +22,10 @@
 
 #include <functional>
 #include <optional>
+#include <utility>
 #include <vector>
 
-namespace autoware::trajectory
+namespace autoware::experimental::trajectory
 {
 namespace detail::impl
 {
@@ -41,8 +42,8 @@ namespace detail::impl
  * trajectory that satisfies the constraint, or `std::nullopt` if no such point exists.
  */
 std::optional<double> closest_with_constraint_impl(
-  const std::function<Eigen::Vector2d(const double & s)> & trajectory_compute,
-  const std::vector<double> & bases, const Eigen::Vector2d & point,
+  const std::function<Eigen::Vector3d(const double & s)> & trajectory_compute,
+  const std::vector<double> & bases, const Eigen::Vector3d & point,
   const std::function<bool(const double &)> & constraint);
 }  // namespace detail::impl
 
@@ -61,19 +62,21 @@ std::optional<double> closest_with_constraint_impl(
 template <class TrajectoryPointType, class ArgPointType, class Constraint>
 std::optional<double> closest_with_constraint(
   const trajectory::Trajectory<TrajectoryPointType> & trajectory, const ArgPointType & point,
-  const Constraint & constraint)
+  Constraint && constraint)
 {
-  using autoware::trajectory::detail::to_point;
+  using autoware::experimental::trajectory::detail::to_point;
 
   return detail::impl::closest_with_constraint_impl(
     [&trajectory](const double & s) {
-      TrajectoryPointType point = trajectory.compute(s);
-      Eigen::Vector2d result;
-      result << to_point(point).x, to_point(point).y;
+      const auto point = to_point(trajectory.compute(s));
+      Eigen::Vector3d result;
+      result << point.x, point.y, point.z;
       return result;
     },
-    trajectory.get_internal_bases(), {to_point(point).x, to_point(point).y},
-    [&constraint, &trajectory](const double & s) { return constraint(trajectory.compute(s)); });
+    trajectory.get_underlying_bases(), {to_point(point).x, to_point(point).y, to_point(point).z},
+    [constraint = std::forward<Constraint>(constraint), &trajectory](const double & s) {
+      return constraint(trajectory.compute(s));
+    });
 }
 
 /**
@@ -95,6 +98,6 @@ double closest(
   }
   return *s;
 }
-}  // namespace autoware::trajectory
+}  // namespace autoware::experimental::trajectory
 
 #endif  // AUTOWARE__TRAJECTORY__UTILS__CLOSEST_HPP_

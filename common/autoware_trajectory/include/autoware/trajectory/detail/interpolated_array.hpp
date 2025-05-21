@@ -18,15 +18,15 @@
 #include "autoware/trajectory/detail/logging.hpp"
 #include "autoware/trajectory/interpolator/interpolator.hpp"
 
-#include <Eigen/Core>
 #include <rclcpp/logging.hpp>
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
-namespace autoware::trajectory::detail
+namespace autoware::experimental::trajectory::detail
 {
 
 /**
@@ -42,6 +42,7 @@ private:
   std::vector<double> bases_;
   std::vector<T> values_;
   std::shared_ptr<interpolator::InterpolatorInterface<T>> interpolator_;
+  std::function<void(const double s)> base_addition_callback_slot_{nullptr};
 
 public:
   /**
@@ -58,7 +59,10 @@ public:
    * @param other The InterpolatedArray to copy from.
    */
   InterpolatedArray(const InterpolatedArray & other)
-  : bases_(other.bases_), values_(other.values_), interpolator_(other.interpolator_->clone())
+  : bases_(other.bases_),
+    values_(other.values_),
+    interpolator_(other.interpolator_->clone()),
+    base_addition_callback_slot_(other.base_addition_callback_slot_)
   {
   }
 
@@ -97,12 +101,21 @@ public:
       bases_ = other.bases_;
       values_ = other.values_;
       interpolator_ = other.interpolator_->clone();
+      base_addition_callback_slot_ = other.base_addition_callback_slot_;
     }
     return *this;
   }
 
   // Destructor
   ~InterpolatedArray() = default;
+
+  /**
+   * @brief add the callback function to be executed when a new base is added to this class
+   */
+  void connect_base_addition_callback(std::function<void(const double s)> && signal)
+  {
+    base_addition_callback_slot_ = std::move(signal);
+  }
 
   /**
    * @brief Get the start value of the base.
@@ -134,25 +147,31 @@ public:
       std::vector<double> & bases = parent_.bases_;
       std::vector<T> & values = parent_.values_;
 
-      auto insert_if_not_present = [&](const double val) -> size_t {
-        auto it = std::lower_bound(bases.begin(), bases.end(), val);
+      auto insert_new_base_if_not_present = [&](const double new_base) -> size_t {
+        auto it = std::lower_bound(bases.begin(), bases.end(), new_base);
         size_t index = std::distance(bases.begin(), it);
 
-        if (it != bases.end() && *it == val) {
+        if (it != bases.end() && *it == new_base) {
           // Return the index if the value already exists
           return index;
         }  // Insert into bases
-        bases.insert(it, val);
+        bases.insert(it, new_base);
+
+        // execute the callback to notify that a new base has been added
+        if (parent_.base_addition_callback_slot_) {
+          std::invoke(parent_.base_addition_callback_slot_, new_base);
+        }
+
         // Insert into values at the corresponding position
         values.insert(values.begin() + index, value);
         return index;
       };
 
       // Insert the start value if not present
-      size_t start_index = insert_if_not_present(start_);
+      size_t start_index = insert_new_base_if_not_present(start_);
 
       // Insert the end value if not present
-      size_t end_index = insert_if_not_present(end_);
+      size_t end_index = insert_new_base_if_not_present(end_);
 
       // Ensure the indices are in ascending order
       if (start_index > end_index) {
@@ -219,6 +238,6 @@ public:
   std::pair<std::vector<double>, std::vector<T>> get_data() const { return {bases_, values_}; }
 };
 
-}  // namespace autoware::trajectory::detail
+}  // namespace autoware::experimental::trajectory::detail
 
 #endif  // AUTOWARE__TRAJECTORY__DETAIL__INTERPOLATED_ARRAY_HPP_

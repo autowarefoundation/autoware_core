@@ -13,7 +13,8 @@
 // limitations under the License.
 
 #include "autoware/motion_utils/trajectory/path_with_lane_id.hpp"
-#include "autoware_utils/geometry/geometry.hpp"
+
+#include <autoware_utils_geometry/geometry.hpp>
 
 #include <gtest/gtest.h>
 
@@ -24,14 +25,14 @@ namespace
 {
 using autoware_internal_planning_msgs::msg::PathPointWithLaneId;
 using autoware_internal_planning_msgs::msg::PathWithLaneId;
-using autoware_utils::create_point;
+using autoware_utils_geometry::create_point;
 
 geometry_msgs::msg::Pose createPose(
   double x, double y, double z, double roll, double pitch, double yaw)
 {
   geometry_msgs::msg::Pose p;
-  p.position = create_point(x, y, z);
-  p.orientation = autoware_utils::create_quaternion_from_rpy(roll, pitch, yaw);
+  p.position = autoware_utils_geometry::create_point(x, y, z);
+  p.orientation = autoware_utils_geometry::create_quaternion_from_rpy(roll, pitch, yaw);
   return p;
 }
 

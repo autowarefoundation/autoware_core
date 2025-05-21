@@ -16,36 +16,12 @@
 #define AUTOWARE__TRAJECTORY__DETAIL__HELPERS_HPP_
 
 #include <cstddef>
-#include <set>
 #include <vector>
 
-namespace autoware::trajectory::detail
+namespace autoware::experimental::trajectory::detail
 {
 inline namespace helpers
 {
-/**
- * @brief Merge multiple vectors into one, keeping only unique elements.
- * @tparam Vectors Variadic template parameter for vector types.
- * @param vectors Vectors to be merged.
- * @return std::vector<double> Merged vector with unique elements.
- */
-template <typename... Vectors>
-std::vector<double> merge_vectors(const Vectors &... vectors)
-{
-  std::set<double> unique_elements;
-
-  // Helper function to insert elements into the set
-  auto insert_elements = [&unique_elements](const auto & vec) {
-    unique_elements.insert(vec.begin(), vec.end());
-  };
-
-  // Expand the parameter pack and insert elements from each vector
-  (insert_elements(vectors), ...);
-
-  // Convert the set to std::vector<double>
-  return {unique_elements.begin(), unique_elements.end()};
-}
-
 /**
  * @brief Ensures the output vector has at least a specified number of points by linearly
  * interpolating values between each input intervals
@@ -66,6 +42,6 @@ std::vector<double> fill_bases(const std::vector<double> & x, const size_t outpu
 
 std::vector<double> crop_bases(const std::vector<double> & x, const double start, const double end);
 }  // namespace helpers
-}  // namespace autoware::trajectory::detail
+}  // namespace autoware::experimental::trajectory::detail
 
 #endif  // AUTOWARE__TRAJECTORY__DETAIL__HELPERS_HPP_

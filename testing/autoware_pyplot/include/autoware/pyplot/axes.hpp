@@ -83,6 +83,10 @@ public:
     const pybind11::tuple & args = pybind11::tuple(),
     const pybind11::dict & kwargs = pybind11::dict()) const;
 
+  PyObjectWrapper scatter(
+    const pybind11::tuple & args = pybind11::tuple(),
+    const pybind11::dict & kwargs = pybind11::dict()) const;
+
   PyObjectWrapper set_aspect(
     const pybind11::tuple & args = pybind11::tuple(),
     const pybind11::dict & kwargs = pybind11::dict()) const;
@@ -107,7 +111,15 @@ public:
     const pybind11::tuple & args = pybind11::tuple(),
     const pybind11::dict & kwargs = pybind11::dict()) const;
 
+  void set_zlim(
+    const pybind11::tuple & args = pybind11::tuple(),
+    const pybind11::dict & kwargs = pybind11::dict()) const;
+
   PyObjectWrapper text(
+    const pybind11::tuple & args = pybind11::tuple(),
+    const pybind11::dict & kwargs = pybind11::dict()) const;
+
+  void view_init(
     const pybind11::tuple & args = pybind11::tuple(),
     const pybind11::dict & kwargs = pybind11::dict()) const;
 
@@ -134,7 +146,11 @@ private:
   pybind11::object set_xlim_attr;
   pybind11::object set_ylabel_attr;
   pybind11::object set_ylim_attr;
+  pybind11::object set_zlim_attr;
   pybind11::object text_attr;
+  pybind11::object view_init_attr;
+
+  bool projection_3d_;
 };
 }  // namespace axes
 }  // namespace autoware::pyplot

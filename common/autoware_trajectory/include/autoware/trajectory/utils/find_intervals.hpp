@@ -18,11 +18,11 @@
 #include "autoware/trajectory/detail/types.hpp"
 #include "autoware/trajectory/forward.hpp"
 
-#include <Eigen/Core>
-
 #include <functional>
+#include <utility>
 #include <vector>
-namespace autoware::trajectory
+
+namespace autoware::experimental::trajectory
 {
 
 /**
@@ -31,8 +31,8 @@ namespace autoware::trajectory
  */
 struct Interval
 {
-  double start;  ///< Start value of the interval.
-  double end;    ///< End value of the interval.
+  const double start;  ///< Start value of the interval.
+  const double end;    ///< End value of the interval.
 };
 
 namespace detail::impl
@@ -47,7 +47,8 @@ namespace detail::impl
  * satisfied.
  */
 std::vector<Interval> find_intervals_impl(
-  const std::vector<double> & bases, const std::function<bool(const double &)> & constraint);
+  const std::vector<double> & bases, const std::function<bool(const double &)> & constraint,
+  int max_iter = 0);
 
 }  // namespace detail::impl
 
@@ -62,15 +63,18 @@ std::vector<Interval> find_intervals_impl(
  */
 template <class TrajectoryPointType, class Constraint>
 std::vector<Interval> find_intervals(
-  const Trajectory<TrajectoryPointType> & trajectory, const Constraint & constraint)
+  const Trajectory<TrajectoryPointType> & trajectory, Constraint && constraint, int max_iter = 0)
 {
-  using autoware::trajectory::detail::to_point;
+  using autoware::experimental::trajectory::detail::to_point;
 
   return detail::impl::find_intervals_impl(
-    trajectory.get_internal_bases(),
-    [&constraint, &trajectory](const double & s) { return constraint(trajectory.compute(s)); });
+    trajectory.get_underlying_bases(),
+    [constraint = std::forward<Constraint>(constraint), &trajectory](const double & s) {
+      return constraint(trajectory.compute(s));
+    },
+    max_iter);
 }
 
-}  // namespace autoware::trajectory
+}  // namespace autoware::experimental::trajectory
 
 #endif  // AUTOWARE__TRAJECTORY__UTILS__FIND_INTERVALS_HPP_

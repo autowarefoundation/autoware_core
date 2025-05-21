@@ -14,10 +14,6 @@
 
 #include "autoware/objects_of_interest_marker_interface/objects_of_interest_marker_interface.hpp"
 
-#include <autoware_utils/geometry/geometry.hpp>
-#include <autoware_utils/math/constants.hpp>
-#include <autoware_utils/math/trigonometry.hpp>
-
 #include <string>
 
 namespace autoware::objects_of_interest_marker_interface
@@ -55,6 +51,9 @@ void ObjectsOfInterestMarkerInterface::insertObjectDataWithCustomColor(
 
 void ObjectsOfInterestMarkerInterface::publishMarkerArray()
 {
+  if (pub_marker_->get_subscription_count() == 0) {
+    return;
+  }
   MarkerArray marker_array;
   for (size_t i = 0; i < obj_marker_data_array_.size(); ++i) {
     const auto data = obj_marker_data_array_.at(i);

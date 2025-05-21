@@ -44,7 +44,7 @@ autoware_map_msgs::msg::MapProjectorInfo load_info_from_yaml(const std::string &
     msg.vertical_datum = data["vertical_datum"].as<std::string>();
     msg.map_origin.latitude = data["map_origin"]["latitude"].as<double>();
     msg.map_origin.longitude = data["map_origin"]["longitude"].as<double>();
-    msg.map_origin.altitude = data["map_origin"]["altitude"].as<double>();
+    msg.map_origin.altitude = 0.0;
 
   } else if (msg.projector_type == autoware_map_msgs::msg::MapProjectorInfo::LOCAL) {
     ;  // do nothing
@@ -63,6 +63,30 @@ autoware_map_msgs::msg::MapProjectorInfo load_info_from_yaml(const std::string &
       "Invalid map projector type. Currently supported types: MGRS, LocalCartesian, "
       "LocalCartesianUTM, "
       "TransverseMercator, and local");
+  }
+
+  // set scale factor
+  static constexpr float scale_factor_for_utm = 0.9996;
+  static constexpr float scale_factor_for_local = 1.0;
+  if (msg.projector_type == autoware_map_msgs::msg::MapProjectorInfo::TRANSVERSE_MERCATOR) {
+    if (data["scale_factor"]) {
+      msg.scale_factor = data["scale_factor"].as<float>();
+    } else {
+      msg.scale_factor = scale_factor_for_utm;
+    }
+  } else if (
+    msg.projector_type == autoware_map_msgs::msg::MapProjectorInfo::MGRS ||
+    msg.projector_type == autoware_map_msgs::msg::MapProjectorInfo::LOCAL_CARTESIAN_UTM) {
+    msg.scale_factor = scale_factor_for_utm;
+  } else if (
+    msg.projector_type == autoware_map_msgs::msg::MapProjectorInfo::LOCAL ||
+    msg.projector_type == autoware_map_msgs::msg::MapProjectorInfo::LOCAL_CARTESIAN) {
+    msg.scale_factor = scale_factor_for_local;
+  }
+
+  if (msg.scale_factor <= 0.0) {
+    throw std::runtime_error(
+      "Invalid scale factor. The scale factor must be a value greater than 0.");
   }
   return msg;
 }
@@ -104,10 +128,8 @@ MapProjectionLoader::MapProjectionLoader(const rclcpp::NodeOptions & options)
     load_map_projector_info(yaml_filename, lanelet2_map_filename);
 
   // Publish the message
-  MapProjectorInfo map_projector_info_specs;
   publisher_ = this->create_publisher<MapProjectorInfo::Message>(
-    map_projector_info_specs.name,
-    autoware::component_interface_specs::get_qos(map_projector_info_specs));
+    MapProjectorInfo::name, autoware::component_interface_specs::get_qos<MapProjectorInfo>());
   publisher_->publish(msg);
 }
 }  // namespace autoware::map_projection_loader
