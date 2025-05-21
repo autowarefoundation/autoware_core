@@ -6,8 +6,8 @@ find_package(autoware_cmake REQUIRED)
 
 find_package(
   Python3
-  COMPONENTS Interpreter Development
-  REQUIRED)
+  REQUIRED
+  COMPONENTS Interpreter Development)
 find_package(pybind11_vendor REQUIRED)
 find_package(pybind11 REQUIRED)
 
@@ -17,7 +17,7 @@ ament_auto_add_library(${PROJECT_NAME} STATIC
   DIRECTORY src
 )
 target_compile_options(${PROJECT_NAME} PUBLIC "-fPIC")
-target_link_libraries(${PROJECT_NAME} Python3::Python pybind11::embed)
+target_link_libraries(${PROJECT_NAME} ${Python3_LIBRARIES} pybind11::embed)
 
 # NOTE(soblin): this is workaround for propagating the include of "Python.h" to user modules to avoid "'Python.h' not found"
 ament_export_include_directories(${Python3_INCLUDE_DIRS})
