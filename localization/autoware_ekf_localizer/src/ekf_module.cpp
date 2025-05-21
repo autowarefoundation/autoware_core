@@ -24,10 +24,10 @@
 
 #include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_utils_geometry/msg/covariance.hpp>
+#include <tf2/LinearMath/Quaternion.hpp>
+#include <tf2/utils.hpp>
 
 #include <fmt/core.h>
-#include <tf2/LinearMath/Quaternion.h>
-#include <tf2/utils.h>
 
 #include <algorithm>
 #include <utility>

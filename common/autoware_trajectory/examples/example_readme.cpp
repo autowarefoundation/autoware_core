@@ -23,6 +23,8 @@
 
 #include <autoware/pyplot/pyplot.hpp>
 #include <range/v3/all.hpp>
+#include <tf2/LinearMath/Quaternion.hpp>
+#include <tf2/LinearMath/Vector3.hpp>
 
 #include <autoware_internal_planning_msgs/msg/path_point_with_lane_id.hpp>
 #include <autoware_planning_msgs/msg/path_point.hpp>
@@ -30,8 +32,6 @@
 
 #include <pybind11/embed.h>
 #include <pybind11/stl.h>
-#include <tf2/LinearMath/Quaternion.h>
-#include <tf2/LinearMath/Vector3.h>
 
 #include <iostream>
 #include <random>

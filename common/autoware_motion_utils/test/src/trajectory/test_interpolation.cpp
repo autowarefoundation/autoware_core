@@ -18,10 +18,10 @@
 
 #include <autoware_utils_geometry/boost_geometry.hpp>
 #include <autoware_utils_math/unit_conversion.hpp>
+#include <tf2/LinearMath/Quaternion.hpp>
 
 #include <gtest/gtest.h>
 #include <gtest/internal/gtest-port.h>
-#include <tf2/LinearMath/Quaternion.h>
 
 #include <limits>
 #include <vector>
