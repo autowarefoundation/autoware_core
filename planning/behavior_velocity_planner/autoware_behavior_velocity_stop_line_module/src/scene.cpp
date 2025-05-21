@@ -45,13 +45,13 @@ bool hasIntersection(const std::set<lanelet::Id> & a, const std::set<lanelet::Id
 }
 
 StopLineModule::StopLineModule(
-  const int64_t module_id,                                          //
-  const lanelet::ConstLineString3d & stop_line,                     //
-  const lanelet::Id & linked_lanelet_id,                            //
-  const PlannerParam & planner_param,                               //
-  const rclcpp::Logger & logger,                                    //
-  const rclcpp::Clock::SharedPtr clock,                             //
-  const std::shared_ptr<autoware_utils::TimeKeeper> & time_keeper,  //
+  const int64_t module_id,                                                //
+  const lanelet::ConstLineString3d & stop_line,                           //
+  const lanelet::Id & linked_lanelet_id,                                  //
+  const PlannerParam & planner_param,                                     //
+  const rclcpp::Logger & logger,                                          //
+  const rclcpp::Clock::SharedPtr clock,                                   //
+  const std::shared_ptr<autoware_utils_debug::TimeKeeper> & time_keeper,  //
   const std::shared_ptr<planning_factor_interface::PlanningFactorInterface> &
     planning_factor_interface)
 : SceneModuleInterface(module_id, logger, clock, time_keeper, planning_factor_interface),
