@@ -432,6 +432,20 @@ double get_arc_length_on_path(
   std::optional<lanelet::Id> target_lanelet_id = std::nullopt;
   std::optional<lanelet::BasicPoint2d> point_on_centerline = std::nullopt;
 
+  if (lanelet_sequence.empty() || path.empty()) {
+    RCLCPP_WARN(
+      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+      "Input lanelet sequence or path is empty, returning 0.");
+    return 0.;
+  }
+
+  if (s_centerline < 0.) {
+    RCLCPP_WARN(
+      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+      "Input arc length is negative, returning 0.");
+    return 0.;
+  }
+
   for (auto [it, s] = std::make_tuple(lanelet_sequence.begin(), 0.); it != lanelet_sequence.end();
        ++it) {
     const double centerline_length = lanelet::geometry::length(it->centerline2d());
@@ -447,10 +461,8 @@ double get_arc_length_on_path(
   }
 
   if (!target_lanelet_id || !point_on_centerline) {
-    RCLCPP_WARN(
-      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
-      "Input arc length is larger than length of lanelet sequence, returning 0.");
-    return 0.;
+    // lanelet_sequence is too short, thus we return input arc length as is.
+    return s_centerline;
   }
 
   auto s_path = 0.;
