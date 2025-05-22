@@ -170,6 +170,127 @@ TEST(VoxelGridBasedEuclideanClusterTest, testcase3)
   EXPECT_EQ(output.objects.size(), 0);
 }
 
+// Test default constructor
+TEST(VoxelGridBasedEuclideanClusterTest, DefaultConstructor)
+{
+  auto cluster = std::make_shared<autoware::euclidean_cluster::VoxelGridBasedEuclideanCluster>();
+  EXPECT_NE(cluster, nullptr);
+
+  // Since the default constructor doesn't initialize parameters, we just check if the object was
+  // created successfully
+}
+
+// Test three-parameter constructor
+TEST(VoxelGridBasedEuclideanClusterTest, ThreeParamConstructor)
+{
+  bool use_height = true;
+  int min_cluster_size = 5;
+  int max_cluster_size = 100;
+
+  auto cluster = std::make_shared<autoware::euclidean_cluster::VoxelGridBasedEuclideanCluster>(
+    use_height, min_cluster_size, max_cluster_size);
+  EXPECT_NE(cluster, nullptr);
+
+  // Indirectly test if parameters were set correctly by calling other methods
+  pcl::PointCloud<pcl::PointXYZ>::ConstPtr empty_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+  std::vector<pcl::PointCloud<pcl::PointXYZ>> clusters;
+
+  // This method should return false (unimplemented)
+  EXPECT_FALSE(cluster->cluster(empty_cloud, clusters));
+}
+
+// Helper function: Generate a point cloud with multiple clusters
+sensor_msgs::msg::PointCloud2 generateMultiClusterPointCloud(
+  int point_per_cluster, int num_clusters)
+{
+  sensor_msgs::msg::PointCloud2 pointcloud;
+  setPointCloud2Fields(pointcloud);
+
+  int total_points = point_per_cluster * num_clusters;
+  pointcloud.data.resize(total_points * pointcloud.point_step);
+
+  // Generate points for each cluster
+  for (int c = 0; c < num_clusters; ++c) {
+    float offset_x =
+      c * 15.0;  // Distance between clusters should be greater than tolerance to ensure separation
+
+    for (int i = 0; i < point_per_cluster; ++i) {
+      PointXYZI point;
+      // Generate random points within each cluster
+      point.x = offset_x + std::experimental::randint(0, 30) / 100.0;
+      point.y = std::experimental::randint(0, 30) / 100.0;
+      point.z = std::experimental::randint(0, 30) / 1.0;
+      point.intensity = 0.0;
+
+      int idx = (c * point_per_cluster + i);
+      memcpy(&pointcloud.data[idx * pointcloud.point_step], &point, pointcloud.point_step);
+    }
+  }
+
+  pointcloud.width = total_points;
+  pointcloud.row_step = pointcloud.point_step * total_points;
+  return pointcloud;
+}
+
+// Test unimplemented cluster functions
+TEST(VoxelGridBasedEuclideanClusterTest, UnimplementedClusterMethod)
+{
+  auto cluster = std::make_shared<autoware::euclidean_cluster::VoxelGridBasedEuclideanCluster>();
+
+  // Test first unimplemented cluster method
+  pcl::PointCloud<pcl::PointXYZ>::ConstPtr empty_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+  std::vector<pcl::PointCloud<pcl::PointXYZ>> clusters;
+  EXPECT_FALSE(cluster->cluster(empty_cloud, clusters));
+
+  // Test second unimplemented cluster method
+  sensor_msgs::msg::PointCloud2::ConstSharedPtr msg =
+    std::make_shared<sensor_msgs::msg::PointCloud2>(generateMultiClusterPointCloud(5, 2));
+  autoware_perception_msgs::msg::DetectedObjects objects;
+  EXPECT_FALSE(cluster->cluster(msg, objects));
+}
+
+// Test diagnostics interface (indirectly)
+TEST(VoxelGridBasedEuclideanClusterTest, DiagnosticsInterface)
+{
+  // Create cluster
+  auto cluster = std::make_shared<autoware::euclidean_cluster::VoxelGridBasedEuclideanCluster>(
+    true, 5, 100, 0.5, 0.2, 1);
+
+  // Create a point cloud message
+  sensor_msgs::msg::PointCloud2::ConstSharedPtr msg =
+    std::make_shared<sensor_msgs::msg::PointCloud2>(generateMultiClusterPointCloud(5, 2));
+
+  // Indirectly test the diagnostics functionality by calling cluster
+  // At this point, the diagnostics interface is nullptr, which shouldn't affect functionality
+  autoware_perception_msgs::msg::DetectedObjects objects;
+  std::vector<pcl::PointCloud<pcl::PointXYZ>> clusters;
+
+  // Indirect call to diagnostics functionality shouldn't crash
+  EXPECT_TRUE(cluster->cluster(msg, objects, clusters));
+}
+
+// Test exceeding max_cluster_size case
+TEST(VoxelGridBasedEuclideanClusterTest, ExceedMaxClusterSize)
+{
+  // Create a cluster with a relatively small max_cluster_size
+  int max_cluster_size = 50;
+  auto cluster = std::make_shared<autoware::euclidean_cluster::VoxelGridBasedEuclideanCluster>(
+    true, 5, max_cluster_size, 0.5, 0.2, 1);
+
+  // Create a point cloud message with many points which should exceed max_cluster_size
+  sensor_msgs::msg::PointCloud2::ConstSharedPtr msg =
+    std::make_shared<sensor_msgs::msg::PointCloud2>(generateMultiClusterPointCloud(200, 1));
+
+  autoware_perception_msgs::msg::DetectedObjects objects;
+  std::vector<pcl::PointCloud<pcl::PointXYZ>> clusters;
+
+  // Even when exceeding max_cluster_size, function should return true
+  EXPECT_TRUE(cluster->cluster(msg, objects, clusters));
+
+  // But since too many points were filtered out, no objects should be detected
+  EXPECT_EQ(objects.objects.size(), 0);
+}
+
 int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
