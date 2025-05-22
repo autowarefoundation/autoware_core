@@ -420,12 +420,15 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
   // Attach orientation for all the points
   trajectory->align_orientation_with_trajectory_direction();
 
-  // Refine the trajectory by cropping
   const auto s_path_start = utils::get_arc_length_on_path(
     extended_lanelet_sequence, path_points_with_lane_id, extended_arc_length + s_start);
   const auto s_path_end = utils::get_arc_length_on_path(
     extended_lanelet_sequence, path_points_with_lane_id, extended_arc_length + s_end);
-  trajectory->crop(s_path_start, std::min(s_path_end, trajectory->length()) - s_path_start);
+
+  // Refine the trajectory by cropping
+  if (trajectory->length() - s_path_end > 0) {
+    trajectory->crop(0., s_path_end);
+  }
 
   // Check if the goal point is in the search range
   // Note: We only see if the goal is approaching the tail of the path.
@@ -442,6 +445,11 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
     }
   }
 
+  if (trajectory->length() - s_path_start > 0) {
+    trajectory->crop(s_path_start, trajectory->length() - s_path_start);
+  }
+
+  // Compose the polished path
   PathWithLaneId finalized_path_with_lane_id{};
   finalized_path_with_lane_id.points = trajectory->restore();
 
