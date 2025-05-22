@@ -248,6 +248,8 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
     lanelets.begin(), backward_lanelets_within_route->begin(),
     backward_lanelets_within_route->end());
 
+  //  Extend lanelets by backward_length even outside planned route to ensure
+  //  ego footprint is inside lanelets if ego is at the beginning of start lane
   auto backward_lanelets_length =
     lanelet::utils::getLaneletLength2d(*backward_lanelets_within_route);
   while (backward_lanelets_length < backward_length) {
@@ -270,6 +272,8 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
   lanelets.insert(
     lanelets.end(), forward_lanelets_within_route->begin(), forward_lanelets_within_route->end());
 
+  //  Extend lanelets by forward_length even outside planned route to ensure
+  //  ego footprint is inside lanelets if ego is at the end of goal lane
   auto forward_lanelets_length = lanelet::utils::getLaneletLength2d(*forward_lanelets_within_route);
   while (forward_lanelets_length < forward_length) {
     const auto next_lanelets = planner_data_.routing_graph_ptr->following(lanelets.back());
