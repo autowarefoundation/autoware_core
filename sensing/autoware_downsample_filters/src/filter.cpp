@@ -173,8 +173,7 @@ void autoware::downsample_filters::Filter::input_callback(const PointCloud2Const
       rclcpp::Duration::from_seconds(1.0));
     if (!tf_ptr) {
       RCLCPP_ERROR(
-        this->get_logger(),
-        "[input_callback] Error converting output dataset from %s to %s.",
+        this->get_logger(), "[input_callback] Error converting output dataset from %s to %s.",
         cloud_tf->header.frame_id.c_str(), tf_output_frame_.c_str());
       return;
     }
