@@ -11,75 +11,101 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-/*
- * Software License Agreement (BSD License)
- *
- *  Copyright (c) 2009, Willow Garage, Inc.
- *  All rights reserved.
- *
- *  Redistribution and use in source and binary forms, with or without
- *  modification, are permitted provided that the following conditions
- *  are met:
- *
- *   * Redistributions of source code must retain the above copyright
- *     notice, this list of conditions and the following disclaimer.
- *   * Redistributions in binary form must reproduce the above
- *     copyright notice, this list of conditions and the following
- *     disclaimer in the documentation and/or other materials provided
- *     with the distribution.
- *   * Neither the name of Willow Garage, Inc. nor the names of its
- *     contributors may be used to endorse or promote products derived
- *     from this software without specific prior written permission.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- *  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- *  COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- *  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- *  BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- *  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
- *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- *  POSSIBILITY OF SUCH DAMAGE.
- *
- * $Id: voxel_grid.cpp 35876 2011-02-09 01:04:36Z rusu $
- *
- */
 
 #ifndef AUTOWARE__DOWNSAMPLE_FILTERS__VOXEL_GRID_DOWNSAMPLE_FILTER_NODE_HPP_  // NOLINT
 #define AUTOWARE__DOWNSAMPLE_FILTERS__VOXEL_GRID_DOWNSAMPLE_FILTER_NODE_HPP_  // NOLINT
 
-#include "autoware/downsample_filters/filter.hpp"
-#include "autoware/downsample_filters/transform_info.hpp"
+#include "transform_info.hpp"
 
+#include <boost/thread/mutex.hpp>
+
+#include <string>
+
+// PCL includes
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/search/pcl_search.h>
+#include <sensor_msgs/msg/point_cloud2.hpp>
 
-#include <vector>
+// Include tier4 autoware utils
+#include <autoware_utils_debug/debug_publisher.hpp>
+#include <autoware_utils_debug/published_time_publisher.hpp>
+#include <autoware_utils_system/stop_watch.hpp>
+#include <autoware_utils_tf/transform_listener.hpp>
 
 namespace autoware::downsample_filters
 {
-class VoxelGridDownsampleFilter : public autoware::downsample_filters::Filter
+class VoxelGridDownsampleFilter : public rclcpp::Node
 {
-protected:
-  void filter(const PointCloud2ConstPtr & input, PointCloud2 & output) override;
-
-  // TODO(atsushi421): Temporary Implementation: Remove this interface when all the filter nodes
-  // conform to new API
-  void faster_filter(
-    const PointCloud2ConstPtr & input, PointCloud2 & output,
-    const TransformInfo & transform_info) override;
-
-private:
-  float voxel_size_x_;
-  float voxel_size_y_;
-  float voxel_size_z_;
-
 public:
+  using PointCloud2 = sensor_msgs::msg::PointCloud2;
+  using PointCloud2ConstPtr = sensor_msgs::msg::PointCloud2::ConstSharedPtr;
+
   PCL_MAKE_ALIGNED_OPERATOR_NEW
   explicit VoxelGridDownsampleFilter(const rclcpp::NodeOptions & options);
+
+private:
+  /** \brief The input PointCloud2 subscriber. */
+  rclcpp::Subscription<PointCloud2>::SharedPtr sub_input_;
+
+  /** \brief The output PointCloud2 publisher. */
+  rclcpp::Publisher<PointCloud2>::SharedPtr pub_output_;
+
+  /** \brief transform listener */
+  std::unique_ptr<autoware_utils_tf::TransformListener> transform_listener_{nullptr};
+
+  /** \brief processing time publisher. **/
+  std::unique_ptr<autoware_utils_system::StopWatch<std::chrono::milliseconds>> stop_watch_ptr_;
+  std::unique_ptr<autoware_utils_debug::DebugPublisher> debug_publisher_;
+  std::unique_ptr<autoware_utils_debug::PublishedTimePublisher> published_time_publisher_;
+
+
+  /** \brief PointCloud2 data callback. */
+  void input_callback(const PointCloud2ConstPtr cloud);
+
+  /** \brief Convert output to PointCloud2. */
+  bool convert_output_costly(std::unique_ptr<PointCloud2> & output);
+
+  /** \brief apply voxel grid downsample filter and transform point cloud */
+  /** \param input input point cloud */
+  /** \param output output point cloud */
+  /** \param transform_info transform info */
+  void filter(
+    const PointCloud2ConstPtr & input, PointCloud2 & output,
+    const TransformInfo & transform_info);
+
+  /** \brief voxel size x */
+  float voxel_size_x_;
+  /** \brief voxel size y */
+  float voxel_size_y_;
+  /** \brief voxel size z */
+  float voxel_size_z_;
+  /** \brief The input TF frame the data should be transformed into,
+   * if input.header.frame_id is different. */
+  std::string tf_input_frame_;
+  /** \brief The original data input TF frame. */
+  std::string tf_input_orig_frame_;
+  /** \brief The output TF frame the data should be transformed into,
+   * if input.header.frame_id is different. */
+  std::string tf_output_frame_;
+  /** \brief Internal mutex. */
+  std::mutex mutex_;
+  /** \brief The maximum queue size (default: 3). */
+  size_t max_queue_size_ = 3;
+
+  /** \brief check if point cloud is valid */
+  /** \param cloud point cloud */
+  /** \return true if point cloud is valid, false otherwise */
+  bool is_valid(const PointCloud2ConstPtr & cloud);
+
+  /** \brief calculate transform matrix */
+  /** \param target_frame target frame */
+  /** \param from point cloud with original frame id and timestamp */
+  /** \param transform_info transform info */
+  /** \return true if transform matrix is calculated, false otherwise */
+  bool calculate_transform_matrix(
+    const std::string & target_frame, const sensor_msgs::msg::PointCloud2 & from,
+    TransformInfo & transform_info /*output*/);
+
 };
 }  // namespace autoware::downsample_filters
 

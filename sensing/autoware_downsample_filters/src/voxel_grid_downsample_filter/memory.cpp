@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/downsample_filters/memory.hpp"
+#include "memory.hpp"
 
 #include <autoware/point_types/types.hpp>
 

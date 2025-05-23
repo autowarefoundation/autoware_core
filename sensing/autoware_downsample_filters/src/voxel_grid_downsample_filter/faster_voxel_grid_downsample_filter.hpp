@@ -15,7 +15,7 @@
 #ifndef AUTOWARE__DOWNSAMPLE_FILTERS__FASTER_VOXEL_GRID_DOWNSAMPLE_FILTER_HPP_
 #define AUTOWARE__DOWNSAMPLE_FILTERS__FASTER_VOXEL_GRID_DOWNSAMPLE_FILTER_HPP_
 
-#include "autoware/downsample_filters/transform_info.hpp"
+#include "transform_info.hpp"
 
 #include <pcl/filters/voxel_grid.h>
 #include <pcl_conversions/pcl_conversions.h>

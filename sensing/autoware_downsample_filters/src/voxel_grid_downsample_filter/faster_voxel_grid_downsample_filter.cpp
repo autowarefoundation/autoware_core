@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/downsample_filters/faster_voxel_grid_downsample_filter.hpp"
+#include "faster_voxel_grid_downsample_filter.hpp"
 
 #include <cfloat>
 #include <unordered_map>
