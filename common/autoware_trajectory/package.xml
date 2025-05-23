@@ -14,6 +14,7 @@
 
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
   <buildtool_depend>autoware_cmake</buildtool_depend>
+  <buildtool_depend>python_cmake_module</buildtool_depend>
 
   <depend>autoware_internal_planning_msgs</depend>
   <depend>autoware_planning_msgs</depend>
@@ -33,6 +34,8 @@
   <test_depend>autoware_test_utils</test_depend>
   <test_depend>autoware_utils_geometry</test_depend>
   <test_depend>pybind11_vendor</test_depend>
+  <test_depend>python3-dev</test_depend>
+  <test_depend>python3-matplotlib</test_depend>
   <test_depend>range-v3</test_depend>
 
   <export>

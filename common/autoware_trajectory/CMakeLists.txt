@@ -64,11 +64,17 @@ if(BUILD_TESTING)
 
   add_definitions("-Wno-attributes")
   find_package(ament_lint_auto REQUIRED)
+  find_package(python_cmake_module REQUIRED)
+  find_package(
+    Python3
+    COMPONENTS Interpreter Development
+    REQUIRED)
   find_package(autoware_pyplot REQUIRED)
   find_package(autoware_utils_geometry REQUIRED)
   find_package(range-v3 REQUIRED)
   find_package(autoware_test_utils REQUIRED)
   ament_lint_auto_find_test_dependencies()
+  find_package(pybind11_vendor REQUIRED)
   find_package(pybind11 REQUIRED)
   include_directories(${autoware_pyplot_INCLUDE_DIRS})
   include_directories(${autoware_test_utils_INCLUDE_DIRS})
@@ -84,6 +90,7 @@ if(BUILD_TESTING)
       ${autoware_motion_utils_LIBRARIES}
       ${autoware_pyplot_LIBRARIES}
       range-v3::range-v3
+      Python3::Python
       pybind11::embed
       ${autoware_test_utils_LIBRARIES}
     )
