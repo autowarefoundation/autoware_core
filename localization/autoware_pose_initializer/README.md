@@ -55,7 +55,7 @@ If the score of initial pose estimation result is lower than score threshold, ER
 
 This `autoware_pose_initializer` is used via default AD API. For detailed description of the API description, please refer to [the description of `autoware_default_adapi`](https://github.com/autowarefoundation/autoware_universe/blob/main/system/autoware_default_adapi/document/localization.md).
 
-<img src="../../system/autoware_default_adapi/document/images/localization.drawio.svg" alt="drawing" width="800"/>
+<img src="https://github.com/autowarefoundation/autoware_universe/blob/main/system/autoware_default_adapi/document/images/localization.drawio.svg" alt="drawing" width="800"/>
 
 ## Initialize pose via CLI
 
