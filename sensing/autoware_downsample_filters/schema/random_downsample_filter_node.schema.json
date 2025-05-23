@@ -11,6 +11,12 @@
           "minimum": 0,
           "description": "number of indices to be sampled",
           "default": "1500"
+        },
+        "max_queue_size": {
+          "type": "number",
+          "description": "max buffer size of input/output topics",
+          "default": "5",
+          "minimum": 0
         }
       },
       "required": ["sample_num"],
