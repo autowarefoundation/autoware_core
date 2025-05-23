@@ -48,14 +48,6 @@ This algorithm samples a single actual point existing within the voxel, not the 
 
 ### Node Parameters
 
-#### pickup_based_voxel_grid_downsample_filter_node
-
-| Name           | Type   | Default Value | Description          |
-| -------------- | ------ | ------------- | -------------------- |
-| `voxel_size_x` | double | 1.0           | x value of the voxel |
-| `voxel_size_y` | double | 1.0           | y value of the voxel |
-| `voxel_size_z` | double | 1.0           | z value of the voxel |
-
 #### random_downsample_filter_node
 
 | Name         | Type   | Default Value | Description          |
@@ -87,10 +79,6 @@ ros2 launch autoware_downsample_filters random_downsample_filter_node.launch.xml
 ### 3. launch rviz2 and AWSIM to check the downsample result
 
 ## Assumptions / Known limits
-
-<!-- cspell: ignore martinus -->
-
-This implementation uses the `robin_hood.h` hashing library by martinus, available under the MIT License at [martinus/robin-hood-hashing](https://github.com/martinus/robin-hood-hashing) on GitHub. Special thanks to martinus for this contribution.
 
 ## (Optional) Error detection and handling
 
