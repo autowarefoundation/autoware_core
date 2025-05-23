@@ -21,6 +21,7 @@
 #include <autoware_lanelet2_extension/utility/message_conversion.hpp>
 #include <autoware_utils_pcl/transforms.hpp>
 #include <autoware_utils_rclcpp/parameter.hpp>
+#include <tf2_eigen/tf2_eigen.hpp>
 
 #include <diagnostic_msgs/msg/diagnostic_status.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
@@ -29,11 +30,9 @@
 #include <pcl/common/transforms.h>
 #include <pcl_conversions/pcl_conversions.h>
 
-#include <string>
-#include <tf2_eigen/tf2_eigen.hpp>
-
 #include <functional>
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace autoware::behavior_velocity_planner

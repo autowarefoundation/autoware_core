@@ -20,7 +20,6 @@
 #include <tf2/utils.hpp>
 
 #include <geometry_msgs/msg/quaternion.hpp>
-
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
 #include <vector>

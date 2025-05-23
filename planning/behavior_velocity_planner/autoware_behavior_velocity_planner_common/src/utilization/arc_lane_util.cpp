@@ -13,10 +13,9 @@
 // limitations under the License.
 
 #include <autoware/behavior_velocity_planner_common/utilization/arc_lane_util.hpp>
+#include <tf2_eigen/tf2_eigen.hpp>
 
 #include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
-
-#include <tf2_eigen/tf2_eigen.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
 #include <utility>

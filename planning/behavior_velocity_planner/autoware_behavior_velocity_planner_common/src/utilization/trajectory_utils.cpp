@@ -23,14 +23,12 @@
 
 #include <autoware_internal_planning_msgs/msg/path_point_with_lane_id.hpp>
 #include <geometry_msgs/msg/quaternion.hpp>
-
-#include <iostream>
-#include <utility>
-#include <vector>
-
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
+#include <iostream>
 #include <memory>
+#include <utility>
+#include <vector>
 
 namespace autoware::behavior_velocity_planner
 {
