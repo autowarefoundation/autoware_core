@@ -30,11 +30,7 @@ namespace autoware::downsample_filters
  */
 struct TransformInfo
 {
-  TransformInfo()
-  {
-    eigen_transform = Eigen::Matrix4f::Identity(4, 4);
-    need_transform = false;
-  }
+  TransformInfo() : eigen_transform(Eigen::Matrix4f::Identity(4, 4)), need_transform(false) {}
 
   Eigen::Matrix4f eigen_transform;
   bool need_transform;

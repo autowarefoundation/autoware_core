@@ -34,18 +34,14 @@
 namespace autoware::downsample_filters
 {
 VoxelGridDownsampleFilter::VoxelGridDownsampleFilter(const rclcpp::NodeOptions & options)
-: rclcpp::Node("VoxelGridDownsampleFilter", options)
+: rclcpp::Node("VoxelGridDownsampleFilter", options),
+  voxel_size_x_(declare_parameter<float>("voxel_size_x")),
+  voxel_size_y_(declare_parameter<float>("voxel_size_y")),
+  voxel_size_z_(declare_parameter<float>("voxel_size_z")),
+  tf_input_frame_(declare_parameter<std::string>("input_frame")),
+  tf_output_frame_(declare_parameter<std::string>("output_frame")),
+  max_queue_size_(static_cast<std::size_t>(declare_parameter<int64_t>("max_queue_size")))
 {
-  // set initial parameters
-  {
-    tf_input_frame_ = declare_parameter<std::string>("input_frame");
-    tf_output_frame_ = declare_parameter<std::string>("output_frame");
-    max_queue_size_ = static_cast<std::size_t>(declare_parameter<int64_t>("max_queue_size"));
-    voxel_size_x_ = declare_parameter<float>("voxel_size_x");
-    voxel_size_y_ = declare_parameter<float>("voxel_size_y");
-    voxel_size_z_ = declare_parameter<float>("voxel_size_z");
-  }
-
   // Set publishers
   {
     rclcpp::PublisherOptions pub_options;

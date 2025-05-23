@@ -49,7 +49,7 @@ private:
     float intensity;
     uint32_t point_count_;
 
-    Centroid() : x(0), y(0), z(0), intensity(0) {}
+    Centroid() : x(0), y(0), z(0), intensity(0), point_count_(1) {}
     Centroid(float _x, float _y, float _z, float _intensity)
     : x(_x), y(_y), z(_z), intensity(_intensity)
     {
@@ -83,7 +83,7 @@ private:
   bool offset_initialized_;
 
   Eigen::Vector4f get_point_from_global_offset(
-    const PointCloud2ConstPtr & input, size_t global_offset);
+    const PointCloud2ConstPtr & input, size_t global_offset) const;
 
   bool get_min_max_voxel(
     const PointCloud2ConstPtr & input, Eigen::Vector3i & min_voxel, Eigen::Vector3i & max_voxel);
@@ -93,8 +93,8 @@ private:
     const Eigen::Vector3i & min_voxel);
 
   void copy_centroids_to_output(
-    std::unordered_map<uint32_t, Centroid> & voxel_centroid_map, PointCloud2 & output,
-    const TransformInfo & transform_info);
+    const std::unordered_map<uint32_t, Centroid> & voxel_centroid_map, PointCloud2 & output,
+    const TransformInfo & transform_info) const;
 };
 
 }  // namespace autoware::downsample_filters

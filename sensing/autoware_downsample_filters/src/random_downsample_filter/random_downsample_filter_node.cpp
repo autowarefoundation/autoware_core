@@ -27,15 +27,13 @@
 namespace autoware::downsample_filters
 {
 RandomDownsampleFilter::RandomDownsampleFilter(const rclcpp::NodeOptions & options)
-: Node("RandomDownsampleFilter", options)
+: Node("RandomDownsampleFilter", options),
+  tf_input_frame_(declare_parameter<std::string>("input_frame")),
+  tf_output_frame_(declare_parameter<std::string>("output_frame")),
+  sample_num_(static_cast<size_t>(declare_parameter<int64_t>("sample_num"))),
+  max_queue_size_(static_cast<size_t>(declare_parameter<int64_t>("max_queue_size")))
 {
-  // set initial parameters
   {
-    tf_input_frame_ = declare_parameter<std::string>("input_frame");
-    tf_output_frame_ = declare_parameter<std::string>("output_frame");
-    max_queue_size_ = static_cast<std::size_t>(declare_parameter<int64_t>("max_queue_size"));
-    sample_num_ = static_cast<size_t>(declare_parameter<int64_t>("sample_num"));
-
     RCLCPP_DEBUG_STREAM(
       this->get_logger(),
       "Filter (as Component) successfully created with the following parameters:"

@@ -22,6 +22,11 @@ namespace autoware::downsample_filters
 
 FasterVoxelGridDownsampleFilter::FasterVoxelGridDownsampleFilter()
 {
+  x_offset_ = 0;
+  y_offset_ = 0;
+  z_offset_ = 0;
+  intensity_index_ = 0;
+  intensity_offset_ = 0;
   offset_initialized_ = false;
 }
 
@@ -96,7 +101,7 @@ void FasterVoxelGridDownsampleFilter::filter(
 }
 
 Eigen::Vector4f FasterVoxelGridDownsampleFilter::get_point_from_global_offset(
-  const PointCloud2ConstPtr & input, size_t global_offset)
+  const PointCloud2ConstPtr & input, size_t global_offset) const
 {
   float intensity = 0.0;
   if (intensity_index_ >= 0) {
@@ -180,8 +185,8 @@ FasterVoxelGridDownsampleFilter::calc_centroids_each_voxel(
 }
 
 void FasterVoxelGridDownsampleFilter::copy_centroids_to_output(
-  std::unordered_map<uint32_t, Centroid> & voxel_centroid_map, PointCloud2 & output,
-  const TransformInfo & transform_info)
+  const std::unordered_map<uint32_t, Centroid> & voxel_centroid_map, PointCloud2 & output,
+  const TransformInfo & transform_info) const
 {
   size_t output_data_size = 0;
   for (const auto & pair : voxel_centroid_map) {
