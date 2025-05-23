@@ -913,7 +913,13 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::plan_stop(
   const auto stop_point = calc_stop_point(
     planner_data, traj_points, dist_to_bumper, determined_stop_obstacle, determined_zero_vel_dist);
 
-  // Update path length buffer with current stop point
+  if (determined_stop_obstacle->velocity >= stop_planning_param_.max_negative_velocity) {
+    // set stop_planning_debug_info
+    set_stop_planning_debug_info(determined_stop_obstacle, determined_desired_stop_margin);
+
+    return stop_point;
+  }
+    // Update path length buffer with current stop point
   path_length_buffer_.update_buffer(
     stop_point,
     [traj_points](const geometry_msgs::msg::Point & point) {
@@ -931,10 +937,7 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::plan_stop(
     return std::make_optional(buffered_stop->stop_point);
   }
 
-  // set stop_planning_debug_info
-  set_stop_planning_debug_info(determined_stop_obstacle, determined_desired_stop_margin);
-
-  return stop_point;
+  return std::nullopt;
 }
 
 double ObstacleStopModule::calc_desired_stop_margin(
