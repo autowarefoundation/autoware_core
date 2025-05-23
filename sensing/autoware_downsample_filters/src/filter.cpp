@@ -150,13 +150,11 @@ void autoware::downsample_filters::Filter::input_callback(const PointCloud2Const
     return;
   }
 
-  /// DEBUG
   RCLCPP_DEBUG(
     this->get_logger(),
     "[input_callback] PointCloud with %d data points and frame %s on input topic "
     "received.",
     cloud->width * cloud->height, cloud->header.frame_id.c_str());
-  ///
 
   // Check whether the user has given a different input TF frame
   tf_input_orig_frame_ = cloud->header.frame_id;
