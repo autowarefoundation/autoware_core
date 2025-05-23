@@ -1,3 +1,4 @@
 /**:
   ros__parameters:
-    sample_num: 1500
+    sample_num: 20000
+    max_queue_size: 3
