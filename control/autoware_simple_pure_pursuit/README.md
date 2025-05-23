@@ -4,7 +4,31 @@ The `simple_pure_pursuit` node receives a reference trajectory from `motion_velo
 
 ## Flowchart
 
-![Flowchart](https://www.plantuml.com/plantuml/png/LOuxSWCn28PxJa5fNy5Rn4NkiKCaB3D1Q4T2XMyVeZZEH8q6_iV7TJXrdrN1nPMnsUvIkSFQ0roSFlcTd3QG6vvaO8u1ErD-l9tHxsnuUl0u0-jWG1pU3c3BSWCelSq3KvYTzzJCUzFuQoNBOVqk32tTEMDffF_xCDxbc1yguxvQyPdSbhGuY3-aS2RIj6kp8Zwp6EalS7kfmvcxMDd9Yl86aSLr8i0Bz0pziM21hk6TLRy0)
+```plantuml
+@startuml
+title on_timer
+start
+
+:takeData;
+if (is data ready?) then (yes)
+else
+  stop
+endif
+
+group create_control_command
+  if (reached goal?) then (yes)
+    :publish stop command;
+    stop
+  endif
+  :calc_longitudinal_control;
+  :calc_steering_angle;
+end group
+
+:publish control command;
+
+stop
+@enduml
+```
 
 ## Input topics
 

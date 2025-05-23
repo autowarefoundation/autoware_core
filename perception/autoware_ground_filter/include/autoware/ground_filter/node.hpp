@@ -26,6 +26,8 @@
 #include <boost/thread/mutex.hpp>
 
 // PCL includes
+#include <tf2/transform_datatypes.hpp>
+
 #include <pcl_msgs/msg/point_indices.hpp>
 
 #include <pcl/filters/extract_indices.h>
@@ -34,7 +36,6 @@
 #include <pcl/pcl_base.h>
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
-#include <tf2/transform_datatypes.h>
 
 // PCL includes
 #if __has_include(<message_filters/subscriber.hpp>)

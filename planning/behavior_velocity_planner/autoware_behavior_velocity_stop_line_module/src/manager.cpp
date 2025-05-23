@@ -45,31 +45,29 @@ std::vector<StopLineWithLaneId> StopLineModuleManager::getStopLinesWithLaneIdOnP
 {
   std::vector<StopLineWithLaneId> stop_lines_with_lane_id;
 
-  for (const auto & m : planning_utils::getRegElemMapOnPath<TrafficSign>(
+  for (const auto & [traffic_sign_reg_elem, lanelet] :
+       planning_utils::getRegElemMapOnPath<TrafficSign>(
          path, lanelet_map, planner_data_->current_odometry->pose)) {
-    const auto & traffic_sign_reg_elem = m.first;
-    const int64_t lane_id = m.second.id();
-    // Is stop sign?
     if (traffic_sign_reg_elem->type() != "stop_sign") {
       continue;
     }
 
     for (const auto & stop_line : traffic_sign_reg_elem->refLines()) {
-      stop_lines_with_lane_id.emplace_back(stop_line, lane_id);
+      stop_lines_with_lane_id.emplace_back(stop_line, lanelet.id());
     }
   }
 
   return stop_lines_with_lane_id;
 }
 
-std::set<int64_t> StopLineModuleManager::getStopLineIdSetOnPath(
+std::set<lanelet::Id> StopLineModuleManager::getStopLineIdSetOnPath(
   const autoware_internal_planning_msgs::msg::PathWithLaneId & path,
   const lanelet::LaneletMapPtr lanelet_map)
 {
-  std::set<int64_t> stop_line_id_set;
+  std::set<lanelet::Id> stop_line_id_set;
 
-  for (const auto & stop_line_with_lane_id : getStopLinesWithLaneIdOnPath(path, lanelet_map)) {
-    stop_line_id_set.insert(stop_line_with_lane_id.first.id());
+  for (const auto & [stop_line, linked_lane_id] : getStopLinesWithLaneIdOnPath(path, lanelet_map)) {
+    stop_line_id_set.insert(stop_line.id());
   }
 
   return stop_line_id_set;
@@ -78,13 +76,19 @@ std::set<int64_t> StopLineModuleManager::getStopLineIdSetOnPath(
 void StopLineModuleManager::launchNewModules(
   const autoware_internal_planning_msgs::msg::PathWithLaneId & path)
 {
-  for (const auto & stop_line_with_lane_id :
+  for (const auto & [stop_line, linked_lane_id] :
        getStopLinesWithLaneIdOnPath(path, planner_data_->route_handler_->getLaneletMapPtr())) {
-    const auto module_id = stop_line_with_lane_id.first.id();
+    const auto module_id = stop_line.id();
     if (!isModuleRegistered(module_id)) {
       registerModule(std::make_shared<StopLineModule>(
-        module_id, stop_line_with_lane_id.first, planner_param_,
-        logger_.get_child("stop_line_module"), clock_, time_keeper_, planning_factor_interface_));
+        module_id,                              //
+        stop_line,                              //
+        linked_lane_id,                         //
+        planner_param_,                         //
+        logger_.get_child("stop_line_module"),  //
+        clock_,                                 //
+        time_keeper_,                           //
+        planning_factor_interface_));
     }
   }
 }

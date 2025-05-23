@@ -145,6 +145,9 @@ size_t get_index_with_longitudinal_offset(
 double calc_possible_min_dist_from_obj_to_traj_poly(
   const std::shared_ptr<PlannerData::Object> object,
   const std::vector<TrajectoryPoint> & traj_points, const VehicleInfo & vehicle_info);
-}  // namespace autoware::motion_velocity_planner::utils
 
+double get_dist_to_traj_poly(
+  const geometry_msgs::msg::Point & point,
+  const std::vector<autoware_utils::Polygon2d> & decimated_traj_polys);
+}  // namespace autoware::motion_velocity_planner::utils
 #endif  // AUTOWARE__MOTION_VELOCITY_PLANNER_COMMON__UTILS_HPP_

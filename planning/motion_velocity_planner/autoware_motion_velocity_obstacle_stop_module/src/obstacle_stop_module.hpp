@@ -101,7 +101,8 @@ private:
 
   std::vector<geometry_msgs::msg::Point> convert_point_cloud_to_stop_points(
     const PlannerData::Pointcloud & pointcloud, const std::vector<TrajectoryPoint> & traj_points,
-    const VehicleInfo & vehicle_info, size_t ego_idx);
+    const std::vector<Polygon2d> & decimated_traj_polys, const VehicleInfo & vehicle_info,
+    size_t ego_idx);
 
   std::vector<Polygon2d> get_trajectory_polygon_for_inside(
     const std::vector<TrajectoryPoint> & decimated_traj_points, const VehicleInfo & vehicle_info,

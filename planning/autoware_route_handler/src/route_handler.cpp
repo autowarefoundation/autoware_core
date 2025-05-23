@@ -19,9 +19,10 @@
 #include <autoware_lanelet2_extension/utility/query.hpp>
 #include <autoware_lanelet2_extension/utility/route_checker.hpp>
 #include <autoware_lanelet2_extension/utility/utilities.hpp>
-#include <autoware_utils/geometry/geometry.hpp>
-#include <autoware_utils/math/normalization.hpp>
+#include <autoware_utils_geometry/geometry.hpp>
+#include <autoware_utils_math/normalization.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <tf2/utils.hpp>
 
 #include <autoware_internal_planning_msgs/msg/path_point_with_lane_id.hpp>
 #include <autoware_planning_msgs/msg/lanelet_primitive.hpp>
@@ -32,7 +33,6 @@
 #include <lanelet2_routing/Route.h>
 #include <lanelet2_routing/RoutingGraph.h>
 #include <lanelet2_routing/RoutingGraphContainer.h>
-#include <tf2/utils.h>
 
 #include <algorithm>
 #include <functional>
@@ -41,6 +41,7 @@
 #include <memory>
 #include <optional>
 #include <set>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -54,8 +55,8 @@ using autoware_internal_planning_msgs::msg::PathPointWithLaneId;
 using autoware_internal_planning_msgs::msg::PathWithLaneId;
 using autoware_planning_msgs::msg::LaneletPrimitive;
 using autoware_planning_msgs::msg::Path;
-using autoware_utils::create_point;
-using autoware_utils::create_quaternion_from_yaw;
+using autoware_utils_geometry::create_point;
+using autoware_utils_geometry::create_quaternion_from_yaw;
 using geometry_msgs::msg::Pose;
 using lanelet::utils::to2D;
 
@@ -119,7 +120,9 @@ PathWithLaneId removeOverlappingPoints(const PathWithLaneId & input_path)
     }
 
     constexpr double min_dist = 0.001;
-    if (autoware_utils::calc_distance3d(filtered_path.points.back().point, pt.point) < min_dist) {
+    if (
+      autoware_utils_geometry::calc_distance3d(filtered_path.points.back().point, pt.point) <
+      min_dist) {
       filtered_path.points.back().lane_ids.push_back(pt.lane_ids.front());
       filtered_path.points.back().point.longitudinal_velocity_mps = std::min(
         pt.point.longitudinal_velocity_mps,
@@ -180,6 +183,18 @@ lanelet::ArcCoordinates calcArcCoordinates(
   return lanelet::geometry::toArcCoordinates(
     to2D(lanelet.centerline()),
     to2D(lanelet::utils::conversion::toLaneletPoint(point)).basicPoint());
+}
+
+std::string convertLaneletsIdToString(const lanelet::ConstLanelets & lanelets)
+{
+  std::stringstream ss;
+  ss << "{";
+  for (const auto & lanelet : lanelets) {
+    ss << lanelet.id() << ",";
+  }
+  ss << "}";
+
+  return ss.str();
 }
 }  // namespace
 
@@ -1611,7 +1626,7 @@ PathWithLaneId RouteHandler::getCenterLinePath(
                                       : piecewise_ref_points.at(ref_point_idx);
 
       const double distance =
-        autoware_utils::calc_distance2d(ref_point.point, next_ref_point.point);
+        autoware_utils_geometry::calc_distance2d(ref_point.point, next_ref_point.point);
 
       if (s < s_start && s + distance > s_start) {
         const auto p =
@@ -1651,14 +1666,14 @@ PathWithLaneId RouteHandler::getCenterLinePath(
     double angle{0.0};
     const auto & pts = reference_path.points;
     if (i + 1 < reference_path.points.size()) {
-      angle = autoware_utils::calc_azimuth_angle(
+      angle = autoware_utils_geometry::calc_azimuth_angle(
         pts.at(i).point.pose.position, pts.at(i + 1).point.pose.position);
     } else if (i != 0) {
-      angle = autoware_utils::calc_azimuth_angle(
+      angle = autoware_utils_geometry::calc_azimuth_angle(
         pts.at(i - 1).point.pose.position, pts.at(i).point.pose.position);
     }
     reference_path.points.at(i).point.pose.orientation =
-      autoware_utils::create_quaternion_from_yaw(angle);
+      autoware_utils_geometry::create_quaternion_from_yaw(angle);
   }
 
   return reference_path;
@@ -1981,13 +1996,13 @@ bool RouteHandler::planPathLaneletsBetweenCheckpoints(
     // orientation is in yaw_threshold range
     double lanelet_angle = lanelet::utils::getLaneletAngle(st_llt, start_checkpoint.position);
     double pose_yaw = tf2::getYaw(start_checkpoint.orientation);
-    double angle_diff = std::abs(autoware_utils::normalize_radian(lanelet_angle - pose_yaw));
+    double angle_diff = std::abs(autoware_utils_math::normalize_radian(lanelet_angle - pose_yaw));
 
     bool is_proper_angle = angle_diff <= std::abs(yaw_threshold);
 
     optional_route = routing_graph_ptr_->getRoute(st_llt, goal_lanelet, 0);
     if (!optional_route || !is_proper_angle) {
-      RCLCPP_ERROR_STREAM(
+      RCLCPP_DEBUG_STREAM(
         logger_, "Failed to find a proper route!"
                    << std::endl
                    << " - start checkpoint: " << toString(start_checkpoint) << std::endl
@@ -2031,6 +2046,14 @@ bool RouteHandler::planPathLaneletsBetweenCheckpoints(
     for (const auto & llt : path) {
       path_lanelets->push_back(llt);
     }
+  } else {
+    RCLCPP_ERROR_STREAM(
+      logger_, "Failed to find a proper route!"
+                 << std::endl
+                 << " - start checkpoint: " << toString(start_checkpoint) << std::endl
+                 << " - goal checkpoint: " << toString(goal_checkpoint) << std::endl
+                 << " - start lane ids: " << convertLaneletsIdToString(start_lanelets) << std::endl
+                 << " - goal lane id: " << goal_lanelet.id() << std::endl);
   }
 
   return is_route_found;

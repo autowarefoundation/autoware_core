@@ -9,25 +9,30 @@
         "lookahead_gain": {
           "type": "number",
           "description": "Gain for lookahead distance calculation: {lookahead distance} = lookahead_gain * {target velocity} + lookahead_min_distance",
+          "default": 1.0,
           "minimum": 0.0
         },
         "lookahead_min_distance": {
           "type": "number",
           "description": "Minimum lookahead distance [m]",
+          "default": 1.0,
           "minimum": 0.0
         },
         "speed_proportional_gain": {
           "type": "number",
           "description": "Gain for longitudinal acceleration calculation: {longitudinal acceleration} = speed_proportional_gain * ({target velocity} - {current velocity})",
+          "default": 1.0,
           "minimum": 0.0
         },
         "use_external_target_vel": {
           "type": "boolean",
-          "description": "Whether to use external target velocity"
+          "description": "Whether to use external target velocity",
+          "default": false
         },
         "external_target_vel": {
           "type": "number",
           "description": "External target velocity [m/s]",
+          "default": 1.0,
           "minimum": 0.0
         }
       },

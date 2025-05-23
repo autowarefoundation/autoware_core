@@ -48,7 +48,77 @@ This node always publishes a hazard signal of `autoware_vehicle_msgs::msg::Hazar
 
 ## Flowchart
 
-![Flowchart](https://www.plantuml.com/plantuml/png/dLHHajem3FttAVJ9NW4witkJZ8YLnBD6JcKPIa_VHWunsytEjEM3CRBUqzEJp5jM52sNw3He9932paBE7HNVgVEeU7B7JDhD4Pb9rb0Ou12o_UY4qDzVG2TYEDmflpYAcU30wSK1P4sp8_PXS6wKL6POcBePTN80DJ8Iaw3I8mfmBBDV0dqH8TOk8bCaFTNBaHJMI8PRq2amI2fAzNuHjp31EHNs6IQy4WHMaaozXiJvzODS06F564O60n9xu_s0WZa5NYLOGtQwJI4I73POo92Avk0917aaICEczNMhHJ-KsBScXYGt5B-H6-idVflDVrOuO_--NyByGhx33U_MOktwYj4ABbYQGkFQTU_hUlj-3Kc0i9-WfwKOnC1K3QwCLLMwaaISP_9mRlhgrkofM6SlT0sfv7Y7Hh2cRubFExfzZkZzLYM39jk6sa7hOWVVq0PzHZRS9z-FlQIv9PhsCM5S9XmOCg7qqphZnQzyIKadi9G-CTUrt9t69VamtEqzTR-XNOLs2xHhq3zdipnqU7ev9sUtrM_NJkxnRBNJ8jpbC396ztcunjMcQXqk2F11geIbrqpcM9z4AC-9VU3niKWxtHaBZMcrQP34-lG6ljuB7x8YzmIQ7idm3Puww1uP-nm0Ho6JRryLSuA_Me-cUiQSoOFGznA4FEHgnB-KtAzevtPgo_OykUDSpZ7awIDV2q_u4yNlNDGrTVPt_aRiooN-0W00)
+```plantuml
+@startuml
+title run
+start
+
+:take_data;
+:set_planner_data;
+if (is_data_ready) then (yes)
+else (no)
+  stop
+endif
+
+group plan_path
+  group generate_path
+    :update_current_lanelet;
+    :get lanelets within route;
+    if (path bounds have intersections?) then (yes)
+      :align path end with intersection point;
+    endif
+    while (path end is outside range of lanelets?)
+      :extend lanelets forward;
+    endwhile
+    while (path start is outside range of lanelets?)
+      :extend lanelets backward;
+    endwhile
+    if (any waypoint interval starts behind lanelets?) then (yes)
+      :extend lanelets backward;
+    endif
+    while (for each center line point)
+      if (overlapped by waypoint group?) then (yes)
+        if (previously overlapped?) then
+        else (no)
+          :add waypoints to path;
+        endif
+      else (no)
+        :add point to path;
+      endif
+    endwhile
+    :crop path;
+    if (goal is in search range for smooth goal connection?) then (yes)
+      :modify_path_for_smooth_goal_connection;
+    endif
+    :set path bounds;
+  end group
+end group
+
+group get_turn_signal
+  while (for each path point)
+    if (turn direction is set to corresponding lanelet?) then (yes)
+      if (ego is in front of lanelet?) then (yes)
+        if (distance to lanelet < turn_signal_distance?) then (yes)
+          :return turn signal;
+        endif
+      else (no)
+        if (ego passed required section?) then (yes)
+          :return turn signal;
+        endif
+      endif
+    endif
+  endwhile
+end group
+
+:publish turn signal;
+
+:publish hazard signal;
+
+:publish path;
+
+stop
+@enduml
+```
 
 ## Input topics
 

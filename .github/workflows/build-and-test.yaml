@@ -17,7 +17,18 @@ env:
 jobs:
   build-and-test:
     runs-on: ubuntu-24.04
-    container: ghcr.io/autowarefoundation/autoware:core-common-devel
+    container: ${{ matrix.container }}
+    strategy:
+      fail-fast: false
+      matrix:
+        rosdistro:
+          - humble
+          - jazzy
+        include:
+          - rosdistro: humble
+            container: ghcr.io/autowarefoundation/autoware:core-common-devel
+          - rosdistro: jazzy
+            container: ros:jazzy
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -37,8 +48,21 @@ jobs:
         id: get-self-packages
         uses: autowarefoundation/autoware-github-actions/get-self-packages@v1
 
+      - name: Use ros2-testing packages
+        run: |
+          if [ "${{ matrix.rosdistro }}" = "jazzy" ]; then
+            sed -i 's|http://packages.ros.org/ros2/ubuntu|http://packages.ros.org/ros2-testing/ubuntu|g' /etc/apt/sources.list.d/ros2-latest.list
+            apt-get update
+          fi
+        shell: bash
+
       - name: Create ccache directory
         run: |
+          if [ -z "${CCACHE_DIR}" ]; then
+            apt-get update
+            apt-get install -y ccache
+            export CCACHE_DIR=/root/.ccache
+          fi
           mkdir -p ${CCACHE_DIR}
           du -sh ${CCACHE_DIR} && ccache -s
         shell: bash
@@ -48,9 +72,9 @@ jobs:
         with:
           path: |
             /root/.ccache
-          key: ccache-main-${{ runner.arch }}-humble-${{ github.sha }}
+          key: ccache-main-${{ runner.arch }}-${{ matrix.rosdistro }}-${{ github.sha }}
           restore-keys: |
-            ccache-main-${{ runner.arch }}-humble-
+            ccache-main-${{ runner.arch }}-${{ matrix.rosdistro }}-
 
       - name: Limit ccache size
         run: |
@@ -68,7 +92,7 @@ jobs:
         if: ${{ steps.get-self-packages.outputs.self-packages != '' }}
         uses: autowarefoundation/autoware-github-actions/colcon-build@v1
         with:
-          rosdistro: humble
+          rosdistro: ${{ matrix.rosdistro }}
           target-packages: ${{ steps.get-self-packages.outputs.self-packages }}
           build-pre-command: taskset --cpu-list 0-6
           underlay-workspace: /opt/autoware
@@ -82,14 +106,14 @@ jobs:
         with:
           path: |
             /root/.ccache
-          key: ccache-main-${{ runner.arch }}-humble-${{ github.sha }}
+          key: ccache-main-${{ runner.arch }}-${{ matrix.rosdistro }}-${{ github.sha }}
 
       - name: Test
         if: ${{ steps.get-self-packages.outputs.self-packages != '' }}
         id: test
         uses: autowarefoundation/autoware-github-actions/colcon-test@v1
         with:
-          rosdistro: humble
+          rosdistro: ${{ matrix.rosdistro }}
           target-packages: ${{ steps.get-self-packages.outputs.self-packages }}
           underlay-workspace: /opt/autoware
 
