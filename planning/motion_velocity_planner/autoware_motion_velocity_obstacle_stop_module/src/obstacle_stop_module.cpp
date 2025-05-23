@@ -919,7 +919,7 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::plan_stop(
 
     return stop_point;
   }
-    // Update path length buffer with current stop point
+  // Update path length buffer with current stop point
   path_length_buffer_.update_buffer(
     stop_point,
     [traj_points](const geometry_msgs::msg::Point & point) {
