@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/ndt_scan_matcher/particle.hpp"
+#include <autoware/ndt_scan_matcher/particle.hpp>
 
-#include "autoware/localization_util/util_func.hpp"
+#include <autoware/localization_util/util_func.hpp>
 
 #include <string>
 namespace autoware::ndt_scan_matcher

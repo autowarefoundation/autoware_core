@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/ndt_scan_matcher/map_update_module.hpp"
+#include <autoware/ndt_scan_matcher/map_update_module.hpp>
 
 #include <memory>
 #include <string>
