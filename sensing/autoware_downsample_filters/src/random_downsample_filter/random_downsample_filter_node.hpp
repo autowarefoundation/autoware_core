@@ -27,6 +27,7 @@
 
 #include <pcl/filters/random_sample.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 

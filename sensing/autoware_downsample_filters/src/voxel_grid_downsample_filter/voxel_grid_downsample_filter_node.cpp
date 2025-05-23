@@ -26,7 +26,9 @@
 #include <pcl/search/kdtree.h>
 #include <pcl/segmentation/segment_differences.h>
 
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace autoware::downsample_filters

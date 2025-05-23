@@ -19,6 +19,7 @@
 
 #include <boost/thread/mutex.hpp>
 
+#include <memory>
 #include <string>
 
 // PCL includes

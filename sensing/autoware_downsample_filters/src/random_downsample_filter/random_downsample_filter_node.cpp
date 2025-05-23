@@ -19,7 +19,9 @@
 
 #include <pcl_conversions/pcl_conversions.h>
 
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace autoware::downsample_filters
