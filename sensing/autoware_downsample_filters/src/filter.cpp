@@ -107,7 +107,7 @@ autoware::downsample_filters::Filter::Filter(
     "input", rclcpp::SensorDataQoS().keep_last(max_queue_size_), cb);
 
   // Set tf_listener, tf_buffer.
-    transform_listener_ = std::make_unique<autoware_utils_tf::TransformListener>(this);
+  transform_listener_ = std::make_unique<autoware_utils_tf::TransformListener>(this);
 
   published_time_publisher_ = std::make_unique<autoware_utils_debug::PublishedTimePublisher>(this);
   RCLCPP_DEBUG(this->get_logger(), "[Filter Constructor] successfully created.");
