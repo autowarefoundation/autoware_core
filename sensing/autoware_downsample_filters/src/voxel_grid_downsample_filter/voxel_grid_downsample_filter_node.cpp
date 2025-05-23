@@ -13,16 +13,18 @@
 // limitations under the License.
 
 #include "voxel_grid_downsample_filter_node.hpp"
+
 #include "faster_voxel_grid_downsample_filter.hpp"
 #include "memory.hpp"
 #include "transform_info.hpp"
 
+#include <pcl_ros/transforms.hpp>
+#include <tf2_eigen/tf2_eigen.hpp>
+
+#include <pcl/io/io.h>
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/search/kdtree.h>
 #include <pcl/segmentation/segment_differences.h>
-#include <pcl/io/io.h>
-#include <pcl_ros/transforms.hpp>
-#include <tf2_eigen/tf2_eigen.hpp>
 
 #include <string>
 #include <vector>
@@ -49,19 +51,19 @@ VoxelGridDownsampleFilter::VoxelGridDownsampleFilter(const rclcpp::NodeOptions &
     pub_output_ = this->create_publisher<PointCloud2>(
       "output", rclcpp::SensorDataQoS().keep_last(max_queue_size_), pub_options);
 
-    published_time_publisher_ = std::make_unique<autoware_utils_debug::PublishedTimePublisher>(this);
+    published_time_publisher_ =
+      std::make_unique<autoware_utils_debug::PublishedTimePublisher>(this);
   }
 
   // Set subscribers
   {
     sub_input_ = create_subscription<PointCloud2>(
-      "input", rclcpp::SensorDataQoS().keep_last(max_queue_size_), 
+      "input", rclcpp::SensorDataQoS().keep_last(max_queue_size_),
       std::bind(&VoxelGridDownsampleFilter::input_callback, this, std::placeholders::_1));
     transform_listener_ = std::make_unique<autoware_utils_tf::TransformListener>(this);
   }
 
   RCLCPP_DEBUG(this->get_logger(), "[Filter Constructor] successfully created.");
-
 }
 
 void VoxelGridDownsampleFilter::input_callback(const PointCloud2ConstPtr cloud)
@@ -95,7 +97,8 @@ void VoxelGridDownsampleFilter::input_callback(const PointCloud2ConstPtr cloud)
   published_time_publisher_->publish_if_subscribed(pub_output_, cloud->header.stamp);
 }
 
-bool VoxelGridDownsampleFilter::is_valid(const PointCloud2ConstPtr & cloud){
+bool VoxelGridDownsampleFilter::is_valid(const PointCloud2ConstPtr & cloud)
+{
   if (cloud->width * cloud->height * cloud->point_step != cloud->data.size()) {
     RCLCPP_WARN(
       this->get_logger(),
@@ -133,8 +136,11 @@ bool VoxelGridDownsampleFilter::is_valid(const PointCloud2ConstPtr & cloud){
   return true;
 }
 
-bool VoxelGridDownsampleFilter::calculate_transform_matrix(const std::string & target_frame, const sensor_msgs::msg::PointCloud2 & from, TransformInfo & transform_info){
-transform_info.need_transform = false;
+bool VoxelGridDownsampleFilter::calculate_transform_matrix(
+  const std::string & target_frame, const sensor_msgs::msg::PointCloud2 & from,
+  TransformInfo & transform_info)
+{
+  transform_info.need_transform = false;
 
   if (target_frame.empty() || from.header.frame_id == target_frame) return true;
 
@@ -155,7 +161,8 @@ transform_info.need_transform = false;
   return true;
 }
 
-bool VoxelGridDownsampleFilter::convert_output_costly(std::unique_ptr<PointCloud2> & output){
+bool VoxelGridDownsampleFilter::convert_output_costly(std::unique_ptr<PointCloud2> & output)
+{
   if (!tf_output_frame_.empty() && output->header.frame_id != tf_output_frame_) {
     RCLCPP_DEBUG(
       this->get_logger(), "[convert_output_costly] Transforming output dataset from %s to %s.",
@@ -203,7 +210,6 @@ bool VoxelGridDownsampleFilter::convert_output_costly(std::unique_ptr<PointCloud
 
   return true;
 }
-
 
 void VoxelGridDownsampleFilter::filter(
   const PointCloud2ConstPtr & input, PointCloud2 & output, const TransformInfo & transform_info)

@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__DOWNSAMPLE_FILTERS__MEMORY_HPP_
-#define AUTOWARE__DOWNSAMPLE_FILTERS__MEMORY_HPP_
+#ifndef VOXEL_GRID_DOWNSAMPLE_FILTER__MEMORY_HPP_
+#define VOXEL_GRID_DOWNSAMPLE_FILTER__MEMORY_HPP_
 
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
@@ -59,4 +59,4 @@ bool is_data_layout_compatible_with_point_xyzircaedt(const sensor_msgs::msg::Poi
 
 }  // namespace autoware::downsample_filters::utils
 
-#endif  // AUTOWARE__DOWNSAMPLE_FILTERS__MEMORY_HPP_
+#endif  // VOXEL_GRID_DOWNSAMPLE_FILTER__MEMORY_HPP_

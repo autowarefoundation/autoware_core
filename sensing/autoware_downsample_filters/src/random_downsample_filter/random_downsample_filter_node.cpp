@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include "random_downsample_filter_node.hpp"
 
-#include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/transforms.hpp>
 #include <tf2_eigen/tf2_eigen.hpp>
+
+#include <pcl_conversions/pcl_conversions.h>
 
 #include <string>
 #include <vector>
@@ -49,13 +49,14 @@ RandomDownsampleFilter::RandomDownsampleFilter(const rclcpp::NodeOptions & optio
     pub_output_ = this->create_publisher<PointCloud2>(
       "output", rclcpp::SensorDataQoS().keep_last(max_queue_size_), pub_options);
 
-    published_time_publisher_ = std::make_unique<autoware_utils_debug::PublishedTimePublisher>(this);
+    published_time_publisher_ =
+      std::make_unique<autoware_utils_debug::PublishedTimePublisher>(this);
   }
 
   // Set subscriber
   {
     sub_input_ = create_subscription<PointCloud2>(
-      "input", rclcpp::SensorDataQoS().keep_last(max_queue_size_), 
+      "input", rclcpp::SensorDataQoS().keep_last(max_queue_size_),
       std::bind(&RandomDownsampleFilter::input_callback, this, std::placeholders::_1));
     transform_listener_ = std::make_unique<autoware_utils_tf::TransformListener>(this);
   }
@@ -63,7 +64,8 @@ RandomDownsampleFilter::RandomDownsampleFilter(const rclcpp::NodeOptions & optio
   RCLCPP_DEBUG(this->get_logger(), "[Filter Constructor] successfully created.");
 }
 
-void RandomDownsampleFilter::input_callback(const PointCloud2ConstPtr cloud){
+void RandomDownsampleFilter::input_callback(const PointCloud2ConstPtr cloud)
+{
   // If cloud is given, check if it's valid
   if (!is_valid(cloud)) {
     RCLCPP_ERROR(this->get_logger(), "[input_callback] Invalid input!");
@@ -93,8 +95,7 @@ void RandomDownsampleFilter::input_callback(const PointCloud2ConstPtr cloud){
       rclcpp::Duration::from_seconds(1.0));
     if (!tf_ptr) {
       RCLCPP_ERROR(
-        this->get_logger(),
-        "[input_callback] Error converting output dataset from %s to %s.",
+        this->get_logger(), "[input_callback] Error converting output dataset from %s to %s.",
         cloud_tf->header.frame_id.c_str(), tf_output_frame_.c_str());
       return;
     }
@@ -108,7 +109,6 @@ void RandomDownsampleFilter::input_callback(const PointCloud2ConstPtr cloud){
   }
 
   compute_publish(cloud_tf);
-
 }
 
 bool RandomDownsampleFilter::is_valid(const PointCloud2ConstPtr & cloud)
@@ -139,8 +139,9 @@ void RandomDownsampleFilter::compute_publish(const PointCloud2ConstPtr & input)
   published_time_publisher_->publish_if_subscribed(pub_output_, input->header.stamp);
 }
 
-bool RandomDownsampleFilter::convert_output_costly(std::unique_ptr<PointCloud2> & output){
-    // In terms of performance, we should avoid using pcl_ros library function,
+bool RandomDownsampleFilter::convert_output_costly(std::unique_ptr<PointCloud2> & output)
+{
+  // In terms of performance, we should avoid using pcl_ros library function,
   // but this code path isn't reached in the main use case of Autoware, so it's left as is for now.
   if (!tf_output_frame_.empty() && output->header.frame_id != tf_output_frame_) {
     RCLCPP_DEBUG(

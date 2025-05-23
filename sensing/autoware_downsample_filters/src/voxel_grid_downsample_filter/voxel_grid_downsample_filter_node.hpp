@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__DOWNSAMPLE_FILTERS__VOXEL_GRID_DOWNSAMPLE_FILTER_NODE_HPP_  // NOLINT
-#define AUTOWARE__DOWNSAMPLE_FILTERS__VOXEL_GRID_DOWNSAMPLE_FILTER_NODE_HPP_  // NOLINT
+#ifndef VOXEL_GRID_DOWNSAMPLE_FILTER__VOXEL_GRID_DOWNSAMPLE_FILTER_NODE_HPP_  // NOLINT
+#define VOXEL_GRID_DOWNSAMPLE_FILTER__VOXEL_GRID_DOWNSAMPLE_FILTER_NODE_HPP_  // NOLINT
 
 #include "transform_info.hpp"
 
@@ -22,9 +22,10 @@
 #include <string>
 
 // PCL includes
+#include <sensor_msgs/msg/point_cloud2.hpp>
+
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/search/pcl_search.h>
-#include <sensor_msgs/msg/point_cloud2.hpp>
 
 // Include tier4 autoware utils
 #include <autoware_utils_debug/debug_publisher.hpp>
@@ -58,7 +59,6 @@ private:
   std::unique_ptr<autoware_utils_debug::DebugPublisher> debug_publisher_;
   std::unique_ptr<autoware_utils_debug::PublishedTimePublisher> published_time_publisher_;
 
-
   /** \brief PointCloud2 data callback. */
   void input_callback(const PointCloud2ConstPtr cloud);
 
@@ -70,8 +70,7 @@ private:
   /** \param output output point cloud */
   /** \param transform_info transform info */
   void filter(
-    const PointCloud2ConstPtr & input, PointCloud2 & output,
-    const TransformInfo & transform_info);
+    const PointCloud2ConstPtr & input, PointCloud2 & output, const TransformInfo & transform_info);
 
   /** \brief voxel size x */
   float voxel_size_x_;
@@ -105,10 +104,9 @@ private:
   bool calculate_transform_matrix(
     const std::string & target_frame, const sensor_msgs::msg::PointCloud2 & from,
     TransformInfo & transform_info /*output*/);
-
 };
 }  // namespace autoware::downsample_filters
 
 // clang-format off
-#endif  // AUTOWARE__DOWNSAMPLE_FILTERS__VOXEL_GRID_DOWNSAMPLE_FILTER_NODE_HPP_  // NOLINT
+#endif  // VOXEL_GRID_DOWNSAMPLE_FILTER__VOXEL_GRID_DOWNSAMPLE_FILTER_NODE_HPP_  // NOLINT
 // clang-format on

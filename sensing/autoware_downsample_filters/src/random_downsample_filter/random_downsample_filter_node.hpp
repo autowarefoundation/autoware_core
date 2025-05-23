@@ -12,23 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__DOWNSAMPLE_FILTERS__RANDOM_DOWNSAMPLE_FILTER_NODE_HPP_
-#define AUTOWARE__DOWNSAMPLE_FILTERS__RANDOM_DOWNSAMPLE_FILTER_NODE_HPP_
-
+#ifndef RANDOM_DOWNSAMPLE_FILTER__RANDOM_DOWNSAMPLE_FILTER_NODE_HPP_
+#define RANDOM_DOWNSAMPLE_FILTER__RANDOM_DOWNSAMPLE_FILTER_NODE_HPP_
 
 #include <autoware_utils_debug/debug_publisher.hpp>
 #include <autoware_utils_debug/published_time_publisher.hpp>
 #include <autoware_utils_system/stop_watch.hpp>
 #include <autoware_utils_tf/transform_listener.hpp>
-#include <pcl/filters/random_sample.h>
 #include <rclcpp/rclcpp.hpp>
+
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
 #include <boost/thread/mutex.hpp>
 
-#include <vector>
-#include <string>
+#include <pcl/filters/random_sample.h>
 
+#include <string>
+#include <vector>
 
 namespace autoware::downsample_filters
 {
@@ -40,7 +40,6 @@ public:
 
   PCL_MAKE_ALIGNED_OPERATOR_NEW
   explicit RandomDownsampleFilter(const rclcpp::NodeOptions & options);
-
 
 private:
   void filter(const PointCloud2ConstPtr & input, PointCloud2 & output);
@@ -65,7 +64,7 @@ private:
   /** \brief The output PointCloud2 publisher. */
   rclcpp::Publisher<PointCloud2>::SharedPtr pub_output_;
 
-    /** \brief processing time publisher. **/
+  /** \brief processing time publisher. **/
   std::unique_ptr<autoware_utils_system::StopWatch<std::chrono::milliseconds>> stop_watch_ptr_;
   std::unique_ptr<autoware_utils_debug::DebugPublisher> debug_publisher_;
   std::unique_ptr<autoware_utils_debug::PublishedTimePublisher> published_time_publisher_;
@@ -89,5 +88,5 @@ private:
 }  // namespace autoware::downsample_filters
 
 // clang-format off
-#endif  // AUTOWARE__DOWNSAMPLE_FILTERS__RANDOM_DOWNSAMPLE_FILTER_NODE_HPP_  // NOLINT
+#endif  // RANDOM_DOWNSAMPLE_FILTER__RANDOM_DOWNSAMPLE_FILTER_NODE_HPP_  // NOLINT
 // clang-format on
