@@ -60,6 +60,18 @@ if(BUILD_TESTING)
   ament_auto_add_gtest(test_voxel_grid_based_euclidean_cluster_fusion
     test/test_voxel_grid_based_euclidean_cluster.cpp
   )
+
+  ament_auto_add_gtest(test_euclidean_cluster
+    test/test_euclidean_cluster.cpp
+  )
+
+  ament_auto_add_gtest(test_utils
+    test/test_utils.cpp
+  )
+
+  ament_auto_add_gtest(test_nodes
+    test/test_nodes.cpp
+  )
 endif()
 
 ament_auto_package(INSTALL_TO_SHARE
