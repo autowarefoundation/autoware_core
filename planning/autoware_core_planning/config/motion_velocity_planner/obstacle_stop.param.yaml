@@ -10,6 +10,14 @@
         terminal_stop_margin : 3.0 # Stop margin at the goal. This value cannot exceed stop margin. [m]
         min_behavior_stop_margin: 3.0 # [m]
 
+        max_negative_velocity: -0.1 # [m/s] maximum velocity of opposing traffic to consider stop planning
+        stop_margin_opposing_traffic: 10.0 # Ideal stop-margin from moving opposing obstacle when ego comes to a stop
+        effective_deceleration_opposing_traffic: 4.0 # Setting a higher value brings the final stop-margin closer to the ideal value above
+
+        min_on_duration: 0.3  # [s] minimum duration needed before a decision can be triggered
+        min_off_duration: 1.0  # [s] minimum duration needed before a decision can be canceled
+        update_distance_th: 0.5 # [m] minimum distance threshold to update stop point
+
         hold_stop_velocity_threshold: 0.01 # The maximum ego velocity to hold stopping [m/s]
         hold_stop_distance_threshold: 0.3 # The ego keeps stopping if the distance to stop changes within the threshold [m]
 
@@ -54,6 +62,14 @@
             bicycle: false
             pedestrian: false
 
+        pointcloud:
+          pointcloud_voxel_grid_x: 0.05
+          pointcloud_voxel_grid_y: 0.05
+          pointcloud_voxel_grid_z: 100000.0
+          pointcloud_cluster_tolerance: 1.0
+          pointcloud_min_cluster_size: 1
+          pointcloud_max_cluster_size: 100000
+
         # hysteresis for velocity
         obstacle_velocity_threshold_to_stop : 3.0 # stop planning is executed to the obstacle whose velocity is less than this value [m/s]
         obstacle_velocity_threshold_from_stop : 3.5 # stop planning is executed to the obstacle whose velocity is less than this value [m/s]
@@ -72,3 +88,4 @@
 
         crossing_obstacle:
           collision_time_margin : 1.0 # time threshold of collision between obstacle adn ego for cruise or stop [s]
+          traj_angle_threshold: 0.523599 # [rad] = 70 [deg], yaw threshold of crossing obstacle against the nearest trajectory point for cruise or stop

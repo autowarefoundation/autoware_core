@@ -16,6 +16,7 @@
 #define OBSTACLE_STOP_MODULE_HPP_
 
 #include "parameters.hpp"
+#include "path_length_buffer.hpp"
 #include "stop_planning_debug_info.hpp"
 #include "type_alias.hpp"
 #include "types.hpp"
@@ -84,6 +85,8 @@ private:
   mutable std::shared_ptr<DebugData> debug_data_ptr_{};
   std::vector<StopObstacle> prev_closest_stop_obstacles_{};
   std::vector<StopObstacle> prev_stop_obstacles_{};
+
+  autoware::motion_velocity_planner::obstacle_stop::PathLengthBuffer path_length_buffer_;
 
   // PointCloud-based stop obstacle history
   std::vector<StopObstacle> stop_pointcloud_obstacle_history_;
