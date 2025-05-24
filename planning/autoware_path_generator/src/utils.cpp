@@ -205,17 +205,20 @@ std::vector<WaypointGroup> get_waypoint_groups(
     const auto & waypoints = lanelet_map.lineStringLayer.get(waypoints_id);
 
     if (
-      waypoint_groups.empty() ||
-      lanelet::geometry::distance2d(waypoint_groups.back().waypoints.back(), waypoints.front()) >
-        group_separation_threshold) {
+      waypoint_groups.empty() || lanelet::geometry::distance2d(
+                                   waypoint_groups.back().waypoints.back().point,
+                                   waypoints.front()) > group_separation_threshold) {
       waypoint_groups.emplace_back().interval.start =
         get_interval_bound(waypoints.front(), -interval_margin_ratio);
     }
     waypoint_groups.back().interval.end =
       get_interval_bound(waypoints.back(), interval_margin_ratio);
 
-    waypoint_groups.back().waypoints.insert(
-      waypoint_groups.back().waypoints.end(), waypoints.begin(), waypoints.end());
+    std::transform(
+      waypoints.begin(), waypoints.end(), std::back_inserter(waypoint_groups.back().waypoints),
+      [&](const lanelet::ConstPoint3d & waypoint) {
+        return WaypointGroup::Waypoint{waypoint, lanelet.id()};
+      });
   }
 
   return waypoint_groups;
@@ -420,6 +423,68 @@ std::optional<double> get_first_self_intersection_arc_length(
   }
 
   return std::nullopt;
+}
+
+double get_arc_length_on_path(
+  const lanelet::LaneletSequence & lanelet_sequence, const std::vector<PathPointWithLaneId> & path,
+  const double s_centerline)
+{
+  std::optional<lanelet::Id> target_lanelet_id = std::nullopt;
+  std::optional<lanelet::BasicPoint2d> point_on_centerline = std::nullopt;
+
+  if (lanelet_sequence.empty() || path.empty()) {
+    RCLCPP_WARN(
+      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+      "Input lanelet sequence or path is empty, returning 0.");
+    return 0.;
+  }
+
+  if (s_centerline < 0.) {
+    RCLCPP_WARN(
+      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+      "Input arc length is negative, returning 0.");
+    return 0.;
+  }
+
+  for (auto [it, s] = std::make_tuple(lanelet_sequence.begin(), 0.); it != lanelet_sequence.end();
+       ++it) {
+    const double centerline_length = lanelet::geometry::length(it->centerline2d());
+    if (s + centerline_length < s_centerline) {
+      s += centerline_length;
+      continue;
+    }
+
+    target_lanelet_id = it->id();
+    point_on_centerline =
+      lanelet::geometry::interpolatedPointAtDistance(it->centerline2d(), s_centerline - s);
+    break;
+  }
+
+  if (!target_lanelet_id || !point_on_centerline) {
+    // lanelet_sequence is too short, thus we return input arc length as is.
+    return s_centerline;
+  }
+
+  auto s_path = 0.;
+  lanelet::BasicLineString2d target_path_segment;
+
+  for (auto it = path.begin(); it != path.end(); ++it) {
+    if (
+      std::find(it->lane_ids.begin(), it->lane_ids.end(), *target_lanelet_id) ==
+      it->lane_ids.end()) {
+      if (target_path_segment.empty() && it != std::prev(path.end())) {
+        s_path += autoware_utils::calc_distance2d(*it, *std::next(it));
+        continue;
+      }
+      break;
+    }
+    target_path_segment.push_back(
+      lanelet::utils::conversion::toLaneletPoint(it->point.pose.position).basicPoint2d());
+  }
+
+  s_path += lanelet::geometry::toArcCoordinates(target_path_segment, *point_on_centerline).length;
+
+  return s_path;
 }
 
 PathRange<std::vector<geometry_msgs::msg::Point>> get_path_bounds(

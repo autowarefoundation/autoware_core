@@ -16,6 +16,24 @@
 
 #include <lanelet2_core/geometry/Lanelet.h>
 
+namespace
+{
+std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> create_path_points(
+  const std::vector<std::pair<lanelet::Ids, lanelet::BasicPoint2d>> & points)
+{
+  std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> path_points;
+  path_points.reserve(points.size());
+  for (const auto & [lane_ids, point] : points) {
+    autoware_internal_planning_msgs::msg::PathPointWithLaneId path_point;
+    path_point.point.pose.position.x = point.x();
+    path_point.point.pose.position.y = point.y();
+    path_point.lane_ids = lane_ids;
+    path_points.push_back(path_point);
+  }
+  return path_points;
+}
+}  // namespace
+
 namespace autoware::path_generator
 {
 struct GetFirstIntersectionArcLengthTestParam
@@ -138,6 +156,53 @@ TEST_F(UtilsTest, getFirstSelfIntersectionArcLength)
 
     ASSERT_TRUE(result);
     ASSERT_NEAR(*result, 7.0, epsilon);
+  }
+}
+
+TEST_F(UtilsTest, GetArcLengthOnPath)
+{
+  const auto epsilon = 1e-1;
+
+  {  // lanelet sequence is empty
+    const auto result = utils::get_arc_length_on_path(
+      {},
+      create_path_points({{{55, 122}, {3757.5609, 73751.8479}}, {{122}, {3752.1707, 73762.1772}}}),
+      {});
+
+    ASSERT_NEAR(result, 0.0, epsilon);
+  }
+
+  {  // path is empty
+    const auto result = utils::get_arc_length_on_path(get_lanelets_from_ids({122}), {}, {});
+
+    ASSERT_NEAR(result, 0.0, epsilon);
+  }
+
+  {  // normal case
+    const auto result = utils::get_arc_length_on_path(
+      get_lanelets_from_ids({122}),
+      create_path_points({{{55, 122}, {3757.5609, 73751.8479}}, {{122}, {3752.1707, 73762.1772}}}),
+      10.0);
+
+    ASSERT_NEAR(result, 10.0, epsilon);
+  }
+
+  {  // input arc length is negative
+    const auto result = utils::get_arc_length_on_path(
+      get_lanelets_from_ids({122}),
+      create_path_points({{{55, 122}, {3757.5609, 73751.8479}}, {{122}, {3752.1707, 73762.1772}}}),
+      -10.0);
+
+    ASSERT_NEAR(result, 0.0, epsilon);
+  }
+
+  {  // input arc length exceeds lanelet length
+    const auto result = utils::get_arc_length_on_path(
+      get_lanelets_from_ids({122}),
+      create_path_points({{{55, 122}, {3757.5609, 73751.8479}}, {{122}, {3752.1707, 73762.1772}}}),
+      100.0);
+
+    ASSERT_NEAR(result, 100.0, epsilon);
   }
 }
 
