@@ -166,3 +166,67 @@ TEST_F(StopLineModuleTest, TestUpdateStateAndStoppedTime)
   EXPECT_EQ(state, StopLineModule::State::START);
   EXPECT_FALSE(stopped_time.has_value());
 }
+
+TEST_F(StopLineModuleTest, TestCreateDebugMarkerArray)
+{
+  // This test verifies that createDebugMarkerArray returns an empty marker array
+  auto markers = module_->createDebugMarkerArray();
+  EXPECT_EQ(markers.markers.size(), 0);
+}
+
+TEST_F(StopLineModuleTest, TestCreateVirtualWalls)
+{
+  // Test the virtual walls creation functionality
+  auto virtual_walls = module_->createVirtualWalls();
+  // Since no processing has been done, we expect no virtual walls
+  EXPECT_EQ(virtual_walls.size(), 0);
+
+  // Set debug data and verify wall creation
+  StopLineModule::DebugData debug_data;
+  geometry_msgs::msg::Pose stop_pose;
+  stop_pose.position.x = 7.0;
+  stop_pose.position.y = 0.0;
+
+  module_->updateDebugData(&debug_data, stop_pose, StopLineModule::State::APPROACH);
+
+  // Verify debug data was updated correctly
+  EXPECT_TRUE(debug_data.stop_pose.has_value());
+  EXPECT_DOUBLE_EQ(debug_data.stop_pose->position.x, stop_pose.position.x);
+  EXPECT_DOUBLE_EQ(debug_data.stop_pose->position.y, stop_pose.position.y);
+  EXPECT_DOUBLE_EQ(
+    debug_data.base_link2front, planner_data_->vehicle_info_.max_longitudinal_offset_m);
+}
+
+TEST_F(StopLineModuleTest, TestGetEgoAndStopPointStartState)
+{
+  // Test with START state (should return no stop point)
+  geometry_msgs::msg::Pose ego_pose;
+  ego_pose.position.x = 5.0;
+  ego_pose.position.y = 0.0;
+
+  const auto [ego_s, stop_point_s] =
+    module_->getEgoAndStopPoint(trajectory_, path_, ego_pose, StopLineModule::State::START);
+
+  EXPECT_DOUBLE_EQ(ego_s, 5.0);
+  EXPECT_FALSE(stop_point_s.has_value());
+}
+
+TEST_F(StopLineModuleTest, TestModifyPathVelocity)
+{
+  // Create a copy of the path to modify
+  auto test_path = path_;
+
+  // Setup odometry data
+  auto odometry = std::make_shared<geometry_msgs::msg::PoseStamped>();
+  odometry->pose.position.x = 5.0;
+  odometry->pose.position.y = 0.0;
+  planner_data_->current_odometry = odometry;
+
+  // Create and set velocity data
+  auto velocity = std::make_shared<geometry_msgs::msg::TwistStamped>();
+  velocity->twist.linear.x = 0.0;  // Stopped
+  planner_data_->current_velocity = velocity;
+
+  EXPECT_TRUE(module_->modifyPathVelocity(&test_path));
+  EXPECT_GT(test_path.points.size(), 0);
+}
