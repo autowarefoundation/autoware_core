@@ -25,27 +25,19 @@
 namespace
 {
 
-#if ROS_DISTRO_HUMBLE
-constexpr std::string_view EGM2008_VERSION = "egm2008-1";
-#else
-constexpr std::string_view EGM2008_VERSION = "egm2008-2_5";
-#endif
-
-}  // namespace
-
 namespace autoware::geography_utils
 {
 
 double convert_wgs84_to_egm2008(const double height, const double latitude, const double longitude)
 {
-  GeographicLib::Geoid egm2008(EGM2008_VERSION.data());
+  GeographicLib::Geoid egm2008("egm2008-1");
   // cSpell: ignore ELLIPSOIDTOGEOID
   return egm2008.ConvertHeight(latitude, longitude, height, GeographicLib::Geoid::ELLIPSOIDTOGEOID);
 }
 
 double convert_egm2008_to_wgs84(const double height, const double latitude, const double longitude)
 {
-  GeographicLib::Geoid egm2008(EGM2008_VERSION.data());
+  GeographicLib::Geoid egm2008("egm2008-1");
   // cSpell: ignore GEOIDTOELLIPSOID
   return egm2008.ConvertHeight(latitude, longitude, height, GeographicLib::Geoid::GEOIDTOELLIPSOID);
 }
