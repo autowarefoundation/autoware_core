@@ -22,9 +22,6 @@
 #include <string_view>
 #include <utility>
 
-namespace
-{
-
 namespace autoware::geography_utils
 {
 
