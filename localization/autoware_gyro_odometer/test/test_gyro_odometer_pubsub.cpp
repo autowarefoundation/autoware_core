@@ -121,7 +121,7 @@ TEST(GyroOdometer, TestGyroOdometerWithImuAndVelocity)
   auto velocity_generator = std::make_shared<VelocityGenerator>();
   auto gyro_odometer_validator_node = std::make_shared<GyroOdometerValidator>();
 
-  // need these for now, which should eventually be removed
+  // TODO(youtalk): Remove these after the refinement of the GyroOdometerNode
   velocity_generator->vehicle_velocity_pub->publish(input_velocity);
   imu_generator->imu_pub->publish(input_imu);
 
