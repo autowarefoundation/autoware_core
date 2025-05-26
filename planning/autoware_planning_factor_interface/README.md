@@ -30,28 +30,20 @@ Instantiate the `PlanningFactorInterface` by providing a node and a name for the
 
 ```cpp
 
-class PlannerInterface
+class AvoidancePlanner
 {
 public:
-  virtual ~PlannerInterface() = default;
-  PlannerInterface(
-    rclcpp::Node & node, const LongitudinalInfo & longitudinal_info,
-    const autoware::vehicle_info_utils::VehicleInfo & vehicle_info,
-    const EgoNearestParam & ego_nearest_param, const std::shared_ptr<DebugData> debug_data_ptr)
+  AvoidancePlanner(rclcpp::Node & node)
   : planning_factor_interface_{std::make_unique<
       autoware::planning_factor_interface::PlanningFactorInterface>(
-      &node, "obstacle_cruise_planner")},
+      &node, "avoidance_planner")}
 ```
-
-code example from src/universe/autoware_universe/planning/autoware_obstacle_cruise_planner/include/autoware/obstacle_cruise_planner/planner_interface.hpp
 
 ### Adding Planning Factors
 
-The `add` method can be used to add planning factors. Here's an example from src/universe/autoware_universe/planning/autoware_obstacle_cruise_planner/src/pid_based_planner/pid_based_planner.cpp.
-
 ```cpp
 planning_factor_interface_->add(
-        stop_traj_points, planner_data.ego_pose, stop_traj_points.at(wall_idx).pose,
+        traj_points, ego_pose, stop_pose,
         autoware_internal_planning_msgs::msg::PlanningFactor::NONE,
         autoware_internal_planning_msgs::msg::SafetyFactorArray{});
 ```

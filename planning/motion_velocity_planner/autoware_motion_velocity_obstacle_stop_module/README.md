@@ -45,7 +45,7 @@ If the acceleration is less than `common.min_strong_accel`, the stop planning wi
 #### Prioritization of behavior module's stop point
 
 When stopping for a pedestrian walking on the crosswalk, the behavior module inserts the zero velocity in the trajectory in front of the crosswalk.
-Also `autoware_obstacle_cruise_planner`'s stop planning also works, and the ego may not reach the behavior module's stop point since the safe distance defined in `autoware_obstacle_cruise_planner` may be longer than the behavior module's safe distance.
+Also `obstacle_cruise_module`'s stop planning also works, and the ego may not reach the behavior module's stop point since the safe distance defined in `obstacle_cruise_module` may be longer than the behavior module's safe distance.
 To resolve this non-alignment of the stop point between the behavior module and this module, `stop_planning.min_behavior_stop_margin` is defined.
 In the case of the crosswalk described above, this module inserts the stop point with a distance `stop_planning.min_behavior_stop_margin` at minimum between the ego and obstacle.
 
