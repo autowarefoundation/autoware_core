@@ -964,7 +964,7 @@ double ObstacleStopModule::calc_desired_stop_margin(
       const double ego_stop_margin = stop_planning_param_.stop_margin_opposing_traffic;
 
       const double rel_vel = v_ego - v_obs;
-      const double epsilon = 1e-6;  // Small threshold for numerical stability
+      constexpr double epsilon = 1e-6;  // Small threshold for numerical stability
       if (std::abs(rel_vel) <= epsilon) {
         RCLCPP_WARN(
           logger_,

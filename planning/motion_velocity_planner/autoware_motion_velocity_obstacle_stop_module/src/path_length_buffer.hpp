@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "autoware_utils/geometry/geometry.hpp"
+#include "autoware_utils_geometry/geometry.hpp"
 
 #include <chrono>
 #include <cmath>
@@ -123,10 +123,8 @@ public:
 
           const double rel_dist = std::abs(buffered_item.stop_distance - stop_distance);
 
-          const bool is_remove = (buffered_item.is_active && (duration > min_off_duration_)) ||
-                                 (!buffered_item.is_active && rel_dist > update_distance_th_);
-
-          return is_remove;
+          return (buffered_item.is_active && (duration > min_off_duration_)) ||
+                (!buffered_item.is_active && rel_dist > update_distance_th_);
         }),
       buffer_.end());
 
