@@ -41,7 +41,7 @@ public:
   VelocityGenerator()
   : Node("velocity_generator"),
     vehicle_velocity_pub(
-      create_publisher<TwistWithCovarianceStamped>("/twist_with_covariance", 1))
+      create_publisher<TwistWithCovarianceStamped>("vehicle/twist_with_covariance", 1))
   {
   }
   rclcpp::Publisher<TwistWithCovarianceStamped>::SharedPtr vehicle_velocity_pub;
@@ -53,7 +53,7 @@ public:
   GyroOdometerValidator()
   : Node("gyro_odometer_validator"),
     twist_sub(create_subscription<TwistWithCovarianceStamped>(
-      "/twist_with_covariance", 1,
+      "twist_with_covariance", 1,
       [this](const TwistWithCovarianceStamped::ConstSharedPtr msg) {
         received_latest_twist_ptr = msg;
       })),
