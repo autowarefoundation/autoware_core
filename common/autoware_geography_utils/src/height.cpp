@@ -28,7 +28,7 @@ namespace
 #if ROS_DISTRO_HUMBLE
 constexpr std::string_view EGM2008_VERSION = "egm2008-1";
 #else
-constexpr std::string_view EGM2008_VERSION = "egm2008-5";
+constexpr std::string_view EGM2008_VERSION = "egm2008-2_5";
 #endif
 
 }  // namespace
