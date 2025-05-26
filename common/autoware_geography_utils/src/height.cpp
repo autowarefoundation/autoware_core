@@ -22,7 +22,7 @@
 #include <string_view>
 #include <utility>
 
-namespace autoware::geography_utils
+namespace
 {
 
 #if ROS_DISTRO_HUMBLE
@@ -30,6 +30,11 @@ constexpr GeographicLib::Geoid EGM2008("egm2008-1");
 #else
 constexpr GeographicLib::Geoid EGM2008("egm2008-5");
 #endif
+
+}  // namespace
+
+namespace autoware::geography_utils
+{
 
 double convert_wgs84_to_egm2008(const double height, const double latitude, const double longitude)
 {
