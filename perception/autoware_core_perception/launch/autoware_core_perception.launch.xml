@@ -38,7 +38,5 @@
       <arg name="updater_type" value="binary_bayes_filter"/>
       <arg name="updater_param_file" value="$(var occupancy_grid_map_updater_param_path)"/>
     </include>
-
   </group>
-
 </launch>
