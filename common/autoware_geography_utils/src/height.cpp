@@ -26,9 +26,9 @@ namespace autoware::geography_utils
 {
 
 #if ROS_DISTRO_HUMBLE
-constexpr std::string_view EGM2008_VERSION = "egm2008-1";
+constexpr char* EGM2008_VERSION = "egm2008-1";
 #else
-constexpr std::string_view EGM2008_VERSION = "egm2008-5";
+constexpr char* EGM2008_VERSION = "egm2008-5";
 #endif
 
 double convert_wgs84_to_egm2008(const double height, const double latitude, const double longitude)
