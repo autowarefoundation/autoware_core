@@ -111,7 +111,7 @@ jobs:
 
       - name: Set up geographiclib-tools
         run: |
-          if [ "${{ inputs.rosdistro }}" = "jazzy" ]; then
+          if [ "${{ matrix.rosdistro }}" = "jazzy" ]; then
             apt-get update
             apt-get install -y geographiclib-tools
             geographiclib-get-geoids egm2008-1
