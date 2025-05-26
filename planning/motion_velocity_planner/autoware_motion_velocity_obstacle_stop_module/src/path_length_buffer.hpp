@@ -124,7 +124,7 @@ public:
           const double rel_dist = std::abs(buffered_item.stop_distance - stop_distance);
 
           return (buffered_item.is_active && (duration > min_off_duration_)) ||
-                (!buffered_item.is_active && rel_dist > update_distance_th_);
+                 (!buffered_item.is_active && rel_dist > update_distance_th_);
         }),
       buffer_.end());
 
