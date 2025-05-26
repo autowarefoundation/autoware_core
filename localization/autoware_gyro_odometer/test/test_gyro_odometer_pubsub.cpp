@@ -129,6 +129,24 @@ TEST(GyroOdometer, TestGyroOdometerWithImuAndVelocity)
   wait_spin_some(gyro_odometer_validator_node);
 
   EXPECT_FALSE(gyro_odometer_validator_node->received_latest_twist_ptr == nullptr);
+  EXPECT_DOUBLE_EQ(
+    gyro_odometer_validator_node->received_latest_twist_ptr->twist.twist.linear.x,
+    expected_output_twist.twist.twist.linear.x);
+  EXPECT_DOUBLE_EQ(
+    gyro_odometer_validator_node->received_latest_twist_ptr->twist.twist.linear.y,
+    expected_output_twist.twist.twist.linear.y);
+  EXPECT_DOUBLE_EQ(
+    gyro_odometer_validator_node->received_latest_twist_ptr->twist.twist.linear.z,
+    expected_output_twist.twist.twist.linear.z);
+  EXPECT_DOUBLE_EQ(
+    gyro_odometer_validator_node->received_latest_twist_ptr->twist.twist.angular.x,
+    expected_output_twist.twist.twist.angular.x);
+  EXPECT_DOUBLE_EQ(
+    gyro_odometer_validator_node->received_latest_twist_ptr->twist.twist.angular.y,
+    expected_output_twist.twist.twist.angular.y);
+  EXPECT_DOUBLE_EQ(
+    gyro_odometer_validator_node->received_latest_twist_ptr->twist.twist.angular.z,
+    expected_output_twist.twist.twist.angular.z);
   EXPECT_TRUE(is_twist_valid(
     *(gyro_odometer_validator_node->received_latest_twist_ptr), expected_output_twist));
 }
