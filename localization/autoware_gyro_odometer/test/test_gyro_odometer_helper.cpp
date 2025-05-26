@@ -21,7 +21,6 @@ Imu generate_sample_imu()
 {
   Imu imu;
   imu.header.frame_id = "base_link";
-  imu.header.stamp = rclcpp::Clock().now();
   imu.angular_velocity.x = 0.1;
   imu.angular_velocity.y = 0.2;
   imu.angular_velocity.z = 0.3;
@@ -32,7 +31,6 @@ TwistWithCovarianceStamped generate_sample_velocity()
 {
   TwistWithCovarianceStamped twist;
   twist.header.frame_id = "base_link";
-  twist.header.stamp = rclcpp::Clock().now();
   twist.twist.twist.linear.x = 1.0;
   return twist;
 }
