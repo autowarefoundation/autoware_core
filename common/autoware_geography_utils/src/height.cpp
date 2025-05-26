@@ -26,23 +26,21 @@ namespace autoware::geography_utils
 {
 
 #if ROS_DISTRO_HUMBLE
-constexpr char* EGM2008_VERSION = "egm2008-1";
+constexpr GeographicLib::Geoid EGM2008("egm2008-1");
 #else
-constexpr char* EGM2008_VERSION = "egm2008-5";
+constexpr GeographicLib::Geoid EGM2008("egm2008-5");
 #endif
 
 double convert_wgs84_to_egm2008(const double height, const double latitude, const double longitude)
 {
-  GeographicLib::Geoid egm2008(EGM2008_VERSION);
   // cSpell: ignore ELLIPSOIDTOGEOID
-  return egm2008.ConvertHeight(latitude, longitude, height, GeographicLib::Geoid::ELLIPSOIDTOGEOID);
+  return EGM2008.ConvertHeight(latitude, longitude, height, GeographicLib::Geoid::ELLIPSOIDTOGEOID);
 }
 
 double convert_egm2008_to_wgs84(const double height, const double latitude, const double longitude)
 {
-  GeographicLib::Geoid egm2008(EGM2008_VERSION);
   // cSpell: ignore GEOIDTOELLIPSOID
-  return egm2008.ConvertHeight(latitude, longitude, height, GeographicLib::Geoid::GEOIDTOELLIPSOID);
+  return EGM2008.ConvertHeight(latitude, longitude, height, GeographicLib::Geoid::GEOIDTOELLIPSOID);
 }
 
 double convert_height(
