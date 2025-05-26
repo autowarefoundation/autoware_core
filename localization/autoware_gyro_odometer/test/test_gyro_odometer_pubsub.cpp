@@ -123,6 +123,8 @@ TEST(GyroOdometer, TestGyroOdometerWithImuAndVelocity)
   velocity_generator->vehicle_velocity_pub->publish(input_velocity);
 
   // gyro_odometer receives IMU and velocity, and publishes the fused twist data.
+  wait_spin_some(imu_generator);
+  wait_spin_some(velocity_generator);
   wait_spin_some(gyro_odometer_node);
 
   // validator node receives the fused twist data and store in "received_latest_twist_ptr".
