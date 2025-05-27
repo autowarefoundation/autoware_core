@@ -154,8 +154,13 @@ bool VoxelGridBasedEuclideanCluster::cluster(
   size_t pointcloud_size = pointcloud->points.size();
   for (size_t i = 0; i < pointcloud_size; ++i) {
     const auto & point = pointcloud->points.at(i);
-    const auto grid_coords = voxel_grid_.getGridCoordinates(point.x, point.y, point.z);
-    const int index = voxel_grid_.getCentroidIndexAt(grid_coords);
+    // Temporarily disable array-bounds warning for this specific PCL function call
+    // This is a known issue with PCL 1.14 and GCC 13 due to Eigen alignment
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
+    const int index =
+      voxel_grid_.getCentroidIndexAt(voxel_grid_.getGridCoordinates(point.x, point.y, point.z));
+#pragma GCC diagnostic pop
     if (map.find(index) != map.end()) {
       auto & cluster_data_size = clusters_data_size.at(map[index]);
       if (
