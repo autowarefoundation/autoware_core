@@ -212,13 +212,14 @@ PathWithLaneId refine_path_for_goal(
   const PlannerData & planner_data);
 
 /**
- * @brief Extract lanelets from the path.
- * @param path Input path.
+ * @brief Extract lanelets from the trajectory.
+ * @param trajectory Input trajectory.
  * @param planner_data Planner data.
  * @return Extracted lanelets
  */
-std::optional<lanelet::ConstLanelets> extract_lanelets_from_path(
-  const PathWithLaneId & refined_path, const PlannerData & planner_data);
+lanelet::ConstLanelets extract_lanelets_from_trajectory(
+  const experimental::trajectory::Trajectory<PathPointWithLaneId> & trajectory,
+  const PlannerData & planner_data);
 
 /**
  * @brief Check if the pose is in the lanelets.
