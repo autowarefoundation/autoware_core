@@ -164,11 +164,11 @@ TEST_F(ExtrapolatedLaneletTest, ConcatenateCenterlinesSequence)
   ASSERT_TRUE(opt_ls.has_value());
   const auto & ls = *opt_ls;
 
-  const auto & first_expected = lanelets.front().centerline().front().basicPoint();
+  const auto first_expected = lanelets.front().centerline().front().basicPoint();
   EXPECT_NEAR(ls.front().x(), first_expected.x(), 1e-6);
   EXPECT_NEAR(ls.front().y(), first_expected.y(), 1e-6);
   EXPECT_NEAR(ls.front().z(), first_expected.z(), 1e-6);
-  const auto & last_expected = lanelets.back().centerline().back().basicPoint();
+  const auto last_expected = lanelets.back().centerline().back().basicPoint();
   EXPECT_NEAR(ls.back().x(), last_expected.x(), 1e-6);
   EXPECT_NEAR(ls.back().y(), last_expected.y(), 1e-6);
   EXPECT_NEAR(ls.back().z(), last_expected.z(), 1e-6);
