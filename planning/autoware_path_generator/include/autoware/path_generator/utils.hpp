@@ -229,6 +229,16 @@ lanelet::ConstLanelets extract_lanelets_from_trajectory(
  */
 bool is_in_lanelets(const geometry_msgs::msg::Pose & pose, const lanelet::ConstLanelets & lanes);
 
+/**
+ * @brief Check if the trajectory is inside the lanelets.
+ * @param refined_path Input trajectory.
+ * @param lanelets Lanelets to check against.
+ * @return True if the trajectory is inside the lanelets, false otherwise
+ */
+bool is_trajectory_inside_lanelets(
+  const experimental::trajectory::Trajectory<PathPointWithLaneId> & refined_path,
+  const lanelet::ConstLanelets & lanelets);
+
 std::optional<experimental::trajectory::Trajectory<PathPointWithLaneId>>
 modify_path_for_smooth_goal_connection(
   const experimental::trajectory::Trajectory<PathPointWithLaneId> & trajectory,
