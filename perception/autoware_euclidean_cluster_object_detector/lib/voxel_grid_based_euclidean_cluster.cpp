@@ -157,6 +157,7 @@ bool VoxelGridBasedEuclideanCluster::cluster(
     // Temporarily disable array-bounds warning for this specific PCL function call
     // This is a known issue with PCL 1.14 and GCC 13 due to Eigen alignment
 #pragma GCC diagnostic push
+// cspell: ignore Warray
 #pragma GCC diagnostic ignored "-Warray-bounds"
     const int index =
       voxel_grid_.getCentroidIndexAt(voxel_grid_.getGridCoordinates(point.x, point.y, point.z));
