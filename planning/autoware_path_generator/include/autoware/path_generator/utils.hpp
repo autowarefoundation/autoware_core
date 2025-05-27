@@ -207,9 +207,10 @@ geometry_msgs::msg::Pose refine_goal(
  * @param planner_data Planner data.
  * @return Recreated path
  */
-PathWithLaneId refine_path_for_goal(
-  const PathWithLaneId & input, const geometry_msgs::msg::Pose & goal,
-  const PlannerData & planner_data);
+experimental::trajectory::Trajectory<PathPointWithLaneId> refine_path_for_goal(
+  const experimental::trajectory::Trajectory<PathPointWithLaneId> & input,
+  const geometry_msgs::msg::Pose & goal_pose, const lanelet::Id goal_lane_id,
+  const double refine_goal_search_radius_range);
 
 /**
  * @brief Extract lanelets from the trajectory.
