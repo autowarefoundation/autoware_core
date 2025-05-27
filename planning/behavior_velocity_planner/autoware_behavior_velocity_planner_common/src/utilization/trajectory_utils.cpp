@@ -23,18 +23,12 @@
 
 #include <autoware_internal_planning_msgs/msg/path_point_with_lane_id.hpp>
 #include <geometry_msgs/msg/quaternion.hpp>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
 #include <iostream>
+#include <memory>
 #include <utility>
 #include <vector>
-
-#ifdef ROS_DISTRO_GALACTIC
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-#else
-#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
-#endif
-
-#include <memory>
 
 namespace autoware::behavior_velocity_planner
 {
