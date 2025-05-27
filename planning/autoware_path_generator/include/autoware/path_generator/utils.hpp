@@ -201,39 +201,6 @@ geometry_msgs::msg::Pose refine_goal(
   const geometry_msgs::msg::Pose & goal, const lanelet::ConstLanelet & goal_lanelet);
 
 /**
- * @brief Prepare the point before the goal point.
- * @param goal Goal pose.
- * @param lanes Lanelets.
- * @return Pre-goal point.
- */
-PathPointWithLaneId prepare_pre_goal(
-  const geometry_msgs::msg::Pose & goal, const lanelet::ConstLanelets & lanes);
-
-/**
- * @brief Get the index of the point closest to the circumference of the circle whose center is the
- * goal and outside of it.
- * @param points Points to search.
- * @param goal Goal pose.
- * @param goal_lane_id Lane ID of the goal.
- * @param max_dist Maximum distance to search.
- * @return Index of the point closest to the circumference of the circle whose center is the goal
- * and outside of it.
- */
-std::optional<size_t> find_index_out_of_goal_search_range(
-  const std::vector<PathPointWithLaneId> & points, const geometry_msgs::msg::Pose & goal,
-  const int64_t goal_lane_id, const double max_dist);
-
-/**
- * @brief Get the path up to just before the pre_goal.
- * @param input Input path.
- * @param refined_goal Goal pose.
- * @return Recreated path
- */
-std::optional<PathWithLaneId> get_path_up_to_just_before_pre_goal(
-  const PathWithLaneId & input, const geometry_msgs::msg::Pose & goal,
-  const lanelet::Id goal_lane_id, const double search_radius_range);
-
-/**
  * @brief Recreate the path with a given goal pose.
  * @param input Input path.
  * @param refined_goal Goal pose.
