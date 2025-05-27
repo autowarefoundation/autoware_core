@@ -263,7 +263,8 @@ protected:
       point.x = static_cast<float>(i % 10) - 5.0f;
       point.y = static_cast<float>(i / 10) - 5.0f;
       // Add small noise to ground points
-      point.z = 0.0f + (static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX)- 0.5f) * 0.05f;
+      point.z =
+        0.0f + (static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX) - 0.5f) * 0.05f;
       point.intensity = 100;
       point.return_type = 1;
       point.channel = 0;
