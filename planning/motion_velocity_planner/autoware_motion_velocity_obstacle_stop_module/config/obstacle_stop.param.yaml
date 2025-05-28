@@ -72,6 +72,7 @@
         min_velocity_to_reach_collision_point: 2.0 # minimum velocity margin to calculate time to reach collision [m/s]
         stop_obstacle_hold_time_threshold : 1.0 # maximum time for holding closest stop obstacle
 
+        # NOTE: This feature is not supported, and will be removed soon.
         outside_obstacle:
           max_lateral_time_margin: 4.5 # time threshold of lateral margin between the obstacles and ego's footprint [s]
           num_of_predicted_paths: 1 # number of the highest confidence predicted path to check collision between obstacle and ego
