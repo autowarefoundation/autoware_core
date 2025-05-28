@@ -149,5 +149,9 @@ double calc_possible_min_dist_from_obj_to_traj_poly(
 double get_dist_to_traj_poly(
   const geometry_msgs::msg::Point & point,
   const std::vector<autoware_utils::Polygon2d> & decimated_traj_polys);
+
+std::vector<TrajectoryPoint> get_extended_trajectory_points(
+  const std::vector<TrajectoryPoint> & input_points, const double extend_distance,
+  const double step_length);
 }  // namespace autoware::motion_velocity_planner::utils
 #endif  // AUTOWARE__MOTION_VELOCITY_PLANNER_COMMON__UTILS_HPP_
