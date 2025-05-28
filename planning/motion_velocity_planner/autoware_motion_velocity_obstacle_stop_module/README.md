@@ -12,7 +12,7 @@ The obstacles meeting the following condition are determined as obstacles for st
 
 - The object type is for stopping according to `obstacle_filtering.object_type.*`.
 - The lateral distance from the object to the ego's trajectory is smaller than `obstacle_filtering.max_lat_margin`.
-  - `obstacle_filtering.max_lat_margin_against_predicted_object_unknown` is applied to the predicted object of unkonwn.
+  - `obstacle_filtering.max_lat_margin_against_predicted_object_unknown` is applied to the predicted object of unknown.
 - The object velocity along the ego's trajectory is smaller than `obstacle_filtering.obstacle_velocity_threshold_from_stop`.
 - The object
   - does not cross the ego's trajectory (\*1)
