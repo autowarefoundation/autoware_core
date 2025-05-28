@@ -65,9 +65,16 @@ In order to keep the closest stop point
 
 #### Stop point adjustment on the curve
 
-Enabling `stop_planning.stop_on_curve.enable_approaching` will make the stop margin shorter than usual on a curve.
-`stop_planning.stop_on_curve.additional_stop_margin` will be applied instead of `stop_planning.stop_margin`.
-`stop_planning.stop_on_curve.min_stop_margin` will be kept at minimum.
+When the ego stops on the curve road, since the stop margin is a bit long by default, in the following figure, the object B will come between the ego and object A.
+To avoid this cut-in, the feature of using the stop margin shorter than usual on a curve can be used by enabling `stop_planning.stop_on_curve.enable_approaching`.
+
+The following figure shows the logic.
+
+- First, calculate the blue point where the straight driving footprint of the each future ego's pose collides with the front object.
+- Then, calculate the stop point `stop_planning.stop_on_curve.additional_stop_margin` behind the above ego's pose.
+  - `stop_planning.stop_on_curve.min_stop_margin` will be kept at minimum between the ego and object.
+
+![stop_on_curve](./docs/stop_on_curve.drawio.svg)
 
 #### Ignoring crossing obstacles
 
