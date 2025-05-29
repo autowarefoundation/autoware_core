@@ -1,0 +1,6 @@
+# lcov configuration file to suppress warnings and fix deprecated options
+# Use the new branch_coverage option instead of deprecated lcov_branch_coverage
+branch_coverage = 1
+
+# Suppress mismatched line warnings
+ignore_errors = mismatch

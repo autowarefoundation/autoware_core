@@ -69,6 +69,24 @@ struct VehicleInfo
   [[nodiscard]] autoware_utils::LinearRing2d createFootprint(
     const double lat_margin, const double lon_margin) const;
 
+  /**
+   * @brief Calculate the vehicle footprint in a clockwise manner, starting from the front-left
+   * edge. The polygon is formed by tracing from front-left edge → front-right edge → center-right
+   * point → rear-right edge → rear-left edge → center-left point → front-left edge to form a closed
+   * shape.
+   * @param front_lat_margin lateral inflation margin at the front section
+   * @param center_lat_margin lateral inflation margin at the center section
+   * @param rear_lat_margin lateral inflation margin at the rear section
+   * @param front_lon_margin longitudinal inflation margin at the front section
+   * @param rear_lon_margin longitudinal inflation margin at the rear section
+   * @param center_at_base_link if true, center point is aligned at base_link (x=0), otherwise
+   * placed at wheelbase center
+   */
+  [[nodiscard]] autoware_utils::LinearRing2d createFootprint(
+    const double front_lat_margin, const double center_lat_margin, const double rear_lat_margin,
+    const double front_lon_margin, const double rear_lon_margin,
+    const bool center_at_base_link = false) const;
+
   [[nodiscard]] double calcMaxCurvature() const;
   [[nodiscard]] double calcCurvatureFromSteerAngle(const double steer_angle) const;
   [[nodiscard]] double calcSteerAngleFromCurvature(const double curvature) const;

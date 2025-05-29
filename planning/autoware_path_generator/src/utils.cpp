@@ -205,17 +205,20 @@ std::vector<WaypointGroup> get_waypoint_groups(
     const auto & waypoints = lanelet_map.lineStringLayer.get(waypoints_id);
 
     if (
-      waypoint_groups.empty() ||
-      lanelet::geometry::distance2d(waypoint_groups.back().waypoints.back(), waypoints.front()) >
-        group_separation_threshold) {
+      waypoint_groups.empty() || lanelet::geometry::distance2d(
+                                   waypoint_groups.back().waypoints.back().point,
+                                   waypoints.front()) > group_separation_threshold) {
       waypoint_groups.emplace_back().interval.start =
         get_interval_bound(waypoints.front(), -interval_margin_ratio);
     }
     waypoint_groups.back().interval.end =
       get_interval_bound(waypoints.back(), interval_margin_ratio);
 
-    waypoint_groups.back().waypoints.insert(
-      waypoint_groups.back().waypoints.end(), waypoints.begin(), waypoints.end());
+    std::transform(
+      waypoints.begin(), waypoints.end(), std::back_inserter(waypoint_groups.back().waypoints),
+      [&](const lanelet::ConstPoint3d & waypoint) {
+        return WaypointGroup::Waypoint{waypoint, lanelet.id()};
+      });
   }
 
   return waypoint_groups;
@@ -422,6 +425,68 @@ std::optional<double> get_first_self_intersection_arc_length(
   return std::nullopt;
 }
 
+double get_arc_length_on_path(
+  const lanelet::LaneletSequence & lanelet_sequence, const std::vector<PathPointWithLaneId> & path,
+  const double s_centerline)
+{
+  std::optional<lanelet::Id> target_lanelet_id = std::nullopt;
+  std::optional<lanelet::BasicPoint2d> point_on_centerline = std::nullopt;
+
+  if (lanelet_sequence.empty() || path.empty()) {
+    RCLCPP_WARN(
+      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+      "Input lanelet sequence or path is empty, returning 0.");
+    return 0.;
+  }
+
+  if (s_centerline < 0.) {
+    RCLCPP_WARN(
+      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+      "Input arc length is negative, returning 0.");
+    return 0.;
+  }
+
+  for (auto [it, s] = std::make_tuple(lanelet_sequence.begin(), 0.); it != lanelet_sequence.end();
+       ++it) {
+    const double centerline_length = lanelet::geometry::length(it->centerline2d());
+    if (s + centerline_length < s_centerline) {
+      s += centerline_length;
+      continue;
+    }
+
+    target_lanelet_id = it->id();
+    point_on_centerline =
+      lanelet::geometry::interpolatedPointAtDistance(it->centerline2d(), s_centerline - s);
+    break;
+  }
+
+  if (!target_lanelet_id || !point_on_centerline) {
+    // lanelet_sequence is too short, thus we return input arc length as is.
+    return s_centerline;
+  }
+
+  auto s_path = 0.;
+  lanelet::BasicLineString2d target_path_segment;
+
+  for (auto it = path.begin(); it != path.end(); ++it) {
+    if (
+      std::find(it->lane_ids.begin(), it->lane_ids.end(), *target_lanelet_id) ==
+      it->lane_ids.end()) {
+      if (target_path_segment.empty() && it != std::prev(path.end())) {
+        s_path += autoware_utils::calc_distance2d(*it, *std::next(it));
+        continue;
+      }
+      break;
+    }
+    target_path_segment.push_back(
+      lanelet::utils::conversion::toLaneletPoint(it->point.pose.position).basicPoint2d());
+  }
+
+  s_path += lanelet::geometry::toArcCoordinates(target_path_segment, *point_on_centerline).length;
+
+  return s_path;
+}
+
 PathRange<std::vector<geometry_msgs::msg::Point>> get_path_bounds(
   const lanelet::LaneletSequence & lanelet_sequence, const double s_start, const double s_end)
 {
@@ -614,112 +679,6 @@ geometry_msgs::msg::Pose refine_goal(
     refined_goal.orientation = tf2::toMsg(tf_quat);
   }
   return refined_goal;
-}
-
-// To perform smooth goal connection, we need to prepare the point before the goal point.
-// This function prepares the point before the goal point.
-// See the link below for more details:
-//   https://autowarefoundation.github.io/autoware_universe/main/planning/behavior_path_planner/autoware_behavior_path_goal_planner_module/#fixed_goal_planner
-PathPointWithLaneId prepare_pre_goal(
-  const geometry_msgs::msg::Pose & goal, const lanelet::ConstLanelets & lanes)
-{
-  PathPointWithLaneId pre_refined_goal{};
-
-  // -1.0 is to prepare the point before the goal point. See the link above for more details.
-  constexpr double goal_to_pre_goal_distance = -1.0;
-
-  // First, calculate the pose of the pre_goal point
-  pre_refined_goal.point.pose =
-    autoware_utils::calc_offset_pose(goal, goal_to_pre_goal_distance, 0.0, 0.0);
-
-  // Second, find and set the lane_id that the pre_goal point belongs to
-  for (const auto & lane : lanes) {
-    if (lanelet::utils::isInLanelet(pre_refined_goal.point.pose, lane)) {
-      // Prevent from duplication
-      if (exists(pre_refined_goal.lane_ids, lane.id())) {
-        continue;
-      }
-      pre_refined_goal.lane_ids.push_back(lane.id());
-    }
-  }
-
-  return pre_refined_goal;
-}
-
-// A function that assumes a circle with radius max_dist centered at the goal and returns
-// the index of the point closest to the circumference of the circle and outside of it.
-// If no such point is found, return the farthest point from the goal in the circle.
-std::optional<size_t> find_index_out_of_goal_search_range(
-  const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & points,
-  const geometry_msgs::msg::Pose & goal, const int64_t goal_lane_id, const double max_dist)
-{
-  if (points.empty()) {
-    return std::nullopt;
-  }
-
-  // find goal index
-  size_t min_dist_index;
-  {
-    bool found = false;
-    double min_dist = std::numeric_limits<double>::max();
-    for (size_t i = 0; i < points.size(); ++i) {
-      const auto & lane_ids = points.at(i).lane_ids;
-
-      const double dist_to_goal = autoware_utils::calc_distance2d(points.at(i).point.pose, goal);
-      const bool is_goal_lane_id_in_point = exists(lane_ids, goal_lane_id);
-      if (dist_to_goal < max_dist && dist_to_goal < min_dist && is_goal_lane_id_in_point) {
-        min_dist_index = i;
-        min_dist = dist_to_goal;
-        found = true;
-      }
-    }
-    if (!found) {
-      return std::nullopt;
-    }
-  }
-
-  // Find index out of goal search range
-  size_t min_dist_out_of_range_index = min_dist_index;
-  for (int i = min_dist_index; 0 <= i; --i) {
-    const double dist = autoware_utils::calc_distance2d(points.at(i).point, goal);
-    min_dist_out_of_range_index = i;
-    if (max_dist < dist) {
-      break;
-    }
-  }
-
-  return min_dist_out_of_range_index;
-}
-
-// Clean up points around the goal for smooth goal connection
-// This function returns the cleaned up path. You need to add pre_goal and goal to the returned
-// path. This is because we'll do spline interpolation between the tail of the returned path and the
-// pre_goal later at this file.
-//   https://github.com/autowarefoundation/autoware_universe/blob/908cb7ee5cca01c367f03caf6db4562a620504fb/planning/behavior_path_planner/autoware_behavior_path_planner/src/behavior_path_planner_node.cpp#L724-L725
-std::optional<PathWithLaneId> get_path_up_to_just_before_pre_goal(
-  const PathWithLaneId & input, const geometry_msgs::msg::Pose & goal,
-  const lanelet::Id goal_lane_id, const double search_radius_range)
-{
-  // Find min_dist_out_of_circle_index whose distance to goal is longer than search_radius_range
-  const auto min_dist_out_of_circle_index_opt =
-    find_index_out_of_goal_search_range(input.points, goal, goal_lane_id, search_radius_range);
-
-  // It seems we are almost at the goal as no point is found outside of the circle whose center is
-  // the goal
-  if (!min_dist_out_of_circle_index_opt) {
-    return std::nullopt;
-  }
-
-  // It seems we have a point outside of the circle whose center is the goal
-  const auto min_dist_out_of_circle_index = min_dist_out_of_circle_index_opt.value();
-
-  // Fill all the points up to just before the point outside of the circle
-  PathWithLaneId output;
-  for (size_t i = 0; i <= min_dist_out_of_circle_index; ++i) {
-    output.points.push_back(input.points.at(i));
-  }
-
-  return output;
 }
 
 // Function to refine the path for the goal

@@ -85,11 +85,16 @@ EKFLocalizer::EKFLocalizer(const rclcpp::NodeOptions & node_options)
   sub_twist_with_cov_ = create_subscription<geometry_msgs::msg::TwistWithCovarianceStamped>(
     "in_twist_with_covariance", 1,
     std::bind(&EKFLocalizer::callback_twist_with_covariance, this, _1));
+#if ROS_DISTRO_HUMBLE
+  const auto service_trigger_qos = rclcpp::ServicesQoS().get_rmw_qos_profile();
+#else
+  const auto service_trigger_qos = rclcpp::ServicesQoS();
+#endif
   service_trigger_node_ = create_service<std_srvs::srv::SetBool>(
     "trigger_node_srv",
     std::bind(
       &EKFLocalizer::service_trigger_node, this, std::placeholders::_1, std::placeholders::_2),
-    rclcpp::ServicesQoS().get_rmw_qos_profile());
+    service_trigger_qos);
 
   tf_br_ = std::make_shared<tf2_ros::TransformBroadcaster>(
     std::shared_ptr<rclcpp::Node>(this, [](auto) {}));

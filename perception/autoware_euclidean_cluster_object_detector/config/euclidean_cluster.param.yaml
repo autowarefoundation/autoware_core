@@ -1,0 +1,15 @@
+/**:
+  ros__parameters:
+    max_cluster_size: 1000
+    min_cluster_size: 10
+    tolerance: 0.7
+    use_height: false
+
+    # low height crop box filter param
+    max_x: 200.0
+    min_x: -200.0
+    max_y: 200.0
+    min_y: -200.0
+    max_z: 2.0
+    min_z: -10.0
+    negative: false

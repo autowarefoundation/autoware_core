@@ -2544,6 +2544,16 @@ extern template bool isTargetPointFront<std::vector<autoware_planning_msgs::msg:
   const geometry_msgs::msg::Point & base_point, const geometry_msgs::msg::Point & target_point,
   const double threshold = 0.0);
 
+/**
+ * @brief calculate the difference angle between the target pose and the nearest trajectory point
+ * @param points points of trajectory, path, ...
+ * @param target_pose target pose to calculate the difference angle
+ * @return difference angle in radians
+ */
+double calc_diff_angle_against_trajectory(
+  const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & traj_points,
+  const geometry_msgs::msg::Pose & target_pose);
+
 /// @brief calculate the time_from_start fields of the given trajectory points
 /// @details this function assumes constant longitudinal velocity between points
 /// @param trajectory trajectory for which to calculate the time_from_start

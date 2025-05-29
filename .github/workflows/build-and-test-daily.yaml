@@ -52,6 +52,15 @@ jobs:
           target-packages: ${{ steps.get-self-packages.outputs.self-packages }}
           underlay-workspace: /opt/autoware
 
+      - name: Set up geographiclib-tools
+        run: |
+          if [ "${{ matrix.rosdistro }}" = "jazzy" ]; then
+            apt-get update
+            apt-get install -y geographiclib-tools
+            geographiclib-get-geoids egm2008-1
+          fi
+        shell: bash
+
       - name: Test
         if: ${{ steps.get-self-packages.outputs.self-packages != '' }}
         id: test

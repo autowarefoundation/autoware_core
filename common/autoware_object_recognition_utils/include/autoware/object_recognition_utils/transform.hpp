@@ -16,23 +16,17 @@
 #define AUTOWARE__OBJECT_RECOGNITION_UTILS__TRANSFORM_HPP_
 
 #include <pcl_ros/transforms.hpp>
+#include <tf2_eigen/tf2_eigen.hpp>
 
 #include <geometry_msgs/msg/transform.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <sensor_msgs/msg/point_field.hpp>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
 #include <boost/optional.hpp>
 
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
-#ifdef ROS_DISTRO_GALACTIC
-#include <tf2_eigen/tf2_eigen.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-#else
-#include <tf2_eigen/tf2_eigen.hpp>
-
-#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
-#endif
 
 #include <string>
 

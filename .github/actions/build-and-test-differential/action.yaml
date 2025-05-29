@@ -80,6 +80,15 @@ runs:
       run: du -sh ${CCACHE_DIR} && ccache -s
       shell: bash
 
+    - name: Set up geographiclib-tools
+      run: |
+        if [ "${{ inputs.rosdistro }}" = "jazzy" ]; then
+          apt-get update
+          apt-get install -y geographiclib-tools
+          geographiclib-get-geoids egm2008-1
+        fi
+      shell: bash
+
     - name: Test
       id: test
       if: ${{ steps.get-modified-packages.outputs.modified-packages != '' }}

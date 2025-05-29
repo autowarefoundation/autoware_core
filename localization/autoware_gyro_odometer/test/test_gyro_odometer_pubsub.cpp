@@ -31,7 +31,11 @@ using sensor_msgs::msg::Imu;
 class ImuGenerator : public rclcpp::Node
 {
 public:
-  ImuGenerator() : Node("imu_generator"), imu_pub(create_publisher<Imu>("/imu", 1)) {}
+  ImuGenerator()
+  : Node("imu_generator"),
+    imu_pub(create_publisher<Imu>("/imu", rclcpp::QoS{1}.reliable().transient_local()))
+  {
+  }
   rclcpp::Publisher<Imu>::SharedPtr imu_pub;
 };
 
@@ -40,8 +44,8 @@ class VelocityGenerator : public rclcpp::Node
 public:
   VelocityGenerator()
   : Node("velocity_generator"),
-    vehicle_velocity_pub(
-      create_publisher<TwistWithCovarianceStamped>("/vehicle/twist_with_covariance", 1))
+    vehicle_velocity_pub(create_publisher<TwistWithCovarianceStamped>(
+      "/vehicle/twist_with_covariance", rclcpp::QoS{1}.reliable().transient_local()))
   {
   }
   rclcpp::Publisher<TwistWithCovarianceStamped>::SharedPtr vehicle_velocity_pub;
@@ -117,10 +121,12 @@ TEST(GyroOdometer, TestGyroOdometerWithImuAndVelocity)
   auto velocity_generator = std::make_shared<VelocityGenerator>();
   auto gyro_odometer_validator_node = std::make_shared<GyroOdometerValidator>();
 
-  velocity_generator->vehicle_velocity_pub->publish(
-    input_velocity);  // need this for now, which should eventually be removed
-  imu_generator->imu_pub->publish(input_imu);
+  // TODO(youtalk): Remove these after the refinement of the GyroOdometerNode
   velocity_generator->vehicle_velocity_pub->publish(input_velocity);
+  imu_generator->imu_pub->publish(input_imu);
+
+  velocity_generator->vehicle_velocity_pub->publish(input_velocity);
+  imu_generator->imu_pub->publish(input_imu);
 
   // gyro_odometer receives IMU and velocity, and publishes the fused twist data.
   wait_spin_some(gyro_odometer_node);
