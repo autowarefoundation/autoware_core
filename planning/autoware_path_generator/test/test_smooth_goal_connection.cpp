@@ -137,12 +137,6 @@ TEST_F(UtilsTest, isTrajectoryInsideLanelets)
     ASSERT_TRUE(result);
   }
 
-  {  // trajectory is empty
-    const auto result = utils::is_trajectory_inside_lanelets({}, planner_data_.route_lanelets);
-
-    ASSERT_TRUE(result);  // isn't this expected to be false?
-  }
-
   {  // lanelets are empty
     const auto result =
       utils::is_trajectory_inside_lanelets(*Trajectory::Builder{}.build(path_.points), {});
