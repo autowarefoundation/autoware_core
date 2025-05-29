@@ -47,6 +47,8 @@ TrajectoryPoint extend_trajectory_point(
   return extended_trajectory_point;
 }
 
+}  // namespace
+
 std::vector<TrajectoryPoint> get_extended_trajectory_points(
   const std::vector<TrajectoryPoint> & input_points, const double extend_distance,
   const double step_length)
@@ -83,8 +85,6 @@ std::vector<TrajectoryPoint> resample_trajectory_points(
   const auto resampled_traj = autoware::motion_utils::resampleTrajectory(traj, interval);
   return autoware::motion_utils::convertToTrajectoryPointArray(resampled_traj);
 }
-
-}  // namespace
 
 std::vector<TrajectoryPoint> decimate_trajectory_points_from_ego(
   const std::vector<TrajectoryPoint> & traj_points, const geometry_msgs::msg::Pose & current_pose,

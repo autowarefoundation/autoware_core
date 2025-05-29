@@ -271,7 +271,7 @@ VelocityPlanningResult ObstacleStopModule::plan(
 std::vector<geometry_msgs::msg::Point> ObstacleStopModule::convert_point_cloud_to_stop_points(
   const PlannerData::Pointcloud & pointcloud, const std::vector<TrajectoryPoint> & traj_points,
   const std::vector<Polygon2d> & decimated_traj_polys, const VehicleInfo & vehicle_info,
-  size_t ego_idx)
+  const TrajectoryPolygonCollisionCheck & trajectory_polygon_collision_check, size_t ego_idx)
 {
   autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
 
@@ -280,13 +280,17 @@ std::vector<geometry_msgs::msg::Point> ObstacleStopModule::convert_point_cloud_t
   }
 
   const auto & p = obstacle_filtering_param_;
+  const auto & tp = trajectory_polygon_collision_check;
 
   std::vector<geometry_msgs::msg::Point> stop_collision_points;
 
-  const PointCloud::Ptr filtered_points_ptr =
-    pointcloud.get_filtered_pointcloud_ptr(traj_points, vehicle_info);
+  const auto extended_traj_points_from_ego = utils::get_extended_trajectory_points(
+    traj_points, tp.goal_extended_trajectory_length, tp.decimate_trajectory_step_length);
+
+  const PointCloud::Ptr filtered_points_ptr = pointcloud.get_filtered_pointcloud_ptr(
+    extended_traj_points_from_ego, vehicle_info);  // extend trajectory points here
   const std::vector<pcl::PointIndices> clusters =
-    pointcloud.get_cluster_indices(traj_points, vehicle_info);
+    pointcloud.get_cluster_indices(extended_traj_points_from_ego, vehicle_info);
 
   // 2. convert clusters to obstacles
   for (const auto & cluster_indices : clusters) {
@@ -468,7 +472,7 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_point_clo
     tp.enable_to_consider_current_pose, tp.time_to_convergence, tp.decimate_trajectory_step_length);
 
   const std::vector<geometry_msgs::msg::Point> stop_points = convert_point_cloud_to_stop_points(
-    point_cloud, traj_points, decimated_traj_polys, vehicle_info, ego_idx);
+    point_cloud, traj_points, decimated_traj_polys, vehicle_info, tp, ego_idx);
 
   debug_data_ptr_->decimated_traj_polys = decimated_traj_polys;
 
