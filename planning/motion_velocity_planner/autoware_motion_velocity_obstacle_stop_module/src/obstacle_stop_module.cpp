@@ -285,7 +285,7 @@ std::vector<geometry_msgs::msg::Point> ObstacleStopModule::convert_point_cloud_t
   std::vector<geometry_msgs::msg::Point> stop_collision_points;
 
   const auto extended_traj_points_from_ego = utils::get_extended_trajectory_points(
-    traj_points, tp.decimate_trajectory_step_length, tp.goal_extended_trajectory_length);
+    traj_points, tp.goal_extended_trajectory_length, tp.decimate_trajectory_step_length);
 
   const PointCloud::Ptr filtered_points_ptr = pointcloud.get_filtered_pointcloud_ptr(
     extended_traj_points_from_ego, vehicle_info);  // extend trajectory points here
