@@ -18,6 +18,7 @@
 
 #include <string>
 #include <tuple>
+#include <vector>
 
 namespace autoware::path_generator
 {
