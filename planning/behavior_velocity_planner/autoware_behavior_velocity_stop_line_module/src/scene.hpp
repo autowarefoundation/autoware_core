@@ -33,6 +33,7 @@
 #include <memory>
 #include <optional>
 #include <utility>
+#include <vector>
 
 namespace autoware::behavior_velocity_planner
 {
@@ -113,6 +114,9 @@ public:
     return visualization_msgs::msg::MarkerArray{};
   }
   autoware::motion_utils::VirtualWalls createVirtualWalls() override;
+
+  std::vector<int64_t> getLaneletIds() const override { return {linked_lanelet_id_}; }
+  std::vector<int64_t> getLineIds() const override { return {stop_line_.id()}; }
 
 private:
   const lanelet::ConstLineString3d stop_line_;  ///< Stop line geometry.

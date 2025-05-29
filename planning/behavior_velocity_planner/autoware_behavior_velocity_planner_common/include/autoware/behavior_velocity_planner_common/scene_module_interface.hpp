@@ -114,6 +114,20 @@ protected:
 
   size_t findEgoSegmentIndex(
     const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & points) const;
+
+  void logInfo(const char * format, ...) const;
+  void logWarn(const char * format, ...) const;
+  void logDebug(const char * format, ...) const;
+  void logInfoThrottle(const int duration, const char * format, ...) const;
+  void logWarnThrottle(const int duration, const char * format, ...) const;
+  void logDebugThrottle(const int duration, const char * format, ...) const;
+
+  virtual std::vector<int64_t> getRegulatoryElementIds() const { return {}; }
+  virtual std::vector<int64_t> getLaneletIds() const { return {}; }
+  virtual std::vector<int64_t> getLineIds() const { return {}; }
+
+private:
+  std::string formatLogMessage(const char * format, va_list args) const;
 };
 
 template <class T = SceneModuleInterface>

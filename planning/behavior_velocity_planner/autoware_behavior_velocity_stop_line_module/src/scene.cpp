@@ -26,6 +26,7 @@
 #include <lanelet2_core/Forward.h>
 #include <lanelet2_core/primitives/Lanelet.h>
 
+#include <cstdarg>
 #include <memory>
 #include <optional>
 #include <set>
@@ -61,6 +62,7 @@ StopLineModule::StopLineModule(
   state_(State::APPROACH),
   debug_data_()
 {
+  logInfo("Module initialized");
 }
 
 bool StopLineModule::modifyPathVelocity(PathWithLaneId * path)
@@ -68,6 +70,7 @@ bool StopLineModule::modifyPathVelocity(PathWithLaneId * path)
   auto trajectory = Trajectory::Builder{}.build(path->points);
 
   if (!trajectory) {
+    logWarnThrottle(5000, "Failed to build trajectory from path points");
     return true;
   }
 
@@ -75,6 +78,11 @@ bool StopLineModule::modifyPathVelocity(PathWithLaneId * path)
     getEgoAndStopPoint(*trajectory, *path, planner_data_->current_odometry->pose, state_);
 
   if (!stop_point) {
+    if (state_ == State::APPROACH) {
+      logWarnThrottle(
+        5000, "No stop point found | ego_s: %.2f | trajectory_length: %.2f", ego_s,
+        trajectory->length());
+    }
     return true;
   }
 
@@ -170,11 +178,12 @@ void StopLineModule::updateStateAndStoppedTime(
       if (distance_to_stop_point < planner_param_.hold_stop_margin_distance && is_vehicle_stopped) {
         *state = State::STOPPED;
         *stopped_time = now;
-        RCLCPP_INFO(logger_, "APPROACH -> STOPPED");
-
+        logInfo("State transition: APPROACH -> STOPPED | Distance: %.2fm", distance_to_stop_point);
         if (distance_to_stop_point < 0.0) {
-          RCLCPP_WARN(logger_, "Vehicle cannot stop before stop line");
+          logWarn("Vehicle stopped after stop line | Distance: %.2fm", distance_to_stop_point);
         }
+      } else {
+        logInfoThrottle(10000, "State: APPROACH | Distance: %.2fm", distance_to_stop_point);
       }
       break;
     }
@@ -183,11 +192,16 @@ void StopLineModule::updateStateAndStoppedTime(
       if (stop_duration > planner_param_.stop_duration_sec) {
         *state = State::START;
         stopped_time->reset();
-        RCLCPP_INFO(logger_, "STOPPED -> START");
+        logInfo("State transition: STOPPED -> START | Duration: %.2fs", stop_duration);
+      } else {
+        logInfoThrottle(
+          5000, "State: STOPPED | Distance: %.2fm | Duration: %.2fs", distance_to_stop_point,
+          stop_duration);
       }
       break;
     }
     case State::START: {
+      logDebug("State: START | Distance: %.2fm", distance_to_stop_point);
       break;
     }
   }
