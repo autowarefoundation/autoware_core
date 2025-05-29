@@ -41,6 +41,7 @@ class PluginModuleInterface
 public:
   virtual ~PluginModuleInterface() = default;
   virtual void init(rclcpp::Node & node, const std::string & module_name) = 0;
+  virtual RequiredSubscriptionInfo getRequiredSubscriptions() const = 0;
   virtual void update_parameters(const std::vector<rclcpp::Parameter> & parameters) = 0;
   virtual VelocityPlanningResult plan(
     const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & raw_trajectory_points,

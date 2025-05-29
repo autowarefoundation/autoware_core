@@ -48,9 +48,12 @@ public:
     const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & smoothed_trajectory_points,
     const std::shared_ptr<const PlannerData> planner_data);
 
+  RequiredSubscriptionInfo getRequiredSubscriptions() const { return required_subscriptions_; }
+
 private:
   pluginlib::ClassLoader<PluginModuleInterface> plugin_loader_;
   std::vector<std::shared_ptr<PluginModuleInterface>> loaded_plugins_;
+  RequiredSubscriptionInfo required_subscriptions_;
 };
 }  // namespace autoware::motion_velocity_planner
 
