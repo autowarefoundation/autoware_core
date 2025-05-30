@@ -43,15 +43,18 @@ std::optional<lanelet::ConstLanelet> get_closest_lanelet(
   double min_distance = std::numeric_limits<double>::max();
   for (const auto & llt : lanelets) {
     /*
-      NOTE(soblin): comparable_distance is a distance that maybe x*x+y*y, not std::hypot of it,
+      NOTE(soblin):
+      if point is on the edge of, or within the area of that polygon, distance is
+      0.0.
+      comparable_distance is a distance that maybe be x*x+y*y, not std::hypot of it,
       which is used to only compare distance
+      stackoverflow.com/questions/51267577/boost-geometry-polygon-distance-for-inside-point
      */
     const double distance =
       boost::geometry::comparable_distance(llt.polygon2d().basicPolygon(), search_point);
 
     /*
-      NOTE(soblin): if point is on the edge of, or within the area of that polygon, distance is
-      0.0. this line is intended to push all lanelets on which search_point is located to
+      NOTE(soblin): this line is intended to push all lanelets on which search_point is located to
       candidate, and later judge by angle
      */
     if (std::fabs(distance - min_distance) <= std::numeric_limits<double>::epsilon()) {
