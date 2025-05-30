@@ -22,6 +22,7 @@
 #include <boost/geometry.hpp>
 
 #include <gtest/gtest.h>
+#include <lanelet2_core/LaneletMap.h>
 #include <lanelet2_core/geometry/Lanelet.h>
 #include <lanelet2_core/primitives/Lanelet.h>
 #include <lanelet2_core/primitives/Point.h>
@@ -183,7 +184,8 @@ TEST_F(ExtrapolatedLaneletTest, ConcatenateCenterlinesSequence)
 TEST(GetLineStringFromArcLength, EmptyLinestringReturnsNullopt)
 {
   lanelet::ConstLineString3d empty{lanelet::InvalId, lanelet::Points3d{}};
-  auto opt = autoware::lanelet2_utils::get_linestring_from_arc_length(empty, 0.5, 1.0);
+  auto opt =
+    autoware::experimental::lanelet2_utils::get_linestring_from_arc_length(empty, 0.5, 1.0);
   EXPECT_FALSE(opt.has_value());
 }
 
@@ -195,9 +197,11 @@ TEST(GetLineStringFromArcLength, OutOfBoundsReturnsNullopt)
     lanelet::Point3d{lanelet::ConstPoint3d(1, 1.0, 0.0, 0.0)},
     lanelet::Point3d{lanelet::ConstPoint3d(1, 2.0, 0.0, 0.0)}};
   lanelet::ConstLineString3d line{lanelet::InvalId, pts};
-  auto opt1 = autoware::lanelet2_utils::get_linestring_from_arc_length(line, 0.0, 3.0);
+  auto opt1 =
+    autoware::experimental::lanelet2_utils::get_linestring_from_arc_length(line, 0.0, 3.0);
   EXPECT_FALSE(opt1.has_value());
-  auto opt2 = autoware::lanelet2_utils::get_linestring_from_arc_length(line, -1.0, 1.0);
+  auto opt2 =
+    autoware::experimental::lanelet2_utils::get_linestring_from_arc_length(line, -1.0, 1.0);
   EXPECT_FALSE(opt2.has_value());
 }
 
@@ -209,7 +213,7 @@ TEST(GetLineStringFromArcLength, FullRangeReturnsAllPoints)
     lanelet::Point3d{lanelet::ConstPoint3d(1, 1.0, 0.0, 0.0)},
     lanelet::Point3d{lanelet::ConstPoint3d(1, 2.0, 0.0, 0.0)}};
   lanelet::ConstLineString3d line{lanelet::InvalId, pts};
-  auto opt = autoware::lanelet2_utils::get_linestring_from_arc_length(line, 0.0, 2.0);
+  auto opt = autoware::experimental::lanelet2_utils::get_linestring_from_arc_length(line, 0.0, 2.0);
   ASSERT_TRUE(opt.has_value());
   const auto & out = *opt;
   ASSERT_EQ(out.size(), line.size());
@@ -229,7 +233,7 @@ TEST(GetLineStringFromArcLength, PartialRangeExtractsCorrectSegment)
     lanelet::Point3d{lanelet::ConstPoint3d(1, 1.7, 0.0, 0.0)},
     lanelet::Point3d{lanelet::ConstPoint3d(1, 2.0, 0.0, 0.0)}};
   lanelet::ConstLineString3d line{lanelet::InvalId, pts};
-  auto opt = autoware::lanelet2_utils::get_linestring_from_arc_length(line, 0.5, 1.5);
+  auto opt = autoware::experimental::lanelet2_utils::get_linestring_from_arc_length(line, 0.5, 1.5);
   ASSERT_TRUE(opt.has_value());
   const auto & out = *opt;
   ASSERT_EQ(out.size(), 3u);
@@ -241,11 +245,14 @@ TEST(GetLineStringFromArcLength, PartialRangeExtractsCorrectSegment)
 TEST_F(ExtrapolatedLaneletTest, GetPoseFrom2dArcLength_OutOfBounds)
 {
   lanelet::ConstLanelets lanelets;
-  EXPECT_FALSE(autoware::lanelet2_utils::get_pose_from_2d_arc_length(lanelets, 0.0).has_value());
+  EXPECT_FALSE(
+    autoware::experimental::lanelet2_utils::get_pose_from_2d_arc_length(lanelets, 0.0).has_value());
 
   lanelets.push_back(lanelet_map_ptr_->laneletLayer.get(2287));
-  EXPECT_FALSE(autoware::lanelet2_utils::get_pose_from_2d_arc_length(lanelets, -1.0).has_value());
-  EXPECT_FALSE(autoware::lanelet2_utils::get_pose_from_2d_arc_length(lanelets, 1e6).has_value());
+  EXPECT_FALSE(autoware::experimental::lanelet2_utils::get_pose_from_2d_arc_length(lanelets, -1.0)
+                 .has_value());
+  EXPECT_FALSE(
+    autoware::experimental::lanelet2_utils::get_pose_from_2d_arc_length(lanelets, 1e6).has_value());
 }
 
 // Test 15: get_pose_from_2d_arc_length
@@ -255,7 +262,8 @@ TEST_F(ExtrapolatedLaneletTest, GetPoseFrom2dArcLength_OnRealMapLanelets)
   for (auto id : {2287, 2288, 2289}) {
     lanelets.push_back(lanelet_map_ptr_->laneletLayer.get(id));
   }
-  auto opt_pose = autoware::lanelet2_utils::get_pose_from_2d_arc_length(lanelets, 3.0);
+  auto opt_pose =
+    autoware::experimental::lanelet2_utils::get_pose_from_2d_arc_length(lanelets, 3.0);
   ASSERT_TRUE(opt_pose.has_value());
   const auto & p = *opt_pose;
   EXPECT_NEAR(p.position.x, 164.269030, 1e-6);
