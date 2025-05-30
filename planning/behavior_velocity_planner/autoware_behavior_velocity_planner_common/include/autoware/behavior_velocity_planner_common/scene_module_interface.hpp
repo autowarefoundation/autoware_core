@@ -32,9 +32,11 @@
 #include <autoware_planning_msgs/msg/path.hpp>
 #include <unique_identifier_msgs/msg/uuid.hpp>
 
+#include <iomanip>
 #include <memory>
 #include <optional>
 #include <set>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -227,15 +229,21 @@ protected:
     const autoware_internal_planning_msgs::msg::PathWithLaneId & path)
   {
     const auto isModuleExpired = getModuleExpiredFunction(path);
+    std::vector<int64_t> expired_module_ids;
 
     auto itr = scene_modules_.begin();
     while (itr != scene_modules_.end()) {
       if (isModuleExpired(*itr)) {
+        expired_module_ids.push_back((*itr)->getModuleId());
         registered_module_id_set_.erase((*itr)->getModuleId());
         itr = scene_modules_.erase(itr);
       } else {
         itr++;
       }
+    }
+
+    if (!expired_module_ids.empty()) {
+      printDeletionInfo(expired_module_ids);
     }
   }
 
@@ -246,11 +254,10 @@ protected:
 
   void registerModule(const std::shared_ptr<T> & scene_module)
   {
-    RCLCPP_DEBUG(
-      logger_, "register task: module = %s, id = %lu", getModuleName(),
-      scene_module->getModuleId());
     registered_module_id_set_.emplace(scene_module->getModuleId());
     scene_modules_.insert(scene_module);
+
+    printRegistrationInfo(scene_module->getModuleId());
   }
 
   size_t findEgoSegmentIndex(
@@ -286,7 +293,66 @@ protected:
   std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper_;
 
   std::shared_ptr<planning_factor_interface::PlanningFactorInterface> planning_factor_interface_;
+
+private:
+  void appendCommonInfo(std::ostringstream & log)
+  {
+    if (planner_data_ && planner_data_->current_odometry) {
+      const auto & ego_pose = planner_data_->current_odometry->pose;
+      const auto & ego_velocity = planner_data_->current_velocity;
+
+      log << std::fixed << std::setprecision(2) << "Ego Position: (" << ego_pose.position.x << ", "
+          << ego_pose.position.y << ", " << ego_pose.position.z << ")\n";
+
+      if (ego_velocity) {
+        log << "Ego Velocity: (" << ego_velocity->twist.linear.x << ", "
+            << ego_velocity->twist.linear.y << ") m/s\n";
+      }
+      log << "Ego Stopped: " << (planner_data_->isVehicleStopped() ? "Yes" : "No") << "\n";
+    }
+
+    log << "Registered Module IDs: [";
+    for (const auto & module : scene_modules_) {
+      log << module->getModuleId();
+    }
+    log << "]\n";
+  }
+
+  void printRegistrationInfo(int64_t module_id)
+  {
+    std::ostringstream log;
+
+    log << "\n=== BEHAVIOR VELOCITY PLANNER MODULE REGISTRATION ===\n"
+        << "Module Name: " << getModuleName() << "\n"
+        << "Module ID: " << module_id << "\n";
+
+    appendCommonInfo(log);
+    log << "========================================================\n";
+
+    RCLCPP_INFO(logger_, "%s", log.str().c_str());
+  }
+
+  void printDeletionInfo(const std::vector<int64_t> & expired_module_ids)
+  {
+    std::ostringstream log;
+
+    log << "\n=== BEHAVIOR VELOCITY PLANNER MODULE DELETION ===\n"
+        << "Module Name: " << getModuleName() << "\n"
+        << "Expired Module IDs: [";
+
+    for (size_t i = 0; i < expired_module_ids.size(); ++i) {
+      if (i > 0) log << ", ";
+      log << expired_module_ids[i];
+    }
+    log << "]\n";
+
+    appendCommonInfo(log);
+    log << "========================================================\n";
+
+    RCLCPP_INFO(logger_, "%s", log.str().c_str());
+  }
 };
+
 extern template SceneModuleManagerInterface<SceneModuleInterface>::SceneModuleManagerInterface(
   rclcpp::Node & node, [[maybe_unused]] const char * module_name);
 extern template size_t SceneModuleManagerInterface<SceneModuleInterface>::findEgoSegmentIndex(
