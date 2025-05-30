@@ -16,12 +16,17 @@
 #include <autoware_lanelet2_extension/projection/mgrs_projector.hpp>
 #include <autoware_lanelet2_extension/utility/utilities.hpp>
 
+#include <boost/archive/binary_iarchive.hpp>
+
 #include <lanelet2_core/LaneletMap.h>
 #include <lanelet2_core/primitives/Lanelet.h>
 #include <lanelet2_io/Io.h>
 #include <lanelet2_io/Projection.h>
+#include <lanelet2_io/io_handlers/Serialize.h>
 #include <lanelet2_routing/RoutingGraph.h>
 
+#include <memory>
+#include <sstream>
 #include <string>
 #include <utility>
 
@@ -54,6 +59,25 @@ instantiate_routing_graph_and_traffic_rules(
   auto traffic_rules = lanelet::traffic_rules::TrafficRulesFactory::create(location, participant);
   return {
     lanelet::routing::RoutingGraph::build(*lanelet_map, *traffic_rules), std::move(traffic_rules)};
+}
+
+lanelet::LaneletMapConstPtr from_autoware_map_msgs(
+  const autoware_map_msgs::msg::LaneletMapBin & msg)
+{
+  std::string data_str;
+  data_str.assign(msg.data.begin(), msg.data.end());
+
+  std::stringstream ss;
+  ss << data_str;
+  boost::archive::binary_iarchive oa(ss);
+
+  auto lanelet_map_ptr = std::make_shared<lanelet::LaneletMap>();
+  oa >> *lanelet_map_ptr;
+  lanelet::Id id_counter = 0;
+  oa >> id_counter;
+  lanelet::utils::registerId(id_counter);
+
+  return lanelet_map_ptr;
 }
 
 geometry_msgs::msg::Point to_ros(const lanelet::BasicPoint3d & src)

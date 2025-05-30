@@ -12,6 +12,9 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/conversion.cpp
   src/geometry.cpp
   src/hatched_road_markings.cpp
+  src/lane_sequence.cpp
+  src/nn_search.cpp
+  src/route_manager.cpp
 )
 
 if(BUILD_TESTING)
