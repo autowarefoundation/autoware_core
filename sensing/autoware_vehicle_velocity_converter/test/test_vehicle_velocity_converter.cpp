@@ -13,12 +13,12 @@
 // limitations under the License.
 
 #include "../src/vehicle_velocity_converter.hpp"
-#include "rclcpp/publisher.hpp"
-#include "rclcpp/rclcpp.hpp"
-#include "rclcpp/subscription.hpp"
+#include <rclcpp/publisher.hpp>
+#include <rclcpp/rclcpp.hpp>
+#include <rclcpp/subscription.hpp>
 
-#include "autoware_vehicle_msgs/msg/velocity_report.hpp"
-#include "geometry_msgs/msg/twist_with_covariance_stamped.hpp"
+#include <autoware_vehicle_msgs/msg/velocity_report.hpp>
+#include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
 
 #include <gtest/gtest.h>
 
