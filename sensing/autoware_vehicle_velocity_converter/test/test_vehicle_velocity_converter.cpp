@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "../src/vehicle_velocity_converter.hpp"
+
 #include <rclcpp/publisher.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/subscription.hpp>
