@@ -250,7 +250,7 @@ struct RequiredSubscriptionInfo
   bool occupancy_grid_map{false};
   bool no_ground_pointcloud{false};
 
-  void concat(const RequiredSubscriptionInfo & required_subscriptions)
+  void update(const RequiredSubscriptionInfo & required_subscriptions)
   {
     traffic_signals |= required_subscriptions.traffic_signals;
     predicted_objects |= required_subscriptions.predicted_objects;

@@ -46,7 +46,7 @@ void MotionVelocityPlannerManager::load_module_plugin(rclcpp::Node & node, const
 
     // update the subscription
     const auto required_subscriptions = plugin->getRequiredSubscriptions();
-    required_subscriptions_.concat(required_subscriptions);
+    required_subscriptions_.update(required_subscriptions);
   } else {
     RCLCPP_ERROR_STREAM(node.get_logger(), "The scene plugin '" << name << "' is not available.");
   }
