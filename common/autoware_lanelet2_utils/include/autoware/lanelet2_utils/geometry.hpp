@@ -22,7 +22,7 @@
 
 #include <optional>
 
-namespace autoware::lanelet2_utils
+namespace autoware::experimental::lanelet2_utils
 {
 
 /**
@@ -100,6 +100,6 @@ std::optional<lanelet::LineString3d> get_linestring_from_arc_length(
 std::optional<geometry_msgs::msg::Pose> get_pose_from_2d_arc_length(
   const lanelet::ConstLanelets & lanelet_sequence, const double s);
 
-}  // namespace autoware::lanelet2_utils
+}  // namespace autoware::experimental::lanelet2_utils
 
 #endif  // AUTOWARE__LANELET2_UTILS__GEOMETRY_HPP_

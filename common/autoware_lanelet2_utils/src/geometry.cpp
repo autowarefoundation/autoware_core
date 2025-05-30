@@ -27,7 +27,7 @@
 #include <iostream>
 #include <vector>
 
-namespace autoware::lanelet2_utils
+namespace autoware::experimental::lanelet2_utils
 {
 lanelet::ConstPoint3d extrapolate_point(
   const lanelet::ConstPoint3d & first, const lanelet::ConstPoint3d & second, const double distance)
@@ -217,4 +217,4 @@ std::optional<geometry_msgs::msg::Pose> get_pose_from_2d_arc_length(
   return std::nullopt;
 }
 
-}  // namespace autoware::lanelet2_utils
+}  // namespace autoware::experimental::lanelet2_utils

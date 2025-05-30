@@ -14,7 +14,7 @@
 
 #include "autoware/lanelet2_utils/geometry.hpp"
 
-#include "map_loader.hpp"
+#include "autoware/lanelet2_utils/conversion.hpp"
 
 #include <Eigen/Core>
 #include <ament_index_cpp/get_package_share_directory.hpp>
@@ -32,7 +32,7 @@
 
 namespace fs = std::filesystem;
 
-namespace autoware
+namespace autoware::experimental
 {
 
 class ExtrapolatedLaneletTest : public ::testing::Test
@@ -47,7 +47,8 @@ protected:
       "sample_map";
     const auto intersection_crossing_map_path = sample_map_dir / "intersection" / "crossing.osm";
 
-    lanelet_map_ptr_ = load_mgrs_coordinate_map(intersection_crossing_map_path.string());
+    lanelet_map_ptr_ =
+      lanelet2_utils::load_mgrs_coordinate_map(intersection_crossing_map_path.string());
   }
 };
 
@@ -276,7 +277,7 @@ TEST_F(ExtrapolatedLaneletTest, GetPoseFrom2dArcLength_OnRealMapLanelets)
   EXPECT_NEAR(p.orientation.w, eq.w, 1e-6);
 }
 
-}  // namespace autoware
+}  // namespace autoware::experimental
 
 int main(int argc, char ** argv)
 {
