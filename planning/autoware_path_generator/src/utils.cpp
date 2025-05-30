@@ -636,51 +636,6 @@ PathRange<std::optional<double>> get_arc_length_on_centerline(
     s_right_centerline ? s_right_centerline : s_right_bound};
 }
 
-geometry_msgs::msg::Pose refine_goal(
-  const geometry_msgs::msg::Pose & goal, const lanelet::ConstLanelet & goal_lanelet)
-{
-  const auto goal_point_on_lanelet = lanelet::utils::conversion::toLaneletPoint(goal.position);
-  const double distance = boost::geometry::distance(
-    goal_lanelet.polygon2d().basicPolygon(),
-    lanelet::utils::to2D(goal_point_on_lanelet).basicPoint());
-
-  // You are almost at the goal
-  if (distance < std::numeric_limits<double>::epsilon()) {
-    return goal;
-  }
-
-  // Get the closest segment to the goal
-  const auto segment = lanelet::utils::getClosestSegment(
-    lanelet::utils::to2D(goal_point_on_lanelet), goal_lanelet.centerline());
-
-  // If the segment is empty, return the original goal.
-  if (segment.empty()) {
-    return goal;
-  }
-
-  geometry_msgs::msg::Pose refined_goal;
-  {
-    // find position
-    const auto p1 = segment.front().basicPoint();
-    const auto p2 = segment.back().basicPoint();
-    const auto direction_vector = (p2 - p1).normalized();
-    const auto p1_to_goal = goal_point_on_lanelet.basicPoint() - p1;
-    const double s = direction_vector.dot(p1_to_goal);
-    const auto refined_point = p1 + direction_vector * s;
-
-    refined_goal.position.x = refined_point.x();
-    refined_goal.position.y = refined_point.y();
-    refined_goal.position.z = refined_point.z();
-
-    // find orientation
-    const double yaw = std::atan2(direction_vector.y(), direction_vector.x());
-    tf2::Quaternion tf_quat;
-    tf_quat.setRPY(0, 0, yaw);
-    refined_goal.orientation = tf2::toMsg(tf_quat);
-  }
-  return refined_goal;
-}
-
 // Function to refine the path for the goal
 experimental::trajectory::Trajectory<PathPointWithLaneId> refine_path_for_goal(
   const experimental::trajectory::Trajectory<PathPointWithLaneId> & input,  //
@@ -798,15 +753,13 @@ modify_path_for_smooth_goal_connection(
     return std::nullopt;
   }
   const auto lanelets = extract_lanelets_from_trajectory(trajectory, planner_data);
-  auto goal_pose =
-    utils::refine_goal(planner_data.goal_pose, planner_data.preferred_lanelets.back());
 
   // This process is to fit the trajectory inside the lanelets. By reducing
   // refine_goal_search_radius_range, we can fit the trajectory inside lanelets even if the
   // trajectory has a high curvature.
   for (double s = refine_goal_search_radius_range; s > 0; s -= 0.1) {
     const auto refined_trajectory = refine_path_for_goal(
-      trajectory, goal_pose, planner_data.preferred_lanelets.back().id(),
+      trajectory, planner_data.goal_pose, planner_data.preferred_lanelets.back().id(),
       refine_goal_search_radius_range);
     const bool is_inside = is_trajectory_inside_lanelets(refined_trajectory, lanelets);
     if (is_inside) {

@@ -190,17 +190,6 @@ PathRange<std::optional<double>> get_arc_length_on_centerline(
   const std::optional<double> & s_right_bound);
 
 /**
- * @brief Recreate the goal pose to prevent the goal point being too far from the lanelet, which
- *  causes the path to twist near the goal.
- * @details Return the goal point projected on the straight line of the segment of lanelet
- *  closest to the original goal.
- * @param [in] goal original goal pose
- * @param [in] goal_lanelet lanelet containing the goal pose
- */
-geometry_msgs::msg::Pose refine_goal(
-  const geometry_msgs::msg::Pose & goal, const lanelet::ConstLanelet & goal_lanelet);
-
-/**
  * @brief Recreate the path with a given goal pose.
  * @param input Input path.
  * @param refined_goal Goal pose.
