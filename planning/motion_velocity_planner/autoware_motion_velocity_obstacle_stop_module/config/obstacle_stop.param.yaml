@@ -62,14 +62,6 @@
             bicycle: false
             pedestrian: false
 
-        pointcloud:
-          pointcloud_voxel_grid_x: 0.05
-          pointcloud_voxel_grid_y: 0.05
-          pointcloud_voxel_grid_z: 100000.0
-          pointcloud_cluster_tolerance: 1.0
-          pointcloud_min_cluster_size: 1
-          pointcloud_max_cluster_size: 100000
-
         # hysteresis for velocity
         obstacle_velocity_threshold_to_stop : 3.0 # stop planning is executed to the obstacle whose velocity is less than this value [m/s]
         obstacle_velocity_threshold_from_stop : 3.5 # stop planning is executed to the obstacle whose velocity is less than this value [m/s]
@@ -80,6 +72,7 @@
         min_velocity_to_reach_collision_point: 2.0 # minimum velocity margin to calculate time to reach collision [m/s]
         stop_obstacle_hold_time_threshold : 1.0 # maximum time for holding closest stop obstacle
 
+        # NOTE: This feature is not supported, and will be removed soon.
         outside_obstacle:
           max_lateral_time_margin: 4.5 # time threshold of lateral margin between the obstacles and ego's footprint [s]
           num_of_predicted_paths: 1 # number of the highest confidence predicted path to check collision between obstacle and ego
@@ -87,5 +80,5 @@
           bicycle_deceleration_rate: 0.5 # planner perceives bicycles will stop with this rate to avoid unnecessary stops [m/ss]
 
         crossing_obstacle:
-          collision_time_margin : 1.0 # time threshold of collision between obstacle adn ego for cruise or stop [s]
+          collision_time_margin : 1.0 # time threshold of collision between obstacle and ego for stop [s]
           traj_angle_threshold: 0.523599 # [rad] = 70 [deg], yaw threshold of crossing obstacle against the nearest trajectory point for cruise or stop

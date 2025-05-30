@@ -12,10 +12,12 @@ The obstacles meeting the following condition are determined as obstacles for st
 
 - The object type is for stopping according to `obstacle_filtering.object_type.*`.
 - The lateral distance from the object to the ego's trajectory is smaller than `obstacle_filtering.max_lat_margin`.
+  - `obstacle_filtering.max_lat_margin_against_predicted_object_unknown` is applied to the predicted object of unknown.
 - The object velocity along the ego's trajectory is smaller than `obstacle_filtering.obstacle_velocity_threshold_from_stop`.
 - The object
   - does not cross the ego's trajectory (\*1)
-  - and its collision time margin is large enough (\*2).
+  - and its collision time margin is large enough (\*2)
+  - when `obstacle_filtering.ignore_crossing_obstacle` is false.
 
 #### NOTE
 
@@ -49,11 +51,33 @@ Also `obstacle_cruise_module`'s stop planning also works, and the ego may not re
 To resolve this non-alignment of the stop point between the behavior module and this module, `stop_planning.min_behavior_stop_margin` is defined.
 In the case of the crosswalk described above, this module inserts the stop point with a distance `stop_planning.min_behavior_stop_margin` at minimum between the ego and obstacle.
 
-#### A function to keep the closest stop obstacle in target obstacles
+#### Holding the closest stop obstacle in target obstacles
 
-In order to keep the closest stop obstacle in the target obstacles, we check whether it is disappeared or not from the target obstacles in the `check_consistency` function.
-If the previous closest stop obstacle is remove from the lists, we keep it in the lists for `obstacle_filtering.stop_obstacle_hold_time_threshold` seconds.
+In order to keep the closest stop obstacle in the target obstacles against the perception's detection instability, we check whether it is disappeared or not from the target obstacles in the `check_consistency` function.
+If the previous closest stop obstacle is removed from the lists, we keep it in the lists for `obstacle_filtering.stop_obstacle_hold_time_threshold` seconds.
 Note that if a new stop obstacle appears and the previous closest obstacle removes from the lists, we do not add it to the target obstacles again.
+
+#### Holding the previous stop point if necessary
+
+When the ego stops for the front obstacle or pointcloud, even though the obstacle does not move, the detected position of the obstacle may change due to the perception's detection noise. In this case, the ego will start driving a little bit.
+In order to avoid the ego to restart, we keep the previous stop point if the ego's velocity is less than `stop_planning.hold_stop_velocity_threshold` and the distance between the current and previous stop points is less than `stop_planning.hold_stop_distance_threshold`.
+
+#### Stop point adjustment on a curve
+
+When the ego stops on a curve road, since the stop margin is a bit long by default for the curve road, as shown in the following figure, the object B will come between the ego and object A, which may be dangerous.
+To avoid this cut-in, the feature to use the shorter stop margin than usual on a curve can be used by enabling `stop_planning.stop_on_curve.enable_approaching`.
+
+The following figure shows the logic.
+
+- First, calculate the blue point where the straight driving footprint of the each future ego's pose collides with the front object (object A).
+- Then, calculate the stop point `stop_planning.stop_on_curve.additional_stop_margin` behind the above blue ego's pose.
+  - `stop_planning.stop_on_curve.min_stop_margin` will be kept at minimum between the ego and object.
+
+![stop_on_curve](./docs/stop_on_curve.drawio.svg)
+
+#### Sudden stop suppression
+
+- Enabling `obstacle_filtering.suppress_sudden_stop` will make the deceleration for the stop higher than `limit_min_acc` by force to suppress the sudden obstacle stop.
 
 ## Visualization
 
