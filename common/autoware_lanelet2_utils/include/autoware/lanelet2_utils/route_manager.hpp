@@ -21,11 +21,13 @@
 #include <autoware_planning_msgs/msg/lanelet_route.hpp>
 #include <geometry_msgs/msg/pose.hpp>
 
+#include <lanelet2_core/LaneletMap.h>
 #include <lanelet2_core/primitives/Lanelet.h>
 #include <lanelet2_routing/Forward.h>
 #include <lanelet2_traffic_rules/TrafficRules.h>
 
 #include <optional>
+#include <unordered_map>
 
 namespace autoware::experimental::lanelet2_utils
 {
@@ -39,8 +41,8 @@ public:
    * @param route_msg raw message
    * @param initial_pose initial_pose
    * @pre route_msg has non-empty RouteSegment
-   * @post current_lanelet is determined, but it is not assured that initial_pose is within
-   * current_lanelet
+   * @post current_lanelet is determined, but IT IS NOT ASSURED that current_pose is inside
+   * current_lanelet.
    */
   static std::optional<RouteManager> create(
     const autoware_map_msgs::msg::LaneletMapBin & map_msg,
@@ -50,44 +52,84 @@ public:
   /**
    * @brief update current_pose only within forward/backward route lanelets, and return a new
    * RouteManager if current_pose is valid
+   * @param dist_threshold nearest_threshold for distance
+   * @param yaw_threshold nearest_threshold for orientation
+   * @param search_window [opt, 25] forward/backward length for search
    * @note this function updates current_route_lanelet along its LaneSequence. even if ego is
    * executing avoidance and deviates from reference path, this function tracks
    * current_route_lanelet without considering lane change
    * @attention this can only be called against std::move(*this)
    */
-  std::optional<RouteManager> update_current_pose(const geometry_msgs::msg::Pose & current_pose) &&;
+  std::optional<RouteManager> update_current_pose(
+    const geometry_msgs::msg::Pose & current_pose, const double dist_threshold,
+    const double yaw_threshold, const double search_window = 25) &&;
 
   /**
    * @brief update current_pose against all route lanelets and return a new RouteManager if
    * current_pose is valid
+   * @param search_window [opt, 25] forward/backward length for search
    * @note this functions is aimed to be used only when lane change is completed
    * @attention this can only be called against std::move(*this)
    */
-  std::optional<RouteManager> update_current_pose_with_lane_change(
+  std::optional<RouteManager> update_current_pose_after_lane_change(
     const geometry_msgs::msg::Pose & current_pose) &&;
 
+  /**
+   * @brief return the lanelet to which current_pose is closest among route_lanelets. IT IS NOT
+   * ASSURED that current_pose is inside current_lanelet.
+   */
   const lanelet::ConstLanelet & current_lanelet() const { return current_lanelet_; }
+
+  /**
+   * @brief from current_position, return the list of lanelets from tail(behind of ego) to head at
+   * least for given backward/forward length, within the designated route
+   * @param forward_length forward length from current_position
+   * @param backward_length backward(behind) length from current_position
+   * @return LaneSequence
+   * @post the output contains at least one lanelet, which is current_lanelet
+   */
+  LaneSequence get_lanelet_sequence_on_route(
+    const double forward_length, const double backward_length) const;
+
+  /**
+   * @brief from current_position, return the list of lanelets from tail(behind of ego) to head at
+   * least for given backward/forward length, querying lanelets outside of the route as well
+   * @param forward_length forward length from current_position
+   * @param backward_length backward(behind) length from current_position
+   * @note it is undefined which lanelet is chosen in querying lanelet out of route
+   * @return LaneSequence
+   * @post the output contains at least one lanelet, which is current_lanelet
+   */
+  LaneSequence get_lanelet_sequence_outward_route(
+    const double forward_length, const double backward_length) const;
 
 private:
   RouteManager(
     lanelet::LaneletMapConstPtr lanelet_map_ptr,
     lanelet::routing::RoutingGraphConstPtr routing_graph_ptr,
     lanelet::traffic_rules::TrafficRulesPtr traffic_rules_ptr,
-    lanelet::ConstLanelets && all_route_lanelets, lanelet::ConstLanelets && preferred_lanelets,
-    const lanelet::ConstLanelet & start_lanelet, const lanelet::ConstLanelet & goal_lanelet,
-    const geometry_msgs::msg::Pose & current_pose, lanelet::ConstLanelet current_lanelet);
+    lanelet::ConstLanelets && all_route_lanelets,
+    std::unordered_map<lanelet::Id, double> && all_route_length_cache,
+    lanelet::ConstLanelets && preferred_lanelets, const lanelet::ConstLanelet & start_lanelet,
+    const lanelet::ConstLanelet & goal_lanelet, const geometry_msgs::msg::Pose & current_pose,
+    const lanelet::ConstLanelet & current_lanelet, const lanelet::LaneletSubmapPtr route_submap_ptr,
+    const lanelet::routing::RoutingGraphPtr route_subgraph_ptr);
 
   lanelet::LaneletMapConstPtr lanelet_map_ptr_;
   lanelet::routing::RoutingGraphConstPtr routing_graph_ptr_;
   lanelet::traffic_rules::TrafficRulesPtr traffic_rules_ptr_;
 
   lanelet::ConstLanelets all_route_lanelets_;  //<! all route lanelets, the order is not defined
+  std::unordered_map<lanelet::Id, double> all_route_length_cache_{};
   lanelet::ConstLanelets preferred_lanelets_;
   lanelet::ConstLanelet start_lanelet_;
   lanelet::ConstLanelet goal_lanelet_;
 
   geometry_msgs::msg::Pose current_pose_;
   lanelet::ConstLanelet current_lanelet_;
+
+  lanelet::LaneletSubmapConstPtr route_submap_ptr_;
+  lanelet::routing::RoutingGraphConstPtr route_subgraph_ptr_;
 };
 
 }  // namespace autoware::experimental::lanelet2_utils
