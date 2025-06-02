@@ -51,5 +51,8 @@ TEST(localization, interface)
     EXPECT_EQ(InitializationState::durability, RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
 
     const auto qos = autoware::component_interface_specs::get_qos<InitializationState>();
+    EXPECT_EQ(qos.depth(), depth);
+    EXPECT_EQ(qos.reliability(), rclcpp::ReliabilityPolicy::Reliable);
+    EXPECT_EQ(qos.durability(), rclcpp::DurabilityPolicy::TransientLocal);
   }
 }
