@@ -27,6 +27,8 @@ namespace autoware::experimental::lanelet2_utils
 class LaneSequence
 {
 public:
+  explicit LaneSequence(const lanelet::ConstLanelet & lanelet);
+
   static std::optional<LaneSequence> create(
     const lanelet::ConstLanelets & lanelets, lanelet::routing::RoutingGraphConstPtr routing_graph);
 

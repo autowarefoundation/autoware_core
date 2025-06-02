@@ -45,6 +45,12 @@ std::optional<LaneSequence> LaneSequence::create(
   return LaneSequence(lanelet::ConstLanelets(lanelets), std::move(distance));
 }
 
+LaneSequence::LaneSequence(const lanelet::ConstLanelet & lanelet)
+: lanelets_(lanelet::ConstLanelets{lanelet}),
+  distance_(std::vector<double>{lanelet::geometry::length3d(lanelet)})
+{
+}
+
 LaneSequence::LaneSequence(lanelet::ConstLanelets && lanelets, std::vector<double> && distance)
 : lanelets_(std::move(lanelets)), distance_(std::move(distance))
 {
