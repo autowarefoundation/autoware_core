@@ -672,6 +672,10 @@ experimental::trajectory::Trajectory<PathPointWithLaneId> refine_path_for_goal(
   if (!intervals.empty()) {
     auto cropped = autoware::experimental::trajectory::crop(cropped_path, 0, intervals.back().end);
     goal_connected_trajectory_points = cropped.restore(2);
+  } else if (cropped_path.length() > 1.0) {
+    // If distance from start to goal is smaller than refine_goal_search_radius_range and start is
+    // farther from goal than pre_goal, we just connect start, pre_goal, and goal.
+    goal_connected_trajectory_points = {cropped_path.compute(0)};
   }
 
   auto goal = input.compute(autoware::experimental::trajectory::closest(input, goal_pose));
