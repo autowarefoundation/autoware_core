@@ -29,11 +29,16 @@ path_generator:
     angle_threshold_deg:
       type: double
 
-  refine_goal_search_radius_range:
-    type: double
+  smooth_goal_connection:
+    search_radius_range:
+      type: double
+      validation:
+        gt<>: [0]
 
-  search_radius_decrement:
-    type: double
+    pre_goal_offset:
+      type: double
+      validation:
+        gt<>: [0]
 
   ego_nearest_dist_threshold:
     type: double
