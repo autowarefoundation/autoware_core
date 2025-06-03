@@ -94,10 +94,6 @@ private:
 
   std::optional<PathWithLaneId> plan_path(const InputData & input_data, const Params & params);
 
-  std::optional<PathWithLaneId> generate_path(
-    const lanelet::LaneletSequence & lanelet_sequence, const double s_start, const double s_end,
-    const Params & params) const;
-
   bool update_current_lanelet(const geometry_msgs::msg::Pose & current_pose, const Params & params);
 };
 }  // namespace autoware::path_generator
