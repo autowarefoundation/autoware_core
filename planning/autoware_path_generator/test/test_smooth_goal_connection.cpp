@@ -85,7 +85,7 @@ TEST_F(UtilsTest, refinePathForGoal)
     EXPECT_NEAR(result.length(), path.length(), epsilon);
   }
 
-  {  // refine_goal_search_radius_range is zero
+  {  // refine_goal_search_radius_range is small
     const auto result = utils::refine_path_for_goal(
       path, planner_data_.goal_pose, planner_data_.preferred_lanelets.back().id(), 0.1);
 
