@@ -103,8 +103,16 @@ TEST_F(UtilsTest, refinePathForGoal)
     const auto result = utils::refine_path_for_goal(
       path, planner_data_.goal_pose, planner_data_.preferred_lanelets.back().id(), 100.0);
 
-    EXPECT_NEAR(
-      result.length(), 1.0, epsilon);  // isn't this expected to directly connect start and goal?
+    EXPECT_EQ(result.compute(0.0), path_.points.front());
+
+    const auto new_goal = result.compute(result.length());
+    EXPECT_NEAR(new_goal.point.pose.position.x, planner_data_.goal_pose.position.x, epsilon);
+    EXPECT_NEAR(new_goal.point.pose.position.y, planner_data_.goal_pose.position.y, epsilon);
+    EXPECT_NEAR(new_goal.point.pose.position.z, planner_data_.goal_pose.position.z, epsilon);
+    EXPECT_NEAR(new_goal.point.pose.orientation.x, planner_data_.goal_pose.orientation.x, epsilon);
+    EXPECT_NEAR(new_goal.point.pose.orientation.y, planner_data_.goal_pose.orientation.y, epsilon);
+    EXPECT_NEAR(new_goal.point.pose.orientation.z, planner_data_.goal_pose.orientation.z, epsilon);
+    EXPECT_NEAR(new_goal.point.pose.orientation.w, planner_data_.goal_pose.orientation.w, epsilon);
   }
 }
 
