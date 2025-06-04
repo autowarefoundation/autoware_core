@@ -31,9 +31,9 @@
 namespace autoware::pose_initializer
 {
 PoseInitializer::PoseInitializer(const rclcpp::NodeOptions & options)
-: rclcpp::Node("pose_initializer", options)
+: rclcpp::Node("pose_initializer", options),
+  group_srv_(create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive))
 {
-  group_srv_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
   rclcpp::QoS qos_state(1);
   qos_state.reliability(RMW_QOS_POLICY_RELIABILITY_RELIABLE);
   qos_state.durability(RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);

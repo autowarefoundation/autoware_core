@@ -28,9 +28,9 @@ using Initialize = autoware::component_interface_specs::localization::Initialize
 using PoseWithCovarianceStamped = geometry_msgs::msg::PoseWithCovarianceStamped;
 
 LocalizationModule::LocalizationModule(rclcpp::Node * node, const std::string & service_name)
-: logger_(node->get_logger())
+: logger_(node->get_logger()),
+  cli_align_(node->create_client<RequestPoseAlignment>(service_name))
 {
-  cli_align_ = node->create_client<RequestPoseAlignment>(service_name);
 }
 
 std::tuple<PoseWithCovarianceStamped, bool> LocalizationModule::align_pose(
