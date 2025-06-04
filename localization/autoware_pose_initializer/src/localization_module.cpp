@@ -14,7 +14,8 @@
 
 #include "localization_module.hpp"
 
-#include <autoware_internal_localization_msgs/srv/initialize_localization.hpp>
+#include <autoware/component_interface_specs/localization.hpp>
+
 #include <autoware_adapi_v1_msgs/msg/response_status.hpp>
 
 #include <memory>
@@ -23,7 +24,7 @@
 
 namespace autoware::pose_initializer
 {
-using Initialize = autoware_internal_localization_msgs::srv::InitializeLocalization;
+using Initialize = autoware::component_interface_specs::localization::Initialize;
 using PoseWithCovarianceStamped = geometry_msgs::msg::PoseWithCovarianceStamped;
 
 LocalizationModule::LocalizationModule(rclcpp::Node * node, const std::string & service_name)
@@ -51,7 +52,7 @@ std::tuple<PoseWithCovarianceStamped, bool> LocalizationModule::align_pose(
   if (!res->success) {
     autoware_adapi_v1_msgs::msg::ResponseStatus respose_status;
     respose_status.success = false;
-    respose_status.code = Initialize::Response::ERROR_ESTIMATION;
+    respose_status.code = Initialize::Service::Response::ERROR_ESTIMATION;
     respose_status.message = "align server failed.";
     throw respose_status;
   }
