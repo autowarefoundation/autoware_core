@@ -548,21 +548,23 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
     if (!is_in_vector(obj_label, obstacle_filtering_param_.outside_stop_object_types)) {
       return 0.0;
     }
-    const auto equivalent_esimation_time = [&predicted_object](double deceleration_rate) {
+    const auto equivalent_estimation_time = [&predicted_object](double deceleration_rate) {
       if (deceleration_rate <= std::numeric_limits<double>::epsilon()) {
         return 0.0;
       }
+      // convert constant deceleration to constant velocity
       const auto twist = predicted_object.kinematics.initial_twist_with_covariance.twist;
       return std::hypot(twist.linear.x, twist.linear.y) * 0.5 / deceleration_rate;
     };
     switch (obj_label) {
       case ObjectClassification::PEDESTRIAN:
         return std::clamp(
-          equivalent_esimation_time(obstacle_filtering_param_.outside_pedestrian_deceleration_rate),
+          equivalent_estimation_time(
+            obstacle_filtering_param_.outside_pedestrian_deceleration_rate),
           0.0, obstacle_filtering_param_.outside_estimation_time_horizon);
       case ObjectClassification::BICYCLE:
         return std::clamp(
-          equivalent_esimation_time(obstacle_filtering_param_.outside_bicycle_deceleration_rate),
+          equivalent_estimation_time(obstacle_filtering_param_.outside_bicycle_deceleration_rate),
           0.0, obstacle_filtering_param_.outside_estimation_time_horizon);
       default:
         return obstacle_filtering_param_.outside_estimation_time_horizon;
