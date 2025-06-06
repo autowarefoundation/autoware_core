@@ -11,10 +11,22 @@
 
   <group>
     <push-ros-namespace namespace="localization"/>
+
+    <include file="$(find-pkg-share autoware_pose_initializer)/launch/pose_initializer.launch.xml">
+      <arg name="user_defined_initial_pose/enable" value="$(var user_defined_initial_pose/enable)"/>
+      <arg name="user_defined_initial_pose/pose" value="$(var user_defined_initial_pose/pose)"/>
+      <arg name="ndt_enabled" value="$(var use_ndt_pose)"/>
+      <arg name="yabloc_enabled" value="$(var use_yabloc_pose)"/>
+      <arg name="gnss_enabled" value="$(var gnss_enabled)"/>
+      <arg name="ekf_enabled" value="true"/>
+      <arg name="stop_check_enabled" value="$(var stop_check_enabled)"/>
+      <arg name="config_file" value="$(var pose_initializer_param_path)"/>
+      <arg name="sub_gnss_pose_cov" value="$(var sub_gnss_pose_cov)"/>
+    </include>
+
+    <!-- place holder for pose_estimator-->
     <group>
       <push-ros-namespace namespace="pose_estimator"/>
-      <!-- place holder for pose_estimator-->
-
       <node pkg="autoware_downsample_filters" exec="voxel_grid_downsample_filter_node" name="voxel_grid_downsample_filter_node">
         <param from="$(var voxel_grid_downsample_filter_param_file)"/>
         <remap from="input" to="$(var lidar_input_topic)"/>
