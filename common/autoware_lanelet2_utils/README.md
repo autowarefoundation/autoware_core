@@ -166,6 +166,8 @@ All of the maps are in `MGRS` coordinate. In each map, an anchor point is set to
 | `road_shoulder/pudo.osm`            | `140`           | ![pudo](./media/maps/road_shoulder/pudo.png)                    |
 | `intersection/crossing.osm`         | `1791`          | ![crossing](./media/maps/intersection/crossing.png)             |
 | `dense_centerline/lanelet2_map.osm` | `16`            | ![lanelet2_map](./media/maps/dense_centerline/lanelet2_map.png) |
+| `narrow_lane/U-shaped_curve.osm`    | `2`             | ![lanelet2_map](./media/maps/narrow_lane/U-shaped_curve.png)    |
+| `narrow_lane/center_line.osm`       | `34`            | ![lanelet2_map](./media/maps/narrow_lane/center_line.png)       |
 
 ### How to craft test map
 
