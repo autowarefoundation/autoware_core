@@ -43,191 +43,74 @@ struct GetFirstIntersectionArcLengthTest
   }
 };
 
-TEST_P(GetFirstIntersectionArcLengthTest, getFirstIntersectionArcLength)
-{
-  const auto & p = GetParam();
-
-  const auto result = utils::get_first_intersection_arc_length(
-    get_lanelets_from_ids(p.lane_ids), p.s_start, p.s_end, vehicle_info_.vehicle_length_m);
-
-  ASSERT_EQ(result.has_value(), p.expected_s_intersection.has_value());
-
-  constexpr auto epsilon = 1e-1;
-  if (p.expected_s_intersection.has_value()) {
-    ASSERT_NEAR(*result, *p.expected_s_intersection, epsilon);
-  }
-}
-
-INSTANTIATE_TEST_SUITE_P(
-  , GetFirstIntersectionArcLengthTest,
-  ::testing::Values(
-    GetFirstIntersectionArcLengthTestParam{
-      "UTurnWithGap", {601, 602, 600}, 0.0, std::numeric_limits<double>::max(), std::nullopt},
-    GetFirstIntersectionArcLengthTestParam{
-      "UTurnWithFullCrossing",
-      {615, 616, 604, 605, 603, 618, 617},
-      0.0,
-      std::numeric_limits<double>::max(),
-      194.477},
-    GetFirstIntersectionArcLengthTestParam{
-      "UTurnWithHalfCrossing",
-      {619, 621, 607, 608, 606, 622, 620},
-      0.0,
-      std::numeric_limits<double>::max(),
-      195.507},
-    GetFirstIntersectionArcLengthTestParam{
-      "Overpass", {609, 610, 612, 611, 613}, 0.0, std::numeric_limits<double>::max(), 311.068},
-    GetFirstIntersectionArcLengthTestParam{
-      "OverpassWithStartEdgeIntersection",
-      {609, 610, 612, 611, 613},
-      36.0,
-      std::numeric_limits<double>::max(),
-      325.376},
-    GetFirstIntersectionArcLengthTestParam{
-      "OverpassWithIntersectionBehind",
-      {609, 610, 612, 611, 613},
-      76.0,
-      std::numeric_limits<double>::max(),
-      std::nullopt},
-    GetFirstIntersectionArcLengthTestParam{
-      "OverpassWithIntersectionAhead", {609, 610, 612, 611, 613}, 0.0, 16.0, std::nullopt}),
-  ::testing::PrintToStringParamName{});
-
-TEST_F(UtilsTest, getFirstSelfIntersectionArcLength)
-{
-  constexpr double epsilon = 1e-1;
-
-  {  // line string is empty
-    const auto result = utils::get_first_self_intersection_arc_length(lanelet::BasicLineString2d{});
-
-    ASSERT_FALSE(result);
-  }
-
-  {  // line string is straight line
-    const auto result = utils::get_first_self_intersection_arc_length(
-      lanelet::BasicLineString2d{{0.0, 0.0}, {1.0, 0.0}});
-
-    ASSERT_FALSE(result);
-  }
-
-  {  // line string has no self-intersection
-    const auto result = utils::get_first_self_intersection_arc_length(
-      lanelet::BasicLineString2d{{0.0, 0.0}, {1.0, 0.0}, {1.0, 1.0}, {-1.0, 1.0}, {-1.0, -1.0}});
-
-    ASSERT_FALSE(result);
-  }
-
-  {  // line string has self-intersection
-    const auto result = utils::get_first_self_intersection_arc_length(
-      lanelet::BasicLineString2d{{0.0, 0.0}, {1.0, 0.0}, {1.0, 1.0}, {0.0, 1.0}, {0.0, -1.0}});
-
-    ASSERT_TRUE(result);
-    ASSERT_NEAR(*result, 4.0, epsilon);
-  }
-
-  {  // line string has overlap
-    const auto result = utils::get_first_self_intersection_arc_length(lanelet::BasicLineString2d{
-      {0.0, 0.0},
-      {1.0, 0.0},
-      {1.0, -1.0},
-      {2.0, -1.0},
-      {2.0, 1.0},
-      {1.0, 1.0},
-      {1.0, 0.0},
-      {0.0, 0.0}});
-
-    ASSERT_TRUE(result);
-    ASSERT_NEAR(*result, 7.0, epsilon);
-  }
-}
-
 TEST_F(UtilsTest, getPathBound)
 {
   set_map("autoware_test_utils", "2km_test.osm");
   constexpr auto epsilon = 1e-1;
 
   {  // lanelet sequence is empty
-    const auto [left, right] = utils::get_path_bounds(get_lanelets_from_ids({}), {}, {});
+    const auto result = utils::get_path_bounds({}, {});
 
-    ASSERT_TRUE(left.empty());
-    ASSERT_TRUE(right.empty());
+    ASSERT_FALSE(result.has_value());
   }
 
   {  // normal case
-    const auto [left, right] = utils::get_path_bounds(get_lanelets_from_ids({4417}), 1.0, 24.0);
+    PathPointWithLaneId start, end;
+    start.point.pose.position.x = -999.0;
+    start.point.pose.position.y = 1.75;
+    start.lane_ids = {4417};
+    end.point.pose.position.x = -976.0;
+    end.point.pose.position.y = 1.75;
+    end.lane_ids = {4417};
+    const auto result = utils::get_path_bounds({start, end}, get_lanelets_from_ids({4417}));
 
-    ASSERT_GE(left.size(), 2);
-    ASSERT_NEAR(left.front().x, -999.0, epsilon);
-    ASSERT_NEAR(left.front().y, 3.5, epsilon);
-    ASSERT_NEAR(left.back().x, -976.0, epsilon);
-    ASSERT_NEAR(left.back().y, 3.5, epsilon);
-    ASSERT_GE(right.size(), 2);
-    ASSERT_NEAR(right.front().x, -999.0, epsilon);
-    ASSERT_NEAR(right.front().y, 0, epsilon);
-    ASSERT_NEAR(right.back().x, -976.0, epsilon);
-    ASSERT_NEAR(right.back().y, 0, epsilon);
+    ASSERT_TRUE(result.has_value());
+    ASSERT_GE(result->left.size(), 2);
+    ASSERT_NEAR(result->left.front().x, -999.0, epsilon);
+    ASSERT_NEAR(result->left.front().y, 3.5, epsilon);
+    ASSERT_NEAR(result->left.back().x, -976.0, epsilon);
+    ASSERT_NEAR(result->left.back().y, 3.5, epsilon);
+    ASSERT_GE(result->right.size(), 2);
+    ASSERT_NEAR(result->right.front().x, -999.0, epsilon);
+    ASSERT_NEAR(result->right.front().y, 0, epsilon);
+    ASSERT_NEAR(result->right.back().x, -976.0, epsilon);
+    ASSERT_NEAR(result->right.back().y, 0, epsilon);
   }
 
   {  // normal case with multiple lanelets
-    const auto [left, right] =
-      utils::get_path_bounds(get_lanelets_from_ids({4429, 4434}), 1.0, 49.0);
+    PathPointWithLaneId start, end;
+    start.point.pose.position.x = -974.0;
+    start.point.pose.position.y = 1.75;
+    start.lane_ids = {4429};
+    end.point.pose.position.x = -926.0;
+    end.point.pose.position.y = 1.75;
+    end.lane_ids = {4434};
+    const auto result = utils::get_path_bounds({start, end}, get_lanelets_from_ids({4429, 4434}));
 
-    ASSERT_GE(left.size(), 2);
-    ASSERT_NEAR(left.front().x, -974.0, epsilon);
-    ASSERT_NEAR(left.front().y, 3.5, epsilon);
-    ASSERT_NEAR(left.back().x, -926.0, epsilon);
-    ASSERT_NEAR(left.back().y, 3.5, epsilon);
-    ASSERT_GE(right.size(), 2);
-    ASSERT_NEAR(right.front().x, -974.0, epsilon);
-    ASSERT_NEAR(right.front().y, 0.0, epsilon);
-    ASSERT_NEAR(right.back().x, -926.0, epsilon);
-    ASSERT_NEAR(right.back().y, 0.0, epsilon);
+    ASSERT_TRUE(result.has_value());
+    ASSERT_GE(result->left.size(), 2);
+    ASSERT_NEAR(result->left.front().x, -974.0, epsilon);
+    ASSERT_NEAR(result->left.front().y, 3.5, epsilon);
+    ASSERT_NEAR(result->left.back().x, -926.0, epsilon);
+    ASSERT_NEAR(result->left.back().y, 3.5, epsilon);
+    ASSERT_GE(result->right.size(), 2);
+    ASSERT_NEAR(result->right.front().x, -974.0, epsilon);
+    ASSERT_NEAR(result->right.front().y, 0.0, epsilon);
+    ASSERT_NEAR(result->right.back().x, -926.0, epsilon);
+    ASSERT_NEAR(result->right.back().y, 0.0, epsilon);
   }
 
-  {  // start of bound is negative
-    const auto [left, right] = utils::get_path_bounds(get_lanelets_from_ids({4417}), -1.0, 24.0);
+  {  // path exceeds lanelet sequence
+    PathPointWithLaneId start, end;
+    start.point.pose.position.x = -999.0;
+    start.point.pose.position.y = 1.75;
+    start.lane_ids = {4417};
+    end.point.pose.position.x = -974.0;
+    end.point.pose.position.y = 1.75;
+    end.lane_ids = {4429};
+    const auto result = utils::get_path_bounds({start, end}, get_lanelets_from_ids({4417}));
 
-    ASSERT_GE(left.size(), 2);
-    ASSERT_NEAR(left.front().x, -1000.0, epsilon);
-    ASSERT_NEAR(left.front().y, 3.5, epsilon);
-    ASSERT_NEAR(left.back().x, -976.0, epsilon);
-    ASSERT_NEAR(left.back().y, 3.5, epsilon);
-    ASSERT_GE(right.size(), 2);
-    ASSERT_NEAR(right.front().x, -1000.0, epsilon);
-    ASSERT_NEAR(right.front().y, 0, epsilon);
-    ASSERT_NEAR(right.back().x, -976.0, epsilon);
-    ASSERT_NEAR(right.back().y, 0, epsilon);
-  }
-
-  {  // end of bound exceeds lanelet length
-    const auto [left, right] = utils::get_path_bounds(get_lanelets_from_ids({4417}), 1.0, 26.0);
-
-    ASSERT_GE(left.size(), 2);
-    ASSERT_NEAR(left.front().x, -999.0, epsilon);
-    ASSERT_NEAR(left.front().y, 3.5, epsilon);
-    ASSERT_NEAR(left.back().x, -975.0, epsilon);
-    ASSERT_NEAR(left.back().y, 3.5, epsilon);
-    ASSERT_GE(right.size(), 2);
-    ASSERT_NEAR(right.front().x, -999.0, epsilon);
-    ASSERT_NEAR(right.front().y, 0, epsilon);
-    ASSERT_NEAR(right.back().x, -975.0, epsilon);
-    ASSERT_NEAR(right.back().y, 0, epsilon);
-  }
-
-  {  // start of bound is larger than end
-    const auto [left, right] =
-      utils::get_path_bounds(get_lanelets_from_ids({4429, 4434}), 30.0, 20.0);
-
-    ASSERT_GE(left.size(), 2);
-    ASSERT_NEAR(left.front().x, -975.0, epsilon);
-    ASSERT_NEAR(left.front().y, 3.5, epsilon);
-    ASSERT_NEAR(left.back().x, -925.0, epsilon);
-    ASSERT_NEAR(left.back().y, 3.5, epsilon);
-    ASSERT_GE(right.size(), 2);
-    ASSERT_NEAR(right.front().x, -975.0, epsilon);
-    ASSERT_NEAR(right.front().y, 0.0, epsilon);
-    ASSERT_NEAR(right.back().x, -925.0, epsilon);
-    ASSERT_NEAR(right.back().y, 0.0, epsilon);
+    ASSERT_FALSE(result.has_value());
   }
 }
 
@@ -242,16 +125,14 @@ TEST_F(UtilsTest, cropLineString)
   }
 
   {  // line string has only 1 point
-    const auto result = utils::crop_line_string({geometry_msgs::msg::Point{}}, {}, {});
+    const auto result = utils::crop_line_string({{}}, {}, {});
 
     ASSERT_TRUE(result.empty());
   }
 
   {  // normal case
     const auto result = utils::crop_line_string(
-      {lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{0.0, 0.0, 0.0}),
-       lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{3.0, 0.0, 0.0})},
-      1.0, 2.0);
+      {lanelet::BasicPoint3d{0.0, 0.0, 0.0}, lanelet::BasicPoint3d{3.0, 0.0, 0.0}}, 1.0, 2.0);
 
     ASSERT_GE(result.size(), 2);
     ASSERT_NEAR(result.front().x, 1.0, epsilon);
@@ -262,9 +143,7 @@ TEST_F(UtilsTest, cropLineString)
 
   {  // start of crop range is negative
     const auto result = utils::crop_line_string(
-      {lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{0.0, 0.0, 0.0}),
-       lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{3.0, 0.0, 0.0})},
-      -1.0, 2.0);
+      {lanelet::BasicPoint3d{0.0, 0.0, 0.0}, lanelet::BasicPoint3d{3.0, 0.0, 0.0}}, -1.0, 2.0);
 
     ASSERT_GE(result.size(), 2);
     ASSERT_NEAR(result.front().x, 0.0, epsilon);
@@ -275,9 +154,7 @@ TEST_F(UtilsTest, cropLineString)
 
   {  // end of crop range exceeds line string length
     const auto result = utils::crop_line_string(
-      {lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{0.0, 0.0, 0.0}),
-       lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{3.0, 0.0, 0.0})},
-      1.0, 4.0);
+      {lanelet::BasicPoint3d{0.0, 0.0, 0.0}, lanelet::BasicPoint3d{3.0, 0.0, 0.0}}, 1.0, 4.0);
 
     ASSERT_GE(result.size(), 2);
     ASSERT_NEAR(result.front().x, 1.0, epsilon);
@@ -288,9 +165,7 @@ TEST_F(UtilsTest, cropLineString)
 
   {  // start of crop range is larger than end
     const auto result = utils::crop_line_string(
-      {lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{0.0, 0.0, 0.0}),
-       lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{3.0, 0.0, 0.0})},
-      2.0, 1.0);
+      {lanelet::BasicPoint3d{0.0, 0.0, 0.0}, lanelet::BasicPoint3d{3.0, 0.0, 0.0}}, 2.0, 1.0);
 
     ASSERT_GE(result.size(), 2);
     ASSERT_NEAR(result.front().x, 0.0, epsilon);
@@ -305,83 +180,44 @@ TEST_F(UtilsTest, GetArcLengthOnBounds)
   const auto epsilon = 1e-1;
 
   {  // lanelet sequence is empty
-    const auto [left, right] = utils::get_arc_length_on_bounds({}, {});
+    const auto result = utils::get_arc_length_on_bounds({}, PathPointWithLaneId{});
 
-    ASSERT_NEAR(left, {}, epsilon);
-    ASSERT_NEAR(right, {}, epsilon);
+    ASSERT_FALSE(result.has_value());
   }
 
   {  // normal case
-    const auto [left, right] = utils::get_arc_length_on_bounds(get_lanelets_from_ids({50}), 10.0);
+    PathPointWithLaneId path_point;
+    path_point.point.pose.position.x = 3765.5;
+    path_point.point.pose.position.y = 73746.0;
+    path_point.lane_ids = {50};
+    const auto result = utils::get_arc_length_on_bounds(get_lanelets_from_ids({50}), path_point);
 
-    ASSERT_NEAR(left, 11.293, epsilon);
-    ASSERT_NEAR(right, 8.823, epsilon);
+    ASSERT_TRUE(result.has_value());
+    ASSERT_NEAR(result->left, 10.672, epsilon);
+    ASSERT_NEAR(result->right, 8.203, epsilon);
   }
 
-  {  // input arc length is negative
-    const auto [left, right] = utils::get_arc_length_on_bounds(get_lanelets_from_ids({50}), -10.0);
+  {  // normal case with multiple lanelets
+    PathPointWithLaneId path_point;
+    path_point.point.pose.position.x = 3758.0;
+    path_point.point.pose.position.y = 73754.0;
+    path_point.lane_ids = {122};
+    const auto result =
+      utils::get_arc_length_on_bounds(get_lanelets_from_ids({50, 122}), path_point);
 
-    ASSERT_NEAR(left, 0.0, epsilon);
-    ASSERT_NEAR(right, 0.0, epsilon);
+    ASSERT_TRUE(result.has_value());
+    ASSERT_NEAR(result->left, 22.944, epsilon);
+    ASSERT_NEAR(result->right, 18.266, epsilon);
   }
 
-  {  // input arc length exceeds lanelet length
-    const auto [left, right] = utils::get_arc_length_on_bounds(get_lanelets_from_ids({50}), 100.0);
+  {  // path point is outside lanelet sequence
+    PathPointWithLaneId path_point;
+    path_point.point.pose.position.x = 3777.0;
+    path_point.point.pose.position.y = 73748.5;
+    path_point.lane_ids = {125};
+    const auto result = utils::get_arc_length_on_bounds(get_lanelets_from_ids({50}), path_point);
 
-    ASSERT_NEAR(left, 100.0, epsilon);
-    ASSERT_NEAR(right, 100.0, epsilon);
-  }
-}
-
-TEST_F(UtilsTest, GetArcLengthOnCenterline)
-{
-  const auto epsilon = 1e-1;
-
-  {  // lanelet sequence is empty
-    const auto [left, right] = utils::get_arc_length_on_centerline({}, {{}}, {{}});
-
-    ASSERT_TRUE(left.has_value());
-    ASSERT_NEAR(*left, {}, epsilon);
-    ASSERT_TRUE(right.has_value());
-    ASSERT_NEAR(*right, {}, epsilon);
-  }
-
-  {  // normal case
-    const auto [left, right] =
-      utils::get_arc_length_on_centerline(get_lanelets_from_ids({50}), 11.293, 8.823);
-
-    ASSERT_TRUE(left.has_value());
-    ASSERT_NEAR(*left, 10.0, epsilon);
-    ASSERT_TRUE(right.has_value());
-    ASSERT_NEAR(*right, 10.0, epsilon);
-  }
-
-  {  // input arc length is negative
-    const auto [left, right] =
-      utils::get_arc_length_on_centerline(get_lanelets_from_ids({50}), -10, -10);
-
-    ASSERT_TRUE(left.has_value());
-    ASSERT_NEAR(*left, 0.0, epsilon);
-    ASSERT_TRUE(right.has_value());
-    ASSERT_NEAR(*right, 0.0, epsilon);
-  }
-
-  {  // input arc length exceeds lanelet length
-    const auto [left, right] =
-      utils::get_arc_length_on_centerline(get_lanelets_from_ids({50}), 100.0, 100.0);
-
-    ASSERT_TRUE(left.has_value());
-    ASSERT_NEAR(*left, 100.0, epsilon);
-    ASSERT_TRUE(right.has_value());
-    ASSERT_NEAR(*right, 100.0, epsilon);
-  }
-
-  {  // input arc length is null
-    const auto [left, right] =
-      utils::get_arc_length_on_centerline(get_lanelets_from_ids({50}), std::nullopt, std::nullopt);
-
-    ASSERT_FALSE(left.has_value());
-    ASSERT_FALSE(right.has_value());
+    ASSERT_FALSE(result.has_value());
   }
 }
 }  // namespace autoware::path_generator

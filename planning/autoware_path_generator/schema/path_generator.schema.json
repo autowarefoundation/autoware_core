@@ -60,15 +60,15 @@
           "default": "15.0",
           "minimum": 0.0
         },
-        "refine_goal_search_radius_range": {
+        "smooth_goal_connection.search_radius_range": {
           "type": "number",
-          "description": "Search radius for goal point refinement [m]",
+          "description": "Search radius for smooth goal connection [m]",
           "default": "7.5",
           "minimum": 0.0
         },
-        "search_radius_decrement": {
+        "smooth_goal_connection.pre_goal_offset": {
           "type": "number",
-          "description": "Decrement value for search radius [m]",
+          "description": "Offset for pre-goal [m]",
           "default": "1.0",
           "minimum": 0.0
         }
@@ -83,8 +83,8 @@
         "turn_signal.search_distance",
         "turn_signal.resampling_interval",
         "turn_signal.angle_threshold_deg",
-        "refine_goal_search_radius_range",
-        "search_radius_decrement"
+        "smooth_goal_connection.search_radius_range",
+        "smooth_goal_connection.pre_goal_offset"
       ],
       "additionalProperties": false
     }

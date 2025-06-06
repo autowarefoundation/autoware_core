@@ -1,42 +1,69 @@
 path_generator:
   planning_hz:
     type: double
+    validation:
+      gt<>: [0]
 
   path_length:
     backward:
       type: double
+      validation:
+        gt<>: [0]
 
     forward:
       type: double
+      validation:
+        gt<>: [0]
 
   waypoint_group:
     separation_threshold:
       type: double
+      validation:
+        gt<>: [0]
 
     interval_margin_ratio:
       type: double
+      validation:
+        gt<>: [0]
 
   turn_signal:
     search_time:
       type: double
+      validation:
+        gt<>: [0]
 
     search_distance:
       type: double
+      validation:
+        gt<>: [0]
 
     resampling_interval:
       type: double
+      validation:
+        gt<>: [0]
 
     angle_threshold_deg:
       type: double
+      validation:
+        gt<>: [0]
 
-  refine_goal_search_radius_range:
-    type: double
+  smooth_goal_connection:
+    search_radius_range:
+      type: double
+      validation:
+        gt<>: [0]
 
-  search_radius_decrement:
-    type: double
+    pre_goal_offset:
+      type: double
+      validation:
+        gt<>: [0]
 
   ego_nearest_dist_threshold:
     type: double
+    validation:
+      gt<>: [0]
 
   ego_nearest_yaw_threshold:
     type: double
+    validation:
+      gt<>: [0]
