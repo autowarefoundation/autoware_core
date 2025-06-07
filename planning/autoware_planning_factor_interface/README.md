@@ -39,6 +39,15 @@ public:
       &node, "avoidance_planner")}
 ```
 
+You can also enable console output for debugging by setting the appropriate parameters:
+
+```cpp
+// Enable console output with a 1000ms throttle duration
+planning_factor_interface_ = std::make_unique<
+  autoware::planning_factor_interface::PlanningFactorInterface>(
+  &node, "avoidance_planner", true, 1000);
+```
+
 ### Adding Planning Factors
 
 ```cpp

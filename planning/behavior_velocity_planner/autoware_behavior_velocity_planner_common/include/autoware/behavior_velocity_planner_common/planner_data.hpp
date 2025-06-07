@@ -66,6 +66,9 @@ struct PlannerData
 
   bool is_simulation = false;
 
+  bool planning_factor_console_output_enabled = false;
+  int planning_factor_console_output_duration = 0;
+
   std::shared_ptr<autoware::velocity_smoother::SmootherBase> velocity_smoother_;
   std::shared_ptr<autoware::route_handler::RouteHandler> route_handler_;
   autoware::vehicle_info_utils::VehicleInfo vehicle_info_;

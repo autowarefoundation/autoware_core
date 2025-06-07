@@ -3,3 +3,6 @@
     forward_path_length: 1000.0
     backward_path_length: 5.0
     behavior_output_path_interval: 1.0
+    planning_factor_console_output:
+      enable: false
+      duration: 1000 # ms

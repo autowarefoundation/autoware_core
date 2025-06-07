@@ -27,6 +27,7 @@
 #include <autoware_planning_msgs/msg/trajectory_point.hpp>
 #include <geometry_msgs/msg/pose.hpp>
 
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -42,11 +43,15 @@ using geometry_msgs::msg::Pose;
 class PlanningFactorInterface
 {
 public:
-  PlanningFactorInterface(rclcpp::Node * node, const std::string & name)
+  PlanningFactorInterface(
+    rclcpp::Node * node, const std::string & name, bool enable_console_output = false,
+    int throttle_duration_ms = 1000)
   : name_{name},
     pub_factors_{
       node->create_publisher<PlanningFactorArray>("/planning/planning_factors/" + name, 1)},
-    clock_{node->get_clock()}
+    clock_{node->get_clock()},
+    enable_console_output_{enable_console_output},
+    throttle_duration_ms_{throttle_duration_ms}
   {
   }
 
@@ -203,10 +208,30 @@ public:
 
     pub_factors_->publish(msg);
 
+    if (enable_console_output_ && !factors_.empty()) {
+      print_factors_to_console(msg);
+    }
+
     factors_.clear();
   }
 
 private:
+  /**
+   * @brief Print message to console in YAML format
+   * @param msg The message to print
+   */
+  void print_factors_to_console(const PlanningFactorArray & msg)
+  {
+    const std::string output_str =
+      "Planning factor:\n" + autoware_internal_planning_msgs::msg::to_yaml(msg);
+    if (throttle_duration_ms_ > 0) {
+      RCLCPP_INFO_THROTTLE(
+        rclcpp::get_logger(name_), *clock_, throttle_duration_ms_, "%s", output_str.c_str());
+    } else {
+      RCLCPP_INFO(rclcpp::get_logger(name_), "%s", output_str.c_str());
+    }
+  }
+
   std::string name_;
 
   rclcpp::Publisher<PlanningFactorArray>::SharedPtr pub_factors_;
@@ -214,6 +239,9 @@ private:
   rclcpp::Clock::SharedPtr clock_;
 
   std::vector<PlanningFactor> factors_;
+
+  bool enable_console_output_{false};
+  int throttle_duration_ms_{0};
 };
 
 extern template void
