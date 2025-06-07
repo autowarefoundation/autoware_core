@@ -42,7 +42,7 @@ PoseInitializer::PoseInitializer(const rclcpp::NodeOptions & options)
   srv_initialize_ = create_service<Initialize::Service>(
     Initialize::name,
     std::bind(&PoseInitializer::on_initialize, this, std::placeholders::_1, std::placeholders::_2),
-    rmw_qos_profile_services_default, group_srv_);
+    rclcpp::ServicesQoS(), group_srv_);
   pub_reset_ = create_publisher<PoseWithCovarianceStamped>("pose_reset", 1);
 
   output_pose_covariance_ = get_covariance_parameter(this, "output_pose_covariance");

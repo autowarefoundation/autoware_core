@@ -195,12 +195,12 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
       "ndt_align_srv",
       std::bind(
         &NDTScanMatcher::service_ndt_align, this, std::placeholders::_1, std::placeholders::_2),
-      rclcpp::ServicesQoS().get_rmw_qos_profile(), sensor_callback_group);
+      rclcpp::ServicesQoS(), sensor_callback_group);
   service_trigger_node_ = this->create_service<std_srvs::srv::SetBool>(
     "trigger_node_srv",
     std::bind(
       &NDTScanMatcher::service_trigger_node, this, std::placeholders::_1, std::placeholders::_2),
-    rclcpp::ServicesQoS().get_rmw_qos_profile(), sensor_callback_group);
+    rclcpp::ServicesQoS(), sensor_callback_group);
 
   ndt_ptr_->setParams(param_.ndt);
 

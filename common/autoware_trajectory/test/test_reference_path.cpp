@@ -486,4 +486,9 @@ TEST_P(TestCase_Map_Overlap_Lane_00, test_path_validity)
   }
 }
 
+INSTANTIATE_TEST_SUITE_P(
+  test_path_validity, TestCase_Map_Overlap_Lane_00,
+  ::testing::Values(Parameter_Map_Overlap_Lane_00{
+    40, 0, {600, 601, 602, 603, 604, 605}, 600, 100.0, 108.1, 100.0, {0.0, 0.0, 0.0, 1.0}, true}));
+
 }  // namespace autoware::experimental

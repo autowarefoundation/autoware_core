@@ -31,6 +31,7 @@ ament_auto_add_library(autoware_trajectory SHARED
 
 if(BUILD_TESTING)
   find_package(ament_cmake_ros REQUIRED)
+  find_package(ament_index_cpp REQUIRED)
   find_package(autoware_motion_utils REQUIRED)
   include_directories(${autoware_motion_utils_INCLUDE_DIRS})
 
@@ -48,6 +49,7 @@ if(BUILD_TESTING)
   ament_add_ros_isolated_gtest(test_autoware_trajectory ${test_files})
 
   target_link_libraries(test_autoware_trajectory
+    ament_index_cpp::ament_index_cpp
     autoware_trajectory
     ${autoware_motion_utils_LIBRARIES}
   )
@@ -80,7 +82,6 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
   find_package(pybind11_vendor REQUIRED)
   find_package(pybind11 REQUIRED)
-  include_directories(${autoware_index_cpp_INCLUDE_DIRS})
   include_directories(${autoware_pyplot_INCLUDE_DIRS})
   include_directories(${autoware_test_utils_INCLUDE_DIRS})
   include_directories(${autoware_utils_geometry_INCLUDE_DIRS})
@@ -91,7 +92,7 @@ if(BUILD_TESTING)
     )
     target_link_libraries(${example_name}
       autoware_trajectory
-      ${autoware_index_cpp_LIBRARIES}
+      ament_index_cpp::ament_index_cpp
       ${autoware_utils_geometry_LIBRARIES}
       ${autoware_motion_utils_LIBRARIES}
       ${autoware_pyplot_LIBRARIES}
