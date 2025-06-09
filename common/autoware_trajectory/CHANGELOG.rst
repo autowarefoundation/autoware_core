@@ -50,8 +50,8 @@ Changelog for package autoware_trajectory
 * chore: include iostream and link yaml-cpp for Jazzy (`#351 <https://github.com/autowarefoundation/autoware_core/issues/351>`_)
 * Contributors: Mamoru Sobue, Tim Clephas, Yukinari Hisaki
 
-Forthcoming
------------
+1.2.0 (2025-06-09)
+------------------
 * fix: tf2 uses hpp headers in rolling (and is backported) (`#483 <https://github.com/autowarefoundation/autoware_core/issues/483>`_)
   * tf2 uses hpp headers in rolling (and is backported)
   * fixup! tf2 uses hpp headers in rolling (and is backported)

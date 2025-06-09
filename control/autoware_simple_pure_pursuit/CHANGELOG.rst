@@ -5,8 +5,8 @@ Changelog for package autoware_simple_pure_pursuit
 1.1.0 (2025-05-01)
 ------------------
 
-Forthcoming
------------
+1.2.0 (2025-06-09)
+------------------
 * docs(simple_pure_pursuit): add flowchart (`#481 <https://github.com/autowarefoundation/autoware_core/issues/481>`_)
   * add flowchart
   * add default value to parameter schema

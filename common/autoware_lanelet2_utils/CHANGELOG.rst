@@ -18,8 +18,8 @@ Changelog for package autoware_lanelet2_utils
   ---------
 * Contributors: Mamoru Sobue, Yutaka Kondo
 
-Forthcoming
------------
+1.2.0 (2025-06-09)
+------------------
 * feat(autoware_lanelet2_utils): refactor interpolation and extrapolation for lanelet2 points and line (`#373 <https://github.com/autowarefoundation/autoware_core/issues/373>`_)
   * task 1
   * style(pre-commit): autofix

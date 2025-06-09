@@ -13,8 +13,8 @@ Changelog for package autoware_motion_utils
 * refactor(autoware_motion_utils): rewrite using modern C++ without API breakage (`#348 <https://github.com/autowarefoundation/autoware_core/issues/348>`_)
 * Contributors: Arjun Jagdish Ram, Yutaka Kondo
 
-Forthcoming
------------
+1.2.0 (2025-06-09)
+------------------
 * fix: tf2 uses hpp headers in rolling (and is backported) (`#483 <https://github.com/autowarefoundation/autoware_core/issues/483>`_)
   * tf2 uses hpp headers in rolling (and is backported)
   * fixup! tf2 uses hpp headers in rolling (and is backported)

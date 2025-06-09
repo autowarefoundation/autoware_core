@@ -14,8 +14,8 @@ Changelog for package autoware_geography_utils
   ---------
 * Contributors: Yamato Ando, Yutaka Kondo
 
-Forthcoming
------------
+1.2.0 (2025-06-09)
+------------------
 * chore: bump up version to 1.1.0 (`#462 <https://github.com/autowarefoundation/autoware_core/issues/462>`_) (`#464 <https://github.com/autowarefoundation/autoware_core/issues/464>`_)
 * feat(map_projection_loader): add scale_factor and remove altitude (`#340 <https://github.com/autowarefoundation/autoware_core/issues/340>`_)
 * refactor(autoware_geography_utils): rewrite using modern C++ without API breakage (`#345 <https://github.com/autowarefoundation/autoware_core/issues/345>`_)

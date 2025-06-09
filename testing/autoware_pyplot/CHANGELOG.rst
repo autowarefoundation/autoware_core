@@ -10,8 +10,8 @@ Changelog for package autoware_pyplot
   ---------
 * Contributors: Mamoru Sobue
 
-Forthcoming
------------
+1.2.0 (2025-06-09)
+------------------
 * chore: bump up version to 1.1.0 (`#462 <https://github.com/autowarefoundation/autoware_core/issues/462>`_) (`#464 <https://github.com/autowarefoundation/autoware_core/issues/464>`_)
 * feat(trajectory): add API description, nomenclature, illustration, rename functions to align with nomenclature (`#292 <https://github.com/autowarefoundation/autoware_core/issues/292>`_)
   * feat(trajectory): add API description, nomenclature, illustration, rename functions to align with nomenclature

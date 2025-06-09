@@ -5,8 +5,8 @@ Changelog for package autoware_velocity_smoother
 1.1.0 (2025-05-01)
 ------------------
 
-Forthcoming
------------
+1.2.0 (2025-06-09)
+------------------
 * fix: tf2 uses hpp headers in rolling (and is backported) (`#483 <https://github.com/autowarefoundation/autoware_core/issues/483>`_)
   * tf2 uses hpp headers in rolling (and is backported)
   * fixup! tf2 uses hpp headers in rolling (and is backported)

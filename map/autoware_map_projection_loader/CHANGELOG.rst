@@ -9,8 +9,8 @@ Changelog for package autoware_map_projection_loader
 * feat(map_projection_loader): add scale_factor and remove altitude (`#340 <https://github.com/autowarefoundation/autoware_core/issues/340>`_)
 * Contributors: Takagi, Isamu, Yamato Ando
 
-Forthcoming
------------
+1.2.0 (2025-06-09)
+------------------
 * chore: bump up version to 1.1.0 (`#462 <https://github.com/autowarefoundation/autoware_core/issues/462>`_) (`#464 <https://github.com/autowarefoundation/autoware_core/issues/464>`_)
 * feat(component_interface_specs): use template type in get_qos function (`#364 <https://github.com/autowarefoundation/autoware_core/issues/364>`_)
   Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>

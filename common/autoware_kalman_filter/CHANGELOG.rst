@@ -24,8 +24,8 @@ Changelog for package autoware_kalman_filter
   ---------
 * Contributors: RyuYamamoto, Yutaka Kondo
 
-Forthcoming
------------
+1.2.0 (2025-06-09)
+------------------
 * chore: bump up version to 1.1.0 (`#462 <https://github.com/autowarefoundation/autoware_core/issues/462>`_) (`#464 <https://github.com/autowarefoundation/autoware_core/issues/464>`_)
 * fix(autoware_kalman_filter): fixed clang-tidy error (`#379 <https://github.com/autowarefoundation/autoware_core/issues/379>`_)
   * fix(autoware_kalman_filter): fixed clang-tidy error

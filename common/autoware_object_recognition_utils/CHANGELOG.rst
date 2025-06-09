@@ -8,8 +8,8 @@ Changelog for package autoware_object_recognition_utils
   use autoware_utils\_*
 * Contributors: Yutaka Kondo
 
-Forthcoming
------------
+1.2.0 (2025-06-09)
+------------------
 * refactor(autoware_obect_recognition_utils): rewrite using modern C++ without API breakage (`#396 <https://github.com/autowarefoundation/autoware_core/issues/396>`_)
 * chore: bump up version to 1.1.0 (`#462 <https://github.com/autowarefoundation/autoware_core/issues/462>`_) (`#464 <https://github.com/autowarefoundation/autoware_core/issues/464>`_)
 * refactor(autoware_object_recognition_utils): use `autoware_utils\_*` instead of `autoware_utils` (`#385 <https://github.com/autowarefoundation/autoware_core/issues/385>`_)

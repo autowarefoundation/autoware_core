@@ -5,8 +5,8 @@ Changelog for package autoware_planning_factor_interface
 1.1.0 (2025-05-01)
 ------------------
 
-Forthcoming
------------
+1.2.0 (2025-06-09)
+------------------
 * fix(autoware_planning_factor_interface): removed unused autoware_utils (`#440 <https://github.com/autowarefoundation/autoware_core/issues/440>`_)
   removed unused autoware_utils
   Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>

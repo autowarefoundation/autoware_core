@@ -2,8 +2,8 @@
 Changelog for package autoware_perception_objects_converter
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.2.0 (2025-06-09)
+------------------
 * fix: to be consistent version in all package.xml(s)
 * feat: add autoware_perception_objects_converter (`#458 <https://github.com/autowarefoundation/autoware_core/issues/458>`_)
   Co-authored-by: suchang <chang.su@autocore.ai>

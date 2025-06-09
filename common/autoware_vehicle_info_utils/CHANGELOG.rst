@@ -7,8 +7,8 @@ Changelog for package autoware_vehicle_info_utils
 * refactor(autoware_vehicle_info_utils): rewrite using modern C++ without API breakage (`#343 <https://github.com/autowarefoundation/autoware_core/issues/343>`_)
 * Contributors: Yutaka Kondo
 
-Forthcoming
------------
+1.2.0 (2025-06-09)
+------------------
 * chore: bump up version to 1.1.0 (`#462 <https://github.com/autowarefoundation/autoware_core/issues/462>`_) (`#464 <https://github.com/autowarefoundation/autoware_core/issues/464>`_)
 * refactor(autoware_vehicle_info_utils): rewrite using modern C++ without API breakage (`#343 <https://github.com/autowarefoundation/autoware_core/issues/343>`_)
 * Contributors: Yutaka Kondo

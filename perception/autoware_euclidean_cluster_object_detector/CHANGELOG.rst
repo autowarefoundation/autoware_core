@@ -2,8 +2,8 @@
 Changelog for package autoware_euclidean_cluster_object_detector
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.2.0 (2025-06-09)
+------------------
 * fix: to be consistent version in all package.xml(s)
 * feat(autoware_euclidean_cluster_object_detector): port autoware_euclidean_cluster to autoware.core (`#460 <https://github.com/autowarefoundation/autoware_core/issues/460>`_)
   Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>

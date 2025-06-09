@@ -14,8 +14,8 @@ Changelog for package autoware_interpolation
   Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
 * Contributors: Arjun Jagdish Ram, Takagi, Isamu
 
-Forthcoming
------------
+1.2.0 (2025-06-09)
+------------------
 * fix: tf2 uses hpp headers in rolling (and is backported) (`#483 <https://github.com/autowarefoundation/autoware_core/issues/483>`_)
   * tf2 uses hpp headers in rolling (and is backported)
   * fixup! tf2 uses hpp headers in rolling (and is backported)

@@ -63,8 +63,8 @@ Changelog for package autoware_path_generator
 * feat(autoware_path_generator): use autoware_trajectory for cropping bounds (`#349 <https://github.com/autowarefoundation/autoware_core/issues/349>`_)
 * Contributors: Kazunori-Nakajima, Mamoru Sobue, Mitsuhiro Sakamoto, Yukinari Hisaki
 
-Forthcoming
------------
+1.2.0 (2025-06-09)
+------------------
 * docs(path_generator): replace flowchart with raw plantuml code (`#482 <https://github.com/autowarefoundation/autoware_core/issues/482>`_)
   * add flowchart
   * style(pre-commit): autofix

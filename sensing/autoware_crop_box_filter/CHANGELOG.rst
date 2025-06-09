@@ -11,8 +11,8 @@ Changelog for package autoware_crop_box_filter
   Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
 * Contributors: Amadeusz Szymko
 
-Forthcoming
------------
+1.2.0 (2025-06-09)
+------------------
 * chore: bump up version to 1.1.0 (`#462 <https://github.com/autowarefoundation/autoware_core/issues/462>`_) (`#464 <https://github.com/autowarefoundation/autoware_core/issues/464>`_)
 * fix(autoware_crop_box_filter): fix deprecated autoware_utils header (`#418 <https://github.com/autowarefoundation/autoware_core/issues/418>`_)
   * fix autoware_utils header

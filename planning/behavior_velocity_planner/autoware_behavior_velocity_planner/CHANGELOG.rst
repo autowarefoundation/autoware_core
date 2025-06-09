@@ -5,8 +5,8 @@ Changelog for package autoware_behavior_velocity_planner
 1.1.0 (2025-05-01)
 ------------------
 
-Forthcoming
------------
+1.2.0 (2025-06-09)
+------------------
 * fix(autoware_behavior_velocity_planner): fix deprecated autoware_utils header (`#442 <https://github.com/autowarefoundation/autoware_core/issues/442>`_)
 * feat(behavior_velocity_planner)!: remove unused function extendLine (`#457 <https://github.com/autowarefoundation/autoware_core/issues/457>`_)
   * remove unused function

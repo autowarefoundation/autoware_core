@@ -2,8 +2,8 @@
 Changelog for package autoware_lanelet2_map_visualizer
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.2.0 (2025-06-09)
+------------------
 * fix: to be consistent version in all package.xml(s)
 * test(autoware_lanelet2_map_visualization): add unit test code (`#477 <https://github.com/autowarefoundation/autoware_core/issues/477>`_)
 * feat(autoware_lanelet2_map_visualizer): porting autoware_lanelet2_map_visualizer from autoware_universe (`#428 <https://github.com/autowarefoundation/autoware_core/issues/428>`_)
