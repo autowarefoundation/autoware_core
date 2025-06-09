@@ -36,26 +36,10 @@ jobs:
         id: get-self-packages
         uses: autowarefoundation/autoware-github-actions/get-self-packages@v1
 
-      # TODO(youtalk): Remove this once ros:jazzy is updated
-      - name: Workaround for ROS signing key issue
-        run: |
-          if [ "${{ matrix.rosdistro }}" = "jazzy" ]; then
-            rm -f /etc/apt/sources.list.d/ros2-latest.list
-            rm -f /usr/share/keyrings/ros2-latest-archive-keyring.gpg
-            apt-get update
-            apt-get install -y ca-certificates curl
-            export ROS_APT_SOURCE_VERSION=$(curl -s https://api.github.com/repos/ros-infrastructure/ros-apt-source/releases/latest | grep -F "tag_name" | awk -F\" '{print $4}')
-            curl -L -s -o /tmp/ros2-apt-source.deb "https://github.com/ros-infrastructure/ros-apt-source/releases/download/${ROS_APT_SOURCE_VERSION}/ros2-apt-source_${ROS_APT_SOURCE_VERSION}.$(. /etc/os-release && echo "$VERSION_CODENAME")_all.deb"
-            apt-get update
-            apt-get install -y /tmp/ros2-apt-source.deb
-            rm -f /tmp/ros2-apt-source.deb
-          fi
-        shell: bash
-
       - name: Use ros2-testing packages
         run: |
           if [ "${{ matrix.rosdistro }}" = "jazzy" ]; then
-            sed -i 's|http://packages.ros.org/ros2/ubuntu|http://packages.ros.org/ros2-testing/ubuntu|g' /etc/apt/sources.list.d/ros2.sources
+            sed -i 's|http://packages.ros.org/ros2/ubuntu|http://packages.ros.org/ros2-testing/ubuntu|g' /etc/apt/sources.list.d/ros2-latest.list
             apt-get update
           fi
         shell: bash
