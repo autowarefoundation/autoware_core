@@ -61,13 +61,13 @@ autoware_perception_msgs::msg::PredictedPath resamplePredictedPath(
   if (path.path.size() == 1) {
     const auto resampled_size = std::min(resampled_path.path.max_size(), resampled_time.size());
     resampled_path.path.resize(resampled_size);
-    
+
     // Fill all points with the same position and orientation
     for (size_t i = 0; i < resampled_size; ++i) {
       resampled_path.path.at(i).position = path.path.at(0).position;
       resampled_path.path.at(i).orientation = path.path.at(0).orientation;
     }
-    
+
     return resampled_path;
   }
 
