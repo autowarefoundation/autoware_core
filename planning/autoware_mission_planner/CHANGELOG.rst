@@ -5,6 +5,20 @@ Changelog for package autoware_mission_planner
 1.1.0 (2025-05-01)
 ------------------
 
+Forthcoming
+-----------
+* fix: tf2 uses hpp headers in rolling (and is backported) (`#483 <https://github.com/autowarefoundation/autoware_core/issues/483>`_)
+  * tf2 uses hpp headers in rolling (and is backported)
+  * fixup! tf2 uses hpp headers in rolling (and is backported)
+  ---------
+* chore: bump up version to 1.1.0 (`#462 <https://github.com/autowarefoundation/autoware_core/issues/462>`_) (`#464 <https://github.com/autowarefoundation/autoware_core/issues/464>`_)
+* fix(autoware_mission_planner): fix deprecated autoware_utils header (`#421 <https://github.com/autowarefoundation/autoware_core/issues/421>`_)
+  * fix autoware_utils header
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* Contributors: Masaki Baba, Tim Clephas, Yutaka Kondo
+
 1.0.0 (2025-03-31)
 ------------------
 * chore: update version in package.xml

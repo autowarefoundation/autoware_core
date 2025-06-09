@@ -13,6 +13,26 @@ Changelog for package autoware_motion_utils
 * refactor(autoware_motion_utils): rewrite using modern C++ without API breakage (`#348 <https://github.com/autowarefoundation/autoware_core/issues/348>`_)
 * Contributors: Arjun Jagdish Ram, Yutaka Kondo
 
+Forthcoming
+-----------
+* fix: tf2 uses hpp headers in rolling (and is backported) (`#483 <https://github.com/autowarefoundation/autoware_core/issues/483>`_)
+  * tf2 uses hpp headers in rolling (and is backported)
+  * fixup! tf2 uses hpp headers in rolling (and is backported)
+  ---------
+* chore: bump up version to 1.1.0 (`#462 <https://github.com/autowarefoundation/autoware_core/issues/462>`_) (`#464 <https://github.com/autowarefoundation/autoware_core/issues/464>`_)
+* refactor(motion_utils): use `autoware_utils\_*` instead of `autoware_utils` (`#383 <https://github.com/autowarefoundation/autoware_core/issues/383>`_)
+  * feat(interpolation): use split autoware utils
+  * feat(motion_utils): use split autoware utils
+  ---------
+* fix(autoware_path_optimizer): incorrect application of input velocity due to badly mapping output trajectory to input trajectory (`#355 <https://github.com/autowarefoundation/autoware_core/issues/355>`_)
+  * changes to avoid improper mapping
+  * Update common/autoware_motion_utils/include/autoware/motion_utils/trajectory/trajectory.hpp
+  Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
+  ---------
+  Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
+* refactor(autoware_motion_utils): rewrite using modern C++ without API breakage (`#348 <https://github.com/autowarefoundation/autoware_core/issues/348>`_)
+* Contributors: Arjun Jagdish Ram, Takagi, Isamu, Tim Clephas, Yutaka Kondo
+
 1.0.0 (2025-03-31)
 ------------------
 

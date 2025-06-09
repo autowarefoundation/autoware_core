@@ -50,6 +50,86 @@ Changelog for package autoware_trajectory
 * chore: include iostream and link yaml-cpp for Jazzy (`#351 <https://github.com/autowarefoundation/autoware_core/issues/351>`_)
 * Contributors: Mamoru Sobue, Tim Clephas, Yukinari Hisaki
 
+Forthcoming
+-----------
+* fix: tf2 uses hpp headers in rolling (and is backported) (`#483 <https://github.com/autowarefoundation/autoware_core/issues/483>`_)
+  * tf2 uses hpp headers in rolling (and is backported)
+  * fixup! tf2 uses hpp headers in rolling (and is backported)
+  ---------
+* feat(autoware_trajectory): enhance shift flexibility (`#456 <https://github.com/autowarefoundation/autoware_core/issues/456>`_)
+  * feat(autoware_trajectory): enhance shift flexibility
+  * add test
+  * fix spell miss
+  * remove unused
+  ---------
+* chore: bump up version to 1.1.0 (`#462 <https://github.com/autowarefoundation/autoware_core/issues/462>`_) (`#464 <https://github.com/autowarefoundation/autoware_core/issues/464>`_)
+* chore(autoware_trajectory): update includes to maintain backward compatibility (`#455 <https://github.com/autowarefoundation/autoware_core/issues/455>`_)
+* feat(autoware_trajectory): enable downcast from Trajectory<Point> to Trajectory<Pose> (`#430 <https://github.com/autowarefoundation/autoware_core/issues/430>`_)
+  * feat(autoware_trajectory): enable downcast from Trajectory<Point> to Trajectory<Pose>
+  * add test
+  * fix test
+  ---------
+* chore(autoware_trajectory): fix CMake to work with differential build (`#420 <https://github.com/autowarefoundation/autoware_core/issues/420>`_)
+* feat(autoware_trajectory): improve accuracy of boundary by using binary search (`#391 <https://github.com/autowarefoundation/autoware_core/issues/391>`_)
+  * feat(autoware_trajectory): improve accuracy of boundary by using binary search
+  * add example
+  * Update common/autoware_trajectory/src/utils/find_intervals.cpp
+  Co-authored-by: Kosuke Takeuchi <kosuke.tnp@gmail.com>
+  * Update common/autoware_trajectory/src/utils/find_intervals.cpp
+  Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
+  * define macro for avoiding compiler error
+  * add unit test
+  * use flag instead of optional
+  * add missing include
+  ---------
+  Co-authored-by: Kosuke Takeuchi <kosuke.tnp@gmail.com>
+  Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
+* fix(autoware_trajectory): avoid nan in align_orientation_with_trajectory_direction (`#398 <https://github.com/autowarefoundation/autoware_core/issues/398>`_)
+  * fix(autoware_trajectory): avoid nan in align_orientation_with_trajectory_direction
+  * tidy
+  * remove eps
+  ---------
+* chore(autoware_trajectory): relax the warning condition of boundary check (`#393 <https://github.com/autowarefoundation/autoware_core/issues/393>`_)
+  * chore(autoware_trajectory): relax the warning condition of boundary check
+  * tidy
+  ---------
+* feat(trajectory): define distance threshold and refine restore() without API breakage(in experimental) (`#376 <https://github.com/autowarefoundation/autoware_core/issues/376>`_)
+  * feat(trajectory): define distance threshold and refine restore
+  * fix spell
+  ---------
+* feat(autoware_trajectory): add get_contained_lane_ids function (`#369 <https://github.com/autowarefoundation/autoware_core/issues/369>`_)
+  * add get_contained_lane_ids
+  * add unit test
+  * remove assert
+  ---------
+* feat(trajectory): add pretty_build() function for Planning/Control component node (`#332 <https://github.com/autowarefoundation/autoware_core/issues/332>`_)
+* refactor(autoware_trajectory)!: move everything to namespace experimetal (`#371 <https://github.com/autowarefoundation/autoware_core/issues/371>`_)
+  refactor(autoware_trajectory)!: move everything to namespace experimental
+* feat(trajectory): improve shift function and their documents (`#337 <https://github.com/autowarefoundation/autoware_core/issues/337>`_)
+  * feat(trajectory): add populate function
+  * update curvature figure for approximation desc
+  * update align_orientation_with_trajectory_direction fig
+  * finished trajectory classes
+  * refactored shift
+  * add comment
+  * update error message
+  ---------
+* fix(autoware_trajectory): fix base_addition callback to work when Trajectory is moved (`#370 <https://github.com/autowarefoundation/autoware_core/issues/370>`_)
+* fix(autoware_trajectory): check vector size check before accessing (`#365 <https://github.com/autowarefoundation/autoware_core/issues/365>`_)
+  * fix(autoware_trajectory): check vector size check before accessing
+  * update
+  * minor fix
+  ---------
+  Co-authored-by: Mamoru Sobue <hilo.soblin@gmail.com>
+* feat(autoware_trajectory): improve performance of get_underlying_base  (`#298 <https://github.com/autowarefoundation/autoware_core/issues/298>`_)
+* feat(trajectory): add API documentation for trajectory class, add some utillity (`#295 <https://github.com/autowarefoundation/autoware_core/issues/295>`_)
+* feat(trajectory): add API description, nomenclature, illustration, rename functions to align with nomenclature (`#292 <https://github.com/autowarefoundation/autoware_core/issues/292>`_)
+  * feat(trajectory): add API description, nomenclature, illustration, rename functions to align with nomenclature
+  * resurrect get_internal_base
+  ---------
+* chore: include iostream and link yaml-cpp for Jazzy (`#351 <https://github.com/autowarefoundation/autoware_core/issues/351>`_)
+* Contributors: Mamoru Sobue, Tim Clephas, Yukinari Hisaki, Yutaka Kondo
+
 1.0.0 (2025-03-31)
 ------------------
 * feat(trajectory): remove default ctor and collect default setting in Builder (`#287 <https://github.com/autowarefoundation/autoware_core/issues/287>`_)

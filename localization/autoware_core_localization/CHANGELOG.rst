@@ -5,6 +5,11 @@ Changelog for package autoware_core_localization
 1.1.0 (2025-05-01)
 ------------------
 
+Forthcoming
+-----------
+* chore: bump up version to 1.1.0 (`#462 <https://github.com/autowarefoundation/autoware_core/issues/462>`_) (`#464 <https://github.com/autowarefoundation/autoware_core/issues/464>`_)
+* Contributors: Yutaka Kondo
+
 1.0.0 (2025-03-31)
 ------------------
 * chore: update version in package.xml
