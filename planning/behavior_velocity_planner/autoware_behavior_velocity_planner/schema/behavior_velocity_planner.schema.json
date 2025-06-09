@@ -20,9 +20,32 @@
           "type": "number",
           "default": "1.0",
           "description": "the output path will be interpolated by this interval"
+        },
+        "planning_factor_console_output": {
+          "type": "object",
+          "properties": {
+            "enable": {
+              "type": "boolean",
+              "default": false,
+              "description": "enable console output for planning factors"
+            },
+            "duration": {
+              "type": "number",
+              "default": 1000,
+              "description": "output duration in milliseconds"
+            }
+          },
+          "required": ["enable", "duration"],
+          "additionalProperties": false,
+          "description": "configuration for planning factor console output"
         }
       },
-      "required": ["forward_path_length", "behavior_output_path_interval", "backward_path_length"],
+      "required": [
+        "forward_path_length",
+        "behavior_output_path_interval",
+        "backward_path_length",
+        "planning_factor_console_output"
+      ],
       "additionalProperties": false
     }
   },

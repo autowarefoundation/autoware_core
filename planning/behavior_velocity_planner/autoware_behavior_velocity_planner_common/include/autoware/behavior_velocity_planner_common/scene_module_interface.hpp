@@ -152,8 +152,15 @@ public:
     }
     pub_virtual_wall_ = node.create_publisher<visualization_msgs::msg::MarkerArray>(
       std::string("~/virtual_wall/") + module_name, 5);
+
+    const bool enable_console_output =
+      get_or_declare_parameter<bool>(node, "planning_factor_console_output.enable");
+    const int throttle_duration_ms =
+      get_or_declare_parameter<int>(node, "planning_factor_console_output.duration");
+
     planning_factor_interface_ =
-      std::make_shared<planning_factor_interface::PlanningFactorInterface>(&node, module_name);
+      std::make_shared<planning_factor_interface::PlanningFactorInterface>(
+        &node, module_name, enable_console_output, throttle_duration_ms);
 
     processing_time_publisher_ = std::make_shared<DebugPublisher>(&node, "~/debug");
 
