@@ -244,15 +244,13 @@ geometry_msgs::msg::Pose PlannerData::Object::get_specified_time_pose(
 {
   const auto predicted_pose_opt = get_predicted_object_pose_from_predicted_paths(
     predicted_object.kinematics.predicted_paths, predicted_objects_stamp, time);
-
-  if (predicted_pose_opt) {
-    return *predicted_pose_opt;
-  } else {
+  if (!predicted_pose_opt) {
     RCLCPP_WARN(
       rclcpp::get_logger("motion_velocity_planner_common"),
       "Failed to calculate the predicted object pose.");
     return predicted_object.kinematics.initial_pose_with_covariance.pose;
   }
+  return *predicted_pose_opt;
 }
 
 void PlannerData::process_predicted_objects(

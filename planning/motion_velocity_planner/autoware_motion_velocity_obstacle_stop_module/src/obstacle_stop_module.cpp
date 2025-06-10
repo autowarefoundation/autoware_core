@@ -57,6 +57,40 @@ double calc_minimum_distance_to_stop(
   return -std::pow(initial_vel, 2) / 2.0 / min_acc;
 }
 
+double calc_estimation_time(
+  const PredictedObject & predicted_object, const ObstacleFilteringParam & obstacle_filtering_param)
+{
+  const uint8_t obj_label = predicted_object.classification.at(0).label;
+  if (!is_in_vector(obj_label, obstacle_filtering_param.outside_stop_object_types)) {
+    return 0.0;
+  }
+  // convert constant deceleration to constant velocity
+  // In this feature, we are assuming the pedestrians will decelerate by specified value,
+  // hence the travelling distance is drived as v^2/2a.
+  // However, to maintain the compatibility with the otehr objcects,
+  // we have to capselize this distance information as time with constant velocity assumuption.
+  // Therefore here we return a value (v^2/2a) / v = v/2a as the equivalent estimation time.
+  const auto equivalent_estimation_time = [&predicted_object](double deceleration_rate) {
+    if (deceleration_rate <= std::numeric_limits<double>::epsilon()) {
+      return 0.0;
+    }
+    const auto & twist = predicted_object.kinematics.initial_twist_with_covariance.twist;
+    return std::hypot(twist.linear.x, twist.linear.y) * 0.5 / deceleration_rate;
+  };
+  switch (obj_label) {
+    case ObjectClassification::PEDESTRIAN:
+      return std::clamp(
+        equivalent_estimation_time(obstacle_filtering_param.outside_pedestrian_deceleration_rate),
+        0.0, obstacle_filtering_param.outside_estimation_time_horizon);
+    case ObjectClassification::BICYCLE:
+      return std::clamp(
+        equivalent_estimation_time(obstacle_filtering_param.outside_bicycle_deceleration_rate), 0.0,
+        obstacle_filtering_param.outside_estimation_time_horizon);
+    default:
+      return obstacle_filtering_param.outside_estimation_time_horizon;
+  }
+}
+
 autoware_utils_geometry::Point2d convert_point(const geometry_msgs::msg::Point & p)
 {
   return autoware_utils_geometry::Point2d{p.x, p.y};
@@ -537,6 +571,7 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
 
   const auto & predicted_object = object->predicted_object;
   const auto & obj_pose = object->get_predicted_pose(clock_->now(), predicted_objects_stamp);
+  const double estimation_time = calc_estimation_time(predicted_object, obstacle_filtering_param_);
 
   // 1. filter by label
   const uint8_t obj_label = predicted_object.classification.at(0).label;
@@ -544,36 +579,11 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
     return std::nullopt;
   }
 
-  const auto estimation_time = [&]() {
-    if (!is_in_vector(obj_label, obstacle_filtering_param_.outside_stop_object_types)) {
-      return 0.0;
-    }
-    const auto equivalent_estimation_time = [&predicted_object](double deceleration_rate) {
-      if (deceleration_rate <= std::numeric_limits<double>::epsilon()) {
-        return 0.0;
-      }
-      // convert constant deceleration to constant velocity
-      const auto twist = predicted_object.kinematics.initial_twist_with_covariance.twist;
-      return std::hypot(twist.linear.x, twist.linear.y) * 0.5 / deceleration_rate;
-    };
-    switch (obj_label) {
-      case ObjectClassification::PEDESTRIAN:
-        return std::clamp(
-          equivalent_estimation_time(
-            obstacle_filtering_param_.outside_pedestrian_deceleration_rate),
-          0.0, obstacle_filtering_param_.outside_estimation_time_horizon);
-      case ObjectClassification::BICYCLE:
-        return std::clamp(
-          equivalent_estimation_time(obstacle_filtering_param_.outside_bicycle_deceleration_rate),
-          0.0, obstacle_filtering_param_.outside_estimation_time_horizon);
-      default:
-        return obstacle_filtering_param_.outside_estimation_time_horizon;
-    }
-  }();
-
   // 2. filter by lateral distance
   const double max_lat_margin = get_max_lat_margin(obj_label);
   // NOTE: max_lat_margin can be negative, so apply std::max with 1e-3.
+  std::cerr << "dist_from_obj_poly_to_traj_poly: " << dist_from_obj_poly_to_traj_poly << std::endl;
+  std::cerr << "lat vel: " << object->get_lat_vel_relative_to_traj(traj_points) << std::endl;
   if (
     std::max(max_lat_margin, 1e-3) <=
     dist_from_obj_poly_to_traj_poly -
@@ -609,6 +619,7 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
       decimated_traj_points, decimated_traj_polys_with_lat_margin, future_obj_pose, clock_->now(),
       predicted_object.shape, dist_to_bumper);
     if (collision_point) {
+      // The value 0.1 denotes zero-divison escape value. No significant meaning.
       const double time_interval = stop_planning_param_.hold_stop_distance_threshold /
                                    std::max(object->get_lon_vel_relative_to_traj(traj_points), 0.1);
       for (double time = time_interval; time < estimation_time; time += time_interval) {
