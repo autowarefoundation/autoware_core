@@ -562,7 +562,6 @@ LineString2d extendSegmentToBounds(
   const auto extended = (*intersection2 - *intersection1).dot(segment[1] - segment[0]) < 0.0
                           ? LineString2d{*intersection2, *intersection1}
                           : LineString2d{*intersection1, *intersection2};
-  ;
 
   // 1) Check overlap:
   //    verify if extended and original segments have overlapping parts
