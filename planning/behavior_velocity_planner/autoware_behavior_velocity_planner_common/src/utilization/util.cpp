@@ -506,19 +506,20 @@ LineString2d extendSegmentToBounds(
       [](const auto & point) { return Point2d{point.x(), point.y()}; });
     return autoware_line_string;
   };
+  const auto original_line = to_autoware_line_string(segment);
 
   if (segment.size() != 2) {
     std::cerr << "[behavior_velocity](extendLineStringUntilIntersection) input segment must "
                  "have exactly 2 points"
               << std::endl;
-    return to_autoware_line_string(segment);
+    return original_line;
   }
 
   if (bound1.size() < 2 || bound2.size() < 2) {
     std::cerr << "[behavior_velocity](extendLineStringUntilIntersection) input bounds must "
                  "have at least 2 points"
               << std::endl;
-    return to_autoware_line_string(segment);
+    return original_line;
   }
 
   const auto find_intersection_point =
@@ -554,13 +555,53 @@ LineString2d extendSegmentToBounds(
   const auto intersection2 = find_intersection_point(bound2);
 
   if (!intersection1 || !intersection2) {
-    return to_autoware_line_string(segment);
+    return original_line;
   }
 
-  if ((*intersection2 - *intersection1).dot(segment[1] - segment[0]) < 0.0) {
-    return LineString2d{*intersection2, *intersection1};
+  // Validation for extended line segment
+  const auto extended = (*intersection2 - *intersection1).dot(segment[1] - segment[0]) < 0.0
+                          ? LineString2d{*intersection2, *intersection1}
+                          : LineString2d{*intersection1, *intersection2};
+  ;
+
+  // 1) Check overlap:
+  //    verify if extended and original segments have overlapping parts
+  const auto original_points =
+    std::array{Point2d{segment[0].x(), segment[0].y()}, Point2d{segment[1].x(), segment[1].y()}};
+  const auto extended_points = std::array{extended[0], extended[1]};
+  constexpr double containment_threshold = 0.1;
+  const auto is_point_on_line = [](const LineString2d & line, const Point2d & point) {
+    return boost::geometry::distance(point, line) < containment_threshold;
+  };
+  const auto has_overlap =
+    std::any_of(
+      original_points.begin(), original_points.end(),
+      [&](const auto & point) { return is_point_on_line(extended, point); }) ||
+    std::any_of(extended_points.begin(), extended_points.end(), [&](const auto & point) {
+      return is_point_on_line(original_line, point);
+    });
+  if (!has_overlap) {
+    return original_line;
   }
-  return LineString2d{*intersection1, *intersection2};
+
+  // 2) Check angle difference:
+  //    verify if angle between original and extended segments is within threshold
+  const Eigen::Vector2d original_vector = segment[1] - segment[0];
+  const Eigen::Vector2d extended_vector = extended[1] - extended[0];
+  const double original_norm = original_vector.norm();
+  const double extended_norm = extended_vector.norm();
+  if (original_norm < epsilon || extended_norm < epsilon) {
+    return original_line;  // Invalid if zero vector
+  }
+  const double cos_angle = original_vector.dot(extended_vector) / (original_norm * extended_norm);
+  const double angle_diff = std::acos(std::clamp(cos_angle, -1.0, 1.0));
+  constexpr double max_angle_diff_rad = M_PI / 36.0;
+  const auto has_similar_angle = angle_diff <= max_angle_diff_rad;
+  if (!has_similar_angle) {
+    return original_line;
+  }
+
+  return extended;
 }
 
 std::optional<int64_t> getNearestLaneId(
