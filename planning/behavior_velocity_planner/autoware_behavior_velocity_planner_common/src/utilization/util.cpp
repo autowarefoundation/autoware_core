@@ -558,13 +558,10 @@ LineString2d extendSegmentToBounds(
     return original_line;
   }
 
-  // Validation for extended line segment
+  // verify if extended and original segments have overlapping parts
   const auto extended = (*intersection2 - *intersection1).dot(segment[1] - segment[0]) < 0.0
                           ? LineString2d{*intersection2, *intersection1}
                           : LineString2d{*intersection1, *intersection2};
-
-  // 1) Check overlap:
-  //    verify if extended and original segments have overlapping parts
   const auto original_points =
     std::array{Point2d{segment[0].x(), segment[0].y()}, Point2d{segment[1].x(), segment[1].y()}};
   const auto extended_points = std::array{extended[0], extended[1]};
@@ -580,23 +577,6 @@ LineString2d extendSegmentToBounds(
       return is_point_on_line(original_line, point);
     });
   if (!has_overlap) {
-    return original_line;
-  }
-
-  // 2) Check angle difference:
-  //    verify if angle between original and extended segments is within threshold
-  const Eigen::Vector2d original_vector = segment[1] - segment[0];
-  const Eigen::Vector2d extended_vector = extended[1] - extended[0];
-  const double original_norm = original_vector.norm();
-  const double extended_norm = extended_vector.norm();
-  if (original_norm < epsilon || extended_norm < epsilon) {
-    return original_line;  // Invalid if zero vector
-  }
-  const double cos_angle = original_vector.dot(extended_vector) / (original_norm * extended_norm);
-  const double angle_diff = std::acos(std::clamp(cos_angle, -1.0, 1.0));
-  constexpr double max_angle_diff_rad = M_PI / 36.0;
-  const auto has_similar_angle = angle_diff <= max_angle_diff_rad;
-  if (!has_similar_angle) {
     return original_line;
   }
 
