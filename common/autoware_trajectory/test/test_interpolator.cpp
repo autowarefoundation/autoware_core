@@ -101,7 +101,7 @@ TEST(TestLaneIdsInterpolator, compute)
   EXPECT_EQ(result_left.size(), 1);
   EXPECT_EQ(result_left[0], 1);
 
-  auto result_right = interpolator->compute(3.2);
+  auto result_right = interpolator->compute(3.75);
   EXPECT_EQ(result_right.size(), 1);
   EXPECT_EQ(result_right[0], 1);
 
