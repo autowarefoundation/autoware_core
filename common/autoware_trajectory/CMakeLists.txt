@@ -18,6 +18,7 @@ ament_auto_add_library(autoware_trajectory SHARED
   src/detail/util.cpp
   src/interpolator/akima_spline.cpp
   src/interpolator/cubic_spline.cpp
+  src/interpolator/lane_ids_interpolator.cpp
   src/interpolator/linear.cpp
   src/interpolator/result.cpp
   src/interpolator/spherical_linear.cpp
