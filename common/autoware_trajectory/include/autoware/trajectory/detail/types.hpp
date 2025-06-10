@@ -17,10 +17,7 @@
 
 #include "lanelet2_core/primitives/Point.h"
 
-#include <Eigen/Core>
-
 #include <autoware_internal_planning_msgs/msg/path_point_with_lane_id.hpp>
-#include <autoware_planning_msgs/msg/detail/trajectory_point__struct.hpp>
 #include <autoware_planning_msgs/msg/path_point.hpp>
 #include <autoware_planning_msgs/msg/trajectory_point.hpp>
 #include <geometry_msgs/msg/point.hpp>

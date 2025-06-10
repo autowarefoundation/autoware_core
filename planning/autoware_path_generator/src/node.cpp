@@ -60,12 +60,6 @@ PathGenerator::PathGenerator(const rclcpp::NodeOptions & node_options)
 
   const auto params = param_listener_->get_params();
 
-  // Ensure that the refine_goal_search_radius_range and search_radius_decrement must be positive
-  if (params.refine_goal_search_radius_range <= 0 || params.search_radius_decrement <= 0) {
-    throw std::runtime_error(
-      "refine_goal_search_radius_range and search_radius_decrement must be positive");
-  }
-
   timer_ = rclcpp::create_timer(
     this, get_clock(), rclcpp::Rate(params.planning_hz).period(),
     std::bind(&PathGenerator::run, this));
@@ -439,9 +433,10 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
   const auto distance_to_goal = autoware_utils::calc_distance2d(
     trajectory->compute(trajectory->length()), planner_data_.goal_pose);
 
-  if (distance_to_goal < params.refine_goal_search_radius_range) {
+  if (distance_to_goal < params.smooth_goal_connection.search_radius_range) {
     auto refined_path = utils::modify_path_for_smooth_goal_connection(
-      *trajectory, planner_data_, params.refine_goal_search_radius_range);
+      *trajectory, planner_data_, params.smooth_goal_connection.search_radius_range,
+      params.smooth_goal_connection.pre_goal_offset);
 
     if (refined_path) {
       refined_path->align_orientation_with_trajectory_direction();

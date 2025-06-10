@@ -50,11 +50,11 @@ struct LineConfig
   static constexpr const char * default_color = "blue";
   static LineConfig defaults()
   {
-    return LineConfig{std::string(default_color), 1.0, "solid", std::nullopt};
+    return LineConfig{std::string(default_color), "solid", 1.0, std::nullopt};
   }
   std::optional<std::string> color{};
-  std::optional<double> linewidth{};
   std::optional<std::string> linestyle{};
+  std::optional<double> linewidth{};
   std::optional<std::string> label{};
 };
 
@@ -138,7 +138,7 @@ inline void plot_lanelet2_object(
     if (config.plot_centerline) {
       auto centerline_config = [&]() -> LineConfig {
         if (!config.line_config) {
-          return LineConfig{"k", std::nullopt, "dashed"};
+          return LineConfig{"k", "dashed", 1.0, std::nullopt};
         }
         auto cfg = config.line_config.value();
         cfg.color = "k";

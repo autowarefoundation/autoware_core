@@ -190,17 +190,6 @@ PathRange<std::optional<double>> get_arc_length_on_centerline(
   const std::optional<double> & s_right_bound);
 
 /**
- * @brief Recreate the goal pose to prevent the goal point being too far from the lanelet, which
- *  causes the path to twist near the goal.
- * @details Return the goal point projected on the straight line of the segment of lanelet
- *  closest to the original goal.
- * @param [in] goal original goal pose
- * @param [in] goal_lanelet lanelet containing the goal pose
- */
-geometry_msgs::msg::Pose refine_goal(
-  const geometry_msgs::msg::Pose & goal, const lanelet::ConstLanelet & goal_lanelet);
-
-/**
  * @brief Recreate the path with a given goal pose.
  * @param input Input path.
  * @param refined_goal Goal pose.
@@ -210,7 +199,7 @@ geometry_msgs::msg::Pose refine_goal(
 experimental::trajectory::Trajectory<PathPointWithLaneId> refine_path_for_goal(
   const experimental::trajectory::Trajectory<PathPointWithLaneId> & input,
   const geometry_msgs::msg::Pose & goal_pose, const lanelet::Id goal_lane_id,
-  const double refine_goal_search_radius_range);
+  const double search_radius_range, const double pre_goal_offset);
 
 /**
  * @brief Extract lanelets from the trajectory.
@@ -243,7 +232,7 @@ bool is_trajectory_inside_lanelets(
 std::optional<experimental::trajectory::Trajectory<PathPointWithLaneId>>
 modify_path_for_smooth_goal_connection(
   const experimental::trajectory::Trajectory<PathPointWithLaneId> & trajectory,
-  const PlannerData & planner_data, const double refine_goal_search_radius_range);
+  const PlannerData & planner_data, const double search_radius_range, const double pre_goal_offset);
 
 /**
  * @brief get earliest turn signal based on turn direction specified for lanelets

@@ -48,7 +48,7 @@ void BehaviorVelocityPlannerManager::launchScenePlugin(
 
     // register
     scene_manager_plugins_.push_back(plugin);
-    RCLCPP_DEBUG_STREAM(node.get_logger(), "The scene plugin '" << name << "' is loaded.");
+    RCLCPP_INFO_STREAM(node.get_logger(), "The scene plugin '" << name << "' is loaded.");
 
     // update the subscription
     const auto required_subscriptions = plugin->getRequiredSubscriptions();

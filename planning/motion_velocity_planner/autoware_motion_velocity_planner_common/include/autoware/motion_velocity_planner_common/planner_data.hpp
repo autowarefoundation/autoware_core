@@ -243,6 +243,21 @@ public:
       traj_points, pose, ego_nearest_dist_threshold, ego_nearest_yaw_threshold);
   }
 };
+struct RequiredSubscriptionInfo
+{
+  bool traffic_signals{false};
+  bool predicted_objects{false};
+  bool occupancy_grid_map{false};
+  bool no_ground_pointcloud{false};
+
+  void update(const RequiredSubscriptionInfo & required_subscriptions)
+  {
+    traffic_signals |= required_subscriptions.traffic_signals;
+    predicted_objects |= required_subscriptions.predicted_objects;
+    occupancy_grid_map |= required_subscriptions.occupancy_grid_map;
+    no_ground_pointcloud |= required_subscriptions.no_ground_pointcloud;
+  }
+};
 }  // namespace autoware::motion_velocity_planner
 
 #endif  // AUTOWARE__MOTION_VELOCITY_PLANNER_COMMON__PLANNER_DATA_HPP_

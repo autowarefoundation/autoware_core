@@ -137,7 +137,11 @@ bool MotionVelocityPlannerNode::update_planner_data(
 {
   auto clock = *get_clock();
   auto is_ready = true;
-  const auto check_with_log = [&](const auto ptr, const auto & log) {
+  const auto check_with_log = [&](const auto ptr, const auto & log, const bool is_required = true) {
+    if (!is_required) {
+      return false;
+    }
+
     constexpr auto throttle_duration = 3000;  // [ms]
     if (!ptr) {
       RCLCPP_INFO_THROTTLE(get_logger(), clock, throttle_duration, "%s", log);
@@ -146,6 +150,8 @@ bool MotionVelocityPlannerNode::update_planner_data(
     }
     return true;
   };
+
+  const auto required_subscriptions = planner_manager_.getRequiredSubscriptions();
 
   autoware_utils_system::StopWatch<std::chrono::milliseconds> sw;
   const auto ego_state_ptr = sub_vehicle_odometry_.take_data();
@@ -159,12 +165,16 @@ bool MotionVelocityPlannerNode::update_planner_data(
   processing_times["update_planner_data.accel"] = sw.toc(true);
 
   const auto predicted_objects_ptr = sub_predicted_objects_.take_data();
-  if (check_with_log(predicted_objects_ptr, "Waiting for predicted objects"))
+  if (check_with_log(
+        predicted_objects_ptr, "Waiting for predicted objects",
+        required_subscriptions.predicted_objects))
     planner_data_.process_predicted_objects(*predicted_objects_ptr);
   processing_times["update_planner_data.pred_obj"] = sw.toc(true);
 
   const auto no_ground_pointcloud_ptr = sub_no_ground_pointcloud_.take_data();
-  if (check_with_log(no_ground_pointcloud_ptr, "Waiting for pointcloud")) {
+  if (check_with_log(
+        no_ground_pointcloud_ptr, "Waiting for pointcloud",
+        required_subscriptions.no_ground_pointcloud)) {
     auto no_ground_pointcloud = process_no_ground_pointcloud(no_ground_pointcloud_ptr);
     processing_times["update_planner_data.pcl.process_no_ground_pointcloud"] = sw.toc(true);
     if (no_ground_pointcloud) {
@@ -173,7 +183,9 @@ bool MotionVelocityPlannerNode::update_planner_data(
   }
 
   const auto occupancy_grid_ptr = sub_occupancy_grid_.take_data();
-  if (check_with_log(occupancy_grid_ptr, "Waiting for the occupancy grid"))
+  if (check_with_log(
+        occupancy_grid_ptr, "Waiting for the occupancy grid",
+        required_subscriptions.occupancy_grid_map))
     planner_data_.occupancy_grid = *occupancy_grid_ptr;
   processing_times["update_planner_data.occ_grid"] = sw.toc(true);
 
@@ -194,6 +206,7 @@ bool MotionVelocityPlannerNode::update_planner_data(
 
   // optional data
   const auto traffic_signals_ptr = sub_traffic_signals_.take_data();
+  // NOTE: required_subscriptions.traffic_signals is not used since is_ready is not updated here.
   if (traffic_signals_ptr) process_traffic_signals(traffic_signals_ptr);
   processing_times["update_planner_data.traffic_lights"] = sw.toc(true);
 
@@ -205,11 +218,19 @@ MotionVelocityPlannerNode::process_no_ground_pointcloud(
   const sensor_msgs::msg::PointCloud2::ConstSharedPtr msg)
 {
   geometry_msgs::msg::TransformStamped transform;
-  try {
+  const bool is_pcl_time_valid = (this->get_clock()->now() - rclcpp::Time(msg->header.stamp)) <
+                                 rclcpp::Duration::from_seconds(1.0);
+
+  if (
+    is_pcl_time_valid && tf_buffer_.canTransform("map", msg->header.frame_id, msg->header.stamp)) {
+    transform = tf_buffer_.lookupTransform(
+      "map", msg->header.frame_id, msg->header.stamp, rclcpp::Duration::from_seconds(0.05));
+  } else if (tf_buffer_.canTransform("map", msg->header.frame_id, tf2::TimePointZero)) {
     transform = tf_buffer_.lookupTransform("map", msg->header.frame_id, tf2::TimePointZero);
-  } catch (tf2::TransformException & e) {
-    RCLCPP_WARN(get_logger(), "no transform found for no_ground_pointcloud: %s", e.what());
-    return {};
+    RCLCPP_DEBUG(get_logger(), "pcl time is invalid, using tf2::TimePointZero");
+  } else {
+    RCLCPP_WARN(get_logger(), "no transform found for no_ground_pointcloud");
+    return std::nullopt;
   }
 
   pcl::PointCloud<pcl::PointXYZ> pc;

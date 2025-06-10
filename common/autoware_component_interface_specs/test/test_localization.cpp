@@ -42,4 +42,17 @@ TEST(localization, interface)
     EXPECT_EQ(qos.reliability(), rclcpp::ReliabilityPolicy::Reliable);
     EXPECT_EQ(qos.durability(), rclcpp::DurabilityPolicy::Volatile);
   }
+
+  {
+    using autoware::component_interface_specs::localization::InitializationState;
+    size_t depth = 1;
+    EXPECT_EQ(InitializationState::depth, depth);
+    EXPECT_EQ(InitializationState::reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
+    EXPECT_EQ(InitializationState::durability, RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
+
+    const auto qos = autoware::component_interface_specs::get_qos<InitializationState>();
+    EXPECT_EQ(qos.depth(), depth);
+    EXPECT_EQ(qos.reliability(), rclcpp::ReliabilityPolicy::Reliable);
+    EXPECT_EQ(qos.durability(), rclcpp::DurabilityPolicy::TransientLocal);
+  }
 }

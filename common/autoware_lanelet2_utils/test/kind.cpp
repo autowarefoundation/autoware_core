@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "map_loader.hpp"
-
 #include <ament_index_cpp/get_package_share_directory.hpp>
+#include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/lanelet2_utils/kind.hpp>
 
 #include <gtest/gtest.h>
+#include <lanelet2_core/LaneletMap.h>
 
 #include <filesystem>
 #include <string>
@@ -38,7 +38,8 @@ protected:
       "sample_map";
     const auto road_shoulder_highway_map_path = sample_map_dir / "road_shoulder" / "highway.osm";
 
-    lanelet_map_ptr_ = load_mgrs_coordinate_map(road_shoulder_highway_map_path.string());
+    lanelet_map_ptr_ =
+      lanelet2_utils::load_mgrs_coordinate_map(road_shoulder_highway_map_path.string());
   }
 };
 
@@ -54,7 +55,8 @@ protected:
       "sample_map";
     const auto road_shoulder_highway_map_path = sample_map_dir / "intersection" / "crossing.osm";
 
-    lanelet_map_ptr_ = load_mgrs_coordinate_map(road_shoulder_highway_map_path.string());
+    lanelet_map_ptr_ =
+      lanelet2_utils::load_mgrs_coordinate_map(road_shoulder_highway_map_path.string());
   }
 };
 

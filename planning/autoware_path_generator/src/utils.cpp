@@ -636,57 +636,11 @@ PathRange<std::optional<double>> get_arc_length_on_centerline(
     s_right_centerline ? s_right_centerline : s_right_bound};
 }
 
-geometry_msgs::msg::Pose refine_goal(
-  const geometry_msgs::msg::Pose & goal, const lanelet::ConstLanelet & goal_lanelet)
-{
-  const auto goal_point_on_lanelet = lanelet::utils::conversion::toLaneletPoint(goal.position);
-  const double distance = boost::geometry::distance(
-    goal_lanelet.polygon2d().basicPolygon(),
-    lanelet::utils::to2D(goal_point_on_lanelet).basicPoint());
-
-  // You are almost at the goal
-  if (distance < std::numeric_limits<double>::epsilon()) {
-    return goal;
-  }
-
-  // Get the closest segment to the goal
-  const auto segment = lanelet::utils::getClosestSegment(
-    lanelet::utils::to2D(goal_point_on_lanelet), goal_lanelet.centerline());
-
-  // If the segment is empty, return the original goal.
-  if (segment.empty()) {
-    return goal;
-  }
-
-  geometry_msgs::msg::Pose refined_goal;
-  {
-    // find position
-    const auto p1 = segment.front().basicPoint();
-    const auto p2 = segment.back().basicPoint();
-    const auto direction_vector = (p2 - p1).normalized();
-    const auto p1_to_goal = goal_point_on_lanelet.basicPoint() - p1;
-    const double s = direction_vector.dot(p1_to_goal);
-    const auto refined_point = p1 + direction_vector * s;
-
-    refined_goal.position.x = refined_point.x();
-    refined_goal.position.y = refined_point.y();
-    refined_goal.position.z = refined_point.z();
-
-    // find orientation
-    const double yaw = std::atan2(direction_vector.y(), direction_vector.x());
-    tf2::Quaternion tf_quat;
-    tf_quat.setRPY(0, 0, yaw);
-    refined_goal.orientation = tf2::toMsg(tf_quat);
-  }
-  return refined_goal;
-}
-
 // Function to refine the path for the goal
 experimental::trajectory::Trajectory<PathPointWithLaneId> refine_path_for_goal(
-  const experimental::trajectory::Trajectory<PathPointWithLaneId> & input,  //
-  const geometry_msgs::msg::Pose & goal_pose,                               //
-  const lanelet::Id goal_lane_id,                                           //
-  const double refine_goal_search_radius_range)
+  const experimental::trajectory::Trajectory<PathPointWithLaneId> & input,
+  const geometry_msgs::msg::Pose & goal_pose, const lanelet::Id goal_lane_id,
+  const double search_radius_range, const double pre_goal_offset)
 {
   auto contain_goal_lane_id = [&](const PathPointWithLaneId & point) {
     const auto & lane_ids = point.lane_ids;
@@ -697,7 +651,7 @@ experimental::trajectory::Trajectory<PathPointWithLaneId> refine_path_for_goal(
 
   auto outside_circle = [&](const PathPointWithLaneId & point) {
     const double dist = autoware_utils::calc_distance2d(point.point.pose, goal_pose);
-    return dist > refine_goal_search_radius_range;
+    return dist > search_radius_range;
   };
 
   auto closest_to_goal = autoware::experimental::trajectory::closest_with_constraint(
@@ -717,6 +671,10 @@ experimental::trajectory::Trajectory<PathPointWithLaneId> refine_path_for_goal(
   if (!intervals.empty()) {
     auto cropped = autoware::experimental::trajectory::crop(cropped_path, 0, intervals.back().end);
     goal_connected_trajectory_points = cropped.restore(2);
+  } else if (cropped_path.length() > pre_goal_offset) {
+    // If distance from start to goal is smaller than refine_goal_search_radius_range and start is
+    // farther from goal than pre_goal, we just connect start, pre_goal, and goal.
+    goal_connected_trajectory_points = {cropped_path.compute(0)};
   }
 
   auto goal = input.compute(autoware::experimental::trajectory::closest(input, goal_pose));
@@ -725,7 +683,8 @@ experimental::trajectory::Trajectory<PathPointWithLaneId> refine_path_for_goal(
 
   goal.point.longitudinal_velocity_mps = 0.0;
 
-  auto pre_goal_pose = autoware_utils_geometry::calc_offset_pose(goal_pose, -1.0, 0.0, 0.0);
+  auto pre_goal_pose =
+    autoware_utils_geometry::calc_offset_pose(goal_pose, -pre_goal_offset, 0.0, 0.0);
 
   auto pre_goal = input.compute(autoware::experimental::trajectory::closest(input, pre_goal_pose));
 
@@ -792,22 +751,20 @@ bool is_trajectory_inside_lanelets(
 std::optional<experimental::trajectory::Trajectory<PathPointWithLaneId>>
 modify_path_for_smooth_goal_connection(
   const experimental::trajectory::Trajectory<PathPointWithLaneId> & trajectory,
-  const PlannerData & planner_data, const double refine_goal_search_radius_range)
+  const PlannerData & planner_data, const double search_radius_range, const double pre_goal_offset)
 {
   if (planner_data.preferred_lanelets.empty()) {
     return std::nullopt;
   }
   const auto lanelets = extract_lanelets_from_trajectory(trajectory, planner_data);
-  auto goal_pose =
-    utils::refine_goal(planner_data.goal_pose, planner_data.preferred_lanelets.back());
 
   // This process is to fit the trajectory inside the lanelets. By reducing
   // refine_goal_search_radius_range, we can fit the trajectory inside lanelets even if the
   // trajectory has a high curvature.
-  for (double s = refine_goal_search_radius_range; s > 0; s -= 0.1) {
+  for (double s = search_radius_range; s > 0; s -= 0.1) {
     const auto refined_trajectory = refine_path_for_goal(
-      trajectory, goal_pose, planner_data.preferred_lanelets.back().id(),
-      refine_goal_search_radius_range);
+      trajectory, planner_data.goal_pose, planner_data.preferred_lanelets.back().id(),
+      search_radius_range, pre_goal_offset);
     const bool is_inside = is_trajectory_inside_lanelets(refined_trajectory, lanelets);
     if (is_inside) {
       return refined_trajectory;

@@ -9,6 +9,7 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/topology.cpp
   src/stop_line.cpp
   src/intersection.cpp
+  src/conversion.cpp
   src/geometry.cpp
 )
 

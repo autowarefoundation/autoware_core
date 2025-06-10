@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "map_loader.hpp"
-
 #include <ament_index_cpp/get_package_share_directory.hpp>
+#include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/lanelet2_utils/stop_line.hpp>
 
 #include <gtest/gtest.h>
+#include <lanelet2_core/LaneletMap.h>
 
 #include <cmath>
 #include <filesystem>
@@ -29,7 +29,7 @@
 
 namespace fs = std::filesystem;
 
-namespace autoware
+namespace autoware::experimental
 {
 class TestGetStopLineFromMap : public ::testing::Test
 {
@@ -44,7 +44,8 @@ protected:
     const auto regulatory_elements_map_path =
       sample_map_dir / "intersection" / "regulatory_elements.osm";
 
-    lanelet_map_ptr_ = load_mgrs_coordinate_map(regulatory_elements_map_path.string());
+    lanelet_map_ptr_ =
+      lanelet2_utils::load_mgrs_coordinate_map(regulatory_elements_map_path.string());
   }
 };
 
@@ -167,7 +168,7 @@ TEST_F(TestGetStopLineFromMap, GetStopLineFromStopSign_NoTarget)
     << "Expected stop line ID (" << expected_stop_line_id
     << ") not found for get_stop_lines_from_stop_sign without target_id.";
 }
-}  // namespace autoware
+}  // namespace autoware::experimental
 
 int main(int argc, char ** argv)
 {
