@@ -105,6 +105,9 @@ TEST(TestLaneIdsInterpolator, compute)
   EXPECT_EQ(result_right.size(), 1);
   EXPECT_EQ(result_right[0], 1);
 
+  auto result_right_after_boundary = interpolator->compute(5.0);
+  EXPECT_EQ(result_right_after_boundary.size(), 1);
+  EXPECT_EQ(result_right_after_boundary[0], 2);
   // Test exact boundary point
   auto boundary_result = interpolator->compute(4.0);
   EXPECT_EQ(boundary_result.size(), 2);
