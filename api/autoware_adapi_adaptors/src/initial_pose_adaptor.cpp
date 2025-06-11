@@ -42,7 +42,8 @@ InitialPoseAdaptor::InitialPoseAdaptor(const rclcpp::NodeOptions & options)
     "~/initialpose", rclcpp::QoS(1),
     std::bind(&InitialPoseAdaptor::on_initial_pose, this, std::placeholders::_1));
 
-  cli_initialize_ = create_client<Initialize::Service>(Initialize::name,rmw_qos_profile_services_default);
+  cli_initialize_ =
+    create_client<Initialize::Service>(Initialize::name, rmw_qos_profile_services_default);
 }
 
 void InitialPoseAdaptor::on_initial_pose(const PoseWithCovarianceStamped::ConstSharedPtr msg)
