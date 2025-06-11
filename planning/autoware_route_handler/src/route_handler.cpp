@@ -1011,8 +1011,45 @@ bool RouteHandler::getClosestLaneletWithConstrainsWithinRoute(
   const Pose & search_pose, lanelet::ConstLanelet * closest_lanelet, const double dist_threshold,
   const double yaw_threshold) const
 {
-  return lanelet::utils::query::getClosestLaneletWithConstrains(
-    route_lanelets_, search_pose, closest_lanelet, dist_threshold, yaw_threshold);
+  if (route_lanelets_.empty() || closest_lanelet == nullptr) {
+    return false;
+  }
+  const auto pose_yaw = tf2::getYaw(search_pose.orientation);
+  const auto search_point = lanelet::BasicPoint2d(search_pose.position.x, search_pose.position.y);
+  const auto query_nearest = boost::geometry::index::nearest(search_point, route_lanelets_.size());
+  auto min_dist_to_route_lanelet = std::numeric_limits<double>::max();
+  auto min_angle_diff_to_route_lanelet = std::numeric_limits<double>::max();
+  auto nearest_id = 0UL;
+  // search starting from the nearest bounding box
+  for (auto query_it = route_lanelets_rtree_.qbegin(query_nearest);
+       query_it != route_lanelets_rtree_.qend(); ++query_it) {
+    const auto dist_to_bbox = boost::geometry::comparable_distance(search_point, query_it->first);
+    // stop when the distance to the bounding box is larger than the min distance found so far
+    if (dist_to_bbox > min_dist_to_route_lanelet || dist_to_bbox > dist_threshold) {
+      break;
+    }
+    const auto & lanelet = route_lanelets_[query_it->second];
+    const auto dist =
+      boost::geometry::comparable_distance(search_point, lanelet.polygon2d().basicPolygon());
+    const double lanelet_angle = lanelet::utils::getLaneletAngle(lanelet, search_pose.position);
+    const double angle_diff =
+      std::abs(autoware_utils_geometry::normalize_radian(lanelet_angle - pose_yaw));
+    if (dist > dist_threshold || angle_diff > std::abs(yaw_threshold)) {
+      continue;
+    }
+    if (
+      dist < min_dist_to_route_lanelet ||
+      (dist == min_dist_to_route_lanelet && angle_diff < min_angle_diff_to_route_lanelet)) {
+      min_dist_to_route_lanelet = dist;
+      min_angle_diff_to_route_lanelet = angle_diff;
+      nearest_id = query_it->second;
+    }
+  }
+  if (min_dist_to_route_lanelet > dist_threshold) {
+    return false;
+  }
+  *closest_lanelet = route_lanelets_[nearest_id];
+  return true;
 }
 
 bool RouteHandler::getClosestRouteLaneletFromLanelet(
