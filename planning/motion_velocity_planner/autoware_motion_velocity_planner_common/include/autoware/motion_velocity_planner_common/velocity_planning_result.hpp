@@ -15,15 +15,12 @@
 #ifndef AUTOWARE__MOTION_VELOCITY_PLANNER_COMMON__VELOCITY_PLANNING_RESULT_HPP_
 #define AUTOWARE__MOTION_VELOCITY_PLANNER_COMMON__VELOCITY_PLANNING_RESULT_HPP_
 
-#include <autoware/motion_utils/marker/virtual_wall_marker_creator.hpp>
-
 #include <autoware_internal_planning_msgs/msg/velocity_limit.hpp>
 #include <autoware_internal_planning_msgs/msg/velocity_limit_clear_command.hpp>
+#include <autoware_planning_msgs/msg/trajectory_point.hpp>
 #include <geometry_msgs/msg/point.hpp>
-#include <visualization_msgs/msg/marker_array.hpp>
 
-#include <string>
-#include <utility>
+#include <optional>
 #include <vector>
 
 namespace autoware::motion_velocity_planner
@@ -36,18 +33,31 @@ struct SlowdownInterval
   : from{from_}, to{to_}, velocity{vel}
   {
   }
-  geometry_msgs::msg::Point from{};
-  geometry_msgs::msg::Point to{};
+  geometry_msgs::msg::Point from;
+  geometry_msgs::msg::Point to;
   double velocity{};
 };
 struct VelocityPlanningResult
 {
-  std::vector<geometry_msgs::msg::Point> stop_points{};
-  std::vector<SlowdownInterval> slowdown_intervals{};
+  std::vector<geometry_msgs::msg::Point> stop_points;
+  std::vector<SlowdownInterval> slowdown_intervals;
   std::optional<autoware_internal_planning_msgs::msg::VelocityLimit> velocity_limit{std::nullopt};
   std::optional<autoware_internal_planning_msgs::msg::VelocityLimitClearCommand>
     velocity_limit_clear_command{std::nullopt};
 };
+
+/// @brief modify a trajectory with the given velocity planning result
+void add_planning_results_to_trajectory(
+  std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & trajectory,
+  const VelocityPlanningResult & planning_result);
+/// @brief insert a stop point in the given trajectory
+void insert_stop(
+  std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & trajectory,
+  const geometry_msgs::msg::Point & stop_point);
+/// @brief insert a slowdown interval in the given trajectory
+void insert_slowdown(
+  std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & trajectory,
+  const autoware::motion_velocity_planner::SlowdownInterval & slowdown_interval);
 }  // namespace autoware::motion_velocity_planner
 
 #endif  // AUTOWARE__MOTION_VELOCITY_PLANNER_COMMON__VELOCITY_PLANNING_RESULT_HPP_

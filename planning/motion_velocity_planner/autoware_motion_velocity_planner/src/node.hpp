@@ -136,12 +136,6 @@ private:
   bool update_planner_data(
     std::map<std::string, double> & processing_times,
     const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & input_traj_points);
-  void insert_stop(
-    autoware_planning_msgs::msg::Trajectory & trajectory,
-    const geometry_msgs::msg::Point & stop_point) const;
-  void insert_slowdown(
-    autoware_planning_msgs::msg::Trajectory & trajectory,
-    const autoware::motion_velocity_planner::SlowdownInterval & slowdown_interval) const;
   autoware::motion_velocity_planner::TrajectoryPoints smooth_trajectory(
     const autoware::motion_velocity_planner::TrajectoryPoints & trajectory_points,
     const autoware::motion_velocity_planner::PlannerData & planner_data) const;

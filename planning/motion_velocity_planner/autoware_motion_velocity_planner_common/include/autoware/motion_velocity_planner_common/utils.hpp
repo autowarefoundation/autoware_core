@@ -15,6 +15,7 @@
 #ifndef AUTOWARE__MOTION_VELOCITY_PLANNER_COMMON__UTILS_HPP_
 #define AUTOWARE__MOTION_VELOCITY_PLANNER_COMMON__UTILS_HPP_
 
+#include "autoware/motion_velocity_planner_common/velocity_planning_result.hpp"
 #include "autoware_vehicle_info_utils/vehicle_info_utils.hpp"
 #include "planner_data.hpp"
 

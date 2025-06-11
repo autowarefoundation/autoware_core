@@ -81,12 +81,16 @@ std::vector<VelocityPlanningResult> MotionVelocityPlannerManager::plan_velocitie
   const std::shared_ptr<const PlannerData> planner_data)
 {
   std::vector<VelocityPlanningResult> results;
+  autoware_planning_msgs::msg::Trajectory debug_trajectory;
   for (auto & plugin : loaded_plugins_) {
     VelocityPlanningResult res =
       plugin->plan(raw_trajectory_points, smoothed_trajectory_points, planner_data);
     results.push_back(res);
 
     plugin->publish_planning_factor();
+    debug_trajectory.points = smoothed_trajectory_points;
+    add_planning_results_to_trajectory(debug_trajectory.points, res);
+    plugin->publish_debug_trajectory(debug_trajectory);
   }
   return results;
 }
