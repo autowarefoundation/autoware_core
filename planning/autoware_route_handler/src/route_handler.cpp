@@ -29,6 +29,7 @@
 #include <autoware_planning_msgs/msg/path.hpp>
 
 #include <lanelet2_core/geometry/Lanelet.h>
+#include <lanelet2_core/primitives/BoundingBox.h>
 #include <lanelet2_core/primitives/LaneletSequence.h>
 #include <lanelet2_routing/Route.h>
 #include <lanelet2_routing/RoutingGraph.h>
@@ -370,15 +371,21 @@ void RouteHandler::setRouteLanelets(const lanelet::ConstLanelets & path_lanelets
 
   route_lanelets_.clear();
   route_lanelets_.reserve(route_lanelets_id.size());
+  std::vector<RouteRtreeNode> rtree_nodes;
+  rtree_nodes.reserve(route_lanelets_.capacity());
+  auto i = 0UL;
   for (const auto & id : route_lanelets_id) {
     route_lanelets_.push_back(lanelet_map_ptr_->laneletLayer.get(id));
+    rtree_nodes.emplace_back(lanelet::geometry::boundingBox2d(route_lanelets_.back()), i++);
   }
+  route_lanelets_rtree_ = RouteRtree(rtree_nodes);
   is_handler_ready_ = true;
 }
 
 void RouteHandler::clearRoute()
 {
   route_lanelets_.clear();
+  route_lanelets_rtree_.clear();
   preferred_lanelets_.clear();
   start_lanelets_.clear();
   goal_lanelets_.clear();
@@ -392,6 +399,7 @@ void RouteHandler::setLaneletsFromRouteMsg()
     return;
   }
   route_lanelets_.clear();
+  route_lanelets_rtree_.clear();
   preferred_lanelets_.clear();
   const bool is_route_valid = lanelet::utils::route::isRouteValid(*route_ptr_, lanelet_map_ptr_);
   if (!is_route_valid) {
@@ -403,17 +411,22 @@ void RouteHandler::setLaneletsFromRouteMsg()
     primitive_size += route_section.primitives.size();
   }
   route_lanelets_.reserve(primitive_size);
+  std::vector<RouteRtreeNode> rtree_nodes;
+  rtree_nodes.reserve(route_lanelets_.capacity());
+  auto i = 0UL;
 
   for (const auto & route_section : route_ptr_->segments) {
     for (const auto & primitive : route_section.primitives) {
       const auto id = primitive.id;
       const auto & llt = lanelet_map_ptr_->laneletLayer.get(id);
       route_lanelets_.push_back(llt);
+      rtree_nodes.emplace_back(lanelet::geometry::boundingBox2d(llt), i++);
       if (id == route_section.preferred_primitive.id) {
         preferred_lanelets_.push_back(llt);
       }
     }
   }
+  route_lanelets_rtree_ = RouteRtree(rtree_nodes);
   goal_lanelets_.clear();
   start_lanelets_.clear();
   if (!route_ptr_->segments.empty()) {

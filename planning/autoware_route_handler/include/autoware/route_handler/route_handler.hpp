@@ -24,8 +24,15 @@
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <unique_identifier_msgs/msg/uuid.hpp>
 
+#include <boost/geometry/index/parameters.hpp>
+#include <boost/geometry/index/rtree.hpp>
+
 #include <lanelet2_core/Forward.h>
+#include <lanelet2_core/LaneletMap.h>
+#include <lanelet2_core/geometry/BoundingBox.h>
+#include <lanelet2_core/primitives/BoundingBox.h>
 #include <lanelet2_core/primitives/Lanelet.h>
+#include <lanelet2_core/primitives/Polygon.h>
 #include <lanelet2_routing/Forward.h>
 #include <lanelet2_routing/RoutingCost.h>
 #include <lanelet2_traffic_rules/TrafficRules.h>
@@ -33,6 +40,7 @@
 #include <limits>
 #include <memory>
 #include <optional>
+#include <utility>
 #include <vector>
 
 namespace autoware::route_handler
@@ -325,6 +333,10 @@ private:
   std::shared_ptr<const lanelet::routing::RoutingGraphContainer> overall_graphs_ptr_;
   lanelet::LaneletMapPtr lanelet_map_ptr_;
   lanelet::ConstLanelets route_lanelets_;
+  using RouteRtreeNode = std::pair<lanelet::BoundingBox2d, size_t>;
+  using RouteRtree =
+    boost::geometry::index::rtree<RouteRtreeNode, boost::geometry::index::rstar<16>>;
+  RouteRtree route_lanelets_rtree_;
   lanelet::ConstLanelets preferred_lanelets_;
   lanelet::ConstLanelets start_lanelets_;
   lanelet::ConstLanelets goal_lanelets_;
