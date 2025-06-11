@@ -15,6 +15,7 @@
 #ifndef AUTOWARE__ROUTE_HANDLER__ROUTE_HANDLER_HPP_
 #define AUTOWARE__ROUTE_HANDLER__ROUTE_HANDLER_HPP_
 
+#include <autoware_utils_geometry/boost_geometry.hpp>
 #include <rclcpp/logger.hpp>
 
 #include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
@@ -24,7 +25,6 @@
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <unique_identifier_msgs/msg/uuid.hpp>
 
-#include <boost/geometry/index/parameters.hpp>
 #include <boost/geometry/index/rtree.hpp>
 
 #include <lanelet2_core/Forward.h>
@@ -54,6 +54,8 @@ using geometry_msgs::msg::PoseStamped;
 using std_msgs::msg::Header;
 using unique_identifier_msgs::msg::UUID;
 using RouteSections = std::vector<autoware_planning_msgs::msg::LaneletSegment>;
+using RouteRtreeNode = std::pair<autoware_utils_geometry::Box2d, size_t>;
+using RouteRtree = boost::geometry::index::rtree<RouteRtreeNode, boost::geometry::index::rstar<16>>;
 
 enum class Direction { NONE, LEFT, RIGHT };
 enum class PullOverDirection { NONE, LEFT, RIGHT };
@@ -247,6 +249,12 @@ public:
   std::vector<double> getLateralIntervalsToPreferredLane(
     const lanelet::ConstLanelet & lanelet, const Direction direction = Direction::NONE) const;
 
+  /**
+   * Find the route lanelet nearest to the given search pose
+   * @param [in] search_pose search pose
+   * @param [out] closest_lanelet output lanelet
+   * @return true if the nearest route lanelet was found
+   */
   bool getClosestLaneletWithinRoute(
     const Pose & search_pose, lanelet::ConstLanelet * closest_lanelet) const;
   bool getClosestPreferredLaneletWithinRoute(
@@ -333,9 +341,6 @@ private:
   std::shared_ptr<const lanelet::routing::RoutingGraphContainer> overall_graphs_ptr_;
   lanelet::LaneletMapPtr lanelet_map_ptr_;
   lanelet::ConstLanelets route_lanelets_;
-  using RouteRtreeNode = std::pair<lanelet::BoundingBox2d, size_t>;
-  using RouteRtree =
-    boost::geometry::index::rtree<RouteRtreeNode, boost::geometry::index::rstar<16>>;
   RouteRtree route_lanelets_rtree_;
   lanelet::ConstLanelets preferred_lanelets_;
   lanelet::ConstLanelets start_lanelets_;

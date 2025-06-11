@@ -19,6 +19,7 @@
 #include <autoware_lanelet2_extension/utility/query.hpp>
 #include <autoware_lanelet2_extension/utility/route_checker.hpp>
 #include <autoware_lanelet2_extension/utility/utilities.hpp>
+#include <autoware_utils_geometry/boost_geometry.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_utils_math/normalization.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -28,9 +29,16 @@
 #include <autoware_planning_msgs/msg/lanelet_primitive.hpp>
 #include <autoware_planning_msgs/msg/path.hpp>
 
+#include <boost/geometry/algorithms/detail/comparable_distance/interface.hpp>
+#include <boost/geometry/algorithms/detail/envelope/interface.hpp>
+#include <boost/geometry/index/distance_predicates.hpp>
+#include <boost/geometry/index/predicates.hpp>
+
+#include <lanelet2_core/geometry/BoundingBox.h>
 #include <lanelet2_core/geometry/Lanelet.h>
 #include <lanelet2_core/primitives/BoundingBox.h>
 #include <lanelet2_core/primitives/LaneletSequence.h>
+#include <lanelet2_core/primitives/Point.h>
 #include <lanelet2_routing/Route.h>
 #include <lanelet2_routing/RoutingGraph.h>
 #include <lanelet2_routing/RoutingGraphContainer.h>
@@ -372,11 +380,14 @@ void RouteHandler::setRouteLanelets(const lanelet::ConstLanelets & path_lanelets
   route_lanelets_.clear();
   route_lanelets_.reserve(route_lanelets_id.size());
   std::vector<RouteRtreeNode> rtree_nodes;
-  rtree_nodes.reserve(route_lanelets_.capacity());
+  rtree_nodes.reserve(route_lanelets_id.size());
   auto i = 0UL;
   for (const auto & id : route_lanelets_id) {
     route_lanelets_.push_back(lanelet_map_ptr_->laneletLayer.get(id));
-    rtree_nodes.emplace_back(lanelet::geometry::boundingBox2d(route_lanelets_.back()), i++);
+    rtree_nodes.emplace_back(
+      boost::geometry::return_envelope<autoware_utils_geometry::Box2d>(
+        route_lanelets_.back().polygon2d().basicPolygon()),
+      i++);
   }
   route_lanelets_rtree_ = RouteRtree(rtree_nodes);
   is_handler_ready_ = true;
@@ -412,7 +423,7 @@ void RouteHandler::setLaneletsFromRouteMsg()
   }
   route_lanelets_.reserve(primitive_size);
   std::vector<RouteRtreeNode> rtree_nodes;
-  rtree_nodes.reserve(route_lanelets_.capacity());
+  rtree_nodes.reserve(primitive_size);
   auto i = 0UL;
 
   for (const auto & route_section : route_ptr_->segments) {
@@ -420,7 +431,10 @@ void RouteHandler::setLaneletsFromRouteMsg()
       const auto id = primitive.id;
       const auto & llt = lanelet_map_ptr_->laneletLayer.get(id);
       route_lanelets_.push_back(llt);
-      rtree_nodes.emplace_back(lanelet::geometry::boundingBox2d(llt), i++);
+      rtree_nodes.emplace_back(
+        boost::geometry::return_envelope<autoware_utils_geometry::Box2d>(
+          llt.polygon2d().basicPolygon()),
+        i++);
       if (id == route_section.preferred_primitive.id) {
         preferred_lanelets_.push_back(llt);
       }
@@ -960,7 +974,30 @@ lanelet::ConstLanelets RouteHandler::get_shoulder_lanelet_sequence(
 bool RouteHandler::getClosestLaneletWithinRoute(
   const Pose & search_pose, lanelet::ConstLanelet * closest_lanelet) const
 {
-  return lanelet::utils::query::getClosestLanelet(route_lanelets_, search_pose, closest_lanelet);
+  if (route_lanelets_.empty() || closest_lanelet == nullptr) {
+    return false;
+  }
+  const auto search_point = lanelet::BasicPoint2d(search_pose.position.x, search_pose.position.y);
+  const auto query_nearest = boost::geometry::index::nearest(search_point, route_lanelets_.size());
+  auto min_dist_to_route_lanelet = std::numeric_limits<double>::max();
+  auto nearest_id = 0UL;
+  // search starting from the nearest bounding box
+  for (auto query_it = route_lanelets_rtree_.qbegin(query_nearest);
+       query_it != route_lanelets_rtree_.qend(); ++query_it) {
+    const auto dist_to_bbox = boost::geometry::comparable_distance(search_point, query_it->first);
+    // stop when the distance to the bounding box is larger than the min distance found so far
+    if (dist_to_bbox > min_dist_to_route_lanelet) {
+      break;
+    }
+    const auto dist = boost::geometry::comparable_distance(
+      search_point, route_lanelets_[query_it->second].polygon2d().basicPolygon());
+    if (dist < min_dist_to_route_lanelet) {
+      min_dist_to_route_lanelet = dist;
+      nearest_id = query_it->second;
+    }
+  }
+  *closest_lanelet = route_lanelets_[nearest_id];
+  return true;
 }
 
 bool RouteHandler::getClosestPreferredLaneletWithinRoute(
