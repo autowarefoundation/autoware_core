@@ -33,12 +33,14 @@ RoutingAdaptor::RoutingAdaptor(const rclcpp::NodeOptions & options)
   sub_waypoint_ = create_subscription<PoseStamped>(
     "~/input/waypoint", 10, std::bind(&RoutingAdaptor::on_waypoint, this, _1));
 
-  const auto adaptor = autoware::component_interface_utils::NodeAdaptor(this);
-  adaptor.init_cli(cli_reroute_);
-  adaptor.init_cli(cli_route_);
-  adaptor.init_cli(cli_clear_);
-  adaptor.init_sub(
-    sub_state_, [this](const RouteState::Message::ConstSharedPtr msg) { state_ = msg->state; });
+  cli_reroute_ = create_client<ChangeRoutePoints::Service>(ChangeRoutePoints::name,rmw_qos_profile_services_default);
+  cli_route_ = create_client<SetRoutePoints::Service>(SetRoutePoints::name,rmw_qos_profile_services_default);
+  cli_clear_ = create_client<ClearRoute::Service>(ClearRoute::name,rmw_qos_profile_services_default);
+
+  const auto state_qos = rclcpp::QoS{RouteState::depth}.reliability(RouteState::reliability).durability(RouteState::durability);
+  sub_state_ = create_subscription<RouteState::Message>(
+    RouteState::name, state_qos,
+    [this](const RouteState::Message::ConstSharedPtr msg) { state_ = msg->state; });
 
   const auto rate = rclcpp::Rate(5.0);
   timer_ = rclcpp::create_timer(
@@ -60,15 +62,16 @@ void RoutingAdaptor::on_timer()
     return;
   }
 
+
   if (!calling_service_) {
     if (state_ != RouteState::Message::UNSET) {
       const auto request = std::make_shared<ClearRoute::Service::Request>();
       calling_service_ = true;
-      cli_clear_->async_send_request(request, [this](auto) { calling_service_ = false; });
+      cli_clear_->async_send_request(request, [this](rclcpp::Client<ClearRoute::Service>::SharedFuture) { calling_service_ = false; });
     } else {
       request_timing_control_ = 0;
       calling_service_ = true;
-      cli_route_->async_send_request(route_, [this](auto) { calling_service_ = false; });
+      cli_route_->async_send_request(route_, [this](rclcpp::Client<SetRoutePoints::Service>::SharedFuture) { calling_service_ = false; });
     }
   }
 }
