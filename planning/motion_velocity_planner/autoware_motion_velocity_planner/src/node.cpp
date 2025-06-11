@@ -218,11 +218,19 @@ MotionVelocityPlannerNode::process_no_ground_pointcloud(
   const sensor_msgs::msg::PointCloud2::ConstSharedPtr msg)
 {
   geometry_msgs::msg::TransformStamped transform;
-  try {
+  const bool is_pcl_time_valid = (this->get_clock()->now() - rclcpp::Time(msg->header.stamp)) <
+                                 rclcpp::Duration::from_seconds(1.0);
+
+  if (
+    is_pcl_time_valid && tf_buffer_.canTransform("map", msg->header.frame_id, msg->header.stamp)) {
+    transform = tf_buffer_.lookupTransform(
+      "map", msg->header.frame_id, msg->header.stamp, rclcpp::Duration::from_seconds(0.05));
+  } else if (tf_buffer_.canTransform("map", msg->header.frame_id, tf2::TimePointZero)) {
     transform = tf_buffer_.lookupTransform("map", msg->header.frame_id, tf2::TimePointZero);
-  } catch (tf2::TransformException & e) {
-    RCLCPP_WARN(get_logger(), "no transform found for no_ground_pointcloud: %s", e.what());
-    return {};
+    RCLCPP_DEBUG(get_logger(), "pcl time is invalid, using tf2::TimePointZero");
+  } else {
+    RCLCPP_WARN(get_logger(), "no transform found for no_ground_pointcloud");
+    return std::nullopt;
   }
 
   pcl::PointCloud<pcl::PointXYZ> pc;
