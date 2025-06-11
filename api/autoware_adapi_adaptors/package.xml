@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>autoware_adapi_adaptors</name>
-  <version>0.45.0</version>
+  <version>0.0.0</version>
   <description>The adapi_adaptors package</description>
   <maintainer email="isamu.takagi@tier4.jp">Takagi, Isamu</maintainer>
   <maintainer email="ryohsuke.mitsudome@tier4.jp">Ryohsuke Mitsudome</maintainer>
@@ -15,7 +15,7 @@
 
   <depend>autoware_adapi_specs</depend>
   <depend>autoware_adapi_v1_msgs</depend>
-  <depend>autoware_component_interface_utils</depend>
+  <depend>autoware_component_interface_specs</depend>
   <depend>autoware_map_height_fitter</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
