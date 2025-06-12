@@ -308,19 +308,27 @@ private:
       const auto & ego_pose = planner_data_->current_odometry->pose;
       const auto & ego_velocity = planner_data_->current_velocity;
 
-      log << std::fixed << std::setprecision(2) << "Ego Position: (" << ego_pose.position.x << ", "
-          << ego_pose.position.y << ", " << ego_pose.position.z << ")\n";
+      log << std::fixed << std::setprecision(2) << "Ego position: (" << ego_pose.position.x << ", "
+          << ego_pose.position.y << ", " << ego_pose.position.z << "), ";
 
       if (ego_velocity) {
-        log << "Ego Velocity: (" << ego_velocity->twist.linear.x << ", "
-            << ego_velocity->twist.linear.y << ") m/s\n";
+        log << "velocity: (" << ego_velocity->twist.linear.x << ", " << ego_velocity->twist.linear.y
+            << ") m/s";
+        if (planner_data_->isVehicleStopped()) {
+          log << " (stopped)";
+        }
       }
-      log << "Ego Stopped: " << (planner_data_->isVehicleStopped() ? "Yes" : "No") << "\n";
+      log << "\n";
     }
 
     log << "Registered Module IDs: [";
+    bool first = true;
     for (const auto & module : scene_modules_) {
+      if (!first) {
+        log << ", ";
+      }
       log << module->getModuleId();
+      first = false;
     }
     log << "]\n";
   }
