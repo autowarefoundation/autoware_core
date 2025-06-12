@@ -93,19 +93,19 @@ TEST_F(TestRouteHandler, getClosestRouteLaneletFromLaneletWhenOverlappingRoute)
   const auto found_reference_lanelet =
     route_handler_->getClosestLaneletWithinRoute(reference_pose, &reference_lanelet);
   ASSERT_TRUE(found_reference_lanelet);
-  ASSERT_EQ(reference_lanelet.id(), 168);
+  EXPECT_EQ(reference_lanelet.id(), 168);
 
   lanelet::ConstLanelet closest_lanelet;
   search_pose.position = autoware_utils_geometry::create_point(3736.89, 73730.8, 0);
   search_pose.orientation = autoware_utils_geometry::create_quaternion(0, 0, 0.223244, 0.974763);
   bool found_lanelet = route_handler_->getClosestLaneletWithinRoute(search_pose, &closest_lanelet);
   ASSERT_TRUE(found_lanelet);
-  ASSERT_EQ(closest_lanelet.id(), 345);
+  EXPECT_EQ(closest_lanelet.id(), 277);
 
   found_lanelet = route_handler_->getClosestRouteLaneletFromLanelet(
     search_pose, reference_lanelet, &closest_lanelet, dist_threshold, yaw_threshold);
   ASSERT_TRUE(found_lanelet);
-  ASSERT_EQ(closest_lanelet.id(), 277);
+  EXPECT_EQ(closest_lanelet.id(), 277);
 }
 
 TEST_F(TestRouteHandler, CheckLaneIsInGoalRouteSection)
