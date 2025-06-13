@@ -24,11 +24,20 @@
 namespace autoware::experimental::lanelet2_utils
 {
 
+/**
+ * @brief a class for representing consecutive sequence of Lanelet on the road topology
+ * @invariant as_lanelets() returns a list of Lanelet along driving direction, and they are
+ * consecutive
+ */
 class LaneSequence
 {
 public:
   explicit LaneSequence(const lanelet::ConstLanelet & lanelet);
 
+  /**
+   * @brief create LaneSequence object
+   * @return if the inputs does not satisfy the invariance, return nullopt
+   */
   static std::optional<LaneSequence> create(
     const lanelet::ConstLanelets & lanelets, lanelet::routing::RoutingGraphConstPtr routing_graph);
 
