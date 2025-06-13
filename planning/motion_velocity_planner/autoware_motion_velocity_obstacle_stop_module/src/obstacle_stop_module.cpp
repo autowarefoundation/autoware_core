@@ -582,15 +582,16 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
   // 2. filter by lateral distance
   const double max_lat_margin = get_max_lat_margin(obj_label);
   // NOTE: max_lat_margin can be negative, so apply std::max with 1e-3.
-  std::cerr << "dist_from_obj_poly_to_traj_poly: " << dist_from_obj_poly_to_traj_poly << std::endl;
-  std::cerr << "lat vel: " << object->get_lat_vel_relative_to_traj(traj_points) << std::endl;
+  // dist_from_obj_poly_to_traj_poly: denotes the distance as is.
+  // object->get_lat_vel_relative_to_traj(traj_points): This is not the lateral velocity in the
+  // coordinate system. The sign has been manipulated so that it shows a positive value when
+  // approaching the path and a negative value when moving away from the path.
   if (
     std::max(max_lat_margin, 1e-3) <=
     dist_from_obj_poly_to_traj_poly -
       std::abs(object->get_lat_vel_relative_to_traj(traj_points) * estimation_time)) {
     return std::nullopt;
   }
-
   // 3. filter by velocity
   if (!is_inside_stop_obstacle_velocity(object, traj_points)) {
     return std::nullopt;
@@ -613,6 +614,7 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
   if (
     !collision_point && std::abs(object->get_lat_vel_relative_to_traj(traj_points)) <
                           obstacle_filtering_param_.outside_max_lateral_velocity) {
+    autoware_utils_debug::ScopedTimeTrack st("outside_obstacle_check", *time_keeper_);
     const auto & future_obj_pose = object->get_specified_time_pose(
       clock_->now() + rclcpp::Duration::from_seconds(estimation_time), predicted_objects_stamp);
     collision_point = polygon_utils::get_collision_point(
@@ -620,9 +622,12 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
       predicted_object.shape, dist_to_bumper);
     if (collision_point) {
       // The value 0.1 denotes zero-divison escape value. No significant meaning.
-      const double time_interval = stop_planning_param_.hold_stop_distance_threshold /
-                                   std::max(object->get_lon_vel_relative_to_traj(traj_points), 0.1);
+      const double time_interval = std::min(
+        stop_planning_param_.hold_stop_distance_threshold /
+          std::max(object->get_lon_vel_relative_to_traj(traj_points), 0.1),
+        0.1);
       for (double time = time_interval; time < estimation_time; time += time_interval) {
+        autoware_utils_debug::ScopedTimeTrack st("outside_obstacle_check_loop", *time_keeper_);
         const auto idx_obj_pose = object->get_specified_time_pose(
           clock_->now() + rclcpp::Duration::from_seconds(time), predicted_objects_stamp);
         const auto idx_collision_point = polygon_utils::get_collision_point(
