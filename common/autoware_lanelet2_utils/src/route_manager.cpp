@@ -44,6 +44,10 @@ std::optional<RouteManager> RouteManager::create(
 
   lanelet::ConstLanelets all_route_lanelets;
   lanelet::ConstLanelets preferred_lanelets;
+  if (route_msg.segments.empty()) {
+    return std::nullopt;
+  }
+
   for (const auto & route_segment : route_msg.segments) {
     for (const auto & primitive : route_segment.primitives) {
       const auto id = primitive.id;
@@ -131,6 +135,7 @@ LaneSequence RouteManager::get_lanelet_sequence_on_route(
 
   lanelet::ConstLanelets sequence;
 
+  // traverse backward until we exceed backward_length
   for (auto [acc_dist, prev_lanes] = std::make_tuple(
          current_lane_entry_to_ego, route_subgraph_ptr_->previous(current_lanelet_));
        acc_dist < backward_length;) {
@@ -138,6 +143,7 @@ LaneSequence RouteManager::get_lanelet_sequence_on_route(
       break;
     }
 
+    // on "route_subgraph_ptr" there should be only one prev_lane which is also a route
     const auto & prev_lane = prev_lanes.front();
     sequence.insert(sequence.begin(), prev_lane);
     acc_dist += all_route_length_cache_.at(prev_lane.id());
@@ -146,6 +152,7 @@ LaneSequence RouteManager::get_lanelet_sequence_on_route(
 
   sequence.push_back(current_lanelet_);
 
+  // traverse backward until we exceed backward_length
   for (auto [acc_dist, next_lanes] = std::make_tuple(
          ego_to_current_lane_exit, route_subgraph_ptr_->following(current_lanelet_));
        acc_dist < forward_length;) {
@@ -153,13 +160,14 @@ LaneSequence RouteManager::get_lanelet_sequence_on_route(
       break;
     }
 
+    // on "route_subgraph_ptr" there should be only one next_lane which is also a route
     const auto & next_lane = next_lanes.front();
     sequence.push_back(next_lane);
     acc_dist += all_route_length_cache_.at(next_lane.id());
     next_lanes = route_subgraph_ptr_->following(next_lane);
   }
 
-  if (auto seq = LaneSequence::create(sequence, routing_graph_ptr_); seq) {
+  if (const auto seq = LaneSequence::create(sequence, routing_graph_ptr_); seq) {
     return seq.value();
   }
   return LaneSequence(current_lanelet_);
@@ -187,14 +195,16 @@ LaneSequence RouteManager::get_lanelet_sequence_outward_route(
     const auto & prev_lane = prev_lanes.front();
     if (const auto route_cache = all_route_length_cache_.find(prev_lane.id());
         route_cache != all_route_length_cache_.end()) {
-      // query route
+      // traverse on route lanelets
       sequence.insert(sequence.begin(), prev_lane);
       acc_dist += route_cache->second;
+      // continue search on route
       prev_lanes = route_subgraph_ptr_->previous(prev_lane);
     } else {
       // query outward route
       sequence.insert(sequence.begin(), prev_lane);
       acc_dist += lanelet::geometry::length3d(prev_lane);
+      // continue search outside of route
       prev_lanes = routing_graph_ptr_->previous(prev_lane);
     }
   }
@@ -211,14 +221,16 @@ LaneSequence RouteManager::get_lanelet_sequence_outward_route(
     const auto & next_lane = next_lanes.front();
     if (const auto route_cache = all_route_length_cache_.find(next_lane.id());
         route_cache != all_route_length_cache_.end()) {
-      // query route
+      // traverse on route lanelets
       sequence.push_back(next_lane);
       acc_dist += route_cache->second;
+      // continue search on route
       next_lanes = route_subgraph_ptr_->following(next_lane);
     } else {
       // query outward route
       sequence.push_back(next_lane);
       acc_dist += lanelet::geometry::length3d(next_lane);
+      // continue search on route
       next_lanes = routing_graph_ptr_->following(next_lane);
     }
   }

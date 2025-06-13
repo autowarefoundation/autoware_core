@@ -14,9 +14,11 @@
 
 #include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware_lanelet2_extension/projection/mgrs_projector.hpp>
+#include <autoware_lanelet2_extension/utility/message_conversion.hpp>
 #include <autoware_lanelet2_extension/utility/utilities.hpp>
 
 #include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
 
 #include <lanelet2_core/LaneletMap.h>
 #include <lanelet2_core/primitives/Lanelet.h>
@@ -59,6 +61,24 @@ instantiate_routing_graph_and_traffic_rules(
   auto traffic_rules = lanelet::traffic_rules::TrafficRulesFactory::create(location, participant);
   return {
     lanelet::routing::RoutingGraph::build(*lanelet_map, *traffic_rules), std::move(traffic_rules)};
+}
+
+autoware_map_msgs::msg::LaneletMapBin to_autoware_map_msgs(const lanelet::LaneletMapConstPtr & map)
+{
+  const lanelet::LaneletMapPtr map_mut = std::const_pointer_cast<lanelet::LaneletMap>(map);
+
+  std::stringstream ss;
+  boost::archive::binary_oarchive oa(ss);
+  oa << *map_mut;
+  auto id_counter = lanelet::utils::getId();
+  oa << id_counter;
+
+  std::string data_str(ss.str());
+
+  autoware_map_msgs::msg::LaneletMapBin msg;
+  msg.data.clear();
+  msg.data.assign(data_str.begin(), data_str.end());
+  return msg;
 }
 
 lanelet::LaneletMapConstPtr from_autoware_map_msgs(
