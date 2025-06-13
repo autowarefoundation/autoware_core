@@ -32,6 +32,12 @@
 namespace autoware::experimental::lanelet2_utils
 {
 
+/**
+ * @brief This class handles the driving lane tracking and utility functions for manipulating
+ * Lanelet on the route
+ * @invariant current_pose IS ASSURED not to be necessarily inside current_lanelet, but to be
+ * closest the current_lanelet, especially when ego is avoiding a parked vehicle
+ */
 class RouteManager
 {
 public:
@@ -40,7 +46,6 @@ public:
    * @param map_msg raw message
    * @param route_msg raw message
    * @param initial_pose initial_pose
-   * @pre route_msg has non-empty RouteSegment
    * @post current_lanelet is determined, but IT IS NOT ASSURED that current_pose is inside
    * current_lanelet.
    */
@@ -68,7 +73,7 @@ public:
    * @brief update current_pose against all route lanelets and return a new RouteManager if
    * current_pose is valid
    * @param search_window [opt, 25] forward/backward length for search
-   * @note this functions is aimed to be used only when lane change is completed
+   * @note this functions is aimed to be used only when lane change has just completed
    * @attention this can only be called against std::move(*this)
    */
   std::optional<RouteManager> update_current_pose_after_lane_change(
