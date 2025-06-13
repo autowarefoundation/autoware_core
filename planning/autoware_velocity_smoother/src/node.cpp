@@ -136,6 +136,20 @@ void VelocitySmootherNode::setupSmoother(const double wheelbase)
   smoother_->setWheelBase(wheelbase);
 }
 
+template <class T>
+bool get_param_general(
+  const std::vector<rclcpp::Parameter> & p, const std::string & name, T & value)
+{
+  auto it = std::find_if(p.cbegin(), p.cend(), [&name](const rclcpp::Parameter & parameter) {
+    return parameter.get_name() == name;
+  });
+  if (it != p.cend()) {
+    value = it->template get_value<T>();
+    return true;
+  }
+  return false;
+}
+
 rcl_interfaces::msg::SetParametersResult VelocitySmootherNode::onParameter(
   const std::vector<rclcpp::Parameter> & parameters)
 {
@@ -204,7 +218,8 @@ rcl_interfaces::msg::SetParametersResult VelocitySmootherNode::onParameter(
     update_param("sparse_min_interval_distance", p.resample_param.sparse_min_interval_distance);
     update_param("resample_ds", p.sample_ds);
     update_param("curvature_threshold", p.curvature_threshold);
-    update_param("max_steering_angle_rate", p.max_steering_angle_rate);
+    get_param_general(parameters, "velocity_thresholds", p.velocity_thresholds);
+    get_param_general(parameters, "steering_angle_rate_limits", p.steering_angle_rate_limits);
     update_param("curvature_calculation_distance", p.curvature_calculation_distance);
     smoother_->setParam(p);
   }

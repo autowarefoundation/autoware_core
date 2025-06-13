@@ -47,9 +47,11 @@ public:
     double min_curve_velocity;                    // min velocity at curve [m/s]
     double decel_distance_before_curve;  // distance before slow down for lateral acc at a curve
     double decel_distance_after_curve;   // distance after slow down for lateral acc at a curve
-    double max_steering_angle_rate;      // max steering angle rate [degree/s]
-    double wheel_base;                   // wheel base [m]
-    double sample_ds;                    // distance between trajectory points [m]
+    // Velocity-dependent steering angle rate parameters
+    std::vector<double> velocity_thresholds;         // velocity thresholds [m/s]
+    std::vector<double> steering_angle_rate_limits;  // steering angle rate limits [degree/s]
+    double wheel_base;                               // wheel base [m]
+    double sample_ds;                                // distance between trajectory points [m]
     double curvature_threshold;  // look-up distance of Trajectory point for calculation of steering
                                  // angle limit [m]
     double curvature_calculation_distance;  // threshold steering degree limit to trigger
@@ -91,6 +93,13 @@ public:
   BaseParam getBaseParam() const;
 
 protected:
+  // Helper function to get steering angle rate limit based on velocity
+  std::vector<std::pair<double, double>> computeSteerRateVelocityRatioLimits() const;
+
+  double computeVelocityLimit(
+    const double local_steer_rate_velocity_ratio,
+    const std::vector<std::pair<double, double>> steer_rate_velocity_ratio_limits) const;
+
   BaseParam base_param_;
   mutable std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper_{nullptr};
 };
