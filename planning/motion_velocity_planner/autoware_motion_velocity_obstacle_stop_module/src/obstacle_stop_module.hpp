@@ -48,8 +48,14 @@
 
 namespace autoware::motion_velocity_planner
 {
+class OutsideCutInObstacleTest;
+class ObstacleStopModuleWrapper;
+
 class ObstacleStopModule : public PluginModuleInterface
 {
+  friend class OutsideCutInObstacleTest;
+  friend class ObstacleStopModuleWrapper;
+
 public:
   void init(rclcpp::Node & node, const std::string & module_name) override;
   void update_parameters(const std::vector<rclcpp::Parameter> & parameters) override;
@@ -203,6 +209,14 @@ private:
     const autoware::vehicle_info_utils::VehicleInfo & vehicle_info,
     const double ego_nearest_dist_threshold, const double ego_nearest_yaw_threshold,
     const TrajectoryPolygonCollisionCheck & trajectory_polygon_collision_check) const;
+
+  std::optional<std::pair<geometry_msgs::msg::Point, double>> check_outside_cut_in_obstacle(
+    const std::shared_ptr<PlannerData::Object> object,
+    const std::vector<TrajectoryPoint> & traj_points,
+    const std::vector<TrajectoryPoint> & decimated_traj_points,
+    const std::vector<Polygon2d> & decimated_traj_polys_with_lat_margin,
+    const double dist_to_bumper, const double estimation_time,
+    const rclcpp::Time & predicted_objects_stamp) const;
 };
 }  // namespace autoware::motion_velocity_planner
 

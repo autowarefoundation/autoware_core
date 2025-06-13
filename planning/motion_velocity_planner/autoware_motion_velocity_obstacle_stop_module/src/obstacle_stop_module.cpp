@@ -611,37 +611,10 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
     predicted_object.shape, dist_to_bumper);
 
   // 4.3. outside obstacle check. Scope of this check is cut-in obstacles.
-  if (
-    !collision_point && std::abs(object->get_lat_vel_relative_to_traj(traj_points)) <
-                          obstacle_filtering_param_.outside_max_lateral_velocity) {
-    autoware_utils_debug::ScopedTimeTrack st("outside_obstacle_check", *time_keeper_);
-    const auto & future_obj_pose = object->get_specified_time_pose(
-      clock_->now() + rclcpp::Duration::from_seconds(estimation_time), predicted_objects_stamp);
-    collision_point = polygon_utils::get_collision_point(
-      decimated_traj_points, decimated_traj_polys_with_lat_margin, future_obj_pose, clock_->now(),
-      predicted_object.shape, dist_to_bumper);
-    if (collision_point) {
-      // The value 0.1 denotes zero-divison escape value. No significant meaning.
-      const double time_interval = std::min(
-        stop_planning_param_.hold_stop_distance_threshold /
-          std::max(object->get_lon_vel_relative_to_traj(traj_points), 0.1),
-        0.1);
-      for (double time = time_interval; time < estimation_time; time += time_interval) {
-        autoware_utils_debug::ScopedTimeTrack st("outside_obstacle_check_loop", *time_keeper_);
-        const auto idx_obj_pose = object->get_specified_time_pose(
-          clock_->now() + rclcpp::Duration::from_seconds(time), predicted_objects_stamp);
-        const auto idx_collision_point = polygon_utils::get_collision_point(
-          decimated_traj_points, decimated_traj_polys_with_lat_margin, idx_obj_pose, clock_->now(),
-          predicted_object.shape, dist_to_bumper);
-        if (idx_collision_point) {
-          collision_point = idx_collision_point;
-          break;
-        }
-      }
-    }
-    if (collision_point && collision_point->second < 0.0) {
-      return std::nullopt;
-    }
+  if (!collision_point) {
+    collision_point = check_outside_cut_in_obstacle(
+      object, traj_points, decimated_traj_points, decimated_traj_polys_with_lat_margin,
+      dist_to_bumper, estimation_time, predicted_objects_stamp);
   }
 
   if (!collision_point) {
@@ -1345,6 +1318,52 @@ std::vector<Polygon2d> ObstacleStopModule::get_decimated_traj_polys(
       p.time_to_convergence, p.decimate_trajectory_step_length);
   }
   return *decimated_traj_polys_;
+}
+
+std::optional<std::pair<geometry_msgs::msg::Point, double>>
+ObstacleStopModule::check_outside_cut_in_obstacle(
+  const std::shared_ptr<PlannerData::Object> object,
+  const std::vector<TrajectoryPoint> & traj_points,
+  const std::vector<TrajectoryPoint> & decimated_traj_points,
+  const std::vector<Polygon2d> & decimated_traj_polys_with_lat_margin, const double dist_to_bumper,
+  const double estimation_time, const rclcpp::Time & predicted_objects_stamp) const
+{
+  autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
+  if (
+    std::abs(object->get_lat_vel_relative_to_traj(traj_points)) >=
+    obstacle_filtering_param_.outside_max_lateral_velocity) {
+    return std::nullopt;
+  }
+
+  const auto & future_obj_pose = object->get_specified_time_pose(
+    clock_->now() + rclcpp::Duration::from_seconds(estimation_time), predicted_objects_stamp);
+  auto collision_point = polygon_utils::get_collision_point(
+    decimated_traj_points, decimated_traj_polys_with_lat_margin, future_obj_pose, clock_->now(),
+    object->predicted_object.shape, dist_to_bumper);
+
+  if (collision_point) {
+    // The value 0.1 denotes zero-divison escape value. No significant meaning.
+    const double time_interval = std::min(
+      stop_planning_param_.hold_stop_distance_threshold /
+        std::max(object->get_lon_vel_relative_to_traj(traj_points), 0.1),
+      0.1);
+    for (double time = time_interval; time < estimation_time; time += time_interval) {
+      const auto idx_obj_pose = object->get_specified_time_pose(
+        clock_->now() + rclcpp::Duration::from_seconds(time), predicted_objects_stamp);
+      const auto idx_collision_point = polygon_utils::get_collision_point(
+        decimated_traj_points, decimated_traj_polys_with_lat_margin, idx_obj_pose, clock_->now(),
+        object->predicted_object.shape, dist_to_bumper);
+      if (idx_collision_point) {
+        collision_point = idx_collision_point;
+        break;
+      }
+    }
+  }
+  if (collision_point && collision_point->second < 0.0) {
+    return std::nullopt;
+  }
+
+  return collision_point;
 }
 
 }  // namespace autoware::motion_velocity_planner
