@@ -74,11 +74,12 @@ SmootherBase::SmootherBase(
   p.stop_decel = node.declare_parameter<double>("stop_decel");
   p.max_jerk = node.declare_parameter<double>("normal.max_jerk");
   p.min_jerk = node.declare_parameter<double>("normal.min_jerk");
-  p.max_lateral_accel = node.declare_parameter<double>("max_lateral_accel");
   p.min_decel_for_lateral_acc_lim_filter =
     node.declare_parameter<double>("min_decel_for_lateral_acc_lim_filter");
   p.sample_ds = node.declare_parameter<double>("resample_ds");
   p.curvature_threshold = node.declare_parameter<double>("curvature_threshold");
+  p.lateral_acceleration_limits =
+    node.declare_parameter<std::vector<double>>("lateral_acceleration_limits");
   p.velocity_thresholds = node.declare_parameter<std::vector<double>>("velocity_thresholds");
   p.steering_angle_rate_limits =
     node.declare_parameter<std::vector<double>>("steering_angle_rate_limits");
@@ -184,13 +185,15 @@ TrajectoryPoints SmootherBase::applyLateralAccelerationFilter(
     static_cast<size_t>(std::round(base_param_.decel_distance_before_curve / points_interval));
   const size_t after_decel_index =
     static_cast<size_t>(std::round(base_param_.decel_distance_after_curve / points_interval));
-  const double max_lateral_accel_abs = std::fabs(base_param_.max_lateral_accel);
 
   const auto latacc_min_vel_arr =
     enable_smooth_limit ? trajectory_utils::calcVelocityProfileWithConstantJerkAndAccelerationLimit(
                             output, v0, a0, base_param_.min_jerk, base_param_.max_accel,
                             base_param_.min_decel_for_lateral_acc_lim_filter)
                         : std::vector<double>{};
+
+  const auto lateral_acceleration_velocity_square_ratio_limits =
+    computeLateralAccelerationVelocitySquareRatioLimits();
 
   for (size_t i = 0; i < output.size(); ++i) {
     double curvature = 0.0;
@@ -200,7 +203,8 @@ TrajectoryPoints SmootherBase::applyLateralAccelerationFilter(
       if (j >= curvature_v.size()) return output;
       curvature = std::max(curvature, std::fabs(curvature_v.at(j)));
     }
-    double v_curvature_max = std::sqrt(max_lateral_accel_abs / std::max(curvature, 1.0E-5));
+    double v_curvature_max = computeVelocityLimitFromLateralAcc(
+      curvature, lateral_acceleration_velocity_square_ratio_limits);
     v_curvature_max = std::max(v_curvature_max, base_param_.min_curve_velocity);
 
     if (enable_smooth_limit) {
@@ -211,6 +215,36 @@ TrajectoryPoints SmootherBase::applyLateralAccelerationFilter(
       output.at(i).longitudinal_velocity_mps = v_curvature_max;
     }
   }
+  return output;
+}
+
+std::vector<std::pair<double, double>>
+SmootherBase::computeLateralAccelerationVelocitySquareRatioLimits() const
+{
+  std::vector<std::pair<double, double>> output;
+
+  // Process each velocity threshold
+  for (size_t i = 0; i < base_param_.velocity_thresholds.size(); ++i) {
+    double lateral_acc_threshold = base_param_.lateral_acceleration_limits[i];
+    double vi = base_param_.velocity_thresholds[i];
+    double vi_1;
+
+    if (i == 0) {
+      vi_1 = 0.0;
+    } else {
+      vi_1 = base_param_.velocity_thresholds[i - 1];
+    }
+
+    // Add the ratio pair for this threshold
+    output.push_back(std::make_pair(
+      lateral_acc_threshold / (vi_1 * vi_1 + 1e-5), lateral_acc_threshold / (vi * vi + 1e-5)));
+  }
+
+  // Add the last part
+  auto v_max = base_param_.velocity_thresholds.back();
+  output.push_back(
+    std::make_pair(base_param_.steering_angle_rate_limits.back() / (v_max * v_max + 1e-5), 0.0));
+
   return output;
 }
 
@@ -243,7 +277,49 @@ std::vector<std::pair<double, double>> SmootherBase::computeSteerRateVelocityRat
   return output;
 }
 
-double SmootherBase::computeVelocityLimit(
+double SmootherBase::computeVelocityLimitFromLateralAcc(
+  const double local_curvature,
+  const std::vector<std::pair<double, double>> lateral_acceleration_velocity_square_ratio_limits)
+  const
+{
+  // Iterate through the limits in reverse order
+  for (int i = static_cast<int>(lateral_acceleration_velocity_square_ratio_limits.size()) - 1;
+       i >= 0; --i) {
+    const double lower = lateral_acceleration_velocity_square_ratio_limits[i].second;
+    const double higher = lateral_acceleration_velocity_square_ratio_limits[i].first;
+
+    // If ratio is higher than the upper bound, continue to the next range
+    if (local_curvature > higher) {
+      continue;
+    }
+
+    // If ratio is lower than or equal to the lower bound
+    if (local_curvature <= lower) {
+      if (i == static_cast<int>(lateral_acceleration_velocity_square_ratio_limits.size()) - 1) {
+        return std::numeric_limits<double>::max();  // max_double equivalent
+      } else {
+        return base_param_.velocity_thresholds[i];
+      }
+    }
+
+    // Between lower and higher, calculate the velocity threshold
+    double current_lateral_acceleration_threshold;
+    if (i == static_cast<int>(lateral_acceleration_velocity_square_ratio_limits.size()) - 1) {
+      current_lateral_acceleration_threshold = base_param_.lateral_acceleration_limits.back();
+    } else {
+      current_lateral_acceleration_threshold = base_param_.lateral_acceleration_limits[i];
+    }
+
+    const double velocity_threshold =
+      std::sqrt(current_lateral_acceleration_threshold / std::max(local_curvature, 1.0E-5));
+    return velocity_threshold;
+  }
+
+  // If no appropriate range is found
+  return 0.0;
+}
+
+double SmootherBase::computeVelocityLimitFromSteerRate(
   const double local_steer_rate_velocity_ratio,
   const std::vector<std::pair<double, double>> steer_rate_velocity_ratio_limits) const
 {
@@ -344,8 +420,8 @@ TrajectoryPoints SmootherBase::applySteeringRateLimit(
     const auto mean_vel =
       (output.at(i).longitudinal_velocity_mps + output.at(i + 1).longitudinal_velocity_mps) / 2.0;
 
-    const auto local_velocity_limit =
-      computeVelocityLimit(steer_rate_velocity_ratio_arr.at(i), steer_rate_velocity_ratio_limits);
+    const auto local_velocity_limit = computeVelocityLimitFromSteerRate(
+      steer_rate_velocity_ratio_arr.at(i), steer_rate_velocity_ratio_limits);
 
     if (mean_vel < local_velocity_limit) {
       continue;

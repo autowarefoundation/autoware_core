@@ -205,7 +205,6 @@ rcl_interfaces::msg::SetParametersResult VelocitySmootherNode::onParameter(
     update_param("stop_decel", p.stop_decel);
     update_param("normal.max_jerk", p.max_jerk);
     update_param("normal.min_jerk", p.min_jerk);
-    update_param("max_lateral_accel", p.max_lateral_accel);
     update_param("min_curve_velocity", p.min_curve_velocity);
     update_param("decel_distance_before_curve", p.decel_distance_before_curve);
     update_param("decel_distance_after_curve", p.decel_distance_after_curve);
@@ -219,6 +218,7 @@ rcl_interfaces::msg::SetParametersResult VelocitySmootherNode::onParameter(
     update_param("resample_ds", p.sample_ds);
     update_param("curvature_threshold", p.curvature_threshold);
     get_param_general(parameters, "velocity_thresholds", p.velocity_thresholds);
+    get_param_general(parameters, "lateral_acceleration_limits", p.lateral_acceleration_limits);
     get_param_general(parameters, "steering_angle_rate_limits", p.steering_angle_rate_limits);
     update_param("curvature_calculation_distance", p.curvature_calculation_distance);
     smoother_->setParam(p);
