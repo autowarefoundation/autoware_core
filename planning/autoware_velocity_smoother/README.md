@@ -38,7 +38,7 @@ Note: velocity limit that requests larger than `nominal.jerk` is not applied. In
 #### Apply steering rate limit
 
 It calculates the desired steering angles of trajectory points, and it applies the steering rate limit.
-For each point in the curve, it will find the maximum velocity that satisfy the steering rate limit defined by `steering_angle_rate_limits` and `velocity_thresholds`. If the trajectory speed is larger than the computed max velicity, it will try to decelerate at the curve.
+For each point in the curve, it will find the maximum velocity that satisfy the steering rate limit defined by `steering_angle_rate_limits` and `velocity_thresholds`. If the trajectory speed is larger than the computed max velocity, it will try to decelerate at the curve.
 
 #### Resample trajectory
 
@@ -143,7 +143,7 @@ After the optimization, a resampling called `post resampling` is performed befor
 | :------------------------------------- | :--------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------ |
 | `enable_lateral_acc_limit`             | `bool`           | To toggle the lateral acceleration filter on and off. You can switch it dynamically at runtime.                                                                                                              | true          |
 | `lateral_acceleration_limits`          | `vector<double>` | Max lateral acceleration limit at different velocity thresholds[m/ss]                                                                                                                                        | 0.5           |
-| `velocity_thresholds`                  | `vector<double>` | Velocity hreshold define the velocity ranges for different lateral limits [m/s]                                                                                                                              | 0.5           |
+| `velocity_thresholds`                  | `vector<double>` | Velocity threshold define the velocity ranges for different lateral limits [m/s]                                                                                                                             | 0.5           |
 | `min_curve_velocity`                   | `double`         | Min velocity at lateral acceleration limit [m/ss]                                                                                                                                                            | 2.74          |
 | `decel_distance_before_curve`          | `double`         | Distance to slowdown before a curve for lateral acceleration limit [m]                                                                                                                                       | 3.5           |
 | `decel_distance_after_curve`           | `double`         | Distance to slowdown after a curve for lateral acceleration limit [m]                                                                                                                                        | 2.0           |
