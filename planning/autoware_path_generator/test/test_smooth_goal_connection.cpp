@@ -26,7 +26,8 @@ TEST_F(UtilsTest, modifyPathForSmoothGoalConnection)
   const auto path = *Trajectory::Builder{}.build(path_.points);
 
   {  // normal case
-    const auto result = utils::modify_path_for_smooth_goal_connection(path, planner_data_, 7.5);
+    const auto result =
+      utils::modify_path_for_smooth_goal_connection(path, planner_data_, 7.5, 1.0);
 
     ASSERT_TRUE(result.has_value());
 
@@ -41,19 +42,19 @@ TEST_F(UtilsTest, modifyPathForSmoothGoalConnection)
   }
 
   {  // input path is empty
-    const auto result = utils::modify_path_for_smooth_goal_connection({}, planner_data_, {});
+    const auto result = utils::modify_path_for_smooth_goal_connection({}, planner_data_, {}, {});
 
     ASSERT_FALSE(result.has_value());
   }
 
   {  // planner data is not set
-    const auto result = utils::modify_path_for_smooth_goal_connection(path, {}, {});
+    const auto result = utils::modify_path_for_smooth_goal_connection(path, {}, {}, {});
 
     ASSERT_FALSE(result.has_value());
   }
 
-  {  // refine_goal_search_radius_range is zero
-    const auto result = utils::modify_path_for_smooth_goal_connection(path, planner_data_, 0.0);
+  {  // search_radius_range is zero
+    const auto result = utils::modify_path_for_smooth_goal_connection(path, planner_data_, 0.0, {});
 
     ASSERT_FALSE(result.has_value());
   }
@@ -66,7 +67,7 @@ TEST_F(UtilsTest, refinePathForGoal)
 
   {  // normal case
     const auto result = utils::refine_path_for_goal(
-      path, planner_data_.goal_pose, planner_data_.preferred_lanelets.back().id(), 7.5);
+      path, planner_data_.goal_pose, planner_data_.preferred_lanelets.back().id(), 7.5, 1.0);
 
     const auto new_goal = result.compute(result.length());
     EXPECT_NEAR(new_goal.point.pose.position.x, planner_data_.goal_pose.position.x, epsilon);
@@ -80,14 +81,14 @@ TEST_F(UtilsTest, refinePathForGoal)
 
   {  // goal lane id is invalid
     const auto result =
-      utils::refine_path_for_goal(path, planner_data_.goal_pose, lanelet::InvalId, {});
+      utils::refine_path_for_goal(path, planner_data_.goal_pose, lanelet::InvalId, {}, {});
 
     EXPECT_NEAR(result.length(), path.length(), epsilon);
   }
 
-  {  // refine_goal_search_radius_range is small
+  {  // search_radius_range is small
     const auto result = utils::refine_path_for_goal(
-      path, planner_data_.goal_pose, planner_data_.preferred_lanelets.back().id(), 0.1);
+      path, planner_data_.goal_pose, planner_data_.preferred_lanelets.back().id(), 0.1, 1.0);
 
     const auto new_goal = result.compute(result.length());
     EXPECT_NEAR(new_goal.point.pose.position.x, planner_data_.goal_pose.position.x, epsilon);
@@ -99,9 +100,9 @@ TEST_F(UtilsTest, refinePathForGoal)
     EXPECT_NEAR(new_goal.point.pose.orientation.w, planner_data_.goal_pose.orientation.w, epsilon);
   }
 
-  {  // refine_goal_search_radius_range is larger than distance from start to goal
+  {  // search_radius_range is larger than distance from start to goal
     const auto result = utils::refine_path_for_goal(
-      path, planner_data_.goal_pose, planner_data_.preferred_lanelets.back().id(), 100.0);
+      path, planner_data_.goal_pose, planner_data_.preferred_lanelets.back().id(), 100.0, 1.0);
 
     EXPECT_EQ(result.compute(0.0), path_.points.front());
 
