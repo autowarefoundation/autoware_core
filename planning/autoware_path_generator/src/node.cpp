@@ -224,6 +224,7 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
   const geometry_msgs::msg::Pose & current_pose, const Params & params)
 {
   if (!update_current_lanelet(current_pose, params)) {
+    RCLCPP_ERROR(get_logger(), "Failed to update current lanelet");
     return std::nullopt;
   }
 
@@ -237,6 +238,9 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
   const auto backward_lanelets_within_route =
     utils::get_lanelets_within_route_up_to(*current_lanelet_, planner_data_, backward_length);
   if (!backward_lanelets_within_route) {
+    RCLCPP_ERROR(
+      get_logger(), "Failed to get backward lanelets within route for current lanelet (id: %ld)",
+      current_lanelet_->id());
     return std::nullopt;
   }
   lanelets.insert(
@@ -262,6 +266,9 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
   const auto forward_lanelets_within_route =
     utils::get_lanelets_within_route_after(*current_lanelet_, planner_data_, forward_length);
   if (!forward_lanelets_within_route) {
+    RCLCPP_ERROR(
+      get_logger(), "Failed to get forward lanelets within route for current lanelet (id: %ld)",
+      current_lanelet_->id());
     return std::nullopt;
   }
   lanelets.insert(
@@ -319,6 +326,7 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
   const Params & params) const
 {
   if (lanelet_sequence.empty()) {
+    RCLCPP_ERROR(get_logger(), "Lanelet sequence is empty");
     return std::nullopt;
   }
 
@@ -408,11 +416,13 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
   }
 
   if (path_points_with_lane_id.empty()) {
+    RCLCPP_ERROR(get_logger(), "No path points generated from lanelet sequence");
     return std::nullopt;
   }
 
   auto trajectory = autoware::experimental::trajectory::pretty_build(path_points_with_lane_id);
   if (!trajectory) {
+    RCLCPP_ERROR(get_logger(), "Failed to build trajectory from path points");
     return std::nullopt;
   }
 
@@ -454,6 +464,7 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
   finalized_path_with_lane_id.points = trajectory->restore();
 
   if (finalized_path_with_lane_id.points.empty()) {
+    RCLCPP_ERROR(get_logger(), "Finalized path points are empty after cropping");
     return std::nullopt;
   }
 
