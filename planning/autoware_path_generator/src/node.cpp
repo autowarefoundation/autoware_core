@@ -18,6 +18,7 @@
 
 #include <autoware/motion_utils/resample/resample.hpp>
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
+#include <autoware/trajectory/utils/pretty_build.hpp>
 #include <autoware_lanelet2_extension/utility/message_conversion.hpp>
 #include <autoware_lanelet2_extension/utility/query.hpp>
 #include <autoware_lanelet2_extension/utility/utilities.hpp>
@@ -410,7 +411,7 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
     return std::nullopt;
   }
 
-  auto trajectory = Trajectory::Builder().build(path_points_with_lane_id);
+  auto trajectory = autoware::experimental::trajectory::pretty_build(path_points_with_lane_id);
   if (!trajectory) {
     return std::nullopt;
   }

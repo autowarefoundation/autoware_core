@@ -24,6 +24,7 @@
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
 #include <autoware/trajectory/forward.hpp>
 #include <autoware/trajectory/path_point_with_lane_id.hpp>
+#include <autoware/trajectory/utils/pretty_build.hpp>
 #include <autoware_lanelet2_extension/utility/message_conversion.hpp>
 #include <autoware_lanelet2_extension/utility/utilities.hpp>
 #include <autoware_utils/geometry/geometry.hpp>
@@ -693,20 +694,10 @@ experimental::trajectory::Trajectory<PathPointWithLaneId> refine_path_for_goal(
   goal_connected_trajectory_points.emplace_back(pre_goal);
   goal_connected_trajectory_points.emplace_back(goal);
 
-  if (goal_connected_trajectory_points.size() < 4) {  // 4 points are required for spline
-                                                      // interpolation
-    auto output = experimental::trajectory::Trajectory<PathPointWithLaneId>::Builder{}
-                    .set_xy_interpolator<experimental::trajectory::interpolator::Linear>()
-                    .build(goal_connected_trajectory_points);
-    if (output) {
-      return output.value();
-    }
-  } else {
-    auto output = experimental::trajectory::Trajectory<PathPointWithLaneId>::Builder{}.build(
-      goal_connected_trajectory_points);
-    if (output) {
-      return output.value();
-    }
+  if (
+    const auto output =
+      autoware::experimental::trajectory::pretty_build(goal_connected_trajectory_points)) {
+    return *output;
   }
   return input;
 }
