@@ -381,7 +381,7 @@ void RouteHandler::setRouteLanelets(const lanelet::ConstLanelets & path_lanelets
   route_lanelets_.reserve(route_lanelets_id.size());
   std::vector<RouteRtreeNode> rtree_nodes;
   rtree_nodes.reserve(route_lanelets_id.size());
-  auto i = 0UL;
+  size_t i = 0;
   for (const auto & id : route_lanelets_id) {
     route_lanelets_.push_back(lanelet_map_ptr_->laneletLayer.get(id));
     rtree_nodes.emplace_back(
@@ -424,7 +424,7 @@ void RouteHandler::setLaneletsFromRouteMsg()
   route_lanelets_.reserve(primitive_size);
   std::vector<RouteRtreeNode> rtree_nodes;
   rtree_nodes.reserve(primitive_size);
-  auto i = 0UL;
+  size_t i = 0;
 
   for (const auto & route_section : route_ptr_->segments) {
     for (const auto & primitive : route_section.primitives) {
@@ -980,7 +980,7 @@ bool RouteHandler::getClosestLaneletWithinRoute(
   const auto search_point = lanelet::BasicPoint2d(search_pose.position.x, search_pose.position.y);
   const auto query_nearest = boost::geometry::index::nearest(search_point, route_lanelets_.size());
   auto min_dist_to_route_lanelet = std::numeric_limits<double>::max();
-  auto nearest_id = 0UL;
+  size_t nearest_id = 0;
   // search starting from the nearest bounding box
   for (auto query_it = route_lanelets_rtree_.qbegin(query_nearest);
        query_it != route_lanelets_rtree_.qend(); ++query_it) {
@@ -1019,7 +1019,7 @@ bool RouteHandler::getClosestLaneletWithConstrainsWithinRoute(
   const auto query_nearest = boost::geometry::index::nearest(search_point, route_lanelets_.size());
   auto min_dist_to_route_lanelet = std::numeric_limits<double>::max();
   auto min_angle_diff_to_route_lanelet = std::numeric_limits<double>::max();
-  auto nearest_id = 0UL;
+  size_t nearest_id = 0;
   // search starting from the nearest bounding box
   for (auto query_it = route_lanelets_rtree_.qbegin(query_nearest);
        query_it != route_lanelets_rtree_.qend(); ++query_it) {
