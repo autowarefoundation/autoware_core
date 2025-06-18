@@ -56,13 +56,12 @@ PointWithStamp calc_nearest_collision_point(
 // calculation.
 std::optional<std::pair<size_t, std::vector<PointWithStamp>>> get_collision_index(
   const std::vector<TrajectoryPoint> & traj_points, const std::vector<Polygon2d> & traj_polygons,
-  const geometry_msgs::msg::Pose & object_pose, const rclcpp::Time & object_time,
-  const Shape & object_shape, const double max_dist = std::numeric_limits<double>::max())
+  const geometry_msgs::msg::Point & object_position, const rclcpp::Time & object_time,
+  const Polygon2d & obj_polygon, const double max_dist = std::numeric_limits<double>::max())
 {
-  const auto obj_polygon = autoware_utils_geometry::to_polygon2d(object_pose, object_shape);
   for (size_t i = 0; i < traj_polygons.size(); ++i) {
     const double approximated_dist =
-      autoware_utils_geometry::calc_distance2d(traj_points.at(i).pose, object_pose);
+      autoware_utils_geometry::calc_distance2d(traj_points.at(i).pose.position, object_position);
     if (approximated_dist > max_dist) {
       continue;
     }
@@ -100,11 +99,11 @@ std::optional<std::pair<size_t, std::vector<PointWithStamp>>> get_collision_inde
 
 std::optional<std::pair<geometry_msgs::msg::Point, double>> get_collision_point(
   const std::vector<TrajectoryPoint> & traj_points, const std::vector<Polygon2d> & traj_polygons,
-  const geometry_msgs::msg::Pose obj_pose, const rclcpp::Time obj_stamp, const Shape & obj_shape,
-  const double dist_to_bumper)
+  const geometry_msgs::msg::Point obj_position, const rclcpp::Time obj_stamp,
+  const Polygon2d & obj_polygon, const double dist_to_bumper)
 {
   const auto collision_info =
-    get_collision_index(traj_points, traj_polygons, obj_pose, obj_stamp, obj_shape);
+    get_collision_index(traj_points, traj_polygons, obj_position, obj_stamp, obj_polygon);
   if (!collision_info) {
     return std::nullopt;
   }
@@ -126,35 +125,6 @@ std::optional<std::pair<geometry_msgs::msg::Point, double>> get_collision_point(
   return std::make_pair(
     *max_collision_point,
     autoware::motion_utils::calcSignedArcLength(traj_points, 0, collision_info->first) -
-      *max_collision_length);
-}
-
-std::optional<std::pair<geometry_msgs::msg::Point, double>> get_collision_point(
-  const std::vector<TrajectoryPoint> & traj_points, const size_t collision_idx,
-  const std::vector<PointWithStamp> & collision_points, const double dist_to_bumper)
-{
-  std::pair<size_t, std::vector<PointWithStamp>> collision_info;
-  collision_info.first = collision_idx;
-  collision_info.second = collision_points;
-
-  const auto bumper_pose = autoware_utils_geometry::calc_offset_pose(
-    traj_points.at(collision_info.first).pose, dist_to_bumper, 0.0, 0.0);
-
-  std::optional<double> max_collision_length = std::nullopt;
-  std::optional<geometry_msgs::msg::Point> max_collision_point = std::nullopt;
-  for (const auto & poly_vertex : collision_info.second) {
-    const double dist_from_bumper =
-      std::abs(autoware_utils_geometry::inverse_transform_point(poly_vertex.point, bumper_pose).x);
-
-    if (!max_collision_length.has_value() || dist_from_bumper > *max_collision_length) {
-      max_collision_length = dist_from_bumper;
-      max_collision_point = poly_vertex.point;
-    }
-  }
-  if (!max_collision_point.has_value() || !max_collision_length.has_value()) return std::nullopt;
-  return std::make_pair(
-    *max_collision_point,
-    autoware::motion_utils::calcSignedArcLength(traj_points, 0, collision_info.first) -
       *max_collision_length);
 }
 
@@ -183,7 +153,8 @@ std::vector<PointWithStamp> get_collision_points(
     }
 
     const auto collision_info = get_collision_index(
-      traj_points, traj_polygons, predicted_path.path.at(i), object_time, shape, max_lat_dist);
+      traj_points, traj_polygons, predicted_path.path.at(i).position, object_time,
+      autoware_utils_geometry::to_polygon2d(predicted_path.path.at(i), shape), max_lat_dist);
     if (collision_info) {
       const auto nearest_collision_point = calc_nearest_collision_point(
         collision_info->first, collision_info->second, traj_points, is_driving_forward);

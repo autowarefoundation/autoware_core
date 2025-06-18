@@ -48,8 +48,14 @@
 
 namespace autoware::motion_velocity_planner
 {
+class OutsideCutInObstacleTest;
+class ObstacleStopModuleWrapper;
+
 class ObstacleStopModule : public PluginModuleInterface
 {
+  friend class OutsideCutInObstacleTest;
+  friend class ObstacleStopModuleWrapper;
+
 public:
   void init(rclcpp::Node & node, const std::string & module_name) override;
   void update_parameters(const std::vector<rclcpp::Parameter> & parameters) override;
@@ -106,7 +112,6 @@ private:
     std::nullopt};
   autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_{};
   mutable std::unordered_map<double, std::vector<Polygon2d>> trajectory_polygon_for_inside_map_{};
-  mutable std::optional<std::vector<Polygon2d>> trajectory_polygon_for_outside_{std::nullopt};
   mutable std::optional<std::vector<Polygon2d>> decimated_traj_polys_{std::nullopt};
   mutable std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper_{};
 
@@ -115,13 +120,7 @@ private:
     const std::vector<Polygon2d> & decimated_traj_polys, const VehicleInfo & vehicle_info,
     const TrajectoryPolygonCollisionCheck & trajectory_polygon_collision_check, size_t ego_idx);
 
-  std::vector<Polygon2d> get_trajectory_polygon_for_inside(
-    const std::vector<TrajectoryPoint> & decimated_traj_points, const VehicleInfo & vehicle_info,
-    const geometry_msgs::msg::Pose & current_ego_pose, const double lat_margin,
-    const bool enable_to_consider_current_pose, const double time_to_convergence,
-    const double decimate_trajectory_step_length) const;
-
-  std::vector<Polygon2d> get_trajectory_polygon_for_outside(
+  std::vector<Polygon2d> get_trajectory_polygon(
     const std::vector<TrajectoryPoint> & decimated_traj_points, const VehicleInfo & vehicle_info,
     const geometry_msgs::msg::Pose & current_ego_pose, const double lat_margin,
     const bool enable_to_consider_current_pose, const double time_to_convergence,
@@ -133,7 +132,7 @@ private:
     const std::vector<TrajectoryPoint> & traj_points,
     const std::vector<TrajectoryPoint> & decimated_traj_points,
     const std::vector<std::shared_ptr<PlannerData::Object>> & objects,
-    const bool is_driving_forward, const VehicleInfo & vehicle_info, const double dist_to_bumper,
+    const VehicleInfo & vehicle_info, const double dist_to_bumper,
     const TrajectoryPolygonCollisionCheck & trajectory_polygon_collision_check);
 
   std::vector<StopObstacle> filter_stop_obstacle_for_point_cloud(
@@ -170,7 +169,7 @@ private:
     const std::optional<double> & determined_desired_stop_margin) const;
   void publish_debug_info();
 
-  std::optional<StopObstacle> filter_inside_stop_obstacle_for_predicted_object(
+  std::optional<StopObstacle> pick_stop_obstacle_from_predicted_object(
     const Odometry & odometry, const std::vector<TrajectoryPoint> & traj_points,
     const std::vector<TrajectoryPoint> & decimated_traj_points,
     const std::shared_ptr<PlannerData::Object> object, const rclcpp::Time & predicted_objects_stamp,
@@ -187,27 +186,10 @@ private:
     const std::vector<Polygon2d> & decimated_traj_polys_with_lat_margin,
     const std::optional<std::pair<geometry_msgs::msg::Point, double>> & collision_point) const;
 
-  std::optional<StopObstacle> filter_outside_stop_obstacle_for_predicted_object(
-    const Odometry & odometry, const std::vector<TrajectoryPoint> & traj_points,
-    const std::vector<TrajectoryPoint> & decimated_traj_points,
-    const rclcpp::Time & predicted_objects_stamp, const std::shared_ptr<PlannerData::Object> object,
-    const double dist_from_obj_poly_to_traj_poly, const bool is_driving_forward,
-    const VehicleInfo & vehicle_info, const double dist_to_bumper,
-    const TrajectoryPolygonCollisionCheck & trajectory_polygon_collision_check) const;
-
   StopObstacle create_stop_obstacle_for_point_cloud(
     const std::vector<TrajectoryPoint> & traj_points, const rclcpp::Time & stamp,
     const geometry_msgs::msg::Point & stop_point, const double dist_to_bumper) const;
 
-  std::optional<std::pair<geometry_msgs::msg::Point, double>>
-  create_collision_point_for_outside_stop_obstacle(
-    const Odometry & odometry, const std::vector<TrajectoryPoint> & traj_points,
-    const std::vector<TrajectoryPoint> & decimated_traj_points,
-    const std::vector<Polygon2d> & decimated_traj_polys,
-    const std::shared_ptr<PlannerData::Object> object, const rclcpp::Time & predicted_objects_stamp,
-    const PredictedPath & resampled_predicted_path, double max_lat_margin,
-    const bool is_driving_forward, const VehicleInfo & vehicle_info, const double dist_to_bumper,
-    const double decimate_trajectory_step_length) const;
   double calc_collision_time_margin(
     const Odometry & odometry, const std::vector<polygon_utils::PointWithStamp> & collision_points,
     const std::vector<TrajectoryPoint> & traj_points, const double dist_to_bumper) const;
@@ -227,6 +209,14 @@ private:
     const autoware::vehicle_info_utils::VehicleInfo & vehicle_info,
     const double ego_nearest_dist_threshold, const double ego_nearest_yaw_threshold,
     const TrajectoryPolygonCollisionCheck & trajectory_polygon_collision_check) const;
+
+  std::optional<std::pair<geometry_msgs::msg::Point, double>> check_outside_cut_in_obstacle(
+    const std::shared_ptr<PlannerData::Object> object,
+    const std::vector<TrajectoryPoint> & traj_points,
+    const std::vector<TrajectoryPoint> & decimated_traj_points,
+    const std::vector<Polygon2d> & decimated_traj_polys_with_lat_margin,
+    const double dist_to_bumper, const double estimation_time,
+    const rclcpp::Time & predicted_objects_stamp) const;
 };
 }  // namespace autoware::motion_velocity_planner
 
