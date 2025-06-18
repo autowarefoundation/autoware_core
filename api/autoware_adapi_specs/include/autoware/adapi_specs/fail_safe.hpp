@@ -28,7 +28,7 @@ namespace autoware::adapi_specs::fail_safe
 struct MrmDescription
 {
   using Service = autoware_adapi_v1_msgs::srv::ListMrmDescription;
-  static constexpr char name[] = "/api/fail_safe/mrm_description";
+  static constexpr char name[] = "/api/fail_safe/list_mrm_description";
 };
 
 struct MrmState
