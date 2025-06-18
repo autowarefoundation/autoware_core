@@ -22,7 +22,7 @@ if(BUILD_TESTING)
   # Set test dependencies
   target_link_libraries(test_${PROJECT_NAME}
     gtest_main
-    ${PROJECT_NAME}_lib
+    ${PROJECT_NAME}
   )
 
   # Set test include directories
