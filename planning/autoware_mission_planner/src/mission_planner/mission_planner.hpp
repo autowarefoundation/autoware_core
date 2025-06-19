@@ -17,6 +17,7 @@
 
 #include "arrival_checker.hpp"
 
+#include <autoware/component_interface_specs/planning.hpp>
 #include <autoware/mission_planner/mission_planner_plugin.hpp>
 #include <autoware/route_handler/route_handler.hpp>
 #include <autoware_utils_logging/logger_level_configure.hpp>
@@ -28,10 +29,6 @@
 #include <autoware_adapi_v1_msgs/srv/set_route.hpp>
 #include <autoware_adapi_v1_msgs/srv/set_route_points.hpp>
 #include <autoware_internal_debug_msgs/msg/float64_stamped.hpp>
-#include <autoware_internal_planning_msgs/msg/route_state.hpp>
-#include <autoware_internal_planning_msgs/srv/clear_route.hpp>
-#include <autoware_internal_planning_msgs/srv/set_lanelet_route.hpp>
-#include <autoware_internal_planning_msgs/srv/set_waypoint_route.hpp>
 #include <autoware_planning_msgs/msg/lanelet_route.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
@@ -45,17 +42,21 @@
 
 namespace autoware::mission_planner
 {
-
+using RouteStateSpecs = autoware::component_interface_specs::planning::RouteState;
+using ClearRouteSpecs = autoware::component_interface_specs::planning::ClearRoute;
+using SetLaneletRouteSpecs = autoware::component_interface_specs::planning::SetLaneletRoute;
+using SetWaypointRouteSpecs = autoware::component_interface_specs::planning::SetWaypointRoute;
+using LaneletRouteSpecs = autoware::component_interface_specs::planning::LaneletRoute;
 using autoware_adapi_v1_msgs::msg::OperationModeState;
-using autoware_internal_planning_msgs::msg::RouteState;
-using autoware_internal_planning_msgs::srv::ClearRoute;
-using autoware_internal_planning_msgs::srv::SetLaneletRoute;
-using autoware_internal_planning_msgs::srv::SetWaypointRoute;
 using autoware_map_msgs::msg::LaneletMapBin;
 using autoware_planning_msgs::msg::LaneletPrimitive;
 using autoware_planning_msgs::msg::LaneletRoute;
 using autoware_planning_msgs::msg::LaneletSegment;
 using autoware_planning_msgs::msg::PoseWithUuidStamped;
+using autoware_planning_msgs::msg::RouteState;
+using autoware_planning_msgs::srv::ClearRoute;
+using autoware_planning_msgs::srv::SetLaneletRoute;
+using autoware_planning_msgs::srv::SetWaypointRoute;
 using geometry_msgs::msg::Pose;
 using geometry_msgs::msg::PoseStamped;
 using nav_msgs::msg::Odometry;
@@ -80,11 +81,11 @@ private:
   tf2_ros::TransformListener tf_listener_;
   Pose transform_pose(const Pose & pose, const Header & header);
 
-  rclcpp::Service<ClearRoute>::SharedPtr srv_clear_route;
-  rclcpp::Service<SetLaneletRoute>::SharedPtr srv_set_lanelet_route;
-  rclcpp::Service<SetWaypointRoute>::SharedPtr srv_set_waypoint_route;
-  rclcpp::Publisher<RouteState>::SharedPtr pub_state_;
-  rclcpp::Publisher<LaneletRoute>::SharedPtr pub_route_;
+  rclcpp::Service<ClearRouteSpecs::Service>::SharedPtr srv_clear_route;
+  rclcpp::Service<SetLaneletRouteSpecs::Service>::SharedPtr srv_set_lanelet_route;
+  rclcpp::Service<SetWaypointRouteSpecs::Service>::SharedPtr srv_set_waypoint_route;
+  rclcpp::Publisher<RouteStateSpecs::Message>::SharedPtr pub_state_;
+  rclcpp::Publisher<LaneletRouteSpecs::Message>::SharedPtr pub_route_;
 
   rclcpp::Subscription<PoseWithUuidStamped>::SharedPtr sub_modified_goal_;
   rclcpp::Subscription<Odometry>::SharedPtr sub_odometry_;
