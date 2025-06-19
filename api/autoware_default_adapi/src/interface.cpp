@@ -19,13 +19,14 @@ namespace autoware::default_adapi
 
 InterfaceNode::InterfaceNode(const rclcpp::NodeOptions & options) : Node("interface", options)
 {
-  const auto on_interface_version = [this](
-    const autoware::adapi_specs::interface::Version::Service::Request::SharedPtr,
-    const autoware::adapi_specs::interface::Version::Service::Response::SharedPtr res) {
-    res->major = 1;
-    res->minor = 8;
-    res->patch = 0;
-  };
+  const auto on_interface_version =
+    [this](
+      const autoware::adapi_specs::interface::Version::Service::Request::SharedPtr,
+      const autoware::adapi_specs::interface::Version::Service::Response::SharedPtr res) {
+      res->major = 1;
+      res->minor = 8;
+      res->patch = 0;
+    };
 
   srv_ = create_service<autoware::adapi_specs::interface::Version::Service>(
     autoware::adapi_specs::interface::Version::name, on_interface_version);

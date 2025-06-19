@@ -32,21 +32,23 @@ LocalizationNode::LocalizationNode(const rclcpp::NodeOptions & options)
   // AD API
   pub_state_ = create_publisher<autoware::adapi_specs::localization::InitializationState::Message>(
     autoware::adapi_specs::localization::InitializationState::name,
-    autoware::component_interface_specs::get_qos<autoware::adapi_specs::localization::InitializationState>());
+    autoware::component_interface_specs::get_qos<
+      autoware::adapi_specs::localization::InitializationState>());
   srv_initialize_ = create_service<autoware::adapi_specs::localization::Initialize::Service>(
     autoware::adapi_specs::localization::Initialize::name,
     std::bind(&LocalizationNode::on_initialize, this, std::placeholders::_1, std::placeholders::_2),
-    rmw_qos_profile_services_default,
-    group_cli_);
+    rmw_qos_profile_services_default, group_cli_);
 
   // Component Interface
-  sub_state_ = create_subscription<autoware::component_interface_specs::localization::InitializationState::Message>(
+  sub_state_ = create_subscription<
+    autoware::component_interface_specs::localization::InitializationState::Message>(
     autoware::component_interface_specs::localization::InitializationState::name,
-    autoware::component_interface_specs::get_qos<autoware::component_interface_specs::localization::InitializationState>(),
+    autoware::component_interface_specs::get_qos<
+      autoware::component_interface_specs::localization::InitializationState>(),
     std::bind(&LocalizationNode::on_state, this, std::placeholders::_1));
-  cli_initialize_ = create_client<autoware::component_interface_specs::localization::Initialize::Service>(
-    autoware::component_interface_specs::localization::Initialize::name);
-
+  cli_initialize_ =
+    create_client<autoware::component_interface_specs::localization::Initialize::Service>(
+      autoware::component_interface_specs::localization::Initialize::name);
 
   state_.state = ImplState::Message::UNKNOWN;
 }

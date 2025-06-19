@@ -58,7 +58,6 @@ RoutingNode::RoutingNode(const rclcpp::NodeOptions & options)
 
   group_cli_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
 
-
   // AD API Interface
   pub_state_ = create_publisher<autoware::adapi_specs::routing::RouteState::Message>(
     autoware::adapi_specs::routing::RouteState::name,
@@ -74,44 +73,53 @@ RoutingNode::RoutingNode(const rclcpp::NodeOptions & options)
     std::bind(&RoutingNode::on_set_route, this, std::placeholders::_1, std::placeholders::_2));
   srv_set_route_points_ = create_service<autoware::adapi_specs::routing::SetRoutePoints::Service>(
     autoware::adapi_specs::routing::SetRoutePoints::name,
-    std::bind(&RoutingNode::on_set_route_points, this, std::placeholders::_1, std::placeholders::_2));
+    std::bind(
+      &RoutingNode::on_set_route_points, this, std::placeholders::_1, std::placeholders::_2));
   srv_change_route_ = create_service<autoware::adapi_specs::routing::ChangeRoute::Service>(
     autoware::adapi_specs::routing::ChangeRoute::name,
     std::bind(&RoutingNode::on_change_route, this, std::placeholders::_1, std::placeholders::_2));
-  srv_change_route_points_ = create_service<autoware::adapi_specs::routing::ChangeRoutePoints::Service>(
-    autoware::adapi_specs::routing::ChangeRoutePoints::name,
-    std::bind(&RoutingNode::on_change_route_points, this, std::placeholders::_1, std::placeholders::_2));
+  srv_change_route_points_ =
+    create_service<autoware::adapi_specs::routing::ChangeRoutePoints::Service>(
+      autoware::adapi_specs::routing::ChangeRoutePoints::name,
+      std::bind(
+        &RoutingNode::on_change_route_points, this, std::placeholders::_1, std::placeholders::_2));
 
   // Component Interface
-  sub_state_ = create_subscription<autoware::component_interface_specs::planning::RouteState::Message>(
-    autoware::component_interface_specs::planning::RouteState::name,
-    autoware::component_interface_specs::get_qos<autoware::component_interface_specs::planning::RouteState>(),
-    std::bind(&RoutingNode::on_state, this, std::placeholders::_1));
-  sub_route_ = create_subscription<autoware::component_interface_specs::planning::LaneletRoute::Message>(
-    autoware::component_interface_specs::planning::LaneletRoute::name,
-    autoware::component_interface_specs::get_qos<autoware::component_interface_specs::planning::LaneletRoute>(),
-    std::bind(&RoutingNode::on_route, this, std::placeholders::_1));
-  cli_clear_route_ = create_client<autoware::component_interface_specs::planning::ClearRoute::Service>(
-    autoware::component_interface_specs::planning::ClearRoute::name,
-    rmw_qos_profile_services_default,
-    group_cli_);
-  cli_set_waypoint_route_ = create_client<autoware::component_interface_specs::planning::SetWaypointRoute::Service>(
-    autoware::component_interface_specs::planning::SetWaypointRoute::name,
-    rmw_qos_profile_services_default,
-    group_cli_);
-  cli_set_lanelet_route_ = create_client<autoware::component_interface_specs::planning::SetLaneletRoute::Service>(
-    autoware::component_interface_specs::planning::SetLaneletRoute::name,
-    rmw_qos_profile_services_default,
-    group_cli_);
-  sub_operation_mode_ = create_subscription<autoware::component_interface_specs::system::OperationModeState::Message>(
-    autoware::component_interface_specs::system::OperationModeState::name,
-    autoware::component_interface_specs::get_qos<autoware::component_interface_specs::system::OperationModeState>(),
-    std::bind(&RoutingNode::on_operation_mode, this, std::placeholders::_1));
+  sub_state_ =
+    create_subscription<autoware::component_interface_specs::planning::RouteState::Message>(
+      autoware::component_interface_specs::planning::RouteState::name,
+      autoware::component_interface_specs::get_qos<
+        autoware::component_interface_specs::planning::RouteState>(),
+      std::bind(&RoutingNode::on_state, this, std::placeholders::_1));
+  sub_route_ =
+    create_subscription<autoware::component_interface_specs::planning::LaneletRoute::Message>(
+      autoware::component_interface_specs::planning::LaneletRoute::name,
+      autoware::component_interface_specs::get_qos<
+        autoware::component_interface_specs::planning::LaneletRoute>(),
+      std::bind(&RoutingNode::on_route, this, std::placeholders::_1));
+  cli_clear_route_ =
+    create_client<autoware::component_interface_specs::planning::ClearRoute::Service>(
+      autoware::component_interface_specs::planning::ClearRoute::name,
+      rmw_qos_profile_services_default, group_cli_);
+  cli_set_waypoint_route_ =
+    create_client<autoware::component_interface_specs::planning::SetWaypointRoute::Service>(
+      autoware::component_interface_specs::planning::SetWaypointRoute::name,
+      rmw_qos_profile_services_default, group_cli_);
+  cli_set_lanelet_route_ =
+    create_client<autoware::component_interface_specs::planning::SetLaneletRoute::Service>(
+      autoware::component_interface_specs::planning::SetLaneletRoute::name,
+      rmw_qos_profile_services_default, group_cli_);
+  sub_operation_mode_ =
+    create_subscription<autoware::component_interface_specs::system::OperationModeState::Message>(
+      autoware::component_interface_specs::system::OperationModeState::name,
+      autoware::component_interface_specs::get_qos<
+        autoware::component_interface_specs::system::OperationModeState>(),
+      std::bind(&RoutingNode::on_operation_mode, this, std::placeholders::_1));
 
-  cli_operation_mode_ = create_client<autoware::component_interface_specs::system::ChangeOperationMode::Service>(
-    autoware::component_interface_specs::system::ChangeOperationMode::name,
-    rmw_qos_profile_services_default,
-    group_cli_);
+  cli_operation_mode_ =
+    create_client<autoware::component_interface_specs::system::ChangeOperationMode::Service>(
+      autoware::component_interface_specs::system::ChangeOperationMode::name,
+      rmw_qos_profile_services_default, group_cli_);
 
   is_autoware_control_ = false;
   is_auto_mode_ = false;

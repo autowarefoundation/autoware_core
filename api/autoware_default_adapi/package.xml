@@ -32,6 +32,7 @@
   <depend>shape_msgs</depend>
   <depend>std_srvs</depend>
 
+  <exec_depend>autoware_default_adapi_universe</exec_depend>
   <exec_depend>autoware_global_parameter_loader</exec_depend>
   <exec_depend>python3-flask</exec_depend>
 
