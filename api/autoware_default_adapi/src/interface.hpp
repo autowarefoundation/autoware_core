@@ -18,9 +18,6 @@
 #include <autoware/adapi_specs/interface.hpp>
 #include <rclcpp/rclcpp.hpp>
 
-// This file should be included after messages.
-#include "utils/types.hpp"
-
 namespace autoware::default_adapi
 {
 
@@ -31,7 +28,7 @@ public:
 
 private:
   using Version = autoware::adapi_specs::interface::Version;
-  Srv<Version::Service> srv_;
+  rclcpp::Service<Version::Service>::SharedPtr srv_;
 };
 
 }  // namespace autoware::default_adapi

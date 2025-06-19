@@ -22,9 +22,6 @@
 #include <diagnostic_updater/diagnostic_updater.hpp>
 #include <rclcpp/rclcpp.hpp>
 
-// This file should be included after messages.
-#include "utils/types.hpp"
-
 namespace autoware::default_adapi
 {
 
@@ -41,25 +38,25 @@ private:
   rclcpp::CallbackGroup::SharedPtr group_cli_;
 
   // AD API Interface
-  Pub<autoware::adapi_specs::routing::RouteState::Message> pub_state_;
-  Pub<autoware::adapi_specs::routing::Route::Message> pub_route_;
-  Srv<autoware::adapi_specs::routing::SetRoutePoints::Service> srv_set_route_points_;
-  Srv<autoware::adapi_specs::routing::SetRoute::Service> srv_set_route_;
-  Srv<autoware::adapi_specs::routing::ChangeRoutePoints::Service> srv_change_route_points_;
-  Srv<autoware::adapi_specs::routing::ChangeRoute::Service> srv_change_route_;
-  Srv<autoware::adapi_specs::routing::ClearRoute::Service> srv_clear_route_;
+  rclcpp::Publisher<autoware::adapi_specs::routing::RouteState::Message>::SharedPtr pub_state_;
+  rclcpp::Publisher<autoware::adapi_specs::routing::Route::Message>::SharedPtr pub_route_;
+  rclcpp::Service<autoware::adapi_specs::routing::SetRoutePoints::Service>::SharedPtr srv_set_route_points_;
+  rclcpp::Service<autoware::adapi_specs::routing::SetRoute::Service>::SharedPtr srv_set_route_;
+  rclcpp::Service<autoware::adapi_specs::routing::ChangeRoutePoints::Service>::SharedPtr srv_change_route_points_;
+  rclcpp::Service<autoware::adapi_specs::routing::ChangeRoute::Service>::SharedPtr srv_change_route_;
+  rclcpp::Service<autoware::adapi_specs::routing::ClearRoute::Service>::SharedPtr srv_clear_route_;
 
   // Component Interface
-  Sub<autoware::component_interface_specs::planning::RouteState::Message> sub_state_;
-  Sub<autoware::component_interface_specs::planning::LaneletRoute::Message> sub_route_;
-  Cli<autoware::component_interface_specs::planning::SetWaypointRoute::Service>
+  rclcpp::Subscription<autoware::component_interface_specs::planning::RouteState::Message>::SharedPtr sub_state_;
+  rclcpp::Subscription<autoware::component_interface_specs::planning::LaneletRoute::Message>::SharedPtr sub_route_;
+  rclcpp::Client<autoware::component_interface_specs::planning::SetWaypointRoute::Service>::SharedPtr
     cli_set_waypoint_route_;
-  Cli<autoware::component_interface_specs::planning::SetLaneletRoute::Service>
+  rclcpp::Client<autoware::component_interface_specs::planning::SetLaneletRoute::Service>::SharedPtr
     cli_set_lanelet_route_;
-  Cli<autoware::component_interface_specs::planning::ClearRoute::Service> cli_clear_route_;
-  Sub<autoware::component_interface_specs::system::OperationModeState::Message> sub_operation_mode_;
+  rclcpp::Client<autoware::component_interface_specs::planning::ClearRoute::Service>::SharedPtr cli_clear_route_;
+  rclcpp::Subscription<autoware::component_interface_specs::system::OperationModeState::Message>::SharedPtr sub_operation_mode_;
 
-  Cli<autoware::component_interface_specs::system::ChangeOperationMode::Service>
+  rclcpp::Client<autoware::component_interface_specs::system::ChangeOperationMode::Service>::SharedPtr
     cli_operation_mode_;
 
   void diagnose_state(diagnostic_updater::DiagnosticStatusWrapper & stat);
