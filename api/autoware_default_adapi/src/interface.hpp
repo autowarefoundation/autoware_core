@@ -30,7 +30,8 @@ public:
   explicit InterfaceNode(const rclcpp::NodeOptions & options);
 
 private:
-  Srv<autoware::adapi_specs::interface::Version::Service> srv_;
+  using Version = autoware::adapi_specs::interface::Version;
+  Srv<Version::Service> srv_;
 };
 
 }  // namespace autoware::default_adapi
