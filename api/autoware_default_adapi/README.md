@@ -15,4 +15,3 @@ This package is a default implementation AD API.
 ## Interface
 
 - [Autoware AD API](https://autowarefoundation.github.io/autoware-documentation/main/design/autoware-interfaces/ad-api/)
-
