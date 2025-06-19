@@ -27,7 +27,7 @@ import pytest
 @launch_testing.markers.keep_alive
 def generate_test_description():
     path = (
-        get_package_share_directory("autoware_default_adapi_universe")
+        get_package_share_directory("autoware_default_adapi")
         + "/launch/default_adapi.launch.py"
     )
     specification = importlib.util.spec_from_file_location("launch_script", path)
@@ -43,7 +43,7 @@ def generate_test_description():
 
 class TestMain(unittest.TestCase):
     def test_interface_version(self, launch_service, proc_info, proc_output):
-        prefix = get_package_share_directory("autoware_default_adapi_universe")
+        prefix = get_package_share_directory("autoware_default_adapi")
         target = prefix + "/test/node/interface_version.py"
         action = launch.actions.ExecuteProcess(cmd=["python3", target])
         with launch_testing.tools.launch_process(launch_service, action, proc_info, proc_output):
