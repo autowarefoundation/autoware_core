@@ -32,10 +32,15 @@ private:
   using ImplState = autoware::component_interface_specs::localization::InitializationState;
 
   rclcpp::CallbackGroup::SharedPtr group_cli_;
-  rclcpp::Service<autoware::adapi_specs::localization::Initialize::Service>::SharedPtr srv_initialize_;
-  rclcpp::Publisher<autoware::adapi_specs::localization::InitializationState::Message>::SharedPtr pub_state_;
-  rclcpp::Client<autoware::component_interface_specs::localization::Initialize::Service>::SharedPtr cli_initialize_;
-  rclcpp::Subscription<autoware::component_interface_specs::localization::InitializationState::Message>::SharedPtr sub_state_;
+  rclcpp::Service<autoware::adapi_specs::localization::Initialize::Service>::SharedPtr
+    srv_initialize_;
+  rclcpp::Publisher<autoware::adapi_specs::localization::InitializationState::Message>::SharedPtr
+    pub_state_;
+  rclcpp::Client<autoware::component_interface_specs::localization::Initialize::Service>::SharedPtr
+    cli_initialize_;
+  rclcpp::Subscription<
+    autoware::component_interface_specs::localization::InitializationState::Message>::SharedPtr
+    sub_state_;
 
   void diagnose_state(diagnostic_updater::DiagnosticStatusWrapper & stat);
   void on_state(const ImplState::Message::ConstSharedPtr msg);
