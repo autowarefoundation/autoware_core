@@ -26,10 +26,7 @@ import pytest
 @pytest.mark.launch_test
 @launch_testing.markers.keep_alive
 def generate_test_description():
-    path = (
-        get_package_share_directory("autoware_default_adapi")
-        + "/launch/default_adapi.launch.py"
-    )
+    path = get_package_share_directory("autoware_default_adapi") + "/launch/default_adapi.launch.py"
     specification = importlib.util.spec_from_file_location("launch_script", path)
     launch_script = importlib.util.module_from_spec(specification)
     specification.loader.exec_module(launch_script)
