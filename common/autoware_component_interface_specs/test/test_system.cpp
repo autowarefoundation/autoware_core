@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <autoware/component_interface_specs/system.hpp>
+
 #include <gtest/gtest.h>
 
 TEST(system, interface)
