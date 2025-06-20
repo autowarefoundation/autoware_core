@@ -31,6 +31,11 @@
          <changefreq>daily</changefreq>
     </url>
     <url>
+         <loc>https://autowarefoundation.github.io/autoware_core/main/api/autoware_core_api/</loc>
+         <lastmod>2025-06-20</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
          <loc>https://autowarefoundation.github.io/autoware_core/main/api/autoware_default_adapi/</loc>
          <lastmod>2025-06-20</lastmod>
          <changefreq>daily</changefreq>
