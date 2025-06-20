@@ -59,14 +59,12 @@ autoware_perception_msgs::msg::PredictedPath resamplePredictedPath(
   resampled_path.confidence = path.confidence;
   // Handle special case: If the input path has only one point
   if (path.path.size() == 1) {
-    const auto resampled_size = std::min(resampled_path.path.max_size(), resampled_time.size());
-    resampled_path.path.resize(resampled_size);
+    // Copy the confidence and time_step
+    resampled_path.confidence = path.confidence;
+    resampled_path.time_step = path.time_step;
 
-    // Fill all points with the same position and orientation
-    for (size_t i = 0; i < resampled_size; ++i) {
-      resampled_path.path.at(i).position = path.path.at(0).position;
-      resampled_path.path.at(i).orientation = path.path.at(0).orientation;
-    }
+    // Copy the single point
+    resampled_path.path.push_back(path.path.front());
 
     return resampled_path;
   }
