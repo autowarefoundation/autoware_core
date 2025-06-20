@@ -18,6 +18,7 @@
 
 #include <string>
 #include <tuple>
+#include <vector>
 
 namespace autoware::path_generator
 {
@@ -25,13 +26,19 @@ using autoware_vehicle_msgs::msg::TurnIndicatorsCommand;
 
 struct GetTurnSignalTestParam
 {
+  struct PositionOnCenterline
+  {
+    std::vector<lanelet::Id> lane_ids;
+    double arc_length;
+  };
+
   std::string description;
   double current_vel;
   double search_distance;
   double search_time;
   double angle_threshold_deg;
   double base_link_to_front;
-  std::tuple<std::vector<lanelet::Id>, double> current_position_locator;
+  PositionOnCenterline current_position;
   uint8_t expected_turn_signal;
 };
 
@@ -43,27 +50,41 @@ std::ostream & operator<<(std::ostream & os, const GetTurnSignalTestParam & p)
 struct GetTurnSignalTest : public UtilsTest,
                            public ::testing::WithParamInterface<GetTurnSignalTestParam>
 {
+  void SetUp() override
+  {
+    UtilsTest::SetUp();
+
+    set_map("autoware_test_utils", "consecutive_turn/lanelet2_map.osm");
+
+    const auto route_lanelets = get_lanelets_from_ids({500, 501, 489, 497, 494});
+    planner_data_.route_lanelets = route_lanelets;
+    planner_data_.preferred_lanelets = route_lanelets;
+    planner_data_.start_lanelets = {route_lanelets.front()};
+    planner_data_.goal_lanelets = {route_lanelets.back()};
+
+    path_ = PathWithLaneId{};
+    for (auto it = route_lanelets.begin(); it != route_lanelets.end(); ++it) {
+      path_.points.insert(
+        path_.points.end(), it->centerline().size() - 1,
+        PathPointWithLaneId{}.set__lane_ids({it->id()}));
+      if (it != std::prev(route_lanelets.end())) {
+        path_.points.back().lane_ids.push_back(std::next(it)->id());
+      }
+    }
+  }
 };
 
 TEST_P(GetTurnSignalTest, getTurnSignal)
 {
   const auto & p = GetParam();
 
+  const auto current_position = lanelet::geometry::interpolatedPointAtDistance(
+    lanelet::LaneletSequence(get_lanelets_from_ids(p.current_position.lane_ids)).centerline2d(),
+    p.current_position.arc_length);
+
   geometry_msgs::msg::Pose current_pose;
-  {
-    const auto & [lane_ids, arc_length] = p.current_position_locator;
-
-    lanelet::ConstLanelets lanelets;
-    for (const auto & lane_id : lane_ids) {
-      lanelets.push_back(planner_data_.lanelet_map_ptr->laneletLayer.get(lane_id));
-    }
-
-    const auto current_position = lanelet::geometry::interpolatedPointAtDistance(
-      lanelet::LaneletSequence(lanelets).centerline2d(), arc_length);
-
-    current_pose.position.x = current_position.x();
-    current_pose.position.y = current_position.y();
-  }
+  current_pose.position.x = current_position.x();
+  current_pose.position.y = current_position.y();
 
   const auto result = utils::get_turn_signal(
     path_, planner_data_, current_pose, p.current_vel, p.search_distance, p.search_time,
@@ -76,58 +97,76 @@ INSTANTIATE_TEST_SUITE_P(
   , GetTurnSignalTest,
   ::testing::Values(
     GetTurnSignalTestParam{
-      "EgoIsStoppingAndBeforeDesiredStartPoint",
+      "EgoIsStoppingAndBeforeFirstDesiredSection",
       0.0,
       30.0,
       3.0,
       15.0,
       3.79,
-      {{125}, -40.0},
+      {{500}, -40.0},
       TurnIndicatorsCommand::NO_COMMAND},
     GetTurnSignalTestParam{
-      "EgoIsStoppingAndAheadOfDesiredStartPoint",
+      "EgoIsStoppingAndInFirstDesiredSection",
       0.0,
       30.0,
       3.0,
       15.0,
       3.79,
-      {{125}, -20.0},
+      {{500}, -20.0},
       TurnIndicatorsCommand::ENABLE_RIGHT},
     GetTurnSignalTestParam{
-      "EgoIsMovingAndAheadOfDesiredStartPoint",
+      "EgoIsMovingAndAheadOfFirstDesiredSection",
       3.5,
       30.0,
       3.0,
       15.0,
       3.79,
-      {{125}, -40.0},
+      {{500}, -40.0},
       TurnIndicatorsCommand::ENABLE_RIGHT},
     GetTurnSignalTestParam{
-      "EgoIsInRequiredSection",
+      "EgoIsInFirstRequiredSection",
       0.0,
       30.0,
       3.0,
       15.0,
       3.79,
-      {{50}, -10.0},
+      {{501}, 1.0},
       TurnIndicatorsCommand::ENABLE_RIGHT},
     GetTurnSignalTestParam{
-      "EgoIsInDesiredSection",
+      "EgoIsInConflictedDesiredSection",
       0.0,
       30.0,
       3.0,
       15.0,
       3.79,
-      {{50}, -1.0},
-      TurnIndicatorsCommand::ENABLE_RIGHT},
+      {{501}, -1.0},
+      TurnIndicatorsCommand::ENABLE_LEFT},
     GetTurnSignalTestParam{
-      "EgoIsAheadOfDesiredEndPoint",
+      "EgoIsInSecondRequiredSection",
       0.0,
       30.0,
       3.0,
       15.0,
       3.79,
-      {{122}, 1.0},
+      {{497}, 1.0},
+      TurnIndicatorsCommand::ENABLE_LEFT},
+    GetTurnSignalTestParam{
+      "EgoIsInSecondDesiredSection",
+      0.0,
+      30.0,
+      3.0,
+      15.0,
+      3.79,
+      {{497}, -1.0},
+      TurnIndicatorsCommand::ENABLE_LEFT},
+    GetTurnSignalTestParam{
+      "EgoIsOutsideSecondDesiredSection",
+      0.0,
+      30.0,
+      3.0,
+      15.0,
+      3.79,
+      {{494}, 1.0},
       TurnIndicatorsCommand::NO_COMMAND}),
   ::testing::PrintToStringParamName{});
 
