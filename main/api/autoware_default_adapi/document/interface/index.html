@@ -8,27 +8,27 @@
       
       
       
-        <link rel="canonical" href="https://autowarefoundation.github.io/autoware_core/main/planning/autoware_mission_planner/">
+        <link rel="canonical" href="https://autowarefoundation.github.io/autoware_core/main/api/autoware_default_adapi/document/interface/">
       
       
-        <link rel="prev" href="../autoware_core_planning/">
+        <link rel="prev" href="../../">
       
       
-        <link rel="next" href="../autoware_objects_of_interest_marker_interface/">
+        <link rel="next" href="../localization/">
       
-      <link rel="icon" href="../../docs/assets/images/autoware-foundation.png">
+      <link rel="icon" href="../../../../docs/assets/images/autoware-foundation.png">
       <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.20">
     
     
       
-        <title>Mission Planner - Autoware Core Documentation</title>
+        <title>Interface API - Autoware Core Documentation</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.eebd395e.min.css">
+      <link rel="stylesheet" href="../../../../assets/stylesheets/main.eebd395e.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ecc896b0.min.css">
+        <link rel="stylesheet" href="../../../../assets/stylesheets/palette.ecc896b0.min.css">
       
       
 
@@ -44,11 +44,11 @@
       
     
     
-      <link rel="stylesheet" href="../../docs/assets/css/extra.css">
+      <link rel="stylesheet" href="../../../../docs/assets/css/extra.css">
     
       <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css">
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -77,7 +77,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#mission-planner" class="md-skip">
+        <a href="#interface-api" class="md-skip">
           Skip to content
         </a>
       
@@ -97,7 +97,7 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="Autoware Core Documentation" class="md-header__button md-logo" aria-label="Autoware Core Documentation" data-md-component="logo">
+    <a href="../../../.." title="Autoware Core Documentation" class="md-header__button md-logo" aria-label="Autoware Core Documentation" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.4.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M135.2 117.4 109.1 192h293.8l-26.1-74.6c-4.5-12.8-16.6-21.4-30.2-21.4H165.4c-13.6 0-25.7 8.6-30.2 21.4zm-95.6 79.4L74.8 96.3C88.3 57.8 124.6 32 165.4 32h181.2c40.8 0 77.1 25.8 90.6 64.3l35.2 100.5c23.2 9.6 39.6 32.5 39.6 59.2v192c0 17.7-14.3 32-32 32h-32c-17.7 0-32-14.3-32-32v-48H96v48c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32V256c0-26.7 16.4-49.6 39.6-59.2zM128 288a32 32 0 1 0-64 0 32 32 0 1 0 64 0zm288 32a32 32 0 1 0 0-64 32 32 0 1 0 0 64z"/></svg>
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Mission Planner
+              Interface API
             
           </span>
         </div>
@@ -208,6 +208,8 @@
         
   
   
+    
+  
 
 
   
@@ -219,7 +221,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../api/autoware_adapi_adaptors/" class="md-tabs__link">
+      <a href="../../../autoware_adapi_adaptors/" class="md-tabs__link md-tabs__link--active">
         Api
       </a>
     </li>
@@ -237,7 +239,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../autoware_core/" class="md-tabs__link">
+      <a href="../../../../autoware_core/" class="md-tabs__link">
         Autoware core
       </a>
     </li>
@@ -258,7 +260,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../common/autoware_component_interface_specs/" class="md-tabs__link">
+      <a href="../../../../common/autoware_component_interface_specs/" class="md-tabs__link">
         Common
       </a>
     </li>
@@ -281,7 +283,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../control/autoware_core_control/" class="md-tabs__link">
+      <a href="../../../../control/autoware_core_control/" class="md-tabs__link">
         Control
       </a>
     </li>
@@ -304,7 +306,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../localization/autoware_core_localization/" class="md-tabs__link">
+      <a href="../../../../localization/autoware_core_localization/" class="md-tabs__link">
         Localization
       </a>
     </li>
@@ -327,7 +329,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../map/autoware_core_map/" class="md-tabs__link">
+      <a href="../../../../map/autoware_core_map/" class="md-tabs__link">
         Map
       </a>
     </li>
@@ -350,7 +352,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../perception/autoware_core_perception/" class="md-tabs__link">
+      <a href="../../../../perception/autoware_core_perception/" class="md-tabs__link">
         Perception
       </a>
     </li>
@@ -361,8 +363,6 @@
       
         
   
-  
-    
   
 
 
@@ -375,7 +375,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../autoware_core_planning/" class="md-tabs__link md-tabs__link--active">
+      <a href="../../../../planning/autoware_core_planning/" class="md-tabs__link">
         Planning
       </a>
     </li>
@@ -398,7 +398,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../sensing/autoware_core_sensing/" class="md-tabs__link">
+      <a href="../../../../sensing/autoware_core_sensing/" class="md-tabs__link">
         Sensing
       </a>
     </li>
@@ -421,7 +421,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../testing/autoware_planning_test_manager/" class="md-tabs__link">
+      <a href="../../../../testing/autoware_planning_test_manager/" class="md-tabs__link">
         Testing
       </a>
     </li>
@@ -444,7 +444,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../vehicle/autoware_core_vehicle/" class="md-tabs__link">
+      <a href="../../../../vehicle/autoware_core_vehicle/" class="md-tabs__link">
         Vehicle
       </a>
     </li>
@@ -480,7 +480,7 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="Autoware Core Documentation" class="md-nav__button md-logo" aria-label="Autoware Core Documentation" data-md-component="logo">
+    <a href="../../../.." title="Autoware Core Documentation" class="md-nav__button md-logo" aria-label="Autoware Core Documentation" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.4.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M135.2 117.4 109.1 192h293.8l-26.1-74.6c-4.5-12.8-16.6-21.4-30.2-21.4H165.4c-13.6 0-25.7 8.6-30.2 21.4zm-95.6 79.4L74.8 96.3C88.3 57.8 124.6 32 165.4 32h181.2c40.8 0 77.1 25.8 90.6 64.3l35.2 100.5c23.2 9.6 39.6 32.5 39.6 59.2v192c0 17.7-14.3 32-32 32h-32c-17.7 0-32-14.3-32-32v-48H96v48c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32V256c0-26.7 16.4-49.6 39.6-59.2zM128 288a32 32 0 1 0-64 0 32 32 0 1 0 64 0zm288 32a32 32 0 1 0 0-64 32 32 0 1 0 0 64z"/></svg>
@@ -509,16 +509,16 @@
 
   
   
+    
+  
   
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
       
       
       
-        
-      
-      <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_1" >
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" checked>
       
       
         
@@ -535,7 +535,7 @@
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="true">
         <label class="md-nav__title" for="__nav_1">
           <span class="md-nav__icon md-icon"></span>
           Api
@@ -570,7 +570,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../api/autoware_adapi_adaptors/">Autoware adapi adaptors</a>
+          <a href="../../../autoware_adapi_adaptors/">Autoware adapi adaptors</a>
           
         </div>
       
@@ -618,7 +618,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../api/autoware_adapi_specs/">Autoware adapi specs</a>
+          <a href="../../../autoware_adapi_specs/">Autoware adapi specs</a>
           
         </div>
       
@@ -642,18 +642,18 @@
               
   
   
+    
+  
   
     
       
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
       
       
       
-        
-      
-      <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_1_3" >
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1_3" checked>
       
       
         
@@ -668,7 +668,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../api/autoware_default_adapi/">Autoware default adapi</a>
+          <a href="../../">Autoware default adapi</a>
           
             <label for="__nav_1_3">
               <span class="md-nav__icon md-icon"></span>
@@ -676,7 +676,7 @@
           
         </div>
       
-      <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_1_3_label" aria-expanded="false">
+      <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_1_3_label" aria-expanded="true">
         <label class="md-nav__title" for="__nav_1_3">
           <span class="md-nav__icon md-icon"></span>
           Autoware default adapi
@@ -689,16 +689,16 @@
               
   
   
+    
+  
   
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
       
       
       
-        
-      
-      <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_1_3_2" >
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1_3_2" checked>
       
       
         
@@ -715,7 +715,7 @@
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_1_3_2_label" aria-expanded="false">
+      <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_1_3_2_label" aria-expanded="true">
         <label class="md-nav__title" for="__nav_1_3_2">
           <span class="md-nav__icon md-icon"></span>
           Document
@@ -726,11 +726,52 @@
               
   
   
+    
   
-    <li class="md-nav__item">
-      <a href="../../api/autoware_default_adapi/document/interface/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Interface API
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         Interface API
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    Overview
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -742,7 +783,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/autoware_default_adapi/document/localization/" class="md-nav__link">
+      <a href="../localization/" class="md-nav__link">
         Localization API
       </a>
     </li>
@@ -756,7 +797,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/autoware_default_adapi/document/routing/" class="md-nav__link">
+      <a href="../routing/" class="md-nav__link">
         Routing API
       </a>
     </li>
@@ -812,7 +853,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../autoware_core/">Autoware core</a>
+          <a href="../../../../autoware_core/">Autoware core</a>
           
         </div>
       
@@ -922,7 +963,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../common/autoware_component_interface_specs/">Autoware component interface specs</a>
+          <a href="../../../../common/autoware_component_interface_specs/">Autoware component interface specs</a>
           
         </div>
       
@@ -970,7 +1011,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../common/autoware_geography_utils/">Autoware geography utils</a>
+          <a href="../../../../common/autoware_geography_utils/">Autoware geography utils</a>
           
         </div>
       
@@ -1031,7 +1072,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../common/autoware_global_parameter_loader/Readme/" class="md-nav__link">
+      <a href="../../../../common/autoware_global_parameter_loader/Readme/" class="md-nav__link">
         Autoware Global Parameter Loader
       </a>
     </li>
@@ -1074,7 +1115,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../common/autoware_interpolation/">Autoware interpolation</a>
+          <a href="../../../../common/autoware_interpolation/">Autoware interpolation</a>
           
         </div>
       
@@ -1122,7 +1163,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../common/autoware_kalman_filter/">Autoware kalman filter</a>
+          <a href="../../../../common/autoware_kalman_filter/">Autoware kalman filter</a>
           
         </div>
       
@@ -1170,7 +1211,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../common/autoware_lanelet2_utils/">Autoware lanelet2 utils</a>
+          <a href="../../../../common/autoware_lanelet2_utils/">Autoware lanelet2 utils</a>
           
         </div>
       
@@ -1220,7 +1261,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../common/autoware_motion_utils/">Autoware motion utils</a>
+          <a href="../../../../common/autoware_motion_utils/">Autoware motion utils</a>
           
             <label for="__nav_3_7">
               <span class="md-nav__icon md-icon"></span>
@@ -1309,7 +1350,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../common/autoware_motion_utils/docs/vehicle/vehicle/" class="md-nav__link">
+      <a href="../../../../common/autoware_motion_utils/docs/vehicle/vehicle/" class="md-nav__link">
         vehicle utils
       </a>
     </li>
@@ -1366,7 +1407,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../common/autoware_node/">Autoware node</a>
+          <a href="../../../../common/autoware_node/">Autoware node</a>
           
         </div>
       
@@ -1414,7 +1455,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../common/autoware_object_recognition_utils/">Autoware object recognition utils</a>
+          <a href="../../../../common/autoware_object_recognition_utils/">Autoware object recognition utils</a>
           
         </div>
       
@@ -1508,7 +1549,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../common/autoware_osqp_interface/design/osqp_interface-design/" class="md-nav__link">
+      <a href="../../../../common/autoware_osqp_interface/design/osqp_interface-design/" class="md-nav__link">
         Interface for the OSQP library
       </a>
     </li>
@@ -1558,7 +1599,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../common/autoware_point_types/">Autoware point types</a>
+          <a href="../../../../common/autoware_point_types/">Autoware point types</a>
           
         </div>
       
@@ -1652,7 +1693,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../common/autoware_qp_interface/design/qp_interface-design/" class="md-nav__link">
+      <a href="../../../../common/autoware_qp_interface/design/qp_interface-design/" class="md-nav__link">
         Interface for QP solvers
       </a>
     </li>
@@ -1704,7 +1745,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../common/autoware_signal_processing/">Autoware signal processing</a>
+          <a href="../../../../common/autoware_signal_processing/">Autoware signal processing</a>
           
             <label for="__nav_3_13">
               <span class="md-nav__icon md-icon"></span>
@@ -1760,7 +1801,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../common/autoware_signal_processing/documentation/ButterworthFilter/" class="md-nav__link">
+      <a href="../../../../common/autoware_signal_processing/documentation/ButterworthFilter/" class="md-nav__link">
         ButterworthFilter
       </a>
     </li>
@@ -1810,7 +1851,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../common/autoware_trajectory/">Autoware trajectory</a>
+          <a href="../../../../common/autoware_trajectory/">Autoware trajectory</a>
           
         </div>
       
@@ -1858,7 +1899,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../common/autoware_vehicle_info_utils/">Autoware vehicle info utils</a>
+          <a href="../../../../common/autoware_vehicle_info_utils/">Autoware vehicle info utils</a>
           
         </div>
       
@@ -1949,7 +1990,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../control/autoware_core_control/">Autoware core control</a>
+          <a href="../../../../control/autoware_core_control/">Autoware core control</a>
           
         </div>
       
@@ -1997,7 +2038,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../control/autoware_simple_pure_pursuit/">Autoware simple pure pursuit</a>
+          <a href="../../../../control/autoware_simple_pure_pursuit/">Autoware simple pure pursuit</a>
           
         </div>
       
@@ -2100,7 +2141,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../localization/autoware_core_localization/">Autoware core localization</a>
+          <a href="../../../../localization/autoware_core_localization/">Autoware core localization</a>
           
         </div>
       
@@ -2148,7 +2189,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../localization/autoware_ekf_localizer/">Autoware ekf localizer</a>
+          <a href="../../../../localization/autoware_ekf_localizer/">Autoware ekf localizer</a>
           
         </div>
       
@@ -2196,7 +2237,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../localization/autoware_gyro_odometer/">Autoware gyro odometer</a>
+          <a href="../../../../localization/autoware_gyro_odometer/">Autoware gyro odometer</a>
           
         </div>
       
@@ -2244,7 +2285,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../localization/autoware_localization_util/">Autoware localization util</a>
+          <a href="../../../../localization/autoware_localization_util/">Autoware localization util</a>
           
         </div>
       
@@ -2294,7 +2335,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../localization/autoware_ndt_scan_matcher/">Autoware ndt scan matcher</a>
+          <a href="../../../../localization/autoware_ndt_scan_matcher/">Autoware ndt scan matcher</a>
           
             <label for="__nav_5_5">
               <span class="md-nav__icon md-icon"></span>
@@ -2436,7 +2477,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../localization/autoware_ndt_scan_matcher/include/autoware/ndt_scan_matcher/ndt_omp/">Ndt omp</a>
+          <a href="../../../../localization/autoware_ndt_scan_matcher/include/autoware/ndt_scan_matcher/ndt_omp/">Ndt omp</a>
           
         </div>
       
@@ -2512,7 +2553,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../localization/autoware_pose_initializer/">Autoware pose initializer</a>
+          <a href="../../../../localization/autoware_pose_initializer/">Autoware pose initializer</a>
           
         </div>
       
@@ -2560,7 +2601,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../localization/autoware_stop_filter/">Autoware stop filter</a>
+          <a href="../../../../localization/autoware_stop_filter/">Autoware stop filter</a>
           
         </div>
       
@@ -2608,7 +2649,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../localization/autoware_twist2accel/">Autoware twist2accel</a>
+          <a href="../../../../localization/autoware_twist2accel/">Autoware twist2accel</a>
           
         </div>
       
@@ -2705,7 +2746,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../map/autoware_core_map/">Autoware core map</a>
+          <a href="../../../../map/autoware_core_map/">Autoware core map</a>
           
         </div>
       
@@ -2753,7 +2794,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../map/autoware_lanelet2_map_visualizer/">Autoware lanelet2 map visualizer</a>
+          <a href="../../../../map/autoware_lanelet2_map_visualizer/">Autoware lanelet2 map visualizer</a>
           
         </div>
       
@@ -2801,7 +2842,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../map/autoware_map_height_fitter/">Autoware map height fitter</a>
+          <a href="../../../../map/autoware_map_height_fitter/">Autoware map height fitter</a>
           
         </div>
       
@@ -2849,7 +2890,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../map/autoware_map_loader/">Autoware map loader</a>
+          <a href="../../../../map/autoware_map_loader/">Autoware map loader</a>
           
         </div>
       
@@ -2897,7 +2938,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../map/autoware_map_projection_loader/">Autoware map projection loader</a>
+          <a href="../../../../map/autoware_map_projection_loader/">Autoware map projection loader</a>
           
         </div>
       
@@ -2992,7 +3033,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../perception/autoware_core_perception/">Autoware core perception</a>
+          <a href="../../../../perception/autoware_core_perception/">Autoware core perception</a>
           
         </div>
       
@@ -3040,7 +3081,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../perception/autoware_euclidean_cluster_object_detector/">Autoware euclidean cluster object detector</a>
+          <a href="../../../../perception/autoware_euclidean_cluster_object_detector/">Autoware euclidean cluster object detector</a>
           
         </div>
       
@@ -3090,7 +3131,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../perception/autoware_ground_filter/">Autoware ground filter</a>
+          <a href="../../../../perception/autoware_ground_filter/">Autoware ground filter</a>
           
             <label for="__nav_7_3">
               <span class="md-nav__icon md-icon"></span>
@@ -3146,7 +3187,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../perception/autoware_ground_filter/docs/ground-filter/" class="md-nav__link">
+      <a href="../../../../perception/autoware_ground_filter/docs/ground-filter/" class="md-nav__link">
         Autoware Ground Filter
       </a>
     </li>
@@ -3196,7 +3237,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../perception/autoware_perception_objects_converter/">Autoware perception objects converter</a>
+          <a href="../../../../perception/autoware_perception_objects_converter/">Autoware perception objects converter</a>
           
         </div>
       
@@ -3228,16 +3269,16 @@
 
   
   
-    
-  
   
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
       
       
       
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
+        
+      
+      <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
       
       
         
@@ -3268,7 +3309,7 @@
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
         <label class="md-nav__title" for="__nav_8">
           <span class="md-nav__icon md-icon"></span>
           Planning
@@ -3303,7 +3344,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../autoware_core_planning/">Autoware core planning</a>
+          <a href="../../../../planning/autoware_core_planning/">Autoware core planning</a>
           
         </div>
       
@@ -3327,18 +3368,18 @@
               
   
   
-    
-  
   
     
       
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
       
       
       
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8_2" checked>
+        
+      
+      <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8_2" >
       
       
         
@@ -3350,12 +3391,12 @@
       
         
         
-        <div class="md-nav__link md-nav__link--index md-nav__link--active">
-          <a href="./">Autoware mission planner</a>
+        <div class="md-nav__link md-nav__link--index ">
+          <a href="../../../../planning/autoware_mission_planner/">Autoware mission planner</a>
           
         </div>
       
-      <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_8_2_label" aria-expanded="true">
+      <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_8_2_label" aria-expanded="false">
         <label class="md-nav__title" for="__nav_8_2">
           <span class="md-nav__icon md-icon"></span>
           Autoware mission planner
@@ -3399,7 +3440,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../autoware_objects_of_interest_marker_interface/">Autoware objects of interest marker interface</a>
+          <a href="../../../../planning/autoware_objects_of_interest_marker_interface/">Autoware objects of interest marker interface</a>
           
         </div>
       
@@ -3447,7 +3488,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../autoware_path_generator/">Autoware path generator</a>
+          <a href="../../../../planning/autoware_path_generator/">Autoware path generator</a>
           
         </div>
       
@@ -3495,7 +3536,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../autoware_planning_factor_interface/">Autoware planning factor interface</a>
+          <a href="../../../../planning/autoware_planning_factor_interface/">Autoware planning factor interface</a>
           
         </div>
       
@@ -3543,7 +3584,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../autoware_planning_topic_converter/">Autoware planning topic converter</a>
+          <a href="../../../../planning/autoware_planning_topic_converter/">Autoware planning topic converter</a>
           
         </div>
       
@@ -3591,7 +3632,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../autoware_route_handler/">Autoware route handler</a>
+          <a href="../../../../planning/autoware_route_handler/">Autoware route handler</a>
           
         </div>
       
@@ -3639,7 +3680,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../autoware_velocity_smoother/">Autoware velocity smoother</a>
+          <a href="../../../../planning/autoware_velocity_smoother/">Autoware velocity smoother</a>
           
         </div>
       
@@ -3724,7 +3765,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../behavior_velocity_planner/autoware_behavior_velocity_planner/">Autoware behavior velocity planner</a>
+          <a href="../../../../planning/behavior_velocity_planner/autoware_behavior_velocity_planner/">Autoware behavior velocity planner</a>
           
         </div>
       
@@ -3770,7 +3811,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../behavior_velocity_planner/autoware_behavior_velocity_planner_common/">Autoware behavior velocity planner common</a>
+          <a href="../../../../planning/behavior_velocity_planner/autoware_behavior_velocity_planner_common/">Autoware behavior velocity planner common</a>
           
         </div>
       
@@ -3816,7 +3857,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../behavior_velocity_planner/autoware_behavior_velocity_stop_line_module/">Autoware behavior velocity stop line module</a>
+          <a href="../../../../planning/behavior_velocity_planner/autoware_behavior_velocity_stop_line_module/">Autoware behavior velocity stop line module</a>
           
         </div>
       
@@ -3908,7 +3949,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../motion_velocity_planner/autoware_motion_velocity_obstacle_stop_module/">Autoware motion velocity obstacle stop module</a>
+          <a href="../../../../planning/motion_velocity_planner/autoware_motion_velocity_obstacle_stop_module/">Autoware motion velocity obstacle stop module</a>
           
         </div>
       
@@ -3954,7 +3995,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../motion_velocity_planner/autoware_motion_velocity_planner/">Autoware motion velocity planner</a>
+          <a href="../../../../planning/motion_velocity_planner/autoware_motion_velocity_planner/">Autoware motion velocity planner</a>
           
         </div>
       
@@ -4000,7 +4041,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../motion_velocity_planner/autoware_motion_velocity_planner_common/">Autoware motion velocity planner common</a>
+          <a href="../../../../planning/motion_velocity_planner/autoware_motion_velocity_planner_common/">Autoware motion velocity planner common</a>
           
         </div>
       
@@ -4104,7 +4145,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../sensing/autoware_core_sensing/">Autoware core sensing</a>
+          <a href="../../../../sensing/autoware_core_sensing/">Autoware core sensing</a>
           
         </div>
       
@@ -4152,7 +4193,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../sensing/autoware_crop_box_filter/">Autoware crop box filter</a>
+          <a href="../../../../sensing/autoware_crop_box_filter/">Autoware crop box filter</a>
           
         </div>
       
@@ -4200,7 +4241,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../sensing/autoware_downsample_filters/">Autoware downsample filters</a>
+          <a href="../../../../sensing/autoware_downsample_filters/">Autoware downsample filters</a>
           
         </div>
       
@@ -4248,7 +4289,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../sensing/autoware_gnss_poser/">Autoware gnss poser</a>
+          <a href="../../../../sensing/autoware_gnss_poser/">Autoware gnss poser</a>
           
         </div>
       
@@ -4296,7 +4337,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../sensing/autoware_vehicle_velocity_converter/">Autoware vehicle velocity converter</a>
+          <a href="../../../../sensing/autoware_vehicle_velocity_converter/">Autoware vehicle velocity converter</a>
           
         </div>
       
@@ -4393,7 +4434,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../testing/autoware_planning_test_manager/">Autoware planning test manager</a>
+          <a href="../../../../testing/autoware_planning_test_manager/">Autoware planning test manager</a>
           
         </div>
       
@@ -4441,7 +4482,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../testing/autoware_pyplot/">Autoware pyplot</a>
+          <a href="../../../../testing/autoware_pyplot/">Autoware pyplot</a>
           
         </div>
       
@@ -4489,7 +4530,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../testing/autoware_test_node/">Autoware test node</a>
+          <a href="../../../../testing/autoware_test_node/">Autoware test node</a>
           
         </div>
       
@@ -4537,7 +4578,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../testing/autoware_test_utils/">Autoware test utils</a>
+          <a href="../../../../testing/autoware_test_utils/">Autoware test utils</a>
           
         </div>
       
@@ -4631,7 +4672,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../testing/autoware_testing/design/autoware_testing-design/" class="md-nav__link">
+      <a href="../../../../testing/autoware_testing/design/autoware_testing-design/" class="md-nav__link">
         autoware_testing
       </a>
     </li>
@@ -4722,7 +4763,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../vehicle/autoware_core_vehicle/">Autoware core vehicle</a>
+          <a href="../../../../vehicle/autoware_core_vehicle/">Autoware core vehicle</a>
           
         </div>
       
@@ -4775,104 +4816,8 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#purpose" class="md-nav__link">
-    Purpose
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#interfaces" class="md-nav__link">
-    Interfaces
-  </a>
-  
-    <nav class="md-nav" aria-label="Interfaces">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#parameters" class="md-nav__link">
-    Parameters
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#services" class="md-nav__link">
-    Services
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#subscriptions" class="md-nav__link">
-    Subscriptions
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#publications" class="md-nav__link">
-    Publications
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#route-section" class="md-nav__link">
-    Route section
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#goal-validation" class="md-nav__link">
-    Goal Validation
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#implementation" class="md-nav__link">
-    Implementation
-  </a>
-  
-    <nav class="md-nav" aria-label="Implementation">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#mission-planner_1" class="md-nav__link">
-    Mission Planner
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#route-planner" class="md-nav__link">
-    Route Planner
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#rerouting" class="md-nav__link">
-    Rerouting
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#limitations" class="md-nav__link">
-    Limitations
+  <a href="#overview" class="md-nav__link">
+    Overview
   </a>
   
 </li>
@@ -4895,228 +4840,9 @@
   
 
 
-<div><h1 id="mission-planner">Mission Planner<a class="headerlink" href="#mission-planner" title="Permanent link">#</a></h1>
-<h2 id="purpose">Purpose<a class="headerlink" href="#purpose" title="Permanent link">#</a></h2>
-<p><code>Mission Planner</code> calculates a route that navigates from the current ego pose to the goal pose following the given check points.
-The route is made of a sequence of lanes on a static map.
-Dynamic objects (e.g. pedestrians and other vehicles) and dynamic map information (e.g. road construction which blocks some lanes) are not considered during route planning.
-Therefore, the output topic is only published when the goal pose or check points are given and will be latched until the new goal pose or check points are given.</p>
-<p>The core implementation does not depend on a map format. Any planning algorithms can be added as plugin modules.
-In current Autoware Universe, only the plugin for Lanelet2 map format is supported.</p>
-<h2 id="interfaces">Interfaces<a class="headerlink" href="#interfaces" title="Permanent link">#</a></h2>
-<h3 id="parameters">Parameters<a class="headerlink" href="#parameters" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Name</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>map_frame</code></td>
-<td>string</td>
-<td>The frame name for map</td>
-</tr>
-<tr>
-<td><code>arrival_check_angle_deg</code></td>
-<td>double</td>
-<td>Angle threshold for goal check</td>
-</tr>
-<tr>
-<td><code>arrival_check_distance</code></td>
-<td>double</td>
-<td>Distance threshold for goal check</td>
-</tr>
-<tr>
-<td><code>arrival_check_duration</code></td>
-<td>double</td>
-<td>Duration threshold for goal check</td>
-</tr>
-<tr>
-<td><code>goal_angle_threshold</code></td>
-<td>double</td>
-<td>Max goal pose angle for goal approve</td>
-</tr>
-<tr>
-<td><code>enable_correct_goal_pose</code></td>
-<td>bool</td>
-<td>Enabling correction of goal pose according to the closest lanelet orientation</td>
-</tr>
-<tr>
-<td><code>reroute_time_threshold</code></td>
-<td>double</td>
-<td>If the time to the rerouting point at the current velocity is greater than this threshold, rerouting is possible</td>
-</tr>
-<tr>
-<td><code>minimum_reroute_length</code></td>
-<td>double</td>
-<td>Minimum Length for publishing a new route</td>
-</tr>
-<tr>
-<td><code>consider_no_drivable_lanes</code></td>
-<td>bool</td>
-<td>This flag is for considering no_drivable_lanes in planning or not.</td>
-</tr>
-<tr>
-<td><code>allow_reroute_in_autonomous_mode</code></td>
-<td>bool</td>
-<td>This is a flag to allow reroute in autonomous driving mode. If false, reroute fails. If true, only safe reroute is allowed</td>
-</tr>
-</tbody>
-</table>
-<h3 id="services">Services<a class="headerlink" href="#services" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Name</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>/planning/mission_planning/mission_planner/clear_route</code></td>
-<td>autoware_internal_planning_msgs/srv/ClearRoute</td>
-<td>route clear request</td>
-</tr>
-<tr>
-<td><code>/planning/mission_planning/mission_planner/set_waypoint_route</code></td>
-<td>autoware_internal_planning_msgs/srv/SetWaypointRoute</td>
-<td>route request with lanelet waypoints.</td>
-</tr>
-<tr>
-<td><code>/planning/mission_planning/mission_planner/set_lanelet_route</code></td>
-<td>autoware_internal_planning_msgs/srv/SetLaneletRoute</td>
-<td>route request with pose waypoints.</td>
-</tr>
-</tbody>
-</table>
-<h3 id="subscriptions">Subscriptions<a class="headerlink" href="#subscriptions" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Name</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>input/vector_map</code></td>
-<td>autoware_map_msgs/msg/LaneletMapBin</td>
-<td>vector map of Lanelet2</td>
-</tr>
-<tr>
-<td><code>input/operation_mode_state</code></td>
-<td>autoware_adapi_v1_msgs/OperationModeState</td>
-<td>operation mode state</td>
-</tr>
-<tr>
-<td><code>input/odometry</code></td>
-<td>nav_msgs/msg/Odometry</td>
-<td>vehicle odometry</td>
-</tr>
-</tbody>
-</table>
-<h3 id="publications">Publications<a class="headerlink" href="#publications" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Name</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>/planning/mission_planning/state</code></td>
-<td>autoware_internal_planning_msgs/msg/RouteState</td>
-<td>route state</td>
-</tr>
-<tr>
-<td><code>/planning/mission_planning/route</code></td>
-<td>autoware_planning_msgs/LaneletRoute</td>
-<td>route</td>
-</tr>
-<tr>
-<td><code>~/debug/route_marker</code></td>
-<td>visualization_msgs/msg/MarkerArray</td>
-<td>route marker for debug</td>
-</tr>
-<tr>
-<td><code>~/debug/goal_footprint</code></td>
-<td>visualization_msgs/msg/MarkerArray</td>
-<td>goal footprint for debug</td>
-</tr>
-</tbody>
-</table>
-<h2 id="route-section">Route section<a class="headerlink" href="#route-section" title="Permanent link">#</a></h2>
-<p><img alt="route_sections" src="media/route_sections.svg"></p>
-<p>Route section, whose type is <code>autoware_planning_msgs/LaneletSegment</code>, is a "slice" of a road that bundles lane changeable lanes.
-Note that the most atomic unit of route is <code>autoware_planning_msgs/LaneletPrimitive</code>, which has the unique id of a lane in a vector map and its type.
-Therefore, route message does not contain geometric information about the lane since we did not want to have planning module’s message to have dependency on map data structure.</p>
-<p>The ROS message of route section contains following three elements for each route section.</p>
-<ul>
-<li><code>preferred_primitive</code>: Preferred lane to follow towards the goal.</li>
-<li><code>primitives</code>: All neighbor lanes in the same direction including the preferred lane.</li>
-</ul>
-<h2 id="goal-validation">Goal Validation<a class="headerlink" href="#goal-validation" title="Permanent link">#</a></h2>
-<p>The mission planner has control mechanism to validate the given goal pose and create a route. If goal pose angle between goal pose lanelet and goal pose' yaw is greater than <code>goal_angle_threshold</code> parameter, the goal is rejected.
-Another control mechanism is the creation of a footprint of the goal pose according to the dimensions of the vehicle and checking whether this footprint is within the lanelets. If goal footprint exceeds lanelets, then the goal is rejected.</p>
-<p>At the image below, there are sample goal pose validation cases.</p>
-<p><img alt="goal_footprints" src="media/goal_footprints.svg"></p>
-<h2 id="implementation">Implementation<a class="headerlink" href="#implementation" title="Permanent link">#</a></h2>
-<h3 id="mission-planner_1">Mission Planner<a class="headerlink" href="#mission-planner_1" title="Permanent link">#</a></h3>
-<p>Two callbacks (goal and check points) are a trigger for route planning.
-Routing graph, which plans route in Lanelet2, must be created before those callbacks, and this routing graph is created in vector map callback.</p>
-<p><code>plan route</code> is explained in detail in the following section.</p>
-<p><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBjb250ZW50U3R5bGVUeXBlPSJ0ZXh0L2NzcyIgZGF0YS1kaWFncmFtLXR5cGU9IkFDVElWSVRZIiBoZWlnaHQ9IjM5MXB4IiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIiBzdHlsZT0id2lkdGg6MzEzcHg7aGVpZ2h0OjM5MXB4O2JhY2tncm91bmQ6I0ZGRkZGRjsiIHZlcnNpb249IjEuMSIgdmlld0JveD0iMCAwIDMxMyAzOTEiIHdpZHRoPSIzMTNweCIgem9vbUFuZFBhbj0ibWFnbmlmeSI+PHRpdGxlPmdvYWwgY2FsbGJhY2s8L3RpdGxlPjxkZWZzLz48Zz48ZyBjbGFzcz0idGl0bGUiIGRhdGEtc291cmNlLWxpbmU9IjEiPjx0ZXh0IGZpbGw9IiMwMDAwMDAiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmb250LXdlaWdodD0iYm9sZCIgbGVuZ3RoQWRqdXN0PSJzcGFjaW5nIiB0ZXh0TGVuZ3RoPSIxMDMuMTgxNiIgeD0iMTAzLjY2MjEiIHk9IjMyLjk5NTEiPmdvYWwgY2FsbGJhY2s8L3RleHQ+PC9nPjxlbGxpcHNlIGN4PSIxNTYuNzUyOSIgY3k9IjU3LjI5NjkiIGZpbGw9IiMyMjIyMjIiIHJ4PSIxMCIgcnk9IjEwIiBzdHlsZT0ic3Ryb2tlOiMyMjIyMjI7c3Ryb2tlLXdpZHRoOjE7Ii8+PHJlY3QgZmlsbD0iI0YxRjFGMSIgaGVpZ2h0PSIzMy45Njg4IiByeD0iMTIuNSIgcnk9IjEyLjUiIHN0eWxlPSJzdHJva2U6IzE4MTgxODtzdHJva2Utd2lkdGg6MC41OyIgd2lkdGg9IjI2Ni41MjE1IiB4PSIyMy40OTIyIiB5PSI4Ny4yOTY5Ii8+PHRleHQgZmlsbD0iIzAwMDAwMCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIiIGxlbmd0aEFkanVzdD0ic3BhY2luZyIgdGV4dExlbmd0aD0iMjQ2LjUyMTUiIHg9IjMzLjQ5MjIiIHk9IjEwOC40MzU1Ij5jbGVhciBwcmV2aW91c2x5IG1lbW9yaXplZCBjaGVjayBwb2ludHM8L3RleHQ+PHJlY3QgZmlsbD0iI0YxRjFGMSIgaGVpZ2h0PSIzMy45Njg4IiByeD0iMTIuNSIgcnk9IjEyLjUiIHN0eWxlPSJzdHJva2U6IzE4MTgxODtzdHJva2Utd2lkdGg6MC41OyIgd2lkdGg9IjI5MS41MDU5IiB4PSIxMSIgeT0iMTQxLjI2NTYiLz48dGV4dCBmaWxsPSIjMDAwMDAwIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiIgbGVuZ3RoQWRqdXN0PSJzcGFjaW5nIiB0ZXh0TGVuZ3RoPSIyNzEuNTA1OSIgeD0iMjEiIHk9IjE2Mi40MDQzIj5tZW1vcml6ZSBlZ28gYW5kIGdvYWwgcG9zZSBhcyBjaGVjayBwb2ludHM8L3RleHQ+PHBvbHlnb24gZmlsbD0iI0YxRjFGMSIgcG9pbnRzPSI5Mi41NjAzLDE5NS4yMzQ0LDIyMC45NDU2LDE5NS4yMzQ0LDIzMi45NDU2LDIwNy4yMzQ0LDIyMC45NDU2LDIxOS4yMzQ0LDkyLjU2MDMsMjE5LjIzNDQsODAuNTYwMywyMDcuMjM0NCw5Mi41NjAzLDE5NS4yMzQ0IiBzdHlsZT0ic3Ryb2tlOiMxODE4MTg7c3Ryb2tlLXdpZHRoOjAuNTsiLz48dGV4dCBmaWxsPSIjMDAwMDAwIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMSIgbGVuZ3RoQWRqdXN0PSJzcGFjaW5nIiB0ZXh0TGVuZ3RoPSIxOS4wMDgzIiB4PSIxNjAuNzUyOSIgeT0iMjI5LjQ0NDgiPnllczwvdGV4dD48dGV4dCBmaWxsPSIjMDAwMDAwIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMSIgbGVuZ3RoQWRqdXN0PSJzcGFjaW5nIiB0ZXh0TGVuZ3RoPSIxMjguMzg1MyIgeD0iOTIuNTYwMyIgeT0iMjExLjA0MjUiPnJvdXRpbmcgZ3JhcGggaXMgcmVhZHk/PC90ZXh0Pjx0ZXh0IGZpbGw9IiMwMDAwMDAiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjExIiBsZW5ndGhBZGp1c3Q9InNwYWNpbmciIHRleHRMZW5ndGg9IjEzLjcwMTciIHg9IjIzMi45NDU2IiB5PSIyMDQuNjQwMSI+bm88L3RleHQ+PGVsbGlwc2UgY3g9IjI2OC42NDcyIiBjeT0iMjA3LjIzNDQiIGZpbGw9Im5vbmUiIHJ4PSIxMSIgcnk9IjExIiBzdHlsZT0ic3Ryb2tlOiMyMjIyMjI7c3Ryb2tlLXdpZHRoOjE7Ii8+PGVsbGlwc2UgY3g9IjI2OC42NDcyIiBjeT0iMjA3LjIzNDQiIGZpbGw9IiMyMjIyMjIiIHJ4PSI2IiByeT0iNiIgc3R5bGU9InN0cm9rZTojMjIyMjIyO3N0cm9rZS13aWR0aDoxOyIvPjxyZWN0IGZpbGw9IiNGMUYxRjEiIGhlaWdodD0iMzMuOTY4OCIgcng9IjEyLjUiIHJ5PSIxMi41IiBzdHlsZT0ic3Ryb2tlOiMxODE4MTg7c3Ryb2tlLXdpZHRoOjAuNTsiIHdpZHRoPSI4MS42OTM0IiB4PSIxMTUuOTA2MyIgeT0iMjUwLjk0NDgiLz48dGV4dCBmaWxsPSIjMDAwMDAwIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiIgbGVuZ3RoQWRqdXN0PSJzcGFjaW5nIiB0ZXh0TGVuZ3RoPSI2MS42OTM0IiB4PSIxMjUuOTA2MyIgeT0iMjcyLjA4MzUiPnBsYW4gcm91dGU8L3RleHQ+PHJlY3QgZmlsbD0iI0YxRjFGMSIgaGVpZ2h0PSIzMy45Njg4IiByeD0iMTIuNSIgcnk9IjEyLjUiIHN0eWxlPSJzdHJva2U6IzE4MTgxODtzdHJva2Utd2lkdGg6MC41OyIgd2lkdGg9Ijk5LjE0ODQiIHg9IjEwNy4xNzg3IiB5PSIzMDQuOTEzNiIvPjx0ZXh0IGZpbGw9IiMwMDAwMDAiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBsZW5ndGhBZGp1c3Q9InNwYWNpbmciIHRleHRMZW5ndGg9Ijc5LjE0ODQiIHg9IjExNy4xNzg3IiB5PSIzMjYuMDUyMiI+cHVibGlzaCByb3V0ZTwvdGV4dD48ZWxsaXBzZSBjeD0iMTU2Ljc1MjkiIGN5PSIzNjkuODgyMyIgZmlsbD0ibm9uZSIgcng9IjExIiByeT0iMTEiIHN0eWxlPSJzdHJva2U6IzIyMjIyMjtzdHJva2Utd2lkdGg6MTsiLz48ZWxsaXBzZSBjeD0iMTU2Ljc1MjkiIGN5PSIzNjkuODgyMyIgZmlsbD0iIzIyMjIyMiIgcng9IjYiIHJ5PSI2IiBzdHlsZT0ic3Ryb2tlOiMyMjIyMjI7c3Ryb2tlLXdpZHRoOjE7Ii8+PGxpbmUgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDoxOyIgeDE9IjE1Ni43NTI5IiB4Mj0iMTU2Ljc1MjkiIHkxPSI2Ny4yOTY5IiB5Mj0iODcuMjk2OSIvPjxwb2x5Z29uIGZpbGw9IiMxODE4MTgiIHBvaW50cz0iMTUyLjc1MjksNzcuMjk2OSwxNTYuNzUyOSw4Ny4yOTY5LDE2MC43NTI5LDc3LjI5NjksMTU2Ljc1MjksODEuMjk2OSIgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDoxOyIvPjxsaW5lIHN0eWxlPSJzdHJva2U6IzE4MTgxODtzdHJva2Utd2lkdGg6MTsiIHgxPSIxNTYuNzUyOSIgeDI9IjE1Ni43NTI5IiB5MT0iMTIxLjI2NTYiIHkyPSIxNDEuMjY1NiIvPjxwb2x5Z29uIGZpbGw9IiMxODE4MTgiIHBvaW50cz0iMTUyLjc1MjksMTMxLjI2NTYsMTU2Ljc1MjksMTQxLjI2NTYsMTYwLjc1MjksMTMxLjI2NTYsMTU2Ljc1MjksMTM1LjI2NTYiIHN0eWxlPSJzdHJva2U6IzE4MTgxODtzdHJva2Utd2lkdGg6MTsiLz48bGluZSBzdHlsZT0ic3Ryb2tlOiMxODE4MTg7c3Ryb2tlLXdpZHRoOjE7IiB4MT0iMTU2Ljc1MjkiIHgyPSIxNTYuNzUyOSIgeTE9IjIxOS4yMzQ0IiB5Mj0iMjUwLjk0NDgiLz48cG9seWdvbiBmaWxsPSIjMTgxODE4IiBwb2ludHM9IjE1Mi43NTI5LDI0MC45NDQ4LDE1Ni43NTI5LDI1MC45NDQ4LDE2MC43NTI5LDI0MC45NDQ4LDE1Ni43NTI5LDI0NC45NDQ4IiBzdHlsZT0ic3Ryb2tlOiMxODE4MTg7c3Ryb2tlLXdpZHRoOjE7Ii8+PGxpbmUgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDoxOyIgeDE9IjIzMi45NDU2IiB4Mj0iMjU3LjY0NzIiIHkxPSIyMDcuMjM0NCIgeTI9IjIwNy4yMzQ0Ii8+PHBvbHlnb24gZmlsbD0iIzE4MTgxOCIgcG9pbnRzPSIyNDcuNjQ3MiwyMDMuMjM0NCwyNTcuNjQ3MiwyMDcuMjM0NCwyNDcuNjQ3MiwyMTEuMjM0NCwyNTEuNjQ3MiwyMDcuMjM0NCIgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDoxOyIvPjxsaW5lIHN0eWxlPSJzdHJva2U6IzE4MTgxODtzdHJva2Utd2lkdGg6MTsiIHgxPSIxNTYuNzUyOSIgeDI9IjE1Ni43NTI5IiB5MT0iMTc1LjIzNDQiIHkyPSIxOTUuMjM0NCIvPjxwb2x5Z29uIGZpbGw9IiMxODE4MTgiIHBvaW50cz0iMTUyLjc1MjksMTg1LjIzNDQsMTU2Ljc1MjksMTk1LjIzNDQsMTYwLjc1MjksMTg1LjIzNDQsMTU2Ljc1MjksMTg5LjIzNDQiIHN0eWxlPSJzdHJva2U6IzE4MTgxODtzdHJva2Utd2lkdGg6MTsiLz48bGluZSBzdHlsZT0ic3Ryb2tlOiMxODE4MTg7c3Ryb2tlLXdpZHRoOjE7IiB4MT0iMTU2Ljc1MjkiIHgyPSIxNTYuNzUyOSIgeTE9IjI4NC45MTM2IiB5Mj0iMzA0LjkxMzYiLz48cG9seWdvbiBmaWxsPSIjMTgxODE4IiBwb2ludHM9IjE1Mi43NTI5LDI5NC45MTM2LDE1Ni43NTI5LDMwNC45MTM2LDE2MC43NTI5LDI5NC45MTM2LDE1Ni43NTI5LDI5OC45MTM2IiBzdHlsZT0ic3Ryb2tlOiMxODE4MTg7c3Ryb2tlLXdpZHRoOjE7Ii8+PGxpbmUgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDoxOyIgeDE9IjE1Ni43NTI5IiB4Mj0iMTU2Ljc1MjkiIHkxPSIzMzguODgyMyIgeTI9IjM1OC44ODIzIi8+PHBvbHlnb24gZmlsbD0iIzE4MTgxOCIgcG9pbnRzPSIxNTIuNzUyOSwzNDguODgyMywxNTYuNzUyOSwzNTguODgyMywxNjAuNzUyOSwzNDguODgyMywxNTYuNzUyOSwzNTIuODgyMyIgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDoxOyIvPjwhLS1TUkM9W05PdkIzaUNXMzRKdGQ2QU1vSE5RSFNfWVcwRE03OG8wTDRmRk53QWdOTkd4eS1SSmZJaVo2WWF5Z0l4YUR6U3dyVXhTcElqSkhRZHk1M2tRZGpYdmpvZWwzbDI5X09QWWFka3gzX0poV0FFMVNsV3E1Y2lDUWwtcWg5WWc3THJvSEFuSzRnSVhDZU5wQ1FDZHBmWEVSaERaN1Y0ZnNwbVVNTjZTV3duWmdvWGJON2MtYmlrbmdCSnE0b3hxM0cwMF0tLT48L2c+PC9zdmc+" class="uml" alt="uml diagram" title=""></p>
-<h3 id="route-planner">Route Planner<a class="headerlink" href="#route-planner" title="Permanent link">#</a></h3>
-<p><code>plan route</code> is executed with check points including current ego pose and goal pose.</p>
-<p><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBjb250ZW50U3R5bGVUeXBlPSJ0ZXh0L2NzcyIgZGF0YS1kaWFncmFtLXR5cGU9IkFDVElWSVRZIiBoZWlnaHQ9IjU5MnB4IiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIiBzdHlsZT0id2lkdGg6MzA2cHg7aGVpZ2h0OjU5MnB4O2JhY2tncm91bmQ6I0ZGRkZGRjsiIHZlcnNpb249IjEuMSIgdmlld0JveD0iMCAwIDMwNiA1OTIiIHdpZHRoPSIzMDZweCIgem9vbUFuZFBhbj0ibWFnbmlmeSI+PHRpdGxlPnBsYW4gcm91dGU8L3RpdGxlPjxkZWZzLz48Zz48ZyBjbGFzcz0idGl0bGUiIGRhdGEtc291cmNlLWxpbmU9IjEiPjx0ZXh0IGZpbGw9IiMwMDAwMDAiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmb250LXdlaWdodD0iYm9sZCIgbGVuZ3RoQWRqdXN0PSJzcGFjaW5nIiB0ZXh0TGVuZ3RoPSI4MS43ODUyIiB4PSIxMTEuMDQ1OSIgeT0iMzIuOTk1MSI+cGxhbiByb3V0ZTwvdGV4dD48L2c+PGVsbGlwc2UgY3g9IjE0MC45Mzg1IiBjeT0iNTcuMjk2OSIgZmlsbD0iIzIyMjIyMiIgcng9IjEwIiByeT0iMTAiIHN0eWxlPSJzdHJva2U6IzIyMjIyMjtzdHJva2Utd2lkdGg6MTsiLz48cG9seWdvbiBmaWxsPSIjRjFGMUYxIiBwb2ludHM9IjEwNS4yMDE5LDg3LjI5NjksMTc2LjY3NSw4Ny4yOTY5LDE4OC42NzUsOTkuMjk2OSwxNzYuNjc1LDExMS4yOTY5LDEwNS4yMDE5LDExMS4yOTY5LDkzLjIwMTksOTkuMjk2OSwxMDUuMjAxOSw4Ny4yOTY5IiBzdHlsZT0ic3Ryb2tlOiMxODE4MTg7c3Ryb2tlLXdpZHRoOjAuNTsiLz48dGV4dCBmaWxsPSIjMDAwMDAwIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMSIgbGVuZ3RoQWRqdXN0PSJzcGFjaW5nIiB0ZXh0TGVuZ3RoPSIxOS4wMDgzIiB4PSIxNDQuOTM4NSIgeT0iMTIxLjUwNzMiPnllczwvdGV4dD48dGV4dCBmaWxsPSIjMDAwMDAwIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMSIgbGVuZ3RoQWRqdXN0PSJzcGFjaW5nIiB0ZXh0TGVuZ3RoPSI3MS40NzMxIiB4PSIxMDUuMjAxOSIgeT0iMTAzLjEwNSI+Z29hbCBpcyB2YWxpZD88L3RleHQ+PHRleHQgZmlsbD0iIzAwMDAwMCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTEiIGxlbmd0aEFkanVzdD0ic3BhY2luZyIgdGV4dExlbmd0aD0iMTMuNzAxNyIgeD0iMTg4LjY3NSIgeT0iOTYuNzAyNiI+bm88L3RleHQ+PGVsbGlwc2UgY3g9IjIyNC4zNzY3IiBjeT0iOTkuMjk2OSIgZmlsbD0ibm9uZSIgcng9IjExIiByeT0iMTEiIHN0eWxlPSJzdHJva2U6IzIyMjIyMjtzdHJva2Utd2lkdGg6MTsiLz48ZWxsaXBzZSBjeD0iMjI0LjM3NjciIGN5PSI5OS4yOTY5IiBmaWxsPSIjMjIyMjIyIiByeD0iNiIgcnk9IjYiIHN0eWxlPSJzdHJva2U6IzIyMjIyMjtzdHJva2Utd2lkdGg6MTsiLz48cmVjdCBmaWxsPSIjRjFGMUYxIiBoZWlnaHQ9IjMzLjk2ODgiIHJ4PSIxMi41IiByeT0iMTIuNSIgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDowLjU7IiB3aWR0aD0iMjQ1LjA4MiIgeD0iMTguMzk3NSIgeT0iMTQzLjAwNzMiLz48dGV4dCBmaWxsPSIjMDAwMDAwIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiIgbGVuZ3RoQWRqdXN0PSJzcGFjaW5nIiB0ZXh0TGVuZ3RoPSIyMjUuMDgyIiB4PSIyOC4zOTc1IiB5PSIxNjQuMTQ2Ij5wbGFuIHBhdGggYmV0d2VlbiBlYWNoIGNoZWNrIHBvaW50czwvdGV4dD48cmVjdCBmaWxsPSIjRjFGMUYxIiBoZWlnaHQ9IjMzLjk2ODgiIHJ4PSIxMi41IiByeT0iMTIuNSIgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDowLjU7IiB3aWR0aD0iMTU2Ljk2MjkiIHg9IjYyLjQ1NyIgeT0iMTk2Ljk3NjEiLz48dGV4dCBmaWxsPSIjMDAwMDAwIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiIgbGVuZ3RoQWRqdXN0PSJzcGFjaW5nIiB0ZXh0TGVuZ3RoPSIxMzYuOTYyOSIgeD0iNzIuNDU3IiB5PSIyMTguMTE0NyI+aW5pdGlhbGl6ZSByb3V0ZSBsYW5lbGV0czwvdGV4dD48cmVjdCBmaWxsPSIjRjFGMUYxIiBoZWlnaHQ9IjMzLjk2ODgiIHJ4PSIxMi41IiByeT0iMTIuNSIgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDowLjU7IiB3aWR0aD0iMTUxLjA5MTgiIHg9IjY1LjM5MjYiIHk9IjI1MC45NDQ4Ii8+PHRleHQgZmlsbD0iIzAwMDAwMCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIiIGxlbmd0aEFkanVzdD0ic3BhY2luZyIgdGV4dExlbmd0aD0iMTMxLjA5MTgiIHg9Ijc1LjM5MjYiIHk9IjI3Mi4wODM1Ij5nZXQgcHJlZmVycmVkIGxhbmVsZXRzPC90ZXh0PjxyZWN0IGZpbGw9IiNGMUYxRjEiIGhlaWdodD0iMzMuOTY4OCIgcng9IjEyLjUiIHJ5PSIxMi41IiBzdHlsZT0ic3Ryb2tlOiMxODE4MTg7c3Ryb2tlLXdpZHRoOjAuNTsiIHdpZHRoPSIxNDcuNDIzOCIgeD0iNjcuMjI2NiIgeT0iMzA0LjkxMzYiLz48dGV4dCBmaWxsPSIjMDAwMDAwIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiIgbGVuZ3RoQWRqdXN0PSJzcGFjaW5nIiB0ZXh0TGVuZ3RoPSIxMjcuNDIzOCIgeD0iNzcuMjI2NiIgeT0iMzI2LjA1MjIiPmNyZWF0ZSByb3V0ZSBzZWN0aW9uczwvdGV4dD48cmVjdCBmaWxsPSIjRjFGMUYxIiBoZWlnaHQ9IjMzLjk2ODgiIHJ4PSIxMi41IiByeT0iMTIuNSIgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDowLjU7IiB3aWR0aD0iMjU5Ljg3NyIgeD0iMTEiIHk9IjQwNy4yODQ3Ii8+PHRleHQgZmlsbD0iIzAwMDAwMCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIiIGxlbmd0aEFkanVzdD0ic3BhY2luZyIgdGV4dExlbmd0aD0iMjM5Ljg3NyIgeD0iMjEiIHk9IjQyOC40MjMzIj53YXJuIHRoYXQgbG9vcGVkIHJvdXRlIGlzIG5vdCBzdXBwb3J0ZWQ8L3RleHQ+PHBvbHlnb24gZmlsbD0iI0YxRjFGMSIgcG9pbnRzPSI3Ni4zNTM4LDM1OC44ODIzLDIwNS41MjMyLDM1OC44ODIzLDIxNy41MjMyLDM3MC44ODIzLDIwNS41MjMyLDM4Mi44ODIzLDc2LjM1MzgsMzgyLjg4MjMsNjQuMzUzOCwzNzAuODgyMyw3Ni4zNTM4LDM1OC44ODIzIiBzdHlsZT0ic3Ryb2tlOiMxODE4MTg7c3Ryb2tlLXdpZHRoOjAuNTsiLz48dGV4dCBmaWxsPSIjMDAwMDAwIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMSIgbGVuZ3RoQWRqdXN0PSJzcGFjaW5nIiB0ZXh0TGVuZ3RoPSIxOS4wMDgzIiB4PSIxNDQuOTM4NSIgeT0iMzkzLjA5MjgiPnllczwvdGV4dD48dGV4dCBmaWxsPSIjMDAwMDAwIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMSIgbGVuZ3RoQWRqdXN0PSJzcGFjaW5nIiB0ZXh0TGVuZ3RoPSIxMjkuMTY5NCIgeD0iNzYuMzUzOCIgeT0iMzc0LjY5MDQiPnBsYW5lZCByb3V0ZSBpcyBsb29wZWQ/PC90ZXh0Pjx0ZXh0IGZpbGw9IiMwMDAwMDAiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjExIiBsZW5ndGhBZGp1c3Q9InNwYWNpbmciIHRleHRMZW5ndGg9IjEzLjcwMTciIHg9IjIxNy41MjMyIiB5PSIzNjguMjg4MSI+bm88L3RleHQ+PHBvbHlnb24gZmlsbD0iI0YxRjFGMSIgcG9pbnRzPSIxNDAuOTM4NSw0NjEuMjUzNCwxNTIuOTM4NSw0NzMuMjUzNCwxNDAuOTM4NSw0ODUuMjUzNCwxMjguOTM4NSw0NzMuMjUzNCwxNDAuOTM4NSw0NjEuMjUzNCIgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDowLjU7Ii8+PHJlY3QgZmlsbD0iI0YxRjFGMSIgaGVpZ2h0PSIzMy45Njg4IiByeD0iMTIuNSIgcnk9IjEyLjUiIHN0eWxlPSJzdHJva2U6IzE4MTgxODtzdHJva2Utd2lkdGg6MC41OyIgd2lkdGg9IjkyLjk0OTIiIHg9Ijk0LjQ2MzkiIHk9IjUwNS4yNTM0Ii8+PHRleHQgZmlsbD0iIzAwMDAwMCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIiIGxlbmd0aEFkanVzdD0ic3BhY2luZyIgdGV4dExlbmd0aD0iNzIuOTQ5MiIgeD0iMTA0LjQ2MzkiIHk9IjUyNi4zOTIxIj5yZXR1cm4gcm91dGU8L3RleHQ+PGVsbGlwc2UgY3g9IjE0MC45Mzg1IiBjeT0iNTcwLjIyMjIiIGZpbGw9Im5vbmUiIHJ4PSIxMSIgcnk9IjExIiBzdHlsZT0ic3Ryb2tlOiMyMjIyMjI7c3Ryb2tlLXdpZHRoOjE7Ii8+PGVsbGlwc2UgY3g9IjE0MC45Mzg1IiBjeT0iNTcwLjIyMjIiIGZpbGw9IiMyMjIyMjIiIHJ4PSI2IiByeT0iNiIgc3R5bGU9InN0cm9rZTojMjIyMjIyO3N0cm9rZS13aWR0aDoxOyIvPjxsaW5lIHN0eWxlPSJzdHJva2U6IzE4MTgxODtzdHJva2Utd2lkdGg6MTsiIHgxPSIxNDAuOTM4NSIgeDI9IjE0MC45Mzg1IiB5MT0iMTExLjI5NjkiIHkyPSIxNDMuMDA3MyIvPjxwb2x5Z29uIGZpbGw9IiMxODE4MTgiIHBvaW50cz0iMTM2LjkzODUsMTMzLjAwNzMsMTQwLjkzODUsMTQzLjAwNzMsMTQ0LjkzODUsMTMzLjAwNzMsMTQwLjkzODUsMTM3LjAwNzMiIHN0eWxlPSJzdHJva2U6IzE4MTgxODtzdHJva2Utd2lkdGg6MTsiLz48bGluZSBzdHlsZT0ic3Ryb2tlOiMxODE4MTg7c3Ryb2tlLXdpZHRoOjE7IiB4MT0iMTg4LjY3NSIgeDI9IjIxMy4zNzY3IiB5MT0iOTkuMjk2OSIgeTI9Ijk5LjI5NjkiLz48cG9seWdvbiBmaWxsPSIjMTgxODE4IiBwb2ludHM9IjIwMy4zNzY3LDk1LjI5NjksMjEzLjM3NjcsOTkuMjk2OSwyMDMuMzc2NywxMDMuMjk2OSwyMDcuMzc2Nyw5OS4yOTY5IiBzdHlsZT0ic3Ryb2tlOiMxODE4MTg7c3Ryb2tlLXdpZHRoOjE7Ii8+PGxpbmUgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDoxOyIgeDE9IjE0MC45Mzg1IiB4Mj0iMTQwLjkzODUiIHkxPSI2Ny4yOTY5IiB5Mj0iODcuMjk2OSIvPjxwb2x5Z29uIGZpbGw9IiMxODE4MTgiIHBvaW50cz0iMTM2LjkzODUsNzcuMjk2OSwxNDAuOTM4NSw4Ny4yOTY5LDE0NC45Mzg1LDc3LjI5NjksMTQwLjkzODUsODEuMjk2OSIgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDoxOyIvPjxsaW5lIHN0eWxlPSJzdHJva2U6IzE4MTgxODtzdHJva2Utd2lkdGg6MTsiIHgxPSIxNDAuOTM4NSIgeDI9IjE0MC45Mzg1IiB5MT0iMTc2Ljk3NjEiIHkyPSIxOTYuOTc2MSIvPjxwb2x5Z29uIGZpbGw9IiMxODE4MTgiIHBvaW50cz0iMTM2LjkzODUsMTg2Ljk3NjEsMTQwLjkzODUsMTk2Ljk3NjEsMTQ0LjkzODUsMTg2Ljk3NjEsMTQwLjkzODUsMTkwLjk3NjEiIHN0eWxlPSJzdHJva2U6IzE4MTgxODtzdHJva2Utd2lkdGg6MTsiLz48bGluZSBzdHlsZT0ic3Ryb2tlOiMxODE4MTg7c3Ryb2tlLXdpZHRoOjE7IiB4MT0iMTQwLjkzODUiIHgyPSIxNDAuOTM4NSIgeTE9IjIzMC45NDQ4IiB5Mj0iMjUwLjk0NDgiLz48cG9seWdvbiBmaWxsPSIjMTgxODE4IiBwb2ludHM9IjEzNi45Mzg1LDI0MC45NDQ4LDE0MC45Mzg1LDI1MC45NDQ4LDE0NC45Mzg1LDI0MC45NDQ4LDE0MC45Mzg1LDI0NC45NDQ4IiBzdHlsZT0ic3Ryb2tlOiMxODE4MTg7c3Ryb2tlLXdpZHRoOjE7Ii8+PGxpbmUgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDoxOyIgeDE9IjE0MC45Mzg1IiB4Mj0iMTQwLjkzODUiIHkxPSIyODQuOTEzNiIgeTI9IjMwNC45MTM2Ii8+PHBvbHlnb24gZmlsbD0iIzE4MTgxOCIgcG9pbnRzPSIxMzYuOTM4NSwyOTQuOTEzNiwxNDAuOTM4NSwzMDQuOTEzNiwxNDQuOTM4NSwyOTQuOTEzNiwxNDAuOTM4NSwyOTguOTEzNiIgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDoxOyIvPjxsaW5lIHN0eWxlPSJzdHJva2U6IzE4MTgxODtzdHJva2Utd2lkdGg6MTsiIHgxPSIxNDAuOTM4NSIgeDI9IjE0MC45Mzg1IiB5MT0iMzgyLjg4MjMiIHkyPSI0MDcuMjg0NyIvPjxwb2x5Z29uIGZpbGw9IiMxODE4MTgiIHBvaW50cz0iMTM2LjkzODUsMzk3LjI4NDcsMTQwLjkzODUsNDA3LjI4NDcsMTQ0LjkzODUsMzk3LjI4NDcsMTQwLjkzODUsNDAxLjI4NDciIHN0eWxlPSJzdHJva2U6IzE4MTgxODtzdHJva2Utd2lkdGg6MTsiLz48bGluZSBzdHlsZT0ic3Ryb2tlOiMxODE4MTg7c3Ryb2tlLXdpZHRoOjE7IiB4MT0iMjE3LjUyMzIiIHgyPSIyODAuODc3IiB5MT0iMzcwLjg4MjMiIHkyPSIzNzAuODgyMyIvPjxwb2x5Z29uIGZpbGw9IiMxODE4MTgiIHBvaW50cz0iMjc2Ljg3Nyw0MTQuMjY5LDI4MC44NzcsNDI0LjI2OSwyODQuODc3LDQxNC4yNjksMjgwLjg3Nyw0MTguMjY5IiBzdHlsZT0ic3Ryb2tlOiMxODE4MTg7c3Ryb2tlLXdpZHRoOjE7Ii8+PGxpbmUgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDoxOyIgeDE9IjI4MC44NzciIHgyPSIyODAuODc3IiB5MT0iMzcwLjg4MjMiIHkyPSI0NzMuMjUzNCIvPjxsaW5lIHN0eWxlPSJzdHJva2U6IzE4MTgxODtzdHJva2Utd2lkdGg6MTsiIHgxPSIyODAuODc3IiB4Mj0iMTUyLjkzODUiIHkxPSI0NzMuMjUzNCIgeTI9IjQ3My4yNTM0Ii8+PHBvbHlnb24gZmlsbD0iIzE4MTgxOCIgcG9pbnRzPSIxNjIuOTM4NSw0NjkuMjUzNCwxNTIuOTM4NSw0NzMuMjUzNCwxNjIuOTM4NSw0NzcuMjUzNCwxNTguOTM4NSw0NzMuMjUzNCIgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDoxOyIvPjxsaW5lIHN0eWxlPSJzdHJva2U6IzE4MTgxODtzdHJva2Utd2lkdGg6MTsiIHgxPSIxNDAuOTM4NSIgeDI9IjE0MC45Mzg1IiB5MT0iNDQxLjI1MzQiIHkyPSI0NjEuMjUzNCIvPjxwb2x5Z29uIGZpbGw9IiMxODE4MTgiIHBvaW50cz0iMTM2LjkzODUsNDUxLjI1MzQsMTQwLjkzODUsNDYxLjI1MzQsMTQ0LjkzODUsNDUxLjI1MzQsMTQwLjkzODUsNDU1LjI1MzQiIHN0eWxlPSJzdHJva2U6IzE4MTgxODtzdHJva2Utd2lkdGg6MTsiLz48bGluZSBzdHlsZT0ic3Ryb2tlOiMxODE4MTg7c3Ryb2tlLXdpZHRoOjE7IiB4MT0iMTQwLjkzODUiIHgyPSIxNDAuOTM4NSIgeTE9IjMzOC44ODIzIiB5Mj0iMzU4Ljg4MjMiLz48cG9seWdvbiBmaWxsPSIjMTgxODE4IiBwb2ludHM9IjEzNi45Mzg1LDM0OC44ODIzLDE0MC45Mzg1LDM1OC44ODIzLDE0NC45Mzg1LDM0OC44ODIzLDE0MC45Mzg1LDM1Mi44ODIzIiBzdHlsZT0ic3Ryb2tlOiMxODE4MTg7c3Ryb2tlLXdpZHRoOjE7Ii8+PGxpbmUgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDoxOyIgeDE9IjE0MC45Mzg1IiB4Mj0iMTQwLjkzODUiIHkxPSI0ODUuMjUzNCIgeTI9IjUwNS4yNTM0Ii8+PHBvbHlnb24gZmlsbD0iIzE4MTgxOCIgcG9pbnRzPSIxMzYuOTM4NSw0OTUuMjUzNCwxNDAuOTM4NSw1MDUuMjUzNCwxNDQuOTM4NSw0OTUuMjUzNCwxNDAuOTM4NSw0OTkuMjUzNCIgc3R5bGU9InN0cm9rZTojMTgxODE4O3N0cm9rZS13aWR0aDoxOyIvPjxsaW5lIHN0eWxlPSJzdHJva2U6IzE4MTgxODtzdHJva2Utd2lkdGg6MTsiIHgxPSIxNDAuOTM4NSIgeDI9IjE0MC45Mzg1IiB5MT0iNTM5LjIyMjIiIHkyPSI1NTkuMjIyMiIvPjxwb2x5Z29uIGZpbGw9IiMxODE4MTgiIHBvaW50cz0iMTM2LjkzODUsNTQ5LjIyMjIsMTQwLjkzODUsNTU5LjIyMjIsMTQ0LjkzODUsNTQ5LjIyMjIsMTQwLjkzODUsNTUzLjIyMjIiIHN0eWxlPSJzdHJva2U6IzE4MTgxODtzdHJva2Utd2lkdGg6MTsiLz48IS0tU1JDPVtMUDFEU2k4bTM4TnRGZU1Nb0hMV21MYlN2dUxleTRXVU1JZEpkWHdQRzlja3R6eWRFTmk1alBnNUo3VDd3ZnhESy1BTGZnbGNJanBmRXJUVUJaRnYxZzdmMXRyRWcxcXFZU3hYcnZPVzJ3eWZkUHV6QlZqNk5fMHhtZXZTRFllUm9lc1FpZFdfWHVzNWRRRnE1eVNlSEdtTFh0WTVLcEVpQ0NGb0pvYzZ4RXo4SHQ1TTZTOVc3U2pYRnhIV2hnZUQ3LVgxVVowX3lLX3RSMTlJemZWbjRuSHJ3ZGpoUWV4Yl83VVBtTlR4X0lXY256S0ZdLS0+PC9nPjwvc3ZnPg==" class="uml" alt="uml diagram" title=""></p>
-<p><code>plan path between each check points</code> firstly calculates closest lanes to start and goal pose.
-Then routing graph of Lanelet2 plans the shortest path from start and goal pose.</p>
-<p><code>initialize route lanelets</code> initializes route handler, and calculates <code>route_lanelets</code>.
-<code>route_lanelets</code>, all of which will be registered in route sections, are lanelets next to the lanelets in the planned path, and used when planning lane change.
-To calculate <code>route_lanelets</code>,</p>
-<ol>
-<li>All the neighbor (right and left) lanes for the planned path which is lane-changeable is memorized as <code>route_lanelets</code>.</li>
-<li>All the neighbor (right and left) lanes for the planned path which is not lane-changeable is memorized as <code>candidate_lanelets</code>.</li>
-<li>If the following and previous lanelets of each <code>candidate_lanelets</code> are <code>route_lanelets</code>, the <code>candidate_lanelet</code> is registered as <code>route_lanelets</code><ul>
-<li>This is because even though <code>candidate_lanelet</code> (an adjacent lane) is not lane-changeable, we can pass the <code>candidate_lanelet</code> without lane change if the following and previous lanelets of the <code>candidate_lanelet</code> are <code>route_lanelets</code></li>
-</ul>
-</li>
-</ol>
-<p><code>get preferred lanelets</code> extracts <code>preferred_primitive</code> from <code>route_lanelets</code> with the route handler.</p>
-<p><code>create route sections</code> extracts <code>primitives</code> from <code>route_lanelets</code> for each route section with the route handler, and creates route sections.</p>
-<h3 id="rerouting">Rerouting<a class="headerlink" href="#rerouting" title="Permanent link">#</a></h3>
-<p>Reroute here means changing the route while driving. Unlike route setting, it is required to keep a certain distance from vehicle to the point where the route is changed.
-If the ego vehicle is not on autonomous driving state, the safety checking process will be skipped.</p>
-<p><img alt="rerouting_safety" src="media/rerouting_safety.svg"></p>
-<p>And there are three use cases that require reroute.</p>
-<ul>
-<li>Route change API</li>
-<li>Emergency route</li>
-<li>Goal modification</li>
-</ul>
-<h4 id="route-change-api">Route change API<a class="headerlink" href="#route-change-api" title="Permanent link">#</a></h4>
-<p>It is used when changing the destination while driving or when driving a divided loop route. When the vehicle is driving on a MRM route, normal rerouting by this interface is not allowed.</p>
-<h4 id="emergency-route">Emergency route<a class="headerlink" href="#emergency-route" title="Permanent link">#</a></h4>
-<p>The interface for the MRM that pulls over the road shoulder. It has to be stopped as soon as possible, so a reroute is required. The MRM route has priority over the normal route. And if MRM route is cleared, try to return to the normal route also with a rerouting safety check.</p>
-<h5 id="goal-modification">Goal modification<a class="headerlink" href="#goal-modification" title="Permanent link">#</a></h5>
-<p>This is a goal change to pull over, avoid parked vehicles, and so on by a planning component. If the modified goal is outside the calculated route, a reroute is required. This goal modification is executed by checking the local environment and path safety as the vehicle actually approaches the destination. And this modification is allowed for both normal_route and mrm_route.
-The new route generated here is sent to the AD API so that it can also be referenced by the application. Note, however, that the specifications here are subject to change in the future.</p>
-<h4 id="rerouting-limitations">Rerouting Limitations<a class="headerlink" href="#rerouting-limitations" title="Permanent link">#</a></h4>
-<ul>
-<li>The safety judgment of rerouting is not guaranteed to the level of trajectory or control. Therefore, the distance to the reroute change must be large for the safety.</li>
-</ul>
-<h2 id="limitations">Limitations<a class="headerlink" href="#limitations" title="Permanent link">#</a></h2>
-<ul>
-<li>Dynamic objects (e.g. pedestrians and other vehicles) and dynamic map information (e.g. road construction which blocks some lanes) are not considered during route planning.</li>
-<li>Looped route is not supported.</li>
-</ul></div>
+<div><h1 id="interface-api">Interface API<a class="headerlink" href="#interface-api" title="Permanent link">#</a></h1>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">#</a></h2>
+<p>The interface API simply returns a version number. See the <a href="https://autowarefoundation.github.io/autoware-documentation/main/design/autoware-interfaces/ad-api/features/interface/">autoware-documentation</a> for AD API specifications.</p></div>
 
 
 
@@ -5143,7 +4869,7 @@ The new route generated here is sent to the AD API so that it can also be refere
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../autoware_core_planning/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Autoware Core Planning" rel="prev">
+          <a href="../../" class="md-footer__link md-footer__link--prev" aria-label="Previous: autoware_default_adapi" rel="prev">
             <div class="md-footer__button md-icon">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
             </div>
@@ -5152,20 +4878,20 @@ The new route generated here is sent to the AD API so that it can also be refere
                 Previous
               </span>
               <div class="md-ellipsis">
-                Autoware Core Planning
+                autoware_default_adapi
               </div>
             </div>
           </a>
         
         
           
-          <a href="../autoware_objects_of_interest_marker_interface/" class="md-footer__link md-footer__link--next" aria-label="Next: Objects Of Interest Marker Interface" rel="next">
+          <a href="../localization/" class="md-footer__link md-footer__link--next" aria-label="Next: Localization API" rel="next">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Objects Of Interest Marker Interface
+                Localization API
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -5201,13 +4927,13 @@ The new route generated here is sent to the AD API so that it can also be refere
       <div class="md-dialog__inner md-typeset"></div>
     </div>
     
-    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.expand", "navigation.indexes", "navigation.instant", "navigation.sections", "navigation.tabs", "navigation.tabs.sticky", "navigation.top", "navigation.footer"], "search": "../../assets/javascripts/workers/search.74e28a9f.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    <script id="__config" type="application/json">{"base": "../../../..", "features": ["navigation.expand", "navigation.indexes", "navigation.instant", "navigation.sections", "navigation.tabs", "navigation.tabs.sticky", "navigation.top", "navigation.footer"], "search": "../../../../assets/javascripts/workers/search.74e28a9f.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.220ee61c.min.js"></script>
+      <script src="../../../../assets/javascripts/bundle.220ee61c.min.js"></script>
       
         
-          <script src="../../docs/assets/js/mathjax.js"></script>
+          <script src="../../../../docs/assets/js/mathjax.js"></script>
         
       
         
