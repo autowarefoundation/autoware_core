@@ -4,6 +4,15 @@ project(autoware_kalman_filter)
 find_package(autoware_cmake REQUIRED)
 autoware_package()
 
+# Check if AVX2 is supported
+include(CheckCXXCompilerFlag)
+check_cxx_compiler_flag("-mavx2" COMPILER_SUPPORTS_AVX2)
+
+if(COMPILER_SUPPORTS_AVX2)
+# cspell:ignore mfma
+    add_compile_options(-mavx2 -mfma -O3)  # Enable AVX2 & FMA
+endif()
+
 find_package(eigen3_cmake_module REQUIRED)
 find_package(Eigen3 REQUIRED)
 
