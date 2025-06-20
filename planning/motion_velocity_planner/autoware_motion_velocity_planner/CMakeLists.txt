@@ -31,7 +31,19 @@ else()
     target_link_libraries(${PROJECT_NAME}_lib "${cpp_typesupport_target}")
 endif()
 
+if(BUILD_TESTING)
+  ament_add_ros_isolated_gtest(test_node
+    test/test_node.cpp
+  )
+  target_link_libraries(test_node
+    ${PROJECT_NAME}_lib
+  )
+endif()
+
 ament_auto_package(INSTALL_TO_SHARE
   launch
   config
+  test_config
+  test_data
+  test_map
 )
