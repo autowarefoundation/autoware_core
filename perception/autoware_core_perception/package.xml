@@ -14,8 +14,9 @@
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
   <buildtool_depend>autoware_cmake</buildtool_depend>
 
+  <exec_depend>autoware_euclidean_cluster_object_detector</exec_depend>
   <exec_depend>autoware_ground_filter</exec_depend>
-  <exec_depend>autoware_vehicle_velocity_converter</exec_depend>
+  <exec_depend>autoware_perception_objects_converter</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>autoware_lint_common</test_depend>

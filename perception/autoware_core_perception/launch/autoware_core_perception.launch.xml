@@ -9,5 +9,19 @@
       <arg name="input/pointcloud" value="$(var lidar_input_topic)"/>
       <arg name="output/pointcloud" value="/perception/obstacle_segmentation/pointcloud"/>
     </include>
+
+    <group>
+      <push-ros-namespace namespace="object_recognition"/>
+      <include file="$(find-pkg-share autoware_euclidean_cluster_object_detector)/launch/voxel_grid_based_euclidean_cluster.launch.xml">
+        <arg name="input_pointcloud" value="$(var lidar_input_topic)"/>
+        <arg name="output_clusters" value="/perception/object_recognition/detection/objects"/>
+        <arg name="use_low_height_cropbox" value="false"/>
+        <arg name="use_pointcloud_container" value="false"/>
+      </include>
+      <include file="$(find-pkg-share autoware_perception_objects_converter)/launch/detected_to_predicted_objects.launch.xml">
+        <arg name="input_topic" value="/perception/object_recognition/detection/objects"/>
+        <arg name="output_topic" value="/perception/object_recognition/objects"/>
+      </include>
+    </group>
   </group>
 </launch>
