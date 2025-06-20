@@ -1,4 +1,4 @@
-# autoware_default_adapi_universe
+# autoware_default_adapi
 
 ## Notes
 
