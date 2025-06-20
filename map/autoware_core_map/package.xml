@@ -14,6 +14,7 @@
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
   <buildtool_depend>autoware_cmake</buildtool_depend>
 
+  <exec_depend>autoware_lanelet2_map_visualizer</exec_depend>
   <exec_depend>autoware_map_loader</exec_depend>
   <exec_depend>autoware_map_projection_loader</exec_depend>
 
