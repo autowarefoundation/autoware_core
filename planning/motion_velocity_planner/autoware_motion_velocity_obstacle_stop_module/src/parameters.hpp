@@ -138,6 +138,13 @@ struct StopPlanningParam
   bool enable_approaching_on_curve{};
   double additional_stop_margin_on_curve{};
   double min_stop_margin_on_curve{};
+  struct
+  {
+    bool use_rss_stop{};
+    double two_wheel_objects_deceleration{};
+    double other_vehicle_objects_deceleration{};
+    double velocity_offset{};
+  } rss_params;
 
   struct ObjectTypeSpecificParams
   {
@@ -177,6 +184,14 @@ struct StopPlanningParam
       node, "obstacle_stop.stop_planning.stop_on_curve.additional_stop_margin");
     min_stop_margin_on_curve = get_or_declare_parameter<double>(
       node, "obstacle_stop.stop_planning.stop_on_curve.min_stop_margin");
+    rss_params.use_rss_stop =
+      get_or_declare_parameter<bool>(node, "obstacle_stop.stop_planning.rss_params.use_rss_stop");
+    rss_params.two_wheel_objects_deceleration = get_or_declare_parameter<double>(
+      node, "obstacle_stop.stop_planning.rss_params.two_wheel_objects_deceleration");
+    rss_params.other_vehicle_objects_deceleration = get_or_declare_parameter<double>(
+      node, "obstacle_stop.stop_planning.rss_params.other_vehicle_objects_deceleration");
+    rss_params.velocity_offset = get_or_declare_parameter<double>(
+      node, "obstacle_stop.stop_planning.rss_params.velocity_offset");
 
     const std::string param_prefix = "obstacle_stop.stop_planning.object_type_specified_params.";
     const auto object_types =
