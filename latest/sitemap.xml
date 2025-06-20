@@ -31,6 +31,26 @@
          <changefreq>daily</changefreq>
     </url>
     <url>
+         <loc>https://autowarefoundation.github.io/autoware_core/latest/api/autoware_default_adapi/</loc>
+         <lastmod>2025-06-20</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://autowarefoundation.github.io/autoware_core/latest/api/autoware_default_adapi/document/interface/</loc>
+         <lastmod>2025-06-20</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://autowarefoundation.github.io/autoware_core/latest/api/autoware_default_adapi/document/localization/</loc>
+         <lastmod>2025-06-20</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://autowarefoundation.github.io/autoware_core/latest/api/autoware_default_adapi/document/routing/</loc>
+         <lastmod>2025-06-20</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
          <loc>https://autowarefoundation.github.io/autoware_core/latest/autoware_core/</loc>
          <lastmod>2025-06-20</lastmod>
          <changefreq>daily</changefreq>
