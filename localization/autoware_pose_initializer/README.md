@@ -138,4 +138,4 @@ pose:
 ```
 
 It behaves the same as "initialpose (from rviz)".
-The position.z and the covariance will be overwritten by [autoware_adapi_adaptors](https://github.com/autowarefoundation/autoware_universe/tree/main/system/autoware_default_adapi_helpers/autoware_adapi_adaptors), so there is no need to input them.
+The position.z and the covariance will be overwritten by [autoware_adapi_adaptors](../../api/autoware_adapi_adaptors/README.md), so there is no need to input them.
