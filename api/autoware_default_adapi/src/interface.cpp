@@ -24,7 +24,7 @@ InterfaceNode::InterfaceNode(const rclcpp::NodeOptions & options)
     [this](
       const Version::Service::Request::SharedPtr, const Version::Service::Response::SharedPtr res) {
       res->major = 1;
-      res->minor = 8;
+      res->minor = 9;
       res->patch = 0;
     }))
 {
