@@ -17,9 +17,9 @@ This node depends on the map height fitter library.
 
 ### Services
 
-| Name                       | Type                                                             | Description           |
-| -------------------------- | ---------------------------------------------------------------- | --------------------- |
-| `/localization/initialize` | autoware_internal_localization_msgs::srv::InitializeLocalization | initial pose from api |
+| Name                       | Type                                                    | Description           |
+| -------------------------- | ------------------------------------------------------- | --------------------- |
+| `/localization/initialize` | autoware_localization_msgs::srv::InitializeLocalization | initial pose from api |
 
 ### Clients
 

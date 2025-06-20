@@ -19,10 +19,17 @@
 
 #include <autoware_adapi_v1_msgs/msg/mrm_request_list.hpp>
 #include <autoware_adapi_v1_msgs/msg/mrm_state.hpp>
+#include <autoware_adapi_v1_msgs/srv/list_mrm_description.hpp>
 #include <autoware_adapi_v1_msgs/srv/send_mrm_request.hpp>
 
 namespace autoware::adapi_specs::fail_safe
 {
+
+struct MrmDescription
+{
+  using Service = autoware_adapi_v1_msgs::srv::ListMrmDescription;
+  static constexpr char name[] = "/api/fail_safe/list_mrm_description";
+};
 
 struct MrmState
 {
