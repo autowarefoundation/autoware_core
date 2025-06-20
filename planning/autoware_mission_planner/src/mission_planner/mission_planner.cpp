@@ -77,11 +77,9 @@ MissionPlanner::MissionPlanner(const rclcpp::NodeOptions & options)
     "~/set_waypoint_route",
     service_utils::handle_exception(&MissionPlanner::on_set_waypoint_route, this));
   pub_route_ = create_publisher<LaneletRouteSpecs::Message>(
-    "~/route",
-    autoware::component_interface_specs::get_qos<LaneletRouteSpecs>());
+    "~/route", autoware::component_interface_specs::get_qos<LaneletRouteSpecs>());
   pub_state_ = create_publisher<RouteStateSpecs::Message>(
-    "~/state",
-    autoware::component_interface_specs::get_qos<RouteStateSpecs>());
+    "~/state", autoware::component_interface_specs::get_qos<RouteStateSpecs>());
 
   // Route state will be published when the node gets ready for route api after initialization,
   // otherwise the mission planner rejects the request for the API.
