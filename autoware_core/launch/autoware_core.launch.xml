@@ -17,6 +17,7 @@
   <arg name="launch_planning" default="true" description="launch planning"/>
   <arg name="launch_control" default="true" description="launch control"/>
   <arg name="launch_vehicle" default="true" description="launch vehicle"/>
+  <arg name="launch_api" default="true" description="launch api"/>
 
   <!-- Global parameters -->
   <group scoped="false">
@@ -31,6 +32,8 @@
     <include file="$(find-pkg-share autoware_core_map)/launch/autoware_core_map.launch.xml">
       <arg name="lanelet2_map_path" value="$(var map_path)/lanelet2_map.osm"/>
       <arg name="map_projector_info_path" value="$(var map_path)/map_projector_info.yaml"/>
+      <arg name="pointcloud_map_path" value="$(var map_path)/pointcloud_map.pcd"/>
+      <arg name="pointcloud_map_metadata_path" value="$(var map_path)/pointcloud_map/metadata.yaml"/>
     </include>
   </group>
 
@@ -64,6 +67,10 @@
       <arg name="vehicle_model" value="$(var vehicle_model)"/>
       <arg name="sensor_model" value="$(var sensor_model)"/>
     </include>
+  </group>
+
+  <group if="$(var launch_api)">
+    <include file="$(find-pkg-share autoware_core_api)/launch/autoware_core_api.launch.xml"/>
   </group>
 
   <!-- Tools -->

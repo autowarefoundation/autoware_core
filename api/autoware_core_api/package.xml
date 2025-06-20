@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>autoware_core</name>
-  <version>1.1.0</version>
-  <description>The autoware_core package</description>
+  <name>autoware_core_api</name>
+  <version>0.0.0</version>
+  <description>The autoware_core_api package</description>
   <maintainer email="ryohsuke.mitsudome@tier4.jp">Ryohsuke Mitsudome</maintainer>
   <maintainer email="mfc@autoware.org">Mete Fatih Cırıt</maintainer>
   <maintainer email="yutaka.kondo@tier4.jp">Yutaka Kondo</maintainer>
@@ -14,16 +14,8 @@
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
   <buildtool_depend>autoware_cmake</buildtool_depend>
 
-  <exec_depend>autoware_core_api</exec_depend>
-  <exec_depend>autoware_core_control</exec_depend>
-  <exec_depend>autoware_core_localization</exec_depend>
-  <exec_depend>autoware_core_map</exec_depend>
-  <exec_depend>autoware_core_perception</exec_depend>
-  <exec_depend>autoware_core_planning</exec_depend>
-  <exec_depend>autoware_core_sensing</exec_depend>
-  <exec_depend>autoware_core_vehicle</exec_depend>
-  <exec_depend>autoware_global_parameter_loader</exec_depend>
-  <exec_depend>rviz2</exec_depend>
+  <exec_depend>autoware_adapi_adaptors</exec_depend>
+  <exec_depend>autoware_default_adapi</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>autoware_lint_common</test_depend>
