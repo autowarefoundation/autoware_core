@@ -40,7 +40,7 @@
       <remap from="~/route" to="/planning/route"/>
       <remap from="~/state" to="/planning/route_state"/>
       <remap from="~/clear_route" to="/planning/clear_route"/>
-      <remap from="~/set_lanelet_route" to="/planning/set_lanelet_route"/>  
+      <remap from="~/set_lanelet_route" to="/planning/set_lanelet_route"/>
       <remap from="~/set_waypoint_route" to="/planning/set_waypoint_route"/>
       <remap from="~/debug/route_marker" to="$(var visualization_topic_name)"/>
     </node>
