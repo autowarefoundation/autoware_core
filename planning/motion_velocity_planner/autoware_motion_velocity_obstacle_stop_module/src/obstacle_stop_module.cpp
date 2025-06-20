@@ -175,6 +175,8 @@ void ObstacleStopModule::init(rclcpp::Node & node, const std::string & module_na
     node.create_publisher<visualization_msgs::msg::MarkerArray>("~/obstacle_stop/virtual_walls", 1);
   debug_publisher_ =
     node.create_publisher<visualization_msgs::msg::MarkerArray>("~/obstacle_stop/debug_markers", 1);
+  debug_trajectory_publisher_ = node.create_publisher<autoware_planning_msgs::msg::Trajectory>(
+    "~/debug/obstacle_stop/trajectory", 1);
 
   // module publisher
   debug_stop_planning_info_pub_ =
