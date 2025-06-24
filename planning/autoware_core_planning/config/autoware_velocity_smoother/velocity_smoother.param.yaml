@@ -11,7 +11,6 @@
     curvature_calculation_distance: 2.0         # distance of points while curvature is calculating for the steer rate and lateral acceleration limit [m]
     # lateral acceleration limit parameters
     enable_lateral_acc_limit: true     # To toggle the lateral acc filter on and off. You can switch it dynamically at runtime.
-    max_lateral_accel: 1.0             # max lateral acceleration limit [m/ss]
     lateral_acceleration_limits: [1.2, 1.0, 1.0, 1.0] # max lateral acceleration at varying velocity limits [m/ss]
     min_curve_velocity: 2.0            # min velocity at lateral acceleration limit and steering angle rate limit [m/s]
     decel_distance_before_curve: 3.5   # slow speed distance before a curve for lateral acceleration limit
