@@ -38,6 +38,13 @@
             sudden_object_dist_threshold: 1000.0 # If a stop distance is longer than this value, it is not considered as "sudden stop".
             abandon_to_stop: false # If true, the planner gives up to stop when it cannot avoid to run over while maintaining the deceleration limit.
 
+        rss_params:
+          use_rss_stop: true
+          two_wheel_objects_deceleration: -3.0 # [m/ss] for BICYCLE, MOTORCYCLE
+          vehicle_objects_deceleration: -1.2 # [m/ss] for CAR, TRUCK, etc
+          no_wheel_objects_deceleration: -10.0 # [m/ss] for PEDESTRIAN, UNKNOWN
+          velocity_offset: -1.0 # [m/s]
+
       obstacle_filtering:
         object_type:
           pointcloud: false
