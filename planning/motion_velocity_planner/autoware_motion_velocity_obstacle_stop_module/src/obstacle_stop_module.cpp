@@ -170,7 +170,7 @@ double calc_time_to_reach_collision_point(
 
 double calc_braking_dist(const uint8_t obj_label, const double lon_vel, const RSSParam & rss_params)
 {
-  double braking_acc = [&]() {
+  const double braking_acc = [&]() {
     switch (obj_label) {
       case ObjectClassification::UNKNOWN:
       case ObjectClassification::PEDESTRIAN:
@@ -182,7 +182,7 @@ double calc_braking_dist(const uint8_t obj_label, const double lon_vel, const RS
         return rss_params.vehicle_objects_deceleration;
     }
   }();
-  double error_considered_vel = std::max(lon_vel + rss_params.velocity_offset, 0.0);
+  const double error_considered_vel = std::max(lon_vel + rss_params.velocity_offset, 0.0);
   return error_considered_vel * error_considered_vel * 0.5 / -braking_acc;
 }
 
