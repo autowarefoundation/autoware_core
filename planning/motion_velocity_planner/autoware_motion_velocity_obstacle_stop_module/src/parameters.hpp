@@ -125,6 +125,15 @@ struct ObstacleFilteringParam
   }
 };
 
+struct RSSParam
+{
+  bool use_rss_stop{};
+  double two_wheel_objects_deceleration{};
+  double vehicle_objects_deceleration{};
+  double no_wheel_objects_deceleration{};
+  double velocity_offset{};
+};
+
 struct StopPlanningParam
 {
   double stop_margin{};
@@ -138,13 +147,7 @@ struct StopPlanningParam
   bool enable_approaching_on_curve{};
   double additional_stop_margin_on_curve{};
   double min_stop_margin_on_curve{};
-  struct
-  {
-    bool use_rss_stop{};
-    double two_wheel_objects_deceleration{};
-    double other_vehicle_objects_deceleration{};
-    double velocity_offset{};
-  } rss_params;
+  RSSParam rss_params;
 
   struct ObjectTypeSpecificParams
   {
@@ -188,8 +191,10 @@ struct StopPlanningParam
       get_or_declare_parameter<bool>(node, "obstacle_stop.stop_planning.rss_params.use_rss_stop");
     rss_params.two_wheel_objects_deceleration = get_or_declare_parameter<double>(
       node, "obstacle_stop.stop_planning.rss_params.two_wheel_objects_deceleration");
-    rss_params.other_vehicle_objects_deceleration = get_or_declare_parameter<double>(
-      node, "obstacle_stop.stop_planning.rss_params.other_vehicle_objects_deceleration");
+    rss_params.vehicle_objects_deceleration = get_or_declare_parameter<double>(
+      node, "obstacle_stop.stop_planning.rss_params.vehicle_objects_deceleration");
+    rss_params.no_wheel_objects_deceleration = get_or_declare_parameter<double>(
+      node, "obstacle_stop.stop_planning.rss_params.no_wheel_objects_deceleration");
     rss_params.velocity_offset = get_or_declare_parameter<double>(
       node, "obstacle_stop.stop_planning.rss_params.velocity_offset");
 
