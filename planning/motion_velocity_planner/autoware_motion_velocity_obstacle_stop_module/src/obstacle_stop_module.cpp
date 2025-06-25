@@ -167,6 +167,25 @@ double calc_time_to_reach_collision_point(
   return dist_from_ego_to_obstacle /
          std::max(min_velocity_to_reach_collision_point, std::abs(odometry.twist.twist.linear.x));
 }
+
+double calc_braking_dist(const uint8_t obj_label, const double lon_vel, const RSSParam & rss_params)
+{
+  double braking_acc = [&]() {
+    switch (obj_label) {
+      case ObjectClassification::UNKNOWN:
+      case ObjectClassification::PEDESTRIAN:
+        return rss_params.no_wheel_objects_deceleration;
+      case ObjectClassification::BICYCLE:
+      case ObjectClassification::MOTORCYCLE:
+        return rss_params.two_wheel_objects_deceleration;
+      default:
+        return rss_params.vehicle_objects_deceleration;
+    }
+  }();
+  double error_considered_vel = std::max(lon_vel + rss_params.velocity_offset, 0.0);
+  return error_considered_vel * error_considered_vel * 0.5 / -braking_acc;
+}
+
 }  // namespace
 
 void ObstacleStopModule::init(rclcpp::Node & node, const std::string & module_name)
@@ -634,25 +653,8 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
     return std::nullopt;
   }
 
-  const auto braking_dist = [&]() {
-    double braking_acc = [&]() {
-      switch (obj_label) {
-        case ObjectClassification::UNKNOWN:
-        case ObjectClassification::PEDESTRIAN:
-          return -std::numeric_limits<double>::infinity();
-        case ObjectClassification::BICYCLE:
-        case ObjectClassification::MOTORCYCLE:
-          return stop_planning_param_.rss_params.two_wheel_objects_deceleration;
-        default:
-          return stop_planning_param_.rss_params.other_vehicle_objects_deceleration;
-      }
-    }();
-    double error_considered_vel = std::max(
-      object->get_lon_vel_relative_to_traj(traj_points) +
-        stop_planning_param_.rss_params.velocity_offset,
-      0.0);
-    return error_considered_vel * error_considered_vel * 0.5 / -braking_acc;
-  }();
+  const auto braking_dist = calc_braking_dist(
+    obj_label, object->get_lon_vel_relative_to_traj(traj_points), stop_planning_param_.rss_params);
 
   return StopObstacle{
     autoware_utils_uuid::to_hex_string(predicted_object.object_id),
