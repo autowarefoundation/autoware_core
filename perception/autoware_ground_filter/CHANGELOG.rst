@@ -11,6 +11,34 @@ Changelog for package autoware_ground_filter
   Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
 * Contributors: Amadeusz Szymko
 
+1.3.0 (2025-06-23)
+------------------
+* fix: to be consistent version in all package.xml(s)
+* fix: tf2 uses hpp headers in rolling (and is backported) (`#483 <https://github.com/autowarefoundation/autoware_core/issues/483>`_)
+  * tf2 uses hpp headers in rolling (and is backported)
+  * fixup! tf2 uses hpp headers in rolling (and is backported)
+  ---------
+* fix: deprecation of .h files in message_filters (`#467 <https://github.com/autowarefoundation/autoware_core/issues/467>`_)
+  * fix: deprecation of .h files in message_filters
+  * Update perception/autoware_ground_filter/include/autoware/ground_filter/node.hpp
+  Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
+  ---------
+  Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
+* chore: bump up version to 1.1.0 (`#462 <https://github.com/autowarefoundation/autoware_core/issues/462>`_) (`#464 <https://github.com/autowarefoundation/autoware_core/issues/464>`_)
+* fix(autoware_ground_filter): fix deprecated autoware_utils header (`#417 <https://github.com/autowarefoundation/autoware_core/issues/417>`_)
+  * fix autoware_utils header
+  * style(pre-commit): autofix
+  * fix autoware_utils packages
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* feat(autoware_utils): remove managed transform buffer (`#360 <https://github.com/autowarefoundation/autoware_core/issues/360>`_)
+  * feat(autoware_utils): remove managed transform buffer
+  * fix(autoware_ground_filter): redundant inclusion
+  ---------
+  Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
+* Contributors: Amadeusz Szymko, Masaki Baba, Tim Clephas, Yutaka Kondo, github-actions
+
 1.0.0 (2025-03-31)
 ------------------
 * chore: update version in package.xml
