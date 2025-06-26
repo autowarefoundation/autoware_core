@@ -238,6 +238,74 @@ TEST(resample_vector_pose, resample_by_same_interval)
   }
 }
 
+TEST(resample_vector_pose, resample_forward_helical_path)
+{
+  using autoware::motion_utils::resamplePoseVector;
+  using geometry_msgs::msg::Pose;
+
+  std::vector<Pose> path(100);
+
+  // forward helical path
+  for (size_t i = 0; i < 100; ++i) {
+    constexpr double radius = 10.0;
+    constexpr double step_length = 0.1;
+    constexpr double slope_rate = 0.1;
+    const double alpha = i * step_length / radius;
+    path.at(i) = createPose(
+      radius * cos(alpha), radius * sin(alpha), slope_rate * radius * alpha, 0.0, slope_rate,
+      alpha + autoware_utils_math::pi / 2.0);
+  }
+  {
+    const auto resampled_path = resamplePoseVector(path, 2.0);
+    for (size_t i = 1; i < resampled_path.size() - 1; ++i) {
+      const auto & res_p = resampled_path.at(i);
+      const auto & cor_p = path.at(i * 20);
+      const auto res_rpy = autoware_utils_geometry::get_rpy(res_p);
+      const auto cor_rpy = autoware_utils_geometry::get_rpy(cor_p);
+      EXPECT_NEAR(res_p.position.x, cor_p.position.x, 0.1);
+      EXPECT_NEAR(res_p.position.y, cor_p.position.y, 0.1);
+      EXPECT_NEAR(res_p.position.z, cor_p.position.z, 0.1);
+      EXPECT_NEAR(res_rpy.x, cor_rpy.x, 0.02);
+      EXPECT_NEAR(res_rpy.y, cor_rpy.y, 0.02);
+      EXPECT_NEAR(res_rpy.z, cor_rpy.z, 0.02);
+    }
+  }
+}
+
+TEST(resample_vector_pose, resample_backward_helical_path)
+{
+  using autoware::motion_utils::resamplePoseVector;
+  using geometry_msgs::msg::Pose;
+
+  std::vector<Pose> path(100);
+
+  // backward helical path
+  for (size_t i = 0; i < 100; ++i) {
+    constexpr double radius = 10.0;
+    constexpr double step_length = 0.1;
+    constexpr double slope_rate = 0.1;
+    const double alpha = i * step_length / radius;
+    path.at(i) = createPose(
+      radius * cos(alpha), radius * sin(alpha), slope_rate * radius * alpha, 0.0, -slope_rate,
+      alpha - autoware_utils_math::pi / 2.0);
+  }
+  {
+    const auto resampled_path = resamplePoseVector(path, 2.0);
+    for (size_t i = 1; i < resampled_path.size() - 1; ++i) {
+      const auto & res_p = resampled_path.at(i);
+      const auto & cor_p = path.at(i * 20);
+      const auto res_rpy = autoware_utils_geometry::get_rpy(res_p);
+      const auto cor_rpy = autoware_utils_geometry::get_rpy(cor_p);
+      EXPECT_NEAR(res_p.position.x, cor_p.position.x, 0.1);
+      EXPECT_NEAR(res_p.position.y, cor_p.position.y, 0.1);
+      EXPECT_NEAR(res_p.position.z, cor_p.position.z, 0.1);
+      EXPECT_NEAR(res_rpy.x, cor_rpy.x, 0.02);
+      EXPECT_NEAR(res_rpy.y, cor_rpy.y, 0.02);
+      EXPECT_NEAR(res_rpy.z, cor_rpy.z, 0.02);
+    }
+  }
+}
+
 TEST(resample_path_with_lane_id, resample_path_by_vector)
 {
   using autoware::motion_utils::resamplePath;
