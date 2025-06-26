@@ -323,7 +323,9 @@ TrajectoryPoints AnalyticalJerkConstrainedSmoother::applyLateralAccelerationFilt
     static_cast<size_t>(std::round(base_param_.decel_distance_before_curve / points_interval));
   const size_t after_decel_index =
     static_cast<size_t>(std::round(base_param_.decel_distance_after_curve / points_interval));
-  const double max_lateral_accel_abs = std::fabs(base_param_.max_lateral_accel);
+
+  const auto lateral_acceleration_velocity_square_ratio_limits =
+    computeLateralAccelerationVelocitySquareRatioLimits();
 
   std::vector<int> filtered_points;
   for (size_t i = 0; i < output.size(); ++i) {
@@ -333,7 +335,8 @@ TrajectoryPoints AnalyticalJerkConstrainedSmoother::applyLateralAccelerationFilt
     for (size_t j = start; j < end; ++j) {
       curvature = std::max(curvature, std::fabs(curvature_v.at(j)));
     }
-    double v_curvature_max = std::sqrt(max_lateral_accel_abs / std::max(curvature, 1.0E-5));
+    double v_curvature_max = computeVelocityLimitFromLateralAcc(
+      curvature, lateral_acceleration_velocity_square_ratio_limits);
     v_curvature_max = std::max(v_curvature_max, base_param_.min_curve_velocity);
     if (output.at(i).longitudinal_velocity_mps > v_curvature_max) {
       output.at(i).longitudinal_velocity_mps = v_curvature_max;

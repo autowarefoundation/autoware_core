@@ -11,14 +11,15 @@
     curvature_calculation_distance: 2.0         # distance of points while curvature is calculating for the steer rate and lateral acceleration limit [m]
     # lateral acceleration limit parameters
     enable_lateral_acc_limit: true     # To toggle the lateral acc filter on and off. You can switch it dynamically at runtime.
-    max_lateral_accel: 1.0             # max lateral acceleration limit [m/ss]
+    lateral_acceleration_limits: [1.2, 1.0, 1.0, 1.0] # max lateral acceleration at varying velocity limits [m/ss]
     min_curve_velocity: 2.0            # min velocity at lateral acceleration limit and steering angle rate limit [m/s]
     decel_distance_before_curve: 3.5   # slow speed distance before a curve for lateral acceleration limit
     decel_distance_after_curve: 2.0    # slow speed distance after a curve for lateral acceleration limit
     min_decel_for_lateral_acc_lim_filter: -2.5  # deceleration limit applied in the lateral acceleration filter to avoid sudden braking [m/ss]
     # steering angle rate limit parameters
     enable_steering_rate_limit: true         # To toggle the steer rate filter on and off. You can switch it dynamically at runtime.
-    max_steering_angle_rate: 11.5            # maximum steering angle rate [degree/s]
+    velocity_thresholds: [0.1, 0.3, 20.0, 30.0]           # velocity thresholds in mps for steering angle rate limits [m/s]
+    steering_angle_rate_limits: [11.0, 11.0, 11.0, 11.0]  # steering angle rates in degree for each velocity range [degree/s]
     resample_ds: 0.1                         # distance between trajectory points [m]
     curvature_threshold: 0.02                # if curvature > curvature_threshold, steeringRateLimit is triggered [1/m]
 
