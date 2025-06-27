@@ -544,7 +544,8 @@ std::optional<StopObstacle> ObstacleStopModule::filter_inside_stop_obstacle_for_
   autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
 
   const auto & predicted_object = object->predicted_object;
-  const auto & obj_pose = object->get_predicted_pose(clock_->now(), predicted_objects_stamp);
+  const auto & obj_pose =
+    object->get_predicted_current_pose(clock_->now(), predicted_objects_stamp);
 
   // 1. filter by label
   const uint8_t obj_label = predicted_object.classification.at(0).label;
@@ -789,7 +790,7 @@ std::optional<StopObstacle> ObstacleStopModule::filter_outside_stop_obstacle_for
       object_id,
       predicted_objects_stamp,
       object->predicted_object.classification.at(0),
-      object->get_predicted_pose(clock_->now(), predicted_objects_stamp),
+      object->get_predicted_current_pose(clock_->now(), predicted_objects_stamp),
       object->predicted_object.shape,
       object->get_lon_vel_relative_to_traj(traj_points),
       collision_point->first,

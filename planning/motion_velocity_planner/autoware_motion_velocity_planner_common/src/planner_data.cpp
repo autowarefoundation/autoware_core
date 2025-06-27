@@ -225,7 +225,6 @@ geometry_msgs::msg::Pose PlannerData::Object::get_predicted_pose(
     const auto obj_stamp = predicted_objects_stamp;
     const auto predicted_pose_opt = get_predicted_object_pose_from_predicted_paths(
       predicted_object.kinematics.predicted_paths, obj_stamp, current_stamp);
-
     if (predicted_pose_opt) {
       predicted_pose = *predicted_pose_opt;
     } else {
@@ -237,6 +236,29 @@ geometry_msgs::msg::Pose PlannerData::Object::get_predicted_pose(
   }
 
   return *predicted_pose;
+}
+
+geometry_msgs::msg::Pose PlannerData::Object::get_predicted_current_pose(
+  const rclcpp::Time & current_stamp, const rclcpp::Time & predicted_objects_stamp) const
+{
+  if (!predicted_pose) {
+    predicted_pose = calc_predicted_pose(current_stamp, predicted_objects_stamp);
+  }
+  return *predicted_pose;
+}
+
+geometry_msgs::msg::Pose PlannerData::Object::calc_predicted_pose(
+  const rclcpp::Time & time, const rclcpp::Time & predicted_objects_stamp) const
+{
+  const auto predicted_pose_opt = get_predicted_object_pose_from_predicted_paths(
+    predicted_object.kinematics.predicted_paths, predicted_objects_stamp, time);
+  if (!predicted_pose_opt) {
+    RCLCPP_WARN(
+      rclcpp::get_logger("motion_velocity_planner_common"),
+      "Failed to calculate the predicted object pose.");
+    return predicted_object.kinematics.initial_pose_with_covariance.pose;
+  }
+  return *predicted_pose_opt;
 }
 
 void PlannerData::process_predicted_objects(
