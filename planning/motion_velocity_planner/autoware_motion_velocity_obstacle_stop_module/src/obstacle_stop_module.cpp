@@ -578,11 +578,6 @@ std::optional<StopObstacle> ObstacleStopModule::filter_inside_stop_obstacle_for_
     return std::nullopt;
   }
 
-  // 3. filter by velocity
-  if (!is_inside_stop_obstacle_velocity(object, traj_points)) {
-    return std::nullopt;
-  }
-
   // calculate collision points with trajectory with lateral stop margin
   const auto & p = trajectory_polygon_collision_check;
   const auto decimated_traj_polys_with_lat_margin = get_trajectory_polygon_for_inside(
@@ -607,8 +602,13 @@ std::optional<StopObstacle> ObstacleStopModule::filter_inside_stop_obstacle_for_
     return std::nullopt;
   }
 
-  const auto braking_dist = calc_braking_dist(
-    obj_label, object->get_lon_vel_relative_to_traj(traj_points), stop_planning_param_.rss_params);
+  const bool use_obstacle_braking_distance =
+    !is_strict_stop_obstacle_velocity(object, traj_points) && stop_planning_param_.rss_params.use_rss_stop;
+  const auto braking_dist = use_obstacle_braking_distance
+                              ? calc_braking_dist(
+                                  obj_label, object->get_lon_vel_relative_to_traj(traj_points),
+                                  stop_planning_param_.rss_params)
+                              : 0.0;
 
   return StopObstacle{
     autoware_utils_uuid::to_hex_string(predicted_object.object_id),
@@ -622,7 +622,7 @@ std::optional<StopObstacle> ObstacleStopModule::filter_inside_stop_obstacle_for_
     braking_dist};
 }
 
-bool ObstacleStopModule::is_inside_stop_obstacle_velocity(
+bool ObstacleStopModule::is_strict_stop_obstacle_velocity(
   const std::shared_ptr<PlannerData::Object> object,
   const std::vector<TrajectoryPoint> & traj_points) const
 {
