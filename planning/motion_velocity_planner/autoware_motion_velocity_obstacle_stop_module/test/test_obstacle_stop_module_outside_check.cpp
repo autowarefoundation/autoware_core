@@ -238,6 +238,7 @@ TEST_F(OutsideCutInObstacleTest, ValidCollisionPointWithCutInObject)
   EXPECT_TRUE(result.has_value());
 }
 
+// TODO(takagi): move this to autoware_motion_velocity_planner_common package
 TEST_F(OutsideCutInObstacleTest, GetSpecifiedTimePoseStaticObject)
 {
   // Create a static object
