@@ -218,26 +218,6 @@ void PlannerData::Object::calc_vel_relative_to_traj(
   lat_vel_relative_to_traj = sign * projected_velocity[1];
 }
 
-geometry_msgs::msg::Pose PlannerData::Object::get_predicted_pose(
-  const rclcpp::Time & current_stamp, const rclcpp::Time & predicted_objects_stamp) const
-{
-  if (!predicted_pose) {
-    const auto obj_stamp = predicted_objects_stamp;
-    const auto predicted_pose_opt = get_predicted_object_pose_from_predicted_paths(
-      predicted_object.kinematics.predicted_paths, obj_stamp, current_stamp);
-    if (predicted_pose_opt) {
-      predicted_pose = *predicted_pose_opt;
-    } else {
-      predicted_pose = predicted_object.kinematics.initial_pose_with_covariance.pose;
-      RCLCPP_WARN(
-        rclcpp::get_logger("motion_velocity_planner_common"),
-        "Failed to calculate the predicted object pose.");
-    }
-  }
-
-  return *predicted_pose;
-}
-
 geometry_msgs::msg::Pose PlannerData::Object::get_predicted_current_pose(
   const rclcpp::Time & current_stamp, const rclcpp::Time & predicted_objects_stamp) const
 {

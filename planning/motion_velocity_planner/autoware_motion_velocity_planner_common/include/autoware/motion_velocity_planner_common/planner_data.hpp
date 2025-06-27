@@ -115,8 +115,6 @@ public:
       const geometry_msgs::msg::Point & ego_pos) const;
     double get_lon_vel_relative_to_traj(const std::vector<TrajectoryPoint> & traj_points) const;
     double get_lat_vel_relative_to_traj(const std::vector<TrajectoryPoint> & traj_points) const;
-    geometry_msgs::msg::Pose get_predicted_pose(
-      const rclcpp::Time & current_stamp, const rclcpp::Time & predicted_object_stamp) const;
     geometry_msgs::msg::Pose get_predicted_current_pose(
       const rclcpp::Time & current_stamp, const rclcpp::Time & predicted_objects_stamp) const;
     geometry_msgs::msg::Pose calc_predicted_pose(
