@@ -68,16 +68,18 @@ MissionPlanner::MissionPlanner(const rclcpp::NodeOptions & options)
   pub_marker_ = create_publisher<MarkerArray>("~/debug/route_marker", durable_qos);
 
   // NOTE: The route interface should be mutually exclusive by callback group.
-  srv_clear_route = create_service<ClearRoute>(
+  srv_clear_route = create_service<ClearRouteSpecs::Service>(
     "~/clear_route", service_utils::handle_exception(&MissionPlanner::on_clear_route, this));
-  srv_set_lanelet_route = create_service<SetLaneletRoute>(
+  srv_set_lanelet_route = create_service<SetLaneletRouteSpecs::Service>(
     "~/set_lanelet_route",
     service_utils::handle_exception(&MissionPlanner::on_set_lanelet_route, this));
-  srv_set_waypoint_route = create_service<SetWaypointRoute>(
+  srv_set_waypoint_route = create_service<SetWaypointRouteSpecs::Service>(
     "~/set_waypoint_route",
     service_utils::handle_exception(&MissionPlanner::on_set_waypoint_route, this));
-  pub_route_ = create_publisher<LaneletRoute>("~/route", durable_qos);
-  pub_state_ = create_publisher<RouteState>("~/state", durable_qos);
+  pub_route_ = create_publisher<LaneletRouteSpecs::Message>(
+    "~/route", autoware::component_interface_specs::get_qos<LaneletRouteSpecs>());
+  pub_state_ = create_publisher<RouteStateSpecs::Message>(
+    "~/state", autoware::component_interface_specs::get_qos<RouteStateSpecs>());
 
   // Route state will be published when the node gets ready for route api after initialization,
   // otherwise the mission planner rejects the request for the API.

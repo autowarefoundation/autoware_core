@@ -30,7 +30,7 @@ path_generator:
     search_time:
       type: double
       validation:
-        gt<>: [0]
+        gt_eq<>: [0]
 
     search_distance:
       type: double

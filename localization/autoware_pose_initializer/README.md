@@ -17,9 +17,9 @@ This node depends on the map height fitter library.
 
 ### Services
 
-| Name                       | Type                                                             | Description           |
-| -------------------------- | ---------------------------------------------------------------- | --------------------- |
-| `/localization/initialize` | autoware_internal_localization_msgs::srv::InitializeLocalization | initial pose from api |
+| Name                       | Type                                                    | Description           |
+| -------------------------- | ------------------------------------------------------- | --------------------- |
+| `/localization/initialize` | autoware_localization_msgs::srv::InitializeLocalization | initial pose from api |
 
 ### Clients
 
@@ -138,4 +138,4 @@ pose:
 ```
 
 It behaves the same as "initialpose (from rviz)".
-The position.z and the covariance will be overwritten by [autoware_adapi_adaptors](https://github.com/autowarefoundation/autoware_universe/tree/main/system/autoware_default_adapi_helpers/autoware_adapi_adaptors), so there is no need to input them.
+The position.z and the covariance will be overwritten by [autoware_adapi_adaptors](../../api/autoware_adapi_adaptors/README.md), so there is no need to input them.

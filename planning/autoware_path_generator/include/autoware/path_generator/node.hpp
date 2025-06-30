@@ -20,8 +20,11 @@
 #include <autoware/trajectory/path_point_with_lane_id.hpp>
 #include <autoware_path_generator/path_generator_parameters.hpp>
 #include <autoware_utils/ros/polling_subscriber.hpp>
+#include <autoware_utils_debug/time_keeper.hpp>
+#include <autoware_utils_system/stop_watch.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
 
+#include <autoware_internal_debug_msgs/msg/float64_stamped.hpp>
 #include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
 #include <autoware_planning_msgs/msg/lanelet_route.hpp>
@@ -33,6 +36,7 @@
 
 namespace autoware::path_generator
 {
+using autoware_internal_debug_msgs::msg::Float64Stamped;
 using autoware_internal_planning_msgs::msg::PathPointWithLaneId;
 using autoware_internal_planning_msgs::msg::PathWithLaneId;
 using autoware_map_msgs::msg::LaneletMapBin;
@@ -76,6 +80,7 @@ private:
   rclcpp::Publisher<PathWithLaneId>::SharedPtr path_publisher_;
   rclcpp::Publisher<TurnIndicatorsCommand>::SharedPtr turn_signal_publisher_;
   rclcpp::Publisher<HazardLightsCommand>::SharedPtr hazard_signal_publisher_;
+  rclcpp::Publisher<Float64Stamped>::SharedPtr debug_calculation_time_;
 
   rclcpp::TimerBase::SharedPtr timer_;
 
@@ -85,6 +90,10 @@ private:
   PlannerData planner_data_;
 
   std::optional<lanelet::ConstLanelet> current_lanelet_{std::nullopt};
+
+  mutable std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper_{nullptr};
+
+  autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_;
 
   void run();
 
@@ -99,6 +108,8 @@ private:
     const Params & params) const;
 
   bool update_current_lanelet(const geometry_msgs::msg::Pose & current_pose, const Params & params);
+
+  void publishStopWatchTime();
 };
 }  // namespace autoware::path_generator
 
