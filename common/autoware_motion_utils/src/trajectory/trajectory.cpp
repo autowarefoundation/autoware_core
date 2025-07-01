@@ -669,5 +669,4 @@ void calculate_time_from_start(
     }
   }
 }
-
 }  // namespace autoware::motion_utils
