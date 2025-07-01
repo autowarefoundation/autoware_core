@@ -78,8 +78,8 @@
           pointcloud_max_cluster_size: 100000
 
         # hysteresis for velocity
-        obstacle_velocity_threshold_to_stop : 30.0 # stop planning is executed to the obstacle whose velocity is less than this value [m/s]
-        obstacle_velocity_threshold_from_stop : 30.5 # stop planning is executed to the obstacle whose velocity is less than this value [m/s]
+        obstacle_velocity_threshold_enter_current_position : 30.0 # stop planning is executed to the obstacle whose velocity is less than this value [m/s]
+        obstacle_velocity_threshold_enter_braking_distance : 30.5 # stop planning is executed to the obstacle whose velocity is less than this value [m/s]
 
         max_lat_margin: 0.3 # lateral margin between the obstacles except for unknown and ego's footprint
         max_lat_margin_against_predicted_object_unknown: 0.3 # lateral margin between the unknown obstacles and ego's footprint

@@ -176,7 +176,7 @@ private:
     const double dist_from_obj_poly_to_traj_poly, const VehicleInfo & vehicle_info,
     const double dist_to_bumper,
     const TrajectoryPolygonCollisionCheck & trajectory_polygon_collision_check) const;
-  bool is_strict_stop_obstacle_velocity(
+  bool is_obstacle_velocity_requiring_strict_stop(
     const std::shared_ptr<PlannerData::Object> object,
     const std::vector<TrajectoryPoint> & traj_points) const;
   bool is_crossing_transient_obstacle(
