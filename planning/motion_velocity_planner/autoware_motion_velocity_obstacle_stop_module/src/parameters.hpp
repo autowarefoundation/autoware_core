@@ -67,8 +67,8 @@ struct ObstacleFilteringParam
   std::vector<uint8_t> inside_stop_object_types{};
   std::vector<uint8_t> outside_stop_object_types{};
 
-  double obstacle_velocity_threshold_to_stop{};
-  double obstacle_velocity_threshold_from_stop{};
+  double obstacle_velocity_threshold_enter_current_position{};
+  double obstacle_velocity_threshold_enter_braking_distance{};
 
   double max_lat_margin{};
   double max_lat_margin_against_predicted_object_unknown{};
@@ -91,10 +91,10 @@ struct ObstacleFilteringParam
     outside_stop_object_types(
       utils::get_target_object_type(node, "obstacle_stop.obstacle_filtering.object_type.outside."))
   {
-    obstacle_velocity_threshold_to_stop = get_or_declare_parameter<double>(
-      node, "obstacle_stop.obstacle_filtering.obstacle_velocity_threshold_to_stop");
-    obstacle_velocity_threshold_from_stop = get_or_declare_parameter<double>(
-      node, "obstacle_stop.obstacle_filtering.obstacle_velocity_threshold_from_stop");
+    obstacle_velocity_threshold_enter_current_position = get_or_declare_parameter<double>(
+      node, "obstacle_stop.obstacle_filtering.obstacle_velocity_threshold_enter_current_position");
+    obstacle_velocity_threshold_enter_braking_distance = get_or_declare_parameter<double>(
+      node, "obstacle_stop.obstacle_filtering.obstacle_velocity_threshold_enter_braking_distance");
 
     max_lat_margin =
       get_or_declare_parameter<double>(node, "obstacle_stop.obstacle_filtering.max_lat_margin");

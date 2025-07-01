@@ -649,13 +649,17 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
     return std::nullopt;
   }
 
-  const bool use_obstacle_braking_distance =
-    !is_strict_stop_obstacle_velocity(object, traj_points) && stop_planning_param_.rss_params.use_rss_stop;
-  const auto braking_dist = use_obstacle_braking_distance
-                              ? calc_braking_dist(
-                                  obj_label, object->get_lon_vel_relative_to_traj(traj_points),
-                                  stop_planning_param_.rss_params)
-                              : 0.0;
+  const auto braking_dist = [&]() {
+    const bool use_obstacle_braking_distance =
+      !is_obstacle_velocity_requiring_strict_stop(object, traj_points) &&
+      stop_planning_param_.rss_params.use_rss_stop;
+    if (!use_obstacle_braking_distance) {
+      return 0.0;
+    }
+    return calc_braking_dist(
+      obj_label, object->get_lon_vel_relative_to_traj(traj_points),
+      stop_planning_param_.rss_params);
+  }();
 
   return StopObstacle{
     autoware_utils_uuid::to_hex_string(predicted_object.object_id),
@@ -669,7 +673,7 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
     braking_dist};
 }
 
-bool ObstacleStopModule::is_strict_stop_obstacle_velocity(
+bool ObstacleStopModule::is_obstacle_velocity_requiring_strict_stop(
   const std::shared_ptr<PlannerData::Object> object,
   const std::vector<TrajectoryPoint> & traj_points) const
 {
@@ -680,7 +684,7 @@ bool ObstacleStopModule::is_strict_stop_obstacle_velocity(
 
   if (is_prev_object_stop) {
     if (
-      obstacle_filtering_param_.obstacle_velocity_threshold_from_stop <
+      obstacle_filtering_param_.obstacle_velocity_threshold_enter_braking_distance <
       object->get_lon_vel_relative_to_traj(traj_points)) {
       return false;
     }
@@ -688,7 +692,7 @@ bool ObstacleStopModule::is_strict_stop_obstacle_velocity(
   }
   if (
     object->get_lon_vel_relative_to_traj(traj_points) <
-    obstacle_filtering_param_.obstacle_velocity_threshold_to_stop) {
+    obstacle_filtering_param_.obstacle_velocity_threshold_enter_current_position) {
     return true;
   }
   return false;
@@ -1214,7 +1218,7 @@ void ObstacleStopModule::check_consistency(
       const double elapsed_time = (current_time - prev_closest_stop_obstacle.stamp).seconds();
       if (
         (*object_itr)->predicted_object.kinematics.initial_twist_with_covariance.twist.linear.x <
-          obstacle_filtering_param_.obstacle_velocity_threshold_from_stop &&
+          obstacle_filtering_param_.obstacle_velocity_threshold_enter_braking_distance &&
         elapsed_time < obstacle_filtering_param_.stop_obstacle_hold_time_threshold) {
         stop_obstacles.push_back(prev_closest_stop_obstacle);
       }
