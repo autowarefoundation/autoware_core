@@ -469,6 +469,18 @@ template void insertOrientation<std::vector<autoware_planning_msgs::msg::Traject
   const bool is_driving_forward);
 
 //
+template void insertOrientationAsArc<std::vector<autoware_planning_msgs::msg::PathPoint>>(
+  std::vector<autoware_planning_msgs::msg::PathPoint> & points, const bool is_driving_forward);
+template void
+insertOrientationAsArc<std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId>>(
+  std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & points,
+  const bool is_driving_forward);
+template void
+insertOrientationAsArc<std::vector<autoware_planning_msgs::msg::TrajectoryPoint>>(
+  std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points,
+  const bool is_driving_forward);
+
+//
 template double calcSignedArcLength<std::vector<autoware_planning_msgs::msg::PathPoint>>(
   const std::vector<autoware_planning_msgs::msg::PathPoint> & points,
   const geometry_msgs::msg::Point & src_point, const size_t src_seg_idx,
@@ -657,4 +669,5 @@ void calculate_time_from_start(
     }
   }
 }
+
 }  // namespace autoware::motion_utils
