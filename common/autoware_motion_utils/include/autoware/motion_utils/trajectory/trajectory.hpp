@@ -1880,6 +1880,53 @@ insertDecelPoint<std::vector<autoware_planning_msgs::msg::TrajectoryPoint>>(
 template <class T>
 void insertOrientation(T & points, const bool is_driving_forward)
 {
+  if (is_driving_forward) {
+    for (size_t i = 0; i < points.size() - 1; ++i) {
+      const auto & src_point = autoware_utils_geometry::get_point(points.at(i));
+      const auto & dst_point = autoware_utils_geometry::get_point(points.at(i + 1));
+      const double pitch = autoware_utils_geometry::calc_elevation_angle(src_point, dst_point);
+      const double yaw = autoware_utils_geometry::calc_azimuth_angle(src_point, dst_point);
+      autoware_utils_geometry::set_orientation(
+        autoware_utils_geometry::create_quaternion_from_rpy(0.0, pitch, yaw), points.at(i));
+      if (i == points.size() - 2) {
+        // Terminal orientation is same as the point before it
+        autoware_utils_geometry::set_orientation(
+          autoware_utils_geometry::get_pose(points.at(i)).orientation, points.at(i + 1));
+      }
+    }
+  } else {
+    for (size_t i = points.size() - 1; i >= 1; --i) {
+      const auto & src_point = autoware_utils_geometry::get_point(points.at(i));
+      const auto & dst_point = autoware_utils_geometry::get_point(points.at(i - 1));
+      const double pitch = autoware_utils_geometry::calc_elevation_angle(src_point, dst_point);
+      const double yaw = autoware_utils_geometry::calc_azimuth_angle(src_point, dst_point);
+      autoware_utils_geometry::set_orientation(
+        autoware_utils_geometry::create_quaternion_from_rpy(0.0, pitch, yaw), points.at(i));
+    }
+    // Initial orientation is same as the point after it
+    autoware_utils_geometry::set_orientation(
+      autoware_utils_geometry::get_pose(points.at(1)).orientation, points.at(0));
+  }
+}
+
+extern template void insertOrientation<std::vector<autoware_planning_msgs::msg::PathPoint>>(
+  std::vector<autoware_planning_msgs::msg::PathPoint> & points, const bool is_driving_forward);
+extern template void
+insertOrientation<std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId>>(
+  std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & points,
+  const bool is_driving_forward);
+extern template void insertOrientation<std::vector<autoware_planning_msgs::msg::TrajectoryPoint>>(
+  std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points,
+  const bool is_driving_forward);
+
+/**
+ * @brief Insert orientation to each point in points container (trajectory, path, ...)
+ * @param points points of trajectory, path, ... (input / output)
+ * @param is_driving_forward  flag indicating the order of points is forward or backward
+ */
+template <class T>
+void insertOrientationAsArc(T & points, const bool is_driving_forward)
+{
   if (points.size() < 2) {
     return;
   }
@@ -1940,13 +1987,14 @@ void insertOrientation(T & points, const bool is_driving_forward)
   }
 }
 
-extern template void insertOrientation<std::vector<autoware_planning_msgs::msg::PathPoint>>(
+extern template void insertOrientationAsArc<std::vector<autoware_planning_msgs::msg::PathPoint>>(
   std::vector<autoware_planning_msgs::msg::PathPoint> & points, const bool is_driving_forward);
 extern template void
-insertOrientation<std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId>>(
+insertOrientationAsArc<std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId>>(
   std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & points,
   const bool is_driving_forward);
-extern template void insertOrientation<std::vector<autoware_planning_msgs::msg::TrajectoryPoint>>(
+extern template void
+insertOrientationAsArc<std::vector<autoware_planning_msgs::msg::TrajectoryPoint>>(
   std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points,
   const bool is_driving_forward);
 
