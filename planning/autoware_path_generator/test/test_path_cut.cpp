@@ -49,7 +49,7 @@ TEST_F(UtilsTest, getPathBound)
   constexpr auto epsilon = 1e-1;
 
   {  // lanelet sequence is empty
-    const auto result = utils::get_path_bounds({}, {});
+    const auto result = utils::get_path_bounds({}, {}, {}, {}, {});
 
     ASSERT_FALSE(result.has_value());
   }
@@ -62,7 +62,8 @@ TEST_F(UtilsTest, getPathBound)
     end.point.pose.position.x = -976.0;
     end.point.pose.position.y = 1.75;
     end.lane_ids = {4417};
-    const auto result = utils::get_path_bounds({start, end}, get_lanelets_from_ids({4417}));
+    const auto result = utils::get_path_bounds(
+      {start, end}, get_lanelets_from_ids({4417}), planner_data_.routing_graph_ptr, 0.0, 0.0);
 
     ASSERT_TRUE(result.has_value());
     ASSERT_GE(result->left.size(), 2);
@@ -85,7 +86,8 @@ TEST_F(UtilsTest, getPathBound)
     end.point.pose.position.x = -926.0;
     end.point.pose.position.y = 1.75;
     end.lane_ids = {4434};
-    const auto result = utils::get_path_bounds({start, end}, get_lanelets_from_ids({4429, 4434}));
+    const auto result = utils::get_path_bounds(
+      {start, end}, get_lanelets_from_ids({4429, 4434}), planner_data_.routing_graph_ptr, 0.0, 0.0);
 
     ASSERT_TRUE(result.has_value());
     ASSERT_GE(result->left.size(), 2);
@@ -100,17 +102,28 @@ TEST_F(UtilsTest, getPathBound)
     ASSERT_NEAR(result->right.back().y, 0.0, epsilon);
   }
 
-  {  // path exceeds lanelet sequence
+  {  // normal case with offsets
     PathPointWithLaneId start, end;
-    start.point.pose.position.x = -999.0;
+    start.point.pose.position.x = -974.5;
     start.point.pose.position.y = 1.75;
-    start.lane_ids = {4417};
-    end.point.pose.position.x = -974.0;
+    start.lane_ids = {4429};
+    end.point.pose.position.x = -950.5;
     end.point.pose.position.y = 1.75;
     end.lane_ids = {4429};
-    const auto result = utils::get_path_bounds({start, end}, get_lanelets_from_ids({4417}));
+    const auto result = utils::get_path_bounds(
+      {start, end}, get_lanelets_from_ids({4429}), planner_data_.routing_graph_ptr, 1.0, 1.0);
 
-    ASSERT_FALSE(result.has_value());
+    ASSERT_TRUE(result.has_value());
+    ASSERT_GE(result->left.size(), 2);
+    ASSERT_NEAR(result->left.front().x, -975.5, epsilon);
+    ASSERT_NEAR(result->left.front().y, 3.5, epsilon);
+    ASSERT_NEAR(result->left.back().x, -949.5, epsilon);
+    ASSERT_NEAR(result->left.back().y, 3.5, epsilon);
+    ASSERT_GE(result->right.size(), 2);
+    ASSERT_NEAR(result->right.front().x, -975.5, epsilon);
+    ASSERT_NEAR(result->right.front().y, 0, epsilon);
+    ASSERT_NEAR(result->right.back().x, -949.5, epsilon);
+    ASSERT_NEAR(result->right.back().y, 0, epsilon);
   }
 }
 
@@ -180,17 +193,14 @@ TEST_F(UtilsTest, GetArcLengthOnBounds)
   const auto epsilon = 1e-1;
 
   {  // lanelet sequence is empty
-    const auto result = utils::get_arc_length_on_bounds({}, PathPointWithLaneId{});
+    const auto result = utils::get_arc_length_on_bounds({}, {}, {});
 
     ASSERT_FALSE(result.has_value());
   }
 
   {  // normal case
-    PathPointWithLaneId path_point;
-    path_point.point.pose.position.x = 3765.5;
-    path_point.point.pose.position.y = 73746.0;
-    path_point.lane_ids = {50};
-    const auto result = utils::get_arc_length_on_bounds(get_lanelets_from_ids({50}), path_point);
+    const auto result =
+      utils::get_arc_length_on_bounds(get_lanelets_from_ids({50}), {3765.5, 73746.0}, 50);
 
     ASSERT_TRUE(result.has_value());
     ASSERT_NEAR(result->left, 10.672, epsilon);
@@ -198,12 +208,8 @@ TEST_F(UtilsTest, GetArcLengthOnBounds)
   }
 
   {  // normal case with multiple lanelets
-    PathPointWithLaneId path_point;
-    path_point.point.pose.position.x = 3758.0;
-    path_point.point.pose.position.y = 73754.0;
-    path_point.lane_ids = {122};
     const auto result =
-      utils::get_arc_length_on_bounds(get_lanelets_from_ids({50, 122}), path_point);
+      utils::get_arc_length_on_bounds(get_lanelets_from_ids({50, 122}), {3758.0, 73754.0}, 122);
 
     ASSERT_TRUE(result.has_value());
     ASSERT_NEAR(result->left, 22.944, epsilon);
@@ -211,11 +217,8 @@ TEST_F(UtilsTest, GetArcLengthOnBounds)
   }
 
   {  // path point is outside lanelet sequence
-    PathPointWithLaneId path_point;
-    path_point.point.pose.position.x = 3777.0;
-    path_point.point.pose.position.y = 73748.5;
-    path_point.lane_ids = {125};
-    const auto result = utils::get_arc_length_on_bounds(get_lanelets_from_ids({50}), path_point);
+    const auto result =
+      utils::get_arc_length_on_bounds(get_lanelets_from_ids({50}), {3777.0, 73748.5}, 50);
 
     ASSERT_FALSE(result.has_value());
   }
