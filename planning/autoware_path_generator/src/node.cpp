@@ -32,16 +32,6 @@
 #include <utility>
 #include <vector>
 
-namespace
-{
-template <typename LaneletT, typename PointT>
-double get_arc_length_along_centerline(const LaneletT & lanelet, const PointT & point)
-{
-  return lanelet::geometry::toArcCoordinates(lanelet.centerline2d(), lanelet::utils::to2D(point))
-    .length;
-}
-}  // namespace
-
 namespace autoware::path_generator
 {
 PathGenerator::PathGenerator(const rclcpp::NodeOptions & node_options)
@@ -272,8 +262,10 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
     return std::nullopt;
   }
 
-  const auto path_bounds =
-    utils::get_path_bounds(finalized_path_with_lane_id.points, planner_data_.preferred_lanelets);
+  const auto path_bounds = utils::get_path_bounds(
+    finalized_path_with_lane_id.points, planner_data_.preferred_lanelets,
+    planner_data_.routing_graph_ptr, vehicle_info_.max_longitudinal_offset_m,
+    vehicle_info_.max_longitudinal_offset_m);
 
   if (!path_bounds) {
     return std::nullopt;
