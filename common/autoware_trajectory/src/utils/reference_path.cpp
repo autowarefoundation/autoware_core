@@ -455,6 +455,7 @@ std::tuple<lanelet::ConstLanelets, double, double> supplement_lanelet_sequence(
     }
     visited_prev_lane_ids.insert(longest_previous_lane.id());
     new_s_start += lanelet::geometry::length3d(longest_previous_lane);
+    new_s_end += lanelet::geometry::length3d(longest_previous_lane);
   }
 
   std::set<lanelet::Id> visited_next_lane_ids{extended_lanelet_sequence.back().id()};
