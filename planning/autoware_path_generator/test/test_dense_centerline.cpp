@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef UTILS_TEST_HPP_
-#define UTILS_TEST_HPP_
-
 #include "autoware/path_generator/node.hpp"
 
 #include <autoware_lanelet2_extension/utility/message_conversion.hpp>
@@ -102,5 +99,3 @@ TEST(DenseCenterlineTest, generatePath)
   ASSERT_FALSE(path->points.empty());
 }
 }  // namespace autoware::path_generator
-
-#endif  // UTILS_TEST_HPP_
