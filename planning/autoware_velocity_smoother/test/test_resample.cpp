@@ -1029,7 +1029,7 @@ TEST_F(TrajectoryResampleTest, ResampleWithZeroOrderHold)
       EXPECT_NEAR(zoh_point.longitudinal_velocity_mps, zoh_prev_velocity, 0.01);
       zoh_prev_velocity = zoh_point.longitudinal_velocity_mps;
     }
-    
+
     double linear_prev_velocity = output_linear.front().longitudinal_velocity_mps;
     for (const auto & linear_point : output_linear) {
       double x = linear_point.pose.position.x;

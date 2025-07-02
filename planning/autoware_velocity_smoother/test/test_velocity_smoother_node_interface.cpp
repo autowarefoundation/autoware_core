@@ -86,8 +86,7 @@ TEST(PlanningModuleInterfaceTest, testPlanningInterfaceWithVariousTrajectoryInpu
   publishMandatoryTopics(test_manager, test_target_node);
 
   // test for normal trajectory
-  ASSERT_NO_THROW(
-    test_manager->testWithNormalTrajectory(test_target_node, INPUT_TRAJECTORY_TOPIC));
+  ASSERT_NO_THROW(test_manager->testWithNormalTrajectory(test_target_node, INPUT_TRAJECTORY_TOPIC));
   EXPECT_GE(test_manager->getReceivedTopicNum(), 1);
 
   // test for trajectory with empty/one point/overlapping point
@@ -105,10 +104,8 @@ TEST(PlanningModuleInterfaceTest, NodeTestWithOffTrackEgoPose)
 
   publishMandatoryTopics(test_manager, test_target_node);
 
-
   // test for normal trajectory
-  ASSERT_NO_THROW(
-    test_manager->testWithNormalTrajectory(test_target_node, INPUT_TRAJECTORY_TOPIC));
+  ASSERT_NO_THROW(test_manager->testWithNormalTrajectory(test_target_node, INPUT_TRAJECTORY_TOPIC));
   EXPECT_GE(test_manager->getReceivedTopicNum(), 1);
 
   ASSERT_NO_THROW(test_manager->testWithOffTrackOdometry(test_target_node, INPUT_ODOMETRY_TOPIC));
