@@ -222,6 +222,7 @@ std::vector<std::pair<double, double>>
 SmootherBase::computeLateralAccelerationVelocitySquareRatioLimits() const
 {
   std::vector<std::pair<double, double>> output;
+  constexpr double epsilon = 1e-5;
 
   // Process each velocity threshold
   for (size_t i = 0; i < base_param_.velocity_thresholds.size(); ++i) {
@@ -237,13 +238,14 @@ SmootherBase::computeLateralAccelerationVelocitySquareRatioLimits() const
 
     // Add the ratio pair for this threshold
     output.push_back(std::make_pair(
-      lateral_acc_threshold / (vi_1 * vi_1 + 1e-5), lateral_acc_threshold / (vi * vi + 1e-5)));
+      lateral_acc_threshold / (vi_1 * vi_1 + epsilon),
+      lateral_acc_threshold / (vi * vi + epsilon)));
   }
 
   // Add the last part
   auto v_max = base_param_.velocity_thresholds.back();
-  output.push_back(
-    std::make_pair(base_param_.lateral_acceleration_limits.back() / (v_max * v_max + 1e-5), 0.0));
+  output.push_back(std::make_pair(
+    base_param_.lateral_acceleration_limits.back() / (v_max * v_max + epsilon), 0.0));
 
   return output;
 }
@@ -251,6 +253,7 @@ SmootherBase::computeLateralAccelerationVelocitySquareRatioLimits() const
 std::vector<std::pair<double, double>> SmootherBase::computeSteerRateVelocityRatioLimits() const
 {
   std::vector<std::pair<double, double>> output;
+  constexpr double epsilon = 1e-5;
 
   // Process each velocity threshold
   for (size_t i = 0; i < base_param_.velocity_thresholds.size(); ++i) {
@@ -266,14 +269,14 @@ std::vector<std::pair<double, double>> SmootherBase::computeSteerRateVelocityRat
     }
 
     // Add the ratio pair for this threshold
-    output.push_back(
-      std::make_pair(steer_rate_threshold / (vi_1 + 1e-5), steer_rate_threshold / (vi + 1e-5)));
+    output.push_back(std::make_pair(
+      steer_rate_threshold / (vi_1 + epsilon), steer_rate_threshold / (vi + epsilon)));
   }
 
   // Add the last part
   output.push_back(std::make_pair(
     autoware_utils_math::deg2rad(base_param_.steering_angle_rate_limits.back()) /
-      (base_param_.velocity_thresholds.back() + 1e-5),
+      (base_param_.velocity_thresholds.back() + epsilon),
     0.0));
 
   return output;
