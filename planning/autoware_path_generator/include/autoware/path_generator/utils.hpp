@@ -63,12 +63,17 @@ std::optional<lanelet::ConstLanelet> get_next_lanelet_within_route(
 /**
  * @brief get path bounds for PathWithLaneId
  * @param path_points path points
- * @param lanelet_sequence lanelet sequence
+ * @param lanelet_sequence lanelet sequence (not required to contain all path points)
+ * @param routing_graph routing graph
+ * @param backward_offset backward offset from first point of path
+ * @param forward_offset forward offset from last point of path
  * @return path bounds (left / right, std::nullopt if bounds cannot be determined)
  */
 std::optional<PathRange<std::vector<geometry_msgs::msg::Point>>> get_path_bounds(
   const std::vector<PathPointWithLaneId> & path_points,
-  const lanelet::LaneletSequence & lanelet_sequence);
+  const lanelet::LaneletSequence & lanelet_sequence,
+  const lanelet::routing::RoutingGraphConstPtr routing_graph, const double backward_offset,
+  const double forward_offset);
 
 /**
  * @brief crop line string
@@ -81,13 +86,26 @@ std::vector<geometry_msgs::msg::Point> crop_line_string(
   const lanelet::BasicLineString3d & line_string, const double s_start, const double s_end);
 
 /**
- * @brief get positions of given path point projected to left / right bound in arc length
+ * @brief get position of given point projected to centerline in arc length
  * @param lanelet_sequence lanelet sequence
- * @param path_point path point
- * @return longitudinal distance of projected point (left / right)
+ * @param point input point
+ * @param lane_id id of lanelet which point is on
+ * @return longitudinal position of projected point
+ */
+std::optional<double> get_arc_length_on_centerline(
+  const lanelet::LaneletSequence & lanelet_sequence, const lanelet::BasicPoint2d & point,
+  const lanelet::Id & lane_id);
+
+/**
+ * @brief get positions of given point projected to left / right bound in arc length
+ * @param lanelet_sequence lanelet sequence
+ * @param point input point
+ * @param lane_id id of lanelet which point is on
+ * @return longitudinal position of projected point (left / right)
  */
 std::optional<PathRange<double>> get_arc_length_on_bounds(
-  const lanelet::LaneletSequence & lanelet_sequence, const PathPointWithLaneId & path_point);
+  const lanelet::LaneletSequence & lanelet_sequence, const lanelet::BasicPoint2d & point,
+  const lanelet::Id & lane_id);
 
 /**
  * @brief Recreate the path with a given goal pose.
