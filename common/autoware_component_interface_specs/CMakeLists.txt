@@ -12,6 +12,7 @@ if(BUILD_TESTING)
     test/test_localization.cpp
     test/test_map.cpp
     test/test_perception.cpp
+    test/test_system.cpp
     test/test_vehicle.cpp
   )
 endif()

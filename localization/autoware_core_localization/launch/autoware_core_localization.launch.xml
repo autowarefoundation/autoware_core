@@ -1,22 +1,36 @@
 <launch>
   <arg name="gnss_input_topic" default="/sensing/gnss/pose_with_covariance"/>
+  <arg name="lidar_input_topic" default="/sensing/lidar/top/pointcloud_raw_ex"/>
   <arg name="vehicle_twist_input_topic" default="/sensing/vehicle_velocity_converter/twist_with_covariance"/>
 
   <arg name="ekf_localizer_param_path" default="$(find-pkg-share autoware_core_localization)/config/ekf_localizer.param.yaml"/>
   <arg name="stop_filter_param_path" default="$(find-pkg-share autoware_core_localization)/config/stop_filter.param.yaml"/>
   <arg name="twist2accel_param_path" default="$(find-pkg-share autoware_core_localization)/config/twist2accel.param.yaml"/>
+  <arg name="pose_initializer_param_path" default="$(find-pkg-share autoware_core_localization)/config/pose_initializer.param.yaml"/>
+  <arg name="voxel_grid_downsample_filter_param_file" default="$(find-pkg-share autoware_core_localization)/config/voxel_grid_downsample_filter.param.yaml"/>
+  <arg name="ndt_scan_matcher_param_path" default="$(find-pkg-share autoware_core_localization)/config/ndt_scan_matcher.param.yaml"/>
 
   <group>
     <push-ros-namespace namespace="localization"/>
     <group>
       <push-ros-namespace namespace="pose_estimator"/>
-      <!-- place holder for pose_estimator-->
-      <node pkg="topic_tools" exec="relay" name="pose_estimator_relay" output="log">
-        <param name="input_topic" value="$(var gnss_input_topic)"/>
-        <param name="output_topic" value="/localization/pose_estimator/pose_with_covariance"/>
-        <param name="type" value="geometry_msgs/msg/PoseWithCovarianceStamped"/>
-        <param name="reliability" value="reliable"/>
+      <node pkg="autoware_downsample_filters" exec="voxel_grid_downsample_filter_node" name="voxel_grid_downsample_filter_node">
+        <param from="$(var voxel_grid_downsample_filter_param_file)"/>
+        <remap from="input" to="$(var lidar_input_topic)"/>
+        <remap from="output" to="/localization/util/downsample/pointcloud"/>
       </node>
+
+      <include file="$(find-pkg-share autoware_ndt_scan_matcher)/launch/ndt_scan_matcher.launch.xml">
+        <arg name="input_pointcloud" value="/localization/util/downsample/pointcloud"/>
+        <arg name="input_initial_pose_topic" value="/localization/pose_twist_fusion_filter/biased_pose_with_covariance"/>
+        <arg name="input_regularization_pose_topic" value="/sensing/gnss/pose_with_covariance"/>
+        <arg name="input_service_trigger_node" value="/localization/pose_estimator/trigger_node"/>
+
+        <arg name="output_pose_topic" value="/localization/pose_estimator/pose"/>
+        <arg name="output_pose_with_covariance_topic" value="/localization/pose_estimator/pose_with_covariance"/>
+        <arg name="client_map_loader" value="/map/get_differential_pointcloud_map"/>
+        <arg name="param_file" value="$(var ndt_scan_matcher_param_path)"/>
+      </include>
     </group>
 
     <group>
@@ -60,6 +74,24 @@
         <arg name="out_accel" value="/localization/acceleration"/>
         <arg name="param_file" value="$(var twist2accel_param_path)"/>
       </include>
+    </group>
+
+    <group>
+      <push-ros-namespace namespace="util"/>
+      <node pkg="autoware_pose_initializer" exec="autoware_pose_initializer_node" output="both">
+        <param from="$(var pose_initializer_param_path)"/>
+        <remap from="ndt_align" to="/localization/pose_estimator/ndt_align_srv"/>
+        <remap from="stop_check_twist" to="$(var vehicle_twist_input_topic)"/>
+        <remap from="gnss_pose_cov" to="$(var gnss_input_topic)"/>
+        <remap from="pose_reset" to="/initialpose3d"/>
+        <remap from="ekf_trigger_node" to="/localization/pose_twist_fusion_filter/trigger_node"/>
+        <remap from="ndt_trigger_node" to="/localization/pose_estimator/trigger_node"/>
+        <param name="map_height_fitter.map_loader_name" value="/map/pointcloud_map_loader"/>
+        <param name="map_height_fitter.target" value="pointcloud_map"/>
+        <remap from="~/pointcloud_map" to="/map/pointcloud_map"/>
+        <remap from="~/partial_map_load" to="/map/get_partial_pointcloud_map"/>
+        <remap from="~/vector_map" to="/map/vector_map"/>
+      </node>
     </group>
   </group>
 </launch>

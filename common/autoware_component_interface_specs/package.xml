@@ -14,11 +14,11 @@
 
   <depend>autoware_adapi_v1_msgs</depend>
   <depend>autoware_control_msgs</depend>
-  <depend>autoware_internal_localization_msgs</depend>
   <depend>autoware_localization_msgs</depend>
   <depend>autoware_map_msgs</depend>
   <depend>autoware_perception_msgs</depend>
   <depend>autoware_planning_msgs</depend>
+  <depend>autoware_system_msgs</depend>
   <depend>autoware_vehicle_msgs</depend>
   <depend>nav_msgs</depend>
   <depend>rcl</depend>

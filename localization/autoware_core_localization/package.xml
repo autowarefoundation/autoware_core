@@ -14,7 +14,10 @@
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
   <buildtool_depend>autoware_cmake</buildtool_depend>
 
+  <exec_depend>autoware_downsample_filters</exec_depend>
   <exec_depend>autoware_ekf_localizer</exec_depend>
+  <exec_depend>autoware_ndt_scan_matcher</exec_depend>
+  <exec_depend>autoware_pose_initializer</exec_depend>
   <exec_depend>autoware_stop_filter</exec_depend>
   <exec_depend>autoware_twist2accel</exec_depend>
 

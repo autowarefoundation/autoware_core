@@ -15,7 +15,7 @@
 #include "autoware/trajectory/path_point_with_lane_id.hpp"
 
 #include "autoware/trajectory/detail/helpers.hpp"
-#include "autoware/trajectory/interpolator/stairstep.hpp"
+#include "autoware/trajectory/interpolator/lane_ids_interpolator.hpp"
 #include "autoware/trajectory/threshold.hpp"
 
 #include <cstddef>
@@ -195,7 +195,7 @@ void Trajectory<PointType>::Builder::defaults(Trajectory<PointType> * trajectory
 {
   BaseClass::Builder::defaults(trajectory);
   trajectory->lane_ids_ = std::make_shared<detail::InterpolatedArray<LaneIdType>>(
-    std::make_shared<interpolator::Stairstep<LaneIdType>>());
+    std::make_shared<interpolator::LaneIdsInterpolator>());
 }
 
 tl::expected<Trajectory<PointType>, interpolator::InterpolationFailure>

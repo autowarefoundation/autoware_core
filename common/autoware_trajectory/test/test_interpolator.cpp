@@ -14,6 +14,7 @@
 
 #include "autoware/trajectory/interpolator/akima_spline.hpp"
 #include "autoware/trajectory/interpolator/cubic_spline.hpp"
+#include "autoware/trajectory/interpolator/lane_ids_interpolator.hpp"
 #include "autoware/trajectory/interpolator/linear.hpp"
 #include "autoware/trajectory/interpolator/nearest_neighbor.hpp"
 #include "autoware/trajectory/interpolator/spherical_linear.hpp"
@@ -76,6 +77,49 @@ template class TestInterpolator<
   autoware::experimental::trajectory::interpolator::NearestNeighbor<double>>;
 template class TestInterpolator<
   autoware::experimental::trajectory::interpolator::Stairstep<double>>;
+
+/*
+ * Test LaneIds interpolator
+ */
+
+TEST(TestLaneIdsInterpolator, compute)
+{
+  using autoware::experimental::trajectory::interpolator::LaneIdsInterpolator;
+
+  // Test data from user's example
+  std::vector<double> bases = {0.0, 1.0, 3.0, 3.5, 4.0, 6.0, 7.0, 8.0, 9.0};
+  std::vector<std::vector<int64_t>> values = {{1}, {1}, {1}, {1}, {1, 2}, {2}, {2}, {2}, {2}};
+
+  auto interpolator = LaneIdsInterpolator::Builder().set_bases(bases).set_values(values).build();
+
+  if (!interpolator) {
+    FAIL();
+  }
+
+  // Test domain knowledge: at base=3.2, should return [1] (prefers single lane IDs)
+  auto result_left = interpolator->compute(3.2);
+  EXPECT_EQ(result_left.size(), 1);
+  EXPECT_EQ(result_left[0], 1);
+
+  auto result_right = interpolator->compute(3.75);
+  EXPECT_EQ(result_right.size(), 1);
+  EXPECT_EQ(result_right[0], 1);
+
+  auto result_right_after_boundary = interpolator->compute(5.0);
+  EXPECT_EQ(result_right_after_boundary.size(), 1);
+  EXPECT_EQ(result_right_after_boundary[0], 2);
+  // Test exact boundary point
+  auto boundary_result = interpolator->compute(4.0);
+  EXPECT_EQ(boundary_result.size(), 2);
+  EXPECT_EQ(boundary_result[0], 1);
+  EXPECT_EQ(boundary_result[1], 2);
+
+  // Test that same input generates same output
+  for (size_t i = 0; i < bases.size(); ++i) {
+    auto result = interpolator->compute(bases[i]);
+    EXPECT_EQ(result, values[i]);
+  }
+}
 
 /*
  * Test SphericalLinear interpolator

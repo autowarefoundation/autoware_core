@@ -14,6 +14,7 @@
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
   <buildtool_depend>autoware_cmake</buildtool_depend>
 
+  <exec_depend>autoware_core_api</exec_depend>
   <exec_depend>autoware_core_control</exec_depend>
   <exec_depend>autoware_core_localization</exec_depend>
   <exec_depend>autoware_core_map</exec_depend>
