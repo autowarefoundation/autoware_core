@@ -441,8 +441,8 @@ modify_path_for_smooth_goal_connection(
   // trajectory has a high curvature.
   for (double s = search_radius_range; s > 0; s -= 0.1) {
     const auto refined_trajectory = refine_path_for_goal(
-      trajectory, planner_data.goal_pose, planner_data.preferred_lanelets.back().id(),
-      search_radius_range, pre_goal_offset);
+      trajectory, planner_data.goal_pose, planner_data.preferred_lanelets.back().id(), s,
+      pre_goal_offset);
     const bool is_inside = is_trajectory_inside_lanelets(refined_trajectory, lanelets);
     if (is_inside) {
       return refined_trajectory;
