@@ -92,7 +92,18 @@ public:
   void setParam(const BaseParam & param);
   BaseParam getBaseParam() const;
 
-protected:
+  template <typename ThresholdType, typename ComputeRatioFunc>
+  std::vector<std::pair<double, double>> computeRatioLimits(
+    const std::vector<double> & velocity_thresholds,
+    const std::vector<ThresholdType> & threshold_values, ComputeRatioFunc compute_ratio_func) const;
+
+  template <typename RatioType, typename ThresholdType, typename ComputeVelocityFunc>
+  double computeVelocityLimit(
+    const RatioType local_ratio, const std::vector<std::pair<double, double>> & ratio_limits,
+    const std::vector<double> & velocity_thresholds,
+    const std::vector<ThresholdType> & threshold_values,
+    ComputeVelocityFunc compute_velocity_func) const;
+
   // Compute acc/v**2 limits at difference velocity threshold
   std::vector<std::pair<double, double>> computeLateralAccelerationVelocitySquareRatioLimits()
     const;
@@ -108,6 +119,7 @@ protected:
     const double local_steer_rate_velocity_ratio,
     const std::vector<std::pair<double, double>> steer_rate_velocity_ratio_limits) const;
 
+protected:
   BaseParam base_param_;
   mutable std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper_{nullptr};
 };

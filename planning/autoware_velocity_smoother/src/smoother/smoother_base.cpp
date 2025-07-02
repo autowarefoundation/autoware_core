@@ -144,6 +144,126 @@ double SmootherBase::getMinJerk() const
   return base_param_.min_jerk;
 }
 
+// Template function for computing ratio limits
+template <typename ThresholdType, typename ComputeRatioFunc>
+std::vector<std::pair<double, double>> SmootherBase::computeRatioLimits(
+  const std::vector<double> & velocity_thresholds,
+  const std::vector<ThresholdType> & threshold_values, ComputeRatioFunc compute_ratio_func) const
+{
+  std::vector<std::pair<double, double>> output;
+  constexpr double epsilon = 1e-5;
+
+  // Process each velocity threshold
+  for (size_t i = 0; i < velocity_thresholds.size(); ++i) {
+    ThresholdType threshold = threshold_values[i];
+    double vi = velocity_thresholds[i];
+    double vi_1 = (i == 0) ? 0.0 : velocity_thresholds[i - 1];
+
+    // Add the ratio pair for this threshold using the provided function
+    output.push_back(std::make_pair(
+      compute_ratio_func(threshold, vi_1, epsilon), compute_ratio_func(threshold, vi, epsilon)));
+  }
+
+  // Add the last part
+  auto v_max = velocity_thresholds.back();
+  output.push_back(
+    std::make_pair(compute_ratio_func(threshold_values.back(), v_max, epsilon), 0.0));
+
+  return output;
+}
+
+// Template function for computing velocity limits
+template <typename RatioType, typename ThresholdType, typename ComputeVelocityFunc>
+double SmootherBase::computeVelocityLimit(
+  const RatioType local_ratio, const std::vector<std::pair<double, double>> & ratio_limits,
+  const std::vector<double> & velocity_thresholds,
+  const std::vector<ThresholdType> & threshold_values,
+  ComputeVelocityFunc compute_velocity_func) const
+{
+  // Iterate through the limits in reverse order
+  for (int i = static_cast<int>(ratio_limits.size()) - 1; i >= 0; --i) {
+    const double lower = ratio_limits[i].second;
+    const double higher = ratio_limits[i].first;
+
+    // If ratio is higher than the upper bound, continue to the next range
+    if (local_ratio > higher) {
+      continue;
+    }
+
+    // If ratio is lower than or equal to the lower bound
+    if (local_ratio <= lower) {
+      if (i == static_cast<int>(ratio_limits.size()) - 1) {
+        return std::numeric_limits<double>::max();  // max_double equivalent
+      } else {
+        return velocity_thresholds[i];
+      }
+    }
+
+    // Between lower and higher, calculate the velocity threshold
+    ThresholdType current_threshold;
+    if (i == static_cast<int>(ratio_limits.size()) - 1) {
+      current_threshold = threshold_values.back();
+    } else {
+      current_threshold = threshold_values[i];
+    }
+
+    return compute_velocity_func(current_threshold, local_ratio);
+  }
+
+  // If no appropriate range is found
+  return 0.0;
+}
+
+std::vector<std::pair<double, double>>
+SmootherBase::computeLateralAccelerationVelocitySquareRatioLimits() const
+{
+  auto compute_lateral_acc_ratio = [](double acc, double v, double epsilon) {
+    return acc / (v * v + epsilon);
+  };
+
+  return computeRatioLimits<double>(
+    base_param_.velocity_thresholds, base_param_.lateral_acceleration_limits,
+    compute_lateral_acc_ratio);
+}
+
+std::vector<std::pair<double, double>> SmootherBase::computeSteerRateVelocityRatioLimits() const
+{
+  auto compute_steer_rate_ratio = [](double rate_deg, double v, double epsilon) {
+    return autoware_utils_math::deg2rad(rate_deg) / (v + epsilon);
+  };
+
+  return computeRatioLimits<double>(
+    base_param_.velocity_thresholds, base_param_.steering_angle_rate_limits,
+    compute_steer_rate_ratio);
+}
+
+double SmootherBase::computeVelocityLimitFromLateralAcc(
+  const double local_curvature,
+  const std::vector<std::pair<double, double>> lateral_acceleration_velocity_square_ratio_limits)
+  const
+{
+  auto compute_velocity = [](double acc, double curvature) {
+    return std::sqrt(acc / std::max(curvature, 1.0E-5));
+  };
+
+  return computeVelocityLimit<double, double>(
+    local_curvature, lateral_acceleration_velocity_square_ratio_limits,
+    base_param_.velocity_thresholds, base_param_.lateral_acceleration_limits, compute_velocity);
+}
+
+double SmootherBase::computeVelocityLimitFromSteerRate(
+  const double local_steer_rate_velocity_ratio,
+  const std::vector<std::pair<double, double>> steer_rate_velocity_ratio_limits) const
+{
+  auto compute_velocity = [](double rate_deg, double ratio) {
+    return autoware_utils_math::deg2rad(rate_deg) / ratio;
+  };
+
+  return computeVelocityLimit<double, double>(
+    local_steer_rate_velocity_ratio, steer_rate_velocity_ratio_limits,
+    base_param_.velocity_thresholds, base_param_.steering_angle_rate_limits, compute_velocity);
+}
+
 TrajectoryPoints SmootherBase::applyLateralAccelerationFilter(
   const TrajectoryPoints & input, [[maybe_unused]] const double v0,
   [[maybe_unused]] const double a0, [[maybe_unused]] const bool enable_smooth_limit,
@@ -216,154 +336,6 @@ TrajectoryPoints SmootherBase::applyLateralAccelerationFilter(
     }
   }
   return output;
-}
-
-std::vector<std::pair<double, double>>
-SmootherBase::computeLateralAccelerationVelocitySquareRatioLimits() const
-{
-  std::vector<std::pair<double, double>> output;
-  constexpr double epsilon = 1e-5;
-
-  // Process each velocity threshold
-  for (size_t i = 0; i < base_param_.velocity_thresholds.size(); ++i) {
-    double lateral_acc_threshold = base_param_.lateral_acceleration_limits[i];
-    double vi = base_param_.velocity_thresholds[i];
-    double vi_1;
-
-    if (i == 0) {
-      vi_1 = 0.0;
-    } else {
-      vi_1 = base_param_.velocity_thresholds[i - 1];
-    }
-
-    // Add the ratio pair for this threshold
-    output.push_back(std::make_pair(
-      lateral_acc_threshold / (vi_1 * vi_1 + epsilon),
-      lateral_acc_threshold / (vi * vi + epsilon)));
-  }
-
-  // Add the last part
-  auto v_max = base_param_.velocity_thresholds.back();
-  output.push_back(std::make_pair(
-    base_param_.lateral_acceleration_limits.back() / (v_max * v_max + epsilon), 0.0));
-
-  return output;
-}
-
-std::vector<std::pair<double, double>> SmootherBase::computeSteerRateVelocityRatioLimits() const
-{
-  std::vector<std::pair<double, double>> output;
-  constexpr double epsilon = 1e-5;
-
-  // Process each velocity threshold
-  for (size_t i = 0; i < base_param_.velocity_thresholds.size(); ++i) {
-    double steer_rate_threshold =
-      autoware_utils_math::deg2rad(base_param_.steering_angle_rate_limits[i]);
-    double vi = base_param_.velocity_thresholds[i];
-    double vi_1;
-
-    if (i == 0) {
-      vi_1 = 0.0;
-    } else {
-      vi_1 = base_param_.velocity_thresholds[i - 1];
-    }
-
-    // Add the ratio pair for this threshold
-    output.push_back(std::make_pair(
-      steer_rate_threshold / (vi_1 + epsilon), steer_rate_threshold / (vi + epsilon)));
-  }
-
-  // Add the last part
-  output.push_back(std::make_pair(
-    autoware_utils_math::deg2rad(base_param_.steering_angle_rate_limits.back()) /
-      (base_param_.velocity_thresholds.back() + epsilon),
-    0.0));
-
-  return output;
-}
-
-double SmootherBase::computeVelocityLimitFromLateralAcc(
-  const double local_curvature,
-  const std::vector<std::pair<double, double>> lateral_acceleration_velocity_square_ratio_limits)
-  const
-{
-  // Iterate through the limits in reverse order
-  for (int i = static_cast<int>(lateral_acceleration_velocity_square_ratio_limits.size()) - 1;
-       i >= 0; --i) {
-    const double lower = lateral_acceleration_velocity_square_ratio_limits[i].second;
-    const double higher = lateral_acceleration_velocity_square_ratio_limits[i].first;
-
-    // If ratio is higher than the upper bound, continue to the next range
-    if (local_curvature > higher) {
-      continue;
-    }
-
-    // If ratio is lower than or equal to the lower bound
-    if (local_curvature <= lower) {
-      if (i == static_cast<int>(lateral_acceleration_velocity_square_ratio_limits.size()) - 1) {
-        return std::numeric_limits<double>::max();  // max_double equivalent
-      } else {
-        return base_param_.velocity_thresholds[i];
-      }
-    }
-
-    // Between lower and higher, calculate the velocity threshold
-    double current_lateral_acceleration_threshold;
-    if (i == static_cast<int>(lateral_acceleration_velocity_square_ratio_limits.size()) - 1) {
-      current_lateral_acceleration_threshold = base_param_.lateral_acceleration_limits.back();
-    } else {
-      current_lateral_acceleration_threshold = base_param_.lateral_acceleration_limits[i];
-    }
-
-    const double velocity_threshold =
-      std::sqrt(current_lateral_acceleration_threshold / std::max(local_curvature, 1.0E-5));
-    return velocity_threshold;
-  }
-
-  // If no appropriate range is found
-  return 0.0;
-}
-
-double SmootherBase::computeVelocityLimitFromSteerRate(
-  const double local_steer_rate_velocity_ratio,
-  const std::vector<std::pair<double, double>> steer_rate_velocity_ratio_limits) const
-{
-  // Iterate through the limits in reverse order
-  for (int i = static_cast<int>(steer_rate_velocity_ratio_limits.size()) - 1; i >= 0; --i) {
-    const double lower = steer_rate_velocity_ratio_limits[i].second;
-    const double higher = steer_rate_velocity_ratio_limits[i].first;
-
-    // If ratio is higher than the upper bound, continue to the next range
-    if (local_steer_rate_velocity_ratio > higher) {
-      continue;
-    }
-
-    // If ratio is lower than or equal to the lower bound
-    if (local_steer_rate_velocity_ratio <= lower) {
-      if (i == static_cast<int>(steer_rate_velocity_ratio_limits.size()) - 1) {
-        return std::numeric_limits<double>::max();  // max_double equivalent
-      } else {
-        return base_param_.velocity_thresholds[i];
-      }
-    }
-
-    // Between lower and higher, calculate the velocity threshold
-    double current_steer_rate_threshold_degree;
-    if (i == static_cast<int>(steer_rate_velocity_ratio_limits.size()) - 1) {
-      current_steer_rate_threshold_degree = base_param_.steering_angle_rate_limits.back();
-    } else {
-      current_steer_rate_threshold_degree = base_param_.steering_angle_rate_limits[i];
-    }
-
-    const double current_steer_rate_threshold_rad =
-      autoware_utils_math::deg2rad(current_steer_rate_threshold_degree);
-    const double velocity_threshold =
-      current_steer_rate_threshold_rad / local_steer_rate_velocity_ratio;
-    return velocity_threshold;
-  }
-
-  // If no appropriate range is found
-  return 0.0;
 }
 
 TrajectoryPoints SmootherBase::applySteeringRateLimit(
