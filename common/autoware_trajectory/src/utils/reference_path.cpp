@@ -425,7 +425,7 @@ static std::optional<double> compute_s_on_current_route_lanelet(
   return ego_s_current_route;
 }
 
-std::tuple<lanelet::ConstLanelets, double, double> supplement_lanelet_sequence(
+LaneletSequenceWithRange supplement_lanelet_sequence(
   const lanelet::routing::RoutingGraphConstPtr routing_graph,
   const lanelet::ConstLanelets & lanelet_sequence, const double s_start, const double s_end)
 {

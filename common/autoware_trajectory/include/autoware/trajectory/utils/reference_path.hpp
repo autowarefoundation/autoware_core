@@ -24,10 +24,16 @@
 #include <lanelet2_traffic_rules/TrafficRules.h>
 
 #include <optional>
-#include <tuple>
 
 namespace autoware::experimental::trajectory
 {
+struct LaneletSequenceWithRange
+{
+  lanelet::ConstLanelets lanelet_sequence;
+  double s_start;
+  double s_end;
+};
+
 /**
  * @brief extend given lanelet sequence backward/forward so that s_start, s_end is within
  * output lanelet sequence
@@ -36,7 +42,7 @@ namespace autoware::experimental::trajectory
  * @return extended lanelet sequence, new start arc length, new end arc length
  * @post s_start >= 0.0, s_end <= lanelet::geometry::length3d(lanelet_sequence)
  */
-std::tuple<lanelet::ConstLanelets, double, double> supplement_lanelet_sequence(
+LaneletSequenceWithRange supplement_lanelet_sequence(
   const lanelet::routing::RoutingGraphConstPtr routing_graph,
   const lanelet::ConstLanelets & lanelet_sequence, const double s_start, const double s_end);
 
