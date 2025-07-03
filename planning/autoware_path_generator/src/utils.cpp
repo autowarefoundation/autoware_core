@@ -194,6 +194,13 @@ get_lanelet_sequence_covering_path(
   const std::vector<PathPointWithLaneId> & path_points,
   const lanelet::routing::RoutingGraphConstPtr routing_graph)
 {
+  if (lanelet_sequence.empty()) {
+    RCLCPP_ERROR(
+      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+      "Lanelet sequence is empty");
+    return std::nullopt;
+  }
+
   if (path_points.empty()) {
     RCLCPP_ERROR(
       rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
