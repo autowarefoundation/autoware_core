@@ -107,15 +107,15 @@ std::optional<lanelet::ConstLanelet> get_next_lanelet_within_route(
   }
 
   const auto next_lanelets = planner_data.routing_graph_ptr->following(lanelet);
-  if (
-    next_lanelets.empty() ||
-    next_lanelets.front().id() == planner_data.preferred_lanelets.front().id()) {
+  if (next_lanelets.empty()) {
     return std::nullopt;
   }
 
   const auto next_lanelet_itr = std::find_if(
-    next_lanelets.cbegin(), next_lanelets.cend(),
-    [&](const lanelet::ConstLanelet & l) { return exists(planner_data.route_lanelets, l); });
+    next_lanelets.cbegin(), next_lanelets.cend(), [&](const lanelet::ConstLanelet & l) {
+      return exists(planner_data.route_lanelets, l) &&
+             l.id() != planner_data.preferred_lanelets.front().id();
+    });
   if (next_lanelet_itr == next_lanelets.cend()) {
     return std::nullopt;
   }
