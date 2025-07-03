@@ -5040,11 +5040,12 @@ The external velocity is applied at the position that it is able to reach the ve
 This function is used to approach near the obstacle or improve the accuracy of stopping.</p>
 <h4 id="apply-lateral-acceleration-limit">Apply lateral acceleration limit<a class="headerlink" href="#apply-lateral-acceleration-limit" title="Permanent link">#</a></h4>
 <p>It applies the velocity limit to decelerate at the curve.
-It calculates the velocity limit from the curvature of the reference trajectory and the maximum lateral acceleration <code>max_lateral_accel</code>.
+For each point in the trajectory, it will find the maximum velocity, so that the lateral acceleration is under the thresholds defined by <code>lateral_acceleration_limits</code> and <code>velocity_thresholds</code>. If the trajectory speed is larger than the computed max velocity, it will try to decelerate at the curve.
 The velocity limit is set as not to fall under <code>min_curve_velocity</code>.</p>
 <p>Note: velocity limit that requests larger than <code>nominal.jerk</code> is not applied. In other words, even if a sharp curve is planned just in front of the ego, no deceleration is performed.</p>
 <h4 id="apply-steering-rate-limit">Apply steering rate limit<a class="headerlink" href="#apply-steering-rate-limit" title="Permanent link">#</a></h4>
-<p>It calculates the desired steering angles of trajectory points. and it applies the steering rate limit. If the (<code>steering_angle_rate</code> &gt; <code>max_steering_angle_rate</code>), it decreases the velocity of the trajectory point to acceptable velocity.</p>
+<p>It calculates the desired steering angles of trajectory points, and it applies the steering rate limit.
+For each point in the curve, it will find the maximum velocity that satisfy the steering rate limit defined by <code>steering_angle_rate_limits</code> and <code>velocity_thresholds</code>. If the trajectory speed is larger than the computed max velocity, it will try to decelerate at the curve.</p>
 <h4 id="resample-trajectory">Resample trajectory<a class="headerlink" href="#resample-trajectory" title="Permanent link">#</a></h4>
 <p>It resamples the points on the reference trajectory with designated time interval.
 Note that the range of the length of the trajectory is set between <code>min_trajectory_length</code> and <code>max_trajectory_length</code>, and the distance between two points is longer than <code>min_trajectory_interval_distance</code>.
@@ -5301,15 +5302,21 @@ In these algorithms, they use OSQP[1] as the solver of the optimization.</p>
 <td align="left">true</td>
 </tr>
 <tr>
-<td align="left"><code>max_lateral_accel</code></td>
-<td align="left"><code>double</code></td>
-<td align="left">Max lateral acceleration limit [m/ss]</td>
+<td align="left"><code>lateral_acceleration_limits</code></td>
+<td align="left"><code>vector&lt;double&gt;</code></td>
+<td align="left">Max lateral acceleration limit at different velocity thresholds[m/ss]</td>
+<td align="left">0.5</td>
+</tr>
+<tr>
+<td align="left"><code>velocity_thresholds</code></td>
+<td align="left"><code>vector&lt;double&gt;</code></td>
+<td align="left">Velocity threshold define the velocity ranges for different lateral limits [m/s]</td>
 <td align="left">0.5</td>
 </tr>
 <tr>
 <td align="left"><code>min_curve_velocity</code></td>
 <td align="left"><code>double</code></td>
-<td align="left">Min velocity at lateral acceleration limit [m/ss]</td>
+<td align="left">Min velocity at lateral acceleration limit [m/s]</td>
 <td align="left">2.74</td>
 </tr>
 <tr>
@@ -5559,9 +5566,9 @@ In these algorithms, they use OSQP[1] as the solver of the optimization.</p>
 <td align="left">true</td>
 </tr>
 <tr>
-<td align="left"><code>max_steering_angle_rate</code></td>
-<td align="left"><code>double</code></td>
-<td align="left">Maximum steering angle rate [degree/s]</td>
+<td align="left"><code>steering_angle_rate_limits</code></td>
+<td align="left"><code>vector&lt;double&gt;</code></td>
+<td align="left">Maximum steering angle rate at various velocity ranges [degree/s]</td>
 <td align="left">40.0</td>
 </tr>
 <tr>
