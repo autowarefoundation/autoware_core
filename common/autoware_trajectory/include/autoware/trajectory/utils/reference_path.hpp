@@ -24,6 +24,7 @@
 #include <lanelet2_traffic_rules/TrafficRules.h>
 
 #include <optional>
+#include <tuple>
 
 namespace autoware::experimental::trajectory
 {
