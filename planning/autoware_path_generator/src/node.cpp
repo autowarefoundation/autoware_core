@@ -37,9 +37,6 @@ namespace autoware::path_generator
 PathGenerator::PathGenerator(const rclcpp::NodeOptions & node_options)
 : Node("path_generator", node_options)
 {
-  param_listener_ =
-    std::make_shared<::path_generator::ParamListener>(this->get_node_parameters_interface());
-
   path_publisher_ = create_publisher<PathWithLaneId>("~/output/path", 1);
 
   turn_signal_publisher_ =
@@ -47,14 +44,18 @@ PathGenerator::PathGenerator(const rclcpp::NodeOptions & node_options)
 
   hazard_signal_publisher_ = create_publisher<HazardLightsCommand>("~/output/hazard_lights_cmd", 1);
 
-  vehicle_info_ = autoware::vehicle_info_utils::VehicleInfoUtils(*this).getVehicleInfo();
+  debug_processing_time_publisher_ =
+    create_publisher<Float64Stamped>("~/debug/processing_time_ms", 1);
 
   const auto debug_processing_time_detail =
     create_publisher<autoware_utils_debug::ProcessingTimeDetail>(
       "~/debug/processing_time_detail_ms", 1);
   time_keeper_ = std::make_shared<autoware_utils_debug::TimeKeeper>(debug_processing_time_detail);
 
-  debug_calculation_time_ = create_publisher<Float64Stamped>("~/debug/processing_time_ms", 1);
+  vehicle_info_ = autoware::vehicle_info_utils::VehicleInfoUtils(*this).getVehicleInfo();
+
+  param_listener_ =
+    std::make_shared<::path_generator::ParamListener>(this->get_node_parameters_interface());
 
   const auto params = param_listener_->get_params();
 
@@ -97,7 +98,7 @@ void PathGenerator::run()
 
   path_publisher_->publish(*path);
 
-  publishStopWatchTime();
+  publish_stop_watch_time();
 }
 
 PathGenerator::InputData PathGenerator::take_data()
@@ -319,12 +320,12 @@ bool PathGenerator::update_current_lanelet(
   return false;
 }
 
-void PathGenerator::publishStopWatchTime()
+void PathGenerator::publish_stop_watch_time()
 {
-  Float64Stamped calculation_time_data{};
-  calculation_time_data.stamp = this->now();
-  calculation_time_data.data = stop_watch_.toc();
-  debug_calculation_time_->publish(calculation_time_data);
+  Float64Stamped processing_time_data{};
+  processing_time_data.stamp = this->now();
+  processing_time_data.data = stop_watch_.toc();
+  debug_processing_time_publisher_->publish(processing_time_data);
 }
 }  // namespace autoware::path_generator
 

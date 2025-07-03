@@ -80,7 +80,7 @@ private:
   rclcpp::Publisher<PathWithLaneId>::SharedPtr path_publisher_;
   rclcpp::Publisher<TurnIndicatorsCommand>::SharedPtr turn_signal_publisher_;
   rclcpp::Publisher<HazardLightsCommand>::SharedPtr hazard_signal_publisher_;
-  rclcpp::Publisher<Float64Stamped>::SharedPtr debug_calculation_time_;
+  rclcpp::Publisher<Float64Stamped>::SharedPtr debug_processing_time_publisher_;
 
   rclcpp::TimerBase::SharedPtr timer_;
 
@@ -105,7 +105,7 @@ private:
 
   bool update_current_lanelet(const geometry_msgs::msg::Pose & current_pose, const Params & params);
 
-  void publishStopWatchTime();
+  void publish_stop_watch_time();
 };
 }  // namespace autoware::path_generator
 

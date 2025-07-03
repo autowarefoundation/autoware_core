@@ -154,12 +154,12 @@ bool is_in_lanelets(const geometry_msgs::msg::Pose & pose, const lanelet::ConstL
 
 /**
  * @brief Check if the trajectory is inside the lanelets.
- * @param refined_path Input trajectory.
+ * @param trajectory Input trajectory.
  * @param lanelets Lanelets to check against.
  * @return True if the trajectory is inside the lanelets, false otherwise
  */
 bool is_trajectory_inside_lanelets(
-  const experimental::trajectory::Trajectory<PathPointWithLaneId> & refined_path,
+  const experimental::trajectory::Trajectory<PathPointWithLaneId> & trajectory,
   const lanelet::ConstLanelets & lanelets);
 
 std::optional<experimental::trajectory::Trajectory<PathPointWithLaneId>>

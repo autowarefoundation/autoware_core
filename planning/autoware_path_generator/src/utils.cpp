@@ -356,20 +356,13 @@ experimental::trajectory::Trajectory<PathPointWithLaneId> refine_path_for_goal(
   const geometry_msgs::msg::Pose & goal_pose, const lanelet::Id goal_lane_id,
   const double search_radius_range, const double pre_goal_offset)
 {
-  auto contain_goal_lane_id = [&](const PathPointWithLaneId & point) {
+  const auto has_goal_lane_id = [&](const PathPointWithLaneId & point) {
     const auto & lane_ids = point.lane_ids;
-    const bool is_goal_lane_id_in_point =
-      std::find(lane_ids.begin(), lane_ids.end(), goal_lane_id) != lane_ids.end();
-    return is_goal_lane_id_in_point;
+    return std::find(lane_ids.begin(), lane_ids.end(), goal_lane_id) != lane_ids.end();
   };
 
-  auto outside_circle = [&](const PathPointWithLaneId & point) {
-    const double dist = autoware_utils::calc_distance2d(point.point.pose, goal_pose);
-    return dist > search_radius_range;
-  };
-
-  auto closest_to_goal = autoware::experimental::trajectory::closest_with_constraint(
-    input, goal_pose, contain_goal_lane_id);
+  const auto closest_to_goal =
+    autoware::experimental::trajectory::closest_with_constraint(input, goal_pose, has_goal_lane_id);
 
   if (!closest_to_goal) {
     return input;
@@ -377,8 +370,13 @@ experimental::trajectory::Trajectory<PathPointWithLaneId> refine_path_for_goal(
 
   auto cropped_path = autoware::experimental::trajectory::crop(input, 0, *closest_to_goal);
 
+  const auto far_from_goal = [&](const PathPointWithLaneId & point) {
+    const double dist = autoware_utils::calc_distance2d(point.point.pose, goal_pose);
+    return dist > search_radius_range;
+  };
+
   auto intervals =
-    autoware::experimental::trajectory::find_intervals(cropped_path, outside_circle, 10);
+    autoware::experimental::trajectory::find_intervals(cropped_path, far_from_goal, 10);
 
   std::vector<PathPointWithLaneId> goal_connected_trajectory_points;
 
@@ -437,11 +435,11 @@ bool is_in_lanelets(const geometry_msgs::msg::Pose & pose, const lanelet::ConstL
 }
 
 bool is_trajectory_inside_lanelets(
-  const experimental::trajectory::Trajectory<PathPointWithLaneId> & refined_path,
+  const experimental::trajectory::Trajectory<PathPointWithLaneId> & trajectory,
   const lanelet::ConstLanelets & lanelets)
 {
-  for (double s = 0.0; s < refined_path.length(); s += 0.1) {
-    const auto point = refined_path.compute(s);
+  for (double s = 0.0; s < trajectory.length(); s += 0.1) {
+    const auto point = trajectory.compute(s);
     if (!is_in_lanelets(point.point.pose, lanelets)) {
       return false;
     }
@@ -526,12 +524,14 @@ TurnIndicatorsCommand get_turn_signal(
         }
 
         // ego is inside lanelet
-        const auto required_end_point_opt =
+        const auto required_end_point =
           get_turn_signal_required_end_point(lanelet, angle_threshold_deg);
-        if (!required_end_point_opt) continue;
+        if (!required_end_point) {
+          continue;
+        }
         if (
           calc_arc_length(lanelet, current_point) <=
-          calc_arc_length(lanelet, required_end_point_opt.value())) {
+          calc_arc_length(lanelet, *required_end_point)) {
           return turn_signal;
         }
       }
