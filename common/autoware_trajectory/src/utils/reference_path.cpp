@@ -448,11 +448,11 @@ std::tuple<lanelet::ConstLanelets, double, double> supplement_lanelet_sequence(
       previous_lanes.begin(), previous_lanes.end(), [](const auto & lane1, const auto & lane2) {
         return lanelet::geometry::length3d(lane1) < lanelet::geometry::length3d(lane2);
       });
-    extended_lanelet_sequence.insert(extended_lanelet_sequence.begin(), longest_previous_lane);
     if (visited_prev_lane_ids.find(longest_previous_lane.id()) != visited_prev_lane_ids.end()) {
       // loop detected
       break;
     }
+    extended_lanelet_sequence.insert(extended_lanelet_sequence.begin(), longest_previous_lane);
     visited_prev_lane_ids.insert(longest_previous_lane.id());
     new_s_start += lanelet::geometry::length3d(longest_previous_lane);
     new_s_end += lanelet::geometry::length3d(longest_previous_lane);
