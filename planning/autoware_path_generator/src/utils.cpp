@@ -484,13 +484,15 @@ TurnIndicatorsCommand get_turn_signal(
   const lanelet::BasicPoint2d current_point{current_pose.position.x, current_pose.position.y};
   const auto base_search_distance = search_distance + current_vel * search_time;
 
-  std::vector<lanelet::Id> searched_lanelet_ids = {};
-  std::optional<double> arc_length_from_vehicle_front_to_lanelet_start = std::nullopt;
-
-  auto calc_arc_length =
+  const auto calc_arc_length =
     [&](const lanelet::ConstLanelet & lanelet, const lanelet::BasicPoint2d & point) -> double {
     return lanelet::geometry::toArcCoordinates(lanelet.centerline2d(), point).length;
   };
+
+  std::vector<lanelet::Id> searched_lanelet_ids = {};
+
+  // arc length from vehicle front to start of first lanelet with turn signal
+  std::optional<double> arc_length_from_vehicle_front_to_lanelet_start = std::nullopt;
 
   for (const auto & point : path.points) {
     for (const auto & lane_id : point.lane_ids) {
@@ -584,18 +586,21 @@ std::optional<lanelet::ConstPoint2d> get_turn_signal_required_end_point(
   auto centerline =
     autoware::experimental::trajectory::Trajectory<geometry_msgs::msg::Pose>::Builder{}.build(
       centerline_poses);
-  if (!centerline) return std::nullopt;
+  if (!centerline) {
+    return std::nullopt;
+  }
   centerline->align_orientation_with_trajectory_direction();
 
   const auto terminal_yaw = tf2::getYaw(centerline->compute(centerline->length()).orientation);
   const auto intervals = autoware::experimental::trajectory::find_intervals(
-    centerline.value(),
-    [terminal_yaw, angle_threshold_deg](const geometry_msgs::msg::Pose & point) {
+    *centerline, [terminal_yaw, angle_threshold_deg](const geometry_msgs::msg::Pose & point) {
       const auto yaw = tf2::getYaw(point.orientation);
-      return std::fabs(autoware_utils::normalize_radian(yaw - terminal_yaw)) <
+      return std::abs(autoware_utils::normalize_radian(yaw - terminal_yaw)) <
              autoware_utils::deg2rad(angle_threshold_deg);
     });
-  if (intervals.empty()) return std::nullopt;
+  if (intervals.empty()) {
+    return std::nullopt;
+  }
 
   return lanelet::utils::conversion::toLaneletPoint(
     centerline->compute(intervals.front().start).position);
