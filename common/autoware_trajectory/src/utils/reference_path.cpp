@@ -61,67 +61,6 @@ static std::optional<UserDefinedWaypoints> get_user_defined_waypoint(
          ranges::to<std::vector>();
 }
 
-/**
- * @brief extend backward/forward the given lanelet_sequence so that s_start, s_end is within
- * the output lanelet sequence
- * @param s_start On the interval [0.0, length(lanelet_sequence)], it is the specified s value
- * (maybe less than 0)
- * @param s_end On the interval [0.0, length(lanelet_sequence)], it is the specified s value (maybe
- * large than the length(lanelet_sequence))
- * @post s_start >= 0.0, s_end <= lanelet::geometry::length3d(lanelet_sequence)
- */
-static std::tuple<lanelet::ConstLanelets, double, double> supplement_lanelet_sequence(
-
-  const lanelet::routing::RoutingGraphConstPtr routing_graph,
-  lanelet::ConstLanelets lanelet_sequence, double s_start, double s_end)
-{
-  using autoware::experimental::lanelet2_utils::following_lanelets;
-  using autoware::experimental::lanelet2_utils::previous_lanelets;
-
-  std::set<lanelet::Id> visited_prev_lane_ids{lanelet_sequence.front().id()};
-  while (s_start < 0.0) {
-    const auto previous_lanes = previous_lanelets(lanelet_sequence.front(), routing_graph);
-    if (previous_lanes.empty()) {
-      s_start = 0.0;
-      break;
-    }
-    // take the longest previous lane to construct underlying lanelets
-    const auto longest_previous_lane = *std::max_element(
-      previous_lanes.begin(), previous_lanes.end(), [](const auto & lane1, const auto & lane2) {
-        return lanelet::geometry::length3d(lane1) < lanelet::geometry::length3d(lane2);
-      });
-    lanelet_sequence.insert(lanelet_sequence.begin(), longest_previous_lane);
-    if (visited_prev_lane_ids.find(longest_previous_lane.id()) != visited_prev_lane_ids.end()) {
-      // loop detected
-      break;
-    }
-    visited_prev_lane_ids.insert(longest_previous_lane.id());
-    s_start += lanelet::geometry::length3d(longest_previous_lane);
-  }
-
-  std::set<lanelet::Id> visited_next_lane_ids{lanelet_sequence.back().id()};
-  while (s_end > lanelet::geometry::length3d(lanelet::LaneletSequence(lanelet_sequence))) {
-    const auto next_lanes = following_lanelets(lanelet_sequence.back(), routing_graph);
-    if (next_lanes.empty()) {
-      s_end = lanelet::geometry::length3d(lanelet::LaneletSequence(lanelet_sequence));
-      break;
-    }
-    // take the longest previous lane to construct underlying lanelets
-    const auto longest_next_lane = *std::max_element(
-      next_lanes.begin(), next_lanes.end(), [](const auto & lane1, const auto & lane2) {
-        return lanelet::geometry::length3d(lane1) < lanelet::geometry::length3d(lane2);
-      });
-    if (visited_next_lane_ids.find(longest_next_lane.id()) != visited_next_lane_ids.end()) {
-      // loop detected
-      break;
-    }
-    visited_next_lane_ids.insert(longest_next_lane.id());
-    lanelet_sequence.push_back(longest_next_lane);
-  }
-
-  return {lanelet_sequence, s_start, s_end};
-}
-
 class UserDefinedWaypointsGroup
 {
 private:
@@ -484,6 +423,63 @@ static std::optional<double> compute_s_on_current_route_lanelet(
       lanelet::utils::to2D(lanelet::utils::conversion::toLaneletPoint(ego_pose.position)))
       .length;
   return ego_s_current_route;
+}
+
+LaneletSequenceWithRange supplement_lanelet_sequence(
+  const lanelet::routing::RoutingGraphConstPtr routing_graph,
+  const lanelet::ConstLanelets & lanelet_sequence, const double s_start, const double s_end)
+{
+  using autoware::experimental::lanelet2_utils::following_lanelets;
+  using autoware::experimental::lanelet2_utils::previous_lanelets;
+
+  auto extended_lanelet_sequence = lanelet_sequence;
+  auto new_s_start = s_start;
+  auto new_s_end = s_end;
+
+  std::set<lanelet::Id> visited_prev_lane_ids{extended_lanelet_sequence.front().id()};
+  while (new_s_start < 0.0) {
+    const auto previous_lanes = previous_lanelets(extended_lanelet_sequence.front(), routing_graph);
+    if (previous_lanes.empty()) {
+      new_s_start = 0.0;
+      break;
+    }
+    // take the longest previous lane to construct underlying lanelets
+    const auto longest_previous_lane = *std::max_element(
+      previous_lanes.begin(), previous_lanes.end(), [](const auto & lane1, const auto & lane2) {
+        return lanelet::geometry::length3d(lane1) < lanelet::geometry::length3d(lane2);
+      });
+    if (visited_prev_lane_ids.find(longest_previous_lane.id()) != visited_prev_lane_ids.end()) {
+      // loop detected
+      break;
+    }
+    extended_lanelet_sequence.insert(extended_lanelet_sequence.begin(), longest_previous_lane);
+    visited_prev_lane_ids.insert(longest_previous_lane.id());
+    new_s_start += lanelet::geometry::length3d(longest_previous_lane);
+    new_s_end += lanelet::geometry::length3d(longest_previous_lane);
+  }
+
+  std::set<lanelet::Id> visited_next_lane_ids{extended_lanelet_sequence.back().id()};
+  while (new_s_end >
+         lanelet::geometry::length3d(lanelet::LaneletSequence(extended_lanelet_sequence))) {
+    const auto next_lanes = following_lanelets(extended_lanelet_sequence.back(), routing_graph);
+    if (next_lanes.empty()) {
+      new_s_end = lanelet::geometry::length3d(lanelet::LaneletSequence(extended_lanelet_sequence));
+      break;
+    }
+    // take the longest previous lane to construct underlying lanelets
+    const auto longest_next_lane = *std::max_element(
+      next_lanes.begin(), next_lanes.end(), [](const auto & lane1, const auto & lane2) {
+        return lanelet::geometry::length3d(lane1) < lanelet::geometry::length3d(lane2);
+      });
+    if (visited_next_lane_ids.find(longest_next_lane.id()) != visited_next_lane_ids.end()) {
+      // loop detected
+      break;
+    }
+    visited_next_lane_ids.insert(longest_next_lane.id());
+    extended_lanelet_sequence.push_back(longest_next_lane);
+  }
+
+  return {extended_lanelet_sequence, new_s_start, new_s_end};
 }
 
 std::optional<Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>>
