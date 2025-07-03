@@ -133,6 +133,9 @@ std::optional<PathRange<std::vector<geometry_msgs::msg::Point>>> get_path_bounds
   const double forward_offset)
 {
   if (lanelet_sequence.empty()) {
+    RCLCPP_ERROR(
+      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+      "Lanelet sequence is empty");
     return std::nullopt;
   }
 
@@ -471,6 +474,9 @@ modify_path_for_smooth_goal_connection(
   const PlannerData & planner_data, const double search_radius_range, const double pre_goal_offset)
 {
   if (planner_data.preferred_lanelets.empty()) {
+    RCLCPP_ERROR(
+      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+      "Preferred lanelets are empty");
     return std::nullopt;
   }
   const auto lanelets = extract_lanelets_from_trajectory(trajectory, planner_data);
@@ -607,7 +613,12 @@ std::optional<lanelet::ConstPoint2d> get_turn_signal_required_end_point(
     }
     centerline_poses =
       autoware::motion_utils::resamplePoseVector(centerline_poses, resampled_arclength);
-    if (centerline_poses.size() < 4) return std::nullopt;
+    if (centerline_poses.size() < 4) {
+      RCLCPP_ERROR(
+        rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+        "Failed to resample centerline");
+      return std::nullopt;
+    }
   }
 
   // Build trajectory from centerline poses
@@ -628,6 +639,9 @@ std::optional<lanelet::ConstPoint2d> get_turn_signal_required_end_point(
              autoware_utils::deg2rad(angle_threshold_deg);
     });
   if (intervals.empty()) {
+    RCLCPP_ERROR(
+      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+      "Failed to find intervals with driving direction close to terminal yaw");
     return std::nullopt;
   }
 
