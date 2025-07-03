@@ -25,7 +25,6 @@
 #include <autoware/trajectory/forward.hpp>
 #include <autoware/trajectory/path_point_with_lane_id.hpp>
 #include <autoware/trajectory/utils/pretty_build.hpp>
-#include <autoware/trajectory/utils/reference_path.hpp>
 #include <autoware_lanelet2_extension/utility/message_conversion.hpp>
 #include <autoware_lanelet2_extension/utility/utilities.hpp>
 #include <autoware_utils/geometry/geometry.hpp>
@@ -133,6 +132,71 @@ std::optional<PathRange<std::vector<geometry_msgs::msg::Point>>> get_path_bounds
     return std::nullopt;
   }
 
+  auto lanelet_sequence_with_range =
+    get_lanelet_sequence_covering_path(lanelet_sequence, path_points, routing_graph);
+  if (!lanelet_sequence_with_range) {
+    return std::nullopt;
+  }
+
+  // Extend lanelet sequence to include start and end points with offsets
+  lanelet_sequence_with_range = autoware::experimental::trajectory::supplement_lanelet_sequence(
+    routing_graph, lanelet_sequence_with_range->lanelet_sequence,
+    lanelet_sequence_with_range->s_start - backward_offset,
+    lanelet_sequence_with_range->s_end + forward_offset);
+
+  const auto & [extended_lanelets, s_start, s_end] = *lanelet_sequence_with_range;
+
+  // Get offset start and end points on centerline of extended lanelet sequence
+  const lanelet::LaneletSequence extended_lanelet_sequence(extended_lanelets);
+  const auto offset_start_point = lanelet::geometry::interpolatedPointAtDistance(
+    extended_lanelet_sequence.centerline2d(), s_start);
+  const auto offset_end_point =
+    lanelet::geometry::interpolatedPointAtDistance(extended_lanelet_sequence.centerline2d(), s_end);
+
+  // Get longitudinal positions of offset start on bounds
+  const auto ss_bound_start = get_arc_length_on_bounds(
+    extended_lanelet_sequence, offset_start_point, extended_lanelets.front().id());
+  if (!ss_bound_start) {
+    RCLCPP_ERROR(
+      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+      "Failed to get arc length of bound start");
+    return std::nullopt;
+  }
+
+  // Get longitudinal positions of offset end on bounds
+  const auto ss_bound_end = get_arc_length_on_bounds(
+    extended_lanelet_sequence, offset_end_point, extended_lanelets.back().id());
+  if (!ss_bound_end) {
+    RCLCPP_ERROR(
+      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+      "Failed to get arc length of bound end");
+    return std::nullopt;
+  }
+
+  // Crop bounds of extended lanelet sequence
+  const auto left_bound = crop_line_string(
+    extended_lanelet_sequence.leftBound().basicLineString(), ss_bound_start->left,
+    ss_bound_end->left);
+  const auto right_bound = crop_line_string(
+    extended_lanelet_sequence.rightBound().basicLineString(), ss_bound_start->right,
+    ss_bound_end->right);
+
+  return PathRange<std::vector<geometry_msgs::msg::Point>>{left_bound, right_bound};
+}
+
+std::optional<autoware::experimental::trajectory::LaneletSequenceWithRange>
+get_lanelet_sequence_covering_path(
+  const lanelet::LaneletSequence & lanelet_sequence,
+  const std::vector<PathPointWithLaneId> & path_points,
+  const lanelet::routing::RoutingGraphConstPtr routing_graph)
+{
+  if (path_points.empty()) {
+    RCLCPP_ERROR(
+      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+      "Path points are empty");
+    return std::nullopt;
+  }
+
   auto lanelets = lanelet_sequence.lanelets();
 
   const auto path_start_lanelet_it = std::find_if(
@@ -207,45 +271,7 @@ std::optional<PathRange<std::vector<geometry_msgs::msg::Point>>> get_path_bounds
     return std::nullopt;
   }
 
-  // Extend lanelet sequence to include start and end points with offsets
-  const auto [extended_lanelets, new_s_start, new_s_end] =
-    autoware::experimental::trajectory::supplement_lanelet_sequence(
-      routing_graph, lanelets, *s_start - backward_offset, *s_end + forward_offset);
-
-  // Get offset start and end points on centerline of extended lanelet sequence
-  const lanelet::LaneletSequence extended_lanelet_sequence(extended_lanelets);
-  const auto offset_start_point = lanelet::geometry::interpolatedPointAtDistance(
-    extended_lanelet_sequence.centerline2d(), new_s_start);
-  const auto offset_end_point = lanelet::geometry::interpolatedPointAtDistance(
-    extended_lanelet_sequence.centerline2d(), new_s_end);
-
-  // Get longitudinal positions of start of path on bounds
-  const auto ss_bound_start = get_arc_length_on_bounds(
-    extended_lanelet_sequence, offset_start_point, extended_lanelets.front().id());
-  if (!ss_bound_start) {
-    RCLCPP_ERROR(
-      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
-      "Failed to get arc length of bound start");
-    return std::nullopt;
-  }
-
-  // Get longitudinal positions of end of path on bounds
-  const auto ss_bound_end = get_arc_length_on_bounds(
-    extended_lanelet_sequence, offset_end_point, extended_lanelets.back().id());
-  if (!ss_bound_end) {
-    RCLCPP_ERROR(
-      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
-      "Failed to get arc length of bound end");
-    return std::nullopt;
-  }
-
-  return PathRange<std::vector<geometry_msgs::msg::Point>>{
-    crop_line_string(
-      extended_lanelet_sequence.leftBound().basicLineString(), ss_bound_start->left,
-      ss_bound_end->left),
-    crop_line_string(
-      extended_lanelet_sequence.rightBound().basicLineString(), ss_bound_start->right,
-      ss_bound_end->right)};
+  return autoware::experimental::trajectory::LaneletSequenceWithRange{lanelets, *s_start, *s_end};
 }
 
 std::vector<geometry_msgs::msg::Point> crop_line_string(

@@ -16,7 +16,9 @@
 #define AUTOWARE__PATH_GENERATOR__UTILS_HPP_
 
 #include "autoware/path_generator/common_structs.hpp"
-#include "autoware/trajectory/path_point_with_lane_id.hpp"
+
+#include <autoware/trajectory/path_point_with_lane_id.hpp>
+#include <autoware/trajectory/utils/reference_path.hpp>
 
 #include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
 #include <autoware_vehicle_msgs/msg/turn_indicators_command.hpp>
@@ -74,6 +76,19 @@ std::optional<PathRange<std::vector<geometry_msgs::msg::Point>>> get_path_bounds
   const lanelet::LaneletSequence & lanelet_sequence,
   const lanelet::routing::RoutingGraphConstPtr routing_graph, const double backward_offset,
   const double forward_offset);
+
+/**
+ * @brief get lanelet sequence that just covers path
+ * @param lanelet_sequence lanelet sequence (not required to contain all path points)
+ * @param path_points path points
+ * @param routing_graph routing graph
+ * @return lanelet sequence covering path
+ */
+std::optional<autoware::experimental::trajectory::LaneletSequenceWithRange>
+get_lanelet_sequence_covering_path(
+  const lanelet::LaneletSequence & lanelet_sequence,
+  const std::vector<PathPointWithLaneId> & path_points,
+  const lanelet::routing::RoutingGraphConstPtr routing_graph);
 
 /**
  * @brief crop line string
