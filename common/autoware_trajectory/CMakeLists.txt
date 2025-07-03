@@ -43,6 +43,7 @@ if(BUILD_TESTING)
     test/test_reference_path.cpp
     test/test_trajectory_container.cpp
     test/test_trajectory_container_trajectory_point.cpp
+    test/test_utils_find_nearest.cpp
   )
   file(GLOB_RECURSE test_files test/*.cpp)
 
