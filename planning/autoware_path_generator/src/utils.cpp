@@ -431,12 +431,9 @@ lanelet::ConstLanelets extract_lanelets_from_trajectory(
 
 bool is_in_lanelets(const geometry_msgs::msg::Pose & pose, const lanelet::ConstLanelets & lanes)
 {
-  for (const auto & lane : lanes) {
-    if (lanelet::utils::isInLanelet(pose, lane)) {
-      return true;
-    }
-  }
-  return false;
+  return std::any_of(lanes.begin(), lanes.end(), [&](const lanelet::ConstLanelet & l) {
+    return lanelet::utils::isInLanelet(pose, l);
+  });
 }
 
 bool is_trajectory_inside_lanelets(
