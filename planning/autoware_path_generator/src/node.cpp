@@ -250,7 +250,6 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
     params.smooth_goal_connection.pre_goal_offset);
 
   if (refined_path) {
-    refined_path->align_orientation_with_trajectory_direction();
     *reference_path = *refined_path;
   }
 

@@ -461,11 +461,11 @@ modify_path_for_smooth_goal_connection(
   // refine_goal_search_radius_range, we can fit the trajectory inside lanelets even if the
   // trajectory has a high curvature.
   for (double s = search_radius_range; s > 0; s -= 0.1) {
-    const auto refined_trajectory = refine_path_for_goal(
+    auto refined_trajectory = refine_path_for_goal(
       trajectory, planner_data.goal_pose, planner_data.preferred_lanelets.back().id(), s,
       pre_goal_offset);
-    const bool is_inside = is_trajectory_inside_lanelets(refined_trajectory, lanelets);
-    if (is_inside) {
+    if (is_trajectory_inside_lanelets(refined_trajectory, lanelets)) {
+      refined_trajectory.align_orientation_with_trajectory_direction();
       return refined_trajectory;
     }
   }
