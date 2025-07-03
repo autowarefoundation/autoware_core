@@ -60,8 +60,11 @@ public:
     LaneletMapBin::ConstSharedPtr lanelet_map_bin_ptr{nullptr};
     Odometry::ConstSharedPtr odometry_ptr{nullptr};
   };
+
   bool is_data_ready(const InputData & input_data);
+
   void set_planner_data(const InputData & input_data);
+
   std::optional<PathWithLaneId> generate_path(
     const geometry_msgs::msg::Pose & current_pose, const Params & params);
 
@@ -99,7 +102,7 @@ private:
 
   InputData take_data();
 
-  void set_route(const LaneletRoute::ConstSharedPtr & route_ptr);
+  void set_route(const LaneletRoute::ConstSharedPtr route_ptr);
 
   std::optional<PathWithLaneId> plan_path(const InputData & input_data, const Params & params);
 

@@ -141,7 +141,7 @@ void PathGenerator::set_planner_data(const InputData & input_data)
   }
 }
 
-void PathGenerator::set_route(const LaneletRoute::ConstSharedPtr & route_ptr)
+void PathGenerator::set_route(const LaneletRoute::ConstSharedPtr route_ptr)
 {
   planner_data_.route_frame_id = route_ptr->header.frame_id;
   planner_data_.goal_pose = route_ptr->goal_pose;
