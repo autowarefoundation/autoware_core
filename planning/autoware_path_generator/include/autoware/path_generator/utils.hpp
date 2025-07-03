@@ -162,6 +162,15 @@ bool is_trajectory_inside_lanelets(
   const experimental::trajectory::Trajectory<PathPointWithLaneId> & trajectory,
   const lanelet::ConstLanelets & lanelets);
 
+/**
+ * @brief Modify the trajectory to ensure a smooth connection to the goal.
+ * @param trajectory Input trajectory.
+ * @param planner_data Planner data.
+ * @param search_radius_range Search radius range for the goal.
+ * @param pre_goal_offset Offset before the goal point.
+ * @return Modified trajectory with a smooth connection to the goal, or std::nullopt if
+ *         the modification is not possible.
+ */
 std::optional<experimental::trajectory::Trajectory<PathPointWithLaneId>>
 modify_path_for_smooth_goal_connection(
   const experimental::trajectory::Trajectory<PathPointWithLaneId> & trajectory,
