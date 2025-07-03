@@ -12,6 +12,6 @@
       search_distance: 30.0
       resampling_interval: 1.0
       angle_threshold_deg: 15.0
-    smooth_goal_connection:
-      search_radius_range: 7.5
+    goal_connection:
+      goal_margin: 7.5
       pre_goal_offset: 1.0
