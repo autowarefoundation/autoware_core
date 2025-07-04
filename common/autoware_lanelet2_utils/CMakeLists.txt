@@ -11,6 +11,7 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/intersection.cpp
   src/conversion.cpp
   src/geometry.cpp
+  src/hatched_road_markings.cpp
 )
 
 if(BUILD_TESTING)
@@ -23,6 +24,7 @@ if(BUILD_TESTING)
     test/intersection.cpp
     test/stop_line.cpp
     test/geometry.cpp
+    test/hatched_road_marking.cpp
   )
 
   foreach (test_file IN LISTS test_files)
