@@ -67,9 +67,6 @@ struct ObstacleFilteringParam
   std::vector<uint8_t> inside_stop_object_types{};
   std::vector<uint8_t> outside_stop_object_types{};
 
-  double obstacle_velocity_threshold_enter_current_position{};
-  double obstacle_velocity_threshold_enter_braking_distance{};
-
   double max_lat_margin{};
   double max_lat_margin_against_predicted_object_unknown{};
 
@@ -91,11 +88,6 @@ struct ObstacleFilteringParam
     outside_stop_object_types(
       utils::get_target_object_type(node, "obstacle_stop.obstacle_filtering.object_type.outside."))
   {
-    obstacle_velocity_threshold_enter_current_position = get_or_declare_parameter<double>(
-      node, "obstacle_stop.obstacle_filtering.obstacle_velocity_threshold_enter_current_position");
-    obstacle_velocity_threshold_enter_braking_distance = get_or_declare_parameter<double>(
-      node, "obstacle_stop.obstacle_filtering.obstacle_velocity_threshold_enter_braking_distance");
-
     max_lat_margin =
       get_or_declare_parameter<double>(node, "obstacle_stop.obstacle_filtering.max_lat_margin");
     max_lat_margin_against_predicted_object_unknown = get_or_declare_parameter<double>(
@@ -148,6 +140,8 @@ struct StopPlanningParam
   double additional_stop_margin_on_curve{};
   double min_stop_margin_on_curve{};
   RSSParam rss_params;
+  double obstacle_velocity_threshold_enter_strict_stop{};
+  double obstacle_velocity_threshold_exit_strict_stop{};
 
   struct ObjectTypeSpecificParams
   {
@@ -197,6 +191,10 @@ struct StopPlanningParam
       node, "obstacle_stop.stop_planning.rss_params.no_wheel_objects_deceleration");
     rss_params.velocity_offset = get_or_declare_parameter<double>(
       node, "obstacle_stop.stop_planning.rss_params.velocity_offset");
+    obstacle_velocity_threshold_enter_strict_stop = get_or_declare_parameter<double>(
+      node, "obstacle_stop.stop_planning.obstacle_velocity_threshold_enter_strict_stop");
+    obstacle_velocity_threshold_exit_strict_stop = get_or_declare_parameter<double>(
+      node, "obstacle_stop.stop_planning.obstacle_velocity_threshold_exit_strict_stop");
 
     const std::string param_prefix = "obstacle_stop.stop_planning.object_type_specified_params.";
     const auto object_types =

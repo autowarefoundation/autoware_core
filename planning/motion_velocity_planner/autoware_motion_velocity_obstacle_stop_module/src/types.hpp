@@ -38,7 +38,8 @@ struct StopObstacle
     const ObjectClassification & object_classification, const geometry_msgs::msg::Pose & arg_pose,
     const Shape & arg_shape, const double arg_lon_velocity,
     const geometry_msgs::msg::Point & arg_collision_point,
-    const double arg_dist_to_collide_on_decimated_traj, const double arg_braking_dist = 0.0)
+    const double arg_dist_to_collide_on_decimated_traj,
+    const std::optional<double> arg_braking_dist = std::nullopt)
   : uuid(arg_uuid),
     stamp(arg_stamp),
     pose(arg_pose),
@@ -62,7 +63,7 @@ struct StopObstacle
                       // replaced by ”dist_to_collide_on_decimated_traj”
   double dist_to_collide_on_decimated_traj;
   ObjectClassification classification;
-  double braking_dist;
+  std::optional<double> braking_dist;
 };
 
 struct DebugData
