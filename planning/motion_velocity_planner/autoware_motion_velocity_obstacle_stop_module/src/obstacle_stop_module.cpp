@@ -167,6 +167,25 @@ double calc_time_to_reach_collision_point(
   return dist_from_ego_to_obstacle /
          std::max(min_velocity_to_reach_collision_point, std::abs(odometry.twist.twist.linear.x));
 }
+
+double calc_braking_dist(const uint8_t obj_label, const double lon_vel, const RSSParam & rss_params)
+{
+  const double braking_acc = [&]() {
+    switch (obj_label) {
+      case ObjectClassification::UNKNOWN:
+      case ObjectClassification::PEDESTRIAN:
+        return rss_params.no_wheel_objects_deceleration;
+      case ObjectClassification::BICYCLE:
+      case ObjectClassification::MOTORCYCLE:
+        return rss_params.two_wheel_objects_deceleration;
+      default:
+        return rss_params.vehicle_objects_deceleration;
+    }
+  }();
+  const double error_considered_vel = std::max(lon_vel + rss_params.velocity_offset, 0.0);
+  return error_considered_vel * error_considered_vel * 0.5 / -braking_acc;
+}
+
 }  // namespace
 
 void ObstacleStopModule::init(rclcpp::Node & node, const std::string & module_name)
@@ -594,13 +613,9 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
     return std::nullopt;
   }
 
-  // 3. filter by velocity
-  if (!is_inside_stop_obstacle_velocity(object, traj_points)) {
-    return std::nullopt;
-  }
-
   // 4. check if the obstacle really collides with the trajectory
   // 4.1 generate polygon to be checked
+  // calculate collision points with trajectory with lateral stop margin
   const auto & p = trajectory_polygon_collision_check;
   const auto decimated_traj_polys_with_lat_margin = get_trajectory_polygon(
     decimated_traj_points, vehicle_info, odometry.pose.pose, max_lat_margin,
@@ -634,29 +649,49 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
     return std::nullopt;
   }
 
-  return StopObstacle{
-    autoware_utils_uuid::to_hex_string(predicted_object.object_id),
-    predicted_objects_stamp,
-    predicted_object.classification.at(0),
-    obj_pose,
-    predicted_object.shape,
-    object->get_lon_vel_relative_to_traj(traj_points),
-    collision_point->first,
-    collision_point->second};
+  if (is_obstacle_velocity_requiring_strict_stop(object, traj_points)) {
+    return StopObstacle{
+      autoware_utils_uuid::to_hex_string(predicted_object.object_id),
+      predicted_objects_stamp,
+      predicted_object.classification.at(0),
+      obj_pose,
+      predicted_object.shape,
+      object->get_lon_vel_relative_to_traj(traj_points),
+      collision_point->first,
+      collision_point->second};
+  }
+
+  if (stop_planning_param_.rss_params.use_rss_stop) {
+    const auto braking_dist = calc_braking_dist(
+      obj_label, object->get_lon_vel_relative_to_traj(traj_points),
+      stop_planning_param_.rss_params);
+    return StopObstacle{
+      autoware_utils_uuid::to_hex_string(predicted_object.object_id),
+      predicted_objects_stamp,
+      predicted_object.classification.at(0),
+      obj_pose,
+      predicted_object.shape,
+      object->get_lon_vel_relative_to_traj(traj_points),
+      collision_point->first,
+      collision_point->second,
+      braking_dist};
+  }
+
+  return std::nullopt;
 }
 
-bool ObstacleStopModule::is_inside_stop_obstacle_velocity(
+bool ObstacleStopModule::is_obstacle_velocity_requiring_strict_stop(
   const std::shared_ptr<PlannerData::Object> object,
   const std::vector<TrajectoryPoint> & traj_points) const
 {
-  const bool is_prev_object_stop =
-    utils::get_obstacle_from_uuid(
-      prev_stop_obstacles_, autoware_utils_uuid::to_hex_string(object->predicted_object.object_id))
-      .has_value();
+  const auto stop_obstacle_opt = utils::get_obstacle_from_uuid(
+    prev_stop_obstacles_, autoware_utils_uuid::to_hex_string(object->predicted_object.object_id));
+  const bool is_prev_object_requires_strict_stop =
+    stop_obstacle_opt.has_value() && !stop_obstacle_opt->braking_dist.has_value();
 
-  if (is_prev_object_stop) {
+  if (is_prev_object_requires_strict_stop) {
     if (
-      obstacle_filtering_param_.obstacle_velocity_threshold_from_stop <
+      stop_planning_param_.obstacle_velocity_threshold_exit_strict_stop <
       object->get_lon_vel_relative_to_traj(traj_points)) {
       return false;
     }
@@ -664,7 +699,7 @@ bool ObstacleStopModule::is_inside_stop_obstacle_velocity(
   }
   if (
     object->get_lon_vel_relative_to_traj(traj_points) <
-    obstacle_filtering_param_.obstacle_velocity_threshold_to_stop) {
+    stop_planning_param_.obstacle_velocity_threshold_enter_strict_stop) {
     return true;
   }
   return false;
@@ -772,7 +807,7 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::plan_stop(
     // calculate dist to collide
     const double dist_to_collide_on_ref_traj =
       autoware::motion_utils::calcSignedArcLength(traj_points, 0, ego_segment_idx) +
-      stop_obstacle.dist_to_collide_on_decimated_traj;
+      stop_obstacle.dist_to_collide_on_decimated_traj + stop_obstacle.braking_dist.value_or(0.0);
 
     // calculate desired stop margin
     const double desired_stop_margin = calc_desired_stop_margin(
@@ -790,8 +825,10 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::plan_stop(
       const bool is_same_param_types =
         (stop_obstacle.classification.label == determined_stop_obstacle->classification.label);
       if (
-        (is_same_param_types && stop_obstacle.dist_to_collide_on_decimated_traj >
-                                  determined_stop_obstacle->dist_to_collide_on_decimated_traj) ||
+        (is_same_param_types && stop_obstacle.dist_to_collide_on_decimated_traj +
+                                    stop_obstacle.dist_to_collide_on_decimated_traj >
+                                  determined_stop_obstacle->dist_to_collide_on_decimated_traj +
+                                    determined_stop_obstacle->braking_dist.value_or(0.0)) ||
         (!is_same_param_types && *candidate_zero_vel_dist > determined_zero_vel_dist)) {
         continue;
       }
@@ -1188,7 +1225,7 @@ void ObstacleStopModule::check_consistency(
       const double elapsed_time = (current_time - prev_closest_stop_obstacle.stamp).seconds();
       if (
         (*object_itr)->predicted_object.kinematics.initial_twist_with_covariance.twist.linear.x <
-          obstacle_filtering_param_.obstacle_velocity_threshold_from_stop &&
+          stop_planning_param_.obstacle_velocity_threshold_enter_strict_stop &&
         elapsed_time < obstacle_filtering_param_.stop_obstacle_hold_time_threshold) {
         stop_obstacles.push_back(prev_closest_stop_obstacle);
       }
@@ -1294,7 +1331,8 @@ std::vector<StopObstacle> ObstacleStopModule::get_closest_stop_obstacles(
     if (itr == candidates.end()) {
       candidates.emplace_back(stop_obstacle);
     } else if (
-      stop_obstacle.dist_to_collide_on_decimated_traj < itr->dist_to_collide_on_decimated_traj) {
+      stop_obstacle.dist_to_collide_on_decimated_traj + stop_obstacle.braking_dist.value_or(0.0) <
+      itr->dist_to_collide_on_decimated_traj + itr->braking_dist.value_or(0.0)) {
       *itr = stop_obstacle;
     }
   }

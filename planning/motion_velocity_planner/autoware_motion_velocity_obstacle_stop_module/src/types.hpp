@@ -22,6 +22,8 @@
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
 #include <autoware/motion_velocity_planner_common/utils.hpp>
 
+#include <algorithm>
+#include <limits>
 #include <memory>
 #include <string>
 #include <utility>
@@ -35,8 +37,9 @@ struct StopObstacle
     const std::string & arg_uuid, const rclcpp::Time & arg_stamp,
     const ObjectClassification & object_classification, const geometry_msgs::msg::Pose & arg_pose,
     const Shape & arg_shape, const double arg_lon_velocity,
-    const geometry_msgs::msg::Point arg_collision_point,
-    const double arg_dist_to_collide_on_decimated_traj)
+    const geometry_msgs::msg::Point & arg_collision_point,
+    const double arg_dist_to_collide_on_decimated_traj,
+    const std::optional<double> arg_braking_dist = std::nullopt)
   : uuid(arg_uuid),
     stamp(arg_stamp),
     pose(arg_pose),
@@ -44,7 +47,8 @@ struct StopObstacle
     shape(arg_shape),
     collision_point(arg_collision_point),
     dist_to_collide_on_decimated_traj(arg_dist_to_collide_on_decimated_traj),
-    classification(object_classification)
+    classification(object_classification),
+    braking_dist(arg_braking_dist)
   {
   }
   std::string uuid;
@@ -59,6 +63,7 @@ struct StopObstacle
                       // replaced by ”dist_to_collide_on_decimated_traj”
   double dist_to_collide_on_decimated_traj;
   ObjectClassification classification;
+  std::optional<double> braking_dist;
 };
 
 struct DebugData
