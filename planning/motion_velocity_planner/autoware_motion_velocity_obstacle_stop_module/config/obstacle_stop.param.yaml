@@ -45,8 +45,8 @@
           no_wheel_objects_deceleration: -10.0 # [m/ss] for PEDESTRIAN, UNKNOWN
           velocity_offset: -1.0 # [m/s]
 
-        obstacle_velocity_threshold_enter_strict_stop: 3.0  # [m/s] obstacle velocity threshold to use its current position for stop point decision
-        obstacle_velocity_threshold_exit_strict_stop: 3.5  # [m/s] obstacle velocity threshold to use its braking position (if use_rss_stop is true) for stop point decision
+        obstacle_velocity_threshold_enter_fixed_stop: 3.0  # [m/s] obstacle velocity threshold to use its current position for stop point decision
+        obstacle_velocity_threshold_exit_fixed_stop: 3.5  # [m/s] obstacle velocity threshold to use its braking distance (if use_rss_stop is true) for stop point decision
 
       obstacle_filtering:
         object_type:

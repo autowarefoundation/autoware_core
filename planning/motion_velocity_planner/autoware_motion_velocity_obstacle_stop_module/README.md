@@ -51,8 +51,8 @@ The operating principle is to assume a constant deceleration for the leading veh
 Leading vehicle following is realized through the cooperation of this function and the velocity_smoother.
 Please note that the ego vehicle's behavior is influenced not only by the obstacle_stop settings but also by the velocity_smoother settings.
 
-For objects moving slower than `obstacle_velocity_threshold_enter_strict_stop`, the braking distance is not calculated. Instead, only the object's current position is used for stop position calculation.
-Additionally, if this feature is disabled by `use_rss_stop`, stop planning is performed only for objects moving slower than `obstacle_velocity_threshold_enter_strict_stop`.
+For objects moving slower than `obstacle_velocity_threshold_enter_fixed_stop`, the braking distance is not calculated. Instead, only the object's current position is used for stop position calculation.
+Additionally, if this feature is disabled by `use_rss_stop`, stop planning is performed only for objects moving slower than `obstacle_velocity_threshold_enter_fixed_stop`.
 
 ### Minor functions
 

@@ -649,7 +649,7 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
     return std::nullopt;
   }
 
-  if (is_obstacle_velocity_requiring_strict_stop(object, traj_points)) {
+  if (is_obstacle_velocity_requiring_fixed_stop(object, traj_points)) {
     return StopObstacle{
       autoware_utils_uuid::to_hex_string(predicted_object.object_id),
       predicted_objects_stamp,
@@ -680,18 +680,18 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
   return std::nullopt;
 }
 
-bool ObstacleStopModule::is_obstacle_velocity_requiring_strict_stop(
+bool ObstacleStopModule::is_obstacle_velocity_requiring_fixed_stop(
   const std::shared_ptr<PlannerData::Object> object,
   const std::vector<TrajectoryPoint> & traj_points) const
 {
   const auto stop_obstacle_opt = utils::get_obstacle_from_uuid(
     prev_stop_obstacles_, autoware_utils_uuid::to_hex_string(object->predicted_object.object_id));
-  const bool is_prev_object_requires_strict_stop =
+  const bool is_prev_object_requires_fixed_stop =
     stop_obstacle_opt.has_value() && !stop_obstacle_opt->braking_dist.has_value();
 
-  if (is_prev_object_requires_strict_stop) {
+  if (is_prev_object_requires_fixed_stop) {
     if (
-      stop_planning_param_.obstacle_velocity_threshold_exit_strict_stop <
+      stop_planning_param_.obstacle_velocity_threshold_exit_fixed_stop <
       object->get_lon_vel_relative_to_traj(traj_points)) {
       return false;
     }
@@ -699,7 +699,7 @@ bool ObstacleStopModule::is_obstacle_velocity_requiring_strict_stop(
   }
   if (
     object->get_lon_vel_relative_to_traj(traj_points) <
-    stop_planning_param_.obstacle_velocity_threshold_enter_strict_stop) {
+    stop_planning_param_.obstacle_velocity_threshold_enter_fixed_stop) {
     return true;
   }
   return false;
@@ -1225,7 +1225,7 @@ void ObstacleStopModule::check_consistency(
       const double elapsed_time = (current_time - prev_closest_stop_obstacle.stamp).seconds();
       if (
         (*object_itr)->predicted_object.kinematics.initial_twist_with_covariance.twist.linear.x <
-          stop_planning_param_.obstacle_velocity_threshold_enter_strict_stop &&
+          stop_planning_param_.obstacle_velocity_threshold_enter_fixed_stop &&
         elapsed_time < obstacle_filtering_param_.stop_obstacle_hold_time_threshold) {
         stop_obstacles.push_back(prev_closest_stop_obstacle);
       }

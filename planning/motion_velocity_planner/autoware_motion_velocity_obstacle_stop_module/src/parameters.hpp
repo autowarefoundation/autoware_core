@@ -140,8 +140,8 @@ struct StopPlanningParam
   double additional_stop_margin_on_curve{};
   double min_stop_margin_on_curve{};
   RSSParam rss_params;
-  double obstacle_velocity_threshold_enter_strict_stop{};
-  double obstacle_velocity_threshold_exit_strict_stop{};
+  double obstacle_velocity_threshold_enter_fixed_stop{};
+  double obstacle_velocity_threshold_exit_fixed_stop{};
 
   struct ObjectTypeSpecificParams
   {
@@ -191,10 +191,10 @@ struct StopPlanningParam
       node, "obstacle_stop.stop_planning.rss_params.no_wheel_objects_deceleration");
     rss_params.velocity_offset = get_or_declare_parameter<double>(
       node, "obstacle_stop.stop_planning.rss_params.velocity_offset");
-    obstacle_velocity_threshold_enter_strict_stop = get_or_declare_parameter<double>(
-      node, "obstacle_stop.stop_planning.obstacle_velocity_threshold_enter_strict_stop");
-    obstacle_velocity_threshold_exit_strict_stop = get_or_declare_parameter<double>(
-      node, "obstacle_stop.stop_planning.obstacle_velocity_threshold_exit_strict_stop");
+    obstacle_velocity_threshold_enter_fixed_stop = get_or_declare_parameter<double>(
+      node, "obstacle_stop.stop_planning.obstacle_velocity_threshold_enter_fixed_stop");
+    obstacle_velocity_threshold_exit_fixed_stop = get_or_declare_parameter<double>(
+      node, "obstacle_stop.stop_planning.obstacle_velocity_threshold_exit_fixed_stop");
 
     const std::string param_prefix = "obstacle_stop.stop_planning.object_type_specified_params.";
     const auto object_types =
