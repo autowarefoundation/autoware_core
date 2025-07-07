@@ -5431,6 +5431,16 @@
 <td>A convenient function that generates Trajectory class from given Lanelets and specified length before/after given position.<br>Input <code>lanelet_sequence</code> must be consecutive.<br>If <code>lanelet_sequence</code> have self-intersection ego position gets ambiguous, so both <code>current_lanelet</code> and <code>current_pose</code> need to be given.<br><code>forward/backward_length</code> is measured in terms of lane coordinate from <code>current_pose</code>. Thus, if and only if the Lanelets contained waypoint, the output trajectory length does not equal to <code>forward_length + backward_length</code>.</td>
 <td><img alt="build_reference_path" src="images/utils/reference_path.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Flatest%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Freference_path.drawio.svg">View in Drawio</a></td>
 </tr>
+<tr>
+<td><code>&lt;autoware/trajectory/utils/find_nearest.hpp&gt;</code></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><ul><li><code>find_nearest_index</code></li></ul></td>
+<td>A utility function that locates the arc-length coordinate <code>s</code> on a continuous trajectory closest to a given pose.<br> Input is any continuous trajectory type.<br>If <code>get_underlying_bases()</code> is empty or no sample lies within <code>max_dist</code> (Euclidean) and <code>max_yaw</code> (heading) limits, returns <code>std::nullopt</code>.<br>Otherwise, it performs a ternary search between the two bases bracketing the best discrete match to refine <code>s</code> to \~1e-4 m precision.<br>If two samples are equally close in distance, the one with the smaller yaw deviation (within <code>max_yaw</code>) is chosen.</td>
+<td><img alt="find_nearest_index" src="images/utils/find_nearest.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Flatest%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Ffind_nearest.drawio.svg">View in Drawio</a></td>
+</tr>
 </tbody>
 </table>
 <h4 id="derivation-of-shift">Derivation of <code>shift</code><a class="headerlink" href="#derivation-of-shift" title="Permanent link">#</a></h4>
