@@ -4548,7 +4548,7 @@ TEST(trajectory, insertOrientationWithHelicalForwardPath)
 
   constexpr size_t num_points = 5;
   std::vector<Pose> path_points(num_points);
-  std::vector<Pose> corecot_orientations(num_points);
+  std::vector<Pose> correct_orientations(num_points);
 
   // forward helical path
   for (size_t i = 0; i < num_points; ++i) {
@@ -4558,14 +4558,14 @@ TEST(trajectory, insertOrientationWithHelicalForwardPath)
     const double alpha = i * step_length / radius;
     path_points.at(i).position =
       create_point(radius * cos(alpha), radius * sin(alpha), slope_rate * radius * alpha);
-    corecot_orientations.at(i).orientation =
+    correct_orientations.at(i).orientation =
       create_quaternion_from_rpy(0.0, slope_rate, alpha + autoware_utils_math::pi / 2.0);
   }
   {
     insertOrientation(path_points, true);
     for (size_t i = 1; i < num_points - 1; ++i) {
       const auto & res_p = path_points.at(i);
-      const auto & cor_p = corecot_orientations.at(i);
+      const auto & cor_p = correct_orientations.at(i);
       const auto res_rpy = autoware_utils_geometry::get_rpy(res_p);
       const auto cor_rpy = autoware_utils_geometry::get_rpy(cor_p);
       EXPECT_NEAR(res_rpy.x, cor_rpy.x, 0.02);
@@ -4582,7 +4582,7 @@ TEST(trajectory, insertOrientationWithHelicalBackwardPath)
 
   constexpr size_t num_points = 5;
   std::vector<Pose> path_points(num_points);
-  std::vector<Pose> corecot_orientations(num_points);
+  std::vector<Pose> correct_orientations(num_points);
 
   // forward helical path
   for (size_t i = 0; i < num_points; ++i) {
@@ -4592,14 +4592,14 @@ TEST(trajectory, insertOrientationWithHelicalBackwardPath)
     const double alpha = i * step_length / radius;
     path_points.at(i).position =
       create_point(radius * cos(alpha), radius * sin(alpha), slope_rate * radius * alpha);
-    corecot_orientations.at(i).orientation =
+    correct_orientations.at(i).orientation =
       create_quaternion_from_rpy(0.0, -slope_rate, alpha - autoware_utils_math::pi / 2.0);
   }
   {
     insertOrientation(path_points, false);
     for (size_t i = 1; i < num_points - 1; ++i) {
       const auto & res_p = path_points.at(i);
-      const auto & cor_p = corecot_orientations.at(i);
+      const auto & cor_p = correct_orientations.at(i);
       const auto res_rpy = autoware_utils_geometry::get_rpy(res_p);
       const auto cor_rpy = autoware_utils_geometry::get_rpy(cor_p);
       EXPECT_NEAR(res_rpy.x, cor_rpy.x, 0.02);
@@ -4616,7 +4616,7 @@ TEST(trajectory, insertOrientationAsArcWithHelicalForwardPath)
 
   constexpr size_t num_points = 5;
   std::vector<Pose> path_points(num_points);
-  std::vector<Pose> corecot_orientations(num_points);
+  std::vector<Pose> correct_orientations(num_points);
 
   // forward helical path
   for (size_t i = 0; i < num_points; ++i) {
@@ -4626,14 +4626,14 @@ TEST(trajectory, insertOrientationAsArcWithHelicalForwardPath)
     const double alpha = i * step_length / radius;
     path_points.at(i).position =
       create_point(radius * cos(alpha), radius * sin(alpha), slope_rate * radius * alpha);
-    corecot_orientations.at(i).orientation =
+    correct_orientations.at(i).orientation =
       create_quaternion_from_rpy(0.0, slope_rate, alpha + autoware_utils_math::pi / 2.0);
   }
   {
     insertOrientationAsArc(path_points, true);
     for (size_t i = 1; i < num_points - 1; ++i) {
       const auto & res_p = path_points.at(i);
-      const auto & cor_p = corecot_orientations.at(i);
+      const auto & cor_p = correct_orientations.at(i);
       const auto res_rpy = autoware_utils_geometry::get_rpy(res_p);
       const auto cor_rpy = autoware_utils_geometry::get_rpy(cor_p);
       EXPECT_NEAR(res_rpy.x, cor_rpy.x, 0.02);
@@ -4650,7 +4650,7 @@ TEST(trajectory, insertOrientationAsArcWithHelicalBackwardPath)
 
   constexpr size_t num_points = 5;
   std::vector<Pose> path_points(num_points);
-  std::vector<Pose> corecot_orientations(num_points);
+  std::vector<Pose> correct_orientations(num_points);
 
   // forward helical path
   for (size_t i = 0; i < num_points; ++i) {
@@ -4660,14 +4660,14 @@ TEST(trajectory, insertOrientationAsArcWithHelicalBackwardPath)
     const double alpha = i * step_length / radius;
     path_points.at(i).position =
       create_point(radius * cos(alpha), radius * sin(alpha), slope_rate * radius * alpha);
-    corecot_orientations.at(i).orientation =
+    correct_orientations.at(i).orientation =
       create_quaternion_from_rpy(0.0, -slope_rate, alpha - autoware_utils_math::pi / 2.0);
   }
   {
     insertOrientationAsArc(path_points, false);
     for (size_t i = 1; i < num_points - 1; ++i) {
       const auto & res_p = path_points.at(i);
-      const auto & cor_p = corecot_orientations.at(i);
+      const auto & cor_p = correct_orientations.at(i);
       const auto res_rpy = autoware_utils_geometry::get_rpy(res_p);
       const auto cor_rpy = autoware_utils_geometry::get_rpy(cor_p);
       EXPECT_NEAR(res_rpy.x, cor_rpy.x, 0.02);

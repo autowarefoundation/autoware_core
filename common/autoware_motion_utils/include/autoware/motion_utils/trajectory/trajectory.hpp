@@ -1931,8 +1931,8 @@ void insertOrientationAsArc(T & points, const bool is_driving_forward)
     return;
   }
 
-  // Calculate tangent direction of intermediate point from 3 points using alternate segment theorem
-  // by connecting 3 points by as arc.
+  // Calculate the tangent direction of an intermediate point by treating 3 consecutive points as an arc
+  // and applying the alternate segment theorem.
   for (size_t i = 0; i < points.size(); ++i) {
     if (i == 0) {  // use line direction
       const auto & src_point = autoware_utils_geometry::get_point(points.at(i));
