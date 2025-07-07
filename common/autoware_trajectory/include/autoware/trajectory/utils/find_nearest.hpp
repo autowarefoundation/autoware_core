@@ -116,7 +116,7 @@ std::optional<double> find_nearest_index(
     const double mid2 = search_end - (search_end - search_start) / 3.0;
 
     const auto pose1 = trajectory.compute(mid1);
-    const double squared_dist1 =
+    double squared_dist1 =
       autoware_utils_geometry::calc_squared_distance2d(pose1.position, pose.position);
     const double yaw_dev1 = autoware_utils_geometry::calc_yaw_deviation(pose1, pose);
 
@@ -130,7 +130,7 @@ std::optional<double> find_nearest_index(
     }
 
     const auto pose2 = trajectory.compute(mid2);
-    const double squared_dist2 =
+    double squared_dist2 =
       autoware_utils_geometry::calc_squared_distance2d(pose2.position, pose.position);
     const double yaw_dev2 = autoware_utils_geometry::calc_yaw_deviation(pose2, pose);
 
