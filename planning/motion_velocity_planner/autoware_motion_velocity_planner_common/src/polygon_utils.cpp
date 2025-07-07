@@ -188,17 +188,6 @@ std::vector<Polygon2d> create_one_step_polygons(
   std::vector<Polygon2d> output_polygons;
   Polygon2d tmp_polys{};
   for (size_t i = 0; i < traj_points.size(); ++i) {
-    // if (i < traj_points.size() - 1) {
-    //   const auto & src_pose = traj_points.at(i).pose;
-    //   const auto & dst_pose = traj_points.at(i + 1).pose;
-    //   const auto pose_diff = autoware_utils_geometry::inverse_transform_pose(dst_pose, src_pose);
-    //   const double yaw_diff = tf2::getYaw(pose_diff.orientation);
-    //   const double y_diff = pose_diff.position.y;
-    //   if (std::abs(yaw_diff) > 0.11) {
-    //     std::cerr << "yaw_diff: " << yaw_diff << ", y_diff: " << y_diff << std::endl;
-    //   }
-    // }
-
     std::vector<geometry_msgs::msg::Pose> current_poses = {traj_points.at(i).pose};
 
     // estimate the future ego pose with assuming that the pose error against the reference path
