@@ -5017,6 +5017,13 @@
 <td></td>
 </tr>
 <tr>
+<td><code>&lt;autoware_lanelet2_utils/hatched_road_markings.hpp&gt;</code></td>
+<td><code>get_adjacent_hatched_road_markings</code></td>
+<td>Returns polygons with type <code>hatched_road_markings</code> that touch the left/right bounds of the given lanelet sequence. Polygons are grouped by side and duplicates removed.</td>
+<td><span class="arithmatex">\(O(V)\)</span> where <span class="arithmatex">\(V\)</span> is the number of boundary vertices inspected</td>
+<td></td>
+</tr>
+<tr>
 <td><code>&lt;autoware_lanelet2_utils/topology.hpp&gt;</code></td>
 <td><code>instantiate_routing_graph</code></td>
 <td>This function creates a <code>RoutingGraph</code> object only from "road" lanes, which means "road_shoulder" and "bicycle_lane" Lanelets are inaccessible from left/right adjacency.</td>
@@ -5242,6 +5249,11 @@
 <td><code>dense_centerline/lanelet2_map.osm</code></td>
 <td><code>16</code></td>
 <td><img alt="lanelet2_map" src="media/maps/dense_centerline/lanelet2_map.png"></td>
+</tr>
+<tr>
+<td><code>hatched_road_marking/lanelet2_map.osm</code></td>
+<td><code>15</code></td>
+<td><img alt="lanelet2_map" src="media/maps/hatched_road_marking/lanelet2_map.png"></td>
 </tr>
 </tbody>
 </table>
