@@ -1062,7 +1062,7 @@ void ObstacleStopModule::publish_debug_info()
     auto collision_point_marker = autoware_utils_visualization::create_default_marker(
       "map", clock_->now(), "collision_points", 0, Marker::SPHERE,
       autoware_utils_visualization::create_marker_scale(0.25, 0.25, 0.25),
-      autoware_utils_visualization::create_marker_color(1.0, 0.0, 0.0, 0.999));
+      autoware_utils_visualization::create_marker_color(0.0, 1.0, 0.0, 0.999));
     collision_point_marker.pose.position = debug_data_ptr_->obstacles_to_stop.at(i).collision_point;
     debug_marker.markers.push_back(collision_point_marker);
   }
