@@ -475,8 +475,18 @@ template void
 insertOrientationAsArc<std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId>>(
   std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & points,
   const bool is_driving_forward);
+template void insertOrientationAsArc<std::vector<autoware_planning_msgs::msg::TrajectoryPoint>>(
+  std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points,
+  const bool is_driving_forward);
+
+//
+template void insertOrientationAsSpline<std::vector<autoware_planning_msgs::msg::PathPoint>>(
+  std::vector<autoware_planning_msgs::msg::PathPoint> & points, const bool is_driving_forward);
 template void
-insertOrientationAsArc<std::vector<autoware_planning_msgs::msg::TrajectoryPoint>>(
+insertOrientationAsSpline<std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId>>(
+  std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & points,
+  const bool is_driving_forward);
+template void insertOrientationAsSpline<std::vector<autoware_planning_msgs::msg::TrajectoryPoint>>(
   std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points,
   const bool is_driving_forward);
 

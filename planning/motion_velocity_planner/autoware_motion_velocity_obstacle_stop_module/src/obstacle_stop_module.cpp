@@ -263,7 +263,7 @@ VelocityPlanningResult ObstacleStopModule::plan(
     raw_trajectory_points, planner_data->current_odometry.pose.pose,
     planner_data->ego_nearest_dist_threshold, planner_data->ego_nearest_yaw_threshold,
     planner_data->trajectory_polygon_collision_check.decimate_trajectory_step_length,
-    stop_planning_param_.stop_margin);
+    stop_planning_param_.stop_margin, 2);
 
   // 3. filter obstacles of predicted objects
   auto stop_obstacles_for_predicted_object = filter_stop_obstacle_for_predicted_object(
@@ -1319,7 +1319,7 @@ std::vector<Polygon2d> ObstacleStopModule::get_decimated_traj_polys(
     const auto & p = trajectory_polygon_collision_check;
     const auto decimated_traj_points = utils::decimate_trajectory_points_from_ego(
       traj_points, current_pose, ego_nearest_dist_threshold, ego_nearest_yaw_threshold,
-      p.decimate_trajectory_step_length, p.goal_extended_trajectory_length);
+      p.decimate_trajectory_step_length, p.goal_extended_trajectory_length, 2);
     decimated_traj_polys_ = polygon_utils::create_one_step_polygons(
       decimated_traj_points, vehicle_info, current_pose, 0.0, p.enable_to_consider_current_pose,
       p.time_to_convergence, p.decimate_trajectory_step_length);

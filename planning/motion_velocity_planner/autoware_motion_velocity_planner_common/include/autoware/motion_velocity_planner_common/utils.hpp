@@ -62,7 +62,8 @@ std::vector<T> concat_vectors(std::vector<T> first_vector, std::vector<T> second
 std::vector<TrajectoryPoint> decimate_trajectory_points_from_ego(
   const std::vector<TrajectoryPoint> & traj_points, const geometry_msgs::msg::Pose & current_pose,
   const double ego_nearest_dist_threshold, const double ego_nearest_yaw_threshold,
-  const double decimate_trajectory_step_length, const double goal_extended_trajectory_length);
+  const double decimate_trajectory_step_length, const double goal_extended_trajectory_length,
+  const int8_t mode);
 
 template <typename T>
 std::optional<T> get_obstacle_from_uuid(

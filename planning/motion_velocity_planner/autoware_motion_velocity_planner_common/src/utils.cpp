@@ -79,21 +79,34 @@ std::vector<TrajectoryPoint> get_extended_trajectory_points(
 }
 
 std::vector<TrajectoryPoint> resample_trajectory_points(
-  const std::vector<TrajectoryPoint> & traj_points, const double interval)
+  const std::vector<TrajectoryPoint> & traj_points, const double interval, const int8_t mode)
 {
   const auto traj_msg = autoware::motion_utils::convertToTrajectory(traj_points);
   const auto resampled_traj_msg = autoware::motion_utils::resampleTrajectory(traj_msg, interval);
   auto resampled_traj = autoware::motion_utils::convertToTrajectoryPointArray(resampled_traj_msg);
   const bool is_driving_forward =
     autoware_utils_geometry::is_driving_forward(traj_points.at(0), traj_points.at(1));
-  autoware::motion_utils::insertOrientationAsArc(resampled_traj, is_driving_forward);
+  switch (mode) {
+    case 0:
+      autoware::motion_utils::insertOrientation(resampled_traj, is_driving_forward);
+      break;
+    case 1:
+      autoware::motion_utils::insertOrientationAsArc(resampled_traj, is_driving_forward);
+      break;
+    case 2:
+      autoware::motion_utils::insertOrientationAsSpline(resampled_traj, is_driving_forward);
+      break;
+    default:
+      break;
+  }
   return resampled_traj;
 }
 
 std::vector<TrajectoryPoint> decimate_trajectory_points_from_ego(
   const std::vector<TrajectoryPoint> & traj_points, const geometry_msgs::msg::Pose & current_pose,
   const double ego_nearest_dist_threshold, const double ego_nearest_yaw_threshold,
-  const double decimate_trajectory_step_length, const double goal_extended_trajectory_length)
+  const double decimate_trajectory_step_length, const double goal_extended_trajectory_length,
+  const int8_t mode)
 {
   // trim trajectory points from ego pose
   const size_t traj_ego_seg_idx =
@@ -104,7 +117,7 @@ std::vector<TrajectoryPoint> decimate_trajectory_points_from_ego(
 
   // decimate trajectory
   const auto decimated_traj_points_from_ego =
-    resample_trajectory_points(traj_points_from_ego, decimate_trajectory_step_length);
+    resample_trajectory_points(traj_points_from_ego, decimate_trajectory_step_length, mode);
 
   // extend trajectory
   const auto extended_traj_points_from_ego = get_extended_trajectory_points(
