@@ -4668,7 +4668,7 @@ TEST(trajectory, insertOrientationAsSplineWithHelicalBackwardPath)
   std::vector<Pose> raw_path_points(num_points);
   std::vector<Pose> correct_orientation_points(num_points);
 
-  // forward helical path
+  // backward helical path
   for (size_t i = 0; i < num_points; ++i) {
     constexpr double radius = 10.0;
     constexpr double step_length = 2.0;
