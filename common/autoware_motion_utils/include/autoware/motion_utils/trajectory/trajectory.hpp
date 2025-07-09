@@ -2011,7 +2011,8 @@ void insertOrientationAsSpline(T & points, const bool is_driving_forward)
     return;
   }
 
-  const int8_t sign = is_driving_forward ? 1 : -1;
+  const double yaw_offset = is_driving_forward ? 0.0 : M_PI;
+  const int8_t pitch_sign = is_driving_forward ? 1 : -1;
 
   std::vector<geometry_msgs::msg::Point> geometry_points_vec(points.size());
   for (size_t i = 0; i < points.size(); ++i) {
@@ -2029,8 +2030,9 @@ void insertOrientationAsSpline(T & points, const bool is_driving_forward)
       dst_point = geometry_points_vec.at(i + 1);
     }
 
-    const double yaw = sign * yaw_vec.at(i);
-    const double pitch = sign * autoware_utils_geometry::calc_elevation_angle(src_point, dst_point);
+    const double yaw = yaw_offset + yaw_vec.at(i);
+    const double pitch =
+      pitch_sign * autoware_utils_geometry::calc_elevation_angle(src_point, dst_point);
     autoware_utils_geometry::set_orientation(
       autoware_utils_geometry::create_quaternion_from_rpy(0.0, pitch, yaw), points.at(i));
   }
