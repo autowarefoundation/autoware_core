@@ -1062,7 +1062,7 @@ void ObstacleStopModule::publish_debug_info()
     auto collision_point_marker = autoware_utils_visualization::create_default_marker(
       "map", clock_->now(), "collision_points", 0, Marker::SPHERE,
       autoware_utils_visualization::create_marker_scale(0.25, 0.25, 0.25),
-      autoware_utils_visualization::create_marker_color(0.0, 1.0, 0.0, 0.999));
+      autoware_utils_visualization::create_marker_color(1.0, 0.0, 0.0, 0.999));
     collision_point_marker.pose.position = debug_data_ptr_->obstacles_to_stop.at(i).collision_point;
     debug_marker.markers.push_back(collision_point_marker);
   }
@@ -1080,7 +1080,7 @@ void ObstacleStopModule::publish_debug_info()
   auto decimated_traj_polys_marker = autoware_utils_visualization::create_default_marker(
     "map", clock_->now(), "detection_area", 0, Marker::LINE_LIST,
     autoware_utils_visualization::create_marker_scale(0.01, 0.0, 0.0),
-    autoware_utils_visualization::create_marker_color(1.0, 0.0, 0.0, 0.999));
+    autoware_utils_visualization::create_marker_color(0.0, 1.0, 0.0, 0.999));
   for (const auto & decimated_traj_poly : debug_data_ptr_->decimated_traj_polys) {
     for (size_t dp_idx = 0; dp_idx < decimated_traj_poly.outer().size(); ++dp_idx) {
       const auto & current_point = decimated_traj_poly.outer().at(dp_idx);
