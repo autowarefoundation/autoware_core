@@ -190,15 +190,19 @@ std::vector<WaypointGroup> get_waypoint_groups(
 {
   std::vector<WaypointGroup> waypoint_groups{};
 
-  const auto get_interval_bound =
-    [&](const lanelet::ConstPoint3d & point, const double lateral_distance_factor) {
-      const auto arc_coordinates = lanelet::geometry::toArcCoordinates(
-        lanelet_sequence.centerline2d(), lanelet::utils::to2D(point));
-      return arc_coordinates.length + lateral_distance_factor * std::abs(arc_coordinates.distance);
-    };
+  const auto get_interval_bound = [&](
+                                    const lanelet::ConstPoint3d & point,
+                                    const lanelet::ConstLanelet & lanelet,
+                                    const double lateral_distance_factor) {
+    const auto arc_coordinates =
+      lanelet::geometry::toArcCoordinates(lanelet.centerline2d(), lanelet::utils::to2D(point));
+    return arc_coordinates.length + lateral_distance_factor * std::abs(arc_coordinates.distance);
+  };
 
+  double s = 0.;
   for (const auto & lanelet : lanelet_sequence) {
     if (!lanelet.hasAttribute("waypoints")) {
+      s += lanelet::geometry::length2d(lanelet);
       continue;
     }
 
@@ -210,16 +214,18 @@ std::vector<WaypointGroup> get_waypoint_groups(
                                    waypoint_groups.back().waypoints.back().point,
                                    waypoints.front()) > group_separation_threshold) {
       waypoint_groups.emplace_back().interval.start =
-        get_interval_bound(waypoints.front(), -interval_margin_ratio);
+        s + get_interval_bound(waypoints.front(), lanelet, -interval_margin_ratio);
     }
     waypoint_groups.back().interval.end =
-      get_interval_bound(waypoints.back(), interval_margin_ratio);
+      s + get_interval_bound(waypoints.back(), lanelet, interval_margin_ratio);
 
     std::transform(
       waypoints.begin(), waypoints.end(), std::back_inserter(waypoint_groups.back().waypoints),
       [&](const lanelet::ConstPoint3d & waypoint) {
         return WaypointGroup::Waypoint{waypoint, lanelet.id()};
       });
+
+    s += lanelet::geometry::length2d(lanelet);
   }
 
   return waypoint_groups;
