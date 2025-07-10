@@ -13,5 +13,5 @@
       resampling_interval: 1.0
       angle_threshold_deg: 15.0
     goal_connection:
-      goal_margin: 7.5
+      connection_section_length: 7.5
       pre_goal_offset: 1.0

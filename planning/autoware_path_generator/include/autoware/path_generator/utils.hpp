@@ -195,7 +195,7 @@ PathRange<std::optional<double>> get_arc_length_on_centerline(
  * @param lanelets Lanelets.
  * @param goal_pose Goal pose.
  * @param goal_lane_id Goal lane ID.
- * @param goal_margin Margin to consider for the goal connection.
+ * @param connection_section_length Length of connection section.
  * @param pre_goal_offset Offset for pre-goal.
  * @return A path connected to the goal. (std::nullopt if no valid path found)
  */
@@ -203,21 +203,22 @@ std::optional<experimental::trajectory::Trajectory<PathPointWithLaneId>>
 connect_path_to_goal_inside_lanelets(
   const experimental::trajectory::Trajectory<PathPointWithLaneId> & path,
   const lanelet::ConstLanelets & lanelets, const geometry_msgs::msg::Pose & goal_pose,
-  const lanelet::Id goal_lane_id, const double goal_margin, const double pre_goal_offset);
+  const lanelet::Id goal_lane_id, const double connection_section_length,
+  const double pre_goal_offset);
 
 /**
  * @brief Connect the path to the goal.
  * @param path Input path.
  * @param goal_pose Goal pose.
  * @param goal_lane_id Goal lane ID.
- * @param goal_margin Margin to consider for the goal connection.
+ * @param connection_section_length Length of connection section.
  * @param pre_goal_offset Offset for pre-goal.
  * @return A path connected to the goal.
  */
 experimental::trajectory::Trajectory<PathPointWithLaneId> connect_path_to_goal(
   const experimental::trajectory::Trajectory<PathPointWithLaneId> & path,
   const geometry_msgs::msg::Pose & goal_pose, const lanelet::Id goal_lane_id,
-  const double goal_margin, const double pre_goal_offset);
+  const double connection_section_length, const double pre_goal_offset);
 
 /**
  * @brief Check if the pose is inside the lanelets.

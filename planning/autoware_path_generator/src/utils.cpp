@@ -641,9 +641,10 @@ std::optional<experimental::trajectory::Trajectory<PathPointWithLaneId>>
 connect_path_to_goal_inside_lanelets(
   const experimental::trajectory::Trajectory<PathPointWithLaneId> & path,
   const lanelet::ConstLanelets & lanelets, const geometry_msgs::msg::Pose & goal_pose,
-  const lanelet::Id goal_lane_id, const double goal_margin, const double pre_goal_offset)
+  const lanelet::Id goal_lane_id, const double connection_section_length,
+  const double pre_goal_offset)
 {
-  for (auto m = goal_margin; m >= 0.0; m -= 0.1) {
+  for (auto m = connection_section_length; m >= 0.0; m -= 0.1) {
     auto path_to_goal = connect_path_to_goal(path, goal_pose, goal_lane_id, m, pre_goal_offset);
     if (!is_path_inside_lanelets(path_to_goal, lanelets)) {
       continue;
@@ -657,7 +658,7 @@ connect_path_to_goal_inside_lanelets(
 experimental::trajectory::Trajectory<PathPointWithLaneId> connect_path_to_goal(
   const experimental::trajectory::Trajectory<PathPointWithLaneId> & path,
   const geometry_msgs::msg::Pose & goal_pose, const lanelet::Id goal_lane_id,
-  const double goal_margin, const double pre_goal_offset)
+  const double connection_section_length, const double pre_goal_offset)
 {
   auto has_goal_lane_id = [&](const PathPointWithLaneId & point) {
     const auto & lane_ids = point.lane_ids;
@@ -685,13 +686,13 @@ experimental::trajectory::Trajectory<PathPointWithLaneId> connect_path_to_goal(
 
   std::vector<PathPointWithLaneId> path_points_to_goal;
 
-  if (*s_goal <= goal_margin) {
-    // If distance from start to goal is smaller than goal_margin and start is
+  if (*s_goal <= connection_section_length) {
+    // If distance from start to goal is smaller than connection_section_length and start is
     // farther from goal than pre-goal, we just connect start, pre-goal, and goal.
     path_points_to_goal = {path.compute(0)};
   } else {
     const auto cropped_path =
-      autoware::experimental::trajectory::crop(path, 0, *s_goal - goal_margin);
+      autoware::experimental::trajectory::crop(path, 0, *s_goal - connection_section_length);
     path_points_to_goal = cropped_path.restore(2);
   }
   if (*s_goal > pre_goal_offset) {

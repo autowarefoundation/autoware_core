@@ -48,7 +48,7 @@ path_generator:
         gt<>: [0]
 
   goal_connection:
-    goal_margin:
+    connection_section_length:
       type: double
       validation:
         gt<>: [0]

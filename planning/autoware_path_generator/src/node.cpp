@@ -458,7 +458,7 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
 
   trajectory = utils::connect_path_to_goal_inside_lanelets(
     *trajectory, extended_lanelet_sequence.lanelets(), planner_data_.goal_pose,
-    planner_data_.preferred_lanelets.back().id(), params.goal_connection.goal_margin,
+    planner_data_.preferred_lanelets.back().id(), params.goal_connection.connection_section_length,
     params.goal_connection.pre_goal_offset);
 
   if (!trajectory) {
