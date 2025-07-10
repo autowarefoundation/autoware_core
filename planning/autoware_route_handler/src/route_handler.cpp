@@ -1984,7 +1984,8 @@ lanelet::ConstLanelets RouteHandler::getNeighborsWithinRoute(
 
 bool RouteHandler::planPathLaneletsBetweenCheckpoints(
   const Pose & start_checkpoint, const Pose & goal_checkpoint,
-  lanelet::ConstLanelets * path_lanelets, const bool consider_no_drivable_lanes) const
+  lanelet::ConstLanelets * path_lanelets, const bool consider_no_drivable_lanes,
+  const bool prioritize_bus_stop_as_start_lane) const
 {
   // Find lanelets for start point. First, find all lanelets containing the start point to calculate
   // all possible route later. It fails when the point is not located on any road lanelet (e.g. the
@@ -2077,11 +2078,13 @@ bool RouteHandler::planPathLaneletsBetweenCheckpoints(
   double min_route_cost = std::numeric_limits<double>::max();
   constexpr double yaw_threshold = M_PI / 2.0;
   constexpr double angle_diff_weight = 1000.0;
+  const double non_bus_stop_weight = prioritize_bus_stop_as_start_lane ? 1e+10 : 0.0;
 
   for (const auto & st_llt : start_lanelets) {
     // check if the angle difference between start_checkpoint and start lanelet center line
     // orientation is in yaw_threshold range
-    double lanelet_angle = lanelet::utils::getLaneletAngle(st_llt, start_checkpoint.position);
+    double lanelet_angle = lanelet::utils::getLaneletAngleOnEgoCenterline(
+      st_llt, start_checkpoint.position, lanelet_map_ptr_);
     double pose_yaw = tf2::getYaw(start_checkpoint.orientation);
     double angle_diff = std::abs(autoware_utils_math::normalize_radian(lanelet_angle - pose_yaw));
 
@@ -2108,7 +2111,8 @@ bool RouteHandler::planPathLaneletsBetweenCheckpoints(
       }
     }
     const double optional_route_length = optional_route->length2d();
-    const double optional_route_cost = optional_route_length + angle_diff_weight * angle_diff;
+    double optional_route_cost = optional_route_length + angle_diff_weight * angle_diff;
+    if (!st_llt.hasAttribute("bus_stop")) optional_route_cost += non_bus_stop_weight;
     RCLCPP_DEBUG(
       logger_, "Lanelet ID %ld: Route length = %.1f, Angle Diff = %.4f rad, Route cost = %.2f",
       st_llt.id(), optional_route_length, angle_diff, optional_route_cost);
