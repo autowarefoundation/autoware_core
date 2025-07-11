@@ -190,49 +190,54 @@ PathRange<std::optional<double>> get_arc_length_on_centerline(
   const std::optional<double> & s_right_bound);
 
 /**
- * @brief Recreate the path with a given goal pose.
- * @param input Input path.
- * @param refined_goal Goal pose.
- * @param planner_data Planner data.
- * @return Recreated path
+ * @brief Connect the path to the goal, ensuring the path is inside the lanelets.
+ * @param path Input path.
+ * @param lanelets Lanelets.
+ * @param goal_pose Goal pose.
+ * @param goal_lane_id Goal lane ID.
+ * @param connection_section_length Length of connection section.
+ * @param pre_goal_offset Offset for pre-goal.
+ * @return A path connected to the goal. (std::nullopt if no valid path found)
  */
-experimental::trajectory::Trajectory<PathPointWithLaneId> refine_path_for_goal(
-  const experimental::trajectory::Trajectory<PathPointWithLaneId> & input,
-  const geometry_msgs::msg::Pose & goal_pose, const lanelet::Id goal_lane_id,
-  const double search_radius_range, const double pre_goal_offset);
-
-/**
- * @brief Extract lanelets from the trajectory.
- * @param trajectory Input trajectory.
- * @param planner_data Planner data.
- * @return Extracted lanelets
- */
-lanelet::ConstLanelets extract_lanelets_from_trajectory(
-  const experimental::trajectory::Trajectory<PathPointWithLaneId> & trajectory,
-  const PlannerData & planner_data);
-
-/**
- * @brief Check if the pose is in the lanelets.
- * @param pose Pose.
- * @param lanes Lanelets.
- * @return True if the pose is in the lanelets, false otherwise
- */
-bool is_in_lanelets(const geometry_msgs::msg::Pose & pose, const lanelet::ConstLanelets & lanes);
-
-/**
- * @brief Check if the trajectory is inside the lanelets.
- * @param refined_path Input trajectory.
- * @param lanelets Lanelets to check against.
- * @return True if the trajectory is inside the lanelets, false otherwise
- */
-bool is_trajectory_inside_lanelets(
-  const experimental::trajectory::Trajectory<PathPointWithLaneId> & refined_path,
-  const lanelet::ConstLanelets & lanelets);
-
 std::optional<experimental::trajectory::Trajectory<PathPointWithLaneId>>
-modify_path_for_smooth_goal_connection(
-  const experimental::trajectory::Trajectory<PathPointWithLaneId> & trajectory,
-  const PlannerData & planner_data, const double search_radius_range, const double pre_goal_offset);
+connect_path_to_goal_inside_lanelets(
+  const experimental::trajectory::Trajectory<PathPointWithLaneId> & path,
+  const lanelet::ConstLanelets & lanelets, const geometry_msgs::msg::Pose & goal_pose,
+  const lanelet::Id goal_lane_id, const double connection_section_length,
+  const double pre_goal_offset);
+
+/**
+ * @brief Connect the path to the goal.
+ * @param path Input path.
+ * @param goal_pose Goal pose.
+ * @param goal_lane_id Goal lane ID.
+ * @param connection_section_length Length of connection section.
+ * @param pre_goal_offset Offset for pre-goal.
+ * @return A path connected to the goal.
+ */
+experimental::trajectory::Trajectory<PathPointWithLaneId> connect_path_to_goal(
+  const experimental::trajectory::Trajectory<PathPointWithLaneId> & path,
+  const geometry_msgs::msg::Pose & goal_pose, const lanelet::Id goal_lane_id,
+  const double connection_section_length, const double pre_goal_offset);
+
+/**
+ * @brief Check if the pose is inside the lanelets.
+ * @param pose Pose.
+ * @param lanelets Lanelets.
+ * @return True if the pose is inside the lanelets, false otherwise
+ */
+bool is_pose_inside_lanelets(
+  const geometry_msgs::msg::Pose & pose, const lanelet::ConstLanelets & lanelets);
+
+/**
+ * @brief Check if the path is inside the lanelets.
+ * @param path Path.
+ * @param lanelets Lanelets.
+ * @return True if the path is inside the lanelets, false otherwise
+ */
+bool is_path_inside_lanelets(
+  const experimental::trajectory::Trajectory<PathPointWithLaneId> & path,
+  const lanelet::ConstLanelets & lanelets);
 
 /**
  * @brief get earliest turn signal based on turn direction specified for lanelets

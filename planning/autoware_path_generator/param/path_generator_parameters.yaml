@@ -47,8 +47,8 @@ path_generator:
       validation:
         gt<>: [0]
 
-  smooth_goal_connection:
-    search_radius_range:
+  goal_connection:
+    connection_section_length:
       type: double
       validation:
         gt<>: [0]

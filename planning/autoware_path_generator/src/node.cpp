@@ -456,20 +456,14 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
     trajectory->crop(0., s_path_end);
   }
 
-  // Check if the goal point is in the search range
-  // Note: We only see if the goal is approaching the tail of the path.
-  const auto distance_to_goal = autoware_utils::calc_distance2d(
-    trajectory->compute(trajectory->length()), planner_data_.goal_pose);
+  trajectory = utils::connect_path_to_goal_inside_lanelets(
+    *trajectory, extended_lanelet_sequence.lanelets(), planner_data_.goal_pose,
+    planner_data_.preferred_lanelets.back().id(), params.goal_connection.connection_section_length,
+    params.goal_connection.pre_goal_offset);
 
-  if (distance_to_goal < params.smooth_goal_connection.search_radius_range) {
-    auto refined_path = utils::modify_path_for_smooth_goal_connection(
-      *trajectory, planner_data_, params.smooth_goal_connection.search_radius_range,
-      params.smooth_goal_connection.pre_goal_offset);
-
-    if (refined_path) {
-      refined_path->align_orientation_with_trajectory_direction();
-      *trajectory = *refined_path;
-    }
+  if (!trajectory) {
+    RCLCPP_ERROR(get_logger(), "Failed to connect trajectory to goal");
+    return std::nullopt;
   }
 
   if (trajectory->length() - s_path_start > 0) {
