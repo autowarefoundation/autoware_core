@@ -120,8 +120,9 @@ protected:
       return static_cast<int32_t>(bases_.size()) - 2;
     }
     auto comp = [](const double & a, const double & b) { return a <= b; };
-    return std::distance(bases_.begin(), std::lower_bound(bases_.begin(), bases_.end(), s, comp)) -
-           1;
+    const int32_t idx =
+      std::distance(bases_.begin(), std::lower_bound(bases_.begin(), bases_.end(), s, comp)) - 1;
+    return std::clamp(idx, 0, base.size() - 1);
   }
 
 public:
