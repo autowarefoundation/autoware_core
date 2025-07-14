@@ -16,14 +16,12 @@ Package motion velocity planner is responsible for generating velocity profiles 
 
 1. **Polygon Utilities (`polygon_utils.hpp`)**  
    This component provides functions for handling geometric polygons related to motion planning. It includes:
-
    - Collision detection between trajectories and obstacles.
    - Creation of polygons representing the vehicle's trajectory at different time steps.
    - Geometric calculations using Boost Geometry.
 
 2. **General Utilities (`utils.hpp`)**  
    This component provides various utility functions, including:
-
    - Conversion between point representations (e.g., `pcl::PointXYZ` to `geometry_msgs::msg::Point`).
    - Distance calculations between trajectory points and obstacles.
    - Functions for concatenating vectors and processing trajectories.
