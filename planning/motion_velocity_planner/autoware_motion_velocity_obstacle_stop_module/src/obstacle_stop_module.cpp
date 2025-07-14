@@ -1083,7 +1083,7 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::calc_stop_point(
 
   // update planning factor
   autoware_internal_planning_msgs::msg::SafetyFactor safety_factor;
-  // TODO(Yuki TAKAGI): set correct type after pcl stop feature is implemented
+  // TODO(Yuki TAKAGI): set correct type after pcl stop feature is improved.
   safety_factor.type = autoware_internal_planning_msgs::msg::SafetyFactor::UNKNOWN;
   safety_factor.object_id = determined_stop_obstacle->uuid;
   safety_factor.points = {determined_stop_obstacle->pose.position};
