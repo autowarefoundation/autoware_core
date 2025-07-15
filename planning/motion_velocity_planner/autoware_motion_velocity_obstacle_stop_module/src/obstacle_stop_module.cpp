@@ -406,8 +406,6 @@ StopObstacle ObstacleStopModule::create_stop_obstacle_for_point_cloud(
   const auto dist_to_collide_on_traj =
     autoware::motion_utils::calcSignedArcLength(traj_points, 0, stop_point) - dist_to_bumper;
 
-  const unique_identifier_msgs::msg::UUID obj_uuid;
-
   autoware_perception_msgs::msg::Shape bounding_box_shape;
   bounding_box_shape.type = autoware_perception_msgs::msg::Shape::BOUNDING_BOX;
 
@@ -417,7 +415,7 @@ StopObstacle ObstacleStopModule::create_stop_obstacle_for_point_cloud(
   const double unconfigured_lon_vel = 0.;
 
   return StopObstacle{
-    obj_uuid,
+    UUID{},
     stamp,
     unconfigured_object_classification,
     unconfigured_pose,
