@@ -4,13 +4,16 @@ project(autoware_stop_filter)
 find_package(autoware_cmake REQUIRED)
 autoware_package()
 
-ament_auto_add_library(${PROJECT_NAME} SHARED
-  src/stop_filter.cpp
-  src/stop_filter.hpp
+include_directories(
+  include
 )
 
-rclcpp_components_register_node(${PROJECT_NAME}
-  PLUGIN "autoware::stop_filter::StopFilter"
+ament_auto_add_library(${PROJECT_NAME}_ros SHARED
+  src/stop_filter_node.cpp
+)
+
+rclcpp_components_register_node(${PROJECT_NAME}_ros
+  PLUGIN "autoware::stop_filter::StopFilterNode"
   EXECUTABLE ${PROJECT_NAME}_node
   EXECUTOR SingleThreadedExecutor
 )
