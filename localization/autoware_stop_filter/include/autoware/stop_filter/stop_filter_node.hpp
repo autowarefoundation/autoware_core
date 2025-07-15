@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef STOP_FILTER_HPP_
-#define STOP_FILTER_HPP_
+#ifndef STOP_FILTER_NODE_HPP_
+#define STOP_FILTER_NODE_HPP_
 
 #include <rclcpp/rclcpp.hpp>
 #include <tf2/LinearMath/Quaternion.hpp>
@@ -35,10 +35,10 @@
 
 namespace autoware::stop_filter
 {
-class StopFilter : public rclcpp::Node
+class StopFilterNode : public rclcpp::Node
 {
 public:
-  explicit StopFilter(const rclcpp::NodeOptions & node_options);
+  explicit StopFilterNode(const rclcpp::NodeOptions & node_options);
 
 private:
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr pub_odom_;  //!< @brief odom publisher
@@ -56,4 +56,4 @@ private:
   void callback_odometry(const nav_msgs::msg::Odometry::SharedPtr msg);
 };
 }  // namespace autoware::stop_filter
-#endif  // STOP_FILTER_HPP_
+#endif  // STOP_FILTER_NODE_HPP_

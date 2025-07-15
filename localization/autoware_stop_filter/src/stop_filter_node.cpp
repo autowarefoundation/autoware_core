@@ -24,21 +24,21 @@
 
 namespace autoware::stop_filter
 {
-StopFilter::StopFilter(const rclcpp::NodeOptions & node_options)
+StopFilterNode::StopFilterNode(const rclcpp::NodeOptions & node_options)
 : rclcpp::Node("stop_filter", node_options)
 {
   vx_threshold_ = declare_parameter<double>("vx_threshold");
   wz_threshold_ = declare_parameter<double>("wz_threshold");
 
   sub_odom_ = create_subscription<nav_msgs::msg::Odometry>(
-    "input/odom", 1, std::bind(&StopFilter::callback_odometry, this, std::placeholders::_1));
+    "input/odom", 1, std::bind(&StopFilterNode::callback_odometry, this, std::placeholders::_1));
 
   pub_odom_ = create_publisher<nav_msgs::msg::Odometry>("output/odom", 1);
   pub_stop_flag_ =
     create_publisher<autoware_internal_debug_msgs::msg::BoolStamped>("debug/stop_flag", 1);
 }
 
-void StopFilter::callback_odometry(const nav_msgs::msg::Odometry::SharedPtr msg)
+void StopFilterNode::callback_odometry(const nav_msgs::msg::Odometry::SharedPtr msg)
 {
   autoware_internal_debug_msgs::msg::BoolStamped stop_flag_msg;
   stop_flag_msg.stamp = msg->header.stamp;
@@ -61,4 +61,4 @@ void StopFilter::callback_odometry(const nav_msgs::msg::Odometry::SharedPtr msg)
 }  // namespace autoware::stop_filter
 
 #include <rclcpp_components/register_node_macro.hpp>
-RCLCPP_COMPONENTS_REGISTER_NODE(autoware::stop_filter::StopFilter)
+RCLCPP_COMPONENTS_REGISTER_NODE(autoware::stop_filter::StopFilterNode)
