@@ -18,6 +18,58 @@
 
 #include <memory>
 
+nav_msgs::msg::Odometry::SharedPtr createOdometryMessage(
+  double linear_x, double linear_y, double linear_z, double angular_x, double angular_y,
+  double angular_z)
+{
+  auto msg = std::make_shared<nav_msgs::msg::Odometry>();
+  msg->header.frame_id = "base_link";
+  msg->header.stamp = rclcpp::Clock().now();
+  msg->twist.twist.linear.x = linear_x;
+  msg->twist.twist.linear.y = linear_y;
+  msg->twist.twist.linear.z = linear_z;
+  msg->twist.twist.angular.x = angular_x;
+  msg->twist.twist.angular.y = angular_y;
+  msg->twist.twist.angular.z = angular_z;
+  return msg;
+}
+
+TEST(StopFilterProcessorTest, TestCreateStopFlagMsgMoving)
+{
+  // Create message with velocities above threshold (moving)
+  auto message_filter_ = std::make_unique<autoware::stop_filter::StopFilterProcessor>(0.1, 0.1);
+  auto input_msg = createOdometryMessage(0.2, 0.0, 0.0, 0.0, 0.0, 0.2);
+
+  // Test stop flag creation
+  auto stop_flag_msg = message_filter_->create_stop_flag_msg(input_msg);
+
+  // Verify stop flag is false (vehicle is moving)
+  ASSERT_FALSE(stop_flag_msg.data);
+  ASSERT_EQ(stop_flag_msg.stamp, input_msg->header.stamp);
+}
+
+TEST(StopFilterProcessorTest, TestCreateFilteredMsgStopped)
+{
+  // Create message with velocities below threshold (stopped)
+  auto message_filter_ = std::make_unique<autoware::stop_filter::StopFilterProcessor>(0.1, 0.1);
+  auto input_msg = createOdometryMessage(0.05, 0.02, 0.01, 0.03, 0.04, 0.05);
+
+  // Test filtered message creation
+  auto filtered_msg = message_filter_->create_filtered_msg(input_msg);
+
+  // Verify velocities are set to zero when stopped
+  ASSERT_EQ(filtered_msg.twist.twist.linear.x, 0.0);
+  ASSERT_EQ(filtered_msg.twist.twist.linear.y, 0.0);
+  ASSERT_EQ(filtered_msg.twist.twist.linear.z, 0.0);
+  ASSERT_EQ(filtered_msg.twist.twist.angular.x, 0.0);
+  ASSERT_EQ(filtered_msg.twist.twist.angular.y, 0.0);
+  ASSERT_EQ(filtered_msg.twist.twist.angular.z, 0.0);
+
+  // Verify header is preserved
+  ASSERT_EQ(filtered_msg.header.frame_id, input_msg->header.frame_id);
+  ASSERT_EQ(filtered_msg.header.stamp, input_msg->header.stamp);
+}
+
 // Test for stop detection in StopFilterNode
 // This test is disabled by default due to its reliance on real-time execution
 // To run this test, you need to enable it manually by removing the DISABLED_ prefix

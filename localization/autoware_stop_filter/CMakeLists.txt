@@ -8,8 +8,16 @@ include_directories(
   include
 )
 
+ament_auto_add_library(${PROJECT_NAME} SHARED
+  src/stop_filter.cpp
+)
+
 ament_auto_add_library(${PROJECT_NAME}_ros SHARED
   src/stop_filter_node.cpp
+)
+
+target_link_libraries(${PROJECT_NAME}_ros
+  ${PROJECT_NAME}
 )
 
 rclcpp_components_register_node(${PROJECT_NAME}_ros
@@ -21,6 +29,7 @@ rclcpp_components_register_node(${PROJECT_NAME}_ros
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
   ament_auto_add_gtest(test_stop_filter_node
+    test/test_stop_filter.cpp
     test/test_stop_filter_node.cpp
   )
 endif()
