@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef STOP_FILTER_NODE_HPP_
-#define STOP_FILTER_NODE_HPP_
+#ifndef AUTOWARE__STOP_FILTER__STOP_FILTER_NODE_HPP_
+#define AUTOWARE__STOP_FILTER__STOP_FILTER_NODE_HPP_
 
 #include "autoware/stop_filter/stop_filter.hpp"
 
@@ -58,4 +58,4 @@ private:
   void callback_odometry(const nav_msgs::msg::Odometry::SharedPtr msg);
 };
 }  // namespace autoware::stop_filter
-#endif  // STOP_FILTER_NODE_HPP_
+#endif  // AUTOWARE__STOP_FILTER__STOP_FILTER_NODE_HPP_
