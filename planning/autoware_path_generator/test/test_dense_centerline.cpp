@@ -88,10 +88,9 @@ TEST(DenseCenterlineTest, generatePath)
   path_generator.get_parameter(
     "waypoint_group.interval_margin_ratio", params.waypoint_group.interval_margin_ratio);
   path_generator.get_parameter(
-    "smooth_goal_connection.search_radius_range",
-    params.smooth_goal_connection.search_radius_range);
+    "goal_connection.connection_section_length", params.goal_connection.connection_section_length);
   path_generator.get_parameter(
-    "smooth_goal_connection.pre_goal_offset", params.smooth_goal_connection.pre_goal_offset);
+    "smooth_goal_connection.pre_goal_offset", params.goal_connection.pre_goal_offset);
 
   const auto path = path_generator.generate_path(input_data.route_ptr->start_pose, params);
 
