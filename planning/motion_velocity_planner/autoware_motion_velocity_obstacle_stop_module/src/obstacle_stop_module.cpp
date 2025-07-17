@@ -459,8 +459,10 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_predicted
     const uint8_t obj_label = object->predicted_object.classification.at(0).label;
     if (
       get_max_lat_margin(obj_label) <
-      min_lat_dist_to_traj_poly - object->get_lat_vel_relative_to_traj(traj_points) *
-                                    obstacle_filtering_param_.outside_estimation_time_horizon) {
+      min_lat_dist_to_traj_poly - std::max(
+                                    object->get_lat_vel_relative_to_traj(traj_points) *
+                                      obstacle_filtering_param_.outside_estimation_time_horizon,
+                                    0.0)) {
       continue;
     }
 
@@ -609,7 +611,7 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
   if (
     std::max(max_lat_margin, 1e-3) <=
     dist_from_obj_poly_to_traj_poly -
-      object->get_lat_vel_relative_to_traj(traj_points) * estimation_time) {
+      std::max(object->get_lat_vel_relative_to_traj(traj_points) * estimation_time, 0.0)) {
     return std::nullopt;
   }
 
