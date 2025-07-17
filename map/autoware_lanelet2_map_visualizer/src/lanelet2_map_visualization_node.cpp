@@ -98,7 +98,7 @@ void Lanelet2MapVisualizationNode::on_map_bin(
     lanelet::utils::query::bicycleLaneLanelets(all_lanelets);
   lanelet::ConstLineStrings3d partitions = lanelet::utils::query::getAllPartitions(viz_lanelet_map);
   lanelet::ConstLineStrings3d road_borders =
-    lanelet::utils::query::getAllRoadBorders(viz_lanelet_map);
+    lanelet::utils::query::getAllLinestringsWithType(viz_lanelet_map, "road_border");
   lanelet::ConstLineStrings3d pedestrian_polygon_markings =
     lanelet::utils::query::getAllPedestrianPolygonMarkings(viz_lanelet_map);
   lanelet::ConstLineStrings3d pedestrian_line_markings =
