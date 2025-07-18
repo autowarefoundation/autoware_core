@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__STOP_FILTER__STOP_FILTER_HPP_
-#define AUTOWARE__STOP_FILTER__STOP_FILTER_HPP_
+#ifndef STOP_FILTER_HPP_
+#define STOP_FILTER_HPP_
 
 namespace autoware::stop_filter
 {
@@ -45,4 +45,4 @@ private:
   bool is_stopped(const Vector3D & linear_velocity, const Vector3D & angular_velocity) const;
 };
 }  // namespace autoware::stop_filter
-#endif  // AUTOWARE__STOP_FILTER__STOP_FILTER_HPP_
+#endif  // STOP_FILTER_HPP_
