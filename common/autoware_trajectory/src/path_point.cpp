@@ -115,8 +115,9 @@ interpolator::InterpolationResult Trajectory<PointType>::build(
   if (const auto result = this->longitudinal_velocity_mps().build(
         bases_, std::move(longitudinal_velocity_mps_values));
       !result) {
-    return tl::unexpected(interpolator::InterpolationFailure{
-      "failed to interpolate PathPoint::longitudinal_velocity_mps"});
+    return tl::unexpected(
+      interpolator::InterpolationFailure{
+        "failed to interpolate PathPoint::longitudinal_velocity_mps"});
   }
   if (const auto result =
         this->lateral_velocity_mps().build(bases_, std::move(lateral_velocity_mps_values));

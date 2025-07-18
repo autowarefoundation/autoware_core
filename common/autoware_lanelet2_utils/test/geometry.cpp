@@ -251,8 +251,9 @@ TEST_F(ExtrapolatedLaneletTest, GetPoseFrom2dArcLength_OutOfBounds)
     autoware::experimental::lanelet2_utils::get_pose_from_2d_arc_length(lanelets, 0.0).has_value());
 
   lanelets.push_back(lanelet_map_ptr_->laneletLayer.get(2287));
-  EXPECT_FALSE(autoware::experimental::lanelet2_utils::get_pose_from_2d_arc_length(lanelets, -1.0)
-                 .has_value());
+  EXPECT_FALSE(
+    autoware::experimental::lanelet2_utils::get_pose_from_2d_arc_length(lanelets, -1.0)
+      .has_value());
   EXPECT_FALSE(
     autoware::experimental::lanelet2_utils::get_pose_from_2d_arc_length(lanelets, 1e6).has_value());
 }
