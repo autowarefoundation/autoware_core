@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef NODE_HPP_
-#define NODE_HPP_
+#ifndef AUTOWARE__MOTION_VELOCITY_PLANNER__NODE_HPP_
+#define AUTOWARE__MOTION_VELOCITY_PLANNER__NODE_HPP_
 
-#include "planner_manager.hpp"
+#include "autoware/motion_velocity_planner/planner_manager.hpp"
 
 #include <autoware/motion_velocity_planner_common/planner_data.hpp>
 #include <autoware_motion_velocity_planner/srv/load_plugin.hpp>
@@ -153,4 +153,4 @@ private:
 };
 }  // namespace autoware::motion_velocity_planner
 
-#endif  // NODE_HPP_
+#endif  // AUTOWARE__MOTION_VELOCITY_PLANNER__NODE_HPP_
