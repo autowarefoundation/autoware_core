@@ -16,11 +16,13 @@
 
 #include <gtest/gtest.h>
 
-using namespace autoware::stop_filter;
+using autoware::stop_filter::FilterResult;
+using autoware::stop_filter::StopFilter;
+using autoware::stop_filter::Vector3D;
 
 TEST(StopFilterTest, FilterStopWhenStopped)
 {
-  autoware::stop_filter::StopFilter filter(0.1, 0.1);
+  StopFilter filter(0.1, 0.1);
   Vector3D linear_velocity = {0.05, 0.0, 0.0};
   Vector3D angular_velocity = {0.0, 0.0, 0.05};
 
