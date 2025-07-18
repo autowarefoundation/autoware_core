@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "../src/obstacle_stop_module.hpp"
+#include "../src/parameters.hpp"
+#include "../src/type_alias.hpp"
+#include "../src/types.hpp"
+#include "_test_utils.hpp"
 #include "autoware/motion_velocity_planner_common/polygon_utils.hpp"
-#include "obstacle_stop_module.hpp"
-#include "parameters.hpp"
-#include "test_utils.hpp"
-#include "type_alias.hpp"
-#include "types.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <rclcpp/node_options.hpp>
