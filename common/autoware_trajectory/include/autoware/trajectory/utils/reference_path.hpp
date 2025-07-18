@@ -27,6 +27,24 @@
 
 namespace autoware::experimental::trajectory
 {
+struct LaneletSequenceWithRange
+{
+  lanelet::ConstLanelets lanelet_sequence;
+  double s_start;
+  double s_end;
+};
+
+/**
+ * @brief extend given lanelet sequence backward/forward so that s_start, s_end is within
+ * output lanelet sequence
+ * @param s_start start arc length
+ * @param s_end end arc length
+ * @return extended lanelet sequence, new start arc length, new end arc length
+ * @post s_start >= 0.0, s_end <= lanelet::geometry::length3d(lanelet_sequence)
+ */
+LaneletSequenceWithRange supplement_lanelet_sequence(
+  const lanelet::routing::RoutingGraphConstPtr routing_graph,
+  const lanelet::ConstLanelets & lanelet_sequence, const double s_start, const double s_end);
 
 /**
  * @brief create Trajectory which is backward_length backward and forward_length forward from ego's
