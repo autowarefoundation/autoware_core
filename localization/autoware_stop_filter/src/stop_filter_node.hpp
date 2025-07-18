@@ -15,7 +15,7 @@
 #ifndef AUTOWARE__STOP_FILTER__STOP_FILTER_NODE_HPP_
 #define AUTOWARE__STOP_FILTER__STOP_FILTER_NODE_HPP_
 
-#include "autoware/stop_filter/stop_filter.hpp"
+#include "stop_filter.hpp"
 
 #include <rclcpp/rclcpp.hpp>
 

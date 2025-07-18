@@ -4,10 +4,6 @@ project(autoware_stop_filter)
 find_package(autoware_cmake REQUIRED)
 autoware_package()
 
-include_directories(
-  include
-)
-
 ament_auto_add_library(${PROJECT_NAME} SHARED
   src/stop_filter.cpp
 )

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/stop_filter/stop_filter_node.hpp"
+#include "../src/stop_filter_node.hpp"
 
 #include <gtest/gtest.h>
 
