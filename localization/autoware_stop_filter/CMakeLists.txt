@@ -23,11 +23,12 @@ rclcpp_components_register_node(${PROJECT_NAME}_ros
 )
 
 if(BUILD_TESTING)
-  find_package(ament_cmake_gtest REQUIRED)
-  ament_auto_add_gtest(test_stop_filter_node
+  ament_add_ros_isolated_gtest(test_stop_filter_node
     test/test_stop_filter.cpp
     test/test_stop_filter_node.cpp
   )
+  target_link_libraries(test_stop_filter_node ${PROJECT_NAME} ${PROJECT_NAME}_ros)
+  target_include_directories(test_stop_filter_node PRIVATE src)
 endif()
 
 ament_auto_package(
