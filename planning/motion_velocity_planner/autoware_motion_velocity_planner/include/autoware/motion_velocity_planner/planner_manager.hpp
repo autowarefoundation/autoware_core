@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef PLANNER_MANAGER_HPP_
-#define PLANNER_MANAGER_HPP_
+#ifndef AUTOWARE__MOTION_VELOCITY_PLANNER__PLANNER_MANAGER_HPP_
+#define AUTOWARE__MOTION_VELOCITY_PLANNER__PLANNER_MANAGER_HPP_
 
 #include <autoware/motion_velocity_planner_common/plugin_module_interface.hpp>
 #include <autoware/motion_velocity_planner_common/velocity_planning_result.hpp>
@@ -57,4 +57,4 @@ private:
 };
 }  // namespace autoware::motion_velocity_planner
 
-#endif  // PLANNER_MANAGER_HPP_
+#endif  // AUTOWARE__MOTION_VELOCITY_PLANNER__PLANNER_MANAGER_HPP_
