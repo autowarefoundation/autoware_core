@@ -33,7 +33,7 @@ FilterResult StopFilterProcessor::apply_filter(const nav_msgs::msg::Odometry::Sh
 }
 
 autoware_internal_debug_msgs::msg::BoolStamped StopFilterProcessor::create_stop_flag_msg(
-  const nav_msgs::msg::Odometry::SharedPtr input)
+  const nav_msgs::msg::Odometry::SharedPtr input) const
 {
   autoware_internal_debug_msgs::msg::BoolStamped stop_flag_msg;
   stop_flag_msg.stamp = input->header.stamp;
@@ -45,7 +45,7 @@ autoware_internal_debug_msgs::msg::BoolStamped StopFilterProcessor::create_stop_
 }
 
 nav_msgs::msg::Odometry StopFilterProcessor::create_filtered_msg(
-  const nav_msgs::msg::Odometry::SharedPtr input)
+  const nav_msgs::msg::Odometry::SharedPtr input) const
 {
   nav_msgs::msg::Odometry filtered_msg = *input;
 

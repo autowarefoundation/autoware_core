@@ -30,8 +30,8 @@ class StopFilterProcessor
 public:
   StopFilterProcessor(double linear_x_threshold, double angular_z_threshold);
   autoware_internal_debug_msgs::msg::BoolStamped create_stop_flag_msg(
-    const nav_msgs::msg::Odometry::SharedPtr input);
-  nav_msgs::msg::Odometry create_filtered_msg(const nav_msgs::msg::Odometry::SharedPtr input);
+    const nav_msgs::msg::Odometry::SharedPtr input) const;
+  nav_msgs::msg::Odometry create_filtered_msg(const nav_msgs::msg::Odometry::SharedPtr input) const;
 
 private:
   StopFilter stop_filter_;

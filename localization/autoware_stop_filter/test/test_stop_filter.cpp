@@ -16,12 +16,11 @@
 
 #include <gtest/gtest.h>
 
-namespace autoware::stop_filter
-{
+using namespace autoware::stop_filter;
 
 TEST(StopFilterTest, FilterStopWhenStopped)
 {
-  StopFilter filter(0.1, 0.1);
+  autoware::stop_filter::StopFilter filter(0.1, 0.1);
   Vector3D linear_velocity = {0.05, 0.0, 0.0};
   Vector3D angular_velocity = {0.0, 0.0, 0.05};
 
@@ -78,5 +77,3 @@ TEST(StopFilterTest, FilterStopOnlyAngularVelocityBelowThreshold)
   EXPECT_EQ(result.linear_velocity.x, 0.2);
   EXPECT_EQ(result.angular_velocity.z, 0.05);
 }
-
-}  // namespace autoware::stop_filter
