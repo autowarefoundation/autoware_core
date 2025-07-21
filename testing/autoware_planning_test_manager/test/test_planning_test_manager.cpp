@@ -34,7 +34,7 @@ TEST(PlanningTestManager, CommunicationTest)
     std::make_shared<autoware::planning_test_manager::PlanningInterfaceTestManager>();
 
   // instantiate the TargetNode for test
-  auto test_target_node = std::make_shared<rclcpp::Node>("target_node_for_test");
+  auto test_target_node = std::make_shared<rclcpp::Node>("target_node_for_communication_test");
 
   test_manager->resetReceivedTopicNum();
   test_manager->subscribeOutput<Trajectory>("normal_trajectory_for_test");
@@ -112,7 +112,7 @@ TEST(PlanningTestManager, CallbackSubscriptionTest)
   auto test_manager =
     std::make_shared<autoware::planning_test_manager::PlanningInterfaceTestManager>();
 
-  auto test_target_node = std::make_shared<rclcpp::Node>("target_node_for_test");
+  auto test_target_node = std::make_shared<rclcpp::Node>("target_node_for_subscription_test");
 
   std::optional<Odometry> off_track_odometry;
   test_manager->subscribeOutput<Odometry>(
@@ -133,7 +133,7 @@ TEST(PlanningTestManager, CallbackSubscriptionTestWithMsgValidation)
   auto test_manager =
     std::make_shared<autoware::planning_test_manager::PlanningInterfaceTestManager>();
 
-  auto test_target_node = std::make_shared<rclcpp::Node>("target_node_for_test");
+  auto test_target_node = std::make_shared<rclcpp::Node>("target_node_for_msg_validation_test");
 
   std::optional<Odometry> off_track_odometry;
   Odometry msg{rosidl_runtime_cpp::MessageInitialization::ZERO};
