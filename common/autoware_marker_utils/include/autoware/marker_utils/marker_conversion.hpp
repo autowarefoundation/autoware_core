@@ -40,20 +40,6 @@ namespace autoware::experimental::marker_utils
 // ===================== Helper Function ==================================
 
 /**
- * @brief create centroid point of lanelet's BasicPolygon3d
- * @param [in] poly lanelet BasicPolygon3d
- * @return BasicPoint3d which is centroid of polygon
- */
-lanelet::BasicPoint3d get_centroid_point(const lanelet::BasicPolygon3d & poly);
-
-/**
- * @brief convert point into ROS2 message
- * @param [in] point lanelet BasicPoint3d (from get_centroid_point)
- * @return geometry type Point (ROS2 message)
- */
-geometry_msgs::msg::Point to_msg(const lanelet::BasicPoint3d & point);
-
-/**
  * @brief check if the input type is LINE_LIST or LINE_STRIP
  * @details it will throw runtime error if it's not LINE_LIST or LINE_STRIP
  */

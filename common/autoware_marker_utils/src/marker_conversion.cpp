@@ -53,7 +53,7 @@ using autoware_utils_visualization::create_marker_scale;
 
 // ===================== Helper Function ==================================
 
-lanelet::BasicPoint3d get_centroid_point(const lanelet::BasicPolygon3d & poly)
+static lanelet::BasicPoint3d get_centroid_point(const lanelet::BasicPolygon3d & poly)
 {
   lanelet::BasicPoint3d p_sum{0.0, 0.0, 0.0};
   for (const auto & p : poly) {
@@ -62,7 +62,7 @@ lanelet::BasicPoint3d get_centroid_point(const lanelet::BasicPolygon3d & poly)
   return p_sum / poly.size();
 }
 
-Point to_msg(const lanelet::BasicPoint3d & point)
+static Point to_msg(const lanelet::BasicPoint3d & point)
 {
   Point msg;
   msg.x = point.x();
