@@ -392,6 +392,38 @@ TEST(PlanningUtilsTest, ExtendSegmentToBounds)
     EXPECT_NEAR(result[1].x(), segment[1].x(), epsilon);
     EXPECT_NEAR(result[1].y(), segment[1].y(), epsilon);
   }
+
+  {  // extended segment within the boundary of the adjacent lane
+    //
+    // ======================================
+    //      ^
+    //      |
+    //      | segment (original line)
+    //      |
+    //      v
+    // ====================================== boundary1
+    //      ^
+    //      | extended line (this does not have any overlap with the original segment,
+    //      |                so the original segment should be returned)
+    //      v
+    // ====================================== boundary2
+
+    const lanelet::BasicLineString2d segment{{0.0, 1.0}, {0.0, -1.0}};
+
+    const auto bound1_excluding_segment = make_bound({-1.0, -1.0}, {1.0, -1.0});
+    const auto bound2_excluding_segment = make_bound({-1.0, -3.0}, {1.0, -3.0});
+
+    const auto result =
+      extendSegmentToBounds(segment, bound1_excluding_segment, bound2_excluding_segment);
+
+    ASSERT_EQ(result.size(), 2);
+
+    // Check the output segment coordinates (should be original segment)
+    EXPECT_NEAR(result[0].x(), segment[0].x(), epsilon);
+    EXPECT_NEAR(result[0].y(), segment[0].y(), epsilon);
+    EXPECT_NEAR(result[1].x(), segment[1].x(), epsilon);
+    EXPECT_NEAR(result[1].y(), segment[1].y(), epsilon);
+  }
 }
 
 TEST(PlanningUtilsTest, getConstLaneletsFromIds)
