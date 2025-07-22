@@ -5,18 +5,18 @@ header:
   frame_id: map
 start_pose:
   position:
-    x: 740.9996337890625
-    y: 1147.8701171875
+    x: 120.1219
+    y: 96.4085
     z: 100.0
   orientation:
     x: 0.0
     y: 0.0
     z: 1.0
-    w: 6.123233995736766e-17
+    w: 0.0
 goal_pose:
   position:
-    x: 740.7576904296875
-    y: 1142.4354248046875
+    x: 111.1549
+    y: 90.695
     z: 100.0
   orientation:
     x: 0.0

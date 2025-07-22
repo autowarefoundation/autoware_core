@@ -650,7 +650,7 @@ connect_path_to_goal_inside_lanelets(
   const lanelet::Id goal_lane_id, const double connection_section_length,
   const double pre_goal_offset)
 {
-  for (auto m = connection_section_length; m >= 0.0; m -= 0.1) {
+  for (auto m = connection_section_length; m > 0.0; m -= 0.1) {
     auto path_to_goal = connect_path_to_goal(path, goal_pose, goal_lane_id, m, pre_goal_offset);
     if (!is_path_inside_lanelets(path_to_goal, lanelets)) {
       continue;
