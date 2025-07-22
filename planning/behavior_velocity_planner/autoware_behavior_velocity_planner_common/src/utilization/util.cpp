@@ -503,9 +503,7 @@ LineString2d extendSegmentToBounds(
     LineString2d autoware_line_string;
     std::transform(
       line_string.begin(), line_string.end(), std::back_inserter(autoware_line_string),
-      [](const auto & point) {
-        return Point2d{point.x(), point.y()};
-      });
+      [](const auto & point) { return Point2d{point.x(), point.y()}; });
     return autoware_line_string;
   };
   const auto original_line = to_autoware_line_string(segment);
