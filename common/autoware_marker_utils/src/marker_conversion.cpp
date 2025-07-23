@@ -191,24 +191,6 @@ Marker create_linestring_marker(
   return marker;
 }
 
-Marker create_basiclinestring_marker(
-  const lanelet::BasicLineString2d & ls, const rclcpp::Time & stamp, const std::string & ns,
-  int32_t id, const Vector3 & scale, const ColorRGBA & color, const double z)
-{
-  Marker marker = create_default_marker("map", stamp, ns, id, Marker::LINE_LIST, scale, color);
-  Point p1, p2;
-  p1.z = p2.z = z;
-  for (auto i = 0UL; i + 1 < ls.size(); ++i) {
-    p1.x = ls[i].x();
-    p1.y = ls[i].y();
-    p2.x = ls[i + 1].x();
-    p2.y = ls[i + 1].y();
-    marker.points.push_back(p1);
-    marker.points.push_back(p2);
-  }
-  return marker;
-}
-
 // ====================== Main Function ===================================
 
 MarkerArray create_autoware_geometry_marker_array(
@@ -414,6 +396,24 @@ MarkerArray create_autoware_geometry_marker_array(
   marker_array.markers.push_back(marker_line);
 
   return marker_array;
+}
+
+Marker create_lanelet_linestring_marker(
+  const lanelet::BasicLineString2d & ls, const rclcpp::Time & stamp, const std::string & ns,
+  int32_t id, const Vector3 & scale, const ColorRGBA & color, const double z)
+{
+  Marker marker = create_default_marker("map", stamp, ns, id, Marker::LINE_LIST, scale, color);
+  Point p1, p2;
+  p1.z = p2.z = z;
+  for (auto i = 0UL; i + 1 < ls.size(); ++i) {
+    p1.x = ls[i].x();
+    p1.y = ls[i].y();
+    p2.x = ls[i + 1].x();
+    p2.y = ls[i + 1].y();
+    marker.points.push_back(p1);
+    marker.points.push_back(p2);
+  }
+  return marker;
 }
 
 MarkerArray create_lanelets_marker_array(

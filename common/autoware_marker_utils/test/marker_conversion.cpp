@@ -1059,8 +1059,8 @@ TEST_F(MarkerConversionTest, CreateLineStringMarker)
   expect_point_eq(marker.points[2], 1, 1, z);
 }
 
-// Test 35: create_basiclinestring_marker
-TEST_F(MarkerConversionTest, CreateBasicLineStringMarker)
+// Test 35: create_lanelet_linestring_marker
+TEST_F(MarkerConversionTest, CreateLaneletLineStringMarker)
 {
   using lanelet::BasicLineString2d;
   using lanelet::BasicPoint2d;
@@ -1072,7 +1072,7 @@ TEST_F(MarkerConversionTest, CreateBasicLineStringMarker)
   ls.push_back(BasicPoint2d(1, 1));
 
   double z = 3;
-  auto marker = autoware::experimental::marker_utils::create_basiclinestring_marker(
+  auto marker = autoware::experimental::marker_utils::create_lanelet_linestring_marker(
     ls, now, "test_ns", 0, create_marker_scale(1.0, 1.0, 0.1), color_, z);
 
   // size of points = 4

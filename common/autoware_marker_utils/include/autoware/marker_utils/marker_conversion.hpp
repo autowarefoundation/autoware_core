@@ -90,21 +90,6 @@ visualization_msgs::msg::Marker create_linestring_marker(
   int32_t id, const geometry_msgs::msg::Vector3 & scale, const std_msgs::msg::ColorRGBA & color,
   const double z);
 
-/**
- * @brief Make a marker of BasicLineString2d
- * @param [in] ls BasicLineString2d
- * @param [in] stamp time stamp of the marker
- * @param [in] ns namespace
- * @param [in] id id of the marker
- * @param [in] scale scale of the marker
- * @param [in] color color of the marker
- * return marker of BasicLineString2d
- */
-visualization_msgs::msg::Marker create_basiclinestring_marker(
-  const lanelet::BasicLineString2d & ls, const rclcpp::Time & stamp, const std::string & ns,
-  int32_t id, const geometry_msgs::msg::Vector3 & scale, const std_msgs::msg::ColorRGBA & color,
-  const double z);
-
 // ====================== Main Function ===================================
 
 /**
@@ -236,6 +221,21 @@ visualization_msgs::msg::MarkerArray create_autoware_geometry_marker_array(
   const geometry_msgs::msg::Pose & pose, const rclcpp::Time & stamp, const std::string & ns,
   const int64_t id, const geometry_msgs::msg::Vector3 & scale,
   const std_msgs::msg::ColorRGBA & color);
+
+/**
+ * @brief Make a marker of BasicLineString2d
+ * @param [in] ls BasicLineString2d
+ * @param [in] stamp time stamp of the marker
+ * @param [in] ns namespace
+ * @param [in] id id of the marker
+ * @param [in] scale scale of the marker
+ * @param [in] color color of the marker
+ * return marker of BasicLineString2d
+ */
+visualization_msgs::msg::Marker create_lanelet_linestring_marker(
+  const lanelet::BasicLineString2d & ls, const rclcpp::Time & stamp, const std::string & ns,
+  int32_t id, const geometry_msgs::msg::Vector3 & scale, const std_msgs::msg::ColorRGBA & color,
+  const double z);
 
 /**
  * @brief return marker array from lanelets
