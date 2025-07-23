@@ -74,9 +74,9 @@ MotionVelocityPlannerNode::MotionVelocityPlannerNode(const rclcpp::NodeOptions &
     std::bind(&MotionVelocityPlannerNode::on_lanelet_map, this, _1),
     create_subscription_options(this));
 
-  srv_load_plugin_ = create_service<LoadPlugin>(
+  srv_load_plugin_ = create_service<autoware_internal_debug_msgs::srv::String>(
     "~/service/load_plugin", std::bind(&MotionVelocityPlannerNode::on_load_plugin, this, _1, _2));
-  srv_unload_plugin_ = create_service<UnloadPlugin>(
+  srv_unload_plugin_ = create_service<autoware_internal_debug_msgs::srv::String>(
     "~/service/unload_plugin",
     std::bind(&MotionVelocityPlannerNode::on_unload_plugin, this, _1, _2));
 
@@ -115,19 +115,19 @@ MotionVelocityPlannerNode::MotionVelocityPlannerNode(const rclcpp::NodeOptions &
 }
 
 void MotionVelocityPlannerNode::on_load_plugin(
-  const LoadPlugin::Request::SharedPtr request,
-  [[maybe_unused]] const LoadPlugin::Response::SharedPtr response)
+  const autoware_internal_debug_msgs::srv::String::Request::SharedPtr request,
+  [[maybe_unused]] const autoware_internal_debug_msgs::srv::String::Response::SharedPtr response)
 {
   std::unique_lock<std::mutex> lk(mutex_);
-  planner_manager_.load_module_plugin(*this, request->plugin_name);
+  planner_manager_.load_module_plugin(*this, request->data);
 }
 
 void MotionVelocityPlannerNode::on_unload_plugin(
-  const UnloadPlugin::Request::SharedPtr request,
-  [[maybe_unused]] const UnloadPlugin::Response::SharedPtr response)
+  const autoware_internal_debug_msgs::srv::String::Request::SharedPtr request,
+  [[maybe_unused]] const autoware_internal_debug_msgs::srv::String::Response::SharedPtr response)
 {
   std::unique_lock<std::mutex> lk(mutex_);
-  planner_manager_.unload_module_plugin(*this, request->plugin_name);
+  planner_manager_.unload_module_plugin(*this, request->data);
 }
 
 // NOTE: argument planner_data must not be referenced for multithreading

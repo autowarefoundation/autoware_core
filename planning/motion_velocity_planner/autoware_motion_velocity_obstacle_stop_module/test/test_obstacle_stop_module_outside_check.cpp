@@ -16,8 +16,8 @@
 #include "../src/parameters.hpp"
 #include "../src/type_alias.hpp"
 #include "../src/types.hpp"
-#include "test_utils.hpp"
 #include "autoware/motion_velocity_planner_common/polygon_utils.hpp"
+#include "test_utils.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <rclcpp/node_options.hpp>
