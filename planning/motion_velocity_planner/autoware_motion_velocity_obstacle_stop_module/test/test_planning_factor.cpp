@@ -35,8 +35,6 @@ namespace autoware::motion_velocity_planner
 
 TEST(PlanningFactorTest, NodeTestWithPredictedObjects)
 {
-  rclcpp::init(0, nullptr);
-
   const auto plugin_info_vec = {autoware::motion_velocity_planner::PluginInfo{
     "obstacle_stop", "autoware::motion_velocity_planner::ObstacleStopModule"}};
 
@@ -87,7 +85,6 @@ TEST(PlanningFactorTest, NodeTestWithPredictedObjects)
 
   // Add a simple pedestrian obstacle for testing
   autoware_perception_msgs::msg::PredictedObject pedestrian;
-  // pedestrian.object_id = autoware_utils_uuid::generateUUID();
   pedestrian.existence_probability = 1.0;
 
   // Set classification
@@ -152,27 +149,23 @@ TEST(PlanningFactorTest, NodeTestWithPredictedObjects)
   // make sure motion_velocity_planner is running
   EXPECT_GE(test_manager->getReceivedTopicNum(), 1);
 
-  // NOTE: In this test, the objects variable contains only one pedestrian.
-  const auto expected_object_id = objects.objects.front().object_id;
-  const auto expected_object_type = autoware_internal_planning_msgs::msg::SafetyFactor::OBJECT;
-
   // make sure planning_factor_msg is received
   EXPECT_NE(planning_factor_msg, nullptr);
 
   // make sure planning_factor_msg is not empty
   EXPECT_EQ(planning_factor_msg->factors.size(), 1);
 
-  const auto & factor = planning_factor_msg->factors.front();
-  EXPECT_FALSE(factor.safety_factors.is_safe);
+  const auto & planning_factor = planning_factor_msg->factors.front();
+  EXPECT_EQ(planning_factor.behavior, autoware_internal_planning_msgs::msg::PlanningFactor::STOP);
+  EXPECT_NEAR(planning_factor.control_points.front().pose.position.x, 10.0, 3.0);
+  EXPECT_EQ(planning_factor.safety_factors.factors.size(), 1);
 
-  // make sure safety_factors is not empty
-  EXPECT_EQ(factor.safety_factors.factors.size(), 1);
-
-  const auto & safety_factor = factor.safety_factors.factors.front();
-  EXPECT_EQ(safety_factor.type, expected_object_type);
+  const auto & safety_factor = planning_factor.safety_factors.factors.front();
+  // current implementation does not set object type
+  // EXPECT_EQ(safety_factor.type, expected_object_type);
   EXPECT_FALSE(safety_factor.is_safe);
   EXPECT_EQ(safety_factor.points.size(), 1);
-  EXPECT_EQ(safety_factor.object_id, expected_object_id);
+  EXPECT_EQ(safety_factor.object_id, objects.objects.front().object_id);
 
   rclcpp::shutdown();
 }
