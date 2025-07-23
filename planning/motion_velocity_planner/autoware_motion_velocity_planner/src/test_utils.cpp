@@ -44,6 +44,8 @@ std::shared_ptr<MotionVelocityPlannerNode> generateNode(
     ament_index_cpp::get_package_share_directory("autoware_test_utils");
   const auto motion_velocity_planner_dir =
     ament_index_cpp::get_package_share_directory("autoware_motion_velocity_planner");
+  const auto autoware_velocity_smoother_dir =
+    ament_index_cpp::get_package_share_directory("autoware_velocity_smoother");
 
   const auto get_motion_velocity_module_config = [](const std::string & module) {
     const auto package_name = "autoware_motion_velocity_" + module + "_module";
@@ -65,6 +67,8 @@ std::shared_ptr<MotionVelocityPlannerNode> generateNode(
     autoware_test_utils_dir + "/config/test_common.param.yaml",
     autoware_test_utils_dir + "/config/test_nearest_search.param.yaml",
     autoware_test_utils_dir + "/config/test_vehicle_info.param.yaml",
+    autoware_velocity_smoother_dir + "/config/default_velocity_smoother.param.yaml",
+    autoware_velocity_smoother_dir + "/config/Analytical.param.yaml",
     motion_velocity_planner_dir + "/config/motion_velocity_planner.param.yaml"};
   for (const auto & plugin_info : plugin_info_vec) {
     yaml_files.push_back(get_motion_velocity_module_config(plugin_info.module_name));
