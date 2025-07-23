@@ -18,14 +18,13 @@
 #include "planner_manager.hpp"
 
 #include <autoware/motion_velocity_planner_common/planner_data.hpp>
-#include <autoware_motion_velocity_planner/srv/load_plugin.hpp>
-#include <autoware_motion_velocity_planner/srv/unload_plugin.hpp>
 #include <autoware_utils_debug/published_time_publisher.hpp>
 #include <autoware_utils_logging/logger_level_configure.hpp>
 #include <autoware_utils_rclcpp/polling_subscriber.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <autoware_internal_debug_msgs/msg/float64_stamped.hpp>
+#include <autoware_internal_debug_msgs/srv/string.hpp>
 #include <autoware_internal_planning_msgs/msg/velocity_limit.hpp>
 #include <autoware_internal_planning_msgs/msg/velocity_limit_clear_command.hpp>
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
@@ -51,8 +50,6 @@ namespace autoware::motion_velocity_planner
 using autoware_internal_planning_msgs::msg::VelocityLimit;
 using autoware_internal_planning_msgs::msg::VelocityLimitClearCommand;
 using autoware_map_msgs::msg::LaneletMapBin;
-using autoware_motion_velocity_planner::srv::LoadPlugin;
-using autoware_motion_velocity_planner::srv::UnloadPlugin;
 using autoware_planning_msgs::msg::Trajectory;
 using TrajectoryPoints = std::vector<autoware_planning_msgs::msg::TrajectoryPoint>;
 
@@ -117,13 +114,14 @@ private:
   LaneletMapBin::ConstSharedPtr map_ptr_{nullptr};
   bool has_received_map_ = false;
 
-  rclcpp::Service<LoadPlugin>::SharedPtr srv_load_plugin_;
-  rclcpp::Service<UnloadPlugin>::SharedPtr srv_unload_plugin_;
+  rclcpp::Service<autoware_internal_debug_msgs::srv::String>::SharedPtr srv_load_plugin_;
+  rclcpp::Service<autoware_internal_debug_msgs::srv::String>::SharedPtr srv_unload_plugin_;
   void on_unload_plugin(
-    const UnloadPlugin::Request::SharedPtr request,
-    const UnloadPlugin::Response::SharedPtr response);
+    const autoware_internal_debug_msgs::srv::String::Request::SharedPtr request,
+    const autoware_internal_debug_msgs::srv::String::Response::SharedPtr response);
   void on_load_plugin(
-    const LoadPlugin::Request::SharedPtr request, const LoadPlugin::Response::SharedPtr response);
+    const autoware_internal_debug_msgs::srv::String::Request::SharedPtr request,
+    const autoware_internal_debug_msgs::srv::String::Response::SharedPtr response);
   rcl_interfaces::msg::SetParametersResult on_set_param(
     const std::vector<rclcpp::Parameter> & parameters);
 
