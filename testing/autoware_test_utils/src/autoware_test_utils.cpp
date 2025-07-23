@@ -265,7 +265,7 @@ LaneletRoute makeBehaviorNormalRoute()
   route.goal_pose =
     createPose({3778.362060546875, 73721.2734375, -0.5107480274693206, 0.8597304533609347});
 
-  std::vector<int> primitive_ids = {9102, 9178, 54, 112};
+  std::vector<int> primitive_ids = {9102, 9540, 9546, 9178, 54, 112};
   for (int id : primitive_ids) {
     route.segments.push_back(createLaneletSegment(id));
   }

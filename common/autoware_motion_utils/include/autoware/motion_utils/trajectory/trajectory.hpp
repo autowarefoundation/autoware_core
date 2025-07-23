@@ -16,6 +16,7 @@
 #define AUTOWARE__MOTION_UTILS__TRAJECTORY__TRAJECTORY_HPP_
 
 #include <Eigen/Geometry>
+#include <autoware/interpolation/spline_interpolation_points_2d.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_utils_geometry/pose_deviation.hpp>
 #include <autoware_utils_math/constants.hpp>
@@ -1044,6 +1045,46 @@ calcCurvatureAndSegmentLength<std::vector<autoware_planning_msgs::msg::Trajector
   const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points);
 
 /**
+ * @brief calculate elevation angles through points container.
+ * The method calculates elevation angles between consecutive points in the container.
+ * @param points points of trajectory, path, ...
+ * @return calculated elevation angles container through points container
+ */
+template <class T>
+std::vector<double> calcElevationAngles(const T & points)
+{
+  std::vector<double> elevation_angles(points.size());
+  if (points.size() < 2) {
+    return elevation_angles;
+  }
+
+  for (size_t i = 0; i < points.size(); ++i) {
+    geometry_msgs::msg::Point src_point, dst_point;
+    if (i == points.size() - 1) {
+      src_point = autoware_utils_geometry::get_point(points.at(i - 1));
+      dst_point = autoware_utils_geometry::get_point(points.at(i));
+    } else {
+      src_point = autoware_utils_geometry::get_point(points.at(i));
+      dst_point = autoware_utils_geometry::get_point(points.at(i + 1));
+    }
+
+    elevation_angles.at(i) = autoware_utils_geometry::calc_elevation_angle(src_point, dst_point);
+  }
+
+  return elevation_angles;
+}
+
+extern template std::vector<double>
+calcElevationAngles<std::vector<autoware_planning_msgs::msg::PathPoint>>(
+  const std::vector<autoware_planning_msgs::msg::PathPoint> & points);
+extern template std::vector<double>
+calcElevationAngles<std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId>>(
+  const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & points);
+extern template std::vector<double>
+calcElevationAngles<std::vector<autoware_planning_msgs::msg::TrajectoryPoint>>(
+  const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points);
+
+/**
  * @brief calculate length of 2D distance between given start point index in points container and
  * first point in container with zero longitudinal velocity
  * @param points_with_twist points of trajectory, path, ... (with velocity)
@@ -1884,6 +1925,8 @@ void insertOrientation(T & points, const bool is_driving_forward)
     for (size_t i = 0; i < points.size() - 1; ++i) {
       const auto & src_point = autoware_utils_geometry::get_point(points.at(i));
       const auto & dst_point = autoware_utils_geometry::get_point(points.at(i + 1));
+      // TODO(Yuki TAKAGI): The current implementation sets a value with the sign inverted. Fix in
+      // https://github.com/autowarefoundation/autoware_core/issues/571
       const double pitch = autoware_utils_geometry::calc_elevation_angle(src_point, dst_point);
       const double yaw = autoware_utils_geometry::calc_azimuth_angle(src_point, dst_point);
       autoware_utils_geometry::set_orientation(
@@ -1898,6 +1941,7 @@ void insertOrientation(T & points, const bool is_driving_forward)
     for (size_t i = points.size() - 1; i >= 1; --i) {
       const auto & src_point = autoware_utils_geometry::get_point(points.at(i));
       const auto & dst_point = autoware_utils_geometry::get_point(points.at(i - 1));
+      // NOTE: pitch sign is incorrect.
       const double pitch = autoware_utils_geometry::calc_elevation_angle(src_point, dst_point);
       const double yaw = autoware_utils_geometry::calc_azimuth_angle(src_point, dst_point);
       autoware_utils_geometry::set_orientation(
@@ -1916,6 +1960,42 @@ insertOrientation<std::vector<autoware_internal_planning_msgs::msg::PathPointWit
   std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & points,
   const bool is_driving_forward);
 extern template void insertOrientation<std::vector<autoware_planning_msgs::msg::TrajectoryPoint>>(
+  std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points,
+  const bool is_driving_forward);
+
+/**
+ * @brief Insert orientation to each point in points container (trajectory, path, ...)
+ * @param points points of trajectory, path, ... (input / output)
+ * @param is_driving_forward  flag indicating the order of points is forward or backward
+ */
+template <class T>
+void insertOrientationAsSpline(T & points, const bool is_driving_forward)
+{
+  if (points.size() < 2) {
+    return;
+  }
+
+  const double yaw_offset = is_driving_forward ? 0.0 : M_PI;
+  const int8_t pitch_sign = is_driving_forward ? -1 : 1;
+
+  const auto yaw_vec = autoware::interpolation::splineYawFromPoints(points);
+  const auto pitch_vec = calcElevationAngles(points);
+
+  for (size_t i = 0; i < points.size(); ++i) {
+    const double yaw = yaw_offset + yaw_vec.at(i);
+    const double pitch = pitch_sign * pitch_vec.at(i);
+    autoware_utils_geometry::set_orientation(
+      autoware_utils_geometry::create_quaternion_from_rpy(0.0, pitch, yaw), points.at(i));
+  }
+}
+extern template void insertOrientationAsSpline<std::vector<autoware_planning_msgs::msg::PathPoint>>(
+  std::vector<autoware_planning_msgs::msg::PathPoint> & points, const bool is_driving_forward);
+extern template void
+insertOrientationAsSpline<std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId>>(
+  std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & points,
+  const bool is_driving_forward);
+extern template void
+insertOrientationAsSpline<std::vector<autoware_planning_msgs::msg::TrajectoryPoint>>(
   std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points,
   const bool is_driving_forward);
 

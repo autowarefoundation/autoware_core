@@ -263,6 +263,17 @@ calcCurvatureAndSegmentLength<std::vector<autoware_planning_msgs::msg::Trajector
   const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points);
 
 //
+template std::vector<double>
+calcElevationAngles<std::vector<autoware_planning_msgs::msg::PathPoint>>(
+  const std::vector<autoware_planning_msgs::msg::PathPoint> & points);
+template std::vector<double>
+calcElevationAngles<std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId>>(
+  const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & points);
+template std::vector<double>
+calcElevationAngles<std::vector<autoware_planning_msgs::msg::TrajectoryPoint>>(
+  const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points);
+
+//
 template std::optional<double>
 calcDistanceToForwardStopPoint<std::vector<autoware_planning_msgs::msg::TrajectoryPoint>>(
   const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points_with_twist,
@@ -465,6 +476,17 @@ insertOrientation<std::vector<autoware_internal_planning_msgs::msg::PathPointWit
   std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & points,
   const bool is_driving_forward);
 template void insertOrientation<std::vector<autoware_planning_msgs::msg::TrajectoryPoint>>(
+  std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points,
+  const bool is_driving_forward);
+
+//
+template void insertOrientationAsSpline<std::vector<autoware_planning_msgs::msg::PathPoint>>(
+  std::vector<autoware_planning_msgs::msg::PathPoint> & points, const bool is_driving_forward);
+template void
+insertOrientationAsSpline<std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId>>(
+  std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & points,
+  const bool is_driving_forward);
+template void insertOrientationAsSpline<std::vector<autoware_planning_msgs::msg::TrajectoryPoint>>(
   std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points,
   const bool is_driving_forward);
 

@@ -30,14 +30,15 @@ This function is used to approach near the obstacle or improve the accuracy of s
 #### Apply lateral acceleration limit
 
 It applies the velocity limit to decelerate at the curve.
-It calculates the velocity limit from the curvature of the reference trajectory and the maximum lateral acceleration `max_lateral_accel`.
+For each point in the trajectory, it will find the maximum velocity, so that the lateral acceleration is under the thresholds defined by `lateral_acceleration_limits` and `velocity_thresholds`. If the trajectory speed is larger than the computed max velocity, it will try to decelerate at the curve.
 The velocity limit is set as not to fall under `min_curve_velocity`.
 
 Note: velocity limit that requests larger than `nominal.jerk` is not applied. In other words, even if a sharp curve is planned just in front of the ego, no deceleration is performed.
 
 #### Apply steering rate limit
 
-It calculates the desired steering angles of trajectory points. and it applies the steering rate limit. If the (`steering_angle_rate` > `max_steering_angle_rate`), it decreases the velocity of the trajectory point to acceptable velocity.
+It calculates the desired steering angles of trajectory points, and it applies the steering rate limit.
+For each point in the curve, it will find the maximum velocity that satisfy the steering rate limit defined by `steering_angle_rate_limits` and `velocity_thresholds`. If the trajectory speed is larger than the computed max velocity, it will try to decelerate at the curve.
 
 #### Resample trajectory
 
@@ -138,14 +139,15 @@ After the optimization, a resampling called `post resampling` is performed befor
 
 ### Curve parameters
 
-| Name                                   | Type     | Description                                                                                                                                                                                                  | Default value |
-| :------------------------------------- | :------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------ |
-| `enable_lateral_acc_limit`             | `bool`   | To toggle the lateral acceleration filter on and off. You can switch it dynamically at runtime.                                                                                                              | true          |
-| `max_lateral_accel`                    | `double` | Max lateral acceleration limit [m/ss]                                                                                                                                                                        | 0.5           |
-| `min_curve_velocity`                   | `double` | Min velocity at lateral acceleration limit [m/ss]                                                                                                                                                            | 2.74          |
-| `decel_distance_before_curve`          | `double` | Distance to slowdown before a curve for lateral acceleration limit [m]                                                                                                                                       | 3.5           |
-| `decel_distance_after_curve`           | `double` | Distance to slowdown after a curve for lateral acceleration limit [m]                                                                                                                                        | 2.0           |
-| `min_decel_for_lateral_acc_lim_filter` | `double` | Deceleration limit to avoid sudden braking by the lateral acceleration filter [m/ss]. Strong limitation degrades the deceleration response to the appearance of sharp curves due to obstacle avoidance, etc. | -2.5          |
+| Name                                   | Type             | Description                                                                                                                                                                                                  | Default value |
+| :------------------------------------- | :--------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------ |
+| `enable_lateral_acc_limit`             | `bool`           | To toggle the lateral acceleration filter on and off. You can switch it dynamically at runtime.                                                                                                              | true          |
+| `lateral_acceleration_limits`          | `vector<double>` | Max lateral acceleration limit at different velocity thresholds[m/ss]                                                                                                                                        | 0.5           |
+| `velocity_thresholds`                  | `vector<double>` | Velocity threshold define the velocity ranges for different lateral limits [m/s]                                                                                                                             | 0.5           |
+| `min_curve_velocity`                   | `double`         | Min velocity at lateral acceleration limit [m/s]                                                                                                                                                             | 2.74          |
+| `decel_distance_before_curve`          | `double`         | Distance to slowdown before a curve for lateral acceleration limit [m]                                                                                                                                       | 3.5           |
+| `decel_distance_after_curve`           | `double`         | Distance to slowdown after a curve for lateral acceleration limit [m]                                                                                                                                        | 2.0           |
+| `min_decel_for_lateral_acc_lim_filter` | `double`         | Deceleration limit to avoid sudden braking by the lateral acceleration filter [m/ss]. Strong limitation degrades the deceleration response to the appearance of sharp curves due to obstacle avoidance, etc. | -2.5          |
 
 ### Engage & replan parameters
 
@@ -198,13 +200,13 @@ After the optimization, a resampling called `post resampling` is performed befor
 
 ### Limit steering angle rate parameters
 
-| Name                             | Type     | Description                                                                           | Default value |
-| :------------------------------- | :------- | :------------------------------------------------------------------------------------ | :------------ |
-| `enable_steering_rate_limit`     | `bool`   | To toggle the steer rate filter on and off. You can switch it dynamically at runtime. | true          |
-| `max_steering_angle_rate`        | `double` | Maximum steering angle rate [degree/s]                                                | 40.0          |
-| `resample_ds`                    | `double` | Distance between trajectory points [m]                                                | 0.1           |
-| `curvature_threshold`            | `double` | If curvature > curvature_threshold, steeringRateLimit is triggered [1/m]              | 0.02          |
-| `curvature_calculation_distance` | `double` | Distance of points while curvature is calculating [m]                                 | 1.0           |
+| Name                             | Type             | Description                                                                           | Default value |
+| :------------------------------- | :--------------- | :------------------------------------------------------------------------------------ | :------------ |
+| `enable_steering_rate_limit`     | `bool`           | To toggle the steer rate filter on and off. You can switch it dynamically at runtime. | true          |
+| `steering_angle_rate_limits`     | `vector<double>` | Maximum steering angle rate at various velocity ranges [degree/s]                     | 40.0          |
+| `resample_ds`                    | `double`         | Distance between trajectory points [m]                                                | 0.1           |
+| `curvature_threshold`            | `double`         | If curvature > curvature_threshold, steeringRateLimit is triggered [1/m]              | 0.02          |
+| `curvature_calculation_distance` | `double`         | Distance of points while curvature is calculating [m]                                 | 1.0           |
 
 ### Weights for optimization
 

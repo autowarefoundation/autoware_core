@@ -4541,6 +4541,178 @@ TEST(trajectory, insertDecelPoint_from_a_point)
   }
 }
 
+TEST(trajectory, insertOrientationWithHelicalForwardPath)
+{
+  using autoware::motion_utils::insertOrientation;
+  using geometry_msgs::msg::Pose;
+
+  constexpr size_t num_points = 5;
+  std::vector<Pose> path_points(num_points);
+  std::vector<Pose> correct_orientations(num_points);
+
+  // forward helical path
+  for (size_t i = 0; i < num_points; ++i) {
+    constexpr double radius = 10.0;
+    constexpr double step_length = 0.1;
+    constexpr double slope_rate = 0.1;
+    const double alpha = i * step_length / radius;
+    path_points.at(i).position =
+      create_point(radius * cos(alpha), radius * sin(alpha), slope_rate * radius * alpha);
+    correct_orientations.at(i).orientation =
+      create_quaternion_from_rpy(0.0, -slope_rate, alpha + autoware_utils_math::pi / 2.0);
+  }
+  {
+    insertOrientation(path_points, true);
+    for (size_t i = 1; i < num_points - 1; ++i) {
+      const auto & res_p = path_points.at(i);
+      const auto & cor_p = correct_orientations.at(i);
+      const auto res_rpy = autoware_utils_geometry::get_rpy(res_p);
+      const auto cor_rpy = autoware_utils_geometry::get_rpy(cor_p);
+      EXPECT_NEAR(res_rpy.x, cor_rpy.x, 0.02);
+      // TODO(Yuki TAKAGI): The current implementation sets a value with the sign inverted. Fix in
+      // https://github.com/autowarefoundation/autoware_core/issues/571
+      // EXPECT_NEAR(res_rpy.y, cor_rpy.y, 0.02);
+      EXPECT_NEAR(res_rpy.z, cor_rpy.z, 0.02);
+    }
+  }
+}
+
+TEST(trajectory, insertOrientationWithHelicalBackwardPath)
+{
+  using autoware::motion_utils::insertOrientation;
+  using geometry_msgs::msg::Pose;
+
+  constexpr size_t num_points = 5;
+  std::vector<Pose> path_points(num_points);
+  std::vector<Pose> correct_orientations(num_points);
+
+  // forward helical path
+  for (size_t i = 0; i < num_points; ++i) {
+    constexpr double radius = 10.0;
+    constexpr double step_length = 0.1;
+    constexpr double slope_rate = 0.1;
+    const double alpha = i * step_length / radius;
+    path_points.at(i).position =
+      create_point(radius * cos(alpha), radius * sin(alpha), slope_rate * radius * alpha);
+    correct_orientations.at(i).orientation =
+      create_quaternion_from_rpy(0.0, slope_rate, alpha - autoware_utils_math::pi / 2.0);
+  }
+  {
+    insertOrientation(path_points, false);
+    for (size_t i = 1; i < num_points - 1; ++i) {
+      const auto & res_p = path_points.at(i);
+      const auto & cor_p = correct_orientations.at(i);
+      const auto res_rpy = autoware_utils_geometry::get_rpy(res_p);
+      const auto cor_rpy = autoware_utils_geometry::get_rpy(cor_p);
+      EXPECT_NEAR(res_rpy.x, cor_rpy.x, 0.02);
+      // TODO(Yuki TAKAGI): The current implementation sets a value with the sign inverted. Fix in
+      // https://github.com/autowarefoundation/autoware_core/issues/571
+      // EXPECT_NEAR(res_rpy.y, cor_rpy.y, 0.02);
+      EXPECT_NEAR(res_rpy.z, cor_rpy.z, 0.02);
+    }
+  }
+}
+
+TEST(trajectory, insertOrientationAsSplineWithHelicalForwardPath)
+{
+  using autoware::motion_utils::insertOrientationAsSpline;
+  using geometry_msgs::msg::Pose;
+
+  constexpr size_t num_points = 5;
+  std::vector<Pose> raw_path_points(num_points);
+  std::vector<Pose> correct_orientation_points(num_points);
+
+  // forward helical path
+  for (size_t i = 0; i < num_points; ++i) {
+    constexpr double radius = 10.0;
+    constexpr double step_length = 2.0;
+    constexpr double slope_rate = 0.1;
+    const double alpha = i * step_length / radius;
+    raw_path_points.at(i).position =
+      create_point(radius * cos(alpha), radius * sin(alpha), slope_rate * radius * alpha);
+    correct_orientation_points.at(i).orientation =
+      create_quaternion_from_rpy(0.0, -slope_rate, alpha + autoware_utils_math::pi / 2.0);
+  }
+  {
+    auto full_path_points = raw_path_points;
+    insertOrientationAsSpline(full_path_points, true);
+    for (size_t i = 1; i < num_points - 1; ++i) {
+      const auto & res_p = full_path_points.at(i);
+      const auto & cor_p = correct_orientation_points.at(i);
+      const auto res_rpy = autoware_utils_geometry::get_rpy(res_p);
+      const auto cor_rpy = autoware_utils_geometry::get_rpy(cor_p);
+      EXPECT_NEAR(res_rpy.x, cor_rpy.x, 0.02);
+      EXPECT_NEAR(res_rpy.y, cor_rpy.y, 0.02);
+      EXPECT_NEAR(res_rpy.z, cor_rpy.z, 0.02);
+    }
+  }
+  {
+    for (size_t range_num = 2; range_num <= num_points; ++range_num) {
+      std::vector<Pose> range_points(raw_path_points.begin(), raw_path_points.begin() + range_num);
+      insertOrientationAsSpline(range_points, true);
+      for (size_t i = 0; i < range_num; ++i) {
+        const auto & res_p = range_points.at(i);
+        const auto & cor_p = correct_orientation_points.at(i);
+        const auto res_rpy = autoware_utils_geometry::get_rpy(res_p);
+        const auto cor_rpy = autoware_utils_geometry::get_rpy(cor_p);
+        EXPECT_NEAR(res_rpy.x, cor_rpy.x, 0.2);
+        EXPECT_NEAR(res_rpy.y, cor_rpy.y, 0.2);
+        EXPECT_NEAR(res_rpy.z, cor_rpy.z, 0.2);
+      }
+    }
+  }
+}
+
+TEST(trajectory, insertOrientationAsSplineWithHelicalBackwardPath)
+{
+  using autoware::motion_utils::insertOrientationAsSpline;
+  using geometry_msgs::msg::Pose;
+
+  constexpr size_t num_points = 5;
+  std::vector<Pose> raw_path_points(num_points);
+  std::vector<Pose> correct_orientation_points(num_points);
+
+  // backward helical path
+  for (size_t i = 0; i < num_points; ++i) {
+    constexpr double radius = 10.0;
+    constexpr double step_length = 2.0;
+    constexpr double slope_rate = 0.1;
+    const double alpha = i * step_length / radius;
+    raw_path_points.at(i).position =
+      create_point(radius * cos(alpha), radius * sin(alpha), slope_rate * radius * alpha);
+    correct_orientation_points.at(i).orientation =
+      create_quaternion_from_rpy(0.0, slope_rate, alpha - autoware_utils_math::pi / 2.0);
+  }
+  {
+    auto full_path_points = raw_path_points;
+    insertOrientationAsSpline(full_path_points, false);
+    for (size_t i = 1; i < num_points - 1; ++i) {
+      const auto & res_p = full_path_points.at(i);
+      const auto & cor_p = correct_orientation_points.at(i);
+      const auto res_rpy = autoware_utils_geometry::get_rpy(res_p);
+      const auto cor_rpy = autoware_utils_geometry::get_rpy(cor_p);
+      EXPECT_NEAR(res_rpy.x, cor_rpy.x, 0.02);
+      EXPECT_NEAR(res_rpy.y, cor_rpy.y, 0.02);
+      EXPECT_NEAR(res_rpy.z, cor_rpy.z, 0.02);
+    }
+  }
+  {
+    for (size_t range_num = 2; range_num <= num_points; ++range_num) {
+      std::vector<Pose> range_points(raw_path_points.begin(), raw_path_points.begin() + range_num);
+      insertOrientationAsSpline(range_points, false);
+      for (size_t i = 0; i < range_num; ++i) {
+        const auto & res_p = range_points.at(i);
+        const auto & cor_p = correct_orientation_points.at(i);
+        const auto res_rpy = autoware_utils_geometry::get_rpy(res_p);
+        const auto cor_rpy = autoware_utils_geometry::get_rpy(cor_p);
+        EXPECT_NEAR(res_rpy.x, cor_rpy.x, 0.2);
+        EXPECT_NEAR(res_rpy.y, cor_rpy.y, 0.2);
+        EXPECT_NEAR(res_rpy.z, cor_rpy.z, 0.2);
+      }
+    }
+  }
+}
+
 TEST(trajectory, findFirstNearestIndexWithSoftConstraints)
 {
   using autoware::motion_utils::findFirstNearestIndexWithSoftConstraints;

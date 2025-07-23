@@ -57,12 +57,8 @@ struct PointWithStamp
 
 std::optional<std::pair<geometry_msgs::msg::Point, double>> get_collision_point(
   const std::vector<TrajectoryPoint> & traj_points, const std::vector<Polygon2d> & traj_polygons,
-  const geometry_msgs::msg::Pose obj_pose, const rclcpp::Time obj_stamp, const Shape & obj_shape,
-  const double dist_to_bumper);
-
-std::optional<std::pair<geometry_msgs::msg::Point, double>> get_collision_point(
-  const std::vector<TrajectoryPoint> & traj_points, const size_t collision_idx,
-  const std::vector<PointWithStamp> & collision_points, const double dist_to_bumper);
+  const geometry_msgs::msg::Point obj_position, const rclcpp::Time obj_stamp,
+  const Polygon2d & obj_polygon, const double dist_to_bumper);
 
 std::vector<PointWithStamp> get_collision_points(
   const std::vector<TrajectoryPoint> & traj_points, const std::vector<Polygon2d> & traj_polygons,

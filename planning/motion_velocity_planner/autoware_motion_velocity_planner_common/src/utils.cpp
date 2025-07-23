@@ -81,9 +81,13 @@ std::vector<TrajectoryPoint> get_extended_trajectory_points(
 std::vector<TrajectoryPoint> resample_trajectory_points(
   const std::vector<TrajectoryPoint> & traj_points, const double interval)
 {
-  const auto traj = autoware::motion_utils::convertToTrajectory(traj_points);
-  const auto resampled_traj = autoware::motion_utils::resampleTrajectory(traj, interval);
-  return autoware::motion_utils::convertToTrajectoryPointArray(resampled_traj);
+  const auto traj_msg = autoware::motion_utils::convertToTrajectory(traj_points);
+  const auto resampled_traj_msg = autoware::motion_utils::resampleTrajectory(traj_msg, interval);
+  auto resampled_traj = autoware::motion_utils::convertToTrajectoryPointArray(resampled_traj_msg);
+  const bool is_driving_forward =
+    autoware_utils_geometry::is_driving_forward(traj_points.at(0), traj_points.at(1));
+  autoware::motion_utils::insertOrientationAsSpline(resampled_traj, is_driving_forward);
+  return resampled_traj;
 }
 
 std::vector<TrajectoryPoint> decimate_trajectory_points_from_ego(
