@@ -28,6 +28,7 @@
 #include <autoware_perception_msgs/msg/predicted_objects.hpp>
 #include <autoware_perception_msgs/msg/traffic_light_group.hpp>
 #include <autoware_perception_msgs/msg/traffic_light_group_array.hpp>
+#include <autoware_planning_msgs/msg/lanelet_route.hpp>
 #include <autoware_planning_msgs/msg/trajectory_point.hpp>
 #include <geometry_msgs/msg/accel_with_covariance_stamped.hpp>
 #include <nav_msgs/msg/occupancy_grid.hpp>
@@ -180,6 +181,7 @@ public:
     const autoware_perception_msgs::msg::PredictedObjects & predicted_objects);
 
   // msgs from callbacks that are used for data-ready
+  autoware_planning_msgs::msg::LaneletRoute current_route;
   nav_msgs::msg::Odometry current_odometry;
   geometry_msgs::msg::AccelWithCovarianceStamped current_acceleration;
   std_msgs::msg::Header predicted_objects_header;
