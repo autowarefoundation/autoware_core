@@ -69,7 +69,7 @@ private:
 
   // subscriber
   autoware_utils_rclcpp::InterProcessPollingSubscriber<autoware_planning_msgs::msg::LaneletRoute>
-    route_subscriber_{this, "~/input/route", rclcpp::QoS{1}.transient_local()};
+    sub_route_{this, "~/input/route", rclcpp::QoS{1}.transient_local()};
   rclcpp::Subscription<autoware_planning_msgs::msg::Trajectory>::SharedPtr sub_trajectory_;
   autoware_utils_rclcpp::InterProcessPollingSubscriber<
     autoware_perception_msgs::msg::PredictedObjects>

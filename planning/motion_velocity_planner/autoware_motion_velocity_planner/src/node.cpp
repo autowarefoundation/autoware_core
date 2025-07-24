@@ -154,7 +154,7 @@ bool MotionVelocityPlannerNode::update_planner_data(
   const auto required_subscriptions = planner_manager_.getRequiredSubscriptions();
 
   autoware_utils_system::StopWatch<std::chrono::milliseconds> sw;
-  const auto route_ptr = route_subscriber_.take_data();
+  const auto route_ptr = sub_route_.take_data();
   if (check_with_log(route_ptr, "Waiting for current route"))
     planner_data_.current_route = *route_ptr;
   processing_times["update_planner_data.route"] = sw.toc(true);
