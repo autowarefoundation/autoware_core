@@ -35,6 +35,8 @@ namespace autoware::motion_velocity_planner
 
 TEST(PlanningFactorTest, NodeTestWithPredictedObjects)
 {
+  rclcpp::init(0, nullptr);
+
   const auto plugin_info_vec = {autoware::motion_velocity_planner::PluginInfo{
     "obstacle_stop", "autoware::motion_velocity_planner::ObstacleStopModule"}};
 
@@ -81,7 +83,7 @@ TEST(PlanningFactorTest, NodeTestWithPredictedObjects)
   // Create test data using autoware_test_utils
   auto objects = autoware_perception_msgs::msg::PredictedObjects{};
   objects.header.frame_id = "map";
-  objects.header.stamp = test_node->now();
+  objects.header.stamp = test_node->get_clock()->now();
 
   // Add a simple pedestrian obstacle for testing
   autoware_perception_msgs::msg::PredictedObject pedestrian;
@@ -94,10 +96,17 @@ TEST(PlanningFactorTest, NodeTestWithPredictedObjects)
   pedestrian.classification.push_back(classification);
 
   // Set pose - place pedestrian in front of ego
-  pedestrian.kinematics.initial_pose_with_covariance.pose.position.x = 20.0;
-  pedestrian.kinematics.initial_pose_with_covariance.pose.position.y = 0.0;
-  pedestrian.kinematics.initial_pose_with_covariance.pose.position.z = 0.0;
-  pedestrian.kinematics.initial_pose_with_covariance.pose.orientation.w = 1.0;
+  geometry_msgs::msg::Pose initial_pose;
+  initial_pose.position.x = 20.0;
+  initial_pose.position.y = 0.0;
+  initial_pose.position.z = 0.0;
+  initial_pose.orientation.w = 1.0;
+  pedestrian.kinematics.initial_pose_with_covariance.pose = initial_pose;
+
+  geometry_msgs::msg::Twist initial_twist;
+  initial_twist.linear.x = 0.0;
+  initial_twist.linear.y = 0.0;
+  pedestrian.kinematics.initial_twist_with_covariance.twist = initial_twist;
 
   // Set velocity
   pedestrian.kinematics.initial_twist_with_covariance.twist.linear.x = 0.0;
@@ -109,21 +118,33 @@ TEST(PlanningFactorTest, NodeTestWithPredictedObjects)
   pedestrian.shape.dimensions.y = 0.5;
   pedestrian.shape.dimensions.z = 1.8;
 
+  pedestrian.kinematics.predicted_paths.resize(1);
+  auto & predicted_path = pedestrian.kinematics.predicted_paths.front();
+  predicted_path.path.resize(10);
+  predicted_path.time_step = rclcpp::Duration::from_seconds(0.5);
+  predicted_path.confidence = 1.0;
+  for (size_t i = 0; i < predicted_path.path.size(); ++i) {
+    predicted_path.path[i].position.x = initial_pose.position.x + i * 0.5 * initial_twist.linear.x;
+    predicted_path.path[i].position.y = initial_pose.position.y + i * 0.5 * initial_twist.linear.y;
+    predicted_path.path[i].position.z = initial_pose.position.z;
+    predicted_path.path[i].orientation = initial_pose.orientation;
+  }
+
   objects.objects.push_back(pedestrian);
 
   auto odometry = nav_msgs::msg::Odometry{};
   odometry.header.frame_id = "map";
-  odometry.header.stamp = test_node->now();
+  odometry.header.stamp = test_node->get_clock()->now();
   odometry.pose.pose.position.x = 0.0;
   odometry.pose.pose.position.y = 0.0;
   odometry.pose.pose.position.z = 0.0;
   odometry.pose.pose.orientation.w = 1.0;
 
+  // Generate trajectory points along a straight line
   auto trajectory = autoware_planning_msgs::msg::Trajectory{};
   trajectory.header.frame_id = "map";
-  trajectory.header.stamp = test_node->now();
+  trajectory.header.stamp = test_node->get_clock()->now();
 
-  // Generate trajectory points along a straight line
   for (double x = 0.0; x <= 100.0; x += 1.0) {
     autoware_planning_msgs::msg::TrajectoryPoint point;
     point.pose.position.x = x;
