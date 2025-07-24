@@ -24,7 +24,6 @@ if(BUILD_TESTING)
     test_${PROJECT_NAME}
     ${PROJECT_NAME}
   )
-
 endif()
 
-ament_auto_package(INSTALL_TO_SHARE config test/test_config)
+ament_auto_package(INSTALL_TO_SHARE config)

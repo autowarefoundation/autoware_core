@@ -315,7 +315,7 @@ void spinSomeNodes(
   executor.add_node(target_node);
   for (int i = 0; i < repeat_count; i++) {
     executor.spin_some(std::chrono::milliseconds(100));
-    rclcpp::sleep_for(std::chrono::milliseconds(100));
+    rclcpp::sleep_for(std::chrono::milliseconds(10));
   }
 }
 
