@@ -1,4 +1,4 @@
-// Copyright 2021 TierIV
+// Copyright 2021-2025 TIER IV
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,45 +15,34 @@
 #ifndef STOP_FILTER_HPP_
 #define STOP_FILTER_HPP_
 
-#include <rclcpp/rclcpp.hpp>
-#include <tf2/LinearMath/Quaternion.hpp>
-#include <tf2/utils.hpp>
-
-#include <autoware_internal_debug_msgs/msg/bool_stamped.hpp>
-#include <geometry_msgs/msg/twist_stamped.hpp>
-#include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
-#include <nav_msgs/msg/odometry.hpp>
-
-#include <chrono>
-#include <fstream>
-#include <iostream>
-#include <memory>
-#include <mutex>
-#include <queue>
-#include <string>
-#include <vector>
-
 namespace autoware::stop_filter
 {
-class StopFilter : public rclcpp::Node
+
+struct Vector3D
+{
+  double x;
+  double y;
+  double z;
+};
+
+struct FilterResult
+{
+  Vector3D linear_velocity;
+  Vector3D angular_velocity;
+  bool was_stopped;
+};
+
+class StopFilter
 {
 public:
-  explicit StopFilter(const rclcpp::NodeOptions & node_options);
+  StopFilter(double linear_x_threshold, double angular_z_threshold);
+  FilterResult apply_stop_filter(
+    const Vector3D & linear_velocity, const Vector3D & angular_velocity) const;
 
 private:
-  rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr pub_odom_;  //!< @brief odom publisher
-  rclcpp::Publisher<autoware_internal_debug_msgs::msg::BoolStamped>::SharedPtr
-    pub_stop_flag_;  //!< @brief stop flag publisher
-  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr
-    sub_odom_;  //!< @brief measurement odometry subscriber
-
-  double vx_threshold_;  //!< @brief vx threshold
-  double wz_threshold_;  //!< @brief wz threshold
-
-  /**
-   * @brief set odometry measurement
-   */
-  void callback_odometry(const nav_msgs::msg::Odometry::SharedPtr msg);
+  double linear_x_threshold_;
+  double angular_z_threshold_;
+  bool is_stopped(const Vector3D & linear_velocity, const Vector3D & angular_velocity) const;
 };
 }  // namespace autoware::stop_filter
 #endif  // STOP_FILTER_HPP_
