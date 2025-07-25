@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "planner_manager.hpp"
+#include "autoware/motion_velocity_planner/planner_manager.hpp"
 
 #include <boost/format.hpp>
 
