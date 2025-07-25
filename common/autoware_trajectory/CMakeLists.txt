@@ -28,6 +28,7 @@ ament_auto_add_library(autoware_trajectory SHARED
   src/utils/pretty_build.cpp
   src/utils/shift.cpp
   src/utils/reference_path.cpp
+  src/utils/find_nearest.cpp
 )
 
 if(BUILD_TESTING)

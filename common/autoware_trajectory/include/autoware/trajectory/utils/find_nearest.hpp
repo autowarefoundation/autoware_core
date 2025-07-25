@@ -17,7 +17,12 @@
 
 #include "autoware/trajectory/detail/types.hpp"
 #include "autoware/trajectory/forward.hpp"
+#include "autoware/trajectory/path_point.hpp"
+#include "autoware/trajectory/path_point_with_lane_id.hpp"
+#include "autoware/trajectory/point.hpp"
+#include "autoware/trajectory/pose.hpp"
 #include "autoware/trajectory/threshold.hpp"
+#include "autoware/trajectory/trajectory_point.hpp"
 #include "autoware_utils_geometry/geometry.hpp"
 #include "autoware_utils_geometry/pose_deviation.hpp"
 
@@ -28,6 +33,94 @@ namespace autoware::experimental::trajectory
 {
 
 /**
+ * @brief Find the index on the trajectory for a given point container.
+ * @details Nearest index is considered from brute force for all underlying bases of trajectory
+ * @param trajectory Continuous trajectory object
+ * @param point given point
+ * @return index of nearest point in the trajectory
+ */
+template <class TrajectoryPointType>
+[[nodiscard]] std::optional<size_t> find_nearest_index(
+  const Trajectory<TrajectoryPointType> & trajectory, const geometry_msgs::msg::Point & point)
+{
+  const auto bases = trajectory.get_underlying_bases();
+  if (bases.empty()) {
+    return std::nullopt;
+  }
+
+  double min_dist = std::numeric_limits<double>::max();
+  size_t min_idx = 0;
+
+  for (size_t i = 0; i < bases.size(); ++i) {
+    auto pnt = trajectory.compute(bases[i]);
+    const auto dist = autoware_utils_geometry::calc_squared_distance2d(pnt, point);
+    if (dist < min_dist) {
+      min_dist = dist;
+      min_idx = i;
+    }
+  }
+  return min_idx;
+}
+
+/**
+ * @brief find first nearest point index from Trajectory undelying base for a given pose with
+ * distance and yaw constraints (the nearest point index in the first area that constraints are
+ * satisfied.)
+ * @param trajectory Continuous trajectory object
+ * @param pose given pose
+ * @param dist_threshold max distance used to get squared distance for finding the nearest point to
+ * given pose
+ * @param yaw_threshold max yaw used for finding nearest point to given pose
+ * @return index of nearest point in the trajectory (index or none if not found)
+ */
+template <class TrajectoryPointType>
+std::optional<size_t> find_first_nearest_index(
+  const Trajectory<TrajectoryPointType> & trajectory, const geometry_msgs::msg::Pose & pose,
+  const double dist_threshold = std::numeric_limits<double>::max(),
+  const double yaw_threshold = std::numeric_limits<double>::max())
+{
+  std::vector<geometry_msgs::msg::Pose> points;
+  const auto & bases = trajectory.get_underlying_bases();
+  {
+    // Original Approach: Find the first nearest actual index
+    const double squared_dist_threshold = dist_threshold * dist_threshold;
+    double min_squared_dist = std::numeric_limits<double>::max();
+    size_t min_idx = 0;
+    bool is_within_constraints = false;
+    for (size_t i = 0; i < bases.size(); ++i) {
+      const auto point = trajectory.compute(bases[i]);
+      const auto squared_dist =
+        autoware_utils_geometry::calc_squared_distance2d(point, pose.position);
+      const auto yaw_dev =
+        autoware_utils_geometry::calc_yaw_deviation(autoware_utils_geometry::get_pose(point), pose);
+
+      if (squared_dist_threshold < squared_dist || yaw_threshold < std::abs(yaw_dev)) {
+        if (is_within_constraints) {
+          break;
+        }
+        continue;
+      }
+
+      if (min_squared_dist <= squared_dist) {
+        continue;
+      }
+
+      min_squared_dist = squared_dist;
+      min_idx = i;
+      is_within_constraints = true;
+    }
+
+    // nearest index is found
+    if (is_within_constraints) {
+      return min_idx;
+    } else {
+      // Cannot find the nearest index within threshold
+      return std::nullopt;
+    }
+  }
+}
+
+/**
  * @brief Find the corresponding s value on the trajectory for a given point container.
  * @details Nearest point is determined by performing ternary search between the front
  * and back of baseline points to refine, and return the point with the minimum distance.
@@ -36,7 +129,7 @@ namespace autoware::experimental::trajectory
  * @return distance of nearest point in the trajectory (distance or none if not found)
  */
 template <class TrajectoryPointType>
-[[nodiscard]] std::optional<double> find_nearest_index(
+[[nodiscard]] std::optional<double> find_precise_index(
   const Trajectory<TrajectoryPointType> & trajectory, const geometry_msgs::msg::Point & point)
 {
   const auto bases = trajectory.get_underlying_bases();
@@ -44,42 +137,49 @@ template <class TrajectoryPointType>
     return std::nullopt;
   }
 
-  double search_start = bases.front();
-  double search_end = bases.back();
+  auto actual_min_index = find_nearest_index(trajectory, point);
 
-  double min_dist = std::numeric_limits<double>::infinity();
-  double min_s = (search_start + search_end) * 0.5;
+  if (actual_min_index.has_value()) {
+    double search_start = (*actual_min_index == 0) ? bases[0ul] : bases[*actual_min_index - 1];
+    double search_end = (*actual_min_index == bases.size() - 1) ? bases[bases.size() - 1]
+                                                                : bases[*actual_min_index + 1];
 
-  while (search_end - search_start > k_points_minimum_dist_threshold) {
-    const double mid1 = search_start + (search_end - search_start) / 3.0;
-    const double mid2 = search_end - (search_end - search_start) / 3.0;
+    double min_dist = std::numeric_limits<double>::infinity();
+    double min_s = (search_start + search_end) * 0.5;
 
-    const auto pose1 = trajectory.compute(mid1);
-    const auto pose2 = trajectory.compute(mid2);
+    while (search_end - search_start > k_points_minimum_dist_threshold) {
+      const double mid1 = search_start + (search_end - search_start) / 3.0;
+      const double mid2 = search_end - (search_end - search_start) / 3.0;
 
-    const double dist1 = autoware_utils_geometry::calc_squared_distance2d(pose1.position, point);
-    const double dist2 = autoware_utils_geometry::calc_squared_distance2d(pose2.position, point);
+      const auto pose1 = trajectory.compute(mid1);
+      const auto pose2 = trajectory.compute(mid2);
 
-    if (dist1 < min_dist) {
-      min_dist = dist1;
-      min_s = mid1;
+      const double dist1 = autoware_utils_geometry::calc_squared_distance2d(pose1, point);
+      const double dist2 = autoware_utils_geometry::calc_squared_distance2d(pose2, point);
+
+      if (dist1 < min_dist) {
+        min_dist = dist1;
+        min_s = mid1;
+      }
+      if (dist2 < min_dist) {
+        min_dist = dist2;
+        min_s = mid2;
+      }
+
+      if (dist1 < dist2) {
+        search_end = mid2;
+      } else {
+        search_start = mid1;
+      }
     }
-    if (dist2 < min_dist) {
-      min_dist = dist2;
-      min_s = mid2;
-    }
 
-    if (dist1 < dist2) {
-      search_end = mid2;
-    } else {
-      search_start = mid1;
+    if (min_dist == std::numeric_limits<double>::infinity()) {
+      return std::nullopt;
     }
-  }
-
-  if (min_dist == std::numeric_limits<double>::infinity()) {
+    return min_s;
+  } else {
     return std::nullopt;
   }
-  return min_s;
 }
 
 /**
@@ -88,73 +188,125 @@ template <class TrajectoryPointType>
  * and back of baseline points to refine, and return the point with the minimum distance.
  * @param trajectory Continuous trajectory object
  * @param pose given pose
- * @param max_dist max distance used to get squared distance for finding the nearest point to given
- * pose
- * @param max_yaw max yaw used for finding nearest point to given pose
+ * @param dist_threshold max distance used to get squared distance for finding the nearest point to
+ * given pose
+ * @param yaw_threshold max yaw used for finding nearest point to given pose
  * @return distance of nearest point in the trajectory (distance or none if not found)
  */
 template <class TrajectoryPointType>
-std::optional<double> find_nearest_index(
+std::optional<double> find_precise_index(
   const Trajectory<TrajectoryPointType> & trajectory, const geometry_msgs::msg::Pose & pose,
-  const double max_dist = std::numeric_limits<double>::max(),
-  const double max_yaw = std::numeric_limits<double>::max())
+  const double dist_threshold = std::numeric_limits<double>::max(),
+  const double yaw_threshold = std::numeric_limits<double>::max())
 {
   const auto bases = trajectory.get_underlying_bases();
   if (bases.empty()) {
     return std::nullopt;
   }
+  // Ternary Search from before and after interval
+  auto actual_min_index = find_first_nearest_index(trajectory, pose, dist_threshold, yaw_threshold);
+  if (actual_min_index.has_value()) {
+    double squared_dist_threshold = dist_threshold * dist_threshold;
 
-  const double max_squared_dist = max_dist * max_dist;
-  double search_start = bases.front();
-  double search_end = bases.back();
+    double search_start = (*actual_min_index == 0) ? bases[0ul] : bases[*actual_min_index - 1];
+    double search_end = (*actual_min_index == bases.size() - 1) ? bases[bases.size() - 1]
+                                                                : bases[*actual_min_index + 1];
 
-  double min_dist = std::numeric_limits<double>::infinity();
-  double min_s = (search_start + search_end) * 0.5;
+    double min_dist = std::numeric_limits<double>::infinity();
+    double min_s = (search_start + search_end) * 0.5;
 
-  while (search_end - search_start > k_points_minimum_dist_threshold) {
-    const double mid1 = search_start + (search_end - search_start) / 3.0;
-    const double mid2 = search_end - (search_end - search_start) / 3.0;
+    while (search_end - search_start > k_points_minimum_dist_threshold) {
+      const double mid1 = search_start + (search_end - search_start) / 3.0;
+      const double mid2 = search_end - (search_end - search_start) / 3.0;
 
-    const auto pose1 = trajectory.compute(mid1);
-    double squared_dist1 =
-      autoware_utils_geometry::calc_squared_distance2d(pose1.position, pose.position);
-    const double yaw_dev1 = autoware_utils_geometry::calc_yaw_deviation(pose1, pose);
+      const auto pose1 = trajectory.compute(mid1);
+      double squared_dist1 = autoware_utils_geometry::calc_squared_distance2d(pose1, pose.position);
+      const double yaw_dev1 =
+        autoware_utils_geometry::calc_yaw_deviation(autoware_utils_geometry::get_pose(pose1), pose);
 
-    if (squared_dist1 <= max_squared_dist && std::fabs(yaw_dev1) <= max_yaw) {
-      if (squared_dist1 < min_dist) {
-        min_dist = squared_dist1;
-        min_s = mid1;
+      if (squared_dist1 <= squared_dist_threshold && std::fabs(yaw_dev1) <= yaw_threshold) {
+        if (squared_dist1 < min_dist) {
+          min_dist = squared_dist1;
+          min_s = mid1;
+        }
+      } else {
+        squared_dist1 = std::numeric_limits<double>::infinity();
       }
-    } else {
-      squared_dist1 = std::numeric_limits<double>::infinity();
-    }
 
-    const auto pose2 = trajectory.compute(mid2);
-    double squared_dist2 =
-      autoware_utils_geometry::calc_squared_distance2d(pose2.position, pose.position);
-    const double yaw_dev2 = autoware_utils_geometry::calc_yaw_deviation(pose2, pose);
+      const auto pose2 = trajectory.compute(mid2);
+      double squared_dist2 = autoware_utils_geometry::calc_squared_distance2d(pose2, pose.position);
+      const double yaw_dev2 =
+        autoware_utils_geometry::calc_yaw_deviation(autoware_utils_geometry::get_pose(pose2), pose);
 
-    if (squared_dist2 <= max_squared_dist && std::fabs(yaw_dev2) <= max_yaw) {
-      if (squared_dist2 < min_dist) {
-        min_dist = squared_dist2;
-        min_s = mid2;
+      if (squared_dist2 <= squared_dist_threshold && std::fabs(yaw_dev2) <= yaw_threshold) {
+        if (squared_dist2 < min_dist) {
+          min_dist = squared_dist2;
+          min_s = mid2;
+        }
+      } else {
+        squared_dist2 = std::numeric_limits<double>::infinity();
       }
-    } else {
-      squared_dist2 = std::numeric_limits<double>::infinity();
+
+      if (squared_dist1 < squared_dist2) {
+        search_end = mid2;
+      } else {
+        search_start = mid1;
+      }
     }
 
-    if (squared_dist1 < squared_dist2) {
-      search_end = mid2;
-    } else {
-      search_start = mid1;
+    if (min_dist == std::numeric_limits<double>::infinity()) {
+      return std::nullopt;
     }
-  }
-
-  if (min_dist == std::numeric_limits<double>::infinity()) {
+    return min_s;
+  } else {
     return std::nullopt;
   }
-  return min_s;
 }
+
+// Extern template for Point =====================================================================
+extern template std::optional<double> find_precise_index<autoware_planning_msgs::msg::PathPoint>(
+  const Trajectory<autoware_planning_msgs::msg::PathPoint> & trajectory,
+  const geometry_msgs::msg::Point & point);
+
+extern template std::optional<double>
+find_precise_index<autoware_internal_planning_msgs::msg::PathPointWithLaneId>(
+  const Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & trajectory,
+  const geometry_msgs::msg::Point & point);
+
+// extern template std::optional<double> find_precise_index<geometry_msgs::msg::Point>(
+//   const Trajectory<geometry_msgs::msg::Point> & trajectory,
+//   const geometry_msgs::msg::Point & point);
+
+extern template std::optional<double> find_precise_index<geometry_msgs::msg::Pose>(
+  const Trajectory<geometry_msgs::msg::Pose> & trajectory, const geometry_msgs::msg::Point & point);
+
+extern template std::optional<double>
+find_precise_index<autoware_planning_msgs::msg::TrajectoryPoint>(
+  const Trajectory<autoware_planning_msgs::msg::TrajectoryPoint> & trajectory,
+  const geometry_msgs::msg::Point & point);
+
+// Extern template for Pose =====================================================================
+extern template std::optional<double> find_precise_index<autoware_planning_msgs::msg::PathPoint>(
+  const Trajectory<autoware_planning_msgs::msg::PathPoint> & trajectory,
+  const geometry_msgs::msg::Pose & pose, const double max_dist, const double max_yaw);
+
+extern template std::optional<double>
+find_precise_index<autoware_internal_planning_msgs::msg::PathPointWithLaneId>(
+  const Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & trajectory,
+  const geometry_msgs::msg::Pose & pose, const double max_dist, const double max_yaw);
+
+// extern template std::optional<double> find_precise_index<geometry_msgs::msg::Point>(
+//   const Trajectory<geometry_msgs::msg::Point> & trajectory, const geometry_msgs::msg::Pose &
+//   pose, const double max_dist, const double max_yaw);
+
+extern template std::optional<double> find_precise_index<geometry_msgs::msg::Pose>(
+  const Trajectory<geometry_msgs::msg::Pose> & trajectory, const geometry_msgs::msg::Pose & pose,
+  const double max_dist, const double max_yaw);
+
+extern template std::optional<double>
+find_precise_index<autoware_planning_msgs::msg::TrajectoryPoint>(
+  const Trajectory<autoware_planning_msgs::msg::TrajectoryPoint> & trajectory,
+  const geometry_msgs::msg::Pose & pose, const double max_dist, const double max_yaw);
 
 }  // namespace autoware::experimental::trajectory
 
