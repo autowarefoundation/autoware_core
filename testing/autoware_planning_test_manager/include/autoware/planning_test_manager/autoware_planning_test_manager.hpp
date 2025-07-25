@@ -43,6 +43,7 @@
 #include <ctime>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace autoware::planning_test_manager
@@ -61,8 +62,8 @@ public:
       test_node_, target_node, topic_name, {}, input, repeat_count);
   }
 
-  template <typename OutputT>
-  void subscribeOutput(const std::string & topic_name)
+  template <typename OutputT, typename CallbackT>
+  void subscribeOutput(const std::string & topic_name, CallbackT && callback)
   {
     const auto qos = []() {
       if constexpr (std::is_same_v<OutputT, autoware_planning_msgs::msg::Trajectory>) {
@@ -71,8 +72,15 @@ public:
       return rclcpp::QoS{10};
     }();
 
-    test_output_subs_.push_back(test_node_->create_subscription<OutputT>(
-      topic_name, qos, [this](const typename OutputT::ConstSharedPtr) { received_topic_num_++; }));
+    test_output_subs_.push_back(
+      test_node_->create_subscription<OutputT>(topic_name, qos, std::forward<CallbackT>(callback)));
+  }
+
+  template <typename OutputT>
+  void subscribeOutput(const std::string & topic_name)
+  {
+    return subscribeOutput<OutputT>(
+      topic_name, [this](const typename OutputT::ConstSharedPtr) { received_topic_num_++; });
   }
 
   void testWithNormalTrajectory(
