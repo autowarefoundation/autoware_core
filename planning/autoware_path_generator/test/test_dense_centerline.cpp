@@ -84,9 +84,8 @@ TEST(DenseCenterlineTest, generatePath)
   path_generator.get_parameter("path_length.backward", params.path_length.backward);
   path_generator.get_parameter("path_length.forward", params.path_length.forward);
   path_generator.get_parameter(
-    "waypoint_group.separation_threshold", params.waypoint_group.separation_threshold);
-  path_generator.get_parameter(
-    "waypoint_group.interval_margin_ratio", params.waypoint_group.interval_margin_ratio);
+    "waypoint.connection_gradient_from_centerline",
+    params.waypoint.connection_gradient_from_centerline);
   path_generator.get_parameter(
     "goal_connection.connection_section_length", params.goal_connection.connection_section_length);
   path_generator.get_parameter(

@@ -186,7 +186,7 @@ std::optional<lanelet::ConstLanelet> get_next_lanelet_within_route(
 
 std::vector<WaypointGroup> get_waypoint_groups(
   const lanelet::LaneletSequence & lanelet_sequence, const lanelet::LaneletMap & lanelet_map,
-  const double group_separation_threshold, const double interval_margin_ratio)
+  const double connection_gradient_from_centerline)
 {
   std::vector<WaypointGroup> waypoint_groups{};
 
@@ -209,15 +209,15 @@ std::vector<WaypointGroup> get_waypoint_groups(
     const auto waypoints_id = lanelet.attribute("waypoints").asId().value();
     const auto & waypoints = lanelet_map.lineStringLayer.get(waypoints_id);
 
-    if (
-      waypoint_groups.empty() || lanelet::geometry::distance2d(
-                                   waypoint_groups.back().waypoints.back().point,
-                                   waypoints.front()) > group_separation_threshold) {
-      waypoint_groups.emplace_back().interval.start =
-        s + get_interval_bound(waypoints.front(), lanelet, -interval_margin_ratio);
+    const auto start =
+      s + get_interval_bound(waypoints.front(), lanelet, -connection_gradient_from_centerline);
+    if (waypoint_groups.empty() || start > waypoint_groups.back().interval.end) {
+      // current waypoint group is not within interval of any other group, thus create a new group
+      waypoint_groups.emplace_back().interval.start = start;
     }
+
     waypoint_groups.back().interval.end =
-      s + get_interval_bound(waypoints.back(), lanelet, interval_margin_ratio);
+      s + get_interval_bound(waypoints.back(), lanelet, connection_gradient_from_centerline);
 
     std::transform(
       waypoints.begin(), waypoints.end(), std::back_inserter(waypoint_groups.back().waypoints),

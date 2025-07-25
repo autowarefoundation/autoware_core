@@ -12,9 +12,9 @@ If found, it gets the lanelets within a distance of `path_length.backward` behin
 Their center lines are concatenated to generate a path.
 
 If waypoints exist in the route, it replaces the overlapped segment of the center line with them.
-The overlap interval is determined as shown in the following figure.
+The waypoints are grouped as shown in the following figure.
 
-![waypoint_group_overlap_interval_determination](./media/waypoint_group_overlap_interval_determination.drawio.svg)
+![waypoint_grouping](./media/waypoint_grouping.drawio.svg)
 
 ## Path cut
 

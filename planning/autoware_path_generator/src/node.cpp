@@ -350,8 +350,8 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
   std::vector<PathPointWithLaneId> path_points_with_lane_id{};
 
   const auto waypoint_groups = utils::get_waypoint_groups(
-    lanelet_sequence, *planner_data_.lanelet_map_ptr, params.waypoint_group.separation_threshold,
-    params.waypoint_group.interval_margin_ratio);
+    lanelet_sequence, *planner_data_.lanelet_map_ptr,
+    params.waypoint.connection_gradient_from_centerline);
 
   auto extended_lanelets = lanelet_sequence.lanelets();
   auto extended_arc_length = 0.;

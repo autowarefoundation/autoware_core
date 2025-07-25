@@ -104,15 +104,13 @@ std::optional<lanelet::ConstLanelet> get_next_lanelet_within_route(
  * @brief get waypoints in lanelet sequence and group them
  * @param lanelet_sequence lanelet sequence
  * @param lanelet_map lanelet map to get waypoints
- * @param group_separation_threshold maximum distance between waypoints to belong to same
- * group (see figure in README)
- * @param interval_margin_ratio ratio to expand interval bound of group according to the
- * lateral distance of first and last point of group
+ * @param connection_gradient_from_centerline gradient for connecting centerline and user-defined
+ * waypoints (see figure in README)
  * @return waypoint groups
  */
 std::vector<WaypointGroup> get_waypoint_groups(
   const lanelet::LaneletSequence & lanelet_sequence, const lanelet::LaneletMap & lanelet_map,
-  const double group_separation_threshold, const double interval_margin_ratio);
+  const double connection_gradient_from_centerline);
 
 /**
  * @brief get position of first intersection (including self-intersection) in lanelet sequence in
