@@ -358,9 +358,11 @@ std::vector<geometry_msgs::msg::Point> ObstacleStopModule::convert_point_cloud_t
       const auto current_lat_dist_from_obstacle_to_traj =
         autoware::motion_utils::calcLateralOffset(traj_points, obstacle_point);
       // The minimum lateral distance to the trajectory polygon is estimated by assuming that the
-      // ego-vehicle is fully perpendicular to the trajectory, in the very worst case
+      // ego-vehicle's front right or left corner is the furthest from the trajectory, in the very
+      // worst case
       const auto min_lat_dist_to_traj_poly =
-        std::abs(current_lat_dist_from_obstacle_to_traj) - vehicle_info.max_longitudinal_offset_m;
+        std::abs(current_lat_dist_from_obstacle_to_traj) -
+        std::hypot(vehicle_info.max_longitudinal_offset_m, vehicle_info.vehicle_width_m / 2.0);
       // The trajectory polygon is ignored if the minimum lateral distance is more than maximum
       // lateral margin
       if (min_lat_dist_to_traj_poly >= p.max_lat_margin) {
@@ -463,6 +465,13 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_predicted
                                     object->get_lat_vel_relative_to_traj(traj_points) *
                                       obstacle_filtering_param_.outside_estimation_time_horizon,
                                     0.0)) {
+      const auto obj_uuid_str =
+        autoware_utils_uuid::to_hex_string(object->predicted_object.object_id);
+      RCLCPP_DEBUG(
+        logger_,
+        "[Stop] Ignore obstacle (%s) since the rough lateral distance to the trajectory is too "
+        "large.",
+        obj_uuid_str.substr(0, 4).c_str());
       continue;
     }
 
@@ -495,6 +504,9 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_predicted
 
   prev_stop_obstacles_ = stop_obstacles;
 
+  RCLCPP_DEBUG(
+    logger_, "The number of output obstacles of filter_stop_obstacles is %ld",
+    stop_obstacles.size());
   return stop_obstacles;
 }
 
@@ -549,7 +561,8 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_point_clo
     const auto lat_dist_from_obstacle_to_traj =
       autoware::motion_utils::calcLateralOffset(traj_points, itr->collision_point);
     const double min_lat_dist_to_traj_poly =
-      std::abs(lat_dist_from_obstacle_to_traj) - vehicle_info.max_longitudinal_offset_m;
+      std::abs(lat_dist_from_obstacle_to_traj) -
+      std::hypot(vehicle_info.max_longitudinal_offset_m, vehicle_info.vehicle_width_m / 2.0);
 
     if (min_lat_dist_to_traj_poly >= obstacle_filtering_param_.max_lat_margin) {
       continue;
@@ -577,6 +590,9 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_point_clo
   stop_obstacles = autoware::motion_velocity_planner::utils::concat_vectors(
     std::move(stop_obstacles), std::move(past_stop_obstacles));
 
+  RCLCPP_DEBUG(
+    logger_, "The number of output obstacles of filter_stop_obstacles is %ld",
+    stop_obstacles.size());
   return stop_obstacles;
 }
 
@@ -594,6 +610,7 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
   const auto & obj_pose =
     object->get_predicted_current_pose(clock_->now(), predicted_objects_stamp);
   const double estimation_time = calc_estimation_time(predicted_object, obstacle_filtering_param_);
+  const auto obj_uuid_str = autoware_utils_uuid::to_hex_string(predicted_object.object_id);
 
   // 1. filter by label
   const uint8_t obj_label = predicted_object.classification.at(0).label;
@@ -612,6 +629,10 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
     std::max(max_lat_margin, 1e-3) <=
     dist_from_obj_poly_to_traj_poly -
       std::max(object->get_lat_vel_relative_to_traj(traj_points) * estimation_time, 0.0)) {
+    RCLCPP_DEBUG(
+      logger_,
+      "[Stop] Ignore obstacle (%s) since the lateral distance to the trajectory is too large.",
+      obj_uuid_str.substr(0, 4).c_str());
     return std::nullopt;
   }
 
@@ -639,6 +660,9 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
   }
 
   if (!collision_point) {
+    RCLCPP_DEBUG(
+      logger_, "[Stop] Ignore obstacle (%s) since there is no collision point.",
+      obj_uuid_str.substr(0, 4).c_str());
     return std::nullopt;
   }
 
@@ -648,6 +672,9 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
     is_crossing_transient_obstacle(
       odometry, traj_points, decimated_traj_points, object, dist_to_bumper,
       decimated_traj_polys_with_lat_margin, collision_point)) {
+    RCLCPP_DEBUG(
+      logger_, "[Stop] Ignore obstacle (%s) since the obstacle will go out of the trajectory soon.",
+      obj_uuid_str.substr(0, 4).c_str());
     return std::nullopt;
   }
 

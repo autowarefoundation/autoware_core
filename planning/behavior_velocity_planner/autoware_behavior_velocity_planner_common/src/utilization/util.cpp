@@ -527,6 +527,23 @@ LineString2d extendSegmentToBounds(
     std::optional<Point2d> intersection_point = std::nullopt;
     auto min_distance_to_bound = std::numeric_limits<double>::max();
     for (auto it = std::next(bound.begin()); it != bound.end(); ++it) {
+      //
+      //      -----------------------> v23
+      //
+      //      p2    pi                p3
+      //    (t=0)  (t)              (t=1)
+      // =====o=====o================o==================== boundry
+      //            :
+      //            :
+      //            :
+      //            :
+      //            o segment[1]                   ^
+      //            |                              |
+      //            |  segment (original line)     | v01
+      //            |                              |
+      //            |                              |
+      //            o segment[0]                   |
+
       const auto p2 = autoware_utils_geometry::from_msg(*std::prev(it)).to_2d();
       const auto p3 = autoware_utils_geometry::from_msg(*it).to_2d();
       const Eigen::Vector2d v01 = segment[1] - segment[0];
@@ -541,6 +558,7 @@ LineString2d extendSegmentToBounds(
         continue;
       }
       const Eigen::Vector2d pi = p2 + t * v23;
+
       const auto distance = std::min(
         boost::geometry::distance(pi, segment[0]), boost::geometry::distance(pi, segment[1]));
       if (!intersection_point || distance <= min_distance_to_bound) {
@@ -569,14 +587,48 @@ LineString2d extendSegmentToBounds(
   const auto is_point_on_line = [](const LineString2d & line, const Point2d & point) {
     return boost::geometry::distance(point, line) < containment_threshold;
   };
-  const auto has_overlap =
-    std::any_of(
-      original_points.begin(), original_points.end(),
-      [&](const auto & point) { return is_point_on_line(extended, point); }) ||
-    std::any_of(extended_points.begin(), extended_points.end(), [&](const auto & point) {
-      return is_point_on_line(original_line, point);
-    });
-  if (!has_overlap) {
+
+  const auto original_points_on_extended_line = std::all_of(
+    original_points.begin(), original_points.end(),
+    [&](const auto & point) { return is_point_on_line(extended, point); });
+
+  const auto extended_points_on_original_line = std::all_of(
+    extended_points.begin(), extended_points.end(),
+    [&](const auto & point) { return is_point_on_line(original_line, point); });
+
+  // We need to check OR condition of `original_points_on_extended_line` and
+  // `extended_points_on_original_line` because the extended line is not always a subset of the
+  // original line. The below is an example.
+  //
+  // ==================================^=== boundary1
+  //      ^                            |
+  //      |2e                          |
+  //      v                            |
+  //      ^                            |
+  //      |                            |
+  //      | segment (original line)    | extended line
+  //      |                            |
+  //      v                            |
+  //      ^                            |
+  //      |2e                          |
+  //      v                            |
+  // ==================================v=== boundary2
+  //
+  // Also, the extended line is not always a subset of the original line. The below is another
+  // example.
+  //
+  //     ^   ^
+  //     |   | 2e
+  //     |   v
+  // ====|=============================^=== boundary2
+  //     |                             |
+  //     | segment (original line)     | extended line
+  //     |                             |
+  // ====|=============================v=== boundary1
+  //     |   ^
+  //     |   | 2e
+  //     v   v
+  if (!(original_points_on_extended_line || extended_points_on_original_line)) {
     return original_line;
   }
 

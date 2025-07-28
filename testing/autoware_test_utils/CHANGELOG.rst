@@ -27,6 +27,52 @@ Changelog for package autoware_test_utils
 * chore: include iostream and link yaml-cpp for Jazzy (`#351 <https://github.com/autowarefoundation/autoware_core/issues/351>`_)
 * Contributors: Mitsuhiro Sakamoto, Tim Clephas
 
+1.3.0 (2025-06-23)
+------------------
+* fix: to be consistent version in all package.xml(s)
+* feat(autoware_trajectory): implement a function to construct trajectory class for reference path (`#469 <https://github.com/autowarefoundation/autoware_core/issues/469>`_)
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* chore(autoware_test_utils): delete `launch` directory to remove dependency on `autoware_launch` (`#498 <https://github.com/autowarefoundation/autoware_core/issues/498>`_)
+  remove launch
+* fix(autoware_test_utils): fix linking to yaml-cpp (`#315 <https://github.com/autowarefoundation/autoware_core/issues/315>`_)
+  * Fix linking to yaml-cpp
+  * Remove find_package(yaml_cpp_vendor...)
+  * wip
+  ---------
+  Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
+* fix: tf2 uses hpp headers in rolling (and is backported) (`#483 <https://github.com/autowarefoundation/autoware_core/issues/483>`_)
+  * tf2 uses hpp headers in rolling (and is backported)
+  * fixup! tf2 uses hpp headers in rolling (and is backported)
+  ---------
+* chore: bump up version to 1.1.0 (`#462 <https://github.com/autowarefoundation/autoware_core/issues/462>`_) (`#464 <https://github.com/autowarefoundation/autoware_core/issues/464>`_)
+* fix(autoware_test_utils): fix deprecated autoware_utils header (`#415 <https://github.com/autowarefoundation/autoware_core/issues/415>`_)
+  * fix autoware_utils header
+  * fix autoware_utils packages
+  ---------
+  Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
+* test(path_generator): add tests for path cut feature (`#268 <https://github.com/autowarefoundation/autoware_core/issues/268>`_)
+  * add map for test
+  * add overpass map
+  * refactor & enhance base test class
+  * add tests
+  * style(pre-commit): autofix
+  * fix year created
+  Co-authored-by: Kosuke Takeuchi <kosuke.tnp@gmail.com>
+  * anonymize test map
+  * style(pre-commit): autofix
+  * add test map info to README
+  * style(pre-commit): autofix
+  * make tests work with autoware_trajectory
+  * include necessary header
+  * fix test case
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Kosuke Takeuchi <kosuke.tnp@gmail.com>
+  Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
+* chore: include iostream and link yaml-cpp for Jazzy (`#351 <https://github.com/autowarefoundation/autoware_core/issues/351>`_)
+* Contributors: Mamoru Sobue, Masaki Baba, Mitsuhiro Sakamoto, Shane Loretz, Tim Clephas, Yutaka Kondo, github-actions
+
 1.0.0 (2025-03-31)
 ------------------
 

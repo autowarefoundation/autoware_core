@@ -5,6 +5,35 @@ Changelog for package autoware_simple_pure_pursuit
 1.1.0 (2025-05-01)
 ------------------
 
+1.3.0 (2025-06-23)
+------------------
+* fix: to be consistent version in all package.xml(s)
+* docs(simple_pure_pursuit): add flowchart (`#481 <https://github.com/autowarefoundation/autoware_core/issues/481>`_)
+  * add flowchart
+  * add default value to parameter schema
+  * fix parameter schema
+  ---------
+  Co-authored-by: Ryohsuke Mitsudome <43976834+mitsudome-r@users.noreply.github.com>
+* fix: tf2 uses hpp headers in rolling (and is backported) (`#483 <https://github.com/autowarefoundation/autoware_core/issues/483>`_)
+  * tf2 uses hpp headers in rolling (and is backported)
+  * fixup! tf2 uses hpp headers in rolling (and is backported)
+  ---------
+* fix(autoware_simple_pure_pursuit): fix document (`#473 <https://github.com/autowarefoundation/autoware_core/issues/473>`_)
+  fix deadlink
+* fix(autoware_simple_pure_pursuit): fix path follower lateral deviation (`#425 <https://github.com/autowarefoundation/autoware_core/issues/425>`_)
+  * fix::autoware_simple_pure_pursuit::fix path follower lateral deviation, v0.0
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* chore: bump up version to 1.1.0 (`#462 <https://github.com/autowarefoundation/autoware_core/issues/462>`_) (`#464 <https://github.com/autowarefoundation/autoware_core/issues/464>`_)
+* fix(autoware_simple_pure_pursuit): fix deprecated autoware_utils header (`#416 <https://github.com/autowarefoundation/autoware_core/issues/416>`_)
+  * fix autoware_utils header
+  * style(pre-commit): autofix
+  * fix autoware_utils packages
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* Contributors: Masaki Baba, Mitsuhiro Sakamoto, Tim Clephas, Yukinari Hisaki, Yutaka Kondo, github-actions, 心刚
+
 1.0.0 (2025-03-31)
 ------------------
 * fix(autoware_simple_pure_pursuit): make control command output transient local (`#328 <https://github.com/autowarefoundation/autoware_core/issues/328>`_)

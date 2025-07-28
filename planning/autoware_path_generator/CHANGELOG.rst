@@ -63,6 +63,109 @@ Changelog for package autoware_path_generator
 * feat(autoware_path_generator): use autoware_trajectory for cropping bounds (`#349 <https://github.com/autowarefoundation/autoware_core/issues/349>`_)
 * Contributors: Kazunori-Nakajima, Mamoru Sobue, Mitsuhiro Sakamoto, Yukinari Hisaki
 
+1.3.0 (2025-06-23)
+------------------
+* fix: to be consistent version in all package.xml(s)
+* feat(path_generator): publish processing time (`#549 <https://github.com/autowarefoundation/autoware_core/issues/549>`_)
+* fix(path_generator): deal with short path (`#536 <https://github.com/autowarefoundation/autoware_core/issues/536>`_)
+  * use pretty_build to handle short path
+  * add error message
+  ---------
+* fix(path_generator): ensure refined path connects start and goal (`#511 <https://github.com/autowarefoundation/autoware_core/issues/511>`_)
+  * ensure refined path connects start and goal
+  * rename and add parameters for smooth goal connection
+  * parameterize pre-goal offset
+  * delegate validation to generate_parameter_library
+  ---------
+  Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
+* refactor(path_generator): remove refine_goal (`#500 <https://github.com/autowarefoundation/autoware_core/issues/500>`_)
+* refactor(path_generator): remove unused functions (`#499 <https://github.com/autowarefoundation/autoware_core/issues/499>`_)
+  * remove unused functions
+  * fix function declaration to match implementation
+  * add declaration of is_trajectory_inside_lanelets
+  * fix declaration of refine_path_for_goal
+  ---------
+* fix(path_generator): fix crop range when waypoints exist (`#461 <https://github.com/autowarefoundation/autoware_core/issues/461>`_)
+  * fix crop range when waypoints exist
+  * add get_arc_length_on_path function
+  * fix handling of waypoints on overlapping lanes
+  * check for self-intersections of bounds of lanelets extended outside route
+  * fix cropping at goal
+  * fix cropping trajectory
+  * add comments about lanelet extension
+  * fix behavior in edge cases
+  ---------
+* docs(path_generator): replace flowchart with raw plantuml code (`#482 <https://github.com/autowarefoundation/autoware_core/issues/482>`_)
+  * add flowchart
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* fix(path_generator): add missing autoware planning msgs (`#480 <https://github.com/autowarefoundation/autoware_core/issues/480>`_)
+* chore: bump up version to 1.1.0 (`#462 <https://github.com/autowarefoundation/autoware_core/issues/462>`_) (`#464 <https://github.com/autowarefoundation/autoware_core/issues/464>`_)
+* refactor(path_generator): avoid using non-API functions (`#432 <https://github.com/autowarefoundation/autoware_core/issues/432>`_)
+  * avoid using lanelet::geometry::internal functions
+  * use meaningful struct instead of pair
+  ---------
+* feat(autoware_path_generator): add smooth goal connection (`#394 <https://github.com/autowarefoundation/autoware_core/issues/394>`_)
+* fix(path_generator): set both lane IDs to point on border of adjacent lanes (`#384 <https://github.com/autowarefoundation/autoware_core/issues/384>`_)
+  set both lane IDs to point on border of adjacent lanes
+* feat(path_generator): move generate_path public (`#380 <https://github.com/autowarefoundation/autoware_core/issues/380>`_)
+  * feat(path_generator): move generate_path public
+  * style(pre-commit): autofix
+  * fix pre-commit
+  * fix test include path
+  ---------
+  Co-authored-by: t4-adc <grp-rd-1-adc-admin@tier4.jp>
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* refactor(autoware_trajectory)!: move everything to namespace experimetal (`#371 <https://github.com/autowarefoundation/autoware_core/issues/371>`_)
+  refactor(autoware_trajectory)!: move everything to namespace experimental
+* test(path_generator): add tests for path cut feature (`#268 <https://github.com/autowarefoundation/autoware_core/issues/268>`_)
+  * add map for test
+  * add overpass map
+  * refactor & enhance base test class
+  * add tests
+  * style(pre-commit): autofix
+  * fix year created
+  Co-authored-by: Kosuke Takeuchi <kosuke.tnp@gmail.com>
+  * anonymize test map
+  * style(pre-commit): autofix
+  * add test map info to README
+  * style(pre-commit): autofix
+  * make tests work with autoware_trajectory
+  * include necessary header
+  * fix test case
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Kosuke Takeuchi <kosuke.tnp@gmail.com>
+  Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
+* fix(path_generator): deal with unintended input (`#336 <https://github.com/autowarefoundation/autoware_core/issues/336>`_)
+  * prevent segfault
+  * fix self-intersection search range
+  * define behavior for unintended input
+  * prevent segfault
+  * check builder output instead of input size
+  ---------
+* refactor(path_generator): avoid using fixed-size array (`#353 <https://github.com/autowarefoundation/autoware_core/issues/353>`_)
+  * avoid using fixed-size array
+  * include necessary headers
+  * avoid capturing structured bindings in lambdas
+  ---------
+* docs(path_generator): add description of path cut & turn signal feature (`#359 <https://github.com/autowarefoundation/autoware_core/issues/359>`_)
+  * add diagrams of path cut feature
+  * add diagrams of turn signal feature
+  * update parameter list
+  * update README
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* fix(path_generator): avoid shortcuts at overlaps (`#352 <https://github.com/autowarefoundation/autoware_core/issues/352>`_)
+  * track current lane to avoid shortcut
+  * add constraints for current lane search
+  ---------
+* feat(autoware_path_generator): use autoware_trajectory for cropping bounds (`#349 <https://github.com/autowarefoundation/autoware_core/issues/349>`_)
+* Contributors: Kazunori-Nakajima, Kosuke Takeuchi, Mamoru Sobue, Mitsuhiro Sakamoto, Yukinari Hisaki, Yutaka Kondo, github-actions, taikitanaka3
+
 1.0.0 (2025-03-31)
 ------------------
 * test(autoware_path_generator): add turn signal RequiredEndPoint position test (`#323 <https://github.com/autowarefoundation/autoware_core/issues/323>`_)
