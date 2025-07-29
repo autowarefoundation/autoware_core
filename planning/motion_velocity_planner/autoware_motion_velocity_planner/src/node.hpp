@@ -112,7 +112,7 @@ private:
   void set_velocity_smoother_params();
 
   // members
-  PlannerData planner_data_;
+  std::shared_ptr<PlannerData> planner_data_;
   MotionVelocityPlannerManager planner_manager_;
   LaneletMapBin::ConstSharedPtr map_ptr_{nullptr};
   bool has_received_map_ = false;
@@ -144,7 +144,7 @@ private:
     const autoware::motion_velocity_planner::SlowdownInterval & slowdown_interval) const;
   autoware::motion_velocity_planner::TrajectoryPoints smooth_trajectory(
     const autoware::motion_velocity_planner::TrajectoryPoints & trajectory_points,
-    const autoware::motion_velocity_planner::PlannerData & planner_data) const;
+    const std::shared_ptr<autoware::motion_velocity_planner::PlannerData> & planner_data) const;
   autoware_planning_msgs::msg::Trajectory generate_trajectory(
     const autoware::motion_velocity_planner::TrajectoryPoints & input_trajectory_points,
     std::map<std::string, double> & processing_times);
