@@ -21,6 +21,7 @@
 #include <autoware/motion_utils/resample/resample.hpp>
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
 #include <autoware/motion_velocity_planner_common/utils.hpp>
+#include <autoware/signal_processing/lowpass_filter_1d.hpp>
 
 #include <algorithm>
 #include <limits>
@@ -50,6 +51,14 @@ struct PCLExtendedObjectClassification
     return (object_classification.label == other.object_classification.label) &&
            (is_point_cloud == other.is_point_cloud);
   }
+};
+
+struct StopCandidatePointCloudCollisionPoint
+{
+  std::vector<double> initial_velocities{};
+  autoware::signal_processing::LowpassFilter1d vel_lpf{0.0};
+  rclcpp::Time latest_collision_time;
+  std::pair<geometry_msgs::msg::Point, double> latest_collision_point;
 };
 
 struct StopObstacle

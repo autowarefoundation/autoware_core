@@ -99,6 +99,7 @@ private:
   mutable std::shared_ptr<DebugData> debug_data_ptr_{};
   std::vector<StopObstacle> prev_closest_stop_obstacles_{};
   std::vector<StopObstacle> prev_stop_obstacles_{};
+  std::deque<StopCandidatePointCloudCollisionPoint> stop_candidates{};
 
   autoware::motion_velocity_planner::obstacle_stop::PathLengthBuffer path_length_buffer_;
 
@@ -134,6 +135,10 @@ private:
     const std::vector<std::shared_ptr<PlannerData::Object>> & objects,
     const VehicleInfo & vehicle_info, const double dist_to_bumper,
     const TrajectoryPolygonCollisionCheck & trajectory_polygon_collision_check);
+
+  void upsert_stop_candidate(
+    const std::pair<geometry_msgs::msg::Point, double> & nearest_collision_point,
+    const std::vector<TrajectoryPoint> & traj_points, rclcpp::Time latest_point_cloud_time);
 
   std::vector<StopObstacle> filter_stop_obstacle_for_point_cloud(
     const Odometry & odometry, const std::vector<TrajectoryPoint> & traj_points,
@@ -185,10 +190,6 @@ private:
     const std::shared_ptr<PlannerData::Object> object, const double dist_to_bumper,
     const std::vector<Polygon2d> & decimated_traj_polys_with_lat_margin,
     const std::optional<std::pair<geometry_msgs::msg::Point, double>> & collision_point) const;
-
-  StopObstacle create_stop_obstacle_for_point_cloud(
-    const rclcpp::Time & stamp,
-    const std::pair<geometry_msgs::msg::Point, double> collision_info) const;
 
   std::optional<std::pair<geometry_msgs::msg::Point, double>> get_nearest_collision_point(
     const std::vector<TrajectoryPoint> & traj_points, const std::vector<Polygon2d> & traj_polygons,

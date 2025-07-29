@@ -19,7 +19,6 @@
 #include <autoware/motion_utils/trajectory/conversion.hpp>
 #include <autoware/motion_utils/trajectory/interpolation.hpp>
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
-#include <autoware/signal_processing/lowpass_filter_1d.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_utils_rclcpp/parameter.hpp>
 #include <autoware_utils_uuid/uuid_helper.hpp>
@@ -401,32 +400,6 @@ std::vector<geometry_msgs::msg::Point> ObstacleStopModule::convert_point_cloud_t
   return stop_collision_points;
 }
 
-StopObstacle ObstacleStopModule::create_stop_obstacle_for_point_cloud(
-  const rclcpp::Time & stamp,
-  const std::pair<geometry_msgs::msg::Point, double> collision_info) const
-{
-  const unique_identifier_msgs::msg::UUID obj_uuid;
-  const auto & obj_uuid_str = autoware_utils_uuid::to_hex_string(obj_uuid);
-
-  autoware_perception_msgs::msg::Shape bounding_box_shape;
-  bounding_box_shape.type = autoware_perception_msgs::msg::Shape::BOUNDING_BOX;
-
-  ObjectClassification unconfigured_object_classification;
-
-  const geometry_msgs::msg::Pose unconfigured_pose;
-  const double unconfigured_lon_vel = 0.;
-
-  return StopObstacle{
-    obj_uuid_str,
-    stamp,
-    unconfigured_object_classification,
-    unconfigured_pose,
-    bounding_box_shape,
-    unconfigured_lon_vel,
-    collision_info.first,
-    collision_info.second};
-}
-
 std::optional<std::pair<geometry_msgs::msg::Point, double>>
 ObstacleStopModule::get_nearest_collision_point(
   const std::vector<TrajectoryPoint> & traj_points, const std::vector<Polygon2d> & traj_polygons,
@@ -579,6 +552,57 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_predicted
   return stop_obstacles;
 }
 
+void ObstacleStopModule::upsert_stop_candidate(
+  const std::pair<geometry_msgs::msg::Point, double> & nearest_collision_point,
+  const std::vector<TrajectoryPoint> & traj_points, rclcpp::Time latest_point_cloud_time)
+{
+  autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
+  const auto & vel_params =
+    obstacle_filtering_param_.pointcloud_obstacle_filtering_param.velocity_estimation;
+
+  // check association from the newest candidate to the oldest candidate
+  for (auto stop_candidate = stop_candidates.rbegin(); stop_candidate != stop_candidates.rend();
+       ++stop_candidate) {
+    const double time_since_latest_collision =
+      (latest_point_cloud_time - stop_candidate->latest_collision_time).seconds();
+    if (time_since_latest_collision < 0.05) {
+      return;  // latest_point_cloud_time is aleady checked.
+    }
+    const double longitudinal_displacement = autoware::motion_utils::calcSignedArcLength(
+      traj_points, stop_candidate->latest_collision_point.first, nearest_collision_point.first);
+    const auto & assoc_params =
+      obstacle_filtering_param_.pointcloud_obstacle_filtering_param.time_series_association;
+    if (
+      time_since_latest_collision < assoc_params.max_time_diff &&
+      -assoc_params.position_diff + assoc_params.min_velocity * time_since_latest_collision <
+        longitudinal_displacement &&
+      longitudinal_displacement <
+        assoc_params.position_diff + assoc_params.max_velocity * time_since_latest_collision) {
+      const double clamped_vel = std::clamp(
+        longitudinal_displacement / time_since_latest_collision, vel_params.min_clamp_velocity,
+        vel_params.max_clamp_velocity);
+      if (!stop_candidate->vel_lpf.getValue().has_value()) {
+        auto & vel_vec = stop_candidate->initial_velocities;
+        vel_vec.push_back(clamped_vel);
+        if (vel_vec.size() >= vel_params.required_velocity_count) {
+          stop_candidate->vel_lpf.reset(
+            std::accumulate(vel_vec.begin(), vel_vec.end(), 0.0) / vel_vec.size());
+        }
+      } else {
+        stop_candidate->vel_lpf.filter(clamped_vel);
+      }
+      stop_candidate->latest_collision_point = nearest_collision_point;
+      stop_candidate->latest_collision_time = latest_point_cloud_time;
+      return;
+    }
+  }
+  StopCandidatePointCloudCollisionPoint new_stop_candidate;
+  new_stop_candidate.latest_collision_point = nearest_collision_point;
+  new_stop_candidate.latest_collision_time = latest_point_cloud_time;
+  new_stop_candidate.vel_lpf.setGain(vel_params.lpf_gain);
+  stop_candidates.push_back(new_stop_candidate);
+}
+
 std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_point_cloud(
   const Odometry & odometry, const std::vector<TrajectoryPoint> & traj_points,
   const std::vector<TrajectoryPoint> & decimated_traj_points,
@@ -616,120 +640,58 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_point_clo
     cropped_decimated_traj_points, decimated_traj_polys_with_lat_margin, point_cloud,
     dist_to_bumper);
 
-  struct StopCandidate
-  {
-    std::vector<double> initial_velocities{};
-    autoware::signal_processing::LowpassFilter1d vel_lpf{0.0};
-    rclcpp::Time latest_time;
-    std::pair<geometry_msgs::msg::Point, double> latest_collision_point;
-  };
-
-  static std::deque<StopCandidate> stop_candidates;
-  const auto current_point_cloud_time =
+  const auto latest_point_cloud_time =
     rclcpp::Time(point_cloud.pointcloud.header.stamp * static_cast<uint32_t>(1e3), RCL_ROS_TIME);
 
+  // update stop_candidates
   if (nearest_collision_point) {
-    struct AssociationResult
-    {
-      std::deque<StopCandidate>::reverse_iterator itr;
-      double velocity;
-    };
-    const auto associated_hist = [&]() -> std::optional<AssociationResult> {
-      for (auto stop_candidate = stop_candidates.rbegin(); stop_candidate != stop_candidates.rend();
-           ++stop_candidate) {
-        const double time_diff = (current_point_cloud_time - stop_candidate->latest_time).seconds();
-        if (time_diff < 0.05) {
-          return std::nullopt;
-        }
-        const double long_diff = autoware::motion_utils::calcSignedArcLength(
-          traj_points, stop_candidate->latest_collision_point.first,
-          nearest_collision_point->first);
-        const auto & assoc_params =
-          obstacle_filtering_param_.pointcloud_obstacle_filtering_param.time_series_association;
-        if (
-          time_diff < assoc_params.max_time_diff &&
-          -assoc_params.position_diff + assoc_params.min_velocity * time_diff < long_diff &&
-          long_diff < assoc_params.position_diff + assoc_params.max_velocity * time_diff) {
-          return AssociationResult{stop_candidate, long_diff / time_diff};
-        }
-      }
-      return std::nullopt;
-    }();
-
-    const auto & vel_params =
-      obstacle_filtering_param_.pointcloud_obstacle_filtering_param.velocity_estimation;
-    if (associated_hist) {
-      const double clamped_vel = std::clamp(
-        associated_hist->velocity, vel_params.min_clamp_velocity, vel_params.max_clamp_velocity);
-
-      if (!associated_hist->itr->vel_lpf.getValue().has_value()) {
-        auto & vel_vec = associated_hist->itr->initial_velocities;
-        vel_vec.push_back(clamped_vel);
-        if (vel_vec.size() >= vel_params.required_velocity_count) {
-          associated_hist->itr->vel_lpf.reset(
-            std::accumulate(vel_vec.begin(), vel_vec.end(), 0.0) / vel_vec.size());
-        }
-      } else {
-        associated_hist->itr->vel_lpf.filter(clamped_vel);
-      }
-      associated_hist->itr->latest_collision_point = *nearest_collision_point;
-      associated_hist->itr->latest_time = current_point_cloud_time;
-    } else {
-      StopCandidate new_stop_candidate;
-      new_stop_candidate.latest_collision_point = *nearest_collision_point;
-      new_stop_candidate.latest_time = current_point_cloud_time;
-      new_stop_candidate.vel_lpf.setGain(vel_params.lpf_gain);
-      stop_candidates.push_back(new_stop_candidate);
-    }
+    upsert_stop_candidate(nearest_collision_point.value(), traj_points, latest_point_cloud_time);
   }
 
-  // sort by latest_time
+  // sort by latest_collision_time
   std::sort(
     stop_candidates.begin(), stop_candidates.end(),
-    [](StopCandidate & a, StopCandidate & b) { return a.latest_time < b.latest_time; });
+    [](StopCandidatePointCloudCollisionPoint & a, StopCandidatePointCloudCollisionPoint & b) {
+      return a.latest_collision_time < b.latest_collision_time;
+    });
 
   // erase old data
   while (!stop_candidates.empty() &&
-         (current_point_cloud_time - stop_candidates.front().latest_time).seconds() >
+         (latest_point_cloud_time - stop_candidates.front().latest_collision_time).seconds() >
            obstacle_filtering_param_.stop_obstacle_hold_time_threshold) {
     stop_candidates.pop_front();
   }
 
   // pick stop_obstacle from candidates
   std::vector<StopObstacle> stop_obstacles;
-  for (auto & stop_candidate : stop_candidates) {
+  for (const auto & stop_candidate : stop_candidates) {
     if (!stop_candidate.vel_lpf.getValue().has_value()) {
       continue;
     }
 
-    const double time_delay = (clock_->now() - current_point_cloud_time).seconds();
-    const double time_diff = (current_point_cloud_time - stop_candidate.latest_time).seconds();
-    const double time_compensated_dist_to_collide =
-      stop_candidate.latest_collision_point.second +
-      *stop_candidate.vel_lpf.getValue() * (time_delay + time_diff) -
-      odometry.twist.twist.linear.x * time_diff;
+    const double time_delay = (clock_->now() - stop_candidate.latest_collision_time).seconds();
+    const double time_compensated_dist_to_collide = stop_candidate.latest_collision_point.second +
+                                                    *stop_candidate.vel_lpf.getValue() * time_delay;
     const auto pcl_braking_dist = [&]() {
       double error_considered_vel = std::max(
         *stop_candidate.vel_lpf.getValue() + stop_planning_param_.rss_params.velocity_offset, 0.0);
       return error_considered_vel * error_considered_vel * 0.5 /
              -stop_planning_param_.rss_params.pointcloud_deceleration;
     }();
-    if (time_diff < obstacle_filtering_param_.stop_obstacle_hold_time_threshold) {
-      const auto stop_obstacle = StopObstacle{
-        stop_candidate.latest_time,         true,
-        *stop_candidate.vel_lpf.getValue(), stop_candidate.latest_collision_point.first,
-        time_compensated_dist_to_collide,   pcl_braking_dist};
+    const auto stop_obstacle = StopObstacle{
+      stop_candidate.latest_collision_time, true,
+      *stop_candidate.vel_lpf.getValue(),   stop_candidate.latest_collision_point.first,
+      time_compensated_dist_to_collide,     pcl_braking_dist};
 
-      RCLCPP_DEBUG(
-        logger_,
-        "|_PCL_| total_dist: %2.5f, raw_dist: %2.5f, time_compensated dist: %2.5f, braking_dist: "
-        "%2.5f",
-        (time_compensated_dist_to_collide + pcl_braking_dist),
-        (stop_candidate.latest_collision_point.second), time_compensated_dist_to_collide,
-        pcl_braking_dist);
+    RCLCPP_DEBUG(
+      logger_,
+      "|_PCL_| total_dist: %2.5f, raw_dist: %2.5f, time_compensated dist: %2.5f, braking_dist: "
+      "%2.5f",
+      (time_compensated_dist_to_collide + pcl_braking_dist),
+      (stop_candidate.latest_collision_point.second), time_compensated_dist_to_collide,
+      pcl_braking_dist);
 
-      stop_obstacles.push_back(stop_obstacle);
-    }
+    stop_obstacles.push_back(stop_obstacle);
   }
 
   return stop_obstacles;
