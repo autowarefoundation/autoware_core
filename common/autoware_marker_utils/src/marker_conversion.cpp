@@ -51,8 +51,6 @@ using autoware_utils_visualization::create_marker_color;
 using autoware_utils_visualization::create_marker_position;
 using autoware_utils_visualization::create_marker_scale;
 
-// ===================== Helper Function ==================================
-
 static lanelet::BasicPoint3d get_centroid_point(const lanelet::BasicPolygon3d & poly)
 {
   lanelet::BasicPoint3d p_sum{0.0, 0.0, 0.0};
@@ -190,8 +188,6 @@ Marker create_linestring_marker(
   }
   return marker;
 }
-
-// ====================== Main Function ===================================
 
 MarkerArray create_autoware_geometry_marker_array(
   const geometry_msgs::msg::Polygon & polygon, const rclcpp::Time & stamp, const std::string & ns,
@@ -447,6 +443,20 @@ MarkerArray create_lanelets_marker_array(
     }
     marker_array.markers.push_back(marker);
     ++marker.id;
+  }
+  return marker_array;
+}
+
+MarkerArray create_lanelet_linestring_marker_array(
+  const autoware_utils::MultiLineString2d & mls, const rclcpp::Time & stamp, const std::string & ns,
+  int32_t id, const Vector3 & scale, const ColorRGBA & color, const double z)
+{
+  MarkerArray marker_array;
+  int32_t uid;
+  for (auto j = 0ul; j < mls.size(); ++j) {
+    uid = id + j;
+    auto marker = create_linestring_marker(mls[j], stamp, ns, uid, scale, color, z);
+    marker_array.markers.push_back(marker);
   }
   return marker_array;
 }
@@ -740,20 +750,6 @@ MarkerArray create_path_with_lane_id_marker_array(
     ++idx;
   }
   return msg;
-}
-
-MarkerArray create_multistring_marker_array(
-  const autoware_utils::MultiLineString2d & mls, const rclcpp::Time & stamp, const std::string & ns,
-  int32_t id, const Vector3 & scale, const ColorRGBA & color, const double z)
-{
-  MarkerArray marker_array;
-  int32_t uid;
-  for (auto j = 0ul; j < mls.size(); ++j) {
-    uid = id + j;
-    auto marker = create_linestring_marker(mls[j], stamp, ns, uid, scale, color, z);
-    marker_array.markers.push_back(marker);
-  }
-  return marker_array;
 }
 
 }  // namespace autoware::experimental::marker_utils

@@ -396,7 +396,31 @@ TEST_F(MarkerConversionTest, CreateMarkerArrayYawLine)
     pose.position.z);
 }
 
-// Test 11: one simple rectangular lanelet → one marker, closed ring
+// Test 11: create_lanelet_linestring_marker
+TEST_F(MarkerConversionTest, CreateLaneletLineStringMarker)
+{
+  using lanelet::BasicLineString2d;
+  using lanelet::BasicPoint2d;
+
+  BasicLineString2d ls;
+
+  ls.push_back(BasicPoint2d(0, 0));
+  ls.push_back(BasicPoint2d(1, 0));
+  ls.push_back(BasicPoint2d(1, 1));
+
+  double z = 3;
+  auto marker = autoware::experimental::marker_utils::create_lanelet_linestring_marker(
+    ls, now, "test_ns", 0, create_marker_scale(1.0, 1.0, 0.1), color_, z);
+
+  // size of points = 4
+  ASSERT_EQ(marker.points.size(), (ls.size() - 1) * 2);
+  expect_point_eq(marker.points[0], 0, 0, z);
+  expect_point_eq(marker.points[1], 1, 0, z);
+  expect_point_eq(marker.points[2], 1, 0, z);
+  expect_point_eq(marker.points[3], 1, 1, z);
+}
+
+// Test 12: one simple rectangular lanelet → one marker, closed ring
 TEST_F(MarkerConversionTest, CreateLaneletsMarkerArrayOne)
 {
   // build a 1×1 rectangular lanelet
@@ -428,7 +452,7 @@ TEST_F(MarkerConversionTest, CreateLaneletsMarkerArrayOne)
   EXPECT_DOUBLE_EQ(m_out.points.back().z, Z + 0.5);
 }
 
-// Test 12: create_autoware_geometry_marker_array with empty lanelet
+// Test 13: create_autoware_geometry_marker_array with empty lanelet
 TEST_F(MarkerConversionTest, EmptyLaneletsCustomNS)
 {
   lanelet::ConstLanelets empty;
@@ -438,7 +462,7 @@ TEST_F(MarkerConversionTest, EmptyLaneletsCustomNS)
   ASSERT_EQ(markers.markers.size(), 0u);
 }
 
-// Test 13: create_autoware_geometry_marker_array with lanelet as triangle marker array
+// Test 14: create_autoware_geometry_marker_array with lanelet as triangle marker array
 TEST_F(MarkerConversionTest, SingleLaneletClosedRing)
 {
   using lanelet::ConstLanelet;
@@ -462,7 +486,48 @@ TEST_F(MarkerConversionTest, SingleLaneletClosedRing)
   expect_point_eq(m.points.back(), poly.front().x(), poly.front().y(), 0.0);
 }
 
-// Test 14: create_autoware_geometry_marker_array with lanelet as triangle marker array
+// Test 15: create_lanelet_linestring_marker_array
+TEST_F(MarkerConversionTest, CreateLaneletLineStringMarkerArray)
+{
+  using autoware_utils_geometry::LineString2d;
+  using autoware_utils_geometry::MultiLineString2d;
+  using autoware_utils_geometry::Point2d;
+
+  LineString2d ls1{{Point2d{0, 0}, Point2d{1, 0}, Point2d{1, 1}}};
+  LineString2d ls2{{Point2d{1, 1}, Point2d{2, 0}, Point2d{2, 2}}};
+  LineString2d ls3{{Point2d{2, 2}, Point2d{3, 0}, Point2d{3, 3}}};
+
+  MultiLineString2d mls;
+  mls.push_back(ls1);
+  mls.push_back(ls2);
+  mls.push_back(ls3);
+
+  double z = 3;
+  auto marker_array = autoware::experimental::marker_utils::create_lanelet_linestring_marker_array(
+    mls, now, "test_ns", 0, create_marker_scale(1.0, 1.0, 0.1), color_, z);
+
+  EXPECT_EQ(marker_array.markers.size(), 3u);
+  EXPECT_EQ(marker_array.markers[0].id, 0);
+  EXPECT_EQ(marker_array.markers[1].id, 1);
+  EXPECT_EQ(marker_array.markers[2].id, 2);
+
+  auto marker1 = marker_array.markers[0];
+  expect_point_eq(marker1.points[0], 0, 0, z);
+  expect_point_eq(marker1.points[1], 1, 0, z);
+  expect_point_eq(marker1.points[2], 1, 1, z);
+
+  auto marker2 = marker_array.markers[1];
+  expect_point_eq(marker2.points[0], 1, 1, z);
+  expect_point_eq(marker2.points[1], 2, 0, z);
+  expect_point_eq(marker2.points[2], 2, 2, z);
+
+  auto marker3 = marker_array.markers[2];
+  expect_point_eq(marker3.points[0], 2, 2, z);
+  expect_point_eq(marker3.points[1], 3, 0, z);
+  expect_point_eq(marker3.points[2], 3, 3, z);
+}
+
+// Test 16: create_autoware_geometry_marker_array with lanelet as triangle marker array
 TEST_F(MarkerConversionTest, CreateLaneletPolygonMarkerArray)
 {
   lanelet::LineString3d ring{
@@ -496,7 +561,7 @@ TEST_F(MarkerConversionTest, CreateLaneletPolygonMarkerArray)
   EXPECT_EQ(marker.type, visualization_msgs::msg::Marker::LINE_STRIP);
 }
 
-// Test 15: confirm BasicPolygon2d convert to MarkerArray of one Marker at constant z + 0.5
+// Test 17: confirm BasicPolygon2d convert to MarkerArray of one Marker at constant z + 0.5
 TEST_F(MarkerConversionTest, OneBasicPolygon2d)
 {
   using lanelet::BasicPoint2d;
@@ -529,7 +594,7 @@ TEST_F(MarkerConversionTest, OneBasicPolygon2d)
   EXPECT_EQ(marker.type, Marker::LINE_STRIP);
 }
 
-// Test 16: create_lanelet_polygon_marker_array - empty BasicPolygons2d
+// Test 18: create_lanelet_polygon_marker_array - empty BasicPolygons2d
 TEST_F(MarkerConversionTest, EmptyBasicPolygons2d)
 {
   using visualization_msgs::msg::Marker;
@@ -540,7 +605,7 @@ TEST_F(MarkerConversionTest, EmptyBasicPolygons2d)
   ASSERT_EQ(marker_array.markers.size(), 0u);
 }
 
-// Test 17: create_lanelet_polygon_marker_array - BasicPolygons2d with LINE_LIST marker type
+// Test 19: create_lanelet_polygon_marker_array - BasicPolygons2d with LINE_LIST marker type
 TEST_F(MarkerConversionTest, BasicPolygons2dLINELIST)
 {
   using lanelet::BasicPoint2d;
@@ -577,7 +642,7 @@ TEST_F(MarkerConversionTest, BasicPolygons2dLINELIST)
   EXPECT_EQ(marker.type, Marker::LINE_LIST);
 }
 
-// Test 18: create_lanelet_polygon_marker_array - BasicPolygons2d with LINE_STRIP marker type
+// Test 20: create_lanelet_polygon_marker_array - BasicPolygons2d with LINE_STRIP marker type
 TEST_F(MarkerConversionTest, BasicPolygons2dLINESTRIP)
 {
   using lanelet::BasicPoint2d;
@@ -611,7 +676,7 @@ TEST_F(MarkerConversionTest, BasicPolygons2dLINESTRIP)
   EXPECT_EQ(marker.type, Marker::LINE_STRIP);
 }
 
-// Test 19: create_lanelet_polygon_info_marker_array - DetectionArea
+// Test 21: create_lanelet_polygon_info_marker_array - DetectionArea
 TEST_F(MarkerConversionTest, CreateLaneletInfoMarkerArrayDetectionArea)
 {
   lanelet::Polygon3d detection_area;
@@ -650,7 +715,7 @@ TEST_F(MarkerConversionTest, CreateLaneletInfoMarkerArrayDetectionArea)
   }
 }
 
-// Test 20: create_lanelet_polygon_info_marker_array - DetectionArea with Several Polygons
+// Test 22: create_lanelet_polygon_info_marker_array - DetectionArea with Several Polygons
 TEST_F(MarkerConversionTest, CreateLaneletInfoMarkerArrayDetectionAreaSeveralPolygons)
 {
   lanelet::Polygon3d detection_area;
@@ -689,7 +754,7 @@ TEST_F(MarkerConversionTest, CreateLaneletInfoMarkerArrayDetectionAreaSeveralPol
   }
 }
 
-// Test 21: create_lanelet_polygon_info_marker_array - NoStoppingArea with stop line
+// Test 23: create_lanelet_polygon_info_marker_array - NoStoppingArea with stop line
 TEST_F(MarkerConversionTest, CreateLaneletInfoMarkerArrayNoStoppingAreaWithStopLine)
 {
   lanelet::Polygon3d no_stopping_area;
@@ -728,7 +793,7 @@ TEST_F(MarkerConversionTest, CreateLaneletInfoMarkerArrayNoStoppingAreaWithStopL
   }
 }
 
-// Test 22: create_lanelet_polygon_info_marker_array - NoStoppingArea with stop line and several
+// Test 24: create_lanelet_polygon_info_marker_array - NoStoppingArea with stop line and several
 // Polygons
 TEST_F(MarkerConversionTest, CreateLaneletInfoMarkerArrayNoStoppingAreaWithStopLineSeveralPolygon)
 {
@@ -769,7 +834,7 @@ TEST_F(MarkerConversionTest, CreateLaneletInfoMarkerArrayNoStoppingAreaWithStopL
   }
 }
 
-// Test 23: create_lanelet_polygon_info_marker_array - NoStoppingArea without stop line
+// Test 25: create_lanelet_polygon_info_marker_array - NoStoppingArea without stop line
 TEST_F(MarkerConversionTest, CreateLaneletInfoMarkerArrayNoStoppingAreaWithoutStopLine)
 {
   lanelet::Polygon3d no_stopping_area;
@@ -806,7 +871,7 @@ TEST_F(MarkerConversionTest, CreateLaneletInfoMarkerArrayNoStoppingAreaWithoutSt
   }
 }
 
-// Test 24: ensure PredictedObjects produce markers with correct id and pose
+// Test 26: ensure PredictedObjects produce markers with correct id and pose
 TEST_F(MarkerConversionTest, CreateObjectsMakerArray)
 {
   autoware_perception_msgs::msg::PredictedObjects objs;
@@ -833,7 +898,7 @@ TEST_F(MarkerConversionTest, CreateObjectsMakerArray)
   EXPECT_DOUBLE_EQ(m.pose.orientation.w, 1.0);
 }
 
-// Test 25: create_predicted_path_marker_array - empty
+// Test 27: create_predicted_path_marker_array - empty
 TEST_F(MarkerConversionTest, CreatePredictedPathMarkerArrayEmpty)
 {
   autoware_perception_msgs::msg::PredictedPath pp;
@@ -847,7 +912,7 @@ TEST_F(MarkerConversionTest, CreatePredictedPathMarkerArrayEmpty)
   EXPECT_TRUE(arr.markers.empty());
 }
 
-// Test 26: create_predicted_path_marker_array - one element
+// Test 28: create_predicted_path_marker_array - one element
 TEST_F(MarkerConversionTest, CreatePredictedPathMarkerArrayOne)
 {
   autoware_perception_msgs::msg::PredictedPath pp;
@@ -869,7 +934,7 @@ TEST_F(MarkerConversionTest, CreatePredictedPathMarkerArrayOne)
   EXPECT_EQ(m.points.size(), 5u);
 }
 
-// Test 27: create_path_with_lane_id_marker_array without text
+// Test 29: create_path_with_lane_id_marker_array without text
 TEST_F(MarkerConversionTest, CreatePathWithLaneIdMarkerArrayNoText)
 {
   autoware_internal_planning_msgs::msg::PathWithLaneId path;
@@ -888,7 +953,7 @@ TEST_F(MarkerConversionTest, CreatePathWithLaneIdMarkerArrayNoText)
   EXPECT_DOUBLE_EQ(m.pose.position.y, 0.0);
 }
 
-// Test 28: create_path_with_lane_id_marker_array with text
+// Test 30: create_path_with_lane_id_marker_array with text
 TEST_F(MarkerConversionTest, CreatePathWithLaneIdMarkerArrayWithText)
 {
   autoware_internal_planning_msgs::msg::PathWithLaneId path;
@@ -913,7 +978,7 @@ TEST_F(MarkerConversionTest, CreatePathWithLaneIdMarkerArrayWithText)
   EXPECT_TRUE(found_text);
 }
 
-// Test 29: create_vehicle_trajectory_point_marker_array
+// Test 31: create_vehicle_trajectory_point_marker_array
 TEST_F(MarkerConversionTest, CreateVehicleTrajectoryPointMarkerArray)
 {
   std::vector<autoware_planning_msgs::msg::TrajectoryPoint> traj(3);
@@ -935,48 +1000,7 @@ TEST_F(MarkerConversionTest, CreateVehicleTrajectoryPointMarkerArray)
   }
 }
 
-// Test 30: create_multistring_marker_array
-TEST_F(MarkerConversionTest, CreateMultiStringMarkerArray)
-{
-  using autoware_utils_geometry::LineString2d;
-  using autoware_utils_geometry::MultiLineString2d;
-  using autoware_utils_geometry::Point2d;
-
-  LineString2d ls1{{Point2d{0, 0}, Point2d{1, 0}, Point2d{1, 1}}};
-  LineString2d ls2{{Point2d{1, 1}, Point2d{2, 0}, Point2d{2, 2}}};
-  LineString2d ls3{{Point2d{2, 2}, Point2d{3, 0}, Point2d{3, 3}}};
-
-  MultiLineString2d mls;
-  mls.push_back(ls1);
-  mls.push_back(ls2);
-  mls.push_back(ls3);
-
-  double z = 3;
-  auto marker_array = autoware::experimental::marker_utils::create_multistring_marker_array(
-    mls, now, "test_ns", 0, create_marker_scale(1.0, 1.0, 0.1), color_, z);
-
-  EXPECT_EQ(marker_array.markers.size(), 3u);
-  EXPECT_EQ(marker_array.markers[0].id, 0);
-  EXPECT_EQ(marker_array.markers[1].id, 1);
-  EXPECT_EQ(marker_array.markers[2].id, 2);
-
-  auto marker1 = marker_array.markers[0];
-  expect_point_eq(marker1.points[0], 0, 0, z);
-  expect_point_eq(marker1.points[1], 1, 0, z);
-  expect_point_eq(marker1.points[2], 1, 1, z);
-
-  auto marker2 = marker_array.markers[1];
-  expect_point_eq(marker2.points[0], 1, 1, z);
-  expect_point_eq(marker2.points[1], 2, 0, z);
-  expect_point_eq(marker2.points[2], 2, 2, z);
-
-  auto marker3 = marker_array.markers[2];
-  expect_point_eq(marker3.points[0], 2, 2, z);
-  expect_point_eq(marker3.points[1], 3, 0, z);
-  expect_point_eq(marker3.points[2], 3, 3, z);
-}
-
-// Test 31: check_marker_type_line
+// Test 32: check_marker_type_line
 TEST_F(MarkerConversionTest, CheckMarkerTypeLine)
 {
   using visualization_msgs::msg::Marker;
@@ -989,7 +1013,7 @@ TEST_F(MarkerConversionTest, CheckMarkerTypeLine)
     std::runtime_error);
 }
 
-// Test 32: confirm boost Polygon2d converts to marker at constant z height
+// Test 33: confirm boost Polygon2d converts to marker at constant z height
 TEST_F(MarkerConversionTest, CreateBoostPolygonMarker)
 {
   using autoware_utils_geometry::Point2d;
@@ -1013,7 +1037,7 @@ TEST_F(MarkerConversionTest, CreateBoostPolygonMarker)
   }
 }
 
-// Test 33: convert Eigen::Vector3d to geometry_msgs::msg::Point32 and lanelet::ConstPolygon3d to
+// Test 34: convert Eigen::Vector3d to geometry_msgs::msg::Point32 and lanelet::ConstPolygon3d to
 // geometry_msgs::msg::Polygon
 TEST_F(MarkerConversionTest, TypeConversionToGeometryMsg)
 {
@@ -1042,7 +1066,7 @@ TEST_F(MarkerConversionTest, TypeConversionToGeometryMsg)
   EXPECT_TRUE((std::is_same_v<decltype(geom_polygon), geometry_msgs::msg::Polygon>));
 }
 
-// Test 34: create_linestring_marker
+// Test 35: create_linestring_marker
 TEST_F(MarkerConversionTest, CreateLineStringMarker)
 {
   using autoware_utils_geometry::Point2d;
@@ -1059,29 +1083,6 @@ TEST_F(MarkerConversionTest, CreateLineStringMarker)
   expect_point_eq(marker.points[2], 1, 1, z);
 }
 
-// Test 35: create_lanelet_linestring_marker
-TEST_F(MarkerConversionTest, CreateLaneletLineStringMarker)
-{
-  using lanelet::BasicLineString2d;
-  using lanelet::BasicPoint2d;
-
-  BasicLineString2d ls;
-
-  ls.push_back(BasicPoint2d(0, 0));
-  ls.push_back(BasicPoint2d(1, 0));
-  ls.push_back(BasicPoint2d(1, 1));
-
-  double z = 3;
-  auto marker = autoware::experimental::marker_utils::create_lanelet_linestring_marker(
-    ls, now, "test_ns", 0, create_marker_scale(1.0, 1.0, 0.1), color_, z);
-
-  // size of points = 4
-  ASSERT_EQ(marker.points.size(), (ls.size() - 1) * 2);
-  expect_point_eq(marker.points[0], 0, 0, z);
-  expect_point_eq(marker.points[1], 1, 0, z);
-  expect_point_eq(marker.points[2], 1, 0, z);
-  expect_point_eq(marker.points[3], 1, 1, z);
-}
 }  // namespace
 
 int main(int argc, char ** argv)

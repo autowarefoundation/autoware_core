@@ -15,8 +15,6 @@
 #ifndef AUTOWARE__MARKER_UTILS__MARKER_CONVERSION_HPP_
 #define AUTOWARE__MARKER_UTILS__MARKER_CONVERSION_HPP_
 
-#include <autoware_lanelet2_extension/regulatory_elements/detection_area.hpp>
-#include <autoware_lanelet2_extension/regulatory_elements/no_stopping_area.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_utils_visualization/marker_helper.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
@@ -37,7 +35,6 @@
 
 namespace autoware::experimental::marker_utils
 {
-// ===================== Helper Function ==================================
 
 /**
  * @brief check if the input type is LINE_LIST or LINE_STRIP
@@ -89,8 +86,6 @@ visualization_msgs::msg::Marker create_linestring_marker(
   const autoware_utils::LineString2d & ls, const rclcpp::Time & stamp, const std::string & ns,
   int32_t id, const geometry_msgs::msg::Vector3 & scale, const std_msgs::msg::ColorRGBA & color,
   const double z);
-
-// ====================== Main Function ===================================
 
 /**
  * @brief create marker array from geometry polygon based on the marker type
@@ -252,6 +247,21 @@ visualization_msgs::msg::MarkerArray create_lanelets_marker_array(
   const double z = 0.0, const bool planning = false);
 
 /**
+ * @brief create marker array from MultiLineString2d (group of LineString2d)
+ * @param [in] mls MultiLineString2d (group of LineString2d)
+ * @param [in] stamp time stamp of the marker
+ * @param [in] ns namespace
+ * @param [in] id id of the marker
+ * @param [in] scale scale of the marker
+ * @param [in] color color of the marker
+ * @return marker array of the MultiLineString2d
+ */
+visualization_msgs::msg::MarkerArray create_lanelet_linestring_marker_array(
+  const autoware_utils::MultiLineString2d & mls, const rclcpp::Time & stamp, const std::string & ns,
+  int32_t id, const geometry_msgs::msg::Vector3 & scale, const std_msgs::msg::ColorRGBA & color,
+  const double z);
+
+/**
  * @brief create marker array from lanelet polygon (CompoundPolygon3d)
  * @param [in] polygon lanelet polygon
  * @param [in] stamp time stamp of the marker
@@ -387,21 +397,6 @@ visualization_msgs::msg::MarkerArray create_vehicle_trajectory_point_marker_arra
   const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & mpt_traj,
   const autoware::vehicle_info_utils::VehicleInfo & vehicle_info, const std::string & ns,
   const int32_t id);
-
-/**
- * @brief create marker array from MultiLineString2d (group of LineString2d)
- * @param [in] mls MultiLineString2d (group of LineString2d)
- * @param [in] stamp time stamp of the marker
- * @param [in] ns namespace
- * @param [in] id id of the marker
- * @param [in] scale scale of the marker
- * @param [in] color color of the marker
- * @return marker array of the MultiLineString2d
- */
-visualization_msgs::msg::MarkerArray create_multistring_marker_array(
-  const autoware_utils::MultiLineString2d & mls, const rclcpp::Time & stamp, const std::string & ns,
-  int32_t id, const geometry_msgs::msg::Vector3 & scale, const std_msgs::msg::ColorRGBA & color,
-  const double z);
 
 }  // namespace autoware::experimental::marker_utils
 
