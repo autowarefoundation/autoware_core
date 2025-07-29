@@ -95,8 +95,10 @@ struct PointcloudObstacleFilteringParam
 struct PlannerData
 {
 public:
-  explicit PlannerData(const PlannerData &) = delete;
+  PlannerData(const PlannerData &) = delete;
   PlannerData & operator=(const PlannerData &) = delete;
+  PlannerData(PlannerData &&) = default;
+  PlannerData & operator=(PlannerData &&) = default;
   explicit PlannerData(rclcpp::Node & node);
   class Object
   {
