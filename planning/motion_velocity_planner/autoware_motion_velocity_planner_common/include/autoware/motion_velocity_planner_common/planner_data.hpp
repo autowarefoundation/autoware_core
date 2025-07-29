@@ -150,6 +150,8 @@ public:
     void set_pointcloud(pcl::PointCloud<pcl::PointXYZ> && arg_pointcloud)
     {
       pointcloud = arg_pointcloud;
+      filtered_pointcloud_ptr.reset();
+      cluster_indices.reset();
     }
 
     pcl::PointCloud<pcl::PointXYZ> pointcloud;
@@ -160,11 +162,6 @@ public:
     const std::vector<pcl::PointIndices> get_cluster_indices(
       const autoware::motion_velocity_planner::TrajectoryPoints & trajectory_points,
       const autoware::vehicle_info_utils::VehicleInfo & vehicle_info) const;
-    void clear_pointcloud_cache()
-    {
-      filtered_pointcloud_ptr.reset();
-      cluster_indices.reset();
-    };
 
   private:
     mutable std::optional<pcl::PointCloud<pcl::PointXYZ>::Ptr> filtered_pointcloud_ptr;

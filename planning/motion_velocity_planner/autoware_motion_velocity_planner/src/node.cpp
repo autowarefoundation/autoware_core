@@ -179,7 +179,6 @@ bool MotionVelocityPlannerNode::update_planner_data(
     processing_times["update_planner_data.pcl.process_no_ground_pointcloud"] = sw.toc(true);
     if (no_ground_pointcloud) {
       planner_data_->no_ground_pointcloud.set_pointcloud(std::move(*no_ground_pointcloud));
-      planner_data_->no_ground_pointcloud.clear_pointcloud_cache();
     }
   }
 
