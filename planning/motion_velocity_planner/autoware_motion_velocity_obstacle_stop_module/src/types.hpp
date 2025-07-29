@@ -31,6 +31,27 @@
 
 namespace autoware::motion_velocity_planner
 {
+
+struct PCLExtendedObjectClassification
+{
+  ObjectClassification object_classification{};
+  bool is_point_cloud{false};
+
+  explicit PCLExtendedObjectClassification(const ObjectClassification arg_obj_class)
+  : object_classification(arg_obj_class)
+  {
+  }
+  explicit PCLExtendedObjectClassification(const bool arg_is_point_cloud)
+  : is_point_cloud(arg_is_point_cloud)
+  {
+  }
+  bool operator==(const PCLExtendedObjectClassification & other) const
+  {
+    return (object_classification.label == other.object_classification.label) &&
+           (is_point_cloud == other.is_point_cloud);
+  }
+};
+
 struct StopObstacle
 {
   StopObstacle(
@@ -51,6 +72,20 @@ struct StopObstacle
     braking_dist(arg_braking_dist)
   {
   }
+  StopObstacle(
+    const rclcpp::Time & arg_stamp, const bool arg_is_point_cloud, const double arg_lon_velocity,
+    const geometry_msgs::msg::Point & arg_collision_point,
+    const double arg_dist_to_collide_on_decimated_traj, const double arg_braking_dist = 0.0)
+  : stamp(arg_stamp),
+    velocity(arg_lon_velocity),
+    collision_point(arg_collision_point),
+    dist_to_collide_on_decimated_traj(arg_dist_to_collide_on_decimated_traj),
+    classification(arg_is_point_cloud),
+    braking_dist(arg_braking_dist)
+  {
+    uuid = "point_cloud";
+    shape.type = autoware_perception_msgs::msg::Shape::BOUNDING_BOX;
+  }
   std::string uuid;
   rclcpp::Time stamp;
   geometry_msgs::msg::Pose pose;  // interpolated with the current stamp
@@ -62,7 +97,7 @@ struct StopObstacle
                       // calculateMarginFromObstacleOnCurve() and  should be removed as it can be
                       // replaced by ”dist_to_collide_on_decimated_traj”
   double dist_to_collide_on_decimated_traj;
-  ObjectClassification classification;
+  PCLExtendedObjectClassification classification;
   std::optional<double> braking_dist;
 };
 
