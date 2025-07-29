@@ -192,8 +192,7 @@ private:
 
   std::optional<std::pair<geometry_msgs::msg::Point, double>> get_nearest_collision_point(
     const std::vector<TrajectoryPoint> & traj_points, const std::vector<Polygon2d> & traj_polygons,
-    const PlannerData::Pointcloud & point_cloud, const VehicleInfo & vehicle_info,
-    const double dist_to_bumper);
+    const PlannerData::Pointcloud & point_cloud, const double dist_to_bumper);
 
   double calc_collision_time_margin(
     const Odometry & odometry, const std::vector<polygon_utils::PointWithStamp> & collision_points,
