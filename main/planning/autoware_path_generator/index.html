@@ -4907,8 +4907,8 @@ If the route has waypoints set, it generates a path passing through them.</p>
 If found, it gets the lanelets within a distance of <code>path_length.backward</code> behind and <code>path_length.forward</code> in front.
 Their center lines are concatenated to generate a path.</p>
 <p>If waypoints exist in the route, it replaces the overlapped segment of the center line with them.
-The overlap interval is determined as shown in the following figure.</p>
-<p><img alt="waypoint_group_overlap_interval_determination" src="media/waypoint_group_overlap_interval_determination.drawio.svg"></p>
+The waypoints are grouped as shown in the following figure.</p>
+<p><img alt="waypoint_grouping" src="media/waypoint_grouping.drawio.svg"></p>
 <h2 id="path-cut">Path cut<a class="headerlink" href="#path-cut" title="Permanent link">#</a></h2>
 <p>If there is a self-intersection on either of the path bounds, the path is cut off a specified distance before the first intersection, as shown in the following figure (path: green, bound: blue).</p>
 <p><img alt="path_cut_self_intersection" src="media/path_cut_self_intersection.drawio.svg"></p>
@@ -5018,16 +5018,9 @@ The overlap interval is determined as shown in the following figure.</p>
 <td>≥0.0</td>
 </tr>
 <tr>
-<td>waypoint_group.separation_threshold</td>
+<td>waypoint.connection_gradient_from_centerline</td>
 <td>float</td>
-<td>Maximum distance at which consecutive waypoints are considered to belong to the same group [m]</td>
-<td>1</td>
-<td>≥0.0</td>
-</tr>
-<tr>
-<td>waypoint_group.interval_margin_ratio</td>
-<td>float</td>
-<td>Ratio for determining length of switching section from centerline to waypoints</td>
+<td>Gradient for connecting centerline and user-defined waypoints</td>
 <td>10</td>
 <td>≥0.0</td>
 </tr>
@@ -5060,14 +5053,14 @@ The overlap interval is determined as shown in the following figure.</p>
 <td>≥0.0</td>
 </tr>
 <tr>
-<td>smooth_goal_connection.search_radius_range</td>
+<td>goal_connection.connection_section_length</td>
 <td>float</td>
-<td>Search radius for smooth goal connection [m]</td>
+<td>Length of goal connection section [m]</td>
 <td>7.5</td>
 <td>≥0.0</td>
 </tr>
 <tr>
-<td>smooth_goal_connection.pre_goal_offset</td>
+<td>goal_connection.pre_goal_offset</td>
 <td>float</td>
 <td>Offset for pre-goal [m]</td>
 <td>1</td>
