@@ -150,25 +150,49 @@ public:
     void set_pointcloud(pcl::PointCloud<pcl::PointXYZ> && arg_pointcloud)
     {
       pointcloud = arg_pointcloud;
+
       filtered_pointcloud_ptr.reset();
       cluster_indices.reset();
     }
 
+    void set_pointcloud(
+      pcl::PointCloud<pcl::PointXYZ> && arg_pointcloud,
+      const std::vector<Polygon2d> & decimated_traj_polys_with_lat_margin,
+      const autoware::vehicle_info_utils::VehicleInfo & vehicle_info)
+    {
+      pointcloud = arg_pointcloud;
+      auto [filtered_ptr, cluster_idx] = filter_and_cluster_point_clouds(
+        decimated_traj_polys_with_lat_margin, autoware::vehicle_info_utils::VehicleInfo{});
+      filtered_pointcloud_ptr = filtered_ptr;
+      cluster_indices = cluster_idx;
+    }
+
     pcl::PointCloud<pcl::PointXYZ> pointcloud;
 
-    const pcl::PointCloud<pcl::PointXYZ>::Ptr get_filtered_pointcloud_ptr(
-      const autoware::motion_velocity_planner::TrajectoryPoints & trajectory_points,
-      const autoware::vehicle_info_utils::VehicleInfo & vehicle_info) const;
-    const std::vector<pcl::PointIndices> get_cluster_indices(
-      const autoware::motion_velocity_planner::TrajectoryPoints & trajectory_points,
-      const autoware::vehicle_info_utils::VehicleInfo & vehicle_info) const;
+    const pcl::PointCloud<pcl::PointXYZ>::Ptr get_filtered_pointcloud_ptr() const;
+    const std::vector<pcl::PointIndices> get_cluster_indices() const;
+
+    // const pcl::PointCloud<pcl::PointXYZ>::Ptr get_filtered_pointcloud_ptr(
+    //   const autoware::motion_velocity_planner::TrajectoryPoints & trajectory_points,
+    //   const autoware::vehicle_info_utils::VehicleInfo & vehicle_info) const;
+    // const std::vector<pcl::PointIndices> get_cluster_indices(
+    //   const autoware::motion_velocity_planner::TrajectoryPoints & trajectory_points,
+    //   const autoware::vehicle_info_utils::VehicleInfo & vehicle_info) const;
 
   private:
-    mutable std::optional<pcl::PointCloud<pcl::PointXYZ>::Ptr> filtered_pointcloud_ptr;
-    mutable std::optional<std::vector<pcl::PointIndices>> cluster_indices;
+    std::optional<pcl::PointCloud<pcl::PointXYZ>::Ptr> filtered_pointcloud_ptr;
+    std::optional<std::vector<pcl::PointIndices>> cluster_indices;
 
     PointcloudObstacleFilteringParam pointcloud_obstacle_filtering_param_;
     double mask_lat_margin_{};
+
+    // std::vector<pcl::PointIndices> create_single_cluster_indices(size_t num_points)
+    // {
+    //   pcl::PointIndices all_points_indices;
+    //   all_points_indices.indices.resize(num_points);
+    //   std::iota(all_points_indices.indices.begin(), all_points_indices.indices.end(), 0);
+    //   return std::vector<pcl::PointIndices>{std::move(all_points_indices)};
+    // }
 
     void search_pointcloud_near_trajectory(
       const std::vector<TrajectoryPoint> & trajectory,
@@ -178,7 +202,7 @@ public:
 
     std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, std::vector<pcl::PointIndices>>
     filter_and_cluster_point_clouds(
-      const autoware::motion_velocity_planner::TrajectoryPoints & trajectory_points,
+      const std::vector<Polygon2d> & trajectory_polygons,
       const autoware::vehicle_info_utils::VehicleInfo & vehicle_info) const;
   };
 
