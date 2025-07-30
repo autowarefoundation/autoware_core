@@ -314,9 +314,10 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
 
     for (auto [it, goal_arc_length] = std::make_tuple(lanelets.begin(), 0.); it != lanelets.end();
          ++it) {
+      const auto id = it->id();  // capture the necessary value outside the lambda
       if (std::any_of(
             planner_data_.goal_lanelets.begin(), planner_data_.goal_lanelets.end(),
-            [&](const auto & goal_lanelet) { return it->id() == goal_lanelet.id(); })) {
+            [&](const auto & goal_lanelet) { return id == goal_lanelet.id(); })) {
         goal_arc_length += lanelet::utils::getArcCoordinates({*it}, planner_data_.goal_pose).length;
         s_end = std::min(s_end, goal_arc_length);
         break;
