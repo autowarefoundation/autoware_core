@@ -221,6 +221,11 @@ MotionVelocityPlannerNode::process_no_ground_pointcloud(
   const bool is_pcl_time_valid = (this->get_clock()->now() - rclcpp::Time(msg->header.stamp)) <
                                  rclcpp::Duration::from_seconds(1.0);
 
+  if (msg->data.empty()) {
+    RCLCPP_WARN(get_logger(), "Empty pointcloud data received");
+    return std::nullopt;
+  }
+
   if (
     is_pcl_time_valid && tf_buffer_.canTransform("map", msg->header.frame_id, msg->header.stamp)) {
     transform = tf_buffer_.lookupTransform(
