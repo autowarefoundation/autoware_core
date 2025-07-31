@@ -177,6 +177,8 @@ TEST(PlanningFactorTest, NodeTestWithPredictedObjects)
   const auto & planning_factor = planning_factor_msg->factors.front();
   EXPECT_EQ(planning_factor.behavior, autoware_internal_planning_msgs::msg::PlanningFactor::STOP);
   EXPECT_NEAR(planning_factor.control_points.front().pose.position.x, 10.0, 3.0);
+  EXPECT_NEAR(planning_factor.control_points.front().pose.position.y, 0.0, 1.0);
+  EXPECT_NEAR(planning_factor.control_points.front().pose.position.z, 0.0, 1.0);
   EXPECT_EQ(planning_factor.safety_factors.factors.size(), 1);
 
   const auto & safety_factor = planning_factor.safety_factors.factors.front();
@@ -184,8 +186,12 @@ TEST(PlanningFactorTest, NodeTestWithPredictedObjects)
   // EXPECT_EQ(safety_factor.type, expected_object_type);
   EXPECT_FALSE(safety_factor.is_safe);
   EXPECT_EQ(safety_factor.points.size(), 1);
+  EXPECT_NEAR(safety_factor.points.front().x, 20.0, 1.0);
+  EXPECT_NEAR(safety_factor.points.front().y, 0.0, 1.0);
+  EXPECT_NEAR(safety_factor.points.front().z, 0.0, 1.0);
   EXPECT_EQ(safety_factor.object_id, objects.objects.front().object_id);
 
   rclcpp::shutdown();
 }
 }  // namespace autoware::motion_velocity_planner
+
