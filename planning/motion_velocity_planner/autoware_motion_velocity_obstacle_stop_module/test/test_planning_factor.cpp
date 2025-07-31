@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include <autoware/motion_velocity_planner/test_utils.hpp>
-#include <autoware_utils_uuid/uuid_helper.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <autoware_internal_planning_msgs/msg/planning_factor_array.hpp>
@@ -24,7 +23,6 @@
 #include <gtest/gtest.h>
 
 #include <chrono>
-#include <cmath>
 #include <memory>
 #include <string>
 #include <thread>
