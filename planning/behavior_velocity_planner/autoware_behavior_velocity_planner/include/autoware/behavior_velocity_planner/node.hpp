@@ -23,9 +23,10 @@
 #include <autoware_utils_rclcpp/polling_subscriber.hpp>
 #include <rclcpp/rclcpp.hpp>
 
-#include <autoware_internal_debug_msgs/srv/string.hpp>
 #include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
 #include <autoware_internal_planning_msgs/msg/velocity_limit.hpp>
+#include <autoware_internal_planning_msgs/srv/load_plugin.hpp>
+#include <autoware_internal_planning_msgs/srv/unload_plugin.hpp>
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
 #include <autoware_perception_msgs/msg/predicted_objects.hpp>
 #include <autoware_planning_msgs/msg/path.hpp>
@@ -45,6 +46,8 @@
 namespace autoware::behavior_velocity_planner
 {
 using autoware_internal_planning_msgs::msg::VelocityLimit;
+using autoware_internal_planning_msgs::srv::LoadPlugin;
+using autoware_internal_planning_msgs::srv::UnloadPlugin;
 using autoware_map_msgs::msg::LaneletMapBin;
 
 class BehaviorVelocityPlannerNode : public rclcpp::Node
@@ -118,14 +121,13 @@ private:
   BehaviorVelocityPlannerManager planner_manager_;
   bool is_driving_forward_{true};
 
-  rclcpp::Service<autoware_internal_debug_msgs::srv::String>::SharedPtr srv_load_plugin_;
-  rclcpp::Service<autoware_internal_debug_msgs::srv::String>::SharedPtr srv_unload_plugin_;
+  rclcpp::Service<LoadPlugin>::SharedPtr srv_load_plugin_;
+  rclcpp::Service<UnloadPlugin>::SharedPtr srv_unload_plugin_;
   void onUnloadPlugin(
-    const autoware_internal_debug_msgs::srv::String::Request::SharedPtr request,
-    const autoware_internal_debug_msgs::srv::String::Response::SharedPtr response);
+    const UnloadPlugin::Request::SharedPtr request,
+    const UnloadPlugin::Response::SharedPtr response);
   void onLoadPlugin(
-    const autoware_internal_debug_msgs::srv::String::Request::SharedPtr request,
-    const autoware_internal_debug_msgs::srv::String::Response::SharedPtr response);
+    const LoadPlugin::Request::SharedPtr request, const LoadPlugin::Response::SharedPtr response);
 
   // mutex for planner_data_
   std::mutex mutex_;
