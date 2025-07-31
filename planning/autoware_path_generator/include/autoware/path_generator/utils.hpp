@@ -157,13 +157,14 @@ PathRange<std::vector<geometry_msgs::msg::Point>> get_path_bounds(
   const lanelet::LaneletSequence & lanelet_sequence, const double s_start, const double s_end);
 
 /**
- * @brief crop line string
+ * @brief build trajectory from vector of points cropped within specified range
  * @param line_string line string
  * @param s_start longitudinal distance to crop from
  * @param s_end longitudinal distance to crop to
- * @return cropped line string
+ * @return cropped trajectory (std::nullopt if build fails)
  */
-std::vector<geometry_msgs::msg::Point> crop_line_string(
+std::optional<autoware::experimental::trajectory::Trajectory<geometry_msgs::msg::Point>>
+build_cropped_trajectory(
   const std::vector<geometry_msgs::msg::Point> & line_string, const double s_start,
   const double s_end);
 
