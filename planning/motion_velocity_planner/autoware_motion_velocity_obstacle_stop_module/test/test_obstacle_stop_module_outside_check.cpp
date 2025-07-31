@@ -13,11 +13,8 @@
 // limitations under the License.
 
 #include "../src/obstacle_stop_module.hpp"
-#include "../src/parameters.hpp"
-#include "../src/type_alias.hpp"
-#include "../src/types.hpp"
-#include "test_utils.hpp"
 #include "autoware/motion_velocity_planner_common/polygon_utils.hpp"
+#include "test_utils.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <rclcpp/node_options.hpp>
@@ -261,12 +258,3 @@ TEST_F(OutsideCutInObstacleTest, GetSpecifiedTimePoseStaticObject)
 }
 
 }  // namespace autoware::motion_velocity_planner
-
-// int main(int argc, char ** argv)
-// {
-//   testing::InitGoogleTest(&argc, argv);
-//   rclcpp::init(argc, argv);
-//   auto result = RUN_ALL_TESTS();
-//   rclcpp::shutdown();
-//   return result;
-// }
