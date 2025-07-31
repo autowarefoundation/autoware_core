@@ -141,9 +141,9 @@ TEST(PlanningFactorTest, NodeTestWithPredictedObjects)
     point.longitudinal_velocity_mps = 10.0;
     trajectory.points.push_back(point);
   }
-  test_manager->publishInput(test_target_node, input_dynamic_objects_topic, objects, 5);
-  test_manager->publishInput(test_target_node, input_odometry_topic, odometry, 5);
-  test_manager->publishInput(test_target_node, input_trajectory_topic, trajectory, 5);
+  test_manager->publishInput(test_target_node, input_dynamic_objects_topic, objects, 1);
+  test_manager->publishInput(test_target_node, input_odometry_topic, odometry, 1);
+  test_manager->publishInput(test_target_node, input_trajectory_topic, trajectory, 1);
 
   // spin once
   rclcpp::spin_some(test_target_node);
