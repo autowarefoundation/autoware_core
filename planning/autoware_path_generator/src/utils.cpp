@@ -515,22 +515,23 @@ PathRange<std::vector<geometry_msgs::msg::Point>> get_path_bounds(
       s_right_start, s_right_end)};
 }
 
-std::vector<geometry_msgs::msg::Point> crop_line_string(
+std::optional<autoware::experimental::trajectory::Trajectory<geometry_msgs::msg::Point>>
+build_cropped_trajectory(
   const std::vector<geometry_msgs::msg::Point> & line_string, const double s_start,
   const double s_end)
 {
   if (s_start < 0.) {
     RCLCPP_WARN(
       rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
-      "Start of crop range is negative, returning input as is");
-    return line_string;
+      "Start of crop range is negative");
+    return std::nullopt;
   }
 
   if (s_start > s_end) {
     RCLCPP_WARN(
       rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
-      "Start of crop range is larger than end, returning input as is");
-    return line_string;
+      "Start of crop range is larger than end");
+    return std::nullopt;
   }
 
   auto trajectory =
@@ -538,11 +539,14 @@ std::vector<geometry_msgs::msg::Point> crop_line_string(
       .set_xy_interpolator<autoware::experimental::trajectory::interpolator::Linear>()
       .build(line_string);
   if (!trajectory) {
-    return {};
+    RCLCPP_WARN(
+      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+      "Failed to build trajectory from line string");
+    return std::nullopt;
   }
 
   trajectory->crop(s_start, s_end - s_start);
-  return trajectory->restore();
+  return *trajectory;
 }
 
 PathRange<double> get_arc_length_on_bounds(
