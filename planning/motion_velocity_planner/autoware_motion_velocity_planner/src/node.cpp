@@ -223,7 +223,7 @@ MotionVelocityPlannerNode::process_no_ground_pointcloud(
 
   if (msg->data.empty()) {
     RCLCPP_DEBUG(get_logger(), "Empty pointcloud data received");
-    return std::nullopt;
+    return pcl::PointCloud<pcl::PointXYZ>();
   }
 
   if (
