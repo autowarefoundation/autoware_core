@@ -14,28 +14,33 @@
 
 #include "utils_test.hpp"
 
+#include <autoware/trajectory/interpolator/linear.hpp>
+
 #include <lanelet2_core/geometry/Lanelet.h>
 
+namespace autoware::path_generator
+{
 namespace
 {
-std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> create_path_points(
-  const std::vector<std::pair<lanelet::Ids, lanelet::BasicPoint2d>> & points)
+using Trajectory = experimental::trajectory::Trajectory<PathPointWithLaneId>;
+
+Trajectory create_path(const std::vector<std::pair<lanelet::Ids, lanelet::BasicPoint2d>> & points)
 {
-  std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> path_points;
+  std::vector<PathPointWithLaneId> path_points;
   path_points.reserve(points.size());
   for (const auto & [lane_ids, point] : points) {
-    autoware_internal_planning_msgs::msg::PathPointWithLaneId path_point;
+    PathPointWithLaneId path_point;
     path_point.point.pose.position.x = point.x();
     path_point.point.pose.position.y = point.y();
     path_point.lane_ids = lane_ids;
     path_points.push_back(path_point);
   }
-  return path_points;
+  return *Trajectory::Builder{}
+            .set_xy_interpolator<autoware::experimental::trajectory::interpolator::Linear>()
+            .build(path_points);
 }
 }  // namespace
 
-namespace autoware::path_generator
-{
 struct GetFirstIntersectionArcLengthTestParam
 {
   std::string description;
@@ -144,15 +149,16 @@ TEST_F(UtilsTest, getFirstSelfIntersectionArcLength)
   }
 
   {  // line string has overlap
-    const auto result = utils::get_first_self_intersection_arc_length(lanelet::BasicLineString2d{
-      {0.0, 0.0},
-      {1.0, 0.0},
-      {1.0, -1.0},
-      {2.0, -1.0},
-      {2.0, 1.0},
-      {1.0, 1.0},
-      {1.0, 0.0},
-      {0.0, 0.0}});
+    const auto result = utils::get_first_self_intersection_arc_length(
+      lanelet::BasicLineString2d{
+        {0.0, 0.0},
+        {1.0, 0.0},
+        {1.0, -1.0},
+        {2.0, -1.0},
+        {2.0, 1.0},
+        {1.0, 1.0},
+        {1.0, 0.0},
+        {0.0, 0.0}});
 
     ASSERT_TRUE(result);
     ASSERT_NEAR(*result, 7.0, epsilon);
@@ -161,46 +167,31 @@ TEST_F(UtilsTest, getFirstSelfIntersectionArcLength)
 
 TEST_F(UtilsTest, GetArcLengthOnPath)
 {
-  const auto epsilon = 1e-1;
+  constexpr auto epsilon = 1e-1;
+
+  const auto path =
+    create_path({{{55, 122}, {3757.5609, 73751.8479}}, {{122}, {3752.1707, 73762.1772}}});
 
   {  // lanelet sequence is empty
-    const auto result = utils::get_arc_length_on_path(
-      {},
-      create_path_points({{{55, 122}, {3757.5609, 73751.8479}}, {{122}, {3752.1707, 73762.1772}}}),
-      {});
-
-    ASSERT_NEAR(result, 0.0, epsilon);
-  }
-
-  {  // path is empty
-    const auto result = utils::get_arc_length_on_path(get_lanelets_from_ids({122}), {}, {});
+    const auto result = utils::get_arc_length_on_path({}, path, {});
 
     ASSERT_NEAR(result, 0.0, epsilon);
   }
 
   {  // normal case
-    const auto result = utils::get_arc_length_on_path(
-      get_lanelets_from_ids({122}),
-      create_path_points({{{55, 122}, {3757.5609, 73751.8479}}, {{122}, {3752.1707, 73762.1772}}}),
-      10.0);
+    const auto result = utils::get_arc_length_on_path(get_lanelets_from_ids({122}), path, 10.0);
 
     ASSERT_NEAR(result, 10.0, epsilon);
   }
 
   {  // input arc length is negative
-    const auto result = utils::get_arc_length_on_path(
-      get_lanelets_from_ids({122}),
-      create_path_points({{{55, 122}, {3757.5609, 73751.8479}}, {{122}, {3752.1707, 73762.1772}}}),
-      -10.0);
+    const auto result = utils::get_arc_length_on_path(get_lanelets_from_ids({122}), path, -10.0);
 
     ASSERT_NEAR(result, 0.0, epsilon);
   }
 
   {  // input arc length exceeds lanelet length
-    const auto result = utils::get_arc_length_on_path(
-      get_lanelets_from_ids({122}),
-      create_path_points({{{55, 122}, {3757.5609, 73751.8479}}, {{122}, {3752.1707, 73762.1772}}}),
-      100.0);
+    const auto result = utils::get_arc_length_on_path(get_lanelets_from_ids({122}), path, 100.0);
 
     ASSERT_NEAR(result, 100.0, epsilon);
   }
