@@ -105,6 +105,7 @@ private:
 
   std::optional<PathWithLaneId> generate_path(
     const lanelet::LaneletSequence & lanelet_sequence, const double s_start, const double s_end,
+    const std::optional<lanelet::ConstLanelet> & goal_lanelet_for_path,
     const Params & params) const;
 
   bool update_current_lanelet(const geometry_msgs::msg::Pose & current_pose, const Params & params);
