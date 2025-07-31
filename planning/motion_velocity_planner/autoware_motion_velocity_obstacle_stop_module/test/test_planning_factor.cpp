@@ -57,22 +57,11 @@ TEST(PlanningFactorTest, NodeTestWithPredictedObjects)
       [&planning_factor_msg](
         autoware_internal_planning_msgs::msg::PlanningFactorArray::SharedPtr msg) {
         planning_factor_msg = msg;
-        RCLCPP_INFO(
+        RCLCPP_INFO_ONCE(
           rclcpp::get_logger("test_node"), "Received PlanningFactorArray with %zu factors",
           msg->factors.size());
 
-        RCLCPP_INFO_STREAM(rclcpp::get_logger("test_node"), "Planning factors:");
-        for (const auto & factor : msg->factors) {
-          RCLCPP_INFO_STREAM(rclcpp::get_logger("test_node"), "  Module: " << factor.module);
-          RCLCPP_INFO_STREAM(
-            rclcpp::get_logger("test_node"),
-            "    Is driving forward: " << factor.is_driving_forward);
-          RCLCPP_INFO_STREAM(rclcpp::get_logger("test_node"), "    Behavior: " << factor.behavior);
-          RCLCPP_INFO_STREAM(rclcpp::get_logger("test_node"), "    Detail: " << factor.detail);
-          RCLCPP_INFO_STREAM(
-            rclcpp::get_logger("test_node"),
-            "    Safety factors: " << factor.safety_factors.factors.size());
-        }
+        RCLCPP_INFO_ONCE(rclcpp::get_logger("test_node"), "Planning factors:");
         if (msg->factors.empty()) {
           RCLCPP_WARN(rclcpp::get_logger("test_node"), "No planning factors received.");
         }
