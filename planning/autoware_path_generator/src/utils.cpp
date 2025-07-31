@@ -433,16 +433,16 @@ std::optional<double> get_first_self_intersection_arc_length(
 }
 
 double get_arc_length_on_path(
-  const lanelet::LaneletSequence & lanelet_sequence, const std::vector<PathPointWithLaneId> & path,
-  const double s_centerline)
+  const lanelet::LaneletSequence & lanelet_sequence,
+  const experimental::trajectory::Trajectory<PathPointWithLaneId> & path, const double s_centerline)
 {
   std::optional<lanelet::Id> target_lanelet_id = std::nullopt;
-  std::optional<lanelet::BasicPoint2d> point_on_centerline = std::nullopt;
+  std::optional<geometry_msgs::msg::Point> point_on_centerline = std::nullopt;
 
-  if (lanelet_sequence.empty() || path.empty()) {
+  if (lanelet_sequence.empty()) {
     RCLCPP_WARN(
       rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
-      "Input lanelet sequence or path is empty, returning 0.");
+      "Input lanelet sequence is empty, returning 0.");
     return 0.;
   }
 
@@ -462,36 +462,35 @@ double get_arc_length_on_path(
     }
 
     target_lanelet_id = it->id();
-    point_on_centerline =
+    const auto lanelet_point_on_centerline =
       lanelet::geometry::interpolatedPointAtDistance(it->centerline2d(), s_centerline - s);
+    point_on_centerline = lanelet::utils::conversion::toGeomMsgPt(
+      Eigen::Vector3d{lanelet_point_on_centerline.x(), lanelet_point_on_centerline.y(), 0.});
     break;
   }
 
   if (!target_lanelet_id || !point_on_centerline) {
-    // lanelet_sequence is too short, thus we return input arc length as is.
+    RCLCPP_WARN(
+      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+      "No lanelet found for input arc length, returning input as is");
     return s_centerline;
   }
 
-  auto s_path = 0.;
-  lanelet::BasicLineString2d target_path_segment;
-
-  for (auto it = path.begin(); it != path.end(); ++it) {
-    if (
-      std::find(it->lane_ids.begin(), it->lane_ids.end(), *target_lanelet_id) ==
-      it->lane_ids.end()) {
-      if (target_path_segment.empty() && it != std::prev(path.end())) {
-        s_path += autoware_utils::calc_distance2d(*it, *std::next(it));
-        continue;
-      }
-      break;
-    }
-    target_path_segment.push_back(
-      lanelet::utils::conversion::toLaneletPoint(it->point.pose.position).basicPoint2d());
+  const auto s_path = autoware::experimental::trajectory::closest_with_constraint(
+    path, *point_on_centerline,
+    [&](const PathPointWithLaneId & point) { return exists(point.lane_ids, *target_lanelet_id); });
+  if (s_path) {
+    return *s_path;
   }
 
-  s_path += lanelet::geometry::toArcCoordinates(target_path_segment, *point_on_centerline).length;
+  RCLCPP_WARN(
+    rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+    "Path does not contain point with target lane id, falling back to constraint-free closest "
+    "point search");
 
-  return s_path;
+  const auto s_path_free = autoware::experimental::trajectory::closest(path, *point_on_centerline);
+
+  return s_path_free;
 }
 
 PathRange<std::vector<geometry_msgs::msg::Point>> get_path_bounds(
