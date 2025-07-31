@@ -30,6 +30,20 @@ Furthermore, in the case of the following figure, the return path goes inside ev
 
 ![path_cut_start_edge_intersection](./media/path_cut_start_edge_intersection.drawio.svg)
 
+## Goal connection
+
+The path is connected to the goal smoothly in the following way:
+
+(a) The path has not reached the lane where the goal is placed, thus goal connection is not performed.
+
+(b) The path has reached the goal lane and the end is inside the connection section. However, the longitudinal position of the path end is still in front of the goal, so it does not connect the path with the goal.
+
+(c) The path has passed the goal (in terms of longitudinal position). In this case, the original path is cropped up to the connection section, and it is connected to the pre-goal and goal, sequentially. The pre-goal is inserted before the goal with the given offset, which helps align with the goal pose.
+
+(d) If the start of the path is already inside the connection section, it just connects the path start, pre-goal, and goal.
+
+![goal_connection](./media/goal_connection.drawio.svg)
+
 ## Turn signal
 
 Turn signal is determined based on the rules defined for behavior_path_planner. (See [here](https://autowarefoundation.github.io/autoware_universe/main/planning/behavior_path_planner/autoware_behavior_path_planner_common/docs/behavior_path_planner_turn_signal_design/) for details)
