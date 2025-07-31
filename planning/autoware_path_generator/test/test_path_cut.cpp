@@ -283,85 +283,75 @@ TEST_F(UtilsTest, getPathBound)
     const auto [left, right] =
       utils::get_path_bounds(get_lanelets_from_ids({4429, 4434}), 30.0, 20.0);
 
-    ASSERT_GE(left.size(), 2);
-    ASSERT_NEAR(left.front().x, -975.0, epsilon);
-    ASSERT_NEAR(left.front().y, 3.5, epsilon);
-    ASSERT_NEAR(left.back().x, -925.0, epsilon);
-    ASSERT_NEAR(left.back().y, 3.5, epsilon);
-    ASSERT_GE(right.size(), 2);
-    ASSERT_NEAR(right.front().x, -975.0, epsilon);
-    ASSERT_NEAR(right.front().y, 0.0, epsilon);
-    ASSERT_NEAR(right.back().x, -925.0, epsilon);
-    ASSERT_NEAR(right.back().y, 0.0, epsilon);
+    ASSERT_TRUE(left.empty());
+    ASSERT_TRUE(right.empty());
   }
 }
 
-TEST_F(UtilsTest, cropLineString)
+TEST_F(UtilsTest, buildCroppedTrajectory)
 {
   constexpr auto epsilon = 1e-1;
 
   {  // line string is empty
-    const auto result = utils::crop_line_string({}, {}, {});
+    const auto result = utils::build_cropped_trajectory({}, {}, {});
 
-    ASSERT_TRUE(result.empty());
+    ASSERT_FALSE(result);
   }
 
   {  // line string has only 1 point
-    const auto result = utils::crop_line_string({geometry_msgs::msg::Point{}}, {}, {});
+    const auto result = utils::build_cropped_trajectory({geometry_msgs::msg::Point{}}, {}, {});
 
-    ASSERT_TRUE(result.empty());
+    ASSERT_FALSE(result);
   }
 
   {  // normal case
-    const auto result = utils::crop_line_string(
+    const auto result = utils::build_cropped_trajectory(
       {lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{0.0, 0.0, 0.0}),
        lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{3.0, 0.0, 0.0})},
       1.0, 2.0);
 
-    ASSERT_GE(result.size(), 2);
-    ASSERT_NEAR(result.front().x, 1.0, epsilon);
-    ASSERT_NEAR(result.front().y, 0.0, epsilon);
-    ASSERT_NEAR(result.back().x, 2.0, epsilon);
-    ASSERT_NEAR(result.back().y, 0.0, epsilon);
+    ASSERT_TRUE(result);
+
+    const auto start = result->compute(0);
+    ASSERT_NEAR(start.x, 1.0, epsilon);
+    ASSERT_NEAR(start.y, 0.0, epsilon);
+    const auto end = result->compute(result->length());
+    ASSERT_NEAR(end.x, 2.0, epsilon);
+    ASSERT_NEAR(end.y, 0.0, epsilon);
   }
 
   {  // start of crop range is negative
-    const auto result = utils::crop_line_string(
+    const auto result = utils::build_cropped_trajectory(
       {lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{0.0, 0.0, 0.0}),
        lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{3.0, 0.0, 0.0})},
       -1.0, 2.0);
 
-    ASSERT_GE(result.size(), 2);
-    ASSERT_NEAR(result.front().x, 0.0, epsilon);
-    ASSERT_NEAR(result.front().y, 0.0, epsilon);
-    ASSERT_NEAR(result.back().x, 3.0, epsilon);
-    ASSERT_NEAR(result.back().y, 0.0, epsilon);
+    ASSERT_FALSE(result);
   }
 
   {  // end of crop range exceeds line string length
-    const auto result = utils::crop_line_string(
+    const auto result = utils::build_cropped_trajectory(
       {lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{0.0, 0.0, 0.0}),
        lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{3.0, 0.0, 0.0})},
       1.0, 4.0);
 
-    ASSERT_GE(result.size(), 2);
-    ASSERT_NEAR(result.front().x, 1.0, epsilon);
-    ASSERT_NEAR(result.front().y, 0.0, epsilon);
-    ASSERT_NEAR(result.back().x, 3.0, epsilon);
-    ASSERT_NEAR(result.back().y, 0.0, epsilon);
+    ASSERT_TRUE(result);
+
+    const auto start = result->compute(0);
+    ASSERT_NEAR(start.x, 1.0, epsilon);
+    ASSERT_NEAR(start.y, 0.0, epsilon);
+    const auto end = result->compute(result->length());
+    ASSERT_NEAR(end.x, 3.0, epsilon);
+    ASSERT_NEAR(end.y, 0.0, epsilon);
   }
 
   {  // start of crop range is larger than end
-    const auto result = utils::crop_line_string(
+    const auto result = utils::build_cropped_trajectory(
       {lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{0.0, 0.0, 0.0}),
        lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{3.0, 0.0, 0.0})},
       2.0, 1.0);
 
-    ASSERT_GE(result.size(), 2);
-    ASSERT_NEAR(result.front().x, 0.0, epsilon);
-    ASSERT_NEAR(result.front().y, 0.0, epsilon);
-    ASSERT_NEAR(result.back().x, 3.0, epsilon);
-    ASSERT_NEAR(result.back().y, 0.0, epsilon);
+    ASSERT_FALSE(result);
   }
 }
 
