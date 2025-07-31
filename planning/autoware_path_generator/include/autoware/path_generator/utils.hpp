@@ -189,34 +189,40 @@ PathRange<std::optional<double>> get_arc_length_on_centerline(
   const std::optional<double> & s_right_bound);
 
 /**
- * @brief Connect the path to the goal, ensuring the path is inside the lanelets.
+ * @brief Connect the path to the goal, ensuring the path is inside the lanelet sequence.
  * @param path Input path.
- * @param lanelets Lanelets.
+ * @param lanelet_sequence Lanelet sequence.
  * @param goal_pose Goal pose.
- * @param goal_lane_id Goal lane ID.
+ * @param goal_lanelet Goal lanelet.
+ * @param s_goal Longitudinal distance to the goal on the centerline of the lanelet sequence.
+ * @param planner_data Planner data.
  * @param connection_section_length Length of connection section.
  * @param pre_goal_offset Offset for pre-goal.
  * @return A path connected to the goal. (std::nullopt if no valid path found)
  */
 std::optional<experimental::trajectory::Trajectory<PathPointWithLaneId>>
-connect_path_to_goal_inside_lanelets(
+connect_path_to_goal_inside_lanelet_sequence(
   const experimental::trajectory::Trajectory<PathPointWithLaneId> & path,
-  const lanelet::ConstLanelets & lanelets, const geometry_msgs::msg::Pose & goal_pose,
-  const lanelet::Id goal_lane_id, const double connection_section_length,
-  const double pre_goal_offset);
+  const lanelet::LaneletSequence & lanelet_sequence, const geometry_msgs::msg::Pose & goal_pose,
+  const lanelet::ConstLanelet & goal_lanelet, const double s_goal, const PlannerData & planner_data,
+  const double connection_section_length, const double pre_goal_offset);
 
 /**
  * @brief Connect the path to the goal.
  * @param path Input path.
+ * @param lanelet_sequence Lanelet sequence covering the path.
  * @param goal_pose Goal pose.
- * @param goal_lane_id Goal lane ID.
+ * @param goal_lanelet Goal lanelet.
+ * @param s_goal Longitudinal distance to the goal on the centerline of the lanelet sequence.
+ * @param planner_data Planner data.
  * @param connection_section_length Length of connection section.
  * @param pre_goal_offset Offset for pre-goal.
  * @return A path connected to the goal.
  */
 experimental::trajectory::Trajectory<PathPointWithLaneId> connect_path_to_goal(
   const experimental::trajectory::Trajectory<PathPointWithLaneId> & path,
-  const geometry_msgs::msg::Pose & goal_pose, const lanelet::Id goal_lane_id,
+  const lanelet::LaneletSequence & lanelet_sequence, const geometry_msgs::msg::Pose & goal_pose,
+  const lanelet::ConstLanelet & goal_lanelet, const double s_goal, const PlannerData & planner_data,
   const double connection_section_length, const double pre_goal_offset);
 
 /**
