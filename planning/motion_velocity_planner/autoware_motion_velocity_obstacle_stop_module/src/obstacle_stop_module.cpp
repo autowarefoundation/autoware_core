@@ -928,7 +928,8 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::plan_stop(
                  : 0.0;
       };
       if (
-        (is_same_param_types && stop_obstacle.dist_to_collide_on_decimated_traj >
+        (is_same_param_types && stop_obstacle.dist_to_collide_on_decimated_traj +
+                                    stop_obstacle.braking_dist.value_or(0.0) >
                                   determined_stop_obstacle->dist_to_collide_on_decimated_traj +
                                     determined_stop_obstacle->braking_dist.value_or(0.0)) ||
         (!is_same_param_types &&
