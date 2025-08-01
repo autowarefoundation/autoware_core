@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "node.hpp"
+#include "autoware/motion_velocity_planner/node.hpp"
 
 #include <autoware/motion_utils/resample/resample.hpp>
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
@@ -220,6 +220,11 @@ MotionVelocityPlannerNode::process_no_ground_pointcloud(
   geometry_msgs::msg::TransformStamped transform;
   const bool is_pcl_time_valid = (this->get_clock()->now() - rclcpp::Time(msg->header.stamp)) <
                                  rclcpp::Duration::from_seconds(1.0);
+
+  if (msg->data.empty()) {
+    RCLCPP_DEBUG(get_logger(), "Empty pointcloud data received");
+    return pcl::PointCloud<pcl::PointXYZ>();
+  }
 
   if (
     is_pcl_time_valid && tf_buffer_.canTransform("map", msg->header.frame_id, msg->header.stamp)) {
