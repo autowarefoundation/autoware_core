@@ -82,14 +82,70 @@ struct TrajectoryPolygonCollisionCheck
   double time_to_convergence;
 };
 
-struct PointcloudObstacleFilteringParam
+struct PointcloudPreprocessParams
 {
-  double pointcloud_voxel_grid_x{};
-  double pointcloud_voxel_grid_y{};
-  double pointcloud_voxel_grid_z{};
-  double pointcloud_cluster_tolerance{};
-  size_t pointcloud_min_cluster_size{};
-  size_t pointcloud_max_cluster_size{};
+  PointcloudPreprocessParams() = default;
+  explicit PointcloudPreprocessParams(rclcpp::Node & node)
+  {
+    std::string ns = "pointcloud_preprocessing.";
+    enable_preprocessing = get_or_declare_parameter<bool>(node, ns + "enable_preprocessing");
+    {
+      std::string ns_child = ns + "crop_box_by_trajectory_polygon.";
+      crop_box_by_trajectory_polygon.enable_crop_box =
+        get_or_declare_parameter<bool>(node, ns_child + "enable_crop_box");
+      crop_box_by_trajectory_polygon.min_trajectory_length =
+        get_or_declare_parameter<double>(node, ns_child + "min_trajectory_length");
+      crop_box_by_trajectory_polygon.braking_distance_scale_factor =
+        get_or_declare_parameter<double>(node, ns_child + "braking_distance_scale_factor");
+      crop_box_by_trajectory_polygon.lateral_mask_margin =
+        get_or_declare_parameter<double>(node, ns_child + "lateral_mask_margin");
+    }
+    {
+      std::string ns_child = ns + "downsample_by_voxel_grid.";
+      downsample_by_voxel_grid.enable_downsample =
+        get_or_declare_parameter<bool>(node, ns_child + "enable_downsample");
+      downsample_by_voxel_grid.voxel_size_x =
+        get_or_declare_parameter<double>(node, ns_child + "voxel_size_x");
+      downsample_by_voxel_grid.voxel_size_y =
+        get_or_declare_parameter<double>(node, ns_child + "voxel_size_y");
+      downsample_by_voxel_grid.voxel_size_z =
+        get_or_declare_parameter<double>(node, ns_child + "voxel_size_z");
+    }
+    {
+      std::string ns_child = ns + "clustering_filtering.";
+      clustering_filtering.enable_clustering =
+        get_or_declare_parameter<bool>(node, ns_child + "enable_clustering");
+      clustering_filtering.cluster_tolerance =
+        get_or_declare_parameter<double>(node, ns_child + "cluster_tolerance");
+      clustering_filtering.min_cluster_size =
+        get_or_declare_parameter<int>(node, ns_child + "min_cluster_size");
+      clustering_filtering.max_cluster_size =
+        get_or_declare_parameter<int>(node, ns_child + "max_cluster_size");
+    }
+  }
+  bool enable_preprocessing{false};
+  struct CropBoxByTrajectoryPolygon
+  {
+    bool enable_crop_box{false};
+    double min_trajectory_length{};
+    double braking_distance_scale_factor{};
+    double lateral_mask_margin{};
+  } crop_box_by_trajectory_polygon;
+  struct DownsampleByVoxelGrid
+  {
+    bool enable_downsample{false};
+    double voxel_size_x{};
+    double voxel_size_y{};
+    double voxel_size_z{};
+  } downsample_by_voxel_grid;
+
+  struct ClusteringFiltering
+  {
+    bool enable_clustering{false};
+    double cluster_tolerance{};
+    int min_cluster_size{};
+    int max_cluster_size{};
+  } clustering_filtering;
 };
 
 struct PlannerData
@@ -139,71 +195,89 @@ public:
   {
   public:
     Pointcloud() = default;
-    explicit Pointcloud(
-      const PointcloudObstacleFilteringParam & pointcloud_obstacle_filtering_param,
-      double mask_lat_margin)
+    explicit Pointcloud(const PointcloudPreprocessParams & arg_pointcloud_preprocess_param)
 
-    : pointcloud_obstacle_filtering_param_(pointcloud_obstacle_filtering_param),
-      mask_lat_margin_(mask_lat_margin)
+    : preprocess_params_(arg_pointcloud_preprocess_param)
     {
     }
-    void set_pointcloud(pcl::PointCloud<pcl::PointXYZ> && arg_pointcloud)
+
+    // void set_pointcloud(pcl::PointCloud<pcl::PointXYZ> && arg_pointcloud)
+    // {
+    //   pointcloud = arg_pointcloud;
+    //   filtered_pointcloud_ptr.reset();
+    //   cluster_indices.reset();
+    // }
+
+    void set_pointcloud(pcl::PointCloud<pcl::PointXYZ> && arg_pointcloud, 
+                        const std::vector<TrajectoryPoint> & raw_trajectory,
+                        const autoware::vehicle_info_utils::VehicleInfo & vehicle_info,
+                        const TrajectoryPolygonCollisionCheck & collision_check,
+                        const double ego_nearest_dist_threshold,
+                        const double ego_nearest_yaw_threshold)
     {
       pointcloud = arg_pointcloud;
-
-      filtered_pointcloud_ptr.reset();
-      cluster_indices.reset();
+      const auto preprocessed_result =
+        preprocess_pointcloud(raw_trajectory, vehicle_info, collision_check,
+                              ego_nearest_dist_threshold, ego_nearest_yaw_threshold);
+      filtered_pointcloud_ptr = preprocessed_result.first;
+      cluster_indices = preprocessed_result.second;
     }
 
-    void set_pointcloud(
-      pcl::PointCloud<pcl::PointXYZ> && arg_pointcloud,
-      const std::vector<Polygon2d> & decimated_traj_polys_with_lat_margin,
-      const autoware::vehicle_info_utils::VehicleInfo & vehicle_info)
-    {
-      pointcloud = arg_pointcloud;
-      auto [filtered_ptr, cluster_idx] = filter_and_cluster_point_clouds(
-        decimated_traj_polys_with_lat_margin, autoware::vehicle_info_utils::VehicleInfo{});
-      filtered_pointcloud_ptr = filtered_ptr;
-      cluster_indices = cluster_idx;
-    }
+    // void set_pointcloud(
+    //   pcl::PointCloud<pcl::PointXYZ> && arg_pointcloud,
+    //   const std::vector<Polygon2d> & decimated_traj_polys_with_lat_margin,
+    //   const autoware::vehicle_info_utils::VehicleInfo & vehicle_info)
+    // {
+    //   pointcloud = arg_pointcloud;
+    //   auto [filtered_ptr, cluster_idx] = filter_and_cluster_point_clouds(
+    //     decimated_traj_polys_with_lat_margin, autoware::vehicle_info_utils::VehicleInfo{});
+    //   filtered_pointcloud_ptr = filtered_ptr;
+    //   cluster_indices = cluster_idx;
+    // }
 
     pcl::PointCloud<pcl::PointXYZ> pointcloud;
 
-    const pcl::PointCloud<pcl::PointXYZ>::Ptr get_filtered_pointcloud_ptr() const;
-    const std::vector<pcl::PointIndices> get_cluster_indices() const;
-
-    // const pcl::PointCloud<pcl::PointXYZ>::Ptr get_filtered_pointcloud_ptr(
-    //   const autoware::motion_velocity_planner::TrajectoryPoints & trajectory_points,
-    //   const autoware::vehicle_info_utils::VehicleInfo & vehicle_info) const;
-    // const std::vector<pcl::PointIndices> get_cluster_indices(
-    //   const autoware::motion_velocity_planner::TrajectoryPoints & trajectory_points,
-    //   const autoware::vehicle_info_utils::VehicleInfo & vehicle_info) const;
+    const pcl::PointCloud<pcl::PointXYZ>::Ptr get_filtered_pointcloud_ptr() const
+    {
+      if (!filtered_pointcloud_ptr) {
+        // あとで考える
+        throw(
+          std::runtime_error("Filtered pointcloud pointer is not set. Please call set_pointcloud() "
+                             "first."));
+      }
+      return filtered_pointcloud_ptr.value();
+    };
+    const std::vector<pcl::PointIndices> get_cluster_indices() const
+    {
+      if (!cluster_indices) {
+        // あとで考える
+        throw(
+          std::runtime_error("Cluster indices are not set. Please call set_pointcloud() first."));
+      }
+      return cluster_indices.value();
+    };
 
   private:
     std::optional<pcl::PointCloud<pcl::PointXYZ>::Ptr> filtered_pointcloud_ptr;
     std::optional<std::vector<pcl::PointIndices>> cluster_indices;
 
-    PointcloudObstacleFilteringParam pointcloud_obstacle_filtering_param_;
-    double mask_lat_margin_{};
+    PointcloudPreprocessParams preprocess_params_;
 
-    // std::vector<pcl::PointIndices> create_single_cluster_indices(size_t num_points)
-    // {
-    //   pcl::PointIndices all_points_indices;
-    //   all_points_indices.indices.resize(num_points);
-    //   std::iota(all_points_indices.indices.begin(), all_points_indices.indices.end(), 0);
-    //   return std::vector<pcl::PointIndices>{std::move(all_points_indices)};
-    // }
+    // void search_pointcloud_near_trajectory(
+    //   const std::vector<TrajectoryPoint> & trajectory,
+    //   const autoware::vehicle_info_utils::VehicleInfo & vehicle_info,
+    //   const pcl::PointCloud<pcl::PointXYZ>::Ptr & input_points_ptr,
+    //   pcl::PointCloud<pcl::PointXYZ>::Ptr & output_points_ptr) const;
 
-    void search_pointcloud_near_trajectory(
-      const std::vector<TrajectoryPoint> & trajectory,
+    // std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, std::vector<pcl::PointIndices>>
+    // filter_and_cluster_point_clouds(
+    //   const std::vector<Polygon2d> & trajectory_polygons,
+    //   const autoware::vehicle_info_utils::VehicleInfo & vehicle_info) const;
+    std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, std::vector<pcl::PointIndices>> preprocess_pointcloud(
+      const std::vector<TrajectoryPoint> & raw_trajectory,
       const autoware::vehicle_info_utils::VehicleInfo & vehicle_info,
-      const pcl::PointCloud<pcl::PointXYZ>::Ptr & input_points_ptr,
-      pcl::PointCloud<pcl::PointXYZ>::Ptr & output_points_ptr) const;
-
-    std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, std::vector<pcl::PointIndices>>
-    filter_and_cluster_point_clouds(
-      const std::vector<Polygon2d> & trajectory_polygons,
-      const autoware::vehicle_info_utils::VehicleInfo & vehicle_info) const;
+      const TrajectoryPolygonCollisionCheck & collision_check,
+      const double ego_nearest_dist_threshold, const double ego_nearest_yaw_threshold);
   };
 
   void process_predicted_objects(
@@ -222,10 +296,8 @@ public:
   double ego_nearest_dist_threshold{};
   double ego_nearest_yaw_threshold{};
 
-  PointcloudObstacleFilteringParam pointcloud_obstacle_filtering_param{};
+  // both of motion_velocity_planner own and motion_velocity_planner_modules use this prameter
   TrajectoryPolygonCollisionCheck trajectory_polygon_collision_check{};
-
-  double mask_lat_margin{};
 
   // other internal data
   // traffic_light_id_map_raw is the raw observation, while traffic_light_id_map_keep_last keeps the

@@ -22,3 +22,24 @@
       pointcloud_max_cluster_size: 100000
 
       mask_lat_margin: 1.1
+
+    pointcloud_preprocessing:
+      enable_preprocessing: true  # [-] if true, preprocess pointcloud before planning
+      crop_box_by_trajectory_polygon:
+        enable_crop_box: true  # [-] if true, crop pointcloud using trajectory polygon
+        min_trajectory_length: 10.0  # [m] minimum trajectory length to crop pointcloud
+        braking_distance_scale_factor: 1.5  # scale factor for brake distance to crop pointcloud
+        mask_lat_margin: 2.0  # lateral margin to mask pointcloud
+      downsample_by_voxel_grid:
+        enable_downsample: true  # [-] if true, downsample
+        voxel_size_x: 0.1  # [m]
+        voxel_size_y: 0.1  # [m]
+        voxel_size_z: 0.5  # [m]
+      clustering_filtering:
+        enable_clustering: true  # [-] if true, cluster pointcloud
+        cluster_tolerance: 1.0  # [m] clustering tolerance
+        min_cluster_size: 1  # minimum cluster size
+        max_cluster_size: 100000  # maximum cluster size
+      
+
+      
