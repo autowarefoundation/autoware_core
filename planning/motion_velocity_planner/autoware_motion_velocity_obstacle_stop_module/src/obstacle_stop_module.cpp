@@ -173,7 +173,8 @@ double calc_braking_dist(
     return rss_params.vehicle_objects_deceleration;
   }();
   const double error_considered_vel = std::max(lon_vel + rss_params.velocity_offset, 0.0);
-  return error_considered_vel * error_considered_vel * 0.5 / -braking_acc;
+  const double abs_braking_dist = error_considered_vel * error_considered_vel * 0.5 / -braking_acc;
+  return abs_braking_dist * (0 < lon_vel ? 1.0 : -1.0);
 }
 
 PolygonParam create_polygon_param(
@@ -928,8 +929,7 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::plan_stop(
                  : 0.0;
       };
       if (
-        (is_same_param_types && stop_obstacle.dist_to_collide_on_decimated_traj +
-                                    stop_obstacle.dist_to_collide_on_decimated_traj >
+        (is_same_param_types && stop_obstacle.dist_to_collide_on_decimated_traj >
                                   determined_stop_obstacle->dist_to_collide_on_decimated_traj +
                                     determined_stop_obstacle->braking_dist.value_or(0.0)) ||
         (!is_same_param_types &&
@@ -1152,8 +1152,13 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::calc_stop_point(
   auto output_traj_points = traj_points;
 
   // insert stop point
-  const auto zero_vel_idx =
-    autoware::motion_utils::insertStopPoint(0, *determined_zero_vel_dist, output_traj_points);
+  const auto zero_vel_idx = [&]() -> std::optional<size_t> {
+    if (determined_zero_vel_dist <= 0.0) {
+      return 0;
+    }
+    return autoware::motion_utils::insertStopPoint(
+      0, *determined_zero_vel_dist, output_traj_points);
+  }();
   if (!zero_vel_idx) {
     return std::nullopt;
   }
