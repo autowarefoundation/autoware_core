@@ -168,7 +168,8 @@ double calc_time_to_reach_collision_point(
          std::max(min_velocity_to_reach_collision_point, std::abs(odometry.twist.twist.linear.x));
 }
 
-double calc_braking_dist(const uint8_t obj_label, const double lon_vel, const RSSParam & rss_params)
+double calc_braking_dist_along_trajectory(
+  const uint8_t obj_label, const double lon_vel, const RSSParam & rss_params)
 {
   const double braking_acc = [&]() {
     switch (obj_label) {
@@ -691,7 +692,7 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
   }
 
   if (stop_planning_param_.rss_params.use_rss_stop) {
-    const auto braking_dist = calc_braking_dist(
+    const auto braking_dist = calc_braking_dist_along_trajectory(
       obj_label, object->get_lon_vel_relative_to_traj(traj_points),
       stop_planning_param_.rss_params);
     return StopObstacle{
@@ -855,7 +856,7 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::plan_stop(
         (stop_obstacle.classification.label == determined_stop_obstacle->classification.label);
       if (
         (is_same_param_types && stop_obstacle.dist_to_collide_on_decimated_traj +
-                                    stop_obstacle.dist_to_collide_on_decimated_traj >
+                                    stop_obstacle.braking_dist.value_or(0.0) >
                                   determined_stop_obstacle->dist_to_collide_on_decimated_traj +
                                     determined_stop_obstacle->braking_dist.value_or(0.0)) ||
         (!is_same_param_types && *candidate_zero_vel_dist > determined_zero_vel_dist)) {
@@ -1069,8 +1070,13 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::calc_stop_point(
   auto output_traj_points = traj_points;
 
   // insert stop point
-  const auto zero_vel_idx =
-    autoware::motion_utils::insertStopPoint(0, *determined_zero_vel_dist, output_traj_points);
+  const auto zero_vel_idx = [&]() -> std::optional<size_t> {
+    if (determined_zero_vel_dist <= 0.0) {
+      return 0;
+    }
+    return autoware::motion_utils::insertStopPoint(
+      0, *determined_zero_vel_dist, output_traj_points);
+  }();
   if (!zero_vel_idx) {
     return std::nullopt;
   }
