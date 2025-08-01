@@ -107,6 +107,19 @@ map_origin:
 scale_factor: 0.9996
 ```
 
+### Vertical Datum
+
+Autoware uses the WGS84 ellipsoid as its default height reference.  
+If you need orthometric heights based on the EGM2008 geoid, install the required dataset for GeographicLib as shown below:
+
+```bash
+# Install the GeographicLib helper tools
+sudo apt update && sudo apt install geographiclib-tools
+
+# Download and register the 1-arc-minute EGM2008 geoid grid
+sudo geographiclib-get-geoids egm2008-1
+```
+
 ## Published Topics
 
 - `~/map_projector_info` (autoware_map_msgs/MapProjectorInfo) : This topic shows the definition of map projector information

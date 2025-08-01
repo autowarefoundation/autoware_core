@@ -27,16 +27,32 @@ namespace autoware::geography_utils
 
 double convert_wgs84_to_egm2008(const double height, const double latitude, const double longitude)
 {
-  GeographicLib::Geoid egm2008("egm2008-1");
-  // cSpell: ignore ELLIPSOIDTOGEOID
-  return egm2008.ConvertHeight(latitude, longitude, height, GeographicLib::Geoid::ELLIPSOIDTOGEOID);
+  try {
+    GeographicLib::Geoid egm2008("egm2008-1");
+    // cSpell: ignore ELLIPSOIDTOGEOID
+    return egm2008.ConvertHeight(
+      latitude, longitude, height, GeographicLib::Geoid::ELLIPSOIDTOGEOID);
+  } catch (const std::exception & e) {
+    throw std::runtime_error(
+      std::string{"Failed to convert WGS84 to EGM2008. Make sure to install geoid data with `sudo "
+                  "geographiclib-get-geoids egm2008-1` "}
+        .append(e.what()));
+  }
 }
 
 double convert_egm2008_to_wgs84(const double height, const double latitude, const double longitude)
 {
-  GeographicLib::Geoid egm2008("egm2008-1");
-  // cSpell: ignore GEOIDTOELLIPSOID
-  return egm2008.ConvertHeight(latitude, longitude, height, GeographicLib::Geoid::GEOIDTOELLIPSOID);
+  try {
+    GeographicLib::Geoid egm2008("egm2008-1");
+    // cSpell: ignore GEOIDTOELLIPSOID
+    return egm2008.ConvertHeight(
+      latitude, longitude, height, GeographicLib::Geoid::GEOIDTOELLIPSOID);
+  } catch (const std::exception & e) {
+    throw std::runtime_error(
+      std::string{"Failed to convert EGM2008 to WGS84. Make sure to install geoid data with `sudo "
+                  "geographiclib-get-geoids egm2008-1` "}
+        .append(e.what()));
+  }
 }
 
 double convert_height(
