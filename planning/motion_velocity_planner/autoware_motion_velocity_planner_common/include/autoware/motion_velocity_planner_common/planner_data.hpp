@@ -88,17 +88,20 @@ struct PointcloudPreprocessParams
   explicit PointcloudPreprocessParams(rclcpp::Node & node)
   {
     std::string ns = "pointcloud_preprocessing.";
-    enable_preprocessing = get_or_declare_parameter<bool>(node, ns + "enable_preprocessing");
     {
-      std::string ns_child = ns + "crop_box_by_trajectory_polygon.";
-      crop_box_by_trajectory_polygon.enable_crop_box =
-        get_or_declare_parameter<bool>(node, ns_child + "enable_crop_box");
-      crop_box_by_trajectory_polygon.min_trajectory_length =
+      std::string ns_child = ns + "filter_by_trajectory_polygon.";
+      filter_by_trajectory_polygon.enable_mothilic_crop_box =
+        get_or_declare_parameter<bool>(node, ns_child + "enable_mothilic_crop_box");
+      filter_by_trajectory_polygon.enable_multi_polygon_filtering =
+        get_or_declare_parameter<bool>(node, ns_child + "enable_multi_polygon_filtering");
+      filter_by_trajectory_polygon.min_trajectory_length =
         get_or_declare_parameter<double>(node, ns_child + "min_trajectory_length");
-      crop_box_by_trajectory_polygon.braking_distance_scale_factor =
+      filter_by_trajectory_polygon.braking_distance_scale_factor =
         get_or_declare_parameter<double>(node, ns_child + "braking_distance_scale_factor");
-      crop_box_by_trajectory_polygon.lateral_mask_margin =
+      filter_by_trajectory_polygon.lateral_mask_margin =
         get_or_declare_parameter<double>(node, ns_child + "lateral_mask_margin");
+      filter_by_trajectory_polygon.height_margin =
+        get_or_declare_parameter<double>(node, ns_child + "height_margin");
     }
     {
       std::string ns_child = ns + "downsample_by_voxel_grid.";
@@ -123,14 +126,15 @@ struct PointcloudPreprocessParams
         get_or_declare_parameter<int>(node, ns_child + "max_cluster_size");
     }
   }
-  bool enable_preprocessing{false};
-  struct CropBoxByTrajectoryPolygon
+  struct FilterByTrajectoryPolygon
   {
-    bool enable_crop_box{false};
+    bool enable_mothilic_crop_box{false};  // [-] if true, crop pointcloud using trajectory polygon
+    bool enable_multi_polygon_filtering{false};  // [-] if true, filter point
     double min_trajectory_length{};
     double braking_distance_scale_factor{};
     double lateral_mask_margin{};
-  } crop_box_by_trajectory_polygon;
+    double height_margin{};
+  } filter_by_trajectory_polygon;
   struct DownsampleByVoxelGrid
   {
     bool enable_downsample{false};
@@ -201,39 +205,21 @@ public:
     {
     }
 
-    // void set_pointcloud(pcl::PointCloud<pcl::PointXYZ> && arg_pointcloud)
-    // {
-    //   pointcloud = arg_pointcloud;
-    //   filtered_pointcloud_ptr.reset();
-    //   cluster_indices.reset();
-    // }
-
-    void set_pointcloud(pcl::PointCloud<pcl::PointXYZ> && arg_pointcloud, 
-                        const std::vector<TrajectoryPoint> & raw_trajectory,
-                        const autoware::vehicle_info_utils::VehicleInfo & vehicle_info,
-                        const TrajectoryPolygonCollisionCheck & collision_check,
-                        const double ego_nearest_dist_threshold,
-                        const double ego_nearest_yaw_threshold)
+    void set_pointcloud(
+      pcl::PointCloud<pcl::PointXYZ> && arg_pointcloud,
+      const std::vector<TrajectoryPoint> & raw_trajectory, nav_msgs::msg::Odometry current_odometry,
+      double min_deceleration_distance,
+      const autoware::vehicle_info_utils::VehicleInfo & vehicle_info,
+      const TrajectoryPolygonCollisionCheck & trajectory_polygon_collision_check,
+      const double ego_nearest_dist_threshold, const double ego_nearest_yaw_threshold)
     {
       pointcloud = arg_pointcloud;
-      const auto preprocessed_result =
-        preprocess_pointcloud(raw_trajectory, vehicle_info, collision_check,
-                              ego_nearest_dist_threshold, ego_nearest_yaw_threshold);
+      const auto preprocessed_result = preprocess_pointcloud(
+        raw_trajectory, current_odometry, min_deceleration_distance, vehicle_info, trajectory_polygon_collision_check,
+        ego_nearest_dist_threshold, ego_nearest_yaw_threshold);
       filtered_pointcloud_ptr = preprocessed_result.first;
       cluster_indices = preprocessed_result.second;
     }
-
-    // void set_pointcloud(
-    //   pcl::PointCloud<pcl::PointXYZ> && arg_pointcloud,
-    //   const std::vector<Polygon2d> & decimated_traj_polys_with_lat_margin,
-    //   const autoware::vehicle_info_utils::VehicleInfo & vehicle_info)
-    // {
-    //   pointcloud = arg_pointcloud;
-    //   auto [filtered_ptr, cluster_idx] = filter_and_cluster_point_clouds(
-    //     decimated_traj_polys_with_lat_margin, autoware::vehicle_info_utils::VehicleInfo{});
-    //   filtered_pointcloud_ptr = filtered_ptr;
-    //   cluster_indices = cluster_idx;
-    // }
 
     pcl::PointCloud<pcl::PointXYZ> pointcloud;
 
@@ -263,18 +249,11 @@ public:
 
     PointcloudPreprocessParams preprocess_params_;
 
-    // void search_pointcloud_near_trajectory(
-    //   const std::vector<TrajectoryPoint> & trajectory,
-    //   const autoware::vehicle_info_utils::VehicleInfo & vehicle_info,
-    //   const pcl::PointCloud<pcl::PointXYZ>::Ptr & input_points_ptr,
-    //   pcl::PointCloud<pcl::PointXYZ>::Ptr & output_points_ptr) const;
-
-    // std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, std::vector<pcl::PointIndices>>
-    // filter_and_cluster_point_clouds(
-    //   const std::vector<Polygon2d> & trajectory_polygons,
-    //   const autoware::vehicle_info_utils::VehicleInfo & vehicle_info) const;
-    std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, std::vector<pcl::PointIndices>> preprocess_pointcloud(
+    std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, std::vector<pcl::PointIndices>>
+    preprocess_pointcloud(
       const std::vector<TrajectoryPoint> & raw_trajectory,
+      const nav_msgs::msg::Odometry & current_odometry,
+      double min_deceleration_distance,
       const autoware::vehicle_info_utils::VehicleInfo & vehicle_info,
       const TrajectoryPolygonCollisionCheck & collision_check,
       const double ego_nearest_dist_threshold, const double ego_nearest_yaw_threshold);

@@ -339,10 +339,8 @@ std::vector<geometry_msgs::msg::Point> ObstacleStopModule::convert_point_cloud_t
   const auto extended_traj_points_from_ego = utils::get_extended_trajectory_points(
     traj_points, tp.goal_extended_trajectory_length, tp.decimate_trajectory_step_length);
 
-  const PointCloud::Ptr filtered_points_ptr = pointcloud.get_filtered_pointcloud_ptr(
-    extended_traj_points_from_ego, vehicle_info);  // extend trajectory points here
-  const std::vector<pcl::PointIndices> clusters =
-    pointcloud.get_cluster_indices(extended_traj_points_from_ego, vehicle_info);
+  const PointCloud::Ptr filtered_points_ptr = pointcloud.get_filtered_pointcloud_ptr();
+  const std::vector<pcl::PointIndices> clusters = pointcloud.get_cluster_indices();
 
   // 2. convert clusters to obstacles
   for (const auto & cluster_indices : clusters) {

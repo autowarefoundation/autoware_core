@@ -14,10 +14,13 @@
 
 #include "autoware/motion_velocity_planner_common/planner_data.hpp"
 
+#include "autoware/motion_velocity_planner_common/polygon_utils.hpp"
+#include "autoware/motion_velocity_planner_common/utils.hpp"
 #include "autoware/object_recognition_utils/predicted_path_utils.hpp"
 #include "autoware_lanelet2_extension/utility/query.hpp"
 
 #include <autoware/motion_utils/trajectory/interpolation.hpp>
+#include <autoware/motion_utils/trajectory/trajectory.hpp>
 #include <autoware_utils_geometry/boost_polygon_utils.hpp>
 #include <autoware_utils_math/normalization.hpp>
 
@@ -25,6 +28,8 @@
 
 #include <lanelet2_core/geometry/BoundingBox.h>
 #include <lanelet2_core/geometry/LineString.h>
+#include <pcl/filters/crop_box.h>
+#include <pcl/filters/passthrough.h>
 
 #include <algorithm>
 #include <limits>
@@ -111,7 +116,7 @@ std::optional<double> PlannerData::calculate_min_deceleration_distance(
   const double target_velocity) const
 {
   return motion_utils::calcDecelDistWithJerkAndAccConstraints(
-    current_odometry.twist.twist.linear.x, target_velocity,
+    std::abs(current_odometry.twist.twist.linear.x), target_velocity,
     current_acceleration.accel.accel.linear.x, velocity_smoother_->getMinDecel(),
     std::abs(velocity_smoother_->getMinJerk()), velocity_smoother_->getMinJerk());
 }
@@ -276,201 +281,212 @@ std::vector<StopPoint> PlannerData::calculate_map_stop_points(
   return stop_points;
 }
 
-// const pcl::PointCloud<pcl::PointXYZ>::Ptr PlannerData::Pointcloud::get_filtered_pointcloud_ptr(
-//   const autoware::motion_velocity_planner::TrajectoryPoints & trajectory_points,
-//   const autoware::vehicle_info_utils::VehicleInfo & vehicle_info) const
-// {
-//   if (!filtered_pointcloud_ptr) {
-//     auto pair = filter_and_cluster_point_clouds(trajectory_points, vehicle_info);
-//     filtered_pointcloud_ptr = pair.first;
-//     cluster_indices = pair.second;
-//   }
-//   return *filtered_pointcloud_ptr;
-// }
+pcl::PointCloud<pcl::PointXYZ>::Ptr crop_by_monothilic_trajectory_polygon_box(
+  const pcl::PointCloud<pcl::PointXYZ>::Ptr & input_pointcloud_ptr,
+  const PointcloudPreprocessParams::FilterByTrajectoryPolygon & filter_by_trajectory_param,
+  const std::vector<autoware_utils_geometry::Polygon2d> & traj_polygons,
+  const std::vector<TrajectoryPoint> & decimated_trajectory,
+  const autoware::vehicle_info_utils::VehicleInfo & vehicle_info)
+{
+  // make xy min, max
+  double x_min = std::numeric_limits<double>::max();
+  double x_max = std::numeric_limits<double>::lowest();
+  double y_min = std::numeric_limits<double>::max();
+  double y_max = std::numeric_limits<double>::lowest();
+  for (const auto & poly : traj_polygons) {
+    for (const auto & point : poly.outer()) {
+      x_min = std::min(x_min, point[0]);
+      x_max = std::max(x_max, point[0]);
+      y_min = std::min(y_min, point[1]);
+      y_max = std::max(y_max, point[1]);
+    }
+  }
 
-// const std::vector<pcl::PointIndices> PlannerData::Pointcloud::get_cluster_indices(
-//   const autoware::motion_velocity_planner::TrajectoryPoints & trajectory_points,
-//   const autoware::vehicle_info_utils::VehicleInfo & vehicle_info) const
-// {
-//   if (!cluster_indices) {
-//     auto pair = filter_and_cluster_point_clouds(trajectory_points, vehicle_info);
-//     filtered_pointcloud_ptr = pair.first;
-//     cluster_indices = pair.second;
-//   }
-//   return *cluster_indices;
-// }
+  auto lowest_traj_height = std::numeric_limits<double>::max();
+  auto highest_traj_height = std::numeric_limits<double>::lowest();
+  for (const auto & trajectory_point : decimated_trajectory) {
+    lowest_traj_height = std::min(lowest_traj_height, trajectory_point.pose.position.z);
+    highest_traj_height = std::max(highest_traj_height, trajectory_point.pose.position.z);
+  }
+  pcl::CropBox<pcl::PointXYZ> crop_filter;
+  crop_filter.setMin(Eigen::Vector4f(
+    x_min, y_min, lowest_traj_height - filter_by_trajectory_param.height_margin, 1.0f));
+  crop_filter.setMax(Eigen::Vector4f(
+    x_max, y_max,
+    highest_traj_height + vehicle_info.vehicle_height_m + filter_by_trajectory_param.height_margin,
+    1.0f));
 
-// void PlannerData::Pointcloud::search_pointcloud_near_trajectory(
-//   const std::vector<TrajectoryPoint> & trajectory,
-//   const autoware::vehicle_info_utils::VehicleInfo & vehicle_info,
-//   const pcl::PointCloud<pcl::PointXYZ>::Ptr & input_points_ptr,
-//   pcl::PointCloud<pcl::PointXYZ>::Ptr & output_points_ptr) const
-// {
-//   const double front_length = vehicle_info.max_longitudinal_offset_m;
-//   const double rear_length = vehicle_info.rear_overhang_m;
-//   const double vehicle_width = vehicle_info.vehicle_width_m;
+  crop_filter.setInputCloud(input_pointcloud_ptr);
+  auto ret_pointcloud_ptr = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+  crop_filter.filter(*ret_pointcloud_ptr);
 
-//   output_points_ptr->header = input_points_ptr->header;
+  return ret_pointcloud_ptr;
+  // TODO(yuki takagi): monothilic crop_box filter should be cared on the ego_coordinate system.
+}  // namespace autoware::motion_velocity_planner
 
-//   // Build footprints from trajectory
-//   std::vector<Polygon2d> footprints;
-//   footprints.reserve(trajectory.size());
+pcl::PointCloud<pcl::PointXYZ>::Ptr filter_by_multi_trajectory_polygon(
+  const pcl::PointCloud<pcl::PointXYZ>::Ptr & input_pointcloud_ptr,
+  const std::vector<autoware_utils_geometry::Polygon2d> & traj_polygons)
+{
+  auto ret_pointcloud_ptr = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+  ret_pointcloud_ptr->header = input_pointcloud_ptr->header;
+  // Define types for Boost.Geometry
+  namespace bg = boost::geometry;
+  namespace bgi = boost::geometry::index;
+  using BoostPoint2D = bg::model::point<double, 2, bg::cs::cartesian>;
+  using BoostValue = std::pair<BoostPoint2D, size_t>;  // point + index
 
-//   std::transform(
-//     trajectory.begin(), trajectory.end(), std::back_inserter(footprints),
-//     [&](const TrajectoryPoint & trajectory_point) {
-//       return autoware_utils_geometry::to_footprint(
-//         trajectory_point.pose, front_length, rear_length, vehicle_width + mask_lat_margin_
-//         * 2.0);
-//     });
+  // Build R-tree from input points
+  std::vector<BoostValue> rtree_data;
+  rtree_data.reserve(input_pointcloud_ptr->points.size());
 
-//   // Define types for Boost.Geometry
-//   namespace bg = boost::geometry;
-//   namespace bgi = boost::geometry::index;
-//   using BoostPoint2D = bg::model::point<double, 2, bg::cs::cartesian>;
-//   using BoostValue = std::pair<BoostPoint2D, size_t>;  // point + index
+  {
+    std::transform(
+      input_pointcloud_ptr->points.begin(), input_pointcloud_ptr->points.end(),
+      std::back_inserter(rtree_data), [i = 0](const pcl::PointXYZ & pt) mutable {
+        return std::make_pair(BoostPoint2D(pt.x, pt.y), i++);
+      });
+  }
 
-//   // Build R-tree from input points
-//   std::vector<BoostValue> rtree_data;
-//   rtree_data.reserve(input_points_ptr->points.size());
+  bgi::rtree<BoostValue, bgi::quadratic<16>> rtree(rtree_data.begin(), rtree_data.end());
 
-//   {
-//     std::transform(
-//       input_points_ptr->points.begin(), input_points_ptr->points.end(),
-//       std::back_inserter(rtree_data), [i = 0](const pcl::PointXYZ & pt) mutable {
-//         return std::make_pair(BoostPoint2D(pt.x, pt.y), i++);
-//       });
-//   }
+  std::unordered_set<size_t> selected_indices;
 
-//   bgi::rtree<BoostValue, bgi::quadratic<16>> rtree(rtree_data.begin(), rtree_data.end());
+  std::for_each(
+    traj_polygons.begin(), traj_polygons.end(), [&](const Polygon2d & one_step_polygon) {
+      bg::model::box<BoostPoint2D> bbox;
+      bg::envelope(one_step_polygon, bbox);
 
-//   std::unordered_set<size_t> selected_indices;
+      std::vector<BoostValue> result_s;
+      rtree.query(bgi::intersects(bbox), std::back_inserter(result_s));
 
-//   std::for_each(footprints.begin(), footprints.end(), [&](const Polygon2d & footprint) {
-//     bg::model::box<BoostPoint2D> bbox;
-//     bg::envelope(footprint, bbox);
+      for (const auto & val : result_s) {
+        const BoostPoint2D & pt = val.first;
+        if (bg::within(pt, one_step_polygon)) {
+          selected_indices.insert(val.second);
+        }
+      }
+    });
 
-//     std::vector<BoostValue> result_s;
-//     rtree.query(bgi::intersects(bbox), std::back_inserter(result_s));
+  ret_pointcloud_ptr->points.reserve(selected_indices.size());
+  std::transform(
+    selected_indices.begin(), selected_indices.end(),
+    std::back_inserter(ret_pointcloud_ptr->points),
+    [&](const size_t idx) { return input_pointcloud_ptr->points[idx]; });
+  return ret_pointcloud_ptr;
+}
 
-//     for (const auto & val : result_s) {
-//       const BoostPoint2D & pt = val.first;
-//       if (bg::within(pt, footprint)) {
-//         selected_indices.insert(val.second);
-//       }
-//     }
-//   });
+pcl::PointCloud<pcl::PointXYZ>::Ptr downsample_by_voxel_grid(
+  const pcl::PointCloud<pcl::PointXYZ>::Ptr & input_pointcloud_ptr,
+  const PointcloudPreprocessParams::DownsampleByVoxelGrid & downsample_params)
+{
+  pcl::VoxelGrid<pcl::PointXYZ> filter;
+  filter.setLeafSize(
+    downsample_params.voxel_size_x, downsample_params.voxel_size_y, downsample_params.voxel_size_z);
 
-//   output_points_ptr->points.reserve(selected_indices.size());
-//   std::transform(
-//     selected_indices.begin(), selected_indices.end(),
-//     std::back_inserter(output_points_ptr->points),
-//     [&](const size_t idx) { return input_points_ptr->points[idx]; });
-// }
+  filter.setInputCloud(input_pointcloud_ptr);
+  auto ret_pointcloud_ptr = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+  filter.filter(*ret_pointcloud_ptr);
 
-// std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, std::vector<pcl::PointIndices>>
-// PlannerData::Pointcloud::filter_and_cluster_point_clouds(
-//   const autoware::motion_velocity_planner::TrajectoryPoints & trajectory_points,
-//   const autoware::vehicle_info_utils::VehicleInfo & vehicle_info) const
-// {
-//   if (pointcloud.empty()) {
-//     return {};
-//   }
+  return ret_pointcloud_ptr;
+}  // namespace autoware::motion_velocity_planner
 
-//   // 1. transform pointcloud
-//   pcl::PointCloud<pcl::PointXYZ>::Ptr pointcloud_ptr =
-//     std::make_shared<pcl::PointCloud<pcl::PointXYZ>>(pointcloud);
+std::vector<pcl::PointIndices> make_cluster_indices(
+  const pcl::PointCloud<pcl::PointXYZ>::Ptr & input_pointcloud_ptr,
+  const PointcloudPreprocessParams::ClusteringFiltering & clustering_params)
+{
+  std::vector<pcl::PointIndices> ret_clusters;
 
-//   // 2. filter-out points far-away from trajectory
-//   pcl::PointCloud<pcl::PointXYZ>::Ptr far_away_pointcloud_ptr(new
-//   pcl::PointCloud<pcl::PointXYZ>); search_pointcloud_near_trajectory(
-//     trajectory_points, vehicle_info, pointcloud_ptr, far_away_pointcloud_ptr);
+  pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
+  tree->setInputCloud(input_pointcloud_ptr);
+  pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
+  ec.setClusterTolerance(clustering_params.cluster_tolerance);
+  ec.setMinClusterSize(clustering_params.min_cluster_size);
+  ec.setMaxClusterSize(clustering_params.max_cluster_size);
+  ec.setSearchMethod(tree);
+  ec.setInputCloud(input_pointcloud_ptr);
+  ec.extract(ret_clusters);
 
-//   // 3. downsample & cluster pointcloud
-//   pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_points_ptr(new pcl::PointCloud<pcl::PointXYZ>);
-//   pcl::VoxelGrid<pcl::PointXYZ> filter;
+  return ret_clusters;
+}  // namespace autoware::motion_velocity_planner
 
-//   filter.setInputCloud(far_away_pointcloud_ptr);
-//   filter.setLeafSize(
-//     pointcloud_obstacle_filtering_param_.pointcloud_voxel_grid_x,
-//     pointcloud_obstacle_filtering_param_.pointcloud_voxel_grid_y,
-//     pointcloud_obstacle_filtering_param_.pointcloud_voxel_grid_z);
-//   filter.filter(*filtered_points_ptr);
+std::vector<pcl::PointIndices> make_individual_cluster_indices(
+  const pcl::PointCloud<pcl::PointXYZ>::Ptr & input_pointcloud_ptr)
+{
+  std::vector<pcl::PointIndices> ret_clusters;
 
-//   pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
-//   tree->setInputCloud(filtered_points_ptr);
-//   std::vector<pcl::PointIndices> clusters;
-//   pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
-//   ec.setClusterTolerance(pointcloud_obstacle_filtering_param_.pointcloud_cluster_tolerance);
-//   ec.setMinClusterSize(pointcloud_obstacle_filtering_param_.pointcloud_min_cluster_size);
-//   ec.setMaxClusterSize(pointcloud_obstacle_filtering_param_.pointcloud_max_cluster_size);
-//   ec.setSearchMethod(tree);
-//   ec.setInputCloud(filtered_points_ptr);
-//   ec.extract(clusters);
+  ret_clusters.resize(input_pointcloud_ptr->size());
+  for (size_t i = 0; i < input_pointcloud_ptr->size(); ++i) {
+    ret_clusters[i].indices.push_back(i);
+  }
 
-//   return std::make_pair(filtered_points_ptr, clusters);
-// }
+  return ret_clusters;
+}  // namespace autoware::motion_velocity_planner
 
 std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, std::vector<pcl::PointIndices>>
 PlannerData::Pointcloud::preprocess_pointcloud(
   const std::vector<TrajectoryPoint> & raw_trajectory,
+  const nav_msgs::msg::Odometry & current_odometry, double min_deceleration_distance,
   const autoware::vehicle_info_utils::VehicleInfo & vehicle_info,
-  const TrajectoryPolygonCollisionCheck & collision_check, const double ego_nearest_dist_threshold,
-  const double ego_nearest_yaw_threshold)
+  const TrajectoryPolygonCollisionCheck & trajectory_polygon_collision_check,
+  const double ego_nearest_dist_threshold, const double ego_nearest_yaw_threshold)
 {
-  auto ret_pointcloud_ptr = std::shared_ptr<pcl::PointCloud<pcl::PointXYZ>>(&pointcloud);
-  const auto create_single_cluster_indices = [](size_t num_points) {
-    pcl::PointIndices all_points_indices;
-    all_points_indices.indices.resize(num_points);
-    std::iota(all_points_indices.indices.begin(), all_points_indices.indices.end(), 0);
-    return std::vector<pcl::PointIndices>{std::move(all_points_indices)};
-  };
-  auto ret_clusters = create_single_cluster_indices(ret_pointcloud_ptr->size());
+  if (pointcloud.empty()) {
+    return {};
+  }
 
-  std::cerr << "PlannerData::Pointcloud::preprocess_pointcloud: "
-            << "ret_pointcloud size: " << ret_pointcloud_ptr->size() << " pointcloud size: " << pointcloud.size() << std::endl;
+  pcl::PointCloud<pcl::PointXYZ>::Ptr ret_pointcloud_ptr = pointcloud.makeShared();
+  std::vector<pcl::PointIndices> ret_clusters;
 
+  const auto & filter_by_trajectory_param = preprocess_params_.filter_by_trajectory_polygon;
+  const auto & traj_poly_param = trajectory_polygon_collision_check;
+  if (
+    filter_by_trajectory_param.enable_mothilic_crop_box ||
+    filter_by_trajectory_param.enable_multi_polygon_filtering) {
+    const auto decimated_trajectory =
+      autoware::motion_velocity_planner::utils::decimate_trajectory_points_from_ego(
+        raw_trajectory, current_odometry.pose.pose, ego_nearest_dist_threshold,
+        ego_nearest_yaw_threshold, traj_poly_param.decimate_trajectory_step_length,
+        traj_poly_param.goal_extended_trajectory_length);
+    const double trajectory_crop_length =
+      filter_by_trajectory_param.min_trajectory_length +
+      min_deceleration_distance * filter_by_trajectory_param.braking_distance_scale_factor;
+    const auto & dist_cropped_trajectory = motion_utils::cropForwardPoints(
+      decimated_trajectory, decimated_trajectory.front().pose.position, 0, trajectory_crop_length);
+
+    const auto traj_polygons =
+      autoware::motion_velocity_planner::polygon_utils::create_one_step_polygons(
+        dist_cropped_trajectory, vehicle_info, current_odometry.pose.pose,
+        filter_by_trajectory_param.lateral_mask_margin,
+        traj_poly_param.enable_to_consider_current_pose, traj_poly_param.time_to_convergence,
+        traj_poly_param.decimate_trajectory_step_length);
+
+    if (filter_by_trajectory_param.enable_mothilic_crop_box) {
+      pcl::PointCloud<pcl::PointXYZ>::Ptr input_pointcloud_ptr = ret_pointcloud_ptr;
+      ret_pointcloud_ptr = crop_by_monothilic_trajectory_polygon_box(
+        input_pointcloud_ptr, filter_by_trajectory_param, traj_polygons, decimated_trajectory,
+        vehicle_info);
+    }
+    if (filter_by_trajectory_param.enable_multi_polygon_filtering) {
+      pcl::PointCloud<pcl::PointXYZ>::Ptr input_pointcloud_ptr = ret_pointcloud_ptr;
+      ret_pointcloud_ptr = autoware::motion_velocity_planner::filter_by_multi_trajectory_polygon(
+        input_pointcloud_ptr, traj_polygons);
+    }
+  }
+
+  const auto & downsample_params = preprocess_params_.downsample_by_voxel_grid;
+  if (downsample_params.enable_downsample) {
+    pcl::PointCloud<pcl::PointXYZ>::Ptr input_pointcloud_ptr = ret_pointcloud_ptr;
+    ret_pointcloud_ptr = downsample_by_voxel_grid(input_pointcloud_ptr, downsample_params);
+  }
+
+  const auto & clusering_param = preprocess_params_.clustering_filtering;
+  if (clusering_param.enable_clustering) {
+    ret_clusters = make_cluster_indices(ret_pointcloud_ptr, clusering_param);
+  } else {
+    ret_clusters = make_individual_cluster_indices(ret_pointcloud_ptr);
+  }
   return std::make_pair(ret_pointcloud_ptr, ret_clusters);
-
-  // if (pointcloud.empty()) {
-  //   return ;
-  // }
-
-  // if (!preprocess_params_.enable_preprocessing) {
-  //   //ダミーのクラスタリングを作る
-  //   //返す
-  // }
-
-  // const auto crop_param = preprocess_params_.crop_box_by_trajectory_polygon;
-  // if (crop_param.enable_crop_box) {
-  //   // make trajectory polygon
-
-  //   // make cropbox
-
-  //   // apply cropbox
-  // }
-
-  // const auto downsample_param = preprocess_params_.downsample_by_voxel_grid;
-  // if (downsample_param.enable_downsample) {
-  //   const auto input pointcloud_ptr = ret_pointcloud_ptr;
-  //   ret_pointcloud_ptr = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-  //   // downsample pointcloud
-  //   pcl::VoxelGrid<pcl::PointXYZ> voxel_grid_filter;
-  //   voxel_grid_filter.setInputCloud(pointcloud.makeShared());
-  //   voxel_grid_filter.setLeafSize(
-  //     downsample_param.voxel_grid_x, downsample_param.voxel_grid_y,
-  //     downsample_param.voxel_grid_z);
-  //   voxel_grid_filter.filter(pointcloud);
-  // }
-
-  // cosnt auto cluster_param = preprocess_params_.cluster_by_euclidean;
-  // if (cluster_param.enable_clustering) {
-  //   // cluster pointcloud
-  //   pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
-  //   tree->setInputCloud(pointcloud.makeShared());
-  // } else
-
-  // return std::make_pair(filtered_points_ptr, clusters);
 }
 
 }  // namespace autoware::motion_velocity_planner

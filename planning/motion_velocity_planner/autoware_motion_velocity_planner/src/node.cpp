@@ -135,7 +135,6 @@ bool MotionVelocityPlannerNode::update_planner_data(
   std::map<std::string, double> & processing_times,
   const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & input_traj_points)
 {
-  std::cerr << "func, line" << __func__ << ", " << __LINE__ << std::endl;
   auto clock = *get_clock();
   auto is_ready = true;
   const auto check_with_log = [&](const auto ptr, const auto & log, const bool is_required = true) {
@@ -173,19 +172,16 @@ bool MotionVelocityPlannerNode::update_planner_data(
   processing_times["update_planner_data.pred_obj"] = sw.toc(true);
 
   const auto no_ground_pointcloud_ptr = sub_no_ground_pointcloud_.take_data();
-  std::cerr << "func, line" << __func__ << ", " << __LINE__ << std::endl;
   if (check_with_log(
         no_ground_pointcloud_ptr, "Waiting for pointcloud",
         required_subscriptions.no_ground_pointcloud)) {
-    std::cerr << "func, line" << __func__ << ", " << __LINE__ << std::endl;
     auto no_ground_pointcloud = process_no_ground_pointcloud(no_ground_pointcloud_ptr);
     processing_times["update_planner_data.pcl.process_no_ground_pointcloud"] = sw.toc(true);
-    std::cerr << "func, line" << __func__ << ", " << __LINE__ << std::endl;
     if (no_ground_pointcloud) {
-      std::cerr << "func, line" << __func__ << ", " << __LINE__ << std::endl;
       planner_data_->no_ground_pointcloud.set_pointcloud(
-        std::move(*no_ground_pointcloud), input_traj_points, planner_data_->vehicle_info_,
-        planner_data_->trajectory_polygon_collision_check,
+        std::move(*no_ground_pointcloud), input_traj_points, planner_data_->current_odometry,
+        planner_data_->calculate_min_deceleration_distance(0.0).value_or(0.0),
+        planner_data_->vehicle_info_, planner_data_->trajectory_polygon_collision_check,
         planner_data_->ego_nearest_dist_threshold, planner_data_->ego_nearest_yaw_threshold);
     }
   }
@@ -217,8 +213,6 @@ bool MotionVelocityPlannerNode::update_planner_data(
   // NOTE: required_subscriptions.traffic_signals is not used since is_ready is not updated here.
   if (traffic_signals_ptr) process_traffic_signals(traffic_signals_ptr);
   processing_times["update_planner_data.traffic_lights"] = sw.toc(true);
-
-  std::cerr << "func, line" << __func__ << ", " << __LINE__ << std::endl;
 
   return is_ready;
 }
@@ -305,7 +299,6 @@ void MotionVelocityPlannerNode::process_traffic_signals(
 void MotionVelocityPlannerNode::on_trajectory(
   const autoware_planning_msgs::msg::Trajectory::ConstSharedPtr input_trajectory_msg)
 {
-  std::cerr << "func, line" << __func__ << ", " << __LINE__ << std::endl;
   std::unique_lock<std::mutex> lk(mutex_);
 
   autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch;
@@ -345,7 +338,6 @@ void MotionVelocityPlannerNode::on_trajectory(
   processing_time_msg.stamp = get_clock()->now();
   processing_time_msg.data = processing_times["Total"];
   processing_time_publisher_->publish(processing_time_msg);
-  std::cerr << "func, line" << __func__ << ", " << __LINE__ << std::endl;
 }
 
 void MotionVelocityPlannerNode::insert_stop(
