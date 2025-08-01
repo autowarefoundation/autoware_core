@@ -18,6 +18,7 @@
   <arg name="behavior_velocity_planner_walkway_module_param_path"/>
   <arg name="behavior_velocity_planner_detection_area_module_param_path"/>
   <arg name="behavior_velocity_planner_intersection_module_param_path"/>
+  <arg name="behavior_velocity_planner_roundabout_module_param_path"/>
   <arg name="behavior_velocity_planner_stop_line_module_param_path"/>
   <arg name="behavior_velocity_planner_traffic_light_module_param_path"/>
   <arg name="behavior_velocity_planner_virtual_traffic_light_module_param_path"/>
@@ -60,6 +61,7 @@
     <param from="$(var behavior_velocity_planner_walkway_module_param_path)"/>
     <param from="$(var behavior_velocity_planner_detection_area_module_param_path)"/>
     <param from="$(var behavior_velocity_planner_intersection_module_param_path)"/>
+    <param from="$(var behavior_velocity_planner_roundabout_module_param_path)"/>
     <param from="$(var behavior_velocity_planner_stop_line_module_param_path)"/>
     <param from="$(var behavior_velocity_planner_traffic_light_module_param_path)"/>
     <param from="$(var behavior_velocity_planner_virtual_traffic_light_module_param_path)"/>
