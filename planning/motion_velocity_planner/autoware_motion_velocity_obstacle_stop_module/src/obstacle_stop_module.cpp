@@ -168,7 +168,8 @@ double calc_time_to_reach_collision_point(
          std::max(min_velocity_to_reach_collision_point, std::abs(odometry.twist.twist.linear.x));
 }
 
-double calc_braking_dist(const uint8_t obj_label, const double lon_vel, const RSSParam & rss_params)
+double calc_braking_dist_along_trajectory(
+  const uint8_t obj_label, const double lon_vel, const RSSParam & rss_params)
 {
   const double braking_acc = [&]() {
     switch (obj_label) {
@@ -183,8 +184,7 @@ double calc_braking_dist(const uint8_t obj_label, const double lon_vel, const RS
     }
   }();
   const double error_considered_vel = std::max(lon_vel + rss_params.velocity_offset, 0.0);
-  const double abs_braking_dist = error_considered_vel * error_considered_vel * 0.5 / -braking_acc;
-  return abs_braking_dist * (0 < lon_vel ? 1.0 : -1.0);
+  return error_considered_vel * error_considered_vel * 0.5 / -braking_acc;
 }
 
 }  // namespace
@@ -692,7 +692,7 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
   }
 
   if (stop_planning_param_.rss_params.use_rss_stop) {
-    const auto braking_dist = calc_braking_dist(
+    const auto braking_dist = calc_braking_dist_along_trajectory(
       obj_label, object->get_lon_vel_relative_to_traj(traj_points),
       stop_planning_param_.rss_params);
     return StopObstacle{
