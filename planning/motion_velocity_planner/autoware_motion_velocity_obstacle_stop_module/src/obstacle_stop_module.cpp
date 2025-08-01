@@ -153,7 +153,7 @@ double calc_time_to_reach_collision_point(
 }
 
 // TODO(takagi): refactor this function as same as obstacle_filtering_param
-double calc_braking_dist(
+double calc_braking_dist_along_trajectory(
   const StopObstacleClassification::Type label, const double lon_vel, const RSSParam & rss_params)
 {
   const double braking_acc = [&]() {
@@ -173,8 +173,7 @@ double calc_braking_dist(
     return rss_params.vehicle_objects_deceleration;
   }();
   const double error_considered_vel = std::max(lon_vel + rss_params.velocity_offset, 0.0);
-  const double abs_braking_dist = error_considered_vel * error_considered_vel * 0.5 / -braking_acc;
-  return abs_braking_dist * (0 < lon_vel ? 1.0 : -1.0);
+  return error_considered_vel * error_considered_vel * 0.5 / -braking_acc;
 }
 
 PolygonParam create_polygon_param(
