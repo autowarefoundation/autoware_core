@@ -484,6 +484,11 @@ std::optional<double> get_first_start_edge_intersection_arc_length(
 
   std::optional<double> s_start_edge = std::nullopt;
   for (const auto & intersection : start_edge_intersections) {
+    if (
+      boost::geometry::equals(intersection, start_edge.front()) ||
+      boost::geometry::equals(intersection, start_edge.back())) {
+      continue;
+    }
     const auto s = lanelet::geometry::toArcCoordinates(line_string, intersection).length;
     s_start_edge = s_start_edge ? std::min(*s_start_edge, s) : s;
   }
