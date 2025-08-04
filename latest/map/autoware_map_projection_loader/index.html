@@ -4874,6 +4874,13 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#vertical-datum" class="md-nav__link">
+    Vertical Datum
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -4985,6 +4992,15 @@ And specify the scale_factor of the map. If you didn't specify the scale_factor,
 <span class="w">  </span><span class="nt">latitude</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">35.6762</span><span class="w"> </span><span class="c1"># [deg]</span>
 <span class="w">  </span><span class="nt">longitude</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">139.6503</span><span class="w"> </span><span class="c1"># [deg]</span>
 <span class="nt">scale_factor</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.9996</span>
+</code></pre></div>
+<h3 id="vertical-datum">Vertical Datum<a class="headerlink" href="#vertical-datum" title="Permanent link">#</a></h3>
+<p>Autoware uses the WGS84 ellipsoid as its default height reference.<br>
+If you need orthometric heights based on the EGM2008 geoid, install the required dataset for GeographicLib as shown below:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Install the GeographicLib helper tools</span>
+sudo<span class="w"> </span>apt<span class="w"> </span>update<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>geographiclib-tools
+
+<span class="c1"># Download and register the 1-arc-minute EGM2008 geoid grid</span>
+sudo<span class="w"> </span>geographiclib-get-geoids<span class="w"> </span>egm2008-1
 </code></pre></div>
 <h2 id="published-topics">Published Topics<a class="headerlink" href="#published-topics" title="Permanent link">#</a></h2>
 <ul>
