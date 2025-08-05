@@ -213,17 +213,19 @@ void GroundFilterComponent::subscribe()
         message_filters::Synchronizer<message_filters::sync_policies::ApproximateTime<
           sensor_msgs::msg::PointCloud2, pcl_msgs::msg::PointIndices>>>(max_queue_size_);
       sync_input_indices_a_->connectInput(sub_input_filter_, sub_indices_filter_);
-      sync_input_indices_a_->registerCallback(std::bind(
-        &GroundFilterComponent::faster_input_indices_callback, this, std::placeholders::_1,
-        std::placeholders::_2));
+      sync_input_indices_a_->registerCallback(
+        std::bind(
+          &GroundFilterComponent::faster_input_indices_callback, this, std::placeholders::_1,
+          std::placeholders::_2));
     } else {
       sync_input_indices_e_ =
         std::make_shared<message_filters::Synchronizer<message_filters::sync_policies::ExactTime<
           sensor_msgs::msg::PointCloud2, pcl_msgs::msg::PointIndices>>>(max_queue_size_);
       sync_input_indices_e_->connectInput(sub_input_filter_, sub_indices_filter_);
-      sync_input_indices_e_->registerCallback(std::bind(
-        &GroundFilterComponent::faster_input_indices_callback, this, std::placeholders::_1,
-        std::placeholders::_2));
+      sync_input_indices_e_->registerCallback(
+        std::bind(
+          &GroundFilterComponent::faster_input_indices_callback, this, std::placeholders::_1,
+          std::placeholders::_2));
     }
   } else {
     std::function<void(const sensor_msgs::msg::PointCloud2::ConstSharedPtr msg)> cb = std::bind(
