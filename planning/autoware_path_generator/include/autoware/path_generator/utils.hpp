@@ -163,6 +163,7 @@ std::optional<double> get_first_mutual_intersection_arc_length(
  * @brief get position of first intersection between start edge of drivable area (i.e. segment
  * connecting start of bounds) and left / right bound in arc length
  * @param lanelet_sequence target lanelet sequence
+ * @param start_edge target start edge
  * @param left_bound target left bound
  * @param right_bound target right bound
  * @param s_start_on_bounds longitudinal distance of start of bounds on centerline
