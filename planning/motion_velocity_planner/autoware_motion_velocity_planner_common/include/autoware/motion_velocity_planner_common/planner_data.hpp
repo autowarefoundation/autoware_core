@@ -180,8 +180,15 @@ public:
     }
     autoware_perception_msgs::msg::PredictedObject predicted_object;
 
+    /**
+     * @brief compute and the minimal distance to `decimated_traj_polys` by bg::distance and cache
+     * the result
+     * @note is it really OK to cache the result if the object itself is also cached and used in
+     * next iteration ?
+     */
     double get_dist_to_traj_poly(
       const std::vector<autoware_utils_geometry::Polygon2d> & decimated_traj_polys) const;
+
     double get_dist_to_traj_lateral(const std::vector<TrajectoryPoint> & traj_points) const;
     double get_dist_from_ego_longitudinal(
       const std::vector<TrajectoryPoint> & traj_points,
