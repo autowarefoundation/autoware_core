@@ -95,11 +95,6 @@ struct PointcloudObstacleFilteringParam  // TODO(takagi): delete this obsolete p
 
 struct PointcloudPreprocessParams
 {
-  PointcloudPreprocessParams(const PointcloudPreprocessParams &) = delete;
-  PointcloudPreprocessParams & operator=(const PointcloudPreprocessParams &) = delete;
-  PointcloudPreprocessParams(PointcloudPreprocessParams &&) = default;
-  PointcloudPreprocessParams & operator=(PointcloudPreprocessParams &&) = default;
-
   explicit PointcloudPreprocessParams(rclcpp::Node & node)
   {
     std::string ns = "pointcloud_preprocessing.";
@@ -143,9 +138,8 @@ struct PointcloudPreprocessParams
   }
   struct FilterByTrajectoryPolygon
   {
-    bool enable_monolithic_crop_box{
-      false};  // [-] if true, crop pointcloud using trajectory polygon
-    bool enable_multi_polygon_filtering{false};  // [-] if true, filter point
+    bool enable_monolithic_crop_box{false};
+    bool enable_multi_polygon_filtering{false};
     double min_trajectory_length{};
     double braking_distance_scale_factor{};
     double lateral_margin{};
@@ -213,11 +207,6 @@ public:
   class Pointcloud
   {
   public:
-    Pointcloud() = delete;
-    Pointcloud(const Pointcloud &) = delete;
-    Pointcloud & operator=(const Pointcloud &) = delete;
-    Pointcloud(Pointcloud &&) = default;
-    Pointcloud & operator=(Pointcloud &&) = default;
     explicit Pointcloud(rclcpp::Node & node) : preprocess_params_(node) {}
 
     void preprocess_pointcloud(
