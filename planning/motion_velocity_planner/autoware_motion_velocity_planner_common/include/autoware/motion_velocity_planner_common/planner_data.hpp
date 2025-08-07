@@ -209,6 +209,10 @@ public:
   {
   public:
     Pointcloud() = delete;
+    Pointcloud(const Pointcloud &) = delete;
+    Pointcloud & operator=(const Pointcloud &) = delete;
+    Pointcloud(Pointcloud &&) = default;
+    Pointcloud & operator=(Pointcloud &&) = default;
     explicit Pointcloud(rclcpp::Node & node) : preprocess_params_(node) {}
 
     void preprocess_pointcloud(
