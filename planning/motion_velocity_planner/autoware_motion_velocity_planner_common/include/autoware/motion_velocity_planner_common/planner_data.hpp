@@ -260,7 +260,7 @@ public:
       return get_cluster_indices();
     }
 
-    const PointcloudPreprocessParams preprocess_params_;
+    PointcloudPreprocessParams preprocess_params_;
 
   private:
     std::optional<pcl::PointCloud<pcl::PointXYZ>::Ptr> filtered_pointcloud_ptr;
