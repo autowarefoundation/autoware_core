@@ -113,27 +113,92 @@ std::vector<WaypointGroup> get_waypoint_groups(
   const double connection_gradient_from_centerline);
 
 /**
- * @brief get position of first intersection (including self-intersection) in lanelet sequence in
- * arc length
+ * @brief get position of first intersection in lanelet sequence in arc length
  * @param lanelet_sequence target lanelet sequence
  * @param s_start longitudinal distance of point to start searching for intersections
  * @param s_end longitudinal distance of point to end search
  * @param vehicle_length vehicle length
- * @return longitudinal distance of intersecting point (std::nullopt if no intersection)
+ * @return longitudinal distance of first intersection (std::nullopt if no intersection)
  */
 std::optional<double> get_first_intersection_arc_length(
   const lanelet::LaneletSequence & lanelet_sequence, const double s_start, const double s_end,
   const double vehicle_length);
 
 /**
- * @brief get position of first self-intersection (point where return
- * path intersects outward path) of line string in arc length
+ * @brief get position of first self-intersection (point where return path intersects outward path)
+ * of left / right bound in arc length
+ * @param lanelet_sequence target lanelet sequence
+ * @param left_bound target left bound
+ * @param right_bound target right bound
+ * @param s_start_on_bounds longitudinal distance of start of bounds on centerline
+ * @return longitudinal distance of first intersection (std::nullopt if no intersection)
+ */
+std::optional<double> get_first_self_intersection_arc_length(
+  const lanelet::LaneletSequence & lanelet_sequence, const lanelet::BasicLineString2d & left_bound,
+  const lanelet::BasicLineString2d & right_bound, const PathRange<double> & s_start_on_bounds);
+
+/**
+ * @brief get position of first self intersection (point where return path intersects outward path)
+ * of line string in arc length
  * @param line_string target line string
- * @return longitudinal distance of self-intersecting point (std::nullopt if no
- * self-intersection)
+ * @return longitudinal distance of first intersection (std::nullopt if no intersection)
  */
 std::optional<double> get_first_self_intersection_arc_length(
   const lanelet::BasicLineString2d & line_string);
+
+/**
+ * @brief get position of first mutual intersection (point where left and right bounds intersect) in
+ * arc length
+ * @param lanelet_sequence target lanelet sequence
+ * @param left_bound target left bound
+ * @param right_bound target right bound
+ * @param s_start_on_bounds longitudinal distance of start of bounds on centerline
+ * @return longitudinal distance of first intersection (std::nullopt if no intersection)
+ */
+std::optional<double> get_first_mutual_intersection_arc_length(
+  const lanelet::LaneletSequence & lanelet_sequence, const lanelet::BasicLineString2d & left_bound,
+  const lanelet::BasicLineString2d & right_bound, const PathRange<double> & s_start_on_bounds);
+
+/**
+ * @brief get position of first intersection between start edge of drivable area (i.e. segment
+ * connecting start of bounds) and left / right bound in arc length
+ * @param lanelet_sequence target lanelet sequence
+ * @param start_edge target start edge
+ * @param left_bound target left bound
+ * @param right_bound target right bound
+ * @param s_start_on_bounds longitudinal distance of start of bounds on centerline
+ * @param vehicle_length vehicle length
+ * @return longitudinal distance of first intersection (std::nullopt if no intersection)
+ */
+std::optional<double> get_first_start_edge_bound_intersection_arc_length(
+  const lanelet::LaneletSequence & lanelet_sequence, const lanelet::BasicLineString2d & start_edge,
+  const autoware::experimental::trajectory::Trajectory<geometry_msgs::msg::Point> & left_bound,
+  const autoware::experimental::trajectory::Trajectory<geometry_msgs::msg::Point> & right_bound,
+  const PathRange<double> & s_start_on_bounds, const double vehicle_length);
+
+/**
+ * @brief get position of first intersection between start edge of drivable area (i.e. segment
+ * connecting start of bounds) and centerline in arc length
+ * @param lanelet_sequence target lanelet sequence
+ * @param start_edge target start edge
+ * @param s_start longitudinal distance of point to start searching for intersections
+ * @param s_end longitudinal distance of point to end search
+ * @param vehicle_length vehicle length
+ * @return longitudinal distance of first intersection (std::nullopt if no intersection)
+ */
+std::optional<double> get_first_start_edge_centerline_intersection_arc_length(
+  const lanelet::LaneletSequence & lanelet_sequence, const lanelet::BasicLineString2d & start_edge,
+  const double s_start, const double s_end, const double vehicle_length);
+
+/**
+ * @brief get position of first intersection between start edge of drivable area (i.e. segment
+ * connecting start of bounds) and line string in arc length
+ * @param start_edge target start edge
+ * @param line_string target line string
+ * @return longitudinal distance of first intersection (std::nullopt if no intersection)
+ */
+std::optional<double> get_first_start_edge_intersection_arc_length(
+  const lanelet::BasicLineString2d & start_edge, const lanelet::BasicLineString2d & line_string);
 
 /**
  * @brief get position of given point on centerline projected to path in arc length
@@ -158,13 +223,14 @@ PathRange<std::vector<geometry_msgs::msg::Point>> get_path_bounds(
   const lanelet::LaneletSequence & lanelet_sequence, const double s_start, const double s_end);
 
 /**
- * @brief crop line string
+ * @brief build trajectory from vector of points cropped within specified range
  * @param line_string line string
  * @param s_start longitudinal distance to crop from
  * @param s_end longitudinal distance to crop to
- * @return cropped line string
+ * @return cropped trajectory (std::nullopt if build fails)
  */
-std::vector<geometry_msgs::msg::Point> crop_line_string(
+std::optional<autoware::experimental::trajectory::Trajectory<geometry_msgs::msg::Point>>
+build_cropped_trajectory(
   const std::vector<geometry_msgs::msg::Point> & line_string, const double s_start,
   const double s_end);
 
