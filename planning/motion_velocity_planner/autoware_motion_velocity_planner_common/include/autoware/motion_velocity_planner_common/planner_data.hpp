@@ -95,7 +95,6 @@ struct PointcloudObstacleFilteringParam  // TODO(takagi): delete this obsolete p
 
 struct PointcloudPreprocessParams
 {
-  PointcloudPreprocessParams() = delete;
   explicit PointcloudPreprocessParams(rclcpp::Node & node)
   {
     std::string ns = "pointcloud_preprocessing.";
