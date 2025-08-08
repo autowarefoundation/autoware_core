@@ -178,7 +178,11 @@ bool MotionVelocityPlannerNode::update_planner_data(
     auto no_ground_pointcloud = process_no_ground_pointcloud(no_ground_pointcloud_ptr);
     processing_times["update_planner_data.pcl.process_no_ground_pointcloud"] = sw.toc(true);
     if (no_ground_pointcloud) {
-      planner_data_->no_ground_pointcloud.set_pointcloud(std::move(*no_ground_pointcloud));
+      planner_data_->no_ground_pointcloud.preprocess_pointcloud(
+        std::move(*no_ground_pointcloud), input_traj_points, planner_data_->current_odometry,
+        planner_data_->calculate_min_deceleration_distance(0.0).value_or(0.0),
+        planner_data_->vehicle_info_, planner_data_->trajectory_polygon_collision_check,
+        planner_data_->ego_nearest_dist_threshold, planner_data_->ego_nearest_yaw_threshold);
     }
   }
 

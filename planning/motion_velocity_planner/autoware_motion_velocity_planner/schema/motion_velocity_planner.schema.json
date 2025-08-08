@@ -46,42 +46,122 @@
         "pointcloud": {
           "type": "object",
           "properties": {
-            "voxel_grid_x": {
-              "type": "number",
-              "description": "voxel grid x parameter for filtering pointcloud [m]",
-              "default": "0.05"
-            },
-            "voxel_grid_y": {
-              "type": "number",
-              "description": "voxel grid y parameter for filtering pointcloud [m]",
-              "default": "0.05"
-            },
-            "voxel_grid_z": {
-              "type": "number",
-              "description": "voxel grid z parameter for filtering pointcloud [m]",
-              "default": "100000.0"
-            },
-            "pointcloud_cluster_tolerance": {
-              "type": "number",
-              "description": "pointcloud cluster tolerance parameter for clustering pointcloud [voxel]",
-              "default": "1.0"
-            },
-            "pointcloud_min_cluster_size": {
-              "type": "number",
-              "description": "pointcloud min cluster size parameter for clustering pointcloud [voxel]",
-              "default": "1"
-            },
-            "pointcloud_max_cluster_size": {
-              "type": "number",
-              "description": "pointcloud max cluster size parameter for clustering pointcloud [voxel]",
-              "default": "100000"
-            },
             "mask_lat_margin": {
               "type": "number",
-              "description": "lat margin from the input trajectory to mask-out pointcloud points [m]",
-              "default": "0.3"
+              "default": 2.0,
+              "description": "lat margin from the input trajectory to mask-out pointcloud points [m]"
             }
           }
+        },
+        "pointcloud_preprocessing": {
+          "type": "object",
+          "properties": {
+            "filter_by_trajectory_polygon": {
+              "type": "object",
+              "properties": {
+                "enable_monolithic_crop_box": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "if true, crop pointcloud using monolithic trajectory polygon"
+                },
+                "enable_multi_polygon_filtering": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "if true, filter pointcloud using multi trajectory polygons"
+                },
+                "min_trajectory_length": {
+                  "type": "number",
+                  "default": 30.0,
+                  "description": "minimum trajectory length to crop pointcloud [m]"
+                },
+                "braking_distance_scale_factor": {
+                  "type": "number",
+                  "default": 1.5,
+                  "description": "scale factor for brake distance to crop pointcloud"
+                },
+                "lateral_margin": {
+                  "type": "number",
+                  "default": 2.0,
+                  "description": "lateral margin to mask pointcloud [m]"
+                },
+                "height_margin": {
+                  "type": "number",
+                  "default": 1.0,
+                  "description": "height margin to mask pointcloud [m]"
+                }
+              },
+              "required": [
+                "enable_monolithic_crop_box",
+                "enable_multi_polygon_filtering",
+                "min_trajectory_length",
+                "braking_distance_scale_factor",
+                "lateral_margin",
+                "height_margin"
+              ]
+            },
+            "downsample_by_voxel_grid": {
+              "type": "object",
+              "properties": {
+                "enable_downsample": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "if true, downsample"
+                },
+                "voxel_size_x": {
+                  "type": "number",
+                  "default": 0.05,
+                  "description": "voxel grid x parameter for filtering pointcloud [m]"
+                },
+                "voxel_size_y": {
+                  "type": "number",
+                  "default": 0.05,
+                  "description": "voxel grid y parameter for filtering pointcloud [m]"
+                },
+                "voxel_size_z": {
+                  "type": "number",
+                  "default": 100000.0,
+                  "description": "voxel grid z parameter for filtering pointcloud [m]"
+                }
+              },
+              "required": ["enable_downsample", "voxel_size_x", "voxel_size_y", "voxel_size_z"]
+            },
+            "euclidean_clustering": {
+              "type": "object",
+              "properties": {
+                "enable_clustering": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "if true, cluster pointcloud by euclidean distance"
+                },
+                "cluster_tolerance": {
+                  "type": "number",
+                  "default": 1.0,
+                  "description": "clustering tolerance [m]"
+                },
+                "min_cluster_size": {
+                  "type": "number",
+                  "default": 1,
+                  "description": "minimum number of points per cluster"
+                },
+                "max_cluster_size": {
+                  "type": "number",
+                  "default": 100000,
+                  "description": "maximum number of points per cluster"
+                }
+              },
+              "required": [
+                "enable_clustering",
+                "cluster_tolerance",
+                "min_cluster_size",
+                "max_cluster_size"
+              ]
+            }
+          },
+          "required": [
+            "filter_by_trajectory_polygon",
+            "downsample_by_voxel_grid",
+            "euclidean_clustering"
+          ]
         }
       },
       "required": ["smooth_velocity_before_planning"],

@@ -192,6 +192,7 @@ std::vector<Polygon2d> create_one_step_polygons(
 
     // estimate the future ego pose with assuming that the pose error against the reference path
     // will decrease to zero by the time_to_convergence
+    // FIXME(soblin): convergence should be applied from nearest_idx ?
     if (enable_to_consider_current_pose && time_elapsed < time_to_convergence) {
       const double rem_ratio = (time_to_convergence - time_elapsed) / time_to_convergence;
       geometry_msgs::msg::Pose indexed_pose_err;
