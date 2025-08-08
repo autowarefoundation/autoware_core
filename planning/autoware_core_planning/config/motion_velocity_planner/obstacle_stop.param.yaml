@@ -20,6 +20,7 @@
 
         hold_stop_velocity_threshold: 0.01 # The maximum ego velocity to hold stopping [m/s]
         hold_stop_distance_threshold: 0.3 # The ego keeps stopping if the distance to stop changes within the threshold [m]
+        pointcloud_suppression_distance_margin: 0.2
 
         stop_on_curve:
           enable_approaching: false
@@ -43,6 +44,7 @@
           two_wheel_objects_deceleration: -3.0 # [m/ss] for BICYCLE, MOTORCYCLE
           vehicle_objects_deceleration: -1.2 # [m/ss] for CAR, TRUCK, etc
           no_wheel_objects_deceleration: -10.0 # [m/ss] for PEDESTRIAN, UNKNOWN
+          pointcloud_deceleration: -1.0 # [m/ss] for pointcloud
           velocity_offset: -1.0 # [m/s]
 
         obstacle_velocity_threshold_enter_fixed_stop: 3.0  # [m/s] obstacle velocity threshold to use its current position for stop point decision
@@ -73,15 +75,28 @@
             pedestrian: true
 
         pointcloud:
-          pointcloud_voxel_grid_x: 0.05
-          pointcloud_voxel_grid_y: 0.05
-          pointcloud_voxel_grid_z: 100000.0
-          pointcloud_cluster_tolerance: 1.0
-          pointcloud_min_cluster_size: 1
-          pointcloud_max_cluster_size: 100000
+          trim_trajectory:
+            enable_trim: true
+            min_trajectory_length: 30.0  # [m] minimum trajectory length to trim trajectory
+            braking_distance_scale_factor: 1.5  # scale factor for brake distance to trim trajectory
+          time_series_association:
+            max_time_diff: 0.35
+            min_velocity: -5.0
+            max_velocity: 30.0
+            position_diff: 1.0
+          velocity_estimation:
+            use_estimated_velocity: false
+            min_clamp_velocity: 0.0
+            max_clamp_velocity: 20.0
+            required_velocity_count: 5
+            lpf_gain: 0.9
+          height_margin:
+            margin_from_top: 0.5 # [m] margin from the top of the ego vehicle
+            margin_from_bottom: 0.5 # [m] margin from the bottom of the ego vehicle
 
         max_lat_margin: 0.3 # lateral margin between the obstacles except for unknown and ego's footprint
         max_lat_margin_against_predicted_object_unknown: 0.3 # lateral margin between the unknown obstacles and ego's footprint
+        max_lat_margin_against_pointcloud: 0.3
 
         min_velocity_to_reach_collision_point: 2.0 # minimum velocity margin to calculate time to reach collision [m/s]
         stop_obstacle_hold_time_threshold : 1.0 # maximum time for holding closest stop obstacle
