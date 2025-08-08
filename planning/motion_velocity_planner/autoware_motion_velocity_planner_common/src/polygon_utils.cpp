@@ -28,10 +28,6 @@ namespace autoware::motion_velocity_planner::polygon_utils
 {
 namespace
 {
-/**
- * @brief for the segment starting from `first_within_idx`, find the most nearest point from among
- * `collision_points`
- */
 PointWithStamp calc_nearest_collision_point(
   const size_t first_within_idx, const std::vector<PointWithStamp> & collision_points,
   const std::vector<TrajectoryPoint> & decimated_traj_points, const bool is_driving_forward)
@@ -56,14 +52,9 @@ PointWithStamp calc_nearest_collision_point(
   return collision_points.at(min_idx);
 }
 
-/**
- * @pre `traj_points` and `traj_polygons` have same size
- * @return compute the first index where `traj_polygons` collided with `object_polygon`, and return
- * the pair of that index and collision points
- * @note max_dist is used for efficient calculation to suppress boost::geometry's polygon
- * calculation
- */
-std::optional<std::pair<size_t, std::vector<PointWithStamp>>> get_first_collision_index(
+// NOTE: max_dist is used for efficient calculation to suppress boost::geometry's polygon
+// calculation.
+std::optional<std::pair<size_t, std::vector<PointWithStamp>>> get_collision_index(
   const std::vector<TrajectoryPoint> & traj_points, const std::vector<Polygon2d> & traj_polygons,
   const geometry_msgs::msg::Point & object_position, const rclcpp::Time & object_time,
   const Polygon2d & obj_polygon, const double max_dist = std::numeric_limits<double>::max())
