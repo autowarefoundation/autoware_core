@@ -51,10 +51,7 @@ public:
       {"--ros-args", "--params-file",
        ament_index_cpp::get_package_share_directory(
          "autoware_motion_velocity_obstacle_stop_module") +
-         "/config/obstacle_stop.param.yaml",
-       "--params-file",
-       ament_index_cpp::get_package_share_directory("autoware_motion_velocity_planner") +
-         "/config/motion_velocity_planner.param.yaml"});
+         "/config/obstacle_stop.param.yaml"});
     node_ = std::make_shared<rclcpp::Node>("test_node", options);
 
     // Set required parameters directly
@@ -67,6 +64,8 @@ public:
     node_->declare_parameter("limit.max_acc", 1.0);
     node_->declare_parameter("limit.min_jerk", -1.5);
     node_->declare_parameter("limit.max_jerk", 1.5);
+
+    node_->declare_parameter("pointcloud.mask_lat_margin", 4.0);
 
     // Initialize the module
     init(*node_, "test_module");
