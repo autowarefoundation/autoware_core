@@ -102,33 +102,29 @@ std::optional<std::pair<geometry_msgs::msg::Point, double>> get_collision_point(
   const geometry_msgs::msg::Point obj_position, const rclcpp::Time obj_stamp,
   const Polygon2d & obj_polygon, const double dist_to_bumper)
 {
-  const auto first_collision_info =
-    get_first_collision_index(traj_points, traj_polygons, obj_position, obj_stamp, obj_polygon);
-  if (!first_collision_info) {
+  const auto collision_info =
+    get_collision_index(traj_points, traj_polygons, obj_position, obj_stamp, obj_polygon);
+  if (!collision_info) {
     return std::nullopt;
   }
 
   const auto bumper_pose = autoware_utils_geometry::calc_offset_pose(
-    traj_points.at(first_collision_info->first).pose, dist_to_bumper, 0.0, 0.0);
+    traj_points.at(collision_info->first).pose, dist_to_bumper, 0.0, 0.0);
 
   std::optional<double> max_collision_length = std::nullopt;
   std::optional<geometry_msgs::msg::Point> max_collision_point = std::nullopt;
-  for (const auto & poly_vertex : first_collision_info->second) {
-    const double longitudinal_dist_from_bumper =
+  for (const auto & poly_vertex : collision_info->second) {
+    const double dist_from_bumper =
       std::abs(autoware_utils_geometry::inverse_transform_point(poly_vertex.point, bumper_pose).x);
 
-    if (
-      !max_collision_length.has_value() || longitudinal_dist_from_bumper > *max_collision_length) {
-      max_collision_length = longitudinal_dist_from_bumper;
+    if (!max_collision_length.has_value() || dist_from_bumper > *max_collision_length) {
+      max_collision_length = dist_from_bumper;
       max_collision_point = poly_vertex.point;
     }
   }
-  if (!max_collision_length) {
-    return std::nullopt;
-  }
   return std::make_pair(
     *max_collision_point,
-    autoware::motion_utils::calcSignedArcLength(traj_points, 0, first_collision_info->first) -
+    autoware::motion_utils::calcSignedArcLength(traj_points, 0, collision_info->first) -
       *max_collision_length);
 }
 
@@ -156,7 +152,7 @@ std::vector<PointWithStamp> get_collision_points(
       continue;
     }
 
-    const auto collision_info = get_first_collision_index(
+    const auto collision_info = get_collision_index(
       traj_points, traj_polygons, predicted_path.path.at(i).position, object_time,
       autoware_utils_geometry::to_polygon2d(predicted_path.path.at(i), shape), max_lat_dist);
     if (collision_info) {
@@ -190,13 +186,13 @@ std::vector<Polygon2d> create_one_step_polygons(
   double time_elapsed{0.0};
 
   std::vector<Polygon2d> output_polygons;
-  Polygon2d prev_step_poly{};
+  Polygon2d tmp_polys{};
   for (size_t i = 0; i < traj_points.size(); ++i) {
     std::vector<geometry_msgs::msg::Pose> current_poses = {traj_points.at(i).pose};
 
     // estimate the future ego pose with assuming that the pose error against the reference path
     // will decrease to zero by the time_to_convergence
-    // FIXME(soblin): convergence should be applied from nearest_idx
+    // FIXME(soblin): convergence should be applied from nearest_idx ?
     if (enable_to_consider_current_pose && time_elapsed < time_to_convergence) {
       const double rem_ratio = (time_to_convergence - time_elapsed) / time_to_convergence;
       geometry_msgs::msg::Pose indexed_pose_err;
@@ -214,47 +210,40 @@ std::vector<Polygon2d> create_one_step_polygons(
       }
     }
 
-    Polygon2d current_step_poly{};
+    Polygon2d idx_poly{};
     for (const auto & pose : current_poses) {
       if (i == 0 && traj_points.at(i).longitudinal_velocity_mps > 1e-3) {
-        // NOTE(soblin): why only i == 0 ?
         boost::geometry::append(
-          current_step_poly,
+          idx_poly,
           autoware_utils_geometry::to_footprint(pose, front_length, rear_length, vehicle_width)
             .outer());
         boost::geometry::append(
-          current_step_poly, autoware_utils_geometry::from_msg(
-                               autoware_utils_geometry::calc_offset_pose(
-                                 pose, front_length, vehicle_width * 0.5 + lat_margin, 0.0)
-                                 .position)
-                               .to_2d());
+          idx_poly, autoware_utils_geometry::from_msg(
+                      autoware_utils_geometry::calc_offset_pose(
+                        pose, front_length, vehicle_width * 0.5 + lat_margin, 0.0)
+                        .position)
+                      .to_2d());
         boost::geometry::append(
-          current_step_poly, autoware_utils_geometry::from_msg(
-                               autoware_utils_geometry::calc_offset_pose(
-                                 pose, front_length, -vehicle_width * 0.5 - lat_margin, 0.0)
-                                 .position)
-                               .to_2d());
+          idx_poly, autoware_utils_geometry::from_msg(
+                      autoware_utils_geometry::calc_offset_pose(
+                        pose, front_length, -vehicle_width * 0.5 - lat_margin, 0.0)
+                        .position)
+                      .to_2d());
       } else {
         boost::geometry::append(
-          current_step_poly, autoware_utils_geometry::to_footprint(
-                               pose, front_length, rear_length, vehicle_width + lat_margin * 2.0)
-                               .outer());
+          idx_poly, autoware_utils_geometry::to_footprint(
+                      pose, front_length, rear_length, vehicle_width + lat_margin * 2.0)
+                      .outer());
       }
     }
 
-    // add current_step_poly to prev_step_poly to form
-    boost::geometry::append(prev_step_poly, current_step_poly.outer());
-    if (prev_step_poly.outer().size() < 3) {
-      continue;
-    }
-    {
-      Polygon2d hull_polygon;
-      boost::geometry::convex_hull(prev_step_poly, hull_polygon);
-      boost::geometry::correct(hull_polygon);
-      output_polygons.push_back(hull_polygon);
-    }
-    // reset current_step_poly to prev_step_poly
-    prev_step_poly = std::move(current_step_poly);
+    boost::geometry::append(tmp_polys, idx_poly.outer());
+    Polygon2d hull_polygon;
+    boost::geometry::convex_hull(tmp_polys, hull_polygon);
+    boost::geometry::correct(hull_polygon);
+
+    output_polygons.push_back(hull_polygon);
+    tmp_polys = std::move(idx_poly);
   }
   return output_polygons;
 }
