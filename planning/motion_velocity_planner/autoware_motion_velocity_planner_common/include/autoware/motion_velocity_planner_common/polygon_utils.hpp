@@ -57,7 +57,7 @@ struct PointWithStamp
 
 /**
  * @pre `traj_points` and `traj_polygons` have same size
- * @brief find the first `traj_polygons` that collide with `obj_polygon` and amont the collision
+ * @brief find the first `traj_polygons` that collide with `obj_polygon` and amount the collision
  * points, return the point whose distance from ego's bumper is farthest
  */
 std::optional<std::pair<geometry_msgs::msg::Point, double>> get_collision_point(

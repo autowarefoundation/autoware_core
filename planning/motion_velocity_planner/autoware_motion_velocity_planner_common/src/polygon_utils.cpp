@@ -122,7 +122,6 @@ std::optional<std::pair<geometry_msgs::msg::Point, double>> get_collision_point(
 
   std::optional<double> max_collision_length = std::nullopt;
   std::optional<geometry_msgs::msg::Point> max_collision_point = std::nullopt;
-  //
   for (const auto & poly_vertex : first_collision_info->second) {
     const double longitudinal_dist_from_bumper =
       std::abs(autoware_utils_geometry::inverse_transform_point(poly_vertex.point, bumper_pose).x);

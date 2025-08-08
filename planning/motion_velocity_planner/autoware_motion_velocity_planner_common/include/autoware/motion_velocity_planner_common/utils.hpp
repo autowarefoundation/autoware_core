@@ -64,7 +64,7 @@ std::vector<T> concat_vectors(std::vector<T> first_vector, std::vector<T> second
 }
 
 /**
- * @brief crop parf of the `traj_points` from `current_pose`, resample it by
+ * @brief crop part of the `traj_points` from `current_pose`, resample it by
  * `decimate_trajectory_step_length`, and extend the end by `goal_extended_trajectory_length`
  */
 std::vector<TrajectoryPoint> decimate_trajectory_points_from_ego(
