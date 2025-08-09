@@ -133,7 +133,7 @@
 
       <param name="publish_debug_trajs" value="false"/>
       <remap from="~/input/trajectory" to="/planning/scenario_planning/lane_driving/motion_planning/motion_velocity_planner/trajectory"/>
-      <remap from="~/output/trajectory" to="/planning/scenario_planning/trajectory"/>
+      <remap from="~/output/trajectory" to="/planning/trajectory"/>
 
       <remap from="~/input/external_velocity_limit_mps" to="/planning/scenario_planning/max_velocity"/>
       <remap from="~/input/acceleration" to="/localization/acceleration"/>
