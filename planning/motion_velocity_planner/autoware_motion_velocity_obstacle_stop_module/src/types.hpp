@@ -34,7 +34,7 @@ namespace autoware::motion_velocity_planner
 struct StopObstacle
 {
   StopObstacle(
-    const std::string & arg_uuid, const rclcpp::Time & arg_stamp,
+    const UUID & arg_uuid, const rclcpp::Time & arg_stamp,
     const ObjectClassification & object_classification, const geometry_msgs::msg::Pose & arg_pose,
     const Shape & arg_shape, const double arg_lon_velocity,
     const geometry_msgs::msg::Point & arg_collision_point,
@@ -51,7 +51,7 @@ struct StopObstacle
     braking_dist(arg_braking_dist)
   {
   }
-  std::string uuid;
+  UUID uuid;
   rclcpp::Time stamp;
   geometry_msgs::msg::Pose pose;  // interpolated with the current stamp
   double velocity;                // longitudinal velocity against ego's trajectory

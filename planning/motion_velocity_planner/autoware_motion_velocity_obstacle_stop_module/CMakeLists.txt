@@ -15,20 +15,14 @@ if(BUILD_TESTING)
   # Add test executable
   ament_add_ros_isolated_gtest(test_${PROJECT_NAME}
     test/test_obstacle_stop_module_outside_check.cpp
+    test/test_planning_factor.cpp
     test/test_utils.cpp
-    test/test_utils.hpp
   )
 
   # Set test dependencies
-  target_link_libraries(test_${PROJECT_NAME}
-    gtest_main
+  target_link_libraries(
+    test_${PROJECT_NAME}
     ${PROJECT_NAME}
-  )
-
-  # Set test include directories
-  target_include_directories(test_${PROJECT_NAME}
-    PRIVATE
-    src
   )
 endif()
 

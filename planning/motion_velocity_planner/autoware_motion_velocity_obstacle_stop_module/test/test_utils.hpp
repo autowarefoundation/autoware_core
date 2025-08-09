@@ -15,8 +15,8 @@
 #ifndef TEST_UTILS_HPP_
 #define TEST_UTILS_HPP_
 
-#include "obstacle_stop_module.hpp"
-#include "type_alias.hpp"
+#include "../src/obstacle_stop_module.hpp"
+#include "../src/type_alias.hpp"
 
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/pose.hpp>
