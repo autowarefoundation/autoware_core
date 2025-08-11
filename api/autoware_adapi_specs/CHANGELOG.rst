@@ -22,6 +22,17 @@ Changelog for package autoware_adapi_specs
 * feat: port autoware_adapi_specs from Autoware Universe (`#529 <https://github.com/autowarefoundation/autoware_core/issues/529>`_)
 * Contributors: Ryohsuke Mitsudome, Takagi, Isamu, github-actions
 
+Forthcoming
+-----------
+* chore: bump version to 1.3.0 (`#554 <https://github.com/autowarefoundation/autoware_core/issues/554>`_)
+* feat(adapi_specs): add mrm description (`#539 <https://github.com/autowarefoundation/autoware_core/issues/539>`_)
+  * feat(adapi_specs): add mrm description
+  * modify service name
+  ---------
+* feat(adapi_specs): rename control command api (`#538 <https://github.com/autowarefoundation/autoware_core/issues/538>`_)
+* feat: port autoware_adapi_specs from Autoware Universe (`#529 <https://github.com/autowarefoundation/autoware_core/issues/529>`_)
+* Contributors: Ryohsuke Mitsudome, Takagi, Isamu
+
 1.0.0 (2025-03-31)
 ------------------
 

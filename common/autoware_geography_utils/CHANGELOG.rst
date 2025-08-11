@@ -28,6 +28,21 @@ Changelog for package autoware_geography_utils
   ---------
 * Contributors: Yamato Ando, Yutaka Kondo, github-actions
 
+Forthcoming
+-----------
+* fix(autoware_geography_utils): disable tests for egm2008-1 (`#593 <https://github.com/autowarefoundation/autoware_core/issues/593>`_)
+* chore: bump version to 1.3.0 (`#554 <https://github.com/autowarefoundation/autoware_core/issues/554>`_)
+* chore: bump up version to 1.1.0 (`#462 <https://github.com/autowarefoundation/autoware_core/issues/462>`_) (`#464 <https://github.com/autowarefoundation/autoware_core/issues/464>`_)
+* feat(map_projection_loader): add scale_factor and remove altitude (`#340 <https://github.com/autowarefoundation/autoware_core/issues/340>`_)
+* refactor(autoware_geography_utils): rewrite using modern C++ without API breakage (`#345 <https://github.com/autowarefoundation/autoware_core/issues/345>`_)
+  * refactor using modern c++
+  * precommit
+  * revert
+  * remove nodiscard
+  * precommit
+  ---------
+* Contributors: Ryohsuke Mitsudome, Yamato Ando, Yutaka Kondo
+
 1.0.0 (2025-03-31)
 ------------------
 

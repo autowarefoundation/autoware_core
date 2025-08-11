@@ -20,6 +20,16 @@ Changelog for package autoware_core_api
   ---------
 * Contributors: Ryohsuke Mitsudome, github-actions
 
+Forthcoming
+-----------
+* chore: bump version to 1.3.0 (`#554 <https://github.com/autowarefoundation/autoware_core/issues/554>`_)
+* feat: add autoware_core_api package (`#551 <https://github.com/autowarefoundation/autoware_core/issues/551>`_)
+  * feat: add autoware_core_api package
+  * remove unnecessary change
+  * update README
+  ---------
+* Contributors: Ryohsuke Mitsudome
+
 1.0.0 (2025-03-31)
 ------------------
 

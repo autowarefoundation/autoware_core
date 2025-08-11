@@ -16,6 +16,15 @@ Changelog for package autoware_ndt_scan_matcher
   Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
 * Contributors: Ryohsuke Mitsudome, github-actions
 
+Forthcoming
+-----------
+* feat(autoware_ndt_scan_matcher): extend timeout for test case (`#601 <https://github.com/autowarefoundation/autoware_core/issues/601>`_)
+* chore: bump version to 1.3.0 (`#554 <https://github.com/autowarefoundation/autoware_core/issues/554>`_)
+* feat(autoware_ndt_scan_matcher): port the package from Autoware Universe   (`#490 <https://github.com/autowarefoundation/autoware_core/issues/490>`_)
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
+* Contributors: Ryohsuke Mitsudome
+
 1.0.0 (2025-03-31)
 ------------------
 

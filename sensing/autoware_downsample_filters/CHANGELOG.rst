@@ -14,6 +14,13 @@ Changelog for package autoware_downsample_filters
   Co-authored-by: Ryohsuke Mitsudome <ryohsuke.mitsudome@tier4.jp>
 * Contributors: NorahXiong, github-actions
 
+Forthcoming
+-----------
+* chore: bump version to 1.3.0 (`#554 <https://github.com/autowarefoundation/autoware_core/issues/554>`_)
+* feat(autoware_downsample_filters): re-implementation pointcloud downsample filters according to autoware_pointcloud_preprocessor in autoware_universe (`#459 <https://github.com/autowarefoundation/autoware_core/issues/459>`_)
+  Co-authored-by: Ryohsuke Mitsudome <ryohsuke.mitsudome@tier4.jp>
+* Contributors: NorahXiong, Ryohsuke Mitsudome
+
 1.0.0 (2025-03-31)
 ------------------
 

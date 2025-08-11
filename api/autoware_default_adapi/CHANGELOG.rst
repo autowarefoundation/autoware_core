@@ -14,6 +14,13 @@ Changelog for package autoware_default_adapi
 * feat: port autoware_default_adapi from Autoware Universe (`#543 <https://github.com/autowarefoundation/autoware_core/issues/543>`_)
 * Contributors: Ryohsuke Mitsudome, Takagi, Isamu, github-actions
 
+Forthcoming
+-----------
+* chore: bump version to 1.3.0 (`#554 <https://github.com/autowarefoundation/autoware_core/issues/554>`_)
+* feat: release adapi v1.9.0 (`#550 <https://github.com/autowarefoundation/autoware_core/issues/550>`_)
+* feat: port autoware_default_adapi from Autoware Universe (`#543 <https://github.com/autowarefoundation/autoware_core/issues/543>`_)
+* Contributors: Ryohsuke Mitsudome, Takagi, Isamu
+
 1.0.0 (2025-03-31)
 ------------------
 

@@ -11,6 +11,12 @@ Changelog for package autoware_osqp_interface
 * chore: bump up version to 1.1.0 (`#462 <https://github.com/autowarefoundation/autoware_core/issues/462>`_) (`#464 <https://github.com/autowarefoundation/autoware_core/issues/464>`_)
 * Contributors: Yutaka Kondo, github-actions
 
+Forthcoming
+-----------
+* chore: bump version to 1.3.0 (`#554 <https://github.com/autowarefoundation/autoware_core/issues/554>`_)
+* chore: bump up version to 1.1.0 (`#462 <https://github.com/autowarefoundation/autoware_core/issues/462>`_) (`#464 <https://github.com/autowarefoundation/autoware_core/issues/464>`_)
+* Contributors: Ryohsuke Mitsudome, Yutaka Kondo
+
 1.0.0 (2025-03-31)
 ------------------
 

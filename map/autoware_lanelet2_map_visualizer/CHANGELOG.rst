@@ -16,6 +16,20 @@ Changelog for package autoware_lanelet2_map_visualizer
   Co-authored-by: Ryohsuke Mitsudome <43976834+mitsudome-r@users.noreply.github.com>
 * Contributors: Bang.Liu, NorahXiong, github-actions
 
+Forthcoming
+-----------
+* chore: bump version to 1.3.0 (`#554 <https://github.com/autowarefoundation/autoware_core/issues/554>`_)
+* feat(lanelet2_map_visualizer): visualize road borders (`#575 <https://github.com/autowarefoundation/autoware_core/issues/575>`_)
+  * feat(lanelet2_map_visualizer): visualize fences and road borders
+  * only visualize road border
+  * use a more general function
+  ---------
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* test(autoware_lanelet2_map_visualization): add unit test code (`#477 <https://github.com/autowarefoundation/autoware_core/issues/477>`_)
+* feat(autoware_lanelet2_map_visualizer): porting autoware_lanelet2_map_visualizer from autoware_universe (`#428 <https://github.com/autowarefoundation/autoware_core/issues/428>`_)
+  Co-authored-by: Ryohsuke Mitsudome <43976834+mitsudome-r@users.noreply.github.com>
+* Contributors: Bang.Liu, NorahXiong, Ryohsuke Mitsudome, Zulfaqar Azmi
+
 1.0.0 (2025-03-31)
 ------------------
 

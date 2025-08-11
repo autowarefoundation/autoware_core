@@ -16,6 +16,25 @@ Changelog for package autoware_planning_test_manager
 * chore: bump up version to 1.1.0 (`#462 <https://github.com/autowarefoundation/autoware_core/issues/462>`_) (`#464 <https://github.com/autowarefoundation/autoware_core/issues/464>`_)
 * Contributors: Takayuki Murooka, Yutaka Kondo, github-actions
 
+Forthcoming
+-----------
+* feat(planning_test_manager): subscription callback (`#563 <https://github.com/autowarefoundation/autoware_core/issues/563>`_)
+  * feat(planning_test_manager): subscription callback
+  * fix(test_planning_test_manager): unique node names
+  Update testing/autoware_planning_test_manager/test/test_planning_test_manager.cpp
+  Update testing/autoware_planning_test_manager/test/test_planning_test_manager.cpp
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+  ---------
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* chore: bump version to 1.3.0 (`#554 <https://github.com/autowarefoundation/autoware_core/issues/554>`_)
+* feat!: remove obstacle_stop_planner and obstacle_cruise_planner (`#495 <https://github.com/autowarefoundation/autoware_core/issues/495>`_)
+  * feat: remove obstacle_stop_planner and obstacle_cruise_planner
+  * update
+  * fix
+  ---------
+* chore: bump up version to 1.1.0 (`#462 <https://github.com/autowarefoundation/autoware_core/issues/462>`_) (`#464 <https://github.com/autowarefoundation/autoware_core/issues/464>`_)
+* Contributors: Ryohsuke Mitsudome, Takayuki Murooka, Yutaka Kondo, ralwing
+
 1.0.0 (2025-03-31)
 ------------------
 
