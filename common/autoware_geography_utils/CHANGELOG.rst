@@ -14,8 +14,8 @@ Changelog for package autoware_geography_utils
   ---------
 * Contributors: Yamato Ando, Yutaka Kondo
 
-Forthcoming
------------
+1.4.0 (2025-08-11)
+------------------
 * Merge remote-tracking branch 'origin/main' into humble
 * fix(autoware_geography_utils): disable tests for egm2008-1 (`#593 <https://github.com/autowarefoundation/autoware_core/issues/593>`_)
 * chore: bump version to 1.3.0 (`#554 <https://github.com/autowarefoundation/autoware_core/issues/554>`_)

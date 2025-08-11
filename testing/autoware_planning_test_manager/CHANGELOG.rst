@@ -5,8 +5,8 @@ Changelog for package autoware_planning_test_manager
 1.1.0 (2025-05-01)
 ------------------
 
-Forthcoming
------------
+1.4.0 (2025-08-11)
+------------------
 * Merge remote-tracking branch 'origin/main' into humble
 * feat(planning_test_manager): subscription callback (`#563 <https://github.com/autowarefoundation/autoware_core/issues/563>`_)
   * feat(planning_test_manager): subscription callback

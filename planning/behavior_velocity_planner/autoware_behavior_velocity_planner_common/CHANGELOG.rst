@@ -5,8 +5,8 @@ Changelog for package autoware_behavior_velocity_planner_common
 1.1.0 (2025-05-01)
 ------------------
 
-Forthcoming
------------
+1.4.0 (2025-08-11)
+------------------
 * Merge remote-tracking branch 'origin/main' into humble
 * fix(autoware_behavior_velocity_planner_common): fix typo (`#606 <https://github.com/autowarefoundation/autoware_core/issues/606>`_)
 * fix(autoware_behavior_velocity_planner_common): stop line extension inside boundary (`#579 <https://github.com/autowarefoundation/autoware_core/issues/579>`_)
