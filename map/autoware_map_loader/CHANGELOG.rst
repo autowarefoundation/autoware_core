@@ -65,8 +65,8 @@ Changelog for package autoware_map_loader
 * feat(map_loader): add the explanation of handling use_waypoints (`#342 <https://github.com/autowarefoundation/autoware_core/issues/342>`_)
 * Contributors: Takagi, Isamu, Takayuki Murooka, Yutaka Kondo, github-actions
 
-Forthcoming
------------
+1.4.0 (2025-08-11)
+------------------
 * chore: bump version to 1.3.0 (`#554 <https://github.com/autowarefoundation/autoware_core/issues/554>`_)
 * fix(autoware_ndt_scan_matcher): update link (`#510 <https://github.com/autowarefoundation/autoware_core/issues/510>`_)
   fix link

@@ -28,8 +28,8 @@ Changelog for package autoware_geography_utils
   ---------
 * Contributors: Yamato Ando, Yutaka Kondo, github-actions
 
-Forthcoming
------------
+1.4.0 (2025-08-11)
+------------------
 * fix(autoware_geography_utils): disable tests for egm2008-1 (`#593 <https://github.com/autowarefoundation/autoware_core/issues/593>`_)
 * chore: bump version to 1.3.0 (`#554 <https://github.com/autowarefoundation/autoware_core/issues/554>`_)
 * chore: bump up version to 1.1.0 (`#462 <https://github.com/autowarefoundation/autoware_core/issues/462>`_) (`#464 <https://github.com/autowarefoundation/autoware_core/issues/464>`_)

@@ -45,8 +45,8 @@ Changelog for package autoware_behavior_velocity_stop_line_module
   refactor(autoware_trajectory)!: move everything to namespace experimental
 * Contributors: Kosuke Takeuchi, Mamoru Sobue, Masaki Baba, Mitsuhiro Sakamoto, Takayuki Murooka, Yukinari Hisaki, Yutaka Kondo, github-actions
 
-Forthcoming
------------
+1.4.0 (2025-08-11)
+------------------
 * chore: bump version to 1.3.0 (`#554 <https://github.com/autowarefoundation/autoware_core/issues/554>`_)
 * feat(behavior_velocity_planner_common, stop_line_module): print module/regulatory_element/lane/line ID and improve stop line module log (`#504 <https://github.com/autowarefoundation/autoware_core/issues/504>`_)
   feat(behavior_velocity_planner_common, stop_line_module): print module/regulatory_element/lane/line ID and improve stop_line_module log

@@ -16,8 +16,8 @@ Changelog for package autoware_perception_objects_converter
   Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
 * Contributors: github-actions, storrrrrrrrm
 
-Forthcoming
------------
+1.4.0 (2025-08-11)
+------------------
 * chore: bump version to 1.3.0 (`#554 <https://github.com/autowarefoundation/autoware_core/issues/554>`_)
 * feat: add autoware_perception_objects_converter (`#458 <https://github.com/autowarefoundation/autoware_core/issues/458>`_)
   Co-authored-by: suchang <chang.su@autocore.ai>

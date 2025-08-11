@@ -41,8 +41,8 @@ Changelog for package autoware_core_planning
   fix::autoware_path_generator::missing parameters in config file
 * Contributors: Arjun Jagdish Ram, Kosuke Takeuchi, Ryohsuke Mitsudome, Yutaka Kondo, github-actions, 心刚
 
-Forthcoming
------------
+1.4.0 (2025-08-11)
+------------------
 * feat: change planning output topic name to /planning/trajectory (`#602 <https://github.com/autowarefoundation/autoware_core/issues/602>`_)
   * change planning output topic name to /planning/trajectory
   * style(pre-commit): autofix

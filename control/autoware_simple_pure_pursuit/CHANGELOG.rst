@@ -34,8 +34,8 @@ Changelog for package autoware_simple_pure_pursuit
   Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
 * Contributors: Masaki Baba, Mitsuhiro Sakamoto, Tim Clephas, Yukinari Hisaki, Yutaka Kondo, github-actions, 心刚
 
-Forthcoming
------------
+1.4.0 (2025-08-11)
+------------------
 * feat: change planning output topic name to /planning/trajectory (`#602 <https://github.com/autowarefoundation/autoware_core/issues/602>`_)
   * change planning output topic name to /planning/trajectory
   * style(pre-commit): autofix

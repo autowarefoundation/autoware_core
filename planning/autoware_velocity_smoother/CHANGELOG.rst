@@ -25,8 +25,8 @@ Changelog for package autoware_velocity_smoother
   Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
 * Contributors: Masaki Baba, Mitsuhiro Sakamoto, Tim Clephas, Yutaka Kondo, github-actions
 
-Forthcoming
------------
+1.4.0 (2025-08-11)
+------------------
 * feat: change planning output topic name to /planning/trajectory (`#602 <https://github.com/autowarefoundation/autoware_core/issues/602>`_)
   * change planning output topic name to /planning/trajectory
   * style(pre-commit): autofix

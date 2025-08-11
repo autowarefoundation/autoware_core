@@ -24,8 +24,8 @@ Changelog for package autoware_planning_factor_interface
 * chore: bump up version to 1.1.0 (`#462 <https://github.com/autowarefoundation/autoware_core/issues/462>`_) (`#464 <https://github.com/autowarefoundation/autoware_core/issues/464>`_)
 * Contributors: Kosuke Takeuchi, Masaki Baba, Takayuki Murooka, Yutaka Kondo, github-actions
 
-Forthcoming
------------
+1.4.0 (2025-08-11)
+------------------
 * chore: bump version to 1.3.0 (`#554 <https://github.com/autowarefoundation/autoware_core/issues/554>`_)
 * feat(planning_factor): add console output option (`#513 <https://github.com/autowarefoundation/autoware_core/issues/513>`_)
   fix param json

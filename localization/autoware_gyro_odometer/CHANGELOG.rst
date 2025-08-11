@@ -110,8 +110,8 @@ Changelog for package autoware_gyro_odometer
 * feat(autoware_gyro_odometer): porting the package from Autoware Universe (`#423 <https://github.com/autowarefoundation/autoware_core/issues/423>`_)
 * Contributors: Tim Clephas, Yutaka Kondo, github-actions, storrrrrrrrm
 
-Forthcoming
------------
+1.4.0 (2025-08-11)
+------------------
 * chore: bump version to 1.3.0 (`#554 <https://github.com/autowarefoundation/autoware_core/issues/554>`_)
 * feat: support ROS 2 Jazzy (`#487 <https://github.com/autowarefoundation/autoware_core/issues/487>`_)
   * fix ekf_localizer

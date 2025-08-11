@@ -42,8 +42,8 @@ Changelog for package autoware_route_handler
   Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
 * Contributors: Mamoru Sobue, Masaki Baba, Maxime CLEMENT, Mert Çolak, Takayuki Murooka, Tim Clephas, Yutaka Kondo, github-actions
 
-Forthcoming
------------
+1.4.0 (2025-08-11)
+------------------
 * feat(route_handler): add bicycle lane getter (`#589 <https://github.com/autowarefoundation/autoware_core/issues/589>`_)
 * chore: bump version to 1.3.0 (`#554 <https://github.com/autowarefoundation/autoware_core/issues/554>`_)
 * perf(route_handler): improve functions to get nearest route lanelet (`#532 <https://github.com/autowarefoundation/autoware_core/issues/532>`_)

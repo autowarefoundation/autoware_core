@@ -78,8 +78,8 @@ Changelog for package autoware_behavior_velocity_planner_common
   Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
 * Contributors: Kosuke Takeuchi, Mamoru Sobue, Masaki Baba, Mitsuhiro Sakamoto, Takayuki Murooka, Tim Clephas, Yukinari Hisaki, Yutaka Kondo, github-actions
 
-Forthcoming
------------
+1.4.0 (2025-08-11)
+------------------
 * fix(autoware_behavior_velocity_planner_common): stop line extension inside boundary (`#579 <https://github.com/autowarefoundation/autoware_core/issues/579>`_)
   * add comment
   * add test

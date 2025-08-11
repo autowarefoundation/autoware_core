@@ -34,8 +34,8 @@ Changelog for package autoware_component_interface_specs
 * docs(autoware_component_interface_specs): fix `README.md` (`#363 <https://github.com/autowarefoundation/autoware_core/issues/363>`_)
 * Contributors: Ryohsuke Mitsudome, Takagi, Isamu, Yutaka Kondo, github-actions
 
-Forthcoming
------------
+1.4.0 (2025-08-11)
+------------------
 * feat: change planning output topic name to /planning/trajectory (`#602 <https://github.com/autowarefoundation/autoware_core/issues/602>`_)
   * change planning output topic name to /planning/trajectory
   * style(pre-commit): autofix

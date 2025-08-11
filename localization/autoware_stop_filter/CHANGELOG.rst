@@ -15,8 +15,8 @@ Changelog for package autoware_stop_filter
 * chore: bump up version to 1.1.0 (`#462 <https://github.com/autowarefoundation/autoware_core/issues/462>`_) (`#464 <https://github.com/autowarefoundation/autoware_core/issues/464>`_)
 * Contributors: Tim Clephas, Yutaka Kondo, github-actions
 
-Forthcoming
------------
+1.4.0 (2025-08-11)
+------------------
 * feat(stop_filter): add unit tests to stop filter node (`#573 <https://github.com/autowarefoundation/autoware_core/issues/573>`_)
   * refactor(stop_filter): rename file name
   * refactor(stop_filter): rename class

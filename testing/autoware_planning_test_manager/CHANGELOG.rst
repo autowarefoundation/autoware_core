@@ -16,8 +16,8 @@ Changelog for package autoware_planning_test_manager
 * chore: bump up version to 1.1.0 (`#462 <https://github.com/autowarefoundation/autoware_core/issues/462>`_) (`#464 <https://github.com/autowarefoundation/autoware_core/issues/464>`_)
 * Contributors: Takayuki Murooka, Yutaka Kondo, github-actions
 
-Forthcoming
------------
+1.4.0 (2025-08-11)
+------------------
 * feat(planning_test_manager): subscription callback (`#563 <https://github.com/autowarefoundation/autoware_core/issues/563>`_)
   * feat(planning_test_manager): subscription callback
   * fix(test_planning_test_manager): unique node names

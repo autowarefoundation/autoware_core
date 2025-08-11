@@ -51,8 +51,8 @@ Changelog for package autoware_motion_velocity_planner_common
   Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
 * Contributors: Arjun Jagdish Ram, Masaki Baba, Ryohsuke Mitsudome, Yutaka Kondo, github-actions
 
-Forthcoming
------------
+1.4.0 (2025-08-11)
+------------------
 * refactor(mvp_common): add docstrings and comments (`#600 <https://github.com/autowarefoundation/autoware_core/issues/600>`_)
 * feat(motion_velocity_planner, motion_velocity_planner_common): update pointcloud preprocess design (`#591 <https://github.com/autowarefoundation/autoware_core/issues/591>`_)
   * updare pcl preprocess

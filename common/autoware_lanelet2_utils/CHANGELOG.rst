@@ -109,8 +109,8 @@ Changelog for package autoware_lanelet2_utils
   ---------
 * Contributors: Giovanni Muhammad Raditya, Mamoru Sobue, Sarun MUKDAPITAK, Yutaka Kondo, github-actions, yukage-oya
 
-Forthcoming
------------
+1.4.0 (2025-08-11)
+------------------
 * chore: bump version to 1.3.0 (`#554 <https://github.com/autowarefoundation/autoware_core/issues/554>`_)
 * feat(autoware_lanelet2_utils): add hatched_road_markings utility (`#565 <https://github.com/autowarefoundation/autoware_core/issues/565>`_)
 * feat(autoware_trajectory): implement a function to construct trajectory class for reference path (`#469 <https://github.com/autowarefoundation/autoware_core/issues/469>`_)
