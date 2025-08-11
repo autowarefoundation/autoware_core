@@ -5,6 +5,38 @@ Changelog for package autoware_core_planning
 1.1.0 (2025-05-01)
 ------------------
 
+1.4.0 (2025-08-11)
+------------------
+* Merge remote-tracking branch 'origin/main' into humble
+* feat: change planning output topic name to /planning/trajectory (`#602 <https://github.com/autowarefoundation/autoware_core/issues/602>`_)
+  * change planning output topic name to /planning/trajectory
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* feat(motion_velocity_planner, motion_velocity_planner_common): update pointcloud preprocess design (`#591 <https://github.com/autowarefoundation/autoware_core/issues/591>`_)
+  * updare pcl preprocess
+  ---------
+* chore: bump version to 1.3.0 (`#554 <https://github.com/autowarefoundation/autoware_core/issues/554>`_)
+* fix(obstacle_stop): fix for failing scenario (`#566 <https://github.com/autowarefoundation/autoware_core/issues/566>`_)
+  fix for failing scenario
+* feat(obstacle_stop_module)!: add leading vehicle following by rss stop position determination (`#537 <https://github.com/autowarefoundation/autoware_core/issues/537>`_)
+  * add new feature
+  ---------
+* refactor: implement varying lateral acceleration and steering rate threshold in velocity smoother (`#531 <https://github.com/autowarefoundation/autoware_core/issues/531>`_)
+  * refactor: implement varying steering rate threshold in velocity smoother
+  * feat: implement varying lateral acceleration limit
+  * fix  typo in readme
+  * fix bugs in unit conversion
+  * clean up the obsolete parameter in core planning launch
+  ---------
+  Co-authored-by: Shumpei Wakabayashi <42209144+shmpwk@users.noreply.github.com>
+* feat(obstacle_stop_module): add cut in stop feature (`#517 <https://github.com/autowarefoundation/autoware_core/issues/517>`_)
+  * restore the old function to pass universe CI
+  * add new feature
+  * add todo comment
+  ---------
+* Contributors: Arjun Jagdish Ram, Ryohsuke Mitsudome, Yuki TAKAGI, Yukihiro Saito, Yuxuan Liu
+
 1.3.0 (2025-06-23)
 ------------------
 * fix: to be consistent version in all package.xml(s)

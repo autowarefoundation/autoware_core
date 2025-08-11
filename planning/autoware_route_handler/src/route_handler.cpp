@@ -14,6 +14,7 @@
 
 #include "autoware/route_handler/route_handler.hpp"
 
+#include <autoware/lanelet2_utils/kind.hpp>
 #include <autoware_lanelet2_extension/io/autoware_osm_parser.hpp>
 #include <autoware_lanelet2_extension/utility/message_conversion.hpp>
 #include <autoware_lanelet2_extension/utility/query.hpp>
@@ -60,6 +61,7 @@ namespace autoware::route_handler
 {
 namespace
 {
+using autoware::experimental::lanelet2_utils::is_bicycle_lane;
 using autoware_internal_planning_msgs::msg::PathPointWithLaneId;
 using autoware_internal_planning_msgs::msg::PathWithLaneId;
 using autoware_planning_msgs::msg::LaneletPrimitive;
@@ -807,6 +809,28 @@ std::optional<lanelet::ConstLanelet> RouteHandler::getRightShoulderLanelet(
   for (const auto & other_lanelet :
        lanelet_map_ptr_->laneletLayer.findUsages(lanelet.rightBound())) {
     if (other_lanelet.leftBound() == lanelet.rightBound() && isShoulderLanelet(other_lanelet))
+      return other_lanelet;
+  }
+  return std::nullopt;
+}
+
+std::optional<lanelet::ConstLanelet> RouteHandler::getLeftBicycleLanelet(
+  const lanelet::ConstLanelet & lanelet) const
+{
+  for (const auto & other_lanelet :
+       lanelet_map_ptr_->laneletLayer.findUsages(lanelet.leftBound())) {
+    if (other_lanelet.rightBound() == lanelet.leftBound() && is_bicycle_lane(other_lanelet))
+      return other_lanelet;
+  }
+  return std::nullopt;
+}
+
+std::optional<lanelet::ConstLanelet> RouteHandler::getRightBicycleLanelet(
+  const lanelet::ConstLanelet & lanelet) const
+{
+  for (const auto & other_lanelet :
+       lanelet_map_ptr_->laneletLayer.findUsages(lanelet.rightBound())) {
+    if (other_lanelet.leftBound() == lanelet.rightBound() && is_bicycle_lane(other_lanelet))
       return other_lanelet;
   }
   return std::nullopt;

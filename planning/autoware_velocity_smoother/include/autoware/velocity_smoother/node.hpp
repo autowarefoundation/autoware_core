@@ -96,7 +96,7 @@ private:
     VelocityLimit, autoware_utils_rclcpp::polling_policy::Newest>
     sub_external_velocity_limit_{this, "~/input/external_velocity_limit_mps"};
   autoware_utils_rclcpp::InterProcessPollingSubscriber<OperationModeState> sub_operation_mode_{
-    this, "~/input/operation_mode_state"};
+    this, "~/input/operation_mode_state", rclcpp::QoS{1}.transient_local()};
 
   Odometry::ConstSharedPtr current_odometry_ptr_;  // current odometry
   AccelWithCovarianceStamped::ConstSharedPtr current_acceleration_ptr_;

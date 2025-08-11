@@ -13,7 +13,7 @@ The obstacles meeting the following condition are determined as obstacles for st
 - The object type is for stopping according to `obstacle_filtering.object_type.*`.
 - The lateral distance from the object to the ego's trajectory is smaller than `obstacle_filtering.max_lat_margin`.
   - `obstacle_filtering.max_lat_margin_against_predicted_object_unknown` is applied to the predicted object of unknown.
-- The object velocity along the ego's trajectory is smaller than `obstacle_filtering.obstacle_velocity_threshold_from_stop`.
+  - For the 'outside' objects, objects' future poses until 'obstacle_filtering.outside_obstacle.estimation_time_horizon' is also considered.
 - The object
   - does not cross the ego's trajectory (\*1)
   - and its collision time margin is large enough (\*2)
@@ -41,6 +41,18 @@ When it stops at the end of the trajectory, and obstacle is on the same point, t
 
 When inserting the stop point, the required acceleration for the ego to stop in front of the stop point is calculated.
 If the acceleration is less than `common.min_strong_accel`, the stop planning will be cancelled since this package does not assume a strong sudden brake for emergency.
+
+### Leading Vehicle Following by RSS Stop Position Determination
+
+This function enables distance adjustment with moving leading vehicles in the obstacle_stop module as well.
+While leading vehicle following is primarily handled by the obstacle_cruise_module, this function provides a supplementary role.
+
+The operating principle is to assume a constant deceleration for the leading vehicle and predict the stopping point when the leading vehicle stops with a certain deceleration. Then, the logic embeds a stop point in the trajectory with the usual stop margin against that leading vehicle's stopping point.
+Leading vehicle following is realized through the cooperation of this function and the velocity_smoother.
+Please note that the ego vehicle's behavior is influenced not only by the obstacle_stop settings but also by the velocity_smoother settings.
+
+For objects moving slower than `obstacle_velocity_threshold_enter_fixed_stop`, the braking distance is not calculated. Instead, only the object's current position is used for stop position calculation.
+Additionally, if this feature is disabled by `use_rss_stop`, stop planning is performed only for objects moving slower than `obstacle_velocity_threshold_enter_fixed_stop`.
 
 ### Minor functions
 

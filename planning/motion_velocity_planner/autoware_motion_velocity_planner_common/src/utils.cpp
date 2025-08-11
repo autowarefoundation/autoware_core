@@ -81,9 +81,13 @@ std::vector<TrajectoryPoint> get_extended_trajectory_points(
 std::vector<TrajectoryPoint> resample_trajectory_points(
   const std::vector<TrajectoryPoint> & traj_points, const double interval)
 {
-  const auto traj = autoware::motion_utils::convertToTrajectory(traj_points);
-  const auto resampled_traj = autoware::motion_utils::resampleTrajectory(traj, interval);
-  return autoware::motion_utils::convertToTrajectoryPointArray(resampled_traj);
+  const auto traj_msg = autoware::motion_utils::convertToTrajectory(traj_points);
+  const auto resampled_traj_msg = autoware::motion_utils::resampleTrajectory(traj_msg, interval);
+  auto resampled_traj = autoware::motion_utils::convertToTrajectoryPointArray(resampled_traj_msg);
+  const bool is_driving_forward =
+    autoware_utils_geometry::is_driving_forward(traj_points.at(0), traj_points.at(1));
+  autoware::motion_utils::insertOrientationAsSpline(resampled_traj, is_driving_forward);
+  return resampled_traj;
 }
 
 std::vector<TrajectoryPoint> decimate_trajectory_points_from_ego(
@@ -197,8 +201,13 @@ double calc_possible_min_dist_from_obj_to_traj_poly(
 {
   const double object_possible_max_dist =
     calc_object_possible_max_dist_from_center(object->predicted_object.shape);
+  // The minimum lateral distance to the trajectory polygon is estimated by assuming that the
+  // ego-vehicle's front right or left corner is the furthest from the trajectory, in the very worst
+  // case
+  const double ego_possible_max_dist =
+    std::hypot(vehicle_info.max_longitudinal_offset_m, vehicle_info.vehicle_width_m / 2.0);
   const double possible_min_dist_to_traj_poly =
-    std::abs(object->get_dist_to_traj_lateral(traj_points)) - vehicle_info.vehicle_width_m / 2.0 -
+    std::abs(object->get_dist_to_traj_lateral(traj_points)) - ego_possible_max_dist -
     object_possible_max_dist;
   return possible_min_dist_to_traj_poly;
 }

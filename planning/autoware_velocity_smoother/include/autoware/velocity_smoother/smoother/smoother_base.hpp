@@ -41,15 +41,17 @@ public:
     double stop_decel;  // deceleration at a stop point [m/s2] <= 0
     double max_jerk;
     double min_jerk;
-    double max_lateral_accel;                     // max lateral acceleration [m/ss] > 0
     double min_decel_for_lateral_acc_lim_filter;  // deceleration limit applied in the lateral
                                                   // acceleration filter to avoid sudden braking.
     double min_curve_velocity;                    // min velocity at curve [m/s]
     double decel_distance_before_curve;  // distance before slow down for lateral acc at a curve
     double decel_distance_after_curve;   // distance after slow down for lateral acc at a curve
-    double max_steering_angle_rate;      // max steering angle rate [degree/s]
-    double wheel_base;                   // wheel base [m]
-    double sample_ds;                    // distance between trajectory points [m]
+    // Velocity-dependent steering angle rate parameters
+    std::vector<double> lateral_acceleration_limits;  // lateral acceleration limits [m/ss]
+    std::vector<double> velocity_thresholds;          // velocity thresholds [m/s]
+    std::vector<double> steering_angle_rate_limits;   // steering angle rate limits [degree/s]
+    double wheel_base;                                // wheel base [m]
+    double sample_ds;                                 // distance between trajectory points [m]
     double curvature_threshold;  // look-up distance of Trajectory point for calculation of steering
                                  // angle limit [m]
     double curvature_calculation_distance;  // threshold steering degree limit to trigger
@@ -89,6 +91,33 @@ public:
 
   void setParam(const BaseParam & param);
   BaseParam getBaseParam() const;
+
+  template <typename ThresholdType, typename ComputeRatioFunc>
+  std::vector<std::pair<double, double>> computeRatioLimits(
+    const std::vector<double> & velocity_thresholds,
+    const std::vector<ThresholdType> & threshold_values, ComputeRatioFunc compute_ratio_func) const;
+
+  template <typename RatioType, typename ThresholdType, typename ComputeVelocityFunc>
+  double computeVelocityLimit(
+    const RatioType local_ratio, const std::vector<std::pair<double, double>> & ratio_limits,
+    const std::vector<double> & velocity_thresholds,
+    const std::vector<ThresholdType> & threshold_values,
+    ComputeVelocityFunc compute_velocity_func) const;
+
+  // Compute acc/v**2 limits at difference velocity threshold
+  std::vector<std::pair<double, double>> computeLateralAccelerationVelocitySquareRatioLimits()
+    const;
+  // Helper function to get steering angle rate limit based on velocity
+  std::vector<std::pair<double, double>> computeSteerRateVelocityRatioLimits() const;
+
+  double computeVelocityLimitFromLateralAcc(
+    const double local_curvature,
+    const std::vector<std::pair<double, double>> lateral_acceleration_velocity_square_ratio_limits)
+    const;
+
+  double computeVelocityLimitFromSteerRate(
+    const double local_steer_rate_velocity_ratio,
+    const std::vector<std::pair<double, double>> steer_rate_velocity_ratio_limits) const;
 
 protected:
   BaseParam base_param_;

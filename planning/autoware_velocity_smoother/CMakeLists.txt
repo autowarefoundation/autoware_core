@@ -46,6 +46,13 @@ rclcpp_components_register_node(${PROJECT_NAME}_node
 )
 
 if(BUILD_TESTING)
+  ament_add_ros_isolated_gmock(test_smoother_base_functions
+  test/test_smoother_base_functions.cpp
+  )
+  target_link_libraries(test_smoother_base_functions
+  smoother
+  ${PROJECT_NAME}_node
+  )
   ament_add_ros_isolated_gmock(test_smoother_functions
   test/test_smoother_functions.cpp
   )
