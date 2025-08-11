@@ -5,8 +5,8 @@ Changelog for package autoware_stop_filter
 1.1.0 (2025-05-01)
 ------------------
 
-Forthcoming
------------
+1.4.0 (2025-08-11)
+------------------
 * Merge remote-tracking branch 'origin/main' into humble
 * feat(stop_filter): add unit tests to stop filter node (`#573 <https://github.com/autowarefoundation/autoware_core/issues/573>`_)
   * refactor(stop_filter): rename file name
