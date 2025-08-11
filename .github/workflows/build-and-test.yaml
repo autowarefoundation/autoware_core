@@ -23,12 +23,9 @@ jobs:
       matrix:
         rosdistro:
           - humble
-          - jazzy
         include:
           - rosdistro: humble
             container: ghcr.io/autowarefoundation/autoware:core-common-devel
-          - rosdistro: jazzy
-            container: ros:jazzy
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -47,14 +44,6 @@ jobs:
       - name: Get self packages
         id: get-self-packages
         uses: autowarefoundation/autoware-github-actions/get-self-packages@v1
-
-      - name: Use ros2-testing packages
-        run: |
-          if [ "${{ matrix.rosdistro }}" = "jazzy" ]; then
-            sed -i 's|http://packages.ros.org/ros2/ubuntu|http://packages.ros.org/ros2-testing/ubuntu|g' /etc/apt/sources.list.d/ros2-latest.list
-            apt-get update
-          fi
-        shell: bash
 
       - name: Create ccache directory
         run: |
@@ -107,15 +96,6 @@ jobs:
           path: |
             /root/.ccache
           key: ccache-main-${{ runner.arch }}-${{ matrix.rosdistro }}-${{ github.sha }}
-
-      - name: Set up geographiclib-tools
-        run: |
-          if [ "${{ matrix.rosdistro }}" = "jazzy" ]; then
-            apt-get update
-            apt-get install -y geographiclib-tools
-            geographiclib-get-geoids egm2008-1
-          fi
-        shell: bash
 
       - name: Test
         if: ${{ steps.get-self-packages.outputs.self-packages != '' }}

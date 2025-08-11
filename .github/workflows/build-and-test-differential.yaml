@@ -32,12 +32,9 @@ jobs:
       matrix:
         rosdistro:
           - humble
-          - jazzy
         include:
           - rosdistro: humble
             container: ghcr.io/autowarefoundation/autoware:core-common-devel
-          - rosdistro: jazzy
-            container: ros:jazzy
     steps:
       - name: Set PR fetch depth
         run: echo "PR_FETCH_DEPTH=$(( ${{ github.event.pull_request.commits }} + 1 ))" >> "${GITHUB_ENV}"

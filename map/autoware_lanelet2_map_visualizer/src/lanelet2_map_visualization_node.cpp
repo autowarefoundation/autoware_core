@@ -97,6 +97,8 @@ void Lanelet2MapVisualizationNode::on_map_bin(
   lanelet::ConstLanelets bicycle_lane_lanelets =
     lanelet::utils::query::bicycleLaneLanelets(all_lanelets);
   lanelet::ConstLineStrings3d partitions = lanelet::utils::query::getAllPartitions(viz_lanelet_map);
+  lanelet::ConstLineStrings3d road_borders =
+    lanelet::utils::query::getAllLinestringsWithType(viz_lanelet_map, "road_border");
   lanelet::ConstLineStrings3d pedestrian_polygon_markings =
     lanelet::utils::query::getAllPedestrianPolygonMarkings(viz_lanelet_map);
   lanelet::ConstLineStrings3d pedestrian_line_markings =
@@ -139,6 +141,7 @@ void Lanelet2MapVisualizationNode::on_map_bin(
   std_msgs::msg::ColorRGBA cl_shoulder;
   std_msgs::msg::ColorRGBA cl_cross;
   std_msgs::msg::ColorRGBA cl_partitions;
+  std_msgs::msg::ColorRGBA cl_road_borders;
   std_msgs::msg::ColorRGBA cl_pedestrian_markings;
   std_msgs::msg::ColorRGBA cl_ll_borders;
   std_msgs::msg::ColorRGBA cl_shoulder_borders;
@@ -166,6 +169,7 @@ void Lanelet2MapVisualizationNode::on_map_bin(
   set_color(&cl_shoulder, 0.15, 0.15, 0.15, 0.999);
   set_color(&cl_cross, 0.27, 0.3, 0.27, 0.5);
   set_color(&cl_partitions, 0.25, 0.25, 0.25, 0.999);
+  set_color(&cl_road_borders, 0.3, 0.25, 0.3, 0.999);
   set_color(&cl_pedestrian_markings, 0.5, 0.5, 0.5, 0.999);
   set_color(&cl_ll_borders, 0.5, 0.5, 0.5, 0.999);
   set_color(&cl_shoulder_borders, 0.2, 0.2, 0.2, 0.999);
@@ -198,6 +202,9 @@ void Lanelet2MapVisualizationNode::on_map_bin(
   insert_marker_array(
     &map_marker_array,
     lanelet::visualization::lineStringsAsMarkerArray(partitions, "partitions", cl_partitions, 0.1));
+  insert_marker_array(
+    &map_marker_array, lanelet::visualization::lineStringsAsMarkerArray(
+                         road_borders, "road_borders", cl_road_borders, 0.2));
   insert_marker_array(
     &map_marker_array,
     lanelet::visualization::laneletDirectionAsMarkerArray(shoulder_lanelets, "shoulder_"));

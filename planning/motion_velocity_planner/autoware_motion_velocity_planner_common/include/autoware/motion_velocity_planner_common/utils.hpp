@@ -46,6 +46,10 @@ using visualization_msgs::msg::MarkerArray;
 geometry_msgs::msg::Point to_geometry_point(const pcl::PointXYZ & point);
 geometry_msgs::msg::Point to_geometry_point(const autoware_utils_geometry::Point2d & point);
 
+/**
+ * @brief compute the distance between `ego_idx` and `object_pos` along `traj_points`, only when
+ * ego_idx is behind of `obstacle_pos`
+ */
 std::optional<double> calc_distance_to_front_object(
   const std::vector<TrajectoryPoint> & traj_points, const size_t ego_idx,
   const geometry_msgs::msg::Point & obstacle_pos);
@@ -59,6 +63,10 @@ std::vector<T> concat_vectors(std::vector<T> first_vector, std::vector<T> second
   return first_vector;
 }
 
+/**
+ * @brief crop part of the `traj_points` from `current_pose`, resample it by
+ * `decimate_trajectory_step_length`, and extend the end by `goal_extended_trajectory_length`
+ */
 std::vector<TrajectoryPoint> decimate_trajectory_points_from_ego(
   const std::vector<TrajectoryPoint> & traj_points, const geometry_msgs::msg::Pose & current_pose,
   const double ego_nearest_dist_threshold, const double ego_nearest_yaw_threshold,
@@ -80,12 +88,19 @@ std::optional<T> get_obstacle_from_uuid(
 
 std::vector<uint8_t> get_target_object_type(rclcpp::Node & node, const std::string & param_prefix);
 
+/**
+ * @brief compute the half of the diagonal length of the shape
+ */
 double calc_object_possible_max_dist_from_center(const Shape & shape);
 
 Marker get_object_marker(
   const geometry_msgs::msg::Pose & obj_pose, size_t idx, const std::string & ns, const double r,
   const double g, const double b);
 
+/**
+ * @brief compute the index of the point which overpasses `longitudinal_offset` for the 1st time,
+ * and return that index or the index next to it which is closer to `longitudinal_offset`
+ */
 template <class T>
 size_t get_index_with_longitudinal_offset(
   const T & points, const double longitudinal_offset, std::optional<size_t> start_idx)
@@ -142,14 +157,26 @@ size_t get_index_with_longitudinal_offset(
   return 0;
 }
 
+/**
+ * @brief subtract `object`'s diagonal length + `vehicle_info`'s diagonal length from the minimal
+ * distance of `object` to `traj_points`
+ * @note this sets the cache in `object`
+ */
 double calc_possible_min_dist_from_obj_to_traj_poly(
   const std::shared_ptr<PlannerData::Object> object,
   const std::vector<TrajectoryPoint> & traj_points, const VehicleInfo & vehicle_info);
 
+/**
+ * @brief return the minimum distance from `point` to each polygon in `decimated_traj_polys`
+ */
 double get_dist_to_traj_poly(
   const geometry_msgs::msg::Point & point,
   const std::vector<autoware_utils::Polygon2d> & decimated_traj_polys);
 
+/**
+ * @brief append the `input_points` up to `extend_length` every `step_length`, in the direction of
+ * the last point of `input_points`, keeping its vel/acc
+ */
 std::vector<TrajectoryPoint> get_extended_trajectory_points(
   const std::vector<TrajectoryPoint> & input_points, const double extend_distance,
   const double step_length);

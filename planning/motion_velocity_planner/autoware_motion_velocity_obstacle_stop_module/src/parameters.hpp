@@ -67,19 +67,16 @@ struct ObstacleFilteringParam
   std::vector<uint8_t> inside_stop_object_types{};
   std::vector<uint8_t> outside_stop_object_types{};
 
-  double obstacle_velocity_threshold_to_stop{};
-  double obstacle_velocity_threshold_from_stop{};
-
   double max_lat_margin{};
   double max_lat_margin_against_predicted_object_unknown{};
 
   double min_velocity_to_reach_collision_point{};
   double stop_obstacle_hold_time_threshold{};
 
-  double outside_max_lat_time_margin{};
-  int outside_num_of_predicted_paths{};
-  double outside_pedestrian_deceleration_rate{};
-  double outside_bicycle_deceleration_rate{};
+  double outside_estimation_time_horizon{};
+  double outside_max_lateral_velocity{};
+  double outside_pedestrian_deceleration{};
+  double outside_bicycle_deceleration{};
 
   double crossing_obstacle_collision_time_margin{};
   double crossing_obstacle_traj_angle_threshold{};
@@ -91,11 +88,6 @@ struct ObstacleFilteringParam
     outside_stop_object_types(
       utils::get_target_object_type(node, "obstacle_stop.obstacle_filtering.object_type.outside."))
   {
-    obstacle_velocity_threshold_to_stop = get_or_declare_parameter<double>(
-      node, "obstacle_stop.obstacle_filtering.obstacle_velocity_threshold_to_stop");
-    obstacle_velocity_threshold_from_stop = get_or_declare_parameter<double>(
-      node, "obstacle_stop.obstacle_filtering.obstacle_velocity_threshold_from_stop");
-
     max_lat_margin =
       get_or_declare_parameter<double>(node, "obstacle_stop.obstacle_filtering.max_lat_margin");
     max_lat_margin_against_predicted_object_unknown = get_or_declare_parameter<double>(
@@ -106,14 +98,14 @@ struct ObstacleFilteringParam
     stop_obstacle_hold_time_threshold = get_or_declare_parameter<double>(
       node, "obstacle_stop.obstacle_filtering.stop_obstacle_hold_time_threshold");
 
-    outside_max_lat_time_margin = get_or_declare_parameter<double>(
-      node, "obstacle_stop.obstacle_filtering.outside_obstacle.max_lateral_time_margin");
-    outside_num_of_predicted_paths = get_or_declare_parameter<int>(
-      node, "obstacle_stop.obstacle_filtering.outside_obstacle.num_of_predicted_paths");
-    outside_pedestrian_deceleration_rate = get_or_declare_parameter<double>(
-      node, "obstacle_stop.obstacle_filtering.outside_obstacle.pedestrian_deceleration_rate");
-    outside_bicycle_deceleration_rate = get_or_declare_parameter<double>(
-      node, "obstacle_stop.obstacle_filtering.outside_obstacle.bicycle_deceleration_rate");
+    outside_estimation_time_horizon = get_or_declare_parameter<double>(
+      node, "obstacle_stop.obstacle_filtering.outside_obstacle.estimation_time_horizon");
+    outside_pedestrian_deceleration = get_or_declare_parameter<double>(
+      node, "obstacle_stop.obstacle_filtering.outside_obstacle.pedestrian_deceleration");
+    outside_bicycle_deceleration = get_or_declare_parameter<double>(
+      node, "obstacle_stop.obstacle_filtering.outside_obstacle.bicycle_deceleration");
+    outside_max_lateral_velocity = get_or_declare_parameter<double>(
+      node, "obstacle_stop.obstacle_filtering.outside_obstacle.max_lateral_velocity");
 
     crossing_obstacle_collision_time_margin = get_or_declare_parameter<double>(
       node, "obstacle_stop.obstacle_filtering.crossing_obstacle.collision_time_margin");
@@ -123,6 +115,15 @@ struct ObstacleFilteringParam
     use_pointcloud = get_or_declare_parameter<bool>(
       node, "obstacle_stop.obstacle_filtering.object_type.pointcloud");
   }
+};
+
+struct RSSParam
+{
+  bool use_rss_stop{};
+  double two_wheel_objects_deceleration{};
+  double vehicle_objects_deceleration{};
+  double no_wheel_objects_deceleration{};
+  double velocity_offset{};
 };
 
 struct StopPlanningParam
@@ -138,6 +139,9 @@ struct StopPlanningParam
   bool enable_approaching_on_curve{};
   double additional_stop_margin_on_curve{};
   double min_stop_margin_on_curve{};
+  RSSParam rss_params;
+  double obstacle_velocity_threshold_enter_fixed_stop{};
+  double obstacle_velocity_threshold_exit_fixed_stop{};
 
   struct ObjectTypeSpecificParams
   {
@@ -177,6 +181,20 @@ struct StopPlanningParam
       node, "obstacle_stop.stop_planning.stop_on_curve.additional_stop_margin");
     min_stop_margin_on_curve = get_or_declare_parameter<double>(
       node, "obstacle_stop.stop_planning.stop_on_curve.min_stop_margin");
+    rss_params.use_rss_stop =
+      get_or_declare_parameter<bool>(node, "obstacle_stop.stop_planning.rss_params.use_rss_stop");
+    rss_params.two_wheel_objects_deceleration = get_or_declare_parameter<double>(
+      node, "obstacle_stop.stop_planning.rss_params.two_wheel_objects_deceleration");
+    rss_params.vehicle_objects_deceleration = get_or_declare_parameter<double>(
+      node, "obstacle_stop.stop_planning.rss_params.vehicle_objects_deceleration");
+    rss_params.no_wheel_objects_deceleration = get_or_declare_parameter<double>(
+      node, "obstacle_stop.stop_planning.rss_params.no_wheel_objects_deceleration");
+    rss_params.velocity_offset = get_or_declare_parameter<double>(
+      node, "obstacle_stop.stop_planning.rss_params.velocity_offset");
+    obstacle_velocity_threshold_enter_fixed_stop = get_or_declare_parameter<double>(
+      node, "obstacle_stop.stop_planning.obstacle_velocity_threshold_enter_fixed_stop");
+    obstacle_velocity_threshold_exit_fixed_stop = get_or_declare_parameter<double>(
+      node, "obstacle_stop.stop_planning.obstacle_velocity_threshold_exit_fixed_stop");
 
     const std::string param_prefix = "obstacle_stop.stop_planning.object_type_specified_params.";
     const auto object_types =

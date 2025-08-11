@@ -83,6 +83,14 @@ std::vector<double> splineYawFromPoints(const std::vector<T> & points)
 }
 template std::vector<double> splineYawFromPoints(
   const std::vector<geometry_msgs::msg::Point> & points);
+template std::vector<double> splineYawFromPoints(
+  const std::vector<geometry_msgs::msg::Pose> & points);
+template std::vector<double> splineYawFromPoints(
+  const std::vector<autoware_planning_msgs::msg::PathPoint> & points);
+template std::vector<double> splineYawFromPoints(
+  const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & points);
+template std::vector<double> splineYawFromPoints(
+  const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points);
 
 geometry_msgs::msg::Pose SplineInterpolationPoints2d::getSplineInterpolatedPose(
   const size_t idx, const double s) const

@@ -18,8 +18,6 @@
 #include "planner_manager.hpp"
 
 #include <autoware/motion_velocity_planner_common/planner_data.hpp>
-#include <autoware_motion_velocity_planner/srv/load_plugin.hpp>
-#include <autoware_motion_velocity_planner/srv/unload_plugin.hpp>
 #include <autoware_utils_debug/published_time_publisher.hpp>
 #include <autoware_utils_logging/logger_level_configure.hpp>
 #include <autoware_utils_rclcpp/polling_subscriber.hpp>
@@ -28,6 +26,8 @@
 #include <autoware_internal_debug_msgs/msg/float64_stamped.hpp>
 #include <autoware_internal_planning_msgs/msg/velocity_limit.hpp>
 #include <autoware_internal_planning_msgs/msg/velocity_limit_clear_command.hpp>
+#include <autoware_internal_planning_msgs/srv/load_plugin.hpp>
+#include <autoware_internal_planning_msgs/srv/unload_plugin.hpp>
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
 #include <autoware_perception_msgs/msg/predicted_objects.hpp>
 #include <autoware_perception_msgs/msg/traffic_signal_array.hpp>
@@ -50,9 +50,9 @@ namespace autoware::motion_velocity_planner
 {
 using autoware_internal_planning_msgs::msg::VelocityLimit;
 using autoware_internal_planning_msgs::msg::VelocityLimitClearCommand;
+using autoware_internal_planning_msgs::srv::LoadPlugin;
+using autoware_internal_planning_msgs::srv::UnloadPlugin;
 using autoware_map_msgs::msg::LaneletMapBin;
-using autoware_motion_velocity_planner::srv::LoadPlugin;
-using autoware_motion_velocity_planner::srv::UnloadPlugin;
 using autoware_planning_msgs::msg::Trajectory;
 using TrajectoryPoints = std::vector<autoware_planning_msgs::msg::TrajectoryPoint>;
 
@@ -112,7 +112,7 @@ private:
   void set_velocity_smoother_params();
 
   // members
-  PlannerData planner_data_;
+  std::shared_ptr<PlannerData> planner_data_;
   MotionVelocityPlannerManager planner_manager_;
   LaneletMapBin::ConstSharedPtr map_ptr_{nullptr};
   bool has_received_map_ = false;
@@ -144,7 +144,7 @@ private:
     const autoware::motion_velocity_planner::SlowdownInterval & slowdown_interval) const;
   autoware::motion_velocity_planner::TrajectoryPoints smooth_trajectory(
     const autoware::motion_velocity_planner::TrajectoryPoints & trajectory_points,
-    const autoware::motion_velocity_planner::PlannerData & planner_data) const;
+    const std::shared_ptr<autoware::motion_velocity_planner::PlannerData> & planner_data) const;
   autoware_planning_msgs::msg::Trajectory generate_trajectory(
     const autoware::motion_velocity_planner::TrajectoryPoints & input_trajectory_points,
     std::map<std::string, double> & processing_times);

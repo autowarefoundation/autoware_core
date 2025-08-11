@@ -14,10 +14,33 @@
 
 #include "utils_test.hpp"
 
+#include <autoware/trajectory/interpolator/linear.hpp>
+
 #include <lanelet2_core/geometry/Lanelet.h>
 
 namespace autoware::path_generator
 {
+namespace
+{
+using Trajectory = experimental::trajectory::Trajectory<PathPointWithLaneId>;
+
+Trajectory create_path(const std::vector<std::pair<lanelet::Ids, lanelet::BasicPoint2d>> & points)
+{
+  std::vector<PathPointWithLaneId> path_points;
+  path_points.reserve(points.size());
+  for (const auto & [lane_ids, point] : points) {
+    PathPointWithLaneId path_point;
+    path_point.point.pose.position.x = point.x();
+    path_point.point.pose.position.y = point.y();
+    path_point.lane_ids = lane_ids;
+    path_points.push_back(path_point);
+  }
+  return *Trajectory::Builder{}
+            .set_xy_interpolator<autoware::experimental::trajectory::interpolator::Linear>()
+            .build(path_points);
+}
+}  // namespace
+
 struct GetFirstIntersectionArcLengthTestParam
 {
   std::string description;
@@ -95,49 +118,123 @@ INSTANTIATE_TEST_SUITE_P(
 
 TEST_F(UtilsTest, getFirstSelfIntersectionArcLength)
 {
-  constexpr double epsilon = 1e-1;
-
   {  // line string is empty
     const auto result = utils::get_first_self_intersection_arc_length(lanelet::BasicLineString2d{});
 
     ASSERT_FALSE(result);
   }
+}
 
-  {  // line string is straight line
-    const auto result = utils::get_first_self_intersection_arc_length(
-      lanelet::BasicLineString2d{{0.0, 0.0}, {1.0, 0.0}});
+TEST_F(UtilsTest, getFirstMutualIntersectionArcLength)
+{
+  const lanelet::LaneletSequence dummy_lanelet_sequence(get_lanelets_from_ids({122}));
+  const auto dummy_left_bound = dummy_lanelet_sequence.leftBound2d().basicLineString();
+  const auto dummy_right_bound = dummy_lanelet_sequence.rightBound2d().basicLineString();
+
+  {  // lanelet sequence is empty
+    const auto result =
+      utils::get_first_mutual_intersection_arc_length({}, dummy_left_bound, dummy_right_bound, {});
 
     ASSERT_FALSE(result);
   }
 
-  {  // line string has no self-intersection
-    const auto result = utils::get_first_self_intersection_arc_length(
-      lanelet::BasicLineString2d{{0.0, 0.0}, {1.0, 0.0}, {1.0, 1.0}, {-1.0, 1.0}, {-1.0, -1.0}});
+  {  // left bound is empty
+    const auto result = utils::get_first_mutual_intersection_arc_length(
+      dummy_lanelet_sequence, {}, dummy_right_bound, {});
 
     ASSERT_FALSE(result);
   }
 
-  {  // line string has self-intersection
-    const auto result = utils::get_first_self_intersection_arc_length(
-      lanelet::BasicLineString2d{{0.0, 0.0}, {1.0, 0.0}, {1.0, 1.0}, {0.0, 1.0}, {0.0, -1.0}});
+  {  // right bound is empty
+    const auto result = utils::get_first_mutual_intersection_arc_length(
+      dummy_lanelet_sequence, dummy_left_bound, {}, {});
 
-    ASSERT_TRUE(result);
-    ASSERT_NEAR(*result, 4.0, epsilon);
+    ASSERT_FALSE(result);
+  }
+}
+
+TEST_F(UtilsTest, getFirstStartEdgeBoundIntersectionArcLength)
+{
+  constexpr auto to_geometry_msgs_points = [](const auto & line_string) {
+    std::vector<geometry_msgs::msg::Point> geometry_msgs_points{};
+    geometry_msgs_points.reserve(line_string.size());
+    std::transform(
+      line_string.begin(), line_string.end(), std::back_inserter(geometry_msgs_points),
+      [](const auto & point) { return lanelet::utils::conversion::toGeomMsgPt(point); });
+    return geometry_msgs_points;
+  };
+
+  const lanelet::LaneletSequence dummy_lanelet_sequence(get_lanelets_from_ids({122}));
+  const auto dummy_left_bound =
+    *autoware::experimental::trajectory::Trajectory<geometry_msgs::msg::Point>::Builder{}.build(
+      to_geometry_msgs_points(dummy_lanelet_sequence.leftBound()));
+  const auto dummy_right_bound =
+    *autoware::experimental::trajectory::Trajectory<geometry_msgs::msg::Point>::Builder{}.build(
+      to_geometry_msgs_points(dummy_lanelet_sequence.rightBound()));
+
+  {  // lanelet sequence is empty
+    const auto result = utils::get_first_start_edge_bound_intersection_arc_length(
+      {}, {{}, {}}, dummy_left_bound, dummy_right_bound, {}, {});
+
+    ASSERT_FALSE(result);
   }
 
-  {  // line string has overlap
-    const auto result = utils::get_first_self_intersection_arc_length(lanelet::BasicLineString2d{
-      {0.0, 0.0},
-      {1.0, 0.0},
-      {1.0, -1.0},
-      {2.0, -1.0},
-      {2.0, 1.0},
-      {1.0, 1.0},
-      {1.0, 0.0},
-      {0.0, 0.0}});
+  {  // start edge is empty
+    const auto result = utils::get_first_start_edge_bound_intersection_arc_length(
+      dummy_lanelet_sequence, {}, dummy_left_bound, dummy_right_bound, {}, {});
 
-    ASSERT_TRUE(result);
-    ASSERT_NEAR(*result, 7.0, epsilon);
+    ASSERT_FALSE(result);
+  }
+}
+
+TEST_F(UtilsTest, getFirstStartEdgeCenterlineIntersectionArcLength)
+{
+  const lanelet::LaneletSequence dummy_lanelet_sequence(get_lanelets_from_ids({122}));
+
+  {  // lanelet sequence is empty
+    const auto result =
+      utils::get_first_start_edge_centerline_intersection_arc_length({}, {{}, {}}, {}, {}, {});
+
+    ASSERT_FALSE(result);
+  }
+
+  {  // start edge is empty
+    const auto result = utils::get_first_start_edge_centerline_intersection_arc_length(
+      dummy_lanelet_sequence, {}, 0.0, std::numeric_limits<double>::max(), {});
+
+    ASSERT_FALSE(result);
+  }
+}
+
+TEST_F(UtilsTest, GetArcLengthOnPath)
+{
+  constexpr auto epsilon = 1e-1;
+
+  const auto path =
+    create_path({{{55, 122}, {3757.5609, 73751.8479}}, {{122}, {3752.1707, 73762.1772}}});
+
+  {  // lanelet sequence is empty
+    const auto result = utils::get_arc_length_on_path({}, path, {});
+
+    ASSERT_NEAR(result, 0.0, epsilon);
+  }
+
+  {  // normal case
+    const auto result = utils::get_arc_length_on_path(get_lanelets_from_ids({122}), path, 10.0);
+
+    ASSERT_NEAR(result, 10.0, epsilon);
+  }
+
+  {  // input arc length is negative
+    const auto result = utils::get_arc_length_on_path(get_lanelets_from_ids({122}), path, -10.0);
+
+    ASSERT_NEAR(result, 0.0, epsilon);
+  }
+
+  {  // input arc length exceeds lanelet length
+    const auto result = utils::get_arc_length_on_path(get_lanelets_from_ids({122}), path, 100.0);
+
+    ASSERT_NEAR(result, 100.0, epsilon);
   }
 }
 
@@ -218,85 +315,75 @@ TEST_F(UtilsTest, getPathBound)
     const auto [left, right] =
       utils::get_path_bounds(get_lanelets_from_ids({4429, 4434}), 30.0, 20.0);
 
-    ASSERT_GE(left.size(), 2);
-    ASSERT_NEAR(left.front().x, -975.0, epsilon);
-    ASSERT_NEAR(left.front().y, 3.5, epsilon);
-    ASSERT_NEAR(left.back().x, -925.0, epsilon);
-    ASSERT_NEAR(left.back().y, 3.5, epsilon);
-    ASSERT_GE(right.size(), 2);
-    ASSERT_NEAR(right.front().x, -975.0, epsilon);
-    ASSERT_NEAR(right.front().y, 0.0, epsilon);
-    ASSERT_NEAR(right.back().x, -925.0, epsilon);
-    ASSERT_NEAR(right.back().y, 0.0, epsilon);
+    ASSERT_TRUE(left.empty());
+    ASSERT_TRUE(right.empty());
   }
 }
 
-TEST_F(UtilsTest, cropLineString)
+TEST_F(UtilsTest, buildCroppedTrajectory)
 {
   constexpr auto epsilon = 1e-1;
 
   {  // line string is empty
-    const auto result = utils::crop_line_string({}, {}, {});
+    const auto result = utils::build_cropped_trajectory({}, {}, {});
 
-    ASSERT_TRUE(result.empty());
+    ASSERT_FALSE(result);
   }
 
   {  // line string has only 1 point
-    const auto result = utils::crop_line_string({geometry_msgs::msg::Point{}}, {}, {});
+    const auto result = utils::build_cropped_trajectory({geometry_msgs::msg::Point{}}, {}, {});
 
-    ASSERT_TRUE(result.empty());
+    ASSERT_FALSE(result);
   }
 
   {  // normal case
-    const auto result = utils::crop_line_string(
+    const auto result = utils::build_cropped_trajectory(
       {lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{0.0, 0.0, 0.0}),
        lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{3.0, 0.0, 0.0})},
       1.0, 2.0);
 
-    ASSERT_GE(result.size(), 2);
-    ASSERT_NEAR(result.front().x, 1.0, epsilon);
-    ASSERT_NEAR(result.front().y, 0.0, epsilon);
-    ASSERT_NEAR(result.back().x, 2.0, epsilon);
-    ASSERT_NEAR(result.back().y, 0.0, epsilon);
+    ASSERT_TRUE(result);
+
+    const auto start = result->compute(0);
+    ASSERT_NEAR(start.x, 1.0, epsilon);
+    ASSERT_NEAR(start.y, 0.0, epsilon);
+    const auto end = result->compute(result->length());
+    ASSERT_NEAR(end.x, 2.0, epsilon);
+    ASSERT_NEAR(end.y, 0.0, epsilon);
   }
 
   {  // start of crop range is negative
-    const auto result = utils::crop_line_string(
+    const auto result = utils::build_cropped_trajectory(
       {lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{0.0, 0.0, 0.0}),
        lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{3.0, 0.0, 0.0})},
       -1.0, 2.0);
 
-    ASSERT_GE(result.size(), 2);
-    ASSERT_NEAR(result.front().x, 0.0, epsilon);
-    ASSERT_NEAR(result.front().y, 0.0, epsilon);
-    ASSERT_NEAR(result.back().x, 3.0, epsilon);
-    ASSERT_NEAR(result.back().y, 0.0, epsilon);
+    ASSERT_FALSE(result);
   }
 
   {  // end of crop range exceeds line string length
-    const auto result = utils::crop_line_string(
+    const auto result = utils::build_cropped_trajectory(
       {lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{0.0, 0.0, 0.0}),
        lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{3.0, 0.0, 0.0})},
       1.0, 4.0);
 
-    ASSERT_GE(result.size(), 2);
-    ASSERT_NEAR(result.front().x, 1.0, epsilon);
-    ASSERT_NEAR(result.front().y, 0.0, epsilon);
-    ASSERT_NEAR(result.back().x, 3.0, epsilon);
-    ASSERT_NEAR(result.back().y, 0.0, epsilon);
+    ASSERT_TRUE(result);
+
+    const auto start = result->compute(0);
+    ASSERT_NEAR(start.x, 1.0, epsilon);
+    ASSERT_NEAR(start.y, 0.0, epsilon);
+    const auto end = result->compute(result->length());
+    ASSERT_NEAR(end.x, 3.0, epsilon);
+    ASSERT_NEAR(end.y, 0.0, epsilon);
   }
 
   {  // start of crop range is larger than end
-    const auto result = utils::crop_line_string(
+    const auto result = utils::build_cropped_trajectory(
       {lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{0.0, 0.0, 0.0}),
        lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{3.0, 0.0, 0.0})},
       2.0, 1.0);
 
-    ASSERT_GE(result.size(), 2);
-    ASSERT_NEAR(result.front().x, 0.0, epsilon);
-    ASSERT_NEAR(result.front().y, 0.0, epsilon);
-    ASSERT_NEAR(result.back().x, 3.0, epsilon);
-    ASSERT_NEAR(result.back().y, 0.0, epsilon);
+    ASSERT_FALSE(result);
   }
 }
 

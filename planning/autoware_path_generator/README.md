@@ -12,9 +12,9 @@ If found, it gets the lanelets within a distance of `path_length.backward` behin
 Their center lines are concatenated to generate a path.
 
 If waypoints exist in the route, it replaces the overlapped segment of the center line with them.
-The overlap interval is determined as shown in the following figure.
+The waypoints are grouped as shown in the following figure.
 
-![waypoint_group_overlap_interval_determination](./media/waypoint_group_overlap_interval_determination.drawio.svg)
+![waypoint_grouping](./media/waypoint_grouping.drawio.svg)
 
 ## Path cut
 
@@ -29,6 +29,20 @@ Depending on the crossing angle, the return path's bound may be closer to the ce
 Furthermore, in the case of the following figure, the return path goes inside even if mutual intersection is considered. Therefore, path cut is also made when the start edge of the path and the path bounds intersect.
 
 ![path_cut_start_edge_intersection](./media/path_cut_start_edge_intersection.drawio.svg)
+
+## Goal connection
+
+The path is connected to the goal smoothly in the following way:
+
+(a) The path has not reached the lane where the goal is placed, thus goal connection is not performed.
+
+(b) The path has reached the goal lane and the end is inside the connection section. However, the longitudinal position of the path end is still in front of the goal, so it does not connect the path with the goal.
+
+(c) The path has passed the goal (in terms of longitudinal position). In this case, the original path is cropped up to the connection section, and it is connected to the pre-goal and goal, sequentially. The pre-goal is inserted before the goal with the given offset, which helps align with the goal pose.
+
+(d) If the start of the path is already inside the connection section, it just connects the path start, pre-goal, and goal.
+
+![goal_connection](./media/goal_connection.drawio.svg)
 
 ## Turn signal
 

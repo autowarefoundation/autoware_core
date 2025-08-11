@@ -325,6 +325,20 @@ public:
     const lanelet::ConstLanelet & lanelet) const;
 
   /**
+   * @brief get "bicycle_lane" Lanelet on the left side of given lanelet
+   * @note this feature will be moved to autoware_lanelet2_utils
+   */
+  std::optional<lanelet::ConstLanelet> getLeftBicycleLanelet(
+    const lanelet::ConstLanelet & lanelet) const;
+
+  /**
+   * @brief get "bicycle_lane" Lanelet on the right side of given lanelet
+   * @note this feature will be moved to autoware_lanelet2_utils
+   */
+  std::optional<lanelet::ConstLanelet> getRightBicycleLanelet(
+    const lanelet::ConstLanelet & lanelet) const;
+
+  /**
    * @brief Search and return shoulder lanelets that intersect with a given pose.
    * @param pose reference pose at which to search for shoulder lanelets.
    * @return vector of shoulder lanelets intersecting with given pose.
