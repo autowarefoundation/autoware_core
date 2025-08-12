@@ -28,6 +28,7 @@ import launch_testing
 from nav_msgs.msg import Odometry
 import pytest
 import rclpy
+import rclpy.qos
 from std_srvs.srv import SetBool
 
 logger = get_logger(__name__)
@@ -96,8 +97,13 @@ class TestEKFLocalizer(unittest.TestCase):
             )
 
         # Send initial pose
+        qos = rclpy.qos.QoSProfile(
+            depth=1,
+            durability=rclpy.qos.DurabilityPolicy.TRANSIENT_LOCAL,
+            reliability=rclpy.qos.ReliabilityPolicy.RELIABLE,
+        )
         pub_init_pose = self.test_node.create_publisher(
-            PoseWithCovarianceStamped, "/initialpose3d", 10
+            PoseWithCovarianceStamped, "/initialpose3d", qos
         )
         init_pose = PoseWithCovarianceStamped()
         init_pose.header.frame_id = "map"
@@ -151,7 +157,7 @@ class TestEKFLocalizer(unittest.TestCase):
         # Receive Odometry
         msg_buffer = []
         self.test_node.create_subscription(
-            Odometry, "/ekf_odom", lambda msg: msg_buffer.append(msg), 10
+            Odometry, "/ekf_odom", lambda msg: msg_buffer.append(msg), qos
         )
 
         # Wait until the node publishes some topic
