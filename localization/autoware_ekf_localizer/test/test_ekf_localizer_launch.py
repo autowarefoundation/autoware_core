@@ -28,7 +28,6 @@ import launch_testing
 from nav_msgs.msg import Odometry
 import pytest
 import rclpy
-import rclpy.qos
 from std_srvs.srv import SetBool
 
 logger = get_logger(__name__)
@@ -157,7 +156,7 @@ class TestEKFLocalizer(unittest.TestCase):
         # Receive Odometry
         msg_buffer = []
         self.test_node.create_subscription(
-            Odometry, "/ekf_odom", lambda msg: msg_buffer.append(msg), qos
+            Odometry, "/ekf_odom", lambda msg: msg_buffer.append(msg), 10
         )
 
         # Wait until the node publishes some topic
