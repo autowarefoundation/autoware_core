@@ -85,6 +85,7 @@ private:
   CommonParam common_param_{};
   StopPlanningParam stop_planning_param_{};
   std::unordered_map<std::string, ObstacleFilteringParam> obstacle_filtering_params_{};
+  PointcloudSegmentationParam pointcloud_segmentation_param_; 
 
   // module publisher
   rclcpp::Publisher<Float32MultiArrayStamped>::SharedPtr debug_stop_planning_info_pub_{};

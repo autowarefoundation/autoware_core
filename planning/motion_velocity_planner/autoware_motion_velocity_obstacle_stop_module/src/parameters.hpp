@@ -61,14 +61,6 @@ struct CommonParam
   }
 };
 
-static const std::vector<std::string> object_label_list = {
-  "pointcloud", "unknown", "car", "truck", "bus", "trailer", "motorcycle", "bicycle", "pedestrian"};
-static const std::unordered_map<uint8_t, std::string> object_types_maps = {
-  {ObjectClassification::UNKNOWN, "unknown"}, {ObjectClassification::CAR, "car"},
-  {ObjectClassification::TRUCK, "truck"},     {ObjectClassification::BUS, "bus"},
-  {ObjectClassification::TRAILER, "trailer"}, {ObjectClassification::MOTORCYCLE, "motorcycle"},
-  {ObjectClassification::BICYCLE, "bicycle"}, {ObjectClassification::PEDESTRIAN, "pedestrian"}};
-
 /// @brief Get the parameter defined for a specific object label, or the default value if it was
 /// not specified
 template <class T>
@@ -92,73 +84,16 @@ T get_object_parameter(
 }
 struct ObstacleFilteringParam
 {
-  struct PointcloudObstacleFilteringParam
-  {
-    struct
-    {
-      bool enable_trim{};
-      double min_trajectory_length{};
-      double braking_distance_scale_factor{};
-    } trim_trajectory;
-    struct
-    {
-      double max_time_diff{};
-      double min_velocity{};
-      double max_velocity{};
-      double position_diff{};
-    } time_series_association;
-    struct
-    {
-      bool use_estimated_velocity{};
-      double min_clamp_velocity{};
-      double max_clamp_velocity{};
-      size_t required_velocity_count{};
-      double lpf_gain{};
-    } velocity_estimation;
-    struct
-    {
-      double margin_from_bottom{};
-      double margin_from_top{};
-    } height_margin;
-
-    PointcloudObstacleFilteringParam() = default;
-    explicit PointcloudObstacleFilteringParam(rclcpp::Node & node)
-    {
-      const std::string ns = "obstacle_stop.obstacle_filtering.pointcloud.";
-      trim_trajectory.enable_trim =
-        get_or_declare_parameter<bool>(node, ns + "trim_trajectory.enable_trim");
-      trim_trajectory.min_trajectory_length =
-        get_or_declare_parameter<double>(node, ns + "trim_trajectory.min_trajectory_length");
-      trim_trajectory.braking_distance_scale_factor = get_or_declare_parameter<double>(
-        node, ns + "trim_trajectory.braking_distance_scale_factor");
-      time_series_association.max_time_diff =
-        get_or_declare_parameter<double>(node, ns + "time_series_association.max_time_diff");
-      time_series_association.min_velocity =
-        get_or_declare_parameter<double>(node, ns + "time_series_association.min_velocity");
-      time_series_association.max_velocity =
-        get_or_declare_parameter<double>(node, ns + "time_series_association.max_velocity");
-      time_series_association.position_diff =
-        get_or_declare_parameter<double>(node, ns + "time_series_association.position_diff");
-      velocity_estimation.use_estimated_velocity =
-        get_or_declare_parameter<bool>(node, ns + "velocity_estimation.use_estimated_velocity");
-      velocity_estimation.min_clamp_velocity =
-        get_or_declare_parameter<double>(node, ns + "velocity_estimation.min_clamp_velocity");
-      velocity_estimation.max_clamp_velocity =
-        get_or_declare_parameter<double>(node, ns + "velocity_estimation.max_clamp_velocity");
-      velocity_estimation.required_velocity_count =
-        get_or_declare_parameter<int>(node, ns + "velocity_estimation.required_velocity_count");
-      velocity_estimation.lpf_gain =
-        get_or_declare_parameter<double>(node, ns + "velocity_estimation.lpf_gain");
-      height_margin.margin_from_bottom =
-        get_or_declare_parameter<double>(node, ns + "height_margin.margin_from_bottom");
-      height_margin.margin_from_top =
-        get_or_declare_parameter<double>(node, ns + "height_margin.margin_from_top");
-    }
-  };
-  PointcloudObstacleFilteringParam pointcloud_obstacle_filtering_param;
-
   bool check_inside{};
   bool check_outside{};
+
+  struct
+  {
+    bool enable_trim{};
+    double min_trajectory_length{};
+    double braking_distance_scale_factor{};
+  } trim_trajectory;
+
   double max_lat_margin{};
 
   double min_velocity_to_reach_collision_point{};
@@ -179,6 +114,13 @@ struct ObstacleFilteringParam
     check_inside = get_object_parameter<bool>(node, param_prefix + "check_inside", object_label);
     check_outside = get_object_parameter<bool>(node, param_prefix + "check_outside", object_label);
 
+    trim_trajectory.enable_trim =
+      get_object_parameter<bool>(node, param_prefix + "trim_trajectory.enable_trim", object_label);
+    trim_trajectory.min_trajectory_length = get_object_parameter<double>(
+      node, param_prefix + "trim_trajectory.min_trajectory_length", object_label);
+    trim_trajectory.braking_distance_scale_factor = get_object_parameter<double>(
+      node, param_prefix + "trim_trajectory.braking_distance_scale_factor", object_label);
+
     max_lat_margin =
       get_object_parameter<double>(node, param_prefix + "max_lat_margin", object_label);
 
@@ -198,6 +140,58 @@ struct ObstacleFilteringParam
       node, param_prefix + "crossing_obstacle.collision_time_margin", object_label);
     crossing_obstacle_traj_angle_threshold = get_object_parameter<double>(
       node, param_prefix + "crossing_obstacle.traj_angle_threshold", object_label);
+  }
+};
+
+struct PointcloudSegmentationParam
+{
+  struct
+  {
+    double max_time_diff{};
+    double min_velocity{};
+    double max_velocity{};
+    double position_diff{};
+  } time_series_association;
+  struct
+  {
+    bool use_estimated_velocity{};
+    double min_clamp_velocity{};
+    double max_clamp_velocity{};
+    size_t required_velocity_count{};
+    double lpf_gain{};
+  } velocity_estimation;
+  struct
+  {
+    double margin_from_bottom{};
+    double margin_from_top{};
+  } height_margin;
+
+  PointcloudSegmentationParam() = default;
+  explicit PointcloudSegmentationParam(rclcpp::Node & node)
+  {
+    const std::string ns = "obstacle_stop.pointcloud_segmentation.";
+    time_series_association.max_time_diff =
+      get_or_declare_parameter<double>(node, ns + "time_series_association.max_time_diff");
+    time_series_association.min_velocity =
+      get_or_declare_parameter<double>(node, ns + "time_series_association.min_velocity");
+    time_series_association.max_velocity =
+      get_or_declare_parameter<double>(node, ns + "time_series_association.max_velocity");
+    time_series_association.position_diff =
+      get_or_declare_parameter<double>(node, ns + "time_series_association.position_diff");
+    velocity_estimation.use_estimated_velocity =
+      get_or_declare_parameter<bool>(node, ns + "velocity_estimation.use_estimated_velocity");
+    velocity_estimation.min_clamp_velocity =
+      get_or_declare_parameter<double>(node, ns + "velocity_estimation.min_clamp_velocity");
+    velocity_estimation.max_clamp_velocity =
+      get_or_declare_parameter<double>(node, ns + "velocity_estimation.max_clamp_velocity");
+    velocity_estimation.required_velocity_count =
+      get_or_declare_parameter<int>(node, ns + "velocity_estimation.required_velocity_count");
+    velocity_estimation.lpf_gain =
+      get_or_declare_parameter<double>(node, ns + "velocity_estimation.lpf_gain");
+    height_margin.margin_from_bottom =
+      get_or_declare_parameter<double>(node, ns + "height_margin.margin_from_bottom");
+    height_margin.margin_from_top =
+      get_or_declare_parameter<double>(node, ns + "height_margin.margin_from_top");
   }
 };
 
@@ -305,18 +299,14 @@ struct StopPlanningParam
     }
   }
 
-  std::string get_param_type(const ObjectClassWithPointCloud extended_label)
+  std::string get_param_type(const std::string & extended_label)
   {
-    if (extended_label.is_point_cloud) {
+    if (object_type_specific_param_map.count(extended_label) == 0) {
       return "default";
     }
-    const auto type_str = object_types_maps.at(extended_label.object_classification.label);
-    if (object_type_specific_param_map.count(type_str) == 0) {
-      return "default";
-    }
-    return type_str;
+    return extended_label;
   }
-  ObjectTypeSpecificParams get_param(const ObjectClassWithPointCloud extended_label)
+  ObjectTypeSpecificParams get_param(const std::string & extended_label)
   {
     return object_type_specific_param_map.at(get_param_type(extended_label));
   }

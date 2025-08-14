@@ -33,30 +33,13 @@
 namespace autoware::motion_velocity_planner
 {
 
-struct ObjectClassWithPointCloud
-{
-  ObjectClassification object_classification{};
-  bool is_point_cloud{false};
-
-  explicit ObjectClassWithPointCloud(const ObjectClassification arg_obj_class)
-  : object_classification(arg_obj_class)
-  {
-  }
-  explicit ObjectClassWithPointCloud(const uint8_t arg_label)
-  {
-    object_classification.label = arg_label;
-  }
-
-  explicit ObjectClassWithPointCloud(const bool arg_is_point_cloud)
-  : is_point_cloud(arg_is_point_cloud)
-  {
-  }
-  bool operator==(const ObjectClassWithPointCloud & other) const
-  {
-    return (object_classification.label == other.object_classification.label) &&
-           (is_point_cloud == other.is_point_cloud);
-  }
-};
+static const std::vector<std::string> object_label_list = {
+  "pointcloud", "unknown", "car", "truck", "bus", "trailer", "motorcycle", "bicycle", "pedestrian"};
+static const std::unordered_map<uint8_t, std::string> object_types_maps = {
+  {ObjectClassification::UNKNOWN, "unknown"}, {ObjectClassification::CAR, "car"},
+  {ObjectClassification::TRUCK, "truck"},     {ObjectClassification::BUS, "bus"},
+  {ObjectClassification::TRAILER, "trailer"}, {ObjectClassification::MOTORCYCLE, "motorcycle"},
+  {ObjectClassification::BICYCLE, "bicycle"}, {ObjectClassification::PEDESTRIAN, "pedestrian"}};
 
 // TODO(takagi): std::pair<geometry_msgs::msg::Point, double> in mvp should be replaced with
 // CollisionPointWithDist
@@ -90,7 +73,7 @@ struct StopObstacle
     shape(arg_shape),
     collision_point(arg_collision_point),
     dist_to_collide_on_decimated_traj(arg_dist_to_collide_on_decimated_traj),
-    classification(object_classification),
+    classification(object_types_maps.at(object_classification.label)),
     braking_dist(arg_braking_dist)
   {
   }
@@ -104,7 +87,7 @@ struct StopObstacle
     velocity(arg_lon_velocity),
     collision_point(arg_collision_point),
     dist_to_collide_on_decimated_traj(arg_dist_to_collide_on_decimated_traj),
-    classification(arg_is_point_cloud),
+    classification("pointcloud"),
     braking_dist(arg_braking_dist)
   {
     shape.type = autoware_perception_msgs::msg::Shape::BOUNDING_BOX;
@@ -120,7 +103,7 @@ struct StopObstacle
                       // calculateMarginFromObstacleOnCurve() and  should be removed as it can be
                       // replaced by ”dist_to_collide_on_decimated_traj”
   double dist_to_collide_on_decimated_traj;
-  ObjectClassWithPointCloud classification;
+  std::string classification;
   std::optional<double> braking_dist;
 };
 

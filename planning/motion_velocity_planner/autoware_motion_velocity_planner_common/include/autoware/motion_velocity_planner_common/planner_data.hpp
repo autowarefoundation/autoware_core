@@ -83,16 +83,6 @@ struct TrajectoryPolygonCollisionCheck
   double time_to_convergence{};
 };
 
-struct PointcloudObstacleFilteringParam  // TODO(takagi): delete this obsolete parameter type
-{
-  double pointcloud_voxel_grid_x{};
-  double pointcloud_voxel_grid_y{};
-  double pointcloud_voxel_grid_z{};
-  double pointcloud_cluster_tolerance{};
-  size_t pointcloud_min_cluster_size{};
-  size_t pointcloud_max_cluster_size{};
-};
-
 struct PointcloudPreprocessParams
 {
   explicit PointcloudPreprocessParams(rclcpp::Node & node)
@@ -250,22 +240,6 @@ public:
       }
       return cluster_indices.value();
     };
-    // TODO(takagi): Remove these function after universe modules eliminates these functions.
-    const pcl::PointCloud<pcl::PointXYZ>::Ptr get_filtered_pointcloud_ptr(
-      [[maybe_unused]] const autoware::motion_velocity_planner::TrajectoryPoints &
-        trajectory_points,
-      [[maybe_unused]] const autoware::vehicle_info_utils::VehicleInfo & vehicle_info) const
-    {
-      return get_filtered_pointcloud_ptr();
-    };
-    const std::vector<pcl::PointIndices> get_cluster_indices(
-      [[maybe_unused]] const autoware::motion_velocity_planner::TrajectoryPoints &
-        trajectory_points,
-      [[maybe_unused]] const autoware::vehicle_info_utils::VehicleInfo & vehicle_info) const
-    {
-      return get_cluster_indices();
-    }
-
     PointcloudPreprocessParams preprocess_params_;
 
   private:

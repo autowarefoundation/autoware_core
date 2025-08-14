@@ -150,22 +150,22 @@ double calc_time_to_reach_collision_point(
          std::max(min_velocity_to_reach_collision_point, std::abs(odometry.twist.twist.linear.x));
 }
 
+// TODO(takagi): refactor this function as same as obstacle_filtering_param
 double calc_braking_dist(
-  const ObjectClassWithPointCloud & extended_label, const double lon_vel,
-  const RSSParam & rss_params)
+  const std::string & label_str, const double lon_vel, const RSSParam & rss_params)
 {
   const double braking_acc = [&]() {
-    if (extended_label.is_point_cloud) {
+    if (label_str == "pointcloud") {
       return rss_params.pointcloud_deceleration;
     }
     if (
-      extended_label.object_classification.label == ObjectClassification::UNKNOWN ||
-      extended_label.object_classification.label == ObjectClassification::PEDESTRIAN) {
+      label_str == object_types_maps.at(ObjectClassification::UNKNOWN) ||
+      label_str == object_types_maps.at(ObjectClassification::PEDESTRIAN)) {
       return rss_params.no_wheel_objects_deceleration;
     }
     if (
-      extended_label.object_classification.label == ObjectClassification::BICYCLE ||
-      extended_label.object_classification.label == ObjectClassification::MOTORCYCLE) {
+      label_str == object_types_maps.at(ObjectClassification::BICYCLE) ||
+      label_str == object_types_maps.at(ObjectClassification::MOTORCYCLE)) {
       return rss_params.two_wheel_objects_deceleration;
     }
     return rss_params.vehicle_objects_deceleration;
@@ -190,18 +190,10 @@ void ObstacleStopModule::init(rclcpp::Node & node, const std::string & module_na
 
   common_param_ = CommonParam(node);
   stop_planning_param_ = StopPlanningParam(node, common_param_);
-
   for (const auto & key : object_label_list) {
     obstacle_filtering_params_.emplace(key, ObstacleFilteringParam{node, key});
   }
-
-  // TODO(takagi): check difference beetween planner_data->pointcloud_preprocessing_param and
-  // max_lat_margin.pointcloud.
-  //  const double mask_lat_margin =
-  //   get_or_declare_parameter<double>(node, "pointcloud.mask_lat_margin");
-  // if (mask_lat_margin < obstacle_filtering_param_.max_lat_margin) {
-  //   throw std::invalid_argument("point-cloud mask narrower than stop margin");
-  // }
+  pointcloud_segmentation_param_ = PointcloudSegmentationParam(node);
 
   const double update_distance_th =
     get_or_declare_parameter<double>(node, "obstacle_stop.stop_planning.update_distance_th");
@@ -408,12 +400,11 @@ std::optional<CollisionPointWithDist> ObstacleStopModule::get_nearest_collision_
     return std::nullopt;
   }
 
-  const auto & clusters = point_cloud.get_cluster_indices(traj_points, vehicle_info);
-  const auto & pointcloud_ptr = point_cloud.get_filtered_pointcloud_ptr(traj_points, vehicle_info);
+  const auto & clusters = point_cloud.get_cluster_indices();
+  const auto & pointcloud_ptr = point_cloud.get_filtered_pointcloud_ptr();
 
   // height check will works even on the slope, but it is not accurate.
-  const auto & height_margin =
-    obstacle_filtering_param_.pointcloud_obstacle_filtering_param.height_margin;
+  const auto & height_margin = pointcloud_segmentation_param_.height_margin;
   std::vector<geometry_msgs::msg::Point> collision_geom_points{};
   for (size_t traj_index = 0; traj_index < traj_points.size(); ++traj_index) {
     const double rough_dist_th = boost::geometry::perimeter(traj_polygons.at(traj_index)) * 0.5;
@@ -552,10 +543,8 @@ void ObstacleStopModule::upsert_pointcloud_stop_candidates(
   const std::vector<TrajectoryPoint> & traj_points, rclcpp::Time latest_point_cloud_time)
 {
   autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
-  const auto & vel_params =
-    obstacle_filtering_param_.pointcloud_obstacle_filtering_param.velocity_estimation;
-  const auto & assoc_params =
-    obstacle_filtering_param_.pointcloud_obstacle_filtering_param.time_series_association;
+  const auto & vel_params = pointcloud_segmentation_param_.velocity_estimation;
+  const auto & assoc_params = pointcloud_segmentation_param_.time_series_association;
 
   // check association from the newest candidate to the oldest candidate
   for (auto stop_candidate = pointcloud_stop_candidates.rbegin();
@@ -614,16 +603,26 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_point_clo
   const TrajectoryPolygonCollisionCheck & trajectory_polygon_collision_check)
 {
   autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
-  const auto & filtering_params = obstacle_filtering_params_.at("pointcloud");
+  const auto & filtering_param = obstacle_filtering_params_.at("pointcloud");
 
   // outside stop for pointcloud is not implemented.
-  if (!filtering_params.check_inside) {
+  if (!filtering_param.check_inside) {
     return std::vector<StopObstacle>{};
   }
 
+  if (
+    point_cloud.preprocess_params_.filter_by_trajectory_polygon.lateral_margin <
+    filtering_param.max_lat_margin) {
+    RCLCPP_WARN(
+      logger_,
+      "pointcloud preprocessing lateral margin in motion_velocity_planner_node (%f) is smaller "
+      "than obstacle_stop_module param (%f)",
+      point_cloud.preprocess_params_.filter_by_trajectory_polygon.lateral_margin,
+      filtering_param.max_lat_margin);
+  }
+
   const auto trimmed_decimated_traj_points = [&]() {
-    const auto & trim_param =
-      obstacle_filtering_param_.pointcloud_obstacle_filtering_param.trim_trajectory;
+    const auto & trim_param = filtering_param.trim_trajectory;
     if (!trim_param.enable_trim || !autoware::motion_utils::isDrivingForward(traj_points)) {
       return decimated_traj_points;
     }
@@ -641,9 +640,8 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_point_clo
 
   const auto & tp = trajectory_polygon_collision_check;
   const auto trimmed_decimated_traj_polys_with_lat_margin = polygon_utils::create_one_step_polygons(
-    trimmed_decimated_traj_points, vehicle_info, odometry.pose.pose,
-    obstacle_filtering_param_.max_lat_margin_against_pointcloud, tp.enable_to_consider_current_pose,
-    tp.time_to_convergence, tp.decimate_trajectory_step_length);
+    trimmed_decimated_traj_points, vehicle_info, odometry.pose.pose, filtering_param.max_lat_margin,
+    tp.enable_to_consider_current_pose, tp.time_to_convergence, tp.decimate_trajectory_step_length);
   // prioritize the polygon for predicted object
   if (debug_data_ptr_->decimated_traj_polys.empty()) {
     debug_data_ptr_->decimated_traj_polys = trimmed_decimated_traj_polys_with_lat_margin;
@@ -667,7 +665,7 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_point_clo
   while (
     !pointcloud_stop_candidates.empty() &&
     (latest_point_cloud_time - pointcloud_stop_candidates.front().latest_collision_pointcloud_time)
-        .seconds() > obstacle_filtering_param_.stop_obstacle_hold_time_threshold) {
+        .seconds() > filtering_param.stop_obstacle_hold_time_threshold) {
     pointcloud_stop_candidates.pop_front();
   }
 
@@ -685,8 +683,7 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_point_clo
       *stop_candidate.vel_lpf.getValue() * time_delay;
 
     const bool use_estimated_velocity =
-      obstacle_filtering_param_.pointcloud_obstacle_filtering_param.velocity_estimation
-        .use_estimated_velocity;
+      pointcloud_segmentation_param_.velocity_estimation.use_estimated_velocity;
     if (
       !use_estimated_velocity ||
       *stop_candidate.vel_lpf.getValue() <
@@ -697,8 +694,7 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_point_clo
         time_compensated_dist_to_collide);
     } else if (stop_planning_param_.rss_params.use_rss_stop) {
       const auto braking_dist = calc_braking_dist(
-        ObjectClassWithPointCloud{true}, *stop_candidate.vel_lpf.getValue(),
-        stop_planning_param_.rss_params);
+        "pointcloud", *stop_candidate.vel_lpf.getValue(), stop_planning_param_.rss_params);
       stop_obstacles.emplace_back(
         stop_candidate.latest_collision_pointcloud_time, true,
         stop_candidate.vel_lpf.getValue().value(), stop_candidate.latest_collision_point.point,
@@ -811,7 +807,7 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
 
   if (stop_planning_param_.rss_params.use_rss_stop) {
     const auto braking_dist = calc_braking_dist(
-      ObjectClassWithPointCloud{predicted_object.classification.at(0).label},
+      object_types_maps.at(predicted_object.classification.at(0).label),
       object->get_lon_vel_relative_to_traj(traj_points), stop_planning_param_.rss_params);
 
     RCLCPP_DEBUG(
@@ -977,7 +973,7 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::plan_stop(
       const bool is_same_param_types =
         (stop_obstacle.classification == determined_stop_obstacle->classification);
       const auto point_cloud_suppression_margin = [&](const StopObstacle & obs) {
-        return obs.classification.is_point_cloud
+        return obs.classification == "pointcloud"
                  ? stop_planning_param_.pointcloud_suppression_distance_margin
                  : 0.0;
       };
@@ -1139,8 +1135,7 @@ std::optional<double> ObstacleStopModule::calc_candidate_zero_vel_dist(
       if (stop_planning_param_.get_param(stop_obstacle.classification).abandon_to_stop) {
         RCLCPP_WARN(
           rclcpp::get_logger("ObstacleCruisePlanner::StopPlanner"),
-          "[Cruise] abandon to stop against %s object",
-          object_types_maps.at(stop_obstacle.classification.label).c_str());
+          "[Cruise] abandon to stop against %s object", stop_obstacle.classification.c_str());
         return std::nullopt;
       } else {
         return stop_planning_param_.get_param(stop_obstacle.classification).limit_min_acc;
@@ -1373,10 +1368,9 @@ double ObstacleStopModule::calc_margin_from_obstacle_on_curve(
   const std::vector<TrajectoryPoint> & traj_points, const StopObstacle & stop_obstacle,
   const double dist_to_bumper, const double default_stop_margin) const
 {
-  // TODO(takagi): fix use_poincloud condition. label of the stop_obstacle should be checked.
   if (
     !stop_planning_param_.enable_approaching_on_curve ||
-    obstacle_filtering_params_.at("pointcloud").check_inside) {
+    stop_obstacle.classification == "pointcloud") {
     return default_stop_margin;
   }
 
