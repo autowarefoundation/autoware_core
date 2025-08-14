@@ -17,8 +17,47 @@
 #include "autoware/crop_box_filter/crop_box_filter_node.hpp"
 
 #include <gtest/gtest.h>
+#include <sensor_msgs/point_cloud2_iterator.hpp>
 
 #include <memory>
+#include <vector>
+
+sensor_msgs::msg::PointCloud2 create_pointcloud2(std::vector<std::array<float, 3>> & points)
+{
+  sensor_msgs::msg::PointCloud2 pointcloud;
+  sensor_msgs::PointCloud2Modifier modifier(pointcloud);
+  modifier.setPointCloud2FieldsByString(1, "xyz");
+  modifier.resize(points.size());
+
+  sensor_msgs::PointCloud2Iterator<float> iter_x(pointcloud, "x");
+  sensor_msgs::PointCloud2Iterator<float> iter_y(pointcloud, "y");
+  sensor_msgs::PointCloud2Iterator<float> iter_z(pointcloud, "z");
+
+  for (const auto & point : points) {
+    *iter_x = point[0];
+    *iter_y = point[1];
+    *iter_z = point[2];
+    ++iter_x;
+    ++iter_y;
+    ++iter_z;
+  }
+
+  return pointcloud;
+}
+
+std::vector<std::array<float, 3>> extract_points_from_cloud(
+  const sensor_msgs::msg::PointCloud2 & cloud)
+{
+  std::vector<std::array<float, 3>> points;
+  sensor_msgs::PointCloud2ConstIterator<float> iter_x(cloud, "x");
+  sensor_msgs::PointCloud2ConstIterator<float> iter_y(cloud, "y");
+  sensor_msgs::PointCloud2ConstIterator<float> iter_z(cloud, "z");
+
+  for (; iter_x != iter_x.end(); ++iter_x, ++iter_y, ++iter_z) {
+    points.push_back({*iter_x, *iter_y, *iter_z});
+  }
+  return points;
+}
 
 TEST(CropBoxFilterTest, checkOutputPointcloud)
 {
@@ -52,30 +91,29 @@ TEST(CropBoxFilterTest, checkOutputPointcloud)
   // Create the node with the specified options
   autoware::crop_box_filter::CropBoxFilter node(node_options);
 
-  // construct input pointcloud
-  pcl::PointCloud<pcl::PointXYZ> input_pointcloud;
-  input_pointcloud.push_back(pcl::PointXYZ(0.5, 0.5, 0.1));  // point inside the polygon
-  input_pointcloud.push_back(pcl::PointXYZ(1.5, 1.5, 1.1));  // point inside the polygon
-  input_pointcloud.push_back(pcl::PointXYZ(2.5, 2.5, 2.1));  // point inside the polygon
-  input_pointcloud.push_back(pcl::PointXYZ(3.5, 3.5, 3.1));  // point inside the polygon
-  input_pointcloud.push_back(pcl::PointXYZ(4.5, 4.5, 4.1));  // point inside the polygon
+  // Define test points
+  std::vector<std::array<float, 3>> test_points = {
+    // points inside the box
+    {0.5f, 0.5f, 0.1f},
+    {1.5f, 1.5f, 1.1f},
+    {2.5f, 2.5f, 2.1f},
+    {3.5f, 3.5f, 3.1f},
+    {4.5f, 4.5f, 4.1f},
+    // points outside the box
+    {5.5f, 5.5f, 5.1f},
+    {6.5f, 6.5f, 6.1f},
+    {7.5f, 7.5f, 7.1f},
+    {8.5f, 8.5f, 8.1f},
+    {9.5f, 9.5f, 9.1f},
+    {-5.5f, -5.5f, -5.1f},
+    {-6.5f, -6.5f, -6.1f},
+    {-7.5f, -7.5f, -7.1f},
+    {-8.5f, -8.5f, -8.1f},
+    {-9.5f, -9.5f, -9.1f}
+  };
 
-  input_pointcloud.push_back(pcl::PointXYZ(5.5, 5.5, 5.1));  // point outside the polygon
-  input_pointcloud.push_back(pcl::PointXYZ(6.5, 6.5, 6.1));  // point outside the polygon
-  input_pointcloud.push_back(pcl::PointXYZ(7.5, 7.5, 7.1));  // point outside the polygon
-  input_pointcloud.push_back(pcl::PointXYZ(8.5, 8.5, 8.1));  // point outside the polygon
-  input_pointcloud.push_back(pcl::PointXYZ(9.5, 9.5, 9.1));  // point outside the polygon
-
-  input_pointcloud.push_back(pcl::PointXYZ(-5.5, -5.5, -5.1));  // point outside the polygon
-  input_pointcloud.push_back(pcl::PointXYZ(-6.5, -6.5, -6.1));  // point outside the polygon
-  input_pointcloud.push_back(pcl::PointXYZ(-7.5, -7.5, -7.1));  // point outside the polygon
-  input_pointcloud.push_back(pcl::PointXYZ(-8.5, -8.5, -8.1));  // point outside the polygon
-  input_pointcloud.push_back(pcl::PointXYZ(-9.5, -9.5, -9.1));  // point outside the polygon
-
-  // convert the point cloud to a ROS message
-  sensor_msgs::msg::PointCloud2 pointcloud;
-  pcl::toROSMsg(input_pointcloud, pointcloud);
-  pointcloud.header.frame_id = "base_link";
+  // Create pointcloud using helper function
+  sensor_msgs::msg::PointCloud2 pointcloud = create_pointcloud2(test_points);
 
   const sensor_msgs::msg::PointCloud2::ConstSharedPtr pointcloud_msg =
     std::make_shared<sensor_msgs::msg::PointCloud2>(pointcloud);
@@ -87,14 +125,17 @@ TEST(CropBoxFilterTest, checkOutputPointcloud)
   // check the size of the output point cloud
   EXPECT_EQ((output.data.size() / output.point_step), 10);
 
-  // check every point in the output pointcloud
-  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-  pcl::fromROSMsg(output, *cloud);
+  // Extract points from output using helper function
+  std::vector<std::array<float, 3>> output_points = extract_points_from_cloud(output);
 
-  // check if the points are inside the polygon
-  for (const auto & point : cloud->points) {
-    bool point_is_inside = point.z > min_z && point.z < max_z && point.y > min_y &&
-                           point.y < max_y && point.x > min_x && point.x < max_x;
+  // check if the points are inside/outside the box as expected
+  for (const auto & point : output_points) {
+    float x = point[0];
+    float y = point[1];
+    float z = point[2];
+    
+    bool point_is_inside = z > min_z && z < max_z && y > min_y &&
+                           y < max_y && x > min_x && x < max_x;
     EXPECT_TRUE((!negative && point_is_inside) || (negative && !point_is_inside));
   }
 }
