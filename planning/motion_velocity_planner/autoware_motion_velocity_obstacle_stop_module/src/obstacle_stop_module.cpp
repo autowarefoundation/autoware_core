@@ -613,8 +613,8 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_point_clo
   if (
     point_cloud.preprocess_params_.filter_by_trajectory_polygon.lateral_margin <
     filtering_param.max_lat_margin) {
-    RCLCPP_WARN(
-      logger_,
+    RCLCPP_WARN_THROTTLE(
+      logger_, *clock_, 5000,
       "pointcloud preprocessing lateral margin in motion_velocity_planner_node (%f) is smaller "
       "than obstacle_stop_module param (%f)",
       point_cloud.preprocess_params_.filter_by_trajectory_polygon.lateral_margin,
