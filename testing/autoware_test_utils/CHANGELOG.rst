@@ -27,6 +27,37 @@ Changelog for package autoware_test_utils
 * chore: include iostream and link yaml-cpp for Jazzy (`#351 <https://github.com/autowarefoundation/autoware_core/issues/351>`_)
 * Contributors: Mitsuhiro Sakamoto, Tim Clephas
 
+1.4.0 (2025-08-11)
+------------------
+* Merge remote-tracking branch 'origin/main' into humble
+* feat: change planning output topic name to /planning/trajectory (`#602 <https://github.com/autowarefoundation/autoware_core/issues/602>`_)
+  * change planning output topic name to /planning/trajectory
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* chore: bump version to 1.3.0 (`#554 <https://github.com/autowarefoundation/autoware_core/issues/554>`_)
+* fix(test_utils): add missing lane ids in `makeBehaviorNormalRoute()` (`#561 <https://github.com/autowarefoundation/autoware_core/issues/561>`_)
+  add missing lane ids
+* test(path_generator): add extra tests (`#449 <https://github.com/autowarefoundation/autoware_core/issues/449>`_)
+  * add map for test
+  * update test cases for get_turn_signal()
+  * rename test route files
+  * add test with dense centerline
+  * move dense centerline map to sample_map directory
+  * add tests for get_arc_length_on_path
+  * modify path start point to be inside route lanelet
+  * add tests for smooth goal connection
+  * include necessary header
+  * remove ineffective test case
+  * fix comment
+  * remove unnecessary lines
+  * fix test case for refine_path_for_goal
+  * rename parameters
+  * add missing argument
+  * remove include guard
+  ---------
+* Contributors: Mitsuhiro Sakamoto, Ryohsuke Mitsudome, Yukihiro Saito
+
 1.3.0 (2025-06-23)
 ------------------
 * fix: to be consistent version in all package.xml(s)

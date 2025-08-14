@@ -63,6 +63,72 @@ Changelog for package autoware_path_generator
 * feat(autoware_path_generator): use autoware_trajectory for cropping bounds (`#349 <https://github.com/autowarefoundation/autoware_core/issues/349>`_)
 * Contributors: Kazunori-Nakajima, Mamoru Sobue, Mitsuhiro Sakamoto, Yukinari Hisaki
 
+1.4.0 (2025-08-11)
+------------------
+* Merge remote-tracking branch 'origin/main' into humble
+* fix(path_generator): avoid far goal connection (`#594 <https://github.com/autowarefoundation/autoware_core/issues/594>`_)
+  * use autoware_trajectory instead of vector of path points
+  * fix goal connection algorithm
+  * perform goal connection only if path reaches goal
+  * fix tests
+  * style(pre-commit): autofix
+  * add description of goal connection feature
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Kosuke Takeuchi <kosuke.tnp@gmail.com>
+* fix(path_generator): fix start edge intersection search (`#595 <https://github.com/autowarefoundation/autoware_core/issues/595>`_)
+  * return cropped line string as autoware_trajectory
+  * separate intersection search into functions & fix start edge intersection search
+  * fix tests
+  * add tests for intersection search functions
+  * ensure intersection point is not ends of start edge
+  * update doxygen comment
+  ---------
+* fix(path_generator): merge waypoint groups with shared overlap interval (`#586 <https://github.com/autowarefoundation/autoware_core/issues/586>`_)
+  * merge waypoint groups with shared overlap intervals
+  * replace parameters with new ones
+  * update figure in description
+  * style(pre-commit): autofix
+  * fix(path_generator): apply clang-tidy
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+  Co-authored-by: Junya Sasaki <junya.sasaki@tier4.jp>
+* chore: bump version to 1.3.0 (`#554 <https://github.com/autowarefoundation/autoware_core/issues/554>`_)
+* fix(path_generator): update unit tests (`#577 <https://github.com/autowarefoundation/autoware_core/issues/577>`_)
+  * fix tests to use new goal connection functions
+  * fix dense centerline test
+  ---------
+* feat(path_generator): improve goal connection for goal on the side (`#564 <https://github.com/autowarefoundation/autoware_core/issues/564>`_)
+  * change goal connection method
+  * apply goal connection
+  * rename parameter
+  * change parameter name
+  ---------
+* test(path_generator): add extra tests (`#449 <https://github.com/autowarefoundation/autoware_core/issues/449>`_)
+  * add map for test
+  * update test cases for get_turn_signal()
+  * rename test route files
+  * add test with dense centerline
+  * move dense centerline map to sample_map directory
+  * add tests for get_arc_length_on_path
+  * modify path start point to be inside route lanelet
+  * add tests for smooth goal connection
+  * include necessary header
+  * remove ineffective test case
+  * fix comment
+  * remove unnecessary lines
+  * fix test case for refine_path_for_goal
+  * rename parameters
+  * add missing argument
+  * remove include guard
+  ---------
+* fix(path_generator): fix waypoint interval calculation (`#567 <https://github.com/autowarefoundation/autoware_core/issues/567>`_)
+  fix waypoint interval calculation
+* fix(path_generator): support 0s turn signal search time (`#557 <https://github.com/autowarefoundation/autoware_core/issues/557>`_)
+* Contributors: Kosuke Takeuchi, Mitsuhiro Sakamoto, Ryohsuke Mitsudome
+
 1.3.0 (2025-06-23)
 ------------------
 * fix: to be consistent version in all package.xml(s)

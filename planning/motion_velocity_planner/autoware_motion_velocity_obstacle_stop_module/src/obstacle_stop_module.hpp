@@ -40,6 +40,7 @@
 #include <tf2_ros/buffer.h>
 
 #include <algorithm>
+#include <deque>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -99,6 +100,7 @@ private:
   mutable std::shared_ptr<DebugData> debug_data_ptr_{};
   std::vector<StopObstacle> prev_closest_stop_obstacles_{};
   std::vector<StopObstacle> prev_stop_obstacles_{};
+  std::deque<PointcloudStopCandidate> pointcloud_stop_candidates{};
 
   autoware::motion_velocity_planner::obstacle_stop::PathLengthBuffer path_length_buffer_;
 
@@ -135,12 +137,22 @@ private:
     const VehicleInfo & vehicle_info, const double dist_to_bumper,
     const TrajectoryPolygonCollisionCheck & trajectory_polygon_collision_check);
 
+  /// @brief Update pointcloud_stop_candidates by the nearest collision point
+  ///
+  /// If the nearest collision point can be associated with an existing stop_candidate, update its
+  /// velocity and time. If not, create a new PointcloudStopCandidate and add it to
+  /// pointcloud_stop_candidates.
+  ///
+  void upsert_pointcloud_stop_candidates(
+    const CollisionPointWithDist & nearest_collision_point,
+    const std::vector<TrajectoryPoint> & traj_points, rclcpp::Time latest_point_cloud_time);
+
   std::vector<StopObstacle> filter_stop_obstacle_for_point_cloud(
     const Odometry & odometry, const std::vector<TrajectoryPoint> & traj_points,
     const std::vector<TrajectoryPoint> & decimated_traj_points,
     const PlannerData::Pointcloud & point_cloud, const VehicleInfo & vehicle_info,
     const double dist_to_bumper,
-    const TrajectoryPolygonCollisionCheck & trajectory_polygon_collision_check, size_t ego_idx);
+    const TrajectoryPolygonCollisionCheck & trajectory_polygon_collision_check);
 
   std::optional<geometry_msgs::msg::Point> plan_stop(
     const std::shared_ptr<const PlannerData> planner_data,
@@ -186,9 +198,10 @@ private:
     const std::vector<Polygon2d> & decimated_traj_polys_with_lat_margin,
     const std::optional<std::pair<geometry_msgs::msg::Point, double>> & collision_point) const;
 
-  StopObstacle create_stop_obstacle_for_point_cloud(
-    const std::vector<TrajectoryPoint> & traj_points, const rclcpp::Time & stamp,
-    const geometry_msgs::msg::Point & stop_point, const double dist_to_bumper) const;
+  std::optional<CollisionPointWithDist> get_nearest_collision_point(
+    const std::vector<TrajectoryPoint> & traj_points, const std::vector<Polygon2d> & traj_polygons,
+    const PlannerData::Pointcloud & point_cloud, const double dist_to_bumper,
+    const VehicleInfo & vehicle_info) const;
 
   double calc_collision_time_margin(
     const Odometry & odometry, const std::vector<polygon_utils::PointWithStamp> & collision_points,

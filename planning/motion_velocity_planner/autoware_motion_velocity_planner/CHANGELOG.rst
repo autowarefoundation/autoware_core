@@ -5,6 +5,20 @@ Changelog for package autoware_motion_velocity_planner
 1.1.0 (2025-05-01)
 ------------------
 
+1.4.0 (2025-08-11)
+------------------
+* Merge remote-tracking branch 'origin/main' into humble
+* feat(motion_velocity_planner, motion_velocity_planner_common): update pointcloud preprocess design (`#591 <https://github.com/autowarefoundation/autoware_core/issues/591>`_)
+  * updare pcl preprocess
+  ---------
+* chore(motion_velocity_planner, behavior_velocity_planner): unifiy module load srv (`#585 <https://github.com/autowarefoundation/autoware_core/issues/585>`_)
+  port srv
+* refactor(motion_velocity_planner): restrict copy of planner_data  (`#587 <https://github.com/autowarefoundation/autoware_core/issues/587>`_)
+  * restrict plannar data copy
+  ---------
+* chore: bump version to 1.3.0 (`#554 <https://github.com/autowarefoundation/autoware_core/issues/554>`_)
+* Contributors: Ryohsuke Mitsudome, Yuki TAKAGI
+
 1.3.0 (2025-06-23)
 ------------------
 * fix: to be consistent version in all package.xml(s)

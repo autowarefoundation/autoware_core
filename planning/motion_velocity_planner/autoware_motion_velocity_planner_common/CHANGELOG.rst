@@ -5,6 +5,34 @@ Changelog for package autoware_motion_velocity_planner_common
 1.1.0 (2025-05-01)
 ------------------
 
+1.4.0 (2025-08-11)
+------------------
+* Merge remote-tracking branch 'origin/main' into humble
+* refactor(mvp_common): add docstrings and comments (`#600 <https://github.com/autowarefoundation/autoware_core/issues/600>`_)
+* feat(motion_velocity_planner, motion_velocity_planner_common): update pointcloud preprocess design (`#591 <https://github.com/autowarefoundation/autoware_core/issues/591>`_)
+  * updare pcl preprocess
+  ---------
+* refactor(motion_velocity_planner): restrict copy of planner_data  (`#587 <https://github.com/autowarefoundation/autoware_core/issues/587>`_)
+  * restrict plannar data copy
+  ---------
+* fix(obstacle_stop): fix the brief stop decision logic (`#583 <https://github.com/autowarefoundation/autoware_core/issues/583>`_)
+* chore: bump version to 1.3.0 (`#554 <https://github.com/autowarefoundation/autoware_core/issues/554>`_)
+* chore: apply pre-commit fix (`#574 <https://github.com/autowarefoundation/autoware_core/issues/574>`_)
+* feat(motion_utils): update insert orientation function to use tangent direction of a spline cruve (`#556 <https://github.com/autowarefoundation/autoware_core/issues/556>`_)
+  * update insertOrientationSpline()
+  * update test
+  * use insertOrientationSpline() in motion_velcity_planner_common
+  ---------
+* feat(obstacle_stop_module): add cut in stop feature (`#517 <https://github.com/autowarefoundation/autoware_core/issues/517>`_)
+  * restore the old function to pass universe CI
+  * add new feature
+  * add todo comment
+  ---------
+* refactor(motion_velocity_planner_common): splt get_predicted_pose() (`#558 <https://github.com/autowarefoundation/autoware_core/issues/558>`_)
+  * rename
+  * restore the old function to pass universe CI
+* Contributors: Mamoru Sobue, Ryohsuke Mitsudome, Takayuki Murooka, Yuki TAKAGI
+
 1.3.0 (2025-06-23)
 ------------------
 * fix: to be consistent version in all package.xml(s)
