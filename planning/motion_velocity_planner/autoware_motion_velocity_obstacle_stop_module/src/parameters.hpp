@@ -61,6 +61,35 @@ struct CommonParam
   }
 };
 
+static const std::vector<std::string> object_label_list = {
+  "pointcloud", "unknown", "car", "truck", "bus", "trailer", "motorcycle", "bicycle", "pedestrian"};
+static const std::unordered_map<uint8_t, std::string> object_types_maps = {
+  {ObjectClassification::UNKNOWN, "unknown"}, {ObjectClassification::CAR, "car"},
+  {ObjectClassification::TRUCK, "truck"},     {ObjectClassification::BUS, "bus"},
+  {ObjectClassification::TRAILER, "trailer"}, {ObjectClassification::MOTORCYCLE, "motorcycle"},
+  {ObjectClassification::BICYCLE, "bicycle"}, {ObjectClassification::PEDESTRIAN, "pedestrian"}};
+
+/// @brief Get the parameter defined for a specific object label, or the default value if it was
+/// not specified
+template <class T>
+T get_object_parameter(
+  rclcpp::Node & node, const std::string & ns, const std::string & object_label,
+  std::string suffix = "")
+{
+  if (!suffix.empty()) suffix = "." + suffix;
+  const std::vector<std::string> fallback_keys = {
+    ns + suffix, ns + "." + object_label + suffix, ns + ".default" + suffix};
+
+  for (const auto & key : fallback_keys) {
+    try {
+      return autoware_utils_rclcpp::get_or_declare_parameter<T>(node, key);
+    } catch (const std::exception &) {
+      continue;
+    }
+  }
+
+  throw std::runtime_error("Failed to get parameter: " + ns);
+}
 struct ObstacleFilteringParam
 {
   struct PointcloudObstacleFilteringParam
@@ -128,61 +157,47 @@ struct ObstacleFilteringParam
   };
   PointcloudObstacleFilteringParam pointcloud_obstacle_filtering_param;
 
-  bool use_pointcloud{false};
-  std::vector<uint8_t> inside_stop_object_types{};
-  std::vector<uint8_t> outside_stop_object_types{};
-
+  bool check_inside{};
+  bool check_outside{};
   double max_lat_margin{};
-  double max_lat_margin_against_predicted_object_unknown{};
-  double max_lat_margin_against_pointcloud{};
 
   double min_velocity_to_reach_collision_point{};
   double stop_obstacle_hold_time_threshold{};
 
   double outside_estimation_time_horizon{};
   double outside_max_lateral_velocity{};
-  double outside_pedestrian_deceleration{};
-  double outside_bicycle_deceleration{};
+  double outside_deceleration{};
 
   double crossing_obstacle_collision_time_margin{};
   double crossing_obstacle_traj_angle_threshold{};
 
   ObstacleFilteringParam() = default;
-  explicit ObstacleFilteringParam(rclcpp::Node & node)
-  : pointcloud_obstacle_filtering_param(node),
-    inside_stop_object_types(
-      utils::get_target_object_type(node, "obstacle_stop.obstacle_filtering.object_type.inside.")),
-    outside_stop_object_types(
-      utils::get_target_object_type(node, "obstacle_stop.obstacle_filtering.object_type.outside."))
+  explicit ObstacleFilteringParam(rclcpp::Node & node, const std::string & object_label)
   {
+    const std::string param_prefix = "obstacle_stop.obstacle_filtering.";
+
+    check_inside = get_object_parameter<bool>(node, param_prefix + "check_inside", object_label);
+    check_outside = get_object_parameter<bool>(node, param_prefix + "check_outside", object_label);
+
     max_lat_margin =
-      get_or_declare_parameter<double>(node, "obstacle_stop.obstacle_filtering.max_lat_margin");
-    max_lat_margin_against_predicted_object_unknown = get_or_declare_parameter<double>(
-      node, "obstacle_stop.obstacle_filtering.max_lat_margin_against_predicted_object_unknown");
-    max_lat_margin_against_pointcloud = get_or_declare_parameter<double>(
-      node, "obstacle_stop.obstacle_filtering.max_lat_margin_against_pointcloud");
+      get_object_parameter<double>(node, param_prefix + "max_lat_margin", object_label);
 
-    min_velocity_to_reach_collision_point = get_or_declare_parameter<double>(
-      node, "obstacle_stop.obstacle_filtering.min_velocity_to_reach_collision_point");
-    stop_obstacle_hold_time_threshold = get_or_declare_parameter<double>(
-      node, "obstacle_stop.obstacle_filtering.stop_obstacle_hold_time_threshold");
+    min_velocity_to_reach_collision_point = get_object_parameter<double>(
+      node, param_prefix + "min_velocity_to_reach_collision_point", object_label);
+    stop_obstacle_hold_time_threshold = get_object_parameter<double>(
+      node, param_prefix + "stop_obstacle_hold_time_threshold", object_label);
 
-    outside_estimation_time_horizon = get_or_declare_parameter<double>(
-      node, "obstacle_stop.obstacle_filtering.outside_obstacle.estimation_time_horizon");
-    outside_pedestrian_deceleration = get_or_declare_parameter<double>(
-      node, "obstacle_stop.obstacle_filtering.outside_obstacle.pedestrian_deceleration");
-    outside_bicycle_deceleration = get_or_declare_parameter<double>(
-      node, "obstacle_stop.obstacle_filtering.outside_obstacle.bicycle_deceleration");
-    outside_max_lateral_velocity = get_or_declare_parameter<double>(
-      node, "obstacle_stop.obstacle_filtering.outside_obstacle.max_lateral_velocity");
+    outside_estimation_time_horizon = get_object_parameter<double>(
+      node, param_prefix + "outside_obstacle.estimation_time_horizon", object_label);
+    outside_deceleration = get_object_parameter<double>(
+      node, param_prefix + "outside_obstacle.deceleration", object_label);
+    outside_max_lateral_velocity = get_object_parameter<double>(
+      node, param_prefix + "outside_obstacle.max_lateral_velocity", object_label);
 
-    crossing_obstacle_collision_time_margin = get_or_declare_parameter<double>(
-      node, "obstacle_stop.obstacle_filtering.crossing_obstacle.collision_time_margin");
-    crossing_obstacle_traj_angle_threshold = get_or_declare_parameter<double>(
-      node, "obstacle_stop.obstacle_filtering.crossing_obstacle.traj_angle_threshold");
-
-    use_pointcloud = get_or_declare_parameter<bool>(
-      node, "obstacle_stop.obstacle_filtering.object_type.pointcloud");
+    crossing_obstacle_collision_time_margin = get_object_parameter<double>(
+      node, param_prefix + "crossing_obstacle.collision_time_margin", object_label);
+    crossing_obstacle_traj_angle_threshold = get_object_parameter<double>(
+      node, param_prefix + "crossing_obstacle.traj_angle_threshold", object_label);
   }
 };
 
@@ -221,11 +236,7 @@ struct StopPlanningParam
     double sudden_object_dist_threshold{};
     bool abandon_to_stop{};
   };
-  std::unordered_map<uint8_t, std::string> object_types_maps = {
-    {ObjectClassification::UNKNOWN, "unknown"}, {ObjectClassification::CAR, "car"},
-    {ObjectClassification::TRUCK, "truck"},     {ObjectClassification::BUS, "bus"},
-    {ObjectClassification::TRAILER, "trailer"}, {ObjectClassification::MOTORCYCLE, "motorcycle"},
-    {ObjectClassification::BICYCLE, "bicycle"}, {ObjectClassification::PEDESTRIAN, "pedestrian"}};
+
   std::unordered_map<std::string, ObjectTypeSpecificParams> object_type_specific_param_map;
 
   StopPlanningParam() = default;
