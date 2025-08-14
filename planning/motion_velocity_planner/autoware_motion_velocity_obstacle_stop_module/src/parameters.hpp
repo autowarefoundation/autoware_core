@@ -107,39 +107,38 @@ struct ObstacleFilteringParam
   double crossing_obstacle_traj_angle_threshold{};
 
   ObstacleFilteringParam() = default;
-  explicit ObstacleFilteringParam(rclcpp::Node & node, const std::string & object_label)
+  explicit ObstacleFilteringParam(rclcpp::Node & node, const std::string & label_str)
   {
     const std::string param_prefix = "obstacle_stop.obstacle_filtering.";
 
-    check_inside = get_object_parameter<bool>(node, param_prefix + "check_inside", object_label);
-    check_outside = get_object_parameter<bool>(node, param_prefix + "check_outside", object_label);
+    check_inside = get_object_parameter<bool>(node, param_prefix + "check_inside", label_str);
+    check_outside = get_object_parameter<bool>(node, param_prefix + "check_outside", label_str);
 
     trim_trajectory.enable_trim =
-      get_object_parameter<bool>(node, param_prefix + "trim_trajectory.enable_trim", object_label);
+      get_object_parameter<bool>(node, param_prefix + "trim_trajectory.enable_trim", label_str);
     trim_trajectory.min_trajectory_length = get_object_parameter<double>(
-      node, param_prefix + "trim_trajectory.min_trajectory_length", object_label);
+      node, param_prefix + "trim_trajectory.min_trajectory_length", label_str);
     trim_trajectory.braking_distance_scale_factor = get_object_parameter<double>(
-      node, param_prefix + "trim_trajectory.braking_distance_scale_factor", object_label);
+      node, param_prefix + "trim_trajectory.braking_distance_scale_factor", label_str);
 
-    max_lat_margin =
-      get_object_parameter<double>(node, param_prefix + "max_lat_margin", object_label);
+    max_lat_margin = get_object_parameter<double>(node, param_prefix + "max_lat_margin", label_str);
 
     min_velocity_to_reach_collision_point = get_object_parameter<double>(
-      node, param_prefix + "min_velocity_to_reach_collision_point", object_label);
+      node, param_prefix + "min_velocity_to_reach_collision_point", label_str);
     stop_obstacle_hold_time_threshold = get_object_parameter<double>(
-      node, param_prefix + "stop_obstacle_hold_time_threshold", object_label);
+      node, param_prefix + "stop_obstacle_hold_time_threshold", label_str);
 
     outside_estimation_time_horizon = get_object_parameter<double>(
-      node, param_prefix + "outside_obstacle.estimation_time_horizon", object_label);
-    outside_deceleration = get_object_parameter<double>(
-      node, param_prefix + "outside_obstacle.deceleration", object_label);
+      node, param_prefix + "outside_obstacle.estimation_time_horizon", label_str);
+    outside_deceleration =
+      get_object_parameter<double>(node, param_prefix + "outside_obstacle.deceleration", label_str);
     outside_max_lateral_velocity = get_object_parameter<double>(
-      node, param_prefix + "outside_obstacle.max_lateral_velocity", object_label);
+      node, param_prefix + "outside_obstacle.max_lateral_velocity", label_str);
 
     crossing_obstacle_collision_time_margin = get_object_parameter<double>(
-      node, param_prefix + "crossing_obstacle.collision_time_margin", object_label);
+      node, param_prefix + "crossing_obstacle.collision_time_margin", label_str);
     crossing_obstacle_traj_angle_threshold = get_object_parameter<double>(
-      node, param_prefix + "crossing_obstacle.traj_angle_threshold", object_label);
+      node, param_prefix + "crossing_obstacle.traj_angle_threshold", label_str);
   }
 };
 
@@ -299,16 +298,17 @@ struct StopPlanningParam
     }
   }
 
-  std::string get_param_type(const std::string & extended_label)
+  std::string get_param_type(const StopObstacleClassification & stop_obstacle_classificatoin)
   {
-    if (object_type_specific_param_map.count(extended_label) == 0) {
+    if (object_type_specific_param_map.count(stop_obstacle_classificatoin.toString()) == 0) {
       return "default";
     }
-    return extended_label;
+    return stop_obstacle_classificatoin.toString();
   }
-  ObjectTypeSpecificParams get_param(const std::string & extended_label)
+  ObjectTypeSpecificParams get_param(
+    const StopObstacleClassification & stop_obstacle_classification)
   {
-    return object_type_specific_param_map.at(get_param_type(extended_label));
+    return object_type_specific_param_map.at(get_param_type(stop_obstacle_classification));
   }
 };
 }  // namespace autoware::motion_velocity_planner

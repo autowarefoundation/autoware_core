@@ -152,20 +152,21 @@ double calc_time_to_reach_collision_point(
 
 // TODO(takagi): refactor this function as same as obstacle_filtering_param
 double calc_braking_dist(
-  const std::string & label_str, const double lon_vel, const RSSParam & rss_params)
+  const StopObstacleClassification classification, const double lon_vel,
+  const RSSParam & rss_params)
 {
   const double braking_acc = [&]() {
-    if (label_str == "pointcloud") {
+    if (classification.label == StopObstacleClassification::Type::POINTCLOUD) {
       return rss_params.pointcloud_deceleration;
     }
     if (
-      label_str == object_types_maps.at(ObjectClassification::UNKNOWN) ||
-      label_str == object_types_maps.at(ObjectClassification::PEDESTRIAN)) {
+      classification.label == StopObstacleClassification::Type::UNKNOWN ||
+      classification.label == StopObstacleClassification::Type::PEDESTRIAN) {
       return rss_params.no_wheel_objects_deceleration;
     }
     if (
-      label_str == object_types_maps.at(ObjectClassification::BICYCLE) ||
-      label_str == object_types_maps.at(ObjectClassification::MOTORCYCLE)) {
+      classification.label == StopObstacleClassification::Type::BICYCLE ||
+      classification.label == StopObstacleClassification::Type::MOTORCYCLE) {
       return rss_params.two_wheel_objects_deceleration;
     }
     return rss_params.vehicle_objects_deceleration;
@@ -190,8 +191,8 @@ void ObstacleStopModule::init(rclcpp::Node & node, const std::string & module_na
 
   common_param_ = CommonParam(node);
   stop_planning_param_ = StopPlanningParam(node, common_param_);
-  for (const auto & key : object_label_list) {
-    obstacle_filtering_params_.emplace(key, ObstacleFilteringParam{node, key});
+  for (const auto & [type, str] : StopObstacleClassification::to_string_map) {
+    obstacle_filtering_params_.emplace(type, ObstacleFilteringParam{node, str});
   }
   pointcloud_segmentation_param_ = PointcloudSegmentationParam(node);
 
@@ -314,7 +315,7 @@ std::vector<geometry_msgs::msg::Point> ObstacleStopModule::convert_point_cloud_t
     return {};
   }
 
-  const auto & p = obstacle_filtering_params_.at("pointcloud");
+  const auto & p = obstacle_filtering_params_.at(StopObstacleClassification::Type::POINTCLOUD);
   const auto & tp = trajectory_polygon_collision_check;
 
   std::vector<geometry_msgs::msg::Point> stop_collision_points;
@@ -474,7 +475,7 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_predicted
     autoware_utils_debug::ScopedTimeTrack st_for_each_object("for_each_object", *time_keeper_);
 
     const auto & filtering_params = obstacle_filtering_params_.at(
-      object_types_maps.at(object->predicted_object.classification.at(0).label));
+      StopObstacleClassification{object->predicted_object.classification});
 
     // 1. rough filtering
     // 1.1. Check if the obstacle is in front of the ego.
@@ -603,7 +604,8 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_point_clo
   const TrajectoryPolygonCollisionCheck & trajectory_polygon_collision_check)
 {
   autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
-  const auto & filtering_param = obstacle_filtering_params_.at("pointcloud");
+  const auto & filtering_param =
+    obstacle_filtering_params_.at(StopObstacleClassification::Type::POINTCLOUD);
 
   // outside stop for pointcloud is not implemented.
   if (!filtering_param.check_inside) {
@@ -694,7 +696,8 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_point_clo
         time_compensated_dist_to_collide);
     } else if (stop_planning_param_.rss_params.use_rss_stop) {
       const auto braking_dist = calc_braking_dist(
-        "pointcloud", *stop_candidate.vel_lpf.getValue(), stop_planning_param_.rss_params);
+        StopObstacleClassification::Type::POINTCLOUD, *stop_candidate.vel_lpf.getValue(),
+        stop_planning_param_.rss_params);
       stop_obstacles.emplace_back(
         stop_candidate.latest_collision_pointcloud_time, true,
         stop_candidate.vel_lpf.getValue().value(), stop_candidate.latest_collision_point.point,
@@ -723,7 +726,7 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
   autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
 
   const auto & filtering_params = obstacle_filtering_params_.at(
-    object_types_maps.at(object->predicted_object.classification.at(0).label));
+    StopObstacleClassification{object->predicted_object.classification});
 
   const auto & predicted_object = object->predicted_object;
   const auto & obj_pose =
@@ -807,7 +810,7 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
 
   if (stop_planning_param_.rss_params.use_rss_stop) {
     const auto braking_dist = calc_braking_dist(
-      object_types_maps.at(predicted_object.classification.at(0).label),
+      StopObstacleClassification{predicted_object.classification},
       object->get_lon_vel_relative_to_traj(traj_points), stop_planning_param_.rss_params);
 
     RCLCPP_DEBUG(
@@ -866,7 +869,7 @@ bool ObstacleStopModule::is_crossing_transient_obstacle(
     traj_points, object->predicted_object.kinematics.initial_pose_with_covariance.pose);
 
   const auto & filtering_params = obstacle_filtering_params_.at(
-    object_types_maps.at(object->predicted_object.classification.at(0).label));
+    StopObstacleClassification{object->predicted_object.classification});
   bool near_zero =
     (-filtering_params.crossing_obstacle_traj_angle_threshold < diff_angle &&
      diff_angle < filtering_params.crossing_obstacle_traj_angle_threshold);
@@ -973,7 +976,7 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::plan_stop(
       const bool is_same_param_types =
         (stop_obstacle.classification == determined_stop_obstacle->classification);
       const auto point_cloud_suppression_margin = [&](const StopObstacle & obs) {
-        return obs.classification == "pointcloud"
+        return obs.classification == StopObstacleClassification::Type::POINTCLOUD
                  ? stop_planning_param_.pointcloud_suppression_distance_margin
                  : 0.0;
       };
@@ -1135,7 +1138,8 @@ std::optional<double> ObstacleStopModule::calc_candidate_zero_vel_dist(
       if (stop_planning_param_.get_param(stop_obstacle.classification).abandon_to_stop) {
         RCLCPP_WARN(
           rclcpp::get_logger("ObstacleCruisePlanner::StopPlanner"),
-          "[Cruise] abandon to stop against %s object", stop_obstacle.classification.c_str());
+          "[Cruise] abandon to stop against %s object",
+          stop_obstacle.classification.toString().c_str());
         return std::nullopt;
       } else {
         return stop_planning_param_.get_param(stop_obstacle.classification).limit_min_acc;
@@ -1350,7 +1354,7 @@ void ObstacleStopModule::check_consistency(
       // condition is satisfied
       const double elapsed_time = (current_time - prev_closest_stop_obstacle.stamp).seconds();
       const auto & filtering_params = obstacle_filtering_params_.at(
-        object_types_maps.at((*object_itr)->predicted_object.classification.at(0).label));
+        StopObstacleClassification{prev_closest_stop_obstacle.classification});
       if (
         (*object_itr)->predicted_object.kinematics.initial_twist_with_covariance.twist.linear.x <
           stop_planning_param_.obstacle_velocity_threshold_enter_fixed_stop &&
@@ -1370,7 +1374,7 @@ double ObstacleStopModule::calc_margin_from_obstacle_on_curve(
 {
   if (
     !stop_planning_param_.enable_approaching_on_curve ||
-    stop_obstacle.classification == "pointcloud") {
+    stop_obstacle.classification == StopObstacleClassification::Type::POINTCLOUD) {
     return default_stop_margin;
   }
 
@@ -1497,7 +1501,7 @@ ObstacleStopModule::check_outside_cut_in_obstacle(
   autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
 
   const auto & filtering_params = obstacle_filtering_params_.at(
-    object_types_maps.at(object->predicted_object.classification.at(0).label));
+    StopObstacleClassification{object->predicted_object.classification});
 
   if (
     std::abs(object->get_lat_vel_relative_to_traj(traj_points)) >
