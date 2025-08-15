@@ -146,6 +146,9 @@ protected:
     object->predicted_object.shape.dimensions.y = 2.0;
     object->predicted_object.shape.dimensions.z = 2.0;
 
+    object->predicted_object.classification.resize(1);
+    object->predicted_object.classification.at(0).label = ObjectClassification::CAR;
+
     const double time_step = 1.0;
     const double prediction_time = 30.0;
     const size_t num_points = static_cast<size_t>(prediction_time / time_step) + 1;
