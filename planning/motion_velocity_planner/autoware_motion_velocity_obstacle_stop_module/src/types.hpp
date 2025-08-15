@@ -86,8 +86,8 @@ struct StopObstacleClassification
     }
   }
   StopObstacleClassification(const std::vector<ObjectClassification> & object_classifications)
+  : StopObstacleClassification(object_classifications.at(0))
   {
-    StopObstacleClassification(object_classifications.at(0));
   }
   StopObstacleClassification(Type v) : label(v) {}
   StopObstacleClassification() = default;
@@ -98,10 +98,7 @@ struct StopObstacleClassification
 
   bool operator==(const StopObstacleClassification & other) const { return label == other.label; }
   bool operator!=(const StopObstacleClassification & other) const { return !(*this == other); }
-  bool operator<(const StopObstacleClassification & other) const
-  {
-    return static_cast<int>(label) < static_cast<int>(other.label);
-  }
+  bool operator<(const StopObstacleClassification & other) const { return label < other.label; }
 };
 
 // TODO(takagi): std::pair<geometry_msgs::msg::Point, double> in mvp should be replaced with
