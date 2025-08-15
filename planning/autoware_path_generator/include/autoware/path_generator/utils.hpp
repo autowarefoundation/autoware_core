@@ -208,8 +208,7 @@ std::optional<double> get_first_start_edge_intersection_arc_length(
  * @return longitudinal distance of projected point
  */
 double get_arc_length_on_path(
-  const lanelet::LaneletSequence & lanelet_sequence,
-  const experimental::trajectory::Trajectory<PathPointWithLaneId> & path,
+  const lanelet::LaneletSequence & lanelet_sequence, const std::vector<PathPointWithLaneId> & path,
   const double s_centerline);
 
 /**
