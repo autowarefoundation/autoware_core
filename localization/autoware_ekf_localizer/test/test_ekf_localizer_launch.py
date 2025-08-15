@@ -96,8 +96,13 @@ class TestEKFLocalizer(unittest.TestCase):
             )
 
         # Send initial pose
+        qos = rclpy.qos.QoSProfile(
+            depth=1,
+            durability=rclpy.qos.DurabilityPolicy.TRANSIENT_LOCAL,
+            reliability=rclpy.qos.ReliabilityPolicy.RELIABLE,
+        )
         pub_init_pose = self.test_node.create_publisher(
-            PoseWithCovarianceStamped, "/initialpose3d", 10
+            PoseWithCovarianceStamped, "/initialpose3d", qos
         )
         init_pose = PoseWithCovarianceStamped()
         init_pose.header.frame_id = "map"

@@ -43,7 +43,8 @@ PoseInitializer::PoseInitializer(const rclcpp::NodeOptions & options)
     Initialize::name,
     std::bind(&PoseInitializer::on_initialize, this, std::placeholders::_1, std::placeholders::_2),
     rmw_qos_profile_services_default, group_srv_);
-  pub_reset_ = create_publisher<PoseWithCovarianceStamped>("pose_reset", 1);
+  pub_reset_ = create_publisher<PoseWithCovarianceStamped>(
+    "pose_reset", rclcpp::QoS(1).transient_local().reliable());
 
   output_pose_covariance_ = get_covariance_parameter(this, "output_pose_covariance");
   gnss_particle_covariance_ = get_covariance_parameter(this, "gnss_particle_covariance");

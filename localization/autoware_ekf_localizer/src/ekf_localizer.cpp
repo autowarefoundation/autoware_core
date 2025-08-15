@@ -78,7 +78,8 @@ EKFLocalizer::EKFLocalizer(const rclcpp::NodeOptions & node_options)
   pub_processing_time_ = create_publisher<autoware_internal_debug_msgs::msg::Float64Stamped>(
     "debug/processing_time_ms", 1);
   sub_initialpose_ = create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
-    "initialpose", 1, std::bind(&EKFLocalizer::callback_initial_pose, this, _1));
+    "initialpose", rclcpp::QoS(1).transient_local().reliable(),
+    std::bind(&EKFLocalizer::callback_initial_pose, this, _1));
   sub_pose_with_cov_ = create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
     "in_pose_with_covariance", 1,
     std::bind(&EKFLocalizer::callback_pose_with_covariance, this, _1));
