@@ -67,16 +67,16 @@ TEST(StopObstacleClassificationTest, InitializesFromPredictedObjectClassificatio
 TEST(StopObstacleClassificationTest, InitializesFromStopObstacleClassification)
 {
   ASSERT_EQ(
-    StopObstacleClassification{StopObstacleClassification::Type::UNKNOWN},
+    StopObstacleClassification{StopObstacleClassification::Type::UNKNOWN}.label,
     StopObstacleClassification::Type::UNKNOWN);
   ASSERT_EQ(
-    StopObstacleClassification{StopObstacleClassification::Type::CAR},
+    StopObstacleClassification{StopObstacleClassification::Type::CAR}.label,
     StopObstacleClassification::Type::CAR);
   ASSERT_EQ(
-    StopObstacleClassification{StopObstacleClassification::Type::PEDESTRIAN},
+    StopObstacleClassification{StopObstacleClassification::Type::PEDESTRIAN}.label,
     StopObstacleClassification::Type::PEDESTRIAN);
   ASSERT_EQ(
-    StopObstacleClassification{StopObstacleClassification::Type::POINTCLOUD},
+    StopObstacleClassification{StopObstacleClassification::Type::POINTCLOUD}.label,
     StopObstacleClassification::Type::POINTCLOUD);
 }
 

@@ -152,21 +152,20 @@ double calc_time_to_reach_collision_point(
 
 // TODO(takagi): refactor this function as same as obstacle_filtering_param
 double calc_braking_dist(
-  const StopObstacleClassification classification, const double lon_vel,
-  const RSSParam & rss_params)
+  const StopObstacleClassification::Type label, const double lon_vel, const RSSParam & rss_params)
 {
   const double braking_acc = [&]() {
-    if (classification.label == StopObstacleClassification::Type::POINTCLOUD) {
+    if (label == StopObstacleClassification::Type::POINTCLOUD) {
       return rss_params.pointcloud_deceleration;
     }
     if (
-      classification.label == StopObstacleClassification::Type::UNKNOWN ||
-      classification.label == StopObstacleClassification::Type::PEDESTRIAN) {
+      label == StopObstacleClassification::Type::UNKNOWN ||
+      label == StopObstacleClassification::Type::PEDESTRIAN) {
       return rss_params.no_wheel_objects_deceleration;
     }
     if (
-      classification.label == StopObstacleClassification::Type::BICYCLE ||
-      classification.label == StopObstacleClassification::Type::MOTORCYCLE) {
+      label == StopObstacleClassification::Type::BICYCLE ||
+      label == StopObstacleClassification::Type::MOTORCYCLE) {
       return rss_params.two_wheel_objects_deceleration;
     }
     return rss_params.vehicle_objects_deceleration;
@@ -475,7 +474,7 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_predicted
     autoware_utils_debug::ScopedTimeTrack st_for_each_object("for_each_object", *time_keeper_);
 
     const auto & filtering_params = obstacle_filtering_params_.at(
-      StopObstacleClassification{object->predicted_object.classification});
+      StopObstacleClassification{object->predicted_object.classification}.label);
 
     // 1. rough filtering
     // 1.1. Check if the obstacle is in front of the ego.
@@ -726,7 +725,7 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
   autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
 
   const auto & filtering_params = obstacle_filtering_params_.at(
-    StopObstacleClassification{object->predicted_object.classification});
+    StopObstacleClassification{object->predicted_object.classification}.label);
 
   const auto & predicted_object = object->predicted_object;
   const auto & obj_pose =
@@ -810,7 +809,7 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
 
   if (stop_planning_param_.rss_params.use_rss_stop) {
     const auto braking_dist = calc_braking_dist(
-      StopObstacleClassification{predicted_object.classification},
+      StopObstacleClassification{predicted_object.classification}.label,
       object->get_lon_vel_relative_to_traj(traj_points), stop_planning_param_.rss_params);
 
     RCLCPP_DEBUG(
@@ -869,7 +868,7 @@ bool ObstacleStopModule::is_crossing_transient_obstacle(
     traj_points, object->predicted_object.kinematics.initial_pose_with_covariance.pose);
 
   const auto & filtering_params = obstacle_filtering_params_.at(
-    StopObstacleClassification{object->predicted_object.classification});
+    StopObstacleClassification{object->predicted_object.classification}.label);
   bool near_zero =
     (-filtering_params.crossing_obstacle_traj_angle_threshold < diff_angle &&
      diff_angle < filtering_params.crossing_obstacle_traj_angle_threshold);
@@ -976,7 +975,7 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::plan_stop(
       const bool is_same_param_types =
         (stop_obstacle.classification == determined_stop_obstacle->classification);
       const auto point_cloud_suppression_margin = [&](const StopObstacle & obs) {
-        return obs.classification == StopObstacleClassification::Type::POINTCLOUD
+        return obs.classification.label == StopObstacleClassification::Type::POINTCLOUD
                  ? stop_planning_param_.pointcloud_suppression_distance_margin
                  : 0.0;
       };
@@ -1354,7 +1353,7 @@ void ObstacleStopModule::check_consistency(
       // condition is satisfied
       const double elapsed_time = (current_time - prev_closest_stop_obstacle.stamp).seconds();
       const auto & filtering_params = obstacle_filtering_params_.at(
-        StopObstacleClassification{prev_closest_stop_obstacle.classification});
+        StopObstacleClassification{prev_closest_stop_obstacle.classification}.label);
       if (
         (*object_itr)->predicted_object.kinematics.initial_twist_with_covariance.twist.linear.x <
           stop_planning_param_.obstacle_velocity_threshold_enter_fixed_stop &&
@@ -1374,7 +1373,7 @@ double ObstacleStopModule::calc_margin_from_obstacle_on_curve(
 {
   if (
     !stop_planning_param_.enable_approaching_on_curve ||
-    stop_obstacle.classification == StopObstacleClassification::Type::POINTCLOUD) {
+    stop_obstacle.classification.label == StopObstacleClassification::Type::POINTCLOUD) {
     return default_stop_margin;
   }
 
@@ -1501,7 +1500,7 @@ ObstacleStopModule::check_outside_cut_in_obstacle(
   autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
 
   const auto & filtering_params = obstacle_filtering_params_.at(
-    StopObstacleClassification{object->predicted_object.classification});
+    StopObstacleClassification{object->predicted_object.classification}.label);
 
   if (
     std::abs(object->get_lat_vel_relative_to_traj(traj_points)) >

@@ -99,7 +99,6 @@ struct StopObstacleClassification
 
   bool operator==(const StopObstacleClassification & other) const { return label == other.label; }
   bool operator!=(const StopObstacleClassification & other) const { return !(*this == other); }
-  bool operator<(const StopObstacleClassification & other) const { return label < other.label; }
 };
 
 // TODO(takagi): std::pair<geometry_msgs::msg::Point, double> in mvp should be replaced with

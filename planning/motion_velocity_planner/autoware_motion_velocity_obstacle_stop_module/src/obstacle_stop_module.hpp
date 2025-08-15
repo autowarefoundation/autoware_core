@@ -84,7 +84,7 @@ private:
   bool suppress_sudden_stop_{};
   CommonParam common_param_{};
   StopPlanningParam stop_planning_param_{};
-  std::map<StopObstacleClassification, ObstacleFilteringParam> obstacle_filtering_params_{};
+  std::map<StopObstacleClassification::Type, ObstacleFilteringParam> obstacle_filtering_params_{};
   PointcloudSegmentationParam pointcloud_segmentation_param_;
 
   // module publisher
