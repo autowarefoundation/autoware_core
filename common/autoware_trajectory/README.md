@@ -307,3 +307,18 @@ common/autoware_trajectory/examples/example_reference_path.cpp:74:80
 ```
 
 ![reference_path](./images/utils/reference_path_dense_centerline.drawio.svg)[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/reference_path_dense_centerline.drawio.svg") }})
+
+### Find first nearest index from Trajectory
+
+`find_first_nearest_index` is a utility function that locates the arc-length coordinate s on a continuous trajectory closest to a given pose.
+These are the usage examples of self-intersecting trajectory (Bow Trajectory and Vertical Loop Trajectory), and Edge case Lollipop Trajectory.
+
+```cpp title="./examples/example_self_intersecting.cpp:300:304"
+--8<--
+common/autoware_trajectory/examples/example_self_intersecting.cpp:300:304
+--8<--
+```
+
+![bow_trajectory](./images/utils/find_precise_index_bow_trajectory.drawio.svg)[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/find_precise_index_bow_trajectory.drawio.svg") }})
+![vertical_loop_trajectory](./images/utils/find_precise_index_vertical_loop_trajectory.drawio.svg)[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/find_precise_index_vertical_loop_trajectory.drawio.svg") }})
+![lollipop_trajectory](./images/utils/find_precise_index_lollipop_trajectory.drawio.svg)[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/find_precise_index_lollipop_trajectory.drawio.svg") }})
