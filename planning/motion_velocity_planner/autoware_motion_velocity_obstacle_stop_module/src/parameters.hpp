@@ -61,8 +61,13 @@ struct CommonParam
   }
 };
 
-/// @brief Get the parameter defined for a specific object label, or the default value if it was
-/// not specified
+/// @brief Get a parameter with a fallback mechanism.
+/// The function tries to get a parameter with the following priority:
+/// 1. Generic parameter (e.g., obstacle_stop.obstacle_filtering.check_inside)
+/// 2. Parameter for a specific object label (e.g.,
+/// obstacle_stop.obstacle_filtering.car.check_inside)
+/// 3. Default parameter for the object type (e.g.,
+/// obstacle_stop.obstacle_filtering.default.check_inside)
 template <class T>
 T get_object_parameter(
   rclcpp::Node & node, const std::string & ns, const std::string & object_label,
