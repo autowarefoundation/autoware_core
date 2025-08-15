@@ -130,7 +130,7 @@ void BehaviorVelocityPlannerNode::onParam()
   planner_data_.velocity_smoother_->setWheelBase(planner_data_.vehicle_info_.wheel_base_m);
 }
 
-void BehaviorVelocityPlannerNode::processNoGroundPointCloud(
+bool BehaviorVelocityPlannerNode::processNoGroundPointCloud(
   const sensor_msgs::msg::PointCloud2::ConstSharedPtr msg)
 {
   geometry_msgs::msg::TransformStamped transform;
@@ -139,19 +139,21 @@ void BehaviorVelocityPlannerNode::processNoGroundPointCloud(
       "map", msg->header.frame_id, msg->header.stamp, rclcpp::Duration::from_seconds(0.1));
   } catch (tf2::TransformException & e) {
     RCLCPP_WARN(get_logger(), "no transform found for no_ground_pointcloud: %s", e.what());
-    return;
+    return false;
   }
 
   pcl::PointCloud<pcl::PointXYZ> pc;
   pcl::fromROSMsg(*msg, pc);
+  if (pc.empty()) {
+    return false;
+  }
 
   Eigen::Affine3f affine = tf2::transformToEigen(transform.transform).cast<float>();
   pcl::PointCloud<pcl::PointXYZ>::Ptr pc_transformed(new pcl::PointCloud<pcl::PointXYZ>);
-  if (!pc.empty()) {
-    autoware_utils_pcl::transform_pointcloud(pc, *pc_transformed, affine);
-  }
+  autoware_utils_pcl::transform_pointcloud(pc, *pc_transformed, affine);
 
   planner_data_.no_ground_pointcloud = pc_transformed;
+  return true;
 }
 
 void BehaviorVelocityPlannerNode::processOdometry(const nav_msgs::msg::Odometry::ConstSharedPtr msg)
@@ -265,8 +267,9 @@ bool BehaviorVelocityPlannerNode::processData(rclcpp::Clock clock)
   is_ready &= getData(
     no_ground_pointcloud, sub_no_ground_pointcloud_, "pointcloud",
     required_subscriptions.no_ground_pointcloud);
-  if (no_ground_pointcloud) {
-    processNoGroundPointCloud(no_ground_pointcloud);
+
+  if (required_subscriptions.no_ground_pointcloud && no_ground_pointcloud) {
+    is_ready &= processNoGroundPointCloud(no_ground_pointcloud);
   }
 
   const auto map_data = sub_lanelet_map_.take_data();
