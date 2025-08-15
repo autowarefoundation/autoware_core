@@ -81,7 +81,7 @@
             pedestrian: 1.0
             bicycle: 2.0
 
-        crossing_obstacle: # Parameters for predicting if an obstacle will dissappear. Pointcloud obstacles are not supported.
+        crossing_obstacle: # Parameters for predicting if an obstacle will cross. Pointcloud obstacles are not supported.
           collision_time_margin : 1.0 # time threshold of collision between obstacle and ego for cruise or stop [s]
           traj_angle_threshold: 0.523599 # [rad] = 70 [deg], yaw threshold of crossing obstacle against the nearest trajectory point for cruise or stop
 

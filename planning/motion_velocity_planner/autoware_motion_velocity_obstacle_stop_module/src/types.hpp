@@ -54,7 +54,7 @@ struct StopObstacleClassification
     {Type::BICYCLE, "bicycle"},      {Type::PEDESTRIAN, "pedestrian"},
     {Type::POINTCLOUD, "pointcloud"}};
 
-  StopObstacleClassification(const ObjectClassification object_classification)
+  explicit StopObstacleClassification(const ObjectClassification object_classification)
   {
     switch (object_classification.label) {
       case ObjectClassification::UNKNOWN:
@@ -85,16 +85,17 @@ struct StopObstacleClassification
         throw std::invalid_argument("Undefined ObjectClassification label");
     }
   }
-  StopObstacleClassification(const std::vector<ObjectClassification> & object_classifications)
+  explicit StopObstacleClassification(
+    const std::vector<ObjectClassification> & object_classifications)
   : StopObstacleClassification(object_classifications.at(0))
   {
   }
-  StopObstacleClassification(Type v) : label(v) {}
+  explicit StopObstacleClassification(Type v) : label(v) {}
   StopObstacleClassification() = default;
 
   std::string toString() const { return to_string_map.at(label); }
 
-  Type label;
+  Type label{};
 
   bool operator==(const StopObstacleClassification & other) const { return label == other.label; }
   bool operator!=(const StopObstacleClassification & other) const { return !(*this == other); }

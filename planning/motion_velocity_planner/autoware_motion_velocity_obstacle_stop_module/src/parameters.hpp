@@ -303,15 +303,15 @@ struct StopPlanningParam
     }
   }
 
-  std::string get_param_type(const StopObstacleClassification & stop_obstacle_classificatoin)
+  std::string get_param_type(const StopObstacleClassification & stop_obstacle_classification) const
   {
-    if (object_type_specific_param_map.count(stop_obstacle_classificatoin.toString()) == 0) {
+    if (object_type_specific_param_map.count(stop_obstacle_classification.toString()) == 0) {
       return "default";
     }
-    return stop_obstacle_classificatoin.toString();
+    return stop_obstacle_classification.toString();
   }
   ObjectTypeSpecificParams get_param(
-    const StopObstacleClassification & stop_obstacle_classification)
+    const StopObstacleClassification & stop_obstacle_classification) const
   {
     return object_type_specific_param_map.at(get_param_type(stop_obstacle_classification));
   }
