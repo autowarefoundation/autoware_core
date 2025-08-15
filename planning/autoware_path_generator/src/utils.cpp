@@ -497,16 +497,16 @@ std::optional<double> get_first_start_edge_intersection_arc_length(
 }
 
 double get_arc_length_on_path(
-  const lanelet::LaneletSequence & lanelet_sequence,
-  const experimental::trajectory::Trajectory<PathPointWithLaneId> & path, const double s_centerline)
+  const lanelet::LaneletSequence & lanelet_sequence, const std::vector<PathPointWithLaneId> & path,
+  const double s_centerline)
 {
-  std::optional<lanelet::Id> target_lanelet_id = std::nullopt;
-  std::optional<geometry_msgs::msg::Point> point_on_centerline = std::nullopt;
+  auto target_lanelet_it = lanelet_sequence.end();
+  std::optional<lanelet::BasicPoint2d> point_on_centerline = std::nullopt;
 
-  if (lanelet_sequence.empty()) {
+  if (lanelet_sequence.empty() || path.empty()) {
     RCLCPP_WARN(
       rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
-      "Input lanelet sequence is empty, returning 0.");
+      "Input lanelet sequence or path is empty, returning 0.");
     return 0.;
   }
 
@@ -525,36 +525,106 @@ double get_arc_length_on_path(
       continue;
     }
 
-    target_lanelet_id = it->id();
-    const auto lanelet_point_on_centerline =
+    target_lanelet_it = it;
+    point_on_centerline =
       lanelet::geometry::interpolatedPointAtDistance(it->centerline2d(), s_centerline - s);
-    point_on_centerline = lanelet::utils::conversion::toGeomMsgPt(
-      Eigen::Vector3d{lanelet_point_on_centerline.x(), lanelet_point_on_centerline.y(), 0.});
     break;
   }
 
-  if (!target_lanelet_id || !point_on_centerline) {
+  if (target_lanelet_it == lanelet_sequence.end() || !point_on_centerline) {
     RCLCPP_WARN(
       rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
       "No lanelet found for input arc length, returning input as is");
     return s_centerline;
   }
 
-  const auto s_path = autoware::experimental::trajectory::closest_with_constraint(
-    path, *point_on_centerline,
-    [&](const PathPointWithLaneId & point) { return exists(point.lane_ids, *target_lanelet_id); });
-  if (s_path) {
-    return *s_path;
+  auto s_path = 0.;
+  lanelet::BasicLineString2d target_path_segment;
+
+  for (auto it = path.begin(); it != path.end(); ++it) {
+    if (!exists(it->lane_ids, target_lanelet_it->id())) {
+      if (target_path_segment.empty() && it != std::prev(path.end())) {
+        s_path += autoware_utils::calc_distance2d(*it, *std::next(it));
+        continue;
+      }
+      break;
+    }
+    target_path_segment.push_back(
+      lanelet::utils::conversion::toLaneletPoint(it->point.pose.position).basicPoint2d());
   }
 
-  RCLCPP_WARN(
-    rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
-    "Path does not contain point with target lane id, falling back to constraint-free closest "
-    "point search");
+  if (target_path_segment.empty()) {
+    // Path does not contain any point on target lanelet, thus we connect last point on previous
+    // lanelet and first point on next lanelet instead.
+    // This happens when target lanelet is entirely covered by interval of waypoint group defined in
+    // adjacent lanelets.
+    if (
+      target_lanelet_it == lanelet_sequence.begin() ||
+      target_lanelet_it == std::prev(lanelet_sequence.end())) {
+      RCLCPP_WARN(
+        rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+        "Path does not any point on target lanelet and target lanelet is at beginning or end "
+        "of lanelet sequence, returning 0.");
+      return 0.;
+    }
 
-  const auto s_path_free = autoware::experimental::trajectory::closest(path, *point_on_centerline);
+    s_path = 0.;
+    auto prev_point_it = path.end();
 
-  return s_path_free;
+    for (auto lanelet_it = std::prev(target_lanelet_it);;) {
+      for (auto path_point_it = path.begin(); path_point_it != std::prev(path.end());
+           ++path_point_it) {
+        if (exists(path_point_it->lane_ids, lanelet_it->id())) {
+          prev_point_it = path_point_it;
+        } else if (prev_point_it != path.end()) {
+          break;
+        }
+        if (path_point_it != path.begin()) {
+          s_path += autoware_utils::calc_distance2d(*std::prev(path_point_it), *path_point_it);
+        }
+      }
+
+      if (prev_point_it != path.end()) {
+        break;
+      } else if (lanelet_it == lanelet_sequence.begin()) {
+        RCLCPP_WARN(
+          rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+          "Path does not contain any point on target lanelet and no previous point found, "
+          "returning 0.");
+        return 0.;
+      }
+      --lanelet_it;
+    }
+
+    auto next_point_it = path.end();
+
+    for (auto lanelet_it = std::next(target_lanelet_it);;) {
+      next_point_it = std::find_if(
+        std::next(prev_point_it), path.end(), [&](const PathPointWithLaneId & path_point) {
+          return exists(path_point.lane_ids, lanelet_it->id());
+        });
+
+      if (next_point_it != path.end()) {
+        break;
+      } else if (lanelet_it == std::prev(lanelet_sequence.end())) {
+        RCLCPP_WARN(
+          rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+          "Path does not contain any point on target lanelet and no next point found, "
+          "returning 0.");
+        return 0.;
+      }
+      ++lanelet_it;
+    }
+
+    target_path_segment = {
+      lanelet::utils::conversion::toLaneletPoint(prev_point_it->point.pose.position).basicPoint2d(),
+      lanelet::utils::conversion::toLaneletPoint(next_point_it->point.pose.position)
+        .basicPoint2d()};
+  }
+
+  s_path += lanelet::geometry::toArcCoordinates(target_path_segment, *point_on_centerline).length;
+
+  return s_path;
 }
 
 PathRange<std::vector<geometry_msgs::msg::Point>> get_path_bounds(
@@ -792,8 +862,9 @@ experimental::trajectory::Trajectory<PathPointWithLaneId> connect_path_to_goal(
     // farther from goal than pre-goal, we just connect start, pre-goal, and goal.
     path_points_to_goal = {path.compute(0)};
   } else {
+    const auto path_points = path.restore();
     const auto s_connection_section_start =
-      get_arc_length_on_path(lanelet_sequence, path, s_goal - connection_section_length);
+      get_arc_length_on_path(lanelet_sequence, path_points, s_goal - connection_section_length);
     const auto cropped_path =
       autoware::experimental::trajectory::crop(path, 0, s_connection_section_start);
     path_points_to_goal = cropped_path.restore(1);

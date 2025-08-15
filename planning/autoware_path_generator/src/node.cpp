@@ -450,10 +450,10 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
   // Attach orientation to path
   path->align_orientation_with_trajectory_direction();
 
-  const auto s_path_start =
-    utils::get_arc_length_on_path(extended_lanelet_sequence, *path, extended_arc_length + s_start);
-  const auto s_path_end =
-    utils::get_arc_length_on_path(extended_lanelet_sequence, *path, extended_arc_length + s_end);
+  const auto s_path_start = utils::get_arc_length_on_path(
+    extended_lanelet_sequence, path_points_with_lane_id, extended_arc_length + s_start);
+  const auto s_path_end = utils::get_arc_length_on_path(
+    extended_lanelet_sequence, path_points_with_lane_id, extended_arc_length + s_end);
 
   if (path->length() - s_path_end > 0) {
     path->crop(0., s_path_end);
