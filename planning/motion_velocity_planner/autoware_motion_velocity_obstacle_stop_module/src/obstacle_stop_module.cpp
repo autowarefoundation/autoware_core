@@ -693,7 +693,8 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_point_clo
       *stop_candidate.vel_lpf.getValue() <
         stop_planning_param_.obstacle_velocity_threshold_enter_fixed_stop) {
       stop_obstacles.emplace_back(
-        stop_candidate.latest_collision_pointcloud_time, true,
+        stop_candidate.latest_collision_pointcloud_time,
+        StopObstacleClassification{StopObstacleClassification::Type::POINTCLOUD},
         stop_candidate.vel_lpf.getValue().value(), stop_candidate.latest_collision_point.point,
         time_compensated_dist_to_collide);
     } else if (stop_planning_param_.rss_params.use_rss_stop) {
@@ -701,7 +702,8 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_point_clo
         StopObstacleClassification::Type::POINTCLOUD, *stop_candidate.vel_lpf.getValue(),
         stop_planning_param_.rss_params);
       stop_obstacles.emplace_back(
-        stop_candidate.latest_collision_pointcloud_time, true,
+        stop_candidate.latest_collision_pointcloud_time,
+        StopObstacleClassification{StopObstacleClassification::Type::POINTCLOUD},
         stop_candidate.vel_lpf.getValue().value(), stop_candidate.latest_collision_point.point,
         time_compensated_dist_to_collide, braking_dist);
       RCLCPP_DEBUG(
@@ -802,7 +804,7 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
     return StopObstacle{
       autoware_utils_uuid::to_hex_string(predicted_object.object_id),
       predicted_objects_stamp,
-      predicted_object.classification.at(0),
+      StopObstacleClassification{predicted_object.classification},
       obj_pose,
       predicted_object.shape,
       object->get_lon_vel_relative_to_traj(traj_points),
@@ -822,7 +824,7 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
     return StopObstacle{
       autoware_utils_uuid::to_hex_string(predicted_object.object_id),
       predicted_objects_stamp,
-      predicted_object.classification.at(0),
+      StopObstacleClassification{predicted_object.classification},
       obj_pose,
       predicted_object.shape,
       object->get_lon_vel_relative_to_traj(traj_points),

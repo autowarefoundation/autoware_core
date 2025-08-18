@@ -122,7 +122,7 @@ struct StopObstacle
 {
   StopObstacle(
     const std::string & arg_uuid, const rclcpp::Time & arg_stamp,
-    const ObjectClassification & arg_object_classification,
+    const StopObstacleClassification & arg_object_classification,
     const geometry_msgs::msg::Pose & arg_pose, const Shape & arg_shape,
     const double arg_lon_velocity, const geometry_msgs::msg::Point & arg_collision_point,
     const double arg_dist_to_collide_on_decimated_traj,
@@ -139,8 +139,8 @@ struct StopObstacle
   {
   }
   StopObstacle(
-    const rclcpp::Time & arg_stamp, const bool arg_is_point_cloud, const double arg_lon_velocity,
-    const geometry_msgs::msg::Point & arg_collision_point,
+    const rclcpp::Time & arg_stamp, const StopObstacleClassification & arg_object_classification,
+    const double arg_lon_velocity, const geometry_msgs::msg::Point & arg_collision_point,
     const double arg_dist_to_collide_on_decimated_traj,
     const std::optional<double> arg_braking_dist = std::nullopt)
   : uuid("point_cloud"),
@@ -148,9 +148,14 @@ struct StopObstacle
     velocity(arg_lon_velocity),
     collision_point(arg_collision_point),
     dist_to_collide_on_decimated_traj(arg_dist_to_collide_on_decimated_traj),
-    classification(StopObstacleClassification::Type::POINTCLOUD),
+    classification(arg_object_classification),
     braking_dist(arg_braking_dist)
   {
+    if (arg_object_classification.label != StopObstacleClassification::Type::POINTCLOUD) {
+      throw std::invalid_argument(
+        "Constructor for poitcoud StopObstacle must be called with POINTCLOUD label");
+    }
+
     shape.type = autoware_perception_msgs::msg::Shape::BOUNDING_BOX;
   }
   std::string uuid;
