@@ -153,7 +153,7 @@ struct StopObstacle
   {
     if (arg_object_classification.label != StopObstacleClassification::Type::POINTCLOUD) {
       throw std::invalid_argument(
-        "Constructor for poitcloud StopObstacle must be called with POINTCLOUD label");
+        "Constructor for pointcloud StopObstacle must be called with POINTCLOUD label");
     }
 
     shape.type = autoware_perception_msgs::msg::Shape::BOUNDING_BOX;
