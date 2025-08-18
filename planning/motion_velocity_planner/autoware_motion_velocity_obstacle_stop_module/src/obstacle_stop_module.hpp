@@ -84,7 +84,9 @@ private:
   bool suppress_sudden_stop_{};
   CommonParam common_param_{};
   StopPlanningParam stop_planning_param_{};
-  ObstacleFilteringParam obstacle_filtering_param_{};
+  std::unordered_map<StopObstacleClassification::Type, ObstacleFilteringParam>
+    obstacle_filtering_params_{};
+  PointcloudSegmentationParam pointcloud_segmentation_param_;
 
   // module publisher
   rclcpp::Publisher<Float32MultiArrayStamped>::SharedPtr debug_stop_planning_info_pub_{};
@@ -203,9 +205,6 @@ private:
     const PlannerData::Pointcloud & point_cloud, const double x_offset_to_bumper,
     const VehicleInfo & vehicle_info) const;
 
-  double calc_collision_time_margin(
-    const Odometry & odometry, const std::vector<polygon_utils::PointWithStamp> & collision_points,
-    const std::vector<TrajectoryPoint> & traj_points, const double x_offset_to_bumper) const;
   void check_consistency(
     const rclcpp::Time & current_time,
     const std::vector<std::shared_ptr<PlannerData::Object>> & objects,
@@ -216,7 +215,6 @@ private:
     const double x_offset_to_bumper, const double default_stop_margin) const;
   std::vector<StopObstacle> get_closest_stop_obstacles(
     const std::vector<StopObstacle> & stop_obstacles);
-  double get_max_lat_margin(const uint8_t obj_label) const;
   std::vector<Polygon2d> get_decimated_traj_polys(
     const std::vector<TrajectoryPoint> & traj_points, const geometry_msgs::msg::Pose & current_pose,
     const autoware::vehicle_info_utils::VehicleInfo & vehicle_info,
