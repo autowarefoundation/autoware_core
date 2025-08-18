@@ -94,7 +94,7 @@ struct StopObstacleClassification
   explicit StopObstacleClassification(Type v) : label(v) {}
   StopObstacleClassification() = default;
 
-  std::string toString() const { return to_string_map.at(label); }
+  std::string to_string() const { return to_string_map.at(label); }
 
   Type label{};
 

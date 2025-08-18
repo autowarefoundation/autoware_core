@@ -1142,7 +1142,7 @@ std::optional<double> ObstacleStopModule::calc_candidate_zero_vel_dist(
         RCLCPP_WARN(
           rclcpp::get_logger("ObstacleCruisePlanner::StopPlanner"),
           "[Cruise] abandon to stop against %s object",
-          stop_obstacle.classification.toString().c_str());
+          stop_obstacle.classification.to_string().c_str());
         return std::nullopt;
       } else {
         return stop_planning_param_.get_param(stop_obstacle.classification).limit_min_acc;
@@ -1384,7 +1384,6 @@ void ObstacleStopModule::check_consistency(
       [&prev_closest_stop_obstacle](const StopObstacle & so) {
         return so.uuid == prev_closest_stop_obstacle.uuid;
       });
-
     if (is_disappeared_from_stop_obstacle) {
       // re-evaluate as a stop candidate, and overwrite the current decision if "maintain stop"
       // condition is satisfied

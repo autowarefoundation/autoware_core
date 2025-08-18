@@ -234,7 +234,6 @@ struct StopPlanningParam
     double sudden_object_dist_threshold{};
     bool abandon_to_stop{};
   };
-
   std::unordered_map<std::string, ObjectTypeSpecificParams> object_type_specific_param_map;
 
   StopPlanningParam() = default;
@@ -305,10 +304,10 @@ struct StopPlanningParam
 
   std::string get_param_type(const StopObstacleClassification & stop_obstacle_classification) const
   {
-    if (object_type_specific_param_map.count(stop_obstacle_classification.toString()) == 0) {
+    if (object_type_specific_param_map.count(stop_obstacle_classification.to_string()) == 0) {
       return "default";
     }
-    return stop_obstacle_classification.toString();
+    return stop_obstacle_classification.to_string();
   }
   ObjectTypeSpecificParams get_param(
     const StopObstacleClassification & stop_obstacle_classification) const
