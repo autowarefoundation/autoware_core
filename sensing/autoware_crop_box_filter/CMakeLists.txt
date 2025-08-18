@@ -27,6 +27,10 @@ if(BUILD_TESTING)
   ament_auto_add_gtest(test_crop_box_filter_node
     test/test_crop_box_filter_node.cpp
   )
+
+  ament_auto_add_gtest(test_crop_box_filter_integration
+    test/test_crop_box_filter_integration.cpp
+  )
 endif()
 
 ament_auto_package(INSTALL_TO_SHARE
