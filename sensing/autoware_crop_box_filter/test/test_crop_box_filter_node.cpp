@@ -16,10 +16,13 @@
 
 #include "autoware/crop_box_filter/crop_box_filter_node.hpp"
 
-#include <gtest/gtest.h>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
 
+#include <gtest/gtest.h>
+
+#include <algorithm>
 #include <memory>
+#include <string>
 #include <vector>
 
 sensor_msgs::msg::PointCloud2 create_pointcloud2(std::vector<std::array<float, 3>> & points)
@@ -81,7 +84,8 @@ bool is_same_points(
 }
 
 // Test helper structure to hold crop box parameters
-struct CropBoxParams {
+struct CropBoxParams
+{
   double min_x = -5.0;
   double max_x = 5.0;
   double min_y = -5.0;
@@ -119,8 +123,7 @@ std::unique_ptr<autoware::crop_box_filter::CropBoxFilter> create_crop_box_filter
 
 // Helper function to run crop box filter test
 void run_crop_box_filter_test(
-  const CropBoxParams & params,
-  const std::vector<std::array<float, 3>> & input_points,
+  const CropBoxParams & params, const std::vector<std::array<float, 3>> & input_points,
   const std::vector<std::array<float, 3>> & expected_points)
 {
   // Create the node with the specified options
@@ -162,6 +165,8 @@ TEST(CropBoxFilterTest, FilterExcludePointsInsideBoxWhenNegative)
   CropBoxParams params;
   params.negative = true;
 
+  // clang-format off
+
   // input points
   std::vector<std::array<float, 3>> input_points = {
     // points inside the box
@@ -197,6 +202,8 @@ TEST(CropBoxFilterTest, FilterExcludePointsInsideBoxWhenNegative)
     {-9.5f, -9.5f, -9.1f}
   };
 
+  // clang-format on
+
   run_crop_box_filter_test(params, input_points, expected_points);
 }
 
@@ -204,6 +211,8 @@ TEST(CropBoxFilterTest, FilterExcludePointsOutsideBoxWhenPositive)
 {
   CropBoxParams params;
   params.negative = false;
+
+  // clang-format off
 
   // input points
   std::vector<std::array<float, 3>> input_points = {
@@ -234,6 +243,8 @@ TEST(CropBoxFilterTest, FilterExcludePointsOutsideBoxWhenPositive)
     {3.5f, 3.5f, 3.1f},
     {4.5f, 4.5f, 4.1f}
   };
+
+  // clang-format on
 
   run_crop_box_filter_test(params, input_points, expected_points);
 }
