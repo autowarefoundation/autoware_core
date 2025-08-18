@@ -144,13 +144,13 @@ bool BehaviorVelocityPlannerNode::processNoGroundPointCloud(
 
   pcl::PointCloud<pcl::PointXYZ> pc;
   pcl::fromROSMsg(*msg, pc);
-  if (pc.empty()) {
-    return false;
-  }
 
   Eigen::Affine3f affine = tf2::transformToEigen(transform.transform).cast<float>();
   pcl::PointCloud<pcl::PointXYZ>::Ptr pc_transformed(new pcl::PointCloud<pcl::PointXYZ>);
-  autoware_utils_pcl::transform_pointcloud(pc, *pc_transformed, affine);
+
+  if (!pc.empty()) {
+    autoware_utils_pcl::transform_pointcloud(pc, *pc_transformed, affine);
+  }
 
   planner_data_.no_ground_pointcloud = pc_transformed;
   return true;
