@@ -97,8 +97,6 @@ void Lanelet2MapVisualizationNode::on_map_bin(
   lanelet::ConstLanelets bicycle_lane_lanelets =
     lanelet::utils::query::bicycleLaneLanelets(all_lanelets);
   lanelet::ConstLineStrings3d partitions = lanelet::utils::query::getAllPartitions(viz_lanelet_map);
-  lanelet::ConstLineStrings3d road_borders =
-    lanelet::utils::query::getAllLinestringsWithType(viz_lanelet_map, "road_border");
   lanelet::ConstLineStrings3d pedestrian_polygon_markings =
     lanelet::utils::query::getAllPedestrianPolygonMarkings(viz_lanelet_map);
   lanelet::ConstLineStrings3d pedestrian_line_markings =
@@ -119,6 +117,8 @@ void Lanelet2MapVisualizationNode::on_map_bin(
   lanelet::ConstLineStrings3d parking_spaces =
     lanelet::utils::query::getAllParkingSpaces(viz_lanelet_map);
   lanelet::ConstPolygons3d parking_lots = lanelet::utils::query::getAllParkingLots(viz_lanelet_map);
+  lanelet::ConstPolygons3d waypoint_zones =
+    lanelet::utils::query::getAllWaypointZones(viz_lanelet_map);
   lanelet::ConstPolygons3d obstacle_polygons =
     lanelet::utils::query::getAllObstaclePolygons(viz_lanelet_map);
   lanelet::ConstPolygons3d no_obstacle_segmentation_area =
@@ -135,13 +135,11 @@ void Lanelet2MapVisualizationNode::on_map_bin(
   lanelet::ConstLineStrings3d curbstones = lanelet::utils::query::curbstones(viz_lanelet_map);
   std::vector<lanelet::BusStopAreaConstPtr> bus_stop_reg_elems =
     lanelet::utils::query::busStopAreas(all_lanelets);
-  lanelet::ConstLineStrings3d waypoints = lanelet::utils::query::getAllWaypoints(viz_lanelet_map);
 
   std_msgs::msg::ColorRGBA cl_road;
   std_msgs::msg::ColorRGBA cl_shoulder;
   std_msgs::msg::ColorRGBA cl_cross;
   std_msgs::msg::ColorRGBA cl_partitions;
-  std_msgs::msg::ColorRGBA cl_road_borders;
   std_msgs::msg::ColorRGBA cl_pedestrian_markings;
   std_msgs::msg::ColorRGBA cl_ll_borders;
   std_msgs::msg::ColorRGBA cl_shoulder_borders;
@@ -151,6 +149,7 @@ void Lanelet2MapVisualizationNode::on_map_bin(
   std_msgs::msg::ColorRGBA cl_speed_bumps;
   std_msgs::msg::ColorRGBA cl_crosswalks;
   std_msgs::msg::ColorRGBA cl_parking_lots;
+  std_msgs::msg::ColorRGBA cl_waypoint_zones;
   std_msgs::msg::ColorRGBA cl_parking_spaces;
   std_msgs::msg::ColorRGBA cl_lanelet_id;
   std_msgs::msg::ColorRGBA cl_obstacle_polygons;
@@ -164,12 +163,10 @@ void Lanelet2MapVisualizationNode::on_map_bin(
   std_msgs::msg::ColorRGBA cl_intersection_area;
   std_msgs::msg::ColorRGBA cl_bus_stop_area;
   std_msgs::msg::ColorRGBA cl_bicycle_lane;
-  std_msgs::msg::ColorRGBA cl_waypoints;
   set_color(&cl_road, 0.27, 0.27, 0.27, 0.999);
   set_color(&cl_shoulder, 0.15, 0.15, 0.15, 0.999);
   set_color(&cl_cross, 0.27, 0.3, 0.27, 0.5);
   set_color(&cl_partitions, 0.25, 0.25, 0.25, 0.999);
-  set_color(&cl_road_borders, 0.3, 0.25, 0.3, 0.999);
   set_color(&cl_pedestrian_markings, 0.5, 0.5, 0.5, 0.999);
   set_color(&cl_ll_borders, 0.5, 0.5, 0.5, 0.999);
   set_color(&cl_shoulder_borders, 0.2, 0.2, 0.2, 0.999);
@@ -181,6 +178,7 @@ void Lanelet2MapVisualizationNode::on_map_bin(
   set_color(&cl_crosswalks, 0.80, 0.80, 0.0, 0.5);
   set_color(&cl_obstacle_polygons, 0.4, 0.27, 0.27, 0.5);
   set_color(&cl_parking_lots, 1.0, 1.0, 1.0, 0.2);
+  set_color(&cl_waypoint_zones, 1.0, 0.5, 0.0, 0.3);
   set_color(&cl_parking_spaces, 1.0, 1.0, 1.0, 0.3);
   set_color(&cl_lanelet_id, 0.5, 0.5, 0.5, 0.999);
   set_color(&cl_no_obstacle_segmentation_area, 0.37, 0.37, 0.27, 0.5);
@@ -192,7 +190,6 @@ void Lanelet2MapVisualizationNode::on_map_bin(
   set_color(&cl_intersection_area, 0.16, 1.0, 0.69, 0.5);
   set_color(&cl_bus_stop_area, 0.863, 0.863, 0.863, 0.5);
   set_color(&cl_bicycle_lane, 0.0, 0.3843, 0.6274, 0.5);
-  set_color(&cl_waypoints, 0.6, 0.4, 0.3, 0.999);
 
   visualization_msgs::msg::MarkerArray map_marker_array;
 
@@ -202,9 +199,6 @@ void Lanelet2MapVisualizationNode::on_map_bin(
   insert_marker_array(
     &map_marker_array,
     lanelet::visualization::lineStringsAsMarkerArray(partitions, "partitions", cl_partitions, 0.1));
-  insert_marker_array(
-    &map_marker_array, lanelet::visualization::lineStringsAsMarkerArray(
-                         road_borders, "road_borders", cl_road_borders, 0.2));
   insert_marker_array(
     &map_marker_array,
     lanelet::visualization::laneletDirectionAsMarkerArray(shoulder_lanelets, "shoulder_"));
@@ -241,6 +235,9 @@ void Lanelet2MapVisualizationNode::on_map_bin(
   insert_marker_array(
     &map_marker_array,
     lanelet::visualization::parkingLotsAsMarkerArray(parking_lots, cl_parking_lots));
+  insert_marker_array(
+    &map_marker_array,
+    lanelet::visualization::waypointZonesAsMarkerArray(waypoint_zones, cl_waypoint_zones));
   insert_marker_array(
     &map_marker_array,
     lanelet::visualization::parkingSpacesAsMarkerArray(parking_spaces, cl_parking_spaces));
@@ -320,10 +317,6 @@ void Lanelet2MapVisualizationNode::on_map_bin(
   insert_marker_array(
     &map_marker_array, lanelet::visualization::laneletsAsTriangleMarkerArray(
                          "bicycle_lane_lanelets", bicycle_lane_lanelets, cl_bicycle_lane));
-
-  insert_marker_array(
-    &map_marker_array,
-    lanelet::visualization::lineStringsAsMarkerArray(waypoints, "waypoints", cl_waypoints, 0.02));
 
   pub_marker_->publish(map_marker_array);
 }
