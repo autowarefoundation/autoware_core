@@ -752,9 +752,6 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
   const double max_lat_margin = get_max_lat_margin(obj_label);
   // NOTE: max_lat_margin can be negative, so apply std::max with 1e-3.
   // dist_from_obj_poly_to_traj_poly: denotes the distance as is.
-  // object->get_lat_vel_relative_to_traj(traj_points): This is not the lateral velocity in the
-  // coordinate system. The sign has been manipulated so that it shows a positive value when
-  // approaching the path and a negative value when moving away from the path.
   if (
     std::max(max_lat_margin, 1e-3) <=
     dist_from_obj_poly_to_traj_poly -
