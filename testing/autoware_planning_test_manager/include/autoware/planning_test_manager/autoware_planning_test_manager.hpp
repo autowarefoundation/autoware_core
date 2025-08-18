@@ -33,12 +33,12 @@
 #include <autoware/component_interface_specs/planning.hpp>
 #include <autoware_test_utils/autoware_test_utils.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <tf2_ros/buffer.hpp>
+#include <tf2_ros/transform_listener.hpp>
 
 #include <autoware_planning_msgs/msg/trajectory.hpp>
 
 #include <gtest/gtest.h>
-#include <tf2_ros/buffer.h>
-#include <tf2_ros/transform_listener.h>
 
 #include <ctime>
 #include <memory>
