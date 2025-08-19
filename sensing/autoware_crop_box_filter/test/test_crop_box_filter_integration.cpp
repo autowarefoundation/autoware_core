@@ -265,16 +265,16 @@ TEST_F(CropBoxFilterIntegrationTest, IntegrationTestWithTfTransform)
   // Test points in sensor_frame coordinates
   std::vector<std::array<float, 3>> input_points = {
     // These points will be inside the crop box after transformation
-    {0.5f, 0.5f, 0.5f},  // In sensor_frame, will be (1.5, 0.5, 0.5) in base_link, then (1.0, 0.5,
-                         // 0.5) in output_frame
-    {-0.5f, -0.5f, -0.5f},  // In sensor_frame, will be (0.5, -0.5, -0.5) in base_link, then (0.0,
-                            // -0.5, -0.5) in output_frame
+    {0.5f, 0.5f, 0.5f},     // In sensor_frame, will be (1.5, 0.5, 0.5) in base_link,
+                            // then (1.0, 0.5, 0.5) in output_frame
+    {-0.5f, -0.5f, -0.5f},  // In sensor_frame, will be (0.5, -0.5, -0.5) in base_link,
+                            // then (0.0, -0.5, -0.5) in output_frame
 
     // These points will be outside the crop box after transformation
-    {3.0f, 3.0f, 3.0f},    // In sensor_frame, will be (4.0, 3.0, 3.0) in base_link, then
-                           // (3.5, 3.0, 3.0) in output_frame - outside box
-    {-3.0f, -3.0f, -3.0f}  // In sensor_frame, will be (-2.0, -3.0, -3.0) in base_link, then (-2.5,
-                           // -3.0, -3.0) in output_frame - outside box
+    {3.0f, 3.0f, 3.0f},    // In sensor_frame, will be (4.0, 3.0, 3.0) in base_link,
+                           // then (3.5, 3.0, 3.0) in output_frame - outside box
+    {-3.0f, -3.0f, -3.0f}  // In sensor_frame, will be (-2.0, -3.0, -3.0) in base_link,
+                           // then (-2.5, -3.0, -3.0) in output_frame - outside box
   };
 
   // Expected points after transformation:
