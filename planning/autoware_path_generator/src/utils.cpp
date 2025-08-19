@@ -581,9 +581,8 @@ double get_arc_length_on_path(
 
     target_lanelet_id = it->id();
     const auto lanelet_point_on_centerline =
-      lanelet::geometry::interpolatedPointAtDistance(it->centerline2d(), s_centerline - s);
-    point_on_centerline = lanelet::utils::conversion::toGeomMsgPt(
-      Eigen::Vector3d{lanelet_point_on_centerline.x(), lanelet_point_on_centerline.y(), 0.});
+      lanelet::geometry::interpolatedPointAtDistance(it->centerline(), s_centerline - s);
+    point_on_centerline = lanelet::utils::conversion::toGeomMsgPt(lanelet_point_on_centerline);
     break;
   }
 
