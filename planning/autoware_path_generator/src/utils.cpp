@@ -230,6 +230,34 @@ std::vector<WaypointGroup> get_waypoint_groups(
   return waypoint_groups;
 }
 
+std::optional<lanelet::ConstPoint3d> get_border_point(
+  const lanelet::BasicLineString3d & segment_across_border,
+  const lanelet::ConstLanelet & border_lanelet)
+{
+  if (segment_across_border.size() < 2) {
+    RCLCPP_ERROR(
+      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+      "Segment has less than 2 points");
+    return std::nullopt;
+  }
+
+  const lanelet::BasicLineString3d border{
+    border_lanelet.leftBound().front().basicPoint(),
+    border_lanelet.rightBound().front().basicPoint()};
+
+  lanelet::BasicPoints3d border_points;
+  boost::geometry::intersection(segment_across_border, border, border_points);
+
+  if (border_points.empty()) {
+    return std::nullopt;
+  }
+
+  return lanelet::utils::to3D(
+    lanelet::ConstPoint2d(
+      border_lanelet.id(),
+      {border_points.front().x(), border_points.front().y(), segment_across_border.back().z()}));
+}
+
 std::optional<double> get_first_intersection_arc_length(
   const lanelet::LaneletSequence & lanelet_sequence, const double s_start, const double s_end,
   const double vehicle_length)

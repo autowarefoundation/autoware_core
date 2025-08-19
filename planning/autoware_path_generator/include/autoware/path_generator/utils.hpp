@@ -113,6 +113,17 @@ std::vector<WaypointGroup> get_waypoint_groups(
   const double connection_gradient_from_centerline);
 
 /**
+ * @brief get border point (intersection between segment and border)
+ * @param segment_across_border segment across border
+ * @param border_lanelet lanelet whose start edge is border to be checked
+ * @return border point (std::nullopt if no intersection)
+ * @note z of border point is the same as that of segment_across_border.front()
+ */
+std::optional<lanelet::ConstPoint3d> get_border_point(
+  const lanelet::BasicLineString3d & segment_across_border,
+  const lanelet::ConstLanelet & border_lanelet);
+
+/**
  * @brief get position of first intersection in lanelet sequence in arc length
  * @param lanelet_sequence target lanelet sequence
  * @param s_start longitudinal distance of point to start searching for intersections
