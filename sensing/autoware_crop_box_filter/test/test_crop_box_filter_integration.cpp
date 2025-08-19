@@ -315,17 +315,11 @@ TEST_F(CropBoxFilterIntegrationTest, IntegrationTestWithTfTransform)
 
 int main(int argc, char ** argv)
 {
-  // Initialize ROS2 only once
   rclcpp::init(argc, argv);
-
-  // Initialize Google Test
   testing::InitGoogleTest(&argc, argv);
 
-  // Run all tests
   int result = RUN_ALL_TESTS();
 
-  // Shutdown ROS2
   rclcpp::shutdown();
-
   return result;
 }
