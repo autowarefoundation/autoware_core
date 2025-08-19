@@ -37,6 +37,12 @@ struct WaypointGroup
   {
     lanelet::ConstPoint3d point;
     lanelet::Id lane_id;
+    std::optional<lanelet::Id> next_lane_id = std::nullopt;
+
+    explicit Waypoint(const lanelet::ConstPoint3d & point, const lanelet::Id & lane_id)
+    : point(point), lane_id(lane_id)
+    {
+    }
   };
 
   struct Interval
