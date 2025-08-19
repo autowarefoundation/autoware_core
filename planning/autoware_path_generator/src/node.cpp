@@ -411,8 +411,29 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
         if (s < interval.start + extended_arc_length || s > interval.end + extended_arc_length) {
           continue;
         }
-        for (const auto & waypoint : waypoints) {
-          add_path_point(waypoint.point, waypoint.lane_id);
+        for (auto waypoint_it = waypoints.begin(); waypoint_it != waypoints.end(); ++waypoint_it) {
+          if (
+            waypoint_it == waypoints.begin() && !path_points_with_lane_id.empty() &&
+            std::find(
+              path_points_with_lane_id.back().lane_ids.cbegin(),
+              path_points_with_lane_id.back().lane_ids.cend(),
+              waypoint_it->lane_id) == path_points_with_lane_id.back().lane_ids.cend()) {
+            if (
+              const auto border_point = utils::get_border_point(
+                {lanelet::utils::conversion::toLaneletPoint(
+                   path_points_with_lane_id.back().point.pose.position)
+                   .basicPoint(),
+                 waypoint_it->point.basicPoint()},
+                planner_data_.lanelet_map_ptr->laneletLayer.get(waypoint_it->lane_id))) {
+              add_path_point(*border_point, path_points_with_lane_id.back().lane_ids.front());
+              path_points_with_lane_id.back().lane_ids.push_back(waypoint_it->lane_id);
+            }
+          }
+
+          add_path_point(waypoint_it->point, waypoint_it->lane_id);
+          if (waypoint_it->next_lane_id) {
+            path_points_with_lane_id.back().lane_ids.push_back(*waypoint_it->next_lane_id);
+          }
         }
         overlapping_waypoint_group_index = i;
         break;
