@@ -66,6 +66,40 @@ struct GetFirstIntersectionArcLengthTest
   }
 };
 
+TEST_F(UtilsTest, getBorderPoint)
+{
+  constexpr auto epsilon = 1e-1;
+
+  {  // segment is empty
+    const auto result = utils::get_border_point({}, get_lanelets_from_ids({122}).front());
+
+    ASSERT_FALSE(result);
+  }
+
+  {  // segment has only 1 point
+    const auto result = utils::get_border_point({{}}, get_lanelets_from_ids({122}).front());
+
+    ASSERT_FALSE(result);
+  }
+
+  {  // segment does not intersect border
+    const auto result = utils::get_border_point(
+      {{3760, 73750, 19.284}, {3759, 73752, 19.284}}, get_lanelets_from_ids({122}).front());
+
+    ASSERT_FALSE(result);
+  }
+
+  {  // normal case
+    const auto result = utils::get_border_point(
+      {{3759, 73752, 19.284}, {3759, 73753, 19.284}}, get_lanelets_from_ids({122}).front());
+
+    ASSERT_TRUE(result);
+    ASSERT_NEAR(result->x(), 3759.00, epsilon);
+    ASSERT_NEAR(result->y(), 73752.60, epsilon);
+    ASSERT_NEAR(result->z(), 19.28, epsilon);
+  }
+}
+
 TEST_P(GetFirstIntersectionArcLengthTest, getFirstIntersectionArcLength)
 {
   const auto & p = GetParam();
