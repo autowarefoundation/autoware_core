@@ -207,6 +207,9 @@ std::vector<WaypointGroup> get_waypoint_groups(
 
     const auto waypoints_id = lanelet.attribute("waypoints").asId().value();
     const auto & waypoints = lanelet_map.lineStringLayer.get(waypoints_id);
+    if (waypoints.empty()) {
+      continue;
+    }
 
     const auto start =
       s + get_interval_bound(waypoints.front(), lanelet, -connection_gradient_from_centerline);
@@ -229,6 +232,8 @@ std::vector<WaypointGroup> get_waypoint_groups(
     waypoint_groups.back().interval.end =
       s + get_interval_bound(waypoints.back(), lanelet, connection_gradient_from_centerline);
 
+    waypoint_groups.back().waypoints.reserve(
+      waypoint_groups.back().waypoints.size() + waypoints.size());
     std::transform(
       waypoints.begin(), waypoints.end(), std::back_inserter(waypoint_groups.back().waypoints),
       [&](const lanelet::ConstPoint3d & waypoint) {
