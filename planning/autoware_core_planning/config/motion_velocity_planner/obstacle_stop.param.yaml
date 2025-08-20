@@ -50,7 +50,7 @@
         obstacle_velocity_threshold_enter_fixed_stop: 3.0  # [m/s] obstacle velocity threshold to use its current position for stop point decision
         obstacle_velocity_threshold_exit_fixed_stop: 3.5  # [m/s] obstacle velocity threshold to use its braking distance (if use_rss_stop is true) for stop point decision
 
-      obstacle_filtering:
+      obstacle_filtering: # All parameters under this namespace can be set for each object type. If you want to set a value different from the default, please add a line.
         check_inside: # If true, the planner checks if the obstacle is inside the ego's footprint
           default: true
           pointcloud: false
