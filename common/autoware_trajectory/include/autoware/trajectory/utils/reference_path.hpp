@@ -89,30 +89,22 @@ LaneletSequenceWithInterval extend_lanelet_sequence(
   const lanelet::routing::RoutingGraphConstPtr routing_graph, const Interval & interval);
 
 /**
- * @brief build reference path that spans backward_length backward and forward_length forward from
- * ego in s coordinate
- * @param lanelet_sequence consecutive lanelet sequence, self-intersections are allowed
- * @param current_lanelet lanelet where ego is driving
- * @param ego_pose ego's current pose
+ * @brief build reference path that spans specified interval in front of and behind ego in s
+ * coordinate
+ * @param lanelet_sequence_with_interval consecutive lanelet sequence with interval in s coordinate
  * @param lanelet_map lanelet map
- * @param routing_graph routing graph
  * @param traffic_rules traffic rules
- * @param forward_length forward length from ego
- * @param backward_length backward length from ego
  * @param waypoint_connection_gradient_from_centerline gradient for connecting centerline and user
  * defined waypoints
  * @return reference path with lane ids (std::nullopt if failed)
- * @note length of Trajectory may not match backward_length + forward_length
+ * @note length of Trajectory may not match length of interval
  */
 std::optional<Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>>
 build_reference_path(
-  const lanelet::ConstLanelets & lanelet_sequence, const lanelet::ConstLanelet & current_lanelet,
-  const geometry_msgs::msg::Pose & ego_pose, const lanelet::LaneletMapConstPtr lanelet_map,
-  const lanelet::routing::RoutingGraphConstPtr routing_graph,
-  lanelet::traffic_rules::TrafficRulesPtr traffic_rules, const double forward_length,
-  const double backward_length, const double waypoint_connection_gradient_from_centerline,
-  std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> * debug_path_points =
-    nullptr);
+  const LaneletSequenceWithInterval & lanelet_sequence_with_interval,
+  const lanelet::LaneletMapConstPtr lanelet_map,
+  const lanelet::traffic_rules::TrafficRulesPtr traffic_rules,
+  const double waypoint_connection_gradient_from_centerline);
 }  // namespace autoware::experimental::trajectory
 
 #endif  // AUTOWARE__TRAJECTORY__UTILS__REFERENCE_PATH_HPP_
