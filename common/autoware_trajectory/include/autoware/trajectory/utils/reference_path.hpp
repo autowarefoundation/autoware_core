@@ -35,11 +35,49 @@ struct ElementWithInterval
   const Interval interval;
 };
 
+template <typename T>
+struct ElementWithDistance
+{
+  T element;
+  double distance;
+};
+
+struct Waypoint
+{
+  lanelet::ConstPoint3d point;
+  lanelet::Id id;
+  std::optional<lanelet::Id> next_id{std::nullopt};  // this is for border point only
+
+  // ctor definition to avoid setting next_id mistakenly
+  Waypoint(const lanelet::ConstPoint3d & point, const lanelet::Id & id) : point(point), id(id) {};
+};
+
 using LaneletSequenceWithInterval = ElementWithInterval<lanelet::ConstLanelets>;
 
+using LaneletWithDistance = ElementWithDistance<lanelet::ConstLanelet>;
+using LaneletsWithDistance = std::vector<LaneletWithDistance>;
+
 /**
- * @brief extend given lanelet sequence backward/forward so that s_start, s_end is within interval
- * of output
+ * @brief zip lanelet sequence with accumulated distance (i.e. generate set of pairs of lanelet and
+ * accumulated distance)
+ * @param lanelet_sequence consecutive lanelet sequence
+ * @return lanelet sequence with accumulated distance
+ */
+LaneletsWithDistance zip_accumulated_distance(const lanelet::ConstLanelets & lanelet_sequence);
+
+/**
+ * @brief get position of waypoint in lanelet sequence in s coordinate
+ * @param lanelet_sequence_with_acc_dist lanelet sequence with accumulated distance
+ * @param waypoint waypoint
+ * @return position of waypoint in s coordinate (std::nullopt if waypoint is not in lanelet
+ * sequence)
+ */
+std::optional<double> get_position_in_lanelet_sequence(
+  const LaneletsWithDistance & lanelet_sequence_with_acc_dist, const Waypoint & waypoint);
+
+/**
+ * @brief extend given lanelet sequence backward/forward so that given interval is within output
+ * lanelets
  * @param lanelet_sequence original lanelet sequence
  * @param routing_graph routing graph
  * @param s_start start of interval in s coordinate
