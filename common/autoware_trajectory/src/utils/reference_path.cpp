@@ -355,13 +355,12 @@ std::optional<double> get_position_in_lanelet_sequence(
 
 LaneletSequenceWithInterval extend_lanelet_sequence(
   const lanelet::ConstLanelets & lanelet_sequence,
-  const lanelet::routing::RoutingGraphConstPtr routing_graph, const double s_start,
-  const double s_end)
+  const lanelet::routing::RoutingGraphConstPtr routing_graph, const Interval & interval)
 {
   auto new_lanelet_sequence = lanelet_sequence;
   auto new_length = lanelet::geometry::length3d(lanelet::LaneletSequence(new_lanelet_sequence));
-  auto new_s_start = s_start;
-  auto new_s_end = s_end;
+  auto new_s_start = interval.start;
+  auto new_s_end = interval.end;
 
   for (std::set<lanelet::Id> visited_lanelet_ids = {new_lanelet_sequence.front().id()};
        new_s_start < 0.0;) {
