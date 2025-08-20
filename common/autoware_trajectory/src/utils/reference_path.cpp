@@ -35,31 +35,11 @@ namespace autoware::experimental::trajectory
 {
 namespace
 {
-struct Waypoint
-{
-  lanelet::ConstPoint3d point;
-  lanelet::Id id;
-  std::optional<lanelet::Id> next_id{std::nullopt};  // this is for border point only
-
-  // ctor definition to avoid setting next_id mistakenly
-  Waypoint(const lanelet::ConstPoint3d & point, const lanelet::Id & id) : point(point), id(id) {};
-};
-
-template <typename T>
-struct ElementWithDistance
-{
-  T element;
-  double distance;
-};
-
-template <typename T>
-using ElementsWithDistance = std::vector<ElementWithDistance<T>>;
-
 using Waypoints = std::vector<Waypoint>;
 using WaypointsWithInterval = ElementWithInterval<Waypoints>;
 
-using LaneletWithDistance = ElementWithDistance<lanelet::ConstLanelet>;
-using LaneletsWithDistance = std::vector<LaneletWithDistance>;
+template <typename T>
+using ElementsWithDistance = std::vector<ElementWithDistance<T>>;
 
 /**
  * @brief get user defined waypoints from lanelet
@@ -205,49 +185,6 @@ void append_or_merge_waypoints_to_chunks(
 }
 
 /**
- * @brief zip lanelet sequence with accumulated distance (i.e. generate set of pairs of lanelet and
- * accumulated distance)
- * @param lanelet_sequence consecutive lanelet sequence
- * @return lanelet sequence with accumulated distance
- */
-LaneletsWithDistance zip_accumulated_distance(const lanelet::ConstLanelets & lanelet_sequence)
-{
-  LaneletsWithDistance lanelet_sequence_with_acc_dist;
-  auto acc_dist = 0.0;
-  for (const auto & lanelet : lanelet_sequence) {
-    lanelet_sequence_with_acc_dist.push_back({lanelet, acc_dist});
-    acc_dist += lanelet::geometry::length3d(lanelet);
-  }
-  return lanelet_sequence_with_acc_dist;
-}
-
-/**
- * @brief get position of waypoint in lanelet sequence in s coordinate
- * @param lanelet_sequence_with_acc_dist lanelet sequence with accumulated distance
- * @param waypoint waypoint
- * @return position of waypoint in s coordinate (std::nullopt if waypoint is not in lanelet
- * sequence)
- */
-std::optional<double> get_position_in_lanelet_sequence(
-  const LaneletsWithDistance & lanelet_sequence_with_acc_dist, const Waypoint & waypoint)
-{
-  const auto waypoint_lanelet = std::find_if(
-    lanelet_sequence_with_acc_dist.begin(), lanelet_sequence_with_acc_dist.end(),
-    [&waypoint](const LaneletWithDistance & lanelet) {
-      return lanelet.element.id() == waypoint.id;
-    });
-  if (waypoint_lanelet == lanelet_sequence_with_acc_dist.end()) {
-    // waypoint is not on lanelet sequence
-    return std::nullopt;
-  }
-
-  return waypoint_lanelet->distance +
-         lanelet::geometry::toArcCoordinates(
-           waypoint_lanelet->element.centerline2d(), waypoint.point.basicPoint2d())
-           .length;
-};
-
-/**
  * @brief merge native centerline and user defined waypoints into one vector of waypoints
  * @param lanelet_sequence consecutive lanelet sequence
  * @param waypoint_chunks user-defined waypoint chunks on lanelet sequence
@@ -385,6 +322,36 @@ Waypoints merge_native_centerline_and_user_defined_waypoints(
   return merged_waypoints;
 }
 }  // namespace
+
+LaneletsWithDistance zip_accumulated_distance(const lanelet::ConstLanelets & lanelet_sequence)
+{
+  LaneletsWithDistance lanelet_sequence_with_acc_dist;
+  auto acc_dist = 0.0;
+  for (const auto & lanelet : lanelet_sequence) {
+    lanelet_sequence_with_acc_dist.push_back({lanelet, acc_dist});
+    acc_dist += lanelet::geometry::length3d(lanelet);
+  }
+  return lanelet_sequence_with_acc_dist;
+}
+
+std::optional<double> get_position_in_lanelet_sequence(
+  const LaneletsWithDistance & lanelet_sequence_with_acc_dist, const Waypoint & waypoint)
+{
+  const auto waypoint_lanelet = std::find_if(
+    lanelet_sequence_with_acc_dist.begin(), lanelet_sequence_with_acc_dist.end(),
+    [&waypoint](const LaneletWithDistance & lanelet) {
+      return lanelet.element.id() == waypoint.id;
+    });
+  if (waypoint_lanelet == lanelet_sequence_with_acc_dist.end()) {
+    // waypoint is not on lanelet sequence
+    return std::nullopt;
+  }
+
+  return waypoint_lanelet->distance +
+         lanelet::geometry::toArcCoordinates(
+           waypoint_lanelet->element.centerline2d(), waypoint.point.basicPoint2d())
+           .length;
+};
 
 LaneletSequenceWithInterval extend_lanelet_sequence(
   const lanelet::ConstLanelets & lanelet_sequence,
