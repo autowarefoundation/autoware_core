@@ -246,12 +246,12 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
   }
 
   lanelet::ConstLanelets lanelets{*current_lanelet_};
-  const auto s_on_current_lanelet =
+  const auto s_ego_on_current_lanelet =
     lanelet::utils::getArcCoordinates({*current_lanelet_}, current_pose).length;
 
   const auto backward_length = std::max(
-    0.,
-    params.path_length.backward + vehicle_info_.max_longitudinal_offset_m - s_on_current_lanelet);
+    0., params.path_length.backward + vehicle_info_.max_longitudinal_offset_m -
+          s_ego_on_current_lanelet);
   const auto backward_lanelets_within_route =
     utils::get_lanelets_within_route_up_to(*current_lanelet_, planner_data_, backward_length);
   if (!backward_lanelets_within_route) {
@@ -279,7 +279,7 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
 
   const auto forward_length = std::max(
     0., params.path_length.forward + vehicle_info_.max_longitudinal_offset_m -
-          (lanelet::geometry::length2d(*current_lanelet_) - s_on_current_lanelet));
+          (lanelet::geometry::length2d(*current_lanelet_) - s_ego_on_current_lanelet));
   const auto forward_lanelets_within_route =
     utils::get_lanelets_within_route_after(*current_lanelet_, planner_data_, forward_length);
   if (!forward_lanelets_within_route) {
@@ -303,9 +303,9 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
     forward_lanelets_length += lanelet::geometry::length2d(next_lanelets.front());
   }
 
-  const auto s = s_on_current_lanelet + backward_lanelets_length;
-  const auto s_start = std::max(0., s - params.path_length.backward);
-  auto s_end = s + params.path_length.forward;
+  const auto s_ego = s_ego_on_current_lanelet + backward_lanelets_length;
+  const auto s_start = std::max(0., s_ego - params.path_length.backward);
+  auto s_end = s_ego + params.path_length.forward;
 
   if (!utils::get_next_lanelet_within_route(lanelets.back(), planner_data_)) {
     s_end = std::min(s_end, lanelet::utils::getLaneletLength2d(lanelets));
