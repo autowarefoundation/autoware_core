@@ -166,8 +166,6 @@ void append_or_merge_waypoints_to_chunks(
   if (
     const auto border_point =
       get_border_point(segment_across_border, defined_lanelet_with_acc_dist.element)) {
-    std::cout << "Border point found for " << last_waypoint_chunk.element.back().id << " to "
-              << defined_lanelet_with_acc_dist.element.id() << std::endl;
     if (!is_almost_same(last_waypoint_chunk.element.back().point, *border_point)) {
       last_waypoint_chunk.element.emplace_back(
         *border_point, last_waypoint_chunk.element.back().id);
