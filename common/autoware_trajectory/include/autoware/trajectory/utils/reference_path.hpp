@@ -80,15 +80,13 @@ std::optional<double> get_position_in_lanelet_sequence(
  * lanelets
  * @param lanelet_sequence original lanelet sequence
  * @param routing_graph routing graph
- * @param s_start start of interval in s coordinate
- * @param s_end end of interval in s coordinate
- * @return extended lanelet sequence with new start and end in s coordinate
- * @post s_start >= 0, s_end <= length of lanelet sequence
+ * @param interval interval in s coordinate
+ * @return extended lanelet sequence with new interval in s coordinate
+ * @post interval.start >= 0, interval.end <= length of lanelet sequence
  */
 LaneletSequenceWithInterval extend_lanelet_sequence(
   const lanelet::ConstLanelets & lanelet_sequence,
-  const lanelet::routing::RoutingGraphConstPtr routing_graph, const double s_start,
-  const double s_end);
+  const lanelet::routing::RoutingGraphConstPtr routing_graph, const Interval & interval);
 
 /**
  * @brief build reference path that spans backward_length backward and forward_length forward from
