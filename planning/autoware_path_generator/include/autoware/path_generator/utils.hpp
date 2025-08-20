@@ -123,7 +123,7 @@ std::vector<WaypointGroup> get_waypoint_groups(
  * @param segment_across_border segment across border
  * @param border_lanelet lanelet whose start edge is border to be checked
  * @return border point (std::nullopt if no intersection)
- * @note z of border point is the same as that of segment_across_border.front()
+ * @note z of border point is the same as that of segment_across_border.back()
  */
 std::optional<lanelet::ConstPoint3d> get_border_point(
   const lanelet::BasicLineString3d & segment_across_border,
