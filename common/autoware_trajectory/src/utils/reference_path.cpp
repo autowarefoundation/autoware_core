@@ -23,30 +23,51 @@
 
 #include <lanelet2_core/LaneletMap.h>
 #include <lanelet2_core/geometry/Lanelet.h>
-#include <lanelet2_core/geometry/Point.h>
-#include <lanelet2_core/primitives/Lanelet.h>
-#include <lanelet2_routing/RoutingGraph.h>
+#include <lanelet2_core/primitives/LaneletSequence.h>
 
 #include <algorithm>
 #include <set>
 #include <tuple>
 #include <utility>
 #include <vector>
+
 namespace autoware::experimental::trajectory
 {
-
-using Waypoint = std::pair<lanelet::ConstPoint3d, lanelet::Id>;
-using UserDefinedWaypoints = std::vector<Waypoint>;
-
-struct WaypointsGroupChunk
+namespace
 {
-  UserDefinedWaypoints points;  // the points merged from several lanelet UserDefinedWaypoints
-                                // that are close to each other
-  const double start_s;         // the s coordinate on the designated lanelet sequence
-  double end_s{};               // the s coordinate on the designated lanelet sequence
+struct Waypoint
+{
+  lanelet::ConstPoint3d point;
+  lanelet::Id id;
+  std::optional<lanelet::Id> next_id{std::nullopt};  // this is for border point only
+
+  // ctor definition to avoid setting next_id mistakenly
+  Waypoint(const lanelet::ConstPoint3d & point, const lanelet::Id & id) : point(point), id(id) {};
 };
 
-static std::optional<UserDefinedWaypoints> get_user_defined_waypoint(
+template <typename T>
+struct ElementWithDistance
+{
+  T element;
+  double distance;
+};
+
+template <typename T>
+using ElementsWithDistance = std::vector<ElementWithDistance<T>>;
+
+using Waypoints = std::vector<Waypoint>;
+using WaypointsWithInterval = ElementWithInterval<Waypoints>;
+
+using LaneletWithDistance = ElementWithDistance<lanelet::ConstLanelet>;
+using LaneletsWithDistance = std::vector<LaneletWithDistance>;
+
+/**
+ * @brief get user defined waypoints from lanelet
+ * @param lanelet lanelet to get waypoints from
+ * @param lanelet_map lanelet map
+ * @return user defined waypoints as vector of pairs of point and lanelet id
+ */
+std::optional<Waypoints> get_user_defined_waypoint(
   const lanelet::ConstLanelet & lanelet, const lanelet::LaneletMapConstPtr & lanelet_map)
 {
   if (!lanelet.hasAttribute("waypoints")) {
@@ -55,498 +76,451 @@ static std::optional<UserDefinedWaypoints> get_user_defined_waypoint(
   const auto waypoints_id = lanelet.attribute("waypoints").asId().value();
   const auto & waypoints_linestring = lanelet_map->lineStringLayer.get(waypoints_id);
 
-  return waypoints_linestring | ranges::views::transform([&lanelet](const auto & p) {
-           return std::make_pair(p, lanelet.id());
-         }) |
+  return waypoints_linestring |
+         ranges::views::transform(
+           [&lanelet](const lanelet::ConstPoint3d & p) { return Waypoint{p, lanelet.id()}; }) |
          ranges::to<std::vector>();
 }
 
-class UserDefinedWaypointsGroup
+/**
+ * @brief compute interval for waypoints to smoothly connect to native centerline
+ * @param waypoints waypoints to compute interval for
+ * @param defined_lanelet_with_acc_dist lanelet on which waypoints are defined, with accumulated
+ * distance
+ * @param connection_gradient_from_centerline gradient for connecting centerline and user
+ * defined waypoints
+ * @return interval in s coordinate
+ */
+Interval compute_smooth_interval(
+  const Waypoints & waypoints, const LaneletWithDistance & defined_lanelet_with_acc_dist,
+  const double connection_gradient_from_centerline)
 {
-private:
-  /**
-   * @brief if the interval of points is [s1, s2] for example, extend [s1, s2] by some margin, like
-   * [s1 - margin, s2 + margin]. read the document for more detail of the geometric description
-   * @param current_lanelet_distance_from_route_start defined_lanelet's cumulative distance on the
-   * designated lanelet_sequence
-   * @param defined_lanelet the lanelet on which points is defined
-   */
-  std::tuple<double, double> compute_smooth_interval(
-    const UserDefinedWaypoints & points, const double current_lanelet_distance_from_route_start,
-    const lanelet::ConstLanelet & defined_lanelet,
-    const double connection_from_default_point_gradient)
-  {
-    const auto front_frenet_coords = lanelet::geometry::toArcCoordinates(
-      defined_lanelet.centerline2d(), lanelet::utils::to2D(std::get<0>(points.front())));
-    const double first =
-      current_lanelet_distance_from_route_start + front_frenet_coords.length -
-      connection_from_default_point_gradient * std::fabs(front_frenet_coords.distance);
-    const auto back_frenet_coords = lanelet::geometry::toArcCoordinates(
-      defined_lanelet.centerline2d(), lanelet::utils::to2D(std::get<0>(points.back())));
-    const double second =
-      current_lanelet_distance_from_route_start + back_frenet_coords.length +
-      connection_from_default_point_gradient * std::fabs(back_frenet_coords.distance);
-    return {first, second};
-  }
-
-  std::vector<WaypointsGroupChunk> waypoints_chunks_;
-
-public:
-  void add(
-    UserDefinedWaypoints && user_defined_waypoints,
-    const double current_lanelet_distance_from_route_start,
-    const lanelet::ConstLanelet & defined_lanelet, const double group_separation_distance,
-    const double connection_from_default_point_gradient)
-  {
-    if (waypoints_chunks_.empty()) {
-      auto [start, end] = compute_smooth_interval(
-        user_defined_waypoints, current_lanelet_distance_from_route_start, defined_lanelet,
-        connection_from_default_point_gradient);
-      if (start < 0.0) {
-        start = 0.0;
-      }
-      waypoints_chunks_.push_back({std::move(user_defined_waypoints), start, end});
-      return;
-    }
-
-    if (const auto & last_waypoints = waypoints_chunks_.back().points;
-        lanelet::geometry::distance3d(
-          last_waypoints.back().first, user_defined_waypoints.front().first) >
-        group_separation_distance) {
-      const auto [start, end] = compute_smooth_interval(
-        user_defined_waypoints, current_lanelet_distance_from_route_start, defined_lanelet,
-        connection_from_default_point_gradient);
-      waypoints_chunks_.push_back({std::move(user_defined_waypoints), start, end});
-      return;
-    }
-
-    /*
-      '+' are ConstPoint3d
-
-      ----> lane direction
-
-      if last_waypoints and next_waypoints are close, next_waypoints are merged into last_waypoints
-
-      >+--+--+--+--+ last_waypoints --+--+--+--+--+> >+--+--+--+--+ next_waypoints --+--+--+--+--+>
-     */
-    auto & last_waypoints_mut = waypoints_chunks_.back().points;
-    last_waypoints_mut.insert(
-      last_waypoints_mut.end(), user_defined_waypoints.begin(), user_defined_waypoints.end());
-    const auto [_, new_end] = compute_smooth_interval(
-      user_defined_waypoints, current_lanelet_distance_from_route_start, defined_lanelet,
-      connection_from_default_point_gradient);
-    waypoints_chunks_.back().end_s = new_end;
-  }
-
-  std::vector<WaypointsGroupChunk> waypoints_chunks() { return std::move(waypoints_chunks_); }
-};
-
-static std::vector<std::pair<lanelet::ConstLanelet, double>> accumulate_distance(
-  const lanelet::ConstLanelets & lanelet_sequence)
-{
-  std::vector<std::pair<lanelet::ConstLanelet, double>> ll_with_dist;
-  double acc_dist = 0.0;
-  for (const auto & lanelet : lanelet_sequence) {
-    ll_with_dist.emplace_back(lanelet, acc_dist);
-    acc_dist += lanelet::geometry::length3d(lanelet);
-  }
-  return ll_with_dist;
-}
-
-static double measure_point_s(
-  const std::vector<std::pair<lanelet::ConstLanelet, double>> & lanelet_with_acc_dist_sequence,
-  const Waypoint & waypoint)
-{
-  const auto & point = waypoint.first;
-  const auto & lane_id = waypoint.second;
-  const auto [lanelet, acc_dist] = *std::find_if(
-    lanelet_with_acc_dist_sequence.begin(), lanelet_with_acc_dist_sequence.end(),
-    [&](const auto & ll) { return ll.first.id() == lane_id; });
-  return acc_dist +
-         lanelet::geometry::toArcCoordinates(lanelet.centerline2d(), point.basicPoint2d()).length;
-};
-
-static std::vector<Waypoint> sanitize_and_crop(
-  const std::vector<Waypoint> & inputs,
-  const std::vector<std::pair<lanelet::ConstLanelet, double>> & lanelet_with_acc_dist_sequence,
-  const double s_start, const double s_end)
-{
-  auto s_with_ref =
-    inputs |
-    ranges::views::transform(
-      [&](const auto & point) -> std::pair<double, std::reference_wrapper<const Waypoint>> {
-        return std::make_pair(
-          measure_point_s(lanelet_with_acc_dist_sequence, point), std::cref(point));
-      }) |
-    ranges::to<std::vector>();
-  // sanitize invalid points so that s is monotonic
-  for (auto it = s_with_ref.begin(); it != s_with_ref.end();) {
-    if (it == s_with_ref.begin()) {
-      it++;
-      continue;
-    }
-    if (it->first < std::prev(it)->first) {
-      // s is not monotonic
-      it = s_with_ref.erase(it);
-    } else {
-      it++;
-    }
-  }
-  if (s_with_ref.size() < 2) {
-    return {};
-  }
-
-  // now s_with_ref is monotonic, so take the element
-  auto s_start_it = std::lower_bound(
-    s_with_ref.begin(), s_with_ref.end(),
-    std::make_pair(s_start /*search for element >= this */, inputs.front() /*dummy*/),
-    [](
-      const std::pair<double, const Waypoint &> & a,
-      const std::pair<double, const Waypoint &> & b) { return a.first < b.first; });
-  if (s_start_it != s_with_ref.begin()) {
-    s_start_it = std::prev(s_start_it);
-  }
-
-  auto s_end_it = std::lower_bound(
-    s_with_ref.begin(), s_with_ref.end(),
-    std::make_pair(s_end /* search for element >= this */, inputs.front() /*dummy*/),
-    [](
-      const std::pair<double, const Waypoint &> & a,
-      const std::pair<double, const Waypoint &> & b) { return a.first < b.first; });
-
-  std::vector<Waypoint> monotonic_reference_points;
-  for (auto it = s_start_it; it != s_with_ref.end(); ++it) {
-    monotonic_reference_points.push_back(it->second);
-    if (it == s_end_it) {
-      break;
-    }
-  }
-  return monotonic_reference_points;
+  const auto front_arc_coords = lanelet::geometry::toArcCoordinates(
+    defined_lanelet_with_acc_dist.element.centerline2d(), waypoints.front().point.basicPoint2d());
+  const auto start = defined_lanelet_with_acc_dist.distance + front_arc_coords.length -
+                     connection_gradient_from_centerline * std::abs(front_arc_coords.distance);
+  const auto back_arc_coords = lanelet::geometry::toArcCoordinates(
+    defined_lanelet_with_acc_dist.element.centerline2d(), waypoints.back().point.basicPoint2d());
+  const auto end = defined_lanelet_with_acc_dist.distance + back_arc_coords.length +
+                   connection_gradient_from_centerline * std::abs(back_arc_coords.distance);
+  return {start, end};
 }
 
 /**
- * @param waypoint_chunks WaypointGroupChunk defined on the lanelet_sequence
- * @param lanelet_sequence consecutive lanelet sequence
- * @param s_start On the interval of [0.0, length(lanelet_sequence)], trim the path from s_start
- * @param s_end On the interval of [0.0, length(lanelet_sequence)], trim the path from s_end
- * @pre s_start < s_end
+ * @brief get border point between adjacent lanelets
+ * @param segment_across_border segment across border
+ * @param next_lanelet next lanelet
+ * @return border point (std::nullopt if not found)
  */
-static std::vector<Waypoint> consolidate_user_defined_waypoints_and_native_centerline(
-  const std::vector<WaypointsGroupChunk> & waypoints_chunks,
-  const lanelet::ConstLanelets & lanelet_sequence, const double s_start, const double s_end)
+std::optional<lanelet::ConstPoint3d> get_border_point(
+  const lanelet::BasicLineString3d & segment_across_border,
+  const lanelet::ConstLanelet & next_lanelet)
 {
-  // reference path generation algorithm
-  //
+  const lanelet::BasicLineString2d border{
+    next_lanelet.leftBound().front().basicPoint2d(),
+    next_lanelet.rightBound().front().basicPoint2d()};
+
+  lanelet::BasicPoints2d basic_border_point;
+  boost::geometry::intersection(
+    lanelet::utils::to2D(segment_across_border), border, basic_border_point);
+  if (basic_border_point.empty()) {
+    return std::nullopt;
+  }
+
+  lanelet::Point3d border_point;
+  border_point.basicPoint() << basic_border_point.front(), segment_across_border.front().z();
+  return lanelet::utils::toConst(border_point);
+}
+
+/**
+ * @brief append or merge waypoints to waypoint chunks depending on distance to last chunk
+ * @param waypoint_chunks waypoint chunks
+ * @param waypoints new waypoints
+ * @param defined_lanelet_with_acc_dist lanelet on which waypoints are defined, with accumulated
+ * distance
+ * @param lanelet_map lanelet map
+ * @param connection_gradient_from_centerline gradient for connecting centerline and user
+ * defined waypoints
+ */
+void append_or_merge_waypoints_to_chunks(
+  std::vector<WaypointsWithInterval> & waypoint_chunks, const Waypoints & waypoints,
+  const LaneletWithDistance & defined_lanelet_with_acc_dist,
+  const lanelet::LaneletMapConstPtr & lanelet_map, const double connection_gradient_from_centerline)
+{
+  if (waypoints.empty()) {
+    return;
+  }
+
+  const auto interval = compute_smooth_interval(
+    waypoints, defined_lanelet_with_acc_dist, connection_gradient_from_centerline);
+  if (waypoint_chunks.empty() || interval.start > waypoint_chunks.back().interval.end) {
+    // current waypoint chunk is not within interval of last chunk, thus create a new chunk
+    waypoint_chunks.push_back({waypoints, interval});
+    return;
+  }
+
+  if (waypoint_chunks.back().element.empty()) {
+    return;
+  }
+  auto last_waypoint_chunk = std::move(waypoint_chunks.back());
+  waypoint_chunks.pop_back();
+
+  // remove points that do not belong to their defined lanelet from last_waypoint_chunk
+  const auto last_waypoint_defined_lanelet =
+    lanelet_map->laneletLayer.get(last_waypoint_chunk.element.front().id);
+  last_waypoint_chunk.element.erase(
+    std::remove_if(
+      last_waypoint_chunk.element.begin(), last_waypoint_chunk.element.end(),
+      [&](const Waypoint & waypoint) {
+        return !lanelet::geometry::inside(
+          last_waypoint_defined_lanelet, waypoint.point.basicPoint2d());
+      }),
+    last_waypoint_chunk.element.end());
+  if (last_waypoint_chunk.element.empty()) {
+    return;
+  }
+
+  // append border point before merging
+  const lanelet::BasicLineString3d segment_across_border{
+    last_waypoint_chunk.element.back().point.basicPoint(), waypoints.front().point.basicPoint()};
+  if (
+    const auto border_point =
+      get_border_point(segment_across_border, defined_lanelet_with_acc_dist.element)) {
+    std::cout << "Border point found for " << last_waypoint_chunk.element.back().id << " to "
+              << defined_lanelet_with_acc_dist.element.id() << std::endl;
+    if (!is_almost_same(last_waypoint_chunk.element.back().point, *border_point)) {
+      last_waypoint_chunk.element.emplace_back(
+        *border_point, last_waypoint_chunk.element.back().id);
+    }
+    last_waypoint_chunk.element.back().next_id = waypoints.front().id;
+  }
+
+  // merge waypoints into last_waypoint_chunk
+  last_waypoint_chunk.element.insert(
+    last_waypoint_chunk.element.end(), waypoints.begin(), waypoints.end());
+  const auto [_, end] = compute_smooth_interval(
+    waypoints, defined_lanelet_with_acc_dist, connection_gradient_from_centerline);
+  waypoint_chunks.push_back(
+    {last_waypoint_chunk.element, {last_waypoint_chunk.interval.start, end}});
+}
+
+/**
+ * @brief zip lanelet sequence with accumulated distance (i.e. generate set of pairs of lanelet and
+ * accumulated distance)
+ * @param lanelet_sequence consecutive lanelet sequence
+ * @return lanelet sequence with accumulated distance
+ */
+LaneletsWithDistance zip_accumulated_distance(const lanelet::ConstLanelets & lanelet_sequence)
+{
+  LaneletsWithDistance lanelet_sequence_with_acc_dist;
+  auto acc_dist = 0.0;
+  for (const auto & lanelet : lanelet_sequence) {
+    lanelet_sequence_with_acc_dist.push_back({lanelet, acc_dist});
+    acc_dist += lanelet::geometry::length3d(lanelet);
+  }
+  return lanelet_sequence_with_acc_dist;
+}
+
+/**
+ * @brief get position of waypoint in lanelet sequence in s coordinate
+ * @param lanelet_sequence_with_acc_dist lanelet sequence with accumulated distance
+ * @param waypoint waypoint
+ * @return position of waypoint in s coordinate (std::nullopt if waypoint is not in lanelet
+ * sequence)
+ */
+std::optional<double> get_position_in_lanelet_sequence(
+  const LaneletsWithDistance & lanelet_sequence_with_acc_dist, const Waypoint & waypoint)
+{
+  const auto waypoint_lanelet = std::find_if(
+    lanelet_sequence_with_acc_dist.begin(), lanelet_sequence_with_acc_dist.end(),
+    [&waypoint](const LaneletWithDistance & lanelet) {
+      return lanelet.element.id() == waypoint.id;
+    });
+  if (waypoint_lanelet == lanelet_sequence_with_acc_dist.end()) {
+    // waypoint is not on lanelet sequence
+    return std::nullopt;
+  }
+
+  return waypoint_lanelet->distance +
+         lanelet::geometry::toArcCoordinates(
+           waypoint_lanelet->element.centerline2d(), waypoint.point.basicPoint2d())
+           .length;
+};
+
+/**
+ * @brief merge native centerline and user defined waypoints into one vector of waypoints
+ * @param lanelet_sequence consecutive lanelet sequence
+ * @param waypoint_chunks user-defined waypoint chunks on lanelet sequence
+ * @param path_interval interval of path in s coordinate
+ * @return waypoints with user defined waypoints and native centerline points merged
+ */
+Waypoints merge_native_centerline_and_user_defined_waypoints(
+  const LaneletsWithDistance & lanelet_sequence_with_acc_dist,
+  const std::vector<WaypointsWithInterval> & user_defined_waypoint_chunks,
+  const Interval & path_interval)
+{
   // Basically, each native_point in centerline of original lanelet_sequence is added to
-  // reference_lanelet_points, but if a native_point is within the interval of
-  // current_overlapped_chunk_iter, the waypoints on that chunk are added instead.
-  // s_start, and s_end are measured by the accumulated distance of native points in
-  // lanelet_sequence
-  std::vector<Waypoint> reference_lanelet_points;
-  auto append_reference_points = [&](const std::vector<Waypoint> & waypoints) {
+  // merged_waypoints, but if native_s is within interval of target_waypoint_chunk, waypoints in
+  // that chunk are added instead.
+
+  Waypoints merged_waypoints;
+  const auto add_waypoints = [&](const Waypoints & waypoints) {
     for (const auto & waypoint : waypoints) {
-      const auto & [point, id] = waypoint;
-      if (!reference_lanelet_points.empty()) {
-        const auto & prev = reference_lanelet_points.back();
-        if (is_almost_same(prev.first, point)) {
+      if (!merged_waypoints.empty()) {
+        const auto & prev_waypoint = merged_waypoints.back();
+        if (is_almost_same(prev_waypoint.point, waypoint.point)) {
           continue;
         }
       }
-      reference_lanelet_points.emplace_back(point, id);
+      merged_waypoints.push_back(waypoint);
     }
   };
-  const auto lanelet_with_acc_dist_sequence = accumulate_distance(lanelet_sequence);
 
-  // flag to indicate that native point iteration has not passed current_overlapped_chunk_iter yet,
-  // which is important if current_overlapped_chunk_iter "steps over" to next lanelet
-  auto is_overlapping = false;
-  auto current_overlapped_chunk_iter = waypoints_chunks.begin();
+  // flag to indicate that native_s is still within interval of target_chunk,
+  // which is important if target_chunk "steps over" to next lanelet
+  auto is_in_chunk = false;
+  auto target_chunk_it = user_defined_waypoint_chunks.begin();
 
-  for (auto lanelet_it = lanelet_with_acc_dist_sequence.begin();
-       lanelet_it != lanelet_with_acc_dist_sequence.end(); ++lanelet_it) {
-    const auto & [lanelet, this_lanelet_s] = *lanelet_it;
+  for (auto lanelet_it = lanelet_sequence_with_acc_dist.begin();
+       lanelet_it != lanelet_sequence_with_acc_dist.end(); ++lanelet_it) {
+    const auto & [lanelet, lanelet_s] = *lanelet_it;
     const auto & centerline = lanelet.centerline();
-    const auto this_lane_id = lanelet.id();
+    const auto lanelet_id = lanelet.id();
 
-    bool terminated = false;
-    for (auto [native_point_it, native_s] = std::make_tuple(centerline.begin(), this_lanelet_s);
-         native_point_it != centerline.end(); native_point_it++) {
-      const double prev_native_s = native_s;
+    for (auto [native_point_it, native_s] = std::make_tuple(centerline.begin(), lanelet_s);
+         native_point_it != centerline.end(); ++native_point_it) {
+      const auto prev_native_s = native_s;
       if (native_point_it != centerline.begin()) {
         native_s += lanelet::geometry::distance3d(*std::prev(native_point_it), *native_point_it);
       }
 
-      auto check_last_native_point_before_start =
-        [&, native_s = native_s,
-         native_point_it = native_point_it]() -> std::optional<lanelet::ConstPoint3d> {
-        if (prev_native_s < s_start && s_start <= native_s) {
+      if (
+        target_chunk_it == user_defined_waypoint_chunks.end() ||
+        (native_s < target_chunk_it->interval.start && target_chunk_it->interval.end <= native_s)) {
+        // native_s is out of interval of target_chunk
+        if (is_in_chunk) {
+          // native_s has passed interval of target_chunk, so set target_chunk to next one
+          is_in_chunk = false;
+          if (target_chunk_it != user_defined_waypoint_chunks.end()) {
+            target_chunk_it++;
+          }
+        }
+
+        if (prev_native_s < path_interval.start && path_interval.start <= native_s) {
+          // native_s has passed start of path_interval, so add previous waypoint for
+          // interpolation
           if (native_point_it != centerline.begin()) {
-            return *std::prev(native_point_it);
+            add_waypoints({{*std::prev(native_point_it), lanelet_id}});
+
+          } else if (lanelet_it != lanelet_sequence_with_acc_dist.begin()) {
+            add_waypoints(
+              {{std::prev(lanelet_it)->element.centerline().back(),
+                std::prev(lanelet_it)->element.id()}});
           }
-          if (lanelet_it != lanelet_with_acc_dist_sequence.begin()) {
-            return std::prev(lanelet_it)->first.centerline().back();
+        }
+
+        // add native_point in centerline
+        add_waypoints({{*native_point_it, lanelet_id}});
+
+        if (native_s > path_interval.end) {
+          break;
+        }
+        continue;
+      }
+
+      // native_s is within interval of target_chunk
+      if (is_in_chunk) {
+        if (native_s > path_interval.end) {
+          break;
+        }
+        continue;
+      }
+
+      // native_s has just entered interval of target_chunk
+      is_in_chunk = true;
+
+      if (target_chunk_it->element.front().id != lanelet_id && !merged_waypoints.empty()) {
+        // waypoints in target_chunk belong to next lanelet, so add border point
+        const auto next_lanelet_it = std::find_if(
+          std::next(lanelet_it), lanelet_sequence_with_acc_dist.end(),
+          [&target_chunk_it](const LaneletWithDistance & lanelet) {
+            return lanelet.element.id() == target_chunk_it->element.front().id;
+          });
+        if (next_lanelet_it != lanelet_sequence_with_acc_dist.end()) {
+          const lanelet::BasicLineString3d segment_across_border{
+            merged_waypoints.back().point.basicPoint(),
+            target_chunk_it->element.front().point.basicPoint()};
+          if (
+            const auto border_point =
+              get_border_point(segment_across_border, next_lanelet_it->element)) {
+            if (!is_almost_same(merged_waypoints.back().point, *border_point)) {
+              merged_waypoints.emplace_back(*border_point, lanelet_id);
+            }
+            merged_waypoints.back().next_id = next_lanelet_it->element.id();
           }
         }
-        return std::nullopt;
-      };
-
-      if (native_s > s_end) {
-        // add this point to interpolate the precise point at s_end
-        append_reference_points(std::vector{Waypoint{*native_point_it, this_lane_id}});
-        terminated = true;
-        break;
       }
 
-      std::vector<Waypoint> points_to_add_native;
-      std::vector<Waypoint> points_to_add_chunk;
+      // add waypoints in target_chunk
+      add_waypoints(target_chunk_it->element);
+    }
+
+    if (is_in_chunk || lanelet_it == std::prev(lanelet_sequence_with_acc_dist.end())) {
+      continue;
+    }
+
+    // add border point
+    const auto & next_lanelet = std::next(lanelet_it)->element;
+    const lanelet::BasicLineString3d segment_across_border{
+      centerline.back().basicPoint(), next_lanelet.centerline().front().basicPoint()};
+    if (const auto border_point = get_border_point(segment_across_border, next_lanelet)) {
       if (
-        current_overlapped_chunk_iter == waypoints_chunks.end() ||
-        native_s < current_overlapped_chunk_iter->start_s) {
-        // native_point haven't reached a waypoint chunk yet
-        is_overlapping = false;
-        if (const auto last_native_point = check_last_native_point_before_start();
-            last_native_point) {
-          // this block happens only once when native_s steps over s_start for the 1st time.
-          // s_start is between last_native_it and native_it, so the position at s_start
-          // needs to be interpolated
-          points_to_add_native.emplace_back(*last_native_point, this_lane_id);
-        }
-        points_to_add_native.emplace_back(*native_point_it, this_lane_id);
-      } else if (native_s <= current_overlapped_chunk_iter->end_s) {
-        if (const auto last_native_point = check_last_native_point_before_start();
-            last_native_point) {
-          // this block happens only once when native_s steps over s_start for the 1st time.
-          // s_start is between last_native_it and the chunk, so the position at s_start
-          // needs to be interpolated
-          points_to_add_native.emplace_back(*last_native_point, this_lane_id);
-        }
-        if (!is_overlapping) {
-          // native_point_it reached a waypoint chunk for the first time
-          is_overlapping = true;
-          // so append all the points in current_overlapped_chunk_iter at once
-          points_to_add_chunk = current_overlapped_chunk_iter->points;
-        } else {
-          // native_point_it is still inside current_overlapped_chunk_iter, so just skip
-          // this for-loop can terminate with this block if this Lanelet centerline's last native
-          // point is still in current_overlapped_chunk_iter, in which case native points in the
-          // next lanelet may continue this block or go to else branch below
-        }
-      } else {
-        current_overlapped_chunk_iter++;
-        is_overlapping = false;
-        points_to_add_native.emplace_back(*native_point_it, this_lane_id);
+        merged_waypoints.empty() || !is_almost_same(merged_waypoints.back().point, *border_point)) {
+        merged_waypoints.emplace_back(*border_point, lanelet_id);
       }
-
-      if (!points_to_add_native.empty() && native_s >= s_start) {
-        append_reference_points(points_to_add_native);
-      }
-      if (
-        !points_to_add_chunk.empty() && current_overlapped_chunk_iter != waypoints_chunks.end() &&
-        current_overlapped_chunk_iter->start_s <= native_s) {
-        append_reference_points(points_to_add_chunk);
-      }
-    }
-    if (terminated) {
-      break;
+      merged_waypoints.back().next_id = next_lanelet.id();
     }
   }
 
-  // assert("all points in reference_lanelet_points are !is_almost_same")
-
-  if (reference_lanelet_points.size() < 2) {
-    return {};
-  }
-
-  auto monotonic_reference_points =
-    sanitize_and_crop(reference_lanelet_points, lanelet_with_acc_dist_sequence, s_start, s_end);
-  if (monotonic_reference_points.size() < 2) {
-    return {};
-  }
-  {
-    const auto & p1 = monotonic_reference_points.front();
-    const auto & p2 = monotonic_reference_points.at(1);
-    const double s_p1 = measure_point_s(lanelet_with_acc_dist_sequence, p1);
-    const double s_p2 = measure_point_s(lanelet_with_acc_dist_sequence, p2);
-    if (s_p1 <= s_start && s_start < s_p2) {
-      const auto a = s_start - s_p1;
-      const auto b = s_p2 - s_start;
-      const auto precise_point = (p1.first.basicPoint() * b + p2.first.basicPoint() * a) / (a + b);
-      const auto lane_id = a < b ? p1.second : p2.second;
-      monotonic_reference_points.front().first =
-        lanelet::ConstPoint3d(lanelet::InvalId, precise_point);
-      monotonic_reference_points.front().second = lane_id;
-    }
-  }
-  {
-    const auto & p1 = monotonic_reference_points.at(monotonic_reference_points.size() - 2);
-    const auto & p2 = monotonic_reference_points.back();
-    const double s_p1 = measure_point_s(lanelet_with_acc_dist_sequence, p1);
-    const double s_p2 = measure_point_s(lanelet_with_acc_dist_sequence, p2);  // >= s_end
-    if (s_p1 <= s_end && s_end < s_p2) {
-      const auto a = s_end - s_p1;
-      const auto b = s_p2 - s_end;
-      const auto precise_point = (p1.first.basicPoint() * b + p2.first.basicPoint() * a) / (a + b);
-      const auto lane_id = a < b ? p1.second : p2.second;
-      monotonic_reference_points.back().first =
-        lanelet::ConstPoint3d(lanelet::InvalId, precise_point);
-      monotonic_reference_points.back().second = lane_id;
-    }
-  }
-  return monotonic_reference_points;
+  return merged_waypoints;
 }
+}  // namespace
 
-static std::optional<double> compute_s_on_current_route_lanelet(
-  const lanelet::ConstLanelets & route_lanelets, const lanelet::ConstLanelet & current_lanelet,
-  const geometry_msgs::msg::Pose & ego_pose)
+LaneletSequenceWithInterval extend_lanelet_sequence(
+  const lanelet::ConstLanelets & lanelet_sequence,
+  const lanelet::routing::RoutingGraphConstPtr routing_graph, const double s_start,
+  const double s_end)
 {
-  lanelet::ConstLanelets route_lanelets_before_current;
-  bool found_current = false;
-  for (const auto & route_lanelet : route_lanelets) {
-    if (route_lanelet.id() == current_lanelet.id()) {
-      found_current = true;
-      break;
-    }
-    route_lanelets_before_current.push_back(route_lanelet);
-  }
-  if (!found_current) {
-    return std::nullopt;
-  }
-  const double route_length_before_current =
-    route_lanelets_before_current.empty()
-      ? 0.0
-      : lanelet::geometry::length3d(lanelet::LaneletSequence(route_lanelets_before_current));
-
-  const auto ego_s_current_route =
-    route_length_before_current +
-    lanelet::geometry::toArcCoordinates(
-      lanelet::utils::to2D(current_lanelet.centerline()),
-      lanelet::utils::to2D(lanelet::utils::conversion::toLaneletPoint(ego_pose.position)))
-      .length;
-  return ego_s_current_route;
-}
-
-LaneletSequenceWithRange supplement_lanelet_sequence(
-  const lanelet::routing::RoutingGraphConstPtr routing_graph,
-  const lanelet::ConstLanelets & lanelet_sequence, const double s_start, const double s_end)
-{
-  using autoware::experimental::lanelet2_utils::following_lanelets;
-  using autoware::experimental::lanelet2_utils::previous_lanelets;
-
-  auto extended_lanelet_sequence = lanelet_sequence;
+  auto new_lanelet_sequence = lanelet_sequence;
+  auto new_length = lanelet::geometry::length3d(lanelet::LaneletSequence(new_lanelet_sequence));
   auto new_s_start = s_start;
   auto new_s_end = s_end;
 
-  std::set<lanelet::Id> visited_prev_lane_ids{extended_lanelet_sequence.front().id()};
-  while (new_s_start < 0.0) {
-    const auto previous_lanes = previous_lanelets(extended_lanelet_sequence.front(), routing_graph);
-    if (previous_lanes.empty()) {
+  for (std::set<lanelet::Id> visited_lanelet_ids = {new_lanelet_sequence.front().id()};
+       new_s_start < 0.0;) {
+    const auto prev_lanelets = autoware::experimental::lanelet2_utils::previous_lanelets(
+      new_lanelet_sequence.front(), routing_graph);
+    if (prev_lanelets.empty()) {
       new_s_start = 0.0;
       break;
     }
-    // take the longest previous lane to construct underlying lanelets
-    const auto longest_previous_lane = *std::max_element(
-      previous_lanes.begin(), previous_lanes.end(), [](const auto & lane1, const auto & lane2) {
-        return lanelet::geometry::length3d(lane1) < lanelet::geometry::length3d(lane2);
+
+    // take the longest previous lanelet for extension
+    const auto & new_lanelet = *std::max_element(
+      prev_lanelets.begin(), prev_lanelets.end(),
+      [](const lanelet::ConstLanelet & a, const lanelet::ConstLanelet & b) {
+        return lanelet::geometry::length3d(a) < lanelet::geometry::length3d(b);
       });
-    if (visited_prev_lane_ids.find(longest_previous_lane.id()) != visited_prev_lane_ids.end()) {
+    if (visited_lanelet_ids.find(new_lanelet.id()) != visited_lanelet_ids.end()) {
       // loop detected
       break;
     }
-    extended_lanelet_sequence.insert(extended_lanelet_sequence.begin(), longest_previous_lane);
-    visited_prev_lane_ids.insert(longest_previous_lane.id());
-    new_s_start += lanelet::geometry::length3d(longest_previous_lane);
-    new_s_end += lanelet::geometry::length3d(longest_previous_lane);
+
+    visited_lanelet_ids.insert(new_lanelet.id());
+    new_lanelet_sequence.insert(new_lanelet_sequence.begin(), new_lanelet);
+    const auto extended_length = lanelet::geometry::length3d(new_lanelet);
+    new_length += extended_length;
+    new_s_start += extended_length;
+    new_s_end += extended_length;
   }
 
-  std::set<lanelet::Id> visited_next_lane_ids{extended_lanelet_sequence.back().id()};
-  while (new_s_end >
-         lanelet::geometry::length3d(lanelet::LaneletSequence(extended_lanelet_sequence))) {
-    const auto next_lanes = following_lanelets(extended_lanelet_sequence.back(), routing_graph);
-    if (next_lanes.empty()) {
-      new_s_end = lanelet::geometry::length3d(lanelet::LaneletSequence(extended_lanelet_sequence));
+  for (std::set<lanelet::Id> visited_lanelet_ids = {new_lanelet_sequence.back().id()};
+       new_s_end > new_length;) {
+    const auto next_lanelets = autoware::experimental::lanelet2_utils::following_lanelets(
+      new_lanelet_sequence.back(), routing_graph);
+    if (next_lanelets.empty()) {
+      new_s_end = new_length;
       break;
     }
-    // take the longest previous lane to construct underlying lanelets
-    const auto longest_next_lane = *std::max_element(
-      next_lanes.begin(), next_lanes.end(), [](const auto & lane1, const auto & lane2) {
-        return lanelet::geometry::length3d(lane1) < lanelet::geometry::length3d(lane2);
+
+    // take the longest next lanelet for extension
+    const auto new_lanelet = *std::max_element(
+      next_lanelets.begin(), next_lanelets.end(),
+      [](const lanelet::ConstLanelet & a, const lanelet::ConstLanelet & b) {
+        return lanelet::geometry::length3d(a) < lanelet::geometry::length3d(b);
       });
-    if (visited_next_lane_ids.find(longest_next_lane.id()) != visited_next_lane_ids.end()) {
+    if (visited_lanelet_ids.find(new_lanelet.id()) != visited_lanelet_ids.end()) {
       // loop detected
       break;
     }
-    visited_next_lane_ids.insert(longest_next_lane.id());
-    extended_lanelet_sequence.push_back(longest_next_lane);
+
+    visited_lanelet_ids.insert(new_lanelet.id());
+    new_lanelet_sequence.push_back(new_lanelet);
+    new_length += lanelet::geometry::length3d(new_lanelet);
   }
 
-  return {extended_lanelet_sequence, new_s_start, new_s_end};
+  return {new_lanelet_sequence, {new_s_start, new_s_end}};
 }
 
 std::optional<Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>>
 build_reference_path(
-  const lanelet::ConstLanelets & connected_lane_sequence,
-  const lanelet::ConstLanelet & current_lanelet, const geometry_msgs::msg::Pose & ego_pose,
-  const lanelet::LaneletMapConstPtr lanelet_map,
+  const lanelet::ConstLanelets & lanelet_sequence, const lanelet::ConstLanelet & current_lanelet,
+  const geometry_msgs::msg::Pose & ego_pose, const lanelet::LaneletMapConstPtr lanelet_map,
   const lanelet::routing::RoutingGraphConstPtr routing_graph,
   lanelet::traffic_rules::TrafficRulesPtr traffic_rules, const double forward_length,
-  const double backward_length)
+  const double backward_length, const double waypoint_connection_gradient_from_centerline,
+  std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> * debug_path_points)
 {
-  static constexpr double waypoint_group_separation_distance = 1.0;
-  static constexpr double waypoint_connection_from_default_point_gradient = 10.0;
-
-  const auto ego_s_current_route_opt =
-    compute_s_on_current_route_lanelet(connected_lane_sequence, current_lanelet, ego_pose);
-  if (!ego_s_current_route_opt) {
-    return std::nullopt;
-  }
-  const auto ego_s_current_route = ego_s_current_route_opt.value();
-
-  const auto [lanelet_sequence, s_start, s_end] = supplement_lanelet_sequence(
-    routing_graph, connected_lane_sequence, ego_s_current_route - backward_length,
-    ego_s_current_route + forward_length);
-
-  if (s_end <= s_start) {
+  const auto ego_s = get_position_in_lanelet_sequence(
+    zip_accumulated_distance(lanelet_sequence),
+    Waypoint{lanelet::utils::conversion::toLaneletPoint(ego_pose.position), current_lanelet.id()});
+  if (!ego_s) {
+    // ego is not in lanelet sequence
     return std::nullopt;
   }
 
-  UserDefinedWaypointsGroup waypoint_group;
-  for (auto [lanelet, acc_dist] = std::make_tuple(lanelet_sequence.begin(), 0.0);
-       lanelet != lanelet_sequence.end(); ++lanelet) {
-    if (lanelet != lanelet_sequence.begin()) {
-      acc_dist += lanelet::geometry::length3d(*std::prev(lanelet));
-    }
-    if (auto user_defined_waypoint_opt = get_user_defined_waypoint(*lanelet, lanelet_map);
-        user_defined_waypoint_opt) {
-      waypoint_group.add(
-        std::move(user_defined_waypoint_opt.value()), acc_dist, *lanelet,
-        waypoint_group_separation_distance, waypoint_connection_from_default_point_gradient);
+  const auto [extended_lanelet_sequence, interval] = extend_lanelet_sequence(
+    lanelet_sequence, routing_graph, *ego_s - backward_length, *ego_s + forward_length);
+
+  if (interval.end <= interval.start) {
+    return std::nullopt;
+  }
+
+  const auto lanelet_sequence_with_acc_dist = zip_accumulated_distance(extended_lanelet_sequence);
+
+  std::vector<WaypointsWithInterval> user_defined_waypoint_chunks;
+  for (const auto & lanelet_with_acc_dist : lanelet_sequence_with_acc_dist) {
+    if (
+      const auto user_defined_waypoint =
+        get_user_defined_waypoint(lanelet_with_acc_dist.element, lanelet_map)) {
+      append_or_merge_waypoints_to_chunks(
+        user_defined_waypoint_chunks, *user_defined_waypoint, lanelet_with_acc_dist, lanelet_map,
+        waypoint_connection_gradient_from_centerline);
     }
   }
-  const auto waypoints_chunks = waypoint_group.waypoints_chunks();
 
-  const auto reference_lanelet_points = consolidate_user_defined_waypoints_and_native_centerline(
-    waypoints_chunks, lanelet_sequence, s_start, s_end);
+  auto path_points = merge_native_centerline_and_user_defined_waypoints(
+    lanelet_sequence_with_acc_dist, user_defined_waypoint_chunks, interval);
 
-  const auto path_points_with_lane_ids =
-    reference_lanelet_points | ranges::views::transform([&](const auto & waypoint) {
-      autoware_internal_planning_msgs::msg::PathPointWithLaneId point;
-      // position
-      point.point.pose.position = lanelet::utils::conversion::toGeomMsgPt(waypoint.first);
-      // longitudinal_velocity
-      point.point.longitudinal_velocity_mps =
-        traffic_rules->speedLimit(lanelet_map->laneletLayer.get(waypoint.second))
-          .speedLimit.value();
-      // lane_ids
-      point.lane_ids.push_back(waypoint.second);
-      return point;
-    }) |
-    ranges::to<std::vector>();
+  std::sort(path_points.begin(), path_points.end(), [&](const Waypoint & a, const Waypoint & b) {
+    return get_position_in_lanelet_sequence(lanelet_sequence_with_acc_dist, a) <
+           get_position_in_lanelet_sequence(lanelet_sequence_with_acc_dist, b);
+  });
 
-  if (auto trajectory = pretty_build(path_points_with_lane_ids); trajectory) {
+  const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId>
+    path_points_with_lane_ids =
+      path_points | ranges::views::transform([&](const Waypoint & waypoint) {
+        autoware_internal_planning_msgs::msg::PathPointWithLaneId point;
+        // position
+        point.point.pose.position = lanelet::utils::conversion::toGeomMsgPt(waypoint.point);
+        // longitudinal_velocity
+        point.point.longitudinal_velocity_mps =
+          traffic_rules->speedLimit(lanelet_map->laneletLayer.get(waypoint.id)).speedLimit.value();
+        // lane_ids
+        point.lane_ids.push_back(waypoint.id);
+        if (waypoint.next_id) {
+          point.lane_ids.push_back(*waypoint.next_id);
+        }
+        return point;
+      }) |
+      ranges::to<std::vector>();
+  if (debug_path_points) {
+    *debug_path_points = path_points_with_lane_ids;
+  }
+  if (auto trajectory = pretty_build(path_points_with_lane_ids)) {
     trajectory->align_orientation_with_trajectory_direction();
     return trajectory;
   }
   return std::nullopt;
 }
-
 }  // namespace autoware::experimental::trajectory
