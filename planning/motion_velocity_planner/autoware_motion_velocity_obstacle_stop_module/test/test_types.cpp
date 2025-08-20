@@ -44,6 +44,7 @@ TEST(StopObstacleClassificationTest, InitializesFromPredictedObjectClassificatio
 {
   PredictedObject predicted_obj;
 
+  // test by multiple classification elements
   for (size_t i = 1; i <= 2; ++i) {
     predicted_obj.classification.resize(i);
 
