@@ -5,6 +5,30 @@ Changelog for package autoware_motion_velocity_obstacle_stop_module
 1.1.0 (2025-05-01)
 ------------------
 
+1.4.0 (2025-08-11)
+------------------
+* Merge remote-tracking branch 'origin/main' into humble
+* feat(motion_velocity_planner, motion_velocity_planner_common): update pointcloud preprocess design (`#591 <https://github.com/autowarefoundation/autoware_core/issues/591>`_)
+  * updare pcl preprocess
+  ---------
+* fix(obstacle_stop): fix the brief stop decision logic (`#583 <https://github.com/autowarefoundation/autoware_core/issues/583>`_)
+* chore: bump version to 1.3.0 (`#554 <https://github.com/autowarefoundation/autoware_core/issues/554>`_)
+* fix(obstacle_stop_module): fix outside stop feature (`#576 <https://github.com/autowarefoundation/autoware_core/issues/576>`_)
+* fix(obstacle_stop): fix for failing scenario (`#566 <https://github.com/autowarefoundation/autoware_core/issues/566>`_)
+  fix for failing scenario
+* feat(obstacle_stop_module)!: add leading vehicle following by rss stop position determination (`#537 <https://github.com/autowarefoundation/autoware_core/issues/537>`_)
+  * add new feature
+  ---------
+* feat(obstacle_stop_module): add cut in stop feature (`#517 <https://github.com/autowarefoundation/autoware_core/issues/517>`_)
+  * restore the old function to pass universe CI
+  * add new feature
+  * add todo comment
+  ---------
+* refactor(motion_velocity_planner_common): splt get_predicted_pose() (`#558 <https://github.com/autowarefoundation/autoware_core/issues/558>`_)
+  * rename
+  * restore the old function to pass universe CI
+* Contributors: Arjun Jagdish Ram, Ryohsuke Mitsudome, Takayuki Murooka, Yuki TAKAGI
+
 1.3.0 (2025-06-23)
 ------------------
 * fix: to be consistent version in all package.xml(s)

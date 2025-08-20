@@ -13,6 +13,23 @@ Changelog for package autoware_motion_utils
 * refactor(autoware_motion_utils): rewrite using modern C++ without API breakage (`#348 <https://github.com/autowarefoundation/autoware_core/issues/348>`_)
 * Contributors: Arjun Jagdish Ram, Yutaka Kondo
 
+1.4.0 (2025-08-11)
+------------------
+* Merge remote-tracking branch 'origin/main' into humble
+* feat: change planning output topic name to /planning/trajectory (`#602 <https://github.com/autowarefoundation/autoware_core/issues/602>`_)
+  * change planning output topic name to /planning/trajectory
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* chore: bump version to 1.3.0 (`#554 <https://github.com/autowarefoundation/autoware_core/issues/554>`_)
+* fix(motion_utils): update motion utils trajectory (`#569 <https://github.com/autowarefoundation/autoware_core/issues/569>`_)
+* feat(motion_utils): update insert orientation function to use tangent direction of a spline cruve (`#556 <https://github.com/autowarefoundation/autoware_core/issues/556>`_)
+  * update insertOrientationSpline()
+  * update test
+  * use insertOrientationSpline() in motion_velcity_planner_common
+  ---------
+* Contributors: Ryohsuke Mitsudome, Yuki TAKAGI, Yukihiro Saito
+
 1.3.0 (2025-06-23)
 ------------------
 * fix: to be consistent version in all package.xml(s)
