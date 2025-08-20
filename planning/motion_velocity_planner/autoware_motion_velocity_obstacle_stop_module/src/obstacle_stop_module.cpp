@@ -1316,39 +1316,6 @@ void ObstacleStopModule::publish_debug_info()
   planning_factor_interface_->publish();
 }
 
-<<<<<<< HEAD
-double ObstacleStopModule::calc_collision_time_margin(
-  const Odometry & odometry, const std::vector<polygon_utils::PointWithStamp> & collision_points,
-  const std::vector<TrajectoryPoint> & traj_points, const double x_offset_to_bumper) const
-{
-  const double time_to_reach_stop_point = calc_time_to_reach_collision_point(
-    odometry, collision_points.front().point, traj_points, x_offset_to_bumper,
-    stop_planning_param_.min_behavior_stop_margin,
-    obstacle_filtering_param_.min_velocity_to_reach_collision_point);
-
-  // todo(takagi): use vehicle length instead of distance to bumper from base link
-  const double time_to_leave_collision_point =
-    time_to_reach_stop_point + std::abs(x_offset_to_bumper) /
-                                 std::max(
-                                   obstacle_filtering_param_.min_velocity_to_reach_collision_point,
-                                   odometry.twist.twist.linear.x);
-
-  const double time_to_start_cross =
-    (rclcpp::Time(collision_points.front().stamp) - clock_->now()).seconds();
-  const double time_to_end_cross =
-    (rclcpp::Time(collision_points.back().stamp) - clock_->now()).seconds();
-
-  if (time_to_leave_collision_point < time_to_start_cross) {  // Ego goes first.
-    return time_to_start_cross - time_to_reach_stop_point;
-  }
-  if (time_to_end_cross < time_to_reach_stop_point) {  // Obstacle goes first.
-    return time_to_reach_stop_point - time_to_end_cross;
-  }
-  return 0.0;  // Ego and obstacle will collide.
-}
-
-=======
->>>>>>> 99296a49 (refactor obstacle_filtering structure and type handling)
 std::vector<Polygon2d> ObstacleStopModule::get_trajectory_polygon(
   const std::vector<TrajectoryPoint> & decimated_traj_points, const VehicleInfo & vehicle_info,
   const geometry_msgs::msg::Pose & current_ego_pose, const double lat_margin,
