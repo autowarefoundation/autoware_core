@@ -73,9 +73,10 @@ int main1()
     auto & ax = axes[0];
     const double forward_length = 40;
     const double backward_length = 0.0;
+    const double waypoint_connection_gradient_from_centerline = 10.0;
     const auto reference_path_opt = trajectory::build_reference_path(
       lanelet_sequence, current_lanelet, ego_pose, lanelet_map_ptr, routing_graph, traffic_rules,
-      forward_length, backward_length);
+      forward_length, backward_length, waypoint_connection_gradient_from_centerline);
     if (reference_path_opt) {
       const auto & reference_path = reference_path_opt.value();
       autoware_internal_planning_msgs::msg::PathWithLaneId path;
@@ -133,10 +134,11 @@ int main2()
   {
     const double forward_length = 50;
     const double backward_length = 10.0;
+    const double waypoint_connection_gradient_from_centerline = 10.0;
     auto & ax = axes[0];
     const auto reference_path_opt = trajectory::build_reference_path(
       lanelet_sequence, current_lanelet, ego_pose, lanelet_map_ptr, routing_graph, traffic_rules,
-      forward_length, backward_length);
+      forward_length, backward_length, waypoint_connection_gradient_from_centerline);
     if (reference_path_opt) {
       const auto & reference_path = reference_path_opt.value();
       autoware_internal_planning_msgs::msg::PathWithLaneId path;
