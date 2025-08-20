@@ -43,6 +43,41 @@ static constexpr auto inf = std::numeric_limits<double>::infinity();
 namespace autoware::experimental
 {
 
+namespace
+{
+std::optional<trajectory::Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>>
+build_reference_path(
+  const lanelet::ConstLanelets & lanelet_sequence, const lanelet::ConstLanelet & current_lanelet,
+  const geometry_msgs::msg::Pose & ego_pose, const lanelet::LaneletMapConstPtr lanelet_map,
+  const lanelet::routing::RoutingGraphConstPtr routing_graph,
+  lanelet::traffic_rules::TrafficRulesPtr traffic_rules, const double forward_length,
+  const double backward_length, const double waypoint_connection_gradient_from_centerline)
+{
+  const auto s_ego = trajectory::get_position_in_lanelet_sequence(
+    trajectory::zip_accumulated_distance(lanelet_sequence),
+    trajectory::Waypoint{
+      lanelet::utils::conversion::toLaneletPoint(ego_pose.position), current_lanelet.id()});
+  if (!s_ego) {
+    // ego is not in lanelet sequence
+    return std::nullopt;
+  }
+
+  const auto extended_lanelet_sequence_with_interval = trajectory::extend_lanelet_sequence(
+    lanelet_sequence, routing_graph, {*s_ego - backward_length, *s_ego + forward_length});
+
+  if (
+    extended_lanelet_sequence_with_interval.interval.end <=
+    extended_lanelet_sequence_with_interval.interval.start) {
+    // interval is invalid
+    return std::nullopt;
+  }
+
+  return trajectory::build_reference_path(
+    extended_lanelet_sequence_with_interval, lanelet_map, traffic_rules,
+    waypoint_connection_gradient_from_centerline);
+}
+}  // namespace
+
 template <typename Parameter>
 class TestCase : public ::testing::TestWithParam<Parameter>
 {
@@ -104,7 +139,7 @@ TEST_P(TestCase_Map_Waypoint_Straight_00, test_path_validity)
     geometry_msgs::build<geometry_msgs::msg::Pose>()
       .position(autoware_utils_geometry::create_point(x, y, z))
       .orientation(autoware_utils_geometry::create_quaternion(quat[0], quat[1], quat[2], quat[3]));
-  const auto reference_path_opt = trajectory::build_reference_path(
+  const auto reference_path_opt = build_reference_path(
     lanelet_sequence, lanelet_map_->laneletLayer.get(current_id), ego_pose, lanelet_map_,
     routing_graph_, traffic_rules_, FORWARD_LENGTH, BACKWARD_LENGTH,
     WAYPOINT_CONNECTION_GRADIENT_FROM_CENTERLINE);
@@ -247,7 +282,7 @@ TEST_P(TestCase_Map_Waypoint_Curve_00, test_path_validity)
     geometry_msgs::build<geometry_msgs::msg::Pose>()
       .position(autoware_utils_geometry::create_point(x, y, z))
       .orientation(autoware_utils_geometry::create_quaternion(quat[0], quat[1], quat[2], quat[3]));
-  const auto reference_path_opt = trajectory::build_reference_path(
+  const auto reference_path_opt = build_reference_path(
     lanelet_sequence, lanelet_map_->laneletLayer.get(current_id), ego_pose, lanelet_map_,
     routing_graph_, traffic_rules_, FORWARD_LENGTH, BACKWARD_LENGTH,
     WAYPOINT_CONNECTION_GRADIENT_FROM_CENTERLINE);
@@ -467,7 +502,7 @@ TEST_P(TestCase_Map_Overlap_Lane_00, test_path_validity)
     geometry_msgs::build<geometry_msgs::msg::Pose>()
       .position(autoware_utils_geometry::create_point(x, y, z))
       .orientation(autoware_utils_geometry::create_quaternion(quat[0], quat[1], quat[2], quat[3]));
-  const auto reference_path_opt = trajectory::build_reference_path(
+  const auto reference_path_opt = build_reference_path(
     lanelet_sequence, lanelet_map_->laneletLayer.get(current_id), ego_pose, lanelet_map_,
     routing_graph_, traffic_rules_, FORWARD_LENGTH, BACKWARD_LENGTH,
     WAYPOINT_CONNECTION_GRADIENT_FROM_CENTERLINE);
