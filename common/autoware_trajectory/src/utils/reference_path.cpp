@@ -420,29 +420,15 @@ LaneletSequenceWithInterval extend_lanelet_sequence(
 
 std::optional<Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>>
 build_reference_path(
-  const lanelet::ConstLanelets & lanelet_sequence, const lanelet::ConstLanelet & current_lanelet,
-  const geometry_msgs::msg::Pose & ego_pose, const lanelet::LaneletMapConstPtr lanelet_map,
-  const lanelet::routing::RoutingGraphConstPtr routing_graph,
-  lanelet::traffic_rules::TrafficRulesPtr traffic_rules, const double forward_length,
-  const double backward_length, const double waypoint_connection_gradient_from_centerline,
-  std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> * debug_path_points)
+  const LaneletSequenceWithInterval & lanelet_sequence_with_interval,
+  const lanelet::LaneletMapConstPtr lanelet_map,
+  const lanelet::traffic_rules::TrafficRulesPtr traffic_rules,
+  const double waypoint_connection_gradient_from_centerline)
 {
-  const auto ego_s = get_position_in_lanelet_sequence(
-    zip_accumulated_distance(lanelet_sequence),
-    Waypoint{lanelet::utils::conversion::toLaneletPoint(ego_pose.position), current_lanelet.id()});
-  if (!ego_s) {
-    // ego is not in lanelet sequence
-    return std::nullopt;
-  }
+  const auto & lanelet_sequence = lanelet_sequence_with_interval.element;
+  const auto & interval = lanelet_sequence_with_interval.interval;
 
-  const auto [extended_lanelet_sequence, interval] = extend_lanelet_sequence(
-    lanelet_sequence, routing_graph, *ego_s - backward_length, *ego_s + forward_length);
-
-  if (interval.end <= interval.start) {
-    return std::nullopt;
-  }
-
-  const auto lanelet_sequence_with_acc_dist = zip_accumulated_distance(extended_lanelet_sequence);
+  const auto lanelet_sequence_with_acc_dist = zip_accumulated_distance(lanelet_sequence);
 
   std::vector<WaypointsWithInterval> user_defined_waypoint_chunks;
   for (const auto & lanelet_with_acc_dist : lanelet_sequence_with_acc_dist) {
@@ -480,9 +466,7 @@ build_reference_path(
         return point;
       }) |
       ranges::to<std::vector>();
-  if (debug_path_points) {
-    *debug_path_points = path_points_with_lane_ids;
-  }
+
   if (auto trajectory = pretty_build(path_points_with_lane_ids)) {
     trajectory->align_orientation_with_trajectory_direction();
     return trajectory;
