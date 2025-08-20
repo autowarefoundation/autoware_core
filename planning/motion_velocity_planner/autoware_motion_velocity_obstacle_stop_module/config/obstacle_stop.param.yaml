@@ -59,7 +59,7 @@
           unknown: false
 
         trim_trajectory: # This feature supports only pointcloud obstacles yet.
-          enable_trim:
+          enable_trimming:
             default: false
             pointcloud: true
           min_trajectory_length: 30.0  # [m] minimum trajectory length to trim trajectory

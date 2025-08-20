@@ -627,7 +627,9 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_point_clo
 
   const auto trimmed_decimated_traj_points = [&]() {
     const auto & trim_param = filtering_param.trim_trajectory;
-    if (!trim_param.enable_trim || !autoware::motion_utils::isDrivingForward(traj_points)) {
+    if (
+      !trim_param.enable_trimming ||
+      autoware::motion_utils::isDrivingForward(traj_points) != true) {
       return decimated_traj_points;
     }
     const auto braking_distance =

@@ -94,7 +94,7 @@ struct ObstacleFilteringParam
 
   struct
   {
-    bool enable_trim{};
+    bool enable_trimming{};
     double min_trajectory_length{};
     double braking_distance_scale_factor{};
   } trim_trajectory;
@@ -119,8 +119,8 @@ struct ObstacleFilteringParam
     check_inside = get_object_parameter<bool>(node, param_prefix + "check_inside", label_str);
     check_outside = get_object_parameter<bool>(node, param_prefix + "check_outside", label_str);
 
-    trim_trajectory.enable_trim =
-      get_object_parameter<bool>(node, param_prefix + "trim_trajectory.enable_trim", label_str);
+    trim_trajectory.enable_trimming =
+      get_object_parameter<bool>(node, param_prefix + "trim_trajectory.enable_trimming", label_str);
     trim_trajectory.min_trajectory_length = get_object_parameter<double>(
       node, param_prefix + "trim_trajectory.min_trajectory_length", label_str);
     trim_trajectory.braking_distance_scale_factor = get_object_parameter<double>(
