@@ -100,7 +100,7 @@ std::optional<std::pair<size_t, std::vector<PointWithStamp>>> get_collision_inde
 std::optional<std::pair<geometry_msgs::msg::Point, double>> get_collision_point(
   const std::vector<TrajectoryPoint> & traj_points, const std::vector<Polygon2d> & traj_polygons,
   const geometry_msgs::msg::Point obj_position, const rclcpp::Time obj_stamp,
-  const Polygon2d & obj_polygon, const double dist_to_bumper)
+  const Polygon2d & obj_polygon, const double x_offset_to_bumper)
 {
   const auto collision_info =
     get_collision_index(traj_points, traj_polygons, obj_position, obj_stamp, obj_polygon);
@@ -109,7 +109,7 @@ std::optional<std::pair<geometry_msgs::msg::Point, double>> get_collision_point(
   }
 
   const auto bumper_pose = autoware_utils_geometry::calc_offset_pose(
-    traj_points.at(collision_info->first).pose, dist_to_bumper, 0.0, 0.0);
+    traj_points.at(collision_info->first).pose, x_offset_to_bumper, 0.0, 0.0);
 
   std::optional<double> max_collision_length = std::nullopt;
   std::optional<geometry_msgs::msg::Point> max_collision_point = std::nullopt;

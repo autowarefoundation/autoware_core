@@ -84,7 +84,9 @@ private:
   bool suppress_sudden_stop_{};
   CommonParam common_param_{};
   StopPlanningParam stop_planning_param_{};
-  ObstacleFilteringParam obstacle_filtering_param_{};
+  std::unordered_map<StopObstacleClassification::Type, ObstacleFilteringParam>
+    obstacle_filtering_params_{};
+  PointcloudSegmentationParam pointcloud_segmentation_param_;
 
   // module publisher
   rclcpp::Publisher<Float32MultiArrayStamped>::SharedPtr debug_stop_planning_info_pub_{};
@@ -134,7 +136,7 @@ private:
     const std::vector<TrajectoryPoint> & traj_points,
     const std::vector<TrajectoryPoint> & decimated_traj_points,
     const std::vector<std::shared_ptr<PlannerData::Object>> & objects,
-    const VehicleInfo & vehicle_info, const double dist_to_bumper,
+    const VehicleInfo & vehicle_info, const double x_offset_to_bumper,
     const TrajectoryPolygonCollisionCheck & trajectory_polygon_collision_check);
 
   /// @brief Update pointcloud_stop_candidates by the nearest collision point
@@ -151,17 +153,17 @@ private:
     const Odometry & odometry, const std::vector<TrajectoryPoint> & traj_points,
     const std::vector<TrajectoryPoint> & decimated_traj_points,
     const PlannerData::Pointcloud & point_cloud, const VehicleInfo & vehicle_info,
-    const double dist_to_bumper,
+    const double x_offset_to_bumper,
     const TrajectoryPolygonCollisionCheck & trajectory_polygon_collision_check);
 
   std::optional<geometry_msgs::msg::Point> plan_stop(
     const std::shared_ptr<const PlannerData> planner_data,
     const std::vector<TrajectoryPoint> & traj_points,
-    const std::vector<StopObstacle> & stop_obstacles, const double dist_to_bumper);
+    const std::vector<StopObstacle> & stop_obstacles, const double x_offset_to_bumper);
   double calc_desired_stop_margin(
     const std::shared_ptr<const PlannerData> planner_data,
     const std::vector<TrajectoryPoint> & traj_points, const StopObstacle & stop_obstacle,
-    const double dist_to_bumper, const size_t ego_segment_idx,
+    const double x_offset_to_bumper, const size_t ego_segment_idx,
     const double dist_to_collide_on_ref_traj);
   std::optional<double> calc_candidate_zero_vel_dist(
     const std::shared_ptr<const PlannerData> planner_data,
@@ -173,7 +175,7 @@ private:
     std::optional<double> & determined_zero_vel_dist);
   std::optional<geometry_msgs::msg::Point> calc_stop_point(
     const std::shared_ptr<const PlannerData> planner_data,
-    const std::vector<TrajectoryPoint> & traj_points, const double dist_to_bumper,
+    const std::vector<TrajectoryPoint> & traj_points, const double x_offset_to_bumper,
     const std::optional<StopObstacle> & determined_stop_obstacle,
     const std::optional<double> & determined_zero_vel_dist);
   void set_stop_planning_debug_info(
@@ -186,7 +188,7 @@ private:
     const std::vector<TrajectoryPoint> & decimated_traj_points,
     const std::shared_ptr<PlannerData::Object> object, const rclcpp::Time & predicted_objects_stamp,
     const double dist_from_obj_poly_to_traj_poly, const VehicleInfo & vehicle_info,
-    const double dist_to_bumper,
+    const double x_offset_to_bumper,
     const TrajectoryPolygonCollisionCheck & trajectory_polygon_collision_check) const;
   bool is_obstacle_velocity_requiring_fixed_stop(
     const std::shared_ptr<PlannerData::Object> object,
@@ -194,18 +196,15 @@ private:
   bool is_crossing_transient_obstacle(
     const Odometry & odometry, const std::vector<TrajectoryPoint> & traj_points,
     const std::vector<TrajectoryPoint> & decimated_traj_points,
-    const std::shared_ptr<PlannerData::Object> object, const double dist_to_bumper,
+    const std::shared_ptr<PlannerData::Object> object, const double x_offset_to_bumper,
     const std::vector<Polygon2d> & decimated_traj_polys_with_lat_margin,
     const std::optional<std::pair<geometry_msgs::msg::Point, double>> & collision_point) const;
 
   std::optional<CollisionPointWithDist> get_nearest_collision_point(
     const std::vector<TrajectoryPoint> & traj_points, const std::vector<Polygon2d> & traj_polygons,
-    const PlannerData::Pointcloud & point_cloud, const double dist_to_bumper,
+    const PlannerData::Pointcloud & point_cloud, const double x_offset_to_bumper,
     const VehicleInfo & vehicle_info) const;
 
-  double calc_collision_time_margin(
-    const Odometry & odometry, const std::vector<polygon_utils::PointWithStamp> & collision_points,
-    const std::vector<TrajectoryPoint> & traj_points, const double dist_to_bumper) const;
   void check_consistency(
     const rclcpp::Time & current_time,
     const std::vector<std::shared_ptr<PlannerData::Object>> & objects,
@@ -213,10 +212,9 @@ private:
   double calc_margin_from_obstacle_on_curve(
     const std::shared_ptr<const PlannerData> planner_data,
     const std::vector<TrajectoryPoint> & traj_points, const StopObstacle & stop_obstacle,
-    const double dist_to_bumper, const double default_stop_margin) const;
+    const double x_offset_to_bumper, const double default_stop_margin) const;
   std::vector<StopObstacle> get_closest_stop_obstacles(
     const std::vector<StopObstacle> & stop_obstacles);
-  double get_max_lat_margin(const uint8_t obj_label) const;
   std::vector<Polygon2d> get_decimated_traj_polys(
     const std::vector<TrajectoryPoint> & traj_points, const geometry_msgs::msg::Pose & current_pose,
     const autoware::vehicle_info_utils::VehicleInfo & vehicle_info,
@@ -228,7 +226,7 @@ private:
     const std::vector<TrajectoryPoint> & traj_points,
     const std::vector<TrajectoryPoint> & decimated_traj_points,
     const std::vector<Polygon2d> & decimated_traj_polys_with_lat_margin,
-    const double dist_to_bumper, const double estimation_time,
+    const double x_offset_to_bumper, const double estimation_time,
     const rclcpp::Time & predicted_objects_stamp) const;
 };
 }  // namespace autoware::motion_velocity_planner

@@ -272,6 +272,13 @@ std::optional<double> get_first_intersection_arc_length(
   const auto left_bound_string = lanelet::utils::to2D(to_lanelet_points(left_bound->restore()));
   const auto right_bound_string = lanelet::utils::to2D(to_lanelet_points(right_bound->restore()));
 
+  if (left_bound_string.size() < 2 || right_bound_string.size() < 2) {
+    RCLCPP_ERROR(
+      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+      "Left or right bound has less than 2 points");
+    return std::nullopt;
+  }
+
   std::optional<double> s_intersection{std::nullopt};
 
   // self intersection
@@ -387,6 +394,10 @@ std::optional<double> get_first_mutual_intersection_arc_length(
   const lanelet::LaneletSequence & lanelet_sequence, const lanelet::BasicLineString2d & left_bound,
   const lanelet::BasicLineString2d & right_bound, const PathRange<double> & s_start_on_bounds)
 {
+  if (left_bound.size() < 2 || right_bound.size() < 2) {
+    return std::nullopt;
+  }
+
   lanelet::BasicPoints2d intersections;
   boost::geometry::intersection(left_bound, right_bound, intersections);
 
@@ -479,6 +490,10 @@ std::optional<double> get_first_start_edge_centerline_intersection_arc_length(
 std::optional<double> get_first_start_edge_intersection_arc_length(
   const lanelet::BasicLineString2d & start_edge, const lanelet::BasicLineString2d & line_string)
 {
+  if (start_edge.size() < 2 || line_string.size() < 2) {
+    return std::nullopt;
+  }
+
   lanelet::BasicPoints2d start_edge_intersections;
   boost::geometry::intersection(start_edge, line_string, start_edge_intersections);
 
@@ -938,7 +953,9 @@ std::optional<lanelet::ConstPoint2d> get_turn_signal_required_end_point(
     for (double s = 0.0; s < lanelet_length; s += resampling_interval) {
       resampled_arclength.push_back(s);
     }
-    if (lanelet_length - resampled_arclength.back() < autoware::motion_utils::overlap_threshold) {
+    if (
+      !resampled_arclength.empty() &&
+      lanelet_length - resampled_arclength.back() < autoware::motion_utils::overlap_threshold) {
       resampled_arclength.back() = lanelet_length;
     } else {
       resampled_arclength.push_back(lanelet_length);
