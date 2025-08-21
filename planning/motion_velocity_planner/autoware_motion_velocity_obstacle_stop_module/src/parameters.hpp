@@ -92,7 +92,7 @@ struct ObstacleFilteringParam
   bool check_inside{};
   bool check_outside{};
 
-  struct
+  struct TrimTrajectoryParam
   {
     bool enable_trimming{};
     double min_trajectory_length{};

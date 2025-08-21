@@ -116,15 +116,13 @@ private:
   std::optional<std::pair<std::vector<TrajectoryPoint>, double>> prev_stop_distance_info_{
     std::nullopt};
   autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_{};
-  mutable std::map<LateralMarginParamForPolygon, std::vector<Polygon2d>>
-    trajectory_polygon_for_inside_map_{};
+  mutable std::map<PolygonParam, DetectionPolygon> trajectory_polygon_for_inside_map_{};
   mutable std::optional<std::vector<Polygon2d>> decimated_traj_polys_{std::nullopt};
   mutable std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper_{};
 
-  std::vector<Polygon2d> get_trajectory_polygon(
+  DetectionPolygon get_trajectory_polygon(
     const std::vector<TrajectoryPoint> & decimated_traj_points, const VehicleInfo & vehicle_info,
-    const geometry_msgs::msg::Pose & current_ego_pose,
-    const LateralMarginParamForPolygon & lateral_margin_parm,
+    const geometry_msgs::msg::Pose & current_ego_pose, const PolygonParam & lateral_margin_parm,
     const bool enable_to_consider_current_pose, const double time_to_convergence,
     const double decimate_trajectory_step_length) const;
 
@@ -180,7 +178,8 @@ private:
     const std::optional<StopObstacle> & determined_stop_obstacle,
     const std::optional<double> & determined_desired_stop_margin) const;
   void publish_debug_info();
-
+  std::optional<double> calc_ego_forwarding_braking_distance(
+    const std::vector<TrajectoryPoint> & traj_points, const Odometry & odometry) const;
   std::optional<StopObstacle> pick_stop_obstacle_from_predicted_object(
     const Odometry & odometry, const std::vector<TrajectoryPoint> & traj_points,
     const std::vector<TrajectoryPoint> & decimated_traj_points,
