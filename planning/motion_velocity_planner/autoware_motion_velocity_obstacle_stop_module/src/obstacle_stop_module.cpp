@@ -305,85 +305,6 @@ VelocityPlanningResult ObstacleStopModule::plan(
   return result;
 }
 
-std::vector<geometry_msgs::msg::Point> ObstacleStopModule::convert_point_cloud_to_stop_points(
-  const PlannerData::Pointcloud & pointcloud, const std::vector<TrajectoryPoint> & traj_points,
-  const std::vector<Polygon2d> & decimated_traj_polys, const VehicleInfo & vehicle_info,
-  const TrajectoryPolygonCollisionCheck & trajectory_polygon_collision_check, size_t ego_idx)
-{
-  autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
-
-  if (pointcloud.pointcloud.empty()) {
-    return {};
-  }
-
-  const auto & p = obstacle_filtering_params_.at(StopObstacleClassification::Type::POINTCLOUD);
-  const auto & tp = trajectory_polygon_collision_check;
-
-  std::vector<geometry_msgs::msg::Point> stop_collision_points;
-
-  const auto extended_traj_points_from_ego = utils::get_extended_trajectory_points(
-    traj_points, tp.goal_extended_trajectory_length, tp.decimate_trajectory_step_length);
-
-  const PointCloud::Ptr filtered_points_ptr = pointcloud.get_filtered_pointcloud_ptr();
-  const std::vector<pcl::PointIndices> clusters = pointcloud.get_cluster_indices();
-
-  // 2. convert clusters to obstacles
-  for (const auto & cluster_indices : clusters) {
-    double ego_to_stop_collision_distance = std::numeric_limits<double>::max();
-    double lat_dist_from_obstacle_to_traj = std::numeric_limits<double>::max();
-    std::optional<geometry_msgs::msg::Point> stop_collision_point = std::nullopt;
-
-    for (const auto & index : cluster_indices.indices) {
-      const auto obstacle_point = autoware::motion_velocity_planner::utils::to_geometry_point(
-        filtered_points_ptr->points[index]);
-      // 1. brief filtering - filters out point-cloud points that are far from the trajectory
-      // laterally The lateral distance of the obstacle-point to trajectory is measured below
-      const auto current_lat_dist_from_obstacle_to_traj =
-        autoware::motion_utils::calcLateralOffset(traj_points, obstacle_point);
-      // The minimum lateral distance to the trajectory polygon is estimated by assuming that the
-      // ego-vehicle's front right or left corner is the furthest from the trajectory, in the very
-      // worst case
-      const auto min_lat_dist_to_traj_poly =
-        std::abs(current_lat_dist_from_obstacle_to_traj) -
-        std::hypot(vehicle_info.max_longitudinal_offset_m, vehicle_info.vehicle_width_m / 2.0);
-      // The trajectory polygon is ignored if the minimum lateral distance is more than maximum
-      // lateral margin
-      if (min_lat_dist_to_traj_poly >= p.max_lat_margin) {
-        continue;
-      }
-
-      // 2. precise filtering
-      const double precise_min_lat_dist_to_traj_poly =
-        utils::get_dist_to_traj_poly(obstacle_point, decimated_traj_polys);
-
-      if (precise_min_lat_dist_to_traj_poly >= p.max_lat_margin) {
-        continue;
-      }
-
-      const auto current_ego_to_obstacle_distance =
-        autoware::motion_velocity_planner::utils::calc_distance_to_front_object(
-          traj_points, ego_idx, obstacle_point);
-      if (!current_ego_to_obstacle_distance) {
-        continue;
-      }
-
-      lat_dist_from_obstacle_to_traj =
-        std::min(lat_dist_from_obstacle_to_traj, current_lat_dist_from_obstacle_to_traj);
-
-      if (*current_ego_to_obstacle_distance < ego_to_stop_collision_distance) {
-        stop_collision_point = obstacle_point;
-        ego_to_stop_collision_distance = *current_ego_to_obstacle_distance;
-      }
-    }
-
-    if (stop_collision_point) {
-      stop_collision_points.emplace_back(std::move(*stop_collision_point));
-    }
-  }
-
-  return stop_collision_points;
-}
-
 std::optional<CollisionPointWithDist> ObstacleStopModule::get_nearest_collision_point(
   const std::vector<TrajectoryPoint> & traj_points, const std::vector<Polygon2d> & traj_polygons,
   const PlannerData::Pointcloud & point_cloud, const double x_offset_to_bumper,
@@ -490,7 +411,7 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_predicted
     const double min_lat_dist_to_traj_poly =
       utils::calc_possible_min_dist_from_obj_to_traj_poly(object, traj_points, vehicle_info);
     if (
-      filtering_params.max_lat_margin <
+      filtering_params.lateral_margin.max_margin(vehicle_info) <
       min_lat_dist_to_traj_poly - std::max(
                                     object->get_lat_vel_relative_to_traj(traj_points) *
                                       filtering_params.outside_estimation_time_horizon,
@@ -616,13 +537,13 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_point_clo
 
   if (
     point_cloud.preprocess_params_.filter_by_trajectory_polygon.lateral_margin <
-    filtering_param.max_lat_margin) {
+    filtering_param.lateral_margin.nominal_margin) {
     RCLCPP_WARN_THROTTLE(
       logger_, *clock_, 5000,
       "pointcloud preprocessing lateral margin in motion_velocity_planner_node (%f) is smaller "
       "than obstacle_stop_module param (%f)",
       point_cloud.preprocess_params_.filter_by_trajectory_polygon.lateral_margin,
-      filtering_param.max_lat_margin);
+      filtering_param.lateral_margin.nominal_margin);
   }
 
   const auto trimmed_decimated_traj_points = [&]() {
@@ -646,8 +567,9 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_point_clo
 
   const auto & tp = trajectory_polygon_collision_check;
   const auto trimmed_decimated_traj_polys_with_lat_margin = polygon_utils::create_one_step_polygons(
-    trimmed_decimated_traj_points, vehicle_info, odometry.pose.pose, filtering_param.max_lat_margin,
-    tp.enable_to_consider_current_pose, tp.time_to_convergence, tp.decimate_trajectory_step_length);
+    trimmed_decimated_traj_points, vehicle_info, odometry.pose.pose,
+    filtering_param.lateral_margin.nominal_margin, tp.enable_to_consider_current_pose,
+    tp.time_to_convergence, tp.decimate_trajectory_step_length);
   // prioritize the polygon for predicted object
   if (debug_data_ptr_->decimated_traj_polys.empty()) {
     debug_data_ptr_->decimated_traj_polys = trimmed_decimated_traj_polys_with_lat_margin;
@@ -751,8 +673,9 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
   // object->get_lat_vel_relative_to_traj(traj_points): This is not the lateral velocity in the
   // coordinate system. The sign has been manipulated so that it shows a positive value when
   // approaching the path and a negative value when moving away from the path.
+
   if (
-    std::max(filtering_params.max_lat_margin, 1e-3) <=
+    std::max(filtering_params.lateral_margin.max_margin(vehicle_info), 1e-3) <=
     dist_from_obj_poly_to_traj_poly -
       std::max(object->get_lat_vel_relative_to_traj(traj_points) * estimation_time, 0.0)) {
     RCLCPP_DEBUG(
@@ -766,8 +689,19 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
   // 4.1 generate polygon to be checked
   // calculate collision points with trajectory with lateral stop margin
   const auto & p = trajectory_polygon_collision_check;
+
+  // filtering_params.lateral_margin;
+  const auto & lat_param = filtering_params.lateral_margin;
+  const auto & obj_vel = predicted_object.kinematics.initial_twist_with_covariance.twist.linear;
+  const bool is_moving_obstacle =
+    std::hypot(obj_vel.x, obj_vel.y) > lat_param.is_moving_threshold_velocity;
+  const LateralMarginParamForPolygon lateral_margin_param_for_polygon{
+    lat_param.nominal_margin + (is_moving_obstacle ? lat_param.additional_is_moving_margin
+                                                   : lat_param.additional_is_stop_margin),
+    lat_param.additional_wheel_off_track_scale};
+
   const auto decimated_traj_polys_with_lat_margin = get_trajectory_polygon(
-    decimated_traj_points, vehicle_info, odometry.pose.pose, filtering_params.max_lat_margin,
+    decimated_traj_points, vehicle_info, odometry.pose.pose, lateral_margin_param_for_polygon,
     p.enable_to_consider_current_pose, p.time_to_convergence, p.decimate_trajectory_step_length);
   debug_data_ptr_->decimated_traj_polys = decimated_traj_polys_with_lat_margin;
 
@@ -1318,17 +1252,19 @@ void ObstacleStopModule::publish_debug_info()
 
 std::vector<Polygon2d> ObstacleStopModule::get_trajectory_polygon(
   const std::vector<TrajectoryPoint> & decimated_traj_points, const VehicleInfo & vehicle_info,
-  const geometry_msgs::msg::Pose & current_ego_pose, const double lat_margin,
+  const geometry_msgs::msg::Pose & current_ego_pose,
+  const LateralMarginParamForPolygon & lateral_margin_parm,
   const bool enable_to_consider_current_pose, const double time_to_convergence,
   const double decimate_trajectory_step_length) const
 {
-  if (trajectory_polygon_for_inside_map_.count(lat_margin) == 0) {
+  if (trajectory_polygon_for_inside_map_.count(lateral_margin_parm) == 0) {
     const auto traj_polys = polygon_utils::create_one_step_polygons(
-      decimated_traj_points, vehicle_info, current_ego_pose, lat_margin,
-      enable_to_consider_current_pose, time_to_convergence, decimate_trajectory_step_length);
-    trajectory_polygon_for_inside_map_.emplace(lat_margin, traj_polys);
+      decimated_traj_points, vehicle_info, current_ego_pose, lateral_margin_parm.lateral_margin,
+      enable_to_consider_current_pose, time_to_convergence, decimate_trajectory_step_length,
+      lateral_margin_parm.off_track_scale);
+    trajectory_polygon_for_inside_map_.emplace(lateral_margin_parm, traj_polys);
   }
-  return trajectory_polygon_for_inside_map_.at(lat_margin);
+  return trajectory_polygon_for_inside_map_.at(lateral_margin_parm);
 }
 
 void ObstacleStopModule::check_consistency(

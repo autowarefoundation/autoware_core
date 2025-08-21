@@ -182,6 +182,28 @@ struct DebugData
   MarkerArray stop_wall_marker;
 };
 
+struct LateralMarginParamForPolygon
+{
+  double lateral_margin{0.0};
+  double off_track_scale{0.0};
+
+  LateralMarginParamForPolygon(double arg_lateral_margin, double arg_off_track_scale)
+  : lateral_margin(arg_lateral_margin), off_track_scale(arg_off_track_scale)
+  {
+  }
+
+  bool operator<(const LateralMarginParamForPolygon & other) const
+  {
+    if (lateral_margin < other.lateral_margin) {
+      return true;
+    }
+    if (lateral_margin > other.lateral_margin) {
+      return false;
+    }
+    return off_track_scale < other.off_track_scale;
+  }
+};
+
 }  // namespace autoware::motion_velocity_planner
 
 #endif  // TYPES_HPP_
