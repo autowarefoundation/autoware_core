@@ -186,15 +186,8 @@ std::optional<std::pair<geometry_msgs::msg::Point, double>> get_collision_point(
     return std::nullopt;
   }
 
-  auto x_diff_to_bumper = [&]() {
-    if (motion_utils::isDrivingForward(traj_points) != (dist_to_bumper > 0.0)) {
-      return -dist_to_bumper;
-    }
-    return dist_to_bumper;
-  }();
-
   const auto bumper_pose = autoware_utils_geometry::calc_offset_pose(
-    traj_points.at(collision_info->first).pose, x_diff_to_bumper, 0.0, 0.0);
+    traj_points.at(collision_info->first).pose, x_offset_to_bumper, 0.0, 0.0);
 
   std::optional<double> max_collision_length = std::nullopt;
   std::optional<geometry_msgs::msg::Point> max_collision_point = std::nullopt;
