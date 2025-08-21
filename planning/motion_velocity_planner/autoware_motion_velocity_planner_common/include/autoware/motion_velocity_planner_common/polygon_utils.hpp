@@ -82,9 +82,12 @@ std::vector<PointWithStamp> get_collision_points(
   std::vector<size_t> & collision_index, const double max_dist = std::numeric_limits<double>::max(),
   const double max_prediction_time_for_collision_check = std::numeric_limits<double>::max());
 
+std::vector<double> calc_front_outer_wheel_off_track(
+  const std::vector<TrajectoryPoint> & traj_points, const VehicleInfo & vehicle_info);
+
 /**
- * @brief return MultiPolygon whose each element represents a convex polygon comprising footprint at
- * the corresponding index position + footprint at the previous index position
+ * @brief return MultiPolygon whose each element represents a convex polygon comprising footprint
+ * at the corresponding index position + footprint at the previous index position
  * @param enable_to_consider_current_pose if true, `current_ego_pose`
  * @post the output has the same size as `traj_points`
  */
@@ -92,7 +95,8 @@ std::vector<Polygon2d> create_one_step_polygons(
   const std::vector<TrajectoryPoint> & traj_points, const VehicleInfo & vehicle_info,
   const geometry_msgs::msg::Pose & current_ego_pose, const double lat_margin,
   const bool enable_to_consider_current_pose, const double time_to_convergence,
-  const double decimate_trajectory_step_length);
+  const double decimate_trajectory_step_length,
+  const double front_outer_wheel_off_track_additional_scale = 0.0);
 }  // namespace polygon_utils
 }  // namespace autoware::motion_velocity_planner
 
