@@ -122,7 +122,7 @@ private:
 
   DetectionPolygon get_trajectory_polygon(
     const std::vector<TrajectoryPoint> & decimated_traj_points, const VehicleInfo & vehicle_info,
-    const geometry_msgs::msg::Pose & current_ego_pose, const PolygonParam & lateral_margin_parm,
+    const geometry_msgs::msg::Pose & current_ego_pose, const PolygonParam & polygon_param,
     const bool enable_to_consider_current_pose, const double time_to_convergence,
     const double decimate_trajectory_step_length) const;
 

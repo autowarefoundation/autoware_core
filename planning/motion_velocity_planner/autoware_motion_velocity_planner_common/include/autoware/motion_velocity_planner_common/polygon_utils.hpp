@@ -82,6 +82,10 @@ std::vector<PointWithStamp> get_collision_points(
   std::vector<size_t> & collision_index, const double max_dist = std::numeric_limits<double>::max(),
   const double max_prediction_time_for_collision_check = std::numeric_limits<double>::max());
 
+/**
+ * @brief calculate wheel off-track length between the front outer wheel and the rear wheel.
+ * result values are approximately equal to the curvature times the square of wheel base as c*L^2.
+ */
 std::vector<double> calc_front_outer_wheel_off_track(
   const std::vector<TrajectoryPoint> & traj_points, const VehicleInfo & vehicle_info);
 
@@ -96,7 +100,7 @@ std::vector<Polygon2d> create_one_step_polygons(
   const geometry_msgs::msg::Pose & current_ego_pose, const double lat_margin,
   const bool enable_to_consider_current_pose, const double time_to_convergence,
   const double decimate_trajectory_step_length,
-  const double front_outer_wheel_off_track_additional_scale = 0.0);
+  const double additional_front_outer_wheel_off_track_scale = 0.0);
 }  // namespace polygon_utils
 }  // namespace autoware::motion_velocity_planner
 

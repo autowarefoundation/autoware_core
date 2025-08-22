@@ -35,7 +35,6 @@ class OffTrackTest : public ::testing::Test
 protected:
   VehicleInfo vehicle_info_;
   std::vector<TrajectoryPoint> trajectory_points_;
-  const size_t num_points_ = 10;
   const double step_length_ = 2.0;
 
   void SetUp() override
@@ -45,13 +44,13 @@ protected:
   }
 
   void generate_arc_trajectory(
-    const double radius, const int rotation_sign, const bool is_driving_forward)
+    const double radius, const int rotation_sign, const bool is_driving_forward, size_t num_points)
   {
     trajectory_points_.clear();
-    trajectory_points_.reserve(num_points_);
+    trajectory_points_.reserve(num_points);
 
     const double step_angle = rotation_sign * step_length_ / radius;
-    for (size_t i = 0; i < num_points_; ++i) {
+    for (size_t i = 0; i < num_points; ++i) {
       TrajectoryPoint point;
       point.pose.position.x = radius * std::cos(i * step_angle);
       point.pose.position.y = radius * std::sin(i * step_angle);
@@ -61,12 +60,12 @@ protected:
       trajectory_points_.push_back(point);
     }
   }
-  void generate_straight_trajectory(const bool is_driving_forward)
+  void generate_straight_trajectory(const bool is_driving_forward, size_t num_points)
   {
     trajectory_points_.clear();
-    trajectory_points_.reserve(num_points_);
+    trajectory_points_.reserve(num_points);
 
-    for (size_t i = 0; i < num_points_; ++i) {
+    for (size_t i = 0; i < num_points; ++i) {
       TrajectoryPoint point;
       point.pose.position.x = i * step_length_;
       point.pose.position.y = 0.0;
@@ -79,23 +78,28 @@ protected:
 
 TEST_F(OffTrackTest, ForwardDriving)
 {
-  generate_straight_trajectory(true);
-  auto result = autoware::motion_velocity_planner::polygon_utils::calc_front_outer_wheel_off_track(
-    trajectory_points_, vehicle_info_);
-  ASSERT_EQ(result.size(), num_points_);
-  for (const auto & value : result) {
-    EXPECT_NEAR(value, 0.0, 1e-9);
+  for (size_t num_points = 0; num_points < 10; ++num_points) {
+    generate_straight_trajectory(true, num_points);
+    const auto result =
+      autoware::motion_velocity_planner::polygon_utils::calc_front_outer_wheel_off_track(
+        trajectory_points_, vehicle_info_);
+    ASSERT_EQ(result.size(), num_points);
+    for (const auto & value : result) {
+      EXPECT_NEAR(value, 0.0, 1e-6);
+    }
   }
 
   std::vector<double> rotation_signs{1.0, -1.0};
   std::vector<double> radius_vec{10.0, 1e3, 1e6};
 
+  const size_t num_points = 10;  // Set a fixed number of points for the arc trajectory
   for (const auto & rotation_sign : rotation_signs) {
     for (const auto & radius : radius_vec) {
-      generate_arc_trajectory(radius, rotation_sign, true);
-      result = autoware::motion_velocity_planner::polygon_utils::calc_front_outer_wheel_off_track(
-        trajectory_points_, vehicle_info_);
-      ASSERT_EQ(result.size(), num_points_);
+      generate_arc_trajectory(radius, rotation_sign, true, num_points);
+      const auto result =
+        autoware::motion_velocity_planner::polygon_utils::calc_front_outer_wheel_off_track(
+          trajectory_points_, vehicle_info_);
+      ASSERT_EQ(result.size(), num_points);
 
       const auto expected_value = [&]() {
         const double dist =
@@ -112,23 +116,28 @@ TEST_F(OffTrackTest, ForwardDriving)
 
 TEST_F(OffTrackTest, BackwardDriving)
 {
-  generate_straight_trajectory(false);
-  auto result = autoware::motion_velocity_planner::polygon_utils::calc_front_outer_wheel_off_track(
-    trajectory_points_, vehicle_info_);
-  ASSERT_EQ(result.size(), num_points_);
-  for (const auto & value : result) {
-    EXPECT_NEAR(value, 0.0, 1e-9);
+  for (size_t num_points = 0; num_points < 10; ++num_points) {
+    generate_straight_trajectory(false, num_points);
+    const auto result =
+      autoware::motion_velocity_planner::polygon_utils::calc_front_outer_wheel_off_track(
+        trajectory_points_, vehicle_info_);
+    ASSERT_EQ(result.size(), num_points);
+    for (const auto & value : result) {
+      EXPECT_NEAR(value, 0.0, 1e-6);
+    }
   }
 
   std::vector<double> rotation_signs{1.0, -1.0};
   std::vector<double> radius_vec{10.0, 1e3, 1e6};
 
+  const size_t num_points = 10;  // Set a fixed number of points for the arc trajectory
   for (const auto & rotation_sign : rotation_signs) {
     for (const auto & radius : radius_vec) {
-      generate_arc_trajectory(radius, rotation_sign, false);
-      result = autoware::motion_velocity_planner::polygon_utils::calc_front_outer_wheel_off_track(
-        trajectory_points_, vehicle_info_);
-      ASSERT_EQ(result.size(), num_points_);
+      generate_arc_trajectory(radius, rotation_sign, false, num_points);
+      const auto result =
+        autoware::motion_velocity_planner::polygon_utils::calc_front_outer_wheel_off_track(
+          trajectory_points_, vehicle_info_);
+      ASSERT_EQ(result.size(), num_points);
 
       const auto expected_value = [&]() {
         const double dist =

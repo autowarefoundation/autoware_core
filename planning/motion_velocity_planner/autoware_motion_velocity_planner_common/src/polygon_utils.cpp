@@ -151,7 +151,6 @@ Polygon2d create_pose_footprint(
 {
   using autoware_utils_geometry::calc_offset_pose;
   const double half_width = vehicle_info.vehicle_width_m / 2.0;
-  Polygon2d polygon;
   const auto point0 =
     calc_offset_pose(pose, vehicle_info.max_longitudinal_offset_m, half_width + left_margin, 0.0)
       .position;
@@ -163,6 +162,7 @@ Polygon2d create_pose_footprint(
   const auto point3 =
     calc_offset_pose(pose, -vehicle_info.rear_overhang_m, half_width + left_margin, 0.0).position;
 
+  Polygon2d polygon;
   boost::geometry::append(polygon, msg_to_2d(point0));
   boost::geometry::append(polygon, msg_to_2d(point1));
   boost::geometry::append(polygon, msg_to_2d(point2));
@@ -258,11 +258,11 @@ std::vector<double> calc_front_outer_wheel_off_track(
   std::transform(
     curvature_vec.begin(), curvature_vec.end(), front_outer_wheel_off_track.begin(),
     [&vehicle_info](double base_link_curvature) {
-      const double outer_base_link_curvature =
+      const double base_link_outer_wheel_curvature =
         base_link_curvature /
         (1.0 + std::abs(base_link_curvature) * vehicle_info.vehicle_width_m / 2.0);
       return -1.0 * vehicle_info.wheel_base_m *
-             std::tan(0.5 * std::atan(outer_base_link_curvature * vehicle_info.wheel_base_m));
+             std::tan(0.5 * std::atan(base_link_outer_wheel_curvature * vehicle_info.wheel_base_m));
     });
 
   return front_outer_wheel_off_track;
@@ -273,7 +273,7 @@ std::vector<Polygon2d> create_one_step_polygons(
   const geometry_msgs::msg::Pose & current_ego_pose, const double lat_margin,
   const bool enable_to_consider_current_pose, const double time_to_convergence,
   const double decimate_trajectory_step_length,
-  const double front_outer_wheel_off_track_additional_scale)
+  const double additional_front_outer_wheel_off_track_scale)
 {
   using autoware_utils_geometry::calc_offset_pose;
   const double front_length = vehicle_info.max_longitudinal_offset_m;
@@ -285,7 +285,7 @@ std::vector<Polygon2d> create_one_step_polygons(
       ? calculate_error_poses(traj_points, current_ego_pose, time_to_convergence)
       : std::vector<geometry_msgs::msg::Pose>{};
   const auto front_outer_wheel_off_tracks =
-    front_outer_wheel_off_track_additional_scale > 0.0
+    additional_front_outer_wheel_off_track_scale > 0.0
       ? calc_front_outer_wheel_off_track(traj_points, vehicle_info)
       : std::vector<double>(traj_points.size(), 0.0);
 
@@ -297,9 +297,9 @@ std::vector<Polygon2d> create_one_step_polygons(
       current_poses.push_back(error_poses.at(i));
     }
 
-    const double left_margin = lat_margin + front_outer_wheel_off_track_additional_scale *
+    const double left_margin = lat_margin + additional_front_outer_wheel_off_track_scale *
                                               std::max(front_outer_wheel_off_tracks.at(i), 0.0);
-    const double right_margin = lat_margin + front_outer_wheel_off_track_additional_scale *
+    const double right_margin = lat_margin + additional_front_outer_wheel_off_track_scale *
                                                std::max(-front_outer_wheel_off_tracks.at(i), 0.0);
 
     Polygon2d idx_poly{};
