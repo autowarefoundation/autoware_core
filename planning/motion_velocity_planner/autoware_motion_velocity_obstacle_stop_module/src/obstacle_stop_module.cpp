@@ -178,17 +178,17 @@ double calc_braking_dist(
 
 PolygonParam create_polygon_param(
   const ObstacleFilteringParam::TrimTrajectoryParam & trim_trajectory_param,
-  std::optional<double> braking_distance,
+  const std::optional<double> ego_braking_distance,
   const ObstacleFilteringParam::LateralMarginParam & lateral_margin_param,
-  const double object_velocity)
+  const std::optional<double> object_velocity)
 {
   PolygonParam p;
-  if (!trim_trajectory_param.enable_trimming || !braking_distance.has_value()) {
+  if (!trim_trajectory_param.enable_trimming || !ego_braking_distance.has_value()) {
     p.trimming_length = std::nullopt;
   } else {
     p.trimming_length =
       trim_trajectory_param.min_trajectory_length +
-      trim_trajectory_param.braking_distance_scale_factor * braking_distance.value();
+      trim_trajectory_param.braking_distance_scale_factor * ego_braking_distance.value();
   }
   p.lateral_margin = lateral_margin_param.nominal_margin +
                      (object_velocity > lateral_margin_param.is_moving_threshold_velocity
@@ -582,7 +582,7 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_point_clo
   const auto & tp = trajectory_polygon_collision_check;
   const auto polygon_param = create_polygon_param(
     filtering_param.trim_trajectory, calc_ego_forwarding_braking_distance(traj_points, odometry),
-    filtering_param.lateral_margin, 0.0);
+    filtering_param.lateral_margin, std::nullopt);
   const auto detection_polygon_with_lat_margin = get_trajectory_polygon(
     decimated_traj_points, vehicle_info, odometry.pose.pose, polygon_param,
     tp.enable_to_consider_current_pose, tp.time_to_convergence, tp.decimate_trajectory_step_length);
@@ -645,8 +645,7 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_point_clo
       RCLCPP_DEBUG(
         logger_,
         "|_PC_| total_dist: %2.5f, raw_dist: %2.5f, time_compensated dist: %2.5f, "
-        "braking_dist: "
-        "%2.5f",
+        "braking_dist: %2.5f",
         (time_compensated_dist_to_collide + braking_dist),
         (stop_candidate.latest_collision_point.dist_to_collide), time_compensated_dist_to_collide,
         braking_dist);
@@ -686,7 +685,6 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
   // object->get_lat_vel_relative_to_traj(traj_points): This is not the lateral velocity in the
   // coordinate system. The sign has been manipulated so that it shows a positive value when
   // approaching the path and a negative value when moving away from the path.
-
   if (
     std::max(filtering_params.lateral_margin.max_margin(vehicle_info), 1e-3) <=
     dist_from_obj_poly_to_traj_poly -
@@ -702,10 +700,7 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
   // 4.1 generate polygon to be checked
   // calculate collision points with trajectory with lateral stop margin
   const auto & p = trajectory_polygon_collision_check;
-
-  // filtering_params.lateral_margin;
   const auto & obj_vel = predicted_object.kinematics.initial_twist_with_covariance.twist.linear;
-
   const auto polygon_param = create_polygon_param(
     filtering_params.trim_trajectory, calc_ego_forwarding_braking_distance(traj_points, odometry),
     filtering_params.lateral_margin, std::hypot(obj_vel.x, obj_vel.y));
@@ -1168,6 +1163,7 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::calc_stop_point(
     output_traj_points.at(*zero_vel_idx).pose, "obstacle stop", clock_->now(), 0,
     std::abs(x_offset_to_bumper), "", planner_data->is_driving_forward);
   autoware_utils_visualization::append_marker_array(markers, &debug_data_ptr_->stop_wall_marker);
+  debug_data_ptr_->obstacles_to_stop.push_back(*determined_stop_obstacle);
 
   // update planning factor
   const auto stop_pose = output_traj_points.at(*zero_vel_idx).pose;
@@ -1234,7 +1230,6 @@ void ObstacleStopModule::publish_debug_info()
     "map", clock_->now(), "detection_area", 0, Marker::LINE_LIST,
     autoware_utils_visualization::create_marker_scale(0.01, 0.0, 0.0),
     autoware_utils_visualization::create_marker_color(0.0, 1.0, 0.0, 0.999));
-
   for (const auto & decimated_traj_poly : debug_data_ptr_->decimated_traj_polys) {
     for (size_t dp_idx = 0; dp_idx < decimated_traj_poly.outer().size(); ++dp_idx) {
       const auto & current_point = decimated_traj_poly.outer().at(dp_idx);

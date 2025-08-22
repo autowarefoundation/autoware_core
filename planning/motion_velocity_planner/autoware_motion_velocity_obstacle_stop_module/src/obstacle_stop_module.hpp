@@ -178,6 +178,7 @@ private:
     const std::optional<StopObstacle> & determined_stop_obstacle,
     const std::optional<double> & determined_desired_stop_margin) const;
   void publish_debug_info();
+
   std::optional<double> calc_ego_forwarding_braking_distance(
     const std::vector<TrajectoryPoint> & traj_points, const Odometry & odometry) const;
   std::optional<StopObstacle> pick_stop_obstacle_from_predicted_object(
