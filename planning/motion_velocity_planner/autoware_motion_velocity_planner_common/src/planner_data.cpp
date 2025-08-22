@@ -449,7 +449,7 @@ PlannerData::Pointcloud::filter_and_cluster_point_clouds(
       filter_by_trajectory_param.min_trajectory_length +
       min_deceleration_distance * filter_by_trajectory_param.braking_distance_scale_factor;
     const auto & trimmed_trajectory =
-      motion_utils::isDrivingForward(raw_trajectory)
+      motion_utils::isDrivingForward(raw_trajectory) == true
         ? motion_utils::cropForwardPoints(
             decimated_trajectory, decimated_trajectory.front().pose.position, 0,
             trajectory_trim_length)

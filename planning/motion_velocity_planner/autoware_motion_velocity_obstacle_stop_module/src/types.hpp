@@ -27,35 +27,79 @@
 #include <limits>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
 namespace autoware::motion_velocity_planner
 {
 
-struct ObjectClassWithPointCloud
+struct StopObstacleClassification
 {
-  ObjectClassification object_classification{};
-  bool is_point_cloud{false};
+  enum class Type {
+    UNKNOWN,
+    CAR,
+    TRUCK,
+    BUS,
+    TRAILER,
+    MOTORCYCLE,
+    BICYCLE,
+    PEDESTRIAN,
+    POINTCLOUD
+  };
 
-  explicit ObjectClassWithPointCloud(const ObjectClassification arg_obj_class)
-  : object_classification(arg_obj_class)
-  {
-  }
-  explicit ObjectClassWithPointCloud(const uint8_t arg_label)
-  {
-    object_classification.label = arg_label;
-  }
+  inline static const std::unordered_map<Type, std::string> to_string_map = {
+    {Type::UNKNOWN, "unknown"},      {Type::CAR, "car"},
+    {Type::TRUCK, "truck"},          {Type::BUS, "bus"},
+    {Type::TRAILER, "trailer"},      {Type::MOTORCYCLE, "motorcycle"},
+    {Type::BICYCLE, "bicycle"},      {Type::PEDESTRIAN, "pedestrian"},
+    {Type::POINTCLOUD, "pointcloud"}};
 
-  explicit ObjectClassWithPointCloud(const bool arg_is_point_cloud)
-  : is_point_cloud(arg_is_point_cloud)
+  explicit StopObstacleClassification(const ObjectClassification object_classification)
+  {
+    switch (object_classification.label) {
+      case ObjectClassification::UNKNOWN:
+        label = Type::UNKNOWN;
+        break;
+      case ObjectClassification::CAR:
+        label = Type::CAR;
+        break;
+      case ObjectClassification::TRUCK:
+        label = Type::TRUCK;
+        break;
+      case ObjectClassification::BUS:
+        label = Type::BUS;
+        break;
+      case ObjectClassification::TRAILER:
+        label = Type::TRAILER;
+        break;
+      case ObjectClassification::MOTORCYCLE:
+        label = Type::MOTORCYCLE;
+        break;
+      case ObjectClassification::BICYCLE:
+        label = Type::BICYCLE;
+        break;
+      case ObjectClassification::PEDESTRIAN:
+        label = Type::PEDESTRIAN;
+        break;
+      default:
+        throw std::invalid_argument("Undefined ObjectClassification label");
+    }
+  }
+  explicit StopObstacleClassification(
+    const std::vector<ObjectClassification> & object_classifications)
+  : StopObstacleClassification(object_classifications.at(0))
   {
   }
-  bool operator==(const ObjectClassWithPointCloud & other) const
-  {
-    return (object_classification.label == other.object_classification.label) &&
-           (is_point_cloud == other.is_point_cloud);
-  }
+  explicit StopObstacleClassification(Type v) : label(v) {}
+  StopObstacleClassification() = default;
+
+  std::string to_string() const { return to_string_map.at(label); }
+
+  Type label{};
+
+  bool operator==(const StopObstacleClassification & other) const { return label == other.label; }
+  bool operator!=(const StopObstacleClassification & other) const { return !(*this == other); }
 };
 
 // TODO(takagi): std::pair<geometry_msgs::msg::Point, double> in mvp should be replaced with
@@ -78,9 +122,9 @@ struct StopObstacle
 {
   StopObstacle(
     const std::string & arg_uuid, const rclcpp::Time & arg_stamp,
-    const ObjectClassification & object_classification, const geometry_msgs::msg::Pose & arg_pose,
-    const Shape & arg_shape, const double arg_lon_velocity,
-    const geometry_msgs::msg::Point & arg_collision_point,
+    const StopObstacleClassification & arg_object_classification,
+    const geometry_msgs::msg::Pose & arg_pose, const Shape & arg_shape,
+    const double arg_lon_velocity, const geometry_msgs::msg::Point & arg_collision_point,
     const double arg_dist_to_collide_on_decimated_traj,
     const std::optional<double> arg_braking_dist = std::nullopt)
   : uuid(arg_uuid),
@@ -90,13 +134,13 @@ struct StopObstacle
     shape(arg_shape),
     collision_point(arg_collision_point),
     dist_to_collide_on_decimated_traj(arg_dist_to_collide_on_decimated_traj),
-    classification(object_classification),
+    classification(arg_object_classification),
     braking_dist(arg_braking_dist)
   {
   }
   StopObstacle(
-    const rclcpp::Time & arg_stamp, const bool arg_is_point_cloud, const double arg_lon_velocity,
-    const geometry_msgs::msg::Point & arg_collision_point,
+    const rclcpp::Time & arg_stamp, const StopObstacleClassification & arg_object_classification,
+    const double arg_lon_velocity, const geometry_msgs::msg::Point & arg_collision_point,
     const double arg_dist_to_collide_on_decimated_traj,
     const std::optional<double> arg_braking_dist = std::nullopt)
   : uuid("point_cloud"),
@@ -104,9 +148,14 @@ struct StopObstacle
     velocity(arg_lon_velocity),
     collision_point(arg_collision_point),
     dist_to_collide_on_decimated_traj(arg_dist_to_collide_on_decimated_traj),
-    classification(arg_is_point_cloud),
+    classification(arg_object_classification),
     braking_dist(arg_braking_dist)
   {
+    if (arg_object_classification.label != StopObstacleClassification::Type::POINTCLOUD) {
+      throw std::invalid_argument(
+        "Constructor for pointcloud StopObstacle must be called with POINTCLOUD label");
+    }
+
     shape.type = autoware_perception_msgs::msg::Shape::BOUNDING_BOX;
   }
   std::string uuid;
@@ -120,7 +169,7 @@ struct StopObstacle
                       // calculateMarginFromObstacleOnCurve() and  should be removed as it can be
                       // replaced by ”dist_to_collide_on_decimated_traj”
   double dist_to_collide_on_decimated_traj;
-  ObjectClassWithPointCloud classification;
+  StopObstacleClassification classification;
   std::optional<double> braking_dist;
 };
 
