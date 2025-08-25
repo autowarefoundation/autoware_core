@@ -58,22 +58,18 @@ std::vector<TrajectoryPoint> get_extended_trajectory_points(
     autoware::motion_utils::isDrivingForwardWithTwist(input_points);
   const bool is_driving_forward = is_driving_forward_opt ? *is_driving_forward_opt : true;
 
-  if (extend_distance < std::numeric_limits<double>::epsilon()) {
+  // A value to prevent division-by-zero in curvature math while ensuring adequate precision.
+  constexpr double min_step_length = 0.1;
+  if (extend_distance < min_step_length) {
     return output_points;
   }
 
   const auto goal_point = input_points.back();
-
-  double extend_sum = 0.0;
-  while (extend_sum <= (extend_distance - step_length)) {
-    const auto extended_trajectory_point =
-      extend_trajectory_point(extend_sum, goal_point, is_driving_forward);
-    output_points.push_back(extended_trajectory_point);
-    extend_sum += step_length;
+  for (double extend_sum = step_length; extend_sum < extend_distance - step_length;
+       extend_sum += step_length) {
+    output_points.push_back(extend_trajectory_point(extend_sum, goal_point, is_driving_forward));
   }
-  const auto extended_trajectory_point =
-    extend_trajectory_point(extend_distance, goal_point, is_driving_forward);
-  output_points.push_back(extended_trajectory_point);
+  output_points.push_back(extend_trajectory_point(extend_distance, goal_point, is_driving_forward));
 
   return output_points;
 }

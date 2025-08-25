@@ -41,6 +41,7 @@
 
 #include <algorithm>
 #include <deque>
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -115,18 +116,13 @@ private:
   std::optional<std::pair<std::vector<TrajectoryPoint>, double>> prev_stop_distance_info_{
     std::nullopt};
   autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_{};
-  mutable std::unordered_map<double, std::vector<Polygon2d>> trajectory_polygon_for_inside_map_{};
+  mutable std::map<PolygonParam, DetectionPolygon> trajectory_polygon_for_inside_map_{};
   mutable std::optional<std::vector<Polygon2d>> decimated_traj_polys_{std::nullopt};
   mutable std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper_{};
 
-  std::vector<geometry_msgs::msg::Point> convert_point_cloud_to_stop_points(
-    const PlannerData::Pointcloud & pointcloud, const std::vector<TrajectoryPoint> & traj_points,
-    const std::vector<Polygon2d> & decimated_traj_polys, const VehicleInfo & vehicle_info,
-    const TrajectoryPolygonCollisionCheck & trajectory_polygon_collision_check, size_t ego_idx);
-
-  std::vector<Polygon2d> get_trajectory_polygon(
+  DetectionPolygon get_trajectory_polygon(
     const std::vector<TrajectoryPoint> & decimated_traj_points, const VehicleInfo & vehicle_info,
-    const geometry_msgs::msg::Pose & current_ego_pose, const double lat_margin,
+    const geometry_msgs::msg::Pose & current_ego_pose, const PolygonParam & polygon_param,
     const bool enable_to_consider_current_pose, const double time_to_convergence,
     const double decimate_trajectory_step_length) const;
 
@@ -183,6 +179,8 @@ private:
     const std::optional<double> & determined_desired_stop_margin) const;
   void publish_debug_info();
 
+  std::optional<double> calc_ego_forwarding_braking_distance(
+    const std::vector<TrajectoryPoint> & traj_points, const Odometry & odometry) const;
   std::optional<StopObstacle> pick_stop_obstacle_from_predicted_object(
     const Odometry & odometry, const std::vector<TrajectoryPoint> & traj_points,
     const std::vector<TrajectoryPoint> & decimated_traj_points,

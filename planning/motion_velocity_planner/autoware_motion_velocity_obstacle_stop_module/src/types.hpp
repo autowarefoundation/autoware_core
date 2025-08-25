@@ -118,6 +118,19 @@ struct PointcloudStopCandidate
   CollisionPointWithDist latest_collision_point;
 };
 
+struct PolygonParam
+{
+  std::optional<double> trimming_length{};
+  double lateral_margin{};
+  double off_track_scale{};
+
+  bool operator<(const PolygonParam & other) const
+  {
+    return std::tie(trimming_length, lateral_margin, off_track_scale) <
+           std::tie(other.trimming_length, other.lateral_margin, other.off_track_scale);
+  }
+};
+
 struct StopObstacle
 {
   StopObstacle(
@@ -125,7 +138,7 @@ struct StopObstacle
     const StopObstacleClassification & arg_object_classification,
     const geometry_msgs::msg::Pose & arg_pose, const Shape & arg_shape,
     const double arg_lon_velocity, const geometry_msgs::msg::Point & arg_collision_point,
-    const double arg_dist_to_collide_on_decimated_traj,
+    const double arg_dist_to_collide_on_decimated_traj, const PolygonParam & arg_polygon_param,
     const std::optional<double> arg_braking_dist = std::nullopt)
   : uuid(arg_uuid),
     stamp(arg_stamp),
@@ -135,13 +148,14 @@ struct StopObstacle
     collision_point(arg_collision_point),
     dist_to_collide_on_decimated_traj(arg_dist_to_collide_on_decimated_traj),
     classification(arg_object_classification),
+    polygon_param(arg_polygon_param),
     braking_dist(arg_braking_dist)
   {
   }
   StopObstacle(
     const rclcpp::Time & arg_stamp, const StopObstacleClassification & arg_object_classification,
     const double arg_lon_velocity, const geometry_msgs::msg::Point & arg_collision_point,
-    const double arg_dist_to_collide_on_decimated_traj,
+    const double arg_dist_to_collide_on_decimated_traj, const PolygonParam & arg_polygon_param,
     const std::optional<double> arg_braking_dist = std::nullopt)
   : uuid("point_cloud"),
     stamp(arg_stamp),
@@ -149,6 +163,7 @@ struct StopObstacle
     collision_point(arg_collision_point),
     dist_to_collide_on_decimated_traj(arg_dist_to_collide_on_decimated_traj),
     classification(arg_object_classification),
+    polygon_param(arg_polygon_param),
     braking_dist(arg_braking_dist)
   {
     if (arg_object_classification.label != StopObstacleClassification::Type::POINTCLOUD) {
@@ -170,7 +185,21 @@ struct StopObstacle
                       // replaced by ”dist_to_collide_on_decimated_traj”
   double dist_to_collide_on_decimated_traj;
   StopObstacleClassification classification;
+  PolygonParam polygon_param;
   std::optional<double> braking_dist;
+};
+
+struct DetectionPolygon
+{
+  const std::vector<TrajectoryPoint> traj_points;
+  const std::vector<Polygon2d> polygons;
+  DetectionPolygon(std::vector<TrajectoryPoint> && points, std::vector<Polygon2d> && polys)
+  : traj_points(std::move(points)), polygons(std::move(polys))
+  {
+    if (traj_points.size() != polygons.size()) {
+      throw std::invalid_argument("Vector sizes must be identical for DetectionPolygon.");
+    }
+  }
 };
 
 struct DebugData
