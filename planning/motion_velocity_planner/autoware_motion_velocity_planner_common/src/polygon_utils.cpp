@@ -272,7 +272,7 @@ std::vector<Polygon2d> create_one_step_polygons(
   const std::vector<TrajectoryPoint> & traj_points, const VehicleInfo & vehicle_info,
   const geometry_msgs::msg::Pose & current_ego_pose, const double lat_margin,
   const bool enable_to_consider_current_pose, const double time_to_convergence,
-  const double decimate_trajectory_step_length,
+  [[maybe_unused]] const double decimate_trajectory_step_length,
   const double additional_front_outer_wheel_off_track_scale)
 {
   using autoware_utils_geometry::calc_offset_pose;
