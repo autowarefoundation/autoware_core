@@ -72,7 +72,7 @@
             pointcloud: 0.3
           additional: # additional stop margin to the obstacle.
             wheel_off_track_scale: # scale factor for additional stop margin against ego's wheel off-track. Even if this value is set to 0.0, the planner considers the nominal wheel off-track.
-              default: 0.4 # for test
+              default: 0.0
             is_moving_threshold_velocity: 0.5 # [m/s] threshold to consider the obstacle as a moving obstacle. Pointcloud obstacles are always considered as stop obstacles.
             is_stop_obstacle: # [m] additional stop margin for stop obstacle
               default: 0.0
