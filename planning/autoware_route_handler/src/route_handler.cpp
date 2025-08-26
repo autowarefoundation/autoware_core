@@ -118,7 +118,16 @@ std::optional<geometry_msgs::msg::Point> getGeometryPointFrom2DArcLength(
     }
   }
 
-  return std::nullopt;
+  if (lanelet_sequence.empty()) {
+    return std::nullopt;
+  }
+
+  if (lanelet_sequence.back().centerline().empty()) {
+    return std::nullopt;
+  }
+
+  const auto p_lanelet = lanelet_sequence.back().centerline().back().basicPoint();
+  return autoware_utils_geometry::create_point(p_lanelet.x(), p_lanelet.y(), p_lanelet.z());
 }
 
 PathWithLaneId removeOverlappingPoints(const PathWithLaneId & input_path)
