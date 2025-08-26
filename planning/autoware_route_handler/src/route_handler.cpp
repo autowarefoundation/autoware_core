@@ -91,7 +91,7 @@ bool exists(const lanelet::ConstLanelets & vectors, const lanelet::ConstLanelet 
   return false;
 }
 
-geometry_msgs::msg::Point getGeometryPointFrom2DArcLength(
+std::optional<geometry_msgs::msg::Point> getGeometryPointFrom2DArcLength(
   const lanelet::ConstLanelets & lanelet_sequence, const double s)
 {
   double accumulated_distance2d = 0;
@@ -118,7 +118,16 @@ geometry_msgs::msg::Point getGeometryPointFrom2DArcLength(
     }
   }
 
-  return geometry_msgs::msg::Point{};
+  if (lanelet_sequence.empty()) {
+    return std::nullopt;
+  }
+
+  if (lanelet_sequence.back().centerline().empty()) {
+    return std::nullopt;
+  }
+
+  const auto p_lanelet = lanelet_sequence.back().centerline().back().basicPoint();
+  return autoware_utils_geometry::create_point(p_lanelet.x(), p_lanelet.y(), p_lanelet.z());
 }
 
 PathWithLaneId removeOverlappingPoints(const PathWithLaneId & input_path)
@@ -1740,17 +1749,25 @@ PathWithLaneId RouteHandler::getCenterLinePath(
         autoware_utils_geometry::calc_distance2d(ref_point.point, next_ref_point.point);
 
       if (s < s_start && s + distance > s_start) {
-        const auto p =
-          use_exact ? getGeometryPointFrom2DArcLength(lanelet_sequence, s_start) : ref_point.point;
-        add_path_point(p, lanelet, speed_limit);
+        const auto p_opt = getGeometryPointFrom2DArcLength(lanelet_sequence, s_start);
+        if (p_opt.has_value()) {
+          const auto p = use_exact ? p_opt.value() : ref_point.point;
+          add_path_point(p, lanelet, speed_limit);
+        } else {
+          add_path_point(ref_point.point, lanelet, speed_limit);
+        }
       }
       if (s >= s_start && s <= s_end) {
         add_path_point(ref_point.point, lanelet, speed_limit);
       }
       if (s < s_end && s + distance > s_end) {
-        const auto p =
-          use_exact ? getGeometryPointFrom2DArcLength(lanelet_sequence, s_end) : ref_point.point;
-        add_path_point(p, lanelet, speed_limit);
+        const auto p_opt = getGeometryPointFrom2DArcLength(lanelet_sequence, s_end);
+        if (p_opt.has_value()) {
+          const auto p = use_exact ? p_opt.value() : ref_point.point;
+          add_path_point(p, lanelet, speed_limit);
+        } else {
+          add_path_point(ref_point.point, lanelet, speed_limit);
+        }
       }
       s += distance;
     }
