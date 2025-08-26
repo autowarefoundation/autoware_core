@@ -266,7 +266,7 @@ std::vector<double> calc_front_outer_wheel_off_tracking(
         base_link_curvature /
         (1.0 + std::abs(base_link_curvature) * vehicle_info.vehicle_width_m / 2.0);
       // Calculate the front outer wheel's off-tracking distance.
-      // The absolute value of this foumula is equivalent to:
+      // The absolute value of this formula is equivalent to:
       // std::hypot(radius_front_outer_wheel, wheel_base) - radius_front_outer_wheel;
       return -1.0 * vehicle_info.wheel_base_m *
              std::tan(0.5 * std::atan(base_link_outer_wheel_curvature * vehicle_info.wheel_base_m));
