@@ -83,16 +83,17 @@ std::vector<PointWithStamp> get_collision_points(
   const double max_prediction_time_for_collision_check = std::numeric_limits<double>::max());
 
 /**
- * @brief Calculates the off-tracking distance between the front and rear outer wheels.
- * This value is used to add a lateral margin on curves that is proportional to the off-tracking
- * distance. While the implementation calculates the geometrically exact value, it uses a formula
- * designed to prevent numerical issues such as cancellation errors and division by zero. For a
- * detailed geometric explanation, please refer to the test code:
+ * @brief Calculate the off-tracking of the front outer wheel whichs is defined as the difference in
+ * turning radius between the front and rear outer wheels. This value is used to add a lateral
+ * margin on curves that is proportional to the front off-tracking distance. While the
+ * implementation calculates the geometrically exact value, it uses a formula designed to prevent
+ * numerical issues such as cancellation errors and division by zero. For a detailed geometric
+ * explanation, please refer to the test code:
  * `autoware_motion_velocity_planner_common/test/test_polygon_utils.cpp`
  * The result is approximately equal to the product of the curvature and the square of the wheelbase
  * ($c \cdot L^2$).
  */
-std::vector<double> calc_front_outer_wheel_off_track(
+std::vector<double> calc_front_outer_wheel_off_tracking(
   const std::vector<TrajectoryPoint> & traj_points, const VehicleInfo & vehicle_info);
 
 /**

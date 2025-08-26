@@ -81,7 +81,7 @@ TEST_F(OffTrackTest, ForwardDriving)
   for (size_t num_points = 0; num_points < 10; ++num_points) {
     generate_straight_trajectory(true, num_points);
     const auto result =
-      autoware::motion_velocity_planner::polygon_utils::calc_front_outer_wheel_off_track(
+      autoware::motion_velocity_planner::polygon_utils::calc_front_outer_wheel_off_tracking(
         trajectory_points_, vehicle_info_);
     ASSERT_EQ(result.size(), num_points);
     for (const auto & value : result) {
@@ -97,7 +97,7 @@ TEST_F(OffTrackTest, ForwardDriving)
     for (const auto & radius : radius_vec) {
       generate_arc_trajectory(radius, rotation_sign, true, num_points);
       const auto result =
-        autoware::motion_velocity_planner::polygon_utils::calc_front_outer_wheel_off_track(
+        autoware::motion_velocity_planner::polygon_utils::calc_front_outer_wheel_off_tracking(
           trajectory_points_, vehicle_info_);
       ASSERT_EQ(result.size(), num_points);
 
@@ -119,7 +119,7 @@ TEST_F(OffTrackTest, BackwardDriving)
   for (size_t num_points = 0; num_points < 10; ++num_points) {
     generate_straight_trajectory(false, num_points);
     const auto result =
-      autoware::motion_velocity_planner::polygon_utils::calc_front_outer_wheel_off_track(
+      autoware::motion_velocity_planner::polygon_utils::calc_front_outer_wheel_off_tracking(
         trajectory_points_, vehicle_info_);
     ASSERT_EQ(result.size(), num_points);
     for (const auto & value : result) {
@@ -135,7 +135,7 @@ TEST_F(OffTrackTest, BackwardDriving)
     for (const auto & radius : radius_vec) {
       generate_arc_trajectory(radius, rotation_sign, false, num_points);
       const auto result =
-        autoware::motion_velocity_planner::polygon_utils::calc_front_outer_wheel_off_track(
+        autoware::motion_velocity_planner::polygon_utils::calc_front_outer_wheel_off_tracking(
           trajectory_points_, vehicle_info_);
       ASSERT_EQ(result.size(), num_points);
 

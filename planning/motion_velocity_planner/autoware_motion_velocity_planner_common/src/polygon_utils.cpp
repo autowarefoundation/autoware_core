@@ -244,7 +244,9 @@ std::vector<PointWithStamp> get_collision_points(
   return collision_points;
 }
 
-std::vector<double> calc_front_outer_wheel_off_track(
+// Calculate the off-tracking of the front outer wheel.
+// This is defined as the difference in turning radii between the front and rear outer wheels.
+std::vector<double> calc_front_outer_wheel_off_tracking(
   const std::vector<TrajectoryPoint> & traj_points, const VehicleInfo & vehicle_info)
 {
   auto curvature_vec = motion_utils::calcCurvature(traj_points);
@@ -258,9 +260,14 @@ std::vector<double> calc_front_outer_wheel_off_track(
   std::transform(
     curvature_vec.begin(), curvature_vec.end(), front_outer_wheel_off_track.begin(),
     [&vehicle_info](double base_link_curvature) {
+      // Calculate the curvature of the outer rear wheel's path from the curvature at the rear axle
+      // center.
       const double base_link_outer_wheel_curvature =
         base_link_curvature /
         (1.0 + std::abs(base_link_curvature) * vehicle_info.vehicle_width_m / 2.0);
+      // Calculate the front outer wheel's off-tracking distance.
+      // The absolute value of this foumula is equivalent to:
+      // std::hypot(radius_front_outer_wheel, wheel_base) - radius_front_outer_wheel;
       return -1.0 * vehicle_info.wheel_base_m *
              std::tan(0.5 * std::atan(base_link_outer_wheel_curvature * vehicle_info.wheel_base_m));
     });
@@ -286,7 +293,7 @@ std::vector<Polygon2d> create_one_step_polygons(
       : std::vector<geometry_msgs::msg::Pose>{};
   const auto front_outer_wheel_off_tracks =
     additional_front_outer_wheel_off_track_scale > 0.0
-      ? calc_front_outer_wheel_off_track(traj_points, vehicle_info)
+      ? calc_front_outer_wheel_off_tracking(traj_points, vehicle_info)
       : std::vector<double>(traj_points.size(), 0.0);
 
   std::vector<Polygon2d> output_polygons;
