@@ -634,7 +634,7 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_point_clo
         stop_candidate.vel_lpf.getValue().value(), stop_candidate.latest_collision_point.point,
         time_compensated_dist_to_collide, polygon_param);
     } else if (stop_planning_param_.rss_params.use_rss_stop) {
-      const auto braking_dist = calc_braking_dist(
+      const auto braking_dist = calc_braking_dist_along_trajectory(
         StopObstacleClassification::Type::POINTCLOUD, *stop_candidate.vel_lpf.getValue(),
         stop_planning_param_.rss_params);
       stop_obstacles.emplace_back(
@@ -755,7 +755,7 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
   }
 
   if (stop_planning_param_.rss_params.use_rss_stop) {
-    const auto braking_dist = calc_braking_dist(
+    const auto braking_dist = calc_braking_dist_along_trajectory(
       StopObstacleClassification{predicted_object.classification}.label,
       object->get_lon_vel_relative_to_traj(traj_points), stop_planning_param_.rss_params);
 
