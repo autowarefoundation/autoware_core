@@ -28,6 +28,7 @@ ament_auto_add_library(autoware_trajectory SHARED
   src/utils/pretty_build.cpp
   src/utils/shift.cpp
   src/utils/reference_path.cpp
+  src/utils/find_nearest.cpp
 )
 
 if(BUILD_TESTING)
@@ -65,6 +66,7 @@ if(BUILD_TESTING)
     examples/example_readme.cpp
     examples/example_reference_path.cpp
     examples/example_shift.cpp
+    examples/example_self_intersecting.cpp
   )
 
   add_definitions("-Wno-attributes")

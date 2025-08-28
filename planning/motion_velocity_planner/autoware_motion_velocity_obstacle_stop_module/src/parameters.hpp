@@ -92,14 +92,27 @@ struct ObstacleFilteringParam
   bool check_inside{};
   bool check_outside{};
 
-  struct
+  struct TrimTrajectoryParam
   {
     bool enable_trimming{};
     double min_trajectory_length{};
     double braking_distance_scale_factor{};
   } trim_trajectory;
 
-  double max_lat_margin{};
+  struct LateralMarginParam
+  {
+    double nominal_margin{};
+    double additional_wheel_off_track_scale{};
+    double is_moving_threshold_velocity{};
+    double additional_is_stop_margin{};
+    double additional_is_moving_margin{};
+
+    double max_margin(const VehicleInfo & vehicle_info) const
+    {
+      return nominal_margin + additional_wheel_off_track_scale * vehicle_info.wheel_base_m +
+             std::max(additional_is_stop_margin, additional_is_moving_margin);
+    };
+  } lateral_margin;
 
   double min_velocity_to_reach_collision_point{};
   double stop_obstacle_hold_time_threshold{};
@@ -126,7 +139,16 @@ struct ObstacleFilteringParam
     trim_trajectory.braking_distance_scale_factor = get_object_parameter<double>(
       node, param_prefix + "trim_trajectory.braking_distance_scale_factor", label_str);
 
-    max_lat_margin = get_object_parameter<double>(node, param_prefix + "max_lat_margin", label_str);
+    lateral_margin.nominal_margin =
+      get_object_parameter<double>(node, param_prefix + "lateral_margin.nominal", label_str);
+    lateral_margin.additional_wheel_off_track_scale = get_object_parameter<double>(
+      node, param_prefix + "lateral_margin.additional.wheel_off_track_scale", label_str);
+    lateral_margin.is_moving_threshold_velocity = get_object_parameter<double>(
+      node, param_prefix + "lateral_margin.additional.is_moving_threshold_velocity", label_str);
+    lateral_margin.additional_is_stop_margin = get_object_parameter<double>(
+      node, param_prefix + "lateral_margin.additional.is_stop_obstacle", label_str);
+    lateral_margin.additional_is_moving_margin = get_object_parameter<double>(
+      node, param_prefix + "lateral_margin.additional.is_moving_obstacle", label_str);
 
     min_velocity_to_reach_collision_point = get_object_parameter<double>(
       node, param_prefix + "min_velocity_to_reach_collision_point", label_str);
