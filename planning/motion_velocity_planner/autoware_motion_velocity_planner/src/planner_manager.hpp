@@ -19,6 +19,7 @@
 #include <autoware/motion_velocity_planner_common/velocity_planning_result.hpp>
 #include <pluginlib/class_loader.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <tf2_ros/transform_listener.hpp>
 
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
 #include <autoware_perception_msgs/msg/predicted_objects.hpp>
@@ -28,7 +29,6 @@
 #include <lanelet2_core/LaneletMap.h>
 #include <lanelet2_routing/RoutingGraph.h>
 #include <lanelet2_traffic_rules/TrafficRulesFactory.h>
-#include <tf2_ros/transform_listener.h>
 
 #include <memory>
 #include <string>
