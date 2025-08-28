@@ -4949,6 +4949,13 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#find-first-nearest-index-from-trajectory" class="md-nav__link">
+    Find first nearest index from Trajectory
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -5437,8 +5444,8 @@
 <td></td>
 </tr>
 <tr>
-<td><ul><li><code>find_nearest_index</code></li></ul></td>
-<td>A utility function that locates the arc-length coordinate <code>s</code> on a continuous trajectory closest to a given pose.<br> Input is any continuous trajectory type.<br>If <code>get_underlying_bases()</code> is empty or no sample lies within <code>max_dist</code> (Euclidean) and <code>max_yaw</code> (heading) limits, returns <code>std::nullopt</code>.<br>Otherwise, it performs a ternary search between the two bases bracketing the best discrete match to refine <code>s</code> to \~1e-4 m precision.<br>If two samples are equally close in distance, the one with the smaller yaw deviation (within <code>max_yaw</code>) is chosen.</td>
+<td><ul><li><code>find_first_nearest_index</code></li></ul></td>
+<td>A utility function that locates the arc-length coordinate <code>s</code> on a continuous trajectory closest to a given pose.<br> Input is any continuous trajectory type.<br>If no sample lies within <code>max_dist</code> (Euclidean) and <code>max_yaw</code> (heading) limits, returns <code>std::nullopt</code>.<br>Otherwise, It searches for the best point on the bases first, and then performs a ternary search to precisely locate the nearest <code>s</code> in a continuous manner at \~1e-4 m precision level.<br>If two samples are equally close in distance, the one with the smaller yaw deviation (within <code>max_yaw</code>) is chosen.</td>
 <td><img alt="find_nearest_index" src="images/utils/find_nearest.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Ffind_nearest.drawio.svg">View in Drawio</a></td>
 </tr>
 </tbody>
@@ -5554,7 +5561,18 @@ s_{3} &amp;= L_{\mathrm{lon}}, &amp; l_{3} &amp;= L
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">reference_path_opt</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">      </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">reference_path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">reference_path_opt</span><span class="p">.</span><span class="n">value</span><span class="p">();</span>
 </code></pre></div>
-<p><img alt="reference_path" src="images/utils/reference_path_dense_centerline.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Freference_path_dense_centerline.drawio.svg">View in Drawio</a></p></div>
+<p><img alt="reference_path" src="images/utils/reference_path_dense_centerline.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Freference_path_dense_centerline.drawio.svg">View in Drawio</a></p>
+<h3 id="find-first-nearest-index-from-trajectory">Find first nearest index from Trajectory<a class="headerlink" href="#find-first-nearest-index-from-trajectory" title="Permanent link">#</a></h3>
+<p><code>find_first_nearest_index</code> is a utility function that locates the arc-length coordinate s on a continuous trajectory closest to a given pose.
+These are the usage examples of self-intersecting trajectory (Bow Trajectory and Vertical Loop Trajectory), and Edge case Lollipop Trajectory.</p>
+<div class="highlight"><span class="filename">./examples/example_self_intersecting.cpp:300:304</span><pre><span></span><code><span class="w">    </span><span class="n">yaw</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">calculate_bow_trajectory_yaw</span><span class="p">(</span><span class="n">M_PI</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">3</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">2</span><span class="p">);</span>
+<span class="w">    </span><span class="n">query</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">make_pose</span><span class="p">(</span><span class="mf">-0.05</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">yaw</span><span class="p">);</span>
+<span class="w">    </span><span class="n">queries</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">query</span><span class="p">);</span>
+<span class="w">    </span><span class="n">yaws</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="s">"-1/4 * M_PI"</span><span class="p">);</span>
+</code></pre></div>
+<p><img alt="bow_trajectory" src="images/utils/find_precise_index_bow_trajectory.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Ffind_precise_index_bow_trajectory.drawio.svg">View in Drawio</a>
+<img alt="vertical_loop_trajectory" src="images/utils/find_precise_index_vertical_loop_trajectory.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Ffind_precise_index_vertical_loop_trajectory.drawio.svg">View in Drawio</a>
+<img alt="lollipop_trajectory" src="images/utils/find_precise_index_lollipop_trajectory.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Ffind_precise_index_lollipop_trajectory.drawio.svg">View in Drawio</a></p></div>
 
 
 
