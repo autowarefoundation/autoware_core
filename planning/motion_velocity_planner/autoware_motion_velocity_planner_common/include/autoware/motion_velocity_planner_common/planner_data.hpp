@@ -193,14 +193,15 @@ public:
     double get_dist_to_traj_lateral(const std::vector<TrajectoryPoint> & traj_points) const;
 
     /**
-     * @brief compute the signed distance between ego-baselink and object-center
+     * @brief compute the longitudinal signed distance between ego-baselink and object-center along
+     * `traj_points`
      */
     double get_dist_from_ego_longitudinal(
       const std::vector<TrajectoryPoint> & traj_points,
       const geometry_msgs::msg::Point & ego_pos) const;
 
     /**
-     * @brief compute the parallel element of the objects' velocity in world frame
+     * @brief compute the tangent velocity of the object against `traj_points`
      */
     double get_lon_vel_relative_to_traj(const std::vector<TrajectoryPoint> & traj_points) const;
 
