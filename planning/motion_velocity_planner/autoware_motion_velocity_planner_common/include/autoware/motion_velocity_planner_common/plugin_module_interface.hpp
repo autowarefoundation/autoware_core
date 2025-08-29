@@ -58,13 +58,9 @@ public:
   autoware::motion_utils::VirtualWallMarkerCreator virtual_wall_marker_creator{};
   std::vector<PlanningFactor> get_planning_factors() const
   {
-    std::cerr << "line: " << __LINE__ << ", file: " << __FILE__ << std::endl;
     if (planning_factor_interface_ != nullptr) {
-      std::cerr << "line: " << __LINE__ << ", file: " << __FILE__ << std::endl;
-      std::cerr << "planning_factor_size: " << planning_factor_interface_->get_factors().size() << std::endl;
       return planning_factor_interface_->get_factors();
     }
-    std::cerr << "line: " << __LINE__ << ", file: " << __FILE__ << std::endl;
     return {};
   }
 

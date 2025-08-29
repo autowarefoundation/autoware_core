@@ -14,20 +14,13 @@
 
 #include "../src/obstacle_stop_module.hpp"
 
-#include <ament_index_cpp/get_package_share_directory.hpp>
-#include <autoware/motion_velocity_planner_common/planner_data.hpp>
-#include <autoware_test_utils/autoware_test_utils.hpp>
-#include <rclcpp/node_options.hpp>
-#include <rclcpp/rclcpp.hpp>
-
 #include <autoware_internal_planning_msgs/msg/planning_factor_array.hpp>
 #include <autoware_perception_msgs/msg/predicted_objects.hpp>
 #include <autoware_planning_msgs/msg/trajectory.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 
+#include <autoware_test_utils/autoware_test_utils.hpp>
 #include <gtest/gtest.h>
-
-#include <memory>
 
 int main(int argc, char ** argv)
 {
@@ -121,13 +114,13 @@ TEST_F(ObstacleStopModuleTest, NodeTestWithPredictedObjects)
   predicted_objects.header.stamp = node_->get_clock()->now();
   predicted_objects.objects.push_back(pedestrian);
 
-  auto odometry = std::make_shared<nav_msgs::msg::Odometry>();
-  odometry->header.frame_id = "map";
-  odometry->header.stamp = node_->get_clock()->now();
-  odometry->pose.pose.position.x = 0.0;
-  odometry->pose.pose.position.y = 0.0;
-  odometry->pose.pose.position.z = 0.0;
-  odometry->pose.pose.orientation.w = 1.0;
+  auto odometry = nav_msgs::msg::Odometry{};
+  odometry.header.frame_id = "map";
+  odometry.header.stamp = node_->get_clock()->now();
+  odometry.pose.pose.position.x = 0.0;
+  odometry.pose.pose.position.y = 0.0;
+  odometry.pose.pose.position.z = 0.0;
+  odometry.pose.pose.orientation.w = 1.0;
 
   // Generate trajectory points along a straight line
   auto trajectory = autoware_planning_msgs::msg::Trajectory{};
@@ -145,7 +138,7 @@ TEST_F(ObstacleStopModuleTest, NodeTestWithPredictedObjects)
   }
 
   // Set data for PlannerData
-  planner_data_->current_odometry = *odometry;
+  planner_data_->current_odometry = odometry;
   planner_data_->process_predicted_objects(predicted_objects);
 
   module_->init(*node_, "obstacle_stop");
@@ -154,15 +147,14 @@ TEST_F(ObstacleStopModuleTest, NodeTestWithPredictedObjects)
   // Get and verify planning factors
   const auto planning_factors = module_->get_planning_factors();
   ASSERT_EQ(planning_factors.size(), 1);
-
   const auto & planning_factor = planning_factors.front();
   EXPECT_EQ(planning_factor.behavior,
   autoware_internal_planning_msgs::msg::PlanningFactor::STOP);
   EXPECT_NEAR(planning_factor.control_points.front().pose.position.x, 10.0, 3.0);
   EXPECT_NEAR(planning_factor.control_points.front().pose.position.y, 0.0, 1.0);
   EXPECT_NEAR(planning_factor.control_points.front().pose.position.z, 0.0, 1.0);
+  
   ASSERT_EQ(planning_factor.safety_factors.factors.size(), 1);
-
   const auto & safety_factor = planning_factor.safety_factors.factors.front();
   // current implementation does not set object type
   // EXPECT_EQ(safety_factor.type, expected_object_type);
