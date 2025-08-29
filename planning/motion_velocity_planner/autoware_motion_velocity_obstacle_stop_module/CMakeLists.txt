@@ -13,25 +13,28 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
 
 if(BUILD_TESTING)
   # Add test executable
-  ament_add_ros_isolated_gtest(test_${PROJECT_NAME}
-    test/test_obstacle_stop_module_outside_check.cpp
-    test/test_types.cpp
-    test/test_parameters.cpp
+  ament_add_ros_isolated_gtest(test_obstacle_stop_module_outside_check
     test/test_utils.cpp
-    test/test_utils.hpp
+    test/test_obstacle_stop_module_outside_check.cpp
   )
 
-  # Set test dependencies
-  target_link_libraries(test_${PROJECT_NAME}
-    gtest_main
-    ${PROJECT_NAME}
+  ament_add_ros_isolated_gtest(test_types
+    test/test_types.cpp
   )
 
-  # Set test include directories
-  target_include_directories(test_${PROJECT_NAME}
-    PRIVATE
-    src
+  ament_add_ros_isolated_gtest(test_parameters
+    test/test_parameters.cpp
   )
+
+  ament_add_ros_isolated_gtest(test_planning_factor
+    test/test_planning_factor.cpp
+  )
+
+  target_link_libraries(test_obstacle_stop_module_outside_check ${PROJECT_NAME})
+  target_link_libraries(test_types ${PROJECT_NAME})
+  target_link_libraries(test_parameters ${PROJECT_NAME})
+  target_link_libraries(test_planning_factor ${PROJECT_NAME})
+
 endif()
 
 ament_auto_package(INSTALL_TO_SHARE config)

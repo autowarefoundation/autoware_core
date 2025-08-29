@@ -743,7 +743,7 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
 
   if (is_obstacle_velocity_requiring_fixed_stop(object, traj_points)) {
     return StopObstacle{
-      autoware_utils_uuid::to_hex_string(predicted_object.object_id),
+      predicted_object.object_id,
       predicted_objects_stamp,
       StopObstacleClassification{predicted_object.classification},
       obj_pose,
@@ -764,7 +764,7 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
       (collision_point->second + braking_dist), (collision_point->second), braking_dist);
 
     return StopObstacle{
-      autoware_utils_uuid::to_hex_string(predicted_object.object_id),
+      predicted_object.object_id,
       predicted_objects_stamp,
       StopObstacleClassification{predicted_object.classification},
       obj_pose,
@@ -783,8 +783,8 @@ bool ObstacleStopModule::is_obstacle_velocity_requiring_fixed_stop(
   const std::shared_ptr<PlannerData::Object> object,
   const std::vector<TrajectoryPoint> & traj_points) const
 {
-  const auto stop_obstacle_opt = utils::get_obstacle_from_uuid(
-    prev_stop_obstacles_, autoware_utils_uuid::to_hex_string(object->predicted_object.object_id));
+  const auto stop_obstacle_opt =
+    utils::get_obstacle_from_uuid(prev_stop_obstacles_, object->predicted_object.object_id);
   const bool is_prev_object_requires_fixed_stop =
     stop_obstacle_opt.has_value() && !stop_obstacle_opt->braking_dist.has_value();
 
@@ -970,7 +970,6 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::plan_stop(
   if (determined_stop_obstacle->velocity >= stop_planning_param_.max_negative_velocity) {
     // set stop_planning_debug_info
     set_stop_planning_debug_info(determined_stop_obstacle, determined_desired_stop_margin);
-
     return stop_point;
   }
   // Update path length buffer with current stop point
@@ -1171,10 +1170,21 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::calc_stop_point(
   debug_data_ptr_->obstacles_to_stop.push_back(*determined_stop_obstacle);
 
   // update planning factor
+  autoware_internal_planning_msgs::msg::SafetyFactor safety_factor;
+  // TODO(Yuki TAKAGI): set correct type after pcl stop feature is improved.
+  safety_factor.type = autoware_internal_planning_msgs::msg::SafetyFactor::UNKNOWN;
+  safety_factor.object_id = determined_stop_obstacle->uuid;
+  safety_factor.points = {determined_stop_obstacle->pose.position};
+  safety_factor.is_safe = false;
+
+  autoware_internal_planning_msgs::msg::SafetyFactorArray safety_factor_array;
+  safety_factor_array.factors.push_back(safety_factor);
+  safety_factor_array.is_safe = false;
+
   const auto stop_pose = output_traj_points.at(*zero_vel_idx).pose;
   planning_factor_interface_->add(
     output_traj_points, planner_data->current_odometry.pose.pose, stop_pose, PlanningFactor::STOP,
-    SafetyFactorArray{});
+    safety_factor_array);
 
   prev_stop_distance_info_ = std::make_pair(output_traj_points, determined_zero_vel_dist.value());
 
@@ -1263,9 +1273,6 @@ void ObstacleStopModule::publish_debug_info()
 
   // 5. processing time
   processing_time_publisher_->publish(create_float64_stamped(clock_->now(), stop_watch_.toc()));
-
-  // 6. planning factor
-  planning_factor_interface_->publish();
 }
 
 DetectionPolygon ObstacleStopModule::get_trajectory_polygon(
@@ -1303,8 +1310,7 @@ void ObstacleStopModule::check_consistency(
     const auto object_itr = std::find_if(
       objects.begin(), objects.end(),
       [&prev_closest_stop_obstacle](const std::shared_ptr<PlannerData::Object> & o) {
-        return autoware_utils_uuid::to_hex_string(o->predicted_object.object_id) ==
-               prev_closest_stop_obstacle.uuid;
+        return o->predicted_object.object_id == prev_closest_stop_obstacle.uuid;
       });
     // If previous closest obstacle disappear from the perception result, do nothing anymore.
     if (object_itr == objects.end()) {
