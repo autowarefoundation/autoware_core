@@ -12,7 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <autoware/motion_velocity_planner/test_utils.hpp>
+#include "../src/obstacle_stop_module.hpp"
+
+#include <ament_index_cpp/get_package_share_directory.hpp>
+#include <autoware/motion_velocity_planner_common/planner_data.hpp>
+#include <autoware_test_utils/autoware_test_utils.hpp>
+#include <rclcpp/node_options.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <autoware_internal_planning_msgs/msg/planning_factor_array.hpp>
@@ -22,56 +27,53 @@
 
 #include <gtest/gtest.h>
 
-#include <chrono>
 #include <memory>
-#include <string>
-#include <thread>
-#include <vector>
 
-namespace autoware::motion_velocity_planner
+int main(int argc, char ** argv)
 {
+  ::testing::InitGoogleTest(&argc, argv);
 
-TEST(PlanningFactorTest, NodeTestWithPredictedObjects)
+  rclcpp::init(argc, argv);
+
+  auto result = RUN_ALL_TESTS();
+
+  rclcpp::shutdown();
+
+  return result;
+}
+
+class ObstacleStopModuleTest : public ::testing::Test
 {
-  rclcpp::init(0, nullptr);
+protected:
+  void SetUp() override
+  {
+    auto node_options = rclcpp::NodeOptions{};
+    const auto autoware_test_utils_dir =
+      ament_index_cpp::get_package_share_directory("autoware_test_utils");
+    std::vector<std::string> yaml_files = {
+      autoware_test_utils_dir + "/config/test_motion_velocity_planner.param.yaml",
+      autoware_test_utils_dir + "/config/test_common.param.yaml",
+      autoware_test_utils_dir + "/config/test_nearest_search.param.yaml",
+      autoware_test_utils_dir + "/config/test_vehicle_info.param.yaml",
+      ament_index_cpp::get_package_share_directory(
+        "autoware_motion_velocity_obstacle_stop_module") +
+        "/config/obstacle_stop.param.yaml"};
+    autoware::test_utils::updateNodeOptions(node_options, yaml_files);
 
-  const auto plugin_info_vec = {autoware::motion_velocity_planner::PluginInfo{
-    "obstacle_stop", "autoware::motion_velocity_planner::ObstacleStopModule"}};
+    node_ = std::make_shared<rclcpp::Node>("test_node", node_options);
+    module_ = std::make_unique<autoware::motion_velocity_planner::ObstacleStopModule>();
 
-  auto test_manager = autoware::motion_velocity_planner::generateTestManager();
-  auto test_target_node = autoware::motion_velocity_planner::generateNode(plugin_info_vec);
-  autoware::motion_velocity_planner::publishMandatoryTopics(test_manager, test_target_node);
+    module_->init(*node_, "obstacle_stop");
+    planner_data_ = std::make_shared<autoware::motion_velocity_planner::PlannerData>(*node_);
+  }
 
-  const std::string input_trajectory_topic = "motion_velocity_planner/input/trajectory";
-  const std::string input_odometry_topic = "motion_velocity_planner/input/vehicle_odometry";
-  const std::string input_dynamic_objects_topic = "motion_velocity_planner/input/dynamic_objects";
-  const std::string output_planning_factors_topic = "planning/planning_factors/obstacle_stop";
+  std::unique_ptr<autoware::motion_velocity_planner::ObstacleStopModule> module_;
+  std::shared_ptr<rclcpp::Node> node_;
+  std::shared_ptr<autoware::motion_velocity_planner::PlannerData> planner_data_;
+};
 
-  const rclcpp::Node::SharedPtr test_node = test_manager->getTestNode();
-  RCLCPP_INFO(rclcpp::get_logger("test_node"), "test");
-
-  autoware_internal_planning_msgs::msg::PlanningFactorArray::SharedPtr planning_factor_msg;
-  const auto test_sub =
-    test_node->create_subscription<autoware_internal_planning_msgs::msg::PlanningFactorArray>(
-      output_planning_factors_topic, rclcpp::QoS{1},
-      [&planning_factor_msg](
-        autoware_internal_planning_msgs::msg::PlanningFactorArray::SharedPtr msg) {
-        planning_factor_msg = msg;
-        RCLCPP_INFO_ONCE(
-          rclcpp::get_logger("test_node"), "Received PlanningFactorArray with %zu factors",
-          msg->factors.size());
-
-        RCLCPP_INFO_ONCE(rclcpp::get_logger("test_node"), "Planning factors:");
-        if (msg->factors.empty()) {
-          RCLCPP_WARN(rclcpp::get_logger("test_node"), "No planning factors received.");
-        }
-      });
-
-  // Create test data using autoware_test_utils
-  auto objects = autoware_perception_msgs::msg::PredictedObjects{};
-  objects.header.frame_id = "map";
-  objects.header.stamp = test_node->get_clock()->now();
-
+TEST_F(ObstacleStopModuleTest, NodeTestWithPredictedObjects)
+{
   // Add a simple pedestrian obstacle for testing
   autoware_perception_msgs::msg::PredictedObject pedestrian;
   pedestrian.existence_probability = 1.0;
@@ -80,7 +82,8 @@ TEST(PlanningFactorTest, NodeTestWithPredictedObjects)
   autoware_perception_msgs::msg::ObjectClassification classification;
   classification.label = autoware_perception_msgs::msg::ObjectClassification::PEDESTRIAN;
   classification.probability = 1.0;
-  pedestrian.classification.push_back(classification);
+  pedestrian.classification.resize(1);
+  pedestrian.classification.at(0) = classification;
 
   // Set pose - place pedestrian in front of ego
   geometry_msgs::msg::Pose initial_pose;
@@ -94,10 +97,6 @@ TEST(PlanningFactorTest, NodeTestWithPredictedObjects)
   initial_twist.linear.x = 0.0;
   initial_twist.linear.y = 0.0;
   pedestrian.kinematics.initial_twist_with_covariance.twist = initial_twist;
-
-  // Set velocity
-  pedestrian.kinematics.initial_twist_with_covariance.twist.linear.x = 0.0;
-  pedestrian.kinematics.initial_twist_with_covariance.twist.linear.y = 0.0;
 
   // Set shape
   pedestrian.shape.type = autoware_perception_msgs::msg::Shape::CYLINDER;
@@ -117,20 +116,23 @@ TEST(PlanningFactorTest, NodeTestWithPredictedObjects)
     predicted_path.path[i].orientation = initial_pose.orientation;
   }
 
-  objects.objects.push_back(pedestrian);
+  autoware_perception_msgs::msg::PredictedObjects predicted_objects;
+  predicted_objects.header.frame_id = "map";
+  predicted_objects.header.stamp = node_->get_clock()->now();
+  predicted_objects.objects.push_back(pedestrian);
 
-  auto odometry = nav_msgs::msg::Odometry{};
-  odometry.header.frame_id = "map";
-  odometry.header.stamp = test_node->get_clock()->now();
-  odometry.pose.pose.position.x = 0.0;
-  odometry.pose.pose.position.y = 0.0;
-  odometry.pose.pose.position.z = 0.0;
-  odometry.pose.pose.orientation.w = 1.0;
+  auto odometry = std::make_shared<nav_msgs::msg::Odometry>();
+  odometry->header.frame_id = "map";
+  odometry->header.stamp = node_->get_clock()->now();
+  odometry->pose.pose.position.x = 0.0;
+  odometry->pose.pose.position.y = 0.0;
+  odometry->pose.pose.position.z = 0.0;
+  odometry->pose.pose.orientation.w = 1.0;
 
   // Generate trajectory points along a straight line
   auto trajectory = autoware_planning_msgs::msg::Trajectory{};
   trajectory.header.frame_id = "map";
-  trajectory.header.stamp = test_node->get_clock()->now();
+  trajectory.header.stamp = node_->get_clock()->now();
 
   for (double x = 0.0; x <= 100.0; x += 1.0) {
     autoware_planning_msgs::msg::TrajectoryPoint point;
@@ -141,46 +143,33 @@ TEST(PlanningFactorTest, NodeTestWithPredictedObjects)
     point.longitudinal_velocity_mps = 10.0;
     trajectory.points.push_back(point);
   }
-  test_manager->publishInput(test_target_node, input_dynamic_objects_topic, objects, 1);
-  test_manager->publishInput(test_target_node, input_odometry_topic, odometry, 1);
-  test_manager->publishInput(test_target_node, input_trajectory_topic, trajectory, 1);
 
-  // spin once
-  rclcpp::spin_some(test_target_node);
-  rclcpp::spin_some(test_manager->getTestNode());
+  // Set data for PlannerData
+  planner_data_->current_odometry = *odometry;
+  planner_data_->process_predicted_objects(predicted_objects);
 
-  // Wait for messages to be processed
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  rclcpp::spin_some(test_target_node);
-  rclcpp::spin_some(test_manager->getTestNode());
+  module_->init(*node_, "obstacle_stop");
+  module_->plan(trajectory.points, trajectory.points, planner_data_);
 
-  // make sure motion_velocity_planner is running
-  EXPECT_GE(test_manager->getReceivedTopicNum(), 1);
+  // Get and verify planning factors
+  const auto planning_factors = module_->get_planning_factors();
+  ASSERT_EQ(planning_factors.size(), 1);
 
-  // make sure planning_factor_msg is received
-  EXPECT_NE(planning_factor_msg, nullptr);
-
-  // make sure planning_factor_msg is not empty
-  EXPECT_EQ(planning_factor_msg->factors.size(), 1);
-
-  const auto & planning_factor = planning_factor_msg->factors.front();
-  EXPECT_EQ(planning_factor.behavior, autoware_internal_planning_msgs::msg::PlanningFactor::STOP);
+  const auto & planning_factor = planning_factors.front();
+  EXPECT_EQ(planning_factor.behavior,
+  autoware_internal_planning_msgs::msg::PlanningFactor::STOP);
   EXPECT_NEAR(planning_factor.control_points.front().pose.position.x, 10.0, 3.0);
   EXPECT_NEAR(planning_factor.control_points.front().pose.position.y, 0.0, 1.0);
   EXPECT_NEAR(planning_factor.control_points.front().pose.position.z, 0.0, 1.0);
-  EXPECT_EQ(planning_factor.safety_factors.factors.size(), 1);
+  ASSERT_EQ(planning_factor.safety_factors.factors.size(), 1);
 
   const auto & safety_factor = planning_factor.safety_factors.factors.front();
   // current implementation does not set object type
   // EXPECT_EQ(safety_factor.type, expected_object_type);
   EXPECT_FALSE(safety_factor.is_safe);
-  EXPECT_EQ(safety_factor.points.size(), 1);
+  ASSERT_EQ(safety_factor.points.size(), 1);
   EXPECT_NEAR(safety_factor.points.front().x, 20.0, 1.0);
   EXPECT_NEAR(safety_factor.points.front().y, 0.0, 1.0);
   EXPECT_NEAR(safety_factor.points.front().z, 0.0, 1.0);
-  EXPECT_EQ(safety_factor.object_id, objects.objects.front().object_id);
-
-  rclcpp::shutdown();
+  EXPECT_EQ(safety_factor.object_id, predicted_objects.objects.front().object_id);
 }
-}  // namespace autoware::motion_velocity_planner
-

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "parameters.hpp"
+#include "../src/parameters.hpp"
 
 #include <autoware_utils_rclcpp/parameter.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -22,6 +22,19 @@
 #include <memory>
 #include <string>
 #include <vector>
+
+int main(int argc, char ** argv)
+{
+  ::testing::InitGoogleTest(&argc, argv);
+
+  rclcpp::init(argc, argv);
+
+  auto result = RUN_ALL_TESTS();
+
+  rclcpp::shutdown();
+
+  return result;
+}
 
 namespace autoware::motion_velocity_planner
 {

@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "type_alias.hpp"
-#include "types.hpp"
+#include "../src/type_alias.hpp"
+#include "../src/types.hpp"
 
 #include <gtest/gtest.h>
 

@@ -764,7 +764,7 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
       (collision_point->second + braking_dist), (collision_point->second), braking_dist);
 
     return StopObstacle{
-      autoware_utils_uuid::to_hex_string(predicted_object.object_id),
+      predicted_object.object_id,
       predicted_objects_stamp,
       StopObstacleClassification{predicted_object.classification},
       obj_pose,
@@ -970,7 +970,6 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::plan_stop(
   if (determined_stop_obstacle->velocity >= stop_planning_param_.max_negative_velocity) {
     // set stop_planning_debug_info
     set_stop_planning_debug_info(determined_stop_obstacle, determined_desired_stop_margin);
-
     return stop_point;
   }
   // Update path length buffer with current stop point
@@ -1274,9 +1273,6 @@ void ObstacleStopModule::publish_debug_info()
 
   // 5. processing time
   processing_time_publisher_->publish(create_float64_stamped(clock_->now(), stop_watch_.toc()));
-
-  // 6. planning factor
-  planning_factor_interface_->publish();
 }
 
 DetectionPolygon ObstacleStopModule::get_trajectory_polygon(

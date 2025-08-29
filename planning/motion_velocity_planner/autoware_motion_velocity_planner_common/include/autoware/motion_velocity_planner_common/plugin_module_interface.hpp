@@ -56,6 +56,17 @@ public:
   rclcpp::Publisher<autoware_internal_debug_msgs::msg::Float64Stamped>::SharedPtr
     processing_time_publisher_;
   autoware::motion_utils::VirtualWallMarkerCreator virtual_wall_marker_creator{};
+  std::vector<PlanningFactor> get_planning_factors() const
+  {
+    std::cerr << "line: " << __LINE__ << ", file: " << __FILE__ << std::endl;
+    if (planning_factor_interface_ != nullptr) {
+      std::cerr << "line: " << __LINE__ << ", file: " << __FILE__ << std::endl;
+      std::cerr << "planning_factor_size: " << planning_factor_interface_->get_factors().size() << std::endl;
+      return planning_factor_interface_->get_factors();
+    }
+    std::cerr << "line: " << __LINE__ << ", file: " << __FILE__ << std::endl;
+    return {};
+  }
 
 protected:
   std::unique_ptr<autoware::planning_factor_interface::PlanningFactorInterface>
