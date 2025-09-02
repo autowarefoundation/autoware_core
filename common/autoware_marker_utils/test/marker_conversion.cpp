@@ -164,7 +164,7 @@ TEST_F(MarkerConversionTest, CreateMarkerArrayYawLine)
 
   const double yaw = tf2::getYaw(pose.orientation);
 
-  auto marker_array = autoware::experimental::marker_utils::create_ros_pose_marker_array(
+  auto marker_array = autoware::experimental::marker_utils::create_geometry_msgs_marker_array(
     pose, now, "test_ns", 0, create_marker_scale(1.0, 1.0, 0.1), color_);
 
   EXPECT_EQ(marker_array.markers.size(), 1u);
@@ -178,21 +178,45 @@ TEST_F(MarkerConversionTest, CreateMarkerArrayYawLine)
     pose.position.z);
 }
 
-// Test 5: create_autoware_geometry_marker_array with an arrow
+// Test 5: create_geometry_msgs_marker_array with an arrow
 TEST_F(MarkerConversionTest, CreateMarkerArrayArrow)
 {
   using geometry_msgs::msg::Point;
+  auto arrow_type = visualization_msgs::msg::Marker::ARROW;
 
   Point p_start = make_point_plain(0.0f, 0.0f, 0.0f);
   Point p_end = make_point_plain(1.0f, 1.0f, 1.0f);
+  std::vector<Point> test_vector;
+  test_vector.push_back(p_start);
 
-  auto marker_array = autoware::experimental::marker_utils::create_ros_point_marker_array(
-    p_start, p_end, now, "test_ns", 0, color_);
+  // Only one point in vector.
+  auto marker_array_one_point =
+    autoware::experimental::marker_utils::create_geometry_msgs_marker_array(
+      test_vector, now, "test_ns", 0, arrow_type, create_marker_scale(1.0, 1.0, 1.0), color_);
+  EXPECT_EQ(marker_array_one_point.markers.size(), 0u);
+
+  test_vector.push_back(p_end);
+
+  // There are exactly two points in vector.
+  auto marker_array = autoware::experimental::marker_utils::create_geometry_msgs_marker_array(
+    test_vector, now, "test_ns", 0, arrow_type, create_marker_scale(1.0, 1.0, 1.0), color_);
 
   EXPECT_EQ(marker_array.markers.size(), 1u);
   EXPECT_EQ(marker_array.markers[0].type, visualization_msgs::msg::Marker::ARROW);
   expect_point_eq(marker_array.markers[0].points[0], 0.0f, 0.0f, 0.0f);
   expect_point_eq(marker_array.markers[0].points[1], 1.0f, 1.0f, 1.0f);
+
+  Point p_extra = make_point_plain(2.0f, 2.0f, 2.0f);
+  test_vector.push_back(p_extra);
+
+  // There are more than 2 points in vector.
+  auto marker_array_extra = autoware::experimental::marker_utils::create_geometry_msgs_marker_array(
+    test_vector, now, "test_ns", 0, arrow_type, create_marker_scale(1.0, 1.0, 1.0), color_);
+
+  EXPECT_EQ(marker_array_extra.markers.size(), 1u);
+  EXPECT_EQ(marker_array_extra.markers[0].type, visualization_msgs::msg::Marker::ARROW);
+  expect_point_eq(marker_array_extra.markers[0].points[0], 0.0f, 0.0f, 0.0f);
+  expect_point_eq(marker_array_extra.markers[0].points[1], 1.0f, 1.0f, 1.0f);
 }
 
 // Test 6: create_autoware_geometry_marker_array with a vector of geometry_msgs::msg::Point
@@ -208,7 +232,7 @@ TEST_F(MarkerConversionTest, CreateMarkerArrayGeometryPoints)
   test_vector.push_back(make_point_plain(4.0f, 1.0f, 0.0f));
 
   auto line_strip_type = visualization_msgs::msg::Marker::LINE_STRIP;
-  auto marker_array = autoware::experimental::marker_utils::create_ros_points_marker_array(
+  auto marker_array = autoware::experimental::marker_utils::create_geometry_msgs_marker_array(
     test_vector, now, "test_ns", 0, line_strip_type, create_marker_scale(1.0, 1.0, 1.0), color_);
 
   EXPECT_EQ(marker_array.markers.size(), 1u);
@@ -219,8 +243,9 @@ TEST_F(MarkerConversionTest, CreateMarkerArrayGeometryPoints)
   expect_point_eq(marker.points[3], 4.0f, 1.0f, 0.0f);
 
   auto sphere_type = visualization_msgs::msg::Marker::SPHERE;
-  auto marker_array_sphere = autoware::experimental::marker_utils::create_ros_points_marker_array(
-    test_vector, now, "test_ns", 0, sphere_type, create_marker_scale(1.0, 1.0, 1.0), color_);
+  auto marker_array_sphere =
+    autoware::experimental::marker_utils::create_geometry_msgs_marker_array(
+      test_vector, now, "test_ns", 0, sphere_type, create_marker_scale(1.0, 1.0, 1.0), color_);
 
   EXPECT_EQ(marker_array_sphere.markers.size(), test_vector.size());
   for (auto i = 0u; i < marker_array_sphere.markers.size(); ++i) {
@@ -230,7 +255,7 @@ TEST_F(MarkerConversionTest, CreateMarkerArrayGeometryPoints)
 
   auto line_list_type = visualization_msgs::msg::Marker::LINE_LIST;
   auto marker_array_line_list =
-    autoware::experimental::marker_utils::create_ros_points_marker_array(
+    autoware::experimental::marker_utils::create_geometry_msgs_marker_array(
       test_vector, now, "test_ns", 0, line_list_type, create_marker_scale(1.0, 1.0, 1.0), color_);
 
   EXPECT_EQ(marker_array_line_list.markers.size(), 0u);

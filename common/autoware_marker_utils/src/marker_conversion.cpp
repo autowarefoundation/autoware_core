@@ -208,7 +208,7 @@ visualization_msgs::msg::MarkerArray create_geometry_msgs_marker_array(
   return marker_array;
 }
 
-visualization_msgs::msg::MarkerArray create_ros_pose_marker_array(
+visualization_msgs::msg::MarkerArray create_geometry_msgs_marker_array(
   const geometry_msgs::msg::Pose & pose, const rclcpp::Time & stamp, const std::string & ns,
   const int64_t id, const geometry_msgs::msg::Vector3 & scale,
   const std_msgs::msg::ColorRGBA & color)
@@ -238,27 +238,7 @@ visualization_msgs::msg::MarkerArray create_ros_pose_marker_array(
   return marker_array;
 }
 
-visualization_msgs::msg::MarkerArray create_ros_point_marker_array(
-  const geometry_msgs::msg::Point & point_start, const geometry_msgs::msg::Point & point_end,
-  const rclcpp::Time & stamp, const std::string & ns, const int64_t id,
-  const std_msgs::msg::ColorRGBA & color)
-{
-  visualization_msgs::msg::MarkerArray marker_array;
-  geometry_msgs::msg::Vector3 scale;
-  scale.x = 1.0;
-  scale.y = 1.0;
-  scale.z = 1.0;
-  visualization_msgs::msg::Marker marker = create_default_marker(
-    "map", stamp, ns + "_line", id, visualization_msgs::msg::Marker::ARROW, scale, color);
-
-  marker.points.push_back(point_start);
-  marker.points.push_back(point_end);
-
-  marker_array.markers.push_back(marker);
-  return marker_array;
-}
-
-visualization_msgs::msg::MarkerArray create_ros_points_marker_array(
+visualization_msgs::msg::MarkerArray create_geometry_msgs_marker_array(
   const std::vector<geometry_msgs::msg::Point> & points, const rclcpp::Time & stamp,
   const std::string & ns, int32_t id, uint32_t marker_type,
   const geometry_msgs::msg::Vector3 & scale, const std_msgs::msg::ColorRGBA & color)
@@ -267,7 +247,30 @@ visualization_msgs::msg::MarkerArray create_ros_points_marker_array(
   auto marker = create_default_marker(
     "map", stamp, ns, id, visualization_msgs::msg::Marker::SPHERE, scale, color);
 
-  if (marker_type == visualization_msgs::msg::Marker::SPHERE) {
+  if (marker_type == visualization_msgs::msg::Marker::ARROW) {
+    if (points.size() < 2) {
+      RCLCPP_WARN(
+        rclcpp::get_logger("autoware_marker_utils").get_child("marker_conversion"),
+        "ARROW type Marker requires exactly 2 points, Point is not enough");
+      // return empty marker array
+      return marker_array;
+    } else if (points.size() > 2) {
+      RCLCPP_WARN(
+        rclcpp::get_logger("autoware_marker_utils").get_child("marker_conversion"),
+        "ARROW type Marker requires exactly 2 points. Too many points, use the first two points.");
+    }
+    geometry_msgs::msg::Vector3 scale;
+    scale.x = 1.0;
+    scale.y = 1.0;
+    scale.z = 1.0;
+    visualization_msgs::msg::Marker marker = create_default_marker(
+      "map", stamp, ns + "_line", id, visualization_msgs::msg::Marker::ARROW, scale, color);
+
+    marker.points.push_back(points.at(0));
+    marker.points.push_back(points.at(1));
+
+    marker_array.markers.push_back(marker);
+  } else if (marker_type == visualization_msgs::msg::Marker::SPHERE) {
     // Put each point to each marker
     for (size_t i = 0; i < points.size(); ++i) {
       marker.id = static_cast<int32_t>(i + bitShift(id));
@@ -283,7 +286,7 @@ visualization_msgs::msg::MarkerArray create_ros_points_marker_array(
   } else {
     RCLCPP_WARN(
       rclcpp::get_logger("autoware_marker_utils").get_child("marker_conversion"),
-      "Unsupported marker type: only SPHERE and LINE_STRIP are supported.");
+      "Unsupported marker type: only ARROW, SPHERE and LINE_STRIP are supported.");
   }
 
   return marker_array;

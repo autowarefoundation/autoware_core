@@ -113,24 +113,9 @@ visualization_msgs::msg::MarkerArray create_geometry_msgs_marker_array(
  * @param [in] color color of the marker
  * @return marker array of yaw line marker
  */
-visualization_msgs::msg::MarkerArray create_ros_pose_marker_array(
+visualization_msgs::msg::MarkerArray create_geometry_msgs_marker_array(
   const geometry_msgs::msg::Pose & pose, const rclcpp::Time & stamp, const std::string & ns,
   const int64_t id, const geometry_msgs::msg::Vector3 & scale,
-  const std_msgs::msg::ColorRGBA & color);
-
-/**
- * @brief create marker array with marker type ARROW from two points
- * @param [in] point_start start point of the arrow
- * @param [in] point_end end point of the arrow
- * @param [in] stamp time stamp of the marker
- * @param [in] ns namespace
- * @param [in] id id of the marker
- * @param [in] color color of the marker
- * @return marker array of ARROW marker
- */
-visualization_msgs::msg::MarkerArray create_ros_point_marker_array(
-  const geometry_msgs::msg::Point & point_start, const geometry_msgs::msg::Point & point_end,
-  const rclcpp::Time & stamp, const std::string & ns, const int64_t id,
   const std_msgs::msg::ColorRGBA & color);
 
 /**
@@ -139,12 +124,12 @@ visualization_msgs::msg::MarkerArray create_ros_point_marker_array(
  * @param [in] stamp time stamp of the marker
  * @param [in] ns namespace
  * @param [in] id id of the marker
- * @param [in] marker_type type of the marker (only SPHERE or LINE_STRIP)
+ * @param [in] marker_type type of the marker (only ARROW, SPHERE or LINE_STRIP)
  * @param [in] scale scale of the marker
  * @param [in] color color of the marker
  * @return marker array of the stop obstacle point
  */
-visualization_msgs::msg::MarkerArray create_ros_points_marker_array(
+visualization_msgs::msg::MarkerArray create_geometry_msgs_marker_array(
   const std::vector<geometry_msgs::msg::Point> & points, const rclcpp::Time & stamp,
   const std::string & ns, int32_t id, uint32_t marker_type,
   const geometry_msgs::msg::Vector3 & scale, const std_msgs::msg::ColorRGBA & color);
