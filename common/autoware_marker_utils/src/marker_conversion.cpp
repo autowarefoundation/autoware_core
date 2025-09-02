@@ -244,8 +244,6 @@ visualization_msgs::msg::MarkerArray create_geometry_msgs_marker_array(
   const geometry_msgs::msg::Vector3 & scale, const std_msgs::msg::ColorRGBA & color)
 {
   visualization_msgs::msg::MarkerArray marker_array;
-  auto marker = create_default_marker(
-    "map", stamp, ns, id, visualization_msgs::msg::Marker::SPHERE, scale, color);
 
   if (marker_type == visualization_msgs::msg::Marker::ARROW) {
     if (points.size() < 2) {
@@ -259,18 +257,15 @@ visualization_msgs::msg::MarkerArray create_geometry_msgs_marker_array(
         rclcpp::get_logger("autoware_marker_utils").get_child("marker_conversion"),
         "ARROW type Marker requires exactly 2 points. Too many points, use the first two points.");
     }
-    geometry_msgs::msg::Vector3 scale;
-    scale.x = 1.0;
-    scale.y = 1.0;
-    scale.z = 1.0;
-    visualization_msgs::msg::Marker marker = create_default_marker(
-      "map", stamp, ns + "_line", id, visualization_msgs::msg::Marker::ARROW, scale, color);
+    auto marker = create_default_marker("map", stamp, ns + "_line", id, marker_type, scale, color);
 
     marker.points.push_back(points.at(0));
     marker.points.push_back(points.at(1));
 
     marker_array.markers.push_back(marker);
   } else if (marker_type == visualization_msgs::msg::Marker::SPHERE) {
+    auto marker = create_default_marker("map", stamp, ns, id, marker_type, scale, color);
+
     // Put each point to each marker
     for (size_t i = 0; i < points.size(); ++i) {
       marker.id = static_cast<int32_t>(i + bitShift(id));
@@ -279,6 +274,7 @@ visualization_msgs::msg::MarkerArray create_geometry_msgs_marker_array(
     }
   } else if (marker_type == visualization_msgs::msg::Marker::LINE_STRIP) {
     // Put all points in one marker
+    auto marker = create_default_marker("map", stamp, ns, id, marker_type, scale, color);
     for (const auto & point : points) {
       marker.points.push_back(point);
     }
@@ -294,7 +290,7 @@ visualization_msgs::msg::MarkerArray create_geometry_msgs_marker_array(
 
 visualization_msgs::msg::MarkerArray create_autoware_geometry_marker_array(
   const autoware_utils_geometry::MultiPolygon2d & area_polygons, const rclcpp::Time & stamp,
-  const std::string & ns, int32_t & id, uint32_t marker_type,
+  const std::string & ns, const int32_t & id, uint32_t marker_type,
   const geometry_msgs::msg::Vector3 & scale, const std_msgs::msg::ColorRGBA & color, double z)
 {
   visualization_msgs::msg::MarkerArray marker_array;

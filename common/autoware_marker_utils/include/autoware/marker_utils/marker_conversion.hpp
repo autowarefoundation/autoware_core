@@ -163,7 +163,7 @@ visualization_msgs::msg::MarkerArray create_autoware_geometry_marker_array(
  */
 visualization_msgs::msg::MarkerArray create_autoware_geometry_marker_array(
   const autoware_utils_geometry::MultiPolygon2d & area_polygons, const rclcpp::Time & stamp,
-  const std::string & ns, int32_t & id, uint32_t marker_type,
+  const std::string & ns, const int32_t & id, uint32_t marker_type,
   const geometry_msgs::msg::Vector3 & scale, const std_msgs::msg::ColorRGBA & color,
   double z = 0.0);
 
