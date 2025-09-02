@@ -98,7 +98,7 @@ TEST_F(MarkerConversionTest, MakeMarkerFromPolygonLINESTRIP)
   poly.points.push_back(make_point(1.0f, 1.0f, 0.0f));
 
   int32_t id = 42;
-  auto arr = autoware::experimental::marker_utils::create_autoware_geometry_marker_array(
+  auto arr = autoware::experimental::marker_utils::create_geometry_msgs_marker_array(
     poly, now, "ns", id, visualization_msgs::msg::Marker::LINE_STRIP,
     create_marker_scale(0.1, 0.1, 0.1), color_);
 
@@ -119,7 +119,7 @@ TEST_F(MarkerConversionTest, MakeMarkerFromPolygonLINELIST)
   poly.points.push_back(make_point(1.0f, 0.0f, 0.0f));
   poly.points.push_back(make_point(.5f, 1.0f, 0.0f));
 
-  auto arr = autoware::experimental::marker_utils::create_autoware_geometry_marker_array(
+  auto arr = autoware::experimental::marker_utils::create_geometry_msgs_marker_array(
     poly, now, "ns", 7, visualization_msgs::msg::Marker::LINE_LIST,
     create_marker_scale(0.2, 0.2, 0.2), color_);
 
@@ -134,7 +134,109 @@ TEST_F(MarkerConversionTest, MakeMarkerFromPolygonLINELIST)
   expect_point_eq(pts[5], 0.0f, 0.0f, 0.0f);
 }
 
-// Test 3: debug footprint draws full closed ring including first point at end
+// Test 3: text marker from point
+TEST_F(MarkerConversionTest, CreateTextMarkerFromPoint)
+{
+  geometry_msgs::msg::Point pt;
+  pt.x = 1.0;
+  pt.y = 2.0;
+  pt.z = 3.0;
+
+  auto arr = autoware::experimental::marker_utils::create_geometry_msgs_marker_array(
+    pt, now, "no_start_obstacle_text", 0, visualization_msgs::msg::Marker::TEXT_VIEW_FACING,
+    create_marker_scale(0.0, 0.0, 1.0), create_marker_color(1.0, 1.0, 1.0, 0.999));
+  ASSERT_EQ(arr.markers.size(), 1u);
+  const auto & m = arr.markers[0];
+  EXPECT_EQ(m.text, "!");
+  EXPECT_DOUBLE_EQ(m.pose.position.x, 1.0);
+  EXPECT_DOUBLE_EQ(m.pose.position.y, 2.0);
+  EXPECT_DOUBLE_EQ(m.pose.position.z, 5.0);  // 3 + 2 offset
+}
+
+// Test 4: create_ros_pose_marker_array with the pose (to create yaw line)
+TEST_F(MarkerConversionTest, CreateMarkerArrayYawLine)
+{
+  geometry_msgs::msg::Pose pose;
+
+  pose.position.x = 1.0;
+  pose.position.y = 2.0;
+  pose.position.z = 0.0;
+
+  const double yaw = tf2::getYaw(pose.orientation);
+
+  auto marker_array = autoware::experimental::marker_utils::create_ros_pose_marker_array(
+    pose, now, "test_ns", 0, create_marker_scale(1.0, 1.0, 0.1), color_);
+
+  EXPECT_EQ(marker_array.markers.size(), 1u);
+  auto marker_line = marker_array.markers[0];
+  EXPECT_EQ(marker_line.points.size(), 2u);
+  expect_point_eq(
+    marker_line.points[0], pose.position.x - 3 * std::sin(yaw), pose.position.y + 3 * std::cos(yaw),
+    pose.position.z);
+  expect_point_eq(
+    marker_line.points[1], pose.position.x + 3 * std::sin(yaw), pose.position.y - 3 * std::cos(yaw),
+    pose.position.z);
+}
+
+// Test 5: create_autoware_geometry_marker_array with an arrow
+TEST_F(MarkerConversionTest, CreateMarkerArrayArrow)
+{
+  using geometry_msgs::msg::Point;
+
+  Point p_start = make_point_plain(0.0f, 0.0f, 0.0f);
+  Point p_end = make_point_plain(1.0f, 1.0f, 1.0f);
+
+  auto marker_array = autoware::experimental::marker_utils::create_ros_point_marker_array(
+    p_start, p_end, now, "test_ns", 0, color_);
+
+  EXPECT_EQ(marker_array.markers.size(), 1u);
+  EXPECT_EQ(marker_array.markers[0].type, visualization_msgs::msg::Marker::ARROW);
+  expect_point_eq(marker_array.markers[0].points[0], 0.0f, 0.0f, 0.0f);
+  expect_point_eq(marker_array.markers[0].points[1], 1.0f, 1.0f, 1.0f);
+}
+
+// Test 6: create_autoware_geometry_marker_array with a vector of geometry_msgs::msg::Point
+// (both SPHERE and LINE_STRIP, and other)
+TEST_F(MarkerConversionTest, CreateMarkerArrayGeometryPoints)
+{
+  using geometry_msgs::msg::Point;
+
+  std::vector<Point> test_vector;
+  test_vector.push_back(make_point_plain(1.0f, 2.0f, 3.0f));
+  test_vector.push_back(make_point_plain(0.0f, 4.0f, -1.0f));
+  test_vector.push_back(make_point_plain(3.0f, 3.0f, 1.0f));
+  test_vector.push_back(make_point_plain(4.0f, 1.0f, 0.0f));
+
+  auto line_strip_type = visualization_msgs::msg::Marker::LINE_STRIP;
+  auto marker_array = autoware::experimental::marker_utils::create_ros_points_marker_array(
+    test_vector, now, "test_ns", 0, line_strip_type, create_marker_scale(1.0, 1.0, 1.0), color_);
+
+  EXPECT_EQ(marker_array.markers.size(), 1u);
+  auto marker = marker_array.markers[0];
+  expect_point_eq(marker.points[0], 1.0f, 2.0f, 3.0);
+  expect_point_eq(marker.points[1], 0.0f, 4.0f, -1.0f);
+  expect_point_eq(marker.points[2], 3.0f, 3.0f, 1.0f);
+  expect_point_eq(marker.points[3], 4.0f, 1.0f, 0.0f);
+
+  auto sphere_type = visualization_msgs::msg::Marker::SPHERE;
+  auto marker_array_sphere = autoware::experimental::marker_utils::create_ros_points_marker_array(
+    test_vector, now, "test_ns", 0, sphere_type, create_marker_scale(1.0, 1.0, 1.0), color_);
+
+  EXPECT_EQ(marker_array_sphere.markers.size(), test_vector.size());
+  for (auto i = 0u; i < marker_array_sphere.markers.size(); ++i) {
+    auto marker = marker_array_sphere.markers[i];
+    expect_point_eq(marker.pose.position, test_vector[i].x, test_vector[i].y, test_vector[i].z);
+  }
+
+  auto line_list_type = visualization_msgs::msg::Marker::LINE_LIST;
+  auto marker_array_line_list =
+    autoware::experimental::marker_utils::create_ros_points_marker_array(
+      test_vector, now, "test_ns", 0, line_list_type, create_marker_scale(1.0, 1.0, 1.0), color_);
+
+  EXPECT_EQ(marker_array_line_list.markers.size(), 0u);
+}
+
+// Test 7: debug footprint draws full closed ring including first point at end
 TEST_F(MarkerConversionTest, VisualizeDebugFootprint)
 {
   using autoware_utils_geometry::LinearRing2d;
@@ -157,7 +259,7 @@ TEST_F(MarkerConversionTest, VisualizeDebugFootprint)
   expect_point_eq(pts.back(), ring.front().x(), ring.front().y(), 0.0);
 }
 
-// Test 4: validate pull-over area MultiPolygon2d flattens to single marker ring
+// Test 8: validate pull-over area MultiPolygon2d flattens to single marker ring
 TEST_F(MarkerConversionTest, CreatePullOverAreaMarkerArray)
 {
   using autoware_utils_geometry::MultiPolygon2d;
@@ -196,207 +298,7 @@ TEST_F(MarkerConversionTest, CreatePullOverAreaMarkerArray)
   }
 }
 
-// Test 5: create marker array from MultiPolygon2d with running id
-TEST_F(MarkerConversionTest, CreateMultiPolygonMarkerArrayRunningID)
-{
-  using autoware_utils_geometry::MultiPolygon2d;
-  using autoware_utils_geometry::Point2d;
-  using autoware_utils_geometry::Polygon2d;
-
-  Polygon2d square;
-  auto & ring = square.outer();
-  ring.push_back(Point2d{0.0, 0.0});
-  ring.push_back(Point2d{1.0, 0.0});
-  ring.push_back(Point2d{1.0, 1.0});
-  ring.push_back(Point2d{0.0, 1.0});
-
-  Polygon2d square_2;
-  auto & ring_2 = square_2.outer();
-  ring_2.push_back(Point2d{1.0, 1.0});
-  ring_2.push_back(Point2d{2.0, 1.0});
-  ring_2.push_back(Point2d{2.0, 2.0});
-  ring_2.push_back(Point2d{1.0, 2.0});
-
-  MultiPolygon2d mp;
-  mp.push_back(square);
-  mp.push_back(square_2);
-
-  double z = 3;
-  int32_t id = 0;
-  auto marker_array = autoware::experimental::marker_utils::create_autoware_geometry_marker_array(
-    mp, now, "test_ns", id, visualization_msgs::msg::Marker::LINE_STRIP,
-    create_marker_scale(1.0, 1.0, 0.1), color_, z, true);
-
-  ASSERT_EQ(marker_array.markers.size(), 2u);
-  EXPECT_EQ(marker_array.markers[0].id, 0);
-  EXPECT_EQ(marker_array.markers[1].id, 1);
-  EXPECT_EQ(id, 2);
-
-  const auto & pts = marker_array.markers[0].points;
-  EXPECT_EQ(pts.size(), 4u);
-  for (size_t i = 0; i < ring.size(); ++i) {
-    expect_point_eq(pts[i], ring[i].x(), ring[i].y(), z);
-  }
-}
-
-// Test 6: create_autoware_geometry_marker_array with a MultiPolygon2d of two rings
-TEST_F(MarkerConversionTest, CreateAutowareGeometryMarkerArrayMultiPolygon)
-{
-  using autoware_utils_geometry::MultiPolygon2d;
-  using autoware_utils_geometry::Polygon2d;
-
-  // build a triangle and a square
-  Polygon2d tri;
-  {
-    auto & r = tri.outer();
-    r.push_back({0.0, 0.0});
-    r.push_back({1.0, 0.0});
-    r.push_back({0.0, 1.0});
-  }
-  Polygon2d sq;
-  {
-    auto & r = sq.outer();
-    r.push_back({0.0, 0.0});
-    r.push_back({2.0, 0.0});
-    r.push_back({2.0, 2.0});
-    r.push_back({0.0, 2.0});
-  }
-  MultiPolygon2d mp{tri, sq};
-
-  // single trajectory point at (5,6,7)
-  std::vector<autoware_planning_msgs::msg::TrajectoryPoint> traj(1);
-  traj[0].pose.position.x = 5.0;
-  traj[0].pose.position.y = 6.0;
-  traj[0].pose.position.z = 7.0;
-
-  const auto & arr = autoware::experimental::marker_utils::create_autoware_geometry_marker_array(
-    mp, 0, traj, rclcpp::Time(0), "out_of_lane_areas", 0,
-    visualization_msgs::msg::Marker::LINE_LIST, create_marker_scale(0.1, 0.1, 0.1),
-    create_marker_color(1.0, 0.0, 0.0, 1.0));
-
-  ASSERT_EQ(arr.markers.size(), 1u);
-  const auto & pts = arr.markers[0].points;
-
-  ASSERT_EQ(pts.size(), 4u);
-
-  // first push: trajectory point
-  EXPECT_DOUBLE_EQ(pts[0].x, 5.0);
-  EXPECT_DOUBLE_EQ(pts[0].y, 6.0);
-  EXPECT_DOUBLE_EQ(pts[0].z, 7.0);
-
-  // centroid of triangle (0,0),(1,0),(0,1) is (1/3,1/3)
-  EXPECT_DOUBLE_EQ(pts[1].x, 1.0 / 3.0);
-  EXPECT_DOUBLE_EQ(pts[1].y, 1.0 / 3.0);
-  EXPECT_DOUBLE_EQ(pts[1].z, 0.0);
-
-  // second loop: trajectory point again
-  EXPECT_DOUBLE_EQ(pts[2].x, 5.0);
-  EXPECT_DOUBLE_EQ(pts[2].y, 6.0);
-  EXPECT_DOUBLE_EQ(pts[2].z, 7.0);
-
-  // centroid of square (0,0),(2,0),(2,2),(0,2) is (1,1)
-  EXPECT_DOUBLE_EQ(pts[3].x, 1.0);
-  EXPECT_DOUBLE_EQ(pts[3].y, 1.0);
-  EXPECT_DOUBLE_EQ(pts[3].z, 0.0);
-}
-
-// Test 7: text marker from point
-TEST_F(MarkerConversionTest, CreateTextMarkerFromPoint)
-{
-  geometry_msgs::msg::Point pt;
-  pt.x = 1.0;
-  pt.y = 2.0;
-  pt.z = 3.0;
-
-  auto arr = autoware::experimental::marker_utils::create_autoware_geometry_marker_array(
-    pt, now, "no_start_obstacle_text", 0, visualization_msgs::msg::Marker::TEXT_VIEW_FACING,
-    create_marker_scale(0.0, 0.0, 1.0), create_marker_color(1.0, 1.0, 1.0, 0.999));
-  ASSERT_EQ(arr.markers.size(), 1u);
-  const auto & m = arr.markers[0];
-  EXPECT_EQ(m.text, "!");
-  EXPECT_DOUBLE_EQ(m.pose.position.x, 1.0);
-  EXPECT_DOUBLE_EQ(m.pose.position.y, 2.0);
-  EXPECT_DOUBLE_EQ(m.pose.position.z, 5.0);  // 3 + 2 offset
-}
-
-// Test 8: create_autoware_geometry_marker_array with a vector of geometry_msgs::msg::Point
-// (both separate and not separate)
-TEST_F(MarkerConversionTest, CreateMarkerArrayGeometryPoints)
-{
-  using geometry_msgs::msg::Point;
-
-  std::vector<Point> test_vector;
-  test_vector.push_back(make_point_plain(1.0f, 2.0f, 3.0f));
-  test_vector.push_back(make_point_plain(0.0f, 4.0f, -1.0f));
-  test_vector.push_back(make_point_plain(3.0f, 3.0f, 1.0f));
-  test_vector.push_back(make_point_plain(4.0f, 1.0f, 0.0f));
-
-  bool false_separate = false;
-  auto marker_array = autoware::experimental::marker_utils::create_autoware_geometry_marker_array(
-    test_vector, now, "test_ns", 0, create_marker_scale(1.0, 1.0, 1.0), color_, false_separate);
-
-  EXPECT_EQ(marker_array.markers.size(), 1u);
-  auto marker = marker_array.markers[0];
-  expect_point_eq(marker.points[0], 1.0f, 2.0f, 3.0);
-  expect_point_eq(marker.points[1], 0.0f, 4.0f, -1.0f);
-  expect_point_eq(marker.points[2], 3.0f, 3.0f, 1.0f);
-  expect_point_eq(marker.points[3], 4.0f, 1.0f, 0.0f);
-
-  bool true_separate = true;
-  auto marker_array_separate =
-    autoware::experimental::marker_utils::create_autoware_geometry_marker_array(
-      test_vector, now, "test_ns", 0, create_marker_scale(1.0, 1.0, 1.0), color_, true_separate);
-
-  EXPECT_EQ(marker_array_separate.markers.size(), test_vector.size());
-  for (auto i = 0u; i < marker_array_separate.markers.size(); ++i) {
-    auto marker = marker_array_separate.markers[i];
-    expect_point_eq(marker.pose.position, test_vector[i].x, test_vector[i].y, test_vector[i].z);
-  }
-}
-
-// Test 9: create_autoware_geometry_marker_array with an arrow
-TEST_F(MarkerConversionTest, CreateMarkerArrayArrow)
-{
-  using geometry_msgs::msg::Point;
-
-  Point p_start = make_point_plain(0.0f, 0.0f, 0.0f);
-  Point p_end = make_point_plain(1.0f, 1.0f, 1.0f);
-
-  auto marker_array = autoware::experimental::marker_utils::create_autoware_geometry_marker_array(
-    p_start, p_end, now, "test_ns", 0, color_);
-
-  EXPECT_EQ(marker_array.markers.size(), 1u);
-  EXPECT_EQ(marker_array.markers[0].type, visualization_msgs::msg::Marker::ARROW);
-  expect_point_eq(marker_array.markers[0].points[0], 0.0f, 0.0f, 0.0f);
-  expect_point_eq(marker_array.markers[0].points[1], 1.0f, 1.0f, 1.0f);
-}
-
-// Test 10: create_autoware_geometry_marker_array with the pose (to create yaw line)
-TEST_F(MarkerConversionTest, CreateMarkerArrayYawLine)
-{
-  geometry_msgs::msg::Pose pose;
-
-  pose.position.x = 1.0;
-  pose.position.y = 2.0;
-  pose.position.z = 0.0;
-
-  const double yaw = tf2::getYaw(pose.orientation);
-
-  auto marker_array = autoware::experimental::marker_utils::create_autoware_geometry_marker_array(
-    pose, now, "test_ns", 0, create_marker_scale(1.0, 1.0, 0.1), color_);
-
-  EXPECT_EQ(marker_array.markers.size(), 1u);
-  auto marker_line = marker_array.markers[0];
-  EXPECT_EQ(marker_line.points.size(), 2u);
-  expect_point_eq(
-    marker_line.points[0], pose.position.x - 3 * std::sin(yaw), pose.position.y + 3 * std::cos(yaw),
-    pose.position.z);
-  expect_point_eq(
-    marker_line.points[1], pose.position.x + 3 * std::sin(yaw), pose.position.y - 3 * std::cos(yaw),
-    pose.position.z);
-}
-
-// Test 11: create_lanelet_linestring_marker
+// Test 9: create_lanelet_linestring_marker
 TEST_F(MarkerConversionTest, CreateLaneletLineStringMarker)
 {
   using lanelet::BasicLineString2d;
@@ -420,7 +322,7 @@ TEST_F(MarkerConversionTest, CreateLaneletLineStringMarker)
   expect_point_eq(marker.points[3], 1, 1, z);
 }
 
-// Test 12: one simple rectangular lanelet → one marker, closed ring
+// Test 10: one simple rectangular lanelet → one marker, closed ring
 TEST_F(MarkerConversionTest, CreateLaneletsMarkerArrayOne)
 {
   // build a 1×1 rectangular lanelet
@@ -452,7 +354,7 @@ TEST_F(MarkerConversionTest, CreateLaneletsMarkerArrayOne)
   EXPECT_DOUBLE_EQ(m_out.points.back().z, Z + 0.5);
 }
 
-// Test 13: create_autoware_geometry_marker_array with empty lanelet
+// Test 11: create_autoware_geometry_marker_array with empty lanelet
 TEST_F(MarkerConversionTest, EmptyLaneletsCustomNS)
 {
   lanelet::ConstLanelets empty;
@@ -462,7 +364,7 @@ TEST_F(MarkerConversionTest, EmptyLaneletsCustomNS)
   ASSERT_EQ(markers.markers.size(), 0u);
 }
 
-// Test 14: create_autoware_geometry_marker_array with lanelet as triangle marker array
+// Test 12: create_autoware_geometry_marker_array with lanelet as triangle marker array
 TEST_F(MarkerConversionTest, SingleLaneletClosedRing)
 {
   using lanelet::ConstLanelet;
@@ -486,7 +388,7 @@ TEST_F(MarkerConversionTest, SingleLaneletClosedRing)
   expect_point_eq(m.points.back(), poly.front().x(), poly.front().y(), 0.0);
 }
 
-// Test 15: create_lanelet_linestring_marker_array
+// Test 13: create_lanelet_linestring_marker_array
 TEST_F(MarkerConversionTest, CreateLaneletLineStringMarkerArray)
 {
   using autoware_utils_geometry::LineString2d;
@@ -527,7 +429,7 @@ TEST_F(MarkerConversionTest, CreateLaneletLineStringMarkerArray)
   expect_point_eq(marker3.points[2], 3, 3, z);
 }
 
-// Test 16: create_autoware_geometry_marker_array with lanelet as triangle marker array
+// Test 14: create_autoware_geometry_marker_array with lanelet as triangle marker array
 TEST_F(MarkerConversionTest, CreateLaneletPolygonMarkerArray)
 {
   lanelet::LineString3d ring{
@@ -561,7 +463,7 @@ TEST_F(MarkerConversionTest, CreateLaneletPolygonMarkerArray)
   EXPECT_EQ(marker.type, visualization_msgs::msg::Marker::LINE_STRIP);
 }
 
-// Test 17: confirm BasicPolygon2d convert to MarkerArray of one Marker at constant z + 0.5
+// Test 15: confirm BasicPolygon2d convert to MarkerArray of one Marker at constant z + 0.5
 TEST_F(MarkerConversionTest, OneBasicPolygon2d)
 {
   using lanelet::BasicPoint2d;
@@ -594,7 +496,7 @@ TEST_F(MarkerConversionTest, OneBasicPolygon2d)
   EXPECT_EQ(marker.type, Marker::LINE_STRIP);
 }
 
-// Test 18: create_lanelet_polygon_marker_array - empty BasicPolygons2d
+// Test 16: create_lanelet_polygon_marker_array - empty BasicPolygons2d
 TEST_F(MarkerConversionTest, EmptyBasicPolygons2d)
 {
   using visualization_msgs::msg::Marker;
@@ -605,7 +507,7 @@ TEST_F(MarkerConversionTest, EmptyBasicPolygons2d)
   ASSERT_EQ(marker_array.markers.size(), 0u);
 }
 
-// Test 19: create_lanelet_polygon_marker_array - BasicPolygons2d with LINE_LIST marker type
+// Test 17: create_lanelet_polygon_marker_array - BasicPolygons2d with LINE_LIST marker type
 TEST_F(MarkerConversionTest, BasicPolygons2dLINELIST)
 {
   using lanelet::BasicPoint2d;
@@ -642,7 +544,7 @@ TEST_F(MarkerConversionTest, BasicPolygons2dLINELIST)
   EXPECT_EQ(marker.type, Marker::LINE_LIST);
 }
 
-// Test 20: create_lanelet_polygon_marker_array - BasicPolygons2d with LINE_STRIP marker type
+// Test 18: create_lanelet_polygon_marker_array - BasicPolygons2d with LINE_STRIP marker type
 TEST_F(MarkerConversionTest, BasicPolygons2dLINESTRIP)
 {
   using lanelet::BasicPoint2d;
@@ -676,7 +578,7 @@ TEST_F(MarkerConversionTest, BasicPolygons2dLINESTRIP)
   EXPECT_EQ(marker.type, Marker::LINE_STRIP);
 }
 
-// Test 21: ensure PredictedObjects produce markers with correct id and pose
+// Test 19: ensure PredictedObjects produce markers with correct id and pose
 TEST_F(MarkerConversionTest, CreateObjectsMakerArray)
 {
   autoware_perception_msgs::msg::PredictedObjects objs;
@@ -703,7 +605,7 @@ TEST_F(MarkerConversionTest, CreateObjectsMakerArray)
   EXPECT_DOUBLE_EQ(m.pose.orientation.w, 1.0);
 }
 
-// Test 22: create_predicted_path_marker_array - empty
+// Test 20: create_predicted_path_marker_array - empty
 TEST_F(MarkerConversionTest, CreatePredictedPathMarkerArrayEmpty)
 {
   autoware_perception_msgs::msg::PredictedPath pp;
@@ -717,7 +619,7 @@ TEST_F(MarkerConversionTest, CreatePredictedPathMarkerArrayEmpty)
   EXPECT_TRUE(arr.markers.empty());
 }
 
-// Test 23: create_predicted_path_marker_array - one element
+// Test 21: create_predicted_path_marker_array - one element
 TEST_F(MarkerConversionTest, CreatePredictedPathMarkerArrayOne)
 {
   autoware_perception_msgs::msg::PredictedPath pp;
@@ -739,7 +641,7 @@ TEST_F(MarkerConversionTest, CreatePredictedPathMarkerArrayOne)
   EXPECT_EQ(m.points.size(), 5u);
 }
 
-// Test 24: create_path_with_lane_id_marker_array without text
+// Test 22: create_path_with_lane_id_marker_array without text
 TEST_F(MarkerConversionTest, CreatePathWithLaneIdMarkerArrayNoText)
 {
   autoware_internal_planning_msgs::msg::PathWithLaneId path;
@@ -758,7 +660,7 @@ TEST_F(MarkerConversionTest, CreatePathWithLaneIdMarkerArrayNoText)
   EXPECT_DOUBLE_EQ(m.pose.position.y, 0.0);
 }
 
-// Test 25: create_path_with_lane_id_marker_array with text
+// Test 23: create_path_with_lane_id_marker_array with text
 TEST_F(MarkerConversionTest, CreatePathWithLaneIdMarkerArrayWithText)
 {
   autoware_internal_planning_msgs::msg::PathWithLaneId path;
@@ -783,7 +685,7 @@ TEST_F(MarkerConversionTest, CreatePathWithLaneIdMarkerArrayWithText)
   EXPECT_TRUE(found_text);
 }
 
-// Test 26: create_vehicle_trajectory_point_marker_array
+// Test 24: create_vehicle_trajectory_point_marker_array
 TEST_F(MarkerConversionTest, CreateVehicleTrajectoryPointMarkerArray)
 {
   std::vector<autoware_planning_msgs::msg::TrajectoryPoint> traj(3);
@@ -805,7 +707,7 @@ TEST_F(MarkerConversionTest, CreateVehicleTrajectoryPointMarkerArray)
   }
 }
 
-// Test 27: confirm boost Polygon2d converts to marker at constant z height (LINE_STRIP)
+// Test 25: confirm boost Polygon2d converts to marker at constant z height (LINE_STRIP)
 TEST_F(MarkerConversionTest, CreateBoostPolygonMarkerLINESTRIP)
 {
   using autoware_utils_geometry::Point2d;
@@ -829,7 +731,7 @@ TEST_F(MarkerConversionTest, CreateBoostPolygonMarkerLINESTRIP)
   }
 }
 
-// Test 28: confirm boost Polygon2d converts to marker at constant z height (LINE_LIST)
+// Test 26: confirm boost Polygon2d converts to marker at constant z height (LINE_LIST)
 TEST_F(MarkerConversionTest, CreateBoostPolygonMarkerLINELIST)
 {
   using autoware_utils_geometry::Point2d;
@@ -855,7 +757,7 @@ TEST_F(MarkerConversionTest, CreateBoostPolygonMarkerLINELIST)
   }
 }
 
-// Test 29: create_linestring_marker
+// Test 27: create_autoware_geometry_marker
 TEST_F(MarkerConversionTest, CreateLineStringMarker)
 {
   using autoware_utils_geometry::Point2d;
@@ -863,7 +765,7 @@ TEST_F(MarkerConversionTest, CreateLineStringMarker)
   autoware_utils_geometry::LineString2d ls{{Point2d{0, 0}, Point2d{1, 0}, Point2d{1, 1}}};
 
   double z = 3;
-  auto marker = autoware::experimental::marker_utils::create_linestring_marker(
+  auto marker = autoware::experimental::marker_utils::create_autoware_geometry_marker(
     ls, now, "test_ns", 0, create_marker_scale(1.0, 1.0, 0.1), color_, z);
 
   ASSERT_EQ(marker.points.size(), 3u);
