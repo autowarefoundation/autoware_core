@@ -90,13 +90,13 @@ std::optional<RouteManager> RouteManager::create(
 }
 
 std::optional<RouteManager> RouteManager::update_current_pose(
-  const geometry_msgs::msg::Pose & current_pose, const double dist_threshold,
-  const double yaw_threshold, const double search_window) &&
+  const geometry_msgs::msg::Pose & current_pose, const double dist_threshold_soft,
+  const double yaw_threshold_soft, const double search_window) &&
 {
   const auto neighbors_seq = get_lanelet_sequence_on_route(search_window, search_window);
   const auto & neighbors = neighbors_seq.as_lanelets();
   if (const auto closest_lane = get_closest_lanelet_within_constraint(
-        neighbors, current_pose, dist_threshold, yaw_threshold);
+        neighbors, current_pose, dist_threshold_soft, yaw_threshold_soft);
       closest_lane) {
     return RouteManager(
       lanelet_map_ptr_, routing_graph_ptr_, traffic_rules_ptr_, std::move(all_route_lanelets_),
@@ -105,10 +105,21 @@ std::optional<RouteManager> RouteManager::update_current_pose(
       std::const_pointer_cast<lanelet::LaneletSubmap>(route_submap_ptr_),
       std::const_pointer_cast<lanelet::routing::RoutingGraph>(route_subgraph_ptr_));
   }
+  // NOTE(soblin): following line is possible during the execution/transition of
+  // swerving/lane_change
+  if (const auto closest_lane = get_closest_lanelet(neighbors, current_pose); closest_lane) {
+    return RouteManager(
+      lanelet_map_ptr_, routing_graph_ptr_, traffic_rules_ptr_, std::move(all_route_lanelets_),
+      std::move(all_route_length_cache_), std::move(preferred_lanelets_), start_lanelet_,
+      goal_lanelet_, current_pose, closest_lane.value(),
+      std::const_pointer_cast<lanelet::LaneletSubmap>(route_submap_ptr_),
+      std::const_pointer_cast<lanelet::routing::RoutingGraph>(route_subgraph_ptr_));
+  }
+  // this line is possible only when `neighbors` is empty, which is impossible
   return std::nullopt;
 }
 
-std::optional<RouteManager> RouteManager::update_current_pose_after_lane_change(
+std::optional<RouteManager> RouteManager::commit_lane_change_success(
   const geometry_msgs::msg::Pose & current_pose) &&
 {
   if (const auto closest_lane = get_closest_lanelet(all_route_lanelets_, current_pose);

@@ -24,9 +24,20 @@
 namespace autoware::experimental::lanelet2_utils
 {
 
+/**
+ * @brief returns the closest lanelet to `search_pose`. If several lanelets give zero
+ * distance(because `search_pose` is on those lanelets), the one that gives smallest yaw difference
+ * is returned
+ * @note if `search_pose` is on or within a Lanelet, the distance is zero
+ */
 std::optional<lanelet::ConstLanelet> get_closest_lanelet(
   const lanelet::ConstLanelets & lanelets, const geometry_msgs::msg::Pose & search_pose);
 
+/**
+ * @brief returns the closest(in 3d distance) lanelet to `search_pose` within `dist_threshold` and
+ * `yaw_threshold`
+ * @note if `search_pose` is on or within a Lanelet, the distance is zero
+ */
 std::optional<lanelet::ConstLanelet> get_closest_lanelet_within_constraint(
   const lanelet::ConstLanelets & lanelets, const geometry_msgs::msg::Pose & search_pose,
   const double dist_threshold = std::numeric_limits<double>::max(),
