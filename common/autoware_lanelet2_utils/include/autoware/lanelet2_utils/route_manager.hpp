@@ -41,6 +41,19 @@ namespace autoware::experimental::lanelet2_utils
 class RouteManager
 {
 public:
+  RouteManager(const RouteManager & other) = delete;
+  RouteManager & operator=(const RouteManager & other) = delete;
+
+  /**
+   * @brief move construct while keeping invariance
+   */
+  RouteManager(RouteManager && other) = default;
+
+  /**
+   * @brief move construct while keeping invariance
+   */
+  RouteManager & operator=(RouteManager && other) = default;
+
   /**
    * @brief create RouteManager
    * @param map_msg raw message
@@ -57,17 +70,17 @@ public:
   /**
    * @brief update current_pose only within forward/backward route lanelets, and return a new
    * RouteManager if current_pose is valid
-   * @param dist_threshold nearest_threshold for distance
-   * @param yaw_threshold nearest_threshold for orientation
-   * @param search_window [opt, 25] forward/backward length for search
+   * @param dist_threshold_soft soft constraint for distance from lanelet
+   * @param yaw_threshold_soft soft constraint for orientation from lanelet
+   * @param search_window [opt, 100] forward/backward length for search
    * @note this function updates current_route_lanelet along its LaneSequence. even if ego is
    * executing avoidance and deviates from reference path, this function tracks
    * current_route_lanelet without considering lane change
-   * @attention this can only be called against std::move(*this)
+   * @attention this can only be called against std::move(*this).
    */
   std::optional<RouteManager> update_current_pose(
-    const geometry_msgs::msg::Pose & current_pose, const double dist_threshold,
-    const double yaw_threshold, const double search_window = 25) &&;
+    const geometry_msgs::msg::Pose & current_pose, const double dist_threshold_soft,
+    const double yaw_threshold_soft, const double search_window = 100) &&;
 
   /**
    * @brief update current_pose against all route lanelets and return a new RouteManager if
@@ -76,7 +89,7 @@ public:
    * @note this functions is aimed to be used only when lane change has just completed
    * @attention this can only be called against std::move(*this)
    */
-  std::optional<RouteManager> update_current_pose_after_lane_change(
+  std::optional<RouteManager> commit_lane_change_success(
     const geometry_msgs::msg::Pose & current_pose) &&;
 
   /**
