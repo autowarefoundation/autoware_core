@@ -100,6 +100,24 @@ std::optional<lanelet::LineString3d> get_linestring_from_arc_length(
 std::optional<geometry_msgs::msg::Pose> get_pose_from_2d_arc_length(
   const lanelet::ConstLanelets & lanelet_sequence, const double s);
 
+/**
+ * @brief find the closest segment of the ConstLineString3d to the BasicPoint2d
+ * @param[in] search_pt query point
+ * @param[in] linestring linestring that want to find the closest segment
+ * @return closest segment of the line string to the query point
+ */
+std::optional<lanelet::ConstLineString3d> get_closest_segment(
+  const lanelet::BasicPoint2d & search_pt, const lanelet::ConstLineString3d & linestring);
+
+/**
+ * @brief find the angle of lanelet center line segment that is closest to search point
+ * @param[in] lanelet lanelet that want to find the angle of the closest centerline segment
+ * @param[in] search_pt query point
+ * @return angle of the center line of the closest lanelet segment
+ */
+double get_lanelet_angle(
+  const lanelet::ConstLanelet & lanelet, const geometry_msgs::msg::Point & search_pt);
+
 }  // namespace autoware::experimental::lanelet2_utils
 
 #endif  // AUTOWARE__LANELET2_UTILS__GEOMETRY_HPP_
