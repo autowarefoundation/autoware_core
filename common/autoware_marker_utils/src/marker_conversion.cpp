@@ -218,19 +218,13 @@ visualization_msgs::msg::MarkerArray create_geometry_msgs_marker_array(
   visualization_msgs::msg::Marker marker_line = create_default_marker(
     "map", stamp, ns + "_line", id, visualization_msgs::msg::Marker::LINE_STRIP, scale, color);
 
-  const double yaw = tf2::getYaw(pose.orientation);
-
-  const double a = 3.0;
-  geometry_msgs::msg::Point p0;
-  p0.x = pose.position.x - a * std::sin(yaw);
-  p0.y = pose.position.y + a * std::cos(yaw);
-  p0.z = pose.position.z;
+  constexpr double a = 3.0;
+  geometry_msgs::msg::Point p0 =
+    autoware_utils_geometry::calc_offset_pose(pose, 0.0, a, 0.0, 0.0).position;
   marker_line.points.push_back(p0);
 
-  geometry_msgs::msg::Point p1;
-  p1.x = pose.position.x + a * std::sin(yaw);
-  p1.y = pose.position.y - a * std::cos(yaw);
-  p1.z = pose.position.z;
+  geometry_msgs::msg::Point p1 =
+    autoware_utils_geometry::calc_offset_pose(pose, 0.0, -a, 0.0, 0.0).position;
   marker_line.points.push_back(p1);
 
   marker_array.markers.push_back(marker_line);
