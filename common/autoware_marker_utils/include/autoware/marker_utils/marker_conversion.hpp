@@ -89,7 +89,7 @@ visualization_msgs::msg::MarkerArray create_geometry_msgs_marker_array(
 
 /**
  * @brief create marker array from stop obstacle point
- * @param [in] stop_obstacle_point point of the stop obstacle
+ * @param [in] point point of the stop obstacle
  * @param [in] stamp time stamp of the marker
  * @param [in] ns namespace
  * @param [in] id id of the marker
@@ -99,9 +99,9 @@ visualization_msgs::msg::MarkerArray create_geometry_msgs_marker_array(
  * @return marker array of the stop obstacle point
  */
 visualization_msgs::msg::MarkerArray create_geometry_msgs_marker_array(
-  const geometry_msgs::msg::Point & stop_obstacle_point, const rclcpp::Time & stamp,
-  const std::string & ns, int32_t id, uint32_t marker_type,
-  const geometry_msgs::msg::Vector3 & scale, const std_msgs::msg::ColorRGBA & color);
+  const geometry_msgs::msg::Point & point, const rclcpp::Time & stamp, const std::string & ns,
+  int32_t id, uint32_t marker_type, const geometry_msgs::msg::Vector3 & scale,
+  const std_msgs::msg::ColorRGBA & color);
 
 /**
  * @brief create marker array from pose (drawing yaw line)
@@ -151,7 +151,7 @@ visualization_msgs::msg::MarkerArray create_autoware_geometry_marker_array(
 
 /**
  * @brief create marker array from boost MultiPolygon2d (Pull over area)
- * @param [in] area_polygon boost MultiPolygon2d
+ * @param [in] polygon boost MultiPolygon2d
  * @param [in] stamp time stamp of the marker
  * @param [in] ns namespace
  * @param [in] id id of the marker
@@ -162,7 +162,7 @@ visualization_msgs::msg::MarkerArray create_autoware_geometry_marker_array(
  * @return marker array of the boost MultiPolygon2d (Pull over area)
  */
 visualization_msgs::msg::MarkerArray create_autoware_geometry_marker_array(
-  const autoware_utils_geometry::MultiPolygon2d & area_polygons, const rclcpp::Time & stamp,
+  const autoware_utils_geometry::MultiPolygon2d & polygons, const rclcpp::Time & stamp,
   const std::string & ns, const int32_t & id, uint32_t marker_type,
   const geometry_msgs::msg::Vector3 & scale, const std_msgs::msg::ColorRGBA & color,
   double z = 0.0);
@@ -302,14 +302,14 @@ visualization_msgs::msg::MarkerArray create_path_with_lane_id_marker_array(
 
 /**
  * @brief create a vehicle trajectory point marker array object
- * @param [in] mpt_traj trajectory points to create markers from
+ * @param [in] trajectory trajectory points to create markers from
  * @param [in] vehicle_info vehicle information to calculate footprint
  * @param [in] ns namespace
  * @param [in] id id of the marker
  * @return visualization_msgs::msg::MarkerArray
  */
 visualization_msgs::msg::MarkerArray create_vehicle_trajectory_point_marker_array(
-  const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & mpt_traj,
+  const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & trajectory,
   const autoware::vehicle_info_utils::VehicleInfo & vehicle_info, const std::string & ns,
   const int32_t id);
 
