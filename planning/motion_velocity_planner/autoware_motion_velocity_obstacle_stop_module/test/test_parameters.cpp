@@ -14,14 +14,12 @@
 
 #include "parameters.hpp"
 
-#include <autoware_utils_rclcpp/parameter.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <gtest/gtest.h>
 
 #include <memory>
 #include <string>
-#include <vector>
 
 namespace autoware::motion_velocity_planner
 {
@@ -37,7 +35,12 @@ public:
 class GetObjectParameterTest : public ::testing::Test
 {
 protected:
-  void SetUp() override { node_ = std::make_shared<TestNode>(); }
+  void SetUp() override
+  {
+    rclcpp::init(0, nullptr);
+    node_ = std::make_shared<TestNode>();
+  }
+  void TearDown() override { rclcpp::shutdown(); }
 
   std::shared_ptr<TestNode> node_;
 };
