@@ -72,9 +72,8 @@ std::vector<TrajectoryPoint> decimate_trajectory_points_from_ego(
   const double ego_nearest_dist_threshold, const double ego_nearest_yaw_threshold,
   const double decimate_trajectory_step_length, const double goal_extended_trajectory_length);
 
-template <typename T>
-std::optional<T> get_obstacle_from_uuid(
-  const std::vector<T> & obstacles, const std::string & target_uuid)
+template <typename T, typename U>
+std::optional<T> get_obstacle_from_uuid(const std::vector<T> & obstacles, const U & target_uuid)
 {
   const auto itr = std::find_if(obstacles.begin(), obstacles.end(), [&](const auto & obstacle) {
     return obstacle.uuid == target_uuid;
