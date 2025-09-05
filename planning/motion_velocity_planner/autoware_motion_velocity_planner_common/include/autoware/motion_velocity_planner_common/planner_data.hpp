@@ -173,17 +173,36 @@ public:
     /**
      * @brief compute and the minimal distance to `decimated_traj_polys` by bg::distance and cache
      * the result
-     * @note is it really OK to cache the result if the object itself is also cached and used in
-     * next iteration ?
      */
     double get_dist_to_traj_poly(
       const std::vector<autoware_utils_geometry::Polygon2d> & decimated_traj_polys) const;
+
+    /**
+     * @brief compute the unsigned normal distance to `traj_points` from object's center
+     */
     double get_dist_to_traj_lateral(const std::vector<TrajectoryPoint> & traj_points) const;
+
+    /**
+     * @brief compute the longitudinal signed distance between ego-baselink and object-center along
+     * `traj_points`
+     */
     double get_dist_from_ego_longitudinal(
       const std::vector<TrajectoryPoint> & traj_points,
       const geometry_msgs::msg::Point & ego_pos) const;
+
+    /**
+     * @brief compute the tangent velocity of the object against `traj_points`
+     */
     double get_lon_vel_relative_to_traj(const std::vector<TrajectoryPoint> & traj_points) const;
+
+    /**
+     * @brief compute the "lateral approaching velocity" of the object. if the object velocity
+     * vector (in world frame) is directed to decrease lateral absolute distance to `traj_points`,
+     * it is positive. otherwise it is negative. more simply if the object is moving away from
+     * `traj_points` it is negative.
+     */
     double get_lat_vel_relative_to_traj(const std::vector<TrajectoryPoint> & traj_points) const;
+
     geometry_msgs::msg::Pose get_predicted_current_pose(
       const rclcpp::Time & current_stamp, const rclcpp::Time & predicted_objects_stamp) const;
     geometry_msgs::msg::Pose calc_predicted_pose(

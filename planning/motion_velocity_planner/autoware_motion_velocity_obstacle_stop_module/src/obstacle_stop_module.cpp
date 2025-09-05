@@ -682,9 +682,6 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
   // 2. filter by lateral distance
   // NOTE: max_lat_margin can be negative, so apply std::max with 1e-3.
   // dist_from_obj_poly_to_traj_poly: denotes the distance as is.
-  // object->get_lat_vel_relative_to_traj(traj_points): This is not the lateral velocity in the
-  // coordinate system. The sign has been manipulated so that it shows a positive value when
-  // approaching the path and a negative value when moving away from the path.
   if (
     std::max(filtering_params.lateral_margin.max_margin(vehicle_info), 1e-3) <=
     dist_from_obj_poly_to_traj_poly -
