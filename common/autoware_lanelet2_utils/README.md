@@ -184,3 +184,16 @@ By applying `lanelet_id_aligner.py`, the primitive ids are aligned to start from
 ```bash
 ros2 run autoware_lanelet2_utils lanelet_id_aligner.py <input_map.osm>
 ```
+
+## Tested case
+
+`test_data` contains test scene yaml files describing the context of unit tests. They can be visualized
+
+```bash
+ros2 run autoware_lanelet2_utils test_case_generator.py --view <file name>
+```
+
+| File                          | Tested specs                                                                                                                                                                                       | Image |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
+| `test_route_manager_001.yaml` | During lane change, `current_route_lanelet` is updated lonitudinally. To update `current_route_lanelet` after lane change `RouteManager::commit_lane_change` needs to be called                    |       |
+| `test_route_manager_002.yaml` | During swerving maneuver like parked vehicle avoidance, `RouteManager::commit_lane_change` is not expected to be called. So `current_pose` of `RouteManager` may not be on `current_route_lanelet` |       |
