@@ -24,6 +24,7 @@
   <test_depend>ament_cmake_ros</test_depend>
   <test_depend>ament_index_cpp</test_depend>
   <test_depend>autoware_pyplot</test_depend>
+  <test_depend>autoware_test_utils</test_depend>
   <test_depend>rclpy-message-converter</test_depend>
 
   <export>

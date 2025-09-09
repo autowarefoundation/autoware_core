@@ -142,6 +142,7 @@ LaneSequence RouteManager::get_lanelet_sequence_on_route(
   const double current_lane_entry_to_ego =
     lanelet::geometry::toArcCoordinates(current_lanelet_.centerline2d(), ego_position_2d).length;
   const double ego_to_current_lane_exit =
+    lanelet::geometry::length3d(current_lanelet_) -
     lanelet::geometry::toArcCoordinates(current_lanelet_.centerline2d(), ego_position_2d).length;
 
   lanelet::ConstLanelets sequence;
@@ -192,18 +193,27 @@ LaneSequence RouteManager::get_lanelet_sequence_outward_route(
   const double current_lane_entry_to_ego =
     lanelet::geometry::toArcCoordinates(current_lanelet_.centerline2d(), ego_position_2d).length;
   const double ego_to_current_lane_exit =
+    lanelet::geometry::length3d(current_lanelet_) -
     lanelet::geometry::toArcCoordinates(current_lanelet_.centerline2d(), ego_position_2d).length;
 
   lanelet::ConstLanelets sequence;
 
-  for (auto [acc_dist, prev_lanes] = std::make_tuple(
-         current_lane_entry_to_ego, route_subgraph_ptr_->previous(current_lanelet_));
+  const auto initial_previous_lanes = [&]() {
+    const auto route_prev_lanes = route_subgraph_ptr_->previous(current_lanelet_);
+    if (route_prev_lanes.empty()) {
+      const auto entire_prev_lanes = routing_graph_ptr_->previous(current_lanelet_);
+      return entire_prev_lanes;
+    }
+    return route_prev_lanes;
+  }();
+  for (auto [acc_dist, prev_lanes] =
+         std::make_tuple(current_lane_entry_to_ego, initial_previous_lanes);
        acc_dist < backward_length;) {
     if (prev_lanes.empty()) {
       break;
     }
 
-    const auto & prev_lane = prev_lanes.front();
+    const auto prev_lane = prev_lanes.front();
     if (const auto route_cache = all_route_length_cache_.find(prev_lane.id());
         route_cache != all_route_length_cache_.end()) {
       // traverse on route lanelets
@@ -211,6 +221,10 @@ LaneSequence RouteManager::get_lanelet_sequence_outward_route(
       acc_dist += route_cache->second;
       // continue search on route
       prev_lanes = route_subgraph_ptr_->previous(prev_lane);
+      if (prev_lanes.empty()) {
+        // this lane is the end of route lanes
+        prev_lanes = routing_graph_ptr_->previous(prev_lane);
+      }
     } else {
       // query outward route
       sequence.insert(sequence.begin(), prev_lane);
@@ -222,14 +236,21 @@ LaneSequence RouteManager::get_lanelet_sequence_outward_route(
 
   sequence.push_back(current_lanelet_);
 
-  for (auto [acc_dist, next_lanes] = std::make_tuple(
-         ego_to_current_lane_exit, route_subgraph_ptr_->following(current_lanelet_));
+  const auto initial_next_lanes = [&]() {
+    const auto route_next_lanes = route_subgraph_ptr_->following(current_lanelet_);
+    if (route_next_lanes.empty()) {
+      const auto entire_next_lanes = routing_graph_ptr_->following(current_lanelet_);
+      return entire_next_lanes;
+    }
+    return route_next_lanes;
+  }();
+  for (auto [acc_dist, next_lanes] = std::make_tuple(ego_to_current_lane_exit, initial_next_lanes);
        acc_dist < forward_length;) {
     if (next_lanes.empty()) {
       break;
     }
 
-    const auto & next_lane = next_lanes.front();
+    const auto next_lane = next_lanes.front();
     if (const auto route_cache = all_route_length_cache_.find(next_lane.id());
         route_cache != all_route_length_cache_.end()) {
       // traverse on route lanelets
@@ -237,6 +258,10 @@ LaneSequence RouteManager::get_lanelet_sequence_outward_route(
       acc_dist += route_cache->second;
       // continue search on route
       next_lanes = route_subgraph_ptr_->following(next_lane);
+      if (next_lanes.empty()) {
+        // this lane is the end of route lanes
+        next_lanes = routing_graph_ptr_->following(next_lane);
+      }
     } else {
       // query outward route
       sequence.push_back(next_lane);
