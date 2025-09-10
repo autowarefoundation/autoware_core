@@ -172,6 +172,13 @@ double get_dist_to_traj_poly(
   const geometry_msgs::msg::Point & point,
   const std::vector<autoware_utils::Polygon2d> & decimated_traj_polys);
 
+/*
+ * @brief return the  distance from `predicted_object` to `decimated_traj_polys`
+ */
+double calc_dist_to_traj_poly(
+  const autoware_perception_msgs::msg::PredictedObject & predicted_object,
+  const std::vector<autoware_utils_geometry::Polygon2d> & decimated_traj_polys);
+
 /**
  * @brief append the `input_points` up to `extend_length` every `step_length`, in the direction of
  * the last point of `input_points`, keeping its vel/acc
