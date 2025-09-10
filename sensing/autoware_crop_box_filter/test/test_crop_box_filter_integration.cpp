@@ -33,7 +33,7 @@ sensor_msgs::msg::PointCloud2 create_pointcloud2(std::vector<std::array<float, 3
   sensor_msgs::msg::PointCloud2 pointcloud;
   sensor_msgs::PointCloud2Modifier modifier(pointcloud);
 
-  // Create XYZIRC compatible pointcloud (minimum required fields)
+  // Create a PointCloud2 with XYZIRC fields (minimum required for this integration test)
   modifier.setPointCloud2Fields(
     6, "x", 1, sensor_msgs::msg::PointField::FLOAT32, "y", 1, sensor_msgs::msg::PointField::FLOAT32,
     "z", 1, sensor_msgs::msg::PointField::FLOAT32, "intensity", 1,
@@ -260,6 +260,13 @@ protected:
   sensor_msgs::msg::PointCloud2::SharedPtr received_pointcloud_;
 };
 
+/**
+ * @test
+ * @brief Integration test for CropBoxFilter with TF transform.
+ * 
+ * This test verifies that the CropBoxFilter correctly transforms and filters points
+ * in a PointCloud2 message when multiple TF transforms are present between input, base, and output frames.
+*/
 TEST_F(CropBoxFilterIntegrationTest, IntegrationTestWithTfTransform)
 {
   // Test points in sensor_frame coordinates
