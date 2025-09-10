@@ -263,10 +263,11 @@ protected:
 /**
  * @test
  * @brief Integration test for CropBoxFilter with TF transform.
- * 
+ *
  * This test verifies that the CropBoxFilter correctly transforms and filters points
- * in a PointCloud2 message when multiple TF transforms are present between input, base, and output frames.
-*/
+ * in a PointCloud2 message when multiple TF transforms are present between input, base, and output
+ * frames.
+ */
 TEST_F(CropBoxFilterIntegrationTest, IntegrationTestWithTfTransform)
 {
   // Test points in sensor_frame coordinates
