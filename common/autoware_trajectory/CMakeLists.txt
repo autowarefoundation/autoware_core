@@ -50,6 +50,7 @@ if(BUILD_TESTING)
 
   ament_add_ros_isolated_gtest(test_autoware_trajectory ${test_files})
 
+  ament_target_dependencies(test_autoware_trajectory ament_index_cpp)
   target_link_libraries(test_autoware_trajectory
     autoware_trajectory
     ${autoware_motion_utils_LIBRARIES}
