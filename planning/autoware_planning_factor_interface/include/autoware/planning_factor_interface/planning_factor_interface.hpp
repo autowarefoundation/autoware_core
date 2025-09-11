@@ -215,6 +215,11 @@ public:
     factors_.clear();
   }
 
+  /**
+   * @brief get the current factors (for test purpose).
+   */
+  std::vector<PlanningFactor> get_factors() const { return factors_; }
+
 private:
   /**
    * @brief Print message to console in YAML format
