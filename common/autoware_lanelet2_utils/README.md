@@ -195,5 +195,5 @@ ros2 run autoware_lanelet2_utils test_case_generator.py --view <file name>
 
 | File                          | Tested specs                                                                                                                                                                                       | Image |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
-| `test_route_manager_001.yaml` | During lane change, `current_route_lanelet` is updated lonitudinally. To update `current_route_lanelet` after lane change `RouteManager::commit_lane_change` needs to be called                    |       |
+| `test_route_manager_001.yaml` | During lane change, `current_route_lanelet` is updated lonitudinally. To update `current_route_lanelet` after lane change, `RouteManager::commit_lane_change` needs to be called                   |       |
 | `test_route_manager_002.yaml` | During swerving maneuver like parked vehicle avoidance, `RouteManager::commit_lane_change` is not expected to be called. So `current_pose` of `RouteManager` may not be on `current_route_lanelet` |       |

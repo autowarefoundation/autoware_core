@@ -115,7 +115,7 @@ std::optional<RouteManager> RouteManager::update_current_pose(
       std::const_pointer_cast<lanelet::LaneletSubmap>(route_submap_ptr_),
       std::const_pointer_cast<lanelet::routing::RoutingGraph>(route_subgraph_ptr_));
   }
-  // this line is possible only when `neighbors` is empty, which is impossible
+  // this line is possible only when `neighbors` is empty or ego position has suddenly jumped
   return std::nullopt;
 }
 
