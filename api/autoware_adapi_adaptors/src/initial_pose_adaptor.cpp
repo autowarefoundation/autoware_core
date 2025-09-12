@@ -43,7 +43,13 @@ InitialPoseAdaptor::InitialPoseAdaptor(const rclcpp::NodeOptions & options)
     std::bind(&InitialPoseAdaptor::on_initial_pose, this, std::placeholders::_1));
 
   cli_initialize_ =
-    create_client<Initialize::Service>(Initialize::name, rmw_qos_profile_services_default);
+    create_client<Initialize::Service>(Initialize::name, 
+#ifdef ROS_DISTRO_JAZZY
+      rclcpp::ServicesQoS()
+#else
+      rmw_qos_profile_services_default
+#endif
+    );
 }
 
 void InitialPoseAdaptor::on_initial_pose(const PoseWithCovarianceStamped::ConstSharedPtr msg)
