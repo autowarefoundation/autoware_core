@@ -1174,14 +1174,17 @@ std::optional<lanelet::ConstLanelet> RouteHandler::getRightLanelet(
   if (isShoulderLanelet(lanelet)) {
     const auto right_lanelets = lanelet_map_ptr_->laneletLayer.findUsages(lanelet.rightBound());
     for (const auto & right_lanelet : right_lanelets)
-      if (isRoadLanelet(right_lanelet)) return right_lanelet;
+      if (isRoadLanelet(right_lanelet) && lanelet.rightBound() == right_lanelet.leftBound())
+        return right_lanelet;
     return std::nullopt;
   }
 
   // right shoulder lanelet
   if (get_shoulder_lane) {
     const auto right_shoulder_lanelet = getRightShoulderLanelet(lanelet);
-    if (right_shoulder_lanelet) return *right_shoulder_lanelet;
+    if (right_shoulder_lanelet) {
+      return *right_shoulder_lanelet;
+    }
   }
 
   // routable lane
@@ -1209,7 +1212,9 @@ std::optional<lanelet::ConstLanelet> RouteHandler::getRightLanelet(
   lanelet::ConstLanelet next_lanelet;
   if (!getNextLaneletWithinRoute(lanelet, &next_lanelet)) {
     for (const auto & lane : getNextLanelets(prev_lanelet.front())) {
-      if (lanelet.rightBound().back().id() == lane.leftBound().back().id()) {
+      if (
+        lanelet.rightBound().back().id() == lane.leftBound().back().id() &&
+        lane.id() != lanelet.id()) {
         return lane;
       }
     }
@@ -1223,7 +1228,7 @@ std::optional<lanelet::ConstLanelet> RouteHandler::getRightLanelet(
 
   for (const auto & lane : getNextLanelets(prev_lanelet.front())) {
     for (const auto & target_lane : getNextLanelets(lane)) {
-      if (next_right_lane.value().id() == target_lane.id()) {
+      if (next_right_lane.value().id() == target_lane.id() && lane.id() != lanelet.id()) {
         return lane;
       }
     }
@@ -1240,14 +1245,17 @@ std::optional<lanelet::ConstLanelet> RouteHandler::getLeftLanelet(
   if (isShoulderLanelet(lanelet)) {
     const auto left_lanelets = lanelet_map_ptr_->laneletLayer.findUsages(lanelet.leftBound());
     for (const auto & left_lanelet : left_lanelets)
-      if (isRoadLanelet(left_lanelet)) return left_lanelet;
+      if (isRoadLanelet(left_lanelet) && lanelet.leftBound() == left_lanelet.rightBound())
+        return left_lanelet;
     return std::nullopt;
   }
 
   // left shoulder lanelet
   if (get_shoulder_lane) {
     const auto left_shoulder_lanelet = getLeftShoulderLanelet(lanelet);
-    if (left_shoulder_lanelet) return *left_shoulder_lanelet;
+    if (left_shoulder_lanelet) {
+      return *left_shoulder_lanelet;
+    }
   }
 
   // routable lane
@@ -1275,7 +1283,9 @@ std::optional<lanelet::ConstLanelet> RouteHandler::getLeftLanelet(
   lanelet::ConstLanelet next_lanelet;
   if (!getNextLaneletWithinRoute(lanelet, &next_lanelet)) {
     for (const auto & lane : getNextLanelets(prev_lanelet.front())) {
-      if (lanelet.leftBound().back().id() == lane.rightBound().back().id()) {
+      if (
+        lanelet.leftBound().back().id() == lane.rightBound().back().id() &&
+        lane.id() != lanelet.id()) {
         return lane;
       }
     }
@@ -1289,7 +1299,7 @@ std::optional<lanelet::ConstLanelet> RouteHandler::getLeftLanelet(
 
   for (const auto & lane : getNextLanelets(prev_lanelet.front())) {
     for (const auto & target_lane : getNextLanelets(lane)) {
-      if (next_left_lane.value().id() == target_lane.id()) {
+      if (next_left_lane.value().id() == target_lane.id() && lane.id() != lanelet.id()) {
         return lane;
       }
     }
