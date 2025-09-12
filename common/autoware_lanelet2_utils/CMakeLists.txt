@@ -31,6 +31,7 @@ if(BUILD_TESTING)
     test/hatched_road_marking.cpp
     test/conversion.cpp
     test/route_manager.cpp
+    test/nn_search.cpp
   )
 
   foreach (test_file IN LISTS test_files)

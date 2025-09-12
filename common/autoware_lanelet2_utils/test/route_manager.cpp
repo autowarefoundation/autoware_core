@@ -430,6 +430,7 @@ protected:
   geometry_msgs::msg::Pose P8;
 
   static constexpr double ego_nearest_dist_threshold = 3.0;
+  static constexpr double ego_nearest_dist_threshold_strict = 0.0;
   static constexpr double ego_nearest_yaw_threshold = 1.046;
 };
 
@@ -542,6 +543,115 @@ TEST_F(TestRouteManager002, current_pose_along_swerving)
   }
 }
 
+TEST_F(TestRouteManager002, current_pose_along_swerving_strict_dist_threshold)
+{
+  auto route_manager_opt =
+    lanelet2_utils::RouteManager::create(map_msg_, route_msg_, initial_pose_);
+  ASSERT_TRUE(route_manager_opt.has_value()) << "initialization of route_manager failed";
+
+  const auto initial_lanelet = route_manager_opt->current_lanelet();
+  ASSERT_EQ(initial_lanelet.id(), 2239);
+
+  {
+    route_manager_opt =
+      std::move(route_manager_opt.value())
+        .update_current_pose(P1, ego_nearest_dist_threshold_strict, ego_nearest_yaw_threshold);
+
+    ASSERT_TRUE(route_manager_opt.has_value());
+
+    const auto & route_manager = route_manager_opt.value();
+    const auto & current_lanelet = route_manager.current_lanelet();
+    ASSERT_EQ(current_lanelet.id(), 2239);
+  }
+
+  // begin swerving
+  {
+    route_manager_opt =
+      std::move(route_manager_opt.value())
+        .update_current_pose(P2, ego_nearest_dist_threshold_strict, ego_nearest_yaw_threshold);
+
+    ASSERT_TRUE(route_manager_opt.has_value());
+
+    const auto & route_manager = route_manager_opt.value();
+    const auto & current_lanelet = route_manager.current_lanelet();
+    ASSERT_EQ(current_lanelet.id(), 2239);
+  }
+
+  {
+    route_manager_opt =
+      std::move(route_manager_opt.value())
+        .update_current_pose(P3, ego_nearest_dist_threshold_strict, ego_nearest_yaw_threshold);
+
+    ASSERT_TRUE(route_manager_opt.has_value());
+
+    const auto & route_manager = route_manager_opt.value();
+    const auto & current_lanelet = route_manager.current_lanelet();
+    ASSERT_EQ(current_lanelet.id(), 2239);
+  }
+
+  // swerved to adjacent lane
+  {
+    route_manager_opt =
+      std::move(route_manager_opt.value())
+        .update_current_pose(P4, ego_nearest_dist_threshold_strict, ego_nearest_yaw_threshold);
+
+    ASSERT_TRUE(route_manager_opt.has_value());
+
+    const auto & route_manager = route_manager_opt.value();
+    const auto & current_lanelet = route_manager.current_lanelet();
+    ASSERT_EQ(current_lanelet.id(), 2239);
+  }
+
+  {
+    route_manager_opt =
+      std::move(route_manager_opt.value())
+        .update_current_pose(P5, ego_nearest_dist_threshold_strict, ego_nearest_yaw_threshold);
+
+    ASSERT_TRUE(route_manager_opt.has_value());
+
+    const auto & route_manager = route_manager_opt.value();
+    const auto & current_lanelet = route_manager.current_lanelet();
+    ASSERT_EQ(current_lanelet.id(), 2301);
+  }
+
+  // begin return
+  {
+    route_manager_opt =
+      std::move(route_manager_opt.value())
+        .update_current_pose(P6, ego_nearest_dist_threshold_strict, ego_nearest_yaw_threshold);
+
+    ASSERT_TRUE(route_manager_opt.has_value());
+
+    const auto & route_manager = route_manager_opt.value();
+    const auto & current_lanelet = route_manager.current_lanelet();
+    ASSERT_EQ(current_lanelet.id(), 2301);
+  }
+
+  {
+    route_manager_opt =
+      std::move(route_manager_opt.value())
+        .update_current_pose(P7, ego_nearest_dist_threshold_strict, ego_nearest_yaw_threshold);
+
+    ASSERT_TRUE(route_manager_opt.has_value());
+
+    const auto & route_manager = route_manager_opt.value();
+    const auto & current_lanelet = route_manager.current_lanelet();
+    ASSERT_EQ(current_lanelet.id(), 2301);
+  }
+
+  {
+    route_manager_opt =
+      std::move(route_manager_opt.value())
+        .update_current_pose(P8, ego_nearest_dist_threshold_strict, ego_nearest_yaw_threshold);
+
+    ASSERT_TRUE(route_manager_opt.has_value());
+
+    const auto & route_manager = route_manager_opt.value();
+    const auto & current_lanelet = route_manager.current_lanelet();
+    ASSERT_EQ(current_lanelet.id(), 2301);
+  }
+}
+
 class TestRouteManager003 : public ::testing::Test
 {
 protected:
@@ -560,18 +670,20 @@ protected:
       create_route_msg({{{2244, 2245, 2246, 2247}, 2245}, {{2265, 2261, 2262, 2263}, 2261}});
 
     initial_pose_ = test_case_data.manual_poses.at("P0");
+    P1 = test_case_data.manual_poses.at("P1");
   }
 
   autoware_map_msgs::msg::LaneletMapBin map_msg_;
   autoware_planning_msgs::msg::LaneletRoute route_msg_;
 
   geometry_msgs::msg::Pose initial_pose_;
+  geometry_msgs::msg::Pose P1;
 
   static constexpr double ego_nearest_dist_threshold = 3.0;
   static constexpr double ego_nearest_yaw_threshold = 1.046;
 };
 
-TEST_F(TestRouteManager003, current_pose_along_lane_changing_route)
+TEST_F(TestRouteManager003, get_lanelet_sequence_at_beginning_of_route)
 {
   auto route_manager_opt =
     lanelet2_utils::RouteManager::create(map_msg_, route_msg_, initial_pose_);
@@ -659,6 +771,48 @@ TEST_F(TestRouteManager003, current_pose_along_lane_changing_route)
       ASSERT_EQ(lane4.id(), 2261);
       ASSERT_EQ(lane5.id(), 2250);
     }
+  }
+}
+
+TEST_F(TestRouteManager003, get_lanelet_sequence_at_end_of_route)
+{
+  auto route_manager_opt = lanelet2_utils::RouteManager::create(map_msg_, route_msg_, P1);
+
+  ASSERT_TRUE(route_manager_opt.has_value());
+
+  const auto initial_lanelet = route_manager_opt->current_lanelet();
+  ASSERT_EQ(initial_lanelet.id(), 2261);
+
+  const auto & route_manager = route_manager_opt.value();
+
+  {
+    const auto seq = route_manager.get_lanelet_sequence_on_route(0.0, 0.0);
+    ASSERT_EQ(seq.as_lanelets().size(), 1)
+      << "if forward/backward length is 0, only current_route_lanelet is returned";
+    const auto lane = seq.as_lanelets().front();
+    ASSERT_EQ(lane.id(), 2261);
+  }
+
+  {
+    const auto seq = route_manager.get_lanelet_sequence_on_route(50.0, 50.0);
+    ASSERT_EQ(seq.as_lanelets().size(), 2);
+    const auto lane1 = seq.as_lanelets().front();
+    const auto lane2 = seq.as_lanelets().at(1);
+    ASSERT_EQ(lane1.id(), 2245);
+    ASSERT_EQ(lane2.id(), 2261);
+  }
+  // outward route
+  {
+    const auto seq = route_manager.get_lanelet_sequence_outward_route(50.0, 50.0);
+    ASSERT_EQ(seq.as_lanelets().size(), 4);
+    const auto lane1 = seq.as_lanelets().front();
+    const auto lane2 = seq.as_lanelets().at(1);
+    const auto lane3 = seq.as_lanelets().at(2);
+    const auto lane4 = seq.as_lanelets().at(3);
+    ASSERT_EQ(lane1.id(), 2302);
+    ASSERT_EQ(lane2.id(), 2245);
+    ASSERT_EQ(lane3.id(), 2261);
+    ASSERT_EQ(lane4.id(), 2250);
   }
 }
 

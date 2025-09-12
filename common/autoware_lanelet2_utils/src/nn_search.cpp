@@ -24,9 +24,9 @@
 
 #include <limits>
 #include <optional>
+#include <string>
 #include <utility>
 #include <vector>
-
 namespace autoware::experimental::lanelet2_utils
 {
 
