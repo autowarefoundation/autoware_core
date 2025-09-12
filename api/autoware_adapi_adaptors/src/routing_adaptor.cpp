@@ -34,11 +34,29 @@ RoutingAdaptor::RoutingAdaptor(const rclcpp::NodeOptions & options)
     "~/input/waypoint", 10, std::bind(&RoutingAdaptor::on_waypoint, this, _1));
 
   cli_reroute_ = create_client<ChangeRoutePoints::Service>(
-    ChangeRoutePoints::name, rmw_qos_profile_services_default);
+    ChangeRoutePoints::name, 
+#ifdef ROS_DISTRO_JAZZY
+    rclcpp::ServicesQoS()
+#else
+    rmw_qos_profile_services_default
+#endif
+  );
   cli_route_ =
-    create_client<SetRoutePoints::Service>(SetRoutePoints::name, rmw_qos_profile_services_default);
+    create_client<SetRoutePoints::Service>(SetRoutePoints::name, 
+#ifdef ROS_DISTRO_JAZZY
+    rclcpp::ServicesQoS()
+#else
+    rmw_qos_profile_services_default
+#endif
+  );
   cli_clear_ =
-    create_client<ClearRoute::Service>(ClearRoute::name, rmw_qos_profile_services_default);
+    create_client<ClearRoute::Service>(ClearRoute::name, 
+#ifdef ROS_DISTRO_JAZZY
+    rclcpp::ServicesQoS()
+#else
+    rmw_qos_profile_services_default
+#endif
+  );
 
   const auto state_qos = rclcpp::QoS{RouteState::depth}
                            .reliability(RouteState::reliability)
