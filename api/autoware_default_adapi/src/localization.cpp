@@ -37,7 +37,11 @@ LocalizationNode::LocalizationNode(const rclcpp::NodeOptions & options)
   srv_initialize_ = create_service<autoware::adapi_specs::localization::Initialize::Service>(
     autoware::adapi_specs::localization::Initialize::name,
     std::bind(&LocalizationNode::on_initialize, this, std::placeholders::_1, std::placeholders::_2),
+#ifdef ROS_DISTRO_JAZZY
+    rclcpp::ServicesQoS(), group_cli_);
+#else
     rmw_qos_profile_services_default, group_cli_);
+#endif
 
   // Component Interface
   sub_state_ = create_subscription<
