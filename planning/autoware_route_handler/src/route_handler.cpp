@@ -1174,27 +1174,28 @@ std::optional<lanelet::ConstLanelet> RouteHandler::getRightLanelet(
   if (isShoulderLanelet(lanelet)) {
     const auto right_lanelets = lanelet_map_ptr_->laneletLayer.findUsages(lanelet.rightBound());
     for (const auto & right_lanelet : right_lanelets)
-      if (isRoadLanelet(right_lanelet) && right_lanelet.id() != lanelet.id()) return right_lanelet;
+      if (isRoadLanelet(right_lanelet) && lanelet.rightBound() == right_lanelet.leftBound())
+        return right_lanelet;
     return std::nullopt;
   }
 
   // right shoulder lanelet
   if (get_shoulder_lane) {
     const auto right_shoulder_lanelet = getRightShoulderLanelet(lanelet);
-    if (right_shoulder_lanelet && right_shoulder_lanelet->id() != lanelet.id()) {
+    if (right_shoulder_lanelet) {
       return *right_shoulder_lanelet;
     }
   }
 
   // routable lane
   const auto & right_lane = routing_graph_ptr_->right(lanelet);
-  if (right_lane && right_lane->id() != lanelet.id()) {
+  if (right_lane) {
     return *right_lane;
   }
 
   // non-routable lane (e.g. lane change infeasible)
   const auto & adjacent_right_lane = routing_graph_ptr_->adjacentRight(lanelet);
-  if (adjacent_right_lane && adjacent_right_lane->id() != lanelet.id()) {
+  if (adjacent_right_lane) {
     return *adjacent_right_lane;
   }
 
@@ -1244,27 +1245,28 @@ std::optional<lanelet::ConstLanelet> RouteHandler::getLeftLanelet(
   if (isShoulderLanelet(lanelet)) {
     const auto left_lanelets = lanelet_map_ptr_->laneletLayer.findUsages(lanelet.leftBound());
     for (const auto & left_lanelet : left_lanelets)
-      if (isRoadLanelet(left_lanelet) && left_lanelet.id() != lanelet.id()) return left_lanelet;
+      if (isRoadLanelet(left_lanelet) && lanelet.leftBound() == left_lanelet.rightBound())
+        return left_lanelet;
     return std::nullopt;
   }
 
   // left shoulder lanelet
   if (get_shoulder_lane) {
     const auto left_shoulder_lanelet = getLeftShoulderLanelet(lanelet);
-    if (left_shoulder_lanelet && left_shoulder_lanelet->id() != lanelet.id()) {
+    if (left_shoulder_lanelet) {
       return *left_shoulder_lanelet;
     }
   }
 
   // routable lane
   const auto & left_lane = routing_graph_ptr_->left(lanelet);
-  if (left_lane && left_lane->id() != lanelet.id()) {
+  if (left_lane) {
     return *left_lane;
   }
 
   // non-routable lane (e.g. lane change infeasible)
   const auto & adjacent_left_lane = routing_graph_ptr_->adjacentLeft(lanelet);
-  if (adjacent_left_lane && adjacent_left_lane->id() != lanelet.id()) {
+  if (adjacent_left_lane) {
     return *adjacent_left_lane;
   }
 
