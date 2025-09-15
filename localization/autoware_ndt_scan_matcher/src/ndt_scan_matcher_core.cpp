@@ -18,6 +18,7 @@
 #include <autoware/ndt_scan_matcher/ndt_omp/estimate_covariance.hpp>
 #include <autoware/ndt_scan_matcher/ndt_scan_matcher_core.hpp>
 #include <autoware/ndt_scan_matcher/particle.hpp>
+#include <autoware/qos_utils/qos_compatibility.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_utils_pcl/transforms.hpp>
 
@@ -195,20 +196,12 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
       "ndt_align_srv",
       std::bind(
         &NDTScanMatcher::service_ndt_align, this, std::placeholders::_1, std::placeholders::_2),
-#ifdef ROS_DISTRO_JAZZY
-      rclcpp::ServicesQoS(), sensor_callback_group);
-#else
-      rclcpp::ServicesQoS().get_rmw_qos_profile(), sensor_callback_group);
-#endif
+      AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE(), sensor_callback_group);
   service_trigger_node_ = this->create_service<std_srvs::srv::SetBool>(
     "trigger_node_srv",
     std::bind(
       &NDTScanMatcher::service_trigger_node, this, std::placeholders::_1, std::placeholders::_2),
-#ifdef ROS_DISTRO_JAZZY
-    rclcpp::ServicesQoS(), sensor_callback_group);
-#else
-    rclcpp::ServicesQoS().get_rmw_qos_profile(), sensor_callback_group);
-#endif
+    AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE(), sensor_callback_group);
 
   ndt_ptr_->setParams(param_.ndt);
 
