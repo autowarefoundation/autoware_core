@@ -14,6 +14,7 @@
 
 #include "initial_pose_adaptor.hpp"
 
+#include <autoware/qos_utils/qos_compatibility.hpp>
 #include <memory>
 #include <string>
 #include <vector>
@@ -42,14 +43,9 @@ InitialPoseAdaptor::InitialPoseAdaptor(const rclcpp::NodeOptions & options)
     "~/initialpose", rclcpp::QoS(1),
     std::bind(&InitialPoseAdaptor::on_initial_pose, this, std::placeholders::_1));
 
-  cli_initialize_ =
-    create_client<Initialize::Service>(Initialize::name, 
-#ifdef ROS_DISTRO_JAZZY
-      rclcpp::ServicesQoS()
-#else
-      rmw_qos_profile_services_default
-#endif
-    );
+        cli_initialize_ =
+          create_client<Initialize::Service>(Initialize::name,
+            AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE());
 }
 
 void InitialPoseAdaptor::on_initial_pose(const PoseWithCovarianceStamped::ConstSharedPtr msg)
