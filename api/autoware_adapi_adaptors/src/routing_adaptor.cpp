@@ -14,6 +14,7 @@
 
 #include "routing_adaptor.hpp"
 
+#include <autoware/qos_utils/qos_compatibility.hpp>
 #include <memory>
 
 namespace autoware::adapi_adaptors
@@ -34,29 +35,14 @@ RoutingAdaptor::RoutingAdaptor(const rclcpp::NodeOptions & options)
     "~/input/waypoint", 10, std::bind(&RoutingAdaptor::on_waypoint, this, _1));
 
   cli_reroute_ = create_client<ChangeRoutePoints::Service>(
-    ChangeRoutePoints::name, 
-#ifdef ROS_DISTRO_JAZZY
-    rclcpp::ServicesQoS()
-#else
-    rmw_qos_profile_services_default
-#endif
-  );
+    ChangeRoutePoints::name,
+    AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE());
   cli_route_ =
-    create_client<SetRoutePoints::Service>(SetRoutePoints::name, 
-#ifdef ROS_DISTRO_JAZZY
-    rclcpp::ServicesQoS()
-#else
-    rmw_qos_profile_services_default
-#endif
-  );
+    create_client<SetRoutePoints::Service>(SetRoutePoints::name,
+    AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE());
   cli_clear_ =
-    create_client<ClearRoute::Service>(ClearRoute::name, 
-#ifdef ROS_DISTRO_JAZZY
-    rclcpp::ServicesQoS()
-#else
-    rmw_qos_profile_services_default
-#endif
-  );
+    create_client<ClearRoute::Service>(ClearRoute::name,
+    AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE());
 
   const auto state_qos = rclcpp::QoS{RouteState::depth}
                            .reliability(RouteState::reliability)

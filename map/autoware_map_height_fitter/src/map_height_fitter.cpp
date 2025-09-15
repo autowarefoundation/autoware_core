@@ -16,6 +16,7 @@
 
 #include <autoware_lanelet2_extension/utility/message_conversion.hpp>
 #include <autoware_lanelet2_extension/utility/query.hpp>
+#include <autoware/qos_utils/qos_compatibility.hpp>
 
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
 #include <autoware_map_msgs/srv/get_partial_point_cloud_map.hpp>
@@ -81,14 +82,10 @@ MapHeightFitter::Impl::Impl(rclcpp::Node * node) : tf2_listener_(tf2_buffer_), n
 
         if (partial_load) {
           group_ = node_->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
-          cli_pcd_map_ = node_->create_client<autoware_map_msgs::srv::GetPartialPointCloudMap>(
-            "~/partial_map_load", 
-#ifdef ROS_DISTRO_JAZZY
-            rclcpp::QoS(rclcpp::KeepLast(10)), 
-#else
-            rmw_qos_profile_default, 
-#endif
-            group_);
+        cli_pcd_map_ = node_->create_client<autoware_map_msgs::srv::GetPartialPointCloudMap>(
+          "~/partial_map_load",
+          AUTOWARE_DEFAULT_TOPIC_QOS_PROFILE(),
+          group_);
         } else {
           const auto durable_qos = rclcpp::QoS(1).transient_local();
           sub_pcd_map_ = node_->create_subscription<sensor_msgs::msg::PointCloud2>(
