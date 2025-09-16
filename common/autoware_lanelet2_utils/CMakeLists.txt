@@ -25,13 +25,15 @@ if(BUILD_TESTING)
   set(test_files
     test/kind.cpp
     test/topology.cpp
-    test/intersection.cpp
     test/stop_line.cpp
+    test/intersection.cpp
     test/geometry.cpp
     test/hatched_road_marking.cpp
     test/conversion.cpp
     test/route_manager.cpp
+    test/lane_sequence.cpp
     test/nn_search.cpp
+    test/route_manager.cpp
   )
 
   foreach (test_file IN LISTS test_files)
