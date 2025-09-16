@@ -237,13 +237,17 @@ MotionVelocityPlannerNode::process_no_ground_pointcloud(
     return std::nullopt;
   }
 
-  pcl::PointCloud<pcl::PointXYZ> pc;
-  pcl::fromROSMsg(*msg, pc);
+  pcl::PointCloud<pcl::PointXYZ> pc_input;
+  pcl::fromROSMsg(*msg, pc_input);
 
-  Eigen::Affine3f affine = tf2::transformToEigen(transform.transform).cast<float>();
-  pcl::PointCloud<pcl::PointXYZ>::Ptr pc_transformed(new pcl::PointCloud<pcl::PointXYZ>);
-  if (!pc.empty()) autoware_utils_pcl::transform_pointcloud(pc, *pc_transformed, affine);
-  return *pc_transformed;
+  const Eigen::Affine3f affine = tf2::transformToEigen(transform.transform).cast<float>();
+  pcl::PointCloud<pcl::PointXYZ> pc_transformed;
+  if (!pc_input.empty()) autoware_utils_pcl::transform_pointcloud(pc_input, pc_transformed, affine);
+
+  pc_transformed.header = pc_input.header;
+  pc_transformed.header.frame_id = "map";
+
+  return pc_transformed;
 }
 
 void MotionVelocityPlannerNode::set_velocity_smoother_params()
