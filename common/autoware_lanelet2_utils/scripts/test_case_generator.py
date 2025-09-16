@@ -80,16 +80,16 @@ class LaneletVisualizationHandler:
         self.lanelet_annot = self.ax.annotate(
             "",
             xy=(0, 0),
-            xytext=(10, 10),
-            textcoords="offset points",
-            bbox={"boxstyle": "round", "fc": "w"},
-            arrowprops={"arrowstyle": "->"},
+            xytext=(10, 10),  # cSpell:ignore xytext
+            textcoords="offset points",  # cSpell:ignore textcoords
+            bbox={"boxstyle": "round", "fc": "w"},  # cSpell:ignore boxstyle
+            arrowprops={"arrowstyle": "->"},  # cSpell:ignore arrowstyle, arrowprops
         )
         self.lanelet_annot.set_visible(False)
         self.fig.canvas.mpl_connect("motion_notify_event", self.hover_on_lanelet)
         for lanelet in lanelet_map.laneletLayer:
             self.draw_lanelet_as_polygon(lanelet)
-        self.ax.relim()
+        self.ax.relim()  # cSpell:ignore relim
         self.ax.autoscale_view()
 
     def draw_lanelet_as_polygon(self, lanelet):
@@ -287,7 +287,7 @@ class UserProvidedPointsHandler:
 
     def deactivate_button(self) -> None:
         self.button.label.set_text("Manual pose mode")
-        self.button.hovercolor = self.button.color = "gray"
+        self.button.hovercolor = self.button.color = "gray"  # cSpell:ignore hovercolor
         self.drawing_state = PoseArrowState()
         global shared_ctx
         shared_ctx.manual_poses = []
@@ -296,7 +296,7 @@ class UserProvidedPointsHandler:
         self.drawing_state.arrow_mode = not self.drawing_state.arrow_mode
         if self.drawing_state.arrow_mode:
             self.button.label.set_text("Drag to get pose / Press to clear")
-            self.button.hovercolor = self.button.color = "red"
+            self.button.hovercolor = self.button.color = "red"  # cSpell:ignore hovercolor
         else:
             self.deactivate_button()
         self.fig.canvas.draw()
@@ -334,7 +334,9 @@ def main():
     if args.generate:
         pkg_dir = Path(get_package_share_directory("autoware_lanelet2_utils"))
         sample_map_dir = pkg_dir / "sample_map"
-        map_path = filedialog.askopenfilenames(initialdir=sample_map_dir)[0]
+        map_path = filedialog.askopenfilenames(initialdir=sample_map_dir)[
+            0
+        ]  # cSpell:ignore initialdir
         map_rel_path = Path(map_path).relative_to(sample_map_dir)
 
         fig, ax = plt.subplots()
