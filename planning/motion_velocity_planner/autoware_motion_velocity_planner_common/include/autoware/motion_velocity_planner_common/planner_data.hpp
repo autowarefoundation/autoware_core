@@ -259,6 +259,29 @@ public:
       }
       return cluster_indices.value();
     };
+    pcl::PointCloud<pcl::PointXYZ> extract_clustered_points() const
+    {
+      const auto & clusters = get_cluster_indices();
+      const auto & source_cloud_ptr = get_filtered_pointcloud_ptr();
+
+      std::vector<int> combined_indices;
+      size_t total_points = 0;
+      for (const auto & cluster : clusters) {
+        total_points += cluster.indices.size();
+      }
+      combined_indices.reserve(total_points);
+
+      for (const auto & cluster : clusters) {
+        combined_indices.insert(
+          combined_indices.end(), cluster.indices.begin(), cluster.indices.end());
+      }
+
+      pcl::PointCloud<pcl::PointXYZ> extracted_cloud;
+      pcl::copyPointCloud(*source_cloud_ptr, combined_indices, extracted_cloud);
+
+      return extracted_cloud;
+    }
+
     PointcloudPreprocessParams preprocess_params_;
 
   private:

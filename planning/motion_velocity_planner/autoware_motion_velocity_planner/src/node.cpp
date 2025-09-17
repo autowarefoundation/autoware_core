@@ -92,6 +92,8 @@ MotionVelocityPlannerNode::MotionVelocityPlannerNode(const rclcpp::NodeOptions &
       "~/debug/processing_time_ms", 1);
   debug_viz_pub_ =
     this->create_publisher<visualization_msgs::msg::MarkerArray>("~/debug/markers", 1);
+  debug_processed_pointcloud_pub_ =
+    this->create_publisher<sensor_msgs::msg::PointCloud2>("~/debug/processed_pointcloud", 1);
 
   // Parameters
   smooth_velocity_before_planning_ = declare_parameter<bool>("smooth_velocity_before_planning");
@@ -334,6 +336,15 @@ void MotionVelocityPlannerNode::on_trajectory(
   lk.unlock();
 
   trajectory_pub_->publish(output_trajectory_msg);
+
+  if (planner_data_->no_ground_pointcloud.preprocess_params_.downsample_by_voxel_grid
+        .enable_downsample) {
+    sensor_msgs::msg::PointCloud2 output_pointcloud_msg;
+    pcl::toROSMsg(
+      planner_data_->no_ground_pointcloud.extract_clustered_points(), output_pointcloud_msg);
+    debug_processed_pointcloud_pub_->publish(output_pointcloud_msg);
+  }
+
   published_time_publisher_.publish_if_subscribed(
     trajectory_pub_, output_trajectory_msg.header.stamp);
   processing_times["Total"] = stop_watch.toc("Total");
