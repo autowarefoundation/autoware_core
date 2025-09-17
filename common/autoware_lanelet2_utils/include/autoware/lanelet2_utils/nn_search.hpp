@@ -15,12 +15,18 @@
 #ifndef AUTOWARE__LANELET2_UTILS__NN_SEARCH_HPP_
 #define AUTOWARE__LANELET2_UTILS__NN_SEARCH_HPP_
 
+#include <autoware_utils_geometry/boost_geometry.hpp>
+
 #include <geometry_msgs/msg/pose.hpp>
 
-#include <lanelet2_core/Forward.h>
+#include <boost/geometry/index/rtree.hpp>
+
+#include <lanelet2_core/primitives/Lanelet.h>
 
 #include <limits>
 #include <optional>
+#include <utility>
+
 namespace autoware::experimental::lanelet2_utils
 {
 
@@ -42,6 +48,26 @@ std::optional<lanelet::ConstLanelet> get_closest_lanelet_within_constraint(
   const lanelet::ConstLanelets & lanelets, const geometry_msgs::msg::Pose & search_pose,
   const double dist_threshold = std::numeric_limits<double>::max(),
   const double yaw_threshold = std::numeric_limits<double>::max());
+
+class LaneletRTree
+{
+public:
+  explicit LaneletRTree(const lanelet::ConstLanelets & lanelets);
+
+  std::optional<lanelet::ConstLanelet> get_closest_lanelet(
+    const geometry_msgs::msg::Point search_position) const;
+
+  std::optional<lanelet::ConstLanelet> get_closest_lanelet_within_constraint(
+    const geometry_msgs::msg::Pose & search_pose, const double dist_threshold,
+    const double yaw_threshold) const;
+
+private:
+  using Node = std::pair<autoware_utils_geometry::Box2d, size_t>;
+  using Rtree = boost::geometry::index::rtree<Node, boost::geometry::index::rstar<16>>;
+
+  lanelet::ConstLanelets lanelets_;
+  Rtree rtree_;
+};
 
 }  // namespace autoware::experimental::lanelet2_utils
 

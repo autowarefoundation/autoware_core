@@ -15,6 +15,7 @@
 #include <autoware/lanelet2_utils/nn_search.hpp>
 #include <autoware_lanelet2_extension/utility/utilities.hpp>
 #include <autoware_utils_math/normalization.hpp>
+#include <range/v3/view/enumerate.hpp>
 #include <tf2/utils.hpp>
 
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
@@ -27,6 +28,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+
 namespace autoware::experimental::lanelet2_utils
 {
 
@@ -147,4 +149,91 @@ std::optional<lanelet::ConstLanelet> get_closest_lanelet_within_constraint(
 
   return closest_lanelet;
 }
+
+LaneletRTree::LaneletRTree(const lanelet::ConstLanelets & lanelets) : lanelets_(lanelets)
+{
+  std::vector<Node> nodes;
+  nodes.reserve(lanelets.size());
+  for (const auto & [i, lanelet] : ranges::views::enumerate(lanelets)) {
+    nodes.emplace_back(
+      boost::geometry::return_envelope<autoware_utils_geometry::Box2d>(
+        lanelet.polygon2d().basicPolygon()),
+      i);
+  }
+  rtree_ = Rtree(nodes);
+}
+
+std::optional<lanelet::ConstLanelet> LaneletRTree::get_closest_lanelet(
+  const geometry_msgs::msg::Point search_position) const
+{
+  if (lanelets_.empty()) {
+    return std::nullopt;
+  }
+  const auto search_point = lanelet::BasicPoint2d(search_position.x, search_position.y);
+  const auto query_nearest = boost::geometry::index::nearest(search_point, lanelets_.size());
+
+  auto min_dist = std::numeric_limits<double>::max();
+  std::optional<size_t> nearest_id{std::nullopt};
+  for (auto query_it = rtree_.qbegin(query_nearest); query_it != rtree_.qend(); ++query_it) {
+    const auto approx_dist_to_lanelet =
+      boost::geometry::comparable_distance(search_point, query_it->first);
+    if (approx_dist_to_lanelet > min_dist && nearest_id) {
+      return lanelets_.at(nearest_id.value());
+    }
+    const auto dist = boost::geometry::comparable_distance(
+      search_point, lanelets_.at(query_it->second).polygon2d().basicPolygon());
+    if (dist < min_dist) {
+      nearest_id = query_it->second;
+    }
+  }
+  if (nearest_id) {
+    // this block is possible if all lanelets overalp at search_position, and they all give zero
+    // distance
+    return lanelets_.at(nearest_id.value());
+  }
+  return std::nullopt;
+}
+
+std::optional<lanelet::ConstLanelet> LaneletRTree::get_closest_lanelet_within_constraint(
+  const geometry_msgs::msg::Pose & search_pose, const double dist_threshold,
+  const double yaw_threshold) const
+{
+  const auto pose_yaw = tf2::getYaw(search_pose.orientation);
+  const auto search_point = lanelet::BasicPoint2d(search_pose.position.x, search_pose.position.y);
+  const auto query_nearest = boost::geometry::index::nearest(search_point, lanelets_.size());
+
+  auto min_dist = std::numeric_limits<double>::max();
+  auto min_angle_diff = std::numeric_limits<double>::max();
+  std::optional<size_t> optimal_id = 0;
+
+  for (auto query_it = rtree_.qbegin(query_nearest); query_it != rtree_.qend(); ++query_it) {
+    const auto approx_dist_to_lanelet =
+      boost::geometry::comparable_distance(search_point, query_it->first);
+    if (approx_dist_to_lanelet > min_dist || approx_dist_to_lanelet > dist_threshold) {
+      break;
+    }
+
+    const auto & lanelet = lanelets_.at(query_it->second);
+    const auto precise_dist =
+      boost::geometry::comparable_distance(search_point, lanelet.polygon2d().basicPolygon());
+    const auto lanelet_angle = lanelet::utils::getLaneletAngle(lanelet, search_pose.position);
+    const double angle_diff =
+      std::abs(autoware_utils_math::normalize_radian(lanelet_angle - pose_yaw));
+    if (precise_dist > dist_threshold || angle_diff > std::abs(yaw_threshold)) {
+      continue;
+    }
+    if (
+      precise_dist < min_dist || (precise_dist == min_dist /*nominally both 0.0 if they overlap */
+                                  && angle_diff < min_angle_diff)) {
+      min_dist = precise_dist;
+      min_angle_diff = angle_diff;
+      optimal_id = query_it->second;
+    }
+  }
+  if (optimal_id) {
+    return lanelets_.at(optimal_id.value());
+  }
+  return std::nullopt;
+}
+
 }  // namespace autoware::experimental::lanelet2_utils

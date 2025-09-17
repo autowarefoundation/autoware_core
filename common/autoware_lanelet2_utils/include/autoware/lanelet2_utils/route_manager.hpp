@@ -16,6 +16,7 @@
 #define AUTOWARE__LANELET2_UTILS__ROUTE_MANAGER_HPP_
 
 #include <autoware/lanelet2_utils/lane_sequence.hpp>
+#include <autoware/lanelet2_utils/nn_search.hpp>
 
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
 #include <autoware_planning_msgs/msg/lanelet_route.hpp>
@@ -121,6 +122,13 @@ public:
   LaneSequence get_lanelet_sequence_outward_route(
     const double forward_length, const double backward_length) const;
 
+  std::optional<lanelet::ConstLanelet> get_closest_preferred_route_lanelet(
+    const geometry_msgs::msg::Pose & search_pose) const;
+
+  std::optional<lanelet::ConstLanelet> get_closest_route_lanelet_within_constraints(
+    const geometry_msgs::msg::Pose & search_pose, const double dist_threshold,
+    const double yaw_threshold) const;
+
 private:
   RouteManager(
     lanelet::LaneletMapConstPtr lanelet_map_ptr,
@@ -139,7 +147,11 @@ private:
 
   lanelet::ConstLanelets all_route_lanelets_;  //<! all route lanelets, the order is not defined
   std::unordered_map<lanelet::Id, double> all_route_length_cache_{};
+  LaneletRTree route_rtree_;
+
   lanelet::ConstLanelets preferred_lanelets_;
+  LaneletRTree preferred_route_rtree_;
+
   lanelet::ConstLanelet start_lanelet_;
   lanelet::ConstLanelet goal_lanelet_;
 
@@ -148,6 +160,10 @@ private:
 
   lanelet::LaneletSubmapConstPtr route_submap_ptr_;
   lanelet::routing::RoutingGraphConstPtr route_subgraph_ptr_;
+
+  // TODO(soblin): road_shoulder
+
+  // TODO(soblin): bicycle_lane
 };
 
 }  // namespace autoware::experimental::lanelet2_utils

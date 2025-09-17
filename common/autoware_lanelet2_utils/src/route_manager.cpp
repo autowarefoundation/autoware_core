@@ -122,7 +122,7 @@ std::optional<RouteManager> RouteManager::update_current_pose(
 std::optional<RouteManager> RouteManager::commit_lane_change_success(
   const geometry_msgs::msg::Pose & current_pose) &&
 {
-  if (const auto closest_lane = get_closest_lanelet(all_route_lanelets_, current_pose);
+  if (const auto closest_lane = route_rtree_.get_closest_lanelet(current_pose.position);
       closest_lane) {
     return RouteManager(
       lanelet_map_ptr_, routing_graph_ptr_, traffic_rules_ptr_, std::move(all_route_lanelets_),
@@ -277,6 +277,20 @@ LaneSequence RouteManager::get_lanelet_sequence_outward_route(
   return LaneSequence(current_lanelet_);
 }
 
+std::optional<lanelet::ConstLanelet> RouteManager::get_closest_preferred_route_lanelet(
+  const geometry_msgs::msg::Pose & search_pose) const
+{
+  return preferred_route_rtree_.get_closest_lanelet(search_pose.position);
+}
+
+std::optional<lanelet::ConstLanelet> RouteManager::get_closest_route_lanelet_within_constraints(
+  const geometry_msgs::msg::Pose & search_pose, const double dist_threshold,
+  const double yaw_threshold) const
+{
+  return route_rtree_.get_closest_lanelet_within_constraint(
+    search_pose, dist_threshold, yaw_threshold);
+}
+
 RouteManager::RouteManager(
   lanelet::LaneletMapConstPtr lanelet_map_ptr,
   lanelet::routing::RoutingGraphConstPtr routing_graph_ptr,
@@ -292,7 +306,9 @@ RouteManager::RouteManager(
   traffic_rules_ptr_(traffic_rules_ptr),
   all_route_lanelets_(std::move(all_route_lanelets)),
   all_route_length_cache_(std::move(all_route_length_cache)),
+  route_rtree_(all_route_lanelets_),
   preferred_lanelets_(std::move(preferred_lanelets)),
+  preferred_route_rtree_(preferred_lanelets_),
   start_lanelet_(start_lanelet),
   goal_lanelet_(goal_lanelet),
   current_pose_(current_pose),
