@@ -345,7 +345,7 @@ void MotionVelocityPlannerNode::on_trajectory(
     pcl::toROSMsg(
       planner_data_->no_ground_pointcloud.extract_clustered_points(), output_pointcloud_msg);
     debug_processed_pointcloud_pub_->publish(output_pointcloud_msg);
-    processing_times["publish_down_sampled_point_cloud"] = stop_watch.toc(true);
+    processing_times["publish_down_sampled_pointcloud"] = stop_watch.toc(true);
   }
 
   published_time_publisher_.publish_if_subscribed(
