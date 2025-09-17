@@ -337,12 +337,15 @@ void MotionVelocityPlannerNode::on_trajectory(
 
   trajectory_pub_->publish(output_trajectory_msg);
 
-  if (planner_data_->no_ground_pointcloud.preprocess_params_.downsample_by_voxel_grid
-        .enable_downsample) {
+  if (
+    debug_processed_pointcloud_pub_->get_subscription_count() > 0 &&
+    planner_data_->no_ground_pointcloud.preprocess_params_.downsample_by_voxel_grid
+      .enable_downsample) {
     sensor_msgs::msg::PointCloud2 output_pointcloud_msg;
     pcl::toROSMsg(
       planner_data_->no_ground_pointcloud.extract_clustered_points(), output_pointcloud_msg);
     debug_processed_pointcloud_pub_->publish(output_pointcloud_msg);
+    processing_times["publish_down_sampled_point_cloud"] = stop_watch.toc(true);
   }
 
   published_time_publisher_.publish_if_subscribed(
