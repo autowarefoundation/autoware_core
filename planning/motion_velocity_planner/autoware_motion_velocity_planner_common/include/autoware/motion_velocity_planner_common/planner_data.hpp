@@ -259,6 +259,9 @@ public:
       }
       return cluster_indices.value();
     };
+    /*
+     * @brief extract points included in all clusters as a single pointcloud
+     */
     pcl::PointCloud<pcl::PointXYZ> extract_clustered_points() const
     {
       const auto & clusters = get_cluster_indices();
