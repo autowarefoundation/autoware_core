@@ -266,10 +266,9 @@ std::optional<lanelet::ConstPoint3d> get_border_point(
     return std::nullopt;
   }
 
-  return lanelet::utils::to3D(
-    lanelet::ConstPoint2d(
-      lanelet::InvalId,
-      {border_points.front().x(), border_points.front().y(), segment_across_border.back().z()}));
+  return lanelet::utils::to3D(lanelet::ConstPoint2d(
+    lanelet::InvalId,
+    {border_points.front().x(), border_points.front().y(), segment_across_border.back().z()}));
 }
 
 std::optional<double> get_first_intersection_arc_length(
