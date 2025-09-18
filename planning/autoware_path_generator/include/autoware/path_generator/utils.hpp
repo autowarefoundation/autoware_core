@@ -37,8 +37,9 @@ struct WaypointGroup
   {
     lanelet::ConstPoint3d point;
     lanelet::Id lane_id;
-    std::optional<lanelet::Id> next_lane_id = std::nullopt;
+    std::optional<lanelet::Id> next_lane_id = std::nullopt;  // this is for border point only
 
+    // ctor definition to avoid setting next_id mistakenly
     explicit Waypoint(const lanelet::ConstPoint3d & point, const lanelet::Id & lane_id)
     : point(point), lane_id(lane_id)
     {
