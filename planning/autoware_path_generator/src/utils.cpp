@@ -216,17 +216,15 @@ std::vector<WaypointGroup> get_waypoint_groups(
     if (waypoint_groups.empty() || start > waypoint_groups.back().interval.end) {
       // current waypoint group is not within interval of any other group, thus create a new group
       waypoint_groups.emplace_back().interval.start = start;
-    } else {
-      if (
-        const auto border_point = get_border_point(
-          lanelet::BasicLineString3d{
-            waypoint_groups.back().waypoints.back().point.basicPoint(),
-            waypoints.front().basicPoint()},
-          lanelet)) {
-        waypoint_groups.back().waypoints.emplace_back(
-          *border_point, waypoint_groups.back().waypoints.back().lane_id);
-        waypoint_groups.back().waypoints.back().next_lane_id = lanelet.id();
-      }
+    } else if (
+      const auto border_point = get_border_point(
+        lanelet::BasicLineString3d{
+          waypoint_groups.back().waypoints.back().point.basicPoint(),
+          waypoints.front().basicPoint()},
+        lanelet)) {
+      waypoint_groups.back().waypoints.emplace_back(
+        *border_point, waypoint_groups.back().waypoints.back().lane_id);
+      waypoint_groups.back().waypoints.back().next_lane_id = lanelet.id();
     }
 
     waypoint_groups.back().interval.end =
@@ -268,9 +266,10 @@ std::optional<lanelet::ConstPoint3d> get_border_point(
     return std::nullopt;
   }
 
-  return lanelet::utils::to3D(lanelet::ConstPoint2d(
-    border_lanelet.id(),
-    {border_points.front().x(), border_points.front().y(), segment_across_border.back().z()}));
+  return lanelet::utils::to3D(
+    lanelet::ConstPoint2d(
+      lanelet::InvalId,
+      {border_points.front().x(), border_points.front().y(), segment_across_border.back().z()}));
 }
 
 std::optional<double> get_first_intersection_arc_length(
