@@ -72,15 +72,16 @@ std::optional<Waypoints> get_user_defined_waypoint(
  * @return interval in s coordinate
  */
 Interval compute_smooth_interval(
-  const Waypoints & waypoints, const LaneletWithDistance & defined_lanelet_with_acc_dist,
+  const Waypoint & first_waypoint, const Waypoint & last_waypoint,
+  const LaneletWithDistance & defined_lanelet_with_acc_dist,
   const double connection_gradient_from_centerline)
 {
   const auto front_arc_coords = lanelet::geometry::toArcCoordinates(
-    defined_lanelet_with_acc_dist.element.centerline2d(), waypoints.front().point.basicPoint2d());
+    defined_lanelet_with_acc_dist.element.centerline2d(), first_waypoint.point.basicPoint2d());
   const auto start = defined_lanelet_with_acc_dist.distance + front_arc_coords.length -
                      connection_gradient_from_centerline * std::abs(front_arc_coords.distance);
   const auto back_arc_coords = lanelet::geometry::toArcCoordinates(
-    defined_lanelet_with_acc_dist.element.centerline2d(), waypoints.back().point.basicPoint2d());
+    defined_lanelet_with_acc_dist.element.centerline2d(), last_waypoint.point.basicPoint2d());
   const auto end = defined_lanelet_with_acc_dist.distance + back_arc_coords.length +
                    connection_gradient_from_centerline * std::abs(back_arc_coords.distance);
   return {start, end};
@@ -125,17 +126,35 @@ std::optional<lanelet::ConstPoint3d> get_border_point(
 void append_or_merge_waypoints_to_chunks(
   std::vector<WaypointsWithInterval> & waypoint_chunks, const Waypoints & waypoints,
   const LaneletWithDistance & defined_lanelet_with_acc_dist,
-  const lanelet::LaneletMapConstPtr & lanelet_map, const double connection_gradient_from_centerline)
+  const double connection_gradient_from_centerline)
 {
   if (waypoints.empty()) {
     return;
   }
 
+  // find points that belong to their defined lanelet
+  const auto is_waypoint_inside_lanelet = [&](const Waypoint & waypoint) {
+    return lanelet::geometry::inside(
+      defined_lanelet_with_acc_dist.element, waypoint.point.basicPoint2d());
+  };
+  const auto first_waypoint_inside_lanelet_it =
+    std::find_if(waypoints.begin(), waypoints.end(), is_waypoint_inside_lanelet);
+  const auto last_waypoint_inside_lanelet_it =
+    std::next(std::find_if(waypoints.rbegin(), waypoints.rend(), is_waypoint_inside_lanelet))
+      .base();
+  if (first_waypoint_inside_lanelet_it == waypoints.end()) {
+    // no waypoint inside lanelet, thus ignore this chunk
+    return;
+  }
+
   const auto interval = compute_smooth_interval(
-    waypoints, defined_lanelet_with_acc_dist, connection_gradient_from_centerline);
+    *first_waypoint_inside_lanelet_it, *last_waypoint_inside_lanelet_it,
+    defined_lanelet_with_acc_dist, connection_gradient_from_centerline);
   if (waypoint_chunks.empty() || interval.start > waypoint_chunks.back().interval.end) {
     // current waypoint chunk is not within interval of last chunk, thus create a new chunk
-    waypoint_chunks.push_back({waypoints, interval});
+    waypoint_chunks.push_back(
+      {std::vector(first_waypoint_inside_lanelet_it, std::next(last_waypoint_inside_lanelet_it)),
+       interval});
     return;
   }
 
@@ -145,28 +164,17 @@ void append_or_merge_waypoints_to_chunks(
   auto last_waypoint_chunk = std::move(waypoint_chunks.back());
   waypoint_chunks.pop_back();
 
-  // remove points that do not belong to their defined lanelet from last_waypoint_chunk
-  const auto last_waypoint_defined_lanelet =
-    lanelet_map->laneletLayer.get(last_waypoint_chunk.element.front().id);
-  last_waypoint_chunk.element.erase(
-    std::remove_if(
-      last_waypoint_chunk.element.begin(), last_waypoint_chunk.element.end(),
-      [&](const Waypoint & waypoint) {
-        return !lanelet::geometry::inside(
-          last_waypoint_defined_lanelet, waypoint.point.basicPoint2d());
-      }),
-    last_waypoint_chunk.element.end());
-  if (last_waypoint_chunk.element.empty()) {
-    return;
-  }
-
   // append border point before merging
   const lanelet::BasicLineString3d segment_across_border{
     last_waypoint_chunk.element.back().point.basicPoint(), waypoints.front().point.basicPoint()};
-  if (
-    const auto border_point =
-      get_border_point(segment_across_border, defined_lanelet_with_acc_dist.element)) {
-    if (!is_almost_same(last_waypoint_chunk.element.back().point, *border_point)) {
+  const auto border_point =
+    get_border_point(segment_across_border, defined_lanelet_with_acc_dist.element);
+  const auto skip_first =
+    !border_point &&
+    is_almost_same(last_waypoint_chunk.element.back().point, waypoints.front().point);
+
+  if (border_point || skip_first) {
+    if (border_point && !is_almost_same(last_waypoint_chunk.element.back().point, *border_point)) {
       last_waypoint_chunk.element.emplace_back(
         *border_point, last_waypoint_chunk.element.back().id);
     }
@@ -175,11 +183,11 @@ void append_or_merge_waypoints_to_chunks(
 
   // merge waypoints into last_waypoint_chunk
   last_waypoint_chunk.element.insert(
-    last_waypoint_chunk.element.end(), waypoints.begin(), waypoints.end());
-  const auto [_, end] = compute_smooth_interval(
-    waypoints, defined_lanelet_with_acc_dist, connection_gradient_from_centerline);
+    last_waypoint_chunk.element.end(),
+    skip_first ? std::next(first_waypoint_inside_lanelet_it) : first_waypoint_inside_lanelet_it,
+    std::next(last_waypoint_inside_lanelet_it));
   waypoint_chunks.push_back(
-    {last_waypoint_chunk.element, {last_waypoint_chunk.interval.start, end}});
+    {last_waypoint_chunk.element, {last_waypoint_chunk.interval.start, interval.end}});
 }
 
 /**
@@ -201,11 +209,13 @@ Waypoints merge_native_centerline_and_user_defined_waypoints(
   Waypoints merged_waypoints;
   const auto add_waypoints = [&](const Waypoints & waypoints) {
     for (const auto & waypoint : waypoints) {
-      if (!merged_waypoints.empty()) {
-        const auto & prev_waypoint = merged_waypoints.back();
-        if (is_almost_same(prev_waypoint.point, waypoint.point)) {
-          continue;
+      if (
+        !merged_waypoints.empty() &&
+        is_almost_same(merged_waypoints.back().point, waypoint.point)) {
+        if (waypoint.next_id) {
+          merged_waypoints.back().next_id = waypoint.next_id;
         }
+        continue;
       }
       merged_waypoints.push_back(waypoint);
     }
@@ -231,11 +241,28 @@ Waypoints merge_native_centerline_and_user_defined_waypoints(
 
       if (
         target_chunk_it == user_defined_waypoint_chunks.end() ||
-        (native_s < target_chunk_it->interval.start && target_chunk_it->interval.end <= native_s)) {
+        native_s < target_chunk_it->interval.start || target_chunk_it->interval.end <= native_s) {
         // native_s is out of interval of target_chunk
         if (is_in_chunk) {
           // native_s has passed interval of target_chunk, so set target_chunk to next one
           is_in_chunk = false;
+          if (target_chunk_it->element.back().id != lanelet_id && !merged_waypoints.empty()) {
+            // waypoints in target_chunk belong to previous lanelet, so add border point
+            const auto previous_lanelet_it = std::find_if(
+              lanelet_sequence_with_acc_dist.begin(), lanelet_it,
+              [target_chunk_it](const LaneletWithDistance & lanelet) {
+                return lanelet.element.id() == target_chunk_it->element.back().id;
+              });
+            if (previous_lanelet_it != lanelet_sequence_with_acc_dist.end()) {
+              const lanelet::BasicLineString3d segment_across_border{
+                target_chunk_it->element.back().point.basicPoint(), native_point_it->basicPoint()};
+              if (const auto border_point = get_border_point(segment_across_border, lanelet)) {
+                Waypoint border_waypoint{*border_point, previous_lanelet_it->element.id()};
+                border_waypoint.next_id = lanelet_id;
+                add_waypoints({border_waypoint});
+              }
+            }
+          }
           if (target_chunk_it != user_defined_waypoint_chunks.end()) {
             target_chunk_it++;
           }
@@ -246,7 +273,6 @@ Waypoints merge_native_centerline_and_user_defined_waypoints(
           // interpolation
           if (native_point_it != centerline.begin()) {
             add_waypoints({{*std::prev(native_point_it), lanelet_id}});
-
           } else if (lanelet_it != lanelet_sequence_with_acc_dist.begin()) {
             add_waypoints(
               {{std::prev(lanelet_it)->element.centerline().back(),
@@ -278,7 +304,7 @@ Waypoints merge_native_centerline_and_user_defined_waypoints(
         // waypoints in target_chunk belong to next lanelet, so add border point
         const auto next_lanelet_it = std::find_if(
           std::next(lanelet_it), lanelet_sequence_with_acc_dist.end(),
-          [&target_chunk_it](const LaneletWithDistance & lanelet) {
+          [target_chunk_it](const LaneletWithDistance & lanelet) {
             return lanelet.element.id() == target_chunk_it->element.front().id;
           });
         if (next_lanelet_it != lanelet_sequence_with_acc_dist.end()) {
@@ -288,10 +314,9 @@ Waypoints merge_native_centerline_and_user_defined_waypoints(
           if (
             const auto border_point =
               get_border_point(segment_across_border, next_lanelet_it->element)) {
-            if (!is_almost_same(merged_waypoints.back().point, *border_point)) {
-              merged_waypoints.emplace_back(*border_point, lanelet_id);
-            }
-            merged_waypoints.back().next_id = next_lanelet_it->element.id();
+            Waypoint border_waypoint{*border_point, lanelet_id};
+            border_waypoint.next_id = next_lanelet_it->element.id();
+            add_waypoints({border_waypoint});
           }
         }
       }
@@ -309,11 +334,9 @@ Waypoints merge_native_centerline_and_user_defined_waypoints(
     const lanelet::BasicLineString3d segment_across_border{
       centerline.back().basicPoint(), next_lanelet.centerline().front().basicPoint()};
     if (const auto border_point = get_border_point(segment_across_border, next_lanelet)) {
-      if (
-        merged_waypoints.empty() || !is_almost_same(merged_waypoints.back().point, *border_point)) {
-        merged_waypoints.emplace_back(*border_point, lanelet_id);
-      }
-      merged_waypoints.back().next_id = next_lanelet.id();
+      Waypoint border_waypoint{*border_point, lanelet_id};
+      border_waypoint.next_id = next_lanelet.id();
+      add_waypoints({border_waypoint});
     }
   }
 
@@ -424,7 +447,7 @@ build_reference_path(
   const double waypoint_connection_gradient_from_centerline)
 {
   const auto & lanelet_sequence = lanelet_sequence_with_interval.element;
-  const auto & interval = lanelet_sequence_with_interval.interval;
+  const auto & path_interval = lanelet_sequence_with_interval.interval;
 
   const auto lanelet_sequence_with_acc_dist = zip_accumulated_distance(lanelet_sequence);
 
@@ -434,13 +457,13 @@ build_reference_path(
       const auto user_defined_waypoint =
         get_user_defined_waypoint(lanelet_with_acc_dist.element, lanelet_map)) {
       append_or_merge_waypoints_to_chunks(
-        user_defined_waypoint_chunks, *user_defined_waypoint, lanelet_with_acc_dist, lanelet_map,
+        user_defined_waypoint_chunks, *user_defined_waypoint, lanelet_with_acc_dist,
         waypoint_connection_gradient_from_centerline);
     }
   }
 
   auto path_points = merge_native_centerline_and_user_defined_waypoints(
-    lanelet_sequence_with_acc_dist, user_defined_waypoint_chunks, interval);
+    lanelet_sequence_with_acc_dist, user_defined_waypoint_chunks, path_interval);
 
   std::sort(path_points.begin(), path_points.end(), [&](const Waypoint & a, const Waypoint & b) {
     return get_position_in_lanelet_sequence(lanelet_sequence_with_acc_dist, a) <
