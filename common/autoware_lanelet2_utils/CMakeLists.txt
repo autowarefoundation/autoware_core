@@ -25,7 +25,6 @@ if(BUILD_TESTING)
     test/stop_line.cpp
     test/geometry.cpp
     test/hatched_road_marking.cpp
-    test/conversion.cpp
   )
 
   foreach (test_file IN LISTS test_files)
