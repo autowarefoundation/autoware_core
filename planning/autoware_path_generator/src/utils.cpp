@@ -77,6 +77,7 @@ std::optional<lanelet::ConstLanelet> get_previous_lanelet_within_route(
   const lanelet::ConstLanelet & lanelet, const PlannerData & planner_data)
 {
   if (exists(planner_data.start_lanelets, lanelet)) {
+    // If the lanelet is a start lanelet, we cannot go backward
     return std::nullopt;
   }
 
@@ -85,6 +86,7 @@ std::optional<lanelet::ConstLanelet> get_previous_lanelet_within_route(
     return std::nullopt;
   }
 
+  // Pick the first lanelet that is part of the route
   const auto prev_lanelet_itr = std::find_if(
     prev_lanelets.cbegin(), prev_lanelets.cend(),
     [&](const lanelet::ConstLanelet & l) { return exists(planner_data.route_lanelets, l); });
@@ -102,6 +104,7 @@ std::optional<lanelet::ConstLanelet> get_next_lanelet_within_route(
   }
 
   if (exists(planner_data.goal_lanelets, lanelet)) {
+    // If the lanelet is a goal lanelet, we cannot go forward
     return std::nullopt;
   }
 
@@ -112,6 +115,7 @@ std::optional<lanelet::ConstLanelet> get_next_lanelet_within_route(
     return std::nullopt;
   }
 
+  // Pick the first lanelet that is part of the route and not in a loop
   const auto next_lanelet_itr = std::find_if(
     next_lanelets.cbegin(), next_lanelets.cend(),
     [&](const lanelet::ConstLanelet & l) { return exists(planner_data.route_lanelets, l); });
@@ -419,29 +423,34 @@ TurnIndicatorsCommand get_turn_signal(
   const lanelet::BasicPoint2d current_point{current_pose.position.x, current_pose.position.y};
   const auto base_search_distance = search_distance + current_vel * search_time;
 
-  std::vector<lanelet::Id> searched_lanelet_ids = {};
-  std::optional<double> arc_length_from_vehicle_front_to_lanelet_start = std::nullopt;
-
-  auto calc_arc_length =
+  const auto calc_arc_length =
     [&](const lanelet::ConstLanelet & lanelet, const lanelet::BasicPoint2d & point) -> double {
     return lanelet::geometry::toArcCoordinates(lanelet.centerline2d(), point).length;
   };
 
+  std::vector<lanelet::Id> searched_lanelet_ids = {};
+
+  // arc length from vehicle front to start of first lanelet with turn signal
+  std::optional<double> arc_length_from_vehicle_front_to_lanelet_start = std::nullopt;
+
   for (const auto & point : path.points) {
     for (const auto & lane_id : point.lane_ids) {
       if (exists(searched_lanelet_ids, lane_id)) {
+        // Skip already searched lanelets
         continue;
       }
       searched_lanelet_ids.push_back(lane_id);
 
       const auto lanelet = planner_data.lanelet_map_ptr->laneletLayer.get(lane_id);
       if (!get_next_lanelet_within_route(lanelet, planner_data)) {
+        // If lanelet is at end of route, no need to publish turn signal
         continue;
       }
 
       if (
         !arc_length_from_vehicle_front_to_lanelet_start &&
         !lanelet::geometry::inside(lanelet, current_point)) {
+        // Skip until we find first lanelet that contains current point
         continue;
       }
 
@@ -449,30 +458,37 @@ TurnIndicatorsCommand get_turn_signal(
         turn_signal.command =
           turn_signal_command_map.at(lanelet.attribute("turn_direction").value());
 
-        if (arc_length_from_vehicle_front_to_lanelet_start) {  // ego is in front of lanelet
+        if (arc_length_from_vehicle_front_to_lanelet_start) {
+          // Ego is in front of lanelet with turn signal
           if (
             *arc_length_from_vehicle_front_to_lanelet_start >
             lanelet.attributeOr("turn_signal_distance", base_search_distance)) {
+            // Ego is still too far from lanelet to publish turn signal
             turn_signal.command = TurnIndicatorsCommand::NO_COMMAND;
           }
           return turn_signal;
         }
 
-        // ego is inside lanelet
-        const auto required_end_point_opt =
+        // Ego is inside lanelet with turn signal
+        const auto required_end_point =
           get_turn_signal_required_end_point(lanelet, angle_threshold_deg);
-        if (!required_end_point_opt) continue;
+        if (!required_end_point) {
+          continue;
+        }
         if (
           calc_arc_length(lanelet, current_point) <=
-          calc_arc_length(lanelet, required_end_point_opt.value())) {
+          calc_arc_length(lanelet, *required_end_point)) {
+          // Ego is in front of required end point, so we continue to publish current turn signal
           return turn_signal;
         }
       }
 
       const auto lanelet_length = lanelet::utils::getLaneletLength2d(lanelet);
       if (arc_length_from_vehicle_front_to_lanelet_start) {
+        // Accumulate lanelet length
         *arc_length_from_vehicle_front_to_lanelet_start += lanelet_length;
       } else {
+        // Initialize arc length from vehicle front to lanelet start
         arc_length_from_vehicle_front_to_lanelet_start =
           lanelet_length - calc_arc_length(lanelet, current_point) - base_link_to_front;
       }
@@ -486,6 +502,7 @@ TurnIndicatorsCommand get_turn_signal(
 std::optional<lanelet::ConstPoint2d> get_turn_signal_required_end_point(
   const lanelet::ConstLanelet & lanelet, const double angle_threshold_deg)
 {
+  // Convert lanelet centerline to set of geometry_msgs::msg::Pose for autoware_trajectory
   std::vector<geometry_msgs::msg::Pose> centerline_poses(lanelet.centerline().size());
   std::transform(
     lanelet.centerline().begin(), lanelet.centerline().end(), centerline_poses.begin(),
@@ -495,8 +512,8 @@ std::optional<lanelet::ConstPoint2d> get_turn_signal_required_end_point(
       return pose;
     });
 
-  // NOTE: Trajectory does not support less than 4 points, so resample if less than 4.
-  //       This implementation should be replaced in the future
+  // Trajectory cannot be built from less than 4 points, so we resample centerline if necessary.
+  // This implementation should be replaced once pretty_build() supports geometry_msgs::msg::Pose.
   if (centerline_poses.size() < 4) {
     const auto lanelet_length = autoware::motion_utils::calcArcLength(centerline_poses);
     const auto resampling_interval = lanelet_length / 4.0;
@@ -513,25 +530,39 @@ std::optional<lanelet::ConstPoint2d> get_turn_signal_required_end_point(
     }
     centerline_poses =
       autoware::motion_utils::resamplePoseVector(centerline_poses, resampled_arclength);
-    if (centerline_poses.size() < 4) return std::nullopt;
+    if (centerline_poses.size() < 4) {
+      RCLCPP_ERROR(
+        rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+        "Failed to resample centerline");
+      return std::nullopt;
+    }
   }
 
+  // Build trajectory from centerline poses
   auto centerline =
     autoware::experimental::trajectory::Trajectory<geometry_msgs::msg::Pose>::Builder{}.build(
       centerline_poses);
-  if (!centerline) return std::nullopt;
+  if (!centerline) {
+    return std::nullopt;
+  }
   centerline->align_orientation_with_trajectory_direction();
 
+  // Find intervals where driving direction is close to terminal yaw by angle_threshold_deg
   const auto terminal_yaw = tf2::getYaw(centerline->compute(centerline->length()).orientation);
   const auto intervals = autoware::experimental::trajectory::find_intervals(
-    centerline.value(),
-    [terminal_yaw, angle_threshold_deg](const geometry_msgs::msg::Pose & point) {
+    *centerline, [terminal_yaw, angle_threshold_deg](const geometry_msgs::msg::Pose & point) {
       const auto yaw = tf2::getYaw(point.orientation);
-      return std::fabs(autoware_utils::normalize_radian(yaw - terminal_yaw)) <
+      return std::abs(autoware_utils::normalize_radian(yaw - terminal_yaw)) <
              autoware_utils::deg2rad(angle_threshold_deg);
     });
-  if (intervals.empty()) return std::nullopt;
+  if (intervals.empty()) {
+    RCLCPP_ERROR(
+      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+      "Failed to find intervals with driving direction close to terminal yaw");
+    return std::nullopt;
+  }
 
+  // Return first point where driving direction difference is below threshold as required end point
   return lanelet::utils::conversion::toLaneletPoint(
     centerline->compute(intervals.front().start).position);
 }
