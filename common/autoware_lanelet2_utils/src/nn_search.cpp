@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <autoware/lanelet2_utils/kind.hpp>
 #include <autoware/lanelet2_utils/nn_search.hpp>
 #include <autoware_lanelet2_extension/utility/utilities.hpp>
 #include <autoware_utils_math/normalization.hpp>
@@ -20,6 +21,7 @@
 
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
+#include <lanelet2_core/LaneletMap.h>
 #include <lanelet2_core/geometry/Lanelet.h>
 #include <lanelet2_core/primitives/Lanelet.h>
 
@@ -164,34 +166,31 @@ LaneletRTree::LaneletRTree(const lanelet::ConstLanelets & lanelets) : lanelets_(
 }
 
 std::optional<lanelet::ConstLanelet> LaneletRTree::get_closest_lanelet(
-  const geometry_msgs::msg::Point search_position) const
+  const geometry_msgs::msg::Pose search_pose) const
 {
   if (lanelets_.empty()) {
     return std::nullopt;
   }
-  const auto search_point = lanelet::BasicPoint2d(search_position.x, search_position.y);
+  const auto search_point = lanelet::BasicPoint2d(search_pose.position.x, search_pose.position.y);
   const auto query_nearest = boost::geometry::index::nearest(search_point, lanelets_.size());
 
   auto min_dist = std::numeric_limits<double>::max();
-  std::optional<size_t> nearest_id{std::nullopt};
+  lanelet::ConstLanelets candidates;
   for (auto query_it = rtree_.qbegin(query_nearest); query_it != rtree_.qend(); ++query_it) {
     const auto approx_dist_to_lanelet =
       boost::geometry::comparable_distance(search_point, query_it->first);
-    if (approx_dist_to_lanelet > min_dist && nearest_id) {
-      return lanelets_.at(nearest_id.value());
+    if (approx_dist_to_lanelet > min_dist) {
+      break;
     }
     const auto dist = boost::geometry::comparable_distance(
       search_point, lanelets_.at(query_it->second).polygon2d().basicPolygon());
-    if (dist < min_dist) {
-      nearest_id = query_it->second;
+    if (dist <= min_dist) {
+      // NOTE(soblin): if multiple lanelets overlap at same position, they all give zero distance
+      candidates.push_back(lanelets_.at(query_it->second));
+      min_dist = dist;
     }
   }
-  if (nearest_id) {
-    // this block is possible if all lanelets overalp at search_position, and they all give zero
-    // distance
-    return lanelets_.at(nearest_id.value());
-  }
-  return std::nullopt;
+  return autoware::experimental::lanelet2_utils::get_closest_lanelet(candidates, search_pose);
 }
 
 std::optional<lanelet::ConstLanelet> LaneletRTree::get_closest_lanelet_within_constraint(
@@ -234,6 +233,36 @@ std::optional<lanelet::ConstLanelet> LaneletRTree::get_closest_lanelet_within_co
     return lanelets_.at(optimal_id.value());
   }
   return std::nullopt;
+}
+
+lanelet::ConstLanelets get_road_lanelets_at(
+  const lanelet::LaneletMapConstPtr lanelet_map, const double x, const double y)
+{
+  const lanelet::BasicPoint2d p{x, y};
+
+  lanelet::ConstLanelets lanelets;
+  for (const auto & lanelet_at_pose : lanelet_map->laneletLayer.search(lanelet::BoundingBox2d{p})) {
+    // NOTE(soblin): for Point, we do not need bbox actually -- RTree returns no false positives
+    if (is_road_lane(lanelet_at_pose) && lanelet::geometry::inside(lanelet_at_pose, p)) {
+      lanelets.push_back(lanelet_at_pose);
+    }
+  }
+  return lanelets;
+}
+
+lanelet::ConstLanelets get_shoulder_lanelets_at(
+  const lanelet::LaneletMapConstPtr lanelet_map, const double x, const double y)
+{
+  const lanelet::BasicPoint2d p{x, y};
+
+  lanelet::ConstLanelets lanelets;
+  for (const auto & lanelet_at_pose : lanelet_map->laneletLayer.search(lanelet::BoundingBox2d{p})) {
+    // NOTE(soblin): for Point, we do not need bbox actually -- RTree returns no false positives
+    if (is_shoulder_lane(lanelet_at_pose) && lanelet::geometry::inside(lanelet_at_pose, p)) {
+      lanelets.push_back(lanelet_at_pose);
+    }
+  }
+  return lanelets;
 }
 
 }  // namespace autoware::experimental::lanelet2_utils

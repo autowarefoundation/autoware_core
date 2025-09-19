@@ -122,8 +122,7 @@ std::optional<RouteManager> RouteManager::update_current_pose(
 std::optional<RouteManager> RouteManager::commit_lane_change_success(
   const geometry_msgs::msg::Pose & current_pose) &&
 {
-  if (const auto closest_lane = route_rtree_.get_closest_lanelet(current_pose.position);
-      closest_lane) {
+  if (const auto closest_lane = route_rtree_.get_closest_lanelet(current_pose); closest_lane) {
     return RouteManager(
       lanelet_map_ptr_, routing_graph_ptr_, traffic_rules_ptr_, std::move(all_route_lanelets_),
       std::move(all_route_length_cache_), std::move(preferred_lanelets_), start_lanelet_,
@@ -157,6 +156,12 @@ LaneSequence RouteManager::get_lanelet_sequence_on_route(
 
     // on "route_subgraph_ptr" there should be only one prev_lane which is also a route
     const auto & prev_lane = prev_lanes.front();
+
+    // loop detected
+    if (lanelet::utils::contains(sequence, prev_lane)) {
+      break;
+    }
+
     sequence.insert(sequence.begin(), prev_lane);
     acc_dist += all_route_length_cache_.at(prev_lane.id());
     prev_lanes = route_subgraph_ptr_->previous(prev_lane);
@@ -174,6 +179,12 @@ LaneSequence RouteManager::get_lanelet_sequence_on_route(
 
     // on "route_subgraph_ptr" there should be only one next_lane which is also a route
     const auto & next_lane = next_lanes.front();
+
+    // loop detected
+    if (lanelet::utils::contains(sequence, next_lane)) {
+      break;
+    }
+
     sequence.push_back(next_lane);
     acc_dist += all_route_length_cache_.at(next_lane.id());
     next_lanes = route_subgraph_ptr_->following(next_lane);
@@ -214,6 +225,12 @@ LaneSequence RouteManager::get_lanelet_sequence_outward_route(
     }
 
     const auto prev_lane = prev_lanes.front();
+
+    // loop detected
+    if (lanelet::utils::contains(sequence, prev_lane)) {
+      break;
+    }
+
     if (const auto route_cache = all_route_length_cache_.find(prev_lane.id());
         route_cache != all_route_length_cache_.end()) {
       // traverse on route lanelets
@@ -251,6 +268,12 @@ LaneSequence RouteManager::get_lanelet_sequence_outward_route(
     }
 
     const auto next_lane = next_lanes.front();
+
+    // loop detected
+    if (lanelet::utils::contains(sequence, next_lane)) {
+      break;
+    }
+
     if (const auto route_cache = all_route_length_cache_.find(next_lane.id());
         route_cache != all_route_length_cache_.end()) {
       // traverse on route lanelets
@@ -280,7 +303,7 @@ LaneSequence RouteManager::get_lanelet_sequence_outward_route(
 std::optional<lanelet::ConstLanelet> RouteManager::get_closest_preferred_route_lanelet(
   const geometry_msgs::msg::Pose & search_pose) const
 {
-  return preferred_route_rtree_.get_closest_lanelet(search_pose.position);
+  return preferred_route_rtree_.get_closest_lanelet(search_pose);
 }
 
 std::optional<lanelet::ConstLanelet> RouteManager::get_closest_route_lanelet_within_constraints(
@@ -301,9 +324,7 @@ RouteManager::RouteManager(
   const lanelet::ConstLanelet & goal_lanelet, const geometry_msgs::msg::Pose & current_pose,
   const lanelet::ConstLanelet & current_lanelet, const lanelet::LaneletSubmapPtr route_submap_ptr,
   const lanelet::routing::RoutingGraphPtr route_subgraph_ptr)
-: lanelet_map_ptr_(lanelet_map_ptr),
-  routing_graph_ptr_(routing_graph_ptr),
-  traffic_rules_ptr_(traffic_rules_ptr),
+: MapHandler(lanelet_map_ptr, routing_graph_ptr, traffic_rules_ptr),
   all_route_lanelets_(std::move(all_route_lanelets)),
   all_route_length_cache_(std::move(all_route_length_cache)),
   route_rtree_(all_route_lanelets_),

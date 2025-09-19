@@ -49,13 +49,28 @@ std::optional<lanelet::ConstLanelet> get_closest_lanelet_within_constraint(
   const double dist_threshold = std::numeric_limits<double>::max(),
   const double yaw_threshold = std::numeric_limits<double>::max());
 
+/**
+ * @brief efficiently search all the lanelets containing given `point` using RTree
+ */
+lanelet::ConstLanelets get_road_lanelets_at(
+  const lanelet::LaneletMapConstPtr lanelet_map, const double x, const double y);
+
+/**
+ * @brief efficiently search all road_shoulder lanelets containing given `point` using RTree
+ */
+lanelet::ConstLanelets get_shoulder_lanelets_at(
+  const lanelet::LaneletMapConstPtr lanelet_map, const double x, const double y);
+
+/**
+ * @brief build RTree from given lanelets
+ */
 class LaneletRTree
 {
 public:
   explicit LaneletRTree(const lanelet::ConstLanelets & lanelets);
 
   std::optional<lanelet::ConstLanelet> get_closest_lanelet(
-    const geometry_msgs::msg::Point search_position) const;
+    const geometry_msgs::msg::Pose search_pose) const;
 
   std::optional<lanelet::ConstLanelet> get_closest_lanelet_within_constraint(
     const geometry_msgs::msg::Pose & search_pose, const double dist_threshold,
@@ -65,7 +80,7 @@ private:
   using Node = std::pair<autoware_utils_geometry::Box2d, size_t>;
   using Rtree = boost::geometry::index::rtree<Node, boost::geometry::index::rstar<16>>;
 
-  lanelet::ConstLanelets lanelets_;
+  lanelet::ConstLanelets lanelets_;  // TODO(soblin): reference_wrapper
   Rtree rtree_;
 };
 

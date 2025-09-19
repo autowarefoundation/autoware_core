@@ -93,13 +93,39 @@ class LaneletVisualizationHandler:
         self.ax.autoscale_view()
 
     def draw_lanelet_as_polygon(self, lanelet):
+        colormap = {
+            "road": "lightgray",
+            "road_shoulder": "darkgray",
+            "bicycle_lane": "steelblue",
+            "crosswalk": "darkgray",
+        }
+        subtype = lanelet.attributes["subtype"]
         left_boundary = lanelet.leftBound
         right_boundary = lanelet.rightBound
 
         left_points = [(pt.x, pt.y) for pt in left_boundary]
         right_points = [(pt.x, pt.y) for pt in reversed(right_boundary)]
         left_points.extend(right_points)
-        p = Polygon(left_points, closed=True, facecolor=None, edgecolor="k", alpha=0.8)
+        p = (
+            Polygon(
+                left_points,
+                closed=True,
+                facecolor=colormap[subtype],
+                edgecolor="k",
+                alpha=0.8,
+                hatch="//",
+                linewidth=0.5,
+            )
+            if subtype == "crosswalk"
+            else Polygon(
+                left_points,
+                closed=True,
+                facecolor=colormap[subtype],
+                edgecolor="black",
+                alpha=0.8,
+                linewidth=0.5,
+            )
+        )
         self.ax.add_patch(p)
         self.lanelet_polygon_patches.append((p, lanelet.id))
 

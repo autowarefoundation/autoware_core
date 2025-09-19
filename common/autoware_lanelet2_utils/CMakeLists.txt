@@ -14,6 +14,7 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/hatched_road_markings.cpp
   src/lane_sequence.cpp
   src/nn_search.cpp
+  src/map_handler.cpp
   src/route_manager.cpp
 )
 
@@ -33,6 +34,7 @@ if(BUILD_TESTING)
     test/route_manager.cpp
     test/lane_sequence.cpp
     test/nn_search.cpp
+    test/map_handler.cpp
     test/route_manager.cpp
   )
 

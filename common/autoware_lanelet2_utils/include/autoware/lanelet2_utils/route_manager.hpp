@@ -16,16 +16,14 @@
 #define AUTOWARE__LANELET2_UTILS__ROUTE_MANAGER_HPP_
 
 #include <autoware/lanelet2_utils/lane_sequence.hpp>
+#include <autoware/lanelet2_utils/map_handler.hpp>
 #include <autoware/lanelet2_utils/nn_search.hpp>
 
-#include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
 #include <autoware_planning_msgs/msg/lanelet_route.hpp>
 #include <geometry_msgs/msg/pose.hpp>
 
 #include <lanelet2_core/LaneletMap.h>
 #include <lanelet2_core/primitives/Lanelet.h>
-#include <lanelet2_routing/Forward.h>
-#include <lanelet2_traffic_rules/TrafficRules.h>
 
 #include <optional>
 #include <unordered_map>
@@ -39,9 +37,13 @@ namespace autoware::experimental::lanelet2_utils
  * @invariant current_pose IS ASSURED not to be necessarily inside current_lanelet, but to be
  * closest the current_lanelet, especially when ego is avoiding a parked vehicle
  */
-class RouteManager
+class RouteManager : public MapHandler
 {
 public:
+  /**
+   * \defgroup constructors
+   */
+  /** @{ */
   RouteManager(const RouteManager & other) = delete;
   RouteManager & operator=(const RouteManager & other) = delete;
 
@@ -55,6 +57,8 @@ public:
    */
   RouteManager & operator=(RouteManager && other) = default;
 
+  virtual ~RouteManager() = default;
+
   /**
    * @brief create RouteManager
    * @param map_msg raw message
@@ -67,7 +71,12 @@ public:
     const autoware_map_msgs::msg::LaneletMapBin & map_msg,
     const autoware_planning_msgs::msg::LaneletRoute & route_msg,
     const geometry_msgs::msg::Pose & initial_pose);
+  /*@}*/
 
+  /**
+   * \defgroup current_route_lanelet related operations
+   */
+  /** @{ */
   /**
    * @brief update current_pose only within forward/backward route lanelets, and return a new
    * RouteManager if current_pose is valid
@@ -121,6 +130,7 @@ public:
    */
   LaneSequence get_lanelet_sequence_outward_route(
     const double forward_length, const double backward_length) const;
+  /*@}*/
 
   std::optional<lanelet::ConstLanelet> get_closest_preferred_route_lanelet(
     const geometry_msgs::msg::Pose & search_pose) const;
@@ -141,10 +151,6 @@ private:
     const lanelet::ConstLanelet & current_lanelet, const lanelet::LaneletSubmapPtr route_submap_ptr,
     const lanelet::routing::RoutingGraphPtr route_subgraph_ptr);
 
-  lanelet::LaneletMapConstPtr lanelet_map_ptr_;
-  lanelet::routing::RoutingGraphConstPtr routing_graph_ptr_;
-  lanelet::traffic_rules::TrafficRulesPtr traffic_rules_ptr_;
-
   lanelet::ConstLanelets all_route_lanelets_;  //<! all route lanelets, the order is not defined
   std::unordered_map<lanelet::Id, double> all_route_length_cache_{};
   LaneletRTree route_rtree_;
@@ -160,10 +166,6 @@ private:
 
   lanelet::LaneletSubmapConstPtr route_submap_ptr_;
   lanelet::routing::RoutingGraphConstPtr route_subgraph_ptr_;
-
-  // TODO(soblin): road_shoulder
-
-  // TODO(soblin): bicycle_lane
 };
 
 }  // namespace autoware::experimental::lanelet2_utils
