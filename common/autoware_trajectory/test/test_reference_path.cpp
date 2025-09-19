@@ -168,18 +168,16 @@ TEST_P(TestCase_Map_Waypoint_Straight_00, test_path_validity)
       EXPECT_TRUE(
         autoware_utils_geometry::calc_distance3d(p1, p2) >=
         autoware::experimental::trajectory::k_points_minimum_dist_threshold);
-      EXPECT_TRUE(
-        boost::geometry::within(
-          lanelet::utils::to2D(lanelet::utils::conversion::toLaneletPoint(p2.point.pose.position)),
-          lanelet.polygon2d().basicPolygon()))
+      EXPECT_TRUE(boost::geometry::within(
+        lanelet::utils::to2D(lanelet::utils::conversion::toLaneletPoint(p2.point.pose.position)),
+        lanelet.polygon2d().basicPolygon()))
         << "point(" << p2.point.pose.position.x << ", " << p2.point.pose.position.y << ")";
       EXPECT_TRUE(
-        std::fabs(
-          autoware_utils_math::normalize_radian(
-            autoware_utils_geometry::calc_azimuth_angle(
-              p1.point.pose.position, p2.point.pose.position) -
-            autoware_utils_geometry::calc_azimuth_angle(
-              p2.point.pose.position, p3.point.pose.position))) < M_PI / 2.0);
+        std::fabs(autoware_utils_math::normalize_radian(
+          autoware_utils_geometry::calc_azimuth_angle(
+            p1.point.pose.position, p2.point.pose.position) -
+          autoware_utils_geometry::calc_azimuth_angle(
+            p2.point.pose.position, p3.point.pose.position))) < M_PI / 2.0);
     }
   } else {
     ASSERT_FALSE(reference_path_opt.has_value());
@@ -190,8 +188,8 @@ INSTANTIATE_TEST_SUITE_P(
   test_path_validity, TestCase_Map_Waypoint_Straight_00,
   ::testing::Values(  // enumerate values below
     Parameter_Map_Waypoint_Straight_00{
-      200,                   // [m]
-      0,                     // [m]
+      200,  // [m]
+      0,    // [m]
       10.0,
       {1043, 1047, 1049},    // ids
       1043,                  // id
@@ -203,8 +201,8 @@ INSTANTIATE_TEST_SUITE_P(
       200 * 0.9  // [m]
     },
     Parameter_Map_Waypoint_Straight_00{
-      200,                   // [m]
-      100,                   // [m]
+      200,  // [m]
+      100,  // [m]
       10.0,
       {1043, 1047, 1049},    // ids
       1043,                  // id
@@ -216,8 +214,8 @@ INSTANTIATE_TEST_SUITE_P(
       200 * 0.9  // [m]
     },
     Parameter_Map_Waypoint_Straight_00{
-      0,                     // [m]
-      0,                     // [m]
+      0,  // [m]
+      0,  // [m]
       10.0,
       {1043, 1047, 1049},    // ids
       1043,                  // id
@@ -229,8 +227,8 @@ INSTANTIATE_TEST_SUITE_P(
       0.0  // [m]
     },
     Parameter_Map_Waypoint_Straight_00{
-      inf,                   // [m]
-      inf,                   // [m]
+      inf,  // [m]
+      inf,  // [m]
       10.0,
       {1043, 1047, 1049},    // ids
       1043,                  // id
@@ -313,19 +311,17 @@ TEST_P(TestCase_Map_Waypoint_Curve_00, test_path_validity)
         autoware::experimental::trajectory::k_points_minimum_dist_threshold);
 
       // use p2, because p1/p3 at the end may well be slightly outside of the Lanelets by error
-      EXPECT_TRUE(
-        boost::geometry::within(
-          lanelet::utils::to2D(lanelet::utils::conversion::toLaneletPoint(p2.point.pose.position)),
-          lanelet.polygon2d().basicPolygon()))
+      EXPECT_TRUE(boost::geometry::within(
+        lanelet::utils::to2D(lanelet::utils::conversion::toLaneletPoint(p2.point.pose.position)),
+        lanelet.polygon2d().basicPolygon()))
         << "point(" << p2.point.pose.position.x << ", " << p2.point.pose.position.y << ")";
 
       EXPECT_TRUE(
-        std::fabs(
-          autoware_utils_math::normalize_radian(
-            autoware_utils_geometry::calc_azimuth_angle(
-              p1.point.pose.position, p2.point.pose.position) -
-            autoware_utils_geometry::calc_azimuth_angle(
-              p2.point.pose.position, p3.point.pose.position))) < M_PI / 2.0);
+        std::fabs(autoware_utils_math::normalize_radian(
+          autoware_utils_geometry::calc_azimuth_angle(
+            p1.point.pose.position, p2.point.pose.position) -
+          autoware_utils_geometry::calc_azimuth_angle(
+            p2.point.pose.position, p3.point.pose.position))) < M_PI / 2.0);
     }
   } else {
     ASSERT_FALSE(reference_path_opt.has_value());
@@ -527,19 +523,17 @@ TEST_P(TestCase_Map_Overlap_Lane_00, test_path_validity)
         autoware::experimental::trajectory::k_points_minimum_dist_threshold);
 
       // use p2, because p1/p3 at the end may well be slightly outside of the Lanelets by error
-      EXPECT_TRUE(
-        boost::geometry::within(
-          lanelet::utils::to2D(lanelet::utils::conversion::toLaneletPoint(p2.point.pose.position)),
-          lanelet.polygon2d().basicPolygon()))
+      EXPECT_TRUE(boost::geometry::within(
+        lanelet::utils::to2D(lanelet::utils::conversion::toLaneletPoint(p2.point.pose.position)),
+        lanelet.polygon2d().basicPolygon()))
         << "point(" << p2.point.pose.position.x << ", " << p2.point.pose.position.y << ")";
 
       EXPECT_TRUE(
-        std::fabs(
-          autoware_utils_math::normalize_radian(
-            autoware_utils_geometry::calc_azimuth_angle(
-              p1.point.pose.position, p2.point.pose.position) -
-            autoware_utils_geometry::calc_azimuth_angle(
-              p2.point.pose.position, p3.point.pose.position))) < M_PI / 2.0);
+        std::fabs(autoware_utils_math::normalize_radian(
+          autoware_utils_geometry::calc_azimuth_angle(
+            p1.point.pose.position, p2.point.pose.position) -
+          autoware_utils_geometry::calc_azimuth_angle(
+            p2.point.pose.position, p3.point.pose.position))) < M_PI / 2.0);
     }
   } else {
     ASSERT_FALSE(reference_path_opt.has_value());
