@@ -90,8 +90,6 @@ MotionVelocityPlannerNode::MotionVelocityPlannerNode(const rclcpp::NodeOptions &
   processing_time_publisher_ =
     this->create_publisher<autoware_internal_debug_msgs::msg::Float64Stamped>(
       "~/debug/processing_time_ms", 1);
-  debug_viz_pub_ =
-    this->create_publisher<visualization_msgs::msg::MarkerArray>("~/debug/markers", 1);
   debug_processed_pointcloud_pub_ =
     this->create_publisher<sensor_msgs::msg::PointCloud2>("~/debug/processed_pointcloud", 1);
 
