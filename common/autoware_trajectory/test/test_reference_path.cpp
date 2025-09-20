@@ -43,6 +43,41 @@ static constexpr auto inf = std::numeric_limits<double>::infinity();
 namespace autoware::experimental
 {
 
+namespace
+{
+std::optional<trajectory::Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>>
+build_reference_path(
+  const lanelet::ConstLanelets & lanelet_sequence, const lanelet::ConstLanelet & current_lanelet,
+  const geometry_msgs::msg::Pose & ego_pose, const lanelet::LaneletMapConstPtr lanelet_map,
+  const lanelet::routing::RoutingGraphConstPtr routing_graph,
+  lanelet::traffic_rules::TrafficRulesPtr traffic_rules, const double forward_length,
+  const double backward_length, const double waypoint_connection_gradient_from_centerline)
+{
+  const auto s_ego = trajectory::get_position_in_lanelet_sequence(
+    trajectory::zip_accumulated_distance(lanelet_sequence),
+    trajectory::Waypoint{
+      lanelet::utils::conversion::toLaneletPoint(ego_pose.position), current_lanelet.id()});
+  if (!s_ego) {
+    // ego is not in lanelet sequence
+    return std::nullopt;
+  }
+
+  const auto extended_lanelet_sequence_with_interval = trajectory::extend_lanelet_sequence(
+    lanelet_sequence, routing_graph, {*s_ego - backward_length, *s_ego + forward_length});
+
+  if (
+    extended_lanelet_sequence_with_interval.interval.end <=
+    extended_lanelet_sequence_with_interval.interval.start) {
+    // interval is invalid
+    return std::nullopt;
+  }
+
+  return trajectory::build_reference_path(
+    extended_lanelet_sequence_with_interval, lanelet_map, traffic_rules,
+    waypoint_connection_gradient_from_centerline);
+}
+}  // namespace
+
 template <typename Parameter>
 class TestCase : public ::testing::TestWithParam<Parameter>
 {
@@ -71,6 +106,7 @@ struct Parameter_Map_Waypoint_Straight_00  // NOLINT
   static constexpr const char * dir = "straight_waypoint";
   const double forward_length;
   const double backward_length;
+  const double waypoint_connection_gradient_from_centerline;
   const std::vector<lanelet::Id> route_lane_ids;
   const lanelet::Id current_lane_id;
   const double ego_x;
@@ -92,8 +128,8 @@ using TestCase_Map_Waypoint_Straight_00 = TestCase<Parameter_Map_Waypoint_Straig
 TEST_P(TestCase_Map_Waypoint_Straight_00, test_path_validity)
 {
   auto
-    [FORWARD_LENGTH, BACKWARD_LENGTH, ids, current_id, x, y, z, quat, expect_success,
-     expected_approximate_length_lower_bound] = GetParam();
+    [FORWARD_LENGTH, BACKWARD_LENGTH, WAYPOINT_CONNECTION_GRADIENT_FROM_CENTERLINE, ids, current_id,
+     x, y, z, quat, expect_success, expected_approximate_length_lower_bound] = GetParam();
 
   const auto lanelet_sequence =
     ids |
@@ -103,9 +139,10 @@ TEST_P(TestCase_Map_Waypoint_Straight_00, test_path_validity)
     geometry_msgs::build<geometry_msgs::msg::Pose>()
       .position(autoware_utils_geometry::create_point(x, y, z))
       .orientation(autoware_utils_geometry::create_quaternion(quat[0], quat[1], quat[2], quat[3]));
-  const auto reference_path_opt = trajectory::build_reference_path(
+  const auto reference_path_opt = build_reference_path(
     lanelet_sequence, lanelet_map_->laneletLayer.get(current_id), ego_pose, lanelet_map_,
-    routing_graph_, traffic_rules_, FORWARD_LENGTH, BACKWARD_LENGTH);
+    routing_graph_, traffic_rules_, FORWARD_LENGTH, BACKWARD_LENGTH,
+    WAYPOINT_CONNECTION_GRADIENT_FROM_CENTERLINE);
 
   if (expect_success) {
     ASSERT_TRUE(reference_path_opt.has_value());
@@ -151,8 +188,9 @@ INSTANTIATE_TEST_SUITE_P(
   test_path_validity, TestCase_Map_Waypoint_Straight_00,
   ::testing::Values(  // enumerate values below
     Parameter_Map_Waypoint_Straight_00{
-      200,                   // [m]
-      0,                     // [m]
+      200,  // [m]
+      0,    // [m]
+      10.0,
       {1043, 1047, 1049},    // ids
       1043,                  // id
       102,                   // x[m]
@@ -163,8 +201,9 @@ INSTANTIATE_TEST_SUITE_P(
       200 * 0.9  // [m]
     },
     Parameter_Map_Waypoint_Straight_00{
-      200,                   // [m]
-      100,                   // [m]
+      200,  // [m]
+      100,  // [m]
+      10.0,
       {1043, 1047, 1049},    // ids
       1043,                  // id
       102,                   // x[m]
@@ -175,8 +214,9 @@ INSTANTIATE_TEST_SUITE_P(
       200 * 0.9  // [m]
     },
     Parameter_Map_Waypoint_Straight_00{
-      0,                     // [m]
-      0,                     // [m]
+      0,  // [m]
+      0,  // [m]
+      10.0,
       {1043, 1047, 1049},    // ids
       1043,                  // id
       102,                   // x[m]
@@ -187,8 +227,9 @@ INSTANTIATE_TEST_SUITE_P(
       0.0  // [m]
     },
     Parameter_Map_Waypoint_Straight_00{
-      inf,                   // [m]
-      inf,                   // [m]
+      inf,  // [m]
+      inf,  // [m]
+      10.0,
       {1043, 1047, 1049},    // ids
       1043,                  // id
       102,                   // x[m]
@@ -206,6 +247,7 @@ struct Parameter_Map_Waypoint_Curve_00  // NOLINT
   static constexpr const char * dir = "dense_centerline";
   const double forward_length;
   const double backward_length;
+  const double waypoint_connection_gradient_from_centerline;
   const std::vector<lanelet::Id> route_lane_ids;
   const lanelet::Id current_lane_id;
   const double ego_x;
@@ -227,8 +269,8 @@ using TestCase_Map_Waypoint_Curve_00 = TestCase<Parameter_Map_Waypoint_Curve_00>
 TEST_P(TestCase_Map_Waypoint_Curve_00, test_path_validity)
 {
   auto
-    [FORWARD_LENGTH, BACKWARD_LENGTH, ids, current_id, x, y, z, quat, expect_success,
-     expected_approximate_length_lower_bound] = GetParam();
+    [FORWARD_LENGTH, BACKWARD_LENGTH, WAYPOINT_CONNECTION_GRADIENT_FROM_CENTERLINE, ids, current_id,
+     x, y, z, quat, expect_success, expected_approximate_length_lower_bound] = GetParam();
 
   const auto lanelet_sequence =
     ids |
@@ -238,9 +280,10 @@ TEST_P(TestCase_Map_Waypoint_Curve_00, test_path_validity)
     geometry_msgs::build<geometry_msgs::msg::Pose>()
       .position(autoware_utils_geometry::create_point(x, y, z))
       .orientation(autoware_utils_geometry::create_quaternion(quat[0], quat[1], quat[2], quat[3]));
-  const auto reference_path_opt = trajectory::build_reference_path(
+  const auto reference_path_opt = build_reference_path(
     lanelet_sequence, lanelet_map_->laneletLayer.get(current_id), ego_pose, lanelet_map_,
-    routing_graph_, traffic_rules_, FORWARD_LENGTH, BACKWARD_LENGTH);
+    routing_graph_, traffic_rules_, FORWARD_LENGTH, BACKWARD_LENGTH,
+    WAYPOINT_CONNECTION_GRADIENT_FROM_CENTERLINE);
 
   if (expect_success) {
     ASSERT_TRUE(reference_path_opt.has_value());
@@ -290,8 +333,9 @@ INSTANTIATE_TEST_SUITE_P(
   ::testing::Values(  // enumerate values below
                       // here are the cases where current_pose is on a normal lanelet
     Parameter_Map_Waypoint_Curve_00{
-      40,                              // [m]
-      0,                               // [m]
+      40,  // [m]
+      0,   // [m]
+      10.0,
       {140, 137, 136, 138, 139, 135},  // ids
       140,                             // id
       740,                             // x[m]
@@ -302,8 +346,9 @@ INSTANTIATE_TEST_SUITE_P(
       40 * 0.9  // [m]
     },
     Parameter_Map_Waypoint_Curve_00{
-      0,                               // [m]
-      6.5,                             // [m]
+      0,    // [m]
+      6.5,  // [m]
+      10.0,
       {140, 137, 136, 138, 139, 135},  // ids
       140,                             // id
       740,                             // x[m]
@@ -314,8 +359,9 @@ INSTANTIATE_TEST_SUITE_P(
       6.5 * 0.9  // [m]
     },
     Parameter_Map_Waypoint_Curve_00{
-      40,                              // [m]
-      6.5,                             // [m]
+      40,   // [m]
+      6.5,  // [m]
+      10.0,
       {140, 137, 136, 138, 139, 135},  // ids
       140,                             // id
       740,                             // x[m]
@@ -326,8 +372,9 @@ INSTANTIATE_TEST_SUITE_P(
       45 * 0.9  // [m]
     },
     Parameter_Map_Waypoint_Curve_00{
-      0,                               // [m]
-      0,                               // [m]
+      0,  // [m]
+      0,  // [m]
+      10.0,
       {140, 137, 136, 138, 139, 135},  // ids
       140,                             // id
       740,                             // x[m]
@@ -338,8 +385,9 @@ INSTANTIATE_TEST_SUITE_P(
       0.0  // [m]
     },
     Parameter_Map_Waypoint_Curve_00{
-      inf,                             // [m]
-      inf,                             // [m]
+      inf,  // [m]
+      inf,  // [m]
+      10.0,
       {140, 137, 136, 138, 139, 135},  // ids
       140,                             // id
       740,                             // x[m]
@@ -351,8 +399,9 @@ INSTANTIATE_TEST_SUITE_P(
     },
     // here are the cases where current_pose is just before a waypoint
     Parameter_Map_Waypoint_Curve_00{
-      40,                              // [m]
-      0,                               // [m]
+      40,  // [m]
+      0,   // [m]
+      10.0,
       {140, 137, 136, 138, 139, 135},  // ids
       137,                             // id
       735,                             // x[m]
@@ -363,8 +412,9 @@ INSTANTIATE_TEST_SUITE_P(
       40 * 0.9  // [m]
     },
     Parameter_Map_Waypoint_Curve_00{
-      0,                               // [m]
-      6.5,                             // [m]
+      0,    // [m]
+      6.5,  // [m]
+      10.0,
       {140, 137, 136, 138, 139, 135},  // ids
       137,                             // id
       735,                             // x[m]
@@ -375,8 +425,9 @@ INSTANTIATE_TEST_SUITE_P(
       6.5 * 0.9  // [m]
     },
     Parameter_Map_Waypoint_Curve_00{
-      40,                              // [m]
-      6.5,                             // [m]
+      40,   // [m]
+      6.5,  // [m]
+      10.0,
       {140, 137, 136, 138, 139, 135},  // ids
       137,                             // id
       735,                             // x[m]
@@ -394,6 +445,7 @@ struct Parameter_Map_Overlap_Lane_00  // NOLINT
   static constexpr const char * dir = "overlap";
   const double forward_length;
   const double backward_length;
+  const double waypoint_connection_gradient_from_centerline;
   const std::vector<lanelet::Id> route_lane_ids;
   const lanelet::Id current_lane_id;
   const double ego_x;
@@ -434,8 +486,9 @@ protected:
 
 TEST_P(TestCase_Map_Overlap_Lane_00, test_path_validity)
 {
-  auto [FORWARD_LENGTH, BACKWARD_LENGTH, ids, current_id, x, y, z, quat, expect_success] =
-    GetParam();
+  auto
+    [FORWARD_LENGTH, BACKWARD_LENGTH, WAYPOINT_CONNECTION_GRADIENT_FROM_CENTERLINE, ids, current_id,
+     x, y, z, quat, expect_success] = GetParam();
 
   const auto lanelet_sequence =
     ids |
@@ -445,9 +498,10 @@ TEST_P(TestCase_Map_Overlap_Lane_00, test_path_validity)
     geometry_msgs::build<geometry_msgs::msg::Pose>()
       .position(autoware_utils_geometry::create_point(x, y, z))
       .orientation(autoware_utils_geometry::create_quaternion(quat[0], quat[1], quat[2], quat[3]));
-  const auto reference_path_opt = trajectory::build_reference_path(
+  const auto reference_path_opt = build_reference_path(
     lanelet_sequence, lanelet_map_->laneletLayer.get(current_id), ego_pose, lanelet_map_,
-    routing_graph_, traffic_rules_, FORWARD_LENGTH, BACKWARD_LENGTH);
+    routing_graph_, traffic_rules_, FORWARD_LENGTH, BACKWARD_LENGTH,
+    WAYPOINT_CONNECTION_GRADIENT_FROM_CENTERLINE);
 
   if (expect_success) {
     ASSERT_TRUE(reference_path_opt.has_value());
