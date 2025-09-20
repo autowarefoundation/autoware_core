@@ -73,10 +73,11 @@ double convert_height(
     return it->second(height, latitude, longitude);
   }
 
-  throw std::invalid_argument(std::string{"Invalid conversion types: "}
-                                .append(source_vertical_datum)
-                                .append(" to ")
-                                .append(target_vertical_datum));
+  throw std::invalid_argument(
+    std::string{"Invalid conversion types: "}
+      .append(source_vertical_datum)
+      .append(" to ")
+      .append(target_vertical_datum));
 }
 
 }  // namespace autoware::geography_utils

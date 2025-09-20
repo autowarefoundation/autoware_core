@@ -109,12 +109,15 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr crop_by_monolithic_trajectory_polygon(
     lowest_traj_height = std::min(lowest_traj_height, trajectory_point.pose.position.z);
     highest_traj_height = std::max(highest_traj_height, trajectory_point.pose.position.z);
   }
-  crop_filter.setMin(Eigen::Vector4f(
-    x_min, y_min, lowest_traj_height - filter_by_trajectory_param.height_margin, 1.0f));
-  crop_filter.setMax(Eigen::Vector4f(
-    x_max, y_max,
-    highest_traj_height + vehicle_info.vehicle_height_m + filter_by_trajectory_param.height_margin,
-    1.0f));
+  crop_filter.setMin(
+    Eigen::Vector4f(
+      x_min, y_min, lowest_traj_height - filter_by_trajectory_param.height_margin, 1.0f));
+  crop_filter.setMax(
+    Eigen::Vector4f(
+      x_max, y_max,
+      highest_traj_height + vehicle_info.vehicle_height_m +
+        filter_by_trajectory_param.height_margin,
+      1.0f));
 
   auto ret_pointcloud_ptr = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
   crop_filter.filter(*ret_pointcloud_ptr);
