@@ -55,9 +55,10 @@ std::vector<int64_t> LaneIdsInterpolator::compute_impl(const double s) const
   }  // If both are single or both are multiple, choose the closest one
   const double left_distance = s - this->bases_[idx];
   const double right_distance = this->bases_[idx + 1] - s;
-  
+
   // Create a copy to avoid potential compiler optimization issues
-  const std::vector<int64_t> & chosen_value = (left_distance <= right_distance) ? left_value : right_value;
+  const std::vector<int64_t> & chosen_value =
+    (left_distance <= right_distance) ? left_value : right_value;
   std::vector<int64_t> result;
   result.reserve(chosen_value.size());
   result.assign(chosen_value.begin(), chosen_value.end());
