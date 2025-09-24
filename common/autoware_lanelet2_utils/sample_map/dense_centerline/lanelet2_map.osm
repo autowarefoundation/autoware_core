@@ -684,14 +684,14 @@
     <nd ref="117" />
     <nd ref="108" />
     <nd ref="115" />
-    <nd ref="107" />
-    <nd ref="106" />
-    <nd ref="105" />
-    <nd ref="70" />
     <tag k="type" v="line_thin" />
     <tag k="subtype" v="solid" />
   </way>
   <way id="128">
+    <nd ref="115" />
+    <nd ref="107" />
+    <nd ref="106" />
+    <nd ref="105" />
     <nd ref="70" />
     <nd ref="69" />
     <nd ref="57" />
