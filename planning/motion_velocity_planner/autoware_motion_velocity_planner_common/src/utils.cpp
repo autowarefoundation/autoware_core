@@ -16,7 +16,6 @@
 
 #include "autoware/motion_utils/resample/resample.hpp"
 #include "autoware/motion_utils/trajectory/conversion.hpp"
-#include "autoware/motion_utils/trajectory/trajectory.hpp"
 #include "autoware/motion_velocity_planner_common/planner_data.hpp"
 
 #include <autoware_utils_visualization/marker_helper.hpp>

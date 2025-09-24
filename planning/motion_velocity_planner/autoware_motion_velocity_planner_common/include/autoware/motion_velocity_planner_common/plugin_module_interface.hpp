@@ -18,13 +18,16 @@
 #include "planner_data.hpp"
 #include "velocity_planning_result.hpp"
 
+#include <autoware/motion_utils/marker/virtual_wall_marker_creator.hpp>
 #include <autoware/planning_factor_interface/planning_factor_interface.hpp>
 #include <autoware_utils_debug/processing_time_publisher.hpp>
 #include <autoware_utils_debug/published_time_publisher.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <autoware_internal_debug_msgs/msg/float64_stamped.hpp>
+#include <autoware_planning_msgs/msg/trajectory.hpp>
 #include <autoware_planning_msgs/msg/trajectory_point.hpp>
+#include <visualization_msgs/visualization_msgs/msg/marker_array.hpp>
 
 #include <memory>
 #include <string>
@@ -49,8 +52,17 @@ public:
     const std::shared_ptr<const PlannerData> planner_data) = 0;
   virtual std::string get_module_name() const = 0;
   virtual void publish_planning_factor() {}
+  /// @brief publish a debug trajectory with the calculated slowdowns added to trajectory input used
+  /// by the module
+  inline void publish_debug_trajectory(const autoware_planning_msgs::msg::Trajectory & trajectory)
+  {
+    if (debug_trajectory_publisher_) {
+      debug_trajectory_publisher_->publish(trajectory);
+    }
+  }
   rclcpp::Logger logger_ = rclcpp::get_logger("");
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr debug_publisher_;
+  rclcpp::Publisher<autoware_planning_msgs::msg::Trajectory>::SharedPtr debug_trajectory_publisher_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr virtual_wall_publisher_;
   std::shared_ptr<autoware_utils_debug::ProcessingTimePublisher> processing_diag_publisher_;
   rclcpp::Publisher<autoware_internal_debug_msgs::msg::Float64Stamped>::SharedPtr
