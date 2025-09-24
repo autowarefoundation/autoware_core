@@ -18,7 +18,6 @@ It loads modules as plugins. Please refer to the links listed below for detail o
 - [Traffic Light](https://autowarefoundation.github.io/autoware_universe/main/planning/behavior_velocity_planner/autoware_behavior_velocity_traffic_light_module/)
 - [Occlusion Spot](https://autowarefoundation.github.io/autoware_universe/main/planning/behavior_velocity_planner/autoware_behavior_velocity_occlusion_spot_module/)
 - [No Stopping Area](https://autowarefoundation.github.io/autoware_universe/main/planning/behavior_velocity_planner/autoware_behavior_velocity_no_stopping_area_module/)
-- [Run Out](https://autowarefoundation.github.io/autoware_universe/main/planning/behavior_velocity_planner/autoware_behavior_velocity_run_out_module/)
 - [Speed Bump](https://autowarefoundation.github.io/autoware_universe/main/planning/behavior_velocity_planner/autoware_behavior_velocity_speed_bump_module/)
 
 When each module plans velocity, it considers based on `base_link`(center of rear-wheel axis) pose.

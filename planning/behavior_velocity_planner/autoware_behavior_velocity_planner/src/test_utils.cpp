@@ -82,7 +82,6 @@ std::shared_ptr<BehaviorVelocityPlannerNode> generateNode(
   // TODO(Takagi, Isamu): set launch_modules
   // TODO(Kyoichi Sugahara) set to true launch_virtual_traffic_light
   // TODO(Kyoichi Sugahara) set to true launch_occlusion_spot
-  // TODO(Kyoichi Sugahara) set to true launch_run_out
   // TODO(Kyoichi Sugahara) set to true launch_speed_bump
 
   return std::make_shared<BehaviorVelocityPlannerNode>(node_options);
