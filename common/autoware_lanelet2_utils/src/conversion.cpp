@@ -84,23 +84,14 @@ geometry_msgs::msg::Point to_ros(const lanelet::ConstPoint2d & src, const double
   return to_ros(src.basicPoint(), z);
 }
 
-lanelet::BasicPoint3d from_ros(const geometry_msgs::msg::Point & src)
-{
-  return lanelet::BasicPoint3d(src.x, src.y, src.z);
-}
-lanelet::BasicPoint3d from_ros(const geometry_msgs::msg::Pose & src)
-{
-  return from_ros(src.position);
-}
-
-lanelet::ConstPoint3d from_ros_const(const geometry_msgs::msg::Point & src)
+lanelet::ConstPoint3d from_ros(const geometry_msgs::msg::Point & src)
 {
   return lanelet::ConstPoint3d(lanelet::Point3d(lanelet::InvalId, src.x, src.y, src.z));
 }
 
-lanelet::ConstPoint3d from_ros_const(const geometry_msgs::msg::Pose & src)
+lanelet::ConstPoint3d from_ros(const geometry_msgs::msg::Pose & src)
 {
-  return from_ros_const(src.position);
+  return from_ros(src.position);
 }
 
 }  // namespace autoware::experimental::lanelet2_utils

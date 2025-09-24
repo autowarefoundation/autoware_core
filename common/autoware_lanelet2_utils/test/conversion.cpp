@@ -40,8 +40,8 @@ static void assert_float_point_eq_2d(PointT1 & p1, PointT2 & p2)
   ASSERT_FLOAT_EQ(p1.y, p2.y()) << "y mismatch.";
 }
 
-// Test 1: to/from ros (Point<->BasicPoint3d)
-TEST(TestConversion, RoundTripPointToBasicPoint3d)
+// Test 1: to ros (BasicPoint3d->Point)
+TEST(TestConversion, BasicPoint3dToPoint)
 {
   auto original = lanelet::BasicPoint3d(1.0, 2.0, 3.0);
 
@@ -49,11 +49,6 @@ TEST(TestConversion, RoundTripPointToBasicPoint3d)
   assert_float_point_eq(ros_pt, original);
   EXPECT_EQ(typeid(ros_pt), typeid(geometry_msgs::msg::Point))
     << "ros_pt is not geometry_msgs::msg::Point.";
-
-  auto converted_pt = autoware::experimental::lanelet2_utils::from_ros(ros_pt);
-  assert_float_point_eq(ros_pt, converted_pt);
-  EXPECT_EQ(typeid(converted_pt), typeid(lanelet::BasicPoint3d))
-    << "converted_pt is not lanelet::BasicPoint3d";
 }
 
 // Test 2: to/from ros (Point<->ConstPoint3d)
@@ -66,32 +61,27 @@ TEST(TestConversion, RoundTripPointToConstPoint3d)
   EXPECT_EQ(typeid(ros_pt), typeid(geometry_msgs::msg::Point))
     << "ros_pt is not geometry_msgs::msg::Point.";
 
-  auto converted_pt = autoware::experimental::lanelet2_utils::from_ros_const(ros_pt);
+  auto converted_pt = autoware::experimental::lanelet2_utils::from_ros(ros_pt);
   assert_float_point_eq(ros_pt, converted_pt);
   EXPECT_EQ(typeid(converted_pt), typeid(lanelet::ConstPoint3d))
     << "converted_pt is not lanelet::ConstPoint3d.";
 }
 
-// Test 3: from ros (Pose->BasicPoint3d, ConstPoint3d)
-TEST(TestConversion, PoseToBasicPoint3dAndConstPoint3d)
+// Test 3: from ros (Pose->ConstPoint3d)
+TEST(TestConversion, PoseToConstPoint3d)
 {
   geometry_msgs::msg::Pose original;
   original.position.x = 1.0;
   original.position.y = 2.0;
   original.position.z = 3.0;
 
-  auto basic_pt = autoware::experimental::lanelet2_utils::from_ros(original);
-  assert_float_point_eq(original.position, basic_pt);
-  EXPECT_EQ(typeid(basic_pt), typeid(lanelet::BasicPoint3d))
-    << "basic_pt is not lanelet::BasicPoint3d";
-
-  auto const_pt = autoware::experimental::lanelet2_utils::from_ros_const(original);
+  auto const_pt = autoware::experimental::lanelet2_utils::from_ros(original);
   assert_float_point_eq(original.position, const_pt);
   EXPECT_EQ(typeid(const_pt), typeid(lanelet::ConstPoint3d))
     << "const_pt is not lanelet::ConstPoint3d.";
 }
 
-// Test 4: to/from ros (Point<->BasicPoint2d)
+// Test 4: to ros (BasicPoint2d->Point)
 TEST(TestConversion, RoundTripPointToBasicPoint2d)
 {
   auto original = lanelet::BasicPoint2d(lanelet::Point2d(lanelet::InvalId, 1.0, 2.0));
@@ -100,12 +90,6 @@ TEST(TestConversion, RoundTripPointToBasicPoint2d)
   assert_float_point_eq_3d_to_2d(ros_pt, original, 3.0);
   EXPECT_EQ(typeid(ros_pt), typeid(geometry_msgs::msg::Point))
     << "ros_pt is not geometry_msgs::msg::Point.";
-
-  auto converted_pt = autoware::experimental::lanelet2_utils::from_ros(ros_pt);
-  auto converted_pt2d = lanelet::utils::to2D(converted_pt);
-  assert_float_point_eq_2d(ros_pt, converted_pt2d);
-  EXPECT_EQ(typeid(converted_pt2d), typeid(lanelet::BasicPoint2d))
-    << "converted_pt is not lanelet::BasicPoint2d";
 }
 
 // Test 5: to/from ros (Point<->ConstPoint2d)
@@ -118,7 +102,7 @@ TEST(TestConversion, RoundTripPointToConstPoint2d)
   EXPECT_EQ(typeid(ros_pt), typeid(geometry_msgs::msg::Point))
     << "ros_pt is not geometry_msgs::msg::Point.";
 
-  auto converted_pt = autoware::experimental::lanelet2_utils::from_ros_const(ros_pt);
+  auto converted_pt = autoware::experimental::lanelet2_utils::from_ros(ros_pt);
   auto converted_pt2d = lanelet::utils::to2D(converted_pt);
   assert_float_point_eq_2d(ros_pt, converted_pt2d);
   EXPECT_EQ(typeid(converted_pt2d), typeid(lanelet::ConstPoint2d))

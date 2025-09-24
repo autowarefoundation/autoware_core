@@ -57,20 +57,12 @@ geometry_msgs::msg::Point to_ros(const lanelet::BasicPoint2d & src, const double
 geometry_msgs::msg::Point to_ros(const lanelet::ConstPoint2d & src, const double & z = 0.0);
 
 /**
- * @brief convert ROS Point or Pose to lanelet::BasicPoint3d
- * @param src source point/pose
- * @return lanelet::BasicPoint3d
- */
-lanelet::BasicPoint3d from_ros(const geometry_msgs::msg::Point & src);
-lanelet::BasicPoint3d from_ros(const geometry_msgs::msg::Pose & src);
-
-/**
  * @brief convert ROS Point or Pose to lanelet::ConstPoint3d
  * @param src source point/pose
  * @return lanelet::ConstPoint3d
  */
-lanelet::ConstPoint3d from_ros_const(const geometry_msgs::msg::Point & src);
-lanelet::ConstPoint3d from_ros_const(const geometry_msgs::msg::Pose & src);
+lanelet::ConstPoint3d from_ros(const geometry_msgs::msg::Point & src);
+lanelet::ConstPoint3d from_ros(const geometry_msgs::msg::Pose & src);
 
 }  // namespace autoware::experimental::lanelet2_utils
 #endif  // AUTOWARE__LANELET2_UTILS__CONVERSION_HPP_
