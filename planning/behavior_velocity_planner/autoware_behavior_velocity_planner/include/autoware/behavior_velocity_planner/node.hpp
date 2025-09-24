@@ -140,9 +140,7 @@ private:
 
   // function
   bool isDataReady(rclcpp::Clock clock);
-  autoware_planning_msgs::msg::Path generatePath(
-    const autoware_internal_planning_msgs::msg::PathWithLaneId::ConstSharedPtr input_path_msg,
-    const PlannerData & planner_data);
+  Trajectory generatePath(const Trajectory & input_path, const PlannerData & planner_data);
 
   std::unique_ptr<autoware_utils_logging::LoggerLevelConfigure> logger_configure_;
 

@@ -77,19 +77,25 @@ void BehaviorVelocityPlannerManager::removeScenePlugin(
   }
 }
 
-autoware_internal_planning_msgs::msg::PathWithLaneId
-BehaviorVelocityPlannerManager::planPathVelocity(
-  const std::shared_ptr<const PlannerData> & planner_data,
-  const autoware_internal_planning_msgs::msg::PathWithLaneId & input_path_msg)
+Trajectory BehaviorVelocityPlannerManager::planPathVelocity(
+  const PlannerData & planner_data, const Trajectory & input_path)
 {
-  autoware_internal_planning_msgs::msg::PathWithLaneId output_path_msg = input_path_msg;
+  autoware_internal_planning_msgs::msg::PathWithLaneId input_path_msg;
+  input_path_msg.points = input_path.restore();
+
+  auto output_path_msg = input_path_msg;
 
   for (const auto & plugin : scene_manager_plugins_) {
-    plugin->updateSceneModuleInstances(planner_data, input_path_msg);
+    plugin->updateSceneModuleInstances(std::make_shared<PlannerData>(planner_data), input_path_msg);
     plugin->plan(&output_path_msg);
   }
 
-  return output_path_msg;
+  const auto output_path = Trajectory::Builder{}.build(output_path_msg.points);
+  if (!output_path) {
+    throw std::runtime_error("Failed to convert output path");
+  }
+
+  return *output_path;
 }
 
 }  // namespace autoware::behavior_velocity_planner
