@@ -177,12 +177,11 @@ std::optional<lanelet::ConstLanelet> LaneletRTree::get_closest_lanelet(
   auto min_dist = std::numeric_limits<double>::max();
   lanelet::ConstLanelets candidates;
   for (auto query_it = rtree_.qbegin(query_nearest); query_it != rtree_.qend(); ++query_it) {
-    const auto approx_dist_to_lanelet =
-      boost::geometry::comparable_distance(search_point, query_it->first);
+    const auto approx_dist_to_lanelet = boost::geometry::distance(search_point, query_it->first);
     if (approx_dist_to_lanelet > min_dist) {
       break;
     }
-    const auto dist = boost::geometry::comparable_distance(
+    const auto dist = boost::geometry::distance(
       search_point, lanelets_.at(query_it->second).polygon2d().basicPolygon());
     if (dist <= min_dist) {
       // NOTE(soblin): if multiple lanelets overlap at same position, they all give zero distance
@@ -203,18 +202,17 @@ std::optional<lanelet::ConstLanelet> LaneletRTree::get_closest_lanelet_within_co
 
   auto min_dist = std::numeric_limits<double>::max();
   auto min_angle_diff = std::numeric_limits<double>::max();
-  std::optional<size_t> optimal_id = 0;
+  std::optional<size_t> optimal_index{};
 
   for (auto query_it = rtree_.qbegin(query_nearest); query_it != rtree_.qend(); ++query_it) {
-    const auto approx_dist_to_lanelet =
-      boost::geometry::comparable_distance(search_point, query_it->first);
+    const auto approx_dist_to_lanelet = boost::geometry::distance(search_point, query_it->first);
     if (approx_dist_to_lanelet > min_dist || approx_dist_to_lanelet > dist_threshold) {
       break;
     }
 
     const auto & lanelet = lanelets_.at(query_it->second);
     const auto precise_dist =
-      boost::geometry::comparable_distance(search_point, lanelet.polygon2d().basicPolygon());
+      boost::geometry::distance(search_point, lanelet.polygon2d().basicPolygon());
     const auto lanelet_angle = lanelet::utils::getLaneletAngle(lanelet, search_pose.position);
     const double angle_diff =
       std::abs(autoware_utils_math::normalize_radian(lanelet_angle - pose_yaw));
@@ -226,11 +224,11 @@ std::optional<lanelet::ConstLanelet> LaneletRTree::get_closest_lanelet_within_co
                                   && angle_diff < min_angle_diff)) {
       min_dist = precise_dist;
       min_angle_diff = angle_diff;
-      optimal_id = query_it->second;
+      optimal_index = query_it->second;
     }
   }
-  if (optimal_id) {
-    return lanelets_.at(optimal_id.value());
+  if (optimal_index) {
+    return lanelets_.at(optimal_index.value());
   }
   return std::nullopt;
 }

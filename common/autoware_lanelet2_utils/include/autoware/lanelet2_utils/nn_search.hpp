@@ -40,8 +40,8 @@ std::optional<lanelet::ConstLanelet> get_closest_lanelet(
   const lanelet::ConstLanelets & lanelets, const geometry_msgs::msg::Pose & search_pose);
 
 /**
- * @brief returns the closest(in 3d distance) lanelet to `search_pose` within `dist_threshold` and
- * `yaw_threshold`
+ * @brief returns the closest(in 3d distance) lanelet to `search_pose` s.t. dist <= `dist_threshold`
+ * and yaw <= `yaw_threshold`
  * @note if `search_pose` is on or within a Lanelet, the distance is zero
  */
 std::optional<lanelet::ConstLanelet> get_closest_lanelet_within_constraint(
@@ -72,6 +72,11 @@ public:
   std::optional<lanelet::ConstLanelet> get_closest_lanelet(
     const geometry_msgs::msg::Pose search_pose) const;
 
+  /**
+   * @brief returns the closest(in 3d distance) lanelet to `search_pose` s.t. dist <=
+   * `dist_threshold` and yaw <= `yaw_threshold`
+   * @note if `search_pose` is on or within a Lanelet, the distance is zero
+   */
   std::optional<lanelet::ConstLanelet> get_closest_lanelet_within_constraint(
     const geometry_msgs::msg::Pose & search_pose, const double dist_threshold,
     const double yaw_threshold) const;

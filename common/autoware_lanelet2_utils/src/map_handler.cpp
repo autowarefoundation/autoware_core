@@ -21,11 +21,32 @@
 #include <lanelet2_core/geometry/Lanelet.h>
 #include <lanelet2_routing/RoutingGraph.h>
 
+#include <set>
+
 namespace
 {
 
-[[maybe_unused]] std::optional<lanelet::ConstLanelet> get_following_shoulder_lanelet(
-  const lanelet::LaneletMapConstPtr lanelet_map_ptr, const lanelet::ConstLanelet & lanelet)
+std::optional<lanelet::ConstLanelet> get_previous_shoulder_lanelet(
+  const lanelet::ConstLanelet & lanelet, const lanelet::LaneletMapConstPtr lanelet_map_ptr)
+{
+  bool found = false;
+  const auto & search_point = lanelet.centerline().front().basicPoint2d();
+  const auto previous_lanelet = lanelet_map_ptr->laneletLayer.nearestUntil(
+    search_point, [&](const auto & bbox, const auto & ll) {
+      if (
+        autoware::experimental::lanelet2_utils::is_shoulder_lane(ll) &&
+        lanelet::geometry::follows(ll, lanelet))
+        found = true;
+      // stop search once prev shoulder lanelet is found, or the bbox does not touch the search
+      // point
+      return found || lanelet::geometry::distance2d(bbox, search_point) > 1e-3;
+    });
+  if (found && previous_lanelet.has_value()) return *previous_lanelet;
+  return std::nullopt;
+}
+
+std::optional<lanelet::ConstLanelet> get_following_shoulder_lanelet(
+  const lanelet::ConstLanelet & lanelet, const lanelet::LaneletMapConstPtr lanelet_map_ptr)
 {
   bool found = false;
   const auto & search_point = lanelet.centerline().back().basicPoint2d();
@@ -42,6 +63,60 @@ namespace
     return *next_lanelet;
   }
   return std::nullopt;
+}
+
+lanelet::ConstLanelets get_shoulder_lanelet_sequence_upto(
+  const lanelet::ConstLanelet & lanelet, const lanelet::LaneletMapConstPtr lanelet_map_ptr,
+  const double min_length)
+{
+  double length = 0.0;
+  lanelet::ConstLanelets lanelets;
+  lanelet::ConstLanelet current_lanelet = lanelet;
+  std::set<lanelet::Id> searched_ids{lanelet.id()};
+  while (length < min_length) {
+    const auto previous_shoulder_lanelet =
+      get_previous_shoulder_lanelet(current_lanelet, lanelet_map_ptr);
+    if (!previous_shoulder_lanelet) break;
+
+    if (searched_ids.find(previous_shoulder_lanelet->id()) != searched_ids.end()) {
+      // loop detected
+      break;
+    }
+
+    lanelets.insert(lanelets.begin(), *previous_shoulder_lanelet);
+    searched_ids.insert(previous_shoulder_lanelet->id());
+    length += lanelet::geometry::length3d(*previous_shoulder_lanelet);
+
+    current_lanelet = *previous_shoulder_lanelet;
+  }
+  return lanelets;
+}
+
+lanelet::ConstLanelets get_shoulder_lanelet_sequence_after(
+  const lanelet::ConstLanelet & lanelet, const lanelet::LaneletMapConstPtr lanelet_map_ptr,
+  const double min_length)
+{
+  double length = 0.0;
+  lanelet::ConstLanelets lanelets;
+  lanelet::ConstLanelet current_lanelet = lanelet;
+  std::set<lanelet::Id> searched_ids{lanelet.id()};
+  while (length < min_length) {
+    const auto next_shoulder_lanelet =
+      get_following_shoulder_lanelet(current_lanelet, lanelet_map_ptr);
+    if (!next_shoulder_lanelet) break;
+
+    if (searched_ids.find(next_shoulder_lanelet->id()) != searched_ids.end()) {
+      // loop detected
+      break;
+    }
+
+    lanelets.push_back(*next_shoulder_lanelet);
+    searched_ids.insert(next_shoulder_lanelet->id());
+    length += lanelet::geometry::length3d(*next_shoulder_lanelet);
+
+    current_lanelet = *next_shoulder_lanelet;
+  }
+  return lanelets;
 }
 
 }  // namespace
@@ -287,6 +362,34 @@ lanelet::ConstLanelets MapHandler::right_lanelets(
   return rights;
 }
 
+lanelet::ConstLanelets MapHandler::get_shoulder_lanelet_sequence(
+  const lanelet::ConstLanelet & lanelet, const double backward_distance,
+  const double forward_distance) const
+{
+  if (!is_shoulder_lane(lanelet)) {
+    return {};
+  }
+
+  const auto forward =
+    get_shoulder_lanelet_sequence_after(lanelet, lanelet_map_ptr_, forward_distance);
+  const auto backward =
+    get_shoulder_lanelet_sequence_upto(lanelet, lanelet_map_ptr_, backward_distance);
+  lanelet::ConstLanelets all = backward;
+
+  // loop check
+  if (!lanelet::utils::contains(all, lanelet)) {
+    all.push_back(lanelet);
+  }
+  for (const auto & forward_lanelet : forward) {
+    if (lanelet::utils::contains(all, forward_lanelet)) {
+      break;
+    }
+    all.push_back(forward_lanelet);
+  }
+
+  return all;
+}
+
 std::optional<lanelet::ConstLanelet> MapHandler::left_shoulder_lanelet(
   const lanelet::ConstLanelet & lanelet) const
 {
@@ -302,8 +405,8 @@ std::optional<lanelet::ConstLanelet> MapHandler::right_shoulder_lanelet(
   const lanelet::ConstLanelet & lanelet) const
 {
   for (const auto & other_lanelet :
-       lanelet_map_ptr_->laneletLayer.findUsages(lanelet.leftBound())) {
-    if (other_lanelet.rightBound() == lanelet.leftBound() && is_shoulder_lane(other_lanelet))
+       lanelet_map_ptr_->laneletLayer.findUsages(lanelet.rightBound())) {
+    if (other_lanelet.leftBound() == lanelet.rightBound() && is_shoulder_lane(other_lanelet))
       return other_lanelet;
   }
   return std::nullopt;
@@ -324,8 +427,8 @@ std::optional<lanelet::ConstLanelet> MapHandler::right_bicycle_lanelet(
   const lanelet::ConstLanelet & lanelet) const
 {
   for (const auto & other_lanelet :
-       lanelet_map_ptr_->laneletLayer.findUsages(lanelet.leftBound())) {
-    if (other_lanelet.rightBound() == lanelet.leftBound() && is_bicycle_lane(other_lanelet))
+       lanelet_map_ptr_->laneletLayer.findUsages(lanelet.rightBound())) {
+    if (other_lanelet.leftBound() == lanelet.rightBound() && is_bicycle_lane(other_lanelet))
       return other_lanelet;
   }
   return std::nullopt;

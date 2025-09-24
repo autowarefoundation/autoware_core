@@ -388,6 +388,93 @@ TEST_F(TestRouteManager001, get_lanelet_sequence_on_route_with_outward_forward)
   }
 }
 
+TEST_F(TestRouteManager001, get_closest_preferred_route_lanelet)
+{
+  auto route_manager_opt =
+    lanelet2_utils::RouteManager::create(map_msg_, route_msg_, initial_pose_);
+  const auto & route_manager = route_manager_opt.value();
+
+  {
+    const auto lane_opt = route_manager.get_closest_preferred_route_lanelet(initial_pose_);
+    ASSERT_TRUE(lane_opt.has_value());
+    EXPECT_EQ(lane_opt.value().id(), 2302);
+  }
+
+  {
+    const auto lane_opt = route_manager.get_closest_preferred_route_lanelet(P1);
+    ASSERT_TRUE(lane_opt.has_value());
+    EXPECT_EQ(lane_opt.value().id(), 2302);
+  }
+
+  {
+    const auto lane_opt = route_manager.get_closest_preferred_route_lanelet(P2);
+    ASSERT_TRUE(lane_opt.has_value());
+    EXPECT_EQ(lane_opt.value().id(), 2245);
+  }
+
+  {
+    const auto lane_opt = route_manager.get_closest_preferred_route_lanelet(P3);
+    ASSERT_TRUE(lane_opt.has_value());
+    EXPECT_EQ(lane_opt.value().id(), 2245);
+  }
+}
+
+TEST_F(TestRouteManager001, get_closest_route_lanelet_within_constraints)
+{
+  auto route_manager_opt =
+    lanelet2_utils::RouteManager::create(map_msg_, route_msg_, initial_pose_);
+  const auto & route_manager = route_manager_opt.value();
+
+  {
+    const auto lane_opt = route_manager.get_closest_route_lanelet_within_constraints(
+      initial_pose_, ego_nearest_dist_threshold, ego_nearest_yaw_threshold);
+    ASSERT_TRUE(lane_opt.has_value());
+    EXPECT_EQ(lane_opt.value().id(), 2302);
+  }
+
+  {
+    const auto lane_opt = route_manager.get_closest_route_lanelet_within_constraints(
+      P1, ego_nearest_dist_threshold, ego_nearest_yaw_threshold);
+    ASSERT_TRUE(lane_opt.has_value());
+    EXPECT_EQ(lane_opt.value().id(), 2302);
+  }
+
+  {
+    const auto lane_opt = route_manager.get_closest_route_lanelet_within_constraints(
+      P2, ego_nearest_dist_threshold, ego_nearest_yaw_threshold);
+    ASSERT_TRUE(lane_opt.has_value());
+    EXPECT_EQ(lane_opt.value().id(), 2245);
+  }
+
+  {
+    const auto lane_opt = route_manager.get_closest_route_lanelet_within_constraints(
+      P3, ego_nearest_dist_threshold, ego_nearest_yaw_threshold);
+    ASSERT_TRUE(lane_opt.has_value());
+    EXPECT_EQ(lane_opt.value().id(), 2245);
+  }
+
+  {
+    const auto lane_opt = route_manager.get_closest_route_lanelet_within_constraints(
+      P4, ego_nearest_dist_threshold, ego_nearest_yaw_threshold);
+    ASSERT_TRUE(lane_opt.has_value());
+    EXPECT_EQ(lane_opt.value().id(), 2245);
+  }
+
+  {
+    const auto lane_opt = route_manager.get_closest_route_lanelet_within_constraints(
+      P5, ego_nearest_dist_threshold, ego_nearest_yaw_threshold);
+    ASSERT_TRUE(lane_opt.has_value());
+    EXPECT_EQ(lane_opt.value().id(), 2246);
+  }
+
+  {
+    const auto lane_opt = route_manager.get_closest_route_lanelet_within_constraints(
+      P6, ego_nearest_dist_threshold, ego_nearest_yaw_threshold);
+    ASSERT_TRUE(lane_opt.has_value());
+    EXPECT_EQ(lane_opt.value().id(), 2246);
+  }
+}
+
 class TestRouteManager002 : public ::testing::Test
 {
 protected:

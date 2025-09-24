@@ -144,6 +144,11 @@ public:
    * \defgroup VRU related operations
    */
   /** @{ */
+
+  /**
+   * @brief retrieve lanelets behind/from of `lanelet`, in the order from backward, `lanelet`, to
+   * forward
+   */
   lanelet::ConstLanelets get_shoulder_lanelet_sequence(
     const lanelet::ConstLanelet & lanelet,
     const double backward_distance = std::numeric_limits<double>::max(),

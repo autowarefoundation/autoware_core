@@ -68,24 +68,70 @@ TEST_F(TestWithIntersectionCrossingMap, LoadCheck)
   EXPECT_NEAR(point.y(), 100.0, 0.05);
 }
 
-TEST_F(TestWithIntersectionCrossingMap, shoulder_lane_is_inaccessible_on_routing_graph)
+TEST_F(TestWithIntersectionCrossingMap, left_lanelet_of_road_with_shoulder_on_left)
 {
   const auto & map_handler = map_handler_opt_.value();
   const auto lanelet_map_ptr = map_handler.lanelet_map_ptr();
 
-  const auto lane = map_handler.left_lanelet(
-    lanelet_map_ptr->laneletLayer.get(2257), false, lanelet2_utils::ExtraVRU::RoadOnly);
-  EXPECT_EQ(lane.has_value(), false);
+  {
+    const auto lane = map_handler.left_lanelet(
+      lanelet_map_ptr->laneletLayer.get(2257), false, lanelet2_utils::ExtraVRU::RoadOnly);
+    EXPECT_EQ(lane.has_value(), false);
+  }
+
+  {
+    const auto lane = map_handler.left_lanelet(
+      lanelet_map_ptr->laneletLayer.get(2257), false, lanelet2_utils::ExtraVRU::Shoulder);
+    EXPECT_EQ(lane.has_value(), true);
+    EXPECT_EQ(lane.value().id(), 2309);
+  }
+
+  {
+    const auto lane = map_handler.left_lanelet(
+      lanelet_map_ptr->laneletLayer.get(2257), false, lanelet2_utils::ExtraVRU::BicycleLane);
+    EXPECT_EQ(lane.has_value(), false);
+  }
+
+  {
+    const auto lane = map_handler.left_lanelet(
+      lanelet_map_ptr->laneletLayer.get(2257), false,
+      lanelet2_utils::ExtraVRU::ShoulderAndBicycleLane);
+    EXPECT_EQ(lane.has_value(), true);
+    EXPECT_EQ(lane.value().id(), 2309);
+  }
 }
 
-TEST_F(TestWithIntersectionCrossingMap, bicycle_lane_is_inaccessible_on_routing_graph)
+TEST_F(TestWithIntersectionCrossingMap, left_lanelet_of_road_with_bicycle_lane_on_left)
 {
   const auto & map_handler = map_handler_opt_.value();
   const auto lanelet_map_ptr = map_handler.lanelet_map_ptr();
 
-  const auto lane = map_handler.left_lanelet(
-    lanelet_map_ptr->laneletLayer.get(2286), false, lanelet2_utils::ExtraVRU::RoadOnly);
-  EXPECT_EQ(lane.has_value(), false);
+  {
+    const auto lane = map_handler.left_lanelet(
+      lanelet_map_ptr->laneletLayer.get(2286), false, lanelet2_utils::ExtraVRU::RoadOnly);
+    EXPECT_EQ(lane.has_value(), false);
+  }
+
+  {
+    const auto lane = map_handler.left_lanelet(
+      lanelet_map_ptr->laneletLayer.get(2286), false, lanelet2_utils::ExtraVRU::Shoulder);
+    EXPECT_EQ(lane.has_value(), false);
+  }
+
+  {
+    const auto lane = map_handler.left_lanelet(
+      lanelet_map_ptr->laneletLayer.get(2286), false, lanelet2_utils::ExtraVRU::BicycleLane);
+    EXPECT_EQ(lane.has_value(), true);
+    EXPECT_EQ(lane.value().id(), 2303);
+  }
+
+  {
+    const auto lane = map_handler.left_lanelet(
+      lanelet_map_ptr->laneletLayer.get(2286), false,
+      lanelet2_utils::ExtraVRU::ShoulderAndBicycleLane);
+    EXPECT_EQ(lane.has_value(), true);
+    EXPECT_EQ(lane.value().id(), 2303);
+  }
 }
 
 TEST_F(TestWithIntersectionCrossingMap, left_lanelet_without_lc_permission)
@@ -96,6 +142,26 @@ TEST_F(TestWithIntersectionCrossingMap, left_lanelet_without_lc_permission)
   const auto lane = map_handler.left_lanelet(
     lanelet_map_ptr->laneletLayer.get(2246), false, lanelet2_utils::ExtraVRU::RoadOnly);
   EXPECT_EQ(lane.value().id(), 2245);
+}
+
+TEST_F(TestWithIntersectionCrossingMap, left_lanelet_with_take_sibling_with_sibling)
+{
+  const auto & map_handler = map_handler_opt_.value();
+  const auto lanelet_map_ptr = map_handler.lanelet_map_ptr();
+
+  const auto lane = map_handler.left_lanelet(
+    lanelet_map_ptr->laneletLayer.get(2243), true, lanelet2_utils::ExtraVRU::RoadOnly);
+  EXPECT_EQ(lane.value().id(), 2299);
+}
+
+TEST_F(TestWithIntersectionCrossingMap, right_lanelet_with_take_sibling_with_sibling)
+{
+  const auto & map_handler = map_handler_opt_.value();
+  const auto lanelet_map_ptr = map_handler.lanelet_map_ptr();
+
+  const auto lane = map_handler.right_lanelet(
+    lanelet_map_ptr->laneletLayer.get(2299), true, lanelet2_utils::ExtraVRU::RoadOnly);
+  EXPECT_EQ(lane.value().id(), 2243);
 }
 
 TEST_F(TestWithIntersectionCrossingMap, left_lanelet_with_lc_permission)
@@ -231,6 +297,19 @@ TEST_F(TestWithIntersectionCrossingMap, right_lanelets_with_opposite_without_act
   EXPECT_EQ(rights[0].id(), 2260);
 }
 
+TEST_F(TestWithIntersectionCrossingMap, right_lanelet_of_shoulder)
+{
+  const auto & map_handler = map_handler_opt_.value();
+  const auto lanelet_map_ptr = map_handler.lanelet_map_ptr();
+
+  {
+    const auto lane = map_handler.right_lanelet(
+      lanelet_map_ptr->laneletLayer.get(2309), false, lanelet2_utils::ExtraVRU::RoadOnly);
+    EXPECT_EQ(lane.has_value(), true);
+    EXPECT_EQ(lane.value().id(), 2257);
+  }
+}
+
 class TestWithIntersectionCrossingInverseMap : public ::testing::Test
 {
 protected:
@@ -272,6 +351,167 @@ TEST_F(TestWithIntersectionCrossingInverseMap, left_lanelets_with_opposite_witho
   const auto lefts = map_handler.left_lanelets(lanelet_map_ptr->laneletLayer.get(2251), true);
   EXPECT_EQ(lefts.size(), 1);
   EXPECT_EQ(lefts[0].id(), 2252);
+}
+
+TEST_F(TestWithIntersectionCrossingInverseMap, left_lanelet_of_shoulder)
+{
+  const auto & map_handler = map_handler_opt_.value();
+  const auto lanelet_map_ptr = map_handler.lanelet_map_ptr();
+
+  {
+    const auto lane = map_handler.left_lanelet(
+      lanelet_map_ptr->laneletLayer.get(2309), false, lanelet2_utils::ExtraVRU::RoadOnly);
+    EXPECT_EQ(lane.has_value(), true);
+    EXPECT_EQ(lane->id(), 2257);
+  }
+}
+
+TEST_F(TestWithIntersectionCrossingInverseMap, right_lanelet_of_road_with_shoulder_on_right)
+{
+  const auto & map_handler = map_handler_opt_.value();
+  const auto lanelet_map_ptr = map_handler.lanelet_map_ptr();
+
+  {
+    const auto lane = map_handler.right_lanelet(
+      lanelet_map_ptr->laneletLayer.get(2257), false, lanelet2_utils::ExtraVRU::RoadOnly);
+    EXPECT_EQ(lane.has_value(), false);
+  }
+
+  {
+    const auto lane = map_handler.right_lanelet(
+      lanelet_map_ptr->laneletLayer.get(2257), false, lanelet2_utils::ExtraVRU::Shoulder);
+    EXPECT_EQ(lane.has_value(), true);
+    EXPECT_EQ(lane->id(), 2309);
+  }
+
+  {
+    const auto lane = map_handler.right_lanelet(
+      lanelet_map_ptr->laneletLayer.get(2257), false, lanelet2_utils::ExtraVRU::BicycleLane);
+    EXPECT_EQ(lane.has_value(), false);
+  }
+
+  {
+    const auto lane = map_handler.right_lanelet(
+      lanelet_map_ptr->laneletLayer.get(2257), false,
+      lanelet2_utils::ExtraVRU::ShoulderAndBicycleLane);
+    EXPECT_EQ(lane.has_value(), true);
+    EXPECT_EQ(lane->id(), 2309);
+  }
+}
+
+TEST_F(TestWithIntersectionCrossingInverseMap, right_lanelet_of_road_with_bicycle_lane_on_right)
+{
+  const auto & map_handler = map_handler_opt_.value();
+  const auto lanelet_map_ptr = map_handler.lanelet_map_ptr();
+
+  {
+    const auto lane = map_handler.right_lanelet(
+      lanelet_map_ptr->laneletLayer.get(2286), false, lanelet2_utils::ExtraVRU::RoadOnly);
+    EXPECT_EQ(lane.has_value(), false);
+  }
+
+  {
+    const auto lane = map_handler.right_lanelet(
+      lanelet_map_ptr->laneletLayer.get(2286), false, lanelet2_utils::ExtraVRU::Shoulder);
+    EXPECT_EQ(lane.has_value(), false);
+  }
+
+  {
+    const auto lane = map_handler.right_lanelet(
+      lanelet_map_ptr->laneletLayer.get(2286), false, lanelet2_utils::ExtraVRU::BicycleLane);
+    EXPECT_EQ(lane.has_value(), true);
+    EXPECT_EQ(lane->id(), 2303);
+  }
+
+  {
+    const auto lane = map_handler.right_lanelet(
+      lanelet_map_ptr->laneletLayer.get(2286), false,
+      lanelet2_utils::ExtraVRU::ShoulderAndBicycleLane);
+    EXPECT_EQ(lane.has_value(), true);
+    EXPECT_EQ(lane->id(), 2303);
+  }
+}
+
+class TestWithShoulderHighwayMap : public ::testing::Test
+{
+protected:
+  void SetUp() override
+  {
+    const auto sample_map_dir =
+      fs::path(ament_index_cpp::get_package_share_directory("autoware_lanelet2_utils")) /
+      "sample_map";
+    const auto intersection_crossing_map_path = sample_map_dir / "road_shoulder" / "highway.osm";
+
+    map_msg_ = lanelet2_utils::to_autoware_map_msgs(
+      lanelet2_utils::load_mgrs_coordinate_map(intersection_crossing_map_path.string()));
+    map_handler_opt_.emplace(lanelet2_utils::MapHandler::create(map_msg_).value());
+  }
+
+  autoware_map_msgs::msg::LaneletMapBin map_msg_;
+  std::optional<lanelet2_utils::MapHandler> map_handler_opt_;
+};
+
+TEST_F(TestWithShoulderHighwayMap, shoulder_sequence)
+{
+  const auto & map_handler = map_handler_opt_.value();
+  const auto lanelet_map_ptr = map_handler.lanelet_map_ptr();
+
+  {
+    const auto seq =
+      map_handler.get_shoulder_lanelet_sequence(lanelet_map_ptr->laneletLayer.get(48));
+    EXPECT_EQ(seq.size(), 2);
+    EXPECT_EQ(seq.at(0).id(), 48);
+    EXPECT_EQ(seq.at(1).id(), 49);
+  }
+
+  {
+    const auto seq =
+      map_handler.get_shoulder_lanelet_sequence(lanelet_map_ptr->laneletLayer.get(49));
+    EXPECT_EQ(seq.size(), 2);
+    EXPECT_EQ(seq.at(0).id(), 48);
+    EXPECT_EQ(seq.at(1).id(), 49);
+  }
+}
+
+class TestWithShoulderLoopMap : public ::testing::Test
+{
+protected:
+  void SetUp() override
+  {
+    const auto sample_map_dir =
+      fs::path(ament_index_cpp::get_package_share_directory("autoware_lanelet2_utils")) /
+      "sample_map";
+    const auto intersection_crossing_map_path = sample_map_dir / "road_shoulder" / "loop.osm";
+
+    map_msg_ = lanelet2_utils::to_autoware_map_msgs(
+      lanelet2_utils::load_mgrs_coordinate_map(intersection_crossing_map_path.string()));
+    map_handler_opt_.emplace(lanelet2_utils::MapHandler::create(map_msg_).value());
+  }
+
+  autoware_map_msgs::msg::LaneletMapBin map_msg_;
+  std::optional<lanelet2_utils::MapHandler> map_handler_opt_;
+};
+
+TEST_F(TestWithShoulderLoopMap, shoulder_sequence)
+{
+  const auto & map_handler = map_handler_opt_.value();
+  const auto lanelet_map_ptr = map_handler.lanelet_map_ptr();
+
+  {
+    const auto seq =
+      map_handler.get_shoulder_lanelet_sequence(lanelet_map_ptr->laneletLayer.get(357));
+    EXPECT_EQ(seq.size(), 16);
+    EXPECT_EQ(seq.front().id(), 358);
+    EXPECT_EQ(seq.back().id(), 357);
+  }
+
+  {
+    const auto seq =
+      map_handler.get_shoulder_lanelet_sequence(lanelet_map_ptr->laneletLayer.get(359));
+    EXPECT_EQ(seq.size(), 16);
+    EXPECT_EQ(seq.front().id(), 350);
+    EXPECT_EQ(seq.back().id(), 359);
+  }
 }
 
 }  // namespace autoware::experimental
