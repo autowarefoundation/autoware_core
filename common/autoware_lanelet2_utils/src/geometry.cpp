@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <autoware/lanelet2_utils/geometry.hpp>
+#include <range/v3/all.hpp>
 
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/pose.hpp>
@@ -228,16 +229,14 @@ std::optional<lanelet::ConstLineString3d> get_closest_segment(
   lanelet::ConstLineString3d closest_segment;
   double min_distance = std::numeric_limits<double>::max();
 
-  for (size_t i = 1; i < linestring.size(); i++) {
-    lanelet::BasicPoint3d prev_basic_pt = linestring[i - 1].basicPoint();
-    lanelet::BasicPoint3d current_basic_pt = linestring[i].basicPoint();
-
+  for (const auto & [prev_const_pt, current_const_pt] :
+       ranges::views::zip(linestring, linestring | ranges::views::drop(1))) {
     lanelet::Point3d prev_pt(
-      lanelet::InvalId, prev_basic_pt.x(), prev_basic_pt.y(), prev_basic_pt.z());
+      lanelet::InvalId, prev_const_pt.x(), prev_const_pt.y(), prev_const_pt.z());
     lanelet::Point3d current_pt(
-      lanelet::InvalId, current_basic_pt.x(), current_basic_pt.y(), current_basic_pt.z());
+      lanelet::InvalId, current_const_pt.x(), current_const_pt.y(), current_const_pt.z());
 
-    lanelet::LineString3d current_segment(lanelet::InvalId, {prev_pt, current_pt});
+    lanelet::ConstLineString3d current_segment(lanelet::InvalId, {prev_pt, current_pt});
     double distance = lanelet::geometry::distance2d(
       lanelet::utils::to2D(current_segment).basicLineString(), search_pt);
     if (distance < min_distance) {
