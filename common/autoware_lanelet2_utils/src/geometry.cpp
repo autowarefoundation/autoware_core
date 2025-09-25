@@ -220,7 +220,7 @@ std::optional<geometry_msgs::msg::Pose> get_pose_from_2d_arc_length(
 }
 
 std::optional<lanelet::ConstLineString3d> get_closest_segment(
-  const lanelet::BasicPoint2d & search_pt, const lanelet::ConstLineString3d & linestring)
+  const lanelet::ConstLineString3d & linestring, const lanelet::BasicPoint3d & search_pt)
 {
   if (linestring.size() < 2) {
     return std::nullopt;
@@ -237,8 +237,7 @@ std::optional<lanelet::ConstLineString3d> get_closest_segment(
       lanelet::InvalId, current_const_pt.x(), current_const_pt.y(), current_const_pt.z());
 
     lanelet::ConstLineString3d current_segment(lanelet::InvalId, {prev_pt, current_pt});
-    double distance = lanelet::geometry::distance2d(
-      lanelet::utils::to2D(current_segment).basicLineString(), search_pt);
+    double distance = lanelet::geometry::distance3d(current_segment.basicLineString(), search_pt);
     if (distance < min_distance) {
       closest_segment = current_segment;
       min_distance = distance;
@@ -248,10 +247,9 @@ std::optional<lanelet::ConstLineString3d> get_closest_segment(
 }
 
 double get_lanelet_angle(
-  const lanelet::ConstLanelet & lanelet, const geometry_msgs::msg::Point & search_pt)
+  const lanelet::ConstLanelet & lanelet, const lanelet::BasicPoint3d & search_pt)
 {
-  lanelet::BasicPoint2d llt_search_point(search_pt.x, search_pt.y);
-  lanelet::ConstLineString3d segment = *get_closest_segment(llt_search_point, lanelet.centerline());
+  lanelet::ConstLineString3d segment = *get_closest_segment(lanelet.centerline(), search_pt);
   return std::atan2(
     segment.back().y() - segment.front().y(), segment.back().x() - segment.front().x());
 }
