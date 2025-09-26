@@ -14,6 +14,7 @@
 
 #include "autoware/route_handler/route_handler.hpp"
 
+#include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/lanelet2_utils/geometry.hpp>
 #include <autoware/lanelet2_utils/kind.hpp>
 #include <autoware_lanelet2_extension/io/autoware_osm_parser.hpp>
@@ -1065,8 +1066,8 @@ bool RouteHandler::getClosestLaneletWithConstrainsWithinRoute(
     const auto & lanelet = route_lanelets_[query_it->second];
     const auto dist =
       boost::geometry::comparable_distance(search_point, lanelet.polygon2d().basicPolygon());
-    const double lanelet_angle =
-      autoware::experimental::lanelet2_utils::get_lanelet_angle(lanelet, search_pose.position);
+    const double lanelet_angle = autoware::experimental::lanelet2_utils::get_lanelet_angle(
+      lanelet, autoware::experimental::lanelet2_utils::from_ros(search_pose.position).basicPoint());
     const double angle_diff =
       std::abs(autoware_utils_geometry::normalize_radian(lanelet_angle - pose_yaw));
     if (dist > dist_threshold || angle_diff > std::abs(yaw_threshold)) {
@@ -1791,7 +1792,8 @@ PathWithLaneId RouteHandler::getCenterLinePath(
     const lanelet::Id lane_id = reference_path.points.front().lane_ids.front();
     const auto lanelet = lanelet_map_ptr_->laneletLayer.get(lane_id);
     const auto point = reference_path.points.front().point.pose.position;
-    const auto lane_yaw = autoware::experimental::lanelet2_utils::get_lanelet_angle(lanelet, point);
+    const auto lane_yaw = autoware::experimental::lanelet2_utils::get_lanelet_angle(
+      lanelet, autoware::experimental::lanelet2_utils::from_ros(point).basicPoint());
     PathPointWithLaneId path_point{};
     path_point.lane_ids.push_back(lane_id);
     constexpr double ds{0.1};
@@ -2134,8 +2136,9 @@ bool RouteHandler::planPathLaneletsBetweenCheckpoints(
   for (const auto & st_llt : start_lanelets) {
     // check if the angle difference between start_checkpoint and start lanelet center line
     // orientation is in yaw_threshold range
-    double lanelet_angle =
-      autoware::experimental::lanelet2_utils::get_lanelet_angle(st_llt, start_checkpoint.position);
+    double lanelet_angle = autoware::experimental::lanelet2_utils::get_lanelet_angle(
+      st_llt,
+      autoware::experimental::lanelet2_utils::from_ros(start_checkpoint.position).basicPoint());
     double pose_yaw = tf2::getYaw(start_checkpoint.orientation);
     double angle_diff = std::abs(autoware_utils_math::normalize_radian(lanelet_angle - pose_yaw));
 
