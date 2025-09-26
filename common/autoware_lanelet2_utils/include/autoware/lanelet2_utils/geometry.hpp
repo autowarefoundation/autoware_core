@@ -106,7 +106,7 @@ std::optional<geometry_msgs::msg::Pose> get_pose_from_2d_arc_length(
  * @param[in] search_pt query point
  * @return closest segment of the line string to the query point
  */
-std::optional<lanelet::ConstLineString3d> get_closest_segment(
+lanelet::ConstLineString3d get_closest_segment(
   const lanelet::ConstLineString3d & linestring, const lanelet::BasicPoint3d & search_pt);
 
 /**

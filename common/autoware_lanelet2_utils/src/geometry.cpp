@@ -219,13 +219,9 @@ std::optional<geometry_msgs::msg::Pose> get_pose_from_2d_arc_length(
   return std::nullopt;
 }
 
-std::optional<lanelet::ConstLineString3d> get_closest_segment(
+lanelet::ConstLineString3d get_closest_segment(
   const lanelet::ConstLineString3d & linestring, const lanelet::BasicPoint3d & search_pt)
 {
-  if (linestring.size() < 2) {
-    return std::nullopt;
-  }
-
   lanelet::ConstLineString3d closest_segment;
   double min_distance = std::numeric_limits<double>::max();
 
@@ -249,7 +245,7 @@ std::optional<lanelet::ConstLineString3d> get_closest_segment(
 double get_lanelet_angle(
   const lanelet::ConstLanelet & lanelet, const lanelet::BasicPoint3d & search_pt)
 {
-  lanelet::ConstLineString3d segment = *get_closest_segment(lanelet.centerline(), search_pt);
+  lanelet::ConstLineString3d segment = get_closest_segment(lanelet.centerline(), search_pt);
   return std::atan2(
     segment.back().y() - segment.front().y(), segment.back().x() - segment.front().x());
 }

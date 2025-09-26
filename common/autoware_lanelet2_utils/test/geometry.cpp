@@ -300,16 +300,7 @@ TEST_F(ExtrapolatedLaneletTest, GetPoseFrom2dArcLength_OnRealMapLanelets)
   EXPECT_NEAR(p.orientation.w, eq.w, 1e-4);
 }
 
-// Test 16: get_closest_segment empty linestring
-TEST(GetClosestSegment, EmptyLinestringReturnsNullopt)
-{
-  lanelet::ConstLineString3d empty{lanelet::InvalId, lanelet::Points3d{}};
-  lanelet::BasicPoint3d test_point(0.0, 0.0, 0.0);
-  auto opt = autoware::experimental::lanelet2_utils::get_closest_segment(empty, test_point);
-  EXPECT_FALSE(opt.has_value());
-}
-
-// Test 17: get_closest_segment full range
+// Test 16: get_closest_segment full range
 TEST(GetClosestSegment, OrdinaryLinestringReturnCorrectSegment)
 {
   std::vector<lanelet::Point3d> pts = {
@@ -321,9 +312,7 @@ TEST(GetClosestSegment, OrdinaryLinestringReturnCorrectSegment)
   // The Closest Segment is the first segment
   {
     lanelet::BasicPoint3d query(0.5, 0.0, 0.0);
-    auto opt = autoware::experimental::lanelet2_utils::get_closest_segment(line, query);
-    ASSERT_TRUE(opt.has_value());
-    const auto & out = *opt;
+    auto out = autoware::experimental::lanelet2_utils::get_closest_segment(line, query);
     ASSERT_EQ(out.size(), 2);
 
     lanelet::BasicPoint3d start_point = out.front().basicPoint();
@@ -336,9 +325,7 @@ TEST(GetClosestSegment, OrdinaryLinestringReturnCorrectSegment)
   // The Closest Segment is the second segment
   {
     lanelet::BasicPoint3d query(1.5, 0.0, 0.0);
-    auto opt = autoware::experimental::lanelet2_utils::get_closest_segment(line, query);
-    ASSERT_TRUE(opt.has_value());
-    const auto & out = *opt;
+    auto out = autoware::experimental::lanelet2_utils::get_closest_segment(line, query);
     ASSERT_EQ(out.size(), 2);
 
     lanelet::BasicPoint3d start_point = out.front().basicPoint();
@@ -349,7 +336,7 @@ TEST(GetClosestSegment, OrdinaryLinestringReturnCorrectSegment)
   }
 }
 
-// TEST 18: get_lanelet_angle Horizontal Case
+// TEST 17: get_lanelet_angle Horizontal Case
 TEST_F(GetLaneletAngle, GetHorizontalAngle)
 {
   const auto ll = lanelet_map_ptr_->laneletLayer.get(2296);
@@ -359,7 +346,7 @@ TEST_F(GetLaneletAngle, GetHorizontalAngle)
   EXPECT_NEAR(out, -3.1308317, 1e-4);
 }
 
-// TEST 19: get_lanelet_angle Vertical
+// TEST 18: get_lanelet_angle Vertical
 TEST_F(GetLaneletAngle, GetVerticalAngle)
 {
   const auto ll = lanelet_map_ptr_->laneletLayer.get(2258);
