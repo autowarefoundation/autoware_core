@@ -25,6 +25,7 @@
 #include <lanelet2_traffic_rules/TrafficRules.h>
 
 #include <optional>
+#include <vector>
 
 namespace autoware::experimental::trajectory
 {
@@ -49,7 +50,7 @@ struct Waypoint
   std::optional<lanelet::Id> next_id{std::nullopt};  // this is for border point only
 
   // ctor definition to avoid setting next_id mistakenly
-  Waypoint(const lanelet::ConstPoint3d & point, const lanelet::Id & id) : point(point), id(id) {};
+  Waypoint(const lanelet::ConstPoint3d & point, const lanelet::Id & id) : point(point), id(id) {}
 };
 
 using LaneletSequenceWithInterval = ElementWithInterval<lanelet::ConstLanelets>;
