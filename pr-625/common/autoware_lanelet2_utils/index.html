@@ -6908,7 +6908,7 @@
 <tr>
 <td></td>
 <td><code>.left_lanelet(lanelet, take_sibling, extra_vru)</code></td>
-<td>This function ignores the permission of lane change.<br>If <code>extra_vru</code> is:<ul><code>RoadOnly</code>, it ignores <code>shoulder</code> and <code>bicycle</code> Lanelet<li><li><li></ul></td>
+<td>This function ignores the permission of lane change.<br>If <code>extra_vru</code> is:<ul><li><code>RoadOnly</code>, it ignores <code>shoulder</code> and <code>bicycle</code> Lanelet</li><li><code>Shoulder</code>, it searches <code>shoulder</code> Lanelet additionally</li><li><code>BicycleLane</code>, it searches <code>bicycle_lane</code> Lanelet additionally</li><li><code>ShoulderAndBicycleLane</code>, it searches <code>shoulder</code> and <code>bicycle_lane</code> Lanelet additionally</li></ul></td>
 <td><span class="arithmatex">\(O(1)\)</span></td>
 <td>In the first map, the green Lanelet is the <code>left_lanelet</code> of the orange Lanelet.<br>In the second and third map, the <code>left_lanelet</code> of the orange Lanelet is <code>null</code>.<br><img alt="left_lanelet" src="media/api/left_lanelet.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-625%2Fcommon%2Fautoware%2Flanelet2_utils%2Fmedia%2Fapi%2Fleft_lanelet.drawio.svg">Open</a></td>
 <td></td>
