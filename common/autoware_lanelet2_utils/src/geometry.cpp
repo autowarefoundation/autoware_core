@@ -225,14 +225,13 @@ lanelet::ConstLineString3d get_closest_segment(
   lanelet::ConstLineString3d closest_segment;
   double min_distance = std::numeric_limits<double>::max();
 
-  for (const auto & [prev_const_pt, current_const_pt] :
+  for (const auto & [prev_pt, current_pt] :
        ranges::views::zip(linestring, linestring | ranges::views::drop(1))) {
-    lanelet::Point3d prev_pt(
-      lanelet::InvalId, prev_const_pt.x(), prev_const_pt.y(), prev_const_pt.z());
-    lanelet::Point3d current_pt(
-      lanelet::InvalId, current_const_pt.x(), current_const_pt.y(), current_const_pt.z());
+    lanelet::Point3d prev_pt_3d(lanelet::InvalId, prev_pt.x(), prev_pt.y(), prev_pt.z());
+    lanelet::Point3d current_pt_3d(
+      lanelet::InvalId, current_pt.x(), current_pt.y(), current_pt.z());
 
-    lanelet::ConstLineString3d current_segment(lanelet::InvalId, {prev_pt, current_pt});
+    lanelet::ConstLineString3d current_segment(lanelet::InvalId, {prev_pt_3d, current_pt_3d});
     double distance = lanelet::geometry::distance3d(current_segment.basicLineString(), search_pt);
     if (distance < min_distance) {
       closest_segment = current_segment;
