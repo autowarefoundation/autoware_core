@@ -58,6 +58,7 @@ if(BUILD_TESTING)
   target_link_libraries(test_autoware_trajectory
     autoware_trajectory
     ${autoware_motion_utils_LIBRARIES}
+    ${autoware_test_utils_LIBRARIES}
   )
 
   # Examples
