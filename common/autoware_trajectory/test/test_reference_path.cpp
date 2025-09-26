@@ -18,526 +18,237 @@
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <autoware/lanelet2_utils/conversion.hpp>
-#include <autoware/lanelet2_utils/topology.hpp>
 #include <autoware_lanelet2_extension/utility/message_conversion.hpp>
+#include <autoware_lanelet2_extension/utility/query.hpp>
 #include <autoware_lanelet2_extension/utility/utilities.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 #include <range/v3/all.hpp>
 
+#include <boost/geometry/algorithms/touches.hpp>
+
 #include <gtest/gtest.h>
 #include <lanelet2_core/geometry/Lanelet.h>
-#include <lanelet2_core/geometry/Point.h>
-#include <lanelet2_core/geometry/Polygon.h>
-#include <lanelet2_io/Io.h>
+#include <lanelet2_core/geometry/LineString.h>
 
-#include <array>
-#include <filesystem>
-#include <limits>
-#include <string>
-#include <vector>
-
-namespace fs = std::filesystem;
-
-static constexpr auto inf = std::numeric_limits<double>::infinity();
-
-namespace autoware::experimental
+namespace autoware::experimental::trajectory
 {
+using autoware_internal_planning_msgs::msg::PathPointWithLaneId;
 
-namespace
+struct ReferencePathTestParam
 {
-std::optional<trajectory::Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>>
-build_reference_path(
-  const lanelet::ConstLanelets & lanelet_sequence, const lanelet::ConstLanelet & current_lanelet,
-  const geometry_msgs::msg::Pose & ego_pose, const lanelet::LaneletMapConstPtr lanelet_map,
-  const lanelet::routing::RoutingGraphConstPtr routing_graph,
-  lanelet::traffic_rules::TrafficRulesPtr traffic_rules, const double forward_length,
-  const double backward_length, const double waypoint_connection_gradient_from_centerline)
+  std::string description;
+  std::vector<lanelet::Id> lane_ids;
+  lanelet::BasicPoint3d ego_position;
+  lanelet::Id current_lanelet_id;
+  double backward_length;
+  double forward_length;
+  double waypoint_connection_gradient_from_centerline;
+
+  bool has_result;
+};
+
+std::ostream & operator<<(std::ostream & os, const ReferencePathTestParam & p)
 {
-  const auto s_ego = trajectory::get_position_in_lanelet_sequence(
-    trajectory::zip_accumulated_distance(lanelet_sequence),
-    trajectory::Waypoint{
-      lanelet::utils::conversion::toLaneletPoint(ego_pose.position), current_lanelet.id()});
-  if (!s_ego) {
-    // ego is not in lanelet sequence
-    return std::nullopt;
-  }
-
-  const auto extended_lanelet_sequence_with_interval = trajectory::extend_lanelet_sequence(
-    lanelet_sequence, routing_graph, {*s_ego - backward_length, *s_ego + forward_length});
-
-  if (
-    extended_lanelet_sequence_with_interval.interval.end <=
-    extended_lanelet_sequence_with_interval.interval.start) {
-    // interval is invalid
-    return std::nullopt;
-  }
-
-  return trajectory::build_reference_path(
-    extended_lanelet_sequence_with_interval, lanelet_map, traffic_rules,
-    waypoint_connection_gradient_from_centerline);
+  return os << p.description;
 }
-}  // namespace
 
-template <typename Parameter>
-class TestCase : public ::testing::TestWithParam<Parameter>
+class ReferencePathTest : public ::testing::TestWithParam<ReferencePathTestParam>
 {
-public:
 protected:
-  lanelet::LaneletMapConstPtr lanelet_map_{nullptr};
-  lanelet::routing::RoutingGraphConstPtr routing_graph_{nullptr};
-  lanelet::traffic_rules::TrafficRulesPtr traffic_rules_{nullptr};
-
-  void SetUp() override
+  void set_map(const std::string & map_path)
   {
-    const auto sample_map_dir =
-      fs::path(ament_index_cpp::get_package_share_directory(Parameter::pkg)) / "sample_map" /
-      std::string(Parameter::dir);
-    const auto map_path = sample_map_dir / "lanelet2_map.osm";
-    lanelet_map_ = lanelet2_utils::load_mgrs_coordinate_map(map_path.string());
-    std::tie(routing_graph_, traffic_rules_) =
-      autoware::experimental::lanelet2_utils::instantiate_routing_graph_and_traffic_rules(
-        lanelet_map_);
-  }
-};
-
-struct Parameter_Map_Waypoint_Straight_00  // NOLINT
-{
-  static constexpr const char * pkg = "autoware_lanelet2_utils";
-  static constexpr const char * dir = "straight_waypoint";
-  const double forward_length;
-  const double backward_length;
-  const double waypoint_connection_gradient_from_centerline;
-  const std::vector<lanelet::Id> route_lane_ids;
-  const lanelet::Id current_lane_id;
-  const double ego_x;
-  const double ego_y;
-  const double ego_z;
-  const std::array<double, 4> ego_quat;
-  const bool expect_success;
-  const double expected_approximate_length_lower_bound;
-};
-
-void PrintTo(const Parameter_Map_Waypoint_Straight_00 & param, ::std::ostream * os)  // NOLINT
-{
-  *os << "forward/backward length = (" << param.forward_length << ", " << param.backward_length
-      << "), (x, y, z) = (" << param.ego_x << ", " << param.ego_y << ", " << param.ego_z << ")";
-}
-
-using TestCase_Map_Waypoint_Straight_00 = TestCase<Parameter_Map_Waypoint_Straight_00>;  // NOLINT
-
-TEST_P(TestCase_Map_Waypoint_Straight_00, test_path_validity)
-{
-  auto
-    [FORWARD_LENGTH, BACKWARD_LENGTH, WAYPOINT_CONNECTION_GRADIENT_FROM_CENTERLINE, ids, current_id,
-     x, y, z, quat, expect_success, expected_approximate_length_lower_bound] = GetParam();
-
-  const auto lanelet_sequence =
-    ids |
-    ranges::views::transform([&](const auto & id) { return lanelet_map_->laneletLayer.get(id); }) |
-    ranges::to<std::vector>();
-  const auto ego_pose =
-    geometry_msgs::build<geometry_msgs::msg::Pose>()
-      .position(autoware_utils_geometry::create_point(x, y, z))
-      .orientation(autoware_utils_geometry::create_quaternion(quat[0], quat[1], quat[2], quat[3]));
-  const auto reference_path_opt = build_reference_path(
-    lanelet_sequence, lanelet_map_->laneletLayer.get(current_id), ego_pose, lanelet_map_,
-    routing_graph_, traffic_rules_, FORWARD_LENGTH, BACKWARD_LENGTH,
-    WAYPOINT_CONNECTION_GRADIENT_FROM_CENTERLINE);
-
-  if (expect_success) {
-    ASSERT_TRUE(reference_path_opt.has_value());
-    const auto & reference_path = reference_path_opt.value();
-    EXPECT_TRUE(reference_path.length() > expected_approximate_length_lower_bound)
-      << "length of reference_path / expected_approximate_length_lower_bound = "
-      << reference_path.length() << ", " << expected_approximate_length_lower_bound;
-    /*
-    // TODO(soblin): if waypoints are contained, trajectory length does not match with s_end -
-    // s_start
-    if (expect_length.value() != inf) {
-      EXPECT_TRUE(std::fabs(reference_path.length() - expect_length.value()) < 0.1)
-        << "length of reference_path / expected = " << reference_path.length() << ", "
-        << expect_length.value();
+    lanelet_map_ = lanelet2_utils::load_mgrs_coordinate_map(map_path);
+    if (!lanelet_map_) {
+      throw std::runtime_error("Failed to load map: " + map_path);
     }
-    */
 
-    const auto points = reference_path.restore();
-    const auto lanelet = lanelet::utils::combineLaneletsShape(lanelet_sequence);
+    std::tie(routing_graph_, traffic_rules_) =
+      lanelet2_utils::instantiate_routing_graph_and_traffic_rules(lanelet_map_);
+  }
+
+  lanelet::ConstLanelets get_lanelets_from_ids(const lanelet::Ids & ids) const
+  {
+    if (!lanelet_map_) {
+      throw std::runtime_error("Map not set");
+    }
+
+    lanelet::ConstLanelets lanelets;
+    for (const auto & id : ids) {
+      lanelets.push_back(lanelet_map_->laneletLayer.get(id));
+    }
+    return lanelets;
+  }
+
+  std::optional<Trajectory<PathPointWithLaneId>> build_reference_path()
+  {
+    const auto & p = GetParam();
+
+    const auto lanelet_sequence = get_lanelets_from_ids(p.lane_ids);
+
+    const auto s_ego = get_position_in_lanelet_sequence(
+      zip_accumulated_distance(lanelet_sequence),
+      Waypoint{
+        lanelet::utils::to3D(lanelet::ConstPoint2d{lanelet::InvalId, p.ego_position}),
+        p.current_lanelet_id});
+    if (!s_ego) {
+      throw std::runtime_error("Ego is not in lanelet sequence");
+    }
+
+    extended_lanelet_sequence_with_interval_ =
+      std::make_unique<LaneletSequenceWithInterval>(extend_lanelet_sequence(
+        lanelet_sequence, routing_graph_, {*s_ego - p.backward_length, *s_ego + p.forward_length}));
+
+    if (
+      extended_lanelet_sequence_with_interval_->interval.end <=
+      extended_lanelet_sequence_with_interval_->interval.start) {
+      throw std::runtime_error("Interval is invalid");
+    }
+
+    return trajectory::build_reference_path(
+      *extended_lanelet_sequence_with_interval_, lanelet_map_, traffic_rules_,
+      p.waypoint_connection_gradient_from_centerline);
+  }
+
+  void check_path_shape(const std::vector<PathPointWithLaneId> & result_points) const
+  {
+    const auto combined_lanelet =
+      lanelet::utils::combineLaneletsShape(extended_lanelet_sequence_with_interval_->element);
 
     for (const auto [p1, p2, p3] : ranges::views::zip(
-           points, points | ranges::views::drop(1), points | ranges::views::drop(2))) {
+           result_points, result_points | ranges::views::drop(1),
+           result_points | ranges::views::drop(2))) {
+      EXPECT_GE(autoware_utils_geometry::calc_distance3d(p1, p2), k_points_minimum_dist_threshold)
+        << "p1: \n"
+        << autoware_internal_planning_msgs::msg::to_yaml(p1) << "\np2: \n"
+        << autoware_internal_planning_msgs::msg::to_yaml(p2);
       EXPECT_TRUE(
-        autoware_utils_geometry::calc_distance3d(p1, p2) >=
-        autoware::experimental::trajectory::k_points_minimum_dist_threshold);
-      EXPECT_TRUE(boost::geometry::within(
-        lanelet::utils::to2D(lanelet::utils::conversion::toLaneletPoint(p2.point.pose.position)),
-        lanelet.polygon2d().basicPolygon()))
-        << "point(" << p2.point.pose.position.x << ", " << p2.point.pose.position.y << ")";
-      EXPECT_TRUE(
-        std::fabs(autoware_utils_math::normalize_radian(
-          autoware_utils_geometry::calc_azimuth_angle(
-            p1.point.pose.position, p2.point.pose.position) -
-          autoware_utils_geometry::calc_azimuth_angle(
-            p2.point.pose.position, p3.point.pose.position))) < M_PI / 2.0);
+        lanelet::geometry::within(
+          lanelet::utils::to2D(lanelet::utils::conversion::toLaneletPoint(p2.point.pose.position)),
+          combined_lanelet.polygon2d().basicPolygon()))
+        << "p2: \n"
+        << autoware_internal_planning_msgs::msg::to_yaml(p2);
+      EXPECT_LT(
+        std::abs(
+          autoware_utils_math::normalize_radian(
+            autoware_utils_geometry::calc_azimuth_angle(
+              p1.point.pose.position, p2.point.pose.position) -
+            autoware_utils_geometry::calc_azimuth_angle(
+              p2.point.pose.position, p3.point.pose.position))),
+        M_PI_2)
+        << "p1: \n"
+        << autoware_internal_planning_msgs::msg::to_yaml(p1) << "\np2: \n"
+        << autoware_internal_planning_msgs::msg::to_yaml(p2) << "\np3: \n"
+        << autoware_internal_planning_msgs::msg::to_yaml(p3);
     }
-  } else {
-    ASSERT_FALSE(reference_path_opt.has_value());
   }
+
+  void check_waypoints(const std::vector<PathPointWithLaneId> & result_points) const
+  {
+    for (const auto & lanelet : extended_lanelet_sequence_with_interval_->element) {
+      if (!lanelet.hasAttribute("waypoints")) {
+        continue;
+      }
+
+      const auto waypoints_id = lanelet.attribute("waypoints").asId().value();
+      const auto & waypoints_linestring = lanelet_map_->lineStringLayer.get(waypoints_id);
+
+      const std::vector<Waypoint> user_defined_waypoints =
+        waypoints_linestring |
+        ranges::views::transform(
+          [&lanelet](const lanelet::ConstPoint3d & p) { return Waypoint{p, lanelet.id()}; }) |
+        ranges::to<std::vector>();
+
+      for (const auto & waypoint : user_defined_waypoints | ranges::views::drop_last(1)) {
+        EXPECT_TRUE(
+          std::any_of(
+            result_points.begin(), result_points.end(),
+            [&waypoint](const PathPointWithLaneId & result_point) {
+              return lanelet::geometry::distance(
+                       waypoint.point, lanelet::utils::conversion::toLaneletPoint(
+                                         result_point.point.pose.position)) <
+                     k_points_minimum_dist_threshold;
+            }))
+          << "waypoint: (" << waypoint.point.x() << ", " << waypoint.point.y() << ", "
+          << waypoint.point.z() << ")" << std::endl;
+      }
+    }
+  }
+
+  void check_border_points(const std::vector<PathPointWithLaneId> & result_points) const
+  {
+    for (auto lanelet_it = std::next(extended_lanelet_sequence_with_interval_->element.begin());
+         lanelet_it != extended_lanelet_sequence_with_interval_->element.end(); ++lanelet_it) {
+      const lanelet::BasicLineString2d border{
+        lanelet_it->leftBound().front().basicPoint2d(),
+        lanelet_it->rightBound().front().basicPoint2d()};
+
+      EXPECT_TRUE(
+        std::any_of(
+          result_points.begin(), result_points.end(),
+          [&](const PathPointWithLaneId & result_point) {
+            return lanelet::geometry::distance(
+                     border,
+                     lanelet::utils::conversion::toLaneletPoint(result_point.point.pose.position)
+                       .basicPoint2d()) < k_points_minimum_dist_threshold &&
+                   result_point.lane_ids.size() == 2 &&
+                   ranges::equal(
+                     result_point.lane_ids | ranges::to<std::vector>() | ranges::actions::sort,
+                     std::vector{std::prev(lanelet_it)->id(), lanelet_it->id()} |
+                       ranges::actions::sort);
+          }))
+        << "lanelet: " << lanelet_it->id() << std::endl;
+    }
+  }
+
+  lanelet::LaneletMapConstPtr lanelet_map_;
+  lanelet::traffic_rules::TrafficRulesPtr traffic_rules_;
+  lanelet::routing::RoutingGraphConstPtr routing_graph_;
+
+  std::unique_ptr<LaneletSequenceWithInterval> extended_lanelet_sequence_with_interval_;
+};
+
+struct DenseCenterlineTest : public ReferencePathTest
+{
+  void SetUp() override
+  {
+    ReferencePathTest::SetUp();
+    set_map(
+      ament_index_cpp::get_package_share_directory("autoware_lanelet2_utils") +
+      "/sample_map/dense_centerline/lanelet2_map.osm");
+  }
+};
+
+TEST_P(DenseCenterlineTest, DenseCenterline)
+{
+  const auto & p = GetParam();
+
+  const auto result = build_reference_path();
+
+  ASSERT_EQ(result.has_value(), p.has_result);
+  if (!p.has_result) {
+    return;
+  }
+
+  const auto result_points = result->restore();
+
+  check_path_shape(result_points);
+
+  check_waypoints(result_points);
+
+  check_border_points(result_points);
 }
 
 INSTANTIATE_TEST_SUITE_P(
-  test_path_validity, TestCase_Map_Waypoint_Straight_00,
-  ::testing::Values(  // enumerate values below
-    Parameter_Map_Waypoint_Straight_00{
-      200,  // [m]
-      0,    // [m]
+  , DenseCenterlineTest,
+  ::testing::Values(
+    ReferencePathTestParam{
+      "Normal",
+      {140, 137, 136, 138, 139, 135},
+      {125.059, 96.2981, 100},
+      140,
+      5.0,
+      300.0,
       10.0,
-      {1043, 1047, 1049},    // ids
-      1043,                  // id
-      102,                   // x[m]
-      300,                   // y[m]
-      100.0,                 // z[m]
-      {0.0, 0.0, 0.0, 1.0},  // quaternion
-      true,
-      200 * 0.9  // [m]
-    },
-    Parameter_Map_Waypoint_Straight_00{
-      200,  // [m]
-      100,  // [m]
-      10.0,
-      {1043, 1047, 1049},    // ids
-      1043,                  // id
-      102,                   // x[m]
-      300,                   // y[m]
-      100.0,                 // z[m]
-      {0.0, 0.0, 0.0, 1.0},  // quaternion
-      true,
-      200 * 0.9  // [m]
-    },
-    Parameter_Map_Waypoint_Straight_00{
-      0,  // [m]
-      0,  // [m]
-      10.0,
-      {1043, 1047, 1049},    // ids
-      1043,                  // id
-      102,                   // x[m]
-      300,                   // y[m]
-      100.0,                 // z[m]
-      {0.0, 0.0, 0.0, 1.0},  // quaternion
-      false,
-      0.0  // [m]
-    },
-    Parameter_Map_Waypoint_Straight_00{
-      inf,  // [m]
-      inf,  // [m]
-      10.0,
-      {1043, 1047, 1049},    // ids
-      1043,                  // id
-      102,                   // x[m]
-      300,                   // y[m]
-      100.0,                 // z[m]
-      {0.0, 0.0, 0.0, 1.0},  // quaternion
-      true,
-      200 * 0.9  // [m]
-    })           // values
-);
-
-struct Parameter_Map_Waypoint_Curve_00  // NOLINT
-{
-  static constexpr const char * pkg = "autoware_lanelet2_utils";
-  static constexpr const char * dir = "dense_centerline";
-  const double forward_length;
-  const double backward_length;
-  const double waypoint_connection_gradient_from_centerline;
-  const std::vector<lanelet::Id> route_lane_ids;
-  const lanelet::Id current_lane_id;
-  const double ego_x;
-  const double ego_y;
-  const double ego_z;
-  const std::array<double, 4> ego_quat;
-  const bool expect_success;
-  const double expected_approximate_length_lower_bound;
-};
-
-void PrintTo(const Parameter_Map_Waypoint_Curve_00 & param, ::std::ostream * os)  // NOLINT
-{
-  *os << "forward/backward length = (" << param.forward_length << ", " << param.backward_length
-      << "), (x, y, z) = (" << param.ego_x << ", " << param.ego_y << ", " << param.ego_z << ")";
-}
-
-using TestCase_Map_Waypoint_Curve_00 = TestCase<Parameter_Map_Waypoint_Curve_00>;  // NOLINT
-
-TEST_P(TestCase_Map_Waypoint_Curve_00, test_path_validity)
-{
-  auto
-    [FORWARD_LENGTH, BACKWARD_LENGTH, WAYPOINT_CONNECTION_GRADIENT_FROM_CENTERLINE, ids, current_id,
-     x, y, z, quat, expect_success, expected_approximate_length_lower_bound] = GetParam();
-
-  const auto lanelet_sequence =
-    ids |
-    ranges::views::transform([&](const auto & id) { return lanelet_map_->laneletLayer.get(id); }) |
-    ranges::to<std::vector>();
-  const auto ego_pose =
-    geometry_msgs::build<geometry_msgs::msg::Pose>()
-      .position(autoware_utils_geometry::create_point(x, y, z))
-      .orientation(autoware_utils_geometry::create_quaternion(quat[0], quat[1], quat[2], quat[3]));
-  const auto reference_path_opt = build_reference_path(
-    lanelet_sequence, lanelet_map_->laneletLayer.get(current_id), ego_pose, lanelet_map_,
-    routing_graph_, traffic_rules_, FORWARD_LENGTH, BACKWARD_LENGTH,
-    WAYPOINT_CONNECTION_GRADIENT_FROM_CENTERLINE);
-
-  if (expect_success) {
-    ASSERT_TRUE(reference_path_opt.has_value());
-    const auto & reference_path = reference_path_opt.value();
-    EXPECT_TRUE(reference_path.length() > expected_approximate_length_lower_bound)
-      << "length of reference_path / expected_approximate_length_lower_bound = "
-      << reference_path.length() << ", " << expected_approximate_length_lower_bound;
-    /*
-    // TODO(soblin): if waypoints are contained, trajectory length does not match with s_end -
-    // s_start
-    if (expect_length.value() != inf) {
-      EXPECT_TRUE(std::fabs(reference_path.length() - expect_length.value()) < 0.1)
-        << "length of reference_path / expected = " << reference_path.length() << ", "
-        << expect_length.value();
-    }
-    */
-
-    const auto points = reference_path.restore();
-    const auto lanelet = lanelet::utils::combineLaneletsShape(lanelet_sequence);
-
-    for (const auto [p1, p2, p3] : ranges::views::zip(
-           points, points | ranges::views::drop(1), points | ranges::views::drop(2))) {
-      EXPECT_TRUE(
-        autoware_utils_geometry::calc_distance3d(p1, p2) >=
-        autoware::experimental::trajectory::k_points_minimum_dist_threshold);
-
-      // use p2, because p1/p3 at the end may well be slightly outside of the Lanelets by error
-      EXPECT_TRUE(boost::geometry::within(
-        lanelet::utils::to2D(lanelet::utils::conversion::toLaneletPoint(p2.point.pose.position)),
-        lanelet.polygon2d().basicPolygon()))
-        << "point(" << p2.point.pose.position.x << ", " << p2.point.pose.position.y << ")";
-
-      EXPECT_TRUE(
-        std::fabs(autoware_utils_math::normalize_radian(
-          autoware_utils_geometry::calc_azimuth_angle(
-            p1.point.pose.position, p2.point.pose.position) -
-          autoware_utils_geometry::calc_azimuth_angle(
-            p2.point.pose.position, p3.point.pose.position))) < M_PI / 2.0);
-    }
-  } else {
-    ASSERT_FALSE(reference_path_opt.has_value());
-  }
-}
-
-INSTANTIATE_TEST_SUITE_P(
-  test_path_validity, TestCase_Map_Waypoint_Curve_00,
-  ::testing::Values(  // enumerate values below
-                      // here are the cases where current_pose is on a normal lanelet
-    Parameter_Map_Waypoint_Curve_00{
-      40,  // [m]
-      0,   // [m]
-      10.0,
-      {140, 137, 136, 138, 139, 135},  // ids
-      140,                             // id
-      740,                             // x[m]
-      1148,                            // y[m]
-      100.0,                           // z[m]
-      {0.0, 0.0, 0.0, 1.0},            // quaternion
-      true,
-      40 * 0.9  // [m]
-    },
-    Parameter_Map_Waypoint_Curve_00{
-      0,    // [m]
-      6.5,  // [m]
-      10.0,
-      {140, 137, 136, 138, 139, 135},  // ids
-      140,                             // id
-      740,                             // x[m]
-      1148,                            // y[m]
-      100.0,                           // z[m]
-      {0.0, 0.0, 0.0, 1.0},            // quaternion
-      true,
-      6.5 * 0.9  // [m]
-    },
-    Parameter_Map_Waypoint_Curve_00{
-      40,   // [m]
-      6.5,  // [m]
-      10.0,
-      {140, 137, 136, 138, 139, 135},  // ids
-      140,                             // id
-      740,                             // x[m]
-      1148,                            // y[m]
-      100.0,                           // z[m]
-      {0.0, 0.0, 0.0, 1.0},            // quaternion
-      true,
-      45 * 0.9  // [m]
-    },
-    Parameter_Map_Waypoint_Curve_00{
-      0,  // [m]
-      0,  // [m]
-      10.0,
-      {140, 137, 136, 138, 139, 135},  // ids
-      140,                             // id
-      740,                             // x[m]
-      1148,                            // y[m]
-      100.0,                           // z[m]
-      {0.0, 0.0, 0.0, 1.0},            // quaternion
-      false,
-      0.0  // [m]
-    },
-    Parameter_Map_Waypoint_Curve_00{
-      inf,  // [m]
-      inf,  // [m]
-      10.0,
-      {140, 137, 136, 138, 139, 135},  // ids
-      140,                             // id
-      740,                             // x[m]
-      1148,                            // y[m]
-      100.0,                           // z[m]
-      {0.0, 0.0, 0.0, 1.0},            // quaternion
-      true,
-      50 * 0.9  // [m]
-    },
-    // here are the cases where current_pose is just before a waypoint
-    Parameter_Map_Waypoint_Curve_00{
-      40,  // [m]
-      0,   // [m]
-      10.0,
-      {140, 137, 136, 138, 139, 135},  // ids
-      137,                             // id
-      735,                             // x[m]
-      1148,                            // y[m]
-      100.0,                           // z[m]
-      {0.0, 0.0, 0.0, 1.0},            // quaternion
-      true,
-      40 * 0.9  // [m]
-    },
-    Parameter_Map_Waypoint_Curve_00{
-      0,    // [m]
-      6.5,  // [m]
-      10.0,
-      {140, 137, 136, 138, 139, 135},  // ids
-      137,                             // id
-      735,                             // x[m]
-      1148,                            // y[m]
-      100.0,                           // z[m]
-      {0.0, 0.0, 0.0, 1.0},            // quaternion
-      true,
-      6.5 * 0.9  // [m]
-    },
-    Parameter_Map_Waypoint_Curve_00{
-      40,   // [m]
-      6.5,  // [m]
-      10.0,
-      {140, 137, 136, 138, 139, 135},  // ids
-      137,                             // id
-      735,                             // x[m]
-      1148,                            // y[m]
-      100.0,                           // z[m]
-      {0.0, 0.0, 0.0, 1.0},            // quaternion
-      true,
-      45 * 0.9  // [m]
-    })          // values
-);
-
-struct Parameter_Map_Overlap_Lane_00  // NOLINT
-{
-  static constexpr const char * pkg = "autoware_test_utils";
-  static constexpr const char * dir = "overlap";
-  const double forward_length;
-  const double backward_length;
-  const double waypoint_connection_gradient_from_centerline;
-  const std::vector<lanelet::Id> route_lane_ids;
-  const lanelet::Id current_lane_id;
-  const double ego_x;
-  const double ego_y;
-  const double ego_z;
-  const std::array<double, 4> ego_quat;
-  const bool expect_success;
-};
-
-void PrintTo(const Parameter_Map_Overlap_Lane_00 & param, ::std::ostream * os)  // NOLINT
-{
-  *os << "forward/backward length = (" << param.forward_length << ", " << param.backward_length
-      << "), (x, y, z) = (" << param.ego_x << ", " << param.ego_y << ", " << param.ego_z << ")";
-}
-
-class TestCase_Map_Overlap_Lane_00 : public ::testing::TestWithParam<Parameter_Map_Overlap_Lane_00>
-{
-public:
-protected:
-  lanelet::LaneletMapConstPtr lanelet_map_{nullptr};
-  lanelet::routing::RoutingGraphConstPtr routing_graph_{nullptr};
-  lanelet::traffic_rules::TrafficRulesPtr traffic_rules_{nullptr};
-
-  void SetUp() override
-  {
-    // TODO(soblin): unify test map location and PATHs! (one of autoware_test_utils,
-    // autoware_lanelet2_utils)
-    const auto sample_map_dir =
-      fs::path(ament_index_cpp::get_package_share_directory(Parameter_Map_Overlap_Lane_00::pkg)) /
-      "test_map" / std::string(Parameter_Map_Overlap_Lane_00::dir);
-    const auto map_path = sample_map_dir / "lanelet2_map.osm";
-    lanelet_map_ = lanelet2_utils::load_mgrs_coordinate_map(map_path.string());
-    std::tie(routing_graph_, traffic_rules_) =
-      autoware::experimental::lanelet2_utils::instantiate_routing_graph_and_traffic_rules(
-        lanelet_map_);
-  }
-};
-
-TEST_P(TestCase_Map_Overlap_Lane_00, test_path_validity)
-{
-  auto
-    [FORWARD_LENGTH, BACKWARD_LENGTH, WAYPOINT_CONNECTION_GRADIENT_FROM_CENTERLINE, ids, current_id,
-     x, y, z, quat, expect_success] = GetParam();
-
-  const auto lanelet_sequence =
-    ids |
-    ranges::views::transform([&](const auto & id) { return lanelet_map_->laneletLayer.get(id); }) |
-    ranges::to<std::vector>();
-  const auto ego_pose =
-    geometry_msgs::build<geometry_msgs::msg::Pose>()
-      .position(autoware_utils_geometry::create_point(x, y, z))
-      .orientation(autoware_utils_geometry::create_quaternion(quat[0], quat[1], quat[2], quat[3]));
-  const auto reference_path_opt = build_reference_path(
-    lanelet_sequence, lanelet_map_->laneletLayer.get(current_id), ego_pose, lanelet_map_,
-    routing_graph_, traffic_rules_, FORWARD_LENGTH, BACKWARD_LENGTH,
-    WAYPOINT_CONNECTION_GRADIENT_FROM_CENTERLINE);
-
-  if (expect_success) {
-    ASSERT_TRUE(reference_path_opt.has_value());
-    const auto & reference_path = reference_path_opt.value();
-    // NOTE(soblin): this map does not have waypoint, so s_end - s_start matches the trajectory
-    // length
-    const double expect_length = FORWARD_LENGTH + BACKWARD_LENGTH;
-    EXPECT_TRUE(std::fabs(reference_path.length() - expect_length) < 0.1)
-      << "length of reference_path / expected = " << reference_path.length() << ", "
-      << expect_length;
-
-    const auto points = reference_path.restore();
-    const auto lanelet = lanelet::utils::combineLaneletsShape(lanelet_sequence);
-
-    for (const auto [p1, p2, p3] : ranges::views::zip(
-           points, points | ranges::views::drop(1), points | ranges::views::drop(2))) {
-      EXPECT_TRUE(
-        autoware_utils_geometry::calc_distance3d(p1, p2) >=
-        autoware::experimental::trajectory::k_points_minimum_dist_threshold);
-
-      // use p2, because p1/p3 at the end may well be slightly outside of the Lanelets by error
-      EXPECT_TRUE(boost::geometry::within(
-        lanelet::utils::to2D(lanelet::utils::conversion::toLaneletPoint(p2.point.pose.position)),
-        lanelet.polygon2d().basicPolygon()))
-        << "point(" << p2.point.pose.position.x << ", " << p2.point.pose.position.y << ")";
-
-      EXPECT_TRUE(
-        std::fabs(autoware_utils_math::normalize_radian(
-          autoware_utils_geometry::calc_azimuth_angle(
-            p1.point.pose.position, p2.point.pose.position) -
-          autoware_utils_geometry::calc_azimuth_angle(
-            p2.point.pose.position, p3.point.pose.position))) < M_PI / 2.0);
-    }
-  } else {
-    ASSERT_FALSE(reference_path_opt.has_value());
-  }
-}
-
-}  // namespace autoware::experimental
+      true}),
+  ::testing::PrintToStringParamName{});
+}  // namespace autoware::experimental::trajectory
