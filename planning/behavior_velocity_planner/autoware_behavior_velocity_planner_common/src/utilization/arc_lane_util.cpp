@@ -64,6 +64,7 @@ std::optional<geometry_msgs::msg::Point> checkCollision(
   const geometry_msgs::msg::Point & p3, const geometry_msgs::msg::Point & p4)
 {
   const double det = (p2.x - p1.x) * (p4.y - p3.y) - (p2.y - p1.y) * (p4.x - p3.x);
+
   if (det == 0.0) {
     // collision is not one point.
     return std::nullopt;
