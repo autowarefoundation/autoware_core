@@ -121,19 +121,17 @@ protected:
         << "p1: \n"
         << autoware_internal_planning_msgs::msg::to_yaml(p1) << "\np2: \n"
         << autoware_internal_planning_msgs::msg::to_yaml(p2);
-      EXPECT_TRUE(
-        lanelet::geometry::within(
-          lanelet::utils::to2D(lanelet::utils::conversion::toLaneletPoint(p2.point.pose.position)),
-          combined_lanelet.polygon2d().basicPolygon()))
+      EXPECT_TRUE(lanelet::geometry::within(
+        lanelet::utils::to2D(lanelet::utils::conversion::toLaneletPoint(p2.point.pose.position)),
+        combined_lanelet.polygon2d().basicPolygon()))
         << "p2: \n"
         << autoware_internal_planning_msgs::msg::to_yaml(p2);
       EXPECT_LT(
-        std::abs(
-          autoware_utils_math::normalize_radian(
-            autoware_utils_geometry::calc_azimuth_angle(
-              p1.point.pose.position, p2.point.pose.position) -
-            autoware_utils_geometry::calc_azimuth_angle(
-              p2.point.pose.position, p3.point.pose.position))),
+        std::abs(autoware_utils_math::normalize_radian(
+          autoware_utils_geometry::calc_azimuth_angle(
+            p1.point.pose.position, p2.point.pose.position) -
+          autoware_utils_geometry::calc_azimuth_angle(
+            p2.point.pose.position, p3.point.pose.position))),
         M_PI_2)
         << "p1: \n"
         << autoware_internal_planning_msgs::msg::to_yaml(p1) << "\np2: \n"
@@ -159,15 +157,14 @@ protected:
         ranges::to<std::vector>();
 
       for (const auto & waypoint : user_defined_waypoints | ranges::views::drop_last(1)) {
-        EXPECT_TRUE(
-          std::any_of(
-            result_points.begin(), result_points.end(),
-            [&waypoint](const PathPointWithLaneId & result_point) {
-              return lanelet::geometry::distance(
-                       waypoint.point, lanelet::utils::conversion::toLaneletPoint(
-                                         result_point.point.pose.position)) <
-                     k_points_minimum_dist_threshold;
-            }))
+        EXPECT_TRUE(std::any_of(
+          result_points.begin(), result_points.end(),
+          [&waypoint](const PathPointWithLaneId & result_point) {
+            return lanelet::geometry::distance(
+                     waypoint.point,
+                     lanelet::utils::conversion::toLaneletPoint(result_point.point.pose.position)) <
+                   k_points_minimum_dist_threshold;
+          }))
           << "waypoint: (" << waypoint.point.x() << ", " << waypoint.point.y() << ", "
           << waypoint.point.z() << ")" << std::endl;
       }
@@ -182,20 +179,19 @@ protected:
         lanelet_it->leftBound().front().basicPoint2d(),
         lanelet_it->rightBound().front().basicPoint2d()};
 
-      EXPECT_TRUE(
-        std::any_of(
-          result_points.begin(), result_points.end(),
-          [&](const PathPointWithLaneId & result_point) {
-            return lanelet::geometry::distance(
-                     border,
-                     lanelet::utils::conversion::toLaneletPoint(result_point.point.pose.position)
-                       .basicPoint2d()) < k_points_minimum_dist_threshold &&
-                   result_point.lane_ids.size() == 2 &&
-                   ranges::equal(
-                     result_point.lane_ids | ranges::to<std::vector>() | ranges::actions::sort,
-                     std::vector{std::prev(lanelet_it)->id(), lanelet_it->id()} |
-                       ranges::actions::sort);
-          }))
+      EXPECT_TRUE(std::any_of(
+        result_points.begin(), result_points.end(),
+        [&](const PathPointWithLaneId & result_point) {
+          return lanelet::geometry::distance(
+                   border,
+                   lanelet::utils::conversion::toLaneletPoint(result_point.point.pose.position)
+                     .basicPoint2d()) < k_points_minimum_dist_threshold &&
+                 result_point.lane_ids.size() == 2 &&
+                 ranges::equal(
+                   result_point.lane_ids | ranges::to<std::vector>() | ranges::actions::sort,
+                   std::vector{std::prev(lanelet_it)->id(), lanelet_it->id()} |
+                     ranges::actions::sort);
+        }))
         << "lanelet: " << lanelet_it->id() << std::endl;
     }
   }
@@ -240,15 +236,14 @@ TEST_P(DenseCenterlineTest, DenseCenterline)
 
 INSTANTIATE_TEST_SUITE_P(
   , DenseCenterlineTest,
-  ::testing::Values(
-    ReferencePathTestParam{
-      "Normal",
-      {140, 137, 136, 138, 139, 135},
-      {125.059, 96.2981, 100},
-      140,
-      5.0,
-      300.0,
-      10.0,
-      true}),
+  ::testing::Values(ReferencePathTestParam{
+    "Normal",
+    {140, 137, 136, 138, 139, 135},
+    {125.059, 96.2981, 100},
+    140,
+    5.0,
+    300.0,
+    10.0,
+    true}),
   ::testing::PrintToStringParamName{});
 }  // namespace autoware::experimental::trajectory
