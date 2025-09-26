@@ -26,12 +26,11 @@ if(BUILD_TESTING)
   set(test_files
     test/kind.cpp
     test/topology.cpp
-    test/stop_line.cpp
     test/intersection.cpp
+    test/stop_line.cpp
     test/geometry.cpp
     test/hatched_road_marking.cpp
     test/conversion.cpp
-    test/route_manager.cpp
     test/lane_sequence.cpp
     test/nn_search.cpp
     test/map_handler.cpp
