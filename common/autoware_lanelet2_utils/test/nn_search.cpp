@@ -41,7 +41,7 @@ protected:
     lanelet::LaneletMapConstPtr lanelet_map =
       lanelet2_utils::load_mgrs_coordinate_map(test_case_data.map_abs_path);
 
-    all_lanelets_ = lanelet_map->laneletLayer | ranges::v3::to<std::vector>();
+    all_lanelets_ = lanelet_map->laneletLayer | ranges::to<std::vector>();
     rtree_.emplace(lanelet2_utils::LaneletRTree(all_lanelets_));
 
     P0 = test_case_data.manual_poses.at("P0");
@@ -308,7 +308,7 @@ protected:
     lanelet::LaneletMapConstPtr lanelet_map =
       lanelet2_utils::load_mgrs_coordinate_map(test_case_data.map_abs_path);
 
-    all_lanelets_ = lanelet_map->laneletLayer | ranges::v3::to<std::vector>();
+    all_lanelets_ = lanelet_map->laneletLayer | ranges::to<std::vector>();
     rtree_.emplace(lanelet2_utils::LaneletRTree(all_lanelets_));
 
     P0 = test_case_data.manual_poses.at("P0");
@@ -445,7 +445,7 @@ protected:
 
     lanelet_map_ptr_ = lanelet2_utils::load_mgrs_coordinate_map(test_case_data.map_abs_path);
 
-    all_lanelets_ = lanelet_map_ptr_->laneletLayer | ranges::v3::to<std::vector>();
+    all_lanelets_ = lanelet_map_ptr_->laneletLayer | ranges::to<std::vector>();
     rtree_.emplace(lanelet2_utils::LaneletRTree(all_lanelets_));
 
     P0 = test_case_data.manual_poses.at("P0");
