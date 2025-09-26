@@ -99,6 +99,7 @@ private:
   rclcpp::Publisher<VelocityLimit>::SharedPtr velocity_limit_pub_;
   rclcpp::Publisher<VelocityLimitClearCommand>::SharedPtr clear_velocity_limit_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr debug_viz_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr debug_processed_pointcloud_pub_;
   autoware_utils_debug::ProcessingTimePublisher processing_diag_publisher_{
     this, "~/debug/processing_time_ms_diag"};
   rclcpp::Publisher<autoware_internal_debug_msgs::msg::Float64Stamped>::SharedPtr

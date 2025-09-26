@@ -16,91 +16,242 @@
 
 #include "autoware/crop_box_filter/crop_box_filter_node.hpp"
 
+#include <sensor_msgs/point_cloud2_iterator.hpp>
+
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <memory>
+#include <string>
+#include <vector>
 
-TEST(CropBoxFilterTest, checkOutputPointcloud)
+sensor_msgs::msg::PointCloud2 create_pointcloud2(std::vector<std::array<float, 3>> & points)
 {
-  rclcpp::init(0, nullptr);
+  sensor_msgs::msg::PointCloud2 pointcloud;
+  sensor_msgs::PointCloud2Modifier modifier(pointcloud);
+  modifier.setPointCloud2FieldsByString(1, "xyz");
+  modifier.resize(points.size());
 
-  // prepare parameters for the node
-  const double min_x = -5.0;
-  const double max_x = 5.0;
-  const double min_y = -5.0;
-  const double max_y = 5.0;
-  const double min_z = -5.0;
-  const double max_z = 5.0;
-  const int64_t max_queue_size = 5;
-  const bool negative = true;
+  sensor_msgs::PointCloud2Iterator<float> iter_x(pointcloud, "x");
+  sensor_msgs::PointCloud2Iterator<float> iter_y(pointcloud, "y");
+  sensor_msgs::PointCloud2Iterator<float> iter_z(pointcloud, "z");
 
+  for (const auto & point : points) {
+    *iter_x = point[0];
+    *iter_y = point[1];
+    *iter_z = point[2];
+    ++iter_x;
+    ++iter_y;
+    ++iter_z;
+  }
+
+  return pointcloud;
+}
+
+std::vector<std::array<float, 3>> extract_points_from_cloud(
+  const sensor_msgs::msg::PointCloud2 & cloud)
+{
+  std::vector<std::array<float, 3>> points;
+  sensor_msgs::PointCloud2ConstIterator<float> iter_x(cloud, "x");
+  sensor_msgs::PointCloud2ConstIterator<float> iter_y(cloud, "y");
+  sensor_msgs::PointCloud2ConstIterator<float> iter_z(cloud, "z");
+
+  for (; iter_x != iter_x.end(); ++iter_x, ++iter_y, ++iter_z) {
+    points.push_back({*iter_x, *iter_y, *iter_z});
+  }
+  return points;
+}
+
+bool is_same_points(
+  const std::vector<std::array<float, 3>> & points1,
+  const std::vector<std::array<float, 3>> & points2)
+{
+  if (points1.size() != points2.size()) {
+    return false;
+  }
+  // sort both vectors to ensure order does not affect comparison
+  std::vector<std::array<float, 3>> sorted_points1 = points1;
+  std::vector<std::array<float, 3>> sorted_points2 = points2;
+  std::sort(sorted_points1.begin(), sorted_points1.end());
+  std::sort(sorted_points2.begin(), sorted_points2.end());
+  // compare each point
+  for (size_t i = 0; i < sorted_points1.size(); ++i) {
+    if (sorted_points1[i] != sorted_points2[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// Test helper structure to hold crop box parameters
+struct CropBoxParams
+{
+  double min_x = -5.0;
+  double max_x = 5.0;
+  double min_y = -5.0;
+  double max_y = 5.0;
+  double min_z = -5.0;
+  double max_z = 5.0;
+  bool negative = true;
+  std::string input_pointcloud_frame = "base_link";
+  std::string input_frame = "base_link";
+  std::string output_frame = "base_link";
+  int64_t max_queue_size = 5;
+};
+
+// Helper function to create crop box filter node with given parameters
+std::unique_ptr<autoware::crop_box_filter::CropBoxFilter> create_crop_box_filter_node(
+  const CropBoxParams & params)
+{
   rclcpp::NodeOptions node_options;
   node_options.parameter_overrides({
-    {"min_x", min_x},
-    {"min_y", min_y},
-    {"min_z", min_z},
-    {"max_x", max_x},
-    {"max_y", max_y},
-    {"max_z", max_z},
-    {"negative", negative},
-    {"input_pointcloud_frame", "base_link"},
-    {"input_frame", "base_link"},
-    {"output_frame", "base_link"},
-    {"max_queue_size", max_queue_size},
+    {"min_x", params.min_x},
+    {"min_y", params.min_y},
+    {"min_z", params.min_z},
+    {"max_x", params.max_x},
+    {"max_y", params.max_y},
+    {"max_z", params.max_z},
+    {"negative", params.negative},
+    {"input_pointcloud_frame", params.input_pointcloud_frame},
+    {"input_frame", params.input_frame},
+    {"output_frame", params.output_frame},
+    {"max_queue_size", params.max_queue_size},
   });
 
+  return std::make_unique<autoware::crop_box_filter::CropBoxFilter>(node_options);
+}
+
+// Helper function to run crop box filter test
+void run_crop_box_filter_test(
+  const CropBoxParams & params, const std::vector<std::array<float, 3>> & input_points,
+  const std::vector<std::array<float, 3>> & expected_points)
+{
   // Create the node with the specified options
-  autoware::crop_box_filter::CropBoxFilter node(node_options);
+  auto node = create_crop_box_filter_node(params);
 
-  // construct input pointcloud
-  pcl::PointCloud<pcl::PointXYZ> input_pointcloud;
-  input_pointcloud.push_back(pcl::PointXYZ(0.5, 0.5, 0.1));  // point inside the polygon
-  input_pointcloud.push_back(pcl::PointXYZ(1.5, 1.5, 1.1));  // point inside the polygon
-  input_pointcloud.push_back(pcl::PointXYZ(2.5, 2.5, 2.1));  // point inside the polygon
-  input_pointcloud.push_back(pcl::PointXYZ(3.5, 3.5, 3.1));  // point inside the polygon
-  input_pointcloud.push_back(pcl::PointXYZ(4.5, 4.5, 4.1));  // point inside the polygon
-
-  input_pointcloud.push_back(pcl::PointXYZ(5.5, 5.5, 5.1));  // point outside the polygon
-  input_pointcloud.push_back(pcl::PointXYZ(6.5, 6.5, 6.1));  // point outside the polygon
-  input_pointcloud.push_back(pcl::PointXYZ(7.5, 7.5, 7.1));  // point outside the polygon
-  input_pointcloud.push_back(pcl::PointXYZ(8.5, 8.5, 8.1));  // point outside the polygon
-  input_pointcloud.push_back(pcl::PointXYZ(9.5, 9.5, 9.1));  // point outside the polygon
-
-  input_pointcloud.push_back(pcl::PointXYZ(-5.5, -5.5, -5.1));  // point outside the polygon
-  input_pointcloud.push_back(pcl::PointXYZ(-6.5, -6.5, -6.1));  // point outside the polygon
-  input_pointcloud.push_back(pcl::PointXYZ(-7.5, -7.5, -7.1));  // point outside the polygon
-  input_pointcloud.push_back(pcl::PointXYZ(-8.5, -8.5, -8.1));  // point outside the polygon
-  input_pointcloud.push_back(pcl::PointXYZ(-9.5, -9.5, -9.1));  // point outside the polygon
-
-  // convert the point cloud to a ROS message
-  sensor_msgs::msg::PointCloud2 pointcloud;
-  pcl::toROSMsg(input_pointcloud, pointcloud);
-  pointcloud.header.frame_id = "base_link";
+  // Create pointcloud using helper function
+  auto mutable_input_points = const_cast<std::vector<std::array<float, 3>> &>(input_points);
+  sensor_msgs::msg::PointCloud2 pointcloud = create_pointcloud2(mutable_input_points);
 
   const sensor_msgs::msg::PointCloud2::ConstSharedPtr pointcloud_msg =
     std::make_shared<sensor_msgs::msg::PointCloud2>(pointcloud);
 
   auto output = sensor_msgs::msg::PointCloud2();
   // filtering
-  node.filter_pointcloud(pointcloud_msg, output);
+  node->filter_pointcloud(pointcloud_msg, output);
 
-  // check the size of the output point cloud
-  EXPECT_EQ((output.data.size() / output.point_step), 10);
+  // Extract points from output using helper function
+  std::vector<std::array<float, 3>> output_points = extract_points_from_cloud(output);
 
-  // check every point in the output pointcloud
-  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-  pcl::fromROSMsg(output, *cloud);
+  // check if the points are inside/outside the box as expected
+  EXPECT_TRUE(is_same_points(expected_points, output_points));
+}
 
-  // check if the points are inside the polygon
-  for (const auto & point : cloud->points) {
-    bool point_is_inside = point.z > min_z && point.z < max_z && point.y > min_y &&
-                           point.y < max_y && point.x > min_x && point.x < max_x;
-    EXPECT_TRUE((!negative && point_is_inside) || (negative && !point_is_inside));
-  }
+TEST(CropBoxFilterTest, FilterZeroPointReturnZeroPoint)
+{
+  CropBoxParams params;
+
+  // input points
+  std::vector<std::array<float, 3>> input_points = {};
+
+  // expected points after filtering
+  std::vector<std::array<float, 3>> expected_points = {};
+
+  run_crop_box_filter_test(params, input_points, expected_points);
+}
+
+TEST(CropBoxFilterTest, FilterExcludePointsInsideBoxWhenNegative)
+{
+  CropBoxParams params;
+  params.negative = true;
+
+  // clang-format off
+
+  // input points
+  std::vector<std::array<float, 3>> input_points = {
+    // points inside the box
+    {0.5f, 0.5f, 0.1f},
+    {1.5f, 1.5f, 1.1f},
+    {2.5f, 2.5f, 2.1f},
+    {3.5f, 3.5f, 3.1f},
+    {4.5f, 4.5f, 4.1f},
+    // points outside the box
+    {5.5f, 5.5f, 5.1f},
+    {6.5f, 6.5f, 6.1f},
+    {7.5f, 7.5f, 7.1f},
+    {8.5f, 8.5f, 8.1f},
+    {9.5f, 9.5f, 9.1f},
+    {-5.5f, -5.5f, -5.1f},
+    {-6.5f, -6.5f, -6.1f},
+    {-7.5f, -7.5f, -7.1f},
+    {-8.5f, -8.5f, -8.1f},
+    {-9.5f, -9.5f, -9.1f}
+  };
+
+  // expected points after filtering
+  std::vector<std::array<float, 3>> expected_points = {
+    {5.5f, 5.5f, 5.1f},
+    {6.5f, 6.5f, 6.1f},
+    {7.5f, 7.5f, 7.1f},
+    {8.5f, 8.5f, 8.1f},
+    {9.5f, 9.5f, 9.1f},
+    {-5.5f, -5.5f, -5.1f},
+    {-6.5f, -6.5f, -6.1f},
+    {-7.5f, -7.5f, -7.1f},
+    {-8.5f, -8.5f, -8.1f},
+    {-9.5f, -9.5f, -9.1f}
+  };
+
+  // clang-format on
+
+  run_crop_box_filter_test(params, input_points, expected_points);
+}
+
+TEST(CropBoxFilterTest, FilterExcludePointsOutsideBoxWhenPositive)
+{
+  CropBoxParams params;
+  params.negative = false;
+
+  // clang-format off
+
+  // input points
+  std::vector<std::array<float, 3>> input_points = {
+    // points inside the box
+    {0.5f, 0.5f, 0.1f},
+    {1.5f, 1.5f, 1.1f},
+    {2.5f, 2.5f, 2.1f},
+    {3.5f, 3.5f, 3.1f},
+    {4.5f, 4.5f, 4.1f},
+    // points outside the box
+    {5.5f, 5.5f, 5.1f},
+    {6.5f, 6.5f, 6.1f},
+    {7.5f, 7.5f, 7.1f},
+    {8.5f, 8.5f, 8.1f},
+    {9.5f, 9.5f, 9.1f},
+    {-5.5f, -5.5f, -5.1f},
+    {-6.5f, -6.5f, -6.1f},
+    {-7.5f, -7.5f, -7.1f},
+    {-8.5f, -8.5f, -8.1f},
+    {-9.5f, -9.5f, -9.1f}
+  };
+
+  // expected points after filtering
+  std::vector<std::array<float, 3>> expected_points = {
+    {0.5f, 0.5f, 0.1f},
+    {1.5f, 1.5f, 1.1f},
+    {2.5f, 2.5f, 2.1f},
+    {3.5f, 3.5f, 3.1f},
+    {4.5f, 4.5f, 4.1f}
+  };
+
+  // clang-format on
+
+  run_crop_box_filter_test(params, input_points, expected_points);
 }
 
 int main(int argc, char ** argv)
 {
+  rclcpp::init(0, nullptr);
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

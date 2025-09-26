@@ -56,4 +56,42 @@ instantiate_routing_graph_and_traffic_rules(
     lanelet::routing::RoutingGraph::build(*lanelet_map, *traffic_rules), std::move(traffic_rules)};
 }
 
+geometry_msgs::msg::Point to_ros(const lanelet::BasicPoint3d & src)
+{
+  geometry_msgs::msg::Point dst;
+  dst.x = src.x();
+  dst.y = src.y();
+  dst.z = src.z();
+  return dst;
+}
+
+geometry_msgs::msg::Point to_ros(const lanelet::ConstPoint3d & src)
+{
+  return to_ros(src.basicPoint());
+}
+
+geometry_msgs::msg::Point to_ros(const lanelet::BasicPoint2d & src, const double & z)
+{
+  geometry_msgs::msg::Point dst;
+  dst.x = src.x();
+  dst.y = src.y();
+  dst.z = z;
+  return dst;
+}
+
+geometry_msgs::msg::Point to_ros(const lanelet::ConstPoint2d & src, const double & z)
+{
+  return to_ros(src.basicPoint(), z);
+}
+
+lanelet::ConstPoint3d from_ros(const geometry_msgs::msg::Point & src)
+{
+  return lanelet::ConstPoint3d(lanelet::Point3d(lanelet::InvalId, src.x, src.y, src.z));
+}
+
+lanelet::ConstPoint3d from_ros(const geometry_msgs::msg::Pose & src)
+{
+  return from_ros(src.position);
+}
+
 }  // namespace autoware::experimental::lanelet2_utils

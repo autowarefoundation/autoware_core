@@ -28,6 +28,7 @@ ament_auto_add_library(autoware_trajectory SHARED
   src/utils/pretty_build.cpp
   src/utils/shift.cpp
   src/utils/reference_path.cpp
+  src/utils/find_nearest.cpp
 )
 
 if(BUILD_TESTING)
@@ -49,6 +50,7 @@ if(BUILD_TESTING)
 
   ament_add_ros_isolated_gtest(test_autoware_trajectory ${test_files})
 
+  ament_target_dependencies(test_autoware_trajectory ament_index_cpp)
   target_link_libraries(test_autoware_trajectory
     autoware_trajectory
     ${autoware_motion_utils_LIBRARIES}
@@ -65,6 +67,7 @@ if(BUILD_TESTING)
     examples/example_readme.cpp
     examples/example_reference_path.cpp
     examples/example_shift.cpp
+    examples/example_self_intersecting.cpp
   )
 
   add_definitions("-Wno-attributes")
