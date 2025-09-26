@@ -246,12 +246,12 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
   }
 
   lanelet::ConstLanelets lanelets{*current_lanelet_};
-  const auto s_on_current_lanelet =
+  const auto s_ego_on_current_lanelet =
     lanelet::utils::getArcCoordinates({*current_lanelet_}, current_pose).length;
 
   const auto backward_length = std::max(
-    0.,
-    params.path_length.backward + vehicle_info_.max_longitudinal_offset_m - s_on_current_lanelet);
+    0., params.path_length.backward + vehicle_info_.max_longitudinal_offset_m -
+          s_ego_on_current_lanelet);
   const auto backward_lanelets_within_route =
     utils::get_lanelets_within_route_up_to(*current_lanelet_, planner_data_, backward_length);
   if (!backward_lanelets_within_route) {
@@ -279,7 +279,7 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
 
   const auto forward_length = std::max(
     0., params.path_length.forward + vehicle_info_.max_longitudinal_offset_m -
-          (lanelet::geometry::length2d(*current_lanelet_) - s_on_current_lanelet));
+          (lanelet::geometry::length2d(*current_lanelet_) - s_ego_on_current_lanelet));
   const auto forward_lanelets_within_route =
     utils::get_lanelets_within_route_after(*current_lanelet_, planner_data_, forward_length);
   if (!forward_lanelets_within_route) {
@@ -303,41 +303,49 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
     forward_lanelets_length += lanelet::geometry::length2d(next_lanelets.front());
   }
 
-  const auto s = s_on_current_lanelet + backward_lanelets_length;
-  const auto s_start = std::max(0., s - params.path_length.backward);
+  const auto s_ego = s_ego_on_current_lanelet + backward_lanelets_length;
+  const auto s_start = std::max(0., s_ego - params.path_length.backward);
+  auto s_end = s_ego + params.path_length.forward;
+
+  if (!utils::get_next_lanelet_within_route(lanelets.back(), planner_data_)) {
+    s_end = std::min(s_end, lanelet::utils::getLaneletLength2d(lanelets));
+  }
+
+  const auto s_intersection = utils::get_first_intersection_arc_length(
+    lanelets, std::max(0., s_start - vehicle_info_.max_longitudinal_offset_m),
+    s_end + vehicle_info_.max_longitudinal_offset_m, vehicle_info_.vehicle_length_m);
+  if (s_intersection) {
+    s_end =
+      std::min(s_end, std::max(0., *s_intersection - vehicle_info_.max_longitudinal_offset_m));
+  }
 
   std::optional<lanelet::ConstLanelet> goal_lanelet_for_path = std::nullopt;
-  const auto s_end = [&]() {
-    auto s_end = s + params.path_length.forward;
-
-    if (!utils::get_next_lanelet_within_route(lanelets.back(), planner_data_)) {
-      s_end = std::min(s_end, lanelet::utils::getLaneletLength2d(lanelets));
+  for (auto [it, s] = std::make_tuple(lanelets.begin(), 0.); it != lanelets.end(); ++it) {
+    const auto & lane_id = it->id();
+    if (std::any_of(lanelets.begin(), it, [lane_id](const lanelet::ConstLanelet & lanelet) {
+          return lane_id == lanelet.id();
+        })) {
+      RCLCPP_WARN(get_logger(), "Loop detected: %ld", lane_id);
+      lanelets.erase(it, lanelets.end());
+      s_end = s;
+      break;
     }
-
-    const auto s_intersection = utils::get_first_intersection_arc_length(
-      lanelets, std::max(0., s_start - vehicle_info_.max_longitudinal_offset_m),
-      s_end + vehicle_info_.max_longitudinal_offset_m, vehicle_info_.vehicle_length_m);
-    if (s_intersection) {
-      s_end =
-        std::min(s_end, std::max(0., *s_intersection - vehicle_info_.max_longitudinal_offset_m));
-    }
-
-    for (auto [it, s_goal] = std::make_tuple(lanelets.begin(), 0.); it != lanelets.end(); ++it) {
-      if (std::any_of(
-            planner_data_.goal_lanelets.begin(), planner_data_.goal_lanelets.end(),
-            [id = it->id()](const auto & goal_lanelet) { return id == goal_lanelet.id(); })) {
-        s_goal += lanelet::utils::getArcCoordinates({*it}, planner_data_.goal_pose).length;
-        if (s_goal < s_end) {
-          goal_lanelet_for_path = *it;
-          s_end = s_goal;
-        }
-        break;
+    if (std::any_of(
+          planner_data_.goal_lanelets.begin(), planner_data_.goal_lanelets.end(),
+          [lane_id](const auto & goal_lanelet) { return lane_id == goal_lanelet.id(); })) {
+      const auto s_goal =
+        s + lanelet::utils::getArcCoordinates({*it}, planner_data_.goal_pose).length;
+      if (s_goal < s_end) {
+        goal_lanelet_for_path = *it;
+        s_end = s_goal;
       }
-      s_goal += lanelet::geometry::length2d(*it);
     }
-
-    return s_end;
-  }();
+    s += lanelet::geometry::length2d(*it);
+    if (s >= s_end + vehicle_info_.max_longitudinal_offset_m) {
+      lanelets.erase(std::next(it), lanelets.end());
+      break;
+    }
+  }
 
   return generate_path(lanelets, s_start, s_end, goal_lanelet_for_path, params);
 }
@@ -371,6 +379,8 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
     }
   }
 
+  const lanelet::LaneletSequence extended_lanelet_sequence(extended_lanelets);
+
   const auto add_path_point =
     [&](const lanelet::ConstPoint3d & path_point, const lanelet::Id & lane_id) {
       PathPointWithLaneId path_point_with_lane_id{};
@@ -384,7 +394,6 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
       path_points_with_lane_id.push_back(std::move(path_point_with_lane_id));
     };
 
-  const lanelet::LaneletSequence extended_lanelet_sequence(extended_lanelets);
   std::optional<size_t> overlapping_waypoint_group_index = std::nullopt;
 
   for (auto [lanelet_it, s] = std::make_tuple(extended_lanelet_sequence.begin(), 0.);
@@ -411,8 +420,29 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
         if (s < interval.start + extended_arc_length || s > interval.end + extended_arc_length) {
           continue;
         }
-        for (const auto & waypoint : waypoints) {
-          add_path_point(waypoint.point, waypoint.lane_id);
+        for (auto waypoint_it = waypoints.begin(); waypoint_it != waypoints.end(); ++waypoint_it) {
+          if (
+            waypoint_it == waypoints.begin() && !path_points_with_lane_id.empty() &&
+            std::find(
+              path_points_with_lane_id.back().lane_ids.cbegin(),
+              path_points_with_lane_id.back().lane_ids.cend(),
+              waypoint_it->lane_id) == path_points_with_lane_id.back().lane_ids.cend()) {
+            if (
+              const auto border_point = utils::get_border_point(
+                {lanelet::utils::conversion::toLaneletPoint(
+                   path_points_with_lane_id.back().point.pose.position)
+                   .basicPoint(),
+                 waypoint_it->point.basicPoint()},
+                planner_data_.lanelet_map_ptr->laneletLayer.get(waypoint_it->lane_id))) {
+              add_path_point(*border_point, path_points_with_lane_id.back().lane_ids.front());
+              path_points_with_lane_id.back().lane_ids.push_back(waypoint_it->lane_id);
+            }
+          }
+
+          add_path_point(waypoint_it->point, waypoint_it->lane_id);
+          if (waypoint_it->next_lane_id) {
+            path_points_with_lane_id.back().lane_ids.push_back(*waypoint_it->next_lane_id);
+          }
         }
         overlapping_waypoint_group_index = i;
         break;
