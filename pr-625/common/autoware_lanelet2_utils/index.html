@@ -6463,9 +6463,9 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#about-boostgeomety-r-tree" class="md-nav__link">
+  <a href="#about-boostgeometry-r-tree" class="md-nav__link">
     <span class="md-ellipsis">
-      About Boost.Geomety R-tree
+      About Boost.Geometry R-tree
     </span>
   </a>
   
@@ -6813,7 +6813,7 @@
 <td><code>&lt;autoware/lanelet2_utils/nn_search.hpp&gt;</code></td>
 <td><code>get_closest_lanelet(lanelets, pose)</code></td>
 <td>This function retrieves the lanelet which gives the smallest distance to given <code>pose</code>(if it is within a lanelet, it gives zero distance) and whose centerline is closest to the given orientation among them</td>
-<td><span class="arithmatex">\(O(N)\)</span> where <span class="arithmatex">\(N\)</span> is the number of input lanelets<br><br><img alt="⚠" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@14.1.2/assets/svg/26a0.svg" title=":warning:"> "Natve R-tree API" and <code>LaneletRTree</code> is much more efficient</td>
+<td><span class="arithmatex">\(O(N)\)</span> where <span class="arithmatex">\(N\)</span> is the number of input lanelets<br><br><img alt="⚠" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@14.1.2/assets/svg/26a0.svg" title=":warning:"> "Native R-tree API" and <code>LaneletRTree</code> is much more efficient</td>
 <td></td>
 <td></td>
 </tr>
@@ -6821,7 +6821,7 @@
 <td></td>
 <td><code>get_closest_lanelet_within_constraint(lanelets, pose, dist_thresh, yaw_thresh)</code></td>
 <td>In addition to <code>get_closest_lanelet</code>, it filters <code>lanelets</code> whose distance to <code>pose</code> is <span class="arithmatex">\(\leq\)</span> <code>dist_thresh</code> and yaw angle difference is <span class="arithmatex">\(\leq\)</span> <code>yaw_thresh</code></td>
-<td><span class="arithmatex">\(O(N)\)</span> where <span class="arithmatex">\(N\)</span> is the number of input lanelets<br><br><img alt="⚠" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@14.1.2/assets/svg/26a0.svg" title=":warning:"> "Natve R-tree API" and <code>LaneletRTree</code> is much more efficient</td>
+<td><span class="arithmatex">\(O(N)\)</span> where <span class="arithmatex">\(N\)</span> is the number of input lanelets<br><br><img alt="⚠" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@14.1.2/assets/svg/26a0.svg" title=":warning:"> "Native R-tree API" and <code>LaneletRTree</code> is much more efficient</td>
 <td></td>
 <td></td>
 </tr>
@@ -6836,7 +6836,7 @@
 <tr>
 <td></td>
 <td><code>get_shoulder_lanelets_at(lanelet_map, x, y)</code></td>
-<td>Retrive all "road_shoulder" Lanelets at given position</td>
+<td>Retrieve all "road_shoulder" Lanelets at given position</td>
 <td><em>R-tree</em></td>
 <td></td>
 <td></td>
@@ -6988,7 +6988,7 @@
 <tr>
 <td></td>
 <td><strong>class invariance</strong></td>
-<td><ul><li><code>current_pose</code> may not be inside of any <code>route_lanelets</code> nor <code>preferred_route_lanelets</code>, because (1)swerving (2)abrupt localization jump cannot be distinguished. For the same reason <code>current_pose</code> may not be inside of <code>current_route_lanelet</code></li><li><code>current_route_lanelet</code> mathces one of the <code>route_lanleets</code></li></ul></td>
+<td><ul><li><code>current_pose</code> may not be inside of any <code>route_lanelets</code> nor <code>preferred_route_lanelets</code>, because (1)swerving (2)abrupt localization jump cannot be distinguished. For the same reason <code>current_pose</code> may not be inside of <code>current_route_lanelet</code></li><li><code>current_route_lanelet</code> matches one of the <code>route_lanelets</code></li></ul></td>
 <td></td>
 <td></td>
 <td></td>
@@ -7108,7 +7108,7 @@
 </tbody>
 </table>
 <h2 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">#</a></h2>
-<h3 id="about-boostgeomety-r-tree">About Boost.Geomety R-tree<a class="headerlink" href="#about-boostgeomety-r-tree" title="Permanent link">#</a></h3>
+<h3 id="about-boostgeometry-r-tree">About Boost.Geometry R-tree<a class="headerlink" href="#about-boostgeometry-r-tree" title="Permanent link">#</a></h3>
 <p><a href="https://archive.fosdem.org/2020/schedule/event/boostgeometry_rtree_speeding_up_geographical_computation/attachments/slides/3894/export/events/attachments/boostgeometry_rtree_speeding_up_geographical_computation/slides/3894/FOSDEM2020_Boost_Geometry_R_tree.pdf">This slide</a> is useful for understanding Boost.Geometry R-tree features.</p>
 <div class="admonition tip tip">
 <p class="admonition-title">Tip</p>
