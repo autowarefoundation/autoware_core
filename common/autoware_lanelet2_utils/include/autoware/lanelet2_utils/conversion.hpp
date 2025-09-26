@@ -15,6 +15,8 @@
 #ifndef AUTOWARE__LANELET2_UTILS__CONVERSION_HPP_
 #define AUTOWARE__LANELET2_UTILS__CONVERSION_HPP_
 
+#include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
+#include <autoware_planning_msgs/msg/lanelet_route.hpp>
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/pose.hpp>
 
@@ -63,6 +65,17 @@ geometry_msgs::msg::Point to_ros(const lanelet::ConstPoint2d & src, const double
  */
 lanelet::ConstPoint3d from_ros(const geometry_msgs::msg::Point & src);
 lanelet::ConstPoint3d from_ros(const geometry_msgs::msg::Pose & src);
+
+/**
+ * @brief serialize lanelet map message to binary ROS message
+ */
+autoware_map_msgs::msg::LaneletMapBin to_autoware_map_msgs(const lanelet::LaneletMapConstPtr & map);
+
+/**
+ * @brief deserialize lanelet map object from binary ROS message
+ */
+lanelet::LaneletMapConstPtr from_autoware_map_msgs(
+  const autoware_map_msgs::msg::LaneletMapBin & msg);
 
 }  // namespace autoware::experimental::lanelet2_utils
 #endif  // AUTOWARE__LANELET2_UTILS__CONVERSION_HPP_
