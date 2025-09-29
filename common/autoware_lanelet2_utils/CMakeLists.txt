@@ -29,6 +29,7 @@ if(BUILD_TESTING)
     test/geometry.cpp
     test/hatched_road_marking.cpp
     test/conversion.cpp
+    test/lane_sequence.cpp
     test/nn_search.cpp
   )
 
