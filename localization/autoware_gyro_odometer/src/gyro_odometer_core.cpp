@@ -273,13 +273,13 @@ void GyroOdometerNode::publish_diagnostics()
   std::string log_message = "";
 
   if (!vehicle_twist_arrived_) {
-    const std::string message = "Twist msg is not subscribed";
+    const std::string message = "Twist msg has not been arrived yet.";
     diagnostics_->update_level_and_message(diagnostic_msgs::msg::DiagnosticStatus::WARN, message);
     log_message += message;
     log_message += "; ";
   }
   if (!imu_arrived_) {
-    const std::string message = "Imu msg is not subscribed";
+    const std::string message = "IMU msg has not been arrived yet.";
     diagnostics_->update_level_and_message(diagnostic_msgs::msg::DiagnosticStatus::WARN, message);
     log_message += message;
     log_message += "; ";
@@ -294,7 +294,7 @@ void GyroOdometerNode::publish_diagnostics()
   }
   if (latest_imu_dt_ > message_timeout_sec_) {
     const std::string message = fmt::format(
-      "Imu msg is timeout. imu_dt: {}[sec], tolerance {}[sec]", latest_imu_dt_,
+      "IMU msg is timeout. imu_dt: {}[sec], tolerance {}[sec]", latest_imu_dt_,
       message_timeout_sec_);
     diagnostics_->update_level_and_message(diagnostic_msgs::msg::DiagnosticStatus::ERROR, message);
     log_message += message;
