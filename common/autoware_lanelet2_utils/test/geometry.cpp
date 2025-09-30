@@ -36,6 +36,14 @@ namespace fs = std::filesystem;
 namespace autoware::experimental
 {
 
+template <typename LaneletPointT, typename LaneletPointT2>
+static void expect_point_eq(const LaneletPointT & p1, LaneletPointT2 & p2)
+{
+  EXPECT_DOUBLE_EQ(p1.x(), p2.x());
+  EXPECT_DOUBLE_EQ(p1.y(), p2.y());
+  EXPECT_DOUBLE_EQ(p1.z(), p2.z());
+}
+
 class ExtrapolatedLaneletTest : public ::testing::Test
 {
 protected:
@@ -51,6 +59,10 @@ protected:
     lanelet_map_ptr_ =
       lanelet2_utils::load_mgrs_coordinate_map(intersection_crossing_map_path.string());
   }
+};
+
+class GetLaneletAngle : public ExtrapolatedLaneletTest
+{
 };
 
 // Test 1: forward extrapolation
@@ -286,6 +298,62 @@ TEST_F(ExtrapolatedLaneletTest, GetPoseFrom2dArcLength_OnRealMapLanelets)
   EXPECT_NEAR(p.orientation.y, eq.y, 1e-4);
   EXPECT_NEAR(p.orientation.z, eq.z, 1e-4);
   EXPECT_NEAR(p.orientation.w, eq.w, 1e-4);
+}
+
+// Test 16: get_closest_segment full range
+TEST(GetClosestSegment, OrdinaryLinestringReturnCorrectSegment)
+{
+  std::vector<lanelet::Point3d> pts = {
+    lanelet::Point3d{lanelet::ConstPoint3d(1, 0.0, 0.0, 0.0)},
+    lanelet::Point3d{lanelet::ConstPoint3d(1, 1.0, 0.0, 0.0)},
+    lanelet::Point3d{lanelet::ConstPoint3d(1, 2.0, 0.0, 0.0)}};
+  lanelet::ConstLineString3d line{lanelet::InvalId, pts};
+
+  // The Closest Segment is the first segment
+  {
+    lanelet::BasicPoint3d query(0.5, 0.0, 0.0);
+    auto out = autoware::experimental::lanelet2_utils::get_closest_segment(line, query);
+    ASSERT_EQ(out.size(), 2);
+
+    lanelet::BasicPoint3d start_point = out.front().basicPoint();
+    lanelet::BasicPoint3d end_point = out.back().basicPoint();
+
+    expect_point_eq(start_point, pts.at(0));
+    expect_point_eq(end_point, pts.at(1));
+  }
+
+  // The Closest Segment is the second segment
+  {
+    lanelet::BasicPoint3d query(1.5, 0.0, 0.0);
+    auto out = autoware::experimental::lanelet2_utils::get_closest_segment(line, query);
+    ASSERT_EQ(out.size(), 2);
+
+    lanelet::BasicPoint3d start_point = out.front().basicPoint();
+    lanelet::BasicPoint3d end_point = out.back().basicPoint();
+
+    expect_point_eq(start_point, pts.at(1));
+    expect_point_eq(end_point, pts.at(2));
+  }
+}
+
+// TEST 17: get_lanelet_angle Horizontal Case
+TEST_F(GetLaneletAngle, GetHorizontalAngle)
+{
+  const auto ll = lanelet_map_ptr_->laneletLayer.get(2296);
+  lanelet::BasicPoint3d p(190.5, 177.83, 100);
+  auto out = autoware::experimental::lanelet2_utils::get_lanelet_angle(ll, p);
+  // Test = -3.1308317, Result = -3.13089
+  EXPECT_NEAR(out, -3.1308317, 1e-4);
+}
+
+// TEST 18: get_lanelet_angle Vertical
+TEST_F(GetLaneletAngle, GetVerticalAngle)
+{
+  const auto ll = lanelet_map_ptr_->laneletLayer.get(2258);
+  lanelet::BasicPoint3d p(106.71, 149.3, 100);
+  auto out = autoware::experimental::lanelet2_utils::get_lanelet_angle(ll, p);
+  // Test = 1.58204, Result = 1.58206
+  EXPECT_NEAR(out, 1.58204, 1e-4);
 }
 
 }  // namespace autoware::experimental

@@ -14,6 +14,8 @@
 
 #include "autoware/route_handler/route_handler.hpp"
 
+#include <autoware/lanelet2_utils/conversion.hpp>
+#include <autoware/lanelet2_utils/geometry.hpp>
 #include <autoware/lanelet2_utils/kind.hpp>
 #include <autoware_lanelet2_extension/io/autoware_osm_parser.hpp>
 #include <autoware_lanelet2_extension/utility/message_conversion.hpp>
@@ -1064,7 +1066,8 @@ bool RouteHandler::getClosestLaneletWithConstrainsWithinRoute(
     const auto & lanelet = route_lanelets_[query_it->second];
     const auto dist =
       boost::geometry::comparable_distance(search_point, lanelet.polygon2d().basicPolygon());
-    const double lanelet_angle = lanelet::utils::getLaneletAngle(lanelet, search_pose.position);
+    const double lanelet_angle = autoware::experimental::lanelet2_utils::get_lanelet_angle(
+      lanelet, autoware::experimental::lanelet2_utils::from_ros(search_pose.position).basicPoint());
     const double angle_diff =
       std::abs(autoware_utils_geometry::normalize_radian(lanelet_angle - pose_yaw));
     if (dist > dist_threshold || angle_diff > std::abs(yaw_threshold)) {
@@ -1174,14 +1177,17 @@ std::optional<lanelet::ConstLanelet> RouteHandler::getRightLanelet(
   if (isShoulderLanelet(lanelet)) {
     const auto right_lanelets = lanelet_map_ptr_->laneletLayer.findUsages(lanelet.rightBound());
     for (const auto & right_lanelet : right_lanelets)
-      if (isRoadLanelet(right_lanelet)) return right_lanelet;
+      if (isRoadLanelet(right_lanelet) && lanelet.rightBound() == right_lanelet.leftBound())
+        return right_lanelet;
     return std::nullopt;
   }
 
   // right shoulder lanelet
   if (get_shoulder_lane) {
     const auto right_shoulder_lanelet = getRightShoulderLanelet(lanelet);
-    if (right_shoulder_lanelet) return *right_shoulder_lanelet;
+    if (right_shoulder_lanelet) {
+      return *right_shoulder_lanelet;
+    }
   }
 
   // routable lane
@@ -1209,7 +1215,9 @@ std::optional<lanelet::ConstLanelet> RouteHandler::getRightLanelet(
   lanelet::ConstLanelet next_lanelet;
   if (!getNextLaneletWithinRoute(lanelet, &next_lanelet)) {
     for (const auto & lane : getNextLanelets(prev_lanelet.front())) {
-      if (lanelet.rightBound().back().id() == lane.leftBound().back().id()) {
+      if (
+        lanelet.rightBound().back().id() == lane.leftBound().back().id() &&
+        lane.id() != lanelet.id()) {
         return lane;
       }
     }
@@ -1223,7 +1231,7 @@ std::optional<lanelet::ConstLanelet> RouteHandler::getRightLanelet(
 
   for (const auto & lane : getNextLanelets(prev_lanelet.front())) {
     for (const auto & target_lane : getNextLanelets(lane)) {
-      if (next_right_lane.value().id() == target_lane.id()) {
+      if (next_right_lane.value().id() == target_lane.id() && lane.id() != lanelet.id()) {
         return lane;
       }
     }
@@ -1240,14 +1248,17 @@ std::optional<lanelet::ConstLanelet> RouteHandler::getLeftLanelet(
   if (isShoulderLanelet(lanelet)) {
     const auto left_lanelets = lanelet_map_ptr_->laneletLayer.findUsages(lanelet.leftBound());
     for (const auto & left_lanelet : left_lanelets)
-      if (isRoadLanelet(left_lanelet)) return left_lanelet;
+      if (isRoadLanelet(left_lanelet) && lanelet.leftBound() == left_lanelet.rightBound())
+        return left_lanelet;
     return std::nullopt;
   }
 
   // left shoulder lanelet
   if (get_shoulder_lane) {
     const auto left_shoulder_lanelet = getLeftShoulderLanelet(lanelet);
-    if (left_shoulder_lanelet) return *left_shoulder_lanelet;
+    if (left_shoulder_lanelet) {
+      return *left_shoulder_lanelet;
+    }
   }
 
   // routable lane
@@ -1275,7 +1286,9 @@ std::optional<lanelet::ConstLanelet> RouteHandler::getLeftLanelet(
   lanelet::ConstLanelet next_lanelet;
   if (!getNextLaneletWithinRoute(lanelet, &next_lanelet)) {
     for (const auto & lane : getNextLanelets(prev_lanelet.front())) {
-      if (lanelet.leftBound().back().id() == lane.rightBound().back().id()) {
+      if (
+        lanelet.leftBound().back().id() == lane.rightBound().back().id() &&
+        lane.id() != lanelet.id()) {
         return lane;
       }
     }
@@ -1289,7 +1302,7 @@ std::optional<lanelet::ConstLanelet> RouteHandler::getLeftLanelet(
 
   for (const auto & lane : getNextLanelets(prev_lanelet.front())) {
     for (const auto & target_lane : getNextLanelets(lane)) {
-      if (next_left_lane.value().id() == target_lane.id()) {
+      if (next_left_lane.value().id() == target_lane.id() && lane.id() != lanelet.id()) {
         return lane;
       }
     }
@@ -1779,7 +1792,8 @@ PathWithLaneId RouteHandler::getCenterLinePath(
     const lanelet::Id lane_id = reference_path.points.front().lane_ids.front();
     const auto lanelet = lanelet_map_ptr_->laneletLayer.get(lane_id);
     const auto point = reference_path.points.front().point.pose.position;
-    const auto lane_yaw = lanelet::utils::getLaneletAngle(lanelet, point);
+    const auto lane_yaw = autoware::experimental::lanelet2_utils::get_lanelet_angle(
+      lanelet, autoware::experimental::lanelet2_utils::from_ros(point).basicPoint());
     PathPointWithLaneId path_point{};
     path_point.lane_ids.push_back(lane_id);
     constexpr double ds{0.1};
@@ -2122,7 +2136,9 @@ bool RouteHandler::planPathLaneletsBetweenCheckpoints(
   for (const auto & st_llt : start_lanelets) {
     // check if the angle difference between start_checkpoint and start lanelet center line
     // orientation is in yaw_threshold range
-    double lanelet_angle = lanelet::utils::getLaneletAngle(st_llt, start_checkpoint.position);
+    double lanelet_angle = autoware::experimental::lanelet2_utils::get_lanelet_angle(
+      st_llt,
+      autoware::experimental::lanelet2_utils::from_ros(start_checkpoint.position).basicPoint());
     double pose_yaw = tf2::getYaw(start_checkpoint.orientation);
     double angle_diff = std::abs(autoware_utils_math::normalize_radian(lanelet_angle - pose_yaw));
 

@@ -16,12 +16,18 @@
 #include <autoware_lanelet2_extension/projection/mgrs_projector.hpp>
 #include <autoware_lanelet2_extension/utility/utilities.hpp>
 
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+
 #include <lanelet2_core/LaneletMap.h>
 #include <lanelet2_core/primitives/Lanelet.h>
 #include <lanelet2_io/Io.h>
 #include <lanelet2_io/Projection.h>
+#include <lanelet2_io/io_handlers/Serialize.h>
 #include <lanelet2_routing/RoutingGraph.h>
 
+#include <memory>
+#include <sstream>
 #include <string>
 #include <utility>
 
@@ -54,6 +60,81 @@ instantiate_routing_graph_and_traffic_rules(
   auto traffic_rules = lanelet::traffic_rules::TrafficRulesFactory::create(location, participant);
   return {
     lanelet::routing::RoutingGraph::build(*lanelet_map, *traffic_rules), std::move(traffic_rules)};
+}
+
+autoware_map_msgs::msg::LaneletMapBin to_autoware_map_msgs(const lanelet::LaneletMapConstPtr & map)
+{
+  const lanelet::LaneletMapPtr map_mut = std::const_pointer_cast<lanelet::LaneletMap>(map);
+
+  std::stringstream ss;
+  boost::archive::binary_oarchive oa(ss);
+  oa << *map_mut;
+  auto id_counter = lanelet::utils::getId();
+  oa << id_counter;
+
+  std::string data_str(ss.str());
+
+  autoware_map_msgs::msg::LaneletMapBin msg;
+  msg.data.clear();
+  msg.data.assign(data_str.begin(), data_str.end());
+  return msg;
+}
+
+lanelet::LaneletMapConstPtr from_autoware_map_msgs(
+  const autoware_map_msgs::msg::LaneletMapBin & msg)
+{
+  std::string data_str;
+  data_str.assign(msg.data.begin(), msg.data.end());
+
+  std::stringstream ss;
+  ss << data_str;
+  boost::archive::binary_iarchive oa(ss);
+
+  auto lanelet_map_ptr = std::make_shared<lanelet::LaneletMap>();
+  oa >> *lanelet_map_ptr;
+  lanelet::Id id_counter = 0;
+  oa >> id_counter;
+  lanelet::utils::registerId(id_counter);
+
+  return lanelet_map_ptr;
+}
+
+geometry_msgs::msg::Point to_ros(const lanelet::BasicPoint3d & src)
+{
+  geometry_msgs::msg::Point dst;
+  dst.x = src.x();
+  dst.y = src.y();
+  dst.z = src.z();
+  return dst;
+}
+
+geometry_msgs::msg::Point to_ros(const lanelet::ConstPoint3d & src)
+{
+  return to_ros(src.basicPoint());
+}
+
+geometry_msgs::msg::Point to_ros(const lanelet::BasicPoint2d & src, const double & z)
+{
+  geometry_msgs::msg::Point dst;
+  dst.x = src.x();
+  dst.y = src.y();
+  dst.z = z;
+  return dst;
+}
+
+geometry_msgs::msg::Point to_ros(const lanelet::ConstPoint2d & src, const double & z)
+{
+  return to_ros(src.basicPoint(), z);
+}
+
+lanelet::ConstPoint3d from_ros(const geometry_msgs::msg::Point & src)
+{
+  return lanelet::ConstPoint3d(lanelet::Point3d(lanelet::InvalId, src.x, src.y, src.z));
+}
+
+lanelet::ConstPoint3d from_ros(const geometry_msgs::msg::Pose & src)
+{
+  return from_ros(src.position);
 }
 
 }  // namespace autoware::experimental::lanelet2_utils

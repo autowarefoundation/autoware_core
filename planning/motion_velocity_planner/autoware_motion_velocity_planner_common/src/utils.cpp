@@ -226,4 +226,18 @@ double get_dist_to_traj_poly(
   return dist_to_traj_poly;
 }
 
+double calc_dist_to_traj_poly(
+  const autoware_perception_msgs::msg::PredictedObject & predicted_object,
+  const std::vector<autoware_utils_geometry::Polygon2d> & decimated_traj_polys)
+{
+  const auto obj_poly = autoware_utils_geometry::to_polygon2d(
+    predicted_object.kinematics.initial_pose_with_covariance.pose, predicted_object.shape);
+  double dist_to_traj_poly = std::numeric_limits<double>::max();
+  for (const auto & traj_poly : decimated_traj_polys) {
+    const double current_dist_to_traj_poly = boost::geometry::distance(traj_poly, obj_poly);
+    dist_to_traj_poly = std::min(dist_to_traj_poly, current_dist_to_traj_poly);
+  }
+  return dist_to_traj_poly;
+}
+
 }  // namespace autoware::motion_velocity_planner::utils

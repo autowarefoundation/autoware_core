@@ -134,7 +134,7 @@ struct PolygonParam
 struct StopObstacle
 {
   StopObstacle(
-    const std::string & arg_uuid, const rclcpp::Time & arg_stamp,
+    const UUID & arg_uuid, const rclcpp::Time & arg_stamp,
     const StopObstacleClassification & arg_object_classification,
     const geometry_msgs::msg::Pose & arg_pose, const Shape & arg_shape,
     const double arg_lon_velocity, const geometry_msgs::msg::Point & arg_collision_point,
@@ -157,8 +157,7 @@ struct StopObstacle
     const double arg_lon_velocity, const geometry_msgs::msg::Point & arg_collision_point,
     const double arg_dist_to_collide_on_decimated_traj, const PolygonParam & arg_polygon_param,
     const std::optional<double> arg_braking_dist = std::nullopt)
-  : uuid("point_cloud"),
-    stamp(arg_stamp),
+  : stamp(arg_stamp),
     velocity(arg_lon_velocity),
     collision_point(arg_collision_point),
     dist_to_collide_on_decimated_traj(arg_dist_to_collide_on_decimated_traj),
@@ -170,10 +169,10 @@ struct StopObstacle
       throw std::invalid_argument(
         "Constructor for pointcloud StopObstacle must be called with POINTCLOUD label");
     }
-
+    pose.position = arg_collision_point;
     shape.type = autoware_perception_msgs::msg::Shape::BOUNDING_BOX;
   }
-  std::string uuid;
+  UUID uuid{};
   rclcpp::Time stamp;
   geometry_msgs::msg::Pose pose;  // interpolated with the current stamp
   double velocity;                // longitudinal velocity against ego's trajectory

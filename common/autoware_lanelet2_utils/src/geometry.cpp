@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <autoware/lanelet2_utils/geometry.hpp>
+#include <range/v3/all.hpp>
 
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/pose.hpp>
@@ -25,6 +26,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <limits>
 #include <vector>
 
 namespace autoware::experimental::lanelet2_utils
@@ -215,6 +217,36 @@ std::optional<geometry_msgs::msg::Pose> get_pose_from_2d_arc_length(
     }
   }
   return std::nullopt;
+}
+
+lanelet::ConstLineString3d get_closest_segment(
+  const lanelet::ConstLineString3d & linestring, const lanelet::BasicPoint3d & search_pt)
+{
+  lanelet::ConstLineString3d closest_segment;
+  double min_distance = std::numeric_limits<double>::max();
+
+  for (const auto & [prev_pt, current_pt] :
+       ranges::views::zip(linestring, linestring | ranges::views::drop(1))) {
+    lanelet::Point3d prev_pt_3d(lanelet::InvalId, prev_pt.x(), prev_pt.y(), prev_pt.z());
+    lanelet::Point3d current_pt_3d(
+      lanelet::InvalId, current_pt.x(), current_pt.y(), current_pt.z());
+
+    lanelet::ConstLineString3d current_segment(lanelet::InvalId, {prev_pt_3d, current_pt_3d});
+    double distance = lanelet::geometry::distance3d(current_segment.basicLineString(), search_pt);
+    if (distance < min_distance) {
+      closest_segment = current_segment;
+      min_distance = distance;
+    }
+  }
+  return closest_segment;
+}
+
+double get_lanelet_angle(
+  const lanelet::ConstLanelet & lanelet, const lanelet::BasicPoint3d & search_pt)
+{
+  lanelet::ConstLineString3d segment = get_closest_segment(lanelet.centerline(), search_pt);
+  return std::atan2(
+    segment.back().y() - segment.front().y(), segment.back().x() - segment.front().x());
 }
 
 }  // namespace autoware::experimental::lanelet2_utils
