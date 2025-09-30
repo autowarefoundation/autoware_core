@@ -1,0 +1,7449 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://autowarefoundation.github.io/autoware_core/pr-653/common/autoware_lanelet2_utils/">
+      
+      
+        <link rel="prev" href="../autoware_kalman_filter/">
+      
+      
+        <link rel="next" href="../autoware_motion_utils/">
+      
+      
+      <link rel="icon" href="../../docs/assets/images/autoware-foundation.png">
+      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.6.20">
+    
+    
+      
+        <title>autoware_lanelet2_utils - Autoware Core Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.e53b48f4.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../docs/assets/css/extra.css">
+    
+      <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="white" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#autoware_lanelet2_utils" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Autoware Core Documentation" class="md-header__button md-logo" aria-label="Autoware Core Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M135.2 117.4 109.1 192h293.8l-26.1-74.6c-4.5-12.8-16.6-21.4-30.2-21.4H165.4c-13.6 0-25.7 8.6-30.2 21.4m-95.6 79.4L74.8 96.3C88.3 57.8 124.6 32 165.4 32h181.2c40.8 0 77.1 25.8 90.6 64.3l35.2 100.5c23.2 9.6 39.6 32.5 39.6 59.2v192c0 17.7-14.3 32-32 32h-32c-17.7 0-32-14.3-32-32v-32H96v32c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32V256c0-26.7 16.4-49.6 39.6-59.2M128 304a32 32 0 1 0-64 0 32 32 0 1 0 64 0m288 32a32 32 0 1 0 0-64 32 32 0 1 0 0 64"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Autoware Core Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              autoware_lanelet2_utils
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="white" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="grey" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/autowarefoundation/autoware_core" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../api/autoware_adapi_adaptors/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Api
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../autoware_core/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Autoware core
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../autoware_component_interface_specs/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Common
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../control/autoware_core_control/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Control
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../localization/autoware_core_localization/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Localization
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../map/autoware_core_map/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Map
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../perception/autoware_core_perception/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Perception
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../planning/autoware_core_planning/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Planning
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../sensing/autoware_core_sensing/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Sensing
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../testing/autoware_planning_test_manager/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Testing
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../vehicle/autoware_core_vehicle/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Vehicle
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Autoware Core Documentation" class="md-nav__button md-logo" aria-label="Autoware Core Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M135.2 117.4 109.1 192h293.8l-26.1-74.6c-4.5-12.8-16.6-21.4-30.2-21.4H165.4c-13.6 0-25.7 8.6-30.2 21.4m-95.6 79.4L74.8 96.3C88.3 57.8 124.6 32 165.4 32h181.2c40.8 0 77.1 25.8 90.6 64.3l35.2 100.5c23.2 9.6 39.6 32.5 39.6 59.2v192c0 17.7-14.3 32-32 32h-32c-17.7 0-32-14.3-32-32v-32H96v32c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32V256c0-26.7 16.4-49.6 39.6-59.2M128 304a32 32 0 1 0-64 0 32 32 0 1 0 64 0m288 32a32 32 0 1 0 0-64 32 32 0 1 0 0 64"/></svg>
+
+    </a>
+    Autoware Core Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/autowarefoundation/autoware_core" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Api
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            Api
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_1_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../api/autoware_adapi_adaptors/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware adapi adaptors
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_1_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1_1">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware adapi adaptors
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_1_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../api/autoware_adapi_specs/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware adapi specs
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_1_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1_2">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware adapi specs
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_1_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../api/autoware_core_api/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware core api
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_1_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1_3">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware core api
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_1_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../api/autoware_default_adapi/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware default adapi
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1_4" id="__nav_1_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_1_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1_4">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware default adapi
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_1_4_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_1_4_2" id="__nav_1_4_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Document
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_1_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            Document
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/autoware_default_adapi/document/interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Interface API
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/autoware_default_adapi/document/localization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Localization API
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/autoware_default_adapi/document/routing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Routing API
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../autoware_core/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware core
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware core
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Common
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Common
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../autoware_component_interface_specs/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware component interface specs
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware component interface specs
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../autoware_geography_utils/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware geography utils
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware geography utils
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Autoware global parameter loader
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware global parameter loader
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../autoware_global_parameter_loader/Readme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Autoware Global Parameter Loader
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../autoware_interpolation/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware interpolation
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware interpolation
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../autoware_kalman_filter/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware kalman filter
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware kalman filter
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_6" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="./" class="md-nav__link md-nav__link--active">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware lanelet2 utils
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3_6">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware lanelet2 utils
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_7" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../autoware_motion_utils/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware motion utils
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_7" id="__nav_3_7_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_7">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware motion utils
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_7_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_7_2" id="__nav_3_7_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Docs
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_7_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_7_2">
+            <span class="md-nav__icon md-icon"></span>
+            Docs
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_7_2_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_7_2_1" id="__nav_3_7_2_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Vehicle
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_3_7_2_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_7_2_1">
+            <span class="md-nav__icon md-icon"></span>
+            Vehicle
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../autoware_motion_utils/docs/vehicle/vehicle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    vehicle utils
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_8" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../autoware_node/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware node
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_8">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware node
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_9" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../autoware_object_recognition_utils/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware object recognition utils
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_9">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware object recognition utils
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_10" id="__nav_3_10_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Autoware osqp interface
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_10">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware osqp interface
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_10_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_10_1" id="__nav_3_10_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Design
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_10_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_10_1">
+            <span class="md-nav__icon md-icon"></span>
+            Design
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../autoware_osqp_interface/design/osqp_interface-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Interface for the OSQP library
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_11" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../autoware_point_types/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware point types
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_11">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware point types
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_12" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_12" id="__nav_3_12_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Autoware qp interface
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_12">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware qp interface
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_12_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_12_1" id="__nav_3_12_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Design
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_12_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_12_1">
+            <span class="md-nav__icon md-icon"></span>
+            Design
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../autoware_qp_interface/design/qp_interface-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Interface for QP solvers
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_13" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../autoware_signal_processing/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware signal processing
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3_13" id="__nav_3_13_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_13">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware signal processing
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_13_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_13_2" id="__nav_3_13_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Documentation
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_13_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_13_2">
+            <span class="md-nav__icon md-icon"></span>
+            Documentation
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../autoware_signal_processing/documentation/ButterworthFilter/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    ButterworthFilter
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_14" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../autoware_trajectory/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware trajectory
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_14_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_14">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware trajectory
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_15" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../autoware_vehicle_info_utils/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware vehicle info utils
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_15_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_15">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware vehicle info utils
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Control
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Control
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../control/autoware_core_control/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware core control
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_1">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware core control
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../control/autoware_simple_pure_pursuit/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware simple pure pursuit
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware simple pure pursuit
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Localization
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Localization
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../localization/autoware_core_localization/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware core localization
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_1">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware core localization
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../localization/autoware_ekf_localizer/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware ekf localizer
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware ekf localizer
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../localization/autoware_gyro_odometer/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware gyro odometer
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware gyro odometer
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../localization/autoware_localization_util/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware localization util
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_4">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware localization util
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../localization/autoware_ndt_scan_matcher/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware ndt scan matcher
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_5" id="__nav_5_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware ndt scan matcher
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_5_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_5_2" id="__nav_5_5_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Include
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_5_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5_2">
+            <span class="md-nav__icon md-icon"></span>
+            Include
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_5_2_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_5_2_1" id="__nav_5_5_2_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Autoware
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_5_2_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5_2_1">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_5_2_1_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_5_2_1_1" id="__nav_5_5_2_1_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Ndt scan matcher
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_5_5_2_1_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5_2_1_1">
+            <span class="md-nav__icon md-icon"></span>
+            Ndt scan matcher
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_5_2_1_1_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../localization/autoware_ndt_scan_matcher/include/autoware/ndt_scan_matcher/ndt_omp/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Ndt omp
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="6" aria-labelledby="__nav_5_5_2_1_1_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5_2_1_1_1">
+            <span class="md-nav__icon md-icon"></span>
+            Ndt omp
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../localization/autoware_pose_initializer/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware pose initializer
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_6">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware pose initializer
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_7" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../localization/autoware_stop_filter/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware stop filter
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_7">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware stop filter
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_8" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../localization/autoware_twist2accel/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware twist2accel
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_8">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware twist2accel
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Map
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Map
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../map/autoware_core_map/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware core map
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_1">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware core map
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../map/autoware_lanelet2_map_visualizer/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware lanelet2 map visualizer
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_2">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware lanelet2 map visualizer
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../map/autoware_map_height_fitter/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware map height fitter
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_3">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware map height fitter
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../map/autoware_map_loader/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware map loader
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_4">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware map loader
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../map/autoware_map_projection_loader/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware map projection loader
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6_5">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware map projection loader
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Perception
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            Perception
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../perception/autoware_core_perception/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware core perception
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_1">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware core perception
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../perception/autoware_euclidean_cluster_object_detector/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware euclidean cluster object detector
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_2">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware euclidean cluster object detector
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../perception/autoware_ground_filter/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware ground filter
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_7_3" id="__nav_7_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_3">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware ground filter
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_7_3_2" id="__nav_7_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Docs
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_7_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            Docs
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../perception/autoware_ground_filter/docs/ground-filter/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Autoware Ground Filter
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../perception/autoware_perception_objects_converter/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware perception objects converter
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_4">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware perception objects converter
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Planning
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            Planning
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../planning/autoware_core_planning/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware core planning
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_8_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8_1">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware core planning
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../planning/autoware_mission_planner/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware mission planner
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_8_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8_2">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware mission planner
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../planning/autoware_objects_of_interest_marker_interface/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware objects of interest marker interface
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_8_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8_3">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware objects of interest marker interface
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../planning/autoware_path_generator/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware path generator
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_8_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8_4">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware path generator
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../planning/autoware_planning_factor_interface/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware planning factor interface
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_8_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8_5">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware planning factor interface
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../planning/autoware_planning_topic_converter/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware planning topic converter
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_8_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8_6">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware planning topic converter
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8_7" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../planning/autoware_route_handler/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware route handler
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_8_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8_7">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware route handler
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8_8" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../planning/autoware_velocity_smoother/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware velocity smoother
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_8_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8_8">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware velocity smoother
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_8_9" id="__nav_8_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Behavior velocity planner
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_8_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8_9">
+            <span class="md-nav__icon md-icon"></span>
+            Behavior velocity planner
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8_9_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../planning/behavior_velocity_planner/autoware_behavior_velocity_planner/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware behavior velocity planner
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_8_9_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8_9_1">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware behavior velocity planner
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8_9_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../planning/behavior_velocity_planner/autoware_behavior_velocity_planner_common/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware behavior velocity planner common
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_8_9_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8_9_2">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware behavior velocity planner common
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8_9_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../planning/behavior_velocity_planner/autoware_behavior_velocity_stop_line_module/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware behavior velocity stop line module
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_8_9_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8_9_3">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware behavior velocity stop line module
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_8_10" id="__nav_8_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Motion velocity planner
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_8_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8_10">
+            <span class="md-nav__icon md-icon"></span>
+            Motion velocity planner
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8_10_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../planning/motion_velocity_planner/autoware_motion_velocity_obstacle_stop_module/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware motion velocity obstacle stop module
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_8_10_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8_10_1">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware motion velocity obstacle stop module
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8_10_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../planning/motion_velocity_planner/autoware_motion_velocity_planner/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware motion velocity planner
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_8_10_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8_10_2">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware motion velocity planner
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8_10_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../planning/motion_velocity_planner/autoware_motion_velocity_planner_common/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware motion velocity planner common
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_8_10_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8_10_3">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware motion velocity planner common
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Sensing
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            Sensing
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../sensing/autoware_core_sensing/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware core sensing
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_9_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9_1">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware core sensing
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../sensing/autoware_crop_box_filter/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware crop box filter
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_9_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9_2">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware crop box filter
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../sensing/autoware_downsample_filters/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware downsample filters
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_9_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9_3">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware downsample filters
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../sensing/autoware_gnss_poser/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware gnss poser
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_9_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9_4">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware gnss poser
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../sensing/autoware_vehicle_velocity_converter/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware vehicle velocity converter
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_9_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9_5">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware vehicle velocity converter
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Testing
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
+            <span class="md-nav__icon md-icon"></span>
+            Testing
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../testing/autoware_planning_test_manager/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware planning test manager
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_10_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_1">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware planning test manager
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../testing/autoware_pyplot/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware pyplot
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_10_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_2">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware pyplot
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../testing/autoware_test_node/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware test node
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_10_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_3">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware test node
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../testing/autoware_test_utils/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware test utils
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_10_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_4">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware test utils
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_10_5" id="__nav_10_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Autoware testing
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_10_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_5">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware testing
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10_5_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_10_5_1" id="__nav_10_5_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Design
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_10_5_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10_5_1">
+            <span class="md-nav__icon md-icon"></span>
+            Design
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../testing/autoware_testing/design/autoware_testing-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    autoware_testing
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_11" >
+        
+          
+          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Vehicle
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11">
+            <span class="md-nav__icon md-icon"></span>
+            Vehicle
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_11_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../vehicle/autoware_core_vehicle/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Autoware core vehicle
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_11_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11_1">
+            <span class="md-nav__icon md-icon"></span>
+            Autoware core vehicle
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#nomenclature" class="md-nav__link">
+    <span class="md-ellipsis">
+      Nomenclature
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api-description" class="md-nav__link">
+    <span class="md-ellipsis">
+      API description
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Notes
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Notes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#about-boostgeometry-r-tree" class="md-nav__link">
+    <span class="md-ellipsis">
+      About Boost.Geometry R-tree
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#complexity-of-findusage" class="md-nav__link">
+    <span class="md-ellipsis">
+      Complexity of findUsage
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#test-maps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Test maps
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Test maps">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-to-craft-test-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      How to craft test map
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tested-case" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tested case
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<div><h1 id="autoware_lanelet2_utils">autoware_lanelet2_utils<a class="headerlink" href="#autoware_lanelet2_utils" title="Permanent link">#</a></h1>
+<h2 id="nomenclature">Nomenclature<a class="headerlink" href="#nomenclature" title="Permanent link">#</a></h2>
+<p>This package aims to strictly define the meaning of several words to clarify the documentation and API's scope. In the table below, <code>codespace</code> words are given specific meanings when used in the API and API description. <em>italic</em> words are emphasized to indicate that it refers to social common sense which often comes with ambiguity. To help disambiguate the meaning, illustration is provided. "Lanelet" refers to the entity of a<code>lanelet::ConstLanelet</code> object in order to distinguish with the word "lane" used in social customs. <code>A</code> and <code>B</code> stands for some Lanelets objects.</p>
+<table>
+<thead>
+<tr>
+<th>Word</th>
+<th>Meaning</th>
+<th>Illustration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>driving</code></td>
+<td>The vehicle position belongs to the designated Lanelet.</td>
+<td>In each map, green Lanelet are the <code>driving</code> lanes of the vehicle.<br><img alt="driving" src="media/nomenclature/driving.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-653%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fnomenclature%2Fdriving.drawio.svg">Open</a></td>
+</tr>
+<tr>
+<td><code>boundary</code>,<br><code>entry</code>,<br><code>exit</code></td>
+<td>The <code>boundary</code> of a Lanelet refers to the left or right Linestring.</td>
+<td><img alt="boundary_entry_exit" src="media/nomenclature/boundary_entry_exit.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-653%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fnomenclature%2Fboundary_entry_exit.drawio.svg">Open</a></td>
+</tr>
+<tr>
+<td><code>adjacent</code></td>
+<td>If A is <code>adjacent</code> to B, A and B share a common <code>boundary</code> with same direction either on the left or right side.</td>
+<td>In each map, orange Lanelet is <code>adjacent</code> to green Lanelet.<br><img alt="adjacent" src="media/nomenclature/adjacent.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-653%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fnomenclature%2Fadjacent.drawio.svg">Open</a></td>
+</tr>
+<tr>
+<td><code>same_direction</code></td>
+<td>Lanelet A and Lanelet B are <code>same_direction</code> if A and B are directly or indirectly <code>adjacent</code> to each other.</td>
+<td>In each map, orange Lanelets are <code>same_direction</code> as green Lanelet.<br><img alt="same_direction" src="media/nomenclature/same_direction.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-653%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fnomenclature%2Fsame_direction.drawio.svg">Open</a></td>
+</tr>
+<tr>
+<td><code>bundle</code></td>
+<td>A <code>bundle</code> refers to a transitive closure set of Lanelets which are <code>same_direction</code> to each other.</td>
+<td>The enclosed sets of Lanelets are <code>bundle</code>s.<br><img alt="bundle" src="media/nomenclature/bundle.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-653%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fnomenclature%2Fbundle.drawio.svg">Open</a></td>
+</tr>
+<tr>
+<td><code>opposite</code></td>
+<td>If A is <code>opposite</code> to B, A and B share a common <code>boundary</code> with opposite direction.</td>
+<td>In the first map, green Lanelet and orange Lanelet are <code>opposite</code> to each other.<br>In the second map, two red Lanelets are not <code>opposite</code> relation because they do not share a common LineString.<br><img alt="opposite" src="media/nomenclature/opposite.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-653%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fnomenclature%2Fopposite.drawio.svg">Open</a></td>
+</tr>
+<tr>
+<td><code>opposite_direction</code></td>
+<td>If A and B are <code>opposite_direction</code>, the <code>bundle</code> of A and B are directly <code>opposite</code> to each other.</td>
+<td>In the each map, green Lanelet and orange Lanelet are <code>opposite_direction</code> because their <code>bundle</code>s(enclosed in dotted line) are <code>opposite</code> relation.<br><img alt="opposite_direction" src="media/nomenclature/opposite_direction.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-653%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fnomenclature%2Fopposite_direction.drawio.svg">Open</a></td>
+</tr>
+<tr>
+<td><code>connected</code></td>
+<td>A is <code>connected</code> to(from) B if and only if the <code>exit</code>(<code>entry</code>) of A is identical to the <code>entry</code>(<code>exit</code>) of B.</td>
+<td>A is connected to B, and B is connected from A.<br><img alt="connected" src="media/nomenclature/connected.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-653%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fnomenclature%2Fconnected.drawio.svg">Open</a></td>
+</tr>
+<tr>
+<td><code>following</code></td>
+<td>The <code>following</code> Lanelets of A is the list of Lanelets to which A is <code>connected</code>.</td>
+<td>In each map, orange Lanelets are the <code>following</code> of green Lanelet.<br><img alt="following" src="media/nomenclature/following.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-653%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fnomenclature%2Ffollowing.drawio.svg">Open</a></td>
+</tr>
+<tr>
+<td><code>previous</code></td>
+<td>The <code>previous</code> Lanelets of A is the list of Lanelets from which A is <code>connected</code>.</td>
+<td>In each map, orange Lanelets are the <code>previous</code> of green Lanelet. <br> <img alt="previous" src="media/nomenclature/previous.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-653%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fnomenclature%2Fprevious.drawio.svg">Open</a></td>
+</tr>
+<tr>
+<td><code>conflicting</code></td>
+<td>A is <code>conflicting</code> with B if A and B are geometrically intersecting.</td>
+<td></td>
+</tr>
+<tr>
+<td><code>merging</code></td>
+<td>A is said to be <code>merging</code> Lanelet of B if and only if A is <code>conflicting</code> with B and both A and B are connected to a common Lanelet.</td>
+<td>In each map, one of the orange Lanelet is a <code>merging</code> Lanelet of the other orange Lanelet.<br><img alt="merging" src="media/nomenclature/merging.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-653%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fnomenclature%2Fmerging.drawio.svg">Open</a></td>
+</tr>
+<tr>
+<td><code>sibling</code></td>
+<td>The designated Lanelets are referred to as <code>sibling</code> if all of them are <code>connected</code> from a common Lanelet.</td>
+<td>In each map, orange Lanelets are <code>sibling</code>s.<br><img alt="sibling" src="media/nomenclature/sibling.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-653%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fnomenclature%2Fsibling.drawio.svg">Open</a></td>
+</tr>
+<tr>
+<td><code>oncoming</code></td>
+<td>TBD</td>
+<td>TBD</td>
+</tr>
+<tr>
+<td><code>upcoming</code></td>
+<td>TBD</td>
+<td>TBD</td>
+</tr>
+<tr>
+<td><code>sequence</code></td>
+<td><code>sequence</code> is a list of Lanelets whose each element is <code>connected from</code> or <code>adjacent to</code> the previous element.</td>
+<td><img alt="sequence" src="media/nomenclature/sequence.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-653%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fnomenclature%2Fsequence.drawio.svg">Open</a></td>
+</tr>
+<tr>
+<td><code>current_route_lanelet</code></td>
+<td><code>current_route_lanelet</code> is one of the lanelet within the route which serves as the reference for ego position.</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="api-description">API description<a class="headerlink" href="#api-description" title="Permanent link">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Header</th>
+<th>function</th>
+<th>description</th>
+<th>average computational complexity</th>
+<th>illustration</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>&lt;autoware/lanelet2_utils/conversion.hpp&gt;</code></td>
+<td><code>load_mgrs_coordinate_map(path, centerline_resolution)</code></td>
+<td>Instantiate a LaneletMap object from given <code>path</code> to <code>.osm</code> file. Also it sets more dense centerline(at the interval of <code>centerline_resolution</code>) than default <code>Lanelet2</code> library, to help improve Planning accuracy.</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>instantiate_routing_graph_and_traffic_rules</code></td>
+<td>This function creates a <code>RoutingGraph</code> and <code>TrafficRules</code> object only from "road" lanes for <code>Vehicle</code> participant, which means "road_shoulder","bicycle_lane", "crosswalk", etc. Lanelets are inaccessible from left/right adjacency.</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><ul><li><code>from_autoware_map_msgs(...)</code></li><li><code>to_autoware_map_msgs(...</code>)</li></ul></td>
+<td>Convert LaneletMap object from/to <code>autoware_mapping_msgs::LaneletMapBin</code> message</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>&lt;autoware/lanelet2_utils/kind.hpp&gt;</code></td>
+<td><code>is_road_lane</code></td>
+<td>This function returns <code>true</code> if the input Lanelet is <code>road</code> subtype.</td>
+<td><span class="arithmatex">\(O(1)\)</span></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>is_shoulder_lane</code></td>
+<td>This function returns <code>true</code> if the input Lanelet is <code>road_shoulder</code> subtype.</td>
+<td><span class="arithmatex">\(O(1)\)</span></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>is_bicycle_lane</code></td>
+<td>This function returns <code>true</code> if the input Lanelet is <code>bicycle_lane</code> subtype.</td>
+<td><span class="arithmatex">\(O(1)\)</span></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>&lt;autoware/lanelet2_utils/hatched_road_markings.hpp&gt;</code></td>
+<td><code>get_adjacent_hatched_road_markings</code></td>
+<td>Returns polygons with type <code>hatched_road_markings</code> that touch the left/right bounds of the given lanelet sequence. Polygons are grouped by side and duplicates removed.</td>
+<td><span class="arithmatex">\(O(V)\)</span> where <span class="arithmatex">\(V\)</span> is the number of boundary vertices inspected</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>&lt;autoware/lanelet2_utils/topology.hpp&gt;</code></td>
+<td><code>left_opposite_lanelet</code></td>
+<td>same as below <code>right_opposite_lanelet</code></td>
+<td><span class="arithmatex">\(O(1)\)</span><br>see <a href="#complexity-of-findusage"><code>findUsage</code></a> for detail</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>right_opposite_lanelet</code></td>
+<td>This functions returns the right <code>opposite</code> Lanelet of the input Lanelet if available, otherwise returns null.</td>
+<td><span class="arithmatex">\(O(1)\)</span><br>see <a href="#complexity-of-findusage"><code>findUsage</code></a> for detail</td>
+<td>In the first and second map, the green Lanelet is the <code>right_opposite_lanelet</code> of the orange Lanelet.<br>In the third map, the <code>right_opposite_lanelet</code> of the orange Lanelet is <code>null</code>.<br><img alt="right_opposite_lanelet" src="media/api/right_opposite_lanelet.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-653%2Fcommon%2Fautoware%2Flanelet2_utils%2Fmedia%2Fapi%2Fright_opposite_lanelet.drawio.svg">Open</a></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>following_lanelets</code></td>
+<td>This function returns the <code>following</code> Lanelets of the input Lanelet. The order is not defined.</td>
+<td><span class="arithmatex">\(O(E)\)</span> where <span class="arithmatex">\(E\)</span> is the number of Lanelets to which the input is connected to.</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>previous_lanelets</code></td>
+<td>This function returns the <code>previous</code> Lanelets of the input Lanelet. The order is not defined.</td>
+<td><span class="arithmatex">\(O(E)\)</span> where <span class="arithmatex">\(E\)</span> is the number of Lanelets from which the input is connected from.</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>sibling_lanelets</code></td>
+<td>This function returns the <code>sibling</code> Lanelets of the input Lanelet excluding itself. The order is not defined.</td>
+<td><span class="arithmatex">\(O(E)\)</span> where <span class="arithmatex">\(E\)</span> is the number of sibling Lanelets</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>from_ids</code></td>
+<td>This function returns Lanelet objects in the same order as the input IDs.</td>
+<td><span class="arithmatex">\(O(n)\)</span></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>&lt;autoware/lanelet2_utils/intersection.hpp&gt;</code></td>
+<td><code>is_intersection_lanelet</code></td>
+<td>This function returns <code>true</code> if and only if the input Lanelet has <code>turn_direction</code> attribute.</td>
+<td><span class="arithmatex">\(O(1)\)</span></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><ul><li><code>is_straight_lanelet</code></li><li><code>is_left_lanelet</code></li><li><code>is_right_lanelet</code></li></ul></td>
+<td>This function returns <code>true</code> if and only if the input Lanelet has <code>turn_direction</code> attribute and its value is <code>straight</code>/<code>left</code>/<code>right</code>.</td>
+<td><span class="arithmatex">\(O(1)\)</span></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>&lt;autoware/lanelet2_utils/lane_sequence.hpp</code></td>
+<td><code>class LaneSequence</code></td>
+<td>This class internally holds <code>lanelet::ConstLanelets</code> such that they are consecutive on the routing graph.</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><strong>class invariance</strong></td>
+<td><code>.as_lanelets()</code> return Lanelets that are consecutive on the routing graph</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>create(lanelets, routing_graph)</code></td>
+<td>Return an optional of <code>LaneSequence</code> class that satisfies the invariance</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>.as_lanelets()</code></td>
+<td>Return the underlying <code>lanelet::ConstLanelets</code></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>&lt;autoware/lanelet2_utils/nn_search.hpp&gt;</code></td>
+<td><code>get_closest_lanelet(lanelets, pose)</code></td>
+<td>This function retrieves the lanelet which gives the smallest distance to given <code>pose</code>(if it is within a lanelet, it gives zero distance) and whose centerline is closest to the given orientation among them</td>
+<td><span class="arithmatex">\(O(N)\)</span> where <span class="arithmatex">\(N\)</span> is the number of input lanelets<br><br><img alt="⚠" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@14.1.2/assets/svg/26a0.svg" title=":warning:"> "Native R-tree API" and <code>LaneletRTree</code> is much more efficient</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>get_closest_lanelet_within_constraint(lanelets, pose, dist_thresh, yaw_thresh)</code></td>
+<td>In addition to <code>get_closest_lanelet</code>, it filters <code>lanelets</code> whose distance to <code>pose</code> is <span class="arithmatex">\(\leq\)</span> <code>dist_thresh</code> and yaw angle difference is <span class="arithmatex">\(\leq\)</span> <code>yaw_thresh</code></td>
+<td><span class="arithmatex">\(O(N)\)</span> where <span class="arithmatex">\(N\)</span> is the number of input lanelets<br><br><img alt="⚠" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@14.1.2/assets/svg/26a0.svg" title=":warning:"> "Native R-tree API" and <code>LaneletRTree</code> is much more efficient</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>get_road_lanelets_at(lanelet_map, x, y)</code></td>
+<td>Retrieve all "road" Lanelets at given position</td>
+<td><em>R-tree</em></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>get_shoulder_lanelets_at(lanelet_map, x, y)</code></td>
+<td>Retrieve all "road_shoulder" Lanelets at given position</td>
+<td><em>R-tree</em></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>class LaneletRTree</code></td>
+<td><code>class LaneletRTree</code> constructs R-tree structure from given Lanelets and provides more efficient operations.</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>.get_closest_lanelet(pose)</code></td>
+<td>Efficient version of <code>get_closest_lanelet</code></td>
+<td><em>R-tree</em></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>.get_closest_lanelet_within_constraint(pose, dist_thresh, yaw_thresh)</code></td>
+<td>Efficient version of <code>get_closest_lanelet_within_constraint</code></td>
+<td><em>R-tree</em></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>&lt;autoware/lanelet2_utils/map_handler.hpp&gt;</code></td>
+<td><code>class MapHandler</code></td>
+<td><code>class MapHandler</code> provides convenient functions related to adjacency, VRU lanes, etc. for Planning.</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><strong>class invariance</strong></td>
+<td><ul><li><code>lanelet_map_ptr</code> is not <code>nullptr</code></li><li><code>routing_graph_ptr</code> is not <code>nullptr</code></li><li><code>traffic_rules_ptr</code> is not <code>nullptr</code></li></ul></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>MapHandler::create(...)</code></td>
+<td>A factory function to construct under invariance</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><ul><li><code>.lanelet_map_ptr()</code></li><li><code>.routing_graph_ptr()</code></li><li><code>.traffic_rules_ptr()</code></li></ul></td>
+<td>Getter functions</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>.left_lanelet(lanelet, take_sibling, extra_vru)</code></td>
+<td>This function ignores the permission of lane change.<br>If <code>extra_vru</code> is:<ul><li><code>RoadOnly</code>, it ignores <code>shoulder</code> and <code>bicycle</code> Lanelet</li><li><code>Shoulder</code>, it searches <code>shoulder</code> Lanelet additionally</li><li><code>BicycleLane</code>, it searches <code>bicycle_lane</code> Lanelet additionally</li><li><code>ShoulderAndBicycleLane</code>, it searches <code>shoulder</code> and <code>bicycle_lane</code> Lanelet additionally</li></ul></td>
+<td><span class="arithmatex">\(O(1)\)</span></td>
+<td>In the first map, the green Lanelet is the <code>left_lanelet</code> of the orange Lanelet.<br>In the second and third map, the <code>left_lanelet</code> of the orange Lanelet is <code>null</code>.<br><img alt="left_lanelet" src="media/api/left_lanelet.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-653%2Fcommon%2Fautoware%2Flanelet2_utils%2Fmedia%2Fapi%2Fleft_lanelet.drawio.svg">Open</a></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>.right_lanelet(lanelet, take_sibling, extra_vru)</code></td>
+<td>same as above <code>.left_lanelet()</code></td>
+<td><span class="arithmatex">\(O(1)\)</span></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>.leftmost_lanelet(lanelet, take_sibling, extra_vru)</code></td>
+<td>This function recursively searches <code>.left_lanelet()</code> of input <code>lanelet</code>.</td>
+<td><span class="arithmatex">\(O(W)\)</span> where <span class="arithmatex">\(W\)</span> is the size of the <code>bundle</code>.</td>
+<td>In the first and second map, the green Lanelet is the <code>leftmost_lanelet</code> of the orange Lanelet.<br>In the third map, the <code>leftmost_lanelet</code> of the orange Lanelet is <code>null</code>.<br><img alt="leftmost_lanelet" src="media/api/leftmost_lanelet.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-653%2Fcommon%2Fautoware%2Flanelet2_utils%2Fmedia%2Fapi%2Fleftmost_lanelet.drawio.svg">Open</a></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>.rightmost_lanelet(lanelet, take_sibling, extra_vru)</code></td>
+<td>This function recursively searches <code>.right_lanelet()</code> of input <code>lanelet</code>.</td>
+<td><span class="arithmatex">\(O(W)\)</span> where <span class="arithmatex">\(W\)</span> is the size of the <code>bundle</code>.</td>
+<td>In the first map, the green Lanelet is the <code>rightmost_lanelet</code> of the orange Lanelet.<br>In the second and third map, the <code>rightmost_lanelet</code> of the orange Lanelet is <code>null</code>.<br><img alt="rightmost_lanelet" src="media/api/rightmost_lanelet.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-653%2Fcommon%2Fautoware%2Flanelet2_utils%2Fmedia%2Fapi%2Frightmost_lanelet.drawio.svg">Open</a></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>.left_lanelets(lanelet, include_opposite)</code></td>
+<td>The input Lanelet is not included in the output, and output is ordered from left to right.</td>
+<td><span class="arithmatex">\(O(W)\)</span> where <span class="arithmatex">\(W\)</span> is the size of the <code>bundle</code>.</td>
+<td>In the first map, the green Lanelets are the <code>left_lanelets</code> of the orange Lanelet.<br>In the second and third map, <code>left_lanelets</code> of the orange Lanelet is empty.<br>If the flag <code>include_opposite = true</code>, the left opposite Lanelet and all of its <code>same_direction</code> Lanelets area also retrieved as illustrated in the fourth and fifth maps.<br><img alt="left_lanelets" src="media/api/left_lanelets.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-653%2Fcommon%2Fautoware%2Flanelet2_utils%2Fmedia%2Fapi%2Fleft_lanelets.drawio.svg">Open</a></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>.right_lanelets(lanelet, include_opposite)</code></td>
+<td>The input Lanelet is not included in the output, and output is ordered from right to left.</td>
+<td><span class="arithmatex">\(O(W)\)</span> where <span class="arithmatex">\(W\)</span> is the size of the <code>bundle</code>.</td>
+<td>In the first map, the green Lanelets are the <code>right_lanelets</code> of the orange Lanelet.<br>In the second and third map, <code>right_lanelets</code> of the orange Lanelet is empty.<br>If the flag <code>include_opposite = true</code>, the right opposite Lanelet and all of its <code>same_direction</code> Lanelets area also retrieved as illustrated in the fourth and fifth maps.<br><img alt="right_lanelets" src="media/api/right_lanelets.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-653%2Fcommon%2Fautoware%2Flanelet2_utils%2Fmedia%2Fapi%2Fright_lanelets.drawio.svg">Open</a></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>.get_shoulder_lanelet_sequence(lanelet, forward, backward)</code></td>
+<td>This function computes (1) "road_shoulder" Lanelets behind of <code>lanelet</code> by up to <code>backward</code> and (2) "road_shoulder" Lanelets after <code>lanelet</code> by up to <code>forward</code> as a list</td>
+<td><span class="arithmatex">\(O(\textrm{total length})\)</span></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><ul><li><code>.left_shoulder_lanelet(lanelet)</code></li><li><code>.right_shoulder_lanelet(lanelet)</code></li><li><code>.left_bicycle_lanelet(lanelet)</code></li><li><code>.right_bicycle_lanelet(lanelet)</code></li></ul></td>
+<td>Retrieve each VRU Lanelet of <code>lanelet</code> if it exists</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>&lt;autoware/lanelet2_utils/route_manager.hpp&gt;</code></td>
+<td><code>class RouteManager EXTENDS MapHandler</code></td>
+<td><code>class RouteManager</code> is responsible for properly tracking <code>current_route_lanelet</code> along the given route information, considering swerving maneuver and lane change. Also it provides several functions related to <code>current_route_lanelet</code></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><strong>class invariance</strong></td>
+<td><ul><li><code>current_pose</code> may not be inside of any <code>route_lanelets</code> nor <code>preferred_route_lanelets</code>, because swerving and abrupt localization jump cannot be distinguished. For the same reason <code>current_pose</code> may not be inside of <code>current_route_lanelet</code></li><li><code>current_route_lanelet</code> matches one of the <code>route_lanelets</code></li></ul></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>RouteManager::create(...)</code></td>
+<td>A factory function to construct under invariance</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>Inherits <code>MapHandler</code>'s member functions</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>.update_current_pose(new_pose)</code></td>
+<td>This function updates <code>current_route_lanelet</code> on the route based on <code>new_pose</code>. This method should be used for all the cases excluding lane change completion, and <code>current_route_lanelet</code> is updated longitudinally. It is expected to be called in every cycle of planning.</td>
+<td><span class="arithmatex">\(O(1)\)</span></td>
+<td>Even if ego vehicle is in the middle swerving, <code>update_current_pose</code> decides next <code>current_route_lanelet</code> longitudinally, as illustrated in thin violet in the figure.<br><img alt="update_current_pose" src="media/api/current_route_lanelet.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-653%2Fcommon%2Fautoware%2Flanelet2_utils%2Fmedia%2Fapi%2Fcurrent_route_lanelet.drawio.svg">Open</a></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>.commit_lane_change(new_pose)</code></td>
+<td>This function updates <code>current_route_lanelet</code> on the route considering lane change.<br><br><img alt="⚠" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@14.1.2/assets/svg/26a0.svg" title=":warning:"> It is expected to be called only when lane change execution has succeeded</td>
+<td><em>R-tree</em></td>
+<td>Only when lane change has been completed, <code>commit_lane_change()</code> is expected to be called, as illustrated in the the last item of "(2) Lane Change Scenario".<br><img alt="update_current_pose" src="media/api/current_route_lanelet.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-653%2Fcommon%2Fautoware%2Flanelet2_utils%2Fmedia%2Fapi%2Fcurrent_route_lanelet.drawio.svg">Open</a></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>.current_lanelet()</code></td>
+<td>Get <code>current_route_lanelet</code> Lanelet</td>
+<td><span class="arithmatex">\(O(1)\)</span></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>.get_lanelet_sequence_on_route(forward, backward)</code></td>
+<td>This function computes (1) Lanelets behind of <code>current_route_lanelet</code> by up to <code>backward</code> and (2) Lanelets after <code>current_route_lanelet</code> by up to <code>forward</code> as a list, only on the route without lane change.</td>
+<td><span class="arithmatex">\(O(\textrm{total length})\)</span></td>
+<td>From <code>current_route_lanelet</code>, the output contains the Lanelets by up to given distance in backward/forward direction. The output does not contain non-route Lanelets even if the sequence is below specified length, as illustrated in "(1)" in below figure.<br><img alt="get_lanelet_sequence_on_route" src="media/api/lane_sequence.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-653%2Fcommon%2Fautoware%2Flanelet2_utils%2Fmedia%2Fapi%2Flane_sequence.drawio.svg">Open</a></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>.get_lanelet_sequence_on_outward_route(forward, backward)</code></td>
+<td>This function computes (1) Lanelets behind of <code>current_route_lanelet</code> by up to <code>backward</code> and (2) Lanelets after <code>current_route_lanelet</code> by up to <code>forward</code> as a list, extending to non-route Lanelet if necessary, without lane change.</td>
+<td><span class="arithmatex">\(O(\textrm{total length})\)</span></td>
+<td>From <code>current_route_lanelet</code>, the output contains the Lanelets by up to given distance in backward/forward direction. The output extends to non-route Lanelets if the route part of the sequence is below specified length, as illustrated in "(2)" in above figure.</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>.get_closest_preferred_route_lanelet(...)</code></td>
+<td>preferred route lanelet limited version of <code>get_closest_lanelet_within_constraint</code></td>
+<td><em>R-tree</em></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>.get_closest_route_lanelet_within_constraints(...)</code></td>
+<td>route lanelet limited version of <code>get_closest_lanelet_within_constraint</code></td>
+<td><em>R-tree</em></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Native R-tree API</td>
+<td><code>.laneletLayer</code>, <code>.pointLayer</code>, etc. have following member functions<ul><li><code>PrimitiveLayer::nearest(point, n)</code></li><li><code>PrimitiveLayer::nearestUntil(point, cond)</code></li></ul></td>
+<td>Against the input <code>point</code>, this function <strong>approximately</strong> returns elements of given <code>layer</code> in the ascending order of distance by specified number <code>n</code>(<a href="https://docs.ros.org/en/noetic/api/lanelet2_core/html/doxygen/classlanelet_1_1PrimitiveLayer.html#ad95e9e5a636de3fdeed1b269589600fb">reference</a>). Note that they can return inaccurate distance.</td>
+<td><em>R-tree</em></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><ul><li><code>PrimitiveLayer::search(area)</code></li><li><code>PrimitiveLayer::searchUntil(area, cond)</code></li></ul></td>
+<td>This function <strong>approximately</strong> searches for the object within the specified <code>area</code>(<a href="https://docs.ros.org/en/noetic/api/lanelet2_core/html/doxygen/classlanelet_1_1PrimitiveLayer.html#a15bd6c74dcf274be3626a33ad67c0f2c">reference</a>)</td>
+<td><em>R-tree</em></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>&lt;lanelet2_core/LaneletMap.h&gt;</code></td>
+<td><code>findNearest(layer, point, n)</code></td>
+<td>On the given primitive <code>layer</code>, this function <strong>approximately</strong> returns <code>n</code> closest elements to given <code>point</code> in the ascending order of distance(<a href="https://docs.ros.org/en/noetic/api/lanelet2_core/html/doxygen/namespacelanelet_1_1geometry.html#a9ae9480f3552e37e5777f1e4a04b0e2e">reference</a>)</td>
+<td><em>R-tree</em></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>&lt;lanelet2_core/geometry/LaneletMap.h&gt;</code></td>
+<td><code>findWithin2d(layer, geometry, max_dist)</code></td>
+<td>On the given primitive <code>layer</code>, this function returns the elements whose distance to given <code>geometry</code> is less than <code>max_dist</code> <strong>precisely</strong></td>
+<td><em>R-tree</em></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">#</a></h2>
+<h3 id="about-boostgeometry-r-tree">About Boost.Geometry R-tree<a class="headerlink" href="#about-boostgeometry-r-tree" title="Permanent link">#</a></h3>
+<p><a href="https://archive.fosdem.org/2020/schedule/event/boostgeometry_rtree_speeding_up_geographical_computation/attachments/slides/3894/export/events/attachments/boostgeometry_rtree_speeding_up_geographical_computation/slides/3894/FOSDEM2020_Boost_Geometry_R_tree.pdf">This slide</a> is useful for understanding Boost.Geometry R-tree features.</p>
+<div class="admonition tip tip">
+<p class="admonition-title">Tip</p>
+<p>To handle large size HDMaps efficiently, it is highly recommended not to do <span class="arithmatex">\(O(N)\)</span> search on primitive layers.</p>
+</div>
+<div class="admonition info r-tree basic">
+<p class="admonition-title">Info</p>
+<ul>
+<li>Creating the R-tree is expensive, so it is a good practice to initialize it once from a set of Lanelets</li>
+<li>For small number of geometries using a rtree can be more costly. Construction times may be higher than the gain in query performance</li>
+</ul>
+</div>
+<div class="admonition warning performance">
+<p class="admonition-title">Warning</p>
+<ul>
+<li>For small number of geometries using a rtree can be more costly. Construction times may be higher than the gain in query performance</li>
+<li>Do not do queries on multiple geometries at once (e.g., multiple polygons)<ul>
+<li>like <code>rtree.query(intersects(geometries))</code></li>
+<li>It is usually much faster to do the query for each individual geometries<ul>
+<li><code>for(const auto &amp; geometry : geometries) rtree.query(intersects(geometry))</code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+<h3 id="complexity-of-findusage">Complexity of <code>findUsage</code><a class="headerlink" href="#complexity-of-findusage" title="Permanent link">#</a></h3>
+<p>The readers should be noted that following description is implementation dependent.</p>
+<ul>
+<li><a href="https://github.com/fzi-forschungszentrum-informatik/Lanelet2/blob/d9320cf66698004cd5e57988ac001e02e73e2e40/lanelet2_core/include/lanelet2_core/LaneletMap.h">LaneletMap.h</a></li>
+<li><a href="https://github.com/fzi-forschungszentrum-informatik/Lanelet2/blob/d9320cf66698004cd5e57988ac001e02e73e2e40/lanelet2_core/src/LaneletMap.cpp">LaneletMap.cpp</a></li>
+</ul>
+<p>Lanelet map primitives(like <code>Lanelet</code>, <code>Area</code>, <code>RegulatoryElement</code>) are stored in several <code>PrimitiveLayer&lt;T&gt;</code> objects according to their types as shown below.</p>
+<div class="highlight"><span class="filename">lanelet2_core/LaneletMap.h#L375-L438</span><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">LaneletMap</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="k">public</span><span class="w"> </span><span class="n">LaneletMapLayers</span><span class="w"> </span><span class="p">{</span>
+<span class="w"> </span><span class="k">public</span><span class="o">:</span>
+<span class="w">  </span><span class="k">using</span><span class="w"> </span><span class="n">LaneletMapLayers</span><span class="o">::</span><span class="n">LaneletMapLayers</span><span class="p">;</span>
+<span class="w">  </span><span class="o">&lt;</span><span class="p">...</span><span class="o">&gt;</span>
+<span class="p">};</span>
+</code></pre></div>
+<div class="highlight"><span class="filename">lanelet2_core/LaneletMap.h#L313-L359</span><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">LaneletMapLayers</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="o">&lt;</span><span class="p">...</span><span class="o">&gt;</span>
+<span class="w">  </span><span class="n">LaneletLayer</span><span class="w"> </span><span class="n">laneletLayer</span><span class="p">;</span><span class="w">                      </span><span class="c1">//!&lt; access to the lanelets within this map</span>
+<span class="w">  </span><span class="n">AreaLayer</span><span class="w"> </span><span class="n">areaLayer</span><span class="p">;</span><span class="w">                            </span><span class="c1">//!&lt; access to areas</span>
+<span class="w">  </span><span class="n">RegulatoryElementLayer</span><span class="w"> </span><span class="n">regulatoryElementLayer</span><span class="p">;</span><span class="w">  </span><span class="c1">//!&lt; access to regElems</span>
+<span class="w">  </span><span class="n">PolygonLayer</span><span class="w"> </span><span class="n">polygonLayer</span><span class="p">;</span><span class="w">                      </span><span class="c1">//!&lt; access to the polygons</span>
+<span class="w">  </span><span class="n">LineStringLayer</span><span class="w"> </span><span class="n">lineStringLayer</span><span class="p">;</span><span class="w">                </span><span class="c1">//!&lt; access to the lineStrings</span>
+<span class="w">  </span><span class="n">PointLayer</span><span class="w"> </span><span class="n">pointLayer</span><span class="p">;</span><span class="w">                          </span><span class="c1">//!&lt; access to the points</span>
+<span class="p">};</span>
+</code></pre></div>
+<div class="highlight"><span class="filename">lanelet2_core/LaneletMap.h#L285-L303</span><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">LaneletLayer</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="k">public</span><span class="w"> </span><span class="n">PrimitiveLayer</span><span class="o">&lt;</span><span class="n">Lanelet</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w"> </span><span class="k">public</span><span class="o">:</span>
+<span class="w">  </span><span class="k">using</span><span class="w"> </span><span class="n">PrimitiveLayer</span><span class="o">::</span><span class="n">findUsages</span><span class="p">;</span>
+<span class="w">  </span><span class="n">LaneletLayer</span><span class="p">()</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">default</span><span class="p">;</span>
+<span class="w">  </span><span class="o">~</span><span class="n">LaneletLayer</span><span class="p">()</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">default</span><span class="p">;</span>
+<span class="w">  </span><span class="n">LaneletLayer</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">LaneletLayer</span><span class="o">&amp;</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">delete</span><span class="p">;</span>
+<span class="w">  </span><span class="n">LaneletLayer</span><span class="w"> </span><span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="n">LaneletLayer</span><span class="o">&amp;</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">delete</span><span class="p">;</span>
+<span class="w">  </span><span class="n">Lanelets</span><span class="w"> </span><span class="nf">findUsages</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">RegulatoryElementConstPtr</span><span class="o">&amp;</span><span class="w"> </span><span class="n">regElem</span><span class="p">);</span>
+<span class="w">  </span><span class="n">ConstLanelets</span><span class="w"> </span><span class="nf">findUsages</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">RegulatoryElementConstPtr</span><span class="o">&amp;</span><span class="w"> </span><span class="n">regElem</span><span class="p">)</span><span class="w"> </span><span class="k">const</span><span class="p">;</span>
+<span class="w">  </span><span class="o">&lt;</span><span class="p">...</span><span class="o">&gt;</span>
+<span class="p">};</span>
+</code></pre></div>
+<p>Each <code>PrimitiveLayer</code> owns a field named <code>tree_</code> that contains a lookup table named <code>usage</code> of type <code>UsageLookup</code>,</p>
+<div class="highlight"><span class="filename">lanelet2_core/LaneletMap.h#L38-L253</span><pre><span></span><code><span class="k">template</span><span class="w"> </span><span class="o">&lt;</span><span class="k">typename</span><span class="w"> </span><span class="nc">T</span><span class="o">&gt;</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PrimitiveLayer</span><span class="w"> </span><span class="p">{</span>
+<span class="w"> </span><span class="k">public</span><span class="o">:</span>
+<span class="w"> </span><span class="o">&lt;</span><span class="p">...</span><span class="o">&gt;</span>
+<span class="w">  </span><span class="cm">/**</span>
+<span class="cm">   * @brief finds usages of an owned type within this layer</span>
+<span class="cm">   *</span>
+<span class="cm">   * This is the non-const version to find usages of a primitive in a layer.</span>
+<span class="cm">   */</span>
+<span class="w">  </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">PrimitiveT</span><span class="o">&gt;</span><span class="w"> </span><span class="n">findUsages</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">traits</span><span class="o">::</span><span class="n">ConstPrimitiveType</span><span class="o">&lt;</span><span class="n">traits</span><span class="o">::</span><span class="n">OwnedT</span><span class="o">&lt;</span><span class="n">PrimitiveT</span><span class="o">&gt;&gt;&amp;</span><span class="w"> </span><span class="n">primitive</span><span class="p">);</span>
+<span class="w">  </span><span class="o">&lt;</span><span class="p">...</span><span class="o">&gt;</span>
+<span class="w">  </span><span class="k">struct</span><span class="w"> </span><span class="nc">Tree</span><span class="p">;</span>
+<span class="w">  </span><span class="c1">// NOLINTNEXTLINE</span>
+<span class="w">  </span><span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">Tree</span><span class="o">&gt;</span><span class="w"> </span><span class="n">tree_</span><span class="p">;</span><span class="w">  </span><span class="c1">//!&lt; Hides boost trees from you/the compiler</span>
+</code></pre></div>
+<div class="highlight"><span class="filename">lanelet2_core/src/LaneletMap.cpp#L277-L308</span><pre><span></span><code><span class="k">template</span><span class="w"> </span><span class="o">&lt;</span><span class="k">typename</span><span class="w"> </span><span class="nc">T</span><span class="o">&gt;</span>
+<span class="k">struct</span><span class="w"> </span><span class="nc">PrimitiveLayer</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;::</span><span class="n">Tree</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">using</span><span class="w"> </span><span class="n">TreeNode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="n">BoundingBox2d</span><span class="p">,</span><span class="w"> </span><span class="n">T</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="w">  </span><span class="k">using</span><span class="w"> </span><span class="n">RTree</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bgi</span><span class="o">::</span><span class="n">rtree</span><span class="o">&lt;</span><span class="n">TreeNode</span><span class="p">,</span><span class="w"> </span><span class="n">bgi</span><span class="o">::</span><span class="n">quadratic</span><span class="o">&lt;</span><span class="mi">16</span><span class="o">&gt;&gt;</span><span class="p">;</span>
+<span class="w">  </span><span class="k">static</span><span class="w"> </span><span class="n">TreeNode</span><span class="w"> </span><span class="nf">treeNode</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">T</span><span class="o">&amp;</span><span class="w"> </span><span class="n">elem</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="p">{</span><span class="n">geometry</span><span class="o">::</span><span class="n">boundingBox2d</span><span class="p">(</span><span class="n">to2D</span><span class="p">(</span><span class="n">elem</span><span class="p">)),</span><span class="w"> </span><span class="n">elem</span><span class="p">};</span><span class="w"> </span><span class="p">}</span>
+<span class="w">  </span><span class="o">&lt;</span><span class="p">...</span><span class="o">&gt;</span>
+<span class="w">  </span><span class="n">RTree</span><span class="w"> </span><span class="n">rTree</span><span class="p">;</span>
+<span class="w">  </span><span class="n">UsageLookup</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="w"> </span><span class="n">usage</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div>
+<p>and <code>UsageLookup</code> contains reference relation between different types as <code>std::unordered_multimap</code>.</p>
+<div class="highlight"><span class="filename">lanelet2_core/src/LaneletMap.cpp#L259-L270</span><pre><span></span><code><span class="k">template</span><span class="w"> </span><span class="o">&lt;&gt;</span>
+<span class="k">struct</span><span class="w"> </span><span class="nc">UsageLookup</span><span class="o">&lt;</span><span class="n">Lanelet</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kt">void</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="n">Lanelet</span><span class="w"> </span><span class="n">ll</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">ownedLookup</span><span class="p">.</span><span class="n">insert</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">make_pair</span><span class="p">(</span><span class="n">ll</span><span class="p">.</span><span class="n">leftBound</span><span class="p">(),</span><span class="w"> </span><span class="n">ll</span><span class="p">));</span>
+<span class="w">    </span><span class="n">ownedLookup</span><span class="p">.</span><span class="n">insert</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">make_pair</span><span class="p">(</span><span class="n">ll</span><span class="p">.</span><span class="n">rightBound</span><span class="p">(),</span><span class="w"> </span><span class="n">ll</span><span class="p">));</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="n">elem</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">ll</span><span class="p">.</span><span class="n">regulatoryElements</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="n">regElemLookup</span><span class="p">.</span><span class="n">insert</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">make_pair</span><span class="p">(</span><span class="n">elem</span><span class="p">,</span><span class="w"> </span><span class="n">ll</span><span class="p">));</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="w">  </span><span class="n">std</span><span class="o">::</span><span class="n">unordered_multimap</span><span class="o">&lt;</span><span class="n">ConstLineString3d</span><span class="p">,</span><span class="w"> </span><span class="n">Lanelet</span><span class="o">&gt;</span><span class="w"> </span><span class="n">ownedLookup</span><span class="p">;</span>
+<span class="w">  </span><span class="n">std</span><span class="o">::</span><span class="n">unordered_multimap</span><span class="o">&lt;</span><span class="n">RegulatoryElementConstPtr</span><span class="p">,</span><span class="w"> </span><span class="n">Lanelet</span><span class="o">&gt;</span><span class="w"> </span><span class="n">regElemLookup</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div>
+<p>Thus the complexity of <code>findUsage</code> function is equal to that of <code>std::unordered_multimap::equal_range</code> which is <span class="arithmatex">\(O(1)\)</span>.</p>
+<div class="highlight"><span class="filename">lanelet2_core/src/LaneletMap.cpp#L419-L424</span><pre><span></span><code><span class="k">template</span><span class="w"> </span><span class="o">&lt;</span><span class="k">typename</span><span class="w"> </span><span class="nc">T</span><span class="o">&gt;</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="k">typename</span><span class="w"> </span><span class="nc">PrimitiveLayer</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;::</span><span class="n">ConstPrimitiveT</span><span class="o">&gt;</span><span class="w"> </span><span class="n">PrimitiveLayer</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;::</span><span class="n">findUsages</span><span class="p">(</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">traits</span><span class="o">::</span><span class="n">ConstPrimitiveType</span><span class="o">&lt;</span><span class="n">traits</span><span class="o">::</span><span class="n">OwnedT</span><span class="o">&lt;</span><span class="n">PrimitiveLayer</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;::</span><span class="n">PrimitiveT</span><span class="o">&gt;&gt;&amp;</span><span class="w"> </span><span class="n">primitive</span><span class="p">)</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="n">forEachMatchInMultiMap</span><span class="o">&lt;</span><span class="n">traits</span><span class="o">::</span><span class="n">ConstPrimitiveType</span><span class="o">&lt;</span><span class="k">typename</span><span class="w"> </span><span class="nc">PrimitiveLayer</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;::</span><span class="n">PrimitiveT</span><span class="o">&gt;&gt;</span><span class="p">(</span>
+<span class="w">      </span><span class="n">tree_</span><span class="o">-&gt;</span><span class="n">usage</span><span class="p">.</span><span class="n">ownedLookup</span><span class="p">,</span><span class="w"> </span><span class="n">primitive</span><span class="p">,</span><span class="w"> </span><span class="p">[](</span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="n">elem</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">traits</span><span class="o">::</span><span class="n">toConst</span><span class="p">(</span><span class="n">elem</span><span class="p">.</span><span class="n">second</span><span class="p">);</span><span class="w"> </span><span class="p">});</span>
+<span class="p">}</span>
+</code></pre></div>
+<div class="highlight"><span class="filename">lanelet2_core/src/LaneletMap.cpp#L165-L169</span><pre><span></span><code><span class="k">template</span><span class="w"> </span><span class="o">&lt;</span><span class="k">typename</span><span class="w"> </span><span class="nc">T</span><span class="p">,</span><span class="w"> </span><span class="k">typename</span><span class="w"> </span><span class="nc">MapT</span><span class="p">,</span><span class="w"> </span><span class="k">typename</span><span class="w"> </span><span class="nc">KeyT</span><span class="p">,</span><span class="w"> </span><span class="k">typename</span><span class="w"> </span><span class="nc">Func</span><span class="o">&gt;</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="w"> </span><span class="n">forEachMatchInMultiMap</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">MapT</span><span class="o">&amp;</span><span class="w"> </span><span class="n">map</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">KeyT</span><span class="o">&amp;</span><span class="w"> </span><span class="n">key</span><span class="p">,</span><span class="w"> </span><span class="n">Func</span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">f</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">range</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">map</span><span class="p">.</span><span class="n">equal_range</span><span class="p">(</span><span class="n">key</span><span class="p">);</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="n">utils</span><span class="o">::</span><span class="n">transform</span><span class="p">(</span><span class="n">range</span><span class="p">.</span><span class="n">first</span><span class="p">,</span><span class="w"> </span><span class="n">range</span><span class="p">.</span><span class="n">second</span><span class="p">,</span><span class="w"> </span><span class="n">f</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+<h2 id="test-maps">Test maps<a class="headerlink" href="#test-maps" title="Permanent link">#</a></h2>
+<p>All of the maps are in <code>MGRS</code> coordinate. In each map, an anchor point is set to an origin point <span class="arithmatex">\((100.0, 100.0)\)</span> for simplicity.</p>
+<table>
+<thead>
+<tr>
+<th>Map name</th>
+<th>Origin point id</th>
+<th>Image</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>road_shoulder/highway.osm</code></td>
+<td><code>1</code></td>
+<td><img alt="highway" src="media/maps/road_shoulder/highway.png"></td>
+</tr>
+<tr>
+<td><code>road_shoulder/pudo.osm</code></td>
+<td><code>140</code></td>
+<td><img alt="pudo" src="media/maps/road_shoulder/pudo.png"></td>
+</tr>
+<tr>
+<td><code>intersection/crossing.osm</code></td>
+<td><code>1791</code></td>
+<td><img alt="crossing" src="media/maps/intersection/crossing.png"></td>
+</tr>
+<tr>
+<td><code>dense_centerline/lanelet2_map.osm</code></td>
+<td><code>16</code></td>
+<td><img alt="lanelet2_map" src="media/maps/dense_centerline/lanelet2_map.png"></td>
+</tr>
+<tr>
+<td><code>hatched_road_marking/lanelet2_map.osm</code></td>
+<td><code>15</code></td>
+<td><img alt="lanelet2_map" src="media/maps/hatched_road_marking/lanelet2_map.png"></td>
+</tr>
+</tbody>
+</table>
+<h3 id="how-to-craft-test-map">How to craft test map<a class="headerlink" href="#how-to-craft-test-map" title="Permanent link">#</a></h3>
+<p>On the VMB, create the map in MGRS system and save the file as <code>&lt;input_map.osm&gt;</code>. Next, select the point to set as origin, get its <code>&lt;ID&gt;</code> and run</p>
+<div class="highlight"><pre><span></span><code>ros2<span class="w"> </span>run<span class="w"> </span>autoware_lanelet2_utils<span class="w"> </span>lanelet_anonymizer.py<span class="w"> </span>&lt;input_map.osm&gt;<span class="w"> </span>&lt;output_map.osm&gt;<span class="w"> </span>&lt;ID&gt;
+</code></pre></div>
+<p>Then the coordinate of the specified point is (100, 100) on the loaded map(NOTE: not exactly (0, 0) because MGRS does not any point to have negative coordinate value).</p>
+<p>By applying <code>lanelet_id_aligner.py</code>, the primitive ids are aligned to start from 1 and increase one-by-one.</p>
+<div class="highlight"><pre><span></span><code>ros2<span class="w"> </span>run<span class="w"> </span>autoware_lanelet2_utils<span class="w"> </span>lanelet_id_aligner.py<span class="w"> </span>&lt;input_map.osm&gt;
+</code></pre></div>
+<h2 id="tested-case">Tested case<a class="headerlink" href="#tested-case" title="Permanent link">#</a></h2>
+<p><code>test_data</code> contains test scene yaml files describing the context of unit tests. They can be visualized</p>
+<div class="highlight"><pre><span></span><code>ros2<span class="w"> </span>run<span class="w"> </span>autoware_lanelet2_utils<span class="w"> </span>test_case_generator.py<span class="w"> </span>--view<span class="w"> </span>&lt;file<span class="w"> </span>name&gt;
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Tested specs</th>
+<th>Image</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>test_route_manager_001.yaml</code></td>
+<td>During lane change, <code>current_route_lanelet</code> is updated longitudinally. To update <code>current_route_lanelet</code> after lane change, <code>RouteManager::commit_lane_change</code> needs to be called</td>
+<td></td>
+</tr>
+<tr>
+<td><code>test_route_manager_002.yaml</code></td>
+<td>During swerving maneuver like parked vehicle avoidance, <code>RouteManager::commit_lane_change</code> is not expected to be called. So <code>current_pose</code> of <code>RouteManager</code> may not be on <code>current_route_lanelet</code></td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../autoware_kalman_filter/" class="md-footer__link md-footer__link--prev" aria-label="Previous: kalman_filter">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                kalman_filter
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../autoware_motion_utils/" class="md-footer__link md-footer__link--next" aria-label="Next: Motion Utils package">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Motion Utils package
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2023 The Autoware Foundation
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.expand", "navigation.indexes", "navigation.instant", "navigation.sections", "navigation.tabs", "navigation.tabs.sticky", "navigation.top", "navigation.footer"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+        <script src="../../docs/assets/js/mathjax.js"></script>
+      
+        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>
