@@ -29,8 +29,9 @@ namespace autoware::experimental::lanelet2_utils
 std::optional<LaneSequence> LaneSequence::create(
   const lanelet::ConstLanelets & lanelets, lanelet::routing::RoutingGraphConstPtr routing_graph)
 {
-  for (const auto [lane1, lane2] :
+  for (const auto lane1_and_lane2 :
        ranges::views::zip(lanelets, lanelets | ranges::views::drop(1))) {
+    const auto [lane1, lane2] = lane1_and_lane2;
     if (const auto nexts = following_lanelets(lane1, routing_graph);
         std::find_if(nexts.begin(), nexts.end(), [&](const auto & lane) {
           return lane.id() == lane2.id();
@@ -38,21 +39,15 @@ std::optional<LaneSequence> LaneSequence::create(
       return std::nullopt;
     }
   }
-  auto distance =
-    lanelets |
-    ranges::views::transform([&](const auto & lane) { return lanelet::geometry::length3d(lane); }) |
-    ranges::to<std::vector>();
-  return LaneSequence(lanelet::ConstLanelets(lanelets), std::move(distance));
+  return LaneSequence(lanelet::ConstLanelets(lanelets));
 }
 
 LaneSequence::LaneSequence(const lanelet::ConstLanelet & lanelet)
-: lanelets_(lanelet::ConstLanelets{lanelet}),
-  distance_(std::vector<double>{lanelet::geometry::length3d(lanelet)})
+: lanelets_(lanelet::ConstLanelets{lanelet})
 {
 }
 
-LaneSequence::LaneSequence(lanelet::ConstLanelets && lanelets, std::vector<double> && distance)
-: lanelets_(std::move(lanelets)), distance_(std::move(distance))
+LaneSequence::LaneSequence(lanelet::ConstLanelets && lanelets) : lanelets_(std::move(lanelets))
 {
 }
 

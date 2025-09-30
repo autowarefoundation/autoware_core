@@ -44,10 +44,9 @@ public:
   const lanelet::ConstLanelets & as_lanelets() const { return lanelets_; }
 
 private:
-  LaneSequence(lanelet::ConstLanelets && lanelets, std::vector<double> && distance);
+  explicit LaneSequence(lanelet::ConstLanelets && lanelets);
 
   lanelet::ConstLanelets lanelets_;
-  std::vector<double> distance_;
 };
 
 }  // namespace autoware::experimental::lanelet2_utils
