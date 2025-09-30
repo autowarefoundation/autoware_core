@@ -6669,10 +6669,26 @@
 <td></td>
 </tr>
 <tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
 <td><code>&lt;autoware_lanelet2_utils/hatched_road_markings.hpp&gt;</code></td>
 <td><code>get_adjacent_hatched_road_markings</code></td>
 <td>Returns polygons with type <code>hatched_road_markings</code> that touch the left/right bounds of the given lanelet sequence. Polygons are grouped by side and duplicates removed.</td>
 <td><span class="arithmatex">\(O(V)\)</span> where <span class="arithmatex">\(V\)</span> is the number of boundary vertices inspected</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
 <td></td>
 <td></td>
 </tr>
@@ -6781,6 +6797,14 @@
 <td></td>
 </tr>
 <tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
 <td><code>&lt;autoware_lanelet2_utils/intersection.hpp&gt;</code></td>
 <td><code>is_intersection_lanelet</code></td>
 <td>This function returns <code>true</code> if and only if the input Lanelet has <code>turn_direction</code> attribute.</td>
@@ -6793,6 +6817,54 @@
 <td><code>is_straight_lanelet</code>,<br><code>is_left_lanelet</code>,<br><code>is_right_lanelet</code></td>
 <td>This function returns <code>true</code> if and only if the input Lanelet has <code>turn_direction</code> attribute and its value is <code>straight</code>/<code>left</code>/<code>right</code>.</td>
 <td><span class="arithmatex">\(O(1)\)</span></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>&lt;autoware/lanelet2_utils/lane_sequence.hpp</code></td>
+<td><code>class LaneSequence</code></td>
+<td>This class internally holds <code>lanelet::ConstLanelets</code> such that they are consecutive on the routing graph.</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><strong>class invariance</strong></td>
+<td><code>.as_lanelets()</code> return Lanelets that are consecutive on the routing graph</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>create(lanelets, routing_graph)</code></td>
+<td>Return an optional of <code>LaneSequence</code> class that satisfies the invariance</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>.as_lanelets()</code></td>
+<td>Return the underlying <code>lanelet::ConstLanelets</code></td>
+<td></td>
 <td></td>
 <td></td>
 </tr>
