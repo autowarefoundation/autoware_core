@@ -29,8 +29,9 @@ namespace autoware::experimental::lanelet2_utils
 std::optional<LaneSequence> LaneSequence::create(
   const lanelet::ConstLanelets & lanelets, lanelet::routing::RoutingGraphConstPtr routing_graph)
 {
-  for (const auto [lane1, lane2] :
-       ranges::views::zip(lanelets, lanelets | ranges::views::drop(1))) {
+  for (const auto lane1_2 : ranges::views::zip(lanelets, lanelets | ranges::views::drop(1))) {
+    const auto lane1 = std::get<0>(lane1_2);
+    const auto lane2 = std::get<1>(lane1_2);
     if (const auto nexts = following_lanelets(lane1, routing_graph);
         std::find_if(nexts.begin(), nexts.end(), [&](const auto & lane) {
           return lane.id() == lane2.id();
