@@ -77,7 +77,8 @@ public:
    * @brief get the left adjacent and same_direction lanelet on the routing graph if exists
    * regardless of lane change permission
    * @param [in] lanelet input lanelet
-   * @param [in] routing_graph routing_graph containing `lanelet`
+   * @param [in] take_sibling if true, sibling lanelet of `lanelet` is searched
+   * @param [in] extra_vru if provided, VRU lanes are also searched
    * @return optional of left adjacent lanelet(nullopt if there is no such adjacent lanelet)
    */
   std::optional<lanelet::ConstLanelet> left_lanelet(
@@ -86,7 +87,8 @@ public:
   /**
    * @brief get the right adjacent and same_direction lanelet on the routing graph if exists
    * @param [in] lanelet input lanelet
-   * @param [in] routing_graph routing_graph containing `lanelet`
+   * @param [in] take_sibling if true, sibling lanelet of `lanelet` is searched
+   * @param [in] extra_vru if provided, VRU lanes are also searched
    * @return optional of right adjacent lanelet(nullopt if there is no such adjacent lanelet)
    */
   std::optional<lanelet::ConstLanelet> right_lanelet(
@@ -95,7 +97,8 @@ public:
   /**
    * @brief get the leftmost same_direction lanelet if exists
    * @param [in] lanelet input lanelet
-   * @param [in] routing_graph routing_graph containing `lanelet`
+   * @param [in] take_sibling if true, sibling lanelet of `lanelet` is searched
+   * @param [in] extra_vru if provided, VRU lanes are also searched
    * @return optional of such lanelet(nullopt if there is no such adjacent lanelet)
    */
   std::optional<lanelet::ConstLanelet> leftmost_lanelet(
@@ -104,7 +107,8 @@ public:
   /**
    * @brief get the rightmost same_direction lanelet if exists
    * @param [in] lanelet input lanelet
-   * @param [in] routing_graph routing_graph containing `lanelet`
+   * @param [in] take_sibling if true, sibling lanelet of `lanelet` is searched
+   * @param [in] extra_vru if provided, VRU lanes are also searched
    * @return optional of such lanelet(nullopt if there is no such adjacent lanelet)
    */
   std::optional<lanelet::ConstLanelet> rightmost_lanelet(
@@ -113,7 +117,6 @@ public:
   /**
    * @brief get the left lanelets which are adjacent to `lanelet`
    * @param [in] lanelet input lanelet
-   * @param [in] routing_graph routing_graph containing `lanelet`
    * @param [in] include_opposite flag if opposite_direction lanelet is included
    * @param [in] invert_opposite_lanelet flag if the opposite lanelet in the output is `.inverted()`
    * or not
@@ -127,7 +130,6 @@ public:
   /**
    * @brief get the right lanelets which are adjacent to `lanelet`
    * @param [in] lanelet input lanelet
-   * @param [in] routing_graph routing_graph containing `lanelet`
    * @param [in] include_opposite flag if opposite_direction lanelet is included
    * @param [in] invert_opposite_lanelet flag if the opposite lanelet in the output is `.inverted()`
    * or not
