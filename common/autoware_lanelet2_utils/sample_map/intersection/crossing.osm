@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <osm generator="VMB">
-  <MetaInfo format_version="2" map_version="202" validation_version="1"/>
+  <MetaInfo format_version="2" map_version="201" validation_version="1"/>
   <node id="1" lat="35.22470252585" lon="138.80395805753">
     <tag k="local_x" v="140.383"/>
     <tag k="local_y" v="171.9777"/>
@@ -11002,7 +11002,6 @@
     <nd ref="1040"/>
     <nd ref="134"/>
     <nd ref="687"/>
-    <nd ref="1902"/>
     <tag k="type" v="virtual"/>
   </way>
   <way id="1975">

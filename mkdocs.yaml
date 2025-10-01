@@ -86,7 +86,6 @@ markdown_extensions:
   - pymdownx.emoji:
       emoji_index: !!python/name:materialx.emoji.twemoji
       emoji_generator: !!python/name:materialx.emoji.to_svg
-  - pymdownx.details
   - pymdownx.highlight
   - pymdownx.snippets:
       auto_append:
