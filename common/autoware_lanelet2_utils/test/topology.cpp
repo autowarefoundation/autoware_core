@@ -51,6 +51,55 @@ protected:
   }
 };
 
+TEST_F(TestWithIntersectionCrossingMap, LoadCheck)
+{
+  const auto point = lanelet_map_ptr_->pointLayer.get(1791);
+  EXPECT_NEAR(point.x(), 100.0, 0.05);
+  EXPECT_NEAR(point.y(), 100.0, 0.05);
+}
+
+TEST_F(TestWithIntersectionCrossingMap, shoulder_lane_is_inaccessible_on_routing_graph)
+{
+  const auto lane =
+    lanelet2_utils::left_lanelet(lanelet_map_ptr_->laneletLayer.get(2257), routing_graph_ptr_);
+  EXPECT_EQ(lane.has_value(), false);
+}
+
+TEST_F(TestWithIntersectionCrossingMap, bicycle_lane_is_inaccessible_on_routing_graph)
+{
+  const auto lane =
+    lanelet2_utils::left_lanelet(lanelet_map_ptr_->laneletLayer.get(2286), routing_graph_ptr_);
+  EXPECT_EQ(lane.has_value(), false);
+}
+
+TEST_F(TestWithIntersectionCrossingMap, left_lanelet_without_lc_permission)
+{
+  const auto lane =
+    lanelet2_utils::left_lanelet(lanelet_map_ptr_->laneletLayer.get(2246), routing_graph_ptr_);
+  EXPECT_EQ(lane.value().id(), 2245);
+}
+
+TEST_F(TestWithIntersectionCrossingMap, left_lanelet_with_lc_permission)
+{
+  const auto lane =
+    lanelet2_utils::left_lanelet(lanelet_map_ptr_->laneletLayer.get(2245), routing_graph_ptr_);
+  EXPECT_EQ(lane.value().id(), 2244);
+}
+
+TEST_F(TestWithIntersectionCrossingMap, right_lanelet_without_lc_permission)
+{
+  const auto lane =
+    lanelet2_utils::right_lanelet(lanelet_map_ptr_->laneletLayer.get(2245), routing_graph_ptr_);
+  EXPECT_EQ(lane.value().id(), 2246);
+}
+
+TEST_F(TestWithIntersectionCrossingMap, right_lanelet_with_lc_permission)
+{
+  const auto lane =
+    lanelet2_utils::right_lanelet(lanelet_map_ptr_->laneletLayer.get(2244), routing_graph_ptr_);
+  EXPECT_EQ(lane.value().id(), 2245);
+}
+
 TEST_F(TestWithIntersectionCrossingMap, right_opposite_lanelet_valid)
 {
   const auto lane = lanelet2_utils::right_opposite_lanelet(
@@ -62,6 +111,34 @@ TEST_F(TestWithIntersectionCrossingMap, right_opposite_lanelet_null)
 {
   const auto lane = lanelet2_utils::right_opposite_lanelet(
     lanelet_map_ptr_->laneletLayer.get(2260), lanelet_map_ptr_);
+  EXPECT_EQ(lane.has_value(), false);
+}
+
+TEST_F(TestWithIntersectionCrossingMap, leftmost_lanelet_valid)
+{
+  const auto lane =
+    lanelet2_utils::leftmost_lanelet(lanelet_map_ptr_->laneletLayer.get(2288), routing_graph_ptr_);
+  EXPECT_EQ(lane.value().id(), 2286);
+}
+
+TEST_F(TestWithIntersectionCrossingMap, leftmost_lanelet_null)
+{
+  const auto lane =
+    lanelet2_utils::leftmost_lanelet(lanelet_map_ptr_->laneletLayer.get(2286), routing_graph_ptr_);
+  EXPECT_EQ(lane.has_value(), false);
+}
+
+TEST_F(TestWithIntersectionCrossingMap, rightmost_lanelet_valid)
+{
+  const auto lane =
+    lanelet2_utils::rightmost_lanelet(lanelet_map_ptr_->laneletLayer.get(2286), routing_graph_ptr_);
+  EXPECT_EQ(lane.value().id(), 2288);
+}
+
+TEST_F(TestWithIntersectionCrossingMap, rightmost_lanelet_null)
+{
+  const auto lane =
+    lanelet2_utils::rightmost_lanelet(lanelet_map_ptr_->laneletLayer.get(2288), routing_graph_ptr_);
   EXPECT_EQ(lane.has_value(), false);
 }
 

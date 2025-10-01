@@ -14,6 +14,7 @@
 
 #include <autoware/lanelet2_utils/topology.hpp>
 #include <range/v3/all.hpp>
+#include <rclcpp/logging.hpp>
 
 #include <lanelet2_core/primitives/Lanelet.h>
 #include <lanelet2_routing/RoutingGraph.h>
@@ -22,6 +23,34 @@
 
 namespace autoware::experimental::lanelet2_utils
 {
+
+static constexpr size_t k_normal_bundle_max_size = 10;
+
+std::optional<lanelet::ConstLanelet> left_lanelet(
+  const lanelet::ConstLanelet & lanelet, const lanelet::routing::RoutingGraphConstPtr routing_graph)
+{
+  if (const auto left_lane = routing_graph->left(lanelet)) {
+    // lane changeable
+    return *left_lane;
+  }
+  if (const auto adjacent_left_lane = routing_graph->adjacentLeft(lanelet)) {
+    return *adjacent_left_lane;
+  }
+  return std::nullopt;
+}
+
+std::optional<lanelet::ConstLanelet> right_lanelet(
+  const lanelet::ConstLanelet & lanelet, const lanelet::routing::RoutingGraphConstPtr routing_graph)
+{
+  if (const auto right_lane = routing_graph->right(lanelet)) {
+    // lane changeable
+    return *right_lane;
+  }
+  if (const auto adjacent_right_lane = routing_graph->adjacentRight(lanelet)) {
+    return *adjacent_right_lane;
+  }
+  return std::nullopt;
+}
 
 std::optional<lanelet::ConstLanelet> left_opposite_lanelet(
   const lanelet::ConstLanelet & lanelet, const lanelet::LaneletMapConstPtr lanelet_map)
@@ -41,6 +70,58 @@ std::optional<lanelet::ConstLanelet> right_opposite_lanelet(
     return opposite_candidate;
   }
   return std::nullopt;
+}
+
+std::optional<lanelet::ConstLanelet> leftmost_lanelet(
+  const lanelet::ConstLanelet & lanelet, const lanelet::routing::RoutingGraphConstPtr routing_graph)
+{
+  auto left_lane = left_lanelet(lanelet, routing_graph);
+  if (!left_lane) {
+    return std::nullopt;
+  }
+  size_t bundle_size_diagnosis = 0;
+  while (bundle_size_diagnosis < k_normal_bundle_max_size) {
+    const auto next_left_lane = left_lanelet(left_lane.value(), routing_graph);
+    if (!next_left_lane) {
+      // reached
+      return left_lane;
+    }
+    left_lane = next_left_lane.value();
+    bundle_size_diagnosis++;
+  }
+
+  // LCOV_EXCL_START
+  RCLCPP_ERROR(
+    rclcpp::get_logger("autoware_lanelet2_utility"),
+    "You have passed an unrealistic map with a bundle of size>=10");
+  return std::nullopt;
+  // LCOV_EXCL_STOP
+}
+
+std::optional<lanelet::ConstLanelet> rightmost_lanelet(
+  const lanelet::ConstLanelet & lanelet, const lanelet::routing::RoutingGraphConstPtr routing_graph)
+{
+  auto right_lane = right_lanelet(lanelet, routing_graph);
+  if (!right_lane) {
+    return std::nullopt;
+  }
+  size_t bundle_size_diagnosis = 0;
+  while (bundle_size_diagnosis < k_normal_bundle_max_size) {
+    const auto next_right_lane = right_lanelet(right_lane.value(), routing_graph);
+    if (!next_right_lane) {
+      // reached
+      return right_lane;
+    }
+    right_lane = next_right_lane.value();
+    bundle_size_diagnosis++;
+  }
+
+  // LCOV_EXCL_START
+  RCLCPP_ERROR(
+    rclcpp::get_logger("autoware_lanelet2_utility"),
+    "You have passed an unrealistic map with a bundle of size>=10");
+  return std::nullopt;
+  // LCOV_EXCL_STOP
 }
 
 lanelet::ConstLanelets following_lanelets(
