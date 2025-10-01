@@ -14,6 +14,7 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/hatched_road_markings.cpp
   src/lane_sequence.cpp
   src/nn_search.cpp
+  src/map_handler.cpp
 )
 
 if(BUILD_TESTING)
@@ -31,6 +32,7 @@ if(BUILD_TESTING)
     test/conversion.cpp
     test/lane_sequence.cpp
     test/nn_search.cpp
+    test/map_handler.cpp
   )
 
   foreach (test_file IN LISTS test_files)
