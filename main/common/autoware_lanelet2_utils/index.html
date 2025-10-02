@@ -6474,7 +6474,7 @@
           <li class="md-nav__item">
   <a href="#complexity-of-findusage" class="md-nav__link">
     <span class="md-ellipsis">
-      complexity of findUsage
+      Complexity of findUsage
     </span>
   </a>
   
@@ -6629,6 +6629,11 @@
 <td><code>sequence</code> is a list of Lanelets whose each element is <code>connected from</code> or <code>adjacent to</code> the previous element.</td>
 <td><img alt="sequence" src="media/nomenclature/sequence.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fnomenclature%2Fsequence.drawio.svg">Open</a></td>
 </tr>
+<tr>
+<td><code>current_route_lanelet</code></td>
+<td><code>current_route_lanelet</code> is one of the lanelet within the route which serves as the reference for ego position.</td>
+<td></td>
+</tr>
 </tbody>
 </table>
 <h2 id="api-description">API description<a class="headerlink" href="#api-description" title="Permanent link">#</a></h2>
@@ -6645,7 +6650,39 @@
 </thead>
 <tbody>
 <tr>
-<td><code>&lt;autoware_lanelet2_utils/kind.hpp&gt;</code></td>
+<td><code>&lt;autoware/lanelet2_utils/conversion.hpp&gt;</code></td>
+<td><code>load_mgrs_coordinate_map(path, centerline_resolution)</code></td>
+<td>Instantiate a LaneletMap object from given <code>path</code> to <code>.osm</code> file. Also it sets more dense centerline(at the interval of <code>centerline_resolution</code>) than default <code>Lanelet2</code> library, to help improve Planning accuracy.</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>instantiate_routing_graph_and_traffic_rules</code></td>
+<td>This function creates a <code>RoutingGraph</code> and <code>TrafficRules</code> object only from "road" lanes for <code>Vehicle</code> participant, which means "road_shoulder","bicycle_lane", "crosswalk", etc. Lanelets are inaccessible from left/right adjacency.</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><ul><li><code>from_autoware_map_msgs(...)</code></li><li><code>to_autoware_map_msgs(...</code>)</li></ul></td>
+<td>Convert LaneletMap object from/to <code>autoware_mapping_msgs::LaneletMapBin</code> message</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>&lt;autoware/lanelet2_utils/kind.hpp&gt;</code></td>
 <td><code>is_road_lane</code></td>
 <td>This function returns <code>true</code> if the input Lanelet is <code>road</code> subtype.</td>
 <td><span class="arithmatex">\(O(1)\)</span></td>
@@ -6677,7 +6714,7 @@
 <td></td>
 </tr>
 <tr>
-<td><code>&lt;autoware_lanelet2_utils/hatched_road_markings.hpp&gt;</code></td>
+<td><code>&lt;autoware/lanelet2_utils/hatched_road_markings.hpp&gt;</code></td>
 <td><code>get_adjacent_hatched_road_markings</code></td>
 <td>Returns polygons with type <code>hatched_road_markings</code> that touch the left/right bounds of the given lanelet sequence. Polygons are grouped by side and duplicates removed.</td>
 <td><span class="arithmatex">\(O(V)\)</span> where <span class="arithmatex">\(V\)</span> is the number of boundary vertices inspected</td>
@@ -6693,34 +6730,10 @@
 <td></td>
 </tr>
 <tr>
-<td><code>&lt;autoware_lanelet2_utils/topology.hpp&gt;</code></td>
-<td><code>instantiate_routing_graph</code></td>
-<td>This function creates a <code>RoutingGraph</code> object only from "road" lanes, which means "road_shoulder" and "bicycle_lane" Lanelets are inaccessible from left/right adjacency.</td>
-<td></td>
-<td></td>
-<td></td>
-</tr>
-<tr>
-<td></td>
-<td><code>left_lanelet</code></td>
-<td>This function ignores the permission of lane change. Also it ignores <code>shoulder</code> and <code>bicycle</code> Lanelet.</td>
-<td><span class="arithmatex">\(O(1)\)</span></td>
-<td>In the first map, the green Lanelet is the <code>left_lanelet</code> of the orange Lanelet.<br>In the second and third map, the <code>left_lanelet</code> of the orange Lanelet is <code>null</code>.<br><img alt="left_lanelet" src="media/api/left_lanelet.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fapi%2Fleft_lanelet.drawio.svg">Open</a></td>
-<td></td>
-</tr>
-<tr>
-<td></td>
-<td><code>right_lanelet</code></td>
-<td>same as above <code>left_lanelet</code></td>
-<td><span class="arithmatex">\(O(1)\)</span></td>
-<td></td>
-<td></td>
-</tr>
-<tr>
-<td></td>
+<td><code>&lt;autoware/lanelet2_utils/topology.hpp&gt;</code></td>
 <td><code>left_opposite_lanelet</code></td>
 <td>same as below <code>right_opposite_lanelet</code></td>
-<td><span class="arithmatex">\(O(1)\)</span><br>see <a href="./#complexity-of-findusage"><code>findUsage</code></a> for detail</td>
+<td><span class="arithmatex">\(O(1)\)</span><br>see <a href="#complexity-of-findusage"><code>findUsage</code></a> for detail</td>
 <td></td>
 <td></td>
 </tr>
@@ -6728,40 +6741,8 @@
 <td></td>
 <td><code>right_opposite_lanelet</code></td>
 <td>This functions returns the right <code>opposite</code> Lanelet of the input Lanelet if available, otherwise returns null.</td>
-<td><span class="arithmatex">\(O(1)\)</span><br>see <a href="./#complexity-of-findusage"><code>findUsage</code></a> for detail</td>
+<td><span class="arithmatex">\(O(1)\)</span><br>see <a href="#complexity-of-findusage"><code>findUsage</code></a> for detail</td>
 <td>In the first and second map, the green Lanelet is the <code>right_opposite_lanelet</code> of the orange Lanelet.<br>In the third map, the <code>right_opposite_lanelet</code> of the orange Lanelet is <code>null</code>.<br><img alt="right_opposite_lanelet" src="media/api/right_opposite_lanelet.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fapi%2Fright_opposite_lanelet.drawio.svg">Open</a></td>
-<td></td>
-</tr>
-<tr>
-<td></td>
-<td><code>leftmost_lanelet</code></td>
-<td>This function returns the Lanelet which is recursively left adjacent to the input Lanelet.</td>
-<td><span class="arithmatex">\(O(W)\)</span> where <span class="arithmatex">\(W\)</span> is the size of the <code>bundle</code>.</td>
-<td>In the first and second map, the green Lanelet is the <code>leftmost_lanelet</code> of the orange Lanelet.<br>In the third map, the <code>leftmost_lanelet</code> of the orange Lanelet is <code>null</code>.<br><img alt="leftmost_lanelet" src="media/api/leftmost_lanelet.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fapi%2Fleftmost_lanelet.drawio.svg">Open</a></td>
-<td></td>
-</tr>
-<tr>
-<td></td>
-<td><code>rightmost_lanelet</code></td>
-<td>This function returns the Lanelet which is recursively right adjacent to the input Lanelet.</td>
-<td><span class="arithmatex">\(O(W)\)</span> where <span class="arithmatex">\(W\)</span> is the size of the <code>bundle</code>.</td>
-<td>In the first map, the green Lanelet is the <code>rightmost_lanelet</code> of the orange Lanelet.<br>In the second and third map, the <code>rightmost_lanelet</code> of the orange Lanelet is <code>null</code>.<br><img alt="rightmost_lanelet" src="media/api/rightmost_lanelet.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fapi%2Frightmost_lanelet.drawio.svg">Open</a></td>
-<td></td>
-</tr>
-<tr>
-<td></td>
-<td><code>left_lanelets</code></td>
-<td>The input Lanelet is not included in the output, and output is ordered from left to right.</td>
-<td><span class="arithmatex">\(O(W)\)</span> where <span class="arithmatex">\(W\)</span> is the size of the <code>bundle</code>.</td>
-<td>In the first map, the green Lanelets are the <code>left_lanelets</code> of the orange Lanelet.<br>In the second and third map, <code>left_lanelets</code> of the orange Lanelet is empty.<br>If the flag <code>include_opposite = true</code>, the left opposite Lanelet and all of its <code>same_direction</code> Lanelets area also retrieved as illustrated in the fourth and fifth maps.<br><img alt="left_lanelets" src="media/api/left_lanelets.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fapi%2Fleft_lanelets.drawio.svg">Open</a></td>
-<td></td>
-</tr>
-<tr>
-<td></td>
-<td><code>right_lanelets</code></td>
-<td>The input Lanelet is not included in the output, and output is ordered from right to left.</td>
-<td><span class="arithmatex">\(O(W)\)</span> where <span class="arithmatex">\(W\)</span> is the size of the <code>bundle.</code></td>
-<td>In the first map, the green Lanelets are the <code>right_lanelets</code> of the orange Lanelet.<br>In the second and third map, <code>right_lanelets</code> of the orange Lanelet is empty.<br>If the flag <code>include_opposite = true</code>, the right opposite Lanelet and all of its <code>same_direction</code> Lanelets area also retrieved as illustrated in the fourth and fifth maps.<br><img alt="right_lanelets" src="media/api/right_lanelets.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fapi%2Fright_lanelets.drawio.svg">Open</a></td>
 <td></td>
 </tr>
 <tr>
@@ -6805,7 +6786,7 @@
 <td></td>
 </tr>
 <tr>
-<td><code>&lt;autoware_lanelet2_utils/intersection.hpp&gt;</code></td>
+<td><code>&lt;autoware/lanelet2_utils/intersection.hpp&gt;</code></td>
 <td><code>is_intersection_lanelet</code></td>
 <td>This function returns <code>true</code> if and only if the input Lanelet has <code>turn_direction</code> attribute.</td>
 <td><span class="arithmatex">\(O(1)\)</span></td>
@@ -6814,17 +6795,9 @@
 </tr>
 <tr>
 <td></td>
-<td><code>is_straight_lanelet</code>,<br><code>is_left_lanelet</code>,<br><code>is_right_lanelet</code></td>
+<td><ul><li><code>is_straight_lanelet</code></li><li><code>is_left_lanelet</code></li><li><code>is_right_lanelet</code></li></ul></td>
 <td>This function returns <code>true</code> if and only if the input Lanelet has <code>turn_direction</code> attribute and its value is <code>straight</code>/<code>left</code>/<code>right</code>.</td>
 <td><span class="arithmatex">\(O(1)\)</span></td>
-<td></td>
-<td></td>
-</tr>
-<tr>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
 <td></td>
 <td></td>
 </tr>
@@ -6932,6 +6905,150 @@
 <td></td>
 <td></td>
 </tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>&lt;autoware/lanelet2_utils/map_handler.hpp&gt;</code></td>
+<td><code>class MapHandler</code></td>
+<td><code>class MapHandler</code> provides convenient functions related to adjacency, VRU lanes, etc. for Planning.</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><strong>class invariance</strong></td>
+<td><ul><li><code>lanelet_map_ptr</code> is not <code>nullptr</code></li><li><code>routing_graph_ptr</code> is not <code>nullptr</code></li><li><code>traffic_rules_ptr</code> is not <code>nullptr</code></li></ul></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>MapHandler::create(...)</code></td>
+<td>A factory function to construct under invariance</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><ul><li><code>.lanelet_map_ptr()</code></li><li><code>.routing_graph_ptr()</code></li><li><code>.traffic_rules_ptr()</code></li></ul></td>
+<td>Getter functions</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>.left_lanelet(lanelet, take_sibling, extra_vru)</code></td>
+<td>This function ignores the permission of lane change.<br>If <code>extra_vru</code> is:<ul><li><code>RoadOnly</code>, it ignores <code>shoulder</code> and <code>bicycle</code> Lanelet</li><li><code>Shoulder</code>, it searches <code>shoulder</code> Lanelet additionally</li><li><code>BicycleLane</code>, it searches <code>bicycle_lane</code> Lanelet additionally</li><li><code>ShoulderAndBicycleLane</code>, it searches <code>shoulder</code> and <code>bicycle_lane</code> Lanelet additionally</li></ul></td>
+<td><span class="arithmatex">\(O(1)\)</span></td>
+<td>In the first map, the green Lanelet is the <code>left_lanelet</code> of the orange Lanelet.<br>In the second and third map, the <code>left_lanelet</code> of the orange Lanelet is <code>null</code>.<br><img alt="left_lanelet" src="media/api/left_lanelet.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fapi%2Fleft_lanelet.drawio.svg">Open</a></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>.right_lanelet(lanelet, take_sibling, extra_vru)</code></td>
+<td>same as above <code>.left_lanelet()</code></td>
+<td><span class="arithmatex">\(O(1)\)</span></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>.leftmost_lanelet(lanelet, take_sibling, extra_vru)</code></td>
+<td>This function recursively searches <code>.left_lanelet()</code> of input <code>lanelet</code>.</td>
+<td><span class="arithmatex">\(O(W)\)</span> where <span class="arithmatex">\(W\)</span> is the size of the <code>bundle</code>.</td>
+<td>In the first and second map, the green Lanelet is the <code>leftmost_lanelet</code> of the orange Lanelet.<br>In the third map, the <code>leftmost_lanelet</code> of the orange Lanelet is <code>null</code>.<br><img alt="leftmost_lanelet" src="media/api/leftmost_lanelet.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fapi%2Fleftmost_lanelet.drawio.svg">Open</a></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>.rightmost_lanelet(lanelet, take_sibling, extra_vru)</code></td>
+<td>This function recursively searches <code>.right_lanelet()</code> of input <code>lanelet</code>.</td>
+<td><span class="arithmatex">\(O(W)\)</span> where <span class="arithmatex">\(W\)</span> is the size of the <code>bundle</code>.</td>
+<td>In the first map, the green Lanelet is the <code>rightmost_lanelet</code> of the orange Lanelet.<br>In the second and third map, the <code>rightmost_lanelet</code> of the orange Lanelet is <code>null</code>.<br><img alt="rightmost_lanelet" src="media/api/rightmost_lanelet.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fapi%2Frightmost_lanelet.drawio.svg">Open</a></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>.left_lanelets(lanelet, include_opposite)</code></td>
+<td>The input Lanelet is not included in the output, and output is ordered from left to right.</td>
+<td><span class="arithmatex">\(O(W)\)</span> where <span class="arithmatex">\(W\)</span> is the size of the <code>bundle</code>.</td>
+<td>In the first map, the green Lanelets are the <code>left_lanelets</code> of the orange Lanelet.<br>In the second and third map, <code>left_lanelets</code> of the orange Lanelet is empty.<br>If the flag <code>include_opposite = true</code>, the left opposite Lanelet and all of its <code>same_direction</code> Lanelets area also retrieved as illustrated in the fourth and fifth maps.<br><img alt="left_lanelets" src="media/api/left_lanelets.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fapi%2Fleft_lanelets.drawio.svg">Open</a></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>.right_lanelets(lanelet, include_opposite)</code></td>
+<td>The input Lanelet is not included in the output, and output is ordered from right to left.</td>
+<td><span class="arithmatex">\(O(W)\)</span> where <span class="arithmatex">\(W\)</span> is the size of the <code>bundle</code>.</td>
+<td>In the first map, the green Lanelets are the <code>right_lanelets</code> of the orange Lanelet.<br>In the second and third map, <code>right_lanelets</code> of the orange Lanelet is empty.<br>If the flag <code>include_opposite = true</code>, the right opposite Lanelet and all of its <code>same_direction</code> Lanelets area also retrieved as illustrated in the fourth and fifth maps.<br><img alt="right_lanelets" src="media/api/right_lanelets.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon_autoware_lanelet2_utils%2Fmedia%2Fapi%2Fright_lanelets.drawio.svg">Open</a></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>.get_shoulder_lanelet_sequence(lanelet, forward, backward)</code></td>
+<td>This function computes (1) "road_shoulder" Lanelets behind of <code>lanelet</code> by up to <code>backward</code> and (2) "road_shoulder" Lanelets after <code>lanelet</code> by up to <code>forward</code> as a list</td>
+<td><span class="arithmatex">\(O(\textrm{total length})\)</span></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><ul><li><code>.left_shoulder_lanelet(lanelet)</code></li><li><code>.right_shoulder_lanelet(lanelet)</code></li><li><code>.left_bicycle_lanelet(lanelet)</code></li><li><code>.right_bicycle_lanelet(lanelet)</code></li></ul></td>
+<td>Retrieve each VRU Lanelet of <code>lanelet</code> if it exists</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Native R-tree API</td>
+<td><code>.laneletLayer</code>, <code>.pointLayer</code>, etc. have following member functions<ul><li><code>PrimitiveLayer::nearest(point, n)</code></li><li><code>PrimitiveLayer::nearestUntil(point, cond)</code></li></ul></td>
+<td>Against the input <code>point</code>, this function <strong>approximately</strong> returns elements of given <code>layer</code> in the ascending order of distance by specified number <code>n</code>(<a href="https://docs.ros.org/en/noetic/api/lanelet2_core/html/doxygen/classlanelet_1_1PrimitiveLayer.html#ad95e9e5a636de3fdeed1b269589600fb">reference</a>). Note that they can return inaccurate distance.</td>
+<td><em>R-tree</em></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><ul><li><code>PrimitiveLayer::search(area)</code></li><li><code>PrimitiveLayer::searchUntil(area, cond)</code></li></ul></td>
+<td>This function <strong>approximately</strong> searches for the object within the specified <code>area</code>(<a href="https://docs.ros.org/en/noetic/api/lanelet2_core/html/doxygen/classlanelet_1_1PrimitiveLayer.html#a15bd6c74dcf274be3626a33ad67c0f2c">reference</a>)</td>
+<td><em>R-tree</em></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>&lt;lanelet2_core/LaneletMap.h&gt;</code></td>
+<td><code>findNearest(layer, point, n)</code></td>
+<td>On the given primitive <code>layer</code>, this function <strong>approximately</strong> returns <code>n</code> closest elements to given <code>point</code> in the ascending order of distance(<a href="https://docs.ros.org/en/noetic/api/lanelet2_core/html/doxygen/namespacelanelet_1_1geometry.html#a9ae9480f3552e37e5777f1e4a04b0e2e">reference</a>)</td>
+<td><em>R-tree</em></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>&lt;lanelet2_core/geometry/LaneletMap.h&gt;</code></td>
+<td><code>findWithin2d(layer, geometry, max_dist)</code></td>
+<td>On the given primitive <code>layer</code>, this function returns the elements whose distance to given <code>geometry</code> is less than <code>max_dist</code> <strong>precisely</strong></td>
+<td><em>R-tree</em></td>
+<td></td>
+<td></td>
+</tr>
 </tbody>
 </table>
 <h2 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">#</a></h2>
@@ -6962,7 +7079,7 @@
 </li>
 </ul>
 </div>
-<h3 id="complexity-of-findusage">complexity of <code>findUsage</code><a class="headerlink" href="#complexity-of-findusage" title="Permanent link">#</a></h3>
+<h3 id="complexity-of-findusage">Complexity of <code>findUsage</code><a class="headerlink" href="#complexity-of-findusage" title="Permanent link">#</a></h3>
 <p>The readers should be noted that following description is implementation dependent.</p>
 <ul>
 <li><a href="https://github.com/fzi-forschungszentrum-informatik/Lanelet2/blob/d9320cf66698004cd5e57988ac001e02e73e2e40/lanelet2_core/include/lanelet2_core/LaneletMap.h">LaneletMap.h</a></li>
