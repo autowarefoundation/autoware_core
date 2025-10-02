@@ -141,8 +141,7 @@ LaneSequence RouteManager::get_lanelet_sequence_on_route(
   const double current_lane_entry_to_ego =
     lanelet::geometry::toArcCoordinates(current_lanelet_.centerline2d(), ego_position_2d).length;
   const double ego_to_current_lane_exit =
-    lanelet::geometry::length3d(current_lanelet_) -
-    lanelet::geometry::toArcCoordinates(current_lanelet_.centerline2d(), ego_position_2d).length;
+    lanelet::geometry::length3d(current_lanelet_) - current_lane_entry_to_ego;
 
   lanelet::ConstLanelets sequence;
 
@@ -204,8 +203,7 @@ LaneSequence RouteManager::get_lanelet_sequence_outward_route(
   const double current_lane_entry_to_ego =
     lanelet::geometry::toArcCoordinates(current_lanelet_.centerline2d(), ego_position_2d).length;
   const double ego_to_current_lane_exit =
-    lanelet::geometry::length3d(current_lanelet_) -
-    lanelet::geometry::toArcCoordinates(current_lanelet_.centerline2d(), ego_position_2d).length;
+    lanelet::geometry::length3d(current_lanelet_) - current_lane_entry_to_ego;
 
   lanelet::ConstLanelets sequence;
 
