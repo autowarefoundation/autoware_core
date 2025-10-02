@@ -20,32 +20,13 @@
 #include "autoware_utils_geometry/geometry.hpp"
 
 #include <autoware/lanelet2_utils/conversion.hpp>
+#include <autoware_utils_math/normalization.hpp>
 
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/pose.hpp>
 
 namespace autoware::experimental::trajectory
 {
-
-inline double calc_azimuth_angle(
-  const geometry_msgs::msg::Point & p_from, const geometry_msgs::msg::Point & p_to)
-{
-  const double dx = p_to.x - p_from.x;
-  const double dy = p_to.y - p_from.y;
-  return std::atan2(dy, dx);
-}
-
-inline double normalize_radian(const double rad, const double min_rad = -M_PI)
-{
-  const auto max_rad = min_rad + 2 * M_PI;
-
-  const auto value = std::fmod(rad, 2 * M_PI);
-  if (min_rad <= value && value < max_rad) {
-    return value;
-  }
-
-  return value - std::copysign(2 * M_PI, value);
-}
 
 template <class TrajectoryPointType>
 double compute_lateral_distance(
@@ -72,9 +53,10 @@ bool is_left_side(
   const auto traj_pose = trajectory.compute(target_s);
   const double tangent_yaw = autoware_utils_geometry::get_rpy(traj_pose).z;
 
-  const double target_yaw = calc_azimuth_angle(traj_pose.position, target_point);
+  const double target_yaw =
+    autoware_utils_geometry::calc_azimuth_angle(traj_pose.position, target_point);
 
-  const double diff_yaw = normalize_radian(target_yaw - tangent_yaw);
+  const double diff_yaw = autoware_utils_math::normalize_radian(target_yaw - tangent_yaw);
 
   if (0 < diff_yaw) {
     return true;
