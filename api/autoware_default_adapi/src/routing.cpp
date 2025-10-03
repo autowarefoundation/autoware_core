@@ -16,6 +16,8 @@
 
 #include "utils/route_conversion.hpp"
 
+#include <autoware/qos_utils/qos_compatibility.hpp>
+
 #include <memory>
 
 namespace
@@ -100,15 +102,15 @@ RoutingNode::RoutingNode(const rclcpp::NodeOptions & options)
   cli_clear_route_ =
     create_client<autoware::component_interface_specs::planning::ClearRoute::Service>(
       autoware::component_interface_specs::planning::ClearRoute::name,
-      rmw_qos_profile_services_default, group_cli_);
+      AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE(), group_cli_);
   cli_set_waypoint_route_ =
     create_client<autoware::component_interface_specs::planning::SetWaypointRoute::Service>(
       autoware::component_interface_specs::planning::SetWaypointRoute::name,
-      rmw_qos_profile_services_default, group_cli_);
+      AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE(), group_cli_);
   cli_set_lanelet_route_ =
     create_client<autoware::component_interface_specs::planning::SetLaneletRoute::Service>(
       autoware::component_interface_specs::planning::SetLaneletRoute::name,
-      rmw_qos_profile_services_default, group_cli_);
+      AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE(), group_cli_);
   sub_operation_mode_ =
     create_subscription<autoware::component_interface_specs::system::OperationModeState::Message>(
       autoware::component_interface_specs::system::OperationModeState::name,
@@ -119,7 +121,7 @@ RoutingNode::RoutingNode(const rclcpp::NodeOptions & options)
   cli_operation_mode_ =
     create_client<autoware::component_interface_specs::system::ChangeOperationMode::Service>(
       autoware::component_interface_specs::system::ChangeOperationMode::name,
-      rmw_qos_profile_services_default, group_cli_);
+      AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE(), group_cli_);
 
   is_autoware_control_ = false;
   is_auto_mode_ = false;
