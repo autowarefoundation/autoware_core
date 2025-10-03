@@ -69,7 +69,7 @@ bool is_point_inside_crop_box(const Eigen::Vector4f & point, const CropBox & box
  * @param box The crop box to check against.
  * @return Whether the line segment intersects the crop box.
  */
- bool does_line_segment_intersect_crop_box(
+bool does_line_segment_intersect_crop_box(
   const Eigen::Vector4f & from_point, const Eigen::Vector4f & to_point, const CropBox & box);
 
 class CropBoxFilter : public rclcpp::Node

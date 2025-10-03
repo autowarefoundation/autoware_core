@@ -61,9 +61,7 @@ TEST_P(CropBoxFilterTest, RayIntersection)
 
 INSTANTIATE_TEST_SUITE_P(
   TestMain, CropBoxFilterTest, testing::ValuesIn(test_cases),
-  [](const testing::TestParamInfo<TestCaseParam> & p) {
-    return p.param.gtest_suffix;
-  });
+  [](const testing::TestParamInfo<TestCaseParam> & p) { return p.param.gtest_suffix; });
 
 int main(int argc, char ** argv)
 {

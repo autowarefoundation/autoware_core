@@ -50,12 +50,12 @@ bool does_line_segment_intersect_crop_box(
   Eigen::Vector3f box_max = {box.max_x, box.max_y, box.max_z};
 
   // A line is represented as `l(t) = ray_origin + t * ray_direction`.
-  // A line segment is represented as `l(t) = ray_origin + t * ray_direction`, where `t` is in [0, 1],
-  // given that `ray_direction = (to_point - from_point)` (not normalized).
-  // We start with the full line segment.
-  float t_min = 0; // from_point
-  float t_max = 1; // to_point
-  
+  // A line segment is represented as `l(t) = ray_origin + t * ray_direction`, where `t` is in [0,
+  // 1], given that `ray_direction = (to_point - from_point)` (not normalized). We start with the
+  // full line segment.
+  float t_min = 0;  // from_point
+  float t_max = 1;  // to_point
+
   // For each axis, we intersect the line segment with the min and max planes of the box,
   // keeping only the part of the line segment that is within the box.
   for (int axis = 0 /* x */; axis < 3 /* z */; ++axis) {
