@@ -44,6 +44,24 @@ using PointCloudConstPtr = PointCloud::ConstPtr;
 namespace autoware::crop_box_filter
 {
 
+struct CropBox
+{
+  float min_x;
+  float max_x;
+  float min_y;
+  float max_y;
+  float min_z;
+  float max_z;
+};
+
+/** \brief Return whether the point is inside the crop box.
+ *
+ * @param point The point to check, in the crop box frame.
+ * @param box The crop box to check against.
+ * @return Whether the point is inside the crop box.
+ */
+bool is_point_inside_crop_box(const Eigen::Vector4f & point, const CropBox & box);
+
 class CropBoxFilter : public rclcpp::Node
 {
 private:
@@ -77,12 +95,7 @@ private:
 
   struct CropBoxParam
   {
-    float min_x;
-    float max_x;
-    float min_y;
-    float max_y;
-    float min_z;
-    float max_z;
+    CropBox box{};
     bool negative{false};
   } param_;
 
