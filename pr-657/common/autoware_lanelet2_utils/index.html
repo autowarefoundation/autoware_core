@@ -7120,15 +7120,15 @@
 </tr>
 <tr>
 <td><code>.get_lanelet_sequence_on_route(forward, backward)</code></td>
-<td>This function computes (1) Lanelets behind of <code>current_route_lanelet</code> by up to <code>backward</code> and (2) Lanelets after <code>current_route_lanelet</code> by up to <code>forward</code> as a list, only on the route without lane change.</td>
+<td>This function computes (1) Lanelets behind of <code>current_route_lanelet</code> by up to <code>backward</code> and (2) Lanelets after <code>current_route_lanelet</code> by up to <code>forward</code> as a list, only on the route without lane change. The length is measured from <code>current_pose</code> with respect to <code>current_route_lanelet</code>.</td>
 <td><span class="arithmatex">\(O(\textrm{total length})\)</span></td>
 <td>From <code>current_route_lanelet</code>, the output contains the Lanelets by up to given distance in backward/forward direction. The output does not contain non-route Lanelets even if the sequence is below specified length, as illustrated in "(1)" in below figure.<br><img alt="get_lanelet_sequence_on_route" src="media/api/lane_sequence.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-657%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fapi%2Flane_sequence.drawio.svg">Open</a></td>
 </tr>
 <tr>
 <td><code>.get_lanelet_sequence_on_outward_route(forward, backward)</code></td>
-<td>This function computes (1) Lanelets behind of <code>current_route_lanelet</code> by up to <code>backward</code> and (2) Lanelets after <code>current_route_lanelet</code> by up to <code>forward</code> as a list, extending to non-route Lanelet if necessary, without lane change.</td>
+<td>This function computes (1) Lanelets behind of <code>current_route_lanelet</code> by up to <code>backward</code> and (2) Lanelets after <code>current_route_lanelet</code> by up to <code>forward</code> as a list, extending to non-route Lanelet if necessary, without lane change. The length is measured from <code>current_pose</code> with respect to <code>current_route_lanelet</code>.</td>
 <td><span class="arithmatex">\(O(\textrm{total length})\)</span></td>
-<td>From <code>current_route_lanelet</code>, the output contains the Lanelets by up to given distance in backward/forward direction. The output extends to non-route Lanelets if the route part of the sequence is below specified length, as illustrated in "(2)" in above figure.</td>
+<td>From <code>current_route_lanelet</code>, the output contains the Lanelets by up to given distance in backward/forward direction. The output extends to non-route Lanelets if the route part of the sequence is below specified length, as illustrated in "(2)" in below figure.<br><img alt="get_lanelet_sequence_on_route" src="media/api/lane_sequence.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-657%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fapi%2Flane_sequence.drawio.svg">Open</a></td>
 </tr>
 <tr>
 <td><code>.get_closest_preferred_route_lanelet(...)</code></td>
