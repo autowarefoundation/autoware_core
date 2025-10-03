@@ -33,6 +33,12 @@ bool is_point_inside_crop_box(const Eigen::Vector4f & point, const CropBox & box
          (point[2] > box.min_z && point[2] < box.max_z);
 }
 
+bool does_line_segment_intersect_crop_box(
+  const Eigen::Vector4f & from_point, const Eigen::Vector4f & to_point, const CropBox & box)
+{
+  return is_point_inside_crop_box(from_point, box) && is_point_inside_crop_box(to_point, box);
+}
+
 CropBoxFilter::CropBoxFilter(const rclcpp::NodeOptions & node_options)
 : rclcpp::Node("crop_box_filter", node_options)
 {
