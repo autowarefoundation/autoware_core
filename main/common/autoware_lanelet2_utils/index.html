@@ -6990,7 +6990,7 @@
 <td><code>.right_lanelets(lanelet, include_opposite)</code></td>
 <td>The input Lanelet is not included in the output, and output is ordered from right to left.</td>
 <td><span class="arithmatex">\(O(W)\)</span> where <span class="arithmatex">\(W\)</span> is the size of the <code>bundle</code>.</td>
-<td>In the first map, the green Lanelets are the <code>right_lanelets</code> of the orange Lanelet.<br>In the second and third map, <code>right_lanelets</code> of the orange Lanelet is empty.<br>If the flag <code>include_opposite = true</code>, the right opposite Lanelet and all of its <code>same_direction</code> Lanelets area also retrieved as illustrated in the fourth and fifth maps.<br><img alt="right_lanelets" src="media/api/right_lanelets.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon_autoware_lanelet2_utils%2Fmedia%2Fapi%2Fright_lanelets.drawio.svg">Open</a></td>
+<td>In the first map, the green Lanelets are the <code>right_lanelets</code> of the orange Lanelet.<br>In the second and third map, <code>right_lanelets</code> of the orange Lanelet is empty.<br>If the flag <code>include_opposite = true</code>, the right opposite Lanelet and all of its <code>same_direction</code> Lanelets area also retrieved as illustrated in the fourth and fifth maps.<br><img alt="right_lanelets" src="media/api/right_lanelets.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fapi%2Fright_lanelets.drawio.svg">Open</a></td>
 <td></td>
 </tr>
 <tr>
@@ -7006,6 +7006,102 @@
 <td><ul><li><code>.left_shoulder_lanelet(lanelet)</code></li><li><code>.right_shoulder_lanelet(lanelet)</code></li><li><code>.left_bicycle_lanelet(lanelet)</code></li><li><code>.right_bicycle_lanelet(lanelet)</code></li></ul></td>
 <td>Retrieve each VRU Lanelet of <code>lanelet</code> if it exists</td>
 <td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>&lt;autoware/lanelet2_utils/route_manager.hpp&gt;</code></td>
+<td><code>class RouteManager EXTENDS MapHandler</code></td>
+<td><code>class RouteManager</code> is responsible for properly tracking <code>current_route_lanelet</code> along the given route information, considering swerving maneuver and lane change. Also it provides several functions related to <code>current_route_lanelet</code></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><strong>class invariance</strong></td>
+<td><ul><li><code>current_pose</code> may not be inside of any <code>route_lanelets</code> nor <code>preferred_route_lanelets</code>, because swerving and abrupt localization jump cannot be distinguished. For the same reason <code>current_pose</code> may not be inside of <code>current_route_lanelet</code></li><li><code>current_route_lanelet</code> matches one of the <code>route_lanelets</code></li></ul></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>RouteManager::create(...)</code></td>
+<td>A factory function to construct under invariance</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>Inherits <code>MapHandler</code>'s member functions</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>.update_current_pose(new_pose)</code></td>
+<td>This function updates <code>current_route_lanelet</code> on the route based on <code>new_pose</code>. This method should be used for all the cases excluding lane change completion, and <code>current_route_lanelet</code> is updated longitudinally. It is expected to be called in every cycle of planning.</td>
+<td><span class="arithmatex">\(O(1)\)</span></td>
+<td>Even if ego vehicle is in the middle swerving, <code>update_current_pose</code> decides next <code>current_route_lanelet</code> longitudinally, as illustrated in thin violet in the figure.<br><img alt="update_current_pose" src="media/api/current_route_lanelet.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fapi%2Fcurrent_route_lanelet.drawio.svg">Open</a></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>.commit_lane_change(new_pose)</code></td>
+<td>This function updates <code>current_route_lanelet</code> on the route considering lane change.<br><br><img alt="⚠" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@14.1.2/assets/svg/26a0.svg" title=":warning:"> It is expected to be called only when lane change execution has succeeded</td>
+<td><em>R-tree</em></td>
+<td>Only when lane change has been completed, <code>commit_lane_change()</code> is expected to be called, as illustrated in the the last item of "(2) Lane Change Scenario".<br><img alt="update_current_pose" src="media/api/current_route_lanelet.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fapi%2Fcurrent_route_lanelet.drawio.svg">Open</a></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>.current_lanelet()</code></td>
+<td>Get <code>current_route_lanelet</code> Lanelet</td>
+<td><span class="arithmatex">\(O(1)\)</span></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>.get_lanelet_sequence_on_route(forward, backward)</code></td>
+<td>This function computes (1) Lanelets behind of <code>current_route_lanelet</code> by up to <code>backward</code> and (2) Lanelets after <code>current_route_lanelet</code> by up to <code>forward</code> as a list, only on the route without lane change. The length is measured from <code>current_pose</code> with respect to <code>current_route_lanelet</code>.</td>
+<td><span class="arithmatex">\(O(\textrm{total length})\)</span></td>
+<td>From <code>current_route_lanelet</code>, the output contains the Lanelets by up to given distance in backward/forward direction. The output does not contain non-route Lanelets even if the sequence is below specified length, as illustrated in "(1)" in below figure.<br><img alt="get_lanelet_sequence_on_route" src="media/api/lane_sequence.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fapi%2Flane_sequence.drawio.svg">Open</a></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>.get_lanelet_sequence_on_outward_route(forward, backward)</code></td>
+<td>This function computes (1) Lanelets behind of <code>current_route_lanelet</code> by up to <code>backward</code> and (2) Lanelets after <code>current_route_lanelet</code> by up to <code>forward</code> as a list, extending to non-route Lanelet if necessary, without lane change. The length is measured from <code>current_pose</code> with respect to <code>current_route_lanelet</code>.</td>
+<td><span class="arithmatex">\(O(\textrm{total length})\)</span></td>
+<td>From <code>current_route_lanelet</code>, the output contains the Lanelets by up to given distance in backward/forward direction. The output extends to non-route Lanelets if the route part of the sequence is below specified length, as illustrated in "(2)" in below figure.<br><img alt="get_lanelet_sequence_on_route" src="media/api/lane_sequence.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fapi%2Flane_sequence.drawio.svg">Open</a>.</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>.get_closest_preferred_route_lanelet(...)</code></td>
+<td>preferred route lanelet limited version of <code>get_closest_lanelet_within_constraint</code></td>
+<td><em>R-tree</em></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>.get_closest_route_lanelet_within_constraints(...)</code></td>
+<td>route lanelet limited version of <code>get_closest_lanelet_within_constraint</code></td>
+<td><em>R-tree</em></td>
 <td></td>
 <td></td>
 </tr>
@@ -7217,7 +7313,28 @@
 <h2 id="tested-case">Tested case<a class="headerlink" href="#tested-case" title="Permanent link">#</a></h2>
 <p><code>test_data</code> contains test scene yaml files describing the context of unit tests. They can be visualized</p>
 <div class="highlight"><pre><span></span><code>ros2<span class="w"> </span>run<span class="w"> </span>autoware_lanelet2_utils<span class="w"> </span>test_case_generator.py<span class="w"> </span>--view<span class="w"> </span>&lt;file<span class="w"> </span>name&gt;
-</code></pre></div></div>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Tested specs</th>
+<th>Image</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>test_route_manager_001.yaml</code></td>
+<td>During lane change, <code>current_route_lanelet</code> is updated longitudinally. To update <code>current_route_lanelet</code> after lane change, <code>RouteManager::commit_lane_change</code> needs to be called</td>
+<td></td>
+</tr>
+<tr>
+<td><code>test_route_manager_002.yaml</code></td>
+<td>During swerving maneuver like parked vehicle avoidance, <code>RouteManager::commit_lane_change</code> is not expected to be called. So <code>current_pose</code> of <code>RouteManager</code> may not be on <code>current_route_lanelet</code></td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
 
 
 
