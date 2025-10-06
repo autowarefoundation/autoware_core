@@ -52,18 +52,6 @@ std::optional<lanelet::ConstLanelet> right_lanelet(
   return std::nullopt;
 }
 
-/*
-std::optional<lanelet::ConstLanelet> left_similar_lanelet(
-const lanelet::ConstLanelet & lanelet, const lanelet::LaneletMapConstPtr lanelet_map,
-const lanelet::routing::RoutingGraphConstPtr routing_graph);
-*/
-
-/*
-std::optional<lanelet::ConstLanelet> right_similar_lanelet(
-const lanelet::ConstLanelet & lanelet, const lanelet::LaneletMapConstPtr lanelet_map,
-const lanelet::routing::RoutingGraphConstPtr routing_graph);
-*/
-
 std::optional<lanelet::ConstLanelet> left_opposite_lanelet(
   const lanelet::ConstLanelet & lanelet, const lanelet::LaneletMapConstPtr lanelet_map)
 {
@@ -134,90 +122,6 @@ std::optional<lanelet::ConstLanelet> rightmost_lanelet(
     "You have passed an unrealistic map with a bundle of size>=10");
   return std::nullopt;
   // LCOV_EXCL_STOP
-}
-
-lanelet::ConstLanelets left_lanelets(
-  const lanelet::ConstLanelet & lanelet, const lanelet::LaneletMapConstPtr lanelet_map,
-  const lanelet::routing::RoutingGraphConstPtr routing_graph, const bool include_opposite,
-  const bool invert_opposite_lane)
-{
-  lanelet::ConstLanelets lefts{};
-  auto left_lane = left_lanelet(lanelet, routing_graph);
-  size_t bundle_size_diagnosis = 0;
-  while (bundle_size_diagnosis < k_normal_bundle_max_size) {
-    if (!left_lane) {
-      break;
-    }
-    lefts.push_back(left_lane.value());
-    left_lane = left_lanelet(left_lane.value(), routing_graph);
-    bundle_size_diagnosis++;
-  }
-  // LCOV_EXCL_START
-  if (bundle_size_diagnosis >= k_normal_bundle_max_size) {
-    RCLCPP_ERROR(
-      rclcpp::get_logger("autoware_lanelet2_utility"),
-      "You have passed an unrealistic map with a bundle of size>=10");
-    return {};
-  }
-  // LCOV_EXCL_STOP
-  if (lefts.empty()) {
-    return {};
-  }
-  const auto & leftmost = lefts.back();
-  if (include_opposite) {
-    const auto direct_opposite = left_opposite_lanelet(leftmost, lanelet_map);
-    if (direct_opposite) {
-      const auto opposites =
-        right_lanelets(direct_opposite.value(), lanelet_map, routing_graph, false, false);
-      lefts.push_back(direct_opposite.value());
-      for (const auto & opposite : opposites) {
-        lefts.push_back(invert_opposite_lane ? opposite.invert() : opposite);
-      }
-    }
-  }
-  return lefts;
-}
-
-lanelet::ConstLanelets right_lanelets(
-  const lanelet::ConstLanelet & lanelet, const lanelet::LaneletMapConstPtr lanelet_map,
-  const lanelet::routing::RoutingGraphConstPtr routing_graph, const bool include_opposite,
-  const bool invert_opposite_lane)
-{
-  lanelet::ConstLanelets rights{};
-  auto right_lane = right_lanelet(lanelet, routing_graph);
-  size_t bundle_size_diagnosis = 0;
-  while (bundle_size_diagnosis < k_normal_bundle_max_size) {
-    if (!right_lane) {
-      break;
-    }
-    rights.push_back(right_lane.value());
-    right_lane = right_lanelet(right_lane.value(), routing_graph);
-    bundle_size_diagnosis++;
-  }
-  // LCOV_EXCL_START
-  if (bundle_size_diagnosis >= k_normal_bundle_max_size) {
-    RCLCPP_ERROR(
-      rclcpp::get_logger("autoware_lanelet2_utility"),
-      "You have passed an unrealistic map with a bundle of size>=10");
-    return {};
-  }
-  // LCOV_EXCL_STOP
-  if (rights.empty()) {
-    return {};
-  }
-  const auto & rightmost = rights.back();
-  if (include_opposite) {
-    const auto direct_opposite = right_opposite_lanelet(rightmost, lanelet_map);
-    if (direct_opposite) {
-      const auto opposites =
-        left_lanelets(direct_opposite.value(), lanelet_map, routing_graph, false, false);
-      rights.push_back(direct_opposite.value());
-      for (const auto & opposite : opposites) {
-        rights.push_back(invert_opposite_lane ? opposite.invert() : opposite);
-      }
-    }
-  }
-  return rights;
 }
 
 lanelet::ConstLanelets following_lanelets(

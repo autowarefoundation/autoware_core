@@ -72,98 +72,59 @@ GyroOdometerNode::GyroOdometerNode(const rclcpp::NodeOptions & node_options)
   diagnostics_ = std::make_unique<autoware_utils_diagnostics::DiagnosticsInterface>(
     this, "gyro_odometer_status");
 
-  // TODO(YamatoAndo) createTimer
+  timer_ = rclcpp::create_timer(
+    this, this->get_clock(), std::chrono::milliseconds(100),
+    std::bind(&GyroOdometerNode::publish_diagnostics, this));
 }
 
 void GyroOdometerNode::callback_vehicle_twist(
   const geometry_msgs::msg::TwistWithCovarianceStamped::ConstSharedPtr vehicle_twist_msg_ptr)
 {
-  diagnostics_->clear();
-  diagnostics_->add_key_value(
-    "topic_time_stamp",
-    static_cast<rclcpp::Time>(vehicle_twist_msg_ptr->header.stamp).nanoseconds());
-
   vehicle_twist_arrived_ = true;
   latest_vehicle_twist_ros_time_ = vehicle_twist_msg_ptr->header.stamp;
   vehicle_twist_queue_.push_back(*vehicle_twist_msg_ptr);
   concat_gyro_and_odometer();
-
-  diagnostics_->publish(vehicle_twist_msg_ptr->header.stamp);
 }
 
 void GyroOdometerNode::callback_imu(const sensor_msgs::msg::Imu::ConstSharedPtr imu_msg_ptr)
 {
-  diagnostics_->clear();
-  diagnostics_->add_key_value(
-    "topic_time_stamp", static_cast<rclcpp::Time>(imu_msg_ptr->header.stamp).nanoseconds());
-
   imu_arrived_ = true;
   latest_imu_ros_time_ = imu_msg_ptr->header.stamp;
   gyro_queue_.push_back(*imu_msg_ptr);
   concat_gyro_and_odometer();
-
-  diagnostics_->publish(imu_msg_ptr->header.stamp);
 }
 
 void GyroOdometerNode::concat_gyro_and_odometer()
 {
   // check arrive first topic
-  diagnostics_->add_key_value("is_arrived_first_vehicle_twist", vehicle_twist_arrived_);
-  diagnostics_->add_key_value("is_arrived_first_imu", imu_arrived_);
   if (!vehicle_twist_arrived_) {
-    std::stringstream message;
-    message << "Twist msg is not subscribed";
-    RCLCPP_WARN_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 1000, message.str());
-    diagnostics_->update_level_and_message(
-      diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
-
     vehicle_twist_queue_.clear();
     gyro_queue_.clear();
     return;
   }
   if (!imu_arrived_) {
-    std::stringstream message;
-    message << "Imu msg is not subscribed";
-    RCLCPP_WARN_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 1000, message.str());
-    diagnostics_->update_level_and_message(
-      diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
-
     vehicle_twist_queue_.clear();
     gyro_queue_.clear();
     return;
   }
 
   // check timeout
-  const double vehicle_twist_dt =
-    std::abs((this->now() - latest_vehicle_twist_ros_time_).seconds());
-  const double imu_dt = std::abs((this->now() - latest_imu_ros_time_).seconds());
-  diagnostics_->add_key_value("vehicle_twist_time_stamp_dt", vehicle_twist_dt);
-  diagnostics_->add_key_value("imu_time_stamp_dt", imu_dt);
-  if (vehicle_twist_dt > message_timeout_sec_) {
-    const std::string message = fmt::format(
-      "Vehicle twist msg is timeout. vehicle_twist_dt: {}[sec], tolerance {}[sec]",
-      vehicle_twist_dt, message_timeout_sec_);
-    RCLCPP_ERROR_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 1000, message);
-    diagnostics_->update_level_and_message(diagnostic_msgs::msg::DiagnosticStatus::ERROR, message);
-
+  latest_vehicle_twist_dt_ = std::abs((this->now() - latest_vehicle_twist_ros_time_).seconds());
+  latest_imu_dt_ = std::abs((this->now() - latest_imu_ros_time_).seconds());
+  if (latest_vehicle_twist_dt_ > message_timeout_sec_) {
     vehicle_twist_queue_.clear();
     gyro_queue_.clear();
     return;
   }
-  if (imu_dt > message_timeout_sec_) {
-    const std::string message = fmt::format(
-      "Imu msg is timeout. imu_dt: {}[sec], tolerance {}[sec]", imu_dt, message_timeout_sec_);
-    RCLCPP_ERROR_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 1000, message);
-    diagnostics_->update_level_and_message(diagnostic_msgs::msg::DiagnosticStatus::ERROR, message);
-
+  if (latest_imu_dt_ > message_timeout_sec_) {
     vehicle_twist_queue_.clear();
     gyro_queue_.clear();
     return;
   }
 
   // check queue size
-  diagnostics_->add_key_value("vehicle_twist_queue_size", vehicle_twist_queue_.size());
-  diagnostics_->add_key_value("imu_queue_size", gyro_queue_.size());
+  latest_vehicle_twist_queue_size_ = vehicle_twist_queue_.size();
+  latest_imu_queue_size_ = gyro_queue_.size();
   if (vehicle_twist_queue_.empty()) {
     // not output error and clear queue
     return;
@@ -176,17 +137,8 @@ void GyroOdometerNode::concat_gyro_and_odometer()
   // get transformation
   geometry_msgs::msg::TransformStamped::ConstSharedPtr tf_imu2base_ptr =
     transform_listener_->get_latest_transform(gyro_queue_.front().header.frame_id, output_frame_);
-
-  const bool is_succeed_transform_imu = (tf_imu2base_ptr != nullptr);
-  diagnostics_->add_key_value("is_succeed_transform_imu", is_succeed_transform_imu);
-  if (!is_succeed_transform_imu) {
-    std::stringstream message;
-    message << "Please publish TF " << output_frame_ << " to "
-            << gyro_queue_.front().header.frame_id;
-    RCLCPP_ERROR_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 1000, message.str());
-    diagnostics_->update_level_and_message(
-      diagnostic_msgs::msg::DiagnosticStatus::ERROR, message.str());
-
+  is_succeed_transform_imu_ = (tf_imu2base_ptr != nullptr);
+  if (!is_succeed_transform_imu_) {
     vehicle_twist_queue_.clear();
     gyro_queue_.clear();
     return;
@@ -296,6 +248,72 @@ void GyroOdometerNode::publish_data(
 
   twist_pub_->publish(twist);
   twist_with_covariance_pub_->publish(twist_with_covariance);
+}
+
+void GyroOdometerNode::publish_diagnostics()
+{
+  diagnostics_->clear();
+
+  const auto vehicle_twist_time =
+    vehicle_twist_arrived_ ? static_cast<rclcpp::Time>(latest_vehicle_twist_ros_time_).nanoseconds()
+                           : std::nan("");
+  const auto imu_time =
+    imu_arrived_ ? static_cast<rclcpp::Time>(latest_imu_ros_time_).nanoseconds() : std::nan("");
+  diagnostics_->add_key_value("latest_vehicle_twist_time_stamp", vehicle_twist_time);
+  diagnostics_->add_key_value("latest_imu_time_stamp", imu_time);
+  diagnostics_->add_key_value("is_arrived_first_vehicle_twist", vehicle_twist_arrived_);
+  diagnostics_->add_key_value("is_arrived_first_imu", imu_arrived_);
+  diagnostics_->add_key_value("vehicle_twist_time_stamp_dt", latest_vehicle_twist_dt_);
+  diagnostics_->add_key_value("imu_time_stamp_dt", latest_imu_dt_);
+  diagnostics_->add_key_value("vehicle_twist_queue_size", latest_vehicle_twist_queue_size_);
+  diagnostics_->add_key_value("imu_queue_size", latest_imu_queue_size_);
+  diagnostics_->add_key_value("is_succeed_transform_imu", is_succeed_transform_imu_);
+
+  uint8_t level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+  std::string log_message = "";
+
+  if (!vehicle_twist_arrived_) {
+    const std::string message = "Twist msg has not been arrived yet.";
+    diagnostics_->update_level_and_message(diagnostic_msgs::msg::DiagnosticStatus::WARN, message);
+    log_message += message;
+    log_message += "; ";
+  }
+  if (!imu_arrived_) {
+    const std::string message = "IMU msg has not been arrived yet.";
+    diagnostics_->update_level_and_message(diagnostic_msgs::msg::DiagnosticStatus::WARN, message);
+    log_message += message;
+    log_message += "; ";
+  }
+  if (latest_vehicle_twist_dt_ > message_timeout_sec_) {
+    const std::string message = fmt::format(
+      "Vehicle twist msg is timeout. vehicle_twist_dt: {}[sec], tolerance {}[sec]",
+      latest_vehicle_twist_dt_, message_timeout_sec_);
+    diagnostics_->update_level_and_message(diagnostic_msgs::msg::DiagnosticStatus::ERROR, message);
+    log_message += message;
+    log_message += "; ";
+  }
+  if (latest_imu_dt_ > message_timeout_sec_) {
+    const std::string message = fmt::format(
+      "IMU msg is timeout. imu_dt: {}[sec], tolerance {}[sec]", latest_imu_dt_,
+      message_timeout_sec_);
+    diagnostics_->update_level_and_message(diagnostic_msgs::msg::DiagnosticStatus::ERROR, message);
+    log_message += message;
+    log_message += "; ";
+  }
+  if (!is_succeed_transform_imu_) {
+    const std::string message = "Please publish TF from " + output_frame_ + " to frame of IMU.";
+    diagnostics_->update_level_and_message(diagnostic_msgs::msg::DiagnosticStatus::ERROR, message);
+    log_message += message;
+    log_message += "; ";
+  }
+
+  if (level == diagnostic_msgs::msg::DiagnosticStatus::WARN)
+    RCLCPP_WARN_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 1000, log_message);
+
+  if (level == diagnostic_msgs::msg::DiagnosticStatus::ERROR)
+    RCLCPP_ERROR_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 1000, log_message);
+
+  diagnostics_->publish(this->now());
 }
 
 }  // namespace autoware::gyro_odometer
