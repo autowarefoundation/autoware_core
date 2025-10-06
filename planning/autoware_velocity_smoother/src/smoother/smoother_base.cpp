@@ -160,8 +160,9 @@ std::vector<std::pair<double, double>> SmootherBase::computeRatioLimits(
     double vi_1 = (i == 0) ? 0.0 : velocity_thresholds[i - 1];
 
     // Add the ratio pair for this threshold using the provided function
-    output.push_back(std::make_pair(
-      compute_ratio_func(threshold, vi_1, epsilon), compute_ratio_func(threshold, vi, epsilon)));
+    output.push_back(
+      std::make_pair(
+        compute_ratio_func(threshold, vi_1, epsilon), compute_ratio_func(threshold, vi, epsilon)));
   }
 
   // Add the last part
