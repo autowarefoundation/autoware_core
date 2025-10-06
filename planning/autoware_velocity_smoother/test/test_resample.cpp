@@ -63,8 +63,19 @@ TrajectoryPoints createStraightTrajectory(double velocity, double length, double
 TrajectoryPoints createVaryingVelocityTrajectory(
   double start_velocity, double end_velocity, double length, double point_interval)
 {
+  if (point_interval <= 0.0) {
+    throw std::invalid_argument(
+      "point_interval ( " + std::to_string(point_interval) + " ) must be > 0");
+  }
+
   TrajectoryPoints trajectory;
   const int num_points = static_cast<int>(length / point_interval) + 1;
+
+  if (num_points < 2) {
+    throw std::invalid_argument(
+      "num_points ( " + std::to_string(num_points) + " ) must be >= 2. Length: " +
+      std::to_string(length) + ", point_interval: " + std::to_string(point_interval) + " )");
+  }
 
   for (int i = 0; i < num_points; i++) {
     const double ratio = static_cast<double>(i) / (num_points - 1);
@@ -94,6 +105,10 @@ TrajectoryPoints createVaryingVelocityTrajectory(
  */
 TrajectoryPoints createCurvedTrajectory(double radius, double velocity, int num_points)
 {
+  if (num_points < 2) {
+    throw std::invalid_argument("num_points ( " + std::to_string(num_points) + " ) must be >= 2. ");
+  }
+
   TrajectoryPoints trajectory;
   const double angle_step = M_PI / 2.0 / (num_points - 1);
 
@@ -109,6 +124,11 @@ TrajectoryPoints createCurvedTrajectory(double radius, double velocity, int num_
 TrajectoryPoints createTrajectoryWithStop(
   double length, double stop_distance, double point_interval)
 {
+  if (stop_distance <= 0.0 || stop_distance > length) {
+    throw std::invalid_argument(
+      "stop_distance ( " + std::to_string(stop_distance) + " ) must be within (0, " +
+      std::to_string(length) + "] ");
+  }
   TrajectoryPoints trajectory;
   for (double x = 0.0; x <= length; x += point_interval) {
     double velocity = 5.0;
@@ -156,8 +176,8 @@ protected:
   geometry_msgs::msg::Pose ego_pose_;
 
   // Constants for testing
-  const double nearest_dist_threshold = 3.0;
-  const double nearest_yaw_threshold = 1.0472;  // 60 degrees
+  static constexpr double nearest_dist_threshold = 3.0;
+  static constexpr double nearest_yaw_threshold = 1.0472;  // 60 degrees
 };
 
 /**
@@ -198,7 +218,7 @@ TEST_F(TrajectoryResampleTest, ResampleStraightTrajectory)
 
   // Check that we have enough points in the output
   EXPECT_GE(output.size(), static_cast<size_t>(expected_min_points));
-
+  ASSERT_GE(output.size(), 2u);
   // Check that points are properly spaced (approximately ds apart)
   for (size_t i = 1; i < output.size(); ++i) {
     const double dist =
@@ -371,6 +391,7 @@ TEST_F(TrajectoryResampleTest, ResampleTrajectoryWithStop)
 
   // Check that we have a denser sampling near the stop point
   int points_near_stop = 0;
+  ASSERT_GE(output.size(), 2u);
 
   for (size_t i = 1; i < output.size(); ++i) {
     const double x = output[i].pose.position.x;
@@ -424,6 +445,7 @@ TEST_F(TrajectoryResampleTest, ResampleMinimalTrajectory)
   EXPECT_NEAR(output.back().pose.position.x, 10.0, 0.01);
   EXPECT_NEAR(output.front().longitudinal_velocity_mps, 5.0, 0.01);
   EXPECT_NEAR(output.back().longitudinal_velocity_mps, 5.0, 0.01);
+  ASSERT_GE(output.size(), 2u);
 
   // Check that points are approximately evenly spaced
   for (size_t i = 1; i < output.size(); ++i) {
@@ -466,6 +488,7 @@ TEST_F(TrajectoryResampleTest, ResampleWithNominalDs)
   // Check that the first and last points are preserved
   EXPECT_NEAR(output.front().pose.position.x, 0.0, 0.01);
   EXPECT_NEAR(output.back().pose.position.x, 8.0, 0.2);
+  ASSERT_GE(output.size(), 2u);
 
   // Verify point spacing with larger tolerance to match actual implementation
   for (size_t i = 1; i < output.size(); ++i) {
@@ -693,6 +716,7 @@ TEST_F(TrajectoryResampleTest, MinimumIntervalDistance)
   // Check that all points have reasonable spacing (may not strictly adhere to min_interval
   // due to implementation details, but should be close)
   double min_observed_dist = std::numeric_limits<double>::max();
+  ASSERT_GE(output.size(), 2u);
 
   for (size_t i = 1; i < output.size(); ++i) {
     const double dist =
@@ -755,6 +779,7 @@ TEST_F(TrajectoryResampleTest, TimeBasedResampling)
   // Based on actual output, divide trajectory into two regions for analysis
   // Note: Adjusting the threshold based on observed output
   const double dense_region_end = 20.0;  // End of dense region at 20m (v*resample_time)
+  ASSERT_GE(output.size(), 2u);
 
   // Check early part of trajectory (should be densely sampled)
   std::vector<double> distances_dense;
@@ -778,6 +803,7 @@ TEST_F(TrajectoryResampleTest, TimeBasedResampling)
   // Find the longest point spacing in the trajectory - this should be in the sparse region if it
   // exists
   double max_distance = 0.0;
+  ASSERT_GE(output.size(), 2u);
   for (size_t i = 1; i < output.size(); ++i) {
     const double dist =
       autoware_utils::calc_distance2d(output[i].pose.position, output[i - 1].pose.position);
@@ -843,7 +869,8 @@ TEST_F(TrajectoryResampleTest, ResampleTrajectoryWithDenseStopPointSampling)
   // Check spacing in different regions
   std::vector<double> distances_near_stop;
   std::vector<double> distances_away_from_stop;
-
+  ASSERT_GE(output.size(), 2u);
+  
   for (size_t i = 1; i < output.size(); ++i) {
     const double x = output[i].pose.position.x;
     const double prev_x = output[i - 1].pose.position.x;
@@ -883,6 +910,7 @@ TEST_F(TrajectoryResampleTest, ResampleTrajectoryWithDenseStopPointSampling)
 
   // Verify velocities are correctly interpolated at the stop point
   // Find stop points in output
+  ASSERT_GE(output.size(), 2u);
   bool found_decreasing_velocity = false;
   for (size_t i = 1; i < output.size(); ++i) {
     if (output[i].longitudinal_velocity_mps < output[i - 1].longitudinal_velocity_mps) {
@@ -1096,7 +1124,8 @@ TEST_F(TrajectoryResampleTest, CombinedMinLengthAndArclengthChecks)
   const double ds = std::max(
     current_velocity * resample_param_.dense_resample_dt,
     resample_param_.dense_min_interval_distance);
-
+  
+  ASSERT_GE(output.size(), 2u);
   // Verify point spacing in the output is close to expected interval
   for (size_t i = 1; i < output.size() - 1; ++i) {  // Skip last point check
     const double dist =
