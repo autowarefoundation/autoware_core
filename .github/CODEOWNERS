@@ -5,11 +5,11 @@ api/autoware_core_api/** mfc@autoware.org ryohsuke.mitsudome@tier4.jp yutaka.kon
 api/autoware_default_adapi/** isamu.takagi@tier4.jp ryohsuke.mitsudome@tier4.jp yukihiro.saito@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 autoware_core/** mfc@autoware.org ryohsuke.mitsudome@tier4.jp yutaka.kondo@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 common/autoware_component_interface_specs/** isamu.takagi@tier4.jp ryohsuke.mitsudome@tier4.jp yukihiro.saito@tier4.jp @autowarefoundation/autoware-core-global-codeowners
-common/autoware_geography_utils/** anh.nguyen.2@tier4.jp masahiro.sakamoto@tier4.jp ryu.yamamoto@tier4.jp shintaro.sakoda@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
+common/autoware_geography_utils/** anh.nguyen.2@tier4.jp masahiro.sakamoto@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 common/autoware_global_parameter_loader/** ryohsuke.mitsudome@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 common/autoware_interpolation/** fumiya.watanabe@tier4.jp takayuki.murooka@tier4.jp @autowarefoundation/autoware-core-global-codeowners
-common/autoware_kalman_filter/** anh.nguyen.2@tier4.jp masahiro.sakamoto@tier4.jp ryu.yamamoto@tier4.jp shintaro.sakoda@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp yukihiro.saito@tier4.jp @autowarefoundation/autoware-core-global-codeowners
-common/autoware_lanelet2_utils/** kosuke.takeuchi@tier4.jp mamoru.sobue@tier4.jp @autowarefoundation/autoware-core-global-codeowners
+common/autoware_kalman_filter/** anh.nguyen.2@tier4.jp masahiro.sakamoto@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp yukihiro.saito@tier4.jp @autowarefoundation/autoware-core-global-codeowners
+common/autoware_lanelet2_utils/** kosuke.takeuchi@tier4.jp mamoru.sobue@tier4.jp maxime.clement@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 common/autoware_marker_utils/** kosuke.takeuchi@tier4.jp mamoru.sobue@tier4.jp radit.giovanni@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 common/autoware_motion_utils/** fumiya.watanabe@tier4.jp kosuke.takeuchi@tier4.jp mamoru.sobue@tier4.jp satoshi.ota@tier4.jp taiki.tanaka@tier4.jp takamasa.horibe@tier4.jp takayuki.murooka@tier4.jp tomoya.kimura@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 common/autoware_node/** mfc@autoware.org @autowarefoundation/autoware-core-global-codeowners
@@ -23,18 +23,18 @@ common/autoware_vehicle_info_utils/** egon.kang@autocore.ai mamoru.sobue@tier4.j
 control/autoware_core_control/** mfc@autoware.org ryohsuke.mitsudome@tier4.jp yutaka.kondo@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 control/autoware_simple_pure_pursuit/** kosuke.takeuchi@tier4.jp takayuki.murooka@tier4.jp yuki.takagi@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 localization/autoware_core_localization/** mfc@autoware.org ryohsuke.mitsudome@tier4.jp yutaka.kondo@tier4.jp @autowarefoundation/autoware-core-global-codeowners
-localization/autoware_ekf_localizer/** anh.nguyen.2@tier4.jp kento.yabuuchi.2@tier4.jp masahiro.sakamoto@tier4.jp ryu.yamamoto@tier4.jp shintaro.sakoda@tier4.jp taiki.yamada@tier4.jp takamasa.horibe@tier4.jp takeshi.ishita@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
-localization/autoware_gyro_odometer/** anh.nguyen.2@tier4.jp kento.yabuuchi.2@tier4.jp masahiro.sakamoto@tier4.jp ryu.yamamoto@tier4.jp shintaro.sakoda@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
-localization/autoware_localization_util/** anh.nguyen.2@tier4.jp kento.yabuuchi.2@tier4.jp lxg19892021@gmail.com masahiro.sakamoto@tier4.jp ryu.yamamoto@tier4.jp shintaro.sakoda@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
-localization/autoware_ndt_scan_matcher/** anh.nguyen.2@tier4.jp kento.yabuuchi.2@tier4.jp masahiro.sakamoto@tier4.jp ryu.yamamoto@tier4.jp shintaro.sakoda@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
-localization/autoware_pose_initializer/** anh.nguyen.2@tier4.jp isamu.takagi@tier4.jp kento.yabuuchi.2@tier4.jp masahiro.sakamoto@tier4.jp ryu.yamamoto@tier4.jp shintaro.sakoda@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
-localization/autoware_stop_filter/** anh.nguyen.2@tier4.jp kento.yabuuchi.2@tier4.jp masahiro.sakamoto@tier4.jp ryu.yamamoto@tier4.jp shintaro.sakoda@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
-localization/autoware_twist2accel/** anh.nguyen.2@tier4.jp kento.yabuuchi.2@tier4.jp masahiro.sakamoto@tier4.jp ryu.yamamoto@tier4.jp shintaro.sakoda@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
+localization/autoware_ekf_localizer/** anh.nguyen.2@tier4.jp masahiro.sakamoto@tier4.jp taiki.yamada@tier4.jp takamasa.horibe@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
+localization/autoware_gyro_odometer/** anh.nguyen.2@tier4.jp masahiro.sakamoto@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
+localization/autoware_localization_util/** anh.nguyen.2@tier4.jp lxg19892021@gmail.com masahiro.sakamoto@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
+localization/autoware_ndt_scan_matcher/** anh.nguyen.2@tier4.jp masahiro.sakamoto@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
+localization/autoware_pose_initializer/** anh.nguyen.2@tier4.jp isamu.takagi@tier4.jp masahiro.sakamoto@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
+localization/autoware_stop_filter/** anh.nguyen.2@tier4.jp masahiro.sakamoto@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
+localization/autoware_twist2accel/** anh.nguyen.2@tier4.jp masahiro.sakamoto@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 map/autoware_core_map/** mfc@autoware.org ryohsuke.mitsudome@tier4.jp yutaka.kondo@tier4.jp @autowarefoundation/autoware-core-global-codeowners
-map/autoware_lanelet2_map_visualizer/** anh.nguyen.2@tier4.jp kento.yabuuchi.2@tier4.jp mamoru.sobue@tier4.jp masahiro.sakamoto@tier4.jp ryu.yamamoto@tier4.jp shintaro.sakoda@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
-map/autoware_map_height_fitter/** anh.nguyen.2@tier4.jp isamu.takagi@tier4.jp kento.yabuuchi.2@tier4.jp masahiro.sakamoto@tier4.jp ryu.yamamoto@tier4.jp shintaro.sakoda@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
-map/autoware_map_loader/** anh.nguyen.2@tier4.jp kento.yabuuchi.2@tier4.jp masahiro.sakamoto@tier4.jp ryu.yamamoto@tier4.jp shintaro.sakoda@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
-map/autoware_map_projection_loader/** anh.nguyen.2@tier4.jp kento.yabuuchi.2@tier4.jp masahiro.sakamoto@tier4.jp ryu.yamamoto@tier4.jp shintaro.sakoda@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
+map/autoware_lanelet2_map_visualizer/** anh.nguyen.2@tier4.jp mamoru.sobue@tier4.jp masahiro.sakamoto@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
+map/autoware_map_height_fitter/** anh.nguyen.2@tier4.jp isamu.takagi@tier4.jp masahiro.sakamoto@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
+map/autoware_map_loader/** anh.nguyen.2@tier4.jp masahiro.sakamoto@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
+map/autoware_map_projection_loader/** anh.nguyen.2@tier4.jp masahiro.sakamoto@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 perception/autoware_core_perception/** mfc@autoware.org ryohsuke.mitsudome@tier4.jp yutaka.kondo@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 perception/autoware_euclidean_cluster_object_detector/** dai.nguyen@tier4.jp yukihiro.saito@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 perception/autoware_ground_filter/** abrahammonrroy@yahoo.com dai.nguyen@tier4.jp junya.sasaki@tier4.jp yoshi.ri@tier4.jp yukihiro.saito@tier4.jp @autowarefoundation/autoware-core-global-codeowners
@@ -56,8 +56,8 @@ planning/motion_velocity_planner/autoware_motion_velocity_planner_common/** alqu
 sensing/autoware_core_sensing/** mfc@autoware.org ryohsuke.mitsudome@tier4.jp yutaka.kondo@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 sensing/autoware_crop_box_filter/** abrahammonrroy@yahoo.com dai.nguyen@tier4.jp david.wong@tier4.jp kenzo.lobos@tier4.jp kyoichi.sugahara@tier4.jp lxg19892021@gmail.com max.schmeller@tier4.jp melike@leodrive.ai yihsiang.fang@tier4.jp yoshi.ri@tier4.jp yukihiro.saito@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 sensing/autoware_downsample_filters/** abrahammonrroy@yahoo.com dai.nguyen@tier4.jp david.wong@tier4.jp kenzo.lobos@tier4.jp kyoichi.sugahara@tier4.jp lxg19892021@gmail.com max.schmeller@tier4.jp melike@leodrive.ai norah.xiong@autocore.ai yihsiang.fang@tier4.jp yoshi.ri@tier4.jp yukihiro.saito@tier4.jp @autowarefoundation/autoware-core-global-codeowners
-sensing/autoware_gnss_poser/** anh.nguyen.2@tier4.jp kento.yabuuchi.2@tier4.jp lxg19892021@gmail.com masahiro.sakamoto@tier4.jp ryu.yamamoto@tier4.jp shintaro.sakoda@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
-sensing/autoware_vehicle_velocity_converter/** ryu.yamamoto@tier4.jp @autowarefoundation/autoware-core-global-codeowners
+sensing/autoware_gnss_poser/** anh.nguyen.2@tier4.jp lxg19892021@gmail.com masahiro.sakamoto@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
+sensing/autoware_vehicle_velocity_converter/** anh.nguyen.2@tier4.jp masahiro.sakamoto@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 testing/autoware_planning_test_manager/** junya.sasaki@tier4.jp kyoichi.sugahara@tier4.jp mamoru.sobue@tier4.jp takamasa.horibe@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 testing/autoware_pyplot/** mamoru.sobue@tier4.jp yukinari.hisaki.2@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 testing/autoware_test_node/** mfc@autoware.org @autowarefoundation/autoware-core-global-codeowners
