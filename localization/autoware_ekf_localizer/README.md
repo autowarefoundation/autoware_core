@@ -188,19 +188,20 @@ Note that, although the dimension gets larger since the analytical expansion can
 <img src="./media/ekf_diagnostics_callback_twist.png" width="320">
 </p>
 
-### The conditions that result in a WARN state
+### Diagnostic Conditions
 
-- The node is not in the activate state.
-- The initial pose is not set.
-- The number of consecutive no measurement update via the Pose/Twist topic exceeds the `pose_no_update_count_threshold_warn`/`twist_no_update_count_threshold_warn`.
-- The timestamp of the Pose/Twist topic is beyond the delay compensation range.
-- The Pose/Twist topic is beyond the range of Mahalanobis distance for covariance estimation.
-- The covariance ellipse is bigger than threshold `warn_ellipse_size` for long axis or `warn_ellipse_size_lateral_direction` for lateral_direction.
-
-### The conditions that result in an ERROR state
-
-- The number of consecutive no measurement update via the Pose/Twist topic exceeds the `pose_no_update_count_threshold_error`/`twist_no_update_count_threshold_error`.
-- The covariance ellipse is bigger than threshold `error_ellipse_size` for long axis or `error_ellipse_size_lateral_direction` for lateral_direction.
+| Condition | Description | Transition condition to Warning | Transition condition to Error |
+| --------- | ----------- | ------------------------------- | ----------------------------- |
+| `is_activated` | The activation state of the node | The node is not in the activate state | none |
+| `is_set_initialpose` | Whether the initial pose is set | The initial pose is not set | none |
+| `pose_no_update_count` | Consecutive count of no measurement update via Pose topic | The count exceeds `pose_no_update_count_threshold_warn` | The count exceeds `pose_no_update_count_threshold_error` |
+| `twist_no_update_count` | Consecutive count of no measurement update via Twist topic | The count exceeds `twist_no_update_count_threshold_warn` | The count exceeds `twist_no_update_count_threshold_error` |
+| `pose_is_passed_delay_gate` | Whether the Pose topic passes the delay gate | The timestamp is beyond the delay compensation range | none |
+| `twist_is_passed_delay_gate` | Whether the Twist topic passes the delay gate | The timestamp is beyond the delay compensation range | none |
+| `pose_is_passed_mahalanobis_gate` | Whether the Pose topic passes the Mahalanobis distance gate | The Pose topic is beyond the range of Mahalanobis distance for covariance estimation | none |
+| `twist_is_passed_mahalanobis_gate` | Whether the Twist topic passes the Mahalanobis distance gate | The Twist topic is beyond the range of Mahalanobis distance for covariance estimation | none |
+| `cov_ellipse_long_axis` | Size of the covariance ellipse (long axis) | The ellipse is bigger than `warn_ellipse_size` | The ellipse is bigger than `error_ellipse_size` |
+| `cov_ellipse_lateral_direction` | Size of the covariance ellipse (lateral direction) | The ellipse is bigger than `warn_ellipse_size_lateral_direction` | The ellipse is bigger than `error_ellipse_size_lateral_direction` |
 
 ## Known issues
 
