@@ -870,7 +870,7 @@ TEST_F(TrajectoryResampleTest, ResampleTrajectoryWithDenseStopPointSampling)
   std::vector<double> distances_near_stop;
   std::vector<double> distances_away_from_stop;
   ASSERT_GE(output.size(), 2u);
-  
+
   for (size_t i = 1; i < output.size(); ++i) {
     const double x = output[i].pose.position.x;
     const double prev_x = output[i - 1].pose.position.x;
@@ -1124,7 +1124,7 @@ TEST_F(TrajectoryResampleTest, CombinedMinLengthAndArclengthChecks)
   const double ds = std::max(
     current_velocity * resample_param_.dense_resample_dt,
     resample_param_.dense_min_interval_distance);
-  
+
   ASSERT_GE(output.size(), 2u);
   // Verify point spacing in the output is close to expected interval
   for (size_t i = 1; i < output.size() - 1; ++i) {  // Skip last point check
