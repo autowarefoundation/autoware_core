@@ -101,7 +101,9 @@ protected:
     rclcpp::init(0, nullptr);
     module_ = std::make_unique<ObstacleStopModuleWrapper>();
     // Initialize test parameters
-    obstacle_filtering_param_.outside_max_lateral_velocity = 1.0;
+    obstacle_filtering_param_.outside_obstacle.max_lateral_velocity = 1.0;
+    obstacle_filtering_param_.outside_obstacle.min_longitudinal_velocity = -8.0;
+    obstacle_filtering_param_.outside_obstacle.max_moving_direction_angle = 2.6;
     stop_planning_param_.hold_stop_distance_threshold = 2.0;
 
     // Prepare test trajectory data
