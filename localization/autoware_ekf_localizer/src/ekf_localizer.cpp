@@ -389,55 +389,90 @@ void EKFLocalizer::publish_estimate_result(
 void EKFLocalizer::publish_diagnostics(
   const geometry_msgs::msg::PoseStamped & current_ekf_pose, const rclcpp::Time & current_time)
 {
-  std::vector<diagnostic_msgs::msg::DiagnosticStatus> diag_status_array;
-
-  diag_status_array.push_back(check_process_activated(is_activated_));
-  diag_status_array.push_back(check_set_initialpose(is_set_initialpose_));
-
-  if (is_activated_ && is_set_initialpose_) {
-    diag_status_array.push_back(check_measurement_updated(
-      "pose", pose_diag_info_.no_update_count, params_.pose_no_update_count_threshold_warn,
-      params_.pose_no_update_count_threshold_error));
-    diag_status_array.push_back(check_measurement_queue_size("pose", pose_diag_info_.queue_size));
-    diag_status_array.push_back(check_measurement_delay_gate(
-      "pose", pose_diag_info_.is_passed_delay_gate, pose_diag_info_.delay_time,
-      pose_diag_info_.delay_time_threshold));
-    diag_status_array.push_back(check_measurement_mahalanobis_gate(
-      "pose", pose_diag_info_.is_passed_mahalanobis_gate, pose_diag_info_.mahalanobis_distance,
-      params_.pose_gate_dist));
-
-    diag_status_array.push_back(check_measurement_updated(
-      "twist", twist_diag_info_.no_update_count, params_.twist_no_update_count_threshold_warn,
-      params_.twist_no_update_count_threshold_error));
-    diag_status_array.push_back(check_measurement_queue_size("twist", twist_diag_info_.queue_size));
-    diag_status_array.push_back(check_measurement_delay_gate(
-      "twist", twist_diag_info_.is_passed_delay_gate, twist_diag_info_.delay_time,
-      twist_diag_info_.delay_time_threshold));
-    diag_status_array.push_back(check_measurement_mahalanobis_gate(
-      "twist", twist_diag_info_.is_passed_mahalanobis_gate, twist_diag_info_.mahalanobis_distance,
-      params_.twist_gate_dist));
-
-    geometry_msgs::msg::PoseWithCovariance pose_cov;
-    pose_cov.pose = current_ekf_pose.pose;
-    pose_cov.covariance = ekf_module_->get_current_pose_covariance();
-    const autoware::localization_util::Ellipse ellipse =
-      autoware::localization_util::calculate_xy_ellipse(pose_cov, params_.ellipse_scale);
-    diag_status_array.push_back(check_covariance_ellipse(
-      "cov_ellipse_long_axis", ellipse.long_radius, params_.warn_ellipse_size,
-      params_.error_ellipse_size));
-    diag_status_array.push_back(check_covariance_ellipse(
-      "cov_ellipse_lateral_direction", ellipse.size_lateral_direction,
-      params_.warn_ellipse_size_lateral_direction, params_.error_ellipse_size_lateral_direction));
-  }
-
-  diagnostic_msgs::msg::DiagnosticStatus diag_merged_status;
-  diag_merged_status = merge_diagnostic_status(diag_status_array);
-  diag_merged_status.name = "localization: " + std::string(this->get_name());
-  diag_merged_status.hardware_id = this->get_name();
-
   diagnostic_msgs::msg::DiagnosticArray diag_msg;
   diag_msg.header.stamp = current_time;
-  diag_msg.status.push_back(diag_merged_status);
+
+  // 1. General status (その他)
+  {
+    std::vector<diagnostic_msgs::msg::DiagnosticStatus> general_diag_array;
+    general_diag_array.push_back(check_process_activated(is_activated_));
+    general_diag_array.push_back(check_set_initialpose(is_set_initialpose_));
+
+    diagnostic_msgs::msg::DiagnosticStatus general_status =
+      merge_diagnostic_status(general_diag_array);
+    general_status.name = "localization: " + std::string(this->get_name()) + ": general_status";
+    general_status.hardware_id = this->get_name();
+    diag_msg.status.push_back(general_status);
+  }
+
+  if (is_activated_ && is_set_initialpose_) {
+    // 2. Pose diagnostics (pose_...)
+    {
+      std::vector<diagnostic_msgs::msg::DiagnosticStatus> pose_diag_array;
+      pose_diag_array.push_back(check_measurement_updated(
+        "pose", pose_diag_info_.no_update_count, params_.pose_no_update_count_threshold_warn,
+        params_.pose_no_update_count_threshold_error));
+      pose_diag_array.push_back(check_measurement_queue_size("pose", pose_diag_info_.queue_size));
+      pose_diag_array.push_back(check_measurement_delay_gate(
+        "pose", pose_diag_info_.is_passed_delay_gate, pose_diag_info_.delay_time,
+        pose_diag_info_.delay_time_threshold));
+      pose_diag_array.push_back(check_measurement_mahalanobis_gate(
+        "pose", pose_diag_info_.is_passed_mahalanobis_gate, pose_diag_info_.mahalanobis_distance,
+        params_.pose_gate_dist));
+
+      diagnostic_msgs::msg::DiagnosticStatus pose_status = merge_diagnostic_status(pose_diag_array);
+      pose_status.name = "localization: " + std::string(this->get_name()) + ": pose_measurement";
+      pose_status.hardware_id = this->get_name();
+      diag_msg.status.push_back(pose_status);
+    }
+
+    // 3. Twist diagnostics (twist_...)
+    {
+      std::vector<diagnostic_msgs::msg::DiagnosticStatus> twist_diag_array;
+      twist_diag_array.push_back(check_measurement_updated(
+        "twist", twist_diag_info_.no_update_count, params_.twist_no_update_count_threshold_warn,
+        params_.twist_no_update_count_threshold_error));
+      twist_diag_array.push_back(
+        check_measurement_queue_size("twist", twist_diag_info_.queue_size));
+      twist_diag_array.push_back(check_measurement_delay_gate(
+        "twist", twist_diag_info_.is_passed_delay_gate, twist_diag_info_.delay_time,
+        twist_diag_info_.delay_time_threshold));
+      twist_diag_array.push_back(check_measurement_mahalanobis_gate(
+        "twist", twist_diag_info_.is_passed_mahalanobis_gate, twist_diag_info_.mahalanobis_distance,
+        params_.twist_gate_dist));
+
+      diagnostic_msgs::msg::DiagnosticStatus twist_status =
+        merge_diagnostic_status(twist_diag_array);
+      twist_status.name = "localization: " + std::string(this->get_name()) + ": twist_measurement";
+      twist_status.hardware_id = this->get_name();
+      diag_msg.status.push_back(twist_status);
+    }
+
+    // 4. Covariance ellipse diagnostics (cov_ellipse_...)
+    {
+      geometry_msgs::msg::PoseWithCovariance pose_cov;
+      pose_cov.pose = current_ekf_pose.pose;
+      pose_cov.covariance = ekf_module_->get_current_pose_covariance();
+      const autoware::localization_util::Ellipse ellipse =
+        autoware::localization_util::calculate_xy_ellipse(pose_cov, params_.ellipse_scale);
+
+      std::vector<diagnostic_msgs::msg::DiagnosticStatus> covariance_diag_array;
+      covariance_diag_array.push_back(check_covariance_ellipse(
+        "cov_ellipse_long_axis", ellipse.long_radius, params_.warn_ellipse_size,
+        params_.error_ellipse_size));
+      covariance_diag_array.push_back(check_covariance_ellipse(
+        "cov_ellipse_lateral_direction", ellipse.size_lateral_direction,
+        params_.warn_ellipse_size_lateral_direction, params_.error_ellipse_size_lateral_direction));
+
+      diagnostic_msgs::msg::DiagnosticStatus covariance_status =
+        merge_diagnostic_status(covariance_diag_array);
+      covariance_status.name =
+        "localization: " + std::string(this->get_name()) + ": covariance_ellipse";
+      covariance_status.hardware_id = this->get_name();
+      diag_msg.status.push_back(covariance_status);
+    }
+  }
+
   pub_diag_->publish(diag_msg);
 }
 
