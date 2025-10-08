@@ -83,7 +83,7 @@ static Trajectory<geometry_msgs::msg::Pose> build_parabolic_trajectory(
 }
 
 // Test 1: Simple test on horizontal line
-TEST(lateral_metrics, horizonatalLine)
+TEST(lateral_metrics, horizontalLine)
 {
   auto traj = build_horizontal_line(10, 1.0);
   geometry_msgs::msg::Point target_point;

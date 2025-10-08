@@ -171,48 +171,46 @@ int main1()
   target_point.z = 0.0;
 
   // To the right
-  {
-    auto traj = build_parabolic_trajectory(11, 0.5);
-    plot_trajectory(ax1, traj, "Parabolic to the right");
-    plot_traj_with_orientation(ax1, traj);
 
-    const auto nearest_s =
-      autoware::experimental::trajectory::find_nearest_index(traj, target_point);
+  auto traj = build_parabolic_trajectory(11, 0.5);
+  plot_trajectory(ax1, traj, "Parabolic to the right");
+  plot_traj_with_orientation(ax1, traj);
 
-    const auto target_s = nearest_s - 0.5;
-    const auto target_pose = traj.compute(target_s);
+  const auto nearest_s = autoware::experimental::trajectory::find_nearest_index(traj, target_point);
 
-    const auto longitudinal_offset =
-      autoware_utils_geometry::calc_longitudinal_deviation(target_pose, target_point);
-    const auto vertical_pose =
-      autoware_utils_geometry::calc_offset_pose(target_pose, longitudinal_offset, 0, 0, 0);
+  const auto target_s = nearest_s - 0.5;
+  const auto target_pose = traj.compute(target_s);
 
-    auto on_left = autoware::experimental::trajectory::is_left_side(traj, target_point, nearest_s);
-    auto line_label = on_left ? "left" : "right";
+  const auto longitudinal_offset =
+    autoware_utils_geometry::calc_longitudinal_deviation(target_pose, target_point);
+  const auto vertical_pose =
+    autoware_utils_geometry::calc_offset_pose(target_pose, longitudinal_offset, 0, 0, 0);
 
-    plot_point(ax1, target_point, "red", "Target Point");
-    plot_point(ax1, target_pose.position, "orange", "Target s");
-    plot_point(ax1, vertical_pose.position, "blue", "Perpendicular Point");
+  auto on_left = autoware::experimental::trajectory::is_left_side(traj, target_point, nearest_s);
+  auto line_label = on_left ? "left" : "right";
 
-    draw_line(ax1, target_point, vertical_pose.position, "orange", "lateral distance");
-    draw_line(ax1, target_point, target_pose.position, "red", "distance2d");
-    draw_square_angle_line(ax1, target_pose, target_point, "black", line_label);
-    draw_tangent_line(ax1, target_pose);
+  plot_point(ax1, target_point, "red", "Target Point");
+  plot_point(ax1, target_pose.position, "orange", "Target s");
+  plot_point(ax1, vertical_pose.position, "blue", "Perpendicular Point");
 
-    plot_trajectory(ax2, traj, "Parabolic to the right");
-    plot_point(ax2, target_point, "red", "Target Point", true);
-    plot_point(ax2, target_pose.position, "orange", "Target s", true);
-    plot_point(ax2, vertical_pose.position, "blue", "Perpendicular Point", true);
+  draw_line(ax1, target_point, vertical_pose.position, "orange", "lateral distance");
+  draw_line(ax1, target_point, target_pose.position, "red", "distance2d");
+  draw_square_angle_line(ax1, target_pose, target_point, "black", line_label);
+  draw_tangent_line(ax1, target_pose);
 
-    draw_line(ax2, target_point, vertical_pose.position, "orange", "lateral distance", true);
-    draw_line(ax2, target_point, target_pose.position, "red", "distance2d", true);
-    draw_square_angle_line(ax2, target_pose, target_point, "black", line_label);
-    draw_tangent_line(ax2, target_pose);
+  plot_trajectory(ax2, traj, "Parabolic to the right");
+  plot_point(ax2, target_point, "red", "Target Point", true);
+  plot_point(ax2, target_pose.position, "orange", "Target s", true);
+  plot_point(ax2, vertical_pose.position, "blue", "Perpendicular Point", true);
 
-    ax2.set_title(Args("To the right (Point on the Right)"), Kwargs("fontsize"_a = 16));
-    ax2.set_xlim(Args(std::make_tuple(0, 1.5)));
-    ax2.set_ylim(Args(std::make_tuple(0, 1)));
-  }
+  draw_line(ax2, target_point, vertical_pose.position, "orange", "lateral distance", true);
+  draw_line(ax2, target_point, target_pose.position, "red", "distance2d", true);
+  draw_square_angle_line(ax2, target_pose, target_point, "black", line_label);
+  draw_tangent_line(ax2, target_pose);
+
+  ax2.set_title(Args("To the right (Point on the Right)"), Kwargs("fontsize"_a = 16));
+  ax2.set_xlim(Args(std::make_tuple(0, 1.5)));
+  ax2.set_ylim(Args(std::make_tuple(0, 1)));
 
   for (auto & ax : axes) {
     ax.grid();
@@ -238,48 +236,46 @@ int main2()
   target_point.z = 0.0;
 
   // To the left
-  {
-    auto traj = build_parabolic_trajectory(11, 0.5, true);
 
-    plot_trajectory(ax1, traj, "Parabolic to the left");
-    plot_traj_with_orientation(ax1, traj);
+  auto traj = build_parabolic_trajectory(11, 0.5, true);
 
-    const auto nearest_s =
-      autoware::experimental::trajectory::find_nearest_index(traj, target_point);
+  plot_trajectory(ax1, traj, "Parabolic to the left");
+  plot_traj_with_orientation(ax1, traj);
 
-    const auto target_s = nearest_s + 0.5;
-    const auto target_pose = traj.compute(target_s);
+  const auto nearest_s = autoware::experimental::trajectory::find_nearest_index(traj, target_point);
 
-    const auto longitudinal_offset =
-      autoware_utils_geometry::calc_longitudinal_deviation(target_pose, target_point);
-    const auto vertical_pose =
-      autoware_utils_geometry::calc_offset_pose(target_pose, longitudinal_offset, 0, 0, 0);
+  const auto target_s = nearest_s + 0.5;
+  const auto target_pose = traj.compute(target_s);
 
-    auto on_left = autoware::experimental::trajectory::is_left_side(traj, target_point, nearest_s);
-    auto line_label = on_left ? "left" : "right";
+  const auto longitudinal_offset =
+    autoware_utils_geometry::calc_longitudinal_deviation(target_pose, target_point);
+  const auto vertical_pose =
+    autoware_utils_geometry::calc_offset_pose(target_pose, longitudinal_offset, 0, 0, 0);
 
-    plot_point(ax1, target_point, "red", "Target Point");
-    plot_point(ax1, target_pose.position, "orange", "Target s");
-    plot_point(ax1, vertical_pose.position, "blue", "Perpendicular Point");
-    draw_line(ax1, target_point, vertical_pose.position, "orange", "lateral distance");
-    draw_line(ax1, target_point, target_pose.position, "red", "distance2d");
-    draw_square_angle_line(ax1, target_pose, target_point, "black", line_label);
-    draw_tangent_line(ax1, target_pose);
+  auto on_left = autoware::experimental::trajectory::is_left_side(traj, target_point, nearest_s);
+  auto line_label = on_left ? "left" : "right";
 
-    plot_trajectory(ax2, traj, "Parabolic to the right");
-    plot_point(ax2, target_point, "red", "Target Point", true);
-    plot_point(ax2, target_pose.position, "orange", "Target s", true);
-    plot_point(ax2, vertical_pose.position, "blue", "Perpendicular Point", true);
+  plot_point(ax1, target_point, "red", "Target Point");
+  plot_point(ax1, target_pose.position, "orange", "Target s");
+  plot_point(ax1, vertical_pose.position, "blue", "Perpendicular Point");
+  draw_line(ax1, target_point, vertical_pose.position, "orange", "lateral distance");
+  draw_line(ax1, target_point, target_pose.position, "red", "distance2d");
+  draw_square_angle_line(ax1, target_pose, target_point, "black", line_label);
+  draw_tangent_line(ax1, target_pose);
 
-    draw_line(ax2, target_point, vertical_pose.position, "orange", "lateral distance", true);
-    draw_line(ax2, target_point, target_pose.position, "red", "distance2d", true);
-    draw_square_angle_line(ax2, target_pose, target_point, "black", line_label);
-    draw_tangent_line(ax2, target_pose);
+  plot_trajectory(ax2, traj, "Parabolic to the right");
+  plot_point(ax2, target_point, "red", "Target Point", true);
+  plot_point(ax2, target_pose.position, "orange", "Target s", true);
+  plot_point(ax2, vertical_pose.position, "blue", "Perpendicular Point", true);
 
-    ax2.set_title(Args("To the left (Point on the Left)"), Kwargs("fontsize"_a = 16));
-    ax2.set_xlim(Args(std::make_tuple(0, 1.5)));
-    ax2.set_ylim(Args(std::make_tuple(0, 1)));
-  }
+  draw_line(ax2, target_point, vertical_pose.position, "orange", "lateral distance", true);
+  draw_line(ax2, target_point, target_pose.position, "red", "distance2d", true);
+  draw_square_angle_line(ax2, target_pose, target_point, "black", line_label);
+  draw_tangent_line(ax2, target_pose);
+
+  ax2.set_title(Args("To the left (Point on the Left)"), Kwargs("fontsize"_a = 16));
+  ax2.set_xlim(Args(std::make_tuple(0, 1.5)));
+  ax2.set_ylim(Args(std::make_tuple(0, 1)));
 
   for (auto & ax : axes) {
     ax.grid();
