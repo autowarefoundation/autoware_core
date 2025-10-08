@@ -1487,7 +1487,7 @@ ObstacleStopModule::check_outside_cut_in_obstacle(
   if (
     std::abs(lat_vel) > outside_params.max_lateral_velocity ||
     long_vel < outside_params.min_longitudinal_velocity ||
-    long_vel < std::abs(lat_vel) * std::tan(outside_params.max_moving_direction_angle)) {
+    std::atan2(std::abs(lat_vel), long_vel) > outside_params.max_moving_direction_angle) {
     return std::nullopt;
   }
 
