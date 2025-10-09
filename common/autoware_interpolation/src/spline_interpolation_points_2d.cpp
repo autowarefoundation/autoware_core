@@ -14,6 +14,8 @@
 
 #include "autoware/interpolation/spline_interpolation_points_2d.hpp"
 
+#include <autoware_utils_geometry/geometry.hpp>
+
 #include <vector>
 
 namespace autoware::interpolation
@@ -73,14 +75,26 @@ std::vector<double> splineYawFromPoints(const std::vector<T> & points)
   // calculate spline coefficients
   SplineInterpolationPoints2d interpolator(points);
 
-  // interpolate base_keys at query_keys
+  if (interpolator.getSize() == points.size()) {
+    return interpolator.getSplineInterpolatedYaws();
+  }
+
+  const auto interpolated_points = interpolator.getSplineInterpolatedPoints();
   std::vector<double> yaw_vec;
+  yaw_vec.reserve(points.size());
+  size_t interpolated_idx = 0;
   for (size_t i = 0; i < points.size(); ++i) {
-    const double yaw = interpolator.getSplineInterpolatedYaw(i, 0.0);
-    yaw_vec.push_back(yaw);
+    const auto distance =
+      autoware_utils_geometry::calc_distance2d(points[i], interpolated_points[interpolated_idx]);
+    const auto same_point = interpolated_idx < interpolated_points.size() && distance < 1e-9;
+    yaw_vec.push_back(interpolator.getSplineInterpolatedYaw(interpolated_idx, distance));
+    if (same_point) {
+      interpolated_idx++;
+    }
   }
   return yaw_vec;
 }
+
 template std::vector<double> splineYawFromPoints(
   const std::vector<geometry_msgs::msg::Point> & points);
 template std::vector<double> splineYawFromPoints(
@@ -100,6 +114,24 @@ geometry_msgs::msg::Pose SplineInterpolationPoints2d::getSplineInterpolatedPose(
   pose.orientation =
     autoware_utils_geometry::create_quaternion_from_yaw(getSplineInterpolatedYaw(idx, s));
   return pose;
+}
+
+std::vector<geometry_msgs::msg::Point> SplineInterpolationPoints2d::getSplineInterpolatedPoints()
+  const
+{
+  std::vector<geometry_msgs::msg::Point> geom_points;
+  geom_points.reserve(getSize());
+  const auto xs = spline_x_.getSplineInterpolatedValues(base_s_vec_);
+  const auto ys = spline_y_.getSplineInterpolatedValues(base_s_vec_);
+  const auto zs = spline_z_.getSplineInterpolatedValues(base_s_vec_);
+  geometry_msgs::msg::Point geom_point;
+  for (auto i = 0UL; i < getSize(); ++i) {
+    geom_point.x = xs[i];
+    geom_point.y = ys[i];
+    geom_point.z = zs[i];
+    geom_points.push_back(geom_point);
+  }
+  return geom_points;
 }
 
 geometry_msgs::msg::Point SplineInterpolationPoints2d::getSplineInterpolatedPoint(
