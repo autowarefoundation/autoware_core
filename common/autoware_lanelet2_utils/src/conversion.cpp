@@ -30,6 +30,7 @@
 #include <sstream>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace autoware::experimental::lanelet2_utils
 {
@@ -140,6 +141,34 @@ lanelet::ConstPoint3d from_ros(const geometry_msgs::msg::Pose & src)
 lanelet::Point3d remove_const(const lanelet::ConstPoint3d & point)
 {
   return lanelet::Point3d{std::const_pointer_cast<lanelet::PointData>(point.constData())};
+}
+
+std::optional<lanelet::BasicLineString3d> create_basic_linestring3d(
+  const std::vector<lanelet::BasicPoint3d> points)
+{
+  if (points.size() < 2) {
+    return std::nullopt;
+  }
+  lanelet::BasicLineString3d linestring{};
+  for (auto & point : points) {
+    linestring.emplace_back(point.x(), point.y(), point.z());
+  }
+  return linestring;
+}
+
+std::optional<lanelet::ConstLineString3d> create_const_linestring3d(
+  const std::vector<lanelet::ConstPoint3d> points)
+{
+  if (points.size() < 2) {
+    return std::nullopt;
+  }
+  std::vector<lanelet::Point3d> without_const_points;
+  std::for_each(points.begin(), points.end(), [&](const auto & point) {
+    without_const_points.push_back(remove_const(point));
+  });
+  lanelet::ConstLineString3d const_linestring(lanelet::InvalId, without_const_points);
+
+  return const_linestring;
 }
 
 }  // namespace autoware::experimental::lanelet2_utils

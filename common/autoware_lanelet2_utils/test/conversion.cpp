@@ -17,6 +17,16 @@
 #include <gtest/gtest.h>
 #include <lanelet2_core/primitives/Lanelet.h>
 
+#include <vector>
+
+template <typename PointT1, typename PointT2>
+static void expect_point_eq(PointT1 & p1, PointT2 & p2)
+{
+  EXPECT_EQ(p1.x(), p2.x()) << "x mismatch.";
+  EXPECT_EQ(p1.y(), p2.y()) << "y mismatch.";
+  EXPECT_EQ(p1.z(), p2.z()) << "z mismatch.";
+}
+
 template <typename PointT1, typename PointT2>
 static void assert_float_point_eq(PointT1 & p1, PointT2 & p2)
 {
@@ -124,4 +134,58 @@ TEST(RemoveConst, RemoveConst)
   EXPECT_EQ(point.x(), without_const_point.x());
   EXPECT_EQ(point.y(), without_const_point.y());
   EXPECT_EQ(point.z(), without_const_point.z());
+}
+
+// Test 6: construct BasicLineString3d - one point
+TEST(ArtificialLaneletObjectConstruction, OnePointBasicLineString3d)
+{
+  auto p1 = lanelet::BasicPoint3d(1.0, 1.0, 1.0);
+  std::vector<lanelet::BasicPoint3d> vect_points = {p1};
+  auto ls = autoware::experimental::lanelet2_utils::create_basic_linestring3d(vect_points);
+  EXPECT_FALSE(ls.has_value());
+}
+
+// Test 7: construct BasicLineString3d - normal
+TEST(ArtificialLaneletObjectConstruction, BasicLineString3d)
+{
+  auto p1 = lanelet::BasicPoint3d(1.0, 1.0, 1.0);
+  auto p2 = lanelet::BasicPoint3d(2.0, 2.0, 2.0);
+  auto p3 = lanelet::BasicPoint3d(3.0, 3.0, 3.0);
+  std::vector<lanelet::BasicPoint3d> vect_points = {p1, p2, p3};
+  auto ls = autoware::experimental::lanelet2_utils::create_basic_linestring3d(vect_points);
+  EXPECT_TRUE(ls.has_value());
+
+  EXPECT_EQ(typeid(*ls), typeid(lanelet::BasicLineString3d))
+    << "ls is not lanelet::BasicLineString3d.";
+
+  for (size_t i = 0; i < vect_points.size(); ++i) {
+    expect_point_eq((*ls)[i], vect_points[i]);
+  }
+}
+
+// Test 8: construct ConstLineString3d - one point
+TEST(ArtificialLaneletObjectConstruction, OnePointConstLineString3d)
+{
+  auto p1 = lanelet::ConstPoint3d(lanelet::Point3d(lanelet::InvalId, 1.0, 1.0, 1.0));
+  std::vector<lanelet::ConstPoint3d> vect_points = {p1};
+  auto ls = autoware::experimental::lanelet2_utils::create_const_linestring3d(vect_points);
+  EXPECT_FALSE(ls.has_value());
+}
+
+// Test 7: construct ConstLineString3d - normal
+TEST(ArtificialLaneletObjectConstruction, ConstLineString3d)
+{
+  auto p1 = lanelet::ConstPoint3d(lanelet::Point3d(lanelet::InvalId, 1.0, 1.0, 1.0));
+  auto p2 = lanelet::ConstPoint3d(lanelet::Point3d(lanelet::InvalId, 2.0, 2.0, 2.0));
+  auto p3 = lanelet::ConstPoint3d(lanelet::Point3d(lanelet::InvalId, 3.0, 3.0, 3.0));
+  std::vector<lanelet::ConstPoint3d> vect_points = {p1, p2, p3};
+  auto ls = autoware::experimental::lanelet2_utils::create_const_linestring3d(vect_points);
+  EXPECT_TRUE(ls.has_value());
+
+  EXPECT_EQ(typeid(*ls), typeid(lanelet::ConstLineString3d))
+    << "ls is not lanelet::ConstLineString3d.";
+
+  for (size_t i = 0; i < vect_points.size(); ++i) {
+    expect_point_eq((*ls)[i], vect_points[i]);
+  }
 }
