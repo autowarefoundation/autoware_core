@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <autoware/lanelet2_utils/conversion.hpp>
+#include <autoware/lanelet2_utils/geometry.hpp>
 #include <autoware/lanelet2_utils/kind.hpp>
 #include <autoware/lanelet2_utils/nn_search.hpp>
 #include <autoware_lanelet2_extension/utility/utilities.hpp>
@@ -41,7 +43,7 @@ std::optional<lanelet::ConstLanelet> get_closest_lanelet(
     return std::nullopt;
   }
 
-  const lanelet::BasicPoint2d search_point(search_pose.position.x, search_pose.position.y);
+  const lanelet::BasicPoint3d search_point = from_ros(search_pose);
 
   lanelet::ConstLanelets candidate_lanelets;
   double min_distance = std::numeric_limits<double>::max();
@@ -54,8 +56,8 @@ std::optional<lanelet::ConstLanelet> get_closest_lanelet(
       which is used to only compare distance
       stackoverflow.com/questions/51267577/boost-geometry-polygon-distance-for-inside-point
      */
-    const double distance =
-      boost::geometry::comparable_distance(llt.polygon2d().basicPolygon(), search_point);
+    const double distance = boost::geometry::comparable_distance(
+      llt.polygon2d().basicPolygon(), lanelet::utils::to2D(search_point));
 
     /*
       NOTE(soblin): this line is intended to push all lanelets on which search_point is located to
@@ -79,8 +81,7 @@ std::optional<lanelet::ConstLanelet> get_closest_lanelet(
   double min_angle = std::numeric_limits<double>::max();
   std::optional<lanelet::ConstLanelet> closest_lanelet{};
   for (const auto & llt : candidate_lanelets) {
-    const lanelet::ConstLineString3d segment =
-      lanelet::utils::getClosestSegment(search_point, llt.centerline());
+    const lanelet::ConstLineString3d segment = get_closest_segment(llt.centerline(), search_point);
     if (segment.empty()) {
       continue;
     }
@@ -104,11 +105,12 @@ std::optional<lanelet::ConstLanelet> get_closest_lanelet_within_constraint(
     return std::nullopt;
   }
 
-  const lanelet::BasicPoint2d search_point(search_pose.position.x, search_pose.position.y);
+  const lanelet::BasicPoint3d search_point = from_ros(search_pose);
 
   std::vector<std::pair<lanelet::ConstLanelet, double>> candidate_lanelets;
   for (const auto & llt : lanelets) {
-    const double distance = boost::geometry::distance(llt.polygon2d().basicPolygon(), search_point);
+    const double distance =
+      boost::geometry::distance(llt.polygon2d().basicPolygon(), lanelet::utils::to2D(search_point));
 
     if (distance <= dist_threshold) {
       candidate_lanelets.emplace_back(llt, distance);
@@ -134,7 +136,7 @@ std::optional<lanelet::ConstLanelet> get_closest_lanelet_within_constraint(
   for (const auto & llt_pair : candidate_lanelets) {
     const auto & distance = llt_pair.second;
 
-    double lanelet_angle = lanelet::utils::getLaneletAngle(llt_pair.first, search_pose.position);
+    double lanelet_angle = get_lanelet_angle(llt_pair.first, search_point);
     double angle_diff = std::fabs(autoware_utils_math::normalize_radian(lanelet_angle - pose_yaw));
     // reject
     if (angle_diff > std::fabs(yaw_threshold)) continue;
@@ -197,23 +199,25 @@ std::optional<lanelet::ConstLanelet> LaneletRTree::get_closest_lanelet_within_co
   const double yaw_threshold) const
 {
   const auto pose_yaw = tf2::getYaw(search_pose.orientation);
-  const auto search_point = lanelet::BasicPoint2d(search_pose.position.x, search_pose.position.y);
-  const auto query_nearest = boost::geometry::index::nearest(search_point, lanelets_.size());
+  const lanelet::BasicPoint3d search_point = from_ros(search_pose);
+  const auto query_nearest =
+    boost::geometry::index::nearest(lanelet::utils::to2D(search_point), lanelets_.size());
 
   auto min_dist = std::numeric_limits<double>::max();
   auto min_angle_diff = std::numeric_limits<double>::max();
   std::optional<size_t> optimal_index{};
 
   for (auto query_it = rtree_.qbegin(query_nearest); query_it != rtree_.qend(); ++query_it) {
-    const auto approx_dist_to_lanelet = boost::geometry::distance(search_point, query_it->first);
+    const auto approx_dist_to_lanelet =
+      boost::geometry::distance(lanelet::utils::to2D(search_point), query_it->first);
     if (approx_dist_to_lanelet > min_dist || approx_dist_to_lanelet > dist_threshold) {
       break;
     }
 
     const auto & lanelet = lanelets_.at(query_it->second);
-    const auto precise_dist =
-      boost::geometry::distance(search_point, lanelet.polygon2d().basicPolygon());
-    const auto lanelet_angle = lanelet::utils::getLaneletAngle(lanelet, search_pose.position);
+    const auto precise_dist = boost::geometry::distance(
+      lanelet::utils::to2D(search_point), lanelet.polygon2d().basicPolygon());
+    const auto lanelet_angle = get_lanelet_angle(lanelet, search_point);
     const double angle_diff =
       std::abs(autoware_utils_math::normalize_radian(lanelet_angle - pose_yaw));
     if (precise_dist > dist_threshold || angle_diff > std::abs(yaw_threshold)) {

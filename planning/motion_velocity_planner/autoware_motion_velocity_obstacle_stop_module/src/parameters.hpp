@@ -117,9 +117,14 @@ struct ObstacleFilteringParam
   double min_velocity_to_reach_collision_point{};
   double stop_obstacle_hold_time_threshold{};
 
-  double outside_estimation_time_horizon{};
-  double outside_max_lateral_velocity{};
-  double outside_deceleration{};
+  struct OutsideObstacleParam
+  {
+    double estimation_time_horizon{};
+    double max_lateral_velocity{};
+    double min_longitudinal_velocity{};
+    double max_moving_direction_angle{};
+    double deceleration{};
+  } outside_obstacle;
 
   double crossing_obstacle_collision_time_margin{};
   double crossing_obstacle_traj_angle_threshold{};
@@ -155,12 +160,16 @@ struct ObstacleFilteringParam
     stop_obstacle_hold_time_threshold = get_object_parameter<double>(
       node, param_prefix + "stop_obstacle_hold_time_threshold", label_str);
 
-    outside_estimation_time_horizon = get_object_parameter<double>(
+    outside_obstacle.estimation_time_horizon = get_object_parameter<double>(
       node, param_prefix + "outside_obstacle.estimation_time_horizon", label_str);
-    outside_deceleration =
-      get_object_parameter<double>(node, param_prefix + "outside_obstacle.deceleration", label_str);
-    outside_max_lateral_velocity = get_object_parameter<double>(
+    outside_obstacle.max_lateral_velocity = get_object_parameter<double>(
       node, param_prefix + "outside_obstacle.max_lateral_velocity", label_str);
+    outside_obstacle.min_longitudinal_velocity = get_object_parameter<double>(
+      node, param_prefix + "outside_obstacle.min_longitudinal_velocity", label_str);
+    outside_obstacle.max_moving_direction_angle = get_object_parameter<double>(
+      node, param_prefix + "outside_obstacle.max_moving_direction_angle", label_str);
+    outside_obstacle.deceleration =
+      get_object_parameter<double>(node, param_prefix + "outside_obstacle.deceleration", label_str);
 
     crossing_obstacle_collision_time_margin = get_object_parameter<double>(
       node, param_prefix + "crossing_obstacle.collision_time_margin", label_str);

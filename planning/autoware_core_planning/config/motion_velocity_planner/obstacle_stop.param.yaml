@@ -85,6 +85,8 @@
         outside_obstacle: # Parameters for predicting if an obstacle will cut in. Pointcloud obstacles are not supported.
           estimation_time_horizon: 1.0
           max_lateral_velocity: 5.0 # maximum lateral velocity to consider the obstacle as a stop obstacle [m/s]
+          min_longitudinal_velocity: -8.0 # minimum longitudinal velocity to consider the obstacle as a stop obstacle [m/s]
+          max_moving_direction_angle: 2.44 # [rad] = 140 [deg], maximum angle of moving direction to consider the obstacle as a stop obstacle
           deceleration: # planner perceives the object will stop with this rate to avoid unnecessary stops [m/ss]
             default: 0.0
             pedestrian: 1.0
