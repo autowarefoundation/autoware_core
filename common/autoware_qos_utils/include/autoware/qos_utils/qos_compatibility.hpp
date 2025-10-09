@@ -24,26 +24,26 @@ namespace autoware::qos_utils
  * @brief Get QoS profile for services with ROS 2 distribution compatibility
  * @return QoS profile appropriate for the current ROS 2 distribution
  * 
- * For ROS 2 Jazzy and later: returns rclcpp::ServicesQoS()
- * For earlier versions: returns rclcpp::ServicesQoS().get_rmw_qos_profile()
+ * For ROS 2 Humble and earlier: returns rclcpp::ServicesQoS().get_rmw_qos_profile()
+ * For Jazzy and later: returns rclcpp::ServicesQoS()
  */
-#ifdef ROS_DISTRO_JAZZY
-#define AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE() rclcpp::ServicesQoS()
-#else
+#ifdef ROS_DISTRO_HUMBLE
 #define AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE() rclcpp::ServicesQoS().get_rmw_qos_profile()
+#else
+#define AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE() rclcpp::ServicesQoS()
 #endif
 
 /**
  * @brief Get default QoS profile with ROS 2 distribution compatibility
  * @return QoS profile appropriate for the current ROS 2 distribution
  * 
- * For ROS 2 Jazzy and later: returns rclcpp::QoS(rclcpp::KeepLast(10))
- * For earlier versions: returns rmw_qos_profile_default
+ * For ROS 2 Humble and earlier: returns rmw_qos_profile_default
+ * For Jazzy and later: returns rclcpp::QoS(rclcpp::KeepLast(10))
  */
-#ifdef ROS_DISTRO_JAZZY
-#define AUTOWARE_DEFAULT_TOPIC_QOS_PROFILE() rclcpp::QoS(rclcpp::KeepLast(10))
-#else
+#ifdef ROS_DISTRO_HUMBLE
 #define AUTOWARE_DEFAULT_TOPIC_QOS_PROFILE() rmw_qos_profile_default
+#else
+#define AUTOWARE_DEFAULT_TOPIC_QOS_PROFILE() rclcpp::QoS(rclcpp::KeepLast(10))
 #endif
 
 }  // namespace autoware::qos_utils
