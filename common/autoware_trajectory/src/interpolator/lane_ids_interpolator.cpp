@@ -29,39 +29,25 @@ std::vector<int64_t> LaneIdsInterpolator::compute_impl(const double s) const
   if (s == this->bases_[idx]) {
     return values_.at(idx);
   }
-  if (idx + 1 < static_cast<int32_t>(this->bases_.size()) && s == this->bases_[idx + 1]) {
+  if (s == this->bases_[idx + 1]) {
     return values_.at(idx + 1);
   }
 
   // Get the two adjacent values for interpolation
-  const std::vector<int64_t> & left_value = values_.at(idx);
-  const std::vector<int64_t> & right_value = values_.at(idx + 1);
+  const auto & left_value = values_.at(idx);
+  const auto & right_value = values_.at(idx + 1);
 
   // Domain knowledge: prefer boundaries with single lane IDs over multiple lane IDs
   // This handles the case where lane boundaries should contain more than two elements
   if (left_value.size() == 1 && right_value.size() > 1) {
-    // Create a copy to avoid potential compiler optimization issues
-    std::vector<int64_t> result;
-    result.reserve(left_value.size());
-    result.assign(left_value.begin(), left_value.end());
-    return result;
+    return left_value;
   }
   if (left_value.size() > 1 && right_value.size() == 1) {
-    // Create a copy to avoid potential compiler optimization issues
-    std::vector<int64_t> result;
-    result.reserve(right_value.size());
-    result.assign(right_value.begin(), right_value.end());
-    return result;
+    return right_value;
   }  // If both are single or both are multiple, choose the closest one
   const double left_distance = s - this->bases_[idx];
   const double right_distance = this->bases_[idx + 1] - s;
-  
-  // Create a copy to avoid potential compiler optimization issues
-  const std::vector<int64_t> & chosen_value = (left_distance <= right_distance) ? left_value : right_value;
-  std::vector<int64_t> result;
-  result.reserve(chosen_value.size());
-  result.assign(chosen_value.begin(), chosen_value.end());
-  return result;
+  return (left_distance <= right_distance) ? left_value : right_value;
 }
 
 bool LaneIdsInterpolator::build_impl(
