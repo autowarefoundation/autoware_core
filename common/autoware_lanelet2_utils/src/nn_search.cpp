@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/lanelet2_utils/geometry.hpp>
 #include <autoware/lanelet2_utils/kind.hpp>
 #include <autoware/lanelet2_utils/nn_search.hpp>
@@ -42,8 +43,7 @@ std::optional<lanelet::ConstLanelet> get_closest_lanelet(
     return std::nullopt;
   }
 
-  const lanelet::BasicPoint3d search_point(
-    search_pose.position.x, search_pose.position.y, search_pose.position.z);
+  const lanelet::BasicPoint3d search_point = from_ros(search_pose);
 
   lanelet::ConstLanelets candidate_lanelets;
   double min_distance = std::numeric_limits<double>::max();
@@ -105,8 +105,7 @@ std::optional<lanelet::ConstLanelet> get_closest_lanelet_within_constraint(
     return std::nullopt;
   }
 
-  const lanelet::BasicPoint3d search_point(
-    search_pose.position.x, search_pose.position.y, search_pose.position.z);
+  const lanelet::BasicPoint3d search_point = from_ros(search_pose);
 
   std::vector<std::pair<lanelet::ConstLanelet, double>> candidate_lanelets;
   for (const auto & llt : lanelets) {
@@ -200,8 +199,7 @@ std::optional<lanelet::ConstLanelet> LaneletRTree::get_closest_lanelet_within_co
   const double yaw_threshold) const
 {
   const auto pose_yaw = tf2::getYaw(search_pose.orientation);
-  const auto search_point =
-    lanelet::BasicPoint3d(search_pose.position.x, search_pose.position.y, search_pose.position.z);
+  const lanelet::BasicPoint3d search_point = from_ros(search_pose);
   const auto query_nearest =
     boost::geometry::index::nearest(lanelet::utils::to2D(search_point), lanelets_.size());
 
