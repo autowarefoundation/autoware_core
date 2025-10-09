@@ -7093,6 +7093,21 @@
 <td>A utility function that locates the arc-length coordinate <code>s</code> on a continuous trajectory closest to a given pose.<br> Input is any continuous trajectory type.<br>If no sample lies within <code>max_dist</code> (Euclidean) and <code>max_yaw</code> (heading) limits, returns <code>std::nullopt</code>.<br>Otherwise, It searches for the best point on the bases first, and then performs a ternary search to precisely locate the nearest <code>s</code> in a continuous manner at \~1e-4 m precision level.<br>If two samples are equally close in distance, the one with the smaller yaw deviation (within <code>max_yaw</code>) is chosen.</td>
 <td><img alt="find_nearest_index" src="images/utils/find_nearest.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Ffind_nearest.drawio.svg">View in Drawio</a></td>
 </tr>
+<tr>
+<td><code>&lt;autoware/trajectory/utils/lateral_metrics.hpp&gt;</code></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><ul><li><code>compute_lateral_distance</code></li></ul></td>
+<td>A utility A utility function that computes the normal distance between a given <code>target point</code> and the tangent line of the pose at specified arc-length <code>s</code> on the trajectory.<br> See below cell figure</td>
+<td></td>
+</tr>
+<tr>
+<td><ul><li><code>is_left_side</code></li></ul></td>
+<td>A utility function that determines whether a given <code>target point</code> lies on the <strong>left side</strong> of the trajectory's tangent direction at the specified arc-length <code>s</code>.</td>
+<td><img alt="lateral_metrics" src="images/utils/lateral_distance_computation.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Flateral_distance_computation.drawio.svg">View in Drawio</a></td>
+</tr>
 </tbody>
 </table>
 <h4 id="derivation-of-shift">Derivation of <code>shift</code><a class="headerlink" href="#derivation-of-shift" title="Permanent link">#</a></h4>
