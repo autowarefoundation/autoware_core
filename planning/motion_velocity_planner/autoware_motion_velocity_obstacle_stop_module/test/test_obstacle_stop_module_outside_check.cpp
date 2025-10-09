@@ -101,7 +101,6 @@ protected:
     rclcpp::init(0, nullptr);
     module_ = std::make_unique<ObstacleStopModuleWrapper>();
     // Initialize test parameters
-    obstacle_filtering_param_.outside_max_lateral_velocity = 1.0;
     stop_planning_param_.hold_stop_distance_threshold = 2.0;
 
     // Prepare test trajectory data
@@ -233,11 +232,23 @@ TEST_F(OutsideCutInObstacleTest, ValidCollisionPointWithCutInObject)
   auto pose = test_utils::create_test_pose();
   pose.position.x = 20.0;
   pose.position.y = -5.0;
-  auto object = create_test_object(1.0, 0.5, pose);
+  auto object = create_test_object(2.0, 0.5, pose);
   auto result = module_->check_outside_cut_in_obstacle_wrapper(
     object, traj_points_, decimated_traj_points_, decimated_traj_polys_with_lat_margin_,
     dist_to_bumper_, estimation_time_, current_time_);
   EXPECT_TRUE(result.has_value());
+}
+
+TEST_F(OutsideCutInObstacleTest, ValidCollisionPointWithOppositeCutInObject)
+{
+  auto pose = test_utils::create_test_pose();
+  pose.position.x = 20.0;
+  pose.position.y = -5.0;
+  auto object = create_test_object(-2.0, 0.5, pose);
+  auto result = module_->check_outside_cut_in_obstacle_wrapper(
+    object, traj_points_, decimated_traj_points_, decimated_traj_polys_with_lat_margin_,
+    dist_to_bumper_, estimation_time_, current_time_);
+  EXPECT_FALSE(result.has_value());
 }
 
 // TODO(takagi): move this to autoware_motion_velocity_planner_common package
