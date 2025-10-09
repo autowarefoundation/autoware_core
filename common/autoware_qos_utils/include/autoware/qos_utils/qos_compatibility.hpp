@@ -23,7 +23,7 @@ namespace autoware::qos_utils
 /**
  * @brief Get QoS profile for services with ROS 2 distribution compatibility
  * @return QoS profile appropriate for the current ROS 2 distribution
- * 
+ *
  * For ROS 2 Humble and earlier: returns rclcpp::ServicesQoS().get_rmw_qos_profile()
  * For Jazzy and later: returns rclcpp::ServicesQoS()
  */
@@ -36,7 +36,7 @@ namespace autoware::qos_utils
 /**
  * @brief Get default QoS profile with ROS 2 distribution compatibility
  * @return QoS profile appropriate for the current ROS 2 distribution
- * 
+ *
  * For ROS 2 Humble and earlier: returns rmw_qos_profile_default
  * For Jazzy and later: returns rclcpp::QoS(rclcpp::KeepLast(10))
  */
