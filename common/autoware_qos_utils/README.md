@@ -22,7 +22,7 @@ This package provides compatibility functions for QoS (Quality of Service) confi
 
 // Create a service client with compatible QoS
 auto client = node->create_client<MyService>(
-  "my_service", 
+  "my_service",
   AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE()
 );
 
@@ -41,7 +41,7 @@ auto service = node->create_service<MyService>(
 
 // Create a publisher with compatible QoS
 auto publisher = node->create_publisher<MyMessage>(
-  "my_topic", 
+  "my_topic",
   AUTOWARE_DEFAULT_TOPIC_QOS_PROFILE()
 );
 
@@ -63,10 +63,10 @@ auto subscription = node->create_subscription<MyMessage>(
 
 ## ROS 2 Distribution Compatibility
 
-| ROS 2 Distribution | Service QoS | Topic QoS |
-|-------------------|-------------|-----------|
-| Humble and earlier | `rclcpp::ServicesQoS().get_rmw_qos_profile()` | `rmw_qos_profile_default` |
-| Jazzy and later | `rclcpp::ServicesQoS()` | `rclcpp::QoS(rclcpp::KeepLast(10))` |
+| ROS 2 Distribution | Service QoS                                   | Topic QoS                           |
+| ------------------ | --------------------------------------------- | ----------------------------------- |
+| Humble and earlier | `rclcpp::ServicesQoS().get_rmw_qos_profile()` | `rmw_qos_profile_default`           |
+| Jazzy and later    | `rclcpp::ServicesQoS()`                       | `rclcpp::QoS(rclcpp::KeepLast(10))` |
 
 ### Implementation Details
 
