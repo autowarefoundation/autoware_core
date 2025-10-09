@@ -7100,12 +7100,12 @@
 </tr>
 <tr>
 <td><ul><li><code>compute_lateral_distance</code></li></ul></td>
-<td>A utility function that computes the lateral distance between a given <code>target point</code> and the trajectory point corresponding to the specified arc-length <code>s</code>, perpendicular to trajectory’s local tangent direction.</td>
+<td>A utility A utility function that computes the normal distance between a given <code>target point</code> and the tangent line of the pose at specified arc-length <code>s</code> on the trajectory.<br> See below cell figure</td>
 <td></td>
 </tr>
 <tr>
 <td><ul><li><code>is_left_side</code></li></ul></td>
-<td>A utility function that determines whether a given <code>target point</code> lies to the <strong>left side</strong> of the trajectory's tangent direction at the specified arc-length <code>s</code>.</td>
+<td>A utility function that determines whether a given <code>target point</code> lies on the <strong>left side</strong> of the trajectory's tangent direction at the specified arc-length <code>s</code>.</td>
 <td><img alt="lateral_metrics" src="images/utils/lateral_distance_computation.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-655%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Flateral_distance_computation.drawio.svg">View in Drawio</a></td>
 </tr>
 </tbody>
