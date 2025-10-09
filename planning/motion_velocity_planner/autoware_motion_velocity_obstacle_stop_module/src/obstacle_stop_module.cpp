@@ -62,15 +62,18 @@ double calc_estimation_time(
   // we have to capsulize this distance information as time with constant velocity assumption.
   // Therefore here we return a value (v^2/2a) / v = v/2a as the equivalent estimation time.
   const auto equivalent_estimation_time = [&]() {
-    if (obstacle_filtering_param.outside_deceleration <= std::numeric_limits<double>::epsilon()) {
+    if (
+      obstacle_filtering_param.outside_obstacle.deceleration <=
+      std::numeric_limits<double>::epsilon()) {
       return std::numeric_limits<double>::infinity();
     }
     const auto & twist = predicted_object.kinematics.initial_twist_with_covariance.twist;
     return std::hypot(twist.linear.x, twist.linear.y) * 0.5 /
-           obstacle_filtering_param.outside_deceleration;
+           obstacle_filtering_param.outside_obstacle.deceleration;
   };
   return std::clamp(
-    equivalent_estimation_time(), 0.0, obstacle_filtering_param.outside_estimation_time_horizon);
+    equivalent_estimation_time(), 0.0,
+    obstacle_filtering_param.outside_obstacle.estimation_time_horizon);
 }
 
 autoware_utils_geometry::Point2d convert_point(const geometry_msgs::msg::Point & p)
@@ -447,7 +450,7 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_predicted
       filtering_params.lateral_margin.max_margin(vehicle_info) <
       min_lat_dist_to_traj_poly - std::max(
                                     object->get_lat_vel_relative_to_traj(traj_points) *
-                                      filtering_params.outside_estimation_time_horizon,
+                                      filtering_params.outside_obstacle.estimation_time_horizon,
                                     0.0)) {
       const auto obj_uuid_str =
         autoware_utils_uuid::to_hex_string(object->predicted_object.object_id);
@@ -1474,12 +1477,17 @@ ObstacleStopModule::check_outside_cut_in_obstacle(
 {
   autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
 
-  const auto & filtering_params = obstacle_filtering_params_.at(
-    StopObstacleClassification{object->predicted_object.classification}.label);
+  const auto & outside_params =
+    obstacle_filtering_params_
+      .at(StopObstacleClassification{object->predicted_object.classification}.label)
+      .outside_obstacle;
 
+  const double lat_vel = object->get_lat_vel_relative_to_traj(traj_points);
+  const double long_vel = object->get_lon_vel_relative_to_traj(traj_points);
   if (
-    std::abs(object->get_lat_vel_relative_to_traj(traj_points)) >
-    filtering_params.outside_max_lateral_velocity) {
+    std::abs(lat_vel) > outside_params.max_lateral_velocity ||
+    long_vel < outside_params.min_longitudinal_velocity ||
+    std::atan2(std::abs(lat_vel), long_vel) > outside_params.max_moving_direction_angle) {
     return std::nullopt;
   }
 
