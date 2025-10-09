@@ -2,6 +2,17 @@ cmake_minimum_required(VERSION 3.14)
 
 project(autoware_trajectory)
 
+# cspell: ignore Warray, Wstringop, stringop
+# Disable array bounds warnings for GCC 13+ as they appear to be false positives
+# NOTE: workaround https://github.com/autowarefoundation/autoware_core/pull/644
+# Delete in the future
+if(((CMAKE_CXX_COMPILER_ID MATCHES "GNU") AND NOT MINGW AND NOT HAIKU) AND CMAKE_CXX_COMPILER_VERSION GREATER_EQUAL 13)
+  message(STATUS "GCC13 or later detected, disabling \"-Warray-bounds and -Wstringop-overflow\" "
+    "for interpolator/lane_ids_interpolator.cpp as it appears to be a false positive")
+  set_source_files_properties(src/interpolator/lane_ids_interpolator.cpp PROPERTIES
+      COMPILE_FLAGS "-Wno-array-bounds -Wno-stringop-overflow"
+  )
+endif()
 
 find_package(autoware_cmake REQUIRED)
 autoware_package()
