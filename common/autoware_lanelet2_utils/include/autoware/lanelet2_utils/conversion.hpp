@@ -77,5 +77,12 @@ autoware_map_msgs::msg::LaneletMapBin to_autoware_map_msgs(const lanelet::Lanele
 lanelet::LaneletMapConstPtr from_autoware_map_msgs(
   const autoware_map_msgs::msg::LaneletMapBin & msg);
 
+/**
+ * @brief remove constant from ConstPoint3d
+ * @param point ConstPoint3d
+ * @return Point3d (without const)
+ */
+lanelet::Point3d remove_const(const lanelet::ConstPoint3d & point);
+
 }  // namespace autoware::experimental::lanelet2_utils
 #endif  // AUTOWARE__LANELET2_UTILS__CONVERSION_HPP_

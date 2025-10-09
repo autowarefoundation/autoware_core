@@ -108,3 +108,20 @@ TEST(TestConversion, RoundTripPointToConstPoint2d)
   EXPECT_EQ(typeid(converted_pt2d), typeid(lanelet::ConstPoint2d))
     << "converted_pt is not lanelet::ConstPoint2d.";
 }
+
+// Test 5: remove const from ConstPoint3d
+TEST(RemoveConst, RemoveConst)
+{
+  const lanelet::ConstPoint3d point = lanelet::Point3d(lanelet::InvalId, 1.0, 1.0, 1.0);
+  ASSERT_EQ(typeid(point), typeid(lanelet::ConstPoint3d)) << "point is not lanelet::ConstPoint3d.";
+
+  const auto without_const_point = autoware::experimental::lanelet2_utils::remove_const(point);
+  // Check type
+  EXPECT_EQ(typeid(without_const_point), typeid(lanelet::Point3d))
+    << "without_const_point is not lanelet::Point3d.";
+
+  // Check Content
+  EXPECT_EQ(point.x(), without_const_point.x());
+  EXPECT_EQ(point.y(), without_const_point.y());
+  EXPECT_EQ(point.z(), without_const_point.z());
+}
