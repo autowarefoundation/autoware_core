@@ -63,6 +63,9 @@ std::vector<T> concat_vectors(std::vector<T> first_vector, std::vector<T> second
   return first_vector;
 }
 
+std::vector<TrajectoryPoint> resample_trajectory_points(
+  const std::vector<TrajectoryPoint> & traj_points, const double interval);
+
 /**
  * @brief crop part of the `traj_points` from `current_pose`, resample it by
  * `decimate_trajectory_step_length`, and extend the end by `goal_extended_trajectory_length`
