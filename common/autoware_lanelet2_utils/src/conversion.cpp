@@ -176,4 +176,62 @@ std::optional<lanelet::ConstLineString3d> create_const_linestring3d(
   return const_linestring;
 }
 
+std::optional<lanelet::ConstLanelet> create_const_lanelet(
+  const std::vector<lanelet::Point3d> & left_points,
+  const std::vector<lanelet::Point3d> & right_points)
+{
+  if (left_points.size() < 2 || right_points.size() < 2) {
+    return std::nullopt;
+  }
+  lanelet::LineString3d left_ls(lanelet::InvalId, left_points);
+  lanelet::LineString3d right_ls(lanelet::InvalId, right_points);
+
+  lanelet::ConstLanelet cll(lanelet::InvalId, left_ls, right_ls);
+  return cll;
+}
+
+std::optional<lanelet::ConstLanelet> create_const_lanelet(
+  const std::vector<lanelet::BasicPoint3d> & left_points,
+  const std::vector<lanelet::BasicPoint3d> & right_points)
+{
+  if (left_points.size() < 2 || right_points.size() < 2) {
+    return std::nullopt;
+  }
+
+  std::vector<lanelet::Point3d> plain_left_points;
+  std::vector<lanelet::Point3d> plain_right_points;
+
+  std::for_each(left_points.begin(), left_points.end(), [&](const auto & point) {
+    plain_left_points.push_back(remove_basic(point));
+  });
+
+  std::for_each(right_points.begin(), right_points.end(), [&](const auto & point) {
+    plain_right_points.push_back(remove_basic(point));
+  });
+
+  return *create_const_lanelet(plain_left_points, plain_right_points);
+}
+
+std::optional<lanelet::ConstLanelet> create_const_lanelet(
+  const std::vector<lanelet::ConstPoint3d> & left_points,
+  const std::vector<lanelet::ConstPoint3d> & right_points)
+{
+  if (left_points.size() < 2 || right_points.size() < 2) {
+    return std::nullopt;
+  }
+
+  std::vector<lanelet::Point3d> plain_left_points;
+  std::vector<lanelet::Point3d> plain_right_points;
+
+  std::for_each(left_points.begin(), left_points.end(), [&](const auto & point) {
+    plain_left_points.push_back(remove_const(point));
+  });
+
+  std::for_each(right_points.begin(), right_points.end(), [&](const auto & point) {
+    plain_right_points.push_back(remove_const(point));
+  });
+
+  return *create_const_lanelet(plain_left_points, plain_right_points);
+}
+
 }  // namespace autoware::experimental::lanelet2_utils
