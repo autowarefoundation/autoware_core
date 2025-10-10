@@ -143,6 +143,11 @@ lanelet::Point3d remove_const(const lanelet::ConstPoint3d & point)
   return lanelet::Point3d{std::const_pointer_cast<lanelet::PointData>(point.constData())};
 }
 
+lanelet::Point3d remove_basic(const lanelet::BasicPoint3d & point)
+{
+  return lanelet::Point3d(lanelet::InvalId, point);
+}
+
 std::optional<lanelet::BasicLineString3d> create_basic_linestring3d(
   const std::vector<lanelet::BasicPoint3d> points)
 {

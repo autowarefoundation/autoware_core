@@ -136,7 +136,24 @@ TEST(RemoveConst, RemoveConst)
   EXPECT_EQ(point.z(), without_const_point.z());
 }
 
-// Test 6: construct BasicLineString3d - one point
+// Test 6: remove basic from BasicPoint3d
+TEST(RemoveBasic, RemoveBasic)
+{
+  const lanelet::BasicPoint3d point = lanelet::BasicPoint3d(1.0, 1.0, 2.0);
+  ASSERT_EQ(typeid(point), typeid(lanelet::BasicPoint3d)) << "point is not lanelet::BasicPoint3d.";
+
+  const auto without_basic_point = autoware::experimental::lanelet2_utils::remove_basic(point);
+  // Check type
+  EXPECT_EQ(typeid(without_basic_point), typeid(lanelet::Point3d))
+    << "without_basic_point is not lanelet::Point3d.";
+
+  // Check Content
+  EXPECT_EQ(point.x(), without_basic_point.x());
+  EXPECT_EQ(point.y(), without_basic_point.y());
+  EXPECT_EQ(point.z(), without_basic_point.z());
+}
+
+// Test 7: construct BasicLineString3d - one point
 TEST(ArtificialLaneletObjectConstruction, OnePointBasicLineString3d)
 {
   auto p1 = lanelet::BasicPoint3d(1.0, 1.0, 1.0);
@@ -145,7 +162,7 @@ TEST(ArtificialLaneletObjectConstruction, OnePointBasicLineString3d)
   EXPECT_FALSE(ls.has_value());
 }
 
-// Test 7: construct BasicLineString3d - normal
+// Test 8: construct BasicLineString3d - normal
 TEST(ArtificialLaneletObjectConstruction, BasicLineString3d)
 {
   auto p1 = lanelet::BasicPoint3d(1.0, 1.0, 1.0);
@@ -163,7 +180,7 @@ TEST(ArtificialLaneletObjectConstruction, BasicLineString3d)
   }
 }
 
-// Test 8: construct ConstLineString3d - one point
+// Test 9: construct ConstLineString3d - one point
 TEST(ArtificialLaneletObjectConstruction, OnePointConstLineString3d)
 {
   auto p1 = lanelet::ConstPoint3d(lanelet::Point3d(lanelet::InvalId, 1.0, 1.0, 1.0));
@@ -172,7 +189,7 @@ TEST(ArtificialLaneletObjectConstruction, OnePointConstLineString3d)
   EXPECT_FALSE(ls.has_value());
 }
 
-// Test 7: construct ConstLineString3d - normal
+// Test 10: construct ConstLineString3d - normal
 TEST(ArtificialLaneletObjectConstruction, ConstLineString3d)
 {
   auto p1 = lanelet::ConstPoint3d(lanelet::Point3d(lanelet::InvalId, 1.0, 1.0, 1.0));
