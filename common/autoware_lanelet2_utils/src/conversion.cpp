@@ -30,6 +30,7 @@
 #include <sstream>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace autoware::experimental::lanelet2_utils
 {
@@ -135,6 +136,102 @@ lanelet::ConstPoint3d from_ros(const geometry_msgs::msg::Point & src)
 lanelet::ConstPoint3d from_ros(const geometry_msgs::msg::Pose & src)
 {
   return from_ros(src.position);
+}
+
+lanelet::Point3d remove_const(const lanelet::ConstPoint3d & point)
+{
+  return lanelet::Point3d{std::const_pointer_cast<lanelet::PointData>(point.constData())};
+}
+
+lanelet::Point3d remove_basic(const lanelet::BasicPoint3d & point)
+{
+  return lanelet::Point3d(lanelet::InvalId, point);
+}
+
+std::optional<lanelet::BasicLineString3d> create_basic_linestring3d(
+  const std::vector<lanelet::BasicPoint3d> & points)
+{
+  if (points.size() < 2) {
+    return std::nullopt;
+  }
+  lanelet::BasicLineString3d linestring{};
+  for (auto & point : points) {
+    linestring.emplace_back(point.x(), point.y(), point.z());
+  }
+  return linestring;
+}
+
+std::optional<lanelet::ConstLineString3d> create_const_linestring3d(
+  const std::vector<lanelet::ConstPoint3d> & points)
+{
+  if (points.size() < 2) {
+    return std::nullopt;
+  }
+  std::vector<lanelet::Point3d> without_const_points;
+  std::for_each(points.begin(), points.end(), [&](const auto & point) {
+    without_const_points.push_back(remove_const(point));
+  });
+  lanelet::ConstLineString3d const_linestring(lanelet::InvalId, without_const_points);
+
+  return const_linestring;
+}
+
+std::optional<lanelet::ConstLanelet> create_const_lanelet(
+  const std::vector<lanelet::Point3d> & left_points,
+  const std::vector<lanelet::Point3d> & right_points)
+{
+  if (left_points.size() < 2 || right_points.size() < 2) {
+    return std::nullopt;
+  }
+  lanelet::LineString3d left_ls(lanelet::InvalId, left_points);
+  lanelet::LineString3d right_ls(lanelet::InvalId, right_points);
+
+  lanelet::ConstLanelet cll(lanelet::InvalId, left_ls, right_ls);
+  return cll;
+}
+
+std::optional<lanelet::ConstLanelet> create_const_lanelet(
+  const std::vector<lanelet::BasicPoint3d> & left_points,
+  const std::vector<lanelet::BasicPoint3d> & right_points)
+{
+  if (left_points.size() < 2 || right_points.size() < 2) {
+    return std::nullopt;
+  }
+
+  std::vector<lanelet::Point3d> plain_left_points;
+  std::vector<lanelet::Point3d> plain_right_points;
+
+  std::for_each(left_points.begin(), left_points.end(), [&](const auto & point) {
+    plain_left_points.push_back(remove_basic(point));
+  });
+
+  std::for_each(right_points.begin(), right_points.end(), [&](const auto & point) {
+    plain_right_points.push_back(remove_basic(point));
+  });
+
+  return *create_const_lanelet(plain_left_points, plain_right_points);
+}
+
+std::optional<lanelet::ConstLanelet> create_const_lanelet(
+  const std::vector<lanelet::ConstPoint3d> & left_points,
+  const std::vector<lanelet::ConstPoint3d> & right_points)
+{
+  if (left_points.size() < 2 || right_points.size() < 2) {
+    return std::nullopt;
+  }
+
+  std::vector<lanelet::Point3d> plain_left_points;
+  std::vector<lanelet::Point3d> plain_right_points;
+
+  std::for_each(left_points.begin(), left_points.end(), [&](const auto & point) {
+    plain_left_points.push_back(remove_const(point));
+  });
+
+  std::for_each(right_points.begin(), right_points.end(), [&](const auto & point) {
+    plain_right_points.push_back(remove_const(point));
+  });
+
+  return *create_const_lanelet(plain_left_points, plain_right_points);
 }
 
 }  // namespace autoware::experimental::lanelet2_utils

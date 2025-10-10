@@ -24,8 +24,10 @@
 #include <lanelet2_routing/Forward.h>
 #include <lanelet2_traffic_rules/TrafficRulesFactory.h>
 
+#include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace autoware::experimental::lanelet2_utils
 {
@@ -76,6 +78,51 @@ autoware_map_msgs::msg::LaneletMapBin to_autoware_map_msgs(const lanelet::Lanele
  */
 lanelet::LaneletMapConstPtr from_autoware_map_msgs(
   const autoware_map_msgs::msg::LaneletMapBin & msg);
+
+/**
+ * @brief remove constant from ConstPoint3d
+ * @param point ConstPoint3d
+ * @return Point3d (without const)
+ */
+lanelet::Point3d remove_const(const lanelet::ConstPoint3d & point);
+
+/**
+ * @brief remove basic from BasicPoint3d
+ * @param point BasicPoint3d
+ * @return Point3d (without basic)
+ */
+lanelet::Point3d remove_basic(const lanelet::BasicPoint3d & point);
+
+/**
+ * @brief construct BasicLineString3d from vector of BasicPoint3d
+ */
+std::optional<lanelet::BasicLineString3d> create_basic_linestring3d(
+  const std::vector<lanelet::BasicPoint3d> points);
+
+/**
+ * @brief construct ConstLineString3d from vector of ConstPoint3d
+ */
+std::optional<lanelet::ConstLineString3d> create_const_linestring3d(
+  const std::vector<lanelet::ConstPoint3d> points);
+
+/**
+ * @brief construct ConstLanelet from Point3d, BasicPoint3d, or ConstPoint3d
+ * @param left_points vector of points (for left side)
+ * @param right_points vector of points (for right side)
+ * @return ConstLanelet
+ */
+
+std::optional<lanelet::ConstLanelet> create_const_lanelet(
+  const std::vector<lanelet::Point3d> & left_points,
+  const std::vector<lanelet::Point3d> & right_points);
+
+std::optional<lanelet::ConstLanelet> create_const_lanelet(
+  const std::vector<lanelet::BasicPoint3d> & left_points,
+  const std::vector<lanelet::BasicPoint3d> & right_points);
+
+std::optional<lanelet::ConstLanelet> create_const_lanelet(
+  const std::vector<lanelet::ConstPoint3d> & left_points,
+  const std::vector<lanelet::ConstPoint3d> & right_points);
 
 }  // namespace autoware::experimental::lanelet2_utils
 #endif  // AUTOWARE__LANELET2_UTILS__CONVERSION_HPP_
