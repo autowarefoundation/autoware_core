@@ -149,7 +149,7 @@ lanelet::Point3d remove_basic(const lanelet::BasicPoint3d & point)
 }
 
 std::optional<lanelet::BasicLineString3d> create_basic_linestring3d(
-  const std::vector<lanelet::BasicPoint3d> points)
+  const std::vector<lanelet::BasicPoint3d> & points)
 {
   if (points.size() < 2) {
     return std::nullopt;
@@ -162,7 +162,7 @@ std::optional<lanelet::BasicLineString3d> create_basic_linestring3d(
 }
 
 std::optional<lanelet::ConstLineString3d> create_const_linestring3d(
-  const std::vector<lanelet::ConstPoint3d> points)
+  const std::vector<lanelet::ConstPoint3d> & points)
 {
   if (points.size() < 2) {
     return std::nullopt;
