@@ -183,9 +183,9 @@ Note that, although the dimension gets larger since the analytical expansion can
 <img src="./media/ekf_diagnostics_is_activated.png" width="320">
 </p>
 
-| Name           | Description                      | Transition condition to Warning | Transition condition to Error |
-| -------------- | -------------------------------- | ------------------------------- | ----------------------------- |
-| `is_activated` | The activation state of the node | The node is not in the activate state | none |
+| Name           | Description                      | Transition condition to Warning       | Transition condition to Error |
+| -------------- | -------------------------------- | ------------------------------------- | ----------------------------- |
+| `is_activated` | The activation state of the node | The node is not in the activate state | none                          |
 
 ### is_set_initialpose
 
@@ -193,9 +193,9 @@ Note that, although the dimension gets larger since the analytical expansion can
 <img src="./media/ekf_diagnostics_is_set_initialpose.png" width="320">
 </p>
 
-| Name                | Description                         | Transition condition to Warning | Transition condition to Error |
-| ------------------- | ----------------------------------- | ------------------------------- | ----------------------------- |
-| `is_set_initialpose` | Whether the initial pose is set | The initial pose is not set | none |
+| Name                 | Description                     | Transition condition to Warning | Transition condition to Error |
+| -------------------- | ------------------------------- | ------------------------------- | ----------------------------- |
+| `is_set_initialpose` | Whether the initial pose is set | The initial pose is not set     | none                          |
 
 ### pose_no_update_count
 
@@ -203,11 +203,11 @@ Note that, although the dimension gets larger since the analytical expansion can
 <img src="./media/ekf_diagnostics_pose_no_update_count.png" width="320">
 </p>
 
-| Name                                   | Description                                           | Transition condition to Warning | Transition condition to Error |
-| -------------------------------------- | ----------------------------------------------------- | ------------------------------- | ----------------------------- |
+| Name                                   | Description                                               | Transition condition to Warning                         | Transition condition to Error                            |
+| -------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------- |
 | `pose_no_update_count`                 | Consecutive count of no measurement update via Pose topic | The count exceeds `pose_no_update_count_threshold_warn` | The count exceeds `pose_no_update_count_threshold_error` |
-| `pose_no_update_count_threshold_warn`  | Warning threshold for pose update count               | none | none |
-| `pose_no_update_count_threshold_error` | Error threshold for pose update count                 | none | none |
+| `pose_no_update_count_threshold_warn`  | Warning threshold for pose update count                   | none                                                    | none                                                     |
+| `pose_no_update_count_threshold_error` | Error threshold for pose update count                     | none                                                    | none                                                     |
 
 ### pose_queue_size
 
@@ -217,7 +217,7 @@ Note that, although the dimension gets larger since the analytical expansion can
 
 | Name              | Description                    | Transition condition to Warning | Transition condition to Error |
 | ----------------- | ------------------------------ | ------------------------------- | ----------------------------- |
-| `pose_queue_size` | Current size of the pose queue | none | none |
+| `pose_queue_size` | Current size of the pose queue | none                            | none                          |
 
 ### pose_delay_time
 
@@ -225,11 +225,11 @@ Note that, although the dimension gets larger since the analytical expansion can
 <img src="./media/ekf_diagnostics_pose_delay_time.png" width="320">
 </p>
 
-| Name                         | Description                                  | Transition condition to Warning | Transition condition to Error |
-| ---------------------------- | -------------------------------------------- | ------------------------------- | ----------------------------- |
-| `pose_is_passed_delay_gate`  | Whether the Pose topic passes the delay gate | The timestamp is beyond the delay compensation range | none |
-| `pose_delay_time`            | Current delay time of Pose topic            | none | none |
-| `pose_delay_time_threshold`  | Threshold for pose delay time                | none | none |
+| Name                        | Description                                  | Transition condition to Warning                      | Transition condition to Error |
+| --------------------------- | -------------------------------------------- | ---------------------------------------------------- | ----------------------------- |
+| `pose_is_passed_delay_gate` | Whether the Pose topic passes the delay gate | The timestamp is beyond the delay compensation range | none                          |
+| `pose_delay_time`           | Current delay time of Pose topic             | none                                                 | none                          |
+| `pose_delay_time_threshold` | Threshold for pose delay time                | none                                                 | none                          |
 
 ### pose_mahalanobis_distance
 
@@ -237,11 +237,11 @@ Note that, although the dimension gets larger since the analytical expansion can
 <img src="./media/ekf_diagnostics_pose_mahalanobis_distance.png" width="320">
 </p>
 
-| Name                               | Description                                              | Transition condition to Warning | Transition condition to Error |
-| ---------------------------------- | -------------------------------------------------------- | ------------------------------- | ----------------------------- |
-| `pose_is_passed_mahalanobis_gate`  | Whether the Pose topic passes the Mahalanobis distance gate | The Pose topic is beyond the range of Mahalanobis distance for covariance estimation | none |
-| `pose_mahalanobis_distance`        | Current Mahalanobis distance for Pose topic             | none | none |
-| `pose_mahalanobis_distance_threshold` | Threshold for pose Mahalanobis distance              | none | none |
+| Name                                  | Description                                                 | Transition condition to Warning                                                      | Transition condition to Error |
+| ------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------ | ----------------------------- |
+| `pose_is_passed_mahalanobis_gate`     | Whether the Pose topic passes the Mahalanobis distance gate | The Pose topic is beyond the range of Mahalanobis distance for covariance estimation | none                          |
+| `pose_mahalanobis_distance`           | Current Mahalanobis distance for Pose topic                 | none                                                                                 | none                          |
+| `pose_mahalanobis_distance_threshold` | Threshold for pose Mahalanobis distance                     | none                                                                                 | none                          |
 
 ### twist_no_update_count
 
@@ -249,17 +249,17 @@ Note that, although the dimension gets larger since the analytical expansion can
 <img src="./media/ekf_diagnostics_twist_no_update_count.png" width="320">
 </p>
 
-| Name                                    | Description                                            | Transition condition to Warning | Transition condition to Error |
-| --------------------------------------- | ------------------------------------------------------ | ------------------------------- | ----------------------------- |
+| Name                                    | Description                                                | Transition condition to Warning                          | Transition condition to Error                             |
+| --------------------------------------- | ---------------------------------------------------------- | -------------------------------------------------------- | --------------------------------------------------------- |
 | `twist_no_update_count`                 | Consecutive count of no measurement update via Twist topic | The count exceeds `twist_no_update_count_threshold_warn` | The count exceeds `twist_no_update_count_threshold_error` |
-| `twist_no_update_count_threshold_warn`  | Warning threshold for twist update count               | none | none |
-| `twist_no_update_count_threshold_error` | Error threshold for twist update count                 | none | none |
+| `twist_no_update_count_threshold_warn`  | Warning threshold for twist update count                   | none                                                     | none                                                      |
+| `twist_no_update_count_threshold_error` | Error threshold for twist update count                     | none                                                     | none                                                      |
 
 ### twist_queue_size
 
 | Name               | Description                     | Transition condition to Warning | Transition condition to Error |
 | ------------------ | ------------------------------- | ------------------------------- | ----------------------------- |
-| `twist_queue_size` | Current size of the twist queue | none | none |
+| `twist_queue_size` | Current size of the twist queue | none                            | none                          |
 
 ### twist_delay_time
 
@@ -267,11 +267,11 @@ Note that, although the dimension gets larger since the analytical expansion can
 <img src="./media/ekf_diagnostics_twist_delay_time.png" width="320">
 </p>
 
-| Name                          | Description                                   | Transition condition to Warning | Transition condition to Error |
-| ----------------------------- | --------------------------------------------- | ------------------------------- | ----------------------------- |
-| `twist_is_passed_delay_gate`  | Whether the Twist topic passes the delay gate | The timestamp is beyond the delay compensation range | none |
-| `twist_delay_time`            | Current delay time of Twist topic            | none | none |
-| `twist_delay_time_threshold`  | Threshold for twist delay time                | none | none |
+| Name                         | Description                                   | Transition condition to Warning                      | Transition condition to Error |
+| ---------------------------- | --------------------------------------------- | ---------------------------------------------------- | ----------------------------- |
+| `twist_is_passed_delay_gate` | Whether the Twist topic passes the delay gate | The timestamp is beyond the delay compensation range | none                          |
+| `twist_delay_time`           | Current delay time of Twist topic             | none                                                 | none                          |
+| `twist_delay_time_threshold` | Threshold for twist delay time                | none                                                 | none                          |
 
 ### twist_mahalanobis_distance
 
@@ -279,11 +279,11 @@ Note that, although the dimension gets larger since the analytical expansion can
 <img src="./media/ekf_diagnostics_twist_mahalanobis_distance.png" width="320">
 </p>
 
-| Name                                | Description                                               | Transition condition to Warning | Transition condition to Error |
-| ----------------------------------- | --------------------------------------------------------- | ------------------------------- | ----------------------------- |
-| `twist_is_passed_mahalanobis_gate`  | Whether the Twist topic passes the Mahalanobis distance gate | The Twist topic is beyond the range of Mahalanobis distance for covariance estimation | none |
-| `twist_mahalanobis_distance`        | Current Mahalanobis distance for Twist topic             | none | none |
-| `twist_mahalanobis_distance_threshold` | Threshold for twist Mahalanobis distance              | none | none |
+| Name                                   | Description                                                  | Transition condition to Warning                                                       | Transition condition to Error |
+| -------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------- | ----------------------------- |
+| `twist_is_passed_mahalanobis_gate`     | Whether the Twist topic passes the Mahalanobis distance gate | The Twist topic is beyond the range of Mahalanobis distance for covariance estimation | none                          |
+| `twist_mahalanobis_distance`           | Current Mahalanobis distance for Twist topic                 | none                                                                                  | none                          |
+| `twist_mahalanobis_distance_threshold` | Threshold for twist Mahalanobis distance                     | none                                                                                  | none                          |
 
 ### cov_ellipse_long_axis_size
 
@@ -291,11 +291,11 @@ Note that, although the dimension gets larger since the analytical expansion can
 <img src="./media/ekf_diagnostics_cov_ellipse_long_axis_size.png" width="320">
 </p>
 
-| Name                                 | Description                                | Transition condition to Warning | Transition condition to Error |
-| ------------------------------------ | ------------------------------------------ | ------------------------------- | ----------------------------- |
-| `cov_ellipse_long_axis_size`         | Size of the covariance ellipse (long axis) | The ellipse is bigger than `warn_ellipse_size` | The ellipse is bigger than `error_ellipse_size` |
-| `cov_ellipse_long_axis_warn_threshold` | Warning threshold for long axis ellipse size | none | none |
-| `cov_ellipse_long_axis_error_threshold` | Error threshold for long axis ellipse size | none | none |
+| Name                                    | Description                                  | Transition condition to Warning                | Transition condition to Error                   |
+| --------------------------------------- | -------------------------------------------- | ---------------------------------------------- | ----------------------------------------------- |
+| `cov_ellipse_long_axis_size`            | Size of the covariance ellipse (long axis)   | The ellipse is bigger than `warn_ellipse_size` | The ellipse is bigger than `error_ellipse_size` |
+| `cov_ellipse_long_axis_warn_threshold`  | Warning threshold for long axis ellipse size | none                                           | none                                            |
+| `cov_ellipse_long_axis_error_threshold` | Error threshold for long axis ellipse size   | none                                           | none                                            |
 
 ### cov_ellipse_lateral_direction_size
 
@@ -303,11 +303,11 @@ Note that, although the dimension gets larger since the analytical expansion can
 <img src="./media/ekf_diagnostics_cov_ellipse_lateral_direction_size.png" width="320">
 </p>
 
-| Name                                           | Description                                         | Transition condition to Warning | Transition condition to Error |
-| ---------------------------------------------- | --------------------------------------------------- | ------------------------------- | ----------------------------- |
-| `cov_ellipse_lateral_direction_size`           | Size of the covariance ellipse (lateral direction) | The ellipse is bigger than `warn_ellipse_size_lateral_direction` | The ellipse is bigger than `error_ellipse_size_lateral_direction` |
-| `cov_ellipse_lateral_direction_warn_threshold` | Warning threshold for lateral direction ellipse size | none | none |
-| `cov_ellipse_lateral_direction_error_threshold` | Error threshold for lateral direction ellipse size | none | none |
+| Name                                            | Description                                          | Transition condition to Warning                                  | Transition condition to Error                                     |
+| ----------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `cov_ellipse_lateral_direction_size`            | Size of the covariance ellipse (lateral direction)   | The ellipse is bigger than `warn_ellipse_size_lateral_direction` | The ellipse is bigger than `error_ellipse_size_lateral_direction` |
+| `cov_ellipse_lateral_direction_warn_threshold`  | Warning threshold for lateral direction ellipse size | none                                                             | none                                                              |
+| `cov_ellipse_lateral_direction_error_threshold` | Error threshold for lateral direction ellipse size   | none                                                             | none                                                              |
 
 ### callback_pose
 
@@ -315,9 +315,9 @@ Note that, although the dimension gets larger since the analytical expansion can
 <img src="./media/ekf_diagnostics_callback_pose.png" width="320">
 </p>
 
-| Name               | Description                                    | Transition condition to Warning | Transition condition to Error |
-| ------------------ | ---------------------------------------------- | ------------------------------- | ----------------------------- |
-| `topic_time_stamp` | The time stamp of the pose callback execution | none | none |
+| Name               | Description                                   | Transition condition to Warning | Transition condition to Error |
+| ------------------ | --------------------------------------------- | ------------------------------- | ----------------------------- |
+| `topic_time_stamp` | The time stamp of the pose callback execution | none                            | none                          |
 
 ※This diagnostic is published every time the pose callback is executed, providing a record of when pose measurements are received.
 
@@ -327,9 +327,9 @@ Note that, although the dimension gets larger since the analytical expansion can
 <img src="./media/ekf_diagnostics_callback_twist.png" width="320">
 </p>
 
-| Name               | Description                                     | Transition condition to Warning | Transition condition to Error |
-| ------------------ | ----------------------------------------------- | ------------------------------- | ----------------------------- |
-| `topic_time_stamp` | The time stamp of the twist callback execution | none | none |
+| Name               | Description                                    | Transition condition to Warning | Transition condition to Error |
+| ------------------ | ---------------------------------------------- | ------------------------------- | ----------------------------- |
+| `topic_time_stamp` | The time stamp of the twist callback execution | none                            | none                          |
 
 ※This diagnostic is published every time the twist callback is executed, providing a record of when twist measurements are received.
 
