@@ -208,8 +208,7 @@ protected:
 
       auto module_markers = scene_module->createDebugMarkerArray();
       debug_marker_array.markers.insert(
-        debug_marker_array.markers.end(),
-        std::make_move_iterator(module_markers.markers.begin()),
+        debug_marker_array.markers.end(), std::make_move_iterator(module_markers.markers.begin()),
         std::make_move_iterator(module_markers.markers.end()));
 
       virtual_wall_marker_creator_.add_virtual_walls(scene_module->createVirtualWalls());
