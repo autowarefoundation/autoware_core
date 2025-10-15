@@ -65,35 +65,34 @@ StopLineModule::StopLineModule(
   logInfo("Module initialized");
 }
 
-bool StopLineModule::modifyPathVelocity(PathWithLaneId * path)
+bool StopLineModule::modifyPathVelocity(PathWithLaneId * _path)
 {
-  auto trajectory = Trajectory::Builder{}.build(path->points);
-
-  if (!trajectory) {
+  auto path = Trajectory::Builder{}.build(_path->points);
+  if (!path) {
     logWarnThrottle(5000, "Failed to build trajectory from path points");
     return true;
   }
+  const auto & left_bound = _path->left_bound;
+  const auto & right_bound = _path->right_bound;
 
-  auto [ego_s, stop_point] =
-    getEgoAndStopPoint(*trajectory, *path, planner_data_->current_odometry->pose, state_);
+  const auto [ego_s, stop_point] = getEgoAndStopPoint(
+    *path, left_bound, right_bound, planner_data_->current_odometry->pose, state_);
 
   if (!stop_point) {
     if (state_ == State::APPROACH) {
       logWarnThrottle(
-        5000, "No stop point found | ego_s: %.2f | trajectory_length: %.2f", ego_s,
-        trajectory->length());
+        5000, "No stop point found | ego_s: %.2f | path->length(): %.2f", ego_s, path->length());
     }
     return true;
   }
 
-  trajectory->longitudinal_velocity_mps().range(*stop_point, trajectory->length()).set(0.0);
+  path->longitudinal_velocity_mps().range(*stop_point, path->length()).set(0.0);
 
-  path->points = trajectory->restore();
+  _path->points = path->restore();
 
   // TODO(soblin): PlanningFactorInterface use trajectory class
   planning_factor_interface_->add(
-    path->points, planner_data_->current_odometry->pose,
-    trajectory->compute(*stop_point).point.pose,
+    _path->points, planner_data_->current_odometry->pose, path->compute(*stop_point).point.pose,
     autoware_internal_planning_msgs::msg::PlanningFactor::STOP,
     autoware_internal_planning_msgs::msg::SafetyFactorArray{}, true /*is_driving_forward*/, 0.0,
     0.0 /*shift distance*/, "stopline");
@@ -101,7 +100,7 @@ bool StopLineModule::modifyPathVelocity(PathWithLaneId * path)
   updateStateAndStoppedTime(
     &state_, &stopped_time_, clock_->now(), *stop_point - ego_s, planner_data_->isVehicleStopped());
 
-  geometry_msgs::msg::Pose stop_pose = trajectory->compute(*stop_point).point.pose;
+  geometry_msgs::msg::Pose stop_pose = path->compute(*stop_point).point.pose;
 
   updateDebugData(&debug_data_, stop_pose, state_);
 
@@ -109,7 +108,8 @@ bool StopLineModule::modifyPathVelocity(PathWithLaneId * path)
 }
 
 std::pair<double, std::optional<double>> StopLineModule::getEgoAndStopPoint(
-  const Trajectory & trajectory, const PathWithLaneId & path,
+  const Trajectory & trajectory, const std::vector<geometry_msgs::msg::Point> & left_bound,
+  const std::vector<geometry_msgs::msg::Point> & right_bound,
   const geometry_msgs::msg::Pose & ego_pose, const State & state) const
 {
   const double ego_s = autoware::experimental::trajectory::closest(trajectory, ego_pose);
@@ -119,7 +119,7 @@ std::pair<double, std::optional<double>> StopLineModule::getEgoAndStopPoint(
     case State::APPROACH: {
       const double base_link2front = planner_data_->vehicle_info_.max_longitudinal_offset_m;
       const LineString2d stop_line = planning_utils::extendSegmentToBounds(
-        lanelet::utils::to2D(stop_line_).basicLineString(), path.left_bound, path.right_bound);
+        lanelet::utils::to2D(stop_line_).basicLineString(), left_bound, right_bound);
 
       lanelet::Ids connected_lanelet_ids;
 
