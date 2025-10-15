@@ -82,13 +82,13 @@ lanelet::LaneletMapConstPtr from_autoware_map_msgs(
 /**
  * @brief construct BasicLineString3d from vector of BasicPoint3d
  */
-std::optional<lanelet::BasicLineString3d> create_basic_linestring3d(
+std::optional<lanelet::BasicLineString3d> create_basic_linestring(
   const std::vector<lanelet::BasicPoint3d> & points);
 
 /**
  * @brief construct ConstLineString3d from vector of ConstPoint3d
  */
-std::optional<lanelet::ConstLineString3d> create_const_linestring3d(
+std::optional<lanelet::ConstLineString3d> create_safe_linestring(
   const std::vector<lanelet::ConstPoint3d> & points);
 
 /**
@@ -97,11 +97,11 @@ std::optional<lanelet::ConstLineString3d> create_const_linestring3d(
  * @param right_points vector of points (for right side)
  * @return ConstLanelet
  */
-std::optional<lanelet::ConstLanelet> create_const_lanelet(
+std::optional<lanelet::ConstLanelet> create_safe_lanelet(
   const std::vector<lanelet::BasicPoint3d> & left_points,
   const std::vector<lanelet::BasicPoint3d> & right_points);
 
-std::optional<lanelet::ConstLanelet> create_const_lanelet(
+std::optional<lanelet::ConstLanelet> create_safe_lanelet(
   const std::vector<lanelet::ConstPoint3d> & left_points,
   const std::vector<lanelet::ConstPoint3d> & right_points);
 

@@ -124,7 +124,7 @@ TEST(ArtificialLaneletObjectConstruction, OnePointBasicLineString3d)
 {
   auto p1 = lanelet::BasicPoint3d(1.0, 1.0, 1.0);
   std::vector<lanelet::BasicPoint3d> vector_points = {p1};
-  auto ls = autoware::experimental::lanelet2_utils::create_basic_linestring3d(vector_points);
+  auto ls = autoware::experimental::lanelet2_utils::create_basic_linestring(vector_points);
   EXPECT_FALSE(ls.has_value());
 }
 
@@ -135,7 +135,7 @@ TEST(ArtificialLaneletObjectConstruction, BasicLineString3d)
   auto p2 = lanelet::BasicPoint3d(2.0, 2.0, 2.0);
   auto p3 = lanelet::BasicPoint3d(3.0, 3.0, 3.0);
   std::vector<lanelet::BasicPoint3d> vector_points = {p1, p2, p3};
-  auto ls = autoware::experimental::lanelet2_utils::create_basic_linestring3d(vector_points);
+  auto ls = autoware::experimental::lanelet2_utils::create_basic_linestring(vector_points);
   EXPECT_TRUE(ls.has_value());
 
   EXPECT_EQ(typeid(*ls), typeid(lanelet::BasicLineString3d))
@@ -151,7 +151,7 @@ TEST(ArtificialLaneletObjectConstruction, OnePointConstLineString3d)
 {
   auto p1 = lanelet::ConstPoint3d(lanelet::Point3d(lanelet::InvalId, 1.0, 1.0, 1.0));
   std::vector<lanelet::ConstPoint3d> vector_points = {p1};
-  auto ls = autoware::experimental::lanelet2_utils::create_const_linestring3d(vector_points);
+  auto ls = autoware::experimental::lanelet2_utils::create_safe_linestring(vector_points);
   EXPECT_FALSE(ls.has_value());
 }
 
@@ -162,7 +162,7 @@ TEST(ArtificialLaneletObjectConstruction, ConstLineString3d)
   auto p2 = lanelet::ConstPoint3d(lanelet::Point3d(lanelet::InvalId, 2.0, 2.0, 2.0));
   auto p3 = lanelet::ConstPoint3d(lanelet::Point3d(lanelet::InvalId, 3.0, 3.0, 3.0));
   std::vector<lanelet::ConstPoint3d> vector_points = {p1, p2, p3};
-  auto ls = autoware::experimental::lanelet2_utils::create_const_linestring3d(vector_points);
+  auto ls = autoware::experimental::lanelet2_utils::create_safe_linestring(vector_points);
   EXPECT_TRUE(ls.has_value());
 
   EXPECT_EQ(typeid(*ls), typeid(lanelet::ConstLineString3d))
@@ -184,7 +184,7 @@ TEST(ArtificialLaneletObjectConstruction, OnePointConstLaneletConstruct)
   std::vector<lanelet::BasicPoint3d> right_points = {p3};
   {
     const auto opt =
-      autoware::experimental::lanelet2_utils::create_const_lanelet(left_points, right_points);
+      autoware::experimental::lanelet2_utils::create_safe_lanelet(left_points, right_points);
     EXPECT_FALSE(opt.has_value()) << "BasicPoint3d can construct with 1 point.";
   }
 
@@ -195,7 +195,7 @@ TEST(ArtificialLaneletObjectConstruction, OnePointConstLaneletConstruct)
   std::vector<lanelet::ConstPoint3d> const_left_points = {const_p1};
   std::vector<lanelet::ConstPoint3d> const_right_points = {const_p2};
   {
-    const auto opt = autoware::experimental::lanelet2_utils::create_const_lanelet(
+    const auto opt = autoware::experimental::lanelet2_utils::create_safe_lanelet(
       const_left_points, const_right_points);
     EXPECT_FALSE(opt.has_value()) << "ConstPoint3d can construct with 1 point.";
   }
@@ -213,7 +213,7 @@ TEST(ArtificialLaneletObjectConstruction, ConstLaneletConstruct)
   std::vector<lanelet::BasicPoint3d> right_points = {p3, p4};
   {
     const auto opt =
-      autoware::experimental::lanelet2_utils::create_const_lanelet(left_points, right_points);
+      autoware::experimental::lanelet2_utils::create_safe_lanelet(left_points, right_points);
     EXPECT_TRUE(opt.has_value()) << "BasicPoint3d can construct normally.";
     const auto ll = *opt;
     for (size_t i = 0; i < left_points.size(); ++i) {
@@ -230,7 +230,7 @@ TEST(ArtificialLaneletObjectConstruction, ConstLaneletConstruct)
   std::vector<lanelet::ConstPoint3d> const_left_points = {const_p1, const_p2};
   std::vector<lanelet::ConstPoint3d> const_right_points = {const_p3, const_p4};
   {
-    const auto opt = autoware::experimental::lanelet2_utils::create_const_lanelet(
+    const auto opt = autoware::experimental::lanelet2_utils::create_safe_lanelet(
       const_left_points, const_right_points);
     EXPECT_TRUE(opt.has_value()) << "ConstPoint3d can't construct normally.";
     const auto ll = *opt;

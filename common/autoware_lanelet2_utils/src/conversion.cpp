@@ -148,7 +148,7 @@ static lanelet::Point3d remove_basic(const lanelet::BasicPoint3d & point)
   return lanelet::Point3d(lanelet::InvalId, point);
 }
 
-std::optional<lanelet::BasicLineString3d> create_basic_linestring3d(
+std::optional<lanelet::BasicLineString3d> create_basic_linestring(
   const std::vector<lanelet::BasicPoint3d> & points)
 {
   if (points.size() < 2) {
@@ -161,7 +161,7 @@ std::optional<lanelet::BasicLineString3d> create_basic_linestring3d(
   return linestring;
 }
 
-std::optional<lanelet::ConstLineString3d> create_const_linestring3d(
+std::optional<lanelet::ConstLineString3d> create_safe_linestring(
   const std::vector<lanelet::ConstPoint3d> & points)
 {
   if (points.size() < 2) {
@@ -176,7 +176,7 @@ std::optional<lanelet::ConstLineString3d> create_const_linestring3d(
   return const_linestring;
 }
 
-std::optional<lanelet::ConstLanelet> create_const_lanelet(
+std::optional<lanelet::ConstLanelet> create_safe_lanelet(
   const std::vector<lanelet::BasicPoint3d> & left_points,
   const std::vector<lanelet::BasicPoint3d> & right_points)
 {
@@ -203,7 +203,7 @@ std::optional<lanelet::ConstLanelet> create_const_lanelet(
   return cll;
 }
 
-std::optional<lanelet::ConstLanelet> create_const_lanelet(
+std::optional<lanelet::ConstLanelet> create_safe_lanelet(
   const std::vector<lanelet::ConstPoint3d> & left_points,
   const std::vector<lanelet::ConstPoint3d> & right_points)
 {
