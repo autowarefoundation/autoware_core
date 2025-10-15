@@ -106,16 +106,11 @@ std::optional<lanelet::ConstLineString3d> create_const_linestring3d(
   const std::vector<lanelet::ConstPoint3d> & points);
 
 /**
- * @brief construct ConstLanelet from Point3d, BasicPoint3d, or ConstPoint3d
+ * @brief construct ConstLanelet from BasicPoint3d or ConstPoint3d
  * @param left_points vector of points (for left side)
  * @param right_points vector of points (for right side)
  * @return ConstLanelet
  */
-
-std::optional<lanelet::ConstLanelet> create_const_lanelet(
-  const std::vector<lanelet::Point3d> & left_points,
-  const std::vector<lanelet::Point3d> & right_points);
-
 std::optional<lanelet::ConstLanelet> create_const_lanelet(
   const std::vector<lanelet::BasicPoint3d> & left_points,
   const std::vector<lanelet::BasicPoint3d> & right_points);
