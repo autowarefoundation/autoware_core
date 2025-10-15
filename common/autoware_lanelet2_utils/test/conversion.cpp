@@ -124,7 +124,7 @@ TEST(ArtificialLaneletObjectConstruction, OnePointBasicLineString3d)
 {
   auto p1 = lanelet::BasicPoint3d(1.0, 1.0, 1.0);
   std::vector<lanelet::BasicPoint3d> vector_points = {p1};
-  auto ls = autoware::experimental::lanelet2_utils::create_basic_linestring(vector_points);
+  auto ls = autoware::experimental::lanelet2_utils::create_safe_linestring(vector_points);
   EXPECT_FALSE(ls.has_value());
 }
 
@@ -135,7 +135,7 @@ TEST(ArtificialLaneletObjectConstruction, BasicLineString3d)
   auto p2 = lanelet::BasicPoint3d(2.0, 2.0, 2.0);
   auto p3 = lanelet::BasicPoint3d(3.0, 3.0, 3.0);
   std::vector<lanelet::BasicPoint3d> vector_points = {p1, p2, p3};
-  auto ls = autoware::experimental::lanelet2_utils::create_basic_linestring(vector_points);
+  auto ls = autoware::experimental::lanelet2_utils::create_safe_linestring(vector_points);
   EXPECT_TRUE(ls.has_value());
 
   EXPECT_EQ(typeid(*ls), typeid(lanelet::BasicLineString3d))

@@ -148,7 +148,7 @@ static lanelet::Point3d remove_basic(const lanelet::BasicPoint3d & point)
   return lanelet::Point3d(lanelet::InvalId, point);
 }
 
-std::optional<lanelet::BasicLineString3d> create_basic_linestring(
+std::optional<lanelet::BasicLineString3d> create_safe_linestring(
   const std::vector<lanelet::BasicPoint3d> & points)
 {
   if (points.size() < 2) {

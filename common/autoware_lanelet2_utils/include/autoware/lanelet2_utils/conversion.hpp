@@ -82,7 +82,7 @@ lanelet::LaneletMapConstPtr from_autoware_map_msgs(
 /**
  * @brief construct BasicLineString3d from vector of BasicPoint3d
  */
-std::optional<lanelet::BasicLineString3d> create_basic_linestring(
+std::optional<lanelet::BasicLineString3d> create_safe_linestring(
   const std::vector<lanelet::BasicPoint3d> & points);
 
 /**
