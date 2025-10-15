@@ -1058,14 +1058,24 @@ double ObstacleStopModule::calc_desired_stop_margin(
   //       margin we set closest_obstacle_stop_distance to closest_behavior_stop_distance
   const auto closest_behavior_stop_idx =
     autoware::motion_utils::searchZeroVelocityIndex(traj_points, ego_segment_idx + 1);
+  const auto current_time = clock_->now();
   if (closest_behavior_stop_idx) {
     const double closest_behavior_stop_dist_on_ref_traj =
       autoware::motion_utils::calcSignedArcLength(traj_points, 0, *closest_behavior_stop_idx);
     const double stop_dist_diff =
       closest_behavior_stop_dist_on_ref_traj - (dist_to_collide_on_ref_traj - stop_margin_on_curve);
     if (0.0 < stop_dist_diff && stop_dist_diff < stop_margin_on_curve) {
-      return stop_planning_param_.min_behavior_stop_margin;
+      last_observed_behavior_stop_time_and_margin_ = std::make_pair(
+        current_time, std::max(
+                        stop_planning_param_.min_behavior_stop_margin,
+                        dist_to_collide_on_ref_traj - closest_behavior_stop_dist_on_ref_traj));
     }
+  }
+  if (
+    last_observed_behavior_stop_time_and_margin_.has_value() &&
+    (current_time - last_observed_behavior_stop_time_and_margin_->first).seconds() <=
+      stop_planning_param_.behavior_stop_margin_hold_time) {
+    return last_observed_behavior_stop_time_and_margin_->second;
   }
   return stop_margin_on_curve;
 }

@@ -105,6 +105,8 @@ private:
   std::vector<StopObstacle> prev_closest_stop_obstacles_{};
   std::vector<StopObstacle> prev_stop_obstacles_{};
   std::deque<PointcloudStopCandidate> pointcloud_stop_candidates{};
+  std::optional<std::pair<rclcpp::Time, double>> last_observed_behavior_stop_time_and_margin_{
+    std::nullopt};
 
   autoware::motion_velocity_planner::obstacle_stop::PathLengthBuffer path_length_buffer_;
 
