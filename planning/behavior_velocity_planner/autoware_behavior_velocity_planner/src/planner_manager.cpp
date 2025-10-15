@@ -78,10 +78,14 @@ void BehaviorVelocityPlannerManager::removeScenePlugin(
 }
 
 Trajectory BehaviorVelocityPlannerManager::planPathVelocity(
-  const PlannerData & planner_data, const Trajectory & input_path)
+  const PlannerData & planner_data, const Trajectory & input_path,
+  const std::vector<geometry_msgs::msg::Point> & left_bound,
+  const std::vector<geometry_msgs::msg::Point> & right_bound)
 {
   autoware_internal_planning_msgs::msg::PathWithLaneId input_path_msg;
   input_path_msg.points = input_path.restore();
+  input_path_msg.left_bound = left_bound;
+  input_path_msg.right_bound = right_bound;
 
   auto output_path_msg = input_path_msg;
 

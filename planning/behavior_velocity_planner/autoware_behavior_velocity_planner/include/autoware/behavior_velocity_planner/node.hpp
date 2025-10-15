@@ -140,7 +140,9 @@ private:
 
   // function
   bool isDataReady(rclcpp::Clock clock);
-  Trajectory generatePath(const Trajectory & input_path, const PlannerData & planner_data);
+  Trajectory generatePath(
+    const Trajectory & input_path, const std::vector<geometry_msgs::msg::Point> & left_bound,
+    const std::vector<geometry_msgs::msg::Point> & right_bound, const PlannerData & planner_data);
 
   std::unique_ptr<autoware_utils_logging::LoggerLevelConfigure> logger_configure_;
 
