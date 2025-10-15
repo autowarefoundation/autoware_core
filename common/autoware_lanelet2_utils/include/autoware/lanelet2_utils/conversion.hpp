@@ -24,8 +24,10 @@
 #include <lanelet2_routing/Forward.h>
 #include <lanelet2_traffic_rules/TrafficRulesFactory.h>
 
+#include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace autoware::experimental::lanelet2_utils
 {
@@ -76,6 +78,32 @@ autoware_map_msgs::msg::LaneletMapBin to_autoware_map_msgs(const lanelet::Lanele
  */
 lanelet::LaneletMapConstPtr from_autoware_map_msgs(
   const autoware_map_msgs::msg::LaneletMapBin & msg);
+
+/**
+ * @brief construct BasicLineString3d from vector of BasicPoint3d
+ */
+std::optional<lanelet::BasicLineString3d> create_safe_linestring(
+  const std::vector<lanelet::BasicPoint3d> & points);
+
+/**
+ * @brief construct ConstLineString3d from vector of ConstPoint3d
+ */
+std::optional<lanelet::ConstLineString3d> create_safe_linestring(
+  const std::vector<lanelet::ConstPoint3d> & points);
+
+/**
+ * @brief construct ConstLanelet from BasicPoint3d or ConstPoint3d
+ * @param left_points vector of points (for left side)
+ * @param right_points vector of points (for right side)
+ * @return ConstLanelet
+ */
+std::optional<lanelet::ConstLanelet> create_safe_lanelet(
+  const std::vector<lanelet::BasicPoint3d> & left_points,
+  const std::vector<lanelet::BasicPoint3d> & right_points);
+
+std::optional<lanelet::ConstLanelet> create_safe_lanelet(
+  const std::vector<lanelet::ConstPoint3d> & left_points,
+  const std::vector<lanelet::ConstPoint3d> & right_points);
 
 }  // namespace autoware::experimental::lanelet2_utils
 #endif  // AUTOWARE__LANELET2_UTILS__CONVERSION_HPP_
