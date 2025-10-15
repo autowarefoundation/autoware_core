@@ -80,20 +80,6 @@ lanelet::LaneletMapConstPtr from_autoware_map_msgs(
   const autoware_map_msgs::msg::LaneletMapBin & msg);
 
 /**
- * @brief remove constant from ConstPoint3d
- * @param point ConstPoint3d
- * @return Point3d (without const)
- */
-lanelet::Point3d remove_const(const lanelet::ConstPoint3d & point);
-
-/**
- * @brief remove basic from BasicPoint3d
- * @param point BasicPoint3d
- * @return Point3d (without basic)
- */
-lanelet::Point3d remove_basic(const lanelet::BasicPoint3d & point);
-
-/**
  * @brief construct BasicLineString3d from vector of BasicPoint3d
  */
 std::optional<lanelet::BasicLineString3d> create_basic_linestring3d(

@@ -138,12 +138,12 @@ lanelet::ConstPoint3d from_ros(const geometry_msgs::msg::Pose & src)
   return from_ros(src.position);
 }
 
-lanelet::Point3d remove_const(const lanelet::ConstPoint3d & point)
+static lanelet::Point3d remove_const(const lanelet::ConstPoint3d & point)
 {
   return lanelet::Point3d{std::const_pointer_cast<lanelet::PointData>(point.constData())};
 }
 
-lanelet::Point3d remove_basic(const lanelet::BasicPoint3d & point)
+static lanelet::Point3d remove_basic(const lanelet::BasicPoint3d & point)
 {
   return lanelet::Point3d(lanelet::InvalId, point);
 }

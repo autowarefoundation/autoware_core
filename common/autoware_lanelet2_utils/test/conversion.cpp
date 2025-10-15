@@ -119,41 +119,7 @@ TEST(TestConversion, RoundTripPointToConstPoint2d)
     << "converted_pt is not lanelet::ConstPoint2d.";
 }
 
-// Test 5: remove const from ConstPoint3d
-TEST(RemoveConst, RemoveConst)
-{
-  const lanelet::ConstPoint3d point = lanelet::Point3d(lanelet::InvalId, 1.0, 1.0, 1.0);
-  ASSERT_EQ(typeid(point), typeid(lanelet::ConstPoint3d)) << "point is not lanelet::ConstPoint3d.";
-
-  const auto without_const_point = autoware::experimental::lanelet2_utils::remove_const(point);
-  // Check type
-  EXPECT_EQ(typeid(without_const_point), typeid(lanelet::Point3d))
-    << "without_const_point is not lanelet::Point3d.";
-
-  // Check Content
-  EXPECT_EQ(point.x(), without_const_point.x());
-  EXPECT_EQ(point.y(), without_const_point.y());
-  EXPECT_EQ(point.z(), without_const_point.z());
-}
-
-// Test 6: remove basic from BasicPoint3d
-TEST(RemoveBasic, RemoveBasic)
-{
-  const lanelet::BasicPoint3d point = lanelet::BasicPoint3d(1.0, 1.0, 2.0);
-  ASSERT_EQ(typeid(point), typeid(lanelet::BasicPoint3d)) << "point is not lanelet::BasicPoint3d.";
-
-  const auto without_basic_point = autoware::experimental::lanelet2_utils::remove_basic(point);
-  // Check type
-  EXPECT_EQ(typeid(without_basic_point), typeid(lanelet::Point3d))
-    << "without_basic_point is not lanelet::Point3d.";
-
-  // Check Content
-  EXPECT_EQ(point.x(), without_basic_point.x());
-  EXPECT_EQ(point.y(), without_basic_point.y());
-  EXPECT_EQ(point.z(), without_basic_point.z());
-}
-
-// Test 7: construct BasicLineString3d - one point
+// Test 6: construct BasicLineString3d - one point
 TEST(ArtificialLaneletObjectConstruction, OnePointBasicLineString3d)
 {
   auto p1 = lanelet::BasicPoint3d(1.0, 1.0, 1.0);
@@ -162,7 +128,7 @@ TEST(ArtificialLaneletObjectConstruction, OnePointBasicLineString3d)
   EXPECT_FALSE(ls.has_value());
 }
 
-// Test 8: construct BasicLineString3d - normal
+// Test 7: construct BasicLineString3d - normal
 TEST(ArtificialLaneletObjectConstruction, BasicLineString3d)
 {
   auto p1 = lanelet::BasicPoint3d(1.0, 1.0, 1.0);
@@ -180,7 +146,7 @@ TEST(ArtificialLaneletObjectConstruction, BasicLineString3d)
   }
 }
 
-// Test 9: construct ConstLineString3d - one point
+// Test 8: construct ConstLineString3d - one point
 TEST(ArtificialLaneletObjectConstruction, OnePointConstLineString3d)
 {
   auto p1 = lanelet::ConstPoint3d(lanelet::Point3d(lanelet::InvalId, 1.0, 1.0, 1.0));
@@ -189,7 +155,7 @@ TEST(ArtificialLaneletObjectConstruction, OnePointConstLineString3d)
   EXPECT_FALSE(ls.has_value());
 }
 
-// Test 10: construct ConstLineString3d - normal
+// Test 9: construct ConstLineString3d - normal
 TEST(ArtificialLaneletObjectConstruction, ConstLineString3d)
 {
   auto p1 = lanelet::ConstPoint3d(lanelet::Point3d(lanelet::InvalId, 1.0, 1.0, 1.0));
@@ -207,7 +173,7 @@ TEST(ArtificialLaneletObjectConstruction, ConstLineString3d)
   }
 }
 
-// Test 11: construct ConstLanelet - less than 2 points
+// Test 10: construct ConstLanelet - less than 2 points
 TEST(ArtificialLaneletObjectConstruction, OnePointConstLaneletConstruct)
 {
   // BasicPoint3d
@@ -223,9 +189,9 @@ TEST(ArtificialLaneletObjectConstruction, OnePointConstLaneletConstruct)
   }
 
   // ConstPoint3d
-  auto const_p1 = lanelet::ConstPoint3d(autoware::experimental::lanelet2_utils::remove_basic(p1));
-  auto const_p2 = lanelet::ConstPoint3d(autoware::experimental::lanelet2_utils::remove_basic(p2));
-  auto const_p3 = lanelet::ConstPoint3d(autoware::experimental::lanelet2_utils::remove_basic(p3));
+  auto const_p1 = lanelet::ConstPoint3d(lanelet::Point3d(lanelet::InvalId, p1));
+  auto const_p2 = lanelet::ConstPoint3d(lanelet::Point3d(lanelet::InvalId, p2));
+  auto const_p3 = lanelet::ConstPoint3d(lanelet::Point3d(lanelet::InvalId, p3));
   std::vector<lanelet::ConstPoint3d> const_left_points = {const_p1};
   std::vector<lanelet::ConstPoint3d> const_right_points = {const_p2};
   {
@@ -235,7 +201,7 @@ TEST(ArtificialLaneletObjectConstruction, OnePointConstLaneletConstruct)
   }
 }
 
-// Test 12: construct ConstLanelet - Normal
+// Test 11: construct ConstLanelet - Normal
 TEST(ArtificialLaneletObjectConstruction, ConstLaneletConstruct)
 {
   // BasicPoint3d
@@ -257,10 +223,10 @@ TEST(ArtificialLaneletObjectConstruction, ConstLaneletConstruct)
   }
 
   // ConstPoint3d
-  auto const_p1 = lanelet::ConstPoint3d(autoware::experimental::lanelet2_utils::remove_basic(p1));
-  auto const_p2 = lanelet::ConstPoint3d(autoware::experimental::lanelet2_utils::remove_basic(p2));
-  auto const_p3 = lanelet::ConstPoint3d(autoware::experimental::lanelet2_utils::remove_basic(p3));
-  auto const_p4 = lanelet::ConstPoint3d(autoware::experimental::lanelet2_utils::remove_basic(p4));
+  auto const_p1 = lanelet::ConstPoint3d(lanelet::Point3d(lanelet::InvalId, p1));
+  auto const_p2 = lanelet::ConstPoint3d(lanelet::Point3d(lanelet::InvalId, p2));
+  auto const_p3 = lanelet::ConstPoint3d(lanelet::Point3d(lanelet::InvalId, p3));
+  auto const_p4 = lanelet::ConstPoint3d(lanelet::Point3d(lanelet::InvalId, p4));
   std::vector<lanelet::ConstPoint3d> const_left_points = {const_p1, const_p2};
   std::vector<lanelet::ConstPoint3d> const_right_points = {const_p3, const_p4};
   {
