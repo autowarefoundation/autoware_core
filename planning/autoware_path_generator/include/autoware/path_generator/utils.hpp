@@ -37,6 +37,13 @@ struct WaypointGroup
   {
     lanelet::ConstPoint3d point;
     lanelet::Id lane_id;
+    std::optional<lanelet::Id> next_lane_id = std::nullopt;  // this is for border point only
+
+    // ctor definition to avoid setting next_id mistakenly
+    explicit Waypoint(const lanelet::ConstPoint3d & point, const lanelet::Id & lane_id)
+    : point(point), lane_id(lane_id)
+    {
+    }
   };
 
   struct Interval
@@ -111,6 +118,17 @@ std::optional<lanelet::ConstLanelet> get_next_lanelet_within_route(
 std::vector<WaypointGroup> get_waypoint_groups(
   const lanelet::LaneletSequence & lanelet_sequence, const lanelet::LaneletMap & lanelet_map,
   const double connection_gradient_from_centerline);
+
+/**
+ * @brief get border point (intersection between segment and border)
+ * @param segment_across_border segment across border
+ * @param border_lanelet lanelet whose start edge is border to be checked
+ * @return border point (std::nullopt if no intersection)
+ * @note z of border point is the same as that of segment_across_border.back()
+ */
+std::optional<lanelet::ConstPoint3d> get_border_point(
+  const lanelet::BasicLineString3d & segment_across_border,
+  const lanelet::ConstLanelet & border_lanelet);
 
 /**
  * @brief get position of first intersection in lanelet sequence in arc length
