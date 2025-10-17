@@ -77,6 +77,9 @@ BehaviorVelocityPlannerNode::BehaviorVelocityPlannerNode(const rclcpp::NodeOptio
   // Publishers
   path_pub_ = this->create_publisher<autoware_planning_msgs::msg::Path>("~/output/path", 1);
   debug_viz_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("~/debug/path", 1);
+  processing_time_publisher_ =
+    this->create_publisher<autoware_internal_debug_msgs::msg::Float64Stamped>(
+      "~/debug/processing_time_ms", 1);
 
   // Parameters
   forward_path_length_ = declare_parameter<double>("forward_path_length");
@@ -308,6 +311,7 @@ bool BehaviorVelocityPlannerNode::isDataReady(rclcpp::Clock clock)
 void BehaviorVelocityPlannerNode::onTrigger(
   const autoware_internal_planning_msgs::msg::PathWithLaneId::ConstSharedPtr input_path_msg)
 {
+  stop_watch_.tic();
   std::unique_lock<std::mutex> lk(mutex_);
 
   if (!isDataReady(*get_clock())) {
@@ -337,6 +341,8 @@ void BehaviorVelocityPlannerNode::onTrigger(
   if (debug_viz_pub_->get_subscription_count() > 0) {
     publishDebugMarker(output_path_msg);
   }
+
+  publishProcessingTime();
 }
 
 autoware_planning_msgs::msg::Path BehaviorVelocityPlannerNode::generatePath(
@@ -383,6 +389,14 @@ autoware_planning_msgs::msg::Path BehaviorVelocityPlannerNode::generatePath(
   output_path_msg.right_bound = input_path_msg->right_bound;
 
   return output_path_msg;
+}
+
+void BehaviorVelocityPlannerNode::publishProcessingTime()
+{
+  Float64Stamped processing_time_msg;
+  processing_time_msg.stamp = get_clock()->now();
+  processing_time_msg.data = stop_watch_.toc();
+  processing_time_publisher_->publish(processing_time_msg);
 }
 
 void BehaviorVelocityPlannerNode::publishDebugMarker(const autoware_planning_msgs::msg::Path & path)
