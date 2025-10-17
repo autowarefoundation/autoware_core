@@ -208,6 +208,7 @@ double SplineInterpolationPoints2d::getSplineInterpolatedCurvature(
 std::vector<double> SplineInterpolationPoints2d::getSplineInterpolatedCurvatures() const
 {
   std::vector<double> curvature_vec;
+  curvature_vec.reserve(spline_x_.getSize());
   for (size_t i = 0; i < spline_x_.getSize(); ++i) {
     const double curvature = getSplineInterpolatedCurvature(i, 0.0);
     curvature_vec.push_back(curvature);

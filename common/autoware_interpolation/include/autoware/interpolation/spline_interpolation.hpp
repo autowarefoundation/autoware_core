@@ -82,7 +82,8 @@ public:
   // Debug methods to expose spline coefficients
   const Eigen::VectorXd getCoefficients() const
   {
-    Eigen::VectorXd coefficients(4 * base_keys_.size());
+    const auto m = static_cast<Eigen::Index>(a_.size());
+    Eigen::VectorXd coefficients(4 * m);
     coefficients << a_, b_, c_, d_;
     return coefficients;
   }
