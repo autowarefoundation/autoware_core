@@ -72,6 +72,11 @@ public:
   double getSplineInterpolatedCurvature(const size_t idx, const double s) const;
   std::vector<double> getSplineInterpolatedCurvatures() const;
 
+  // Debug methods to expose spline coefficients
+  const Eigen::VectorXd getSplineCoefficientsX() const { return spline_x_.getCoefficients(); }
+  const Eigen::VectorXd getSplineCoefficientsY() const { return spline_y_.getCoefficients(); }
+  const std::vector<double> getSplineKnots() const { return spline_x_.getKnots(); }
+
   size_t getSize() const { return base_s_vec_.size(); }
   size_t getOffsetIndex(const size_t idx, const double offset) const;
   double getAccumulatedLength(const size_t idx) const;
