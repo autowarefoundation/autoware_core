@@ -408,120 +408,139 @@ void EKFLocalizer::publish_diagnostics(
     diag_msg.status.push_back(status);
   }
 
-  if (is_activated_ && is_set_initialpose_) {
-    // 3. Pose no update count diagnostic
-    {
-      diagnostic_msgs::msg::DiagnosticStatus status = check_measurement_updated(
-        "pose", pose_diag_info_.no_update_count, params_.pose_no_update_count_threshold_warn,
-        params_.pose_no_update_count_threshold_error);
-      status.name = "localization: " + std::string(this->get_name()) + ": pose_no_update_count";
-      status.hardware_id = this->get_name();
-      diag_msg.status.push_back(status);
+  // 3. Pose no update count diagnostic
+  {
+    diagnostic_msgs::msg::DiagnosticStatus status = check_measurement_updated(
+      "pose", pose_diag_info_.no_update_count, params_.pose_no_update_count_threshold_warn,
+      params_.pose_no_update_count_threshold_error);
+    status.name = "localization: " + std::string(this->get_name()) + ": pose_no_update_count";
+    status.hardware_id = this->get_name();
+    diag_msg.status.push_back(status);
+  }
+
+  // 4. Pose queue size diagnostic
+  {
+    diagnostic_msgs::msg::DiagnosticStatus status =
+      check_measurement_queue_size("pose", pose_diag_info_.queue_size);
+    status.name = "localization: " + std::string(this->get_name()) + ": pose_queue_size";
+    status.hardware_id = this->get_name();
+    diag_msg.status.push_back(status);
+  }
+
+  // 5. Pose delay time diagnostic
+  {
+    diagnostic_msgs::msg::DiagnosticStatus status = check_measurement_delay_gate(
+      "pose", pose_diag_info_.is_passed_delay_gate, pose_diag_info_.delay_time,
+      pose_diag_info_.delay_time_threshold);
+    status.name = "localization: " + std::string(this->get_name()) + ": pose_delay_time";
+    status.hardware_id = this->get_name();
+    // WARN when the node is NOT activated or initial pose is NOT set
+    if (!(is_activated_ && is_set_initialpose_)) {
+      status.level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
     }
+    diag_msg.status.push_back(status);
+  }
 
-    // 4. Pose queue size diagnostic
-    {
-      diagnostic_msgs::msg::DiagnosticStatus status =
-        check_measurement_queue_size("pose", pose_diag_info_.queue_size);
-      status.name = "localization: " + std::string(this->get_name()) + ": pose_queue_size";
-      status.hardware_id = this->get_name();
-      diag_msg.status.push_back(status);
+  // 6. Pose mahalanobis distance diagnostic
+  {
+    diagnostic_msgs::msg::DiagnosticStatus status = check_measurement_mahalanobis_gate(
+      "pose", pose_diag_info_.is_passed_mahalanobis_gate, pose_diag_info_.mahalanobis_distance,
+      params_.pose_gate_dist);
+    status.name = "localization: " + std::string(this->get_name()) + ": pose_mahalanobis_distance";
+    status.hardware_id = this->get_name();
+    // WARN when the node is NOT activated or initial pose is NOT set
+    if (!(is_activated_ && is_set_initialpose_)) {
+      status.level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
     }
+    diag_msg.status.push_back(status);
+  }
 
-    // 5. Pose delay time diagnostic
-    {
-      diagnostic_msgs::msg::DiagnosticStatus status = check_measurement_delay_gate(
-        "pose", pose_diag_info_.is_passed_delay_gate, pose_diag_info_.delay_time,
-        pose_diag_info_.delay_time_threshold);
-      status.name = "localization: " + std::string(this->get_name()) + ": pose_delay_time";
-      status.hardware_id = this->get_name();
-      diag_msg.status.push_back(status);
+  // 7. Twist no update count diagnostic
+  {
+    diagnostic_msgs::msg::DiagnosticStatus status = check_measurement_updated(
+      "twist", twist_diag_info_.no_update_count, params_.twist_no_update_count_threshold_warn,
+      params_.twist_no_update_count_threshold_error);
+    status.name = "localization: " + std::string(this->get_name()) + ": twist_no_update_count";
+    status.hardware_id = this->get_name();
+    diag_msg.status.push_back(status);
+  }
+
+  // 8. Twist queue size diagnostic
+  {
+    diagnostic_msgs::msg::DiagnosticStatus status =
+      check_measurement_queue_size("twist", twist_diag_info_.queue_size);
+    status.name = "localization: " + std::string(this->get_name()) + ": twist_queue_size";
+    status.hardware_id = this->get_name();
+    diag_msg.status.push_back(status);
+  }
+
+  // 9. Twist delay time diagnostic
+  {
+    diagnostic_msgs::msg::DiagnosticStatus status = check_measurement_delay_gate(
+      "twist", twist_diag_info_.is_passed_delay_gate, twist_diag_info_.delay_time,
+      twist_diag_info_.delay_time_threshold);
+    status.name = "localization: " + std::string(this->get_name()) + ": twist_delay_time";
+    status.hardware_id = this->get_name();
+    // WARN when the node is NOT activated or initial pose is NOT set
+    if (!(is_activated_ && is_set_initialpose_)) {
+      status.level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
     }
+    diag_msg.status.push_back(status);
+  }
 
-    // 6. Pose mahalanobis distance diagnostic
-    {
-      diagnostic_msgs::msg::DiagnosticStatus status = check_measurement_mahalanobis_gate(
-        "pose", pose_diag_info_.is_passed_mahalanobis_gate, pose_diag_info_.mahalanobis_distance,
-        params_.pose_gate_dist);
-      status.name =
-        "localization: " + std::string(this->get_name()) + ": pose_mahalanobis_distance";
-      status.hardware_id = this->get_name();
-      diag_msg.status.push_back(status);
+  // 10. Twist mahalanobis distance diagnostic
+  {
+    diagnostic_msgs::msg::DiagnosticStatus status = check_measurement_mahalanobis_gate(
+      "twist", twist_diag_info_.is_passed_mahalanobis_gate, twist_diag_info_.mahalanobis_distance,
+      params_.twist_gate_dist);
+    status.name = "localization: " + std::string(this->get_name()) + ": twist_mahalanobis_distance";
+    status.hardware_id = this->get_name();
+    // WARN when the node is NOT activated or initial pose is NOT set
+    if (!(is_activated_ && is_set_initialpose_)) {
+      status.level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
     }
+    diag_msg.status.push_back(status);
+  }
 
-    // 7. Twist no update count diagnostic
-    {
-      diagnostic_msgs::msg::DiagnosticStatus status = check_measurement_updated(
-        "twist", twist_diag_info_.no_update_count, params_.twist_no_update_count_threshold_warn,
-        params_.twist_no_update_count_threshold_error);
-      status.name = "localization: " + std::string(this->get_name()) + ": twist_no_update_count";
-      status.hardware_id = this->get_name();
-      diag_msg.status.push_back(status);
+  // 11. Covariance ellipse long axis diagnostic
+  {
+    geometry_msgs::msg::PoseWithCovariance pose_cov;
+    pose_cov.pose = current_ekf_pose.pose;
+    pose_cov.covariance = ekf_module_->get_current_pose_covariance();
+    const autoware::localization_util::Ellipse ellipse =
+      autoware::localization_util::calculate_xy_ellipse(pose_cov, params_.ellipse_scale);
+
+    diagnostic_msgs::msg::DiagnosticStatus status = check_covariance_ellipse(
+      "cov_ellipse_long_axis", ellipse.long_radius, params_.warn_ellipse_size,
+      params_.error_ellipse_size);
+    status.name = "localization: " + std::string(this->get_name()) + ": cov_ellipse_long_axis_size";
+    status.hardware_id = this->get_name();
+    // WARN when the node is NOT activated or initial pose is NOT set
+    if (!(is_activated_ && is_set_initialpose_)) {
+      status.level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
     }
+    diag_msg.status.push_back(status);
+  }
 
-    // 8. Twist queue size diagnostic
-    {
-      diagnostic_msgs::msg::DiagnosticStatus status =
-        check_measurement_queue_size("twist", twist_diag_info_.queue_size);
-      status.name = "localization: " + std::string(this->get_name()) + ": twist_queue_size";
-      status.hardware_id = this->get_name();
-      diag_msg.status.push_back(status);
+  // 12. Covariance ellipse lateral direction diagnostic
+  {
+    geometry_msgs::msg::PoseWithCovariance pose_cov;
+    pose_cov.pose = current_ekf_pose.pose;
+    pose_cov.covariance = ekf_module_->get_current_pose_covariance();
+    const autoware::localization_util::Ellipse ellipse =
+      autoware::localization_util::calculate_xy_ellipse(pose_cov, params_.ellipse_scale);
+
+    diagnostic_msgs::msg::DiagnosticStatus status = check_covariance_ellipse(
+      "cov_ellipse_lateral_direction", ellipse.size_lateral_direction,
+      params_.warn_ellipse_size_lateral_direction, params_.error_ellipse_size_lateral_direction);
+    status.name =
+      "localization: " + std::string(this->get_name()) + ": cov_ellipse_lateral_direction_size";
+    status.hardware_id = this->get_name();
+    // WARN when the node is NOT activated or initial pose is NOT set
+    if (!(is_activated_ && is_set_initialpose_)) {
+      status.level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
     }
-
-    // 9. Twist delay time diagnostic
-    {
-      diagnostic_msgs::msg::DiagnosticStatus status = check_measurement_delay_gate(
-        "twist", twist_diag_info_.is_passed_delay_gate, twist_diag_info_.delay_time,
-        twist_diag_info_.delay_time_threshold);
-      status.name = "localization: " + std::string(this->get_name()) + ": twist_delay_time";
-      status.hardware_id = this->get_name();
-      diag_msg.status.push_back(status);
-    }
-
-    // 10. Twist mahalanobis distance diagnostic
-    {
-      diagnostic_msgs::msg::DiagnosticStatus status = check_measurement_mahalanobis_gate(
-        "twist", twist_diag_info_.is_passed_mahalanobis_gate, twist_diag_info_.mahalanobis_distance,
-        params_.twist_gate_dist);
-      status.name =
-        "localization: " + std::string(this->get_name()) + ": twist_mahalanobis_distance";
-      status.hardware_id = this->get_name();
-      diag_msg.status.push_back(status);
-    }
-
-    // 11. Covariance ellipse long axis diagnostic
-    {
-      geometry_msgs::msg::PoseWithCovariance pose_cov;
-      pose_cov.pose = current_ekf_pose.pose;
-      pose_cov.covariance = ekf_module_->get_current_pose_covariance();
-      const autoware::localization_util::Ellipse ellipse =
-        autoware::localization_util::calculate_xy_ellipse(pose_cov, params_.ellipse_scale);
-
-      diagnostic_msgs::msg::DiagnosticStatus status = check_covariance_ellipse(
-        "cov_ellipse_long_axis", ellipse.long_radius, params_.warn_ellipse_size,
-        params_.error_ellipse_size);
-      status.name =
-        "localization: " + std::string(this->get_name()) + ": cov_ellipse_long_axis_size";
-      status.hardware_id = this->get_name();
-      diag_msg.status.push_back(status);
-    }
-
-    // 12. Covariance ellipse lateral direction diagnostic
-    {
-      geometry_msgs::msg::PoseWithCovariance pose_cov;
-      pose_cov.pose = current_ekf_pose.pose;
-      pose_cov.covariance = ekf_module_->get_current_pose_covariance();
-      const autoware::localization_util::Ellipse ellipse =
-        autoware::localization_util::calculate_xy_ellipse(pose_cov, params_.ellipse_scale);
-
-      diagnostic_msgs::msg::DiagnosticStatus status = check_covariance_ellipse(
-        "cov_ellipse_lateral_direction", ellipse.size_lateral_direction,
-        params_.warn_ellipse_size_lateral_direction, params_.error_ellipse_size_lateral_direction);
-      status.name =
-        "localization: " + std::string(this->get_name()) + ": cov_ellipse_lateral_direction_size";
-      status.hardware_id = this->get_name();
-      diag_msg.status.push_back(status);
-    }
+    diag_msg.status.push_back(status);
   }
 
   pub_diag_->publish(diag_msg);
