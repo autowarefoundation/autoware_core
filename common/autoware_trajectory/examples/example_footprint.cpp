@@ -125,16 +125,22 @@ static void draw_polygon(
     Kwargs("color"_a = "skyblue", "alpha"_a = 0.4, "edgecolor"_a = "blue", "linewidth"_a = 2));
 }
 
-static void draw_points(
-  autoware::pyplot::Axes & ax, const autoware_utils_geometry::MultiPoint2d & points)
+static void draw_footprints(
+  autoware::pyplot::Axes & ax, const std::vector<autoware_utils_geometry::Polygon2d> & footprints)
 {
-  std::vector<double> x_list;
-  std::vector<double> y_list;
-  for (auto point : points) {
-    x_list.push_back(point.x());
-    y_list.push_back(point.y());
+  for (auto fp : footprints) {
+    std::vector<double> x_list;
+    std::vector<double> y_list;
+    for (auto point : fp.outer()) {
+      x_list.push_back(point.x());
+      y_list.push_back(point.y());
+    }
+
+    ax.fill(
+      Args(x_list, y_list),
+      Kwargs("color"_a = "grey", "alpha"_a = 0.4, "edgecolor"_a = "grey", "linewidth"_a = 2));
+    ax.scatter(Args(x_list, y_list), Kwargs("color"_a = "grey"));
   }
-  ax.scatter(Args(x_list, y_list), Kwargs("color"_a = "grey", "label"_a = "Footprint"));
 }
 
 int main1()
@@ -171,10 +177,10 @@ int main2()
   plot_trajectory(ax, traj, "Parabolic to the right");
   plot_traj_with_orientation(ax, traj);
 
-  const auto points = autoware::experimental::trajectory::build_path_footprints(
+  const auto footprints = autoware::experimental::trajectory::build_path_footprints(
     traj, 0, traj.get_underlying_bases()[traj.get_underlying_bases().size() - 1], 0.5, 1);
 
-  draw_points(ax, points);
+  draw_footprints(ax, footprints);
   ax.set_title(Args("build_path_footprints"), Kwargs("fontsize"_a = 16));
 
   ax.legend();

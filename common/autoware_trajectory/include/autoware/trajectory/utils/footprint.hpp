@@ -23,6 +23,8 @@
 
 #include <boost/geometry/algorithms/correct.hpp>
 
+#include <vector>
+
 namespace autoware::experimental::trajectory
 {
 
@@ -52,22 +54,20 @@ autoware_utils_geometry::Polygon2d build_path_polygon(
 }
 
 template <class TrajectoryPointType>
-autoware_utils_geometry::MultiPoint2d build_path_footprints(
+std::vector<autoware_utils_geometry::Polygon2d> build_path_footprints(
   const Trajectory<TrajectoryPointType> & trajectory, const double start_s, const double end_s,
   const double width, const double base_length)
 {
-  autoware_utils_geometry::MultiPoint2d footprint;
+  std::vector<autoware_utils_geometry::Polygon2d> footprints;
   double interval = 1.0;
   auto footprint_size = (end_s - start_s) / interval;
-  footprint.reserve(footprint_size * 4);
+  footprints.reserve(footprint_size);
   for (auto target_s = start_s; target_s <= end_s; target_s += interval) {
     const auto p = trajectory.compute(target_s);
     auto fp = autoware_utils_geometry::to_footprint(p, base_length / 2, base_length / 2, width);
-    for (auto & point : fp.outer()) {
-      footprint.emplace_back(point.x(), point.y());
-    }
+    footprints.push_back(fp);
   }
-  return footprint;
+  return footprints;
 }
 
 }  // namespace autoware::experimental::trajectory
