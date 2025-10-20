@@ -70,6 +70,7 @@ if(BUILD_TESTING)
     examples/example_shift.cpp
     examples/example_self_intersecting.cpp
     examples/example_lateral_metrics.cpp
+    examples/example_footprint.cpp
   )
 
   add_definitions("-Wno-attributes")
