@@ -79,10 +79,11 @@ void BehaviorVelocityPlannerManager::removeScenePlugin(
 
 Trajectory BehaviorVelocityPlannerManager::planPathVelocity(
   const PlannerData & planner_data, const Trajectory & input_path,
-  const std::vector<geometry_msgs::msg::Point> & left_bound,
+  const std_msgs::msg::Header & header, const std::vector<geometry_msgs::msg::Point> & left_bound,
   const std::vector<geometry_msgs::msg::Point> & right_bound)
 {
   autoware_internal_planning_msgs::msg::PathWithLaneId input_path_msg;
+  input_path_msg.header = header;
   input_path_msg.points = input_path.restore();
   input_path_msg.left_bound = left_bound;
   input_path_msg.right_bound = right_bound;
@@ -90,7 +91,8 @@ Trajectory BehaviorVelocityPlannerManager::planPathVelocity(
   auto output_path_msg = input_path_msg;
 
   for (const auto & plugin : scene_manager_plugins_) {
-    plugin->updateSceneModuleInstances(std::make_shared<PlannerData>(planner_data), input_path_msg);
+    plugin->updateSceneModuleInstances(
+      std::make_shared<const PlannerData>(planner_data), input_path_msg);
     plugin->plan(&output_path_msg);
   }
 

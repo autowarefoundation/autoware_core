@@ -51,7 +51,7 @@ public:
   // cppcheck-suppress functionConst
   Trajectory planPathVelocity(
     const PlannerData & planner_data, const Trajectory & input_path,
-    const std::vector<geometry_msgs::msg::Point> & left_bound,
+    const std_msgs::msg::Header & header, const std::vector<geometry_msgs::msg::Point> & left_bound,
     const std::vector<geometry_msgs::msg::Point> & right_bound);
 
   RequiredSubscriptionInfo getRequiredSubscriptions() const { return required_subscriptions_; }

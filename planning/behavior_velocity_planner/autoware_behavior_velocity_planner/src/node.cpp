@@ -321,7 +321,8 @@ void BehaviorVelocityPlannerNode::onTrigger(
   }
 
   const auto output_path = generatePath(
-    *input_path, input_path_msg->left_bound, input_path_msg->right_bound, planner_data_);
+    *input_path, input_path_msg->header, input_path_msg->left_bound, input_path_msg->right_bound,
+    planner_data_);
 
   autoware_planning_msgs::msg::Path output_path_msg;
   output_path_msg.header.frame_id = "map";
@@ -347,7 +348,8 @@ void BehaviorVelocityPlannerNode::onTrigger(
 }
 
 Trajectory BehaviorVelocityPlannerNode::generatePath(
-  const Trajectory & input_path, const std::vector<geometry_msgs::msg::Point> & left_bound,
+  const Trajectory & input_path, const std_msgs::msg::Header & header,
+  const std::vector<geometry_msgs::msg::Point> & left_bound,
   const std::vector<geometry_msgs::msg::Point> & right_bound, const PlannerData & planner_data)
 {
   // TODO(someone): support backward path
@@ -362,7 +364,7 @@ Trajectory BehaviorVelocityPlannerNode::generatePath(
 
   // Plan path velocity
   const auto velocity_planned_path =
-    planner_manager_.planPathVelocity(planner_data, input_path, left_bound, right_bound);
+    planner_manager_.planPathVelocity(planner_data, input_path, header, left_bound, right_bound);
 
   // check stop point
   const auto stop_intervals = experimental::trajectory::find_intervals(
