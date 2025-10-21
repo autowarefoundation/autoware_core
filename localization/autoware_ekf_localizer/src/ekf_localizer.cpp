@@ -28,6 +28,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <limits>
 #include <memory>
 #include <queue>
 #include <string>
@@ -140,6 +141,8 @@ void EKFLocalizer::timer_callback()
 
   const rclcpp::Time current_time = this->now();
 
+  initialize_diagnostic_info(pose_diag_info_, twist_diag_info_, pose_queue_, twist_queue_);
+
   if (!is_activated_) {
     warning_->warn_throttle(
       "The node is not activated. Provide initial pose to pose_initializer", 2000);
@@ -166,14 +169,6 @@ void EKFLocalizer::timer_callback()
   DEBUG_INFO(get_logger(), "[EKF] predictKinematicsModel calc time = %f [ms]", stop_watch_.toc());
   DEBUG_INFO(get_logger(), "------------------------- end prediction -------------------------\n");
 
-  /* pose measurement update */
-  pose_diag_info_.queue_size = pose_queue_.size();
-  pose_diag_info_.is_passed_delay_gate = true;
-  pose_diag_info_.delay_time = 0.0;
-  pose_diag_info_.delay_time_threshold = 0.0;
-  pose_diag_info_.is_passed_mahalanobis_gate = true;
-  pose_diag_info_.mahalanobis_distance = 0.0;
-
   bool pose_is_updated = false;
 
   if (!pose_queue_.empty()) {
@@ -181,6 +176,10 @@ void EKFLocalizer::timer_callback()
     stop_watch_.tic();
 
     // Sequential state update for all Pose observations in the queue
+    // These flags are initialized true before their checks in measurement_update_pose
+    pose_diag_info_.is_passed_delay_gate = true;
+    pose_diag_info_.is_passed_mahalanobis_gate = true;
+    // save the initial size because the queue size can change in the loop
     const size_t n = pose_queue_.size();
     for (size_t i = 0; i < n; ++i) {
       const auto pose = pose_queue_.pop_increment_age();
@@ -193,14 +192,6 @@ void EKFLocalizer::timer_callback()
   }
   pose_diag_info_.no_update_count = pose_is_updated ? 0 : (pose_diag_info_.no_update_count + 1);
 
-  /* twist measurement update */
-  twist_diag_info_.queue_size = twist_queue_.size();
-  twist_diag_info_.is_passed_delay_gate = true;
-  twist_diag_info_.delay_time = 0.0;
-  twist_diag_info_.delay_time_threshold = 0.0;
-  twist_diag_info_.is_passed_mahalanobis_gate = true;
-  twist_diag_info_.mahalanobis_distance = 0.0;
-
   bool twist_is_updated = false;
 
   if (!twist_queue_.empty()) {
@@ -208,6 +199,10 @@ void EKFLocalizer::timer_callback()
     stop_watch_.tic();
 
     // Sequential state update for all Twist observations in the queue
+    // These flags are initialized true before their checks in measurement_update_twist
+    twist_diag_info_.is_passed_delay_gate = true;
+    twist_diag_info_.is_passed_mahalanobis_gate = true;
+    // save the initial size because the queue size can change in the loop
     const size_t n = twist_queue_.size();
     for (size_t i = 0; i < n; ++i) {
       const auto twist = twist_queue_.pop_increment_age();
@@ -476,6 +471,28 @@ void EKFLocalizer::service_trigger_node(
     is_set_initialpose_ = false;
   }
   res->success = true;
+}
+
+void EKFLocalizer::initialize_diagnostic_info(
+  EKFDiagnosticInfo & pose_diag_info, EKFDiagnosticInfo & twist_diag_info,
+  const AgedObjectQueue<geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr> & pose_queue,
+  const AgedObjectQueue<geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr> & twist_queue)
+{
+  /* pose diagnostics initialization */
+  pose_diag_info.queue_size = pose_queue.size();
+  pose_diag_info.is_passed_delay_gate = false;
+  pose_diag_info.delay_time = std::numeric_limits<double>::quiet_NaN();
+  pose_diag_info.delay_time_threshold = std::numeric_limits<double>::quiet_NaN();
+  pose_diag_info.is_passed_mahalanobis_gate = false;
+  pose_diag_info.mahalanobis_distance = std::numeric_limits<double>::quiet_NaN();
+
+  /* twist diagnostics initialization */
+  twist_diag_info.queue_size = twist_queue.size();
+  twist_diag_info.is_passed_delay_gate = false;
+  twist_diag_info.delay_time = std::numeric_limits<double>::quiet_NaN();
+  twist_diag_info.delay_time_threshold = std::numeric_limits<double>::quiet_NaN();
+  twist_diag_info.is_passed_mahalanobis_gate = false;
+  twist_diag_info.mahalanobis_distance = std::numeric_limits<double>::quiet_NaN();
 }
 
 }  // namespace autoware::ekf_localizer
