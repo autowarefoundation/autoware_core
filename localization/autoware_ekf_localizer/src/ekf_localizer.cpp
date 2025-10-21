@@ -292,6 +292,17 @@ void EKFLocalizer::callback_pose_with_covariance(
 
   pose_queue_.push(msg);
 
+  // Warn if queue is exceeded
+  if (pose_queue_.exceeded()) {
+    warning_->warn_throttle(
+      fmt::format(
+        "[EKF] Pose queue size ({}) is exceeding max_queue_size ({}). Consider increasing "
+        "max_queue_size or reducing input frequency.",
+        pose_queue_.size(), pose_queue_.max_queue_size()),
+      2000);
+    pose_queue_.pop();
+  }
+
   publish_callback_return_diagnostics("pose", msg->header.stamp);
 }
 
@@ -306,7 +317,19 @@ void EKFLocalizer::callback_twist_with_covariance(
   if (std::abs(msg->twist.twist.linear.x) < params_.threshold_observable_velocity_mps) {
     msg->twist.covariance[0 * 6 + 0] = 10000.0;
   }
+
   twist_queue_.push(msg);
+
+  // Warn if queue is exceeded
+  if (twist_queue_.exceeded()) {
+    warning_->warn_throttle(
+      fmt::format(
+        "[EKF] Twist queue size ({}) is exceeding max_queue_size ({}). Consider increasing "
+        "max_queue_size or reducing input frequency.",
+        twist_queue_.size(), twist_queue_.max_queue_size()),
+      2000);
+    twist_queue_.pop();
+  }
 
   publish_callback_return_diagnostics("twist", msg->header.stamp);
 }
