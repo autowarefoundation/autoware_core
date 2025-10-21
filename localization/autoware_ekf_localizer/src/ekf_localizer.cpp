@@ -185,7 +185,7 @@ void EKFLocalizer::timer_callback()
     for (size_t i = 0; i < n; ++i) {
       const auto pose = pose_queue_.pop_increment_age();
       bool is_updated = ekf_module_->measurement_update_pose(*pose, current_time, pose_diag_info_);
-      if (is_updated) {
+    if (is_updated) {
         pose_is_updated = true;
       }
     }
@@ -215,8 +215,8 @@ void EKFLocalizer::timer_callback()
       const auto twist = twist_queue_.pop_increment_age();
       bool is_updated =
         ekf_module_->measurement_update_twist(*twist, current_time, twist_diag_info_);
-      if (is_updated) {
-        twist_is_updated = true;
+    if (is_updated) {
+      twist_is_updated = true;
       }
     }
     DEBUG_INFO(
@@ -290,6 +290,10 @@ void EKFLocalizer::callback_pose_with_covariance(
     return;
   }
 
+  // pop old element if queue is full before pushing new one
+  if (pose_queue_.full()) {
+    pose_queue_.pop_increment_age();
+  }
   pose_queue_.push(msg);
 
   publish_callback_return_diagnostics("pose", msg->header.stamp);
@@ -305,6 +309,10 @@ void EKFLocalizer::callback_twist_with_covariance(
   // Note that this inequality must not include "equal".
   if (std::abs(msg->twist.twist.linear.x) < params_.threshold_observable_velocity_mps) {
     msg->twist.covariance[0 * 6 + 0] = 10000.0;
+  }
+  // pop old element if queue is full before pushing new one
+  if (twist_queue_.full()) {
+    twist_queue_.pop_increment_age();
   }
   twist_queue_.push(msg);
 
