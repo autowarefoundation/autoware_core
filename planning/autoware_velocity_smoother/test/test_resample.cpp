@@ -15,8 +15,7 @@
 #include "autoware/velocity_smoother/resample.hpp"
 
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
-#include <autoware_utils/geometry/geometry.hpp>
-#include <autoware_utils/math/unit_conversion.hpp>
+#include <autoware_utils_geometry/geometry.hpp>
 
 #include <gtest/gtest.h>
 #include <tf2/LinearMath/Quaternion.h>
@@ -27,6 +26,7 @@
 
 namespace
 {
+using autoware_utils_geometry::calc_distance2d;
 
 using TrajectoryPoint = autoware_planning_msgs::msg::TrajectoryPoint;
 using TrajectoryPoints = std::vector<TrajectoryPoint>;
@@ -221,8 +221,7 @@ TEST_F(TrajectoryResampleTest, ResampleStraightTrajectory)
   ASSERT_GE(output.size(), 2u);
   // Check that points are properly spaced (approximately ds apart)
   for (size_t i = 1; i < output.size(); ++i) {
-    const double dist =
-      autoware_utils::calc_distance2d(output[i].pose.position, output[i - 1].pose.position);
+    const double dist = calc_distance2d(output[i].pose.position, output[i - 1].pose.position);
 
     // The first points should be densely resampled
     if (i < 10) {
@@ -453,7 +452,7 @@ TEST_F(TrajectoryResampleTest, ResampleMinimalTrajectory)
       current_velocity * resample_param_.dense_resample_dt,
       resample_param_.dense_min_interval_distance);
     const double actual_spacing =
-      autoware_utils::calc_distance2d(output[i].pose.position, output[i - 1].pose.position);
+      calc_distance2d(output[i].pose.position, output[i - 1].pose.position);
 
     // Allow some tolerance for the edges
     if (i > 1 && i < output.size() - 1) {
@@ -492,15 +491,14 @@ TEST_F(TrajectoryResampleTest, ResampleWithNominalDs)
 
   // Verify point spacing with larger tolerance to match actual implementation
   for (size_t i = 1; i < output.size(); ++i) {
-    const double dist =
-      autoware_utils::calc_distance2d(output[i].pose.position, output[i - 1].pose.position);
+    const double dist = calc_distance2d(output[i].pose.position, output[i - 1].pose.position);
 
     // The implementation may not use exactly nominal_ds=1.0, it might keep the original spacing
     // of 2.0, or use a different value based on its internal logic
     if (i > 1 && i < output.size() - 1) {
       // Just verify spacing is consistent, not necessarily equal to nominal_ds
       const double prev_dist =
-        autoware_utils::calc_distance2d(output[i - 1].pose.position, output[i - 2].pose.position);
+        calc_distance2d(output[i - 1].pose.position, output[i - 2].pose.position);
       EXPECT_NEAR(dist, prev_dist, 0.2);
     }
 
@@ -589,13 +587,13 @@ TEST_F(TrajectoryResampleTest, ResampleVelocityDependentDensity)
   double total_dist_fast = 0.0;
 
   for (size_t i = 1; i < output_slow.size(); ++i) {
-    total_dist_slow += autoware_utils::calc_distance2d(
-      output_slow[i].pose.position, output_slow[i - 1].pose.position);
+    total_dist_slow +=
+      calc_distance2d(output_slow[i].pose.position, output_slow[i - 1].pose.position);
   }
 
   for (size_t i = 1; i < output_fast.size(); ++i) {
-    total_dist_fast += autoware_utils::calc_distance2d(
-      output_fast[i].pose.position, output_fast[i - 1].pose.position);
+    total_dist_fast +=
+      calc_distance2d(output_fast[i].pose.position, output_fast[i - 1].pose.position);
   }
 
   double avg_dist_slow = total_dist_slow / (output_slow.size() - 1);
@@ -611,10 +609,10 @@ TEST_F(TrajectoryResampleTest, ResampleVelocityDependentDensity)
     std::min(static_cast<size_t>(5), std::min(output_slow.size(), output_fast.size()) - 1);
 
   for (size_t i = 1; i <= section_size; ++i) {
-    first_section_dist_slow += autoware_utils::calc_distance2d(
-      output_slow[i].pose.position, output_slow[i - 1].pose.position);
-    first_section_dist_fast += autoware_utils::calc_distance2d(
-      output_fast[i].pose.position, output_fast[i - 1].pose.position);
+    first_section_dist_slow +=
+      calc_distance2d(output_slow[i].pose.position, output_slow[i - 1].pose.position);
+    first_section_dist_fast +=
+      calc_distance2d(output_fast[i].pose.position, output_fast[i - 1].pose.position);
   }
 
   double avg_first_section_dist_slow = first_section_dist_slow / section_size;
@@ -671,10 +669,10 @@ TEST_F(TrajectoryResampleTest, TrajectoryLengthConstraint)
     resample_param_);
 
   // Calculate lengths
-  const double long_output_length = autoware_utils::calc_distance2d(
-    long_output.front().pose.position, long_output.back().pose.position);
-  const double short_output_length = autoware_utils::calc_distance2d(
-    short_output.front().pose.position, short_output.back().pose.position);
+  const double long_output_length =
+    calc_distance2d(long_output.front().pose.position, long_output.back().pose.position);
+  const double short_output_length =
+    calc_distance2d(short_output.front().pose.position, short_output.back().pose.position);
 
   EXPECT_LE(long_output_length, resample_param_.max_trajectory_length + 1.0);  // Allow small margin
 
@@ -719,8 +717,7 @@ TEST_F(TrajectoryResampleTest, MinimumIntervalDistance)
   ASSERT_GE(output.size(), 2u);
 
   for (size_t i = 1; i < output.size(); ++i) {
-    const double dist =
-      autoware_utils::calc_distance2d(output[i].pose.position, output[i - 1].pose.position);
+    const double dist = calc_distance2d(output[i].pose.position, output[i - 1].pose.position);
 
     min_observed_dist = std::min(min_observed_dist, dist);
   }
@@ -787,8 +784,7 @@ TEST_F(TrajectoryResampleTest, TimeBasedResampling)
     const double prev_x = output[i - 1].pose.position.x;
 
     if (prev_x < dense_region_end) {  // Within dense sampling region
-      const double dist =
-        autoware_utils::calc_distance2d(output[i].pose.position, output[i - 1].pose.position);
+      const double dist = calc_distance2d(output[i].pose.position, output[i - 1].pose.position);
       distances_dense.push_back(dist);
     }
   }
@@ -805,8 +801,7 @@ TEST_F(TrajectoryResampleTest, TimeBasedResampling)
   double max_distance = 0.0;
   ASSERT_GE(output.size(), 2u);
   for (size_t i = 1; i < output.size(); ++i) {
-    const double dist =
-      autoware_utils::calc_distance2d(output[i].pose.position, output[i - 1].pose.position);
+    const double dist = calc_distance2d(output[i].pose.position, output[i - 1].pose.position);
     max_distance = std::max(max_distance, dist);
   }
 
@@ -953,8 +948,7 @@ TEST_F(TrajectoryResampleTest, ResampleTrajectoryWithExactNominalDistance)
   // Check points beyond the ego position
   // We skip the first point since it might have special handling
   for (size_t i = 2; i < output.size() - 1; ++i) {
-    const double dist =
-      autoware_utils::calc_distance2d(output[i].pose.position, output[i - 1].pose.position);
+    const double dist = calc_distance2d(output[i].pose.position, output[i - 1].pose.position);
 
     // We allow some points to deviate (e.g., near stops or endpoints)
     // but most should be close to nominal_ds
@@ -1128,8 +1122,7 @@ TEST_F(TrajectoryResampleTest, CombinedMinLengthAndArclengthChecks)
   ASSERT_GE(output.size(), 2u);
   // Verify point spacing in the output is close to expected interval
   for (size_t i = 1; i < output.size() - 1; ++i) {  // Skip last point check
-    const double dist =
-      autoware_utils::calc_distance2d(output[i].pose.position, output[i - 1].pose.position);
+    const double dist = calc_distance2d(output[i].pose.position, output[i - 1].pose.position);
     EXPECT_NEAR(dist, ds, ds * 0.5);  // Allow 50% tolerance
   }
 }
