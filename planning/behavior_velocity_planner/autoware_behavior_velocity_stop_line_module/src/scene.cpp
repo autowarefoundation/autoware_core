@@ -19,6 +19,7 @@
 #include "autoware/trajectory/utils/crossed.hpp"
 
 #include <autoware/route_handler/route_handler.hpp>
+#include <autoware/trajectory/utils/pretty_build.hpp>
 #include <rclcpp/logging.hpp>
 
 #include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
@@ -67,7 +68,7 @@ StopLineModule::StopLineModule(
 
 bool StopLineModule::modifyPathVelocity(PathWithLaneId * _path)
 {
-  auto path = Trajectory::Builder{}.build(_path->points);
+  auto path = experimental::trajectory::pretty_build(_path->points);
   if (!path) {
     logWarnThrottle(5000, "Failed to build trajectory from path points");
     return true;

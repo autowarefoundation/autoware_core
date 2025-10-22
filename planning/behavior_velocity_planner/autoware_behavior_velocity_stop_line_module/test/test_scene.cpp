@@ -16,6 +16,7 @@
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <autoware/behavior_velocity_planner_common/planner_data.hpp>
+#include <autoware/trajectory/utils/pretty_build.hpp>
 #include <rclcpp/node.hpp>
 
 #include <autoware_internal_planning_msgs/msg/path_point_with_lane_id.hpp>
@@ -84,7 +85,7 @@ protected:
     path_.left_bound = {make_geom_point(0.0, 1.0), make_geom_point(10.0, 1.0)};
     path_.right_bound = {make_geom_point(0.0, -1.0), make_geom_point(10.0, -1.0)};
 
-    trajectory_ = *StopLineModule::Trajectory::Builder{}.build(path_.points);
+    trajectory_ = *autoware::experimental::trajectory::pretty_build(path_.points);
 
     clock_ = std::make_shared<rclcpp::Clock>();
 

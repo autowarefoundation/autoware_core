@@ -14,10 +14,8 @@
 
 #include "autoware/behavior_velocity_planner/node.hpp"
 
-#include <autoware/behavior_velocity_planner_common/utilization/path_utilization.hpp>
-#include <autoware/motion_utils/trajectory/path_with_lane_id.hpp>
-#include <autoware/motion_utils/trajectory/trajectory.hpp>
 #include <autoware/trajectory/utils/find_intervals.hpp>
+#include <autoware/trajectory/utils/pretty_build.hpp>
 #include <autoware/velocity_smoother/smoother/analytical_jerk_constrained_smoother/analytical_jerk_constrained_smoother.hpp>
 #include <autoware_lanelet2_extension/utility/message_conversion.hpp>
 #include <autoware_utils_pcl/transforms.hpp>
@@ -314,7 +312,7 @@ void BehaviorVelocityPlannerNode::onTrigger(
     return;
   }
 
-  const auto input_path = Trajectory::Builder{}.build(input_path_msg->points);
+  const auto input_path = experimental::trajectory::pretty_build(input_path_msg->points);
   if (!input_path) {
     RCLCPP_ERROR(get_logger(), "Failed to convert input path");
     return;

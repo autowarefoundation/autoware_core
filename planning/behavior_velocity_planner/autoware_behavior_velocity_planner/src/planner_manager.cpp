@@ -14,8 +14,7 @@
 
 #include "autoware/behavior_velocity_planner/planner_manager.hpp"
 
-#include <autoware/motion_utils/trajectory/interpolation.hpp>
-#include <autoware/motion_utils/trajectory/trajectory.hpp>
+#include <autoware/trajectory/utils/pretty_build.hpp>
 
 #include <boost/format.hpp>
 
@@ -96,7 +95,7 @@ Trajectory BehaviorVelocityPlannerManager::planPathVelocity(
     plugin->plan(&output_path_msg);
   }
 
-  const auto output_path = Trajectory::Builder{}.build(output_path_msg.points);
+  const auto output_path = experimental::trajectory::pretty_build(output_path_msg.points);
   if (!output_path) {
     throw std::runtime_error("Failed to convert output path");
   }
