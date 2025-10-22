@@ -17,7 +17,6 @@
 #include <autoware/trajectory/utils/find_intervals.hpp>
 #include <autoware/trajectory/utils/pretty_build.hpp>
 #include <autoware/velocity_smoother/smoother/analytical_jerk_constrained_smoother/analytical_jerk_constrained_smoother.hpp>
-#include <autoware_lanelet2_extension/utility/message_conversion.hpp>
 #include <autoware_utils_pcl/transforms.hpp>
 #include <autoware_utils_rclcpp/parameter.hpp>
 #include <tf2_eigen/tf2_eigen.hpp>
