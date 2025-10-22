@@ -17,6 +17,7 @@
 #include "utils/localization_conversion.hpp"
 
 #include <autoware/component_interface_specs/utils.hpp>
+#include <autoware/qos_utils/qos_compatibility.hpp>
 
 namespace autoware::default_adapi
 {
@@ -37,7 +38,7 @@ LocalizationNode::LocalizationNode(const rclcpp::NodeOptions & options)
   srv_initialize_ = create_service<autoware::adapi_specs::localization::Initialize::Service>(
     autoware::adapi_specs::localization::Initialize::name,
     std::bind(&LocalizationNode::on_initialize, this, std::placeholders::_1, std::placeholders::_2),
-    rmw_qos_profile_services_default, group_cli_);
+    AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE(), group_cli_);
 
   // Component Interface
   sub_state_ = create_subscription<
