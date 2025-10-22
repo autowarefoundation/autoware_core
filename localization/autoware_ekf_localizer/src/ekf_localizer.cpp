@@ -51,8 +51,8 @@ EKFLocalizer::EKFLocalizer(const rclcpp::NodeOptions & node_options)
   tf2_listener_(tf2_buffer_),
   params_(this),
   ekf_dt_(params_.ekf_dt),
-  pose_queue_(params_.pose_smoothing_steps),
-  twist_queue_(params_.twist_smoothing_steps)
+  pose_queue_(params_.pose_smoothing_steps, params_.max_pose_queue_size),
+  twist_queue_(params_.twist_smoothing_steps, params_.max_twist_queue_size)
 {
   is_activated_ = false;
   is_set_initialpose_ = false;

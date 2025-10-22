@@ -38,10 +38,12 @@ public:
       node->declare_parameter<double>("pose_measurement.pose_additional_delay")),
     pose_gate_dist(node->declare_parameter<double>("pose_measurement.pose_gate_dist")),
     pose_smoothing_steps(node->declare_parameter<int>("pose_measurement.pose_smoothing_steps")),
+    max_pose_queue_size(node->declare_parameter<int>("pose_measurement.max_pose_queue_size")),
     twist_additional_delay(
       node->declare_parameter<double>("twist_measurement.twist_additional_delay")),
     twist_gate_dist(node->declare_parameter<double>("twist_measurement.twist_gate_dist")),
     twist_smoothing_steps(node->declare_parameter<int>("twist_measurement.twist_smoothing_steps")),
+    max_twist_queue_size(node->declare_parameter<int>("twist_measurement.max_twist_queue_size")),
     proc_stddev_vx_c(node->declare_parameter<double>("process_noise.proc_stddev_vx_c")),
     proc_stddev_wz_c(node->declare_parameter<double>("process_noise.proc_stddev_wz_c")),
     proc_stddev_yaw_c(node->declare_parameter<double>("process_noise.proc_stddev_yaw_c")),
@@ -81,9 +83,11 @@ public:
   const double pose_additional_delay;
   const double pose_gate_dist;
   const size_t pose_smoothing_steps;
+  const size_t max_pose_queue_size;
   const double twist_additional_delay;
   const double twist_gate_dist;
   const size_t twist_smoothing_steps;
+  const size_t max_twist_queue_size;
   const double proc_stddev_vx_c;   //!< @brief  vx process noise
   const double proc_stddev_wz_c;   //!< @brief  wz process noise
   const double proc_stddev_yaw_c;  //!< @brief  yaw process noise
