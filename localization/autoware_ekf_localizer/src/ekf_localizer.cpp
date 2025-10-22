@@ -180,7 +180,7 @@ void EKFLocalizer::timer_callback()
     DEBUG_INFO(get_logger(), "------------------------- start Pose -------------------------");
     stop_watch_.tic();
 
-    // save the initial size because the queue size can change in the loop
+    // Sequential state update for all Pose observations in the queue
     const size_t n = pose_queue_.size();
     for (size_t i = 0; i < n; ++i) {
       const auto pose = pose_queue_.pop_increment_age();
@@ -207,7 +207,7 @@ void EKFLocalizer::timer_callback()
     DEBUG_INFO(get_logger(), "------------------------- start Twist -------------------------");
     stop_watch_.tic();
 
-    // save the initial size because the queue size can change in the loop
+    // Sequential state update for all Twist observations in the queue
     const size_t n = twist_queue_.size();
     for (size_t i = 0; i < n; ++i) {
       const auto twist = twist_queue_.pop_increment_age();
