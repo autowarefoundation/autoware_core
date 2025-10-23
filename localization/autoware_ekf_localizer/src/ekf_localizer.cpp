@@ -431,13 +431,9 @@ void EKFLocalizer::publish_diagnostics(
   {
     diagnostic_msgs::msg::DiagnosticStatus status = check_measurement_delay_gate(
       "pose", pose_diag_info_.is_passed_delay_gate, pose_diag_info_.delay_time,
-      pose_diag_info_.delay_time_threshold);
+      pose_diag_info_.delay_time_threshold, !(is_activated_ && is_set_initialpose_));
     status.name = "localization: " + std::string(this->get_name()) + ": pose_delay_time";
     status.hardware_id = this->get_name();
-    // WARN when the node is NOT activated or initial pose is NOT set
-    if (!(is_activated_ && is_set_initialpose_)) {
-      status.level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
-    }
     diag_msg.status.push_back(status);
   }
 
@@ -445,13 +441,9 @@ void EKFLocalizer::publish_diagnostics(
   {
     diagnostic_msgs::msg::DiagnosticStatus status = check_measurement_mahalanobis_gate(
       "pose", pose_diag_info_.is_passed_mahalanobis_gate, pose_diag_info_.mahalanobis_distance,
-      params_.pose_gate_dist);
+      params_.pose_gate_dist, !(is_activated_ && is_set_initialpose_));
     status.name = "localization: " + std::string(this->get_name()) + ": pose_mahalanobis_distance";
     status.hardware_id = this->get_name();
-    // WARN when the node is NOT activated or initial pose is NOT set
-    if (!(is_activated_ && is_set_initialpose_)) {
-      status.level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
-    }
     diag_msg.status.push_back(status);
   }
 
@@ -478,13 +470,9 @@ void EKFLocalizer::publish_diagnostics(
   {
     diagnostic_msgs::msg::DiagnosticStatus status = check_measurement_delay_gate(
       "twist", twist_diag_info_.is_passed_delay_gate, twist_diag_info_.delay_time,
-      twist_diag_info_.delay_time_threshold);
+      twist_diag_info_.delay_time_threshold, !(is_activated_ && is_set_initialpose_));
     status.name = "localization: " + std::string(this->get_name()) + ": twist_delay_time";
     status.hardware_id = this->get_name();
-    // WARN when the node is NOT activated or initial pose is NOT set
-    if (!(is_activated_ && is_set_initialpose_)) {
-      status.level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
-    }
     diag_msg.status.push_back(status);
   }
 
@@ -492,13 +480,9 @@ void EKFLocalizer::publish_diagnostics(
   {
     diagnostic_msgs::msg::DiagnosticStatus status = check_measurement_mahalanobis_gate(
       "twist", twist_diag_info_.is_passed_mahalanobis_gate, twist_diag_info_.mahalanobis_distance,
-      params_.twist_gate_dist);
+      params_.twist_gate_dist, !(is_activated_ && is_set_initialpose_));
     status.name = "localization: " + std::string(this->get_name()) + ": twist_mahalanobis_distance";
     status.hardware_id = this->get_name();
-    // WARN when the node is NOT activated or initial pose is NOT set
-    if (!(is_activated_ && is_set_initialpose_)) {
-      status.level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
-    }
     diag_msg.status.push_back(status);
   }
 
@@ -512,13 +496,9 @@ void EKFLocalizer::publish_diagnostics(
 
     diagnostic_msgs::msg::DiagnosticStatus status = check_covariance_ellipse(
       "cov_ellipse_long_axis", ellipse.long_radius, params_.warn_ellipse_size,
-      params_.error_ellipse_size);
+      params_.error_ellipse_size, !(is_activated_ && is_set_initialpose_));
     status.name = "localization: " + std::string(this->get_name()) + ": cov_ellipse_long_axis_size";
     status.hardware_id = this->get_name();
-    // WARN when the node is NOT activated or initial pose is NOT set
-    if (!(is_activated_ && is_set_initialpose_)) {
-      status.level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
-    }
     diag_msg.status.push_back(status);
   }
 
@@ -532,14 +512,11 @@ void EKFLocalizer::publish_diagnostics(
 
     diagnostic_msgs::msg::DiagnosticStatus status = check_covariance_ellipse(
       "cov_ellipse_lateral_direction", ellipse.size_lateral_direction,
-      params_.warn_ellipse_size_lateral_direction, params_.error_ellipse_size_lateral_direction);
+      params_.warn_ellipse_size_lateral_direction, params_.error_ellipse_size_lateral_direction,
+      !(is_activated_ && is_set_initialpose_));
     status.name =
       "localization: " + std::string(this->get_name()) + ": cov_ellipse_lateral_direction_size";
     status.hardware_id = this->get_name();
-    // WARN when the node is NOT activated or initial pose is NOT set
-    if (!(is_activated_ && is_set_initialpose_)) {
-      status.level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
-    }
     diag_msg.status.push_back(status);
   }
 

@@ -33,13 +33,14 @@ diagnostic_msgs::msg::DiagnosticStatus check_measurement_queue_size(
   const std::string & measurement_type, const size_t queue_size);
 diagnostic_msgs::msg::DiagnosticStatus check_measurement_delay_gate(
   const std::string & measurement_type, const bool is_passed_delay_gate, const double delay_time,
-  const double delay_time_threshold);
+  const double delay_time_threshold, const bool is_invalid);
 diagnostic_msgs::msg::DiagnosticStatus check_measurement_mahalanobis_gate(
   const std::string & measurement_type, const bool is_passed_mahalanobis_gate,
-  const double mahalanobis_distance, const double mahalanobis_distance_threshold);
+  const double mahalanobis_distance, const double mahalanobis_distance_threshold,
+  const bool is_invalid);
 diagnostic_msgs::msg::DiagnosticStatus check_covariance_ellipse(
   const std::string & name, const double curr_size, const double warn_threshold,
-  const double error_threshold);
+  const double error_threshold, const bool is_invalid);
 
 diagnostic_msgs::msg::DiagnosticStatus merge_diagnostic_status(
   const std::vector<diagnostic_msgs::msg::DiagnosticStatus> & stat_array);
