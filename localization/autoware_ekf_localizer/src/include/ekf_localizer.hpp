@@ -206,7 +206,6 @@ private:
     const AgedObjectQueue<geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr> & pose_queue,
     const AgedObjectQueue<geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr> & twist_queue);
 
-  friend class EKFLocalizerTestSuite;        // for test code
   friend class EKFLocalizerDiagnosticsTest;  // for test code
 };
 
