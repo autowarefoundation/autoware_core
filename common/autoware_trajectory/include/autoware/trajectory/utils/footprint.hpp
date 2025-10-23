@@ -105,6 +105,22 @@ std::vector<autoware_utils_geometry::Polygon2d> build_path_footprints(
   return footprints;
 }
 
+/** @brief create footprints trace along trajectory from start_s to end_s with size of base
+ * footprint (Polygon2d)
+ *  @param trajectory trajectory
+ *  @param start_s start arc-length
+ *  @param end_s end arc_length
+ *  @param base_footprint base footprint (Polygon2d)
+ *  @return vector of Polygon2d (several footprints - footprint trace)
+ */
+template <class TrajectoryPointType>
+std::vector<autoware_utils_geometry::Polygon2d> build_path_footprints(
+  const Trajectory<TrajectoryPointType> & trajectory, const double start_s, const double end_s,
+  const autoware_utils_geometry::Polygon2d & base_footprint)
+{
+  return build_path_footprints(trajectory, start_s, end_s, base_footprint.outer());
+}
+
 }  // namespace autoware::experimental::trajectory
 
 #endif  // AUTOWARE__TRAJECTORY__UTILS__FOOTPRINT_HPP_

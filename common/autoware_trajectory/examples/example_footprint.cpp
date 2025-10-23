@@ -188,7 +188,41 @@ int main2()
     traj, 0, traj.get_underlying_bases()[traj.get_underlying_bases().size() - 1], base_ring);
 
   draw_footprints(ax, footprints);
-  ax.set_title(Args("build_path_footprints"), Kwargs("fontsize"_a = 16));
+  ax.set_title(Args("build_path_footprints for LinearRing2d"), Kwargs("fontsize"_a = 16));
+
+  ax.legend();
+  ax.grid();
+  ax.set_aspect(Args("equal"));
+  fig.tight_layout();
+  plt.show();
+  return 0;
+}
+
+int main3()
+{
+  auto plt = autoware::pyplot::import();
+  auto [fig, axes] = plt.subplots(1, 1);
+  auto ax = axes[0];
+
+  auto traj = build_parabolic_trajectory(11, 0.5);
+  plot_trajectory(ax, traj, "Parabolic to the right");
+  plot_traj_with_orientation(ax, traj);
+
+  autoware_utils_geometry::Point2d left_front{-0.5, 0.25};
+  autoware_utils_geometry::Point2d right_front{0.5, 0.25};
+  autoware_utils_geometry::Point2d right_rear{0.5, -0.25};
+  autoware_utils_geometry::Point2d left_rear{-0.5, -0.25};
+  autoware_utils_geometry::Polygon2d base_polygon;
+  base_polygon.outer().push_back(left_front);
+  base_polygon.outer().push_back(right_front);
+  base_polygon.outer().push_back(right_rear);
+  base_polygon.outer().push_back(left_rear);
+
+  const auto footprints = autoware::experimental::trajectory::build_path_footprints(
+    traj, 0, traj.get_underlying_bases()[traj.get_underlying_bases().size() - 1], base_polygon);
+
+  draw_footprints(ax, footprints);
+  ax.set_title(Args("build_path_footprints for Polygon2d"), Kwargs("fontsize"_a = 16));
 
   ax.legend();
   ax.grid();
@@ -203,5 +237,6 @@ int main()
   pybind11::scoped_interpreter guard{};
   main1();
   main2();
+  main3();
   return 0;
 }
