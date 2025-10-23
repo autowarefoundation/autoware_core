@@ -90,10 +90,9 @@ autoware_utils_geometry::Polygon2d build_path_polygon(
 template <class TrajectoryPointType>
 std::vector<autoware_utils_geometry::Polygon2d> build_path_footprints(
   const Trajectory<TrajectoryPointType> & trajectory, const double start_s, const double end_s,
-  const autoware_utils_geometry::LinearRing2d & base_footprint)
+  const autoware_utils_geometry::LinearRing2d & base_footprint, const double interval = 1.0)
 {
   std::vector<autoware_utils_geometry::Polygon2d> footprints;
-  double interval = 1.0;
   auto footprint_size = (end_s - start_s) / interval;
   footprints.reserve(footprint_size);
   for (auto target_s = start_s; target_s <= end_s; target_s += interval) {
@@ -116,9 +115,9 @@ std::vector<autoware_utils_geometry::Polygon2d> build_path_footprints(
 template <class TrajectoryPointType>
 std::vector<autoware_utils_geometry::Polygon2d> build_path_footprints(
   const Trajectory<TrajectoryPointType> & trajectory, const double start_s, const double end_s,
-  const autoware_utils_geometry::Polygon2d & base_footprint)
+  const autoware_utils_geometry::Polygon2d & base_footprint, const double interval = 1.0)
 {
-  return build_path_footprints(trajectory, start_s, end_s, base_footprint.outer());
+  return build_path_footprints(trajectory, start_s, end_s, base_footprint.outer(), interval);
 }
 
 }  // namespace autoware::experimental::trajectory
