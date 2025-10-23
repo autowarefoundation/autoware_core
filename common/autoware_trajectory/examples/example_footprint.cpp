@@ -20,6 +20,7 @@
 #include "autoware/trajectory/utils/footprint.hpp"
 
 #include <autoware/pyplot/pyplot.hpp>
+#include <autoware_utils_geometry/boost_geometry.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 #include <range/v3/all.hpp>
 
@@ -177,8 +178,14 @@ int main2()
   plot_trajectory(ax, traj, "Parabolic to the right");
   plot_traj_with_orientation(ax, traj);
 
+  autoware_utils_geometry::Point2d left_front{-0.5, 0.5};
+  autoware_utils_geometry::Point2d right_front{0.5, 0.5};
+  autoware_utils_geometry::Point2d right_rear{0.5, -0.5};
+  autoware_utils_geometry::Point2d left_rear{-0.5, -0.5};
+  autoware_utils_geometry::LinearRing2d base_ring{left_front, right_front, right_rear, left_rear};
+
   const auto footprints = autoware::experimental::trajectory::build_path_footprints(
-    traj, 0, traj.get_underlying_bases()[traj.get_underlying_bases().size() - 1], 0.5, 1);
+    traj, 0, traj.get_underlying_bases()[traj.get_underlying_bases().size() - 1], base_ring);
 
   draw_footprints(ax, footprints);
   ax.set_title(Args("build_path_footprints"), Kwargs("fontsize"_a = 16));

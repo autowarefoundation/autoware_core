@@ -25,6 +25,21 @@
 
 #include <vector>
 
+namespace
+{
+autoware_utils_geometry::Polygon2d convert_linear_ring_to_polygon(
+  autoware_utils_geometry::LinearRing2d footprint)
+{
+  autoware_utils_geometry::Polygon2d footprint_polygon;
+  for (auto point : footprint) {
+    footprint_polygon.outer().push_back(point);
+  }
+
+  boost::geometry::correct(footprint_polygon);
+  return footprint_polygon;
+}
+}  // namespace
+
 namespace autoware::experimental::trajectory
 {
 
@@ -56,7 +71,7 @@ autoware_utils_geometry::Polygon2d build_path_polygon(
 template <class TrajectoryPointType>
 std::vector<autoware_utils_geometry::Polygon2d> build_path_footprints(
   const Trajectory<TrajectoryPointType> & trajectory, const double start_s, const double end_s,
-  const double width, const double base_length)
+  const autoware_utils_geometry::LinearRing2d & base_footprint)
 {
   std::vector<autoware_utils_geometry::Polygon2d> footprints;
   double interval = 1.0;
@@ -64,8 +79,9 @@ std::vector<autoware_utils_geometry::Polygon2d> build_path_footprints(
   footprints.reserve(footprint_size);
   for (auto target_s = start_s; target_s <= end_s; target_s += interval) {
     const auto p = trajectory.compute(target_s);
-    auto fp = autoware_utils_geometry::to_footprint(p, base_length / 2, base_length / 2, width);
-    footprints.push_back(fp);
+    auto fp = autoware_utils_geometry::transform_vector(
+      base_footprint, autoware_utils_geometry::pose2transform(p));
+    footprints.push_back(convert_linear_ring_to_polygon(fp));
   }
   return footprints;
 }
