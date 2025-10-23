@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Parameters for Gnss Poser Node",
+  "type": "object",
+  "definitions": {
+    "crop_box_filter": {
+      "type": "object",
+      "properties": {
+        "min_x": {
+          "type": "number",
+          "description": "Minimum x value of the crop box"
+        },
+        "min_y": {
+          "type": "number",
+          "description": "Minimum y value of the crop box"
+        },
+        "min_z": {
+          "type": "number",
+          "description": "Minimum z value of the crop box"
+        },
+        "max_x": {
+          "type": "number",
+          "description": "Maximum x value of the crop box"
+        },
+        "max_y": {
+          "type": "number",
+          "description": "Maximum y value of the crop box"
+        },
+        "max_z": {
+          "type": "number",
+          "description": "Maximum z value of the crop box"
+        },
+        "negative": {
+          "type": "boolean",
+          "description": "If true, points inside the box are removed, otherwise points outside the box are removed."
+        }
+      },
+      "required": [
+        "min_x",
+        "min_y",
+        "min_z",
+        "max_x",
+        "max_y",
+        "max_z",
+        "negative"
+      ]
+    }
+  },
+  "properties": {
+    "/**": {
+      "type": "object",
+      "properties": {
+        "ros__parameters": {
+          "$ref": "#/definitions/crop_box_filter"
+        }
+      },
+      "required": [
+        "ros__parameters"
+      ]
+    }
+  },
+  "required": [
+    "/**"
+  ]
+}
