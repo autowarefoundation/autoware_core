@@ -51,15 +51,7 @@
           "description": "If true, points inside the box are removed, otherwise points outside the box are removed."
         }
       },
-      "required": [
-        "min_x",
-        "min_y",
-        "min_z",
-        "max_x",
-        "max_y",
-        "max_z",
-        "negative"
-      ]
+      "required": ["min_x", "min_y", "min_z", "max_x", "max_y", "max_z", "negative"]
     }
   },
   "properties": {
@@ -70,12 +62,8 @@
           "$ref": "#/definitions/crop_box_filter"
         }
       },
-      "required": [
-        "ros__parameters"
-      ]
+      "required": ["ros__parameters"]
     }
   },
-  "required": [
-    "/**"
-  ]
+  "required": ["/**"]
 }
