@@ -94,6 +94,21 @@ TEST(spline_interpolation, splineYawFromPoints)
       EXPECT_NEAR(yaws.at(i), ans.at(i), epsilon);
     }
   }
+
+  {  // points very close together
+    std::vector<geometry_msgs::msg::Point> points;
+    points.push_back(create_point(1.0, 0.0, 0.0));
+    points.push_back(create_point(1.0 + 1e-9, 0.0 + 1.5e-9, 0.0));
+    points.push_back(create_point(2.0, 1.5, 0.0));
+    points.push_back(create_point(3.0, 3.0, 0.0));
+
+    const std::vector<double> ans{0.9827937, 0.9827937, 0.9827937, 0.9827937};
+
+    const auto yaws = autoware::interpolation::splineYawFromPoints(points);
+    for (size_t i = 0; i < yaws.size(); ++i) {
+      EXPECT_NEAR(yaws.at(i), ans.at(i), epsilon);
+    }
+  }
 }
 
 TEST(spline_interpolation, SplineInterpolationPoints2d)
