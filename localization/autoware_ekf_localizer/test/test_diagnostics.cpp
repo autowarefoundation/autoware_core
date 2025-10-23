@@ -118,13 +118,24 @@ TEST(TestEkfDiagnostics, check_measurement_delay_gate)
 
   bool is_passed_delay_gate = true;
   stat = check_measurement_delay_gate(
-    measurement_type, is_passed_delay_gate, delay_time, delay_time_threshold);
+    measurement_type, is_passed_delay_gate, delay_time, delay_time_threshold, false);
   EXPECT_EQ(stat.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
 
   is_passed_delay_gate = false;
   stat = check_measurement_delay_gate(
-    measurement_type, is_passed_delay_gate, delay_time, delay_time_threshold);
+    measurement_type, is_passed_delay_gate, delay_time, delay_time_threshold, false);
   EXPECT_EQ(stat.level, diagnostic_msgs::msg::DiagnosticStatus::WARN);
+
+  // is_invalid true
+  is_passed_delay_gate = false;
+  stat = check_measurement_delay_gate(
+    measurement_type, is_passed_delay_gate, delay_time, delay_time_threshold, true);
+  EXPECT_EQ(stat.level, diagnostic_msgs::msg::DiagnosticStatus::WARN);
+  bool found_invalid = false;
+  for (const auto & kv : stat.values) {
+    if (kv.key == "pose_is_invalid" && kv.value == "True") found_invalid = true;
+  }
+  EXPECT_TRUE(found_invalid);
 }
 
 TEST(TestEkfDiagnostics, check_measurement_mahalanobis_gate)
@@ -138,14 +149,26 @@ TEST(TestEkfDiagnostics, check_measurement_mahalanobis_gate)
   bool is_passed_mahalanobis_gate = true;
   stat = check_measurement_mahalanobis_gate(
     measurement_type, is_passed_mahalanobis_gate, mahalanobis_distance,
-    mahalanobis_distance_threshold);
+    mahalanobis_distance_threshold, false);
   EXPECT_EQ(stat.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
 
   is_passed_mahalanobis_gate = false;
   stat = check_measurement_mahalanobis_gate(
     measurement_type, is_passed_mahalanobis_gate, mahalanobis_distance,
-    mahalanobis_distance_threshold);
+    mahalanobis_distance_threshold, false);
   EXPECT_EQ(stat.level, diagnostic_msgs::msg::DiagnosticStatus::WARN);
+
+  // is_invalid true
+  is_passed_mahalanobis_gate = false;
+  stat = check_measurement_mahalanobis_gate(
+    measurement_type, is_passed_mahalanobis_gate, mahalanobis_distance,
+    mahalanobis_distance_threshold, true);
+  EXPECT_EQ(stat.level, diagnostic_msgs::msg::DiagnosticStatus::WARN);
+  bool found_invalid = false;
+  for (const auto & kv : stat.values) {
+    if (kv.key == "pose_is_invalid" && kv.value == "True") found_invalid = true;
+  }
+  EXPECT_TRUE(found_invalid);
 }
 
 TEST(TestLocalizationErrorMonitorDiagnostics, merge_diagnostic_status)
