@@ -27,6 +27,10 @@
 
 namespace
 {
+/** @brief convert LinearRing2d to Polygon2d
+ *  @param footprint LinearRing2d
+ *  @return Polygon2d
+ */
 autoware_utils_geometry::Polygon2d convert_linear_ring_to_polygon(
   autoware_utils_geometry::LinearRing2d footprint)
 {
@@ -43,6 +47,13 @@ autoware_utils_geometry::Polygon2d convert_linear_ring_to_polygon(
 namespace autoware::experimental::trajectory
 {
 
+/** @brief create long polygon along trajectory from start_s to end_s with designated width
+ *  @param trajectory trajectory
+ *  @param start_s start arc-length
+ *  @param end_s end arc_length
+ *  @param width width of the polygon (vehicle_info.width/2)
+ *  @return Polygon2d (one)
+ */
 template <class TrajectoryPointType>
 autoware_utils_geometry::Polygon2d build_path_polygon(
   const Trajectory<TrajectoryPointType> & trajectory, const double start_s, const double end_s,
@@ -68,6 +79,14 @@ autoware_utils_geometry::Polygon2d build_path_polygon(
   return long_polygon;
 }
 
+/** @brief create footprints trace along trajectory from start_s to end_s with size of base
+ * footprint (LinearRing2d)
+ *  @param trajectory trajectory
+ *  @param start_s start arc-length
+ *  @param end_s end arc_length
+ *  @param base_footprint base footprint (LinearRing2d)
+ *  @return vector of Polygon2d (several footprints - footprint trace)
+ */
 template <class TrajectoryPointType>
 std::vector<autoware_utils_geometry::Polygon2d> build_path_footprints(
   const Trajectory<TrajectoryPointType> & trajectory, const double start_s, const double end_s,
