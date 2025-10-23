@@ -171,6 +171,37 @@ TEST(TestEkfDiagnostics, check_measurement_mahalanobis_gate)
   EXPECT_TRUE(found_invalid);
 }
 
+TEST(TestEkfDiagnostics, check_covariance_ellipse)
+{
+  diagnostic_msgs::msg::DiagnosticStatus stat;
+
+  const std::string name = "cov_ellipse";
+  const double curr_size = 0.5;
+  const double warn_threshold = 1.0;
+  const double error_threshold = 2.0;
+
+  // Normal case
+  stat = check_covariance_ellipse(name, curr_size, warn_threshold, error_threshold, false);
+  EXPECT_EQ(stat.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
+
+  // Warn case
+  stat = check_covariance_ellipse(name, 1.5, warn_threshold, error_threshold, false);
+  EXPECT_EQ(stat.level, diagnostic_msgs::msg::DiagnosticStatus::WARN);
+
+  // Error case
+  stat = check_covariance_ellipse(name, 2.5, warn_threshold, error_threshold, false);
+  EXPECT_EQ(stat.level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
+
+  // is_invalid true
+  stat = check_covariance_ellipse(name, curr_size, warn_threshold, error_threshold, true);
+  EXPECT_EQ(stat.level, diagnostic_msgs::msg::DiagnosticStatus::WARN);
+  bool found_invalid = false;
+  for (const auto & kv : stat.values) {
+    if (kv.key == "cov_ellipse_is_invalid" && kv.value == "True") found_invalid = true;
+  }
+  EXPECT_TRUE(found_invalid);
+}
+
 TEST(TestLocalizationErrorMonitorDiagnostics, merge_diagnostic_status)
 {
   diagnostic_msgs::msg::DiagnosticStatus merged_stat;
