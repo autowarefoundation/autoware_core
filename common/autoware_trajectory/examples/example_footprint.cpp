@@ -178,10 +178,10 @@ int main2()
   plot_trajectory(ax, traj, "Parabolic to the right");
   plot_traj_with_orientation(ax, traj);
 
-  autoware_utils_geometry::Point2d left_front{-0.5, 0.5};
-  autoware_utils_geometry::Point2d right_front{0.5, 0.5};
-  autoware_utils_geometry::Point2d right_rear{0.5, -0.5};
-  autoware_utils_geometry::Point2d left_rear{-0.5, -0.5};
+  autoware_utils_geometry::Point2d left_front{-0.5, 0.25};
+  autoware_utils_geometry::Point2d right_front{0.5, 0.25};
+  autoware_utils_geometry::Point2d right_rear{0.5, -0.25};
+  autoware_utils_geometry::Point2d left_rear{-0.5, -0.25};
   autoware_utils_geometry::LinearRing2d base_ring{left_front, right_front, right_rear, left_rear};
 
   const auto footprints = autoware::experimental::trajectory::build_path_footprints(
