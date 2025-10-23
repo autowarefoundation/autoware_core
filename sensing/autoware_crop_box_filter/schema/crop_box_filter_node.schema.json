@@ -6,6 +6,22 @@
     "crop_box_filter": {
       "type": "object",
       "properties": {
+        "input_pointcloud_frame": {
+          "type": "string",
+          "description": "Frame id of the TF2 frame the input pointcloud is in"
+        },
+        "input_frame": {
+          "type": "string",
+          "description": "Frame id of the TF2 frame the crop box is defined in"
+        },
+        "output_frame": {
+          "type": "string",
+          "description": "Frame id of the TF2 frame to output the filtered cloud in"
+        },
+        "max_queue_size": {
+          "type": "integer",
+          "description": "Maximum queue size of the pointcloud subscription"
+        },
         "min_x": {
           "type": "number",
           "description": "Minimum x value of the crop box"
