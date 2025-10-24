@@ -81,7 +81,7 @@ public:
     const std::shared_ptr<planning_factor_interface::PlanningFactorInterface> &
       planning_factor_interface);
 
-  bool modifyPathVelocity(PathWithLaneId * _path) override;
+  bool modifyPathVelocity(PathWithLaneId * path) override;
 
   /**
    * @brief Calculate ego position and stop point.
