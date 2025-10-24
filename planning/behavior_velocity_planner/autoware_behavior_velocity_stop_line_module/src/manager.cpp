@@ -40,14 +40,17 @@ StopLineModuleManager::StopLineModuleManager(rclcpp::Node & node)
 }
 
 std::vector<StopLineWithLaneId> StopLineModuleManager::getStopLinesWithLaneIdOnPath(
-  const autoware_internal_planning_msgs::msg::PathWithLaneId & path,
-  const lanelet::LaneletMapPtr lanelet_map)
+  const Trajectory & path, const lanelet::LaneletMapPtr lanelet_map,
+  const PlannerData & planner_data)
 {
   std::vector<StopLineWithLaneId> stop_lines_with_lane_id;
 
+  PathWithLaneId path_msg;
+  path_msg.points = path.restore();
+
   for (const auto & [traffic_sign_reg_elem, lanelet] :
        planning_utils::getRegElemMapOnPath<TrafficSign>(
-         path, lanelet_map, planner_data_->current_odometry->pose)) {
+         path_msg, lanelet_map, planner_data.current_odometry->pose)) {
     if (traffic_sign_reg_elem->type() != "stop_sign") {
       continue;
     }
@@ -61,12 +64,13 @@ std::vector<StopLineWithLaneId> StopLineModuleManager::getStopLinesWithLaneIdOnP
 }
 
 std::set<lanelet::Id> StopLineModuleManager::getStopLineIdSetOnPath(
-  const autoware_internal_planning_msgs::msg::PathWithLaneId & path,
-  const lanelet::LaneletMapPtr lanelet_map)
+  const Trajectory & path, const lanelet::LaneletMapPtr lanelet_map,
+  const PlannerData & planner_data)
 {
   std::set<lanelet::Id> stop_line_id_set;
 
-  for (const auto & [stop_line, linked_lane_id] : getStopLinesWithLaneIdOnPath(path, lanelet_map)) {
+  for (const auto & [stop_line, linked_lane_id] :
+       getStopLinesWithLaneIdOnPath(path, lanelet_map, planner_data)) {
     stop_line_id_set.insert(stop_line.id());
   }
 
@@ -74,31 +78,33 @@ std::set<lanelet::Id> StopLineModuleManager::getStopLineIdSetOnPath(
 }
 
 void StopLineModuleManager::launchNewModules(
-  const autoware_internal_planning_msgs::msg::PathWithLaneId & path)
+  const Trajectory & path, const rclcpp::Time & /* stamp */, const PlannerData & planner_data)
 {
-  for (const auto & [stop_line, linked_lane_id] :
-       getStopLinesWithLaneIdOnPath(path, planner_data_->route_handler_->getLaneletMapPtr())) {
+  for (const auto & [stop_line, linked_lane_id] : getStopLinesWithLaneIdOnPath(
+         path, planner_data.route_handler_->getLaneletMapPtr(), planner_data)) {
     const auto module_id = stop_line.id();
     if (!isModuleRegistered(module_id)) {
-      registerModule(std::make_shared<StopLineModule>(
-        module_id,                              //
-        stop_line,                              //
-        linked_lane_id,                         //
-        planner_param_,                         //
-        logger_.get_child("stop_line_module"),  //
-        clock_,                                 //
-        time_keeper_,                           //
-        planning_factor_interface_));
+      registerModule(
+        std::make_shared<StopLineModule>(
+          module_id,                              //
+          stop_line,                              //
+          linked_lane_id,                         //
+          planner_param_,                         //
+          logger_.get_child("stop_line_module"),  //
+          clock_,                                 //
+          time_keeper_,                           //
+          planning_factor_interface_),
+        planner_data);
     }
   }
 }
 
 std::function<bool(const std::shared_ptr<SceneModuleInterface> &)>
 StopLineModuleManager::getModuleExpiredFunction(
-  const autoware_internal_planning_msgs::msg::PathWithLaneId & path)
+  const Trajectory & path, const PlannerData & planner_data)
 {
   const auto stop_line_id_set =
-    getStopLineIdSetOnPath(path, planner_data_->route_handler_->getLaneletMapPtr());
+    getStopLineIdSetOnPath(path, planner_data.route_handler_->getLaneletMapPtr(), planner_data);
 
   return [stop_line_id_set](const std::shared_ptr<SceneModuleInterface> & scene_module) {
     return stop_line_id_set.count(scene_module->getModuleId()) == 0;

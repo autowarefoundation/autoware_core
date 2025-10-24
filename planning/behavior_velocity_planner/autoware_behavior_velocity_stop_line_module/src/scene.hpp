@@ -18,15 +18,12 @@
 
 #include "autoware/behavior_velocity_planner_common/scene_module_interface.hpp"
 #include "autoware/behavior_velocity_planner_common/utilization/util.hpp"
-#include "autoware/trajectory/path_point_with_lane_id.hpp"
 
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <autoware_utils_debug/time_keeper.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/time.hpp>
-
-#include <geometry_msgs/msg/pose.hpp>
 
 #include <lanelet2_core/LaneletMap.h>
 
@@ -41,8 +38,7 @@ class StopLineModule : public SceneModuleInterface
 {
 public:
   using StopLineWithLaneId = std::pair<lanelet::ConstLineString3d, int64_t>;
-  using Trajectory = autoware::experimental::trajectory::Trajectory<
-    autoware_internal_planning_msgs::msg::PathPointWithLaneId>;
+
   enum class State { APPROACH, STOPPED, START };
 
   struct DebugData
@@ -81,33 +77,37 @@ public:
     const std::shared_ptr<planning_factor_interface::PlanningFactorInterface> &
       planning_factor_interface);
 
-  bool modifyPathVelocity(PathWithLaneId * path) override;
+  bool modifyPathVelocity(
+    Trajectory & path, const std::vector<geometry_msgs::msg::Point> & left_bound,
+    const std::vector<geometry_msgs::msg::Point> & right_bound,
+    const PlannerData & planner_data) override;
 
   /**
    * @brief Calculate ego position and stop point.
-   * @param trajectory Current trajectory.
+   * @param path Current path.
+   * @param left_bound Left bound of the path.
+   * @param right_bound Right bound of the path.
    * @param ego_pose Current pose of the vehicle.
    * @param state Current state of the stop line module.
    * @return Pair of ego position and optional stop point.
    */
   std::pair<double, std::optional<double>> getEgoAndStopPoint(
-    const Trajectory & trajectory, const PathWithLaneId & path,
-    const geometry_msgs::msg::Pose & ego_pose, const State & state) const;
+    const Trajectory & path, const std::vector<geometry_msgs::msg::Point> & left_bound,
+    const std::vector<geometry_msgs::msg::Point> & right_bound,
+    const geometry_msgs::msg::Pose & ego_pose, const PlannerData & planner_data) const;
 
   /**
    * @brief Update the state and stopped time of the module.
-   * @param state Pointer to the current state.
-   * @param stopped_time Pointer to the stopped time.
    * @param now Current time.
    * @param distance_to_stop_point Distance to the stop point.
    * @param is_vehicle_stopped Flag indicating if the vehicle is stopped.
    */
   void updateStateAndStoppedTime(
-    State * state, std::optional<rclcpp::Time> * stopped_time, const rclcpp::Time & now,
-    const double & distance_to_stop_point, const bool & is_vehicle_stopped) const;
+    const rclcpp::Time & now, const double & distance_to_stop_point,
+    const bool & is_vehicle_stopped);
 
   void updateDebugData(
-    DebugData * debug_data, const geometry_msgs::msg::Pose & stop_pose, const State & state) const;
+    const geometry_msgs::msg::Pose & stop_pose, const PlannerData & planner_data);
 
   visualization_msgs::msg::MarkerArray createDebugMarkerArray() override
   {
@@ -119,6 +119,8 @@ public:
   std::vector<int64_t> getLineIds() const override { return {stop_line_.id()}; }
 
 private:
+  friend class StopLineModuleTest;
+
   const lanelet::ConstLineString3d stop_line_;  ///< Stop line geometry.
   const lanelet::Id linked_lanelet_id_;         ///< ID of the linked lanelet.
   const PlannerParam planner_param_;            ///< Parameters for the planner.
