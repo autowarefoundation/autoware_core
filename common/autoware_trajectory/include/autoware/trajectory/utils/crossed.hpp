@@ -19,6 +19,7 @@
 
 #include <Eigen/Core>
 
+#include <limits>
 #include <utility>
 #include <vector>
 
@@ -56,13 +57,16 @@ std::vector<double> crossed_with_constraint_impl(
  * @param trajectory The trajectory to evaluate.
  * @param linestring The linestring to intersect with the trajectory.
  * @param constraint The constraint to apply to each point in the trajectory.
+ * @param start [opt] search range start, default = 0.0
+ * @param end_inclusive [opt] search range end, default = infinity
  * @return A vector of double values representing the parameters `s` where the trajectory intersects
  * the linestring and satisfies the constraint.
  */
 template <class TrajectoryPointType, class LineStringType, class Constraint>
 [[nodiscard]] std::vector<double> crossed_with_constraint(
   const trajectory::Trajectory<TrajectoryPointType> & trajectory, const LineStringType & linestring,
-  const Constraint & constraint)
+  const Constraint & constraint, const double start = 0.0,
+  const double end_inclusive = std::numeric_limits<double>::infinity())
 {
   using autoware::experimental::trajectory::detail::to_point;
 
@@ -91,26 +95,62 @@ template <class TrajectoryPointType, class LineStringType, class Constraint>
     linestring_eigen.emplace_back(start, end);
   }
 
+  std::vector<double> base_range;
+  for (const auto & base : trajectory.get_underlying_bases()) {
+    if (start <= base && base <= end_inclusive) {
+      base_range.push_back(base);
+    }
+  }
+
   return detail::impl::crossed_with_constraint_impl(
-    trajectory_compute, trajectory.get_underlying_bases(), linestring_eigen,
+    trajectory_compute, base_range, linestring_eigen,
     [&constraint, &trajectory](const double & s) { return constraint(trajectory.compute(s)); });
 }
 
 /**
- * @brief Finds intersections between a trajectory and a linestring.
+ * @brief Finds intersections between a trajectory and a linestring,
  * @tparam TrajectoryPointType The type of points in the trajectory.
  * @tparam LineStringType The type of the linestring.
  * @param trajectory The trajectory to evaluate.
  * @param linestring The linestring to intersect with the trajectory.
+ * @param start [opt] search range start, default = 0.0
+ * @param end_inclusive [opt] search range end, default = infinity
  * @return A vector of double values representing the parameters `s` where the trajectory intersects
  * the linestring.
+ * @post the output is sorted in ascending order along trajectory
  */
 template <class TrajectoryPointType, class LineStringType>
 [[nodiscard]] std::vector<double> crossed(
-  const trajectory::Trajectory<TrajectoryPointType> & trajectory, const LineStringType & linestring)
+  const trajectory::Trajectory<TrajectoryPointType> & trajectory, const LineStringType & linestring,
+  const double start = 0.0, const double end_inclusive = std::numeric_limits<double>::infinity())
 {
   return crossed_with_constraint(
-    trajectory, linestring, [](const TrajectoryPointType &) { return true; });
+    trajectory, linestring, [](const TrajectoryPointType &) { return true; }, start, end_inclusive);
+}
+
+/**
+ * @brief Finds intersections between a trajectory and a polygon,
+ * @tparam TrajectoryPointType The type of points in the trajectory.
+ * @tparam PolygonClosurePointsType The type of the polygon. If the polygon is open, pass it AS-IS.
+ * If the polygon is closed, pass its .outer()
+ * @param trajectory The trajectory to evaluate.
+ * @param linestring The linestring to intersect with the trajectory.
+ * @param start [opt] search range start, default = 0.0
+ * @param end_inclusive [opt] search range end, default = infinity
+ * @return A vector of double values representing the parameters `s` where the trajectory intersects
+ * the linestring.
+ * @post the output is sorted in ascending order along trajectory
+ */
+template <class TrajectoryPointType, class PolygonClosurePointsType>
+[[nodiscard]] std::vector<double> crossed_with_polygon(
+  const trajectory::Trajectory<TrajectoryPointType> & trajectory,
+  const PolygonClosurePointsType & open_or_closed_boundary, const double start = 0.0,
+  const double end_inclusive = std::numeric_limits<double>::infinity())
+{
+  // TODO(soblin): can we statically dispatch for Boost.Geometry objects ?
+  auto boundary = open_or_closed_boundary;
+  return crossed_with_constraint(
+    trajectory, boundary, [](const TrajectoryPointType &) { return true; }, start, end_inclusive);
 }
 
 }  // namespace autoware::experimental::trajectory

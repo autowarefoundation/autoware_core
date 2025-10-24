@@ -14,6 +14,7 @@
 
 #include "autoware/trajectory/utils/crossed.hpp"
 
+#include <algorithm>
 #include <optional>
 #include <vector>
 
@@ -80,6 +81,7 @@ std::vector<double> crossed_with_constraint_impl(
     }
   }
 
+  std::sort(intersections.begin(), intersections.end());
   return intersections;
 }
 
