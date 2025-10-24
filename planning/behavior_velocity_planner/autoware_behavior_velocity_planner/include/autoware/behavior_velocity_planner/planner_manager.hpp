@@ -17,19 +17,8 @@
 
 #include <autoware/behavior_velocity_planner_common/plugin_interface.hpp>
 #include <autoware/behavior_velocity_planner_common/plugin_wrapper.hpp>
-#include <autoware/trajectory/path_point_with_lane_id.hpp>
 #include <pluginlib/class_loader.hpp>
 #include <rclcpp/rclcpp.hpp>
-
-#include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
-#include <autoware_perception_msgs/msg/predicted_objects.hpp>
-#include <diagnostic_msgs/msg/diagnostic_status.hpp>
-#include <sensor_msgs/msg/point_cloud2.hpp>
-
-#include <lanelet2_core/LaneletMap.h>
-#include <lanelet2_routing/RoutingGraph.h>
-#include <lanelet2_traffic_rules/TrafficRulesFactory.h>
-#include <tf2_ros/transform_listener.h>
 
 #include <memory>
 #include <string>
