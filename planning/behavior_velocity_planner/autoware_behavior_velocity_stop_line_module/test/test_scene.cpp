@@ -121,8 +121,8 @@ TEST_F(StopLineModuleTest, TestGetEgoAndStopPoint)
 
   {  // Test for APPROACH state
     // Execute the function
-    const auto [ego_s, stop_point_s] = module_->getEgoAndStopPoint(
-      trajectory_, path_.left_bound, path_.right_bound, ego_pose, StopLineModule::State::APPROACH);
+    const auto [ego_s, stop_point_s] =
+      module_->getEgoAndStopPoint(trajectory_, path_, ego_pose, StopLineModule::State::APPROACH);
 
     // Verify results
     EXPECT_DOUBLE_EQ(ego_s, 5.0);
@@ -130,8 +130,8 @@ TEST_F(StopLineModuleTest, TestGetEgoAndStopPoint)
   }
 
   {  // Test for STOPPED state
-    const auto [ego_s, stop_point_s] = module_->getEgoAndStopPoint(
-      trajectory_, path_.left_bound, path_.right_bound, ego_pose, StopLineModule::State::STOPPED);
+    const auto [ego_s, stop_point_s] =
+      module_->getEgoAndStopPoint(trajectory_, path_, ego_pose, StopLineModule::State::STOPPED);
 
     EXPECT_TRUE(stop_point_s.has_value());
     EXPECT_DOUBLE_EQ(ego_s, 5.0);

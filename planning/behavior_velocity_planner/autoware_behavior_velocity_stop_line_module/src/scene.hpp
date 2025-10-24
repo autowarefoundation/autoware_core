@@ -91,8 +91,7 @@ public:
    * @return Pair of ego position and optional stop point.
    */
   std::pair<double, std::optional<double>> getEgoAndStopPoint(
-    const Trajectory & trajectory, const std::vector<geometry_msgs::msg::Point> & left_bound,
-    const std::vector<geometry_msgs::msg::Point> & right_bound,
+    const Trajectory & trajectory, const PathWithLaneId & path,
     const geometry_msgs::msg::Pose & ego_pose, const State & state) const;
 
   /**
