@@ -65,14 +65,6 @@ SceneModuleInterface::SceneModuleInterface(
 {
 }
 
-size_t SceneModuleInterface::findEgoSegmentIndex(
-  const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & points) const
-{
-  const auto & p = planner_data_;
-  return autoware::motion_utils::findFirstNearestSegmentIndexWithSoftConstraints(
-    points, p->current_odometry->pose, p->ego_nearest_dist_threshold);
-}
-
 std::string SceneModuleInterface::formatLogMessage(const char * format, va_list args) const
 {
   char buffer[1024];
@@ -111,15 +103,14 @@ DEFINE_LOG_THROTTLE_FUNCTION(logDebugThrottle, RCLCPP_DEBUG_THROTTLE)
 
 template SceneModuleManagerInterface<SceneModuleInterface>::SceneModuleManagerInterface(
   rclcpp::Node & node, [[maybe_unused]] const char * module_name);
-template size_t SceneModuleManagerInterface<SceneModuleInterface>::findEgoSegmentIndex(
-  const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & points) const;
 template void SceneModuleManagerInterface<SceneModuleInterface>::updateSceneModuleInstances(
-  const std::shared_ptr<const PlannerData> & planner_data,
-  const autoware_internal_planning_msgs::msg::PathWithLaneId & path);
+  const Trajectory & path, const rclcpp::Time & stamp, const PlannerData & planner_data);
 template void SceneModuleManagerInterface<SceneModuleInterface>::modifyPathVelocity(
-  autoware_internal_planning_msgs::msg::PathWithLaneId * path);
+  Trajectory & path, const std_msgs::msg::Header & header,
+  const std::vector<geometry_msgs::msg::Point> & left_bound,
+  const std::vector<geometry_msgs::msg::Point> & right_bound, const PlannerData & planner_data);
 template void SceneModuleManagerInterface<SceneModuleInterface>::deleteExpiredModules(
-  const autoware_internal_planning_msgs::msg::PathWithLaneId & path);
+  const Trajectory & path, const PlannerData & planner_data);
 template void SceneModuleManagerInterface<SceneModuleInterface>::registerModule(
-  const std::shared_ptr<SceneModuleInterface> & scene_module);
+  const std::shared_ptr<SceneModuleInterface> & scene_module, const PlannerData & planner_data);
 }  // namespace autoware::behavior_velocity_planner

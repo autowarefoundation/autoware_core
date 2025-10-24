@@ -32,15 +32,21 @@ public:
   {
     return scene_manager_->getRequiredSubscriptions();
   };
-  void plan(autoware_internal_planning_msgs::msg::PathWithLaneId * path) override
+  void plan(
+    experimental::trajectory::Trajectory<
+      autoware_internal_planning_msgs::msg::PathPointWithLaneId> & path,
+    const std_msgs::msg::Header & header, const std::vector<geometry_msgs::msg::Point> & left_bound,
+    const std::vector<geometry_msgs::msg::Point> & right_bound,
+    const PlannerData & planner_data) override
   {
-    scene_manager_->plan(path);
+    scene_manager_->plan(path, header, left_bound, right_bound, planner_data);
   };
   void updateSceneModuleInstances(
-    const std::shared_ptr<const PlannerData> & planner_data,
-    const autoware_internal_planning_msgs::msg::PathWithLaneId & path) override
+    const experimental::trajectory::Trajectory<
+      autoware_internal_planning_msgs::msg::PathPointWithLaneId> & path,
+    const rclcpp::Time & stamp, const PlannerData & planner_data) override
   {
-    scene_manager_->updateSceneModuleInstances(planner_data, path);
+    scene_manager_->updateSceneModuleInstances(path, stamp, planner_data);
   }
   const char * getModuleName() override { return scene_manager_->getModuleName(); }
 
