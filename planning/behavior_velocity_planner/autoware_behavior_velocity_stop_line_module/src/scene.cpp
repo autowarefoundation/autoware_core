@@ -32,6 +32,7 @@
 #include <optional>
 #include <set>
 #include <utility>
+#include <vector>
 
 namespace autoware::behavior_velocity_planner
 {

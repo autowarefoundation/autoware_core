@@ -26,6 +26,7 @@
 #include <memory>
 #include <optional>
 #include <tuple>
+#include <vector>
 
 using autoware::behavior_velocity_planner::StopLineModule;
 
