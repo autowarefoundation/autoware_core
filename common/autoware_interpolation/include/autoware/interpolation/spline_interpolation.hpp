@@ -89,6 +89,16 @@ public:
   }
   std::vector<double> getKnots() const { return base_keys_; }
 
+  void resize(const size_t size)
+  {
+    a_.conservativeResize(size-1);
+    b_.conservativeResize(size-1);
+    c_.conservativeResize(size-1);
+    d_.conservativeResize(size-1);
+
+    base_keys_.resize(size);
+  }
+
 private:
   Eigen::VectorXd a_;
   Eigen::VectorXd b_;
