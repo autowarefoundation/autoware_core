@@ -19,9 +19,9 @@
 #include <autoware/velocity_smoother/smoother/analytical_jerk_constrained_smoother/analytical_jerk_constrained_smoother.hpp>
 #include <autoware_utils_pcl/transforms.hpp>
 #include <autoware_utils_rclcpp/parameter.hpp>
+#include <tf2/utils.hpp>
 #include <tf2_eigen/tf2_eigen.hpp>
 
-#include <diagnostic_msgs/msg/diagnostic_status.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
 
 #include <lanelet2_routing/Route.h>
@@ -35,6 +35,19 @@
 
 namespace autoware::behavior_velocity_planner
 {
+
+namespace
+{
+
+bool is_driving_forward(const Trajectory & trajectory)
+{
+  const auto start_yaw = tf2::getYaw(trajectory.compute(0).point.pose.orientation);
+  const auto azimuth = trajectory.azimuth(0);
+  return std::abs(autoware_utils_math::normalize_radian(start_yaw - azimuth)) <
+         autoware_utils_math::pi / 2.0;
+}
+
+}  // namespace
 
 BehaviorVelocityPlannerNode::BehaviorVelocityPlannerNode(const rclcpp::NodeOptions & node_options)
 : Node("behavior_velocity_planner_node", node_options),
@@ -350,12 +363,11 @@ Trajectory BehaviorVelocityPlannerNode::generatePath(
   const std::vector<geometry_msgs::msg::Point> & right_bound, const PlannerData & planner_data)
 {
   // TODO(someone): support backward path
-  const auto is_driving_forward = autoware::motion_utils::isDrivingForward(input_path.restore());
-  is_driving_forward_ = is_driving_forward ? is_driving_forward.value() : is_driving_forward_;
+  is_driving_forward_ = is_driving_forward(input_path);
   if (!is_driving_forward_) {
     RCLCPP_WARN_THROTTLE(
       get_logger(), *get_clock(), logger_throttle_interval,
-      "Backward path is NOT supported. just returning input path");
+      "Backward path is NOT supported, just returning input path");
     return input_path;
   }
 
@@ -364,10 +376,13 @@ Trajectory BehaviorVelocityPlannerNode::generatePath(
     planner_manager_.planPathVelocity(planner_data, input_path, header, left_bound, right_bound);
 
   // check stop point
+  constexpr auto stop_threshold = 0.01;  // m/s
   const auto stop_intervals = experimental::trajectory::find_intervals(
-    velocity_planned_path, [](const autoware_internal_planning_msgs::msg::PathPointWithLaneId & p) {
-      return std::abs(p.point.longitudinal_velocity_mps) < 0.01;
+    velocity_planned_path,
+    [&](const autoware_internal_planning_msgs::msg::PathPointWithLaneId & p) {
+      return std::abs(p.point.longitudinal_velocity_mps) < stop_threshold;
     });
+
   auto output_path = velocity_planned_path;
   for (const auto & interval : stop_intervals) {
     output_path.longitudinal_velocity_mps().range(interval.start, interval.end).set(0.0);
