@@ -4,6 +4,8 @@ project(autoware_lanelet2_utils)
 find_package(autoware_cmake REQUIRED)
 autoware_package()
 
+find_package(yaml-cpp REQUIRED)
+
 ament_auto_add_library(${PROJECT_NAME} SHARED
   src/kind.cpp
   src/topology.cpp
@@ -42,6 +44,7 @@ if(BUILD_TESTING)
     ament_auto_add_gtest(${test_file_name}_${PROJECT_NAME} ${test_file})
     target_link_libraries(${test_file_name}_${PROJECT_NAME}
       ${PROJECT_NAME}
+      yaml-cpp
     )
   endforeach()
 endif()
