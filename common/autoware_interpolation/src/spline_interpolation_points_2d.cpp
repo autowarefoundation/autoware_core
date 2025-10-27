@@ -220,11 +220,7 @@ void SplineInterpolationPoints2d::calcSplineCoefficientsInner(
 }
 
 std::pair<double, double> SplineInterpolationPoints2d::projectPointOntoSpline(
-  const double x_i,
-  const double y_i,
-  double s_init,
-  const double tol,
-  const int max_iter) const
+  const double x_i, const double y_i, double s_init, const double tol, const int max_iter) const
 {
   double s = s_init;
 
@@ -234,7 +230,7 @@ std::pair<double, double> SplineInterpolationPoints2d::projectPointOntoSpline(
   for (const auto & s_knot : knots) {
     double dx = spline_x_.getSplineInterpolatedValues({s_knot}).at(0) - x_i;
     double dy = spline_y_.getSplineInterpolatedValues({s_knot}).at(0) - y_i;
-    double dist = dx*dx + dy*dy;
+    double dist = dx * dx + dy * dy;
     if (dist < min_dist) {
       min_dist = dist;
       s = s_knot;
@@ -254,14 +250,14 @@ std::pair<double, double> SplineInterpolationPoints2d::projectPointOntoSpline(
     const double dy_ds = spline_y_.getSplineInterpolatedDiffValues({s}).at(0);
 
     const double numerator = (x_s - x_i) * dx_ds + (y_s - y_i) * dy_ds;
-    const double denominator = dx_ds*dx_ds + dy_ds*dy_ds;
+    const double denominator = dx_ds * dx_ds + dy_ds * dy_ds;
 
-    if (denominator < 1e-12) break; // avoid divide by zero
+    if (denominator < 1e-12) break;  // avoid divide by zero
 
     ds = numerator / denominator;
     s -= ds;
 
-    if (std::fabs(ds) < tol) break; // converged
+    if (std::fabs(ds) < tol) break;  // converged
   }
 
   std::cerr << "Final s after Newton iteration: " << s << std::endl;
