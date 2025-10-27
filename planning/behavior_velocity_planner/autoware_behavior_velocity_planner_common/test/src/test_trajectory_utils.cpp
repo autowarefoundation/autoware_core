@@ -52,30 +52,30 @@ TEST(smoothPath, nominal)
        "/config/JerkFiltered.param.yaml"});
   auto node = std::make_shared<rclcpp::Node>("test_node", options);
 
-  auto planner_data = std::make_shared<autoware::behavior_velocity_planner::PlannerData>(*node);
-  planner_data->vehicle_info_.max_longitudinal_offset_m = 1.0;
+  auto planner_data = autoware::behavior_velocity_planner::PlannerData(*node);
+  planner_data.vehicle_info_.max_longitudinal_offset_m = 1.0;
 
-  planner_data->current_odometry = std::make_shared<geometry_msgs::msg::PoseStamped>([]() {
+  planner_data.current_odometry = std::make_shared<geometry_msgs::msg::PoseStamped>([]() {
     geometry_msgs::msg::PoseStamped pose;
     pose.pose.position.x = 2.0;
     pose.pose.position.y = 1.0;
     return pose;
   }());
 
-  planner_data->current_velocity = std::make_shared<geometry_msgs::msg::TwistStamped>([]() {
+  planner_data.current_velocity = std::make_shared<geometry_msgs::msg::TwistStamped>([]() {
     geometry_msgs::msg::TwistStamped twist;
     twist.twist.linear.x = 3.0;
     return twist;
   }());
 
-  planner_data->current_acceleration =
+  planner_data.current_acceleration =
     std::make_shared<geometry_msgs::msg::AccelWithCovarianceStamped>([]() {
       geometry_msgs::msg::AccelWithCovarianceStamped accel;
       accel.accel.accel.linear.x = 1.0;
       return accel;
     }());
 
-  planner_data->velocity_smoother_ =
+  planner_data.velocity_smoother_ =
     std::make_shared<autoware::velocity_smoother::JerkFilteredSmoother>(
       *node, std::make_shared<autoware_utils_debug::TimeKeeper>());
 
