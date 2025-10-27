@@ -58,6 +58,15 @@ public:
   // std::vector<geometry_msgs::msg::Point> getSplineInterpolatedPoints(const double width);
   // std::vector<geometry_msgs::msg::Pose> getSplineInterpolatedPoses(const double width);
 
+  geometry_msgs::msg::Point getSplineInterpolatedPointAt(const double s) const
+  {
+    geometry_msgs::msg::Point point;
+    point.x = spline_x_.getSplineInterpolatedValues({s}).at(0);
+    point.y = spline_y_.getSplineInterpolatedValues({s}).at(0);
+    point.z = spline_z_.getSplineInterpolatedValues({s}).at(0);
+    return point;
+  }
+
   // pose (= getSplineInterpolatedPoint + getSplineInterpolatedYaw)
   geometry_msgs::msg::Pose getSplineInterpolatedPose(const size_t idx, const double s) const;
 
