@@ -273,6 +273,8 @@ std::pair<double, double> SplineInterpolationPoints2d::projectPointOntoSpline(
     }
   }
 
+  std::cerr << "Initial s after coarse search: " << s << std::endl;
+
   double ds = std::numeric_limits<double>::infinity();
 
   // Newton iteration
@@ -293,6 +295,8 @@ std::pair<double, double> SplineInterpolationPoints2d::projectPointOntoSpline(
 
     if (std::fabs(ds) < tol) break; // converged
   }
+
+  std::cerr << "Final s after Newton iteration: " << s << std::endl;
 
   // Compute cross-track error eY
   double x_s = spline_x_.getSplineInterpolatedValues({s}).at(0);
