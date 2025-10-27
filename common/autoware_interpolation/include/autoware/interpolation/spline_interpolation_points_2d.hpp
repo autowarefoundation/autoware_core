@@ -93,27 +93,24 @@ public:
   void resize(const size_t size)
   {
     base_s_vec_.resize(size);
-    spline_x_.resize(size-1);
-    spline_y_.resize(size-1);
-    spline_z_.resize(size-1);
+    spline_x_.resize(size - 1);
+    spline_y_.resize(size - 1);
+    spline_z_.resize(size - 1);
   }
 
   /**
-  * @brief Project a 2D point onto a spline (x(s), y(s)) and return s-coordinate and cross-track error.
-  * @param x_i x-coordinate of the point
-  * @param y_i y-coordinate of the point
-  * @param s_init initial guess for s (optional)
-  * @param tol Newton convergence tolerance
-  * @param max_iter maximum Newton iterations
-  * @return std::pair<double, double> -> (s_projected, eY)
-  */
+   * @brief Project a 2D point onto a spline (x(s), y(s)) and return s-coordinate and cross-track
+   * error.
+   * @param x_i x-coordinate of the point
+   * @param y_i y-coordinate of the point
+   * @param s_init initial guess for s (optional)
+   * @param tol Newton convergence tolerance
+   * @param max_iter maximum Newton iterations
+   * @return std::pair<double, double> -> (s_projected, eY)
+   */
   std::pair<double, double> projectPointOntoSpline(
-    const double x_i,
-    const double y_i,
-    double s_init = 0.0,
-    const double tol = 1e-6,
-    const int max_iter = 20
-  ) const;
+    const double x_i, const double y_i, double s_init = 0.0, const double tol = 1e-6,
+    const int max_iter = 20) const;
 
 private:
   void calcSplineCoefficientsInner(const std::vector<geometry_msgs::msg::Point> & points);
