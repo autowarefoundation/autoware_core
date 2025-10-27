@@ -37,6 +37,7 @@ if(BUILD_TESTING)
   include_directories(${autoware_motion_utils_INCLUDE_DIRS})
 
   set(test_files
+    test/test_crossed.cpp
     test/test_shift.cpp
     test/test_helpers.cpp
     test/test_interpolator.cpp

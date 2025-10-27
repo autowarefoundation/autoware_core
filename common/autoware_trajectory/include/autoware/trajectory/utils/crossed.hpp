@@ -16,6 +16,7 @@
 #define AUTOWARE__TRAJECTORY__UTILS__CROSSED_HPP_
 #include "autoware/trajectory/detail/types.hpp"
 #include "autoware/trajectory/forward.hpp"
+#include "autoware/trajectory/threshold.hpp"
 
 #include <Eigen/Core>
 
@@ -95,9 +96,22 @@ template <class TrajectoryPointType, class LineStringType, class Constraint>
     linestring_eigen.emplace_back(start, end);
   }
 
+  const auto & bases = trajectory.get_underlying_bases();
   std::vector<double> base_range;
-  for (const auto & base : trajectory.get_underlying_bases()) {
-    if (start <= base && base <= end_inclusive) {
+  for (const auto & base : bases) {
+    if (base < start) {
+      continue;
+    }
+    if (base_range.empty()) {
+      base_range.push_back(start);
+    }
+    if (base > end_inclusive) {
+      if (!is_almost_same(end_inclusive, base_range.back())) {
+        base_range.push_back(end_inclusive);
+      }
+      break;
+    }
+    if (!is_almost_same(base, base_range.back())) {
       base_range.push_back(base);
     }
   }
@@ -148,7 +162,17 @@ template <class TrajectoryPointType, class PolygonClosurePointsType>
   const double end_inclusive = std::numeric_limits<double>::infinity())
 {
   // TODO(soblin): can we statically dispatch for Boost.Geometry objects ?
+  const auto & front_point = open_or_closed_boundary.front();
+  const auto & last_point = open_or_closed_boundary.back();
+  const double d = std::hypot(front_point.x() - last_point.x(), front_point.y() - last_point.y());
+  if (d <= std::numeric_limits<double>::epsilon()) {
+    // closed
+    return crossed_with_constraint(
+      trajectory, open_or_closed_boundary, [](const TrajectoryPointType &) { return true; }, start,
+      end_inclusive);
+  }
   auto boundary = open_or_closed_boundary;
+  boundary.push_back(front_point);
   return crossed_with_constraint(
     trajectory, boundary, [](const TrajectoryPointType &) { return true; }, start, end_inclusive);
 }
