@@ -17,13 +17,10 @@
 #include "autoware/trajectory/threshold.hpp"
 #include "autoware/trajectory/utils/pretty_build.hpp"
 
+#include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/lanelet2_utils/topology.hpp>
-#include <autoware_lanelet2_extension/utility/message_conversion.hpp>
-#include <range/v3/all.hpp>
 
-#include <lanelet2_core/LaneletMap.h>
 #include <lanelet2_core/geometry/Lanelet.h>
-#include <lanelet2_core/primitives/LaneletSequence.h>
 
 #include <algorithm>
 #include <set>
@@ -35,11 +32,46 @@ namespace autoware::experimental::trajectory
 {
 namespace
 {
-using Waypoints = std::vector<Waypoint>;
-using WaypointsWithInterval = ElementWithInterval<Waypoints>;
+struct Interval
+{
+  double start;
+  double end;
+};
 
 template <typename T>
-using ElementsWithDistance = std::vector<ElementWithDistance<T>>;
+struct ElementWithInterval
+{
+  T element;
+  Interval interval;
+};
+
+template <typename T>
+struct ElementWithDistance
+{
+  T element;
+  double distance;
+};
+
+struct Waypoint
+{
+  lanelet::ConstPoint3d point;
+  lanelet::Id id;
+  std::optional<lanelet::Id> next_id{std::nullopt};  // this is for border point only
+
+  // ctor definition to avoid setting next_id mistakenly
+  explicit Waypoint(const lanelet::ConstPoint3d & point, const lanelet::Id & id)
+  : point(point), id(id)
+  {
+  }
+};
+
+using Waypoints = std::vector<Waypoint>;
+
+using WaypointsWithInterval = ElementWithInterval<Waypoints>;
+using LaneletSequenceWithInterval = ElementWithInterval<lanelet::ConstLanelets>;
+
+using LaneletWithDistance = ElementWithDistance<lanelet::ConstLanelet>;
+using LaneletsWithDistance = std::vector<LaneletWithDistance>;
 
 /**
  * @brief get user defined waypoints from lanelet
@@ -272,16 +304,16 @@ Waypoints merge_native_centerline_and_user_defined_waypoints(
           // native_s has passed start of path_interval, so add previous waypoint for
           // interpolation
           if (native_point_it != centerline.begin()) {
-            add_waypoints({{*std::prev(native_point_it), lanelet_id}});
+            add_waypoints({Waypoint{*std::prev(native_point_it), lanelet_id}});
           } else if (lanelet_it != lanelet_sequence_with_acc_dist.begin()) {
-            add_waypoints(
-              {{std::prev(lanelet_it)->element.centerline().back(),
-                std::prev(lanelet_it)->element.id()}});
+            add_waypoints({Waypoint{
+              std::prev(lanelet_it)->element.centerline().back(),
+              std::prev(lanelet_it)->element.id()}});
           }
         }
 
         // add native_point in centerline
-        add_waypoints({{*native_point_it, lanelet_id}});
+        add_waypoints({Waypoint{*native_point_it, lanelet_id}});
 
         if (native_s > path_interval.end) {
           break;
@@ -342,8 +374,13 @@ Waypoints merge_native_centerline_and_user_defined_waypoints(
 
   return merged_waypoints;
 }
-}  // namespace
 
+/**
+ * @brief zip lanelet sequence with accumulated distance (i.e. generate set of pairs of lanelet and
+ * accumulated distance)
+ * @param lanelet_sequence consecutive lanelet sequence
+ * @return lanelet sequence with accumulated distance
+ */
 LaneletsWithDistance zip_accumulated_distance(const lanelet::ConstLanelets & lanelet_sequence)
 {
   LaneletsWithDistance lanelet_sequence_with_acc_dist;
@@ -355,6 +392,13 @@ LaneletsWithDistance zip_accumulated_distance(const lanelet::ConstLanelets & lan
   return lanelet_sequence_with_acc_dist;
 }
 
+/**
+ * @brief get position of waypoint in lanelet sequence in s coordinate
+ * @param lanelet_sequence_with_acc_dist lanelet sequence with accumulated distance
+ * @param waypoint waypoint
+ * @return position of waypoint in s coordinate (std::nullopt if waypoint is not in lanelet
+ * sequence)
+ */
 std::optional<double> get_position_in_lanelet_sequence(
   const LaneletsWithDistance & lanelet_sequence_with_acc_dist, const Waypoint & waypoint)
 {
@@ -374,14 +418,22 @@ std::optional<double> get_position_in_lanelet_sequence(
            .length;
 };
 
+/**
+ * @brief extend given lanelet sequence backward/forward so that given interval is within output
+ * lanelets
+ * @param lanelet_sequence original lanelet sequence
+ * @param routing_graph routing graph
+ * @param interval interval in s coordinate
+ * @return extended lanelet sequence with new interval in s coordinate
+ * @post interval.start >= 0, interval.end <= length of lanelet sequence
+ */
 LaneletSequenceWithInterval extend_lanelet_sequence(
   const lanelet::ConstLanelets & lanelet_sequence,
   const lanelet::routing::RoutingGraphConstPtr routing_graph, const Interval & interval)
 {
   auto new_lanelet_sequence = lanelet_sequence;
   auto new_length = lanelet::geometry::length3d(lanelet::LaneletSequence(new_lanelet_sequence));
-  auto new_s_start = interval.start;
-  auto new_s_end = interval.end;
+  auto [new_s_start, new_s_end] = interval;
 
   for (std::set<lanelet::Id> visited_lanelet_ids = {new_lanelet_sequence.front().id()};
        new_s_start < 0.0;) {
@@ -438,18 +490,34 @@ LaneletSequenceWithInterval extend_lanelet_sequence(
 
   return {new_lanelet_sequence, {new_s_start, new_s_end}};
 }
+}  // namespace
 
 std::optional<Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>>
 build_reference_path(
-  const LaneletSequenceWithInterval & lanelet_sequence_with_interval,
-  const lanelet::LaneletMapConstPtr lanelet_map,
+  const lanelet::ConstLanelets & lanelet_sequence, const lanelet::LaneletMapConstPtr lanelet_map,
   const lanelet::traffic_rules::TrafficRulesPtr traffic_rules,
+  const lanelet::routing::RoutingGraphConstPtr routing_graph,
+  const geometry_msgs::msg::Point & ego_position, const lanelet::Id ego_lane_id,
+  const double backward_length, const double forward_length,
   const double waypoint_connection_gradient_from_centerline)
 {
-  const auto & lanelet_sequence = lanelet_sequence_with_interval.element;
-  const auto & path_interval = lanelet_sequence_with_interval.interval;
+  const auto s_ego = get_position_in_lanelet_sequence(
+    zip_accumulated_distance(lanelet_sequence),
+    Waypoint{experimental::lanelet2_utils::from_ros(ego_position), ego_lane_id});
+  if (!s_ego) {
+    // Ego is not in lanelet sequence
+    return std::nullopt;
+  }
 
-  const auto lanelet_sequence_with_acc_dist = zip_accumulated_distance(lanelet_sequence);
+  const auto [extended_lanelet_sequence, path_interval] = extend_lanelet_sequence(
+    lanelet_sequence, routing_graph, {*s_ego - backward_length, *s_ego + forward_length});
+
+  if (path_interval.start >= path_interval.end) {
+    // Interval is invalid
+    return std::nullopt;
+  }
+
+  const auto lanelet_sequence_with_acc_dist = zip_accumulated_distance(extended_lanelet_sequence);
 
   std::vector<WaypointsWithInterval> user_defined_waypoint_chunks;
   for (const auto & lanelet_with_acc_dist : lanelet_sequence_with_acc_dist) {
@@ -475,7 +543,7 @@ build_reference_path(
       path_points | ranges::views::transform([&](const Waypoint & waypoint) {
         autoware_internal_planning_msgs::msg::PathPointWithLaneId point;
         // position
-        point.point.pose.position = lanelet::utils::conversion::toGeomMsgPt(waypoint.point);
+        point.point.pose.position = experimental::lanelet2_utils::to_ros(waypoint.point);
         // longitudinal_velocity
         point.point.longitudinal_velocity_mps =
           traffic_rules->speedLimit(lanelet_map->laneletLayer.get(waypoint.id)).speedLimit.value();
