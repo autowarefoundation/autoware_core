@@ -12,23 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/trajectory/path_point_with_lane_id.hpp"
 #include "autoware/trajectory/threshold.hpp"
 #include "autoware/trajectory/utils/reference_path.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <autoware/lanelet2_utils/conversion.hpp>
-#include <autoware_lanelet2_extension/utility/message_conversion.hpp>
-#include <autoware_lanelet2_extension/utility/query.hpp>
 #include <autoware_lanelet2_extension/utility/utilities.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 #include <range/v3/all.hpp>
 
-#include <boost/geometry/algorithms/touches.hpp>
-
 #include <gtest/gtest.h>
 #include <lanelet2_core/geometry/Lanelet.h>
-#include <lanelet2_core/geometry/LineString.h>
 
 #include <memory>
 #include <string>
@@ -89,34 +83,18 @@ protected:
 
     const auto lanelet_sequence = get_lanelets_from_ids(p.lane_ids);
 
-    const auto s_ego = get_position_in_lanelet_sequence(
-      zip_accumulated_distance(lanelet_sequence),
-      Waypoint{
-        lanelet::utils::to3D(lanelet::ConstPoint2d{lanelet::InvalId, p.ego_position}),
-        p.current_lanelet_id});
-    if (!s_ego) {
-      throw std::runtime_error("Ego is not in lanelet sequence");
-    }
-
-    extended_lanelet_sequence_with_interval_ =
-      std::make_unique<LaneletSequenceWithInterval>(extend_lanelet_sequence(
-        lanelet_sequence, routing_graph_, {*s_ego - p.backward_length, *s_ego + p.forward_length}));
-
-    if (
-      extended_lanelet_sequence_with_interval_->interval.end <=
-      extended_lanelet_sequence_with_interval_->interval.start) {
-      throw std::runtime_error("Interval is invalid");
-    }
-
     return trajectory::build_reference_path(
-      *extended_lanelet_sequence_with_interval_, lanelet_map_, traffic_rules_,
-      p.waypoint_connection_gradient_from_centerline);
+      lanelet_sequence, lanelet_map_, traffic_rules_, routing_graph_,
+      lanelet2_utils::to_ros(p.ego_position), p.current_lanelet_id, p.backward_length,
+      p.forward_length, p.waypoint_connection_gradient_from_centerline);
   }
 
   void check_path_shape(const std::vector<PathPointWithLaneId> & result_points) const
   {
+    const auto & p = GetParam();
+
     const auto combined_lanelet =
-      lanelet::utils::combineLaneletsShape(extended_lanelet_sequence_with_interval_->element);
+      lanelet::utils::combineLaneletsShape(get_lanelets_from_ids(p.lane_ids));
 
     for (const auto [p1, p2, p3] : ranges::views::zip(
            result_points, result_points | ranges::views::drop(1),
@@ -126,7 +104,7 @@ protected:
         << autoware_internal_planning_msgs::msg::to_yaml(p1) << "\np2: \n"
         << autoware_internal_planning_msgs::msg::to_yaml(p2);
       EXPECT_TRUE(lanelet::geometry::within(
-        lanelet::utils::to2D(lanelet::utils::conversion::toLaneletPoint(p2.point.pose.position)),
+        lanelet::utils::to2D(experimental::lanelet2_utils::from_ros(p2.point.pose.position)),
         combined_lanelet.polygon2d().basicPolygon()))
         << "p2: \n"
         << autoware_internal_planning_msgs::msg::to_yaml(p2);
@@ -146,39 +124,38 @@ protected:
 
   void check_waypoints(const std::vector<PathPointWithLaneId> & result_points) const
   {
-    for (const auto & lanelet : extended_lanelet_sequence_with_interval_->element) {
+    const auto & p = GetParam();
+
+    for (const auto & lanelet : get_lanelets_from_ids(p.lane_ids)) {
       if (!lanelet.hasAttribute("waypoints")) {
         continue;
       }
 
       const auto waypoints_id = lanelet.attribute("waypoints").asId().value();
-      const auto & waypoints_linestring = lanelet_map_->lineStringLayer.get(waypoints_id);
-
-      const std::vector<Waypoint> user_defined_waypoints =
-        waypoints_linestring |
-        ranges::views::transform(
-          [&lanelet](const lanelet::ConstPoint3d & p) { return Waypoint{p, lanelet.id()}; }) |
-        ranges::to<std::vector>();
+      const auto user_defined_waypoints = lanelet_map_->lineStringLayer.get(waypoints_id);
 
       for (const auto & waypoint : user_defined_waypoints | ranges::views::drop_last(1)) {
         EXPECT_TRUE(std::any_of(
           result_points.begin(), result_points.end(),
           [&waypoint](const PathPointWithLaneId & result_point) {
             return lanelet::geometry::distance(
-                     waypoint.point,
-                     lanelet::utils::conversion::toLaneletPoint(result_point.point.pose.position)) <
+                     waypoint,
+                     experimental::lanelet2_utils::from_ros(result_point.point.pose.position)) <
                    k_points_minimum_dist_threshold;
           }))
-          << "waypoint: (" << waypoint.point.x() << ", " << waypoint.point.y() << ", "
-          << waypoint.point.z() << ")" << std::endl;
+          << "waypoint: (" << waypoint.x() << ", " << waypoint.y() << ", " << waypoint.z() << ")"
+          << std::endl;
       }
     }
   }
 
   void check_border_points(const std::vector<PathPointWithLaneId> & result_points) const
   {
-    for (auto lanelet_it = std::next(extended_lanelet_sequence_with_interval_->element.begin());
-         lanelet_it != extended_lanelet_sequence_with_interval_->element.end(); ++lanelet_it) {
+    const auto & p = GetParam();
+    const auto lanelet_sequence = get_lanelets_from_ids(p.lane_ids);
+
+    for (auto lanelet_it = std::next(lanelet_sequence.begin());
+         lanelet_it != lanelet_sequence.end(); ++lanelet_it) {
       const lanelet::BasicLineString2d border{
         lanelet_it->leftBound().front().basicPoint2d(),
         lanelet_it->rightBound().front().basicPoint2d()};
@@ -187,9 +164,8 @@ protected:
         result_points.begin(), result_points.end(),
         [&](const PathPointWithLaneId & result_point) {
           return lanelet::geometry::distance(
-                   border,
-                   lanelet::utils::conversion::toLaneletPoint(result_point.point.pose.position)
-                     .basicPoint2d()) < k_points_minimum_dist_threshold &&
+                   border, experimental::lanelet2_utils::from_ros(result_point.point.pose.position)
+                             .basicPoint2d()) < k_points_minimum_dist_threshold &&
                  result_point.lane_ids.size() == 2 &&
                  ranges::equal(
                    result_point.lane_ids | ranges::to<std::vector>() | ranges::actions::sort,
@@ -203,8 +179,6 @@ protected:
   lanelet::LaneletMapConstPtr lanelet_map_;
   lanelet::traffic_rules::TrafficRulesPtr traffic_rules_;
   lanelet::routing::RoutingGraphConstPtr routing_graph_;
-
-  std::unique_ptr<LaneletSequenceWithInterval> extended_lanelet_sequence_with_interval_;
 };
 
 struct DenseCenterlineTest : public ReferencePathTest
