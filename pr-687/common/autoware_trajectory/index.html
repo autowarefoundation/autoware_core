@@ -7247,6 +7247,28 @@
 </tr>
 </tbody>
 </table>
+<p><strong><code>&lt;autoware/trajectory/utils/footprint.hpp&gt;</code></strong></p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><ul><li><code>build_path_polygon</code></li></ul></td>
+<td>A utility function that creates the polygon along the trajectory with designated width from specified start arc-length <code>start_s</code> to end arc-length <code>end_s</code>.</td>
+<td><img alt="build_path_polygon" src="images/utils/build_path_polygon.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-687%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Fbuild_path_polygon.drawio.svg">View in Drawio</a></td>
+</tr>
+<tr>
+<td><ul><li><code>build_path_footprints</code></li></ul></td>
+<td>A utility function that creates a trace of footprints (<code>vector&lt;Polygon2d&gt;</code>) along the trajectory with the size of input footprint from specified start arc-length <code>start_s</code> to end arc-length <code>end_s</code> .</td>
+<td><img alt="build_path_footprints" src="images/utils/build_path_footprints.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-687%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Fbuild_path_footprints.drawio.svg">View in Drawio</a></td>
+</tr>
+</tbody>
+</table>
 <h4 id="derivation-of-shift">Derivation of <code>shift</code><a class="headerlink" href="#derivation-of-shift" title="Permanent link">#</a></h4>
 <p><code>shift</code> function laterally offsets given curve by <span class="arithmatex">\(l(s)\)</span> in normal direction at each point following the lateral time-jerk profile as shown bellow.</p>
 <p><img alt="jerk_profile" src="images/utils/shift/path_shifter.png"></p>
