@@ -319,9 +319,18 @@ common/autoware_trajectory/examples/example_reference_path.cpp:74:80
 `find_first_nearest_index` is a utility function that locates the arc-length coordinate s on a continuous trajectory closest to a given pose.
 These are the usage examples of self-intersecting trajectory (Bow Trajectory and Vertical Loop Trajectory), and Edge case Lollipop Trajectory.
 
-```cpp title="./examples/example_self_intersecting.cpp:300:304"
+```cpp title="./examples/example_self_intersecting.cpp:331"
 --8<--
-common/autoware_trajectory/examples/example_self_intersecting.cpp:300:304
+common/autoware_trajectory/examples/example_self_intersecting.cpp:331
+--8<--
+--8<--
+common/autoware_trajectory/examples/example_self_intersecting.cpp:339:341
+--8<--
+```
+
+```cpp title="./examples/example_self_intersecting.cpp:352:357"
+--8<--
+common/autoware_trajectory/examples/example_self_intersecting.cpp:352:357
 --8<--
 ```
 
