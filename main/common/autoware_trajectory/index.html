@@ -6739,12 +6739,12 @@
 <p>In such cases the result <code>expected</code> object contains <code>InterpolationFailure</code> type with an error message like <strong>"base size 3 is less than minimum required 4"</strong>.</p>
 <h3 id="trajectory-class">Trajectory class<a class="headerlink" href="#trajectory-class" title="Permanent link">#</a></h3>
 <p>The <em>Trajectory</em> class provides mathematical continuous representation and object oriented interface for discrete array of following point types</p>
-<ul>
-<li>[x] <code>geometry_msgs::Point</code></li>
-<li>[x] <code>geometry_msgs::Pose</code></li>
-<li>[x] <code>autoware_planning_msgs::PathPoint</code></li>
-<li>[x] <code>autoware_planning_msgs::PathPointWithLaneId</code></li>
-<li>[x] <code>autoware_planning_msgs::TrajectoryPoint</code></li>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked><span class="task-list-indicator"></span></label> <code>geometry_msgs::Point</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked><span class="task-list-indicator"></span></label> <code>geometry_msgs::Pose</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked><span class="task-list-indicator"></span></label> <code>autoware_planning_msgs::PathPoint</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked><span class="task-list-indicator"></span></label> <code>autoware_planning_msgs::PathPointWithLaneId</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked><span class="task-list-indicator"></span></label> <code>autoware_planning_msgs::TrajectoryPoint</code></li>
 </ul>
 <p>by interpolating the given <em>underlying</em> points. Once built, arbitrary point on the curve is continuously parametrized by a single <code>s</code> coordinate.</p>
 <div class="highlight"><span class="filename">./examples/example_readme.cpp:549:561</span><pre><span></span><code><span class="w">  </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">geometry_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">Point</span><span class="o">&gt;</span><span class="w"> </span><span class="n">underlying_points</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
@@ -6817,8 +6817,8 @@
 <thead>
 <tr>
 <th>Class</th>
-<th>method/function</th>
-<th>description</th>
+<th>Method/Function</th>
+<th>Description</th>
 </tr>
 </thead>
 <tbody>
@@ -6910,18 +6910,19 @@
 <p><img alt="hierarchy" src="images/nomenclature/trajectory_hierarchy.drawio.svg">
 <a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Fnomenclature%2Ftrajectory_hierarchy.drawio.svg">View in Drawio</a></p>
 <p>Each derived class in the diagram inherits the methods of all of its descending subclasses. For example, all of the classes have the methods like <code>length()</code>, <code>curvature()</code> in common.</p>
+<p><strong><code>&lt;autoware/trajectory/point.hpp&gt;</code></strong></p>
 <table>
 <thead>
 <tr>
-<th>Header/Class</th>
-<th>method</th>
-<th>description</th>
-<th>illustration</th>
+<th>Class</th>
+<th>Method</th>
+<th>Description</th>
+<th>Illustration</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>&lt;autoware/trajectory/point.hpp&gt;</code><br><ul><li><code>Trajectory&lt;geometry_msgs::msg::Point&gt;::Builder</code></li></ul></td>
+<td><br><ul><li><code>Trajectory&lt;geometry_msgs::msg::Point&gt;::Builder</code></li></ul></td>
 <td><code>Builder()</code></td>
 <td>set default interpolator setting as follows.<br><ul><li><code>x, y</code>: Cubic</li><li><code>z</code>: Linear</li></ul></td>
 <td></td>
@@ -6980,8 +6981,21 @@
 <td>return the vector of <code>s</code> values of current <code>underlying</code> points.</td>
 <td></td>
 </tr>
+</tbody>
+</table>
+<p><strong><code>&lt;autoware/trajectory/pose.hpp&gt;</code></strong></p>
+<table>
+<thead>
 <tr>
-<td><code>&lt;autoware/trajectory/pose.hpp&gt;</code><br><ul><li><code>Trajectory&lt;geometry_msgs::msg::Pose&gt;::Builder</code></li></ul></td>
+<th>Class</th>
+<th>Method</th>
+<th>Description</th>
+<th>Illustration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><br><ul><li><code>Trajectory&lt;geometry_msgs::msg::Pose&gt;::Builder</code></li></ul></td>
 <td><code>Builder()</code></td>
 <td>set default interpolator setting in addition to that of <code>Trajectory&lt;Point&gt;::Builder</code> as follows.<br><ul><li><code>orientation</code>: SphericalLinear</li></ul></td>
 <td></td>
@@ -7010,8 +7024,21 @@
 <td>update the underlying points so that their orientations match the <code>azimuth()</code> of interpolated <code>curve</code>. This is useful when the user gave only the position of <code>Pose</code> and created <code>Trajectory</code> object.</td>
 <td><img alt="align_orientation_with_trajectory_direction" src="images/utils/align_orientation_with_trajectory_direction.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Falign_orientation_with_trajectory_direction.drawio.svg">View in Drawio</a></td>
 </tr>
+</tbody>
+</table>
+<p><strong><code>&lt;autoware/trajectory/path_point.hpp&gt;</code></strong></p>
+<table>
+<thead>
 <tr>
-<td><code>&lt;autoware/trajectory/path_point.hpp&gt;</code><br><ul><li><code>Trajectory&lt;autoware_planning_msgs::msg::PathPoint&gt;::Builder</code></li></ul></td>
+<th>Class</th>
+<th>Method</th>
+<th>Description</th>
+<th>Illustration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><br><ul><li><code>Trajectory&lt;autoware_planning_msgs::msg::PathPoint&gt;::Builder</code></li></ul></td>
 <td><code>Builder()</code></td>
 <td>set default interpolator setting in addition to that of <code>Trajectory&lt;Pose&gt;::Builder</code> as follows.<br><ul><li><code>longitudinal_velocity_mps</code>: StairStep</li><li><code>lateral_velocity_mps</code>: StairStep</li><li><code>heading_rate_rps</code>: StairStep</li></ul></td>
 <td></td>
@@ -7064,8 +7091,21 @@
 <td>return reference to <code>heading_rate_rps</code></td>
 <td></td>
 </tr>
+</tbody>
+</table>
+<p><strong><code>&lt;autoware/trajectory/path_point_with_lane_id.hpp&gt;</code></strong></p>
+<table>
+<thead>
 <tr>
-<td><code>&lt;autoware/trajectory/path_point_with_lane_id.hpp&gt;</code><br><ul><li><code>Trajectory&lt;autoware_internal_planning_msgs::msg::PathPointWithLaneId&gt;::Builder</code></li></ul></td>
+<th>Class</th>
+<th>Method</th>
+<th>Description</th>
+<th>Illustration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><br><ul><li><code>Trajectory&lt;autoware_internal_planning_msgs::msg::PathPointWithLaneId&gt;::Builder</code></li></ul></td>
 <td><code>Builder()</code></td>
 <td>set default interpolator setting in addition to that of <code>Trajectory&lt;PathPoint&gt;::Builder</code> as follows.<br><ul><li><code>lane_ids</code>: StairStep</li></ul></td>
 <td></td>
@@ -7097,17 +7137,18 @@
 </tbody>
 </table>
 <h3 id="utility-functions">Utility functions<a class="headerlink" href="#utility-functions" title="Permanent link">#</a></h3>
+<p><strong><code>&lt;autoware/trajectory/utils/shift.hpp&gt;</code></strong></p>
 <table>
 <thead>
 <tr>
-<th>Header / function</th>
-<th>description</th>
-<th>detail</th>
+<th>Header / Function</th>
+<th>Description</th>
+<th>Detail</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>&lt;autoware/trajectory/utils/shift.hpp</code></td>
+<td><code>&lt;autoware/trajectory/utils/shift.hpp&gt;</code></td>
 <td></td>
 <td><img alt="shift" src="images/utils/shift/shift.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Fshift%2Fshift.drawio.svg">View in Drawio</a><br>This is the case where <span class="arithmatex">\(a_{\mathrm{max}}^{\mathrm{lat}} &gt; a_{\mathrm{lim}}^{\mathrm{lat}}\)</span> because newly 4 points are inserted in the shift interval.</td>
 </tr>
@@ -7131,41 +7172,69 @@
 <td>Following <a href="#derivation-of-shift">formulation</a>, return a shifted <code>Trajectory</code> object if the parameters are feasible, otherwise return <code>Error</code> object indicating error reason(i.e. <span class="arithmatex">\(T_j\)</span> becomes negative, <span class="arithmatex">\(j\)</span> becomes negative, etc.).</td>
 <td>For derivation, see <a href="#derivation-of-shift">formulation</a>.<br>The example code for this plot is found <a href="#shift-trajectory">example</a></td>
 </tr>
+</tbody>
+</table>
+<p><strong><code>&lt;autoware/trajectory/utils/pretty_build.hpp&gt;</code></strong></p>
+<table>
+<thead>
 <tr>
-<td><code>&lt;autoware/trajectory/utils/pretty_build.hpp&gt;</code></td>
-<td></td>
-<td></td>
+<th>Function</th>
+<th>Description</th>
+<th>Detail</th>
 </tr>
+</thead>
+<tbody>
 <tr>
 <td><ul><li><code>pretty_build</code></li></ul></td>
 <td>A convenient function that will <strong>almost surely succeed</strong> in constructing a Trajectory class unless the given points size is 0 or 1.<br>Input points are interpolated to 3 points using <code>Linear</code> and to 4 points using <code>Cubic</code> so that it returns<br><ul><li><code>Cubic</code> interpolated Trajectory class(by default), or</li><li><code>Akima</code> interpolated class if the parameter <code>use_akima = true</code></li></ul>All of the properties are interpolated by <code>default</code> interpolators setting.<br>You may need to call <code>align_orientation_with_trajectory_direction</code> if you did not give desired orientation.</td>
 <td><img alt="pretty_trajectory" src="images/utils/pretty_trajectory.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Fpretty_trajectory.drawio.svg">View in Drawio</a></td>
 </tr>
+</tbody>
+</table>
+<p><strong><code>&lt;autoware/trajectory/utils/reference_path.hpp&gt;</code></strong></p>
+<table>
+<thead>
 <tr>
-<td><code>&lt;autoware/trajectory/utils/reference_path.hpp&gt;</code></td>
-<td></td>
-<td></td>
+<th>Function</th>
+<th>Description</th>
+<th>Detail</th>
 </tr>
+</thead>
+<tbody>
 <tr>
 <td><ul><li><code>build_reference_path</code></li></ul></td>
 <td>A convenient function that generates Trajectory class from given Lanelets and specified length before/after given position.<br>Input <code>lanelet_sequence</code> must be consecutive.<br>If <code>lanelet_sequence</code> have self-intersection ego position gets ambiguous, so both <code>current_lanelet</code> and <code>current_pose</code> need to be given.<br><code>forward/backward_length</code> is measured in terms of lane coordinate from <code>current_pose</code>. Thus, if and only if the Lanelets contained waypoint, the output trajectory length does not equal to <code>forward_length + backward_length</code>.</td>
 <td><img alt="build_reference_path" src="images/utils/reference_path.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Freference_path.drawio.svg">View in Drawio</a></td>
 </tr>
+</tbody>
+</table>
+<p><strong><code>&lt;autoware/trajectory/utils/find_nearest.hpp&gt;</code></strong></p>
+<table>
+<thead>
 <tr>
-<td><code>&lt;autoware/trajectory/utils/find_nearest.hpp&gt;</code></td>
-<td></td>
-<td></td>
+<th>Function</th>
+<th>Description</th>
+<th>Detail</th>
 </tr>
+</thead>
+<tbody>
 <tr>
 <td><ul><li><code>find_first_nearest_index</code></li></ul></td>
 <td>A utility function that locates the arc-length coordinate <code>s</code> on a continuous trajectory closest to a given pose.<br> Input is any continuous trajectory type.<br>If no sample lies within <code>max_dist</code> (Euclidean) and <code>max_yaw</code> (heading) limits, returns <code>std::nullopt</code>.<br>Otherwise, It searches for the best point on the bases first, and then performs a ternary search to precisely locate the nearest <code>s</code> in a continuous manner at \~1e-4 m precision level.<br>If two samples are equally close in distance, the one with the smaller yaw deviation (within <code>max_yaw</code>) is chosen.</td>
 <td><img alt="find_nearest_index" src="images/utils/find_nearest.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Ffind_nearest.drawio.svg">View in Drawio</a></td>
 </tr>
+</tbody>
+</table>
+<p><strong><code>&lt;autoware/trajectory/utils/lateral_metrics.hpp&gt;</code></strong></p>
+<table>
+<thead>
 <tr>
-<td><code>&lt;autoware/trajectory/utils/lateral_metrics.hpp&gt;</code></td>
-<td></td>
-<td></td>
+<th>Function</th>
+<th>Description</th>
+<th>Detail</th>
 </tr>
+</thead>
+<tbody>
 <tr>
 <td><ul><li><code>compute_lateral_distance</code></li></ul></td>
 <td>A utility function that computes the normal distance between a given <code>target point</code> and the tangent line of the pose at specified arc-length <code>s</code> on the trajectory.<br> See below cell figure</td>
@@ -7176,11 +7245,18 @@
 <td>A utility function that determines whether a given <code>target point</code> lies on the <strong>left side</strong> of the trajectory's tangent direction at the specified arc-length <code>s</code>.</td>
 <td><img alt="lateral_metrics" src="images/utils/lateral_distance_computation.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Flateral_distance_computation.drawio.svg">View in Drawio</a></td>
 </tr>
+</tbody>
+</table>
+<p><strong><code>&lt;autoware/trajectory/utils/footprint.hpp&gt;</code></strong></p>
+<table>
+<thead>
 <tr>
-<td><code>&lt;autoware/trajectory/utils/footprint.hpp&gt;</code></td>
-<td></td>
-<td></td>
+<th>Function</th>
+<th>Description</th>
+<th>Detail</th>
 </tr>
+</thead>
+<tbody>
 <tr>
 <td><ul><li><code>build_path_polygon</code></li></ul></td>
 <td>A utility function that creates the polygon along the trajectory with designated width from specified start arc-length <code>start_s</code> to end arc-length <code>end_s</code>.</td>
@@ -7308,10 +7384,12 @@ s_{3} &amp;= L_{\mathrm{lon}}, &amp; l_{3} &amp;= L
 <h3 id="find-first-nearest-index-from-trajectory">Find first nearest index from Trajectory<a class="headerlink" href="#find-first-nearest-index-from-trajectory" title="Permanent link">#</a></h3>
 <p><code>find_first_nearest_index</code> is a utility function that locates the arc-length coordinate s on a continuous trajectory closest to a given pose.
 These are the usage examples of self-intersecting trajectory (Bow Trajectory and Vertical Loop Trajectory), and Edge case Lollipop Trajectory.</p>
-<div class="highlight"><span class="filename">./examples/example_self_intersecting.cpp:300:304</span><pre><span></span><code><span class="w">    </span><span class="n">yaw</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">calculate_bow_trajectory_yaw</span><span class="p">(</span><span class="n">M_PI</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">3</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">2</span><span class="p">);</span>
-<span class="w">    </span><span class="n">query</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">make_pose</span><span class="p">(</span><span class="mf">-0.05</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">yaw</span><span class="p">);</span>
-<span class="w">    </span><span class="n">queries</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">query</span><span class="p">);</span>
-<span class="w">    </span><span class="n">yaws</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="s">"-1/4 * M_PI"</span><span class="p">);</span>
+<div class="highlight"><span class="filename">./examples/example_self_intersecting.cpp:352:357</span><pre><span></span><code><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">q</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">queries</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="k">auto</span><span class="w"> </span><span class="n">s_opt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">find_first_nearest_index</span><span class="p">(</span><span class="n">traj</span><span class="p">,</span><span class="w"> </span><span class="n">q</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">numeric_limits</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;::</span><span class="n">max</span><span class="p">(),</span><span class="w"> </span><span class="mf">0.4</span><span class="p">);</span>
+<span class="w">      </span><span class="kt">double</span><span class="w"> </span><span class="n">s_nearest</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">*</span><span class="n">s_opt</span><span class="p">;</span>
+<span class="w">      </span><span class="n">s_nearests</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">s_nearest</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="n">plot_nearest_point</span><span class="p">(</span><span class="n">plt</span><span class="p">,</span><span class="w"> </span><span class="n">traj</span><span class="p">,</span><span class="w"> </span><span class="n">s_nearests</span><span class="p">);</span>
 </code></pre></div>
 <p><img alt="bow_trajectory" src="images/utils/find_precise_index_bow_trajectory.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Ffind_precise_index_bow_trajectory.drawio.svg">View in Drawio</a>
 <img alt="vertical_loop_trajectory" src="images/utils/find_precise_index_vertical_loop_trajectory.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Ffind_precise_index_vertical_loop_trajectory.drawio.svg">View in Drawio</a>
