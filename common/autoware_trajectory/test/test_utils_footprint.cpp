@@ -65,7 +65,7 @@ TEST(trajectoryFootprint, LongPolygon)
 {
   auto traj = build_parabolic_trajectory(11, 0.5);
   const auto polygon = autoware::experimental::trajectory::build_path_polygon(
-    traj, 0, traj.get_underlying_bases()[traj.get_underlying_bases().size() - 1], 0.5);
+    traj, 0, traj.get_underlying_bases()[traj.get_underlying_bases().size() - 1], 1.0, 0.5);
 
   EXPECT_EQ(typeid(polygon), typeid(autoware_utils_geometry::Polygon2d))
     << "polygon is not autoware_utils_geometry::Polygon2d.";
@@ -84,7 +84,7 @@ TEST(trajectoryFootprint, FootprintTraceDefault)
     autoware_utils_geometry::LinearRing2d base_ring{left_front, right_front, right_rear, left_rear};
 
     const auto footprints = autoware::experimental::trajectory::build_path_footprints(
-      traj, 0, traj.get_underlying_bases()[traj.get_underlying_bases().size() - 1], base_ring);
+      traj, 0, traj.get_underlying_bases()[traj.get_underlying_bases().size() - 1], 1.0, base_ring);
 
     EXPECT_EQ(
       footprints.size(),
@@ -100,7 +100,8 @@ TEST(trajectoryFootprint, FootprintTraceDefault)
     base_polygon.outer().push_back(left_rear);
 
     const auto footprints = autoware::experimental::trajectory::build_path_footprints(
-      traj, 0, traj.get_underlying_bases()[traj.get_underlying_bases().size() - 1], base_polygon);
+      traj, 0, traj.get_underlying_bases()[traj.get_underlying_bases().size() - 1], 1.0,
+      base_polygon);
 
     EXPECT_EQ(
       footprints.size(),
@@ -122,8 +123,8 @@ TEST(trajectoryFootprint, FootprintTraceAdjustInterval)
     autoware_utils_geometry::LinearRing2d base_ring{left_front, right_front, right_rear, left_rear};
 
     const auto footprints = autoware::experimental::trajectory::build_path_footprints(
-      traj, 0, traj.get_underlying_bases()[traj.get_underlying_bases().size() - 1], base_ring,
-      interval);
+      traj, 0, traj.get_underlying_bases()[traj.get_underlying_bases().size() - 1], interval,
+      base_ring);
 
     EXPECT_EQ(
       footprints.size(),
@@ -140,8 +141,8 @@ TEST(trajectoryFootprint, FootprintTraceAdjustInterval)
     base_polygon.outer().push_back(left_rear);
 
     const auto footprints = autoware::experimental::trajectory::build_path_footprints(
-      traj, 0, traj.get_underlying_bases()[traj.get_underlying_bases().size() - 1], base_polygon,
-      interval);
+      traj, 0, traj.get_underlying_bases()[traj.get_underlying_bases().size() - 1], interval,
+      base_polygon);
 
     EXPECT_EQ(
       footprints.size(),

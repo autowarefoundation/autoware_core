@@ -155,7 +155,7 @@ int main1()
   plot_traj_with_orientation(ax, traj);
 
   const auto polygon = autoware::experimental::trajectory::build_path_polygon(
-    traj, 0, traj.get_underlying_bases()[traj.get_underlying_bases().size() - 1], 0.5);
+    traj, 0, traj.get_underlying_bases()[traj.get_underlying_bases().size() - 1], 0.5, 0.5);
 
   draw_polygon(ax, polygon);
   ax.set_title(Args("build_path_polygon"), Kwargs("fontsize"_a = 16));
@@ -185,7 +185,7 @@ int main2()
   autoware_utils_geometry::LinearRing2d base_ring{left_front, right_front, right_rear, left_rear};
 
   const auto footprints = autoware::experimental::trajectory::build_path_footprints(
-    traj, 0, traj.get_underlying_bases()[traj.get_underlying_bases().size() - 1], base_ring);
+    traj, 0, traj.get_underlying_bases()[traj.get_underlying_bases().size() - 1], 1.0, base_ring);
 
   draw_footprints(ax, footprints);
   ax.set_title(Args("build_path_footprints for LinearRing2d"), Kwargs("fontsize"_a = 16));
@@ -219,7 +219,8 @@ int main3()
   base_polygon.outer().push_back(left_rear);
 
   const auto footprints = autoware::experimental::trajectory::build_path_footprints(
-    traj, 0, traj.get_underlying_bases()[traj.get_underlying_bases().size() - 1], base_polygon);
+    traj, 0, traj.get_underlying_bases()[traj.get_underlying_bases().size() - 1], 1.0,
+    base_polygon);
 
   draw_footprints(ax, footprints);
   ax.set_title(Args("build_path_footprints for Polygon2d"), Kwargs("fontsize"_a = 16));

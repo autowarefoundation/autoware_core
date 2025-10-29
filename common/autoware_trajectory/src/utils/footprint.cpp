@@ -23,70 +23,70 @@ namespace autoware::experimental::trajectory
 template autoware_utils_geometry::Polygon2d
 build_path_polygon<autoware_planning_msgs::msg::PathPoint>(
   const Trajectory<autoware_planning_msgs::msg::PathPoint> & trajectory, const double start_s,
-  const double end_s, const double width);
+  const double end_s, const double interval, const double width);
 
 template autoware_utils_geometry::Polygon2d
 build_path_polygon<autoware_internal_planning_msgs::msg::PathPointWithLaneId>(
   const Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & trajectory,
-  const double start_s, const double end_s, const double width);
+  const double start_s, const double end_s, const double interval, const double width);
 
 template autoware_utils_geometry::Polygon2d build_path_polygon<geometry_msgs::msg::Pose>(
   const Trajectory<geometry_msgs::msg::Pose> & trajectory, const double start_s, const double end_s,
-  const double width);
+  const double interval, const double width);
 
 template autoware_utils_geometry::Polygon2d
 build_path_polygon<autoware_planning_msgs::msg::TrajectoryPoint>(
   const Trajectory<autoware_planning_msgs::msg::TrajectoryPoint> & trajectory, const double start_s,
-  const double end_s, const double width);
+  const double end_s, const double interval, const double width);
 
 // ===================== build_path_footprints (LinearRing2d) ==============
 
 template std::vector<autoware_utils_geometry::Polygon2d>
 build_path_footprints<autoware_planning_msgs::msg::PathPoint>(
   const Trajectory<autoware_planning_msgs::msg::PathPoint> & trajectory, const double start_s,
-  const double end_s, const autoware_utils_geometry::LinearRing2d & base_footprint,
-  const double interval);
+  const double end_s, const double interval,
+  const autoware_utils_geometry::LinearRing2d & base_footprint);
 
 template std::vector<autoware_utils_geometry::Polygon2d>
 build_path_footprints<autoware_internal_planning_msgs::msg::PathPointWithLaneId>(
   const Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & trajectory,
-  const double start_s, const double end_s,
-  const autoware_utils_geometry::LinearRing2d & base_footprint, const double interval);
+  const double start_s, const double end_s, const double interval,
+  const autoware_utils_geometry::LinearRing2d & base_footprint);
 
 template std::vector<autoware_utils_geometry::Polygon2d>
 build_path_footprints<geometry_msgs::msg::Pose>(
   const Trajectory<geometry_msgs::msg::Pose> & trajectory, const double start_s, const double end_s,
-  const autoware_utils_geometry::LinearRing2d & base_footprint, const double interval);
+  const double interval, const autoware_utils_geometry::LinearRing2d & base_footprint);
 
 template std::vector<autoware_utils_geometry::Polygon2d>
 build_path_footprints<autoware_planning_msgs::msg::TrajectoryPoint>(
   const Trajectory<autoware_planning_msgs::msg::TrajectoryPoint> & trajectory, const double start_s,
-  const double end_s, const autoware_utils_geometry::LinearRing2d & base_footprint,
-  const double interval);
+  const double end_s, const double interval,
+  const autoware_utils_geometry::LinearRing2d & base_footprint);
 
 // ====================== build_path_footprints (Polygon2d) ================
 
 template std::vector<autoware_utils_geometry::Polygon2d>
 build_path_footprints<autoware_planning_msgs::msg::PathPoint>(
   const Trajectory<autoware_planning_msgs::msg::PathPoint> & trajectory, const double start_s,
-  const double end_s, const autoware_utils_geometry::Polygon2d & base_footprint,
-  const double interval);
+  const double end_s, const double interval,
+  const autoware_utils_geometry::Polygon2d & base_footprint);
 
 template std::vector<autoware_utils_geometry::Polygon2d>
 build_path_footprints<autoware_internal_planning_msgs::msg::PathPointWithLaneId>(
   const Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & trajectory,
-  const double start_s, const double end_s,
-  const autoware_utils_geometry::Polygon2d & base_footprint, const double interval);
+  const double start_s, const double end_s, const double interval,
+  const autoware_utils_geometry::Polygon2d & base_footprint);
 
 template std::vector<autoware_utils_geometry::Polygon2d>
 build_path_footprints<geometry_msgs::msg::Pose>(
   const Trajectory<geometry_msgs::msg::Pose> & trajectory, const double start_s, const double end_s,
-  const autoware_utils_geometry::Polygon2d & base_footprint, const double interval);
+  const double interval, const autoware_utils_geometry::Polygon2d & base_footprint);
 
 template std::vector<autoware_utils_geometry::Polygon2d>
 build_path_footprints<autoware_planning_msgs::msg::TrajectoryPoint>(
   const Trajectory<autoware_planning_msgs::msg::TrajectoryPoint> & trajectory, const double start_s,
-  const double end_s, const autoware_utils_geometry::Polygon2d & base_footprint,
-  const double interval);
+  const double end_s, const double interval,
+  const autoware_utils_geometry::Polygon2d & base_footprint);
 
 }  // namespace autoware::experimental::trajectory
