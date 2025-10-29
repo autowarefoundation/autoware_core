@@ -12,24 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/trajectory/path_point_with_lane_id.hpp"
 #include "autoware/trajectory/utils/reference_path.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <autoware/lanelet2_utils/conversion.hpp>
-#include <autoware/motion_utils/resample/resample.hpp>
-#include <autoware/motion_utils/trajectory/trajectory.hpp>
 #include <autoware/pyplot/pyplot.hpp>
-#include <autoware_lanelet2_extension/utility/message_conversion.hpp>
 #include <autoware_test_utils/visualization.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 #include <range/v3/all.hpp>
 
-#include <geometry_msgs/msg/pose.hpp>
-
-#include <lanelet2_core/LaneletMap.h>
 #include <pybind11/embed.h>
-#include <pybind11/stl.h>
 
 #include <filesystem>
 #include <string>
