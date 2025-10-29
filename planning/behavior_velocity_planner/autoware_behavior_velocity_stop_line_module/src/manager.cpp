@@ -75,7 +75,8 @@ std::set<lanelet::Id> StopLineModuleManager::getStopLineIdSetOnPath(
 }
 
 void StopLineModuleManager::launchNewModules(
-  const Trajectory & path, const rclcpp::Time & /* stamp */, const PlannerData & planner_data)
+  const Trajectory & path, [[maybe_unused]] const rclcpp::Time & stamp,
+  const PlannerData & planner_data)
 {
   for (const auto & [stop_line, linked_lane_id] : getStopLinesWithLaneIdOnPath(
          path, planner_data.route_handler_->getLaneletMapPtr(), planner_data)) {
