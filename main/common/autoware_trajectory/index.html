@@ -7168,13 +7168,28 @@
 </tr>
 <tr>
 <td><ul><li><code>compute_lateral_distance</code></li></ul></td>
-<td>A utility A utility function that computes the normal distance between a given <code>target point</code> and the tangent line of the pose at specified arc-length <code>s</code> on the trajectory.<br> See below cell figure</td>
+<td>A utility function that computes the normal distance between a given <code>target point</code> and the tangent line of the pose at specified arc-length <code>s</code> on the trajectory.<br> See below cell figure</td>
 <td></td>
 </tr>
 <tr>
 <td><ul><li><code>is_left_side</code></li></ul></td>
 <td>A utility function that determines whether a given <code>target point</code> lies on the <strong>left side</strong> of the trajectory's tangent direction at the specified arc-length <code>s</code>.</td>
 <td><img alt="lateral_metrics" src="images/utils/lateral_distance_computation.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Flateral_distance_computation.drawio.svg">View in Drawio</a></td>
+</tr>
+<tr>
+<td><code>&lt;autoware/trajectory/utils/footprint.hpp&gt;</code></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><ul><li><code>build_path_polygon</code></li></ul></td>
+<td>A utility function that creates the polygon along the trajectory with designated width from specified start arc-length <code>start_s</code> to end arc-length <code>end_s</code>.</td>
+<td><img alt="build_path_polygon" src="images/utils/build_path_polygon.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Fbuild_path_polygon.drawio.svg">View in Drawio</a></td>
+</tr>
+<tr>
+<td><ul><li><code>build_path_footprints</code></li></ul></td>
+<td>A utility function that creates a trace of footprints (<code>vector&lt;Polygon2d&gt;</code>) along the trajectory with the size of input footprint from specified start arc-length <code>start_s</code> to end arc-length <code>end_s</code> .</td>
+<td><img alt="build_path_footprints" src="images/utils/build_path_footprints.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Fbuild_path_footprints.drawio.svg">View in Drawio</a></td>
 </tr>
 </tbody>
 </table>
