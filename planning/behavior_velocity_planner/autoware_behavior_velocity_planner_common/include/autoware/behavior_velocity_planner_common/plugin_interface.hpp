@@ -16,11 +16,11 @@
 #define AUTOWARE__BEHAVIOR_VELOCITY_PLANNER_COMMON__PLUGIN_INTERFACE_HPP_
 
 #include <autoware/behavior_velocity_planner_common/planner_data.hpp>
-#include <autoware/trajectory/path_point_with_lane_id.hpp>
 #include <rclcpp/rclcpp.hpp>
 
+#include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
+
 #include <memory>
-#include <vector>
 
 namespace autoware::behavior_velocity_planner
 {
@@ -31,16 +31,10 @@ public:
   virtual ~PluginInterface() = default;
   virtual void init(rclcpp::Node & node) = 0;
   virtual RequiredSubscriptionInfo getRequiredSubscriptions() = 0;
-  virtual void plan(
-    experimental::trajectory::Trajectory<
-      autoware_internal_planning_msgs::msg::PathPointWithLaneId> & path,
-    const std_msgs::msg::Header & header, const std::vector<geometry_msgs::msg::Point> & left_bound,
-    const std::vector<geometry_msgs::msg::Point> & right_bound,
-    const PlannerData & planner_data) = 0;
+  virtual void plan(autoware_internal_planning_msgs::msg::PathWithLaneId * path) = 0;
   virtual void updateSceneModuleInstances(
-    const experimental::trajectory::Trajectory<
-      autoware_internal_planning_msgs::msg::PathPointWithLaneId> & path,
-    const rclcpp::Time & stamp, const PlannerData & planner_data) = 0;
+    const std::shared_ptr<const PlannerData> & planner_data,
+    const autoware_internal_planning_msgs::msg::PathWithLaneId & path) = 0;
   virtual const char * getModuleName() = 0;
 };
 

@@ -14,8 +14,6 @@
 
 #include "manager.hpp"
 
-#include <autoware_utils/ros/parameter.hpp>
-
 #include <lanelet2_core/primitives/BasicRegulatoryElements.h>
 
 #include <memory>
@@ -25,7 +23,6 @@
 
 namespace autoware::behavior_velocity_planner
 {
-using autoware_utils::get_or_declare_parameter;
 using lanelet::TrafficSign;
 
 StopLineModuleManager::StopLineModuleManager(rclcpp::Node & node)
@@ -99,16 +96,17 @@ void StopLineModuleManager::launchNewModules(
   }
 }
 
-std::function<bool(const std::shared_ptr<SceneModuleInterface> &)>
+std::function<bool(const std::shared_ptr<experimental::SceneModuleInterface> &)>
 StopLineModuleManager::getModuleExpiredFunction(
   const Trajectory & path, const PlannerData & planner_data)
 {
   const auto stop_line_id_set =
     getStopLineIdSetOnPath(path, planner_data.route_handler_->getLaneletMapPtr(), planner_data);
 
-  return [stop_line_id_set](const std::shared_ptr<SceneModuleInterface> & scene_module) {
-    return stop_line_id_set.count(scene_module->getModuleId()) == 0;
-  };
+  return
+    [stop_line_id_set](const std::shared_ptr<experimental::SceneModuleInterface> & scene_module) {
+      return stop_line_id_set.count(scene_module->getModuleId()) == 0;
+    };
 }
 
 }  // namespace autoware::behavior_velocity_planner
@@ -116,4 +114,4 @@ StopLineModuleManager::getModuleExpiredFunction(
 #include <pluginlib/class_list_macros.hpp>
 PLUGINLIB_EXPORT_CLASS(
   autoware::behavior_velocity_planner::StopLineModulePlugin,
-  autoware::behavior_velocity_planner::PluginInterface)
+  autoware::behavior_velocity_planner::experimental::PluginInterface)

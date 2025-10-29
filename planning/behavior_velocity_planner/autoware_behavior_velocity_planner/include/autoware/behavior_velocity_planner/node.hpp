@@ -15,9 +15,8 @@
 #ifndef AUTOWARE__BEHAVIOR_VELOCITY_PLANNER__NODE_HPP_
 #define AUTOWARE__BEHAVIOR_VELOCITY_PLANNER__NODE_HPP_
 
-#include "autoware/behavior_velocity_planner/planner_manager.hpp"
+#include "planner_manager.hpp"
 
-#include <autoware/behavior_velocity_planner_common/planner_data.hpp>
 #include <autoware_utils_debug/published_time_publisher.hpp>
 #include <autoware_utils_logging/logger_level_configure.hpp>
 #include <autoware_utils_rclcpp/polling_subscriber.hpp>
@@ -25,16 +24,10 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include <autoware_internal_debug_msgs/msg/float64_stamped.hpp>
-#include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
-#include <autoware_internal_planning_msgs/msg/velocity_limit.hpp>
 #include <autoware_internal_planning_msgs/srv/load_plugin.hpp>
 #include <autoware_internal_planning_msgs/srv/unload_plugin.hpp>
-#include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
-#include <autoware_perception_msgs/msg/predicted_objects.hpp>
 #include <autoware_planning_msgs/msg/path.hpp>
-#include <nav_msgs/msg/occupancy_grid.hpp>
 #include <nav_msgs/msg/odometry.hpp>
-#include <sensor_msgs/msg/point_cloud2.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
 
 #include <tf2_ros/buffer.h>

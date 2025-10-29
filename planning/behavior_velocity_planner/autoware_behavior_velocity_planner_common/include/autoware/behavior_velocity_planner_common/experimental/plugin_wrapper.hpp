@@ -1,4 +1,4 @@
-// Copyright 2023 The Autoware Contributors
+// Copyright 2025 TIER IV, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__BEHAVIOR_VELOCITY_PLANNER_COMMON__PLUGIN_WRAPPER_HPP_
-#define AUTOWARE__BEHAVIOR_VELOCITY_PLANNER_COMMON__PLUGIN_WRAPPER_HPP_
+#ifndef AUTOWARE__BEHAVIOR_VELOCITY_PLANNER_COMMON__EXPERIMENTAL__PLUGIN_WRAPPER_HPP_
+#define AUTOWARE__BEHAVIOR_VELOCITY_PLANNER_COMMON__EXPERIMENTAL__PLUGIN_WRAPPER_HPP_
 
-#include <autoware/behavior_velocity_planner_common/plugin_interface.hpp>
+#include <autoware/behavior_velocity_planner_common/experimental/plugin_interface.hpp>
 
 #include <memory>
-#include <optional>
+#include <vector>
 
-namespace autoware::behavior_velocity_planner
+namespace autoware::behavior_velocity_planner::experimental
 {
 
 template <class T>
@@ -32,15 +32,18 @@ public:
   {
     return scene_manager_->getRequiredSubscriptions();
   };
-  void plan(autoware_internal_planning_msgs::msg::PathWithLaneId * path) override
+  void plan(
+    Trajectory & path, const std_msgs::msg::Header & header,
+    const std::vector<geometry_msgs::msg::Point> & left_bound,
+    const std::vector<geometry_msgs::msg::Point> & right_bound,
+    const PlannerData & planner_data) override
   {
-    scene_manager_->plan(path);
+    scene_manager_->plan(path, header, left_bound, right_bound, planner_data);
   };
   void updateSceneModuleInstances(
-    const std::shared_ptr<const PlannerData> & planner_data,
-    const autoware_internal_planning_msgs::msg::PathWithLaneId & path) override
+    const Trajectory & path, const rclcpp::Time & stamp, const PlannerData & planner_data) override
   {
-    scene_manager_->updateSceneModuleInstances(planner_data, path);
+    scene_manager_->updateSceneModuleInstances(path, stamp, planner_data);
   }
   const char * getModuleName() override { return scene_manager_->getModuleName(); }
 
@@ -48,6 +51,6 @@ private:
   std::unique_ptr<T> scene_manager_;
 };
 
-}  // namespace autoware::behavior_velocity_planner
+}  // namespace autoware::behavior_velocity_planner::experimental
 
-#endif  // AUTOWARE__BEHAVIOR_VELOCITY_PLANNER_COMMON__PLUGIN_WRAPPER_HPP_
+#endif  // AUTOWARE__BEHAVIOR_VELOCITY_PLANNER_COMMON__EXPERIMENTAL__PLUGIN_WRAPPER_HPP_

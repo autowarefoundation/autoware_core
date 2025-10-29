@@ -16,25 +16,15 @@
 #define SCENE_HPP_
 #define EIGEN_MPL2_ONLY
 
-#include "autoware/behavior_velocity_planner_common/scene_module_interface.hpp"
-#include "autoware/behavior_velocity_planner_common/utilization/util.hpp"
-
-#include <Eigen/Core>
-#include <Eigen/Geometry>
-#include <autoware_utils_debug/time_keeper.hpp>
-#include <rclcpp/rclcpp.hpp>
-#include <rclcpp/time.hpp>
-
-#include <lanelet2_core/LaneletMap.h>
+#include <autoware/behavior_velocity_planner_common/experimental/scene_module_interface.hpp>
 
 #include <memory>
-#include <optional>
 #include <utility>
 #include <vector>
 
 namespace autoware::behavior_velocity_planner
 {
-class StopLineModule : public SceneModuleInterface
+class StopLineModule : public experimental::SceneModuleInterface
 {
 public:
   using StopLineWithLaneId = std::pair<lanelet::ConstLineString3d, int64_t>;

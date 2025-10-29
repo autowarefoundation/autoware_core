@@ -1,4 +1,4 @@
-// Copyright 2020 Tier IV, Inc.
+// Copyright 2025 TIER IV, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,53 +12,40 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__BEHAVIOR_VELOCITY_PLANNER_COMMON__SCENE_MODULE_INTERFACE_HPP_
-#define AUTOWARE__BEHAVIOR_VELOCITY_PLANNER_COMMON__SCENE_MODULE_INTERFACE_HPP_
+#ifndef AUTOWARE__BEHAVIOR_VELOCITY_PLANNER_COMMON__EXPERIMENTAL__SCENE_MODULE_INTERFACE_HPP_
+#define AUTOWARE__BEHAVIOR_VELOCITY_PLANNER_COMMON__EXPERIMENTAL__SCENE_MODULE_INTERFACE_HPP_
 
-#include <autoware/behavior_velocity_planner_common/planner_data.hpp>
-#include <autoware/behavior_velocity_planner_common/utilization/util.hpp>
+#include "autoware/behavior_velocity_planner_common/planner_data.hpp"
+#include "autoware/behavior_velocity_planner_common/utilization/util.hpp"
+
 #include <autoware/motion_utils/marker/virtual_wall_marker_creator.hpp>
-#include <autoware/motion_utils/trajectory/trajectory.hpp>
 #include <autoware/objects_of_interest_marker_interface/objects_of_interest_marker_interface.hpp>
 #include <autoware/planning_factor_interface/planning_factor_interface.hpp>
 #include <autoware_utils_debug/debug_publisher.hpp>
-#include <autoware_utils_debug/time_keeper.hpp>
 #include <autoware_utils_rclcpp/parameter.hpp>
-#include <autoware_utils_system/stop_watch.hpp>
-#include <builtin_interfaces/msg/time.hpp>
 
-#include <autoware_internal_debug_msgs/msg/float64_stamped.hpp>
-#include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
-#include <autoware_planning_msgs/msg/path.hpp>
-#include <unique_identifier_msgs/msg/uuid.hpp>
-
-#include <iomanip>
 #include <memory>
-#include <optional>
 #include <set>
-#include <sstream>
 #include <string>
-#include <unordered_map>
-#include <utility>
 #include <vector>
 
-// Debug
-#include <rclcpp/publisher.hpp>
-#include <rclcpp/rclcpp.hpp>
-
-#include <visualization_msgs/msg/marker_array.hpp>
 namespace autoware::behavior_velocity_planner
 {
 
 using autoware::objects_of_interest_marker_interface::ColorName;
 using autoware::objects_of_interest_marker_interface::ObjectsOfInterestMarkerInterface;
 using autoware_internal_debug_msgs::msg::Float64Stamped;
-using autoware_internal_planning_msgs::msg::PathWithLaneId;
 using autoware_utils_debug::DebugPublisher;
 using autoware_utils_rclcpp::get_or_declare_parameter;
 using autoware_utils_system::StopWatch;
 using builtin_interfaces::msg::Time;
 using unique_identifier_msgs::msg::UUID;
+
+using Trajectory = autoware::experimental::trajectory::Trajectory<
+  autoware_internal_planning_msgs::msg::PathPointWithLaneId>;
+
+namespace experimental
+{
 
 struct ObjectOfInterest
 {
@@ -66,9 +53,9 @@ struct ObjectOfInterest
   autoware_perception_msgs::msg::Shape shape;
   ColorName color;
   ObjectOfInterest(
-    const geometry_msgs::msg::Pose & pose, autoware_perception_msgs::msg::Shape shape,
+    const geometry_msgs::msg::Pose & pose, const autoware_perception_msgs::msg::Shape & shape,
     const ColorName & color_name)
-  : pose(pose), shape(std::move(shape)), color(color_name)
+  : pose(pose), shape(shape), color(color_name)
   {
   }
 };
@@ -77,23 +64,21 @@ class SceneModuleInterface
 {
 public:
   explicit SceneModuleInterface(
-    const int64_t module_id, rclcpp::Logger logger, rclcpp::Clock::SharedPtr clock,
+    const int64_t module_id, const rclcpp::Logger & logger, const rclcpp::Clock::SharedPtr clock,
     const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper,
     const std::shared_ptr<planning_factor_interface::PlanningFactorInterface>
       planning_factor_interface);
   virtual ~SceneModuleInterface() = default;
 
-  virtual bool modifyPathVelocity(PathWithLaneId * path) = 0;
+  virtual bool modifyPathVelocity(
+    Trajectory & path, const std::vector<geometry_msgs::msg::Point> & left_bound,
+    const std::vector<geometry_msgs::msg::Point> & right_bound,
+    const PlannerData & planner_data) = 0;
 
   virtual visualization_msgs::msg::MarkerArray createDebugMarkerArray() = 0;
   virtual std::vector<autoware::motion_utils::VirtualWall> createVirtualWalls() = 0;
 
   int64_t getModuleId() const { return module_id_; }
-
-  void setPlannerData(const std::shared_ptr<const PlannerData> & planner_data)
-  {
-    planner_data_ = planner_data;
-  }
 
   std::vector<ObjectOfInterest> getObjectsOfInterestData() const { return objects_of_interest_; }
   void clearObjectsOfInterestData() { objects_of_interest_.clear(); }
@@ -102,7 +87,6 @@ protected:
   const int64_t module_id_;
   rclcpp::Logger logger_;
   rclcpp::Clock::SharedPtr clock_;
-  std::shared_ptr<const PlannerData> planner_data_;
   std::vector<ObjectOfInterest> objects_of_interest_;
   mutable std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper_;
   std::shared_ptr<planning_factor_interface::PlanningFactorInterface> planning_factor_interface_;
@@ -115,7 +99,13 @@ protected:
   }
 
   size_t findEgoSegmentIndex(
-    const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & points) const;
+    const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & points,
+    const PlannerData & planner_data) const
+  {
+    const auto & p = planner_data;
+    return autoware::motion_utils::findFirstNearestSegmentIndexWithSoftConstraints(
+      points, p.current_odometry->pose, p.ego_nearest_dist_threshold, p.ego_nearest_yaw_threshold);
+  }
 
   void logInfo(const char * format, ...) const;
   void logWarn(const char * format, ...) const;
@@ -175,24 +165,27 @@ public:
   virtual const char * getModuleName() = 0;
 
   void updateSceneModuleInstances(
-    const std::shared_ptr<const PlannerData> & planner_data,
-    const autoware_internal_planning_msgs::msg::PathWithLaneId & path)
+    const Trajectory & path, const rclcpp::Time & stamp, const PlannerData & planner_data)
   {
-    planner_data_ = planner_data;
-
-    launchNewModules(path);
-    deleteExpiredModules(path);
+    launchNewModules(path, stamp, planner_data);
+    deleteExpiredModules(path, planner_data);
   }
 
-  virtual void plan(autoware_internal_planning_msgs::msg::PathWithLaneId * path)
+  virtual void plan(
+    Trajectory & path, const std_msgs::msg::Header & header,
+    const std::vector<geometry_msgs::msg::Point> & left_bound,
+    const std::vector<geometry_msgs::msg::Point> & right_bound, const PlannerData & planner_data)
   {
-    modifyPathVelocity(path);
+    modifyPathVelocity(path, header, left_bound, right_bound, planner_data);
   }
 
   virtual RequiredSubscriptionInfo getRequiredSubscriptions() const = 0;
 
 protected:
-  virtual void modifyPathVelocity(autoware_internal_planning_msgs::msg::PathWithLaneId * path)
+  virtual void modifyPathVelocity(
+    Trajectory & path, const std_msgs::msg::Header & header,
+    const std::vector<geometry_msgs::msg::Point> & left_bound,
+    const std::vector<geometry_msgs::msg::Point> & right_bound, const PlannerData & planner_data)
   {
     autoware_utils_debug::ScopedTimeTrack st(
       "SceneModuleManagerInterface::modifyPathVelocity", *time_keeper_);
@@ -201,8 +194,7 @@ protected:
     visualization_msgs::msg::MarkerArray debug_marker_array;
 
     for (const auto & scene_module : scene_modules_) {
-      scene_module->setPlannerData(planner_data_);
-      scene_module->modifyPathVelocity(path);
+      scene_module->modifyPathVelocity(path, left_bound, right_bound, planner_data);
 
       // The velocity factor must be called after modifyPathVelocity.
 
@@ -217,8 +209,8 @@ protected:
     pub_debug_->publish(debug_marker_array);
     if (is_publish_debug_path_) {
       autoware_internal_planning_msgs::msg::PathWithLaneId debug_path;
-      debug_path.header = path->header;
-      debug_path.points = path->points;
+      debug_path.header = header;
+      debug_path.points = path.restore();
       pub_debug_path_->publish(debug_path);
     }
     pub_virtual_wall_->publish(virtual_wall_marker_creator_.create_markers(clock_->now()));
@@ -227,15 +219,14 @@ protected:
   }
 
   virtual void launchNewModules(
-    const autoware_internal_planning_msgs::msg::PathWithLaneId & path) = 0;
+    const Trajectory & path, const rclcpp::Time & stamp, const PlannerData & planner_data) = 0;
 
   virtual std::function<bool(const std::shared_ptr<T> &)> getModuleExpiredFunction(
-    const autoware_internal_planning_msgs::msg::PathWithLaneId & path) = 0;
+    const Trajectory & path, const PlannerData & planner_data) = 0;
 
-  virtual void deleteExpiredModules(
-    const autoware_internal_planning_msgs::msg::PathWithLaneId & path)
+  virtual void deleteExpiredModules(const Trajectory & path, const PlannerData & planner_data)
   {
-    const auto isModuleExpired = getModuleExpiredFunction(path);
+    const auto isModuleExpired = getModuleExpiredFunction(path, planner_data);
     std::vector<int64_t> expired_module_ids;
 
     auto itr = scene_modules_.begin();
@@ -250,7 +241,7 @@ protected:
     }
 
     if (!expired_module_ids.empty()) {
-      printDeletionInfo(expired_module_ids);
+      printDeletionInfo(expired_module_ids, planner_data);
     }
   }
 
@@ -259,27 +250,17 @@ protected:
     return registered_module_id_set_.count(module_id) != 0;
   }
 
-  void registerModule(const std::shared_ptr<T> & scene_module)
+  void registerModule(const std::shared_ptr<T> & scene_module, const PlannerData & planner_data)
   {
     registered_module_id_set_.emplace(scene_module->getModuleId());
     scene_modules_.insert(scene_module);
 
-    printRegistrationInfo(scene_module->getModuleId());
-  }
-
-  size_t findEgoSegmentIndex(
-    const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & points) const
-  {
-    const auto & p = planner_data_;
-    return autoware::motion_utils::findFirstNearestSegmentIndexWithSoftConstraints(
-      points, p->current_odometry->pose, p->ego_nearest_dist_threshold,
-      p->ego_nearest_yaw_threshold);
+    printRegistrationInfo(scene_module->getModuleId(), planner_data);
   }
 
   std::set<std::shared_ptr<T>> scene_modules_;
   std::set<int64_t> registered_module_id_set_;
 
-  std::shared_ptr<const PlannerData> planner_data_;
   autoware::motion_utils::VirtualWallMarkerCreator virtual_wall_marker_creator_;
 
   rclcpp::Node & node_;
@@ -302,11 +283,11 @@ protected:
   std::shared_ptr<planning_factor_interface::PlanningFactorInterface> planning_factor_interface_;
 
 private:
-  void appendCommonInfo(std::ostringstream & log)
+  void appendCommonInfo(std::ostringstream & log, const PlannerData & planner_data)
   {
-    if (planner_data_ && planner_data_->current_odometry) {
-      const auto & ego_pose = planner_data_->current_odometry->pose;
-      const auto & ego_velocity = planner_data_->current_velocity;
+    if (planner_data.current_odometry) {
+      const auto & ego_pose = planner_data.current_odometry->pose;
+      const auto & ego_velocity = planner_data.current_velocity;
 
       log << std::fixed << std::setprecision(2) << "Ego position: (" << ego_pose.position.x << ", "
           << ego_pose.position.y << ", " << ego_pose.position.z << "), ";
@@ -314,7 +295,7 @@ private:
       if (ego_velocity) {
         log << "velocity: (" << ego_velocity->twist.linear.x << ", " << ego_velocity->twist.linear.y
             << ") m/s";
-        if (planner_data_->isVehicleStopped()) {
+        if (planner_data.isVehicleStopped()) {
           log << " (stopped)";
         }
       }
@@ -333,7 +314,7 @@ private:
     log << "]\n";
   }
 
-  void printRegistrationInfo(int64_t module_id)
+  void printRegistrationInfo(const int64_t module_id, const PlannerData & planner_data)
   {
     std::ostringstream log;
 
@@ -341,13 +322,14 @@ private:
         << "Module Name: " << getModuleName() << "\n"
         << "Module ID: " << module_id << "\n";
 
-    appendCommonInfo(log);
+    appendCommonInfo(log, planner_data);
     log << "========================================================\n";
 
     RCLCPP_INFO(logger_, "%s", log.str().c_str());
   }
 
-  void printDeletionInfo(const std::vector<int64_t> & expired_module_ids)
+  void printDeletionInfo(
+    const std::vector<int64_t> & expired_module_ids, const PlannerData & planner_data)
   {
     std::ostringstream log;
 
@@ -361,7 +343,7 @@ private:
     }
     log << "]\n";
 
-    appendCommonInfo(log);
+    appendCommonInfo(log, planner_data);
     log << "========================================================\n";
 
     RCLCPP_INFO(logger_, "%s", log.str().c_str());
@@ -370,17 +352,18 @@ private:
 
 extern template SceneModuleManagerInterface<SceneModuleInterface>::SceneModuleManagerInterface(
   rclcpp::Node & node, [[maybe_unused]] const char * module_name);
-extern template size_t SceneModuleManagerInterface<SceneModuleInterface>::findEgoSegmentIndex(
-  const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & points) const;
 extern template void SceneModuleManagerInterface<SceneModuleInterface>::updateSceneModuleInstances(
-  const std::shared_ptr<const PlannerData> & planner_data,
-  const autoware_internal_planning_msgs::msg::PathWithLaneId & path);
+  const Trajectory & path, const rclcpp::Time & stamp, const PlannerData & planner_data);
 extern template void SceneModuleManagerInterface<SceneModuleInterface>::modifyPathVelocity(
-  autoware_internal_planning_msgs::msg::PathWithLaneId * path);
+  Trajectory & path, const std_msgs::msg::Header & header,
+  const std::vector<geometry_msgs::msg::Point> & left_bound,
+  const std::vector<geometry_msgs::msg::Point> & right_bound, const PlannerData & planner_data);
 extern template void SceneModuleManagerInterface<SceneModuleInterface>::deleteExpiredModules(
-  const autoware_internal_planning_msgs::msg::PathWithLaneId & path);
+  const Trajectory & path, const PlannerData & planner_data);
 extern template void SceneModuleManagerInterface<SceneModuleInterface>::registerModule(
-  const std::shared_ptr<SceneModuleInterface> & scene_module);
+  const std::shared_ptr<SceneModuleInterface> & scene_module, const PlannerData & planner_data);
+
+}  // namespace experimental
 }  // namespace autoware::behavior_velocity_planner
 
-#endif  // AUTOWARE__BEHAVIOR_VELOCITY_PLANNER_COMMON__SCENE_MODULE_INTERFACE_HPP_
+#endif  // AUTOWARE__BEHAVIOR_VELOCITY_PLANNER_COMMON__EXPERIMENTAL__SCENE_MODULE_INTERFACE_HPP_

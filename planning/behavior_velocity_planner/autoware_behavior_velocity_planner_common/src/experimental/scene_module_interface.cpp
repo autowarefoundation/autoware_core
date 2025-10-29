@@ -1,4 +1,4 @@
-// Copyright 2023 TIER IV, Inc.
+// Copyright 2025 TIER IV, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <autoware/behavior_velocity_planner_common/scene_module_interface.hpp>
-#include <autoware/motion_utils/trajectory/trajectory.hpp>
-#include <autoware_utils_debug/time_keeper.hpp>
+#include "autoware/behavior_velocity_planner_common/experimental/scene_module_interface.hpp"
 
-#include <algorithm>
-#include <cstdarg>
 #include <cstdio>
-#include <limits>
 #include <memory>
 #include <string>
 #include <vector>
 
-namespace autoware::behavior_velocity_planner
+namespace autoware::behavior_velocity_planner::experimental
 {
 
 namespace
@@ -53,7 +48,7 @@ std::string formatIds(
 }  // namespace
 
 SceneModuleInterface::SceneModuleInterface(
-  const int64_t module_id, rclcpp::Logger logger, rclcpp::Clock::SharedPtr clock,
+  const int64_t module_id, const rclcpp::Logger & logger, rclcpp::Clock::SharedPtr clock,
   const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper,
   const std::shared_ptr<planning_factor_interface::PlanningFactorInterface>
     planning_factor_interface)
@@ -63,14 +58,6 @@ SceneModuleInterface::SceneModuleInterface(
   time_keeper_(time_keeper),
   planning_factor_interface_(planning_factor_interface)
 {
-}
-
-size_t SceneModuleInterface::findEgoSegmentIndex(
-  const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & points) const
-{
-  const auto & p = planner_data_;
-  return autoware::motion_utils::findFirstNearestSegmentIndexWithSoftConstraints(
-    points, p->current_odometry->pose, p->ego_nearest_dist_threshold);
 }
 
 std::string SceneModuleInterface::formatLogMessage(const char * format, va_list args) const
@@ -111,15 +98,15 @@ DEFINE_LOG_THROTTLE_FUNCTION(logDebugThrottle, RCLCPP_DEBUG_THROTTLE)
 
 template SceneModuleManagerInterface<SceneModuleInterface>::SceneModuleManagerInterface(
   rclcpp::Node & node, [[maybe_unused]] const char * module_name);
-template size_t SceneModuleManagerInterface<SceneModuleInterface>::findEgoSegmentIndex(
-  const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & points) const;
 template void SceneModuleManagerInterface<SceneModuleInterface>::updateSceneModuleInstances(
-  const std::shared_ptr<const PlannerData> & planner_data,
-  const autoware_internal_planning_msgs::msg::PathWithLaneId & path);
+  const Trajectory & path, const rclcpp::Time & stamp, const PlannerData & planner_data);
 template void SceneModuleManagerInterface<SceneModuleInterface>::modifyPathVelocity(
-  autoware_internal_planning_msgs::msg::PathWithLaneId * path);
+  Trajectory & path, const std_msgs::msg::Header & header,
+  const std::vector<geometry_msgs::msg::Point> & left_bound,
+  const std::vector<geometry_msgs::msg::Point> & right_bound, const PlannerData & planner_data);
 template void SceneModuleManagerInterface<SceneModuleInterface>::deleteExpiredModules(
-  const autoware_internal_planning_msgs::msg::PathWithLaneId & path);
+  const Trajectory & path, const PlannerData & planner_data);
 template void SceneModuleManagerInterface<SceneModuleInterface>::registerModule(
-  const std::shared_ptr<SceneModuleInterface> & scene_module);
-}  // namespace autoware::behavior_velocity_planner
+  const std::shared_ptr<SceneModuleInterface> & scene_module, const PlannerData & planner_data);
+
+}  // namespace autoware::behavior_velocity_planner::experimental

@@ -15,10 +15,8 @@
 #ifndef AUTOWARE__BEHAVIOR_VELOCITY_PLANNER__PLANNER_MANAGER_HPP_
 #define AUTOWARE__BEHAVIOR_VELOCITY_PLANNER__PLANNER_MANAGER_HPP_
 
-#include <autoware/behavior_velocity_planner_common/plugin_interface.hpp>
-#include <autoware/behavior_velocity_planner_common/plugin_wrapper.hpp>
+#include <autoware/behavior_velocity_planner_common/experimental/plugin_interface.hpp>
 #include <pluginlib/class_loader.hpp>
-#include <rclcpp/rclcpp.hpp>
 
 #include <memory>
 #include <string>
@@ -27,8 +25,8 @@
 namespace autoware::behavior_velocity_planner
 {
 
-using Trajectory =
-  experimental::trajectory::Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>;
+using Trajectory = autoware::experimental::trajectory::Trajectory<
+  autoware_internal_planning_msgs::msg::PathPointWithLaneId>;
 
 class BehaviorVelocityPlannerManager
 {
@@ -46,8 +44,8 @@ public:
   RequiredSubscriptionInfo getRequiredSubscriptions() const { return required_subscriptions_; }
 
 private:
-  pluginlib::ClassLoader<PluginInterface> plugin_loader_;
-  std::vector<std::shared_ptr<PluginInterface>> scene_manager_plugins_;
+  pluginlib::ClassLoader<experimental::PluginInterface> plugin_loader_;
+  std::vector<std::shared_ptr<experimental::PluginInterface>> scene_manager_plugins_;
   RequiredSubscriptionInfo required_subscriptions_;
 };
 }  // namespace autoware::behavior_velocity_planner

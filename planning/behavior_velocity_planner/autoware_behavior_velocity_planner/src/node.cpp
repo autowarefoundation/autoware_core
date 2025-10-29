@@ -22,8 +22,6 @@
 #include <tf2/utils.hpp>
 #include <tf2_eigen/tf2_eigen.hpp>
 
-#include <visualization_msgs/msg/marker_array.hpp>
-
 #include <lanelet2_routing/Route.h>
 #include <pcl/common/transforms.h>
 #include <pcl_conversions/pcl_conversions.h>
@@ -324,7 +322,7 @@ void BehaviorVelocityPlannerNode::onTrigger(
     return;
   }
 
-  const auto input_path = experimental::trajectory::pretty_build(input_path_msg->points);
+  const auto input_path = autoware::experimental::trajectory::pretty_build(input_path_msg->points);
   if (!input_path) {
     RCLCPP_ERROR(get_logger(), "Failed to convert input path");
     return;
@@ -377,7 +375,7 @@ Trajectory BehaviorVelocityPlannerNode::generatePath(
 
   // check stop point
   constexpr auto stop_threshold = 0.01;  // m/s
-  const auto stop_intervals = experimental::trajectory::find_intervals(
+  const auto stop_intervals = autoware::experimental::trajectory::find_intervals(
     velocity_planned_path,
     [&](const autoware_internal_planning_msgs::msg::PathPointWithLaneId & p) {
       return std::abs(p.point.longitudinal_velocity_mps) < stop_threshold;

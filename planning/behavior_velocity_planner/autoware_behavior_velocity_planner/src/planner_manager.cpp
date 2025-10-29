@@ -14,12 +14,7 @@
 
 #include "autoware/behavior_velocity_planner/planner_manager.hpp"
 
-#include <autoware/trajectory/utils/pretty_build.hpp>
-
-#include <boost/format.hpp>
-
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -34,36 +29,37 @@ BehaviorVelocityPlannerManager::BehaviorVelocityPlannerManager()
 void BehaviorVelocityPlannerManager::launchScenePlugin(
   rclcpp::Node & node, const std::string & name)
 {
-  if (plugin_loader_.isClassAvailable(name)) {
-    const auto plugin = plugin_loader_.createSharedInstance(name);
-    plugin->init(node);
-
-    // Check if the plugin is already registered.
-    for (const auto & running_plugin : scene_manager_plugins_) {
-      if (plugin->getModuleName() == running_plugin->getModuleName()) {
-        RCLCPP_WARN_STREAM(node.get_logger(), "The plugin '" << name << "' is already loaded.");
-        return;
-      }
-    }
-
-    // register
-    scene_manager_plugins_.push_back(plugin);
-    RCLCPP_INFO_STREAM(node.get_logger(), "The scene plugin '" << name << "' is loaded.");
-
-    // update the subscription
-    const auto required_subscriptions = plugin->getRequiredSubscriptions();
-    required_subscriptions_.concat(required_subscriptions);
-  } else {
+  if (!plugin_loader_.isClassAvailable(name)) {
     RCLCPP_ERROR_STREAM(node.get_logger(), "The scene plugin '" << name << "' is not available.");
+    return;
   }
+
+  const auto plugin = plugin_loader_.createSharedInstance(name);
+  plugin->init(node);
+
+  // Check if the plugin is already registered.
+  for (const auto & running_plugin : scene_manager_plugins_) {
+    if (plugin->getModuleName() == running_plugin->getModuleName()) {
+      RCLCPP_WARN_STREAM(node.get_logger(), "The plugin '" << name << "' is already loaded.");
+      return;
+    }
+  }
+
+  // register
+  scene_manager_plugins_.push_back(plugin);
+  RCLCPP_INFO_STREAM(node.get_logger(), "The scene plugin '" << name << "' is loaded.");
+
+  // update the subscription
+  const auto required_subscriptions = plugin->getRequiredSubscriptions();
+  required_subscriptions_.concat(required_subscriptions);
 }
 
 void BehaviorVelocityPlannerManager::removeScenePlugin(
   rclcpp::Node & node, const std::string & name)
 {
-  auto it = std::remove_if(
+  const auto it = std::remove_if(
     scene_manager_plugins_.begin(), scene_manager_plugins_.end(),
-    [&](const std::shared_ptr<behavior_velocity_planner::PluginInterface> plugin) {
+    [&](const std::shared_ptr<experimental::PluginInterface> plugin) {
       return plugin->getModuleName() == name;
     });
 
@@ -71,10 +67,10 @@ void BehaviorVelocityPlannerManager::removeScenePlugin(
     RCLCPP_WARN_STREAM(
       node.get_logger(),
       "The scene plugin '" << name << "' is not found in the registered modules.");
-  } else {
-    scene_manager_plugins_.erase(it, scene_manager_plugins_.end());
-    RCLCPP_INFO_STREAM(node.get_logger(), "The scene plugin '" << name << "' is unloaded.");
+    return;
   }
+  scene_manager_plugins_.erase(it, scene_manager_plugins_.end());
+  RCLCPP_INFO_STREAM(node.get_logger(), "The scene plugin '" << name << "' is unloaded.");
 }
 
 Trajectory BehaviorVelocityPlannerManager::planPathVelocity(

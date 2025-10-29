@@ -15,15 +15,11 @@
 #ifndef MANAGER_HPP_
 #define MANAGER_HPP_
 
-#include "autoware/behavior_velocity_planner_common/plugin_wrapper.hpp"
-#include "autoware/behavior_velocity_planner_common/scene_module_interface.hpp"
 #include "scene.hpp"
 
-#include <rclcpp/rclcpp.hpp>
+#include <autoware/behavior_velocity_planner_common/experimental/plugin_wrapper.hpp>
+#include <autoware/behavior_velocity_planner_common/experimental/scene_module_interface.hpp>
 
-#include <lanelet2_core/Forward.h>
-
-#include <functional>
 #include <memory>
 #include <set>
 #include <utility>
@@ -33,7 +29,7 @@ namespace autoware::behavior_velocity_planner
 {
 using StopLineWithLaneId = std::pair<lanelet::ConstLineString3d, lanelet::Id>;
 
-class StopLineModuleManager : public SceneModuleManagerInterface<>
+class StopLineModuleManager : public experimental::SceneModuleManagerInterface<>
 {
 public:
   explicit StopLineModuleManager(rclcpp::Node & node);
@@ -59,11 +55,11 @@ private:
   void launchNewModules(
     const Trajectory & path, const rclcpp::Time & stamp, const PlannerData & planner_data) override;
 
-  std::function<bool(const std::shared_ptr<SceneModuleInterface> &)> getModuleExpiredFunction(
-    const Trajectory & path, const PlannerData & planner_data) override;
+  std::function<bool(const std::shared_ptr<experimental::SceneModuleInterface> &)>
+  getModuleExpiredFunction(const Trajectory & path, const PlannerData & planner_data) override;
 };
 
-class StopLineModulePlugin : public PluginWrapper<StopLineModuleManager>
+class StopLineModulePlugin : public experimental::PluginWrapper<StopLineModuleManager>
 {
 };
 
