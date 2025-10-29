@@ -321,7 +321,7 @@ These are the usage examples of self-intersecting trajectory (Bow Trajectory and
 
 ```cpp title="./examples/example_self_intersecting.cpp:331"
 --8<--
-common/autoware_trajectory/examples/example_self_intersecting.cpp:331
+common/autoware_trajectory/examples/example_self_intersecting.cpp:331:331
 --8<--
 --8<--
 common/autoware_trajectory/examples/example_self_intersecting.cpp:339:341
