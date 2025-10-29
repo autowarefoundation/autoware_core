@@ -32,6 +32,9 @@ using autoware_internal_planning_msgs::msg::PathWithLaneId;
 
 //! smooth path point with lane id starts from ego position on path to the path end
 bool smoothPath(
+  const PathWithLaneId & in_path, PathWithLaneId & out_path,
+  const std::shared_ptr<const PlannerData> & planner_data);
+bool smoothPath(
   const PathWithLaneId & in_path, PathWithLaneId & out_path, const PlannerData & planner_data);
 }  // namespace autoware::behavior_velocity_planner
 

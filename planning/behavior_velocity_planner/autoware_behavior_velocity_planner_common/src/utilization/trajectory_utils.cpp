@@ -42,6 +42,13 @@ using TrajectoryPointWithIdx = std::pair<TrajectoryPoint, size_t>;
 
 //! smooth path point with lane id starts from ego position on path to the path end
 bool smoothPath(
+  const PathWithLaneId & in_path, PathWithLaneId & out_path,
+  const std::shared_ptr<const PlannerData> & planner_data)
+{
+  return smoothPath(in_path, out_path, *planner_data);
+}
+
+bool smoothPath(
   const PathWithLaneId & in_path, PathWithLaneId & out_path, const PlannerData & planner_data)
 {
   const geometry_msgs::msg::Pose current_pose = planner_data.current_odometry->pose;
