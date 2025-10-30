@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <autoware/lanelet2_utils/geometry.hpp>
+#include <autoware_utils_geometry/geometry.hpp>
 #include <range/v3/all.hpp>
 
 #include <geometry_msgs/msg/point.hpp>
@@ -247,6 +248,43 @@ double get_lanelet_angle(
   lanelet::ConstLineString3d segment = get_closest_segment(lanelet.centerline(), search_pt);
   return std::atan2(
     segment.back().y() - segment.front().y(), segment.back().x() - segment.front().x());
+}
+
+geometry_msgs::msg::Pose get_closest_center_pose(
+  const lanelet::ConstLanelet & lanelet, const lanelet::BasicPoint3d & search_pt)
+{
+  if (lanelet.centerline().size() == 1) {
+    geometry_msgs::msg::Pose closest_pose;
+    closest_pose.position.x = lanelet.centerline().front().x();
+    closest_pose.position.y = lanelet.centerline().front().y();
+    closest_pose.position.z = search_pt.z();
+    closest_pose.orientation.x = 0.0;
+    closest_pose.orientation.y = 0.0;
+    closest_pose.orientation.z = 0.0;
+    closest_pose.orientation.w = 1.0;
+    return closest_pose;
+  }
+
+  lanelet::ConstLineString3d segment = get_closest_segment(lanelet.centerline(), search_pt);
+  if (segment.empty()) {
+    return geometry_msgs::msg::Pose{};
+  }
+
+  const Eigen::Vector2d direction(
+    (segment.back().basicPoint2d() - segment.front().basicPoint2d()).normalized());
+  const Eigen::Vector2d xf(segment.front().basicPoint2d());
+  const Eigen::Vector2d x(search_pt.x(), search_pt.y());
+  const Eigen::Vector2d p = xf + (x - xf).dot(direction) * direction;
+
+  geometry_msgs::msg::Pose closest_pose;
+  closest_pose.position.x = p.x();
+  closest_pose.position.y = p.y();
+  closest_pose.position.z = search_pt.z();
+
+  const double lane_yaw = get_lanelet_angle(lanelet, search_pt);
+  closest_pose.orientation = autoware_utils_geometry::create_quaternion_from_yaw(lane_yaw);
+
+  return closest_pose;
 }
 
 }  // namespace autoware::experimental::lanelet2_utils
