@@ -28,17 +28,17 @@ This package aims to strictly define the meaning of several words to clarify the
 
 ### `<autoware/lanelet2_utils/geometry.hpp>`
 
-| Function                         | Description                                                                                          | Average Computational Complexity | Illustration |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------- | ------------ |
-| `extrapolate_point`              | Linearly extrapolate a point (`ConstPoint3d`) beyond a segment defined by two points.                |                                  |              |
-| `interpolate_point`              | Linearly interpolates a point along a segment defined by two points.                                 |                                  |              |
-| `interpolate_lanelet`            | Find an interpolated point from a lanelet centerline at a given distance.                            |                                  |              |
-| `interpolate_lanelet_sequence`   | Find the first interpolated point from a centerline of the lanelet sequence at a given distance.     |                                  |              |
-| `concatenate_center_line`        | Concatenate all center line of input lanelet sequence (several ConstLanelets)                        |                                  |              |
-| `get_linestring_from_arc_length` | Extract a sub-linestring between two arc-length positions along an input linestring.                 |                                  |              |
-| `get_pose_from_2d_arc_length`    | Compute the 2D pose (position and heading) at a given arc-length along a sequence of lanelets.       |                                  |              |
-| `get_closest_segment`            | Find the closest segment of the ConstLineString3d to the search point (BasicPoint3d).                |                                  |              |
-| `get_lanelet_angle`              | Find the angle of center line segment of the lanelet that is closest to search point (BasicPoint3d). |                                  |              |
+| Function                         | Description                                                                                                                      | Average Computational Complexity | Illustration |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- | ------------ |
+| `extrapolate_point`              | Linearly extrapolate a point (`ConstPoint3d`) beyond a segment defined by two points (`first` and `second`) with given distance. |                                  |              |
+| `interpolate_point`              | Linearly interpolates a point along a segment defined by two points.                                                             |                                  |              |
+| `interpolate_lanelet`            | Find an interpolated point from a lanelet centerline at a given distance.                                                        |                                  |              |
+| `interpolate_lanelet_sequence`   | Find the first interpolated point from a centerline of the lanelet sequence at a given distance.                                 |                                  |              |
+| `concatenate_center_line`        | Concatenate all center line of input lanelet sequence (several `ConstLanelets`)                                                  |                                  |              |
+| `get_linestring_from_arc_length` | Extract a sub-linestring between two arc-length positions along an input linestring.                                             |                                  |              |
+| `get_pose_from_2d_arc_length`    | Compute the 2D pose (position and heading) at a given arc-length along a sequence of lanelets.                                   |                                  |              |
+| `get_closest_segment`            | Find the closest segment of the `ConstLineString3d` to the search point (`BasicPoint3d`).                                        |                                  |              |
+| `get_lanelet_angle`              | Find the angle of center line segment of the lanelet that is closest to search point (`BasicPoint3d`).                           |                                  |              |
 
 ### `<autoware/lanelet2_utils/conversion.hpp>`
 
