@@ -367,8 +367,8 @@ void MotionVelocityPlannerNode::insert_stop(
   const double overlap_threshold = 5e-2;
   const auto seg_idx =
     autoware::motion_utils::findNearestSegmentIndex(trajectory.points, stop_point);
-  const auto insert_idx =
-    autoware::motion_utils::insertTargetPoint(seg_idx, stop_point, trajectory.points, overlap_threshold);
+  const auto insert_idx = autoware::motion_utils::insertTargetPoint(
+    seg_idx, stop_point, trajectory.points, overlap_threshold);
   if (insert_idx) {
     for (auto idx = *insert_idx; idx < trajectory.points.size(); ++idx)
       trajectory.points[idx].longitudinal_velocity_mps = 0.0;
