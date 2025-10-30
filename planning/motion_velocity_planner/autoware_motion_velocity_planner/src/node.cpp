@@ -362,10 +362,13 @@ void MotionVelocityPlannerNode::insert_stop(
   autoware_planning_msgs::msg::Trajectory & trajectory,
   const geometry_msgs::msg::Point & stop_point) const
 {
+  // Prevent sudden yaw angle changes by using a larger overlap threshold
+  // when inserting stop points that are very close to existing points
+  const double overlap_threshold = 5e-2;
   const auto seg_idx =
     autoware::motion_utils::findNearestSegmentIndex(trajectory.points, stop_point);
   const auto insert_idx =
-    autoware::motion_utils::insertTargetPoint(seg_idx, stop_point, trajectory.points);
+    autoware::motion_utils::insertTargetPoint(seg_idx, stop_point, trajectory.points, overlap_threshold);
   if (insert_idx) {
     for (auto idx = *insert_idx; idx < trajectory.points.size(); ++idx)
       trajectory.points[idx].longitudinal_velocity_mps = 0.0;
