@@ -17,6 +17,7 @@
 #include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/lanelet2_utils/geometry.hpp>
 #include <autoware/lanelet2_utils/kind.hpp>
+#include <autoware/lanelet2_utils/nn_search.hpp>
 #include <autoware_lanelet2_extension/io/autoware_osm_parser.hpp>
 #include <autoware_lanelet2_extension/utility/message_conversion.hpp>
 #include <autoware_lanelet2_extension/utility/query.hpp>
@@ -1107,9 +1108,10 @@ bool RouteHandler::getClosestRouteLaneletFromLanelet(
   if (getNextLaneletsWithinRoute(reference_lanelet, &next_lanelets)) {
     lanelet_sequence.insert(lanelet_sequence.end(), next_lanelets.begin(), next_lanelets.end());
   }
-
-  if (lanelet::utils::query::getClosestLaneletWithConstrains(
-        lanelet_sequence, search_pose, closest_lanelet, dist_threshold, yaw_threshold)) {
+  auto opt = autoware::experimental::lanelet2_utils::get_closest_lanelet_within_constraint(
+    lanelet_sequence, search_pose, dist_threshold, yaw_threshold);
+  if (opt.has_value()) {
+    *closest_lanelet = *opt;
     return true;
   }
 

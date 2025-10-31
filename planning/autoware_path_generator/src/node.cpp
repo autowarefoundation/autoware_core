@@ -16,6 +16,7 @@
 
 #include "autoware/path_generator/utils.hpp"
 
+#include <autoware/lanelet2_utils/nn_search.hpp>
 #include <autoware/motion_utils/resample/resample.hpp>
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
 #include <autoware/trajectory/utils/pretty_build.hpp>
@@ -554,9 +555,11 @@ bool PathGenerator::update_current_lanelet(
     candidates.push_back(*next_lanelet);
   }
 
-  if (lanelet::utils::query::getClosestLaneletWithConstrains(
-        candidates, current_pose, &*current_lanelet_, params.ego_nearest_dist_threshold,
-        params.ego_nearest_yaw_threshold)) {
+  auto opt = autoware::experimental::lanelet2_utils::get_closest_lanelet_within_constraint(
+    candidates, current_pose, params.ego_nearest_dist_threshold, params.ego_nearest_yaw_threshold);
+
+  if (opt.has_value()) {
+    current_lanelet_ = opt;
     return true;
   }
 

@@ -16,6 +16,7 @@
 
 #include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/lanelet2_utils/geometry.hpp>
+#include <autoware/lanelet2_utils/nn_search.hpp>
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
 #include <autoware_lanelet2_extension/utility/query.hpp>
 #include <autoware_lanelet2_extension/utility/utilities.hpp>
@@ -26,6 +27,35 @@
 
 #include <limits>
 #include <vector>
+
+namespace
+{
+
+lanelet::Point3d remove_const(const lanelet::ConstPoint3d & point)
+{
+  return lanelet::Point3d{std::const_pointer_cast<lanelet::PointData>(point.constData())};
+}
+
+lanelet::Lanelet remove_const(const lanelet::ConstLanelet const_lanelet)
+{
+  lanelet::ConstLineString3d left_cls = const_lanelet.leftBound();
+  lanelet::ConstLineString3d right_cls = const_lanelet.rightBound();
+
+  lanelet::LineString3d left_ls;
+  lanelet::LineString3d right_ls;
+
+  std::for_each(left_cls.begin(), left_cls.end(), [&](const auto & point) {
+    left_ls.push_back(remove_const(point));
+  });
+
+  std::for_each(right_cls.begin(), right_cls.end(), [&](const auto & point) {
+    right_ls.push_back(remove_const(point));
+  });
+
+  lanelet::Lanelet ll(lanelet::InvalId, left_ls, right_ls);
+  return ll;
+}
+}  // namespace
 
 namespace autoware::mission_planner::lanelet2
 {
@@ -132,12 +162,14 @@ geometry_msgs::msg::Pose get_closest_centerline_pose(
   const lanelet::ConstLanelets & road_lanelets, const geometry_msgs::msg::Pose & point,
   autoware::vehicle_info_utils::VehicleInfo vehicle_info)
 {
-  lanelet::Lanelet closest_lanelet;
-  if (!lanelet::utils::query::getClosestLaneletWithConstrains(
-        road_lanelets, point, &closest_lanelet, 0.0)) {
+  auto opt = autoware::experimental::lanelet2_utils::get_closest_lanelet_within_constraint(
+    road_lanelets, point, 0.0);
+  if (!opt.has_value()) {
     // point is not on any lanelet.
     return point;
   }
+
+  lanelet::Lanelet closest_lanelet = remove_const(*opt);
 
   const auto refined_center_line = lanelet::utils::generateFineCenterline(closest_lanelet, 1.0);
   closest_lanelet.setCenterline(refined_center_line);
