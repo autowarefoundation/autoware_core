@@ -18,6 +18,7 @@
 
 #include <Eigen/Core>
 #include <ament_index_cpp/get_package_share_directory.hpp>
+#include <autoware_utils_geometry/geometry.hpp>
 
 #include <boost/geometry.hpp>
 
@@ -43,6 +44,31 @@ static void expect_point_eq(const LaneletPointT & p1, LaneletPointT2 & p2)
   EXPECT_DOUBLE_EQ(p1.y(), p2.y());
   EXPECT_DOUBLE_EQ(p1.z(), p2.z());
 }
+
+template <typename ROSPointT, typename ROSPointT2>
+static void expect_point_eq_ros(const ROSPointT & p1, ROSPointT2 & p2)
+{
+  EXPECT_DOUBLE_EQ(p1.x, p2.x);
+  EXPECT_DOUBLE_EQ(p1.y, p2.y);
+  EXPECT_DOUBLE_EQ(p1.z, p2.z);
+}
+
+template <typename QuatT>
+static void expect_quat_eq(const QuatT & quat1, const QuatT & quat2)
+{
+  EXPECT_DOUBLE_EQ(quat1.x, quat2.x);
+  EXPECT_DOUBLE_EQ(quat1.y, quat2.y);
+  EXPECT_DOUBLE_EQ(quat1.z, quat2.z);
+  EXPECT_DOUBLE_EQ(quat1.w, quat2.w);
+}
+
+auto make_point = [](double x, double y, double z) {
+  geometry_msgs::msg::Point p;
+  p.x = x;
+  p.y = y;
+  p.z = z;
+  return p;
+};
 
 class ExtrapolatedLaneletTest : public ::testing::Test
 {
@@ -354,6 +380,103 @@ TEST_F(GetLaneletAngle, GetVerticalAngle)
   auto out = autoware::experimental::lanelet2_utils::get_lanelet_angle(ll, p);
   // Test = 1.58204, Result = 1.58206
   EXPECT_NEAR(out, 1.58204, 1e-4);
+}
+
+// TEST 19: get_closest_center_pose Horizontal Case
+TEST(GetClosestCenterPoseTest, getHorizontalPose)
+{
+  using autoware::experimental::lanelet2_utils::create_safe_lanelet;
+  using autoware_utils_geometry::create_quaternion_from_yaw;
+  auto p1 = lanelet::BasicPoint3d(0.0, 2.0, 0.0);
+  auto p2 = lanelet::BasicPoint3d(3.0, 2.0, 0.0);
+  auto p3 = lanelet::BasicPoint3d(0.0, 0.0, 0.0);
+  auto p4 = lanelet::BasicPoint3d(3.0, 0.0, 0.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points = {p1, p2};
+  std::vector<lanelet::BasicPoint3d> right_points = {p3, p4};
+  auto ll = create_safe_lanelet(left_points, right_points);
+
+  auto search_pt = lanelet::BasicPoint3d(1.0, 1.2, 0.0);
+  auto out = autoware::experimental::lanelet2_utils::get_closest_center_pose(*ll, search_pt);
+
+  auto expected_point = make_point(1.0, 1.0, 0.0);
+  expect_point_eq_ros(out.position, expected_point);
+
+  auto expected_quat = create_quaternion_from_yaw(0);
+  expect_quat_eq(out.orientation, expected_quat);
+}
+
+// TEST 20: get_closest_center_pose Vertical Case
+TEST(GetClosestCenterPoseTest, getVerticalPose)
+{
+  using autoware::experimental::lanelet2_utils::create_safe_lanelet;
+  using autoware_utils_geometry::create_quaternion_from_yaw;
+  auto p1 = lanelet::BasicPoint3d(0.0, 0.0, 0.0);
+  auto p2 = lanelet::BasicPoint3d(0.0, 3.0, 0.0);
+  auto p3 = lanelet::BasicPoint3d(2.0, 0.0, 0.0);
+  auto p4 = lanelet::BasicPoint3d(2.0, 3.0, 0.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points = {p1, p2};
+  std::vector<lanelet::BasicPoint3d> right_points = {p3, p4};
+  auto ll = create_safe_lanelet(left_points, right_points);
+
+  auto search_pt = lanelet::BasicPoint3d(1.2, 1.0, 0.0);
+  auto out = autoware::experimental::lanelet2_utils::get_closest_center_pose(*ll, search_pt);
+
+  auto expected_point = make_point(1.0, 1.0, 0.0);
+  expect_point_eq_ros(out.position, expected_point);
+
+  auto expected_quat = create_quaternion_from_yaw(M_PI / 2);
+  expect_quat_eq(out.orientation, expected_quat);
+}
+
+// TEST 21: get_closest_center_pose Incline Case
+TEST(GetClosestCenterPoseTest, getInclinePose)
+{
+  using autoware::experimental::lanelet2_utils::create_safe_lanelet;
+  using autoware_utils_geometry::create_quaternion_from_yaw;
+  auto p1 = lanelet::BasicPoint3d(0.0, 2.0, 0.0);
+  auto p2 = lanelet::BasicPoint3d(2.0, 4.0, 0.0);
+  auto p3 = lanelet::BasicPoint3d(0.0, 0.0, 0.0);
+  auto p4 = lanelet::BasicPoint3d(2.0, 2.0, 0.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points = {p1, p2};
+  std::vector<lanelet::BasicPoint3d> right_points = {p3, p4};
+  auto ll = create_safe_lanelet(left_points, right_points);
+
+  auto search_pt = lanelet::BasicPoint3d(1.2, 2.0, 0.0);
+  auto out = autoware::experimental::lanelet2_utils::get_closest_center_pose(*ll, search_pt);
+
+  auto expected_point = make_point(1.1, 2.1, 0.0);
+  expect_point_eq_ros(out.position, expected_point);
+
+  auto expected_quat = create_quaternion_from_yaw(M_PI / 4);
+  expect_quat_eq(out.orientation, expected_quat);
+}
+
+// TEST 22: get_closest_center_pose Incline Down Case
+TEST(GetClosestCenterPoseTest, getInclineDownPose)
+{
+  using autoware::experimental::lanelet2_utils::create_safe_lanelet;
+  using autoware_utils_geometry::create_quaternion_from_yaw;
+  auto p1 = lanelet::BasicPoint3d(2.0, 2.0, 0.0);
+  auto p2 = lanelet::BasicPoint3d(0.0, 0.0, 0.0);
+  auto p3 = lanelet::BasicPoint3d(2.0, 4.0, 0.0);
+  auto p4 = lanelet::BasicPoint3d(0.0, 2.0, 0.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points = {p1, p2};
+  std::vector<lanelet::BasicPoint3d> right_points = {p3, p4};
+  auto ll = create_safe_lanelet(left_points, right_points);
+
+  auto search_pt = lanelet::BasicPoint3d(1.2, 2.0, 0.0);
+  auto out = autoware::experimental::lanelet2_utils::get_closest_center_pose(*ll, search_pt);
+
+  auto expected_point = make_point(1.1, 2.1, 0.0);
+  expect_point_eq_ros(out.position, expected_point);
+
+  // Yaw is from - pi to pi
+  auto expected_quat = create_quaternion_from_yaw(-3 * M_PI / 4);
+  expect_quat_eq(out.orientation, expected_quat);
 }
 
 }  // namespace autoware::experimental
