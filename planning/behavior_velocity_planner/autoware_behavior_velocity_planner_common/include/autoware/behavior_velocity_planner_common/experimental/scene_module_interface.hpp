@@ -29,7 +29,7 @@
 #include <string>
 #include <vector>
 
-namespace autoware::behavior_velocity_planner
+namespace autoware::behavior_velocity_planner::experimental
 {
 
 using autoware::objects_of_interest_marker_interface::ColorName;
@@ -43,9 +43,6 @@ using unique_identifier_msgs::msg::UUID;
 
 using Trajectory = autoware::experimental::trajectory::Trajectory<
   autoware_internal_planning_msgs::msg::PathPointWithLaneId>;
-
-namespace experimental
-{
 
 struct ObjectOfInterest
 {
@@ -363,7 +360,6 @@ extern template void SceneModuleManagerInterface<SceneModuleInterface>::deleteEx
 extern template void SceneModuleManagerInterface<SceneModuleInterface>::registerModule(
   const std::shared_ptr<SceneModuleInterface> & scene_module, const PlannerData & planner_data);
 
-}  // namespace experimental
-}  // namespace autoware::behavior_velocity_planner
+}  // namespace autoware::behavior_velocity_planner::experimental
 
 #endif  // AUTOWARE__BEHAVIOR_VELOCITY_PLANNER_COMMON__EXPERIMENTAL__SCENE_MODULE_INTERFACE_HPP_

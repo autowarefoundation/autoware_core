@@ -97,17 +97,16 @@ void StopLineModuleManager::launchNewModules(
   }
 }
 
-std::function<bool(const std::shared_ptr<experimental::SceneModuleInterface> &)>
+std::function<bool(const std::shared_ptr<SceneModuleInterface> &)>
 StopLineModuleManager::getModuleExpiredFunction(
   const Trajectory & path, const PlannerData & planner_data)
 {
   const auto stop_line_id_set =
     getStopLineIdSetOnPath(path, planner_data.route_handler_->getLaneletMapPtr(), planner_data);
 
-  return
-    [stop_line_id_set](const std::shared_ptr<experimental::SceneModuleInterface> & scene_module) {
-      return stop_line_id_set.count(scene_module->getModuleId()) == 0;
-    };
+  return [stop_line_id_set](const std::shared_ptr<SceneModuleInterface> & scene_module) {
+    return stop_line_id_set.count(scene_module->getModuleId()) == 0;
+  };
 }
 
 }  // namespace autoware::behavior_velocity_planner::experimental

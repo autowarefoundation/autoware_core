@@ -41,8 +41,8 @@ public:
   RequiredSubscriptionInfo getRequiredSubscriptions() const { return required_subscriptions_; }
 
 private:
-  pluginlib::ClassLoader<experimental::PluginInterface> plugin_loader_;
-  std::vector<std::shared_ptr<experimental::PluginInterface>> scene_manager_plugins_;
+  pluginlib::ClassLoader<PluginInterface> plugin_loader_;
+  std::vector<std::shared_ptr<PluginInterface>> scene_manager_plugins_;
   RequiredSubscriptionInfo required_subscriptions_;
 };
 }  // namespace autoware::behavior_velocity_planner::experimental

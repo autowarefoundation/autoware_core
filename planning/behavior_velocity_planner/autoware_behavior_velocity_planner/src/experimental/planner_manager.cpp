@@ -22,7 +22,8 @@ namespace autoware::behavior_velocity_planner::experimental
 {
 BehaviorVelocityPlannerManager::BehaviorVelocityPlannerManager()
 : plugin_loader_(
-    "autoware_behavior_velocity_planner", "autoware::behavior_velocity_planner::PluginInterface")
+    "autoware_behavior_velocity_planner",
+    "autoware::behavior_velocity_planner::experimental::PluginInterface")
 {
 }
 
@@ -59,9 +60,7 @@ void BehaviorVelocityPlannerManager::removeScenePlugin(
 {
   const auto it = std::remove_if(
     scene_manager_plugins_.begin(), scene_manager_plugins_.end(),
-    [&](const std::shared_ptr<experimental::PluginInterface> plugin) {
-      return plugin->getModuleName() == name;
-    });
+    [&](const std::shared_ptr<PluginInterface> plugin) { return plugin->getModuleName() == name; });
 
   if (it == scene_manager_plugins_.end()) {
     RCLCPP_WARN_STREAM(
