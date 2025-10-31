@@ -135,24 +135,28 @@ std::optional<geometry_msgs::msg::Point> getGeometryPointFrom2DArcLength(
 PathWithLaneId removeOverlappingPoints(const PathWithLaneId & input_path)
 {
   PathWithLaneId filtered_path;
+  filtered_path.points.reserve(input_path.points.size());
+
   for (const auto & pt : input_path.points) {
     if (filtered_path.points.empty()) {
       filtered_path.points.push_back(pt);
       continue;
     }
 
-    constexpr double min_dist = 0.001;
-    if (
-      autoware_utils_geometry::calc_distance3d(filtered_path.points.back().point, pt.point) <
-      min_dist) {
+    constexpr double th_overlapping_dist = 0.001;
+    const double dist_between_points =
+      autoware_utils_geometry::calc_distance3d(filtered_path.points.back().point, pt.point);
+
+    if (dist_between_points < th_overlapping_dist) {
       filtered_path.points.back().lane_ids.push_back(pt.lane_ids.front());
-      filtered_path.points.back().point.longitudinal_velocity_mps = std::min(
-        pt.point.longitudinal_velocity_mps,
-        filtered_path.points.back().point.longitudinal_velocity_mps);
-    } else {
-      filtered_path.points.push_back(pt);
+      filtered_path.points.back().point.longitudinal_velocity_mps =
+        pt.point.longitudinal_velocity_mps;
+      continue;
     }
+
+    filtered_path.points.push_back(pt);
   }
+
   filtered_path.left_bound = input_path.left_bound;
   filtered_path.right_bound = input_path.right_bound;
   return filtered_path;
