@@ -421,4 +421,5 @@ void BehaviorVelocityPlannerNode::publishDebugMarker(const autoware_planning_msg
 }  // namespace autoware::behavior_velocity_planner::experimental
 
 #include <rclcpp_components/register_node_macro.hpp>
-RCLCPP_COMPONENTS_REGISTER_NODE(autoware::behavior_velocity_planner::BehaviorVelocityPlannerNode)
+RCLCPP_COMPONENTS_REGISTER_NODE(
+  autoware::behavior_velocity_planner::experimental::BehaviorVelocityPlannerNode)
