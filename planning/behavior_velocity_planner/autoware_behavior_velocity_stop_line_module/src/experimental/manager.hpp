@@ -1,4 +1,4 @@
-// Copyright 2020 Tier IV, Inc.
+// Copyright 2025 Tier IV, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,26 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MANAGER_HPP_
-#define MANAGER_HPP_
+#ifndef EXPERIMENTAL__MANAGER_HPP_
+#define EXPERIMENTAL__MANAGER_HPP_
 
-#include "autoware/behavior_velocity_planner_common/plugin_wrapper.hpp"
-#include "autoware/behavior_velocity_planner_common/scene_module_interface.hpp"
 #include "scene.hpp"
 
-#include <rclcpp/rclcpp.hpp>
+#include <autoware/behavior_velocity_planner_common/experimental/plugin_wrapper.hpp>
 
-#include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
-
-#include <lanelet2_core/Forward.h>
-
-#include <functional>
 #include <memory>
 #include <set>
 #include <utility>
 #include <vector>
 
-namespace autoware::behavior_velocity_planner
+namespace autoware::behavior_velocity_planner::experimental
 {
 using StopLineWithLaneId = std::pair<lanelet::ConstLineString3d, lanelet::Id>;
 
@@ -51,23 +44,24 @@ private:
   StopLineModule::PlannerParam planner_param_;
 
   std::vector<StopLineWithLaneId> getStopLinesWithLaneIdOnPath(
-    const autoware_internal_planning_msgs::msg::PathWithLaneId & path,
-    const lanelet::LaneletMapPtr lanelet_map);
+    const Trajectory & path, const lanelet::LaneletMapPtr lanelet_map,
+    const PlannerData & planner_data);
 
   std::set<lanelet::Id> getStopLineIdSetOnPath(
-    const autoware_internal_planning_msgs::msg::PathWithLaneId & path,
-    const lanelet::LaneletMapPtr lanelet_map);
+    const Trajectory & path, const lanelet::LaneletMapPtr lanelet_map,
+    const PlannerData & planner_data);
 
-  void launchNewModules(const autoware_internal_planning_msgs::msg::PathWithLaneId & path) override;
+  void launchNewModules(
+    const Trajectory & path, const rclcpp::Time & stamp, const PlannerData & planner_data) override;
 
   std::function<bool(const std::shared_ptr<SceneModuleInterface> &)> getModuleExpiredFunction(
-    const autoware_internal_planning_msgs::msg::PathWithLaneId & path) override;
+    const Trajectory & path, const PlannerData & planner_data) override;
 };
 
 class StopLineModulePlugin : public PluginWrapper<StopLineModuleManager>
 {
 };
 
-}  // namespace autoware::behavior_velocity_planner
+}  // namespace autoware::behavior_velocity_planner::experimental
 
-#endif  // MANAGER_HPP_
+#endif  // EXPERIMENTAL__MANAGER_HPP_

@@ -14,9 +14,14 @@
 
 #include "autoware/behavior_velocity_planner/planner_manager.hpp"
 
+#include <autoware/motion_utils/trajectory/interpolation.hpp>
+#include <autoware/motion_utils/trajectory/trajectory.hpp>
+
+#include <boost/format.hpp>
+
 #include <memory>
+#include <optional>
 #include <string>
-#include <vector>
 
 namespace autoware::behavior_velocity_planner
 {
@@ -29,37 +34,36 @@ BehaviorVelocityPlannerManager::BehaviorVelocityPlannerManager()
 void BehaviorVelocityPlannerManager::launchScenePlugin(
   rclcpp::Node & node, const std::string & name)
 {
-  if (!plugin_loader_.isClassAvailable(name)) {
-    RCLCPP_ERROR_STREAM(node.get_logger(), "The scene plugin '" << name << "' is not available.");
-    return;
-  }
+  if (plugin_loader_.isClassAvailable(name)) {
+    const auto plugin = plugin_loader_.createSharedInstance(name);
+    plugin->init(node);
 
-  const auto plugin = plugin_loader_.createSharedInstance(name);
-  plugin->init(node);
-
-  // Check if the plugin is already registered.
-  for (const auto & running_plugin : scene_manager_plugins_) {
-    if (plugin->getModuleName() == running_plugin->getModuleName()) {
-      RCLCPP_WARN_STREAM(node.get_logger(), "The plugin '" << name << "' is already loaded.");
-      return;
+    // Check if the plugin is already registered.
+    for (const auto & running_plugin : scene_manager_plugins_) {
+      if (plugin->getModuleName() == running_plugin->getModuleName()) {
+        RCLCPP_WARN_STREAM(node.get_logger(), "The plugin '" << name << "' is already loaded.");
+        return;
+      }
     }
+
+    // register
+    scene_manager_plugins_.push_back(plugin);
+    RCLCPP_INFO_STREAM(node.get_logger(), "The scene plugin '" << name << "' is loaded.");
+
+    // update the subscription
+    const auto required_subscriptions = plugin->getRequiredSubscriptions();
+    required_subscriptions_.concat(required_subscriptions);
+  } else {
+    RCLCPP_ERROR_STREAM(node.get_logger(), "The scene plugin '" << name << "' is not available.");
   }
-
-  // register
-  scene_manager_plugins_.push_back(plugin);
-  RCLCPP_INFO_STREAM(node.get_logger(), "The scene plugin '" << name << "' is loaded.");
-
-  // update the subscription
-  const auto required_subscriptions = plugin->getRequiredSubscriptions();
-  required_subscriptions_.concat(required_subscriptions);
 }
 
 void BehaviorVelocityPlannerManager::removeScenePlugin(
   rclcpp::Node & node, const std::string & name)
 {
-  const auto it = std::remove_if(
+  auto it = std::remove_if(
     scene_manager_plugins_.begin(), scene_manager_plugins_.end(),
-    [&](const std::shared_ptr<experimental::PluginInterface> plugin) {
+    [&](const std::shared_ptr<behavior_velocity_planner::PluginInterface> plugin) {
       return plugin->getModuleName() == name;
     });
 
@@ -67,25 +71,25 @@ void BehaviorVelocityPlannerManager::removeScenePlugin(
     RCLCPP_WARN_STREAM(
       node.get_logger(),
       "The scene plugin '" << name << "' is not found in the registered modules.");
-    return;
+  } else {
+    scene_manager_plugins_.erase(it, scene_manager_plugins_.end());
+    RCLCPP_INFO_STREAM(node.get_logger(), "The scene plugin '" << name << "' is unloaded.");
   }
-  scene_manager_plugins_.erase(it, scene_manager_plugins_.end());
-  RCLCPP_INFO_STREAM(node.get_logger(), "The scene plugin '" << name << "' is unloaded.");
 }
 
-Trajectory BehaviorVelocityPlannerManager::planPathVelocity(
-  const PlannerData & planner_data, const Trajectory & input_path,
-  const std_msgs::msg::Header & header, const std::vector<geometry_msgs::msg::Point> & left_bound,
-  const std::vector<geometry_msgs::msg::Point> & right_bound)
+autoware_internal_planning_msgs::msg::PathWithLaneId
+BehaviorVelocityPlannerManager::planPathVelocity(
+  const std::shared_ptr<const PlannerData> & planner_data,
+  const autoware_internal_planning_msgs::msg::PathWithLaneId & input_path_msg)
 {
-  auto output_path = input_path;
+  autoware_internal_planning_msgs::msg::PathWithLaneId output_path_msg = input_path_msg;
 
   for (const auto & plugin : scene_manager_plugins_) {
-    plugin->updateSceneModuleInstances(input_path, header.stamp, planner_data);
-    plugin->plan(output_path, header, left_bound, right_bound, planner_data);
+    plugin->updateSceneModuleInstances(planner_data, input_path_msg);
+    plugin->plan(&output_path_msg);
   }
 
-  return output_path;
+  return output_path_msg;
 }
 
 }  // namespace autoware::behavior_velocity_planner

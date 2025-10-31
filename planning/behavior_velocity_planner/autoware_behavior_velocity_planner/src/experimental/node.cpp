@@ -1,4 +1,4 @@
-// Copyright 2020 Tier IV, Inc.
+// Copyright 2025 Tier IV, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/behavior_velocity_planner/node.hpp"
+#include "autoware/behavior_velocity_planner/experimental/node.hpp"
 
-#include <autoware/behavior_velocity_planner_common/utilization/path_utilization.hpp>
-#include <autoware/motion_utils/trajectory/path_with_lane_id.hpp>
-#include <autoware/motion_utils/trajectory/trajectory.hpp>
+#include <autoware/trajectory/utils/find_intervals.hpp>
+#include <autoware/trajectory/utils/pretty_build.hpp>
 #include <autoware/velocity_smoother/smoother/analytical_jerk_constrained_smoother/analytical_jerk_constrained_smoother.hpp>
-#include <autoware_lanelet2_extension/utility/message_conversion.hpp>
 #include <autoware_utils_pcl/transforms.hpp>
 #include <autoware_utils_rclcpp/parameter.hpp>
+#include <tf2/utils.hpp>
 #include <tf2_eigen/tf2_eigen.hpp>
-
-#include <diagnostic_msgs/msg/diagnostic_status.hpp>
-#include <visualization_msgs/msg/marker_array.hpp>
 
 #include <lanelet2_routing/Route.h>
 #include <pcl/common/transforms.h>
@@ -35,20 +31,20 @@
 #include <string>
 #include <vector>
 
-namespace autoware::behavior_velocity_planner
+namespace autoware::behavior_velocity_planner::experimental
 {
+
 namespace
 {
 
-autoware_planning_msgs::msg::Path to_path(
-  const autoware_internal_planning_msgs::msg::PathWithLaneId & path_with_id)
+bool is_driving_forward(const Trajectory & trajectory)
 {
-  autoware_planning_msgs::msg::Path path;
-  for (const auto & path_point : path_with_id.points) {
-    path.points.push_back(path_point.point);
-  }
-  return path;
+  const auto start_yaw = tf2::getYaw(trajectory.compute(0).point.pose.orientation);
+  const auto azimuth = trajectory.azimuth(0);
+  return std::abs(autoware_utils_math::normalize_radian(start_yaw - azimuth)) <
+         autoware_utils_math::pi / 2.0;
 }
+
 }  // namespace
 
 BehaviorVelocityPlannerNode::BehaviorVelocityPlannerNode(const rclcpp::NodeOptions & node_options)
@@ -326,12 +322,26 @@ void BehaviorVelocityPlannerNode::onTrigger(
     return;
   }
 
-  if (input_path_msg->points.empty()) {
+  const auto input_path = autoware::experimental::trajectory::pretty_build(input_path_msg->points);
+  if (!input_path) {
+    RCLCPP_ERROR(get_logger(), "Failed to convert input path");
     return;
   }
 
-  const autoware_planning_msgs::msg::Path output_path_msg =
-    generatePath(input_path_msg, planner_data_);
+  const auto output_path = generatePath(
+    *input_path, input_path_msg->header, input_path_msg->left_bound, input_path_msg->right_bound,
+    planner_data_);
+
+  autoware_planning_msgs::msg::Path output_path_msg;
+  output_path_msg.header.frame_id = "map";
+  output_path_msg.header.stamp = input_path_msg->header.stamp;
+  // TODO(someone): This must be updated in each scene module, but copy from input message for now.
+  output_path_msg.left_bound = input_path_msg->left_bound;
+  output_path_msg.right_bound = input_path_msg->right_bound;
+
+  for (const auto & p : output_path.restore()) {
+    output_path_msg.points.push_back(p.point);
+  }
 
   lk.unlock();
 
@@ -345,50 +355,38 @@ void BehaviorVelocityPlannerNode::onTrigger(
   publishProcessingTime();
 }
 
-autoware_planning_msgs::msg::Path BehaviorVelocityPlannerNode::generatePath(
-  const autoware_internal_planning_msgs::msg::PathWithLaneId::ConstSharedPtr input_path_msg,
-  const PlannerData & planner_data)
+Trajectory BehaviorVelocityPlannerNode::generatePath(
+  const Trajectory & input_path, const std_msgs::msg::Header & header,
+  const std::vector<geometry_msgs::msg::Point> & left_bound,
+  const std::vector<geometry_msgs::msg::Point> & right_bound, const PlannerData & planner_data)
 {
-  autoware_planning_msgs::msg::Path output_path_msg;
-
   // TODO(someone): support backward path
-  const auto is_driving_forward = autoware::motion_utils::isDrivingForward(input_path_msg->points);
-  is_driving_forward_ = is_driving_forward ? is_driving_forward.value() : is_driving_forward_;
+  is_driving_forward_ = is_driving_forward(input_path);
   if (!is_driving_forward_) {
     RCLCPP_WARN_THROTTLE(
       get_logger(), *get_clock(), logger_throttle_interval,
-      "Backward path is NOT supported. just converting path_with_lane_id to path");
-    output_path_msg = to_path(*input_path_msg);
-    output_path_msg.header.frame_id = "map";
-    output_path_msg.header.stamp = input_path_msg->header.stamp;
-    output_path_msg.left_bound = input_path_msg->left_bound;
-    output_path_msg.right_bound = input_path_msg->right_bound;
-    return output_path_msg;
+      "Backward path is NOT supported, just returning input path");
+    return input_path;
   }
 
   // Plan path velocity
-  const auto velocity_planned_path = planner_manager_.planPathVelocity(
-    std::make_shared<const PlannerData>(planner_data), *input_path_msg);
-
-  // screening
-  const auto filtered_path =
-    autoware::behavior_velocity_planner::filterLitterPathPoint(to_path(velocity_planned_path));
-
-  // interpolation
-  const auto interpolated_path_msg = autoware::behavior_velocity_planner::interpolatePath(
-    filtered_path, forward_path_length_, behavior_output_path_interval_);
+  const auto velocity_planned_path =
+    planner_manager_.planPathVelocity(planner_data, input_path, header, left_bound, right_bound);
 
   // check stop point
-  output_path_msg = autoware::behavior_velocity_planner::filterStopPathPoint(interpolated_path_msg);
+  constexpr auto stop_threshold = 0.01;  // m/s
+  const auto stop_intervals = autoware::experimental::trajectory::find_intervals(
+    velocity_planned_path,
+    [&](const autoware_internal_planning_msgs::msg::PathPointWithLaneId & p) {
+      return std::abs(p.point.longitudinal_velocity_mps) < stop_threshold;
+    });
 
-  output_path_msg.header.frame_id = "map";
-  output_path_msg.header.stamp = input_path_msg->header.stamp;
+  auto output_path = velocity_planned_path;
+  for (const auto & interval : stop_intervals) {
+    output_path.longitudinal_velocity_mps().range(interval.start, interval.end).set(0.0);
+  }
 
-  // TODO(someone): This must be updated in each scene module, but copy from input message for now.
-  output_path_msg.left_bound = input_path_msg->left_bound;
-  output_path_msg.right_bound = input_path_msg->right_bound;
-
-  return output_path_msg;
+  return output_path;
 }
 
 void BehaviorVelocityPlannerNode::publishProcessingTime()
@@ -420,7 +418,7 @@ void BehaviorVelocityPlannerNode::publishDebugMarker(const autoware_planning_msg
   }
   debug_viz_pub_->publish(output_msg);
 }
-}  // namespace autoware::behavior_velocity_planner
+}  // namespace autoware::behavior_velocity_planner::experimental
 
 #include <rclcpp_components/register_node_macro.hpp>
 RCLCPP_COMPONENTS_REGISTER_NODE(autoware::behavior_velocity_planner::BehaviorVelocityPlannerNode)

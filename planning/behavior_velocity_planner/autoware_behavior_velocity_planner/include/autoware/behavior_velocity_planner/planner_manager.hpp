@@ -15,8 +15,22 @@
 #ifndef AUTOWARE__BEHAVIOR_VELOCITY_PLANNER__PLANNER_MANAGER_HPP_
 #define AUTOWARE__BEHAVIOR_VELOCITY_PLANNER__PLANNER_MANAGER_HPP_
 
-#include <autoware/behavior_velocity_planner_common/experimental/plugin_interface.hpp>
+#include <autoware/behavior_velocity_planner_common/plugin_interface.hpp>
+#include <autoware/behavior_velocity_planner_common/plugin_wrapper.hpp>
 #include <pluginlib/class_loader.hpp>
+#include <rclcpp/rclcpp.hpp>
+
+#include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
+#include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
+#include <autoware_perception_msgs/msg/predicted_objects.hpp>
+#include <autoware_planning_msgs/msg/path.hpp>
+#include <diagnostic_msgs/msg/diagnostic_status.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+
+#include <lanelet2_core/LaneletMap.h>
+#include <lanelet2_routing/RoutingGraph.h>
+#include <lanelet2_traffic_rules/TrafficRulesFactory.h>
+#include <tf2_ros/transform_listener.h>
 
 #include <memory>
 #include <string>
@@ -24,9 +38,6 @@
 
 namespace autoware::behavior_velocity_planner
 {
-
-using Trajectory = autoware::experimental::trajectory::Trajectory<
-  autoware_internal_planning_msgs::msg::PathPointWithLaneId>;
 
 class BehaviorVelocityPlannerManager
 {
@@ -36,16 +47,15 @@ public:
   void removeScenePlugin(rclcpp::Node & node, const std::string & name);
 
   // cppcheck-suppress functionConst
-  Trajectory planPathVelocity(
-    const PlannerData & planner_data, const Trajectory & input_path,
-    const std_msgs::msg::Header & header, const std::vector<geometry_msgs::msg::Point> & left_bound,
-    const std::vector<geometry_msgs::msg::Point> & right_bound);
+  autoware_internal_planning_msgs::msg::PathWithLaneId planPathVelocity(
+    const std::shared_ptr<const PlannerData> & planner_data,
+    const autoware_internal_planning_msgs::msg::PathWithLaneId & input_path_msg);
 
   RequiredSubscriptionInfo getRequiredSubscriptions() const { return required_subscriptions_; }
 
 private:
-  pluginlib::ClassLoader<experimental::PluginInterface> plugin_loader_;
-  std::vector<std::shared_ptr<experimental::PluginInterface>> scene_manager_plugins_;
+  pluginlib::ClassLoader<PluginInterface> plugin_loader_;
+  std::vector<std::shared_ptr<PluginInterface>> scene_manager_plugins_;
   RequiredSubscriptionInfo required_subscriptions_;
 };
 }  // namespace autoware::behavior_velocity_planner
