@@ -18,6 +18,7 @@
 #include "autoware/motion_utils/trajectory/trajectory.hpp"
 
 #include <autoware/lanelet2_utils/topology.hpp>
+#include <autoware/trajectory/utils/pretty_build.hpp>
 #include <autoware_lanelet2_extension/utility/query.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 #include <tf2/utils.hpp>
@@ -849,6 +850,32 @@ lanelet::Ids collectConnectedLaneIds(
     }
   }
   return lane_ids;
+}
+
+PathWithLaneId fromTrajectory(
+  const experimental::trajectory::Trajectory<
+    autoware_internal_planning_msgs::msg::PathPointWithLaneId> & path,
+  const std::vector<geometry_msgs::msg::Point> & left_bound,
+  const std::vector<geometry_msgs::msg::Point> & right_bound)
+{
+  PathWithLaneId path_msg;
+  path_msg.points = path.restore();
+  path_msg.left_bound = left_bound;
+  path_msg.right_bound = right_bound;
+  return path_msg;
+}
+
+void toTrajectory(
+  const PathWithLaneId & path_msg,
+  experimental::trajectory::Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId> &
+    path)
+{
+  const auto path_opt = experimental::trajectory::pretty_build(path_msg.points);
+  if (!path_opt) {
+    std::cerr << "[behavior_velocity](toTrajectory) Failed to build trajectory" << std::endl;
+    return;
+  }
+  path = *path_opt;
 }
 
 }  // namespace autoware::behavior_velocity_planner::planning_utils

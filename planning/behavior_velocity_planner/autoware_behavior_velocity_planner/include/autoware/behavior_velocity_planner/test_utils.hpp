@@ -15,7 +15,7 @@
 #ifndef AUTOWARE__BEHAVIOR_VELOCITY_PLANNER__TEST_UTILS_HPP_
 #define AUTOWARE__BEHAVIOR_VELOCITY_PLANNER__TEST_UTILS_HPP_
 
-#include "autoware/behavior_velocity_planner/node.hpp"
+#include "node.hpp"
 
 #include <autoware/planning_test_manager/autoware_planning_test_manager.hpp>
 
