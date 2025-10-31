@@ -111,8 +111,6 @@ public:
   std::vector<int64_t> getLineIds() const override { return {stop_line_.id()}; }
 
 private:
-  friend class StopLineModuleTest;
-
   const lanelet::ConstLineString3d stop_line_;  ///< Stop line geometry.
   const lanelet::Id linked_lanelet_id_;         ///< ID of the linked lanelet.
   const PlannerParam planner_param_;            ///< Parameters for the planner.
