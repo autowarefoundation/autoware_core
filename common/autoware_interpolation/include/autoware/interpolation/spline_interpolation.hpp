@@ -79,6 +79,26 @@ public:
 
   size_t getSize() const { return base_keys_.size(); }
 
+  // Debug methods to expose spline coefficients
+  const Eigen::VectorXd getCoefficients() const
+  {
+    const auto m = static_cast<Eigen::Index>(a_.size());
+    Eigen::VectorXd coefficients(4 * m);
+    coefficients << a_, b_, c_, d_;
+    return coefficients;
+  }
+  std::vector<double> getKnots() const { return base_keys_; }
+
+  void resize(const size_t size)
+  {
+    a_.conservativeResize(size - 1);
+    b_.conservativeResize(size - 1);
+    c_.conservativeResize(size - 1);
+    d_.conservativeResize(size - 1);
+
+    base_keys_.resize(size);
+  }
+
 private:
   Eigen::VectorXd a_;
   Eigen::VectorXd b_;
