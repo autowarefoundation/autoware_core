@@ -6522,6 +6522,15 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#autowarelanelet2_utilsgeometryhpp" class="md-nav__link">
+    <span class="md-ellipsis">
+      &lt;autoware/lanelet2_utils/geometry.hpp&gt;
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#autowarelanelet2_utilsconversionhpp" class="md-nav__link">
     <span class="md-ellipsis">
       &lt;autoware/lanelet2_utils/conversion.hpp&gt;
@@ -6801,14 +6810,81 @@
 </tbody>
 </table>
 <h2 id="api-description">API description<a class="headerlink" href="#api-description" title="Permanent link">#</a></h2>
+<h3 id="autowarelanelet2_utilsgeometryhpp"><code>&lt;autoware/lanelet2_utils/geometry.hpp&gt;</code><a class="headerlink" href="#autowarelanelet2_utilsgeometryhpp" title="Permanent link">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+<th>Average Computational Complexity</th>
+<th>Illustration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>extrapolate_point</code></td>
+<td>Linearly extrapolate a point (<code>ConstPoint3d</code>) beyond a segment defined by two points (<code>first</code> and <code>second</code>) with given distance.</td>
+<td></td>
+<td><img alt="extrapolate_point" src="media/api/geometry/extrapolate_point.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fapi%2Fgeometry%2Fextrapolate_point.drawio.svg">Open</a></td>
+</tr>
+<tr>
+<td><code>interpolate_point</code></td>
+<td>Linearly interpolates a point along a segment defined by two points.</td>
+<td></td>
+<td><img alt="interpolate_point" src="media/api/geometry/interpolate_point.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fapi%2Fgeometry%2Finterpolate_point.drawio.svg">Open</a></td>
+</tr>
+<tr>
+<td><code>interpolate_lanelet</code></td>
+<td>Find an interpolated point from a lanelet centerline at a given distance.</td>
+<td></td>
+<td><img alt="interpolate_lanelet" src="media/api/geometry/interpolate_lanelet.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fapi%2Fgeometry%2Finterpolate_lanelet.drawio.svg">Open</a></td>
+</tr>
+<tr>
+<td><code>interpolate_lanelet_sequence</code></td>
+<td>Find the first interpolated point from a centerline of the lanelet sequence at a given distance.</td>
+<td></td>
+<td><img alt="interpolate_lanelet_sequence" src="media/api/geometry/interpolate_lanelet_sequence.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fapi%2Fgeometry%2Finterpolate_lanelet_sequence.drawio.svg">Open</a></td>
+</tr>
+<tr>
+<td><code>concatenate_center_line</code></td>
+<td>Concatenate all center line of input lanelet sequence (several <code>ConstLanelets</code>)</td>
+<td></td>
+<td><img alt="concatenate_center_line" src="media/api/geometry/concatenate_center_line.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fapi%2Fgeometry%2Fconcatenate_center_line.drawio.svg">Open</a></td>
+</tr>
+<tr>
+<td><code>get_linestring_from_arc_length</code></td>
+<td>Extract a sub-linestring between two arc-length positions along an input linestring.</td>
+<td></td>
+<td><img alt="get_linestring_from_arc_length" src="media/api/geometry/get_linestring_from_arc_length.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fapi%2Fgeometry%2Fget_linestring_from_arc_length.drawio.svg">Open</a></td>
+</tr>
+<tr>
+<td><code>get_pose_from_2d_arc_length</code></td>
+<td>Compute the 2D pose (position and heading) at a given arc-length along a sequence of lanelets.</td>
+<td></td>
+<td><img alt="get_pose_from_2d_arc_length" src="media/api/geometry/get_pose_from_2d_arc_length.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fapi%2Fgeometry%2Fget_pose_from_2d_arc_length.drawio.svg">Open</a></td>
+</tr>
+<tr>
+<td><code>get_closest_segment</code></td>
+<td>Find the closest segment of the <code>ConstLineString3d</code> to the search point (<code>BasicPoint3d</code>).</td>
+<td></td>
+<td><img alt="get_closest_segment" src="media/api/geometry/get_closest_segment.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fapi%2Fgeometry%2Fget_closest_segment.drawio.svg">Open</a></td>
+</tr>
+<tr>
+<td><code>get_lanelet_angle</code></td>
+<td>Find the angle of center line segment of the lanelet that is closest to search point (<code>BasicPoint3d</code>). The angle is defined with the x-axis as the reference (0 radians). Positive angles are measured counterclockwise, while negative angles are measured clockwise within range of −π to π radians.</td>
+<td></td>
+<td><img alt="get_lanelet_angle" src="media/api/geometry/get_lanelet_angle.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fapi%2Fgeometry%2Fget_lanelet_angle.drawio.svg">Open</a></td>
+</tr>
+</tbody>
+</table>
 <h3 id="autowarelanelet2_utilsconversionhpp"><code>&lt;autoware/lanelet2_utils/conversion.hpp&gt;</code><a class="headerlink" href="#autowarelanelet2_utilsconversionhpp" title="Permanent link">#</a></h3>
 <table>
 <thead>
 <tr>
-<th>function</th>
-<th>description</th>
-<th>average computational complexity</th>
-<th>illustration</th>
+<th>Function</th>
+<th>Description</th>
+<th>Average Computational Complexity</th>
+<th>Illustration</th>
 </tr>
 </thead>
 <tbody>
@@ -6854,10 +6930,10 @@
 <table>
 <thead>
 <tr>
-<th>function</th>
-<th>description</th>
-<th>average computational complexity</th>
-<th>illustration</th>
+<th>Function</th>
+<th>Description</th>
+<th>Average Computational Complexity</th>
+<th>Illustration</th>
 </tr>
 </thead>
 <tbody>
@@ -6885,10 +6961,10 @@
 <table>
 <thead>
 <tr>
-<th>function</th>
-<th>description</th>
-<th>average computational complexity</th>
-<th>illustration</th>
+<th>Function</th>
+<th>Description</th>
+<th>Average Computational Complexity</th>
+<th>Illustration</th>
 </tr>
 </thead>
 <tbody>
@@ -6904,10 +6980,10 @@
 <table>
 <thead>
 <tr>
-<th>function</th>
-<th>description</th>
-<th>average computational complexity</th>
-<th>illustration</th>
+<th>Function</th>
+<th>Description</th>
+<th>Average Computational Complexity</th>
+<th>Illustration</th>
 </tr>
 </thead>
 <tbody>
@@ -6953,10 +7029,10 @@
 <table>
 <thead>
 <tr>
-<th>function</th>
-<th>description</th>
-<th>average computational complexity</th>
-<th>illustration</th>
+<th>Function</th>
+<th>Description</th>
+<th>Average Computational Complexity</th>
+<th>Illustration</th>
 </tr>
 </thead>
 <tbody>
@@ -6978,10 +7054,10 @@
 <table>
 <thead>
 <tr>
-<th>function</th>
-<th>description</th>
-<th>average computational complexity</th>
-<th>illustration</th>
+<th>Function</th>
+<th>Description</th>
+<th>Average Computational Complexity</th>
+<th>Illustration</th>
 </tr>
 </thead>
 <tbody>
@@ -7015,10 +7091,10 @@
 <table>
 <thead>
 <tr>
-<th>function</th>
-<th>description</th>
-<th>average computational complexity</th>
-<th>illustration</th>
+<th>Function</th>
+<th>Description</th>
+<th>Average Computational Complexity</th>
+<th>Illustration</th>
 </tr>
 </thead>
 <tbody>
@@ -7070,10 +7146,10 @@
 <table>
 <thead>
 <tr>
-<th>function</th>
-<th>description</th>
-<th>average computational complexity</th>
-<th>illustration</th>
+<th>Function</th>
+<th>Description</th>
+<th>Average Computational Complexity</th>
+<th>Illustration</th>
 </tr>
 </thead>
 <tbody>
@@ -7155,10 +7231,10 @@
 <table>
 <thead>
 <tr>
-<th>function</th>
-<th>description</th>
-<th>average computational complexity</th>
-<th>illustration</th>
+<th>Function</th>
+<th>Description</th>
+<th>Average Computational Complexity</th>
+<th>Illustration</th>
 </tr>
 </thead>
 <tbody>
@@ -7234,10 +7310,10 @@
 <table>
 <thead>
 <tr>
-<th>function</th>
-<th>description</th>
-<th>average computational complexity</th>
-<th>illustration</th>
+<th>Function</th>
+<th>Description</th>
+<th>Average Computational Complexity</th>
+<th>Illustration</th>
 </tr>
 </thead>
 <tbody>
