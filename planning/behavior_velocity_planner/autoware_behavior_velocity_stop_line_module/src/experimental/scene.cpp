@@ -200,4 +200,20 @@ void StopLineModule::updateDebugData(
   }
 }
 
+autoware::motion_utils::VirtualWalls StopLineModule::createVirtualWalls()
+{
+  autoware::motion_utils::VirtualWalls virtual_walls;
+
+  if (debug_data_.stop_pose && (state_ == State::APPROACH || state_ == State::STOPPED)) {
+    autoware::motion_utils::VirtualWall wall;
+    wall.text = "stopline";
+    wall.style = autoware::motion_utils::VirtualWallType::stop;
+    wall.ns = std::to_string(module_id_) + "_";
+    wall.pose = autoware_utils::calc_offset_pose(
+      *debug_data_.stop_pose, debug_data_.base_link2front, 0.0, 0.0);
+    virtual_walls.push_back(wall);
+  }
+  return virtual_walls;
+}
+
 }  // namespace autoware::behavior_velocity_planner::experimental

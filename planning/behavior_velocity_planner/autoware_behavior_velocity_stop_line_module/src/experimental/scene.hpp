@@ -104,6 +104,7 @@ public:
   {
     return visualization_msgs::msg::MarkerArray{};
   }
+
   autoware::motion_utils::VirtualWalls createVirtualWalls() override;
 
   std::vector<int64_t> getLaneletIds() const override { return {linked_lanelet_id_}; }

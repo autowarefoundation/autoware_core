@@ -9,7 +9,6 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/debug.cpp
   src/manager.cpp
   src/scene.cpp
-  src/experimental/debug.cpp
   src/experimental/manager.cpp
   src/experimental/scene.cpp
 )
