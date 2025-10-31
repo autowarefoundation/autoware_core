@@ -83,10 +83,10 @@ std::optional<lanelet::CompoundLineString3d> concatenate_center_line(
  * @param[in] linestring the original ConstLineString3d.
  * @param[in] s1 the start distance (arc length from the beginning of the linestring).
  * @param[in] s2 the end distance (arc length from the beginning of the linestring).
- * @return new LineString3d containing the interpolated start point and end point, with original
- * point strictly between s1 and s2.
+ * @return new ConstLineString3d containing the interpolated start point and end point, with
+ * original point strictly between s1 and s2.
  */
-std::optional<lanelet::LineString3d> get_linestring_from_arc_length(
+std::optional<lanelet::ConstLineString3d> get_linestring_from_arc_length(
   const lanelet::ConstLineString3d & linestring, const double s1, const double s2);
 
 /**

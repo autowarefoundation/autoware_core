@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/lanelet2_utils/geometry.hpp>
 #include <range/v3/all.hpp>
 
@@ -111,10 +112,10 @@ std::optional<lanelet::CompoundLineString3d> concatenate_center_line(
   return merged_sequence.centerline();
 }
 
-std::optional<lanelet::LineString3d> get_linestring_from_arc_length(
+std::optional<lanelet::ConstLineString3d> get_linestring_from_arc_length(
   const lanelet::ConstLineString3d & linestring, const double s1, const double s2)
 {
-  lanelet::Points3d points;
+  lanelet::ConstPoints3d points;
   double accumulated_length = 0;
   size_t start_index = linestring.size();
   if (linestring.size() < 2) {
@@ -176,7 +177,7 @@ std::optional<lanelet::LineString3d> get_linestring_from_arc_length(
 
     points.emplace_back(lanelet::InvalId, end_point.value());
   }
-  return lanelet::LineString3d{lanelet::InvalId, points};
+  return create_safe_linestring(points);
 }
 
 std::optional<geometry_msgs::msg::Pose> get_pose_from_2d_arc_length(
