@@ -16,6 +16,7 @@ common/autoware_node/** mfc@autoware.org @autowarefoundation/autoware-core-globa
 common/autoware_object_recognition_utils/** takayuki.murooka@tier4.jp yoshi.ri@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 common/autoware_osqp_interface/** fumiya.watanabe@tier4.jp maxime.clement@tier4.jp satoshi.ota@tier4.jp takayuki.murooka@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 common/autoware_point_types/** cynthia.liu@autocore.ai david.wong@tier4.jp max.schmeller@tier4.jp @autowarefoundation/autoware-core-global-codeowners
+common/autoware_qos_utils/** lxg19892021@gmail.com @autowarefoundation/autoware-core-global-codeowners
 common/autoware_qp_interface/** fumiya.watanabe@tier4.jp maxime.clement@tier4.jp satoshi.ota@tier4.jp takayuki.murooka@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 common/autoware_signal_processing/** ali.boyali@tier4.jp fumiya.watanabe@tier4.jp kyoichi.sugahara@tier4.jp takamasa.horibe@tier4.jp takayuki.murooka@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 common/autoware_trajectory/** kosuke.takeuchi@tier4.jp mamoru.sobue@tier4.jp takayuki.murooka@tier4.jp yukinari.hisaki.2@tier4.jp @autowarefoundation/autoware-core-global-codeowners
@@ -50,7 +51,7 @@ planning/autoware_velocity_smoother/** fumiya.watanabe@tier4.jp go.sakayori@tier
 planning/behavior_velocity_planner/autoware_behavior_velocity_planner/** kosuke.takeuchi@tier4.jp kyoichi.sugahara@tier4.jp makoto.kurihara@tier4.jp mamoru.sobue@tier4.jp maxime.clement@tier4.jp satoshi.ota@tier4.jp shumpei.wakabayashi@tier4.jp taiki.tanaka@tier4.jp takayuki.murooka@tier4.jp tomohito.ando@tier4.jp tomoya.kimura@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 planning/behavior_velocity_planner/autoware_behavior_velocity_planner_common/** fumiya.watanabe@tier4.jp isamu.takagi@tier4.jp mamoru.sobue@tier4.jp shumpei.wakabayashi@tier4.jp tomoya.kimura@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 planning/behavior_velocity_planner/autoware_behavior_velocity_stop_line_module/** fumiya.watanabe@tier4.jp satoshi.ota@tier4.jp shumpei.wakabayashi@tier4.jp tomoya.kimura@tier4.jp yukinari.hisaki.2@tier4.jp zhe.shen@tier4.jp @autowarefoundation/autoware-core-global-codeowners
-planning/motion_velocity_planner/autoware_motion_velocity_obstacle_stop_module/** arjun.ram@tier4.jp berkay@leodrive.ai maxime.clement@tier4.jp takayuki.murooka@tier4.jp yuki.takagi@tier4.jp @autowarefoundation/autoware-core-global-codeowners
+planning/motion_velocity_planner/autoware_motion_velocity_obstacle_stop_module/** arjun.ram@tier4.jp berkay@leodrive.ai maxime.clement@tier4.jp takayuki.murooka@tier4.jp takumi.odashima@tier4.jp yuki.takagi@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 planning/motion_velocity_planner/autoware_motion_velocity_planner/** alqudah.mohammad@tier4.jp maxime.clement@tier4.jp yutaka.kondo@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 planning/motion_velocity_planner/autoware_motion_velocity_planner_common/** alqudah.mohammad@tier4.jp maxime.clement@tier4.jp takayuki.murooka@tier4.jp yuki.takagi@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 sensing/autoware_core_sensing/** mfc@autoware.org ryohsuke.mitsudome@tier4.jp yutaka.kondo@tier4.jp @autowarefoundation/autoware-core-global-codeowners
