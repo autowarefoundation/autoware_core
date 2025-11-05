@@ -209,7 +209,6 @@ std::optional<std::pair<geometry_msgs::msg::Point, double>> get_collision_point(
   std::optional<std::pair<geometry_msgs::msg::Point, double>> nearest_collision{std::nullopt};
 
   for (size_t i = 0; i < traj_polygons.size(); ++i) {
-    // --- 1. 大まかな距離での枝刈り (Broad-phase) ---
     const double ego_maximum_length = boost::geometry::perimeter(traj_polygons.at(i)) * 0.5;
     const double center_dist =
       autoware_utils_geometry::calc_distance2d(traj_points.at(i).pose.position, obj_position);
