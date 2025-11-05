@@ -19,7 +19,7 @@ rclcpp_components_register_node(detected_to_predicted_objects_converter
 )
 
 ## Install
-ament_auto_package(
+autoware_ament_auto_package(
   INSTALL_TO_SHARE
     launch
 )

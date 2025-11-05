@@ -25,4 +25,4 @@ if(BUILD_TESTING)
   endforeach()
 endif()
 
-ament_auto_package()
+autoware_ament_auto_package()

@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.5)
 project(autoware_objects_of_interest_marker_interface)
 
+find_package(autoware_cmake REQUIRED)
+autoware_package()
+
 ### Compile options
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)
@@ -24,4 +27,4 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
-ament_auto_package()
+autoware_ament_auto_package()

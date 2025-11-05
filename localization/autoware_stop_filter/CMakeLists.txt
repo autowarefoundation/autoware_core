@@ -31,7 +31,7 @@ if(BUILD_TESTING)
   target_include_directories(test_stop_filter_node PRIVATE src)
 endif()
 
-ament_auto_package(
+autoware_ament_auto_package(
   INSTALL_TO_SHARE
   launch
   config
