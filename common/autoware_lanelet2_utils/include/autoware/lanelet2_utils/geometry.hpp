@@ -118,6 +118,15 @@ lanelet::ConstLineString3d get_closest_segment(
 double get_lanelet_angle(
   const lanelet::ConstLanelet & lanelet, const lanelet::BasicPoint3d & search_pt);
 
+/**
+ * @brief find pose of the closest point of the lanelet centerline to search point.
+ * @param[in] lanelet lanelet that want to find pose
+ * @param[in] search_pt query point
+ * @return pose of the closest point of the lanelet centerline to search point.
+ */
+geometry_msgs::msg::Pose get_closest_center_pose(
+  const lanelet::ConstLanelet & lanelet, const lanelet::BasicPoint3d & search_pt);
+
 }  // namespace autoware::experimental::lanelet2_utils
 
 #endif  // AUTOWARE__LANELET2_UTILS__GEOMETRY_HPP_
