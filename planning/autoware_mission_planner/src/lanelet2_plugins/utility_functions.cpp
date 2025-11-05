@@ -30,30 +30,9 @@
 
 namespace
 {
-
-lanelet::Point3d remove_const(const lanelet::ConstPoint3d & point)
+lanelet::Lanelet remove_const(const lanelet::ConstLanelet & const_lanelet)
 {
-  return lanelet::Point3d{std::const_pointer_cast<lanelet::PointData>(point.constData())};
-}
-
-lanelet::Lanelet remove_const(const lanelet::ConstLanelet const_lanelet)
-{
-  lanelet::ConstLineString3d left_cls = const_lanelet.leftBound();
-  lanelet::ConstLineString3d right_cls = const_lanelet.rightBound();
-
-  lanelet::LineString3d left_ls;
-  lanelet::LineString3d right_ls;
-
-  std::for_each(left_cls.begin(), left_cls.end(), [&](const auto & point) {
-    left_ls.push_back(remove_const(point));
-  });
-
-  std::for_each(right_cls.begin(), right_cls.end(), [&](const auto & point) {
-    right_ls.push_back(remove_const(point));
-  });
-
-  lanelet::Lanelet ll(lanelet::InvalId, left_ls, right_ls);
-  return ll;
+  return lanelet::Lanelet{std::const_pointer_cast<lanelet::LaneletData>(const_lanelet.constData())};
 }
 }  // namespace
 
