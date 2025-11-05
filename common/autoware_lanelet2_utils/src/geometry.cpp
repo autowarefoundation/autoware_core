@@ -257,9 +257,7 @@ geometry_msgs::msg::Pose get_closest_center_pose(
   lanelet::ConstLineString3d segment = get_closest_segment(lanelet.centerline(), search_pt);
   if (segment.empty()) {
     geometry_msgs::msg::Pose closest_pose;
-    closest_pose.position.x = lanelet.centerline().front().x();
-    closest_pose.position.y = lanelet.centerline().front().y();
-    closest_pose.position.z = search_pt.z();
+    closest_pose.position = to_ros(lanelet.centerline().front(), search_pt.z());
     closest_pose.orientation.x = 0.0;
     closest_pose.orientation.y = 0.0;
     closest_pose.orientation.z = 0.0;
