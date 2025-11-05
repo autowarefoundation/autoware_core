@@ -29,6 +29,7 @@ ament_auto_add_library(autoware_trajectory SHARED
   src/utils/shift.cpp
   src/utils/reference_path.cpp
   src/utils/find_nearest.cpp
+  src/utils/footprint.cpp
 )
 
 if(BUILD_TESTING)
@@ -47,6 +48,7 @@ if(BUILD_TESTING)
     test/test_trajectory_container_trajectory_point.cpp
     test/test_utils_find_nearest.cpp
     test/test_utils_lateral_metrics.cpp
+    test/test_utils_footprint.cpp
   )
   file(GLOB_RECURSE test_files test/*.cpp)
 
@@ -71,6 +73,7 @@ if(BUILD_TESTING)
     examples/example_shift.cpp
     examples/example_self_intersecting.cpp
     examples/example_lateral_metrics.cpp
+    examples/example_footprint.cpp
   )
 
   add_definitions("-Wno-attributes")
