@@ -45,11 +45,17 @@ bool smoothPath(
   const PathWithLaneId & in_path, PathWithLaneId & out_path,
   const std::shared_ptr<const PlannerData> & planner_data)
 {
-  const geometry_msgs::msg::Pose current_pose = planner_data->current_odometry->pose;
-  const double v0 = planner_data->current_velocity->twist.linear.x;
-  const double a0 = planner_data->current_acceleration->accel.accel.linear.x;
-  const auto & external_v_limit = planner_data->external_velocity_limit;
-  const auto & smoother = planner_data->velocity_smoother_;
+  return smoothPath(in_path, out_path, *planner_data);
+}
+
+bool smoothPath(
+  const PathWithLaneId & in_path, PathWithLaneId & out_path, const PlannerData & planner_data)
+{
+  const geometry_msgs::msg::Pose current_pose = planner_data.current_odometry->pose;
+  const double v0 = planner_data.current_velocity->twist.linear.x;
+  const double a0 = planner_data.current_acceleration->accel.accel.linear.x;
+  const auto & external_v_limit = planner_data.external_velocity_limit;
+  const auto & smoother = planner_data.velocity_smoother_;
 
   auto trajectory = autoware::motion_utils::convertToTrajectoryPoints<
     autoware_internal_planning_msgs::msg::PathWithLaneId>(in_path);
@@ -60,12 +66,12 @@ bool smoothPath(
 
   // Resample trajectory with ego-velocity based interval distances
   auto traj_resampled = smoother->resampleTrajectory(
-    traj_steering_rate_limited, v0, current_pose, planner_data->ego_nearest_dist_threshold,
-    planner_data->ego_nearest_yaw_threshold);
+    traj_steering_rate_limited, v0, current_pose, planner_data.ego_nearest_dist_threshold,
+    planner_data.ego_nearest_yaw_threshold);
   const size_t traj_resampled_closest =
     autoware::motion_utils::findFirstNearestIndexWithSoftConstraints(
-      traj_resampled, current_pose, planner_data->ego_nearest_dist_threshold,
-      planner_data->ego_nearest_yaw_threshold);
+      traj_resampled, current_pose, planner_data.ego_nearest_dist_threshold,
+      planner_data.ego_nearest_yaw_threshold);
   std::vector<TrajectoryPoints> debug_trajectories;
   // Clip trajectory from closest point
   TrajectoryPoints clipped;

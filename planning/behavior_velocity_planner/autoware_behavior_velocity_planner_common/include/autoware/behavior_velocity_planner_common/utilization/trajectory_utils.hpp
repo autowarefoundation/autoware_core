@@ -29,17 +29,13 @@
 namespace autoware::behavior_velocity_planner
 {
 using autoware_internal_planning_msgs::msg::PathWithLaneId;
-using autoware_planning_msgs::msg::Trajectory;
-using autoware_planning_msgs::msg::TrajectoryPoint;
-using TrajectoryPoints = std::vector<TrajectoryPoint>;
-using geometry_msgs::msg::Quaternion;
-using TrajectoryPointWithIdx = std::pair<TrajectoryPoint, size_t>;
 
 //! smooth path point with lane id starts from ego position on path to the path end
 bool smoothPath(
   const PathWithLaneId & in_path, PathWithLaneId & out_path,
   const std::shared_ptr<const PlannerData> & planner_data);
-
+bool smoothPath(
+  const PathWithLaneId & in_path, PathWithLaneId & out_path, const PlannerData & planner_data);
 }  // namespace autoware::behavior_velocity_planner
 
 #endif  // AUTOWARE__BEHAVIOR_VELOCITY_PLANNER_COMMON__UTILIZATION__TRAJECTORY_UTILS_HPP_
