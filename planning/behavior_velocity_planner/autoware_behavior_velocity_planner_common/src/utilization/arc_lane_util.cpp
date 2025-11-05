@@ -64,8 +64,9 @@ std::optional<geometry_msgs::msg::Point> checkCollision(
   const geometry_msgs::msg::Point & p3, const geometry_msgs::msg::Point & p4)
 {
   const double det = (p2.x - p1.x) * (p4.y - p3.y) - (p2.y - p1.y) * (p4.x - p3.x);
+  constexpr double geometric_epsilon = 1e-9;
 
-  if (det == 0.0) {
+  if (std::abs(det) < geometric_epsilon) {
     // collision is not one point.
     return std::nullopt;
   }
@@ -73,9 +74,8 @@ std::optional<geometry_msgs::msg::Point> checkCollision(
   const double t1 = ((p4.y - p3.y) * (p4.x - p1.x) - (p4.x - p3.x) * (p4.y - p1.y)) / det;
   const double t2 = ((p2.x - p1.x) * (p4.y - p1.y) - (p2.y - p1.y) * (p4.x - p1.x)) / det;
 
-  constexpr double epsilon = 1e-9;
   const auto is_outside_interval = [&](const double t) {
-    return t < -epsilon || (1.0 + epsilon) < t;
+    return t < - geometric_epsilon || (1.0 + geometric_epsilon) < t;
   };
 
   // check collision is outside the segment line
