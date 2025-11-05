@@ -14,6 +14,9 @@
 
 #include "autoware/trajectory/utils/crossed.hpp"
 
+#include "autoware/trajectory/threshold.hpp"
+
+#include <algorithm>
 #include <optional>
 #include <vector>
 
@@ -80,7 +83,19 @@ std::vector<double> crossed_with_constraint_impl(
     }
   }
 
-  return intersections;
+  if (intersections.empty()) {
+    return {};
+  }
+  std::sort(intersections.begin(), intersections.end());
+  // NOTE(soblin): if the intersection is exactly on one of the point of linestring, they give
+  // duplicate results
+  std::vector<double> intersections_filtered{intersections.front()};
+  for (const auto & p : intersections) {
+    if (!is_almost_same(p, intersections_filtered.back())) {
+      intersections_filtered.push_back(p);
+    }
+  }
+  return intersections_filtered;
 }
 
 }  // namespace autoware::experimental::trajectory::detail::impl
