@@ -46,7 +46,7 @@ if(BUILD_TESTING)
   endforeach()
 endif()
 
-ament_auto_package(INSTALL_TO_SHARE
+ament_auto_package(USE_SCOPED_HEADER_INSTALL_DIR INSTALL_TO_SHARE
   sample_map
   test_data
 )
