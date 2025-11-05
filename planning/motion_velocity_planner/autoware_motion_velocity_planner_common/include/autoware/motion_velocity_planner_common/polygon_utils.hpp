@@ -97,6 +97,14 @@ std::vector<double> calc_front_outer_wheel_off_tracking(
   const std::vector<TrajectoryPoint> & traj_points, const VehicleInfo & vehicle_info);
 
 /**
+ * @brief estimate the future ego pose with assuming that the pose error against the reference path
+ * will decrease to zero by the time_to_convergence.
+ **/
+std::vector<geometry_msgs::msg::Pose> calculate_error_poses(
+  const std::vector<TrajectoryPoint> & traj_points,
+  const geometry_msgs::msg::Pose & current_ego_pose, const double time_to_convergence);
+
+/**
  * @brief return MultiPolygon whose each element represents a convex polygon comprising footprint
  * at the corresponding index position + footprint at the previous index position
  * @param enable_to_consider_current_pose if true, `current_ego_pose`

@@ -101,8 +101,36 @@ std::optional<std::pair<size_t, std::vector<PointWithStamp>>> get_collision_inde
   return std::nullopt;
 }
 
-// estimate the future ego pose with assuming that the pose error against the reference path will
-// decrease to zero by the time_to_convergence.
+Polygon2d create_pose_footprint(
+  const geometry_msgs::msg::Pose & pose, const VehicleInfo & vehicle_info, const double left_margin,
+  const double right_margin)
+{
+  using autoware_utils_geometry::calc_offset_pose;
+  const double half_width = vehicle_info.vehicle_width_m / 2.0;
+  const auto point0 =
+    calc_offset_pose(pose, vehicle_info.max_longitudinal_offset_m, half_width + left_margin, 0.0)
+      .position;
+  const auto point1 =
+    calc_offset_pose(pose, vehicle_info.max_longitudinal_offset_m, -half_width - right_margin, 0.0)
+      .position;
+  const auto point2 =
+    calc_offset_pose(pose, -vehicle_info.rear_overhang_m, -half_width - right_margin, 0.0).position;
+  const auto point3 =
+    calc_offset_pose(pose, -vehicle_info.rear_overhang_m, half_width + left_margin, 0.0).position;
+
+  Polygon2d polygon;
+  boost::geometry::append(polygon, msg_to_2d(point0));
+  boost::geometry::append(polygon, msg_to_2d(point1));
+  boost::geometry::append(polygon, msg_to_2d(point2));
+  boost::geometry::append(polygon, msg_to_2d(point3));
+  boost::geometry::append(polygon, msg_to_2d(point0));
+
+  boost::geometry::correct(polygon);
+  return polygon;
+};
+
+}  // namespace
+
 // FIXME(soblin): convergence should be applied from nearest_idx ?
 std::vector<geometry_msgs::msg::Pose> calculate_error_poses(
   const std::vector<TrajectoryPoint> & traj_points,
@@ -144,36 +172,6 @@ std::vector<geometry_msgs::msg::Pose> calculate_error_poses(
   }
   return error_poses;
 }
-
-Polygon2d create_pose_footprint(
-  const geometry_msgs::msg::Pose & pose, const VehicleInfo & vehicle_info, const double left_margin,
-  const double right_margin)
-{
-  using autoware_utils_geometry::calc_offset_pose;
-  const double half_width = vehicle_info.vehicle_width_m / 2.0;
-  const auto point0 =
-    calc_offset_pose(pose, vehicle_info.max_longitudinal_offset_m, half_width + left_margin, 0.0)
-      .position;
-  const auto point1 =
-    calc_offset_pose(pose, vehicle_info.max_longitudinal_offset_m, -half_width - right_margin, 0.0)
-      .position;
-  const auto point2 =
-    calc_offset_pose(pose, -vehicle_info.rear_overhang_m, -half_width - right_margin, 0.0).position;
-  const auto point3 =
-    calc_offset_pose(pose, -vehicle_info.rear_overhang_m, half_width + left_margin, 0.0).position;
-
-  Polygon2d polygon;
-  boost::geometry::append(polygon, msg_to_2d(point0));
-  boost::geometry::append(polygon, msg_to_2d(point1));
-  boost::geometry::append(polygon, msg_to_2d(point2));
-  boost::geometry::append(polygon, msg_to_2d(point3));
-  boost::geometry::append(polygon, msg_to_2d(point0));
-
-  boost::geometry::correct(polygon);
-  return polygon;
-};
-
-}  // namespace
 
 std::optional<std::pair<geometry_msgs::msg::Point, double>> get_collision_point(
   const std::vector<TrajectoryPoint> & traj_points, const std::vector<Polygon2d> & traj_polygons,
