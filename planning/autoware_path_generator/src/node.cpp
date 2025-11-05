@@ -268,7 +268,7 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
   //  Extend lanelets by backward_length even outside planned route to ensure
   //  ego footprint is inside lanelets if ego is at the beginning of start lane
   auto backward_lanelets_length =
-    lanelet::utils::getLaneletLength2d(*backward_lanelets_within_route);
+    lanelet::geometry::length2d(lanelet::LaneletSequence(*backward_lanelets_within_route));
   while (backward_lanelets_length < backward_length) {
     const auto prev_lanelets = planner_data_.routing_graph_ptr->previous(lanelets.front());
     if (prev_lanelets.empty()) {
@@ -294,7 +294,8 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
 
   //  Extend lanelets by forward_length even outside planned route to ensure
   //  ego footprint is inside lanelets if ego is at the end of goal lane
-  auto forward_lanelets_length = lanelet::utils::getLaneletLength2d(*forward_lanelets_within_route);
+  auto forward_lanelets_length =
+    lanelet::geometry::length2d(lanelet::LaneletSequence(*forward_lanelets_within_route));
   while (forward_lanelets_length < forward_length) {
     const auto next_lanelets = planner_data_.routing_graph_ptr->following(lanelets.back());
     if (next_lanelets.empty()) {
@@ -309,7 +310,7 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
   auto s_end = s_ego + params.path_length.forward;
 
   if (!utils::get_next_lanelet_within_route(lanelets.back(), planner_data_)) {
-    s_end = std::min(s_end, lanelet::utils::getLaneletLength2d(lanelets));
+    s_end = std::min(s_end, lanelet::geometry::length2d(lanelet::LaneletSequence(lanelets)));
   }
 
   const auto s_intersection = utils::get_first_intersection_arc_length(
@@ -376,7 +377,7 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
         break;
       }
       extended_lanelets.insert(extended_lanelets.begin(), prev_lanelets.front());
-      extended_arc_length += lanelet::utils::getLaneletLength2d(prev_lanelets.front());
+      extended_arc_length += lanelet::geometry::length2d(prev_lanelets.front());
     }
   }
 

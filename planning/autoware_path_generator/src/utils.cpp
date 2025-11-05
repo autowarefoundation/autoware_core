@@ -103,7 +103,7 @@ std::optional<lanelet::ConstLanelets> get_lanelets_within_route_up_to(
 
     lanelets.push_back(*prev_lanelet);
     current_lanelet = *prev_lanelet;
-    length += lanelet::utils::getLaneletLength2d(*prev_lanelet);
+    length += lanelet::geometry::length2d(*prev_lanelet);
   }
 
   std::reverse(lanelets.begin(), lanelets.end());
@@ -129,7 +129,7 @@ std::optional<lanelet::ConstLanelets> get_lanelets_within_route_after(
 
     lanelets.push_back(*next_lanelet);
     current_lanelet = *next_lanelet;
-    length += lanelet::utils::getLaneletLength2d(*next_lanelet);
+    length += lanelet::geometry::length2d(*next_lanelet);
   }
 
   return lanelets;
@@ -743,7 +743,7 @@ PathRange<std::optional<double>> get_arc_length_on_centerline(
       break;
     }
 
-    const double centerline_length = lanelet::utils::getLaneletLength2d(*it);
+    const double centerline_length = lanelet::geometry::length2d(*it);
     const double left_bound_length = lanelet::geometry::length(it->leftBound2d());
     const double right_bound_length = lanelet::geometry::length(it->rightBound2d());
 
@@ -958,7 +958,7 @@ TurnIndicatorsCommand get_turn_signal(
         }
       }
 
-      const auto lanelet_length = lanelet::utils::getLaneletLength2d(lanelet);
+      const auto lanelet_length = lanelet::geometry::length2d(lanelet);
       if (arc_length_from_vehicle_front_to_lanelet_start) {
         *arc_length_from_vehicle_front_to_lanelet_start += lanelet_length;
       } else {
