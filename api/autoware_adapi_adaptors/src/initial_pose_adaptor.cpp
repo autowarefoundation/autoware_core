@@ -44,7 +44,8 @@ std::array<double, 36> get_covariance_parameter(rclcpp::Node * node, const std::
     if (vector.size() != 36) {
       RCLCPP_ERROR(
         node->get_logger(),
-        "The covariance parameter '%s' size is %zu, expected 36. Using default identity covariance.",
+        "The covariance parameter '%s' size is %zu, expected 36. Using default identity "
+        "covariance.",
         name.c_str(), vector.size());
       return get_default_covariance();
     }
@@ -53,9 +54,8 @@ std::array<double, 36> get_covariance_parameter(rclcpp::Node * node, const std::
     return array;
   } catch (const rclcpp::exceptions::ParameterNotDeclaredException & e) {
     RCLCPP_WARN(
-      node->get_logger(),
-      "Parameter '%s' not declared: %s. Using default identity covariance.", name.c_str(),
-      e.what());
+      node->get_logger(), "Parameter '%s' not declared: %s. Using default identity covariance.",
+      name.c_str(), e.what());
     return get_default_covariance();
   } catch (const std::exception & e) {
     RCLCPP_ERROR(
@@ -74,8 +74,8 @@ InitialPoseAdaptor::InitialPoseAdaptor(const rclcpp::NodeOptions & options)
       "~/initialpose", rclcpp::QoS(1),
       std::bind(&InitialPoseAdaptor::on_initial_pose, this, std::placeholders::_1));
 
-    cli_initialize_ = create_client<Initialize::Service>(
-      Initialize::name, AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE());
+    cli_initialize_ =
+      create_client<Initialize::Service>(Initialize::name, AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE());
 
     RCLCPP_INFO(get_logger(), "InitialPoseAdaptor initialized successfully");
   } catch (const std::exception & e) {

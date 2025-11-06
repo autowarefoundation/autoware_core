@@ -45,8 +45,7 @@ protected:
 TEST_F(InitialPoseAdaptorTest, InitializeWithValidParameter)
 {
   rclcpp::NodeOptions options;
-  options.append_parameter_override(
-    "initial_pose_particle_covariance", create_valid_covariance());
+  options.append_parameter_override("initial_pose_particle_covariance", create_valid_covariance());
 
   EXPECT_NO_THROW({
     auto node = std::make_shared<InitialPoseAdaptor>(options);
@@ -70,7 +69,8 @@ TEST_F(InitialPoseAdaptorTest, InitializeWithMissingParameter)
 TEST_F(InitialPoseAdaptorTest, InitializeWithWrongSizeParameterTooSmall)
 {
   rclcpp::NodeOptions options;
-  options.append_parameter_override("initial_pose_particle_covariance", create_invalid_covariance(10));
+  options.append_parameter_override(
+    "initial_pose_particle_covariance", create_invalid_covariance(10));
 
   EXPECT_NO_THROW({
     auto node = std::make_shared<InitialPoseAdaptor>(options);
@@ -82,7 +82,8 @@ TEST_F(InitialPoseAdaptorTest, InitializeWithWrongSizeParameterTooSmall)
 TEST_F(InitialPoseAdaptorTest, InitializeWithWrongSizeParameterTooLarge)
 {
   rclcpp::NodeOptions options;
-  options.append_parameter_override("initial_pose_particle_covariance", create_invalid_covariance(50));
+  options.append_parameter_override(
+    "initial_pose_particle_covariance", create_invalid_covariance(50));
 
   EXPECT_NO_THROW({
     auto node = std::make_shared<InitialPoseAdaptor>(options);
@@ -106,8 +107,7 @@ TEST_F(InitialPoseAdaptorTest, InitializeWithEmptyParameter)
 TEST_F(InitialPoseAdaptorTest, MultipleInitializationAttempts)
 {
   rclcpp::NodeOptions options;
-  options.append_parameter_override(
-    "initial_pose_particle_covariance", create_valid_covariance());
+  options.append_parameter_override("initial_pose_particle_covariance", create_valid_covariance());
 
   EXPECT_NO_THROW({
     auto node1 = std::make_shared<InitialPoseAdaptor>(options);
@@ -123,16 +123,15 @@ TEST_F(InitialPoseAdaptorTest, MultipleInitializationAttempts)
 TEST_F(InitialPoseAdaptorTest, CreateAndDestroyNode)
 {
   rclcpp::NodeOptions options;
-  options.append_parameter_override(
-    "initial_pose_particle_covariance", create_valid_covariance());
+  options.append_parameter_override("initial_pose_particle_covariance", create_valid_covariance());
 
   EXPECT_NO_THROW({
     {
       auto node = std::make_shared<InitialPoseAdaptor>(options);
       EXPECT_NE(node, nullptr);
-      // Node goes out of scope and should be destroyed cleanly
-    }
-  });
+  // Node goes out of scope and should be destroyed cleanly
+}
+});
 }
 
 // Test 8: Test with various invalid parameter sizes
@@ -148,7 +147,8 @@ TEST_F(InitialPoseAdaptorTest, InitializeWithVariousInvalidSizes)
     EXPECT_NO_THROW({
       auto node = std::make_shared<InitialPoseAdaptor>(options);
       EXPECT_NE(node, nullptr);
-    }) << "Failed with size: " << size;
+    }) << "Failed with size: "
+       << size;
   }
 }
 
