@@ -89,6 +89,9 @@ std::optional<geometry_msgs::msg::Point> checkCollision(
   };
 
   // check collision is outside the segment line
+  // Check if the computed intersection lies outside the segment boundaries.
+  // The tolerance helps to avoid jitter or inconsistent results for
+  // near-boundary cases caused by floating-point errors.
   if (is_outside_interval(t1) || is_outside_interval(t2)) {
     return std::nullopt;
   }
