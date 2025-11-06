@@ -63,7 +63,14 @@ std::optional<geometry_msgs::msg::Point> checkCollision(
   const geometry_msgs::msg::Point & p1, const geometry_msgs::msg::Point & p2,
   const geometry_msgs::msg::Point & p3, const geometry_msgs::msg::Point & p4)
 {
+  // Compute the determinant to check if the two lines are parallel.
+  // If det is close to zero, the lines are nearly parallel and there's
+  // no unique intersection point.
   const double det = (p2.x - p1.x) * (p4.y - p3.y) - (p2.y - p1.y) * (p4.x - p3.x);
+
+  // A small tolerance factor for geometric computations.
+  // Used to make the intersection detection more robust against
+  // floating-point precision errors and to handle borderline cases consistently.
   constexpr double geometric_epsilon = 1e-9;
 
   if (std::abs(det) < geometric_epsilon) {
