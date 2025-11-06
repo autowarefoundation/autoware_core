@@ -78,9 +78,20 @@ void LocalizationNode::on_initialize(
 {
   if (!cli_initialize_->service_is_ready()) {
     RCLCPP_ERROR(get_logger(), "Initialize service is not ready");
+    res->status.success = false;
+    res->status.code = autoware_adapi_v1_msgs::msg::ResponseStatus::SERVICE_UNREADY;
+    res->status.message = "Initialize service is not ready";
     return;
   }
-  res->status = localization_conversion::convert_call(cli_initialize_, req);
+
+  try {
+    res->status = localization_conversion::convert_call(cli_initialize_, req);
+  } catch (const std::exception & e) {
+    RCLCPP_ERROR(get_logger(), "Exception in initialize: %s", e.what());
+    res->status.success = false;
+    res->status.code = autoware_adapi_v1_msgs::msg::ResponseStatus::UNKNOWN;
+    res->status.message = std::string("Exception: ") + e.what();
+  }
 }
 
 }  // namespace autoware::default_adapi

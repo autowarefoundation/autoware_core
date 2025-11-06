@@ -21,4 +21,16 @@ rclcpp_components_register_node(${PROJECT_NAME}
   EXECUTOR SingleThreadedExecutor
 )
 
+if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
+
+  ament_auto_add_gtest(test_initial_pose_adaptor
+    test/test_initial_pose_adaptor.cpp
+  )
+
+  target_link_libraries(test_initial_pose_adaptor
+    ${PROJECT_NAME}
+  )
+endif()
+
 ament_auto_package(INSTALL_TO_SHARE config launch)

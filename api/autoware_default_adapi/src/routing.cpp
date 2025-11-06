@@ -217,6 +217,9 @@ void RoutingNode::on_clear_route(
 
   if (!cli_clear_route_->service_is_ready()) {
     RCLCPP_ERROR(get_logger(), "Clear route service is not ready");
+    res->status.success = false;
+    res->status.code = ResponseStatus::SERVICE_UNREADY;
+    res->status.message = "Clear route service is not ready";
     return;
   }
   res->status = conversion::convert_call(cli_clear_route_, req);
@@ -232,6 +235,9 @@ void RoutingNode::on_set_route_points(
   }
   if (!cli_set_waypoint_route_->service_is_ready()) {
     RCLCPP_ERROR(get_logger(), "Set waypoint route service is not ready");
+    res->status.success = false;
+    res->status.code = ResponseStatus::SERVICE_UNREADY;
+    res->status.message = "Set waypoint route service is not ready";
     return;
   }
   res->status = conversion::convert_call(cli_set_waypoint_route_, req);
@@ -247,6 +253,9 @@ void RoutingNode::on_set_route(
   }
   if (!cli_set_lanelet_route_->service_is_ready()) {
     RCLCPP_ERROR(get_logger(), "Set lanelet route service is not ready");
+    res->status.success = false;
+    res->status.code = ResponseStatus::SERVICE_UNREADY;
+    res->status.message = "Set lanelet route service is not ready";
     return;
   }
   res->status = conversion::convert_call(cli_set_lanelet_route_, req);
@@ -262,6 +271,9 @@ void RoutingNode::on_change_route_points(
   }
   if (!cli_set_waypoint_route_->service_is_ready()) {
     RCLCPP_ERROR(get_logger(), "Set waypoint route service is not ready");
+    res->status.success = false;
+    res->status.code = ResponseStatus::SERVICE_UNREADY;
+    res->status.message = "Set waypoint route service is not ready";
     return;
   }
   res->status = conversion::convert_call(cli_set_waypoint_route_, req);
@@ -277,6 +289,9 @@ void RoutingNode::on_change_route(
   }
   if (!cli_set_lanelet_route_->service_is_ready()) {
     RCLCPP_ERROR(get_logger(), "Set lanelet route service is not ready");
+    res->status.success = false;
+    res->status.code = ResponseStatus::SERVICE_UNREADY;
+    res->status.message = "Set lanelet route service is not ready";
     return;
   }
   res->status = conversion::convert_call(cli_set_lanelet_route_, req);

@@ -36,8 +36,48 @@ ExternalResponse convert_response(const InternalResponse & internal);
 template <class ClientT, class RequestT>
 ExternalResponse convert_call(ClientT & client, RequestT & req)
 {
-  auto future = client->async_send_request(convert_request(req));
-  return convert_response(future.get()->status);
+  try {
+    auto future = client->async_send_request(convert_request(req));
+
+    // Wait with timeout (5 seconds) to prevent indefinite blocking
+    const auto timeout = std::chrono::seconds(5);
+    const auto status = future.wait_for(timeout);
+
+    if (status == std::future_status::timeout) {
+      ExternalResponse response;
+      response.success = false;
+      response.code = autoware_adapi_v1_msgs::msg::ResponseStatus::SERVICE_TIMEOUT;
+      response.message = "Service call timed out after 5 seconds";
+      return response;
+    }
+
+    if (status == std::future_status::ready) {
+      auto result = future.get();
+      if (result) {
+        return convert_response(result->status);
+      } else {
+        ExternalResponse response;
+        response.success = false;
+        response.code = autoware_adapi_v1_msgs::msg::ResponseStatus::SERVICE_UNREADY;
+        response.message = "Service returned null response";
+        return response;
+      }
+    }
+
+    // Handle deferred status (should not occur with async_send_request)
+    ExternalResponse response;
+    response.success = false;
+    response.code = autoware_adapi_v1_msgs::msg::ResponseStatus::UNKNOWN;
+    response.message = "Unknown future status";
+    return response;
+
+  } catch (const std::exception & e) {
+    ExternalResponse response;
+    response.success = false;
+    response.code = autoware_adapi_v1_msgs::msg::ResponseStatus::UNKNOWN;
+    response.message = std::string("Exception in service call: ") + e.what();
+    return response;
+  }
 }
 
 }  // namespace autoware::default_adapi::localization_conversion
