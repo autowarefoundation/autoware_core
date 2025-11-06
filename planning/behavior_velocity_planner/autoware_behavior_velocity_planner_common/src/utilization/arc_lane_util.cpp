@@ -74,7 +74,7 @@ std::optional<geometry_msgs::msg::Point> checkCollision(
   constexpr double geometric_epsilon = 1e-9;
 
   if (std::abs(det) < geometric_epsilon) {
-    // collision is not one point.
+    // Lines are nearly parallel — treat this as no single intersection point.
     return std::nullopt;
   }
 
