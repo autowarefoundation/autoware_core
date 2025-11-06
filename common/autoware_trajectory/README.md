@@ -228,6 +228,14 @@ Each derived class in the diagram inherits the methods of all of its descending 
 | <ul><li>`build_path_polygon`</li></ul>    | A utility function that creates the polygon along the trajectory with designated width from specified start arc-length `start_s` to end arc-length `end_s`.                                             | ![build_path_polygon](./images/utils/build_path_polygon.drawio.svg)[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/build_path_polygon.drawio.svg") }})          |
 | <ul><li>`build_path_footprints`</li></ul> | A utility function that creates a trace of footprints (`vector<Polygon2d>`) along the trajectory with the size of input footprint from specified start arc-length `start_s` to end arc-length `end_s` . | ![build_path_footprints](./images/utils/build_path_footprints.drawio.svg)[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/build_path_footprints.drawio.svg") }}) |
 
+**`<autoware/trajectory/utils/crossed.hpp>`**
+
+| Function                                    | Description                                                                                                                | Detail |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------ |
+| <ul><li>`crossed_with_constraint`</li></ul> | A utility function that finds intersections between a trajectory and a linestring where the given constraint is satisfied. |        |
+| <ul><li>`crossed`</li></ul>                 | A utility function that finds intersections between a trajectory and a linestring regardless of constraint.                |        |
+| <ul><li>`crossed_with_polygon`</li></ul>    | A utility funcion that finds intersections between a trajectory and a polygon                                              |        |
+
 #### Derivation of `shift`
 
 `shift` function laterally offsets given curve by $l(s)$ in normal direction at each point following the lateral time-jerk profile as shown bellow.
