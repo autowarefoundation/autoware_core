@@ -28,6 +28,8 @@
 #include <autoware_planning_msgs/srv/set_lanelet_route.hpp>
 #include <autoware_planning_msgs/srv/set_waypoint_route.hpp>
 
+#include <string>
+
 namespace autoware::default_adapi::conversion
 {
 
@@ -93,7 +95,6 @@ ExternalResponse convert_call(ClientT & client, RequestT & req)
     response.code = autoware_adapi_v1_msgs::msg::ResponseStatus::UNKNOWN;
     response.message = "Unknown future status";
     return response;
-
   } catch (const std::exception & e) {
     ExternalResponse response;
     response.success = false;

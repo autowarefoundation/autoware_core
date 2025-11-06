@@ -19,6 +19,8 @@
 #include <autoware/component_interface_specs/utils.hpp>
 #include <autoware/qos_utils/qos_compatibility.hpp>
 
+#include <string>
+
 namespace autoware::default_adapi
 {
 

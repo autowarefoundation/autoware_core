@@ -20,6 +20,8 @@
 #include <autoware_adapi_v1_msgs/srv/initialize_localization.hpp>
 #include <autoware_localization_msgs/srv/initialize_localization.hpp>
 
+#include <string>
+
 namespace autoware::default_adapi::localization_conversion
 {
 
@@ -70,7 +72,6 @@ ExternalResponse convert_call(ClientT & client, RequestT & req)
     response.code = autoware_adapi_v1_msgs::msg::ResponseStatus::UNKNOWN;
     response.message = "Unknown future status";
     return response;
-
   } catch (const std::exception & e) {
     ExternalResponse response;
     response.success = false;
