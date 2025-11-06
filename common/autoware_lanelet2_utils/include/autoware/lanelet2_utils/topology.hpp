@@ -115,6 +115,14 @@ lanelet::ConstLanelets sibling_lanelets(
  */
 lanelet::ConstLanelets from_ids(
   const lanelet::LaneletMapConstPtr lanelet_map, const std::vector<lanelet::Id> & ids);
+
+/**
+ * @brief get ConstLanelets that has conflict with lanelet in routing graph
+ * @param [in] graph routing_graph containing `lanelet`
+ * @param [in] lanelet input lanelet
+ */
+lanelet::ConstLanelets get_conflicting_lanelets(
+  const lanelet::routing::RoutingGraphConstPtr & graph, const lanelet::ConstLanelet & lanelet);
 }  // namespace autoware::experimental::lanelet2_utils
 
 #endif  // AUTOWARE__LANELET2_UTILS__TOPOLOGY_HPP_
