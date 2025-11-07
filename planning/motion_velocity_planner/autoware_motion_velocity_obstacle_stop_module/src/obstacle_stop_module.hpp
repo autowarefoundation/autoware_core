@@ -118,7 +118,6 @@ private:
   // crossing lanes.
   std::optional<std::pair<std::vector<TrajectoryPoint>, double>> prev_stop_distance_info_{
     std::nullopt};
-  autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_{};
   mutable std::map<PolygonParam, DetectionPolygon> trajectory_polygon_for_inside_map_{};
   mutable std::optional<std::vector<Polygon2d>> decimated_traj_polys_{std::nullopt};
   mutable std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper_{};
