@@ -4,8 +4,6 @@ project(autoware_lanelet2_utils)
 find_package(autoware_cmake REQUIRED)
 autoware_package()
 
-find_package(yaml-cpp REQUIRED)
-
 ament_auto_add_library(${PROJECT_NAME} SHARED
   src/kind.cpp
   src/topology.cpp
@@ -23,6 +21,7 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
 if(BUILD_TESTING)
   find_package(ament_cmake_ros REQUIRED)
   find_package(autoware_test_utils REQUIRED)
+  find_package(yaml-cpp REQUIRED)
   ament_auto_find_test_dependencies()
 
   set(test_files
