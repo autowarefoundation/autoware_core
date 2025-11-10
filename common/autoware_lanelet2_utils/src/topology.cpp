@@ -158,4 +158,20 @@ lanelet::ConstLanelets from_ids(
          }) |
          ranges::to<std::vector>();
 }
+
+lanelet::ConstLanelets get_conflicting_lanelets(
+  const lanelet::ConstLanelet & lanelet, const lanelet::routing::RoutingGraphConstPtr & graph)
+{
+  const auto & llt_or_areas = graph->conflicting(lanelet);
+  lanelet::ConstLanelets lanelets;
+  lanelets.reserve(llt_or_areas.size());
+  for (const auto & l_or_a : llt_or_areas) {
+    auto llt_opt = l_or_a.lanelet();
+    if (!!llt_opt) {
+      lanelets.push_back(llt_opt.get());
+    }
+  }
+  return lanelets;
+}
+
 }  // namespace autoware::experimental::lanelet2_utils
