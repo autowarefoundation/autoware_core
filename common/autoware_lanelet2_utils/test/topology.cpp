@@ -224,7 +224,7 @@ TEST_F(TestWithIntersectionCrossingInverseMap, left_opposite_lanelet_null)
 TEST_F(TestWithIntersectionCrossingMap, empty_conflicting_lanelet)
 {
   const auto conflicting_lanelets = lanelet2_utils::get_conflicting_lanelets(
-    routing_graph_ptr_, lanelet_map_ptr_->laneletLayer.get(2312));
+    lanelet_map_ptr_->laneletLayer.get(2312), routing_graph_ptr_);
 
   ASSERT_EQ(conflicting_lanelets.size(), 0) << "Conflicting lanelets should be empty";
 }
@@ -232,7 +232,7 @@ TEST_F(TestWithIntersectionCrossingMap, empty_conflicting_lanelet)
 TEST_F(TestWithIntersectionCrossingMap, ordinary_conflicting_lanelet)
 {
   const auto conflicting_lanelets = lanelet2_utils::get_conflicting_lanelets(
-    routing_graph_ptr_, lanelet_map_ptr_->laneletLayer.get(2270));
+    lanelet_map_ptr_->laneletLayer.get(2270), routing_graph_ptr_);
 
   ASSERT_EQ(conflicting_lanelets.size(), 3) << "Size of the conflicting_lanelet doesn't match";
 

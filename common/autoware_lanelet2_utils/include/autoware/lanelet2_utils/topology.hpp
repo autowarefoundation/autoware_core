@@ -122,7 +122,7 @@ lanelet::ConstLanelets from_ids(
  * @param [in] lanelet input lanelet
  */
 lanelet::ConstLanelets get_conflicting_lanelets(
-  const lanelet::routing::RoutingGraphConstPtr & graph, const lanelet::ConstLanelet & lanelet);
+  const lanelet::ConstLanelet & lanelet, const lanelet::routing::RoutingGraphConstPtr & graph);
 }  // namespace autoware::experimental::lanelet2_utils
 
 #endif  // AUTOWARE__LANELET2_UTILS__TOPOLOGY_HPP_

@@ -160,7 +160,7 @@ lanelet::ConstLanelets from_ids(
 }
 
 lanelet::ConstLanelets get_conflicting_lanelets(
-  const lanelet::routing::RoutingGraphConstPtr & graph, const lanelet::ConstLanelet & lanelet)
+  const lanelet::ConstLanelet & lanelet, const lanelet::routing::RoutingGraphConstPtr & graph)
 {
   const auto & llt_or_areas = graph->conflicting(lanelet);
   lanelet::ConstLanelets lanelets;
