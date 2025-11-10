@@ -7286,16 +7286,26 @@
 </tr>
 <tr>
 <td><ul><li><code>crossed</code></li></ul></td>
-<td>A utility function that finds intersections between a trajectory and a linestring regardless of constraint.</td>
-<td></td>
+<td>A utility function that finds intersections between a trajectory and a linestring regardless of constraint. post-condition: the output is sorted in ascending order along the trajectory</td>
+<td><img alt="crossed_linestring" src="images/utils/crossed_linestring.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-705%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Fcrossed_linestring.drawio.svg">View in Drawio</a></td>
 </tr>
 <tr>
 <td><ul><li><code>crossed_with_polygon</code></li></ul></td>
-<td>A utility funcion that finds intersections between a trajectory and a polygon</td>
-<td></td>
+<td>A utility funcion that finds intersections between a trajectory and a polygon post-condition: the output is sorted in ascending order along the trajectory</td>
+<td><img alt="crossed_polygon" src="images/utils/crossed_polygon.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-705%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Fcrossed_polygon.drawio.svg">View in Drawio</a></td>
 </tr>
 </tbody>
 </table>
+<p><strong><code>crossed</code> usage example</strong></p>
+<div class="highlight"><span class="filename">./examples/example_crossed.cpp:184:185</span><pre><span></span><code><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">LineString2d</span><span class="w"> </span><span class="n">line</span><span class="p">{</span><span class="n">Point2d</span><span class="p">{</span><span class="mf">4.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">},</span><span class="w"> </span><span class="n">Point2d</span><span class="p">{</span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">4.0</span><span class="p">}};</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">crossed_line</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autoware</span><span class="o">::</span><span class="n">experimental</span><span class="o">::</span><span class="n">trajectory</span><span class="o">::</span><span class="n">crossed</span><span class="p">(</span><span class="n">traj</span><span class="p">,</span><span class="w"> </span><span class="n">line</span><span class="p">);</span>
+</code></pre></div>
+<div class="highlight"><span class="filename">./examples/example_crossed.cpp:223:227</span><pre><span></span><code><span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Point2d</span><span class="o">&gt;</span><span class="w"> </span><span class="n">open_polygon</span><span class="p">{</span>
+<span class="w">    </span><span class="n">Point2d</span><span class="p">{</span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">},</span><span class="w"> </span><span class="n">Point2d</span><span class="p">{</span><span class="mf">3.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">},</span><span class="w"> </span><span class="n">Point2d</span><span class="p">{</span><span class="mf">3.0</span><span class="p">,</span><span class="w"> </span><span class="mf">3.0</span><span class="p">},</span><span class="w"> </span><span class="n">Point2d</span><span class="p">{</span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">3.0</span><span class="p">}};</span>
+<span class="w">  </span><span class="p">{</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">crossed_line</span><span class="w"> </span><span class="o">=</span>
+<span class="w">      </span><span class="n">autoware</span><span class="o">::</span><span class="n">experimental</span><span class="o">::</span><span class="n">trajectory</span><span class="o">::</span><span class="n">crossed_with_polygon</span><span class="p">(</span><span class="n">traj</span><span class="p">,</span><span class="w"> </span><span class="n">open_polygon</span><span class="p">);</span>
+</code></pre></div>
 <h4 id="derivation-of-shift">Derivation of <code>shift</code><a class="headerlink" href="#derivation-of-shift" title="Permanent link">#</a></h4>
 <p><code>shift</code> function laterally offsets given curve by <span class="arithmatex">\(l(s)\)</span> in normal direction at each point following the lateral time-jerk profile as shown bellow.</p>
 <p><img alt="jerk_profile" src="images/utils/shift/path_shifter.png"></p>
