@@ -23,6 +23,7 @@
 #include <pybind11/embed.h>
 #include <pybind11/stl.h>
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -59,6 +60,35 @@ static void plot_trajectory(
   std::string label = traj_name + " Trajectory";
 
   ax.plot(Args(x_all, y_all), Kwargs("color"_a = "black", "label"_a = label));
+}
+
+template <class TrajectoryPointType>
+static void plot_traj_with_orientation(
+  autoware::pyplot::Axes & ax, const Trajectory<TrajectoryPointType> & traj)
+{
+  const auto s = traj.get_underlying_bases();
+  const auto C = s | transform([&](const double s) { return traj.compute(s); }) | to<std::vector>();
+  const auto Cx =
+    C | transform([&](const auto & p) { return autoware_utils_geometry::get_pose(p).position.x; }) |
+    to<std::vector>();
+  const auto Cy =
+    C | transform([&](const auto & p) { return autoware_utils_geometry::get_pose(p).position.y; }) |
+    to<std::vector>();
+  const auto yaw = s | transform([&](const double s) {
+                     return autoware_utils_geometry::get_rpy(
+                              autoware_utils_geometry::get_pose(traj.compute(s)).orientation)
+                       .z;
+                   }) |
+                   to<std::vector>();
+  const auto cos_yaw =
+    yaw | transform([&](const double s) { return std::cos(s); }) | to<std::vector>();
+  const auto sin_yaw =
+    yaw | transform([&](const double s) { return std::sin(s); }) | to<std::vector>();
+  ax.quiver(
+    Args(Cx, Cy, cos_yaw, sin_yaw),
+    Kwargs(
+      "color"_a = "orange", "scale"_a = 1.5, "width"_a = 0.01, "angles"_a = "xy",
+      "scale_units"_a = "xy", "label"_a = "orientation", "alpha"_a = 1));
 }
 
 static void plot_linestring(
@@ -100,7 +130,7 @@ static void plot_polygon(autoware::pyplot::Axes & ax, const std::vector<Point2d>
     x_all.push_back(point.x());
     y_all.push_back(point.y());
   }
-  ax.plot(Args(x_all, y_all), Kwargs("color"_a = "grey", "label"_a = "Path Polygon"));
+  ax.plot(Args(x_all, y_all), Kwargs("color"_a = "grey", "label"_a = "Given Polygon"));
   ax.fill(
     Args(x_all, y_all),
     Kwargs("color"_a = "skyblue", "alpha"_a = 0.4, "edgecolor"_a = "blue", "linewidth"_a = 2));
@@ -141,13 +171,15 @@ static Trajectory<PathPointWithLaneId> build_trajectory()
 void linestring()
 {
   auto plt = autoware::pyplot::import();
-  auto [fig, axes] = plt.subplots(1, 1);
+  auto [fig, axes] = plt.subplots(1, 1, Kwargs("figsize"_a = std::make_tuple(8, 8)));
   auto ax = axes[0];
 
   // Build Trajectory
   auto traj = build_trajectory();
-  plot_trajectory(ax, traj, "Line");
+  traj.align_orientation_with_trajectory_direction();
 
+  plot_trajectory(ax, traj, "Line");
+  plot_traj_with_orientation(ax, traj);
   {
     const LineString2d line{Point2d{4.0, 0.0}, Point2d{0.0, 4.0}};
     const auto crossed_line = autoware::experimental::trajectory::crossed(traj, line);
@@ -178,12 +210,15 @@ void linestring()
 void polygon()
 {
   auto plt = autoware::pyplot::import();
-  auto [fig, axes] = plt.subplots(1, 1);
+  auto [fig, axes] = plt.subplots(1, 1, Kwargs("figsize"_a = std::make_tuple(8, 8)));
   auto ax = axes[0];
 
   // Build Trajectory
   auto traj = build_trajectory();
+  traj.align_orientation_with_trajectory_direction();
+
   plot_trajectory(ax, traj, "Line");
+  plot_traj_with_orientation(ax, traj);
 
   const std::vector<Point2d> open_polygon{
     Point2d{1.0, 1.0}, Point2d{3.0, 1.0}, Point2d{3.0, 3.0}, Point2d{1.0, 3.0}};
@@ -191,10 +226,13 @@ void polygon()
     const auto crossed_line =
       autoware::experimental::trajectory::crossed_with_polygon(traj, open_polygon);
     plot_polygon(ax, open_polygon);
-    plot_intersection(ax, traj, crossed_line, "red", "Intersection");
+    plot_intersection(
+      ax, traj, crossed_line, "red", "Whole line check $ \\rightarrow $ has two Intersections");
   }
   std::vector<double> range = {2.0 * std::sqrt(2.0) - 0.5, 2.0 * std::sqrt(2.0) + 0.5};
-  plot_intersection(ax, traj, range, "blue", "Start-End Point -> no Intersection");
+  plot_intersection(
+    ax, traj, range, "blue",
+    "Check from $ s=\\sqrt{2.0} - 0.5 $ to $ s=\\sqrt{2.0} + 0.5 \\rightarrow $ no Intersection");
 
   ax.set_title(Args("Cross Polygon"), Kwargs("fontsize"_a = 16));
 
