@@ -91,10 +91,10 @@ public:
 
   void resize(const size_t size)
   {
-    a_.resize(size-1);
-    b_.resize(size-1);
-    c_.resize(size-1);
-    d_.resize(size-1);
+    a_.resize(size - 1);
+    b_.resize(size - 1);
+    c_.resize(size - 1);
+    d_.resize(size - 1);
 
     base_keys_.resize(size);
   }
