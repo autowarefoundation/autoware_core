@@ -230,11 +230,11 @@ Each derived class in the diagram inherits the methods of all of its descending 
 
 **`<autoware/trajectory/utils/crossed.hpp>`**
 
-| Function                                    | Description                                                                                                                | Detail |
-| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------ |
-| <ul><li>`crossed_with_constraint`</li></ul> | A utility function that finds intersections between a trajectory and a linestring where the given constraint is satisfied. |        |
-| <ul><li>`crossed`</li></ul>                 | A utility function that finds intersections between a trajectory and a linestring regardless of constraint.                |        |
-| <ul><li>`crossed_with_polygon`</li></ul>    | A utility funcion that finds intersections between a trajectory and a polygon                                              |        |
+| Function                                    | Description                                                                                                                | Detail                                                                                                                                                                      |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| <ul><li>`crossed_with_constraint`</li></ul> | A utility function that finds intersections between a trajectory and a linestring where the given constraint is satisfied. |                                                                                                                                                                             |
+| <ul><li>`crossed`</li></ul>                 | A utility function that finds intersections between a trajectory and a linestring regardless of constraint.                | ![crossed_linestring](./images/utils/crossed_linestring.drawio.svg)[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/crossed_linestring.drawio.svg") }}) |
+| <ul><li>`crossed_with_polygon`</li></ul>    | A utility funcion that finds intersections between a trajectory and a polygon                                              | ![crossed_polygon](./images/utils/crossed_polygon.drawio.svg)[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/crossed_polygon.drawio.svg") }})          |
 
 #### Derivation of `shift`
 
