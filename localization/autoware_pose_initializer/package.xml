@@ -19,6 +19,7 @@
   <depend>autoware_component_interface_specs</depend>
   <depend>autoware_map_height_fitter</depend>
   <depend>autoware_motion_utils</depend>
+  <depend>autoware_qos_utils</depend>
   <depend>autoware_utils_diagnostics</depend>
   <depend>autoware_utils_logging</depend>
   <depend>geometry_msgs</depend>

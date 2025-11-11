@@ -17,6 +17,7 @@
   <depend>autoware_internal_localization_msgs</depend>
   <depend>autoware_lanelet2_extension</depend>
   <depend>autoware_map_msgs</depend>
+  <depend>autoware_qos_utils</depend>
   <depend>geometry_msgs</depend>
   <depend>libpcl-common</depend>
   <depend>pcl_conversions</depend>
