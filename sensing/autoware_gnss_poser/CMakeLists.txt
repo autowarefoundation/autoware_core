@@ -30,7 +30,7 @@ if(BUILD_TESTING)
   target_link_libraries(test_${PROJECT_NAME} gnss_poser_node)
 endif()
 
-ament_auto_package(INSTALL_TO_SHARE
+autoware_ament_auto_package(INSTALL_TO_SHARE
   config
   launch
 )

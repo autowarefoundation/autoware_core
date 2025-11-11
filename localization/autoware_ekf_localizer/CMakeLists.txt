@@ -75,7 +75,7 @@ endif()
 #   ament_target_dependencies(ekf_localizer-test geometry_msgs rclcpp tf2 tf2_ros)
 # endif()
 
-ament_auto_package(
+autoware_ament_auto_package(
   INSTALL_TO_SHARE
   config
   launch

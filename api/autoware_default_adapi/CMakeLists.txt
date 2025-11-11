@@ -22,4 +22,4 @@ if(BUILD_TESTING)
   add_launch_test(test/main.test.py)
 endif()
 
-ament_auto_package(INSTALL_TO_SHARE config launch test)
+autoware_ament_auto_package(INSTALL_TO_SHARE config launch test)

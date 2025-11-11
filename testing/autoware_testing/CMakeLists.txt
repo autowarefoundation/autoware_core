@@ -8,6 +8,6 @@ list(APPEND ${PROJECT_NAME}_CONFIG_EXTRAS
   "autoware_testing-extras.cmake"
 )
 
-ament_auto_package(
+autoware_ament_auto_package(
   INSTALL_TO_SHARE cmake autoware_testing
 )

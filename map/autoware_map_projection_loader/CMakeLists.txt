@@ -56,7 +56,7 @@ if(BUILD_TESTING)
   add_testcase(test/test_load_info_from_lanelet2_map.cpp)
 endif()
 
-ament_auto_package(
+autoware_ament_auto_package(
   INSTALL_TO_SHARE
   launch
   config

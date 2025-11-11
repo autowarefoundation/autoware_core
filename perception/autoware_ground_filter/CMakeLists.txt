@@ -34,7 +34,7 @@ rclcpp_components_register_node(${PROJECT_NAME}
   PLUGIN "autoware::ground_filter::GroundFilterComponent"
   EXECUTABLE ground_filter_node)
 
-ament_auto_package(INSTALL_TO_SHARE
+autoware_ament_auto_package(INSTALL_TO_SHARE
   launch
   config
 )

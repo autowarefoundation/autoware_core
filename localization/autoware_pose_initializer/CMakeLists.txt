@@ -35,7 +35,7 @@ if(BUILD_TESTING)
   add_testcase(test/test_copy_vector_to_array.cpp)
 endif()
 
-ament_auto_package(
+autoware_ament_auto_package(
   INSTALL_TO_SHARE
   launch
   config
