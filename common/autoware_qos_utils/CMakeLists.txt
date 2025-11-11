@@ -12,4 +12,4 @@ install(
   DESTINATION include
 )
 
-ament_auto_package(INSTALL_TO_SHARE)
+autoware_ament_auto_package(INSTALL_TO_SHARE)

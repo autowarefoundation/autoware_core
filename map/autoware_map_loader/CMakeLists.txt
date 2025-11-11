@@ -71,7 +71,7 @@ install(PROGRAMS
   DESTINATION lib/${PROJECT_NAME}
 )
 
-ament_auto_package(INSTALL_TO_SHARE
+autoware_ament_auto_package(INSTALL_TO_SHARE
   launch
   config
 )

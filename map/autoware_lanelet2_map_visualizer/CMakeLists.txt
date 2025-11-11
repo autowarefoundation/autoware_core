@@ -40,6 +40,6 @@ if(BUILD_TESTING)
   )
 endif()
 
-ament_auto_package(INSTALL_TO_SHARE
+autoware_ament_auto_package(INSTALL_TO_SHARE
   launch
 )
