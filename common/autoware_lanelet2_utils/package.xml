@@ -27,6 +27,7 @@
   <test_depend>autoware_pyplot</test_depend>
   <test_depend>autoware_test_utils</test_depend>
   <test_depend>rclpy_message_converter</test_depend>
+  <test_depend>yaml-cpp</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

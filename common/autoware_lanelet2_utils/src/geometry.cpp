@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/lanelet2_utils/geometry.hpp>
+#include <autoware_utils_geometry/geometry.hpp>
 #include <range/v3/all.hpp>
 
 #include <geometry_msgs/msg/point.hpp>
@@ -111,10 +113,10 @@ std::optional<lanelet::CompoundLineString3d> concatenate_center_line(
   return merged_sequence.centerline();
 }
 
-std::optional<lanelet::LineString3d> get_linestring_from_arc_length(
+std::optional<lanelet::ConstLineString3d> get_linestring_from_arc_length(
   const lanelet::ConstLineString3d & linestring, const double s1, const double s2)
 {
-  lanelet::Points3d points;
+  lanelet::ConstPoints3d points;
   double accumulated_length = 0;
   size_t start_index = linestring.size();
   if (linestring.size() < 2) {
@@ -176,7 +178,7 @@ std::optional<lanelet::LineString3d> get_linestring_from_arc_length(
 
     points.emplace_back(lanelet::InvalId, end_point.value());
   }
-  return lanelet::LineString3d{lanelet::InvalId, points};
+  return create_safe_linestring(points);
 }
 
 std::optional<geometry_msgs::msg::Pose> get_pose_from_2d_arc_length(
@@ -247,6 +249,35 @@ double get_lanelet_angle(
   lanelet::ConstLineString3d segment = get_closest_segment(lanelet.centerline(), search_pt);
   return std::atan2(
     segment.back().y() - segment.front().y(), segment.back().x() - segment.front().x());
+}
+
+geometry_msgs::msg::Pose get_closest_center_pose(
+  const lanelet::ConstLanelet & lanelet, const lanelet::BasicPoint3d & search_pt)
+{
+  lanelet::ConstLineString3d segment = get_closest_segment(lanelet.centerline(), search_pt);
+  if (segment.empty()) {
+    geometry_msgs::msg::Pose closest_pose;
+    closest_pose.position = to_ros(lanelet.centerline().front(), search_pt.z());
+    closest_pose.orientation.x = 0.0;
+    closest_pose.orientation.y = 0.0;
+    closest_pose.orientation.z = 0.0;
+    closest_pose.orientation.w = 1.0;
+    return closest_pose;
+  }
+
+  const Eigen::Vector2d direction(
+    (segment.back().basicPoint2d() - segment.front().basicPoint2d()).normalized());
+  const Eigen::Vector2d xf(segment.front().basicPoint2d());
+  const Eigen::Vector2d x(search_pt.x(), search_pt.y());
+  const Eigen::Vector2d p = xf + (x - xf).dot(direction) * direction;
+
+  geometry_msgs::msg::Pose closest_pose;
+  closest_pose.position = to_ros(p, search_pt.z());
+
+  const double lane_yaw = get_lanelet_angle(lanelet, search_pt);
+  closest_pose.orientation = autoware_utils_geometry::create_quaternion_from_yaw(lane_yaw);
+
+  return closest_pose;
 }
 
 }  // namespace autoware::experimental::lanelet2_utils
