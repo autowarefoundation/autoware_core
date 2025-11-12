@@ -18,6 +18,7 @@
 #include "planner_manager.hpp"
 
 #include <autoware/motion_velocity_planner_common/planner_data.hpp>
+#include <autoware_utils_debug/debug_publisher.hpp>
 #include <autoware_utils_debug/published_time_publisher.hpp>
 #include <autoware_utils_logging/logger_level_configure.hpp>
 #include <autoware_utils_rclcpp/polling_subscriber.hpp>
@@ -102,8 +103,7 @@ private:
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr debug_processed_pointcloud_pub_;
   autoware_utils_debug::ProcessingTimePublisher processing_diag_publisher_{
     this, "~/debug/processing_time_ms_diag"};
-  rclcpp::Publisher<autoware_internal_debug_msgs::msg::Float64Stamped>::SharedPtr
-    processing_time_publisher_;
+  std::shared_ptr<autoware_utils_debug::DebugPublisher> processing_time_publisher_;
   autoware_utils_debug::PublishedTimePublisher published_time_publisher_{this};
 
   //  parameters

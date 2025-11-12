@@ -25,6 +25,7 @@
 #include <tf2/time.hpp>
 #include <tf2_eigen/tf2_eigen.hpp>
 
+#include <autoware_internal_debug_msgs/msg/float64_stamped.hpp>
 #include <autoware_planning_msgs/msg/trajectory_point.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
 
@@ -88,8 +89,7 @@ MotionVelocityPlannerNode::MotionVelocityPlannerNode(const rclcpp::NodeOptions &
   clear_velocity_limit_pub_ = this->create_publisher<VelocityLimitClearCommand>(
     "~/output/clear_velocity_limit", rclcpp::QoS{1}.transient_local());
   processing_time_publisher_ =
-    this->create_publisher<autoware_internal_debug_msgs::msg::Float64Stamped>(
-      "~/debug/processing_time_ms", 1);
+    std::make_shared<autoware_utils_debug::DebugPublisher>(this, "~/debug");
   debug_viz_pub_ =
     this->create_publisher<visualization_msgs::msg::MarkerArray>("~/debug/markers", 1);
   debug_processed_pointcloud_pub_ =
@@ -352,10 +352,12 @@ void MotionVelocityPlannerNode::on_trajectory(
     trajectory_pub_, output_trajectory_msg.header.stamp);
   processing_times["Total"] = stop_watch.toc("Total");
   processing_diag_publisher_.publish(processing_times);
-  autoware_internal_debug_msgs::msg::Float64Stamped processing_time_msg;
-  processing_time_msg.stamp = get_clock()->now();
-  processing_time_msg.data = processing_times["Total"];
-  processing_time_publisher_->publish(processing_time_msg);
+
+  processing_time_publisher_->publish<autoware_internal_debug_msgs::msg::Float64Stamped>(
+    "processing_time_ms", processing_times["Total"]);
+  processing_time_publisher_->publish<autoware_internal_debug_msgs::msg::Float64Stamped>(
+    "mvp_common/processing_time_ms",
+    processing_times["Total"] - processing_times["plan_velocities"]);
 }
 
 void MotionVelocityPlannerNode::insert_stop(
@@ -474,7 +476,8 @@ autoware_planning_msgs::msg::Trajectory MotionVelocityPlannerNode::generate_traj
   processing_times["calculate_time_from_start"] = stop_watch.toc("calculate_time_from_start");
   stop_watch.tic("plan_velocities");
   const auto planning_results = planner_manager_.plan_velocities(
-    input_trajectory_points, resampled_smoothed_trajectory_points, planner_data_);
+    input_trajectory_points, resampled_smoothed_trajectory_points, planner_data_,
+    processing_time_publisher_);
   processing_times["plan_velocities"] = stop_watch.toc("plan_velocities");
 
   for (const auto & planning_result : planning_results) {

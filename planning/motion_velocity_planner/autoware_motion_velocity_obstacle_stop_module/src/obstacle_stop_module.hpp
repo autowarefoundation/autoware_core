@@ -63,6 +63,7 @@ public:
   void publish_planning_factor() override { planning_factor_interface_->publish(); };
   void update_parameters(const std::vector<rclcpp::Parameter> & parameters) override;
   std::string get_module_name() const override { return module_name_; }
+  std::string get_short_module_name() const override { return "obstacle_stop"; }
 
   VelocityPlanningResult plan(
     const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & raw_trajectory_points,
