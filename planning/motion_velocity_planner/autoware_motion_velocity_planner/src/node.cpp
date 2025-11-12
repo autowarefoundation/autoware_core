@@ -177,8 +177,11 @@ bool MotionVelocityPlannerNode::update_planner_data(
   if (check_with_log(
         no_ground_pointcloud_ptr, "Waiting for pointcloud",
         required_subscriptions.no_ground_pointcloud)) {
+    sw.tic("process_no_ground_pointcloud");
     auto no_ground_pointcloud = process_no_ground_pointcloud(no_ground_pointcloud_ptr);
-    processing_times["update_planner_data.pcl.process_no_ground_pointcloud"] = sw.toc(true);
+    processing_times["update_planner_data.pointcloud.affine_transform"] =
+      sw.toc("process_no_ground_pointcloud");
+    sw.tic("preprocess_pointcloud");
     if (no_ground_pointcloud) {
       planner_data_->no_ground_pointcloud.preprocess_pointcloud(
         std::move(*no_ground_pointcloud), input_traj_points, planner_data_->current_odometry,
@@ -186,7 +189,11 @@ bool MotionVelocityPlannerNode::update_planner_data(
         planner_data_->vehicle_info_, planner_data_->trajectory_polygon_collision_check,
         planner_data_->ego_nearest_dist_threshold, planner_data_->ego_nearest_yaw_threshold);
     }
+    processing_times
+      ["update_planner_data.pointcloud.preprocess_for_obstacle_*_modules"] =
+        sw.toc("preprocess_pointcloud");
   }
+  processing_times["update_planner_data.pointcloud"] = sw.toc(true);
 
   const auto occupancy_grid_ptr = sub_occupancy_grid_.take_data();
   if (check_with_log(
