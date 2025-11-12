@@ -74,6 +74,7 @@ if(BUILD_TESTING)
     examples/example_self_intersecting.cpp
     examples/example_lateral_metrics.cpp
     examples/example_footprint.cpp
+    examples/example_crossed.cpp
   )
 
   add_definitions("-Wno-attributes")
