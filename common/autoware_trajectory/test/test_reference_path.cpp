@@ -203,7 +203,7 @@ INSTANTIATE_TEST_SUITE_P(
 struct Parameter_Map_Waypoint_Curve_00  // NOLINT
 {
   static constexpr const char * pkg = "autoware_lanelet2_utils";
-  static constexpr const char * dir = "dense_centerline";
+  static constexpr const char * dir = "vm_01_10-12/dense_centerline";
   const double forward_length;
   const double backward_length;
   const std::vector<lanelet::Id> route_lane_ids;

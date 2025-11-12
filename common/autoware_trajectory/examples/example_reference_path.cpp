@@ -44,7 +44,7 @@ int main1()
 
   const auto sample_map_dir =
     fs::path(ament_index_cpp::get_package_share_directory("autoware_lanelet2_utils")) /
-    "sample_map/dense_centerline";
+    "sample_map/vm_01_10-12/dense_centerline";
   const std::vector<lanelet::Id> ids = {140, 137, 136, 138, 139, 135};
   const auto ego_pose =
     geometry_msgs::build<geometry_msgs::msg::Pose>()
