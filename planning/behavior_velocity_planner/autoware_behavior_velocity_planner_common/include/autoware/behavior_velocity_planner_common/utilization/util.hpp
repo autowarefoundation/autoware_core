@@ -259,15 +259,15 @@ lanelet::Ids collectConnectedLaneIds(
   const int64_t lane_id, const std::shared_ptr<route_handler::RouteHandler> & route_handler);
 
 PathWithLaneId fromTrajectory(
-  const experimental::trajectory::Trajectory<
+  const autoware::experimental::trajectory::Trajectory<
     autoware_internal_planning_msgs::msg::PathPointWithLaneId> & path,
   const std::vector<geometry_msgs::msg::Point> & left_bound,
   const std::vector<geometry_msgs::msg::Point> & right_bound);
 
 void toTrajectory(
   const PathWithLaneId & path_msg,
-  experimental::trajectory::Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId> &
-    path);
+  autoware::experimental::trajectory::Trajectory<
+    autoware_internal_planning_msgs::msg::PathPointWithLaneId> & path);
 
 }  // namespace planning_utils
 }  // namespace autoware::behavior_velocity_planner
