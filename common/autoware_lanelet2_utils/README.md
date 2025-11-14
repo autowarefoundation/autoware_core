@@ -281,15 +281,21 @@ std::vector<T> forEachMatchInMultiMap(const MapT& map, const KeyT& key, Func&& f
 
 ## Test maps
 
-All of the maps are in `MGRS` coordinate. In each map, an anchor point is set to an origin point $(100.0, 100.0)$ for simplicity.
+Test maps are structured based on the [Autoware Vector map specifications](https://autowarefoundation.github.io/autoware-documentation/main/design/autoware-architecture/map/map-requirements/vector-map-requirements-overview/).
 
-| Map name                                | Origin point id | Image                                                               |
-| --------------------------------------- | --------------- | ------------------------------------------------------------------- |
-| `road_shoulder/highway.osm`             | `1`             | ![highway](./media/maps/road_shoulder/highway.png)                  |
-| `road_shoulder/pudo.osm`                | `140`           | ![pudo](./media/maps/road_shoulder/pudo.png)                        |
-| `intersection/crossing.osm`             | `1791`          | ![crossing](./media/maps/intersection/crossing.png)                 |
-| `dense_centerline/lanelet2_map.osm`     | `16`            | ![lanelet2_map](./media/maps/dense_centerline/lanelet2_map.png)     |
-| `hatched_road_marking/lanelet2_map.osm` | `15`            | ![lanelet2_map](./media/maps/hatched_road_marking/lanelet2_map.png) |
+All of the maps are in `MGRS` coordinate **without map_projector_info.yaml**. In each map, an anchor point is set to an origin point $(100.0, 100.0)$ for simplicity.
+
+| Map name                                         | Origin point id | Image                                                                   |
+| ------------------------------------------------ | --------------- | ----------------------------------------------------------------------- |
+| `vm_01_10-12/dense_centerline/lanelet2_map.osm`  | `16`            | ![dense_centerline](./media/maps/vm_01_10-12/dense_centerline.png)      |
+| `vm_01_10-12/straight_waypoint/lanelet2_map.osm` | `1`             | TODO                                                                    |
+| `vm_01_15-16/highway/lanelet2_map.osm`           | `1`             | ![highway](./media/maps/vm_01_15-16/highway.png)                        |
+| `vm_01_15-16/pudo/lanelet2_map.osm`              | `140`           | ![pudo](./media/maps/vm_01_15-16/pudo.png)                              |
+| `vm_01_15-16/loop/lanelet2_map.osm`              | `23`            | ![loop](./media/maps/vm_01_15-16/loop.png)                              |
+| `vm_02/lanelet2_map.osm`                         | TODO            |                                                                         |
+| `vm_03/left_hand/lanelet2_map.osm`               | `1791`          | ![left_hand](./media/maps/vm_03/crossing.png)                           |
+| `vm_03/right_hand/lanelet2_map.osm`              | TODO            | TODO                                                                    |
+| `vm_06_01/lanelet2_map.osm`                      | `15`            | ![hatched_road_marking](./media/maps/vm_06_01/hatched_road_marking.png) |
 
 ### How to craft test map
 
@@ -306,6 +312,8 @@ By applying `lanelet_id_aligner.py`, the primitive ids are aligned to start from
 ```bash
 ros2 run autoware_lanelet2_utils lanelet_id_aligner.py <input_map.osm>
 ```
+
+Finally, to fix lat/lon value of the map, upload the map on VMB, then export it again.
 
 ## Tested case
 

@@ -63,10 +63,19 @@ def draw_centerline_arrow(ax, centerline):
     )
 
 
+def load_properly_projected_map(map_path, projector):
+    dry_run_map = lanelet2.io.load(map_path, projector)
+    for point in dry_run_map.pointLayer:
+        projector.reverse(lanelet2.core.BasicPoint3d(point.x, point.y, point.z))
+        break
+    projector.setMGRSCode(projector.getProjectedMGRSGrid())
+    return lanelet2.io.load(map_path, projector)
+
+
 class LaneletVisualizationHandler:
     def __init__(self, fig, ax, map_path) -> None:
-        projector = MGRSProjector(lanelet2.io.Origin(0.0, 0.0))
-        lanelet_map = lanelet2.io.load(map_path, projector)
+        projector = MGRSProjector()
+        lanelet_map = load_properly_projected_map(map_path, projector)
 
         self.fig, self.ax = fig, ax
         self.ax.set_aspect("equal")

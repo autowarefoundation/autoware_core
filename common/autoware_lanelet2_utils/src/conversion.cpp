@@ -40,6 +40,14 @@ lanelet::LaneletMapConstPtr load_mgrs_coordinate_map(
 {
   lanelet::ErrorMessages errors{};
   lanelet::projection::MGRSProjector projector;
+  {
+    auto dry_load = lanelet::load(path, projector, &errors);
+    for (const auto & point : dry_load->pointLayer) {
+      [[maybe_unused]] const auto dry_point = projector.reverse(point);
+      break;
+    }
+    projector.setMGRSCode(projector.getProjectedMGRSGrid());
+  }
   auto lanelet_map_ptr_mut = lanelet::load(path, projector, &errors);
 
   for (auto & lanelet_obj : lanelet_map_ptr_mut->laneletLayer) {

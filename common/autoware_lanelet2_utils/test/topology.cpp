@@ -42,7 +42,7 @@ protected:
     const auto sample_map_dir =
       fs::path(ament_index_cpp::get_package_share_directory("autoware_lanelet2_utils")) /
       "sample_map";
-    const auto intersection_crossing_map_path = sample_map_dir / "intersection" / "crossing.osm";
+    const auto intersection_crossing_map_path = sample_map_dir / "vm_03/left_hand/lanelet2_map.osm";
 
     lanelet_map_ptr_ =
       lanelet2_utils::load_mgrs_coordinate_map(intersection_crossing_map_path.string());
@@ -198,7 +198,7 @@ protected:
       fs::path(ament_index_cpp::get_package_share_directory("autoware_lanelet2_utils")) /
       "sample_map";
     const auto intersection_crossing_map_path =
-      sample_map_dir / "intersection" / "crossing_inverse.osm";
+      sample_map_dir / "vm_03/right_hand/lanelet2_map.osm";
 
     lanelet_map_ptr_ =
       lanelet2_utils::load_mgrs_coordinate_map(intersection_crossing_map_path.string());

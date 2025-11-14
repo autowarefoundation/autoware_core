@@ -75,5 +75,5 @@ manual_poses:
       x: 120.35991477903326
       y: 215.31150459271936
       z: 100.0
-map_rel_path: intersection/crossing.osm
+map_rel_path: vm_03/left_hand/lanelet2_map.osm
 version: 1
