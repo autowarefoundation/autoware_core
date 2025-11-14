@@ -8353,7 +8353,8 @@
 <span class="p">}</span>
 </code></pre></div>
 <h2 id="test-maps">Test maps<a class="headerlink" href="#test-maps" title="Permanent link">#</a></h2>
-<p>All of the maps are in <code>MGRS</code> coordinate. In each map, an anchor point is set to an origin point <span class="arithmatex">\((100.0, 100.0)\)</span> for simplicity.</p>
+<p>Test maps are structured based on the <a href="https://autowarefoundation.github.io/autoware-documentation/main/design/autoware-architecture/map/map-requirements/vector-map-requirements-overview/">Autoware Vector map specifications</a>.</p>
+<p>All of the maps are in <code>MGRS</code> coordinate <strong>without map_projector_info.yaml</strong>. In each map, an anchor point is set to an origin point <span class="arithmatex">\((100.0, 100.0)\)</span> for simplicity.</p>
 <table>
 <thead>
 <tr>
@@ -8364,29 +8365,49 @@
 </thead>
 <tbody>
 <tr>
-<td><code>road_shoulder/highway.osm</code></td>
-<td><code>1</code></td>
-<td><img alt="highway" src="media/maps/road_shoulder/highway.png"></td>
-</tr>
-<tr>
-<td><code>road_shoulder/pudo.osm</code></td>
-<td><code>140</code></td>
-<td><img alt="pudo" src="media/maps/road_shoulder/pudo.png"></td>
-</tr>
-<tr>
-<td><code>intersection/crossing.osm</code></td>
-<td><code>1791</code></td>
-<td><img alt="crossing" src="media/maps/intersection/crossing.png"></td>
-</tr>
-<tr>
-<td><code>dense_centerline/lanelet2_map.osm</code></td>
+<td><code>vm_01_10-12/dense_centerline/lanelet2_map.osm</code></td>
 <td><code>16</code></td>
-<td><img alt="lanelet2_map" src="media/maps/dense_centerline/lanelet2_map.png"></td>
+<td><img alt="dense_centerline" src="media/maps/vm_01_10-12/dense_centerline.png"></td>
 </tr>
 <tr>
-<td><code>hatched_road_marking/lanelet2_map.osm</code></td>
+<td><code>vm_01_10-12/straight_waypoint/lanelet2_map.osm</code></td>
+<td><code>1</code></td>
+<td>TODO</td>
+</tr>
+<tr>
+<td><code>vm_01_15-16/highway/lanelet2_map.osm</code></td>
+<td><code>1</code></td>
+<td><img alt="highway" src="media/maps/vm_01_15-16/highway.png"></td>
+</tr>
+<tr>
+<td><code>vm_01_15-16/pudo/lanelet2_map.osm</code></td>
+<td><code>140</code></td>
+<td><img alt="pudo" src="media/maps/vm_01_15-16/pudo.png"></td>
+</tr>
+<tr>
+<td><code>vm_01_15-16/loop/lanelet2_map.osm</code></td>
+<td><code>23</code></td>
+<td><img alt="loop" src="media/maps/vm_01_15-16/loop.png"></td>
+</tr>
+<tr>
+<td><code>vm_02/lanelet2_map.osm</code></td>
+<td>TODO</td>
+<td></td>
+</tr>
+<tr>
+<td><code>vm_03/left_hand/lanelet2_map.osm</code></td>
+<td><code>1791</code></td>
+<td><img alt="left_hand" src="media/maps/vm_03/crossing.png"></td>
+</tr>
+<tr>
+<td><code>vm_03/right_hand/lanelet2_map.osm</code></td>
+<td>TODO</td>
+<td>TODO</td>
+</tr>
+<tr>
+<td><code>vm_06_01/lanelet2_map.osm</code></td>
 <td><code>15</code></td>
-<td><img alt="lanelet2_map" src="media/maps/hatched_road_marking/lanelet2_map.png"></td>
+<td><img alt="hatched_road_marking" src="media/maps/vm_06_01/hatched_road_marking.png"></td>
 </tr>
 </tbody>
 </table>
@@ -8398,6 +8419,7 @@
 <p>By applying <code>lanelet_id_aligner.py</code>, the primitive ids are aligned to start from 1 and increase one-by-one.</p>
 <div class="highlight"><pre><span></span><code>ros2<span class="w"> </span>run<span class="w"> </span>autoware_lanelet2_utils<span class="w"> </span>lanelet_id_aligner.py<span class="w"> </span>&lt;input_map.osm&gt;
 </code></pre></div>
+<p>Finally, to fix lat/lon value of the map, upload the map on VMB, then export it again.</p>
 <h2 id="tested-case">Tested case<a class="headerlink" href="#tested-case" title="Permanent link">#</a></h2>
 <p><code>test_data</code> contains test scene yaml files describing the context of unit tests. They can be visualized</p>
 <div class="highlight"><pre><span></span><code>ros2<span class="w"> </span>run<span class="w"> </span>autoware_lanelet2_utils<span class="w"> </span>test_case_generator.py<span class="w"> </span>--view<span class="w"> </span>&lt;file<span class="w"> </span>name&gt;
