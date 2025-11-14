@@ -189,9 +189,8 @@ bool MotionVelocityPlannerNode::update_planner_data(
         planner_data_->vehicle_info_, planner_data_->trajectory_polygon_collision_check,
         planner_data_->ego_nearest_dist_threshold, planner_data_->ego_nearest_yaw_threshold);
     }
-    processing_times
-      ["update_planner_data.pointcloud.preprocess_for_obstacle_*_modules"] =
-        sw.toc("preprocess_pointcloud");
+    processing_times["update_planner_data.pointcloud.preprocess_for_obstacle_*_modules"] =
+      sw.toc("preprocess_pointcloud");
   }
   processing_times["update_planner_data.pointcloud"] = sw.toc(true);
 
