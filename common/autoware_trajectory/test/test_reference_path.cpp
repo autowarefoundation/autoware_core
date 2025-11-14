@@ -68,7 +68,7 @@ protected:
 struct Parameter_Map_Waypoint_Straight_00  // NOLINT
 {
   static constexpr const char * pkg = "autoware_lanelet2_utils";
-  static constexpr const char * dir = "straight_waypoint";
+  static constexpr const char * dir = "vm_01_10-12/straight_waypoint";
   const double forward_length;
   const double backward_length;
   const std::vector<lanelet::Id> route_lane_ids;
@@ -294,8 +294,8 @@ INSTANTIATE_TEST_SUITE_P(
       0,                               // [m]
       {140, 137, 136, 138, 139, 135},  // ids
       140,                             // id
-      740,                             // x[m]
-      1148,                            // y[m]
+      108,                             // x[m]
+      99,                              // y[m]
       100.0,                           // z[m]
       {0.0, 0.0, 0.0, 1.0},            // quaternion
       true,
@@ -306,8 +306,8 @@ INSTANTIATE_TEST_SUITE_P(
       6.5,                             // [m]
       {140, 137, 136, 138, 139, 135},  // ids
       140,                             // id
-      740,                             // x[m]
-      1148,                            // y[m]
+      108,                             // x[m]
+      99,                              // y[m]
       100.0,                           // z[m]
       {0.0, 0.0, 0.0, 1.0},            // quaternion
       true,
@@ -318,8 +318,8 @@ INSTANTIATE_TEST_SUITE_P(
       6.5,                             // [m]
       {140, 137, 136, 138, 139, 135},  // ids
       140,                             // id
-      740,                             // x[m]
-      1148,                            // y[m]
+      108,                             // x[m]
+      99,                              // y[m]
       100.0,                           // z[m]
       {0.0, 0.0, 0.0, 1.0},            // quaternion
       true,
@@ -330,8 +330,8 @@ INSTANTIATE_TEST_SUITE_P(
       0,                               // [m]
       {140, 137, 136, 138, 139, 135},  // ids
       140,                             // id
-      740,                             // x[m]
-      1148,                            // y[m]
+      108,                             // x[m]
+      99,                              // y[m]
       100.0,                           // z[m]
       {0.0, 0.0, 0.0, 1.0},            // quaternion
       false,
@@ -342,8 +342,8 @@ INSTANTIATE_TEST_SUITE_P(
       inf,                             // [m]
       {140, 137, 136, 138, 139, 135},  // ids
       140,                             // id
-      740,                             // x[m]
-      1148,                            // y[m]
+      108,                             // x[m]
+      99,                              // y[m]
       100.0,                           // z[m]
       {0.0, 0.0, 0.0, 1.0},            // quaternion
       true,
@@ -355,8 +355,8 @@ INSTANTIATE_TEST_SUITE_P(
       0,                               // [m]
       {140, 137, 136, 138, 139, 135},  // ids
       137,                             // id
-      735,                             // x[m]
-      1148,                            // y[m]
+      108,                             // x[m]
+      99,                              // y[m]
       100.0,                           // z[m]
       {0.0, 0.0, 0.0, 1.0},            // quaternion
       true,
@@ -367,8 +367,8 @@ INSTANTIATE_TEST_SUITE_P(
       6.5,                             // [m]
       {140, 137, 136, 138, 139, 135},  // ids
       137,                             // id
-      735,                             // x[m]
-      1148,                            // y[m]
+      108,                             // x[m]
+      99,                              // y[m]
       100.0,                           // z[m]
       {0.0, 0.0, 0.0, 1.0},            // quaternion
       true,
@@ -379,8 +379,8 @@ INSTANTIATE_TEST_SUITE_P(
       6.5,                             // [m]
       {140, 137, 136, 138, 139, 135},  // ids
       137,                             // id
-      735,                             // x[m]
-      1148,                            // y[m]
+      108,                             // x[m]
+      99,                              // y[m]
       100.0,                           // z[m]
       {0.0, 0.0, 0.0, 1.0},            // quaternion
       true,
