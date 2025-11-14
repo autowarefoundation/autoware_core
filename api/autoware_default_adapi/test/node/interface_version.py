@@ -32,7 +32,7 @@ if response.major != 1:
     exit(1)
 if response.minor != 9:
     exit(1)
-if response.patch != 0:
+if response.patch != 1:
     exit(1)
 
 rclpy.shutdown()
