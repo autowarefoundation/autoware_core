@@ -63,6 +63,7 @@ public:
   void publish_planning_factor() override { planning_factor_interface_->publish(); };
   void update_parameters(const std::vector<rclcpp::Parameter> & parameters) override;
   std::string get_module_name() const override { return module_name_; }
+  std::string get_short_module_name() const override { return "obstacle_stop"; }
 
   VelocityPlanningResult plan(
     const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & raw_trajectory_points,
@@ -118,7 +119,6 @@ private:
   // crossing lanes.
   std::optional<std::pair<std::vector<TrajectoryPoint>, double>> prev_stop_distance_info_{
     std::nullopt};
-  autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_{};
   mutable std::map<PolygonParam, DetectionPolygon> trajectory_polygon_for_inside_map_{};
   mutable std::optional<std::vector<Polygon2d>> decimated_traj_polys_{std::nullopt};
   mutable std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper_{};
