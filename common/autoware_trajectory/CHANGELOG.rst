@@ -50,6 +50,30 @@ Changelog for package autoware_trajectory
 * chore: include iostream and link yaml-cpp for Jazzy (`#351 <https://github.com/autowarefoundation/autoware_core/issues/351>`_)
 * Contributors: Mamoru Sobue, Tim Clephas, Yukinari Hisaki
 
+Forthcoming
+-----------
+* Merge remote-tracking branch 'origin/main' into humble
+* feat(lanelet2_utils): organize maps by vm-map-spec id (`#716 <https://github.com/autowarefoundation/autoware_core/issues/716>`_)
+* docs(autoware_trajectory): add crossed documentation (`#705 <https://github.com/autowarefoundation/autoware_core/issues/705>`_)
+* feat: replace `ament_auto_package` to `autoware_ament_auto_package` (`#700 <https://github.com/autowarefoundation/autoware_core/issues/700>`_)
+  * replace ament_auto_package to autoware_ament_auto_package
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* feat(trajectory): improve crossed() to handle range, add crossed_with_polygon (`#685 <https://github.com/autowarefoundation/autoware_core/issues/685>`_)
+* docs(autoware_trajectory): update API table of autoware_trajectory document (`#687 <https://github.com/autowarefoundation/autoware_core/issues/687>`_)
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* feat(autoware_trajectory): add footprint along the trajectory (`#678 <https://github.com/autowarefoundation/autoware_core/issues/678>`_)
+* feat(autoware_trajectory): add lateral_distance computation (`#655 <https://github.com/autowarefoundation/autoware_core/issues/655>`_)
+* docs(autoware_trajectory): fix drawio link of self-intersecting images (`#659 <https://github.com/autowarefoundation/autoware_core/issues/659>`_)
+  fix broken drawio link
+* chore: jazzy-porting:fix missing header file (`#630 <https://github.com/autowarefoundation/autoware_core/issues/630>`_)
+* feat(autoware_trajectory): add more test, verify implementation for find_nearest_index in autoware_trajectory packages (`#578 <https://github.com/autowarefoundation/autoware_core/issues/578>`_)
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Mamoru Sobue <hilo.soblin@gmail.com>
+* chore: bump version (1.4.0) and update changelog (`#608 <https://github.com/autowarefoundation/autoware_core/issues/608>`_)
+* Contributors: Mamoru Sobue, Mete Fatih Cırıt, Sarun MUKDAPITAK, Yutaka Kondo, mitsudome-r, 心刚
+
 1.4.0 (2025-08-11)
 ------------------
 * Merge remote-tracking branch 'origin/main' into humble

@@ -63,6 +63,39 @@ Changelog for package autoware_path_generator
 * feat(autoware_path_generator): use autoware_trajectory for cropping bounds (`#349 <https://github.com/autowarefoundation/autoware_core/issues/349>`_)
 * Contributors: Kazunori-Nakajima, Mamoru Sobue, Mitsuhiro Sakamoto, Yukinari Hisaki
 
+Forthcoming
+-----------
+* Merge remote-tracking branch 'origin/main' into humble
+* feat(lanelet2_utils): organize maps by vm-map-spec id (`#716 <https://github.com/autowarefoundation/autoware_core/issues/716>`_)
+* feat(autoware_lanelet2_utils): replace ported functions from autoware_lanelet2_extension (`#695 <https://github.com/autowarefoundation/autoware_core/issues/695>`_)
+* feat: replace `ament_auto_package` to `autoware_ament_auto_package` (`#700 <https://github.com/autowarefoundation/autoware_core/issues/700>`_)
+  * replace ament_auto_package to autoware_ament_auto_package
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* fix(path_generator): add border point to/before waypoint group (`#620 <https://github.com/autowarefoundation/autoware_core/issues/620>`_)
+  * add function to find border point
+  * add field to store next lane id
+  * add border point to waypoint group when merging
+  * interpolate point on centerline in 3d
+  * add validation
+  * add border point to path if necessary
+  * add loop detection
+  * add tests for get_border_point()
+  * style(pre-commit): autofix
+  * fix function description
+  * rename variable to avoid shadowing
+  * flatten nest
+  * add comments for clarity
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* feat(path_generator): add validation to avoid segfault (`#604 <https://github.com/autowarefoundation/autoware_core/issues/604>`_)
+  add validation
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* chore: bump version (1.4.0) and update changelog (`#608 <https://github.com/autowarefoundation/autoware_core/issues/608>`_)
+* Contributors: Mamoru Sobue, Mete Fatih Cırıt, Mitsuhiro Sakamoto, Sarun MUKDAPITAK, Yutaka Kondo, mitsudome-r
+
 1.4.0 (2025-08-11)
 ------------------
 * Merge remote-tracking branch 'origin/main' into humble
