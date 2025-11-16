@@ -9,8 +9,8 @@ Changelog for package autoware_map_loader
 * feat(map_loader): add the explanation of handling use_waypoints (`#342 <https://github.com/autowarefoundation/autoware_core/issues/342>`_)
 * Contributors: Takagi, Isamu, Takayuki Murooka
 
-Forthcoming
------------
+1.5.0 (2025-11-16)
+------------------
 * Merge remote-tracking branch 'origin/main' into humble
 * feat: replace `ament_auto_package` to `autoware_ament_auto_package` (`#700 <https://github.com/autowarefoundation/autoware_core/issues/700>`_)
   * replace ament_auto_package to autoware_ament_auto_package

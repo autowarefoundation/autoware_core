@@ -9,8 +9,8 @@ Changelog for package autoware_map_projection_loader
 * feat(map_projection_loader): add scale_factor and remove altitude (`#340 <https://github.com/autowarefoundation/autoware_core/issues/340>`_)
 * Contributors: Takagi, Isamu, Yamato Ando
 
-Forthcoming
------------
+1.5.0 (2025-11-16)
+------------------
 * Merge remote-tracking branch 'origin/main' into humble
 * feat: replace `ament_auto_package` to `autoware_ament_auto_package` (`#700 <https://github.com/autowarefoundation/autoware_core/issues/700>`_)
   * replace ament_auto_package to autoware_ament_auto_package

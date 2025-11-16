@@ -18,8 +18,8 @@ Changelog for package autoware_lanelet2_utils
   ---------
 * Contributors: Mamoru Sobue, Yutaka Kondo
 
-Forthcoming
------------
+1.5.0 (2025-11-16)
+------------------
 * Merge remote-tracking branch 'origin/main' into humble
 * feat(lanelet2_utils): organize maps by vm-map-spec id (`#716 <https://github.com/autowarefoundation/autoware_core/issues/716>`_)
 * feat: replace `ament_auto_package` to `autoware_ament_auto_package` (`#700 <https://github.com/autowarefoundation/autoware_core/issues/700>`_)

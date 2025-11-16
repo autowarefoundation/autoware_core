@@ -8,8 +8,8 @@ Changelog for package autoware_behavior_velocity_stop_line_module
   refactor(autoware_trajectory)!: move everything to namespace experimental
 * Contributors: Mamoru Sobue
 
-Forthcoming
------------
+1.5.0 (2025-11-16)
+------------------
 * Merge remote-tracking branch 'origin/main' into humble
 * feat: replace `ament_auto_package` to `autoware_ament_auto_package` (`#700 <https://github.com/autowarefoundation/autoware_core/issues/700>`_)
   * replace ament_auto_package to autoware_ament_auto_package

@@ -27,8 +27,8 @@ Changelog for package autoware_test_utils
 * chore: include iostream and link yaml-cpp for Jazzy (`#351 <https://github.com/autowarefoundation/autoware_core/issues/351>`_)
 * Contributors: Mitsuhiro Sakamoto, Tim Clephas
 
-Forthcoming
------------
+1.5.0 (2025-11-16)
+------------------
 * Merge remote-tracking branch 'origin/main' into humble
 * feat: replace `ament_auto_package` to `autoware_ament_auto_package` (`#700 <https://github.com/autowarefoundation/autoware_core/issues/700>`_)
   * replace ament_auto_package to autoware_ament_auto_package

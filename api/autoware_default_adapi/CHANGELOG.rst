@@ -2,8 +2,8 @@
 Changelog for package autoware_default_adapi
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.5.0 (2025-11-16)
+------------------
 * Merge remote-tracking branch 'origin/main' into humble
 * chore: update AD API version to v1.9.1 (`#717 <https://github.com/autowarefoundation/autoware_core/issues/717>`_)
   Co-authored-by: Ryohsuke Mitsudome <ryoshuke.mitsudome@tier4.jp>

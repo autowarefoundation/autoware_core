@@ -50,8 +50,8 @@ Changelog for package autoware_trajectory
 * chore: include iostream and link yaml-cpp for Jazzy (`#351 <https://github.com/autowarefoundation/autoware_core/issues/351>`_)
 * Contributors: Mamoru Sobue, Tim Clephas, Yukinari Hisaki
 
-Forthcoming
------------
+1.5.0 (2025-11-16)
+------------------
 * Merge remote-tracking branch 'origin/main' into humble
 * feat(lanelet2_utils): organize maps by vm-map-spec id (`#716 <https://github.com/autowarefoundation/autoware_core/issues/716>`_)
 * docs(autoware_trajectory): add crossed documentation (`#705 <https://github.com/autowarefoundation/autoware_core/issues/705>`_)

@@ -13,8 +13,8 @@ Changelog for package autoware_motion_utils
 * refactor(autoware_motion_utils): rewrite using modern C++ without API breakage (`#348 <https://github.com/autowarefoundation/autoware_core/issues/348>`_)
 * Contributors: Arjun Jagdish Ram, Yutaka Kondo
 
-Forthcoming
------------
+1.5.0 (2025-11-16)
+------------------
 * Merge remote-tracking branch 'origin/main' into humble
 * feat: replace `ament_auto_package` to `autoware_ament_auto_package` (`#700 <https://github.com/autowarefoundation/autoware_core/issues/700>`_)
   * replace ament_auto_package to autoware_ament_auto_package
