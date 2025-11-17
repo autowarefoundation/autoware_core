@@ -317,12 +317,10 @@ int main()
     plt.legend(
       Args(), Kwargs("loc"_a = "center left", "bbox_to_anchor"_a = std::make_tuple(1.0, 0.5)));
     fig.tight_layout();
-    // plt.xlim(Args(-1,1));
-    // plt.ylim(Args(-1,1));
     plt.show();
   }
 
-  // Lollipop Trajectory
+  // Vertical Loop Trajectory
   {
     auto plt = autoware::pyplot::import();
     auto fig = plt.figure(Args(), Kwargs("figsize"_a = std::make_tuple(18, 6)));
@@ -365,6 +363,8 @@ int main()
 
     plt.show();
   }
+
+  // Lollipop Trajectory
   {
     auto plt = autoware::pyplot::import();
     auto fig = plt.figure(Args(), Kwargs("figsize"_a = std::make_tuple(18, 6)));

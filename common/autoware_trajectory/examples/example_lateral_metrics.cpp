@@ -135,13 +135,24 @@ static void draw_line(
   }
 }
 
+template <class TrajectoryPointType>
 static void draw_square_angle_line(
-  autoware::pyplot::Axes & ax, const geometry_msgs::msg::Pose & from_pose,
-  const geometry_msgs::msg::Point & to_point, const std::string & color, const std::string & label)
+  autoware::pyplot::Axes & ax, const Trajectory<TrajectoryPointType> & traj, const double target_s,
+  const geometry_msgs::msg::Pose & from_pose, const geometry_msgs::msg::Point & to_point,
+  const std::string & color, const std::string & label)
 {
-  const auto lateral_offset = autoware_utils_geometry::calc_lateral_deviation(from_pose, to_point);
-  const auto vertical_point =
-    autoware_utils_geometry::calc_offset_pose(from_pose, 0, lateral_offset, 0, 0);
+  // Always give positive value
+  double lateral_offset =
+    autoware::experimental::trajectory::compute_lateral_distance(traj, to_point, target_s);
+  auto on_left = autoware::experimental::trajectory::is_left_side(traj, to_point, target_s);
+
+  geometry_msgs::msg::Pose vertical_point;
+  if (!on_left) {
+    // positive y is translated to left, so need to convert to negative value for right side.
+    vertical_point = autoware_utils_geometry::calc_offset_pose(from_pose, 0, -lateral_offset, 0, 0);
+  } else {  // left
+    vertical_point = autoware_utils_geometry::calc_offset_pose(from_pose, 0, lateral_offset, 0, 0);
+  }
 
   std::vector<double> x_{from_pose.position.x, vertical_point.position.x, to_point.x};
   std::vector<double> y_{from_pose.position.y, vertical_point.position.y, to_point.y};
@@ -195,7 +206,7 @@ int main1()
 
   draw_line(ax1, target_point, vertical_pose.position, "orange", "lateral distance");
   draw_line(ax1, target_point, target_pose.position, "red", "distance2d");
-  draw_square_angle_line(ax1, target_pose, target_point, "black", line_label);
+  draw_square_angle_line(ax1, traj, target_s, target_pose, target_point, "black", line_label);
   draw_tangent_line(ax1, target_pose);
 
   plot_trajectory(ax2, traj, "Parabolic to the right");
@@ -205,7 +216,7 @@ int main1()
 
   draw_line(ax2, target_point, vertical_pose.position, "orange", "lateral distance", true);
   draw_line(ax2, target_point, target_pose.position, "red", "distance2d", true);
-  draw_square_angle_line(ax2, target_pose, target_point, "black", line_label);
+  draw_square_angle_line(ax2, traj, target_s, target_pose, target_point, "black", line_label);
   draw_tangent_line(ax2, target_pose);
 
   ax2.set_title(Args("To the right (Point on the Right)"), Kwargs("fontsize"_a = 16));
@@ -260,7 +271,7 @@ int main2()
   plot_point(ax1, vertical_pose.position, "blue", "Perpendicular Point");
   draw_line(ax1, target_point, vertical_pose.position, "orange", "lateral distance");
   draw_line(ax1, target_point, target_pose.position, "red", "distance2d");
-  draw_square_angle_line(ax1, target_pose, target_point, "black", line_label);
+  draw_square_angle_line(ax1, traj, target_s, target_pose, target_point, "black", line_label);
   draw_tangent_line(ax1, target_pose);
 
   plot_trajectory(ax2, traj, "Parabolic to the right");
@@ -270,7 +281,7 @@ int main2()
 
   draw_line(ax2, target_point, vertical_pose.position, "orange", "lateral distance", true);
   draw_line(ax2, target_point, target_pose.position, "red", "distance2d", true);
-  draw_square_angle_line(ax2, target_pose, target_point, "black", line_label);
+  draw_square_angle_line(ax2, traj, target_s, target_pose, target_point, "black", line_label);
   draw_tangent_line(ax2, target_pose);
 
   ax2.set_title(Args("To the left (Point on the Left)"), Kwargs("fontsize"_a = 16));
