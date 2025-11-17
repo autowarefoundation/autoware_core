@@ -8153,6 +8153,18 @@
 </tr>
 </tbody>
 </table>
+<h5 id="example-usage-of-footprint"><span style="font-size: 1.2em;">Example Usage of <code>footprint</code></span><a class="headerlink" href="#example-usage-of-footprint" title="Permanent link">#</a></h5>
+<p>Build Path Polygon and Path Footprints of the trajectory from designated arc-length <code>s</code> (in this case, from start to end point).</p>
+<p>Set the point interval and width manually.</p>
+<p>```cpp title="./examples/example_footprint.cpp:157:158
+  const auto polygon = autoware::experimental::trajectory::build_path_polygon(
+    traj, 0, traj.get_underlying_bases()[traj.get_underlying_bases().size() - 1], 0.5, 0.5);
+</p><div class="highlight"><pre><span></span><code>Use base footprint to draw trajectory footprints.
+
+```cpp title="./examples/example_footprint.cpp:187:188
+  const auto footprints = autoware::experimental::trajectory::build_path_footprints(
+    traj, 0, traj.get_underlying_bases()[traj.get_underlying_bases().size() - 1], 1.0, base_ring);
+</code></pre></div>
 <h4 id="autowaretrajectoryutilscrossedhpp"><span style="font-size: 1.2em;"><code>&lt;autoware/trajectory/utils/crossed.hpp&gt;</code></span><a class="headerlink" href="#autowaretrajectoryutilscrossedhpp" title="Permanent link">#</a></h4>
 <table>
 <thead>
