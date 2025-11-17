@@ -331,7 +331,7 @@ Build Path Polygon and Path Footprints of the trajectory from designated arc-len
 
 Set the point interval and width manually.
 
-```cpp title="./examples/example_footprint.cpp:157:158
+```cpp title="./examples/example_footprint.cpp:157:158"
 --8<--
 common/autoware_trajectory/examples/example_footprint.cpp:157:158
 --8<--
@@ -339,7 +339,7 @@ common/autoware_trajectory/examples/example_footprint.cpp:157:158
 
 Use base footprint to draw trajectory footprints.
 
-```cpp title="./examples/example_footprint.cpp:187:188
+```cpp title="./examples/example_footprint.cpp:187:188"
 --8<--
 common/autoware_trajectory/examples/example_footprint.cpp:187:188
 --8<--
