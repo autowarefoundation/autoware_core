@@ -285,17 +285,28 @@ Test maps are structured based on the [Autoware Vector map specifications](https
 
 All of the maps are in `MGRS` coordinate **without map_projector_info.yaml**. In each map, an anchor point is set to an origin point $(100.0, 100.0)$ for simplicity.
 
-| Map name                                         | Origin point id | Image                                                                   |
-| ------------------------------------------------ | --------------- | ----------------------------------------------------------------------- |
-| `vm_01_10-12/dense_centerline/lanelet2_map.osm`  | `16`            | ![dense_centerline](./media/maps/vm_01_10-12/dense_centerline.png)      |
-| `vm_01_10-12/straight_waypoint/lanelet2_map.osm` | `1`             | TODO                                                                    |
-| `vm_01_15-16/highway/lanelet2_map.osm`           | `1`             | ![highway](./media/maps/vm_01_15-16/highway.png)                        |
-| `vm_01_15-16/pudo/lanelet2_map.osm`              | `140`           | ![pudo](./media/maps/vm_01_15-16/pudo.png)                              |
-| `vm_01_15-16/loop/lanelet2_map.osm`              | `23`            | ![loop](./media/maps/vm_01_15-16/loop.png)                              |
-| `vm_02/lanelet2_map.osm`                         | TODO            |                                                                         |
-| `vm_03/left_hand/lanelet2_map.osm`               | `1791`          | ![left_hand](./media/maps/vm_03/crossing.png)                           |
-| `vm_03/right_hand/lanelet2_map.osm`              | TODO            | TODO                                                                    |
-| `vm_06_01/lanelet2_map.osm`                      | `15`            | ![hatched_road_marking](./media/maps/vm_06_01/hatched_road_marking.png) |
+| Map name                                         | Origin point id | Image/Description                                                                                                                                                                                         |
+| ------------------------------------------------ | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `vm_01_10-12/dense_centerline/lanelet2_map.osm`  | `16`            | ![dense_centerline](./media/maps/vm_01_10-12/dense_centerline.png)                                                                                                                                        |
+| `vm_01_10-12/straight_waypoint/lanelet2_map.osm` | `1`             | TODO                                                                                                                                                                                                      |
+| `vm_01_10-12/valid_01/lanelet2_map.osm`          | `16`            | ![valid_01](./media/maps/vm_01_10-12/valid_01.png)<br>The start/end of centerline is exactly on the edge of Lanelet border, and consecutive centerlines are connected. Speed limits are set as annotated. |
+| `vm_01_10-12/valid_02/lanelet2_map.osm`          | `16`            | ![valid_02](./media/maps/vm_01_10-12/valid_02.png)<br>Consecutive centerlines are not connected.                                                                                                          |
+| `vm_01_10-12/valid_03/lanelet2_map.osm`          | `16`            | ![valid_03](./media/maps/vm_01_10-12/valid_03.png)<br>The start of the centerlines are off the border.                                                                                                    |
+| `vm_01_10-12/valid_04/lanelet2_map.osm`          | `16`            | ![valid_04](./media/maps/vm_01_10-12/valid_04.png)<br>The end of the centerlines are off the border.                                                                                                      |
+| `vm_01_10-12/valid_05/lanelet2_map.osm`          | `16`            | ![valid_05](./media/maps/vm_01_10-12/valid_05.png)<br>The start/end of the centerlines are off the border(Consecutive centerlines are connected).                                                         |
+| `vm_01_10-12/valid_06/lanelet2_map.osm`          | `16`            | ![valid_06](./media/maps/vm_01_10-12/valid_06.png)<br>The start/end of the centerlines are off the border(Consecutive centerlines are connected).                                                         |
+| `vm_01_10-12/invalid_01/lanelet2_map.osm`        | `16`            | Any of centerline points except for start/end are outside of the associated Lanelet.                                                                                                                      |
+|                                                  |                 |                                                                                                                                                                                                           |
+| `vm_01_15-16/highway/lanelet2_map.osm`           | `1`             | ![highway](./media/maps/vm_01_15-16/highway.png)                                                                                                                                                          |
+| `vm_01_15-16/pudo/lanelet2_map.osm`              | `140`           | ![pudo](./media/maps/vm_01_15-16/pudo.png)                                                                                                                                                                |
+| `vm_01_15-16/loop/lanelet2_map.osm`              | `23`            | ![loop](./media/maps/vm_01_15-16/loop.png)                                                                                                                                                                |
+|                                                  |                 |                                                                                                                                                                                                           |
+| `vm_02/lanelet2_map.osm`                         | TODO            |                                                                                                                                                                                                           |
+|                                                  |                 |                                                                                                                                                                                                           |
+| `vm_03/left_hand/lanelet2_map.osm`               | `1791`          | ![left_hand](./media/maps/vm_03/crossing.png)                                                                                                                                                             |
+| `vm_03/right_hand/lanelet2_map.osm`              | TODO            | TODO                                                                                                                                                                                                      |
+|                                                  |                 |                                                                                                                                                                                                           |
+| `vm_06_01/lanelet2_map.osm`                      | `15`            | ![hatched_road_marking](./media/maps/vm_06_01/hatched_road_marking.png)                                                                                                                                   |
 
 ### How to craft test map
 
