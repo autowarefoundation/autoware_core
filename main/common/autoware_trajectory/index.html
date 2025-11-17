@@ -7450,105 +7450,11 @@
   
 </li>
         
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#example-usage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example Usage
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Example Usage">
-      <ul class="md-nav__list">
-        
           <li class="md-nav__item">
-  <a href="#pretty_build" class="md-nav__link">
+  <a href="#appendix" class="md-nav__link">
     <span class="md-ellipsis">
       
-        pretty_build
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#use-custom-interpolator" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        use custom Interpolator
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#cropshorten-trajectory" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        crop/shorten Trajectory
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#shift-trajectory" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        shift Trajectory
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#insert-and-set-velocity-profile" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Insert and set velocity profile
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#restore-points" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Restore points
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#generate-reference-path-from-lanelets" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Generate reference path from Lanelets
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#find-first-nearest-index-from-trajectory" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Find first nearest index from Trajectory
+        Appendix
       
     </span>
   </a>
@@ -7793,12 +7699,21 @@
 </code></pre></div>
 <p><img alt="stairstep" src="images/stairstep.drawio.svg">
 <a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Fstairstep.drawio.svg">View in Drawio</a></p>
+<h4 id="example-of-custom-interpolator-usage"><span style="font-size: 1.2em;">Example of custom Interpolator usage</span><a class="headerlink" href="#example-of-custom-interpolator-usage" title="Permanent link">#</a></h4>
+<p>You can also specify interpolation method to <code>Builder{}</code> before calling <code>.build(points)</code></p>
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="n">autoware</span><span class="o">::</span><span class="n">experimental</span><span class="o">::</span><span class="n">trajectory</span><span class="o">::</span><span class="n">interpolator</span><span class="o">::</span><span class="n">CubicSpline</span><span class="p">;</span>
+
+<span class="n">std</span><span class="o">::</span><span class="n">optional</span><span class="o">&lt;</span><span class="n">Trajectory</span><span class="o">&lt;</span><span class="n">autoware_planning_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">PathPoint</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">trajectory</span><span class="w"> </span><span class="o">=</span>
+<span class="w">  </span><span class="n">Trajectory</span><span class="o">&lt;</span><span class="n">autoware_planning_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">PathPoint</span><span class="o">&gt;::</span><span class="n">Builder</span><span class="p">{}</span>
+<span class="w">  </span><span class="p">.</span><span class="n">set_xy_interpolator</span><span class="o">&lt;</span><span class="n">CubicSpline</span><span class="o">&gt;</span><span class="p">()</span><span class="w">  </span><span class="c1">// Set interpolator for x-y plane</span>
+<span class="w">  </span><span class="p">.</span><span class="n">build</span><span class="p">(</span><span class="n">points</span><span class="p">);</span>
+</code></pre></div>
 <h3 id="trajectory-class_1">Trajectory class<a class="headerlink" href="#trajectory-class_1" title="Permanent link">#</a></h3>
 <p>Several <code>Trajectory&lt;T&gt;</code> are defined in the following inheritance hierarchy according to the sub object relationships.</p>
 <p><img alt="hierarchy" src="images/nomenclature/trajectory_hierarchy.drawio.svg">
 <a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Fnomenclature%2Ftrajectory_hierarchy.drawio.svg">View in Drawio</a></p>
 <p>Each derived class in the diagram inherits the methods of all of its descending subclasses. For example, all of the classes have the methods like <code>length()</code>, <code>curvature()</code> in common.</p>
-<p><strong><code>&lt;autoware/trajectory/point.hpp&gt;</code></strong></p>
+<h4 id="autowaretrajectorypointhpp"><span style="font-size: 1.2em;"><code>&lt;autoware/trajectory/point.hpp&gt;</code></span><a class="headerlink" href="#autowaretrajectorypointhpp" title="Permanent link">#</a></h4>
 <table>
 <thead>
 <tr>
@@ -7871,7 +7786,7 @@
 </tr>
 </tbody>
 </table>
-<p><strong><code>&lt;autoware/trajectory/pose.hpp&gt;</code></strong></p>
+<h4 id="autowaretrajectoryposehpp"><span style="font-size: 1.2em;"><code>&lt;autoware/trajectory/pose.hpp&gt;</code></span><a class="headerlink" href="#autowaretrajectoryposehpp" title="Permanent link">#</a></h4>
 <table>
 <thead>
 <tr>
@@ -7914,7 +7829,7 @@
 </tr>
 </tbody>
 </table>
-<p><strong><code>&lt;autoware/trajectory/path_point.hpp&gt;</code></strong></p>
+<h4 id="autowaretrajectorypath_pointhpp"><span style="font-size: 1.2em;"><code>&lt;autoware/trajectory/path_point.hpp&gt;</code></span><a class="headerlink" href="#autowaretrajectorypath_pointhpp" title="Permanent link">#</a></h4>
 <table>
 <thead>
 <tr>
@@ -7981,7 +7896,7 @@
 </tr>
 </tbody>
 </table>
-<p><strong><code>&lt;autoware/trajectory/path_point_with_lane_id.hpp&gt;</code></strong></p>
+<h4 id="autowaretrajectorypath_point_with_lane_idhpp"><span style="font-size: 1.2em;"><code>&lt;autoware/trajectory/path_point_with_lane_id.hpp&gt;</code></span><a class="headerlink" href="#autowaretrajectorypath_point_with_lane_idhpp" title="Permanent link">#</a></h4>
 <table>
 <thead>
 <tr>
@@ -8024,8 +7939,19 @@
 </tr>
 </tbody>
 </table>
+<h4 id="trajectory-example-usage"><span style="font-size: 1.2em;">Trajectory Example Usage</span><a class="headerlink" href="#trajectory-example-usage" title="Permanent link">#</a></h4>
+<h5 id="cropshorten-trajectory"><span style="font-size: 1.2em;">crop/shorten Trajectory</span><a class="headerlink" href="#cropshorten-trajectory" title="Permanent link">#</a></h5>
+<div class="highlight"><pre><span></span><code><span class="n">trajectory</span><span class="o">-&gt;</span><span class="n">crop</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">2.0</span><span class="p">);</span>
+</code></pre></div>
+<h5 id="insert-and-set-velocity-profile"><span style="font-size: 1.2em;">Insert and set velocity profile</span><a class="headerlink" href="#insert-and-set-velocity-profile" title="Permanent link">#</a></h5>
+<p>Set 3.0[m] ~ 5.0[m] part of velocity to 0.0</p>
+<div class="highlight"><pre><span></span><code><span class="n">trajectory</span><span class="o">-&gt;</span><span class="n">longitudinal_velocity_mps</span><span class="p">(</span><span class="mf">3.0</span><span class="p">,</span><span class="w"> </span><span class="mf">5.0</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.0</span><span class="p">;</span>
+</code></pre></div>
+<h5 id="restore-points"><span style="font-size: 1.2em;">Restore points</span><a class="headerlink" href="#restore-points" title="Permanent link">#</a></h5>
+<div class="highlight"><pre><span></span><code><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">autoware_planning_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">PathPoint</span><span class="o">&gt;</span><span class="w"> </span><span class="n">points</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">trajectory</span><span class="o">-&gt;</span><span class="n">restore</span><span class="p">();</span>
+</code></pre></div>
 <h3 id="utility-functions">Utility functions<a class="headerlink" href="#utility-functions" title="Permanent link">#</a></h3>
-<p><strong><code>&lt;autoware/trajectory/utils/shift.hpp&gt;</code></strong></p>
+<h4 id="autowaretrajectoryutilsshifthpp"><span style="font-size: 1.2em;"><code>&lt;autoware/trajectory/utils/shift.hpp&gt;</code></span><a class="headerlink" href="#autowaretrajectoryutilsshifthpp" title="Permanent link">#</a></h4>
 <table>
 <thead>
 <tr>
@@ -8058,11 +7984,35 @@
 <tr>
 <td><ul><li><code>shift(const &amp;Trajectory, const &amp;ShiftInterval, const &amp;ShiftParameters) -&gt; expected&lt;ShiftedTrajectory, ShiftError&gt;</code></li></ul></td>
 <td>Following <a href="#derivation-of-shift">formulation</a>, return a shifted <code>Trajectory</code> object if the parameters are feasible, otherwise return <code>Error</code> object indicating error reason(i.e. <span class="arithmatex">\(T_j\)</span> becomes negative, <span class="arithmatex">\(j\)</span> becomes negative, etc.).</td>
-<td>For derivation, see <a href="#derivation-of-shift">formulation</a>.<br>The example code for this plot is found <a href="#shift-trajectory">example</a></td>
+<td>For derivation, see <a href="#derivation-of-shift">formulation</a>.<br>The example code for this plot is found <a href="#example-usage-of-shift-trajectory">example</a></td>
 </tr>
 </tbody>
 </table>
-<p><strong><code>&lt;autoware/trajectory/utils/pretty_build.hpp&gt;</code></strong></p>
+<h5 id="example-usage-of-shift-trajectory"><span style="font-size: 1.2em;">Example Usage of <code>shift</code> Trajectory</span><a class="headerlink" href="#example-usage-of-shift-trajectory" title="Permanent link">#</a></h5>
+<div class="highlight"><span class="filename">./examples/example_shift.cpp:97:117</span><pre><span></span><code><span class="w">  </span><span class="c1">// six points</span>
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">longitudinal_velocity</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">2.77</span><span class="p">;</span>
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">lateral_jerk</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1.0</span><span class="p">;</span>
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">lateral_shift</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">2.5</span><span class="p">;</span>
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">lateral_acc_limit</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">5.0</span><span class="p">;</span>
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">longitudinal_dist</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autoware</span><span class="o">::</span><span class="n">motion_utils</span><span class="o">::</span><span class="n">calc_longitudinal_dist_from_jerk</span><span class="p">(</span>
+<span class="w">    </span><span class="n">lateral_shift</span><span class="p">,</span><span class="w"> </span><span class="n">lateral_jerk</span><span class="p">,</span><span class="w"> </span><span class="n">longitudinal_velocity</span><span class="p">);</span>
+
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">start_s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">3.0</span><span class="p">;</span>
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="n">ShiftInterval</span><span class="w"> </span><span class="n">shift_interval</span><span class="p">{</span><span class="n">start_s</span><span class="p">,</span><span class="w"> </span><span class="n">start_s</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">longitudinal_dist</span><span class="p">,</span><span class="w"> </span><span class="n">lateral_shift</span><span class="p">};</span>
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="n">ShiftParameters</span><span class="w"> </span><span class="n">shift_parameter</span><span class="p">{</span>
+<span class="w">    </span><span class="n">longitudinal_velocity</span><span class="p">,</span>
+<span class="w">    </span><span class="n">lateral_acc_limit</span><span class="p">,</span>
+<span class="w">  </span><span class="p">};</span>
+
+<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">shifted_trajectory_info</span><span class="w"> </span><span class="o">=</span>
+<span class="w">    </span><span class="n">autoware</span><span class="o">::</span><span class="n">experimental</span><span class="o">::</span><span class="n">trajectory</span><span class="o">::</span><span class="n">shift</span><span class="p">(</span><span class="o">*</span><span class="n">trajectory</span><span class="p">,</span><span class="w"> </span><span class="n">shift_interval</span><span class="p">,</span><span class="w"> </span><span class="n">shift_parameter</span><span class="p">);</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">shifted_trajectory_info</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">shifted_trajectory_info</span><span class="p">.</span><span class="n">error</span><span class="p">().</span><span class="n">what</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<span class="w">  </span><span class="p">}</span>
+</code></pre></div>
+<p><img alt="shift" src="images/utils/shift/shift_num_points.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Fshift%2Fshift_num_points.drawio.svg">View in Drawio</a></p>
+<h4 id="autowaretrajectoryutilspretty_buildhpp"><span style="font-size: 1.2em;"><code>&lt;autoware/trajectory/utils/pretty_build.hpp&gt;</code></span><a class="headerlink" href="#autowaretrajectoryutilspretty_buildhpp" title="Permanent link">#</a></h4>
 <table>
 <thead>
 <tr>
@@ -8079,7 +8029,15 @@
 </tr>
 </tbody>
 </table>
-<p><strong><code>&lt;autoware/trajectory/utils/reference_path.hpp&gt;</code></strong></p>
+<h5 id="example-usage-of-pretty_build"><span style="font-size: 1.2em;">Example Usage of <code>pretty_build</code></span><a class="headerlink" href="#example-usage-of-pretty_build" title="Permanent link">#</a></h5>
+<p><code>pretty_build</code> is a convenient wrapper tailored for most Autoware Planning/Control component, which will never fail to interpolate unless the given points size is 0 or 1.</p>
+<div class="highlight"><span class="filename">./examples/example_pretty_build.cpp:93:97</span><pre><span></span><code><span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">trajectory_opt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autoware</span><span class="o">::</span><span class="n">experimental</span><span class="o">::</span><span class="n">trajectory</span><span class="o">::</span><span class="n">pretty_build</span><span class="p">(</span><span class="n">points</span><span class="p">);</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">trajectory_opt</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">trajectory</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">trajectory_opt</span><span class="p">.</span><span class="n">value</span><span class="p">();</span>
+</code></pre></div>
+<h4 id="autowaretrajectoryutilsreference_pathhpp"><span style="font-size: 1.2em;"><code>&lt;autoware/trajectory/utils/reference_path.hpp&gt;</code></span><a class="headerlink" href="#autowaretrajectoryutilsreference_pathhpp" title="Permanent link">#</a></h4>
 <table>
 <thead>
 <tr>
@@ -8096,7 +8054,18 @@
 </tr>
 </tbody>
 </table>
-<p><strong><code>&lt;autoware/trajectory/utils/find_nearest.hpp&gt;</code></strong></p>
+<h5 id="example-usage-of-build_reference_path"><span style="font-size: 1.2em;">Example Usage of <code>build_reference_path</code></span><a class="headerlink" href="#example-usage-of-build_reference_path" title="Permanent link">#</a></h5>
+<p>Generate reference path from Lanelets</p>
+<div class="highlight"><span class="filename">./examples/example_reference_path.cpp:74:80</span><pre><span></span><code><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">forward_length</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">40</span><span class="p">;</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">backward_length</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.0</span><span class="p">;</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">reference_path_opt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">trajectory</span><span class="o">::</span><span class="n">build_reference_path</span><span class="p">(</span>
+<span class="w">      </span><span class="n">lanelet_sequence</span><span class="p">,</span><span class="w"> </span><span class="n">current_lanelet</span><span class="p">,</span><span class="w"> </span><span class="n">ego_pose</span><span class="p">,</span><span class="w"> </span><span class="n">lanelet_map_ptr</span><span class="p">,</span><span class="w"> </span><span class="n">routing_graph</span><span class="p">,</span><span class="w"> </span><span class="n">traffic_rules</span><span class="p">,</span>
+<span class="w">      </span><span class="n">forward_length</span><span class="p">,</span><span class="w"> </span><span class="n">backward_length</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">reference_path_opt</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">reference_path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">reference_path_opt</span><span class="p">.</span><span class="n">value</span><span class="p">();</span>
+</code></pre></div>
+<p><img alt="reference_path" src="images/utils/reference_path_dense_centerline.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Freference_path_dense_centerline.drawio.svg">View in Drawio</a></p>
+<h4 id="autowaretrajectoryutilsfind_nearesthpp"><span style="font-size: 1.2em;"><code>&lt;autoware/trajectory/utils/find_nearest.hpp&gt;</code></span><a class="headerlink" href="#autowaretrajectoryutilsfind_nearesthpp" title="Permanent link">#</a></h4>
 <table>
 <thead>
 <tr>
@@ -8113,7 +8082,22 @@
 </tr>
 </tbody>
 </table>
-<p><strong><code>&lt;autoware/trajectory/utils/lateral_metrics.hpp&gt;</code></strong></p>
+<h5 id="example-usage-of-find_nearest"><span style="font-size: 1.2em;">Example Usage of <code>find_nearest</code></span><a class="headerlink" href="#example-usage-of-find_nearest" title="Permanent link">#</a></h5>
+<p>These are the usage examples of self-intersecting trajectory (Bow Trajectory and Vertical Loop Trajectory), and Edge case Lollipop Trajectory.</p>
+<div class="highlight"><span class="filename">./examples/example_self_intersecting.cpp:350:355</span><pre><span></span><code><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">q</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">queries</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="k">auto</span><span class="w"> </span><span class="n">s_opt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">find_first_nearest_index</span><span class="p">(</span><span class="n">traj</span><span class="p">,</span><span class="w"> </span><span class="n">q</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">numeric_limits</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;::</span><span class="n">max</span><span class="p">(),</span><span class="w"> </span><span class="mf">0.4</span><span class="p">);</span>
+<span class="w">      </span><span class="kt">double</span><span class="w"> </span><span class="n">s_nearest</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">*</span><span class="n">s_opt</span><span class="p">;</span>
+<span class="w">      </span><span class="n">s_nearests</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">s_nearest</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="n">plot_nearest_point</span><span class="p">(</span><span class="n">plt</span><span class="p">,</span><span class="w"> </span><span class="n">traj</span><span class="p">,</span><span class="w"> </span><span class="n">s_nearests</span><span class="p">);</span>
+</code></pre></div>
+<p>If the query point is <code>geometry_msgs::msg::Point</code> (not <code>geometry_msgs::msg::Pose</code>), <code>find_nearest_index</code> will be used instead.</p>
+<div class="highlight"><pre><span></span><code><span class="k">auto</span><span class="w"> </span><span class="n">s_nearest</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">find_nearest_index</span><span class="p">(</span><span class="n">traj</span><span class="p">,</span><span class="w"> </span><span class="n">query</span><span class="p">);</span>
+</code></pre></div>
+<p><img alt="bow_trajectory" src="images/utils/find_precise_index_bow_trajectory.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Ffind_precise_index_bow_trajectory.drawio.svg">View in Drawio</a>
+<img alt="vertical_loop_trajectory" src="images/utils/find_precise_index_vertical_loop_trajectory.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Ffind_precise_index_vertical_loop_trajectory.drawio.svg">View in Drawio</a>
+<img alt="lollipop_trajectory" src="images/utils/find_precise_index_lollipop_trajectory.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Ffind_precise_index_lollipop_trajectory.drawio.svg">View in Drawio</a></p>
+<h4 id="autowaretrajectoryutilslateral_metricshpp"><span style="font-size: 1.2em;"><code>&lt;autoware/trajectory/utils/lateral_metrics.hpp&gt;</code></span><a class="headerlink" href="#autowaretrajectoryutilslateral_metricshpp" title="Permanent link">#</a></h4>
 <table>
 <thead>
 <tr>
@@ -8125,7 +8109,7 @@
 <tbody>
 <tr>
 <td><ul><li><code>compute_lateral_distance</code></li></ul></td>
-<td>A utility function that computes the normal distance between a given <code>target point</code> and the tangent line of the pose at specified arc-length <code>s</code> on the trajectory.<br> See below cell figure</td>
+<td>A utility function that computes the normal distance between a given <code>target point</code> and the tangent line of the pose at specified arc-length <code>s</code> on the trajectory. The result will always be positive. <br> See below cell figure</td>
 <td></td>
 </tr>
 <tr>
@@ -8135,7 +8119,22 @@
 </tr>
 </tbody>
 </table>
-<p><strong><code>&lt;autoware/trajectory/utils/footprint.hpp&gt;</code></strong></p>
+<h5 id="example-usage-of-lateral_metrics"><span style="font-size: 1.2em;">Example Usage of <code>lateral_metrics</code></span><a class="headerlink" href="#example-usage-of-lateral_metrics" title="Permanent link">#</a></h5>
+<p>Calculate lateral distance from Parabolic Trajectory to given point and check the side of the point from the trajectory.</p>
+<div class="highlight"><span class="filename">./examples/example_lateral_metrics.cpp:144:155</span><pre><span></span><code><span class="w">  </span><span class="c1">// Always give positive value</span>
+<span class="w">  </span><span class="kt">double</span><span class="w"> </span><span class="n">lateral_offset</span><span class="w"> </span><span class="o">=</span>
+<span class="w">    </span><span class="n">autoware</span><span class="o">::</span><span class="n">experimental</span><span class="o">::</span><span class="n">trajectory</span><span class="o">::</span><span class="n">compute_lateral_distance</span><span class="p">(</span><span class="n">traj</span><span class="p">,</span><span class="w"> </span><span class="n">to_point</span><span class="p">,</span><span class="w"> </span><span class="n">target_s</span><span class="p">);</span>
+<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">on_left</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autoware</span><span class="o">::</span><span class="n">experimental</span><span class="o">::</span><span class="n">trajectory</span><span class="o">::</span><span class="n">is_left_side</span><span class="p">(</span><span class="n">traj</span><span class="p">,</span><span class="w"> </span><span class="n">to_point</span><span class="p">,</span><span class="w"> </span><span class="n">target_s</span><span class="p">);</span>
+
+<span class="w">  </span><span class="n">geometry_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">Pose</span><span class="w"> </span><span class="n">vertical_point</span><span class="p">;</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">on_left</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// positive y is translated to left, so need to convert to negative value for right side.</span>
+<span class="w">    </span><span class="n">vertical_point</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autoware_utils_geometry</span><span class="o">::</span><span class="n">calc_offset_pose</span><span class="p">(</span><span class="n">from_pose</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="o">-</span><span class="n">lateral_offset</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<span class="w">  </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="c1">// left</span>
+<span class="w">    </span><span class="n">vertical_point</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autoware_utils_geometry</span><span class="o">::</span><span class="n">calc_offset_pose</span><span class="p">(</span><span class="n">from_pose</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">lateral_offset</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<span class="w">  </span><span class="p">}</span>
+</code></pre></div>
+<h4 id="autowaretrajectoryutilsfootprinthpp"><span style="font-size: 1.2em;"><code>&lt;autoware/trajectory/utils/footprint.hpp&gt;</code></span><a class="headerlink" href="#autowaretrajectoryutilsfootprinthpp" title="Permanent link">#</a></h4>
 <table>
 <thead>
 <tr>
@@ -8157,7 +8156,17 @@
 </tr>
 </tbody>
 </table>
-<p><strong><code>&lt;autoware/trajectory/utils/crossed.hpp&gt;</code></strong></p>
+<h5 id="example-usage-of-footprint"><span style="font-size: 1.2em;">Example Usage of <code>footprint</code></span><a class="headerlink" href="#example-usage-of-footprint" title="Permanent link">#</a></h5>
+<p>Build Path Polygon and Path Footprints of the trajectory from designated arc-length <code>s</code> (in this case, from start to end point).</p>
+<p>Set the point interval and width manually.</p>
+<div class="highlight"><span class="filename">./examples/example_footprint.cpp:157:158</span><pre><span></span><code><span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">polygon</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autoware</span><span class="o">::</span><span class="n">experimental</span><span class="o">::</span><span class="n">trajectory</span><span class="o">::</span><span class="n">build_path_polygon</span><span class="p">(</span>
+<span class="w">    </span><span class="n">traj</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">traj</span><span class="p">.</span><span class="n">get_underlying_bases</span><span class="p">()[</span><span class="n">traj</span><span class="p">.</span><span class="n">get_underlying_bases</span><span class="p">().</span><span class="n">size</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">],</span><span class="w"> </span><span class="mf">0.5</span><span class="p">,</span><span class="w"> </span><span class="mf">0.5</span><span class="p">);</span>
+</code></pre></div>
+<p>Use base footprint to draw trajectory footprints.</p>
+<div class="highlight"><span class="filename">./examples/example_footprint.cpp:187:188</span><pre><span></span><code><span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">footprints</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autoware</span><span class="o">::</span><span class="n">experimental</span><span class="o">::</span><span class="n">trajectory</span><span class="o">::</span><span class="n">build_path_footprints</span><span class="p">(</span>
+<span class="w">    </span><span class="n">traj</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">traj</span><span class="p">.</span><span class="n">get_underlying_bases</span><span class="p">()[</span><span class="n">traj</span><span class="p">.</span><span class="n">get_underlying_bases</span><span class="p">().</span><span class="n">size</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">],</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="n">base_ring</span><span class="p">);</span>
+</code></pre></div>
+<h4 id="autowaretrajectoryutilscrossedhpp"><span style="font-size: 1.2em;"><code>&lt;autoware/trajectory/utils/crossed.hpp&gt;</code></span><a class="headerlink" href="#autowaretrajectoryutilscrossedhpp" title="Permanent link">#</a></h4>
 <table>
 <thead>
 <tr>
@@ -8184,7 +8193,7 @@
 </tr>
 </tbody>
 </table>
-<p><strong><code>crossed</code> usage example</strong></p>
+<h5 id="example-usage-of-crossed"><span style="font-size: 1.2em;">Example Usage of <code>crossed</code></span><a class="headerlink" href="#example-usage-of-crossed" title="Permanent link">#</a></h5>
 <div class="highlight"><span class="filename">./examples/example_crossed.cpp:184:185</span><pre><span></span><code><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">LineString2d</span><span class="w"> </span><span class="n">line</span><span class="p">{</span><span class="n">Point2d</span><span class="p">{</span><span class="mf">4.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">},</span><span class="w"> </span><span class="n">Point2d</span><span class="p">{</span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">4.0</span><span class="p">}};</span>
 <span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">crossed_line</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autoware</span><span class="o">::</span><span class="n">experimental</span><span class="o">::</span><span class="n">trajectory</span><span class="o">::</span><span class="n">crossed</span><span class="p">(</span><span class="n">traj</span><span class="p">,</span><span class="w"> </span><span class="n">line</span><span class="p">);</span>
 </code></pre></div>
@@ -8194,7 +8203,8 @@
 <span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">crossed_line</span><span class="w"> </span><span class="o">=</span>
 <span class="w">      </span><span class="n">autoware</span><span class="o">::</span><span class="n">experimental</span><span class="o">::</span><span class="n">trajectory</span><span class="o">::</span><span class="n">crossed_with_polygon</span><span class="p">(</span><span class="n">traj</span><span class="p">,</span><span class="w"> </span><span class="n">open_polygon</span><span class="p">);</span>
 </code></pre></div>
-<h4 id="derivation-of-shift">Derivation of <code>shift</code><a class="headerlink" href="#derivation-of-shift" title="Permanent link">#</a></h4>
+<h3 id="appendix">Appendix<a class="headerlink" href="#appendix" title="Permanent link">#</a></h3>
+<h4 id="derivation-of-shift"><span style="font-size: 1.2em;">Derivation of <code>shift</code></span><a class="headerlink" href="#derivation-of-shift" title="Permanent link">#</a></h4>
 <p><code>shift</code> function laterally offsets given curve by <span class="arithmatex">\(l(s)\)</span> in normal direction at each point following the lateral time-jerk profile as shown bellow.</p>
 <p><img alt="jerk_profile" src="images/utils/shift/path_shifter.png"></p>
 <p>Starting from the initial longitudinal velocity of <span class="arithmatex">\(v_{0}^{\mathrm{lon}}\)</span> and longitudinal acceleration of <span class="arithmatex">\(a^{\mathrm{lon}}\)</span>, at each time <span class="arithmatex">\(t_{1}, \cdots, t_{7}\)</span>, the lateral offset <span class="arithmatex">\(l_{i}\)</span> at the corresponding longitudinal position <span class="arithmatex">\(s_{i}\)</span>(with the longitudinal velocity <span class="arithmatex">\(v_{i}\)</span>) is expressed as follows.</p>
@@ -8243,82 +8253,7 @@ s_{1} &amp;= v_{\mathrm{lon}}t + \frac{1}{2} a_{\mathrm{lon}}t^2, &amp; l_{1} &a
 s_{2} &amp;= s_{1} + 2 (v_{0} + a_{\mathrm{lon}}t)t + 2a_{\mathrm{lon}}t^2, &amp; l_{2} &amp;= \frac{11L}{12} \\
 s_{3} &amp;= L_{\mathrm{lon}}, &amp; l_{3} &amp;= L
 \end{align}
-\]</div>
-<h2 id="example-usage">Example Usage<a class="headerlink" href="#example-usage" title="Permanent link">#</a></h2>
-<h3 id="pretty_build"><code>pretty_build</code><a class="headerlink" href="#pretty_build" title="Permanent link">#</a></h3>
-<p><code>pretty_build</code> is a convenient wrapper tailored for most Autoware Planning/Control component, which will never fail to interpolate unless the given points size is 0 or 1.</p>
-<div class="highlight"><span class="filename">./examples/example_pretty_build.cpp:93:97</span><pre><span></span><code><span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">trajectory_opt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autoware</span><span class="o">::</span><span class="n">experimental</span><span class="o">::</span><span class="n">trajectory</span><span class="o">::</span><span class="n">pretty_build</span><span class="p">(</span><span class="n">points</span><span class="p">);</span>
-<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">trajectory_opt</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
-<span class="w">  </span><span class="p">}</span>
-<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">trajectory</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">trajectory_opt</span><span class="p">.</span><span class="n">value</span><span class="p">();</span>
-</code></pre></div>
-<h3 id="use-custom-interpolator">use custom Interpolator<a class="headerlink" href="#use-custom-interpolator" title="Permanent link">#</a></h3>
-<p>You can also specify interpolation method to <code>Builder{}</code> before calling <code>.build(points)</code></p>
-<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="n">autoware</span><span class="o">::</span><span class="n">experimental</span><span class="o">::</span><span class="n">trajectory</span><span class="o">::</span><span class="n">interpolator</span><span class="o">::</span><span class="n">CubicSpline</span><span class="p">;</span>
-
-<span class="n">std</span><span class="o">::</span><span class="n">optional</span><span class="o">&lt;</span><span class="n">Trajectory</span><span class="o">&lt;</span><span class="n">autoware_planning_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">PathPoint</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">trajectory</span><span class="w"> </span><span class="o">=</span>
-<span class="w">  </span><span class="n">Trajectory</span><span class="o">&lt;</span><span class="n">autoware_planning_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">PathPoint</span><span class="o">&gt;::</span><span class="n">Builder</span><span class="p">{}</span>
-<span class="w">  </span><span class="p">.</span><span class="n">set_xy_interpolator</span><span class="o">&lt;</span><span class="n">CubicSpline</span><span class="o">&gt;</span><span class="p">()</span><span class="w">  </span><span class="c1">// Set interpolator for x-y plane</span>
-<span class="w">  </span><span class="p">.</span><span class="n">build</span><span class="p">(</span><span class="n">points</span><span class="p">);</span>
-</code></pre></div>
-<h3 id="cropshorten-trajectory">crop/shorten Trajectory<a class="headerlink" href="#cropshorten-trajectory" title="Permanent link">#</a></h3>
-<div class="highlight"><pre><span></span><code><span class="n">trajectory</span><span class="o">-&gt;</span><span class="n">crop</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">2.0</span><span class="p">);</span>
-</code></pre></div>
-<h3 id="shift-trajectory"><code>shift</code> Trajectory<a class="headerlink" href="#shift-trajectory" title="Permanent link">#</a></h3>
-<div class="highlight"><span class="filename">./examples/example_shift.cpp:97:117</span><pre><span></span><code><span class="w">  </span><span class="c1">// six points</span>
-<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">longitudinal_velocity</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">2.77</span><span class="p">;</span>
-<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">lateral_jerk</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1.0</span><span class="p">;</span>
-<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">lateral_shift</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">2.5</span><span class="p">;</span>
-<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">lateral_acc_limit</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">5.0</span><span class="p">;</span>
-<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">longitudinal_dist</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autoware</span><span class="o">::</span><span class="n">motion_utils</span><span class="o">::</span><span class="n">calc_longitudinal_dist_from_jerk</span><span class="p">(</span>
-<span class="w">    </span><span class="n">lateral_shift</span><span class="p">,</span><span class="w"> </span><span class="n">lateral_jerk</span><span class="p">,</span><span class="w"> </span><span class="n">longitudinal_velocity</span><span class="p">);</span>
-
-<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">start_s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">3.0</span><span class="p">;</span>
-<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="n">ShiftInterval</span><span class="w"> </span><span class="n">shift_interval</span><span class="p">{</span><span class="n">start_s</span><span class="p">,</span><span class="w"> </span><span class="n">start_s</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">longitudinal_dist</span><span class="p">,</span><span class="w"> </span><span class="n">lateral_shift</span><span class="p">};</span>
-<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="n">ShiftParameters</span><span class="w"> </span><span class="n">shift_parameter</span><span class="p">{</span>
-<span class="w">    </span><span class="n">longitudinal_velocity</span><span class="p">,</span>
-<span class="w">    </span><span class="n">lateral_acc_limit</span><span class="p">,</span>
-<span class="w">  </span><span class="p">};</span>
-
-<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">shifted_trajectory_info</span><span class="w"> </span><span class="o">=</span>
-<span class="w">    </span><span class="n">autoware</span><span class="o">::</span><span class="n">experimental</span><span class="o">::</span><span class="n">trajectory</span><span class="o">::</span><span class="n">shift</span><span class="p">(</span><span class="o">*</span><span class="n">trajectory</span><span class="p">,</span><span class="w"> </span><span class="n">shift_interval</span><span class="p">,</span><span class="w"> </span><span class="n">shift_parameter</span><span class="p">);</span>
-<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">shifted_trajectory_info</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">shifted_trajectory_info</span><span class="p">.</span><span class="n">error</span><span class="p">().</span><span class="n">what</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
-<span class="w">  </span><span class="p">}</span>
-</code></pre></div>
-<p><img alt="shift" src="images/utils/shift/shift_num_points.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Fshift%2Fshift_num_points.drawio.svg">View in Drawio</a></p>
-<h3 id="insert-and-set-velocity-profile">Insert and set velocity profile<a class="headerlink" href="#insert-and-set-velocity-profile" title="Permanent link">#</a></h3>
-<p>Set 3.0[m] ~ 5.0[m] part of velocity to 0.0</p>
-<div class="highlight"><pre><span></span><code><span class="n">trajectory</span><span class="o">-&gt;</span><span class="n">longitudinal_velocity_mps</span><span class="p">(</span><span class="mf">3.0</span><span class="p">,</span><span class="w"> </span><span class="mf">5.0</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.0</span><span class="p">;</span>
-</code></pre></div>
-<h3 id="restore-points">Restore points<a class="headerlink" href="#restore-points" title="Permanent link">#</a></h3>
-<div class="highlight"><pre><span></span><code><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">autoware_planning_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">PathPoint</span><span class="o">&gt;</span><span class="w"> </span><span class="n">points</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">trajectory</span><span class="o">-&gt;</span><span class="n">restore</span><span class="p">();</span>
-</code></pre></div>
-<h3 id="generate-reference-path-from-lanelets">Generate reference path from Lanelets<a class="headerlink" href="#generate-reference-path-from-lanelets" title="Permanent link">#</a></h3>
-<div class="highlight"><span class="filename">./examples/example_reference_path.cpp:74:80</span><pre><span></span><code><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">forward_length</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">40</span><span class="p">;</span>
-<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">backward_length</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.0</span><span class="p">;</span>
-<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">reference_path_opt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">trajectory</span><span class="o">::</span><span class="n">build_reference_path</span><span class="p">(</span>
-<span class="w">      </span><span class="n">lanelet_sequence</span><span class="p">,</span><span class="w"> </span><span class="n">current_lanelet</span><span class="p">,</span><span class="w"> </span><span class="n">ego_pose</span><span class="p">,</span><span class="w"> </span><span class="n">lanelet_map_ptr</span><span class="p">,</span><span class="w"> </span><span class="n">routing_graph</span><span class="p">,</span><span class="w"> </span><span class="n">traffic_rules</span><span class="p">,</span>
-<span class="w">      </span><span class="n">forward_length</span><span class="p">,</span><span class="w"> </span><span class="n">backward_length</span><span class="p">);</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">reference_path_opt</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">reference_path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">reference_path_opt</span><span class="p">.</span><span class="n">value</span><span class="p">();</span>
-</code></pre></div>
-<p><img alt="reference_path" src="images/utils/reference_path_dense_centerline.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Freference_path_dense_centerline.drawio.svg">View in Drawio</a></p>
-<h3 id="find-first-nearest-index-from-trajectory">Find first nearest index from Trajectory<a class="headerlink" href="#find-first-nearest-index-from-trajectory" title="Permanent link">#</a></h3>
-<p><code>find_first_nearest_index</code> is a utility function that locates the arc-length coordinate s on a continuous trajectory closest to a given pose.
-These are the usage examples of self-intersecting trajectory (Bow Trajectory and Vertical Loop Trajectory), and Edge case Lollipop Trajectory.</p>
-<div class="highlight"><span class="filename">./examples/example_self_intersecting.cpp:352:357</span><pre><span></span><code><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">q</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">queries</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="k">auto</span><span class="w"> </span><span class="n">s_opt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">find_first_nearest_index</span><span class="p">(</span><span class="n">traj</span><span class="p">,</span><span class="w"> </span><span class="n">q</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">numeric_limits</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;::</span><span class="n">max</span><span class="p">(),</span><span class="w"> </span><span class="mf">0.4</span><span class="p">);</span>
-<span class="w">      </span><span class="kt">double</span><span class="w"> </span><span class="n">s_nearest</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">*</span><span class="n">s_opt</span><span class="p">;</span>
-<span class="w">      </span><span class="n">s_nearests</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">s_nearest</span><span class="p">);</span>
-<span class="w">    </span><span class="p">}</span>
-<span class="w">    </span><span class="n">plot_nearest_point</span><span class="p">(</span><span class="n">plt</span><span class="p">,</span><span class="w"> </span><span class="n">traj</span><span class="p">,</span><span class="w"> </span><span class="n">s_nearests</span><span class="p">);</span>
-</code></pre></div>
-<p><img alt="bow_trajectory" src="images/utils/find_precise_index_bow_trajectory.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Ffind_precise_index_bow_trajectory.drawio.svg">View in Drawio</a>
-<img alt="vertical_loop_trajectory" src="images/utils/find_precise_index_vertical_loop_trajectory.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Ffind_precise_index_vertical_loop_trajectory.drawio.svg">View in Drawio</a>
-<img alt="lollipop_trajectory" src="images/utils/find_precise_index_lollipop_trajectory.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Ffind_precise_index_lollipop_trajectory.drawio.svg">View in Drawio</a></p></div>
+\]</div></div>
 
 
 
