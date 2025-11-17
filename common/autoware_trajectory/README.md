@@ -281,14 +281,20 @@ common/autoware_trajectory/examples/example_reference_path.cpp:74:80
 | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | <ul><li>`find_first_nearest_index`</li></ul> | A utility function that locates the arc-length coordinate `s` on a continuous trajectory closest to a given pose.<br> Input is any continuous trajectory type.<br>If no sample lies within `max_dist` (Euclidean) and `max_yaw` (heading) limits, returns `std::nullopt`.<br>Otherwise, It searches for the best point on the bases first, and then performs a ternary search to precisely locate the nearest `s` in a continuous manner at \~1e-4 m precision level.<br>If two samples are equally close in distance, the one with the smaller yaw deviation (within `max_yaw`) is chosen. | ![find_nearest_index](./images/utils/find_nearest.drawio.svg)[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/find_nearest.drawio.svg") }}) |
 
-##### <span style="font-size: 1.2em;">Example Usage of `find_first_nearest_index`</span>
+##### <span style="font-size: 1.2em;">Example Usage of `find_nearest`</span>
 
 These are the usage examples of self-intersecting trajectory (Bow Trajectory and Vertical Loop Trajectory), and Edge case Lollipop Trajectory.
 
-```cpp title="./examples/example_self_intersecting.cpp:352:357"
+```cpp title="./examples/example_self_intersecting.cpp:350:355"
 --8<--
-common/autoware_trajectory/examples/example_self_intersecting.cpp:352:357
+common/autoware_trajectory/examples/example_self_intersecting.cpp:350:355
 --8<--
+```
+
+If the query point is `geometry_msgs::msg::Point` (not `geometry_msgs::msg::Pose`), `find_nearest_index` will be used instead.
+
+```cpp
+auto s_nearest = find_nearest_index(traj, query);
 ```
 
 ![bow_trajectory](./images/utils/find_precise_index_bow_trajectory.drawio.svg)[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/find_precise_index_bow_trajectory.drawio.svg") }})
