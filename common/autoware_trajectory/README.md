@@ -319,6 +319,26 @@ common/autoware_trajectory/examples/example_lateral_metrics.cpp:144:155
 | <ul><li>`build_path_polygon`</li></ul>    | A utility function that creates the polygon along the trajectory with designated width from specified start arc-length `start_s` to end arc-length `end_s`.                                             | ![build_path_polygon](./images/utils/build_path_polygon.drawio.svg)[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/build_path_polygon.drawio.svg") }})          |
 | <ul><li>`build_path_footprints`</li></ul> | A utility function that creates a trace of footprints (`vector<Polygon2d>`) along the trajectory with the size of input footprint from specified start arc-length `start_s` to end arc-length `end_s` . | ![build_path_footprints](./images/utils/build_path_footprints.drawio.svg)[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/build_path_footprints.drawio.svg") }}) |
 
+##### <span style="font-size: 1.2em;">Example Usage of `footprint`</span>
+
+Build Path Polygon and Path Footprints of the trajectory from designated arc-length `s` (in this case, from start to end point).
+
+Set the point interval and width manually.
+
+```cpp title="./examples/example_footprint.cpp:157:158
+--8<--
+common/autoware_trajectory/examples/example_footprint.cpp:157:158
+--8<--
+```
+
+Use base footprint to draw trajectory footprints.
+
+```cpp title="./examples/example_footprint.cpp:187:188
+--8<--
+common/autoware_trajectory/examples/example_footprint.cpp:187:188
+--8<--
+```
+
 #### <span style="font-size: 1.2em;">`<autoware/trajectory/utils/crossed.hpp>`</span>
 
 | Function                                    | Description                                                                                                                                                                                                           | Detail                                                                                                                                                                      |
