@@ -8159,14 +8159,12 @@
 <h5 id="example-usage-of-footprint"><span style="font-size: 1.2em;">Example Usage of <code>footprint</code></span><a class="headerlink" href="#example-usage-of-footprint" title="Permanent link">#</a></h5>
 <p>Build Path Polygon and Path Footprints of the trajectory from designated arc-length <code>s</code> (in this case, from start to end point).</p>
 <p>Set the point interval and width manually.</p>
-<p>```cpp title="./examples/example_footprint.cpp:157:158
-  const auto polygon = autoware::experimental::trajectory::build_path_polygon(
-    traj, 0, traj.get_underlying_bases()[traj.get_underlying_bases().size() - 1], 0.5, 0.5);
-</p><div class="highlight"><pre><span></span><code>Use base footprint to draw trajectory footprints.
-
-```cpp title="./examples/example_footprint.cpp:187:188
-  const auto footprints = autoware::experimental::trajectory::build_path_footprints(
-    traj, 0, traj.get_underlying_bases()[traj.get_underlying_bases().size() - 1], 1.0, base_ring);
+<div class="highlight"><span class="filename">./examples/example_footprint.cpp:157:158</span><pre><span></span><code><span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">polygon</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autoware</span><span class="o">::</span><span class="n">experimental</span><span class="o">::</span><span class="n">trajectory</span><span class="o">::</span><span class="n">build_path_polygon</span><span class="p">(</span>
+<span class="w">    </span><span class="n">traj</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">traj</span><span class="p">.</span><span class="n">get_underlying_bases</span><span class="p">()[</span><span class="n">traj</span><span class="p">.</span><span class="n">get_underlying_bases</span><span class="p">().</span><span class="n">size</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">],</span><span class="w"> </span><span class="mf">0.5</span><span class="p">,</span><span class="w"> </span><span class="mf">0.5</span><span class="p">);</span>
+</code></pre></div>
+<p>Use base footprint to draw trajectory footprints.</p>
+<div class="highlight"><span class="filename">./examples/example_footprint.cpp:187:188</span><pre><span></span><code><span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">footprints</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autoware</span><span class="o">::</span><span class="n">experimental</span><span class="o">::</span><span class="n">trajectory</span><span class="o">::</span><span class="n">build_path_footprints</span><span class="p">(</span>
+<span class="w">    </span><span class="n">traj</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">traj</span><span class="p">.</span><span class="n">get_underlying_bases</span><span class="p">()[</span><span class="n">traj</span><span class="p">.</span><span class="n">get_underlying_bases</span><span class="p">().</span><span class="n">size</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">],</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="n">base_ring</span><span class="p">);</span>
 </code></pre></div>
 <h4 id="autowaretrajectoryutilscrossedhpp"><span style="font-size: 1.2em;"><code>&lt;autoware/trajectory/utils/crossed.hpp&gt;</code></span><a class="headerlink" href="#autowaretrajectoryutilscrossedhpp" title="Permanent link">#</a></h4>
 <table>
