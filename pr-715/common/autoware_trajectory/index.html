@@ -7450,6 +7450,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#appendix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appendix
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -7977,56 +7988,6 @@
 </tr>
 </tbody>
 </table>
-<h5 id="derivation-of-shift"><span style="font-size: 1.2em;">Derivation of <code>shift</code></span><a class="headerlink" href="#derivation-of-shift" title="Permanent link">#</a></h5>
-<p><code>shift</code> function laterally offsets given curve by <span class="arithmatex">\(l(s)\)</span> in normal direction at each point following the lateral time-jerk profile as shown bellow.</p>
-<p><img alt="jerk_profile" src="images/utils/shift/path_shifter.png"></p>
-<p>Starting from the initial longitudinal velocity of <span class="arithmatex">\(v_{0}^{\mathrm{lon}}\)</span> and longitudinal acceleration of <span class="arithmatex">\(a^{\mathrm{lon}}\)</span>, at each time <span class="arithmatex">\(t_{1}, \cdots, t_{7}\)</span>, the lateral offset <span class="arithmatex">\(l_{i}\)</span> at the corresponding longitudinal position <span class="arithmatex">\(s_{i}\)</span>(with the longitudinal velocity <span class="arithmatex">\(v_{i}\)</span>) is expressed as follows.</p>
-<div class="arithmatex">\[
-\begin{align}
-&amp; t_{1}: &amp; s_{1} &amp;= v^{\rm lon}_0 T_j + \frac{1}{2} a^{\rm lon} T_j^2, &amp; v_{1} &amp;= v^{\rm lon}_0 + a^{\rm lon} T_j, &amp; l_{1} &amp;= \frac{1}{6}jT_j^3 \\
-&amp; t_{2}: &amp; s_{2} &amp;= v^{\rm lon}_1 T_a + \frac{1}{2} a^{\rm lon} T_a^2, &amp; v_{2} &amp;= v^{\rm lon}_1 + a^{\rm lon} T_a, &amp; l_{2} &amp;= \frac{1}{6}j T_j^3 + \frac{1}{2} j T_a T_j^2 + \frac{1}{2} j T_a^2 T_j \\
-&amp; t_{3}: &amp; s_{3} &amp;= v^{\rm lon}_2 T_j + \frac{1}{2} a^{\rm lon} T_j^2, &amp; v_{3} &amp;= v^{\rm lon}_2 + a^{\rm lon} T_j, &amp; l_{3} &amp;= j  T_j^3 + \frac{3}{2} j T_a T_j^2 + \frac{1}{2} j T_a^2 T_j \\
-&amp; t_{4}: &amp; s_{4} &amp;= v^{\rm lon}_3 T_v + \frac{1}{2} a^{\rm lon} T_v^2, &amp; v_{4} &amp;= v^{\rm lon}_3 + a^{\rm lon} T_v, &amp; l_{4} &amp;= j T_j^3 + \frac{3}{2} j T_a T_j^2 + \frac{1}{2} j T_a^2 T_j + j(T_a + T_j)T_j T_v \\
-&amp; t_{5}: &amp; s_{5} &amp;= v^{\rm lon}_4 T_j + \frac{1}{2} a^{\rm lon} T_j^2, &amp; v_{5} &amp;= v^{\rm lon}_4 + a^{\rm lon} T_j, &amp; l_{5} &amp;= \frac{11}{6} j T_j^3 + \frac{5}{2} j T_a T_j^2 + \frac{1}{2} j T_a^2 T_j + j(T_a + T_j)T_j T_v \\
-&amp; t_{6}: &amp; s_{6} &amp;= v^{\rm lon}_5 T_a + \frac{1}{2} a^{\rm lon} T_a^2, &amp; v_{6} &amp;= v^{\rm lon}_5 + a^{\rm lon} T_a, &amp; l_{6} &amp;= \frac{11}{6} j T_j^3 + 3 j T_a T_j^2 + j T_a^2 T_j + j(T_a + T_j)T_j T_v \\
-&amp; t_{7}: &amp; s_{7} &amp;= v^{\rm lon}_6 T_j + \frac{1}{2} a^{\rm lon} T_j^2, &amp; v_{7} &amp;= v^{\rm lon}_6 + a^{\rm lon} T_j, &amp; l_{7} &amp;= 2 j T_j^3 + 3 j T_a T_j^2 + j T_a^2 T_j + j(T_a + T_j)T_j T_v
-\end{align}
-\]</div>
-<p>Given following inputs,</p>
-<ul>
-<li>desired longitudinal distance <span class="arithmatex">\(L_{\mathrm{lon}}\)</span></li>
-<li>desired lateral shift distance <span class="arithmatex">\(L\)</span></li>
-<li>longitudinal initial velocity <span class="arithmatex">\(v_{\mathrm{lon}}\)</span></li>
-<li>longitudinal acceleration <span class="arithmatex">\(a_{\mathrm{lon}}\)</span></li>
-<li>lateral acceleration limit <span class="arithmatex">\(a_{\mathrm{lim}}^{\mathrm{lat}}\)</span></li>
-</ul>
-<p><code>shift</code> internally computes</p>
-<ul>
-<li>total time of shift <span class="arithmatex">\(T_{\mathrm{total}}\)</span></li>
-<li>maximum lateral acceleration <span class="arithmatex">\(a_{\mathrm{max}}^{\mathrm{lat}}\)</span> during the shift</li>
-<li>constant/zero jerk time <span class="arithmatex">\(T_{\mathrm{j}}, T_{\mathrm{a}}\)</span> respectively</li>
-<li>required jerk <span class="arithmatex">\(j\)</span></li>
-</ul>
-<p>as following</p>
-<div class="arithmatex">\[
-\begin{align}
-T_{\mathrm{total}} &amp;= \text{(time to travel $L_{\mathrm{lon}}$ from $v_{\mathrm{lon}}$ under $a_{\mathrm{lon}}$)} \\
-a_{\rm max}^{\rm lat}  &amp;= \frac{8L}{T_{\rm total}^2} \\
-T_j&amp;=\frac{T_{\rm total}}{2} - \frac{2L}{a_{\rm lim}^{\rm lat} T_{\rm total}}\\
-T_a&amp;=\frac{4L}{a_{\rm lim}^{\rm lat} T_{\rm total}} - \frac{T_{\rm total}}{2}\\
-j&amp;=\frac{2a_{\rm lim} ^{\mathrm{lat} 2}T_{\rm total}}{a_{\rm lim}^{\rm lat} T_{\rm total}^2-4L}
-\end{align}
-\]</div>
-<p>to obtain <span class="arithmatex">\((s_{i}, l_{i})\)</span> respectively. Note that <span class="arithmatex">\(l_{7} == L\)</span>.</p>
-<p>If <span class="arithmatex">\(a_{\mathrm{max}}^{\mathrm{lat}} &gt; a_{\mathrm{lim}}^{\mathrm{lat}}\)</span>, then <span class="arithmatex">\(l_{i}\)</span> is simply</p>
-<div class="arithmatex">\[
-\begin{align}
-t &amp;= \frac{T_{\mathrm{total}}}{4} \\
-s_{1} &amp;= v_{\mathrm{lon}}t + \frac{1}{2} a_{\mathrm{lon}}t^2, &amp; l_{1} &amp;= \frac{L}{12} \\
-s_{2} &amp;= s_{1} + 2 (v_{0} + a_{\mathrm{lon}}t)t + 2a_{\mathrm{lon}}t^2, &amp; l_{2} &amp;= \frac{11L}{12} \\
-s_{3} &amp;= L_{\mathrm{lon}}, &amp; l_{3} &amp;= L
-\end{align}
-\]</div>
 <h5 id="example-usage-of-shift-trajectory"><span style="font-size: 1.2em;">Example Usage of <code>shift</code> Trajectory</span><a class="headerlink" href="#example-usage-of-shift-trajectory" title="Permanent link">#</a></h5>
 <div class="highlight"><span class="filename">./examples/example_shift.cpp:97:117</span><pre><span></span><code><span class="w">  </span><span class="c1">// six points</span>
 <span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">longitudinal_velocity</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">2.77</span><span class="p">;</span>
@@ -8213,7 +8174,58 @@ s_{3} &amp;= L_{\mathrm{lon}}, &amp; l_{3} &amp;= L
 <span class="w">  </span><span class="p">{</span>
 <span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">crossed_line</span><span class="w"> </span><span class="o">=</span>
 <span class="w">      </span><span class="n">autoware</span><span class="o">::</span><span class="n">experimental</span><span class="o">::</span><span class="n">trajectory</span><span class="o">::</span><span class="n">crossed_with_polygon</span><span class="p">(</span><span class="n">traj</span><span class="p">,</span><span class="w"> </span><span class="n">open_polygon</span><span class="p">);</span>
-</code></pre></div></div>
+</code></pre></div>
+<h3 id="appendix">Appendix<a class="headerlink" href="#appendix" title="Permanent link">#</a></h3>
+<h4 id="derivation-of-shift"><span style="font-size: 1.2em;">Derivation of <code>shift</code></span><a class="headerlink" href="#derivation-of-shift" title="Permanent link">#</a></h4>
+<p><code>shift</code> function laterally offsets given curve by <span class="arithmatex">\(l(s)\)</span> in normal direction at each point following the lateral time-jerk profile as shown bellow.</p>
+<p><img alt="jerk_profile" src="images/utils/shift/path_shifter.png"></p>
+<p>Starting from the initial longitudinal velocity of <span class="arithmatex">\(v_{0}^{\mathrm{lon}}\)</span> and longitudinal acceleration of <span class="arithmatex">\(a^{\mathrm{lon}}\)</span>, at each time <span class="arithmatex">\(t_{1}, \cdots, t_{7}\)</span>, the lateral offset <span class="arithmatex">\(l_{i}\)</span> at the corresponding longitudinal position <span class="arithmatex">\(s_{i}\)</span>(with the longitudinal velocity <span class="arithmatex">\(v_{i}\)</span>) is expressed as follows.</p>
+<div class="arithmatex">\[
+\begin{align}
+&amp; t_{1}: &amp; s_{1} &amp;= v^{\rm lon}_0 T_j + \frac{1}{2} a^{\rm lon} T_j^2, &amp; v_{1} &amp;= v^{\rm lon}_0 + a^{\rm lon} T_j, &amp; l_{1} &amp;= \frac{1}{6}jT_j^3 \\
+&amp; t_{2}: &amp; s_{2} &amp;= v^{\rm lon}_1 T_a + \frac{1}{2} a^{\rm lon} T_a^2, &amp; v_{2} &amp;= v^{\rm lon}_1 + a^{\rm lon} T_a, &amp; l_{2} &amp;= \frac{1}{6}j T_j^3 + \frac{1}{2} j T_a T_j^2 + \frac{1}{2} j T_a^2 T_j \\
+&amp; t_{3}: &amp; s_{3} &amp;= v^{\rm lon}_2 T_j + \frac{1}{2} a^{\rm lon} T_j^2, &amp; v_{3} &amp;= v^{\rm lon}_2 + a^{\rm lon} T_j, &amp; l_{3} &amp;= j  T_j^3 + \frac{3}{2} j T_a T_j^2 + \frac{1}{2} j T_a^2 T_j \\
+&amp; t_{4}: &amp; s_{4} &amp;= v^{\rm lon}_3 T_v + \frac{1}{2} a^{\rm lon} T_v^2, &amp; v_{4} &amp;= v^{\rm lon}_3 + a^{\rm lon} T_v, &amp; l_{4} &amp;= j T_j^3 + \frac{3}{2} j T_a T_j^2 + \frac{1}{2} j T_a^2 T_j + j(T_a + T_j)T_j T_v \\
+&amp; t_{5}: &amp; s_{5} &amp;= v^{\rm lon}_4 T_j + \frac{1}{2} a^{\rm lon} T_j^2, &amp; v_{5} &amp;= v^{\rm lon}_4 + a^{\rm lon} T_j, &amp; l_{5} &amp;= \frac{11}{6} j T_j^3 + \frac{5}{2} j T_a T_j^2 + \frac{1}{2} j T_a^2 T_j + j(T_a + T_j)T_j T_v \\
+&amp; t_{6}: &amp; s_{6} &amp;= v^{\rm lon}_5 T_a + \frac{1}{2} a^{\rm lon} T_a^2, &amp; v_{6} &amp;= v^{\rm lon}_5 + a^{\rm lon} T_a, &amp; l_{6} &amp;= \frac{11}{6} j T_j^3 + 3 j T_a T_j^2 + j T_a^2 T_j + j(T_a + T_j)T_j T_v \\
+&amp; t_{7}: &amp; s_{7} &amp;= v^{\rm lon}_6 T_j + \frac{1}{2} a^{\rm lon} T_j^2, &amp; v_{7} &amp;= v^{\rm lon}_6 + a^{\rm lon} T_j, &amp; l_{7} &amp;= 2 j T_j^3 + 3 j T_a T_j^2 + j T_a^2 T_j + j(T_a + T_j)T_j T_v
+\end{align}
+\]</div>
+<p>Given following inputs,</p>
+<ul>
+<li>desired longitudinal distance <span class="arithmatex">\(L_{\mathrm{lon}}\)</span></li>
+<li>desired lateral shift distance <span class="arithmatex">\(L\)</span></li>
+<li>longitudinal initial velocity <span class="arithmatex">\(v_{\mathrm{lon}}\)</span></li>
+<li>longitudinal acceleration <span class="arithmatex">\(a_{\mathrm{lon}}\)</span></li>
+<li>lateral acceleration limit <span class="arithmatex">\(a_{\mathrm{lim}}^{\mathrm{lat}}\)</span></li>
+</ul>
+<p><code>shift</code> internally computes</p>
+<ul>
+<li>total time of shift <span class="arithmatex">\(T_{\mathrm{total}}\)</span></li>
+<li>maximum lateral acceleration <span class="arithmatex">\(a_{\mathrm{max}}^{\mathrm{lat}}\)</span> during the shift</li>
+<li>constant/zero jerk time <span class="arithmatex">\(T_{\mathrm{j}}, T_{\mathrm{a}}\)</span> respectively</li>
+<li>required jerk <span class="arithmatex">\(j\)</span></li>
+</ul>
+<p>as following</p>
+<div class="arithmatex">\[
+\begin{align}
+T_{\mathrm{total}} &amp;= \text{(time to travel $L_{\mathrm{lon}}$ from $v_{\mathrm{lon}}$ under $a_{\mathrm{lon}}$)} \\
+a_{\rm max}^{\rm lat}  &amp;= \frac{8L}{T_{\rm total}^2} \\
+T_j&amp;=\frac{T_{\rm total}}{2} - \frac{2L}{a_{\rm lim}^{\rm lat} T_{\rm total}}\\
+T_a&amp;=\frac{4L}{a_{\rm lim}^{\rm lat} T_{\rm total}} - \frac{T_{\rm total}}{2}\\
+j&amp;=\frac{2a_{\rm lim} ^{\mathrm{lat} 2}T_{\rm total}}{a_{\rm lim}^{\rm lat} T_{\rm total}^2-4L}
+\end{align}
+\]</div>
+<p>to obtain <span class="arithmatex">\((s_{i}, l_{i})\)</span> respectively. Note that <span class="arithmatex">\(l_{7} == L\)</span>.</p>
+<p>If <span class="arithmatex">\(a_{\mathrm{max}}^{\mathrm{lat}} &gt; a_{\mathrm{lim}}^{\mathrm{lat}}\)</span>, then <span class="arithmatex">\(l_{i}\)</span> is simply</p>
+<div class="arithmatex">\[
+\begin{align}
+t &amp;= \frac{T_{\mathrm{total}}}{4} \\
+s_{1} &amp;= v_{\mathrm{lon}}t + \frac{1}{2} a_{\mathrm{lon}}t^2, &amp; l_{1} &amp;= \frac{L}{12} \\
+s_{2} &amp;= s_{1} + 2 (v_{0} + a_{\mathrm{lon}}t)t + 2a_{\mathrm{lon}}t^2, &amp; l_{2} &amp;= \frac{11L}{12} \\
+s_{3} &amp;= L_{\mathrm{lon}}, &amp; l_{3} &amp;= L
+\end{align}
+\]</div></div>
 
 
 
