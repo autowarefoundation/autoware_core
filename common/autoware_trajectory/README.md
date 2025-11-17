@@ -232,6 +232,7 @@ std::vector<autoware_planning_msgs::msg::PathPoint> points = trajectory->restore
 | <ul><li>`shift(const &Trajectory, const &ShiftInterval, const &ShiftParameters) -> expected<ShiftedTrajectory, ShiftError>`</li></ul> | Following [formulation](#derivation-of-shift), return a shifted `Trajectory` object if the parameters are feasible, otherwise return `Error` object indicating error reason(i.e. $T_j$ becomes negative, $j$ becomes negative, etc.). | For derivation, see [formulation](#derivation-of-shift).<br>The example code for this plot is found [example](#example-usage-of-shift-trajectory)                                                                                                                                                                                             |
 
 ##### <span style="font-size: 1.2em;">Derivation of `shift`</span>
+
 `shift` function laterally offsets given curve by $l(s)$ in normal direction at each point following the lateral time-jerk profile as shown bellow.
 
 ![jerk_profile](./images/utils/shift/path_shifter.png)
@@ -299,9 +300,6 @@ common/autoware_trajectory/examples/example_shift.cpp:97:117
 ```
 
 ![shift](./images/utils/shift/shift_num_points.drawio.svg)[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/shift/shift_num_points.drawio.svg") }})
-
-
-
 
 #### <span style="font-size: 1.2em;">`<autoware/trajectory/utils/pretty_build.hpp>`</span>
 
@@ -371,9 +369,7 @@ common/autoware_trajectory/examples/example_self_intersecting.cpp:352:357
 | <ul><li>`build_path_polygon`</li></ul>    | A utility function that creates the polygon along the trajectory with designated width from specified start arc-length `start_s` to end arc-length `end_s`.                                             | ![build_path_polygon](./images/utils/build_path_polygon.drawio.svg)[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/build_path_polygon.drawio.svg") }})          |
 | <ul><li>`build_path_footprints`</li></ul> | A utility function that creates a trace of footprints (`vector<Polygon2d>`) along the trajectory with the size of input footprint from specified start arc-length `start_s` to end arc-length `end_s` . | ![build_path_footprints](./images/utils/build_path_footprints.drawio.svg)[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/build_path_footprints.drawio.svg") }}) |
 
-
-
-**`<autoware/trajectory/utils/crossed.hpp>`**
+#### <span style="font-size: 1.2em;">`<autoware/trajectory/utils/crossed.hpp>`</span>
 
 | Function                                    | Description                                                                                                                                                                                                           | Detail                                                                                                                                                                      |
 | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -381,7 +377,7 @@ common/autoware_trajectory/examples/example_self_intersecting.cpp:352:357
 | <ul><li>`crossed`</li></ul>                 | A utility function that finds intersections between a trajectory and a linestring regardless of constraint. <br> **Post-condition** <ul><li> The output is sorted in ascending order along the trajectory. </ul></li> | ![crossed_linestring](./images/utils/crossed_linestring.drawio.svg)[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/crossed_linestring.drawio.svg") }}) |
 | <ul><li>`crossed_with_polygon`</li></ul>    | A utility function that finds intersections between a trajectory and a polygon. <br> **Post-condition** <ul><li> The output is sorted in ascending order along the trajectory. </ul></li>                             | ![crossed_polygon](./images/utils/crossed_polygon.drawio.svg)[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/crossed_polygon.drawio.svg") }})          |
 
-**`crossed` usage example**
+##### <span style="font-size: 1.2em;">Example Usage of `crossed`</span>
 
 ```cpp title="./examples/example_crossed.cpp:184:185"
 --8<--
@@ -394,5 +390,3 @@ common/autoware_trajectory/examples/example_crossed.cpp:184:185
 common/autoware_trajectory/examples/example_crossed.cpp:223:227
 --8<--
 ```
-
-## Example Usage
