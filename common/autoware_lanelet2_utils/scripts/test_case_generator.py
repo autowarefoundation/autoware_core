@@ -138,10 +138,14 @@ class LaneletVisualizationHandler:
         self.ax.add_patch(p)
         self.lanelet_polygon_patches.append((p, lanelet.id))
 
+        has_custom_centerline = lanelet.centerline.id != 0
         centerline = lanelet.centerline
         center_x = [pt.x for pt in centerline]
         center_y = [pt.y for pt in centerline]
-        self.ax.plot(center_x, center_y, "k--", linewidth=1, alpha=0.5)
+        if has_custom_centerline:
+            self.ax.plot(center_x, center_y, "k", linewidth=1.5, alpha=0.5)
+        else:
+            self.ax.plot(center_x, center_y, "k--", linewidth=1, alpha=0.5)
         draw_centerline_arrow(self.ax, centerline)
 
     def hover_on_lanelet(self, event):
