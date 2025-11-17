@@ -297,10 +297,20 @@ common/autoware_trajectory/examples/example_self_intersecting.cpp:352:357
 
 #### <span style="font-size: 1.2em;">`<autoware/trajectory/utils/lateral_metrics.hpp>`</span>
 
-| Function                                     | Description                                                                                                                                                                                   | Detail                                                                                                                                                                                       |
-| -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| <ul><li>`compute_lateral_distance`</li></ul> | A utility function that computes the normal distance between a given `target point` and the tangent line of the pose at specified arc-length `s` on the trajectory.<br> See below cell figure |                                                                                                                                                                                              |
-| <ul><li>`is_left_side`</li></ul>             | A utility function that determines whether a given `target point` lies on the **left side** of the trajectory's tangent direction at the specified arc-length `s`.                            | ![lateral_metrics](./images/utils/lateral_distance_computation.drawio.svg)[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/lateral_distance_computation.drawio.svg") }}) |
+| Function                                     | Description                                                                                                                                                                                                                        | Detail                                                                                                                                                                                       |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| <ul><li>`compute_lateral_distance`</li></ul> | A utility function that computes the normal distance between a given `target point` and the tangent line of the pose at specified arc-length `s` on the trajectory. The result will always be positive. <br> See below cell figure |                                                                                                                                                                                              |
+| <ul><li>`is_left_side`</li></ul>             | A utility function that determines whether a given `target point` lies on the **left side** of the trajectory's tangent direction at the specified arc-length `s`.                                                                 | ![lateral_metrics](./images/utils/lateral_distance_computation.drawio.svg)[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/lateral_distance_computation.drawio.svg") }}) |
+
+##### <span style="font-size: 1.2em;">Example Usage of `lateral_metrics`</span>
+
+Calculate lateral distance from Parabolic Trajectory to given point and check the side of the point from the trajectory.
+
+```cpp title="./examples/example_lateral_metrics.cpp:144:155"
+--8<--
+common/autoware_trajectory/examples/example_lateral_metrics.cpp:144:155
+--8<--
+```
 
 #### <span style="font-size: 1.2em;">`<autoware/trajectory/utils/footprint.hpp>`</span>
 
