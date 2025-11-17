@@ -9,11 +9,18 @@ ament_auto_add_library(${PROJECT_NAME}_lib SHARED
   src/node.cpp
   src/planner_manager.cpp
   src/test_utils.cpp
+  src/experimental/node.cpp
+  src/experimental/planner_manager.cpp
 )
 
 rclcpp_components_register_node(${PROJECT_NAME}_lib
   PLUGIN "autoware::behavior_velocity_planner::BehaviorVelocityPlannerNode"
   EXECUTABLE ${PROJECT_NAME}_node
+)
+
+rclcpp_components_register_node(${PROJECT_NAME}_lib
+  PLUGIN "autoware::behavior_velocity_planner::experimental::BehaviorVelocityPlannerNode"
+  EXECUTABLE experimental_${PROJECT_NAME}_node
 )
 
 if(BUILD_TESTING)
@@ -27,7 +34,7 @@ if(BUILD_TESTING)
   target_include_directories(test_${PROJECT_NAME} PRIVATE src)
 endif()
 
-ament_auto_package(INSTALL_TO_SHARE
+autoware_ament_auto_package(INSTALL_TO_SHARE
   launch
   config
 )

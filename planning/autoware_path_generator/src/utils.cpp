@@ -103,7 +103,7 @@ std::optional<lanelet::ConstLanelets> get_lanelets_within_route_up_to(
 
     lanelets.push_back(*prev_lanelet);
     current_lanelet = *prev_lanelet;
-    length += lanelet::utils::getLaneletLength2d(*prev_lanelet);
+    length += lanelet::geometry::length2d(*prev_lanelet);
   }
 
   std::reverse(lanelets.begin(), lanelets.end());
@@ -129,7 +129,7 @@ std::optional<lanelet::ConstLanelets> get_lanelets_within_route_after(
 
     lanelets.push_back(*next_lanelet);
     current_lanelet = *next_lanelet;
-    length += lanelet::utils::getLaneletLength2d(*next_lanelet);
+    length += lanelet::geometry::length2d(*next_lanelet);
   }
 
   return lanelets;
@@ -207,17 +207,31 @@ std::vector<WaypointGroup> get_waypoint_groups(
 
     const auto waypoints_id = lanelet.attribute("waypoints").asId().value();
     const auto & waypoints = lanelet_map.lineStringLayer.get(waypoints_id);
+    if (waypoints.empty()) {
+      continue;
+    }
 
     const auto start =
       s + get_interval_bound(waypoints.front(), lanelet, -connection_gradient_from_centerline);
     if (waypoint_groups.empty() || start > waypoint_groups.back().interval.end) {
       // current waypoint group is not within interval of any other group, thus create a new group
       waypoint_groups.emplace_back().interval.start = start;
+    } else if (
+      const auto border_point = get_border_point(
+        lanelet::BasicLineString3d{
+          waypoint_groups.back().waypoints.back().point.basicPoint(),
+          waypoints.front().basicPoint()},
+        lanelet)) {
+      waypoint_groups.back().waypoints.emplace_back(
+        *border_point, waypoint_groups.back().waypoints.back().lane_id);
+      waypoint_groups.back().waypoints.back().next_lane_id = lanelet.id();
     }
 
     waypoint_groups.back().interval.end =
       s + get_interval_bound(waypoints.back(), lanelet, connection_gradient_from_centerline);
 
+    waypoint_groups.back().waypoints.reserve(
+      waypoint_groups.back().waypoints.size() + waypoints.size());
     std::transform(
       waypoints.begin(), waypoints.end(), std::back_inserter(waypoint_groups.back().waypoints),
       [&](const lanelet::ConstPoint3d & waypoint) {
@@ -228,6 +242,33 @@ std::vector<WaypointGroup> get_waypoint_groups(
   }
 
   return waypoint_groups;
+}
+
+std::optional<lanelet::ConstPoint3d> get_border_point(
+  const lanelet::BasicLineString3d & segment_across_border,
+  const lanelet::ConstLanelet & border_lanelet)
+{
+  if (segment_across_border.size() < 2) {
+    RCLCPP_ERROR(
+      rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
+      "Segment has less than 2 points");
+    return std::nullopt;
+  }
+
+  const lanelet::BasicLineString3d border{
+    border_lanelet.leftBound().front().basicPoint(),
+    border_lanelet.rightBound().front().basicPoint()};
+
+  lanelet::BasicPoints3d border_points;
+  boost::geometry::intersection(segment_across_border, border, border_points);
+
+  if (border_points.empty()) {
+    return std::nullopt;
+  }
+
+  return lanelet::utils::to3D(lanelet::ConstPoint2d(
+    lanelet::InvalId,
+    {border_points.front().x(), border_points.front().y(), segment_across_border.back().z()}));
 }
 
 std::optional<double> get_first_intersection_arc_length(
@@ -542,9 +583,8 @@ double get_arc_length_on_path(
 
     target_lanelet_id = it->id();
     const auto lanelet_point_on_centerline =
-      lanelet::geometry::interpolatedPointAtDistance(it->centerline2d(), s_centerline - s);
-    point_on_centerline = lanelet::utils::conversion::toGeomMsgPt(
-      Eigen::Vector3d{lanelet_point_on_centerline.x(), lanelet_point_on_centerline.y(), 0.});
+      lanelet::geometry::interpolatedPointAtDistance(it->centerline(), s_centerline - s);
+    point_on_centerline = lanelet::utils::conversion::toGeomMsgPt(lanelet_point_on_centerline);
     break;
   }
 
@@ -703,7 +743,7 @@ PathRange<std::optional<double>> get_arc_length_on_centerline(
       break;
     }
 
-    const double centerline_length = lanelet::utils::getLaneletLength2d(*it);
+    const double centerline_length = lanelet::geometry::length2d(*it);
     const double left_bound_length = lanelet::geometry::length(it->leftBound2d());
     const double right_bound_length = lanelet::geometry::length(it->rightBound2d());
 
@@ -918,7 +958,7 @@ TurnIndicatorsCommand get_turn_signal(
         }
       }
 
-      const auto lanelet_length = lanelet::utils::getLaneletLength2d(lanelet);
+      const auto lanelet_length = lanelet::geometry::length2d(lanelet);
       if (arc_length_from_vehicle_front_to_lanelet_start) {
         *arc_length_from_vehicle_front_to_lanelet_start += lanelet_length;
       } else {

@@ -44,7 +44,7 @@ protected:
     const auto sample_map_dir =
       fs::path(ament_index_cpp::get_package_share_directory("autoware_lanelet2_utils")) /
       "sample_map";
-    const auto intersection_crossing_map_path = sample_map_dir / "intersection" / "crossing.osm";
+    const auto intersection_crossing_map_path = sample_map_dir / "vm_03/left_hand/lanelet2_map.osm";
 
     map_msg_ = lanelet2_utils::to_autoware_map_msgs(
       lanelet2_utils::load_mgrs_coordinate_map(intersection_crossing_map_path.string()));
@@ -319,7 +319,7 @@ protected:
       fs::path(ament_index_cpp::get_package_share_directory("autoware_lanelet2_utils")) /
       "sample_map";
     const auto intersection_crossing_map_path =
-      sample_map_dir / "intersection" / "crossing_inverse.osm";
+      sample_map_dir / "vm_03/right_hand/lanelet2_map.osm";
 
     map_msg_ = lanelet2_utils::to_autoware_map_msgs(
       lanelet2_utils::load_mgrs_coordinate_map(intersection_crossing_map_path.string()));
@@ -440,7 +440,8 @@ protected:
     const auto sample_map_dir =
       fs::path(ament_index_cpp::get_package_share_directory("autoware_lanelet2_utils")) /
       "sample_map";
-    const auto intersection_crossing_map_path = sample_map_dir / "road_shoulder" / "highway.osm";
+    const auto intersection_crossing_map_path =
+      sample_map_dir / "vm_01_15-16/highway/lanelet2_map.osm";
 
     map_msg_ = lanelet2_utils::to_autoware_map_msgs(
       lanelet2_utils::load_mgrs_coordinate_map(intersection_crossing_map_path.string()));
@@ -481,7 +482,8 @@ protected:
     const auto sample_map_dir =
       fs::path(ament_index_cpp::get_package_share_directory("autoware_lanelet2_utils")) /
       "sample_map";
-    const auto intersection_crossing_map_path = sample_map_dir / "road_shoulder" / "loop.osm";
+    const auto intersection_crossing_map_path =
+      sample_map_dir / "vm_01_15-16/loop/lanelet2_map.osm";
 
     map_msg_ = lanelet2_utils::to_autoware_map_msgs(
       lanelet2_utils::load_mgrs_coordinate_map(intersection_crossing_map_path.string()));

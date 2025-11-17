@@ -101,8 +101,61 @@ std::optional<std::pair<size_t, std::vector<PointWithStamp>>> get_collision_inde
   return std::nullopt;
 }
 
-// estimate the future ego pose with assuming that the pose error against the reference path will
-// decrease to zero by the time_to_convergence.
+Polygon2d create_pose_footprint(
+  const geometry_msgs::msg::Pose & pose, const VehicleInfo & vehicle_info, const double left_margin,
+  const double right_margin)
+{
+  using autoware_utils_geometry::calc_offset_pose;
+  const double half_width = vehicle_info.vehicle_width_m / 2.0;
+  const auto point0 =
+    calc_offset_pose(pose, vehicle_info.max_longitudinal_offset_m, half_width + left_margin, 0.0)
+      .position;
+  const auto point1 =
+    calc_offset_pose(pose, vehicle_info.max_longitudinal_offset_m, -half_width - right_margin, 0.0)
+      .position;
+  const auto point2 =
+    calc_offset_pose(pose, -vehicle_info.rear_overhang_m, -half_width - right_margin, 0.0).position;
+  const auto point3 =
+    calc_offset_pose(pose, -vehicle_info.rear_overhang_m, half_width + left_margin, 0.0).position;
+
+  Polygon2d polygon;
+  boost::geometry::append(polygon, msg_to_2d(point0));
+  boost::geometry::append(polygon, msg_to_2d(point1));
+  boost::geometry::append(polygon, msg_to_2d(point2));
+  boost::geometry::append(polygon, msg_to_2d(point3));
+  boost::geometry::append(polygon, msg_to_2d(point0));
+
+  boost::geometry::correct(polygon);
+  return polygon;
+};
+
+std::optional<std::pair<geometry_msgs::msg::Point, double>> find_max_penetration_point(
+  const std::vector<Polygon2d> & collision_polygons, const geometry_msgs::msg::Pose & bumper_pose,
+  const double trajectory_z)
+{
+  std::optional<std::pair<geometry_msgs::msg::Point, double>> result{std::nullopt};
+
+  for (const auto & collision_polygon : collision_polygons) {
+    for (const auto & collision_point_2d : collision_polygon.outer()) {
+      geometry_msgs::msg::Point collision_point_3d;
+      collision_point_3d.x = collision_point_2d.x();
+      collision_point_3d.y = collision_point_2d.y();
+      collision_point_3d.z = trajectory_z;
+
+      const double dist_from_bumper = std::abs(
+        autoware_utils_geometry::inverse_transform_point(collision_point_3d, bumper_pose).x);
+
+      if (!result.has_value() || dist_from_bumper > result->second) {
+        result = std::make_pair(collision_point_3d, dist_from_bumper);
+      }
+    }
+  }
+
+  return result;
+}
+
+}  // namespace
+
 // FIXME(soblin): convergence should be applied from nearest_idx ?
 std::vector<geometry_msgs::msg::Pose> calculate_error_poses(
   const std::vector<TrajectoryPoint> & traj_points,
@@ -145,65 +198,55 @@ std::vector<geometry_msgs::msg::Pose> calculate_error_poses(
   return error_poses;
 }
 
-Polygon2d create_pose_footprint(
-  const geometry_msgs::msg::Pose & pose, const VehicleInfo & vehicle_info, const double left_margin,
-  const double right_margin)
-{
-  using autoware_utils_geometry::calc_offset_pose;
-  const double half_width = vehicle_info.vehicle_width_m / 2.0;
-  const auto point0 =
-    calc_offset_pose(pose, vehicle_info.max_longitudinal_offset_m, half_width + left_margin, 0.0)
-      .position;
-  const auto point1 =
-    calc_offset_pose(pose, vehicle_info.max_longitudinal_offset_m, -half_width - right_margin, 0.0)
-      .position;
-  const auto point2 =
-    calc_offset_pose(pose, -vehicle_info.rear_overhang_m, -half_width - right_margin, 0.0).position;
-  const auto point3 =
-    calc_offset_pose(pose, -vehicle_info.rear_overhang_m, half_width + left_margin, 0.0).position;
-
-  Polygon2d polygon;
-  boost::geometry::append(polygon, msg_to_2d(point0));
-  boost::geometry::append(polygon, msg_to_2d(point1));
-  boost::geometry::append(polygon, msg_to_2d(point2));
-  boost::geometry::append(polygon, msg_to_2d(point3));
-  boost::geometry::append(polygon, msg_to_2d(point0));
-
-  boost::geometry::correct(polygon);
-  return polygon;
-};
-
-}  // namespace
-
 std::optional<std::pair<geometry_msgs::msg::Point, double>> get_collision_point(
   const std::vector<TrajectoryPoint> & traj_points, const std::vector<Polygon2d> & traj_polygons,
-  const geometry_msgs::msg::Point obj_position, const rclcpp::Time obj_stamp,
+  const geometry_msgs::msg::Point obj_position, [[maybe_unused]] const rclcpp::Time obj_stamp,
   const Polygon2d & obj_polygon, const double x_offset_to_bumper)
 {
-  const auto collision_info =
-    get_collision_index(traj_points, traj_polygons, obj_position, obj_stamp, obj_polygon);
-  if (!collision_info) {
-    return std::nullopt;
-  }
+  assert(traj_points.size() == traj_polygons.size());
+  const double obj_maximum_length = boost::geometry::perimeter(obj_polygon) * 0.5;
 
-  const auto bumper_pose = autoware_utils_geometry::calc_offset_pose(
-    traj_points.at(collision_info->first).pose, x_offset_to_bumper, 0.0, 0.0);
+  std::optional<std::pair<geometry_msgs::msg::Point, double>> nearest_collision{std::nullopt};
 
-  std::optional<double> max_collision_length = std::nullopt;
-  std::optional<geometry_msgs::msg::Point> max_collision_point = std::nullopt;
-  for (const auto & poly_vertex : collision_info->second) {
-    const double dist_from_bumper =
-      std::abs(autoware_utils_geometry::inverse_transform_point(poly_vertex.point, bumper_pose).x);
+  for (size_t i = 0; i < traj_polygons.size(); ++i) {
+    const double ego_maximum_length = boost::geometry::perimeter(traj_polygons.at(i)) * 0.5;
+    const double center_dist =
+      autoware_utils_geometry::calc_distance2d(traj_points.at(i).pose.position, obj_position);
+    if (center_dist > obj_maximum_length + ego_maximum_length) {
+      continue;
+    }
 
-    if (!max_collision_length.has_value() || dist_from_bumper > *max_collision_length) {
-      max_collision_length = dist_from_bumper;
-      max_collision_point = poly_vertex.point;
+    const double current_arc_length = motion_utils::calcSignedArcLength(traj_points, 0, i);
+
+    if (
+      nearest_collision.has_value() &&
+      std::abs(current_arc_length - x_offset_to_bumper) > std::abs(nearest_collision->second)) {
+      break;
+    }
+
+    std::vector<Polygon2d> collision_polygons;
+    boost::geometry::intersection(traj_polygons.at(i), obj_polygon, collision_polygons);
+    if (collision_polygons.empty()) {
+      continue;
+    }
+    const auto bumper_pose = autoware_utils_geometry::calc_offset_pose(
+      traj_points.at(i).pose, x_offset_to_bumper, 0.0, 0.0);
+    const auto max_penetration = find_max_penetration_point(
+      collision_polygons, bumper_pose, traj_points.at(i).pose.position.z);
+
+    if (max_penetration.has_value()) {
+      const auto & [collision_point, max_penetration_dist] = *max_penetration;
+      const double dist_to_collide = current_arc_length - max_penetration_dist;
+
+      if (
+        !nearest_collision.has_value() ||
+        std::abs(dist_to_collide) < std::abs(nearest_collision->second)) {
+        nearest_collision = std::make_pair(collision_point, dist_to_collide);
+      }
     }
   }
-  return std::make_pair(
-    *max_collision_point,
-    autoware::motion_utils::calcSignedArcLength(traj_points, 0, collision_info->first) -
-      *max_collision_length);
+
+  return nearest_collision;
 }
 
 // NOTE: max_lat_dist is used for efficient calculation to suppress boost::geometry's polygon

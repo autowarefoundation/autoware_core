@@ -42,7 +42,7 @@ protected:
     const auto sample_map_dir =
       fs::path(ament_index_cpp::get_package_share_directory("autoware_lanelet2_utils")) /
       "sample_map";
-    const auto intersection_crossing_map_path = sample_map_dir / "intersection" / "crossing.osm";
+    const auto intersection_crossing_map_path = sample_map_dir / "vm_03/left_hand/lanelet2_map.osm";
 
     lanelet_map_ptr_ =
       lanelet2_utils::load_mgrs_coordinate_map(intersection_crossing_map_path.string());
@@ -198,7 +198,7 @@ protected:
       fs::path(ament_index_cpp::get_package_share_directory("autoware_lanelet2_utils")) /
       "sample_map";
     const auto intersection_crossing_map_path =
-      sample_map_dir / "intersection" / "crossing_inverse.osm";
+      sample_map_dir / "vm_03/right_hand/lanelet2_map.osm";
 
     lanelet_map_ptr_ =
       lanelet2_utils::load_mgrs_coordinate_map(intersection_crossing_map_path.string());
@@ -219,6 +219,30 @@ TEST_F(TestWithIntersectionCrossingInverseMap, left_opposite_lanelet_null)
   const auto lane = lanelet2_utils::left_opposite_lanelet(
     lanelet_map_ptr_->laneletLayer.get(2252), lanelet_map_ptr_);
   EXPECT_EQ(lane.has_value(), false);
+}
+
+TEST_F(TestWithIntersectionCrossingMap, empty_conflicting_lanelet)
+{
+  const auto conflicting_lanelets = lanelet2_utils::get_conflicting_lanelets(
+    lanelet_map_ptr_->laneletLayer.get(2312), routing_graph_ptr_);
+
+  ASSERT_EQ(conflicting_lanelets.size(), 0) << "Conflicting lanelets should be empty";
+}
+
+TEST_F(TestWithIntersectionCrossingMap, ordinary_conflicting_lanelet)
+{
+  const auto conflicting_lanelets = lanelet2_utils::get_conflicting_lanelets(
+    lanelet_map_ptr_->laneletLayer.get(2270), routing_graph_ptr_);
+
+  ASSERT_EQ(conflicting_lanelets.size(), 3) << "Size of the conflicting_lanelet doesn't match";
+
+  const auto conflicting_ids = conflicting_lanelets |
+                               ranges::views::transform([](const auto & l) { return l.id(); }) |
+                               ranges::to<std::set>();
+  EXPECT_EQ(conflicting_ids.find(2265) != conflicting_ids.end(), true) << "id 2265 doesn't exist";
+  EXPECT_EQ(conflicting_ids.find(2283) != conflicting_ids.end(), true) << "id 2283 doesn't exist";
+  EXPECT_EQ(conflicting_ids.find(2340) != conflicting_ids.end(), true) << "id 2340 doesn't exist";
+  EXPECT_EQ(conflicting_ids.find(2271) != conflicting_ids.end(), false) << "id 2271 exists (wrong)";
 }
 
 }  // namespace autoware::experimental

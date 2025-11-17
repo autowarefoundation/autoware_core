@@ -17,6 +17,7 @@
 #include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/lanelet2_utils/geometry.hpp>
 #include <autoware/lanelet2_utils/kind.hpp>
+#include <autoware/lanelet2_utils/nn_search.hpp>
 #include <autoware_lanelet2_extension/io/autoware_osm_parser.hpp>
 #include <autoware_lanelet2_extension/utility/message_conversion.hpp>
 #include <autoware_lanelet2_extension/utility/query.hpp>
@@ -135,24 +136,28 @@ std::optional<geometry_msgs::msg::Point> getGeometryPointFrom2DArcLength(
 PathWithLaneId removeOverlappingPoints(const PathWithLaneId & input_path)
 {
   PathWithLaneId filtered_path;
+  filtered_path.points.reserve(input_path.points.size());
+
   for (const auto & pt : input_path.points) {
     if (filtered_path.points.empty()) {
       filtered_path.points.push_back(pt);
       continue;
     }
 
-    constexpr double min_dist = 0.001;
-    if (
-      autoware_utils_geometry::calc_distance3d(filtered_path.points.back().point, pt.point) <
-      min_dist) {
+    constexpr double th_overlapping_dist = 0.001;
+    const double dist_between_points =
+      autoware_utils_geometry::calc_distance3d(filtered_path.points.back().point, pt.point);
+
+    if (dist_between_points < th_overlapping_dist) {
       filtered_path.points.back().lane_ids.push_back(pt.lane_ids.front());
-      filtered_path.points.back().point.longitudinal_velocity_mps = std::min(
-        pt.point.longitudinal_velocity_mps,
-        filtered_path.points.back().point.longitudinal_velocity_mps);
-    } else {
-      filtered_path.points.push_back(pt);
+      filtered_path.points.back().point.longitudinal_velocity_mps =
+        pt.point.longitudinal_velocity_mps;
+      continue;
     }
+
+    filtered_path.points.push_back(pt);
   }
+
   filtered_path.left_bound = input_path.left_bound;
   filtered_path.right_bound = input_path.right_bound;
   return filtered_path;
@@ -1103,9 +1108,10 @@ bool RouteHandler::getClosestRouteLaneletFromLanelet(
   if (getNextLaneletsWithinRoute(reference_lanelet, &next_lanelets)) {
     lanelet_sequence.insert(lanelet_sequence.end(), next_lanelets.begin(), next_lanelets.end());
   }
-
-  if (lanelet::utils::query::getClosestLaneletWithConstrains(
-        lanelet_sequence, search_pose, closest_lanelet, dist_threshold, yaw_threshold)) {
+  auto opt = autoware::experimental::lanelet2_utils::get_closest_lanelet_within_constraint(
+    lanelet_sequence, search_pose, dist_threshold, yaw_threshold);
+  if (opt.has_value()) {
+    *closest_lanelet = *opt;
     return true;
   }
 

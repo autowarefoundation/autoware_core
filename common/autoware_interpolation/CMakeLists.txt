@@ -21,4 +21,4 @@ if(BUILD_TESTING)
   )
 endif()
 
-ament_auto_package()
+autoware_ament_auto_package()

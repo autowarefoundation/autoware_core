@@ -22,6 +22,8 @@
 #include "pose_error_check_module.hpp"
 #include "stop_check_module.hpp"
 
+#include <autoware/qos_utils/qos_compatibility.hpp>
+
 #include <autoware_adapi_v1_msgs/msg/response_status.hpp>
 
 #include <memory>
@@ -42,7 +44,7 @@ PoseInitializer::PoseInitializer(const rclcpp::NodeOptions & options)
   srv_initialize_ = create_service<Initialize::Service>(
     Initialize::name,
     std::bind(&PoseInitializer::on_initialize, this, std::placeholders::_1, std::placeholders::_2),
-    rmw_qos_profile_services_default, group_srv_);
+    AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE(), group_srv_);
   pub_reset_ = create_publisher<PoseWithCovarianceStamped>("pose_reset", 1);
 
   output_pose_covariance_ = get_covariance_parameter(this, "output_pose_covariance");

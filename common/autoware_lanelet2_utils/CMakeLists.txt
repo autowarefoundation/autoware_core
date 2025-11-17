@@ -21,6 +21,7 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
 if(BUILD_TESTING)
   find_package(ament_cmake_ros REQUIRED)
   find_package(autoware_test_utils REQUIRED)
+  find_package(yaml-cpp REQUIRED)
   ament_auto_find_test_dependencies()
 
   set(test_files
@@ -42,11 +43,12 @@ if(BUILD_TESTING)
     ament_auto_add_gtest(${test_file_name}_${PROJECT_NAME} ${test_file})
     target_link_libraries(${test_file_name}_${PROJECT_NAME}
       ${PROJECT_NAME}
+      yaml-cpp
     )
   endforeach()
 endif()
 
-ament_auto_package(INSTALL_TO_SHARE
+autoware_ament_auto_package(INSTALL_TO_SHARE
   sample_map
   test_data
 )

@@ -41,8 +41,7 @@ protected:
     const auto sample_map_dir =
       fs::path(ament_index_cpp::get_package_share_directory("autoware_lanelet2_utils")) /
       "sample_map";
-    const auto regulatory_elements_map_path =
-      sample_map_dir / "intersection" / "regulatory_elements.osm";
+    const auto regulatory_elements_map_path = sample_map_dir / "vm_02/lanelet2_map.osm";
 
     lanelet_map_ptr_ =
       lanelet2_utils::load_mgrs_coordinate_map(regulatory_elements_map_path.string());
