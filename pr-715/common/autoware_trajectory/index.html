@@ -8106,7 +8106,7 @@
 <tbody>
 <tr>
 <td><ul><li><code>compute_lateral_distance</code></li></ul></td>
-<td>A utility function that computes the normal distance between a given <code>target point</code> and the tangent line of the pose at specified arc-length <code>s</code> on the trajectory.<br> See below cell figure</td>
+<td>A utility function that computes the normal distance between a given <code>target point</code> and the tangent line of the pose at specified arc-length <code>s</code> on the trajectory. The result will always be positive. <br> See below cell figure</td>
 <td></td>
 </tr>
 <tr>
@@ -8116,58 +8116,40 @@
 </tr>
 </tbody>
 </table>
-<h4 id="autowaretrajectoryutilsfootprinthpp"><span style="font-size: 1.2em;"><code>&lt;autoware/trajectory/utils/footprint.hpp&gt;</code></span><a class="headerlink" href="#autowaretrajectoryutilsfootprinthpp" title="Permanent link">#</a></h4>
-<table>
-<thead>
-<tr>
-<th>Function</th>
-<th>Description</th>
-<th>Detail</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><ul><li><code>build_path_polygon</code></li></ul></td>
-<td>A utility function that creates the polygon along the trajectory with designated width from specified start arc-length <code>start_s</code> to end arc-length <code>end_s</code>.</td>
-<td><img alt="build_path_polygon" src="images/utils/build_path_polygon.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-715%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Fbuild_path_polygon.drawio.svg">View in Drawio</a></td>
-</tr>
-<tr>
-<td><ul><li><code>build_path_footprints</code></li></ul></td>
-<td>A utility function that creates a trace of footprints (<code>vector&lt;Polygon2d&gt;</code>) along the trajectory with the size of input footprint from specified start arc-length <code>start_s</code> to end arc-length <code>end_s</code> .</td>
-<td><img alt="build_path_footprints" src="images/utils/build_path_footprints.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-715%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Fbuild_path_footprints.drawio.svg">View in Drawio</a></td>
-</tr>
-</tbody>
-</table>
-<h4 id="autowaretrajectoryutilscrossedhpp"><span style="font-size: 1.2em;"><code>&lt;autoware/trajectory/utils/crossed.hpp&gt;</code></span><a class="headerlink" href="#autowaretrajectoryutilscrossedhpp" title="Permanent link">#</a></h4>
-<table>
-<thead>
-<tr>
-<th>Function</th>
-<th>Description</th>
-<th>Detail</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><ul><li><code>crossed_with_constraint</code></li></ul></td>
-<td>A utility function that finds intersections between a trajectory and a linestring where the given constraint is satisfied.</td>
-<td></td>
-</tr>
-<tr>
-<td><ul><li><code>crossed</code></li></ul></td>
-<td>A utility function that finds intersections between a trajectory and a linestring regardless of constraint. <br> <strong>Post-condition</strong> <ul><li> The output is sorted in ascending order along the trajectory. </li></ul></td>
-<td><img alt="crossed_linestring" src="images/utils/crossed_linestring.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-715%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Fcrossed_linestring.drawio.svg">View in Drawio</a></td>
-</tr>
-<tr>
-<td><ul><li><code>crossed_with_polygon</code></li></ul></td>
-<td>A utility function that finds intersections between a trajectory and a polygon. <br> <strong>Post-condition</strong> <ul><li> The output is sorted in ascending order along the trajectory. </li></ul></td>
-<td><img alt="crossed_polygon" src="images/utils/crossed_polygon.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-715%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Fcrossed_polygon.drawio.svg">View in Drawio</a></td>
-</tr>
-</tbody>
-</table>
-<h5 id="example-usage-of-crossed"><span style="font-size: 1.2em;">Example Usage of <code>crossed</code></span><a class="headerlink" href="#example-usage-of-crossed" title="Permanent link">#</a></h5>
-<div class="highlight"><span class="filename">./examples/example_crossed.cpp:184:185</span><pre><span></span><code><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">LineString2d</span><span class="w"> </span><span class="n">line</span><span class="p">{</span><span class="n">Point2d</span><span class="p">{</span><span class="mf">4.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">},</span><span class="w"> </span><span class="n">Point2d</span><span class="p">{</span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">4.0</span><span class="p">}};</span>
-<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">crossed_line</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autoware</span><span class="o">::</span><span class="n">experimental</span><span class="o">::</span><span class="n">trajectory</span><span class="o">::</span><span class="n">crossed</span><span class="p">(</span><span class="n">traj</span><span class="p">,</span><span class="w"> </span><span class="n">line</span><span class="p">);</span>
+<h5 id="example-usage-of-lateral_metrics"><span style="font-size: 1.2em;">Example Usage of <code>lateral_metrics</code></span><a class="headerlink" href="#example-usage-of-lateral_metrics" title="Permanent link">#</a></h5>
+<p>Calculate lateral distance from Parabolic Trajectory to given point and check the side of the point from the trajectory.</p>
+<p>```cpp title="./examples/example_lateral_metrics.cpp:144:155
+  // Always give positive value
+  double lateral_offset =
+    autoware::experimental::trajectory::compute_lateral_distance(traj, to_point, target_s);
+  auto on_left = autoware::experimental::trajectory::is_left_side(traj, to_point, target_s);</p>
+<p>geometry_msgs::msg::Pose vertical_point;
+  if (!on_left) {
+    // positive y is translated to left, so need to convert to negative value for right side.
+    vertical_point = autoware_utils_geometry::calc_offset_pose(from_pose, 0, -lateral_offset, 0, 0);
+  } else {  // left
+    vertical_point = autoware_utils_geometry::calc_offset_pose(from_pose, 0, lateral_offset, 0, 0);
+  }
+</p><div class="highlight"><pre><span></span><code>#### &lt;span style="font-size: 1.2em;"&gt;`&lt;autoware/trajectory/utils/footprint.hpp&gt;`&lt;/span&gt;
+
+| Function                                  | Description                                                                                                                                                                                             | Detail                                                                                                                                                                               |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| &lt;ul&gt;&lt;li&gt;`build_path_polygon`&lt;/li&gt;&lt;/ul&gt;    | A utility function that creates the polygon along the trajectory with designated width from specified start arc-length `start_s` to end arc-length `end_s`.                                             | ![build_path_polygon](./images/utils/build_path_polygon.drawio.svg)[View in Drawio](https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-715%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Fbuild_path_polygon.drawio.svg)          |
+| &lt;ul&gt;&lt;li&gt;`build_path_footprints`&lt;/li&gt;&lt;/ul&gt; | A utility function that creates a trace of footprints (`vector&lt;Polygon2d&gt;`) along the trajectory with the size of input footprint from specified start arc-length `start_s` to end arc-length `end_s` . | ![build_path_footprints](./images/utils/build_path_footprints.drawio.svg)[View in Drawio](https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-715%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Fbuild_path_footprints.drawio.svg) |
+
+#### &lt;span style="font-size: 1.2em;"&gt;`&lt;autoware/trajectory/utils/crossed.hpp&gt;`&lt;/span&gt;
+
+| Function                                    | Description                                                                                                                                                                                                           | Detail                                                                                                                                                                      |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| &lt;ul&gt;&lt;li&gt;`crossed_with_constraint`&lt;/li&gt;&lt;/ul&gt; | A utility function that finds intersections between a trajectory and a linestring where the given constraint is satisfied.                                                                                            |                                                                                                                                                                             |
+| &lt;ul&gt;&lt;li&gt;`crossed`&lt;/li&gt;&lt;/ul&gt;                 | A utility function that finds intersections between a trajectory and a linestring regardless of constraint. &lt;br&gt; **Post-condition** &lt;ul&gt;&lt;li&gt; The output is sorted in ascending order along the trajectory. &lt;/ul&gt;&lt;/li&gt; | ![crossed_linestring](./images/utils/crossed_linestring.drawio.svg)[View in Drawio](https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-715%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Fcrossed_linestring.drawio.svg) |
+| &lt;ul&gt;&lt;li&gt;`crossed_with_polygon`&lt;/li&gt;&lt;/ul&gt;    | A utility function that finds intersections between a trajectory and a polygon. &lt;br&gt; **Post-condition** &lt;ul&gt;&lt;li&gt; The output is sorted in ascending order along the trajectory. &lt;/ul&gt;&lt;/li&gt;                             | ![crossed_polygon](./images/utils/crossed_polygon.drawio.svg)[View in Drawio](https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-715%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Fcrossed_polygon.drawio.svg)          |
+
+##### &lt;span style="font-size: 1.2em;"&gt;Example Usage of `crossed`&lt;/span&gt;
+
+```cpp title="./examples/example_crossed.cpp:184:185"
+    const LineString2d line{Point2d{4.0, 0.0}, Point2d{0.0, 4.0}};
+    const auto crossed_line = autoware::experimental::trajectory::crossed(traj, line);
 </code></pre></div>
 <div class="highlight"><span class="filename">./examples/example_crossed.cpp:223:227</span><pre><span></span><code><span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Point2d</span><span class="o">&gt;</span><span class="w"> </span><span class="n">open_polygon</span><span class="p">{</span>
 <span class="w">    </span><span class="n">Point2d</span><span class="p">{</span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">},</span><span class="w"> </span><span class="n">Point2d</span><span class="p">{</span><span class="mf">3.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">},</span><span class="w"> </span><span class="n">Point2d</span><span class="p">{</span><span class="mf">3.0</span><span class="p">,</span><span class="w"> </span><span class="mf">3.0</span><span class="p">},</span><span class="w"> </span><span class="n">Point2d</span><span class="p">{</span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">3.0</span><span class="p">}};</span>
