@@ -5,6 +5,23 @@ Changelog for package autoware_behavior_velocity_planner_common
 1.1.0 (2025-05-01)
 ------------------
 
+1.5.0 (2025-11-16)
+------------------
+* Merge remote-tracking branch 'origin/main' into humble
+* fix(behavior_velocity_planner): fix namespace resolution failure (`#713 <https://github.com/autowarefoundation/autoware_core/issues/713>`_)
+  specify full namespace
+* chore(behavior_velocity_planner): remove unnecessary data copy (`#672 <https://github.com/autowarefoundation/autoware_core/issues/672>`_)
+* feat: replace `ament_auto_package` to `autoware_ament_auto_package` (`#700 <https://github.com/autowarefoundation/autoware_core/issues/700>`_)
+  * replace ament_auto_package to autoware_ament_auto_package
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* chore: update maintainer (`#701 <https://github.com/autowarefoundation/autoware_core/issues/701>`_)
+* feat(behavior_velocity_planner and behavior_velocity_planner_common)!: replace PathWithLaneId with Trajectory<> class (`#681 <https://github.com/autowarefoundation/autoware_core/issues/681>`_)
+  Co-authored-by: mitukou1109 <mitukou1109@gmail.com>
+* chore: bump version (1.4.0) and update changelog (`#608 <https://github.com/autowarefoundation/autoware_core/issues/608>`_)
+* Contributors: Keita Morisaki, Mamoru Sobue, Mete Fatih Cırıt, Mitsuhiro Sakamoto, Takagi, Isamu, Yutaka Kondo, mitsudome-r
+
 1.4.0 (2025-08-11)
 ------------------
 * Merge remote-tracking branch 'origin/main' into humble

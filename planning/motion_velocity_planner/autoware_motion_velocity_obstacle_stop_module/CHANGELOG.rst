@@ -5,6 +5,41 @@ Changelog for package autoware_motion_velocity_obstacle_stop_module
 1.1.0 (2025-05-01)
 ------------------
 
+1.5.0 (2025-11-16)
+------------------
+* Merge remote-tracking branch 'origin/main' into humble
+* feat: replace `ament_auto_package` to `autoware_ament_auto_package` (`#700 <https://github.com/autowarefoundation/autoware_core/issues/700>`_)
+  * replace ament_auto_package to autoware_ament_auto_package
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* chore(obstacle_stop_module): add maintainer (`#674 <https://github.com/autowarefoundation/autoware_core/issues/674>`_)
+* feat(obstacle_stop): hold behavior stop margin (`#673 <https://github.com/autowarefoundation/autoware_core/issues/673>`_)
+* feat(obstacle_stop): add filter for outside obstacle (`#667 <https://github.com/autowarefoundation/autoware_core/issues/667>`_)
+* feat(obstacle_stop_module, motion_velocity_planner_common): add safety_factor to obstacle_stop module (`#572 <https://github.com/autowarefoundation/autoware_core/issues/572>`_)
+  add safety factor, add planning_factor test
+* chore(mvp_planner_common): add docstrings for PlannerData:::object (`#615 <https://github.com/autowarefoundation/autoware_core/issues/615>`_)
+* fix(obstacle_stp): fix several bugs (`#596 <https://github.com/autowarefoundation/autoware_core/issues/596>`_)
+  * fix(obstacle_stp): fix several bugs
+  * fix
+  * fix
+  * fix
+  ---------
+* feat(motion_velocity_planner_common):  lateral margin adjustment for the ego's curvature and target obstacle motion (`#619 <https://github.com/autowarefoundation/autoware_core/issues/619>`_)
+  * add additonal off-track featureuki.takagi@tier4.jp>
+  ---------
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* feat(obstacle_stop): enable object specified obstacle_filtering parameter and refactor obstacle type handling (`#613 <https://github.com/autowarefoundation/autoware_core/issues/613>`_)
+  * refactor obstacle_filtering structure and type handling
+  ---------
+* fix(obstacle_stop): fix bug for the backwoard motions (`#617 <https://github.com/autowarefoundation/autoware_core/issues/617>`_)
+  fix back stop
+* fix(autoware_motion_velocity_obstacle_stop_module): rm wrong dependency (`#597 <https://github.com/autowarefoundation/autoware_core/issues/597>`_)
+* feat(obstacle_stop): add velocity estimation feature for point cloud (`#590 <https://github.com/autowarefoundation/autoware_core/issues/590>`_)
+  add velocity estimation for pcl
+* chore: bump version (1.4.0) and update changelog (`#608 <https://github.com/autowarefoundation/autoware_core/issues/608>`_)
+* Contributors: Mamoru Sobue, Maxime CLEMENT, Mete Fatih Cırıt, Takayuki Murooka, Yuki TAKAGI, Yutaka Kondo, mitsudome-r
+
 1.4.0 (2025-08-11)
 ------------------
 * Merge remote-tracking branch 'origin/main' into humble
