@@ -2,6 +2,32 @@
 Changelog for package autoware_gyro_odometer
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.5.0 (2025-11-16)
+------------------
+* Merge remote-tracking branch 'origin/main' into humble
+* feat: replace `ament_auto_package` to `autoware_ament_auto_package` (`#700 <https://github.com/autowarefoundation/autoware_core/issues/700>`_)
+  * replace ament_auto_package to autoware_ament_auto_package
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* feat(gyro_odometer): make diagnostics summarized (`#626 <https://github.com/autowarefoundation/autoware_core/issues/626>`_)
+  * make diagnostics summarized in gyro_odometer
+  * fix diagnostics message
+  ---------
+  Co-authored-by: Yamato Ando <yamato.ando@tier4.jp>
+* chore: update maintainer (`#637 <https://github.com/autowarefoundation/autoware_core/issues/637>`_)
+  * chore: update maintainer
+  remove Takeshi Ishita
+  * chore: update maintainer
+  remove Kento Yabuuchi
+  * chore: update maintainer
+  remove Shintaro Sakoda
+  * chore: update maintainer
+  remove Ryu Yamamoto
+  ---------
+* chore: bump version (1.4.0) and update changelog (`#608 <https://github.com/autowarefoundation/autoware_core/issues/608>`_)
+* Contributors: Mete Fatih Cırıt, Motz, Taiki Yamada, Yutaka Kondo, mitsudome-r
+
 1.4.0 (2025-08-11)
 ------------------
 * chore: bump version to 1.3.0 (`#554 <https://github.com/autowarefoundation/autoware_core/issues/554>`_)

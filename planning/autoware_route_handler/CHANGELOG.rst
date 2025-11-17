@@ -11,6 +11,28 @@ Changelog for package autoware_route_handler
   Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
 * Contributors: Mert Çolak
 
+1.5.0 (2025-11-16)
+------------------
+* Merge remote-tracking branch 'origin/main' into humble
+* feat(autoware_lanelet2_utils): replace ported functions from autoware_lanelet2_extension (`#695 <https://github.com/autowarefoundation/autoware_core/issues/695>`_)
+* feat: replace `ament_auto_package` to `autoware_ament_auto_package` (`#700 <https://github.com/autowarefoundation/autoware_core/issues/700>`_)
+  * replace ament_auto_package to autoware_ament_auto_package
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* fix(route_handler): use next lane velocity when merging points (`#690 <https://github.com/autowarefoundation/autoware_core/issues/690>`_)
+* feat(autoware_lanelet2_utils): porting functions from lanelet2_extension to autoware_lanelet2_utils package (`#621 <https://github.com/autowarefoundation/autoware_core/issues/621>`_)
+* fix(route_handler): add same lane ID check in getRightLanelet/getLeftLanelet function (`#632 <https://github.com/autowarefoundation/autoware_core/issues/632>`_)
+  * fix(route_handler): add same lane ID check in getRightLanelet/getLeftLanelet function
+  * remove unnecessary changes
+  ---------
+* fix(route_handler): correct handling of centerline point retrieval when requested distance is longer than lanelet length (`#622 <https://github.com/autowarefoundation/autoware_core/issues/622>`_)
+  * fix: correct handling of centerline point retrieval when requested distance is longer than lanelet length
+  * fix: return last point
+  ---------
+* chore: bump version (1.4.0) and update changelog (`#608 <https://github.com/autowarefoundation/autoware_core/issues/608>`_)
+* Contributors: Mete Fatih Cırıt, Sarun MUKDAPITAK, Satoshi OTA, Yukinari Hisaki, Yutaka Kondo, Zulfaqar Azmi, mitsudome-r
+
 1.4.0 (2025-08-11)
 ------------------
 * Merge remote-tracking branch 'origin/main' into humble

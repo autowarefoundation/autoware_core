@@ -14,6 +14,19 @@ Changelog for package autoware_interpolation
   Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
 * Contributors: Arjun Jagdish Ram, Takagi, Isamu
 
+1.5.0 (2025-11-16)
+------------------
+* Merge remote-tracking branch 'origin/main' into humble
+* feat: replace `ament_auto_package` to `autoware_ament_auto_package` (`#700 <https://github.com/autowarefoundation/autoware_core/issues/700>`_)
+  * replace ament_auto_package to autoware_ament_auto_package
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* fix(interpolation): ensure consistent output size in splineYawFromPoints (`#670 <https://github.com/autowarefoundation/autoware_core/issues/670>`_)
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* chore: bump version (1.4.0) and update changelog (`#608 <https://github.com/autowarefoundation/autoware_core/issues/608>`_)
+* Contributors: Maxime CLEMENT, Mete Fatih Cırıt, Yutaka Kondo, mitsudome-r
+
 1.4.0 (2025-08-11)
 ------------------
 * Merge remote-tracking branch 'origin/main' into humble
