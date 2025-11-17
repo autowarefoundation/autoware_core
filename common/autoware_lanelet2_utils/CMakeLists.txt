@@ -38,12 +38,42 @@ if(BUILD_TESTING)
     test/route_manager.cpp
   )
 
+
   foreach (test_file IN LISTS test_files)
-    get_filename_component(test_file_name ${test_file} NAME)
-    ament_auto_add_gtest(${test_file_name}_${PROJECT_NAME} ${test_file})
-    target_link_libraries(${test_file_name}_${PROJECT_NAME}
-      ${PROJECT_NAME}
-      yaml-cpp
+  get_filename_component(test_file_name ${test_file} NAME)
+  ament_auto_add_gtest(${test_file_name}_${PROJECT_NAME} ${test_file})
+  target_link_libraries(${test_file_name}_${PROJECT_NAME}
+  ${PROJECT_NAME}
+  yaml-cpp
+  )
+  endforeach()
+
+  # Examples
+  set(example_files
+    examples/example_geometry.cpp
+  )
+
+  find_package(ament_index_cpp REQUIRED)
+  find_package(python_cmake_module REQUIRED)
+  find_package(
+    Python3
+    COMPONENTS Interpreter Development
+    REQUIRED)
+  find_package(range-v3 REQUIRED)
+  find_package(pybind11_vendor REQUIRED)
+  find_package(pybind11 REQUIRED)
+  include_directories(${autoware_index_cpp_INCLUDE_DIRS})
+  foreach(example_file ${example_files})
+    get_filename_component(example_name ${example_file} NAME_WE)
+    ament_auto_add_executable(${example_name}
+      ${example_file}
+    )
+    target_link_libraries(${example_name}
+      autoware_lanelet2_utils
+      ${autoware_index_cpp_LIBRARIES}
+      range-v3::range-v3
+      Python3::Python
+      pybind11::embed
     )
   endforeach()
 endif()

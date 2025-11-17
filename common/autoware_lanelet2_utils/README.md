@@ -40,6 +40,88 @@ This package aims to strictly define the meaning of several words to clarify the
 | `get_closest_segment`            | Find the closest segment of the `ConstLineString3d` to the search point (`BasicPoint3d`).                                                                                                                                                                                                              |                                  | ![get_closest_segment](./media/api/geometry/get_closest_segment.drawio.svg)<br>[Open]({{ drawio("/common/autoware_lanelet2_utils/media/api/geometry/get_closest_segment.drawio.svg") }})                                  |
 | `get_lanelet_angle`              | Find the angle of center line segment of the lanelet that is closest to search point (`BasicPoint3d`). The angle is defined with the x-axis as the reference (0 radians). Positive angles are measured counterclockwise, while negative angles are measured clockwise within range of −π to π radians. |                                  | ![get_lanelet_angle](./media/api/geometry/get_lanelet_angle.drawio.svg)<br>[Open]({{ drawio("/common/autoware_lanelet2_utils/media/api/geometry/get_lanelet_angle.drawio.svg") }})                                        |
 
+#### Example Usage of `geometry`
+
+Extrapolate point for distance of 5.
+
+```cpp title="./examples/example_geometry.cpp:51:55"
+--8<--
+common/autoware_lanelet2_utils/examples/example_geometry.cpp:51:55
+--8<--
+```
+
+Interpolate point at half of the segment.
+
+```cpp title="./examples/example_geometry.cpp:69:74"
+--8<--
+common/autoware_lanelet2_utils/examples/example_geometry.cpp:69:74
+--8<--
+```
+
+Interpolate lanelet at distance of 3.
+
+```cpp title="./examples/example_geometry.cpp:82:84"
+--8<--
+common/autoware_lanelet2_utils/examples/example_geometry.cpp:82:84
+--8<--
+```
+
+Interpolate lanelet sequence at distance of 3.
+
+```cpp title="./examples/example_geometry.cpp:92:98"
+--8<--
+common/autoware_lanelet2_utils/examples/example_geometry.cpp:92:98
+--8<--
+```
+
+Concatenate several lanelet centerline.
+
+```cpp title="./examples/example_geometry.cpp:110:118"
+--8<--
+common/autoware_lanelet2_utils/examples/example_geometry.cpp:110:118
+--8<--
+```
+
+Get linestring from arc-length range (of 0.5 to 1.5).
+
+```cpp title="./examples/example_geometry.cpp:142:150"
+--8<--
+common/autoware_lanelet2_utils/examples/example_geometry.cpp:142:150
+--8<--
+```
+
+Get pose from arc-length (of 3.0).
+
+```cpp title="./examples/example_geometry.cpp:162:168"
+--8<--
+common/autoware_lanelet2_utils/examples/example_geometry.cpp:162:168
+--8<--
+```
+
+Get closest segment from the `ConstLineString3d`.
+
+```cpp title="./examples/example_geometry.cpp:179:186"
+--8<--
+common/autoware_lanelet2_utils/examples/example_geometry.cpp:179:186
+--8<--
+```
+
+Get lanelet angle from the lanelet centerline.
+
+```cpp title="./examples/example_geometry.cpp:202:204"
+--8<--
+common/autoware_lanelet2_utils/examples/example_geometry.cpp:202:204
+--8<--
+```
+
+Get closest center pose from `ConstLanelet`.
+
+```cpp title="./examples/example_geometry.cpp:211:221"
+--8<--
+common/autoware_lanelet2_utils/examples/example_geometry.cpp:211:221
+--8<--
+```
+
 ### `<autoware/lanelet2_utils/conversion.hpp>`
 
 | Function                                                                            | Description                                                                                                                                                                                                                           | Average Computational Complexity | Illustration |
