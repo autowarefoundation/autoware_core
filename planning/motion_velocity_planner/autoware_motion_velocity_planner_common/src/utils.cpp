@@ -58,22 +58,18 @@ std::vector<TrajectoryPoint> get_extended_trajectory_points(
     autoware::motion_utils::isDrivingForwardWithTwist(input_points);
   const bool is_driving_forward = is_driving_forward_opt ? *is_driving_forward_opt : true;
 
-  if (extend_distance < std::numeric_limits<double>::epsilon()) {
+  // A value to prevent division-by-zero in curvature math while ensuring adequate precision.
+  constexpr double min_step_length = 0.1;
+  if (extend_distance < min_step_length) {
     return output_points;
   }
 
   const auto goal_point = input_points.back();
-
-  double extend_sum = 0.0;
-  while (extend_sum <= (extend_distance - step_length)) {
-    const auto extended_trajectory_point =
-      extend_trajectory_point(extend_sum, goal_point, is_driving_forward);
-    output_points.push_back(extended_trajectory_point);
-    extend_sum += step_length;
+  for (double extend_sum = step_length; extend_sum < extend_distance - step_length;
+       extend_sum += step_length) {
+    output_points.push_back(extend_trajectory_point(extend_sum, goal_point, is_driving_forward));
   }
-  const auto extended_trajectory_point =
-    extend_trajectory_point(extend_distance, goal_point, is_driving_forward);
-  output_points.push_back(extended_trajectory_point);
+  output_points.push_back(extend_trajectory_point(extend_distance, goal_point, is_driving_forward));
 
   return output_points;
 }
@@ -227,6 +223,20 @@ double get_dist_to_traj_poly(
     dist_to_traj_poly = std::min(dist_to_traj_poly, current_dist_to_traj_poly);
   }
 
+  return dist_to_traj_poly;
+}
+
+double calc_dist_to_traj_poly(
+  const autoware_perception_msgs::msg::PredictedObject & predicted_object,
+  const std::vector<autoware_utils_geometry::Polygon2d> & decimated_traj_polys)
+{
+  const auto obj_poly = autoware_utils_geometry::to_polygon2d(
+    predicted_object.kinematics.initial_pose_with_covariance.pose, predicted_object.shape);
+  double dist_to_traj_poly = std::numeric_limits<double>::max();
+  for (const auto & traj_poly : decimated_traj_polys) {
+    const double current_dist_to_traj_poly = boost::geometry::distance(traj_poly, obj_poly);
+    dist_to_traj_poly = std::min(dist_to_traj_poly, current_dist_to_traj_poly);
+  }
   return dist_to_traj_poly;
 }
 

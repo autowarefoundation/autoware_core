@@ -24,7 +24,7 @@ rclcpp_components_register_node(${PROJECT_NAME}
   PLUGIN "autoware::downsample_filters::VoxelGridDownsampleFilter"
   EXECUTABLE ${VOXEL_GRID}_node)
 
-ament_auto_package(INSTALL_TO_SHARE
+autoware_ament_auto_package(INSTALL_TO_SHARE
   launch
   config
 )

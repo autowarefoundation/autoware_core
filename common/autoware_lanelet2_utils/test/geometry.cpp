@@ -18,6 +18,7 @@
 
 #include <Eigen/Core>
 #include <ament_index_cpp/get_package_share_directory.hpp>
+#include <autoware_utils_geometry/geometry.hpp>
 
 #include <boost/geometry.hpp>
 
@@ -36,6 +37,39 @@ namespace fs = std::filesystem;
 namespace autoware::experimental
 {
 
+template <typename LaneletPointT, typename LaneletPointT2>
+static void expect_point_eq(const LaneletPointT & p1, LaneletPointT2 & p2)
+{
+  EXPECT_DOUBLE_EQ(p1.x(), p2.x());
+  EXPECT_DOUBLE_EQ(p1.y(), p2.y());
+  EXPECT_DOUBLE_EQ(p1.z(), p2.z());
+}
+
+template <typename ROSPointT, typename ROSPointT2>
+static void expect_point_eq_ros(const ROSPointT & p1, ROSPointT2 & p2)
+{
+  EXPECT_DOUBLE_EQ(p1.x, p2.x);
+  EXPECT_DOUBLE_EQ(p1.y, p2.y);
+  EXPECT_DOUBLE_EQ(p1.z, p2.z);
+}
+
+template <typename QuatT>
+static void expect_quat_eq(const QuatT & quat1, const QuatT & quat2)
+{
+  EXPECT_DOUBLE_EQ(quat1.x, quat2.x);
+  EXPECT_DOUBLE_EQ(quat1.y, quat2.y);
+  EXPECT_DOUBLE_EQ(quat1.z, quat2.z);
+  EXPECT_DOUBLE_EQ(quat1.w, quat2.w);
+}
+
+auto make_point = [](double x, double y, double z) {
+  geometry_msgs::msg::Point p;
+  p.x = x;
+  p.y = y;
+  p.z = z;
+  return p;
+};
+
 class ExtrapolatedLaneletTest : public ::testing::Test
 {
 protected:
@@ -46,11 +80,15 @@ protected:
     const auto sample_map_dir =
       fs::path(ament_index_cpp::get_package_share_directory("autoware_lanelet2_utils")) /
       "sample_map";
-    const auto intersection_crossing_map_path = sample_map_dir / "intersection" / "crossing.osm";
+    const auto intersection_crossing_map_path = sample_map_dir / "vm_03/left_hand/lanelet2_map.osm";
 
     lanelet_map_ptr_ =
       lanelet2_utils::load_mgrs_coordinate_map(intersection_crossing_map_path.string());
   }
+};
+
+class GetLaneletAngle : public ExtrapolatedLaneletTest
+{
 };
 
 // Test 1: forward extrapolation
@@ -286,6 +324,159 @@ TEST_F(ExtrapolatedLaneletTest, GetPoseFrom2dArcLength_OnRealMapLanelets)
   EXPECT_NEAR(p.orientation.y, eq.y, 1e-4);
   EXPECT_NEAR(p.orientation.z, eq.z, 1e-4);
   EXPECT_NEAR(p.orientation.w, eq.w, 1e-4);
+}
+
+// Test 16: get_closest_segment full range
+TEST(GetClosestSegment, OrdinaryLinestringReturnCorrectSegment)
+{
+  std::vector<lanelet::Point3d> pts = {
+    lanelet::Point3d{lanelet::ConstPoint3d(1, 0.0, 0.0, 0.0)},
+    lanelet::Point3d{lanelet::ConstPoint3d(1, 1.0, 0.0, 0.0)},
+    lanelet::Point3d{lanelet::ConstPoint3d(1, 2.0, 0.0, 0.0)}};
+  lanelet::ConstLineString3d line{lanelet::InvalId, pts};
+
+  // The Closest Segment is the first segment
+  {
+    lanelet::BasicPoint3d query(0.5, 0.0, 0.0);
+    auto out = autoware::experimental::lanelet2_utils::get_closest_segment(line, query);
+    ASSERT_EQ(out.size(), 2);
+
+    lanelet::BasicPoint3d start_point = out.front().basicPoint();
+    lanelet::BasicPoint3d end_point = out.back().basicPoint();
+
+    expect_point_eq(start_point, pts.at(0));
+    expect_point_eq(end_point, pts.at(1));
+  }
+
+  // The Closest Segment is the second segment
+  {
+    lanelet::BasicPoint3d query(1.5, 0.0, 0.0);
+    auto out = autoware::experimental::lanelet2_utils::get_closest_segment(line, query);
+    ASSERT_EQ(out.size(), 2);
+
+    lanelet::BasicPoint3d start_point = out.front().basicPoint();
+    lanelet::BasicPoint3d end_point = out.back().basicPoint();
+
+    expect_point_eq(start_point, pts.at(1));
+    expect_point_eq(end_point, pts.at(2));
+  }
+}
+
+// TEST 17: get_lanelet_angle Horizontal Case
+TEST_F(GetLaneletAngle, GetHorizontalAngle)
+{
+  const auto ll = lanelet_map_ptr_->laneletLayer.get(2296);
+  lanelet::BasicPoint3d p(190.5, 177.83, 100);
+  auto out = autoware::experimental::lanelet2_utils::get_lanelet_angle(ll, p);
+  // Test = -3.1308317, Result = -3.13089
+  EXPECT_NEAR(out, -3.1308317, 1e-4);
+}
+
+// TEST 18: get_lanelet_angle Vertical
+TEST_F(GetLaneletAngle, GetVerticalAngle)
+{
+  const auto ll = lanelet_map_ptr_->laneletLayer.get(2258);
+  lanelet::BasicPoint3d p(106.71, 149.3, 100);
+  auto out = autoware::experimental::lanelet2_utils::get_lanelet_angle(ll, p);
+  // Test = 1.58204, Result = 1.58206
+  EXPECT_NEAR(out, 1.58204, 1e-4);
+}
+
+// TEST 19: get_closest_center_pose Horizontal Case
+TEST(GetClosestCenterPoseTest, getHorizontalPose)
+{
+  using autoware::experimental::lanelet2_utils::create_safe_lanelet;
+  using autoware_utils_geometry::create_quaternion_from_yaw;
+  auto p1 = lanelet::BasicPoint3d(0.0, 2.0, 0.0);
+  auto p2 = lanelet::BasicPoint3d(3.0, 2.0, 0.0);
+  auto p3 = lanelet::BasicPoint3d(0.0, 0.0, 0.0);
+  auto p4 = lanelet::BasicPoint3d(3.0, 0.0, 0.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points = {p1, p2};
+  std::vector<lanelet::BasicPoint3d> right_points = {p3, p4};
+  auto ll = create_safe_lanelet(left_points, right_points);
+
+  auto search_pt = lanelet::BasicPoint3d(1.0, 1.2, 0.0);
+  auto out = autoware::experimental::lanelet2_utils::get_closest_center_pose(*ll, search_pt);
+
+  auto expected_point = make_point(1.0, 1.0, 0.0);
+  expect_point_eq_ros(out.position, expected_point);
+
+  auto expected_quat = create_quaternion_from_yaw(0);
+  expect_quat_eq(out.orientation, expected_quat);
+}
+
+// TEST 20: get_closest_center_pose Vertical Case
+TEST(GetClosestCenterPoseTest, getVerticalPose)
+{
+  using autoware::experimental::lanelet2_utils::create_safe_lanelet;
+  using autoware_utils_geometry::create_quaternion_from_yaw;
+  auto p1 = lanelet::BasicPoint3d(0.0, 0.0, 0.0);
+  auto p2 = lanelet::BasicPoint3d(0.0, 3.0, 0.0);
+  auto p3 = lanelet::BasicPoint3d(2.0, 0.0, 0.0);
+  auto p4 = lanelet::BasicPoint3d(2.0, 3.0, 0.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points = {p1, p2};
+  std::vector<lanelet::BasicPoint3d> right_points = {p3, p4};
+  auto ll = create_safe_lanelet(left_points, right_points);
+
+  auto search_pt = lanelet::BasicPoint3d(1.2, 1.0, 0.0);
+  auto out = autoware::experimental::lanelet2_utils::get_closest_center_pose(*ll, search_pt);
+
+  auto expected_point = make_point(1.0, 1.0, 0.0);
+  expect_point_eq_ros(out.position, expected_point);
+
+  auto expected_quat = create_quaternion_from_yaw(M_PI / 2);
+  expect_quat_eq(out.orientation, expected_quat);
+}
+
+// TEST 21: get_closest_center_pose Incline Case
+TEST(GetClosestCenterPoseTest, getInclinePose)
+{
+  using autoware::experimental::lanelet2_utils::create_safe_lanelet;
+  using autoware_utils_geometry::create_quaternion_from_yaw;
+  auto p1 = lanelet::BasicPoint3d(0.0, 2.0, 0.0);
+  auto p2 = lanelet::BasicPoint3d(2.0, 4.0, 0.0);
+  auto p3 = lanelet::BasicPoint3d(0.0, 0.0, 0.0);
+  auto p4 = lanelet::BasicPoint3d(2.0, 2.0, 0.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points = {p1, p2};
+  std::vector<lanelet::BasicPoint3d> right_points = {p3, p4};
+  auto ll = create_safe_lanelet(left_points, right_points);
+
+  auto search_pt = lanelet::BasicPoint3d(1.2, 2.0, 0.0);
+  auto out = autoware::experimental::lanelet2_utils::get_closest_center_pose(*ll, search_pt);
+
+  auto expected_point = make_point(1.1, 2.1, 0.0);
+  expect_point_eq_ros(out.position, expected_point);
+
+  auto expected_quat = create_quaternion_from_yaw(M_PI / 4);
+  expect_quat_eq(out.orientation, expected_quat);
+}
+
+// TEST 22: get_closest_center_pose Incline Down Case
+TEST(GetClosestCenterPoseTest, getInclineDownPose)
+{
+  using autoware::experimental::lanelet2_utils::create_safe_lanelet;
+  using autoware_utils_geometry::create_quaternion_from_yaw;
+  auto p1 = lanelet::BasicPoint3d(2.0, 2.0, 0.0);
+  auto p2 = lanelet::BasicPoint3d(0.0, 0.0, 0.0);
+  auto p3 = lanelet::BasicPoint3d(2.0, 4.0, 0.0);
+  auto p4 = lanelet::BasicPoint3d(0.0, 2.0, 0.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points = {p1, p2};
+  std::vector<lanelet::BasicPoint3d> right_points = {p3, p4};
+  auto ll = create_safe_lanelet(left_points, right_points);
+
+  auto search_pt = lanelet::BasicPoint3d(1.2, 2.0, 0.0);
+  auto out = autoware::experimental::lanelet2_utils::get_closest_center_pose(*ll, search_pt);
+
+  auto expected_point = make_point(1.1, 2.1, 0.0);
+  expect_point_eq_ros(out.position, expected_point);
+
+  // Yaw is from - pi to pi
+  auto expected_quat = create_quaternion_from_yaw(-3 * M_PI / 4);
+  expect_quat_eq(out.orientation, expected_quat);
 }
 
 }  // namespace autoware::experimental

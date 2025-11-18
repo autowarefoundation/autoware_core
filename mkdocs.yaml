@@ -82,10 +82,13 @@ markdown_extensions:
       format: svg
   - pymdownx.arithmatex:
       generic: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
   - pymdownx.details
   - pymdownx.emoji:
       emoji_index: !!python/name:materialx.emoji.twemoji
       emoji_generator: !!python/name:materialx.emoji.to_svg
+  - pymdownx.details
   - pymdownx.highlight
   - pymdownx.snippets:
       auto_append:

@@ -92,6 +92,8 @@ MotionVelocityPlannerNode::MotionVelocityPlannerNode(const rclcpp::NodeOptions &
       "~/debug/processing_time_ms", 1);
   debug_viz_pub_ =
     this->create_publisher<visualization_msgs::msg::MarkerArray>("~/debug/markers", 1);
+  debug_processed_pointcloud_pub_ =
+    this->create_publisher<sensor_msgs::msg::PointCloud2>("~/debug/processed_pointcloud", 1);
 
   // Parameters
   smooth_velocity_before_planning_ = declare_parameter<bool>("smooth_velocity_before_planning");
@@ -237,13 +239,17 @@ MotionVelocityPlannerNode::process_no_ground_pointcloud(
     return std::nullopt;
   }
 
-  pcl::PointCloud<pcl::PointXYZ> pc;
-  pcl::fromROSMsg(*msg, pc);
+  pcl::PointCloud<pcl::PointXYZ> pc_input;
+  pcl::fromROSMsg(*msg, pc_input);
 
-  Eigen::Affine3f affine = tf2::transformToEigen(transform.transform).cast<float>();
-  pcl::PointCloud<pcl::PointXYZ>::Ptr pc_transformed(new pcl::PointCloud<pcl::PointXYZ>);
-  if (!pc.empty()) autoware_utils_pcl::transform_pointcloud(pc, *pc_transformed, affine);
-  return *pc_transformed;
+  const Eigen::Affine3f affine = tf2::transformToEigen(transform.transform).cast<float>();
+  pcl::PointCloud<pcl::PointXYZ> pc_transformed;
+  if (!pc_input.empty()) autoware_utils_pcl::transform_pointcloud(pc_input, pc_transformed, affine);
+
+  pc_transformed.header = pc_input.header;
+  pc_transformed.header.frame_id = "map";
+
+  return pc_transformed;
 }
 
 void MotionVelocityPlannerNode::set_velocity_smoother_params()
@@ -330,6 +336,18 @@ void MotionVelocityPlannerNode::on_trajectory(
   lk.unlock();
 
   trajectory_pub_->publish(output_trajectory_msg);
+
+  if (
+    debug_processed_pointcloud_pub_->get_subscription_count() > 0 &&
+    planner_data_->no_ground_pointcloud.preprocess_params_.downsample_by_voxel_grid
+      .enable_downsample) {
+    sensor_msgs::msg::PointCloud2 output_pointcloud_msg;
+    pcl::toROSMsg(
+      planner_data_->no_ground_pointcloud.extract_clustered_points(), output_pointcloud_msg);
+    debug_processed_pointcloud_pub_->publish(output_pointcloud_msg);
+    processing_times["publish_down_sampled_pointcloud"] = stop_watch.toc(true);
+  }
+
   published_time_publisher_.publish_if_subscribed(
     trajectory_pub_, output_trajectory_msg.header.stamp);
   processing_times["Total"] = stop_watch.toc("Total");
@@ -344,10 +362,13 @@ void MotionVelocityPlannerNode::insert_stop(
   autoware_planning_msgs::msg::Trajectory & trajectory,
   const geometry_msgs::msg::Point & stop_point) const
 {
+  // Prevent sudden yaw angle changes by using a larger overlap threshold
+  // when inserting stop points that are very close to existing points
+  const double overlap_threshold = 5e-2;
   const auto seg_idx =
     autoware::motion_utils::findNearestSegmentIndex(trajectory.points, stop_point);
-  const auto insert_idx =
-    autoware::motion_utils::insertTargetPoint(seg_idx, stop_point, trajectory.points);
+  const auto insert_idx = autoware::motion_utils::insertTargetPoint(
+    seg_idx, stop_point, trajectory.points, overlap_threshold);
   if (insert_idx) {
     for (auto idx = *insert_idx; idx < trajectory.points.size(); ++idx)
       trajectory.points[idx].longitudinal_velocity_mps = 0.0;

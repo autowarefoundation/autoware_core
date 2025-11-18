@@ -13,6 +13,7 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/utilization/boost_geometry_helper.cpp
   src/utilization/util.cpp
   src/utilization/debug.cpp
+  src/experimental/scene_module_interface.cpp
 )
 
 if(BUILD_TESTING)
@@ -24,6 +25,6 @@ if(BUILD_TESTING)
   )
 endif()
 
-ament_auto_package(INSTALL_TO_SHARE
+autoware_ament_auto_package(INSTALL_TO_SHARE
   config
 )

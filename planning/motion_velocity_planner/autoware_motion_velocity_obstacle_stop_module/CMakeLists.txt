@@ -15,8 +15,10 @@ if(BUILD_TESTING)
   # Add test executable
   ament_add_ros_isolated_gtest(test_${PROJECT_NAME}
     test/test_obstacle_stop_module_outside_check.cpp
+    test/test_parameters.cpp
+    test/test_planning_factor.cpp
+    test/test_types.cpp
     test/test_utils.cpp
-    test/test_utils.hpp
   )
 
   # Set test dependencies
@@ -32,4 +34,4 @@ if(BUILD_TESTING)
   )
 endif()
 
-ament_auto_package(INSTALL_TO_SHARE config)
+autoware_ament_auto_package(INSTALL_TO_SHARE config)

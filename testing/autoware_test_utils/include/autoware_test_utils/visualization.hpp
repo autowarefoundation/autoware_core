@@ -182,7 +182,7 @@ inline void plot_lanelet2_object(
   const auto p_before = lanelet.centerline()[before];
   const auto p_after = lanelet.centerline()[after];
   const double azimuth = std::atan2(p_after.y() - p_before.y(), p_after.x() - p_before.x());
-  const auto & mid = lanelet.centerline()[mid_index];
+  const auto mid = lanelet.centerline()[mid_index];
   axes.quiver(
     Args(mid.x(), mid.y(), std::cos(azimuth), std::sin(azimuth)), Kwargs("units"_a = "width"));
 }

@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.5)
 project(autoware_planning_topic_converter)
 
+find_package(autoware_cmake REQUIRED)
+autoware_package()
+
 ### Compile options
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)
@@ -21,4 +24,4 @@ rclcpp_components_register_node(planning_topic_converter
   EXECUTABLE path_to_trajectory_converter
 )
 
-ament_auto_package()
+autoware_ament_auto_package()
