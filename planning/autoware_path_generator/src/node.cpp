@@ -15,12 +15,8 @@
 #include "autoware/path_generator/node.hpp"
 
 #include <autoware/lanelet2_utils/conversion.hpp>
-#include <autoware/lanelet2_utils/geometry.hpp>
-#include <autoware/lanelet2_utils/nn_search.hpp>
-#include <autoware/path_generator/utils.hpp>
 #include <autoware/trajectory/utils/reference_path.hpp>
 #include <autoware_lanelet2_extension/utility/utilities.hpp>
-#include <autoware_utils_geometry/geometry.hpp>
 
 #include <lanelet2_core/geometry/Lanelet.h>
 
@@ -121,6 +117,8 @@ PathGenerator::InputData PathGenerator::take_data()
       RCLCPP_ERROR(get_logger(), "input route is empty, ignoring...");
     } else {
       route_manager_data_.route_ptr = msg;
+      planner_data_.route_frame_id = msg->header.frame_id;
+      planner_data_.goal_pose = msg->goal_pose;
       route_manager_.reset();
     }
   }
@@ -131,14 +129,6 @@ PathGenerator::InputData PathGenerator::take_data()
   }
 
   return input_data;
-}
-
-void PathGenerator::set_planner_data(const InputData & input_data)
-{
-  RouteManagerData route_manager_data;
-  route_manager_data.lanelet_map_bin_ptr = input_data.lanelet_map_bin_ptr;
-  route_manager_data.route_ptr = input_data.route_ptr;
-  initialize_route_manager(route_manager_data, input_data.odometry_ptr->pose.pose);
 }
 
 bool PathGenerator::is_data_ready(const InputData & input_data)
@@ -169,16 +159,6 @@ bool PathGenerator::is_data_ready(const InputData & input_data)
 void PathGenerator::initialize_route_manager(
   const RouteManagerData & route_manager_data, const geometry_msgs::msg::Pose & initial_pose)
 {
-  if (!route_manager_data.lanelet_map_bin_ptr) {
-    RCLCPP_ERROR(get_logger(), "Lanelet map is not set");
-    return;
-  }
-  if (!route_manager_data.route_ptr) {
-    RCLCPP_ERROR(get_logger(), "Route is not set");
-    return;
-  }
-
-  route_manager_data_ = route_manager_data;
   route_manager_ = experimental::lanelet2_utils::RouteManager::create(
     *route_manager_data.lanelet_map_bin_ptr, *route_manager_data.route_ptr, initial_pose);
 }
@@ -225,9 +205,7 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
                     .as_lanelets();
 
   const auto & current_lanelet = route_manager_->current_lanelet();
-  auto s_ego =
-    autoware::experimental::lanelet2_utils::get_arc_coordinates({current_lanelet}, current_pose)
-      .length;
+  auto s_ego = lanelet::utils::getArcCoordinates({current_lanelet}, current_pose).length;
   auto s_start = s_ego - params.path_length.backward;
   auto s_end = s_ego + params.path_length.forward;
 
@@ -242,9 +220,8 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
       s_end += s;
     }
     if (goal_lanelet.id() == lane_id) {
-      const auto s_goal = s + autoware::experimental::lanelet2_utils::get_arc_coordinates(
-                                {goal_lanelet}, route_manager_data_.route_ptr->goal_pose)
-                                .length;
+      const auto s_goal =
+        s + lanelet::utils::getArcCoordinates({goal_lanelet}, planner_data_.goal_pose).length;
       if (s_goal < s_end) {
         s_end = s_goal;
         connect_to_goal = true;
@@ -310,7 +287,7 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
   std::optional<Trajectory> path_to_goal = *path;
   if (connect_to_goal) {
     path_to_goal = utils::connect_path_to_goal_inside_lanelet_sequence(
-      *path, lanelet_sequence, *route_manager_, route_manager_data_.route_ptr->goal_pose, s_end,
+      *path, lanelet_sequence, *route_manager_, planner_data_.goal_pose, s_end,
       params.goal_connection.connection_section_length, params.goal_connection.pre_goal_offset);
 
     if (!path_to_goal) {

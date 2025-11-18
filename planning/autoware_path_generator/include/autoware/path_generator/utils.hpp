@@ -15,8 +15,9 @@
 #ifndef AUTOWARE__PATH_GENERATOR__UTILS_HPP_
 #define AUTOWARE__PATH_GENERATOR__UTILS_HPP_
 
+#include "autoware/trajectory/path_point_with_lane_id.hpp"
+
 #include <autoware/lanelet2_utils/route_manager.hpp>
-#include <autoware/trajectory/path_point_with_lane_id.hpp>
 
 #include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
 #include <autoware_vehicle_msgs/msg/turn_indicators_command.hpp>
@@ -68,6 +69,30 @@ struct PathRange
 namespace utils
 {
 /**
+ * @brief get lanelets within route that are in specified distance backward from target
+ * lanelet
+ * @param lanelet target lanelet
+ * @param route_manager route manager
+ * @param distance backward distance from beginning of target lanelet
+ * @return lanelets in range (std::nullopt if target lanelet is not within route)
+ */
+std::optional<lanelet::ConstLanelets> get_lanelets_within_route_up_to(
+  const lanelet::ConstLanelet & lanelet,
+  const experimental::lanelet2_utils::RouteManager & route_manager, const double distance);
+
+/**
+ * @brief get lanelets within route that are in specified distance forward from target
+ * lanelet
+ * @param lanelet target lanelet
+ * @param route_manager route manager
+ * @param distance forward distance from end of target lanelet
+ * @return lanelets in range (std::nullopt if target lanelet is not within route)
+ */
+std::optional<lanelet::ConstLanelets> get_lanelets_within_route_after(
+  const lanelet::ConstLanelet & lanelet,
+  const experimental::lanelet2_utils::RouteManager & route_manager, const double distance);
+
+/**
  * @brief get previous lanelet within route
  * @param lanelet target lanelet
  * @param route_manager route manager
@@ -88,6 +113,18 @@ std::optional<lanelet::ConstLanelet> get_previous_lanelet_within_route(
 std::optional<lanelet::ConstLanelet> get_next_lanelet_within_route(
   const lanelet::ConstLanelet & lanelet,
   const experimental::lanelet2_utils::RouteManager & route_manager);
+
+/**
+ * @brief get waypoints in lanelet sequence and group them
+ * @param lanelet_sequence lanelet sequence
+ * @param lanelet_map lanelet map to get waypoints
+ * @param connection_gradient_from_centerline gradient for connecting centerline and user-defined
+ * waypoints (see figure in README)
+ * @return waypoint groups
+ */
+std::vector<WaypointGroup> get_waypoint_groups(
+  const lanelet::LaneletSequence & lanelet_sequence, const lanelet::LaneletMap & lanelet_map,
+  const double connection_gradient_from_centerline);
 
 /**
  * @brief get border point (intersection between segment and border)
