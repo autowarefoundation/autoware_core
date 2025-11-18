@@ -285,6 +285,12 @@ std::pair<double, double> SplineInterpolationPoints2d::projectPointOntoSpline(
     if (denominator < 1e-12) break;  // avoid divide by zero
 
     ds = numerator / denominator;
+    // Bind s between min s and max s
+    if (s - ds < base_s_vec_.front()) {
+      ds = s - base_s_vec_.front();
+    } else if (s - ds > base_s_vec_.back()) {
+      ds = s - base_s_vec_.back();
+    }
     s -= ds;
 
     if (std::fabs(ds) < tol) break;  // converged
