@@ -82,7 +82,9 @@ bool StopLineModule::modifyPathVelocity(
     autoware_internal_planning_msgs::msg::SafetyFactorArray{}, true /*is_driving_forward*/, 0.0,
     0.0 /*shift distance*/, "stopline");
 
-  updateStateAndStoppedTime(clock_->now(), *stop_point - ego_s, planner_data.isVehicleStopped());
+  updateStateAndStoppedTime(
+    clock_->now(), *stop_point - ego_s,
+    planner_data.isVehicleStopped(planner_param_.vehicle_stopped_duration_threshold));
 
   const auto stop_pose = path.compute(*stop_point).point.pose;
 

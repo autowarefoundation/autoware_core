@@ -35,6 +35,8 @@ StopLineModuleManager::StopLineModuleManager(rclcpp::Node & node)
     get_or_declare_parameter<double>(node, ns + ".hold_stop_margin_distance");
   p.required_stop_duration_sec =
     get_or_declare_parameter<double>(node, ns + ".required_stop_duration_sec");
+  p.vehicle_stopped_duration_threshold =
+    get_or_declare_parameter<double>(node, ns + ".vehicle_stopped_duration_threshold");
 }
 
 std::vector<StopLineWithLaneId> StopLineModuleManager::getStopLinesWithLaneIdOnPath(
