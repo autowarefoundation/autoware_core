@@ -172,7 +172,7 @@ void StopLineModule::updateStateAndStoppedTime(
     }
     case State::STOPPED: {
       double stop_duration = (now - *stopped_time_).seconds();
-      if (stop_duration > planner_param_.stop_duration_sec) {
+      if (stop_duration > planner_param_.required_stop_duration_sec) {
         state_ = State::START;
         stopped_time_.reset();
         logInfo("State transition: STOPPED -> START | Duration: %.2fs", stop_duration);
