@@ -14,6 +14,8 @@
 
 #include "planner_manager.hpp"
 
+#include <autoware_utils_system/stop_watch.hpp>
+
 #include <boost/format.hpp>
 
 #include <memory>
@@ -78,15 +80,22 @@ void MotionVelocityPlannerManager::update_module_parameters(
 std::vector<VelocityPlanningResult> MotionVelocityPlannerManager::plan_velocities(
   const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & raw_trajectory_points,
   const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & smoothed_trajectory_points,
-  const std::shared_ptr<const PlannerData> planner_data)
+  const std::shared_ptr<const PlannerData> planner_data,
+  std::shared_ptr<autoware_utils_debug::DebugPublisher> & processing_time_publisher)
 {
+  autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch;
   std::vector<VelocityPlanningResult> results;
   for (auto & plugin : loaded_plugins_) {
+    const auto plugin_name = plugin->get_short_module_name();
+    stop_watch.tic(plugin_name);
+
     VelocityPlanningResult res =
       plugin->plan(raw_trajectory_points, smoothed_trajectory_points, planner_data);
     results.push_back(res);
 
     plugin->publish_planning_factor();
+    processing_time_publisher->publish<autoware_internal_debug_msgs::msg::Float64Stamped>(
+      std::string(plugin_name) + "/processing_time_ms", stop_watch.toc(plugin_name));
   }
   return results;
 }
