@@ -51,6 +51,7 @@ if(BUILD_TESTING)
   # Examples
   set(example_files
     examples/example_geometry.cpp
+    examples/example_conversion.cpp
   )
 
   find_package(ament_index_cpp REQUIRED)

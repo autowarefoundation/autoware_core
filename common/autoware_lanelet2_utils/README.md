@@ -133,6 +133,72 @@ common/autoware_lanelet2_utils/examples/example_geometry.cpp:211:221
 | `create_safe_linestring`                                                            | Construct LineString from vector of lanelet points (`BasicLineString3d` - `BasicPoint3d` and `ConstLineString3d` - `ConstPoint3d`)                                                                                                    |                                  |              |
 | `create_safe_lanelet`                                                               | Construct `ConstLanelet` from two vectors of lanelet points (left and right) - `BasicPoint3d` or `ConstPoint3d`                                                                                                                       |                                  |              |
 
+#### Example Usage of `conversion`
+
+Load coordinate map.
+
+```cpp title=".examples/example_conversion.cpp:36:44"
+--8<--
+common/autoware_lanelet2_utils/examples/example_conversion.cpp:36:44
+--8<--
+```
+
+Load routing graph and traffic rules.
+
+```cpp title=".examples/example_conversion.cpp:48:59"
+--8<--
+common/autoware_lanelet2_utils/examples/example_conversion.cpp:48:59
+--8<--
+```
+
+Conversion between `LaneletMapBin` and `LaneletMapConstPtr`.
+
+```cpp title=".examples/example_conversion.cpp:63:71"
+--8<--
+common/autoware_lanelet2_utils/examples/example_conversion.cpp:63:71
+--8<--
+```
+
+Message conversion from `BasicPoint3d` to `Point`.
+
+```cpp title=".examples/example_conversion.cpp:78:80"
+--8<--
+common/autoware_lanelet2_utils/examples/example_conversion.cpp:78:80
+--8<--
+```
+
+Message conversion between `ConstPoint3d` and `Point`.
+
+```cpp title=".examples/example_conversion.cpp:87:93"
+--8<--
+common/autoware_lanelet2_utils/examples/example_conversion.cpp:87:93
+--8<--
+```
+
+Message conversion from `Pose` to `ConstPoint3d`.
+
+```cpp title=".examples/example_conversion.cpp:98:104"
+--8<--
+common/autoware_lanelet2_utils/examples/example_conversion.cpp:98:104
+--8<--
+```
+
+Message conversion from `BasicPoint2d` to `Point`.
+
+```cpp title=".examples/example_conversion.cpp:109:112"
+--8<--
+common/autoware_lanelet2_utils/examples/example_conversion.cpp:109:112
+--8<--
+```
+
+Message conversion from `ConstPoint2d` to `Point`.
+
+```cpp title=".examples/example_conversion.cpp:118:127"
+--8<--
+common/autoware_lanelet2_utils/examples/example_conversion.cpp:118:127
+--8<--
+```
+
 ### `<autoware/lanelet2_utils/kind.hpp>`
 
 | Function           | Description                                                                   | Average Computational Complexity | Illustration |
