@@ -223,6 +223,14 @@ common/autoware_lanelet2_utils/examples/example_kind.cpp:44:66
 | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ------------ |
 | `get_adjacent_hatched_road_markings` | Returns polygons with type `hatched_road_markings` that touch the left/right bounds of the given lanelet sequence. Polygons are grouped by side and duplicates removed. | $O(V)$ where $V$ is the number of boundary vertices inspected |              |
 
+#### Example Usage of `hatched_road_markings`
+
+```cpp title="./examples/example_hatched_road_markings.cpp:51:75"
+--8<--
+common/autoware_lanelet2_utils/examples/example_hatched_road_markings.cpp:51:75
+--8<--
+```
+
 ### `<autoware/lanelet2_utils/topology.hpp>`
 
 | Function                 | Description                                                                                                    | Average Computational Complexity                                                   | Illustration                                                                                                                                                                                                                                                                                                                                                                |

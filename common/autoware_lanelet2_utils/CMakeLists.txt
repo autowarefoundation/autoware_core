@@ -53,6 +53,7 @@ if(BUILD_TESTING)
     examples/example_geometry.cpp
     examples/example_conversion.cpp
     examples/example_kind.cpp
+    examples/example_hatched_road_markings.cpp
   )
 
   find_package(ament_index_cpp REQUIRED)
