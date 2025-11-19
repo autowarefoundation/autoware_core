@@ -64,13 +64,13 @@ int main()
 
   std::cout << "Left ID size is: " << left_ids.size() << std::endl;
   std::cout << "Left ID is: " << std::endl;
-  for (auto & left : left_ids) {
+  for (const auto & left : left_ids) {
     std::cout << left << std::endl;
   }
 
   std::cout << "Right ID size is: " << right_ids.size() << std::endl;
   std::cout << "Right ID is: " << std::endl;
-  for (auto & right : right_ids) {
+  for (const auto & right : right_ids) {
     std::cout << right << std::endl;
   }
   return 0;
