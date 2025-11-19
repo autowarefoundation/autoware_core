@@ -19,7 +19,7 @@ jobs:
           - rosdistro: humble
             container: ghcr.io/autowarefoundation/autoware:core-common-devel
           - rosdistro: jazzy
-            container: ghcr.io/autowarefoundation/autoware:jazzy-core-common-devel
+            container: ghcr.io/autowarefoundation/autoware:core-common-devel-jazzy-amd64
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
