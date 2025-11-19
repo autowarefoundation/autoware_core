@@ -211,9 +211,9 @@ common/autoware_lanelet2_utils/examples/example_conversion.cpp:118:127
 
 Check type of lanelet.
 
-```cpp title=".examples/example_kind.cpp:41:63"
+```cpp title=".examples/example_kind.cpp:44:66"
 --8<--
-common/autoware_lanelet2_utils/examples/example_kind.cpp:41:63
+common/autoware_lanelet2_utils/examples/example_kind.cpp:44:66
 --8<--
 ```
 
