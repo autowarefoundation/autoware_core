@@ -53,8 +53,10 @@ public:
 
   struct PlannerParam
   {
-    double stop_margin;        ///< Margin to the stop line.
-    double stop_duration_sec;  ///< Required stop duration at the stop line.
+    double stop_margin;                         ///< Margin to the stop line.
+    double required_stop_duration_sec;          ///< Required stop duration at the stop line.
+    double vehicle_stopped_duration_threshold;  ///< Duration threshold for determining if the
+                                                ///< vehicle is stopped.
     double
       hold_stop_margin_distance;  ///< Distance threshold for transitioning to the STOPPED state
   };

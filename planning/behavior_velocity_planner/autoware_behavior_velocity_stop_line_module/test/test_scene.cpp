@@ -67,7 +67,7 @@ protected:
 
     // Initialize parameters, logger, and clock
     planner_param_.stop_margin = 0.5;
-    planner_param_.stop_duration_sec = 2.0;
+    planner_param_.required_stop_duration_sec = 2.0;
     planner_param_.hold_stop_margin_distance = 0.5;
 
     planner_data_ = std::make_shared<autoware::behavior_velocity_planner::PlannerData>(*node_);
