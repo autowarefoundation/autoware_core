@@ -13,9 +13,6 @@
         enable_to_consider_current_pose: true
         time_to_convergence: 1.5 #[s]
 
-    pointcloud:
-      mask_lat_margin: 2.0 # for compatibility with the current universe code
-
     pointcloud_preprocessing:
       filter_by_trajectory_polygon:
         enable_monolithic_crop_box: false  # [-] if true, crop pointcloud using trajectory polygon

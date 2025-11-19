@@ -72,9 +72,8 @@ std::vector<TrajectoryPoint> decimate_trajectory_points_from_ego(
   const double ego_nearest_dist_threshold, const double ego_nearest_yaw_threshold,
   const double decimate_trajectory_step_length, const double goal_extended_trajectory_length);
 
-template <typename T>
-std::optional<T> get_obstacle_from_uuid(
-  const std::vector<T> & obstacles, const std::string & target_uuid)
+template <typename T, typename U>
+std::optional<T> get_obstacle_from_uuid(const std::vector<T> & obstacles, const U & target_uuid)
 {
   const auto itr = std::find_if(obstacles.begin(), obstacles.end(), [&](const auto & obstacle) {
     return obstacle.uuid == target_uuid;
@@ -172,6 +171,13 @@ double calc_possible_min_dist_from_obj_to_traj_poly(
 double get_dist_to_traj_poly(
   const geometry_msgs::msg::Point & point,
   const std::vector<autoware_utils::Polygon2d> & decimated_traj_polys);
+
+/*
+ * @brief return the  distance from `predicted_object` to `decimated_traj_polys`
+ */
+double calc_dist_to_traj_poly(
+  const autoware_perception_msgs::msg::PredictedObject & predicted_object,
+  const std::vector<autoware_utils_geometry::Polygon2d> & decimated_traj_polys);
 
 /**
  * @brief append the `input_points` up to `extend_length` every `step_length`, in the direction of

@@ -18,6 +18,7 @@
 #include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
 
+#include "unique_identifier_msgs/msg/uuid.hpp"
 #include <autoware_internal_debug_msgs/msg/float32_stamped.hpp>
 #include <autoware_internal_debug_msgs/msg/float64_stamped.hpp>
 #include <autoware_internal_planning_msgs/msg/planning_factor.hpp>
@@ -48,6 +49,7 @@ using autoware_planning_msgs::msg::TrajectoryPoint;
 using geometry_msgs::msg::Twist;
 using nav_msgs::msg::Odometry;
 using sensor_msgs::msg::PointCloud2;
+using unique_identifier_msgs::msg::UUID;
 using visualization_msgs::msg::Marker;
 using visualization_msgs::msg::MarkerArray;
 namespace bg = boost::geometry;

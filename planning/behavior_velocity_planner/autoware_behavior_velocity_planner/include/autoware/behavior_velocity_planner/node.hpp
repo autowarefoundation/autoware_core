@@ -21,8 +21,10 @@
 #include <autoware_utils_debug/published_time_publisher.hpp>
 #include <autoware_utils_logging/logger_level_configure.hpp>
 #include <autoware_utils_rclcpp/polling_subscriber.hpp>
+#include <autoware_utils_system/stop_watch.hpp>
 #include <rclcpp/rclcpp.hpp>
 
+#include <autoware_internal_debug_msgs/msg/float64_stamped.hpp>
 #include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
 #include <autoware_internal_planning_msgs/msg/velocity_limit.hpp>
 #include <autoware_internal_planning_msgs/srv/load_plugin.hpp>
@@ -45,6 +47,7 @@
 
 namespace autoware::behavior_velocity_planner
 {
+using autoware_internal_debug_msgs::msg::Float64Stamped;
 using autoware_internal_planning_msgs::msg::VelocityLimit;
 using autoware_internal_planning_msgs::srv::LoadPlugin;
 using autoware_internal_planning_msgs::srv::UnloadPlugin;
@@ -99,7 +102,7 @@ private:
 
   void onParam();
 
-  void processNoGroundPointCloud(const sensor_msgs::msg::PointCloud2::ConstSharedPtr msg);
+  bool processNoGroundPointCloud(const sensor_msgs::msg::PointCloud2::ConstSharedPtr msg);
   void processOdometry(const nav_msgs::msg::Odometry::ConstSharedPtr msg);
   void processTrafficSignals(
     const autoware_perception_msgs::msg::TrafficLightGroupArray::ConstSharedPtr msg);
@@ -108,8 +111,10 @@ private:
   // publisher
   rclcpp::Publisher<autoware_planning_msgs::msg::Path>::SharedPtr path_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr debug_viz_pub_;
+  rclcpp::Publisher<Float64Stamped>::SharedPtr processing_time_publisher_;
 
   void publishDebugMarker(const autoware_planning_msgs::msg::Path & path);
+  void publishProcessingTime();
 
   //  parameter
   double forward_path_length_;
@@ -120,6 +125,7 @@ private:
   PlannerData planner_data_;
   BehaviorVelocityPlannerManager planner_manager_;
   bool is_driving_forward_{true};
+  autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_;
 
   rclcpp::Service<LoadPlugin>::SharedPtr srv_load_plugin_;
   rclcpp::Service<UnloadPlugin>::SharedPtr srv_unload_plugin_;

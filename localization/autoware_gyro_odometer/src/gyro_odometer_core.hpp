@@ -48,6 +48,7 @@ private:
   void callback_imu(const sensor_msgs::msg::Imu::ConstSharedPtr imu_msg_ptr);
   void concat_gyro_and_odometer();
   void publish_data(const geometry_msgs::msg::TwistWithCovarianceStamped & twist_with_cov_raw);
+  void publish_diagnostics();
 
   rclcpp::Subscription<geometry_msgs::msg::TwistWithCovarianceStamped>::SharedPtr
     vehicle_twist_sub_;
@@ -61,6 +62,8 @@ private:
   rclcpp::Publisher<geometry_msgs::msg::TwistWithCovarianceStamped>::SharedPtr
     twist_with_covariance_pub_;
 
+  rclcpp::TimerBase::SharedPtr timer_;
+
   std::shared_ptr<autoware_utils_tf::TransformListener> transform_listener_;
   std::unique_ptr<autoware_utils_logging::LoggerLevelConfigure> logger_configure_;
 
@@ -69,8 +72,13 @@ private:
 
   bool vehicle_twist_arrived_;
   bool imu_arrived_;
+  bool is_succeed_transform_imu_;
   rclcpp::Time latest_vehicle_twist_ros_time_;
   rclcpp::Time latest_imu_ros_time_;
+  double latest_vehicle_twist_dt_;
+  double latest_imu_dt_;
+  int32_t latest_vehicle_twist_queue_size_ = 0;
+  int32_t latest_imu_queue_size_ = 0;
   std::deque<geometry_msgs::msg::TwistWithCovarianceStamped> vehicle_twist_queue_;
   std::deque<sensor_msgs::msg::Imu> gyro_queue_;
 

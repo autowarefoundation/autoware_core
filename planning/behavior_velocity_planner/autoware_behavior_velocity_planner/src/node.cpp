@@ -77,6 +77,9 @@ BehaviorVelocityPlannerNode::BehaviorVelocityPlannerNode(const rclcpp::NodeOptio
   // Publishers
   path_pub_ = this->create_publisher<autoware_planning_msgs::msg::Path>("~/output/path", 1);
   debug_viz_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("~/debug/path", 1);
+  processing_time_publisher_ =
+    this->create_publisher<autoware_internal_debug_msgs::msg::Float64Stamped>(
+      "~/debug/processing_time_ms", 1);
 
   // Parameters
   forward_path_length_ = declare_parameter<double>("forward_path_length");
@@ -130,7 +133,7 @@ void BehaviorVelocityPlannerNode::onParam()
   planner_data_.velocity_smoother_->setWheelBase(planner_data_.vehicle_info_.wheel_base_m);
 }
 
-void BehaviorVelocityPlannerNode::processNoGroundPointCloud(
+bool BehaviorVelocityPlannerNode::processNoGroundPointCloud(
   const sensor_msgs::msg::PointCloud2::ConstSharedPtr msg)
 {
   geometry_msgs::msg::TransformStamped transform;
@@ -139,7 +142,7 @@ void BehaviorVelocityPlannerNode::processNoGroundPointCloud(
       "map", msg->header.frame_id, msg->header.stamp, rclcpp::Duration::from_seconds(0.1));
   } catch (tf2::TransformException & e) {
     RCLCPP_WARN(get_logger(), "no transform found for no_ground_pointcloud: %s", e.what());
-    return;
+    return false;
   }
 
   pcl::PointCloud<pcl::PointXYZ> pc;
@@ -147,11 +150,13 @@ void BehaviorVelocityPlannerNode::processNoGroundPointCloud(
 
   Eigen::Affine3f affine = tf2::transformToEigen(transform.transform).cast<float>();
   pcl::PointCloud<pcl::PointXYZ>::Ptr pc_transformed(new pcl::PointCloud<pcl::PointXYZ>);
+
   if (!pc.empty()) {
     autoware_utils_pcl::transform_pointcloud(pc, *pc_transformed, affine);
   }
 
   planner_data_.no_ground_pointcloud = pc_transformed;
+  return true;
 }
 
 void BehaviorVelocityPlannerNode::processOdometry(const nav_msgs::msg::Odometry::ConstSharedPtr msg)
@@ -265,8 +270,9 @@ bool BehaviorVelocityPlannerNode::processData(rclcpp::Clock clock)
   is_ready &= getData(
     no_ground_pointcloud, sub_no_ground_pointcloud_, "pointcloud",
     required_subscriptions.no_ground_pointcloud);
-  if (no_ground_pointcloud) {
-    processNoGroundPointCloud(no_ground_pointcloud);
+
+  if (required_subscriptions.no_ground_pointcloud && no_ground_pointcloud) {
+    is_ready &= processNoGroundPointCloud(no_ground_pointcloud);
   }
 
   const auto map_data = sub_lanelet_map_.take_data();
@@ -305,6 +311,7 @@ bool BehaviorVelocityPlannerNode::isDataReady(rclcpp::Clock clock)
 void BehaviorVelocityPlannerNode::onTrigger(
   const autoware_internal_planning_msgs::msg::PathWithLaneId::ConstSharedPtr input_path_msg)
 {
+  stop_watch_.tic();
   std::unique_lock<std::mutex> lk(mutex_);
 
   if (!isDataReady(*get_clock())) {
@@ -334,6 +341,8 @@ void BehaviorVelocityPlannerNode::onTrigger(
   if (debug_viz_pub_->get_subscription_count() > 0) {
     publishDebugMarker(output_path_msg);
   }
+
+  publishProcessingTime();
 }
 
 autoware_planning_msgs::msg::Path BehaviorVelocityPlannerNode::generatePath(
@@ -380,6 +389,14 @@ autoware_planning_msgs::msg::Path BehaviorVelocityPlannerNode::generatePath(
   output_path_msg.right_bound = input_path_msg->right_bound;
 
   return output_path_msg;
+}
+
+void BehaviorVelocityPlannerNode::publishProcessingTime()
+{
+  Float64Stamped processing_time_msg;
+  processing_time_msg.stamp = get_clock()->now();
+  processing_time_msg.data = stop_watch_.toc();
+  processing_time_publisher_->publish(processing_time_msg);
 }
 
 void BehaviorVelocityPlannerNode::publishDebugMarker(const autoware_planning_msgs::msg::Path & path)

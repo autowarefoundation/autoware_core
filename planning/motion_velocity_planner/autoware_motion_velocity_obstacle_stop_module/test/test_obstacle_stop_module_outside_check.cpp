@@ -12,12 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/motion_velocity_planner_common/polygon_utils.hpp"
 #include "obstacle_stop_module.hpp"
-#include "parameters.hpp"
 #include "test_utils.hpp"
-#include "type_alias.hpp"
-#include "types.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <rclcpp/node_options.hpp>
@@ -51,10 +47,7 @@ public:
       {"--ros-args", "--params-file",
        ament_index_cpp::get_package_share_directory(
          "autoware_motion_velocity_obstacle_stop_module") +
-         "/config/obstacle_stop.param.yaml",
-       "--params-file",
-       ament_index_cpp::get_package_share_directory("autoware_motion_velocity_planner") +
-         "/config/motion_velocity_planner.param.yaml"});
+         "/config/obstacle_stop.param.yaml"});
     node_ = std::make_shared<rclcpp::Node>("test_node", options);
 
     // Set required parameters directly
@@ -67,6 +60,8 @@ public:
     node_->declare_parameter("limit.max_acc", 1.0);
     node_->declare_parameter("limit.min_jerk", -1.5);
     node_->declare_parameter("limit.max_jerk", 1.5);
+
+    node_->declare_parameter("pointcloud.mask_lat_margin", 4.0);
 
     // Initialize the module
     init(*node_, "test_module");
@@ -103,8 +98,9 @@ class OutsideCutInObstacleTest : public ::testing::Test
 protected:
   void SetUp() override
   {
+    rclcpp::init(0, nullptr);
+    module_ = std::make_unique<ObstacleStopModuleWrapper>();
     // Initialize test parameters
-    obstacle_filtering_param_.outside_max_lateral_velocity = 1.0;
     stop_planning_param_.hold_stop_distance_threshold = 2.0;
 
     // Prepare test trajectory data
@@ -131,8 +127,10 @@ protected:
         enable_to_consider_current_pose, time_to_convergence, decimate_trajectory_step_length);
 
     // Set test time
-    current_time_ = module_.clock_->now();
+    current_time_ = module_->clock_->now();
   }
+
+  void TearDown() override { rclcpp::shutdown(); }
 
   // Helper function for testing
   std::shared_ptr<PlannerData::Object> create_test_object(
@@ -146,6 +144,9 @@ protected:
     object->predicted_object.shape.dimensions.x = 2.0;
     object->predicted_object.shape.dimensions.y = 2.0;
     object->predicted_object.shape.dimensions.z = 2.0;
+
+    object->predicted_object.classification.resize(1);
+    object->predicted_object.classification.at(0).label = ObjectClassification::CAR;
 
     const double time_step = 1.0;
     const double prediction_time = 30.0;
@@ -177,7 +178,7 @@ protected:
   double dist_to_bumper_ =
     vehicle_info_.max_longitudinal_offset_m;  // only consider the forward direction
   double estimation_time_ = 10.0;             // set a large value for testing purposes
-  ObstacleStopModuleWrapper module_;
+  std::unique_ptr<ObstacleStopModuleWrapper> module_;
 };
 
 TEST_F(OutsideCutInObstacleTest, HighLateralVelocity)
@@ -186,7 +187,7 @@ TEST_F(OutsideCutInObstacleTest, HighLateralVelocity)
   pose.position.x = 20.0;
   pose.position.y = -10.0;
   auto object = create_test_object(0.0, 10.0, pose);
-  auto result = module_.check_outside_cut_in_obstacle_wrapper(
+  auto result = module_->check_outside_cut_in_obstacle_wrapper(
     object, traj_points_, decimated_traj_points_, decimated_traj_polys_with_lat_margin_,
     dist_to_bumper_, estimation_time_, current_time_);
   EXPECT_FALSE(result.has_value());
@@ -198,7 +199,7 @@ TEST_F(OutsideCutInObstacleTest, NoCollisionPoint)
   pose.position.x = 20.0;
   pose.position.y = -5.0;
   auto object = create_test_object(1.0, 0.0, pose);
-  auto result = module_.check_outside_cut_in_obstacle_wrapper(
+  auto result = module_->check_outside_cut_in_obstacle_wrapper(
     object, traj_points_, decimated_traj_points_, decimated_traj_polys_with_lat_margin_,
     dist_to_bumper_, estimation_time_, current_time_);
   EXPECT_FALSE(result.has_value());
@@ -209,7 +210,7 @@ TEST_F(OutsideCutInObstacleTest, NegativeCollisionDistance)
   auto pose = test_utils::create_test_pose();
   pose.position.x = 0.0;
   auto object = create_test_object(0.0, 0.0, pose);
-  auto result = module_.check_outside_cut_in_obstacle_wrapper(
+  auto result = module_->check_outside_cut_in_obstacle_wrapper(
     object, traj_points_, decimated_traj_points_, decimated_traj_polys_with_lat_margin_,
     dist_to_bumper_, estimation_time_, current_time_);
   EXPECT_FALSE(result.has_value());
@@ -220,7 +221,7 @@ TEST_F(OutsideCutInObstacleTest, ValidCollisionPointWithStaticObject)
   auto pose = test_utils::create_test_pose();
   pose.position.x = 20.0;
   auto object = create_test_object(0.0, 0.0, pose);
-  auto result = module_.check_outside_cut_in_obstacle_wrapper(
+  auto result = module_->check_outside_cut_in_obstacle_wrapper(
     object, traj_points_, decimated_traj_points_, decimated_traj_polys_with_lat_margin_,
     dist_to_bumper_, estimation_time_, current_time_);
   EXPECT_TRUE(result.has_value());
@@ -231,11 +232,23 @@ TEST_F(OutsideCutInObstacleTest, ValidCollisionPointWithCutInObject)
   auto pose = test_utils::create_test_pose();
   pose.position.x = 20.0;
   pose.position.y = -5.0;
-  auto object = create_test_object(1.0, 0.5, pose);
-  auto result = module_.check_outside_cut_in_obstacle_wrapper(
+  auto object = create_test_object(2.0, 0.5, pose);
+  auto result = module_->check_outside_cut_in_obstacle_wrapper(
     object, traj_points_, decimated_traj_points_, decimated_traj_polys_with_lat_margin_,
     dist_to_bumper_, estimation_time_, current_time_);
   EXPECT_TRUE(result.has_value());
+}
+
+TEST_F(OutsideCutInObstacleTest, ValidCollisionPointWithOppositeCutInObject)
+{
+  auto pose = test_utils::create_test_pose();
+  pose.position.x = 20.0;
+  pose.position.y = -5.0;
+  auto object = create_test_object(-2.0, 0.5, pose);
+  auto result = module_->check_outside_cut_in_obstacle_wrapper(
+    object, traj_points_, decimated_traj_points_, decimated_traj_polys_with_lat_margin_,
+    dist_to_bumper_, estimation_time_, current_time_);
+  EXPECT_FALSE(result.has_value());
 }
 
 // TODO(takagi): move this to autoware_motion_velocity_planner_common package
@@ -246,23 +259,14 @@ TEST_F(OutsideCutInObstacleTest, GetSpecifiedTimePoseStaticObject)
   auto object = create_test_object(0.0, 0.0, pose);  // zero velocity
 
   // Check position at arbitrary time
-  auto pose_0s = module_.calc_predicted_pose_wrapper(object, current_time_, current_time_);
+  auto pose_0s = module_->calc_predicted_pose_wrapper(object, current_time_, current_time_);
   EXPECT_DOUBLE_EQ(pose_0s.position.x, pose.position.x);
   EXPECT_DOUBLE_EQ(pose_0s.position.y, pose.position.y);
 
-  auto pose_1s = module_.calc_predicted_pose_wrapper(
+  auto pose_1s = module_->calc_predicted_pose_wrapper(
     object, current_time_ + rclcpp::Duration::from_seconds(1.0), current_time_);
   EXPECT_DOUBLE_EQ(pose_1s.position.x, pose.position.x);
   EXPECT_DOUBLE_EQ(pose_1s.position.y, pose.position.y);
 }
 
 }  // namespace autoware::motion_velocity_planner
-
-int main(int argc, char ** argv)
-{
-  testing::InitGoogleTest(&argc, argv);
-  rclcpp::init(argc, argv);
-  auto result = RUN_ALL_TESTS();
-  rclcpp::shutdown();
-  return result;
-}

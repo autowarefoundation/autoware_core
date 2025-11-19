@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="3">
   <name>autoware_objects_of_interest_marker_interface</name>
-  <version>1.4.0</version>
+  <version>1.5.0</version>
   <description>The autoware_objects_of_interest_marker_interface package</description>
 
   <maintainer email="lxg19892021@gmail.com">Xingang Liu</maintainer>
@@ -14,6 +14,7 @@
   <author email="fumiya.watanabe@tier4.jp">Fumiya Watanabe</author>
 
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
+  <buildtool_depend>autoware_cmake</buildtool_depend>
 
   <depend>autoware_perception_msgs</depend>
   <depend>autoware_utils_geometry</depend>
