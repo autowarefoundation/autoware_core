@@ -207,6 +207,16 @@ common/autoware_lanelet2_utils/examples/example_conversion.cpp:118:127
 | `is_shoulder_lane` | This function returns `true` if the input Lanelet is `road_shoulder` subtype. | $O(1)$                           |              |
 | `is_bicycle_lane`  | This function returns `true` if the input Lanelet is `bicycle_lane` subtype.  | $O(1)$                           |              |
 
+#### Example Usage of `kind`
+
+Check type of lanelet.
+
+```cpp title=".examples/example_kind.cpp:41:63"
+--8<--
+common/autoware_lanelet2_utils/examples/example_kind.cpp:41:63
+--8<--
+```
+
 ### `<autoware/lanelet2_utils/hatched_road_markings.hpp>`
 
 | Function                             | Description                                                                                                                                                             | Average Computational Complexity                              | Illustration |
