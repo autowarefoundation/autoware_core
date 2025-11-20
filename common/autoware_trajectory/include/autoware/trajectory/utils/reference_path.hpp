@@ -15,34 +15,40 @@
 #ifndef AUTOWARE__TRAJECTORY__UTILS__REFERENCE_PATH_HPP_
 #define AUTOWARE__TRAJECTORY__UTILS__REFERENCE_PATH_HPP_
 
-#include "autoware/trajectory/path_point_with_lane_id.hpp"
+#include "autoware/trajectory/forward.hpp"
 
-#include <lanelet2_routing/RoutingGraph.h>
+#include <tl_expected/expected.hpp>
+
+#include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
+
+#include <lanelet2_core/Forward.h>
+#include <lanelet2_routing/Forward.h>
 #include <lanelet2_traffic_rules/TrafficRules.h>
 
-#include <optional>
+#include <string>
 
 namespace autoware::experimental::trajectory
 {
 /**
- * @brief build reference path that spans specified interval in front of and behind ego in s
- * coordinate
- * @param lanelet_sequence_with_interval consecutive lanelet sequence with interval in s coordinate
- * @param lanelet_map lanelet map
- * @param traffic_rules traffic rules
- * @param waypoint_connection_gradient_from_centerline gradient for connecting centerline and user
- * defined waypoints
- * @return reference path with lane ids (std::nullopt if failed)
- * @note length of Trajectory may not match length of interval
+ * @brief create Trajectory which is backward_length backward and forward_length forward from ego's
+ * s coordinate in terms of s coordinate
+ * @param connected_lane_sequence consecutive lanelet sequence. it is ok that it intersects with
+ * itself
+ * @param current_lanelet the lanelet where ego_pose is driving, which is given in order to
+ * disambiguate if route_lanelets have self-intersection
+ * @param ego_pose ego's current pose
+ * @return the s coordinate of start/end is relative from ego by backward_length/forward_length. the
+ * length of Trajectory does not match backward_length + forward_length
  */
-std::optional<Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>>
+tl::expected<Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>, std::string>
 build_reference_path(
-  const lanelet::ConstLanelets & lanelet_sequence, const lanelet::LaneletMapConstPtr lanelet_map,
-  const lanelet::traffic_rules::TrafficRulesPtr traffic_rules,
+  const lanelet::ConstLanelets & connected_lane_sequence,
+  const lanelet::ConstLanelet & current_lanelet, const geometry_msgs::msg::Pose & ego_pose,
+  const lanelet::LaneletMapConstPtr lanelet_map,
   const lanelet::routing::RoutingGraphConstPtr routing_graph,
-  const geometry_msgs::msg::Point & ego_position, const lanelet::Id ego_lane_id,
-  const double backward_length, const double forward_length,
-  const double waypoint_connection_gradient_from_centerline);
+  lanelet::traffic_rules::TrafficRulesPtr traffic_rules, const double forward_length,
+  const double backward_length);
+
 }  // namespace autoware::experimental::trajectory
 
 #endif  // AUTOWARE__TRAJECTORY__UTILS__REFERENCE_PATH_HPP_

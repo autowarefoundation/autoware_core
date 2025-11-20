@@ -12,16 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "autoware/trajectory/path_point_with_lane_id.hpp"
 #include "autoware/trajectory/utils/reference_path.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <autoware/lanelet2_utils/conversion.hpp>
+#include <autoware/motion_utils/resample/resample.hpp>
+#include <autoware/motion_utils/trajectory/trajectory.hpp>
 #include <autoware/pyplot/pyplot.hpp>
 #include <autoware_test_utils/visualization.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 #include <range/v3/all.hpp>
 
+#include <geometry_msgs/msg/pose.hpp>
+
+#include <lanelet2_core/LaneletMap.h>
 #include <pybind11/embed.h>
+#include <pybind11/stl.h>
 
 #include <filesystem>
 #include <string>
@@ -66,11 +73,9 @@ int main1()
     auto & ax = axes[0];
     const double forward_length = 40;
     const double backward_length = 0.0;
-    const double waypoint_connection_gradient_from_centerline = 10.0;
     const auto reference_path_opt = trajectory::build_reference_path(
-      lanelet_sequence, lanelet_map_ptr, traffic_rules, routing_graph, ego_pose.position,
-      current_lanelet.id(), backward_length, forward_length,
-      waypoint_connection_gradient_from_centerline);
+      lanelet_sequence, current_lanelet, ego_pose, lanelet_map_ptr, routing_graph, traffic_rules,
+      forward_length, backward_length);
     if (reference_path_opt) {
       const auto & reference_path = reference_path_opt.value();
       autoware_internal_planning_msgs::msg::PathWithLaneId path;
@@ -128,12 +133,10 @@ int main2()
   {
     const double forward_length = 50;
     const double backward_length = 10.0;
-    const double waypoint_connection_gradient_from_centerline = 10.0;
     auto & ax = axes[0];
     const auto reference_path_opt = trajectory::build_reference_path(
-      lanelet_sequence, lanelet_map_ptr, traffic_rules, routing_graph, ego_pose.position,
-      current_lanelet.id(), backward_length, forward_length,
-      waypoint_connection_gradient_from_centerline);
+      lanelet_sequence, current_lanelet, ego_pose, lanelet_map_ptr, routing_graph, traffic_rules,
+      forward_length, backward_length);
     if (reference_path_opt) {
       const auto & reference_path = reference_path_opt.value();
       autoware_internal_planning_msgs::msg::PathWithLaneId path;
