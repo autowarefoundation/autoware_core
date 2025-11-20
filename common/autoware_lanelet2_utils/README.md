@@ -303,10 +303,53 @@ common/autoware_lanelet2_utils/examples/example_topology.cpp:120:122
 
 ### `<autoware/lanelet2_utils/intersection.hpp>`
 
-| Function                                                                                     | Description                                                                                                                              | Average Computational Complexity | Illustration |
-| -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- | ------------ |
-| `is_intersection_lanelet`                                                                    | This function returns `true` if and only if the input Lanelet has `turn_direction` attribute.                                            | $O(1)$                           |              |
-| <ul><li>`is_straight_lanelet`</li><li>`is_left_lanelet`</li><li>`is_right_lanelet`</li></ul> | This function returns `true` if and only if the input Lanelet has `turn_direction` attribute and its value is `straight`/`left`/`right`. | $O(1)$                           |              |
+| Function                                                                                     | Description                                                                                                                                               | Average Computational Complexity | Illustration |
+| -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- | ------------ |
+| `is_intersection_lanelet`                                                                    | This function returns `true` if and only if the input Lanelet has `turn_direction` attribute.                                                             | $O(1)$                           |              |
+| <ul><li>`is_straight_lanelet`</li><li>`is_left_lanelet`</li><li>`is_right_lanelet`</li></ul> | This function returns `true` if and only if the input Lanelet has `turn_direction` attribute and its value is `straight`/`left`/`right`.                  | $O(1)$                           |              |
+| `get_turn_direction`                                                                         | This function returns the turn direction (`straight`/`left`/`right`) at the intersection if and only if the input Lanelet has `turn_direction` attribute. | $O(1)$                           |              |
+
+#### Example Usage of `intersection`
+
+Check if the lanelet is intersection.
+
+```cpp title="./examples/example_intersection.cpp:47:49"
+--8<--
+common/autoware_lanelet2_utils/examples/example_intersection.cpp:47:49
+--8<--
+```
+
+Check if the lanelet is straight direction.
+
+```cpp title="./examples/example_intersection.cpp:52:54"
+--8<--
+common/autoware_lanelet2_utils/examples/example_intersection.cpp:52:54
+--8<--
+```
+
+Check if the lanelet is left direction.
+
+```cpp title="./examples/example_intersection.cpp:57:59"
+--8<--
+common/autoware_lanelet2_utils/examples/example_intersection.cpp:57:59
+--8<--
+```
+
+Check if the lanelet is right direction.
+
+```cpp title="./examples/example_intersection.cpp:62:65"
+--8<--
+common/autoware_lanelet2_utils/examples/example_intersection.cpp:62:65
+--8<--
+```
+
+Get Turn direction at the intersection.
+
+```cpp title="./examples/example_intersection.cpp:71:104"
+--8<--
+common/autoware_lanelet2_utils/examples/example_intersection.cpp:71:104
+--8<--
+```
 
 ### `<autoware/lanelet2_utils/lane_sequence.hpp`
 
