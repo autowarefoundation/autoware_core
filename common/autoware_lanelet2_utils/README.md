@@ -233,14 +233,73 @@ common/autoware_lanelet2_utils/examples/example_hatched_road_markings.cpp:51:75
 
 ### `<autoware/lanelet2_utils/topology.hpp>`
 
-| Function                 | Description                                                                                                    | Average Computational Complexity                                                   | Illustration                                                                                                                                                                                                                                                                                                                                                                |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `left_opposite_lanelet`  | same as below `right_opposite_lanelet`                                                                         | $O(1)$<br>see [`findUsage`](#complexity-of-findusage) for detail                   |                                                                                                                                                                                                                                                                                                                                                                             |
-| `right_opposite_lanelet` | This functions returns the right `opposite` Lanelet of the input Lanelet if available, otherwise returns null. | $O(1)$<br>see [`findUsage`](#complexity-of-findusage) for detail                   | In the first and second map, the green Lanelet is the `right_opposite_lanelet` of the orange Lanelet.<br>In the third map, the `right_opposite_lanelet` of the orange Lanelet is `null`.<br>![right_opposite_lanelet](./media/api/right_opposite_lanelet.drawio.svg)<br>[Open]({{ drawio("/common/autoware_lanelet2_utils/media/api/right_opposite_lanelet.drawio.svg") }}) |
-| `following_lanelets`     | This function returns the `following` Lanelets of the input Lanelet. The order is not defined.                 | $O(E)$ where $E$ is the number of Lanelets to which the input is connected to.     |                                                                                                                                                                                                                                                                                                                                                                             |
-| `previous_lanelets`      | This function returns the `previous` Lanelets of the input Lanelet. The order is not defined.                  | $O(E)$ where $E$ is the number of Lanelets from which the input is connected from. |                                                                                                                                                                                                                                                                                                                                                                             |
-| `sibling_lanelets`       | This function returns the `sibling` Lanelets of the input Lanelet excluding itself. The order is not defined.  | $O(E)$ where $E$ is the number of sibling Lanelets                                 |                                                                                                                                                                                                                                                                                                                                                                             |
-| `from_ids`               | This function returns Lanelet objects in the same order as the input IDs.                                      | $O(n)$                                                                             |                                                                                                                                                                                                                                                                                                                                                                             |
+| Function                   | Description                                                                                                    | Average Computational Complexity                                                   | Illustration                                                                                                                                                                                                                                                                                                                                                                |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `left_opposite_lanelet`    | same as below `right_opposite_lanelet`                                                                         | $O(1)$<br>see [`findUsage`](#complexity-of-findusage) for detail                   |                                                                                                                                                                                                                                                                                                                                                                             |
+| `right_opposite_lanelet`   | This functions returns the right `opposite` Lanelet of the input Lanelet if available, otherwise returns null. | $O(1)$<br>see [`findUsage`](#complexity-of-findusage) for detail                   | In the first and second map, the green Lanelet is the `right_opposite_lanelet` of the orange Lanelet.<br>In the third map, the `right_opposite_lanelet` of the orange Lanelet is `null`.<br>![right_opposite_lanelet](./media/api/right_opposite_lanelet.drawio.svg)<br>[Open]({{ drawio("/common/autoware_lanelet2_utils/media/api/right_opposite_lanelet.drawio.svg") }}) |
+| `following_lanelets`       | This function returns the `following` Lanelets of the input Lanelet. The order is not defined.                 | $O(E)$ where $E$ is the number of Lanelets to which the input is connected to.     |                                                                                                                                                                                                                                                                                                                                                                             |
+| `previous_lanelets`        | This function returns the `previous` Lanelets of the input Lanelet. The order is not defined.                  | $O(E)$ where $E$ is the number of Lanelets from which the input is connected from. |                                                                                                                                                                                                                                                                                                                                                                             |
+| `sibling_lanelets`         | This function returns the `sibling` Lanelets of the input Lanelet excluding itself. The order is not defined.  | $O(E)$ where $E$ is the number of sibling Lanelets                                 |                                                                                                                                                                                                                                                                                                                                                                             |
+| `from_ids`                 | This function returns Lanelet objects in the same order as the input IDs.                                      | $O(n)$                                                                             |                                                                                                                                                                                                                                                                                                                                                                             |
+| `get_conflicting_lanelets` | This function returns the `conflicting` Lanelets of the input Lanelet. The order is not defined.               | $O(E)$ where $E$ is the number of conflicting Lanelets                             |                                                                                                                                                                                                                                                                                                                                                                             |
+
+#### Example Usage of `topology`
+
+Get left opposite lanelet.
+
+```cpp title="./examples/example_topology.cpp:60:63"
+--8<--
+common/autoware_lanelet2_utils/examples/example_topology.cpp:60:63
+--8<--
+```
+
+Get right opposite lanelet.
+
+```cpp title="./examples/example_topology.cpp:71:74"
+--8<--
+common/autoware_lanelet2_utils/examples/example_topology.cpp:71:74
+--8<--
+```
+
+Get following lanelets.
+
+```cpp title="./examples/example_topology.cpp:84:89"
+--8<--
+common/autoware_lanelet2_utils/examples/example_topology.cpp:84:89
+--8<--
+```
+
+Get previous lanelets.
+
+```cpp title="./examples/example_topology.cpp:93:98"
+--8<--
+common/autoware_lanelet2_utils/examples/example_topology.cpp:93:98
+--8<--
+```
+
+Get sibling lanelets.
+
+```cpp title="./examples/example_topology.cpp:102:107"
+--8<--
+common/autoware_lanelet2_utils/examples/example_topology.cpp:102:107
+--8<--
+```
+
+Get conflicting lanelets.
+
+```cpp title="./examples/example_topology.cpp:111:116"
+--8<--
+common/autoware_lanelet2_utils/examples/example_topology.cpp:111:116
+--8<--
+```
+
+Get `ConstLanelets` from ids.
+
+```cpp title="./examples/example_topology.cpp:120:122"
+--8<--
+common/autoware_lanelet2_utils/examples/example_topology.cpp:120:122
+--8<--
+```
 
 ### `<autoware/lanelet2_utils/intersection.hpp>`
 
