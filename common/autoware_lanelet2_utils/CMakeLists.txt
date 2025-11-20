@@ -56,6 +56,7 @@ if(BUILD_TESTING)
     examples/example_hatched_road_markings.cpp
     examples/example_topology.cpp
     examples/example_intersection.cpp
+    examples/example_lane_sequence.cpp
   )
 
   find_package(ament_index_cpp REQUIRED)
@@ -67,6 +68,7 @@ if(BUILD_TESTING)
   find_package(range-v3 REQUIRED)
   find_package(pybind11_vendor REQUIRED)
   find_package(pybind11 REQUIRED)
+  find_package(yaml-cpp REQUIRED)
   include_directories(${autoware_index_cpp_INCLUDE_DIRS})
   foreach(example_file ${example_files})
     get_filename_component(example_name ${example_file} NAME_WE)
@@ -79,6 +81,7 @@ if(BUILD_TESTING)
       range-v3::range-v3
       Python3::Python
       pybind11::embed
+      yaml-cpp
     )
   endforeach()
 endif()

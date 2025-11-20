@@ -360,6 +360,24 @@ common/autoware_lanelet2_utils/examples/example_intersection.cpp:71:104
 | `create(lanelets, routing_graph)` | Return an optional of `LaneSequence` class that satisfies the invariance                                  |                                  |              |
 | `.as_lanelets()`                  | Return the underlying `lanelet::ConstLanelets`                                                            |                                  |              |
 
+#### Example Usage of `lane_sequence`
+
+Create LaneSequence using constructor.
+
+```cpp title="./examples/example_lane_sequence.cpp:61:67"
+--8<--
+common/autoware_lanelet2_utils/examples/example_lane_sequence.cpp:61:67
+--8<--
+```
+
+Create LaneSequence using `create`.
+
+```cpp title="./examples/example_lane_sequence.cpp:68:80"
+--8<--
+common/autoware_lanelet2_utils/examples/example_lane_sequence.cpp:68:80
+--8<--
+```
+
 ### `<autoware/lanelet2_utils/nn_search.hpp>`
 
 | Function                                                                         | Description                                                                                                                                                                                                  | Average Computational Complexity                                                                                                | Illustration |
