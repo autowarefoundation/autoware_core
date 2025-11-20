@@ -61,9 +61,10 @@ class TestRouteManager001 : public ::testing::Test
 protected:
   void SetUp() override
   {
-    const auto test_case_path = std::filesystem::path(ament_index_cpp::get_package_share_directory(
-                                  "autoware_lanelet2_utils")) /
-                                "test_data" / "test_route_manager_001.yaml";
+    const auto test_case_path =
+      std::filesystem::path(
+        ament_index_cpp::get_package_share_directory("autoware_lanelet2_utils")) /
+      "test_data" / "test_route_manager_001.yaml";
     const auto test_case_data = autoware::test_utils::load_test_case(test_case_path.string());
 
     lanelet::LaneletMapConstPtr lanelet_map =
@@ -480,9 +481,10 @@ class TestRouteManager002 : public ::testing::Test
 protected:
   void SetUp() override
   {
-    const auto test_case_path = std::filesystem::path(ament_index_cpp::get_package_share_directory(
-                                  "autoware_lanelet2_utils")) /
-                                "test_data" / "test_route_manager_002.yaml";
+    const auto test_case_path =
+      std::filesystem::path(
+        ament_index_cpp::get_package_share_directory("autoware_lanelet2_utils")) /
+      "test_data" / "test_route_manager_002.yaml";
     const auto test_case_data = autoware::test_utils::load_test_case(test_case_path.string());
 
     lanelet::LaneletMapConstPtr lanelet_map =
@@ -744,9 +746,10 @@ class TestRouteManager003 : public ::testing::Test
 protected:
   void SetUp() override
   {
-    const auto test_case_path = std::filesystem::path(ament_index_cpp::get_package_share_directory(
-                                  "autoware_lanelet2_utils")) /
-                                "test_data" / "test_route_manager_003.yaml";
+    const auto test_case_path =
+      std::filesystem::path(
+        ament_index_cpp::get_package_share_directory("autoware_lanelet2_utils")) /
+      "test_data" / "test_route_manager_003.yaml";
     const auto test_case_data = autoware::test_utils::load_test_case(test_case_path.string());
 
     lanelet::LaneletMapConstPtr lanelet_map =

@@ -124,8 +124,9 @@ bool VehicleArrivalChecker::isVehicleStoppedAtStopPoint(const double stop_durati
     return false;
   }
 
-  return std::abs(autoware::motion_utils::calcSignedArcLength(
-           trajectory_ptr_->points, p, idx.value())) < th_arrived_distance_m;
+  return std::abs(
+           autoware::motion_utils::calcSignedArcLength(trajectory_ptr_->points, p, idx.value())) <
+         th_arrived_distance_m;
 }
 
 void VehicleArrivalChecker::onTrajectory(const Trajectory::ConstSharedPtr msg)
