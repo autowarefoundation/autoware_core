@@ -8215,8 +8215,72 @@
 <td><span class="arithmatex">\(O(1)\)</span></td>
 <td></td>
 </tr>
+<tr>
+<td><code>get_turn_direction</code></td>
+<td>This function returns the turn direction (<code>straight</code>/<code>left</code>/<code>right</code>) at the intersection if and only if the input Lanelet has <code>turn_direction</code> attribute.</td>
+<td><span class="arithmatex">\(O(1)\)</span></td>
+<td></td>
+</tr>
 </tbody>
 </table>
+<h4 id="example-usage-of-intersection">Example Usage of <code>intersection</code><a class="headerlink" href="#example-usage-of-intersection" title="Permanent link">#</a></h4>
+<p>Check if the lanelet is intersection.</p>
+<div class="highlight"><span class="filename">./examples/example_intersection.cpp:47:49</span><pre><span></span><code><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">check</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">lanelet2_utils</span><span class="o">::</span><span class="n">is_intersection_lanelet</span><span class="p">(</span><span class="n">lanelet_map_ptr_</span><span class="o">-&gt;</span><span class="n">laneletLayer</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="mi">2274</span><span class="p">));</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="p">(</span><span class="n">check</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">"This lanelet is intersection!"</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s">"This lanelet is not intersection."</span><span class="p">)</span>
+<span class="w">              </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+</code></pre></div>
+<p>Check if the lanelet is straight direction.</p>
+<div class="highlight"><span class="filename">./examples/example_intersection.cpp:52:54</span><pre><span></span><code><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">check</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">lanelet2_utils</span><span class="o">::</span><span class="n">is_straight_direction</span><span class="p">(</span><span class="n">lanelet_map_ptr_</span><span class="o">-&gt;</span><span class="n">laneletLayer</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="mi">2278</span><span class="p">));</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="p">(</span><span class="n">check</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">"This lanelet is straight direction!"</span>
+<span class="w">                        </span><span class="o">:</span><span class="w"> </span><span class="s">"This lanelet is not straight direction."</span><span class="p">)</span>
+</code></pre></div>
+<p>Check if the lanelet is left direction.</p>
+<div class="highlight"><span class="filename">./examples/example_intersection.cpp:57:59</span><pre><span></span><code><span class="w">  </span><span class="p">{</span>
+<span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">check</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">lanelet2_utils</span><span class="o">::</span><span class="n">is_left_direction</span><span class="p">(</span><span class="n">lanelet_map_ptr_</span><span class="o">-&gt;</span><span class="n">laneletLayer</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="mi">2274</span><span class="p">));</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="p">(</span><span class="n">check</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">"This lanelet is left direction!"</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s">"This lanelet is not left direction."</span><span class="p">)</span>
+</code></pre></div>
+<p>Check if the lanelet is right direction.</p>
+<div class="highlight"><span class="filename">./examples/example_intersection.cpp:62:65</span><pre><span></span><code><span class="w">  </span><span class="p">{</span>
+<span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">check</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">lanelet2_utils</span><span class="o">::</span><span class="n">is_right_direction</span><span class="p">(</span><span class="n">lanelet_map_ptr_</span><span class="o">-&gt;</span><span class="n">laneletLayer</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="mi">2277</span><span class="p">));</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="p">(</span><span class="n">check</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">"This lanelet is right direction!"</span>
+<span class="w">                        </span><span class="o">:</span><span class="w"> </span><span class="s">"This lanelet is not right direction."</span><span class="p">)</span>
+</code></pre></div>
+<p>Get Turn direction at the intersection.</p>
+<div class="highlight"><span class="filename">./examples/example_intersection.cpp:71:104</span><pre><span></span><code><span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="c1">// not intersection</span>
+<span class="w">      </span><span class="k">auto</span><span class="w"> </span><span class="n">opt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">lanelet2_utils</span><span class="o">::</span><span class="n">get_turn_direction</span><span class="p">(</span><span class="n">lanelet_map_ptr_</span><span class="o">-&gt;</span><span class="n">laneletLayer</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="mi">2257</span><span class="p">));</span>
+<span class="w">      </span><span class="kt">bool</span><span class="w"> </span><span class="n">check</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">opt</span><span class="p">.</span><span class="n">has_value</span><span class="p">();</span>
+<span class="w">      </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="p">(</span><span class="n">check</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">"This lanelet has turn_direction attribute!"</span>
+<span class="w">                          </span><span class="o">:</span><span class="w"> </span><span class="s">"This lanelet has no turn_direction attribute."</span><span class="p">)</span>
+<span class="w">                </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="c1">// straight</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">opt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">lanelet2_utils</span><span class="o">::</span><span class="n">get_turn_direction</span><span class="p">(</span><span class="n">lanelet_map_ptr_</span><span class="o">-&gt;</span><span class="n">laneletLayer</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="mi">2278</span><span class="p">));</span>
+<span class="w">      </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">opt</span><span class="p">.</span><span class="n">has_value</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">auto</span><span class="w"> </span><span class="n">direction</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">*</span><span class="n">opt</span><span class="p">;</span>
+<span class="w">        </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">"Straight: "</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">direction</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// left</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">opt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">lanelet2_utils</span><span class="o">::</span><span class="n">get_turn_direction</span><span class="p">(</span><span class="n">lanelet_map_ptr_</span><span class="o">-&gt;</span><span class="n">laneletLayer</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="mi">2274</span><span class="p">));</span>
+<span class="w">      </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">opt</span><span class="p">.</span><span class="n">has_value</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">auto</span><span class="w"> </span><span class="n">direction</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">*</span><span class="n">opt</span><span class="p">;</span>
+<span class="w">        </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">"Left: "</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">direction</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// right</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">opt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">lanelet2_utils</span><span class="o">::</span><span class="n">get_turn_direction</span><span class="p">(</span><span class="n">lanelet_map_ptr_</span><span class="o">-&gt;</span><span class="n">laneletLayer</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="mi">2277</span><span class="p">));</span>
+<span class="w">      </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">opt</span><span class="p">.</span><span class="n">has_value</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">auto</span><span class="w"> </span><span class="n">direction</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">*</span><span class="n">opt</span><span class="p">;</span>
+<span class="w">        </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">"Right: "</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">direction</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+</code></pre></div>
 <h3 id="autowarelanelet2_utilslane_sequencehpp"><code>&lt;autoware/lanelet2_utils/lane_sequence.hpp</code><a class="headerlink" href="#autowarelanelet2_utilslane_sequencehpp" title="Permanent link">#</a></h3>
 <table>
 <thead>
