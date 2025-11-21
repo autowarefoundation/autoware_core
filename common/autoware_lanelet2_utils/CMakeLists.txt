@@ -57,6 +57,7 @@ if(BUILD_TESTING)
     examples/example_topology.cpp
     examples/example_intersection.cpp
     examples/example_lane_sequence.cpp
+    examples/example_nn_search.cpp
   )
 
   find_package(ament_index_cpp REQUIRED)

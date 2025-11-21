@@ -390,6 +390,48 @@ common/autoware_lanelet2_utils/examples/example_lane_sequence.cpp:68:80
 | `.get_closest_lanelet(pose)`                                                     | Efficient version of `get_closest_lanelet`                                                                                                                                                                   | _R-tree_                                                                                                                        |              |
 | `.get_closest_lanelet_within_constraint(pose, dist_thresh, yaw_thresh)`          | Efficient version of `get_closest_lanelet_within_constraint`                                                                                                                                                 | _R-tree_                                                                                                                        |              |
 
+#### Example Usage of `nn_search`
+
+Create `R-tree`
+
+```cpp title="./examples/example_nn_search.cpp:47:48"
+--8<--
+common/autoware_lanelet2_utils/examples/example_nn_search.cpp:47:48
+--8<--
+```
+
+Get the closest lanelet **without** constraint (in both use and not use `R-tree`)
+
+```cpp title="./examples/example_nn_search.cpp:72:83"
+--8<--
+common/autoware_lanelet2_utils/examples/example_nn_search.cpp:72:83
+--8<--
+```
+
+Get the closest lanelet **without** constraint (in both use and not use `R-tree`)
+
+```cpp title="./examples/example_nn_search.cpp:85:101"
+--8<--
+common/autoware_lanelet2_utils/examples/example_nn_search.cpp:85:101
+--8<--
+```
+
+Get road lanelet from the `LaneletMap`
+
+```cpp title="./examples/example_nn_search.cpp:104:111"
+--8<--
+common/autoware_lanelet2_utils/examples/example_nn_search.cpp:104:111
+--8<--
+```
+
+Get shoulder lanelet from the `LaneletMap`
+
+```cpp title="./examples/example_nn_search.cpp:115:121"
+--8<--
+common/autoware_lanelet2_utils/examples/example_nn_search.cpp:115:121
+--8<--
+```
+
 ### `<autoware/lanelet2_utils/map_handler.hpp>`
 
 | Function                                                                                                                                                                          | Description                                                                                                                                                                                                                                                                                                                                                                                 | Average Computational Complexity              | Illustration                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
