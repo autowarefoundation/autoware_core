@@ -25,11 +25,20 @@ template <typename Object>
 class AgedObjectQueue
 {
 public:
-  explicit AgedObjectQueue(const size_t max_age) : max_age_(max_age) {}
+  explicit AgedObjectQueue(const size_t max_age, const size_t max_queue_size = 0)
+  : max_age_(max_age), max_queue_size_(max_queue_size > max_age ? max_queue_size : max_age)
+  {
+  }
 
   [[nodiscard]] bool empty() const { return this->size() == 0; }
 
+  [[nodiscard]] bool exceeded() const { return this->size() > max_queue_size_; }
+
   [[nodiscard]] size_t size() const { return objects_.size(); }
+
+  [[nodiscard]] size_t max_age() const { return max_age_; }
+
+  [[nodiscard]] size_t max_queue_size() const { return max_queue_size_; }
 
   Object back() const { return objects_.back(); }
 
@@ -37,6 +46,14 @@ public:
   {
     objects_.push(object);
     ages_.push(0);
+  }
+
+  Object pop()
+  {
+    const Object object = objects_.front();
+    objects_.pop();
+    ages_.pop();
+    return object;
   }
 
   Object pop_increment_age()
@@ -62,6 +79,7 @@ public:
 
 private:
   const size_t max_age_;
+  const size_t max_queue_size_;
   std::queue<Object> objects_;
   std::queue<size_t> ages_;
 };

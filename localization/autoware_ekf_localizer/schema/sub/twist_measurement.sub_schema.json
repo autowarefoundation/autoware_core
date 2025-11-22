@@ -15,6 +15,11 @@
           "description": "A value for smoothing steps",
           "default": 2
         },
+        "max_twist_queue_size": {
+          "type": "integer",
+          "description": "Maximum size of the twist queue, if multiple measurements arrive within one ekf_dt, this limits must be adjusted.",
+          "default": 2
+        },
         "twist_gate_dist": {
           "type": "number",
           "description": "Limit of Mahalanobis distance used for outliers detection",
