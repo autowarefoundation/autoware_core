@@ -153,24 +153,3 @@ int main()
   autoware::experimental::map_handler_main();
   return 0;
 }
-
-// // tester
-// {
-//   const auto lanelet_map_ptr = load_lanelet_map();
-
-//   auto tester = lanelet_map_ptr->laneletLayer.get(2257);
-//   std::cout << "No map handler id " << tester.id() << std::endl;
-//   const auto lane = map_handler.left_lanelet(tester, false,
-//   lanelet2_utils::ExtraVRU::Shoulder); std::cout << "Shoulder lane id is " << (*lane).id() <<
-//   std::endl;
-// }
-// {
-//   auto map_handler = load_map_handler().value();
-//   auto lanelet_map_ptr = map_handler.lanelet_map_ptr();
-
-//   auto tester = lanelet_map_ptr->laneletLayer.get(2257);
-//   std::cout << "In map handler id " << tester.id() << std::endl;
-//   const auto lane = map_handler.left_lanelet(tester, false,
-//   lanelet2_utils::ExtraVRU::Shoulder); std::cout << "Shoulder lane id is " << (*lane).id() <<
-//   std::endl;
-// }
