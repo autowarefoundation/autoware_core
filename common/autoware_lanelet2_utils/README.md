@@ -449,6 +449,72 @@ common/autoware_lanelet2_utils/examples/example_nn_search.cpp:115:121
 | `.get_shoulder_lanelet_sequence(lanelet, forward, backward)`                                                                                                                      | This function computes (1) "road_shoulder" Lanelets behind of `lanelet` by up to `backward` and (2) "road_shoulder" Lanelets after `lanelet` by up to `forward` as a list                                                                                                                                                                                                                   | $O(\textrm{total length})$                    |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | <ul><li>`.left_shoulder_lanelet(lanelet)`</li><li>`.right_shoulder_lanelet(lanelet)`</li><li>`.left_bicycle_lanelet(lanelet)`</li><li>`.right_bicycle_lanelet(lanelet)`</li></ul> | Retrieve each VRU Lanelet of `lanelet` if it exists                                                                                                                                                                                                                                                                                                                                         |                                               |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 
+#### Example Usage of `map_handler`
+
+Create `map_handler`.
+
+```cpp title="./examples/example_map_handler.cpp:41:49"
+--8<--
+common/autoware_lanelet2_utils/examples/example_map_handler.cpp:41:49
+--8<--
+```
+
+Try using `left_lanelet` with different `extra_vru`.
+
+```cpp title="./examples/example_map_handler.cpp:59:90"
+--8<--
+common/autoware_lanelet2_utils/examples/example_map_handler.cpp:59:90
+--8<--
+```
+
+Call `right_lanelet`.
+
+```cpp title="./examples/example_map_handler.cpp:94:97"
+--8<--
+common/autoware_lanelet2_utils/examples/example_map_handler.cpp:94:97
+--8<--
+```
+
+Call `leftmost_lanelet`.
+
+```cpp title="./examples/example_map_handler.cpp:102:105"
+--8<--
+common/autoware_lanelet2_utils/examples/example_map_handler.cpp:102:105
+--8<--
+```
+
+Call `rightmost_lanelet`.
+
+```cpp title="./examples/example_map_handler.cpp:110:113"
+--8<--
+common/autoware_lanelet2_utils/examples/example_map_handler.cpp:110:113
+--8<--
+```
+
+Call `left_lanelets`.
+
+```cpp title="./examples/example_map_handler.cpp:118:123"
+--8<--
+common/autoware_lanelet2_utils/examples/example_map_handler.cpp:118:123
+--8<--
+```
+
+Call `right_lanelets` including opposite lanelets.
+
+```cpp title="./examples/example_map_handler.cpp:128:133"
+--8<--
+common/autoware_lanelet2_utils/examples/example_map_handler.cpp:128:133
+--8<--
+```
+
+Call `get_shoulder_lanelet_sequence` including opposite lanelets.
+
+```cpp title="./examples/example_map_handler.cpp:140:146"
+--8<--
+common/autoware_lanelet2_utils/examples/example_map_handler.cpp:140:146
+--8<--
+```
+
 ### `<autoware/lanelet2_utils/route_manager.hpp>`
 
 | Function                                                    | Description                                                                                                                                                                                                                                                                                                                           | Average Computational Complexity | Illustration                                                                                                                                                                                                                                                                                                                                                                                                                                 |
