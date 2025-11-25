@@ -507,7 +507,7 @@ common/autoware_lanelet2_utils/examples/example_map_handler.cpp:128:133
 --8<--
 ```
 
-Call `get_shoulder_lanelet_sequence` including opposite lanelets.
+Call `get_shoulder_lanelet_sequence`.
 
 ```cpp title="./examples/example_map_handler.cpp:140:146"
 --8<--
