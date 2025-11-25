@@ -30,7 +30,7 @@ namespace fs = std::filesystem;
 namespace autoware::experimental
 {
 std::optional<lanelet2_utils::MapHandler> load_map_handler(
-  const std::string map_path = "vm_03/left_hand/lanelet2_map.osm")
+  const std::string & map_path = "vm_03/left_hand/lanelet2_map.osm")
 {
   const auto sample_map_dir =
     fs::path(ament_index_cpp::get_package_share_directory("autoware_lanelet2_utils")) /
@@ -135,10 +135,10 @@ void map_handler_main()
 
   // for get_shoulder_lanelet_sequence
   {
-    auto map_handler = load_map_handler("vm_01_15-16/highway/lanelet2_map.osm").value();
-    auto lanelet_map_ptr = map_handler.lanelet_map_ptr();
+    auto map_handler002 = load_map_handler("vm_01_15-16/highway/lanelet2_map.osm").value();
+    auto lanelet_map_ptr002 = map_handler002.lanelet_map_ptr();
     const auto seq =
-      map_handler.get_shoulder_lanelet_sequence(lanelet_map_ptr->laneletLayer.get(48));
+      map_handler002.get_shoulder_lanelet_sequence(lanelet_map_ptr002->laneletLayer.get(48));
     std::cout << "lanelet sequence size is " << seq.size() << std::endl;
     std::cout << "That has id" << std::endl;
     for (size_t i = 0ul; i < seq.size(); ++i) {
