@@ -15,7 +15,7 @@
 #ifndef AUTOWARE__EKF_LOCALIZER__EKF_LOCALIZER_HPP_
 #define AUTOWARE__EKF_LOCALIZER__EKF_LOCALIZER_HPP_
 
-#include "autoware/ekf_localizer/aged_object_queue.hpp"
+#include "../src/aged_object_queue.hpp"
 #include "autoware/ekf_localizer/ekf_module.hpp"
 #include "autoware/ekf_localizer/hyper_parameters.hpp"
 #include "autoware/ekf_localizer/warning.hpp"
