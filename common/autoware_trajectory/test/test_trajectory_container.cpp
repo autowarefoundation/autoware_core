@@ -51,6 +51,28 @@ geometry_msgs::msg::Point point(double x, double y)
   p.y = y;
   return p;
 }
+
+void check_if_equals(const Trajectory & trajectory1, const Trajectory & trajectory2)
+{
+  for (double s = 0.0; s <= trajectory1.length(); s += 0.5) {
+    auto point1 = trajectory1.compute(s);
+    auto point2 = trajectory2.compute(s);
+
+    EXPECT_EQ(point1.point.pose.position.x, point2.point.pose.position.x);
+  }
+
+  EXPECT_EQ(
+    trajectory1.longitudinal_velocity_mps().start(),
+    trajectory2.longitudinal_velocity_mps().start());
+  EXPECT_EQ(
+    trajectory1.longitudinal_velocity_mps().end(), trajectory2.longitudinal_velocity_mps().end());
+  EXPECT_EQ(trajectory1.lateral_velocity_mps().start(), trajectory2.lateral_velocity_mps().start());
+  EXPECT_EQ(trajectory1.lateral_velocity_mps().end(), trajectory2.lateral_velocity_mps().end());
+  EXPECT_EQ(trajectory1.heading_rate_rps().start(), trajectory2.heading_rate_rps().start());
+  EXPECT_EQ(trajectory1.heading_rate_rps().end(), trajectory2.heading_rate_rps().end());
+  EXPECT_EQ(trajectory1.lane_ids().start(), trajectory2.lane_ids().start());
+  EXPECT_EQ(trajectory1.lane_ids().end(), trajectory2.lane_ids().end());
+}
 }  // namespace
 TEST(TrajectoryCreatorTest, constructor)
 {
@@ -627,4 +649,42 @@ TEST_F(TrajectoryTest, get_contained_lane_ids)
   EXPECT_EQ(2, contained_lane_ids.size());
   EXPECT_EQ(0, contained_lane_ids[0]);
   EXPECT_EQ(1, contained_lane_ids[1]);
+}
+
+TEST_F(TrajectoryTest, copy_ctor)
+{
+  const auto trajectory2(*trajectory);
+
+  check_if_equals(*trajectory, trajectory2);
+}
+
+TEST_F(TrajectoryTest, copy_assignment)
+{
+  const auto trajectory2 = Trajectory::Builder{}.build(
+    {path_point_with_lane_id(0.00, 0.00, 1), path_point_with_lane_id(1.68, 0.81, 1),
+     path_point_with_lane_id(2.98, 1.65, 1), path_point_with_lane_id(4.01, 3.30, 0)});
+
+  *trajectory = *trajectory2;
+
+  check_if_equals(*trajectory, *trajectory2);
+}
+
+TEST_F(TrajectoryTest, move_ctor)
+{
+  const auto trajectory1(*trajectory);
+  const auto trajectory2(std::move(*trajectory));
+
+  check_if_equals(trajectory1, trajectory2);
+}
+
+TEST_F(TrajectoryTest, move_assignment)
+{
+  auto trajectory1 = Trajectory::Builder{}.build(
+    {path_point_with_lane_id(0.00, 0.00, 1), path_point_with_lane_id(1.68, 0.81, 1),
+     path_point_with_lane_id(2.98, 1.65, 1), path_point_with_lane_id(4.01, 3.30, 0)});
+
+  const auto trajectory2(*trajectory1);
+  trajectory = std::move(*trajectory1);
+
+  check_if_equals(*trajectory, trajectory2);
 }
