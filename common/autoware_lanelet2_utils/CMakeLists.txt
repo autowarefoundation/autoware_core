@@ -59,6 +59,7 @@ if(BUILD_TESTING)
     examples/example_lane_sequence.cpp
     examples/example_nn_search.cpp
     examples/example_map_handler.cpp
+    examples/example_route_manager.cpp
   )
 
   find_package(ament_index_cpp REQUIRED)

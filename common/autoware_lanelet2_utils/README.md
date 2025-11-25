@@ -531,6 +531,68 @@ common/autoware_lanelet2_utils/examples/example_map_handler.cpp:140:146
 | `.get_closest_preferred_route_lanelet(...)`                 | preferred route lanelet limited version of `get_closest_lanelet_within_constraint`                                                                                                                                                                                                                                                    | _R-tree_                         |                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `.get_closest_route_lanelet_within_constraints(...)`        | route lanelet limited version of `get_closest_lanelet_within_constraint`                                                                                                                                                                                                                                                              | _R-tree_                         |                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 
+#### Example Usage of `route_manager`
+
+Create `route_manager`.
+
+```cpp title="./examples/example_route_manager.cpp:33:50"
+--8<--
+common/autoware_lanelet2_utils/examples/example_route_manager.cpp:33:50
+--8<--
+```
+
+```cpp title="./examples/example_route_manager.cpp:72:79"
+--8<--
+common/autoware_lanelet2_utils/examples/example_route_manager.cpp:72:79
+--8<--
+```
+
+```cpp title="./examples/example_route_manager.cpp:91:95"
+--8<--
+common/autoware_lanelet2_utils/examples/example_route_manager.cpp:91:95
+--8<--
+```
+
+Update current pose.
+
+```cpp title="./examples/example_route_manager.cpp:124:130"
+--8<--
+common/autoware_lanelet2_utils/examples/example_route_manager.cpp:124:130
+--8<--
+```
+
+Commit success lane change.
+
+```cpp title="./examples/example_route_manager.cpp:144:148"
+--8<--
+common/autoware_lanelet2_utils/examples/example_route_manager.cpp:144:148
+--8<--
+```
+
+Get `current_lanelet` from `route_manager`.
+
+```cpp title="./examples/example_route_manager.cpp:98:104"
+--8<--
+common/autoware_lanelet2_utils/examples/example_route_manager.cpp:98:104
+--8<--
+```
+
+Get lanelet sequence (on route and outward route)
+
+```cpp title="./examples/example_route_manager.cpp:159:175"
+--8<--
+common/autoware_lanelet2_utils/examples/example_route_manager.cpp:159:175
+--8<--
+```
+
+Get closest preferred route lanelet (with and without constraints)
+
+```cpp title="./examples/example_route_manager.cpp:178:191"
+--8<--
+common/autoware_lanelet2_utils/examples/example_route_manager.cpp:178:191
+--8<--
+```
+
 ### Native R-tree API
 
 | Function                                                                                                                                                                      | Description                                                                                                                                                                                                                                                                                                                                               | Average Computational Complexity | Illustration |
