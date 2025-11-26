@@ -15,7 +15,7 @@
 #ifndef AUTOWARE__EKF_LOCALIZER__COVARIANCE_HPP_
 #define AUTOWARE__EKF_LOCALIZER__COVARIANCE_HPP_
 
-#include "autoware/ekf_localizer/matrix_types.hpp"
+#include "matrix_types.hpp"
 
 namespace autoware::ekf_localizer
 {

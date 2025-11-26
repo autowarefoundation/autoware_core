@@ -15,9 +15,9 @@
 #ifndef AUTOWARE__EKF_LOCALIZER__EKF_MODULE_HPP_
 #define AUTOWARE__EKF_LOCALIZER__EKF_MODULE_HPP_
 
-#include "autoware/ekf_localizer/hyper_parameters.hpp"
-#include "autoware/ekf_localizer/state_index.hpp"
-#include "autoware/ekf_localizer/warning.hpp"
+#include "hyper_parameters.hpp"
+#include "state_index.hpp"
+#include "warning.hpp"
 
 #include <autoware/kalman_filter/kalman_filter.hpp>
 #include <autoware/kalman_filter/time_delay_kalman_filter.hpp>

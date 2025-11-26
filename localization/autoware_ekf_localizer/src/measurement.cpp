@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/ekf_localizer/measurement.hpp"
+#include "internal/measurement.hpp"
 
-#include "autoware/ekf_localizer/state_index.hpp"
+#include "internal/state_index.hpp"
 
 #include <autoware_utils_geometry/msg/covariance.hpp>
 
