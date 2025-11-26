@@ -44,7 +44,8 @@ EKFModule::EKFModule(std::shared_ptr<Warning> warning, const HyperParameters & p
   dim_x_(6),  // x, y, yaw, yaw_bias, vx, wz
   accumulated_delay_times_(params.extend_state_step, 1.0E15),
   params_(params),
-  last_angular_velocity_(0.0, 0.0, 0.0)
+  last_angular_velocity_(0.0, 0.0, 0.0),
+  ekf_dt_(0.0)
 {
   Eigen::MatrixXd x = Eigen::MatrixXd::Zero(dim_x_, 1);
   Eigen::MatrixXd p = Eigen::MatrixXd::Identity(dim_x_, dim_x_) * 1.0E15;  // for x & y
