@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__EKF_LOCALIZER__STRING_HPP_
-#define AUTOWARE__EKF_LOCALIZER__STRING_HPP_
+#ifndef INTERNAL__STRING_HPP_
+#define INTERNAL__STRING_HPP_
 
 #include <string>
 
@@ -31,4 +31,4 @@ inline std::string erase_leading_slash(const std::string & s)
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // AUTOWARE__EKF_LOCALIZER__STRING_HPP_
+#endif  // INTERNAL__STRING_HPP_

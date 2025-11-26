@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__EKF_LOCALIZER__COVARIANCE_HPP_
-#define AUTOWARE__EKF_LOCALIZER__COVARIANCE_HPP_
+#ifndef INTERNAL__COVARIANCE_HPP_
+#define INTERNAL__COVARIANCE_HPP_
 
 #include "matrix_types.hpp"
 
@@ -25,4 +25,4 @@ std::array<double, 36> ekf_covariance_to_twist_message_covariance(const Matrix6d
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // AUTOWARE__EKF_LOCALIZER__COVARIANCE_HPP_
+#endif  // INTERNAL__COVARIANCE_HPP_
