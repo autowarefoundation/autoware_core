@@ -17,6 +17,7 @@
 #include <autoware/qos_utils/qos_compatibility.hpp>
 #include <autoware_lanelet2_extension/utility/message_conversion.hpp>
 #include <autoware_lanelet2_extension/utility/query.hpp>
+#include <tf2_ros/transform_listener.hpp>
 
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
 #include <autoware_map_msgs/srv/get_partial_point_cloud_map.hpp>
@@ -28,7 +29,6 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
-#include <tf2_ros/transform_listener.h>
 
 #include <algorithm>
 #include <memory>

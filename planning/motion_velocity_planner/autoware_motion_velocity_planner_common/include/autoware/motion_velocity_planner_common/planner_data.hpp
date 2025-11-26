@@ -23,6 +23,8 @@
 #include <autoware_utils_geometry/boost_polygon_utils.hpp>
 #include <autoware_utils_rclcpp/parameter.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
+#include <tf2_ros/buffer.hpp>
+#include <tf2_ros/transform_listener.hpp>
 
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
 #include <autoware_perception_msgs/msg/predicted_objects.hpp>
@@ -44,8 +46,6 @@
 #include <pcl/segmentation/euclidean_cluster_comparator.h>
 #include <pcl/segmentation/extract_clusters.h>
 #include <pcl_conversions/pcl_conversions.h>
-#include <tf2_ros/buffer.h>
-#include <tf2_ros/transform_listener.h>
 
 #include <map>
 #include <memory>
@@ -321,7 +321,7 @@ public:
 
   // other internal data
   // traffic_light_id_map_raw is the raw observation, while traffic_light_id_map_keep_last keeps the
-  // last observed infomation for UNKNOWN
+  // last observed information for UNKNOWN
   std::map<lanelet::Id, TrafficSignalStamped> traffic_light_id_map_raw_;
   std::map<lanelet::Id, TrafficSignalStamped> traffic_light_id_map_last_observed_;
 
