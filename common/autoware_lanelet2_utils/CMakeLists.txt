@@ -38,7 +38,6 @@ if(BUILD_TESTING)
     test/route_manager.cpp
   )
 
-
   foreach (test_file IN LISTS test_files)
   get_filename_component(test_file_name ${test_file} NAME)
   ament_auto_add_gtest(${test_file_name}_${PROJECT_NAME} ${test_file})
