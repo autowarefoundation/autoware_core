@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__EKF_LOCALIZER__STATE_TRANSITION_HPP_
-#define AUTOWARE__EKF_LOCALIZER__STATE_TRANSITION_HPP_
+#ifndef INTERNAL__STATE_TRANSITION_HPP_
+#define INTERNAL__STATE_TRANSITION_HPP_
 
 #include "matrix_types.hpp"
 
@@ -28,4 +28,4 @@ Matrix6d process_noise_covariance(
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // AUTOWARE__EKF_LOCALIZER__STATE_TRANSITION_HPP_
+#endif  // INTERNAL__STATE_TRANSITION_HPP_

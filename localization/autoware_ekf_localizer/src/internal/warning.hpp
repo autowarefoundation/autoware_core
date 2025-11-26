@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__EKF_LOCALIZER__WARNING_HPP_
-#define AUTOWARE__EKF_LOCALIZER__WARNING_HPP_
+#ifndef INTERNAL__WARNING_HPP_
+#define INTERNAL__WARNING_HPP_
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -45,4 +45,4 @@ private:
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // AUTOWARE__EKF_LOCALIZER__WARNING_HPP_
+#endif  // INTERNAL__WARNING_HPP_

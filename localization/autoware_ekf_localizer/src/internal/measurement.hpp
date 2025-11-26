@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__EKF_LOCALIZER__MEASUREMENT_HPP_
-#define AUTOWARE__EKF_LOCALIZER__MEASUREMENT_HPP_
+#ifndef INTERNAL__MEASUREMENT_HPP_
+#define INTERNAL__MEASUREMENT_HPP_
 
 #include <Eigen/Core>
 
@@ -29,4 +29,4 @@ Eigen::Matrix2d twist_measurement_covariance(
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // AUTOWARE__EKF_LOCALIZER__MEASUREMENT_HPP_
+#endif  // INTERNAL__MEASUREMENT_HPP_

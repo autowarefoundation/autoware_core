@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__EKF_LOCALIZER__EKF_MODULE_HPP_
-#define AUTOWARE__EKF_LOCALIZER__EKF_MODULE_HPP_
+#ifndef INTERNAL__EKF_MODULE_HPP_
+#define INTERNAL__EKF_MODULE_HPP_
 
 #include "hyper_parameters.hpp"
 #include "state_index.hpp"
@@ -152,4 +152,4 @@ private:
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // AUTOWARE__EKF_LOCALIZER__EKF_MODULE_HPP_
+#endif  // INTERNAL__EKF_MODULE_HPP_
