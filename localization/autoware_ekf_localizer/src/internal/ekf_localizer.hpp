@@ -15,10 +15,10 @@
 #ifndef AUTOWARE__EKF_LOCALIZER__EKF_LOCALIZER_HPP_
 #define AUTOWARE__EKF_LOCALIZER__EKF_LOCALIZER_HPP_
 
-#include "../src/aged_object_queue.hpp"
-#include "autoware/ekf_localizer/ekf_module.hpp"
-#include "autoware/ekf_localizer/hyper_parameters.hpp"
-#include "autoware/ekf_localizer/warning.hpp"
+#include "aged_object_queue.hpp"
+#include "ekf_module.hpp"
+#include "hyper_parameters.hpp"
+#include "warning.hpp"
 
 #include <autoware_utils_logging/logger_level_configure.hpp>
 #include <autoware_utils_system/stop_watch.hpp>

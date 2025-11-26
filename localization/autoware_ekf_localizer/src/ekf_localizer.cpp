@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/ekf_localizer/ekf_localizer.hpp"
+#include "internal/ekf_localizer.hpp"
 
-#include "diagnostics.hpp"
-#include "autoware/ekf_localizer/string.hpp"
-#include "autoware/ekf_localizer/warning_message.hpp"
 #include "autoware/localization_util/covariance_ellipse.hpp"
+#include "internal/diagnostics.hpp"
+#include "internal/string.hpp"
+#include "internal/warning_message.hpp"
 
 #include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_utils_logging/logger_level_configure.hpp>

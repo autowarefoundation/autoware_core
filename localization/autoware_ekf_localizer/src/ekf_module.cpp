@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/ekf_localizer/ekf_module.hpp"
+#include "internal/ekf_module.hpp"
 
-#include "autoware/ekf_localizer/covariance.hpp"
-#include "autoware/ekf_localizer/mahalanobis.hpp"
-#include "autoware/ekf_localizer/matrix_types.hpp"
-#include "autoware/ekf_localizer/measurement.hpp"
-#include "autoware/ekf_localizer/numeric.hpp"
-#include "autoware/ekf_localizer/state_transition.hpp"
-#include "autoware/ekf_localizer/warning_message.hpp"
+#include "internal/covariance.hpp"
+#include "internal/mahalanobis.hpp"
+#include "internal/matrix_types.hpp"
+#include "internal/measurement.hpp"
+#include "internal/numeric.hpp"
+#include "internal/state_transition.hpp"
+#include "internal/warning_message.hpp"
 
 #include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_utils_geometry/msg/covariance.hpp>
