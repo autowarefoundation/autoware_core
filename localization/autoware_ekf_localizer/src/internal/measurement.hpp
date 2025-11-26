@@ -1,4 +1,4 @@
-// Copyright 2023 Autoware Foundation
+// Copyright 2022 Autoware Foundation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,23 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__EKF_LOCALIZER__STRING_HPP_
-#define AUTOWARE__EKF_LOCALIZER__STRING_HPP_
+#ifndef INTERNAL__MEASUREMENT_HPP_
+#define INTERNAL__MEASUREMENT_HPP_
 
-#include <string>
+#include <Eigen/Core>
 
 namespace autoware::ekf_localizer
 {
 
-inline std::string erase_leading_slash(const std::string & s)
-{
-  std::string a = s;
-  if (a.front() == '/') {
-    a.erase(0, 1);
-  }
-  return a;
-}
+Eigen::Matrix<double, 3, 6> pose_measurement_matrix();
+Eigen::Matrix<double, 2, 6> twist_measurement_matrix();
+Eigen::Matrix3d pose_measurement_covariance(
+  const std::array<double, 36ul> & covariance, const size_t smoothing_step);
+Eigen::Matrix2d twist_measurement_covariance(
+  const std::array<double, 36ul> & covariance, const size_t smoothing_step);
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // AUTOWARE__EKF_LOCALIZER__STRING_HPP_
+#endif  // INTERNAL__MEASUREMENT_HPP_

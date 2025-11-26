@@ -12,21 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__EKF_LOCALIZER__MEASUREMENT_HPP_
-#define AUTOWARE__EKF_LOCALIZER__MEASUREMENT_HPP_
+#ifndef INTERNAL__MAHALANOBIS_HPP_
+#define INTERNAL__MAHALANOBIS_HPP_
 
 #include <Eigen/Core>
+#include <Eigen/Dense>
 
 namespace autoware::ekf_localizer
 {
 
-Eigen::Matrix<double, 3, 6> pose_measurement_matrix();
-Eigen::Matrix<double, 2, 6> twist_measurement_matrix();
-Eigen::Matrix3d pose_measurement_covariance(
-  const std::array<double, 36ul> & covariance, const size_t smoothing_step);
-Eigen::Matrix2d twist_measurement_covariance(
-  const std::array<double, 36ul> & covariance, const size_t smoothing_step);
+double squared_mahalanobis(
+  const Eigen::VectorXd & x, const Eigen::VectorXd & y, const Eigen::MatrixXd & C);
+
+double mahalanobis(const Eigen::VectorXd & x, const Eigen::VectorXd & y, const Eigen::MatrixXd & C);
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // AUTOWARE__EKF_LOCALIZER__MEASUREMENT_HPP_
+#endif  // INTERNAL__MAHALANOBIS_HPP_

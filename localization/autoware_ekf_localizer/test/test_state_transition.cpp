@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #define _USE_MATH_DEFINES
-#include "autoware/ekf_localizer/state_index.hpp"
-#include "autoware/ekf_localizer/state_transition.hpp"
+#include "internal/state_index.hpp"
+#include "internal/state_transition.hpp"
 
 #include <gtest/gtest.h>
 

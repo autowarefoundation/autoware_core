@@ -12,37 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__EKF_LOCALIZER__WARNING_HPP_
-#define AUTOWARE__EKF_LOCALIZER__WARNING_HPP_
+#ifndef INTERNAL__NUMERIC_HPP_
+#define INTERNAL__NUMERIC_HPP_
 
-#include <rclcpp/rclcpp.hpp>
+#include <Eigen/Core>
 
-#include <string>
+#include <cmath>
 
 namespace autoware::ekf_localizer
 {
 
-class Warning
+inline bool has_inf(const Eigen::MatrixXd & v)
 {
-public:
-  explicit Warning(rclcpp::Node * node) : node_(node) {}
+  return v.array().isInf().any();
+}
 
-  void warn(const std::string & message) const
-  {
-    RCLCPP_WARN(node_->get_logger(), "%s", message.c_str());
-  }
-
-  void warn_throttle(const std::string & message, const int duration_milliseconds) const
-  {
-    RCLCPP_WARN_THROTTLE(
-      node_->get_logger(), *(node_->get_clock()),
-      std::chrono::milliseconds(duration_milliseconds).count(), "%s", message.c_str());
-  }
-
-private:
-  rclcpp::Node * node_;
-};
+inline bool has_nan(const Eigen::MatrixXd & v)
+{
+  return v.array().isNaN().any();
+}
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // AUTOWARE__EKF_LOCALIZER__WARNING_HPP_
+#endif  // INTERNAL__NUMERIC_HPP_

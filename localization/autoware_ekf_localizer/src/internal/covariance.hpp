@@ -12,20 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__EKF_LOCALIZER__MAHALANOBIS_HPP_
-#define AUTOWARE__EKF_LOCALIZER__MAHALANOBIS_HPP_
+#ifndef INTERNAL__COVARIANCE_HPP_
+#define INTERNAL__COVARIANCE_HPP_
 
-#include <Eigen/Core>
-#include <Eigen/Dense>
+#include "matrix_types.hpp"
 
 namespace autoware::ekf_localizer
 {
 
-double squared_mahalanobis(
-  const Eigen::VectorXd & x, const Eigen::VectorXd & y, const Eigen::MatrixXd & C);
-
-double mahalanobis(const Eigen::VectorXd & x, const Eigen::VectorXd & y, const Eigen::MatrixXd & C);
+std::array<double, 36> ekf_covariance_to_pose_message_covariance(const Matrix6d & P);
+std::array<double, 36> ekf_covariance_to_twist_message_covariance(const Matrix6d & P);
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // AUTOWARE__EKF_LOCALIZER__MAHALANOBIS_HPP_
+#endif  // INTERNAL__COVARIANCE_HPP_

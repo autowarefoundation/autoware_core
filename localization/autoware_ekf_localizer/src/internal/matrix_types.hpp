@@ -12,26 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__EKF_LOCALIZER__NUMERIC_HPP_
-#define AUTOWARE__EKF_LOCALIZER__NUMERIC_HPP_
+#ifndef INTERNAL__MATRIX_TYPES_HPP_
+#define INTERNAL__MATRIX_TYPES_HPP_
 
 #include <Eigen/Core>
-
-#include <cmath>
 
 namespace autoware::ekf_localizer
 {
 
-inline bool has_inf(const Eigen::MatrixXd & v)
-{
-  return v.array().isInf().any();
-}
-
-inline bool has_nan(const Eigen::MatrixXd & v)
-{
-  return v.array().isNaN().any();
-}
+using Vector6d = Eigen::Matrix<double, 6, 1>;
+using Matrix6d = Eigen::Matrix<double, 6, 6>;
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // AUTOWARE__EKF_LOCALIZER__NUMERIC_HPP_
+#endif  // INTERNAL__MATRIX_TYPES_HPP_

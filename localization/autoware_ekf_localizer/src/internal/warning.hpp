@@ -12,20 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__EKF_LOCALIZER__STATE_TRANSITION_HPP_
-#define AUTOWARE__EKF_LOCALIZER__STATE_TRANSITION_HPP_
+#ifndef INTERNAL__WARNING_HPP_
+#define INTERNAL__WARNING_HPP_
 
-#include "autoware/ekf_localizer/matrix_types.hpp"
+#include <rclcpp/rclcpp.hpp>
+
+#include <string>
 
 namespace autoware::ekf_localizer
 {
 
-double normalize_yaw(const double & yaw);
-Vector6d predict_next_state(const Vector6d & X_curr, const double dt);
-Matrix6d create_state_transition_matrix(const Vector6d & X_curr, const double dt);
-Matrix6d process_noise_covariance(
-  const double proc_cov_yaw_d, const double proc_cov_vx_d, const double proc_cov_wz_d);
+class Warning
+{
+public:
+  explicit Warning(rclcpp::Node * node) : node_(node) {}
+
+  void warn(const std::string & message) const
+  {
+    RCLCPP_WARN(node_->get_logger(), "%s", message.c_str());
+  }
+
+  void warn_throttle(const std::string & message, const int duration_milliseconds) const
+  {
+    RCLCPP_WARN_THROTTLE(
+      node_->get_logger(), *(node_->get_clock()),
+      std::chrono::milliseconds(duration_milliseconds).count(), "%s", message.c_str());
+  }
+
+private:
+  rclcpp::Node * node_;
+};
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // AUTOWARE__EKF_LOCALIZER__STATE_TRANSITION_HPP_
+#endif  // INTERNAL__WARNING_HPP_
