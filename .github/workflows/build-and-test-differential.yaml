@@ -58,20 +58,10 @@ jobs:
   clang-tidy-differential:
     needs: build-and-test-differential
     # Run regardless of the build-and-test-differential job status until Jazzy build becomes stable
+    # Only run clang-tidy for humble since code quality checks are the same for all distros
     if: ${{ always() }}
     runs-on: ubuntu-24.04
-    container: ${{ matrix.container }}
-    strategy:
-      fail-fast: false
-      matrix:
-        rosdistro:
-          - humble
-          - jazzy
-        include:
-          - rosdistro: humble
-            container: ghcr.io/autowarefoundation/autoware:core-common-devel
-          - rosdistro: jazzy
-            container: ghcr.io/autowarefoundation/autoware:core-common-devel-jazzy-amd64
+    container: ghcr.io/autowarefoundation/autoware:core-common-devel
     steps:
       - name: Set PR fetch depth
         run: echo "PR_FETCH_DEPTH=$(( ${{ github.event.pull_request.commits }} + 1 ))" >> "${GITHUB_ENV}"
@@ -102,7 +92,7 @@ jobs:
         if: ${{ steps.get-changed-files.outputs.changed-files != '' }}
         uses: autowarefoundation/autoware-github-actions/clang-tidy@v1
         with:
-          rosdistro: ${{ matrix.rosdistro }}
+          rosdistro: humble
           target-packages: ${{ steps.get-modified-packages.outputs.modified-packages }}
           target-files: ${{ steps.get-changed-files.outputs.changed-files }}
           clang-tidy-config-url: https://raw.githubusercontent.com/autowarefoundation/autoware/main/.clang-tidy-ci
