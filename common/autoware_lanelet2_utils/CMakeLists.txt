@@ -72,15 +72,14 @@ if(BUILD_TESTING)
   find_package(pybind11_vendor REQUIRED)
   find_package(pybind11 REQUIRED)
   find_package(yaml-cpp REQUIRED)
-  include_directories(${autoware_index_cpp_INCLUDE_DIRS})
   foreach(example_file ${example_files})
     get_filename_component(example_name ${example_file} NAME_WE)
     ament_auto_add_executable(${example_name}
       ${example_file}
     )
+    ament_target_dependencies(${example_name} ament_index_cpp)
     target_link_libraries(${example_name}
       autoware_lanelet2_utils
-      ${autoware_index_cpp_LIBRARIES}
       range-v3::range-v3
       Python3::Python
       pybind11::embed
