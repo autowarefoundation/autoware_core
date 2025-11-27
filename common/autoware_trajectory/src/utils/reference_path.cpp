@@ -690,8 +690,8 @@ static std::optional<double> compute_s_on_current_route_lanelet(
 struct LaneletSequenceWithRange
 {
   lanelet::ConstLanelets lanelet_sequence;
-  double s_start;
-  double s_end;
+  double s_start;  // cppcheck-suppress unusedStructMember
+  double s_end;    // cppcheck-suppress unusedStructMember
 };
 
 /**
