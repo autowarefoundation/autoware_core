@@ -50,6 +50,42 @@ static constexpr auto inf = std::numeric_limits<double>::infinity();
 namespace autoware::experimental
 {
 
+static void savefig(
+  const trajectory::Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId> &
+    reference_path,
+  const double forward, const double backward, const geometry_msgs::msg::Pose & ego_pose,
+  const lanelet::ConstLanelets & lanelet_sequence, const std::string & filename)
+{
+  auto plt = autoware::pyplot::import();
+  auto [fig, axes] = plt.subplots(1, 1);
+  auto & ax = axes[0];
+
+  auto path_plot_config = autoware::test_utils::PathWithLaneIdConfig::defaults();
+  path_plot_config.linewidth = 2.0;
+  path_plot_config.color = "orange";
+  path_plot_config.quiver_size = 2.0;
+  path_plot_config.lane_id = true;
+
+  auto lane_plot_config = autoware::test_utils::LaneConfig::defaults();
+  lane_plot_config.line_config = autoware::test_utils::LineConfig::defaults();
+
+  autoware_internal_planning_msgs::msg::PathWithLaneId path;
+  path.points = reference_path.restore();
+  autoware::test_utils::plot_autoware_object(path, ax, path_plot_config);
+  ax.set_title(Args(
+    fmt::format(
+      "forward = {}, backward = {}(actual length = {})", forward, backward,
+      reference_path.length())));
+  for (const auto & route_lanelet : lanelet_sequence) {
+    autoware::test_utils::plot_lanelet2_object(route_lanelet, ax, lane_plot_config);
+  }
+  ax.scatter(Args(ego_pose.position.x, ego_pose.position.y), Kwargs("label"_a = "ego position"));
+  ax.set_aspect(Args("equal"));
+  ax.legend();
+  ax.grid();
+  plt.savefig(Args(filename));
+}
+
 class TestWithVM_01_10_12_Map : public ::testing::TestWithParam<std::string>  // NOLINT
 {
 protected:
@@ -131,7 +167,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P0_on_entire_lanes)  // NOLINT
   //
   const auto border_points =
     path_points_with_lane_id |
-    ranges::view::filter([&](const auto & point) { return point.lane_ids.size() == 2; }) |
+    ranges::views::filter([&](const auto & point) { return point.lane_ids.size() == 2; }) |
     ranges::to<std::vector>();
   ASSERT_EQ(border_points.size(), 5);
   {
@@ -172,7 +208,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P0_on_entire_lanes)  // NOLINT
 
   const auto non_border_points =
     path_points_with_lane_id |
-    ranges::view::filter([&](const auto & point) { return point.lane_ids.size() == 1; }) |
+    ranges::views::filter([&](const auto & point) { return point.lane_ids.size() == 1; }) |
     ranges::to<std::vector>();
   ASSERT_EQ(non_border_points.size(), path_points_with_lane_id.size() - border_points.size());
 
@@ -217,36 +253,11 @@ TEST_P(TestWithVM_01_10_12_Map, from_P0_on_entire_lanes)  // NOLINT
 
 #ifdef PLOT
   {
-    auto plt = autoware::pyplot::import();
-    auto [fig, axes] = plt.subplots(1, 1);
-    auto & ax = axes[0];
-
-    auto path_plot_config = autoware::test_utils::PathWithLaneIdConfig::defaults();
-    path_plot_config.linewidth = 2.0;
-    path_plot_config.color = "orange";
-    path_plot_config.quiver_size = 2.0;
-
-    auto lane_plot_config = autoware::test_utils::LaneConfig::defaults();
-    lane_plot_config.line_config = autoware::test_utils::LineConfig::defaults();
-
-    autoware_internal_planning_msgs::msg::PathWithLaneId path;
-    path.points = reference_path.restore();
-    autoware::test_utils::plot_autoware_object(path, ax, path_plot_config);
-    ax.set_title(Args(
-      fmt::format(
-        "forward = {}, backward = {}(actual length = {})", forward_length, backward_length,
-        reference_path.length())));
-    for (const auto & route_lanelet : lanelet_sequence) {
-      autoware::test_utils::plot_lanelet2_object(route_lanelet, ax, lane_plot_config);
-    }
-    ax.scatter(Args(ego_pose.position.x, ego_pose.position.y), Kwargs("label"_a = "ego position"));
-    ax.set_aspect(Args("equal"));
-    ax.legend();
-    ax.grid();
-    std::string test_name =
-      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam();
-    std::replace(test_name.begin(), test_name.end(), '/', '_');
-    plt.savefig(Args(test_name + ".svg"));
+    std::string filename =
+      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam() +
+      ".svg";
+    std::replace(filename.begin(), filename.end(), '/', '_');
+    savefig(reference_path, forward_length, backward_length, ego_pose, lanelet_sequence, filename);
   }
 #endif
 }
@@ -295,7 +306,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P1_on_entire_lanes)
   //
   const auto border_points =
     path_points_with_lane_id |
-    ranges::view::filter([&](const auto & point) { return point.lane_ids.size() == 2; }) |
+    ranges::views::filter([&](const auto & point) { return point.lane_ids.size() == 2; }) |
     ranges::to<std::vector>();
   ASSERT_EQ(border_points.size(), 5);
   {
@@ -336,7 +347,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P1_on_entire_lanes)
 
   const auto non_border_points =
     path_points_with_lane_id |
-    ranges::view::filter([&](const auto & point) { return point.lane_ids.size() == 1; }) |
+    ranges::views::filter([&](const auto & point) { return point.lane_ids.size() == 1; }) |
     ranges::to<std::vector>();
   ASSERT_EQ(non_border_points.size(), path_points_with_lane_id.size() - border_points.size());
 
@@ -381,36 +392,11 @@ TEST_P(TestWithVM_01_10_12_Map, from_P1_on_entire_lanes)
 
 #ifdef PLOT
   {
-    auto plt = autoware::pyplot::import();
-    auto [fig, axes] = plt.subplots(1, 1);
-    auto & ax = axes[0];
-
-    auto path_plot_config = autoware::test_utils::PathWithLaneIdConfig::defaults();
-    path_plot_config.linewidth = 2.0;
-    path_plot_config.color = "orange";
-    path_plot_config.quiver_size = 2.0;
-
-    auto lane_plot_config = autoware::test_utils::LaneConfig::defaults();
-    lane_plot_config.line_config = autoware::test_utils::LineConfig::defaults();
-
-    autoware_internal_planning_msgs::msg::PathWithLaneId path;
-    path.points = reference_path.restore();
-    autoware::test_utils::plot_autoware_object(path, ax, path_plot_config);
-    ax.set_title(Args(
-      fmt::format(
-        "forward = {}, backward = {}(actual length = {})", forward_length, backward_length,
-        reference_path.length())));
-    for (const auto & route_lanelet : lanelet_sequence) {
-      autoware::test_utils::plot_lanelet2_object(route_lanelet, ax, lane_plot_config);
-    }
-    ax.scatter(Args(ego_pose.position.x, ego_pose.position.y), Kwargs("label"_a = "ego position"));
-    ax.set_aspect(Args("equal"));
-    ax.legend();
-    ax.grid();
-    std::string test_name =
-      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam();
-    std::replace(test_name.begin(), test_name.end(), '/', '_');
-    plt.savefig(Args(test_name + ".svg"));
+    std::string filename =
+      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam() +
+      ".svg";
+    std::replace(filename.begin(), filename.end(), '/', '_');
+    savefig(reference_path, forward_length, backward_length, ego_pose, lanelet_sequence, filename);
   }
 #endif
 }
@@ -459,7 +445,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P2_on_entire_lanes)
   //
   const auto border_points =
     path_points_with_lane_id |
-    ranges::view::filter([&](const auto & point) { return point.lane_ids.size() == 2; }) |
+    ranges::views::filter([&](const auto & point) { return point.lane_ids.size() == 2; }) |
     ranges::to<std::vector>();
   ASSERT_EQ(border_points.size(), 5);
   {
@@ -500,7 +486,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P2_on_entire_lanes)
 
   const auto non_border_points =
     path_points_with_lane_id |
-    ranges::view::filter([&](const auto & point) { return point.lane_ids.size() == 1; }) |
+    ranges::views::filter([&](const auto & point) { return point.lane_ids.size() == 1; }) |
     ranges::to<std::vector>();
   ASSERT_EQ(non_border_points.size(), path_points_with_lane_id.size() - border_points.size());
 
@@ -545,36 +531,11 @@ TEST_P(TestWithVM_01_10_12_Map, from_P2_on_entire_lanes)
 
 #ifdef PLOT
   {
-    auto plt = autoware::pyplot::import();
-    auto [fig, axes] = plt.subplots(1, 1);
-    auto & ax = axes[0];
-
-    auto path_plot_config = autoware::test_utils::PathWithLaneIdConfig::defaults();
-    path_plot_config.linewidth = 2.0;
-    path_plot_config.color = "orange";
-    path_plot_config.quiver_size = 2.0;
-
-    auto lane_plot_config = autoware::test_utils::LaneConfig::defaults();
-    lane_plot_config.line_config = autoware::test_utils::LineConfig::defaults();
-
-    autoware_internal_planning_msgs::msg::PathWithLaneId path;
-    path.points = reference_path.restore();
-    autoware::test_utils::plot_autoware_object(path, ax, path_plot_config);
-    ax.set_title(Args(
-      fmt::format(
-        "forward = {}, backward = {}(actual length = {})", forward_length, backward_length,
-        reference_path.length())));
-    for (const auto & route_lanelet : lanelet_sequence) {
-      autoware::test_utils::plot_lanelet2_object(route_lanelet, ax, lane_plot_config);
-    }
-    ax.scatter(Args(ego_pose.position.x, ego_pose.position.y), Kwargs("label"_a = "ego position"));
-    ax.set_aspect(Args("equal"));
-    ax.legend();
-    ax.grid();
-    std::string test_name =
-      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam();
-    std::replace(test_name.begin(), test_name.end(), '/', '_');
-    plt.savefig(Args(test_name + ".svg"));
+    std::string filename =
+      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam() +
+      ".svg";
+    std::replace(filename.begin(), filename.end(), '/', '_');
+    savefig(reference_path, forward_length, backward_length, ego_pose, lanelet_sequence, filename);
   }
 #endif
 }
@@ -623,7 +584,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P3_on_entire_lanes)
   //
   const auto border_points =
     path_points_with_lane_id |
-    ranges::view::filter([&](const auto & point) { return point.lane_ids.size() == 2; }) |
+    ranges::views::filter([&](const auto & point) { return point.lane_ids.size() == 2; }) |
     ranges::to<std::vector>();
   ASSERT_EQ(border_points.size(), 5);
   {
@@ -664,7 +625,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P3_on_entire_lanes)
 
   const auto non_border_points =
     path_points_with_lane_id |
-    ranges::view::filter([&](const auto & point) { return point.lane_ids.size() == 1; }) |
+    ranges::views::filter([&](const auto & point) { return point.lane_ids.size() == 1; }) |
     ranges::to<std::vector>();
   ASSERT_EQ(non_border_points.size(), path_points_with_lane_id.size() - border_points.size());
 
@@ -709,36 +670,11 @@ TEST_P(TestWithVM_01_10_12_Map, from_P3_on_entire_lanes)
 
 #ifdef PLOT
   {
-    auto plt = autoware::pyplot::import();
-    auto [fig, axes] = plt.subplots(1, 1);
-    auto & ax = axes[0];
-
-    auto path_plot_config = autoware::test_utils::PathWithLaneIdConfig::defaults();
-    path_plot_config.linewidth = 2.0;
-    path_plot_config.color = "orange";
-    path_plot_config.quiver_size = 2.0;
-
-    auto lane_plot_config = autoware::test_utils::LaneConfig::defaults();
-    lane_plot_config.line_config = autoware::test_utils::LineConfig::defaults();
-
-    autoware_internal_planning_msgs::msg::PathWithLaneId path;
-    path.points = reference_path.restore();
-    autoware::test_utils::plot_autoware_object(path, ax, path_plot_config);
-    ax.set_title(Args(
-      fmt::format(
-        "forward = {}, backward = {}(actual length = {})", forward_length, backward_length,
-        reference_path.length())));
-    for (const auto & route_lanelet : lanelet_sequence) {
-      autoware::test_utils::plot_lanelet2_object(route_lanelet, ax, lane_plot_config);
-    }
-    ax.scatter(Args(ego_pose.position.x, ego_pose.position.y), Kwargs("label"_a = "ego position"));
-    ax.set_aspect(Args("equal"));
-    ax.legend();
-    ax.grid();
-    std::string test_name =
-      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam();
-    std::replace(test_name.begin(), test_name.end(), '/', '_');
-    plt.savefig(Args(test_name + ".svg"));
+    std::string filename =
+      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam() +
+      ".svg";
+    std::replace(filename.begin(), filename.end(), '/', '_');
+    savefig(reference_path, forward_length, backward_length, ego_pose, lanelet_sequence, filename);
   }
 #endif
 }
@@ -787,7 +723,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P4_on_entire_lanes)
   //
   const auto border_points =
     path_points_with_lane_id |
-    ranges::view::filter([&](const auto & point) { return point.lane_ids.size() == 2; }) |
+    ranges::views::filter([&](const auto & point) { return point.lane_ids.size() == 2; }) |
     ranges::to<std::vector>();
   ASSERT_EQ(border_points.size(), 5);
   {
@@ -828,7 +764,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P4_on_entire_lanes)
 
   const auto non_border_points =
     path_points_with_lane_id |
-    ranges::view::filter([&](const auto & point) { return point.lane_ids.size() == 1; }) |
+    ranges::views::filter([&](const auto & point) { return point.lane_ids.size() == 1; }) |
     ranges::to<std::vector>();
   ASSERT_EQ(non_border_points.size(), path_points_with_lane_id.size() - border_points.size());
 
@@ -873,36 +809,11 @@ TEST_P(TestWithVM_01_10_12_Map, from_P4_on_entire_lanes)
 
 #ifdef PLOT
   {
-    auto plt = autoware::pyplot::import();
-    auto [fig, axes] = plt.subplots(1, 1);
-    auto & ax = axes[0];
-
-    auto path_plot_config = autoware::test_utils::PathWithLaneIdConfig::defaults();
-    path_plot_config.linewidth = 2.0;
-    path_plot_config.color = "orange";
-    path_plot_config.quiver_size = 2.0;
-
-    auto lane_plot_config = autoware::test_utils::LaneConfig::defaults();
-    lane_plot_config.line_config = autoware::test_utils::LineConfig::defaults();
-
-    autoware_internal_planning_msgs::msg::PathWithLaneId path;
-    path.points = reference_path.restore();
-    autoware::test_utils::plot_autoware_object(path, ax, path_plot_config);
-    ax.set_title(Args(
-      fmt::format(
-        "forward = {}, backward = {}(actual length = {})", forward_length, backward_length,
-        reference_path.length())));
-    for (const auto & route_lanelet : lanelet_sequence) {
-      autoware::test_utils::plot_lanelet2_object(route_lanelet, ax, lane_plot_config);
-    }
-    ax.scatter(Args(ego_pose.position.x, ego_pose.position.y), Kwargs("label"_a = "ego position"));
-    ax.set_aspect(Args("equal"));
-    ax.legend();
-    ax.grid();
-    std::string test_name =
-      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam();
-    std::replace(test_name.begin(), test_name.end(), '/', '_');
-    plt.savefig(Args(test_name + ".svg"));
+    std::string filename =
+      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam() +
+      ".svg";
+    std::replace(filename.begin(), filename.end(), '/', '_');
+    savefig(reference_path, forward_length, backward_length, ego_pose, lanelet_sequence, filename);
   }
 #endif
 }
@@ -951,7 +862,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P5_on_entire_lanes)
   //
   const auto border_points =
     path_points_with_lane_id |
-    ranges::view::filter([&](const auto & point) { return point.lane_ids.size() == 2; }) |
+    ranges::views::filter([&](const auto & point) { return point.lane_ids.size() == 2; }) |
     ranges::to<std::vector>();
   ASSERT_EQ(border_points.size(), 5);
   {
@@ -992,7 +903,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P5_on_entire_lanes)
 
   const auto non_border_points =
     path_points_with_lane_id |
-    ranges::view::filter([&](const auto & point) { return point.lane_ids.size() == 1; }) |
+    ranges::views::filter([&](const auto & point) { return point.lane_ids.size() == 1; }) |
     ranges::to<std::vector>();
   ASSERT_EQ(non_border_points.size(), path_points_with_lane_id.size() - border_points.size());
 
@@ -1037,36 +948,11 @@ TEST_P(TestWithVM_01_10_12_Map, from_P5_on_entire_lanes)
 
 #ifdef PLOT
   {
-    auto plt = autoware::pyplot::import();
-    auto [fig, axes] = plt.subplots(1, 1);
-    auto & ax = axes[0];
-
-    auto path_plot_config = autoware::test_utils::PathWithLaneIdConfig::defaults();
-    path_plot_config.linewidth = 2.0;
-    path_plot_config.color = "orange";
-    path_plot_config.quiver_size = 2.0;
-
-    auto lane_plot_config = autoware::test_utils::LaneConfig::defaults();
-    lane_plot_config.line_config = autoware::test_utils::LineConfig::defaults();
-
-    autoware_internal_planning_msgs::msg::PathWithLaneId path;
-    path.points = reference_path.restore();
-    autoware::test_utils::plot_autoware_object(path, ax, path_plot_config);
-    ax.set_title(Args(
-      fmt::format(
-        "forward = {}, backward = {}(actual length = {})", forward_length, backward_length,
-        reference_path.length())));
-    for (const auto & route_lanelet : lanelet_sequence) {
-      autoware::test_utils::plot_lanelet2_object(route_lanelet, ax, lane_plot_config);
-    }
-    ax.scatter(Args(ego_pose.position.x, ego_pose.position.y), Kwargs("label"_a = "ego position"));
-    ax.set_aspect(Args("equal"));
-    ax.legend();
-    ax.grid();
-    std::string test_name =
-      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam();
-    std::replace(test_name.begin(), test_name.end(), '/', '_');
-    plt.savefig(Args(test_name + ".svg"));
+    std::string filename =
+      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam() +
+      ".svg";
+    std::replace(filename.begin(), filename.end(), '/', '_');
+    savefig(reference_path, forward_length, backward_length, ego_pose, lanelet_sequence, filename);
   }
 #endif
 }
@@ -1115,7 +1001,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P6_on_entire_lanes)
   //
   const auto border_points =
     path_points_with_lane_id |
-    ranges::view::filter([&](const auto & point) { return point.lane_ids.size() == 2; }) |
+    ranges::views::filter([&](const auto & point) { return point.lane_ids.size() == 2; }) |
     ranges::to<std::vector>();
   ASSERT_EQ(border_points.size(), 5);
   {
@@ -1156,7 +1042,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P6_on_entire_lanes)
 
   const auto non_border_points =
     path_points_with_lane_id |
-    ranges::view::filter([&](const auto & point) { return point.lane_ids.size() == 1; }) |
+    ranges::views::filter([&](const auto & point) { return point.lane_ids.size() == 1; }) |
     ranges::to<std::vector>();
   ASSERT_EQ(non_border_points.size(), path_points_with_lane_id.size() - border_points.size());
 
@@ -1201,36 +1087,11 @@ TEST_P(TestWithVM_01_10_12_Map, from_P6_on_entire_lanes)
 
 #ifdef PLOT
   {
-    auto plt = autoware::pyplot::import();
-    auto [fig, axes] = plt.subplots(1, 1);
-    auto & ax = axes[0];
-
-    auto path_plot_config = autoware::test_utils::PathWithLaneIdConfig::defaults();
-    path_plot_config.linewidth = 2.0;
-    path_plot_config.color = "orange";
-    path_plot_config.quiver_size = 2.0;
-
-    auto lane_plot_config = autoware::test_utils::LaneConfig::defaults();
-    lane_plot_config.line_config = autoware::test_utils::LineConfig::defaults();
-
-    autoware_internal_planning_msgs::msg::PathWithLaneId path;
-    path.points = reference_path.restore();
-    autoware::test_utils::plot_autoware_object(path, ax, path_plot_config);
-    ax.set_title(Args(
-      fmt::format(
-        "forward = {}, backward = {}(actual length = {})", forward_length, backward_length,
-        reference_path.length())));
-    for (const auto & route_lanelet : lanelet_sequence) {
-      autoware::test_utils::plot_lanelet2_object(route_lanelet, ax, lane_plot_config);
-    }
-    ax.scatter(Args(ego_pose.position.x, ego_pose.position.y), Kwargs("label"_a = "ego position"));
-    ax.set_aspect(Args("equal"));
-    ax.legend();
-    ax.grid();
-    std::string test_name =
-      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam();
-    std::replace(test_name.begin(), test_name.end(), '/', '_');
-    plt.savefig(Args(test_name + ".svg"));
+    std::string filename =
+      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam() +
+      ".svg";
+    std::replace(filename.begin(), filename.end(), '/', '_');
+    savefig(reference_path, forward_length, backward_length, ego_pose, lanelet_sequence, filename);
   }
 #endif
 }
@@ -1279,13 +1140,24 @@ TEST_P(TestWithVM_01_10_12_Map, from_P1_forward_on_entire_lanes)
   //
   const auto border_points =
     path_points_with_lane_id |
-    ranges::view::filter([&](const auto & point) { return point.lane_ids.size() == 2; }) |
+    ranges::views::filter([&](const auto & point) { return point.lane_ids.size() == 2; }) |
     ranges::to<std::vector>();
   // TODO(soblin): since Lanelet 57 is too short, this case causes some numerical error, and we
   // obtain backward path to some extent.
   if (
     GetParam() == "test_reference_path_valid_03.yaml" ||
-    GetParam() == "test_reference_path_valid_05.yaml") {
+    GetParam() == "test_reference_path_valid_05.yaml" ||
+    GetParam() == "test_reference_path_valid_06.yaml") {
+#ifdef PLOT
+    {
+      std::string filename =
+        std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam() +
+        ".svg";
+      std::replace(filename.begin(), filename.end(), '/', '_');
+      savefig(
+        reference_path, forward_length, backward_length, ego_pose, lanelet_sequence, filename);
+    }
+#endif
     GTEST_SKIP() << "skip";
   }
 
@@ -1321,7 +1193,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P1_forward_on_entire_lanes)
 
   const auto non_border_points =
     path_points_with_lane_id |
-    ranges::view::filter([&](const auto & point) { return point.lane_ids.size() == 1; }) |
+    ranges::views::filter([&](const auto & point) { return point.lane_ids.size() == 1; }) |
     ranges::to<std::vector>();
   ASSERT_EQ(non_border_points.size(), path_points_with_lane_id.size() - border_points.size());
 
@@ -1360,36 +1232,11 @@ TEST_P(TestWithVM_01_10_12_Map, from_P1_forward_on_entire_lanes)
 
 #ifdef PLOT
   {
-    auto plt = autoware::pyplot::import();
-    auto [fig, axes] = plt.subplots(1, 1);
-    auto & ax = axes[0];
-
-    auto path_plot_config = autoware::test_utils::PathWithLaneIdConfig::defaults();
-    path_plot_config.linewidth = 2.0;
-    path_plot_config.color = "orange";
-    path_plot_config.quiver_size = 2.0;
-
-    auto lane_plot_config = autoware::test_utils::LaneConfig::defaults();
-    lane_plot_config.line_config = autoware::test_utils::LineConfig::defaults();
-
-    autoware_internal_planning_msgs::msg::PathWithLaneId path;
-    path.points = reference_path.restore();
-    autoware::test_utils::plot_autoware_object(path, ax, path_plot_config);
-    ax.set_title(Args(
-      fmt::format(
-        "forward = {}, backward = {}(actual length = {})", forward_length, backward_length,
-        reference_path.length())));
-    for (const auto & route_lanelet : lanelet_sequence) {
-      autoware::test_utils::plot_lanelet2_object(route_lanelet, ax, lane_plot_config);
-    }
-    ax.scatter(Args(ego_pose.position.x, ego_pose.position.y), Kwargs("label"_a = "ego position"));
-    ax.set_aspect(Args("equal"));
-    ax.legend();
-    ax.grid();
-    std::string test_name =
-      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam();
-    std::replace(test_name.begin(), test_name.end(), '/', '_');
-    plt.savefig(Args(test_name + ".svg"));
+    std::string filename =
+      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam() +
+      ".svg";
+    std::replace(filename.begin(), filename.end(), '/', '_');
+    savefig(reference_path, forward_length, backward_length, ego_pose, lanelet_sequence, filename);
   }
 #endif
 }
@@ -1438,7 +1285,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P2_forward_on_entire_lanes)
   //
   const auto border_points =
     path_points_with_lane_id |
-    ranges::view::filter([&](const auto & point) { return point.lane_ids.size() == 2; }) |
+    ranges::views::filter([&](const auto & point) { return point.lane_ids.size() == 2; }) |
     ranges::to<std::vector>();
   ASSERT_EQ(border_points.size(), 3);
   {
@@ -1465,7 +1312,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P2_forward_on_entire_lanes)
 
   const auto non_border_points =
     path_points_with_lane_id |
-    ranges::view::filter([&](const auto & point) { return point.lane_ids.size() == 1; }) |
+    ranges::views::filter([&](const auto & point) { return point.lane_ids.size() == 1; }) |
     ranges::to<std::vector>();
   ASSERT_EQ(non_border_points.size(), path_points_with_lane_id.size() - border_points.size());
 
@@ -1498,36 +1345,11 @@ TEST_P(TestWithVM_01_10_12_Map, from_P2_forward_on_entire_lanes)
 
 #ifdef PLOT
   {
-    auto plt = autoware::pyplot::import();
-    auto [fig, axes] = plt.subplots(1, 1);
-    auto & ax = axes[0];
-
-    auto path_plot_config = autoware::test_utils::PathWithLaneIdConfig::defaults();
-    path_plot_config.linewidth = 2.0;
-    path_plot_config.color = "orange";
-    path_plot_config.quiver_size = 2.0;
-
-    auto lane_plot_config = autoware::test_utils::LaneConfig::defaults();
-    lane_plot_config.line_config = autoware::test_utils::LineConfig::defaults();
-
-    autoware_internal_planning_msgs::msg::PathWithLaneId path;
-    path.points = reference_path.restore();
-    autoware::test_utils::plot_autoware_object(path, ax, path_plot_config);
-    ax.set_title(Args(
-      fmt::format(
-        "forward = {}, backward = {}(actual length = {})", forward_length, backward_length,
-        reference_path.length())));
-    for (const auto & route_lanelet : lanelet_sequence) {
-      autoware::test_utils::plot_lanelet2_object(route_lanelet, ax, lane_plot_config);
-    }
-    ax.scatter(Args(ego_pose.position.x, ego_pose.position.y), Kwargs("label"_a = "ego position"));
-    ax.set_aspect(Args("equal"));
-    ax.legend();
-    ax.grid();
-    std::string test_name =
-      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam();
-    std::replace(test_name.begin(), test_name.end(), '/', '_');
-    plt.savefig(Args(test_name + ".svg"));
+    std::string filename =
+      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam() +
+      ".svg";
+    std::replace(filename.begin(), filename.end(), '/', '_');
+    savefig(reference_path, forward_length, backward_length, ego_pose, lanelet_sequence, filename);
   }
 #endif
 }
@@ -1537,7 +1359,7 @@ INSTANTIATE_TEST_SUITE_P(
   ::testing::Values(
     "test_reference_path_valid_01.yaml", "test_reference_path_valid_02.yaml",
     "test_reference_path_valid_03.yaml", "test_reference_path_valid_04.yaml",
-    "test_reference_path_valid_05.yaml"));
+    "test_reference_path_valid_05.yaml", "test_reference_path_valid_06.yaml"));
 
 }  // namespace autoware::experimental
 
