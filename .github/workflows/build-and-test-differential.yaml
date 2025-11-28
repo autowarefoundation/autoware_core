@@ -58,7 +58,7 @@ jobs:
   clang-tidy-differential:
     needs: build-and-test-differential
     # Run regardless of the build-and-test-differential job status until Jazzy build becomes stable
-    if: ${{ always() }}
+    if: ${{ needs.require-label.outputs.result == 'true' }}
     runs-on: ubuntu-24.04
     container: ${{ matrix.container }}
     strategy:
