@@ -257,6 +257,7 @@ public:
       if (start < 0.0) {
         start = 0.0;
       }
+      reference_points_chunks_.push_back({std::move(user_defined_reference_points), start, end});
       return;
     }
 
