@@ -313,14 +313,6 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
     s_end = std::min(s_end, lanelet::geometry::length2d(lanelet::LaneletSequence(lanelets)));
   }
 
-  const auto s_intersection = utils::get_first_intersection_arc_length(
-    lanelets, std::max(0., s_start - vehicle_info_.max_longitudinal_offset_m),
-    s_end + vehicle_info_.max_longitudinal_offset_m, vehicle_info_.vehicle_length_m);
-  if (s_intersection) {
-    s_end =
-      std::min(s_end, std::max(0., *s_intersection - vehicle_info_.max_longitudinal_offset_m));
-  }
-
   std::optional<lanelet::ConstLanelet> goal_lanelet_for_path = std::nullopt;
   for (auto [it, s] = std::make_tuple(lanelets.begin(), 0.); it != lanelets.end(); ++it) {
     const auto & lane_id = it->id();
@@ -347,6 +339,14 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
       lanelets.erase(std::next(it), lanelets.end());
       break;
     }
+  }
+
+  const auto s_intersection = utils::get_first_intersection_arc_length(
+    lanelets, std::max(0., s_start - vehicle_info_.max_longitudinal_offset_m),
+    s_end + vehicle_info_.max_longitudinal_offset_m, vehicle_info_.vehicle_length_m);
+  if (s_intersection) {
+    s_end =
+      std::min(s_end, std::max(0., *s_intersection - vehicle_info_.max_longitudinal_offset_m));
   }
 
   return generate_path(lanelets, s_start, s_end, goal_lanelet_for_path, params);
