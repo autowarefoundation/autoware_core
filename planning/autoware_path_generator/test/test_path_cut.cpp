@@ -229,8 +229,8 @@ TEST_F(UtilsTest, getFirstStartEdgeCenterlineIntersectionArcLength)
 
   {  // lanelet sequence is empty
     const auto dummy_start_edge = lanelet::BasicLineString2d{{0.0, 0.0}, {0.0, 1.0}};
-    const auto result =
-      utils::get_first_start_edge_centerline_intersection_arc_length({}, dummy_start_edge, {}, {}, {});
+    const auto result = utils::get_first_start_edge_centerline_intersection_arc_length(
+      {}, dummy_start_edge, {}, {}, {});
 
     ASSERT_FALSE(result);
   }
