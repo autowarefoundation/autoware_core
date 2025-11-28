@@ -77,7 +77,7 @@ TEST_F(UtilsTest, getBorderPoint)
   }
 
   {  // segment has only 1 point
-    const auto result = utils::get_border_point({{}}, get_lanelets_from_ids({122}).front());
+    const auto result = utils::get_border_point({{0.0, 0.0, 0.0}}, get_lanelets_from_ids({122}).front());
 
     ASSERT_FALSE(result);
   }
