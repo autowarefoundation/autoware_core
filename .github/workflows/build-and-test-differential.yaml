@@ -57,6 +57,8 @@ jobs:
 
   clang-tidy-differential:
     needs: build-and-test-differential
+    # Run regardless of the build-and-test-differential job status until Jazzy build becomes stable
+    if: ${{ always() }}
     runs-on: ubuntu-24.04
     container: ${{ matrix.container }}
     strategy:
@@ -105,6 +107,7 @@ jobs:
           target-files: ${{ steps.get-changed-files.outputs.changed-files }}
           clang-tidy-config-url: https://raw.githubusercontent.com/autowarefoundation/autoware/main/.clang-tidy-ci
           underlay-workspace: /opt/autoware
+          artifact-name: clang-tidy-result-${{ matrix.rosdistro }}
 
       - name: Show disk space after the tasks
         run: df -h
