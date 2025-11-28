@@ -582,10 +582,27 @@ consolidate_user_defined_waypoints_and_native_centerline(
         if (native_s <= current_overlapping_chunk_iter.value().end_s) {
           // previously overlapping, and still overlapping, skip
         } else {
-          // previously overlapping, but now not overlapping
-          points_to_add_native.emplace_back(ReferencePoint{*native_point_it, this_lane_id});
-          current_overlapping_chunk_iter = std::nullopt;
+          // previously overlapping, but now not overlapping with previous one. But maybe already
+          // overlapping with next chunk
           next_target_chunk_iter++;
+          if (
+            next_target_chunk_iter != reference_points_chunks.end() &&
+            native_s >= next_target_chunk_iter->start_s) {
+            current_overlapping_chunk_iter.emplace(*next_target_chunk_iter);
+
+            if (const auto exceeded_start = exceeded_start_for_the_1st_time_check();
+                exceeded_start) {
+              // this is possible if s_start is on the waypoint
+              // the position at s_start needs to be interpolated
+              points_to_add_native.emplace_back(*exceeded_start);
+            }
+
+            // append all the points in current_overlapped_chunk_iter at once
+            points_to_add_chunk = current_overlapping_chunk_iter.value().points;
+          } else {
+            points_to_add_native.emplace_back(ReferencePoint{*native_point_it, this_lane_id});
+            current_overlapping_chunk_iter = std::nullopt;
+          }
         }
       }
 

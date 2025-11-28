@@ -1388,7 +1388,9 @@ TEST_P(TestWithVM_01_10_12_Map, from_P1_forward_on_entire_lanes)
 
 INSTANTIATE_TEST_SUITE_P(
   ReferencePathWith_VM_01_10_Maps, TestWithVM_01_10_12_Map,
-  ::testing::Values("test_reference_path_valid_02.yaml"));
+  ::testing::Values(
+    "test_reference_path_valid_01.yaml", "test_reference_path_valid_02.yaml",
+    "test_reference_path_valid_03.yaml"));
 
 }  // namespace autoware::experimental
 
