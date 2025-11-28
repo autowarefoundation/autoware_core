@@ -185,7 +185,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P0_on_entire_lanes)  // NOLINT
     ASSERT_EQ(border_point.lane_ids.back(), 56);
   }
   {
-    // 3rd border pointa
+    // 3rd border point
     // 56 -> 58
     const auto & border_point = border_points.at(2);
     ASSERT_EQ(border_point.lane_ids.front(), 56);
@@ -233,7 +233,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P0_on_entire_lanes)  // NOLINT
     ASSERT_FLOAT_EQ(border_point.point.longitudinal_velocity_mps, 20 / 3.6);
   }
   {
-    // 3rd border pointa
+    // 3rd border point
     // 56 -> 58
     const auto & border_point = border_points.at(2);
     ASSERT_FLOAT_EQ(border_point.point.longitudinal_velocity_mps, 25 / 3.6);
@@ -324,7 +324,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P1_on_entire_lanes)
     ASSERT_EQ(border_point.lane_ids.back(), 56);
   }
   {
-    // 3rd border pointa
+    // 3rd border point
     // 56 -> 58
     const auto & border_point = border_points.at(2);
     ASSERT_EQ(border_point.lane_ids.front(), 56);
@@ -372,7 +372,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P1_on_entire_lanes)
     ASSERT_FLOAT_EQ(border_point.point.longitudinal_velocity_mps, 20 / 3.6);
   }
   {
-    // 3rd border pointa
+    // 3rd border point
     // 56 -> 58
     const auto & border_point = border_points.at(2);
     ASSERT_FLOAT_EQ(border_point.point.longitudinal_velocity_mps, 25 / 3.6);
@@ -463,7 +463,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P2_on_entire_lanes)
     ASSERT_EQ(border_point.lane_ids.back(), 56);
   }
   {
-    // 3rd border pointa
+    // 3rd border point
     // 56 -> 58
     const auto & border_point = border_points.at(2);
     ASSERT_EQ(border_point.lane_ids.front(), 56);
@@ -511,7 +511,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P2_on_entire_lanes)
     ASSERT_FLOAT_EQ(border_point.point.longitudinal_velocity_mps, 20 / 3.6);
   }
   {
-    // 3rd border pointa
+    // 3rd border point
     // 56 -> 58
     const auto & border_point = border_points.at(2);
     ASSERT_FLOAT_EQ(border_point.point.longitudinal_velocity_mps, 25 / 3.6);
@@ -602,7 +602,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P3_on_entire_lanes)
     ASSERT_EQ(border_point.lane_ids.back(), 56);
   }
   {
-    // 3rd border pointa
+    // 3rd border point
     // 56 -> 58
     const auto & border_point = border_points.at(2);
     ASSERT_EQ(border_point.lane_ids.front(), 56);
@@ -650,7 +650,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P3_on_entire_lanes)
     ASSERT_FLOAT_EQ(border_point.point.longitudinal_velocity_mps, 20 / 3.6);
   }
   {
-    // 3rd border pointa
+    // 3rd border point
     // 56 -> 58
     const auto & border_point = border_points.at(2);
     ASSERT_FLOAT_EQ(border_point.point.longitudinal_velocity_mps, 25 / 3.6);
@@ -741,7 +741,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P4_on_entire_lanes)
     ASSERT_EQ(border_point.lane_ids.back(), 56);
   }
   {
-    // 3rd border pointa
+    // 3rd border point
     // 56 -> 58
     const auto & border_point = border_points.at(2);
     ASSERT_EQ(border_point.lane_ids.front(), 56);
@@ -789,7 +789,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P4_on_entire_lanes)
     ASSERT_FLOAT_EQ(border_point.point.longitudinal_velocity_mps, 20 / 3.6);
   }
   {
-    // 3rd border pointa
+    // 3rd border point
     // 56 -> 58
     const auto & border_point = border_points.at(2);
     ASSERT_FLOAT_EQ(border_point.point.longitudinal_velocity_mps, 25 / 3.6);
@@ -880,7 +880,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P5_on_entire_lanes)
     ASSERT_EQ(border_point.lane_ids.back(), 56);
   }
   {
-    // 3rd border pointa
+    // 3rd border point
     // 56 -> 58
     const auto & border_point = border_points.at(2);
     ASSERT_EQ(border_point.lane_ids.front(), 56);
@@ -928,7 +928,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P5_on_entire_lanes)
     ASSERT_FLOAT_EQ(border_point.point.longitudinal_velocity_mps, 20 / 3.6);
   }
   {
-    // 3rd border pointa
+    // 3rd border point
     // 56 -> 58
     const auto & border_point = border_points.at(2);
     ASSERT_FLOAT_EQ(border_point.point.longitudinal_velocity_mps, 25 / 3.6);
@@ -1019,7 +1019,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P6_on_entire_lanes)
     ASSERT_EQ(border_point.lane_ids.back(), 56);
   }
   {
-    // 3rd border pointa
+    // 3rd border point
     // 56 -> 58
     const auto & border_point = border_points.at(2);
     ASSERT_EQ(border_point.lane_ids.front(), 56);
@@ -1067,7 +1067,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P6_on_entire_lanes)
     ASSERT_FLOAT_EQ(border_point.point.longitudinal_velocity_mps, 20 / 3.6);
   }
   {
-    // 3rd border pointa
+    // 3rd border point
     // 56 -> 58
     const auto & border_point = border_points.at(2);
     ASSERT_FLOAT_EQ(border_point.point.longitudinal_velocity_mps, 25 / 3.6);
@@ -1170,7 +1170,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P1_forward_on_entire_lanes)
     ASSERT_EQ(border_point.lane_ids.back(), 56);
   }
   {
-    // 3rd border pointa
+    // 3rd border point
     // 56 -> 58
     const auto & border_point = border_points.at(1);
     ASSERT_EQ(border_point.lane_ids.front(), 56);
@@ -1212,7 +1212,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P1_forward_on_entire_lanes)
     ASSERT_FLOAT_EQ(border_point.point.longitudinal_velocity_mps, 20 / 3.6);
   }
   {
-    // 3rd border pointa
+    // 3rd border point
     // 56 -> 58
     const auto & border_point = border_points.at(1);
     ASSERT_FLOAT_EQ(border_point.point.longitudinal_velocity_mps, 25 / 3.6);
@@ -1289,7 +1289,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P2_forward_on_entire_lanes)
     ranges::to<std::vector>();
   ASSERT_EQ(border_points.size(), 3);
   {
-    // 3rd border pointa
+    // 3rd border point
     // 56 -> 58
     const auto & border_point = border_points.at(0);
     ASSERT_EQ(border_point.lane_ids.front(), 56);
@@ -1325,7 +1325,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P2_forward_on_entire_lanes)
     ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 20 / 3.6);
   }
   {
-    // 3rd border pointa
+    // 3rd border point
     // 56 -> 58
     const auto & border_point = border_points.at(0);
     ASSERT_FLOAT_EQ(border_point.point.longitudinal_velocity_mps, 25 / 3.6);
