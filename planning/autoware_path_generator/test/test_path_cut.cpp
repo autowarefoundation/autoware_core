@@ -208,8 +208,9 @@ TEST_F(UtilsTest, getFirstStartEdgeBoundIntersectionArcLength)
       to_geometry_msgs_points(dummy_lanelet_sequence.rightBound()));
 
   {  // lanelet sequence is empty
+    const auto dummy_start_edge = lanelet::BasicLineString2d{{0.0, 0.0}, {0.0, 1.0}};
     const auto result = utils::get_first_start_edge_bound_intersection_arc_length(
-      {}, {{}, {}}, dummy_left_bound, dummy_right_bound, {}, {});
+      {}, dummy_start_edge, dummy_left_bound, dummy_right_bound, {}, {});
 
     ASSERT_FALSE(result);
   }
@@ -227,8 +228,9 @@ TEST_F(UtilsTest, getFirstStartEdgeCenterlineIntersectionArcLength)
   const lanelet::LaneletSequence dummy_lanelet_sequence(get_lanelets_from_ids({122}));
 
   {  // lanelet sequence is empty
+    const auto dummy_start_edge = lanelet::BasicLineString2d{{0.0, 0.0}, {0.0, 1.0}};
     const auto result =
-      utils::get_first_start_edge_centerline_intersection_arc_length({}, {{}, {}}, {}, {}, {});
+      utils::get_first_start_edge_centerline_intersection_arc_length({}, dummy_start_edge, {}, {}, {});
 
     ASSERT_FALSE(result);
   }
