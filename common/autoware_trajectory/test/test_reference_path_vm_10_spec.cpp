@@ -50,14 +50,14 @@ static constexpr auto inf = std::numeric_limits<double>::infinity();
 namespace autoware::experimental
 {
 
-class TestWithVM_01_10_12_valid_01 : public ::testing::Test  // NOLINT
+class TestWithVM_01_10_12_Map : public ::testing::TestWithParam<std::string>  // NOLINT
 {
 protected:
   void SetUp() override
   {
     const auto test_case_path =
       std::filesystem::path(ament_index_cpp::get_package_share_directory("autoware_trajectory")) /
-      "test_data" / "test_reference_path_valid_01.yaml";
+      "test_data" / GetParam();
     const auto test_case_data = autoware::test_utils::load_test_case(test_case_path.string());
 
     lanelet_map_ = lanelet2_utils::load_mgrs_coordinate_map(test_case_data.map_abs_path);
@@ -87,7 +87,7 @@ protected:
   lanelet::traffic_rules::TrafficRulesPtr traffic_rules_{nullptr};
 };
 
-TEST_F(TestWithVM_01_10_12_valid_01, from_P0_on_entire_lanes)
+TEST_P(TestWithVM_01_10_12_Map, from_P0_on_entire_lanes)  // NOLINT
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P0;
@@ -108,9 +108,9 @@ TEST_F(TestWithVM_01_10_12_valid_01, from_P0_on_entire_lanes)
 
   const auto path_points_with_lane_id = reference_path.restore();
 
-  /*
-    points are smooth
-   */
+  //
+  //  points are smooth
+  //
   for (const auto [p1, p2, p3] : ranges::views::zip(
          path_points_with_lane_id, path_points_with_lane_id | ranges::views::drop(1),
          path_points_with_lane_id | ranges::views::drop(2))) {
@@ -126,9 +126,9 @@ TEST_F(TestWithVM_01_10_12_valid_01, from_P0_on_entire_lanes)
             p2.point.pose.position, p3.point.pose.position))) < M_PI / 2.0);
   }
 
-  /*
-    All of path points are either non-border point(with 1 lane_id) or border point(with 2 lane_id)
-   */
+  //
+  //  All of path points are either non-border point(with 1 lane_id) or border point(with 2 lane_id)
+  //
   const auto border_points =
     path_points_with_lane_id |
     ranges::view::filter([&](const auto & point) { return point.lane_ids.size() == 2; }) |
@@ -176,10 +176,10 @@ TEST_F(TestWithVM_01_10_12_valid_01, from_P0_on_entire_lanes)
     ranges::to<std::vector>();
   EXPECT_EQ(non_border_points.size(), path_points_with_lane_id.size() - border_points.size());
 
-  /*
-    Velocity of path points is set the Lanelet speed limit, and increase at the border point in
-    step-function manner
-   */
+  //
+  //  Velocity of path points is set the Lanelet speed limit, and increase at the border point in
+  //  step-function manner
+  //
   {
     const auto & non_border_point = non_border_points.at(0);
     EXPECT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 10 / 3.6);
@@ -243,13 +243,15 @@ TEST_F(TestWithVM_01_10_12_valid_01, from_P0_on_entire_lanes)
     ax.set_aspect(Args("equal"));
     ax.legend();
     ax.grid();
-    plt.savefig(
-      Args(std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + ".svg"));
+    std::string test_name =
+      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam();
+    std::replace(test_name.begin(), test_name.end(), '/', '_');
+    plt.savefig(Args(test_name + ".svg"));
   }
 #endif
 }
 
-TEST_F(TestWithVM_01_10_12_valid_01, from_P1_on_entire_lanes)
+TEST_P(TestWithVM_01_10_12_Map, from_P1_on_entire_lanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P1;
@@ -270,9 +272,9 @@ TEST_F(TestWithVM_01_10_12_valid_01, from_P1_on_entire_lanes)
 
   const auto path_points_with_lane_id = reference_path.restore();
 
-  /*
-    points are smooth
-   */
+  //
+  //  points are smooth
+  //
   for (const auto [p1, p2, p3] : ranges::views::zip(
          path_points_with_lane_id, path_points_with_lane_id | ranges::views::drop(1),
          path_points_with_lane_id | ranges::views::drop(2))) {
@@ -288,9 +290,9 @@ TEST_F(TestWithVM_01_10_12_valid_01, from_P1_on_entire_lanes)
             p2.point.pose.position, p3.point.pose.position))) < M_PI / 2.0);
   }
 
-  /*
-    All of path points are either non-border point(with 1 lane_id) or border point(with 2 lane_id)
-   */
+  //
+  //  All of path points are either non-border point(with 1 lane_id) or border point(with 2 lane_id)
+  //
   const auto border_points =
     path_points_with_lane_id |
     ranges::view::filter([&](const auto & point) { return point.lane_ids.size() == 2; }) |
@@ -338,10 +340,10 @@ TEST_F(TestWithVM_01_10_12_valid_01, from_P1_on_entire_lanes)
     ranges::to<std::vector>();
   EXPECT_EQ(non_border_points.size(), path_points_with_lane_id.size() - border_points.size());
 
-  /*
-    Velocity of path points is set the Lanelet speed limit, and increase at the border point in
-    step-function manner
-   */
+  //
+  //  Velocity of path points is set the Lanelet speed limit, and increase at the border point in
+  //  step-function manner
+  //
   {
     const auto & non_border_point = non_border_points.at(0);
     EXPECT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 10 / 3.6);
@@ -405,13 +407,15 @@ TEST_F(TestWithVM_01_10_12_valid_01, from_P1_on_entire_lanes)
     ax.set_aspect(Args("equal"));
     ax.legend();
     ax.grid();
-    plt.savefig(
-      Args(std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + ".svg"));
+    std::string test_name =
+      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam();
+    std::replace(test_name.begin(), test_name.end(), '/', '_');
+    plt.savefig(Args(test_name + ".svg"));
   }
 #endif
 }
 
-TEST_F(TestWithVM_01_10_12_valid_01, from_P2_on_entire_lanes)
+TEST_P(TestWithVM_01_10_12_Map, from_P2_on_entire_lanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P2;
@@ -432,9 +436,9 @@ TEST_F(TestWithVM_01_10_12_valid_01, from_P2_on_entire_lanes)
 
   const auto path_points_with_lane_id = reference_path.restore();
 
-  /*
-    points are smooth
-   */
+  //
+  //  points are smooth
+  //
   for (const auto [p1, p2, p3] : ranges::views::zip(
          path_points_with_lane_id, path_points_with_lane_id | ranges::views::drop(1),
          path_points_with_lane_id | ranges::views::drop(2))) {
@@ -450,9 +454,9 @@ TEST_F(TestWithVM_01_10_12_valid_01, from_P2_on_entire_lanes)
             p2.point.pose.position, p3.point.pose.position))) < M_PI / 2.0);
   }
 
-  /*
-    All of path points are either non-border point(with 1 lane_id) or border point(with 2 lane_id)
-   */
+  //
+  //  All of path points are either non-border point(with 1 lane_id) or border point(with 2 lane_id)
+  //
   const auto border_points =
     path_points_with_lane_id |
     ranges::view::filter([&](const auto & point) { return point.lane_ids.size() == 2; }) |
@@ -500,10 +504,10 @@ TEST_F(TestWithVM_01_10_12_valid_01, from_P2_on_entire_lanes)
     ranges::to<std::vector>();
   EXPECT_EQ(non_border_points.size(), path_points_with_lane_id.size() - border_points.size());
 
-  /*
-    Velocity of path points is set the Lanelet speed limit, and increase at the border point in
-    step-function manner
-   */
+  //
+  //  Velocity of path points is set the Lanelet speed limit, and increase at the border point in
+  //  step-function manner
+  //
   {
     const auto & non_border_point = non_border_points.at(0);
     EXPECT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 10 / 3.6);
@@ -567,13 +571,15 @@ TEST_F(TestWithVM_01_10_12_valid_01, from_P2_on_entire_lanes)
     ax.set_aspect(Args("equal"));
     ax.legend();
     ax.grid();
-    plt.savefig(
-      Args(std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + ".svg"));
+    std::string test_name =
+      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam();
+    std::replace(test_name.begin(), test_name.end(), '/', '_');
+    plt.savefig(Args(test_name + ".svg"));
   }
 #endif
 }
 
-TEST_F(TestWithVM_01_10_12_valid_01, from_P3_on_entire_lanes)
+TEST_P(TestWithVM_01_10_12_Map, from_P3_on_entire_lanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P3;
@@ -594,9 +600,9 @@ TEST_F(TestWithVM_01_10_12_valid_01, from_P3_on_entire_lanes)
 
   const auto path_points_with_lane_id = reference_path.restore();
 
-  /*
-    points are smooth
-   */
+  //
+  //  points are smooth
+  //
   for (const auto [p1, p2, p3] : ranges::views::zip(
          path_points_with_lane_id, path_points_with_lane_id | ranges::views::drop(1),
          path_points_with_lane_id | ranges::views::drop(2))) {
@@ -612,9 +618,9 @@ TEST_F(TestWithVM_01_10_12_valid_01, from_P3_on_entire_lanes)
             p2.point.pose.position, p3.point.pose.position))) < M_PI / 2.0);
   }
 
-  /*
-    All of path points are either non-border point(with 1 lane_id) or border point(with 2 lane_id)
-   */
+  //
+  // All of path points are either non-border point(with 1 lane_id) or border point(with 2 lane_id)
+  //
   const auto border_points =
     path_points_with_lane_id |
     ranges::view::filter([&](const auto & point) { return point.lane_ids.size() == 2; }) |
@@ -662,10 +668,10 @@ TEST_F(TestWithVM_01_10_12_valid_01, from_P3_on_entire_lanes)
     ranges::to<std::vector>();
   EXPECT_EQ(non_border_points.size(), path_points_with_lane_id.size() - border_points.size());
 
-  /*
-    Velocity of path points is set the Lanelet speed limit, and increase at the border point in
-    step-function manner
-   */
+  //
+  //  Velocity of path points is set the Lanelet speed limit, and increase at the border point in
+  //  step-function manner
+  //
   {
     const auto & non_border_point = non_border_points.at(0);
     EXPECT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 10 / 3.6);
@@ -729,13 +735,15 @@ TEST_F(TestWithVM_01_10_12_valid_01, from_P3_on_entire_lanes)
     ax.set_aspect(Args("equal"));
     ax.legend();
     ax.grid();
-    plt.savefig(
-      Args(std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + ".svg"));
+    std::string test_name =
+      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam();
+    std::replace(test_name.begin(), test_name.end(), '/', '_');
+    plt.savefig(Args(test_name + ".svg"));
   }
 #endif
 }
 
-TEST_F(TestWithVM_01_10_12_valid_01, from_P4_on_entire_lanes)
+TEST_P(TestWithVM_01_10_12_Map, from_P4_on_entire_lanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P4;
@@ -756,9 +764,9 @@ TEST_F(TestWithVM_01_10_12_valid_01, from_P4_on_entire_lanes)
 
   const auto path_points_with_lane_id = reference_path.restore();
 
-  /*
-    points are smooth
-   */
+  //
+  //  points are smooth
+  //
   for (const auto [p1, p2, p3] : ranges::views::zip(
          path_points_with_lane_id, path_points_with_lane_id | ranges::views::drop(1),
          path_points_with_lane_id | ranges::views::drop(2))) {
@@ -774,9 +782,9 @@ TEST_F(TestWithVM_01_10_12_valid_01, from_P4_on_entire_lanes)
             p2.point.pose.position, p3.point.pose.position))) < M_PI / 2.0);
   }
 
-  /*
-    All of path points are either non-border point(with 1 lane_id) or border point(with 2 lane_id)
-   */
+  //
+  //  All of path points are either non-border point(with 1 lane_id) or border point(with 2 lane_id)
+  //
   const auto border_points =
     path_points_with_lane_id |
     ranges::view::filter([&](const auto & point) { return point.lane_ids.size() == 2; }) |
@@ -824,10 +832,10 @@ TEST_F(TestWithVM_01_10_12_valid_01, from_P4_on_entire_lanes)
     ranges::to<std::vector>();
   EXPECT_EQ(non_border_points.size(), path_points_with_lane_id.size() - border_points.size());
 
-  /*
-    Velocity of path points is set the Lanelet speed limit, and increase at the border point in
-    step-function manner
-   */
+  //
+  //  Velocity of path points is set the Lanelet speed limit, and increase at the border point in
+  //  step-function manner
+  //
   {
     const auto & non_border_point = non_border_points.at(0);
     EXPECT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 10 / 3.6);
@@ -891,13 +899,15 @@ TEST_F(TestWithVM_01_10_12_valid_01, from_P4_on_entire_lanes)
     ax.set_aspect(Args("equal"));
     ax.legend();
     ax.grid();
-    plt.savefig(
-      Args(std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + ".svg"));
+    std::string test_name =
+      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam();
+    std::replace(test_name.begin(), test_name.end(), '/', '_');
+    plt.savefig(Args(test_name + ".svg"));
   }
 #endif
 }
 
-TEST_F(TestWithVM_01_10_12_valid_01, from_P5_on_entire_lanes)
+TEST_P(TestWithVM_01_10_12_Map, from_P5_on_entire_lanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P5;
@@ -918,9 +928,9 @@ TEST_F(TestWithVM_01_10_12_valid_01, from_P5_on_entire_lanes)
 
   const auto path_points_with_lane_id = reference_path.restore();
 
-  /*
-    points are smooth
-   */
+  //
+  // points are smooth
+  //
   for (const auto [p1, p2, p3] : ranges::views::zip(
          path_points_with_lane_id, path_points_with_lane_id | ranges::views::drop(1),
          path_points_with_lane_id | ranges::views::drop(2))) {
@@ -936,9 +946,9 @@ TEST_F(TestWithVM_01_10_12_valid_01, from_P5_on_entire_lanes)
             p2.point.pose.position, p3.point.pose.position))) < M_PI / 2.0);
   }
 
-  /*
-    All of path points are either non-border point(with 1 lane_id) or border point(with 2 lane_id)
-   */
+  //
+  //  All of path points are either non-border point(with 1 lane_id) or border point(with 2 lane_id)
+  //
   const auto border_points =
     path_points_with_lane_id |
     ranges::view::filter([&](const auto & point) { return point.lane_ids.size() == 2; }) |
@@ -986,10 +996,10 @@ TEST_F(TestWithVM_01_10_12_valid_01, from_P5_on_entire_lanes)
     ranges::to<std::vector>();
   EXPECT_EQ(non_border_points.size(), path_points_with_lane_id.size() - border_points.size());
 
-  /*
-    Velocity of path points is set the Lanelet speed limit, and increase at the border point in
-    step-function manner
-   */
+  //
+  // Velocity of path points is set the Lanelet speed limit, and increase at the border point in
+  //  step-function manner
+  //
   {
     const auto & non_border_point = non_border_points.at(0);
     EXPECT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 10 / 3.6);
@@ -1053,13 +1063,15 @@ TEST_F(TestWithVM_01_10_12_valid_01, from_P5_on_entire_lanes)
     ax.set_aspect(Args("equal"));
     ax.legend();
     ax.grid();
-    plt.savefig(
-      Args(std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + ".svg"));
+    std::string test_name =
+      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam();
+    std::replace(test_name.begin(), test_name.end(), '/', '_');
+    plt.savefig(Args(test_name + ".svg"));
   }
 #endif
 }
 
-TEST_F(TestWithVM_01_10_12_valid_01, from_P6_on_entire_lanes)
+TEST_P(TestWithVM_01_10_12_Map, from_P6_on_entire_lanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P6;
@@ -1080,9 +1092,9 @@ TEST_F(TestWithVM_01_10_12_valid_01, from_P6_on_entire_lanes)
 
   const auto path_points_with_lane_id = reference_path.restore();
 
-  /*
-    points are smooth
-   */
+  //
+  //  points are smooth
+  //
   for (const auto [p1, p2, p3] : ranges::views::zip(
          path_points_with_lane_id, path_points_with_lane_id | ranges::views::drop(1),
          path_points_with_lane_id | ranges::views::drop(2))) {
@@ -1098,9 +1110,9 @@ TEST_F(TestWithVM_01_10_12_valid_01, from_P6_on_entire_lanes)
             p2.point.pose.position, p3.point.pose.position))) < M_PI / 2.0);
   }
 
-  /*
-    All of path points are either non-border point(with 1 lane_id) or border point(with 2 lane_id)
-   */
+  //
+  //  All of path points are either non-border point(with 1 lane_id) or border point(with 2 lane_id)
+  //
   const auto border_points =
     path_points_with_lane_id |
     ranges::view::filter([&](const auto & point) { return point.lane_ids.size() == 2; }) |
@@ -1148,10 +1160,10 @@ TEST_F(TestWithVM_01_10_12_valid_01, from_P6_on_entire_lanes)
     ranges::to<std::vector>();
   EXPECT_EQ(non_border_points.size(), path_points_with_lane_id.size() - border_points.size());
 
-  /*
-    Velocity of path points is set the Lanelet speed limit, and increase at the border point in
-    step-function manner
-   */
+  //
+  //  Velocity of path points is set the Lanelet speed limit, and increase at the border point in
+  //  step-function manner
+  //
   {
     const auto & non_border_point = non_border_points.at(0);
     EXPECT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 10 / 3.6);
@@ -1215,13 +1227,15 @@ TEST_F(TestWithVM_01_10_12_valid_01, from_P6_on_entire_lanes)
     ax.set_aspect(Args("equal"));
     ax.legend();
     ax.grid();
-    plt.savefig(
-      Args(std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + ".svg"));
+    std::string test_name =
+      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam();
+    std::replace(test_name.begin(), test_name.end(), '/', '_');
+    plt.savefig(Args(test_name + ".svg"));
   }
 #endif
 }
 
-TEST_F(TestWithVM_01_10_12_valid_01, from_P1_forward_on_entire_lanes)
+TEST_P(TestWithVM_01_10_12_Map, from_P1_forward_on_entire_lanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P1;
@@ -1242,9 +1256,9 @@ TEST_F(TestWithVM_01_10_12_valid_01, from_P1_forward_on_entire_lanes)
 
   const auto path_points_with_lane_id = reference_path.restore();
 
-  /*
-    points are smooth
-   */
+  //
+  //  points are smooth
+  //
   for (const auto [p1, p2, p3] : ranges::views::zip(
          path_points_with_lane_id, path_points_with_lane_id | ranges::views::drop(1),
          path_points_with_lane_id | ranges::views::drop(2))) {
@@ -1260,9 +1274,9 @@ TEST_F(TestWithVM_01_10_12_valid_01, from_P1_forward_on_entire_lanes)
             p2.point.pose.position, p3.point.pose.position))) < M_PI / 2.0);
   }
 
-  /*
-    All of path points are either non-border point(with 1 lane_id) or border point(with 2 lane_id)
-   */
+  //
+  //  All of path points are either non-border point(with 1 lane_id) or border point(with 2 lane_id)
+  //
   const auto border_points =
     path_points_with_lane_id |
     ranges::view::filter([&](const auto & point) { return point.lane_ids.size() == 2; }) |
@@ -1303,10 +1317,10 @@ TEST_F(TestWithVM_01_10_12_valid_01, from_P1_forward_on_entire_lanes)
     ranges::to<std::vector>();
   EXPECT_EQ(non_border_points.size(), path_points_with_lane_id.size() - border_points.size());
 
-  /*
-    Velocity of path points is set the Lanelet speed limit, and increase at the border point in
-    step-function manner
-   */
+  //
+  //  Velocity of path points is set the Lanelet speed limit, and increase at the border point in
+  //  step-function manner
+  //
   {
     const auto & non_border_point = non_border_points.at(0);
     EXPECT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 15 / 3.6);
@@ -1364,11 +1378,17 @@ TEST_F(TestWithVM_01_10_12_valid_01, from_P1_forward_on_entire_lanes)
     ax.set_aspect(Args("equal"));
     ax.legend();
     ax.grid();
-    plt.savefig(
-      Args(std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + ".svg"));
+    std::string test_name =
+      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam();
+    std::replace(test_name.begin(), test_name.end(), '/', '_');
+    plt.savefig(Args(test_name + ".svg"));
   }
 #endif
 }
+
+INSTANTIATE_TEST_SUITE_P(
+  ReferencePathWith_VM_01_10_Maps, TestWithVM_01_10_12_Map,
+  ::testing::Values("test_reference_path_valid_02.yaml"));
 
 }  // namespace autoware::experimental
 

@@ -49,8 +49,6 @@ if(BUILD_TESTING)
     test/test_utils_lateral_metrics.cpp
     test/test_utils_footprint.cpp
   )
-  file(GLOB_RECURSE test_files test/*.cpp)
-
   foreach(test_file ${test_files})
     get_filename_component(test_name ${test_file} NAME_WE)
     ament_auto_add_gtest(${test_name}
