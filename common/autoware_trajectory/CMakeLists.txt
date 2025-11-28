@@ -54,6 +54,7 @@ if(BUILD_TESTING)
     test/test_pretty_build.cpp
     test/test_reference_path.cpp
     test/test_reference_path_vm_10_spec.cpp
+    test/test_reference_path_vm_10_spec_invalid.cpp
     test/test_trajectory_container.cpp
     test/test_trajectory_container_trajectory_point.cpp
     test/test_utils_find_nearest.cpp

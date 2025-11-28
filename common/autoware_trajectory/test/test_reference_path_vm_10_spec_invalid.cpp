@@ -86,14 +86,14 @@ static void savefig(
   plt.savefig(Args(filename));
 }
 
-class TestWithVM_01_10_12_Map : public ::testing::TestWithParam<std::string>  // NOLINT
+class TestWithVM_01_10_12_Map : public ::testing::Test  // NOLINT
 {
 protected:
   void SetUp() override
   {
     const auto test_case_path =
       std::filesystem::path(ament_index_cpp::get_package_share_directory("autoware_trajectory")) /
-      "test_data" / GetParam();
+      "test_data/test_reference_path_invalid_01.yaml";
     const auto test_case_data = autoware::test_utils::load_test_case(test_case_path.string());
 
     lanelet_map_ = lanelet2_utils::load_mgrs_coordinate_map(test_case_data.map_abs_path);
@@ -106,8 +106,6 @@ protected:
     P2 = test_case_data.manual_poses.at("P2");
     P3 = test_case_data.manual_poses.at("P3");
     P4 = test_case_data.manual_poses.at("P4");
-    P5 = test_case_data.manual_poses.at("P5");
-    P6 = test_case_data.manual_poses.at("P6");
   };
 
   geometry_msgs::msg::Pose P0;
@@ -115,15 +113,13 @@ protected:
   geometry_msgs::msg::Pose P2;
   geometry_msgs::msg::Pose P3;
   geometry_msgs::msg::Pose P4;
-  geometry_msgs::msg::Pose P5;
-  geometry_msgs::msg::Pose P6;
 
   lanelet::LaneletMapConstPtr lanelet_map_{nullptr};
   lanelet::routing::RoutingGraphConstPtr routing_graph_{nullptr};
   lanelet::traffic_rules::TrafficRulesPtr traffic_rules_{nullptr};
 };
 
-TEST_P(TestWithVM_01_10_12_Map, from_P0_on_entire_lanes)  // NOLINT
+TEST_F(TestWithVM_01_10_12_Map, from_P0_on_entire_lanes)  // NOLINT
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P0;
@@ -254,15 +250,15 @@ TEST_P(TestWithVM_01_10_12_Map, from_P0_on_entire_lanes)  // NOLINT
 #ifdef PLOT
   {
     std::string filename =
-      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam() +
-      ".svg";
+      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
+      "test_reference_path_invalid_01.svg";
     std::replace(filename.begin(), filename.end(), '/', '_');
     savefig(reference_path, forward_length, backward_length, ego_pose, lanelet_sequence, filename);
   }
 #endif
 }
 
-TEST_P(TestWithVM_01_10_12_Map, from_P1_on_entire_lanes)
+TEST_F(TestWithVM_01_10_12_Map, from_P1_on_entire_lanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P1;
@@ -393,19 +389,19 @@ TEST_P(TestWithVM_01_10_12_Map, from_P1_on_entire_lanes)
 #ifdef PLOT
   {
     std::string filename =
-      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam() +
-      ".svg";
+      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
+      "test_reference_path_invalid_01.svg";
     std::replace(filename.begin(), filename.end(), '/', '_');
     savefig(reference_path, forward_length, backward_length, ego_pose, lanelet_sequence, filename);
   }
 #endif
 }
 
-TEST_P(TestWithVM_01_10_12_Map, from_P2_on_entire_lanes)
+TEST_F(TestWithVM_01_10_12_Map, from_P2_on_entire_lanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P2;
-  const auto current_lanelet = lanelet_map_->laneletLayer.get(56);
+  const auto current_lanelet = lanelet_map_->laneletLayer.get(58);
   const auto lanelet_sequence =
     ids |
     ranges::views::transform([&](const auto & id) { return lanelet_map_->laneletLayer.get(id); }) |
@@ -532,15 +528,15 @@ TEST_P(TestWithVM_01_10_12_Map, from_P2_on_entire_lanes)
 #ifdef PLOT
   {
     std::string filename =
-      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam() +
-      ".svg";
+      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
+      "test_reference_path_invalid_01.svg";
     std::replace(filename.begin(), filename.end(), '/', '_');
     savefig(reference_path, forward_length, backward_length, ego_pose, lanelet_sequence, filename);
   }
 #endif
 }
 
-TEST_P(TestWithVM_01_10_12_Map, from_P3_on_entire_lanes)
+TEST_F(TestWithVM_01_10_12_Map, from_P3_on_entire_lanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P3;
@@ -671,15 +667,15 @@ TEST_P(TestWithVM_01_10_12_Map, from_P3_on_entire_lanes)
 #ifdef PLOT
   {
     std::string filename =
-      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam() +
-      ".svg";
+      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
+      "test_reference_path_invalid_01.svg";
     std::replace(filename.begin(), filename.end(), '/', '_');
     savefig(reference_path, forward_length, backward_length, ego_pose, lanelet_sequence, filename);
   }
 #endif
 }
 
-TEST_P(TestWithVM_01_10_12_Map, from_P4_on_entire_lanes)
+TEST_F(TestWithVM_01_10_12_Map, from_P4_on_entire_lanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P4;
@@ -810,293 +806,15 @@ TEST_P(TestWithVM_01_10_12_Map, from_P4_on_entire_lanes)
 #ifdef PLOT
   {
     std::string filename =
-      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam() +
-      ".svg";
+      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
+      "test_reference_path_invalid_01.svg";
     std::replace(filename.begin(), filename.end(), '/', '_');
     savefig(reference_path, forward_length, backward_length, ego_pose, lanelet_sequence, filename);
   }
 #endif
 }
 
-TEST_P(TestWithVM_01_10_12_Map, from_P5_on_entire_lanes)
-{
-  const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
-  const auto ego_pose = P5;
-  const auto current_lanelet = lanelet_map_->laneletLayer.get(59);
-  const auto lanelet_sequence =
-    ids |
-    ranges::views::transform([&](const auto & id) { return lanelet_map_->laneletLayer.get(id); }) |
-    ranges::to<std::vector>();
-
-  const double forward_length = inf;
-  const double backward_length = inf;
-  const auto reference_path_opt = trajectory::build_reference_path(
-    lanelet_sequence, current_lanelet, ego_pose, lanelet_map_, routing_graph_, traffic_rules_,
-    forward_length, backward_length);
-  ASSERT_TRUE(reference_path_opt.has_value());
-
-  const auto & reference_path = reference_path_opt.value();
-
-  const auto path_points_with_lane_id = reference_path.restore();
-
-  //
-  // points are smooth
-  //
-  for (const auto [p1, p2, p3] : ranges::views::zip(
-         path_points_with_lane_id, path_points_with_lane_id | ranges::views::drop(1),
-         path_points_with_lane_id | ranges::views::drop(2))) {
-    EXPECT_TRUE(
-      autoware_utils_geometry::calc_distance3d(p1, p2) >=
-      autoware::experimental::trajectory::k_points_minimum_dist_threshold);
-    EXPECT_TRUE(
-      std::fabs(
-        autoware_utils_math::normalize_radian(
-          autoware_utils_geometry::calc_azimuth_angle(
-            p1.point.pose.position, p2.point.pose.position) -
-          autoware_utils_geometry::calc_azimuth_angle(
-            p2.point.pose.position, p3.point.pose.position))) < M_PI / 2.0);
-  }
-
-  //
-  //  All of path points are either non-border point(with 1 lane_id) or border point(with 2 lane_id)
-  //
-  const auto border_points =
-    path_points_with_lane_id |
-    ranges::views::filter([&](const auto & point) { return point.lane_ids.size() == 2; }) |
-    ranges::to<std::vector>();
-  ASSERT_EQ(border_points.size(), 5);
-  {
-    // 1st border point
-    // 60 -> 57
-    const auto & border_point = border_points.at(0);
-    ASSERT_EQ(border_point.lane_ids.front(), 60);
-    ASSERT_EQ(border_point.lane_ids.back(), 57);
-  }
-  {
-    // 2nd border point
-    // 57 -> 56
-    const auto & border_point = border_points.at(1);
-    ASSERT_EQ(border_point.lane_ids.front(), 57);
-    ASSERT_EQ(border_point.lane_ids.back(), 56);
-  }
-  {
-    // 3rd border point
-    // 56 -> 58
-    const auto & border_point = border_points.at(2);
-    ASSERT_EQ(border_point.lane_ids.front(), 56);
-    ASSERT_EQ(border_point.lane_ids.back(), 58);
-  }
-  {
-    // 4th border point
-    // 58 -> 59
-    const auto & border_point = border_points.at(3);
-    ASSERT_EQ(border_point.lane_ids.front(), 58);
-    ASSERT_EQ(border_point.lane_ids.back(), 59);
-  }
-  {
-    // 5th border point
-    // 59 -> 55
-    const auto & border_point = border_points.at(4);
-    ASSERT_EQ(border_point.lane_ids.front(), 59);
-    ASSERT_EQ(border_point.lane_ids.back(), 55);
-  }
-
-  const auto non_border_points =
-    path_points_with_lane_id |
-    ranges::views::filter([&](const auto & point) { return point.lane_ids.size() == 1; }) |
-    ranges::to<std::vector>();
-  ASSERT_EQ(non_border_points.size(), path_points_with_lane_id.size() - border_points.size());
-
-  //
-  // Velocity of path points is set the Lanelet speed limit, and increase at the border point in
-  //  step-function manner
-  //
-  {
-    const auto & non_border_point = non_border_points.at(0);
-    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 10 / 3.6);
-  }
-  {
-    // 1st border point
-    // 60 -> 57
-    const auto & border_point = border_points.at(0);
-    ASSERT_FLOAT_EQ(border_point.point.longitudinal_velocity_mps, 15 / 3.6);
-  }
-  {
-    // 2nd border point
-    // 57 -> 56
-    const auto & border_point = border_points.at(1);
-    ASSERT_FLOAT_EQ(border_point.point.longitudinal_velocity_mps, 20 / 3.6);
-  }
-  {
-    // 3rd border point
-    // 56 -> 58
-    const auto & border_point = border_points.at(2);
-    ASSERT_FLOAT_EQ(border_point.point.longitudinal_velocity_mps, 25 / 3.6);
-  }
-  {
-    // 4th border point
-    // 58 -> 59
-    const auto & border_point = border_points.at(3);
-    ASSERT_FLOAT_EQ(border_point.point.longitudinal_velocity_mps, 30 / 3.6);
-  }
-  {
-    // 5th border point
-    // 59 -> 55
-    const auto & border_point = border_points.at(4);
-    ASSERT_FLOAT_EQ(border_point.point.longitudinal_velocity_mps, 35 / 3.6);
-  }
-
-#ifdef PLOT
-  {
-    std::string filename =
-      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam() +
-      ".svg";
-    std::replace(filename.begin(), filename.end(), '/', '_');
-    savefig(reference_path, forward_length, backward_length, ego_pose, lanelet_sequence, filename);
-  }
-#endif
-}
-
-TEST_P(TestWithVM_01_10_12_Map, from_P6_on_entire_lanes)
-{
-  const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
-  const auto ego_pose = P6;
-  const auto current_lanelet = lanelet_map_->laneletLayer.get(55);
-  const auto lanelet_sequence =
-    ids |
-    ranges::views::transform([&](const auto & id) { return lanelet_map_->laneletLayer.get(id); }) |
-    ranges::to<std::vector>();
-
-  const double forward_length = inf;
-  const double backward_length = inf;
-  const auto reference_path_opt = trajectory::build_reference_path(
-    lanelet_sequence, current_lanelet, ego_pose, lanelet_map_, routing_graph_, traffic_rules_,
-    forward_length, backward_length);
-  ASSERT_TRUE(reference_path_opt.has_value());
-
-  const auto & reference_path = reference_path_opt.value();
-
-  const auto path_points_with_lane_id = reference_path.restore();
-
-  //
-  //  points are smooth
-  //
-  for (const auto [p1, p2, p3] : ranges::views::zip(
-         path_points_with_lane_id, path_points_with_lane_id | ranges::views::drop(1),
-         path_points_with_lane_id | ranges::views::drop(2))) {
-    EXPECT_TRUE(
-      autoware_utils_geometry::calc_distance3d(p1, p2) >=
-      autoware::experimental::trajectory::k_points_minimum_dist_threshold);
-    EXPECT_TRUE(
-      std::fabs(
-        autoware_utils_math::normalize_radian(
-          autoware_utils_geometry::calc_azimuth_angle(
-            p1.point.pose.position, p2.point.pose.position) -
-          autoware_utils_geometry::calc_azimuth_angle(
-            p2.point.pose.position, p3.point.pose.position))) < M_PI / 2.0);
-  }
-
-  //
-  //  All of path points are either non-border point(with 1 lane_id) or border point(with 2 lane_id)
-  //
-  const auto border_points =
-    path_points_with_lane_id |
-    ranges::views::filter([&](const auto & point) { return point.lane_ids.size() == 2; }) |
-    ranges::to<std::vector>();
-  ASSERT_EQ(border_points.size(), 5);
-  {
-    // 1st border point
-    // 60 -> 57
-    const auto & border_point = border_points.at(0);
-    ASSERT_EQ(border_point.lane_ids.front(), 60);
-    ASSERT_EQ(border_point.lane_ids.back(), 57);
-  }
-  {
-    // 2nd border point
-    // 57 -> 56
-    const auto & border_point = border_points.at(1);
-    ASSERT_EQ(border_point.lane_ids.front(), 57);
-    ASSERT_EQ(border_point.lane_ids.back(), 56);
-  }
-  {
-    // 3rd border point
-    // 56 -> 58
-    const auto & border_point = border_points.at(2);
-    ASSERT_EQ(border_point.lane_ids.front(), 56);
-    ASSERT_EQ(border_point.lane_ids.back(), 58);
-  }
-  {
-    // 4th border point
-    // 58 -> 59
-    const auto & border_point = border_points.at(3);
-    ASSERT_EQ(border_point.lane_ids.front(), 58);
-    ASSERT_EQ(border_point.lane_ids.back(), 59);
-  }
-  {
-    // 5th border point
-    // 59 -> 55
-    const auto & border_point = border_points.at(4);
-    ASSERT_EQ(border_point.lane_ids.front(), 59);
-    ASSERT_EQ(border_point.lane_ids.back(), 55);
-  }
-
-  const auto non_border_points =
-    path_points_with_lane_id |
-    ranges::views::filter([&](const auto & point) { return point.lane_ids.size() == 1; }) |
-    ranges::to<std::vector>();
-  ASSERT_EQ(non_border_points.size(), path_points_with_lane_id.size() - border_points.size());
-
-  //
-  //  Velocity of path points is set the Lanelet speed limit, and increase at the border point in
-  //  step-function manner
-  //
-  {
-    const auto & non_border_point = non_border_points.at(0);
-    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 10 / 3.6);
-  }
-  {
-    // 1st border point
-    // 60 -> 57
-    const auto & border_point = border_points.at(0);
-    ASSERT_FLOAT_EQ(border_point.point.longitudinal_velocity_mps, 15 / 3.6);
-  }
-  {
-    // 2nd border point
-    // 57 -> 56
-    const auto & border_point = border_points.at(1);
-    ASSERT_FLOAT_EQ(border_point.point.longitudinal_velocity_mps, 20 / 3.6);
-  }
-  {
-    // 3rd border point
-    // 56 -> 58
-    const auto & border_point = border_points.at(2);
-    ASSERT_FLOAT_EQ(border_point.point.longitudinal_velocity_mps, 25 / 3.6);
-  }
-  {
-    // 4th border point
-    // 58 -> 59
-    const auto & border_point = border_points.at(3);
-    ASSERT_FLOAT_EQ(border_point.point.longitudinal_velocity_mps, 30 / 3.6);
-  }
-  {
-    // 5th border point
-    // 59 -> 55
-    const auto & border_point = border_points.at(4);
-    ASSERT_FLOAT_EQ(border_point.point.longitudinal_velocity_mps, 35 / 3.6);
-  }
-
-#ifdef PLOT
-  {
-    std::string filename =
-      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam() +
-      ".svg";
-    std::replace(filename.begin(), filename.end(), '/', '_');
-    savefig(reference_path, forward_length, backward_length, ego_pose, lanelet_sequence, filename);
-  }
-#endif
-}
-
-TEST_P(TestWithVM_01_10_12_Map, from_P1_forward_on_entire_lanes)
+TEST_F(TestWithVM_01_10_12_Map, from_P1_forward_on_entire_lanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P1;
@@ -1214,19 +932,19 @@ TEST_P(TestWithVM_01_10_12_Map, from_P1_forward_on_entire_lanes)
 #ifdef PLOT
   {
     std::string filename =
-      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam() +
-      ".svg";
+      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
+      "test_reference_path_invalid_01.svg";
     std::replace(filename.begin(), filename.end(), '/', '_');
     savefig(reference_path, forward_length, backward_length, ego_pose, lanelet_sequence, filename);
   }
 #endif
 }
 
-TEST_P(TestWithVM_01_10_12_Map, from_P2_forward_on_entire_lanes)
+TEST_F(TestWithVM_01_10_12_Map, from_P2_forward_on_entire_lanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P2;
-  const auto current_lanelet = lanelet_map_->laneletLayer.get(56);
+  const auto current_lanelet = lanelet_map_->laneletLayer.get(58);
   const auto lanelet_sequence =
     ids |
     ranges::views::transform([&](const auto & id) { return lanelet_map_->laneletLayer.get(id); }) |
@@ -1268,25 +986,18 @@ TEST_P(TestWithVM_01_10_12_Map, from_P2_forward_on_entire_lanes)
     path_points_with_lane_id |
     ranges::views::filter([&](const auto & point) { return point.lane_ids.size() == 2; }) |
     ranges::to<std::vector>();
-  ASSERT_EQ(border_points.size(), 3);
-  {
-    // 3rd border point
-    // 56 -> 58
-    const auto & border_point = border_points.at(0);
-    ASSERT_EQ(border_point.lane_ids.front(), 56);
-    ASSERT_EQ(border_point.lane_ids.back(), 58);
-  }
+  ASSERT_EQ(border_points.size(), 2);
   {
     // 4th border point
     // 58 -> 59
-    const auto & border_point = border_points.at(1);
+    const auto & border_point = border_points.at(0);
     ASSERT_EQ(border_point.lane_ids.front(), 58);
     ASSERT_EQ(border_point.lane_ids.back(), 59);
   }
   {
     // 5th border point
     // 59 -> 55
-    const auto & border_point = border_points.at(2);
+    const auto & border_point = border_points.at(1);
     ASSERT_EQ(border_point.lane_ids.front(), 59);
     ASSERT_EQ(border_point.lane_ids.back(), 55);
   }
@@ -1303,39 +1014,33 @@ TEST_P(TestWithVM_01_10_12_Map, from_P2_forward_on_entire_lanes)
   //
   {
     const auto & non_border_point = non_border_points.at(0);
-    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 20 / 3.6);
-  }
-  {
-    // 3rd border point
-    // 56 -> 58
-    const auto & border_point = border_points.at(0);
-    ASSERT_FLOAT_EQ(border_point.point.longitudinal_velocity_mps, 25 / 3.6);
+    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 25 / 3.6);
   }
   {
     // 4th border point
     // 58 -> 59
-    const auto & border_point = border_points.at(1);
+    const auto & border_point = border_points.at(0);
     ASSERT_FLOAT_EQ(border_point.point.longitudinal_velocity_mps, 30 / 3.6);
   }
   {
     // 5th border point
     // 59 -> 55
-    const auto & border_point = border_points.at(2);
+    const auto & border_point = border_points.at(1);
     ASSERT_FLOAT_EQ(border_point.point.longitudinal_velocity_mps, 35 / 3.6);
   }
 
 #ifdef PLOT
   {
     std::string filename =
-      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam() +
-      ".svg";
+      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
+      "test_reference_path_invalid_01.svg";
     std::replace(filename.begin(), filename.end(), '/', '_');
     savefig(reference_path, forward_length, backward_length, ego_pose, lanelet_sequence, filename);
   }
 #endif
 }
 
-TEST_P(TestWithVM_01_10_12_Map, from_P3_forward_on_entire_lanes)
+TEST_F(TestWithVM_01_10_12_Map, from_P3_forward_on_entire_lanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P3;
@@ -1427,15 +1132,15 @@ TEST_P(TestWithVM_01_10_12_Map, from_P3_forward_on_entire_lanes)
 #ifdef PLOT
   {
     std::string filename =
-      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam() +
-      ".svg";
+      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
+      "test_reference_path_invalid_01.svg";
     std::replace(filename.begin(), filename.end(), '/', '_');
     savefig(reference_path, forward_length, backward_length, ego_pose, lanelet_sequence, filename);
   }
 #endif
 }
 
-TEST_P(TestWithVM_01_10_12_Map, from_P4_forward_on_entire_lanes)
+TEST_F(TestWithVM_01_10_12_Map, from_P4_forward_on_entire_lanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P4;
@@ -1514,181 +1219,13 @@ TEST_P(TestWithVM_01_10_12_Map, from_P4_forward_on_entire_lanes)
 #ifdef PLOT
   {
     std::string filename =
-      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam() +
-      ".svg";
+      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
+      "test_reference_path_invalid_01.svg";
     std::replace(filename.begin(), filename.end(), '/', '_');
     savefig(reference_path, forward_length, backward_length, ego_pose, lanelet_sequence, filename);
   }
 #endif
 }
-
-TEST_P(TestWithVM_01_10_12_Map, from_P5_forward_on_entire_lanes)
-{
-  const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
-  const auto ego_pose = P5;
-  const auto current_lanelet = lanelet_map_->laneletLayer.get(59);
-  const auto lanelet_sequence =
-    ids |
-    ranges::views::transform([&](const auto & id) { return lanelet_map_->laneletLayer.get(id); }) |
-    ranges::to<std::vector>();
-
-  const double forward_length = inf;
-  const double backward_length = 0.0;
-  const auto reference_path_opt = trajectory::build_reference_path(
-    lanelet_sequence, current_lanelet, ego_pose, lanelet_map_, routing_graph_, traffic_rules_,
-    forward_length, backward_length);
-  ASSERT_TRUE(reference_path_opt.has_value());
-
-  const auto & reference_path = reference_path_opt.value();
-
-  const auto path_points_with_lane_id = reference_path.restore();
-
-  //
-  //  points are smooth
-  //
-  for (const auto [p1, p2, p3] : ranges::views::zip(
-         path_points_with_lane_id, path_points_with_lane_id | ranges::views::drop(1),
-         path_points_with_lane_id | ranges::views::drop(2))) {
-    EXPECT_TRUE(
-      autoware_utils_geometry::calc_distance3d(p1, p2) >=
-      autoware::experimental::trajectory::k_points_minimum_dist_threshold);
-    EXPECT_TRUE(
-      std::fabs(
-        autoware_utils_math::normalize_radian(
-          autoware_utils_geometry::calc_azimuth_angle(
-            p1.point.pose.position, p2.point.pose.position) -
-          autoware_utils_geometry::calc_azimuth_angle(
-            p2.point.pose.position, p3.point.pose.position))) < M_PI / 2.0);
-  }
-
-  //
-  //  All of path points are either non-border point(with 1 lane_id) or border point(with 2 lane_id)
-  //
-  const auto border_points =
-    path_points_with_lane_id |
-    ranges::views::filter([&](const auto & point) { return point.lane_ids.size() == 2; }) |
-    ranges::to<std::vector>();
-  ASSERT_EQ(border_points.size(), 1);
-  {
-    // 5th border point
-    // 59 -> 55
-    const auto & border_point = border_points.at(0);
-    ASSERT_EQ(border_point.lane_ids.front(), 59);
-    ASSERT_EQ(border_point.lane_ids.back(), 55);
-  }
-
-  const auto non_border_points =
-    path_points_with_lane_id |
-    ranges::views::filter([&](const auto & point) { return point.lane_ids.size() == 1; }) |
-    ranges::to<std::vector>();
-  ASSERT_EQ(non_border_points.size(), path_points_with_lane_id.size() - border_points.size());
-
-  //
-  //  Velocity of path points is set the Lanelet speed limit, and increase at the border point in
-  //  step-function manner
-  //
-  {
-    const auto & non_border_point = non_border_points.at(0);
-    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 30 / 3.6);
-  }
-  {
-    // 5th border point
-    // 59 -> 55
-    const auto & border_point = border_points.at(0);
-    ASSERT_FLOAT_EQ(border_point.point.longitudinal_velocity_mps, 35 / 3.6);
-  }
-
-#ifdef PLOT
-  {
-    std::string filename =
-      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam() +
-      ".svg";
-    std::replace(filename.begin(), filename.end(), '/', '_');
-    savefig(reference_path, forward_length, backward_length, ego_pose, lanelet_sequence, filename);
-  }
-#endif
-}
-
-TEST_P(TestWithVM_01_10_12_Map, from_P6_forward_on_entire_lanes)
-{
-  const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
-  const auto ego_pose = P6;
-  const auto current_lanelet = lanelet_map_->laneletLayer.get(55);
-  const auto lanelet_sequence =
-    ids |
-    ranges::views::transform([&](const auto & id) { return lanelet_map_->laneletLayer.get(id); }) |
-    ranges::to<std::vector>();
-
-  const double forward_length = inf;
-  const double backward_length = 0.0;
-  const auto reference_path_opt = trajectory::build_reference_path(
-    lanelet_sequence, current_lanelet, ego_pose, lanelet_map_, routing_graph_, traffic_rules_,
-    forward_length, backward_length);
-  ASSERT_TRUE(reference_path_opt.has_value());
-
-  const auto & reference_path = reference_path_opt.value();
-
-  const auto path_points_with_lane_id = reference_path.restore();
-
-  //
-  //  points are smooth
-  //
-  for (const auto [p1, p2, p3] : ranges::views::zip(
-         path_points_with_lane_id, path_points_with_lane_id | ranges::views::drop(1),
-         path_points_with_lane_id | ranges::views::drop(2))) {
-    EXPECT_TRUE(
-      autoware_utils_geometry::calc_distance3d(p1, p2) >=
-      autoware::experimental::trajectory::k_points_minimum_dist_threshold);
-    EXPECT_TRUE(
-      std::fabs(
-        autoware_utils_math::normalize_radian(
-          autoware_utils_geometry::calc_azimuth_angle(
-            p1.point.pose.position, p2.point.pose.position) -
-          autoware_utils_geometry::calc_azimuth_angle(
-            p2.point.pose.position, p3.point.pose.position))) < M_PI / 2.0);
-  }
-
-  //
-  //  All of path points are either non-border point(with 1 lane_id) or border point(with 2 lane_id)
-  //
-  const auto border_points =
-    path_points_with_lane_id |
-    ranges::views::filter([&](const auto & point) { return point.lane_ids.size() == 2; }) |
-    ranges::to<std::vector>();
-  ASSERT_EQ(border_points.size(), 0);
-
-  const auto non_border_points =
-    path_points_with_lane_id |
-    ranges::views::filter([&](const auto & point) { return point.lane_ids.size() == 1; }) |
-    ranges::to<std::vector>();
-  ASSERT_EQ(non_border_points.size(), path_points_with_lane_id.size() - border_points.size());
-
-  //
-  //  Velocity of path points is set the Lanelet speed limit, and increase at the border point in
-  //  step-function manner
-  //
-  {
-    const auto & non_border_point = non_border_points.at(0);
-    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 35 / 3.6);
-  }
-
-#ifdef PLOT
-  {
-    std::string filename =
-      std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam() +
-      ".svg";
-    std::replace(filename.begin(), filename.end(), '/', '_');
-    savefig(reference_path, forward_length, backward_length, ego_pose, lanelet_sequence, filename);
-  }
-#endif
-}
-
-INSTANTIATE_TEST_SUITE_P(
-  ReferencePathWith_VM_01_10_Maps, TestWithVM_01_10_12_Map,
-  ::testing::Values(
-    "test_reference_path_valid_01.yaml", "test_reference_path_valid_02.yaml",
-    "test_reference_path_valid_03.yaml", "test_reference_path_valid_04.yaml",
-    "test_reference_path_valid_05.yaml", "test_reference_path_valid_06.yaml"));
 
 }  // namespace autoware::experimental
 

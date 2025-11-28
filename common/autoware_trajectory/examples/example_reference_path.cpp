@@ -264,10 +264,71 @@ inline TestCaseFormat1 load_test_case(const std::string & test_case_file_path)
   return 0;
 }
 
+[[maybe_unused]] int main4()
+{
+  auto plt = autoware::pyplot::import();
+  auto [fig, axes] = plt.subplots(1, 1);
+
+  const auto test_case_data = autoware::test_utils::load_test_case(
+    fs::path(ament_index_cpp::get_package_share_directory("autoware_trajectory")) /
+    "test_data/test_reference_path_invalid_01.yaml");
+  const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
+  const auto ego_pose = test_case_data.manual_poses.at("P0");
+
+  const auto lanelet_map_ptr =
+    lanelet2_utils::load_mgrs_coordinate_map(test_case_data.map_abs_path);
+  const auto [routing_graph, traffic_rules] =
+    lanelet2_utils::instantiate_routing_graph_and_traffic_rules(lanelet_map_ptr);
+  const auto current_lanelet = lanelet_map_ptr->laneletLayer.get(60);
+
+  const auto lanelet_sequence = ids | ranges::views::transform([&](const auto & id) {
+                                  return lanelet_map_ptr->laneletLayer.get(id);
+                                }) |
+                                ranges::to<std::vector>();
+  auto path_plot_config = autoware::test_utils::PathWithLaneIdConfig::defaults();
+  path_plot_config.linewidth = 2.0;
+  path_plot_config.color = "orange";
+  path_plot_config.quiver_size = 2.0;
+  path_plot_config.lane_id = true;
+
+  auto lane_plot_config = autoware::test_utils::LaneConfig::defaults();
+  lane_plot_config.line_config = autoware::test_utils::LineConfig::defaults();
+
+  {
+    static constexpr auto inf = std::numeric_limits<double>::infinity();
+    const double forward_length = inf;
+    const double backward_length = inf;
+    auto & ax = axes[0];
+    const auto reference_path_opt = trajectory::build_reference_path(
+      lanelet_sequence, current_lanelet, ego_pose, lanelet_map_ptr, routing_graph, traffic_rules,
+      forward_length, backward_length);
+    if (reference_path_opt) {
+      const auto & reference_path = reference_path_opt.value();
+      autoware_internal_planning_msgs::msg::PathWithLaneId path;
+      path.points = reference_path.restore();
+      autoware::test_utils::plot_autoware_object(path, ax, path_plot_config);
+      ax.set_title(Args(
+        "forward = 50, backward = 10 (actual length = " + std::to_string(reference_path.length()) +
+        ")"));
+    }
+    for (const auto & route_lanelet : lanelet_sequence) {
+      autoware::test_utils::plot_lanelet2_object(route_lanelet, ax, lane_plot_config);
+    }
+    ax.scatter(Args(ego_pose.position.x, ego_pose.position.y), Kwargs("label"_a = "ego position"));
+    ax.set_aspect(Args("equal"));
+    ax.legend();
+    ax.grid();
+  }
+  plt.show();
+
+  return 0;
+}
+
 int main()
 {
   pybind11::scoped_interpreter guard{};
   // main1();
   // main2();
-  main3();
+  // main3();
+  main4();
 }
