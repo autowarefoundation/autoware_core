@@ -1142,25 +1142,6 @@ TEST_P(TestWithVM_01_10_12_Map, from_P1_forward_on_entire_lanes)
     path_points_with_lane_id |
     ranges::views::filter([&](const auto & point) { return point.lane_ids.size() == 2; }) |
     ranges::to<std::vector>();
-  // TODO(soblin): since Lanelet 57 is too short, this case causes some numerical error, and we
-  // obtain backward path to some extent.
-  if (
-    GetParam() == "test_reference_path_valid_03.yaml" ||
-    GetParam() == "test_reference_path_valid_05.yaml" ||
-    GetParam() == "test_reference_path_valid_06.yaml") {
-#ifdef PLOT
-    {
-      std::string filename =
-        std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) + GetParam() +
-        ".svg";
-      std::replace(filename.begin(), filename.end(), '/', '_');
-      savefig(
-        reference_path, forward_length, backward_length, ego_pose, lanelet_sequence, filename);
-    }
-#endif
-    GTEST_SKIP() << "skip";
-  }
-
   ASSERT_EQ(border_points.size(), 4);
   {
     // 2nd border point
