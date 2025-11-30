@@ -220,6 +220,8 @@ void MultiVoxelGridCovariance<PointT>::createKdtree()
     total_leaf_num += grid_ptr->size();
   }
 
+  // Resize to actual number of valid entries to avoid wasting memory on trailing nulls
+  new_grid_list.resize(new_pos);
   grid_list_ = std::move(new_grid_list);
 
   // Rebuild the voxel_centroids_ptr_
@@ -229,11 +231,6 @@ void MultiVoxelGridCovariance<PointT>::createKdtree()
   leaf_ptrs_.reserve(total_leaf_num);
 
   for (const auto & grid_ptr : grid_list_) {
-    // Skip null grid pointers
-    if (!grid_ptr) {
-      continue;
-    }
-
     for (const auto & leaf : *grid_ptr) {
       PointT new_leaf;
 
