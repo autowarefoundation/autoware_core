@@ -9,6 +9,8 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/debug.cpp
   src/manager.cpp
   src/scene.cpp
+  src/experimental/manager.cpp
+  src/experimental/scene.cpp
 )
 
 if(BUILD_TESTING)
@@ -23,4 +25,4 @@ if(BUILD_TESTING)
   target_include_directories(test_${PROJECT_NAME} PRIVATE src)
 endif()
 
-ament_auto_package(INSTALL_TO_SHARE config)
+autoware_ament_auto_package(INSTALL_TO_SHARE config)

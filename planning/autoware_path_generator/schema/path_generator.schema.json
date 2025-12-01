@@ -24,15 +24,9 @@
           "default": "300.0",
           "minimum": 0.0
         },
-        "waypoint_group.separation_threshold": {
+        "waypoint.connection_gradient_from_centerline": {
           "type": "number",
-          "description": "Maximum distance at which consecutive waypoints are considered to belong to the same group [m]",
-          "default": "1.0",
-          "minimum": 0.0
-        },
-        "waypoint_group.interval_margin_ratio": {
-          "type": "number",
-          "description": "Ratio for determining length of switching section from centerline to waypoints",
+          "description": "Gradient for connecting centerline and user-defined waypoints",
           "default": "10.0",
           "minimum": 0.0
         },

@@ -36,7 +36,7 @@ runs:
     - name: Use ros2-testing packages
       run: |
         if [ "${{ inputs.rosdistro }}" = "jazzy" ]; then
-          sed -i 's|http://packages.ros.org/ros2/ubuntu|http://packages.ros.org/ros2-testing/ubuntu|g' /etc/apt/sources.list.d/ros2-latest.list
+          sed -i 's|http://packages.ros.org/ros2/ubuntu|http://packages.ros.org/ros2-testing/ubuntu|g' /etc/apt/sources.list.d/ros2.sources
           apt-get update
         fi
       shell: bash
@@ -78,15 +78,6 @@ runs:
 
     - name: Show ccache stats after build
       run: du -sh ${CCACHE_DIR} && ccache -s
-      shell: bash
-
-    - name: Set up geographiclib-tools
-      run: |
-        if [ "${{ inputs.rosdistro }}" = "jazzy" ]; then
-          apt-get update
-          apt-get install -y geographiclib-tools
-          geographiclib-get-geoids egm2008-1
-        fi
       shell: bash
 
     - name: Test

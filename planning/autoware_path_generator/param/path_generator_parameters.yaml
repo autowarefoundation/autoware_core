@@ -15,13 +15,8 @@ path_generator:
       validation:
         gt<>: [0]
 
-  waypoint_group:
-    separation_threshold:
-      type: double
-      validation:
-        gt<>: [0]
-
-    interval_margin_ratio:
+  waypoint:
+    connection_gradient_from_centerline:
       type: double
       validation:
         gt<>: [0]

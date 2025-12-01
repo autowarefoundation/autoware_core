@@ -21,11 +21,16 @@
 #include <autoware_utils_debug/published_time_publisher.hpp>
 #include <autoware_utils_logging/logger_level_configure.hpp>
 #include <autoware_utils_rclcpp/polling_subscriber.hpp>
+#include <autoware_utils_system/stop_watch.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <tf2_ros/buffer.hpp>
+#include <tf2_ros/transform_listener.hpp>
 
-#include <autoware_internal_debug_msgs/srv/string.hpp>
+#include <autoware_internal_debug_msgs/msg/float64_stamped.hpp>
 #include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
 #include <autoware_internal_planning_msgs/msg/velocity_limit.hpp>
+#include <autoware_internal_planning_msgs/srv/load_plugin.hpp>
+#include <autoware_internal_planning_msgs/srv/unload_plugin.hpp>
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
 #include <autoware_perception_msgs/msg/predicted_objects.hpp>
 #include <autoware_planning_msgs/msg/path.hpp>
@@ -34,9 +39,6 @@
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
 
-#include <tf2_ros/buffer.h>
-#include <tf2_ros/transform_listener.h>
-
 #include <memory>
 #include <mutex>
 #include <string>
@@ -44,7 +46,10 @@
 
 namespace autoware::behavior_velocity_planner
 {
+using autoware_internal_debug_msgs::msg::Float64Stamped;
 using autoware_internal_planning_msgs::msg::VelocityLimit;
+using autoware_internal_planning_msgs::srv::LoadPlugin;
+using autoware_internal_planning_msgs::srv::UnloadPlugin;
 using autoware_map_msgs::msg::LaneletMapBin;
 
 class BehaviorVelocityPlannerNode : public rclcpp::Node
@@ -96,7 +101,7 @@ private:
 
   void onParam();
 
-  void processNoGroundPointCloud(const sensor_msgs::msg::PointCloud2::ConstSharedPtr msg);
+  bool processNoGroundPointCloud(const sensor_msgs::msg::PointCloud2::ConstSharedPtr msg);
   void processOdometry(const nav_msgs::msg::Odometry::ConstSharedPtr msg);
   void processTrafficSignals(
     const autoware_perception_msgs::msg::TrafficLightGroupArray::ConstSharedPtr msg);
@@ -105,8 +110,10 @@ private:
   // publisher
   rclcpp::Publisher<autoware_planning_msgs::msg::Path>::SharedPtr path_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr debug_viz_pub_;
+  rclcpp::Publisher<Float64Stamped>::SharedPtr processing_time_publisher_;
 
   void publishDebugMarker(const autoware_planning_msgs::msg::Path & path);
+  void publishProcessingTime();
 
   //  parameter
   double forward_path_length_;
@@ -117,15 +124,15 @@ private:
   PlannerData planner_data_;
   BehaviorVelocityPlannerManager planner_manager_;
   bool is_driving_forward_{true};
+  autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_;
 
-  rclcpp::Service<autoware_internal_debug_msgs::srv::String>::SharedPtr srv_load_plugin_;
-  rclcpp::Service<autoware_internal_debug_msgs::srv::String>::SharedPtr srv_unload_plugin_;
+  rclcpp::Service<LoadPlugin>::SharedPtr srv_load_plugin_;
+  rclcpp::Service<UnloadPlugin>::SharedPtr srv_unload_plugin_;
   void onUnloadPlugin(
-    const autoware_internal_debug_msgs::srv::String::Request::SharedPtr request,
-    const autoware_internal_debug_msgs::srv::String::Response::SharedPtr response);
+    const UnloadPlugin::Request::SharedPtr request,
+    const UnloadPlugin::Response::SharedPtr response);
   void onLoadPlugin(
-    const autoware_internal_debug_msgs::srv::String::Request::SharedPtr request,
-    const autoware_internal_debug_msgs::srv::String::Response::SharedPtr response);
+    const LoadPlugin::Request::SharedPtr request, const LoadPlugin::Response::SharedPtr response);
 
   // mutex for planner_data_
   std::mutex mutex_;

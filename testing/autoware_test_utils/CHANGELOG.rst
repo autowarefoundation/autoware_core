@@ -27,6 +27,99 @@ Changelog for package autoware_test_utils
 * chore: include iostream and link yaml-cpp for Jazzy (`#351 <https://github.com/autowarefoundation/autoware_core/issues/351>`_)
 * Contributors: Mitsuhiro Sakamoto, Tim Clephas
 
+1.5.0 (2025-11-16)
+------------------
+* Merge remote-tracking branch 'origin/main' into humble
+* feat: replace `ament_auto_package` to `autoware_ament_auto_package` (`#700 <https://github.com/autowarefoundation/autoware_core/issues/700>`_)
+  * replace ament_auto_package to autoware_ament_auto_package
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* chore: jazzy-porting:fix dangling reference (`#633 <https://github.com/autowarefoundation/autoware_core/issues/633>`_)
+  dangling reference::jazzy-porting::fix dangling reference error in test file of autoware_test_utils/
+* chore(behavior_velocity_planner): remove bvp run_out (`#629 <https://github.com/autowarefoundation/autoware_core/issues/629>`_)
+* feat(obstacle_stop_module, motion_velocity_planner_common): add safety_factor to obstacle_stop module (`#572 <https://github.com/autowarefoundation/autoware_core/issues/572>`_)
+  add safety factor, add planning_factor test
+* chore: bump version (1.4.0) and update changelog (`#608 <https://github.com/autowarefoundation/autoware_core/issues/608>`_)
+* Contributors: Mete Fatih Cırıt, Yuki TAKAGI, Yutaka Kondo, mitsudome-r, 心刚
+
+1.4.0 (2025-08-11)
+------------------
+* Merge remote-tracking branch 'origin/main' into humble
+* feat: change planning output topic name to /planning/trajectory (`#602 <https://github.com/autowarefoundation/autoware_core/issues/602>`_)
+  * change planning output topic name to /planning/trajectory
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* chore: bump version to 1.3.0 (`#554 <https://github.com/autowarefoundation/autoware_core/issues/554>`_)
+* fix(test_utils): add missing lane ids in `makeBehaviorNormalRoute()` (`#561 <https://github.com/autowarefoundation/autoware_core/issues/561>`_)
+  add missing lane ids
+* test(path_generator): add extra tests (`#449 <https://github.com/autowarefoundation/autoware_core/issues/449>`_)
+  * add map for test
+  * update test cases for get_turn_signal()
+  * rename test route files
+  * add test with dense centerline
+  * move dense centerline map to sample_map directory
+  * add tests for get_arc_length_on_path
+  * modify path start point to be inside route lanelet
+  * add tests for smooth goal connection
+  * include necessary header
+  * remove ineffective test case
+  * fix comment
+  * remove unnecessary lines
+  * fix test case for refine_path_for_goal
+  * rename parameters
+  * add missing argument
+  * remove include guard
+  ---------
+* Contributors: Mitsuhiro Sakamoto, Ryohsuke Mitsudome, Yukihiro Saito
+
+1.3.0 (2025-06-23)
+------------------
+* fix: to be consistent version in all package.xml(s)
+* feat(autoware_trajectory): implement a function to construct trajectory class for reference path (`#469 <https://github.com/autowarefoundation/autoware_core/issues/469>`_)
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* chore(autoware_test_utils): delete `launch` directory to remove dependency on `autoware_launch` (`#498 <https://github.com/autowarefoundation/autoware_core/issues/498>`_)
+  remove launch
+* fix(autoware_test_utils): fix linking to yaml-cpp (`#315 <https://github.com/autowarefoundation/autoware_core/issues/315>`_)
+  * Fix linking to yaml-cpp
+  * Remove find_package(yaml_cpp_vendor...)
+  * wip
+  ---------
+  Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
+* fix: tf2 uses hpp headers in rolling (and is backported) (`#483 <https://github.com/autowarefoundation/autoware_core/issues/483>`_)
+  * tf2 uses hpp headers in rolling (and is backported)
+  * fixup! tf2 uses hpp headers in rolling (and is backported)
+  ---------
+* chore: bump up version to 1.1.0 (`#462 <https://github.com/autowarefoundation/autoware_core/issues/462>`_) (`#464 <https://github.com/autowarefoundation/autoware_core/issues/464>`_)
+* fix(autoware_test_utils): fix deprecated autoware_utils header (`#415 <https://github.com/autowarefoundation/autoware_core/issues/415>`_)
+  * fix autoware_utils header
+  * fix autoware_utils packages
+  ---------
+  Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
+* test(path_generator): add tests for path cut feature (`#268 <https://github.com/autowarefoundation/autoware_core/issues/268>`_)
+  * add map for test
+  * add overpass map
+  * refactor & enhance base test class
+  * add tests
+  * style(pre-commit): autofix
+  * fix year created
+  Co-authored-by: Kosuke Takeuchi <kosuke.tnp@gmail.com>
+  * anonymize test map
+  * style(pre-commit): autofix
+  * add test map info to README
+  * style(pre-commit): autofix
+  * make tests work with autoware_trajectory
+  * include necessary header
+  * fix test case
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Kosuke Takeuchi <kosuke.tnp@gmail.com>
+  Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
+* chore: include iostream and link yaml-cpp for Jazzy (`#351 <https://github.com/autowarefoundation/autoware_core/issues/351>`_)
+* Contributors: Mamoru Sobue, Masaki Baba, Mitsuhiro Sakamoto, Shane Loretz, Tim Clephas, Yutaka Kondo, github-actions
+
 1.0.0 (2025-03-31)
 ------------------
 

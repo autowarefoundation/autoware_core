@@ -17,6 +17,7 @@
 #include <gtest/gtest.h>
 
 #include <memory>
+#include <string>
 
 TEST(PlanningTestManager, CommunicationTest)
 {
@@ -33,7 +34,7 @@ TEST(PlanningTestManager, CommunicationTest)
     std::make_shared<autoware::planning_test_manager::PlanningInterfaceTestManager>();
 
   // instantiate the TargetNode for test
-  auto test_target_node = std::make_shared<rclcpp::Node>("target_node_for_test");
+  auto test_target_node = std::make_shared<rclcpp::Node>("target_node_for_communication_test");
 
   test_manager->resetReceivedTopicNum();
   test_manager->subscribeOutput<Trajectory>("normal_trajectory_for_test");
@@ -98,5 +99,51 @@ TEST(PlanningTestManager, CommunicationTest)
   EXPECT_GE(test_manager->getReceivedTopicNum(), 1);
 
   // shutdown ROS context
+  rclcpp::shutdown();
+}
+
+TEST(PlanningTestManager, CallbackSubscriptionTest)
+{
+  using nav_msgs::msg::Odometry;
+  const std::string off_track_odometry_topic = "off_track_odometry_for_test";
+
+  rclcpp::init(0, nullptr);
+
+  auto test_manager =
+    std::make_shared<autoware::planning_test_manager::PlanningInterfaceTestManager>();
+
+  auto test_target_node = std::make_shared<rclcpp::Node>("target_node_for_subscription_test");
+
+  std::optional<Odometry> off_track_odometry;
+  test_manager->subscribeOutput<Odometry>(
+    off_track_odometry_topic,
+    [&off_track_odometry](const Odometry::ConstSharedPtr & msg) { off_track_odometry = *msg; });
+  test_manager->testWithOffTrackOdometry(test_target_node, off_track_odometry_topic);
+  ASSERT_TRUE(off_track_odometry.has_value());
+
+  rclcpp::shutdown();
+}
+
+TEST(PlanningTestManager, CallbackSubscriptionTestWithMsgValidation)
+{
+  using nav_msgs::msg::Odometry;
+  const std::string off_track_odometry_topic = "off_track_odometry_for_test";
+  rclcpp::init(0, nullptr);
+
+  auto test_manager =
+    std::make_shared<autoware::planning_test_manager::PlanningInterfaceTestManager>();
+
+  auto test_target_node = std::make_shared<rclcpp::Node>("target_node_for_msg_validation_test");
+
+  std::optional<Odometry> off_track_odometry;
+  Odometry msg{rosidl_runtime_cpp::MessageInitialization::ZERO};
+  msg.pose.pose.position.x = 10.0;
+  test_manager->subscribeOutput<Odometry>(
+    off_track_odometry_topic,
+    [&off_track_odometry](const Odometry::ConstSharedPtr & msg) { off_track_odometry = *msg; });
+  test_manager->publishInput(test_target_node, off_track_odometry_topic, msg);
+  ASSERT_TRUE(off_track_odometry.has_value());
+  EXPECT_DOUBLE_EQ(off_track_odometry->pose.pose.position.x, 10.0);
+
   rclcpp::shutdown();
 }

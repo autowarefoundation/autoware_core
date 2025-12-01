@@ -99,7 +99,8 @@ bool StopLineModule::modifyPathVelocity(PathWithLaneId * path)
     0.0 /*shift distance*/, "stopline");
 
   updateStateAndStoppedTime(
-    &state_, &stopped_time_, clock_->now(), *stop_point - ego_s, planner_data_->isVehicleStopped());
+    &state_, &stopped_time_, clock_->now(), *stop_point - ego_s,
+    planner_data_->isVehicleStopped(planner_param_.vehicle_stopped_duration_threshold));
 
   geometry_msgs::msg::Pose stop_pose = trajectory->compute(*stop_point).point.pose;
 
@@ -189,7 +190,7 @@ void StopLineModule::updateStateAndStoppedTime(
     }
     case State::STOPPED: {
       double stop_duration = (now - **stopped_time).seconds();
-      if (stop_duration > planner_param_.stop_duration_sec) {
+      if (stop_duration > planner_param_.required_stop_duration_sec) {
         *state = State::START;
         stopped_time->reset();
         logInfo("State transition: STOPPED -> START | Duration: %.2fs", stop_duration);

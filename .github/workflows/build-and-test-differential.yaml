@@ -37,7 +37,7 @@ jobs:
           - rosdistro: humble
             container: ghcr.io/autowarefoundation/autoware:core-common-devel
           - rosdistro: jazzy
-            container: ros:jazzy
+            container: ghcr.io/autowarefoundation/autoware:core-common-devel-jazzy-amd64
     steps:
       - name: Set PR fetch depth
         run: echo "PR_FETCH_DEPTH=$(( ${{ github.event.pull_request.commits }} + 1 ))" >> "${GITHUB_ENV}"
@@ -57,8 +57,21 @@ jobs:
 
   clang-tidy-differential:
     needs: build-and-test-differential
+    # Run regardless of the build-and-test-differential job status until Jazzy build becomes stable
+    if: ${{ always() }}
     runs-on: ubuntu-24.04
-    container: ghcr.io/autowarefoundation/autoware:core-common-devel
+    container: ${{ matrix.container }}
+    strategy:
+      fail-fast: false
+      matrix:
+        rosdistro:
+          - humble
+          - jazzy
+        include:
+          - rosdistro: humble
+            container: ghcr.io/autowarefoundation/autoware:core-common-devel
+          - rosdistro: jazzy
+            container: ghcr.io/autowarefoundation/autoware:core-common-devel-jazzy-amd64
     steps:
       - name: Set PR fetch depth
         run: echo "PR_FETCH_DEPTH=$(( ${{ github.event.pull_request.commits }} + 1 ))" >> "${GITHUB_ENV}"
@@ -89,11 +102,12 @@ jobs:
         if: ${{ steps.get-changed-files.outputs.changed-files != '' }}
         uses: autowarefoundation/autoware-github-actions/clang-tidy@v1
         with:
-          rosdistro: humble
+          rosdistro: ${{ matrix.rosdistro }}
           target-packages: ${{ steps.get-modified-packages.outputs.modified-packages }}
           target-files: ${{ steps.get-changed-files.outputs.changed-files }}
           clang-tidy-config-url: https://raw.githubusercontent.com/autowarefoundation/autoware/main/.clang-tidy-ci
           underlay-workspace: /opt/autoware
+          artifact-name: clang-tidy-result-${{ matrix.rosdistro }}
 
       - name: Show disk space after the tasks
         run: df -h
@@ -102,7 +116,18 @@ jobs:
     needs: require-label
     if: ${{ needs.require-label.outputs.result == 'true' }}
     runs-on: ubuntu-24.04
-    container: ghcr.io/autowarefoundation/autoware:core-common-devel
+    container: ${{ matrix.container }}
+    strategy:
+      fail-fast: false
+      matrix:
+        rosdistro:
+          - humble
+          - jazzy
+        include:
+          - rosdistro: humble
+            container: ghcr.io/autowarefoundation/autoware:core-common-devel
+          - rosdistro: jazzy
+            container: ghcr.io/autowarefoundation/autoware:core-common-devel-jazzy-amd64
     steps:
       - name: Set PR fetch depth
         run: echo "PR_FETCH_DEPTH=$(( ${{ github.event.pull_request.commits }} + 1 ))" >> "${GITHUB_ENV}"
@@ -125,5 +150,5 @@ jobs:
       - name: Run build-and-test-differential action
         uses: ./.github/actions/build-and-test-differential
         with:
-          rosdistro: humble
+          rosdistro: ${{ matrix.rosdistro }}
           codecov-token: ${{ secrets.CODECOV_TOKEN }}

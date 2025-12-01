@@ -34,7 +34,7 @@ TEST(HatchedRoadMarking, AdjacentPolygons)
   const auto sample_map_dir =
     fs::path(ament_index_cpp::get_package_share_directory("autoware_lanelet2_utils")) /
     "sample_map";
-  const auto map_path = sample_map_dir / "hatched_road_marking" / "lanelet2_map.osm";
+  const auto map_path = sample_map_dir / "vm_06_01/lanelet2_map.osm";
 
   const auto lanelet_map_ptr = lanelet2_utils::load_mgrs_coordinate_map(map_path.string());
   ASSERT_TRUE(static_cast<bool>(lanelet_map_ptr));

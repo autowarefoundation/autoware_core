@@ -35,7 +35,7 @@ PathGenerator::InputData create_input_data()
 
   const auto lanelet_map_path =
     ament_index_cpp::get_package_share_directory("autoware_lanelet2_utils") +
-    "/sample_map/dense_centerline/lanelet2_map.osm";
+    "/sample_map/vm_01_10-12/dense_centerline/lanelet2_map.osm";
   const auto lanelet_map_bin = autoware::test_utils::make_map_bin_msg(lanelet_map_path);
   if (lanelet_map_bin.header.frame_id == "") {
     throw std::runtime_error(
@@ -84,9 +84,8 @@ TEST(DenseCenterlineTest, generatePath)
   path_generator.get_parameter("path_length.backward", params.path_length.backward);
   path_generator.get_parameter("path_length.forward", params.path_length.forward);
   path_generator.get_parameter(
-    "waypoint_group.separation_threshold", params.waypoint_group.separation_threshold);
-  path_generator.get_parameter(
-    "waypoint_group.interval_margin_ratio", params.waypoint_group.interval_margin_ratio);
+    "waypoint.connection_gradient_from_centerline",
+    params.waypoint.connection_gradient_from_centerline);
   path_generator.get_parameter(
     "goal_connection.connection_section_length", params.goal_connection.connection_section_length);
   path_generator.get_parameter(

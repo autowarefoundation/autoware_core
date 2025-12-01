@@ -2,9 +2,10 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>autoware_lanelet2_utils</name>
-  <version>1.1.0</version>
+  <version>1.5.0</version>
   <description>The autoware_lanelet2_utils package</description>
   <maintainer email="mamoru.sobue@tier4.jp">Mamoru Sobue</maintainer>
+  <maintainer email="maxime.clement@tier4.jp">Maxime Clement</maintainer>
   <maintainer email="kosuke.takeuchi@tier4.jp">Kosuke Takeuchi</maintainer>
   <license>Apache License 2.0</license>
 
@@ -14,12 +15,19 @@
   <buildtool_depend>autoware_cmake</buildtool_depend>
 
   <depend>autoware_lanelet2_extension</depend>
+  <depend>autoware_map_msgs</depend>
+  <depend>autoware_planning_msgs</depend>
+  <depend>autoware_utils_geometry</depend>
+  <depend>autoware_utils_math</depend>
   <depend>range-v3</depend>
   <depend>rclcpp</depend>
 
   <test_depend>ament_cmake_ros</test_depend>
   <test_depend>ament_index_cpp</test_depend>
   <test_depend>autoware_pyplot</test_depend>
+  <test_depend>autoware_test_utils</test_depend>
+  <test_depend>rclpy_message_converter</test_depend>
+  <test_depend>yaml-cpp</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

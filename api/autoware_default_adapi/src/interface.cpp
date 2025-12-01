@@ -19,14 +19,15 @@ namespace autoware::default_adapi
 
 InterfaceNode::InterfaceNode(const rclcpp::NodeOptions & options)
 : Node("interface", options),
-  srv_(create_service<Version::Service>(
-    Version::name,
-    [this](
-      const Version::Service::Request::SharedPtr, const Version::Service::Response::SharedPtr res) {
-      res->major = 1;
-      res->minor = 9;
-      res->patch = 0;
-    }))
+  srv_(
+    create_service<Version::Service>(
+      Version::name, [](
+                       const Version::Service::Request::SharedPtr,
+                       const Version::Service::Response::SharedPtr res) {
+        res->major = 1;
+        res->minor = 9;
+        res->patch = 1;
+      }))
 {
 }
 

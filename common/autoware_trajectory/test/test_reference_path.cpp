@@ -18,8 +18,6 @@
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <autoware/lanelet2_utils/conversion.hpp>
-#include <autoware/lanelet2_utils/topology.hpp>
-#include <autoware_lanelet2_extension/utility/message_conversion.hpp>
 #include <autoware_lanelet2_extension/utility/utilities.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 #include <range/v3/all.hpp>
@@ -68,7 +66,7 @@ protected:
 struct Parameter_Map_Waypoint_Straight_00  // NOLINT
 {
   static constexpr const char * pkg = "autoware_lanelet2_utils";
-  static constexpr const char * dir = "straight_waypoint";
+  static constexpr const char * dir = "vm_01_10-12/straight_waypoint";
   const double forward_length;
   const double backward_length;
   const std::vector<lanelet::Id> route_lane_ids;
@@ -131,16 +129,18 @@ TEST_P(TestCase_Map_Waypoint_Straight_00, test_path_validity)
       EXPECT_TRUE(
         autoware_utils_geometry::calc_distance3d(p1, p2) >=
         autoware::experimental::trajectory::k_points_minimum_dist_threshold);
-      EXPECT_TRUE(boost::geometry::within(
-        lanelet::utils::to2D(lanelet::utils::conversion::toLaneletPoint(p2.point.pose.position)),
-        lanelet.polygon2d().basicPolygon()))
+      EXPECT_TRUE(
+        boost::geometry::within(
+          lanelet::utils::to2D(lanelet2_utils::from_ros(p2.point.pose.position)),
+          lanelet.polygon2d().basicPolygon()))
         << "point(" << p2.point.pose.position.x << ", " << p2.point.pose.position.y << ")";
       EXPECT_TRUE(
-        std::fabs(autoware_utils_math::normalize_radian(
-          autoware_utils_geometry::calc_azimuth_angle(
-            p1.point.pose.position, p2.point.pose.position) -
-          autoware_utils_geometry::calc_azimuth_angle(
-            p2.point.pose.position, p3.point.pose.position))) < M_PI / 2.0);
+        std::fabs(
+          autoware_utils_math::normalize_radian(
+            autoware_utils_geometry::calc_azimuth_angle(
+              p1.point.pose.position, p2.point.pose.position) -
+            autoware_utils_geometry::calc_azimuth_angle(
+              p2.point.pose.position, p3.point.pose.position))) < M_PI / 2.0);
     }
   } else {
     ASSERT_FALSE(reference_path_opt.has_value());
@@ -203,7 +203,7 @@ INSTANTIATE_TEST_SUITE_P(
 struct Parameter_Map_Waypoint_Curve_00  // NOLINT
 {
   static constexpr const char * pkg = "autoware_lanelet2_utils";
-  static constexpr const char * dir = "dense_centerline";
+  static constexpr const char * dir = "vm_01_10-12/dense_centerline";
   const double forward_length;
   const double backward_length;
   const std::vector<lanelet::Id> route_lane_ids;
@@ -268,17 +268,19 @@ TEST_P(TestCase_Map_Waypoint_Curve_00, test_path_validity)
         autoware::experimental::trajectory::k_points_minimum_dist_threshold);
 
       // use p2, because p1/p3 at the end may well be slightly outside of the Lanelets by error
-      EXPECT_TRUE(boost::geometry::within(
-        lanelet::utils::to2D(lanelet::utils::conversion::toLaneletPoint(p2.point.pose.position)),
-        lanelet.polygon2d().basicPolygon()))
+      EXPECT_TRUE(
+        boost::geometry::within(
+          lanelet::utils::to2D(lanelet2_utils::from_ros(p2.point.pose.position)),
+          lanelet.polygon2d().basicPolygon()))
         << "point(" << p2.point.pose.position.x << ", " << p2.point.pose.position.y << ")";
 
       EXPECT_TRUE(
-        std::fabs(autoware_utils_math::normalize_radian(
-          autoware_utils_geometry::calc_azimuth_angle(
-            p1.point.pose.position, p2.point.pose.position) -
-          autoware_utils_geometry::calc_azimuth_angle(
-            p2.point.pose.position, p3.point.pose.position))) < M_PI / 2.0);
+        std::fabs(
+          autoware_utils_math::normalize_radian(
+            autoware_utils_geometry::calc_azimuth_angle(
+              p1.point.pose.position, p2.point.pose.position) -
+            autoware_utils_geometry::calc_azimuth_angle(
+              p2.point.pose.position, p3.point.pose.position))) < M_PI / 2.0);
     }
   } else {
     ASSERT_FALSE(reference_path_opt.has_value());
@@ -294,8 +296,8 @@ INSTANTIATE_TEST_SUITE_P(
       0,                               // [m]
       {140, 137, 136, 138, 139, 135},  // ids
       140,                             // id
-      740,                             // x[m]
-      1148,                            // y[m]
+      108,                             // x[m]
+      99,                              // y[m]
       100.0,                           // z[m]
       {0.0, 0.0, 0.0, 1.0},            // quaternion
       true,
@@ -306,8 +308,8 @@ INSTANTIATE_TEST_SUITE_P(
       6.5,                             // [m]
       {140, 137, 136, 138, 139, 135},  // ids
       140,                             // id
-      740,                             // x[m]
-      1148,                            // y[m]
+      108,                             // x[m]
+      99,                              // y[m]
       100.0,                           // z[m]
       {0.0, 0.0, 0.0, 1.0},            // quaternion
       true,
@@ -318,8 +320,8 @@ INSTANTIATE_TEST_SUITE_P(
       6.5,                             // [m]
       {140, 137, 136, 138, 139, 135},  // ids
       140,                             // id
-      740,                             // x[m]
-      1148,                            // y[m]
+      108,                             // x[m]
+      99,                              // y[m]
       100.0,                           // z[m]
       {0.0, 0.0, 0.0, 1.0},            // quaternion
       true,
@@ -330,8 +332,8 @@ INSTANTIATE_TEST_SUITE_P(
       0,                               // [m]
       {140, 137, 136, 138, 139, 135},  // ids
       140,                             // id
-      740,                             // x[m]
-      1148,                            // y[m]
+      108,                             // x[m]
+      99,                              // y[m]
       100.0,                           // z[m]
       {0.0, 0.0, 0.0, 1.0},            // quaternion
       false,
@@ -342,8 +344,8 @@ INSTANTIATE_TEST_SUITE_P(
       inf,                             // [m]
       {140, 137, 136, 138, 139, 135},  // ids
       140,                             // id
-      740,                             // x[m]
-      1148,                            // y[m]
+      108,                             // x[m]
+      99,                              // y[m]
       100.0,                           // z[m]
       {0.0, 0.0, 0.0, 1.0},            // quaternion
       true,
@@ -355,8 +357,8 @@ INSTANTIATE_TEST_SUITE_P(
       0,                               // [m]
       {140, 137, 136, 138, 139, 135},  // ids
       137,                             // id
-      735,                             // x[m]
-      1148,                            // y[m]
+      108,                             // x[m]
+      99,                              // y[m]
       100.0,                           // z[m]
       {0.0, 0.0, 0.0, 1.0},            // quaternion
       true,
@@ -367,8 +369,8 @@ INSTANTIATE_TEST_SUITE_P(
       6.5,                             // [m]
       {140, 137, 136, 138, 139, 135},  // ids
       137,                             // id
-      735,                             // x[m]
-      1148,                            // y[m]
+      108,                             // x[m]
+      99,                              // y[m]
       100.0,                           // z[m]
       {0.0, 0.0, 0.0, 1.0},            // quaternion
       true,
@@ -379,8 +381,8 @@ INSTANTIATE_TEST_SUITE_P(
       6.5,                             // [m]
       {140, 137, 136, 138, 139, 135},  // ids
       137,                             // id
-      735,                             // x[m]
-      1148,                            // y[m]
+      108,                             // x[m]
+      99,                              // y[m]
       100.0,                           // z[m]
       {0.0, 0.0, 0.0, 1.0},            // quaternion
       true,
@@ -469,17 +471,19 @@ TEST_P(TestCase_Map_Overlap_Lane_00, test_path_validity)
         autoware::experimental::trajectory::k_points_minimum_dist_threshold);
 
       // use p2, because p1/p3 at the end may well be slightly outside of the Lanelets by error
-      EXPECT_TRUE(boost::geometry::within(
-        lanelet::utils::to2D(lanelet::utils::conversion::toLaneletPoint(p2.point.pose.position)),
-        lanelet.polygon2d().basicPolygon()))
+      EXPECT_TRUE(
+        boost::geometry::within(
+          lanelet::utils::to2D(lanelet2_utils::from_ros(p2.point.pose.position)),
+          lanelet.polygon2d().basicPolygon()))
         << "point(" << p2.point.pose.position.x << ", " << p2.point.pose.position.y << ")";
 
       EXPECT_TRUE(
-        std::fabs(autoware_utils_math::normalize_radian(
-          autoware_utils_geometry::calc_azimuth_angle(
-            p1.point.pose.position, p2.point.pose.position) -
-          autoware_utils_geometry::calc_azimuth_angle(
-            p2.point.pose.position, p3.point.pose.position))) < M_PI / 2.0);
+        std::fabs(
+          autoware_utils_math::normalize_radian(
+            autoware_utils_geometry::calc_azimuth_angle(
+              p1.point.pose.position, p2.point.pose.position) -
+            autoware_utils_geometry::calc_azimuth_angle(
+              p2.point.pose.position, p3.point.pose.position))) < M_PI / 2.0);
     }
   } else {
     ASSERT_FALSE(reference_path_opt.has_value());
@@ -487,3 +491,9 @@ TEST_P(TestCase_Map_Overlap_Lane_00, test_path_validity)
 }
 
 }  // namespace autoware::experimental
+
+int main(int argc, char ** argv)
+{
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}

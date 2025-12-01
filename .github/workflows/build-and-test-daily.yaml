@@ -19,7 +19,7 @@ jobs:
           - rosdistro: humble
             container: ghcr.io/autowarefoundation/autoware:core-common-devel
           - rosdistro: jazzy
-            container: ros:jazzy
+            container: ghcr.io/autowarefoundation/autoware:core-common-devel-jazzy-amd64
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -39,7 +39,7 @@ jobs:
       - name: Use ros2-testing packages
         run: |
           if [ "${{ matrix.rosdistro }}" = "jazzy" ]; then
-            sed -i 's|http://packages.ros.org/ros2/ubuntu|http://packages.ros.org/ros2-testing/ubuntu|g' /etc/apt/sources.list.d/ros2-latest.list
+            sed -i 's|http://packages.ros.org/ros2/ubuntu|http://packages.ros.org/ros2-testing/ubuntu|g' /etc/apt/sources.list.d/ros2.sources
             apt-get update
           fi
         shell: bash
@@ -51,15 +51,6 @@ jobs:
           rosdistro: ${{ matrix.rosdistro }}
           target-packages: ${{ steps.get-self-packages.outputs.self-packages }}
           underlay-workspace: /opt/autoware
-
-      - name: Set up geographiclib-tools
-        run: |
-          if [ "${{ matrix.rosdistro }}" = "jazzy" ]; then
-            apt-get update
-            apt-get install -y geographiclib-tools
-            geographiclib-get-geoids egm2008-1
-          fi
-        shell: bash
 
       - name: Test
         if: ${{ steps.get-self-packages.outputs.self-packages != '' }}

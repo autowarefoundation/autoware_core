@@ -16,6 +16,7 @@
 #define AUTOWARE__BEHAVIOR_VELOCITY_PLANNER_COMMON__UTILIZATION__UTIL_HPP_
 
 #include <autoware/route_handler/route_handler.hpp>
+#include <autoware/trajectory/path_point_with_lane_id.hpp>
 #include <autoware_utils_geometry/boost_geometry.hpp>
 
 #include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
@@ -256,6 +257,17 @@ lanelet::ConstLanelets getConstLaneletsFromIds(
  */
 lanelet::Ids collectConnectedLaneIds(
   const int64_t lane_id, const std::shared_ptr<route_handler::RouteHandler> & route_handler);
+
+PathWithLaneId fromTrajectory(
+  const autoware::experimental::trajectory::Trajectory<
+    autoware_internal_planning_msgs::msg::PathPointWithLaneId> & path,
+  const std::vector<geometry_msgs::msg::Point> & left_bound,
+  const std::vector<geometry_msgs::msg::Point> & right_bound);
+
+void toTrajectory(
+  const PathWithLaneId & path_msg,
+  autoware::experimental::trajectory::Trajectory<
+    autoware_internal_planning_msgs::msg::PathPointWithLaneId> & path);
 
 }  // namespace planning_utils
 }  // namespace autoware::behavior_velocity_planner

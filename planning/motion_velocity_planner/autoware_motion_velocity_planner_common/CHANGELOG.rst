@@ -5,6 +5,109 @@ Changelog for package autoware_motion_velocity_planner_common
 1.1.0 (2025-05-01)
 ------------------
 
+1.5.0 (2025-11-16)
+------------------
+* Merge remote-tracking branch 'origin/main' into humble
+* feat: replace `ament_auto_package` to `autoware_ament_auto_package` (`#700 <https://github.com/autowarefoundation/autoware_core/issues/700>`_)
+  * replace ament_auto_package to autoware_ament_auto_package
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* feat(motion_velocity_planner_common): search closest collision point insead of first collision index (`#699 <https://github.com/autowarefoundation/autoware_core/issues/699>`_)
+* feat(polygon_utils): move calculate_error_poses to header file (`#676 <https://github.com/autowarefoundation/autoware_core/issues/676>`_)
+  calculate_error_poses to public
+* feat(motion_velocity_planner): update pointcloud preprocess (`#631 <https://github.com/autowarefoundation/autoware_core/issues/631>`_)
+* refactor(motion_velocity_planner_common): separation of cache and polygon functions (`#628 <https://github.com/autowarefoundation/autoware_core/issues/628>`_)
+  refactor cache
+* feat(obstacle_stop_module, motion_velocity_planner_common): add safety_factor to obstacle_stop module (`#572 <https://github.com/autowarefoundation/autoware_core/issues/572>`_)
+  add safety factor, add planning_factor test
+* chore(mvp_planner_common): add docstrings for PlannerData:::object (`#615 <https://github.com/autowarefoundation/autoware_core/issues/615>`_)
+* feat(motion_velocity_planner_common):  lateral margin adjustment for the ego's curvature and target obstacle motion (`#619 <https://github.com/autowarefoundation/autoware_core/issues/619>`_)
+  * add additonal off-track featureuki.takagi@tier4.jp>
+  ---------
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* feat(obstacle_stop): enable object specified obstacle_filtering parameter and refactor obstacle type handling (`#613 <https://github.com/autowarefoundation/autoware_core/issues/613>`_)
+  * refactor obstacle_filtering structure and type handling
+  ---------
+* fix(obstacle_stop): fix bug for the backwoard motions (`#617 <https://github.com/autowarefoundation/autoware_core/issues/617>`_)
+  fix back stop
+* chore: bump version (1.4.0) and update changelog (`#608 <https://github.com/autowarefoundation/autoware_core/issues/608>`_)
+* Contributors: Kotakku, Mamoru Sobue, Mete Fatih Cırıt, Yuki TAKAGI, Yutaka Kondo, mitsudome-r
+
+1.4.0 (2025-08-11)
+------------------
+* Merge remote-tracking branch 'origin/main' into humble
+* refactor(mvp_common): add docstrings and comments (`#600 <https://github.com/autowarefoundation/autoware_core/issues/600>`_)
+* feat(motion_velocity_planner, motion_velocity_planner_common): update pointcloud preprocess design (`#591 <https://github.com/autowarefoundation/autoware_core/issues/591>`_)
+  * updare pcl preprocess
+  ---------
+* refactor(motion_velocity_planner): restrict copy of planner_data  (`#587 <https://github.com/autowarefoundation/autoware_core/issues/587>`_)
+  * restrict plannar data copy
+  ---------
+* fix(obstacle_stop): fix the brief stop decision logic (`#583 <https://github.com/autowarefoundation/autoware_core/issues/583>`_)
+* chore: bump version to 1.3.0 (`#554 <https://github.com/autowarefoundation/autoware_core/issues/554>`_)
+* chore: apply pre-commit fix (`#574 <https://github.com/autowarefoundation/autoware_core/issues/574>`_)
+* feat(motion_utils): update insert orientation function to use tangent direction of a spline cruve (`#556 <https://github.com/autowarefoundation/autoware_core/issues/556>`_)
+  * update insertOrientationSpline()
+  * update test
+  * use insertOrientationSpline() in motion_velcity_planner_common
+  ---------
+* feat(obstacle_stop_module): add cut in stop feature (`#517 <https://github.com/autowarefoundation/autoware_core/issues/517>`_)
+  * restore the old function to pass universe CI
+  * add new feature
+  * add todo comment
+  ---------
+* refactor(motion_velocity_planner_common): splt get_predicted_pose() (`#558 <https://github.com/autowarefoundation/autoware_core/issues/558>`_)
+  * rename
+  * restore the old function to pass universe CI
+* Contributors: Mamoru Sobue, Ryohsuke Mitsudome, Takayuki Murooka, Yuki TAKAGI
+
+1.3.0 (2025-06-23)
+------------------
+* fix: to be consistent version in all package.xml(s)
+* feat(autoware_motion_velocity_planner)!: only wait for the required subscriptions (`#505 <https://github.com/autowarefoundation/autoware_core/issues/505>`_)
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* fix(autoware_motion_velocity_obstacle_stop_module): point-cloud points ahead of the terminal stop-point (`#502 <https://github.com/autowarefoundation/autoware_core/issues/502>`_)
+  * fix
+  * moved resample_trajectory_points to non-anonymous status
+  * style(pre-commit): autofix
+  * fix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* fix(autoware_motion_velocity_obstacle_stop_module): fix for mishandling lateral-distance (`#452 <https://github.com/autowarefoundation/autoware_core/issues/452>`_)
+  * Fix for mishandling lateral-distance
+  * fix
+  * style(pre-commit): autofix
+  * fix
+  * fix
+  * fix
+  * style(pre-commit): autofix
+  * fix
+  * style(pre-commit): autofix
+  * Update planning/motion_velocity_planner/autoware_motion_velocity_planner_common/src/utils.cpp
+  Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
+* fix(autoware_motion_velocity_planner_common): fix deprecated autoware_utils header (`#445 <https://github.com/autowarefoundation/autoware_core/issues/445>`_)
+  * fix autoware_utils header
+  * style(pre-commit): autofix
+  * add missing header
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* chore: bump up version to 1.1.0 (`#462 <https://github.com/autowarefoundation/autoware_core/issues/462>`_) (`#464 <https://github.com/autowarefoundation/autoware_core/issues/464>`_)
+* feat(autoware_motion_velocity_planner): point-cloud clustering optimization (`#409 <https://github.com/autowarefoundation/autoware_core/issues/409>`_)
+  * Core changes for point-cloud maksing and clustering
+  * fix
+  * style(pre-commit): autofix
+  * Update planning/motion_velocity_planner/autoware_motion_velocity_planner_common/include/autoware/motion_velocity_planner_common/planner_data.hpp
+  Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
+  * fix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
+* Contributors: Arjun Jagdish Ram, Masaki Baba, Ryohsuke Mitsudome, Yutaka Kondo, github-actions
+
 1.0.0 (2025-03-31)
 ------------------
 * chore: update version in package.xml

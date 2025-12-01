@@ -3,6 +3,10 @@ repositories:
     type: git
     url: https://github.com/autowarefoundation/autoware_universe.git
     version: main
+  autoware/autoware_adapi_msgs:
+    type: git
+    url: https://github.com/autowarefoundation/autoware_adapi_msgs.git
+    version: main
   universe/external/tier4_autoware_msgs:
     type: git
     url: https://github.com/tier4/tier4_autoware_msgs.git

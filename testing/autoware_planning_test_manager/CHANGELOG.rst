@@ -5,6 +5,42 @@ Changelog for package autoware_planning_test_manager
 1.1.0 (2025-05-01)
 ------------------
 
+1.5.0 (2025-11-16)
+------------------
+* Merge remote-tracking branch 'origin/main' into humble
+* feat: replace `ament_auto_package` to `autoware_ament_auto_package` (`#700 <https://github.com/autowarefoundation/autoware_core/issues/700>`_)
+  * replace ament_auto_package to autoware_ament_auto_package
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* chore: bump version (1.4.0) and update changelog (`#608 <https://github.com/autowarefoundation/autoware_core/issues/608>`_)
+* Contributors: Mete Fatih Cırıt, Yutaka Kondo, mitsudome-r
+
+1.4.0 (2025-08-11)
+------------------
+* Merge remote-tracking branch 'origin/main' into humble
+* feat(planning_test_manager): subscription callback (`#563 <https://github.com/autowarefoundation/autoware_core/issues/563>`_)
+  * feat(planning_test_manager): subscription callback
+  * fix(test_planning_test_manager): unique node names
+  Update testing/autoware_planning_test_manager/test/test_planning_test_manager.cpp
+  Update testing/autoware_planning_test_manager/test/test_planning_test_manager.cpp
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+  ---------
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* chore: bump version to 1.3.0 (`#554 <https://github.com/autowarefoundation/autoware_core/issues/554>`_)
+* Contributors: Ryohsuke Mitsudome, ralwing
+
+1.3.0 (2025-06-23)
+------------------
+* fix: to be consistent version in all package.xml(s)
+* feat!: remove obstacle_stop_planner and obstacle_cruise_planner (`#495 <https://github.com/autowarefoundation/autoware_core/issues/495>`_)
+  * feat: remove obstacle_stop_planner and obstacle_cruise_planner
+  * update
+  * fix
+  ---------
+* chore: bump up version to 1.1.0 (`#462 <https://github.com/autowarefoundation/autoware_core/issues/462>`_) (`#464 <https://github.com/autowarefoundation/autoware_core/issues/464>`_)
+* Contributors: Takayuki Murooka, Yutaka Kondo, github-actions
+
 1.0.0 (2025-03-31)
 ------------------
 

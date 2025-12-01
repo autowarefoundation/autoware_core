@@ -6,7 +6,7 @@
     <param from="$(var vehicle_info_param_file)"/>
 
     <remap from="~/input/odometry" to="/localization/kinematic_state"/>
-    <remap from="~/input/trajectory" to="/planning/scenario_planning/trajectory"/>
+    <remap from="~/input/trajectory" to="/planning/trajectory"/>
     <remap from="~/output/control_command" to="/control/trajectory_follower/control_cmd"/>
   </node>
 </launch>

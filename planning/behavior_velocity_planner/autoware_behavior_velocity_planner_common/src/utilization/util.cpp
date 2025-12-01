@@ -18,6 +18,7 @@
 #include "autoware/motion_utils/trajectory/trajectory.hpp"
 
 #include <autoware/lanelet2_utils/topology.hpp>
+#include <autoware/trajectory/utils/pretty_build.hpp>
 #include <autoware_lanelet2_extension/utility/query.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 #include <tf2/utils.hpp>
@@ -527,6 +528,23 @@ LineString2d extendSegmentToBounds(
     std::optional<Point2d> intersection_point = std::nullopt;
     auto min_distance_to_bound = std::numeric_limits<double>::max();
     for (auto it = std::next(bound.begin()); it != bound.end(); ++it) {
+      //
+      //      -----------------------> v23
+      //
+      //      p2    pi                p3
+      //    (t=0)  (t)              (t=1)
+      // =====o=====o================o==================== boundary
+      //            :
+      //            :
+      //            :
+      //            :
+      //            o segment[1]                   ^
+      //            |                              |
+      //            |  segment (original line)     | v01
+      //            |                              |
+      //            |                              |
+      //            o segment[0]                   |
+
       const auto p2 = autoware_utils_geometry::from_msg(*std::prev(it)).to_2d();
       const auto p3 = autoware_utils_geometry::from_msg(*it).to_2d();
       const Eigen::Vector2d v01 = segment[1] - segment[0];
@@ -541,6 +559,7 @@ LineString2d extendSegmentToBounds(
         continue;
       }
       const Eigen::Vector2d pi = p2 + t * v23;
+
       const auto distance = std::min(
         boost::geometry::distance(pi, segment[0]), boost::geometry::distance(pi, segment[1]));
       if (!intersection_point || distance <= min_distance_to_bound) {
@@ -569,14 +588,48 @@ LineString2d extendSegmentToBounds(
   const auto is_point_on_line = [](const LineString2d & line, const Point2d & point) {
     return boost::geometry::distance(point, line) < containment_threshold;
   };
-  const auto has_overlap =
-    std::any_of(
-      original_points.begin(), original_points.end(),
-      [&](const auto & point) { return is_point_on_line(extended, point); }) ||
-    std::any_of(extended_points.begin(), extended_points.end(), [&](const auto & point) {
-      return is_point_on_line(original_line, point);
-    });
-  if (!has_overlap) {
+
+  const auto original_points_on_extended_line = std::all_of(
+    original_points.begin(), original_points.end(),
+    [&](const auto & point) { return is_point_on_line(extended, point); });
+
+  const auto extended_points_on_original_line = std::all_of(
+    extended_points.begin(), extended_points.end(),
+    [&](const auto & point) { return is_point_on_line(original_line, point); });
+
+  // We need to check OR condition of `original_points_on_extended_line` and
+  // `extended_points_on_original_line` because the extended line is not always a subset of the
+  // original line. The below is an example.
+  //
+  // ==================================^=== boundary1
+  //      ^                            |
+  //      |2e                          |
+  //      v                            |
+  //      ^                            |
+  //      |                            |
+  //      | segment (original line)    | extended line
+  //      |                            |
+  //      v                            |
+  //      ^                            |
+  //      |2e                          |
+  //      v                            |
+  // ==================================v=== boundary2
+  //
+  // Also, the extended line is not always a subset of the original line. The below is another
+  // example.
+  //
+  //     ^   ^
+  //     |   | 2e
+  //     |   v
+  // ====|=============================^=== boundary2
+  //     |                             |
+  //     | segment (original line)     | extended line
+  //     |                             |
+  // ====|=============================v=== boundary1
+  //     |   ^
+  //     |   | 2e
+  //     v   v
+  if (!(original_points_on_extended_line || extended_points_on_original_line)) {
     return original_line;
   }
 
@@ -797,6 +850,32 @@ lanelet::Ids collectConnectedLaneIds(
     }
   }
   return lane_ids;
+}
+
+PathWithLaneId fromTrajectory(
+  const experimental::trajectory::Trajectory<
+    autoware_internal_planning_msgs::msg::PathPointWithLaneId> & path,
+  const std::vector<geometry_msgs::msg::Point> & left_bound,
+  const std::vector<geometry_msgs::msg::Point> & right_bound)
+{
+  PathWithLaneId path_msg;
+  path_msg.points = path.restore();
+  path_msg.left_bound = left_bound;
+  path_msg.right_bound = right_bound;
+  return path_msg;
+}
+
+void toTrajectory(
+  const PathWithLaneId & path_msg,
+  experimental::trajectory::Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId> &
+    path)
+{
+  const auto path_opt = experimental::trajectory::pretty_build(path_msg.points);
+  if (!path_opt) {
+    std::cerr << "[behavior_velocity](toTrajectory) Failed to build trajectory" << std::endl;
+    return;
+  }
+  path = *path_opt;
 }
 
 }  // namespace autoware::behavior_velocity_planner::planning_utils
