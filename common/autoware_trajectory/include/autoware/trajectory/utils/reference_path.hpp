@@ -17,35 +17,18 @@
 
 #include "autoware/trajectory/forward.hpp"
 
+#include <tl_expected/expected.hpp>
+
 #include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
 
 #include <lanelet2_core/Forward.h>
 #include <lanelet2_routing/Forward.h>
 #include <lanelet2_traffic_rules/TrafficRules.h>
 
-#include <optional>
+#include <string>
 
 namespace autoware::experimental::trajectory
 {
-struct LaneletSequenceWithRange
-{
-  lanelet::ConstLanelets lanelet_sequence;
-  double s_start;
-  double s_end;
-};
-
-/**
- * @brief extend given lanelet sequence backward/forward so that s_start, s_end is within
- * output lanelet sequence
- * @param s_start start arc length
- * @param s_end end arc length
- * @return extended lanelet sequence, new start arc length, new end arc length
- * @post s_start >= 0.0, s_end <= lanelet::geometry::length3d(lanelet_sequence)
- */
-LaneletSequenceWithRange supplement_lanelet_sequence(
-  const lanelet::routing::RoutingGraphConstPtr routing_graph,
-  const lanelet::ConstLanelets & lanelet_sequence, const double s_start, const double s_end);
-
 /**
  * @brief create Trajectory which is backward_length backward and forward_length forward from ego's
  * s coordinate in terms of s coordinate
@@ -57,7 +40,7 @@ LaneletSequenceWithRange supplement_lanelet_sequence(
  * @return the s coordinate of start/end is relative from ego by backward_length/forward_length. the
  * length of Trajectory does not match backward_length + forward_length
  */
-std::optional<Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>>
+tl::expected<Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>, std::string>
 build_reference_path(
   const lanelet::ConstLanelets & connected_lane_sequence,
   const lanelet::ConstLanelet & current_lanelet, const geometry_msgs::msg::Pose & ego_pose,
