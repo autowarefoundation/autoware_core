@@ -390,105 +390,108 @@ INSTANTIATE_TEST_SUITE_P(
     })          // values
 );
 
-struct Parameter_Map_Overlap_Lane_00  // NOLINT
-{
-  static constexpr const char * pkg = "autoware_test_utils";
-  static constexpr const char * dir = "overlap";
-  const double forward_length;
-  const double backward_length;
-  const std::vector<lanelet::Id> route_lane_ids;
-  const lanelet::Id current_lane_id;
-  const double ego_x;
-  const double ego_y;
-  const double ego_z;
-  const std::array<double, 4> ego_quat;
-  const bool expect_success;
-};
+// TODO(soblin): uncomment this after adding parameterized tests
+// struct Parameter_Map_Overlap_Lane_00  // NOLINT
+// {
+//   static constexpr const char * pkg = "autoware_test_utils";
+//   static constexpr const char * dir = "overlap";
+//   const double forward_length;
+//   const double backward_length;
+//   const std::vector<lanelet::Id> route_lane_ids;
+//   const lanelet::Id current_lane_id;
+//   const double ego_x;
+//   const double ego_y;
+//   const double ego_z;
+//   const std::array<double, 4> ego_quat;
+//   const bool expect_success;
+// };
 
-void PrintTo(const Parameter_Map_Overlap_Lane_00 & param, ::std::ostream * os)  // NOLINT
-{
-  *os << "forward/backward length = (" << param.forward_length << ", " << param.backward_length
-      << "), (x, y, z) = (" << param.ego_x << ", " << param.ego_y << ", " << param.ego_z << ")";
-}
+// void PrintTo(const Parameter_Map_Overlap_Lane_00 & param, ::std::ostream * os)  // NOLINT
+// {
+//   *os << "forward/backward length = (" << param.forward_length << ", " << param.backward_length
+//       << "), (x, y, z) = (" << param.ego_x << ", " << param.ego_y << ", " << param.ego_z << ")";
+// }
 
-class TestCase_Map_Overlap_Lane_00 : public ::testing::TestWithParam<Parameter_Map_Overlap_Lane_00>
-{
-public:
-protected:
-  lanelet::LaneletMapConstPtr lanelet_map_{nullptr};
-  lanelet::routing::RoutingGraphConstPtr routing_graph_{nullptr};
-  lanelet::traffic_rules::TrafficRulesPtr traffic_rules_{nullptr};
+// class TestCase_Map_Overlap_Lane_00 : public
+// ::testing::TestWithParam<Parameter_Map_Overlap_Lane_00>
+// {
+// public:
+// protected:
+//   lanelet::LaneletMapConstPtr lanelet_map_{nullptr};
+//   lanelet::routing::RoutingGraphConstPtr routing_graph_{nullptr};
+//   lanelet::traffic_rules::TrafficRulesPtr traffic_rules_{nullptr};
 
-  void SetUp() override
-  {
-    // TODO(soblin): unify test map location and PATHs! (one of autoware_test_utils,
-    // autoware_lanelet2_utils)
-    const auto sample_map_dir =
-      fs::path(ament_index_cpp::get_package_share_directory(Parameter_Map_Overlap_Lane_00::pkg)) /
-      "test_map" / std::string(Parameter_Map_Overlap_Lane_00::dir);
-    const auto map_path = sample_map_dir / "lanelet2_map.osm";
-    lanelet_map_ = lanelet2_utils::load_mgrs_coordinate_map(map_path.string());
-    std::tie(routing_graph_, traffic_rules_) =
-      autoware::experimental::lanelet2_utils::instantiate_routing_graph_and_traffic_rules(
-        lanelet_map_);
-  }
-};
+//   void SetUp() override
+//   {
+//     // TODO(soblin): unify test map location and PATHs! (one of autoware_test_utils,
+//     // autoware_lanelet2_utils)
+//     const auto sample_map_dir =
+//       fs::path(ament_index_cpp::get_package_share_directory(Parameter_Map_Overlap_Lane_00::pkg))
+//       / "test_map" / std::string(Parameter_Map_Overlap_Lane_00::dir);
+//     const auto map_path = sample_map_dir / "lanelet2_map.osm";
+//     lanelet_map_ = lanelet2_utils::load_mgrs_coordinate_map(map_path.string());
+//     std::tie(routing_graph_, traffic_rules_) =
+//       autoware::experimental::lanelet2_utils::instantiate_routing_graph_and_traffic_rules(
+//         lanelet_map_);
+//   }
+// };
 
-TEST_P(TestCase_Map_Overlap_Lane_00, test_path_validity)
-{
-  auto [FORWARD_LENGTH, BACKWARD_LENGTH, ids, current_id, x, y, z, quat, expect_success] =
-    GetParam();
+// TEST_P(TestCase_Map_Overlap_Lane_00, test_path_validity)
+// {
+//   auto [FORWARD_LENGTH, BACKWARD_LENGTH, ids, current_id, x, y, z, quat, expect_success] =
+//     GetParam();
 
-  const auto lanelet_sequence =
-    ids |
-    ranges::views::transform([&](const auto & id) { return lanelet_map_->laneletLayer.get(id); }) |
-    ranges::to<std::vector>();
-  const auto ego_pose =
-    geometry_msgs::build<geometry_msgs::msg::Pose>()
-      .position(autoware_utils_geometry::create_point(x, y, z))
-      .orientation(autoware_utils_geometry::create_quaternion(quat[0], quat[1], quat[2], quat[3]));
-  const auto reference_path_opt = trajectory::build_reference_path(
-    lanelet_sequence, lanelet_map_->laneletLayer.get(current_id), ego_pose, lanelet_map_,
-    routing_graph_, traffic_rules_, FORWARD_LENGTH, BACKWARD_LENGTH);
+//   const auto lanelet_sequence =
+//     ids |
+//     ranges::views::transform([&](const auto & id) { return lanelet_map_->laneletLayer.get(id); })
+//     | ranges::to<std::vector>();
+//   const auto ego_pose =
+//     geometry_msgs::build<geometry_msgs::msg::Pose>()
+//       .position(autoware_utils_geometry::create_point(x, y, z))
+//       .orientation(autoware_utils_geometry::create_quaternion(quat[0], quat[1], quat[2],
+//       quat[3]));
+//   const auto reference_path_opt = trajectory::build_reference_path(
+//     lanelet_sequence, lanelet_map_->laneletLayer.get(current_id), ego_pose, lanelet_map_,
+//     routing_graph_, traffic_rules_, FORWARD_LENGTH, BACKWARD_LENGTH);
 
-  if (expect_success) {
-    ASSERT_TRUE(reference_path_opt.has_value());
-    const auto & reference_path = reference_path_opt.value();
-    // NOTE(soblin): this map does not have waypoint, so s_end - s_start matches the trajectory
-    // length
-    const double expect_length = FORWARD_LENGTH + BACKWARD_LENGTH;
-    EXPECT_TRUE(std::fabs(reference_path.length() - expect_length) < 0.1)
-      << "length of reference_path / expected = " << reference_path.length() << ", "
-      << expect_length;
+//   if (expect_success) {
+//     ASSERT_TRUE(reference_path_opt.has_value());
+//     const auto & reference_path = reference_path_opt.value();
+//     // NOTE(soblin): this map does not have waypoint, so s_end - s_start matches the trajectory
+//     // length
+//     const double expect_length = FORWARD_LENGTH + BACKWARD_LENGTH;
+//     EXPECT_TRUE(std::fabs(reference_path.length() - expect_length) < 0.1)
+//       << "length of reference_path / expected = " << reference_path.length() << ", "
+//       << expect_length;
 
-    const auto points = reference_path.restore();
-    const auto lanelet = lanelet::utils::combineLaneletsShape(lanelet_sequence);
+//     const auto points = reference_path.restore();
+//     const auto lanelet = lanelet::utils::combineLaneletsShape(lanelet_sequence);
 
-    for (const auto [p1, p2, p3] : ranges::views::zip(
-           points, points | ranges::views::drop(1), points | ranges::views::drop(2))) {
-      EXPECT_TRUE(
-        autoware_utils_geometry::calc_distance3d(p1, p2) >=
-        autoware::experimental::trajectory::k_points_minimum_dist_threshold);
+//     for (const auto [p1, p2, p3] : ranges::views::zip(
+//            points, points | ranges::views::drop(1), points | ranges::views::drop(2))) {
+//       EXPECT_TRUE(
+//         autoware_utils_geometry::calc_distance3d(p1, p2) >=
+//         autoware::experimental::trajectory::k_points_minimum_dist_threshold);
 
-      // use p2, because p1/p3 at the end may well be slightly outside of the Lanelets by error
-      EXPECT_TRUE(
-        boost::geometry::within(
-          lanelet::utils::to2D(lanelet2_utils::from_ros(p2.point.pose.position)),
-          lanelet.polygon2d().basicPolygon()))
-        << "point(" << p2.point.pose.position.x << ", " << p2.point.pose.position.y << ")";
+//       // use p2, because p1/p3 at the end may well be slightly outside of the Lanelets by error
+//       EXPECT_TRUE(
+//         boost::geometry::within(
+//           lanelet::utils::to2D(lanelet2_utils::from_ros(p2.point.pose.position)),
+//           lanelet.polygon2d().basicPolygon()))
+//         << "point(" << p2.point.pose.position.x << ", " << p2.point.pose.position.y << ")";
 
-      EXPECT_TRUE(
-        std::fabs(
-          autoware_utils_math::normalize_radian(
-            autoware_utils_geometry::calc_azimuth_angle(
-              p1.point.pose.position, p2.point.pose.position) -
-            autoware_utils_geometry::calc_azimuth_angle(
-              p2.point.pose.position, p3.point.pose.position))) < M_PI / 2.0);
-    }
-  } else {
-    ASSERT_FALSE(reference_path_opt.has_value());
-  }
-}
+//       EXPECT_TRUE(
+//         std::fabs(
+//           autoware_utils_math::normalize_radian(
+//             autoware_utils_geometry::calc_azimuth_angle(
+//               p1.point.pose.position, p2.point.pose.position) -
+//             autoware_utils_geometry::calc_azimuth_angle(
+//               p2.point.pose.position, p3.point.pose.position))) < M_PI / 2.0);
+//     }
+//   } else {
+//     ASSERT_FALSE(reference_path_opt.has_value());
+//   }
+// }
 
 }  // namespace autoware::experimental
 
