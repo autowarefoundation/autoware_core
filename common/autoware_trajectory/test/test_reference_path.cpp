@@ -412,7 +412,8 @@ INSTANTIATE_TEST_SUITE_P(
 //       << "), (x, y, z) = (" << param.ego_x << ", " << param.ego_y << ", " << param.ego_z << ")";
 // }
 
-// class TestCase_Map_Overlap_Lane_00 : public ::testing::TestWithParam<Parameter_Map_Overlap_Lane_00>
+// class TestCase_Map_Overlap_Lane_00 : public
+// ::testing::TestWithParam<Parameter_Map_Overlap_Lane_00>
 // {
 // public:
 // protected:
@@ -425,8 +426,8 @@ INSTANTIATE_TEST_SUITE_P(
 //     // TODO(soblin): unify test map location and PATHs! (one of autoware_test_utils,
 //     // autoware_lanelet2_utils)
 //     const auto sample_map_dir =
-//       fs::path(ament_index_cpp::get_package_share_directory(Parameter_Map_Overlap_Lane_00::pkg)) /
-//       "test_map" / std::string(Parameter_Map_Overlap_Lane_00::dir);
+//       fs::path(ament_index_cpp::get_package_share_directory(Parameter_Map_Overlap_Lane_00::pkg))
+//       / "test_map" / std::string(Parameter_Map_Overlap_Lane_00::dir);
 //     const auto map_path = sample_map_dir / "lanelet2_map.osm";
 //     lanelet_map_ = lanelet2_utils::load_mgrs_coordinate_map(map_path.string());
 //     std::tie(routing_graph_, traffic_rules_) =
@@ -442,12 +443,13 @@ INSTANTIATE_TEST_SUITE_P(
 
 //   const auto lanelet_sequence =
 //     ids |
-//     ranges::views::transform([&](const auto & id) { return lanelet_map_->laneletLayer.get(id); }) |
-//     ranges::to<std::vector>();
+//     ranges::views::transform([&](const auto & id) { return lanelet_map_->laneletLayer.get(id); })
+//     | ranges::to<std::vector>();
 //   const auto ego_pose =
 //     geometry_msgs::build<geometry_msgs::msg::Pose>()
 //       .position(autoware_utils_geometry::create_point(x, y, z))
-//       .orientation(autoware_utils_geometry::create_quaternion(quat[0], quat[1], quat[2], quat[3]));
+//       .orientation(autoware_utils_geometry::create_quaternion(quat[0], quat[1], quat[2],
+//       quat[3]));
 //   const auto reference_path_opt = trajectory::build_reference_path(
 //     lanelet_sequence, lanelet_map_->laneletLayer.get(current_id), ego_pose, lanelet_map_,
 //     routing_graph_, traffic_rules_, FORWARD_LENGTH, BACKWARD_LENGTH);
