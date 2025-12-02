@@ -27,6 +27,7 @@
   <depend>tf2</depend>
   <depend>tf2_geometry_msgs</depend>
   <depend>tl_expected</depend>
+  <depend>yaml-cpp</depend>
 
   <test_depend>ament_cmake_auto</test_depend>
   <test_depend>ament_index_cpp</test_depend>
@@ -39,7 +40,6 @@
   <test_depend>python3-dev</test_depend>
   <test_depend>python3-matplotlib</test_depend>
   <test_depend>range-v3</test_depend>
-  <test_depend>yaml-cpp</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>
