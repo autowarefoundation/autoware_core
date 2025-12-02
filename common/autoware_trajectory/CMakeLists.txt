@@ -68,6 +68,9 @@ if(BUILD_TESTING)
     )
     target_link_libraries(${test_name}
       fmt::fmt # need this somehow
+      Python3::Python
+      pybind11::embed
+      yaml-cpp
     )
   endforeach()
 endif()
@@ -123,6 +126,7 @@ foreach(example_file ${example_files})
     range-v3::range-v3
     Python3::Python
     pybind11::embed
+    yaml-cpp
   )
 endforeach()
 
