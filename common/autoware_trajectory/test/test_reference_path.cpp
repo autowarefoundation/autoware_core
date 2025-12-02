@@ -490,7 +490,7 @@ TEST_P(TestCase_Map_Overlap_Lane_00, test_path_validity)
   }
 }
 
-// TODO: remove this after fixing the test
+// remove this after adding test cases
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(TestCase_Map_Overlap_Lane_00);
 
 }  // namespace autoware::experimental
