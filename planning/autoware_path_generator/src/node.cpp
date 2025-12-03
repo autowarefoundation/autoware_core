@@ -235,16 +235,19 @@ std::optional<PathWithLaneId> PathGenerator::plan_path(
 }
 
 std::optional<PathWithLaneId> PathGenerator::generate_path(
+
   const geometry_msgs::msg::Pose & current_pose, const Params & params)
 {
   autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
 
-  if (!update_current_lanelet(current_pose, params)) {
+  if (!update_current_lanelet(current_pose, params) || !current_lanelet_) {
     RCLCPP_ERROR(get_logger(), "Failed to update current lanelet");
     return std::nullopt;
   }
 
-  lanelet::ConstLanelets lanelets{*current_lanelet_};
+  const auto & current_lanelet = current_lanelet_.value();
+
+  lanelet::ConstLanelets lanelets{current_lanelet};
   const auto s_ego_on_current_lanelet =
     lanelet::utils::getArcCoordinates({*current_lanelet_}, current_pose).length;
 
@@ -252,11 +255,11 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
     0., params.path_length.backward + vehicle_info_.max_longitudinal_offset_m -
           s_ego_on_current_lanelet);
   const auto backward_lanelets_within_route =
-    utils::get_lanelets_within_route_up_to(*current_lanelet_, planner_data_, backward_length);
+    utils::get_lanelets_within_route_up_to(current_lanelet, planner_data_, backward_length);
   if (!backward_lanelets_within_route) {
     RCLCPP_ERROR(
       get_logger(), "Failed to get backward lanelets within route for current lanelet (id: %ld)",
-      current_lanelet_->id());
+      current_lanelet.id());
     return std::nullopt;
   }
   lanelets.insert(
@@ -278,13 +281,13 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
 
   const auto forward_length = std::max(
     0., params.path_length.forward + vehicle_info_.max_longitudinal_offset_m -
-          (lanelet::geometry::length2d(*current_lanelet_) - s_ego_on_current_lanelet));
+          (lanelet::geometry::length2d(current_lanelet) - s_ego_on_current_lanelet));
   const auto forward_lanelets_within_route =
-    utils::get_lanelets_within_route_after(*current_lanelet_, planner_data_, forward_length);
+    utils::get_lanelets_within_route_after(current_lanelet, planner_data_, forward_length);
   if (!forward_lanelets_within_route) {
     RCLCPP_ERROR(
       get_logger(), "Failed to get forward lanelets within route for current lanelet (id: %ld)",
-      current_lanelet_->id());
+      current_lanelet.id());
     return std::nullopt;
   }
   lanelets.insert(
@@ -348,14 +351,14 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
   }
 
   return generate_path(
-    lanelets, current_pose, s_ego, s_start, s_end, goal_lanelet_for_path, params);
+    lanelets, current_lanelet, current_pose, s_ego, s_start, s_end, goal_lanelet_for_path, params);
 }
 
 std::optional<PathWithLaneId> PathGenerator::generate_path(
   const lanelet::ConstLanelets & extended_lanelet_sequence,
-  const geometry_msgs::msg::Pose & current_pose, const double s_ego, const double s_start,
-  const double s_end, const std::optional<lanelet::ConstLanelet> & goal_lanelet_for_path,
-  const Params & params) const
+  const lanelet::ConstLanelet & current_lanelet, const geometry_msgs::msg::Pose & current_pose,
+  const double s_ego, const double s_start, const double s_end,
+  const std::optional<lanelet::ConstLanelet> & goal_lanelet_for_path, const Params & params) const
 {
   if (extended_lanelet_sequence.empty()) {
     RCLCPP_ERROR(get_logger(), "Lanelet sequence is empty");
@@ -367,7 +370,7 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
   constexpr auto extended_arc_length = 0.0;
 
   auto path = experimental::trajectory::build_reference_path(
-    extended_lanelet_sequence, *current_lanelet_, current_pose, planner_data_.lanelet_map_ptr,
+    extended_lanelet_sequence, current_lanelet, current_pose, planner_data_.lanelet_map_ptr,
     planner_data_.routing_graph_ptr, planner_data_.traffic_rules_ptr, s_end - s_ego,
     s_ego - s_start);
   if (!path) {
