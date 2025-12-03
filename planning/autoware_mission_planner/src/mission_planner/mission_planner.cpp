@@ -16,6 +16,7 @@
 
 #include "service_utils.hpp"
 
+#include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware_lanelet2_extension/utility/message_conversion.hpp>
 #include <autoware_lanelet2_extension/utility/query.hpp>
 #include <autoware_lanelet2_extension/utility/route_checker.hpp>
@@ -32,6 +33,14 @@
 #include <string>
 #include <utility>
 #include <vector>
+
+namespace
+{
+lanelet::LaneletMapPtr remove_const(const lanelet::LaneletMapConstPtr & const_map_ptr)
+{
+  return lanelet::LaneletMapPtr{std::const_pointer_cast<lanelet::LaneletMap>(const_map_ptr)};
+}
+}  // namespace
 
 namespace autoware::mission_planner
 {
@@ -160,8 +169,8 @@ void MissionPlanner::on_operation_mode_state(const OperationModeState::ConstShar
 void MissionPlanner::on_map(const LaneletMapBin::ConstSharedPtr msg)
 {
   map_ptr_ = msg;
-  lanelet_map_ptr_ = std::make_shared<lanelet::LaneletMap>();
-  lanelet::utils::conversion::fromBinMsg(*map_ptr_, lanelet_map_ptr_);
+  lanelet_map_ptr_ =
+    remove_const(autoware::experimental::lanelet2_utils::from_autoware_map_msgs(*map_ptr_));
 }
 
 Pose MissionPlanner::transform_pose(const Pose & pose, const Header & header)
