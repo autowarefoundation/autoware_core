@@ -368,8 +368,8 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
 
   auto path = experimental::trajectory::build_reference_path(
     extended_lanelet_sequence, *current_lanelet_, current_pose, planner_data_.lanelet_map_ptr,
-    planner_data_.routing_graph_ptr, planner_data_.traffic_rules_ptr, s_ego - s_start,
-    s_end - s_ego);
+    planner_data_.routing_graph_ptr, planner_data_.traffic_rules_ptr, s_end - s_ego,
+    s_ego - s_start);
   if (!path) {
     RCLCPP_ERROR(get_logger(), "Failed to build trajectory from path points");
     return std::nullopt;
