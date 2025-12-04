@@ -17,6 +17,8 @@
 #include <iostream>
 #include <utility>
 
+#include <Eigen/Cholesky>
+
 namespace autoware::kalman_filter
 {
 void TimeDelayKalmanFilter::init(
@@ -90,12 +92,34 @@ bool TimeDelayKalmanFilter::updateWithDelay(
     return false;
   }
 
-  const int dim_y = y.rows();
+  if (C.cols() != dim_x_) {
+    std::cerr << "Dimension mismatch in C matrix." << std::endl;
+    return false;
+  }
 
-  /* set measurement matrix */
-  Eigen::MatrixXd C_ex = Eigen::MatrixXd::Zero(dim_y, dim_x_ex_);
-  C_ex.block(0, dim_x_ * delay_step, dim_y, dim_x_) = C;
+  const int dim_x = dim_x_;
+  const int start_idx = dim_x * delay_step;
 
-  return update(y, C_ex, R);
+  const auto x_d = x_.block(start_idx, 0, dim_x, 1);
+  const Eigen::MatrixXd e = y - C * x_d;
+
+  const auto P_dd = P_.block(start_idx, start_idx, dim_x, dim_x);
+  Eigen::MatrixXd S = R;
+  S.noalias() += C * P_dd * C.transpose();
+
+  const auto P_star_d = P_.middleCols(start_idx, dim_x);
+  const Eigen::MatrixXd P_CT = P_star_d * C.transpose();
+
+  Eigen::LLT<Eigen::MatrixXd> lltOfS(S);
+  if(lltOfS.info() != Eigen::Success) {
+    std::cerr << "LLT decomposition failed. S matrix might not be positive definite." << std::endl;
+    return false;
+  }
+
+  const Eigen::MatrixXd K = lltOfS.solve(P_CT.transpose()).transpose();
+  x_.noalias() += K * e;
+  P_.noalias() -= P_CT * K.transpose();
+
+  return true;
 }
 }  // namespace autoware::kalman_filter
