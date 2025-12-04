@@ -13,16 +13,17 @@
 // limitations under the License.
 
 #include "autoware/kalman_filter/time_delay_kalman_filter.hpp"
-#include <gtest/gtest.h>
+
 #include <Eigen/Dense>
+
+#include <gtest/gtest.h>
 
 using autoware::kalman_filter::TimeDelayKalmanFilter;
 
 // Helper function to shift the extended state for ground truth verification
 void ground_truth_predict(
-  Eigen::MatrixXd & x_ex, Eigen::MatrixXd & P_ex,
-  const Eigen::MatrixXd & x_next, const Eigen::MatrixXd & A, const Eigen::MatrixXd & Q,
-  int dim_x, int dim_x_ex)
+  Eigen::MatrixXd & x_ex, Eigen::MatrixXd & P_ex, const Eigen::MatrixXd & x_next,
+  const Eigen::MatrixXd & A, const Eigen::MatrixXd & Q, int dim_x, int dim_x_ex)
 {
   // 1. Shift existing states down (old t becomes t-1)
   // The bottom-most block is discarded, 0 moves to 1, etc.
@@ -41,12 +42,10 @@ void ground_truth_predict(
   Eigen::MatrixXd P_tmp = Eigen::MatrixXd::Zero(dim_x_ex, dim_x_ex);
 
   // Top-Left: Standard prediction covariance
-  P_tmp.block(0, 0, dim_x, dim_x) =
-    A * P_ex.block(0, 0, dim_x, dim_x) * A.transpose() + Q;
+  P_tmp.block(0, 0, dim_x, dim_x) = A * P_ex.block(0, 0, dim_x, dim_x) * A.transpose() + Q;
 
   // Top-Right: Correlation between new state and past states
-  P_tmp.block(0, dim_x, dim_x, dim_x_ex - dim_x) =
-    A * P_ex.block(0, 0, dim_x, dim_x_ex - dim_x);
+  P_tmp.block(0, dim_x, dim_x, dim_x_ex - dim_x) = A * P_ex.block(0, 0, dim_x, dim_x_ex - dim_x);
 
   // Bottom-Left: Transpose of Top-Right
   P_tmp.block(dim_x, 0, dim_x_ex - dim_x, dim_x) =
@@ -60,9 +59,9 @@ void ground_truth_predict(
 }
 
 void ground_truth_update(
-  Eigen::MatrixXd & x_ex, Eigen::MatrixXd & P_ex,
-  const Eigen::MatrixXd & y, const Eigen::MatrixXd & C, const Eigen::MatrixXd & R,
-  int delay_step, int dim_x, int dim_y, int dim_x_ex)
+  Eigen::MatrixXd & x_ex, Eigen::MatrixXd & P_ex, const Eigen::MatrixXd & y,
+  const Eigen::MatrixXd & C, const Eigen::MatrixXd & R, int delay_step, int dim_x, int dim_y,
+  int dim_x_ex)
 {
   // Construct Extended C matrix (all zeros except at the delayed block)
   Eigen::MatrixXd C_ex = Eigen::MatrixXd::Zero(dim_y, dim_x_ex);
@@ -134,8 +133,8 @@ TEST(time_delay_kalman_filter, comprehensive_lifecycle)
   P_check = td_kf_.getLatestP();
 
   // Verify top block (current time) matches
-  EXPECT_TRUE(x_check.isApprox(x_ex_gt.block(0,0,dim_x,1), epsilon));
-  EXPECT_TRUE(P_check.isApprox(P_ex_gt.block(0,0,dim_x,dim_x), epsilon));
+  EXPECT_TRUE(x_check.isApprox(x_ex_gt.block(0, 0, dim_x, 1), epsilon));
+  EXPECT_TRUE(P_check.isApprox(P_ex_gt.block(0, 0, dim_x, dim_x), epsilon));
 
   // ==========================================================
   // Test Case 3: Update with Delay (Step = 2)
@@ -155,8 +154,8 @@ TEST(time_delay_kalman_filter, comprehensive_lifecycle)
   x_check = td_kf_.getLatestX();
   P_check = td_kf_.getLatestP();
 
-  EXPECT_TRUE(x_check.isApprox(x_ex_gt.block(0,0,dim_x,1), epsilon));
-  EXPECT_TRUE(P_check.isApprox(P_ex_gt.block(0,0,dim_x,dim_x), epsilon));
+  EXPECT_TRUE(x_check.isApprox(x_ex_gt.block(0, 0, dim_x, 1), epsilon));
+  EXPECT_TRUE(P_check.isApprox(P_ex_gt.block(0, 0, dim_x, dim_x), epsilon));
 
   // ==========================================================
   // Test Case 4: Update with Zero Delay (Current Time)
@@ -164,7 +163,7 @@ TEST(time_delay_kalman_filter, comprehensive_lifecycle)
   // Validates that the TDKF behaves like a standard KF when delay is 0
 
   Eigen::MatrixXd y_current(dim_x, 1);
-  y_current << 2.1, 4.1, 6.1; // Close to current state x_next
+  y_current << 2.1, 4.1, 6.1;  // Close to current state x_next
   delay_step = 0;
 
   // Update Ground Truth
@@ -177,8 +176,8 @@ TEST(time_delay_kalman_filter, comprehensive_lifecycle)
   x_check = td_kf_.getLatestX();
   P_check = td_kf_.getLatestP();
 
-  EXPECT_TRUE(x_check.isApprox(x_ex_gt.block(0,0,dim_x,1), epsilon));
-  EXPECT_TRUE(P_check.isApprox(P_ex_gt.block(0,0,dim_x,dim_x), epsilon));
+  EXPECT_TRUE(x_check.isApprox(x_ex_gt.block(0, 0, dim_x, 1), epsilon));
+  EXPECT_TRUE(P_check.isApprox(P_ex_gt.block(0, 0, dim_x, dim_x), epsilon));
 
   // ==========================================================
   // Test Case 5: Update with Max Delay
@@ -187,7 +186,7 @@ TEST(time_delay_kalman_filter, comprehensive_lifecycle)
 
   Eigen::MatrixXd y_old(dim_x, 1);
   y_old << 0.9, 1.9, 2.9;
-  delay_step = max_delay_step - 1; // Index 4 (0-4)
+  delay_step = max_delay_step - 1;  // Index 4 (0-4)
 
   // Update Ground Truth
   ground_truth_update(x_ex_gt, P_ex_gt, y_old, C, R, delay_step, dim_x, dim_x, dim_x_ex);
@@ -199,6 +198,6 @@ TEST(time_delay_kalman_filter, comprehensive_lifecycle)
   x_check = td_kf_.getLatestX();
   P_check = td_kf_.getLatestP();
 
-  EXPECT_TRUE(x_check.isApprox(x_ex_gt.block(0,0,dim_x,1), epsilon));
-  EXPECT_TRUE(P_check.isApprox(P_ex_gt.block(0,0,dim_x,dim_x), epsilon));
+  EXPECT_TRUE(x_check.isApprox(x_ex_gt.block(0, 0, dim_x, 1), epsilon));
+  EXPECT_TRUE(P_check.isApprox(P_ex_gt.block(0, 0, dim_x, dim_x), epsilon));
 }
