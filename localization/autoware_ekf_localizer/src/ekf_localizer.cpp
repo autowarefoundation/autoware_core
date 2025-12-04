@@ -51,8 +51,8 @@ EKFLocalizer::EKFLocalizer(const rclcpp::NodeOptions & node_options)
   tf2_listener_(tf2_buffer_),
   params_(this),
   ekf_dt_(params_.ekf_dt),
-  pose_queue_(params_.pose_smoothing_steps),
-  twist_queue_(params_.twist_smoothing_steps)
+  pose_queue_(params_.pose_smoothing_steps, params_.max_pose_queue_size),
+  twist_queue_(params_.twist_smoothing_steps, params_.max_twist_queue_size)
 {
   is_activated_ = false;
   is_set_initialpose_ = false;
@@ -180,14 +180,12 @@ void EKFLocalizer::timer_callback()
     DEBUG_INFO(get_logger(), "------------------------- start Pose -------------------------");
     stop_watch_.tic();
 
-    // save the initial size because the queue size can change in the loop
+    // Sequential state update for all Pose observations in the queue
     const size_t n = pose_queue_.size();
     for (size_t i = 0; i < n; ++i) {
       const auto pose = pose_queue_.pop_increment_age();
       bool is_updated = ekf_module_->measurement_update_pose(*pose, current_time, pose_diag_info_);
-      if (is_updated) {
-        pose_is_updated = true;
-      }
+      pose_is_updated = pose_is_updated || is_updated;
     }
     DEBUG_INFO(
       get_logger(), "[EKF] measurement_update_pose calc time = %f [ms]", stop_watch_.toc());
@@ -209,15 +207,13 @@ void EKFLocalizer::timer_callback()
     DEBUG_INFO(get_logger(), "------------------------- start Twist -------------------------");
     stop_watch_.tic();
 
-    // save the initial size because the queue size can change in the loop
+    // Sequential state update for all Twist observations in the queue
     const size_t n = twist_queue_.size();
     for (size_t i = 0; i < n; ++i) {
       const auto twist = twist_queue_.pop_increment_age();
       bool is_updated =
         ekf_module_->measurement_update_twist(*twist, current_time, twist_diag_info_);
-      if (is_updated) {
-        twist_is_updated = true;
-      }
+      twist_is_updated = twist_is_updated || is_updated;
     }
     DEBUG_INFO(
       get_logger(), "[EKF] measurement_update_twist calc time = %f [ms]", stop_watch_.toc());
@@ -292,6 +288,17 @@ void EKFLocalizer::callback_pose_with_covariance(
 
   pose_queue_.push(msg);
 
+  // Warn if queue is exceeded
+  if (pose_queue_.exceeded()) {
+    warning_->warn_throttle(
+      fmt::format(
+        "[EKF] Pose queue size ({}) is exceeding max_queue_size ({}). Consider increasing "
+        "max_queue_size or reducing input frequency.",
+        pose_queue_.size(), pose_queue_.max_queue_size()),
+      2000);
+    pose_queue_.pop();
+  }
+
   publish_callback_return_diagnostics("pose", msg->header.stamp);
 }
 
@@ -306,7 +313,19 @@ void EKFLocalizer::callback_twist_with_covariance(
   if (std::abs(msg->twist.twist.linear.x) < params_.threshold_observable_velocity_mps) {
     msg->twist.covariance[0 * 6 + 0] = 10000.0;
   }
+
   twist_queue_.push(msg);
+
+  // Warn if queue is exceeded
+  if (twist_queue_.exceeded()) {
+    warning_->warn_throttle(
+      fmt::format(
+        "[EKF] Twist queue size ({}) is exceeding max_queue_size ({}). Consider increasing "
+        "max_queue_size or reducing input frequency.",
+        twist_queue_.size(), twist_queue_.max_queue_size()),
+      2000);
+    twist_queue_.pop();
+  }
 
   publish_callback_return_diagnostics("twist", msg->header.stamp);
 }
