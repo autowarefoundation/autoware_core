@@ -367,8 +367,6 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
 
   std::vector<PathPointWithLaneId> path_points_with_lane_id{};
 
-  constexpr auto extended_arc_length = 0.0;
-
   auto path = experimental::trajectory::build_reference_path(
     extended_lanelet_sequence, current_lanelet, current_pose, planner_data_.lanelet_map_ptr,
     planner_data_.routing_graph_ptr, planner_data_.traffic_rules_ptr, s_end - s_ego,
@@ -379,9 +377,8 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
   }
 
   const auto s_path_start =
-    utils::get_arc_length_on_path(extended_lanelet_sequence, *path, extended_arc_length + s_start);
-  const auto s_path_end =
-    utils::get_arc_length_on_path(extended_lanelet_sequence, *path, extended_arc_length + s_end);
+    utils::get_arc_length_on_path(extended_lanelet_sequence, *path, s_start);
+  const auto s_path_end = utils::get_arc_length_on_path(extended_lanelet_sequence, *path, s_end);
 
   if (path->length() - s_path_end > 0) {
     path->crop(0., s_path_end);
@@ -391,8 +388,8 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
     path.value();
   if (goal_lanelet_for_path) {
     path_to_goal = utils::connect_path_to_goal_inside_lanelet_sequence(
-      *path, extended_lanelet_sequence, planner_data_.goal_pose, *goal_lanelet_for_path,
-      extended_arc_length + s_end, planner_data_, params.goal_connection.connection_section_length,
+      *path, extended_lanelet_sequence, planner_data_.goal_pose, *goal_lanelet_for_path, s_end,
+      planner_data_, params.goal_connection.connection_section_length,
       params.goal_connection.pre_goal_offset);
 
     if (!path_to_goal) {
@@ -419,9 +416,8 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
   finalized_path_with_lane_id.header.stamp = now();
 
   const auto [left_bound, right_bound] = utils::get_path_bounds(
-    extended_lanelet_sequence,
-    std::max(0., extended_arc_length + s_start - vehicle_info_.max_longitudinal_offset_m),
-    extended_arc_length + s_end + vehicle_info_.max_longitudinal_offset_m);
+    extended_lanelet_sequence, std::max(0., s_start - vehicle_info_.max_longitudinal_offset_m),
+    s_end + vehicle_info_.max_longitudinal_offset_m);
   finalized_path_with_lane_id.left_bound = left_bound;
   finalized_path_with_lane_id.right_bound = right_bound;
 
