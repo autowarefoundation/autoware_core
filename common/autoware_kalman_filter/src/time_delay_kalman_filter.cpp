@@ -14,10 +14,10 @@
 
 #include "autoware/kalman_filter/time_delay_kalman_filter.hpp"
 
+#include <Eigen/Cholesky>
+
 #include <iostream>
 #include <utility>
-
-#include <Eigen/Cholesky>
 
 namespace autoware::kalman_filter
 {
@@ -111,7 +111,7 @@ bool TimeDelayKalmanFilter::updateWithDelay(
   const Eigen::MatrixXd P_CT = P_star_d * C.transpose();
 
   Eigen::LLT<Eigen::MatrixXd> lltOfS(S);
-  if(lltOfS.info() != Eigen::Success) {
+  if (lltOfS.info() != Eigen::Success) {
     std::cerr << "LLT decomposition failed. S matrix might not be positive definite." << std::endl;
     return false;
   }
