@@ -737,7 +737,7 @@ std::vector<T> forEachMatchInMultiMap(const MapT& map, const KeyT& key, Func&& f
 
 ## Test maps
 
-Test maps are structured based on the [Autoware Vector map specifications](https://autowarefoundation.github.io/autoware-documentation/main/design/autoware-architecture/map/map-requirements/vector-map-requirements-overview/).
+Test maps are structured based on the [Autoware Vector map specifications](https://autowarefoundation.github.io/autoware-documentation/main/design/autoware-architecture-v1/components/map/map-requirements/vector-map-requirements-overview/).
 
 All of the maps are in `MGRS` coordinate **without map_projector_info.yaml**. In each map, an anchor point is set to an origin point $(100.0, 100.0)$ for simplicity.
 
