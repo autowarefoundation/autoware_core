@@ -358,6 +358,12 @@ protected:
       return false;
     }
 
+    // Check for empty point cloud
+    if (cloud->width * cloud->height == 0 || cloud->data.empty()) {
+      RCLCPP_WARN(this->get_logger(), "Received empty PointCloud");
+      return false;
+    }
+
     if (cloud->width * cloud->height * cloud->point_step != cloud->data.size()) {
       RCLCPP_WARN(
         this->get_logger(),
