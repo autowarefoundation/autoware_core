@@ -63,6 +63,18 @@ void SimplePurePursuitNode::on_timer()
 autoware_control_msgs::msg::Control SimplePurePursuitNode::create_control_command(
   const Odometry & odom, const Trajectory & traj)
 {
+  // Check for empty trajectory
+  if (traj.points.empty()) {
+    RCLCPP_WARN_THROTTLE(
+      get_logger(), *get_clock(), 5000,
+      "Received empty trajectory, returning zero velocity command.");
+    autoware_control_msgs::msg::Control cmd;
+    cmd.stamp = odom.header.stamp;
+    cmd.longitudinal.velocity = 0.0;
+    cmd.longitudinal.acceleration = -1.0;
+    return cmd;
+  }
+
   const size_t closest_traj_point_idx = findNearestIndex(traj.points, odom.pose.pose.position);
 
   // when the ego reaches the goal
