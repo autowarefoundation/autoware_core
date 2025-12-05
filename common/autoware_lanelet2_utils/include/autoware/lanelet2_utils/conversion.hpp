@@ -109,6 +109,8 @@ std::optional<lanelet::ConstLanelet> create_safe_lanelet(
 /**
  * @brief remove the const keyword from several types of data
  */
+lanelet::Point3d remove_const(const lanelet::ConstPoint3d & const_map_ptr);
+
 lanelet::LaneletMapPtr remove_const(const lanelet::LaneletMapConstPtr & const_map_ptr);
 
 lanelet::routing::RoutingGraphPtr remove_const(
