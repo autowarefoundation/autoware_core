@@ -115,7 +115,7 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
     this, this->get_clock(), period_ns, std::bind(&NDTScanMatcher::callback_timer, this),
     timer_callback_group_);
   initial_pose_sub_ = this->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
-    "ekf_pose_with_covariance", 100,
+    "ekf_pose_with_covariance", 10,
     std::bind(&NDTScanMatcher::callback_initial_pose, this, std::placeholders::_1),
     initial_pose_sub_opt);
   sensor_points_sub_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
