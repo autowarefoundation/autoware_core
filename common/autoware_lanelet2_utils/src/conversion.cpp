@@ -156,6 +156,23 @@ static lanelet::Point3d remove_basic(const lanelet::BasicPoint3d & point)
   return lanelet::Point3d(lanelet::InvalId, point);
 }
 
+lanelet::LaneletMapPtr remove_const(const lanelet::LaneletMapConstPtr & const_map_ptr)
+{
+  return lanelet::LaneletMapPtr{std::const_pointer_cast<lanelet::LaneletMap>(const_map_ptr)};
+}
+
+lanelet::routing::RoutingGraphPtr remove_const(
+  const lanelet::routing::RoutingGraphConstPtr & const_routing_graph_ptr)
+{
+  return lanelet::routing::RoutingGraphPtr{
+    std::const_pointer_cast<lanelet::routing::RoutingGraph>(const_routing_graph_ptr)};
+}
+
+lanelet::Lanelet remove_const(const lanelet::ConstLanelet & const_lanelet)
+{
+  return lanelet::Lanelet{std::const_pointer_cast<lanelet::LaneletData>(const_lanelet.constData())};
+}
+
 std::optional<lanelet::BasicLineString3d> create_safe_linestring(
   const std::vector<lanelet::BasicPoint3d> & points)
 {

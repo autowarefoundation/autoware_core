@@ -240,3 +240,20 @@ TEST(ArtificialLaneletObjectConstruction, ConstLaneletConstruct)
     }
   }
 }
+
+// Test 12: Remove const from all types
+TEST(RemoveConst, RemoveConst)
+{
+  lanelet::LaneletMapConstPtr const_ll_map_ptr;
+  auto ll_map_ptr = autoware::experimental::lanelet2_utils::remove_const(const_ll_map_ptr);
+  EXPECT_EQ(typeid(ll_map_ptr), typeid(lanelet::LaneletMapPtr))
+    << "Type is not lanelet::LaneletMapPtr";
+  lanelet::routing::RoutingGraphConstPtr const_routing_graph_ptr;
+  auto routing_graph_ptr =
+    autoware::experimental::lanelet2_utils::remove_const(const_routing_graph_ptr);
+  EXPECT_EQ(typeid(routing_graph_ptr), typeid(lanelet::routing::RoutingGraphPtr))
+    << "Type is not lanelet::routing::RoutingGraphPtr";
+  lanelet::ConstLanelet const_ll;
+  auto ll = autoware::experimental::lanelet2_utils::remove_const(const_ll);
+  EXPECT_EQ(typeid(ll), typeid(lanelet::Lanelet)) << "Type is not lanelet::Lanelet";
+}
