@@ -33,7 +33,7 @@ class ImuGenerator : public rclcpp::Node
 public:
   ImuGenerator()
   : Node("imu_generator"),
-    imu_pub(create_publisher<Imu>("/imu", rclcpp::QoS{1}.reliable().transient_local()))
+    imu_pub(create_publisher<Imu>("/imu", rclcpp::SensorDataQoS()))
   {
   }
   rclcpp::Publisher<Imu>::SharedPtr imu_pub;
@@ -46,7 +46,7 @@ public:
   : Node("velocity_generator"),
     vehicle_velocity_pub(
       create_publisher<TwistWithCovarianceStamped>(
-        "/vehicle/twist_with_covariance", rclcpp::QoS{1}.reliable().transient_local()))
+        "/vehicle/twist_with_covariance", rclcpp::SensorDataQoS()))
   {
   }
   rclcpp::Publisher<TwistWithCovarianceStamped>::SharedPtr vehicle_velocity_pub;
@@ -123,12 +123,12 @@ TEST(GyroOdometer, TestGyroOdometerWithImuAndVelocity)
   auto velocity_generator = std::make_shared<VelocityGenerator>();
   auto gyro_odometer_validator_node = std::make_shared<GyroOdometerValidator>();
 
-  // TODO(youtalk): Remove these after the refinement of the GyroOdometerNode
-  velocity_generator->vehicle_velocity_pub->publish(input_velocity);
-  imu_generator->imu_pub->publish(input_imu);
-
-  velocity_generator->vehicle_velocity_pub->publish(input_velocity);
-  imu_generator->imu_pub->publish(input_imu);
+  // Publish multiple times to ensure delivery with SensorDataQoS (BEST_EFFORT)
+  for (int i = 0; i < 10; ++i) {
+    velocity_generator->vehicle_velocity_pub->publish(input_velocity);
+    imu_generator->imu_pub->publish(input_imu);
+    rclcpp::WallRate(10).sleep();
+  }
 
   // gyro_odometer receives IMU and velocity, and publishes the fused twist data.
   wait_spin_some(gyro_odometer_node);
@@ -152,7 +152,11 @@ TEST(GyroOdometer, TestGyroOdometerImuOnly)
   auto imu_generator = std::make_shared<ImuGenerator>();
   auto gyro_odometer_validator_node = std::make_shared<GyroOdometerValidator>();
 
-  imu_generator->imu_pub->publish(input_imu);
+  // Publish multiple times to ensure delivery with SensorDataQoS (BEST_EFFORT)
+  for (int i = 0; i < 10; ++i) {
+    imu_generator->imu_pub->publish(input_imu);
+    rclcpp::WallRate(10).sleep();
+  }
 
   // gyro_odometer receives IMU
   wait_spin_some(gyro_odometer_node);
