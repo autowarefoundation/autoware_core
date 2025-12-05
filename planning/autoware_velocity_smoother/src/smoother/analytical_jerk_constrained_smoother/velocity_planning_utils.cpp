@@ -248,7 +248,6 @@ bool calcStopVelocityWithConstantJerkAccLimit(
     return false;
   }
 
-  // Adjust distances to be relative to start_distance for interpolation with xs/vs/as
   std::vector<double> adjusted_distances;
   for (const auto & d : distances) {
     adjusted_distances.push_back(d - start_distance);
@@ -256,9 +255,6 @@ bool calcStopVelocityWithConstantJerkAccLimit(
 
   const auto vel_at_wp = autoware::interpolation::lerp(xs, vs, adjusted_distances);
   const auto acc_at_wp = autoware::interpolation::lerp(xs, as, adjusted_distances);
-
-  // Note: vel_at_wp and acc_at_wp are indexed by adjusted_distances, but we apply them to absolute
-  // distances This is correct because lerp returns values in the same order as the query points
 
   output_trajectory.longitudinal_velocity_mps().build(distances, vel_at_wp);
   output_trajectory.acceleration_mps2().build(distances, acc_at_wp);
