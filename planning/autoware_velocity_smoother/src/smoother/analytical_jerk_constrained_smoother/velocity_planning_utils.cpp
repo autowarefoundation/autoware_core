@@ -15,6 +15,7 @@
 #include "autoware/velocity_smoother/smoother/analytical_jerk_constrained_smoother/velocity_planning_utils.hpp"
 
 #include "autoware/interpolation/linear_interpolation.hpp"
+#include "autoware/trajectory/trajectory_point.hpp"
 
 #include <autoware_utils_geometry/geometry.hpp>
 
@@ -169,7 +170,7 @@ bool validCheckCalcStopDist(
 bool calcStopVelocityWithConstantJerkAccLimit(
   const double v0, const double a0, const double jerk_acc, const double jerk_dec,
   const double min_acc, const double decel_target_vel, const int type,
-  const std::vector<double> & times, const size_t start_index, TrajectoryPoints & output_trajectory)
+  const std::vector<double> & times, const double start_distance, Trajectory & output_trajectory)
 {
   const double t_total = std::accumulate(times.begin(), times.end(), 0.0);
   std::vector<double> ts, xs, vs, as, js;
@@ -216,23 +217,21 @@ bool calcStopVelocityWithConstantJerkAccLimit(
   }
 
   if (xs.empty()) {
-    for (size_t i = start_index; i < output_trajectory.size(); ++i) {
-      output_trajectory.at(i).longitudinal_velocity_mps = decel_target_vel;
-      output_trajectory.at(i).acceleration_mps2 = 0.0;
-    }
+    const double traj_length = output_trajectory.length();
+    std::vector<double> s_range = {start_distance, traj_length};
+    std::vector<double> vel_range(2, decel_target_vel);
+    output_trajectory.longitudinal_velocity_mps().build(s_range, vel_range);
     return true;
   }
 
-  double distance = 0.0;
+  const double traj_length = output_trajectory.length();
+  const auto s_values = output_trajectory.base_arange(0.1);
+
   std::vector<double> distances;
-  distances.push_back(distance);
-  for (size_t i = start_index; i < output_trajectory.size() - 1; ++i) {
-    distance += autoware_utils_geometry::calc_distance2d(
-      output_trajectory.at(i), output_trajectory.at(i + 1));
-    if (distance > xs.back()) {
-      break;
+  for (const auto & s : s_values) {
+    if (s >= start_distance && s <= xs.back() + start_distance) {
+      distances.push_back(s);
     }
-    distances.push_back(distance);
   }
 
   if (
@@ -245,21 +244,31 @@ bool calcStopVelocityWithConstantJerkAccLimit(
 
   if (
     xs.size() < 2 || vs.size() < 2 || as.size() < 2 || js.size() < 2 || distances.empty() ||
-    distances.front() < xs.front() || xs.back() < distances.back()) {
+    distances.front() < start_distance || xs.back() + start_distance < distances.back()) {
     return false;
   }
 
-  const auto vel_at_wp = autoware::interpolation::lerp(xs, vs, distances);
-  const auto acc_at_wp = autoware::interpolation::lerp(xs, as, distances);
-  const auto jerk_at_wp = autoware::interpolation::lerp(xs, js, distances);
-
-  for (size_t i = 0; i < vel_at_wp.size(); ++i) {
-    output_trajectory.at(start_index + i).longitudinal_velocity_mps = vel_at_wp.at(i);
-    output_trajectory.at(start_index + i).acceleration_mps2 = acc_at_wp.at(i);
+  // Adjust distances to be relative to start_distance for interpolation with xs/vs/as
+  std::vector<double> adjusted_distances;
+  for (const auto & d : distances) {
+    adjusted_distances.push_back(d - start_distance);
   }
-  for (size_t i = start_index + vel_at_wp.size(); i < output_trajectory.size(); ++i) {
-    output_trajectory.at(i).longitudinal_velocity_mps = decel_target_vel;
-    output_trajectory.at(i).acceleration_mps2 = 0.0;
+
+  const auto vel_at_wp = autoware::interpolation::lerp(xs, vs, adjusted_distances);
+  const auto acc_at_wp = autoware::interpolation::lerp(xs, as, adjusted_distances);
+
+  // Note: vel_at_wp and acc_at_wp are indexed by adjusted_distances, but we apply them to absolute
+  // distances This is correct because lerp returns values in the same order as the query points
+
+  output_trajectory.longitudinal_velocity_mps().build(distances, vel_at_wp);
+  output_trajectory.acceleration_mps2().build(distances, acc_at_wp);
+
+  if (!distances.empty()) {
+    std::vector<double> remaining_s;
+    remaining_s.push_back(distances.back());
+    remaining_s.push_back(traj_length);
+    std::vector<double> remaining_vel(2, decel_target_vel);
+    output_trajectory.longitudinal_velocity_mps().build(remaining_s, remaining_vel);
   }
 
   return true;

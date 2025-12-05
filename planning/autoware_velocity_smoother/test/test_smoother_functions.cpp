@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "autoware/motion_utils/trajectory/trajectory.hpp"
+#include "autoware/trajectory/trajectory_point.hpp"
 #include "autoware/velocity_smoother/trajectory_utils.hpp"
 
 #include <gtest/gtest.h>
@@ -20,6 +22,8 @@
 
 using autoware::velocity_smoother::trajectory_utils::TrajectoryPoints;
 using autoware_planning_msgs::msg::TrajectoryPoint;
+using Trajectory =
+  autoware::experimental::trajectory::Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>;
 
 TrajectoryPoints genStraightTrajectory(const size_t size)
 {
@@ -42,6 +46,34 @@ TrajectoryPoints genStraightTrajectory(const size_t size)
   return tps;
 }
 
+Trajectory genStraightTrajectoryContinuous(const size_t size)
+{
+  double x = 0.0;
+  double dx = 1.0;
+  geometry_msgs::msg::Quaternion o;
+  o.x = 0.0;
+  o.y = 0.0;
+  o.z = 0.0;
+  o.w = 1.0;
+
+  TrajectoryPoints tps;
+  TrajectoryPoint p;
+  for (size_t i = 0; i < size; ++i) {
+    p.pose.position.x = x;
+    p.pose.orientation = o;
+    p.longitudinal_velocity_mps = 0.0;
+    p.acceleration_mps2 = 0.0;
+    x += dx;
+    tps.push_back(p);
+  }
+
+  auto result = Trajectory::Builder().build(tps);
+  if (!result) {
+    throw std::runtime_error("Failed to build continuous trajectory");
+  }
+  return result.value();
+}
+
 TEST(TestTrajectoryUtils, CalcTrajectoryCurvatureFrom3Points)
 {
   // the output curvature vector should have the same size of the input trajectory.
@@ -58,6 +90,31 @@ TEST(TestTrajectoryUtils, CalcTrajectoryCurvatureFrom3Points)
   for (const auto trajectory_size : trajectory_size_arr) {
     for (const auto idx_dist : idx_dist_arr) {
       checkOutputSize(trajectory_size, idx_dist);
+    }
+  }
+}
+
+TEST(TestTrajectoryUtils, CalcTrajectoryCurvatureFrom3PointsContinuous)
+{
+  // test with different trajectory sizes and interval distances
+  const auto checkContinuousOutput =
+    [](const size_t trajectory_size, const double interval_distance) {
+      const auto trajectory = genStraightTrajectoryContinuous(trajectory_size);
+      const auto curvatures =
+        autoware::velocity_smoother::trajectory_utils::calcTrajectoryCurvatureFrom3PointsContinuous(
+          trajectory, interval_distance);
+
+      // for a straight trajectory, all curvatures should be close to zero
+      for (const auto & curvature : curvatures) {
+        EXPECT_NEAR(curvature, 0.0, 0.01) << "Straight trajectory should have near-zero curvature";
+      }
+    };
+
+  const auto trajectory_size_arr = {10, 20, 50, 100};
+  const auto interval_distance_arr = {0.5, 1.0, 2.0, 5.0};
+  for (const auto trajectory_size : trajectory_size_arr) {
+    for (const auto interval_distance : interval_distance_arr) {
+      checkContinuousOutput(trajectory_size, interval_distance);
     }
   }
 }

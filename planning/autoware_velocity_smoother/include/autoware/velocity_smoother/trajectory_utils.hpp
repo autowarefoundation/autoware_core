@@ -15,6 +15,9 @@
 #ifndef AUTOWARE__VELOCITY_SMOOTHER__TRAJECTORY_UTILS_HPP_
 #define AUTOWARE__VELOCITY_SMOOTHER__TRAJECTORY_UTILS_HPP_
 
+#include "autoware/motion_utils/trajectory/trajectory.hpp"
+#include "autoware/trajectory/trajectory_point.hpp"
+
 #include "autoware_planning_msgs/msg/trajectory_point.hpp"
 #include "geometry_msgs/msg/pose.hpp"
 
@@ -27,7 +30,11 @@ namespace autoware::velocity_smoother::trajectory_utils
 {
 using autoware_planning_msgs::msg::TrajectoryPoint;
 using TrajectoryPoints = std::vector<TrajectoryPoint>;
+using Trajectory =
+  autoware::experimental::trajectory::Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>;
 using geometry_msgs::msg::Pose;
+using Trajectory =
+  autoware::experimental::trajectory::Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>;
 
 TrajectoryPoint calcInterpolatedTrajectoryPoint(
   const TrajectoryPoints & trajectory, const Pose & target_pose, const size_t seg_idx);
@@ -38,10 +45,15 @@ TrajectoryPoints extractPathAroundIndex(
 
 std::vector<double> calcArclengthArray(const TrajectoryPoints & trajectory);
 
+std::vector<double> calcArclengthArrayContinuous(
+  const Trajectory & trajectory, const double interval_distance);
+
 std::vector<double> calcTrajectoryIntervalDistance(const TrajectoryPoints & trajectory);
 
 std::vector<double> calcTrajectoryCurvatureFrom3Points(
   const TrajectoryPoints & trajectory, size_t idx_dist);
+
+std::vector<double> calcTrajectoryCurvatureFrom3PointsContinuous(const Trajectory & trajectory);
 
 void applyMaximumVelocityLimit(
   const size_t from, const size_t to, const double max_vel, TrajectoryPoints & trajectory);

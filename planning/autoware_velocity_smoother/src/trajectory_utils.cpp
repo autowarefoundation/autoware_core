@@ -16,6 +16,7 @@
 
 #include "autoware/interpolation/linear_interpolation.hpp"
 #include "autoware/motion_utils/trajectory/trajectory.hpp"
+#include "autoware/trajectory/trajectory_point.hpp"
 
 #include <autoware_utils_geometry/geometry.hpp>
 
@@ -141,6 +142,20 @@ TrajectoryPoints extractPathAroundIndex(
   return extracted_traj;
 }
 
+Trajectory extractPathAroundPositionContinuous(
+  const Trajectory & trajectory, const double arc_length_position, const double ahead_distance,
+  const double behind_distance)
+{
+  const double start_s = std::max(0.0, arc_length_position - behind_distance);
+  const double length_s =
+    std::min(trajectory.length() - start_s, arc_length_position + ahead_distance - start_s);
+
+  auto cropped_trajectory = trajectory;
+  cropped_trajectory.crop(start_s, length_s);
+
+  return cropped_trajectory;
+}
+
 std::vector<double> calcArclengthArray(const TrajectoryPoints & trajectory)
 {
   if (trajectory.empty()) {
@@ -220,6 +235,27 @@ std::vector<double> calcTrajectoryCurvatureFrom3Points(
   return k_arr;
 }
 
+std::vector<double> calcTrajectoryCurvatureFrom3PointsContinuous(
+  const Trajectory & trajectory, const double interval_distance)
+{
+  if (trajectory.length() < interval_distance * 2) {
+    return {};
+  }
+
+  const double total_length = trajectory.length();
+
+  std::vector<double> s_values;
+  for (double s = 0.0; s <= total_length; s += interval_distance) {
+    s_values.push_back(s);
+  }
+
+  if (s_values.size() < 3) {
+    return {};
+  }
+
+  return trajectory.curvature(s_values);
+}
+
 void applyMaximumVelocityLimit(
   const size_t begin, const size_t end, const double max_vel, TrajectoryPoints & trajectory)
 {
@@ -228,6 +264,17 @@ void applyMaximumVelocityLimit(
       trajectory.at(idx).longitudinal_velocity_mps = max_vel;
     }
   }
+}
+
+void applyMaximumVelocityLimitContinuous(
+  Trajectory & trajectory, const double begin_distance, const double end_distance,
+  const double max_vel)
+{
+  // Apply velocity limit only between begin_distance and end_distance
+  std::vector<double> s_range = {begin_distance, end_distance};
+  std::vector<double> vel_range(2, max_vel);
+
+  trajectory.longitudinal_velocity_mps().build(s_range, vel_range);
 }
 
 bool calcStopDistWithJerkConstraints(
