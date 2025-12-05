@@ -54,8 +54,7 @@ void EuclideanClusterNode::onPointCloud(
   // Check for empty point cloud
   if (input_msg->data.empty() || input_msg->width * input_msg->height == 0) {
     RCLCPP_WARN_THROTTLE(
-      get_logger(), *get_clock(), 5000,
-      "Received empty point cloud, skipping processing.");
+      get_logger(), *get_clock(), 5000, "Received empty point cloud, skipping processing.");
     // Publish empty DetectedObjects
     autoware_perception_msgs::msg::DetectedObjects output;
     output.header = input_msg->header;
