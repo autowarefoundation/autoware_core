@@ -1,12 +1,26 @@
-name: build-and-test-daily
+name: build-test-tidy-pr
 
 on:
-  schedule:
-    - cron: 0 0 * * *
-  workflow_dispatch:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - labeled
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
-  build-and-test-daily:
+  require-label:
+    uses: autowarefoundation/autoware-github-actions/.github/workflows/require-label.yaml@v1
+    with:
+      label: run:build-and-test-differential
+
+  build-and-test-differential:
+    needs:
+      - require-label
     strategy:
       fail-fast: false
       matrix:
@@ -14,26 +28,18 @@ jobs:
           - rosdistro: humble
             container: ghcr.io/autowarefoundation/autoware:core-common-devel
             above: false
-            codecov-flag: daily
-            concurrency-group: humble
 
           - rosdistro: humble
             container: ghcr.io/autowarefoundation/autoware:core-common-devel
             above: true
-            codecov-flag: not-used
-            concurrency-group: humble-above
 
           - rosdistro: jazzy
             container: ghcr.io/autowarefoundation/autoware:core-common-devel-jazzy-amd64
             above: false
-            codecov-flag: daily-jazzy
-            concurrency-group: jazzy
 
           - rosdistro: jazzy
             container: ghcr.io/autowarefoundation/autoware:core-common-devel-jazzy-amd64
             above: true
-            codecov-flag: not-used
-            concurrency-group: above-jazzy
 
     uses: ./.github/workflows/build-and-test-reusable.yaml
 
@@ -44,8 +50,6 @@ jobs:
       push-ccache: false
       cache-key-element: daily-build
       above: ${{ matrix.above }}
-      codecov-flag: ${{ matrix.codecov-flag }}
-      concurrency-group: build-and-test-daily-${{ matrix.concurrency-group }}-${{ github.ref }}-${{ github.run_id }}
 
     secrets:
       codecov-token: ${{ secrets.CODECOV_TOKEN }}
