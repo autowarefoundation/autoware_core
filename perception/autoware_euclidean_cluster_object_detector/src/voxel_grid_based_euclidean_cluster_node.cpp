@@ -65,6 +65,11 @@ void VoxelGridBasedEuclideanClusterNode::onPointCloud(
     // NOTE: prevent pcl log spam
     RCLCPP_WARN_STREAM_THROTTLE(
       this->get_logger(), *this->get_clock(), 1000, "Empty sensor points!");
+    // Publish empty DetectedObjects and return early
+    autoware_perception_msgs::msg::DetectedObjects output;
+    output.header = input_msg->header;
+    cluster_pub_->publish(output);
+    return;
   }
   // cluster and build output msg
   autoware_perception_msgs::msg::DetectedObjects output;
