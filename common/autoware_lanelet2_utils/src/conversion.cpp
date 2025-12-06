@@ -146,9 +146,26 @@ lanelet::ConstPoint3d from_ros(const geometry_msgs::msg::Pose & src)
   return from_ros(src.position);
 }
 
-static lanelet::Point3d remove_const(const lanelet::ConstPoint3d & point)
+lanelet::Point3d remove_const(const lanelet::ConstPoint3d & point)
 {
   return lanelet::Point3d{std::const_pointer_cast<lanelet::PointData>(point.constData())};
+}
+
+lanelet::LaneletMapPtr remove_const(const lanelet::LaneletMapConstPtr & const_map_ptr)
+{
+  return lanelet::LaneletMapPtr{std::const_pointer_cast<lanelet::LaneletMap>(const_map_ptr)};
+}
+
+lanelet::routing::RoutingGraphPtr remove_const(
+  const lanelet::routing::RoutingGraphConstPtr & const_routing_graph_ptr)
+{
+  return lanelet::routing::RoutingGraphPtr{
+    std::const_pointer_cast<lanelet::routing::RoutingGraph>(const_routing_graph_ptr)};
+}
+
+lanelet::Lanelet remove_const(const lanelet::ConstLanelet & const_lanelet)
+{
+  return lanelet::Lanelet{std::const_pointer_cast<lanelet::LaneletData>(const_lanelet.constData())};
 }
 
 static lanelet::Point3d remove_basic(const lanelet::BasicPoint3d & point)
