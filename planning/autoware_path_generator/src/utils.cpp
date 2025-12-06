@@ -27,8 +27,8 @@
 #include <autoware/trajectory/utils/pretty_build.hpp>
 #include <autoware_lanelet2_extension/utility/message_conversion.hpp>
 #include <autoware_lanelet2_extension/utility/utilities.hpp>
-#include <autoware_utils/geometry/geometry.hpp>
-#include <autoware_utils/math/unit_conversion.hpp>
+#include <autoware_utils_geometry/geometry.hpp>
+#include <autoware_utils_math/unit_conversion.hpp>
 
 #include <autoware_internal_planning_msgs/msg/path_point_with_lane_id.hpp>
 
@@ -1017,8 +1017,8 @@ std::optional<lanelet::ConstPoint2d> get_turn_signal_required_end_point(
     centerline.value(),
     [terminal_yaw, angle_threshold_deg](const geometry_msgs::msg::Pose & point) {
       const auto yaw = tf2::getYaw(point.orientation);
-      return std::fabs(autoware_utils::normalize_radian(yaw - terminal_yaw)) <
-             autoware_utils::deg2rad(angle_threshold_deg);
+      return std::fabs(autoware_utils_math::normalize_radian(yaw - terminal_yaw)) <
+             autoware_utils_math::deg2rad(angle_threshold_deg);
     });
   if (intervals.empty()) return std::nullopt;
 

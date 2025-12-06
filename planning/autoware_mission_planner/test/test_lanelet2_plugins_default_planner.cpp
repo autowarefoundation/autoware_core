@@ -47,7 +47,7 @@ struct DefaultPlanner : public autoware::mission_planner::lanelet2::DefaultPlann
   void set_default_test_map() { route_handler_.setMap(autoware::test_utils::makeMapBinMsg()); }
   [[nodiscard]] bool check_goal_inside_lanes(
     const lanelet::ConstLanelets & lanelets_near_goal,
-    const autoware_utils::Polygon2d & goal_footprint) const
+    const autoware_utils_geometry::Polygon2d & goal_footprint) const
   {
     return check_goal_footprint_inside_lanes(lanelets_near_goal, goal_footprint);
   }
@@ -113,7 +113,7 @@ TEST_F(DefaultPlannerTest, checkGoalInsideLane)
   lanelet::ConstLanelet goal_lanelet{lanelet::InvalId, left_bound, right_bound};
 
   // simple case where the footprint is completely inside the lane
-  autoware_utils::Polygon2d goal_footprint;
+  autoware_utils_geometry::Polygon2d goal_footprint;
   goal_footprint.outer().emplace_back(0, 0);
   goal_footprint.outer().emplace_back(0, 0.5);
   goal_footprint.outer().emplace_back(0.5, 0.5);
@@ -392,7 +392,7 @@ TEST_F(DefaultPlannerTest, visualizeDebugFootprint)
   DefaultPlanner planner;
   planner_.set_default_test_map();
 
-  autoware_utils::LinearRing2d footprint;
+  autoware_utils_geometry::LinearRing2d footprint;
   footprint.push_back({1.0, 1.0});
   footprint.push_back({1.0, -1.0});
   footprint.push_back({0.0, -1.0});

@@ -210,7 +210,7 @@ double calc_possible_min_dist_from_obj_to_traj_poly(
 
 double get_dist_to_traj_poly(
   const geometry_msgs::msg::Point & point,
-  const std::vector<autoware_utils::Polygon2d> & decimated_traj_polys)
+  const std::vector<autoware_utils_geometry::Polygon2d> & decimated_traj_polys)
 {
   const auto point_2d = autoware_utils_geometry::Point2d(point.x, point.y);
 

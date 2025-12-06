@@ -14,7 +14,7 @@
 
 #include "manager.hpp"
 
-#include <autoware_utils/ros/parameter.hpp>
+#include <autoware_utils_rclcpp/parameter.hpp>
 
 #include <lanelet2_core/primitives/BasicRegulatoryElements.h>
 
@@ -25,7 +25,7 @@
 
 namespace autoware::behavior_velocity_planner
 {
-using autoware_utils::get_or_declare_parameter;
+using autoware_utils_rclcpp::get_or_declare_parameter;
 using lanelet::TrafficSign;
 
 StopLineModuleManager::StopLineModuleManager(rclcpp::Node & node)

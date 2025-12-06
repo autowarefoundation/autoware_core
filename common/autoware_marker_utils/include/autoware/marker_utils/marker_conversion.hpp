@@ -65,9 +65,9 @@ visualization_msgs::msg::Marker create_autoware_geometry_marker(
  * return marker of LineString2d
  */
 visualization_msgs::msg::Marker create_autoware_geometry_marker(
-  const autoware_utils::LineString2d & ls, const rclcpp::Time & stamp, const std::string & ns,
-  int32_t id, const geometry_msgs::msg::Vector3 & scale, const std_msgs::msg::ColorRGBA & color,
-  const double z);
+  const autoware_utils_geometry::LineString2d & ls, const rclcpp::Time & stamp,
+  const std::string & ns, int32_t id, const geometry_msgs::msg::Vector3 & scale,
+  const std_msgs::msg::ColorRGBA & color, const double z);
 
 /**
  * @brief create marker array from geometry polygon based on the marker type
@@ -207,9 +207,9 @@ visualization_msgs::msg::MarkerArray create_lanelets_marker_array(
  * @return marker array of the MultiLineString2d
  */
 visualization_msgs::msg::MarkerArray create_lanelet_linestring_marker_array(
-  const autoware_utils::MultiLineString2d & mls, const rclcpp::Time & stamp, const std::string & ns,
-  int32_t id, const geometry_msgs::msg::Vector3 & scale, const std_msgs::msg::ColorRGBA & color,
-  const double z);
+  const autoware_utils_geometry::MultiLineString2d & mls, const rclcpp::Time & stamp,
+  const std::string & ns, int32_t id, const geometry_msgs::msg::Vector3 & scale,
+  const std_msgs::msg::ColorRGBA & color, const double z);
 
 /**
  * @brief create marker array from lanelet polygon (CompoundPolygon3d)
