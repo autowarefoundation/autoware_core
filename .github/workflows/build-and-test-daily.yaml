@@ -5,6 +5,10 @@ on:
     - cron: 0 0 * * *
   workflow_dispatch:
 
+env:
+  CC: /usr/lib/ccache/gcc
+  CXX: /usr/lib/ccache/g++
+
 jobs:
   build-and-test-daily:
     runs-on: ubuntu-24.04
@@ -22,9 +26,7 @@ jobs:
             container: ghcr.io/autowarefoundation/autoware:core-common-devel-jazzy-amd64
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
+        uses: actions/checkout@v6
 
       - name: Show disk space before the tasks
         run: df -h
@@ -35,6 +37,38 @@ jobs:
       - name: Get self packages
         id: get-self-packages
         uses: autowarefoundation/autoware-github-actions/get-self-packages@v1
+
+      - name: Create ccache directory
+        run: |
+          if [ -z "${CCACHE_DIR}" ]; then
+            apt-get update
+            apt-get install -y ccache
+            export CCACHE_DIR=/root/.ccache
+          fi
+          mkdir -p ${CCACHE_DIR}
+          du -sh ${CCACHE_DIR} && ccache -s
+        shell: bash
+
+      - name: Attempt to restore ccache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            /root/.ccache
+          key: ccache-main-${{ runner.arch }}-${{ matrix.rosdistro }}-${{ github.sha }}
+          restore-keys: |
+            ccache-main-${{ runner.arch }}-${{ matrix.rosdistro }}-
+
+      - name: Limit ccache size
+        run: |
+          rm -f "${CCACHE_DIR}/ccache.conf"
+          echo -e "# Set maximum cache size\nmax_size = 1000MB" >> "${CCACHE_DIR}/ccache.conf"
+        shell: bash
+
+      - name: Show ccache stats before build and reset stats
+        run: |
+          du -sh ${CCACHE_DIR} && ccache -s
+          ccache --zero-stats
+        shell: bash
 
       - name: Use ros2-testing packages
         run: |
@@ -49,8 +83,13 @@ jobs:
         uses: autowarefoundation/autoware-github-actions/colcon-build@v1
         with:
           rosdistro: ${{ matrix.rosdistro }}
+          cache-key-element: daily-build
           target-packages: ${{ steps.get-self-packages.outputs.self-packages }}
           underlay-workspace: /opt/autoware
+
+      - name: Show ccache stats after build
+        run: du -sh ${CCACHE_DIR} && ccache -s
+        shell: bash
 
       - name: Test
         if: ${{ steps.get-self-packages.outputs.self-packages != '' }}
@@ -70,6 +109,49 @@ jobs:
           verbose: true
           flags: total
           token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Show disk space after the tasks
+        run: df -h
+
+  clang-tidy:
+    needs: build-and-test-daily
+    runs-on: ubuntu-latest
+    container: ${{ matrix.container }}
+    strategy:
+      fail-fast: false
+      matrix:
+        rosdistro:
+          - humble
+          - jazzy
+        include:
+          - rosdistro: humble
+            container: ghcr.io/autowarefoundation/autoware:core-common-devel
+          - rosdistro: jazzy
+            container: ghcr.io/autowarefoundation/autoware:core-common-devel-jazzy-amd64
+    steps:
+      - name: Checkout PR branch and all PR commits
+        uses: actions/checkout@v6
+
+      - name: Show disk space before the tasks
+        run: df -h
+
+      - name: Remove exec_depend
+        uses: autowarefoundation/autoware-github-actions/remove-exec-depend@v1
+
+      - name: Get self packages
+        id: get-self-packages
+        uses: autowarefoundation/autoware-github-actions/get-self-packages@v1
+
+      - name: Run clang-tidy
+        if: ${{ steps.get-self-packages.outputs.self-packages != '' }}
+        uses: autowarefoundation/autoware-github-actions/clang-tidy@v1
+        with:
+          rosdistro: ${{ matrix.rosdistro }}
+          cache-key-element: daily-build
+          target-packages: ${{ steps.get-self-packages.outputs.self-packages }}
+          clang-tidy-config-url: https://raw.githubusercontent.com/autowarefoundation/autoware/main/.clang-tidy-ci
+          underlay-workspace: /opt/autoware
+          artifact-name: clang-tidy-result-${{ matrix.rosdistro }}
 
       - name: Show disk space after the tasks
         run: df -h
