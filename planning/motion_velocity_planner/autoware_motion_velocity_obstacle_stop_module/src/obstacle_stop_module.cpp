@@ -369,7 +369,7 @@ std::optional<CollisionPointWithDist> ObstacleStopModule::get_nearest_collision_
           continue;
         }
         const double dist_from_base_link =
-          autoware_utils::calc_distance2d(traj_points.at(traj_index).pose, obstacle_point);
+          autoware_utils_geometry::calc_distance2d(traj_points.at(traj_index).pose, obstacle_point);
         if (dist_from_base_link > rough_dist_th) {
           continue;
         }
@@ -383,13 +383,13 @@ std::optional<CollisionPointWithDist> ObstacleStopModule::get_nearest_collision_
       continue;
     }
 
-    const auto bumper_pose = autoware_utils::calc_offset_pose(
+    const auto bumper_pose = autoware_utils_geometry::calc_offset_pose(
       traj_points.at(traj_index).pose, x_offset_to_bumper, 0.0, 0.0);
     std::optional<double> max_collision_length = std::nullopt;
     std::optional<geometry_msgs::msg::Point> max_collision_point = std::nullopt;
     for (const auto & point : collision_geom_points) {
       const double dist_from_bumper =
-        std::abs(autoware_utils::inverse_transform_point(point, bumper_pose).x);
+        std::abs(autoware_utils_geometry::inverse_transform_point(point, bumper_pose).x);
 
       if (!max_collision_length.has_value() || dist_from_bumper > *max_collision_length) {
         max_collision_length = dist_from_bumper;
