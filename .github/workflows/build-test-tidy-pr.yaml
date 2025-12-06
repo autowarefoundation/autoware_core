@@ -1,12 +1,26 @@
-name: build-and-test
+name: build-test-tidy-pr
 
 on:
-  push:
-    branches:
-      - main
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - labeled
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
-  bnt:
+  require-label:
+    uses: autowarefoundation/autoware-github-actions/.github/workflows/require-label.yaml@v1
+    with:
+      label: run:build-and-test-differential
+
+  bnt-diff:
+    needs:
+      - require-label
     strategy:
       fail-fast: false
       matrix:
@@ -19,17 +33,12 @@ jobs:
           - rosdistro: jazzy
             container: ghcr.io/autowarefoundation/autoware:core-common-devel-jazzy-amd64
 
-    uses: ./.github/workflows/build-and-test-reusable.yaml
+    uses: ./.github/workflows/build-and-test-diff-reusable.yaml
 
     with:
       rosdistro: ${{ matrix.rosdistro }}
       container: ${{ matrix.container }}
-      pull-ccache: false
-      push-ccache: true
-      cache-key-element: build
       above: ${{ matrix.above }}
-      codecov-flag: total-${{ matrix.rosdistro }}
-      concurrency-group: build-and-test-${{ matrix.rosdistro }}${{ matrix.above && '-above' || '' }}-${{ github.ref }}-${{ github.run_id }}
 
     secrets:
       codecov-token: ${{ secrets.CODECOV_TOKEN }}
