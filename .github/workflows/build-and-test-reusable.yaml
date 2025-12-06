@@ -3,7 +3,8 @@ name: Reusable Build and Test Workflow
 on:
   workflow_call:
     secrets:
-      token: ${{ secrets.CODECOV_TOKEN }}
+      codecov-token:
+        required: true
     inputs:
       rosdistro:
         type: string
@@ -51,6 +52,7 @@ env:
 
 jobs:
   build-and-test:
+    name: build-and-test-${{ inputs.rosdistro }}${{ inputs.above && '-above' || '' }}
     runs-on: ubuntu-latest
     container: ${{ inputs.container }}
     steps:
@@ -142,12 +144,13 @@ jobs:
           fail_ci_if_error: false
           verbose: true
           flags: ${{ inputs.codecov-flag }}
-          token: ${{ secrets.CODECOV_TOKEN }}
+          token: ${{ secrets.codecov-token }}
 
       - name: Show disk space after the tasks
         run: df -h
 
   clang-tidy:
+    name: clang-tidy-${{ inputs.rosdistro }}${{ inputs.above && '-above' || '' }}
     needs: build-and-test
     if: ${{ inputs.above == false }}
     runs-on: ubuntu-latest

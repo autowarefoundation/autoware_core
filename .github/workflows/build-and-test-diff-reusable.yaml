@@ -2,6 +2,9 @@ name: build-and-test-differential
 
 on:
   workflow_call:
+    secrets:
+      codecov-token:
+        required: true
     inputs:
       container:
         required: true
@@ -17,9 +20,6 @@ on:
         default: true
         required: false
         type: boolean
-    secrets:
-      codecov-token:
-        required: true
 
 env:
   CC: /usr/lib/ccache/gcc
@@ -27,6 +27,7 @@ env:
 
 jobs:
   build-and-test-differential:
+    name: build-and-test-diff-${{ inputs.rosdistro }}${{ inputs.above && '-above' || '' }}
     if: ${{ always() }}
     runs-on: ubuntu-latest
     container: ${{ inputs.container }}
@@ -128,11 +129,15 @@ jobs:
         shell: bash
 
   clang-tidy-differential:
+    name: clang-tidy-diff-${{ inputs.rosdistro }}${{ inputs.above && '-above' || '' }}
     needs: build-and-test-differential
     if: ${{ inputs.above == false }}
     runs-on: ubuntu-latest
     container: ${{ inputs.container }}
     steps:
+      - name: Set PR fetch depth
+        run: echo "PR_FETCH_DEPTH=$(( ${{ github.event.pull_request.commits }} + 1 ))" >> "${GITHUB_ENV}"
+
       - name: Checkout PR branch and all PR commits
         uses: actions/checkout@v4
         with:

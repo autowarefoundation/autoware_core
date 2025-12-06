@@ -18,37 +18,26 @@ jobs:
     with:
       label: run:build-and-test-differential
 
-  build-and-test-differential:
+  bnt-diff:
     needs:
       - require-label
     strategy:
       fail-fast: false
       matrix:
+        rosdistro: [humble, jazzy]
+        above: [false, true]
         include:
           - rosdistro: humble
             container: ghcr.io/autowarefoundation/autoware:core-common-devel
-            above: false
-
-          - rosdistro: humble
-            container: ghcr.io/autowarefoundation/autoware:core-common-devel
-            above: true
 
           - rosdistro: jazzy
             container: ghcr.io/autowarefoundation/autoware:core-common-devel-jazzy-amd64
-            above: false
 
-          - rosdistro: jazzy
-            container: ghcr.io/autowarefoundation/autoware:core-common-devel-jazzy-amd64
-            above: true
-
-    uses: ./.github/workflows/build-and-test-reusable.yaml
+    uses: ./.github/workflows/build-and-test-diff-reusable.yaml
 
     with:
       rosdistro: ${{ matrix.rosdistro }}
       container: ${{ matrix.container }}
-      pull-ccache: true
-      push-ccache: false
-      cache-key-element: daily-build
       above: ${{ matrix.above }}
 
     secrets:
