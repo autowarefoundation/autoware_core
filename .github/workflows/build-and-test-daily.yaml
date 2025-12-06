@@ -6,34 +6,18 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-test-daily:
+  bnt:
     strategy:
       fail-fast: false
       matrix:
+        rosdistro: [humble, jazzy]
+        above: [false, true]
         include:
           - rosdistro: humble
             container: ghcr.io/autowarefoundation/autoware:core-common-devel
-            above: false
-            codecov-flag: daily
-            concurrency-group: humble
-
-          - rosdistro: humble
-            container: ghcr.io/autowarefoundation/autoware:core-common-devel
-            above: true
-            codecov-flag: not-used
-            concurrency-group: humble-above
 
           - rosdistro: jazzy
             container: ghcr.io/autowarefoundation/autoware:core-common-devel-jazzy-amd64
-            above: false
-            codecov-flag: daily-jazzy
-            concurrency-group: jazzy
-
-          - rosdistro: jazzy
-            container: ghcr.io/autowarefoundation/autoware:core-common-devel-jazzy-amd64
-            above: true
-            codecov-flag: not-used
-            concurrency-group: above-jazzy
 
     uses: ./.github/workflows/build-and-test-reusable.yaml
 
@@ -44,8 +28,8 @@ jobs:
       push-ccache: false
       cache-key-element: daily-build
       above: ${{ matrix.above }}
-      codecov-flag: ${{ matrix.codecov-flag }}
-      concurrency-group: build-and-test-daily-${{ matrix.concurrency-group }}-${{ github.ref }}-${{ github.run_id }}
+      codecov-flag: daily-${{ matrix.rosdistro }}
+      concurrency-group: build-and-test-daily-${{ matrix.rosdistro }}${{ matrix.above && '-above' || '' }}-${{ github.ref }}-${{ github.run_id }}
 
     secrets:
       codecov-token: ${{ secrets.CODECOV_TOKEN }}
