@@ -49,11 +49,11 @@ GNSSPoser::GNSSPoser(const rclcpp::NodeOptions & node_options)
 
   // Set subscribers and publishers
   nav_sat_fix_sub_ = create_subscription<sensor_msgs::msg::NavSatFix>(
-    "fix", rclcpp::QoS{1},
+    "fix", rclcpp::SensorDataQoS(),
     std::bind(&GNSSPoser::callback_nav_sat_fix, this, std::placeholders::_1));
   autoware_orientation_sub_ =
     create_subscription<autoware_sensing_msgs::msg::GnssInsOrientationStamped>(
-      "autoware_orientation", rclcpp::QoS{1},
+      "autoware_orientation", rclcpp::SensorDataQoS(),
       std::bind(&GNSSPoser::callback_gnss_ins_orientation_stamped, this, std::placeholders::_1));
 
   pose_pub_ = create_publisher<geometry_msgs::msg::PoseStamped>("gnss_pose", rclcpp::QoS{1});
