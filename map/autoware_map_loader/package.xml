@@ -19,6 +19,7 @@
   <depend>autoware_component_interface_specs</depend>
   <depend>autoware_geography_utils</depend>
   <depend>autoware_lanelet2_extension</depend>
+  <depend>autoware_lanelet2_utils</depend>
   <depend>autoware_map_msgs</depend>
   <depend>fmt</depend>
   <depend>geometry_msgs</depend>

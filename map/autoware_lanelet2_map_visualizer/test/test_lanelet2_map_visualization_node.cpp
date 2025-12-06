@@ -14,7 +14,7 @@
 
 #include "../src/lanelet2_map_visualization_node.hpp"
 
-#include <autoware_lanelet2_extension/utility/message_conversion.hpp>
+#include <autoware/lanelet2_utils/conversion.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
@@ -104,8 +104,8 @@ TEST_F(TestLanelet2MapVisualizationNode, VisualizeLaneletMap)
   auto lanelet_map = createSimpleLaneletMap();
 
   // Convert lanelet map to binary message
-  autoware_map_msgs::msg::LaneletMapBin map_bin_msg;
-  lanelet::utils::conversion::toBinMsg(lanelet_map, &map_bin_msg);
+  autoware_map_msgs::msg::LaneletMapBin map_bin_msg =
+    autoware::experimental::lanelet2_utils::to_autoware_map_msgs(lanelet_map);
 
   // Publish the map
   map_bin_pub_->publish(map_bin_msg);

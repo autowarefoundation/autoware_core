@@ -36,10 +36,10 @@
 #include "lanelet2_local_projector.hpp"
 
 #include <autoware/geography_utils/lanelet2_projector.hpp>
+#include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware_lanelet2_extension/io/autoware_osm_parser.hpp>
 #include <autoware_lanelet2_extension/projection/mgrs_projector.hpp>
 #include <autoware_lanelet2_extension/projection/transverse_mercator_projector.hpp>
-#include <autoware_lanelet2_extension/utility/message_conversion.hpp>
 #include <autoware_lanelet2_extension/utility/utilities.hpp>
 #include <rclcpp/rclcpp.hpp>
 
@@ -190,12 +190,11 @@ LaneletMapBin Lanelet2MapLoaderNode::create_map_bin_msg(
   lanelet::io_handlers::AutowareOsmParser::parseVersions(
     lanelet2_filename, &format_version, &map_version);
 
-  LaneletMapBin map_bin_msg;
+  LaneletMapBin map_bin_msg = autoware::experimental::lanelet2_utils::to_autoware_map_msgs(map);
   map_bin_msg.header.stamp = now;
   map_bin_msg.header.frame_id = "map";
   map_bin_msg.version_map_format = format_version;
   map_bin_msg.version_map = map_version;
-  lanelet::utils::conversion::toBinMsg(map, &map_bin_msg);
 
   return map_bin_msg;
 }
