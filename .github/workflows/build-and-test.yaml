@@ -83,6 +83,7 @@ jobs:
         uses: autowarefoundation/autoware-github-actions/colcon-build@v1
         with:
           rosdistro: ${{ matrix.rosdistro }}
+          cache-key-element: build-and-test
           target-packages: ${{ steps.get-self-packages.outputs.self-packages }}
           build-pre-command: taskset --cpu-list 0-6
           underlay-workspace: /opt/autoware
@@ -154,6 +155,7 @@ jobs:
         uses: autowarefoundation/autoware-github-actions/clang-tidy@v1
         with:
           rosdistro: ${{ matrix.rosdistro }}
+          cache-key-element: build-and-test
           target-packages: ${{ steps.get-self-packages.outputs.self-packages }}
           clang-tidy-config-url: https://raw.githubusercontent.com/autowarefoundation/autoware/main/.clang-tidy-ci
           underlay-workspace: /opt/autoware
