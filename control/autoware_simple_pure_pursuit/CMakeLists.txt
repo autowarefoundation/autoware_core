@@ -3,7 +3,7 @@ project(autoware_simple_pure_pursuit)
 
 find_package(autoware_cmake REQUIRED)
 autoware_package()
-
+# dummy line change
 ament_auto_add_library(${PROJECT_NAME}_lib SHARED
   DIRECTORY src
 )
