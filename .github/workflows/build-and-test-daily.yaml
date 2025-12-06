@@ -30,6 +30,7 @@ jobs:
       above: ${{ matrix.above }}
       codecov-flag: daily-${{ matrix.rosdistro }}
       concurrency-group: build-and-test-daily-${{ matrix.rosdistro }}${{ matrix.above && '-above' || '' }}-${{ github.ref }}-${{ github.run_id }}
+      runner: ${{ matrix.above && '["self-hosted","Linux","X64"]' || '["ubuntu-latest"]' }}
 
     secrets:
       codecov-token: ${{ secrets.CODECOV_TOKEN }}

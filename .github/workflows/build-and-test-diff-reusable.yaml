@@ -43,6 +43,7 @@ jobs:
           fetch-depth: ${{ env.PR_FETCH_DEPTH }}
 
       - name: Show disk space before the tasks
+        if: ${{ always() }}
         run: df -h
         shell: bash
 
@@ -102,6 +103,7 @@ jobs:
           underlay-workspace: /opt/autoware
 
       - name: Show ccache stats after build
+        if: ${{ always() }}
         run: du -sh ${CCACHE_DIR} && ccache -s
         shell: bash
 

@@ -6,6 +6,12 @@ on:
       codecov-token:
         required: true
     inputs:
+      # Why is it a JSON string?
+      # https://github.com/orgs/community/discussions/11692#discussioncomment-3541856
+      runner:
+        type: string
+        default: "['ubuntu-latest']"
+        required: false
       rosdistro:
         type: string
         required: true
@@ -53,13 +59,14 @@ env:
 jobs:
   build-and-test:
     name: build-and-test-${{ inputs.rosdistro }}${{ inputs.above && '-above' || '' }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJson(inputs.runner) }}
     container: ${{ inputs.container }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
 
       - name: Show disk space before the tasks
+        if: ${{ always() }}
         run: df -h
 
       - name: Show machine specs
@@ -116,6 +123,7 @@ jobs:
           underlay-workspace: /opt/autoware
 
       - name: Show ccache stats after build
+        if: ${{ always() }}
         run: du -sh ${CCACHE_DIR} && ccache -s
         shell: bash
 
