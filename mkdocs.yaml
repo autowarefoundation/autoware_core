@@ -20,6 +20,7 @@ theme:
     - navigation.tabs.sticky
     - navigation.top
     - navigation.footer
+    - toc.integrate
   favicon: docs/assets/images/autoware-foundation.png
   icon:
     logo: fontawesome/solid/car
