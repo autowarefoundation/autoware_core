@@ -136,13 +136,13 @@ TEST(ArtificialLaneletObjectConstruction, BasicLineString3d)
   auto p3 = lanelet::BasicPoint3d(3.0, 3.0, 3.0);
   std::vector<lanelet::BasicPoint3d> vector_points = {p1, p2, p3};
   auto ls = autoware::experimental::lanelet2_utils::create_safe_linestring(vector_points);
-  EXPECT_TRUE(ls.has_value());
+  ASSERT_TRUE(ls.has_value());
 
   EXPECT_EQ(typeid(*ls), typeid(lanelet::BasicLineString3d))
     << "ls is not lanelet::BasicLineString3d.";
 
   for (size_t i = 0; i < vector_points.size(); ++i) {
-    expect_point_eq((*ls)[i], vector_points[i]);
+    expect_point_eq(ls.value()[i], vector_points[i]);
   }
 }
 
@@ -163,13 +163,13 @@ TEST(ArtificialLaneletObjectConstruction, ConstLineString3d)
   auto p3 = lanelet::ConstPoint3d(lanelet::Point3d(lanelet::InvalId, 3.0, 3.0, 3.0));
   std::vector<lanelet::ConstPoint3d> vector_points = {p1, p2, p3};
   auto ls = autoware::experimental::lanelet2_utils::create_safe_linestring(vector_points);
-  EXPECT_TRUE(ls.has_value());
+  ASSERT_TRUE(ls.has_value());
 
   EXPECT_EQ(typeid(*ls), typeid(lanelet::ConstLineString3d))
     << "ls is not lanelet::ConstLineString3d.";
 
   for (size_t i = 0; i < vector_points.size(); ++i) {
-    expect_point_eq((*ls)[i], vector_points[i]);
+    expect_point_eq((ls.value())[i], vector_points[i]);
   }
 }
 
@@ -214,8 +214,8 @@ TEST(ArtificialLaneletObjectConstruction, ConstLaneletConstruct)
   {
     const auto opt =
       autoware::experimental::lanelet2_utils::create_safe_lanelet(left_points, right_points);
-    EXPECT_TRUE(opt.has_value()) << "BasicPoint3d can construct normally.";
-    const auto ll = *opt;
+    ASSERT_TRUE(opt.has_value()) << "BasicPoint3d can construct normally.";
+    const auto ll = opt.has_value() ? *opt : lanelet::ConstLanelet{};
     for (size_t i = 0; i < left_points.size(); ++i) {
       expect_point_eq(ll.leftBound()[i], left_points[i]);
       expect_point_eq(ll.rightBound()[i], right_points[i]);
@@ -232,8 +232,8 @@ TEST(ArtificialLaneletObjectConstruction, ConstLaneletConstruct)
   {
     const auto opt = autoware::experimental::lanelet2_utils::create_safe_lanelet(
       const_left_points, const_right_points);
-    EXPECT_TRUE(opt.has_value()) << "ConstPoint3d can't construct normally.";
-    const auto ll = *opt;
+    ASSERT_TRUE(opt.has_value()) << "ConstPoint3d can't construct normally.";
+    const auto ll = opt.has_value() ? *opt : lanelet::ConstLanelet{};
     for (size_t i = 0; i < left_points.size(); ++i) {
       expect_point_eq(ll.leftBound()[i], left_points[i]);
       expect_point_eq(ll.rightBound()[i], right_points[i]);
