@@ -71,7 +71,7 @@ autoware_control_msgs::msg::Control SimplePurePursuitNode::create_control_comman
     autoware_control_msgs::msg::Control cmd;
     cmd.stamp = odom.header.stamp;
     cmd.longitudinal.velocity = 0.0;
-    cmd.longitudinal.acceleration = -1.0;
+    cmd.longitudinal.acceleration = -10.0;
     return cmd;
   }
 
