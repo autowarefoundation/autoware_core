@@ -138,11 +138,13 @@ TEST(ArtificialLaneletObjectConstruction, BasicLineString3d)
   auto ls = autoware::experimental::lanelet2_utils::create_safe_linestring(vector_points);
   ASSERT_TRUE(ls.has_value());
 
+  auto basic_linestring = ls.has_value() ? ls.value() : lanelet::BasicLineString3d{};
+
   EXPECT_EQ(typeid(*ls), typeid(lanelet::BasicLineString3d))
     << "ls is not lanelet::BasicLineString3d.";
 
   for (size_t i = 0; i < vector_points.size(); ++i) {
-    expect_point_eq(ls.value()[i], vector_points[i]);
+    expect_point_eq(basic_linestring[i], vector_points[i]);
   }
 }
 
@@ -168,8 +170,9 @@ TEST(ArtificialLaneletObjectConstruction, ConstLineString3d)
   EXPECT_EQ(typeid(*ls), typeid(lanelet::ConstLineString3d))
     << "ls is not lanelet::ConstLineString3d.";
 
+  auto linestring = ls.has_value() ? ls.value() : lanelet::ConstLineString3d{};
   for (size_t i = 0; i < vector_points.size(); ++i) {
-    expect_point_eq((ls.value())[i], vector_points[i]);
+    expect_point_eq(linestring[i], vector_points[i]);
   }
 }
 
