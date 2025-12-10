@@ -140,7 +140,7 @@ $$
 K_k = P_{CT} S^{-1}
 $$
 
-*Note: In implementation, $S^{-1}$ is solved via Cholesky decomposition.*
+_Note: In implementation, $S^{-1}$ is solved via Cholesky decomposition._
 
 **3. Update State:**
 
@@ -208,3 +208,4 @@ R *= 1.0;
 // Initialize Kalman filter
 autoware::kalman_filter::KalmanFilter kf;
 kf.init(x0, P0);
+```
