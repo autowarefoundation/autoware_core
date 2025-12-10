@@ -477,7 +477,8 @@ std::optional<double> get_first_start_edge_bound_intersection_arc_length(
     [vehicle_length](
       const autoware::experimental::trajectory::Trajectory<geometry_msgs::msg::Point> & bound) {
       auto trimmed_bound = bound;
-      // FIXME(soblin): ensure minimum_point_size * k_minimum_point_distance in ctor and crop() as invariant
+      // FIXME(soblin): ensure minimum_point_size * k_minimum_point_distance in ctor and crop() as
+      // invariant
       trimmed_bound.crop(vehicle_length, trimmed_bound.length() - vehicle_length);
       const auto trimmed_points = trimmed_bound.restore();
       if (trimmed_points.size() < 2) {
