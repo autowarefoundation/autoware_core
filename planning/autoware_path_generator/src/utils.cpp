@@ -477,15 +477,14 @@ std::optional<double> get_first_start_edge_bound_intersection_arc_length(
     [vehicle_length](
       const autoware::experimental::trajectory::Trajectory<geometry_msgs::msg::Point> & bound) {
       auto trimmed_bound = bound;
-      if (bound.length() > vehicle_length) {
-        trimmed_bound.crop(vehicle_length, trimmed_bound.length() - vehicle_length);
-        if (trimmed_bound.length() <= 0.0) {
-          return lanelet::utils::to2D(to_lanelet_points(bound.restore()));
-        }
-      } else {
+      // FIXME(soblin): ensure minimum_point_size * k_minimum_point_distance in ctor and crop() as invariant
+      trimmed_bound.crop(vehicle_length, trimmed_bound.length() - vehicle_length);
+      const auto trimmed_points = trimmed_bound.restore();
+      if (trimmed_points.size() < 2) {
         return lanelet::utils::to2D(to_lanelet_points(bound.restore()));
+      } else {
+        return lanelet::utils::to2D(to_lanelet_points(trimmed_points));
       }
-      return lanelet::utils::to2D(to_lanelet_points(trimmed_bound.restore()));
     };
   const auto trimmed_left_bound_string = trim_bound(left_bound);
   const auto trimmed_right_bound_string = trim_bound(right_bound);
