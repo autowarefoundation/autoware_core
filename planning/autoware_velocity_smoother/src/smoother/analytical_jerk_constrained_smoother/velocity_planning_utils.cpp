@@ -15,11 +15,11 @@
 #include "autoware/velocity_smoother/smoother/analytical_jerk_constrained_smoother/velocity_planning_utils.hpp"
 
 #include "autoware/interpolation/linear_interpolation.hpp"
-#include "autoware/trajectory/trajectory_point.hpp"
 
 #include <autoware_utils_geometry/geometry.hpp>
 
 #include <algorithm>
+#include <numeric>
 #include <vector>
 
 namespace autoware::velocity_smoother
@@ -201,6 +201,119 @@ bool calcStopVelocityWithConstantJerkAccLimit(
     js.push_back(j);
   }
 
+  RCLCPP_DEBUG(rclcpp::get_logger("velocity_planning_utils"), "Calculate stop velocity.");
+  for (unsigned int i = 0; i < ts.size(); ++i) {
+    RCLCPP_DEBUG(
+      rclcpp::get_logger("velocity_planning_utils"), "--- t: %f, x: %f, v: %f, a: %f, j: %f",
+      ts.at(i), xs.at(i), vs.at(i), as.at(i), js.at(i));
+  }
+
+  const double a_target = 0.0;
+  const double v_margin = 0.3;
+  const double a_margin = 0.1;
+  if (!validCheckCalcStopDist(v, a, decel_target_vel, a_target, v_margin, a_margin)) {
+    return false;
+  }
+
+  const double trajectory_length = output_trajectory.length();
+  const double start_s = std::clamp(start_distance, 0.0, trajectory_length);
+  if (trajectory_length <= start_s) {
+    return true;
+  }
+
+  if (xs.empty()) {
+    const std::vector<double> s_range{start_s, trajectory_length};
+    const std::vector<double> vel_range{decel_target_vel, decel_target_vel};
+    const std::vector<double> acc_range{0.0, 0.0};
+    output_trajectory.longitudinal_velocity_mps().build(s_range, vel_range);
+    output_trajectory.acceleration_mps2().build(s_range, acc_range);
+    return true;
+  }
+
+  std::vector<double> s_range;
+  std::vector<double> vel_range;
+  std::vector<double> acc_range;
+
+  for (size_t i = 0; i < xs.size(); ++i) {
+    const double s = start_s + xs.at(i);
+    if (s > trajectory_length) {
+      if (i > 0) {
+        const double prev_s = start_s + xs.at(i - 1);
+        const double ratio = (trajectory_length - prev_s) / (s - prev_s);
+        const double interp_vel = vs.at(i - 1) + ratio * (vs.at(i) - vs.at(i - 1));
+        const double interp_acc = as.at(i - 1) + ratio * (as.at(i) - as.at(i - 1));
+        s_range.push_back(trajectory_length);
+        vel_range.push_back(interp_vel);
+        acc_range.push_back(interp_acc);
+      }
+      break;
+    }
+    s_range.push_back(s);
+    vel_range.push_back(vs.at(i));
+    acc_range.push_back(as.at(i));
+  }
+
+  if (s_range.empty()) {
+    const std::vector<double> s_range_fallback{start_s, trajectory_length};
+    const std::vector<double> vel_range_fallback{decel_target_vel, decel_target_vel};
+    const std::vector<double> acc_range_fallback{0.0, 0.0};
+    output_trajectory.longitudinal_velocity_mps().build(s_range_fallback, vel_range_fallback);
+    output_trajectory.acceleration_mps2().build(s_range_fallback, acc_range_fallback);
+    return true;
+  }
+
+  if (s_range.front() > start_s) {
+    s_range.insert(s_range.begin(), start_s);
+    vel_range.insert(vel_range.begin(), vs.front());
+    acc_range.insert(acc_range.begin(), as.front());
+  }
+
+  if (s_range.back() < trajectory_length) {
+    s_range.push_back(trajectory_length);
+    vel_range.push_back(decel_target_vel);
+    acc_range.push_back(0.0);
+  }
+
+  output_trajectory.longitudinal_velocity_mps().build(s_range, vel_range);
+  output_trajectory.acceleration_mps2().build(s_range, acc_range);
+
+  return true;
+}
+
+bool calcStopVelocityWithConstantJerkAccLimit(
+  const double v0, const double a0, const double jerk_acc, const double jerk_dec,
+  const double min_acc, const double decel_target_vel, const int type,
+  const std::vector<double> & times, const size_t start_index, TrajectoryPoints & output_trajectory)
+{
+  const double t_total = std::accumulate(times.begin(), times.end(), 0.0);
+  std::vector<double> ts, xs, vs, as, js;
+  const double dt = 0.1;
+  double x = 0.0;
+  double v = 0.0;
+  double a = 0.0;
+  double j = 0.0;
+
+  for (double t = 0.0; t < t_total; t += dt) {
+    updateStopVelocityStatus(v0, a0, jerk_acc, jerk_dec, type, times, t, x, v, a, j);
+    if (v > 0.0) {
+      a = std::max(a, min_acc);
+      ts.push_back(t);
+      xs.push_back(x);
+      vs.push_back(v);
+      as.push_back(a);
+      js.push_back(j);
+    }
+  }
+  updateStopVelocityStatus(v0, a0, jerk_acc, jerk_dec, type, times, t_total, x, v, a, j);
+  if (v > 0.0 && !xs.empty() && xs.back() < x) {
+    a = std::max(a, min_acc);
+    ts.push_back(t_total);
+    xs.push_back(x);
+    vs.push_back(v);
+    as.push_back(a);
+    js.push_back(j);
+  }
+
   // for debug
   RCLCPP_DEBUG(rclcpp::get_logger("velocity_planning_utils"), "Calculate stop velocity.");
   for (unsigned int i = 0; i < ts.size(); ++i) {
@@ -217,21 +330,23 @@ bool calcStopVelocityWithConstantJerkAccLimit(
   }
 
   if (xs.empty()) {
-    const double traj_length = output_trajectory.length();
-    std::vector<double> s_range = {start_distance, traj_length};
-    std::vector<double> vel_range(2, decel_target_vel);
-    output_trajectory.longitudinal_velocity_mps().build(s_range, vel_range);
+    for (size_t i = start_index; i < output_trajectory.size(); ++i) {
+      output_trajectory.at(i).longitudinal_velocity_mps = decel_target_vel;
+      output_trajectory.at(i).acceleration_mps2 = 0.0;
+    }
     return true;
   }
 
-  const double traj_length = output_trajectory.length();
-  const auto s_values = output_trajectory.base_arange(0.1);
-
+  double distance = 0.0;
   std::vector<double> distances;
-  for (const auto & s : s_values) {
-    if (s >= start_distance && s <= xs.back() + start_distance) {
-      distances.push_back(s);
+  distances.push_back(distance);
+  for (size_t i = start_index; i < output_trajectory.size() - 1; ++i) {
+    distance += autoware_utils_geometry::calc_distance2d(
+      output_trajectory.at(i), output_trajectory.at(i + 1));
+    if (distance > xs.back()) {
+      break;
     }
+    distances.push_back(distance);
   }
 
   if (
@@ -244,27 +359,21 @@ bool calcStopVelocityWithConstantJerkAccLimit(
 
   if (
     xs.size() < 2 || vs.size() < 2 || as.size() < 2 || js.size() < 2 || distances.empty() ||
-    distances.front() < start_distance || xs.back() + start_distance < distances.back()) {
+    distances.front() < xs.front() || xs.back() < distances.back()) {
     return false;
   }
 
-  std::vector<double> adjusted_distances;
-  for (const auto & d : distances) {
-    adjusted_distances.push_back(d - start_distance);
+  const auto vel_at_wp = autoware::interpolation::lerp(xs, vs, distances);
+  const auto acc_at_wp = autoware::interpolation::lerp(xs, as, distances);
+  const auto jerk_at_wp = autoware::interpolation::lerp(xs, js, distances);
+
+  for (size_t i = 0; i < vel_at_wp.size(); ++i) {
+    output_trajectory.at(start_index + i).longitudinal_velocity_mps = vel_at_wp.at(i);
+    output_trajectory.at(start_index + i).acceleration_mps2 = acc_at_wp.at(i);
   }
-
-  const auto vel_at_wp = autoware::interpolation::lerp(xs, vs, adjusted_distances);
-  const auto acc_at_wp = autoware::interpolation::lerp(xs, as, adjusted_distances);
-
-  output_trajectory.longitudinal_velocity_mps().build(distances, vel_at_wp);
-  output_trajectory.acceleration_mps2().build(distances, acc_at_wp);
-
-  if (!distances.empty()) {
-    std::vector<double> remaining_s;
-    remaining_s.push_back(distances.back());
-    remaining_s.push_back(traj_length);
-    std::vector<double> remaining_vel(2, decel_target_vel);
-    output_trajectory.longitudinal_velocity_mps().build(remaining_s, remaining_vel);
+  for (size_t i = start_index + vel_at_wp.size(); i < output_trajectory.size(); ++i) {
+    output_trajectory.at(i).longitudinal_velocity_mps = decel_target_vel;
+    output_trajectory.at(i).acceleration_mps2 = 0.0;
   }
 
   return true;

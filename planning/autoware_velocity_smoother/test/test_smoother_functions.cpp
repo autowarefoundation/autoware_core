@@ -96,15 +96,13 @@ TEST(TestTrajectoryUtils, CalcTrajectoryCurvatureFrom3Points)
 
 TEST(TestTrajectoryUtils, CalcTrajectoryCurvatureFrom3PointsContinuous)
 {
-  // test with different trajectory sizes and interval distances
   const auto checkContinuousOutput =
     [](const size_t trajectory_size, const double interval_distance) {
       const auto trajectory = genStraightTrajectoryContinuous(trajectory_size);
       const auto curvatures =
-        autoware::velocity_smoother::trajectory_utils::calcTrajectoryCurvatureFrom3PointsContinuous(
+        autoware::velocity_smoother::trajectory_utils::calcTrajectoryCurvatureFrom3Points(
           trajectory, interval_distance);
 
-      // for a straight trajectory, all curvatures should be close to zero
       for (const auto & curvature : curvatures) {
         EXPECT_NEAR(curvature, 0.0, 0.01) << "Straight trajectory should have near-zero curvature";
       }

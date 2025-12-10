@@ -43,20 +43,26 @@ TrajectoryPoints extractPathAroundIndex(
   const TrajectoryPoints & trajectory, const size_t index, const double & ahead_length,
   const double & behind_length);
 
-std::vector<double> calcArclengthArray(const TrajectoryPoints & trajectory);
+Trajectory extractPathAroundPosition(
+  const Trajectory & trajectory, const double arc_length_position, const double ahead_distance,
+  const double behind_distance);
 
-std::vector<double> calcArclengthArrayContinuous(
-  const Trajectory & trajectory, const double interval_distance);
+std::vector<double> calcArclengthArray(const TrajectoryPoints & trajectory);
 
 std::vector<double> calcTrajectoryIntervalDistance(const TrajectoryPoints & trajectory);
 
 std::vector<double> calcTrajectoryCurvatureFrom3Points(
   const TrajectoryPoints & trajectory, size_t idx_dist);
 
-std::vector<double> calcTrajectoryCurvatureFrom3PointsContinuous(const Trajectory & trajectory);
+std::vector<double> calcTrajectoryCurvatureFrom3Points(
+  const Trajectory & trajectory, const double interval_distance);
 
 void applyMaximumVelocityLimit(
   const size_t from, const size_t to, const double max_vel, TrajectoryPoints & trajectory);
+
+void applyMaximumVelocityLimit(
+  const double begin_distance, const double end_distance, const double max_vel,
+  Trajectory & trajectory);
 
 std::optional<size_t> searchZeroVelocityIdx(const TrajectoryPoints & trajectory);
 
@@ -74,6 +80,10 @@ std::optional<std::tuple<double, double, double, double>> updateStateWithJerkCon
 
 std::vector<double> calcVelocityProfileWithConstantJerkAndAccelerationLimit(
   const TrajectoryPoints & trajectory, const double v0, const double a0, const double jerk,
+  const double acc_max, const double acc_min);
+
+std::vector<double> calcVelocityProfileWithConstantJerkAndAccelerationLimit(
+  Trajectory & trajectory, const double v0, const double a0, const double jerk,
   const double acc_max, const double acc_min);
 
 double calcStopDistance(const TrajectoryPoints & trajectory, const size_t closest);

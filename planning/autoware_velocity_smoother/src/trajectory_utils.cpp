@@ -142,7 +142,7 @@ TrajectoryPoints extractPathAroundIndex(
   return extracted_traj;
 }
 
-Trajectory extractPathAroundPositionContinuous(
+Trajectory extractPathAroundPosition(
   const Trajectory & trajectory, const double arc_length_position, const double ahead_distance,
   const double behind_distance)
 {
@@ -235,7 +235,7 @@ std::vector<double> calcTrajectoryCurvatureFrom3Points(
   return k_arr;
 }
 
-std::vector<double> calcTrajectoryCurvatureFrom3PointsContinuous(
+std::vector<double> calcTrajectoryCurvatureFrom3Points(
   const Trajectory & trajectory, const double interval_distance)
 {
   if (trajectory.length() < interval_distance * 2) {
@@ -266,9 +266,9 @@ void applyMaximumVelocityLimit(
   }
 }
 
-void applyMaximumVelocityLimitContinuous(
-  Trajectory & trajectory, const double begin_distance, const double end_distance,
-  const double max_vel)
+void applyMaximumVelocityLimit(
+  const double begin_distance, const double end_distance, const double max_vel,
+  Trajectory & trajectory)
 {
   // Apply velocity limit only between begin_distance and end_distance
   std::vector<double> s_range = {begin_distance, end_distance};
@@ -501,6 +501,34 @@ std::vector<double> calcVelocityProfileWithConstantJerkAndAccelerationLimit(
     curr_a = std::clamp(integ_a(curr_a, jerk, t), acc_min, acc_max);
   }
 
+  return velocities;
+}
+
+std::vector<double> calcVelocityProfileWithConstantJerkAndAccelerationLimit(
+  Trajectory & trajectory, const double v0, const double a0, const double jerk,
+  const double acc_max, const double acc_min)
+{
+  if (trajectory.length() == 0.0) return {};
+
+  const auto bases = trajectory.get_underlying_bases();
+  if (bases.size() < 2) return {};
+
+  std::vector<double> velocities;
+  velocities.reserve(bases.size());
+  velocities.push_back(v0);
+
+  auto curr_v = v0;
+  auto curr_a = a0;
+
+  for (size_t i = 1; i < bases.size(); ++i) {
+    const double interval = bases.at(i) - bases.at(i - 1);
+    const auto t = interval / std::max(curr_v, 1.0e-5);
+    curr_v = integ_v(curr_v, curr_a, jerk, t);
+    velocities.push_back(curr_v);
+    curr_a = std::clamp(integ_a(curr_a, jerk, t), acc_min, acc_max);
+  }
+
+  trajectory.longitudinal_velocity_mps().build(bases, velocities);
   return velocities;
 }
 
