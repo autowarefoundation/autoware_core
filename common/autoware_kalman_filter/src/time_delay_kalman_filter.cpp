@@ -153,8 +153,8 @@ bool TimeDelayKalmanFilter::updateWithDelay(
    * K = P_CT * S^-1
    *
    * Numerical Stability Optimization:
-   * Avoid explicit inversion of S. Instead, solve the linear system using Cholesky decomposition (LLT).
-   * Since Eigen's solve() handles `Ax = B`, we transform the equation:
+   * Avoid explicit inversion of S. Instead, solve the linear system using Cholesky decomposition
+   * (LLT). Since Eigen's solve() handles `Ax = B`, we transform the equation:
    *
    * K = P_CT * S^-1
    * K^T = (P_CT * S^-1)^T
