@@ -282,15 +282,16 @@ std::pair<double, double> SplineInterpolationPoints2d::projectPointOntoSpline(
 
     // f'(s) = d/ds[||p(s) - p_i||^2] = 2[(x_s - x_i)·dx_ds + (y_s - y_i)·dy_ds]
     const double df_ds = (x_s - x_i) * dx_ds + (y_s - y_i) * dy_ds;
-    
-    // f''(s) = d²/ds²[||p(s) - p_i||^2] = 2[dx_ds² + dy_ds² + (x_s - x_i)·d²x_ds² + (y_s - y_i)·d²y_ds²]
-    const double d2f_ds2 = dx_ds * dx_ds + dy_ds * dy_ds + 
-                           (x_s - x_i) * d2x_ds2 + (y_s - y_i) * d2y_ds2;
+
+    // f''(s) = d²/ds²[||p(s) - p_i||^2] = 2[dx_ds² + dy_ds² + (x_s - x_i)·d²x_ds² + (y_s -
+    // y_i)·d²y_ds²]
+    const double d2f_ds2 =
+      dx_ds * dx_ds + dy_ds * dy_ds + (x_s - x_i) * d2x_ds2 + (y_s - y_i) * d2y_ds2;
 
     if (std::fabs(d2f_ds2) < 1e-12) break;  // avoid divide by zero
 
     double ds = df_ds / d2f_ds2;
-    
+
     // Bind s between min s and max s
     if (s - ds < base_s_vec_.front()) {
       ds = s - base_s_vec_.front();
