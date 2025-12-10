@@ -138,6 +138,9 @@ TEST(ArtificialLaneletObjectConstruction, BasicLineString3d)
   auto ls = autoware::experimental::lanelet2_utils::create_safe_linestring(vector_points);
   ASSERT_TRUE(ls.has_value());
 
+  // NOLINT(bugprone-unchecked-optional-access)
+  // Safe: ASSERT_TRUE(ls.has_value()) verifies the optional contains a value,
+  // and thus dereferencing is valid on all reachable paths.
   auto basic_linestring = *ls;
 
   EXPECT_EQ(typeid(*ls), typeid(lanelet::BasicLineString3d))
@@ -170,6 +173,9 @@ TEST(ArtificialLaneletObjectConstruction, ConstLineString3d)
   EXPECT_EQ(typeid(*ls), typeid(lanelet::ConstLineString3d))
     << "ls is not lanelet::ConstLineString3d.";
 
+  // NOLINT(bugprone-unchecked-optional-access)
+  // Safe: ASSERT_TRUE(ls.has_value()) verifies the optional contains a value,
+  // and thus dereferencing is valid on all reachable paths.
   auto linestring = *ls;
   for (size_t i = 0; i < vector_points.size(); ++i) {
     expect_point_eq(linestring[i], vector_points[i]);
@@ -218,6 +224,10 @@ TEST(ArtificialLaneletObjectConstruction, ConstLaneletConstruct)
     const auto opt =
       autoware::experimental::lanelet2_utils::create_safe_lanelet(left_points, right_points);
     ASSERT_TRUE(opt.has_value()) << "BasicPoint3d can construct normally.";
+
+    // NOLINT(bugprone-unchecked-optional-access)
+    // Safe: ASSERT_TRUE(opt.has_value()) verifies the optional contains a value,
+    // and thus dereferencing is valid on all reachable paths.
     const auto ll = *opt;
     for (size_t i = 0; i < left_points.size(); ++i) {
       expect_point_eq(ll.leftBound()[i], left_points[i]);
@@ -236,6 +246,10 @@ TEST(ArtificialLaneletObjectConstruction, ConstLaneletConstruct)
     const auto opt = autoware::experimental::lanelet2_utils::create_safe_lanelet(
       const_left_points, const_right_points);
     ASSERT_TRUE(opt.has_value()) << "ConstPoint3d can't construct normally.";
+
+    // NOLINT(bugprone-unchecked-optional-access)
+    // Safe: ASSERT_TRUE(opt.has_value()) verifies the optional contains a value,
+    // and thus dereferencing is valid on all reachable paths.
     const auto ll = *opt;
     for (size_t i = 0; i < left_points.size(); ++i) {
       expect_point_eq(ll.leftBound()[i], left_points[i]);
