@@ -87,8 +87,8 @@ bool TimeDelayKalmanFilter::updateWithDelay(
   const Eigen::MatrixXd & y, const Eigen::MatrixXd & C, const Eigen::MatrixXd & R,
   const int delay_step)
 {
-  if (delay_step >= max_delay_step_) {
-    std::cerr << "delay step is larger than max_delay_step. ignore update." << std::endl;
+  if (delay_step < 0 || delay_step >= max_delay_step_) {
+    std::cerr << "Invalid delay step: " << delay_step << ". Update ignored." << std::endl;
     return false;
   }
 

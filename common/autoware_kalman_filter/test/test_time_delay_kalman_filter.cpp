@@ -14,11 +14,23 @@
 
 #include "autoware/kalman_filter/time_delay_kalman_filter.hpp"
 
-#include <Eigen/Dense>
-
 #include <gtest/gtest.h>
 
 using autoware::kalman_filter::TimeDelayKalmanFilter;
+
+namespace
+{
+// Test constants
+constexpr int kDimX = 3;
+constexpr int kMaxDelayStep = 5;
+constexpr int kDimXEx = kDimX * kMaxDelayStep;
+constexpr double kEpsilon = 1e-5;
+constexpr double kInitialCovariance = 0.1;
+constexpr double kProcessNoise = 0.01;
+constexpr double kMeasurementNoise = 0.001;
+constexpr double kStateTransitionScale = 2.0;
+constexpr double kObservationScale = 0.5;
+}  // namespace
 
 // Helper function to shift the extended state for ground truth verification
 void ground_truth_predict(
@@ -76,128 +88,223 @@ void ground_truth_update(
   P_ex = P_ex - K * (C_ex * P_ex);
 }
 
-TEST(time_delay_kalman_filter, comprehensive_lifecycle)
+class TimeDelayKalmanFilterTest : public ::testing::Test
 {
-  TimeDelayKalmanFilter td_kf_;
+protected:
+  void SetUp() override
+  {
+    // Initialize state vector
+    x_t_.resize(kDimX, 1);
+    x_t_ << 1.0, 2.0, 3.0;
 
-  // --- Constants ---
-  const int dim_x = 3;
-  const int max_delay_step = 5;
-  const int dim_x_ex = dim_x * max_delay_step;
-  const double epsilon = 1e-5;
+    // Initialize covariance matrix
+    P_t_ = Eigen::MatrixXd::Identity(kDimX, kDimX) * kInitialCovariance;
 
-  // --- Initialization Data ---
-  Eigen::MatrixXd x_t(dim_x, 1);
-  x_t << 1.0, 2.0, 3.0;
-  Eigen::MatrixXd P_t = Eigen::MatrixXd::Identity(dim_x, dim_x) * 0.1;
+    // Initialize ground truth extended state
+    x_ex_gt_ = Eigen::MatrixXd::Zero(kDimXEx, 1);
+    P_ex_gt_ = Eigen::MatrixXd::Zero(kDimXEx, kDimXEx);
 
-  // --- Ground Truth State (Extended) ---
-  Eigen::MatrixXd x_ex_gt = Eigen::MatrixXd::Zero(dim_x_ex, 1);
-  Eigen::MatrixXd P_ex_gt = Eigen::MatrixXd::Zero(dim_x_ex, dim_x_ex);
+    // Fill ground truth with initial state repeated (assuming steady state init)
+    for (int i = 0; i < kMaxDelayStep; ++i) {
+      x_ex_gt_.block(i * kDimX, 0, kDimX, 1) = x_t_;
+      P_ex_gt_.block(i * kDimX, i * kDimX, kDimX, kDimX) = P_t_;
+    }
 
-  // Fill ground truth with initial state repeated (assuming steady state init)
-  for (int i = 0; i < max_delay_step; ++i) {
-    x_ex_gt.block(i * dim_x, 0, dim_x, 1) = x_t;
-    P_ex_gt.block(i * dim_x, i * dim_x, dim_x, dim_x) = P_t;
+    // Setup model matrices
+    A_ = Eigen::MatrixXd::Identity(kDimX, kDimX) * kStateTransitionScale;
+    Q_ = Eigen::MatrixXd::Identity(kDimX, kDimX) * kProcessNoise;
+    C_ = Eigen::MatrixXd::Identity(kDimX, kDimX) * kObservationScale;
+    R_ = Eigen::MatrixXd::Identity(kDimX, kDimX) * kMeasurementNoise;
+
+    // Setup predicted next state
+    x_next_.resize(kDimX, 1);
+    x_next_ << 2.0, 4.0, 6.0;
   }
 
-  // --- 1. Init ---
-  td_kf_.init(x_t, P_t, max_delay_step);
+  TimeDelayKalmanFilter td_kf_;
+  Eigen::MatrixXd x_t_;
+  Eigen::MatrixXd P_t_;
+  Eigen::MatrixXd x_ex_gt_;
+  Eigen::MatrixXd P_ex_gt_;
+  Eigen::MatrixXd A_;
+  Eigen::MatrixXd Q_;
+  Eigen::MatrixXd C_;
+  Eigen::MatrixXd R_;
+  Eigen::MatrixXd x_next_;
+};
 
-  Eigen::MatrixXd x_check = td_kf_.getLatestX();
-  Eigen::MatrixXd P_check = td_kf_.getLatestP();
+TEST_F(TimeDelayKalmanFilterTest, Initialization)
+{
+  td_kf_.init(x_t_, P_t_, kMaxDelayStep);
 
-  EXPECT_TRUE(x_check.isApprox(x_t, epsilon));
-  EXPECT_TRUE(P_check.isApprox(P_t, epsilon));
+  const Eigen::MatrixXd x_check = td_kf_.getLatestX();
+  const Eigen::MatrixXd P_check = td_kf_.getLatestP();
 
-  // --- Setup Models ---
-  Eigen::MatrixXd A = Eigen::MatrixXd::Identity(dim_x, dim_x) * 2.0;
-  Eigen::MatrixXd Q = Eigen::MatrixXd::Identity(dim_x, dim_x) * 0.01;
-  Eigen::MatrixXd C = Eigen::MatrixXd::Identity(dim_x, dim_x) * 0.5;
-  Eigen::MatrixXd R = Eigen::MatrixXd::Identity(dim_x, dim_x) * 0.001;
-  Eigen::MatrixXd x_next(dim_x, 1);
-  x_next << 2.0, 4.0, 6.0;
+  EXPECT_TRUE(x_check.isApprox(x_t_, kEpsilon));
+  EXPECT_TRUE(P_check.isApprox(P_t_, kEpsilon));
+}
 
-  // ==========================================================
-  // Test Case 2: Prediction
-  // ==========================================================
+TEST_F(TimeDelayKalmanFilterTest, Prediction)
+{
+  td_kf_.init(x_t_, P_t_, kMaxDelayStep);
 
   // Update Ground Truth
-  ground_truth_predict(x_ex_gt, P_ex_gt, x_next, A, Q, dim_x, dim_x_ex);
+  ground_truth_predict(x_ex_gt_, P_ex_gt_, x_next_, A_, Q_, kDimX, kDimXEx);
 
   // Update TDKF
-  EXPECT_TRUE(td_kf_.predictWithDelay(x_next, A, Q));
+  ASSERT_TRUE(td_kf_.predictWithDelay(x_next_, A_, Q_));
 
   // Check
-  x_check = td_kf_.getLatestX();
-  P_check = td_kf_.getLatestP();
+  const Eigen::MatrixXd x_check = td_kf_.getLatestX();
+  const Eigen::MatrixXd P_check = td_kf_.getLatestP();
 
-  // Verify top block (current time) matches
-  EXPECT_TRUE(x_check.isApprox(x_ex_gt.block(0, 0, dim_x, 1), epsilon));
-  EXPECT_TRUE(P_check.isApprox(P_ex_gt.block(0, 0, dim_x, dim_x), epsilon));
+  EXPECT_TRUE(x_check.isApprox(x_ex_gt_.block(0, 0, kDimX, 1), kEpsilon));
+  EXPECT_TRUE(P_check.isApprox(P_ex_gt_.block(0, 0, kDimX, kDimX), kEpsilon));
+}
 
-  // ==========================================================
-  // Test Case 3: Update with Delay (Step = 2)
-  // ==========================================================
+TEST_F(TimeDelayKalmanFilterTest, UpdateWithDelay)
+{
+  td_kf_.init(x_t_, P_t_, kMaxDelayStep);
 
-  Eigen::MatrixXd y_delayed(dim_x, 1);
+  // First predict
+  ground_truth_predict(x_ex_gt_, P_ex_gt_, x_next_, A_, Q_, kDimX, kDimXEx);
+  ASSERT_TRUE(td_kf_.predictWithDelay(x_next_, A_, Q_));
+
+  // Update with delay step = 2
+  Eigen::MatrixXd y_delayed(kDimX, 1);
   y_delayed << 1.05, 2.05, 3.05;
-  int delay_step = 2;
+  constexpr int delay_step = 2;
 
   // Update Ground Truth
-  ground_truth_update(x_ex_gt, P_ex_gt, y_delayed, C, R, delay_step, dim_x, dim_x, dim_x_ex);
+  ground_truth_update(x_ex_gt_, P_ex_gt_, y_delayed, C_, R_, delay_step, kDimX, kDimX, kDimXEx);
 
   // Update TDKF
-  EXPECT_TRUE(td_kf_.updateWithDelay(y_delayed, C, R, delay_step));
+  ASSERT_TRUE(td_kf_.updateWithDelay(y_delayed, C_, R_, delay_step));
 
   // Check
-  x_check = td_kf_.getLatestX();
-  P_check = td_kf_.getLatestP();
+  const Eigen::MatrixXd x_check = td_kf_.getLatestX();
+  const Eigen::MatrixXd P_check = td_kf_.getLatestP();
 
-  EXPECT_TRUE(x_check.isApprox(x_ex_gt.block(0, 0, dim_x, 1), epsilon));
-  EXPECT_TRUE(P_check.isApprox(P_ex_gt.block(0, 0, dim_x, dim_x), epsilon));
+  EXPECT_TRUE(x_check.isApprox(x_ex_gt_.block(0, 0, kDimX, 1), kEpsilon));
+  EXPECT_TRUE(P_check.isApprox(P_ex_gt_.block(0, 0, kDimX, kDimX), kEpsilon));
+}
 
-  // ==========================================================
-  // Test Case 4: Update with Zero Delay (Current Time)
-  // ==========================================================
+TEST_F(TimeDelayKalmanFilterTest, UpdateWithZeroDelay)
+{
   // Validates that the TDKF behaves like a standard KF when delay is 0
+  td_kf_.init(x_t_, P_t_, kMaxDelayStep);
 
-  Eigen::MatrixXd y_current(dim_x, 1);
+  // First predict
+  ground_truth_predict(x_ex_gt_, P_ex_gt_, x_next_, A_, Q_, kDimX, kDimXEx);
+  ASSERT_TRUE(td_kf_.predictWithDelay(x_next_, A_, Q_));
+
+  // Update with zero delay
+  Eigen::MatrixXd y_current(kDimX, 1);
   y_current << 2.1, 4.1, 6.1;  // Close to current state x_next
-  delay_step = 0;
+  constexpr int delay_step = 0;
 
   // Update Ground Truth
-  ground_truth_update(x_ex_gt, P_ex_gt, y_current, C, R, delay_step, dim_x, dim_x, dim_x_ex);
+  ground_truth_update(x_ex_gt_, P_ex_gt_, y_current, C_, R_, delay_step, kDimX, kDimX, kDimXEx);
 
   // Update TDKF
-  EXPECT_TRUE(td_kf_.updateWithDelay(y_current, C, R, delay_step));
+  ASSERT_TRUE(td_kf_.updateWithDelay(y_current, C_, R_, delay_step));
 
   // Check
-  x_check = td_kf_.getLatestX();
-  P_check = td_kf_.getLatestP();
+  const Eigen::MatrixXd x_check = td_kf_.getLatestX();
+  const Eigen::MatrixXd P_check = td_kf_.getLatestP();
 
-  EXPECT_TRUE(x_check.isApprox(x_ex_gt.block(0, 0, dim_x, 1), epsilon));
-  EXPECT_TRUE(P_check.isApprox(P_ex_gt.block(0, 0, dim_x, dim_x), epsilon));
+  EXPECT_TRUE(x_check.isApprox(x_ex_gt_.block(0, 0, kDimX, 1), kEpsilon));
+  EXPECT_TRUE(P_check.isApprox(P_ex_gt_.block(0, 0, kDimX, kDimX), kEpsilon));
+}
 
-  // ==========================================================
-  // Test Case 5: Update with Max Delay
-  // ==========================================================
+TEST_F(TimeDelayKalmanFilterTest, UpdateWithMaxDelay)
+{
   // Validates updating the tail of the buffer
+  td_kf_.init(x_t_, P_t_, kMaxDelayStep);
 
-  Eigen::MatrixXd y_old(dim_x, 1);
+  // First predict
+  ground_truth_predict(x_ex_gt_, P_ex_gt_, x_next_, A_, Q_, kDimX, kDimXEx);
+  ASSERT_TRUE(td_kf_.predictWithDelay(x_next_, A_, Q_));
+
+  // Update with max delay
+  Eigen::MatrixXd y_old(kDimX, 1);
   y_old << 0.9, 1.9, 2.9;
-  delay_step = max_delay_step - 1;  // Index 4 (0-4)
+  const int delay_step = kMaxDelayStep - 1;  // Index 4 (0-4)
 
   // Update Ground Truth
-  ground_truth_update(x_ex_gt, P_ex_gt, y_old, C, R, delay_step, dim_x, dim_x, dim_x_ex);
+  ground_truth_update(x_ex_gt_, P_ex_gt_, y_old, C_, R_, delay_step, kDimX, kDimX, kDimXEx);
 
   // Update TDKF
-  EXPECT_TRUE(td_kf_.updateWithDelay(y_old, C, R, delay_step));
+  ASSERT_TRUE(td_kf_.updateWithDelay(y_old, C_, R_, delay_step));
 
   // Check
-  x_check = td_kf_.getLatestX();
-  P_check = td_kf_.getLatestP();
+  const Eigen::MatrixXd x_check = td_kf_.getLatestX();
+  const Eigen::MatrixXd P_check = td_kf_.getLatestP();
 
-  EXPECT_TRUE(x_check.isApprox(x_ex_gt.block(0, 0, dim_x, 1), epsilon));
-  EXPECT_TRUE(P_check.isApprox(P_ex_gt.block(0, 0, dim_x, dim_x), epsilon));
+  EXPECT_TRUE(x_check.isApprox(x_ex_gt_.block(0, 0, kDimX, 1), kEpsilon));
+  EXPECT_TRUE(P_check.isApprox(P_ex_gt_.block(0, 0, kDimX, kDimX), kEpsilon));
+}
+
+TEST_F(TimeDelayKalmanFilterTest, UpdateWithInvalidDelayStepExceedsMax)
+{
+  td_kf_.init(x_t_, P_t_, kMaxDelayStep);
+
+  Eigen::MatrixXd y(kDimX, 1);
+  y << 1.0, 2.0, 3.0;
+  const int invalid_delay_step = kMaxDelayStep;  // Should be max_delay_step - 1 at most
+
+  EXPECT_FALSE(td_kf_.updateWithDelay(y, C_, R_, invalid_delay_step));
+}
+
+TEST_F(TimeDelayKalmanFilterTest, UpdateWithNegativeDelayStep)
+{
+  td_kf_.init(x_t_, P_t_, kMaxDelayStep);
+
+  Eigen::MatrixXd y(kDimX, 1);
+  y << 1.0, 2.0, 3.0;
+  constexpr int negative_delay_step = -1;
+
+  EXPECT_FALSE(td_kf_.updateWithDelay(y, C_, R_, negative_delay_step));
+}
+
+TEST_F(TimeDelayKalmanFilterTest, MultiplePredictionsBeforeUpdate)
+{
+  td_kf_.init(x_t_, P_t_, kMaxDelayStep);
+
+  // Perform multiple predictions
+  for (int i = 0; i < 3; ++i) {
+    Eigen::MatrixXd x_pred(kDimX, 1);
+    x_pred << 2.0 * (i + 1), 4.0 * (i + 1), 6.0 * (i + 1);
+
+    ground_truth_predict(x_ex_gt_, P_ex_gt_, x_pred, A_, Q_, kDimX, kDimXEx);
+    ASSERT_TRUE(td_kf_.predictWithDelay(x_pred, A_, Q_));
+  }
+
+  // Now update
+  Eigen::MatrixXd y(kDimX, 1);
+  y << 1.0, 2.0, 3.0;
+  constexpr int delay_step = 2;
+
+  ground_truth_update(x_ex_gt_, P_ex_gt_, y, C_, R_, delay_step, kDimX, kDimX, kDimXEx);
+  ASSERT_TRUE(td_kf_.updateWithDelay(y, C_, R_, delay_step));
+
+  const Eigen::MatrixXd x_check = td_kf_.getLatestX();
+  const Eigen::MatrixXd P_check = td_kf_.getLatestP();
+
+  EXPECT_TRUE(x_check.isApprox(x_ex_gt_.block(0, 0, kDimX, 1), kEpsilon));
+  EXPECT_TRUE(P_check.isApprox(P_ex_gt_.block(0, 0, kDimX, kDimX), kEpsilon));
+}
+
+TEST_F(TimeDelayKalmanFilterTest, ZeroInitialState)
+{
+  Eigen::MatrixXd x_zero = Eigen::MatrixXd::Zero(kDimX, 1);
+  Eigen::MatrixXd P_zero = Eigen::MatrixXd::Identity(kDimX, kDimX) * kInitialCovariance;
+
+  td_kf_.init(x_zero, P_zero, kMaxDelayStep);
+
+  const Eigen::MatrixXd x_check = td_kf_.getLatestX();
+  const Eigen::MatrixXd P_check = td_kf_.getLatestP();
+
+  EXPECT_TRUE(x_check.isApprox(x_zero, kEpsilon));
+  EXPECT_TRUE(P_check.isApprox(P_zero, kEpsilon));
 }
