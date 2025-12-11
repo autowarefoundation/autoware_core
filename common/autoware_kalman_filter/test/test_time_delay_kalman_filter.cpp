@@ -43,8 +43,6 @@ void ground_truth_predict(
   x_shifted.block(dim_x, 0, dim_x_ex - dim_x, 1) = x_ex.block(0, 0, dim_x_ex - dim_x, 1);
 
   // 2. Insert new prediction at the top (t)
-  // Note: specific to Time Delay Kalman Filter implementation, usually x_next is provided or
-  // calculated as A*x In your test case, you provided x_next explicitly.
   x_shifted.block(0, 0, dim_x, 1) = x_next;
   x_ex = x_shifted;
 
