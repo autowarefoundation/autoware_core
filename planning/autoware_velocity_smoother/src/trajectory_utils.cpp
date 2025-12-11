@@ -17,6 +17,7 @@
 #include "autoware/interpolation/linear_interpolation.hpp"
 #include "autoware/motion_utils/trajectory/trajectory.hpp"
 #include "autoware/trajectory/trajectory_point.hpp"
+#include "autoware/trajectory/utils/velocity.hpp"
 
 #include <autoware_utils_geometry/geometry.hpp>
 
@@ -545,6 +546,18 @@ double calcStopDistance(const TrajectoryPoints & trajectory, const size_t closes
     autoware_utils_geometry::calc_distance2d(trajectory.at(*idx), trajectory.at(closest));
 
   return stop_dist;
+}
+
+double calcStopDistance(const Trajectory & trajectory, const double closest_position)
+{
+  const auto zero_vel_position =
+    autoware::experimental::trajectory::searchZeroVelocityPosition(trajectory);
+
+  if (!zero_vel_position) {
+    return std::numeric_limits<double>::max();
+  }
+
+  return std::abs(*zero_vel_position - closest_position);
 }
 
 }  // namespace trajectory_utils

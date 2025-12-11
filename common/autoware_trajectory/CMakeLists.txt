@@ -60,6 +60,7 @@ if(BUILD_TESTING)
     test/test_utils_find_nearest.cpp
     test/test_utils_lateral_metrics.cpp
     test/test_utils_footprint.cpp
+    test/test_utils_velocity.cpp
   )
   foreach(test_file ${test_files})
     get_filename_component(test_name ${test_file} NAME_WE)
