@@ -551,7 +551,7 @@ double calcStopDistance(const TrajectoryPoints & trajectory, const size_t closes
 double calcStopDistance(const Trajectory & trajectory, const double closest_position)
 {
   const auto zero_vel_position =
-    autoware::experimental::trajectory::searchZeroVelocityPosition(trajectory);
+    autoware::experimental::trajectory::search_zero_velocity_position(trajectory);
 
   if (!zero_vel_position) {
     return std::numeric_limits<double>::max();
