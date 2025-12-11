@@ -477,7 +477,14 @@ std::optional<double> get_first_start_edge_bound_intersection_arc_length(
     [vehicle_length](
       const autoware::experimental::trajectory::Trajectory<geometry_msgs::msg::Point> & bound) {
       auto trimmed_bound = bound;
-      trimmed_bound.crop(vehicle_length, trimmed_bound.length() - vehicle_length);
+      if (bound.length() > vehicle_length) {
+        trimmed_bound.crop(vehicle_length, trimmed_bound.length() - vehicle_length);
+        if (trimmed_bound.length() <= 0.0) {
+          return lanelet::utils::to2D(to_lanelet_points(bound.restore()));
+        }
+      } else {
+        return lanelet::utils::to2D(to_lanelet_points(bound.restore()));
+      }
       return lanelet::utils::to2D(to_lanelet_points(trimmed_bound.restore()));
     };
   const auto trimmed_left_bound_string = trim_bound(left_bound);
