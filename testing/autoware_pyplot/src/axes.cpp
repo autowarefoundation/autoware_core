@@ -118,6 +118,11 @@ PyObjectWrapper Axes::set_xlim(const pybind11::tuple & args, const pybind11::dic
   return PyObjectWrapper{set_xlim_attr(*args, **kwargs)};
 }
 
+PyObjectWrapper Axes::stem(const pybind11::tuple & args, const pybind11::dict & kwargs) const
+{
+  return PyObjectWrapper{stem_attr(*args, **kwargs)};
+}
+
 PyObjectWrapper Axes::set_ylabel(const pybind11::tuple & args, const pybind11::dict & kwargs) const
 {
   return PyObjectWrapper{set_ylabel_attr(*args, **kwargs)};
@@ -163,6 +168,7 @@ void Axes::load_attrs()
   LOAD_FUNC_ATTR(quiver, self_);
   LOAD_FUNC_ATTR(plot, self_);
   LOAD_FUNC_ATTR(scatter, self_);
+  LOAD_FUNC_ATTR(stem, self_);
   LOAD_FUNC_ATTR(set_aspect, self_);
   LOAD_FUNC_ATTR(set_title, self_);
   LOAD_FUNC_ATTR(set_xlabel, self_);

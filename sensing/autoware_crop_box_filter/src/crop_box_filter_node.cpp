@@ -62,6 +62,9 @@ CropBoxFilter::CropBoxFilter(const rclcpp::NodeOptions & node_options)
         RCLCPP_ERROR(
           this->get_logger(), "Cannot get transform from %s to %s. Please check your TF tree.",
           tf_input_orig_frame_.c_str(), tf_input_frame_.c_str());
+        // Set identity transform and disable preprocessing when TF acquisition fails
+        need_preprocess_transform_ = false;
+        eigen_transform_preprocess_ = Eigen::Matrix4f::Identity(4, 4);
       } else {
         auto eigen_tf = tf2::transformToEigen(*tf_ptr);
         eigen_transform_preprocess_ = eigen_tf.matrix().cast<float>();
@@ -79,6 +82,9 @@ CropBoxFilter::CropBoxFilter(const rclcpp::NodeOptions & node_options)
         RCLCPP_ERROR(
           this->get_logger(), "Cannot get transform from %s to %s. Please check your TF tree.",
           tf_input_frame_.c_str(), tf_output_frame_.c_str());
+        // Set identity transform and disable postprocessing when TF acquisition fails
+        need_postprocess_transform_ = false;
+        eigen_transform_postprocess_ = Eigen::Matrix4f::Identity(4, 4);
       } else {
         auto eigen_tf = tf2::transformToEigen(*tf_ptr);
         eigen_transform_postprocess_ = eigen_tf.matrix().cast<float>();
