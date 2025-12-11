@@ -67,13 +67,15 @@ template <class PointT>
 
     const double next_distance = bases[i + 1];
     const double next_vel = velocities[i + 1];
-    const bool sign_change = (curr_vel > 0.0 && next_vel < 0.0) || (curr_vel < 0.0 && next_vel > 0.0);
-    
+    const bool sign_change =
+      (curr_vel > 0.0 && next_vel < 0.0) || (curr_vel < 0.0 && next_vel > 0.0);
+
     if (!sign_change) {
       continue;
     }
 
-    const double zero_pos = curr_distance - curr_vel * (next_distance - curr_distance) / (next_vel - curr_vel);
+    const double zero_pos =
+      curr_distance - curr_vel * (next_distance - curr_distance) / (next_vel - curr_vel);
     if (zero_pos >= start_distance && zero_pos <= end_distance) {
       return zero_pos;
     }

@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "autoware/trajectory/threshold.hpp"
 #include "autoware/trajectory/utils/pretty_build.hpp"
 #include "autoware/trajectory/utils/velocity.hpp"
-#include "autoware/trajectory/threshold.hpp"
 #include "autoware_utils_geometry/geometry.hpp"
 
 #include <gtest/gtest.h>
@@ -48,9 +48,7 @@ TEST(search_zero_velocity_position, found_at_exact_base_point)
   points.push_back(make_trajectory_point(2.0, 0.0, 0.0));  // zero velocity here
   points.push_back(make_trajectory_point(3.0, 0.0, -5.0));
 
-  auto traj = Trajectory<TrajectoryPoint>::Builder()
-                .build(points)
-                .value();
+  auto traj = Trajectory<TrajectoryPoint>::Builder().build(points).value();
 
   auto result = search_zero_velocity_position(traj, 0.0, traj.length());
   ASSERT_TRUE(result.has_value());
@@ -65,9 +63,7 @@ TEST(search_zero_velocity_position, found_at_zero_crossing)
   points.push_back(make_trajectory_point(2.0, 0.0, -5.0));  // crosses zero between previous
   points.push_back(make_trajectory_point(3.0, 0.0, -10.0));
 
-  auto traj = Trajectory<TrajectoryPoint>::Builder()
-                .build(points)
-                .value();
+  auto traj = Trajectory<TrajectoryPoint>::Builder().build(points).value();
 
   auto result = search_zero_velocity_position(traj, 0.0, traj.length());
   ASSERT_TRUE(result.has_value());
@@ -83,9 +79,7 @@ TEST(search_zero_velocity_position, not_found_monotonic_positive)
   points.push_back(make_trajectory_point(2.0, 0.0, 5.0));
   points.push_back(make_trajectory_point(3.0, 0.0, 3.0));
 
-  auto traj = Trajectory<TrajectoryPoint>::Builder()
-                .build(points)
-                .value();
+  auto traj = Trajectory<TrajectoryPoint>::Builder().build(points).value();
 
   auto result = search_zero_velocity_position(traj, 0.0, traj.length());
   EXPECT_FALSE(result.has_value());
@@ -99,9 +93,7 @@ TEST(search_zero_velocity_position, not_found_monotonic_negative)
   points.push_back(make_trajectory_point(2.0, 0.0, -5.0));
   points.push_back(make_trajectory_point(3.0, 0.0, -3.0));
 
-  auto traj = Trajectory<TrajectoryPoint>::Builder()
-                .build(points)
-                .value();
+  auto traj = Trajectory<TrajectoryPoint>::Builder().build(points).value();
 
   auto result = search_zero_velocity_position(traj, 0.0, traj.length());
   EXPECT_FALSE(result.has_value());
@@ -115,9 +107,7 @@ TEST(search_zero_velocity_position, found_at_first_point)
   points.push_back(make_trajectory_point(2.0, 0.0, 10.0));
   points.push_back(make_trajectory_point(3.0, 0.0, 10.0));
 
-  auto traj = Trajectory<TrajectoryPoint>::Builder()
-                .build(points)
-                .value();
+  auto traj = Trajectory<TrajectoryPoint>::Builder().build(points).value();
 
   auto result = search_zero_velocity_position(traj, 0.0, traj.length());
   ASSERT_TRUE(result.has_value());
@@ -132,9 +122,7 @@ TEST(search_zero_velocity_position, found_with_interval)
   points.push_back(make_trajectory_point(2.0, 0.0, -15.0));
   points.push_back(make_trajectory_point(3.0, 0.0, -20.0));
 
-  auto traj = Trajectory<TrajectoryPoint>::Builder()
-                .build(points)
-                .value();
+  auto traj = Trajectory<TrajectoryPoint>::Builder().build(points).value();
 
   // Test with full range (no distance limits)
   auto result_full = search_zero_velocity_position(traj, 0.0, traj.length());
