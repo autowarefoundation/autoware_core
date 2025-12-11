@@ -77,7 +77,7 @@ TEST(TestHelpers, crop_bases)
 
   std::vector<double> expected = {1.5, 2.0, 3.0, 3.5};
 
-  auto result = crop_bases(x, start, end);
+  auto result = crop_bases(x, start, end, expected.size());
 
   EXPECT_EQ(result.size(), expected.size());
 

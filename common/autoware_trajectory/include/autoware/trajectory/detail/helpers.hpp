@@ -40,7 +40,9 @@ inline namespace helpers
  */
 std::vector<double> fill_bases(const std::vector<double> & x, const size_t output_size_at_least);
 
-std::vector<double> crop_bases(const std::vector<double> & x, const double start, const double end);
+std::vector<double> crop_bases(
+  const std::vector<double> & x, const double start, const double end,
+  const size_t output_size_at_least);
 }  // namespace helpers
 }  // namespace autoware::experimental::trajectory::detail
 

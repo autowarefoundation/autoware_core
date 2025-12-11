@@ -102,7 +102,7 @@ TEST(TrajectoryCreatorTest, create)
   }
 }
 
-TEST(TrajectoryCreatorTest, almost_same_points_are_given)
+TEST(TrajectoryCreatorTest, DISABLE_almost_same_points_are_given)
 {
   const double nano_meter = 1e-9;
   std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points{

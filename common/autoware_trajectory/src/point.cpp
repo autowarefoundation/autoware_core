@@ -136,7 +136,10 @@ std::vector<double> Trajectory<PointType>::get_internal_bases() const
 
 std::vector<double> Trajectory<PointType>::get_underlying_bases() const
 {
-  auto bases = detail::crop_bases(bases_, start_, end_);
+  // FIXME(soblin): actually minimum_required_poinst is 4, but this function is used in
+  // `pretty_build`. So I'm passing 3 temporarily. minimum_required_poinst is passed because
+  static constexpr auto minimum_required_point = 3;
+  auto bases = detail::crop_bases(bases_, start_, end_, minimum_required_point);
   std::transform(
     bases.begin(), bases.end(), bases.begin(), [this](const double s) { return s - start_; });
   return bases;
