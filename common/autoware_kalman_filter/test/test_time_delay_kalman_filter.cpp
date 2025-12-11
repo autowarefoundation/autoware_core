@@ -43,7 +43,7 @@ void ground_truth_predict(
   x_shifted.block(dim_x, 0, dim_x_ex - dim_x, 1) = x_ex.block(0, 0, dim_x_ex - dim_x, 1);
 
   // 2. Insert new prediction at the top (t)
-  // Note: specific to TDKF implementation, usually x_next is provided or calculated as A*x
+  // Note: specific to Time Delay Kalman Filter implementation, usually x_next is provided or calculated as A*x
   // In your test case, you provided x_next explicitly.
   x_shifted.block(0, 0, dim_x, 1) = x_next;
   x_ex = x_shifted;
@@ -151,7 +151,7 @@ TEST_F(TimeDelayKalmanFilterTest, Prediction)
   // Update Ground Truth
   ground_truth_predict(x_ex_gt_, P_ex_gt_, x_next_, A_, Q_, kDimX, kDimXEx);
 
-  // Update TDKF
+  // Update Time Delay Kalman Filter
   ASSERT_TRUE(td_kf_.predictWithDelay(x_next_, A_, Q_));
 
   // Check
@@ -178,7 +178,7 @@ TEST_F(TimeDelayKalmanFilterTest, UpdateWithDelay)
   // Update Ground Truth
   ground_truth_update(x_ex_gt_, P_ex_gt_, y_delayed, C_, R_, delay_step, kDimX, kDimX, kDimXEx);
 
-  // Update TDKF
+  // Update Time Delay Kalman Filter
   ASSERT_TRUE(td_kf_.updateWithDelay(y_delayed, C_, R_, delay_step));
 
   // Check
@@ -191,7 +191,7 @@ TEST_F(TimeDelayKalmanFilterTest, UpdateWithDelay)
 
 TEST_F(TimeDelayKalmanFilterTest, UpdateWithZeroDelay)
 {
-  // Validates that the TDKF behaves like a standard KF when delay is 0
+  // Validates that the Time Delay Kalman Filter behaves like a standard KF when delay is 0
   td_kf_.init(x_t_, P_t_, kMaxDelayStep);
 
   // First predict
@@ -206,7 +206,7 @@ TEST_F(TimeDelayKalmanFilterTest, UpdateWithZeroDelay)
   // Update Ground Truth
   ground_truth_update(x_ex_gt_, P_ex_gt_, y_current, C_, R_, delay_step, kDimX, kDimX, kDimXEx);
 
-  // Update TDKF
+  // Update Time Delay Kalman Filter
   ASSERT_TRUE(td_kf_.updateWithDelay(y_current, C_, R_, delay_step));
 
   // Check
@@ -234,7 +234,7 @@ TEST_F(TimeDelayKalmanFilterTest, UpdateWithMaxDelay)
   // Update Ground Truth
   ground_truth_update(x_ex_gt_, P_ex_gt_, y_old, C_, R_, delay_step, kDimX, kDimX, kDimXEx);
 
-  // Update TDKF
+  // Update Time Delay Kalman Filter
   ASSERT_TRUE(td_kf_.updateWithDelay(y_old, C_, R_, delay_step));
 
   // Check
