@@ -43,6 +43,7 @@ void PyPlot::load_attrs()
   LOAD_FUNC_ATTR(savefig, mod);
   LOAD_FUNC_ATTR(scatter, mod);
   LOAD_FUNC_ATTR(show, mod);
+  LOAD_FUNC_ATTR(stem, mod);
   LOAD_FUNC_ATTR(subplot, mod);
   LOAD_FUNC_ATTR(subplots, mod);
   LOAD_FUNC_ATTR(title, mod);
@@ -130,6 +131,11 @@ PyObjectWrapper PyPlot::savefig(const pybind11::tuple & args, const pybind11::di
 PyObjectWrapper PyPlot::show(const pybind11::tuple & args, const pybind11::dict & kwargs)
 {
   return PyObjectWrapper{show_attr(*args, **kwargs)};
+}
+
+PyObjectWrapper PyPlot::stem(const pybind11::tuple & args, const pybind11::dict & kwargs)
+{
+  return PyObjectWrapper{stem_attr(*args, **kwargs)};
 }
 
 axes::Axes PyPlot::subplot(const pybind11::dict & kwargs)

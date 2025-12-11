@@ -188,7 +188,7 @@ std::vector<geometry_msgs::msg::Pose> calculate_error_poses(
       autoware_utils_geometry::transform_pose(indexed_pose_err, traj_points.at(i).pose));
 
     if (traj_points.at(i).longitudinal_velocity_mps != 0.0 && i < traj_points.size() - 1) {
-      time_elapsed += autoware_utils::calc_distance2d(
+      time_elapsed += autoware_utils_geometry::calc_distance2d(
                         traj_points.at(i).pose.position, traj_points.at(i + 1).pose.position) /
                       std::abs(traj_points.at(i).longitudinal_velocity_mps);
     } else {

@@ -53,7 +53,7 @@ public:
   void clearRoute() override;
   [[nodiscard]] MarkerArray visualize(const LaneletRoute & route) const override;
   [[nodiscard]] static MarkerArray visualize_debug_footprint(
-    autoware_utils::LinearRing2d goal_footprint);
+    autoware_utils_geometry::LinearRing2d goal_footprint);
   autoware::vehicle_info_utils::VehicleInfo vehicle_info_;
 
 protected:
@@ -83,7 +83,7 @@ protected:
    */
   [[nodiscard]] bool check_goal_footprint_inside_lanes(
     const lanelet::ConstLanelets & lanelets_near_goal,
-    const autoware_utils::Polygon2d & goal_footprint) const;
+    const autoware_utils_geometry::Polygon2d & goal_footprint) const;
 
   /**
    * @brief return true if (1)the goal is in parking area or (2)the goal is on the lanes and the

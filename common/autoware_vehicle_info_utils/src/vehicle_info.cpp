@@ -14,29 +14,30 @@
 
 #include "autoware/vehicle_info_utils/vehicle_info.hpp"
 
+#include <autoware_utils_geometry/boost_geometry.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <limits>
 
 namespace autoware::vehicle_info_utils
 {
-autoware_utils::LinearRing2d VehicleInfo::createFootprint(const double margin) const
+autoware_utils_geometry::LinearRing2d VehicleInfo::createFootprint(const double margin) const
 {
   return createFootprint(margin, margin);
 }
 
-autoware_utils::LinearRing2d VehicleInfo::createFootprint(
+autoware_utils_geometry::LinearRing2d VehicleInfo::createFootprint(
   const double lat_margin, const double lon_margin) const
 {
   return createFootprint(lat_margin, lat_margin, lat_margin, lon_margin, lon_margin);
 }
 
-autoware_utils::LinearRing2d VehicleInfo::createFootprint(
+autoware_utils_geometry::LinearRing2d VehicleInfo::createFootprint(
   const double front_lat_margin, const double center_lat_margin, const double rear_lat_margin,
   const double front_lon_margin, const double rear_lon_margin, const bool center_at_base_link) const
 {
-  using autoware_utils::LinearRing2d;
-  using autoware_utils::Point2d;
+  using autoware_utils_geometry::LinearRing2d;
+  using autoware_utils_geometry::Point2d;
 
   // Longitudinal positions
   const double x_front = front_overhang_m + wheel_base_m + front_lon_margin;

@@ -115,6 +115,10 @@ public:
     const pybind11::tuple & args = pybind11::tuple(),
     const pybind11::dict & kwargs = pybind11::dict()) const;
 
+  PyObjectWrapper stem(
+    const pybind11::tuple & args = pybind11::tuple(),
+    const pybind11::dict & kwargs = pybind11::dict()) const;
+
   PyObjectWrapper text(
     const pybind11::tuple & args = pybind11::tuple(),
     const pybind11::dict & kwargs = pybind11::dict()) const;
@@ -147,6 +151,7 @@ private:
   pybind11::object set_ylabel_attr;
   pybind11::object set_ylim_attr;
   pybind11::object set_zlim_attr;
+  pybind11::object stem_attr;
   pybind11::object text_attr;
   pybind11::object view_init_attr;
 

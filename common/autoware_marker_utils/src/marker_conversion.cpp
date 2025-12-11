@@ -92,9 +92,9 @@ visualization_msgs::msg::Marker create_autoware_geometry_marker(
 }
 
 visualization_msgs::msg::Marker create_autoware_geometry_marker(
-  const autoware_utils::LineString2d & ls, const rclcpp::Time & stamp, const std::string & ns,
-  int32_t id, const geometry_msgs::msg::Vector3 & scale, const std_msgs::msg::ColorRGBA & color,
-  const double z)
+  const autoware_utils_geometry::LineString2d & ls, const rclcpp::Time & stamp,
+  const std::string & ns, int32_t id, const geometry_msgs::msg::Vector3 & scale,
+  const std_msgs::msg::ColorRGBA & color, const double z)
 {
   visualization_msgs::msg::Marker marker = create_default_marker(
     "map", stamp, ns, id, visualization_msgs::msg::Marker::LINE_STRIP, scale, color);
@@ -379,9 +379,9 @@ visualization_msgs::msg::MarkerArray create_lanelets_marker_array(
 }
 
 visualization_msgs::msg::MarkerArray create_lanelet_linestring_marker_array(
-  const autoware_utils::MultiLineString2d & mls, const rclcpp::Time & stamp, const std::string & ns,
-  int32_t id, const geometry_msgs::msg::Vector3 & scale, const std_msgs::msg::ColorRGBA & color,
-  const double z)
+  const autoware_utils_geometry::MultiLineString2d & mls, const rclcpp::Time & stamp,
+  const std::string & ns, int32_t id, const geometry_msgs::msg::Vector3 & scale,
+  const std_msgs::msg::ColorRGBA & color, const double z)
 {
   visualization_msgs::msg::MarkerArray marker_array;
   for (auto j = 0ul; j < mls.size(); ++j) {
