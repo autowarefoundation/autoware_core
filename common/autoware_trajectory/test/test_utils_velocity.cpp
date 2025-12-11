@@ -26,8 +26,7 @@ using geometry_msgs::msg::Point;
 using geometry_msgs::msg::Pose;
 
 // Helper to create a trajectory point with position and velocity
-static TrajectoryPoint make_trajectory_point(
-  double x, double y, double vx, double yaw = 0.0)
+static TrajectoryPoint make_trajectory_point(double x, double y, double vx, double yaw = 0.0)
 {
   TrajectoryPoint point;
   point.pose = build<Pose>()
