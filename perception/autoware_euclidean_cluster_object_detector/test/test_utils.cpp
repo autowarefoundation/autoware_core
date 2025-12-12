@@ -101,6 +101,46 @@ TEST_F(UtilsTest, TestGetCentroid)
   EXPECT_FLOAT_EQ(centroid.z, 7.5f);
 }
 
+TEST_F(UtilsTest, TestGetCentroidEmptyPointCloud)
+{
+  // Create an empty point cloud
+  sensor_msgs::msg::PointCloud2 empty_pointcloud;
+  empty_pointcloud.header.frame_id = "base_link";
+  empty_pointcloud.header.stamp.sec = 1;
+  empty_pointcloud.header.stamp.nanosec = 0;
+
+  // Setup fields
+  empty_pointcloud.fields.resize(3);
+  empty_pointcloud.fields[0].name = "x";
+  empty_pointcloud.fields[1].name = "y";
+  empty_pointcloud.fields[2].name = "z";
+  empty_pointcloud.fields[0].offset = 0;
+  empty_pointcloud.fields[1].offset = 4;
+  empty_pointcloud.fields[2].offset = 8;
+  empty_pointcloud.fields[0].datatype = sensor_msgs::msg::PointField::FLOAT32;
+  empty_pointcloud.fields[1].datatype = sensor_msgs::msg::PointField::FLOAT32;
+  empty_pointcloud.fields[2].datatype = sensor_msgs::msg::PointField::FLOAT32;
+  empty_pointcloud.fields[0].count = 1;
+  empty_pointcloud.fields[1].count = 1;
+  empty_pointcloud.fields[2].count = 1;
+
+  // Set size and content (empty)
+  empty_pointcloud.height = 1;
+  empty_pointcloud.width = 0;
+  empty_pointcloud.point_step = 12;
+  empty_pointcloud.row_step = 0;
+  empty_pointcloud.is_bigendian = false;
+  empty_pointcloud.is_dense = true;
+  empty_pointcloud.data.resize(0);
+
+  // Calculate centroid - should return origin (0, 0, 0)
+  geometry_msgs::msg::Point centroid = autoware::euclidean_cluster::getCentroid(empty_pointcloud);
+
+  EXPECT_FLOAT_EQ(centroid.x, 0.0f);
+  EXPECT_FLOAT_EQ(centroid.y, 0.0f);
+  EXPECT_FLOAT_EQ(centroid.z, 0.0f);
+}
+
 TEST_F(UtilsTest, TestConvertPointCloudClusters2Msg)
 {
   // Create header for conversion

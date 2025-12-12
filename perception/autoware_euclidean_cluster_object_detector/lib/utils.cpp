@@ -37,6 +37,9 @@ geometry_msgs::msg::Point getCentroid(const sensor_msgs::msg::PointCloud2 & poin
     size++;
   }
   // const size_t size = pointcloud.width * pointcloud.height;
+  if (size == 0) {
+    return centroid;
+  }
   centroid.x = centroid.x / static_cast<float>(size);
   centroid.y = centroid.y / static_cast<float>(size);
   centroid.z = centroid.z / static_cast<float>(size);
