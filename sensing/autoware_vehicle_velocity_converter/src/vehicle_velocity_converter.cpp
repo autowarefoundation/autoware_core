@@ -26,7 +26,7 @@ VehicleVelocityConverter::VehicleVelocityConverter(const rclcpp::NodeOptions & o
   speed_scale_factor_(declare_parameter<double>("speed_scale_factor"))
 {
   vehicle_report_sub_ = create_subscription<autoware_vehicle_msgs::msg::VelocityReport>(
-    "velocity_status", rclcpp::QoS{100},
+    "velocity_status", rclcpp::QoS{10},
     std::bind(&VehicleVelocityConverter::callback_velocity_report, this, std::placeholders::_1));
 
   twist_with_covariance_pub_ = create_publisher<geometry_msgs::msg::TwistWithCovarianceStamped>(

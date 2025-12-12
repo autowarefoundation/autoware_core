@@ -54,11 +54,11 @@ GyroOdometerNode::GyroOdometerNode(const rclcpp::NodeOptions & node_options)
   logger_configure_ = std::make_unique<autoware_utils_logging::LoggerLevelConfigure>(this);
 
   vehicle_twist_sub_ = create_subscription<geometry_msgs::msg::TwistWithCovarianceStamped>(
-    "vehicle/twist_with_covariance", rclcpp::QoS{100},
+    "vehicle/twist_with_covariance", rclcpp::QoS{10},
     std::bind(&GyroOdometerNode::callback_vehicle_twist, this, std::placeholders::_1));
 
   imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
-    "imu", rclcpp::QoS{100},
+    "imu", rclcpp::QoS{10},
     std::bind(&GyroOdometerNode::callback_imu, this, std::placeholders::_1));
 
   twist_raw_pub_ = create_publisher<geometry_msgs::msg::TwistStamped>("twist_raw", rclcpp::QoS{10});
