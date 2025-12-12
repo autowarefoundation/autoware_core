@@ -58,6 +58,15 @@ public:
   // std::vector<geometry_msgs::msg::Point> getSplineInterpolatedPoints(const double width);
   // std::vector<geometry_msgs::msg::Pose> getSplineInterpolatedPoses(const double width);
 
+  geometry_msgs::msg::Point getSplineInterpolatedPointAt(const double s) const
+  {
+    geometry_msgs::msg::Point point;
+    point.x = spline_x_.getSplineInterpolatedValues({s}).at(0);
+    point.y = spline_y_.getSplineInterpolatedValues({s}).at(0);
+    point.z = spline_z_.getSplineInterpolatedValues({s}).at(0);
+    return point;
+  }
+
   // pose (= getSplineInterpolatedPoint + getSplineInterpolatedYaw)
   geometry_msgs::msg::Pose getSplineInterpolatedPose(const size_t idx, const double s) const;
 
@@ -73,9 +82,35 @@ public:
   double getSplineInterpolatedCurvature(const size_t idx, const double s) const;
   std::vector<double> getSplineInterpolatedCurvatures() const;
 
+  // Debug methods to expose spline coefficients
+  const Eigen::VectorXd getSplineCoefficientsX() const { return spline_x_.getCoefficients(); }
+  const Eigen::VectorXd getSplineCoefficientsY() const { return spline_y_.getCoefficients(); }
+  const std::vector<double> getSplineKnots() const { return spline_x_.getKnots(); }
+
   size_t getSize() const { return base_s_vec_.size(); }
   size_t getOffsetIndex(const size_t idx, const double offset) const;
   double getAccumulatedLength(const size_t idx) const;
+  void resize(const size_t size)
+  {
+    base_s_vec_.resize(size);
+    spline_x_.resize(size - 1);
+    spline_y_.resize(size - 1);
+    spline_z_.resize(size - 1);
+  }
+
+  /**
+   * @brief Project a 2D point onto a spline (x(s), y(s)) and return s-coordinate and cross-track
+   * error.
+   * @param x_i x-coordinate of the point
+   * @param y_i y-coordinate of the point
+   * @param s_init initial guess for s (optional)
+   * @param tol Newton convergence tolerance
+   * @param max_iter maximum Newton iterations
+   * @return std::pair<double, double> -> (s_projected, eY)
+   */
+  std::pair<double, double> projectPointOntoSpline(
+    const double x_i, const double y_i, double s_init = 0.0, const double tol = 1e-6,
+    const int max_iter = 20) const;
 
 private:
   void calcSplineCoefficientsInner(const std::vector<geometry_msgs::msg::Point> & points);
