@@ -18,6 +18,8 @@
 #include "autoware/trajectory/forward.hpp"
 #include "autoware/trajectory/threshold.hpp"
 
+#include <range/v3/all.hpp>
+
 #include "autoware_internal_planning_msgs/msg/path_point_with_lane_id.hpp"
 #include "autoware_planning_msgs/msg/path_point.hpp"
 #include "autoware_planning_msgs/msg/trajectory_point.hpp"
@@ -47,8 +49,8 @@ template <class PointT>
     return std::nullopt;
   }
 
-  for (size_t i = 0; i < velocities.size(); ++i) {
-    const double curr_distance = bases[i];
+  for (const auto [curr_distance, next_distance, curr_vel, next_vel] : ranges::views::zip(
+         bases, bases | ranges::views::drop(1), velocities, velocities | ranges::views::drop(1))) {
     if (curr_distance < start_distance) {
       continue;
     }
@@ -56,17 +58,14 @@ template <class PointT>
       break;
     }
 
-    const double curr_vel = velocities[i];
     if (std::abs(curr_vel) < k_zero_velocity_threshold) {
       return curr_distance;
     }
 
-    if (i + 1 >= velocities.size() || bases[i + 1] > end_distance) {
+    if (next_distance > end_distance) {
       continue;
     }
 
-    const double next_distance = bases[i + 1];
-    const double next_vel = velocities[i + 1];
     const bool sign_change =
       (curr_vel > 0.0 && next_vel < 0.0) || (curr_vel < 0.0 && next_vel > 0.0);
 
@@ -109,6 +108,34 @@ template <class PointT>
 {
   return search_zero_velocity_position(trajectory, 0.0, trajectory.length());
 }
+
+/**
+ * @brief Check if velocity has zero in continuous trajectory over full range
+ * @param trajectory continuous trajectory to check
+ * @return true if velocity is zero anywhere in the trajectory, false otherwise
+ */
+template <class PointT>
+[[nodiscard]] bool has_zero_velocity(const Trajectory<PointT> & trajectory)
+{
+  return search_zero_velocity_position(trajectory, 0.0, trajectory.length()).has_value();
+}
+
+extern template std::optional<double>
+search_zero_velocity_position<autoware_planning_msgs::msg::TrajectoryPoint>(
+  const Trajectory<autoware_planning_msgs::msg::TrajectoryPoint> & trajectory,
+  const double start_distance, const double end_distance);
+
+extern template std::optional<double>
+search_zero_velocity_position<autoware_planning_msgs::msg::TrajectoryPoint>(
+  const Trajectory<autoware_planning_msgs::msg::TrajectoryPoint> & trajectory,
+  const double start_distance);
+
+extern template std::optional<double>
+search_zero_velocity_position<autoware_planning_msgs::msg::TrajectoryPoint>(
+  const Trajectory<autoware_planning_msgs::msg::TrajectoryPoint> & trajectory);
+
+extern template bool has_zero_velocity<autoware_planning_msgs::msg::TrajectoryPoint>(
+  const Trajectory<autoware_planning_msgs::msg::TrajectoryPoint> & trajectory);
 
 }  // namespace autoware::experimental::trajectory
 

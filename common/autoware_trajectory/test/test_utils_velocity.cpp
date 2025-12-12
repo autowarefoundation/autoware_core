@@ -19,6 +19,8 @@
 
 #include <gtest/gtest.h>
 
+#include <vector>
+
 using autoware_planning_msgs::msg::TrajectoryPoint;
 using autoware_utils_geometry::create_quaternion_from_yaw;
 using geometry_msgs::build;
