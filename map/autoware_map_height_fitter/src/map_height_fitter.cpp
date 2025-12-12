@@ -34,14 +34,6 @@
 #include <memory>
 #include <string>
 
-namespace
-{
-lanelet::LaneletMapPtr remove_const(const lanelet::LaneletMapConstPtr & const_map_ptr)
-{
-  return lanelet::LaneletMapPtr{std::const_pointer_cast<lanelet::LaneletMap>(const_map_ptr)};
-}
-}  // namespace
-
 namespace autoware::map_height_fitter
 {
 
@@ -178,7 +170,8 @@ bool MapHeightFitter::Impl::get_partial_point_cloud_map(const Point & point)
 void MapHeightFitter::Impl::on_vector_map(
   const autoware_map_msgs::msg::LaneletMapBin::ConstSharedPtr msg)
 {
-  vector_map_ = remove_const(autoware::experimental::lanelet2_utils::from_autoware_map_msgs(*msg));
+  vector_map_ = autoware::experimental::lanelet2_utils::remove_const(
+    autoware::experimental::lanelet2_utils::from_autoware_map_msgs(*msg));
   map_frame_ = msg->header.frame_id;
 }
 

@@ -40,19 +40,6 @@ double get_arc_length_along_centerline(const LaneletT & lanelet, const PointT & 
   return lanelet::geometry::toArcCoordinates(lanelet.centerline2d(), lanelet::utils::to2D(point))
     .length;
 }
-
-lanelet::LaneletMapPtr remove_const(const lanelet::LaneletMapConstPtr & const_map_ptr)
-{
-  return lanelet::LaneletMapPtr{std::const_pointer_cast<lanelet::LaneletMap>(const_map_ptr)};
-}
-
-lanelet::routing::RoutingGraphPtr remove_const(
-  const lanelet::routing::RoutingGraphConstPtr & const_routing_graph_ptr)
-{
-  return lanelet::routing::RoutingGraphPtr{
-    std::const_pointer_cast<lanelet::routing::RoutingGraph>(const_routing_graph_ptr)};
-}
-
 }  // namespace
 
 namespace autoware::path_generator
@@ -152,13 +139,14 @@ PathGenerator::InputData PathGenerator::take_data()
 void PathGenerator::set_planner_data(const InputData & input_data)
 {
   if (input_data.lanelet_map_bin_ptr) {
-    planner_data_.lanelet_map_ptr = remove_const(
+    planner_data_.lanelet_map_ptr = autoware::experimental::lanelet2_utils::remove_const(
       autoware::experimental::lanelet2_utils::from_autoware_map_msgs(
         *input_data.lanelet_map_bin_ptr));
     auto routing_graph_and_traffic_rules =
       autoware::experimental::lanelet2_utils::instantiate_routing_graph_and_traffic_rules(
         planner_data_.lanelet_map_ptr);
-    planner_data_.routing_graph_ptr = remove_const(routing_graph_and_traffic_rules.first);
+    planner_data_.routing_graph_ptr =
+      autoware::experimental::lanelet2_utils::remove_const(routing_graph_and_traffic_rules.first);
     planner_data_.traffic_rules_ptr = routing_graph_and_traffic_rules.second;
   }
 

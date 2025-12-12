@@ -74,18 +74,6 @@ using autoware_utils_geometry::create_quaternion_from_yaw;
 using geometry_msgs::msg::Pose;
 using lanelet::utils::to2D;
 
-lanelet::LaneletMapPtr remove_const(const lanelet::LaneletMapConstPtr & const_map_ptr)
-{
-  return lanelet::LaneletMapPtr{std::const_pointer_cast<lanelet::LaneletMap>(const_map_ptr)};
-}
-
-lanelet::routing::RoutingGraphPtr remove_const(
-  const lanelet::routing::RoutingGraphConstPtr & const_routing_graph_ptr)
-{
-  return lanelet::routing::RoutingGraphPtr{
-    std::const_pointer_cast<lanelet::routing::RoutingGraph>(const_routing_graph_ptr)};
-}
-
 bool exists(const std::vector<LaneletPrimitive> & primitives, const int64_t & id)
 {
   for (const auto & p : primitives) {
@@ -245,12 +233,13 @@ RouteHandler::RouteHandler(const LaneletMapBin & map_msg)
 
 void RouteHandler::setMap(const LaneletMapBin & map_msg)
 {
-  lanelet_map_ptr_ =
-    remove_const(autoware::experimental::lanelet2_utils::from_autoware_map_msgs(map_msg));
+  lanelet_map_ptr_ = autoware::experimental::lanelet2_utils::remove_const(
+    autoware::experimental::lanelet2_utils::from_autoware_map_msgs(map_msg));
   auto routing_graph_and_traffic_rules =
     autoware::experimental::lanelet2_utils::instantiate_routing_graph_and_traffic_rules(
       lanelet_map_ptr_);
-  routing_graph_ptr_ = remove_const(routing_graph_and_traffic_rules.first);
+  routing_graph_ptr_ =
+    autoware::experimental::lanelet2_utils::remove_const(routing_graph_and_traffic_rules.first);
   traffic_rules_ptr_ = routing_graph_and_traffic_rules.second;
   const auto map_major_version_opt =
     lanelet::io_handlers::parseMajorVersion(map_msg.version_map_format);
