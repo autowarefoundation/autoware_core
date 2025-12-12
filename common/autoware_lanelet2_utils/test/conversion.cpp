@@ -136,13 +136,19 @@ TEST(ArtificialLaneletObjectConstruction, BasicLineString3d)
   auto p3 = lanelet::BasicPoint3d(3.0, 3.0, 3.0);
   std::vector<lanelet::BasicPoint3d> vector_points = {p1, p2, p3};
   auto ls = autoware::experimental::lanelet2_utils::create_safe_linestring(vector_points);
-  EXPECT_TRUE(ls.has_value());
+  ASSERT_TRUE(ls.has_value());
+
+  if (!ls.has_value()) {
+    GTEST_SKIP();
+  }
+
+  auto basic_linestring = *ls;
 
   EXPECT_EQ(typeid(*ls), typeid(lanelet::BasicLineString3d))
     << "ls is not lanelet::BasicLineString3d.";
 
   for (size_t i = 0; i < vector_points.size(); ++i) {
-    expect_point_eq((*ls)[i], vector_points[i]);
+    expect_point_eq(basic_linestring[i], vector_points[i]);
   }
 }
 
@@ -163,13 +169,19 @@ TEST(ArtificialLaneletObjectConstruction, ConstLineString3d)
   auto p3 = lanelet::ConstPoint3d(lanelet::Point3d(lanelet::InvalId, 3.0, 3.0, 3.0));
   std::vector<lanelet::ConstPoint3d> vector_points = {p1, p2, p3};
   auto ls = autoware::experimental::lanelet2_utils::create_safe_linestring(vector_points);
-  EXPECT_TRUE(ls.has_value());
+  ASSERT_TRUE(ls.has_value());
+
+  if (!ls.has_value()) {
+    GTEST_SKIP();
+  }
+
+  auto linestring = *ls;
 
   EXPECT_EQ(typeid(*ls), typeid(lanelet::ConstLineString3d))
     << "ls is not lanelet::ConstLineString3d.";
 
   for (size_t i = 0; i < vector_points.size(); ++i) {
-    expect_point_eq((*ls)[i], vector_points[i]);
+    expect_point_eq(linestring[i], vector_points[i]);
   }
 }
 
@@ -214,7 +226,11 @@ TEST(ArtificialLaneletObjectConstruction, ConstLaneletConstruct)
   {
     const auto opt =
       autoware::experimental::lanelet2_utils::create_safe_lanelet(left_points, right_points);
-    EXPECT_TRUE(opt.has_value()) << "BasicPoint3d can construct normally.";
+    ASSERT_TRUE(opt.has_value()) << "BasicPoint3d can construct normally.";
+
+    if (!opt.has_value()) {
+      GTEST_SKIP();
+    }
     const auto ll = *opt;
     for (size_t i = 0; i < left_points.size(); ++i) {
       expect_point_eq(ll.leftBound()[i], left_points[i]);
@@ -232,11 +248,38 @@ TEST(ArtificialLaneletObjectConstruction, ConstLaneletConstruct)
   {
     const auto opt = autoware::experimental::lanelet2_utils::create_safe_lanelet(
       const_left_points, const_right_points);
-    EXPECT_TRUE(opt.has_value()) << "ConstPoint3d can't construct normally.";
+    ASSERT_TRUE(opt.has_value()) << "ConstPoint3d can't construct normally.";
+
+    if (!opt.has_value()) {
+      GTEST_SKIP();
+    }
     const auto ll = *opt;
     for (size_t i = 0; i < left_points.size(); ++i) {
       expect_point_eq(ll.leftBound()[i], left_points[i]);
       expect_point_eq(ll.rightBound()[i], right_points[i]);
     }
   }
+}
+
+// Test 12: Remove const from all types
+TEST(RemoveConst, RemoveConst)
+{
+  lanelet::ConstPoint3d const_pt;
+  auto pt = autoware::experimental::lanelet2_utils::remove_const(const_pt);
+  EXPECT_EQ(typeid(pt), typeid(lanelet::Point3d)) << "Type is not lanelet::Point3d";
+
+  lanelet::LaneletMapConstPtr const_ll_map_ptr;
+  auto ll_map_ptr = autoware::experimental::lanelet2_utils::remove_const(const_ll_map_ptr);
+  EXPECT_EQ(typeid(ll_map_ptr), typeid(lanelet::LaneletMapPtr))
+    << "Type is not lanelet::LaneletMapPtr";
+
+  lanelet::routing::RoutingGraphConstPtr const_routing_graph_ptr;
+  auto routing_graph_ptr =
+    autoware::experimental::lanelet2_utils::remove_const(const_routing_graph_ptr);
+  EXPECT_EQ(typeid(routing_graph_ptr), typeid(lanelet::routing::RoutingGraphPtr))
+    << "Type is not lanelet::routing::RoutingGraphPtr";
+
+  lanelet::ConstLanelet const_ll;
+  auto ll = autoware::experimental::lanelet2_utils::remove_const(const_ll);
+  EXPECT_EQ(typeid(ll), typeid(lanelet::Lanelet)) << "Type is not lanelet::Lanelet";
 }
