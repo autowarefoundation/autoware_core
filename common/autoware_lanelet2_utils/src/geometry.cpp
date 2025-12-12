@@ -14,6 +14,7 @@
 
 #include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/lanelet2_utils/geometry.hpp>
+#include <autoware/lanelet2_utils/nn_search.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 #include <range/v3/all.hpp>
 
@@ -278,6 +279,27 @@ geometry_msgs::msg::Pose get_closest_center_pose(
   closest_pose.orientation = autoware_utils_geometry::create_quaternion_from_yaw(lane_yaw);
 
   return closest_pose;
+}
+
+lanelet::ArcCoordinates get_arc_coordinate(
+  const lanelet::ConstLanelets & lanelet_sequence, const geometry_msgs::msg::Pose & pose)
+{
+  lanelet::ConstLanelet closest_lanelet = *get_closest_lanelet(lanelet_sequence, pose);
+
+  double length = 0;
+  lanelet::ArcCoordinates arc_coordinates;
+  for (const auto & llt : lanelet_sequence) {
+    const auto & centerline_2d = lanelet::utils::to2D(llt.centerline());
+    if (llt == closest_lanelet) {
+      const auto lanelet_point = from_ros(pose);
+      arc_coordinates = lanelet::geometry::toArcCoordinates(
+        centerline_2d, lanelet::utils::to2D(lanelet_point).basicPoint());
+      arc_coordinates.length += length;
+      break;
+    }
+    length += static_cast<double>(lanelet::geometry::length(centerline_2d));
+  }
+  return arc_coordinates;
 }
 
 }  // namespace autoware::experimental::lanelet2_utils
