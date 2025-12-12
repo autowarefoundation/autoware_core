@@ -27,8 +27,8 @@
 #include <autoware/trajectory/utils/pretty_build.hpp>
 #include <autoware_lanelet2_extension/utility/message_conversion.hpp>
 #include <autoware_lanelet2_extension/utility/utilities.hpp>
-#include <autoware_utils/geometry/geometry.hpp>
-#include <autoware_utils/math/unit_conversion.hpp>
+#include <autoware_utils_geometry/geometry.hpp>
+#include <autoware_utils_math/unit_conversion.hpp>
 
 #include <autoware_internal_planning_msgs/msg/path_point_with_lane_id.hpp>
 
@@ -477,7 +477,14 @@ std::optional<double> get_first_start_edge_bound_intersection_arc_length(
     [vehicle_length](
       const autoware::experimental::trajectory::Trajectory<geometry_msgs::msg::Point> & bound) {
       auto trimmed_bound = bound;
-      trimmed_bound.crop(vehicle_length, trimmed_bound.length() - vehicle_length);
+      if (bound.length() > vehicle_length) {
+        trimmed_bound.crop(vehicle_length, trimmed_bound.length() - vehicle_length);
+        if (trimmed_bound.length() <= 0.0) {
+          return lanelet::utils::to2D(to_lanelet_points(bound.restore()));
+        }
+      } else {
+        return lanelet::utils::to2D(to_lanelet_points(bound.restore()));
+      }
       return lanelet::utils::to2D(to_lanelet_points(trimmed_bound.restore()));
     };
   const auto trimmed_left_bound_string = trim_bound(left_bound);
@@ -1017,8 +1024,8 @@ std::optional<lanelet::ConstPoint2d> get_turn_signal_required_end_point(
     centerline.value(),
     [terminal_yaw, angle_threshold_deg](const geometry_msgs::msg::Pose & point) {
       const auto yaw = tf2::getYaw(point.orientation);
-      return std::fabs(autoware_utils::normalize_radian(yaw - terminal_yaw)) <
-             autoware_utils::deg2rad(angle_threshold_deg);
+      return std::fabs(autoware_utils_math::normalize_radian(yaw - terminal_yaw)) <
+             autoware_utils_math::deg2rad(angle_threshold_deg);
     });
   if (intervals.empty()) return std::nullopt;
 
