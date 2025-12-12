@@ -17,7 +17,7 @@
 
 #include "autoware/path_generator/utils.hpp"
 
-#include <autoware_lanelet2_extension/utility/message_conversion.hpp>
+#include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware_lanelet2_extension/utility/query.hpp>
 #include <autoware_test_utils/autoware_test_utils.hpp>
 #include <autoware_test_utils/mock_data_parser.hpp>
@@ -54,10 +54,14 @@ protected:
         lanelet_map_path);
     }
 
-    planner_data_.lanelet_map_ptr = std::make_shared<lanelet::LaneletMap>();
-    lanelet::utils::conversion::fromBinMsg(
-      map_bin_msg, planner_data_.lanelet_map_ptr, &planner_data_.traffic_rules_ptr,
-      &planner_data_.routing_graph_ptr);
+    planner_data_.lanelet_map_ptr = autoware::experimental::lanelet2_utils::remove_const(
+      autoware::experimental::lanelet2_utils::from_autoware_map_msgs(map_bin_msg));
+    auto routing_graph_and_traffic_rules =
+      autoware::experimental::lanelet2_utils::instantiate_routing_graph_and_traffic_rules(
+        planner_data_.lanelet_map_ptr);
+    planner_data_.routing_graph_ptr =
+      autoware::experimental::lanelet2_utils::remove_const(routing_graph_and_traffic_rules.first);
+    planner_data_.traffic_rules_ptr = routing_graph_and_traffic_rules.second;
   }
 
   void set_route(const std::string & package_name, const std::string & route_filename)

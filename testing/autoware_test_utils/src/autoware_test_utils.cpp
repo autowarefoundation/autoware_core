@@ -23,12 +23,42 @@
 #include <rclcpp/node.hpp>
 #include <tf2/utils.hpp>
 
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+
 #include <lanelet2_core/geometry/LineString.h>
+#include <lanelet2_io/io_handlers/Serialize.h>
 #include <yaml-cpp/yaml.h>
 
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
+
+namespace impl
+{
+// This function is already ported from autoware_lanelet2_extension to autoware_lanelet2_utils.
+// To avoid circular dependent, this function is implemented for internal usage.
+// Please use autoware::lanelet2_utils::to_autoware_map_msgs() instead for other packages.
+autoware_map_msgs::msg::LaneletMapBin to_autoware_map_msgs(const lanelet::LaneletMapConstPtr & map)
+{
+  const lanelet::LaneletMapPtr map_mut = std::const_pointer_cast<lanelet::LaneletMap>(map);
+
+  std::stringstream ss;
+  boost::archive::binary_oarchive oa(ss);
+  oa << *map_mut;
+  auto id_counter = lanelet::utils::getId();
+  oa << id_counter;
+
+  std::string data_str(ss.str());
+
+  autoware_map_msgs::msg::LaneletMapBin msg;
+  msg.data.clear();
+  msg.data.assign(data_str.begin(), data_str.end());
+  return msg;
+}
+
+}  // namespace impl
 
 namespace autoware::test_utils
 {
@@ -103,12 +133,11 @@ LaneletMapBin convertToMapBinMsg(
   lanelet::io_handlers::AutowareOsmParser::parseVersions(
     lanelet2_filename, &format_version, &map_version);
 
-  LaneletMapBin map_bin_msg;
+  LaneletMapBin map_bin_msg = impl::to_autoware_map_msgs(map);
   map_bin_msg.header.stamp = now;
   map_bin_msg.header.frame_id = "map";
   map_bin_msg.version_map_format = format_version;
   map_bin_msg.version_map = map_version;
-  lanelet::utils::conversion::toBinMsg(map, &map_bin_msg);
 
   return map_bin_msg;
 }
