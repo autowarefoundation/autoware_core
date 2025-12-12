@@ -127,6 +127,18 @@ double get_lanelet_angle(
 geometry_msgs::msg::Pose get_closest_center_pose(
   const lanelet::ConstLanelet & lanelet, const lanelet::BasicPoint3d & search_pt);
 
+/**
+ * @brief return ArcCoordinate of the search pose on lanelet sequence
+ * @details return {length, distance}
+ * length: arc-length of pose projection point on the lanelet sequence centerline
+ * distance: lateral distance from centerline to pose (left is positive, right is negative)
+ * @param[in] lanelet_sequence
+ * @param[in] pose search pose
+ * @return ArcCoordinate of the pose on lanelet sequence
+ */
+lanelet::ArcCoordinates get_arc_coordinate(
+  const lanelet::ConstLanelets & lanelet_sequence, const geometry_msgs::msg::Pose & pose);
+
 }  // namespace autoware::experimental::lanelet2_utils
 
 #endif  // AUTOWARE__LANELET2_UTILS__GEOMETRY_HPP_
