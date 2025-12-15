@@ -243,6 +243,10 @@ void ObstacleStopModule::init(rclcpp::Node & node, const std::string & module_na
     std::make_unique<autoware::planning_factor_interface::PlanningFactorInterface>(
       &node, "obstacle_stop");
 
+  // debug publisher
+  debug_trajectory_publisher_ = node.create_publisher<autoware_planning_msgs::msg::Trajectory>(
+    "~/debug/obstacle_stop/trajectory", 1);
+
   // time keeper
   time_keeper_ = std::make_shared<autoware_utils_debug::TimeKeeper>(processing_time_detail_pub_);
 }
