@@ -51,9 +51,21 @@ public:
   // TODO(takagi): set const = 0 after all modules implement the override function.
   virtual std::string get_short_module_name() const { return "module_name"; }
   virtual void publish_planning_factor() {}
+  void publish_debug_trajectory(
+    const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & trajectory)
+  {
+    if (!debug_trajectory_publisher_) {
+      return;
+    }
+    autoware_planning_msgs::msg::Trajectory debug_trajectory;
+    debug_trajectory.header.frame_id = "map";
+    debug_trajectory.points = trajectory;
+    debug_trajectory_publisher_->publish(debug_trajectory);
+  }
   rclcpp::Logger logger_ = rclcpp::get_logger("");
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr debug_publisher_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr virtual_wall_publisher_;
+  rclcpp::Publisher<autoware_planning_msgs::msg::Trajectory>::SharedPtr debug_trajectory_publisher_;
   std::shared_ptr<autoware_utils_debug::ProcessingTimePublisher> processing_diag_publisher_;
   rclcpp::Publisher<autoware_internal_debug_msgs::msg::Float64Stamped>::SharedPtr
     processing_time_publisher_;
