@@ -209,12 +209,19 @@ void MultiVoxelGridCovariance<PointT>::createKdtree()
     int & old_pos = it.second;
     auto & grid_ptr = grid_list_[old_pos];
 
+    // Skip null grid pointers (removed grids)
+    if (!grid_ptr) {
+      continue;
+    }
+
     new_grid_list[new_pos] = grid_ptr;
     old_pos = new_pos;
     ++new_pos;
-    total_leaf_num = grid_ptr->size();
+    total_leaf_num += grid_ptr->size();
   }
 
+  // Resize to actual number of valid entries to avoid wasting memory on trailing nulls
+  new_grid_list.resize(new_pos);
   grid_list_ = std::move(new_grid_list);
 
   // Rebuild the voxel_centroids_ptr_
@@ -247,6 +254,11 @@ int MultiVoxelGridCovariance<PointT>::radiusSearch(
   unsigned int max_nn) const
 {
   k_leaves.clear();
+
+  // Check if kdtree has valid input cloud
+  if (!voxel_centroids_ptr_ || voxel_centroids_ptr_->empty()) {
+    return 0;
+  }
 
   // Search from the kdtree to find neighbors of @point
   std::vector<float> k_sqr_distances;
