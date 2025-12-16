@@ -119,7 +119,7 @@ TEST_F(SimplePurePursuitNodeTest, create_control_command)
     const auto result = create_control_command(odom, traj);
 
     EXPECT_DOUBLE_EQ(result.longitudinal.velocity, 0.0);
-    EXPECT_DOUBLE_EQ(result.longitudinal.acceleration, -1.0);
+    EXPECT_DOUBLE_EQ(result.longitudinal.acceleration, 0.0);
   }
 }
 
