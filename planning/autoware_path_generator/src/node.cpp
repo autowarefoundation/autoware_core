@@ -194,7 +194,6 @@ std::optional<PathWithLaneId> PathGenerator::plan_path(
 }
 
 std::optional<PathWithLaneId> PathGenerator::generate_path(
-
   const geometry_msgs::msg::Pose & current_pose, const Params & params)
 {
   if (!route_manager_) {
