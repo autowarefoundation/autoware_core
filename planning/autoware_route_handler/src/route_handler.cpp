@@ -1197,7 +1197,7 @@ std::optional<lanelet::ConstLanelet> RouteHandler::getRightLanelet(
   if (get_shoulder_lane) {
     const auto right_shoulder_lanelet = getRightShoulderLanelet(lanelet);
     if (right_shoulder_lanelet) {
-      return *right_shoulder_lanelet;
+      return right_shoulder_lanelet;
     }
   }
 
@@ -1268,7 +1268,7 @@ std::optional<lanelet::ConstLanelet> RouteHandler::getLeftLanelet(
   if (get_shoulder_lane) {
     const auto left_shoulder_lanelet = getLeftShoulderLanelet(lanelet);
     if (left_shoulder_lanelet) {
-      return *left_shoulder_lanelet;
+      return left_shoulder_lanelet;
     }
   }
 
