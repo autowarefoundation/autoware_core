@@ -64,8 +64,6 @@ void applyMaximumVelocityLimit(
   const double begin_distance, const double end_distance, const double max_vel,
   Trajectory & trajectory);
 
-std::optional<size_t> searchZeroVelocityIdx(const TrajectoryPoints & trajectory);
-
 bool calcStopDistWithJerkConstraints(
   const double v0, const double a0, const double jerk_acc, const double jerk_dec,
   const double min_acc, const double target_vel, std::map<double, double> & jerk_profile,
