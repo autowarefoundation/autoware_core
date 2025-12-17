@@ -45,7 +45,7 @@ template <class PointT>
 {
   const auto [bases, velocities] = trajectory.longitudinal_velocity_mps().get_data();
 
-  if (velocities.empty() || start_distance < 0.0 || end_distance < start_distance) {
+  if (velocities.size() < 2 || start_distance < 0.0 || end_distance < start_distance) {
     return std::nullopt;
   }
 
