@@ -16,6 +16,7 @@
 
 #include "autoware/path_generator/utils.hpp"
 
+#include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/lanelet2_utils/nn_search.hpp>
 #include <autoware/trajectory/utils/reference_path.hpp>
 #include <autoware_lanelet2_extension/utility/message_conversion.hpp>
@@ -138,10 +139,15 @@ PathGenerator::InputData PathGenerator::take_data()
 void PathGenerator::set_planner_data(const InputData & input_data)
 {
   if (input_data.lanelet_map_bin_ptr) {
-    planner_data_.lanelet_map_ptr = std::make_shared<lanelet::LaneletMap>();
-    lanelet::utils::conversion::fromBinMsg(
-      *input_data.lanelet_map_bin_ptr, planner_data_.lanelet_map_ptr,
-      &planner_data_.traffic_rules_ptr, &planner_data_.routing_graph_ptr);
+    planner_data_.lanelet_map_ptr = autoware::experimental::lanelet2_utils::remove_const(
+      autoware::experimental::lanelet2_utils::from_autoware_map_msgs(
+        *input_data.lanelet_map_bin_ptr));
+    auto routing_graph_and_traffic_rules =
+      autoware::experimental::lanelet2_utils::instantiate_routing_graph_and_traffic_rules(
+        planner_data_.lanelet_map_ptr);
+    planner_data_.routing_graph_ptr =
+      autoware::experimental::lanelet2_utils::remove_const(routing_graph_and_traffic_rules.first);
+    planner_data_.traffic_rules_ptr = routing_graph_and_traffic_rules.second;
   }
 
   if (input_data.route_ptr) {
