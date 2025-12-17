@@ -281,7 +281,7 @@ geometry_msgs::msg::Pose get_closest_center_pose(
   return closest_pose;
 }
 
-lanelet::ArcCoordinates get_arc_coordinate(
+lanelet::ArcCoordinates get_arc_coordinates(
   const lanelet::ConstLanelets & lanelet_sequence, const geometry_msgs::msg::Pose & pose)
 {
   lanelet::ConstLanelet closest_lanelet = *get_closest_lanelet(lanelet_sequence, pose);
