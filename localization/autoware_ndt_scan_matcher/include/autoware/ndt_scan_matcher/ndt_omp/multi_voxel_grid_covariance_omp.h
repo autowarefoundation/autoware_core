@@ -64,7 +64,6 @@
 #include <boost/shared_ptr.hpp>
 
 #include <pcl/filters/voxel_grid.h>
-#include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/point_types.h>
 
 #include <future>
@@ -74,6 +73,8 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
+#include "kdtree_nanoflann.hpp"
 
 namespace pclomp
 {
@@ -386,7 +387,7 @@ protected:
   // Grids of leaves are held in a vector for faster access speed
   std::vector<GridNodePtr> grid_list_;
   // A kdtree built from the leaves of grids
-  pcl::KdTreeFLANN<PointT> kdtree_;
+  KdTreeNanoflann<PointT> kdtree_;
   // To access leaf by the search results by kdtree
   std::vector<LeafConstPtr> leaf_ptrs_;
 };
