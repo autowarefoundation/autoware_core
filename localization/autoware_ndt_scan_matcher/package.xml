@@ -39,7 +39,9 @@
   <depend>tf2_ros</depend>
   <depend>tf2_sensor_msgs</depend>
   <depend>visualization_msgs</depend>
+  <depend>libnanoflann-dev</depend>
   <build_depend>libpcl-all-dev</build_depend>
+  
 
   <test_depend>ament_cmake_cppcheck</test_depend>
   <test_depend>ament_index_cpp</test_depend>
