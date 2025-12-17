@@ -98,9 +98,8 @@ class KdTreeNanoflann
   };
 
   using kdtree_t = nanoflann::KDTreeSingleIndexAdaptor<
-    nanoflann::L2_Simple_Adaptor<float, PointCloudNanoflann, float, size_t>, 
-    PointCloudNanoflann, 3, size_t 
-    >;
+    nanoflann::L2_Simple_Adaptor<float, PointCloudNanoflann, float, size_t>, PointCloudNanoflann, 3,
+    size_t>;
 
   std::shared_ptr<kdtree_t> index_ptr_;
   std::shared_ptr<PointCloudNanoflann> cloud_ptr_;
@@ -142,13 +141,12 @@ public:
   }
 
   int radiusSearch(
-    const PointT & point, double radius,
-    std::vector<std::pair<size_t, float>> & indices_dists,
+    const PointT & point, double radius, std::vector<std::pair<size_t, float>> & indices_dists,
     [[maybe_unused]] unsigned int max_nn) const
   {
     float query_pt[3] = {point.x, point.y, point.z};
     nanoflann::SearchParams param;
-    param.sorted = false; // No need sorting
+    param.sorted = false;  // No need sorting
     auto k = index_ptr_->radiusSearch(query_pt, radius, indices_dists, param);
     return k;
   }
