@@ -319,4 +319,38 @@ double get_lateral_distance_to_closest_lanelet(
   return get_lateral_distance_to_centerline(closest_lanelet, pose);
 }
 
+lanelet::ConstLanelet combine_lanelets_shape(const lanelet::ConstLanelets & lanelets)
+{
+  const auto add_unique_point =
+    [](lanelet::ConstPoints3d & points, const lanelet::ConstPoint3d & new_point) {
+      constexpr double distance_threshold = 0.01;
+      const auto is_duplicate = std::any_of(
+        points.cbegin(), points.cend(),
+        [&new_point, distance_threshold](const auto & existing_point) {
+          return boost::geometry::distance(existing_point.basicPoint(), new_point.basicPoint()) <=
+                 distance_threshold;
+        });
+      if (!is_duplicate) points.emplace_back(new_point);
+    };
+
+  const auto add_unique_points = [&add_unique_point](
+                                   lanelet::ConstPoints3d & output, const auto & input_points) {
+    std::for_each(
+      input_points.begin(), input_points.end(),
+      [&output, &add_unique_point](const auto & pt) { add_unique_point(output, pt); });
+  };
+
+  lanelet::ConstPoints3d lefts, rights, centers;
+  for (const auto & llt : lanelets) {
+    add_unique_points(lefts, llt.leftBound());
+    add_unique_points(rights, llt.rightBound());
+    add_unique_points(centers, llt.centerline());
+  }
+
+  auto combined_lanelet = remove_const(*create_safe_lanelet(lefts, rights));
+  const auto center_line = remove_const(*create_safe_linestring(centers));
+  combined_lanelet.setCenterline(center_line);
+  return combined_lanelet;
+}
+
 }  // namespace autoware::experimental::lanelet2_utils

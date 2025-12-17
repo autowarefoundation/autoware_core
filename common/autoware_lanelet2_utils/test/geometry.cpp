@@ -609,6 +609,38 @@ TEST(GetLateralDistanceToClosestLanelet, get_lateral_distance_to_closest_lanelet
   }
 }
 
+// Test 26: combine_lanelets_shape with duplicate point
+TEST(LaneletManipulation, CombineLaneletsWithDuplicatePoint)
+{
+  using autoware::experimental::lanelet2_utils::create_safe_lanelet;
+  auto p1 = lanelet::BasicPoint3d(0.0, 2.0, 0.0);
+  auto p2 = lanelet::BasicPoint3d(3.0, 2.0, 0.0);
+  auto p3 = lanelet::BasicPoint3d(0.0, 0.0, 0.0);
+  auto p4 = lanelet::BasicPoint3d(3.0, 0.0, 0.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points1 = {p1, p2};
+  std::vector<lanelet::BasicPoint3d> right_points1 = {p3, p4};
+
+  auto ll1 = create_safe_lanelet(left_points1, right_points1);
+
+  auto p5 = lanelet::BasicPoint3d(3.0, 2.0, 0.0);
+  auto p6 = lanelet::BasicPoint3d(6.0, 2.0, 0.0);
+  auto p7 = lanelet::BasicPoint3d(3.0, 0.0, 0.0);
+  auto p8 = lanelet::BasicPoint3d(6.0, 0.0, 0.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points2 = {p5, p6};
+  std::vector<lanelet::BasicPoint3d> right_points2 = {p7, p8};
+
+  auto ll2 = create_safe_lanelet(left_points2, right_points2);
+
+  auto one_lanelet = autoware::experimental::lanelet2_utils::combine_lanelets_shape({*ll1, *ll2});
+
+  EXPECT_EQ(typeid(one_lanelet), typeid(lanelet::ConstLanelet))
+    << "one_lanelet is not lanelet::ConstLanelet.";
+  EXPECT_EQ(one_lanelet.leftBound().size(), 3);
+  EXPECT_EQ(one_lanelet.rightBound().size(), 3);
+}
+
 }  // namespace autoware::experimental
 
 int main(int argc, char ** argv)

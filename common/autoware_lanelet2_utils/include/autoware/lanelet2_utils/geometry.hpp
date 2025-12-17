@@ -158,6 +158,13 @@ double get_lateral_distance_to_centerline(
 double get_lateral_distance_to_closest_lanelet(
   const lanelet::ConstLanelets & lanelet_sequence, const geometry_msgs::msg::Pose & pose);
 
+/**
+ * @brief combine lanelet sequence (several lanelets) into one lanelet
+ * @param[in] lanelets several lanelets
+ * @return one lanelet
+ */
+lanelet::ConstLanelet combine_lanelets_shape(const lanelet::ConstLanelets & lanelets);
+
 }  // namespace autoware::experimental::lanelet2_utils
 
 #endif  // AUTOWARE__LANELET2_UTILS__GEOMETRY_HPP_
