@@ -48,6 +48,11 @@ public:
     TrajectoryPoints & output, std::vector<TrajectoryPoints> & debug_trajectories,
     const bool publish_debug_trajs) override;
 
+  bool apply(
+    const double initial_vel, const double initial_acc, const Trajectory & input,
+    Trajectory & output, std::vector<Trajectory> & debug_trajectories,
+    const bool publish_debug_trajs);
+
   TrajectoryPoints resampleTrajectory(
     const TrajectoryPoints & input, const double v0, const geometry_msgs::msg::Pose & current_pose,
     const double nearest_dist_threshold, const double nearest_yaw_threshold) const override;

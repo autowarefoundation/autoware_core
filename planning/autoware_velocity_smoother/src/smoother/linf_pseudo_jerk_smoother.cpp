@@ -249,6 +249,161 @@ bool LinfPseudoJerkSmoother::apply(
   return true;
 }
 
+bool LinfPseudoJerkSmoother::apply(
+  const double initial_vel, const double initial_acc, const Trajectory & input, Trajectory & output,
+  [[maybe_unused]] std::vector<Trajectory> & debug_trajectories,
+  [[maybe_unused]] const bool publish_debug_trajs)
+{
+  const auto [bases, velocities] = input.longitudinal_velocity_mps().get_data();
+  if (bases.empty() || velocities.empty()) {
+    RCLCPP_DEBUG(logger_, "Input trajectory is empty");
+    return false;
+  }
+
+  if (std::fabs(velocities.front()) < 0.1) {
+    RCLCPP_DEBUG(logger_, "closest v_max < 0.1, keep stopping. return.");
+    return false;
+  }
+
+  const size_t N = bases.size();
+  if (N < 2) {
+    return false;
+  }
+
+  std::vector<double> interval_dist_arr;
+  for (size_t i = 0; i < N - 1; ++i) {
+    interval_dist_arr.push_back(bases[i + 1] - bases[i]);
+  }
+  if (N > 0) {
+    interval_dist_arr.push_back(0.0);
+  }
+
+  std::vector<double> v_max = velocities;
+
+  // Setup QP problem
+  const size_t l_variables{4 * N + 1};
+  const size_t l_constraints{3 * N + 1 + 2 * (N - 1)};
+
+  Eigen::MatrixXd A = Eigen::MatrixXd::Zero(l_constraints, l_variables);
+  std::vector<double> lower_bound(l_constraints, 0.0);
+  std::vector<double> upper_bound(l_constraints, 0.0);
+
+  Eigen::MatrixXd P = Eigen::MatrixXd::Zero(l_variables, l_variables);
+  std::vector<double> q(l_variables, 0.0);
+
+  const double a_max{base_param_.max_accel};
+  const double a_min{base_param_.min_decel};
+  const double smooth_weight{smoother_param_.pseudo_jerk_weight};
+  const double over_v_weight{smoother_param_.over_v_weight};
+  const double over_a_weight{smoother_param_.over_a_weight};
+
+  for (unsigned int i = 0; i < N; ++i) {
+    q[i] = -1.0;  // minimize (-bi), i.e., maximize bi
+  }
+
+  for (unsigned int i = 2 * N; i < 3 * N; ++i) {
+    P(i, i) += over_v_weight;
+  }
+
+  for (unsigned int i = 3 * N; i < 4 * N; ++i) {
+    P(i, i) += over_a_weight;
+  }
+
+  q[4 * N] = smooth_weight;
+
+  for (unsigned int i = 0; i < N; ++i) {
+    const int j = 2 * N + i;
+    A(i, i) = 1.0;
+    A(i, j) = -1.0;
+    upper_bound[i] = v_max[i] * v_max[i];
+    lower_bound[i] = 0.0;
+  }
+
+  // a_min < a - sigma < a_max
+  for (unsigned int i = N; i < 2 * N; ++i) {
+    const int j = 2 * N + i;
+    A(i, i) = 1.0;
+    A(i, j) = -1.0;
+    if (i != N && v_max[i - N] < std::numeric_limits<double>::epsilon()) {
+      upper_bound[i] = 0.0;
+      lower_bound[i] = 0.0;
+    } else {
+      upper_bound[i] = a_max;
+      lower_bound[i] = a_min;
+    }
+  }
+
+  // b' = 2a
+  for (unsigned int i = 2 * N; i < 3 * N - 1; ++i) {
+    const unsigned int j = i - 2 * N;
+    const double ds_inv = 1.0 / std::max(interval_dist_arr.at(j), 0.0001);
+    A(i, j) = -ds_inv;
+    A(i, j + 1) = ds_inv;
+    A(i, j + N) = -2.0;
+    upper_bound[i] = 0.0;
+    lower_bound[i] = 0.0;
+  }
+
+  {
+    const unsigned int i = 3 * N - 1;
+    A(i, 0) = 1.0;
+    upper_bound[i] = initial_vel * initial_vel;
+    lower_bound[i] = initial_vel * initial_vel;
+
+    A(i + 1, N) = 1.0;
+    upper_bound[i + 1] = initial_acc;
+    lower_bound[i + 1] = initial_acc;
+  }
+
+  for (unsigned int i = 3 * N + 1; i < 4 * N; ++i) {
+    const unsigned int ia = i - (3 * N + 1) + N;
+    const unsigned int ip = 4 * N;
+    const unsigned int j = i - (3 * N + 1);
+    const double ds_inv = 1.0 / std::max(interval_dist_arr.at(j), 0.0001);
+
+    A(i, ia) = -ds_inv;
+    A(i, ia + 1) = ds_inv;
+    A(i, ip) = -1;
+    lower_bound[i] = -OSQP_INFTY;
+    upper_bound[i] = 0;
+
+    A(i + N - 1, ia) = ds_inv;
+    A(i + N - 1, ia + 1) = -ds_inv;
+    A(i + N - 1, ip) = -1;
+    lower_bound[i + N - 1] = -OSQP_INFTY;
+    upper_bound[i + N - 1] = 0;
+  }
+
+  const auto result = qp_solver_.optimize(P, A, q, lower_bound, upper_bound);
+  const std::vector<double> optval = result.primal_solution;
+  const int status_val = result.solution_status;
+
+  if (status_val != 1) {
+    RCLCPP_WARN(logger_, "optimization failed : %s", qp_solver_.getStatusMessage().c_str());
+    return false;
+  }
+
+  const auto has_nan =
+    std::any_of(optval.begin(), optval.end(), [](const auto v) { return std::isnan(v); });
+  if (has_nan) {
+    RCLCPP_WARN(logger_, "optimization failed: result contains NaN values");
+    return false;
+  }
+
+  output = input;
+  for (unsigned int i = 0; i < N; ++i) {
+    double v = optval.at(i);
+    const double optimized_vel = std::sqrt(std::max(v, 0.0));
+    const double optimized_acc = optval.at(i + N);
+
+    output.longitudinal_velocity_mps().range(bases[i], bases[i]).set(optimized_vel);
+    output.acceleration_mps2().range(bases[i], bases[i]).set(optimized_acc);
+  }
+
+  qp_solver_.logUnsolvedStatus("[autoware_velocity_smoother]");
+  return true;
+}
+
 TrajectoryPoints LinfPseudoJerkSmoother::resampleTrajectory(
   const TrajectoryPoints & input, const double v0, const geometry_msgs::msg::Pose & current_pose,
   const double nearest_dist_threshold, const double nearest_yaw_threshold) const
