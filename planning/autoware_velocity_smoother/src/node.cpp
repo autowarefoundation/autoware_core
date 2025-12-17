@@ -939,13 +939,13 @@ void VelocitySmootherNode::applyExternalVelocityLimit(TrajectoryPoints & traj) c
     0, traj.size(), max_velocity_with_deceleration_, traj);
 
   // insert the point at the distance of external velocity limit
-  const auto & current_pose = current_odometry_ptr_->pose.pose;
-  const size_t closest_seg_idx =
-    autoware::motion_utils::findFirstNearestSegmentIndexWithSoftConstraints(
-      traj, current_pose, node_param_.ego_nearest_dist_threshold,
-      node_param_.ego_nearest_yaw_threshold);
-  const auto inserted_index =
-    autoware::motion_utils::insertTargetPoint(closest_seg_idx, external_velocity_limit_.dist, traj);
+  const size_t anchor_idx = findNearestIndexFromEgo(traj);
+  const size_t anchor_seg_idx = std::min(anchor_idx, traj.size() - 2);
+  const auto & ego_pose = current_odometry_ptr_->pose.pose;
+  const double offset_from_anchor_seg = autoware::motion_utils::calcLongitudinalOffsetToSegment(
+    traj, anchor_seg_idx, ego_pose.position);
+  const auto inserted_index = autoware::motion_utils::insertTargetPoint(
+    anchor_seg_idx, external_velocity_limit_.dist + offset_from_anchor_seg, traj);
   if (!inserted_index) {
     traj.back().longitudinal_velocity_mps = std::min(
       traj.back().longitudinal_velocity_mps, static_cast<float>(external_velocity_limit_.velocity));
