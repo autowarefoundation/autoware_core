@@ -132,12 +132,21 @@ geometry_msgs::msg::Pose get_closest_center_pose(
  * @details return {length, distance}
  * length: arc-length of pose projection point on the lanelet sequence centerline
  * distance: lateral distance from centerline to pose (left is positive, right is negative)
- * @param[in] lanelet_sequence
+ * @param[in] lanelet_sequence vector of ConstLanelet
  * @param[in] pose search pose
  * @return ArcCoordinates of the pose on lanelet sequence
  */
 lanelet::ArcCoordinates get_arc_coordinates(
   const lanelet::ConstLanelets & lanelet_sequence, const geometry_msgs::msg::Pose & pose);
+
+/**
+ * @brief return distance of search pose to centerline (distance in ArcCoordinates)
+ * @param[in] lanelet ConstLanelet
+ * @param[in] pose search pose
+ * @return distance (double)
+ */
+double get_lateral_distance_to_centerline(
+  const lanelet::ConstLanelet & lanelet, const geometry_msgs::msg::Pose & pose);
 
 }  // namespace autoware::experimental::lanelet2_utils
 

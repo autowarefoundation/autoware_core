@@ -302,4 +302,13 @@ lanelet::ArcCoordinates get_arc_coordinates(
   return arc_coordinates;
 }
 
+double get_lateral_distance_to_centerline(
+  const lanelet::ConstLanelet & lanelet, const geometry_msgs::msg::Pose & pose)
+{
+  const auto & centerline_2d = lanelet::utils::to2D(lanelet.centerline());
+  const auto lanelet_point = from_ros(pose);
+  return lanelet::geometry::signedDistance(
+    centerline_2d, lanelet::utils::to2D(lanelet_point).basicPoint());
+}
+
 }  // namespace autoware::experimental::lanelet2_utils

@@ -525,13 +525,44 @@ TEST(GetArcCoordinates, get_arc_coordinateOrdinaryCase)
     EXPECT_NEAR(arc_coord.distance, 0.1, 1e-4);
   }
 
-  // query is above the center of the second lanelet
+  // query is below the center of the second lanelet
   {
     auto query = make_pose(4.5, 0.9);
     auto arc_coord =
       autoware::experimental::lanelet2_utils::get_arc_coordinates(lanelet_sequence, query);
     EXPECT_NEAR(arc_coord.length, 4.5, 1e-4);
     EXPECT_NEAR(arc_coord.distance, -0.1, 1e-4);
+  }
+}
+
+// Test 24: get_lateral_distance_to_centerline ordinary case
+TEST(GetLateralDistanceToCenterline, get_lateral_distance_to_centerlineOrdinaryCase)
+{
+  using autoware::experimental::lanelet2_utils::create_safe_lanelet;
+  auto p1 = lanelet::BasicPoint3d(0.0, 2.0, 0.0);
+  auto p2 = lanelet::BasicPoint3d(3.0, 2.0, 0.0);
+  auto p3 = lanelet::BasicPoint3d(0.0, 0.0, 0.0);
+  auto p4 = lanelet::BasicPoint3d(3.0, 0.0, 0.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points = {p1, p2};
+  std::vector<lanelet::BasicPoint3d> right_points = {p3, p4};
+
+  auto ll = create_safe_lanelet(left_points, right_points);
+
+  // query is above the center of lanelet
+  {
+    auto query = make_pose(1.5, 1.1);
+    auto distance =
+      autoware::experimental::lanelet2_utils::get_lateral_distance_to_centerline(*ll, query);
+    EXPECT_NEAR(distance, 0.1, 1e-4);
+  }
+
+  // query is below the center of lanelet
+  {
+    auto query = make_pose(1.5, 0.9);
+    auto distance =
+      autoware::experimental::lanelet2_utils::get_lateral_distance_to_centerline(*ll, query);
+    EXPECT_NEAR(distance, -0.1, 1e-4);
   }
 }
 
