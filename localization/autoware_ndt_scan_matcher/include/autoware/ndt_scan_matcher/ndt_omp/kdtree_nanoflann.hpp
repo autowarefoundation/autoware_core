@@ -44,8 +44,6 @@
 
 // cspell:ignore nanoflann, dists
 
-#include <nanoflann.hpp>
-
 #include <pcl/pcl_macros.h>
 // clang-format on
 
@@ -56,6 +54,8 @@
 
 #include <memory>
 #include <vector>
+#include <utility>
+#include <nanoflann.hpp>
 
 template <typename PointT>
 class KdTreeNanoflann
