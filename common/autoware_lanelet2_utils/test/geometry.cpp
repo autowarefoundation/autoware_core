@@ -70,6 +70,16 @@ auto make_point = [](double x, double y, double z) {
   return p;
 };
 
+static geometry_msgs::msg::Pose make_pose(double x, double y, double z = 0.0, double yaw = 0.0)
+{
+  using autoware_utils_geometry::create_quaternion_from_rpy;
+
+  geometry_msgs::msg::Pose p;
+  p.position = make_point(x, y, z);
+  p.orientation = create_quaternion_from_rpy(0.0, 0.0, yaw);
+  return p;
+}
+
 class ExtrapolatedLaneletTest : public ::testing::Test
 {
 protected:
@@ -478,6 +488,51 @@ TEST(GetClosestCenterPoseTest, getInclineDownPose)
   // Yaw is from - pi to pi
   auto expected_quat = create_quaternion_from_yaw(-3 * M_PI / 4);
   expect_quat_eq(out.orientation, expected_quat);
+}
+
+// Test 23: get_arc_coordinates ordinary case
+TEST(GetArcCoordinates, get_arc_coordinateOrdinaryCase)
+{
+  using autoware::experimental::lanelet2_utils::create_safe_lanelet;
+  auto p1 = lanelet::BasicPoint3d(0.0, 2.0, 0.0);
+  auto p2 = lanelet::BasicPoint3d(3.0, 2.0, 0.0);
+  auto p3 = lanelet::BasicPoint3d(0.0, 0.0, 0.0);
+  auto p4 = lanelet::BasicPoint3d(3.0, 0.0, 0.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points1 = {p1, p2};
+  std::vector<lanelet::BasicPoint3d> right_points1 = {p3, p4};
+
+  auto ll1 = create_safe_lanelet(left_points1, right_points1);
+
+  auto p5 = lanelet::BasicPoint3d(3.0, 2.0, 0.0);
+  auto p6 = lanelet::BasicPoint3d(6.0, 2.0, 0.0);
+  auto p7 = lanelet::BasicPoint3d(3.0, 0.0, 0.0);
+  auto p8 = lanelet::BasicPoint3d(6.0, 0.0, 0.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points2 = {p5, p6};
+  std::vector<lanelet::BasicPoint3d> right_points2 = {p7, p8};
+
+  auto ll2 = create_safe_lanelet(left_points2, right_points2);
+
+  auto lanelet_sequence = lanelet::ConstLanelets{*ll1, *ll2};
+
+  // query is above the center of the first lanelet
+  {
+    auto query = make_pose(1.5, 1.1);
+    auto arc_coord =
+      autoware::experimental::lanelet2_utils::get_arc_coordinates(lanelet_sequence, query);
+    EXPECT_NEAR(arc_coord.length, 1.5, 1e-4);
+    EXPECT_NEAR(arc_coord.distance, 0.1, 1e-4);
+  }
+
+  // query is above the center of the second lanelet
+  {
+    auto query = make_pose(4.5, 0.9);
+    auto arc_coord =
+      autoware::experimental::lanelet2_utils::get_arc_coordinates(lanelet_sequence, query);
+    EXPECT_NEAR(arc_coord.length, 4.5, 1e-4);
+    EXPECT_NEAR(arc_coord.distance, -0.1, 1e-4);
+  }
 }
 
 }  // namespace autoware::experimental
