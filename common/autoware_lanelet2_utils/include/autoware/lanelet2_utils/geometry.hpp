@@ -148,6 +148,16 @@ lanelet::ArcCoordinates get_arc_coordinates(
 double get_lateral_distance_to_centerline(
   const lanelet::ConstLanelet & lanelet, const geometry_msgs::msg::Pose & pose);
 
+/**
+ * @brief return distance of search pose to the closest lanelet's centerline in lanelet sequence
+ * (distance in ArcCoordinates)
+ * @param[in] lanelet_sequence vector of ConstLanelet (ConstLanelets)
+ * @param[in] pose search pose
+ * @return distance (double)
+ */
+double get_lateral_distance_to_closest_lanelet(
+  const lanelet::ConstLanelets & lanelet_sequence, const geometry_msgs::msg::Pose & pose);
+
 }  // namespace autoware::experimental::lanelet2_utils
 
 #endif  // AUTOWARE__LANELET2_UTILS__GEOMETRY_HPP_

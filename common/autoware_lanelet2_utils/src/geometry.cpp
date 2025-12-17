@@ -311,4 +311,12 @@ double get_lateral_distance_to_centerline(
     centerline_2d, lanelet::utils::to2D(lanelet_point).basicPoint());
 }
 
+double get_lateral_distance_to_closest_lanelet(
+  const lanelet::ConstLanelets & lanelet_sequence, const geometry_msgs::msg::Pose & pose)
+{
+  lanelet::ConstLanelet closest_lanelet = *get_closest_lanelet(lanelet_sequence, pose);
+
+  return get_lateral_distance_to_centerline(closest_lanelet, pose);
+}
+
 }  // namespace autoware::experimental::lanelet2_utils

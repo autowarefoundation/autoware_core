@@ -566,6 +566,49 @@ TEST(GetLateralDistanceToCenterline, get_lateral_distance_to_centerlineOrdinaryC
   }
 }
 
+// Test 25: get_lateral_distance_to_closest_lanelet ordinary case
+TEST(GetLateralDistanceToClosestLanelet, get_lateral_distance_to_closest_laneletOrdinaryCase)
+{
+  using autoware::experimental::lanelet2_utils::create_safe_lanelet;
+  auto p1 = lanelet::BasicPoint3d(0.0, 2.0, 0.0);
+  auto p2 = lanelet::BasicPoint3d(3.0, 2.0, 0.0);
+  auto p3 = lanelet::BasicPoint3d(0.0, 0.0, 0.0);
+  auto p4 = lanelet::BasicPoint3d(3.0, 0.0, 0.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points1 = {p1, p2};
+  std::vector<lanelet::BasicPoint3d> right_points1 = {p3, p4};
+
+  auto ll1 = create_safe_lanelet(left_points1, right_points1);
+
+  auto p5 = lanelet::BasicPoint3d(3.0, 2.0, 0.0);
+  auto p6 = lanelet::BasicPoint3d(6.0, 2.0, 0.0);
+  auto p7 = lanelet::BasicPoint3d(3.0, 0.0, 0.0);
+  auto p8 = lanelet::BasicPoint3d(6.0, 0.0, 0.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points2 = {p5, p6};
+  std::vector<lanelet::BasicPoint3d> right_points2 = {p7, p8};
+
+  auto ll2 = create_safe_lanelet(left_points2, right_points2);
+
+  auto lanelet_sequence = lanelet::ConstLanelets{*ll1, *ll2};
+
+  // query is above the center of the first lanelet
+  {
+    auto query = make_pose(1.5, 1.1);
+    auto distance = autoware::experimental::lanelet2_utils::get_lateral_distance_to_closest_lanelet(
+      lanelet_sequence, query);
+    EXPECT_NEAR(distance, 0.1, 1e-4);
+  }
+
+  // query is below the center of the second lanelet
+  {
+    auto query = make_pose(4.5, 0.9);
+    auto distance = autoware::experimental::lanelet2_utils::get_lateral_distance_to_closest_lanelet(
+      lanelet_sequence, query);
+    EXPECT_NEAR(distance, -0.1, 1e-4);
+  }
+}
+
 }  // namespace autoware::experimental
 
 int main(int argc, char ** argv)
