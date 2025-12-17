@@ -61,6 +61,8 @@
 // clang-format off
 #include <pcl/pcl_macros.h>
 // clang-format on
+#include "kdtree_nanoflann.hpp"
+
 #include <boost/shared_ptr.hpp>
 
 #include <pcl/filters/voxel_grid.h>
@@ -73,8 +75,6 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-
-#include "kdtree_nanoflann.hpp"
 
 namespace pclomp
 {
