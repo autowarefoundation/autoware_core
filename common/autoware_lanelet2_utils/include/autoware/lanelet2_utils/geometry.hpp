@@ -165,6 +165,16 @@ double get_lateral_distance_to_closest_lanelet(
  */
 lanelet::ConstLanelet combine_lanelets_shape(const lanelet::ConstLanelets & lanelets);
 
+/**
+ * @brief expand the lanelet while keep the lanelet ID and Attribute
+ * @param[in] lanelet_obj original lanelet
+ * @param[in] left_offset offset of the left bound (positive value required)
+ * @param[in] right_offset offset of the right bound (negative value required)
+ * @return expanded lanelet with same ID and Attribute
+ */
+lanelet::ConstLanelet get_expanded_lanelet(
+  const lanelet::ConstLanelet & lanelet_obj, const double left_offset, const double right_offset);
+
 }  // namespace autoware::experimental::lanelet2_utils
 
 #endif  // AUTOWARE__LANELET2_UTILS__GEOMETRY_HPP_

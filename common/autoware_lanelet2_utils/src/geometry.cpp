@@ -34,6 +34,62 @@
 
 namespace autoware::experimental::lanelet2_utils
 {
+
+namespace
+{
+lanelet::BasicLineString3d resample_points(
+  const lanelet::BasicLineString3d & line_string, const int num_segments)
+{
+  // Note: this function works well with num_segments >= num_segment of line string
+  // less than this, it might cause loss in information (such as corner curve)
+  if (line_string.size() < 2 || num_segments == 0) {
+    return {};
+  }
+
+  // Compute accumulated arc length
+  std::vector<double> accumulated_lengths{0.0};
+  accumulated_lengths.reserve(line_string.size());
+  for (size_t i = 1; i < line_string.size(); ++i) {
+    const double distance = lanelet::geometry::distance(line_string[i], line_string[i - 1]);
+    accumulated_lengths.push_back(accumulated_lengths.back() + distance);
+  }
+
+  const double total_length = accumulated_lengths.back();
+
+  lanelet::BasicLineString3d resampled_points;
+  for (int i = 0; i <= num_segments; ++i) {
+    const double target_length = total_length * static_cast<double>(i) / num_segments;
+
+    // Find two nearest points (accumulated_lengths[idx-1] <= target_length <=
+    // accumulated_lengths[idx])
+    auto it =
+      std::lower_bound(accumulated_lengths.begin(), accumulated_lengths.end(), target_length);
+    size_t idx = std::distance(accumulated_lengths.begin(), it);
+
+    if (idx == 0) {
+      resampled_points.emplace_back(line_string.front());
+      continue;
+    } else if (idx >= accumulated_lengths.size()) {
+      resampled_points.emplace_back(line_string.back());
+      continue;
+    }
+
+    const double back_length = accumulated_lengths[idx - 1];
+    const double front_length = accumulated_lengths[idx];
+    const double ratio = (target_length - back_length) / (front_length - back_length);
+
+    const lanelet::BasicPoint3d front_point = line_string[idx - 1];
+    const lanelet::BasicPoint3d back_point = line_string[idx];
+
+    const lanelet::BasicPoint3d direction_vector = front_point - back_point;
+    const lanelet::BasicPoint3d target_point = back_point + direction_vector * ratio;
+
+    resampled_points.push_back(target_point);
+  }
+  return resampled_points;
+}
+}  // namespace
+
 lanelet::ConstPoint3d extrapolate_point(
   const lanelet::ConstPoint3d & first, const lanelet::ConstPoint3d & second, const double distance)
 {
@@ -351,6 +407,47 @@ lanelet::ConstLanelet combine_lanelets_shape(const lanelet::ConstLanelets & lane
   const auto center_line = remove_const(*create_safe_linestring(centers));
   combined_lanelet.setCenterline(center_line);
   return combined_lanelet;
+}
+
+lanelet::ConstLanelet get_expanded_lanelet(
+  const lanelet::ConstLanelet & lanelet_obj, const double left_offset, const double right_offset)
+{
+  const auto orig_left_bound = lanelet_obj.leftBound().basicLineString();
+  const auto orig_right_bound = lanelet_obj.rightBound().basicLineString();
+
+  // find the more number of segment
+  const int max_segment = std::max(orig_left_bound.size() - 1, orig_right_bound.size() - 1);
+
+  auto expanded_left_bound = resample_points(orig_left_bound, max_segment);
+  auto expanded_right_bound = resample_points(orig_right_bound, max_segment);
+
+  for (size_t i = 0; i < expanded_left_bound.size(); ++i) {
+    const double diff_x = orig_right_bound.at(i).x() - orig_left_bound.at(i).x();
+    const double diff_y = orig_right_bound.at(i).y() - orig_left_bound.at(i).y();
+    const double theta = std::atan2(diff_y, diff_x);
+    expanded_right_bound.at(i).x() = orig_right_bound.at(i).x() - right_offset * std::cos(theta);
+    expanded_right_bound.at(i).y() = orig_right_bound.at(i).y() - right_offset * std::sin(theta);
+    expanded_left_bound.at(i).x() = orig_left_bound.at(i).x() - left_offset * std::cos(theta);
+    expanded_left_bound.at(i).y() = orig_left_bound.at(i).y() - left_offset * std::sin(theta);
+  }
+
+  const auto remove_basic = [](const lanelet::BasicLineString3d & points) {
+    lanelet::Points3d output;
+    for (auto pt : points) {
+      output.push_back(lanelet::Point3d(lanelet::InvalId, pt));
+    }
+    return output;
+  };
+
+  const auto & expanded_left_bound_ls =
+    lanelet::LineString3d(lanelet::InvalId, remove_basic(expanded_left_bound));
+  const auto & expanded_right_bound_ls =
+    lanelet::LineString3d(lanelet::InvalId, remove_basic(expanded_right_bound));
+
+  const auto & lanelet = lanelet::Lanelet(
+    lanelet_obj.id(), expanded_left_bound_ls, expanded_right_bound_ls, lanelet_obj.attributes());
+
+  return lanelet;
 }
 
 }  // namespace autoware::experimental::lanelet2_utils
