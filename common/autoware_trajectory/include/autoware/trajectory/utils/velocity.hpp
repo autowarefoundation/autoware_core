@@ -45,10 +45,11 @@ template <class PointT>
 {
   const auto [bases, velocities] = trajectory.longitudinal_velocity_mps().get_data();
 
-  if (velocities.size() < 2 || start_distance < 0.0 || end_distance < start_distance) {
+  if (velocities.empty() || start_distance < 0.0 || end_distance < start_distance) {
     return std::nullopt;
   }
 
+  // Check pairs of consecutive points
   for (const auto [curr_distance, next_distance, curr_vel, next_vel] : ranges::views::zip(
          bases, bases | ranges::views::drop(1), velocities, velocities | ranges::views::drop(1))) {
     if (curr_distance < start_distance) {
@@ -79,6 +80,15 @@ template <class PointT>
       return zero_pos;
     }
   }
+
+  const double last_distance = bases.back();
+  const double last_vel = velocities.back();
+  if (
+    last_distance >= start_distance && last_distance <= end_distance &&
+    std::abs(last_vel) < k_zero_velocity_threshold) {
+    return last_distance;
+  }
+
   return std::nullopt;
 }
 

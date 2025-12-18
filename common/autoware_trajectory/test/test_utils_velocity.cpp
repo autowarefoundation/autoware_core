@@ -116,6 +116,21 @@ TEST(search_zero_velocity_position, found_at_first_point)
   EXPECT_NEAR(result.value(), 0.0, k_zero_velocity_threshold);
 }
 
+TEST(search_zero_velocity_position, found_at_last_point)
+{
+  std::vector<TrajectoryPoint> points;
+  points.push_back(make_trajectory_point(0.0, 0.0, 2.0));
+  points.push_back(make_trajectory_point(1.0, 0.0, 5.0));
+  points.push_back(make_trajectory_point(2.0, 0.0, 4.0));
+  points.push_back(make_trajectory_point(3.0, 0.0, 0.0));
+
+  auto traj = Trajectory<TrajectoryPoint>::Builder().build(points).value();
+
+  auto result = search_zero_velocity_position(traj, 0.0, traj.length());
+  ASSERT_TRUE(result.has_value());
+  EXPECT_NEAR(result.value(), traj.length(), k_zero_velocity_threshold);
+}
+
 TEST(search_zero_velocity_position, found_with_interval)
 {
   std::vector<TrajectoryPoint> points;
