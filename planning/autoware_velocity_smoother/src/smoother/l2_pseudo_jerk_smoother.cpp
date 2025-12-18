@@ -26,6 +26,9 @@
 
 namespace autoware::velocity_smoother
 {
+using TrajectoryExperimental =
+  autoware::experimental::trajectory::Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>;
+
 L2PseudoJerkSmoother::L2PseudoJerkSmoother(
   rclcpp::Node & node, const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper)
 : SmootherBase(node, time_keeper)
@@ -238,8 +241,9 @@ bool L2PseudoJerkSmoother::apply(
 }
 
 bool L2PseudoJerkSmoother::apply(
-  const double initial_vel, const double initial_acc, const Trajectory & input, Trajectory & output,
-  [[maybe_unused]] std::vector<Trajectory> & debug_trajectories,
+  const double initial_vel, const double initial_acc, const TrajectoryExperimental & input,
+  TrajectoryExperimental & output,
+  [[maybe_unused]] std::vector<TrajectoryExperimental> & debug_trajectories,
   [[maybe_unused]] const bool publish_debug_trajs)
 {
   const auto [bases, velocities] = input.longitudinal_velocity_mps().get_data();
