@@ -1182,8 +1182,8 @@ bool NDTScanMatcher::check_out_of_map_range_warning(
     const auto & orientation = interpolation_result.interpolated_pose.pose.pose.orientation;
 
     msg << "Lidar has gone out of the map range. "
-        << "Position: (" << std::fixed << std::setprecision(3)
-        << position.x << ", " << position.y << ", " << position.z << "), "
+        << "Position: (" << std::fixed << std::setprecision(3) << position.x << ", " << position.y
+        << ", " << position.z << "), "
         << "Orientation: (" << orientation.x << ", " << orientation.y << ", " << orientation.z
         << ", " << orientation.w << ")";
     diagnostics_scan_points_->update_level_and_message(
