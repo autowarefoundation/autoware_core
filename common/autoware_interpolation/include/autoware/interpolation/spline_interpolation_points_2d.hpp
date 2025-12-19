@@ -94,10 +94,22 @@ public:
   void updateCurvatureSpline();
   void resize(const size_t size)
   {
-    base_s_vec_.resize(size);
-    spline_x_.resize(size - 1);
-    spline_y_.resize(size - 1);
-    spline_z_.resize(size - 1);
+    if (size > base_s_vec_.size()) {
+      // Extending - just resize (new elements will be uninitialized, caller should fill them)
+      base_s_vec_.resize(size);
+      spline_x_.resize(size);
+      spline_y_.resize(size);
+      spline_z_.resize(size);
+      spline_curvature_.resize(size);
+    } else if (size < base_s_vec_.size()) {
+      // Clipping - explicitly copy first N elements to preserve data
+      base_s_vec_.resize(size);
+      spline_x_.resize(size);
+      spline_y_.resize(size);
+      spline_z_.resize(size);
+      spline_curvature_.resize(size);
+    }
+    // If size == base_s_vec_.size(), no-op
   }
 
   /**

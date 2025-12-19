@@ -91,12 +91,27 @@ public:
 
   void resize(const size_t size)
   {
-    a_.resize(size - 1);
-    b_.resize(size - 1);
-    c_.resize(size - 1);
-    d_.resize(size - 1);
-
-    base_keys_.resize(size);
+    if (size > base_keys_.size()) {
+      // Extending - just resize (new elements will be uninitialized, caller should fill them)
+      a_.resize(size - 1);
+      b_.resize(size - 1);
+      c_.resize(size - 1);
+      d_.resize(size - 1);
+      base_keys_.resize(size);
+    } else if (size < base_keys_.size()) {
+      // Clipping - explicitly copy first N elements to preserve data
+      const size_t n_segments = size - 1;
+      Eigen::VectorXd a_new = a_.head(n_segments);
+      Eigen::VectorXd b_new = b_.head(n_segments);
+      Eigen::VectorXd c_new = c_.head(n_segments);
+      Eigen::VectorXd d_new = d_.head(n_segments);
+      a_ = std::move(a_new);
+      b_ = std::move(b_new);
+      c_ = std::move(c_new);
+      d_ = std::move(d_new);
+      base_keys_.resize(size);
+    }
+    // If size == base_keys_.size(), no-op
   }
 
 private:
