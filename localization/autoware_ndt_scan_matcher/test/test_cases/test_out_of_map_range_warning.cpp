@@ -79,7 +79,7 @@ TEST_F(TestNDTScanMatcher, test_out_of_map_range_warning)  // NOLINT
   // check_out_of_map_range_warning関数を直接呼び出し
   // 関数がtrueを返すことを確認（地図範囲外であることを示す）
   // RCLCPP_WARN_STREAM_THROTTLEで警告メッセージが出力されることを確認
-  const bool is_out_of_map = node_->check_out_of_map_range_warning(interpolation_result);
+  const bool is_out_of_map = check_out_of_map_range_warning(interpolation_result);
 
   //--------//
   // Assert //

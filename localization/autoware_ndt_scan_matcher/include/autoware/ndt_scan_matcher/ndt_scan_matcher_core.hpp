@@ -63,6 +63,9 @@
 #include <tuple>
 #include <vector>
 
+// Forward declaration for test friend class (defined in global namespace)
+class TestNDTScanMatcher;
+
 namespace autoware::ndt_scan_matcher
 {
 
@@ -73,6 +76,9 @@ class NDTScanMatcher : public rclcpp::Node
   using NormalDistributionsTransform =
     pclomp::MultiGridNormalDistributionsTransform<PointSource, PointTarget>;
 
+  // Friend class for testing (defined in global namespace)
+  friend class ::TestNDTScanMatcher;
+
 public:
   explicit NDTScanMatcher(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
 
@@ -82,12 +88,11 @@ public:
     return map_update_timer_->time_until_trigger();
   }
 
+private:
   // Check if the lidar has gone out of the map range and update diagnostics
   // This function is public for testing purposes
   void check_out_of_map_range_warning(
     const autoware::localization_util::SmartPoseBuffer::InterpolateResult & interpolation_result);
-
-private:
   void callback_timer();
 
   void callback_initial_pose(
