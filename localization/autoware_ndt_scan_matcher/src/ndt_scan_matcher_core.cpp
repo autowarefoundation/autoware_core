@@ -115,7 +115,7 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
     this, this->get_clock(), period_ns, std::bind(&NDTScanMatcher::callback_timer, this),
     timer_callback_group_);
   initial_pose_sub_ = this->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
-    "ekf_pose_with_covariance", 10,
+    "ekf_pose_with_covariance", 100,
     std::bind(&NDTScanMatcher::callback_initial_pose, this, std::placeholders::_1),
     initial_pose_sub_opt);
   sensor_points_sub_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
@@ -457,7 +457,14 @@ bool NDTScanMatcher::callback_sensor_points_main(
         interpolation_result.interpolated_pose.pose.pose.position)) {
     std::stringstream msg;
 
-    msg << "Lidar has gone out of the map range";
+    const auto & position = interpolation_result.interpolated_pose.pose.pose.position;
+    const auto & orientation = interpolation_result.interpolated_pose.pose.pose.orientation;
+
+    msg << "Lidar has gone out of the map range. "
+        << "Position: (" << std::fixed << std::setprecision(3)
+        << position.x << ", " << position.y << ", " << position.z << "), "
+        << "Orientation: (" << orientation.x << ", " << orientation.y << ", " << orientation.z
+        << ", " << orientation.w << ")";
     diagnostics_scan_points_->update_level_and_message(
       diagnostic_msgs::msg::DiagnosticStatus::WARN, msg.str());
 
