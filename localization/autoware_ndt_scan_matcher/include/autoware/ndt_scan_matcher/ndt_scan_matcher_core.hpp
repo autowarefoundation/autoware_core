@@ -82,6 +82,12 @@ public:
     return map_update_timer_->time_until_trigger();
   }
 
+  // Check if the lidar has gone out of the map range and update diagnostics
+  // This function is public for testing purposes
+  // Returns true if the lidar is out of map range (warning was issued)
+  bool check_out_of_map_range_warning(
+    const autoware::localization_util::SmartPoseBuffer::InterpolateResult & interpolation_result);
+
 private:
   void callback_timer();
 
