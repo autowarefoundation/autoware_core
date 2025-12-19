@@ -72,6 +72,10 @@ if(BUILD_TESTING)
     test/test_cases/once_initialize_at_out_of_map_then_initialize_correctly.cpp
     TIMEOUT "300"
   )
+  ament_auto_add_gtest(test_out_of_map_range_warning
+    test/test_cases/test_out_of_map_range_warning.cpp
+    TIMEOUT "300"
+  )
 endif()
 
 autoware_ament_auto_package(
