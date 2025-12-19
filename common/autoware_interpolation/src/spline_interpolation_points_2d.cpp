@@ -278,8 +278,7 @@ void SplineInterpolationPoints2d::updateCurvatureSpline()
     if (denom < 1e-10) {
       curvature_values.push_back(0.0);  // Straight line
     } else {
-      const double curvature =
-        (diff_x * quad_diff_y - quad_diff_x * diff_y) / std::pow(denom, 1.5);
+      const double curvature = (diff_x * quad_diff_y - quad_diff_x * diff_y) / std::pow(denom, 1.5);
       curvature_values.push_back(curvature);
     }
   }
