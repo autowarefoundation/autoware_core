@@ -35,6 +35,15 @@
 
 class TestNDTScanMatcher : public ::testing::Test
 {
+public:
+  // Wrapper method to access private check_out_of_map_range_warning method
+  // This works because TestNDTScanMatcher is a friend class of NDTScanMatcher
+  bool check_out_of_map_range_warning(
+    const autoware::localization_util::SmartPoseBuffer::InterpolateResult & interpolation_result)
+  {
+    return node_->check_out_of_map_range_warning(interpolation_result);
+  }
+
 protected:
   void SetUp() override
   {
