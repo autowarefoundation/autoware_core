@@ -16,8 +16,9 @@
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <autoware/localization_util/smart_pose_buffer.hpp>
-#include <diagnostic_msgs/msg/diagnostic_array.hpp>
 #include <rclcpp/rclcpp.hpp>
+
+#include <diagnostic_msgs/msg/diagnostic_array.hpp>
 
 #include <gtest/gtest.h>
 #include <rcl_yaml_param_parser/parser.h>
@@ -67,7 +68,8 @@ TEST_F(TestNDTScanMatcher, test_out_of_map_range_warning)  // NOLINT
   autoware::localization_util::SmartPoseBuffer::InterpolateResult interpolation_result;
 
   // 地図範囲外の位置を持つinterpolated_poseを作成
-  geometry_msgs::msg::PoseWithCovarianceStamped interpolated_pose = make_pose(/* x = */ -100.0, /* y = */ -100.0);
+  geometry_msgs::msg::PoseWithCovarianceStamped interpolated_pose =
+    make_pose(/* x = */ -100.0, /* y = */ -100.0);
   interpolated_pose.header.stamp = node_->now();
   interpolated_pose.header.frame_id = "map";
   interpolation_result.interpolated_pose = interpolated_pose;
