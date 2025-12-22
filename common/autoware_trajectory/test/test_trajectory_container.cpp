@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #include "autoware/trajectory/forward.hpp"
 #include "autoware/trajectory/path_point_with_lane_id.hpp"
 #include "autoware/trajectory/utils/closest.hpp"
@@ -26,9 +27,11 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cmath>
 #include <utility>
 #include <vector>
+
 namespace
 {
 using Trajectory = autoware::experimental::trajectory::Trajectory<
@@ -506,6 +509,22 @@ TEST_F(TrajectoryTest, manipulate_velocities_with_move_assignment)
     EXPECT_FLOAT_EQ(0.0, point7.point.lateral_velocity_mps);
     EXPECT_FLOAT_EQ(0.0, point7.point.heading_rate_rps);
   }
+}
+
+TEST_F(TrajectoryTest, manipulate_longitudinal_velocity_with_custom_operation)
+{
+  trajectory->longitudinal_velocity_mps() = 10.0;
+  trajectory->longitudinal_velocity_mps()
+    .range(trajectory->length() / 3, 2.0 * trajectory->length() / 3)
+    .set(5.0);
+  trajectory->longitudinal_velocity_mps().set([](const double & v) { return std::min(v, 8.0); });
+  auto point1 = trajectory->compute(0.0);
+  auto point2 = trajectory->compute(trajectory->length() / 2.0);
+  auto point3 = trajectory->compute(trajectory->length());
+
+  EXPECT_FLOAT_EQ(8.0, point1.point.longitudinal_velocity_mps);
+  EXPECT_FLOAT_EQ(5.0, point2.point.longitudinal_velocity_mps);
+  EXPECT_FLOAT_EQ(8.0, point3.point.longitudinal_velocity_mps);
 }
 
 TEST_F(TrajectoryTest, direction)
