@@ -146,7 +146,11 @@ public:
     [[maybe_unused]] unsigned int max_nn) const
   {
     float query_pt[3] = {point.x, point.y, point.z};
+#ifdef ROS_DISTRO_HUMBLE
     nanoflann::SearchParams param;
+#else
+    nanoflann::SearchParameters param;
+#endif
     param.sorted = false;  // No need sorting
     auto k = index_ptr_->radiusSearch(query_pt, radius, indices_dists, param);
     return k;
