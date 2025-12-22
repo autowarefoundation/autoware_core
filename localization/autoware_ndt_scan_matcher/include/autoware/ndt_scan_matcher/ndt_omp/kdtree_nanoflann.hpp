@@ -141,19 +141,29 @@ public:
       3, *cloud_ptr_, nanoflann::KDTreeSingleIndexAdaptorParams(15 /* max leaf */));
   }
 
+#ifdef ROS_DISTRO_HUMBLE
   int radiusSearch(
     const PointT & point, double radius, std::vector<std::pair<size_t, float>> & indices_dists,
     [[maybe_unused]] unsigned int max_nn) const
   {
     float query_pt[3] = {point.x, point.y, point.z};
-#ifdef ROS_DISTRO_HUMBLE
     nanoflann::SearchParams param;
-#else
-    nanoflann::SearchParameters param;
-#endif
     param.sorted = false;  // No need sorting
     auto k = index_ptr_->radiusSearch(query_pt, radius, indices_dists, param);
     return k;
   }
+#else
+  int radiusSearch(
+    const PointT & point, double radius,
+    std::vector<nanoflann::ResultItem<size_t, float>> indices_dists,
+    [[maybe_unused]] unsigned int max_nn) const
+  {
+    float query_pt[3] = {point.x, point.y, point.z};
+    nanoflann::SearchParameters params;
+    params.sorted = false;  // No need sorting
+    auto k = index_ptr_->radiusSearch(query_pt, radius, indices_dists, params);
+    return k;
+  }
+#endif
 };
 #endif  // AUTOWARE__NDT_SCAN_MATCHER__NDT_OMP__KDTREE_NANOFLANN_HPP_
