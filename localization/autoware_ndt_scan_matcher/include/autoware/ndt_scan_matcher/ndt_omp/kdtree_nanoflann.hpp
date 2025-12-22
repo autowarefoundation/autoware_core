@@ -67,7 +67,7 @@ class KdTreeNanoflann
   struct PointCloudNanoflann
   {
     PointCloudPtr cloud_;
-    explicit PointCloudNanoflann(PointCloudPtr cloud) { cloud_ = cloud; }
+    explicit PointCloudNanoflann(PointCloudPtr cloud) : cloud_(cloud) {}
 
     // Must return the number of data points
     inline size_t kdtree_get_point_count() const { return cloud_->size(); }
@@ -92,7 +92,7 @@ class KdTreeNanoflann
     //   in "bb" so it can be avoided to redo it again. Look at bb.size() to
     //   find out the expected dimensionality (e.g. 2 or 3 for point clouds)
     template <class BBOX>
-    bool kdtree_get_bbox(BBOX & /* bb */) const
+    static bool kdtree_get_bbox(BBOX & /* bb */)
     {
       return false;
     }
