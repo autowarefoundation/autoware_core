@@ -262,8 +262,12 @@ int MultiVoxelGridCovariance<PointT>::radiusSearch(
     return 0;
   }
 
+#ifdef ROS_DISTRO_HUMBLE
   // Search from the kdtree to find neighbors of @point
   std::vector<std::pair<size_t, float>> nn_result;
+#else
+  std::vector<nanoflann::ResultItem<size_t, float>> nn_result;
+#endif
   const int k = kdtree_.radiusSearch(point, radius, nn_result, max_nn);
 
   if (k <= 0) {
