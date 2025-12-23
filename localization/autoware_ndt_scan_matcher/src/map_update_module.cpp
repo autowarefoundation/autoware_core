@@ -127,7 +127,10 @@ bool MapUpdateModule::out_of_map_range(const geometry_msgs::msg::Point & positio
   if (last_update_position_ == std::nullopt) {
     last_update_position_mtx_.unlock();
 
-    return true;
+    RCLCPP_WARN_STREAM_THROTTLE(
+      logger_, *clock_, 1000,
+      "Map information is not available (last_update_position_ is null). Cannot check if lidar is out of map range.");
+    return false;
   }
 
   const double dx = position.x - last_update_position_.value().x;
