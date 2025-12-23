@@ -168,7 +168,8 @@ TEST_F(
   //--------//
   // Assert //
   //--------//
-  // Verify that function returns false (map range check cannot be performed when last_update_position_ is null)
+  // Verify that function returns false (map range check cannot be performed when
+  // last_update_position_ is null)
   EXPECT_FALSE(is_out_of_map)
     << "check_out_of_map_range_warning should return false when last_update_position_ is null.";
 
