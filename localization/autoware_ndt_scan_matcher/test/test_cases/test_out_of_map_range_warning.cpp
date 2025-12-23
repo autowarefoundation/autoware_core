@@ -68,7 +68,8 @@ TEST_F(TestNDTScanMatcher, test_out_of_map_range_warning)  // NOLINT
   // 地図の中心は(100.0, 100.0)なので、その位置に設定
   auto ekf_pose_pub = test_node->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(
     "ekf_pose_with_covariance", 10);
-  geometry_msgs::msg::PoseWithCovarianceStamped ekf_pose = make_pose(/* x = */ 100.0, /* y = */ 100.0);
+  geometry_msgs::msg::PoseWithCovarianceStamped ekf_pose =
+    make_pose(/* x = */ 100.0, /* y = */ 100.0);
   ekf_pose.header.stamp = node_->now();
   ekf_pose.header.frame_id = "map";
   ekf_pose_pub->publish(ekf_pose);
@@ -111,7 +112,8 @@ TEST_F(TestNDTScanMatcher, test_out_of_map_range_warning)  // NOLINT
   t1.join();
 }
 
-TEST_F(TestNDTScanMatcher, test_out_of_map_range_warning_when_last_update_position_is_null)  // NOLINT
+TEST_F(
+  TestNDTScanMatcher, test_out_of_map_range_warning_when_last_update_position_is_null)  // NOLINT
 {
   //---------//
   // Arrange //
@@ -148,7 +150,8 @@ TEST_F(TestNDTScanMatcher, test_out_of_map_range_warning_when_last_update_positi
   autoware::localization_util::SmartPoseBuffer::InterpolateResult interpolation_result;
 
   // 任意の位置を持つinterpolated_poseを作成
-  geometry_msgs::msg::PoseWithCovarianceStamped interpolated_pose = make_pose(/* x = */ 0.0, /* y = */ 0.0);
+  geometry_msgs::msg::PoseWithCovarianceStamped interpolated_pose =
+    make_pose(/* x = */ 0.0, /* y = */ 0.0);
   interpolated_pose.header.stamp = node_->now();
   interpolated_pose.header.frame_id = "map";
   interpolation_result.interpolated_pose = interpolated_pose;
