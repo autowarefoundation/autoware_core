@@ -14,8 +14,8 @@
 
 #include "autoware/map_height_fitter/map_height_fitter.hpp"
 
+#include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/qos_utils/qos_compatibility.hpp>
-#include <autoware_lanelet2_extension/utility/message_conversion.hpp>
 #include <autoware_lanelet2_extension/utility/query.hpp>
 #include <tf2_ros/transform_listener.hpp>
 
@@ -170,8 +170,8 @@ bool MapHeightFitter::Impl::get_partial_point_cloud_map(const Point & point)
 void MapHeightFitter::Impl::on_vector_map(
   const autoware_map_msgs::msg::LaneletMapBin::ConstSharedPtr msg)
 {
-  vector_map_ = std::make_shared<lanelet::LaneletMap>();
-  lanelet::utils::conversion::fromBinMsg(*msg, vector_map_);
+  vector_map_ = autoware::experimental::lanelet2_utils::remove_const(
+    autoware::experimental::lanelet2_utils::from_autoware_map_msgs(*msg));
   map_frame_ = msg->header.frame_id;
 }
 

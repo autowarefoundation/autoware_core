@@ -16,12 +16,13 @@
 
 #include "autoware/path_generator/utils.hpp"
 
+#include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/lanelet2_utils/nn_search.hpp>
 #include <autoware/trajectory/utils/reference_path.hpp>
 #include <autoware_lanelet2_extension/utility/message_conversion.hpp>
 #include <autoware_lanelet2_extension/utility/query.hpp>
 #include <autoware_lanelet2_extension/utility/utilities.hpp>
-#include <autoware_utils/geometry/geometry.hpp>
+#include <autoware_utils_geometry/geometry.hpp>
 
 #include <lanelet2_core/geometry/Lanelet.h>
 
@@ -138,10 +139,15 @@ PathGenerator::InputData PathGenerator::take_data()
 void PathGenerator::set_planner_data(const InputData & input_data)
 {
   if (input_data.lanelet_map_bin_ptr) {
-    planner_data_.lanelet_map_ptr = std::make_shared<lanelet::LaneletMap>();
-    lanelet::utils::conversion::fromBinMsg(
-      *input_data.lanelet_map_bin_ptr, planner_data_.lanelet_map_ptr,
-      &planner_data_.traffic_rules_ptr, &planner_data_.routing_graph_ptr);
+    planner_data_.lanelet_map_ptr = autoware::experimental::lanelet2_utils::remove_const(
+      autoware::experimental::lanelet2_utils::from_autoware_map_msgs(
+        *input_data.lanelet_map_bin_ptr));
+    auto routing_graph_and_traffic_rules =
+      autoware::experimental::lanelet2_utils::instantiate_routing_graph_and_traffic_rules(
+        planner_data_.lanelet_map_ptr);
+    planner_data_.routing_graph_ptr =
+      autoware::experimental::lanelet2_utils::remove_const(routing_graph_and_traffic_rules.first);
+    planner_data_.traffic_rules_ptr = routing_graph_and_traffic_rules.second;
   }
 
   if (input_data.route_ptr) {
@@ -314,15 +320,8 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
     s_end = std::min(s_end, lanelet::geometry::length2d(lanelet::LaneletSequence(lanelets)));
   }
 
-  const auto s_intersection = utils::get_first_intersection_arc_length(
-    lanelets, std::max(0., s_start - vehicle_info_.max_longitudinal_offset_m),
-    s_end + vehicle_info_.max_longitudinal_offset_m, vehicle_info_.vehicle_length_m);
-  if (s_intersection) {
-    s_end =
-      std::min(s_end, std::max(0., *s_intersection - vehicle_info_.max_longitudinal_offset_m));
-  }
-
   std::optional<lanelet::ConstLanelet> goal_lanelet_for_path = std::nullopt;
+  std::optional<double> s_goal_position = std::nullopt;
   for (auto [it, s] = std::make_tuple(lanelets.begin(), 0.); it != lanelets.end(); ++it) {
     const auto & lane_id = it->id();
     if (std::any_of(lanelets.begin(), it, [lane_id](const lanelet::ConstLanelet & lanelet) {
@@ -340,6 +339,7 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
         s + lanelet::utils::getArcCoordinates({*it}, planner_data_.goal_pose).length;
       if (s_goal < s_end) {
         goal_lanelet_for_path = *it;
+        s_goal_position = s_goal;
         s_end = s_goal;
       }
     }
@@ -347,6 +347,18 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
     if (s >= s_end + vehicle_info_.max_longitudinal_offset_m) {
       lanelets.erase(std::next(it), lanelets.end());
       break;
+    }
+  }
+
+  const auto s_intersection = utils::get_first_intersection_arc_length(
+    lanelets, std::max(0., s_start - vehicle_info_.max_longitudinal_offset_m),
+    s_end + vehicle_info_.max_longitudinal_offset_m, vehicle_info_.vehicle_length_m);
+  if (s_intersection) {
+    s_end =
+      std::min(s_end, std::max(0., *s_intersection - vehicle_info_.max_longitudinal_offset_m));
+    // If s_end is cut before goal position, clear goal_lanelet_for_path
+    if (s_goal_position && s_end < *s_goal_position) {
+      goal_lanelet_for_path = std::nullopt;
     }
   }
 
