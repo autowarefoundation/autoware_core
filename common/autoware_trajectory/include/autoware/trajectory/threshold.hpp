@@ -28,6 +28,9 @@ namespace autoware::experimental::trajectory
 // TODO(soblin): this should be defined as one of Autoware's interface/limitations
 static constexpr double k_points_minimum_dist_threshold = 0.005;
 
+// zero velocity threshold [m/s]
+static constexpr double k_zero_velocity_threshold = 1e-6;
+
 /**
  * @brief check if two base values are almost-same
  */
