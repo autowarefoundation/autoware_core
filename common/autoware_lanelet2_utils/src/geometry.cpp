@@ -409,43 +409,72 @@ lanelet::ConstLanelet combine_lanelets_shape(const lanelet::ConstLanelets & lane
   return combined_lanelet;
 }
 
-lanelet::ConstLanelet get_expanded_lanelet(
+lanelet::ConstLanelet get_dirty_expanded_lanelet(
   const lanelet::ConstLanelet & lanelet_obj, const double left_offset, const double right_offset)
 {
-  const auto orig_left_bound = lanelet_obj.leftBound().basicLineString();
-  const auto orig_right_bound = lanelet_obj.rightBound().basicLineString();
+  const auto copy_z = [](const lanelet::ConstLineString3d & from, lanelet::Points3d & to) {
+    lanelet::Points3d new_to = to;
+    if (from.empty() || to.empty()) return to;
+    new_to.front().z() = from.front().z();
+    if (from.size() < 2 || to.size() < 2) return new_to;
+    new_to.back().z() = from.back().z();
+    auto i_from = 1lu;
+    auto s_from = lanelet::geometry::distance2d(from[0], from[1]);
+    auto s_to = 0.0;
+    auto s_from_prev = 0.0;
+    for (auto i_to = 1lu; i_to + 1 < to.size(); ++i_to) {
+      s_to += lanelet::geometry::distance2d(new_to[i_to - 1], new_to[i_to]);
+      for (; s_from < s_to && i_from + 1 < from.size(); ++i_from) {
+        s_from_prev = s_from;
+        s_from += lanelet::geometry::distance2d(from[i_from], from[i_from + 1]);
+      }
+      const auto ratio = (s_to - s_from_prev) / (s_from - s_from_prev);
+      new_to[i_to].z() = from[i_from - 1].z() + ratio * (from[i_from].z() - from[i_from - 1].z());
+    }
+    return new_to;
+  };
 
-  // find the more number of segment
-  const int max_segment = std::max(orig_left_bound.size() - 1, orig_right_bound.size() - 1);
-
-  auto expanded_left_bound = resample_points(orig_left_bound, max_segment);
-  auto expanded_right_bound = resample_points(orig_right_bound, max_segment);
-
-  for (size_t i = 0; i < expanded_left_bound.size(); ++i) {
-    const double diff_x = orig_right_bound.at(i).x() - orig_left_bound.at(i).x();
-    const double diff_y = orig_right_bound.at(i).y() - orig_left_bound.at(i).y();
-    const double theta = std::atan2(diff_y, diff_x);
-    expanded_right_bound.at(i).x() = orig_right_bound.at(i).x() - right_offset * std::cos(theta);
-    expanded_right_bound.at(i).y() = orig_right_bound.at(i).y() - right_offset * std::sin(theta);
-    expanded_left_bound.at(i).x() = orig_left_bound.at(i).x() - left_offset * std::cos(theta);
-    expanded_left_bound.at(i).y() = orig_left_bound.at(i).y() - left_offset * std::sin(theta);
-  }
-
-  const auto remove_basic = [](const lanelet::BasicLineString3d & points) {
+  const auto to_points3d = [](const lanelet::BasicLineString2d & ls2d) {
     lanelet::Points3d output;
-    for (auto pt : points) {
-      output.push_back(lanelet::Point3d(lanelet::InvalId, pt));
+    for (const auto & pt : ls2d) {
+      output.push_back(lanelet::Point3d(lanelet::InvalId, pt.x(), pt.y(), 0.0));
     }
     return output;
   };
 
-  const auto & expanded_left_bound_ls =
-    lanelet::LineString3d(lanelet::InvalId, remove_basic(expanded_left_bound));
-  const auto & expanded_right_bound_ls =
-    lanelet::LineString3d(lanelet::InvalId, remove_basic(expanded_right_bound));
+  using lanelet::geometry::offsetNoThrow;
+  using lanelet::geometry::internal::checkForInversion;
 
+  const auto & orig_left_bound_2d = lanelet_obj.leftBound2d().basicLineString();
+  const auto & orig_right_bound_2d = lanelet_obj.rightBound2d().basicLineString();
+
+  // Note: The lanelet::geometry::offset throws exception when the undesired inversion is found.
+  // Use offsetNoThrow until the logic is updated to handle the inversion.
+  // TODO(Horibe) update
+  // Note: this is ported from autoware_lanelet2_extension
+  auto expanded_left_bound_2d = offsetNoThrow(orig_left_bound_2d, left_offset);
+  auto expanded_right_bound_2d = offsetNoThrow(orig_right_bound_2d, right_offset);
+
+  rclcpp::Clock clock{RCL_ROS_TIME};
+  try {
+    checkForInversion(orig_left_bound_2d, expanded_left_bound_2d, left_offset);
+    checkForInversion(orig_right_bound_2d, expanded_right_bound_2d, right_offset);
+  } catch (const lanelet::GeometryError & e) {
+    RCLCPP_ERROR_THROTTLE(
+      rclcpp::get_logger("autoware_lanelet2_extension"), clock, 1000,
+      "Fail to expand lanelet. output may be undesired. Lanelet points interval in map data could "
+      "be too narrow.");
+  }
+
+  lanelet::Points3d ex_lefts = to_points3d(expanded_left_bound_2d);
+  lanelet::Points3d ex_rights = to_points3d(expanded_right_bound_2d);
+  copy_z(lanelet_obj.leftBound3d(), ex_lefts);
+  copy_z(lanelet_obj.rightBound3d(), ex_rights);
+
+  const auto & expanded_left_bound_3d = lanelet::LineString3d(lanelet::InvalId, ex_lefts);
+  const auto & expanded_right_bound_3d = lanelet::LineString3d(lanelet::InvalId, ex_rights);
   const auto & lanelet = lanelet::Lanelet(
-    lanelet_obj.id(), expanded_left_bound_ls, expanded_right_bound_ls, lanelet_obj.attributes());
+    lanelet_obj.id(), expanded_left_bound_3d, expanded_right_bound_3d, lanelet_obj.attributes());
 
   return lanelet;
 }

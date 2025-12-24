@@ -641,6 +641,91 @@ TEST(LaneletManipulation, CombineLaneletsWithDuplicatePoint)
   EXPECT_EQ(one_lanelet.rightBound().size(), 3);
 }
 
+// Test 27: get_dirty_expanded_lanelet ordinary case
+TEST(LaneletManipulation, getExpandedLaneletOrdinaryCase)
+{
+  using autoware::experimental::lanelet2_utils::create_safe_lanelet;
+  auto p1 = lanelet::BasicPoint3d(0.0, 2.0, 1.0);
+  auto p2 = lanelet::BasicPoint3d(3.0, 2.0, 1.0);
+  auto p3 = lanelet::BasicPoint3d(0.0, 0.0, 1.0);
+  auto p4 = lanelet::BasicPoint3d(3.0, 0.0, 1.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points = {p1, p2};
+  std::vector<lanelet::BasicPoint3d> right_points = {p3, p4};
+
+  auto ll = *create_safe_lanelet(left_points, right_points);
+
+  auto expanded_lanelet = autoware::experimental::lanelet2_utils::get_dirty_expanded_lanelet(ll, 1, -1);
+
+  EXPECT_EQ(expanded_lanelet.id(), lanelet::InvalId);
+
+  auto expanded_left_bound = expanded_lanelet.leftBound();
+  auto expanded_right_bound = expanded_lanelet.rightBound();
+
+  // check left bound
+  {
+    EXPECT_EQ(expanded_left_bound.size(), 2);
+    // check front
+    EXPECT_NEAR(expanded_left_bound.front().x(), 0.0, 1e-4);
+    EXPECT_NEAR(expanded_left_bound.front().y(), 3.0, 1e-4);
+    EXPECT_NEAR(expanded_left_bound.front().z(), 1.0, 1e-4);
+
+    // check back
+    EXPECT_NEAR(expanded_left_bound.back().x(), 3.0, 1e-4);
+    EXPECT_NEAR(expanded_left_bound.back().y(), 3.0, 1e-4);
+    EXPECT_NEAR(expanded_left_bound.back().z(), 1.0, 1e-4);
+  }
+
+  // check right bound
+  {
+    EXPECT_EQ(expanded_right_bound.size(), 2);
+    // check front
+    EXPECT_NEAR(expanded_right_bound.front().x(), 0.0, 1e-4);
+    EXPECT_NEAR(expanded_right_bound.front().y(), -1.0, 1e-4);
+    EXPECT_NEAR(expanded_right_bound.front().z(), 1.0, 1e-4);
+
+    // check back
+    EXPECT_NEAR(expanded_right_bound.back().x(), 3.0, 1e-4);
+    EXPECT_NEAR(expanded_right_bound.back().y(), -1.0, 1e-4);
+    EXPECT_NEAR(expanded_right_bound.back().z(), 1.0, 1e-4);
+  }
+}
+
+// Test 28: get_dirty_expanded_lanelet corner case
+TEST(LaneletManipulation, getExpandedLaneletCornerCase)
+{
+  using autoware::experimental::lanelet2_utils::create_safe_lanelet;
+  auto left_p1 = lanelet::BasicPoint3d(-1.0, 1.0, 1.0);
+  auto left_p2 = lanelet::BasicPoint3d(0.0, 2.0, 1.0);
+  auto left_p3 = lanelet::BasicPoint3d(1.0, 1.0, 1.0);
+
+  auto right_p1 = lanelet::BasicPoint3d(-1.0, -1.0, 1.0);
+  auto right_p2 = lanelet::BasicPoint3d(0.0, 0.0, 1.0);
+  auto right_p4 = lanelet::BasicPoint3d(1.0, -1.0, 1.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points = {left_p1, left_p2, left_p3};
+  // std::vector<lanelet::BasicPoint3d> right_points = {right_p1, right_p2, right_p3, right_p4};
+  std::vector<lanelet::BasicPoint3d> right_points = {right_p1, right_p2, right_p4};
+
+  auto ll = *create_safe_lanelet(left_points, right_points);
+
+  auto expanded_lanelet = autoware::experimental::lanelet2_utils::get_dirty_expanded_lanelet(ll, 1, -1);
+
+  auto expanded_left_bound = expanded_lanelet.leftBound();
+  auto expanded_right_bound = expanded_lanelet.rightBound();
+
+  // check left bound
+  {
+    EXPECT_EQ(expanded_left_bound.size(), 3);
+  }
+
+  // check right bound, number of points changes -> unknown behavior
+  {
+    ASSERT_FALSE((expanded_right_bound.size() == 3));
+  }
+}
+
+
 }  // namespace autoware::experimental
 
 int main(int argc, char ** argv)

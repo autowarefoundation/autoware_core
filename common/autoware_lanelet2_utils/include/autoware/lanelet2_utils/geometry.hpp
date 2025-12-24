@@ -172,7 +172,7 @@ lanelet::ConstLanelet combine_lanelets_shape(const lanelet::ConstLanelets & lane
  * @param[in] right_offset offset of the right bound (negative value required)
  * @return expanded lanelet with same ID and Attribute
  */
-lanelet::ConstLanelet get_expanded_lanelet(
+lanelet::ConstLanelet get_dirty_expanded_lanelet(
   const lanelet::ConstLanelet & lanelet_obj, const double left_offset, const double right_offset);
 
 }  // namespace autoware::experimental::lanelet2_utils
