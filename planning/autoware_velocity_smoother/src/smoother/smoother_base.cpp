@@ -529,29 +529,25 @@ TrajectoryExperimental SmootherBase::applySteeringRateLimit(
     resample_velocities = velocities;
   }
 
+  // Build resampled trajectory for curvature calculation
+  TrajectoryExperimental resampled_traj = input;
+  resampled_traj.longitudinal_velocity_mps().build(resample_bases, resample_velocities);
+
   // Step1. Calculate curvature assuming the trajectory points interval is constant
   const auto curvature_v = trajectory_utils::calcTrajectoryCurvatureFrom3Points(
-    input, base_param_.curvature_calculation_distance);
+    resampled_traj, base_param_.curvature_calculation_distance);
 
   // Step2. Calculate steer rate for each trajectory point
   std::vector<double> steer_rate_velocity_ratio_arr(resample_bases.size());
   for (size_t i = 0; i < resample_bases.size() - 1; i++) {
-    // Get curvatures at current and next positions
-    const double s_current = resample_bases[i];
-    const double s_next = resample_bases[i + 1];
-
-    // Find closest curvature values in the curvature array
     double curvature_current = 0.0;
     double curvature_next = 0.0;
 
-    for (size_t j = 0; j < curvature_v.size(); ++j) {
-      const double s_j = j * base_param_.curvature_calculation_distance;
-      if (std::abs(s_j - s_current) < base_param_.curvature_calculation_distance / 2.0) {
-        curvature_current = curvature_v[j];
-      }
-      if (std::abs(s_j - s_next) < base_param_.curvature_calculation_distance / 2.0) {
-        curvature_next = curvature_v[j];
-      }
+    if (i < curvature_v.size()) {
+      curvature_current = curvature_v.at(i);
+    }
+    if ((i + 1) < curvature_v.size()) {
+      curvature_next = curvature_v.at(i + 1);
     }
 
     // Calculate steering angles
@@ -574,16 +570,10 @@ TrajectoryExperimental SmootherBase::applySteeringRateLimit(
   }
 
   // Step4. Limit velocity by steer rate
-  std::vector<double> filtered_velocities = resample_velocities;
   for (size_t i = 0; i < resample_bases.size() - 1; i++) {
-    // Find curvature at this position
     double local_curvature = 0.0;
-    for (size_t j = 0; j < curvature_v.size(); ++j) {
-      const double s_j = j * base_param_.curvature_calculation_distance;
-      if (std::abs(s_j - resample_bases[i]) < base_param_.curvature_calculation_distance / 2.0) {
-        local_curvature = curvature_v[j];
-        break;
-      }
+    if (i < curvature_v.size()) {
+      local_curvature = curvature_v[i];
     }
 
     if (std::fabs(local_curvature) < base_param_.curvature_threshold) {
@@ -603,12 +593,12 @@ TrajectoryExperimental SmootherBase::applySteeringRateLimit(
         base_param_.min_curve_velocity,
         std::min(
           local_velocity_limit, resample_velocities[i + k] * (local_velocity_limit / mean_vel)));
-      filtered_velocities[i + k] = std::min(filtered_velocities[i + k], target_velocity);
+      resample_velocities[i + k] = std::min(resample_velocities[i + k], target_velocity);
     }
   }
 
   TrajectoryExperimental output = input;
-  output.longitudinal_velocity_mps().build(resample_bases, filtered_velocities);
+  output.longitudinal_velocity_mps().build(resample_bases, resample_velocities);
   return output;
 }
 
