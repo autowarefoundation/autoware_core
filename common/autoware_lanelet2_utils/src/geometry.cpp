@@ -22,6 +22,7 @@
 #include <geometry_msgs/msg/pose.hpp>
 #include <geometry_msgs/msg/quaternion.hpp>
 
+#include <lanelet2_core/geometry/LaneletMap.h>
 #include <lanelet2_core/geometry/LineString.h>
 #include <lanelet2_core/primitives/Lanelet.h>
 #include <lanelet2_core/primitives/LaneletSequence.h>
@@ -37,6 +38,17 @@ namespace autoware::experimental::lanelet2_utils
 
 namespace
 {
+
+int compute_num_segments(const lanelet::ConstLanelet & lanelet, const double resolution)
+{
+  // Get length of longer border
+  const double left_length = static_cast<double>(lanelet::geometry::length(lanelet.leftBound()));
+  const double right_length = static_cast<double>(lanelet::geometry::length(lanelet.rightBound()));
+  const double longer_distance = (left_length > right_length) ? left_length : right_length;
+  const int num_segments = std::max(static_cast<int>(ceil(longer_distance / resolution)), 1);
+  return num_segments;
+}
+
 lanelet::BasicLineString3d resample_points(
   const lanelet::BasicLineString3d & line_string, const int num_segments)
 {
@@ -60,8 +72,8 @@ lanelet::BasicLineString3d resample_points(
   for (int i = 0; i <= num_segments; ++i) {
     const double target_length = total_length * static_cast<double>(i) / num_segments;
 
-    // Find two nearest points (accumulated_lengths[idx-1] <= target_length <=
-    // accumulated_lengths[idx])
+    // Find two nearest points
+    // (accumulated_lengths[idx-1] < target_length <= accumulated_lengths[idx])
     auto it =
       std::lower_bound(accumulated_lengths.begin(), accumulated_lengths.end(), target_length);
     size_t idx = std::distance(accumulated_lengths.begin(), it);
@@ -78,8 +90,8 @@ lanelet::BasicLineString3d resample_points(
     const double front_length = accumulated_lengths[idx];
     const double ratio = (target_length - back_length) / (front_length - back_length);
 
-    const lanelet::BasicPoint3d front_point = line_string[idx - 1];
-    const lanelet::BasicPoint3d back_point = line_string[idx];
+    const lanelet::BasicPoint3d back_point = line_string[idx - 1];
+    const lanelet::BasicPoint3d front_point = line_string[idx];
 
     const lanelet::BasicPoint3d direction_vector = front_point - back_point;
     const lanelet::BasicPoint3d target_point = back_point + direction_vector * ratio;
@@ -477,6 +489,90 @@ lanelet::ConstLanelet get_dirty_expanded_lanelet(
     lanelet_obj.id(), expanded_left_bound_3d, expanded_right_bound_3d, lanelet_obj.attributes());
 
   return lanelet;
+}
+
+lanelet::ConstLineString3d get_centerline_with_offset(
+  const lanelet::ConstLanelet & lanelet_obj, const double offset, const double resolution)
+{
+  // get number of segments from resolution and longer bound
+  const auto num_segments = compute_num_segments(lanelet_obj, resolution);
+
+  // Resample points
+  const auto left_points = resample_points(lanelet_obj.leftBound().basicLineString(), num_segments);
+  const auto right_points =
+    resample_points(lanelet_obj.rightBound().basicLineString(), num_segments);
+
+  // Create centerline
+  lanelet::LineString3d centerline(lanelet::utils::getId());
+  for (int i = 0; i < num_segments + 1; i++) {
+    // Add ID for the average point of left and right
+    const auto center_basic_point = (right_points.at(i) + left_points.at(i)) / 2;
+
+    const auto vec_right_2_left = (left_points.at(i) - right_points.at(i)).normalized();
+
+    const auto offset_center_basic_point = center_basic_point + vec_right_2_left * offset;
+
+    const lanelet::Point3d center_point(
+      lanelet::utils::getId(), offset_center_basic_point.x(), offset_center_basic_point.y(),
+      offset_center_basic_point.z());
+    centerline.push_back(center_point);
+  }
+  return static_cast<lanelet::ConstLineString3d>(centerline);
+}
+
+lanelet::ConstLineString3d get_right_bound_with_offset(
+  const lanelet::ConstLanelet & lanelet_obj, const double offset, const double resolution)
+{
+  // get number of segments from resolution and longer bound
+  const auto num_segments = compute_num_segments(lanelet_obj, resolution);
+
+  // Resample points
+  const auto left_points = resample_points(lanelet_obj.leftBound().basicLineString(), num_segments);
+  const auto right_points =
+    resample_points(lanelet_obj.rightBound().basicLineString(), num_segments);
+
+  // Create centerline
+  lanelet::LineString3d rightBound(lanelet::utils::getId());
+  for (int i = 0; i < num_segments + 1; i++) {
+    // Add ID for the average point of left and right
+    const auto vec_left_2_right = (right_points.at(i) - left_points.at(i)).normalized();
+
+    const auto offset_right_basic_point = right_points.at(i) + vec_left_2_right * offset;
+
+    const lanelet::Point3d rightBound_point(
+      lanelet::utils::getId(), offset_right_basic_point.x(), offset_right_basic_point.y(),
+      offset_right_basic_point.z());
+    rightBound.push_back(rightBound_point);
+  }
+  return static_cast<lanelet::ConstLineString3d>(rightBound);
+}
+
+lanelet::ConstLineString3d get_left_bound_with_offset(
+  const lanelet::ConstLanelet & lanelet_obj, const double offset, const double resolution)
+{
+  // get number of segments from resolution and longer bound
+  const auto num_segments = compute_num_segments(lanelet_obj, resolution);
+
+  // Resample points
+  const auto left_points = resample_points(lanelet_obj.leftBound().basicLineString(), num_segments);
+  const auto right_points =
+    resample_points(lanelet_obj.rightBound().basicLineString(), num_segments);
+
+  // Create centerline
+  lanelet::LineString3d leftBound(lanelet::utils::getId());
+  for (int i = 0; i < num_segments + 1; i++) {
+    // Add ID for the average point of left and right
+
+    const auto vec_right_2_left = (left_points.at(i) - right_points.at(i)).normalized();
+
+    const auto offset_left_basic_point = left_points.at(i) + vec_right_2_left * offset;
+
+    const lanelet::Point3d leftBound_point(
+      lanelet::utils::getId(), offset_left_basic_point.x(), offset_left_basic_point.y(),
+      offset_left_basic_point.z());
+    leftBound.push_back(leftBound_point);
+  }
+  return static_cast<lanelet::ConstLineString3d>(leftBound);
 }
 
 }  // namespace autoware::experimental::lanelet2_utils

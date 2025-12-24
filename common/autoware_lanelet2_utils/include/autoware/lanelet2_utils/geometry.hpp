@@ -175,6 +175,42 @@ lanelet::ConstLanelet combine_lanelets_shape(const lanelet::ConstLanelets & lane
 lanelet::ConstLanelet get_dirty_expanded_lanelet(
   const lanelet::ConstLanelet & lanelet_obj, const double left_offset, const double right_offset);
 
+/**
+ * @brief get the centerline of ConstLanelet with offset
+ * @param[in] lanelet_obj target lanelet
+ * @param[in] offset offset
+ * Sign Convention: (Same as centerline)
+ * Positive: to the left bound
+ * Negative: to the right bound
+ * @return ConstLineString3d which is the ConstLanelet's centerline with offset
+ */
+lanelet::ConstLineString3d get_centerline_with_offset(
+  const lanelet::ConstLanelet & lanelet_obj, const double offset, const double resolution = 5.0);
+
+/**
+ * @brief get the right bound of ConstLanelet with offset
+ * @param[in] lanelet_obj target lanelet
+ * @param[in] offset offset
+ * Sign Convention: (opposite to centerline)
+ * Positive: to outside of lanelet (to the **right**),
+ * Negative: to inside of lanelet (to the **left** bound)
+ * @return ConstLineString3d which is the ConstLanelet's right bound with offset
+ */
+lanelet::ConstLineString3d get_right_bound_with_offset(
+  const lanelet::ConstLanelet & lanelet_obj, const double offset, const double resolution = 5.0);
+
+/**
+ * @brief get the left bound of ConstLanelet with offset
+ * @param[in] lanelet_obj target lanelet
+ * @param[in] offset offset
+ * Sign Convention: (Same as centerline)
+ * Positive: to outside of lanelet (to the left),
+ * Negative: to inside of lanelet (to the right bound).
+ * @return ConstLineString3d which is the ConstLanelet's left bound with offset
+ */
+lanelet::ConstLineString3d get_left_bound_with_offset(
+  const lanelet::ConstLanelet & lanelet_obj, const double offset, const double resolution = 5.0);
+
 }  // namespace autoware::experimental::lanelet2_utils
 
 #endif  // AUTOWARE__LANELET2_UTILS__GEOMETRY_HPP_
