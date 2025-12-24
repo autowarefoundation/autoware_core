@@ -16,6 +16,7 @@
 #define AUTOWARE__TRAJECTORY__DETAIL__HELPERS_HPP_
 
 #include <cstddef>
+#include <optional>
 #include <vector>
 
 namespace autoware::experimental::trajectory::detail
@@ -26,7 +27,7 @@ inline namespace helpers
  * @brief Ensures the output vector has at least a specified number of points by linearly
  * interpolating values between each input intervals
  *
- * @param x Input vector of double values.
+ * @param x Input vector of double values of size() > 1
  * @param output_size_at_least Minimum number of points required.
  * @return A vector of size max(current_size, `output_size_at_least`)
  *
@@ -40,7 +41,9 @@ inline namespace helpers
  */
 std::vector<double> fill_bases(const std::vector<double> & x, const size_t output_size_at_least);
 
-std::vector<double> crop_bases(
+bool is_croppable(const std::vector<double> & x, const double start, const double end);
+
+std::vector<double> crop_and_fill_bases(
   const std::vector<double> & x, const double start, const double end,
   const size_t output_size_at_least);
 }  // namespace helpers

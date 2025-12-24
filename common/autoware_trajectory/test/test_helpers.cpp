@@ -69,7 +69,7 @@ TEST(TestHelpers, fill_bases_as_is_2)
 
 TEST(TestHelpers, crop_bases)
 {
-  using autoware::experimental::trajectory::detail::crop_bases;
+  using autoware::experimental::trajectory::detail::crop_and_fill_bases;
 
   std::vector<double> x = {0.0, 1.0, 2.0, 3.0, 4.0};
   double start = 1.5;
@@ -77,7 +77,7 @@ TEST(TestHelpers, crop_bases)
 
   std::vector<double> expected = {1.5, 2.0, 3.0, 3.5};
 
-  auto result = crop_bases(x, start, end, expected.size());
+  auto result = crop_and_fill_bases(x, start, end, expected.size());
 
   EXPECT_EQ(result.size(), expected.size());
 
