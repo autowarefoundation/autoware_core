@@ -111,6 +111,16 @@ TEST_F(SimplePurePursuitNodeTest, create_control_command)
     EXPECT_DOUBLE_EQ(result.longitudinal.velocity, 0.0);
     EXPECT_DOUBLE_EQ(result.longitudinal.acceleration, -10.0);
   }
+
+  {  // empty trajectory
+    const auto odom = makeOdometry(0.0, 0.0, 0.0);
+    Trajectory traj;  // empty trajectory
+
+    const auto result = create_control_command(odom, traj);
+
+    EXPECT_DOUBLE_EQ(result.longitudinal.velocity, 0.0);
+    EXPECT_DOUBLE_EQ(result.longitudinal.acceleration, 0.0);
+  }
 }
 
 TEST_F(SimplePurePursuitNodeTest, calc_longitudinal_control)
