@@ -140,14 +140,6 @@ std::vector<double> Trajectory<PointType>::get_internal_bases() const
   return get_underlying_bases();
 }
 
-std::vector<double> Trajectory<PointType>::get_underlying_bases() const
-{
-  auto bases = detail::crop_bases(bases_, start_, end_);
-  std::transform(
-    bases.begin(), bases.end(), bases.begin(), [this](const double & s) { return s - start_; });
-  return bases;
-}
-
 PointType Trajectory<PointType>::compute(const double s) const
 {
   PointType result;
