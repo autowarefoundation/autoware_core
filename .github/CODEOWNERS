@@ -43,7 +43,7 @@ perception/autoware_perception_objects_converter/** ryohsuke.mitsudome@tier4.jp 
 planning/autoware_core_planning/** mfc@autoware.org ryohsuke.mitsudome@tier4.jp yutaka.kondo@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 planning/autoware_mission_planner/** kosuke.takeuchi@tier4.jp mamoru.sobue@tier4.jp ryohsuke.mitsudome@tier4.jp takamasa.horibe@tier4.jp takayuki.murooka@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 planning/autoware_objects_of_interest_marker_interface/** fumiya.watanabe@tier4.jp kosuke.takeuchi@tier4.jp lxg19892021@gmail.com zulfaqar.azmi@tier4.jp @autowarefoundation/autoware-core-global-codeowners
-planning/autoware_path_generator/** junya.sasaki@tier4.jp kosuke.takeuchi@tier4.jp mitsuhiro.sakamoto@tier4.jp satoshi.ota@tier4.jp takayuki.murooka@tier4.jp @autowarefoundation/autoware-core-global-codeowners
+planning/autoware_path_generator/** akiro.harada@tier4.jp junya.sasaki@tier4.jp kosuke.takeuchi@tier4.jp masahiro.kubota@tier4.jp mitsuhiro.sakamoto@tier4.jp riku.kimura@tier4.jp takeshi.miura@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 planning/autoware_planning_factor_interface/** mamoru.sobue@tier4.jp satoshi.ota@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 planning/autoware_planning_topic_converter/** kosuke.takeuchi@tier4.jp satoshi.ota@tier4.jp shumpei.wakabayashi@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 planning/autoware_route_handler/** alqudah.mohammad@tier4.jp fumiya.watanabe@tier4.jp go.sakayori@tier4.jp kosuke.takeuchi@tier4.jp mamoru.sobue@tier4.jp takayuki.murooka@tier4.jp zulfaqar.azmi@tier4.jp @autowarefoundation/autoware-core-global-codeowners
