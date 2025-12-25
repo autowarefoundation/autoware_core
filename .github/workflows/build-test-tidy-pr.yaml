@@ -52,7 +52,7 @@ jobs:
     needs:
       - check_if_relevant_files_changed
     if: ${{ always() }}
-    uses: autowarefoundation/autoware-github-actions/.github/workflows/require-label.yaml@feat/require-label-run-condition
+    uses: autowarefoundation/autoware-github-actions/.github/workflows/require-label.yaml@v1
     with:
       label: run:build-and-test-differential
       run-condition: ${{ needs.check_if_relevant_files_changed.outputs.run_required == 'true' }}
