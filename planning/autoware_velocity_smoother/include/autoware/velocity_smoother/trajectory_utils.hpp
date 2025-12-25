@@ -33,8 +33,6 @@ using TrajectoryPoints = std::vector<TrajectoryPoint>;
 using Trajectory =
   autoware::experimental::trajectory::Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>;
 using geometry_msgs::msg::Pose;
-using Trajectory =
-  autoware::experimental::trajectory::Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>;
 
 TrajectoryPoint calcInterpolatedTrajectoryPoint(
   const TrajectoryPoints & trajectory, const Pose & target_pose, const size_t seg_idx);
