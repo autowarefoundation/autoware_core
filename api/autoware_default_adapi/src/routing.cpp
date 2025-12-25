@@ -205,7 +205,7 @@ void RoutingNode::on_clear_route(
   const autoware::adapi_specs::routing::ClearRoute::Service::Response::SharedPtr res)
 {
   // For safety, do not clear the route while it is in use.
-  // https://autowarefoundation.github.io/autoware-documentation/main/design/autoware-interfaces/ad-api/list/api/routing/clear_route/
+  // https://autowarefoundation.github.io/autoware-documentation/main/design/autoware-architecture-v1/interfaces/ad-api/list/api/routing/clear_route/
   if (is_auto_mode_ && is_autoware_control_) {
     if (!vehicle_stop_checker_.isVehicleStopped(stop_check_duration_)) {
       res->status.success = false;
