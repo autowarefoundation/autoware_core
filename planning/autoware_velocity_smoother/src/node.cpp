@@ -603,10 +603,12 @@ TrajectoryPoints VelocitySmootherNode::calcTrajectoryVelocity(
   }
 
   // Smoothing velocity
-  if (!smoothVelocity(traj_extracted, traj_extracted_closest, output)) {
+  // if (!smoothVelocity(traj_extracted, traj_extracted_closest, output)) {
+  //   return prev_output_;
+  // }
+  if (!smoothVelocityContinuous(traj_extracted, traj_extracted_closest, output)) {
     return prev_output_;
   }
-
   return output;
 }
 
@@ -698,6 +700,157 @@ bool VelocitySmootherNode::smoothVelocity(
   insertBehindVelocity(traj_resampled_closest, type, traj_smoothed);
 
   RCLCPP_DEBUG(get_logger(), "smoothVelocity : traj_smoothed.size() = %lu", traj_smoothed.size());
+  if (publish_debug_trajs_) {
+    {
+      auto tmp = traj_lateral_acc_filtered;
+      if (is_reverse_) flipVelocity(tmp);
+      pub_trajectory_latacc_filtered_->publish(toTrajectoryMsg(tmp));
+    }
+    {
+      auto tmp = traj_resampled;
+      if (is_reverse_) flipVelocity(tmp);
+      pub_trajectory_resampled_->publish(toTrajectoryMsg(tmp));
+    }
+    {
+      auto tmp = traj_steering_rate_limited;
+      if (is_reverse_) flipVelocity(tmp);
+      pub_trajectory_steering_rate_limited_->publish(toTrajectoryMsg(tmp));
+    }
+
+    for (auto & debug_trajectory : debug_trajectories) {
+      debug_trajectory.insert(
+        debug_trajectory.begin(), traj_resampled.begin(),
+        traj_resampled.begin() + traj_resampled_closest);
+      for (size_t i = 0; i < traj_resampled_closest; ++i) {
+        debug_trajectory.at(i).longitudinal_velocity_mps =
+          debug_trajectory.at(traj_resampled_closest).longitudinal_velocity_mps;
+      }
+    }
+    publishDebugTrajectories(debug_trajectories);
+  }
+
+  return true;
+}
+
+bool VelocitySmootherNode::smoothVelocityContinuous(
+  const TrajectoryPoints & input, const size_t input_closest,
+  TrajectoryPoints & traj_smoothed) const
+{
+  // convert discrete input to continuous trajectory
+  using TrajectoryExperimental =
+    autoware::experimental::trajectory::Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>;
+
+  auto continuous_result = TrajectoryExperimental::Builder().build(input);
+  if (!continuous_result) {
+    RCLCPP_WARN(get_logger(), "Failed to build continuous trajectory");
+    return smoothVelocity(input, input_closest, traj_smoothed);
+  }
+
+  auto traj_continuous = continuous_result.value();
+
+  if (input.empty()) {
+    return false;  // cannot apply smoothing
+  }
+
+  // Calculate initial motion for smoothing
+  const auto [initial_motion, type] = calcInitialMotion(input, input_closest);
+
+  // Apply filters using continuous versions
+  constexpr bool enable_smooth_limit = true;
+  constexpr bool use_resampling = true;
+
+  // Lateral acceleration limit (continuous)
+  const auto traj_lateral_acc_filtered_cont =
+    node_param_.enable_lateral_acc_limit
+      ? smoother_->applyLateralAccelerationFilter(
+          traj_continuous, initial_motion.vel, initial_motion.acc, enable_smooth_limit,
+          use_resampling)
+      : traj_continuous;
+
+  // Convert back to discrete for steering rate limit
+  auto [bases, velocities] = traj_lateral_acc_filtered_cont.longitudinal_velocity_mps().get_data();
+  TrajectoryPoints traj_lateral_acc_filtered;
+  for (size_t i = 0; i < bases.size() && i < input.size(); ++i) {
+    auto pt = input[i];
+    pt.longitudinal_velocity_mps = velocities[i];
+    traj_lateral_acc_filtered.push_back(pt);
+  }
+
+  // Steering angle rate limit (continuous)
+  auto traj_steering_cont =
+    node_param_.enable_steering_rate_limit
+      ? smoother_->applySteeringRateLimit(traj_lateral_acc_filtered_cont, false)
+      : traj_lateral_acc_filtered_cont;
+
+  // Convert back to discrete
+  std::tie(bases, velocities) = traj_steering_cont.longitudinal_velocity_mps().get_data();
+  TrajectoryPoints traj_steering_rate_limited;
+  for (size_t i = 0; i < bases.size() && i < traj_lateral_acc_filtered.size(); ++i) {
+    auto pt = traj_lateral_acc_filtered[i];
+    pt.longitudinal_velocity_mps = velocities[i];
+    traj_steering_rate_limited.push_back(pt);
+  }
+
+  // Resample trajectory with ego-velocity based interval distance
+  auto traj_resampled = smoother_->resampleTrajectory(
+    traj_steering_rate_limited, current_odometry_ptr_->twist.twist.linear.x,
+    current_odometry_ptr_->pose.pose, node_param_.ego_nearest_dist_threshold,
+    node_param_.ego_nearest_yaw_threshold);
+
+  const size_t traj_resampled_closest = findNearestIndexFromEgo(traj_resampled);
+
+  // Set 0[m/s] in the terminal point
+  if (!traj_resampled.empty()) {
+    traj_resampled.back().longitudinal_velocity_mps = 0.0;
+  }
+
+  // Publish Closest Resample Trajectory Velocity
+  publishClosestVelocity(
+    traj_resampled, current_odometry_ptr_->pose.pose, debug_closest_max_velocity_);
+
+  // Clip trajectory from closest point
+  TrajectoryPoints clipped;
+  clipped.insert(
+    clipped.end(), traj_resampled.begin() + traj_resampled_closest, traj_resampled.end());
+
+  // Set maximum acceleration before applying smoother
+  const double smoother_max_acceleration =
+    external_velocity_limit_.acceleration_request.request
+      ? external_velocity_limit_.acceleration_request.max_acceleration
+      : get_parameter("normal.max_acc").as_double();
+  const double smoother_max_jerk = external_velocity_limit_.acceleration_request.request
+                                     ? external_velocity_limit_.acceleration_request.max_jerk
+                                     : get_parameter("normal.max_jerk").as_double();
+  smoother_->setMaxAccel(smoother_max_acceleration);
+  smoother_->setMaxJerk(smoother_max_jerk);
+
+  std::vector<TrajectoryPoints> debug_trajectories;
+  if (!smoother_->apply(
+        initial_motion.vel, initial_motion.acc, clipped, traj_smoothed, debug_trajectories,
+        publish_debug_trajs_)) {
+    RCLCPP_WARN(get_logger(), "Fail to solve optimization.");
+  }
+
+  // Set 0 velocity after input-stop-point
+  overwriteStopPoint(clipped, traj_smoothed);
+
+  traj_smoothed.insert(
+    traj_smoothed.begin(), traj_resampled.begin(), traj_resampled.begin() + traj_resampled_closest);
+
+  // For the endpoint of the trajectory
+  if (!traj_smoothed.empty()) {
+    traj_smoothed.back().longitudinal_velocity_mps = 0.0;
+  }
+
+  // Max velocity filter for safety
+  trajectory_utils::applyMaximumVelocityLimit(
+    traj_resampled_closest, traj_smoothed.size(), node_param_.max_velocity, traj_smoothed);
+
+  // Insert behind velocity for output's consistency
+  insertBehindVelocity(traj_resampled_closest, type, traj_smoothed);
+
+  RCLCPP_DEBUG(
+    get_logger(), "smoothVelocityContinuous : traj_smoothed.size() = %lu", traj_smoothed.size());
   if (publish_debug_trajs_) {
     {
       auto tmp = traj_lateral_acc_filtered;
