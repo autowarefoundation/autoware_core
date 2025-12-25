@@ -6,7 +6,7 @@ This package is to get vehicle info parameters.
 
 ### Description
 
-In [here](https://autowarefoundation.github.io/autoware-documentation/main/design/autoware-interfaces/components/vehicle-dimensions/), you can check the vehicle dimensions with more detail.
+In [here](https://autowarefoundation.github.io/autoware-documentation/main/design/autoware-architecture-v1/interfaces/components/vehicle-dimensions/), you can check the vehicle dimensions with more detail.
 The current format supports only the Ackermann model. This file defines the model assumed in autoware path planning, control, etc. and does not represent the exact physical model. If a model other than the Ackermann model is used, it is assumed that a vehicle interface will be designed to change the control output for the model.
 
 ### Versioning Policy
