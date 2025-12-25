@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -38,6 +38,5 @@ jobs:
           pr-labels: |
             tag:bot
             tag:update-codeowners-from-packages
-            run:build-and-test-differential
           auto-merge-method: squash
           global-codeowners: "@autowarefoundation/autoware-core-global-codeowners"
