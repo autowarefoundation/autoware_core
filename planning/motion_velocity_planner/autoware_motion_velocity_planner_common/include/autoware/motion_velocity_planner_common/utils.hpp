@@ -15,17 +15,12 @@
 #ifndef AUTOWARE__MOTION_VELOCITY_PLANNER_COMMON__UTILS_HPP_
 #define AUTOWARE__MOTION_VELOCITY_PLANNER_COMMON__UTILS_HPP_
 
-#include "autoware_vehicle_info_utils/vehicle_info_utils.hpp"
 #include "planner_data.hpp"
+#include "velocity_planning_result.hpp"
 
 #include <autoware_utils_geometry/geometry.hpp>
 #include <rclcpp/rclcpp.hpp>
 
-#include "autoware_planning_msgs/msg/trajectory.hpp"
-#include "nav_msgs/msg/odometry.hpp"
-#include "visualization_msgs/msg/marker_array.hpp"
-
-#include <limits>
 #include <memory>
 #include <optional>
 #include <string>
@@ -186,5 +181,29 @@ double calc_dist_to_traj_poly(
 std::vector<TrajectoryPoint> get_extended_trajectory_points(
   const std::vector<TrajectoryPoint> & input_points, const double extend_distance,
   const double step_length);
+
+/**
+ * @brief insert a stop point in the given trajectory
+ */
+void insert_stop(
+  std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & trajectory,
+  const geometry_msgs::msg::Point & stop_point,
+  const rclcpp::Logger & logger = rclcpp::get_logger("motion_velocity_planner|insert_stop"));
+
+/**
+ * @brief insert a slowdown in the given trajectory
+ */
+void insert_slowdown(
+  std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & trajectory,
+  const autoware::motion_velocity_planner::SlowdownInterval & slowdown_interval,
+  const rclcpp::Logger & logger = rclcpp::get_logger("motion_velocity_planner|insert_slowdown"));
+
+/**
+ * @brief apply a planning result to a trajectory
+ */
+void apply_planning_result(
+  std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & trajectory,
+  const autoware::motion_velocity_planner::VelocityPlanningResult & planning_result,
+  const rclcpp::Logger & logger);
 }  // namespace autoware::motion_velocity_planner::utils
 #endif  // AUTOWARE__MOTION_VELOCITY_PLANNER_COMMON__UTILS_HPP_
