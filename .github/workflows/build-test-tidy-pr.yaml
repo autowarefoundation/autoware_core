@@ -49,32 +49,60 @@ jobs:
   require-label:
     needs:
       - check_if_relevant_files_changed
-    if: needs.check_if_relevant_files_changed.outputs.run_required == 'true'
+    if: ${{ always() }}
     uses: autowarefoundation/autoware-github-actions/.github/workflows/require-label.yaml@v1
     with:
       label: run:build-and-test-differential
+      run-condition: ${{ needs.check_if_relevant_files_changed.outputs.run_required == 'true' }}
 
-  bnt-diff:
+  build-and-test-diff-humble:
+    if: ${{ always() }}
     needs:
       - require-label
-    strategy:
-      fail-fast: false
-      matrix:
-        rosdistro: [humble, jazzy]
-        above: [false, true]
-        include:
-          - rosdistro: humble
-            container: ghcr.io/autowarefoundation/autoware:core-common-devel
-
-          - rosdistro: jazzy
-            container: ghcr.io/autowarefoundation/autoware:core-common-devel-jazzy-amd64
-
     uses: ./.github/workflows/build-and-test-diff-reusable.yaml
-
     with:
-      rosdistro: ${{ matrix.rosdistro }}
-      container: ${{ matrix.container }}
-      above: ${{ matrix.above }}
+      rosdistro: humble
+      container: ghcr.io/autowarefoundation/autoware:core-common-devel
+      above: false
+      run-condition: ${{ needs.require-label.outputs.result == 'true' }}
+    secrets:
+      codecov-token: ${{ secrets.CODECOV_TOKEN }}
 
+  build-and-test-diff-humble-above:
+    if: ${{ always() }}
+    needs:
+      - require-label
+    uses: ./.github/workflows/build-and-test-diff-reusable.yaml
+    with:
+      rosdistro: humble
+      container: ghcr.io/autowarefoundation/autoware:core-common-devel
+      above: true
+      run-condition: ${{ needs.require-label.outputs.result == 'true' }}
+    secrets:
+      codecov-token: ${{ secrets.CODECOV_TOKEN }}
+
+  build-and-test-diff-jazzy:
+    if: ${{ always() }}
+    needs:
+      - require-label
+    uses: ./.github/workflows/build-and-test-diff-reusable.yaml
+    with:
+      rosdistro: jazzy
+      container: ghcr.io/autowarefoundation/autoware:core-common-devel-jazzy-amd64
+      above: false
+      run-condition: ${{ needs.require-label.outputs.result == 'true' }}
+    secrets:
+      codecov-token: ${{ secrets.CODECOV_TOKEN }}
+
+  build-and-test-diff-jazzy-above:
+    if: ${{ always() }}
+    needs:
+      - require-label
+    uses: ./.github/workflows/build-and-test-diff-reusable.yaml
+    with:
+      rosdistro: jazzy
+      container: ghcr.io/autowarefoundation/autoware:core-common-devel-jazzy-amd64
+      above: true
+      run-condition: ${{ needs.require-label.outputs.result == 'true' }}
     secrets:
       codecov-token: ${{ secrets.CODECOV_TOKEN }}
