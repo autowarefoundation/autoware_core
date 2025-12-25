@@ -46,6 +46,11 @@ bool calcStopVelocityWithConstantJerkAccLimit(
   const double v0, const double a0, const double jerk_acc, const double jerk_dec,
   const double min_acc, const double decel_target_vel, const int type,
   const std::vector<double> & times, const double start_distance, Trajectory & output_trajectory);
+bool calcStopVelocityWithConstantJerkAccLimit(
+  const double v0, const double a0, const double jerk_acc, const double jerk_dec,
+  const double min_acc, const double decel_target_vel, const int type,
+  const std::vector<double> & times, const size_t start_index,
+  TrajectoryPoints & output_trajectory);
 void updateStopVelocityStatus(
   double v0, double a0, double jerk_acc, double jerk_dec, int type,
   const std::vector<double> & times, double t, double & x, double & v, double & a, double & j);
