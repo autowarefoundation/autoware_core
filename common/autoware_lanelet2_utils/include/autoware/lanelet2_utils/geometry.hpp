@@ -176,6 +176,16 @@ lanelet::ConstLanelet get_dirty_expanded_lanelet(
   const lanelet::ConstLanelet & lanelet_obj, const double left_offset, const double right_offset);
 
 /**
+ * @brief expand the lanelets (several lanelets) while keep the lanelet ID and Attribute
+ * @param[in] lanelet_obj original lanelets (several lanelets)
+ * @param[in] left_offset offset of the left bound (positive value required)
+ * @param[in] right_offset offset of the right bound (negative value required)
+ * @return expanded lanelets with same ID and Attribute
+ */
+lanelet::ConstLanelets get_dirty_expanded_lanelets(
+  const lanelet::ConstLanelets & lanelet_obj, const double left_offset, const double right_offset);
+
+/**
  * @brief get the centerline of ConstLanelet with offset
  * @param[in] lanelet_obj target lanelet
  * @param[in] offset offset

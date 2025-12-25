@@ -491,6 +491,16 @@ lanelet::ConstLanelet get_dirty_expanded_lanelet(
   return lanelet;
 }
 
+lanelet::ConstLanelets get_dirty_expanded_lanelets(
+  const lanelet::ConstLanelets & lanelet_obj, const double left_offset, const double right_offset)
+{
+  lanelet::ConstLanelets lanelets;
+  for (const auto & llt : lanelet_obj) {
+    lanelets.push_back(get_dirty_expanded_lanelet(llt, left_offset, right_offset));
+  }
+  return lanelets;
+}
+
 lanelet::ConstLineString3d get_centerline_with_offset(
   const lanelet::ConstLanelet & lanelet_obj, const double offset, const double resolution)
 {

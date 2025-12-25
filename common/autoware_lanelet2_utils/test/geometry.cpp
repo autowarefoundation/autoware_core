@@ -727,7 +727,73 @@ TEST(LaneletManipulation, getExpandedLaneletCornerCase)
   }
 }
 
-// Test 29: get bound with offset - Ordinary Case (same length)
+// Test 29: get_dirty_expanded_lanelets ordinary case
+TEST(LaneletManipulation, getExpandedLaneletsOrdinaryCase)
+{
+  using autoware::experimental::lanelet2_utils::create_safe_lanelet;
+  auto p1 = lanelet::BasicPoint3d(0.0, 2.0, 1.0);
+  auto p2 = lanelet::BasicPoint3d(3.0, 2.0, 1.0);
+  auto p3 = lanelet::BasicPoint3d(0.0, 0.0, 1.0);
+  auto p4 = lanelet::BasicPoint3d(3.0, 0.0, 1.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points1 = {p1, p2};
+  std::vector<lanelet::BasicPoint3d> right_points1 = {p3, p4};
+  auto ll1 = *create_safe_lanelet(left_points1, right_points1);
+
+  auto p5 = lanelet::BasicPoint3d(3.0, 2.0, 1.0);
+  auto p6 = lanelet::BasicPoint3d(6.0, 2.0, 1.0);
+  auto p7 = lanelet::BasicPoint3d(3.0, 0.0, 1.0);
+  auto p8 = lanelet::BasicPoint3d(6.0, 0.0, 1.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points2 = {p5, p6};
+  std::vector<lanelet::BasicPoint3d> right_points2 = {p7, p8};
+
+  auto ll2 = *create_safe_lanelet(left_points2, right_points2);
+
+  auto lls = lanelet::ConstLanelets{ll1, ll2};
+
+  auto expanded_lanelets =
+    autoware::experimental::lanelet2_utils::get_dirty_expanded_lanelets(lls, 1, -1);
+
+  ASSERT_EQ(expanded_lanelets.size(), 2);
+  auto left_points = std::vector<std::vector<lanelet::BasicPoint3d>>{left_points1, left_points2};
+  auto right_points = std::vector<std::vector<lanelet::BasicPoint3d>>{right_points1, right_points2};
+  for (size_t i = 0ul; i < expanded_lanelets.size(); i++) {
+    auto ll = expanded_lanelets[i];
+    EXPECT_EQ(ll.id(), lanelet::InvalId);
+    auto expanded_left_bound = ll.leftBound();
+    auto expanded_right_bound = ll.rightBound();
+    // check left bound
+    {
+      EXPECT_EQ(expanded_left_bound.size(), 2);
+      // check front
+      EXPECT_NEAR(expanded_left_bound.front().x(), left_points[i].front().x(), 1e-4);
+      EXPECT_NEAR(expanded_left_bound.front().y(), left_points[i].front().y() + 1.0, 1e-4);
+      EXPECT_NEAR(expanded_left_bound.front().z(), left_points[i].front().z(), 1e-4);
+
+      // check back
+      EXPECT_NEAR(expanded_left_bound.back().x(), left_points[i].back().x(), 1e-4);
+      EXPECT_NEAR(expanded_left_bound.back().y(), left_points[i].back().y() + 1.0, 1e-4);
+      EXPECT_NEAR(expanded_left_bound.back().z(), left_points[i].back().z(), 1e-4);
+    }
+
+    // check right bound
+    {
+      EXPECT_EQ(expanded_right_bound.size(), 2);
+      // check front
+      EXPECT_NEAR(expanded_right_bound.front().x(), right_points[i].front().x(), 1e-4);
+      EXPECT_NEAR(expanded_right_bound.front().y(), right_points[i].front().y() - 1.0, 1e-4);
+      EXPECT_NEAR(expanded_right_bound.front().z(), right_points[i].front().z(), 1e-4);
+
+      // check back
+      EXPECT_NEAR(expanded_right_bound.back().x(), right_points[i].back().x(), 1e-4);
+      EXPECT_NEAR(expanded_right_bound.back().y(), right_points[i].back().y() - 1.0, 1e-4);
+      EXPECT_NEAR(expanded_right_bound.back().z(), right_points[i].back().z(), 1e-4);
+    }
+  }
+}
+
+// Test 30: get bound with offset - Ordinary Case (same length)
 TEST(LaneletManipulation, getBoundOrdinaryCase)
 {
   using autoware::experimental::lanelet2_utils::create_safe_lanelet;
@@ -855,7 +921,7 @@ TEST(LaneletManipulation, getBoundOrdinaryCase)
   }
 }
 
-// Test 30: get bound with offset - different length (the distance between each pair is not
+// Test 31: get bound with offset - different length (the distance between each pair is not
 // constant)
 TEST(LaneletManipulation, getBoundDifferentLength)
 {
