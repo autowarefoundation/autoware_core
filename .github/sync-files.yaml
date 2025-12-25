@@ -25,7 +25,6 @@
     - source: .github/workflows/sync-files.yaml
     - source: .github/workflows/update-codeowners-from-packages.yaml
       pre-commands: |
-        sd "            tag:update-codeowners-from-packages\n" "            tag:update-codeowners-from-packages\n            run:build-and-test-differential\n" {source}
         sd "          auto-merge-method: squash\n" "          auto-merge-method: squash\n          global-codeowners: \"@autowarefoundation/autoware-core-global-codeowners\"\n" {source}
     - source: .clang-format
     - source: .clang-tidy
