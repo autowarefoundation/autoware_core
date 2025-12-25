@@ -31,6 +31,8 @@ jobs:
             **.md
             **/CODEOWNERS
             **/CODEOWNERS-manual
+            **.yaml
+            .github/**/*.yaml
 
       - name: Log decision
         run: |
