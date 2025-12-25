@@ -28,7 +28,7 @@ env:
 jobs:
   build-and-test-differential:
     name: build-and-test-diff-${{ inputs.rosdistro }}${{ inputs.above && '-above' || '' }}
-    if: ${{ always() }}
+    if: ${{ inputs.run-condition }}
     runs-on: ubuntu-latest
     container: ${{ inputs.container }}
     steps:
@@ -133,7 +133,7 @@ jobs:
   clang-tidy-differential:
     name: clang-tidy-diff-${{ inputs.rosdistro }}${{ inputs.above && '-above' || '' }}
     needs: build-and-test-differential
-    if: ${{ inputs.above == false }}
+    if: ${{ (inputs.above == false) && inputs.run-condition }}
     runs-on: ubuntu-latest
     container: ${{ inputs.container }}
     steps:
