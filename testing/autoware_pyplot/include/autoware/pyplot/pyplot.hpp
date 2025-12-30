@@ -92,6 +92,10 @@ public:
     const pybind11::tuple & args = pybind11::tuple(),
     const pybind11::dict & kwargs = pybind11::dict());
 
+  PyObjectWrapper stem(
+    const pybind11::tuple & args = pybind11::tuple(),
+    const pybind11::dict & kwargs = pybind11::dict());
+
   axes::Axes subplot(const pybind11::dict & kwargs = pybind11::dict());
   axes::Axes subplot(int cri);
 
@@ -138,6 +142,7 @@ private:
   pybind11::object savefig_attr;
   pybind11::object scatter_attr;
   pybind11::object show_attr;
+  pybind11::object stem_attr;
   pybind11::object subplot_attr;
   pybind11::object subplots_attr;
   pybind11::object title_attr;

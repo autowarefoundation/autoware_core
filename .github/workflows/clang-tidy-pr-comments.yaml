@@ -25,22 +25,44 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Find clang-tidy-result artifact directory
+        id: find-artifact-dir
+        run: |
+          artifact_dir=""
+          # Prefer jazzy over humble (newer distro)
+          if [ -f "/tmp/clang-tidy-result-jazzy/fixes.yaml" ]; then
+            artifact_dir="/tmp/clang-tidy-result-jazzy"
+          elif [ -f "/tmp/clang-tidy-result-humble/fixes.yaml" ]; then
+            artifact_dir="/tmp/clang-tidy-result-humble"
+          # Fallback to default name for backward compatibility
+          elif [ -f "/tmp/clang-tidy-result/fixes.yaml" ]; then
+            artifact_dir="/tmp/clang-tidy-result"
+          fi
+          if [ -n "$artifact_dir" ]; then
+            echo "artifact-dir=$artifact_dir" >> $GITHUB_OUTPUT
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Check if the fixes.yaml file exists
         id: check-fixes-yaml-existence
+        if: ${{ steps.find-artifact-dir.outputs.exists == 'true' }}
         uses: autowarefoundation/autoware-github-actions/check-file-existence@v1
         with:
-          files: /tmp/clang-tidy-result/fixes.yaml
+          files: ${{ steps.find-artifact-dir.outputs.artifact-dir }}/fixes.yaml
 
       - name: Set variables
-        if: ${{ steps.check-fixes-yaml-existence.outputs.exists == 'true' }}
+        if: ${{ steps.find-artifact-dir.outputs.exists == 'true' }}
         id: set-variables
         run: |
-          echo "pr-id=$(cat /tmp/clang-tidy-result/pr-id.txt)" >> $GITHUB_OUTPUT
-          echo "pr-head-repo=$(cat /tmp/clang-tidy-result/pr-head-repo.txt)" >> $GITHUB_OUTPUT
-          echo "pr-head-ref=$(cat /tmp/clang-tidy-result/pr-head-ref.txt)" >> $GITHUB_OUTPUT
+          artifact_dir="${{ steps.find-artifact-dir.outputs.artifact-dir }}"
+          echo "pr-id=$(cat $artifact_dir/pr-id.txt)" >> $GITHUB_OUTPUT
+          echo "pr-head-repo=$(cat $artifact_dir/pr-head-repo.txt)" >> $GITHUB_OUTPUT
+          echo "pr-head-ref=$(cat $artifact_dir/pr-head-ref.txt)" >> $GITHUB_OUTPUT
 
       - name: Check out PR head
-        if: ${{ steps.check-fixes-yaml-existence.outputs.exists == 'true' }}
+        if: ${{ steps.find-artifact-dir.outputs.exists == 'true' }}
         uses: actions/checkout@v4
         with:
           repository: ${{ steps.set-variables.outputs.pr-head-repo }}
@@ -48,18 +70,20 @@ jobs:
           persist-credentials: false
 
       - name: Replace paths in fixes.yaml
-        if: ${{ steps.check-fixes-yaml-existence.outputs.exists == 'true' }}
+        if: ${{ steps.find-artifact-dir.outputs.exists == 'true' }}
         run: |
-          sed -i -e "s|/__w/|/home/runner/work/|g" /tmp/clang-tidy-result/fixes.yaml
-          cat /tmp/clang-tidy-result/fixes.yaml
+          artifact_dir="${{ steps.find-artifact-dir.outputs.artifact-dir }}"
+          sed -i -e "s|/__w/|/home/runner/work/|g" $artifact_dir/fixes.yaml
+          cat $artifact_dir/fixes.yaml
 
       - name: Copy fixes.yaml to access from Docker Container Action
-        if: ${{ steps.check-fixes-yaml-existence.outputs.exists == 'true' }}
+        if: ${{ steps.find-artifact-dir.outputs.exists == 'true' }}
         run: |
-          cp /tmp/clang-tidy-result/fixes.yaml fixes.yaml
+          artifact_dir="${{ steps.find-artifact-dir.outputs.artifact-dir }}"
+          cp $artifact_dir/fixes.yaml fixes.yaml
 
       - name: Run clang-tidy-pr-comments action
-        if: ${{ steps.check-fixes-yaml-existence.outputs.exists == 'true' }}
+        if: ${{ steps.find-artifact-dir.outputs.exists == 'true' }}
         uses: platisd/clang-tidy-pr-comments@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}

@@ -51,6 +51,17 @@ void EuclideanClusterNode::onPointCloud(
 {
   stop_watch_ptr_->toc("processing_time", true);
 
+  // Check for empty point cloud
+  if (input_msg->data.empty() || input_msg->width * input_msg->height == 0) {
+    RCLCPP_WARN_THROTTLE(
+      get_logger(), *get_clock(), 5000, "Received empty point cloud, skipping processing.");
+    // Publish empty DetectedObjects
+    autoware_perception_msgs::msg::DetectedObjects output;
+    output.header = input_msg->header;
+    cluster_pub_->publish(output);
+    return;
+  }
+
   // convert ros to pcl
   pcl::PointCloud<pcl::PointXYZ>::Ptr raw_pointcloud_ptr(new pcl::PointCloud<pcl::PointXYZ>);
   pcl::fromROSMsg(*input_msg, *raw_pointcloud_ptr);

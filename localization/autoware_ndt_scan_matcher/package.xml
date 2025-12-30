@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>autoware_ndt_scan_matcher</name>
-  <version>1.5.0</version>
+  <version>1.6.0</version>
   <description>The autoware_ndt_scan_matcher package</description>
   <maintainer email="yamato.ando@tier4.jp">Yamato Ando</maintainer>
   <maintainer email="masahiro.sakamoto@tier4.jp">Masahiro Sakamoto</maintainer>
@@ -44,6 +44,7 @@
   <test_depend>ament_cmake_cppcheck</test_depend>
   <test_depend>ament_index_cpp</test_depend>
   <test_depend>ament_lint_auto</test_depend>
+  <test_depend>launch_testing_ament_cmake</test_depend>
   <test_depend>ros_testing</test_depend>
 
   <export>

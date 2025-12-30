@@ -14,7 +14,7 @@
 
 #include "manager.hpp"
 
-#include <autoware_utils/ros/parameter.hpp>
+#include <autoware_utils_rclcpp/parameter.hpp>
 
 #include <lanelet2_core/primitives/BasicRegulatoryElements.h>
 
@@ -25,7 +25,7 @@
 
 namespace autoware::behavior_velocity_planner
 {
-using autoware_utils::get_or_declare_parameter;
+using autoware_utils_rclcpp::get_or_declare_parameter;
 using lanelet::TrafficSign;
 
 StopLineModuleManager::StopLineModuleManager(rclcpp::Node & node)
@@ -36,7 +36,10 @@ StopLineModuleManager::StopLineModuleManager(rclcpp::Node & node)
   p.stop_margin = get_or_declare_parameter<double>(node, ns + ".stop_margin");
   p.hold_stop_margin_distance =
     get_or_declare_parameter<double>(node, ns + ".hold_stop_margin_distance");
-  p.stop_duration_sec = get_or_declare_parameter<double>(node, ns + ".stop_duration_sec");
+  p.required_stop_duration_sec =
+    get_or_declare_parameter<double>(node, ns + ".required_stop_duration_sec");
+  p.vehicle_stopped_duration_threshold =
+    get_or_declare_parameter<double>(node, ns + ".vehicle_stopped_duration_threshold");
 }
 
 std::vector<StopLineWithLaneId> StopLineModuleManager::getStopLinesWithLaneIdOnPath(
@@ -80,15 +83,16 @@ void StopLineModuleManager::launchNewModules(
        getStopLinesWithLaneIdOnPath(path, planner_data_->route_handler_->getLaneletMapPtr())) {
     const auto module_id = stop_line.id();
     if (!isModuleRegistered(module_id)) {
-      registerModule(std::make_shared<StopLineModule>(
-        module_id,                              //
-        stop_line,                              //
-        linked_lane_id,                         //
-        planner_param_,                         //
-        logger_.get_child("stop_line_module"),  //
-        clock_,                                 //
-        time_keeper_,                           //
-        planning_factor_interface_));
+      registerModule(
+        std::make_shared<StopLineModule>(
+          module_id,                              //
+          stop_line,                              //
+          linked_lane_id,                         //
+          planner_param_,                         //
+          logger_.get_child("stop_line_module"),  //
+          clock_,                                 //
+          time_keeper_,                           //
+          planning_factor_interface_));
     }
   }
 }

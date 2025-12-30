@@ -1,0 +1,108 @@
+name: build-test-tidy-pr
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - labeled
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  check_if_relevant_files_changed:
+    runs-on: ubuntu-latest
+    outputs:
+      run_required: ${{ steps.changed-files.outputs.any_changed }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: changed-files
+        uses: step-security/changed-files@v46
+        with:
+          since_last_remote_commit: true
+          files_ignore: |
+            **.md
+            **/CODEOWNERS
+            **/CODEOWNERS-manual
+
+      - name: Log decision
+        run: |
+          if [[ "${{ steps.changed-files.outputs.any_changed }}" == "true" ]]; then
+            echo "🚀 Run is required! Relevant changes detected."
+            echo "📂 List of modified files:"
+            for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+              echo "  📝 $file"
+            done
+          else
+            echo "⏭️ No relevant changes detected."
+            echo "💤 This run will be skipped to save resources."
+          fi
+        shell: bash
+
+  require-label:
+    needs:
+      - check_if_relevant_files_changed
+    if: ${{ always() }}
+    uses: autowarefoundation/autoware-github-actions/.github/workflows/require-label.yaml@v1
+    with:
+      label: run:build-and-test-differential
+      run-condition: ${{ needs.check_if_relevant_files_changed.outputs.run_required == 'true' }}
+
+  build-and-test-diff-humble:
+    if: ${{ always() }}
+    needs:
+      - require-label
+    uses: ./.github/workflows/build-and-test-diff-reusable.yaml
+    with:
+      rosdistro: humble
+      container: ghcr.io/autowarefoundation/autoware:core-common-devel
+      above: false
+      run-condition: ${{ needs.require-label.outputs.result == 'true' }}
+    secrets:
+      codecov-token: ${{ secrets.CODECOV_TOKEN }}
+
+  build-and-test-diff-humble-above:
+    if: ${{ always() }}
+    needs:
+      - require-label
+    uses: ./.github/workflows/build-and-test-diff-reusable.yaml
+    with:
+      rosdistro: humble
+      container: ghcr.io/autowarefoundation/autoware:core-common-devel
+      above: true
+      run-condition: ${{ needs.require-label.outputs.result == 'true' }}
+    secrets:
+      codecov-token: ${{ secrets.CODECOV_TOKEN }}
+
+  build-and-test-diff-jazzy:
+    if: ${{ always() }}
+    needs:
+      - require-label
+    uses: ./.github/workflows/build-and-test-diff-reusable.yaml
+    with:
+      rosdistro: jazzy
+      container: ghcr.io/autowarefoundation/autoware:core-common-devel-jazzy-amd64
+      above: false
+      run-condition: ${{ needs.require-label.outputs.result == 'true' }}
+    secrets:
+      codecov-token: ${{ secrets.CODECOV_TOKEN }}
+
+  build-and-test-diff-jazzy-above:
+    if: ${{ always() }}
+    needs:
+      - require-label
+    uses: ./.github/workflows/build-and-test-diff-reusable.yaml
+    with:
+      rosdistro: jazzy
+      container: ghcr.io/autowarefoundation/autoware:core-common-devel-jazzy-amd64
+      above: true
+      run-condition: ${{ needs.require-label.outputs.result == 'true' }}
+    secrets:
+      codecov-token: ${{ secrets.CODECOV_TOKEN }}

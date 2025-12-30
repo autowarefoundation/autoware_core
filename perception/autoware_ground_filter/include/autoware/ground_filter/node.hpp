@@ -56,8 +56,7 @@
 #include <autoware_utils_system/stop_watch.hpp>
 #include <autoware_utils_tf/transform_listener.hpp>
 #include <tf2_eigen/tf2_eigen.hpp>
-
-#include <tf2_ros/transform_listener.h>
+#include <tf2_ros/transform_listener.hpp>
 
 #include <algorithm>
 #include <memory>
@@ -356,6 +355,12 @@ protected:
     // Ensure non-null
     if (cloud == nullptr) {
       RCLCPP_WARN(this->get_logger(), "Received null PointCloud");
+      return false;
+    }
+
+    // Check for empty point cloud
+    if (cloud->data.empty() || cloud->width * cloud->height == 0) {
+      RCLCPP_WARN(this->get_logger(), "Received empty PointCloud");
       return false;
     }
 

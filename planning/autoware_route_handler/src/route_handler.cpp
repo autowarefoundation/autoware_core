@@ -233,9 +233,14 @@ RouteHandler::RouteHandler(const LaneletMapBin & map_msg)
 
 void RouteHandler::setMap(const LaneletMapBin & map_msg)
 {
-  lanelet_map_ptr_ = std::make_shared<lanelet::LaneletMap>();
-  lanelet::utils::conversion::fromBinMsg(
-    map_msg, lanelet_map_ptr_, &traffic_rules_ptr_, &routing_graph_ptr_);
+  lanelet_map_ptr_ = autoware::experimental::lanelet2_utils::remove_const(
+    autoware::experimental::lanelet2_utils::from_autoware_map_msgs(map_msg));
+  auto routing_graph_and_traffic_rules =
+    autoware::experimental::lanelet2_utils::instantiate_routing_graph_and_traffic_rules(
+      lanelet_map_ptr_);
+  routing_graph_ptr_ =
+    autoware::experimental::lanelet2_utils::remove_const(routing_graph_and_traffic_rules.first);
+  traffic_rules_ptr_ = routing_graph_and_traffic_rules.second;
   const auto map_major_version_opt =
     lanelet::io_handlers::parseMajorVersion(map_msg.version_map_format);
   if (!map_major_version_opt) {
@@ -1192,7 +1197,7 @@ std::optional<lanelet::ConstLanelet> RouteHandler::getRightLanelet(
   if (get_shoulder_lane) {
     const auto right_shoulder_lanelet = getRightShoulderLanelet(lanelet);
     if (right_shoulder_lanelet) {
-      return *right_shoulder_lanelet;
+      return right_shoulder_lanelet;
     }
   }
 
@@ -1263,7 +1268,7 @@ std::optional<lanelet::ConstLanelet> RouteHandler::getLeftLanelet(
   if (get_shoulder_lane) {
     const auto left_shoulder_lanelet = getLeftShoulderLanelet(lanelet);
     if (left_shoulder_lanelet) {
-      return *left_shoulder_lanelet;
+      return left_shoulder_lanelet;
     }
   }
 
@@ -1897,8 +1902,9 @@ void RouteHandler::removeOverlappedCenterlineWithWaypoints(
   int target_lanelet_sequence_index = static_cast<int>(piecewise_waypoints_lanelet_sequence_index);
   while (isIndexWithinVector(lanelet_sequence, target_lanelet_sequence_index)) {
     auto & target_piecewise_ref_points = piecewise_ref_points_vec.at(target_lanelet_sequence_index);
-    const double target_lanelet_arc_length = boost::geometry::length(lanelet::utils::to2D(
-      lanelet_sequence.at(target_lanelet_sequence_index).centerline().basicLineString()));
+    const double target_lanelet_arc_length = boost::geometry::length(
+      lanelet::utils::to2D(
+        lanelet_sequence.at(target_lanelet_sequence_index).centerline().basicLineString()));
 
     // search overlapped ref points in the target lanelet
     std::vector<size_t> overlapped_ref_points_indices{};
