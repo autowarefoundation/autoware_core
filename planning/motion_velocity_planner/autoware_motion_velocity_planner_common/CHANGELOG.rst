@@ -5,8 +5,8 @@ Changelog for package autoware_motion_velocity_planner_common
 1.1.0 (2025-05-01)
 ------------------
 
-Forthcoming
------------
+1.6.0 (2025-12-30)
+------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
 * refactor(vehicle_info_utils): reduce autoware_utils deps (`#754 <https://github.com/autowarefoundation/autoware_core/issues/754>`_)
 * chore: tf2_ros to hpp headers (`#616 <https://github.com/autowarefoundation/autoware_core/issues/616>`_)

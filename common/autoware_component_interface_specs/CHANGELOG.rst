@@ -9,8 +9,8 @@ Changelog for package autoware_component_interface_specs
 * docs(autoware_component_interface_specs): fix `README.md` (`#363 <https://github.com/autowarefoundation/autoware_core/issues/363>`_)
 * Contributors: Takagi, Isamu, Yutaka Kondo
 
-Forthcoming
------------
+1.6.0 (2025-12-30)
+------------------
 
 1.5.0 (2025-11-16)
 ------------------

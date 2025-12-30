@@ -2,8 +2,8 @@
 Changelog for package autoware_downsample_filters
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.6.0 (2025-12-30)
+------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
 * fix(autoware_downsample_filters): fix uninitialized pointer in random_downsample_filter (`#742 <https://github.com/autowarefoundation/autoware_core/issues/742>`_)
 * Contributors: Yutaka Kondo, github-actions

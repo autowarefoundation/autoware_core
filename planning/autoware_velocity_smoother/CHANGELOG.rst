@@ -5,8 +5,8 @@ Changelog for package autoware_velocity_smoother
 1.1.0 (2025-05-01)
 ------------------
 
-Forthcoming
------------
+1.6.0 (2025-12-30)
+------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
 * chore: tf2_ros to hpp headers (`#616 <https://github.com/autowarefoundation/autoware_core/issues/616>`_)
 * ci(pre-commit): autoupdate (`#723 <https://github.com/autowarefoundation/autoware_core/issues/723>`_)

@@ -2,8 +2,8 @@
 Changelog for package autoware_ndt_scan_matcher
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.6.0 (2025-12-30)
+------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
 * fix(ndt_scan_matcher): fix segmentation fault in MultiVoxelGridCovariance::createKdtree() (`#733 <https://github.com/autowarefoundation/autoware_core/issues/733>`_)
   * fix(ndt_scan_matcher): handle nullptr

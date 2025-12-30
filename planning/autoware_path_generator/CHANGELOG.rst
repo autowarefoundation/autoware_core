@@ -63,8 +63,8 @@ Changelog for package autoware_path_generator
 * feat(autoware_path_generator): use autoware_trajectory for cropping bounds (`#349 <https://github.com/autowarefoundation/autoware_core/issues/349>`_)
 * Contributors: Kazunori-Nakajima, Mamoru Sobue, Mitsuhiro Sakamoto, Yukinari Hisaki
 
-Forthcoming
------------
+1.6.0 (2025-12-30)
+------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
 * chore(path_generator): add new maintainers to package.xml of path_generator (`#768 <https://github.com/autowarefoundation/autoware_core/issues/768>`_)
   * chore: add new maintainers to package.xml of path_generator

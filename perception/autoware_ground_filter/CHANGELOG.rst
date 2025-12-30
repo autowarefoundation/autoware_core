@@ -11,8 +11,8 @@ Changelog for package autoware_ground_filter
   Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
 * Contributors: Amadeusz Szymko
 
-Forthcoming
------------
+1.6.0 (2025-12-30)
+------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
 * fix(autoware_ground_filter): add empty point cloud check (`#746 <https://github.com/autowarefoundation/autoware_core/issues/746>`_)
   * fix(autoware_ground_filter): add empty point cloud check in isValid function
