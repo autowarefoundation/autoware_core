@@ -17,8 +17,10 @@
 
 #include <autoware/motion_velocity_planner_common/plugin_module_interface.hpp>
 #include <autoware/motion_velocity_planner_common/velocity_planning_result.hpp>
+#include <autoware_utils_debug/debug_publisher.hpp>
 #include <pluginlib/class_loader.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <tf2_ros/transform_listener.hpp>
 
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
 #include <autoware_perception_msgs/msg/predicted_objects.hpp>
@@ -28,7 +30,6 @@
 #include <lanelet2_core/LaneletMap.h>
 #include <lanelet2_routing/RoutingGraph.h>
 #include <lanelet2_traffic_rules/TrafficRulesFactory.h>
-#include <tf2_ros/transform_listener.h>
 
 #include <memory>
 #include <string>
@@ -46,7 +47,8 @@ public:
   std::vector<VelocityPlanningResult> plan_velocities(
     const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & raw_trajectory_points,
     const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & smoothed_trajectory_points,
-    const std::shared_ptr<const PlannerData> planner_data);
+    const std::shared_ptr<const PlannerData> planner_data,
+    std::shared_ptr<autoware_utils_debug::DebugPublisher> & processing_time_publisher);
 
   RequiredSubscriptionInfo getRequiredSubscriptions() const { return required_subscriptions_; }
 

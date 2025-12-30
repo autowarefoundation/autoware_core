@@ -56,7 +56,7 @@ Trajectory<PointType> & Trajectory<PointType>::operator=(const Trajectory & rhs)
 {
   if (this != &rhs) {
     BaseClass::operator=(rhs);
-    lane_ids_ = std::make_shared<detail::InterpolatedArray<LaneIdType>>(this->lane_ids());
+    lane_ids_ = std::make_shared<detail::InterpolatedArray<LaneIdType>>(*rhs.lane_ids_);
     add_base_addition_callback();
   }
   return *this;

@@ -33,6 +33,7 @@
 
 #include "lanelet2_map_visualization_node.hpp"
 
+#include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware_lanelet2_extension/regulatory_elements/autoware_traffic_light.hpp>
 #include <autoware_lanelet2_extension/utility/message_conversion.hpp>
 #include <autoware_lanelet2_extension/utility/query.hpp>
@@ -83,9 +84,8 @@ Lanelet2MapVisualizationNode::Lanelet2MapVisualizationNode(const rclcpp::NodeOpt
 void Lanelet2MapVisualizationNode::on_map_bin(
   const autoware_map_msgs::msg::LaneletMapBin::ConstSharedPtr msg)
 {
-  lanelet::LaneletMapPtr viz_lanelet_map(new lanelet::LaneletMap);
-
-  lanelet::utils::conversion::fromBinMsg(*msg, viz_lanelet_map);
+  lanelet::LaneletMapPtr viz_lanelet_map = autoware::experimental::lanelet2_utils::remove_const(
+    autoware::experimental::lanelet2_utils::from_autoware_map_msgs(*msg));
   RCLCPP_INFO(this->get_logger(), "Map is loaded\n");
 
   // get lanelets etc to visualize

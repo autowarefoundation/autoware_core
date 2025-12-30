@@ -82,7 +82,9 @@ bool StopLineModule::modifyPathVelocity(
     autoware_internal_planning_msgs::msg::SafetyFactorArray{}, true /*is_driving_forward*/, 0.0,
     0.0 /*shift distance*/, "stopline");
 
-  updateStateAndStoppedTime(clock_->now(), *stop_point - ego_s, planner_data.isVehicleStopped());
+  updateStateAndStoppedTime(
+    clock_->now(), *stop_point - ego_s,
+    planner_data.isVehicleStopped(planner_param_.vehicle_stopped_duration_threshold));
 
   const auto stop_pose = path.compute(*stop_point).point.pose;
 
@@ -172,7 +174,7 @@ void StopLineModule::updateStateAndStoppedTime(
     }
     case State::STOPPED: {
       double stop_duration = (now - *stopped_time_).seconds();
-      if (stop_duration > planner_param_.stop_duration_sec) {
+      if (stop_duration > planner_param_.required_stop_duration_sec) {
         state_ = State::START;
         stopped_time_.reset();
         logInfo("State transition: STOPPED -> START | Duration: %.2fs", stop_duration);
@@ -209,7 +211,7 @@ autoware::motion_utils::VirtualWalls StopLineModule::createVirtualWalls()
     wall.text = "stopline";
     wall.style = autoware::motion_utils::VirtualWallType::stop;
     wall.ns = std::to_string(module_id_) + "_";
-    wall.pose = autoware_utils::calc_offset_pose(
+    wall.pose = autoware_utils_geometry::calc_offset_pose(
       *debug_data_.stop_pose, debug_data_.base_link2front, 0.0, 0.0);
     virtual_walls.push_back(wall);
   }

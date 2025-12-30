@@ -63,6 +63,38 @@ Changelog for package autoware_path_generator
 * feat(autoware_path_generator): use autoware_trajectory for cropping bounds (`#349 <https://github.com/autowarefoundation/autoware_core/issues/349>`_)
 * Contributors: Kazunori-Nakajima, Mamoru Sobue, Mitsuhiro Sakamoto, Yukinari Hisaki
 
+1.6.0 (2025-12-30)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* chore(path_generator): add new maintainers to package.xml of path_generator (`#768 <https://github.com/autowarefoundation/autoware_core/issues/768>`_)
+  * chore: add new maintainers to package.xml of path_generator
+  * chore: remove maintainers
+  ---------
+* feat(autoware_lanelet2_utils): replace from/toBinMsg (`#737 <https://github.com/autowarefoundation/autoware_core/issues/737>`_)
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+  Co-authored-by: Mamoru Sobue <hilo.soblin@gmail.com>
+* fix(path_generator): cut path before loop prior to intersection check (`#758 <https://github.com/autowarefoundation/autoware_core/issues/758>`_)
+  * fix(path_generator): cut path before loop prior to intersection check
+  * fix(path_generator): prevent crash when trimming short bounds in intersection check
+  Add defensive check in trim_bound lambda to prevent calling crop() on trajectories that are too short. This fixes SIGSEGV crashes that occurred when lanelet_sequence was shortened by loop detection, resulting in bounds that were shorter than vehicle_length.
+  The fix ensures that:
+  - If bound.length() <= vehicle_length, the original bound is returned
+  - If bound.length() > vehicle_length, crop() is safely executed
+  - After crop(), if the result is empty, the original bound is returned
+  This resolves test failures in:
+  - test_test_static_centerline_generator_path_generator_case1_launch.test.py (Test 6)
+  - test_test_static_centerline_generator_path_generator_case4_launch.test.py (Test 9)
+  Both tests were timing out due to crashes in get_first_start_edge_bound_intersection_arc_length() when calling Trajectory<>::restore() on invalid cropped trajectories.
+  ---------
+* refactor(vehicle_info_utils): reduce autoware_utils deps (`#754 <https://github.com/autowarefoundation/autoware_core/issues/754>`_)
+* feat(QC, path_generator): use build_reference_path() for path generation (`#736 <https://github.com/autowarefoundation/autoware_core/issues/736>`_)
+* fix(autoware_path_generator): fix maybe-unitialized warning from test code (`#730 <https://github.com/autowarefoundation/autoware_core/issues/730>`_)
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* ci(pre-commit): autoupdate (`#723 <https://github.com/autowarefoundation/autoware_core/issues/723>`_)
+  * pre-commit formatting changes
+* Contributors: Mamoru Sobue, Masahiro Kubota, Mete Fatih Cırıt, Ryohsuke Mitsudome, Sarun MUKDAPITAK, github-actions, tera24
+
 1.5.0 (2025-11-16)
 ------------------
 * Merge remote-tracking branch 'origin/main' into humble

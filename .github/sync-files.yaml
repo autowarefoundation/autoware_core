@@ -9,8 +9,6 @@
       dest: .github/pull_request_template.md
     - source: .github/stale.yml
     - source: .github/workflows/cancel-previous-workflows.yaml
-    - source: .github/workflows/clang-tidy-pr-comments.yaml
-    - source: .github/workflows/clang-tidy-pr-comments-manually.yaml
     - source: .github/workflows/comment-on-pr.yaml
     - source: .github/workflows/delete-closed-pr-docs.yaml
     - source: .github/workflows/deploy-docs.yaml
@@ -27,7 +25,6 @@
     - source: .github/workflows/sync-files.yaml
     - source: .github/workflows/update-codeowners-from-packages.yaml
       pre-commands: |
-        sd "            tag:update-codeowners-from-packages\n" "            tag:update-codeowners-from-packages\n            run:build-and-test-differential\n" {source}
         sd "          auto-merge-method: squash\n" "          auto-merge-method: squash\n          global-codeowners: \"@autowarefoundation/autoware-core-global-codeowners\"\n" {source}
     - source: .clang-format
     - source: .clang-tidy
