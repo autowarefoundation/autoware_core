@@ -5,6 +5,12 @@ Changelog for package autoware_vehicle_velocity_converter
 1.1.0 (2025-05-01)
 ------------------
 
+Forthcoming
+-----------
+* Merge remote-tracking branch 'origin/main' into prepare-1.6.0-changelog
+* perf(localization, sensing): reduce subscription queue size from 100 to 10 (`#751 <https://github.com/autowarefoundation/autoware_core/issues/751>`_)
+* Contributors: Ryohsuke Mitsudome, Yutaka Kondo
+
 1.5.0 (2025-11-16)
 ------------------
 * Merge remote-tracking branch 'origin/main' into humble

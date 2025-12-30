@@ -5,6 +5,25 @@ Changelog for package autoware_velocity_smoother
 1.1.0 (2025-05-01)
 ------------------
 
+Forthcoming
+-----------
+* Merge remote-tracking branch 'origin/main' into prepare-1.6.0-changelog
+* chore: tf2_ros to hpp headers (`#616 <https://github.com/autowarefoundation/autoware_core/issues/616>`_)
+* ci(pre-commit): autoupdate (`#723 <https://github.com/autowarefoundation/autoware_core/issues/723>`_)
+  * pre-commit formatting changes
+* fix(velocity_smoother): missing unit tests for resampling and invalid subscribed input topic (`#562 <https://github.com/autowarefoundation/autoware_core/issues/562>`_)
+  * fix(velocity_smoother): correct input trajectory topic in tests
+  * fix(velocity_smoother): add missing resample unit tests
+  * style(pre-commit): autofix
+  * build test_resample.cpp
+  * `#562 <https://github.com/autowarefoundation/autoware_core/issues/562>`_ PR remarks
+  * style(pre-commit): autofix
+  * use current utils geometry namespace
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* Contributors: Mete Fatih Cırıt, Ryohsuke Mitsudome, Tim Clephas, ralwing
+
 1.5.0 (2025-11-16)
 ------------------
 * Merge remote-tracking branch 'origin/main' into humble

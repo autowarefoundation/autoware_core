@@ -24,6 +24,9 @@ Changelog for package autoware_kalman_filter
   ---------
 * Contributors: RyuYamamoto, Yutaka Kondo
 
+Forthcoming
+-----------
+
 1.5.0 (2025-11-16)
 ------------------
 * Merge remote-tracking branch 'origin/main' into humble

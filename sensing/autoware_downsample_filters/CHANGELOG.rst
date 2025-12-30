@@ -2,6 +2,12 @@
 Changelog for package autoware_downsample_filters
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge remote-tracking branch 'origin/main' into prepare-1.6.0-changelog
+* fix(autoware_downsample_filters): fix uninitialized pointer in random_downsample_filter (`#742 <https://github.com/autowarefoundation/autoware_core/issues/742>`_)
+* Contributors: Ryohsuke Mitsudome, Yutaka Kondo
+
 1.5.0 (2025-11-16)
 ------------------
 * Merge remote-tracking branch 'origin/main' into humble

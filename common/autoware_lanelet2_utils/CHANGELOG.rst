@@ -18,6 +18,40 @@ Changelog for package autoware_lanelet2_utils
   ---------
 * Contributors: Mamoru Sobue, Yutaka Kondo
 
+Forthcoming
+-----------
+* Merge remote-tracking branch 'origin/main' into prepare-1.6.0-changelog
+* feat(autoware_lanelet2_utils): define remove_const in header (`#741 <https://github.com/autowarefoundation/autoware_core/issues/741>`_)
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* chore: jazzy-porting: fix test depend launch-test missing (`#738 <https://github.com/autowarefoundation/autoware_core/issues/738>`_)
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* docs(lanelet2_utils): add example usage to autoware_lanelet2_utils documentation (`#720 <https://github.com/autowarefoundation/autoware_core/issues/720>`_)
+  * add lanelet2_utils geometry functions example
+  * add conversion functions example
+  * add kind functions example
+  * fix conversion code line after pre-commit format
+  * fix code snippet title typo
+  * add hatched_road_markings functions example
+  * fix cppcheck
+  * add topology functions example
+  * add intersection functions example
+  * add lane_sequence functions example
+  * add nn_search functions example
+  * add map_handler functions example
+  * add route_manager functions example
+  * fix shadow variable in example_map_handler
+  * fix small typo in example_map_handler
+  * remove map_handler question comment
+  * modify CMakeLists to support jazzy
+  * Update common/autoware_lanelet2_utils/CMakeLists.txt
+  ---------
+  Co-authored-by: Mamoru Sobue <hilo.soblin@gmail.com>
+* feat(trajectory): align build_reference_path with vm-01-11 spec (`#702 <https://github.com/autowarefoundation/autoware_core/issues/702>`_)
+  Co-authored-by: mitukou1109 <mitukou1109@gmail.com>
+* ci(pre-commit): autoupdate (`#723 <https://github.com/autowarefoundation/autoware_core/issues/723>`_)
+  * pre-commit formatting changes
+* Contributors: Mamoru Sobue, Mete Fatih Cırıt, Ryohsuke Mitsudome, Sarun MUKDAPITAK, 心刚
+
 1.5.0 (2025-11-16)
 ------------------
 * Merge remote-tracking branch 'origin/main' into humble

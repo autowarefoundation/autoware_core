@@ -5,6 +5,23 @@ Changelog for package autoware_simple_pure_pursuit
 1.1.0 (2025-05-01)
 ------------------
 
+Forthcoming
+-----------
+* Merge remote-tracking branch 'origin/main' into prepare-1.6.0-changelog
+* fix(autoware_simple_pure_pursuit): add empty trajectory check to prevent crash (`#744 <https://github.com/autowarefoundation/autoware_core/issues/744>`_)
+  * fix(autoware_simple_pure_pursuit): add empty trajectory check to prevent crash
+  * Apply suggestion from @Copilot
+  Co-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>
+  * test(autoware_simple_pure_pursuit): add test for empty trajectory check
+  * Update control/autoware_simple_pure_pursuit/src/simple_pure_pursuit.cpp
+  Co-authored-by: Mamoru Sobue <hilo.soblin@gmail.com>
+  ---------
+  Co-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>
+  Co-authored-by: Mamoru Sobue <hilo.soblin@gmail.com>
+* ci(pre-commit): autoupdate (`#723 <https://github.com/autowarefoundation/autoware_core/issues/723>`_)
+  * pre-commit formatting changes
+* Contributors: Mete Fatih Cırıt, Ryohsuke Mitsudome, Yutaka Kondo
+
 1.5.0 (2025-11-16)
 ------------------
 * Merge remote-tracking branch 'origin/main' into humble

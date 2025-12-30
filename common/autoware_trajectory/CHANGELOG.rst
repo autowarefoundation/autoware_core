@@ -50,6 +50,29 @@ Changelog for package autoware_trajectory
 * chore: include iostream and link yaml-cpp for Jazzy (`#351 <https://github.com/autowarefoundation/autoware_core/issues/351>`_)
 * Contributors: Mamoru Sobue, Tim Clephas, Yukinari Hisaki
 
+Forthcoming
+-----------
+* Merge remote-tracking branch 'origin/main' into prepare-1.6.0-changelog
+* feat(trajectory): added find zero velocity position for continuous trajectory (`#759 <https://github.com/autowarefoundation/autoware_core/issues/759>`_)
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Mamoru Sobue <hilo.soblin@gmail.com>
+* fix(autoware_trajectory): fix missing dependencies (`#734 <https://github.com/autowarefoundation/autoware_core/issues/734>`_)
+* fix(autoware_trajectory): make the get_index function safe (`#568 <https://github.com/autowarefoundation/autoware_core/issues/568>`_)
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+  Co-authored-by: Mamoru Sobue <hilo.soblin@gmail.com>
+* feat(trajectory): align build_reference_path with vm-01-11 spec (`#702 <https://github.com/autowarefoundation/autoware_core/issues/702>`_)
+  Co-authored-by: mitukou1109 <mitukou1109@gmail.com>
+* chore: jazzy-porting, autoware_trajectory, add array size assignment to solve compile failure (`#644 <https://github.com/autowarefoundation/autoware_core/issues/644>`_)
+  * build::jazzy-porting::add array size assignment to sovle compile failures with array bounds checking warnings , v0.0
+  * build::jazzy-porting::use warning surpress macro for false positives of array bounds warnings, v0.1
+  ---------
+* fix(trajectory): copy lane id interpolator array in copy assignment (`#724 <https://github.com/autowarefoundation/autoware_core/issues/724>`_)
+* ci(pre-commit): autoupdate (`#723 <https://github.com/autowarefoundation/autoware_core/issues/723>`_)
+  * pre-commit formatting changes
+* docs(trajectory): reorganize autoware_trajectory documentation (`#715 <https://github.com/autowarefoundation/autoware_core/issues/715>`_)
+* Contributors: Giovanni Muhammad Raditya, Mamoru Sobue, Mete Fatih Cırıt, Mitsuhiro Sakamoto, Ryohsuke Mitsudome, Sarun MUKDAPITAK, Yukinari Hisaki, 心刚
+
 1.5.0 (2025-11-16)
 ------------------
 * Merge remote-tracking branch 'origin/main' into humble

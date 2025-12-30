@@ -11,6 +11,18 @@ Changelog for package autoware_ground_filter
   Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
 * Contributors: Amadeusz Szymko
 
+Forthcoming
+-----------
+* Merge remote-tracking branch 'origin/main' into prepare-1.6.0-changelog
+* fix(autoware_ground_filter): add empty point cloud check (`#746 <https://github.com/autowarefoundation/autoware_core/issues/746>`_)
+  * fix(autoware_ground_filter): add empty point cloud check in isValid function
+  * Update perception/autoware_ground_filter/include/autoware/ground_filter/node.hpp
+  ---------
+* chore: tf2_ros to hpp headers (`#616 <https://github.com/autowarefoundation/autoware_core/issues/616>`_)
+* ci(pre-commit): autoupdate (`#723 <https://github.com/autowarefoundation/autoware_core/issues/723>`_)
+  * pre-commit formatting changes
+* Contributors: Mete Fatih Cırıt, Ryohsuke Mitsudome, Tim Clephas, Yutaka Kondo
+
 1.5.0 (2025-11-16)
 ------------------
 * Merge remote-tracking branch 'origin/main' into humble

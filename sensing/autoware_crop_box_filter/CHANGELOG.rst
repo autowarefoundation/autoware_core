@@ -11,6 +11,20 @@ Changelog for package autoware_crop_box_filter
   Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
 * Contributors: Amadeusz Szymko
 
+Forthcoming
+-----------
+* Merge remote-tracking branch 'origin/main' into prepare-1.6.0-changelog
+* fix(autoware_crop_box_filter): initialize transform variables on TF acquisition failure (`#750 <https://github.com/autowarefoundation/autoware_core/issues/750>`_)
+  When TF acquisition fails during initialization, the transform matrices
+  and flags were left uninitialized, potentially leading to undefined
+  behavior when used in pointcloud filtering.
+  This commit ensures that when TF acquisition fails:
+  - need_preprocess_transform\_ and need_postprocess_transform\_ are set to false
+  - eigen_transform_preprocess\_ and eigen_transform_postprocess\_ are initialized to identity matrices
+  This matches the behavior when frames are equal and prevents the use of
+  uninitialized values.
+* Contributors: Ryohsuke Mitsudome, Yutaka Kondo
+
 1.5.0 (2025-11-16)
 ------------------
 * Merge remote-tracking branch 'origin/main' into humble
