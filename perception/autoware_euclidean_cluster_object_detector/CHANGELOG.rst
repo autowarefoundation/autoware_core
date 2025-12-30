@@ -2,6 +2,17 @@
 Changelog for package autoware_euclidean_cluster_object_detector
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.6.0 (2025-12-30)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* fix(autoware_euclidean_cluster_object_detector): prevent zero division in getCentroid (`#745 <https://github.com/autowarefoundation/autoware_core/issues/745>`_)
+  - Add zero division check in getCentroid() function
+  - Return origin point (0, 0, 0) when empty point cloud is passed
+  - Add unit test for empty point cloud case
+* fix(autoware_euclidean_cluster_object_detector): add early return for empty point cloud in voxel grid node (`#747 <https://github.com/autowarefoundation/autoware_core/issues/747>`_)
+* fix(autoware_euclidean_cluster_object_detector): add empty point cloud check (`#743 <https://github.com/autowarefoundation/autoware_core/issues/743>`_)
+* Contributors: Yutaka Kondo, github-actions
+
 1.5.0 (2025-11-16)
 ------------------
 * Merge remote-tracking branch 'origin/main' into humble
