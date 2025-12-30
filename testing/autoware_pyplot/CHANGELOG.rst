@@ -10,6 +10,13 @@ Changelog for package autoware_pyplot
   ---------
 * Contributors: Mamoru Sobue
 
+Forthcoming
+-----------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* feat(autoware_pyplot): adds stem plot support (`#740 <https://github.com/autowarefoundation/autoware_core/issues/740>`_)
+  feat(autoware_pyplot): add stem plot
+* Contributors: Zulfaqar Azmi, github-actions
+
 1.5.0 (2025-11-16)
 ------------------
 * Merge remote-tracking branch 'origin/main' into humble

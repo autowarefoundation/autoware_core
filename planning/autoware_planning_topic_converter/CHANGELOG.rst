@@ -5,6 +5,9 @@ Changelog for package autoware_planning_topic_converter
 1.1.0 (2025-05-01)
 ------------------
 
+Forthcoming
+-----------
+
 1.5.0 (2025-11-16)
 ------------------
 * Merge remote-tracking branch 'origin/main' into humble

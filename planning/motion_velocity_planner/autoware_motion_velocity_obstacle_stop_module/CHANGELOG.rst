@@ -5,6 +5,14 @@ Changelog for package autoware_motion_velocity_obstacle_stop_module
 1.1.0 (2025-05-01)
 ------------------
 
+Forthcoming
+-----------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* refactor(vehicle_info_utils): reduce autoware_utils deps (`#754 <https://github.com/autowarefoundation/autoware_core/issues/754>`_)
+* chore: tf2_ros to hpp headers (`#616 <https://github.com/autowarefoundation/autoware_core/issues/616>`_)
+* refactor(motion_velocity_planner): refactor time publisher (`#718 <https://github.com/autowarefoundation/autoware_core/issues/718>`_)
+* Contributors: Mete Fatih Cırıt, Tim Clephas, Yuki TAKAGI, github-actions
+
 1.5.0 (2025-11-16)
 ------------------
 * Merge remote-tracking branch 'origin/main' into humble

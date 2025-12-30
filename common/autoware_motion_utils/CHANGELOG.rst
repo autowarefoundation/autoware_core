@@ -13,6 +13,13 @@ Changelog for package autoware_motion_utils
 * refactor(autoware_motion_utils): rewrite using modern C++ without API breakage (`#348 <https://github.com/autowarefoundation/autoware_core/issues/348>`_)
 * Contributors: Arjun Jagdish Ram, Yutaka Kondo
 
+Forthcoming
+-----------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* ci(pre-commit): autoupdate (`#723 <https://github.com/autowarefoundation/autoware_core/issues/723>`_)
+  * pre-commit formatting changes
+* Contributors: Mete Fatih Cırıt, github-actions
+
 1.5.0 (2025-11-16)
 ------------------
 * Merge remote-tracking branch 'origin/main' into humble

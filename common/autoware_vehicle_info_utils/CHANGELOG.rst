@@ -7,6 +7,13 @@ Changelog for package autoware_vehicle_info_utils
 * refactor(autoware_vehicle_info_utils): rewrite using modern C++ without API breakage (`#343 <https://github.com/autowarefoundation/autoware_core/issues/343>`_)
 * Contributors: Yutaka Kondo
 
+Forthcoming
+-----------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* docs: fix broken links (`#779 <https://github.com/autowarefoundation/autoware_core/issues/779>`_)
+* refactor(vehicle_info_utils): reduce autoware_utils deps (`#754 <https://github.com/autowarefoundation/autoware_core/issues/754>`_)
+* Contributors: Mete Fatih Cırıt, github-actions
+
 1.5.0 (2025-11-16)
 ------------------
 * Merge remote-tracking branch 'origin/main' into humble

@@ -13,6 +13,9 @@ Changelog for package autoware_localization_util
   Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
 * Contributors: NorahXiong
 
+Forthcoming
+-----------
+
 1.5.0 (2025-11-16)
 ------------------
 * Merge remote-tracking branch 'origin/main' into humble
