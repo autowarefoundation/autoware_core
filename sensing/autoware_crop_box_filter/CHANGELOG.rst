@@ -11,8 +11,8 @@ Changelog for package autoware_crop_box_filter
   Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
 * Contributors: Amadeusz Szymko
 
-Forthcoming
------------
+1.6.0 (2025-12-30)
+------------------
 * Merge remote-tracking branch 'origin/main' into prepare-1.6.0-changelog
 * fix(autoware_crop_box_filter): initialize transform variables on TF acquisition failure (`#750 <https://github.com/autowarefoundation/autoware_core/issues/750>`_)
   When TF acquisition fails during initialization, the transform matrices

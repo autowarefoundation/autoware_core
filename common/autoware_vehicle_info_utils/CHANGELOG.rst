@@ -7,8 +7,8 @@ Changelog for package autoware_vehicle_info_utils
 * refactor(autoware_vehicle_info_utils): rewrite using modern C++ without API breakage (`#343 <https://github.com/autowarefoundation/autoware_core/issues/343>`_)
 * Contributors: Yutaka Kondo
 
-Forthcoming
------------
+1.6.0 (2025-12-30)
+------------------
 * Merge remote-tracking branch 'origin/main' into prepare-1.6.0-changelog
 * docs: fix broken links (`#779 <https://github.com/autowarefoundation/autoware_core/issues/779>`_)
 * refactor(vehicle_info_utils): reduce autoware_utils deps (`#754 <https://github.com/autowarefoundation/autoware_core/issues/754>`_)

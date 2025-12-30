@@ -2,8 +2,8 @@
 Changelog for package autoware_euclidean_cluster_object_detector
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.6.0 (2025-12-30)
+------------------
 * Merge remote-tracking branch 'origin/main' into prepare-1.6.0-changelog
 * fix(autoware_euclidean_cluster_object_detector): prevent zero division in getCentroid (`#745 <https://github.com/autowarefoundation/autoware_core/issues/745>`_)
   - Add zero division check in getCentroid() function

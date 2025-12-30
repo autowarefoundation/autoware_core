@@ -5,8 +5,8 @@ Changelog for package autoware_motion_velocity_planner
 1.1.0 (2025-05-01)
 ------------------
 
-Forthcoming
------------
+1.6.0 (2025-12-30)
+------------------
 * Merge remote-tracking branch 'origin/main' into prepare-1.6.0-changelog
 * docs: fix broken links (`#779 <https://github.com/autowarefoundation/autoware_core/issues/779>`_)
 * chore: tf2_ros to hpp headers (`#616 <https://github.com/autowarefoundation/autoware_core/issues/616>`_)

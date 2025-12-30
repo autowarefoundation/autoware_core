@@ -5,8 +5,8 @@ Changelog for package autoware_behavior_velocity_planner_common
 1.1.0 (2025-05-01)
 ------------------
 
-Forthcoming
------------
+1.6.0 (2025-12-30)
+------------------
 
 1.5.0 (2025-11-16)
 ------------------
