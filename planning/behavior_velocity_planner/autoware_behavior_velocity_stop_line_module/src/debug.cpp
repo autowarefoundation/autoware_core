@@ -15,7 +15,7 @@
 #include "autoware/motion_utils/marker/virtual_wall_marker_creator.hpp"
 #include "scene.hpp"
 
-#include <autoware_utils/geometry/geometry.hpp>
+#include <autoware_utils_geometry/boost_geometry.hpp>
 
 namespace autoware::behavior_velocity_planner
 {
@@ -29,7 +29,7 @@ autoware::motion_utils::VirtualWalls StopLineModule::createVirtualWalls()
     wall.text = "stopline";
     wall.style = autoware::motion_utils::VirtualWallType::stop;
     wall.ns = std::to_string(module_id_) + "_";
-    wall.pose = autoware_utils::calc_offset_pose(
+    wall.pose = autoware_utils_geometry::calc_offset_pose(
       *debug_data_.stop_pose, debug_data_.base_link2front, 0.0, 0.0);
     virtual_walls.push_back(wall);
   }

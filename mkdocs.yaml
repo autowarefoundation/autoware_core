@@ -50,7 +50,7 @@ extra_css:
 
 extra_javascript:
   - docs/assets/js/mathjax.js
-  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
 
 plugins:
@@ -63,7 +63,9 @@ plugins:
       module_name: mkdocs_macros
   - mkdocs-video
   - same-dir
-  - search
+  # https://squidfunk.github.io/mkdocs-material/plugins/search/#config.separator
+  - search:
+      separator: '[\s\-_,:!=\[\]()"/]+|(?!\b)(?=[A-Z][a-z])|\.(?!\d)|&[lg]t;'
 
 markdown_extensions:
   - abbr
@@ -82,13 +84,10 @@ markdown_extensions:
       format: svg
   - pymdownx.arithmatex:
       generic: true
-  - pymdownx.tasklist:
-      custom_checkbox: true
   - pymdownx.details
   - pymdownx.emoji:
       emoji_index: !!python/name:materialx.emoji.twemoji
       emoji_generator: !!python/name:materialx.emoji.to_svg
-  - pymdownx.details
   - pymdownx.highlight
   - pymdownx.snippets:
       auto_append:
@@ -98,6 +97,8 @@ markdown_extensions:
         - name: mermaid
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tasklist:
+      custom_checkbox: true
   - toc:
       permalink: "#"
       toc_depth: 3

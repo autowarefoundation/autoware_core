@@ -25,8 +25,9 @@ using autoware::motion_utils::findNearestIndex;
 
 SimplePurePursuitNode::SimplePurePursuitNode(const rclcpp::NodeOptions & node_options)
 : Node("simple_pure_pursuit", node_options),
-  pub_control_command_(create_publisher<autoware_control_msgs::msg::Control>(
-    "~/output/control_command", rclcpp::QoS(1).transient_local())),
+  pub_control_command_(
+    create_publisher<autoware_control_msgs::msg::Control>(
+      "~/output/control_command", rclcpp::QoS(1).transient_local())),
   vehicle_info_(autoware::vehicle_info_utils::VehicleInfoUtils(*this).getVehicleInfo()),
   lookahead_gain_(declare_parameter<float>("lookahead_gain")),
   lookahead_min_distance_(declare_parameter<float>("lookahead_min_distance")),
@@ -62,6 +63,18 @@ void SimplePurePursuitNode::on_timer()
 autoware_control_msgs::msg::Control SimplePurePursuitNode::create_control_command(
   const Odometry & odom, const Trajectory & traj)
 {
+  // Check for empty trajectory
+  if (traj.points.empty()) {
+    RCLCPP_WARN_THROTTLE(
+      get_logger(), *get_clock(), 5000,
+      "Received empty trajectory, returning zero velocity command.");
+    autoware_control_msgs::msg::Control cmd;
+    cmd.stamp = odom.header.stamp;
+    cmd.longitudinal.velocity = 0.0;
+    cmd.longitudinal.acceleration = 0.0;
+    return cmd;
+  }
+
   const size_t closest_traj_point_idx = findNearestIndex(traj.points, odom.pose.pose.position);
 
   // when the ego reaches the goal

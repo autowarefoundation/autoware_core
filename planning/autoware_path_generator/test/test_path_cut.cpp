@@ -15,6 +15,7 @@
 #include "utils_test.hpp"
 
 #include <autoware/trajectory/interpolator/linear.hpp>
+#include <autoware_lanelet2_extension/utility/message_conversion.hpp>
 
 #include <lanelet2_core/geometry/Lanelet.h>
 
@@ -77,7 +78,8 @@ TEST_F(UtilsTest, getBorderPoint)
   }
 
   {  // segment has only 1 point
-    const auto result = utils::get_border_point({{}}, get_lanelets_from_ids({122}).front());
+    const auto result =
+      utils::get_border_point({{0.0, 0.0, 0.0}}, get_lanelets_from_ids({122}).front());
 
     ASSERT_FALSE(result);
   }
@@ -93,10 +95,11 @@ TEST_F(UtilsTest, getBorderPoint)
     const auto result = utils::get_border_point(
       {{3759, 73752, 19.284}, {3759, 73753, 19.284}}, get_lanelets_from_ids({122}).front());
 
-    ASSERT_TRUE(result);
-    ASSERT_NEAR(result->x(), 3759.00, epsilon);
-    ASSERT_NEAR(result->y(), 73752.60, epsilon);
-    ASSERT_NEAR(result->z(), 19.28, epsilon);
+    ASSERT_TRUE(result.has_value());
+    const auto & pt = *result;  // NOLINT(bugprone-unchecked-optional-access)
+    ASSERT_NEAR(pt.x(), 3759.00, epsilon);
+    ASSERT_NEAR(pt.y(), 73752.60, epsilon);
+    ASSERT_NEAR(pt.z(), 19.28, epsilon);
   }
 }
 
@@ -111,7 +114,8 @@ TEST_P(GetFirstIntersectionArcLengthTest, getFirstIntersectionArcLength)
 
   constexpr auto epsilon = 1e-1;
   if (p.expected_s_intersection.has_value()) {
-    ASSERT_NEAR(*result, *p.expected_s_intersection, epsilon);
+    ASSERT_NEAR(
+      *result, *p.expected_s_intersection, epsilon);  // NOLINT(bugprone-unchecked-optional-access)
   }
 }
 
@@ -207,8 +211,9 @@ TEST_F(UtilsTest, getFirstStartEdgeBoundIntersectionArcLength)
       to_geometry_msgs_points(dummy_lanelet_sequence.rightBound()));
 
   {  // lanelet sequence is empty
+    const auto dummy_start_edge = lanelet::BasicLineString2d{{0.0, 0.0}, {0.0, 1.0}};
     const auto result = utils::get_first_start_edge_bound_intersection_arc_length(
-      {}, {{}, {}}, dummy_left_bound, dummy_right_bound, {}, {});
+      {}, dummy_start_edge, dummy_left_bound, dummy_right_bound, {}, {});
 
     ASSERT_FALSE(result);
   }
@@ -226,8 +231,9 @@ TEST_F(UtilsTest, getFirstStartEdgeCenterlineIntersectionArcLength)
   const lanelet::LaneletSequence dummy_lanelet_sequence(get_lanelets_from_ids({122}));
 
   {  // lanelet sequence is empty
-    const auto result =
-      utils::get_first_start_edge_centerline_intersection_arc_length({}, {{}, {}}, {}, {}, {});
+    const auto dummy_start_edge = lanelet::BasicLineString2d{{0.0, 0.0}, {0.0, 1.0}};
+    const auto result = utils::get_first_start_edge_centerline_intersection_arc_length(
+      {}, dummy_start_edge, {}, {}, {});
 
     ASSERT_FALSE(result);
   }
@@ -378,10 +384,11 @@ TEST_F(UtilsTest, buildCroppedTrajectory)
 
     ASSERT_TRUE(result);
 
-    const auto start = result->compute(0);
+    const auto start = result->compute(0);  // NOLINT(bugprone-unchecked-optional-access)
     ASSERT_NEAR(start.x, 1.0, epsilon);
     ASSERT_NEAR(start.y, 0.0, epsilon);
-    const auto end = result->compute(result->length());
+    const auto end =
+      result->compute(result->length());  // NOLINT(bugprone-unchecked-optional-access)
     ASSERT_NEAR(end.x, 2.0, epsilon);
     ASSERT_NEAR(end.y, 0.0, epsilon);
   }
@@ -403,10 +410,11 @@ TEST_F(UtilsTest, buildCroppedTrajectory)
 
     ASSERT_TRUE(result);
 
-    const auto start = result->compute(0);
+    const auto start = result->compute(0);  // NOLINT(bugprone-unchecked-optional-access)
     ASSERT_NEAR(start.x, 1.0, epsilon);
     ASSERT_NEAR(start.y, 0.0, epsilon);
-    const auto end = result->compute(result->length());
+    const auto end =
+      result->compute(result->length());  // NOLINT(bugprone-unchecked-optional-access)
     ASSERT_NEAR(end.x, 3.0, epsilon);
     ASSERT_NEAR(end.y, 0.0, epsilon);
   }
@@ -462,9 +470,9 @@ TEST_F(UtilsTest, GetArcLengthOnCenterline)
     const auto [left, right] = utils::get_arc_length_on_centerline({}, {{}}, {{}});
 
     ASSERT_TRUE(left.has_value());
-    ASSERT_NEAR(*left, {}, epsilon);
+    ASSERT_NEAR(*left, {}, epsilon);  // NOLINT(bugprone-unchecked-optional-access)
     ASSERT_TRUE(right.has_value());
-    ASSERT_NEAR(*right, {}, epsilon);
+    ASSERT_NEAR(*right, {}, epsilon);  // NOLINT(bugprone-unchecked-optional-access)
   }
 
   {  // normal case
@@ -472,9 +480,9 @@ TEST_F(UtilsTest, GetArcLengthOnCenterline)
       utils::get_arc_length_on_centerline(get_lanelets_from_ids({50}), 11.293, 8.823);
 
     ASSERT_TRUE(left.has_value());
-    ASSERT_NEAR(*left, 10.0, epsilon);
+    ASSERT_NEAR(*left, 10.0, epsilon);  // NOLINT(bugprone-unchecked-optional-access)
     ASSERT_TRUE(right.has_value());
-    ASSERT_NEAR(*right, 10.0, epsilon);
+    ASSERT_NEAR(*right, 10.0, epsilon);  // NOLINT(bugprone-unchecked-optional-access)
   }
 
   {  // input arc length is negative
@@ -482,9 +490,9 @@ TEST_F(UtilsTest, GetArcLengthOnCenterline)
       utils::get_arc_length_on_centerline(get_lanelets_from_ids({50}), -10, -10);
 
     ASSERT_TRUE(left.has_value());
-    ASSERT_NEAR(*left, 0.0, epsilon);
+    ASSERT_NEAR(*left, 0.0, epsilon);  // NOLINT(bugprone-unchecked-optional-access)
     ASSERT_TRUE(right.has_value());
-    ASSERT_NEAR(*right, 0.0, epsilon);
+    ASSERT_NEAR(*right, 0.0, epsilon);  // NOLINT(bugprone-unchecked-optional-access)
   }
 
   {  // input arc length exceeds lanelet length
@@ -492,9 +500,9 @@ TEST_F(UtilsTest, GetArcLengthOnCenterline)
       utils::get_arc_length_on_centerline(get_lanelets_from_ids({50}), 100.0, 100.0);
 
     ASSERT_TRUE(left.has_value());
-    ASSERT_NEAR(*left, 100.0, epsilon);
+    ASSERT_NEAR(*left, 100.0, epsilon);  // NOLINT(bugprone-unchecked-optional-access)
     ASSERT_TRUE(right.has_value());
-    ASSERT_NEAR(*right, 100.0, epsilon);
+    ASSERT_NEAR(*right, 100.0, epsilon);  // NOLINT(bugprone-unchecked-optional-access)
   }
 
   {  // input arc length is null
