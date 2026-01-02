@@ -931,12 +931,12 @@ void VelocitySmootherNode::applyExternalVelocityLimit(TrajectoryPoints & traj) c
 {
   autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
 
-  if (traj.size() < 1) {
-    return;
-  }
-
   trajectory_utils::applyMaximumVelocityLimit(
     0, traj.size(), max_velocity_with_deceleration_, traj);
+
+  if (traj.size() < 2) {
+    return;
+  }
 
   // insert the point at the distance of external velocity limit
   const size_t anchor_idx = findNearestIndexFromEgo(traj);
