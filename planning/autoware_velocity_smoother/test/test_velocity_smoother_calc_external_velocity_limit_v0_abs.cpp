@@ -129,29 +129,23 @@ TEST_F(VelocitySmootherCalcExternalVelocityLimit, V0IsTreatedAsAbsoluteValue)
   auto node = createNode();
   autoware::velocity_smoother::test::VelocitySmootherTestAccessor accessor{*node};
 
-  // Provide required internal pointers.
   auto odom = std::make_shared<nav_msgs::msg::Odometry>();
-  odom->twist.twist.linear.x = 10.0;  // ensure not engage status due to low vehicle speed
+  odom->twist.twist.linear.x = 10.0;
   accessor.setCurrentOdometry(odom);
 
   auto accel = std::make_shared<geometry_msgs::msg::AccelWithCovarianceStamped>();
   accel->accel.accel.linear.x = 0.0;
   accessor.setCurrentAcceleration(accel);
-
-  // External velocity limit decreases from current external_velocity_limit_.velocity.
   auto external = std::make_shared<autoware_internal_planning_msgs::msg::VelocityLimit>();
   external->max_velocity = 2.0;
   external->use_constraints = false;
   accessor.setExternalVelocityLimitPtr(external);
 
-  // Make the branch "external velocity limit decreases" run.
   accessor.setExternalVelocityLimitStateVelocity(10.0);
 
-  // Pretend we have prev_output and a closest point.
   accessor.setPrevOutputSize(2);
   {
     auto closest = autoware_planning_msgs::msg::TrajectoryPoint{};
-    // Regression stimulus: v0 is negative.
     closest.longitudinal_velocity_mps = -5.0;
     closest.acceleration_mps2 = 0.0;
     accessor.setCurrentClosestPointFromPrevOutput(closest);
