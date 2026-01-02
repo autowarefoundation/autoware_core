@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__VELOCITY_SMOOTHER__TEST__VELOCITY_SMOOTHER_TEST_ACCESSOR_HPP_
-#define AUTOWARE__VELOCITY_SMOOTHER__TEST__VELOCITY_SMOOTHER_TEST_ACCESSOR_HPP_
+#ifndef VELOCITY_SMOOTHER_TEST_ACCESSOR_HPP_
+#define VELOCITY_SMOOTHER_TEST_ACCESSOR_HPP_
 
 #include "autoware/velocity_smoother/node.hpp"
 
@@ -76,7 +76,7 @@ public:
 private:
   VelocitySmootherNode & node_;
 };
- 
+
 }  // namespace autoware::velocity_smoother::test
 
-#endif  // AUTOWARE__VELOCITY_SMOOTHER__TEST__VELOCITY_SMOOTHER_TEST_ACCESSOR_HPP_
+#endif  // VELOCITY_SMOOTHER_TEST_ACCESSOR_HPP_
