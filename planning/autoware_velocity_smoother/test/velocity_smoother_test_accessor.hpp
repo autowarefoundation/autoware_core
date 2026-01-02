@@ -55,11 +55,6 @@ public:
     node_.external_velocity_limit_ptr_ = external_limit;
   }
 
-  void setExternalVelocityLimitStateVelocity(const double v)
-  {
-    node_.external_velocity_limit_.velocity = v;
-  }
-
   void setPrevOutputSize(const std::size_t size) { node_.prev_output_.resize(size); }
 
   void setMaxVelocityWithDeceleration(const double v) { node_.max_velocity_with_deceleration_ = v; }
