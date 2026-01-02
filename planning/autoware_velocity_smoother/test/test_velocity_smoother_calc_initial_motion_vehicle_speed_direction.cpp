@@ -42,9 +42,9 @@
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <autoware_test_utils/autoware_test_utils.hpp>
 
-#include <gtest/gtest.h>
-
 #include <boost/math/constants/constants.hpp>
+
+#include <gtest/gtest.h>
 
 #include <chrono>
 #include <cmath>
@@ -91,7 +91,7 @@ Trajectory createBackwardTrajectory(size_t num_points, double spacing, double ve
       start_x - static_cast<double>(i) * spacing,  // x decreasing
       0.0,                                         // y
       pi<double>(),  // yaw (facing -X for reverse, vehicle rear first)
-      velocity));  // negative velocity for reverse
+      velocity));    // negative velocity for reverse
   }
   // Stop at the end
   if (!traj.points.empty()) {
@@ -169,7 +169,8 @@ protected:
  *
  * The assertion checks that |first_vel| ≈ 2.0 (fix) not ≈ 3.0 (bug).
  */
-TEST_F(VelocitySmootherCalcInitialMotionVehicleSpeedDirectionTest,
+TEST_F(
+  VelocitySmootherCalcInitialMotionVehicleSpeedDirectionTest,
   CalcInitialMotionVehicleSpeedDirectionTriggersReplan)
 {
   using std::chrono_literals::operator""ms;
@@ -183,9 +184,8 @@ TEST_F(VelocitySmootherCalcInitialMotionVehicleSpeedDirectionTest,
     node->create_publisher<nav_msgs::msg::Odometry>("/localization/kinematic_state", 1);
   auto accel_pub = node->create_publisher<geometry_msgs::msg::AccelWithCovarianceStamped>(
     "~/input/acceleration", 1);
-  auto vel_limit_pub =
-    node->create_publisher<autoware_internal_planning_msgs::msg::VelocityLimit>(
-      "~/input/external_velocity_limit_mps", 1);
+  auto vel_limit_pub = node->create_publisher<autoware_internal_planning_msgs::msg::VelocityLimit>(
+    "~/input/external_velocity_limit_mps", 1);
   auto op_mode_pub = node->create_publisher<autoware_adapi_v1_msgs::msg::OperationModeState>(
     "~/input/operation_mode_state", 1);
 
