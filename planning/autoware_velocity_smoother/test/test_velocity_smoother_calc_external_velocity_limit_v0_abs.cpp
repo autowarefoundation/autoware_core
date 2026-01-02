@@ -153,6 +153,10 @@ TEST_F(VelocitySmootherCalcExternalVelocityLimit, V0IsTreatedAsAbsoluteValue)
 
   accessor.calcExternalVelocityLimit();
 
+  EXPECT_GT(accessor.maxVelocityWithDeceleration(), 0.0)
+    << "maxVelocityWithDeceleration() must be positive when v0 is treated as absolute value. "
+    << "Got: " << accessor.maxVelocityWithDeceleration();
+
   autoware::velocity_smoother::TrajectoryPoints traj(20);
   std::generate(traj.begin(), traj.end(), [n = 0]() mutable {
     autoware_planning_msgs::msg::TrajectoryPoint p;
