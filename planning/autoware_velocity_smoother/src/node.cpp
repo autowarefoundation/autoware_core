@@ -931,10 +931,17 @@ void VelocitySmootherNode::applyExternalVelocityLimit(TrajectoryPoints & traj) c
 {
   autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
 
+  if (traj.size() < 1) {
+    return;
+  }
+
   trajectory_utils::applyMaximumVelocityLimit(
     0, traj.size(), max_velocity_with_deceleration_, traj);
 
+  // For single-point trajectories, just clamp the velocity and return
   if (traj.size() < 2) {
+    traj.back().longitudinal_velocity_mps = std::min(
+      traj.back().longitudinal_velocity_mps, static_cast<float>(external_velocity_limit_.velocity));
     return;
   }
 

@@ -136,6 +136,33 @@ TEST_F(VelocitySmootherApplyExternalVelocityLimitTest, DoesNothingForEmptyTrajec
   EXPECT_TRUE(traj.empty());
 }
 
+TEST_F(VelocitySmootherApplyExternalVelocityLimitTest, ClampsVelocityForSinglePointTrajectory)
+{
+  // Purpose: Verify that single-point trajectories are handled gracefully without crashes
+  // and that the velocity limit is applied to the single point.
+  // This is a critical edge case because line 943 in node.cpp computes traj.size() - 2,
+  // which would underflow when traj.size() == 1. The early return at line 937 prevents this.
+  auto node = create_node();
+  VelocitySmootherTestAccessor accessor{*node};
+  accessor.setCurrentOdometry(make_odom_ptr(0.0, 0.0, 0.0, 10.0));
+  accessor.setMaxVelocityWithDeceleration(100.0);
+  accessor.setExternalVelocityLimitDistance(5.0);
+  accessor.setExternalVelocityLimitVelocity(2.0);
+
+  TrajectoryPoints traj;
+  traj.push_back(make_point(0.0, 0.0, 0.0, 10.0));  // Single point with velocity 10.0
+
+  ASSERT_EQ(traj.size(), 1u);
+  accessor.applyExternalVelocityLimit(traj);
+
+  // Should still have exactly one point (no insertion possible)
+  ASSERT_EQ(traj.size(), 1u);
+
+  // The velocity should be clamped to the external limit
+  constexpr double vel_eps = 1.0e-3;
+  EXPECT_LE(traj.at(0).longitudinal_velocity_mps, 2.0F + vel_eps);
+}
+
 TEST_F(VelocitySmootherApplyExternalVelocityLimitTest, ClampsLastPointWhenInsertionIsOutOfRange)
 {
   // Purpose: if insertion cannot be done (distance exceeds trajectory), the function still
