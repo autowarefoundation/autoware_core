@@ -657,32 +657,34 @@ TEST_F(
 //   *---------|--------------*---------------*-------------*
 //   0       ego_x        ego_x+dist         10            20
 //
-// Example:
-// - Trajectory points at x=0,10,20
-// - Ego at x=2.0
-// - External velocity limit distance = 5.5m ahead of ego
-//         segment 1
-// P0────P1────[ego]────P2────P3────P4
-//       |←─1.5m─→|
-// Previously, the code measured the insertion distance from P1 (segment start).
+// Example (actual test values):
+// - Trajectory points at x=0, 10, 20 (3 points)
+// - Ego at x=1.5
+// - External velocity limit distance = 10.0m ahead of ego
+// - Expected insertion at x=11.5 (ego_x + dist)
+//
+// Ego is in segment 0 (p0->p1), offset 1.5m from p0.
+// Previously, the code measured the insertion distance from P0 (segment start).
 // This would insert the new point at X=dist (wrong).
-// closest_seg_idx = 1
-// insertTargetPoint(seg=1, dist)  // e.g., 10m from P1
-// → Point inserted only 8.5m ahead of ego!
+// closest_seg_idx = 0
+// insertTargetPoint(seg=0, 10.0)  // 10.0m from P0
+// → Point inserted at x=10.0, only 8.5m ahead of ego!
+//
 // Currently, the code measures the insertion distance from ego projection.
-// anchor_seg_idx = 1
-// offset = 1.5m  (ego is 1.5m into segment 1)
-// insertTargetPoint(seg=1, dist + 1.5)  // e.g., 10 + 1.5 = 11.5m from P1
-// // → Point inserted 10m AHEAD of ego ✓
-// Goal: Insert velocity limit 10m ahead of ego
-// With offset:
-// P1────[ego]────P2────────────────────[LIMIT]────
-// |←1.5m→|←──────────── 10.0m ─────────→|
-// |←─────────── 11.5m from P1 ──────────→|
-// Without offset:
-// P1────[ego]────P2────────────[LIMIT]──────────
-// |←─────── 10.0m from P1 ─────→|
-//       |←──── only 8.5m! ──────→|
+// anchor_seg_idx = 0
+// offset = 1.5m  (ego is 1.5m into segment 0)
+// insertTargetPoint(seg=0, dist + offset) = insertTargetPoint(seg=0, 11.5)
+// → Point inserted at x=11.5, exactly 10.0m AHEAD of ego ✓
+//
+// Diagram with correct values:
+// P0────[ego]─────────────────────────[LIMIT]──P1─────────P2
+// |←1.5m→|←────────── 10.0m ──────────→|
+// |←──────────── 11.5m from P0 ─────────→|
+//
+// Without offset (buggy):
+// P0────[ego]────────────[LIMIT]──P1─────────P2
+// |←───────── 10.0m from P0 ─────→|
+//       |←──── only 8.5m! ────→|
 TEST_F(
   VelocitySmootherApplyExternalVelocityLimitTest,
   InsertsPointAtDistanceAheadOfEgoAndClampsFromThere)
