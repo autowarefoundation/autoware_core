@@ -66,10 +66,10 @@ if(BUILD_TESTING)
   target_link_libraries(test_${PROJECT_NAME}
     ${PROJECT_NAME}_node
   )
-  ament_add_ros_isolated_gtest(test_${PROJECT_NAME}_calc_initial_motion_vehicle_speed_direction
-    test/test_velocity_smoother_calc_initial_motion_vehicle_speed_direction.cpp
+  ament_add_ros_isolated_gtest(test_${PROJECT_NAME}_calc_external_velocity_limit_v0_abs
+    test/test_velocity_smoother_calc_external_velocity_limit_v0_abs.cpp
   )
-  target_link_libraries(test_${PROJECT_NAME}_calc_initial_motion_vehicle_speed_direction
+  target_link_libraries(test_${PROJECT_NAME}_calc_external_velocity_limit_v0_abs
     ${PROJECT_NAME}_node
   )
 
