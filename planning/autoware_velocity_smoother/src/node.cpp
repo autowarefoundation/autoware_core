@@ -799,9 +799,12 @@ std::pair<Motion, VelocitySmootherNode::InitializeType> VelocitySmootherNode::ca
 {
   autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
 
-  const double vehicle_speed = std::fabs(current_odometry_ptr_->twist.twist.linear.x);
+  // ego motion w.r.t trajectory orientation
+  const double vehicle_speed =
+    (is_reverse_ ? -1.0 : 1.0) * current_odometry_ptr_->twist.twist.linear.x;
   const double vehicle_acceleration = current_acceleration_ptr_->accel.accel.linear.x;
-  const double target_vel = std::fabs(input_traj.at(input_closest).longitudinal_velocity_mps);
+  // always > 0
+  const double target_vel = input_traj.at(input_closest).longitudinal_velocity_mps;
 
   // first time
   if (!current_closest_point_from_prev_output_) {
@@ -812,7 +815,7 @@ std::pair<Motion, VelocitySmootherNode::InitializeType> VelocitySmootherNode::ca
   // when velocity tracking deviation is large
   const double desired_vel = current_closest_point_from_prev_output_->longitudinal_velocity_mps;
   const double desired_acc = current_closest_point_from_prev_output_->acceleration_mps2;
-  const double vel_error = vehicle_speed - std::fabs(desired_vel);
+  const double vel_error = vehicle_speed - desired_vel;
 
   if (std::fabs(vel_error) > node_param_.replan_vel_deviation) {
     RCLCPP_DEBUG(

@@ -66,6 +66,12 @@ if(BUILD_TESTING)
   target_link_libraries(test_${PROJECT_NAME}
     ${PROJECT_NAME}_node
   )
+  ament_add_ros_isolated_gtest(test_${PROJECT_NAME}_calc_initial_motion_vehicle_speed_direction
+    test/test_velocity_smoother_calc_initial_motion_vehicle_speed_direction.cpp
+  )
+  target_link_libraries(test_${PROJECT_NAME}_calc_initial_motion_vehicle_speed_direction
+    ${PROJECT_NAME}_node
+  )
 endif()
 
 
