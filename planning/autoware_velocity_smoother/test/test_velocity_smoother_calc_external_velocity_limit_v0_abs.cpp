@@ -141,7 +141,7 @@ TEST_F(VelocitySmootherCalcExternalVelocityLimit, V0IsTreatedAsAbsoluteValue)
   external->use_constraints = false;
   accessor.setExternalVelocityLimitPtr(external);
 
-  accessor.setExternalVelocityLimitStateVelocity(10.0);
+  accessor.setExternalVelocityLimitVelocity(10.0);
 
   accessor.setPrevOutputSize(2);
   {
