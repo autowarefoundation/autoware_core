@@ -189,7 +189,7 @@ lanelet::ConstLanelets get_dirty_expanded_lanelets(
  * @brief get the centerline of ConstLanelet with offset
  * @param[in] lanelet_obj target lanelet
  * @param[in] offset offset
- * Sign Convention: (Same as centerline)
+ * Sign Convention:
  * Positive: to the left bound
  * Negative: to the right bound
  * @return ConstLineString3d which is the ConstLanelet's centerline with offset
