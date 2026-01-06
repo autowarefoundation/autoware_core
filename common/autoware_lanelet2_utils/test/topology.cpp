@@ -148,6 +148,19 @@ TEST_F(TestWithIntersectionCrossingMap, all_neighbor_lanelets)
   // Right
   EXPECT_EQ(lanes.value()[3].id(), 2247);
   EXPECT_EQ(lanes.value()[4].id(), 2248);
+
+  // check that the first lane is leftmost
+  {
+    auto leftmost_opt = lanelet2_utils::left_lanelet(
+      lanelet_map_ptr_->laneletLayer.get(lanes.value().front().id()), routing_graph_ptr_);
+    EXPECT_FALSE(leftmost_opt.has_value());
+  }
+  // check that the last lane is leftmost
+  {
+    auto rightmost_opt = lanelet2_utils::right_lanelet(
+      lanelet_map_ptr_->laneletLayer.get(lanes.value().back().id()), routing_graph_ptr_);
+    EXPECT_FALSE(rightmost_opt.has_value());
+  }
 }
 
 TEST_F(TestWithIntersectionCrossingMap, right_opposite_lanelet_valid)
