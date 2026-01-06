@@ -18,6 +18,7 @@
 #include <autoware/lanelet2_utils/geometry.hpp>
 #include <autoware/lanelet2_utils/kind.hpp>
 #include <autoware/lanelet2_utils/nn_search.hpp>
+#include <autoware/lanelet2_utils/topology.hpp>
 #include <autoware_lanelet2_extension/io/autoware_osm_parser.hpp>
 #include <autoware_lanelet2_extension/utility/message_conversion.hpp>
 #include <autoware_lanelet2_extension/utility/query.hpp>
@@ -312,9 +313,11 @@ void RouteHandler::setRouteLanelets(const lanelet::ConstLanelets & path_lanelets
 {
   if (!path_lanelets.empty()) {
     const auto & first_lanelet = path_lanelets.front();
-    start_lanelets_ = lanelet::utils::query::getAllNeighbors(routing_graph_ptr_, first_lanelet);
+    start_lanelets_ = *autoware::experimental::lanelet2_utils::all_neighbor_lanelets(
+      first_lanelet, routing_graph_ptr_);
     const auto & last_lanelet = path_lanelets.back();
-    goal_lanelets_ = lanelet::utils::query::getAllNeighbors(routing_graph_ptr_, last_lanelet);
+    goal_lanelets_ = *autoware::experimental::lanelet2_utils::all_neighbor_lanelets(
+      last_lanelet, routing_graph_ptr_);
   }
 
   // set route lanelets
@@ -1580,7 +1583,7 @@ int RouteHandler::getNumLaneToPreferredLane(
   if ((direction == Direction::NONE) || (direction == Direction::RIGHT)) {
     int num{0};
     const auto & right_lanes =
-      lanelet::utils::query::getAllNeighborsRight(routing_graph_ptr_, lanelet);
+      *autoware::experimental::lanelet2_utils::right_lanelets(lanelet, routing_graph_ptr_);
     for (const auto & right : right_lanes) {
       num--;
       if (exists(preferred_lanelets_, right)) {
@@ -1591,7 +1594,7 @@ int RouteHandler::getNumLaneToPreferredLane(
 
   if ((direction == Direction::NONE) || (direction == Direction::LEFT)) {
     const auto & left_lanes =
-      lanelet::utils::query::getAllNeighborsLeft(routing_graph_ptr_, lanelet);
+      *autoware::experimental::lanelet2_utils::left_lanelets(lanelet, routing_graph_ptr_);
     int num = 0;
     for (const auto & left : left_lanes) {
       num++;
@@ -1615,7 +1618,7 @@ std::vector<double> RouteHandler::getLateralIntervalsToPreferredLane(
     std::vector<double> intervals;
     lanelet::ConstLanelet current_lanelet = lanelet;
     const auto & right_lanes =
-      lanelet::utils::query::getAllNeighborsRight(routing_graph_ptr_, lanelet);
+      *autoware::experimental::lanelet2_utils::right_lanelets(lanelet, routing_graph_ptr_);
     for (const auto & right : right_lanes) {
       const auto & current_centerline = current_lanelet.centerline();
       const auto & next_centerline = right.centerline();
@@ -1637,7 +1640,7 @@ std::vector<double> RouteHandler::getLateralIntervalsToPreferredLane(
     std::vector<double> intervals;
     lanelet::ConstLanelet current_lanelet = lanelet;
     const auto & left_lanes =
-      lanelet::utils::query::getAllNeighborsLeft(routing_graph_ptr_, lanelet);
+      *autoware::experimental::lanelet2_utils::left_lanelets(lanelet, routing_graph_ptr_);
     for (const auto & left : left_lanes) {
       const auto & current_centerline = current_lanelet.centerline();
       const auto & next_centerline = left.centerline();
@@ -2017,7 +2020,7 @@ lanelet::ConstLanelets RouteHandler::getPreviousLaneletSequence(
   }
 
   auto right_relations =
-    lanelet::utils::query::getAllNeighborsRight(routing_graph_ptr_, first_lane);
+    *autoware::experimental::lanelet2_utils::right_lanelets(first_lane, routing_graph_ptr_);
   for (const auto & right : right_relations) {
     previous_lanelet_sequence = getLaneletSequenceUpTo(right);
     if (!previous_lanelet_sequence.empty()) {
@@ -2025,7 +2028,8 @@ lanelet::ConstLanelets RouteHandler::getPreviousLaneletSequence(
     }
   }
 
-  auto left_relations = lanelet::utils::query::getAllNeighborsLeft(routing_graph_ptr_, first_lane);
+  auto left_relations =
+    *autoware::experimental::lanelet2_utils::left_lanelets(first_lane, routing_graph_ptr_);
   for (const auto & left : left_relations) {
     previous_lanelet_sequence = getLaneletSequenceUpTo(left);
     if (!previous_lanelet_sequence.empty()) {
@@ -2039,7 +2043,7 @@ lanelet::ConstLanelets RouteHandler::getNeighborsWithinRoute(
   const lanelet::ConstLanelet & lanelet) const
 {
   const lanelet::ConstLanelets neighbor_lanelets =
-    lanelet::utils::query::getAllNeighbors(routing_graph_ptr_, lanelet);
+    *autoware::experimental::lanelet2_utils::all_neighbor_lanelets(lanelet, routing_graph_ptr_);
   lanelet::ConstLanelets neighbors_within_route;
   for (const auto & llt : neighbor_lanelets) {
     if (exists(route_lanelets_, llt)) {
