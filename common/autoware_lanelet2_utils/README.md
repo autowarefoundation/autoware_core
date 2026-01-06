@@ -46,9 +46,9 @@ This package aims to strictly define the meaning of several words to clarify the
 | `combine_lanelets_shape`                  | Combine lanelet sequence (several lanelets) into one lanelet.                                                                                                                                                                                                                                                                 |                                  | ![combine_lanelets_shape](./media/api/geometry/combine_lanelets_shape.drawio.svg)<br>[Open]({{ drawio("/common/autoware_lanelet2_utils/media/api/geometry/combine_lanelets_shape.drawio.svg") }})                                                    |
 | `get_dirty_expanded_lanelet`              | Expand the lanelet while keep the lanelet ID and Attribute. <br><br>Note: <ul><li>`left_offset` needs to be positive.</li> <li> `right_offset` needs to be negative</li></ul>                                                                                                                                                 |                                  | ![get_dirty_expanded_lanelet](./media/api/geometry/get_dirty_expanded_lanelet.drawio.svg)<br>[Open]({{ drawio("/common/autoware_lanelet2_utils/media/api/geometry/get_dirty_expanded_lanelet.drawio.svg") }})                                        |
 | `get_dirty_expanded_lanelets`             | Expand several lanelets while keep the lanelets ID and Attribute. <br><br>Note: <ul><li>`left_offset` needs to be positive.</li> <li> `right_offset` needs to be negative</li></ul>                                                                                                                                           |                                  | ![get_dirty_expanded_lanelets](./media/api/geometry/get_dirty_expanded_lanelets.drawio.svg)<br>[Open]({{ drawio("/common/autoware_lanelet2_utils/media/api/geometry/get_dirty_expanded_lanelets.drawio.svg") }})                                     |
-| `get_centerline_with_offset`              | Get the centerline of ConstLanelet with offset. <br><br>Sign Convention: <ul><li>Positive: to the left bound</li><li>Negative: to the right bound</li></ul>                                                                                                                                                                   |                                  | ![get_centerline_with_offset](./media/api/geometry/get_centerline_with_offset.drawio.svg)<br>[Open]({{ drawio("/common/autoware_lanelet2_utils/media/api/geometry/get_centerline_with_offset.drawio.svg") }})                                        |
-| `get_right_bound_with_offset`             | Get the right bound of ConstLanelet with offset. <br><br>Sign Convention: (Opposite to centerline) <ul><li>Positive: to the **right** bound</li><li>Negative: to the **left** bound</li></ul>                                                                                                                                 |                                  | ![get_right_bound_with_offset](./media/api/geometry/get_right_bound_with_offset.drawio.svg)<br>[Open]({{ drawio("/common/autoware_lanelet2_utils/media/api/geometry/get_right_bound_with_offset.drawio.svg") }})                                     |
-| `get_left_bound_with_offset`              | Get the left bound of ConstLanelet with offset. <br><br>Sign Convention: (Same as centerline) <ul><li>Positive: to the left bound</li><li>Negative: to the right bound</li></ul>                                                                                                                                              |                                  | ![get_left_bound_with_offset](./media/api/geometry/get_left_bound_with_offset.drawio.svg)<br>[Open]({{ drawio("/common/autoware_lanelet2_utils/media/api/geometry/get_left_bound_with_offset.drawio.svg") }})                                        |
+| `get_centerline_with_offset`              | Get the centerline of `ConstLanelet` with offset. <br><br>Sign Convention: <ul><li>Positive: to the left bound</li><li>Negative: to the right bound</li></ul>                                                                                                                                                                 |                                  | ![get_centerline_with_offset](./media/api/geometry/get_centerline_with_offset.drawio.svg)<br>[Open]({{ drawio("/common/autoware_lanelet2_utils/media/api/geometry/get_centerline_with_offset.drawio.svg") }})                                        |
+| `get_right_bound_with_offset`             | Get the right bound of `ConstLanelet` with offset. <br><br>Sign Convention: (Opposite to centerline) <ul><li>Positive: to the **right** bound</li><li>Negative: to the **left** bound</li></ul>                                                                                                                               |                                  | ![get_right_bound_with_offset](./media/api/geometry/get_right_bound_with_offset.drawio.svg)<br>[Open]({{ drawio("/common/autoware_lanelet2_utils/media/api/geometry/get_right_bound_with_offset.drawio.svg") }})                                     |
+| `get_left_bound_with_offset`              | Get the left bound of `ConstLanelet` with offset. <br><br>Sign Convention: (Same as centerline) <ul><li>Positive: to the left bound</li><li>Negative: to the right bound</li></ul>                                                                                                                                            |                                  | ![get_left_bound_with_offset](./media/api/geometry/get_left_bound_with_offset.drawio.svg)<br>[Open]({{ drawio("/common/autoware_lanelet2_utils/media/api/geometry/get_left_bound_with_offset.drawio.svg") }})                                        |
 
 #### Example Usage of `geometry`
 
@@ -129,6 +129,78 @@ Get closest center pose from `ConstLanelet`.
 ```cpp title="./examples/example_geometry.cpp:211:221"
 --8<--
 common/autoware_lanelet2_utils/examples/example_geometry.cpp:211:221
+--8<--
+```
+
+Get `ArcCoordinates` of query pose from lanelet sequence.
+
+```cpp title="./examples/example_geometry.cpp:259:266"
+--8<--
+common/autoware_lanelet2_utils/examples/example_geometry.cpp:259:266
+--8<--
+```
+
+Get lateral distance from query pose to lanelet centerline.
+
+```cpp title="./examples/example_geometry.cpp:297:303"
+--8<--
+common/autoware_lanelet2_utils/examples/example_geometry.cpp:297:303
+--8<--
+```
+
+Get lateral distance from query pose to lanelet sequence centerline (the closest lanelet).
+
+```cpp title="./examples/example_geometry.cpp:308:314"
+--8<--
+common/autoware_lanelet2_utils/examples/example_geometry.cpp:308:314
+--8<--
+```
+
+Combine two lanelets (lanelet sequence, `ConstLanelets`) into one lanelet(`ConstLanelet`).
+
+```cpp title="./examples/example_geometry.cpp:341:349"
+--8<--
+common/autoware_lanelet2_utils/examples/example_geometry.cpp:341:349
+--8<--
+```
+
+Expand lanelet with positive left offset and negative right offset.
+
+```cpp title="./examples/example_geometry.cpp:377:405"
+--8<--
+common/autoware_lanelet2_utils/examples/example_geometry.cpp:377:405
+--8<--
+```
+
+Expand lanelet sequence with positive left offset and negative right offset.
+
+```cpp title="./examples/example_geometry.cpp:408:430"
+--8<--
+common/autoware_lanelet2_utils/examples/example_geometry.cpp:408:430
+--8<--
+```
+
+Get lanelet centerline with offset to left bound.
+
+```cpp title="./examples/example_geometry.cpp:448:454"
+--8<--
+common/autoware_lanelet2_utils/examples/example_geometry.cpp:448:454
+--8<--
+```
+
+Get lanelet right bound with offset to left bound.
+
+```cpp title="./examples/example_geometry.cpp:459:466"
+--8<--
+common/autoware_lanelet2_utils/examples/example_geometry.cpp:459:466
+--8<--
+```
+
+Get lanelet left bound with offset to right bound.
+
+```cpp title="./examples/example_geometry.cpp:471:478"
+--8<--
+common/autoware_lanelet2_utils/examples/example_geometry.cpp:471:478
 --8<--
 ```
 
