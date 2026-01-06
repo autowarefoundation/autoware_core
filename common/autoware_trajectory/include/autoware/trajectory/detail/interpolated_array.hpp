@@ -44,6 +44,21 @@ private:
   std::shared_ptr<interpolator::InterpolatorInterface<T>> interpolator_;
   std::function<void(const double s)> base_addition_callback_slot_{nullptr};
 
+  void set(
+    const size_t start_index, const size_t end_index, const std::function<T(const T &)> & operation)
+  {
+    // Set the values in the specified range
+    std::transform(
+      values_.begin() + start_index, values_.begin() + end_index + 1, values_.begin() + start_index,
+      operation);
+
+    const auto success = interpolator_->build(bases_, values_);
+    if (!success) {
+      throw std::runtime_error(
+        "Failed to build interpolator.");  // This Exception should not be thrown.
+    }
+  }
+
 public:
   /**
    * @brief Construct a InterpolatedArray with a given interpolator.
@@ -142,7 +157,7 @@ public:
     }
 
   public:
-    void set(const T & value)
+    void set(const std::function<T(const T &)> & operation)
     {
       std::vector<double> & bases = parent_.bases_;
       std::vector<T> & values = parent_.values_;
@@ -163,7 +178,7 @@ public:
         }
 
         // Insert into values at the corresponding position
-        values.insert(values.begin() + index, value);
+        values.insert(values.begin() + index, operation(values.at(index)));
         return index;
       };
 
@@ -178,14 +193,12 @@ public:
         std::swap(start_index, end_index);
       }
 
-      // Set the values in the specified range
-      std::fill(values.begin() + start_index, values.begin() + end_index + 1, value);
+      parent_.set(start_index, end_index, operation);
+    }
 
-      const auto success = parent_.interpolator_->build(bases, values);
-      if (!success) {
-        throw std::runtime_error(
-          "Failed to build interpolator.");  // This Exception should not be thrown.
-      }
+    void set(const T & value)
+    {
+      set([&](const T &) { return value; });
     }
   };
 
@@ -208,6 +221,13 @@ public:
     return Segment{*this, start, end};
   }
 
+  void set(const std::function<T(const T &)> & operation) { set(0, values_.size() - 1, operation); }
+
+  void set(const T & value)
+  {
+    set([&](const T &) { return value; });
+  }
+
   /**
    * @brief Assign a value to the entire array.
    * @param value Value to be assigned.
@@ -215,12 +235,7 @@ public:
    */
   InterpolatedArray & operator=(const T & value)
   {
-    std::fill(values_.begin(), values_.end(), value);
-    const auto success = interpolator_->build(bases_, values_);
-    if (!success) {
-      throw std::runtime_error(
-        "Failed to build interpolator.");  // This Exception should not be thrown.
-    }
+    set(value);
     return *this;
   }
 
