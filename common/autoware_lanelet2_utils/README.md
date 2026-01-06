@@ -250,6 +250,46 @@ common/autoware_lanelet2_utils/examples/example_hatched_road_markings.cpp:51:75
 
 #### Example Usage of `topology`
 
+Get left lanelet.
+
+```cpp title="./examples/example_topology.cpp:134:138"
+--8<--
+common/autoware_lanelet2_utils/examples/example_topology.cpp:134:138
+--8<--
+```
+
+Get right lanelet.
+
+```cpp title="./examples/example_topology.cpp:143:147"
+--8<--
+common/autoware_lanelet2_utils/examples/example_topology.cpp:143:147
+--8<--
+```
+
+Get all left lanelets.
+
+```cpp title="./examples/example_topology.cpp:152:160"
+--8<--
+common/autoware_lanelet2_utils/examples/example_topology.cpp:152:160
+--8<--
+```
+
+Get all right lanelets.
+
+```cpp title="./examples/example_topology.cpp:165:173"
+--8<--
+common/autoware_lanelet2_utils/examples/example_topology.cpp:165:173
+--8<--
+```
+
+Get all neighbor lanelets.
+
+```cpp title="./examples/example_topology.cpp:178:186"
+--8<--
+common/autoware_lanelet2_utils/examples/example_topology.cpp:178:186
+--8<--
+```
+
 Get left opposite lanelet.
 
 ```cpp title="./examples/example_topology.cpp:60:63"
