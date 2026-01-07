@@ -66,8 +66,6 @@ public:
 
   [[deprecated]] std::vector<double> get_internal_bases() const override;
 
-  std::vector<double> get_underlying_bases() const override;
-
   detail::InterpolatedArray<double> & longitudinal_velocity_mps()
   {
     return *longitudinal_velocity_mps_;

@@ -66,8 +66,6 @@ public:
 
   [[deprecated]] std::vector<double> get_internal_bases() const override;
 
-  std::vector<double> get_underlying_bases() const override;
-
   /**
    * @brief Compute the point on the trajectory at a given s value
    * @param s Arc length
