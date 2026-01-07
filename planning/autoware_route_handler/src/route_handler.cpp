@@ -1581,10 +1581,10 @@ int RouteHandler::getNumLaneToPreferredLane(
   }
 
   if ((direction == Direction::NONE) || (direction == Direction::RIGHT)) {
-    int num{0};
     const auto right_opt =
       autoware::experimental::lanelet2_utils::right_lanelets(lanelet, routing_graph_ptr_);
     if (right_opt.has_value()) {
+      int num{0};
       const auto & right_lanes = *right_opt;
       for (const auto & right : right_lanes) {
         num--;
@@ -1621,11 +1621,11 @@ std::vector<double> RouteHandler::getLateralIntervalsToPreferredLane(
   }
 
   if ((direction == Direction::NONE) || (direction == Direction::RIGHT)) {
-    std::vector<double> intervals;
     lanelet::ConstLanelet current_lanelet = lanelet;
     const auto right_opt =
       autoware::experimental::lanelet2_utils::right_lanelets(lanelet, routing_graph_ptr_);
     if (right_opt.has_value()) {
+      std::vector<double> intervals;
       const auto & right_lanes = *right_opt;
       for (const auto & right : right_lanes) {
         const auto & current_centerline = current_lanelet.centerline();
@@ -1646,11 +1646,11 @@ std::vector<double> RouteHandler::getLateralIntervalsToPreferredLane(
   }
 
   if ((direction == Direction::NONE) || (direction == Direction::LEFT)) {
-    std::vector<double> intervals;
     lanelet::ConstLanelet current_lanelet = lanelet;
     const auto left_opt =
       autoware::experimental::lanelet2_utils::left_lanelets(lanelet, routing_graph_ptr_);
     if (left_opt.has_value()) {
+      std::vector<double> intervals;
       const auto & left_lanes = *left_opt;
       for (const auto & left : left_lanes) {
         const auto & current_centerline = current_lanelet.centerline();
