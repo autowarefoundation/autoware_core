@@ -49,7 +49,7 @@ int compute_num_segments(const lanelet::ConstLanelet & lanelet, const double res
   return num_segments;
 }
 
-lanelet::BasicLineString3d resample_points(
+lanelet::BasicPoints3d resample_points(
   const lanelet::BasicLineString3d & line_string, const int num_segments)
 {
   // Note: this function works well with num_segments >= num_segment of line string
@@ -68,7 +68,7 @@ lanelet::BasicLineString3d resample_points(
 
   const double total_length = accumulated_lengths.back();
 
-  lanelet::BasicLineString3d resampled_points;
+  lanelet::BasicPoints3d resampled_points;
   for (int i = 0; i <= num_segments; ++i) {
     const double target_length = total_length * static_cast<double>(i) / num_segments;
 
@@ -79,11 +79,11 @@ lanelet::BasicLineString3d resample_points(
     size_t idx = std::distance(accumulated_lengths.begin(), it);
 
     if (idx == 0) {
-      resampled_points.emplace_back(line_string.front());
+      resampled_points.push_back(line_string.front());
       continue;
     } else if (idx >= accumulated_lengths.size()) {
-      resampled_points.emplace_back(line_string.back());
-      continue;
+      resampled_points.push_back(line_string.back());
+      break;
     }
 
     const double back_length = accumulated_lengths[idx - 1];
