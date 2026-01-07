@@ -20,6 +20,11 @@
           "description": "A value for smoothing steps",
           "default": 5
         },
+        "max_pose_queue_size": {
+          "type": "integer",
+          "description": "Maximum size of the pose queue, if multiple measurements arrive within one ekf_dt, this limits must be adjusted.",
+          "default": 5
+        },
         "pose_gate_dist": {
           "type": "number",
           "description": "Limit of Mahalanobis distance used for outliers detection",
