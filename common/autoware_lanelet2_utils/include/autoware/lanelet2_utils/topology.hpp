@@ -72,10 +72,10 @@ std::optional<lanelet::ConstLanelets> right_lanelets(
  * regardless of lane change permission
  * @param [in] lanelet input lanelet
  * @param [in] routing_graph routing_graph containing `lanelet`
- * @return optional of all adjacent lanelets(nullopt if there is no such adjacent lanelet)
+ * @return all adjacent lanelets(vector of input lanelet if there is no such adjacent lanelet)
  * @post Output is ordered from **leftmost** lanelet to `lanelet` to **rightmost** lanelet.
  */
-std::optional<lanelet::ConstLanelets> all_neighbor_lanelets(
+lanelet::ConstLanelets all_neighbor_lanelets(
   const lanelet::ConstLanelet & lanelet,
   const lanelet::routing::RoutingGraphConstPtr & routing_graph);
 

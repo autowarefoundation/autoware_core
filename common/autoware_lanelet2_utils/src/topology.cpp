@@ -88,7 +88,7 @@ std::optional<lanelet::ConstLanelets> right_lanelets(
   return lanelets;
 }
 
-std::optional<lanelet::ConstLanelets> all_neighbor_lanelets(
+lanelet::ConstLanelets all_neighbor_lanelets(
   const lanelet::ConstLanelet & lanelet,
   const lanelet::routing::RoutingGraphConstPtr & routing_graph)
 {
@@ -98,7 +98,8 @@ std::optional<lanelet::ConstLanelets> all_neighbor_lanelets(
   auto right_opt = right_lanelets(lanelet, routing_graph);
 
   if (!left_opt.has_value() && !right_opt.has_value()) {
-    return std::nullopt;
+    lanelets.push_back(lanelet);
+    return lanelets;
   }
 
   if (left_opt.has_value()) {

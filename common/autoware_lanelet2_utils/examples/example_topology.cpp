@@ -177,12 +177,10 @@ void neighbor_lanelet()
   {
     const auto lanes = lanelet2_utils::all_neighbor_lanelets(
       lanelet_map_ptr_->laneletLayer.get(2246), routing_graph_ptr_);
-    if (lanes.has_value()) {
-      std::cout << "There are " << lanes.value().size() << " neighbor lanelets." << std::endl;
-      std::cout << "Those Ids are" << std::endl;
-      for (auto lane : lanes.value()) {
-        std::cout << lane.id() << std::endl;
-      }
+    std::cout << "There are " << lanes.size() << " neighbor lanelets." << std::endl;
+    std::cout << "Those Ids are" << std::endl;
+    for (auto lane : lanes) {
+      std::cout << lane.id() << std::endl;
     }
   }
 }

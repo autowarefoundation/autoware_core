@@ -313,10 +313,10 @@ void RouteHandler::setRouteLanelets(const lanelet::ConstLanelets & path_lanelets
 {
   if (!path_lanelets.empty()) {
     const auto & first_lanelet = path_lanelets.front();
-    start_lanelets_ = *autoware::experimental::lanelet2_utils::all_neighbor_lanelets(
+    start_lanelets_ = autoware::experimental::lanelet2_utils::all_neighbor_lanelets(
       first_lanelet, routing_graph_ptr_);
     const auto & last_lanelet = path_lanelets.back();
-    goal_lanelets_ = *autoware::experimental::lanelet2_utils::all_neighbor_lanelets(
+    goal_lanelets_ = autoware::experimental::lanelet2_utils::all_neighbor_lanelets(
       last_lanelet, routing_graph_ptr_);
   }
 
