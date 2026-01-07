@@ -137,7 +137,7 @@ geometry_msgs::msg::Pose get_closest_center_pose(
  * @return ArcCoordinates of the pose on lanelet sequence
  */
 lanelet::ArcCoordinates get_arc_coordinates(
-  const lanelet::ConstLanelets & lanelet_sequence, const geometry_msgs::msg::Pose & pose);
+  const lanelet::ConstLanelets & lanelets, const geometry_msgs::msg::Pose & pose);
 
 /**
  * @brief return distance of search pose to centerline (distance in ArcCoordinates)

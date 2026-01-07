@@ -350,23 +350,16 @@ geometry_msgs::msg::Pose get_closest_center_pose(
 }
 
 lanelet::ArcCoordinates get_arc_coordinates(
-  const lanelet::ConstLanelets & lanelet_sequence, const geometry_msgs::msg::Pose & pose)
+  const lanelet::ConstLanelets & lanelets, const geometry_msgs::msg::Pose & pose)
 {
-  lanelet::ConstLanelet closest_lanelet = *get_closest_lanelet(lanelet_sequence, pose);
+  const auto lanelet_sequence = lanelet::LaneletSequence(lanelets);
+  const auto centerline_2d = lanelet_sequence.centerline2d();
 
-  double length = 0;
-  lanelet::ArcCoordinates arc_coordinates;
-  for (const auto & llt : lanelet_sequence) {
-    const auto & centerline_2d = lanelet::utils::to2D(llt.centerline());
-    if (llt == closest_lanelet) {
-      const auto lanelet_point = from_ros(pose);
-      arc_coordinates = lanelet::geometry::toArcCoordinates(
-        centerline_2d, lanelet::utils::to2D(lanelet_point).basicPoint());
-      arc_coordinates.length += length;
-      break;
-    }
-    length += static_cast<double>(lanelet::geometry::length(centerline_2d));
-  }
+  const auto lanelet_point = from_ros(pose);
+
+  lanelet::ArcCoordinates arc_coordinates = lanelet::geometry::toArcCoordinates(
+    centerline_2d, lanelet::utils::to2D(lanelet_point).basicPoint());
+
   return arc_coordinates;
 }
 
