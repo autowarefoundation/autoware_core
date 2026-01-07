@@ -655,40 +655,43 @@ TEST(LaneletManipulation, getExpandedLaneletOrdinaryCase)
 
   auto ll = *create_safe_lanelet(left_points, right_points);
 
-  auto expanded_lanelet =
+  auto expanded_lanelet_opt =
     autoware::experimental::lanelet2_utils::get_dirty_expanded_lanelet(ll, 1, -1);
 
-  EXPECT_EQ(expanded_lanelet.id(), lanelet::InvalId);
+  ASSERT_TRUE(expanded_lanelet_opt.has_value());
+  if (expanded_lanelet_opt.has_value()) {
+    auto expanded_lanelet = expanded_lanelet_opt.value();
 
-  auto expanded_left_bound = expanded_lanelet.leftBound();
-  auto expanded_right_bound = expanded_lanelet.rightBound();
+    auto expanded_left_bound = expanded_lanelet.leftBound();
+    auto expanded_right_bound = expanded_lanelet.rightBound();
 
-  // check left bound
-  {
-    EXPECT_EQ(expanded_left_bound.size(), 2);
-    // check front
-    EXPECT_NEAR(expanded_left_bound.front().x(), 0.0, 1e-4);
-    EXPECT_NEAR(expanded_left_bound.front().y(), 3.0, 1e-4);
-    EXPECT_NEAR(expanded_left_bound.front().z(), 1.0, 1e-4);
+    // check left bound
+    {
+      EXPECT_EQ(expanded_left_bound.size(), 2);
+      // check front
+      EXPECT_NEAR(expanded_left_bound.front().x(), 0.0, 1e-4);
+      EXPECT_NEAR(expanded_left_bound.front().y(), 3.0, 1e-4);
+      EXPECT_NEAR(expanded_left_bound.front().z(), 1.0, 1e-4);
 
-    // check back
-    EXPECT_NEAR(expanded_left_bound.back().x(), 3.0, 1e-4);
-    EXPECT_NEAR(expanded_left_bound.back().y(), 3.0, 1e-4);
-    EXPECT_NEAR(expanded_left_bound.back().z(), 1.0, 1e-4);
-  }
+      // check back
+      EXPECT_NEAR(expanded_left_bound.back().x(), 3.0, 1e-4);
+      EXPECT_NEAR(expanded_left_bound.back().y(), 3.0, 1e-4);
+      EXPECT_NEAR(expanded_left_bound.back().z(), 1.0, 1e-4);
+    }
 
-  // check right bound
-  {
-    EXPECT_EQ(expanded_right_bound.size(), 2);
-    // check front
-    EXPECT_NEAR(expanded_right_bound.front().x(), 0.0, 1e-4);
-    EXPECT_NEAR(expanded_right_bound.front().y(), -1.0, 1e-4);
-    EXPECT_NEAR(expanded_right_bound.front().z(), 1.0, 1e-4);
+    // check right bound
+    {
+      EXPECT_EQ(expanded_right_bound.size(), 2);
+      // check front
+      EXPECT_NEAR(expanded_right_bound.front().x(), 0.0, 1e-4);
+      EXPECT_NEAR(expanded_right_bound.front().y(), -1.0, 1e-4);
+      EXPECT_NEAR(expanded_right_bound.front().z(), 1.0, 1e-4);
 
-    // check back
-    EXPECT_NEAR(expanded_right_bound.back().x(), 3.0, 1e-4);
-    EXPECT_NEAR(expanded_right_bound.back().y(), -1.0, 1e-4);
-    EXPECT_NEAR(expanded_right_bound.back().z(), 1.0, 1e-4);
+      // check back
+      EXPECT_NEAR(expanded_right_bound.back().x(), 3.0, 1e-4);
+      EXPECT_NEAR(expanded_right_bound.back().y(), -1.0, 1e-4);
+      EXPECT_NEAR(expanded_right_bound.back().z(), 1.0, 1e-4);
+    }
   }
 }
 
@@ -710,20 +713,24 @@ TEST(LaneletManipulation, getExpandedLaneletCornerCase)
 
   auto ll = *create_safe_lanelet(left_points, right_points);
 
-  auto expanded_lanelet =
+  auto expanded_lanelet_opt =
     autoware::experimental::lanelet2_utils::get_dirty_expanded_lanelet(ll, 1, -1);
 
-  auto expanded_left_bound = expanded_lanelet.leftBound();
-  auto expanded_right_bound = expanded_lanelet.rightBound();
+  if (expanded_lanelet_opt.has_value()) {
+    auto expanded_lanelet = expanded_lanelet_opt.value();
 
-  // check left bound
-  {
-    EXPECT_EQ(expanded_left_bound.size(), 3);
-  }
+    auto expanded_left_bound = expanded_lanelet.leftBound();
+    auto expanded_right_bound = expanded_lanelet.rightBound();
 
-  // check right bound, number of points changes -> unknown behavior
-  {
-    ASSERT_FALSE((expanded_right_bound.size() == 3));
+    // check left bound
+    {
+      EXPECT_EQ(expanded_left_bound.size(), 3);
+    }
+
+    // check right bound, number of points changes -> unknown behavior
+    {
+      ASSERT_FALSE((expanded_right_bound.size() == 3));
+    }
   }
 }
 
@@ -752,43 +759,48 @@ TEST(LaneletManipulation, getExpandedLaneletsOrdinaryCase)
 
   auto lls = lanelet::ConstLanelets{ll1, ll2};
 
-  auto expanded_lanelets =
+  auto expanded_lanelets_opt =
     autoware::experimental::lanelet2_utils::get_dirty_expanded_lanelets(lls, 1, -1);
+  ASSERT_TRUE(expanded_lanelets_opt.has_value());
 
-  ASSERT_EQ(expanded_lanelets.size(), 2);
-  auto left_points = std::vector<std::vector<lanelet::BasicPoint3d>>{left_points1, left_points2};
-  auto right_points = std::vector<std::vector<lanelet::BasicPoint3d>>{right_points1, right_points2};
-  for (size_t i = 0ul; i < expanded_lanelets.size(); i++) {
-    auto ll = expanded_lanelets[i];
-    EXPECT_EQ(ll.id(), lanelet::InvalId);
-    auto expanded_left_bound = ll.leftBound();
-    auto expanded_right_bound = ll.rightBound();
-    // check left bound
-    {
-      EXPECT_EQ(expanded_left_bound.size(), 2);
-      // check front
-      EXPECT_NEAR(expanded_left_bound.front().x(), left_points[i].front().x(), 1e-4);
-      EXPECT_NEAR(expanded_left_bound.front().y(), left_points[i].front().y() + 1.0, 1e-4);
-      EXPECT_NEAR(expanded_left_bound.front().z(), left_points[i].front().z(), 1e-4);
+  if (expanded_lanelets_opt.has_value()) {
+    auto expanded_lanelets = expanded_lanelets_opt.value();
+    ASSERT_EQ(expanded_lanelets.size(), 2);
+    auto left_points = std::vector<std::vector<lanelet::BasicPoint3d>>{left_points1, left_points2};
+    auto right_points =
+      std::vector<std::vector<lanelet::BasicPoint3d>>{right_points1, right_points2};
+    for (size_t i = 0ul; i < expanded_lanelets.size(); i++) {
+      auto ll = expanded_lanelets[i];
+      EXPECT_EQ(ll.id(), lanelet::InvalId);
+      auto expanded_left_bound = ll.leftBound();
+      auto expanded_right_bound = ll.rightBound();
+      // check left bound
+      {
+        EXPECT_EQ(expanded_left_bound.size(), 2);
+        // check front
+        EXPECT_NEAR(expanded_left_bound.front().x(), left_points[i].front().x(), 1e-4);
+        EXPECT_NEAR(expanded_left_bound.front().y(), left_points[i].front().y() + 1.0, 1e-4);
+        EXPECT_NEAR(expanded_left_bound.front().z(), left_points[i].front().z(), 1e-4);
 
-      // check back
-      EXPECT_NEAR(expanded_left_bound.back().x(), left_points[i].back().x(), 1e-4);
-      EXPECT_NEAR(expanded_left_bound.back().y(), left_points[i].back().y() + 1.0, 1e-4);
-      EXPECT_NEAR(expanded_left_bound.back().z(), left_points[i].back().z(), 1e-4);
-    }
+        // check back
+        EXPECT_NEAR(expanded_left_bound.back().x(), left_points[i].back().x(), 1e-4);
+        EXPECT_NEAR(expanded_left_bound.back().y(), left_points[i].back().y() + 1.0, 1e-4);
+        EXPECT_NEAR(expanded_left_bound.back().z(), left_points[i].back().z(), 1e-4);
+      }
 
-    // check right bound
-    {
-      EXPECT_EQ(expanded_right_bound.size(), 2);
-      // check front
-      EXPECT_NEAR(expanded_right_bound.front().x(), right_points[i].front().x(), 1e-4);
-      EXPECT_NEAR(expanded_right_bound.front().y(), right_points[i].front().y() - 1.0, 1e-4);
-      EXPECT_NEAR(expanded_right_bound.front().z(), right_points[i].front().z(), 1e-4);
+      // check right bound
+      {
+        EXPECT_EQ(expanded_right_bound.size(), 2);
+        // check front
+        EXPECT_NEAR(expanded_right_bound.front().x(), right_points[i].front().x(), 1e-4);
+        EXPECT_NEAR(expanded_right_bound.front().y(), right_points[i].front().y() - 1.0, 1e-4);
+        EXPECT_NEAR(expanded_right_bound.front().z(), right_points[i].front().z(), 1e-4);
 
-      // check back
-      EXPECT_NEAR(expanded_right_bound.back().x(), right_points[i].back().x(), 1e-4);
-      EXPECT_NEAR(expanded_right_bound.back().y(), right_points[i].back().y() - 1.0, 1e-4);
-      EXPECT_NEAR(expanded_right_bound.back().z(), right_points[i].back().z(), 1e-4);
+        // check back
+        EXPECT_NEAR(expanded_right_bound.back().x(), right_points[i].back().x(), 1e-4);
+        EXPECT_NEAR(expanded_right_bound.back().y(), right_points[i].back().y() - 1.0, 1e-4);
+        EXPECT_NEAR(expanded_right_bound.back().z(), right_points[i].back().z(), 1e-4);
+      }
     }
   }
 }

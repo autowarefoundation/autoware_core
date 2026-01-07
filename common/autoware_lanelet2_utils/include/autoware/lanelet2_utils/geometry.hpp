@@ -166,23 +166,23 @@ double get_lateral_distance_to_closest_lanelet(
 lanelet::ConstLanelet combine_lanelets_shape(const lanelet::ConstLanelets & lanelets);
 
 /**
- * @brief expand the lanelet while keep the lanelet ID and Attribute
+ * @brief expand the lanelet
  * @param[in] lanelet_obj original lanelet
  * @param[in] left_offset offset of the left bound (positive value required)
  * @param[in] right_offset offset of the right bound (negative value required)
- * @return expanded lanelet with same ID and Attribute
+ * @return expanded lanelet
  */
-lanelet::ConstLanelet get_dirty_expanded_lanelet(
+std::optional<lanelet::ConstLanelet> get_dirty_expanded_lanelet(
   const lanelet::ConstLanelet & lanelet_obj, const double left_offset, const double right_offset);
 
 /**
- * @brief expand the lanelets (several lanelets) while keep the lanelet ID and Attribute
+ * @brief expand the lanelets (several lanelets)
  * @param[in] lanelet_obj original lanelets (several lanelets)
  * @param[in] left_offset offset of the left bound (positive value required)
  * @param[in] right_offset offset of the right bound (negative value required)
- * @return expanded lanelets with same ID and Attribute
+ * @return expanded lanelets
  */
-lanelet::ConstLanelets get_dirty_expanded_lanelets(
+std::optional<lanelet::ConstLanelets> get_dirty_expanded_lanelets(
   const lanelet::ConstLanelets & lanelet_obj, const double left_offset, const double right_offset);
 
 /**

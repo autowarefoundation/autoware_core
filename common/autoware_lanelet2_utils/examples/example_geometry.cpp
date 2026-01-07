@@ -374,59 +374,62 @@ void expand_lanelet()
   auto lls = lanelet::ConstLanelets{ll1, ll2};
 
   {
-    auto expanded_lanelet =
+    auto expanded_lanelet_opt =
       autoware::experimental::lanelet2_utils::get_dirty_expanded_lanelet(ll1, 1, -1);
 
-    std::cout << ((expanded_lanelet.id() == lanelet::InvalId) ? "Id matches." : "Id doesn't match.")
-              << std::endl;
+    if (expanded_lanelet_opt.has_value()) {
+      auto expanded_lanelet = expanded_lanelet_opt.value();
+      auto expanded_left_bound = expanded_lanelet.leftBound();
+      auto expanded_right_bound = expanded_lanelet.rightBound();
 
-    auto expanded_left_bound = expanded_lanelet.leftBound();
-    auto expanded_right_bound = expanded_lanelet.rightBound();
-
-    // check left bound
-    {
-      // check front
-      std::cout << "Expanded (lanelet) left bound x: " << expanded_left_bound.front().x()
-                << std::endl;
-      std::cout << "Expanded (lanelet) left bound y: " << expanded_left_bound.front().y()
-                << std::endl;
-      std::cout << "Expanded (lanelet) left bound z: " << expanded_left_bound.front().z()
-                << std::endl;
-    }
-    // check right bound
-    {
-      // check front
-      std::cout << "Expanded (lanelet) right bound x: " << expanded_right_bound.front().x()
-                << std::endl;
-      std::cout << "Expanded (lanelet) right bound y: " << expanded_right_bound.front().y()
-                << std::endl;
-      std::cout << "Expanded (lanelet) right bound z: " << expanded_right_bound.front().z()
-                << std::endl;
+      // check left bound
+      {
+        // check front
+        std::cout << "Expanded (lanelet) left bound x: " << expanded_left_bound.front().x()
+                  << std::endl;
+        std::cout << "Expanded (lanelet) left bound y: " << expanded_left_bound.front().y()
+                  << std::endl;
+        std::cout << "Expanded (lanelet) left bound z: " << expanded_left_bound.front().z()
+                  << std::endl;
+      }
+      // check right bound
+      {
+        // check front
+        std::cout << "Expanded (lanelet) right bound x: " << expanded_right_bound.front().x()
+                  << std::endl;
+        std::cout << "Expanded (lanelet) right bound y: " << expanded_right_bound.front().y()
+                  << std::endl;
+        std::cout << "Expanded (lanelet) right bound z: " << expanded_right_bound.front().z()
+                  << std::endl;
+      }
     }
   }
   {
-    auto expanded_lanelets =
+    auto expanded_lanelets_opt =
       autoware::experimental::lanelet2_utils::get_dirty_expanded_lanelets(lls, 1, -1);
-    auto expanded_left_bound = expanded_lanelets[0].leftBound();
-    auto expanded_right_bound = expanded_lanelets[0].rightBound();
-    {
-      // check front
-      std::cout << "Expanded (lanelet sequence) left bound x: " << expanded_left_bound.front().x()
-                << std::endl;
-      std::cout << "Expanded (lanelet sequence) left bound y: " << expanded_left_bound.front().y()
-                << std::endl;
-      std::cout << "Expanded (lanelet sequence) left bound z: " << expanded_left_bound.front().z()
-                << std::endl;
-    }
-    // check right bound
-    {
-      // check front
-      std::cout << "Expanded (lanelet sequence) right bound x: " << expanded_right_bound.front().x()
-                << std::endl;
-      std::cout << "Expanded (lanelet sequence) right bound y: " << expanded_right_bound.front().y()
-                << std::endl;
-      std::cout << "Expanded (lanelet sequence) right bound z: " << expanded_right_bound.front().z()
-                << std::endl;
+    if (expanded_lanelets_opt.has_value()) {
+      auto expanded_lanelets = expanded_lanelets_opt.value();
+      auto expanded_left_bound = expanded_lanelets[0].leftBound();
+      auto expanded_right_bound = expanded_lanelets[0].rightBound();
+      {
+        // check front
+        std::cout << "Expanded (lanelet sequence) left bound x: " << expanded_left_bound.front().x()
+                  << std::endl;
+        std::cout << "Expanded (lanelet sequence) left bound y: " << expanded_left_bound.front().y()
+                  << std::endl;
+        std::cout << "Expanded (lanelet sequence) left bound z: " << expanded_left_bound.front().z()
+                  << std::endl;
+      }
+      // check right bound
+      {
+        // check front
+        std::cout << "Expanded (lanelet sequence) right bound x: "
+                  << expanded_right_bound.front().x() << std::endl;
+        std::cout << "Expanded (lanelet sequence) right bound y: "
+                  << expanded_right_bound.front().y() << std::endl;
+        std::cout << "Expanded (lanelet sequence) right bound z: "
+                  << expanded_right_bound.front().z() << std::endl;
+      }
     }
   }
 }

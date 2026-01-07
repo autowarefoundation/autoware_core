@@ -414,7 +414,7 @@ lanelet::ConstLanelet combine_lanelets_shape(const lanelet::ConstLanelets & lane
   return combined_lanelet;
 }
 
-lanelet::ConstLanelet get_dirty_expanded_lanelet(
+std::optional<lanelet::ConstLanelet> get_dirty_expanded_lanelet(
   const lanelet::ConstLanelet & lanelet_obj, const double left_offset, const double right_offset)
 {
   const auto copy_z = [](const lanelet::ConstLineString3d & from, lanelet::Points3d & to) {
@@ -476,20 +476,32 @@ lanelet::ConstLanelet get_dirty_expanded_lanelet(
   copy_z(lanelet_obj.leftBound3d(), ex_lefts);
   copy_z(lanelet_obj.rightBound3d(), ex_rights);
 
-  const auto & expanded_left_bound_3d = lanelet::LineString3d(lanelet::InvalId, ex_lefts);
-  const auto & expanded_right_bound_3d = lanelet::LineString3d(lanelet::InvalId, ex_rights);
-  const auto & lanelet = lanelet::Lanelet(
-    lanelet_obj.id(), expanded_left_bound_3d, expanded_right_bound_3d, lanelet_obj.attributes());
+  auto convert_to_const = [](const lanelet::Points3d from) {
+    lanelet::ConstPoints3d to;
+    for (const auto & pt : from) {
+      to.emplace_back(pt);
+    }
+    return to;
+  };
+
+  auto const_ex_lefts = convert_to_const(ex_lefts);
+  auto const_ex_rights = convert_to_const(ex_rights);
+  const auto & lanelet = create_safe_lanelet(const_ex_lefts, const_ex_rights);
 
   return lanelet;
 }
 
-lanelet::ConstLanelets get_dirty_expanded_lanelets(
+std::optional<lanelet::ConstLanelets> get_dirty_expanded_lanelets(
   const lanelet::ConstLanelets & lanelet_obj, const double left_offset, const double right_offset)
 {
   lanelet::ConstLanelets lanelets;
   for (const auto & llt : lanelet_obj) {
-    lanelets.push_back(get_dirty_expanded_lanelet(llt, left_offset, right_offset));
+    auto expanded_lanelet_opt = get_dirty_expanded_lanelet(llt, left_offset, right_offset);
+    // If at least one lanelet in vector cannot be expanded, return nullopt.
+    if (!expanded_lanelet_opt.has_value()) {
+      return std::nullopt;
+    }
+    lanelets.push_back(expanded_lanelet_opt.value());
   }
   return lanelets;
 }
