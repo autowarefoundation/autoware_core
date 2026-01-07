@@ -284,9 +284,9 @@ common/autoware_lanelet2_utils/examples/example_topology.cpp:165:173
 
 Get all neighbor lanelets.
 
-```cpp title="./examples/example_topology.cpp:178:186"
+```cpp title="./examples/example_topology.cpp:178:184"
 --8<--
-common/autoware_lanelet2_utils/examples/example_topology.cpp:178:186
+common/autoware_lanelet2_utils/examples/example_topology.cpp:178:184
 --8<--
 ```
 
