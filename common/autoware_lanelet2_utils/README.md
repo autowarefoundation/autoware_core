@@ -158,49 +158,49 @@ common/autoware_lanelet2_utils/examples/example_geometry.cpp:308:314
 
 Combine two lanelets (lanelet sequence, `ConstLanelets`) into one lanelet(`ConstLanelet`).
 
-```cpp title="./examples/example_geometry.cpp:341:349"
+```cpp title="./examples/example_geometry.cpp:341:352"
 --8<--
-common/autoware_lanelet2_utils/examples/example_geometry.cpp:341:349
+common/autoware_lanelet2_utils/examples/example_geometry.cpp:341:352
 --8<--
 ```
 
 Expand lanelet with positive left offset and negative right offset.
 
-```cpp title="./examples/example_geometry.cpp:377:405"
+```cpp title="./examples/example_geometry.cpp:380:408"
 --8<--
-common/autoware_lanelet2_utils/examples/example_geometry.cpp:377:405
+common/autoware_lanelet2_utils/examples/example_geometry.cpp:380:408
 --8<--
 ```
 
 Expand lanelet sequence with positive left offset and negative right offset.
 
-```cpp title="./examples/example_geometry.cpp:408:430"
+```cpp title="./examples/example_geometry.cpp:411:437"
 --8<--
-common/autoware_lanelet2_utils/examples/example_geometry.cpp:408:430
+common/autoware_lanelet2_utils/examples/example_geometry.cpp:411:437
 --8<--
 ```
 
 Get lanelet centerline with offset to left bound.
 
-```cpp title="./examples/example_geometry.cpp:448:454"
+```cpp title="./examples/example_geometry.cpp:454:461"
 --8<--
-common/autoware_lanelet2_utils/examples/example_geometry.cpp:448:454
+common/autoware_lanelet2_utils/examples/example_geometry.cpp:454:461
 --8<--
 ```
 
 Get lanelet right bound with offset to left bound.
 
-```cpp title="./examples/example_geometry.cpp:459:466"
+```cpp title="./examples/example_geometry.cpp:465:472"
 --8<--
-common/autoware_lanelet2_utils/examples/example_geometry.cpp:459:466
+common/autoware_lanelet2_utils/examples/example_geometry.cpp:465:472
 --8<--
 ```
 
 Get lanelet left bound with offset to right bound.
 
-```cpp title="./examples/example_geometry.cpp:471:478"
+```cpp title="./examples/example_geometry.cpp:476:483"
 --8<--
-common/autoware_lanelet2_utils/examples/example_geometry.cpp:471:478
+common/autoware_lanelet2_utils/examples/example_geometry.cpp:476:483
 --8<--
 ```
 

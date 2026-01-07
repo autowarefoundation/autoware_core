@@ -472,7 +472,6 @@ void offset_bound()
     }
   }
   // left_bound shift **right**
-
   {
     auto left_bound =
       autoware::experimental::lanelet2_utils::get_left_bound_with_offset(ll, -0.5, sqrt(2));
