@@ -338,15 +338,18 @@ void combine_lanelet()
 
   auto ll2 = *create_safe_lanelet(left_points2, right_points2);
 
-  auto one_lanelet = autoware::experimental::lanelet2_utils::combine_lanelets_shape({ll1, ll2});
-
-  std::cout << ((typeid(one_lanelet) == typeid(lanelet::ConstLanelet))
-                  ? "Lanelet Type is ConstLanelet."
-                  : "Lanelet Type is not ConstLanelet.")
-            << std::endl;
-  std::cout << "There is duplicate point, thus, the bound size becomes" << std::endl;
-  std::cout << "left: " << one_lanelet.leftBound().size() << std::endl;
-  std::cout << "right: " << one_lanelet.rightBound().size() << std::endl;
+  const auto one_lanelet_opt =
+    autoware::experimental::lanelet2_utils::combine_lanelets_shape({ll1, ll2});
+  if (one_lanelet_opt.has_value()) {
+    const auto one_lanelet = one_lanelet_opt.value();
+    std::cout << ((typeid(one_lanelet) == typeid(lanelet::ConstLanelet))
+                    ? "Lanelet Type is ConstLanelet."
+                    : "Lanelet Type is not ConstLanelet.")
+              << std::endl;
+    std::cout << "There is duplicate point, thus, the bound size becomes" << std::endl;
+    std::cout << "left: " << one_lanelet.leftBound().size() << std::endl;
+    std::cout << "right: " << one_lanelet.rightBound().size() << std::endl;
+  }
 }
 
 void expand_lanelet()

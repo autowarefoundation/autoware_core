@@ -380,8 +380,11 @@ double get_lateral_distance_to_closest_lanelet(
   return get_lateral_distance_to_centerline(closest_lanelet, pose);
 }
 
-lanelet::ConstLanelet combine_lanelets_shape(const lanelet::ConstLanelets & lanelets)
+std::optional<lanelet::ConstLanelet> combine_lanelets_shape(const lanelet::ConstLanelets & lanelets)
 {
+  if (lanelets.empty()) {
+    return std::nullopt;
+  }
   const auto add_unique_point =
     [](lanelet::ConstPoints3d & points, const lanelet::ConstPoint3d & new_point) {
       constexpr double distance_threshold = 0.01;
@@ -408,8 +411,14 @@ lanelet::ConstLanelet combine_lanelets_shape(const lanelet::ConstLanelets & lane
     add_unique_points(centers, llt.centerline());
   }
 
-  auto combined_lanelet = remove_const(*create_safe_lanelet(lefts, rights));
-  const auto center_line = remove_const(*create_safe_linestring(centers));
+  const auto combined_lanelet_opt = create_safe_lanelet(lefts, rights);
+  assert(combined_lanelet_opt.has_value() && "lefts or rights bound size is less than 2.");
+  auto combined_lanelet = remove_const(*combined_lanelet_opt);
+
+  const auto center_line_opt = create_safe_linestring(centers);
+  assert(center_line_opt.has_value() && "centers size is less than 2.");
+  const auto center_line = remove_const(*center_line_opt);
+
   combined_lanelet.setCenterline(center_line);
   return combined_lanelet;
 }
@@ -486,9 +495,11 @@ std::optional<lanelet::ConstLanelet> get_dirty_expanded_lanelet(
 
   auto const_ex_lefts = convert_to_const(ex_lefts);
   auto const_ex_rights = convert_to_const(ex_rights);
-  const auto & lanelet = create_safe_lanelet(const_ex_lefts, const_ex_rights);
+  const auto & lanelet_opt = create_safe_lanelet(const_ex_lefts, const_ex_rights);
+  assert(lanelet_opt.has_value() && "lefts or rights bound size is less than 2.");
 
-  return lanelet;
+  // return optional value
+  return lanelet_opt;
 }
 
 std::optional<lanelet::ConstLanelets> get_dirty_expanded_lanelets(
@@ -517,22 +528,24 @@ lanelet::ConstLineString3d get_centerline_with_offset(
   const auto right_points =
     resample_points(lanelet_obj.rightBound().basicLineString(), num_segments);
 
-  // Create centerline
-  lanelet::LineString3d centerline(lanelet::utils::getId());
+  lanelet::ConstPoints3d center_points;
   for (int i = 0; i < num_segments + 1; i++) {
-    // Add ID for the average point of left and right
     const auto center_basic_point = (right_points.at(i) + left_points.at(i)) / 2;
 
     const auto vec_right_2_left = (left_points.at(i) - right_points.at(i)).normalized();
 
     const auto offset_center_basic_point = center_basic_point + vec_right_2_left * offset;
 
-    const lanelet::Point3d center_point(
-      lanelet::utils::getId(), offset_center_basic_point.x(), offset_center_basic_point.y(),
+    const lanelet::ConstPoint3d center_point(
+      lanelet::InvalId, offset_center_basic_point.x(), offset_center_basic_point.y(),
       offset_center_basic_point.z());
-    centerline.push_back(center_point);
+    center_points.push_back(center_point);
   }
-  return static_cast<lanelet::ConstLineString3d>(centerline);
+
+  const auto centerline_opt = create_safe_linestring(center_points);
+  assert(centerline_opt.has_value() && "center_points has less than two points.");
+
+  return *centerline_opt;
 }
 
 lanelet::ConstLineString3d get_right_bound_with_offset(
@@ -546,20 +559,21 @@ lanelet::ConstLineString3d get_right_bound_with_offset(
   const auto right_points =
     resample_points(lanelet_obj.rightBound().basicLineString(), num_segments);
 
-  // Create centerline
-  lanelet::LineString3d rightBound(lanelet::utils::getId());
+  lanelet::ConstPoints3d right_bound_points;
   for (int i = 0; i < num_segments + 1; i++) {
-    // Add ID for the average point of left and right
     const auto vec_left_2_right = (right_points.at(i) - left_points.at(i)).normalized();
 
     const auto offset_right_basic_point = right_points.at(i) + vec_left_2_right * offset;
 
-    const lanelet::Point3d rightBound_point(
-      lanelet::utils::getId(), offset_right_basic_point.x(), offset_right_basic_point.y(),
+    const lanelet::ConstPoint3d right_bound_point(
+      lanelet::InvalId, offset_right_basic_point.x(), offset_right_basic_point.y(),
       offset_right_basic_point.z());
-    rightBound.push_back(rightBound_point);
+    right_bound_points.push_back(right_bound_point);
   }
-  return static_cast<lanelet::ConstLineString3d>(rightBound);
+  const auto right_bound_opt = create_safe_linestring(right_bound_points);
+  assert(right_bound_opt.has_value() && "right_bound_points has less than two points.");
+
+  return *right_bound_opt;
 }
 
 lanelet::ConstLineString3d get_left_bound_with_offset(
@@ -573,21 +587,22 @@ lanelet::ConstLineString3d get_left_bound_with_offset(
   const auto right_points =
     resample_points(lanelet_obj.rightBound().basicLineString(), num_segments);
 
-  // Create centerline
-  lanelet::LineString3d leftBound(lanelet::utils::getId());
+  lanelet::ConstPoints3d left_bound_points;
   for (int i = 0; i < num_segments + 1; i++) {
-    // Add ID for the average point of left and right
-
     const auto vec_right_2_left = (left_points.at(i) - right_points.at(i)).normalized();
 
     const auto offset_left_basic_point = left_points.at(i) + vec_right_2_left * offset;
 
-    const lanelet::Point3d leftBound_point(
+    const lanelet::ConstPoint3d left_bound_point(
       lanelet::utils::getId(), offset_left_basic_point.x(), offset_left_basic_point.y(),
       offset_left_basic_point.z());
-    leftBound.push_back(leftBound_point);
+    left_bound_points.push_back(left_bound_point);
   }
-  return static_cast<lanelet::ConstLineString3d>(leftBound);
+
+  const auto left_bound_opt = create_safe_linestring(left_bound_points);
+  assert(left_bound_opt.has_value() && "left_bound_points has less than two points.");
+
+  return *left_bound_opt;
 }
 
 }  // namespace autoware::experimental::lanelet2_utils

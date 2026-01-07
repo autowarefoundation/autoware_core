@@ -163,7 +163,8 @@ double get_lateral_distance_to_closest_lanelet(
  * @param[in] lanelets several lanelets
  * @return one lanelet
  */
-lanelet::ConstLanelet combine_lanelets_shape(const lanelet::ConstLanelets & lanelets);
+std::optional<lanelet::ConstLanelet> combine_lanelets_shape(
+  const lanelet::ConstLanelets & lanelets);
 
 /**
  * @brief expand the lanelet

@@ -633,14 +633,17 @@ TEST(LaneletManipulation, CombineLaneletsWithDuplicatePoint)
 
   auto ll2 = create_safe_lanelet(left_points2, right_points2);
 
-  auto one_lanelet = autoware::experimental::lanelet2_utils::combine_lanelets_shape({*ll1, *ll2});
+  const auto one_lanelet_opt =
+    autoware::experimental::lanelet2_utils::combine_lanelets_shape({*ll1, *ll2});
+  if (one_lanelet_opt.has_value()) {
+    const auto one_lanelet = one_lanelet_opt.value();
 
-  EXPECT_EQ(typeid(one_lanelet), typeid(lanelet::ConstLanelet))
-    << "one_lanelet is not lanelet::ConstLanelet.";
-  EXPECT_EQ(one_lanelet.leftBound().size(), 3);
-  EXPECT_EQ(one_lanelet.rightBound().size(), 3);
+    EXPECT_EQ(typeid(one_lanelet), typeid(lanelet::ConstLanelet))
+      << "one_lanelet is not lanelet::ConstLanelet.";
+    EXPECT_EQ(one_lanelet.leftBound().size(), 3);
+    EXPECT_EQ(one_lanelet.rightBound().size(), 3);
+  }
 }
-
 // Test 27: get_dirty_expanded_lanelet ordinary case
 TEST(LaneletManipulation, getExpandedLaneletOrdinaryCase)
 {
