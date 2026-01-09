@@ -42,12 +42,13 @@ When it stops at the end of the trajectory, and obstacle is on the same point, t
 When inserting the stop point, the required acceleration for the ego to stop in front of the stop point is calculated.
 If the acceleration is less than `common.min_strong_accel`, the stop planning will be cancelled since this package does not assume a strong sudden brake for emergency.
 
-### Leading Vehicle Following by RSS Stop Position Determination
+### Maintaining Safe Braking Distance While Following Leading Vehicle
 
-This function enables distance adjustment with moving leading vehicles in the obstacle_stop module as well.
-While leading vehicle following is primarily handled by the obstacle_cruise_module, this function provides a supplementary role.
+This function allows the obstacle_stop module to adjust the distance to a leading vehicle.
+While the `obstacle_cruise_module` is the primary module for following a leading vehicle, this function provides a secondary safety role within the stopping logic.
 
-The operating principle is to assume a constant deceleration for the leading vehicle and predict the stopping point when the leading vehicle stops with a certain deceleration. Then, the logic embeds a stop point in the trajectory with the usual stop margin against that leading vehicle's stopping point.
+The module assumes the leading vehicle will decelerate at a constant rate. It predicts where the vehicle will stop based on this deceleration. The module then places a stop point on the ego vehicle's trajectory, maintaining safety margin from the predicted stopping point.
+
 Leading vehicle following is realized through the cooperation of this function and the velocity_smoother.
 Please note that the ego vehicle's behavior is influenced not only by the obstacle_stop settings but also by the velocity_smoother settings.
 
