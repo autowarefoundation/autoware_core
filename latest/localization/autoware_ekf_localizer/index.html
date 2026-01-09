@@ -7938,6 +7938,13 @@
 <td>N/A</td>
 </tr>
 <tr>
+<td>max_pose_queue_size</td>
+<td>integer</td>
+<td>Maximum size of the pose queue, if multiple measurements arrive within one ekf_dt, this limits must be adjusted.</td>
+<td>5</td>
+<td>N/A</td>
+</tr>
+<tr>
 <td>pose_gate_dist</td>
 <td>float</td>
 <td>Limit of Mahalanobis distance used for outliers detection</td>
@@ -7969,6 +7976,13 @@
 <td>twist_smoothing_steps</td>
 <td>integer</td>
 <td>A value for smoothing steps</td>
+<td>2</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td>max_twist_queue_size</td>
+<td>integer</td>
+<td>Maximum size of the twist queue, if multiple measurements arrive within one ekf_dt, this limits must be adjusted.</td>
 <td>2</td>
 <td>N/A</td>
 </tr>
