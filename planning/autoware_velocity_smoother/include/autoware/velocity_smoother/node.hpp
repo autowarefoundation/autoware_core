@@ -70,6 +70,11 @@ using geometry_msgs::msg::PoseStamped;
 using nav_msgs::msg::Odometry;
 using visualization_msgs::msg::MarkerArray;
 
+namespace test
+{
+class VelocitySmootherTestAccessor;
+}  // namespace test
+
 struct Motion
 {
   double vel = 0.0;
@@ -85,6 +90,9 @@ public:
   explicit VelocitySmootherNode(const rclcpp::NodeOptions & node_options);
 
 private:
+  // Test-only accessor (reusable by future unit tests).
+  friend class test::VelocitySmootherTestAccessor;
+
   rclcpp::Publisher<Trajectory>::SharedPtr pub_trajectory_;
   rclcpp::Publisher<MarkerArray>::SharedPtr pub_virtual_wall_;
   rclcpp::Subscription<Trajectory>::SharedPtr sub_current_trajectory_;

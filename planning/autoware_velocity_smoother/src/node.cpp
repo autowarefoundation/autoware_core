@@ -377,7 +377,7 @@ void VelocitySmootherNode::calcExternalVelocityLimit()
   if (
     std::fabs((external_velocity_limit_.velocity - external_velocity_limit_ptr_->max_velocity)) >
     eps) {
-    const double v0 = current_closest_point_from_prev_output_->longitudinal_velocity_mps;
+    const double v0 = std::fabs(current_closest_point_from_prev_output_->longitudinal_velocity_mps);
     const double a0 = current_closest_point_from_prev_output_->acceleration_mps2;
 
     if (isEngageStatus(v0)) {
