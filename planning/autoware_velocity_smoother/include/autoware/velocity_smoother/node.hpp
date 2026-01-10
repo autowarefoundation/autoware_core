@@ -56,6 +56,11 @@
 
 namespace autoware::velocity_smoother
 {
+namespace test
+{
+class VelocitySmootherTestAccessor;
+}  // namespace test
+
 using autoware_planning_msgs::msg::Trajectory;
 using autoware_planning_msgs::msg::TrajectoryPoint;
 using TrajectoryPoints = std::vector<TrajectoryPoint>;
@@ -75,7 +80,7 @@ struct Motion
   double vel = 0.0;
   double acc = 0.0;
 
-  Motion() {}
+  Motion() = default;
   Motion(const double v, const double a) : vel(v), acc(a) {}
 };
 
@@ -85,6 +90,8 @@ public:
   explicit VelocitySmootherNode(const rclcpp::NodeOptions & node_options);
 
 private:
+  friend class test::VelocitySmootherTestAccessor;
+
   rclcpp::Publisher<Trajectory>::SharedPtr pub_trajectory_;
   rclcpp::Publisher<MarkerArray>::SharedPtr pub_virtual_wall_;
   rclcpp::Subscription<Trajectory>::SharedPtr sub_current_trajectory_;

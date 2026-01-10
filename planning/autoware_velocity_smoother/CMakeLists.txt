@@ -66,6 +66,13 @@ if(BUILD_TESTING)
   target_link_libraries(test_${PROJECT_NAME}
     ${PROJECT_NAME}_node
   )
+
+  ament_add_ros_isolated_gtest(test_${PROJECT_NAME}_apply_external_velocity_limit
+    test/test_velocity_smoother_apply_external_velocity_limit.cpp
+  )
+  target_link_libraries(test_${PROJECT_NAME}_apply_external_velocity_limit
+    ${PROJECT_NAME}_node
+  )
 endif()
 
 
