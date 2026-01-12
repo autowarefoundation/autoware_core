@@ -57,10 +57,12 @@ public:
     if (!debug_trajectory_publisher_) {
       return;
     }
-    autoware_planning_msgs::msg::Trajectory debug_trajectory;
-    debug_trajectory.header.frame_id = "map";
-    debug_trajectory.points = trajectory;
-    debug_trajectory_publisher_->publish(debug_trajectory);
+    if (debug_trajectory_publisher_->get_subscription_count() > 0UL) {
+      autoware_planning_msgs::msg::Trajectory debug_trajectory;
+      debug_trajectory.header.frame_id = "map";
+      debug_trajectory.points = trajectory;
+      debug_trajectory_publisher_->publish(debug_trajectory);
+    }
   }
   rclcpp::Logger logger_ = rclcpp::get_logger("");
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr debug_publisher_;
