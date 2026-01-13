@@ -18,6 +18,7 @@
 #include "autoware/motion_utils/trajectory/conversion.hpp"
 #include "autoware/motion_utils/trajectory/trajectory.hpp"
 #include "autoware/motion_velocity_planner_common/planner_data.hpp"
+#include "autoware/motion_velocity_planner_common/velocity_planning_result.hpp"
 
 #include <autoware_utils_visualization/marker_helper.hpp>
 
@@ -240,4 +241,56 @@ double calc_dist_to_traj_poly(
   return dist_to_traj_poly;
 }
 
+void insert_stop(
+  std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & trajectory,
+  const geometry_msgs::msg::Point & stop_point, const rclcpp::Logger & logger)
+{
+  // Prevent sudden yaw angle changes by using a larger overlap threshold
+  // when inserting stop points that are very close to existing points
+  const double overlap_threshold = 5e-2;
+  const auto seg_idx = autoware::motion_utils::findNearestSegmentIndex(trajectory, stop_point);
+  const auto insert_idx =
+    autoware::motion_utils::insertTargetPoint(seg_idx, stop_point, trajectory, overlap_threshold);
+  if (insert_idx) {
+    for (auto idx = *insert_idx; idx < trajectory.size(); ++idx)
+      trajectory[idx].longitudinal_velocity_mps = 0.0;
+  } else {
+    RCLCPP_WARN(logger, "Failed to insert stop point");
+  }
+}
+
+void insert_slowdown(
+  std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & trajectory,
+  const autoware::motion_velocity_planner::SlowdownInterval & slowdown_interval,
+  const rclcpp::Logger & logger)
+{
+  const auto from_seg_idx =
+    autoware::motion_utils::findNearestSegmentIndex(trajectory, slowdown_interval.from);
+  const auto from_insert_idx =
+    autoware::motion_utils::insertTargetPoint(from_seg_idx, slowdown_interval.from, trajectory);
+  const auto to_seg_idx =
+    autoware::motion_utils::findNearestSegmentIndex(trajectory, slowdown_interval.to);
+  const auto to_insert_idx =
+    autoware::motion_utils::insertTargetPoint(to_seg_idx, slowdown_interval.to, trajectory);
+  if (from_insert_idx && to_insert_idx) {
+    for (auto idx = *from_insert_idx; idx <= *to_insert_idx; ++idx) {
+      trajectory[idx].longitudinal_velocity_mps =
+        std::min(  // prevent the node from increasing the velocity
+          trajectory[idx].longitudinal_velocity_mps,
+          static_cast<float>(slowdown_interval.velocity));
+    }
+  } else {
+    RCLCPP_WARN(logger, "Failed to insert slowdown point");
+  }
+}
+void apply_planning_result(
+  std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & trajectory,
+  const autoware::motion_velocity_planner::VelocityPlanningResult & planning_result,
+  const rclcpp::Logger & logger)
+{
+  for (const auto & stop_point : planning_result.stop_points)
+    insert_stop(trajectory, stop_point, logger);
+  for (const auto & slowdown_interval : planning_result.slowdown_intervals)
+    insert_slowdown(trajectory, slowdown_interval, logger);
+}
 }  // namespace autoware::motion_velocity_planner::utils

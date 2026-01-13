@@ -14,6 +14,7 @@
 
 #include "planner_manager.hpp"
 
+#include <autoware/motion_velocity_planner_common/utils.hpp>
 #include <autoware_utils_system/stop_watch.hpp>
 
 #include <boost/format.hpp>
@@ -94,6 +95,9 @@ std::vector<VelocityPlanningResult> MotionVelocityPlannerManager::plan_velocitie
     results.push_back(res);
 
     plugin->publish_planning_factor();
+    auto debug_trajectory = raw_trajectory_points;
+    utils::apply_planning_result(debug_trajectory, res, plugin->logger_);
+    plugin->publish_debug_trajectory(debug_trajectory);
     processing_time_publisher->publish<autoware_internal_debug_msgs::msg::Float64Stamped>(
       std::string(plugin_name) + "/processing_time_ms", stop_watch.toc(plugin_name));
   }
