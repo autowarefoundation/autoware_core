@@ -658,6 +658,12 @@ TEST(LaneletManipulation, getExpandedLaneletOrdinaryCase)
 
   auto ll = *create_safe_lanelet(left_points, right_points);
 
+  {
+    auto expanded_lanelet_opt_failed =
+      autoware::experimental::lanelet2_utils::get_dirty_expanded_lanelet(ll, 1, 1);
+    ASSERT_FALSE(expanded_lanelet_opt_failed.has_value());
+  }
+
   auto expanded_lanelet_opt =
     autoware::experimental::lanelet2_utils::get_dirty_expanded_lanelet(ll, 1, -1);
 
@@ -761,6 +767,12 @@ TEST(LaneletManipulation, getExpandedLaneletsOrdinaryCase)
   auto ll2 = *create_safe_lanelet(left_points2, right_points2);
 
   auto lls = lanelet::ConstLanelets{ll1, ll2};
+
+  {
+    auto expanded_lanelets_opt_failed =
+      autoware::experimental::lanelet2_utils::get_dirty_expanded_lanelets(lls, 1, 1);
+    ASSERT_FALSE(expanded_lanelets_opt_failed.has_value());
+  }
 
   auto expanded_lanelets_opt =
     autoware::experimental::lanelet2_utils::get_dirty_expanded_lanelets(lls, 1, -1);
