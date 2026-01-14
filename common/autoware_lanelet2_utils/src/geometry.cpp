@@ -39,18 +39,18 @@ namespace autoware::experimental::lanelet2_utils
 namespace
 {
 
-int compute_num_segments(const lanelet::ConstLanelet & lanelet, const double resolution)
+size_t compute_num_segments(const lanelet::ConstLanelet & lanelet, const double resolution)
 {
   // Get length of longer border
   const double left_length = static_cast<double>(lanelet::geometry::length(lanelet.leftBound()));
   const double right_length = static_cast<double>(lanelet::geometry::length(lanelet.rightBound()));
   const double longer_distance = (left_length > right_length) ? left_length : right_length;
-  const int num_segments = std::max(static_cast<int>(ceil(longer_distance / resolution)), 1);
+  const size_t num_segments = std::max(static_cast<int>(ceil(longer_distance / resolution)), 1);
   return num_segments;
 }
 
 lanelet::BasicPoints3d resample_points(
-  const lanelet::BasicLineString3d & line_string, const int num_segments)
+  const lanelet::BasicLineString3d & line_string, const size_t num_segments)
 {
   // Note: this function works well with num_segments >= num_segment of line string
   // less than this, it might cause loss in information (such as corner curve)
@@ -69,7 +69,7 @@ lanelet::BasicPoints3d resample_points(
   const double total_length = accumulated_lengths.back();
 
   lanelet::BasicPoints3d resampled_points;
-  for (int i = 0; i <= num_segments; ++i) {
+  for (size_t i = 0; i <= num_segments; ++i) {
     const double target_length = total_length * static_cast<double>(i) / num_segments;
 
     // Find two nearest points
@@ -529,7 +529,7 @@ lanelet::ConstLineString3d get_centerline_with_offset(
     resample_points(lanelet_obj.rightBound().basicLineString(), num_segments);
 
   lanelet::ConstPoints3d center_points;
-  for (int i = 0; i < num_segments + 1; i++) {
+  for (size_t i = 0; i < num_segments + 1; i++) {
     const auto center_basic_point = (right_points.at(i) + left_points.at(i)) / 2;
 
     const auto vec_right_2_left = (left_points.at(i) - right_points.at(i)).normalized();
@@ -560,7 +560,7 @@ lanelet::ConstLineString3d get_right_bound_with_offset(
     resample_points(lanelet_obj.rightBound().basicLineString(), num_segments);
 
   lanelet::ConstPoints3d right_bound_points;
-  for (int i = 0; i < num_segments + 1; i++) {
+  for (size_t i = 0; i < num_segments + 1; i++) {
     const auto vec_left_2_right = (right_points.at(i) - left_points.at(i)).normalized();
 
     const auto offset_right_basic_point = right_points.at(i) + vec_left_2_right * offset;
@@ -588,7 +588,7 @@ lanelet::ConstLineString3d get_left_bound_with_offset(
     resample_points(lanelet_obj.rightBound().basicLineString(), num_segments);
 
   lanelet::ConstPoints3d left_bound_points;
-  for (int i = 0; i < num_segments + 1; i++) {
+  for (size_t i = 0; i < num_segments + 1; i++) {
     const auto vec_right_2_left = (left_points.at(i) - right_points.at(i)).normalized();
 
     const auto offset_left_basic_point = left_points.at(i) + vec_right_2_left * offset;
