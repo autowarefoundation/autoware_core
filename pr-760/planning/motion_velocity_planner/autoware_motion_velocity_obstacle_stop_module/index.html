@@ -7383,10 +7383,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#leading-vehicle-following-by-rss-stop-position-determination" class="md-nav__link">
+  <a href="#maintaining-safe-braking-distance-while-following-leading-vehicle" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Leading Vehicle Following by RSS Stop Position Determination
+        Maintaining Safe Braking Distance While Following Leading Vehicle
       
     </span>
   </a>
@@ -7524,11 +7524,11 @@ The safe distance is parameterized as <code>stop_planning.stop_margin</code>.
 When it stops at the end of the trajectory, and obstacle is on the same point, the safe distance becomes <code>stop_planning.terminal_stop_margin</code>.</p>
 <p>When inserting the stop point, the required acceleration for the ego to stop in front of the stop point is calculated.
 If the acceleration is less than <code>common.min_strong_accel</code>, the stop planning will be cancelled since this package does not assume a strong sudden brake for emergency.</p>
-<h3 id="leading-vehicle-following-by-rss-stop-position-determination">Leading Vehicle Following by RSS Stop Position Determination<a class="headerlink" href="#leading-vehicle-following-by-rss-stop-position-determination" title="Permanent link">#</a></h3>
-<p>This function enables distance adjustment with moving leading vehicles in the obstacle_stop module as well.
-While leading vehicle following is primarily handled by the obstacle_cruise_module, this function provides a supplementary role.</p>
-<p>The operating principle is to assume a constant deceleration for the leading vehicle and predict the stopping point when the leading vehicle stops with a certain deceleration. Then, the logic embeds a stop point in the trajectory with the usual stop margin against that leading vehicle's stopping point.
-Leading vehicle following is realized through the cooperation of this function and the velocity_smoother.
+<h3 id="maintaining-safe-braking-distance-while-following-leading-vehicle">Maintaining Safe Braking Distance While Following Leading Vehicle<a class="headerlink" href="#maintaining-safe-braking-distance-while-following-leading-vehicle" title="Permanent link">#</a></h3>
+<p>This function allows the obstacle_stop module to adjust the distance to a leading vehicle.
+While the <code>obstacle_cruise_module</code> is the primary module for following a leading vehicle, this function provides a secondary safety role within the stopping logic.</p>
+<p>The module assumes the leading vehicle will decelerate at a constant rate. It predicts where the vehicle will stop based on this deceleration. The module then places a stop point on the ego vehicle's trajectory, maintaining safety margin from the predicted stopping point.</p>
+<p>Leading vehicle following is realized through the cooperation of this function and the velocity_smoother.
 Please note that the ego vehicle's behavior is influenced not only by the obstacle_stop settings but also by the velocity_smoother settings.</p>
 <p>For objects moving slower than <code>obstacle_velocity_threshold_enter_fixed_stop</code>, the braking distance is not calculated. Instead, only the object's current position is used for stop position calculation.
 Additionally, if this feature is disabled by <code>use_rss_stop</code>, stop planning is performed only for objects moving slower than <code>obstacle_velocity_threshold_enter_fixed_stop</code>.</p>
