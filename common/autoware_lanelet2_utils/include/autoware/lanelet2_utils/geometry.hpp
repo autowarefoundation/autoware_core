@@ -155,7 +155,7 @@ double get_lateral_distance_to_centerline(
  * @param[in] pose search pose
  * @return distance (double)
  */
-double get_lateral_distance_to_closest_lanelet(
+double get_lateral_distance_to_centerline(
   const lanelet::ConstLanelets & lanelet_sequence, const geometry_msgs::msg::Pose & pose);
 
 /**

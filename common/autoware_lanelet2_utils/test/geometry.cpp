@@ -566,8 +566,8 @@ TEST(GetLateralDistanceToCenterline, get_lateral_distance_to_centerlineOrdinaryC
   }
 }
 
-// Test 25: get_lateral_distance_to_closest_lanelet ordinary case
-TEST(GetLateralDistanceToClosestLanelet, get_lateral_distance_to_closest_laneletOrdinaryCase)
+// Test 25: get_lateral_distance_to_centerline lanelet sequence
+TEST(GetLateralDistanceToClosestLanelet, get_lateral_distance_to_centerlineLaneletSequence)
 {
   using autoware::experimental::lanelet2_utils::create_safe_lanelet;
   auto p1 = lanelet::BasicPoint3d(0.0, 2.0, 0.0);
@@ -595,7 +595,7 @@ TEST(GetLateralDistanceToClosestLanelet, get_lateral_distance_to_closest_lanelet
   // query is above the center of the first lanelet
   {
     auto query = make_pose(1.5, 1.1);
-    auto distance = autoware::experimental::lanelet2_utils::get_lateral_distance_to_closest_lanelet(
+    auto distance = autoware::experimental::lanelet2_utils::get_lateral_distance_to_centerline(
       lanelet_sequence, query);
     EXPECT_NEAR(distance, 0.1, 1e-4);
   }
@@ -603,7 +603,7 @@ TEST(GetLateralDistanceToClosestLanelet, get_lateral_distance_to_closest_lanelet
   // query is below the center of the second lanelet
   {
     auto query = make_pose(4.5, 0.9);
-    auto distance = autoware::experimental::lanelet2_utils::get_lateral_distance_to_closest_lanelet(
+    auto distance = autoware::experimental::lanelet2_utils::get_lateral_distance_to_centerline(
       lanelet_sequence, query);
     EXPECT_NEAR(distance, -0.1, 1e-4);
   }

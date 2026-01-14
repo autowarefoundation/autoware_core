@@ -372,7 +372,7 @@ double get_lateral_distance_to_centerline(
     centerline_2d, lanelet::utils::to2D(lanelet_point).basicPoint());
 }
 
-double get_lateral_distance_to_closest_lanelet(
+double get_lateral_distance_to_centerline(
   const lanelet::ConstLanelets & lanelet_sequence, const geometry_msgs::msg::Pose & pose)
 {
   lanelet::ConstLanelet closest_lanelet = *get_closest_lanelet(lanelet_sequence, pose);

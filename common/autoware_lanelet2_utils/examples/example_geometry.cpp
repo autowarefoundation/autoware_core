@@ -309,7 +309,7 @@ void lateral_distance_related()
     query.position.x = 4.5;
     query.position.y = 0.9;
     query.position.z = 0;
-    auto distance = autoware::experimental::lanelet2_utils::get_lateral_distance_to_closest_lanelet(
+    auto distance = autoware::experimental::lanelet2_utils::get_lateral_distance_to_centerline(
       lanelet_sequence, query);
     std::cout << "Distance (to lanelet sequence) is " << distance << std::endl;
   }
