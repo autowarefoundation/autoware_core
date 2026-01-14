@@ -14,6 +14,9 @@ Changelog for package autoware_interpolation
   Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
 * Contributors: Arjun Jagdish Ram, Takagi, Isamu
 
+1.6.0 (2025-12-30)
+------------------
+
 1.5.0 (2025-11-16)
 ------------------
 * Merge remote-tracking branch 'origin/main' into humble
