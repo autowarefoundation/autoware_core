@@ -220,6 +220,10 @@ private:
     const TrajectoryPoints & input, const size_t input_closest,
     TrajectoryPoints & traj_smoothed) const;
 
+  bool smoothVelocityContinuous(
+    const TrajectoryPoints & input, const size_t input_closest,
+    TrajectoryPoints & traj_smoothed) const;
+
   std::pair<Motion, InitializeType> calcInitialMotion(
     const TrajectoryPoints & input_traj, const size_t input_closest) const;
 
