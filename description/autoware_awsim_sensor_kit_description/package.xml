@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>autoware_awsim_sensor_kit_description</name>
+  <version>0.49.0</version>
+  <description>The autoware_awsim_sensor_kit_description package</description>
+  <maintainer email="piotr.jaroszek@robotec.ai">Piotr Jaroszek</maintainer>
+  <license>Apache License 2.0</license>
+
+  <buildtool_depend>ament_cmake_auto</buildtool_depend>
+
+  <exec_depend>sample_sensor_kit_description</exec_depend>
+  <exec_depend>velodyne_description</exec_depend>
+  <exec_depend>xacro</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
