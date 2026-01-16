@@ -141,45 +141,82 @@ public:
     {
     }
 
-  public:
-    void set(const T & value)
+  private:
+    size_t insert_base_if_not_present(const double base)
     {
-      std::vector<double> & bases = parent_.bases_;
-      std::vector<T> & values = parent_.values_;
+      auto & bases = parent_.bases_;
+      auto & values = parent_.values_;
 
-      auto insert_new_base_if_not_present = [&](const double new_base) -> size_t {
-        auto it = std::lower_bound(bases.begin(), bases.end(), new_base);
-        size_t index = std::distance(bases.begin(), it);
+      const auto it = std::lower_bound(bases.begin(), bases.end(), base);
+      const auto index = std::distance(bases.begin(), it);
 
-        if (it != bases.end() && *it == new_base) {
-          // Return the index if the value already exists
-          return index;
-        }  // Insert into bases
-        bases.insert(it, new_base);
-
-        // execute the callback to notify that a new base has been added
-        if (parent_.base_addition_callback_slot_) {
-          std::invoke(parent_.base_addition_callback_slot_, new_base);
-        }
-
-        // Insert into values at the corresponding position
-        values.insert(values.begin() + index, value);
+      if (it != bases.end() && *it == base) {
+        // Return the index if the value already exists
         return index;
-      };
+      }
 
+      // Insert into bases
+      bases.insert(it, base);
+
+      // execute the callback to notify that a new base has been added
+      if (parent_.base_addition_callback_slot_) {
+        std::invoke(parent_.base_addition_callback_slot_, base);
+      }
+
+      // Insert into values at the corresponding position
+      values.insert(values.begin() + index, values.at(index - 1));
+      return index;
+    }
+
+    std::array<size_t, 2> get_or_insert_bound_indices()
+    {
       // Insert the start value if not present
-      size_t start_index = insert_new_base_if_not_present(start_);
+      auto start_index = insert_base_if_not_present(start_);
 
       // Insert the end value if not present
-      size_t end_index = insert_new_base_if_not_present(end_);
+      auto end_index = insert_base_if_not_present(end_);
 
       // Ensure the indices are in ascending order
       if (start_index > end_index) {
         std::swap(start_index, end_index);
       }
 
+      return {start_index, end_index};
+    }
+
+  public:
+    void set(const T & value)
+    {
+      const auto [start_index, end_index] = get_or_insert_bound_indices();
+
+      auto & bases = parent_.bases_;
+      auto & values = parent_.values_;
+
       // Set the values in the specified range
       std::fill(values.begin() + start_index, values.begin() + end_index + 1, value);
+
+      const auto success = parent_.interpolator_->build(bases, values);
+      if (!success) {
+        throw std::runtime_error(
+          "Failed to build interpolator.");  // This Exception should not be thrown.
+      }
+    }
+
+    void clamp(const T & max)
+    {
+      const auto [start_index, end_index] = get_or_insert_bound_indices();
+
+      auto & bases = parent_.bases_;
+      auto & values = parent_.values_;
+
+      // Clamp the values in the specified range
+      if (max <= 0.0) {
+        std::fill(values.begin() + start_index, values.begin() + end_index + 1, 0.0);
+      } else {
+        std::replace_if(
+          values.begin() + start_index, values.begin() + end_index + 1,
+          [&](const T & v) { return v > max; }, max);
+      }
 
       const auto success = parent_.interpolator_->build(bases, values);
       if (!success) {
