@@ -29,25 +29,17 @@ inline std::vector<size_t> calc_closest_segment_indices(
   // throw exception for invalid arguments
   const auto validated_query_keys = validateKeys(base_keys, query_keys);
 
-  std::vector<size_t> closest_segment_indices(validated_query_keys.size());
+  std::vector<size_t> closest_segment_indices;
+  closest_segment_indices.reserve(validated_query_keys.size());
   size_t base_idx = 0;
-  const double last_segment_threshold = base_keys.back() - overlap_threshold;
-  for (size_t i = 0; i < validated_query_keys.size(); ++i) {
-    const double query_val = validated_query_keys[i];
-    // End condition: query is past the last segment
-    if (query_val > last_segment_threshold) {
-      std::fill(
-        closest_segment_indices.begin() + i, closest_segment_indices.end(), base_keys.size() - 1);
-      break;
-    }
+  for (auto query_val : validated_query_keys) {
     // Search for the base segment such that segment.first <= query < segment.second
     while (base_idx + 1 < base_keys.size() &&
            base_keys[base_idx + 1] - overlap_threshold < query_val) {
       ++base_idx;
     }
-    closest_segment_indices[i] = base_idx;
+    closest_segment_indices.push_back(base_idx);
   }
-
   return closest_segment_indices;
 }
 
