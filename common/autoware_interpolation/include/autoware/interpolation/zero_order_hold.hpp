@@ -21,6 +21,7 @@
 
 namespace autoware::interpolation
 {
+/// @brief for each query key, return the index of the nearest segment in the base_keys
 inline std::vector<size_t> calc_closest_segment_indices(
   const std::vector<double> & base_keys, const std::vector<double> & query_keys,
   const double overlap_threshold = 1e-3)
@@ -29,24 +30,22 @@ inline std::vector<size_t> calc_closest_segment_indices(
   const auto validated_query_keys = validateKeys(base_keys, query_keys);
 
   std::vector<size_t> closest_segment_indices(validated_query_keys.size());
-  size_t closest_segment_idx = 0;
+  size_t base_idx = 0;
+  const double last_segment_threshold = base_keys.back() - overlap_threshold;
   for (size_t i = 0; i < validated_query_keys.size(); ++i) {
-    // Check if query_key is closes to the terminal point of the base keys
-    if (base_keys.back() - overlap_threshold < validated_query_keys.at(i)) {
-      closest_segment_idx = base_keys.size() - 1;
-    } else {
-      for (size_t j = base_keys.size() - 1; j > closest_segment_idx; --j) {
-        if (
-          base_keys.at(j - 1) - overlap_threshold < validated_query_keys.at(i) &&
-          validated_query_keys.at(i) < base_keys.at(j)) {
-          // find closest segment in base keys
-          closest_segment_idx = j - 1;
-          break;
-        }
-      }
+    const double query_val = validated_query_keys[i];
+    // End condition: query is past the last segment
+    if (query_val > last_segment_threshold) {
+      std::fill(
+        closest_segment_indices.begin() + i, closest_segment_indices.end(), base_keys.size() - 1);
+      break;
     }
-
-    closest_segment_indices.at(i) = closest_segment_idx;
+    // Search for the base segment such that segment.first <= query < segment.second
+    while (base_idx + 1 < base_keys.size() &&
+           base_keys[base_idx + 1] - overlap_threshold < query_val) {
+      ++base_idx;
+    }
+    closest_segment_indices[i] = base_idx;
   }
 
   return closest_segment_indices;
