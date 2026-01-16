@@ -22,9 +22,11 @@
 
 #include <autoware_planning_msgs/msg/path_point.hpp>
 
+#include <algorithm>
 #include <memory>
 #include <utility>
 #include <vector>
+
 namespace autoware::experimental::trajectory
 {
 
@@ -201,6 +203,66 @@ std::vector<PointType> Trajectory<PointType>::restore(const size_t min_points) c
     }
   }
   return points;
+}
+
+interpolator::InterpolationResult Trajectory<PointType>::clamp_longitudinal_velocity_max(
+  const double start, const double end, const double max)
+{
+  auto [bases, values] = longitudinal_velocity_mps_->get_data();
+
+  const auto insert_new_base_if_not_present = [&](const double new_base) {
+    const auto it = std::lower_bound(bases.begin(), bases.end(), new_base);
+    const size_t index = std::distance(bases.begin(), it);
+
+    if (it != bases.end() && *it == new_base) {
+      // Return the index if the value already exists
+      return index;
+    }
+
+    // Insert into bases
+    bases.insert(it, new_base);
+    update_bases(new_base);
+
+    // Insert into values at the corresponding position
+    values.insert(values.begin() + index, std::min(values[index], max));
+    return index;
+  };
+
+  // Insert the start value if not present
+  auto start_index = insert_new_base_if_not_present(start);
+
+  // Insert the end value if not present
+  auto end_index = insert_new_base_if_not_present(end);
+
+  // Ensure the indices are in ascending order
+  if (start_index > end_index) {
+    std::swap(start_index, end_index);
+  }
+
+  // Clamp the values in the specified range
+  if (max <= 0.0) {
+    std::fill(values.begin() + start_index, values.begin() + end_index + 1, 0.0);
+  } else {
+    for (auto it = values.begin() + start_index; it != values.begin() + end_index + 1; ++it) {
+      if (*it > max) {
+        *it = max;
+      }
+    }
+  }
+
+  if (const auto result = longitudinal_velocity_mps_->build(bases, std::move(values)); !result) {
+    return tl::unexpected(
+      interpolator::InterpolationFailure{
+        "failed to interpolate PathPoint::longitudinal_velocity_mps"});
+  }
+
+  return interpolator::InterpolationSuccess{};
+}
+
+interpolator::InterpolationResult Trajectory<PointType>::clamp_longitudinal_velocity_max(
+  const double start, const double max)
+{
+  return clamp_longitudinal_velocity_max(start, end_, max);
 }
 
 Trajectory<PointType>::Builder::Builder() : trajectory_(std::make_unique<Trajectory<PointType>>())
