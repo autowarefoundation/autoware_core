@@ -194,6 +194,28 @@ TEST_F(TrajectoryTest, manipulate_lateral_velocity)
   EXPECT_FLOAT_EQ(0.0, point4.point.lateral_velocity_mps);
 }
 
+TEST_F(TrajectoryTest, clamp_longitudinal_velocity)
+{
+  trajectory->longitudinal_velocity_mps() = 10.0;
+  trajectory->longitudinal_velocity_mps()
+    .range(trajectory->length() / 3, 2 * trajectory->length() / 3)
+    .set(5.0);
+  trajectory->longitudinal_velocity_mps()
+    .range(trajectory->length() / 4, 3 * trajectory->length() / 4)
+    .clamp(8.0);
+  auto point1 = trajectory->compute(0.0);
+  auto point2 = trajectory->compute(trajectory->length() / 4.0);
+  auto point3 = trajectory->compute(trajectory->length() / 2.0);
+  auto point4 = trajectory->compute(3 * trajectory->length() / 4.0);
+  auto point5 = trajectory->compute(trajectory->length());
+
+  EXPECT_FLOAT_EQ(10.0, point1.point.longitudinal_velocity_mps);
+  EXPECT_FLOAT_EQ(8.0, point2.point.longitudinal_velocity_mps);
+  EXPECT_FLOAT_EQ(5.0, point3.point.longitudinal_velocity_mps);
+  EXPECT_FLOAT_EQ(8.0, point4.point.longitudinal_velocity_mps);
+  EXPECT_FLOAT_EQ(10.0, point5.point.longitudinal_velocity_mps);
+}
+
 TEST_F(TrajectoryTest, manipulate_velocities)
 {
   // longitudinal velocity = 1.0 [0.3, 0.7]
@@ -687,20 +709,4 @@ TEST_F(TrajectoryTest, move_assignment)
   trajectory = std::move(*trajectory1);
 
   check_if_equals(*trajectory, trajectory2);
-}
-
-TEST_F(TrajectoryTest, clamp_longitudinal_velocity_max)
-{
-  trajectory->longitudinal_velocity_mps() = 10.0;
-  trajectory->longitudinal_velocity_mps()
-    .range(trajectory->length() / 3, 2.0 * trajectory->length() / 3)
-    .set(5.0);
-  trajectory->clamp_longitudinal_velocity_max(0.0, 8.0);
-  auto point1 = trajectory->compute(0.0);
-  auto point2 = trajectory->compute(trajectory->length() / 2.0);
-  auto point3 = trajectory->compute(trajectory->length());
-
-  EXPECT_FLOAT_EQ(8.0, point1.point.longitudinal_velocity_mps);
-  EXPECT_FLOAT_EQ(5.0, point2.point.longitudinal_velocity_mps);
-  EXPECT_FLOAT_EQ(8.0, point3.point.longitudinal_velocity_mps);
 }

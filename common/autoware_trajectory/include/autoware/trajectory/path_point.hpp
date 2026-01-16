@@ -113,24 +113,6 @@ public:
    */
   std::vector<PointType> restore(const size_t min_points = 4) const;
 
-  /**
-   * @brief Clamp the longitudinal velocity to a maximum value within a specified range
-   * @param start Start arc length
-   * @param end End arc length
-   * @param max Maximum longitudinal velocity in m/s
-   */
-  interpolator::InterpolationResult clamp_longitudinal_velocity_max(
-    const double start, const double end, const double max);
-
-  /**
-   * @brief Clamp the longitudinal velocity to a maximum value from a specified start point to the
-   * end of the trajectory
-   * @param start Start arc length
-   * @param max Maximum longitudinal velocity in m/s
-   */
-  interpolator::InterpolationResult clamp_longitudinal_velocity_max(
-    const double start, const double max);
-
   class Builder : BaseClass::Builder
   {
   private:
