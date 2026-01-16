@@ -22,11 +22,9 @@
 
 #include <autoware_planning_msgs/msg/path_point.hpp>
 
-#include <algorithm>
 #include <memory>
 #include <utility>
 #include <vector>
-
 namespace autoware::experimental::trajectory
 {
 
