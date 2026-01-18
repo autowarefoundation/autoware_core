@@ -100,6 +100,7 @@ jobs:
           rosdistro: ${{ inputs.rosdistro }}
           target-packages: ${{ steps.get-modified-packages.outputs.modified-packages }}
           cache-key-element: build-and-test-diff${{ inputs.above && '-above' || '' }}
+          packages-above-repos: ${{ inputs.above && 'packages_above.repos' || '' }}
           underlay-workspace: /opt/autoware
 
       - name: Show ccache stats after build
