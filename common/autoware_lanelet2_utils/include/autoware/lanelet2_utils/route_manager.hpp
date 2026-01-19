@@ -139,14 +139,6 @@ public:
     const geometry_msgs::msg::Pose & search_pose, const double dist_threshold,
     const double yaw_threshold) const;
 
-  const lanelet::ConstLanelets & all_route_lanelets() const { return all_route_lanelets_; }
-
-  const lanelet::ConstLanelets & preferred_lanelets() const { return preferred_lanelets_; }
-
-  const lanelet::ConstLanelet & start_lanelet() const { return start_lanelet_; }
-
-  const lanelet::ConstLanelet & goal_lanelet() const { return goal_lanelet_; }
-
 private:
   RouteManager(
     lanelet::LaneletMapConstPtr lanelet_map_ptr,
