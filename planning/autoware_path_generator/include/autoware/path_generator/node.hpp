@@ -17,7 +17,6 @@
 
 #include "autoware/path_generator/common_structs.hpp"
 
-#include <autoware/lanelet2_utils/route_manager.hpp>
 #include <autoware/trajectory/path_point_with_lane_id.hpp>
 #include <autoware_path_generator/path_generator_parameters.hpp>
 #include <autoware_utils_debug/time_keeper.hpp>
@@ -51,24 +50,18 @@ using Trajectory = autoware::experimental::trajectory::Trajectory<PathPointWithL
 class PathGenerator : public rclcpp::Node
 {
 public:
-  struct InputData
-  {
-    Odometry::ConstSharedPtr odometry_ptr{nullptr};
-  };
-
-  struct RouteManagerData
-  {
-    LaneletMapBin::ConstSharedPtr lanelet_map_bin_ptr{nullptr};
-    LaneletRoute::ConstSharedPtr route_ptr{nullptr};
-  };
-
   explicit PathGenerator(const rclcpp::NodeOptions & node_options);
 
+  // NOTE: This is for the static_centerline_generator package which utilizes the following
+  // instance.
+  struct InputData
+  {
+    LaneletRoute::ConstSharedPtr route_ptr{nullptr};
+    LaneletMapBin::ConstSharedPtr lanelet_map_bin_ptr{nullptr};
+    Odometry::ConstSharedPtr odometry_ptr{nullptr};
+  };
   bool is_data_ready(const InputData & input_data);
-
-  void initialize_route_manager(
-    const RouteManagerData & route_manager_data, const geometry_msgs::msg::Pose & initial_pose);
-
+  void set_planner_data(const InputData & input_data);
   std::optional<PathWithLaneId> generate_path(
     const geometry_msgs::msg::Pose & current_pose, const Params & params);
 
@@ -94,10 +87,9 @@ private:
   std::shared_ptr<::path_generator::ParamListener> param_listener_;
 
   autoware::vehicle_info_utils::VehicleInfo vehicle_info_;
-  RouteManagerData route_manager_data_;
   PlannerData planner_data_;
 
-  std::optional<experimental::lanelet2_utils::RouteManager> route_manager_;
+  std::optional<lanelet::ConstLanelet> current_lanelet_{std::nullopt};
 
   mutable std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper_{nullptr};
 
@@ -107,13 +99,18 @@ private:
 
   InputData take_data();
 
-  std::optional<PathWithLaneId> plan_path(
-    const geometry_msgs::msg::Pose & current_pose, const Params & params);
+  void set_route(const LaneletRoute::ConstSharedPtr & route_ptr);
+
+  std::optional<PathWithLaneId> plan_path(const InputData & input_data, const Params & params);
 
   std::optional<PathWithLaneId> generate_path(
-    const lanelet::ConstLanelets & lanelet_sequence, const geometry_msgs::msg::Pose & current_pose,
-    const double s_ego, const double s_start, const double s_end, const bool connect_to_goal,
+    const lanelet::ConstLanelets & extended_lanelet_sequence,
+    const lanelet::ConstLanelet & current_lanelet, const geometry_msgs::msg::Pose & current_pose,
+    const double s_ego, const double s_start, const double s_end,
+    const std::optional<lanelet::ConstLanelet> & goal_lanelet_for_path,
     const Params & params) const;
+
+  bool update_current_lanelet(const geometry_msgs::msg::Pose & current_pose, const Params & params);
 
   void publishStopWatchTime();
 };

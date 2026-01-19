@@ -15,24 +15,21 @@
 #ifndef UTILS_TEST_HPP_
 #define UTILS_TEST_HPP_
 
-#include "autoware/path_generator/common_structs.hpp"
 #include "autoware/path_generator/utils.hpp"
 
 #include <autoware/lanelet2_utils/conversion.hpp>
+#include <autoware_lanelet2_extension/utility/query.hpp>
 #include <autoware_test_utils/autoware_test_utils.hpp>
 #include <autoware_test_utils/mock_data_parser.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info.hpp>
 
 #include <gtest/gtest.h>
-#include <lanelet2_core/primitives/LaneletSequence.h>
 
 #include <memory>
 #include <string>
 
 namespace autoware::path_generator
 {
-using experimental::lanelet2_utils::to_ros;
-
 class UtilsTest : public ::testing::Test
 {
 protected:
@@ -50,37 +47,76 @@ protected:
   {
     const auto lanelet_map_path =
       autoware::test_utils::get_absolute_path_to_lanelet_map(package_name, map_filename);
-    lanelet_map_bin_ = std::make_shared<autoware_map_msgs::msg::LaneletMapBin>(
-      autoware::test_utils::make_map_bin_msg(lanelet_map_path));
-    if (lanelet_map_bin_->header.frame_id == "") {
+    const auto map_bin_msg = autoware::test_utils::make_map_bin_msg(lanelet_map_path);
+    if (map_bin_msg.header.frame_id == "") {
       throw std::runtime_error(
         "Frame ID of the map is empty. The file might not exist or be corrupted:" +
         lanelet_map_path);
     }
 
-    route_manager_.reset();
+    planner_data_.lanelet_map_ptr = autoware::experimental::lanelet2_utils::remove_const(
+      autoware::experimental::lanelet2_utils::from_autoware_map_msgs(map_bin_msg));
+    auto routing_graph_and_traffic_rules =
+      autoware::experimental::lanelet2_utils::instantiate_routing_graph_and_traffic_rules(
+        planner_data_.lanelet_map_ptr);
+    planner_data_.routing_graph_ptr =
+      autoware::experimental::lanelet2_utils::remove_const(routing_graph_and_traffic_rules.first);
+    planner_data_.traffic_rules_ptr = routing_graph_and_traffic_rules.second;
   }
 
   void set_route(const std::string & package_name, const std::string & route_filename)
   {
-    if (!lanelet_map_bin_) {
+    if (!planner_data_.lanelet_map_ptr) {
       throw std::runtime_error("Map not set");
     }
 
     const auto route_path =
       autoware::test_utils::get_absolute_path_to_route(package_name, route_filename);
-    route_ = autoware::test_utils::parse<std::optional<autoware_planning_msgs::msg::LaneletRoute>>(
-      route_path);
-    if (!route_) {
+    const auto route =
+      autoware::test_utils::parse<std::optional<autoware_planning_msgs::msg::LaneletRoute>>(
+        route_path);
+    if (!route) {
       throw std::runtime_error(
         "Failed to parse YAML file: " + route_path + ". The file might be corrupted.");
     }
 
-    planner_data_.route_frame_id = route_->header.frame_id;
-    planner_data_.goal_pose = route_->goal_pose;
+    planner_data_.route_frame_id = route->header.frame_id;
+    planner_data_.goal_pose = route->goal_pose;
 
-    route_manager_ = experimental::lanelet2_utils::RouteManager::create(
-      *lanelet_map_bin_, *route_, geometry_msgs::msg::Pose{});
+    planner_data_.route_lanelets.clear();
+    planner_data_.preferred_lanelets.clear();
+    planner_data_.start_lanelets.clear();
+    planner_data_.goal_lanelets.clear();
+
+    size_t primitives_num = 0;
+    for (const auto & route_section : route->segments) {
+      primitives_num += route_section.primitives.size();
+    }
+    planner_data_.route_lanelets.reserve(primitives_num);
+
+    for (const auto & route_section : route->segments) {
+      for (const auto & primitive : route_section.primitives) {
+        const auto id = primitive.id;
+        const auto & lanelet = planner_data_.lanelet_map_ptr->laneletLayer.get(id);
+        planner_data_.route_lanelets.push_back(lanelet);
+        if (id == route_section.preferred_primitive.id) {
+          planner_data_.preferred_lanelets.push_back(lanelet);
+        }
+      }
+    }
+
+    const auto set_lanelets_from_segment =
+      [&](
+        const autoware_planning_msgs::msg::LaneletSegment & segment,
+        lanelet::ConstLanelets & lanelets) {
+        lanelets.reserve(segment.primitives.size());
+        for (const auto & primitive : segment.primitives) {
+          const auto & lanelet = planner_data_.lanelet_map_ptr->laneletLayer.get(primitive.id);
+          lanelets.push_back(lanelet);
+        }
+      };
+    set_lanelets_from_segment(route->segments.front(), planner_data_.start_lanelets);
+    set_lanelets_from_segment(route->segments.back(), planner_data_.goal_lanelets);
   }
 
   void set_path(const std::string & package_name, const std::string & path_filename)
@@ -99,33 +135,29 @@ protected:
 
   lanelet::ConstLanelet get_lanelet_closest_to_pose(const geometry_msgs::msg::Pose & pose) const
   {
-    const auto closest_lanelet = route_manager_->get_closest_preferred_route_lanelet(pose);
-    if (!closest_lanelet) {
-      throw std::runtime_error("Failed to get the closest lanelet to the given pose.");
+    lanelet::ConstLanelet lanelet;
+    if (!lanelet::utils::query::getClosestLanelet(
+          planner_data_.preferred_lanelets, pose, &lanelet)) {
+      throw std::runtime_error("Failed to get the closest lanelet to the given point.");
     }
-    return *closest_lanelet;
-  }
-
-  lanelet::ConstLanelet get_lanelet_from_id(const lanelet::Id id) const
-  {
-    return route_manager_->lanelet_map_ptr()->laneletLayer.get(id);
+    return lanelet;
   }
 
   lanelet::ConstLanelets get_lanelets_from_ids(const lanelet::Ids & ids) const
   {
-    lanelet::ConstLanelets lanelets(ids.size());
-    for (size_t i = 0; i < ids.size(); ++i) {
-      lanelets[i] = get_lanelet_from_id(ids[i]);
+    if (!planner_data_.lanelet_map_ptr) {
+      throw std::runtime_error("Map not set");
+    }
+
+    lanelet::ConstLanelets lanelets;
+    for (const auto & id : ids) {
+      lanelets.push_back(planner_data_.lanelet_map_ptr->laneletLayer.get(id));
     }
     return lanelets;
   }
 
   vehicle_info_utils::VehicleInfo vehicle_info_;
   PlannerData planner_data_;
-  std::optional<experimental::lanelet2_utils::RouteManager> route_manager_{std::nullopt};
-
-  autoware_map_msgs::msg::LaneletMapBin::ConstSharedPtr lanelet_map_bin_{nullptr};
-  std::optional<autoware_planning_msgs::msg::LaneletRoute> route_{std::nullopt};
   autoware_internal_planning_msgs::msg::PathWithLaneId path_;
 };
 }  // namespace autoware::path_generator
