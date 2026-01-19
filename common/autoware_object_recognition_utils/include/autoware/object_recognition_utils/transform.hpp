@@ -108,7 +108,7 @@ bool transformObjectsWithFeature(
   output_msg = input_msg;
   if (input_msg.header.frame_id != target_frame_id) {
     output_msg.header.frame_id = target_frame_id;
-    tf2::Transform tf_target2objects_world;
+    tf2::Transform tf_target2objects_world = tf2::Transform::getIdentity();
     tf2::Transform tf_target2objects;
     tf2::Transform tf_objects_world2objects;
     const auto ros_target2objects_world = detail::getTransform(
