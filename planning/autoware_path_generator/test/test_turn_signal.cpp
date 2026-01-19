@@ -55,11 +55,14 @@ struct GetTurnSignalTest : public UtilsTest,
     UtilsTest::SetUp();
 
     set_map("autoware_test_utils", "consecutive_turn/lanelet2_map.osm");
-    set_route("autoware_path_generator", "turn_signal_route.yaml");
 
-    const auto & route_lanelets = route_manager_->all_route_lanelets();
+    const auto route_lanelets = get_lanelets_from_ids({500, 501, 489, 497, 494});
+    planner_data_.route_lanelets = route_lanelets;
+    planner_data_.preferred_lanelets = route_lanelets;
+    planner_data_.start_lanelets = {route_lanelets.front()};
+    planner_data_.goal_lanelets = {route_lanelets.back()};
+
     path_ = PathWithLaneId{};
-
     for (auto it = route_lanelets.begin(); it != route_lanelets.end(); ++it) {
       path_.points.insert(
         path_.points.end(), it->centerline().size() - 1,
@@ -84,7 +87,7 @@ TEST_P(GetTurnSignalTest, getTurnSignal)
   current_pose.position.y = current_position.y();
 
   const auto result = utils::get_turn_signal(
-    path_, *route_manager_, current_pose, p.current_vel, p.search_distance, p.search_time,
+    path_, planner_data_, current_pose, p.current_vel, p.search_distance, p.search_time,
     p.angle_threshold_deg, p.base_link_to_front);
 
   ASSERT_EQ(result.command, p.expected_turn_signal);
@@ -172,8 +175,8 @@ TEST_F(UtilsTest, getTurnSignalRequiredEndPoint)
   constexpr lanelet::Id lane_id = 50;
   constexpr double angle_threshold_deg = 15.0;
 
-  const auto result =
-    utils::get_turn_signal_required_end_point(get_lanelet_from_id(lane_id), angle_threshold_deg);
+  const auto result = utils::get_turn_signal_required_end_point(
+    planner_data_.lanelet_map_ptr->laneletLayer.get(lane_id), angle_threshold_deg);
 
   ASSERT_TRUE(result);
 
