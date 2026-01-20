@@ -15,7 +15,7 @@
 #ifndef UTILS_TEST_HPP_
 #define UTILS_TEST_HPP_
 
-#include "autoware/path_generator/common_structs.hpp"
+#include "autoware/path_generator/node.hpp"
 #include "autoware/path_generator/utils.hpp"
 
 #include <autoware/lanelet2_utils/conversion.hpp>
@@ -76,7 +76,7 @@ protected:
         "Failed to parse YAML file: " + route_path + ". The file might be corrupted.");
     }
 
-    planner_data_.route_frame_id = route_->header.frame_id;
+    planner_data_.frame_id = route_->header.frame_id;
     planner_data_.goal_pose = route_->goal_pose;
 
     route_manager_ = experimental::lanelet2_utils::RouteManager::create(
@@ -121,7 +121,7 @@ protected:
   }
 
   vehicle_info_utils::VehicleInfo vehicle_info_;
-  PlannerData planner_data_;
+  path_generator::PathGenerator::PlannerData planner_data_;
   std::optional<experimental::lanelet2_utils::RouteManager> route_manager_{std::nullopt};
 
   autoware_map_msgs::msg::LaneletMapBin::ConstSharedPtr lanelet_map_bin_{nullptr};
