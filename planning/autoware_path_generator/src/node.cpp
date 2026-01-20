@@ -129,8 +129,6 @@ PathGenerator::InputData PathGenerator::take_data()
       RCLCPP_ERROR(get_logger(), "input route is empty, ignoring...");
     } else {
       route_manager_data_.route_ptr = msg;
-      planner_data_.route_frame_id = msg->header.frame_id;
-      planner_data_.goal_pose = msg->goal_pose;
       route_manager_.reset();
     }
   }
@@ -173,6 +171,8 @@ void PathGenerator::initialize_route_manager(
 {
   route_manager_ = experimental::lanelet2_utils::RouteManager::create(
     *route_manager_data.lanelet_map_bin_ptr, *route_manager_data.route_ptr, initial_pose);
+  planner_data_.frame_id = route_manager_data.route_ptr->header.frame_id;
+  planner_data_.goal_pose = route_manager_data.route_ptr->goal_pose;
 }
 
 std::optional<PathWithLaneId> PathGenerator::plan_path(
@@ -322,7 +322,7 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
   }
 
   // Set header which is needed to engage
-  finalized_path_with_lane_id.header.frame_id = planner_data_.route_frame_id;
+  finalized_path_with_lane_id.header.frame_id = planner_data_.frame_id;
   finalized_path_with_lane_id.header.stamp = now();
 
   const auto [left_bound, right_bound] = utils::get_path_bounds(

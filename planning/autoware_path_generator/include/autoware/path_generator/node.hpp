@@ -15,8 +15,6 @@
 #ifndef AUTOWARE__PATH_GENERATOR__NODE_HPP_
 #define AUTOWARE__PATH_GENERATOR__NODE_HPP_
 
-#include "autoware/path_generator/common_structs.hpp"
-
 #include <autoware/lanelet2_utils/route_manager.hpp>
 #include <autoware/trajectory/path_point_with_lane_id.hpp>
 #include <autoware_path_generator/path_generator_parameters.hpp>
@@ -34,6 +32,7 @@
 #include <nav_msgs/msg/odometry.hpp>
 
 #include <memory>
+#include <string>
 
 namespace autoware::path_generator
 {
@@ -51,20 +50,19 @@ using Trajectory = autoware::experimental::trajectory::Trajectory<PathPointWithL
 class PathGenerator : public rclcpp::Node
 {
 public:
-  struct InputData
-  {
-    Odometry::ConstSharedPtr odometry_ptr{nullptr};
-  };
-
   struct RouteManagerData
   {
     LaneletMapBin::ConstSharedPtr lanelet_map_bin_ptr{nullptr};
     LaneletRoute::ConstSharedPtr route_ptr{nullptr};
   };
 
-  explicit PathGenerator(const rclcpp::NodeOptions & node_options);
+  struct PlannerData
+  {
+    std::string frame_id{};
+    geometry_msgs::msg::Pose goal_pose{};
+  };
 
-  bool is_data_ready(const InputData & input_data);
+  explicit PathGenerator(const rclcpp::NodeOptions & node_options);
 
   void initialize_route_manager(
     const RouteManagerData & route_manager_data, const geometry_msgs::msg::Pose & initial_pose);
@@ -73,6 +71,11 @@ public:
     const geometry_msgs::msg::Pose & current_pose, const Params & params);
 
 private:
+  struct InputData
+  {
+    Odometry::ConstSharedPtr odometry_ptr{nullptr};
+  };
+
   // subscriber
   autoware_utils_rclcpp::InterProcessPollingSubscriber<
     LaneletRoute, autoware_utils_rclcpp::polling_policy::Newest>
@@ -106,6 +109,8 @@ private:
   void run();
 
   InputData take_data();
+
+  bool is_data_ready(const InputData & input_data);
 
   std::optional<PathWithLaneId> plan_path(
     const geometry_msgs::msg::Pose & current_pose, const Params & params);
