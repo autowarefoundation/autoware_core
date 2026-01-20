@@ -116,6 +116,7 @@ bool transformObjectsWithFeature(
     if (!ros_target2objects_world) {
       return false;
     }
+    tf2::fromMsg(*ros_target2objects_world, tf_target2objects_world);
     const auto tf_matrix = detail::getTransformMatrix(target_frame_id, input_msg.header, tf_buffer);
     if (!tf_matrix) {
       RCLCPP_WARN(
