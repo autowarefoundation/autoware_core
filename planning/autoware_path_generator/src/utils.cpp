@@ -78,59 +78,6 @@ lanelet::BasicPoints3d to_lanelet_points(
 }
 }  // namespace
 
-std::optional<lanelet::ConstLanelets> get_lanelets_within_route_up_to(
-  const lanelet::ConstLanelet & lanelet,
-  const experimental::lanelet2_utils::RouteManager & route_manager, const double distance)
-{
-  if (!exists(route_manager.all_route_lanelets(), lanelet)) {
-    return std::nullopt;
-  }
-
-  lanelet::ConstLanelets lanelets{};
-  auto current_lanelet = lanelet;
-  auto length = 0.;
-
-  while (rclcpp::ok() && length < distance) {
-    const auto prev_lanelet = get_previous_lanelet_within_route(current_lanelet, route_manager);
-    if (!prev_lanelet) {
-      break;
-    }
-
-    lanelets.push_back(*prev_lanelet);
-    current_lanelet = *prev_lanelet;
-    length += lanelet::geometry::length2d(*prev_lanelet);
-  }
-
-  std::reverse(lanelets.begin(), lanelets.end());
-  return lanelets;
-}
-
-std::optional<lanelet::ConstLanelets> get_lanelets_within_route_after(
-  const lanelet::ConstLanelet & lanelet,
-  const experimental::lanelet2_utils::RouteManager & route_manager, const double distance)
-{
-  if (!exists(route_manager.all_route_lanelets(), lanelet)) {
-    return std::nullopt;
-  }
-
-  lanelet::ConstLanelets lanelets{};
-  auto current_lanelet = lanelet;
-  auto length = 0.;
-
-  while (rclcpp::ok() && length < distance) {
-    const auto next_lanelet = get_next_lanelet_within_route(current_lanelet, route_manager);
-    if (!next_lanelet) {
-      break;
-    }
-
-    lanelets.push_back(*next_lanelet);
-    current_lanelet = *next_lanelet;
-    length += lanelet::geometry::length2d(*next_lanelet);
-  }
-
-  return lanelets;
-}
-
 std::optional<lanelet::ConstLanelet> get_previous_lanelet_within_route(
   const lanelet::ConstLanelet & lanelet,
   const experimental::lanelet2_utils::RouteManager & route_manager)
