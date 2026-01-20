@@ -77,59 +77,6 @@ lanelet::BasicPoints3d to_lanelet_points(
 }
 }  // namespace
 
-std::optional<lanelet::ConstLanelets> get_lanelets_within_route_up_to(
-  const lanelet::ConstLanelet & lanelet,
-  const experimental::lanelet2_utils::RouteManager & route_manager, const double distance)
-{
-  if (!exists(route_manager.all_route_lanelets(), lanelet)) {
-    return std::nullopt;
-  }
-
-  lanelet::ConstLanelets lanelets{};
-  auto current_lanelet = lanelet;
-  auto length = 0.;
-
-  while (rclcpp::ok() && length < distance) {
-    const auto prev_lanelet = get_previous_lanelet_within_route(current_lanelet, route_manager);
-    if (!prev_lanelet) {
-      break;
-    }
-
-    lanelets.push_back(*prev_lanelet);
-    current_lanelet = *prev_lanelet;
-    length += lanelet::geometry::length2d(*prev_lanelet);
-  }
-
-  std::reverse(lanelets.begin(), lanelets.end());
-  return lanelets;
-}
-
-std::optional<lanelet::ConstLanelets> get_lanelets_within_route_after(
-  const lanelet::ConstLanelet & lanelet,
-  const experimental::lanelet2_utils::RouteManager & route_manager, const double distance)
-{
-  if (!exists(route_manager.all_route_lanelets(), lanelet)) {
-    return std::nullopt;
-  }
-
-  lanelet::ConstLanelets lanelets{};
-  auto current_lanelet = lanelet;
-  auto length = 0.;
-
-  while (rclcpp::ok() && length < distance) {
-    const auto next_lanelet = get_next_lanelet_within_route(current_lanelet, route_manager);
-    if (!next_lanelet) {
-      break;
-    }
-
-    lanelets.push_back(*next_lanelet);
-    current_lanelet = *next_lanelet;
-    length += lanelet::geometry::length2d(*next_lanelet);
-  }
-
-  return lanelets;
-}
-
 std::optional<lanelet::ConstLanelet> get_previous_lanelet_within_route(
   const lanelet::ConstLanelet & lanelet,
   const experimental::lanelet2_utils::RouteManager & route_manager)
@@ -178,67 +125,6 @@ std::optional<lanelet::ConstLanelet> get_next_lanelet_within_route(
     return std::nullopt;
   }
   return *next_lanelet_itr;
-}
-
-std::vector<WaypointGroup> get_waypoint_groups(
-  const lanelet::LaneletSequence & lanelet_sequence, const lanelet::LaneletMap & lanelet_map,
-  const double connection_gradient_from_centerline)
-{
-  std::vector<WaypointGroup> waypoint_groups{};
-
-  const auto get_interval_bound = [&](
-                                    const lanelet::ConstPoint3d & point,
-                                    const lanelet::ConstLanelet & lanelet,
-                                    const double lateral_distance_factor) {
-    const auto arc_coordinates =
-      lanelet::geometry::toArcCoordinates(lanelet.centerline2d(), lanelet::utils::to2D(point));
-    return arc_coordinates.length + lateral_distance_factor * std::abs(arc_coordinates.distance);
-  };
-
-  double s = 0.;
-  for (const auto & lanelet : lanelet_sequence) {
-    if (!lanelet.hasAttribute("waypoints")) {
-      s += lanelet::geometry::length2d(lanelet);
-      continue;
-    }
-
-    const auto waypoints_id = lanelet.attribute("waypoints").asId().value();
-    const auto & waypoints = lanelet_map.lineStringLayer.get(waypoints_id);
-    if (waypoints.empty()) {
-      continue;
-    }
-
-    const auto start =
-      s + get_interval_bound(waypoints.front(), lanelet, -connection_gradient_from_centerline);
-    if (waypoint_groups.empty() || start > waypoint_groups.back().interval.end) {
-      // current waypoint group is not within interval of any other group, thus create a new group
-      waypoint_groups.emplace_back().interval.start = start;
-    } else if (
-      const auto border_point = get_border_point(
-        lanelet::BasicLineString3d{
-          waypoint_groups.back().waypoints.back().point.basicPoint(),
-          waypoints.front().basicPoint()},
-        lanelet)) {
-      waypoint_groups.back().waypoints.emplace_back(
-        *border_point, waypoint_groups.back().waypoints.back().lane_id);
-      waypoint_groups.back().waypoints.back().next_lane_id = lanelet.id();
-    }
-
-    waypoint_groups.back().interval.end =
-      s + get_interval_bound(waypoints.back(), lanelet, connection_gradient_from_centerline);
-
-    waypoint_groups.back().waypoints.reserve(
-      waypoint_groups.back().waypoints.size() + waypoints.size());
-    std::transform(
-      waypoints.begin(), waypoints.end(), std::back_inserter(waypoint_groups.back().waypoints),
-      [&](const lanelet::ConstPoint3d & waypoint) {
-        return WaypointGroup::Waypoint{waypoint, lanelet.id()};
-      });
-
-    s += lanelet::geometry::length2d(lanelet);
-  }
-
-  return waypoint_groups;
 }
 
 std::optional<lanelet::ConstPoint3d> get_border_point(
