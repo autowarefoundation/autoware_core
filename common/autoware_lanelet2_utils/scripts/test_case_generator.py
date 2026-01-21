@@ -46,7 +46,7 @@ def draw_centerline_arrow(ax, centerline):
     size = len(centerline)
     mid = int(size / 2)
     start = max(0, mid - 1)
-    end = max(size - 1, mid + 1)
+    end = min(size - 1, mid + 1)
     start_pt = centerline[start].basicPoint()
     end_pt = centerline[end].basicPoint()
     mid_point = (start_pt + end_pt) * 0.5

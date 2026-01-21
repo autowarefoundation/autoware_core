@@ -25,6 +25,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <exception>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -136,7 +137,13 @@ std::vector<double> Trajectory<PointType>::get_internal_bases() const
 
 std::vector<double> Trajectory<PointType>::get_underlying_bases() const
 {
-  auto bases = detail::crop_bases(bases_, start_, end_);
+  // FIXME(soblin): actually minimum_required_poinst is 4, but this function is used in
+  // `pretty_build`. So I'm passing 3 temporarily. minimum_required_poinst is passed because
+  static constexpr auto minimum_required_point = 3;
+  auto bases = detail::crop_and_fill_bases(bases_, start_, end_, minimum_required_point);
+  if (bases.size() < minimum_required_point) {
+    throw std::logic_error("crop() did not sanitize start_, end_ !");
+  }
   std::transform(
     bases.begin(), bases.end(), bases.begin(), [this](const double s) { return s - start_; });
   return bases;
@@ -261,8 +268,14 @@ std::vector<PointType> Trajectory<PointType>::restore(const size_t min_points) c
 
 void Trajectory<PointType>::crop(const double start, const double length)
 {
-  start_ = std::clamp(start_ + start, start_, end_);
-  end_ = std::clamp(start_ + length, start_, end_);
+  const double new_start = std::clamp(start_ + start, start_, end_);
+  const double new_end = std::clamp(new_start + length, start_, end_);
+  if (detail::is_croppable(bases_, new_start, new_end)) {
+    start_ = new_start;
+    end_ = new_end;
+  }
+  RCLCPP_ERROR(
+    rclcpp::get_logger("trajectory"), "crop for [%f, %f] is invalid", new_start, new_end);
 }
 
 Trajectory<PointType>::Builder::Builder() : trajectory_(std::make_unique<Trajectory<PointType>>())

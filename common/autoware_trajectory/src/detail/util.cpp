@@ -59,7 +59,8 @@ std::vector<double> fill_bases(const std::vector<double> & x, const size_t outpu
   return result;
 }
 
-std::vector<double> crop_bases(const std::vector<double> & x, const double start, const double end)
+static std::vector<double> crop_bases(
+  const std::vector<double> & x, const double start, const double end)
 {
   std::vector<double> result;
 
@@ -78,6 +79,27 @@ std::vector<double> crop_bases(const std::vector<double> & x, const double start
     result.push_back(end);
   }
 
+  return result;
+}
+
+bool is_croppable(const std::vector<double> & x, const double start, const double end)
+{
+  const auto result = crop_bases(x, start, end);
+  return result.size() >= 2;
+}
+
+std::vector<double> crop_and_fill_bases(
+  const std::vector<double> & x, const double start, const double end,
+  const size_t output_size_at_least)
+{
+  if (!is_croppable(x, start, end)) {
+    return {};
+  }
+  std::vector<double> result = crop_bases(x, start, end);
+
+  if (result.size() < output_size_at_least) {
+    return fill_bases(result, output_size_at_least);
+  }
   return result;
 }
 }  // namespace helpers
