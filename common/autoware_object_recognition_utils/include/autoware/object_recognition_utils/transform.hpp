@@ -77,8 +77,6 @@ bool transformObjects(
   if (input_msg.header.frame_id != target_frame_id) {
     output_msg.header.frame_id = target_frame_id;
     tf2::Transform tf_target2objects_world;
-    tf2::Transform tf_target2objects;
-    tf2::Transform tf_objects_world2objects;
     {
       const auto ros_target2objects_world = detail::getTransform(
         tf_buffer, input_msg.header.frame_id, target_frame_id, input_msg.header.stamp);
@@ -88,9 +86,10 @@ bool transformObjects(
       tf2::fromMsg(*ros_target2objects_world, tf_target2objects_world);
     }
     for (auto & object : output_msg.objects) {
+      tf2::Transform tf_objects_world2objects;
       auto & pose_with_cov = object.kinematics.pose_with_covariance;
       tf2::fromMsg(pose_with_cov.pose, tf_objects_world2objects);
-      tf_target2objects = tf_target2objects_world * tf_objects_world2objects;
+      tf2::Transform tf_target2objects = tf_target2objects_world * tf_objects_world2objects;
       // transform pose, frame difference and object pose
       tf2::toMsg(tf_target2objects, pose_with_cov.pose);
       // transform covariance, only the frame difference
@@ -109,8 +108,6 @@ bool transformObjectsWithFeature(
   if (input_msg.header.frame_id != target_frame_id) {
     output_msg.header.frame_id = target_frame_id;
     tf2::Transform tf_target2objects_world = tf2::Transform::getIdentity();
-    tf2::Transform tf_target2objects;
-    tf2::Transform tf_objects_world2objects;
     const auto ros_target2objects_world = detail::getTransform(
       tf_buffer, input_msg.header.frame_id, target_frame_id, input_msg.header.stamp);
     if (!ros_target2objects_world) {
@@ -124,10 +121,11 @@ bool transformObjectsWithFeature(
       return false;
     }
     for (auto & feature_object : output_msg.feature_objects) {
+      tf2::Transform tf_objects_world2objects;
       // transform object
       tf2::fromMsg(
         feature_object.object.kinematics.pose_with_covariance.pose, tf_objects_world2objects);
-      tf_target2objects = tf_target2objects_world * tf_objects_world2objects;
+      tf2::Transform tf_target2objects = tf_target2objects_world * tf_objects_world2objects;
       tf2::toMsg(tf_target2objects, feature_object.object.kinematics.pose_with_covariance.pose);
 
       // transform cluster
