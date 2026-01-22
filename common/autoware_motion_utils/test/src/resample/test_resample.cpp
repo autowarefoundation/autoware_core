@@ -3626,3 +3626,51 @@ TEST(resample_trajectory, resample_with_middle_stop_point)
   EXPECT_NEAR(resampled_traj.points.at(5).longitudinal_velocity_mps, 0.0, epsilon);
   EXPECT_NEAR(resampled_traj.points.at(6).longitudinal_velocity_mps, 0.0, epsilon);
 }
+
+TEST(resample_trajectory, initial_zero_then_nonzero_velocity_zoh)
+{
+  using autoware::motion_utils::resampleTrajectory;
+
+  autoware_planning_msgs::msg::Trajectory traj;
+  traj.points.resize(10);
+  for (size_t i = 0; i < 10; ++i) {
+    const double v = (i < 3) ? 0.0 : 8.33;
+    traj.points.at(i) = generateTestTrajectoryPoint(i * 1.0, 0.0, 0.0, 0.0, v, 0.0, 0.0, 0.0);
+  }
+
+  std::vector<double> resampled_arclength = {0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 9.0};
+  const auto resampled_traj = resampleTrajectory(traj, resampled_arclength);
+
+  EXPECT_EQ(resampled_traj.points.size(), resampled_arclength.size());
+
+  EXPECT_NEAR(resampled_traj.points.at(0).longitudinal_velocity_mps, 0.0, epsilon);
+  EXPECT_NEAR(resampled_traj.points.at(1).longitudinal_velocity_mps, 0.0, epsilon);
+  EXPECT_NEAR(resampled_traj.points.at(2).longitudinal_velocity_mps, 0.0, epsilon);
+  EXPECT_NEAR(resampled_traj.points.at(3).longitudinal_velocity_mps, 8.33, epsilon);
+  EXPECT_NEAR(resampled_traj.points.at(4).longitudinal_velocity_mps, 8.33, epsilon);
+  EXPECT_NEAR(resampled_traj.points.at(5).longitudinal_velocity_mps, 8.33, epsilon);
+  EXPECT_NEAR(resampled_traj.points.at(6).longitudinal_velocity_mps, 8.33, epsilon);
+}
+
+TEST(resample_trajectory, initial_zero_then_nonzero_velocity_lerp)
+{
+  using autoware::motion_utils::resampleTrajectory;
+
+  autoware_planning_msgs::msg::Trajectory traj;
+  traj.points.resize(10);
+  for (size_t i = 0; i < 10; ++i) {
+    const double v = (i < 3) ? 0.0 : 8.33;
+    traj.points.at(i) = generateTestTrajectoryPoint(i * 1.0, 0.0, 0.0, 0.0, v, 0.0, 0.0, 0.0);
+  }
+
+  std::vector<double> resampled_arclength = {0.0, 2.5, 3.0, 3.5, 9.0};
+  const auto resampled_traj = resampleTrajectory(traj, resampled_arclength, false, true, false);
+
+  EXPECT_EQ(resampled_traj.points.size(), resampled_arclength.size());
+
+  EXPECT_NEAR(resampled_traj.points.at(0).longitudinal_velocity_mps, 0.0, epsilon);
+  EXPECT_NEAR(resampled_traj.points.at(1).longitudinal_velocity_mps, 8.33 * 0.5, epsilon);
+  EXPECT_NEAR(resampled_traj.points.at(2).longitudinal_velocity_mps, 8.33, epsilon);
+  EXPECT_NEAR(resampled_traj.points.at(3).longitudinal_velocity_mps, 8.33, epsilon);
+  EXPECT_NEAR(resampled_traj.points.at(4).longitudinal_velocity_mps, 8.33, epsilon);
+}
