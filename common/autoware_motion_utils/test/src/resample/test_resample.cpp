@@ -181,8 +181,13 @@ std::vector<T> setZeroVelocityAfterStop(const std::vector<T> & traj_points)
 {
   std::vector<T> resampled_traj_points;
   bool stop_point_found = false;
+  bool seen_nonzero_v_lon = false;
   for (auto p : traj_points) {
-    if (!stop_point_found && p.longitudinal_velocity_mps < std::numeric_limits<double>::epsilon()) {
+    const bool is_zero = p.longitudinal_velocity_mps < std::numeric_limits<double>::epsilon();
+    if (!is_zero) {
+      seen_nonzero_v_lon = true;
+    }
+    if (seen_nonzero_v_lon && !stop_point_found && is_zero) {
       stop_point_found = true;
     }
     if (stop_point_found) {
@@ -2744,7 +2749,7 @@ TEST(resample_trajectory, resample_trajectory_by_vector)
       EXPECT_NEAR(p.pose.position.x, 1.2, epsilon);
       EXPECT_NEAR(p.pose.position.y, 0.0, epsilon);
       EXPECT_NEAR(p.pose.position.z, 0.0, epsilon);
-      EXPECT_NEAR(p.longitudinal_velocity_mps, 0.0, epsilon);
+      EXPECT_NEAR(p.longitudinal_velocity_mps, 1.0, epsilon);
       EXPECT_NEAR(p.lateral_velocity_mps, 0.5, epsilon);
       EXPECT_NEAR(p.heading_rate_rps, 0.12, epsilon);
       EXPECT_NEAR(p.acceleration_mps2, 0.05, epsilon);
@@ -2755,7 +2760,7 @@ TEST(resample_trajectory, resample_trajectory_by_vector)
       EXPECT_NEAR(p.pose.position.x, 1.5, epsilon);
       EXPECT_NEAR(p.pose.position.y, 0.0, epsilon);
       EXPECT_NEAR(p.pose.position.z, 0.0, epsilon);
-      EXPECT_NEAR(p.longitudinal_velocity_mps, 0.0, epsilon);
+      EXPECT_NEAR(p.longitudinal_velocity_mps, 1.0, epsilon);
       EXPECT_NEAR(p.lateral_velocity_mps, 0.5, epsilon);
       EXPECT_NEAR(p.heading_rate_rps, 0.15, epsilon);
       EXPECT_NEAR(p.acceleration_mps2, 0.05, epsilon);
@@ -2766,7 +2771,7 @@ TEST(resample_trajectory, resample_trajectory_by_vector)
       EXPECT_NEAR(p.pose.position.x, 5.3, epsilon);
       EXPECT_NEAR(p.pose.position.y, 0.0, epsilon);
       EXPECT_NEAR(p.pose.position.z, 0.0, epsilon);
-      EXPECT_NEAR(p.longitudinal_velocity_mps, 0.0, epsilon);
+      EXPECT_NEAR(p.longitudinal_velocity_mps, 5.0, epsilon);
       EXPECT_NEAR(p.lateral_velocity_mps, 2.5, epsilon);
       EXPECT_NEAR(p.heading_rate_rps, 0.53, epsilon);
       EXPECT_NEAR(p.acceleration_mps2, 0.25, epsilon);
@@ -2777,7 +2782,7 @@ TEST(resample_trajectory, resample_trajectory_by_vector)
       EXPECT_NEAR(p.pose.position.x, 7.5, epsilon);
       EXPECT_NEAR(p.pose.position.y, 0.0, epsilon);
       EXPECT_NEAR(p.pose.position.z, 0.0, epsilon);
-      EXPECT_NEAR(p.longitudinal_velocity_mps, 0.0, epsilon);
+      EXPECT_NEAR(p.longitudinal_velocity_mps, 7.0, epsilon);
       EXPECT_NEAR(p.lateral_velocity_mps, 3.5, epsilon);
       EXPECT_NEAR(p.heading_rate_rps, 0.75, epsilon);
       EXPECT_NEAR(p.acceleration_mps2, 0.35, epsilon);
@@ -2788,7 +2793,7 @@ TEST(resample_trajectory, resample_trajectory_by_vector)
       EXPECT_NEAR(p.pose.position.x, 9.0, epsilon);
       EXPECT_NEAR(p.pose.position.y, 0.0, epsilon);
       EXPECT_NEAR(p.pose.position.z, 0.0, epsilon);
-      EXPECT_NEAR(p.longitudinal_velocity_mps, 0.0, epsilon);
+      EXPECT_NEAR(p.longitudinal_velocity_mps, 9.0, epsilon);
       EXPECT_NEAR(p.lateral_velocity_mps, 4.5, epsilon);
       EXPECT_NEAR(p.heading_rate_rps, 0.9, epsilon);
       EXPECT_NEAR(p.acceleration_mps2, 0.45, epsilon);
@@ -2940,7 +2945,7 @@ TEST(resample_trajectory, resample_trajectory_by_vector_non_default)
       EXPECT_NEAR(p.pose.position.x, 1.2, epsilon);
       EXPECT_NEAR(p.pose.position.y, 0.0, epsilon);
       EXPECT_NEAR(p.pose.position.z, 0.0, epsilon);
-      EXPECT_NEAR(p.longitudinal_velocity_mps, 0.0, epsilon);
+      EXPECT_NEAR(p.longitudinal_velocity_mps, 1.0, epsilon);
       EXPECT_NEAR(p.lateral_velocity_mps, 0.5, epsilon);
       EXPECT_NEAR(p.heading_rate_rps, 0.12, epsilon);
       EXPECT_NEAR(p.acceleration_mps2, 0.05, epsilon);
@@ -2951,7 +2956,7 @@ TEST(resample_trajectory, resample_trajectory_by_vector_non_default)
       EXPECT_NEAR(p.pose.position.x, 5.3, epsilon);
       EXPECT_NEAR(p.pose.position.y, 0.0, epsilon);
       EXPECT_NEAR(p.pose.position.z, 0.0, epsilon);
-      EXPECT_NEAR(p.longitudinal_velocity_mps, 0.0, epsilon);
+      EXPECT_NEAR(p.longitudinal_velocity_mps, 5.0, epsilon);
       EXPECT_NEAR(p.lateral_velocity_mps, 2.5, epsilon);
       EXPECT_NEAR(p.heading_rate_rps, 0.53, epsilon);
       EXPECT_NEAR(p.acceleration_mps2, 0.25, epsilon);
@@ -2962,7 +2967,7 @@ TEST(resample_trajectory, resample_trajectory_by_vector_non_default)
       EXPECT_NEAR(p.pose.position.x, 9.0, epsilon);
       EXPECT_NEAR(p.pose.position.y, 0.0, epsilon);
       EXPECT_NEAR(p.pose.position.z, 0.0, epsilon);
-      EXPECT_NEAR(p.longitudinal_velocity_mps, 0.0, epsilon);
+      EXPECT_NEAR(p.longitudinal_velocity_mps, 9.0, epsilon);
       EXPECT_NEAR(p.lateral_velocity_mps, 4.5, epsilon);
       EXPECT_NEAR(p.heading_rate_rps, 0.9, epsilon);
       EXPECT_NEAR(p.acceleration_mps2, 0.45, epsilon);
@@ -3004,7 +3009,7 @@ TEST(resample_trajectory, resample_trajectory_by_vector_non_default)
       EXPECT_NEAR(p.pose.position.x, 1.2, epsilon);
       EXPECT_NEAR(p.pose.position.y, 0.0, epsilon);
       EXPECT_NEAR(p.pose.position.z, 1.2, epsilon);
-      EXPECT_NEAR(p.longitudinal_velocity_mps, 0.0, epsilon);
+      EXPECT_NEAR(p.longitudinal_velocity_mps, 1.0, epsilon);
       EXPECT_NEAR(p.lateral_velocity_mps, 0.5, epsilon);
       EXPECT_NEAR(p.heading_rate_rps, 0.12, epsilon);
       EXPECT_NEAR(p.acceleration_mps2, 0.05, epsilon);
@@ -3015,7 +3020,7 @@ TEST(resample_trajectory, resample_trajectory_by_vector_non_default)
       EXPECT_NEAR(p.pose.position.x, 5.3, epsilon);
       EXPECT_NEAR(p.pose.position.y, 0.0, epsilon);
       EXPECT_NEAR(p.pose.position.z, 5.3, epsilon);
-      EXPECT_NEAR(p.longitudinal_velocity_mps, 0.0, epsilon);
+      EXPECT_NEAR(p.longitudinal_velocity_mps, 5.0, epsilon);
       EXPECT_NEAR(p.lateral_velocity_mps, 2.5, epsilon);
       EXPECT_NEAR(p.heading_rate_rps, 0.53, epsilon);
       EXPECT_NEAR(p.acceleration_mps2, 0.25, epsilon);
@@ -3026,7 +3031,7 @@ TEST(resample_trajectory, resample_trajectory_by_vector_non_default)
       EXPECT_NEAR(p.pose.position.x, 9.0, epsilon);
       EXPECT_NEAR(p.pose.position.y, 0.0, epsilon);
       EXPECT_NEAR(p.pose.position.z, 9.0, epsilon);
-      EXPECT_NEAR(p.longitudinal_velocity_mps, 0.0, epsilon);
+      EXPECT_NEAR(p.longitudinal_velocity_mps, 9.0, epsilon);
       EXPECT_NEAR(p.lateral_velocity_mps, 4.5, epsilon);
       EXPECT_NEAR(p.heading_rate_rps, 0.9, epsilon);
       EXPECT_NEAR(p.acceleration_mps2, 0.45, epsilon);
@@ -3070,7 +3075,7 @@ TEST(resample_trajectory, resample_trajectory_by_vector_non_default)
       EXPECT_NEAR(p.pose.position.x, 1.2, epsilon);
       EXPECT_NEAR(p.pose.position.y, 0.0, epsilon);
       EXPECT_NEAR(p.pose.position.z, 0.0, epsilon);
-      EXPECT_NEAR(p.longitudinal_velocity_mps, 0.0, epsilon);
+      EXPECT_NEAR(p.longitudinal_velocity_mps, 1.2, epsilon);
       EXPECT_NEAR(p.lateral_velocity_mps, 0.6, epsilon);
       EXPECT_NEAR(p.heading_rate_rps, 0.12, epsilon);
       EXPECT_NEAR(p.acceleration_mps2, 0.06, epsilon);
@@ -3081,7 +3086,7 @@ TEST(resample_trajectory, resample_trajectory_by_vector_non_default)
       EXPECT_NEAR(p.pose.position.x, 5.3, epsilon);
       EXPECT_NEAR(p.pose.position.y, 0.0, epsilon);
       EXPECT_NEAR(p.pose.position.z, 0.0, epsilon);
-      EXPECT_NEAR(p.longitudinal_velocity_mps, 0.0, epsilon);
+      EXPECT_NEAR(p.longitudinal_velocity_mps, 5.3, epsilon);
       EXPECT_NEAR(p.lateral_velocity_mps, 2.65, epsilon);
       EXPECT_NEAR(p.heading_rate_rps, 0.53, epsilon);
       EXPECT_NEAR(p.acceleration_mps2, 0.265, epsilon);
@@ -3092,7 +3097,7 @@ TEST(resample_trajectory, resample_trajectory_by_vector_non_default)
       EXPECT_NEAR(p.pose.position.x, 9.0, epsilon);
       EXPECT_NEAR(p.pose.position.y, 0.0, epsilon);
       EXPECT_NEAR(p.pose.position.z, 0.0, epsilon);
-      EXPECT_NEAR(p.longitudinal_velocity_mps, 0.0, epsilon);
+      EXPECT_NEAR(p.longitudinal_velocity_mps, 9.0, epsilon);
       EXPECT_NEAR(p.lateral_velocity_mps, 4.5, epsilon);
       EXPECT_NEAR(p.heading_rate_rps, 0.9, epsilon);
       EXPECT_NEAR(p.acceleration_mps2, 0.45, epsilon);
