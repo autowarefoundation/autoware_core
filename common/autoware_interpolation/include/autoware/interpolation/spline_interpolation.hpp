@@ -106,7 +106,7 @@ public:
       b_ = b_.head(n_segments).eval();
       c_ = c_.head(n_segments).eval();
       d_ = d_.head(n_segments).eval();
-      
+
       base_keys_.resize(size);
     }
     // If size == base_keys_.size(), no-op
