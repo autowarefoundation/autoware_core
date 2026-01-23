@@ -17,6 +17,8 @@
 
 #include "autoware/interpolation/spline_interpolation.hpp"
 
+#include <limits>
+#include <utility>
 #include <vector>
 
 namespace autoware::interpolation
