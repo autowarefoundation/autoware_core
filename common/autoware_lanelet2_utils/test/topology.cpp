@@ -100,6 +100,58 @@ TEST_F(TestWithIntersectionCrossingMap, right_lanelet_with_lc_permission)
   EXPECT_EQ(lane.value().id(), 2245);
 }
 
+TEST_F(TestWithIntersectionCrossingMap, lane_changeable_neighbors_with_lc_permission)
+{
+  // using input lanelet
+  {
+    const auto lanes = lanelet2_utils::lane_changeable_neighbors(
+      lanelet_map_ptr_->laneletLayer.get(2254), routing_graph_ptr_);
+    ASSERT_EQ(lanes.size(), 4);
+    std::vector<int64_t> expected_id = {2253, 2254, 2255, 2256};
+    for (auto i = 0ul; i < lanes.size(); ++i) {
+      EXPECT_EQ(lanes[i].id(), expected_id[i]);
+    }
+  }
+
+  // using LaneletMap and search point
+  {
+    // (107, 117) is on lanelet 2254
+    geometry_msgs::msg::Point search_point;
+    search_point.x = 107.0;
+    search_point.y = 117.0;
+    const auto lanes =
+      lanelet2_utils::lane_changeable_neighbors(lanelet_map_ptr_, routing_graph_ptr_, search_point);
+    ASSERT_EQ(lanes.size(), 4);
+    std::vector<int64_t> expected_id = {2253, 2254, 2255, 2256};
+    for (auto i = 0ul; i < lanes.size(); ++i) {
+      EXPECT_EQ(lanes[i].id(), expected_id[i]);
+    }
+  }
+}
+
+TEST_F(TestWithIntersectionCrossingMap, lane_changeable_neighbors_without_lc_permission)
+{
+  // using input lanelet
+  {
+    const auto lanes = lanelet2_utils::lane_changeable_neighbors(
+      lanelet_map_ptr_->laneletLayer.get(2258), routing_graph_ptr_);
+    ASSERT_EQ(lanes.size(), 1);
+    EXPECT_EQ(lanes.front().id(), 2258);
+  }
+
+  // using LaneletMap and search point
+  {
+    // (107, 137) is on lanelet 2258
+    geometry_msgs::msg::Point search_point;
+    search_point.x = 107.0;
+    search_point.y = 137.0;
+    const auto lanes =
+      lanelet2_utils::lane_changeable_neighbors(lanelet_map_ptr_, routing_graph_ptr_, search_point);
+    ASSERT_EQ(lanes.size(), 1);
+    EXPECT_EQ(lanes.front().id(), 2258);
+  }
+}
+
 TEST_F(TestWithIntersectionCrossingMap, right_opposite_lanelet_valid)
 {
   const auto lane = lanelet2_utils::right_opposite_lanelet(

@@ -12,13 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/lanelet2_utils/topology.hpp>
 #include <range/v3/all.hpp>
 #include <rclcpp/logging.hpp>
 
+#include <lanelet2_core/geometry/LaneletMap.h>
 #include <lanelet2_core/primitives/Lanelet.h>
 #include <lanelet2_routing/RoutingGraph.h>
 
+#include <limits>
 #include <vector>
 
 namespace autoware::experimental::lanelet2_utils
@@ -50,6 +53,33 @@ std::optional<lanelet::ConstLanelet> right_lanelet(
     return *adjacent_right_lane;
   }
   return std::nullopt;
+}
+
+lanelet::ConstLanelets lane_changeable_neighbors(
+  const lanelet::ConstLanelet & lanelet,
+  const lanelet::routing::RoutingGraphConstPtr & routing_graph)
+{
+  return routing_graph->besides(lanelet);
+}
+
+lanelet::ConstLanelets lane_changeable_neighbors(
+  const lanelet::LaneletMapConstPtr & lanelet_map_ptr,
+  const lanelet::routing::RoutingGraphConstPtr & routing_graph,
+  const geometry_msgs::msg::Point & search_point)
+{
+  const auto lanelet_pairs = lanelet::geometry::findWithin2d(
+    remove_const(lanelet_map_ptr)->laneletLayer, lanelet::utils::to2D(from_ros(search_point)),
+    std::numeric_limits<double>::epsilon());
+  lanelet::ConstLanelets lanelets;
+  std::transform(
+    lanelet_pairs.begin(), lanelet_pairs.end(), std::back_inserter(lanelets),
+    [](const auto & pair) { return pair.second; });
+  lanelet::ConstLanelets road_slices;
+  for (const auto & llt : lanelets) {
+    const auto tmp_road_slice = lane_changeable_neighbors(llt, routing_graph);
+    road_slices.insert(road_slices.end(), tmp_road_slice.begin(), tmp_road_slice.end());
+  }
+  return road_slices;
 }
 
 std::optional<lanelet::ConstLanelet> left_opposite_lanelet(

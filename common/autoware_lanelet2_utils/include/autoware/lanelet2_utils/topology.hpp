@@ -15,6 +15,8 @@
 #ifndef AUTOWARE__LANELET2_UTILS__TOPOLOGY_HPP_
 #define AUTOWARE__LANELET2_UTILS__TOPOLOGY_HPP_
 
+#include <geometry_msgs/msg/point.hpp>
+
 #include <lanelet2_core/primitives/Lanelet.h>
 #include <lanelet2_routing/Forward.h>
 #include <lanelet2_traffic_rules/TrafficRulesFactory.h>
@@ -123,6 +125,30 @@ lanelet::ConstLanelets from_ids(
  */
 lanelet::ConstLanelets get_conflicting_lanelets(
   const lanelet::ConstLanelet & lanelet, const lanelet::routing::RoutingGraphConstPtr & graph);
+
+/**
+ * @brief get adjacent (neighboring) lanelets that allow lane change from input lanelet including
+ * itself.
+ * @param [in] lanelet input lanelet
+ * @param [in] routing_graph routing_graph containing `lanelet`
+ * @post returned lanelets are ordered from left to right.
+ */
+lanelet::ConstLanelets lane_changeable_neighbors(
+  const lanelet::ConstLanelet & lanelet,
+  const lanelet::routing::RoutingGraphConstPtr & routing_graph);
+
+/**
+ * @brief get adjacent (neighboring) lanelets that allow lane change from  lanelets containing
+ * the given search point in the LaneletMap.
+ * @param [in] lanelet_map_ptr lanelet map pointer containing LaneletLayer
+ * @param [in] routing_graph routing_graph containing `lanelet`
+ * @param [in] search_point point used for identify the target lanelet(s)
+ */
+lanelet::ConstLanelets lane_changeable_neighbors(
+  const lanelet::LaneletMapConstPtr & lanelet_map_ptr,
+  const lanelet::routing::RoutingGraphConstPtr & routing_graph,
+  const geometry_msgs::msg::Point & search_point);
+
 }  // namespace autoware::experimental::lanelet2_utils
 
 #endif  // AUTOWARE__LANELET2_UTILS__TOPOLOGY_HPP_
