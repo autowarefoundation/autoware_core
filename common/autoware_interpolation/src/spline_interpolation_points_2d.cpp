@@ -253,7 +253,6 @@ void SplineInterpolationPoints2d::calcSplineCoefficientsInner(
 
 void SplineInterpolationPoints2d::updateCurvatureSpline()
 {
-  // Safety check: ensure we have valid splines
   if (base_s_vec_.size() < 2 || spline_x_.getSize() < 2 || spline_y_.getSize() < 2) {
     // Initialize with zero curvature if not enough points
     std::vector<double> zero_curvatures(base_s_vec_.size(), 0.0);
@@ -291,7 +290,7 @@ void SplineInterpolationPoints2d::extendLinearlyForward(
   const size_t target_n_knots, const double delta_s)
 {
   if (target_n_knots <= base_s_vec_.size()) {
-    return;  // Already has enough knots or invalid target
+    return;
   }
 
   const size_t n_missing = target_n_knots - base_s_vec_.size();

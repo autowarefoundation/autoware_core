@@ -112,7 +112,6 @@ public:
       spline_z_.resize(size);
       spline_curvature_.resize(size);
     }
-    // If size == base_s_vec_.size(), no-op
   }
 
   /**
