@@ -16,6 +16,8 @@
 
 #include <autoware_utils_geometry/geometry.hpp>
 
+#include <limits>
+#include <utility>
 #include <vector>
 
 namespace autoware::interpolation
