@@ -295,7 +295,6 @@ void SplineInterpolationPoints2d::extendLinearlyForward(
   }
 
   const size_t n_missing = target_n_knots - base_s_vec_.size();
-  const double last_s = base_s_vec_.back();
 
   // Get the end value and derivative from the last segment
   const double s_end = base_s_vec_.back();
@@ -322,7 +321,7 @@ void SplineInterpolationPoints2d::extendLinearlyForward(
 
   // Add extended knots and linearly extrapolated values
   for (size_t i = 0; i < n_missing; ++i) {
-    const double new_s = last_s + (i + 1) * delta_s;
+    const double new_s = s_end + (i + 1) * delta_s;
     extended_s.push_back(new_s);
 
     // Linear extrapolation: value = end_value + derivative * (new_s - s_end)

@@ -101,14 +101,12 @@ public:
     } else if (size < base_keys_.size()) {
       // Clipping - explicitly copy first N elements to preserve data
       const size_t n_segments = size - 1;
-      Eigen::VectorXd a_new = a_.head(n_segments);
-      Eigen::VectorXd b_new = b_.head(n_segments);
-      Eigen::VectorXd c_new = c_.head(n_segments);
-      Eigen::VectorXd d_new = d_.head(n_segments);
-      a_ = std::move(a_new);
-      b_ = std::move(b_new);
-      c_ = std::move(c_new);
-      d_ = std::move(d_new);
+
+      a_ = a_.head(n_segments).eval();
+      b_ = b_.head(n_segments).eval();
+      c_ = c_.head(n_segments).eval();
+      d_ = d_.head(n_segments).eval();
+      
       base_keys_.resize(size);
     }
     // If size == base_keys_.size(), no-op

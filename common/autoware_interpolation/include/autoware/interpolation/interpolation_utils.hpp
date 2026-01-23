@@ -72,7 +72,7 @@ inline std::vector<double> validateKeys(
   }
 
   // when query_keys is out of base_keys (This function does not allow exterior division.)
-  constexpr double epsilon = 2e-2;
+  constexpr double epsilon = 1e-3;
   if (
     query_keys.front() < base_keys.front() - epsilon ||
     base_keys.back() + epsilon < query_keys.back()) {
