@@ -73,7 +73,7 @@ jobs:
         shell: bash
 
       - name: Attempt to restore ccache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: |
             /root/.ccache
@@ -100,6 +100,7 @@ jobs:
           rosdistro: ${{ inputs.rosdistro }}
           target-packages: ${{ steps.get-modified-packages.outputs.modified-packages }}
           cache-key-element: build-and-test-diff${{ inputs.above && '-above' || '' }}
+          packages-above-repos: ${{ inputs.above && 'packages_above.repos' || '' }}
           underlay-workspace: /opt/autoware
 
       - name: Show ccache stats after build
