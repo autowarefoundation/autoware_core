@@ -79,7 +79,12 @@ public:
 
   size_t getSize() const { return base_keys_.size(); }
 
-  // Debug methods to expose spline coefficients
+  //!< @brief Get the spline coefficients as a concatenated vector.
+  //!< @details Returns all spline coefficients (a, b, c, d) for each segment concatenated into
+  //            a single Eigen vector. The coefficients are ordered as [a_0, ..., a_{m-1},
+  //            b_0, ..., b_{m-1}, c_0, ..., c_{m-1}, d_0, ..., d_{m-1}] where m is the number
+  //            of segments. Each segment i uses the cubic polynomial: a_i + b_i*t + c_i*t^2 + d_i*t^3.
+  //!< @return Eigen::VectorXd of size 4*m containing all spline coefficients concatenated
   const Eigen::VectorXd getCoefficients() const
   {
     const auto m = static_cast<Eigen::Index>(a_.size());
