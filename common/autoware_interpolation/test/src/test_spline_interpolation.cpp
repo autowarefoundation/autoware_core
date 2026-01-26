@@ -14,9 +14,9 @@
 
 #include "autoware/interpolation/spline_interpolation.hpp"
 
+#include <Eigen/Core>
 #include <autoware_utils_geometry/geometry.hpp>
 
-#include <Eigen/Core>
 #include <gtest/gtest.h>
 
 #include <limits>
