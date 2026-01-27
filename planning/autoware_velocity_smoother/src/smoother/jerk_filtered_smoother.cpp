@@ -300,7 +300,6 @@ bool JerkFilteredSmoother::apply(
     A(constr_idx, IDX_A0) = 1.0;  // a0
     upper_bound[constr_idx] = a0;
     lower_bound[constr_idx] = a0;
-    ++constr_idx;
   }
   time_keeper_->end_track("initOptimization");
 
