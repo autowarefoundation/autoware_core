@@ -63,12 +63,6 @@ public:
     LaneletRoute::ConstSharedPtr route_ptr{nullptr};
   };
 
-  struct PlannerData
-  {
-    std::string frame_id{};
-    geometry_msgs::msg::Pose goal_pose{};
-  };
-
   explicit PathGenerator(const rclcpp::NodeOptions & node_options);
 
   void set_planner_data(const InputData & input_data);
@@ -102,7 +96,6 @@ private:
 
   autoware::vehicle_info_utils::VehicleInfo vehicle_info_;
   RouteManagerData route_manager_data_;
-  PlannerData planner_data_;
 
   std::optional<experimental::lanelet2_utils::RouteManager> route_manager_;
 

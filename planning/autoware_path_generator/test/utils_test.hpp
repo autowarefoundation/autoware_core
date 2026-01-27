@@ -76,9 +76,6 @@ protected:
         "Failed to parse YAML file: " + route_path + ". The file might be corrupted.");
     }
 
-    planner_data_.frame_id = route_->header.frame_id;
-    planner_data_.goal_pose = route_->goal_pose;
-
     route_manager_ = experimental::lanelet2_utils::RouteManager::create(
       *lanelet_map_bin_, *route_, geometry_msgs::msg::Pose{});
   }
@@ -121,7 +118,6 @@ protected:
   }
 
   vehicle_info_utils::VehicleInfo vehicle_info_;
-  path_generator::PathGenerator::PlannerData planner_data_;
   std::optional<experimental::lanelet2_utils::RouteManager> route_manager_{std::nullopt};
 
   autoware_map_msgs::msg::LaneletMapBin::ConstSharedPtr lanelet_map_bin_{nullptr};
