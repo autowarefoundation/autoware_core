@@ -15,8 +15,8 @@
 #ifndef UTILS_TEST_HPP_
 #define UTILS_TEST_HPP_
 
+#include "../src/utils.hpp"
 #include "autoware/path_generator/node.hpp"
-#include "autoware/path_generator/utils.hpp"
 
 #include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware_test_utils/autoware_test_utils.hpp>
