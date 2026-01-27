@@ -474,7 +474,7 @@ private:
       // set next grid id, which is radially next
       int next_grid_idx = -1;
       // only if the next radial grid exists
-      if (radial_idx < radial_grid_num) {
+      if (radial_idx + 1 < radial_grid_num) {
         // find nearest azimuth grid in the next radial grid
         const float azimuth = cell.center_azimuth_;
         const size_t azimuth_idx_next_radial_grid = getAzimuthGridIdx(radial_idx + 1, azimuth);
