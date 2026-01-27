@@ -132,7 +132,6 @@ struct GroundFilterParameter
   float global_slope_max_angle_rad;
   float local_slope_max_angle_rad;
   float global_slope_max_ratio;
-  float local_slope_max_ratio;
   float radial_divider_angle_rad;
 
   bool use_recheck_ground_cluster;
@@ -156,7 +155,6 @@ public:
   {
     // calculate derived parameters
     param_.global_slope_max_ratio = std::tan(param_.global_slope_max_angle_rad);
-    param_.local_slope_max_ratio = std::tan(param_.local_slope_max_angle_rad);
 
     // initialize grid pointer
     grid_ptr_ = std::make_unique<Grid>(
