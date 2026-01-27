@@ -92,7 +92,7 @@ double closest(
   const trajectory::Trajectory<TrajectoryPointType> & trajectory, const ArgPointType & point)
 {
   std::optional<double> s =
-    *closest_with_constraint(trajectory, point, [](const TrajectoryPointType &) { return true; });
+    closest_with_constraint(trajectory, point, [](const TrajectoryPointType &) { return true; });
   if (!s) {
     throw std::runtime_error("No closest point found.");  // This Exception should not be thrown.
   }
