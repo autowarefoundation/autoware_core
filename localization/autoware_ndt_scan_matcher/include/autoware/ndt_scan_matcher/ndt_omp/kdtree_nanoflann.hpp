@@ -160,7 +160,7 @@ public:
   {
     float query_pt[3] = {point.x, point.y, point.z};
     nanoflann::SearchParameters params;
-    params.sorted = true;  
+    params.sorted = true;
     auto k = index_ptr_->radiusSearch(query_pt, radius * radius, indices_dists, params);
     return k;
   }
