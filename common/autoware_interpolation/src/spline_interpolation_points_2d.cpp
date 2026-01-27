@@ -16,6 +16,8 @@
 
 #include <autoware_utils_geometry/geometry.hpp>
 
+#include <limits>
+#include <utility>
 #include <vector>
 
 namespace autoware::interpolation
@@ -208,6 +210,7 @@ double SplineInterpolationPoints2d::getSplineInterpolatedCurvature(
 std::vector<double> SplineInterpolationPoints2d::getSplineInterpolatedCurvatures() const
 {
   std::vector<double> curvature_vec;
+  curvature_vec.reserve(spline_x_.getSize());
   for (size_t i = 0; i < spline_x_.getSize(); ++i) {
     const double curvature = getSplineInterpolatedCurvature(i, 0.0);
     curvature_vec.push_back(curvature);
@@ -249,4 +252,155 @@ void SplineInterpolationPoints2d::calcSplineCoefficientsInner(
   spline_y_ = SplineInterpolation(base_s_vec_, base_y_vec);
   spline_z_ = SplineInterpolation(base_s_vec_, base_z_vec);
 }
+
+void SplineInterpolationPoints2d::updateCurvatureSpline()
+{
+  if (base_s_vec_.size() < 2 || spline_x_.getSize() < 2 || spline_y_.getSize() < 2) {
+    // Initialize with zero curvature if not enough points
+    std::vector<double> zero_curvatures(base_s_vec_.size(), 0.0);
+    if (base_s_vec_.size() >= 2) {
+      spline_curvature_ = SplineInterpolation(base_s_vec_, zero_curvatures);
+    }
+    return;
+  }
+
+  // Compute curvature values at each knot
+  std::vector<double> curvature_values;
+  curvature_values.reserve(base_s_vec_.size());
+
+  for (const auto & s : base_s_vec_) {
+    const double diff_x = spline_x_.getSplineInterpolatedDiffValues({s}).at(0);
+    const double diff_y = spline_y_.getSplineInterpolatedDiffValues({s}).at(0);
+
+    const double quad_diff_x = spline_x_.getSplineInterpolatedQuadDiffValues({s}).at(0);
+    const double quad_diff_y = spline_y_.getSplineInterpolatedQuadDiffValues({s}).at(0);
+
+    const double denom = std::pow(diff_x, 2) + std::pow(diff_y, 2);
+    if (denom < 1e-10) {
+      curvature_values.push_back(0.0);  // Straight line
+    } else {
+      const double curvature = (diff_x * quad_diff_y - quad_diff_x * diff_y) / std::pow(denom, 1.5);
+      curvature_values.push_back(curvature);
+    }
+  }
+
+  // Fit a spline to the curvature values
+  spline_curvature_ = SplineInterpolation(base_s_vec_, curvature_values);
+}
+
+void SplineInterpolationPoints2d::extendLinearlyForward(
+  const size_t target_n_knots, const double delta_s)
+{
+  if (target_n_knots <= base_s_vec_.size()) {
+    return;
+  }
+
+  const size_t n_missing = target_n_knots - base_s_vec_.size();
+
+  // Get the end value and derivative from the last segment
+  const double s_end = base_s_vec_.back();
+  const double x_end = spline_x_.getSplineInterpolatedValues({s_end}).at(0);
+  const double y_end = spline_y_.getSplineInterpolatedValues({s_end}).at(0);
+  const double z_end = spline_z_.getSplineInterpolatedValues({s_end}).at(0);
+
+  const double dx_ds = spline_x_.getSplineInterpolatedDiffValues({s_end}).at(0);
+  const double dy_ds = spline_y_.getSplineInterpolatedDiffValues({s_end}).at(0);
+  const double dz_ds = spline_z_.getSplineInterpolatedDiffValues({s_end}).at(0);
+
+  // Build extended knots and values
+  std::vector<double> extended_s = base_s_vec_;
+  std::vector<double> extended_x;
+  std::vector<double> extended_y;
+  std::vector<double> extended_z;
+
+  // Get original values at existing knots
+  for (const auto & s : base_s_vec_) {
+    extended_x.push_back(spline_x_.getSplineInterpolatedValues({s}).at(0));
+    extended_y.push_back(spline_y_.getSplineInterpolatedValues({s}).at(0));
+    extended_z.push_back(spline_z_.getSplineInterpolatedValues({s}).at(0));
+  }
+
+  // Add extended knots and linearly extrapolated values
+  for (size_t i = 0; i < n_missing; ++i) {
+    const double new_s = s_end + (i + 1) * delta_s;
+    extended_s.push_back(new_s);
+
+    // Linear extrapolation: value = end_value + derivative * (new_s - s_end)
+    extended_x.push_back(x_end + dx_ds * (new_s - s_end));
+    extended_y.push_back(y_end + dy_ds * (new_s - s_end));
+    extended_z.push_back(z_end + dz_ds * (new_s - s_end));
+  }
+
+  // Recalculate splines with extended knots and values
+  // SplineInterpolation will automatically create appropriate segments
+  base_s_vec_ = extended_s;
+  spline_x_ = SplineInterpolation(extended_s, extended_x);
+  spline_y_ = SplineInterpolation(extended_s, extended_y);
+  spline_z_ = SplineInterpolation(extended_s, extended_z);
+}
+
+std::pair<double, double> SplineInterpolationPoints2d::projectPointOntoSpline(
+  const double x_i, const double y_i, double s_init, const double tol, const int max_iter) const
+{
+  double s = s_init;
+
+  // Coarse search: iterate over spline knots to find closest s
+  const auto & knots = spline_x_.getKnots();
+  double min_dist = std::numeric_limits<double>::max();
+  for (const auto & s_knot : knots) {
+    double dx = spline_x_.getSplineInterpolatedValues({s_knot}).at(0) - x_i;
+    double dy = spline_y_.getSplineInterpolatedValues({s_knot}).at(0) - y_i;
+    double dist = std::hypot(dx, dy);
+    if (dist < min_dist) {
+      min_dist = dist;
+      s = s_knot;
+    }
+  }
+
+  // Newton iteration with proper second derivative
+  for (int iter = 0; iter < max_iter; ++iter) {
+    const double x_s = spline_x_.getSplineInterpolatedValues({s}).at(0);
+    const double y_s = spline_y_.getSplineInterpolatedValues({s}).at(0);
+
+    const double dx_ds = spline_x_.getSplineInterpolatedDiffValues({s}).at(0);
+    const double dy_ds = spline_y_.getSplineInterpolatedDiffValues({s}).at(0);
+
+    const double d2x_ds2 = spline_x_.getSplineInterpolatedQuadDiffValues({s}).at(0);
+    const double d2y_ds2 = spline_y_.getSplineInterpolatedQuadDiffValues({s}).at(0);
+
+    // f'(s) = d/ds[||p(s) - p_i||^2] = 2[(x_s - x_i)·dx_ds + (y_s - y_i)·dy_ds]
+    const double df_ds = (x_s - x_i) * dx_ds + (y_s - y_i) * dy_ds;
+
+    // f''(s) = d²/ds²[||p(s) - p_i||^2] = 2[dx_ds² + dy_ds² + (x_s - x_i)·d²x_ds² + (y_s -
+    // y_i)·d²y_ds²]
+    const double d2f_ds2 =
+      dx_ds * dx_ds + dy_ds * dy_ds + (x_s - x_i) * d2x_ds2 + (y_s - y_i) * d2y_ds2;
+
+    if (std::fabs(d2f_ds2) < 1e-12) break;  // avoid divide by zero
+
+    double ds = df_ds / d2f_ds2;
+
+    // Bind s between min s and max s
+    if (s - ds < base_s_vec_.front()) {
+      ds = s - base_s_vec_.front();
+    } else if (s - ds > base_s_vec_.back()) {
+      ds = s - base_s_vec_.back();
+    }
+    s -= ds;
+
+    if (std::fabs(ds) < tol) {
+      break;  // converged
+    }
+  }
+
+  // Compute cross-track error eY
+  double x_s = spline_x_.getSplineInterpolatedValues({s}).at(0);
+  double y_s = spline_y_.getSplineInterpolatedValues({s}).at(0);
+  double psi_s = getSplineInterpolatedYaw(0, s);
+
+  double eY = -(x_i - x_s) * std::sin(psi_s) + (y_i - y_s) * std::cos(psi_s);
+
+  return {s, eY};
+}
+
 }  // namespace autoware::interpolation
