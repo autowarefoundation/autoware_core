@@ -147,9 +147,10 @@ void PathGenerator::set_planner_data(const InputData & input_data)
     return;
   }
 
-  route_manager_data_.lanelet_map_bin_ptr = input_data.lanelet_map_bin_ptr;
-  route_manager_data_.route_ptr = input_data.route_ptr;
-  initialize_route_manager(route_manager_data_, input_data.odometry_ptr->pose.pose);
+  RouteManagerData route_manager_data;
+  route_manager_data.lanelet_map_bin_ptr = input_data.lanelet_map_bin_ptr;
+  route_manager_data.route_ptr = input_data.route_ptr;
+  initialize_route_manager(route_manager_data, input_data.odometry_ptr->pose.pose);
 }
 
 bool PathGenerator::is_data_ready(const InputData & input_data)
@@ -180,10 +181,9 @@ bool PathGenerator::is_data_ready(const InputData & input_data)
 void PathGenerator::initialize_route_manager(
   const RouteManagerData & route_manager_data, const geometry_msgs::msg::Pose & initial_pose)
 {
+  route_manager_data_ = route_manager_data;
   route_manager_ = experimental::lanelet2_utils::RouteManager::create(
     *route_manager_data.lanelet_map_bin_ptr, *route_manager_data.route_ptr, initial_pose);
-  planner_data_.frame_id = route_manager_data.route_ptr->header.frame_id;
-  planner_data_.goal_pose = route_manager_data.route_ptr->goal_pose;
 }
 
 std::optional<PathWithLaneId> PathGenerator::plan_path(
@@ -243,8 +243,9 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
       s_end += s;
     }
     if (goal_lanelet.id() == lane_id) {
-      const auto s_goal =
-        s + lanelet::utils::getArcCoordinates({goal_lanelet}, planner_data_.goal_pose).length;
+      const auto s_goal = s + lanelet::utils::getArcCoordinates(
+                                {goal_lanelet}, route_manager_data_.route_ptr->goal_pose)
+                                .length;
       if (s_goal < s_end) {
         s_end = s_goal;
         connect_to_goal = true;
@@ -310,7 +311,7 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
   std::optional<Trajectory> path_to_goal = *path;
   if (connect_to_goal) {
     path_to_goal = utils::connect_path_to_goal_inside_lanelet_sequence(
-      *path, lanelet_sequence, *route_manager_, planner_data_.goal_pose, s_end,
+      *path, lanelet_sequence, *route_manager_, route_manager_data_.route_ptr->goal_pose, s_end,
       params.goal_connection.connection_section_length, params.goal_connection.pre_goal_offset);
 
     if (!path_to_goal) {
@@ -333,7 +334,7 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
   }
 
   // Set header which is needed to engage
-  finalized_path_with_lane_id.header.frame_id = planner_data_.frame_id;
+  finalized_path_with_lane_id.header.frame_id = route_manager_data_.route_ptr->header.frame_id;
   finalized_path_with_lane_id.header.stamp = now();
 
   const auto [left_bound, right_bound] = utils::get_path_bounds(
