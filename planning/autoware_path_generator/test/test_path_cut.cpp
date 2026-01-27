@@ -14,7 +14,6 @@
 
 #include "utils_test.hpp"
 
-#include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/trajectory/interpolator/linear.hpp>
 
 #include <lanelet2_core/geometry/Lanelet.h>
