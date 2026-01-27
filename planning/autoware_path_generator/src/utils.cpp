@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/path_generator/utils.hpp"
+#include "utils.hpp"
 
 #include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/motion_utils/constants.hpp>

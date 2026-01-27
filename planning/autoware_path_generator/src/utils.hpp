@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__PATH_GENERATOR__UTILS_HPP_
-#define AUTOWARE__PATH_GENERATOR__UTILS_HPP_
-
-#include "autoware/trajectory/path_point_with_lane_id.hpp"
+#ifndef UTILS_HPP_
+#define UTILS_HPP_
 
 #include <autoware/lanelet2_utils/route_manager.hpp>
+#include <autoware/trajectory/path_point_with_lane_id.hpp>
 
 #include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
 #include <autoware_vehicle_msgs/msg/turn_indicators_command.hpp>
@@ -329,4 +328,4 @@ std::optional<lanelet::ConstPoint2d> get_turn_signal_required_end_point(
 }  // namespace utils
 }  // namespace autoware::path_generator
 
-#endif  // AUTOWARE__PATH_GENERATOR__UTILS_HPP_
+#endif  // UTILS_HPP_
