@@ -1048,11 +1048,10 @@ bool RouteHandler::getClosestLaneletWithinRoute(
   return true;
 }
 
-bool RouteHandler::getClosestPreferredLaneletWithinRoute(
-  const Pose & search_pose, lanelet::ConstLanelet * closest_lanelet) const
+std::optional<lanelet::ConstLanelet> RouteHandler::getClosestPreferredLaneletWithinRoute(
+  const Pose & search_pose) const
 {
-  return lanelet::utils::query::getClosestLanelet(
-    preferred_lanelets_, search_pose, closest_lanelet);
+  return experimental::lanelet2_utils::get_closest_lanelet(preferred_lanelets_, search_pose);
 }
 
 bool RouteHandler::getClosestLaneletWithConstrainsWithinRoute(
@@ -2094,8 +2093,12 @@ bool RouteHandler::planPathLaneletsBetweenCheckpoints(
       std::remove_if(
         candidates.begin(), candidates.end(), [&](const auto & l) { return !isRoadLanelet(l); }),
       candidates.end());
-    if (lanelet::utils::query::getClosestLanelet(candidates, start_checkpoint, &start_lanelet))
+    if (const auto closest_lanelet =
+          experimental::lanelet2_utils::get_closest_lanelet(candidates, start_checkpoint);
+        closest_lanelet) {
+      start_lanelet = closest_lanelet.value();
       start_lanelets = {start_lanelet};
+    }
   }
   if (start_lanelets.empty()) {
     RCLCPP_WARN_STREAM(
@@ -2121,14 +2124,14 @@ bool RouteHandler::planPathLaneletsBetweenCheckpoints(
   // set it as goal_lanelet.
   // this is to select the same lane as much as possible when rerouting with waypoints.
   const auto findGoalClosestPreferredLanelet = [&]() -> std::optional<lanelet::ConstLanelet> {
-    lanelet::ConstLanelet closest_lanelet;
-    if (getClosestPreferredLaneletWithinRoute(goal_checkpoint, &closest_lanelet)) {
+    if (const auto closest_lanelet = getClosestPreferredLaneletWithinRoute(goal_checkpoint)) {
       if (std::find(candidates.begin(), candidates.end(), closest_lanelet) != candidates.end()) {
-        if (lanelet::utils::isInLanelet(goal_checkpoint, closest_lanelet)) {
+        if (lanelet::utils::isInLanelet(goal_checkpoint, closest_lanelet.value())) {
           return closest_lanelet;
         }
       }
     }
+    lanelet::ConstLanelet closest_lanelet;
     if (getClosestLaneletWithinRoute(goal_checkpoint, &closest_lanelet)) {
       if (std::find(candidates.begin(), candidates.end(), closest_lanelet) != candidates.end()) {
         if (lanelet::utils::isInLanelet(goal_checkpoint, closest_lanelet)) {
@@ -2150,7 +2153,9 @@ bool RouteHandler::planPathLaneletsBetweenCheckpoints(
   if (auto closest_lanelet = findGoalClosestPreferredLanelet()) {
     goal_lanelet = closest_lanelet.value();
   } else {
-    if (!lanelet::utils::query::getClosestLanelet(candidates, goal_checkpoint, &goal_lanelet)) {
+    closest_lanelet =
+      experimental::lanelet2_utils::get_closest_lanelet(candidates, goal_checkpoint);
+    if (!closest_lanelet) {
       RCLCPP_WARN_STREAM(
         logger_, "Failed to find closest lanelet."
                    << std::endl
@@ -2158,6 +2163,7 @@ bool RouteHandler::planPathLaneletsBetweenCheckpoints(
                    << " - goal checkpoint: " << toString(goal_checkpoint) << std::endl);
       return false;
     }
+    goal_lanelet = closest_lanelet.value();
   }
 
   lanelet::Optional<lanelet::routing::Route> optional_route;
@@ -2191,9 +2197,8 @@ bool RouteHandler::planPathLaneletsBetweenCheckpoints(
       continue;
     }
     is_route_found = true;
-    lanelet::ConstLanelet preferred_lane{};
-    if (getClosestPreferredLaneletWithinRoute(start_checkpoint, &preferred_lane)) {
-      if (st_llt.id() == preferred_lane.id()) {
+    if (const auto preferred_lane = getClosestPreferredLaneletWithinRoute(start_checkpoint)) {
+      if (st_llt.id() == preferred_lane.value().id()) {
         shortest_path = optional_route->shortestPath();
         start_lanelet = st_llt;
         break;
