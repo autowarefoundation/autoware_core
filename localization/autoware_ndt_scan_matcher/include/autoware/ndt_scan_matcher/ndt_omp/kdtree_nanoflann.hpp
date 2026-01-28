@@ -147,10 +147,7 @@ public:
     const PointT & point, double radius, std::vector<std::pair<size_t, float>> & indices_dists,
     [[maybe_unused]] unsigned int max_nn) const
   {
-    float query_pt[3] = {point.x, point.y, point.z};
-    nanoflann::SearchParams param;
-    param.sorted = false;  // No need sorting
-    auto k = index_ptr_->radiusSearch(query_pt, radius, indices_dists, param);
+    auto k = index_ptr_->radiusSearch(point.data, radius * radius, indices_dists, params_);
     return k;
   }
 #else
