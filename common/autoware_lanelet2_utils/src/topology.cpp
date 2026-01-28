@@ -204,4 +204,43 @@ lanelet::ConstLanelets get_conflicting_lanelets(
   return lanelets;
 }
 
+std::vector<lanelet::ConstLanelets> get_succeeding_lanelet_sequences(
+  const lanelet::ConstLanelet & lanelet,
+  const lanelet::routing::RoutingGraphConstPtr & routing_graph, double length)
+{
+  // TODO(sarun-hub): not sure if appropriate to share state
+  lanelet::ConstLanelets current_lanelet_sequence;
+  std::vector<lanelet::ConstLanelets> succeeding_lanelet_sequences;
+
+  auto succeeding_recursive = [&](
+                                auto && self, const lanelet::ConstLanelet & current_lanelet,
+                                double remaining_length) -> void {
+    // TODO(sarun-hub): no loop check yet
+    const auto next_lanelets = routing_graph->following(current_lanelet);
+    const double current_lanelet_length = lanelet::geometry::length3d(current_lanelet);
+
+    current_lanelet_sequence.push_back(current_lanelet);
+
+    // end condition of the recursive function
+    if (next_lanelets.empty() || current_lanelet_length >= remaining_length) {
+      succeeding_lanelet_sequences.push_back(current_lanelet_sequence);
+    } else {
+      for (const auto & next_lanelet : next_lanelets) {
+        self(self, next_lanelet, remaining_length - current_lanelet_length);
+      }
+    }
+
+    // backtrack
+    current_lanelet_sequence.pop_back();
+  };
+
+  const auto next_lanelets = routing_graph->following(lanelet);
+  // start from next_lanelet
+  for (const auto & next_lanelet : next_lanelets) {
+    // recursive starts
+    succeeding_recursive(succeeding_recursive, next_lanelet, length);
+  }
+  return succeeding_lanelet_sequences;
+}
+
 }  // namespace autoware::experimental::lanelet2_utils

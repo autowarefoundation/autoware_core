@@ -149,6 +149,18 @@ lanelet::ConstLanelets lane_changeable_neighbors(
   const lanelet::routing::RoutingGraphConstPtr & routing_graph,
   const geometry_msgs::msg::Point & search_point);
 
+/**
+ * @brief enumerate all succeeding(following) lanelet sequences possible from input lanelet within
+ * given length limit. (Also include the last lanelet that exceeds length limit).
+ * @param[in] lanelet input lanelet
+ * @param[in] routing_graph routinh_graph containing `lanelet`
+ * @param[in] length length limit
+ * @return lanelet sequences that follow input lanelet (does not include input lanelet)
+ */
+std::vector<lanelet::ConstLanelets> get_succeeding_lanelet_sequences(
+  const lanelet::ConstLanelet & lanelet,
+  const lanelet::routing::RoutingGraphConstPtr & routing_graph, double length);
+
 }  // namespace autoware::experimental::lanelet2_utils
 
 #endif  // AUTOWARE__LANELET2_UTILS__TOPOLOGY_HPP_
