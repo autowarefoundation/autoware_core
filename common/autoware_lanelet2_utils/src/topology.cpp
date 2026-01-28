@@ -243,4 +243,58 @@ std::vector<lanelet::ConstLanelets> get_succeeding_lanelet_sequences(
   return succeeding_lanelet_sequences;
 }
 
+std::vector<lanelet::ConstLanelets> get_preceding_lanelet_sequences(
+  const lanelet::ConstLanelet & lanelet,
+  const lanelet::routing::RoutingGraphConstPtr & routing_graph, double length,
+  const lanelet::ConstLanelets & exclude_lanelets)
+{
+  // TODO(sarun-hub): not sure if appropriate to share state
+  lanelet::ConstLanelets current_lanelet_sequence;
+  std::vector<lanelet::ConstLanelets> preceding_lanelet_sequences;
+
+  auto preceding_recursive = [&](
+                               auto && self, const lanelet::ConstLanelet & current_lanelet,
+                               double remaining_length) -> void {
+    // TODO(sarun-hub): no loop check yet
+    const auto prev_lanelets = routing_graph->previous(current_lanelet);
+    const double current_lanelet_length = lanelet::geometry::length3d(current_lanelet);
+
+    current_lanelet_sequence.push_back(current_lanelet);
+
+    // end condition of the recursive function
+    if (prev_lanelets.empty() || current_lanelet_length >= remaining_length) {
+      preceding_lanelet_sequences.push_back(current_lanelet_sequence);
+    } else {
+      for (const auto & prev_lanelet : prev_lanelets) {
+        if (lanelet::utils::contains(exclude_lanelets, prev_lanelet)) {
+          // if prev_lanelet is included in exclude_lanelets,
+          // remove prev_lanelet from preceding_lanelet_sequences
+          continue;
+        }
+        self(self, prev_lanelet, remaining_length - current_lanelet_length);
+      }
+    }
+
+    // backtrack
+    current_lanelet_sequence.pop_back();
+  };
+
+  const auto prev_lanelets = routing_graph->previous(lanelet);
+  // start from prev_lanelet
+  for (const auto & prev_lanelet : prev_lanelets) {
+    if (lanelet::utils::contains(exclude_lanelets, prev_lanelet)) {
+      // if prev_lanelet is included in exclude_lanelets,
+      // remove prev_lanelet from preceding_lanelet_sequences
+      continue;
+    }
+    // recursive starts
+    preceding_recursive(preceding_recursive, prev_lanelet, length);
+  }
+  // reverse from (closest->furthest) to (furthest->closest)
+  for (auto & lanelet_sequence : preceding_lanelet_sequences) {
+    std::reverse(lanelet_sequence.begin(), lanelet_sequence.end());
+  }
+  return preceding_lanelet_sequences;
+}
+
 }  // namespace autoware::experimental::lanelet2_utils
