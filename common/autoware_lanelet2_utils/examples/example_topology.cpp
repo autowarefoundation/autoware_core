@@ -122,12 +122,75 @@ void related_lanelets()
     std::cout << "Get ConstLanelets of size: " << lanelets.size() << std::endl;
   }
 }
+
+void neighbor_lanelet()
+{
+  lanelet::LaneletMapConstPtr lanelet_map_ptr_;
+  lanelet::routing::RoutingGraphConstPtr routing_graph_ptr_;
+  std::tie(lanelet_map_ptr_, routing_graph_ptr_) = set_up_lanelet_map_ptr();
+
+  // left_lanelet
+  {
+    const auto lane =
+      lanelet2_utils::left_lanelet(lanelet_map_ptr_->laneletLayer.get(2246), routing_graph_ptr_);
+    if (lane.has_value()) {
+      std::cout << "Left lanelet Id is " << lane.value().id() << std::endl;
+    }
+  }
+
+  // right_lanelet
+  {
+    const auto lane =
+      lanelet2_utils::right_lanelet(lanelet_map_ptr_->laneletLayer.get(2246), routing_graph_ptr_);
+    if (lane.has_value()) {
+      std::cout << "Right lanelet Id is " << lane.value().id() << std::endl;
+    }
+  }
+
+  // left_lanelets
+  {
+    const auto lanes =
+      lanelet2_utils::left_lanelets(lanelet_map_ptr_->laneletLayer.get(2246), routing_graph_ptr_);
+    if (lanes.has_value()) {
+      std::cout << "There are " << lanes.value().size() << " left lanes." << std::endl;
+      std::cout << "Those Ids are" << std::endl;
+      for (auto lane : lanes.value()) {
+        std::cout << lane.id() << std::endl;
+      }
+    }
+  }
+
+  // right_lanelets
+  {
+    const auto lanes =
+      lanelet2_utils::right_lanelets(lanelet_map_ptr_->laneletLayer.get(2246), routing_graph_ptr_);
+    if (lanes.has_value()) {
+      std::cout << "There are " << lanes.value().size() << " right lanes." << std::endl;
+      std::cout << "Those Ids are" << std::endl;
+      for (auto lane : lanes.value()) {
+        std::cout << lane.id() << std::endl;
+      }
+    }
+  }
+
+  // all_neighbor_lanelets
+  {
+    const auto lanes = lanelet2_utils::all_neighbor_lanelets(
+      lanelet_map_ptr_->laneletLayer.get(2246), routing_graph_ptr_);
+    std::cout << "There are " << lanes.size() << " neighbor lanelets." << std::endl;
+    std::cout << "Those Ids are" << std::endl;
+    for (auto lane : lanes) {
+      std::cout << lane.id() << std::endl;
+    }
+  }
+}
 }  // namespace autoware::experimental
 
 int main()
 {
   autoware::experimental::opposite_lanelet();
   autoware::experimental::related_lanelets();
+  autoware::experimental::neighbor_lanelet();
 
   return 0;
 }
