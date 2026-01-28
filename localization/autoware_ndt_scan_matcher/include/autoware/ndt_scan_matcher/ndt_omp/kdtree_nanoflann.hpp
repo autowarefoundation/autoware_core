@@ -104,6 +104,7 @@ class KdTreeNanoflann
 
   std::shared_ptr<kdtree_t> index_ptr_;
   std::shared_ptr<PointCloudNanoflann> cloud_ptr_;
+  nanoflann::SearchParams params_;
 
 public:
   KdTreeNanoflann() : index_ptr_(), cloud_ptr_() {}
@@ -158,10 +159,7 @@ public:
     std::vector<nanoflann::ResultItem<size_t, float>> indices_dists,
     [[maybe_unused]] unsigned int max_nn) const
   {
-    float query_pt[3] = {point.x, point.y, point.z};
-    nanoflann::SearchParameters params;
-    params.sorted = true;
-    auto k = index_ptr_->radiusSearch(query_pt, radius * radius, indices_dists, params);
+    auto k = index_ptr_->radiusSearch(point.data, radius * radius, indices_dists, params_);
     return k;
   }
 #endif
