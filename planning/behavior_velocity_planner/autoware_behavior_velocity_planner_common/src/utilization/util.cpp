@@ -17,6 +17,7 @@
 #include "autoware/behavior_velocity_planner_common/utilization/boost_geometry_helper.hpp"
 #include "autoware/motion_utils/trajectory/trajectory.hpp"
 
+#include <autoware/lanelet2_utils/nn_search.hpp>
 #include <autoware/lanelet2_utils/topology.hpp>
 #include <autoware/trajectory/utils/pretty_build.hpp>
 #include <autoware_lanelet2_extension/utility/query.hpp>
@@ -646,9 +647,10 @@ std::optional<int64_t> getNearestLaneId(
     lanes.push_back(lanelet_map->laneletLayer.get(lane_id));
   }
 
-  lanelet::Lanelet closest_lane;
-  if (lanelet::utils::query::getClosestLanelet(lanes, current_pose, &closest_lane)) {
-    return closest_lane.id();
+  if (
+    const auto closest_lanelet_opt =
+      experimental::lanelet2_utils::get_closest_lanelet(lanes, current_pose)) {
+    return closest_lanelet_opt.value().id();
   }
   return std::nullopt;
 }

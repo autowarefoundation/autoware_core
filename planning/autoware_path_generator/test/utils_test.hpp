@@ -18,6 +18,7 @@
 #include "autoware/path_generator/utils.hpp"
 
 #include <autoware/lanelet2_utils/conversion.hpp>
+#include <autoware/lanelet2_utils/nn_search.hpp>
 #include <autoware_lanelet2_extension/utility/query.hpp>
 #include <autoware_test_utils/autoware_test_utils.hpp>
 #include <autoware_test_utils/mock_data_parser.hpp>
@@ -135,12 +136,12 @@ protected:
 
   lanelet::ConstLanelet get_lanelet_closest_to_pose(const geometry_msgs::msg::Pose & pose) const
   {
-    lanelet::ConstLanelet lanelet;
-    if (!lanelet::utils::query::getClosestLanelet(
-          planner_data_.preferred_lanelets, pose, &lanelet)) {
+    const auto closest_lanelet_opt =
+      experimental::lanelet2_utils::get_closest_lanelet(planner_data_.preferred_lanelets, pose);
+    if (!closest_lanelet_opt) {
       throw std::runtime_error("Failed to get the closest lanelet to the given point.");
     }
-    return lanelet;
+    return closest_lanelet_opt.value();
   }
 
   lanelet::ConstLanelets get_lanelets_from_ids(const lanelet::Ids & ids) const
