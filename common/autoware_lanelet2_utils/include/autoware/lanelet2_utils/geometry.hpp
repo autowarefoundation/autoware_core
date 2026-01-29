@@ -127,6 +127,101 @@ double get_lanelet_angle(
 geometry_msgs::msg::Pose get_closest_center_pose(
   const lanelet::ConstLanelet & lanelet, const lanelet::BasicPoint3d & search_pt);
 
+/**
+ * @brief return ArcCoordinates of the search pose on lanelet sequence
+ * @details return {length, distance}
+ * length: arc-length of pose projection point on the lanelet sequence centerline
+ * distance: lateral distance from centerline to pose (left is positive, right is negative)
+ * @param[in] lanelet_sequence vector of ConstLanelet
+ * @param[in] pose search pose
+ * @return ArcCoordinates of the pose on lanelet sequence
+ */
+lanelet::ArcCoordinates get_arc_coordinates(
+  const lanelet::ConstLanelets & lanelets, const geometry_msgs::msg::Pose & pose);
+
+/**
+ * @brief return distance of search pose to centerline (distance in ArcCoordinates)
+ * @param[in] lanelet ConstLanelet
+ * @param[in] pose search pose
+ * @return distance (double)
+ */
+double get_lateral_distance_to_centerline(
+  const lanelet::ConstLanelet & lanelet, const geometry_msgs::msg::Pose & pose);
+
+/**
+ * @brief return distance of search pose to the closest lanelet's centerline in lanelet sequence
+ * (distance in ArcCoordinates)
+ * @param[in] lanelet_sequence vector of ConstLanelet (ConstLanelets)
+ * @param[in] pose search pose
+ * @return distance (double)
+ */
+double get_lateral_distance_to_centerline(
+  const lanelet::ConstLanelets & lanelet_sequence, const geometry_msgs::msg::Pose & pose);
+
+/**
+ * @brief combine lanelet sequence (several lanelets) into one lanelet
+ * @param[in] lanelets several lanelets
+ * @return one lanelet
+ */
+std::optional<lanelet::ConstLanelet> combine_lanelets_shape(
+  const lanelet::ConstLanelets & lanelets);
+
+/**
+ * @brief expand the lanelet
+ * @param[in] lanelet_obj original lanelet
+ * @param[in] left_offset offset of the left bound (positive value required)
+ * @param[in] right_offset offset of the right bound (negative value required)
+ * @return expanded lanelet
+ */
+std::optional<lanelet::ConstLanelet> get_dirty_expanded_lanelet(
+  const lanelet::ConstLanelet & lanelet_obj, const double left_offset, const double right_offset);
+
+/**
+ * @brief expand the lanelets (several lanelets)
+ * @param[in] lanelet_obj original lanelets (several lanelets)
+ * @param[in] left_offset offset of the left bound (positive value required)
+ * @param[in] right_offset offset of the right bound (negative value required)
+ * @return expanded lanelets
+ */
+std::optional<lanelet::ConstLanelets> get_dirty_expanded_lanelets(
+  const lanelet::ConstLanelets & lanelet_obj, const double left_offset, const double right_offset);
+
+/**
+ * @brief get the centerline of ConstLanelet with offset
+ * @param[in] lanelet_obj target lanelet
+ * @param[in] offset offset
+ * Sign Convention:
+ * Positive: to the left bound
+ * Negative: to the right bound
+ * @return ConstLineString3d which is the ConstLanelet's centerline with offset
+ */
+lanelet::ConstLineString3d get_centerline_with_offset(
+  const lanelet::ConstLanelet & lanelet_obj, const double offset, const double resolution = 5.0);
+
+/**
+ * @brief get the right bound of ConstLanelet with offset
+ * @param[in] lanelet_obj target lanelet
+ * @param[in] offset offset
+ * Sign Convention: (opposite to centerline)
+ * Positive: to outside of lanelet (to the **right**),
+ * Negative: to inside of lanelet (to the **left** bound)
+ * @return ConstLineString3d which is the ConstLanelet's right bound with offset
+ */
+lanelet::ConstLineString3d get_right_bound_with_offset(
+  const lanelet::ConstLanelet & lanelet_obj, const double offset, const double resolution = 5.0);
+
+/**
+ * @brief get the left bound of ConstLanelet with offset
+ * @param[in] lanelet_obj target lanelet
+ * @param[in] offset offset
+ * Sign Convention: (Same as centerline)
+ * Positive: to outside of lanelet (to the left),
+ * Negative: to inside of lanelet (to the right bound).
+ * @return ConstLineString3d which is the ConstLanelet's left bound with offset
+ */
+lanelet::ConstLineString3d get_left_bound_with_offset(
+  const lanelet::ConstLanelet & lanelet_obj, const double offset, const double resolution = 5.0);
+
 }  // namespace autoware::experimental::lanelet2_utils
 
 #endif  // AUTOWARE__LANELET2_UTILS__GEOMETRY_HPP_
