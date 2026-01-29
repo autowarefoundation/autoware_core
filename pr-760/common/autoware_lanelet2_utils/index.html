@@ -8285,6 +8285,36 @@
 </thead>
 <tbody>
 <tr>
+<td><code>left_lanelet</code></td>
+<td>Get the left adjacent and same_direction lanelet on the routing graph if exists regardless of lane change permission.</td>
+<td><span class="arithmatex">\(O(1)\)</span></td>
+<td></td>
+</tr>
+<tr>
+<td><code>right_lanelet</code></td>
+<td>same as above <code>left_lanelet</code> but right lanelet instead.</td>
+<td><span class="arithmatex">\(O(1)\)</span></td>
+<td></td>
+</tr>
+<tr>
+<td><code>left_lanelets</code></td>
+<td>Get <strong>all</strong> the left adjacent and same_direction lanelets on the routing graph if exists regardless of lane change permission.</td>
+<td><span class="arithmatex">\(O(E)\)</span> where <span class="arithmatex">\(E\)</span> is the number of left lanelets.</td>
+<td></td>
+</tr>
+<tr>
+<td><code>right_lanelets</code></td>
+<td>same as above <code>left_lanelets</code></td>
+<td><span class="arithmatex">\(O(E)\)</span> where <span class="arithmatex">\(E\)</span> is the number of right lanelets.</td>
+<td></td>
+</tr>
+<tr>
+<td><code>all_neighbor_lanelets</code></td>
+<td>Get <strong>all</strong> adjacent and same_direction lanelets on the routing graph if exists regardless of lane change permission <br> Post Condition: <br> Output is ordered from <strong>leftmost</strong> lanelet to <strong>rightmost</strong> lanelet (including input <code>lanelet</code>).</td>
+<td><span class="arithmatex">\(O(E)\)</span> where <span class="arithmatex">\(E\)</span> is the number of all neighbor lanelets (both left and right).</td>
+<td></td>
+</tr>
+<tr>
 <td><code>left_opposite_lanelet</code></td>
 <td>same as below <code>right_opposite_lanelet</code></td>
 <td><span class="arithmatex">\(O(1)\)</span><br>see <a href="#complexity-of-findusage"><code>findUsage</code></a> for detail</td>
@@ -8329,6 +8359,51 @@
 </tbody>
 </table>
 <h4 id="example-usage-of-topology">Example Usage of <code>topology</code><a class="headerlink" href="#example-usage-of-topology" title="Permanent link">#</a></h4>
+<p>Get left lanelet.</p>
+<div class="highlight"><span class="filename">./examples/example_topology.cpp:134:138</span><pre><span></span><code><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">lane</span><span class="w"> </span><span class="o">=</span>
+<span class="w">      </span><span class="n">lanelet2_utils</span><span class="o">::</span><span class="n">left_lanelet</span><span class="p">(</span><span class="n">lanelet_map_ptr_</span><span class="o">-&gt;</span><span class="n">laneletLayer</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="mi">2246</span><span class="p">),</span><span class="w"> </span><span class="n">routing_graph_ptr_</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">lane</span><span class="p">.</span><span class="n">has_value</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">"Left lanelet Id is "</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">lane</span><span class="p">.</span><span class="n">value</span><span class="p">().</span><span class="n">id</span><span class="p">()</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+</code></pre></div>
+<p>Get right lanelet.</p>
+<div class="highlight"><span class="filename">./examples/example_topology.cpp:143:147</span><pre><span></span><code><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">lane</span><span class="w"> </span><span class="o">=</span>
+<span class="w">      </span><span class="n">lanelet2_utils</span><span class="o">::</span><span class="n">right_lanelet</span><span class="p">(</span><span class="n">lanelet_map_ptr_</span><span class="o">-&gt;</span><span class="n">laneletLayer</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="mi">2246</span><span class="p">),</span><span class="w"> </span><span class="n">routing_graph_ptr_</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">lane</span><span class="p">.</span><span class="n">has_value</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">"Right lanelet Id is "</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">lane</span><span class="p">.</span><span class="n">value</span><span class="p">().</span><span class="n">id</span><span class="p">()</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+</code></pre></div>
+<p>Get all left lanelets.</p>
+<div class="highlight"><span class="filename">./examples/example_topology.cpp:152:160</span><pre><span></span><code><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">lanes</span><span class="w"> </span><span class="o">=</span>
+<span class="w">      </span><span class="n">lanelet2_utils</span><span class="o">::</span><span class="n">left_lanelets</span><span class="p">(</span><span class="n">lanelet_map_ptr_</span><span class="o">-&gt;</span><span class="n">laneletLayer</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="mi">2246</span><span class="p">),</span><span class="w"> </span><span class="n">routing_graph_ptr_</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">lanes</span><span class="p">.</span><span class="n">has_value</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">"There are "</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">lanes</span><span class="p">.</span><span class="n">value</span><span class="p">().</span><span class="n">size</span><span class="p">()</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">" left lanes."</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="w">      </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">"Those Ids are"</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="w">      </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">auto</span><span class="w"> </span><span class="n">lane</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">lanes</span><span class="p">.</span><span class="n">value</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">lane</span><span class="p">.</span><span class="n">id</span><span class="p">()</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+</code></pre></div>
+<p>Get all right lanelets.</p>
+<div class="highlight"><span class="filename">./examples/example_topology.cpp:165:173</span><pre><span></span><code><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">lanes</span><span class="w"> </span><span class="o">=</span>
+<span class="w">      </span><span class="n">lanelet2_utils</span><span class="o">::</span><span class="n">right_lanelets</span><span class="p">(</span><span class="n">lanelet_map_ptr_</span><span class="o">-&gt;</span><span class="n">laneletLayer</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="mi">2246</span><span class="p">),</span><span class="w"> </span><span class="n">routing_graph_ptr_</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">lanes</span><span class="p">.</span><span class="n">has_value</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">"There are "</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">lanes</span><span class="p">.</span><span class="n">value</span><span class="p">().</span><span class="n">size</span><span class="p">()</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">" right lanes."</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="w">      </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">"Those Ids are"</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="w">      </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">auto</span><span class="w"> </span><span class="n">lane</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">lanes</span><span class="p">.</span><span class="n">value</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">lane</span><span class="p">.</span><span class="n">id</span><span class="p">()</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+</code></pre></div>
+<p>Get all neighbor lanelets.</p>
+<div class="highlight"><span class="filename">./examples/example_topology.cpp:178:184</span><pre><span></span><code><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">lanes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">lanelet2_utils</span><span class="o">::</span><span class="n">all_neighbor_lanelets</span><span class="p">(</span>
+<span class="w">      </span><span class="n">lanelet_map_ptr_</span><span class="o">-&gt;</span><span class="n">laneletLayer</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="mi">2246</span><span class="p">),</span><span class="w"> </span><span class="n">routing_graph_ptr_</span><span class="p">);</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">"There are "</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">lanes</span><span class="p">.</span><span class="n">size</span><span class="p">()</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">" neighbor lanelets."</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">"Those Ids are"</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">auto</span><span class="w"> </span><span class="n">lane</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">lanes</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">lane</span><span class="p">.</span><span class="n">id</span><span class="p">()</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+</code></pre></div>
 <p>Get left opposite lanelet.</p>
 <div class="highlight"><span class="filename">./examples/example_topology.cpp:60:63</span><pre><span></span><code><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">opt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">lanelet2_utils</span><span class="o">::</span><span class="n">left_opposite_lanelet</span><span class="p">(</span>
 <span class="w">      </span><span class="n">lanelet_map_ptr_</span><span class="o">-&gt;</span><span class="n">laneletLayer</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="mi">2311</span><span class="p">),</span><span class="w"> </span><span class="n">lanelet_map_ptr_</span><span class="p">);</span>
