@@ -197,7 +197,7 @@ std::vector<lanelet::ConstLanelets> get_succeeding_lanelet_sequences(
                                 double remaining_length) -> void {
     // TODO(sarun-hub): no loop check yet
     const auto next_lanelets = routing_graph->following(current_lanelet);
-    const double current_lanelet_length = lanelet::geometry::length3d(current_lanelet);
+    const double current_lanelet_length = lanelet::geometry::length2d(current_lanelet);
 
     current_lanelet_sequence.push_back(current_lanelet);
 
@@ -237,7 +237,7 @@ std::vector<lanelet::ConstLanelets> get_preceding_lanelet_sequences(
                                double remaining_length) -> void {
     // TODO(sarun-hub): no loop check yet
     const auto prev_lanelets = routing_graph->previous(current_lanelet);
-    const double current_lanelet_length = lanelet::geometry::length3d(current_lanelet);
+    const double current_lanelet_length = lanelet::geometry::length2d(current_lanelet);
 
     current_lanelet_sequence.push_back(current_lanelet);
 
