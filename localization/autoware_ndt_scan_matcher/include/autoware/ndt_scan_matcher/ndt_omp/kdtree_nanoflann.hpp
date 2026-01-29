@@ -67,7 +67,7 @@ using SearchResultItem = typename std::pair<IndexType, DistanceType>;
 #elif defined(ROS_DISTRO_JAZZY)
 using SearchParams = SearchParameters;
 template <typename IndexType, typename DistanceType>
-using SearchResultItem = ::ResultItem<IndexType, DistanceType>;
+using SearchResultItem = ResultItem<IndexType, DistanceType>;
 #endif
 
 }  // namespace nanoflann
