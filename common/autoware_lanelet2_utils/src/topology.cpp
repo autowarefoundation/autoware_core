@@ -62,26 +62,6 @@ lanelet::ConstLanelets lane_changeable_neighbors(
   return routing_graph->besides(lanelet);
 }
 
-lanelet::ConstLanelets lane_changeable_neighbors(
-  const lanelet::LaneletMapConstPtr & lanelet_map_ptr,
-  const lanelet::routing::RoutingGraphConstPtr & routing_graph,
-  const geometry_msgs::msg::Point & search_point)
-{
-  const auto lanelet_pairs = lanelet::geometry::findWithin2d(
-    remove_const(lanelet_map_ptr)->laneletLayer, lanelet::utils::to2D(from_ros(search_point)),
-    std::numeric_limits<double>::epsilon());
-  lanelet::ConstLanelets lanelets;
-  std::transform(
-    lanelet_pairs.begin(), lanelet_pairs.end(), std::back_inserter(lanelets),
-    [](const auto & pair) { return pair.second; });
-  lanelet::ConstLanelets road_slices;
-  for (const auto & llt : lanelets) {
-    const auto tmp_road_slice = lane_changeable_neighbors(llt, routing_graph);
-    road_slices.insert(road_slices.end(), tmp_road_slice.begin(), tmp_road_slice.end());
-  }
-  return road_slices;
-}
-
 std::optional<lanelet::ConstLanelet> left_opposite_lanelet(
   const lanelet::ConstLanelet & lanelet, const lanelet::LaneletMapConstPtr lanelet_map)
 {

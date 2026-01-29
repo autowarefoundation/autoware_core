@@ -138,18 +138,6 @@ lanelet::ConstLanelets lane_changeable_neighbors(
   const lanelet::routing::RoutingGraphConstPtr & routing_graph);
 
 /**
- * @brief get adjacent (neighboring) lanelets that allow lane change from  lanelets containing
- * the given search point in the LaneletMap.
- * @param [in] lanelet_map_ptr lanelet map pointer containing LaneletLayer
- * @param [in] routing_graph routing_graph containing `lanelet`
- * @param [in] search_point point used for identify the target lanelet(s)
- */
-lanelet::ConstLanelets lane_changeable_neighbors(
-  const lanelet::LaneletMapConstPtr & lanelet_map_ptr,
-  const lanelet::routing::RoutingGraphConstPtr & routing_graph,
-  const geometry_msgs::msg::Point & search_point);
-
-/**
  * @brief enumerate all succeeding(following) lanelet sequences possible from input lanelet within
  * given length limit. (Also include the last lanelet that exceeds length limit).
  * @param[in] lanelet input lanelet
