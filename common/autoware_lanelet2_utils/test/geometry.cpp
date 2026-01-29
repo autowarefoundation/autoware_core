@@ -567,7 +567,7 @@ TEST(GetLateralDistanceToCenterline, get_lateral_distance_to_centerlineOrdinaryC
 }
 
 // Test 25: get_lateral_distance_to_centerline lanelet sequence
-TEST(GetLateralDistanceToClosestLanelet, get_lateral_distance_to_centerlineLaneletSequence)
+TEST(GetLateralDistanceToCenterline, get_lateral_distance_to_centerlineLaneletSequence)
 {
   using autoware::experimental::lanelet2_utils::create_safe_lanelet;
   auto p1 = lanelet::BasicPoint3d(0.0, 2.0, 0.0);
