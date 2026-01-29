@@ -62,15 +62,15 @@ namespace nanoflann
 {
 
 #ifdef ROS_DISTRO_HUMBLE
-  template <typename IndexType, typename DistanceType>
-  using SearchResultItem = typename std::pair<IndexType, DistanceType>;
+template <typename IndexType, typename DistanceType>
+using SearchResultItem = typename std::pair<IndexType, DistanceType>;
 #elif defined(ROS_DISTRO_JAZZY)
-  using SearchParams = SearchParameters;
-  template <typename IndexType, typename DistanceType>
-  using SearchResultItem = ::ResultItem<IndexType, DistanceType>;
+using SearchParams = SearchParameters;
+template <typename IndexType, typename DistanceType>
+using SearchResultItem = ::ResultItem<IndexType, DistanceType>;
 #endif
 
-}
+}  // namespace nanoflann
 
 namespace pclomp
 {
@@ -124,12 +124,10 @@ class KdTreeNanoflann
   nanoflann::SearchParams params_;
   // Cache the squared radius, so we don't have to do radius * radius for every point search
   // The downside is we will have to call setSeachRadius manually
-  double sqr_search_radius_;  
+  double sqr_search_radius_;
 
 public:
-  KdTreeNanoflann() : index_ptr_(), cloud_ptr_() {
-    sqr_search_radius_ = 0;
-  }
+  KdTreeNanoflann() : index_ptr_(), cloud_ptr_() { sqr_search_radius_ = 0; }
 
   KdTreeNanoflann(const KdTreeNanoflann & other)
   : index_ptr_(other.index_ptr_), cloud_ptr_(other.cloud_ptr_)
@@ -168,17 +166,12 @@ public:
       3, *cloud_ptr_, nanoflann::KDTreeSingleIndexAdaptorParams(15 /* max leaf */));
   }
 
-  void setSeachRadius(double radius) {
-    sqr_search_radius_ = radius * radius;
-  }
+  void setSeachRadius(double radius) { sqr_search_radius_ = radius * radius; }
 
-  double getSearchRadius() const {
-    return std::sqrt(sqr_search_radius_);
-  }
+  double getSearchRadius() const { return std::sqrt(sqr_search_radius_); }
 
   int radiusSearch(
-    const PointT & point, 
-    std::vector<nanoflann::SearchResultItem<size_t, float>> & indices_dists,
+    const PointT & point, std::vector<nanoflann::SearchResultItem<size_t, float>> & indices_dists,
     [[maybe_unused]] unsigned int max_nn) const
   {
     auto k = index_ptr_->radiusSearch(point.data, sqr_search_radius_, indices_dists, params_);
@@ -186,5 +179,5 @@ public:
   }
 };
 
-}
+}  // namespace pclomp
 #endif  // AUTOWARE__NDT_SCAN_MATCHER__NDT_OMP__KDTREE_NANOFLANN_HPP_
