@@ -23,6 +23,9 @@ common/autoware_trajectory/** kosuke.takeuchi@tier4.jp mamoru.sobue@tier4.jp tak
 common/autoware_vehicle_info_utils/** egon.kang@autocore.ai mamoru.sobue@tier4.jp shumpei.wakabayashi@tier4.jp taiki.tanaka@tier4.jp tomoya.kimura@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 control/autoware_core_control/** mfc@autoware.org ryohsuke.mitsudome@tier4.jp yutaka.kondo@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 control/autoware_simple_pure_pursuit/** kosuke.takeuchi@tier4.jp takayuki.murooka@tier4.jp yuki.takagi@tier4.jp @autowarefoundation/autoware-core-global-codeowners
+description/autoware_awsim_sensor_kit_description/** isamu.takagi@tier4.jp piotr.jaroszek@robotec.ai @autowarefoundation/autoware-core-global-codeowners
+description/autoware_sample_sensor_kit_description/** isamu.takagi@tier4.jp ryohsuke.mitsudome@tier4.jp yukihiro.saito@tier4.jp @autowarefoundation/autoware-core-global-codeowners
+description/autoware_sample_vehicle_description/** isamu.takagi@tier4.jp ryohsuke.mitsudome@tier4.jp yukihiro.saito@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 localization/autoware_core_localization/** mfc@autoware.org ryohsuke.mitsudome@tier4.jp yutaka.kondo@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 localization/autoware_ekf_localizer/** anh.nguyen.2@tier4.jp masahiro.sakamoto@tier4.jp taiki.yamada@tier4.jp takamasa.horibe@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 localization/autoware_gyro_odometer/** anh.nguyen.2@tier4.jp masahiro.sakamoto@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
