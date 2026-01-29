@@ -252,7 +252,7 @@ void MultiVoxelGridCovariance<PointT>::createKdtree()
 
 template <typename PointT>
 int MultiVoxelGridCovariance<PointT>::radiusSearch(
-  const PointT & point, double radius, std::vector<LeafConstPtr> & k_leaves,
+  const PointT & point, std::vector<LeafConstPtr> & k_leaves,
   unsigned int max_nn) const
 {
   k_leaves.clear();
@@ -262,13 +262,10 @@ int MultiVoxelGridCovariance<PointT>::radiusSearch(
     return 0;
   }
 
-#ifdef ROS_DISTRO_HUMBLE
   // Search from the kdtree to find neighbors of @point
-  std::vector<std::pair<size_t, float>> nn_result;
-#else
-  std::vector<nanoflann::ResultItem<size_t, float>> nn_result;
-#endif
-  const int k = kdtree_.radiusSearch(point, radius, nn_result, max_nn);
+  std::vector<nanoflann::SearchResultItem<size_t, float>> nn_result;
+
+  const int k = kdtree_.radiusSearch(point, nn_result, max_nn);
 
   if (k <= 0) {
     return 0;
@@ -285,14 +282,14 @@ int MultiVoxelGridCovariance<PointT>::radiusSearch(
 
 template <typename PointT>
 int MultiVoxelGridCovariance<PointT>::radiusSearch(
-  const PointCloud & cloud, int index, double radius, std::vector<LeafConstPtr> & k_leaves,
+  const PointCloud & cloud, int index, std::vector<LeafConstPtr> & k_leaves,
   unsigned int max_nn) const
 {
   if (index >= static_cast<int>(cloud.size()) || index < 0) {
     return 0;
   }
 
-  return (radiusSearch(cloud[index], radius, k_leaves, max_nn));
+  return (radiusSearch(cloud[index], k_leaves, max_nn));
 }
 
 template <typename PointT>

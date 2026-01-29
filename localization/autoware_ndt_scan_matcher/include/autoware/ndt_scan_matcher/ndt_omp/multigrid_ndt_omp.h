@@ -254,6 +254,8 @@ public:
     max_iterations_ = params_.max_iterations;
 
     target_cells_.setThreadNum(params_.num_threads);
+
+    target_cells_.setSearchRadius(params_.resolution);
   }
 
   NdtParams getParams() const { return params_; }
