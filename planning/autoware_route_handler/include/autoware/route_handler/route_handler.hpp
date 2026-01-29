@@ -257,8 +257,8 @@ public:
    */
   bool getClosestLaneletWithinRoute(
     const Pose & search_pose, lanelet::ConstLanelet * closest_lanelet) const;
-  bool getClosestPreferredLaneletWithinRoute(
-    const Pose & search_pose, lanelet::ConstLanelet * closest_lanelet) const;
+  std::optional<lanelet::ConstLanelet> getClosestPreferredLaneletWithinRoute(
+    const Pose & search_pose) const;
   bool getClosestLaneletWithConstrainsWithinRoute(
     const Pose & search_pose, lanelet::ConstLanelet * closest_lanelet, const double dist_threshold,
     const double yaw_threshold) const;
