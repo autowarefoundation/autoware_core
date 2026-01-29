@@ -15,6 +15,8 @@
 #ifndef AUTOWARE__LANELET2_UTILS__TOPOLOGY_HPP_
 #define AUTOWARE__LANELET2_UTILS__TOPOLOGY_HPP_
 
+#include <geometry_msgs/msg/point.hpp>
+
 #include <lanelet2_core/primitives/Lanelet.h>
 #include <lanelet2_routing/Forward.h>
 #include <lanelet2_traffic_rules/TrafficRulesFactory.h>
@@ -157,6 +159,45 @@ lanelet::ConstLanelets from_ids(
  */
 lanelet::ConstLanelets get_conflicting_lanelets(
   const lanelet::ConstLanelet & lanelet, const lanelet::routing::RoutingGraphConstPtr & graph);
+
+/**
+ * @brief get adjacent (neighboring) lanelets that allow lane change from input lanelet including
+ * itself.
+ * @param [in] lanelet input lanelet
+ * @param [in] routing_graph routing_graph containing `lanelet`
+ * @post returned lanelets are ordered from left to right.
+ */
+lanelet::ConstLanelets lane_changeable_neighbors(
+  const lanelet::ConstLanelet & lanelet,
+  const lanelet::routing::RoutingGraphConstPtr & routing_graph);
+
+/**
+ * @brief enumerate all succeeding(following) lanelet sequences possible from input lanelet within
+ * given length limit. (Also include the last lanelet that exceeds length limit).
+ * @param[in] lanelet input lanelet
+ * @param[in] routing_graph routing_graph containing `lanelet`
+ * @param[in] length length limit
+ * @return lanelet sequences that follow input lanelet (does not include input lanelet)
+ */
+std::vector<lanelet::ConstLanelets> get_succeeding_lanelet_sequences(
+  const lanelet::ConstLanelet & lanelet,
+  const lanelet::routing::RoutingGraphConstPtr & routing_graph, double length);
+
+/**
+ * @brief enumerate all preceding(previous) lanelet sequences possible from input lanelet within
+ * given length limit. (Also include the last lanelet that exceeds length limit).
+ * @param[in] lanelet input_lanelet
+ * @param[in] routing_graph routing_graph containing `lanelet`
+ * @param[in] length length limit
+ * @param[in] excluding_lanelets to be excluded lanelets
+ * @return lanelet sequences that leads to input lanelet (does not include input lanelet)
+ * @post the lanelet sequences is ordered from furthest to closest.
+ */
+std::vector<lanelet::ConstLanelets> get_preceding_lanelet_sequences(
+  const lanelet::ConstLanelet & lanelet,
+  const lanelet::routing::RoutingGraphConstPtr & routing_graph, double length,
+  const lanelet::ConstLanelets & exclude_lanelets = {});
+
 }  // namespace autoware::experimental::lanelet2_utils
 
 #endif  // AUTOWARE__LANELET2_UTILS__TOPOLOGY_HPP_
