@@ -87,6 +87,23 @@ TEST_F(TestWithIntersectionCrossingMap, left_lanelet_with_lc_permission)
   EXPECT_EQ(lane.value().id(), 2244);
 }
 
+TEST_F(TestWithIntersectionCrossingMap, left_lanelets)
+{
+  const auto lanes =
+    lanelet2_utils::left_lanelets(lanelet_map_ptr_->laneletLayer.get(2246), routing_graph_ptr_);
+  ASSERT_TRUE(lanes.has_value());
+  ASSERT_EQ(lanes.value().size(), 2);
+  EXPECT_EQ(lanes.value()[0].id(), 2245);
+  EXPECT_EQ(lanes.value()[1].id(), 2244);
+}
+
+TEST_F(TestWithIntersectionCrossingMap, left_lanelets_not_exist)
+{
+  const auto lanes =
+    lanelet2_utils::left_lanelets(lanelet_map_ptr_->laneletLayer.get(2244), routing_graph_ptr_);
+  ASSERT_FALSE(lanes.has_value());
+}
+
 TEST_F(TestWithIntersectionCrossingMap, right_lanelet_without_lc_permission)
 {
   const auto lane =
@@ -99,6 +116,51 @@ TEST_F(TestWithIntersectionCrossingMap, right_lanelet_with_lc_permission)
   const auto lane =
     lanelet2_utils::right_lanelet(lanelet_map_ptr_->laneletLayer.get(2244), routing_graph_ptr_);
   EXPECT_EQ(lane.value().id(), 2245);
+}
+
+TEST_F(TestWithIntersectionCrossingMap, right_lanelets)
+{
+  const auto lanes =
+    lanelet2_utils::right_lanelets(lanelet_map_ptr_->laneletLayer.get(2246), routing_graph_ptr_);
+  ASSERT_TRUE(lanes.has_value());
+  ASSERT_EQ(lanes.value().size(), 2);
+  EXPECT_EQ(lanes.value()[0].id(), 2247);
+  EXPECT_EQ(lanes.value()[1].id(), 2248);
+}
+
+TEST_F(TestWithIntersectionCrossingMap, right_lanelets_not_exist)
+{
+  const auto lanes =
+    lanelet2_utils::right_lanelets(lanelet_map_ptr_->laneletLayer.get(2248), routing_graph_ptr_);
+  ASSERT_FALSE(lanes.has_value());
+}
+
+TEST_F(TestWithIntersectionCrossingMap, all_neighbor_lanelets)
+{
+  const auto lanes = lanelet2_utils::all_neighbor_lanelets(
+    lanelet_map_ptr_->laneletLayer.get(2246), routing_graph_ptr_);
+  ASSERT_EQ(lanes.size(), 5);
+  // Left
+  EXPECT_EQ(lanes[0].id(), 2244);
+  EXPECT_EQ(lanes[1].id(), 2245);
+  // Itself
+  EXPECT_EQ(lanes[2].id(), 2246);
+  // Right
+  EXPECT_EQ(lanes[3].id(), 2247);
+  EXPECT_EQ(lanes[4].id(), 2248);
+
+  // check that the first lane is leftmost
+  {
+    auto leftmost_opt = lanelet2_utils::left_lanelet(
+      lanelet_map_ptr_->laneletLayer.get(lanes.front().id()), routing_graph_ptr_);
+    EXPECT_FALSE(leftmost_opt.has_value());
+  }
+  // check that the last lane is leftmost
+  {
+    auto rightmost_opt = lanelet2_utils::right_lanelet(
+      lanelet_map_ptr_->laneletLayer.get(lanes.back().id()), routing_graph_ptr_);
+    EXPECT_FALSE(rightmost_opt.has_value());
+  }
 }
 
 TEST_F(TestWithIntersectionCrossingMap, lane_changeable_neighbors_with_lc_permission)

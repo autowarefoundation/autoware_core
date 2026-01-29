@@ -42,6 +42,24 @@ std::optional<lanelet::ConstLanelet> left_lanelet(
   return std::nullopt;
 }
 
+std::optional<lanelet::ConstLanelets> left_lanelets(
+  const lanelet::ConstLanelet & lanelet,
+  const lanelet::routing::RoutingGraphConstPtr & routing_graph)
+{
+  lanelet::ConstLanelets lanelets;
+  auto left_lane = left_lanelet(lanelet, routing_graph);
+  // If the left lane doesn't exist at the first place.
+  if (!left_lane.has_value()) {
+    return std::nullopt;
+  }
+  // If the left lane exists.
+  while (left_lane.has_value()) {
+    lanelets.push_back(left_lane.value());
+    left_lane = left_lanelet(left_lane.value(), routing_graph);
+  }
+  return lanelets;
+}
+
 std::optional<lanelet::ConstLanelet> right_lanelet(
   const lanelet::ConstLanelet & lanelet, const lanelet::routing::RoutingGraphConstPtr routing_graph)
 {
@@ -53,6 +71,54 @@ std::optional<lanelet::ConstLanelet> right_lanelet(
     return *adjacent_right_lane;
   }
   return std::nullopt;
+}
+
+std::optional<lanelet::ConstLanelets> right_lanelets(
+  const lanelet::ConstLanelet & lanelet,
+  const lanelet::routing::RoutingGraphConstPtr & routing_graph)
+{
+  lanelet::ConstLanelets lanelets;
+  auto right_lane = right_lanelet(lanelet, routing_graph);
+  // If the right lane doesn't exist at the first place.
+  if (!right_lane.has_value()) {
+    return std::nullopt;
+  }
+  // If the right lane exists.
+  while (right_lane.has_value()) {
+    lanelets.push_back(right_lane.value());
+    right_lane = right_lanelet(right_lane.value(), routing_graph);
+  }
+  return lanelets;
+}
+
+lanelet::ConstLanelets all_neighbor_lanelets(
+  const lanelet::ConstLanelet & lanelet,
+  const lanelet::routing::RoutingGraphConstPtr & routing_graph)
+{
+  lanelet::ConstLanelets lanelets;
+
+  auto left_opt = left_lanelets(lanelet, routing_graph);
+  auto right_opt = right_lanelets(lanelet, routing_graph);
+
+  if (!left_opt.has_value() && !right_opt.has_value()) {
+    lanelets.push_back(lanelet);
+    return lanelets;
+  }
+
+  if (left_opt.has_value()) {
+    auto left_lls = left_opt.value();
+    std::reverse(left_lls.begin(), left_lls.end());
+    lanelets.insert(lanelets.end(), left_lls.begin(), left_lls.end());
+  }
+
+  lanelets.push_back(lanelet);
+
+  if (right_opt.has_value()) {
+    auto right_lls = right_opt.value();
+    lanelets.insert(lanelets.end(), right_lls.begin(), right_lls.end());
+  }
+
+  return lanelets;
 }
 
 lanelet::ConstLanelets lane_changeable_neighbors(

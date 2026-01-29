@@ -38,6 +38,17 @@ std::optional<lanelet::ConstLanelet> left_lanelet(
   const lanelet::routing::RoutingGraphConstPtr routing_graph);
 
 /**
+ * @brief get all the left adjacent and same_direction lanelets on the routing graph if exists
+ * regardless of lane change permission
+ * @param [in] lanelet input lanelet
+ * @param [in] routing_graph routing_graph containing `lanelet`
+ * @return optional of all left adjacent lanelets(nullopt if there is no such adjacent lanelet)
+ */
+std::optional<lanelet::ConstLanelets> left_lanelets(
+  const lanelet::ConstLanelet & lanelet,
+  const lanelet::routing::RoutingGraphConstPtr & routing_graph);
+
+/**
  * @brief get the right adjacent and same_direction lanelet on the routing graph if exists
  * @param [in] lanelet input lanelet
  * @param [in] routing_graph routing_graph containing `lanelet`
@@ -46,6 +57,29 @@ std::optional<lanelet::ConstLanelet> left_lanelet(
 std::optional<lanelet::ConstLanelet> right_lanelet(
   const lanelet::ConstLanelet & lanelet,
   const lanelet::routing::RoutingGraphConstPtr routing_graph);
+
+/**
+ * @brief get all the right adjacent and same_direction lanelets on the routing graph if exists
+ * regardless of lane change permission
+ * @param [in] lanelet input lanelet
+ * @param [in] routing_graph routing_graph containing `lanelet`
+ * @return optional of all right adjacent lanelets(nullopt if there is no such adjacent lanelet)
+ */
+std::optional<lanelet::ConstLanelets> right_lanelets(
+  const lanelet::ConstLanelet & lanelet,
+  const lanelet::routing::RoutingGraphConstPtr & routing_graph);
+
+/**
+ * @brief get all adjacent and same_direction lanelets on the routing graph if exists
+ * regardless of lane change permission
+ * @param [in] lanelet input lanelet
+ * @param [in] routing_graph routing_graph containing `lanelet`
+ * @return all adjacent lanelets(vector of input lanelet if there is no such adjacent lanelet)
+ * @post Output is ordered from **leftmost** lanelet to `lanelet` to **rightmost** lanelet.
+ */
+lanelet::ConstLanelets all_neighbor_lanelets(
+  const lanelet::ConstLanelet & lanelet,
+  const lanelet::routing::RoutingGraphConstPtr & routing_graph);
 
 /**
  * @brief get the left adjacent and opposite_direction lanelet on the routing graph if exists

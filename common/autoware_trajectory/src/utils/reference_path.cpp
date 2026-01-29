@@ -284,9 +284,14 @@ public:
       >+--+--+--+--+ last_waypoints --+--+--+--+--+> >+--+--+--+--+ next_waypoints --+--+--+--+--+>
      */
     auto & last_waypoints_mut = reference_points_chunks_.back().points;
-    last_waypoints_mut.insert(
-      last_waypoints_mut.end(), user_defined_reference_points.begin(),
-      user_defined_reference_points.end());
+    // NOTE(soblin): if two custom centerlines are subsequent, waypoints can be duplicate
+    for (const auto & user_defined_reference_point : user_defined_reference_points) {
+      const auto last_added_point_id = last_waypoints_mut.back().point.id();
+      const auto to_add_point_id = user_defined_reference_point.point.id();
+      if (last_added_point_id != to_add_point_id) {
+        last_waypoints_mut.push_back(user_defined_reference_point);
+      }
+    }
     const auto [_, new_end] = compute_smooth_interval(
       user_defined_reference_points, current_lanelet_distance_from_route_start, defined_lanelet,
       connection_from_default_point_gradient);
@@ -717,6 +722,7 @@ struct LaneletSequenceWithRange
 /**
  * @brief extend given lanelet sequence backward/forward so that s_start, s_end is within
  * output lanelet sequence
+ * @detail extended lanelet sequence must contain the previous/next lanelet of `lanelet_sequence`
  * @param s_start start arc length
  * @param s_end end arc length
  * @return extended lanelet sequence, new start arc length, new end arc length
@@ -734,10 +740,11 @@ LaneletSequenceWithRange supplement_lanelet_sequence(
   auto new_s_end = s_end;
 
   std::set<lanelet::Id> visited_prev_lane_ids{extended_lanelet_sequence.front().id()};
-  while (new_s_start < 0.0) {
+  bool added_first_prev_lane{false};
+  while (!added_first_prev_lane || new_s_start < 0.0) {
     const auto previous_lanes = previous_lanelets(extended_lanelet_sequence.front(), routing_graph);
     if (previous_lanes.empty()) {
-      new_s_start = 0.0;
+      new_s_start = std::max(new_s_start, 0.0);
       break;
     }
     // take the longest previous lane to construct underlying lanelets
@@ -753,6 +760,7 @@ LaneletSequenceWithRange supplement_lanelet_sequence(
     visited_prev_lane_ids.insert(longest_previous_lane.id());
     new_s_start += lanelet::geometry::length2d(longest_previous_lane);
     new_s_end += lanelet::geometry::length2d(longest_previous_lane);
+    added_first_prev_lane = true;
   }
 
   std::set<lanelet::Id> visited_next_lane_ids{extended_lanelet_sequence.back().id()};
@@ -760,7 +768,9 @@ LaneletSequenceWithRange supplement_lanelet_sequence(
          lanelet::geometry::length2d(lanelet::LaneletSequence(extended_lanelet_sequence))) {
     const auto next_lanes = following_lanelets(extended_lanelet_sequence.back(), routing_graph);
     if (next_lanes.empty()) {
-      new_s_end = lanelet::geometry::length2d(lanelet::LaneletSequence(extended_lanelet_sequence));
+      new_s_end = std::min(
+        new_s_end,
+        lanelet::geometry::length2d(lanelet::LaneletSequence(extended_lanelet_sequence)));
       break;
     }
     // take the longest previous lane to construct underlying lanelets
