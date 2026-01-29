@@ -263,8 +263,7 @@ public:
    * \return number of neighbors found
    */
   int radiusSearch(
-    const PointT & point, std::vector<LeafConstPtr> & k_leaves,
-    unsigned int max_nn = 0) const;
+    const PointT & point, std::vector<LeafConstPtr> & k_leaves, unsigned int max_nn = 0) const;
 
   /** \brief Search for all the nearest occupied voxels of the query point in a given radius.
    * \note Only voxels containing a sufficient number of points are used.
@@ -298,13 +297,9 @@ public:
     processing_inputs_.resize(thread_num_);
   }
 
-  void setSearchRadius(double radius) {
-    kdtree_.setSeachRadius(radius);
-  }
+  void setSearchRadius(double radius) { kdtree_.setSeachRadius(radius); }
 
-  double getSearchRadius() const {
-    return kdtree_.getSearchRadius();
-  }
+  double getSearchRadius() const { return kdtree_.getSearchRadius(); }
 
   ~MultiVoxelGridCovariance()
   {
