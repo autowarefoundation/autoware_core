@@ -52,7 +52,7 @@
 #ifndef AUTOWARE__NDT_SCAN_MATCHER__NDT_OMP__MULTI_VOXEL_GRID_COVARIANCE_OMP_H_
 #define AUTOWARE__NDT_SCAN_MATCHER__NDT_OMP__MULTI_VOXEL_GRID_COVARIANCE_OMP_H_
 
-// cspell:ignore Magnusson, Okorn, evecs, evals, covar, eigvalue, futs
+// cspell:ignore Magnusson, Okorn, evecs, evals, covar, eigvalue, futs, Nanoflann
 
 #include <Eigen/Cholesky>
 #include <Eigen/Dense>
@@ -61,9 +61,10 @@
 // clang-format off
 #include <pcl/pcl_macros.h>
 // clang-format on
+#include "kdtree_nanoflann.hpp"
+
 #include <pcl/filters/boost.h>
 #include <pcl/filters/voxel_grid.h>
-#include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/point_types.h>
 
 #include <future>
@@ -385,7 +386,7 @@ protected:
   // Grids of leaves are held in a vector for faster access speed
   std::vector<GridNodePtr> grid_list_;
   // A kdtree built from the leaves of grids
-  pcl::KdTreeFLANN<PointT> kdtree_;
+  KdTreeNanoflann<PointT> kdtree_;
   // To access leaf by the search results by kdtree
   std::vector<LeafConstPtr> leaf_ptrs_;
 };
