@@ -252,8 +252,7 @@ void MultiVoxelGridCovariance<PointT>::createKdtree()
 
 template <typename PointT>
 int MultiVoxelGridCovariance<PointT>::radiusSearch(
-  const PointT & point, std::vector<LeafConstPtr> & k_leaves,
-  unsigned int max_nn) const
+  const PointT & point, std::vector<LeafConstPtr> & k_leaves, unsigned int max_nn) const
 {
   k_leaves.clear();
 
