@@ -58,6 +58,23 @@
 #include <utility>
 #include <vector>
 
+namespace nanoflann
+{
+
+#ifdef ROS_DISTRO_HUMBLE
+  template <typename IndexType, typename DistanceType>
+  using SearchResultItem = typename std::pair<IndexType, DistanceType>;
+#elif defined(ROS_DISTRO_JAZZY)
+  using SearchParams = SearchParameters;
+  template <typename IndexType, typename DistanceType>
+  using SearchResultItem = ::ResultItem<IndexType, DistanceType>;
+#endif
+
+}
+
+namespace pclomp
+{
+
 template <typename PointT>
 class KdTreeNanoflann
 {
@@ -105,24 +122,32 @@ class KdTreeNanoflann
   std::shared_ptr<kdtree_t> index_ptr_;
   std::shared_ptr<PointCloudNanoflann> cloud_ptr_;
   nanoflann::SearchParams params_;
+  // Cache the squared radius, so we don't have to do radius * radius for every point search
+  // The downside is we will have to call setSeachRadius manually
+  double sqr_search_radius_;  
 
 public:
-  KdTreeNanoflann() : index_ptr_(), cloud_ptr_() {}
+  KdTreeNanoflann() : index_ptr_(), cloud_ptr_() {
+    sqr_search_radius_ = 0;
+  }
 
   KdTreeNanoflann(const KdTreeNanoflann & other)
   : index_ptr_(other.index_ptr_), cloud_ptr_(other.cloud_ptr_)
   {
+    sqr_search_radius_ = other.sqr_search_radius_;
   }
 
   KdTreeNanoflann(KdTreeNanoflann && other)
   : index_ptr_(std::move(other.index_ptr_)), cloud_ptr_(std::move(other.cloud_ptr_))
   {
+    sqr_search_radius_ = other.sqr_search_radius_;
   }
 
   KdTreeNanoflann & operator=(const KdTreeNanoflann & other)
   {
     index_ptr_ = other.index_ptr_;
     cloud_ptr_ = other.cloud_ptr_;
+    sqr_search_radius_ = other.sqr_search_radius_;
     return *this;
   }
 
@@ -131,6 +156,7 @@ public:
     if (this != &other) {
       index_ptr_ = std::move(other.index_ptr_);
       cloud_ptr_ = std::move(other.cloud_ptr_);
+      sqr_search_radius_ = other.sqr_search_radius_;
     }
     return *this;
   }
@@ -142,23 +168,23 @@ public:
       3, *cloud_ptr_, nanoflann::KDTreeSingleIndexAdaptorParams(15 /* max leaf */));
   }
 
-#ifdef ROS_DISTRO_HUMBLE
+  void setSeachRadius(double radius) {
+    sqr_search_radius_ = radius * radius;
+  }
+
+  double getSearchRadius() const {
+    return std::sqrt(sqr_search_radius_);
+  }
+
   int radiusSearch(
-    const PointT & point, double radius, std::vector<std::pair<size_t, float>> & indices_dists,
+    const PointT & point, 
+    std::vector<nanoflann::SearchResultItem<size_t, float>> & indices_dists,
     [[maybe_unused]] unsigned int max_nn) const
   {
-    auto k = index_ptr_->radiusSearch(point.data, radius * radius, indices_dists, params_);
+    auto k = index_ptr_->radiusSearch(point.data, sqr_search_radius_, indices_dists, params_);
     return k;
   }
-#else
-  int radiusSearch(
-    const PointT & point, double radius,
-    std::vector<nanoflann::ResultItem<size_t, float>> indices_dists,
-    [[maybe_unused]] unsigned int max_nn) const
-  {
-    auto k = index_ptr_->radiusSearch(point.data, radius * radius, indices_dists, params_);
-    return k;
-  }
-#endif
 };
+
+}
 #endif  // AUTOWARE__NDT_SCAN_MATCHER__NDT_OMP__KDTREE_NANOFLANN_HPP_
