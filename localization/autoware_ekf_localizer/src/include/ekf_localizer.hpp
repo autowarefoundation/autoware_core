@@ -173,7 +173,8 @@ private:
     const geometry_msgs::msg::TwistStamped & current_ekf_twist);
 
   /**
-   * @brief check if diagnostics should be published based on period control and update last publish time
+   * @brief check if diagnostics should be published based on period control and update last publish
+   * time
    * @param current_time current time
    * @return true if diagnostics should be published
    */
