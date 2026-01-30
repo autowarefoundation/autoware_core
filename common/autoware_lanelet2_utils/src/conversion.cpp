@@ -163,6 +163,12 @@ lanelet::routing::RoutingGraphPtr remove_const(
     std::const_pointer_cast<lanelet::routing::RoutingGraph>(const_routing_graph_ptr)};
 }
 
+lanelet::LineString3d remove_const(const lanelet::ConstLineString3d & const_linestring)
+{
+  return lanelet::LineString3d{
+    std::const_pointer_cast<lanelet::LineStringData>(const_linestring.constData())};
+}
+
 lanelet::Lanelet remove_const(const lanelet::ConstLanelet & const_lanelet)
 {
   return lanelet::Lanelet{std::const_pointer_cast<lanelet::LaneletData>(const_lanelet.constData())};

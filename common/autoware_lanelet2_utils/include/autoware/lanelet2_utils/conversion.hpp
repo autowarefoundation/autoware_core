@@ -116,6 +116,8 @@ lanelet::LaneletMapPtr remove_const(const lanelet::LaneletMapConstPtr & const_ma
 lanelet::routing::RoutingGraphPtr remove_const(
   const lanelet::routing::RoutingGraphConstPtr & const_routing_graph_ptr);
 
+lanelet::LineString3d remove_const(const lanelet::ConstLineString3d & const_linestring);
+
 lanelet::Lanelet remove_const(const lanelet::ConstLanelet & const_lanelet);
 
 }  // namespace autoware::experimental::lanelet2_utils
