@@ -130,7 +130,8 @@ public:
   KdTreeNanoflann() : index_ptr_(), cloud_ptr_() { sqr_search_radius_ = 0; }
 
   KdTreeNanoflann(const KdTreeNanoflann & other)
-  : index_ptr_(other.index_ptr_), cloud_ptr_(other.cloud_ptr_)
+  : index_ptr_(other.index_ptr_), cloud_ptr_(other.cloud_ptr_),
+  params_(other.params_)
   {
     sqr_search_radius_ = other.sqr_search_radius_;
   }
@@ -146,6 +147,7 @@ public:
     index_ptr_ = other.index_ptr_;
     cloud_ptr_ = other.cloud_ptr_;
     sqr_search_radius_ = other.sqr_search_radius_;
+    params_ = other.params_;
     return *this;
   }
 
@@ -155,6 +157,7 @@ public:
       index_ptr_ = std::move(other.index_ptr_);
       cloud_ptr_ = std::move(other.cloud_ptr_);
       sqr_search_radius_ = other.sqr_search_radius_;
+      params_ = other.params_;
     }
     return *this;
   }
