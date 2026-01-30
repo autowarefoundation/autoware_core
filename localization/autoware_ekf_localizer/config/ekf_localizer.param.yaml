@@ -45,6 +45,9 @@
       warn_ellipse_size: 1.2
       error_ellipse_size_lateral_direction: 0.3
       warn_ellipse_size_lateral_direction: 0.25
+      # diagnostics publish frequency [Hz]. Set to 0.0 to publish at every timer callback (default behavior)
+      # Set to a positive value to publish diagnostics at a lower frequency than the EKF update rate
+      diagnostics_publish_frequency: 0.0
 
     misc:
       # for velocity measurement limitation (Set 0.0 if you want to ignore)
