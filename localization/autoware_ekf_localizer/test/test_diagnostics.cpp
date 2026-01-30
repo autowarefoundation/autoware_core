@@ -13,9 +13,13 @@
 // limitations under the License.
 
 #include "autoware/ekf_localizer/diagnostics.hpp"
+#include "autoware/ekf_localizer/ekf_localizer.hpp"
 
 #include <gtest/gtest.h>
+#include <rclcpp/rclcpp.hpp>
+#include <rclcpp/exceptions.hpp>
 
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -208,6 +212,202 @@ TEST(TestLocalizationErrorMonitorDiagnostics, merge_diagnostic_status)
   merged_stat = merge_diagnostic_status(stat_array);
   EXPECT_EQ(merged_stat.level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
   EXPECT_EQ(merged_stat.message, "ERROR0; ERROR1");
+}
+
+class TestEkfDiagnosticsWithNode : public ::testing::Test
+{
+protected:
+  void SetUp() override
+  {
+    if (!rclcpp::ok()) {
+      rclcpp::init(0, nullptr);
+    }
+  }
+
+  void TearDown() override
+  {
+    // Don't shutdown here as other tests might need rclcpp context
+  }
+
+  std::shared_ptr<rclcpp::Node> create_test_node(const std::string & node_name)
+  {
+    // Create a new node - parameters will be declared by HyperParameters constructor
+    return std::make_shared<rclcpp::Node>(node_name);
+  }
+};
+
+// Friend class to access private members of EKFLocalizer for testing
+class EKFLocalizerTestSuite : public ::testing::Test
+{
+protected:
+  void SetUp() override
+  {
+    if (!rclcpp::ok()) {
+      rclcpp::init(0, nullptr);
+    }
+  }
+
+  void TearDown() override
+  {
+    // Don't shutdown here as other tests might need rclcpp context
+  }
+
+  std::shared_ptr<autoware::ekf_localizer::EKFLocalizer> create_ekf_localizer(
+    const std::string & /* node_name */, double diagnostics_publish_period, double ekf_rate)
+  {
+    rclcpp::NodeOptions options;
+    options.parameter_overrides({
+      // Node parameters
+      {"node.show_debug_info", false},
+      {"node.enable_yaw_bias_estimation", true},
+      {"node.predict_frequency", ekf_rate},
+      {"node.tf_rate", 50.0},
+      {"node.extend_state_step", 50},
+      // Pose measurement parameters
+      {"pose_measurement.pose_additional_delay", 0.0},
+      {"pose_measurement.pose_measure_uncertainty_time", 0.01},
+      {"pose_measurement.pose_smoothing_steps", 5},
+      {"pose_measurement.pose_gate_dist", 49.5},
+      // Twist measurement parameters
+      {"twist_measurement.twist_additional_delay", 0.0},
+      {"twist_measurement.twist_smoothing_steps", 2},
+      {"twist_measurement.twist_gate_dist", 46.1},
+      // Process noise parameters
+      {"process_noise.proc_stddev_yaw_c", 0.005},
+      {"process_noise.proc_stddev_vx_c", 10.0},
+      {"process_noise.proc_stddev_wz_c", 5.0},
+      // Simple 1D filter parameters
+      {"simple_1d_filter_parameters.z_filter_proc_dev", 5.0},
+      {"simple_1d_filter_parameters.roll_filter_proc_dev", 0.1},
+      {"simple_1d_filter_parameters.pitch_filter_proc_dev", 0.1},
+      // Diagnostics parameters
+      {"diagnostics.pose_no_update_count_threshold_warn", 50},
+      {"diagnostics.pose_no_update_count_threshold_error", 100},
+      {"diagnostics.twist_no_update_count_threshold_warn", 50},
+      {"diagnostics.twist_no_update_count_threshold_error", 100},
+      {"diagnostics.ellipse_scale", 3.0},
+      {"diagnostics.error_ellipse_size", 1.5},
+      {"diagnostics.warn_ellipse_size", 1.2},
+      {"diagnostics.error_ellipse_size_lateral_direction", 0.3},
+      {"diagnostics.warn_ellipse_size_lateral_direction", 0.25},
+      {"diagnostics.diagnostics_publish_frequency", diagnostics_publish_period > 0.0 ? 1.0 / diagnostics_publish_period : 0.0},
+      // Misc parameters
+      {"misc.threshold_observable_velocity_mps", 0.0},
+      {"misc.pose_frame_id", "map"},
+    });
+    return std::make_shared<autoware::ekf_localizer::EKFLocalizer>(options);
+  }
+
+  // Helper methods to access private members through friend class
+  bool should_publish_diagnostics(
+    autoware::ekf_localizer::EKFLocalizer * ekf_localizer, const rclcpp::Time & current_time)
+  {
+    return ekf_localizer->should_publish_diagnostics(current_time);
+  }
+
+  void set_diagnostics_publish_counter(
+    autoware::ekf_localizer::EKFLocalizer * ekf_localizer, double value)
+  {
+    ekf_localizer->diagnostics_publish_counter_ = value;
+  }
+
+  double get_diagnostics_publish_counter(autoware::ekf_localizer::EKFLocalizer * ekf_localizer)
+  {
+    return ekf_localizer->diagnostics_publish_counter_;
+  }
+};
+
+TEST_F(EKFLocalizerTestSuite, should_publish_diagnostics_period_zero)
+{
+  // Test that should_publish_diagnostics returns true when diagnostics_publish_period <= 0.0
+  const double ekf_rate = 100.0;  // 100 Hz
+  const double diagnostics_publish_period = 0.0;  // 0.0 means publish every callback
+
+  auto ekf_localizer = create_ekf_localizer("test_should_publish_period_zero", diagnostics_publish_period, ekf_rate);
+
+  rclcpp::Time current_time = ekf_localizer->now();
+
+  // Should always return true when period is 0.0
+  EXPECT_TRUE(should_publish_diagnostics(ekf_localizer.get(), current_time));
+  EXPECT_TRUE(should_publish_diagnostics(ekf_localizer.get(), current_time));
+  EXPECT_TRUE(should_publish_diagnostics(ekf_localizer.get(), current_time));
+}
+
+TEST_F(EKFLocalizerTestSuite, should_publish_diagnostics_period_negative)
+{
+  // Test that should_publish_diagnostics returns true when diagnostics_publish_period < 0.0
+  const double ekf_rate = 100.0;  // 100 Hz
+  const double diagnostics_publish_period = -1.0;  // Negative period
+
+  auto ekf_localizer = create_ekf_localizer("test_should_publish_period_negative", diagnostics_publish_period, ekf_rate);
+
+  rclcpp::Time current_time = ekf_localizer->now();
+
+  // Should always return true when period is negative
+  EXPECT_TRUE(should_publish_diagnostics(ekf_localizer.get(), current_time));
+  EXPECT_TRUE(should_publish_diagnostics(ekf_localizer.get(), current_time));
+}
+
+TEST_F(EKFLocalizerTestSuite, should_publish_diagnostics_period_less_than_ekf_dt)
+{
+  // Test that should_publish_diagnostics returns true when diagnostics_publish_period < ekf_dt
+  const double ekf_rate = 100.0;  // 100 Hz, so ekf_dt = 0.01 seconds
+  const double diagnostics_publish_period = 0.005;  // 0.005 seconds < 0.01 seconds (ekf_dt)
+
+  auto ekf_localizer = create_ekf_localizer("test_should_publish_period_less_than_dt", diagnostics_publish_period, ekf_rate);
+
+  rclcpp::Time current_time = ekf_localizer->now();
+
+  // Should always return true when period < ekf_dt
+  EXPECT_TRUE(should_publish_diagnostics(ekf_localizer.get(), current_time));
+  EXPECT_TRUE(should_publish_diagnostics(ekf_localizer.get(), current_time));
+}
+
+TEST_F(EKFLocalizerTestSuite, should_publish_diagnostics_with_counter)
+{
+  // Test that should_publish_diagnostics uses counter correctly when period > ekf_dt
+  const double ekf_rate = 100.0;  // 100 Hz, so ekf_dt = 0.01 seconds
+  const double diagnostics_publish_period = 0.1;  // 0.1 seconds = 10 timer callbacks
+
+  auto ekf_localizer = create_ekf_localizer("test_should_publish_with_counter", diagnostics_publish_period, ekf_rate);
+
+  rclcpp::Time current_time = ekf_localizer->now();
+
+  // Calculate expected threshold: ekf_rate * diagnostics_publish_period = 100.0 * 0.1 = 10.0
+  const double expected_threshold = ekf_rate * diagnostics_publish_period;
+
+  // Counter starts at 0.0, so first call should return false (0.0 < 10.0)
+  EXPECT_FALSE(should_publish_diagnostics(ekf_localizer.get(), current_time));
+
+  // Access private member diagnostics_publish_counter_ through friend class helper methods
+  // Set counter to just below threshold
+  set_diagnostics_publish_counter(ekf_localizer.get(), expected_threshold - 1.0);
+  EXPECT_FALSE(should_publish_diagnostics(ekf_localizer.get(), current_time));
+
+  // Set counter to exactly at threshold
+  set_diagnostics_publish_counter(ekf_localizer.get(), expected_threshold);
+  EXPECT_TRUE(should_publish_diagnostics(ekf_localizer.get(), current_time));
+  // After returning true, counter should be decremented by threshold
+  EXPECT_DOUBLE_EQ(get_diagnostics_publish_counter(ekf_localizer.get()), 0.0);
+
+  // Set counter to above threshold
+  set_diagnostics_publish_counter(ekf_localizer.get(), expected_threshold + 5.0);
+  EXPECT_TRUE(should_publish_diagnostics(ekf_localizer.get(), current_time));
+  // Counter should be decremented by threshold, leaving remainder
+  EXPECT_DOUBLE_EQ(get_diagnostics_publish_counter(ekf_localizer.get()), 5.0);
+
+  // Test multiple increments
+  set_diagnostics_publish_counter(ekf_localizer.get(), 0.0);
+  EXPECT_FALSE(should_publish_diagnostics(ekf_localizer.get(), current_time));
+
+  // Simulate 9 timer callbacks (counter = 9.0)
+  set_diagnostics_publish_counter(ekf_localizer.get(), 9.0);
+  EXPECT_FALSE(should_publish_diagnostics(ekf_localizer.get(), current_time));
+
+  // Simulate 10th timer callback (counter = 10.0, should trigger publish)
+  set_diagnostics_publish_counter(ekf_localizer.get(), 10.0);
+  EXPECT_TRUE(should_publish_diagnostics(ekf_localizer.get(), current_time));
+  EXPECT_DOUBLE_EQ(get_diagnostics_publish_counter(ekf_localizer.get()), 0.0);
 }
 
 }  // namespace autoware::ekf_localizer
