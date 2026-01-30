@@ -178,14 +178,15 @@ lanelet::ConstLanelets lane_changeable_neighbors(
  * @param[in] routing_graph routing_graph containing `lanelet`
  * @param[in] length length limit
  * @return lanelet sequences that follow input lanelet (does not include input lanelet)
+ * @post the lanelet sequences is ordered from closest to furthest.
  */
 std::vector<lanelet::ConstLanelets> get_succeeding_lanelet_sequences(
   const lanelet::ConstLanelet & lanelet,
   const lanelet::routing::RoutingGraphConstPtr & routing_graph, double length);
 
 /**
- * @brief enumerate all preceding(previous) lanelet sequences possible from input lanelet within
- * given length limit. (Also include the last lanelet that exceeds length limit).
+ * @brief enumerate all preceding(previous) lanelet sequences possible leading to input lanelet
+ * within given length limit. (Also include the last lanelet that exceeds length limit).
  * @param[in] lanelet input_lanelet
  * @param[in] routing_graph routing_graph containing `lanelet`
  * @param[in] length length limit
