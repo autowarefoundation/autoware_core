@@ -127,7 +127,7 @@ class KdTreeNanoflann
   double sqr_search_radius_;
 
 public:
-  KdTreeNanoflann() : index_ptr_(), cloud_ptr_() { sqr_search_radius_ = 0; }
+  KdTreeNanoflann() : index_ptr_(), cloud_ptr_(), params_() { sqr_search_radius_ = 0; }
 
   KdTreeNanoflann(const KdTreeNanoflann & other)
   : index_ptr_(other.index_ptr_), cloud_ptr_(other.cloud_ptr_), params_(other.params_)
