@@ -78,8 +78,8 @@ public:
   }
 
   const bool show_debug_info;
-  const double ekf_rate; // ekf update frequency = predict_frequency [Hz]
-  const double ekf_dt; // ekf update period [s]
+  const double ekf_rate;  // ekf update frequency = predict_frequency [Hz]
+  const double ekf_dt;    // ekf update period [s]
   const double tf_rate_;
   const bool enable_yaw_bias_estimation;
   const size_t extend_state_step;
@@ -108,7 +108,8 @@ public:
   double error_ellipse_size_lateral_direction;
   double warn_ellipse_size_lateral_direction;
   const double diagnostics_publish_frequency;  //!< @brief diagnostics publish frequency [Hz]
-  const double diagnostics_publish_period;     //!< @brief diagnostics publish period [s] (0.0 if frequency is 0.0)
+  const double diagnostics_publish_period;     //!< @brief diagnostics publish period [s] (0.0 if
+                                               //!< frequency is 0.0)
 
   const double threshold_observable_velocity_mps;
 };
