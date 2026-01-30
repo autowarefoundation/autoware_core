@@ -27,6 +27,7 @@
 #include <fmt/core.h>
 
 #include <algorithm>
+#include <cmath>
 #include <functional>
 #include <memory>
 #include <queue>
@@ -56,6 +57,8 @@ EKFLocalizer::EKFLocalizer(const rclcpp::NodeOptions & node_options)
 {
   is_activated_ = false;
   is_set_initialpose_ = false;
+  last_diagnostics_publish_time_ = nullptr;
+  diagnostics_publish_counter_ = 0.0;
 
   /* initialize ros system */
   timer_control_ = rclcpp::create_timer(
@@ -140,17 +143,25 @@ void EKFLocalizer::timer_callback()
 
   const rclcpp::Time current_time = this->now();
 
+  // Increment diagnostics publish counter (only in timer callback, before any early returns)
+  // This ensures accurate frequency control even when node is not activated
+  diagnostics_publish_counter_ += 1.0;
+
   if (!is_activated_) {
     warning_->warn_throttle(
       "The node is not activated. Provide initial pose to pose_initializer", 2000);
-    publish_diagnostics(geometry_msgs::msg::PoseStamped{}, current_time);
+    if (should_publish_diagnostics(current_time)) {
+      publish_diagnostics(geometry_msgs::msg::PoseStamped{}, current_time);
+    }
     return;
   }
 
   if (!is_set_initialpose_) {
     warning_->warn_throttle(
       "Initial pose is not set. Provide initial pose to pose_initializer", 2000);
-    publish_diagnostics(geometry_msgs::msg::PoseStamped{}, current_time);
+    if (should_publish_diagnostics(current_time)) {
+      publish_diagnostics(geometry_msgs::msg::PoseStamped{}, current_time);
+    }
     return;
   }
 
@@ -230,7 +241,11 @@ void EKFLocalizer::timer_callback()
 
   /* publish ekf result */
   publish_estimate_result(current_ekf_pose, current_biased_ekf_pose, current_ekf_twist);
-  publish_diagnostics(current_ekf_pose, current_time);
+
+  /* publish diagnostics with frequency control */
+  if (should_publish_diagnostics(current_time)) {
+    publish_diagnostics(current_ekf_pose, current_time);
+  }
 
   /* publish processing time */
   const double elapsed_time = stop_watch_timer_cb_.toc();
@@ -384,6 +399,30 @@ void EKFLocalizer::publish_estimate_result(
   const geometry_msgs::msg::TransformStamped transform_stamped =
     autoware_utils_geometry::pose2transform(current_ekf_pose, "base_link");
   tf_br_->sendTransform(transform_stamped);
+}
+
+bool EKFLocalizer::should_publish_diagnostics(const rclcpp::Time & current_time)
+{
+  if (params_.diagnostics_publish_period <= 0.0 ||
+      params_.diagnostics_publish_period < params_.ekf_dt) {
+    // 1. If diagnostics_publish_period is 0.0 or negative, publish at every timer callback
+    // 2. If diagnostics_publish_period > ekf_dt, it's impossible to publish at higher frequency
+    //    than the EKF update rate, so publish at every timer callback
+    return true;
+  }
+  // Calculate how many timer callbacks should pass between diagnostics publishes
+  // This approach works correctly even with rosbag playback where timestamps may be irregular
+  // because it counts timer callbacks instead of relying on timestamp differences
+  const double callbacks_per_diagnostics_publish = static_cast<double>(params_.ekf_rate * params_.diagnostics_publish_period);
+
+  // Check if it's time to publish (counter is incremented in timer_callback)
+  if (diagnostics_publish_counter_ >= callbacks_per_diagnostics_publish) {
+    diagnostics_publish_counter_ -= callbacks_per_diagnostics_publish;
+    // Also update last_diagnostics_publish_time_ for compatibility
+    last_diagnostics_publish_time_ = std::make_shared<const rclcpp::Time>(current_time);
+    return true;
+  }
+  return false;
 }
 
 void EKFLocalizer::publish_diagnostics(
