@@ -403,8 +403,9 @@ void EKFLocalizer::publish_estimate_result(
 
 bool EKFLocalizer::should_publish_diagnostics(const rclcpp::Time & current_time)
 {
-  if (params_.diagnostics_publish_period <= 0.0 ||
-      params_.diagnostics_publish_period < params_.ekf_dt) {
+  if (
+    params_.diagnostics_publish_period <= 0.0 ||
+    params_.diagnostics_publish_period < params_.ekf_dt) {
     // 1. If diagnostics_publish_period is 0.0 or negative, publish at every timer callback
     // 2. If diagnostics_publish_period > ekf_dt, it's impossible to publish at higher frequency
     //    than the EKF update rate, so publish at every timer callback
@@ -413,7 +414,8 @@ bool EKFLocalizer::should_publish_diagnostics(const rclcpp::Time & current_time)
   // Calculate how many timer callbacks should pass between diagnostics publishes
   // This approach works correctly even with rosbag playback where timestamps may be irregular
   // because it counts timer callbacks instead of relying on timestamp differences
-  const double callbacks_per_diagnostics_publish = static_cast<double>(params_.ekf_rate * params_.diagnostics_publish_period);
+  const double callbacks_per_diagnostics_publish =
+    static_cast<double>(params_.ekf_rate * params_.diagnostics_publish_period);
 
   // Check if it's time to publish (counter is incremented in timer_callback)
   if (diagnostics_publish_counter_ >= callbacks_per_diagnostics_publish) {

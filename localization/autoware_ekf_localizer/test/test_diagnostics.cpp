@@ -15,9 +15,10 @@
 #include "autoware/ekf_localizer/diagnostics.hpp"
 #include "autoware/ekf_localizer/ekf_localizer.hpp"
 
-#include <gtest/gtest.h>
-#include <rclcpp/rclcpp.hpp>
 #include <rclcpp/exceptions.hpp>
+#include <rclcpp/rclcpp.hpp>
+
+#include <gtest/gtest.h>
 
 #include <stdexcept>
 #include <string>
@@ -290,7 +291,8 @@ protected:
       {"diagnostics.warn_ellipse_size", 1.2},
       {"diagnostics.error_ellipse_size_lateral_direction", 0.3},
       {"diagnostics.warn_ellipse_size_lateral_direction", 0.25},
-      {"diagnostics.diagnostics_publish_frequency", diagnostics_publish_period > 0.0 ? 1.0 / diagnostics_publish_period : 0.0},
+      {"diagnostics.diagnostics_publish_frequency",
+       diagnostics_publish_period > 0.0 ? 1.0 / diagnostics_publish_period : 0.0},
       // Misc parameters
       {"misc.threshold_observable_velocity_mps", 0.0},
       {"misc.pose_frame_id", "map"},
@@ -320,10 +322,11 @@ protected:
 TEST_F(EKFLocalizerTestSuite, should_publish_diagnostics_period_zero)
 {
   // Test that should_publish_diagnostics returns true when diagnostics_publish_period <= 0.0
-  const double ekf_rate = 100.0;  // 100 Hz
+  const double ekf_rate = 100.0;                  // 100 Hz
   const double diagnostics_publish_period = 0.0;  // 0.0 means publish every callback
 
-  auto ekf_localizer = create_ekf_localizer("test_should_publish_period_zero", diagnostics_publish_period, ekf_rate);
+  auto ekf_localizer =
+    create_ekf_localizer("test_should_publish_period_zero", diagnostics_publish_period, ekf_rate);
 
   rclcpp::Time current_time = ekf_localizer->now();
 
@@ -336,10 +339,11 @@ TEST_F(EKFLocalizerTestSuite, should_publish_diagnostics_period_zero)
 TEST_F(EKFLocalizerTestSuite, should_publish_diagnostics_period_negative)
 {
   // Test that should_publish_diagnostics returns true when diagnostics_publish_period < 0.0
-  const double ekf_rate = 100.0;  // 100 Hz
+  const double ekf_rate = 100.0;                   // 100 Hz
   const double diagnostics_publish_period = -1.0;  // Negative period
 
-  auto ekf_localizer = create_ekf_localizer("test_should_publish_period_negative", diagnostics_publish_period, ekf_rate);
+  auto ekf_localizer = create_ekf_localizer(
+    "test_should_publish_period_negative", diagnostics_publish_period, ekf_rate);
 
   rclcpp::Time current_time = ekf_localizer->now();
 
@@ -351,10 +355,11 @@ TEST_F(EKFLocalizerTestSuite, should_publish_diagnostics_period_negative)
 TEST_F(EKFLocalizerTestSuite, should_publish_diagnostics_period_less_than_ekf_dt)
 {
   // Test that should_publish_diagnostics returns true when diagnostics_publish_period < ekf_dt
-  const double ekf_rate = 100.0;  // 100 Hz, so ekf_dt = 0.01 seconds
+  const double ekf_rate = 100.0;                    // 100 Hz, so ekf_dt = 0.01 seconds
   const double diagnostics_publish_period = 0.005;  // 0.005 seconds < 0.01 seconds (ekf_dt)
 
-  auto ekf_localizer = create_ekf_localizer("test_should_publish_period_less_than_dt", diagnostics_publish_period, ekf_rate);
+  auto ekf_localizer = create_ekf_localizer(
+    "test_should_publish_period_less_than_dt", diagnostics_publish_period, ekf_rate);
 
   rclcpp::Time current_time = ekf_localizer->now();
 
@@ -366,10 +371,11 @@ TEST_F(EKFLocalizerTestSuite, should_publish_diagnostics_period_less_than_ekf_dt
 TEST_F(EKFLocalizerTestSuite, should_publish_diagnostics_with_counter)
 {
   // Test that should_publish_diagnostics uses counter correctly when period > ekf_dt
-  const double ekf_rate = 100.0;  // 100 Hz, so ekf_dt = 0.01 seconds
+  const double ekf_rate = 100.0;                  // 100 Hz, so ekf_dt = 0.01 seconds
   const double diagnostics_publish_period = 0.1;  // 0.1 seconds = 10 timer callbacks
 
-  auto ekf_localizer = create_ekf_localizer("test_should_publish_with_counter", diagnostics_publish_period, ekf_rate);
+  auto ekf_localizer =
+    create_ekf_localizer("test_should_publish_with_counter", diagnostics_publish_period, ekf_rate);
 
   rclcpp::Time current_time = ekf_localizer->now();
 
