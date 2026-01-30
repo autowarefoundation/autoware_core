@@ -137,7 +137,7 @@ public:
 
   KdTreeNanoflann(KdTreeNanoflann && other)
   : index_ptr_(std::move(other.index_ptr_)),
-    cloud_ptr_(std::move(other.cloud_ptr_), params_(std::move(other.params_)))
+    cloud_ptr_(std::move(other.cloud_ptr_)), params_(std::move(other.params_))
   {
     sqr_search_radius_ = other.sqr_search_radius_;
   }
