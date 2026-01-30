@@ -49,6 +49,12 @@
           "type": "number",
           "description": "The lateral direction size of the error ellipse to trigger a WARN state",
           "default": 0.25
+        },
+        "diagnostics_publish_frequency": {
+          "type": "number",
+          "description": "Diagnostics publish frequency [Hz]. Set to 0.0 to publish at every timer callback (default behavior). Set to a positive value to publish diagnostics at a lower frequency than the EKF update rate",
+          "default": 0.0,
+          "minimum": 0.0
         }
       },
       "required": [
