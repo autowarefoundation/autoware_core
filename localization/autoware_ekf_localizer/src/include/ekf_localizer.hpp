@@ -97,6 +97,11 @@ private:
   rclcpp::TimerBase::SharedPtr timer_control_;
   //!< @brief last predict time
   std::shared_ptr<const rclcpp::Time> last_predict_time_;
+  //!< @brief last diagnostics publish time
+  std::shared_ptr<const rclcpp::Time> last_diagnostics_publish_time_;
+  //!< @brief counter for diagnostics publish (to handle rosbag playback)
+  // Use double to handle fractional callbacks for accurate frequency control
+  double diagnostics_publish_counter_;
   //!< @brief trigger_node service
   rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr service_trigger_node_;
 
@@ -166,6 +171,13 @@ private:
     const geometry_msgs::msg::PoseStamped & current_ekf_pose,
     const geometry_msgs::msg::PoseStamped & current_biased_ekf_pose,
     const geometry_msgs::msg::TwistStamped & current_ekf_twist);
+
+  /**
+   * @brief check if diagnostics should be published based on period control and update last publish time
+   * @param current_time current time
+   * @return true if diagnostics should be published
+   */
+  bool should_publish_diagnostics(const rclcpp::Time & current_time);
 
   /**
    * @brief publish diagnostics message
