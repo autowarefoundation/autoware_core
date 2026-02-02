@@ -34,12 +34,11 @@ public:
   };
 
   explicit VehicleVelocityConverter(
-    const std::string frame_id,
-    const double velocity_stddev_xx,
-    const double angular_velocity_stddev_zz,
-    const double speed_scale_factor);
+    const std::string frame_id, const double velocity_stddev_xx,
+    const double angular_velocity_stddev_zz, const double speed_scale_factor);
 
-  ConversionResult convert(const autoware_vehicle_msgs::msg::VelocityReport & velocity_report) const;
+  ConversionResult convert(
+    const autoware_vehicle_msgs::msg::VelocityReport & velocity_report) const;
 
 private:
   std::string frame_id_;

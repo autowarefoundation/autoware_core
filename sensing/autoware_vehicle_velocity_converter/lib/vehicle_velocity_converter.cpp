@@ -19,11 +19,9 @@ namespace autoware::vehicle_velocity_converter
 {
 
 VehicleVelocityConverter::VehicleVelocityConverter(
-  const std::string frame_id,
-  const double velocity_stddev_xx,
-  const double angular_velocity_stddev_zz,
-  const double speed_scale_factor) :
-  frame_id_(frame_id),
+  const std::string frame_id, const double velocity_stddev_xx,
+  const double angular_velocity_stddev_zz, const double speed_scale_factor)
+: frame_id_(frame_id),
   covariance_xx_(velocity_stddev_xx * velocity_stddev_xx),
   covariance_zz_(angular_velocity_stddev_zz * angular_velocity_stddev_zz),
   speed_scale_factor_(speed_scale_factor)
