@@ -80,6 +80,14 @@
             is_moving_obstacle: # [m] additional stop margin for moving obstacle
               default: 0.0
 
+        detection_height: # [m] height range for collision detection from the ground.
+          top_limit:
+            default: 50.0
+            unknown: 1.0
+          bottom_limit: -50.0
+
+        min_object_length: 0.1 # [m] minimum object length to consider for stop planning
+
         min_velocity_to_reach_collision_point: 2.0 # minimum velocity margin to calculate time to reach collision [m/s]
         stop_obstacle_hold_time_threshold : 1.0 # maximum time for holding closest stop obstacle
 
