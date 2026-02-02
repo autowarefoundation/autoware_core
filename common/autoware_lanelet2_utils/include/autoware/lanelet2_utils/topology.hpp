@@ -15,8 +15,6 @@
 #ifndef AUTOWARE__LANELET2_UTILS__TOPOLOGY_HPP_
 #define AUTOWARE__LANELET2_UTILS__TOPOLOGY_HPP_
 
-#include <geometry_msgs/msg/point.hpp>
-
 #include <lanelet2_core/primitives/Lanelet.h>
 #include <lanelet2_routing/Forward.h>
 #include <lanelet2_traffic_rules/TrafficRulesFactory.h>
