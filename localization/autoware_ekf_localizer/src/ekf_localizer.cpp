@@ -486,8 +486,9 @@ void EKFLocalizer::update_diagnostics(
 
   // Update latched status if current level is higher than latched level
   // Also update if latched status is OK (to allow continuous updates when OK)
-  if (diag_merged_status.level > latched_diagnostic_status_.level ||
-      latched_diagnostic_status_.level == diagnostic_msgs::msg::DiagnosticStatus::OK) {
+  if (
+    diag_merged_status.level > latched_diagnostic_status_.level ||
+    latched_diagnostic_status_.level == diagnostic_msgs::msg::DiagnosticStatus::OK) {
     latched_diagnostic_status_ = diag_merged_status;
     latched_diagnostic_timestamp_ = current_time;
 
@@ -529,7 +530,6 @@ void EKFLocalizer::publish_diagnostics(const rclcpp::Time & current_time)
   latched_diagnostic_status_.message = "OK";
   latched_diagnostic_status_.values.clear();
   latched_diagnostic_timestamp_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
-
 }
 
 void EKFLocalizer::publish_callback_return_diagnostics(
