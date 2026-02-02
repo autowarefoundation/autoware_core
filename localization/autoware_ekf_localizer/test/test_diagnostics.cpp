@@ -269,10 +269,12 @@ protected:
       {"pose_measurement.pose_additional_delay", 0.0},
       {"pose_measurement.pose_measure_uncertainty_time", 0.01},
       {"pose_measurement.pose_smoothing_steps", 5},
+      {"pose_measurement.max_pose_queue_size", 5},
       {"pose_measurement.pose_gate_dist", 49.5},
       // Twist measurement parameters
       {"twist_measurement.twist_additional_delay", 0.0},
       {"twist_measurement.twist_smoothing_steps", 2},
+      {"twist_measurement.max_twist_queue_size", 2},
       {"twist_measurement.twist_gate_dist", 46.1},
       // Process noise parameters
       {"process_noise.proc_stddev_yaw_c", 0.005},
