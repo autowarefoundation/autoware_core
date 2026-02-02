@@ -243,6 +243,10 @@ void ObstacleStopModule::init(rclcpp::Node & node, const std::string & module_na
     std::make_unique<autoware::planning_factor_interface::PlanningFactorInterface>(
       &node, "obstacle_stop");
 
+  // debug publisher
+  debug_trajectory_publisher_ = node.create_publisher<autoware_planning_msgs::msg::Trajectory>(
+    "~/debug/obstacle_stop/trajectory", 1);
+
   // time keeper
   time_keeper_ = std::make_shared<autoware_utils_debug::TimeKeeper>(processing_time_detail_pub_);
 }
@@ -681,6 +685,31 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
     RCLCPP_DEBUG(
       logger_,
       "[Stop] Ignore obstacle (%s) since the lateral distance to the trajectory is too large.",
+      obj_uuid_str.substr(0, 4).c_str());
+    return std::nullopt;
+  }
+
+  // 3. filter by height and size
+  const double obj_nearest_traj_height =
+    traj_points.at(motion_utils::findNearestIndex(traj_points, obj_pose.position)).pose.position.z;
+  if (
+    obj_pose.position.z - predicted_object.shape.dimensions.z * 0.5 - obj_nearest_traj_height >
+      filtering_params.detection_height.top_limit ||
+    obj_pose.position.z + predicted_object.shape.dimensions.z * 0.5 - obj_nearest_traj_height <
+      filtering_params.detection_height.bottom_limit) {
+    RCLCPP_DEBUG(
+      logger_,
+      "[Stop] Ignore obstacle (%s) since the height is out of range of the detection height.",
+      obj_uuid_str.substr(0, 4).c_str());
+    return std::nullopt;
+  }
+  if (
+    utils::calc_object_possible_max_dist_from_center(predicted_object.shape) * 2.0 <
+    filtering_params.min_object_length) {
+    RCLCPP_DEBUG(
+      logger_,
+      "[Stop] Ignore obstacle (%s) since the object size is smaller than the minimum object "
+      "length.",
       obj_uuid_str.substr(0, 4).c_str());
     return std::nullopt;
   }

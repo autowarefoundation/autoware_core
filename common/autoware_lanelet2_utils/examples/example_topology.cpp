@@ -122,12 +122,148 @@ void related_lanelets()
     std::cout << "Get ConstLanelets of size: " << lanelets.size() << std::endl;
   }
 }
+
+void neighbor_lanelet()
+{
+  lanelet::LaneletMapConstPtr lanelet_map_ptr_;
+  lanelet::routing::RoutingGraphConstPtr routing_graph_ptr_;
+  std::tie(lanelet_map_ptr_, routing_graph_ptr_) = set_up_lanelet_map_ptr();
+
+  // left_lanelet
+  {
+    const auto lane =
+      lanelet2_utils::left_lanelet(lanelet_map_ptr_->laneletLayer.get(2246), routing_graph_ptr_);
+    if (lane.has_value()) {
+      std::cout << "Left lanelet Id is " << lane.value().id() << std::endl;
+    }
+  }
+
+  // right_lanelet
+  {
+    const auto lane =
+      lanelet2_utils::right_lanelet(lanelet_map_ptr_->laneletLayer.get(2246), routing_graph_ptr_);
+    if (lane.has_value()) {
+      std::cout << "Right lanelet Id is " << lane.value().id() << std::endl;
+    }
+  }
+
+  // left_lanelets
+  {
+    const auto lanes =
+      lanelet2_utils::left_lanelets(lanelet_map_ptr_->laneletLayer.get(2246), routing_graph_ptr_);
+    if (lanes.has_value()) {
+      std::cout << "There are " << lanes.value().size() << " left lanes." << std::endl;
+      std::cout << "Those Ids are" << std::endl;
+      for (auto lane : lanes.value()) {
+        std::cout << lane.id() << std::endl;
+      }
+    }
+  }
+
+  // right_lanelets
+  {
+    const auto lanes =
+      lanelet2_utils::right_lanelets(lanelet_map_ptr_->laneletLayer.get(2246), routing_graph_ptr_);
+    if (lanes.has_value()) {
+      std::cout << "There are " << lanes.value().size() << " right lanes." << std::endl;
+      std::cout << "Those Ids are" << std::endl;
+      for (auto lane : lanes.value()) {
+        std::cout << lane.id() << std::endl;
+      }
+    }
+  }
+
+  // all_neighbor_lanelets
+  {
+    const auto lanes = lanelet2_utils::all_neighbor_lanelets(
+      lanelet_map_ptr_->laneletLayer.get(2246), routing_graph_ptr_);
+    std::cout << "There are " << lanes.size() << " neighbor lanelets." << std::endl;
+    std::cout << "Those Ids are" << std::endl;
+    for (auto lane : lanes) {
+      std::cout << lane.id() << std::endl;
+    }
+  }
+
+  // lane_changeable_neighbors
+  {
+    const auto lanes = lanelet2_utils::lane_changeable_neighbors(
+      lanelet_map_ptr_->laneletLayer.get(2254), routing_graph_ptr_);
+    std::cout << "There are " << lanes.size() << " lane changeable neighbor lanelets." << std::endl;
+    std::cout << "Those Ids are" << std::endl;
+    for (auto lane : lanes) {
+      std::cout << lane.id() << std::endl;
+    }
+  }
+}
+
+void following_and_previous_lanelet_sequences()
+{
+  lanelet::LaneletMapConstPtr lanelet_map_ptr_;
+  lanelet::routing::RoutingGraphConstPtr routing_graph_ptr_;
+  std::tie(lanelet_map_ptr_, routing_graph_ptr_) = set_up_lanelet_map_ptr();
+
+  // succeeding_lanelet_sequences
+  {
+    double length = 50;
+    const auto succeeding_lanelet_sequences = lanelet2_utils::get_succeeding_lanelet_sequences(
+      lanelet_map_ptr_->laneletLayer.get(2244), routing_graph_ptr_, length);
+    std::cout << "There are " << succeeding_lanelet_sequences.size()
+              << " first set of succeeding lanelets." << std::endl;
+
+    // check the first lanelet sequence
+    std::cout << "The first lanelet sequence has " << succeeding_lanelet_sequences.front().size()
+              << " lanelet(s) within range." << std::endl;
+    std::cout << "Id(s) are " << succeeding_lanelet_sequences.front()[0].id() << ", "
+              << succeeding_lanelet_sequences.front()[1].id() << "." << std::endl;
+
+    // check the last lanelet sequence
+    std::cout << "The last lanelet sequence has " << succeeding_lanelet_sequences.back().size()
+              << " lanelet(s) within range." << std::endl;
+    std::cout << "Id(s) is " << succeeding_lanelet_sequences.back()[0].id() << "." << std::endl;
+  }
+
+  // preceding_lanelet_sequences
+  // closest->furthest order
+  // 2265, 2244, 2301, 2239
+  // 2270, *2286*, 2296
+  // 2283
+  {
+    lanelet::ConstLanelets exclude_lanelets;
+    // second lanelet in the second lanelet sequence
+    exclude_lanelets.push_back(lanelet_map_ptr_->laneletLayer.get(2286));
+
+    double length = 50;
+
+    const auto preceding_lanelet_sequences = lanelet2_utils::get_preceding_lanelet_sequences(
+      lanelet_map_ptr_->laneletLayer.get(2249), routing_graph_ptr_, length, exclude_lanelets);
+    std::cout << "There are " << preceding_lanelet_sequences.size()
+              << " first set of preceding lanelets." << std::endl;
+
+    // check the first lanelet sequence
+    std::cout << "The first lanelet sequence has " << preceding_lanelet_sequences.front().size()
+              << " lanelet(s) within range." << std::endl;
+    std::cout << "Id(s) are " << preceding_lanelet_sequences.front()[0].id() << ", "
+              << preceding_lanelet_sequences.front()[1].id() << "." << std::endl;
+
+    // check the second lanelet sequence
+    std::cout << "The second lanelet sequence has " << preceding_lanelet_sequences[1].size()
+              << " lanelet(s) within range." << std::endl;
+    std::cout << "Id(s) is " << preceding_lanelet_sequences[1][0].id() << "." << std::endl;
+
+    // check the last lanelet sequence
+    std::cout << "The last lanelet sequence has " << preceding_lanelet_sequences.back().size()
+              << " lanelet(s) within range." << std::endl;
+    std::cout << "Id(s) is " << preceding_lanelet_sequences.back()[0].id() << "." << std::endl;
+  }
+}
 }  // namespace autoware::experimental
 
 int main()
 {
   autoware::experimental::opposite_lanelet();
   autoware::experimental::related_lanelets();
+  autoware::experimental::neighbor_lanelet();
+  autoware::experimental::following_and_previous_lanelet_sequences();
 
   return 0;
 }

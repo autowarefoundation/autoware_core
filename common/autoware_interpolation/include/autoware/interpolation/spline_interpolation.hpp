@@ -79,6 +79,45 @@ public:
 
   size_t getSize() const { return base_keys_.size(); }
 
+  //!< @brief Get the spline coefficients as a concatenated vector.
+  //!< @details Returns all spline coefficients (a, b, c, d) for each segment concatenated into
+  //            a single Eigen vector. The coefficients are ordered as [a_0, ..., a_{m-1},
+  //            b_0, ..., b_{m-1}, c_0, ..., c_{m-1}, d_0, ..., d_{m-1}] where m is the number
+  //            of segments. Each segment i uses the cubic polynomial: a_i + b_i*t + c_i*t^2 +
+  //            d_i*t^3.
+  //!< @return Eigen::VectorXd of size 4*m containing all spline coefficients concatenated
+  const Eigen::VectorXd getCoefficients() const
+  {
+    const auto m = static_cast<Eigen::Index>(a_.size());
+    Eigen::VectorXd coefficients(4 * m);
+    coefficients << a_, b_, c_, d_;
+    return coefficients;
+  }
+  std::vector<double> getKnots() const { return base_keys_; }
+
+  void resize(const size_t size)
+  {
+    if (size > base_keys_.size()) {
+      // Extending - just resize (new elements will be uninitialized, caller should fill them)
+      a_.resize(size - 1);
+      b_.resize(size - 1);
+      c_.resize(size - 1);
+      d_.resize(size - 1);
+      base_keys_.resize(size);
+    } else if (size < base_keys_.size()) {
+      // Clipping - explicitly copy first N elements to preserve data
+      const size_t n_segments = size - 1;
+
+      a_ = a_.head(n_segments).eval();
+      b_ = b_.head(n_segments).eval();
+      c_ = c_.head(n_segments).eval();
+      d_ = d_.head(n_segments).eval();
+
+      base_keys_.resize(size);
+    }
+    // If size == base_keys_.size(), no-op
+  }
+
 private:
   Eigen::VectorXd a_;
   Eigen::VectorXd b_;
