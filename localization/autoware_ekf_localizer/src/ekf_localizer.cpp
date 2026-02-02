@@ -59,6 +59,9 @@ EKFLocalizer::EKFLocalizer(const rclcpp::NodeOptions & node_options)
   is_set_initialpose_ = false;
   last_diagnostics_publish_time_ = nullptr;
   diagnostics_publish_counter_ = 0.0;
+  latched_diagnostic_status_.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+  latched_diagnostic_status_.message = "OK";
+  latched_diagnostic_timestamp_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
 
   /* initialize ros system */
   timer_control_ = rclcpp::create_timer(
@@ -150,8 +153,10 @@ void EKFLocalizer::timer_callback()
   if (!is_activated_) {
     warning_->warn_throttle(
       "The node is not activated. Provide initial pose to pose_initializer", 2000);
+    // Update diagnostics before early return to ensure current status is latched
+    update_diagnostics(geometry_msgs::msg::PoseStamped{}, current_time);
     if (should_publish_diagnostics(current_time)) {
-      publish_diagnostics(geometry_msgs::msg::PoseStamped{}, current_time);
+      publish_diagnostics(current_time);
     }
     return;
   }
@@ -159,8 +164,10 @@ void EKFLocalizer::timer_callback()
   if (!is_set_initialpose_) {
     warning_->warn_throttle(
       "Initial pose is not set. Provide initial pose to pose_initializer", 2000);
+    // Update diagnostics before early return to ensure current status is latched
+    update_diagnostics(geometry_msgs::msg::PoseStamped{}, current_time);
     if (should_publish_diagnostics(current_time)) {
-      publish_diagnostics(geometry_msgs::msg::PoseStamped{}, current_time);
+      publish_diagnostics(current_time);
     }
     return;
   }
@@ -242,9 +249,12 @@ void EKFLocalizer::timer_callback()
   /* publish ekf result */
   publish_estimate_result(current_ekf_pose, current_biased_ekf_pose, current_ekf_twist);
 
+  /* update diagnostics every timer callback to catch errors between publishes */
+  update_diagnostics(current_ekf_pose, current_time);
+
   /* publish diagnostics with frequency control */
   if (should_publish_diagnostics(current_time)) {
-    publish_diagnostics(current_ekf_pose, current_time);
+    publish_diagnostics(current_time);
   }
 
   /* publish processing time */
@@ -427,7 +437,7 @@ bool EKFLocalizer::should_publish_diagnostics(const rclcpp::Time & current_time)
   return false;
 }
 
-void EKFLocalizer::publish_diagnostics(
+void EKFLocalizer::update_diagnostics(
   const geometry_msgs::msg::PoseStamped & current_ekf_pose, const rclcpp::Time & current_time)
 {
   std::vector<diagnostic_msgs::msg::DiagnosticStatus> diag_status_array;
@@ -473,6 +483,38 @@ void EKFLocalizer::publish_diagnostics(
 
   diagnostic_msgs::msg::DiagnosticStatus diag_merged_status;
   diag_merged_status = merge_diagnostic_status(diag_status_array);
+
+  // Update latched status if current level is higher than latched level
+  // Also update if latched status is OK (to allow continuous updates when OK)
+  if (diag_merged_status.level > latched_diagnostic_status_.level ||
+      latched_diagnostic_status_.level == diagnostic_msgs::msg::DiagnosticStatus::OK) {
+    latched_diagnostic_status_ = diag_merged_status;
+    latched_diagnostic_timestamp_ = current_time;
+
+    // Remove existing error_occurrence_timestamp if present (will be re-added if error/warn)
+    latched_diagnostic_status_.values.erase(
+      std::remove_if(
+        latched_diagnostic_status_.values.begin(), latched_diagnostic_status_.values.end(),
+        [](const diagnostic_msgs::msg::KeyValue & kv) {
+          return kv.key == "error_occurrence_timestamp";
+        }),
+      latched_diagnostic_status_.values.end());
+
+    // Add error occurrence timestamp to values if error/warn is latched
+    if (latched_diagnostic_status_.level > diagnostic_msgs::msg::DiagnosticStatus::OK) {
+      diagnostic_msgs::msg::KeyValue error_timestamp_value;
+      error_timestamp_value.key = "error_occurrence_timestamp";
+      error_timestamp_value.value = std::to_string(latched_diagnostic_timestamp_.nanoseconds());
+      latched_diagnostic_status_.values.push_back(error_timestamp_value);
+    }
+  }
+}
+
+void EKFLocalizer::publish_diagnostics(const rclcpp::Time & current_time)
+{
+  // Use latched diagnostic status (already updated in update_diagnostics)
+  diagnostic_msgs::msg::DiagnosticStatus diag_merged_status = latched_diagnostic_status_;
+
   diag_merged_status.name = "localization: " + std::string(this->get_name());
   diag_merged_status.hardware_id = this->get_name();
 
@@ -480,6 +522,14 @@ void EKFLocalizer::publish_diagnostics(
   diag_msg.header.stamp = current_time;
   diag_msg.status.push_back(diag_merged_status);
   pub_diag_->publish(diag_msg);
+
+  // Reset latch after publishing diagnostics
+  // This allows new errors to be latched in the next diagnostics publish period
+  latched_diagnostic_status_.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+  latched_diagnostic_status_.message = "OK";
+  latched_diagnostic_status_.values.clear();
+  latched_diagnostic_timestamp_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
+
 }
 
 void EKFLocalizer::publish_callback_return_diagnostics(

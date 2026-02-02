@@ -131,6 +131,13 @@ private:
   AgedObjectQueue<geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr> pose_queue_;
   AgedObjectQueue<geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr> twist_queue_;
 
+  //!< @brief latched diagnostic status to prevent transient errors from being missed
+  //!< when diagnostics publish period is longer than the error duration
+  //!< Stores the highest level (ERROR > WARN > OK) and its details seen since last publish
+  diagnostic_msgs::msg::DiagnosticStatus latched_diagnostic_status_;
+  //!< @brief timestamp when the latched diagnostic status was first detected
+  rclcpp::Time latched_diagnostic_timestamp_;
+
   /**
    * @brief computes update & prediction of EKF for each ekf_dt_[s] time
    */
@@ -181,10 +188,17 @@ private:
   bool should_publish_diagnostics(const rclcpp::Time & current_time);
 
   /**
+   * @brief update diagnostic status and latch errors
+   * This is called every timer callback to ensure errors are latched even if they
+   * occur between diagnostics publishes
+   */
+  void update_diagnostics(
+    const geometry_msgs::msg::PoseStamped & current_ekf_pose, const rclcpp::Time & current_time);
+
+  /**
    * @brief publish diagnostics message
    */
-  void publish_diagnostics(
-    const geometry_msgs::msg::PoseStamped & current_ekf_pose, const rclcpp::Time & current_time);
+  void publish_diagnostics(const rclcpp::Time & current_time);
 
   /**
    * @brief publish diagnostics message for return
