@@ -543,7 +543,9 @@ TEST_F(EKFLocalizerTestSuite, update_diagnostics_latches_higher_level_error)
   for (const auto & value : latched_status.values) {
     if (value.key == "error_occurrence_timestamp") {
       has_timestamp = true;
-      EXPECT_EQ(value.value, std::to_string(get_latched_diagnostic_timestamp(ekf_localizer.get()).nanoseconds()));
+      EXPECT_EQ(
+        value.value,
+        std::to_string(get_latched_diagnostic_timestamp(ekf_localizer.get()).nanoseconds()));
       break;
     }
   }
@@ -556,8 +558,8 @@ TEST_F(EKFLocalizerTestSuite, update_diagnostics_does_not_update_lower_level)
   const double ekf_rate = 100.0;
   const double diagnostics_publish_period = 0.1;
 
-  auto ekf_localizer =
-    create_ekf_localizer("test_update_diagnostics_no_downgrade", diagnostics_publish_period, ekf_rate);
+  auto ekf_localizer = create_ekf_localizer(
+    "test_update_diagnostics_no_downgrade", diagnostics_publish_period, ekf_rate);
 
   rclcpp::Time current_time = ekf_localizer->now();
   geometry_msgs::msg::PoseStamped current_ekf_pose;
@@ -793,10 +795,13 @@ TEST_F(EKFLocalizerTestSuite, error_timestamp_added_to_latched_status)
     }
   }
   EXPECT_TRUE(has_timestamp);
-  EXPECT_EQ(timestamp_value, std::to_string(get_latched_diagnostic_timestamp(ekf_localizer.get()).nanoseconds()));
+  EXPECT_EQ(
+    timestamp_value,
+    std::to_string(get_latched_diagnostic_timestamp(ekf_localizer.get()).nanoseconds()));
 
   // Verify timestamp matches the error time
-  EXPECT_EQ(get_latched_diagnostic_timestamp(ekf_localizer.get()).nanoseconds(), error_time.nanoseconds());
+  EXPECT_EQ(
+    get_latched_diagnostic_timestamp(ekf_localizer.get()).nanoseconds(), error_time.nanoseconds());
 }
 
 TEST_F(EKFLocalizerTestSuite, diagnostics_updated_when_not_activated)
