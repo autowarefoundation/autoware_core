@@ -8179,13 +8179,13 @@
 <tr>
 <td><code>get_succeeding_lanelet_sequences</code></td>
 <td>This function returns all <code>succeeding</code> (following) lanelet sequences possible from input lanelet within given length limit. (Also include the last lanelet that exceeds length limit). <br><br>Post Condition: <br> The lanelet sequence is ordered from <strong>closest to furthest</strong> (expanded from input lanelet). <br> The lanelet sequence does not include input lanelet.</td>
-<td><span class="arithmatex">\(O(P^d)\)</span> where <span class="arithmatex">\(P\)</span> is the number of first set of succeeding lanelets, <span class="arithmatex">\(d\)</span> is recursive dept (number of lanelets length)</td>
+<td><span class="arithmatex">\(O(P^d)\)</span> where <span class="arithmatex">\(P\)</span> is the number of first set of succeeding lanelets, <span class="arithmatex">\(d\)</span> is recursive depth (number of lanelets length)</td>
 <td></td>
 </tr>
 <tr>
 <td><code>get_preceding_lanelet_sequences</code></td>
 <td>This function returns all <code>preceding</code> (previous) lanelet sequences possible leading to input lanelet within given length limit. (Also include the last lanelet that exceeds length limit). <br><br>Post Condition: <br> The lanelet sequence is ordered from <strong>furthest to closest</strong> (leading to input lanelet). <br> The lanelet sequence does not include input lanelet.</td>
-<td><span class="arithmatex">\(O(P^d)\)</span> where <span class="arithmatex">\(P\)</span> is the number of first set of preceding lanelets, <span class="arithmatex">\(d\)</span> is recursive dept (number of lanelets length)</td>
+<td><span class="arithmatex">\(O(P^d)\)</span> where <span class="arithmatex">\(P\)</span> is the number of first set of preceding lanelets, <span class="arithmatex">\(d\)</span> is recursive depth (number of lanelets length)</td>
 <td></td>
 </tr>
 </tbody>
