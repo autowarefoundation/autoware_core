@@ -22,6 +22,7 @@
 
 #include <autoware_utils_logging/logger_level_configure.hpp>
 #include <autoware_utils_system/stop_watch.hpp>
+#include <diagnostic_updater/diagnostic_updater.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <tf2/LinearMath/Quaternion.hpp>
 #include <tf2/utils.hpp>
@@ -131,6 +132,8 @@ private:
   AgedObjectQueue<geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr> pose_queue_;
   AgedObjectQueue<geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr> twist_queue_;
 
+  //!< @brief diagnostic updater for publishing diagnostics at configured period
+  diagnostic_updater::Updater diagnostics_;
   //!< @brief latched diagnostic status to prevent transient errors from being missed
   //!< when diagnostics publish period is longer than the error duration
   //!< Stores the highest level (ERROR > WARN > OK) and its details seen since last publish
@@ -180,14 +183,6 @@ private:
     const geometry_msgs::msg::TwistStamped & current_ekf_twist);
 
   /**
-   * @brief check if diagnostics should be published based on period control and update last publish
-   * time
-   * @param current_time current time
-   * @return true if diagnostics should be published
-   */
-  bool should_publish_diagnostics(const rclcpp::Time & current_time);
-
-  /**
    * @brief update diagnostic status and latch errors
    * This is called every timer callback to ensure errors are latched even if they
    * occur between diagnostics publishes
@@ -196,9 +191,10 @@ private:
     const geometry_msgs::msg::PoseStamped & current_ekf_pose, const rclcpp::Time & current_time);
 
   /**
-   * @brief publish diagnostics message
+   * @brief diagnostic function called by diagnostic_updater::Updater
+   * @param stat diagnostic status wrapper to fill
    */
-  void publish_diagnostics(const rclcpp::Time & current_time);
+  void diagnose(diagnostic_updater::DiagnosticStatusWrapper & stat);
 
   /**
    * @brief publish diagnostics message for return
