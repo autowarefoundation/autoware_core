@@ -98,8 +98,6 @@ private:
   rclcpp::TimerBase::SharedPtr timer_control_;
   //!< @brief last predict time
   std::shared_ptr<const rclcpp::Time> last_predict_time_;
-  //!< @brief last diagnostics publish time
-  std::shared_ptr<const rclcpp::Time> last_diagnostics_publish_time_;
   //!< @brief counter for diagnostics publish (to handle rosbag playback)
   // Use double to handle fractional callbacks for accurate frequency control
   double diagnostics_publish_counter_;
@@ -140,6 +138,8 @@ private:
   diagnostic_msgs::msg::DiagnosticStatus latched_diagnostic_status_;
   //!< @brief timestamp when the latched diagnostic status was first detected
   rclcpp::Time latched_diagnostic_timestamp_;
+  //!< @brief timestamp when diagnostics were last published (used to reset latch in timer_callback)
+  rclcpp::Time last_diagnostics_publish_time_;
 
   /**
    * @brief computes update & prediction of EKF for each ekf_dt_[s] time
@@ -186,9 +186,12 @@ private:
    * @brief update diagnostic status and latch errors
    * This is called every timer callback to ensure errors are latched even if they
    * occur between diagnostics publishes
+   * @param diag_status_array Array of diagnostic statuses collected during processing
+   * @param current_time Current time for timestamp
    */
   void update_diagnostics(
-    const geometry_msgs::msg::PoseStamped & current_ekf_pose, const rclcpp::Time & current_time);
+    const std::vector<diagnostic_msgs::msg::DiagnosticStatus> & diag_status_array,
+    const rclcpp::Time & current_time);
 
   /**
    * @brief diagnostic function called by diagnostic_updater::Updater
