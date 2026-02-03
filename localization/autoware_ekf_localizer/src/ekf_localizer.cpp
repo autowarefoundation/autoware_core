@@ -30,9 +30,7 @@
 #include <cmath>
 #include <functional>
 #include <memory>
-#include <queue>
 #include <string>
-#include <utility>
 #include <vector>
 
 namespace autoware::ekf_localizer
