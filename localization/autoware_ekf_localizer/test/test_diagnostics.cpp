@@ -304,22 +304,6 @@ protected:
   }
 
   // Helper methods to access private members through friend class
-  bool should_publish_diagnostics(
-    autoware::ekf_localizer::EKFLocalizer * ekf_localizer, const rclcpp::Time & current_time)
-  {
-    return ekf_localizer->should_publish_diagnostics(current_time);
-  }
-
-  void set_diagnostics_publish_counter(
-    autoware::ekf_localizer::EKFLocalizer * ekf_localizer, double value)
-  {
-    ekf_localizer->diagnostics_publish_counter_ = value;
-  }
-
-  double get_diagnostics_publish_counter(autoware::ekf_localizer::EKFLocalizer * ekf_localizer)
-  {
-    return ekf_localizer->diagnostics_publish_counter_;
-  }
 
   void update_diagnostics(
     autoware::ekf_localizer::EKFLocalizer * ekf_localizer,
@@ -374,109 +358,16 @@ protected:
     ekf_localizer->ekf_module_->initialize(initial_pose, transform);
   }
 
-  void publish_diagnostics(
-    autoware::ekf_localizer::EKFLocalizer * ekf_localizer, const rclcpp::Time & current_time)
+  void force_diagnostics_update(autoware::ekf_localizer::EKFLocalizer * ekf_localizer)
   {
-    ekf_localizer->publish_diagnostics(current_time);
+    ekf_localizer->diagnostics_.force_update();
   }
 };
 
-TEST_F(EKFLocalizerTestSuite, should_publish_diagnostics_period_zero)
-{
-  // Test that should_publish_diagnostics returns true when diagnostics_publish_period <= 0.0
-  const double ekf_rate = 100.0;                  // 100 Hz
-  const double diagnostics_publish_period = 0.0;  // 0.0 means publish every callback
-
-  auto ekf_localizer =
-    create_ekf_localizer("test_should_publish_period_zero", diagnostics_publish_period, ekf_rate);
-
-  rclcpp::Time current_time = ekf_localizer->now();
-
-  // Should always return true when period is 0.0
-  EXPECT_TRUE(should_publish_diagnostics(ekf_localizer.get(), current_time));
-  EXPECT_TRUE(should_publish_diagnostics(ekf_localizer.get(), current_time));
-  EXPECT_TRUE(should_publish_diagnostics(ekf_localizer.get(), current_time));
-}
-
-TEST_F(EKFLocalizerTestSuite, should_publish_diagnostics_period_negative)
-{
-  // Test that should_publish_diagnostics returns true when diagnostics_publish_period < 0.0
-  const double ekf_rate = 100.0;                   // 100 Hz
-  const double diagnostics_publish_period = -1.0;  // Negative period
-
-  auto ekf_localizer = create_ekf_localizer(
-    "test_should_publish_period_negative", diagnostics_publish_period, ekf_rate);
-
-  rclcpp::Time current_time = ekf_localizer->now();
-
-  // Should always return true when period is negative
-  EXPECT_TRUE(should_publish_diagnostics(ekf_localizer.get(), current_time));
-  EXPECT_TRUE(should_publish_diagnostics(ekf_localizer.get(), current_time));
-}
-
-TEST_F(EKFLocalizerTestSuite, should_publish_diagnostics_period_less_than_ekf_dt)
-{
-  // Test that should_publish_diagnostics returns true when diagnostics_publish_period < ekf_dt
-  const double ekf_rate = 100.0;                    // 100 Hz, so ekf_dt = 0.01 seconds
-  const double diagnostics_publish_period = 0.005;  // 0.005 seconds < 0.01 seconds (ekf_dt)
-
-  auto ekf_localizer = create_ekf_localizer(
-    "test_should_publish_period_less_than_dt", diagnostics_publish_period, ekf_rate);
-
-  rclcpp::Time current_time = ekf_localizer->now();
-
-  // Should always return true when period < ekf_dt
-  EXPECT_TRUE(should_publish_diagnostics(ekf_localizer.get(), current_time));
-  EXPECT_TRUE(should_publish_diagnostics(ekf_localizer.get(), current_time));
-}
-
-TEST_F(EKFLocalizerTestSuite, should_publish_diagnostics_with_counter)
-{
-  // Test that should_publish_diagnostics uses counter correctly when period > ekf_dt
-  const double ekf_rate = 100.0;                  // 100 Hz, so ekf_dt = 0.01 seconds
-  const double diagnostics_publish_period = 0.1;  // 0.1 seconds = 10 timer callbacks
-
-  auto ekf_localizer =
-    create_ekf_localizer("test_should_publish_with_counter", diagnostics_publish_period, ekf_rate);
-
-  rclcpp::Time current_time = ekf_localizer->now();
-
-  // Calculate expected threshold: ekf_rate * diagnostics_publish_period = 100.0 * 0.1 = 10.0
-  const double expected_threshold = ekf_rate * diagnostics_publish_period;
-
-  // Counter starts at 0.0, so first call should return false (0.0 < 10.0)
-  EXPECT_FALSE(should_publish_diagnostics(ekf_localizer.get(), current_time));
-
-  // Access private member diagnostics_publish_counter_ through friend class helper methods
-  // Set counter to just below threshold
-  set_diagnostics_publish_counter(ekf_localizer.get(), expected_threshold - 1.0);
-  EXPECT_FALSE(should_publish_diagnostics(ekf_localizer.get(), current_time));
-
-  // Set counter to exactly at threshold
-  set_diagnostics_publish_counter(ekf_localizer.get(), expected_threshold);
-  EXPECT_TRUE(should_publish_diagnostics(ekf_localizer.get(), current_time));
-  // After returning true, counter should be decremented by threshold
-  EXPECT_DOUBLE_EQ(get_diagnostics_publish_counter(ekf_localizer.get()), 0.0);
-
-  // Set counter to above threshold
-  set_diagnostics_publish_counter(ekf_localizer.get(), expected_threshold + 5.0);
-  EXPECT_TRUE(should_publish_diagnostics(ekf_localizer.get(), current_time));
-  // Counter should be decremented by threshold, leaving remainder
-  EXPECT_DOUBLE_EQ(get_diagnostics_publish_counter(ekf_localizer.get()), 5.0);
-
-  // Test multiple increments
-  set_diagnostics_publish_counter(ekf_localizer.get(), 0.0);
-  EXPECT_FALSE(should_publish_diagnostics(ekf_localizer.get(), current_time));
-
-  // Simulate 9 timer callbacks (counter = 9.0)
-  set_diagnostics_publish_counter(ekf_localizer.get(), 9.0);
-  EXPECT_FALSE(should_publish_diagnostics(ekf_localizer.get(), current_time));
-
-  // Simulate 10th timer callback (counter = 10.0, should trigger publish)
-  set_diagnostics_publish_counter(ekf_localizer.get(), 10.0);
-  EXPECT_TRUE(should_publish_diagnostics(ekf_localizer.get(), current_time));
-  EXPECT_DOUBLE_EQ(get_diagnostics_publish_counter(ekf_localizer.get()), 0.0);
-}
+// Note: Tests for should_publish_diagnostics() are removed because
+// diagnostic_updater::Updater now handles the period control internally.
+// The period is set via setPeriod() and the updater automatically calls
+// diagnose() at the configured interval.
 
 TEST_F(EKFLocalizerTestSuite, update_diagnostics_latches_higher_level_error)
 {
@@ -736,8 +627,8 @@ TEST_F(EKFLocalizerTestSuite, latch_resets_after_publish)
   auto latched_status_before = get_latched_diagnostic_status(ekf_localizer.get());
   EXPECT_GE(latched_status_before.level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
 
-  // Publish diagnostics (should reset latch)
-  publish_diagnostics(ekf_localizer.get(), current_time);
+  // Force diagnostics update (should reset latch)
+  force_diagnostics_update(ekf_localizer.get());
 
   // Latched status should be reset to OK
   auto latched_status_after = get_latched_diagnostic_status(ekf_localizer.get());
@@ -830,10 +721,10 @@ TEST_F(EKFLocalizerTestSuite, diagnostics_updated_when_not_activated)
   EXPECT_EQ(latched_status.level, diagnostic_msgs::msg::DiagnosticStatus::WARN);
   EXPECT_TRUE(latched_status.message.find("process is not activated") != std::string::npos);
 
-  // Publish diagnostics
-  publish_diagnostics(ekf_localizer.get(), current_time);
+  // Force diagnostics update
+  force_diagnostics_update(ekf_localizer.get());
 
-  // After publish, latch should be reset
+  // After update, latch should be reset
   latched_status = get_latched_diagnostic_status(ekf_localizer.get());
   EXPECT_EQ(latched_status.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
 }
@@ -864,8 +755,8 @@ TEST_F(EKFLocalizerTestSuite, diagnostics_updated_when_initialpose_not_set)
   EXPECT_EQ(latched_status.level, diagnostic_msgs::msg::DiagnosticStatus::WARN);
   EXPECT_TRUE(latched_status.message.find("initial pose is not set") != std::string::npos);
 
-  // Publish diagnostics
-  publish_diagnostics(ekf_localizer.get(), current_time);
+  // Force diagnostics update
+  force_diagnostics_update(ekf_localizer.get());
 
   // After publish, latch should be reset
   latched_status = get_latched_diagnostic_status(ekf_localizer.get());
