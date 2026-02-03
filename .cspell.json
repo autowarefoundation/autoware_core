@@ -2,5 +2,5 @@
   "_comment": "configuration file for spell-check workflow",
   "ignorePaths": [".devcontainer/**"],
   "ignoreRegExpList": [],
-  "words": ["makeIndexedSegmenTree", "libnanoflann", "nanoflann"]
+  "words": ["makeIndexedSegmenTree"]
 }
