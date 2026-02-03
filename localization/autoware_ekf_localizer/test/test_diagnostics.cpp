@@ -14,6 +14,7 @@
 
 #include "autoware/ekf_localizer/diagnostics.hpp"
 #include "autoware/ekf_localizer/ekf_localizer.hpp"
+#include "autoware/localization_util/covariance_ellipse.hpp"
 
 #include <rclcpp/exceptions.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -231,7 +232,7 @@ protected:
     // Don't shutdown here as other tests might need rclcpp context
   }
 
-  std::shared_ptr<rclcpp::Node> create_test_node(const std::string & node_name)
+  static std::shared_ptr<rclcpp::Node> create_test_node(const std::string & node_name)
   {
     // Create a new node - parameters will be declared by HyperParameters constructor
     return std::make_shared<rclcpp::Node>(node_name);
@@ -254,7 +255,7 @@ protected:
     // Don't shutdown here as other tests might need rclcpp context
   }
 
-  std::shared_ptr<autoware::ekf_localizer::EKFLocalizer> create_ekf_localizer(
+  static std::shared_ptr<autoware::ekf_localizer::EKFLocalizer> create_ekf_localizer(
     const std::string & /* node_name */, double diagnostics_publish_period, double ekf_rate)
   {
     rclcpp::NodeOptions options;
@@ -305,42 +306,100 @@ protected:
 
   // Helper methods to access private members through friend class
 
-  void update_diagnostics(
+  static void update_diagnostics(
     autoware::ekf_localizer::EKFLocalizer * ekf_localizer,
     const geometry_msgs::msg::PoseStamped & current_ekf_pose, const rclcpp::Time & current_time)
   {
-    ekf_localizer->update_diagnostics(current_ekf_pose, current_time);
+    // Create diagnostic status array similar to timer_callback
+    std::vector<diagnostic_msgs::msg::DiagnosticStatus> diag_status_array;
+
+    // Check process activation status
+    diag_status_array.push_back(check_process_activated(ekf_localizer->is_activated_));
+
+    // Check initial pose status
+    diag_status_array.push_back(check_set_initialpose(ekf_localizer->is_set_initialpose_));
+
+    // Add diagnostics for pose and twist if activated and initial pose is set
+    if (ekf_localizer->is_activated_ && ekf_localizer->is_set_initialpose_) {
+      diag_status_array.push_back(check_measurement_updated(
+        "pose", ekf_localizer->pose_diag_info_.no_update_count,
+        ekf_localizer->params_.pose_no_update_count_threshold_warn,
+        ekf_localizer->params_.pose_no_update_count_threshold_error));
+      diag_status_array.push_back(
+        check_measurement_queue_size("pose", ekf_localizer->pose_diag_info_.queue_size));
+      diag_status_array.push_back(check_measurement_delay_gate(
+        "pose", ekf_localizer->pose_diag_info_.is_passed_delay_gate,
+        ekf_localizer->pose_diag_info_.delay_time,
+        ekf_localizer->pose_diag_info_.delay_time_threshold));
+      diag_status_array.push_back(check_measurement_mahalanobis_gate(
+        "pose", ekf_localizer->pose_diag_info_.is_passed_mahalanobis_gate,
+        ekf_localizer->pose_diag_info_.mahalanobis_distance,
+        ekf_localizer->params_.pose_gate_dist));
+
+      diag_status_array.push_back(check_measurement_updated(
+        "twist", ekf_localizer->twist_diag_info_.no_update_count,
+        ekf_localizer->params_.twist_no_update_count_threshold_warn,
+        ekf_localizer->params_.twist_no_update_count_threshold_error));
+      diag_status_array.push_back(
+        check_measurement_queue_size("twist", ekf_localizer->twist_diag_info_.queue_size));
+      diag_status_array.push_back(check_measurement_delay_gate(
+        "twist", ekf_localizer->twist_diag_info_.is_passed_delay_gate,
+        ekf_localizer->twist_diag_info_.delay_time,
+        ekf_localizer->twist_diag_info_.delay_time_threshold));
+      diag_status_array.push_back(check_measurement_mahalanobis_gate(
+        "twist", ekf_localizer->twist_diag_info_.is_passed_mahalanobis_gate,
+        ekf_localizer->twist_diag_info_.mahalanobis_distance,
+        ekf_localizer->params_.twist_gate_dist));
+
+      // Calculate covariance ellipse and add diagnostics
+      geometry_msgs::msg::PoseWithCovariance pose_cov;
+      pose_cov.pose = current_ekf_pose.pose;
+      pose_cov.covariance = ekf_localizer->ekf_module_->get_current_pose_covariance();
+      const autoware::localization_util::Ellipse ellipse =
+        autoware::localization_util::calculate_xy_ellipse(
+          pose_cov, ekf_localizer->params_.ellipse_scale);
+      diag_status_array.push_back(check_covariance_ellipse(
+        "cov_ellipse_long_axis", ellipse.long_radius, ekf_localizer->params_.warn_ellipse_size,
+        ekf_localizer->params_.error_ellipse_size));
+      diag_status_array.push_back(check_covariance_ellipse(
+        "cov_ellipse_lateral_direction", ellipse.size_lateral_direction,
+        ekf_localizer->params_.warn_ellipse_size_lateral_direction,
+        ekf_localizer->params_.error_ellipse_size_lateral_direction));
+    }
+
+    ekf_localizer->update_diagnostics(diag_status_array, current_time);
   }
 
-  diagnostic_msgs::msg::DiagnosticStatus get_latched_diagnostic_status(
+  static diagnostic_msgs::msg::DiagnosticStatus get_latched_diagnostic_status(
     autoware::ekf_localizer::EKFLocalizer * ekf_localizer)
   {
     return ekf_localizer->latched_diagnostic_status_;
   }
 
-  rclcpp::Time get_latched_diagnostic_timestamp(
+  static rclcpp::Time get_latched_diagnostic_timestamp(
     autoware::ekf_localizer::EKFLocalizer * ekf_localizer)
   {
     return ekf_localizer->latched_diagnostic_timestamp_;
   }
 
-  void set_pose_diag_info_no_update_count(
+  static void set_pose_diag_info_no_update_count(
     autoware::ekf_localizer::EKFLocalizer * ekf_localizer, size_t count)
   {
     ekf_localizer->pose_diag_info_.no_update_count = count;
   }
 
-  void set_is_activated(autoware::ekf_localizer::EKFLocalizer * ekf_localizer, bool value)
+  static void set_is_activated(autoware::ekf_localizer::EKFLocalizer * ekf_localizer, bool value)
   {
     ekf_localizer->is_activated_ = value;
   }
 
-  void set_is_set_initialpose(autoware::ekf_localizer::EKFLocalizer * ekf_localizer, bool value)
+  static void set_is_set_initialpose(
+    autoware::ekf_localizer::EKFLocalizer * ekf_localizer, bool value)
   {
     ekf_localizer->is_set_initialpose_ = value;
   }
 
-  void initialize_ekf_module(
+  static void initialize_ekf_module(
     autoware::ekf_localizer::EKFLocalizer * ekf_localizer,
     const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose)
   {
@@ -358,9 +417,14 @@ protected:
     ekf_localizer->ekf_module_->initialize(initial_pose, transform);
   }
 
-  void force_diagnostics_update(autoware::ekf_localizer::EKFLocalizer * ekf_localizer)
+  static void force_diagnostics_update(autoware::ekf_localizer::EKFLocalizer * ekf_localizer)
   {
     ekf_localizer->diagnostics_.force_update();
+  }
+
+  static void call_timer_callback(autoware::ekf_localizer::EKFLocalizer * ekf_localizer)
+  {
+    ekf_localizer->timer_callback();
   }
 };
 
@@ -630,6 +694,10 @@ TEST_F(EKFLocalizerTestSuite, latch_resets_after_publish)
   // Force diagnostics update (should reset latch)
   force_diagnostics_update(ekf_localizer.get());
 
+  // Reset error conditions and call timer_callback to trigger latch reset
+  set_pose_diag_info_no_update_count(ekf_localizer.get(), 0);  // Reset to OK
+  call_timer_callback(ekf_localizer.get());
+
   // Latched status should be reset to OK
   auto latched_status_after = get_latched_diagnostic_status(ekf_localizer.get());
   EXPECT_EQ(latched_status_after.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
@@ -724,6 +792,11 @@ TEST_F(EKFLocalizerTestSuite, diagnostics_updated_when_not_activated)
   // Force diagnostics update
   force_diagnostics_update(ekf_localizer.get());
 
+  // Reset state to OK and call timer_callback to trigger latch reset
+  set_is_activated(ekf_localizer.get(), true);
+  set_is_set_initialpose(ekf_localizer.get(), true);
+  call_timer_callback(ekf_localizer.get());
+
   // After update, latch should be reset
   latched_status = get_latched_diagnostic_status(ekf_localizer.get());
   EXPECT_EQ(latched_status.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
@@ -757,6 +830,10 @@ TEST_F(EKFLocalizerTestSuite, diagnostics_updated_when_initialpose_not_set)
 
   // Force diagnostics update
   force_diagnostics_update(ekf_localizer.get());
+
+  // Reset state to OK and call timer_callback to trigger latch reset
+  set_is_set_initialpose(ekf_localizer.get(), true);
+  call_timer_callback(ekf_localizer.get());
 
   // After publish, latch should be reset
   latched_status = get_latched_diagnostic_status(ekf_localizer.get());
