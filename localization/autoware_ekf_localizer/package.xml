@@ -25,6 +25,7 @@
   <depend>autoware_utils_logging</depend>
   <depend>autoware_utils_system</depend>
   <depend>diagnostic_msgs</depend>
+  <depend>diagnostic_updater</depend>
   <depend>fmt</depend>
   <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
