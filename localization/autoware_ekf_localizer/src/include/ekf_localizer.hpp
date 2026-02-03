@@ -43,9 +43,7 @@
 #include <std_srvs/srv/set_bool.hpp>
 
 #include <chrono>
-#include <iostream>
 #include <memory>
-#include <queue>
 #include <string>
 #include <vector>
 
