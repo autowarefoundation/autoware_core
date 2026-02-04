@@ -91,12 +91,12 @@ void RandomDownsampleFilter::input_callback(const PointCloud2ConstPtr cloud)
     auto cloud_transformed = std::make_unique<PointCloud2>();
 
     auto tf_ptr = transform_listener_->get_transform(
-      tf_output_frame_, cloud_tf->header.frame_id, cloud_tf->header.stamp,
+      tf_input_frame_, cloud->header.frame_id, cloud->header.stamp,
       rclcpp::Duration::from_seconds(1.0));
     if (!tf_ptr) {
       RCLCPP_ERROR(
-        this->get_logger(), "[input_callback] Error converting output dataset from %s to %s.",
-        cloud_tf->header.frame_id.c_str(), tf_output_frame_.c_str());
+        this->get_logger(), "[input_callback] Error converting input dataset from %s to %s.",
+        cloud->header.frame_id.c_str(), tf_input_frame_.c_str());
       return;
     }
 

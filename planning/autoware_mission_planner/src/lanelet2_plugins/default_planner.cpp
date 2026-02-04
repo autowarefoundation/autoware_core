@@ -18,9 +18,9 @@
 
 #include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/lanelet2_utils/geometry.hpp>
+#include <autoware/lanelet2_utils/nn_search.hpp>
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
 #include <autoware/route_handler/route_handler.hpp>
-#include <autoware_lanelet2_extension/utility/message_conversion.hpp>
 #include <autoware_lanelet2_extension/utility/query.hpp>
 #include <autoware_lanelet2_extension/utility/utilities.hpp>
 #include <autoware_lanelet2_extension/visualization/visualization.hpp>
@@ -161,7 +161,7 @@ PlannerPlugin::MarkerArray DefaultPlanner::visualize(const LaneletRoute & route)
 }
 
 visualization_msgs::msg::MarkerArray DefaultPlanner::visualize_debug_footprint(
-  autoware_utils::LinearRing2d goal_footprint)
+  autoware_utils_geometry::LinearRing2d goal_footprint)
 {
   visualization_msgs::msg::MarkerArray msg;
   auto marker = autoware_utils_visualization::create_default_marker(
@@ -171,17 +171,17 @@ visualization_msgs::msg::MarkerArray DefaultPlanner::visualize_debug_footprint(
   marker.lifetime = rclcpp::Duration::from_seconds(2.5);
 
   marker.points.push_back(
-    autoware_utils::create_point(goal_footprint[0][0], goal_footprint[0][1], 0.0));
+    autoware_utils_geometry::create_point(goal_footprint[0][0], goal_footprint[0][1], 0.0));
   marker.points.push_back(
-    autoware_utils::create_point(goal_footprint[1][0], goal_footprint[1][1], 0.0));
+    autoware_utils_geometry::create_point(goal_footprint[1][0], goal_footprint[1][1], 0.0));
   marker.points.push_back(
-    autoware_utils::create_point(goal_footprint[2][0], goal_footprint[2][1], 0.0));
+    autoware_utils_geometry::create_point(goal_footprint[2][0], goal_footprint[2][1], 0.0));
   marker.points.push_back(
-    autoware_utils::create_point(goal_footprint[3][0], goal_footprint[3][1], 0.0));
+    autoware_utils_geometry::create_point(goal_footprint[3][0], goal_footprint[3][1], 0.0));
   marker.points.push_back(
-    autoware_utils::create_point(goal_footprint[4][0], goal_footprint[4][1], 0.0));
+    autoware_utils_geometry::create_point(goal_footprint[4][0], goal_footprint[4][1], 0.0));
   marker.points.push_back(
-    autoware_utils::create_point(goal_footprint[5][0], goal_footprint[5][1], 0.0));
+    autoware_utils_geometry::create_point(goal_footprint[5][0], goal_footprint[5][1], 0.0));
   marker.points.push_back(marker.points.front());
 
   msg.markers.push_back(marker);
@@ -191,7 +191,7 @@ visualization_msgs::msg::MarkerArray DefaultPlanner::visualize_debug_footprint(
 
 bool DefaultPlanner::check_goal_footprint_inside_lanes(
   const lanelet::ConstLanelets & lanelets_near_goal,
-  const autoware_utils::Polygon2d & goal_footprint) const
+  const autoware_utils_geometry::Polygon2d & goal_footprint) const
 {
   lanelet::Points3d left_bound_points;
   lanelet::Points3d right_bound_points;
@@ -233,28 +233,27 @@ bool DefaultPlanner::is_goal_valid(const geometry_msgs::msg::Pose & goal)
 {
   const auto logger = node_->get_logger();
 
-  const auto goal_lanelet_pt = lanelet::utils::conversion::toLaneletPoint(goal.position);
+  const auto goal_lanelet_pt = experimental::lanelet2_utils::from_ros(goal.position);
 
   // check if goal is in shoulder lanelet
-  lanelet::Lanelet closest_shoulder_lanelet;
   const auto shoulder_lanelets = route_handler_.getShoulderLaneletsAtPose(goal);
-  if (lanelet::utils::query::getClosestLanelet(
-        shoulder_lanelets, goal, &closest_shoulder_lanelet)) {
+  if (
+    const auto closest_shoulder_lanelet =
+      experimental::lanelet2_utils::get_closest_lanelet(shoulder_lanelets, goal)) {
     const auto lane_yaw = autoware::experimental::lanelet2_utils::get_lanelet_angle(
-      closest_shoulder_lanelet,
+      closest_shoulder_lanelet.value(),
       autoware::experimental::lanelet2_utils::from_ros(goal.position).basicPoint());
     const auto goal_yaw = tf2::getYaw(goal.orientation);
-    const auto angle_diff = autoware_utils::normalize_radian(lane_yaw - goal_yaw);
+    const auto angle_diff = autoware_utils_math::normalize_radian(lane_yaw - goal_yaw);
     const double th_angle = autoware_utils_math::deg2rad(param_.goal_angle_threshold_deg);
     if (std::abs(angle_diff) < th_angle) {
       return true;
     }
   }
-  lanelet::ConstLanelet closest_lanelet_to_goal;
   const auto road_lanelets_at_goal = route_handler_.getRoadLaneletsAtPose(goal);
-  if (!lanelet::utils::query::getClosestLanelet(
-        road_lanelets_at_goal, goal, &closest_lanelet_to_goal)) {
-    // if no road lanelets directly at the goal, find the closest one
+  auto closest_lanelet_to_goal_opt =
+    experimental::lanelet2_utils::get_closest_lanelet(road_lanelets_at_goal, goal);
+  if (!closest_lanelet_to_goal_opt) {
     const lanelet::BasicPoint2d goal_point{goal.position.x, goal.position.y};
     auto closest_dist = std::numeric_limits<double>::max();
     const auto closest_road_lanelet_found =
@@ -267,12 +266,13 @@ bool DefaultPlanner::is_goal_valid(const geometry_msgs::msg::Pose & goal)
           const auto dist = lanelet::geometry::distance2d(goal_point, ll.polygon2d());
           if (route_handler_.isRoadLanelet(ll) && dist < closest_dist) {
             closest_dist = dist;
-            closest_lanelet_to_goal = ll;
+            closest_lanelet_to_goal_opt = ll;
           }
           return false;  // continue the search
         });
-    if (!closest_road_lanelet_found) return false;
+    if (!closest_lanelet_to_goal_opt) return false;
   }
+  const auto & closest_lanelet_to_goal = closest_lanelet_to_goal_opt.value();
 
   // If the goal is at the very beginning or the end of closest_lanelet_to_goal, base link to rear
   // part of ego footprint will be outside of it. To tolerate it, add previous and next lanelets
@@ -286,8 +286,8 @@ bool DefaultPlanner::is_goal_valid(const geometry_msgs::msg::Pose & goal)
   lanelets_near_goal.insert(lanelets_near_goal.end(), next_lanelets.begin(), next_lanelets.end());
 
   const auto local_vehicle_footprint = vehicle_info_.createFootprint();
-  autoware_utils::LinearRing2d goal_footprint =
-    autoware_utils::transform_vector(local_vehicle_footprint, autoware_utils::pose2transform(goal));
+  autoware_utils_geometry::LinearRing2d goal_footprint = autoware_utils_geometry::transform_vector(
+    local_vehicle_footprint, autoware_utils_geometry::pose2transform(goal));
   pub_goal_footprint_marker_->publish(visualize_debug_footprint(goal_footprint));
   const auto polygon_footprint = convert_linear_ring_to_polygon(goal_footprint);
 
@@ -297,7 +297,7 @@ bool DefaultPlanner::is_goal_valid(const geometry_msgs::msg::Pose & goal)
     !check_goal_footprint_inside_lanes(lanelets_near_goal, polygon_footprint) &&
     !is_in_parking_lot(
       lanelet::utils::query::getAllParkingLots(route_handler_.getLaneletMapPtr()),
-      lanelet::utils::conversion::toLaneletPoint(goal.position))) {
+      experimental::lanelet2_utils::from_ros(goal.position))) {
     RCLCPP_WARN(logger, "Goal's footprint exceeds lane!");
     return false;
   }
@@ -307,7 +307,7 @@ bool DefaultPlanner::is_goal_valid(const geometry_msgs::msg::Pose & goal)
       closest_lanelet_to_goal,
       autoware::experimental::lanelet2_utils::from_ros(goal.position).basicPoint());
     const auto goal_yaw = tf2::getYaw(goal.orientation);
-    const auto angle_diff = autoware_utils::normalize_radian(lane_yaw - goal_yaw);
+    const auto angle_diff = autoware_utils_geometry::normalize_radian(lane_yaw - goal_yaw);
 
     const double th_angle = autoware_utils_math::deg2rad(param_.goal_angle_threshold_deg);
     if (std::abs(angle_diff) < th_angle) {
@@ -334,7 +334,8 @@ PlannerPlugin::LaneletRoute DefaultPlanner::plan(const RoutePoints & points)
 
   std::stringstream log_ss;
   for (const auto & point : points) {
-    log_ss << "x: " << point.position.x << " " << "y: " << point.position.y << std::endl;
+    log_ss << "x: " << point.position.x << " "
+           << "y: " << point.position.y << std::endl;
   }
   RCLCPP_DEBUG_STREAM(
     logger, "start planning route with check points: " << std::endl
@@ -394,7 +395,7 @@ geometry_msgs::msg::Pose DefaultPlanner::refine_goal_height(
 {
   const auto goal_lane_id = route_sections.back().preferred_primitive.id;
   const auto goal_lanelet = route_handler_.getLaneletsFromId(goal_lane_id);
-  const auto goal_lanelet_pt = lanelet::utils::conversion::toLaneletPoint(goal.position);
+  const auto goal_lanelet_pt = experimental::lanelet2_utils::from_ros(goal.position);
   const auto goal_height = project_goal_to_map(goal_lanelet, goal_lanelet_pt);
 
   Pose refined_goal = goal;

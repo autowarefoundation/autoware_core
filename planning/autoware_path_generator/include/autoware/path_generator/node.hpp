@@ -19,8 +19,8 @@
 
 #include <autoware/trajectory/path_point_with_lane_id.hpp>
 #include <autoware_path_generator/path_generator_parameters.hpp>
-#include <autoware_utils/ros/polling_subscriber.hpp>
 #include <autoware_utils_debug/time_keeper.hpp>
+#include <autoware_utils_rclcpp/polling_subscriber.hpp>
 #include <autoware_utils_system/stop_watch.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
 
@@ -67,13 +67,13 @@ public:
 
 private:
   // subscriber
-  autoware_utils::InterProcessPollingSubscriber<
-    LaneletRoute, autoware_utils::polling_policy::Newest>
+  autoware_utils_rclcpp::InterProcessPollingSubscriber<
+    LaneletRoute, autoware_utils_rclcpp::polling_policy::Newest>
     route_subscriber_{this, "~/input/route", rclcpp::QoS{1}.transient_local()};
-  autoware_utils::InterProcessPollingSubscriber<
-    LaneletMapBin, autoware_utils::polling_policy::Newest>
+  autoware_utils_rclcpp::InterProcessPollingSubscriber<
+    LaneletMapBin, autoware_utils_rclcpp::polling_policy::Newest>
     vector_map_subscriber_{this, "~/input/vector_map", rclcpp::QoS{1}.transient_local()};
-  autoware_utils::InterProcessPollingSubscriber<Odometry> odometry_subscriber_{
+  autoware_utils_rclcpp::InterProcessPollingSubscriber<Odometry> odometry_subscriber_{
     this, "~/input/odometry"};
 
   // publisher
@@ -104,7 +104,9 @@ private:
   std::optional<PathWithLaneId> plan_path(const InputData & input_data, const Params & params);
 
   std::optional<PathWithLaneId> generate_path(
-    const lanelet::LaneletSequence & lanelet_sequence, const double s_start, const double s_end,
+    const lanelet::ConstLanelets & extended_lanelet_sequence,
+    const lanelet::ConstLanelet & current_lanelet, const geometry_msgs::msg::Pose & current_pose,
+    const double s_ego, const double s_start, const double s_end,
     const std::optional<lanelet::ConstLanelet> & goal_lanelet_for_path,
     const Params & params) const;
 

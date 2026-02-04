@@ -1,0 +1,192 @@
+name: Reusable Build and Test Workflow
+
+on:
+  workflow_call:
+    secrets:
+      codecov-token:
+        required: true
+    inputs:
+      # Why is it a JSON string?
+      # https://github.com/orgs/community/discussions/11692#discussioncomment-3541856
+      runner:
+        type: string
+        default: "['ubuntu-latest']"
+        required: false
+      rosdistro:
+        type: string
+        required: true
+      container:
+        type: string
+        required: true
+      above:
+        description: True if packages above repos should be considered. Clang-tidy will only run if this is false.
+        type: boolean
+        default: false
+        required: false
+      push-ccache:
+        type: boolean
+        default: false
+        required: false
+      pull-ccache:
+        type: boolean
+        default: true
+        required: false
+      cache-key-element:
+        type: string
+        default: default
+        required: false
+      codecov-flag:
+        type: string
+        default: other
+        required: false
+      concurrency-group:
+        type: string
+        default: ${{ github.workflow }}-${{ github.ref }}-${{ github.run_id }} # unique per run
+        required: false
+      cancel-in-progress:
+        type: boolean
+        default: false
+        required: false
+
+concurrency:
+  group: ${{ inputs.concurrency-group }}
+  cancel-in-progress: ${{ inputs.cancel-in-progress }}
+
+env:
+  CC: /usr/lib/ccache/gcc
+  CXX: /usr/lib/ccache/g++
+
+jobs:
+  build-and-test:
+    name: build-and-test-${{ inputs.rosdistro }}${{ inputs.above && '-above' || '' }}
+    runs-on: ${{ fromJson(inputs.runner) }}
+    container: ${{ inputs.container }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Show disk space before the tasks
+        if: ${{ always() }}
+        run: df -h
+
+      - name: Show machine specs
+        run: lscpu && free -h
+
+      - name: Remove exec_depend
+        uses: autowarefoundation/autoware-github-actions/remove-exec-depend@v1
+
+      - name: Get self packages
+        id: get-self-packages
+        uses: autowarefoundation/autoware-github-actions/get-self-packages@v1
+
+      - name: Create ccache directory
+        run: |
+          if [ -z "${CCACHE_DIR}" ]; then
+            apt-get update
+            apt-get install -y ccache
+            export CCACHE_DIR=/root/.ccache
+          fi
+          mkdir -p ${CCACHE_DIR}
+          du -sh ${CCACHE_DIR} && ccache -s
+        shell: bash
+
+      - name: Attempt to restore ccache
+        if: ${{ inputs.pull-ccache == true }}
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            /root/.ccache
+          key: ccache-main-${{ runner.arch }}-${{ inputs.rosdistro }}${{ inputs.above && '-above' || '' }}-${{ github.sha }}
+          restore-keys: |
+            ccache-main-${{ runner.arch }}-${{ inputs.rosdistro }}${{ inputs.above && '-above' || '' }}-
+
+      - name: Limit ccache size
+        run: |
+          rm -f "${CCACHE_DIR}/ccache.conf"
+          echo -e "# Set maximum cache size\nmax_size = 900MB" >> "${CCACHE_DIR}/ccache.conf"
+        shell: bash
+
+      - name: Show ccache stats before build and reset stats
+        run: |
+          du -sh ${CCACHE_DIR} && ccache -s
+          ccache --zero-stats
+        shell: bash
+
+      - name: Build
+        if: ${{ steps.get-self-packages.outputs.self-packages != '' }}
+        uses: autowarefoundation/autoware-github-actions/colcon-build@v1
+        with:
+          rosdistro: ${{ inputs.rosdistro }}
+          cache-key-element: build-and-test-${{ inputs.cache-key-element }}${{ inputs.above && '-above' || '' }}
+          target-packages: ${{ steps.get-self-packages.outputs.self-packages }}
+          packages-above-repos: ${{ inputs.above && 'packages_above.repos' || '' }}
+          underlay-workspace: /opt/autoware
+
+      - name: Show ccache stats after build
+        if: ${{ always() }}
+        run: du -sh ${CCACHE_DIR} && ccache -s
+        shell: bash
+
+      - name: Push the ccache cache
+        if: ${{ inputs.push-ccache == true }}
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            /root/.ccache
+          key: ccache-main-${{ runner.arch }}-${{ inputs.rosdistro }}${{ inputs.above && '-above' || '' }}-${{ github.sha }}
+
+      - name: Test
+        if: ${{ steps.get-self-packages.outputs.self-packages != '' }}
+        id: test
+        uses: autowarefoundation/autoware-github-actions/colcon-test@v1
+        with:
+          rosdistro: ${{ inputs.rosdistro }}
+          target-packages: ${{ steps.get-self-packages.outputs.self-packages }}
+          underlay-workspace: /opt/autoware
+
+      - name: Upload coverage to CodeCov
+        if: ${{ steps.test.outputs.coverage-report-files != '' && !inputs.above }}
+        uses: codecov/codecov-action@v5
+        with:
+          files: ${{ steps.test.outputs.coverage-report-files }}
+          fail_ci_if_error: false
+          verbose: true
+          flags: ${{ inputs.codecov-flag }}
+          token: ${{ secrets.codecov-token }}
+
+      - name: Show disk space after the tasks
+        run: df -h
+
+  clang-tidy:
+    name: clang-tidy-${{ inputs.rosdistro }}${{ inputs.above && '-above' || '' }}
+    needs: build-and-test
+    if: ${{ inputs.above == false }}
+    runs-on: ubuntu-latest
+    container: ${{ inputs.container }}
+    steps:
+      - name: Checkout PR branch and all PR commits
+        uses: actions/checkout@v6
+
+      - name: Show disk space before the tasks
+        run: df -h
+
+      - name: Remove exec_depend
+        uses: autowarefoundation/autoware-github-actions/remove-exec-depend@v1
+
+      - name: Get self packages
+        id: get-self-packages
+        uses: autowarefoundation/autoware-github-actions/get-self-packages@v1
+
+      - name: Run clang-tidy
+        if: ${{ steps.get-self-packages.outputs.self-packages != '' }}
+        uses: autowarefoundation/autoware-github-actions/clang-tidy@v1
+        with:
+          rosdistro: ${{ inputs.rosdistro }}
+          cache-key-element: build-and-test-${{ inputs.cache-key-element }}${{ inputs.above && '-above' || '' }}
+          target-packages: ${{ steps.get-self-packages.outputs.self-packages }}
+          clang-tidy-config-url: https://raw.githubusercontent.com/autowarefoundation/autoware/main/.clang-tidy-ci
+          underlay-workspace: /opt/autoware
+          artifact-name: clang-tidy-result-${{ inputs.rosdistro }}
+
+      - name: Show disk space after the tasks
+        run: df -h

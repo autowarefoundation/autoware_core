@@ -21,6 +21,7 @@
 #include <geometry_msgs/msg/pose.hpp>
 
 #include <lanelet2_core/Forward.h>
+#include <lanelet2_core/primitives/Lanelet.h>
 #include <lanelet2_routing/Forward.h>
 #include <lanelet2_traffic_rules/TrafficRulesFactory.h>
 
@@ -104,6 +105,20 @@ std::optional<lanelet::ConstLanelet> create_safe_lanelet(
 std::optional<lanelet::ConstLanelet> create_safe_lanelet(
   const std::vector<lanelet::ConstPoint3d> & left_points,
   const std::vector<lanelet::ConstPoint3d> & right_points);
+
+/**
+ * @brief remove the const keyword from several types of data
+ */
+lanelet::Point3d remove_const(const lanelet::ConstPoint3d & const_map_ptr);
+
+lanelet::LaneletMapPtr remove_const(const lanelet::LaneletMapConstPtr & const_map_ptr);
+
+lanelet::routing::RoutingGraphPtr remove_const(
+  const lanelet::routing::RoutingGraphConstPtr & const_routing_graph_ptr);
+
+lanelet::LineString3d remove_const(const lanelet::ConstLineString3d & const_linestring);
+
+lanelet::Lanelet remove_const(const lanelet::ConstLanelet & const_lanelet);
 
 }  // namespace autoware::experimental::lanelet2_utils
 #endif  // AUTOWARE__LANELET2_UTILS__CONVERSION_HPP_
