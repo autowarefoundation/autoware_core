@@ -352,6 +352,13 @@ geometry_msgs::msg::Pose get_closest_center_pose(
 lanelet::ArcCoordinates get_arc_coordinates(
   const lanelet::ConstLanelets & lanelets, const geometry_msgs::msg::Pose & pose)
 {
+  // Handle empty Input (Return default ArcCoordinates)
+  if (lanelets.empty()) {
+    RCLCPP_WARN(
+      rclcpp::get_logger("autoware_lanelet2_utility"),
+      "Input lanelets is empty. Returning default ArcCoordinates (length=0, distance=0).");
+    return lanelet::ArcCoordinates();
+  }
   const auto lanelet_sequence = lanelet::LaneletSequence(lanelets);
   const auto centerline_2d = lanelet_sequence.centerline2d();
 
