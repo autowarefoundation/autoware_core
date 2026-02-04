@@ -440,10 +440,10 @@ bool PathGenerator::update_current_lanelet(
   const geometry_msgs::msg::Pose & current_pose, const Params & params)
 {
   if (!current_lanelet_) {
-    lanelet::ConstLanelet current_lanelet;
-    if (lanelet::utils::query::getClosestLanelet(
-          planner_data_.route_lanelets, current_pose, &current_lanelet)) {
-      current_lanelet_ = current_lanelet;
+    if (
+      const auto current_lanelet_opt = experimental::lanelet2_utils::get_closest_lanelet(
+        planner_data_.route_lanelets, current_pose)) {
+      current_lanelet_ = current_lanelet_opt.value();
       return true;
     }
     return false;
@@ -470,8 +470,10 @@ bool PathGenerator::update_current_lanelet(
     return true;
   }
 
-  if (lanelet::utils::query::getClosestLanelet(
-        planner_data_.route_lanelets, current_pose, &*current_lanelet_)) {
+  if (
+    const auto closest_lanelet_opt = experimental::lanelet2_utils::get_closest_lanelet(
+      planner_data_.route_lanelets, current_pose)) {
+    current_lanelet_ = closest_lanelet_opt;
     return true;
   }
 
