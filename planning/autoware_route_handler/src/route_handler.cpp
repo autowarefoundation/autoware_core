@@ -522,8 +522,9 @@ std::vector<lanelet::ConstLanelet> RouteHandler::getLanesAfterGoal(
   }
 
   const double min_succeeding_length = vehicle_length * 2;
-  const auto succeeding_lanes_vec = lanelet::utils::query::getSucceedingLaneletSequences(
-    routing_graph_ptr_, goal_lanelet, min_succeeding_length);
+  const auto succeeding_lanes_vec =
+    autoware::experimental::lanelet2_utils::get_succeeding_lanelet_sequences(
+      goal_lanelet, routing_graph_ptr_, min_succeeding_length);
   if (succeeding_lanes_vec.empty()) {
     return std::vector<lanelet::ConstLanelet>{};
   }
@@ -630,7 +631,8 @@ bool RouteHandler::isDeadEndLanelet(const lanelet::ConstLanelet & lanelet) const
 lanelet::ConstLanelets RouteHandler::getLaneChangeableNeighbors(
   const lanelet::ConstLanelet & lanelet) const
 {
-  return lanelet::utils::query::getLaneChangeableNeighbors(routing_graph_ptr_, lanelet);
+  return autoware::experimental::lanelet2_utils::lane_changeable_neighbors(
+    lanelet, routing_graph_ptr_);
 }
 
 lanelet::ConstLanelets RouteHandler::getLaneletSequenceAfter(
@@ -1481,8 +1483,8 @@ std::vector<lanelet::ConstLanelets> RouteHandler::getPrecedingLaneletSequence(
   const lanelet::ConstLanelet & lanelet, const double length,
   const lanelet::ConstLanelets & exclude_lanelets) const
 {
-  return lanelet::utils::query::getPrecedingLaneletSequences(
-    routing_graph_ptr_, lanelet, length, exclude_lanelets);
+  return autoware::experimental::lanelet2_utils::get_preceding_lanelet_sequences(
+    lanelet, routing_graph_ptr_, length, exclude_lanelets);
 }
 
 std::optional<lanelet::ConstLanelet> RouteHandler::getLaneChangeTarget(
