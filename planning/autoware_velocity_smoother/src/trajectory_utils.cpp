@@ -275,7 +275,9 @@ void applyMaximumVelocityLimit(
   std::vector<double> s_range = {begin_distance, end_distance};
   std::vector<double> vel_range(2, max_vel);
 
-  trajectory.longitudinal_velocity_mps().build(s_range, vel_range);
+  if (!trajectory.longitudinal_velocity_mps().build(s_range, vel_range)) {
+    return;
+  }
 }
 
 bool calcStopDistWithJerkConstraints(
@@ -529,7 +531,9 @@ std::vector<double> calcVelocityProfileWithConstantJerkAndAccelerationLimit(
     curr_a = std::clamp(integ_a(curr_a, jerk, t), acc_min, acc_max);
   }
 
-  trajectory.longitudinal_velocity_mps().build(bases, velocities);
+  if (!trajectory.longitudinal_velocity_mps().build(bases, velocities)) {
+    return {};
+  }
   return velocities;
 }
 
