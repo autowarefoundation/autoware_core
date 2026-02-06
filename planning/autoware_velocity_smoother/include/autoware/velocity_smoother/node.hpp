@@ -232,9 +232,15 @@ private:
   void insertBehindVelocity(
     const size_t output_closest, const InitializeType type, TrajectoryPoints & output) const;
 
+void insertBehindVelocity(
+  const double output_closest_s, const InitializeType type, TrajectoryExperimental & output) const;
+
   void applyStopApproachingVelocity(TrajectoryPoints & traj) const;
 
   void overwriteStopPoint(const TrajectoryPoints & input, TrajectoryPoints & output) const;
+
+  void overwriteStopPoint(
+  const TrajectoryExperimental & input, TrajectoryExperimental & output) const;
 
   double calcTravelDistance() const;
 

@@ -378,6 +378,11 @@ bool L2PseudoJerkSmoother::apply(
     output.acceleration_mps2().range(bases[i], bases[i]).set(optimized_acc);
   }
 
+  if (bases.back() < input.length()) {
+    output.longitudinal_velocity_mps().range(bases.back(), input.length()).set(0.0);
+    output.acceleration_mps2().range(bases.back(), input.length()).set(0.0);
+  }
+
   qp_solver_.logUnsolvedStatus("[autoware_velocity_smoother]");
   return true;
 }

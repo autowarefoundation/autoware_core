@@ -369,7 +369,10 @@ TrajectoryExperimental SmootherBase::applyLateralAccelerationFilter(
   } else {
     resample_bases = bases;
     resample_velocities = velocities;
-    resampled_traj.longitudinal_velocity_mps().build(resample_bases, resample_velocities);
+  }
+
+  if (!resampled_traj.longitudinal_velocity_mps().build(resample_bases, resample_velocities)) {
+      return input;  // return original on error
   }
 
   const auto curvature_v = trajectory_utils::calcTrajectoryCurvatureFrom3Points(
@@ -413,7 +416,9 @@ TrajectoryExperimental SmootherBase::applyLateralAccelerationFilter(
   }
 
   TrajectoryExperimental output = input;
-  output.longitudinal_velocity_mps().build(resample_bases, resample_velocities);
+  if (!output.longitudinal_velocity_mps().build(resample_bases, resample_velocities)) {
+    return input;  // return original on error
+  }
   return output;
 }
 
@@ -531,7 +536,9 @@ TrajectoryExperimental SmootherBase::applySteeringRateLimit(
 
   // Build resampled trajectory for curvature calculation
   TrajectoryExperimental resampled_traj = input;
-  resampled_traj.longitudinal_velocity_mps().build(resample_bases, resample_velocities);
+  if (!resampled_traj.longitudinal_velocity_mps().build(resample_bases, resample_velocities)) {
+    return input;  // return original on error
+  }
 
   // Step1. Calculate curvature assuming the trajectory points interval is constant
   const auto curvature_v = trajectory_utils::calcTrajectoryCurvatureFrom3Points(
@@ -598,7 +605,9 @@ TrajectoryExperimental SmootherBase::applySteeringRateLimit(
   }
 
   TrajectoryExperimental output = input;
-  output.longitudinal_velocity_mps().build(resample_bases, resample_velocities);
+  if (!output.longitudinal_velocity_mps().build(resample_bases, resample_velocities)) {
+    return input;  // return original on error
+  }
   return output;
 }
 
