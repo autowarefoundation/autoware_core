@@ -362,8 +362,7 @@ bool JerkFilteredSmoother::apply(
 
 bool JerkFilteredSmoother::apply(
   const double v0, const double a0, const TrajectoryExperimental & input,
-  TrajectoryExperimental & output,
-  std::vector<TrajectoryExperimental> & debug_trajectories,
+  TrajectoryExperimental & output, std::vector<TrajectoryExperimental> & debug_trajectories,
   const bool publish_debug_trajs)
 {
   // Guard: check if trajectory is empty
@@ -410,18 +409,19 @@ bool JerkFilteredSmoother::apply(
   // Resample merged trajectory first to reduce number of points before optimization
   const auto merged_discrete = merged.restore();
   const auto initial_traj_pose = merged_discrete.front().pose;
-  
+
   auto merged_resampled_discrete = resampling::resampleTrajectory(
     merged_discrete, v0, initial_traj_pose, std::numeric_limits<double>::max(),
     std::numeric_limits<double>::max(), base_param_.resample_param);
-  
+
   // Ensure terminal velocity is zero
   if (!merged_resampled_discrete.empty()) {
     merged_resampled_discrete.back().longitudinal_velocity_mps = 0.0;
   }
 
   // Convert back to continuous for optimization
-  auto merged_resampled = TrajectoryExperimental::Builder().build(merged_resampled_discrete).value();
+  auto merged_resampled =
+    TrajectoryExperimental::Builder().build(merged_resampled_discrete).value();
 
   // For jerk filtering on continuous trajectory, use the arc-length information
   const auto [merged_bases, merged_vels] = merged_resampled.longitudinal_velocity_mps().get_data();
@@ -555,7 +555,7 @@ bool JerkFilteredSmoother::apply(
   RCLCPP_DEBUG(logger_, "optimization time = %f [ms]", dt_ms1);
 
   output = merged_resampled;
-  
+
   for (size_t i = 0; i < N; ++i) {
     double b = optval.at(IDX_B0 + i);
     const double optimized_vel = std::sqrt(std::max(b, 0.0));
@@ -571,7 +571,8 @@ bool JerkFilteredSmoother::apply(
     output.acceleration_mps2().range(0.0, merged_bases[0]).set(a_stop_decel);
   }
 
-  // Handle tail region beyond last optimized base point (matches discrete version: [N, output.length()))
+  // Handle tail region beyond last optimized base point (matches discrete version: [N,
+  // output.length()))
   if (!merged_bases.empty() && merged_bases.back() < input.length()) {
     output.longitudinal_velocity_mps().range(merged_bases.back(), input.length()).set(0.0);
     output.acceleration_mps2().range(merged_bases.back(), input.length()).set(a_stop_decel);
@@ -598,7 +599,8 @@ bool JerkFilteredSmoother::apply(
   // Set debug trajectories
   if (publish_debug_trajs) {
     debug_trajectories.resize(3);
-    debug_trajectories[0] = forwardJerkFilter(v0, std::max(a0, a_min), a_max, a_stop_accel, j_max, input);
+    debug_trajectories[0] =
+      forwardJerkFilter(v0, std::max(a0, a_min), a_max, a_stop_accel, j_max, input);
     debug_trajectories[1] = backwardJerkFilter(
       input.longitudinal_velocity_mps().compute(bases.back()), a_stop_decel, a_min, a_stop_decel,
       j_min, input);
@@ -847,9 +849,12 @@ TrajectoryExperimental JerkFilteredSmoother::mergeFilteredTrajectory(
     double current_vel = v0;
     double current_acc = a0;
 
-    while (bwd_vels_data[i] < current_vel && i < fwd_vels_data.size() - 1 && i < bwd_vels_data.size() - 1) {
+    while (bwd_vels_data[i] < current_vel && i < fwd_vels_data.size() - 1 &&
+           i < bwd_vels_data.size() - 1) {
       // Set velocity and acceleration at this base point
-      merged.longitudinal_velocity_mps().range(fwd_bases_data[i], fwd_bases_data[i]).set(current_vel);
+      merged.longitudinal_velocity_mps()
+        .range(fwd_bases_data[i], fwd_bases_data[i])
+        .set(current_vel);
       merged.acceleration_mps2().range(fwd_bases_data[i], fwd_bases_data[i]).set(current_acc);
 
       const double ds = fwd_bases_data[i + 1] - fwd_bases_data[i];
@@ -878,7 +883,7 @@ TrajectoryExperimental JerkFilteredSmoother::mergeFilteredTrajectory(
     const double fwd_vel = fwd_vels_data[i];
     // Guard: ensure we don't access bwd_vels_data out of bounds
     const double bwd_vel = (i < bwd_vels_data.size()) ? bwd_vels_data[i] : 0.0;
-    
+
     if (fwd_vel < bwd_vel) {
       // Use forward filtered values
       const double fwd_acc = forward_filtered.acceleration_mps2().compute(base);

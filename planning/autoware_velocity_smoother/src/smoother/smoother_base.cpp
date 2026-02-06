@@ -372,7 +372,7 @@ TrajectoryExperimental SmootherBase::applyLateralAccelerationFilter(
   }
 
   if (!resampled_traj.longitudinal_velocity_mps().build(resample_bases, resample_velocities)) {
-      return input;  // return original on error
+    return input;  // return original on error
   }
 
   const auto curvature_v = trajectory_utils::calcTrajectoryCurvatureFrom3Points(
