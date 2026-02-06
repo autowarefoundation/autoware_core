@@ -200,14 +200,14 @@ bool calcStopVelocityWithConstantJerkAccLimit(
     as.push_back(a);
     js.push_back(j);
   }
-  
+
   auto logger = rclcpp::get_logger("velocity_planning_utils");
   RCLCPP_DEBUG(logger, "Calculate stop velocity.");
   if (logger.get_effective_level() <= rclcpp::Logger::Level::Debug) {
     for (unsigned int i = 0; i < ts.size(); ++i) {
       RCLCPP_DEBUG(
-        logger, "--- t: %f, x: %f, v: %f, a: %f, j: %f",
-        ts.at(i), xs.at(i), vs.at(i), as.at(i), js.at(i));
+        logger, "--- t: %f, x: %f, v: %f, a: %f, j: %f", ts.at(i), xs.at(i), vs.at(i), as.at(i),
+        js.at(i));
     }
   }
 
@@ -229,11 +229,15 @@ bool calcStopVelocityWithConstantJerkAccLimit(
     const std::vector<double> vel_range{decel_target_vel, decel_target_vel};
     const std::vector<double> acc_range{0.0, 0.0};
     if (!output_trajectory.longitudinal_velocity_mps().build(s_range, vel_range)) {
-      RCLCPP_WARN(rclcpp::get_logger("velocity_planning_utils"), "Failed to build velocity profile (empty xs case)");
+      RCLCPP_WARN(
+        rclcpp::get_logger("velocity_planning_utils"),
+        "Failed to build velocity profile (empty xs case)");
       return false;
     }
     if (!output_trajectory.acceleration_mps2().build(s_range, acc_range)) {
-      RCLCPP_WARN(rclcpp::get_logger("velocity_planning_utils"), "Failed to build acceleration profile (empty xs case)");
+      RCLCPP_WARN(
+        rclcpp::get_logger("velocity_planning_utils"),
+        "Failed to build acceleration profile (empty xs case)");
       return false;
     }
     return true;
@@ -266,12 +270,17 @@ bool calcStopVelocityWithConstantJerkAccLimit(
     const std::vector<double> s_range_fallback{start_s, trajectory_length};
     const std::vector<double> vel_range_fallback{decel_target_vel, decel_target_vel};
     const std::vector<double> acc_range_fallback{0.0, 0.0};
-    if (!output_trajectory.longitudinal_velocity_mps().build(s_range_fallback, vel_range_fallback)) {
-      RCLCPP_WARN(rclcpp::get_logger("velocity_planning_utils"), "Failed to build velocity profile (empty s_range case)");
+    if (!output_trajectory.longitudinal_velocity_mps().build(
+          s_range_fallback, vel_range_fallback)) {
+      RCLCPP_WARN(
+        rclcpp::get_logger("velocity_planning_utils"),
+        "Failed to build velocity profile (empty s_range case)");
       return false;
     }
     if (!output_trajectory.acceleration_mps2().build(s_range_fallback, acc_range_fallback)) {
-      RCLCPP_WARN(rclcpp::get_logger("velocity_planning_utils"), "Failed to build acceleration profile (empty s_range case)");
+      RCLCPP_WARN(
+        rclcpp::get_logger("velocity_planning_utils"),
+        "Failed to build acceleration profile (empty s_range case)");
       return false;
     }
     return true;
@@ -294,7 +303,8 @@ bool calcStopVelocityWithConstantJerkAccLimit(
     return false;
   }
   if (!output_trajectory.acceleration_mps2().build(s_range, acc_range)) {
-    RCLCPP_WARN(rclcpp::get_logger("velocity_planning_utils"), "Failed to build acceleration profile");
+    RCLCPP_WARN(
+      rclcpp::get_logger("velocity_planning_utils"), "Failed to build acceleration profile");
     return false;
   }
 
