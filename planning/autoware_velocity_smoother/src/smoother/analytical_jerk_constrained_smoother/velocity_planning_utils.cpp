@@ -201,14 +201,11 @@ bool calcStopVelocityWithConstantJerkAccLimit(
     js.push_back(j);
   }
 
-  auto logger = rclcpp::get_logger("velocity_planning_utils");
-  RCLCPP_DEBUG(logger, "Calculate stop velocity.");
-  if (logger.get_effective_level() <= rclcpp::Logger::Level::Debug) {
-    for (unsigned int i = 0; i < ts.size(); ++i) {
-      RCLCPP_DEBUG(
-        logger, "--- t: %f, x: %f, v: %f, a: %f, j: %f", ts.at(i), xs.at(i), vs.at(i), as.at(i),
-        js.at(i));
-    }
+  RCLCPP_DEBUG(rclcpp::get_logger("velocity_planning_utils"), "Calculate stop velocity.");
+  for (unsigned int i = 0; i < ts.size(); ++i) {
+    RCLCPP_DEBUG(
+      rclcpp::get_logger("velocity_planning_utils"), "--- t: %f, x: %f, v: %f, a: %f, j: %f",
+      ts.at(i), xs.at(i), vs.at(i), as.at(i), js.at(i));
   }
 
   constexpr double a_target = 0.0;
@@ -220,7 +217,7 @@ bool calcStopVelocityWithConstantJerkAccLimit(
 
   const double trajectory_length = output_trajectory.length();
   const double start_s = std::clamp(start_distance, 0.0, trajectory_length);
-  if (trajectory_length <= start_s) {
+  if (trajectory_length < start_s) {
     return true;
   }
 
