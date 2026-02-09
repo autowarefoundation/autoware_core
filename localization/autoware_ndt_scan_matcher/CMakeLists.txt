@@ -76,6 +76,10 @@ if(BUILD_TESTING)
     test/test_cases/rotate_covariance_test.cpp
   )
   target_link_libraries(rotate_covariance_test ${PROJECT_NAME})
+
+  ament_auto_add_gtest(map_update_module_test
+    test/test_cases/map_update_module_test.cpp
+  )
 endif()
 
 autoware_ament_auto_package(

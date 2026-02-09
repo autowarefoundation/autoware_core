@@ -285,29 +285,27 @@ bool MapUpdateModule::update_ndt(
     return false;  // No update
   }
 
-  const auto exe_start_time = std::chrono::system_clock::now();
-  // Perform heavy processing outside of the lock scope
+  MapUpdateModule::MapUpdateDiff diff;
 
   // Add pcd
   for (auto & map : maps_to_add) {
     auto cloud = pcl::make_shared<pcl::PointCloud<PointTarget>>();
-
     pcl::fromROSMsg(map.pointcloud, *cloud);
-    ndt.addTarget(cloud, map.cell_id);
+    diff.additions.push_back({cloud, map.cell_id});
   }
 
   // Remove pcd
   for (const std::string & map_id_to_remove : map_ids_to_remove) {
-    ndt.removeTarget(map_id_to_remove);
+    diff.removals.push_back(map_id_to_remove);
   }
 
-  ndt.createVoxelKdtree();
+  const auto result = apply_map_update(ndt, diff);
 
-  const auto exe_end_time = std::chrono::system_clock::now();
-  const auto duration_micro_sec =
-    std::chrono::duration_cast<std::chrono::microseconds>(exe_end_time - exe_start_time).count();
-  const auto exe_time = static_cast<double>(duration_micro_sec) / 1000.0;
-  diagnostics_ptr->add_key_value("map_update_execution_time", exe_time);
+  if (!result.updated) {
+    return false;  // No update
+  }
+
+  diagnostics_ptr->add_key_value("map_update_execution_time", result.execution_time_ms);
   diagnostics_ptr->add_key_value("maps_size_after", ndt.getCurrentMapIDs().size());
   diagnostics_ptr->add_key_value("is_succeed_call_pcd_loader", true);
   return true;  // Updated
