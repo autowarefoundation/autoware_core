@@ -19,13 +19,13 @@
 #include "autoware/trajectory/utils/crop.hpp"
 #include "autoware/trajectory/utils/find_intervals.hpp"
 
+#include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/motion_utils/constants.hpp>
 #include <autoware/motion_utils/resample/resample.hpp>
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
 #include <autoware/trajectory/forward.hpp>
 #include <autoware/trajectory/path_point_with_lane_id.hpp>
 #include <autoware/trajectory/utils/pretty_build.hpp>
-#include <autoware_lanelet2_extension/utility/message_conversion.hpp>
 #include <autoware_lanelet2_extension/utility/utilities.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_utils_math/unit_conversion.hpp>
@@ -68,7 +68,7 @@ std::vector<geometry_msgs::msg::Point> to_geometry_msgs_points(const LineStringT
   geometry_msgs_points.reserve(line_string.size());
   std::transform(
     line_string.begin(), line_string.end(), std::back_inserter(geometry_msgs_points),
-    [](const auto & point) { return lanelet::utils::conversion::toGeomMsgPt(point); });
+    [](const auto & point) { return experimental::lanelet2_utils::to_ros(point); });
   return geometry_msgs_points;
 }
 
@@ -79,7 +79,7 @@ lanelet::BasicPoints3d to_lanelet_points(
   lanelet_points.reserve(geometry_msgs_points.size());
   std::transform(
     geometry_msgs_points.begin(), geometry_msgs_points.end(), std::back_inserter(lanelet_points),
-    [](const auto & point) { return lanelet::utils::conversion::toLaneletPoint(point); });
+    [](const auto & point) { return experimental::lanelet2_utils::from_ros(point); });
   return lanelet_points;
 }
 }  // namespace
@@ -592,7 +592,7 @@ double get_arc_length_on_path(
     target_lanelet_id = it->id();
     const auto lanelet_point_on_centerline =
       lanelet::geometry::interpolatedPointAtDistance(it->centerline(), s_centerline - s);
-    point_on_centerline = lanelet::utils::conversion::toGeomMsgPt(lanelet_point_on_centerline);
+    point_on_centerline = experimental::lanelet2_utils::to_ros(lanelet_point_on_centerline);
     break;
   }
 
@@ -988,7 +988,7 @@ std::optional<lanelet::ConstPoint2d> get_turn_signal_required_end_point(
     lanelet.centerline().begin(), lanelet.centerline().end(), centerline_poses.begin(),
     [](const auto & point) {
       geometry_msgs::msg::Pose pose{};
-      pose.position = lanelet::utils::conversion::toGeomMsgPt(point);
+      pose.position = experimental::lanelet2_utils::to_ros(point);
       return pose;
     });
 
@@ -1029,7 +1029,7 @@ std::optional<lanelet::ConstPoint2d> get_turn_signal_required_end_point(
     });
   if (intervals.empty()) return std::nullopt;
 
-  return lanelet::utils::conversion::toLaneletPoint(
+  return experimental::lanelet2_utils::from_ros(
     centerline->compute(intervals.front().start).position);
 }
 }  // namespace utils

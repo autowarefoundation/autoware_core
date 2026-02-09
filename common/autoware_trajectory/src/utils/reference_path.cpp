@@ -17,8 +17,8 @@
 #include "autoware/trajectory/threshold.hpp"
 #include "autoware/trajectory/utils/pretty_build.hpp"
 
+#include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/lanelet2_utils/topology.hpp>
-#include <autoware_lanelet2_extension/utility/message_conversion.hpp>
 #include <range/v3/to_container.hpp>
 #include <range/v3/view/transform.hpp>
 
@@ -707,7 +707,7 @@ static std::optional<double> compute_s_on_current_route_lanelet(
     route_length_before_current +
     lanelet::geometry::toArcCoordinates(
       lanelet::utils::to2D(current_lanelet.centerline()),
-      lanelet::utils::to2D(lanelet::utils::conversion::toLaneletPoint(ego_pose.position)))
+      lanelet::utils::to2D(lanelet2_utils::from_ros(ego_pose.position)))
       .length;
   return ego_s_current_route;
 }
@@ -860,7 +860,7 @@ build_reference_path(
       autoware_internal_planning_msgs::msg::PathPointWithLaneId point;
       {
         // position
-        point.point.pose.position = lanelet::utils::conversion::toGeomMsgPt(reference_point.point);
+        point.point.pose.position = lanelet2_utils::to_ros(reference_point.point);
       }
       {
         // longitudinal_velocity

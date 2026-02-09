@@ -14,8 +14,8 @@
 
 #include "utils_test.hpp"
 
+#include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/trajectory/interpolator/linear.hpp>
-#include <autoware_lanelet2_extension/utility/message_conversion.hpp>
 
 #include <lanelet2_core/geometry/Lanelet.h>
 
@@ -198,7 +198,7 @@ TEST_F(UtilsTest, getFirstStartEdgeBoundIntersectionArcLength)
     geometry_msgs_points.reserve(line_string.size());
     std::transform(
       line_string.begin(), line_string.end(), std::back_inserter(geometry_msgs_points),
-      [](const auto & point) { return lanelet::utils::conversion::toGeomMsgPt(point); });
+      [](const auto & point) { return experimental::lanelet2_utils::to_ros(point); });
     return geometry_msgs_points;
   };
 
@@ -378,8 +378,8 @@ TEST_F(UtilsTest, buildCroppedTrajectory)
 
   {  // normal case
     const auto result = utils::build_cropped_trajectory(
-      {lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{0.0, 0.0, 0.0}),
-       lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{3.0, 0.0, 0.0})},
+      {experimental::lanelet2_utils::to_ros(lanelet::BasicPoint3d{0.0, 0.0, 0.0}),
+       experimental::lanelet2_utils::to_ros(lanelet::BasicPoint3d{3.0, 0.0, 0.0})},
       1.0, 2.0);
 
     ASSERT_TRUE(result);
@@ -395,8 +395,8 @@ TEST_F(UtilsTest, buildCroppedTrajectory)
 
   {  // start of crop range is negative
     const auto result = utils::build_cropped_trajectory(
-      {lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{0.0, 0.0, 0.0}),
-       lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{3.0, 0.0, 0.0})},
+      {experimental::lanelet2_utils::to_ros(lanelet::BasicPoint3d{0.0, 0.0, 0.0}),
+       experimental::lanelet2_utils::to_ros(lanelet::BasicPoint3d{3.0, 0.0, 0.0})},
       -1.0, 2.0);
 
     ASSERT_FALSE(result);
@@ -404,8 +404,8 @@ TEST_F(UtilsTest, buildCroppedTrajectory)
 
   {  // end of crop range exceeds line string length
     const auto result = utils::build_cropped_trajectory(
-      {lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{0.0, 0.0, 0.0}),
-       lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{3.0, 0.0, 0.0})},
+      {experimental::lanelet2_utils::to_ros(lanelet::BasicPoint3d{0.0, 0.0, 0.0}),
+       experimental::lanelet2_utils::to_ros(lanelet::BasicPoint3d{3.0, 0.0, 0.0})},
       1.0, 4.0);
 
     ASSERT_TRUE(result);
@@ -421,8 +421,8 @@ TEST_F(UtilsTest, buildCroppedTrajectory)
 
   {  // start of crop range is larger than end
     const auto result = utils::build_cropped_trajectory(
-      {lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{0.0, 0.0, 0.0}),
-       lanelet::utils::conversion::toGeomMsgPt(lanelet::BasicPoint3d{3.0, 0.0, 0.0})},
+      {experimental::lanelet2_utils::to_ros(lanelet::BasicPoint3d{0.0, 0.0, 0.0}),
+       experimental::lanelet2_utils::to_ros(lanelet::BasicPoint3d{3.0, 0.0, 0.0})},
       2.0, 1.0);
 
     ASSERT_FALSE(result);
