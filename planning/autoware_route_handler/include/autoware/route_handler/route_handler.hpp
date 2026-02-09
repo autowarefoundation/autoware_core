@@ -311,10 +311,6 @@ public:
     const lanelet::ConstLanelets & lanelet_sequence,
     const size_t piecewise_waypoints_lanelet_sequence_index,
     const bool is_removing_direction_forward) const;
-  std::optional<lanelet::ConstLanelet> getLaneChangeTarget(
-    const lanelet::ConstLanelets & lanelets, const Direction direction = Direction::NONE) const;
-  std::optional<lanelet::ConstLanelet> getLaneChangeTargetExceptPreferredLane(
-    const lanelet::ConstLanelets & lanelets, const Direction direction) const;
   std::optional<lanelet::ConstLanelet> getPullOverTarget(const Pose & goal_pose) const;
   std::optional<lanelet::ConstLanelet> getPullOutStartLane(
     const Pose & pose, const double vehicle_width) const;
