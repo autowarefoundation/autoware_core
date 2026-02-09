@@ -93,8 +93,8 @@ bool TimeDelayKalmanFilter::updateWithDelay(
   }
 
   if (C.cols() != dim_x_) [[unlikely]] {
-    std::cerr << "Dimension mismatch in C matrix: expected " << dim_x_
-              << " columns, got " << C.cols() << "." << std::endl;
+    std::cerr << "Dimension mismatch in C matrix: expected " << dim_x_ << " columns, got "
+              << C.cols() << "." << std::endl;
     return false;
   }
 
@@ -115,8 +115,8 @@ bool TimeDelayKalmanFilter::updateWithDelay(
   }
   if (R.rows() != C.rows()) [[unlikely]] {
     std::cerr << "Dimension mismatch between measurement noise covariance R and "
-              << "observation matrix C: R.rows() = " << R.rows()
-              << ", C.rows() = " << C.rows() << "." << std::endl;
+              << "observation matrix C: R.rows() = " << R.rows() << ", C.rows() = " << C.rows()
+              << "." << std::endl;
     return false;
   }
 
