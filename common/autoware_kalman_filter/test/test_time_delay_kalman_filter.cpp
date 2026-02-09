@@ -265,6 +265,19 @@ TEST_F(TimeDelayKalmanFilterTest, UpdateWithNegativeDelayStep)
   EXPECT_FALSE(td_kf_.updateWithDelay(y, C_, R_, negative_delay_step));
 }
 
+TEST_F(TimeDelayKalmanFilterTest, UpdateWithDimensionMismatchInC)
+{
+  td_kf_.init(x_t_, P_t_, kMaxDelayStep);
+
+  Eigen::MatrixXd y(kDimX, 1);
+  y << 1.0, 2.0, 3.0;
+
+  // C with wrong number of columns (kDimX + 1 instead of kDimX)
+  Eigen::MatrixXd C_wrong = Eigen::MatrixXd::Identity(kDimX, kDimX + 1);
+
+  EXPECT_FALSE(td_kf_.updateWithDelay(y, C_wrong, R_, 0));
+}
+
 TEST_F(TimeDelayKalmanFilterTest, MultiplePredictionsBeforeUpdate)
 {
   td_kf_.init(x_t_, P_t_, kMaxDelayStep);

@@ -60,7 +60,7 @@ where,
 
 ### Extension to Time Delay Kalman Filter
 
-For the Time Delay Kalman filter, it is assumed that there may be a maximum delay of step ($d$) in the measured value. To handle this delay, we extend the state vector to include past states.
+For the Time Delay Kalman filter, it is assumed that there may be a maximum delay of $d$ steps in the measured value (`max_delay_step` $= d$). To handle this delay, we extend the state vector to include past states. The valid delay step range is $0, 1, \ldots, d-1$.
 
 **Augmented State Vector:**
 
@@ -69,7 +69,7 @@ $$
 x_k \\
 x_{k-1} \\
 \vdots \\
-x_{k-d}
+x_{k-d+1}
 \end{bmatrix}
 $$
 

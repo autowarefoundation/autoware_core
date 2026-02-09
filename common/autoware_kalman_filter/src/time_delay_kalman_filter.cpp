@@ -87,13 +87,36 @@ bool TimeDelayKalmanFilter::updateWithDelay(
   const Eigen::MatrixXd & y, const Eigen::MatrixXd & C, const Eigen::MatrixXd & R,
   const int delay_step)
 {
-  if (delay_step < 0 || delay_step >= max_delay_step_) {
+  if (delay_step < 0 || delay_step >= max_delay_step_) [[unlikely]] {
     std::cerr << "Invalid delay step: " << delay_step << ". Update ignored." << std::endl;
     return false;
   }
 
-  if (C.cols() != dim_x_) {
-    std::cerr << "Dimension mismatch in C matrix." << std::endl;
+  if (C.cols() != dim_x_) [[unlikely]] {
+    std::cerr << "Dimension mismatch in C matrix: expected " << dim_x_
+              << " columns, got " << C.cols() << "." << std::endl;
+    return false;
+  }
+
+  if (y.rows() != C.rows()) [[unlikely]] {
+    std::cerr << "Dimension mismatch between measurement vector y and observation matrix C: "
+              << "y.rows() = " << y.rows() << ", C.rows() = " << C.rows() << "." << std::endl;
+    return false;
+  }
+  if (y.cols() != 1) [[unlikely]] {
+    std::cerr << "Measurement vector y must be a column vector: "
+              << "y.cols() = " << y.cols() << "." << std::endl;
+    return false;
+  }
+  if (R.rows() != R.cols()) [[unlikely]] {
+    std::cerr << "Measurement noise covariance R must be square: "
+              << "R.rows() = " << R.rows() << ", R.cols() = " << R.cols() << "." << std::endl;
+    return false;
+  }
+  if (R.rows() != C.rows()) [[unlikely]] {
+    std::cerr << "Dimension mismatch between measurement noise covariance R and "
+              << "observation matrix C: R.rows() = " << R.rows()
+              << ", C.rows() = " << C.rows() << "." << std::endl;
     return false;
   }
 
@@ -124,9 +147,9 @@ bool TimeDelayKalmanFilter::updateWithDelay(
    * Optimization:
    * Due to the sparsity structure C_ex = [0...C...0], this simplifies to:
    * S = C * P_dd * C^T + R
-   * where P_dd is the diagonal block of P corresponding to the delayed state.
+   * where P_dd is the block on the main diagonal of P corresponding to the delayed state.
    *
-   * Note: P_dd can be simplified to a diagonal block instead of a row/column block
+   * Note: We only need this main-diagonal block of P, rather than a full row/column block,
    * because the sparse observation matrix is multiplied from both sides.
    */
   const auto P_dd = P_.block(start_idx, start_idx, dim_x, dim_x);
@@ -165,13 +188,18 @@ bool TimeDelayKalmanFilter::updateWithDelay(
    * We solve for K^T (denoted as K_transposed) and then transpose back.
    */
   Eigen::LLT<Eigen::MatrixXd> lltOfS(S);
-  if (lltOfS.info() != Eigen::Success) {
+  if (lltOfS.info() != Eigen::Success) [[unlikely]] {
     std::cerr << "LLT decomposition failed. S matrix might not be positive definite." << std::endl;
     return false;
   }
 
   const Eigen::MatrixXd K_transposed = lltOfS.solve(P_CT.transpose());
   const Eigen::MatrixXd K = K_transposed.transpose();
+
+  if (K.array().isNaN().any() || K.array().isInf().any()) [[unlikely]] {
+    std::cerr << "Kalman gain contains NaN or Inf. Aborting update." << std::endl;
+    return false;
+  }
 
   // Update state and covariance
   x_.noalias() += K * e;
