@@ -217,8 +217,10 @@ void MapUpdateModule::update_map(
     dummy_ptr.reset();
   }
 
-  secondary_ndt_ptr_.reset(new NdtType);
-  *secondary_ndt_ptr_ = *ndt_ptr_;
+  {
+    std::lock_guard<std::mutex> lock(*ndt_ptr_mutex_);
+    secondary_ndt_ptr_.reset(new NdtType(*ndt_ptr_));
+  }
 
   // Memorize the position of the last update
   last_update_position_mtx_.lock();
