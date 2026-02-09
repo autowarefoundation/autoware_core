@@ -66,26 +66,23 @@ autoware_internal_debug_msgs::msg::Int32Stamped make_int32_stamped(
   return autoware_internal_debug_msgs::build<T>().stamp(stamp).data(data);
 }
 
-std::array<double, 36> rotate_covariance(
+std::array<double, 36> rotate_position_covariance(
   const std::array<double, 36> & src_covariance, const Eigen::Matrix3d & rotation)
 {
-  std::array<double, 36> ret_covariance = src_covariance;
+  using Covariance6d = Eigen::Matrix<double, 6, 6, Eigen::RowMajor>;
 
-  Eigen::Matrix3d src_cov;
-  src_cov << src_covariance[0], src_covariance[1], src_covariance[2], src_covariance[6],
-    src_covariance[7], src_covariance[8], src_covariance[12], src_covariance[13],
-    src_covariance[14];
+  // Covariance layout follows ROS PoseWithCovariance (row-major 6x6: x,y,z,roll,pitch,yaw).
+  // Only the position block (top-left 3x3) needs rotation; orientation and cross terms remain
+  // unchanged.
+  const Eigen::Map<const Covariance6d> src_cov_matrix(src_covariance.data());
 
-  Eigen::Matrix3d ret_cov;
-  ret_cov = rotation * src_cov * rotation.transpose();
+  std::array<double, 36> rotated_covariance = src_covariance;
+  Eigen::Map<Covariance6d> rotated_cov_matrix(rotated_covariance.data());
 
-  for (Eigen::Index i = 0; i < 3; ++i) {
-    ret_covariance[i] = ret_cov(0, i);
-    ret_covariance[i + 6] = ret_cov(1, i);
-    ret_covariance[i + 12] = ret_cov(2, i);
-  }
+  rotated_cov_matrix.topLeftCorner<3, 3>() =
+    rotation * src_cov_matrix.topLeftCorner<3, 3>() * rotation.transpose();
 
-  return ret_covariance;
+  return rotated_covariance;
 }
 
 NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
@@ -590,7 +587,7 @@ bool NDTScanMatcher::callback_sensor_points_main(
     map_to_base_link_quat.normalized().toRotationMatrix();
 
   std::array<double, 36> ndt_covariance =
-    rotate_covariance(param_.covariance.output_pose_covariance, map_to_base_link_rotation);
+    rotate_position_covariance(param_.covariance.output_pose_covariance, map_to_base_link_rotation);
   if (
     param_.covariance.covariance_estimation.covariance_estimation_type !=
     CovarianceEstimationType::FIXED_VALUE) {

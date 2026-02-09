@@ -72,6 +72,10 @@ if(BUILD_TESTING)
     test/test_cases/once_initialize_at_out_of_map_then_initialize_correctly.cpp
     TIMEOUT "300"
   )
+  ament_auto_add_gtest(rotate_covariance_test
+    test/test_cases/rotate_covariance_test.cpp
+  )
+  target_link_libraries(rotate_covariance_test ${PROJECT_NAME})
 endif()
 
 autoware_ament_auto_package(
