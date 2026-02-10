@@ -603,10 +603,9 @@ bool NDTScanMatcher::callback_sensor_points_main(
     const double default_cov_yy = param_.covariance.output_pose_covariance[7];
     const Eigen::Matrix2d estimated_covariance_2d_adj = pclomp::adjust_diagonal_covariance(
       estimated_covariance_2d_scaled, ndt_result.pose, default_cov_xx, default_cov_yy);
-    ndt_covariance[0 + 6 * 0] = estimated_covariance_2d_adj(0, 0);
-    ndt_covariance[1 + 6 * 1] = estimated_covariance_2d_adj(1, 1);
-    ndt_covariance[1 + 6 * 0] = estimated_covariance_2d_adj(1, 0);
-    ndt_covariance[0 + 6 * 1] = estimated_covariance_2d_adj(0, 1);
+    Eigen::Map<Eigen::Matrix<double, 6, 6, Eigen::RowMajor>> ndt_cov_matrix(
+      ndt_covariance.data());
+    ndt_cov_matrix.topLeftCorner<2, 2>() = estimated_covariance_2d_adj;
   }
 
   // check distance_initial_to_result
