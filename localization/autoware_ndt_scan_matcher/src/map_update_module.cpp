@@ -90,20 +90,24 @@ bool MapUpdateModule::should_update_map(
   const geometry_msgs::msg::Point & position,
   std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr)
 {
-  last_update_position_mtx_.lock();
+  double last_x = 0.0;
+  double last_y = 0.0;
+  {
+    // Guard last_update_position_ while reading it for distance computation.
+    std::lock_guard<std::mutex> lock(last_update_position_mtx_);
 
-  if (last_update_position_ == std::nullopt) {
-    last_update_position_mtx_.unlock();
+    if (last_update_position_ == std::nullopt) {
+      need_rebuild_ = true;
+      return true;
+    }
 
-    need_rebuild_ = true;
-    return true;
+    last_x = last_update_position_.value().x;
+    last_y = last_update_position_.value().y;
   }
 
-  const double dx = position.x - last_update_position_.value().x;
-  const double dy = position.y - last_update_position_.value().y;
+  const double dx = position.x - last_x;
+  const double dy = position.y - last_y;
   const double distance = std::hypot(dx, dy);
-
-  last_update_position_mtx_.unlock();
 
   // check distance_last_update_position_to_current_position
   diagnostics_ptr->add_key_value("distance_last_update_position_to_current_position", distance);
@@ -123,18 +127,22 @@ bool MapUpdateModule::should_update_map(
 
 bool MapUpdateModule::out_of_map_range(const geometry_msgs::msg::Point & position)
 {
-  last_update_position_mtx_.lock();
+  double last_x = 0.0;
+  double last_y = 0.0;
+  {
+    // Guard last_update_position_ while checking map range.
+    std::lock_guard<std::mutex> lock(last_update_position_mtx_);
 
-  if (last_update_position_ == std::nullopt) {
-    last_update_position_mtx_.unlock();
+    if (last_update_position_ == std::nullopt) {
+      return true;
+    }
 
-    return true;
+    last_x = last_update_position_.value().x;
+    last_y = last_update_position_.value().y;
   }
 
-  const double dx = position.x - last_update_position_.value().x;
-  const double dy = position.y - last_update_position_.value().y;
-
-  last_update_position_mtx_.unlock();
+  const double dx = position.x - last_x;
+  const double dy = position.y - last_y;
 
   const double distance = std::hypot(dx, dy);
 
@@ -151,41 +159,43 @@ void MapUpdateModule::update_map(
   // If the current position is super far from the previous loading position,
   // lock and rebuild ndt_ptr_
   if (need_rebuild_) {
-    ndt_ptr_mutex_.lock();
+    {
+      // Exclusive rebuild of the primary NDT instance.
+      std::unique_lock<std::mutex> lock(ndt_ptr_mutex_);
 
-    auto param = ndt_ptr_->getParams();
-    auto input_source = ndt_ptr_->getInputSource();
+      auto param = ndt_ptr_->getParams();
+      auto input_source = ndt_ptr_->getInputSource();
 
-    ndt_ptr_.reset(new NdtType);
+      ndt_ptr_.reset(new NdtType);
 
-    ndt_ptr_->setParams(param);
-    if (input_source != nullptr) {
-      ndt_ptr_->setInputSource(input_source);
+      ndt_ptr_->setParams(param);
+      if (input_source != nullptr) {
+        ndt_ptr_->setInputSource(input_source);
+      }
+
+      const bool updated = update_ndt(position, *ndt_ptr_, diagnostics_ptr);
+
+      // check is_updated_map
+      diagnostics_ptr->add_key_value("is_updated_map", updated);
+      if (!updated) {
+        std::stringstream message;
+        message
+          << "update_ndt failed. If this happens with initial position estimation, make sure that"
+          << "(1) the initial position matches the pcd map and (2) the map_loader is working "
+             "properly.";
+        diagnostics_ptr->update_level_and_message(
+          diagnostic_msgs::msg::DiagnosticStatus::ERROR, message.str());
+        RCLCPP_ERROR_STREAM_THROTTLE(logger_, *clock_, 1000, message.str());
+
+        {
+          std::lock_guard<std::mutex> pos_lock(last_update_position_mtx_);
+          last_update_position_ = position;
+        }
+
+        return;
+      }
     }
 
-    const bool updated = update_ndt(position, *ndt_ptr_, diagnostics_ptr);
-
-    // check is_updated_map
-    diagnostics_ptr->add_key_value("is_updated_map", updated);
-    if (!updated) {
-      std::stringstream message;
-      message
-        << "update_ndt failed. If this happens with initial position estimation, make sure that"
-        << "(1) the initial position matches the pcd map and (2) the map_loader is working "
-           "properly.";
-      diagnostics_ptr->update_level_and_message(
-        diagnostic_msgs::msg::DiagnosticStatus::ERROR, message.str());
-      RCLCPP_ERROR_STREAM_THROTTLE(logger_, *clock_, 1000, message.str());
-      ndt_ptr_mutex_.unlock();
-
-      last_update_position_mtx_.lock();
-      last_update_position_ = position;
-      last_update_position_mtx_.unlock();
-
-      return;
-    }
-
-    ndt_ptr_mutex_.unlock();
     need_rebuild_ = false;
 
   } else {
@@ -199,34 +209,42 @@ void MapUpdateModule::update_map(
     // check is_updated_map
     diagnostics_ptr->add_key_value("is_updated_map", updated);
     if (!updated) {
-      last_update_position_mtx_.lock();
-      last_update_position_ = position;
-      last_update_position_mtx_.unlock();
+      {
+        // Record the attempt position while safely owning the position mutex.
+        std::lock_guard<std::mutex> lock(last_update_position_mtx_);
+        last_update_position_ = position;
+      }
 
       return;
     }
 
-    ndt_ptr_mutex_.lock();
-    auto dummy_ptr = ndt_ptr_;
-    auto input_source = ndt_ptr_->getInputSource();
-    ndt_ptr_ = secondary_ndt_ptr_;
-    if (input_source != nullptr) {
-      ndt_ptr_->setInputSource(input_source);
+    std::shared_ptr<NdtType> dummy_ptr;
+    {
+      // Swap primary/secondary NDT under lock to keep shared state consistent.
+      std::lock_guard<std::mutex> lock(ndt_ptr_mutex_);
+      dummy_ptr = ndt_ptr_;
+      auto input_source = ndt_ptr_->getInputSource();
+      ndt_ptr_ = secondary_ndt_ptr_;
+      if (input_source != nullptr) {
+        ndt_ptr_->setInputSource(input_source);
+      }
     }
-    ndt_ptr_mutex_.unlock();
 
+    // Release the old pointer outside the lock scope.
     dummy_ptr.reset();
   }
 
   {
+    // Refresh the secondary copy while holding the shared NDT mutex.
     std::lock_guard<std::mutex> lock(ndt_ptr_mutex_);
     secondary_ndt_ptr_.reset(new NdtType(*ndt_ptr_));
   }
 
   // Memorize the position of the last update
-  last_update_position_mtx_.lock();
-  last_update_position_ = position;
-  last_update_position_mtx_.unlock();
+  {
+    std::lock_guard<std::mutex> lock(last_update_position_mtx_);
+    last_update_position_ = position;
+  }
 
   // Publish the new ndt maps
   publish_partial_pcd_map();
