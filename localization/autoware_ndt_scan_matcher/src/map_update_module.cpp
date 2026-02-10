@@ -256,11 +256,11 @@ bool MapUpdateModule::update_ndt(
   }
 
   // send a request to map_loader
-  auto result{pcd_loader_client_->async_send_request(
+  auto future_result{pcd_loader_client_->async_send_request(
     request,
     [](rclcpp::Client<autoware_map_msgs::srv::GetDifferentialPointCloudMap>::SharedFuture) {})};
 
-  std::future_status status = result.wait_for(std::chrono::seconds(0));
+  std::future_status status = future_result.wait_for(std::chrono::seconds(0));
   while (status != std::future_status::ready) {
     // check is_succeed_call_pcd_loader
     if (!rclcpp::ok()) {
@@ -272,12 +272,12 @@ bool MapUpdateModule::update_ndt(
         diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
       return false;  // No update
     }
-    status = result.wait_for(std::chrono::seconds(1));
+    status = future_result.wait_for(std::chrono::seconds(1));
   }
   diagnostics_ptr->add_key_value("is_succeed_call_pcd_loader", true);
 
-  auto & maps_to_add = result.get()->new_pointcloud_with_ids;
-  auto & map_ids_to_remove = result.get()->ids_to_remove;
+  auto & maps_to_add = future_result.get()->new_pointcloud_with_ids;
+  auto & map_ids_to_remove = future_result.get()->ids_to_remove;
 
   diagnostics_ptr->add_key_value("maps_to_add_size", maps_to_add.size());
   diagnostics_ptr->add_key_value("maps_to_remove_size", map_ids_to_remove.size());
@@ -300,13 +300,13 @@ bool MapUpdateModule::update_ndt(
     diff.removals.push_back(map_id_to_remove);
   }
 
-  const auto result = apply_map_update(ndt, diff);
+  const auto map_update_result = apply_map_update(ndt, diff);
 
-  if (!result.updated) {
+  if (!map_update_result.updated) {
     return false;  // No update
   }
 
-  diagnostics_ptr->add_key_value("map_update_execution_time", result.execution_time_ms);
+  diagnostics_ptr->add_key_value("map_update_execution_time", map_update_result.execution_time_ms);
   diagnostics_ptr->add_key_value("maps_size_after", ndt.getCurrentMapIDs().size());
   diagnostics_ptr->add_key_value("is_succeed_call_pcd_loader", true);
   return true;  // Updated
