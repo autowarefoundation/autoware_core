@@ -15,7 +15,6 @@
 #include <autoware/ndt_scan_matcher/map_update_module.hpp>
 
 #include <gtest/gtest.h>
-#include <gmock/gmock.h>
 
 #include <memory>
 #include <string>
@@ -52,8 +51,10 @@ TEST(MapUpdateModuleTest, AppliesAddsAndRemovals)
   EXPECT_EQ(1U, result.added);
   EXPECT_EQ(1U, result.removed);
   EXPECT_TRUE(ndt.kdtree_built);
-  EXPECT_THAT(ndt.added_ids, ::testing::ElementsAre("cell_a"));
-  EXPECT_THAT(ndt.removed_ids, ::testing::ElementsAre("cell_b"));
+  ASSERT_EQ(1U, ndt.added_ids.size());
+  EXPECT_EQ("cell_a", ndt.added_ids.front());
+  ASSERT_EQ(1U, ndt.removed_ids.size());
+  EXPECT_EQ("cell_b", ndt.removed_ids.front());
 }
 
 TEST(MapUpdateModuleTest, NoChangesSkipsKdtree)
