@@ -90,10 +90,14 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
   tf2_broadcaster_(*this),
   tf2_buffer_(this->get_clock()),
   tf2_listener_(tf2_buffer_),
-  ndt_ptr_(new NormalDistributionsTransform),
+  ndt_resource_(std::make_shared<NdtResource>()),
+  ndt_ptr_(ndt_resource_->ndt_ptr),
+  ndt_ptr_mtx_(ndt_resource_->mutex),
   is_activated_(false),
   param_(this)
 {
+  ndt_ptr_ = std::make_shared<NormalDistributionsTransform>();
+
   timer_callback_group_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
   rclcpp::CallbackGroup::SharedPtr initial_pose_callback_group =
     this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
@@ -207,7 +211,7 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
     param_.validation.initial_pose_distance_tolerance_m);
 
   map_update_module_ =
-    std::make_unique<MapUpdateModule>(this, &ndt_ptr_mtx_, ndt_ptr_, param_.dynamic_map_loading);
+    std::make_unique<MapUpdateModule>(this, ndt_resource_, param_.dynamic_map_loading);
 
   diagnostics_scan_points_ = std::make_unique<DiagnosticsInterface>(this, "scan_matching_status");
   diagnostics_initial_pose_ =

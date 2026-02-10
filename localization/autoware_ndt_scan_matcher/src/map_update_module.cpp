@@ -21,10 +21,11 @@ namespace autoware::ndt_scan_matcher
 {
 
 MapUpdateModule::MapUpdateModule(
-  rclcpp::Node * node, std::mutex * ndt_ptr_mutex, NdtPtrType & ndt_ptr,
+  rclcpp::Node * node, const std::shared_ptr<NdtResource> & ndt_resource,
   HyperParameters::DynamicMapLoading param)
-: ndt_ptr_(ndt_ptr),
-  ndt_ptr_mutex_(ndt_ptr_mutex),
+: ndt_resource_(ndt_resource),
+  ndt_ptr_(ndt_resource_->ndt_ptr),
+  ndt_ptr_mutex_(ndt_resource_->mutex),
   logger_(node->get_logger()),
   clock_(node->get_clock()),
   param_(param)
@@ -150,7 +151,7 @@ void MapUpdateModule::update_map(
   // If the current position is super far from the previous loading position,
   // lock and rebuild ndt_ptr_
   if (need_rebuild_) {
-    ndt_ptr_mutex_->lock();
+    ndt_ptr_mutex_.lock();
 
     auto param = ndt_ptr_->getParams();
     auto input_source = ndt_ptr_->getInputSource();
@@ -175,7 +176,7 @@ void MapUpdateModule::update_map(
       diagnostics_ptr->update_level_and_message(
         diagnostic_msgs::msg::DiagnosticStatus::ERROR, message.str());
       RCLCPP_ERROR_STREAM_THROTTLE(logger_, *clock_, 1000, message.str());
-      ndt_ptr_mutex_->unlock();
+      ndt_ptr_mutex_.unlock();
 
       last_update_position_mtx_.lock();
       last_update_position_ = position;
@@ -184,7 +185,7 @@ void MapUpdateModule::update_map(
       return;
     }
 
-    ndt_ptr_mutex_->unlock();
+    ndt_ptr_mutex_.unlock();
     need_rebuild_ = false;
 
   } else {
@@ -205,20 +206,20 @@ void MapUpdateModule::update_map(
       return;
     }
 
-    ndt_ptr_mutex_->lock();
+    ndt_ptr_mutex_.lock();
     auto dummy_ptr = ndt_ptr_;
     auto input_source = ndt_ptr_->getInputSource();
     ndt_ptr_ = secondary_ndt_ptr_;
     if (input_source != nullptr) {
       ndt_ptr_->setInputSource(input_source);
     }
-    ndt_ptr_mutex_->unlock();
+    ndt_ptr_mutex_.unlock();
 
     dummy_ptr.reset();
   }
 
   {
-    std::lock_guard<std::mutex> lock(*ndt_ptr_mutex_);
+    std::lock_guard<std::mutex> lock(ndt_ptr_mutex_);
     secondary_ndt_ptr_.reset(new NdtType(*ndt_ptr_));
   }
 

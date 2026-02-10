@@ -66,6 +66,14 @@ struct MapUpdateResult
   double execution_time_ms{0.0};
 };
 
+// Shared NDT resource so callers and the map updater coordinate on a single mutex/instance.
+template <typename NdtT>
+struct SharedNdtResource
+{
+  std::shared_ptr<NdtT> ndt_ptr;
+  std::mutex mutex;
+};
+
 class MapUpdateModule
 {
   using PointSource = pcl::PointXYZ;
@@ -73,6 +81,7 @@ class MapUpdateModule
   using NdtType = pclomp::MultiGridNormalDistributionsTransform<PointSource, PointTarget>;
   using NdtPtrType = std::shared_ptr<NdtType>;
   using TargetCloudPtr = typename pcl::PointCloud<PointTarget>::Ptr;
+  using NdtResource = SharedNdtResource<NdtType>;
 
 public:
   using MapUpdateDiff = MapUpdateDiffTemplate<TargetCloudPtr>;
@@ -105,7 +114,7 @@ public:
   }
 
   MapUpdateModule(
-    rclcpp::Node * node, std::mutex * ndt_ptr_mutex, NdtPtrType & ndt_ptr,
+    rclcpp::Node * node, const std::shared_ptr<NdtResource> & ndt_resource,
     HyperParameters::DynamicMapLoading param);
 
   bool out_of_map_range(const geometry_msgs::msg::Point & position);
@@ -135,8 +144,9 @@ private:
   rclcpp::Client<autoware_map_msgs::srv::GetDifferentialPointCloudMap>::SharedPtr
     pcd_loader_client_;
 
+  std::shared_ptr<NdtResource> ndt_resource_;
   NdtPtrType & ndt_ptr_;
-  std::mutex * ndt_ptr_mutex_;
+  std::mutex & ndt_ptr_mutex_;
   rclcpp::Logger logger_;
   rclcpp::Clock::SharedPtr clock_;
 
