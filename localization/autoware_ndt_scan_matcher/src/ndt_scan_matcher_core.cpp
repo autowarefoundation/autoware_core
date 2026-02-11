@@ -15,6 +15,7 @@
 #include <autoware/localization_util/matrix_type.hpp>
 #include <autoware/localization_util/tree_structured_parzen_estimator.hpp>
 #include <autoware/localization_util/util_func.hpp>
+#include <autoware/ndt_scan_matcher/covariance_estimation.hpp>
 #include <autoware/ndt_scan_matcher/ndt_omp/estimate_covariance.hpp>
 #include <autoware/ndt_scan_matcher/ndt_scan_matcher_core.hpp>
 #include <autoware/ndt_scan_matcher/particle.hpp>
@@ -861,54 +862,19 @@ Eigen::Matrix2d NDTScanMatcher::estimate_covariance(
   const pclomp::NdtResult & ndt_result, const Eigen::Matrix4f & initial_pose_matrix,
   const rclcpp::Time & sensor_ros_time)
 {
-  geometry_msgs::msg::PoseArray multi_ndt_result_msg;
-  geometry_msgs::msg::PoseArray multi_initial_pose_msg;
-  multi_ndt_result_msg.header.stamp = sensor_ros_time;
-  multi_ndt_result_msg.header.frame_id = param_.frame.map_frame;
-  multi_initial_pose_msg.header.stamp = sensor_ros_time;
-  multi_initial_pose_msg.header.frame_id = param_.frame.map_frame;
-  multi_ndt_result_msg.poses.push_back(matrix4f_to_pose(ndt_result.pose));
-  multi_initial_pose_msg.poses.push_back(matrix4f_to_pose(initial_pose_matrix));
+  const auto cov_result = compute_covariance_estimate(
+    ndt_result, initial_pose_matrix, param_.covariance, ndt_ptr_, sensor_ros_time,
+    param_.frame.map_frame);
 
-  if (
-    param_.covariance.covariance_estimation.covariance_estimation_type ==
-    CovarianceEstimationType::LAPLACE_APPROXIMATION) {
-    return pclomp::estimate_xy_covariance_by_laplace_approximation(ndt_result.hessian);
-  } else if (
-    param_.covariance.covariance_estimation.covariance_estimation_type ==
-    CovarianceEstimationType::MULTI_NDT) {
-    const std::vector<Eigen::Matrix4f> poses_to_search = pclomp::propose_poses_to_search(
-      ndt_result, param_.covariance.covariance_estimation.initial_pose_offset_model_x,
-      param_.covariance.covariance_estimation.initial_pose_offset_model_y);
-    const pclomp::ResultOfMultiNdtCovarianceEstimation result_of_multi_ndt_covariance_estimation =
-      estimate_xy_covariance_by_multi_ndt(ndt_result, ndt_ptr_, poses_to_search);
-    for (size_t i = 0; i < result_of_multi_ndt_covariance_estimation.ndt_initial_poses.size();
-         i++) {
-      multi_ndt_result_msg.poses.push_back(
-        matrix4f_to_pose(result_of_multi_ndt_covariance_estimation.ndt_results[i].pose));
-      multi_initial_pose_msg.poses.push_back(
-        matrix4f_to_pose(result_of_multi_ndt_covariance_estimation.ndt_initial_poses[i]));
-    }
-    multi_ndt_pose_pub_->publish(multi_ndt_result_msg);
-    multi_initial_pose_pub_->publish(multi_initial_pose_msg);
-    return result_of_multi_ndt_covariance_estimation.covariance;
-  } else if (
-    param_.covariance.covariance_estimation.covariance_estimation_type ==
-    CovarianceEstimationType::MULTI_NDT_SCORE) {
-    const std::vector<Eigen::Matrix4f> poses_to_search = pclomp::propose_poses_to_search(
-      ndt_result, param_.covariance.covariance_estimation.initial_pose_offset_model_x,
-      param_.covariance.covariance_estimation.initial_pose_offset_model_y);
-    const pclomp::ResultOfMultiNdtCovarianceEstimation
-      result_of_multi_ndt_score_covariance_estimation = estimate_xy_covariance_by_multi_ndt_score(
-        ndt_result, ndt_ptr_, poses_to_search, param_.covariance.covariance_estimation.temperature);
-    for (const auto & sub_initial_pose_matrix : poses_to_search) {
-      multi_initial_pose_msg.poses.push_back(matrix4f_to_pose(sub_initial_pose_matrix));
-    }
-    multi_initial_pose_pub_->publish(multi_initial_pose_msg);
-    return result_of_multi_ndt_score_covariance_estimation.covariance;
-  } else {
-    return Eigen::Matrix2d::Identity() * param_.covariance.output_pose_covariance[0 + 6 * 0];
+  const auto cov_type = param_.covariance.covariance_estimation.covariance_estimation_type;
+  if (cov_type == CovarianceEstimationType::MULTI_NDT) {
+    multi_ndt_pose_pub_->publish(cov_result.ndt_result_poses);
+    multi_initial_pose_pub_->publish(cov_result.ndt_initial_poses);
+  } else if (cov_type == CovarianceEstimationType::MULTI_NDT_SCORE) {
+    multi_initial_pose_pub_->publish(cov_result.ndt_initial_poses);
   }
+
+  return cov_result.covariance;
 }
 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr NDTScanMatcher::visualize_point_score(

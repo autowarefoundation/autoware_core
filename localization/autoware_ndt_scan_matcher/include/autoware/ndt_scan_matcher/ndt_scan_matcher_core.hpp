@@ -18,6 +18,7 @@
 #define FMT_HEADER_ONLY
 
 #include "hyper_parameters.hpp"
+#include "covariance_estimation.hpp"
 #include "map_update_module.hpp"
 #include "ndt_omp/multigrid_ndt_omp.h"
 

@@ -43,6 +43,7 @@ else()
 endif()
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
+  src/covariance_estimation.cpp
   src/map_update_module.cpp
   src/ndt_scan_matcher_core.cpp
   src/particle.cpp
@@ -76,6 +77,11 @@ if(BUILD_TESTING)
     test/test_cases/rotate_covariance_test.cpp
   )
   target_link_libraries(rotate_covariance_test ${PROJECT_NAME})
+
+  ament_auto_add_gtest(covariance_estimation_test
+    test/test_cases/covariance_estimation_test.cpp
+  )
+  target_link_libraries(covariance_estimation_test ${PROJECT_NAME})
 
   ament_auto_add_gtest(map_update_module_test
     test/test_cases/map_update_module_test.cpp
