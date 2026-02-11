@@ -664,8 +664,7 @@ std::optional<NDTScanMatcher::ScanMatchingOutput> NDTScanMatcher::run_scan_match
     const double default_cov_yy = param_.covariance.output_pose_covariance[7];
     const Eigen::Matrix2d estimated_covariance_2d_adj = pclomp::adjust_diagonal_covariance(
       estimated_covariance_2d_scaled, ndt_result.pose, default_cov_xx, default_cov_yy);
-    Eigen::Map<Eigen::Matrix<double, 6, 6, Eigen::RowMajor>> ndt_cov_matrix(
-      ndt_covariance.data());
+    Eigen::Map<Eigen::Matrix<double, 6, 6, Eigen::RowMajor>> ndt_cov_matrix(ndt_covariance.data());
     ndt_cov_matrix.topLeftCorner<2, 2>() = estimated_covariance_2d_adj;
   }
 
@@ -745,11 +744,9 @@ void NDTScanMatcher::publish_scan_matching_outputs(
   exe_time_pub_->publish(make_float32_stamped(sensor_ros_time, output.exe_time_ms));
   transform_probability_pub_->publish(
     make_float32_stamped(sensor_ros_time, output.ndt_result.transform_probability));
-  nearest_voxel_transformation_likelihood_pub_->publish(
-    make_float32_stamped(
-      sensor_ros_time, output.ndt_result.nearest_voxel_transformation_likelihood));
-  iteration_num_pub_->publish(
-    make_int32_stamped(sensor_ros_time, output.ndt_result.iteration_num));
+  nearest_voxel_transformation_likelihood_pub_->publish(make_float32_stamped(
+    sensor_ros_time, output.ndt_result.nearest_voxel_transformation_likelihood));
+  iteration_num_pub_->publish(make_int32_stamped(sensor_ros_time, output.ndt_result.iteration_num));
   publish_tf(sensor_ros_time, output.result_pose_msg);
   publish_pose(sensor_ros_time, output.result_pose_msg, output.ndt_covariance, output.is_converged);
   publish_marker(sensor_ros_time, output.transformation_msg_array);
@@ -782,9 +779,8 @@ void NDTScanMatcher::publish_scan_matching_outputs(
 
     no_ground_transform_probability_pub_->publish(
       make_float32_stamped(sensor_ros_time, output.no_ground_transform_probability));
-    no_ground_nearest_voxel_transformation_likelihood_pub_->publish(
-      make_float32_stamped(
-        sensor_ros_time, output.no_ground_nearest_voxel_transformation_likelihood));
+    no_ground_nearest_voxel_transformation_likelihood_pub_->publish(make_float32_stamped(
+      sensor_ros_time, output.no_ground_nearest_voxel_transformation_likelihood));
   }
 }
 

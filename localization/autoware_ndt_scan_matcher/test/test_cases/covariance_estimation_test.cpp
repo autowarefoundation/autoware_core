@@ -13,11 +13,10 @@
 // limitations under the License.
 
 #include <autoware/ndt_scan_matcher/covariance_estimation.hpp>
-
 #include <autoware/ndt_scan_matcher/ndt_omp/estimate_covariance.hpp>
+#include <rclcpp/rclcpp.hpp>
 
 #include <gtest/gtest.h>
-#include <rclcpp/rclcpp.hpp>
 
 namespace autoware::ndt_scan_matcher
 {
@@ -36,8 +35,8 @@ TEST(CovarianceEstimation, LaplaceApproximationMatchesPclomp)
   const Eigen::Matrix4f initial_pose_matrix = Eigen::Matrix4f::Identity();
   const rclcpp::Time stamp{0, 0, RCL_ROS_TIME};
 
-  const auto result = compute_covariance_estimate(
-    ndt_result, initial_pose_matrix, param, ndt_ptr, stamp, "map");
+  const auto result =
+    compute_covariance_estimate(ndt_result, initial_pose_matrix, param, ndt_ptr, stamp, "map");
 
   const auto expected = pclomp::estimate_xy_covariance_by_laplace_approximation(ndt_result.hessian);
 
@@ -61,8 +60,8 @@ TEST(CovarianceEstimation, FixedValueUsesConfiguredDiagonal)
   const Eigen::Matrix4f initial_pose_matrix = Eigen::Matrix4f::Identity();
   const rclcpp::Time stamp{0, 0, RCL_ROS_TIME};
 
-  const auto result = compute_covariance_estimate(
-    ndt_result, initial_pose_matrix, param, ndt_ptr, stamp, "map");
+  const auto result =
+    compute_covariance_estimate(ndt_result, initial_pose_matrix, param, ndt_ptr, stamp, "map");
 
   const Eigen::Matrix2d expected = Eigen::Matrix2d::Identity() * kDiag;
   EXPECT_TRUE(result.covariance.isApprox(expected));

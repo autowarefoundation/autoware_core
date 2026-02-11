@@ -108,7 +108,8 @@ public:
     }
 
     const auto end = std::chrono::steady_clock::now();
-    const double execution_ms = std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(end - start).count();
+    const double execution_ms =
+      std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(end - start).count();
 
     return MapUpdateResult{added, removed, updated, execution_ms};
   }

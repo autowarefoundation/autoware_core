@@ -43,15 +43,9 @@ private:
 class PreprocessSensorPointsTest : public TestNDTScanMatcher
 {
 protected:
-  static void SetUpTestSuite()
-  {
-    rclcpp::init(0, nullptr);
-  }
+  static void SetUpTestSuite() { rclcpp::init(0, nullptr); }
 
-  static void TearDownTestSuite()
-  {
-    rclcpp::shutdown();
-  }
+  static void TearDownTestSuite() { rclcpp::shutdown(); }
 
   void SetUp() override
   {

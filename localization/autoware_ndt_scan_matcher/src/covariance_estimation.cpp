@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <autoware/ndt_scan_matcher/covariance_estimation.hpp>
-
-#include <autoware/ndt_scan_matcher/ndt_omp/estimate_covariance.hpp>
 #include <autoware/localization_util/util_func.hpp>
+#include <autoware/ndt_scan_matcher/covariance_estimation.hpp>
+#include <autoware/ndt_scan_matcher/ndt_omp/estimate_covariance.hpp>
 
 namespace autoware::ndt_scan_matcher
 {
@@ -39,7 +38,8 @@ CovarianceComputationResult compute_covariance_estimate(
 
   switch (param.covariance_estimation.covariance_estimation_type) {
     case CovarianceEstimationType::LAPLACE_APPROXIMATION: {
-      result.covariance = pclomp::estimate_xy_covariance_by_laplace_approximation(ndt_result.hessian);
+      result.covariance =
+        pclomp::estimate_xy_covariance_by_laplace_approximation(ndt_result.hessian);
       break;
     }
     case CovarianceEstimationType::MULTI_NDT: {

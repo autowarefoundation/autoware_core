@@ -14,10 +14,11 @@
 
 #include <Eigen/Core>
 #include <Eigen/Geometry>
-#include <array>
-#include <cmath>
 
 #include <gtest/gtest.h>
+
+#include <array>
+#include <cmath>
 
 namespace autoware::ndt_scan_matcher
 {

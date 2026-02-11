@@ -17,12 +17,12 @@
 
 #include "hyper_parameters.hpp"
 
-#include <autoware/ndt_scan_matcher/ndt_omp/multigrid_ndt_omp.h>
+#include <Eigen/Core>
 #include <autoware_utils_geometry/geometry.hpp>
 
 #include <geometry_msgs/msg/pose_array.hpp>
 
-#include <Eigen/Core>
+#include <autoware/ndt_scan_matcher/ndt_omp/multigrid_ndt_omp.h>
 
 namespace autoware::ndt_scan_matcher
 {
