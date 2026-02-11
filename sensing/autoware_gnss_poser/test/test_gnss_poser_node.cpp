@@ -404,6 +404,10 @@ TEST_F(GNSSPoserTest, TestOrientationSources)
     executor_thread_.join();
   }
   gnss_poser_node_.reset();
+  executor_.reset();
+
+  // Recreate executor
+  executor_ = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
 
   // Create node without using GNSS-INS orientation
   rclcpp::NodeOptions options;
@@ -475,6 +479,10 @@ TEST_F(GNSSPoserTest, TestPositionBufferMethods)
     executor_thread_.join();
   }
   gnss_poser_node_.reset();
+  executor_.reset();
+
+  // Recreate executor
+  executor_ = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
 
   // Create node using position buffer
   rclcpp::NodeOptions options;
@@ -591,6 +599,10 @@ TEST_F(GNSSPoserTest, TestMedianPosition)
     executor_thread_.join();
   }
   gnss_poser_node_.reset();
+  executor_.reset();
+
+  // Recreate executor
+  executor_ = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
 
   // Create node using median method
   rclcpp::NodeOptions options;
