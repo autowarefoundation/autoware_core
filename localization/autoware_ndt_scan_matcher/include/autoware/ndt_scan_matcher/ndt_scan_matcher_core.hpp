@@ -221,6 +221,13 @@ private:
   HyperParameters param_;
 };
 
+namespace detail
+{
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr colorize_point_scores(
+  const pcl::PointCloud<pcl::PointXYZI> & nvs_points_in_map_ptr_i, const float lower_nvs,
+  const float upper_nvs);
+}  // namespace detail
+
 }  // namespace autoware::ndt_scan_matcher
 
 #endif  // AUTOWARE__NDT_SCAN_MATCHER__NDT_SCAN_MATCHER_CORE_HPP_

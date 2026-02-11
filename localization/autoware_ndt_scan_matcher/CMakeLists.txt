@@ -86,6 +86,12 @@ if(BUILD_TESTING)
   ament_auto_add_gtest(map_update_module_test
     test/test_cases/map_update_module_test.cpp
   )
+  target_link_libraries(map_update_module_test ${PROJECT_NAME})
+
+  ament_auto_add_gtest(visualize_point_score_test
+    test/test_cases/visualize_point_score_test.cpp
+  )
+  target_link_libraries(visualize_point_score_test ${PROJECT_NAME})
 endif()
 
 autoware_ament_auto_package(

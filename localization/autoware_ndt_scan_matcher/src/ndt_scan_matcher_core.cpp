@@ -877,13 +877,10 @@ Eigen::Matrix2d NDTScanMatcher::estimate_covariance(
   return cov_result.covariance;
 }
 
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr NDTScanMatcher::visualize_point_score(
-  const pcl::shared_ptr<pcl::PointCloud<PointSource>> & sensor_points_in_map_ptr,
-  const float & lower_nvs, const float & upper_nvs)
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr detail::colorize_point_scores(
+  const pcl::PointCloud<pcl::PointXYZI> & nvs_points_in_map_ptr_i, const float lower_nvs,
+  const float upper_nvs)
 {
-  pcl::PointCloud<pcl::PointXYZI> nvs_points_in_map_ptr_i;
-  nvs_points_in_map_ptr_i =
-    ndt_ptr_->calculateNearestVoxelScoreEachPoint(*sensor_points_in_map_ptr);
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr nvs_points_in_map_ptr_rgb{
     new pcl::PointCloud<pcl::PointXYZRGB>};
 
@@ -901,6 +898,16 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr NDTScanMatcher::visualize_point_score(
     nvs_points_in_map_ptr_rgb->points.push_back(point);
   }
   return nvs_points_in_map_ptr_rgb;
+}
+
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr NDTScanMatcher::visualize_point_score(
+  const pcl::shared_ptr<pcl::PointCloud<PointSource>> & sensor_points_in_map_ptr,
+  const float & lower_nvs, const float & upper_nvs)
+{
+  const pcl::PointCloud<pcl::PointXYZI> nvs_points_in_map_ptr_i =
+    ndt_ptr_->calculateNearestVoxelScoreEachPoint(*sensor_points_in_map_ptr);
+
+  return detail::colorize_point_scores(nvs_points_in_map_ptr_i, lower_nvs, upper_nvs);
 }
 
 void NDTScanMatcher::add_regularization_pose(const rclcpp::Time & sensor_ros_time)
