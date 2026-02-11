@@ -92,6 +92,11 @@ if(BUILD_TESTING)
     test/test_cases/visualize_point_score_test.cpp
   )
   target_link_libraries(visualize_point_score_test ${PROJECT_NAME})
+
+  ament_auto_add_gtest(preprocess_sensor_points_test
+    test/test_cases/preprocess_sensor_points_test.cpp
+  )
+  target_link_libraries(preprocess_sensor_points_test ${PROJECT_NAME})
 endif()
 
 autoware_ament_auto_package(

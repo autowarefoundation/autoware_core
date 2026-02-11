@@ -143,6 +143,20 @@ private:
     const pclomp::NdtResult & ndt_result, const Eigen::Matrix4f & initial_pose_matrix,
     const rclcpp::Time & sensor_ros_time);
 
+  struct PreprocessResult;
+  struct ScanMatchingOutput;
+
+  // Unit test helper to exercise private preprocessing and scan-matching steps.
+  friend class NDTScanMatcherTestHelper;
+  std::optional<PreprocessResult> preprocess_sensor_points(
+    sensor_msgs::msg::PointCloud2::ConstSharedPtr sensor_points_msg_in_sensor_frame,
+    const std::chrono::system_clock::time_point & exe_start_time);
+  std::optional<ScanMatchingOutput> run_scan_matching(
+    const PreprocessResult & preprocess_result,
+    const std::chrono::system_clock::time_point & exe_start_time);
+  void publish_scan_matching_outputs(
+    const ScanMatchingOutput & output, const rclcpp::Time & sensor_ros_time);
+
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr visualize_point_score(
     const pcl::shared_ptr<pcl::PointCloud<PointSource>> & sensor_points_in_map_ptr,
     const float & lower_nvs, const float & upper_nvs);
