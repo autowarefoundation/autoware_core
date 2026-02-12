@@ -225,8 +225,7 @@ MultiGridNormalDistributionsTransform<
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 template <typename PointSource, typename PointTarget>
 void MultiGridNormalDistributionsTransform<PointSource, PointTarget>::align(
-  PointCloudSource & output, const Eigen::Matrix4f & guess,
-  const PointCloudSourceConstPtr & source)
+  PointCloudSource & output, const Eigen::Matrix4f & guess, const PointCloudSourceConstPtr & source)
 {
   output = *source;
   final_transformation_ = transformation_ = previous_transformation_ = Eigen::Matrix4f::Identity();
@@ -237,8 +236,7 @@ void MultiGridNormalDistributionsTransform<PointSource, PointTarget>::align(
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 template <typename PointSource, typename PointTarget>
 void MultiGridNormalDistributionsTransform<PointSource, PointTarget>::computeTransformation(
-  PointCloudSource & output, const Eigen::Matrix4f & guess,
-  const PointCloudSourceConstPtr & source)
+  PointCloudSource & output, const Eigen::Matrix4f & guess, const PointCloudSourceConstPtr & source)
 {
   nr_iterations_ = 0;
   converged_ = false;
