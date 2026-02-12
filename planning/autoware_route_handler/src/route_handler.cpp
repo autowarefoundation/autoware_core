@@ -20,7 +20,6 @@
 #include <autoware/lanelet2_utils/nn_search.hpp>
 #include <autoware/lanelet2_utils/topology.hpp>
 #include <autoware_lanelet2_extension/io/autoware_osm_parser.hpp>
-#include <autoware_lanelet2_extension/utility/message_conversion.hpp>
 #include <autoware_lanelet2_extension/utility/query.hpp>
 #include <autoware_lanelet2_extension/utility/route_checker.hpp>
 #include <autoware_lanelet2_extension/utility/utilities.hpp>
@@ -209,8 +208,7 @@ lanelet::ArcCoordinates calcArcCoordinates(
   const lanelet::ConstLanelet & lanelet, const geometry_msgs::msg::Point & point)
 {
   return lanelet::geometry::toArcCoordinates(
-    to2D(lanelet.centerline()),
-    to2D(lanelet::utils::conversion::toLaneletPoint(point)).basicPoint());
+    to2D(lanelet.centerline()), to2D(experimental::lanelet2_utils::from_ros(point)).basicPoint());
 }
 
 std::string convertLaneletsIdToString(const lanelet::ConstLanelets & lanelets)
@@ -724,7 +722,7 @@ lanelet::ConstLanelets RouteHandler::getLaneletSequence(
   Pose current_pose{};
   current_pose.orientation.w = 1;
   if (!lanelet.centerline().empty()) {
-    current_pose.position = lanelet::utils::conversion::toGeomMsgPt(lanelet.centerline().front());
+    current_pose.position = experimental::lanelet2_utils::to_ros(lanelet.centerline().front());
   }
 
   lanelet::ConstLanelets lanelet_sequence;
@@ -992,7 +990,7 @@ lanelet::ConstLanelets RouteHandler::get_shoulder_lanelet_sequence(
   Pose current_pose{};
   current_pose.orientation.w = 1;
   if (!lanelet.centerline().empty()) {
-    current_pose.position = lanelet::utils::conversion::toGeomMsgPt(lanelet.centerline().front());
+    current_pose.position = experimental::lanelet2_utils::to_ros(lanelet.centerline().front());
   }
 
   lanelet::ConstLanelets lanelet_sequence_forward =
@@ -1679,7 +1677,6 @@ PathWithLaneId RouteHandler::getCenterLinePath(
   bool use_exact) const
 {
   using lanelet::utils::to2D;
-  using lanelet::utils::conversion::toLaneletPoint;
 
   // 1. calculate reference points by lanelets' centerline
   // NOTE: This vector aligns the vector lanelet_sequence.
@@ -1690,7 +1687,7 @@ PathWithLaneId RouteHandler::getCenterLinePath(
     piecewise_ref_points_vec.push_back(std::vector<ReferencePoint>{});
     for (const auto & center_point : centerline) {
       piecewise_ref_points_vec.back().push_back(
-        ReferencePoint{false, lanelet::utils::conversion::toGeomMsgPt(center_point)});
+        ReferencePoint{false, experimental::lanelet2_utils::to_ros(center_point)});
     }
   }
 
@@ -1863,7 +1860,7 @@ std::vector<Waypoints> RouteHandler::calcWaypointsVector(
     const auto waypoints_id = lanelet.attribute("waypoints").asId().value();
     for (const auto & waypoint : lanelet_map_ptr_->lineStringLayer.get(waypoints_id)) {
       piecewise_waypoints.piecewise_waypoints.push_back(
-        lanelet::utils::conversion::toGeomMsgPt(waypoint));
+        experimental::lanelet2_utils::to_ros(waypoint));
     }
     if (piecewise_waypoints.piecewise_waypoints.empty()) {
       continue;
