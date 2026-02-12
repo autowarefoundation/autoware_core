@@ -233,7 +233,7 @@ public:
 
   inline void unsetRegularizationPose() { regularization_pose_ = boost::none; }
 
-  NdtResult getResult()
+  NdtResult getResult() const
   {
     NdtResult ndt_result;
     ndt_result.pose = getFinalTransformation();
@@ -413,7 +413,7 @@ protected:
    * \param[in] mu the step length, constant \f$ \mu \f$ in Equation 1.1 [More, Thuente 1994]
    * \return sufficient decrease value
    */
-  inline double auxiliaryFunction_PsiMT(
+  static inline double auxiliaryFunction_PsiMT(
     double a, double f_a, double f_0, double g_0, double mu = 1.e-4)
   {
     return (f_a - f_0 - mu * g_0 * a);
@@ -426,7 +426,7 @@ protected:
    * \param[in] mu the step length, constant \f$ \mu \f$ in Equation 1.1 [More, Thuente 1994]
    * \return sufficient decrease derivative
    */
-  inline double auxiliaryFunction_dPsiMT(double g_a, double g_0, double mu = 1.e-4)
+  static inline double auxiliaryFunction_dPsiMT(double g_a, double g_0, double mu = 1.e-4)
   {
     return (g_a - mu * g_0);
   }
