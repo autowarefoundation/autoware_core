@@ -222,6 +222,15 @@ lanelet::ConstLineString3d get_right_bound_with_offset(
 lanelet::ConstLineString3d get_left_bound_with_offset(
   const lanelet::ConstLanelet & lanelet_obj, const double offset, const double resolution = 5.0);
 
+/**
+ * @brief check if the query pose is inside lanelet or within given radius.
+ * @param[in] lanelet input lanelet
+ * @param[in] pose query pose
+ * @param[in] radius given radius
+ */
+bool is_in_lanelet(
+  const lanelet::ConstLanelet & lanelet, const geometry_msgs::msg::Pose & pose,
+  const double radius);
 }  // namespace autoware::experimental::lanelet2_utils
 
 #endif  // AUTOWARE__LANELET2_UTILS__GEOMETRY_HPP_

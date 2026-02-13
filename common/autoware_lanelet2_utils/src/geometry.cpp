@@ -624,4 +624,18 @@ lanelet::ConstLineString3d get_left_bound_with_offset(
   return *left_bound_opt;
 }
 
+bool is_in_lanelet(
+  const lanelet::ConstLanelet & lanelet, const geometry_msgs::msg::Pose & pose, const double radius)
+{
+  constexpr double epsilon = 1.0e-9;
+  const double abs_radius = radius >= 0 ? radius : std::fabs(radius);
+  if (radius < 0) {
+    RCLCPP_WARN(
+      rclcpp::get_logger("autoware_lanelet_utility"),
+      "Input radius is negative, applying absolute.");
+  }
+  const lanelet::BasicPoint2d p(pose.position.x, pose.position.y);
+  return boost::geometry::distance(p, lanelet.polygon2d().basicPolygon()) < abs_radius + epsilon;
+}
+
 }  // namespace autoware::experimental::lanelet2_utils
