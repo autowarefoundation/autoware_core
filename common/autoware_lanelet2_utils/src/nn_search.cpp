@@ -27,6 +27,7 @@
 #include <lanelet2_core/geometry/Lanelet.h>
 #include <lanelet2_core/primitives/Lanelet.h>
 
+#include <algorithm>
 #include <limits>
 #include <optional>
 #include <string>
@@ -46,7 +47,7 @@ namespace
  */
 double delta_z_from_range(double z, const std::pair<double, double> & z_min_max)
 {
-  const auto [z_min, z_max] = z_min_max;
+  const auto & [z_min, z_max] = z_min_max;
   if (z < z_min) {
     return z_min - z;
   }
@@ -98,7 +99,7 @@ std::vector<std::pair<double, lanelet::ConstLanelet>> find_nearest(
     search_pose.position.x + r_range, search_pose.position.y + r_range};
   const lanelet::BasicPoint3d query3d = from_ros(search_pose);
   for (const auto & llt : layer.search(lanelet::BoundingBox2d{min_pt, max_pt})) {
-    if (z_range <= 0.0) {
+    if (z_range == 0.0) {
       candidates.push_back(llt);
       continue;
     }
