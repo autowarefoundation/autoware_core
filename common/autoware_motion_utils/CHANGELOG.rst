@@ -13,6 +13,23 @@ Changelog for package autoware_motion_utils
 * refactor(autoware_motion_utils): rewrite using modern C++ without API breakage (`#348 <https://github.com/autowarefoundation/autoware_core/issues/348>`_)
 * Contributors: Arjun Jagdish Ram, Yutaka Kondo
 
+Forthcoming
+-----------
+* Merge remote-tracking branch 'origin/main' into humble
+* fix(autoware_motion_utils): stop point detection while resampling trajectory (`#808 <https://github.com/autowarefoundation/autoware_core/issues/808>`_)
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Shumpei Wakabayashi <42209144+shmpwk@users.noreply.github.com>
+* chore(autoware_motion_utils, autoware_trajectory, autoware_interpolation): add maintainers for packages (`#821 <https://github.com/autowarefoundation/autoware_core/issues/821>`_)
+  * add maintainers for autoware_interpolation
+  * add maintainers for autoware_motion_utils
+  * add maintainers for autoware_trajectory
+  ---------
+  Co-authored-by: Satoshi OTA <44889564+satoshi-ota@users.noreply.github.com>
+* chore(autoware_motion_utils): add a maintainer (`#820 <https://github.com/autowarefoundation/autoware_core/issues/820>`_)
+* chore(autoware_motion_utils): remove boost (`#646 <https://github.com/autowarefoundation/autoware_core/issues/646>`_)
+  remove boost from cmake and package.xml
+* Contributors: Felix F Xu, Junya Sasaki, Mehmet Emin BAŞOĞLU, Ryohsuke Mitsudome, mkquda
+
 1.6.0 (2025-12-30)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

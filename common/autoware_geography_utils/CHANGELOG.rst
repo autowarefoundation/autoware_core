@@ -14,6 +14,9 @@ Changelog for package autoware_geography_utils
   ---------
 * Contributors: Yamato Ando, Yutaka Kondo
 
+Forthcoming
+-----------
+
 1.6.0 (2025-12-30)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

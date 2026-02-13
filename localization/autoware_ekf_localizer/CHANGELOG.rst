@@ -5,6 +5,23 @@ Changelog for package autoware_ekf_localizer
 1.1.0 (2025-05-01)
 ------------------
 
+Forthcoming
+-----------
+* Merge remote-tracking branch 'origin/main' into humble
+* fix(ekf_localizer): queue pop on ekf localizer (`#679 <https://github.com/autowarefoundation/autoware_core/issues/679>`_)
+  * feat: separate max_age and max_queue_size in AgedObjectQueue
+  When multiple pose sources (e.g., GNSS + NDT) are active, the queue
+  can legitimately grow beyond max_age. Separating these concerns allows:
+  1. max_age controls how many times each element is reused
+  2. max_queue_size monitors overall queue health without enforcing hard limits
+  * fix: warn and pop if queue is exceeded
+  * refactor: make less if statement
+  * chore: fix unclear comments
+  * doc: update schema.json
+  * doc: modify comments
+  ---------
+* Contributors: Motz, Ryohsuke Mitsudome
+
 1.6.0 (2025-12-30)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

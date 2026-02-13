@@ -5,6 +5,9 @@ Changelog for package autoware_objects_of_interest_marker_interface
 1.1.0 (2025-05-01)
 ------------------
 
+Forthcoming
+-----------
+
 1.6.0 (2025-12-30)
 ------------------
 

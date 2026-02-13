@@ -5,6 +5,14 @@ Changelog for package autoware_mission_planner
 1.1.0 (2025-05-01)
 ------------------
 
+Forthcoming
+-----------
+* Merge remote-tracking branch 'origin/main' into humble
+* refactor(planning): deprecate lanelet_extension geometry conversion function (`#834 <https://github.com/autowarefoundation/autoware_core/issues/834>`_)
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* refactor(planning, common): replace lanelet2_extension function (`#796 <https://github.com/autowarefoundation/autoware_core/issues/796>`_)
+* Contributors: Mamoru Sobue, Ryohsuke Mitsudome
+
 1.6.0 (2025-12-30)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

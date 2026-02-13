@@ -2,6 +2,9 @@
 Changelog for package autoware_adapi_specs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 1.6.0 (2025-12-30)
 ------------------
 

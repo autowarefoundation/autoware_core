@@ -2,6 +2,9 @@
 Changelog for package autoware_qos_utils
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 1.6.0 (2025-12-30)
 ------------------
 

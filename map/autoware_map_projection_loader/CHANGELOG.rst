@@ -9,6 +9,9 @@ Changelog for package autoware_map_projection_loader
 * feat(map_projection_loader): add scale_factor and remove altitude (`#340 <https://github.com/autowarefoundation/autoware_core/issues/340>`_)
 * Contributors: Takagi, Isamu, Yamato Ando
 
+Forthcoming
+-----------
+
 1.6.0 (2025-12-30)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

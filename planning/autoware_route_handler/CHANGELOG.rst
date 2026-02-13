@@ -11,6 +11,30 @@ Changelog for package autoware_route_handler
   Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
 * Contributors: Mert Çolak
 
+Forthcoming
+-----------
+* Merge remote-tracking branch 'origin/main' into humble
+* refactor(planning): deprecate lanelet_extension geometry conversion function (`#834 <https://github.com/autowarefoundation/autoware_core/issues/834>`_)
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* feat(lanelet2_extension): port some lanelet2_extension query functions (2) (`#809 <https://github.com/autowarefoundation/autoware_core/issues/809>`_)
+* feat(lanelet2_extension): port some lanelet2_extension query functions  (`#790 <https://github.com/autowarefoundation/autoware_core/issues/790>`_)
+  * port left/right/all_neighbor_lanelets and their tests
+  * replace getAllNeighbors* with ported functions
+  * add neighbors order description and verify in test
+  * add ported functions to API table
+  * add example code snippet
+  * Remove optional from return value
+  Assume one lanelet is always in return value (itself)
+  * change usage of left/right_lanelets (always check access)
+  * fix README for example code snippet
+  * fix cppcheck-differential
+  * fix README description
+  ---------
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+  Co-authored-by: Mamoru Sobue <hilo.soblin@gmail.com>
+* refactor(planning, common): replace lanelet2_extension function (`#796 <https://github.com/autowarefoundation/autoware_core/issues/796>`_)
+* Contributors: Mamoru Sobue, Ryohsuke Mitsudome, Sarun MUKDAPITAK
+
 1.6.0 (2025-12-30)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

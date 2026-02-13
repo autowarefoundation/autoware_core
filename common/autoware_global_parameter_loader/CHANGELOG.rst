@@ -5,6 +5,9 @@ Changelog for package autoware_global_parameter_loader
 1.1.0 (2025-05-01)
 ------------------
 
+Forthcoming
+-----------
+
 1.6.0 (2025-12-30)
 ------------------
 

@@ -5,6 +5,14 @@ Changelog for package autoware_motion_velocity_obstacle_stop_module
 1.1.0 (2025-05-01)
 ------------------
 
+Forthcoming
+-----------
+* Merge remote-tracking branch 'origin/main' into humble
+* feat(obstacle_stop): add height and size filter (`#822 <https://github.com/autowarefoundation/autoware_core/issues/822>`_)
+* feat(motion_velocity_planner): publish debug trajectory for each module (`#761 <https://github.com/autowarefoundation/autoware_core/issues/761>`_)
+* docs(obstacle_stop): revise documentation (`#793 <https://github.com/autowarefoundation/autoware_core/issues/793>`_)
+* Contributors: Maxime CLEMENT, Ryohsuke Mitsudome, Yuki TAKAGI, Zulfaqar Azmi
+
 1.6.0 (2025-12-30)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
