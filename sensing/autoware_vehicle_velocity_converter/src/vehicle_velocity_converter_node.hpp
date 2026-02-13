@@ -1,4 +1,5 @@
 // Copyright 2021 TierIV
+// Copyright 2025 The Autoware Contributors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,39 +13,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef VEHICLE_VELOCITY_CONVERTER_HPP_
-#define VEHICLE_VELOCITY_CONVERTER_HPP_
+#ifndef VEHICLE_VELOCITY_CONVERTER_NODE_HPP_
+#define VEHICLE_VELOCITY_CONVERTER_NODE_HPP_
+
+#include "autoware/vehicle_velocity_converter/vehicle_velocity_converter.hpp"
 
 #include <rclcpp/rclcpp.hpp>
 
 #include <autoware_vehicle_msgs/msg/velocity_report.hpp>
-#include <geometry_msgs/msg/twist_stamped.hpp>
 #include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
 
-#include <array>
+#include <memory>
 #include <string>
-#include <vector>
 
 namespace autoware::vehicle_velocity_converter
 {
-class VehicleVelocityConverter : public rclcpp::Node
+
+class VehicleVelocityConverterNode : public rclcpp::Node
 {
 public:
-  explicit VehicleVelocityConverter(const rclcpp::NodeOptions & options);
+  explicit VehicleVelocityConverterNode(const rclcpp::NodeOptions & options);
 
 private:
   void callback_velocity_report(const autoware_vehicle_msgs::msg::VelocityReport::SharedPtr msg);
 
   rclcpp::Subscription<autoware_vehicle_msgs::msg::VelocityReport>::SharedPtr vehicle_report_sub_;
-
   rclcpp::Publisher<geometry_msgs::msg::TwistWithCovarianceStamped>::SharedPtr
     twist_with_covariance_pub_;
 
-  std::string frame_id_;
-  double stddev_vx_;
-  double stddev_wz_;
-  double speed_scale_factor_;
+  std::unique_ptr<VehicleVelocityConverter> converter_;
 };
+
 }  // namespace autoware::vehicle_velocity_converter
 
-#endif  // VEHICLE_VELOCITY_CONVERTER_HPP_
+#endif  // VEHICLE_VELOCITY_CONVERTER_NODE_HPP_
