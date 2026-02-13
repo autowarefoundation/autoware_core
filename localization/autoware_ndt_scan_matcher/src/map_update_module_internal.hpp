@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__NDT_SCAN_MATCHER__MAP_UPDATE_MODULE_INTERNAL_HPP_
-#define AUTOWARE__NDT_SCAN_MATCHER__MAP_UPDATE_MODULE_INTERNAL_HPP_
+#ifndef MAP_UPDATE_MODULE_INTERNAL_HPP_
+#define MAP_UPDATE_MODULE_INTERNAL_HPP_
+
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
 
 #include <chrono>
 #include <string>
 #include <vector>
-
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
 
 namespace autoware::ndt_scan_matcher::detail
 {
@@ -79,4 +79,4 @@ MapUpdateResult apply_map_update(NdtT & ndt, const DiffT & diff)
 
 }  // namespace autoware::ndt_scan_matcher::detail
 
-#endif  // AUTOWARE__NDT_SCAN_MATCHER__MAP_UPDATE_MODULE_INTERNAL_HPP_
+#endif  // MAP_UPDATE_MODULE_INTERNAL_HPP_

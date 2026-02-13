@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__NDT_SCAN_MATCHER__VISUALIZE_POINT_SCORE_HPP_
-#define AUTOWARE__NDT_SCAN_MATCHER__VISUALIZE_POINT_SCORE_HPP_
+#ifndef VISUALIZE_POINT_SCORE_HPP_
+#define VISUALIZE_POINT_SCORE_HPP_
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -22,8 +22,9 @@ namespace autoware::ndt_scan_matcher::detail
 {
 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr colorize_point_scores(
-  const pcl::PointCloud<pcl::PointXYZI> & nvs_points_in_map_ptr_i, float lower_nvs, float upper_nvs);
+  const pcl::PointCloud<pcl::PointXYZI> & nvs_points_in_map_ptr_i, float lower_nvs,
+  float upper_nvs);
 
 }  // namespace autoware::ndt_scan_matcher::detail
 
-#endif  // AUTOWARE__NDT_SCAN_MATCHER__VISUALIZE_POINT_SCORE_HPP_
+#endif  // VISUALIZE_POINT_SCORE_HPP_
