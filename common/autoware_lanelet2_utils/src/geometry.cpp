@@ -370,6 +370,45 @@ lanelet::ArcCoordinates get_arc_coordinates(
   return arc_coordinates;
 }
 
+lanelet::ArcCoordinates get_arc_coordinates_on_ego_centerline(
+  const lanelet::ConstLanelets & lanelets, const geometry_msgs::msg::Pose & pose,
+  const lanelet::LaneletMapConstPtr & lanelet_map_ptr)
+{
+  // Handle empty Input (Return default ArcCoordinates)
+  if (lanelets.empty()) {
+    RCLCPP_WARN(
+      rclcpp::get_logger("autoware_lanelet2_utility"),
+      "Input lanelets is empty. Returning default ArcCoordinates (length=0, distance=0).");
+    return lanelet::ArcCoordinates();
+  }
+
+  lanelet::ConstPoints3d concatenated_points;
+  for (const auto & llt : lanelets) {
+    lanelet::ConstLineString3d centerline;
+    if (llt.hasAttribute("waypoints")) {
+      RCLCPP_INFO(rclcpp::get_logger("autoware_lanelet2_utility"), "Using waypoint centerline.");
+      const auto waypoints_id = llt.attribute("waypoints").asId().value();
+      centerline = lanelet_map_ptr->lineStringLayer.get(waypoints_id);
+    } else {
+      centerline = llt.centerline();
+    }
+
+    for (const auto & pt : centerline) {
+      concatenated_points.push_back(pt);
+    }
+  }
+
+  const auto full_centerline = *create_safe_linestring(concatenated_points);
+  const auto full_centerline_2d = lanelet::utils::to2D(full_centerline);
+
+  const auto lanelet_point = from_ros(pose);
+
+  lanelet::ArcCoordinates arc_coordinates = lanelet::geometry::toArcCoordinates(
+    full_centerline_2d, lanelet::utils::to2D(lanelet_point).basicPoint());
+
+  return arc_coordinates;
+}
+
 double get_lateral_distance_to_centerline(
   const lanelet::ConstLanelet & lanelet, const geometry_msgs::msg::Pose & pose)
 {
@@ -489,7 +528,8 @@ std::optional<lanelet::ConstLanelet> get_dirty_expanded_lanelet(
   } catch (const lanelet::GeometryError & e) {
     RCLCPP_ERROR_THROTTLE(
       rclcpp::get_logger("autoware_lanelet2_utility"), clock, 1000,
-      "Fail to expand lanelet. output may be undesired. Lanelet points interval in map data could "
+      "Fail to expand lanelet. output may be undesired. Lanelet points interval in map data "
+      "could "
       "be too narrow.");
   }
 

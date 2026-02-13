@@ -140,6 +140,25 @@ lanelet::ArcCoordinates get_arc_coordinates(
   const lanelet::ConstLanelets & lanelets, const geometry_msgs::msg::Pose & pose);
 
 /**
+ * @brief return ArcCoordinates of the search pose on lanelet sequence
+ * @details return {length, distance}
+ * length: arc-length of pose projection point on the lanelet sequence centerline
+ * distance: lateral distance from centerline to pose (left is positive, right is negative)
+ * This function uses the centerline for the ego to follow.
+ * - when the `use_waypoints` in the autoware_map_loader is true,
+ *   - the waypoints tag in the lanelet2::LaneletMapPtr is used instead of the centerline.
+ * - when the `use_waypoints` in the autoware_map_loader is false,
+ *   - the centerline in the lanelet2::LaneletMapPtr is used.
+ * @param[in] lanelet_sequence vector of ConstLanelet
+ * @param[in] pose search pose
+ * @param[in] lanelet_map_ptr LaneletMap
+ * @return ArcCoordinates of the pose on lanelet sequence
+ */
+lanelet::ArcCoordinates get_arc_coordinates_on_ego_centerline(
+  const lanelet::ConstLanelets & lanelets, const geometry_msgs::msg::Pose & pose,
+  const lanelet::LaneletMapConstPtr & lanelet_map_ptr);
+
+/**
  * @brief return distance of search pose to centerline (distance in ArcCoordinates)
  * @param[in] lanelet ConstLanelet
  * @param[in] pose search pose
