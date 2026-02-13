@@ -436,8 +436,8 @@ std::optional<lanelet::ConstLanelet> get_dirty_expanded_lanelet(
   if (left_offset < 0 || right_offset > 0) {
     RCLCPP_WARN(
       rclcpp::get_logger("autoware_lanelet2_utility"),
-      "Invalid offsets: left_offset must be >= 0, right_offset must be <= 0");
-    return std::nullopt;
+      "Invalid offsets: left_offset must be >= 0, right_offset must be <= 0. Bound is narrowed "
+      "instead of expanding.");
   }
   const auto copy_z = [](const lanelet::ConstLineString3d & from, lanelet::Points3d & to) {
     lanelet::Points3d new_to = to;
@@ -521,8 +521,8 @@ std::optional<lanelet::ConstLanelets> get_dirty_expanded_lanelets(
   if (left_offset < 0 || right_offset > 0) {
     RCLCPP_WARN(
       rclcpp::get_logger("autoware_lanelet2_utility"),
-      "Invalid offsets: left_offset must be >= 0, right_offset must be <= 0");
-    return std::nullopt;
+      "Invalid offsets: left_offset must be >= 0, right_offset must be <= 0. Bound is narrowed "
+      "instead of expanding.");
   }
   lanelet::ConstLanelets lanelets;
   for (const auto & llt : lanelet_obj) {
