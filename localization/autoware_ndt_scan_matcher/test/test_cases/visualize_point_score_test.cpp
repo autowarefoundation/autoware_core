@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #include <autoware/localization_util/util_func.hpp>
-#include <autoware/ndt_scan_matcher/ndt_scan_matcher_core.hpp>
+
+#include "visualize_point_score.hpp"
 
 #include <gtest/gtest.h>
+
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
@@ -43,8 +45,8 @@ TEST(VisualizePointScoreTest, ConvertsIntensityToColor)
     EXPECT_FLOAT_EQ(colored->points[i].y, scores.points[i].y);
     EXPECT_FLOAT_EQ(colored->points[i].z, scores.points[i].z);
 
-    const auto expected_color =
-      exchange_color_crc((scores.points[i].intensity - lower_nvs) / range);
+    const auto expected_color = exchange_color_crc(
+      (scores.points[i].intensity - lower_nvs) / range);
     EXPECT_EQ(colored->points[i].r, static_cast<uint8_t>(expected_color.r * 255));
     EXPECT_EQ(colored->points[i].g, static_cast<uint8_t>(expected_color.g * 255));
     EXPECT_EQ(colored->points[i].b, static_cast<uint8_t>(expected_color.b * 255));

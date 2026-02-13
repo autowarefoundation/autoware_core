@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__NDT_SCAN_MATCHER__COVARIANCE_ESTIMATION_HPP_
-#define AUTOWARE__NDT_SCAN_MATCHER__COVARIANCE_ESTIMATION_HPP_
+#ifndef AUTOWARE__NDT_SCAN_MATCHER__COVARIANCE_ESTIMATION_INTERNAL_HPP_
+#define AUTOWARE__NDT_SCAN_MATCHER__COVARIANCE_ESTIMATION_INTERNAL_HPP_
 
 #include "hyper_parameters.hpp"
 
@@ -46,4 +46,4 @@ CovarianceComputationResult compute_covariance_estimate(
 
 }  // namespace autoware::ndt_scan_matcher
 
-#endif  // AUTOWARE__NDT_SCAN_MATCHER__COVARIANCE_ESTIMATION_HPP_
+#endif  // AUTOWARE__NDT_SCAN_MATCHER__COVARIANCE_ESTIMATION_INTERNAL_HPP_

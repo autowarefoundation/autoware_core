@@ -14,6 +14,8 @@
 
 #include <autoware/ndt_scan_matcher/map_update_module.hpp>
 
+#include "map_update_module_internal.hpp"
+
 #include <memory>
 #include <string>
 
@@ -304,7 +306,7 @@ bool MapUpdateModule::update_ndt(
     return false;  // No update
   }
 
-  MapUpdateModule::MapUpdateDiff diff;
+  detail::MapUpdateDiff diff;
 
   // Add pcd
   for (auto & map : maps_to_add) {
@@ -318,7 +320,7 @@ bool MapUpdateModule::update_ndt(
     diff.removals.push_back(map_id_to_remove);
   }
 
-  const auto map_update_result = apply_map_update(ndt, diff);
+  const auto map_update_result = detail::apply_map_update(ndt, diff);
 
   if (!map_update_result.updated) {
     return false;  // No update

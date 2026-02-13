@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <autoware/ndt_scan_matcher/map_update_module.hpp>
+#include "map_update_module_internal.hpp"
 
 #include <gtest/gtest.h>
 
@@ -36,7 +36,7 @@ struct FakeNdt
 };
 }  // namespace
 
-using Diff = autoware::ndt_scan_matcher::MapUpdateDiffTemplate<FakeNdt::CloudPtr>;
+using Diff = autoware::ndt_scan_matcher::detail::MapUpdateDiffTemplate<FakeNdt::CloudPtr>;
 
 TEST(MapUpdateModuleTest, AppliesAddsAndRemovals)
 {
@@ -45,7 +45,7 @@ TEST(MapUpdateModuleTest, AppliesAddsAndRemovals)
   diff.additions.push_back({std::make_shared<int>(1), "cell_a"});
   diff.removals.push_back("cell_b");
 
-  const auto result = autoware::ndt_scan_matcher::MapUpdateModule::apply_map_update(ndt, diff);
+  const auto result = autoware::ndt_scan_matcher::detail::apply_map_update(ndt, diff);
 
   EXPECT_TRUE(result.updated);
   EXPECT_EQ(1U, result.added);
@@ -62,7 +62,7 @@ TEST(MapUpdateModuleTest, NoChangesSkipsKdtree)
   FakeNdt ndt;
   Diff diff;
 
-  const auto result = autoware::ndt_scan_matcher::MapUpdateModule::apply_map_update(ndt, diff);
+  const auto result = autoware::ndt_scan_matcher::detail::apply_map_update(ndt, diff);
 
   EXPECT_FALSE(result.updated);
   EXPECT_EQ(0U, result.added);
@@ -76,7 +76,7 @@ TEST(MapUpdateModuleTest, AddsOnlyBuildsKdtree)
   Diff diff;
   diff.additions.push_back({std::make_shared<int>(42), "cell_x"});
 
-  const auto result = autoware::ndt_scan_matcher::MapUpdateModule::apply_map_update(ndt, diff);
+  const auto result = autoware::ndt_scan_matcher::detail::apply_map_update(ndt, diff);
 
   EXPECT_TRUE(result.updated);
   EXPECT_EQ(1U, result.added);
