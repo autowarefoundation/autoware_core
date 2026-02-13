@@ -40,9 +40,10 @@ namespace autoware::experimental::lanelet2_utils
  * @param search_pose Pose to search for.
  * @param count Maximum number of nearest lanelets to return. This value must be > 0.
  * @param r_range Maximum radius to search in meters. This value must be > 0.
- * @param z_range Maximum height difference to search in meters. This value must be > 0.
- * @return std::vector<std::pair<double, lanelet::Lanelet>> Vector of nearest lanelets and their
- * distances.
+ * @param z_range Maximum height difference to search in meters. This value must be > 0; if z_range
+ * <= 0.0, no height-based filtering is applied.
+ * @return std::vector<std::pair<double, lanelet::ConstLanelet>> Vector of nearest lanelets and
+ * their distances.
  */
 std::vector<std::pair<double, lanelet::ConstLanelet>> find_nearest(
   const lanelet::LaneletLayer & layer, const geometry_msgs::msg::Pose & search_pose, size_t count,
@@ -59,8 +60,8 @@ std::vector<std::pair<double, lanelet::ConstLanelet>> find_nearest(
  * @param layer LaneletLayer to search from.
  * @param search_pose Pose to search for.
  * @param count Maximum number of nearest lanelets to return. This value must be > 0.
- * @return std::vector<std::pair<double, lanelet::Lanelet>> Vector of nearest lanelets and their
- * distances.
+ * @return std::vector<std::pair<double, lanelet::ConstLanelet>> Vector of nearest lanelets and
+ * their distances.
  */
 inline std::vector<std::pair<double, lanelet::ConstLanelet>> find_nearest(
   const lanelet::LaneletLayer & layer, const geometry_msgs::msg::Pose & search_pose, size_t count)
