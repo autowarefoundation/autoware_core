@@ -22,6 +22,7 @@
 
 #include <autoware_utils_logging/logger_level_configure.hpp>
 #include <autoware_utils_system/stop_watch.hpp>
+#include <diagnostic_updater/diagnostic_updater.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <tf2/LinearMath/Quaternion.hpp>
 #include <tf2/utils.hpp>
@@ -42,9 +43,7 @@
 #include <std_srvs/srv/set_bool.hpp>
 
 #include <chrono>
-#include <iostream>
 #include <memory>
-#include <queue>
 #include <string>
 #include <vector>
 
@@ -97,6 +96,9 @@ private:
   rclcpp::TimerBase::SharedPtr timer_control_;
   //!< @brief last predict time
   std::shared_ptr<const rclcpp::Time> last_predict_time_;
+  //!< @brief counter for diagnostics publish (to handle rosbag playback)
+  // Use double to handle fractional callbacks for accurate frequency control
+  double diagnostics_publish_counter_;
   //!< @brief trigger_node service
   rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr service_trigger_node_;
 
@@ -125,6 +127,17 @@ private:
 
   AgedObjectQueue<geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr> pose_queue_;
   AgedObjectQueue<geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr> twist_queue_;
+
+  //!< @brief diagnostic updater for publishing diagnostics at configured period
+  diagnostic_updater::Updater diagnostics_;
+  //!< @brief latched diagnostic status to prevent transient errors from being missed
+  //!< when diagnostics publish period is longer than the error duration
+  //!< Stores the highest level (ERROR > WARN > OK) and its details seen since last publish
+  diagnostic_msgs::msg::DiagnosticStatus latched_diagnostic_status_;
+  //!< @brief timestamp when the latched diagnostic status was first detected
+  rclcpp::Time latched_diagnostic_timestamp_;
+  //!< @brief timestamp when diagnostics were last published (used to reset latch in timer_callback)
+  rclcpp::Time last_diagnostics_publish_time_;
 
   /**
    * @brief computes update & prediction of EKF for each ekf_dt_[s] time
@@ -168,10 +181,21 @@ private:
     const geometry_msgs::msg::TwistStamped & current_ekf_twist);
 
   /**
-   * @brief publish diagnostics message
+   * @brief update diagnostic status and latch errors
+   * This is called every timer callback to ensure errors are latched even if they
+   * occur between diagnostics publishes
+   * @param diag_status_array Array of diagnostic statuses collected during processing
+   * @param current_time Current time for timestamp
    */
-  void publish_diagnostics(
-    const geometry_msgs::msg::PoseStamped & current_ekf_pose, const rclcpp::Time & current_time);
+  void update_diagnostics(
+    const std::vector<diagnostic_msgs::msg::DiagnosticStatus> & diag_status_array,
+    const rclcpp::Time & current_time);
+
+  /**
+   * @brief diagnostic function called by diagnostic_updater::Updater
+   * @param stat diagnostic status wrapper to fill
+   */
+  void diagnose(diagnostic_updater::DiagnosticStatusWrapper & stat);
 
   /**
    * @brief publish diagnostics message for return
