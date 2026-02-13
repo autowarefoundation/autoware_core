@@ -2,8 +2,8 @@
 Changelog for package autoware_euclidean_cluster_object_detector
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.7.0 (2026-02-14)
+------------------
 * Merge remote-tracking branch 'origin/main' into humble
 * chore: use local default config files instead of autoware_launch (for core) (`#832 <https://github.com/autowarefoundation/autoware_core/issues/832>`_)
   use local default config files instead of autoware_launch

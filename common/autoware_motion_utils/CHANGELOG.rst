@@ -13,8 +13,8 @@ Changelog for package autoware_motion_utils
 * refactor(autoware_motion_utils): rewrite using modern C++ without API breakage (`#348 <https://github.com/autowarefoundation/autoware_core/issues/348>`_)
 * Contributors: Arjun Jagdish Ram, Yutaka Kondo
 
-Forthcoming
------------
+1.7.0 (2026-02-14)
+------------------
 * Merge remote-tracking branch 'origin/main' into humble
 * fix(autoware_motion_utils): stop point detection while resampling trajectory (`#808 <https://github.com/autowarefoundation/autoware_core/issues/808>`_)
   Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>

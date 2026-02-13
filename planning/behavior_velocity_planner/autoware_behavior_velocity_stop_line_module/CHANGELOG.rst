@@ -8,8 +8,8 @@ Changelog for package autoware_behavior_velocity_stop_line_module
   refactor(autoware_trajectory)!: move everything to namespace experimental
 * Contributors: Mamoru Sobue
 
-Forthcoming
------------
+1.7.0 (2026-02-14)
+------------------
 
 1.6.0 (2025-12-30)
 ------------------

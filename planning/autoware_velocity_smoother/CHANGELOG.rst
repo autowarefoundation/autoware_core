@@ -5,8 +5,8 @@ Changelog for package autoware_velocity_smoother
 1.1.0 (2025-05-01)
 ------------------
 
-Forthcoming
------------
+1.7.0 (2026-02-14)
+------------------
 * Merge remote-tracking branch 'origin/main' into humble
 * fix(velocity_smoother): remove dead store in jerk_filtered_smoother (`#814 <https://github.com/autowarefoundation/autoware_core/issues/814>`_)
   Remove unnecessary increment of `constr_idx` after the last constraint

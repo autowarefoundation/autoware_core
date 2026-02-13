@@ -2,8 +2,8 @@
 Changelog for package autoware_awsim_sensor_kit_description
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.7.0 (2026-02-14)
+------------------
 * chore: match all package versions and remove old CHANGELOG.rst
 * Merge remote-tracking branch 'origin/main' into humble
 * fix: fix dependency to archived package sample_sensor_kit_launch (`#823 <https://github.com/autowarefoundation/autoware_core/issues/823>`_)

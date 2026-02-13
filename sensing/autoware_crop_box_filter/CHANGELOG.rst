@@ -11,8 +11,8 @@ Changelog for package autoware_crop_box_filter
   Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
 * Contributors: Amadeusz Szymko
 
-Forthcoming
------------
+1.7.0 (2026-02-14)
+------------------
 
 1.6.0 (2025-12-30)
 ------------------

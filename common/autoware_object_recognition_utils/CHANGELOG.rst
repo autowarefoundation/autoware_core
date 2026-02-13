@@ -8,8 +8,8 @@ Changelog for package autoware_object_recognition_utils
   use autoware_utils\_*
 * Contributors: Yutaka Kondo
 
-Forthcoming
------------
+1.7.0 (2026-02-14)
+------------------
 * Merge remote-tracking branch 'origin/main' into humble
 * fix(object_recognition_utils): init empty tf2::Transform and use the transform (`#802 <https://github.com/autowarefoundation/autoware_core/issues/802>`_)
 * feat(object_recognition_utils): add test for public api compile check (`#804 <https://github.com/autowarefoundation/autoware_core/issues/804>`_)

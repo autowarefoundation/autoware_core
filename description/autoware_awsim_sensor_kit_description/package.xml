@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>autoware_awsim_sensor_kit_description</name>
-  <version>1.6.0</version>
+  <version>1.7.0</version>
   <description>The autoware_awsim_sensor_kit_description package</description>
   <maintainer email="piotr.jaroszek@robotec.ai">Piotr Jaroszek</maintainer>
   <maintainer email="isamu.takagi@tier4.jp">Takagi, Isamu</maintainer>

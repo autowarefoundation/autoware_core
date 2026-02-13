@@ -5,8 +5,8 @@ Changelog for package autoware_ekf_localizer
 1.1.0 (2025-05-01)
 ------------------
 
-Forthcoming
------------
+1.7.0 (2026-02-14)
+------------------
 * Merge remote-tracking branch 'origin/main' into humble
 * fix(ekf_localizer): queue pop on ekf localizer (`#679 <https://github.com/autowarefoundation/autoware_core/issues/679>`_)
   * feat: separate max_age and max_queue_size in AgedObjectQueue

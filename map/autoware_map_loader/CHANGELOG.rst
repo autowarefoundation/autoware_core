@@ -9,8 +9,8 @@ Changelog for package autoware_map_loader
 * feat(map_loader): add the explanation of handling use_waypoints (`#342 <https://github.com/autowarefoundation/autoware_core/issues/342>`_)
 * Contributors: Takagi, Isamu, Takayuki Murooka
 
-Forthcoming
------------
+1.7.0 (2026-02-14)
+------------------
 
 1.6.0 (2025-12-30)
 ------------------

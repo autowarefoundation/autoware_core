@@ -18,8 +18,8 @@ Changelog for package autoware_lanelet2_utils
   ---------
 * Contributors: Mamoru Sobue, Yutaka Kondo
 
-Forthcoming
------------
+1.7.0 (2026-02-14)
+------------------
 * Merge remote-tracking branch 'origin/main' into humble
 * feat(lanelet2_utils): add empty input handler for get_arc_coordinates (`#831 <https://github.com/autowarefoundation/autoware_core/issues/831>`_)
   * add empty input lanelets handler for get_arc_coordinates
