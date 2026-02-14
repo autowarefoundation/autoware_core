@@ -19,6 +19,7 @@
 #include <autoware_utils_geometry/geometry.hpp>
 
 #include <algorithm>
+#include <numeric>
 #include <vector>
 
 namespace autoware::velocity_smoother
@@ -163,6 +164,147 @@ bool validCheckCalcStopDist(
       a_target, a_end);
     return false;
   }
+  return true;
+}
+
+bool calcStopVelocityWithConstantJerkAccLimit(
+  const double v0, const double a0, const double jerk_acc, const double jerk_dec,
+  const double min_acc, const double decel_target_vel, const int type,
+  const std::vector<double> & times, const double start_distance, Trajectory & output_trajectory)
+{
+  const double t_total = std::accumulate(times.begin(), times.end(), 0.0);
+  std::vector<double> ts, xs, vs, as, js;
+  const double dt = 0.1;
+  double x = 0.0;
+  double v = 0.0;
+  double a = 0.0;
+  double j = 0.0;
+
+  for (double t = 0.0; t < t_total; t += dt) {
+    updateStopVelocityStatus(v0, a0, jerk_acc, jerk_dec, type, times, t, x, v, a, j);
+    if (v > 0.0) {
+      a = std::max(a, min_acc);
+      ts.push_back(t);
+      xs.push_back(x);
+      vs.push_back(v);
+      as.push_back(a);
+      js.push_back(j);
+    }
+  }
+  updateStopVelocityStatus(v0, a0, jerk_acc, jerk_dec, type, times, t_total, x, v, a, j);
+  if (v > 0.0 && !xs.empty() && xs.back() < x) {
+    a = std::max(a, min_acc);
+    ts.push_back(t_total);
+    xs.push_back(x);
+    vs.push_back(v);
+    as.push_back(a);
+    js.push_back(j);
+  }
+
+  RCLCPP_DEBUG(rclcpp::get_logger("velocity_planning_utils"), "Calculate stop velocity.");
+  for (unsigned int i = 0; i < ts.size(); ++i) {
+    RCLCPP_DEBUG(
+      rclcpp::get_logger("velocity_planning_utils"), "--- t: %f, x: %f, v: %f, a: %f, j: %f",
+      ts.at(i), xs.at(i), vs.at(i), as.at(i), js.at(i));
+  }
+
+  constexpr double a_target = 0.0;
+  constexpr double v_margin = 0.3;
+  constexpr double a_margin = 0.1;
+  if (!validCheckCalcStopDist(v, a, decel_target_vel, a_target, v_margin, a_margin)) {
+    return false;
+  }
+
+  const double trajectory_length = output_trajectory.length();
+  const double start_s = std::clamp(start_distance, 0.0, trajectory_length);
+  if (trajectory_length < start_s) {
+    return true;
+  }
+
+  if (xs.empty()) {
+    const std::vector<double> s_range{start_s, trajectory_length};
+    const std::vector<double> vel_range{decel_target_vel, decel_target_vel};
+    const std::vector<double> acc_range{0.0, 0.0};
+    if (!output_trajectory.longitudinal_velocity_mps().build(s_range, vel_range)) {
+      RCLCPP_WARN(
+        rclcpp::get_logger("velocity_planning_utils"),
+        "Failed to build velocity profile (empty xs case)");
+      return false;
+    }
+    if (!output_trajectory.acceleration_mps2().build(s_range, acc_range)) {
+      RCLCPP_WARN(
+        rclcpp::get_logger("velocity_planning_utils"),
+        "Failed to build acceleration profile (empty xs case)");
+      return false;
+    }
+    return true;
+  }
+
+  std::vector<double> s_range;
+  std::vector<double> vel_range;
+  std::vector<double> acc_range;
+
+  for (size_t i = 0; i < xs.size(); ++i) {
+    const double s = start_s + xs.at(i);
+    if (s > trajectory_length) {
+      if (i > 0) {
+        const double prev_s = start_s + xs.at(i - 1);
+        const double ratio = (trajectory_length - prev_s) / (s - prev_s);
+        const double interp_vel = vs.at(i - 1) + ratio * (vs.at(i) - vs.at(i - 1));
+        const double interp_acc = as.at(i - 1) + ratio * (as.at(i) - as.at(i - 1));
+        s_range.push_back(trajectory_length);
+        vel_range.push_back(interp_vel);
+        acc_range.push_back(interp_acc);
+      }
+      break;
+    }
+    s_range.push_back(s);
+    vel_range.push_back(vs.at(i));
+    acc_range.push_back(as.at(i));
+  }
+
+  if (s_range.empty()) {
+    const std::vector<double> s_range_fallback{start_s, trajectory_length};
+    const std::vector<double> vel_range_fallback{decel_target_vel, decel_target_vel};
+    const std::vector<double> acc_range_fallback{0.0, 0.0};
+    if (!output_trajectory.longitudinal_velocity_mps().build(
+          s_range_fallback, vel_range_fallback)) {
+      RCLCPP_WARN(
+        rclcpp::get_logger("velocity_planning_utils"),
+        "Failed to build velocity profile (empty s_range case)");
+      return false;
+    }
+    if (!output_trajectory.acceleration_mps2().build(s_range_fallback, acc_range_fallback)) {
+      RCLCPP_WARN(
+        rclcpp::get_logger("velocity_planning_utils"),
+        "Failed to build acceleration profile (empty s_range case)");
+      return false;
+    }
+    return true;
+  }
+
+  if (s_range.front() > start_s) {
+    s_range.insert(s_range.begin(), start_s);
+    vel_range.insert(vel_range.begin(), vs.front());
+    acc_range.insert(acc_range.begin(), as.front());
+  }
+
+  if (s_range.back() < trajectory_length) {
+    s_range.push_back(trajectory_length);
+    vel_range.push_back(decel_target_vel);
+    acc_range.push_back(0.0);
+  }
+
+  if (!output_trajectory.longitudinal_velocity_mps().build(s_range, vel_range)) {
+    RCLCPP_WARN(rclcpp::get_logger("velocity_planning_utils"), "Failed to build velocity profile");
+    return false;
+  }
+  if (!output_trajectory.acceleration_mps2().build(s_range, acc_range)) {
+    RCLCPP_WARN(
+      rclcpp::get_logger("velocity_planning_utils"), "Failed to build acceleration profile");
+    return false;
+  }
+
   return true;
 }
 
