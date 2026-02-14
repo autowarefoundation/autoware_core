@@ -17,6 +17,7 @@
 
 #include "autoware/motion_utils/trajectory/trajectory.hpp"
 #include "autoware/qp_interface/qp_interface.hpp"
+#include "autoware/trajectory/trajectory_point.hpp"
 #include "autoware/velocity_smoother/smoother/smoother_base.hpp"
 
 #include <autoware_utils_debug/time_keeper.hpp>
@@ -31,6 +32,9 @@
 
 namespace autoware::velocity_smoother
 {
+using TrajectoryExperimental =
+  autoware::experimental::trajectory::Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>;
+
 class JerkFilteredSmoother : public SmootherBase
 {
 public:
@@ -51,6 +55,11 @@ public:
     TrajectoryPoints & output, std::vector<TrajectoryPoints> & debug_trajectories,
     const bool publish_debug_trajs) override;
 
+  bool apply(
+    const double initial_vel, const double initial_acc, const TrajectoryExperimental & input,
+    TrajectoryExperimental & output, std::vector<TrajectoryExperimental> & debug_trajectories,
+    const bool publish_debug_trajs);
+
   TrajectoryPoints resampleTrajectory(
     const TrajectoryPoints & input, [[maybe_unused]] const double v0,
     const geometry_msgs::msg::Pose & current_pose, const double nearest_dist_threshold,
@@ -70,9 +79,22 @@ private:
   TrajectoryPoints backwardJerkFilter(
     const double v0, const double a0, const double a_min, const double a_stop, const double j_min,
     const TrajectoryPoints & input) const;
+
+  TrajectoryExperimental forwardJerkFilter(
+    const double v0, const double a0, const double a_max, const double a_stop, const double j_max,
+    const TrajectoryExperimental & input) const;
+  TrajectoryExperimental backwardJerkFilter(
+    const double v0, const double a0, const double a_min, const double a_stop, const double j_min,
+    const TrajectoryExperimental & input) const;
+
   TrajectoryPoints mergeFilteredTrajectory(
     const double v0, const double a0, const double a_min, const double j_min,
     const TrajectoryPoints & forward_filtered, const TrajectoryPoints & backward_filtered) const;
+
+  TrajectoryExperimental mergeFilteredTrajectory(
+    const double v0, const double a0, const double a_min, const double j_min,
+    const TrajectoryExperimental & forward_filtered,
+    const TrajectoryExperimental & backward_filtered) const;
 };
 }  // namespace autoware::velocity_smoother
 
