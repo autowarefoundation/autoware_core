@@ -733,7 +733,8 @@ lanelet::ConstLanelets RouteHandler::getLaneletSequence(
   const lanelet::ConstLanelets lanelet_sequence_forward =
     getLaneletSequenceAfter(lanelet, forward_distance);
   const lanelet::ConstLanelets lanelet_sequence_backward = std::invoke([&]() {
-    const auto arc_coordinate = lanelet::utils::getArcCoordinates({lanelet}, current_pose);
+    const auto arc_coordinate =
+      autoware::experimental::lanelet2_utils::get_arc_coordinates({lanelet}, current_pose);
     if (arc_coordinate.length < backward_distance) {
       return getLaneletSequenceUpTo(lanelet, backward_distance);
     }
@@ -766,7 +767,8 @@ lanelet::ConstLanelets RouteHandler::getLaneletSequence(
   lanelet::ConstLanelets lanelet_sequence_forward =
     getLaneletSequenceAfter(lanelet, forward_distance);
   lanelet::ConstLanelets lanelet_sequence = std::invoke([&]() {
-    const auto arc_coordinate = lanelet::utils::getArcCoordinates({lanelet}, current_pose);
+    const auto arc_coordinate =
+      autoware::experimental::lanelet2_utils::get_arc_coordinates({lanelet}, current_pose);
     if (arc_coordinate.length < backward_distance) {
       return getLaneletSequenceUpTo(lanelet, backward_distance);
     }
@@ -955,7 +957,8 @@ lanelet::ConstLanelets RouteHandler::getShoulderLaneletSequence(
   lanelet::ConstLanelets lanelet_sequence_forward =
     getShoulderLaneletSequenceAfter(lanelet, forward_distance);
   const lanelet::ConstLanelets lanelet_sequence_backward = std::invoke([&]() {
-    const auto arc_coordinate = lanelet::utils::getArcCoordinates({lanelet}, pose);
+    const auto arc_coordinate =
+      autoware::experimental::lanelet2_utils::get_arc_coordinates({lanelet}, pose);
     if (arc_coordinate.length < backward_distance) {
       return getShoulderLaneletSequenceUpTo(lanelet, backward_distance);
     }
@@ -996,7 +999,8 @@ lanelet::ConstLanelets RouteHandler::get_shoulder_lanelet_sequence(
   lanelet::ConstLanelets lanelet_sequence_forward =
     getShoulderLaneletSequenceAfter(lanelet, forward_distance);
   const lanelet::ConstLanelets lanelet_sequence_backward = std::invoke([&]() {
-    const auto arc_coordinate = lanelet::utils::getArcCoordinates({lanelet}, current_pose);
+    const auto arc_coordinate =
+      autoware::experimental::lanelet2_utils::get_arc_coordinates({lanelet}, current_pose);
     if (arc_coordinate.length < backward_distance) {
       return getShoulderLaneletSequenceUpTo(lanelet, backward_distance);
     }
