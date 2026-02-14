@@ -1171,6 +1171,48 @@ TEST(LaneletManipulation, getBoundDifferentLength)
     }
   }
 }
+
+TEST(LaneletCheck, OrdinaryCaseIsInLanelet)
+{
+  using autoware::experimental::lanelet2_utils::create_safe_lanelet;
+  auto p1 = lanelet::BasicPoint3d(0.0, 2.0, 0.0);
+  auto p2 = lanelet::BasicPoint3d(2.0, 4.0, 0.0);
+  auto p3 = lanelet::BasicPoint3d(0.0, 0.0, 0.0);
+  auto p4 = lanelet::BasicPoint3d(2.0, 2.0, 0.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points = {p1, p2};
+  std::vector<lanelet::BasicPoint3d> right_points = {p3, p4};
+  auto ll = *create_safe_lanelet(left_points, right_points);
+
+  // inside lanelet
+  {
+    auto query = make_pose(1.0, 1.0);
+    bool check = autoware::experimental::lanelet2_utils::is_in_lanelet(ll, query, 0);
+    EXPECT_TRUE(check);
+  }
+
+  // outside lanelet within radius of 1.0
+  {
+    auto query = make_pose(-1.0, 0.0);
+    bool check = autoware::experimental::lanelet2_utils::is_in_lanelet(ll, query, 1.0);
+    EXPECT_TRUE(check);
+  }
+
+  // outside lanelet within radius of 1.0 (negative value)
+  {
+    auto query = make_pose(-1.0, 0.0);
+    bool check = autoware::experimental::lanelet2_utils::is_in_lanelet(ll, query, -1.0);
+    EXPECT_TRUE(check);
+  }
+
+  // outside lanelet outside radius range
+  {
+    auto query = make_pose(-2.0, 0.0);
+    bool check = autoware::experimental::lanelet2_utils::is_in_lanelet(ll, query, 1.0);
+    EXPECT_FALSE(check);
+  }
+}
+
 }  // namespace autoware::experimental
 
 int main(int argc, char ** argv)
