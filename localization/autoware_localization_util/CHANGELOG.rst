@@ -13,6 +13,9 @@ Changelog for package autoware_localization_util
   Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
 * Contributors: NorahXiong
 
+1.7.0 (2026-02-14)
+------------------
+
 1.6.0 (2025-12-30)
 ------------------
 
