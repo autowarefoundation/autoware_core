@@ -18,6 +18,39 @@ Changelog for package autoware_lanelet2_utils
   ---------
 * Contributors: Mamoru Sobue, Yutaka Kondo
 
+1.7.0 (2026-02-14)
+------------------
+* Merge remote-tracking branch 'origin/main' into humble
+* feat(lanelet2_utils): add empty input handler for get_arc_coordinates (`#831 <https://github.com/autowarefoundation/autoware_core/issues/831>`_)
+  * add empty input lanelets handler for get_arc_coordinates
+  * add test ensure default ArcCoordinates
+  ---------
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* docs(lanelet2_utils): add succeeding/preceding lanelet sequence illustration (`#830 <https://github.com/autowarefoundation/autoware_core/issues/830>`_)
+  added succeeding/preceding lanelet sequences illustration
+* feat(lanelet2_extension): port some lanelet2_extension query functions (2) (`#809 <https://github.com/autowarefoundation/autoware_core/issues/809>`_)
+* feat(lanelet2_extension): port remaining lanelet2_extension utilities functions (`#760 <https://github.com/autowarefoundation/autoware_core/issues/760>`_)
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* feat(lanelet2_extension): port some lanelet2_extension query functions  (`#790 <https://github.com/autowarefoundation/autoware_core/issues/790>`_)
+  * port left/right/all_neighbor_lanelets and their tests
+  * replace getAllNeighbors* with ported functions
+  * add neighbors order description and verify in test
+  * add ported functions to API table
+  * add example code snippet
+  * Remove optional from return value
+  Assume one lanelet is always in return value (itself)
+  * change usage of left/right_lanelets (always check access)
+  * fix README for example code snippet
+  * fix cppcheck-differential
+  * fix README description
+  ---------
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+  Co-authored-by: Mamoru Sobue <hilo.soblin@gmail.com>
+* revert: feat(path_generator): use `route_manager` to handle route data `#725 <https://github.com/autowarefoundation/autoware_core/issues/725>`_ (`#801 <https://github.com/autowarefoundation/autoware_core/issues/801>`_)
+  This reverts commit 2403cb5952d33db8e4a403d6cc7b368521d47f5e.
+* feat(path_generator): use `route_manager` to handle route data (`#725 <https://github.com/autowarefoundation/autoware_core/issues/725>`_)
+* Contributors: Mitsuhiro Sakamoto, Ryohsuke Mitsudome, Sarun MUKDAPITAK
+
 1.6.0 (2025-12-30)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
