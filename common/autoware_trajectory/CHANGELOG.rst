@@ -50,6 +50,30 @@ Changelog for package autoware_trajectory
 * chore: include iostream and link yaml-cpp for Jazzy (`#351 <https://github.com/autowarefoundation/autoware_core/issues/351>`_)
 * Contributors: Mamoru Sobue, Tim Clephas, Yukinari Hisaki
 
+1.7.0 (2026-02-14)
+------------------
+* Merge remote-tracking branch 'origin/main' into humble
+* refactor(planning): deprecate lanelet_extension geometry conversion function (`#834 <https://github.com/autowarefoundation/autoware_core/issues/834>`_)
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* chore(autoware_motion_utils, autoware_trajectory, autoware_interpolation): add maintainers for packages (`#821 <https://github.com/autowarefoundation/autoware_core/issues/821>`_)
+  * add maintainers for autoware_interpolation
+  * add maintainers for autoware_motion_utils
+  * add maintainers for autoware_trajectory
+  ---------
+  Co-authored-by: Satoshi OTA <44889564+satoshi-ota@users.noreply.github.com>
+* chore(autoware_trajectory): add a maintainer (`#819 <https://github.com/autowarefoundation/autoware_core/issues/819>`_)
+* docs(autoware_trajectory): fix anker link for pre-commit (`#816 <https://github.com/autowarefoundation/autoware_core/issues/816>`_)
+* fix(trajectory): fix potential undefined behavior in closest() (`#815 <https://github.com/autowarefoundation/autoware_core/issues/815>`_)
+  Remove premature dereference of std::optional before checking if it
+  has a value. The original code dereferenced the result of
+  closest_with_constraint() before assigning to s, which could cause
+  undefined behavior if the function returns std::nullopt.
+  Detected by Facebook Infer static analyzer (OPTIONAL_EMPTY_ACCESS).
+  Co-authored-by: Claude Opus 4.5 <noreply@anthropic.com>
+* fix(trajectory): add at least one prev/next lanelet for generating reference_path (`#810 <https://github.com/autowarefoundation/autoware_core/issues/810>`_)
+* feat(trajectory): add function to clamp `InterpolatedArray` to maximum value (`#791 <https://github.com/autowarefoundation/autoware_core/issues/791>`_)
+* Contributors: Junya Sasaki, Mamoru Sobue, Mitsuhiro Sakamoto, Ryohsuke Mitsudome, Ryuta Kambe, Takagi, Isamu, mkquda
+
 1.6.0 (2025-12-30)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
