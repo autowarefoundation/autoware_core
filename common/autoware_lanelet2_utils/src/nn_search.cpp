@@ -104,7 +104,7 @@ std::vector<std::pair<double, lanelet::ConstLanelet>> find_nearest(
       continue;
     }
     if (const auto z_min_max = find_z_range(llt);
-        !z_min_max || delta_z_from_range(query3d.z(), *z_min_max) <= z_range) {
+        z_min_max && delta_z_from_range(query3d.z(), *z_min_max) <= z_range) {
       candidates.push_back(llt);
     }
   }
