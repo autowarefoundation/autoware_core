@@ -84,6 +84,13 @@ bool createDetectionAreaPolygons(
   const size_t target_seg_idx, const DetectionRange & da_range, const double obstacle_vel_mps,
   const double min_velocity = 1.0);
 
+bool createDetectionAreaPolygons(
+  Polygons2d & da_polys,
+  const autoware::experimental::trajectory::Trajectory<
+    autoware_internal_planning_msgs::msg::PathPointWithLaneId> & path,
+  const double s_ego, const DetectionRange & da_range, const double obstacle_vel_mps,
+  const double min_velocity = 1.0);
+
 Point2d calculateOffsetPoint2d(
   const geometry_msgs::msg::Pose & pose, const double offset_x, const double offset_y);
 
