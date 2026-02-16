@@ -141,14 +141,6 @@ PathGenerator::InputData PathGenerator::take_data()
   return input_data;
 }
 
-void PathGenerator::set_planner_data(const InputData & input_data)
-{
-  RouteManagerData route_manager_data;
-  route_manager_data.lanelet_map_bin_ptr = input_data.lanelet_map_bin_ptr;
-  route_manager_data.route_ptr = input_data.route_ptr;
-  initialize_route_manager(route_manager_data, input_data.odometry_ptr->pose.pose);
-}
-
 bool PathGenerator::is_data_ready(const InputData & input_data)
 {
   const auto notify_waiting = [this](const std::string & name) {

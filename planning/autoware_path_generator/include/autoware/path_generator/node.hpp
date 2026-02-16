@@ -50,13 +50,6 @@ using Trajectory = autoware::experimental::trajectory::Trajectory<PathPointWithL
 class PathGenerator : public rclcpp::Node
 {
 public:
-  struct InputData
-  {
-    LaneletRoute::ConstSharedPtr route_ptr{nullptr};
-    LaneletMapBin::ConstSharedPtr lanelet_map_bin_ptr{nullptr};
-    Odometry::ConstSharedPtr odometry_ptr{nullptr};
-  };
-
   struct RouteManagerData
   {
     LaneletMapBin::ConstSharedPtr lanelet_map_bin_ptr{nullptr};
@@ -65,8 +58,6 @@ public:
 
   explicit PathGenerator(const rclcpp::NodeOptions & node_options);
 
-  void set_planner_data(const InputData & input_data);
-
   void initialize_route_manager(
     const RouteManagerData & route_manager_data, const geometry_msgs::msg::Pose & initial_pose);
 
@@ -74,6 +65,11 @@ public:
     const geometry_msgs::msg::Pose & current_pose, const Params & params);
 
 private:
+  struct InputData
+  {
+    Odometry::ConstSharedPtr odometry_ptr{nullptr};
+  };
+
   // subscriber
   autoware_utils_rclcpp::InterProcessPollingSubscriber<
     LaneletRoute, autoware_utils_rclcpp::polling_policy::Newest>
