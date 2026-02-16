@@ -177,6 +177,15 @@ bool PathGenerator::is_data_ready(const InputData & input_data)
 void PathGenerator::initialize_route_manager(
   const RouteManagerData & route_manager_data, const geometry_msgs::msg::Pose & initial_pose)
 {
+  if (!route_manager_data.lanelet_map_bin_ptr) {
+    RCLCPP_ERROR(get_logger(), "Lanelet map is not set");
+    return;
+  }
+  if (!route_manager_data.route_ptr) {
+    RCLCPP_ERROR(get_logger(), "Route is not set");
+    return;
+  }
+
   route_manager_data_ = route_manager_data;
   route_manager_ = experimental::lanelet2_utils::RouteManager::create(
     *route_manager_data.lanelet_map_bin_ptr, *route_manager_data.route_ptr, initial_pose);
