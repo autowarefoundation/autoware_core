@@ -22,6 +22,7 @@ namespace autoware::motion_utils
 {
 namespace
 {
+constexpr double epsilon = 1e-3;
 bool validCheckDecelPlan(
   const double v_end, const double a_end, const double v_target, const double a_target,
   const double v_margin, const double a_margin)
@@ -99,8 +100,6 @@ std::optional<double> calcDecelDistPlanType1(
   const double v0, const double vt, const double a0, const double am, const double ja,
   const double jd, const double t_during_min_acc)
 {
-  constexpr double epsilon = 1e-3;
-
   // negative jerk time
   const double j1 = am < a0 ? jd : ja;
   const double t1 = epsilon < (am - a0) / j1 ? (am - a0) / j1 : 0.0;
@@ -275,71 +274,63 @@ std::optional<double> calcDecelDistWithJerkAndAccConstraints(
 }
 
 [[nodiscard]] std::optional<double> calculate_stop_distance(
-  const double current_vel, const double current_acc, const double acc_limit,
-  const double jerk_limit, const double initial_time_delay)
+  const double v0, const double a0, const double acc_limit, const double jerk_limit,
+  const double initial_time_delay)
 {
-  // 1. Base case: already stopped or reversing
-  if (current_vel <= 0.0) {
+  // already stopped or reversing
+  if (v0 <= 0.0) {
     return 0.0;
   }
 
-  // 2. Safety constraint validation
-  // Jerk and acceleration limits must be strictly negative to stop a forward-moving vehicle.
-  // Using a small epsilon (-1e-5) prevents division by zero.
-  if (jerk_limit >= -1e-5 || acc_limit >= -1e-5) {
-    return std::nullopt; 
+  // jerk and acceleration limits must be strictly negative to stop a forward-moving vehicle.
+  // using epsilon to prevent division by zero.
+  if (jerk_limit >= -epsilon || acc_limit >= -epsilon) {
+    return std::nullopt;
   }
 
-  // Clamp current acceleration so we don't start with a deceleration that mathematically 
-  // exceeds our absolute limit.
-  const double a0 = std::max(current_acc, acc_limit);
+  // ensure current_acc >= acc_limit, otherwise the maths break down
+  const double valid_acc_limit = std::min(a0, acc_limit);
 
-  // ==========================================
-  // Phase 1: Latency delay
-  // ==========================================
+  // Phase 1: latency delay
   const double t1 = std::max(0.0, initial_time_delay);
-  const double x1 = current_vel * t1 + 0.5 * a0 * t1 * t1;
-  const double v1 = current_vel + a0 * t1;
+  const auto [x1, v1, a1] = update(0.0, v0, a0, 0.0, t1);
 
-  // If the vehicle naturally stops during the delay phase (due to existing deceleration)
+  // If the vehicle naturally stops during the delay phase due to existing deceleration
   if (v1 <= 0.0) {
-    const double t_stop = -current_vel / a0; 
-    return std::max(0.0, current_vel * t_stop + 0.5 * a0 * t_stop * t_stop);
+    const double t_stop = -v0 / a0;
+    const auto [x_stop, v_stop, a_stop] = update(0.0, v0, a0, 0.0, t_stop);
+    return std::max(0.0, x_stop);
   }
 
-  // ==========================================
-  // Phase 2: Jerk-limited braking 
-  // ==========================================
+  // Phase 2: jerk-limited braking
   // Calculate what the velocity (v2) would be exactly when the acceleration reaches acc_limit
-  const double v2 = v1 + (acc_limit * acc_limit - a0 * a0) / (2.0 * jerk_limit);
+  const double v2 = v1 + (valid_acc_limit * valid_acc_limit - a1 * a1) / (2.0 * jerk_limit);
 
   if (v2 <= 0.0) {
     // The vehicle reaches v = 0 before hitting the maximum deceleration limit.
-    // Solve for t2 where 0 = v1 + a0*t + 0.5*j*t^2
-    const double discriminant = a0 * a0 - 2.0 * jerk_limit * v1;
-    
-    // Safety check for imaginary roots (physically shouldn't happen here, but robust)
+    // Solve for t where 0 = v1 + a1*t + 0.5*j*t^2
+    const double discriminant = a1 * a1 - 2.0 * jerk_limit * v1;
+
+    // should be impossible
     if (discriminant < 0.0) {
-        return std::nullopt;
+      return std::nullopt;
     }
 
-    const double t2 = -(a0 + std::sqrt(discriminant)) / jerk_limit;
-    const double x2 = v1 * t2 + 0.5 * a0 * t2 * t2 + (jerk_limit * t2 * t2 * t2) / 6.0;
-    
-    return std::max(0.0, x1 + x2);
+    const double t2 = -(a1 + std::sqrt(discriminant)) / jerk_limit;
+    const auto [x_stop, v_stop, a_stop] = update(x1, v1, a1, jerk_limit, t2);
+
+    return std::max(0.0, x_stop);
   }
 
   // The vehicle successfully reaches the maximum deceleration limit.
-  const double t2 = (acc_limit - a0) / jerk_limit;
-  const double x2 = v1 * t2 + 0.5 * a0 * t2 * t2 + (jerk_limit * t2 * t2 * t2) / 6.0;
+  const double t2 = (valid_acc_limit - a1) / jerk_limit;
+  const auto [x2, v2_final, a2_final] = update(x1, v1, a1, jerk_limit, t2);
 
-  // ==========================================
   // Phase 3: Constant maximum deceleration
-  // ==========================================
-  // Decelerate at acc_limit from v2 down to 0.
-  const double x3 = -(v2 * v2) / (2.0 * acc_limit);
+  // Decelerate at acc_limit from v2_final down to 0.
+  const double x3 = -(v2_final * v2_final) / (2.0 * valid_acc_limit);
 
-  return std::max(0.0, x1 + x2 + x3);
+  return std::max(0.0, x2 + x3);
 }
 
 }  // namespace autoware::motion_utils
