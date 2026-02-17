@@ -118,7 +118,7 @@ TEST_F(TestNDTScanMatcher, test_out_of_map_range_warning)  // NOLINT
   // Verify that diagnostics warning message was output
   EXPECT_FALSE(received_diagnostics.empty())
     << "Diagnostics message should be published when lidar is out of map range.";
-  
+
   if (!received_diagnostics.empty()) {
     const auto & latest_diag = received_diagnostics.back();
     EXPECT_EQ(latest_diag.level, diagnostic_msgs::msg::DiagnosticStatus::WARN)
@@ -203,7 +203,7 @@ TEST_F(
   // Verify that diagnostics warning message was output when last_update_position_ is null
   EXPECT_FALSE(received_diagnostics.empty())
     << "Diagnostics message should be published when last_update_position_ is null.";
-  
+
   if (!received_diagnostics.empty()) {
     const auto & latest_diag = received_diagnostics.back();
     EXPECT_EQ(latest_diag.level, diagnostic_msgs::msg::DiagnosticStatus::WARN)
