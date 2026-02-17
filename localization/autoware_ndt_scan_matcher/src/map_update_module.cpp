@@ -120,25 +120,24 @@ bool MapUpdateModule::should_update_map(
   return distance > param_.update_distance;
 }
 
-bool MapUpdateModule::out_of_map_range(const geometry_msgs::msg::Point & position)
+std::optional<geometry_msgs::msg::Point> MapUpdateModule::get_last_update_position() const
 {
-  last_update_position_mtx_.lock();
+  std::lock_guard<std::mutex> lock(last_update_position_mtx_);
+  return last_update_position_;
+}
 
-  if (last_update_position_ == std::nullopt) {
-    last_update_position_mtx_.unlock();
-
-    RCLCPP_WARN_STREAM_THROTTLE(
-      logger_, *clock_, 1000,
-      "Map information is not available (last_update_position_ is null). Cannot check if lidar is "
-      "out of map range.");
+bool MapUpdateModule::out_of_map_range(
+  const std::optional<geometry_msgs::msg::Point> & last_update_position,
+  const geometry_msgs::msg::Point & position) const
+{
+  // judgement is invalid when last_update_position is null
+  // last_update_position must be checked before calling this function
+  if (last_update_position == std::nullopt) {
     return false;
   }
 
-  const double dx = position.x - last_update_position_.value().x;
-  const double dy = position.y - last_update_position_.value().y;
-
-  last_update_position_mtx_.unlock();
-
+  const double dx = position.x - last_update_position.value().x;
+  const double dy = position.y - last_update_position.value().y;
   const double distance = std::hypot(dx, dy);
 
   // check distance_last_update_position_to_current_position

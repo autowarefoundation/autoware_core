@@ -95,17 +95,37 @@ TEST_F(TestNDTScanMatcher, test_out_of_map_range_warning)  // NOLINT
   interpolation_result.old_pose = interpolated_pose;
   interpolation_result.new_pose = interpolated_pose;
 
+  // Clear any previous diagnostics
+  received_diagnostics.clear();
+
   // Call check_out_of_map_range_warning function directly
-  // Verify that function returns true (indicating out of map range)
-  // Verify that warning message is output via RCLCPP_WARN_STREAM_THROTTLE
-  const bool is_out_of_map = check_out_of_map_range_warning(interpolation_result);
+  // Verify that warning message is output via diagnostics and RCLCPP_WARN_STREAM_THROTTLE
+  check_out_of_map_range_warning(interpolation_result);
+
+  // Publish diagnostics explicitly (normally done in callback_sensor_points)
+  publish_diagnostics(node_->now());
+
+  // Wait for diagnostics to be received by subscriber
+  // Poll with timeout to wait for diagnostics message
+  const auto timeout = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+  while (received_diagnostics.empty() && std::chrono::steady_clock::now() < timeout) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
 
   //--------//
   // Assert //
   //--------//
-  // Verify that function returns true (indicating out of map range)
-  EXPECT_TRUE(is_out_of_map)
-    << "check_out_of_map_range_warning should return true when lidar is out of map range.";
+  // Verify that diagnostics warning message was output
+  EXPECT_FALSE(received_diagnostics.empty())
+    << "Diagnostics message should be published when lidar is out of map range.";
+  
+  if (!received_diagnostics.empty()) {
+    const auto & latest_diag = received_diagnostics.back();
+    EXPECT_EQ(latest_diag.level, diagnostic_msgs::msg::DiagnosticStatus::WARN)
+      << "Diagnostics level should be WARN when lidar is out of map range.";
+    EXPECT_TRUE(latest_diag.message.find("out of the map range") != std::string::npos)
+      << "Diagnostics message should contain 'out of the map range'.";
+  }
 
   // Stop executor to stop threads
   exec.cancel();
@@ -160,17 +180,37 @@ TEST_F(
   interpolation_result.old_pose = interpolated_pose;
   interpolation_result.new_pose = interpolated_pose;
 
+  // Clear any previous diagnostics
+  received_diagnostics.clear();
+
   // Call check_out_of_map_range_warning function directly
-  // Verify that function returns false when last_update_position_ is null
-  // Verify that warning message is output via RCLCPP_WARN_STREAM_THROTTLE
-  const bool is_out_of_map = check_out_of_map_range_warning(interpolation_result);
+  // Verify that warning message is output via both RCLCPP_WARN_STREAM_THROTTLE and diagnostics
+  check_out_of_map_range_warning(interpolation_result);
+
+  // Publish diagnostics explicitly (normally done in callback_sensor_points)
+  publish_diagnostics(node_->now());
+
+  // Wait for diagnostics to be received by subscriber
+  // Poll with timeout to wait for diagnostics message
+  const auto timeout = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+  while (received_diagnostics.empty() && std::chrono::steady_clock::now() < timeout) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
 
   //--------//
   // Assert //
   //--------//
-  // Verify that function returns false (map range check cannot be performed when last_update_position_ is null)
-  EXPECT_FALSE(is_out_of_map)
-    << "check_out_of_map_range_warning should return false when last_update_position_ is null.";
+  // Verify that diagnostics warning message was output when last_update_position_ is null
+  EXPECT_FALSE(received_diagnostics.empty())
+    << "Diagnostics message should be published when last_update_position_ is null.";
+  
+  if (!received_diagnostics.empty()) {
+    const auto & latest_diag = received_diagnostics.back();
+    EXPECT_EQ(latest_diag.level, diagnostic_msgs::msg::DiagnosticStatus::WARN)
+      << "Diagnostics level should be WARN when last_update_position_ is null.";
+    EXPECT_TRUE(latest_diag.message.find("Map information is not available") != std::string::npos)
+      << "Diagnostics message should contain 'Map information is not available'.";
+  }
 
   // Stop executor to stop threads
   exec.cancel();
