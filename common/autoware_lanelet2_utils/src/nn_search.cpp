@@ -88,7 +88,8 @@ std::vector<std::pair<double, lanelet::ConstLanelet>> find_nearest(
   const lanelet::LaneletLayer & layer, const geometry_msgs::msg::Pose & search_pose, size_t count,
   double r_range, double z_range)
 {
-  if (count == 0 || r_range < 0.0 || z_range < 0.0) {
+  constexpr double epsilon = std::numeric_limits<double>::epsilon();
+  if (count == 0 || r_range < -epsilon || z_range < -epsilon) {
     return {};
   }
 
@@ -99,7 +100,7 @@ std::vector<std::pair<double, lanelet::ConstLanelet>> find_nearest(
     search_pose.position.x + r_range, search_pose.position.y + r_range};
   const lanelet::BasicPoint3d query3d = from_ros(search_pose);
   for (const auto & llt : layer.search(lanelet::BoundingBox2d{min_pt, max_pt})) {
-    if (z_range == 0.0) {
+    if (z_range <= epsilon) {
       candidates.push_back(llt);
       continue;
     }
