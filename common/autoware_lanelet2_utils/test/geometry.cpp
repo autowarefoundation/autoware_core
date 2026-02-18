@@ -101,6 +101,10 @@ class GetLaneletAngle : public ExtrapolatedLaneletTest
 {
 };
 
+class GetArcCoordinates : public ExtrapolatedLaneletTest
+{
+};
+
 // Test 1: forward extrapolation
 TEST(ExtrapolatedPointTest, ForwardExtrapolation)
 {
@@ -491,7 +495,7 @@ TEST(GetClosestCenterPoseTest, getInclineDownPose)
 }
 
 // Test 23: get_arc_coordinates empty case
-TEST(GetArcCoordinates, get_arc_coordinateEmptyCase)
+TEST_F(GetArcCoordinates, get_arc_coordinateEmptyCase)
 {
   auto empty_lanelet_sequence = lanelet::ConstLanelets{};
 
@@ -501,10 +505,19 @@ TEST(GetArcCoordinates, get_arc_coordinateEmptyCase)
     autoware::experimental::lanelet2_utils::get_arc_coordinates(empty_lanelet_sequence, query);
   EXPECT_EQ(arc_coord.length, 0);
   EXPECT_EQ(arc_coord.distance, 0);
+
+  // get_arc_coordinates_on_ego_centerline should give same result without waypoints
+  {
+    auto arc_coord_on_ego_centerline =
+      autoware::experimental::lanelet2_utils::get_arc_coordinates_on_ego_centerline(
+        empty_lanelet_sequence, query, lanelet_map_ptr_);
+    EXPECT_EQ(arc_coord_on_ego_centerline.length, 0);
+    EXPECT_EQ(arc_coord_on_ego_centerline.distance, 0);
+  }
 }
 
 // Test 24: get_arc_coordinates ordinary case
-TEST(GetArcCoordinates, get_arc_coordinateOrdinaryCase)
+TEST_F(GetArcCoordinates, get_arc_coordinateOrdinaryCase)
 {
   using autoware::experimental::lanelet2_utils::create_safe_lanelet;
   auto p1 = lanelet::BasicPoint3d(0.0, 2.0, 0.0);
@@ -536,6 +549,13 @@ TEST(GetArcCoordinates, get_arc_coordinateOrdinaryCase)
       autoware::experimental::lanelet2_utils::get_arc_coordinates(lanelet_sequence, query);
     EXPECT_NEAR(arc_coord.length, 1.5, 1e-4);
     EXPECT_NEAR(arc_coord.distance, 0.1, 1e-4);
+
+    // get_arc_coordinates_on_ego_centerline should give same result without waypoints
+    auto arc_coord_on_ego_centerline =
+      autoware::experimental::lanelet2_utils::get_arc_coordinates_on_ego_centerline(
+        lanelet_sequence, query, lanelet_map_ptr_);
+    EXPECT_NEAR(arc_coord_on_ego_centerline.length, 1.5, 1e-4);
+    EXPECT_NEAR(arc_coord_on_ego_centerline.distance, 0.1, 1e-4);
   }
 
   // query is below the center of the second lanelet
@@ -545,6 +565,13 @@ TEST(GetArcCoordinates, get_arc_coordinateOrdinaryCase)
       autoware::experimental::lanelet2_utils::get_arc_coordinates(lanelet_sequence, query);
     EXPECT_NEAR(arc_coord.length, 4.5, 1e-4);
     EXPECT_NEAR(arc_coord.distance, -0.1, 1e-4);
+
+    // get_arc_coordinates_on_ego_centerline should give same result without waypoints
+    auto arc_coord_on_ego_centerline =
+      autoware::experimental::lanelet2_utils::get_arc_coordinates_on_ego_centerline(
+        lanelet_sequence, query, lanelet_map_ptr_);
+    EXPECT_NEAR(arc_coord_on_ego_centerline.length, 4.5, 1e-4);
+    EXPECT_NEAR(arc_coord_on_ego_centerline.distance, -0.1, 1e-4);
   }
 }
 
