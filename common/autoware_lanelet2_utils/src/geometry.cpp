@@ -619,6 +619,32 @@ std::optional<lanelet::ConstLanelets> get_dirty_expanded_lanelets(
   return lanelets;
 }
 
+lanelet::ConstLineString3d get_fine_centerline(
+  const lanelet::ConstLanelet & lanelet_obj, const double resolution)
+{
+  // get number of segments from resolution and longer bound
+  const auto num_segments = compute_num_segments(lanelet_obj, resolution);
+
+  // Resample points
+  const auto left_points = resample_points(lanelet_obj.leftBound().basicLineString(), num_segments);
+  const auto right_points =
+    resample_points(lanelet_obj.rightBound().basicLineString(), num_segments);
+
+  lanelet::ConstPoints3d center_points;
+  for (size_t i = 0; i < num_segments + 1; i++) {
+    const auto center_basic_point = (right_points.at(i) + left_points.at(i)) / 2;
+
+    const lanelet::ConstPoint3d center_point(
+      lanelet::InvalId, center_basic_point.x(), center_basic_point.y(), center_basic_point.z());
+    center_points.push_back(center_point);
+  }
+
+  const auto centerline_opt = create_safe_linestring(center_points);
+  assert(centerline_opt.has_value() && "center_points has less than two points.");
+
+  return *centerline_opt;
+}
+
 lanelet::ConstLineString3d get_centerline_with_offset(
   const lanelet::ConstLanelet & lanelet_obj, const double offset, const double resolution)
 {

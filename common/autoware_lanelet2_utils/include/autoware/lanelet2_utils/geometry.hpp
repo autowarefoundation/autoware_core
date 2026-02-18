@@ -218,7 +218,17 @@ std::optional<lanelet::ConstLanelets> get_dirty_expanded_lanelets(
 /**
  * @brief get the centerline of ConstLanelet with offset
  * @param[in] lanelet_obj target lanelet
+ * @param[in] resolution desired resolution (distance / segments)
+ * @return ConstLineString3d which is the ConstLanelet's centerline (without offset)
+ */
+lanelet::ConstLineString3d get_fine_centerline(
+  const lanelet::ConstLanelet & lanelet_obj, const double resolution = 5.0);
+
+/**
+ * @brief get the centerline of ConstLanelet with offset
+ * @param[in] lanelet_obj target lanelet
  * @param[in] offset offset
+ * @param[in] resolution desired resolution (distance / segments)
  * Sign Convention:
  * Positive: to the left bound
  * Negative: to the right bound
@@ -231,6 +241,7 @@ lanelet::ConstLineString3d get_centerline_with_offset(
  * @brief get the right bound of ConstLanelet with offset
  * @param[in] lanelet_obj target lanelet
  * @param[in] offset offset
+ * @param[in] resolution desired resolution (distance / segments)
  * Sign Convention: (opposite to centerline)
  * Positive: to outside of lanelet (to the **right**),
  * Negative: to inside of lanelet (to the **left** bound)
@@ -243,6 +254,7 @@ lanelet::ConstLineString3d get_right_bound_with_offset(
  * @brief get the left bound of ConstLanelet with offset
  * @param[in] lanelet_obj target lanelet
  * @param[in] offset offset
+ * @param[in] resolution desired resolution (distance / segments)
  * Sign Convention: (Same as centerline)
  * Positive: to outside of lanelet (to the left),
  * Negative: to inside of lanelet (to the right bound).

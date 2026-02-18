@@ -926,6 +926,24 @@ TEST(LaneletManipulation, getBoundOrdinaryCase)
   std::vector<lanelet::BasicPoint3d> right_points = {p3, p4};
   auto ll = *create_safe_lanelet(left_points, right_points);
 
+  // fine centerline (no offset)
+  {
+    auto centerline = autoware::experimental::lanelet2_utils::get_fine_centerline(ll, sqrt(2));
+    ASSERT_EQ(centerline.size(), 3) << "Size of centerline is not 3 as expected!";
+    {
+      auto test_point = lanelet::BasicPoint3d(0, 1.0, 0.0);
+      expect_point_eq(centerline[0], test_point);
+    }
+    {
+      auto test_point = lanelet::BasicPoint3d(1, 2.0, 0.0);
+      expect_point_eq(centerline[1], test_point);
+    }
+    {
+      auto test_point = lanelet::BasicPoint3d(2, 3.0, 0.0);
+      expect_point_eq(centerline[2], test_point);
+    }
+  }
+
   // centerline shift left
   {
     auto centerline =
@@ -1058,6 +1076,29 @@ TEST(LaneletManipulation, getBoundDifferentLength)
   const auto calculate_magnitude = [](const double x, const double y) {
     return sqrt(std::pow(x, 2) + std::pow(y, 2));
   };
+
+  // fine centerline (no offset)
+  {
+    auto centerline = autoware::experimental::lanelet2_utils::get_fine_centerline(ll, sqrt(2));
+    // use longer bound to calculate num_segments
+    ASSERT_EQ(centerline.size(), 4) << "Size of centerline is not 4 as expected!";
+    {
+      auto test_point = lanelet::BasicPoint3d(0, 1.0, 0.0);
+      expect_point_eq(centerline[0], test_point);
+    }
+    {
+      auto test_point = lanelet::BasicPoint3d(5.0 / 6.0, 11.0 / 6.0, 0.0);
+      expect_point_eq(centerline[1], test_point);
+    }
+    {
+      auto test_point = lanelet::BasicPoint3d(5.0 / 3.0, 8.0 / 3.0, 0.0);
+      expect_point_eq(centerline[2], test_point);
+    }
+    {
+      auto test_point = lanelet::BasicPoint3d(2.5, 3.5, 0.0);
+      expect_point_eq(centerline[3], test_point);
+    }
+  }
 
   // centerline shift left
   {
