@@ -101,6 +101,16 @@ std::optional<geometry_msgs::msg::Pose> get_pose_from_2d_arc_length(
   const lanelet::ConstLanelets & lanelet_sequence, const double s);
 
 /**
+ * @brief extract a lanelet Polygon between two arc-length positions along input lanelet sequence
+ * @param[in] lanelet_sequence input sequence of ConstLanelets
+ * @param[in] s1 the start distance (arc length from the beginning).
+ * @param[in] s2 the end distance (arc length from the beginning).
+ * @return new CompoundPolygon3d of lanelet which left and right bound are between their s1 and s2.
+ */
+std::optional<lanelet::CompoundPolygon3d> get_polygon_from_arc_length(
+  const lanelet::ConstLanelets & lanelet_sequence, const double s1, const double s2);
+
+/**
  * @brief find the closest segment of the ConstLineString3d to the BasicPoint3d
  * @param[in] linestring linestring that want to find the closest segment
  * @param[in] search_pt query point

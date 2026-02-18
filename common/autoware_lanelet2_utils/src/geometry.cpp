@@ -290,6 +290,49 @@ std::optional<geometry_msgs::msg::Pose> get_pose_from_2d_arc_length(
   return std::nullopt;
 }
 
+std::optional<lanelet::CompoundPolygon3d> get_polygon_from_arc_length(
+  const lanelet::ConstLanelets & lanelet_sequence, const double s1, const double s2)
+{
+  const auto combined_lanelet_opt = combine_lanelets_shape(lanelet_sequence);
+
+  if (!combined_lanelet_opt.has_value()) {
+    return std::nullopt;
+  }
+  const auto & combined_lanelet = combined_lanelet_opt.value();
+  const auto total_length = lanelet::geometry::length3d(combined_lanelet);
+
+  // make sure s1 and s2 are between [0, lane_length]
+  const auto s1_saturated = std::max(0.0, std::min(s1, total_length));
+  const auto s2_saturated = std::max(0.0, std::min(s2, total_length));
+
+  const auto ratio_s1 = s1_saturated / total_length;
+  const auto ratio_s2 = s2_saturated / total_length;
+
+  const auto s1_left =
+    static_cast<double>(ratio_s1 * lanelet::geometry::length(combined_lanelet.leftBound()));
+  const auto s2_left =
+    static_cast<double>(ratio_s2 * lanelet::geometry::length(combined_lanelet.leftBound()));
+  const auto s1_right =
+    static_cast<double>(ratio_s1 * lanelet::geometry::length(combined_lanelet.rightBound()));
+  const auto s2_right =
+    static_cast<double>(ratio_s2 * lanelet::geometry::length(combined_lanelet.rightBound()));
+
+  const auto left_bound_opt =
+    get_linestring_from_arc_length(combined_lanelet.leftBound(), s1_left, s2_left);
+  const auto right_bound_opt =
+    get_linestring_from_arc_length(combined_lanelet.rightBound(), s1_right, s2_right);
+
+  if (!left_bound_opt.has_value() || !right_bound_opt.has_value()) {
+    return std::nullopt;
+  }
+
+  const auto cll_opt = create_safe_lanelet(left_bound_opt.value(), right_bound_opt.value());
+  if (!cll_opt.has_value()) {
+    return std::nullopt;
+  }
+  return cll_opt.value().polygon3d();
+}
+
 lanelet::ConstLineString3d get_closest_segment(
   const lanelet::ConstLineString3d & linestring, const lanelet::BasicPoint3d & search_pt)
 {

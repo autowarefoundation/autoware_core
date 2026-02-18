@@ -341,6 +341,59 @@ TEST_F(ExtrapolatedLaneletTest, GetPoseFrom2dArcLength_OnRealMapLanelets)
   EXPECT_NEAR(p.orientation.w, eq.w, 1e-4);
 }
 
+// Test xx: getPolygonFromArcLength empty lanelets
+TEST(getPolygonFromArcLength, EmptyLaneletsReturnsNullopt)
+{
+  lanelet::ConstLanelets empty{};
+  auto opt = autoware::experimental::lanelet2_utils::get_polygon_from_arc_length(empty, 0.5, 1.0);
+  EXPECT_FALSE(opt.has_value());
+}
+
+// Test xx: getPolygonFromArcLength ordinary cases
+TEST(getPolygonFromArcLength, OrdinaryLaneletsReturnCorrectPolygon)
+{
+  using autoware::experimental::lanelet2_utils::create_safe_lanelet;
+  auto p1 = lanelet::BasicPoint3d(0.0, 2.0, 0.0);
+  auto p2 = lanelet::BasicPoint3d(3.0, 2.0, 0.0);
+  auto p3 = lanelet::BasicPoint3d(0.0, 0.0, 0.0);
+  auto p4 = lanelet::BasicPoint3d(3.0, 0.0, 0.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points1 = {p1, p2};
+  std::vector<lanelet::BasicPoint3d> right_points1 = {p3, p4};
+
+  auto ll1 = create_safe_lanelet(left_points1, right_points1);
+
+  auto p5 = lanelet::BasicPoint3d(3.0, 2.0, 0.0);
+  auto p6 = lanelet::BasicPoint3d(6.0, 2.0, 0.0);
+  auto p7 = lanelet::BasicPoint3d(3.0, 0.0, 0.0);
+  auto p8 = lanelet::BasicPoint3d(6.0, 0.0, 0.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points2 = {p5, p6};
+  std::vector<lanelet::BasicPoint3d> right_points2 = {p7, p8};
+
+  auto ll2 = create_safe_lanelet(left_points2, right_points2);
+
+  auto lanelet_sequence = lanelet::ConstLanelets{*ll1, *ll2};
+
+  // Full range
+  {
+    const auto polygon_opt = autoware::experimental::lanelet2_utils::get_polygon_from_arc_length(
+      lanelet_sequence, 0.0, 6.0);
+    ASSERT_TRUE(polygon_opt.has_value());
+    const auto polygon_area = boost::geometry::area(lanelet::utils::to2D(polygon_opt.value()));
+    EXPECT_NEAR(polygon_area, 12.0, 1e-4);
+  }
+
+  // Partial range
+  {
+    const auto polygon_opt = autoware::experimental::lanelet2_utils::get_polygon_from_arc_length(
+      lanelet_sequence, 2.0, 4.0);
+    ASSERT_TRUE(polygon_opt.has_value());
+    const auto polygon_area = boost::geometry::area(lanelet::utils::to2D(polygon_opt.value()));
+    EXPECT_NEAR(polygon_area, 4.0, 1e-4);
+  }
+}
+
 // Test 16: get_closest_segment full range
 TEST(GetClosestSegment, OrdinaryLinestringReturnCorrectSegment)
 {
