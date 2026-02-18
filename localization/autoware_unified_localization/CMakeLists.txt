@@ -37,7 +37,7 @@ install(DIRECTORY include/
 # Adapter: one node that subscribes pose/twist, calls Core, publishes odom and acceleration
 add_executable(localization_node src/localization_node.cpp)
 target_link_libraries(localization_node unified_localization_core)
-ament_target_dependencies(localization_node rclcpp geometry_msgs nav_msgs tf2_ros)
+ament_target_dependencies(localization_node rclcpp geometry_msgs nav_msgs tf2_ros autoware_component_interface_specs)
 install(TARGETS localization_node DESTINATION lib/${PROJECT_NAME})
 
 # Install config and launch for the node

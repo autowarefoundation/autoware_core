@@ -6,6 +6,7 @@ import time
 import unittest
 
 from ament_index_python import get_package_share_directory
+from autoware_localization_msgs.srv import InitializeLocalization
 from geometry_msgs.msg import PoseWithCovarianceStamped, TwistWithCovarianceStamped
 import launch
 from launch.actions import IncludeLaunchDescription
@@ -15,6 +16,9 @@ import launch_testing
 import pytest
 import rclpy
 from nav_msgs.msg import Odometry
+
+# Method value for DIRECT (set initial pose from request)
+INITIALIZE_METHOD_DIRECT = 2
 
 logger = get_logger(__name__)
 
@@ -126,6 +130,105 @@ class TestUnifiedLocalizationNode(unittest.TestCase):
                 break
 
         self.assertGreater(len(odom_buffer), 0, "Expected at least one Odometry on /kinematic_state")
+
+    def test_kinematic_state_published_after_initialize_service_and_measurements(self):
+        # Set initial pose via /localization/initialize service (DIRECT method)
+        service_name = "/localization/initialize"
+        for _ in range(50):
+            if self.test_node.count_clients(service_name) >= 1:
+                break
+            rclpy.spin_once(self.test_node, timeout_sec=0.1)
+            time.sleep(0.1)
+        self.assertGreaterEqual(
+            self.test_node.count_clients(service_name), 1,
+            f"Service {service_name} did not become available",
+        )
+
+        client = self.test_node.create_client(InitializeLocalization, service_name)
+        if not client.wait_for_service(timeout_sec=5.0):
+            self.fail(f"Service {service_name} not ready")
+        req = InitializeLocalization.Request()
+        req.method = INITIALIZE_METHOD_DIRECT
+        pose_stamped = PoseWithCovarianceStamped()
+        pose_stamped.header.frame_id = "map"
+        pose_stamped.pose.pose.position.x = 0.0
+        pose_stamped.pose.pose.position.y = 0.0
+        pose_stamped.pose.pose.position.z = 0.0
+        pose_stamped.pose.pose.orientation.w = 1.0
+        pose_stamped.pose.covariance = [
+            0.01, 0.0, 0.0, 0.0, 0.0, 0.0,
+            0.0, 0.01, 0.0, 0.0, 0.0, 0.0,
+            0.0, 0.0, 0.01, 0.0, 0.0, 0.0,
+            0.0, 0.0, 0.0, 0.01, 0.0, 0.0,
+            0.0, 0.0, 0.0, 0.0, 0.01, 0.0,
+            0.0, 0.0, 0.0, 0.0, 0.0, 0.01,
+        ]
+        req.pose_with_covariance = [pose_stamped]
+        future = client.call_async(req)
+        for _ in range(100):
+            rclpy.spin_once(self.test_node, timeout_sec=0.1)
+            if future.done():
+                break
+            time.sleep(0.05)
+        self.assertTrue(future.done(), "Initialize service call did not complete")
+        res = future.result()
+        self.assertTrue(res.status.success, f"Initialize service failed: {res.status.message}")
+
+        # Publish pose and twist so the pipeline publishes kinematic_state
+        pub_pose_1 = self.test_node.create_publisher(
+            PoseWithCovarianceStamped, "/in_pose_with_covariance", 10
+        )
+        pub_pose_2 = self.test_node.create_publisher(
+            PoseWithCovarianceStamped, "/localization_node/in_pose_with_covariance", 10
+        )
+        pub_twist_1 = self.test_node.create_publisher(
+            TwistWithCovarianceStamped, "/in_twist_with_covariance", 10
+        )
+        pub_twist_2 = self.test_node.create_publisher(
+            TwistWithCovarianceStamped, "/localization_node/in_twist_with_covariance", 10
+        )
+        pose_msg = PoseWithCovarianceStamped()
+        pose_msg.header.frame_id = "map"
+        pose_msg.pose.pose.position.x = 0.0
+        pose_msg.pose.pose.position.y = 0.0
+        pose_msg.pose.pose.orientation.w = 1.0
+        pose_msg.pose.covariance = pose_stamped.pose.covariance
+        twist_msg = TwistWithCovarianceStamped()
+        twist_msg.header.frame_id = "base_link"
+        twist_msg.twist.twist.linear.x = 0.5
+        twist_msg.twist.covariance = [
+            0.01, 0.0, 0.0, 0.0, 0.0, 0.0,
+            0.0, 0.01, 0.0, 0.0, 0.0, 0.0,
+            0.0, 0.0, 0.01, 0.0, 0.0, 0.0,
+            0.0, 0.0, 0.0, 0.01, 0.0, 0.0,
+            0.0, 0.0, 0.0, 0.0, 0.01, 0.0,
+            0.0, 0.0, 0.0, 0.0, 0.0, 0.01,
+        ]
+        for _ in range(20):
+            pose_msg.header.stamp = self.test_node.get_clock().now().to_msg()
+            twist_msg.header.stamp = pose_msg.header.stamp
+            pub_pose_1.publish(pose_msg)
+            pub_pose_2.publish(pose_msg)
+            pub_twist_1.publish(twist_msg)
+            pub_twist_2.publish(twist_msg)
+            rclpy.spin_once(self.test_node, timeout_sec=0.05)
+
+        odom_buffer = []
+        self.test_node.create_subscription(
+            Odometry, "/kinematic_state", lambda msg: odom_buffer.append(msg), 10
+        )
+        self.test_node.create_subscription(
+            Odometry, "/localization_node/kinematic_state", lambda msg: odom_buffer.append(msg), 10
+        )
+        end_time = time.time() + self.evaluation_time
+        while time.time() < end_time:
+            rclpy.spin_once(self.test_node, timeout_sec=0.1)
+            if len(odom_buffer) > 0:
+                break
+        self.assertGreater(
+            len(odom_buffer), 0,
+            "Expected at least one Odometry on /kinematic_state after Initialize service (DIRECT)",
+        )
 
 
 @launch_testing.post_shutdown_test()

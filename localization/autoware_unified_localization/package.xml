@@ -18,6 +18,7 @@
   <depend>nav_msgs</depend>
   <depend>rclcpp</depend>
   <depend>tf2_ros</depend>
+  <depend>autoware_component_interface_specs</depend>
 
   <exec_depend>launch_ros</exec_depend>
 
@@ -25,6 +26,7 @@
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>autoware_lint_common</test_depend>
   <test_depend>launch_testing_ament_cmake</test_depend>
+  <test_depend>autoware_localization_msgs</test_depend>
   <test_depend>launch_testing_ros</test_depend>
 
   <export>

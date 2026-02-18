@@ -4,6 +4,7 @@
 #include "autoware/unified_localization_core/fusion_pipeline.hpp"
 #include "autoware/unified_localization_core/types.hpp"
 
+#include <autoware/component_interface_specs/localization.hpp>
 #include <geometry_msgs/msg/accel_with_covariance_stamped.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
@@ -88,6 +89,11 @@ public:
     sub_twist_ = create_subscription<TwistWithCovarianceStamped>(
       "in_twist_with_covariance", rclcpp::QoS(1),
       std::bind(&LocalizationNode::on_twist, this, std::placeholders::_1));
+
+    using Initialize = autoware::component_interface_specs::localization::Initialize;
+    srv_initialize_ = create_service<Initialize::Service>(
+      Initialize::name,
+      std::bind(&LocalizationNode::on_initialize_service, this, std::placeholders::_1, std::placeholders::_2));
   }
 
 private:
@@ -164,6 +170,34 @@ private:
     std::lock_guard<std::mutex> lock(meas_mutex_);
     last_twist_ = std::make_shared<unified_localization_core::TwistWithCovariance>();
     msg_to_twist_core(*msg, *last_twist_);
+  }
+
+  void on_initialize_service(
+    const autoware::component_interface_specs::localization::Initialize::Service::Request::SharedPtr req,
+    const autoware::component_interface_specs::localization::Initialize::Service::Response::SharedPtr res)
+  {
+    using Initialize = autoware::component_interface_specs::localization::Initialize;
+    if (req->method != Initialize::Service::Request::DIRECT) {
+      res->status.success = false;
+      res->status.code = 1;  // PARAMETER_ERROR or similar
+      res->status.message = "Only DIRECT method is supported (pose_with_covariance in request).";
+      RCLCPP_WARN(get_logger(), "%s", res->status.message.c_str());
+      return;
+    }
+    if (req->pose_with_covariance.empty()) {
+      res->status.success = false;
+      res->status.code = 1;
+      res->status.message = "DIRECT method requires at least one pose_with_covariance.";
+      RCLCPP_WARN(get_logger(), "%s", res->status.message.c_str());
+      return;
+    }
+    const PoseWithCovarianceStamped & msg = req->pose_with_covariance.front();
+    unified_localization_core::PoseWithCovariance pose_core;
+    msg_to_pose_core(msg, pose_core);
+    pipeline_->initialize(pose_core);
+    res->status.success = true;
+    res->status.message = "";
+    RCLCPP_INFO(get_logger(), "Initial pose set via /localization/initialize (DIRECT).");
   }
 
   void timer_callback()
@@ -284,6 +318,9 @@ private:
   rclcpp::Subscription<PoseWithCovarianceStamped>::SharedPtr sub_initial_pose_;
   rclcpp::Subscription<PoseWithCovarianceStamped>::SharedPtr sub_pose_;
   rclcpp::Subscription<TwistWithCovarianceStamped>::SharedPtr sub_twist_;
+
+  rclcpp::Service<autoware::component_interface_specs::localization::Initialize::Service>::SharedPtr
+    srv_initialize_;
 
   std::mutex meas_mutex_;
   std::shared_ptr<unified_localization_core::PoseWithCovariance> last_pose_;

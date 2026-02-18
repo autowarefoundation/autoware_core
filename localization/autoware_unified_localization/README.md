@@ -85,6 +85,7 @@ The **localization_node** subscribes to pose and twist (same topic names as `ekf
 - **kinematic_state** (`nav_msgs/msg/Odometry`) — fused pose + twist (component_interface_specs: `/localization/kinematic_state` when remapped)
 - **acceleration** (`geometry_msgs/msg/AccelWithCovarianceStamped`) — from twist2accel
 - TF: `pose_frame_id` → `child_frame_id` (default: map → base_link)
+- **Service** `/localization/initialize` (`autoware_localization_msgs/srv/InitializeLocalization`) — set initial pose via API (DIRECT method only: pass `pose_with_covariance` in the request).
 
 ### Topics (default names, remappable via launch)
 
@@ -95,6 +96,19 @@ The **localization_node** subscribes to pose and twist (same topic names as `ekf
 | Input  | `in_twist_with_covariance`   | `geometry_msgs/msg/TwistWithCovarianceStamped` |
 | Output | `kinematic_state`            | `nav_msgs/msg/Odometry`                   |
 | Output | `acceleration`               | `geometry_msgs/msg/AccelWithCovarianceStamped` |
+
+### Service: set initial pose (DIRECT)
+
+Compatible with component_interface_specs `/localization/initialize`. Only the **DIRECT** method is supported: the request must contain at least one `pose_with_covariance` (e.g. `PoseWithCovarianceStamped`); the first one is used to initialize the pipeline.
+
+Example (after the node is running):
+
+```bash
+ros2 service call /localization/initialize autoware_localization_msgs/srv/InitializeLocalization \
+  "{method: 2, pose_with_covariance: [{header: {frame_id: 'map'}, pose: {pose: {position: {x: 0.0, y: 0.0, z: 0.0}, orientation: {w: 1.0}}, covariance: [0.01,0,0,0,0,0, 0,0.01,0,0,0,0, 0,0,0.01,0,0,0, 0,0,0,0.01,0,0, 0,0,0,0,0.01,0, 0,0,0,0,0,0.01]}}]}"
+```
+
+(`method: 2` is DIRECT; AUTO and others are not supported and return an error.)
 
 ### Run
 
