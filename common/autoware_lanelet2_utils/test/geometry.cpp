@@ -559,11 +559,10 @@ TEST_F(GetArcCoordinates, get_arc_coordinateEmptyCase)
   EXPECT_EQ(arc_coord.length, 0);
   EXPECT_EQ(arc_coord.distance, 0);
 
-  // get_arc_coordinates_on_ego_centerline should give same result without waypoints
+  // get_arc_coordinates should give same result without waypoints
   {
-    auto arc_coord_on_ego_centerline =
-      autoware::experimental::lanelet2_utils::get_arc_coordinates_on_ego_centerline(
-        empty_lanelet_sequence, query, lanelet_map_ptr_);
+    auto arc_coord_on_ego_centerline = autoware::experimental::lanelet2_utils::get_arc_coordinates(
+      empty_lanelet_sequence, query, lanelet_map_ptr_);
     EXPECT_EQ(arc_coord_on_ego_centerline.length, 0);
     EXPECT_EQ(arc_coord_on_ego_centerline.distance, 0);
   }
@@ -603,10 +602,9 @@ TEST_F(GetArcCoordinates, get_arc_coordinateOrdinaryCase)
     EXPECT_NEAR(arc_coord.length, 1.5, 1e-4);
     EXPECT_NEAR(arc_coord.distance, 0.1, 1e-4);
 
-    // get_arc_coordinates_on_ego_centerline should give same result without waypoints
-    auto arc_coord_on_ego_centerline =
-      autoware::experimental::lanelet2_utils::get_arc_coordinates_on_ego_centerline(
-        lanelet_sequence, query, lanelet_map_ptr_);
+    // get_arc_coordinates should give same result without waypoints
+    auto arc_coord_on_ego_centerline = autoware::experimental::lanelet2_utils::get_arc_coordinates(
+      lanelet_sequence, query, lanelet_map_ptr_);
     EXPECT_NEAR(arc_coord_on_ego_centerline.length, 1.5, 1e-4);
     EXPECT_NEAR(arc_coord_on_ego_centerline.distance, 0.1, 1e-4);
   }
@@ -619,10 +617,9 @@ TEST_F(GetArcCoordinates, get_arc_coordinateOrdinaryCase)
     EXPECT_NEAR(arc_coord.length, 4.5, 1e-4);
     EXPECT_NEAR(arc_coord.distance, -0.1, 1e-4);
 
-    // get_arc_coordinates_on_ego_centerline should give same result without waypoints
-    auto arc_coord_on_ego_centerline =
-      autoware::experimental::lanelet2_utils::get_arc_coordinates_on_ego_centerline(
-        lanelet_sequence, query, lanelet_map_ptr_);
+    // get_arc_coordinates should give same result without waypoints
+    auto arc_coord_on_ego_centerline = autoware::experimental::lanelet2_utils::get_arc_coordinates(
+      lanelet_sequence, query, lanelet_map_ptr_);
     EXPECT_NEAR(arc_coord_on_ego_centerline.length, 4.5, 1e-4);
     EXPECT_NEAR(arc_coord_on_ego_centerline.distance, -0.1, 1e-4);
   }

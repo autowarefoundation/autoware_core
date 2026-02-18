@@ -413,7 +413,7 @@ lanelet::ArcCoordinates get_arc_coordinates(
   return arc_coordinates;
 }
 
-lanelet::ArcCoordinates get_arc_coordinates_on_ego_centerline(
+lanelet::ArcCoordinates get_arc_coordinates(
   const lanelet::ConstLanelets & lanelets, const geometry_msgs::msg::Pose & pose,
   const lanelet::LaneletMapConstPtr & lanelet_map_ptr)
 {
