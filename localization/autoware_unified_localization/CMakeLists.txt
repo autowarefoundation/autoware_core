@@ -34,6 +34,16 @@ install(DIRECTORY include/
   PATTERN "*.hpp"
 )
 
+# Adapter: one node that subscribes pose/twist, calls Core, publishes odom and acceleration
+add_executable(localization_node src/localization_node.cpp)
+target_link_libraries(localization_node unified_localization_core)
+ament_target_dependencies(localization_node rclcpp geometry_msgs nav_msgs tf2_ros)
+install(TARGETS localization_node DESTINATION lib/${PROJECT_NAME})
+
+# Install config and launch for the node
+install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
+
 ament_export_include_directories(include)
 ament_export_targets(unified_localization_core HAS_LIBRARY_TARGET)
 ament_export_dependencies(Eigen3 autoware_kalman_filter)
@@ -61,6 +71,11 @@ if(BUILD_TESTING)
   else()
     message(STATUS "Threads not found; skipping test_fusion_pipeline (run with -DBUILD_TESTING=OFF to avoid)")
   endif()
+
+  add_launch_test(
+    test/test_unified_localization_launch.py
+    TIMEOUT "30"
+  )
 endif()
 
 autoware_ament_auto_package()

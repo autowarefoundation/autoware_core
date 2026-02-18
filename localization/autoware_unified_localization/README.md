@@ -1,6 +1,6 @@
 # autoware_unified_localization
 
-Unified localization: **ROS-free Core** (EKF fusion + stop_filter + twist2accel) and optional Adapter node (future).
+Unified localization: **ROS-free Core** (EKF fusion + stop_filter + twist2accel) and **Adapter node** that subscribes to pose/twist, runs the Core, and publishes odometry and acceleration.
 
 ## MVP Core (current)
 
@@ -77,6 +77,109 @@ autoware::unified_localization_core::OdometryOutput odom;
 pipeline.get_odometry(t, odom);
 // use odom.position_*, odom.linear_x, odom.angular_z, etc.
 ```
+
+## Adapter node (ROS 2)
+
+The **localization_node** subscribes to pose and twist (same topic names as `ekf_localizer` for drop-in use), calls the Core `FusionPipeline`, and publishes:
+
+- **kinematic_state** (`nav_msgs/msg/Odometry`) — fused pose + twist (component_interface_specs: `/localization/kinematic_state` when remapped)
+- **acceleration** (`geometry_msgs/msg/AccelWithCovarianceStamped`) — from twist2accel
+- TF: `pose_frame_id` → `child_frame_id` (default: map → base_link)
+
+### Topics (default names, remappable via launch)
+
+| Role   | Topic name                   | Message type                              |
+|--------|------------------------------|-------------------------------------------|
+| Input  | `initialpose`                | `geometry_msgs/msg/PoseWithCovarianceStamped` |
+| Input  | `in_pose_with_covariance`   | `geometry_msgs/msg/PoseWithCovarianceStamped` |
+| Input  | `in_twist_with_covariance`   | `geometry_msgs/msg/TwistWithCovarianceStamped` |
+| Output | `kinematic_state`            | `nav_msgs/msg/Odometry`                   |
+| Output | `acceleration`               | `geometry_msgs/msg/AccelWithCovarianceStamped` |
+
+### Run
+
+```bash
+source install/setup.bash
+ros2 run autoware_unified_localization localization_node --ros-args --params-file install/autoware_unified_localization/share/autoware_unified_localization/config/unified_localization.param.yaml
+```
+(Use the path to the installed config after building; or use the launch file below to load it automatically.)
+
+Or use the launch file (loads the package config by default):
+
+```bash
+source install/setup.bash
+ros2 launch autoware_unified_localization unified_localization.launch.py
+```
+
+To match existing localization launch remaps (e.g. from NDT and gyro_odometer), pass input/output topic names:
+
+```bash
+ros2 launch autoware_unified_localization unified_localization.launch.py \
+  input_pose_with_covariance:=/ndt_pose \
+  input_twist_with_covariance:=/vehicle/twist \
+  output_kinematic_state:=/localization/kinematic_state \
+  output_acceleration:=/localization/acceleration
+```
+
+### Testing the Adapter node
+
+#### Option A: Manual test (two terminals)
+
+1. **Terminal 1** — start the node (with params):
+
+   ```bash
+   source install/setup.bash
+   ros2 launch autoware_unified_localization unified_localization.launch.py
+   ```
+
+2. **Terminal 2** — send initial pose, then pose and twist a few times so the pipeline publishes:
+
+   ```bash
+   source install/setup.bash
+   # Initial pose (required once)
+   ros2 topic pub --once /initialpose geometry_msgs/msg/PoseWithCovarianceStamped \
+     "{header: {frame_id: 'map'}, pose: {pose: {position: {x: 0.0, y: 0.0, z: 0.0}, orientation: {w: 1.0}}, covariance: [0.01,0,0,0,0,0, 0,0.01,0,0,0,0, 0,0,0.01,0,0,0, 0,0,0,0.01,0,0, 0,0,0,0,0.01,0, 0,0,0,0,0,0.01]}}"
+
+   # Pose (repeat a few times or use --rate 10)
+   ros2 topic pub --rate 10 /in_pose_with_covariance geometry_msgs/msg/PoseWithCovarianceStamped \
+     "{header: {frame_id: 'map'}, pose: {pose: {position: {x: 0.0, y: 0.0, z: 0.0}, orientation: {w: 1.0}}, covariance: [0.01,0,0,0,0,0, 0,0.01,0,0,0,0, 0,0,0.01,0,0,0, 0,0,0,0.01,0,0, 0,0,0,0,0.01,0, 0,0,0,0,0,0.01]}}"
+
+   # Twist (in another terminal or in the same with --rate)
+   ros2 topic pub --rate 10 /in_twist_with_covariance geometry_msgs/msg/TwistWithCovarianceStamped \
+     "{header: {frame_id: 'base_link'}, twist: {twist: {linear: {x: 1.0, y: 0.0, z: 0.0}, angular: {z: 0.0}}, covariance: [0.01,0,0,0,0,0, 0,0.01,0,0,0,0, 0,0,0.01,0,0,0, 0,0,0,0.01,0,0, 0,0,0,0,0.01,0, 0,0,0,0,0,0.01]}}"
+   ```
+
+3. **Check output** (in another terminal):
+
+   ```bash
+   ros2 topic echo /kinematic_state    # Odometry
+   ros2 topic echo /acceleration       # AccelWithCovarianceStamped
+   ros2 run tf2_ros tf2_echo map base_link
+   ```
+
+If you use the launch file without remaps, the node’s topic namespace is its node name: use `/localization_node/kinematic_state` and `/localization_node/acceleration` (and remap `initialpose` / `in_pose_with_covariance` / `in_twist_with_covariance` under that namespace if needed). Use `ros2 topic list` to see the actual names.
+
+#### Option B: Automated launch test
+
+Build with tests and run the launch test (starts the node, sends initial pose + pose/twist, checks that `kinematic_state` is published):
+
+```bash
+source install/setup.bash
+colcon build --packages-select autoware_unified_localization --cmake-args -DBUILD_TESTING=ON
+colcon test --packages-select autoware_unified_localization --event-handlers console_direct+
+```
+
+To run only the launch test:
+
+```bash
+colcon test --packages-select autoware_unified_localization --ctest-args -R test_test_unified_localization_launch
+```
+
+#### Option C: Test with existing localization (rosbag / live)
+
+If you have a rosbag or a running stack that publishes NDT pose and vehicle twist:
+
+- Remap inputs to those topics and run the unified node instead of `ekf_localizer`; then check `kinematic_state` and `acceleration` (and TF) as above.
 
 ## Design
 
