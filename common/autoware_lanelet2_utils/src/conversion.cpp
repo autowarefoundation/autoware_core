@@ -261,4 +261,20 @@ std::optional<lanelet::ConstLanelet> create_safe_lanelet(
   return cll;
 }
 
+std::optional<lanelet::ConstLanelet> create_safe_lanelet(
+  const lanelet::ConstLineString3d & left_linestring,
+  const lanelet::ConstLineString3d & right_linestring)
+{
+  if (left_linestring.size() < 2 || right_linestring.size() < 2) {
+    return std::nullopt;
+  }
+
+  const auto left_ls = remove_const(left_linestring);
+  const auto right_ls = remove_const(right_linestring);
+
+  lanelet::ConstLanelet cll(lanelet::InvalId, left_ls, right_ls);
+
+  return cll;
+}
+
 }  // namespace autoware::experimental::lanelet2_utils
