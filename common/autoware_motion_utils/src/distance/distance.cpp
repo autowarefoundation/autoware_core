@@ -161,8 +161,6 @@ std::optional<double> calcDecelDistPlanType1(
 std::optional<double> calcDecelDistPlanType2(
   const double v0, const double vt, const double a0, const double ja, const double jd)
 {
-  constexpr double epsilon = 1e-3;
-
   const double a1_square = (vt - v0 - 0.5 * (0.0 - a0) / jd * a0) * (2.0 * ja * jd / (ja - jd));
   const double a1 = -std::sqrt(a1_square);
 
@@ -218,8 +216,6 @@ std::optional<double> calcDecelDistPlanType2(
 std::optional<double> calcDecelDistPlanType3(
   const double v0, const double vt, const double a0, const double ja)
 {
-  constexpr double epsilon = 1e-3;
-
   // positive jerk time
   const double t_acc = (0.0 - a0) / ja;
   const double t1 = epsilon < t_acc ? t_acc : 0.0;
@@ -245,7 +241,6 @@ std::optional<double> calcDecelDistWithJerkAndAccConstraints(
     return {};
   }
 
-  constexpr double epsilon = 1e-3;
   const double jerk_before_min_acc = acc_min < current_acc ? jerk_dec : jerk_acc;
   const double t_before_min_acc = (acc_min - current_acc) / jerk_before_min_acc;
   const double jerk_after_min_acc = jerk_acc;
