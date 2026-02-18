@@ -24,23 +24,24 @@ namespace autoware::motion_utils
   const double jerk_acc, const double jerk_dec);
 
 /**
- * @brief Computes the minimum longitudinal distance required to bring a vehicle to a 
+ * @brief Computes the minimum longitudinal distance required to bring a vehicle to a
  * complete stop, subject to jerk and acceleration constraints.
  *
  * This function models a three-phase stopping profile:
  * 1. A latency/delay phase where initial acceleration is maintained.
  * 2. A jerk-limited braking phase where deceleration increases to the maximum limit.
  * 3. A constant maximum-deceleration phase until the vehicle stops.
- * * If the vehicle reaches a full stop during phase 1 or phase 2, the calculation 
+ * * If the vehicle reaches a full stop during phase 1 or phase 2, the calculation
  * terminates early and returns the exact distance covered up to the point where v = 0.
  *
  * @param current_vel        Current longitudinal speed v₀ [m/s].
  * @param current_acc        Current longitudinal acceleration a₀ [m/s²].
- * @param acc_limit          Maximum (most negative) braking acceleration a_brake [m/s²] (e.g., -4.0).
+ * @param acc_limit          Maximum (most negative) braking acceleration a_brake [m/s²] (e.g.,
+ * -4.0).
  * @param jerk_limit         Maximum (most negative) braking jerk j_brake [m/s³] (e.g., -10.0).
  * @param initial_time_delay Latency before any braking jerk is applied t₁ [s]. Defaults to 0.0.
  *
- * @return std::optional<double> Minimum longitudinal stopping distance [m]. 
+ * @return std::optional<double> Minimum longitudinal stopping distance [m].
  * Returns 0.0 if the current velocity is already non-positive.
  * Returns std::nullopt if the kinematic limits are invalid (e.g., limits are >= 0).
  */
