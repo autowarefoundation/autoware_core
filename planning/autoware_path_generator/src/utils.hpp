@@ -12,14 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__PATH_GENERATOR__UTILS_HPP_
-#define AUTOWARE__PATH_GENERATOR__UTILS_HPP_
+#ifndef UTILS_HPP_
+#define UTILS_HPP_
 
-#include "autoware/path_generator/common_structs.hpp"
-#include "autoware/trajectory/path_point_with_lane_id.hpp"
+#include <autoware/lanelet2_utils/route_manager.hpp>
+#include <autoware/trajectory/path_point_with_lane_id.hpp>
 
 #include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
 #include <autoware_vehicle_msgs/msg/turn_indicators_command.hpp>
+
+#include <lanelet2_core/primitives/LaneletSequence.h>
 
 #include <optional>
 #include <utility>
@@ -66,58 +68,26 @@ struct PathRange
 namespace utils
 {
 /**
- * @brief get lanelets within route that are in specified distance backward from target
- * lanelet
- * @param lanelet target lanelet
- * @param planner_data planner data
- * @param distance backward distance from beginning of target lanelet
- * @return lanelets in range (std::nullopt if target lanelet is not within route)
- */
-std::optional<lanelet::ConstLanelets> get_lanelets_within_route_up_to(
-  const lanelet::ConstLanelet & lanelet, const PlannerData & planner_data, const double distance);
-
-/**
- * @brief get lanelets within route that are in specified distance forward from target
- * lanelet
- * @param lanelet target lanelet
- * @param planner_data planner data
- * @param distance forward distance from end of target lanelet
- * @return lanelets in range (std::nullopt if target lanelet is not within route)
- */
-std::optional<lanelet::ConstLanelets> get_lanelets_within_route_after(
-  const lanelet::ConstLanelet & lanelet, const PlannerData & planner_data, const double distance);
-
-/**
  * @brief get previous lanelet within route
  * @param lanelet target lanelet
- * @param planner_data planner data
+ * @param route_manager route manager
  * @return lanelets in range (std::nullopt if previous lanelet is not found or not
  * within route)
  */
 std::optional<lanelet::ConstLanelet> get_previous_lanelet_within_route(
-  const lanelet::ConstLanelet & lanelet, const PlannerData & planner_data);
+  const lanelet::ConstLanelet & lanelet,
+  const experimental::lanelet2_utils::RouteManager & route_manager);
 
 /**
  * @brief get next lanelet within route
  * @param lanelet target lanelet
- * @param planner_data planner data
+ * @param route_manager route manager
  * @return lanelets in range (std::nullopt if next lanelet is not found or not
  * within route)
  */
 std::optional<lanelet::ConstLanelet> get_next_lanelet_within_route(
-  const lanelet::ConstLanelet & lanelet, const PlannerData & planner_data);
-
-/**
- * @brief get waypoints in lanelet sequence and group them
- * @param lanelet_sequence lanelet sequence
- * @param lanelet_map lanelet map to get waypoints
- * @param connection_gradient_from_centerline gradient for connecting centerline and user-defined
- * waypoints (see figure in README)
- * @return waypoint groups
- */
-std::vector<WaypointGroup> get_waypoint_groups(
-  const lanelet::LaneletSequence & lanelet_sequence, const lanelet::LaneletMap & lanelet_map,
-  const double connection_gradient_from_centerline);
+  const lanelet::ConstLanelet & lanelet,
+  const experimental::lanelet2_utils::RouteManager & route_manager);
 
 /**
  * @brief get border point (intersection between segment and border)
@@ -276,10 +246,9 @@ PathRange<std::optional<double>> get_arc_length_on_centerline(
  * @brief Connect the path to the goal, ensuring the path is inside the lanelet sequence.
  * @param path Input path.
  * @param lanelet_sequence Lanelet sequence.
+ * @param route_manager Route manager.
  * @param goal_pose Goal pose.
- * @param goal_lanelet Goal lanelet.
  * @param s_goal Longitudinal distance to the goal on the centerline of the lanelet sequence.
- * @param planner_data Planner data.
  * @param connection_section_length Length of connection section.
  * @param pre_goal_offset Offset for pre-goal.
  * @return A path connected to the goal. (std::nullopt if no valid path found)
@@ -287,26 +256,27 @@ PathRange<std::optional<double>> get_arc_length_on_centerline(
 std::optional<experimental::trajectory::Trajectory<PathPointWithLaneId>>
 connect_path_to_goal_inside_lanelet_sequence(
   const experimental::trajectory::Trajectory<PathPointWithLaneId> & path,
-  const lanelet::LaneletSequence & lanelet_sequence, const geometry_msgs::msg::Pose & goal_pose,
-  const lanelet::ConstLanelet & goal_lanelet, const double s_goal, const PlannerData & planner_data,
+  const lanelet::LaneletSequence & lanelet_sequence,
+  const experimental::lanelet2_utils::RouteManager & route_manager,
+  const geometry_msgs::msg::Pose & goal_pose, const double s_goal,
   const double connection_section_length, const double pre_goal_offset);
 
 /**
  * @brief Connect the path to the goal.
  * @param path Input path.
  * @param lanelet_sequence Lanelet sequence covering the path.
+ * @param route_manager Route manager.
  * @param goal_pose Goal pose.
- * @param goal_lanelet Goal lanelet.
  * @param s_goal Longitudinal distance to the goal on the centerline of the lanelet sequence.
- * @param planner_data Planner data.
  * @param connection_section_length Length of connection section.
  * @param pre_goal_offset Offset for pre-goal.
  * @return A path connected to the goal.
  */
 experimental::trajectory::Trajectory<PathPointWithLaneId> connect_path_to_goal(
   const experimental::trajectory::Trajectory<PathPointWithLaneId> & path,
-  const lanelet::LaneletSequence & lanelet_sequence, const geometry_msgs::msg::Pose & goal_pose,
-  const lanelet::ConstLanelet & goal_lanelet, const double s_goal, const PlannerData & planner_data,
+  const lanelet::LaneletSequence & lanelet_sequence,
+  const experimental::lanelet2_utils::RouteManager & route_manager,
+  const geometry_msgs::msg::Pose & goal_pose, const double s_goal,
   const double connection_section_length, const double pre_goal_offset);
 
 /**
@@ -331,7 +301,7 @@ bool is_path_inside_lanelets(
 /**
  * @brief get earliest turn signal based on turn direction specified for lanelets
  * @param path target path
- * @param planner_data planner data
+ * @param route_manager route manager
  * @param current_pose current pose of ego vehicle
  * @param current_vel current longitudinal velocity of ego vehicle
  * @param search_distance base search distance
@@ -341,7 +311,7 @@ bool is_path_inside_lanelets(
  * @return turn signal
  */
 TurnIndicatorsCommand get_turn_signal(
-  const PathWithLaneId & path, const PlannerData & planner_data,
+  const PathWithLaneId & path, const experimental::lanelet2_utils::RouteManager & route_manager,
   const geometry_msgs::msg::Pose & current_pose, const double current_vel,
   const double search_distance, const double search_time, const double angle_threshold_deg,
   const double base_link_to_front);
@@ -358,4 +328,4 @@ std::optional<lanelet::ConstPoint2d> get_turn_signal_required_end_point(
 }  // namespace utils
 }  // namespace autoware::path_generator
 
-#endif  // AUTOWARE__PATH_GENERATOR__UTILS_HPP_
+#endif  // UTILS_HPP_
