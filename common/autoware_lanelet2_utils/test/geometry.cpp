@@ -1323,6 +1323,13 @@ TEST(LaneletCheck, OrdinaryCaseIsInLanelet)
     EXPECT_TRUE(check);
   }
 
+  // outside lanelet check if radius is expanded from the closest point
+  {
+    auto query = make_pose(0.0, 3.0);
+    bool check = autoware::experimental::lanelet2_utils::is_in_lanelet(ll, query, sqrt(2) / 2);
+    EXPECT_TRUE(check);
+  }
+
   // outside lanelet outside radius range
   {
     auto query = make_pose(-2.0, 0.0);
