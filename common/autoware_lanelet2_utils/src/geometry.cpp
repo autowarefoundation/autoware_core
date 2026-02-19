@@ -220,7 +220,7 @@ std::optional<lanelet::ConstLineString3d> get_linestring_from_arc_length(
     points.emplace_back(start_point.value());
   }
 
-  size_t end_index = linestring.size();
+  size_t end_index = linestring.size() - 1;
   for (size_t i = start_index; i < last_linestring_idx; i++) {
     const auto & p1 = linestring[i];
     const auto & p2 = linestring[i + 1];
@@ -232,7 +232,7 @@ std::optional<lanelet::ConstLineString3d> get_linestring_from_arc_length(
     accumulated_length += length;
   }
 
-  for (size_t i = start_index + 1; i < end_index; i++) {
+  for (size_t i = start_index + 1; i <= end_index; i++) {
     const auto p = lanelet::Point3d(linestring[i]);
     points.emplace_back(p);
   }
@@ -241,7 +241,6 @@ std::optional<lanelet::ConstLineString3d> get_linestring_from_arc_length(
     const auto & p2 = linestring[end_index + 1];
     const double residue = s2 - accumulated_length;
     const auto end_point = interpolate_point(p1, p2, residue);
-    points.emplace_back(linestring[end_index]);
 
     if (!end_point.has_value()) return std::nullopt;
 
