@@ -31,4 +31,9 @@
     <remap from="~/output/current_velocity_limit_mps" to="/planning/scenario_planning/current_max_velocity"/>
     <!-- Topic for displaying the set maximum speed (output topic) -->
   </node>
+
+  <node pkg="topic_tools" exec="relay" name="trajectory_relay_for_planning_trajectory" output="screen">
+    <remap from="/in" to="$(var output_trajectory)"/>
+    <remap from="/out" to="/planning/trajectory"/>
+  </node>
 </launch>
