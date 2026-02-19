@@ -85,7 +85,7 @@ The **localization_node** subscribes to pose and twist (same topic names as `ekf
 - **kinematic_state** (`nav_msgs/msg/Odometry`) — fused pose + twist (component_interface_specs: `/localization/kinematic_state` when remapped)
 - **acceleration** (`geometry_msgs/msg/AccelWithCovarianceStamped`) — from twist2accel
 - TF: `pose_frame_id` → `child_frame_id` (default: map → base_link)
-- **Service** `/localization/initialize` (`autoware_localization_msgs/srv/InitializeLocalization`) — set initial pose via API (DIRECT method only: pass `pose_with_covariance` in the request).
+- **Service** `/localization/initialize` (`autoware_localization_msgs/srv/InitializeLocalization`) — set initial pose via API (AUTO or DIRECT; see below).
 
 ### Topics (default names, remappable via launch)
 
@@ -94,21 +94,45 @@ The **localization_node** subscribes to pose and twist (same topic names as `ekf
 | Input  | `initialpose`                | `geometry_msgs/msg/PoseWithCovarianceStamped` |
 | Input  | `in_pose_with_covariance`   | `geometry_msgs/msg/PoseWithCovarianceStamped` |
 | Input  | `in_twist_with_covariance`   | `geometry_msgs/msg/TwistWithCovarianceStamped` |
+| Input  | `initialize.auto_gnss_pose_topic` (optional) | `geometry_msgs/msg/PoseWithCovarianceStamped` — used as seed when AUTO is called with empty pose (GNSS-only mode) |
 | Output | `kinematic_state`            | `nav_msgs/msg/Odometry`                   |
 | Output | `acceleration`               | `geometry_msgs/msg/AccelWithCovarianceStamped` |
+| Output | `/diagnostics`               | `diagnostic_msgs/msg/DiagnosticArray` — 1 Hz; status name `localization: localization_node`, hardware_id `localization_node`; reports `initialized`, `pose_age_sec`, `twist_age_sec` |
 
-### Service: set initial pose (DIRECT)
+### Initial pose covariance override
 
-Compatible with component_interface_specs `/localization/initialize`. Only the **DIRECT** method is supported: the request must contain at least one `pose_with_covariance` (e.g. `PoseWithCovarianceStamped`); the first one is used to initialize the pipeline.
+When **`initialize.initial_pose_covariance_override_enabled`** is true, the **covariance of the initial pose** (from direct pose, AUTO seed, or NDT/YabLoc align result) is replaced by **`initialize.initial_pose_covariance`** before calling the EKF initializer. This matches the existing pose_initializer behavior (parameter overwrites initial pose covariance). When false, align/seed covariance is used as-is.
 
-Example (after the node is running):
+- **`initialize.initial_pose_covariance`**: 36 values (row-major 6×6) or 6 values (diagonal: xx, yy, zz, roll, pitch, yaw).
+
+### Diagnostics
+
+The node publishes to **`/diagnostics`** at 1 Hz with a single `DiagnosticStatus`:
+
+- **name**: `localization: localization_node`
+- **hardware_id**: `localization_node`
+- **level**: `OK` when the pipeline is initialized, `WARN` when not initialized
+- **values**: `initialized` (true/false), `pose_age_sec` (seconds since last pose or "none"), `twist_age_sec` (seconds since last twist or "none")
+
+This allows monitoring tools (e.g. `rqt_runtime_monitor`, or scripts that subscribe to `/diagnostics`) to detect uninitialized or stale localization.
+
+### Service: set initial pose (AUTO / DIRECT)
+
+Compatible with component_interface_specs `/localization/initialize`. Both **AUTO** and **DIRECT** are supported.
+
+- **DIRECT** (`method: 2`): The request must contain at least one `pose_with_covariance`; the first one is used to initialize the pipeline.
+- **AUTO** (`method: 1`): Seed pose is either (1) the first `pose_with_covariance` in the request, or (2) when the request has **empty** `pose_with_covariance` (GNSS-only mode), the latest pose from the topic `initialize.auto_gnss_pose_topic` (e.g. Eagleye or gnss_poser). Set `auto_gnss_pose_topic` in config to enable; if empty and the client sends no pose, the service returns `ERROR_GNSS_SUPPORT`. Optionally checks that the vehicle is stopped (see `initialize.auto_stop_check_*`). When `initialize.auto_ndt_align_enabled` is true, calls the NDT align service; when `initialize.auto_yabloc_align_enabled` is true (and NDT align is off), calls the YabLoc align service (same srv type: `autoware_internal_localization_msgs/srv/PoseWithCovarianceStamped`). **If the chosen align service is not ready or align fails, Initialize returns failure** (same as existing pose_initializer).
+
+Example (DIRECT, after the node is running):
 
 ```bash
 ros2 service call /localization/initialize autoware_localization_msgs/srv/InitializeLocalization \
   "{method: 2, pose_with_covariance: [{header: {frame_id: 'map'}, pose: {pose: {position: {x: 0.0, y: 0.0, z: 0.0}, orientation: {w: 1.0}}, covariance: [0.01,0,0,0,0,0, 0,0.01,0,0,0,0, 0,0,0.01,0,0,0, 0,0,0,0.01,0,0, 0,0,0,0,0.01,0, 0,0,0,0,0,0.01]}}]}"
 ```
 
-(`method: 2` is DIRECT; AUTO and others are not supported and return an error.)
+Same payload with `method: 1` uses AUTO (seed from request or from `auto_gnss_pose_topic` when request is empty + optional stop check + optional NDT or YabLoc align). Parameters under `initialize.*`: `auto_stop_check_enabled`, `auto_stop_check_duration_sec`, `auto_stop_velocity_threshold`, `auto_ndt_align_enabled`, `auto_ndt_align_service_name` (default `/localization/pose_estimator/ndt_align_srv`), `auto_ndt_align_timeout_sec`, `trigger_services` (list of `std_srvs/SetBool` service names; each is called with `data=false` before and `data=true` after initializing, same as pose_initializer’s ekf_trigger_node / ndt_trigger_node), `trigger_timeout_sec`, **`auto_gnss_pose_topic`** (optional; when set, AUTO with empty `pose_with_covariance` uses the latest pose from this topic as seed — GNSS-only mode), **`auto_yabloc_align_enabled`** / **`auto_yabloc_align_service_name`** / **`auto_yabloc_align_timeout_sec`** (for YabLoc pose source; same srv type as NDT align).
+
+**Consistency with existing pose_initializer:** When NDT align is enabled, behavior matches: stop check (optional) → seed required → align must succeed. Trigger: if `trigger_services` is non-empty, the node calls each service with `SetBool(data=false)` before and `SetBool(data=true)` after setting the initial pose (AUTO and DIRECT); if any call fails or times out, Initialize returns failure. The node publishes `/localization/initialization_state`. **GNSS-only AUTO:** when `auto_gnss_pose_topic` is set, calling Initialize with method AUTO and empty `pose_with_covariance` (e.g. from automatic_pose_initializer) uses the latest pose from that topic as seed.
 
 ### Run
 
@@ -123,6 +147,12 @@ Or use the launch file (loads the package config by default):
 ```bash
 source install/setup.bash
 ros2 launch autoware_unified_localization unified_localization.launch.py
+```
+
+When the pose source is **YabLoc** (e.g. universe with `use_yabloc_pose`), pass **`use_yabloc_align:=true`** so that the node uses YabLoc align params (and the YabLoc align service) for AUTO initialization. No need to change the launch file itself; just add the argument when including this launch:
+
+```bash
+ros2 launch autoware_unified_localization unified_localization.launch.py use_yabloc_align:=true
 ```
 
 To match existing localization launch remaps (e.g. from NDT and gyro_odometer), pass input/output topic names:

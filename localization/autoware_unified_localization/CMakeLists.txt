@@ -37,7 +37,18 @@ install(DIRECTORY include/
 # Adapter: one node that subscribes pose/twist, calls Core, publishes odom and acceleration
 add_executable(localization_node src/localization_node.cpp)
 target_link_libraries(localization_node unified_localization_core)
-ament_target_dependencies(localization_node rclcpp geometry_msgs nav_msgs tf2_ros autoware_component_interface_specs)
+ament_target_dependencies(
+  localization_node
+  rclcpp
+  geometry_msgs
+  nav_msgs
+  std_srvs
+  tf2_ros
+  autoware_adapi_v1_msgs
+  autoware_component_interface_specs
+  autoware_internal_localization_msgs
+  diagnostic_msgs
+)
 install(TARGETS localization_node DESTINATION lib/${PROJECT_NAME})
 
 # Install config and launch for the node
@@ -74,6 +85,10 @@ if(BUILD_TESTING)
 
   add_launch_test(
     test/test_unified_localization_launch.py
+    TIMEOUT "30"
+  )
+  add_launch_test(
+    test/test_gnss_only_auto_launch.py
     TIMEOUT "30"
   )
 endif()

@@ -12,11 +12,50 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
+
+
+def _create_localization_node(context):
+    use_yabloc = LaunchConfiguration("use_yabloc_align").perform(context) == "true"
+    pkg_share = context.perform_substitution(
+        FindPackageShare("autoware_unified_localization")
+    )
+    if use_yabloc:
+        param_path = os.path.join(
+            pkg_share, "config", "unified_localization_yabloc.param.yaml"
+        )
+    else:
+        param_path = LaunchConfiguration("param_file").perform(context)
+    return [
+        Node(
+            package="autoware_unified_localization",
+            executable="localization_node",
+            name="localization_node",
+            output="both",
+            parameters=[param_path],
+            remappings=[
+                (
+                    "in_pose_with_covariance",
+                    LaunchConfiguration("input_pose_with_covariance"),
+                ),
+                (
+                    "in_twist_with_covariance",
+                    LaunchConfiguration("input_twist_with_covariance"),
+                ),
+                (
+                    "kinematic_state",
+                    LaunchConfiguration("output_kinematic_state"),
+                ),
+                ("acceleration", LaunchConfiguration("output_acceleration")),
+            ],
+        )
+    ]
 
 
 def generate_launch_description():
@@ -30,6 +69,11 @@ def generate_launch_description():
         "param_file",
         default_value=default_param,
         description="Path to the unified localization parameter file.",
+    )
+    declare_use_yabloc_align = DeclareLaunchArgument(
+        "use_yabloc_align",
+        default_value="false",
+        description="If true, use YabLoc align params (for pose source YabLoc in universe).",
     )
     declare_input_pose = DeclareLaunchArgument(
         "input_pose_with_covariance",
@@ -52,25 +96,12 @@ def generate_launch_description():
         description="Output acceleration topic.",
     )
 
-    localization_node = Node(
-        package="autoware_unified_localization",
-        executable="localization_node",
-        name="localization_node",
-        output="both",
-        parameters=[LaunchConfiguration("param_file")],
-        remappings=[
-            ("in_pose_with_covariance", LaunchConfiguration("input_pose_with_covariance")),
-            ("in_twist_with_covariance", LaunchConfiguration("input_twist_with_covariance")),
-            ("kinematic_state", LaunchConfiguration("output_kinematic_state")),
-            ("acceleration", LaunchConfiguration("output_acceleration")),
-        ],
-    )
-
     return LaunchDescription([
         declare_param_file,
+        declare_use_yabloc_align,
         declare_input_pose,
         declare_input_twist,
         declare_output_kinematic,
         declare_output_accel,
-        localization_node,
+        OpaqueFunction(function=_create_localization_node),
     ])
