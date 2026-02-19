@@ -20,16 +20,19 @@ from ament_index_python import get_package_share_directory
 from autoware_adapi_v1_msgs.msg import LocalizationInitializationState
 from autoware_localization_msgs.srv import InitializeLocalization
 from diagnostic_msgs.msg import DiagnosticArray
-from geometry_msgs.msg import PoseWithCovarianceStamped, TwistWithCovarianceStamped
+from geometry_msgs.msg import PoseWithCovarianceStamped
+from geometry_msgs.msg import TwistWithCovarianceStamped
 import launch
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import AnyLaunchDescriptionSource
 from launch.logging import get_logger
 import launch_testing
+from nav_msgs.msg import Odometry
 import pytest
 import rclpy
-from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy
-from nav_msgs.msg import Odometry
+from rclpy.qos import DurabilityPolicy
+from rclpy.qos import QoSProfile
+from rclpy.qos import ReliabilityPolicy
 
 # Match component_interface_specs: /localization/initialization_state uses TRANSIENT_LOCAL
 QOS_INITIALIZATION_STATE = QoSProfile(
@@ -73,16 +76,44 @@ class TestUnifiedLocalizationNode(unittest.TestCase):
         init_pose.pose.pose.position.z = 0.0
         init_pose.pose.pose.orientation.w = 1.0
         init_pose.pose.covariance = [
-            0.01, 0.0, 0.0, 0.0, 0.0, 0.0,
-            0.0, 0.01, 0.0, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.01, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.01, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.01, 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.0, 0.01,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
         ]
-        pub_init_1 = self.test_node.create_publisher(
-            PoseWithCovarianceStamped, "/initialpose", 10
-        )
+        pub_init_1 = self.test_node.create_publisher(PoseWithCovarianceStamped, "/initialpose", 10)
         pub_init_2 = self.test_node.create_publisher(
             PoseWithCovarianceStamped, "/localization_node/initialpose", 10
         )
@@ -115,12 +146,42 @@ class TestUnifiedLocalizationNode(unittest.TestCase):
         twist_msg.header.frame_id = "base_link"
         twist_msg.twist.twist.linear.x = 0.5
         twist_msg.twist.covariance = [
-            0.01, 0.0, 0.0, 0.0, 0.0, 0.0,
-            0.0, 0.01, 0.0, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.01, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.01, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.01, 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.0, 0.01,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
         ]
         for _ in range(20):
             pose_msg.header.stamp = self.test_node.get_clock().now().to_msg()
@@ -146,7 +207,9 @@ class TestUnifiedLocalizationNode(unittest.TestCase):
             if len(odom_buffer) > 0:
                 break
 
-        self.assertGreater(len(odom_buffer), 0, "Expected at least one Odometry on /kinematic_state")
+        self.assertGreater(
+            len(odom_buffer), 0, "Expected at least one Odometry on /kinematic_state"
+        )
 
     def test_kinematic_state_published_after_initialize_service_and_measurements(self):
         # Set initial pose via /localization/initialize service (DIRECT method)
@@ -163,12 +226,42 @@ class TestUnifiedLocalizationNode(unittest.TestCase):
         pose_stamped.pose.pose.position.z = 0.0
         pose_stamped.pose.pose.orientation.w = 1.0
         pose_stamped.pose.covariance = [
-            0.01, 0.0, 0.0, 0.0, 0.0, 0.0,
-            0.0, 0.01, 0.0, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.01, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.01, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.01, 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.0, 0.01,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
         ]
         req.pose_with_covariance = [pose_stamped]
         future = client.call_async(req)
@@ -204,12 +297,42 @@ class TestUnifiedLocalizationNode(unittest.TestCase):
         twist_msg.header.frame_id = "base_link"
         twist_msg.twist.twist.linear.x = 0.5
         twist_msg.twist.covariance = [
-            0.01, 0.0, 0.0, 0.0, 0.0, 0.0,
-            0.0, 0.01, 0.0, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.01, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.01, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.01, 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.0, 0.01,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
         ]
         for _ in range(20):
             pose_msg.header.stamp = self.test_node.get_clock().now().to_msg()
@@ -233,7 +356,8 @@ class TestUnifiedLocalizationNode(unittest.TestCase):
             if len(odom_buffer) > 0:
                 break
         self.assertGreater(
-            len(odom_buffer), 0,
+            len(odom_buffer),
+            0,
             "Expected at least one Odometry on /kinematic_state after Initialize service (DIRECT)",
         )
 
@@ -252,12 +376,42 @@ class TestUnifiedLocalizationNode(unittest.TestCase):
         pose_stamped.pose.pose.position.z = 0.0
         pose_stamped.pose.pose.orientation.w = 1.0
         pose_stamped.pose.covariance = [
-            0.01, 0.0, 0.0, 0.0, 0.0, 0.0,
-            0.0, 0.01, 0.0, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.01, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.01, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.01, 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.0, 0.01,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
         ]
         req.pose_with_covariance = [pose_stamped]
         future = client.call_async(req)
@@ -292,12 +446,42 @@ class TestUnifiedLocalizationNode(unittest.TestCase):
         twist_msg.header.frame_id = "base_link"
         twist_msg.twist.twist.linear.x = 0.3
         twist_msg.twist.covariance = [
-            0.01, 0.0, 0.0, 0.0, 0.0, 0.0,
-            0.0, 0.01, 0.0, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.01, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.01, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.01, 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.0, 0.01,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
         ]
         for _ in range(20):
             pose_msg.header.stamp = self.test_node.get_clock().now().to_msg()
@@ -321,13 +505,17 @@ class TestUnifiedLocalizationNode(unittest.TestCase):
             if len(odom_buffer) > 0:
                 break
         self.assertGreater(
-            len(odom_buffer), 0,
+            len(odom_buffer),
+            0,
             "Expected at least one Odometry on /kinematic_state after Initialize service (AUTO)",
         )
 
     def test_00_initialization_state_uninitialized_at_start(self):
         state_buffer = []
-        for topic in ["/localization/initialization_state", "/localization_node/initialization_state"]:
+        for topic in [
+            "/localization/initialization_state",
+            "/localization_node/initialization_state",
+        ]:
             self.test_node.create_subscription(
                 LocalizationInitializationState,
                 topic,
@@ -352,16 +540,44 @@ class TestUnifiedLocalizationNode(unittest.TestCase):
         init_pose.pose.pose.position.y = 0.0
         init_pose.pose.pose.orientation.w = 1.0
         init_pose.pose.covariance = [
-            0.01, 0.0, 0.0, 0.0, 0.0, 0.0,
-            0.0, 0.01, 0.0, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.01, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.01, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.01, 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.0, 0.01,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
         ]
-        pub = self.test_node.create_publisher(
-            PoseWithCovarianceStamped, "/initialpose", 10
-        )
+        pub = self.test_node.create_publisher(PoseWithCovarianceStamped, "/initialpose", 10)
         state_buffer = []
         self.test_node.create_subscription(
             LocalizationInitializationState,
@@ -401,12 +617,42 @@ class TestUnifiedLocalizationNode(unittest.TestCase):
         pose_stamped.pose.pose.position.y = 0.0
         pose_stamped.pose.pose.orientation.w = 1.0
         pose_stamped.pose.covariance = [
-            0.01, 0.0, 0.0, 0.0, 0.0, 0.0,
-            0.0, 0.01, 0.0, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.01, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.01, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.01, 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.0, 0.01,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
         ]
         req.pose_with_covariance = [pose_stamped]
         future = client.call_async(req)

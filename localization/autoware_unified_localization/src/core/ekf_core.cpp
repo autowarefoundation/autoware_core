@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "autoware/unified_localization_core/ekf_core.hpp"
+
 #include "autoware/unified_localization_core/covariance_index.hpp"
 #include "autoware/unified_localization_core/matrix_types.hpp"
 #include "autoware/unified_localization_core/measurement_core.hpp"
@@ -21,6 +22,7 @@
 #include "autoware/unified_localization_core/types.hpp"
 
 #include <Eigen/Geometry>
+
 #include <algorithm>
 #include <cmath>
 
@@ -83,8 +85,8 @@ EKFCore::EKFCore(const EKFParams & params)
 }
 
 void EKFCore::initialize(
-  const PoseWithCovariance & initial_pose,
-  double transform_dx, double transform_dy, double transform_dyaw)
+  const PoseWithCovariance & initial_pose, double transform_dx, double transform_dy,
+  double transform_dyaw)
 {
   const int X = static_cast<int>(StateIndex::X);
   const int Y = static_cast<int>(StateIndex::Y);
@@ -97,8 +99,8 @@ void EKFCore::initialize(
   Eigen::MatrixXd x(dim_x_, 1);
   Eigen::MatrixXd p = Eigen::MatrixXd::Zero(dim_x_, dim_x_);
   const double yaw0 = get_yaw_from_quaternion(
-    initial_pose.orientation_x, initial_pose.orientation_y,
-    initial_pose.orientation_z, initial_pose.orientation_w);
+    initial_pose.orientation_x, initial_pose.orientation_y, initial_pose.orientation_z,
+    initial_pose.orientation_w);
   x(X) = initial_pose.position_x + transform_dx;
   x(Y) = initial_pose.position_y + transform_dy;
   x(YAW) = normalize_yaw(yaw0 + transform_dyaw);
@@ -169,9 +171,7 @@ void EKFCore::predict(double dt)
 }
 
 void EKFCore::update_simple_1d_filters(
-  double z, double roll, double pitch,
-  double z_var, double roll_var, double pitch_var,
-  double dt)
+  double z, double roll, double pitch, double z_var, double roll_var, double pitch_var, double dt)
 {
   z_filter_.update(z, z_var, dt);
   roll_filter_.update(roll, roll_var, dt);
@@ -207,8 +207,7 @@ bool EKFCore::measurement_update_pose(const PoseWithCovariance & pose, double t_
 
   const Eigen::Vector3d y_ekf(
     kalman_filter_.getLatestX()(delay_step * dim_x_ + X),
-    kalman_filter_.getLatestX()(delay_step * dim_x_ + Y),
-    ekf_yaw);
+    kalman_filter_.getLatestX()(delay_step * dim_x_ + Y), ekf_yaw);
   const Eigen::MatrixXd p_curr = kalman_filter_.getLatestP();
   const Eigen::MatrixXd p_y = p_curr.block(0, 0, dim_y, dim_y);
   const double dist = std::sqrt(squared_mahalanobis(y_ekf, y, p_y));
@@ -217,15 +216,19 @@ bool EKFCore::measurement_update_pose(const PoseWithCovariance & pose, double t_
   }
 
   const Eigen::Matrix<double, 3, 6> c = pose_measurement_matrix();
-  const Eigen::Matrix3d r = pose_measurement_covariance(pose.covariance, params_.pose_smoothing_steps);
+  const Eigen::Matrix3d r =
+    pose_measurement_covariance(pose.covariance, params_.pose_smoothing_steps);
   kalman_filter_.updateWithDelay(y, c, r, static_cast<int>(delay_step));
 
   const double z = pose.position_z;
   const double roll = 0.0;
   const double pitch = 0.0;
-  const double z_var = pose.covariance[Idx::Z_Z] * static_cast<double>(params_.pose_smoothing_steps);
-  const double roll_var = pose.covariance[Idx::ROLL_ROLL] * static_cast<double>(params_.pose_smoothing_steps);
-  const double pitch_var = pose.covariance[Idx::PITCH_PITCH] * static_cast<double>(params_.pose_smoothing_steps);
+  const double z_var =
+    pose.covariance[Idx::Z_Z] * static_cast<double>(params_.pose_smoothing_steps);
+  const double roll_var =
+    pose.covariance[Idx::ROLL_ROLL] * static_cast<double>(params_.pose_smoothing_steps);
+  const double pitch_var =
+    pose.covariance[Idx::PITCH_PITCH] * static_cast<double>(params_.pose_smoothing_steps);
   update_simple_1d_filters(z, roll, pitch, z_var, roll_var, pitch_var, ekf_dt_);
   return true;
 }
@@ -264,14 +267,14 @@ bool EKFCore::measurement_update_twist(const TwistWithCovariance & twist, double
   }
 
   const Eigen::Matrix<double, 2, 6> c = twist_measurement_matrix();
-  const Eigen::Matrix2d r = twist_measurement_covariance(twist.covariance, params_.twist_smoothing_steps);
+  const Eigen::Matrix2d r =
+    twist_measurement_covariance(twist.covariance, params_.twist_smoothing_steps);
   kalman_filter_.updateWithDelay(y, c, r, static_cast<int>(delay_step));
   return true;
 }
 
 void EKFCore::get_current_pose(
-  double /* t_sec */, bool biased_yaw,
-  double & out_x, double & out_y, double & out_z,
+  double /* t_sec */, bool biased_yaw, double & out_x, double & out_y, double & out_z,
   double & out_qx, double & out_qy, double & out_qz, double & out_qw) const
 {
   const int X = static_cast<int>(StateIndex::X);

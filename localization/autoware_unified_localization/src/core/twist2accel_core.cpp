@@ -31,9 +31,8 @@ Twist2AccelCore::Twist2AccelCore(const Twist2AccelParams & params) : params_(par
 }
 
 void Twist2AccelCore::estimate(
-  double prev_timestamp_sec, double curr_timestamp_sec,
-  const Vector3 & prev_linear, const Vector3 & prev_angular,
-  const Vector3 & curr_linear, const Vector3 & curr_angular,
+  double prev_timestamp_sec, double curr_timestamp_sec, const Vector3 & prev_linear,
+  const Vector3 & prev_angular, const Vector3 & curr_linear, const Vector3 & curr_angular,
   AccelerationOutput & out_accel)
 {
   out_accel.timestamp_sec = curr_timestamp_sec;

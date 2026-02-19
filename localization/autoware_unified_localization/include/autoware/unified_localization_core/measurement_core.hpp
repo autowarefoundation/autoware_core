@@ -16,6 +16,7 @@
 #define AUTOWARE__UNIFIED_LOCALIZATION_CORE__MEASUREMENT_CORE_HPP_
 
 #include <Eigen/Core>
+
 #include <array>
 #include <cstddef>
 

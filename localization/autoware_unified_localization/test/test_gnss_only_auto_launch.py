@@ -18,14 +18,16 @@ import unittest
 
 from ament_index_python import get_package_share_directory
 from autoware_localization_msgs.srv import InitializeLocalization
-from geometry_msgs.msg import PoseWithCovarianceStamped, TwistWithCovarianceStamped
+from geometry_msgs.msg import PoseWithCovarianceStamped
+from geometry_msgs.msg import TwistWithCovarianceStamped
 import launch
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import AnyLaunchDescriptionSource
 import launch_testing
+from nav_msgs.msg import Odometry
 import pytest
 import rclpy
-from nav_msgs.msg import Odometry
+
 
 @pytest.mark.launch_test
 def generate_test_description():
@@ -64,16 +66,44 @@ class TestGnssOnlyAuto(unittest.TestCase):
         gnss_pose.pose.pose.position.z = 0.0
         gnss_pose.pose.pose.orientation.w = 1.0
         gnss_pose.pose.covariance = [
-            0.01, 0.0, 0.0, 0.0, 0.0, 0.0,
-            0.0, 0.01, 0.0, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.01, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.01, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.01, 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.0, 0.01,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
         ]
-        pub_gnss = self.test_node.create_publisher(
-            PoseWithCovarianceStamped, "/test_gnss_pose", 10
-        )
+        pub_gnss = self.test_node.create_publisher(PoseWithCovarianceStamped, "/test_gnss_pose", 10)
         for _ in range(15):
             gnss_pose.header.stamp = self.test_node.get_clock().now().to_msg()
             pub_gnss.publish(gnss_pose)
@@ -115,12 +145,42 @@ class TestGnssOnlyAuto(unittest.TestCase):
         twist_msg.header.frame_id = "base_link"
         twist_msg.twist.twist.linear.x = 0.5
         twist_msg.twist.covariance = [
-            0.01, 0.0, 0.0, 0.0, 0.0, 0.0,
-            0.0, 0.01, 0.0, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.01, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.01, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.01, 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.0, 0.01,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.01,
         ]
         for _ in range(20):
             pose_msg.header.stamp = self.test_node.get_clock().now().to_msg()
@@ -142,7 +202,8 @@ class TestGnssOnlyAuto(unittest.TestCase):
             if len(odom_buffer) > 0:
                 break
         self.assertGreater(
-            len(odom_buffer), 0,
+            len(odom_buffer),
+            0,
             "Expected Odometry on /kinematic_state after GNSS-only AUTO initialize",
         )
 

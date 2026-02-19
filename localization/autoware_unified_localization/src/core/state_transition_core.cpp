@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "autoware/unified_localization_core/state_transition_core.hpp"
+
 #include "autoware/unified_localization_core/state_index.hpp"
 
 #include <cmath>
@@ -75,8 +76,7 @@ Matrix6d create_state_transition_matrix(const Vector6d & x_curr, double dt)
   return a;
 }
 
-Matrix6d process_noise_covariance(
-  double proc_cov_yaw_d, double proc_cov_vx_d, double proc_cov_wz_d)
+Matrix6d process_noise_covariance(double proc_cov_yaw_d, double proc_cov_vx_d, double proc_cov_wz_d)
 {
   const int YAW = static_cast<int>(StateIndex::YAW);
   const int YAWB = static_cast<int>(StateIndex::YAWB);

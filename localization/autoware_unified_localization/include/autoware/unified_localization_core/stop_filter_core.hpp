@@ -33,8 +33,8 @@ public:
 
   /** Apply stop filter: if stopped, output zeros; else pass through. */
   void apply(
-    const Vector3 & linear_velocity, const Vector3 & angular_velocity,
-    Vector3 & out_linear, Vector3 & out_angular, bool & was_stopped) const;
+    const Vector3 & linear_velocity, const Vector3 & angular_velocity, Vector3 & out_linear,
+    Vector3 & out_angular, bool & was_stopped) const;
 
 private:
   bool is_stopped(const Vector3 & linear_velocity, const Vector3 & angular_velocity) const;

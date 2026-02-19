@@ -16,6 +16,7 @@
 #include "autoware/unified_localization_core/types.hpp"
 
 #include <gtest/gtest.h>
+
 #include <cmath>
 
 using autoware::unified_localization_core::FusionPipeline;

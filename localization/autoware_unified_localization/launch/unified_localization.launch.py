@@ -15,21 +15,19 @@
 import os
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, OpaqueFunction
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch.actions import DeclareLaunchArgument
+from launch.actions import OpaqueFunction
+from launch.substitutions import LaunchConfiguration
+from launch.substitutions import PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
 
 def _create_localization_node(context):
     use_yabloc = LaunchConfiguration("use_yabloc_align").perform(context) == "true"
-    pkg_share = context.perform_substitution(
-        FindPackageShare("autoware_unified_localization")
-    )
+    pkg_share = context.perform_substitution(FindPackageShare("autoware_unified_localization"))
     if use_yabloc:
-        param_path = os.path.join(
-            pkg_share, "config", "unified_localization_yabloc.param.yaml"
-        )
+        param_path = os.path.join(pkg_share, "config", "unified_localization_yabloc.param.yaml")
     else:
         param_path = LaunchConfiguration("param_file").perform(context)
     return [
@@ -59,11 +57,13 @@ def _create_localization_node(context):
 
 
 def generate_launch_description():
-    default_param = PathJoinSubstitution([
-        FindPackageShare("autoware_unified_localization"),
-        "config",
-        "unified_localization.param.yaml",
-    ])
+    default_param = PathJoinSubstitution(
+        [
+            FindPackageShare("autoware_unified_localization"),
+            "config",
+            "unified_localization.param.yaml",
+        ]
+    )
 
     declare_param_file = DeclareLaunchArgument(
         "param_file",
@@ -96,12 +96,14 @@ def generate_launch_description():
         description="Output acceleration topic.",
     )
 
-    return LaunchDescription([
-        declare_param_file,
-        declare_use_yabloc_align,
-        declare_input_pose,
-        declare_input_twist,
-        declare_output_kinematic,
-        declare_output_accel,
-        OpaqueFunction(function=_create_localization_node),
-    ])
+    return LaunchDescription(
+        [
+            declare_param_file,
+            declare_use_yabloc_align,
+            declare_input_pose,
+            declare_input_twist,
+            declare_output_kinematic,
+            declare_output_accel,
+            OpaqueFunction(function=_create_localization_node),
+        ]
+    )

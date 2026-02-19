@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "autoware/unified_localization_core/fusion_pipeline.hpp"
+
 #include "autoware/unified_localization_core/types.hpp"
 
 namespace autoware::unified_localization_core
@@ -33,8 +34,7 @@ void FusionPipeline::initialize(const PoseWithCovariance & initial_pose)
 }
 
 void FusionPipeline::step(
-  double t_curr_sec, double dt_sec,
-  const PoseWithCovariance * pose,
+  double t_curr_sec, double dt_sec, const PoseWithCovariance * pose,
   const TwistWithCovariance * twist)
 {
   if (!initialized_) {
@@ -57,7 +57,8 @@ void FusionPipeline::get_odometry(double t_sec, OdometryOutput & out) const
   }
   out.timestamp_sec = t_sec;
   double qx, qy, qz, qw;
-  ekf_->get_current_pose(t_sec, false, out.position_x, out.position_y, out.position_z, qx, qy, qz, qw);
+  ekf_->get_current_pose(
+    t_sec, false, out.position_x, out.position_y, out.position_z, qx, qy, qz, qw);
   out.orientation_x = qx;
   out.orientation_y = qy;
   out.orientation_z = qz;
@@ -87,13 +88,12 @@ void FusionPipeline::get_odometry(double t_sec, OdometryOutput & out) const
 }
 
 void FusionPipeline::get_acceleration(
-  double prev_t_sec, double curr_t_sec,
-  const Vector3 & prev_linear, const Vector3 & prev_angular,
-  const Vector3 & curr_linear, const Vector3 & curr_angular,
-  AccelerationOutput & out)
+  double prev_t_sec, double curr_t_sec, const Vector3 & prev_linear, const Vector3 & prev_angular,
+  const Vector3 & curr_linear, const Vector3 & curr_angular, AccelerationOutput & out)
 {
   if (twist2accel_) {
-    twist2accel_->estimate(prev_t_sec, curr_t_sec, prev_linear, prev_angular, curr_linear, curr_angular, out);
+    twist2accel_->estimate(
+      prev_t_sec, curr_t_sec, prev_linear, prev_angular, curr_linear, curr_angular, out);
   }
 }
 

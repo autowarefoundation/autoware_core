@@ -44,9 +44,8 @@ public:
    * @param out_accel  output linear and angular acceleration
    */
   void estimate(
-    double prev_timestamp_sec, double curr_timestamp_sec,
-    const Vector3 & prev_linear, const Vector3 & prev_angular,
-    const Vector3 & curr_linear, const Vector3 & curr_angular,
+    double prev_timestamp_sec, double curr_timestamp_sec, const Vector3 & prev_linear,
+    const Vector3 & prev_angular, const Vector3 & curr_linear, const Vector3 & curr_angular,
     AccelerationOutput & out_accel);
 
 private:

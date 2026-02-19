@@ -96,7 +96,8 @@ inline double get_yaw_from_quaternion(double ox, double oy, double oz, double ow
   return std::atan2(siny_cosp, cosy_cosp);
 }
 
-inline void quaternion_from_rpy(double roll, double pitch, double yaw, double & ox, double & oy, double & oz, double & ow)
+inline void quaternion_from_rpy(
+  double roll, double pitch, double yaw, double & ox, double & oy, double & oz, double & ow)
 {
   const double cy = std::cos(yaw * 0.5);
   const double sy = std::sin(yaw * 0.5);

@@ -18,9 +18,9 @@
 #include "autoware/unified_localization_core/ekf_params.hpp"
 #include "autoware/unified_localization_core/types.hpp"
 
+#include <Eigen/Core>
 #include <autoware/kalman_filter/time_delay_kalman_filter.hpp>
 
-#include <Eigen/Core>
 #include <array>
 #include <memory>
 #include <vector>
@@ -35,9 +35,7 @@ public:
 
   /** Initialize with initial pose and optional transform (dx, dy, dyaw). */
   void initialize(
-    const PoseWithCovariance & initial_pose,
-    double transform_dx = 0.0,
-    double transform_dy = 0.0,
+    const PoseWithCovariance & initial_pose, double transform_dx = 0.0, double transform_dy = 0.0,
     double transform_dyaw = 0.0);
 
   void predict(double dt);
@@ -47,11 +45,9 @@ public:
   bool measurement_update_twist(const TwistWithCovariance & twist, double t_curr_sec);
 
   void get_current_pose(
-    double t_sec, bool biased_yaw,
-    double & out_x, double & out_y, double & out_z,
-    double & out_qx, double & out_qy, double & out_qz, double & out_qw) const;
-  void get_current_twist(
-    double t_sec, double & out_vx, double & out_wz) const;
+    double t_sec, bool biased_yaw, double & out_x, double & out_y, double & out_z, double & out_qx,
+    double & out_qy, double & out_qz, double & out_qw) const;
+  void get_current_twist(double t_sec, double & out_vx, double & out_wz) const;
   void get_pose_covariance(std::array<double, 36> & out) const;
   void get_twist_covariance(std::array<double, 36> & out) const;
   double get_yaw_bias() const;
@@ -62,8 +58,7 @@ private:
   size_t find_closest_delay_time_index(double target_value) const;
   void accumulate_delay_time(double dt);
   void update_simple_1d_filters(
-    double z, double roll, double pitch,
-    double z_var, double roll_var, double pitch_var,
+    double z, double roll, double pitch, double z_var, double roll_var, double pitch_var,
     double dt);
 
   TimeDelayKalmanFilter kalman_filter_;

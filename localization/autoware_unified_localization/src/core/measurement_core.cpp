@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "autoware/unified_localization_core/measurement_core.hpp"
+
 #include "autoware/unified_localization_core/covariance_index.hpp"
 #include "autoware/unified_localization_core/state_index.hpp"
 
@@ -48,9 +49,9 @@ Eigen::Matrix3d pose_measurement_covariance(
 {
   using Idx = CovarianceIndex::Index;
   Eigen::Matrix3d r;
-  r << covariance[Idx::X_X], covariance[Idx::X_Y], covariance[Idx::X_YAW],
-       covariance[Idx::Y_X], covariance[Idx::Y_Y], covariance[Idx::Y_YAW],
-       covariance[Idx::YAW_X], covariance[Idx::YAW_Y], covariance[Idx::YAW_YAW];
+  r << covariance[Idx::X_X], covariance[Idx::X_Y], covariance[Idx::X_YAW], covariance[Idx::Y_X],
+    covariance[Idx::Y_Y], covariance[Idx::Y_YAW], covariance[Idx::YAW_X], covariance[Idx::YAW_Y],
+    covariance[Idx::YAW_YAW];
   return r * static_cast<double>(smoothing_step);
 }
 

@@ -16,18 +16,18 @@
 #include "autoware/unified_localization_core/types.hpp"
 
 #include <autoware/component_interface_specs/localization.hpp>
-#include <rclcpp/rclcpp.hpp>
 #include <rclcpp/exceptions.hpp>
+#include <rclcpp/rclcpp.hpp>
 
 #include <autoware_internal_localization_msgs/srv/pose_with_covariance_stamped.hpp>
+#include <diagnostic_msgs/msg/diagnostic_array.hpp>
+#include <diagnostic_msgs/msg/diagnostic_status.hpp>
+#include <diagnostic_msgs/msg/key_value.hpp>
 #include <geometry_msgs/msg/accel_with_covariance_stamped.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <std_srvs/srv/set_bool.hpp>
-#include <diagnostic_msgs/msg/diagnostic_array.hpp>
-#include <diagnostic_msgs/msg/diagnostic_status.hpp>
-#include <diagnostic_msgs/msg/key_value.hpp>
 
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_ros/transform_broadcaster.h>
@@ -222,8 +222,7 @@ private:
     auto_yabloc_align_enabled_ =
       declare_parameter<bool>("initialize.auto_yabloc_align_enabled", false);
     auto_yabloc_align_service_name_ = declare_parameter<std::string>(
-      "initialize.auto_yabloc_align_service_name",
-      "/localization/pose_estimator/yabloc_align_srv");
+      "initialize.auto_yabloc_align_service_name", "/localization/pose_estimator/yabloc_align_srv");
     auto_yabloc_align_timeout_sec_ =
       declare_parameter<double>("initialize.auto_yabloc_align_timeout_sec", 10.0);
 
@@ -253,7 +252,8 @@ private:
     } else if (initial_pose_covariance_override_enabled_) {
       RCLCPP_WARN(
         get_logger(),
-        "initialize.initial_pose_covariance has size %zu (need 36 or 6 for diagonal); override disabled.",
+        "initialize.initial_pose_covariance has size %zu (need 36 or 6 for diagonal); override "
+        "disabled.",
         cov_param.size());
       initial_pose_covariance_override_enabled_ = false;
     }
@@ -561,8 +561,7 @@ private:
           return;
         }
         PoseWithCovarianceStamped aligned;
-        if (!try_align(
-              cli_yabloc_align_, auto_yabloc_align_timeout_sec_, pose, aligned)) {
+        if (!try_align(cli_yabloc_align_, auto_yabloc_align_timeout_sec_, pose, aligned)) {
           res->status.success = false;
           res->status.code = Initialize::Service::Response::ERROR_ESTIMATION;
           res->status.message = "YabLoc align failed or timed out.";

@@ -52,8 +52,7 @@ public:
    * @param twist  optional twist measurement (nullptr to skip)
    */
   void step(
-    double t_curr_sec, double dt_sec,
-    const PoseWithCovariance * pose,
+    double t_curr_sec, double dt_sec, const PoseWithCovariance * pose,
     const TwistWithCovariance * twist);
 
   /** Get current odometry (EKF pose + twist, then stop-filtered). */
@@ -61,10 +60,8 @@ public:
 
   /** Get acceleration from two consecutive twists (e.g. EKF twist at t and t-dt). */
   void get_acceleration(
-    double prev_t_sec, double curr_t_sec,
-    const Vector3 & prev_linear, const Vector3 & prev_angular,
-    const Vector3 & curr_linear, const Vector3 & curr_angular,
-    AccelerationOutput & out);
+    double prev_t_sec, double curr_t_sec, const Vector3 & prev_linear, const Vector3 & prev_angular,
+    const Vector3 & curr_linear, const Vector3 & curr_angular, AccelerationOutput & out);
 
   bool is_initialized() const { return initialized_; }
 
