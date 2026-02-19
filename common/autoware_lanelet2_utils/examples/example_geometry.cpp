@@ -175,6 +175,45 @@ void get_from_arc_length()
     std::cout << "orientation z: " << p.orientation.z << std::endl;
     std::cout << "orientation w: " << p.orientation.w << std::endl;
   }
+
+  // get_polygon_from_arc_length
+  {
+    using autoware::experimental::lanelet2_utils::create_safe_lanelet;
+    auto p1 = lanelet::BasicPoint3d(0.0, 2.0, 0.0);
+    auto p2 = lanelet::BasicPoint3d(3.0, 2.0, 0.0);
+    auto p3 = lanelet::BasicPoint3d(0.0, 0.0, 0.0);
+    auto p4 = lanelet::BasicPoint3d(3.0, 0.0, 0.0);
+
+    std::vector<lanelet::BasicPoint3d> left_points1 = {p1, p2};
+    std::vector<lanelet::BasicPoint3d> right_points1 = {p3, p4};
+
+    auto ll1 = create_safe_lanelet(left_points1, right_points1);
+
+    auto p5 = lanelet::BasicPoint3d(3.0, 2.0, 0.0);
+    auto p6 = lanelet::BasicPoint3d(6.0, 2.0, 0.0);
+    auto p7 = lanelet::BasicPoint3d(3.0, 0.0, 0.0);
+    auto p8 = lanelet::BasicPoint3d(6.0, 0.0, 0.0);
+
+    std::vector<lanelet::BasicPoint3d> left_points2 = {p5, p6};
+    std::vector<lanelet::BasicPoint3d> right_points2 = {p7, p8};
+
+    auto ll2 = create_safe_lanelet(left_points2, right_points2);
+
+    const auto lanelet_sequence = lanelet::ConstLanelets{*ll1, *ll2};
+    const auto opt_polygon =
+      autoware::experimental::lanelet2_utils::get_polygon_from_arc_length(lanelet_sequence, 1, 3);
+    if (opt_polygon.has_value()) {
+      std::cout << "Polygon found!" << std::endl;
+      const auto & poly = opt_polygon.value();
+      std::cout << "Polygon points: " << poly.size() << std::endl;
+      std::cout << "These are points " << std::endl;
+      for (const auto & point : poly) {
+        std::cout << "(" << point.x() << ", " << point.y() << ")" << std::endl;
+      }
+    } else {
+      std::cout << "No Polygon found." << std::endl;
+    }
+  }
 }
 
 void closest_segment()
@@ -262,6 +301,18 @@ void arc_coordinates()
     query.position.z = 0;
     auto arc_coord =
       autoware::experimental::lanelet2_utils::get_arc_coordinates(lanelet_sequence, query);
+    std::cout << "ArcCoordinates length is " << arc_coord.length << std::endl;
+    std::cout << "ArcCoordinates distance is " << arc_coord.distance << std::endl;
+  }
+
+  {
+    auto lanelet_map_ptr_ = set_up_lanelet_map_ptr();
+    geometry_msgs::msg::Pose query;
+    query.position.x = 1.5;
+    query.position.y = 1.1;
+    query.position.z = 0;
+    auto arc_coord = autoware::experimental::lanelet2_utils::get_arc_coordinates(
+      lanelet_sequence, query, lanelet_map_ptr_);
     std::cout << "ArcCoordinates length is " << arc_coord.length << std::endl;
     std::cout << "ArcCoordinates distance is " << arc_coord.distance << std::endl;
   }
@@ -449,6 +500,18 @@ void offset_bound()
   std::vector<lanelet::BasicPoint3d> right_points = {p3, p4};
   auto ll = *create_safe_lanelet(left_points, right_points);
 
+  // fine centerline
+  {
+    auto centerline =
+      autoware::experimental::lanelet2_utils::get_centerline_with_offset(ll, 0.5, sqrt(2));
+    std::cout << "Size of centerline: " << centerline.size() << std::endl;
+    {
+      std::cout << "centerline first point, x: " << centerline[0].x() << std::endl;
+      std::cout << "centerline first point, y: " << centerline[0].y() << std::endl;
+      std::cout << "centerline first point, z: " << centerline[0].z() << std::endl;
+    }
+  }
+
   // centerline shift left
   {
     auto centerline =
@@ -484,6 +547,51 @@ void offset_bound()
   }
 }
 
+void check_in_lanelet()
+{
+  using autoware::experimental::lanelet2_utils::create_safe_lanelet;
+  auto p1 = lanelet::BasicPoint3d(0.0, 2.0, 0.0);
+  auto p2 = lanelet::BasicPoint3d(2.0, 4.0, 0.0);
+  auto p3 = lanelet::BasicPoint3d(0.0, 0.0, 0.0);
+  auto p4 = lanelet::BasicPoint3d(2.0, 2.0, 0.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points = {p1, p2};
+  std::vector<lanelet::BasicPoint3d> right_points = {p3, p4};
+  auto ll = *create_safe_lanelet(left_points, right_points);
+
+  // inside
+  {
+    geometry_msgs::msg::Pose query;
+    query.position.x = 1.0;
+    query.position.y = 2.0;
+    query.position.z = 0;
+    const auto in_lanelet = autoware::experimental::lanelet2_utils::is_in_lanelet(ll, query, 0);
+    std::cout << (in_lanelet ? "YES, it's in lanelet." : "NO, it's not in lanelet.") << std::endl;
+  }
+
+  // outside but within radius
+  {
+    geometry_msgs::msg::Pose query;
+    query.position.x = 0.0;
+    query.position.y = 3.0;
+    query.position.z = 0;
+    // the radius is calculated from the closest point to lanelet
+    const auto in_lanelet =
+      autoware::experimental::lanelet2_utils::is_in_lanelet(ll, query, sqrt(2) / 2);
+    std::cout << (in_lanelet ? "YES, it's in lanelet." : "NO, it's not in lanelet.") << std::endl;
+  }
+
+  // outside and outside radius
+  {
+    geometry_msgs::msg::Pose query;
+    query.position.x = 0.0;
+    query.position.y = 3.0;
+    query.position.z = 0;
+    const auto in_lanelet = autoware::experimental::lanelet2_utils::is_in_lanelet(ll, query, 0.5);
+    std::cout << (in_lanelet ? "YES, it's in lanelet." : "NO, it's not in lanelet.") << std::endl;
+  }
+}
+
 }  // namespace autoware::experimental
 
 int main()
@@ -500,5 +608,6 @@ int main()
   autoware::experimental::combine_lanelet();
   autoware::experimental::expand_lanelet();
   autoware::experimental::offset_bound();
+  autoware::experimental::check_in_lanelet();
   return 0;
 }
