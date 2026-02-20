@@ -311,7 +311,7 @@ void arc_coordinates()
     query.position.x = 1.5;
     query.position.y = 1.1;
     query.position.z = 0;
-    auto arc_coord = autoware::experimental::lanelet2_utils::get_arc_coordinates(
+    auto arc_coord = autoware::experimental::lanelet2_utils::get_arc_coordinates_on_ego_centerline(
       lanelet_sequence, query, lanelet_map_ptr_);
     std::cout << "ArcCoordinates length is " << arc_coord.length << std::endl;
     std::cout << "ArcCoordinates distance is " << arc_coord.distance << std::endl;
