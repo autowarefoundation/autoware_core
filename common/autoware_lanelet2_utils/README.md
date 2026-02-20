@@ -504,7 +504,7 @@ common/autoware_lanelet2_utils/examples/example_intersection.cpp:71:104
 --8<--
 ```
 
-### `lane_sequence
+### `lane_sequence`
 
 | Function                          | Description                                                                                               | Average Computational Complexity | Illustration |
 | --------------------------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------- | ------------ |
