@@ -8,7 +8,7 @@ autoware_package()
 find_package(GeographicLib REQUIRED)
 
 set(GNSS_POSER_HEADERS
-  include/autoware/gnss_poser/gnss_poser_node.hpp
+  src/gnss_poser_node.hpp
 )
 
 ament_auto_add_library(gnss_poser_node SHARED
@@ -28,6 +28,7 @@ if(BUILD_TESTING)
   set(TEST_GNSS_POSER_EXE test_gnss_poser)
   ament_add_ros_isolated_gtest(test_${PROJECT_NAME} ${TEST_SOURCES})
   target_link_libraries(test_${PROJECT_NAME} gnss_poser_node)
+  target_include_directories(test_${PROJECT_NAME} PRIVATE src)
 endif()
 
 autoware_ament_auto_package(INSTALL_TO_SHARE
