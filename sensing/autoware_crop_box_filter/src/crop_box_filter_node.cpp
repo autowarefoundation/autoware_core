@@ -27,12 +27,9 @@ namespace autoware::crop_box_filter
 {
 CropBoxFilter::CropBoxFilter(const rclcpp::NodeOptions & node_options)
 : rclcpp::Node("crop_box_filter", node_options),
-  stop_watch_ptr_(
-    std::make_unique<autoware_utils_system::StopWatch<std::chrono::milliseconds>>()),
-  debug_publisher_(
-    std::make_unique<autoware_utils_debug::DebugPublisher>(this, this->get_name())),
-  published_time_publisher_(
-    std::make_unique<autoware_utils_debug::PublishedTimePublisher>(this))
+  stop_watch_ptr_(std::make_unique<autoware_utils_system::StopWatch<std::chrono::milliseconds>>()),
+  debug_publisher_(std::make_unique<autoware_utils_debug::DebugPublisher>(this, this->get_name())),
+  published_time_publisher_(std::make_unique<autoware_utils_debug::PublishedTimePublisher>(this))
 {
   // initialize debug tool
   {
