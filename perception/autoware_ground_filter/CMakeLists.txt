@@ -10,7 +10,6 @@ find_package(PCL REQUIRED)
 find_package(pcl_conversions REQUIRED)
 
 include_directories(
-  include
   SYSTEM
     ${Boost_INCLUDE_DIRS}
     ${PCL_INCLUDE_DIRS}

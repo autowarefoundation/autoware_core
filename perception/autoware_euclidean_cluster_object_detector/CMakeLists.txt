@@ -7,7 +7,6 @@ autoware_package()
 find_package(PCL REQUIRED)
 
 include_directories(
-  include
   SYSTEM
   ${PCL_COMMON_INCLUDE_DIRS}
   ${PCL_INCLUDE_DIRS}
@@ -24,9 +23,8 @@ target_link_libraries(${PROJECT_NAME}_lib
 )
 
 target_include_directories(${PROJECT_NAME}_lib
-  PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
+  PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib
 )
 
 ament_auto_add_library(${PROJECT_NAME}_node_core SHARED
@@ -36,6 +34,7 @@ target_link_libraries(${PROJECT_NAME}_node_core
   ${PCL_LIBRARIES}
   ${PROJECT_NAME}_lib
 )
+target_include_directories(${PROJECT_NAME}_node_core PRIVATE lib)
 
 rclcpp_components_register_node(${PROJECT_NAME}_node_core
   PLUGIN "autoware::euclidean_cluster::EuclideanClusterNode"
@@ -49,6 +48,7 @@ target_link_libraries(${PROJECT_NAME}_voxel_grid_node_core
   ${PCL_LIBRARIES}
   ${PROJECT_NAME}_lib
 )
+target_include_directories(${PROJECT_NAME}_voxel_grid_node_core PRIVATE lib)
 
 rclcpp_components_register_node(${PROJECT_NAME}_voxel_grid_node_core
   PLUGIN "autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterNode"
@@ -60,18 +60,22 @@ if(BUILD_TESTING)
   ament_auto_add_gtest(test_voxel_grid_based_euclidean_cluster_fusion
     test/test_voxel_grid_based_euclidean_cluster.cpp
   )
+  target_include_directories(test_voxel_grid_based_euclidean_cluster_fusion PRIVATE lib)
 
   ament_auto_add_gtest(test_euclidean_cluster
     test/test_euclidean_cluster.cpp
   )
+  target_include_directories(test_euclidean_cluster PRIVATE lib)
 
   ament_auto_add_gtest(test_utils
     test/test_utils.cpp
   )
+  target_include_directories(test_utils PRIVATE lib)
 
   ament_auto_add_gtest(test_nodes
     test/test_nodes.cpp
   )
+  target_include_directories(test_nodes PRIVATE lib src)
 endif()
 
 autoware_ament_auto_package(INSTALL_TO_SHARE

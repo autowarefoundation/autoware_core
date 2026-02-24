@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <autoware/euclidean_cluster_object_detector/utils.hpp>
+#include "utils.hpp"
 
 #include <sensor_msgs/point_cloud2_iterator.hpp>
 

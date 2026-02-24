@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <autoware/euclidean_cluster_object_detector/voxel_grid_based_euclidean_cluster.hpp>
+#include "voxel_grid_based_euclidean_cluster.hpp"
+
 #include <rclcpp/node.hpp>
 
 #include <pcl/kdtree/kdtree.h>

@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "autoware/euclidean_cluster_object_detector/euclidean_cluster.hpp"
+#include "euclidean_cluster.hpp"
 
 #include <autoware_utils_debug/debug_publisher.hpp>
 #include <autoware_utils_system/stop_watch.hpp>

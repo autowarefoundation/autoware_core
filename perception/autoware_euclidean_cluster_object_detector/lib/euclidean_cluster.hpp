@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include <autoware/euclidean_cluster_object_detector/euclidean_cluster_interface.hpp>
-#include <autoware/euclidean_cluster_object_detector/utils.hpp>
+#include "euclidean_cluster_interface.hpp"
+#include "utils.hpp"
 
 #include <pcl/point_types.h>
 
