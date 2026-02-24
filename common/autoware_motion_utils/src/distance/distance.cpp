@@ -291,7 +291,7 @@ std::optional<double> calcDecelDistWithJerkAndAccConstraints(
   const auto [x1, v1, a1] = update(0.0, v0, a0, 0.0, t1);
 
   // If the vehicle naturally stops during the delay phase due to existing deceleration
-  if (v1 <= 0.0) {
+  if (v1 <= 0.0 && (a0 <= -epsilon || a0 >= epsilon)) {
     const double t_stop = -v0 / a0;
     const auto [x_stop, v_stop, a_stop] = update(0.0, v0, a0, 0.0, t_stop);
     return std::max(0.0, x_stop);
