@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__GROUND_FILTER__GRID_HPP_
-#define AUTOWARE__GROUND_FILTER__GRID_HPP_
+#ifndef GRID_HPP_
+#define GRID_HPP_
 
 #include <autoware_utils_debug/time_keeper.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
@@ -225,6 +225,7 @@ public:
   void resetCells()
   {
     std::unique_ptr<ScopedTimeTrack> st_ptr;
+    // cppcheck-suppress unreadVariable
     if (time_keeper_) st_ptr = std::make_unique<ScopedTimeTrack>(__func__, *time_keeper_);
 
     for (auto & cell : cells_) {
@@ -238,6 +239,7 @@ public:
   void setGridConnections()
   {
     std::unique_ptr<ScopedTimeTrack> st_ptr;
+    // cppcheck-suppress unreadVariable
     if (time_keeper_) st_ptr = std::make_unique<ScopedTimeTrack>(__func__, *time_keeper_);
 
     // iterate over grid cells
@@ -295,6 +297,7 @@ private:
   void setGridBoundaries()
   {
     std::unique_ptr<ScopedTimeTrack> st_ptr;
+    // cppcheck-suppress unreadVariable
     if (time_keeper_) st_ptr = std::make_unique<ScopedTimeTrack>(__func__, *time_keeper_);
 
     // radial boundaries
@@ -444,6 +447,7 @@ private:
   void setCellGeometry()
   {
     std::unique_ptr<ScopedTimeTrack> st_ptr;
+    // cppcheck-suppress unreadVariable
     if (time_keeper_) st_ptr = std::make_unique<ScopedTimeTrack>(__func__, *time_keeper_);
 
     for (size_t idx = 0; idx < cells_.size(); ++idx) {
@@ -500,4 +504,4 @@ private:
 
 }  // namespace autoware::ground_filter
 
-#endif  // AUTOWARE__GROUND_FILTER__GRID_HPP_
+#endif  // GRID_HPP_
