@@ -160,12 +160,6 @@ TEST(CalculateStopDistanceTest, ReturnsZeroWhenReversing)
 
 TEST(CalculateStopDistanceTest, FailsOnInvalidKinematicLimits)
 {
-  // Positive acceleration limit (invalid for braking)
-  EXPECT_FALSE(calculate_stop_distance(10.0, 0.0, 2.0, -10.0).has_value());
-
-  // Positive jerk limit (invalid for braking)
-  EXPECT_FALSE(calculate_stop_distance(10.0, 0.0, -4.0, 5.0).has_value());
-
   // Zero limits (would cause division by zero)
   EXPECT_FALSE(calculate_stop_distance(10.0, 0.0, 0.0, -10.0).has_value());
   EXPECT_FALSE(calculate_stop_distance(10.0, 0.0, -4.0, 0.0).has_value());

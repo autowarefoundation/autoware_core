@@ -36,14 +36,13 @@ namespace autoware::motion_utils
  *
  * @param current_vel        Current longitudinal speed v₀ [m/s].
  * @param current_acc        Current longitudinal acceleration a₀ [m/s²].
- * @param acc_limit          Maximum (most negative) braking acceleration a_brake [m/s²] (e.g.,
- * -4.0).
- * @param jerk_limit         Maximum (most negative) braking jerk j_brake [m/s³] (e.g., -10.0).
+ * @param decel_limit        Maximum braking deceleration [m/s²]
+ * @param jerk_limit         Maximum braking jerk [m/s³]
  * @param initial_time_delay Latency before any braking jerk is applied t₁ [s]. Defaults to 0.0.
  *
  * @return std::optional<double> Minimum longitudinal stopping distance [m].
  * Returns 0.0 if the current velocity is already non-positive.
- * Returns std::nullopt if the kinematic limits are invalid (e.g., limits are >= 0).
+ * Returns std::nullopt if the kinematic limits are invalid (e.g., limits are 0).
  */
 [[nodiscard]] std::optional<double> calculate_stop_distance(
   const double current_vel, const double current_acc, const double acc_limit,

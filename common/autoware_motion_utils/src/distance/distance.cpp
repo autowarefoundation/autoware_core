@@ -269,7 +269,7 @@ std::optional<double> calcDecelDistWithJerkAndAccConstraints(
 }
 
 [[nodiscard]] std::optional<double> calculate_stop_distance(
-  const double v0, const double a0, const double acc_limit, const double jerk_limit,
+  const double v0, const double a0, const double decel_limit, const double jerk_limit,
   const double initial_time_delay)
 {
   // already stopped or reversing
@@ -278,13 +278,13 @@ std::optional<double> calcDecelDistWithJerkAndAccConstraints(
   }
 
   // jerk and acceleration limits must be strictly negative to stop a forward-moving vehicle.
+  const auto negative_jerk_limit = -std::abs(jerk_limit);
+  // ensure current_acc respects the deceleration limit, otherwise the maths break down
+  const auto negative_decel_limit = std::min(-std::abs(decel_limit), a0);
   // using epsilon to prevent division by zero.
-  if (jerk_limit >= -epsilon || acc_limit >= -epsilon) {
+  if (negative_jerk_limit >= -epsilon || negative_decel_limit >= -epsilon) {
     return std::nullopt;
   }
-
-  // ensure current_acc >= acc_limit, otherwise the maths break down
-  const double valid_acc_limit = std::min(a0, acc_limit);
 
   // Phase 1: latency delay
   const double t1 = std::max(0.0, initial_time_delay);
@@ -299,7 +299,8 @@ std::optional<double> calcDecelDistWithJerkAndAccConstraints(
 
   // Phase 2: jerk-limited braking
   // Calculate what the velocity (v2) would be exactly when the acceleration reaches acc_limit
-  const double v2 = v1 + (valid_acc_limit * valid_acc_limit - a1 * a1) / (2.0 * jerk_limit);
+  const double v2 =
+    v1 + (negative_decel_limit * negative_decel_limit - a1 * a1) / (2.0 * negative_jerk_limit);
 
   if (v2 <= 0.0) {
     // The vehicle reaches v = 0 before hitting the maximum deceleration limit.
@@ -318,12 +319,12 @@ std::optional<double> calcDecelDistWithJerkAndAccConstraints(
   }
 
   // The vehicle successfully reaches the maximum deceleration limit.
-  const double t2 = (valid_acc_limit - a1) / jerk_limit;
+  const double t2 = (negative_decel_limit - a1) / jerk_limit;
   const auto [x2, v2_final, a2_final] = update(x1, v1, a1, jerk_limit, t2);
 
   // Phase 3: Constant maximum deceleration
   // Decelerate at acc_limit from v2_final down to 0.
-  const double x3 = -(v2_final * v2_final) / (2.0 * valid_acc_limit);
+  const double x3 = -(v2_final * v2_final) / (2.0 * negative_decel_limit);
 
   return std::max(0.0, x2 + x3);
 }
