@@ -8,7 +8,6 @@ find_package(PCL REQUIRED)
 autoware_package()
 
 include_directories(
-  include
   SYSTEM
   ${PCL_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
@@ -27,10 +26,12 @@ if(BUILD_TESTING)
   ament_auto_add_gtest(test_crop_box_filter_node
     test/test_crop_box_filter_node.cpp
   )
+  target_include_directories(test_crop_box_filter_node PRIVATE src)
 
   ament_auto_add_gtest(test_crop_box_filter_integration
     test/test_crop_box_filter_integration.cpp
   )
+  target_include_directories(test_crop_box_filter_integration PRIVATE src)
 endif()
 
 autoware_ament_auto_package(INSTALL_TO_SHARE
