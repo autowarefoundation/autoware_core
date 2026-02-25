@@ -80,7 +80,7 @@ private:
   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pub_biased_pose_;
   //!< @brief ekf estimated yaw bias publisher
   rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr pub_biased_pose_cov_;
-  //!< @brief diagnostics publisher
+  //!< @brief diagnostics publisher (for callback return diagnostics when period <= 0)
   rclcpp::Publisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr pub_diag_;
   //!< @brief processing_time publisher
   rclcpp::Publisher<autoware_internal_debug_msgs::msg::Float64Stamped>::SharedPtr
@@ -138,6 +138,10 @@ private:
   rclcpp::Time latched_diagnostic_timestamp_;
   //!< @brief timestamp when diagnostics were last published (used to reset latch in timer_callback)
   rclcpp::Time last_diagnostics_publish_time_;
+  //!< @brief last pose callback header stamp (for callback_pose diagnostic when period > 0)
+  rclcpp::Time last_pose_callback_time_;
+  //!< @brief last twist callback header stamp (for callback_twist diagnostic when period > 0)
+  rclcpp::Time last_twist_callback_time_;
 
   /**
    * @brief computes update & prediction of EKF for each ekf_dt_[s] time
@@ -198,7 +202,17 @@ private:
   void diagnose(diagnostic_updater::DiagnosticStatusWrapper & stat);
 
   /**
-   * @brief publish diagnostics message for return
+   * @brief diagnostic for callback_pose (used by updater when period > 0)
+   */
+  void diagnose_callback_pose(diagnostic_updater::DiagnosticStatusWrapper & stat);
+
+  /**
+   * @brief diagnostic for callback_twist (used by updater when period > 0)
+   */
+  void diagnose_callback_twist(diagnostic_updater::DiagnosticStatusWrapper & stat);
+
+  /**
+   * @brief publish diagnostics message for callback return (pose/twist)
    */
   void publish_callback_return_diagnostics(
     const std::string & callback_name, const rclcpp::Time & current_time);
