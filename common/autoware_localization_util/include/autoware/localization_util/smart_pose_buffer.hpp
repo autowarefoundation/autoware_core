@@ -15,7 +15,7 @@
 #ifndef AUTOWARE__LOCALIZATION_UTIL__SMART_POSE_BUFFER_HPP_
 #define AUTOWARE__LOCALIZATION_UTIL__SMART_POSE_BUFFER_HPP_
 
-#include "autoware/localization_util/util_func.hpp"
+#include <autoware/localization_util/util_func.hpp>
 
 #include <rclcpp/rclcpp.hpp>
 
