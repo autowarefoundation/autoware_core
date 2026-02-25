@@ -17,8 +17,11 @@
 #include "utils.hpp"
 
 #include <autoware/lanelet2_utils/conversion.hpp>
+
+#include <autoware/lanelet2_utils/geometry.hpp>
+#include <autoware/lanelet2_utils/nn_search.hpp>
 #include <autoware/trajectory/utils/reference_path.hpp>
-#include <autoware_lanelet2_extension/utility/utilities.hpp>
+#include <autoware_utils_geometry/geometry.hpp>
 
 #include <lanelet2_core/geometry/Lanelet.h>
 
@@ -27,16 +30,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-
-namespace
-{
-template <typename LaneletT, typename PointT>
-double get_arc_length_along_centerline(const LaneletT & lanelet, const PointT & point)
-{
-  return lanelet::geometry::toArcCoordinates(lanelet.centerline2d(), lanelet::utils::to2D(point))
-    .length;
-}
-}  // namespace
 
 namespace autoware::path_generator
 {
@@ -248,7 +241,7 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
       s_end += s;
     }
     if (goal_lanelet.id() == lane_id) {
-      const auto s_goal = s + lanelet::utils::getArcCoordinates(
+      const auto s_goal = s + autoware::experimental::lanelet2_utils::get_arc_coordinates(
                                 {goal_lanelet}, route_manager_data_.route_ptr->goal_pose)
                                 .length;
       if (s_goal < s_end) {
