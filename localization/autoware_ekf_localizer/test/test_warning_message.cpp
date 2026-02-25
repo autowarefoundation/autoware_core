@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "internal/warning_message.hpp"
+#include "include/warning_message.hpp"
 
 #include <rclcpp/rclcpp.hpp>
 

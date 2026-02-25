@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "internal/diagnostics.hpp"
+#include "include/diagnostics.hpp"
 
 #include <diagnostic_msgs/msg/diagnostic_status.hpp>
 

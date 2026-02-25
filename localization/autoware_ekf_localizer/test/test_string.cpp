@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "internal/string.hpp"
+#include "include/string.hpp"
 
 #include <gtest/gtest.h>
 

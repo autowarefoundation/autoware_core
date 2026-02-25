@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "internal/state_transition.hpp"
+#include "include/state_transition.hpp"
 
-#include "internal/matrix_types.hpp"
-#include "internal/state_index.hpp"
+#include "include/matrix_types.hpp"
+#include "include/state_index.hpp"
 
 #include <cmath>
 

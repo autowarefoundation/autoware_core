@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "internal/ekf_module.hpp"
+#include "include/ekf_module.hpp"
 
-#include "internal/covariance.hpp"
-#include "internal/mahalanobis.hpp"
-#include "internal/matrix_types.hpp"
-#include "internal/measurement.hpp"
-#include "internal/numeric.hpp"
-#include "internal/state_transition.hpp"
-#include "internal/warning_message.hpp"
+#include "include/covariance.hpp"
+#include "include/mahalanobis.hpp"
+#include "include/matrix_types.hpp"
+#include "include/measurement.hpp"
+#include "include/numeric.hpp"
+#include "include/state_transition.hpp"
+#include "include/warning_message.hpp"
 
 #include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_utils_geometry/msg/covariance.hpp>
