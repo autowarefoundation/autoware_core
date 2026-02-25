@@ -7781,9 +7781,15 @@
 </tr>
 <tr>
 <td><code>get_arc_coordinates</code></td>
-<td>Find <code>ArcCoordinates</code> of the search pose on lanelet sequence centerline. <br>When the <code>use_waypoints</code> in the <code>autoware_map_loader</code> is true, the waypoints tag in the <code>lanelet2::LaneletMapPtr</code> is used instead of the centerline.<br><br><code>ArcCoordinates</code> consists of <code>{length, distance}</code>.<ul><li><code>length</code>: arc-length of pose projection point on the lanelet sequence centerline</li><li><code>distance</code>: lateral distance from centerline to pose (left is positive, right is negative).</li></ul></td>
+<td>Find <code>ArcCoordinates</code> of the search pose on lanelet sequence centerline.<br><br><code>ArcCoordinates</code> consists of <code>{length, distance}</code>.<ul><li><code>length</code>: arc-length of pose projection point on the lanelet sequence centerline</li><li><code>distance</code>: lateral distance from centerline to pose (left is positive, right is negative).</li></ul></td>
 <td></td>
 <td><img alt="get_arc_coordinates" src="media/api/geometry/get_arc_coordinates.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-838%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fapi%2Fgeometry%2Fget_arc_coordinates.drawio.svg">Open</a></td>
+</tr>
+<tr>
+<td><code>get_arc_coordinates_on_ego_centerline</code></td>
+<td>Find <code>ArcCoordinates</code> of the search pose on lanelet sequence centerline. <br>When the <code>use_waypoints</code> in the <code>autoware_map_loader</code> is true, the waypoints tag in the <code>lanelet2::LaneletMapPtr</code> is used instead of the centerline.<br><br><code>ArcCoordinates</code> consists of <code>{length, distance}</code>.<ul><li><code>length</code>: arc-length of pose projection point on the lanelet sequence centerline</li><li><code>distance</code>: lateral distance from centerline to pose (left is positive, right is negative).</li></ul></td>
+<td></td>
+<td><img alt="get_arc_coordinates_on_ego_centerline" src="media/api/geometry/get_arc_coordinates_on_ego_centerline.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-838%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fapi%2Fgeometry%2Fget_arc_coordinates_on_ego_centerline.drawio.svg">Open</a></td>
 </tr>
 <tr>
 <td><code>get_lateral_distance_to_centerline</code></td>
@@ -7956,6 +7962,7 @@
 <span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">"ArcCoordinates length is "</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">arc_coord</span><span class="p">.</span><span class="n">length</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
 <span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">"ArcCoordinates distance is "</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">arc_coord</span><span class="p">.</span><span class="n">distance</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
 </code></pre></div>
+<p>Get <code>ArcCoordinates</code> of query pose from lanelet sequence using ego centerline.</p>
 <div class="highlight"><span class="filename">./examples/example_geometry.cpp:309:317</span><pre><span></span><code><span class="w">    </span><span class="k">auto</span><span class="w"> </span><span class="n">lanelet_map_ptr_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">set_up_lanelet_map_ptr</span><span class="p">();</span>
 <span class="w">    </span><span class="n">geometry_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">Pose</span><span class="w"> </span><span class="n">query</span><span class="p">;</span>
 <span class="w">    </span><span class="n">query</span><span class="p">.</span><span class="n">position</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1.5</span><span class="p">;</span>
