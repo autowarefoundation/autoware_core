@@ -76,12 +76,10 @@ if(BUILD_TESTING)
     test/test_cases/standard_sequence_for_initial_pose_estimation.cpp
     TIMEOUT "300"
   )
-  target_link_libraries(standard_sequence_for_initial_pose_estimation ${PROJECT_NAME})
   ament_auto_add_gtest(once_initialize_at_out_of_map_then_initialize_correctly
     test/test_cases/once_initialize_at_out_of_map_then_initialize_correctly.cpp
     TIMEOUT "300"
   )
-  target_link_libraries(once_initialize_at_out_of_map_then_initialize_correctly ${PROJECT_NAME})
 endif()
 
 autoware_ament_auto_package(
