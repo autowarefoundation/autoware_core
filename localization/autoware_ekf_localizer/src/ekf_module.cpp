@@ -255,6 +255,8 @@ bool EKFModule::measurement_update_pose(
 
   pose_diag_info.delay_time = std::max(delay_time, pose_diag_info.delay_time);
   pose_diag_info.delay_time_threshold = accumulated_delay_times_.back();
+  // is_passed_delay_gate is initialized true before the first calling measurement_update_pose
+  // every ekf_localizer call.
   if (delay_step >= params_.extend_state_step) {
     pose_diag_info.is_passed_delay_gate = false;
     warning_->warn_throttle(
@@ -291,6 +293,8 @@ bool EKFModule::measurement_update_pose(
 
   const double distance = mahalanobis(y_ekf, y, p_y);
   pose_diag_info.mahalanobis_distance = std::max(distance, pose_diag_info.mahalanobis_distance);
+  // is_passed_mahalanobis_gate is initialized true before the first calling measurement_update_pose
+  // every ekf_localizer call.
   if (distance > params_.pose_gate_dist) {
     pose_diag_info.is_passed_mahalanobis_gate = false;
     warning_->warn_throttle(mahalanobis_warning_message(distance, params_.pose_gate_dist), 2000);
@@ -383,6 +387,8 @@ bool EKFModule::measurement_update_twist(
 
   twist_diag_info.delay_time = std::max(delay_time, twist_diag_info.delay_time);
   twist_diag_info.delay_time_threshold = accumulated_delay_times_.back();
+  // is_passed_delay_gate is initialized true before the first calling measurement_update_twist
+  // every ekf_localizer call.
   if (delay_step >= params_.extend_state_step) {
     twist_diag_info.is_passed_delay_gate = false;
     warning_->warn_throttle(
@@ -410,6 +416,8 @@ bool EKFModule::measurement_update_twist(
 
   const double distance = mahalanobis(y_ekf, y, p_y);
   twist_diag_info.mahalanobis_distance = std::max(distance, twist_diag_info.mahalanobis_distance);
+  // is_passed_mahalanobis_gate is initialized true before the first calling
+  // measurement_update_twist every ekf_localizer call.
   if (distance > params_.twist_gate_dist) {
     twist_diag_info.is_passed_mahalanobis_gate = false;
     warning_->warn_throttle(mahalanobis_warning_message(distance, params_.twist_gate_dist), 2000);
