@@ -1018,7 +1018,7 @@ void NDTScanMatcher::service_ndt_align_main(
     diagnostics_ndt_align_->add_key_value("is_succeed_transform_initial_pose", false);
 
     std::stringstream message;
-    message << "Please publish TF " << target_frame.c_str() << " to " << source_frame.c_str();
+    message << "Please publish TF " << target_frame << " to " << source_frame;
     diagnostics_ndt_align_->update_level_and_message(
       diagnostic_msgs::msg::DiagnosticStatus::ERROR, message.str());
     RCLCPP_ERROR_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 1000, message.str());
