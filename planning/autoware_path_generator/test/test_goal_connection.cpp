@@ -14,7 +14,7 @@
 
 #include "utils_test.hpp"
 
-#include <autoware_lanelet2_extension/utility/utilities.hpp>
+#include <autoware/lanelet2_utils/geometry.hpp>
 
 #include <gtest/gtest.h>
 #include <lanelet2_core/geometry/Lanelet.h>
@@ -36,7 +36,9 @@ TEST_F(UtilsTest, connectPathToGoalInsideLaneletSequence)
           planner_data_.goal_lanelets.begin(), planner_data_.goal_lanelets.end(),
           [&](const auto & goal_lanelet) { return lanelet.id() == goal_lanelet.id(); })) {
       goal_lanelet_for_path = lanelet;
-      s_goal += lanelet::utils::getArcCoordinates({lanelet}, planner_data_.goal_pose).length;
+      s_goal += autoware::experimental::lanelet2_utils::get_arc_coordinates(
+                  {lanelet}, planner_data_.goal_pose)
+                  .length;
       break;
     }
     s_goal += lanelet::geometry::length2d(lanelet);
@@ -93,7 +95,9 @@ TEST_F(UtilsTest, connectPathToGoal)
           planner_data_.goal_lanelets.begin(), planner_data_.goal_lanelets.end(),
           [&](const auto & goal_lanelet) { return lanelet.id() == goal_lanelet.id(); })) {
       goal_lanelet_for_path = lanelet;
-      s_goal += lanelet::utils::getArcCoordinates({lanelet}, planner_data_.goal_pose).length;
+      s_goal += autoware::experimental::lanelet2_utils::get_arc_coordinates(
+                  {lanelet}, planner_data_.goal_pose)
+                  .length;
       break;
     }
     s_goal += lanelet::geometry::length2d(lanelet);
