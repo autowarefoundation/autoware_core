@@ -12,21 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "include/mahalanobis.hpp"
+#ifndef MAHALANOBIS_HPP_
+#define MAHALANOBIS_HPP_
+
+#include <Eigen/Core>
+#include <Eigen/Dense>
 
 namespace autoware::ekf_localizer
 {
 
 double squared_mahalanobis(
-  const Eigen::VectorXd & x, const Eigen::VectorXd & y, const Eigen::MatrixXd & C)
-{
-  const Eigen::VectorXd d = x - y;
-  return d.dot(C.inverse() * d);
-}
+  const Eigen::VectorXd & x, const Eigen::VectorXd & y, const Eigen::MatrixXd & C);
 
-double mahalanobis(const Eigen::VectorXd & x, const Eigen::VectorXd & y, const Eigen::MatrixXd & C)
-{
-  return std::sqrt(squared_mahalanobis(x, y, C));
-}
+double mahalanobis(const Eigen::VectorXd & x, const Eigen::VectorXd & y, const Eigen::MatrixXd & C);
 
 }  // namespace autoware::ekf_localizer
+
+#endif  // MAHALANOBIS_HPP_

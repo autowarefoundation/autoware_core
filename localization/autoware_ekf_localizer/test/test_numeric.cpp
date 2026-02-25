@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/ekf_localizer/numeric.hpp"
+#include "include/numeric.hpp"
 
 #include <Eigen/Core>
 

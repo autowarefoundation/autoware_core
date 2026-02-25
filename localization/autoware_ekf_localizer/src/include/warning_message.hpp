@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__EKF_LOCALIZER__WARNING_MESSAGE_HPP_
-#define AUTOWARE__EKF_LOCALIZER__WARNING_MESSAGE_HPP_
+#ifndef WARNING_MESSAGE_HPP_
+#define WARNING_MESSAGE_HPP_
 
 #include <string>
 
@@ -32,4 +32,4 @@ std::string too_slow_ekf_dt_waring_message(const double ekf_dt);
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // AUTOWARE__EKF_LOCALIZER__WARNING_MESSAGE_HPP_
+#endif  // WARNING_MESSAGE_HPP_

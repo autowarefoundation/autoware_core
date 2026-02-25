@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__EKF_LOCALIZER__EKF_LOCALIZER_HPP_
-#define AUTOWARE__EKF_LOCALIZER__EKF_LOCALIZER_HPP_
+#ifndef EKF_LOCALIZER_HPP_
+#define EKF_LOCALIZER_HPP_
 
-#include "autoware/ekf_localizer/aged_object_queue.hpp"
-#include "autoware/ekf_localizer/ekf_module.hpp"
-#include "autoware/ekf_localizer/hyper_parameters.hpp"
-#include "autoware/ekf_localizer/warning.hpp"
+#include "aged_object_queue.hpp"
+#include "ekf_module.hpp"
+#include "hyper_parameters.hpp"
+#include "warning.hpp"
 
 #include <autoware_utils_logging/logger_level_configure.hpp>
 #include <autoware_utils_system/stop_watch.hpp>
@@ -54,7 +54,7 @@ namespace autoware::ekf_localizer
 class EKFLocalizer : public rclcpp::Node
 {
 public:
-  explicit EKFLocalizer(const rclcpp::NodeOptions & options);
+  explicit EKFLocalizer(const rclcpp::NodeOptions & node_options);
 
   // This function is only used in static tools to know when timer callbacks are triggered.
   std::chrono::nanoseconds time_until_trigger() const
@@ -194,4 +194,4 @@ private:
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // AUTOWARE__EKF_LOCALIZER__EKF_LOCALIZER_HPP_
+#endif  // EKF_LOCALIZER_HPP_
