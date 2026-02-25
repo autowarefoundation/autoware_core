@@ -14,7 +14,6 @@
 
 #include <autoware/localization_util/matrix_type.hpp>
 #include <autoware/localization_util/util_func.hpp>
-
 #include <rclcpp/rclcpp.hpp>
 #include <tf2/LinearMath/Quaternion.hpp>
 
