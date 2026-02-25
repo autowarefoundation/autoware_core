@@ -49,8 +49,8 @@
  *
  */
 
-#ifndef AUTOWARE__NDT_SCAN_MATCHER__NDT_OMP__MULTI_VOXEL_GRID_COVARIANCE_OMP_H_
-#define AUTOWARE__NDT_SCAN_MATCHER__NDT_OMP__MULTI_VOXEL_GRID_COVARIANCE_OMP_H_
+#ifndef NDT_OMP__MULTI_VOXEL_GRID_COVARIANCE_OMP_H_
+#define NDT_OMP__MULTI_VOXEL_GRID_COVARIANCE_OMP_H_
 
 // cspell:ignore Magnusson, Okorn, evecs, evals, covar, eigvalue, futs
 
@@ -391,4 +391,4 @@ protected:
 };
 }  // namespace pclomp
 
-#endif  // AUTOWARE__NDT_SCAN_MATCHER__NDT_OMP__MULTI_VOXEL_GRID_COVARIANCE_OMP_H_
+#endif  // NDT_OMP__MULTI_VOXEL_GRID_COVARIANCE_OMP_H_
