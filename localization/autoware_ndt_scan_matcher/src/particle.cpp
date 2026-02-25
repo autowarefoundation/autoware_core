@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include <autoware/localization_util/util_func.hpp>
-#include <autoware/ndt_scan_matcher/particle.hpp>
+#include "particle.hpp"
 
 #include <string>
 namespace autoware::ndt_scan_matcher

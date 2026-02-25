@@ -15,9 +15,9 @@
 #include <autoware/localization_util/matrix_type.hpp>
 #include <autoware/localization_util/tree_structured_parzen_estimator.hpp>
 #include <autoware/localization_util/util_func.hpp>
-#include <autoware/ndt_scan_matcher/ndt_omp/estimate_covariance.hpp>
-#include <autoware/ndt_scan_matcher/ndt_scan_matcher_core.hpp>
-#include <autoware/ndt_scan_matcher/particle.hpp>
+#include "ndt_omp/estimate_covariance.hpp"
+#include "ndt_scan_matcher_core.hpp"
+#include "particle.hpp"
 #include <autoware/qos_utils/qos_compatibility.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_utils_pcl/transforms.hpp>
