@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef INTERNAL__EKF_LOCALIZER_HPP_
-#define INTERNAL__EKF_LOCALIZER_HPP_
+#ifndef EKF_LOCALIZER_HPP_
+#define EKF_LOCALIZER_HPP_
 
 #include "aged_object_queue.hpp"
 #include "ekf_module.hpp"
@@ -194,4 +194,4 @@ private:
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // INTERNAL__EKF_LOCALIZER_HPP_
+#endif  // EKF_LOCALIZER_HPP_

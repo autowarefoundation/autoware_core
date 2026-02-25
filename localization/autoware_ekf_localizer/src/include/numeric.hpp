@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef INTERNAL__NUMERIC_HPP_
-#define INTERNAL__NUMERIC_HPP_
+#ifndef NUMERIC_HPP_
+#define NUMERIC_HPP_
 
 #include <Eigen/Core>
 
@@ -34,4 +34,4 @@ inline bool has_nan(const Eigen::MatrixXd & v)
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // INTERNAL__NUMERIC_HPP_
+#endif  // NUMERIC_HPP_

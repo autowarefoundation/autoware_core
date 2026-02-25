@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef INTERNAL__MATRIX_TYPES_HPP_
-#define INTERNAL__MATRIX_TYPES_HPP_
+#ifndef MATRIX_TYPES_HPP_
+#define MATRIX_TYPES_HPP_
 
 #include <Eigen/Core>
 
@@ -25,4 +25,4 @@ using Matrix6d = Eigen::Matrix<double, 6, 6>;
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // INTERNAL__MATRIX_TYPES_HPP_
+#endif  // MATRIX_TYPES_HPP_
