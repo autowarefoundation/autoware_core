@@ -14,8 +14,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__CROP_BOX_FILTER__CROP_BOX_FILTER_NODE_HPP_
-#define AUTOWARE__CROP_BOX_FILTER__CROP_BOX_FILTER_NODE_HPP_
+#ifndef CROP_BOX_FILTER_NODE_HPP_
+#define CROP_BOX_FILTER_NODE_HPP_
 
 #include <autoware/point_types/types.hpp>
 #include <autoware_utils_debug/debug_publisher.hpp>
@@ -145,9 +145,9 @@ private:
 
 public:
   PCL_MAKE_ALIGNED_OPERATOR_NEW
-  explicit CropBoxFilter(const rclcpp::NodeOptions & options);
+  explicit CropBoxFilter(const rclcpp::NodeOptions & node_options);
   void filter_pointcloud(const PointCloud2ConstPtr & cloud, PointCloud2 & output);
 };
 }  // namespace autoware::crop_box_filter
 
-#endif  // AUTOWARE__CROP_BOX_FILTER__CROP_BOX_FILTER_NODE_HPP_
+#endif  // CROP_BOX_FILTER_NODE_HPP_

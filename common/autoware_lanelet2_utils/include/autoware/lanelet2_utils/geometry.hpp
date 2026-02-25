@@ -198,8 +198,8 @@ std::optional<lanelet::ConstLanelet> combine_lanelets_shape(
 /**
  * @brief expand the lanelet
  * @param[in] lanelet_obj original lanelet
- * @param[in] left_offset offset of the left bound (positive value required)
- * @param[in] right_offset offset of the right bound (negative value required)
+ * @param[in] left_offset offset of the left bound (positive expand, negative narrow)
+ * @param[in] right_offset offset of the right bound (negative expand, positive narrow)
  * @return expanded lanelet
  */
 std::optional<lanelet::ConstLanelet> get_dirty_expanded_lanelet(
@@ -208,8 +208,8 @@ std::optional<lanelet::ConstLanelet> get_dirty_expanded_lanelet(
 /**
  * @brief expand the lanelets (several lanelets)
  * @param[in] lanelet_obj original lanelets (several lanelets)
- * @param[in] left_offset offset of the left bound (positive value required)
- * @param[in] right_offset offset of the right bound (negative value required)
+ * @param[in] left_offset offset of the left bound (positive expand, negative narrow)
+ * @param[in] right_offset offset of the right bound (negative expand, positive narrow)
  * @return expanded lanelets
  */
 std::optional<lanelet::ConstLanelets> get_dirty_expanded_lanelets(
