@@ -25,8 +25,8 @@ MapUpdateModule::MapUpdateModule(
   const HyperParameters::DynamicMapLoading & param)
 : loaded_pcd_pub_(node->create_publisher<sensor_msgs::msg::PointCloud2>(
     "debug/loaded_pointcloud_map", rclcpp::QoS{1}.transient_local())),
-  pcd_loader_client_(
-    node->create_client<autoware_map_msgs::srv::GetDifferentialPointCloudMap>("pcd_loader_service")),
+  pcd_loader_client_(node->create_client<autoware_map_msgs::srv::GetDifferentialPointCloudMap>(
+    "pcd_loader_service")),
   ndt_ptr_(ndt_ptr),
   ndt_ptr_mutex_(ndt_ptr_mutex),
   logger_(node->get_logger()),
