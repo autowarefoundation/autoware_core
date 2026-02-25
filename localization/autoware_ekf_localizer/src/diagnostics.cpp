@@ -109,7 +109,7 @@ diagnostic_msgs::msg::DiagnosticStatus check_measurement_queue_size(
 
 diagnostic_msgs::msg::DiagnosticStatus check_measurement_delay_gate(
   const std::string & measurement_type, const bool is_passed_delay_gate, const double delay_time,
-  const double delay_time_threshold)
+  const double delay_time_threshold, const bool is_invalid)
 {
   diagnostic_msgs::msg::DiagnosticStatus stat;
 
@@ -123,10 +123,17 @@ diagnostic_msgs::msg::DiagnosticStatus check_measurement_delay_gate(
   key_value.key = measurement_type + "_delay_time_threshold";
   key_value.value = std::to_string(delay_time_threshold);
   stat.values.push_back(key_value);
+  key_value.key = measurement_type + "_is_invalid";
+  key_value.value = is_invalid ? "True" : "False";
+  stat.values.push_back(key_value);
 
   stat.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
   stat.message = "OK";
-  if (!is_passed_delay_gate) {
+  if (is_invalid) {
+    stat.level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
+    stat.message = "[WARN] delay gate measurement of " + measurement_type +
+                   " topic is invalid because the node is not activated or initial pose is not set";
+  } else if (!is_passed_delay_gate) {
     stat.level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
     stat.message = "[WARN]" + measurement_type + " topic is delay";
   }
@@ -136,7 +143,8 @@ diagnostic_msgs::msg::DiagnosticStatus check_measurement_delay_gate(
 
 diagnostic_msgs::msg::DiagnosticStatus check_measurement_mahalanobis_gate(
   const std::string & measurement_type, const bool is_passed_mahalanobis_gate,
-  const double mahalanobis_distance, const double mahalanobis_distance_threshold)
+  const double mahalanobis_distance, const double mahalanobis_distance_threshold,
+  const bool is_invalid)
 {
   diagnostic_msgs::msg::DiagnosticStatus stat;
 
@@ -150,10 +158,17 @@ diagnostic_msgs::msg::DiagnosticStatus check_measurement_mahalanobis_gate(
   key_value.key = measurement_type + "_mahalanobis_distance_threshold";
   key_value.value = std::to_string(mahalanobis_distance_threshold);
   stat.values.push_back(key_value);
+  key_value.key = measurement_type + "_is_invalid";
+  key_value.value = is_invalid ? "True" : "False";
+  stat.values.push_back(key_value);
 
   stat.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
   stat.message = "OK";
-  if (!is_passed_mahalanobis_gate) {
+  if (is_invalid) {
+    stat.level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
+    stat.message = "[WARN] mahalanobis gate measurement of " + measurement_type +
+                   " topic is invalid because the node is not activated or initial pose is not set";
+  } else if (!is_passed_mahalanobis_gate) {
     stat.level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
     stat.message = "[WARN]mahalanobis distance of " + measurement_type + " topic is large";
   }
@@ -163,7 +178,7 @@ diagnostic_msgs::msg::DiagnosticStatus check_measurement_mahalanobis_gate(
 
 diagnostic_msgs::msg::DiagnosticStatus check_covariance_ellipse(
   const std::string & name, const double curr_size, const double warn_threshold,
-  const double error_threshold)
+  const double error_threshold, const bool is_invalid)
 {
   diagnostic_msgs::msg::DiagnosticStatus stat;
 
@@ -180,13 +195,21 @@ diagnostic_msgs::msg::DiagnosticStatus check_covariance_ellipse(
   key_value.value = std::to_string(error_threshold);
   stat.values.push_back(key_value);
 
+  key_value.key = name + "_is_invalid";
+  key_value.value = is_invalid ? "True" : "False";
+  stat.values.push_back(key_value);
+
   stat.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
   stat.message = "OK";
-  if (curr_size >= warn_threshold) {
+  if (is_invalid) {
+    stat.level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
+    stat.message = "[WARN] covariance ellipse measurement of " + name +
+                   " is invalid because the node is not activated or initial pose is not set";
+  } else if (curr_size >= warn_threshold) {
     stat.level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
     stat.message = "[WARN]" + name + " is large";
   }
-  if (curr_size >= error_threshold) {
+  if (!is_invalid && curr_size >= error_threshold) {
     stat.level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
     stat.message = "[ERROR]" + name + " is large";
   }
