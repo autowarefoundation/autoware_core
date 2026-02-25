@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../../docs/assets/images/autoware-foundation.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.2">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
     
     
       
@@ -7799,13 +7799,13 @@
 </tr>
 <tr>
 <td><code>get_dirty_expanded_lanelet</code></td>
-<td>Expand the lanelet. <br><br>Note: <ul><li><code>left_offset</code> needs to be positive.</li> <li> <code>right_offset</code> needs to be negative</li></ul></td>
+<td>Expand the lanelet. <br><br>Note: <ul><li>for <code>left_offset</code> <strong>positive</strong> value expand, <strong>negative</strong> value narrow lanelet </li> <li> for <code>right_offset</code> <strong>negative</strong> value expand, <strong>positive</strong> value narrow lanelet</li></ul></td>
 <td></td>
 <td><img alt="get_dirty_expanded_lanelet" src="media/api/geometry/get_dirty_expanded_lanelet.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-838%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fapi%2Fgeometry%2Fget_dirty_expanded_lanelet.drawio.svg">Open</a></td>
 </tr>
 <tr>
 <td><code>get_dirty_expanded_lanelets</code></td>
-<td>Expand several lanelets. <br><br>Note: <ul><li><code>left_offset</code> needs to be positive.</li> <li> <code>right_offset</code> needs to be negative</li></ul></td>
+<td>Expand several lanelets. <br><br>Note: <ul><li>for <code>left_offset</code> <strong>positive</strong> value expand, <strong>negative</strong> value narrow lanelet </li> <li> for <code>right_offset</code> <strong>negative</strong> value expand, <strong>positive</strong> value narrow lanelet</li></ul></td>
 <td></td>
 <td><img alt="get_dirty_expanded_lanelets" src="media/api/geometry/get_dirty_expanded_lanelets.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-838%2Fcommon%2Fautoware_lanelet2_utils%2Fmedia%2Fapi%2Fgeometry%2Fget_dirty_expanded_lanelets.drawio.svg">Open</a></td>
 </tr>
@@ -8751,6 +8751,18 @@
 </tr>
 </thead>
 <tbody>
+<tr>
+<td><code>find_nearest(layer, pose, count, r_range, z_range)</code></td>
+<td>This function returns up to <code>count</code> lanelets nearest to the given <code>pose</code> by filtering lanelets by a 2D bounding-box centered at the pose with radius <code>r_range</code> and the lanelets' vertical extent within <code>z_range</code> of the pose z first, then for remaining candidates it computes the 2D distance from the lanelet polygon to the pose, and returns a vector of <code>(distance, lanelet)</code> pairs sorted by ascending distance</td>
+<td><span class="arithmatex">\(O(N)\)</span> where <span class="arithmatex">\(N\)</span> is the number of input lanelets (after bbox/z filtering)</td>
+<td></td>
+</tr>
+<tr>
+<td><code>find_nearest(layer, pose, count)</code></td>
+<td>Convenience overload of <code>find_nearest(...)</code> that uses fixed search ranges (<code>r_range = 20.0 [m]</code>, <code>z_range = 2.0 [m]</code>)</td>
+<td>Same as the above</td>
+<td></td>
+</tr>
 <tr>
 <td><code>get_closest_lanelet(lanelets, pose)</code></td>
 <td>This function retrieves the lanelet which gives the smallest distance to given <code>pose</code>(if it is within a lanelet, it gives zero distance) and whose centerline is closest to the given orientation among them</td>
