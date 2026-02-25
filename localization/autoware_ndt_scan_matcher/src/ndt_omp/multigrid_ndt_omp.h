@@ -52,8 +52,8 @@
  *
  */
 
-#ifndef AUTOWARE__NDT_SCAN_MATCHER__NDT_OMP__MULTIGRID_NDT_OMP_H_
-#define AUTOWARE__NDT_SCAN_MATCHER__NDT_OMP__MULTIGRID_NDT_OMP_H_
+#ifndef NDT_OMP__MULTIGRID_NDT_OMP_H_
+#define NDT_OMP__MULTIGRID_NDT_OMP_H_
 
 // cspell:ignore multigrid, Magnusson, Thuente, Todor, Stoyanov, Okorn
 
@@ -497,4 +497,4 @@ public:
 
 }  // namespace pclomp
 
-#endif  // AUTOWARE__NDT_SCAN_MATCHER__NDT_OMP__MULTIGRID_NDT_OMP_H_
+#endif  // NDT_OMP__MULTIGRID_NDT_OMP_H_
