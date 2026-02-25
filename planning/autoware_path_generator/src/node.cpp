@@ -17,11 +17,9 @@
 #include "autoware/path_generator/utils.hpp"
 
 #include <autoware/lanelet2_utils/conversion.hpp>
+#include <autoware/lanelet2_utils/geometry.hpp>
 #include <autoware/lanelet2_utils/nn_search.hpp>
 #include <autoware/trajectory/utils/reference_path.hpp>
-#include <autoware_lanelet2_extension/utility/message_conversion.hpp>
-#include <autoware_lanelet2_extension/utility/query.hpp>
-#include <autoware_lanelet2_extension/utility/utilities.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 
 #include <lanelet2_core/geometry/Lanelet.h>
@@ -31,16 +29,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-
-namespace
-{
-template <typename LaneletT, typename PointT>
-double get_arc_length_along_centerline(const LaneletT & lanelet, const PointT & point)
-{
-  return lanelet::geometry::toArcCoordinates(lanelet.centerline2d(), lanelet::utils::to2D(point))
-    .length;
-}
-}  // namespace
 
 namespace autoware::path_generator
 {
@@ -255,7 +243,8 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
 
   lanelet::ConstLanelets lanelets{current_lanelet};
   const auto s_ego_on_current_lanelet =
-    lanelet::utils::getArcCoordinates({*current_lanelet_}, current_pose).length;
+    autoware::experimental::lanelet2_utils::get_arc_coordinates({*current_lanelet_}, current_pose)
+      .length;
 
   const auto backward_length = std::max(
     0., params.path_length.backward + vehicle_info_.max_longitudinal_offset_m -
@@ -335,8 +324,9 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
     if (std::any_of(
           planner_data_.goal_lanelets.begin(), planner_data_.goal_lanelets.end(),
           [lane_id](const auto & goal_lanelet) { return lane_id == goal_lanelet.id(); })) {
-      const auto s_goal =
-        s + lanelet::utils::getArcCoordinates({*it}, planner_data_.goal_pose).length;
+      const auto s_goal = s + autoware::experimental::lanelet2_utils::get_arc_coordinates(
+                                {*it}, planner_data_.goal_pose)
+                                .length;
       if (s_goal < s_end) {
         goal_lanelet_for_path = *it;
         s_goal_position = s_goal;
