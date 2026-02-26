@@ -14,13 +14,12 @@
 
 #include "autoware/path_generator/node.hpp"
 
-#include "utils.hpp"
-
 #include <autoware/lanelet2_utils/conversion.hpp>
-
 #include <autoware/lanelet2_utils/geometry.hpp>
 #include <autoware/lanelet2_utils/nn_search.hpp>
+#include <autoware/path_generator/utils.hpp>
 #include <autoware/trajectory/utils/reference_path.hpp>
+#include <autoware_lanelet2_extension/utility/utilities.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 
 #include <lanelet2_core/geometry/Lanelet.h>

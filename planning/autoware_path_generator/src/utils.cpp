@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "utils.hpp"
-
 #include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/motion_utils/constants.hpp>
 #include <autoware/motion_utils/resample/resample.hpp>
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
+#include <autoware/path_generator/utils.hpp>
 #include <autoware/trajectory/interpolator/linear.hpp>
 #include <autoware/trajectory/utils/closest.hpp>
 #include <autoware/trajectory/utils/crop.hpp>

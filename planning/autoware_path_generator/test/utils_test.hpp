@@ -15,10 +15,10 @@
 #ifndef UTILS_TEST_HPP_
 #define UTILS_TEST_HPP_
 
-#include "../src/utils.hpp"
 #include "autoware/path_generator/node.hpp"
 
 #include <autoware/lanelet2_utils/conversion.hpp>
+#include <autoware/path_generator/utils.hpp>
 #include <autoware_test_utils/autoware_test_utils.hpp>
 #include <autoware_test_utils/mock_data_parser.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info.hpp>
