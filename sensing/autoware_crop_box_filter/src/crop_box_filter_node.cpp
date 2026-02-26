@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/crop_box_filter/crop_box_filter_node.hpp"
+#include "crop_box_filter_node.hpp"
 
 #include <tf2_eigen/tf2_eigen.hpp>
 
@@ -26,19 +26,15 @@
 namespace autoware::crop_box_filter
 {
 CropBoxFilter::CropBoxFilter(const rclcpp::NodeOptions & node_options)
-: rclcpp::Node("crop_box_filter", node_options)
+: rclcpp::Node("crop_box_filter", node_options),
+  stop_watch_ptr_(std::make_unique<autoware_utils_system::StopWatch<std::chrono::milliseconds>>()),
+  debug_publisher_(std::make_unique<autoware_utils_debug::DebugPublisher>(this, this->get_name())),
+  published_time_publisher_(std::make_unique<autoware_utils_debug::PublishedTimePublisher>(this))
 {
   // initialize debug tool
   {
-    using autoware_utils_debug::DebugPublisher;
-    using autoware_utils_system::StopWatch;
-    stop_watch_ptr_ = std::make_unique<StopWatch<std::chrono::milliseconds>>();
-    debug_publisher_ = std::make_unique<DebugPublisher>(this, this->get_name());
     stop_watch_ptr_->tic("cyclic_time");
     stop_watch_ptr_->tic("processing_time");
-
-    published_time_publisher_ =
-      std::make_unique<autoware_utils_debug::PublishedTimePublisher>(this);
   }
 
   max_queue_size_ = static_cast<int64_t>(declare_parameter("max_queue_size", 5));
