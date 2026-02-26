@@ -274,7 +274,7 @@ std::optional<lanelet::ConstLanelet> create_safe_lanelet(
 
   lanelet::ConstLanelet cll(lanelet::InvalId, left_ls, right_ls);
 
-  return cll;
+  return lanelet::ConstLanelet{lanelet::InvalId, left_ls, right_ls};
 }
 
 }  // namespace autoware::experimental::lanelet2_utils
