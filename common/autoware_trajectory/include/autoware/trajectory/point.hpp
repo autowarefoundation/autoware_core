@@ -80,7 +80,7 @@ public:
    * @brief Get the underlying arc lengths of the trajectory
    * @return Vector of bases(arc lengths)
    */
-  virtual std::vector<double> get_underlying_bases() const;
+  std::vector<double> get_underlying_bases() const;
 
   /**
    * @brief Get the length of the trajectory
