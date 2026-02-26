@@ -305,22 +305,22 @@ std::optional<double> calcDecelDistWithJerkAndAccConstraints(
   if (v2 <= 0.0) {
     // The vehicle reaches v = 0 before hitting the maximum deceleration limit.
     // Solve for t where 0 = v1 + a1*t + 0.5*j*t^2
-    const double discriminant = a1 * a1 - 2.0 * jerk_limit * v1;
+    const double discriminant = a1 * a1 - 2.0 * negative_jerk_limit * v1;
 
     // should be impossible
     if (discriminant < 0.0) {
       return std::nullopt;
     }
 
-    const double t2 = -(a1 + std::sqrt(discriminant)) / jerk_limit;
-    const auto [x_stop, v_stop, a_stop] = update(x1, v1, a1, jerk_limit, t2);
+    const double t2 = -(a1 + std::sqrt(discriminant)) / negative_jerk_limit;
+    const auto [x_stop, v_stop, a_stop] = update(x1, v1, a1, negative_jerk_limit, t2);
 
     return std::max(0.0, x_stop);
   }
 
   // The vehicle successfully reaches the maximum deceleration limit.
-  const double t2 = (negative_decel_limit - a1) / jerk_limit;
-  const auto [x2, v2_final, a2_final] = update(x1, v1, a1, jerk_limit, t2);
+  const double t2 = (negative_decel_limit - a1) / negative_jerk_limit;
+  const auto [x2, v2_final, a2_final] = update(x1, v1, a1, negative_jerk_limit, t2);
 
   // Phase 3: Constant maximum deceleration
   // Decelerate at acc_limit from v2_final down to 0.
