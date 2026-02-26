@@ -341,7 +341,7 @@ TEST_F(ExtrapolatedLaneletTest, GetPoseFrom2dArcLength_OnRealMapLanelets)
   EXPECT_NEAR(p.orientation.w, eq.w, 1e-4);
 }
 
-// Test xx: getPolygonFromArcLength empty lanelets
+// Test 16: getPolygonFromArcLength empty lanelets
 TEST(getPolygonFromArcLength, EmptyLaneletsReturnsNullopt)
 {
   lanelet::ConstLanelets empty{};
@@ -349,7 +349,7 @@ TEST(getPolygonFromArcLength, EmptyLaneletsReturnsNullopt)
   EXPECT_FALSE(opt.has_value());
 }
 
-// Test xx: getPolygonFromArcLength ordinary cases
+// Test 17: getPolygonFromArcLength ordinary cases
 TEST(getPolygonFromArcLength, OrdinaryLaneletsReturnCorrectPolygon)
 {
   using autoware::experimental::lanelet2_utils::create_safe_lanelet;
@@ -394,7 +394,7 @@ TEST(getPolygonFromArcLength, OrdinaryLaneletsReturnCorrectPolygon)
   }
 }
 
-// Test 16: get_closest_segment full range
+// Test 18: get_closest_segment full range
 TEST(GetClosestSegment, OrdinaryLinestringReturnCorrectSegment)
 {
   std::vector<lanelet::Point3d> pts = {
@@ -430,7 +430,7 @@ TEST(GetClosestSegment, OrdinaryLinestringReturnCorrectSegment)
   }
 }
 
-// TEST 17: get_lanelet_angle Horizontal Case
+// Test 19: get_lanelet_angle Horizontal Case
 TEST_F(GetLaneletAngle, GetHorizontalAngle)
 {
   const auto ll = lanelet_map_ptr_->laneletLayer.get(2296);
@@ -440,7 +440,7 @@ TEST_F(GetLaneletAngle, GetHorizontalAngle)
   EXPECT_NEAR(out, -3.1308317, 1e-4);
 }
 
-// TEST 18: get_lanelet_angle Vertical
+// Test 20: get_lanelet_angle Vertical
 TEST_F(GetLaneletAngle, GetVerticalAngle)
 {
   const auto ll = lanelet_map_ptr_->laneletLayer.get(2258);
@@ -450,7 +450,7 @@ TEST_F(GetLaneletAngle, GetVerticalAngle)
   EXPECT_NEAR(out, 1.58204, 1e-4);
 }
 
-// TEST 19: get_closest_center_pose Horizontal Case
+// Test 21: get_closest_center_pose Horizontal Case
 TEST(GetClosestCenterPoseTest, getHorizontalPose)
 {
   using autoware::experimental::lanelet2_utils::create_safe_lanelet;
@@ -474,7 +474,7 @@ TEST(GetClosestCenterPoseTest, getHorizontalPose)
   expect_quat_eq(out.orientation, expected_quat);
 }
 
-// TEST 20: get_closest_center_pose Vertical Case
+// Test 22: get_closest_center_pose Vertical Case
 TEST(GetClosestCenterPoseTest, getVerticalPose)
 {
   using autoware::experimental::lanelet2_utils::create_safe_lanelet;
@@ -498,7 +498,7 @@ TEST(GetClosestCenterPoseTest, getVerticalPose)
   expect_quat_eq(out.orientation, expected_quat);
 }
 
-// TEST 21: get_closest_center_pose Incline Case
+// Test 23: get_closest_center_pose Incline Case
 TEST(GetClosestCenterPoseTest, getInclinePose)
 {
   using autoware::experimental::lanelet2_utils::create_safe_lanelet;
@@ -522,7 +522,7 @@ TEST(GetClosestCenterPoseTest, getInclinePose)
   expect_quat_eq(out.orientation, expected_quat);
 }
 
-// TEST 22: get_closest_center_pose Incline Down Case
+// Test 24: get_closest_center_pose Incline Down Case
 TEST(GetClosestCenterPoseTest, getInclineDownPose)
 {
   using autoware::experimental::lanelet2_utils::create_safe_lanelet;
@@ -547,7 +547,7 @@ TEST(GetClosestCenterPoseTest, getInclineDownPose)
   expect_quat_eq(out.orientation, expected_quat);
 }
 
-// Test 23: get_arc_coordinates empty case
+// Test 25: get_arc_coordinates empty case
 TEST_F(GetArcCoordinates, get_arc_coordinateEmptyCase)
 {
   auto empty_lanelet_sequence = lanelet::ConstLanelets{};
@@ -569,7 +569,7 @@ TEST_F(GetArcCoordinates, get_arc_coordinateEmptyCase)
   }
 }
 
-// Test 24: get_arc_coordinates ordinary case
+// Test 26: get_arc_coordinates ordinary case
 TEST_F(GetArcCoordinates, get_arc_coordinateOrdinaryCase)
 {
   using autoware::experimental::lanelet2_utils::create_safe_lanelet;
@@ -628,7 +628,7 @@ TEST_F(GetArcCoordinates, get_arc_coordinateOrdinaryCase)
   }
 }
 
-// Test 25: get_lateral_distance_to_centerline ordinary case
+// Test 27: get_lateral_distance_to_centerline ordinary case
 TEST(GetLateralDistanceToCenterline, get_lateral_distance_to_centerlineOrdinaryCase)
 {
   using autoware::experimental::lanelet2_utils::create_safe_lanelet;
@@ -659,7 +659,7 @@ TEST(GetLateralDistanceToCenterline, get_lateral_distance_to_centerlineOrdinaryC
   }
 }
 
-// Test 26: get_lateral_distance_to_centerline lanelet sequence
+// Test 28: get_lateral_distance_to_centerline lanelet sequence
 TEST(GetLateralDistanceToCenterline, get_lateral_distance_to_centerlineLaneletSequence)
 {
   using autoware::experimental::lanelet2_utils::create_safe_lanelet;
@@ -702,7 +702,7 @@ TEST(GetLateralDistanceToCenterline, get_lateral_distance_to_centerlineLaneletSe
   }
 }
 
-// Test 27: combine_lanelets_shape with duplicate point
+// Test 29: combine_lanelets_shape with duplicate point
 TEST(LaneletManipulation, CombineLaneletsWithDuplicatePoint)
 {
   using autoware::experimental::lanelet2_utils::create_safe_lanelet;
@@ -737,7 +737,7 @@ TEST(LaneletManipulation, CombineLaneletsWithDuplicatePoint)
     EXPECT_EQ(one_lanelet.rightBound().size(), 3);
   }
 }
-// Test 28: get_dirty_expanded_lanelet ordinary case
+// Test 30: get_dirty_expanded_lanelet ordinary case
 TEST(LaneletManipulation, getExpandedLaneletOrdinaryCase)
 {
   using autoware::experimental::lanelet2_utils::create_safe_lanelet;
@@ -833,7 +833,7 @@ TEST(LaneletManipulation, getExpandedLaneletOrdinaryCase)
   }
 }
 
-// Test 29: get_dirty_expanded_lanelet corner case
+// Test 31: get_dirty_expanded_lanelet corner case
 TEST(LaneletManipulation, getExpandedLaneletCornerCase)
 {
   using autoware::experimental::lanelet2_utils::create_safe_lanelet;
@@ -872,7 +872,7 @@ TEST(LaneletManipulation, getExpandedLaneletCornerCase)
   }
 }
 
-// Test 30: get_dirty_expanded_lanelets ordinary case
+// Test 32: get_dirty_expanded_lanelets ordinary case
 TEST(LaneletManipulation, getExpandedLaneletsOrdinaryCase)
 {
   using autoware::experimental::lanelet2_utils::create_safe_lanelet;
@@ -992,7 +992,7 @@ TEST(LaneletManipulation, getExpandedLaneletsOrdinaryCase)
   }
 }
 
-// Test 31: get bound with offset - Ordinary Case (same length)
+// Test 33: get bound with offset - Ordinary Case (same length)
 TEST(LaneletManipulation, getBoundOrdinaryCase)
 {
   using autoware::experimental::lanelet2_utils::create_safe_lanelet;
@@ -1138,7 +1138,7 @@ TEST(LaneletManipulation, getBoundOrdinaryCase)
   }
 }
 
-// Test 32: get bound with offset - different length (the distance between each pair is not
+// Test 34: get bound with offset - different length (the distance between each pair is not
 // constant)
 TEST(LaneletManipulation, getBoundDifferentLength)
 {
@@ -1372,6 +1372,7 @@ TEST(LaneletManipulation, getBoundDifferentLength)
   }
 }
 
+// Test 35: is_in_lanelet ordinary case
 TEST(LaneletCheck, OrdinaryCaseIsInLanelet)
 {
   using autoware::experimental::lanelet2_utils::create_safe_lanelet;
