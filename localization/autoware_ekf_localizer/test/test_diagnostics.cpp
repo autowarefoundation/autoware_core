@@ -911,8 +911,8 @@ TEST_F(EKFLocalizerTestSuite, callback_pose_and_twist_published_at_period_when_p
   const double ekf_rate = 100.0;
   const double diagnostics_publish_period = 0.1;  // 10 Hz
 
-  auto ekf_localizer = create_ekf_localizer(
-    "test_callback_at_period", diagnostics_publish_period, ekf_rate);
+  auto ekf_localizer =
+    create_ekf_localizer("test_callback_at_period", diagnostics_publish_period, ekf_rate);
 
   rclcpp::Time current_time = ekf_localizer->now();
   geometry_msgs::msg::PoseStamped current_ekf_pose;
@@ -938,8 +938,8 @@ TEST_F(EKFLocalizerTestSuite, callback_pose_and_twist_published_at_period_when_p
   bool received_callback_twist_diag = false;
   auto sub = ekf_localizer->create_subscription<diagnostic_msgs::msg::DiagnosticArray>(
     "/diagnostics", 10,
-    [&received_callback_pose_diag, &received_callback_twist_diag](
-      diagnostic_msgs::msg::DiagnosticArray::ConstSharedPtr msg) {
+    [&received_callback_pose_diag,
+     &received_callback_twist_diag](diagnostic_msgs::msg::DiagnosticArray::ConstSharedPtr msg) {
       for (const auto & status : msg->status) {
         if (status.name.find("callback_pose") != std::string::npos) {
           received_callback_pose_diag = true;
@@ -952,9 +952,8 @@ TEST_F(EKFLocalizerTestSuite, callback_pose_and_twist_published_at_period_when_p
 
   auto pub_pose = ekf_localizer->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(
     "in_pose_with_covariance", 1);
-  auto pub_twist =
-    ekf_localizer->create_publisher<geometry_msgs::msg::TwistWithCovarianceStamped>(
-      "in_twist_with_covariance", 1);
+  auto pub_twist = ekf_localizer->create_publisher<geometry_msgs::msg::TwistWithCovarianceStamped>(
+    "in_twist_with_covariance", 1);
 
   rclcpp::ExecutorOptions options;
   rclcpp::executors::SingleThreadedExecutor executor(options);
@@ -1023,8 +1022,9 @@ TEST_F(EKFLocalizerTestSuite, diagnostics_published_from_timer_callback_when_per
     [&received_latched_diag](diagnostic_msgs::msg::DiagnosticArray::ConstSharedPtr msg) {
       for (const auto & status : msg->status) {
         // Latched diagnostic from diagnose(): "localization: <node_name>" (no "callback_" in name)
-        if (status.name.find("localization:") != std::string::npos &&
-            status.name.find("callback_") == std::string::npos) {
+        if (
+          status.name.find("localization:") != std::string::npos &&
+          status.name.find("callback_") == std::string::npos) {
           received_latched_diag = true;
           break;
         }
@@ -1044,8 +1044,8 @@ TEST_F(EKFLocalizerTestSuite, diagnostics_published_from_timer_callback_when_per
 
   executor.remove_node(ekf_localizer);
 
-  EXPECT_TRUE(received_latched_diag)
-    << "Expected at least one latched ekf_localizer diagnostic from timer_callback when period is 0";
+  EXPECT_TRUE(received_latched_diag) << "Expected at least one latched ekf_localizer diagnostic "
+                                        "from timer_callback when period is 0";
 }
 
 TEST_F(EKFLocalizerTestSuite, diagnostics_published_from_pose_callback_when_period_zero)
