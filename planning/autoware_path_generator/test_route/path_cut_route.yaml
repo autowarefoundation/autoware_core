@@ -1,0 +1,685 @@
+header:
+  stamp:
+    sec: 0
+    nanosec: 0
+  frame_id: map
+start_pose:
+  position:
+    x: -997.6600952148438
+    y: 1.790512204170227
+    z: 0.0
+  orientation:
+    x: 0.0
+    y: -0.0
+    z: -0.007518066296932796
+    w: 0.9999717389402337
+goal_pose:
+  position:
+    x: 994.1366577148438
+    y: 1.7349162101745605
+    z: 0.0
+  orientation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 1.0
+segments:
+  - preferred_primitive:
+      id: 4417
+      primitive_type: ""
+    primitives:
+      - id: 4417
+        primitive_type: lane
+      - id: 4458
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4429
+      primitive_type: ""
+    primitives:
+      - id: 4429
+        primitive_type: lane
+      - id: 4462
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4434
+      primitive_type: ""
+    primitives:
+      - id: 4434
+        primitive_type: lane
+      - id: 4466
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4439
+      primitive_type: ""
+    primitives:
+      - id: 4439
+        primitive_type: lane
+      - id: 4470
+        primitive_type: lane
+  - preferred_primitive:
+      id: 9530
+      primitive_type: ""
+    primitives:
+      - id: 9530
+        primitive_type: lane
+      - id: 4474
+        primitive_type: lane
+  - preferred_primitive:
+      id: 9522
+      primitive_type: ""
+    primitives:
+      - id: 9522
+        primitive_type: lane
+      - id: 4512
+        primitive_type: lane
+  - preferred_primitive:
+      id: 9534
+      primitive_type: ""
+    primitives:
+      - id: 9534
+        primitive_type: lane
+      - id: 4570
+        primitive_type: lane
+  - preferred_primitive:
+      id: 9602
+      primitive_type: ""
+    primitives:
+      - id: 9602
+        primitive_type: lane
+      - id: 4580
+        primitive_type: lane
+  - preferred_primitive:
+      id: 9606
+      primitive_type: ""
+    primitives:
+      - id: 9606
+        primitive_type: lane
+      - id: 4590
+        primitive_type: lane
+  - preferred_primitive:
+      id: 9610
+      primitive_type: ""
+    primitives:
+      - id: 9610
+        primitive_type: lane
+      - id: 4600
+        primitive_type: lane
+  - preferred_primitive:
+      id: 9614
+      primitive_type: ""
+    primitives:
+      - id: 9614
+        primitive_type: lane
+      - id: 4610
+        primitive_type: lane
+  - preferred_primitive:
+      id: 9618
+      primitive_type: ""
+    primitives:
+      - id: 9618
+        primitive_type: lane
+      - id: 4620
+        primitive_type: lane
+  - preferred_primitive:
+      id: 9622
+      primitive_type: ""
+    primitives:
+      - id: 9622
+        primitive_type: lane
+      - id: 4630
+        primitive_type: lane
+  - preferred_primitive:
+      id: 9626
+      primitive_type: ""
+    primitives:
+      - id: 9626
+        primitive_type: lane
+      - id: 4640
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4645
+      primitive_type: ""
+    primitives:
+      - id: 4645
+        primitive_type: lane
+      - id: 4976
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4655
+      primitive_type: ""
+    primitives:
+      - id: 4655
+        primitive_type: lane
+      - id: 4980
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4660
+      primitive_type: ""
+    primitives:
+      - id: 4660
+        primitive_type: lane
+      - id: 4984
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4665
+      primitive_type: ""
+    primitives:
+      - id: 4665
+        primitive_type: lane
+      - id: 4988
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4670
+      primitive_type: ""
+    primitives:
+      - id: 4670
+        primitive_type: lane
+      - id: 4992
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4675
+      primitive_type: ""
+    primitives:
+      - id: 4675
+        primitive_type: lane
+      - id: 4996
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4680
+      primitive_type: ""
+    primitives:
+      - id: 4680
+        primitive_type: lane
+      - id: 5000
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4685
+      primitive_type: ""
+    primitives:
+      - id: 4685
+        primitive_type: lane
+      - id: 5004
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4690
+      primitive_type: ""
+    primitives:
+      - id: 4690
+        primitive_type: lane
+      - id: 5008
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4695
+      primitive_type: ""
+    primitives:
+      - id: 4695
+        primitive_type: lane
+      - id: 5012
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4700
+      primitive_type: ""
+    primitives:
+      - id: 4700
+        primitive_type: lane
+      - id: 5016
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4705
+      primitive_type: ""
+    primitives:
+      - id: 4705
+        primitive_type: lane
+      - id: 5020
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4710
+      primitive_type: ""
+    primitives:
+      - id: 4710
+        primitive_type: lane
+      - id: 5024
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4715
+      primitive_type: ""
+    primitives:
+      - id: 4715
+        primitive_type: lane
+      - id: 9467
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4720
+      primitive_type: ""
+    primitives:
+      - id: 4720
+        primitive_type: lane
+      - id: 5032
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4725
+      primitive_type: ""
+    primitives:
+      - id: 4725
+        primitive_type: lane
+      - id: 5036
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4730
+      primitive_type: ""
+    primitives:
+      - id: 4730
+        primitive_type: lane
+      - id: 5040
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4735
+      primitive_type: ""
+    primitives:
+      - id: 4735
+        primitive_type: lane
+      - id: 5044
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4740
+      primitive_type: ""
+    primitives:
+      - id: 4740
+        primitive_type: lane
+      - id: 5048
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4745
+      primitive_type: ""
+    primitives:
+      - id: 4745
+        primitive_type: lane
+      - id: 5052
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4750
+      primitive_type: ""
+    primitives:
+      - id: 4750
+        primitive_type: lane
+      - id: 5056
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4755
+      primitive_type: ""
+    primitives:
+      - id: 4755
+        primitive_type: lane
+      - id: 5060
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4760
+      primitive_type: ""
+    primitives:
+      - id: 4760
+        primitive_type: lane
+      - id: 5064
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4765
+      primitive_type: ""
+    primitives:
+      - id: 4765
+        primitive_type: lane
+      - id: 9590
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4770
+      primitive_type: ""
+    primitives:
+      - id: 4770
+        primitive_type: lane
+      - id: 5072
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4775
+      primitive_type: ""
+    primitives:
+      - id: 4775
+        primitive_type: lane
+      - id: 9594
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4424
+      primitive_type: ""
+    primitives:
+      - id: 4424
+        primitive_type: lane
+      - id: 9598
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4780
+      primitive_type: ""
+    primitives:
+      - id: 4780
+        primitive_type: lane
+      - id: 5084
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4785
+      primitive_type: ""
+    primitives:
+      - id: 4785
+        primitive_type: lane
+      - id: 5088
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4790
+      primitive_type: ""
+    primitives:
+      - id: 4790
+        primitive_type: lane
+      - id: 5092
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4795
+      primitive_type: ""
+    primitives:
+      - id: 4795
+        primitive_type: lane
+      - id: 5096
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4800
+      primitive_type: ""
+    primitives:
+      - id: 4800
+        primitive_type: lane
+      - id: 5104
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4805
+      primitive_type: ""
+    primitives:
+      - id: 4805
+        primitive_type: lane
+      - id: 5100
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4810
+      primitive_type: ""
+    primitives:
+      - id: 4810
+        primitive_type: lane
+      - id: 9813
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4815
+      primitive_type: ""
+    primitives:
+      - id: 4815
+        primitive_type: lane
+      - id: 5112
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4820
+      primitive_type: ""
+    primitives:
+      - id: 4820
+        primitive_type: lane
+      - id: 5116
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4825
+      primitive_type: ""
+    primitives:
+      - id: 4825
+        primitive_type: lane
+      - id: 5120
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4830
+      primitive_type: ""
+    primitives:
+      - id: 4830
+        primitive_type: lane
+      - id: 5124
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4835
+      primitive_type: ""
+    primitives:
+      - id: 4835
+        primitive_type: lane
+      - id: 5128
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4840
+      primitive_type: ""
+    primitives:
+      - id: 4840
+        primitive_type: lane
+      - id: 5132
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4845
+      primitive_type: ""
+    primitives:
+      - id: 4845
+        primitive_type: lane
+      - id: 5136
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4850
+      primitive_type: ""
+    primitives:
+      - id: 4850
+        primitive_type: lane
+      - id: 5140
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4855
+      primitive_type: ""
+    primitives:
+      - id: 4855
+        primitive_type: lane
+      - id: 9817
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4860
+      primitive_type: ""
+    primitives:
+      - id: 4860
+        primitive_type: lane
+      - id: 9821
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4865
+      primitive_type: ""
+    primitives:
+      - id: 4865
+        primitive_type: lane
+      - id: 9825
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4870
+      primitive_type: ""
+    primitives:
+      - id: 4870
+        primitive_type: lane
+      - id: 5156
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4875
+      primitive_type: ""
+    primitives:
+      - id: 4875
+        primitive_type: lane
+      - id: 5160
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4880
+      primitive_type: ""
+    primitives:
+      - id: 4880
+        primitive_type: lane
+      - id: 5164
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4885
+      primitive_type: ""
+    primitives:
+      - id: 4885
+        primitive_type: lane
+      - id: 5168
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4890
+      primitive_type: ""
+    primitives:
+      - id: 4890
+        primitive_type: lane
+      - id: 5172
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4895
+      primitive_type: ""
+    primitives:
+      - id: 4895
+        primitive_type: lane
+      - id: 5176
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4900
+      primitive_type: ""
+    primitives:
+      - id: 4900
+        primitive_type: lane
+      - id: 5180
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4905
+      primitive_type: ""
+    primitives:
+      - id: 4905
+        primitive_type: lane
+      - id: 5184
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4910
+      primitive_type: ""
+    primitives:
+      - id: 4910
+        primitive_type: lane
+      - id: 9833
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4915
+      primitive_type: ""
+    primitives:
+      - id: 4915
+        primitive_type: lane
+      - id: 5192
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4920
+      primitive_type: ""
+    primitives:
+      - id: 4920
+        primitive_type: lane
+      - id: 5196
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4925
+      primitive_type: ""
+    primitives:
+      - id: 4925
+        primitive_type: lane
+      - id: 5200
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4930
+      primitive_type: ""
+    primitives:
+      - id: 4930
+        primitive_type: lane
+      - id: 5204
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4935
+      primitive_type: ""
+    primitives:
+      - id: 4935
+        primitive_type: lane
+      - id: 5208
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4940
+      primitive_type: ""
+    primitives:
+      - id: 4940
+        primitive_type: lane
+      - id: 5212
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4945
+      primitive_type: ""
+    primitives:
+      - id: 4945
+        primitive_type: lane
+      - id: 5216
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4950
+      primitive_type: ""
+    primitives:
+      - id: 4950
+        primitive_type: lane
+      - id: 5220
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4955
+      primitive_type: ""
+    primitives:
+      - id: 4955
+        primitive_type: lane
+      - id: 5224
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4960
+      primitive_type: ""
+    primitives:
+      - id: 4960
+        primitive_type: lane
+      - id: 5228
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4965
+      primitive_type: ""
+    primitives:
+      - id: 4965
+        primitive_type: lane
+      - id: 5232
+        primitive_type: lane
+  - preferred_primitive:
+      id: 4972
+      primitive_type: ""
+    primitives:
+      - id: 4972
+        primitive_type: lane
+      - id: 9837
+        primitive_type: lane
+uuid:
+  uuid:
+    - 45
+    - 41
+    - 244
+    - 224
+    - 105
+    - 200
+    - 68
+    - 67
+    - 168
+    - 112
+    - 53
+    - 91
+    - 191
+    - 207
+    - 186
+    - 182
+allow_modification: false
