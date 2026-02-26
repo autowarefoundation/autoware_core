@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#ifndef VOXEL_GRID_BASED_EUCLIDEAN_CLUSTER_HPP_
+#define VOXEL_GRID_BASED_EUCLIDEAN_CLUSTER_HPP_
+
 #include "euclidean_cluster_interface.hpp"
 #include "utils.hpp"
 
@@ -70,3 +72,5 @@ private:
 };
 
 }  // namespace autoware::euclidean_cluster
+
+#endif  // VOXEL_GRID_BASED_EUCLIDEAN_CLUSTER_HPP_

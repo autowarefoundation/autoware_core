@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#ifndef EUCLIDEAN_CLUSTER_NODE_HPP_
+#define EUCLIDEAN_CLUSTER_NODE_HPP_
 
 #include "euclidean_cluster.hpp"
 
@@ -47,3 +48,5 @@ private:
 };
 
 }  // namespace autoware::euclidean_cluster
+
+#endif  // EUCLIDEAN_CLUSTER_NODE_HPP_
