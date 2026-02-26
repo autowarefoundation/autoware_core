@@ -272,8 +272,6 @@ std::optional<lanelet::ConstLanelet> create_safe_lanelet(
   const auto left_ls = remove_const(left_linestring);
   const auto right_ls = remove_const(right_linestring);
 
-  lanelet::ConstLanelet cll(lanelet::InvalId, left_ls, right_ls);
-
   return lanelet::ConstLanelet{lanelet::InvalId, left_ls, right_ls};
 }
 
