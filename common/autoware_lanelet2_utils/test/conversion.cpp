@@ -213,7 +213,7 @@ TEST(ArtificialLaneletObjectConstruction, OnePointConstLaneletConstruct)
   }
 
   // ConstLineString3d
-  using autoware::experimental::lanelet2_utils::remove_const;  // will be tested later
+  using autoware::experimental::lanelet2_utils::remove_const;
   lanelet::ConstLineString3d const_left_ls(
     lanelet::InvalId, {remove_const(const_p1), remove_const(const_p2)});
   lanelet::ConstLineString3d const_right_ls(lanelet::InvalId, {remove_const(const_p3)});
