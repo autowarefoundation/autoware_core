@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__GROUND_FILTER__SANITY_CHECK_HPP_
-#define AUTOWARE__GROUND_FILTER__SANITY_CHECK_HPP_
+#ifndef SANITY_CHECK_HPP_
+#define SANITY_CHECK_HPP_
 
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
@@ -37,4 +37,4 @@ bool is_data_layout_compatible_with_point_xyzircaedt(const sensor_msgs::msg::Poi
 
 }  // namespace autoware::ground_filter
 
-#endif  // AUTOWARE__GROUND_FILTER__SANITY_CHECK_HPP_
+#endif  // SANITY_CHECK_HPP_
