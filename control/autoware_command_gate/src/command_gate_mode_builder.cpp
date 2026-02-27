@@ -26,7 +26,8 @@ ModeOutputs CommandGateModeBuilder::make_stop(const builtin_interfaces::msg::Tim
   return outputs;
 }
 
-ModeOutputs CommandGateModeBuilder::make_autonomous(const builtin_interfaces::msg::Time & stamp) const
+ModeOutputs CommandGateModeBuilder::make_autonomous(
+  const builtin_interfaces::msg::Time & stamp) const
 {
   ModeOutputs outputs;
   fill_state(outputs.state, autoware_adapi_v1_msgs::msg::OperationModeState::AUTONOMOUS, stamp);
@@ -41,7 +42,8 @@ void CommandGateModeBuilder::fill_state(
 {
   msg.stamp = stamp;
   msg.mode = mode;
-  msg.is_autoware_control_enabled = (mode == autoware_adapi_v1_msgs::msg::OperationModeState::AUTONOMOUS);
+  msg.is_autoware_control_enabled =
+    (mode == autoware_adapi_v1_msgs::msg::OperationModeState::AUTONOMOUS);
   msg.is_in_transition = false;
   msg.is_stop_mode_available = true;
   msg.is_autonomous_mode_available = true;
