@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include <autoware/lanelet2_utils/conversion.hpp>
+#include <autoware/lanelet2_utils/geometry.hpp>
 #include <autoware_lanelet2_extension/projection/mgrs_projector.hpp>
-#include <autoware_lanelet2_extension/utility/utilities.hpp>
 
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
@@ -55,9 +55,8 @@ lanelet::LaneletMapConstPtr load_mgrs_coordinate_map(
       const auto & centerline = lanelet_obj.centerline();
       lanelet_obj.setAttribute("waypoints", centerline.id());
     }
-    const auto fine_center_line =
-      lanelet::utils::generateFineCenterline(lanelet_obj, centerline_resolution);
-    lanelet_obj.setCenterline(fine_center_line);
+    const auto fine_center_line = get_fine_centerline(lanelet_obj, centerline_resolution);
+    lanelet_obj.setCenterline(remove_const(fine_center_line));
   }
   return lanelet::LaneletMapConstPtr{std::move(lanelet_map_ptr_mut)};
 }
