@@ -711,7 +711,7 @@ experimental::trajectory::Trajectory<PathPointWithLaneId> connect_path_to_goal(
   auto pre_goal_lanelet = goal_lanelet;
   while (rclcpp::ok() &&
          !autoware::experimental::lanelet2_utils::is_in_lanelet(pre_goal_lanelet, pre_goal_pose)) {
-    const auto prev_lanelet = get_previous_lanelet_within_route(pre_goal_lanelet, planner_data);
+    const auto prev_lanelet = get_previous_lanelet_within_route(pre_goal_lanelet, route_manager);
     if (!prev_lanelet) {
       RCLCPP_WARN(
         rclcpp::get_logger("path_generator").get_child("utils").get_child(__func__),
