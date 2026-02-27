@@ -342,84 +342,78 @@ TrajectoryPoints SmootherBase::applyLateralAccelerationFilter(
 }
 
 TrajectoryExperimental SmootherBase::applyLateralAccelerationFilter(
-  const TrajectoryExperimental & input, [[maybe_unused]] const double v0,
-  [[maybe_unused]] const double a0, [[maybe_unused]] const bool enable_smooth_limit,
-  const bool use_resampling, const double input_points_interval) const
+  const TrajectoryExperimental & input, const double v0, const double a0,
+  const bool enable_smooth_limit, const bool use_resampling,
+  const double input_points_interval) const
 {
   autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
 
   const auto [bases, velocities] = input.longitudinal_velocity_mps().get_data();
+  if (bases.size() < 3) return input;
 
   const double points_interval = use_resampling ? base_param_.sample_ds : input_points_interval;
 
-  std::vector<double> resample_bases;
-  std::vector<double> resample_velocities;
+  const double traj_length = input.length();
 
-  TrajectoryExperimental resampled_traj = input;
-  if (use_resampling) {
-    const double traj_length = bases.back();
-    for (double s = 0.0; s <= traj_length; s += points_interval) {
-      resample_bases.push_back(s);
-      resample_velocities.push_back(input.longitudinal_velocity_mps().compute(s));
-    }
-    if (std::abs(resample_bases.back() - bases.back()) > 1e-6) {
-      resample_bases.push_back(bases.back());
-      resample_velocities.push_back(input.longitudinal_velocity_mps().compute(bases.back()));
-    }
-  } else {
-    resample_bases = bases;
-    resample_velocities = velocities;
+  std::vector<double> s_vec;
+  for (double s = 0.0; s <= traj_length; s += points_interval) {
+    s_vec.push_back(s);
   }
 
-  if (!resampled_traj.longitudinal_velocity_mps().build(resample_bases, resample_velocities)) {
-    return input;  // return original on error
+  std::vector<double> v_vec;
+  for (double s : s_vec) {
+    v_vec.push_back(input.longitudinal_velocity_mps().compute(std::min(s, traj_length * 0.9999)));
   }
 
-  const auto curvature_v = trajectory_utils::calcTrajectoryCurvatureFrom3Points(
-    resampled_traj, base_param_.curvature_calculation_distance);
+  TrajectoryExperimental resampled = input;
+  if (!resampled.longitudinal_velocity_mps().build(s_vec, v_vec)) {
+    return input;
+  }
+
+  const auto curvature_v = resampled.curvature(s_vec);
+
+  const double before_dist = base_param_.decel_distance_before_curve;
+  const double after_dist = base_param_.decel_distance_after_curve;
+
+  const auto lateral_limits = computeLateralAccelerationVelocitySquareRatioLimits();
 
   const auto latacc_min_vel_arr =
     enable_smooth_limit ? trajectory_utils::calcVelocityProfileWithConstantJerkAndAccelerationLimit(
-                            resampled_traj, v0, a0, base_param_.min_jerk, base_param_.max_accel,
+                            resampled, v0, a0, base_param_.min_jerk, base_param_.max_accel,
                             base_param_.min_decel_for_lateral_acc_lim_filter)
                         : std::vector<double>{};
 
-  const auto lateral_acceleration_velocity_square_ratio_limits =
-    computeLateralAccelerationVelocitySquareRatioLimits();
+  for (size_t i = 0; i < s_vec.size(); ++i) {
+    const double current_s = s_vec[i];
+    const double start_s = std::max(0.0, current_s - after_dist);
+    const double end_s = std::min(traj_length * 0.9999, current_s + before_dist);
 
-  // Map curvature_v (at curvature_calculation_distance intervals) to resample_bases positions
-  for (size_t i = 0; i < resample_bases.size(); ++i) {
-    double curvature = 0.0;
-    const double decel_dist_before = base_param_.decel_distance_before_curve;
-    const double decel_dist_after = base_param_.decel_distance_after_curve;
+    double max_curvature = 0.0;
 
-    // Find max curvature within distance-based deceleration window
-    for (size_t j = 0; j < curvature_v.size(); ++j) {
-      const double s_j = j * base_param_.curvature_calculation_distance;
-      const double distance = std::abs(s_j - resample_bases[i]);
-      if (distance <= decel_dist_before || distance <= decel_dist_after) {
-        curvature = std::max(curvature, std::fabs(curvature_v[j]));
+    for (size_t j = 0; j < s_vec.size(); ++j) {
+      if (s_vec[j] >= start_s && s_vec[j] <= end_s) {
+        max_curvature = std::max(max_curvature, std::fabs(curvature_v[j]));
       }
     }
 
-    double v_curvature_max = computeVelocityLimitFromLateralAcc(
-      curvature, lateral_acceleration_velocity_square_ratio_limits);
-    v_curvature_max = std::max(v_curvature_max, base_param_.min_curve_velocity);
+    double v_limit = computeVelocityLimitFromLateralAcc(max_curvature, lateral_limits);
+
+    v_limit = std::max(v_limit, base_param_.min_curve_velocity);
 
     if (enable_smooth_limit) {
-      if (i < latacc_min_vel_arr.size()) {
-        v_curvature_max = std::max(v_curvature_max, latacc_min_vel_arr.at(i));
-      }
+      if (i >= latacc_min_vel_arr.size()) return input;
+      v_limit = std::max(v_limit, latacc_min_vel_arr[i]);
     }
 
-    resample_velocities[i] = std::min(resample_velocities[i], v_curvature_max);
+    v_vec[i] = std::min(v_vec[i], v_limit);
   }
 
-  TrajectoryExperimental output = input;
-  if (!output.longitudinal_velocity_mps().build(resample_bases, resample_velocities)) {
-    return input;  // return original on error
+  TrajectoryExperimental result = input;
+  if (!result.longitudinal_velocity_mps().build(s_vec, v_vec)) {
+    return input;
   }
-  return output;
+
+  return result;
 }
 
 TrajectoryPoints SmootherBase::applySteeringRateLimit(
@@ -507,27 +501,25 @@ TrajectoryExperimental SmootherBase::applySteeringRateLimit(
   autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
 
   const auto [bases, velocities] = input.longitudinal_velocity_mps().get_data();
-  if (bases.size() < 4) {
+  if (bases.size() < 3) {
     return input;  // cannot calculate the desired velocity. do nothing.
   }
+
+  std::vector<double> resample_bases;
+  std::vector<double> resample_velocities;
 
   const auto steer_rate_velocity_ratio_limits = computeSteerRateVelocityRatioLimits();
 
   const double points_interval = use_resampling ? base_param_.sample_ds : input_points_interval;
 
-  // Resample to constant interval if requested
-  std::vector<double> resample_bases;
-  std::vector<double> resample_velocities;
-
+  // Prepare resampled bases and velocities
   if (use_resampling) {
-    const double traj_length = bases.back();
+    const double actual_traj_length = input.length();
+    const double traj_length = std::min(bases.back(), actual_traj_length);
     for (double s = 0.0; s <= traj_length; s += points_interval) {
       resample_bases.push_back(s);
-      resample_velocities.push_back(input.longitudinal_velocity_mps().compute(s));
-    }
-    if (std::abs(resample_bases.back() - bases.back()) > 1e-6) {
-      resample_bases.push_back(bases.back());
-      resample_velocities.push_back(input.longitudinal_velocity_mps().compute(bases.back()));
+      resample_velocities.push_back(
+        input.longitudinal_velocity_mps().compute(std::min(s, traj_length)));
     }
   } else {
     resample_bases = bases;
@@ -535,72 +527,68 @@ TrajectoryExperimental SmootherBase::applySteeringRateLimit(
   }
 
   // Build resampled trajectory for curvature calculation
-  TrajectoryExperimental resampled_traj = input;
-  if (!resampled_traj.longitudinal_velocity_mps().build(resample_bases, resample_velocities)) {
-    return input;  // return original on error
-  }
+  // TrajectoryExperimental resampled_traj = input;
+  // if (!resampled_traj.longitudinal_velocity_mps().build(resample_bases, resample_velocities)) {
+  //   RCLCPP_WARN(
+  //     rclcpp::get_logger("autoware_velocity_smoother"),
+  //     "[applySteeringRateLimit] Failed to build resampled trajectory velocity field");
+  //   return input;  // return original on error
+  // }
 
-  // Step1. Calculate curvature assuming the trajectory points interval is constant
-  const auto curvature_v = trajectory_utils::calcTrajectoryCurvatureFrom3Points(
-    resampled_traj, base_param_.curvature_calculation_distance);
+  // Step1. Calculate curvature at our exact sample points
+  const auto curvature_v =
+    trajectory_utils::calcTrajectoryCurvatureFrom3Points(input, resample_bases);
 
-  // Step2. Calculate steer rate for each trajectory point
+  // Step2. Calculate steer rate for each trajectory point.
   std::vector<double> steer_rate_velocity_ratio_arr(resample_bases.size());
+  std::vector<double> steering_angles(resample_bases.size());
   for (size_t i = 0; i < resample_bases.size() - 1; i++) {
-    double curvature_current = 0.0;
-    double curvature_next = 0.0;
+    // steer
+    double & steer_front = steering_angles[i + 1];
+    double & steer_back = steering_angles[i];
 
-    if (i < curvature_v.size()) {
-      curvature_current = curvature_v.at(i);
-    }
-    if ((i + 1) < curvature_v.size()) {
-      curvature_next = curvature_v.at(i + 1);
-    }
+    // calculate the just 2 steering angle
+    steer_front = std::atan(base_param_.wheel_base * curvature_v.at(i + 1));
+    steer_back = std::atan(base_param_.wheel_base * curvature_v.at(i));
 
-    // Calculate steering angles
-    const double steer_current = std::atan(base_param_.wheel_base * curvature_current);
-    const double steer_next = std::atan(base_param_.wheel_base * curvature_next);
-    const double steering_diff = std::fabs(steer_next - steer_current);
+    const auto steering_diff = std::fabs(steer_front - steer_back);
 
-    steer_rate_velocity_ratio_arr[i] =
+    steer_rate_velocity_ratio_arr.at(i) =
       steering_diff / (points_interval + std::numeric_limits<double>::epsilon());
   }
 
-  steer_rate_velocity_ratio_arr.back() = steer_rate_velocity_ratio_arr[resample_bases.size() - 2];
+  steer_rate_velocity_ratio_arr.back() =
+    steer_rate_velocity_ratio_arr.at((resample_bases.size() - 2));
 
-  // Step3. Remove noise by mean filter
+  // Step3. Remove noise by mean filter.
   for (size_t i = 1; i < steer_rate_velocity_ratio_arr.size() - 1; i++) {
-    steer_rate_velocity_ratio_arr[i] =
-      (steer_rate_velocity_ratio_arr[i - 1] + steer_rate_velocity_ratio_arr[i] +
-       steer_rate_velocity_ratio_arr[i + 1]) /
+    steer_rate_velocity_ratio_arr.at(i) =
+      (steer_rate_velocity_ratio_arr.at(i - 1) + steer_rate_velocity_ratio_arr.at(i) +
+       steer_rate_velocity_ratio_arr.at(i + 1)) /
       3.0;
   }
 
-  // Step4. Limit velocity by steer rate
+  // Step4. Limit velocity by steer rate.
   for (size_t i = 0; i < resample_bases.size() - 1; i++) {
-    double local_curvature = 0.0;
-    if (i < curvature_v.size()) {
-      local_curvature = curvature_v[i];
-    }
-
-    if (std::fabs(local_curvature) < base_param_.curvature_threshold) {
+    if (fabs(curvature_v.at(i)) < base_param_.curvature_threshold) {
       continue;
     }
 
-    const double mean_vel = (resample_velocities[i] + resample_velocities[i + 1]) / 2.0;
-    const double local_velocity_limit = computeVelocityLimitFromSteerRate(
-      steer_rate_velocity_ratio_arr[i], steer_rate_velocity_ratio_limits);
+    const auto mean_vel = (resample_velocities.at(i) + resample_velocities.at(i + 1)) / 2.0;
+
+    const auto local_velocity_limit = computeVelocityLimitFromSteerRate(
+      steer_rate_velocity_ratio_arr.at(i), steer_rate_velocity_ratio_limits);
 
     if (mean_vel < local_velocity_limit) {
       continue;
     }
 
-    for (size_t k = 0; k < 2 && (i + k) < resample_velocities.size(); k++) {
+    for (size_t k = 0; k < 2; k++) {
+      auto & velocity = resample_velocities.at(i + k);
       const double target_velocity = std::max(
         base_param_.min_curve_velocity,
-        std::min(
-          local_velocity_limit, resample_velocities[i + k] * (local_velocity_limit / mean_vel)));
-      resample_velocities[i + k] = std::min(resample_velocities[i + k], target_velocity);
+        std::min(local_velocity_limit, velocity * (local_velocity_limit / mean_vel)));
+      velocity = std::min(velocity, target_velocity);
     }
   }
 
@@ -608,7 +596,9 @@ TrajectoryExperimental SmootherBase::applySteeringRateLimit(
   if (!output.longitudinal_velocity_mps().build(resample_bases, resample_velocities)) {
     return input;  // return original on error
   }
+  if (!output.front_wheel_angle_rad().build(resample_bases, steering_angles)) {
+    return input;  // return original on error
+  }
   return output;
 }
-
 }  // namespace autoware::velocity_smoother

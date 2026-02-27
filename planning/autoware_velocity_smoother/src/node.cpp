@@ -21,6 +21,7 @@
 
 #include <autoware/trajectory/utils/crop.hpp>
 #include <autoware/trajectory/utils/find_nearest.hpp>
+#include <autoware/trajectory/utils/pretty_build.hpp>
 #include <autoware/trajectory/utils/velocity.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
 
@@ -748,13 +749,14 @@ bool VelocitySmootherNode::smoothVelocityContinuous(
     return false;  // cannot apply smoothing
   }
 
-  // Calculate initial motion for smoothing
   const auto [initial_motion, type] = calcInitialMotion(input, input_closest);
 
-  // Build continuous trajectory
-  auto input_continuous = TrajectoryExperimental::Builder().build(input).value();
+  auto opt_input_continuous = autoware::experimental::trajectory::pretty_build(input);
+  if (!opt_input_continuous) {
+    return false;
+  }
+  auto input_continuous = opt_input_continuous.value();
 
-  // Lateral acceleration limit
   constexpr bool enable_smooth_limit = true;
   constexpr bool use_resampling = true;
   const auto traj_lateral_acc_filtered =
@@ -782,7 +784,11 @@ bool VelocitySmootherNode::smoothVelocityContinuous(
     traj_resampled.back().longitudinal_velocity_mps = 0.0;
   }
 
-  auto traj_resampled_ = TrajectoryExperimental::Builder().build(traj_resampled).value();
+  auto opt_traj_resampled_ = autoware::experimental::trajectory::pretty_build(traj_resampled);
+  if (!opt_traj_resampled_) {
+    return false;
+  }
+  auto traj_resampled_ = opt_traj_resampled_.value();
 
   publishClosestVelocity(
     traj_resampled, current_odometry_ptr_->pose.pose, debug_closest_max_velocity_);
@@ -791,7 +797,16 @@ bool VelocitySmootherNode::smoothVelocityContinuous(
   TrajectoryPoints clipped;
   clipped.insert(
     clipped.end(), traj_resampled.begin() + traj_resampled_closest, traj_resampled.end());
-  auto clipped_ = TrajectoryExperimental::Builder().build(clipped).value();
+
+  if (clipped.empty()) {
+    return false;
+  }
+
+  auto opt_clipped_ = autoware::experimental::trajectory::pretty_build(clipped);
+  if (!opt_clipped_) {
+    return false;
+  }
+  auto clipped_ = opt_clipped_.value();
 
   const double smoother_max_acceleration =
     external_velocity_limit_.acceleration_request.request
@@ -809,6 +824,7 @@ bool VelocitySmootherNode::smoothVelocityContinuous(
         initial_motion.vel, initial_motion.acc, clipped_, traj_smoothed_, debug_trajectories,
         publish_debug_trajs_)) {
     RCLCPP_WARN(get_logger(), "Fail to solve optimization.");
+    return false;
   }
 
   // Set 0 velocity after input-stop-point
@@ -818,19 +834,15 @@ bool VelocitySmootherNode::smoothVelocityContinuous(
   traj_smoothed.insert(
     traj_smoothed.begin(), traj_resampled.begin(), traj_resampled.begin() + traj_resampled_closest);
 
-  // For the endpoint of the trajectory
   if (!traj_smoothed.empty()) {
     traj_smoothed.back().longitudinal_velocity_mps = 0.0;
   }
 
-  // Max velocity filter for safety
   trajectory_utils::applyMaximumVelocityLimit(
     traj_resampled_closest, traj_smoothed.size(), node_param_.max_velocity, traj_smoothed);
 
-  // Insert behind velocity for output's consistency
   insertBehindVelocity(traj_resampled_closest, type, traj_smoothed);
 
-  RCLCPP_INFO(get_logger(), "smoothVelocity : max_velocity = %f", node_param_.max_velocity);
   if (publish_debug_trajs_) {
     {
       auto tmp = traj_lateral_acc_filtered.restore();
@@ -923,7 +935,6 @@ void VelocitySmootherNode::insertBehindVelocity(
      type == InitializeType::ENGAGING);
 
   if (keep_closest_vel_for_behind) {
-    // Set velocity and acceleration from start to closest_s with closest point values
     const auto closest_point = output.compute(output_closest_s);
     output.longitudinal_velocity_mps()
       .range(0.0, output_closest_s)
@@ -934,8 +945,11 @@ void VelocitySmootherNode::insertBehindVelocity(
       return;
     }
 
-    const auto prev_output_continuous =
-      TrajectoryExperimental::Builder().build(prev_output_).value();
+    auto opt_prev_output_continuous = TrajectoryExperimental::Builder().build(prev_output_);
+    if (!opt_prev_output_continuous) {
+      throw std::runtime_error("Failed to build prev_output continuous trajectory");
+    }
+    const auto prev_output_continuous = opt_prev_output_continuous.value();
 
     const auto bases = output.get_underlying_bases();
     std::vector<double> vel_values;
@@ -1132,17 +1146,14 @@ void VelocitySmootherNode::overwriteStopPoint(
 {
   autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
 
-  // Find stop position in input (arc-length distance)
   const auto stop_pos_opt =
     autoware::experimental::trajectory::search_zero_velocity_position(input);
   if (!stop_pos_opt) {
     return;
   }
 
-  // Get pose at stop position
   const auto stop_pose = input.compute(*stop_pos_opt).pose;
 
-  // Find nearest position in output by pose
   const auto nearest_output_pos_opt = autoware::experimental::trajectory::find_first_nearest_index(
     output, stop_pose, node_param_.ego_nearest_dist_threshold,
     node_param_.ego_nearest_yaw_threshold);
@@ -1158,7 +1169,9 @@ void VelocitySmootherNode::overwriteStopPoint(
     const auto input_vel_at_stop = input.compute(*stop_pos_opt).longitudinal_velocity_mps;
     input_stop_vel = input_vel_at_stop;
     output_stop_vel = output_vel_at_stop;
-    output.longitudinal_velocity_mps().range(*nearest_output_pos_opt, output.length()).set(0.0);
+    if (*nearest_output_pos_opt < output.length()) {
+      output.longitudinal_velocity_mps().range(*nearest_output_pos_opt, output.length()).set(0.0);
+    }
     RCLCPP_DEBUG(
       get_logger(),
       "replan : input_stop_pos = %f, stop velocity : input = %f, output = %f, thr = %f",
