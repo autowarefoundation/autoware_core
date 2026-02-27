@@ -14,6 +14,8 @@
 
 #include "command_gate_mode_builder.hpp"
 
+#include <string>
+
 namespace autoware::control::command_gate
 {
 
