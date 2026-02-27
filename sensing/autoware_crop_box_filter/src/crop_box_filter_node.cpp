@@ -138,24 +138,31 @@ CropBoxFilter::CropBoxFilter(const rclcpp::NodeOptions & node_options)
 
 void CropBoxFilter::filter_pointcloud(const PointCloud2ConstPtr & cloud, PointCloud2 & output)
 {
-  int x_offset = cloud->fields[pcl::getFieldIndex(*cloud, "x")].offset;
-  int y_offset = cloud->fields[pcl::getFieldIndex(*cloud, "y")].offset;
-  int z_offset = cloud->fields[pcl::getFieldIndex(*cloud, "z")].offset;
-
+  // set up minimum output metadata required for creating iterators
+  output.fields = cloud->fields;
+  output.point_step = cloud->point_step;
   output.data.resize(cloud->data.size());
-  size_t output_size = 0;
 
+  // create output iterators for writing transformed coordinates
+  sensor_msgs::PointCloud2Iterator<float> out_x(output, "x");
+  sensor_msgs::PointCloud2Iterator<float> out_y(output, "y");
+  sensor_msgs::PointCloud2Iterator<float> out_z(output, "z");
+
+  size_t output_size = 0;
   int skipped_count = 0;
 
-  // pointcloud processing loop
-  for (size_t global_offset = 0; global_offset + cloud->point_step <= cloud->data.size();
-       global_offset += cloud->point_step) {
-    // extract point data from point cloud data buffer
-    Eigen::Vector4f point;
+  // create input iterators for reading coordinates
+  sensor_msgs::PointCloud2ConstIterator<float> iter_x(*cloud, "x");
+  sensor_msgs::PointCloud2ConstIterator<float> iter_y(*cloud, "y");
+  sensor_msgs::PointCloud2ConstIterator<float> iter_z(*cloud, "z");
 
-    std::memcpy(&point[0], &cloud->data[global_offset + x_offset], sizeof(float));
-    std::memcpy(&point[1], &cloud->data[global_offset + y_offset], sizeof(float));
-    std::memcpy(&point[2], &cloud->data[global_offset + z_offset], sizeof(float));
+  for (size_t point_index = 0; iter_x != iter_x.end();
+       ++iter_x, ++iter_y, ++iter_z, ++point_index) {
+    // extract point data using iterators
+    Eigen::Vector4f point;
+    point[0] = *iter_x;
+    point[1] = *iter_y;
+    point[2] = *iter_z;
     point[3] = 1;
 
     if (!std::isfinite(point[0]) || !std::isfinite(point[1]) || !std::isfinite(point[2])) {
@@ -176,24 +183,26 @@ void CropBoxFilter::filter_pointcloud(const PointCloud2ConstPtr & cloud, PointCl
       point_preprocessed[1] > param_.min_y && point_preprocessed[1] < param_.max_y &&
       point_preprocessed[0] > param_.min_x && point_preprocessed[0] < param_.max_x;
     if ((!param_.negative && point_is_inside) || (param_.negative && !point_is_inside)) {
-      // apply post-transform if needed
+      const size_t global_offset = point_index * cloud->point_step;
+
+      // copy all fields from input to output
+      memcpy(&output.data[output_size], &cloud->data[global_offset], cloud->point_step);
+
+      // overwrite x, y, z with transformed coordinates using output iterators
       if (need_postprocess_transform_) {
         Eigen::Vector4f point_postprocessed = eigen_transform_postprocess_ * point_preprocessed;
-
-        memcpy(&output.data[output_size], &cloud->data[global_offset], cloud->point_step);
-
-        std::memcpy(&output.data[output_size + x_offset], &point_postprocessed[0], sizeof(float));
-        std::memcpy(&output.data[output_size + y_offset], &point_postprocessed[1], sizeof(float));
-        std::memcpy(&output.data[output_size + z_offset], &point_postprocessed[2], sizeof(float));
-      } else {
-        memcpy(&output.data[output_size], &cloud->data[global_offset], cloud->point_step);
-
-        if (need_preprocess_transform_) {
-          std::memcpy(&output.data[output_size + x_offset], &point_preprocessed[0], sizeof(float));
-          std::memcpy(&output.data[output_size + y_offset], &point_preprocessed[1], sizeof(float));
-          std::memcpy(&output.data[output_size + z_offset], &point_preprocessed[2], sizeof(float));
-        }
+        *out_x = point_postprocessed[0];
+        *out_y = point_postprocessed[1];
+        *out_z = point_postprocessed[2];
+      } else if (need_preprocess_transform_) {
+        *out_x = point_preprocessed[0];
+        *out_y = point_preprocessed[1];
+        *out_z = point_preprocessed[2];
       }
+
+      ++out_x;
+      ++out_y;
+      ++out_z;
       output_size += cloud->point_step;
     }
   }
@@ -212,9 +221,7 @@ void CropBoxFilter::filter_pointcloud(const PointCloud2ConstPtr & cloud, PointCl
   output.header.stamp = cloud->header.stamp;
 
   output.height = 1;
-  output.fields = cloud->fields;
   output.is_bigendian = cloud->is_bigendian;
-  output.point_step = cloud->point_step;
   output.is_dense = cloud->is_dense;
   output.width = static_cast<uint32_t>(output.data.size() / output.height / output.point_step);
   output.row_step = static_cast<uint32_t>(output.data.size() / output.height);
