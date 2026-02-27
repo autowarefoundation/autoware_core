@@ -14,6 +14,8 @@
 
 #include "autoware/kalman_filter/time_delay_kalman_filter.hpp"
 
+#include <Eigen/Cholesky>
+
 #include <iostream>
 #include <utility>
 
@@ -85,17 +87,124 @@ bool TimeDelayKalmanFilter::updateWithDelay(
   const Eigen::MatrixXd & y, const Eigen::MatrixXd & C, const Eigen::MatrixXd & R,
   const int delay_step)
 {
-  if (delay_step >= max_delay_step_) {
-    std::cerr << "delay step is larger than max_delay_step. ignore update." << std::endl;
+  if (delay_step < 0 || delay_step >= max_delay_step_) [[unlikely]] {
+    std::cerr << "Invalid delay step: " << delay_step << ". Update ignored." << std::endl;
     return false;
   }
 
-  const int dim_y = y.rows();
+  if (C.cols() != dim_x_) [[unlikely]] {
+    std::cerr << "Dimension mismatch in C matrix: expected " << dim_x_ << " columns, got "
+              << C.cols() << "." << std::endl;
+    return false;
+  }
 
-  /* set measurement matrix */
-  Eigen::MatrixXd C_ex = Eigen::MatrixXd::Zero(dim_y, dim_x_ex_);
-  C_ex.block(0, dim_x_ * delay_step, dim_y, dim_x_) = C;
+  if (y.rows() != C.rows()) [[unlikely]] {
+    std::cerr << "Dimension mismatch between measurement vector y and observation matrix C: "
+              << "y.rows() = " << y.rows() << ", C.rows() = " << C.rows() << "." << std::endl;
+    return false;
+  }
+  if (y.cols() != 1) [[unlikely]] {
+    std::cerr << "Measurement vector y must be a column vector: "
+              << "y.cols() = " << y.cols() << "." << std::endl;
+    return false;
+  }
+  if (R.rows() != R.cols()) [[unlikely]] {
+    std::cerr << "Measurement noise covariance R must be square: "
+              << "R.rows() = " << R.rows() << ", R.cols() = " << R.cols() << "." << std::endl;
+    return false;
+  }
+  if (R.rows() != C.rows()) [[unlikely]] {
+    std::cerr << "Dimension mismatch between measurement noise covariance R and "
+              << "observation matrix C: R.rows() = " << R.rows() << ", C.rows() = " << C.rows()
+              << "." << std::endl;
+    return false;
+  }
 
-  return update(y, C_ex, R);
+  const int dim_x = dim_x_;
+  const int start_idx = dim_x * delay_step;
+
+  /*
+   * Calculate Innovation: e
+   *
+   * Theoretical formula:
+   * e = y - C_ex * x
+   * where C_ex is the observation matrix for the augmented state (extended with zeros).
+   *
+   * Optimization:
+   * Since C_ex is sparse (mostly zeros), full multiplication is inefficient.
+   * We extract only the relevant state block x_d corresponding to the delay.
+   * e = y - C * x_d
+   */
+  const auto x_d = x_.block(start_idx, 0, dim_x, 1);
+  const Eigen::MatrixXd e = y - C * x_d;
+
+  /*
+   * Calculate Innovation Covariance: S
+   *
+   * Theoretical formula:
+   * S = C_ex * P * C_ex^T + R
+   *
+   * Optimization:
+   * Due to the sparsity structure C_ex = [0...C...0], this simplifies to:
+   * S = C * P_dd * C^T + R
+   * where P_dd is the block on the main diagonal of P corresponding to the delayed state.
+   *
+   * Note: We only need this main-diagonal block of P, rather than a full row/column block,
+   * because the sparse observation matrix is multiplied from both sides.
+   */
+  const auto P_dd = P_.block(start_idx, start_idx, dim_x, dim_x);
+
+  Eigen::MatrixXd S = R;
+  S.noalias() += C * P_dd * C.transpose();
+
+  /*
+   * Prepare Kalman Gain Numerator: P_CT
+   *
+   * Theoretical term: P * C_ex^T
+   *
+   * Optimization:
+   * This simplifies to P_star_d * C^T, where P_star_d is the column block of P.
+   * This represents the covariance between ALL states (current & past) and the delayed state.
+   */
+  const auto P_star_d = P_.middleCols(start_idx, dim_x);
+  const Eigen::MatrixXd P_CT = P_star_d * C.transpose();
+
+  /*
+   * Calculate Kalman Gain: K
+   *
+   * Theoretical formula:
+   * K = P_CT * S^-1
+   *
+   * Numerical Stability Optimization:
+   * Avoid explicit inversion of S. Instead, solve the linear system using Cholesky decomposition
+   * (LLT). Since Eigen's solve() handles `Ax = B`, we transform the equation:
+   *
+   * K = P_CT * S^-1
+   * K^T = (P_CT * S^-1)^T
+   * K^T = (S^-1)^T * P_CT^T   (Identity: (AB)^T = B^T * A^T)
+   * K^T = S^-1 * P_CT^T       (S is symmetric, so (S^-1)^T = S^-1)
+   * S * K^T = P_CT^T
+   *
+   * We solve for K^T (denoted as K_transposed) and then transpose back.
+   */
+  Eigen::LLT<Eigen::MatrixXd> lltOfS(S);
+  if (lltOfS.info() != Eigen::Success) [[unlikely]] {
+    std::cerr << "LLT decomposition failed. S matrix might not be positive definite." << std::endl;
+    return false;
+  }
+
+  const Eigen::MatrixXd K_transposed = lltOfS.solve(P_CT.transpose());
+  const Eigen::MatrixXd K = K_transposed.transpose();
+
+  if (K.array().isNaN().any() || K.array().isInf().any()) [[unlikely]] {
+    std::cerr << "Kalman gain contains NaN or Inf. Aborting update." << std::endl;
+    return false;
+  }
+
+  // Update state and covariance
+  x_.noalias() += K * e;
+  P_.noalias() -= P_CT * K.transpose();
+
+  return true;
 }
 }  // namespace autoware::kalman_filter
