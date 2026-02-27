@@ -153,14 +153,10 @@ void MapUpdateModule::update_map(
     ndt_ptr_mutex_->lock();
 
     auto param = ndt_ptr_->getParams();
-    auto input_source = ndt_ptr_->getInputSource();
 
     ndt_ptr_.reset(new NdtType);
 
     ndt_ptr_->setParams(param);
-    if (input_source != nullptr) {
-      ndt_ptr_->setInputSource(input_source);
-    }
 
     const bool updated = update_ndt(position, *ndt_ptr_, diagnostics_ptr);
 
@@ -207,11 +203,7 @@ void MapUpdateModule::update_map(
 
     ndt_ptr_mutex_->lock();
     auto dummy_ptr = ndt_ptr_;
-    auto input_source = ndt_ptr_->getInputSource();
     ndt_ptr_ = secondary_ndt_ptr_;
-    if (input_source != nullptr) {
-      ndt_ptr_->setInputSource(input_source);
-    }
     ndt_ptr_mutex_->unlock();
 
     dummy_ptr.reset();

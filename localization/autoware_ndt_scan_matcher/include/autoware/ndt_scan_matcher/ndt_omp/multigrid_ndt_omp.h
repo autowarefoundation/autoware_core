@@ -60,12 +60,12 @@
 #include "multi_voxel_grid_covariance_omp.h"
 #include "ndt_struct.hpp"
 
-#include <pcl/search/impl/search.hpp>
 #include <unsupported/Eigen/NonLinearOptimization>
 
 #include "boost/optional.hpp"
 
-#include <pcl/registration/registration.h>
+#include <pcl/common/transforms.h>
+#include <pcl/point_cloud.h>
 
 #include <iostream>
 #include <string>
@@ -86,15 +86,14 @@ namespace pclomp
  * \author Brian Okorn (Space and Naval Warfare Systems Center Pacific)
  */
 template <typename PointSource, typename PointTarget>
-class MultiGridNormalDistributionsTransform : public pcl::Registration<PointSource, PointTarget>
+class MultiGridNormalDistributionsTransform
 {
 protected:
-  typedef pcl::Registration<PointSource, PointTarget> BaseRegType;
-  typedef typename BaseRegType::PointCloudSource PointCloudSource;
+  typedef pcl::PointCloud<PointSource> PointCloudSource;
   typedef typename PointCloudSource::Ptr PointCloudSourcePtr;
   typedef typename PointCloudSource::ConstPtr PointCloudSourceConstPtr;
 
-  typedef typename BaseRegType::PointCloudTarget PointCloudTarget;
+  typedef pcl::PointCloud<PointTarget> PointCloudTarget;
   typedef typename PointCloudTarget::Ptr PointCloudTargetPtr;
   typedef typename PointCloudTarget::ConstPtr PointCloudTargetConstPtr;
 
@@ -131,19 +130,7 @@ public:
     MultiGridNormalDistributionsTransform && other) noexcept;
 
   /** \brief Empty destructor */
-  virtual ~MultiGridNormalDistributionsTransform() {}
-
-  inline void setInputSource(const PointCloudSourceConstPtr & input)
-  {
-    // This is to avoid segmentation fault when setting null input
-    // No idea why PCL does not check the nullity of input
-    if (input) {
-      BaseRegType::setInputSource(input);
-    } else {
-      std::cerr << "Error: Null input source cloud is not allowed" << std::endl;
-      exit(EXIT_FAILURE);
-    }
-  }
+  ~MultiGridNormalDistributionsTransform() = default;
 
   inline void setInputTarget(const PointCloudTargetConstPtr & cloud)
   {
@@ -157,18 +144,16 @@ public:
    */
   inline void addTarget(const PointCloudTargetConstPtr & cloud, const std::string & target_id)
   {
-    BaseRegType::setInputTarget(cloud);
     target_cells_.setLeafSize(params_.resolution, params_.resolution, params_.resolution);
     target_cells_.setInputCloudAndFilter(cloud, target_id);
   }
 
   inline void removeTarget(const std::string & target_id) { target_cells_.removeCloud(target_id); }
 
-  inline void createVoxelKdtree()
-  {
-    target_cells_.createKdtree();
-    target_cloud_updated_ = false;
-  }
+  inline void createVoxelKdtree() { target_cells_.createKdtree(); }
+
+  /** \brief Check if the target map has been set. */
+  inline bool hasTarget() const { return !target_cells_.getCurrentMapIDs().empty(); }
 
   /** \brief Get the registration alignment probability.
    * \return transformation probability
@@ -184,6 +169,12 @@ public:
    * \return final number of iterations
    */
   inline int getFinalNumIteration() const { return (nr_iterations_); }
+
+  /** \brief Return the final transformation matrix. */
+  inline Eigen::Matrix4f getFinalTransformation() const { return final_transformation_; }
+
+  /** \brief Return the maximum number of iterations. */
+  inline int getMaximumIterations() const { return max_iterations_; }
 
   /** \brief Return the hessian matrix */
   inline Eigen::Matrix<double, 6, 6> getHessian() const { return hessian_; }
@@ -219,6 +210,15 @@ public:
     trans = _affine.matrix();
   }
 
+  /** \brief Perform the NDT alignment.
+   * \param[out] output the resultant transformed point cloud dataset
+   * \param[in] guess the initial gross estimation of the transformation
+   * \param[in] source the input source point cloud
+   */
+  void align(
+    PointCloudSource & output, const Eigen::Matrix4f & guess,
+    const PointCloudSourceConstPtr & source);
+
   // negative log likelihood function
   // lower is better
   double calculateTransformationProbability(const PointCloudSource & cloud) const;
@@ -233,10 +233,10 @@ public:
 
   inline void unsetRegularizationPose() { regularization_pose_ = boost::none; }
 
-  NdtResult getResult()
+  NdtResult getResult() const
   {
     NdtResult ndt_result;
-    ndt_result.pose = this->getFinalTransformation();
+    ndt_result.pose = getFinalTransformation();
     ndt_result.transformation_array = getFinalTransformationArray();
     ndt_result.transform_probability = getTransformationProbability();
     ndt_result.transform_probability_array = transform_probability_array_;
@@ -263,48 +263,27 @@ public:
   std::vector<std::string> getCurrentMapIDs() const { return target_cells_.getCurrentMapIDs(); }
 
 protected:
-  using BaseRegType::converged_;
-  using BaseRegType::final_transformation_;
-  using BaseRegType::input_;
-  using BaseRegType::max_iterations_;
-  using BaseRegType::nr_iterations_;
-  using BaseRegType::previous_transformation_;
-  using BaseRegType::reg_name_;
-  using BaseRegType::target_;
-  using BaseRegType::target_cloud_updated_;
-  using BaseRegType::transformation_;
-  using BaseRegType::transformation_epsilon_;
-
-  using BaseRegType::update_visualizer_;
-
-  /** \brief Estimate the transformation and returns the transformed source (input) as output.
-   * \param[out] output the resultant input transformed point cloud dataset
-   */
-  virtual void computeTransformation(PointCloudSource & output)
-  {
-    computeTransformation(output, Eigen::Matrix4f::Identity());
-  }
-
   /** \brief Estimate the transformation and returns the transformed source (input) as output.
    * \param[out] output the resultant input transformed point cloud dataset
    * \param[in] guess the initial gross estimation of the transformation
+   * \param[in] source the original input source point cloud
    */
-  virtual void computeTransformation(PointCloudSource & output, const Eigen::Matrix4f & guess);
-
-  /** \brief Initiate covariance voxel structure. */
-  void inline init() {}
+  void computeTransformation(
+    PointCloudSource & output, const Eigen::Matrix4f & guess,
+    const PointCloudSourceConstPtr & source);
 
   /** \brief Compute derivatives of probability function w.r.t. the transformation vector.
    * \note Equation 6.10, 6.12 and 6.13 [Magnusson 2009].
    * \param[out] score_gradient the gradient vector of the probability function w.r.t. the
    * transformation vector \param[out] hessian the hessian matrix of the probability function w.r.t.
    * the transformation vector \param[in] trans_cloud transformed point cloud \param[in] p the
-   * current transform vector \param[in] compute_hessian flag to calculate hessian, unnecessary for
-   * step calculation.
+   * current transform vector \param[in] source the original input source point cloud
+   * \param[in] compute_hessian flag to calculate hessian, unnecessary for step calculation.
    */
   double computeDerivatives(
     Eigen::Matrix<double, 6, 1> & score_gradient, Eigen::Matrix<double, 6, 6> & hessian,
-    PointCloudSource & trans_cloud, Eigen::Matrix<double, 6, 1> & p, bool compute_hessian = true);
+    PointCloudSource & trans_cloud, Eigen::Matrix<double, 6, 1> & p,
+    const PointCloudSourceConstPtr & source, bool compute_hessian = true);
 
   /** \brief Compute individual point contributions to derivatives of probability function w.r.t.
    * the transformation vector. \note Equation 6.10, 6.12 and 6.13 [Magnusson 2009]. \param[in,out]
@@ -340,10 +319,11 @@ protected:
    * \note Equation 6.13 [Magnusson 2009].
    * \param[out] hessian the hessian matrix of the probability function w.r.t. the transformation
    * vector \param[in] trans_cloud transformed point cloud \param[in] p the current transform vector
+   * \param[in] source the original input source point cloud
    */
   void computeHessian(
     Eigen::Matrix<double, 6, 6> & hessian, PointCloudSource & trans_cloud,
-    Eigen::Matrix<double, 6, 1> & p);
+    Eigen::Matrix<double, 6, 1> & p, const PointCloudSourceConstPtr & source);
 
   /** \brief Compute individual point contributions to hessian of probability function w.r.t. the
    * transformation vector. \note Equation 6.13 [Magnusson 2009]. \param[in,out] hessian the hessian
@@ -371,13 +351,15 @@ protected:
    * Algorithm 2 [Magnusson 2009] \param[out] hessian hessian of score function w.r.t.
    * transformation vector, \f$ f''(x + \alpha p) \f$ in Moore-Thuente (1994) and \f$ H \f$ in
    * Algorithm 2 [Magnusson 2009] \param[in,out] trans_cloud transformed point cloud, \f$ X \f$
-   * transformed by \f$ T(\vec{p},\vec{x}) \f$ in Algorithm 2 [Magnusson 2009] \return final step
-   * length
+   * transformed by \f$ T(\vec{p},\vec{x}) \f$ in Algorithm 2 [Magnusson 2009]
+   * \param[in] source the original input source point cloud
+   * \return final step length
    */
   double computeStepLengthMT(
     const Eigen::Matrix<double, 6, 1> & x, Eigen::Matrix<double, 6, 1> & step_dir, double step_init,
     double step_max, double step_min, double & score, Eigen::Matrix<double, 6, 1> & score_gradient,
-    Eigen::Matrix<double, 6, 6> & hessian, PointCloudSource & trans_cloud);
+    Eigen::Matrix<double, 6, 6> & hessian, PointCloudSource & trans_cloud,
+    const PointCloudSourceConstPtr & source);
 
   /** \brief Update interval of possible step lengths for More-Thuente method, \f$ I \f$ in
    * More-Thuente (1994) \note Updating Algorithm until some value satisfies \f$ \psi(\alpha_k) \leq
@@ -431,7 +413,7 @@ protected:
    * \param[in] mu the step length, constant \f$ \mu \f$ in Equation 1.1 [More, Thuente 1994]
    * \return sufficient decrease value
    */
-  inline double auxiliaryFunction_PsiMT(
+  static inline double auxiliaryFunction_PsiMT(
     double a, double f_a, double f_0, double g_0, double mu = 1.e-4)
   {
     return (f_a - f_0 - mu * g_0 * a);
@@ -444,15 +426,13 @@ protected:
    * \param[in] mu the step length, constant \f$ \mu \f$ in Equation 1.1 [More, Thuente 1994]
    * \return sufficient decrease derivative
    */
-  inline double auxiliaryFunction_dPsiMT(double g_a, double g_0, double mu = 1.e-4)
+  static inline double auxiliaryFunction_dPsiMT(double g_a, double g_0, double mu = 1.e-4)
   {
     return (g_a - mu * g_0);
   }
 
   /** \brief The voxel grid generated from target cloud containing point means and covariances. */
   TargetGrid target_cells_;
-
-  // double fitness_epsilon_;
 
   /** \brief The ratio of outliers of points w.r.t. a normal distribution, Equation 6.7 [Magnusson
    * 2009]. */
@@ -490,6 +470,14 @@ protected:
   Eigen::Vector3f regularization_pose_translation_;
 
   NdtParams params_;
+
+  // Members previously inherited from pcl::Registration
+  Eigen::Matrix4f final_transformation_ = Eigen::Matrix4f::Identity();
+  Eigen::Matrix4f transformation_ = Eigen::Matrix4f::Identity();
+  Eigen::Matrix4f previous_transformation_ = Eigen::Matrix4f::Identity();
+  int nr_iterations_ = 0;
+  int max_iterations_ = 35;
+  bool converged_ = false;
 
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
