@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include <autoware/localization_util/covariance_ellipse.hpp>
-
 #include <tf2/utils.hpp>
 
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
