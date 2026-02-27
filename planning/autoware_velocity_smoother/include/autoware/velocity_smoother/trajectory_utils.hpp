@@ -15,6 +15,9 @@
 #ifndef AUTOWARE__VELOCITY_SMOOTHER__TRAJECTORY_UTILS_HPP_
 #define AUTOWARE__VELOCITY_SMOOTHER__TRAJECTORY_UTILS_HPP_
 
+#include "autoware/motion_utils/trajectory/trajectory.hpp"
+#include "autoware/trajectory/trajectory_point.hpp"
+
 #include "autoware_planning_msgs/msg/trajectory_point.hpp"
 #include "geometry_msgs/msg/pose.hpp"
 
@@ -27,6 +30,8 @@ namespace autoware::velocity_smoother::trajectory_utils
 {
 using autoware_planning_msgs::msg::TrajectoryPoint;
 using TrajectoryPoints = std::vector<TrajectoryPoint>;
+using Trajectory =
+  autoware::experimental::trajectory::Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>;
 using geometry_msgs::msg::Pose;
 
 TrajectoryPoint calcInterpolatedTrajectoryPoint(
@@ -36,6 +41,10 @@ TrajectoryPoints extractPathAroundIndex(
   const TrajectoryPoints & trajectory, const size_t index, const double & ahead_length,
   const double & behind_length);
 
+Trajectory extractPathAroundPosition(
+  const Trajectory & trajectory, const double arc_length_position, const double ahead_distance,
+  const double behind_distance);
+
 std::vector<double> calcArclengthArray(const TrajectoryPoints & trajectory);
 
 std::vector<double> calcTrajectoryIntervalDistance(const TrajectoryPoints & trajectory);
@@ -43,10 +52,15 @@ std::vector<double> calcTrajectoryIntervalDistance(const TrajectoryPoints & traj
 std::vector<double> calcTrajectoryCurvatureFrom3Points(
   const TrajectoryPoints & trajectory, size_t idx_dist);
 
+std::vector<double> calcTrajectoryCurvatureFrom3Points(
+  const Trajectory & trajectory, const std::vector<double> & s_values);
+
 void applyMaximumVelocityLimit(
   const size_t from, const size_t to, const double max_vel, TrajectoryPoints & trajectory);
 
-std::optional<size_t> searchZeroVelocityIdx(const TrajectoryPoints & trajectory);
+void applyMaximumVelocityLimit(
+  const double begin_distance, const double end_distance, const double max_vel,
+  Trajectory & trajectory);
 
 bool calcStopDistWithJerkConstraints(
   const double v0, const double a0, const double jerk_acc, const double jerk_dec,
@@ -64,8 +78,13 @@ std::vector<double> calcVelocityProfileWithConstantJerkAndAccelerationLimit(
   const TrajectoryPoints & trajectory, const double v0, const double a0, const double jerk,
   const double acc_max, const double acc_min);
 
+std::vector<double> calcVelocityProfileWithConstantJerkAndAccelerationLimit(
+  Trajectory & trajectory, const double v0, const double a0, const double jerk,
+  const double acc_max, const double acc_min);
+
 double calcStopDistance(const TrajectoryPoints & trajectory, const size_t closest);
 
+double calcStopDistance(const Trajectory & trajectory, const double closest_position);
 }  // namespace autoware::velocity_smoother::trajectory_utils
 
 #endif  // AUTOWARE__VELOCITY_SMOOTHER__TRAJECTORY_UTILS_HPP_
