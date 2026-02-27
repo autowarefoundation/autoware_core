@@ -19,7 +19,7 @@
 namespace autoware::control::command_gate
 {
 
-ModeOutputs CommandGateModeBuilder::make_stop(const builtin_interfaces::msg::Time & stamp) const
+ModeOutputs CommandGateModeBuilder::make_stop(const builtin_interfaces::msg::Time & stamp)
 {
   ModeOutputs outputs;
   fill_state(outputs.state, autoware_adapi_v1_msgs::msg::OperationModeState::STOP, stamp);
@@ -28,8 +28,7 @@ ModeOutputs CommandGateModeBuilder::make_stop(const builtin_interfaces::msg::Tim
   return outputs;
 }
 
-ModeOutputs CommandGateModeBuilder::make_autonomous(
-  const builtin_interfaces::msg::Time & stamp) const
+ModeOutputs CommandGateModeBuilder::make_autonomous(const builtin_interfaces::msg::Time & stamp)
 {
   ModeOutputs outputs;
   fill_state(outputs.state, autoware_adapi_v1_msgs::msg::OperationModeState::AUTONOMOUS, stamp);
@@ -40,7 +39,7 @@ ModeOutputs CommandGateModeBuilder::make_autonomous(
 
 void CommandGateModeBuilder::fill_state(
   autoware_adapi_v1_msgs::msg::OperationModeState & msg, uint8_t mode,
-  const builtin_interfaces::msg::Time & stamp) const
+  const builtin_interfaces::msg::Time & stamp)
 {
   msg.stamp = stamp;
   msg.mode = mode;
@@ -55,14 +54,14 @@ void CommandGateModeBuilder::fill_state(
 
 void CommandGateModeBuilder::fill_gear(
   autoware_vehicle_msgs::msg::GearCommand & msg, uint8_t command,
-  const builtin_interfaces::msg::Time & stamp) const
+  const builtin_interfaces::msg::Time & stamp)
 {
   msg.stamp = stamp;
   msg.command = command;
 }
 
 autoware_adapi_v1_msgs::msg::ResponseStatus CommandGateModeBuilder::make_status(
-  const std::string & message) const
+  const std::string & message)
 {
   autoware_adapi_v1_msgs::msg::ResponseStatus status;
   status.success = true;

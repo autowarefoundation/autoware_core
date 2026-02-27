@@ -36,17 +36,17 @@ struct ModeOutputs
 class CommandGateModeBuilder
 {
 public:
-  ModeOutputs make_stop(const builtin_interfaces::msg::Time & stamp) const;
-  ModeOutputs make_autonomous(const builtin_interfaces::msg::Time & stamp) const;
+  static ModeOutputs make_stop(const builtin_interfaces::msg::Time & stamp);
+  static ModeOutputs make_autonomous(const builtin_interfaces::msg::Time & stamp);
 
 private:
-  void fill_state(
+  static void fill_state(
     autoware_adapi_v1_msgs::msg::OperationModeState & msg, uint8_t mode,
-    const builtin_interfaces::msg::Time & stamp) const;
-  void fill_gear(
+    const builtin_interfaces::msg::Time & stamp);
+  static void fill_gear(
     autoware_vehicle_msgs::msg::GearCommand & msg, uint8_t command,
-    const builtin_interfaces::msg::Time & stamp) const;
-  autoware_adapi_v1_msgs::msg::ResponseStatus make_status(const std::string & message) const;
+    const builtin_interfaces::msg::Time & stamp);
+  static autoware_adapi_v1_msgs::msg::ResponseStatus make_status(const std::string & message);
 };
 
 }  // namespace autoware::control::command_gate
