@@ -34,8 +34,8 @@ namespace autoware::motion_utils
  * * If the vehicle reaches a full stop during phase 1 or phase 2, the calculation
  * terminates early and returns the exact distance covered up to the point where v = 0.
  *
- * @param current_vel        Current longitudinal speed v₀ [m/s].
- * @param current_acc        Current longitudinal acceleration a₀ [m/s²].
+ * @param v0 Current longitudinal speed v₀ [m/s].
+ * @param a0 Current longitudinal acceleration a₀ [m/s²].
  * @param decel_limit        Maximum braking deceleration [m/s²]
  * @param jerk_limit         Maximum braking jerk [m/s³]
  * @param initial_time_delay Latency before any braking jerk is applied t₁ [s]. Defaults to 0.0.
@@ -45,8 +45,8 @@ namespace autoware::motion_utils
  * Returns std::nullopt if the kinematic limits are invalid (e.g., limits are 0).
  */
 [[nodiscard]] std::optional<double> calculate_stop_distance(
-  const double current_vel, const double current_acc, const double acc_limit,
-  const double jerk_limit, const double initial_time_delay = 0.0);
+  const double v0, const double a0, const double decel_limit, const double jerk_limit,
+  const double initial_time_delay = 0.0);
 
 }  // namespace autoware::motion_utils
 
