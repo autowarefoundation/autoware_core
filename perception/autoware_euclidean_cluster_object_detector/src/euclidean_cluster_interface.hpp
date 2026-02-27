@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#ifndef EUCLIDEAN_CLUSTER_INTERFACE_HPP_
+#define EUCLIDEAN_CLUSTER_INTERFACE_HPP_
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -55,8 +56,10 @@ public:
 
 protected:
   bool use_height_ = true;
-  int min_cluster_size_;
-  int max_cluster_size_;
+  int min_cluster_size_ = 0;
+  int max_cluster_size_ = 0;
 };
 
 }  // namespace autoware::euclidean_cluster
+
+#endif  // EUCLIDEAN_CLUSTER_INTERFACE_HPP_
