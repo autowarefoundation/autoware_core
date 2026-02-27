@@ -3,13 +3,11 @@ project(autoware_crop_box_filter)
 
 find_package(autoware_cmake REQUIRED)
 find_package(Eigen3 REQUIRED)
-find_package(PCL REQUIRED)
 
 autoware_package()
 
 include_directories(
   SYSTEM
-  ${PCL_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
 )
 

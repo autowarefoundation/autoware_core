@@ -27,19 +27,12 @@
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
 
-#include <pcl_conversions/pcl_conversions.h>
-
 #include <memory>
 #include <string>
-#include <utility>
 #include <vector>
 
 using PointCloud2 = sensor_msgs::msg::PointCloud2;
 using PointCloud2ConstPtr = sensor_msgs::msg::PointCloud2::ConstSharedPtr;
-
-using PointCloud = pcl::PointCloud<pcl::PointXYZ>;
-using PointCloudPtr = PointCloud::Ptr;
-using PointCloudConstPtr = PointCloud::ConstPtr;
 
 namespace autoware::crop_box_filter
 {
@@ -144,7 +137,6 @@ private:
   }
 
 public:
-  PCL_MAKE_ALIGNED_OPERATOR_NEW
   explicit CropBoxFilter(const rclcpp::NodeOptions & node_options);
   void filter_pointcloud(const PointCloud2ConstPtr & cloud, PointCloud2 & output);
 };
