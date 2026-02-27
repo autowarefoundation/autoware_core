@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__NDT_SCAN_MATCHER__MAP_UPDATE_MODULE_HPP_
-#define AUTOWARE__NDT_SCAN_MATCHER__MAP_UPDATE_MODULE_HPP_
+#ifndef MAP_UPDATE_MODULE_HPP_
+#define MAP_UPDATE_MODULE_HPP_
 
 #include "hyper_parameters.hpp"
 #include "ndt_omp/multigrid_ndt_omp.h"
@@ -54,7 +54,7 @@ class MapUpdateModule
 public:
   MapUpdateModule(
     rclcpp::Node * node, std::mutex * ndt_ptr_mutex, NdtPtrType & ndt_ptr,
-    HyperParameters::DynamicMapLoading param);
+    const HyperParameters::DynamicMapLoading & param);
 
   bool out_of_map_range(const geometry_msgs::msg::Point & position);
 
@@ -101,4 +101,4 @@ private:
 
 }  // namespace autoware::ndt_scan_matcher
 
-#endif  // AUTOWARE__NDT_SCAN_MATCHER__MAP_UPDATE_MODULE_HPP_
+#endif  // MAP_UPDATE_MODULE_HPP_

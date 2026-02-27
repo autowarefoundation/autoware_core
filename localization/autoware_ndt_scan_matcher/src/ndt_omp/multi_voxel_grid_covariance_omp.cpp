@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "ndt_omp/multi_voxel_grid_covariance_omp.h"
+
 #include "multi_voxel_grid_covariance_omp_impl.hpp"
 
 template class pclomp::MultiVoxelGridCovariance<pcl::PointXYZ>;

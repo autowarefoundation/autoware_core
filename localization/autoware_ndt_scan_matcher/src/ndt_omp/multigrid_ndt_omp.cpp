@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "ndt_omp/multigrid_ndt_omp.h"
+
 #include "multigrid_ndt_omp_impl.hpp"
 
 template class pclomp::MultiGridNormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ>;

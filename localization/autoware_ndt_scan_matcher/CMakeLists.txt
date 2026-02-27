@@ -34,6 +34,10 @@ ament_auto_add_library(multigrid_ndt_omp SHARED
   src/ndt_omp/multigrid_ndt_omp.cpp
   src/ndt_omp/estimate_covariance.cpp
 )
+target_include_directories(multigrid_ndt_omp
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+)
 target_link_libraries(multigrid_ndt_omp ${PCL_LIBRARIES})
 
 if(OpenMP_CXX_FOUND)
@@ -46,6 +50,10 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/map_update_module.cpp
   src/ndt_scan_matcher_core.cpp
   src/particle.cpp
+)
+target_include_directories(${PROJECT_NAME}
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
 )
 
 link_directories(${PCL_LIBRARY_DIRS})

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <autoware/ndt_scan_matcher/map_update_module.hpp>
+#include "map_update_module.hpp"
 
 #include <memory>
 #include <string>
@@ -22,19 +22,17 @@ namespace autoware::ndt_scan_matcher
 
 MapUpdateModule::MapUpdateModule(
   rclcpp::Node * node, std::mutex * ndt_ptr_mutex, NdtPtrType & ndt_ptr,
-  HyperParameters::DynamicMapLoading param)
-: ndt_ptr_(ndt_ptr),
+  const HyperParameters::DynamicMapLoading & param)
+: loaded_pcd_pub_(node->create_publisher<sensor_msgs::msg::PointCloud2>(
+    "debug/loaded_pointcloud_map", rclcpp::QoS{1}.transient_local())),
+  pcd_loader_client_(node->create_client<autoware_map_msgs::srv::GetDifferentialPointCloudMap>(
+    "pcd_loader_service")),
+  ndt_ptr_(ndt_ptr),
   ndt_ptr_mutex_(ndt_ptr_mutex),
   logger_(node->get_logger()),
   clock_(node->get_clock()),
   param_(param)
 {
-  loaded_pcd_pub_ = node->create_publisher<sensor_msgs::msg::PointCloud2>(
-    "debug/loaded_pointcloud_map", rclcpp::QoS{1}.transient_local());
-
-  pcd_loader_client_ =
-    node->create_client<autoware_map_msgs::srv::GetDifferentialPointCloudMap>("pcd_loader_service");
-
   secondary_ndt_ptr_.reset(new NdtType);
 
   if (ndt_ptr_) {

@@ -12,12 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "ndt_scan_matcher_core.hpp"
+
+#include "ndt_omp/estimate_covariance.hpp"
+#include "particle.hpp"
+
 #include <autoware/localization_util/matrix_type.hpp>
 #include <autoware/localization_util/tree_structured_parzen_estimator.hpp>
 #include <autoware/localization_util/util_func.hpp>
-#include <autoware/ndt_scan_matcher/ndt_omp/estimate_covariance.hpp>
-#include <autoware/ndt_scan_matcher/ndt_scan_matcher_core.hpp>
-#include <autoware/ndt_scan_matcher/particle.hpp>
 #include <autoware/qos_utils/qos_compatibility.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_utils_pcl/transforms.hpp>
@@ -1016,7 +1018,7 @@ void NDTScanMatcher::service_ndt_align_main(
     diagnostics_ndt_align_->add_key_value("is_succeed_transform_initial_pose", false);
 
     std::stringstream message;
-    message << "Please publish TF " << target_frame.c_str() << " to " << source_frame.c_str();
+    message << "Please publish TF " << target_frame << " to " << source_frame;
     diagnostics_ndt_align_->update_level_and_message(
       diagnostic_msgs::msg::DiagnosticStatus::ERROR, message.str());
     RCLCPP_ERROR_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 1000, message.str());

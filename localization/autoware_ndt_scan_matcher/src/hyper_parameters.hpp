@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__NDT_SCAN_MATCHER__HYPER_PARAMETERS_HPP_
-#define AUTOWARE__NDT_SCAN_MATCHER__HYPER_PARAMETERS_HPP_
+#ifndef HYPER_PARAMETERS_HPP_
+#define HYPER_PARAMETERS_HPP_
 
 #include "ndt_omp/multigrid_ndt_omp.h"
 
@@ -196,4 +196,4 @@ public:
 
 }  // namespace autoware::ndt_scan_matcher
 
-#endif  // AUTOWARE__NDT_SCAN_MATCHER__HYPER_PARAMETERS_HPP_
+#endif  // HYPER_PARAMETERS_HPP_

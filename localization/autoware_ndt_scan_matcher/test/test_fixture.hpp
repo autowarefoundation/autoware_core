@@ -15,7 +15,7 @@
 #ifndef TEST_FIXTURE_HPP_
 #define TEST_FIXTURE_HPP_
 
-#include "../include/autoware/ndt_scan_matcher/ndt_scan_matcher_core.hpp"
+#include "ndt_scan_matcher_core.hpp"
 #include "stub_initialpose_client.hpp"
 #include "stub_pcd_loader.hpp"
 #include "stub_sensor_pcd_publisher.hpp"
