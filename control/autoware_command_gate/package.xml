@@ -4,7 +4,7 @@
   <name>autoware_command_gate</name>
   <version>0.1.0</version>
   <description>Simple gateway that maps operation mode service calls to mode state and gear commands.</description>
-  <maintainer email="maintainer@example.com">Autoware Maintainer</maintainer>
+  <maintainer email="junya.sasaki@tier4.jp">Junya Sasaki</maintainer>
 
   <license>Apache License 2.0</license>
 
