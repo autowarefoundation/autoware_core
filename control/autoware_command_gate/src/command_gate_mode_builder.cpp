@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/control/command_gate/command_gate_mode_builder.hpp"
+#include "command_gate_mode_builder.hpp"
 
 namespace autoware::control::command_gate
 {
