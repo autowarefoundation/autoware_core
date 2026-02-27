@@ -19,6 +19,10 @@
 #include "autoware/velocity_smoother/smoother/l2_pseudo_jerk_smoother.hpp"
 #include "autoware/velocity_smoother/smoother/linf_pseudo_jerk_smoother.hpp"
 
+#include <autoware/trajectory/utils/crop.hpp>
+#include <autoware/trajectory/utils/find_nearest.hpp>
+#include <autoware/trajectory/utils/pretty_build.hpp>
+#include <autoware/trajectory/utils/velocity.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
 
 #include <algorithm>
@@ -544,6 +548,9 @@ void VelocitySmootherNode::onCurrentTrajectory(const Trajectory::ConstSharedPtr 
   RCLCPP_DEBUG(get_logger(), "========================== run() end ==========================\n\n");
 }
 
+using TrajectoryExperimental =
+  autoware::experimental::trajectory::Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>;
+
 void VelocitySmootherNode::updateDataForExternalVelocityLimit()
 {
   autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
@@ -567,7 +574,7 @@ TrajectoryPoints VelocitySmootherNode::calcTrajectoryVelocity(
 {
   autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
 
-  TrajectoryPoints output{};  // velocity is optimized by qp solver
+  TrajectoryPoints output;
 
   // Extract trajectory around self-position with desired forward-backward length
   const size_t input_closest = findNearestIndexFromEgo(traj_input);
@@ -603,10 +610,12 @@ TrajectoryPoints VelocitySmootherNode::calcTrajectoryVelocity(
   }
 
   // Smoothing velocity
-  if (!smoothVelocity(traj_extracted, traj_extracted_closest, output)) {
+  // if (!smoothVelocity(traj_extracted, traj_extracted_closest, output)) {
+  //   return prev_output_;
+  // }
+  if (!smoothVelocityContinuous(traj_extracted, traj_extracted_closest, output)) {
     return prev_output_;
   }
-
   return output;
 }
 
@@ -730,6 +739,147 @@ bool VelocitySmootherNode::smoothVelocity(
   return true;
 }
 
+bool VelocitySmootherNode::smoothVelocityContinuous(
+  const TrajectoryPoints & input, const size_t input_closest,
+  TrajectoryPoints & traj_smoothed) const
+{
+  autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
+
+  if (input.empty()) {
+    return false;  // cannot apply smoothing
+  }
+
+  const auto [initial_motion, type] = calcInitialMotion(input, input_closest);
+
+  auto opt_input_continuous = autoware::experimental::trajectory::pretty_build(input);
+  if (!opt_input_continuous) {
+    return false;
+  }
+  auto input_continuous = opt_input_continuous.value();
+
+  constexpr bool enable_smooth_limit = true;
+  constexpr bool use_resampling = true;
+  const auto traj_lateral_acc_filtered =
+    node_param_.enable_lateral_acc_limit
+      ? smoother_->applyLateralAccelerationFilter(
+          input_continuous, initial_motion.vel, initial_motion.acc, enable_smooth_limit,
+          use_resampling)
+      : input_continuous;
+
+  // Steering angle rate limit (Note: set use_resample = false since it is resampled above)
+  const auto traj_steering_rate_limited =
+    node_param_.enable_steering_rate_limit
+      ? smoother_->applySteeringRateLimit(traj_lateral_acc_filtered, false)
+      : traj_lateral_acc_filtered;
+
+  auto traj_resampled = smoother_->resampleTrajectory(
+    traj_steering_rate_limited.restore(), current_odometry_ptr_->twist.twist.linear.x,
+    current_odometry_ptr_->pose.pose, node_param_.ego_nearest_dist_threshold,
+    node_param_.ego_nearest_yaw_threshold);
+
+  const size_t traj_resampled_closest = findNearestIndexFromEgo(traj_resampled);
+
+  // Set 0[m/s] in the terminal point
+  if (!traj_resampled.empty()) {
+    traj_resampled.back().longitudinal_velocity_mps = 0.0;
+  }
+
+  auto opt_traj_resampled_ = autoware::experimental::trajectory::pretty_build(traj_resampled);
+  if (!opt_traj_resampled_) {
+    return false;
+  }
+  auto traj_resampled_ = opt_traj_resampled_.value();
+
+  publishClosestVelocity(
+    traj_resampled, current_odometry_ptr_->pose.pose, debug_closest_max_velocity_);
+
+  // Clip trajectory from closest point
+  TrajectoryPoints clipped;
+  clipped.insert(
+    clipped.end(), traj_resampled.begin() + traj_resampled_closest, traj_resampled.end());
+
+  if (clipped.empty()) {
+    return false;
+  }
+
+  auto opt_clipped_ = autoware::experimental::trajectory::pretty_build(clipped);
+  if (!opt_clipped_) {
+    return false;
+  }
+  auto clipped_ = opt_clipped_.value();
+
+  const double smoother_max_acceleration =
+    external_velocity_limit_.acceleration_request.request
+      ? external_velocity_limit_.acceleration_request.max_acceleration
+      : get_parameter("normal.max_acc").as_double();
+  const double smoother_max_jerk = external_velocity_limit_.acceleration_request.request
+                                     ? external_velocity_limit_.acceleration_request.max_jerk
+                                     : get_parameter("normal.max_jerk").as_double();
+  smoother_->setMaxAccel(smoother_max_acceleration);
+  smoother_->setMaxJerk(smoother_max_jerk);
+
+  std::vector<TrajectoryExperimental> debug_trajectories;
+  TrajectoryExperimental traj_smoothed_;
+  if (!smoother_->apply(
+        initial_motion.vel, initial_motion.acc, clipped_, traj_smoothed_, debug_trajectories,
+        publish_debug_trajs_)) {
+    RCLCPP_WARN(get_logger(), "Fail to solve optimization.");
+    return false;
+  }
+
+  // Set 0 velocity after input-stop-point
+  overwriteStopPoint(clipped_, traj_smoothed_);
+  traj_smoothed = traj_smoothed_.restore();
+
+  traj_smoothed.insert(
+    traj_smoothed.begin(), traj_resampled.begin(), traj_resampled.begin() + traj_resampled_closest);
+
+  if (!traj_smoothed.empty()) {
+    traj_smoothed.back().longitudinal_velocity_mps = 0.0;
+  }
+
+  trajectory_utils::applyMaximumVelocityLimit(
+    traj_resampled_closest, traj_smoothed.size(), node_param_.max_velocity, traj_smoothed);
+
+  insertBehindVelocity(traj_resampled_closest, type, traj_smoothed);
+
+  if (publish_debug_trajs_) {
+    {
+      auto tmp = traj_lateral_acc_filtered.restore();
+      if (is_reverse_) flipVelocity(tmp);
+      pub_trajectory_latacc_filtered_->publish(toTrajectoryMsg(tmp));
+    }
+    {
+      auto tmp = traj_resampled;
+      if (is_reverse_) flipVelocity(tmp);
+      pub_trajectory_resampled_->publish(toTrajectoryMsg(tmp));
+    }
+    {
+      auto tmp = traj_steering_rate_limited.restore();
+      if (is_reverse_) flipVelocity(tmp);
+      pub_trajectory_steering_rate_limited_->publish(toTrajectoryMsg(tmp));
+    }
+
+    std::vector<TrajectoryPoints> debug_trajectories_discrete;
+    for (const auto & traj : debug_trajectories) {
+      debug_trajectories_discrete.push_back(traj.restore());
+    }
+
+    for (auto & debug_trajectory : debug_trajectories_discrete) {
+      debug_trajectory.insert(
+        debug_trajectory.begin(), traj_resampled.begin(),
+        traj_resampled.begin() + traj_resampled_closest);
+      for (size_t i = 0; i < traj_resampled_closest; ++i) {
+        debug_trajectory.at(i).longitudinal_velocity_mps =
+          debug_trajectory.at(traj_resampled_closest).longitudinal_velocity_mps;
+      }
+    }
+    publishDebugTrajectories(debug_trajectories_discrete);
+  }
+
+  return true;
+}
+
 void VelocitySmootherNode::insertBehindVelocity(
   const size_t output_closest, const InitializeType type, TrajectoryPoints & output) const
 {
@@ -771,6 +921,70 @@ void VelocitySmootherNode::insertBehindVelocity(
       output.at(i).longitudinal_velocity_mps =
         std::abs(prev_output_point.longitudinal_velocity_mps);
       output.at(i).acceleration_mps2 = prev_output_point.acceleration_mps2;
+    }
+  }
+}
+
+void VelocitySmootherNode::insertBehindVelocity(
+  const double output_closest_s, const InitializeType type, TrajectoryExperimental & output) const
+{
+  autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
+
+  const bool keep_closest_vel_for_behind =
+    (type == InitializeType::EGO_VELOCITY || type == InitializeType::LARGE_DEVIATION_REPLAN ||
+     type == InitializeType::ENGAGING);
+
+  if (keep_closest_vel_for_behind) {
+    const auto closest_point = output.compute(output_closest_s);
+    output.longitudinal_velocity_mps()
+      .range(0.0, output_closest_s)
+      .set(closest_point.longitudinal_velocity_mps);
+    output.acceleration_mps2().range(0.0, output_closest_s).set(closest_point.acceleration_mps2);
+  } else {
+    if (prev_output_.empty()) {
+      return;
+    }
+
+    auto opt_prev_output_continuous = TrajectoryExperimental::Builder().build(prev_output_);
+    if (!opt_prev_output_continuous) {
+      throw std::runtime_error("Failed to build prev_output continuous trajectory");
+    }
+    const auto prev_output_continuous = opt_prev_output_continuous.value();
+
+    const auto bases = output.get_underlying_bases();
+    std::vector<double> vel_values;
+    std::vector<double> acc_values;
+    std::vector<double> basis_positions;
+
+    for (const auto & s : bases) {
+      if (s >= output_closest_s) {
+        break;  // stop at closest point
+      }
+
+      const auto point_on_output = output.compute(s);
+
+      const auto opt_prev_output_s = autoware::experimental::trajectory::find_first_nearest_index(
+        prev_output_continuous, point_on_output.pose, node_param_.ego_nearest_dist_threshold,
+        node_param_.ego_nearest_yaw_threshold);
+
+      if (!opt_prev_output_s) {
+        continue;  // skip if nearest point not found
+      }
+
+      const auto prev_point = prev_output_continuous.compute(*opt_prev_output_s);
+
+      basis_positions.push_back(s);
+      vel_values.push_back(std::abs(prev_point.longitudinal_velocity_mps));
+      acc_values.push_back(prev_point.acceleration_mps2);
+    }
+
+    if (!basis_positions.empty()) {
+      if (!output.longitudinal_velocity_mps().build(basis_positions, vel_values)) {
+        RCLCPP_WARN(get_logger(), "Failed to build behind velocity profile");
+      }
+      if (!output.acceleration_mps2().build(basis_positions, acc_values)) {
+        RCLCPP_WARN(get_logger(), "Failed to build behind acceleration profile");
+      }
     }
   }
 }
@@ -920,6 +1134,54 @@ void VelocitySmootherNode::overwriteStopPoint(
     RCLCPP_DEBUG(
       get_logger(),
       "replan : input_stop_idx = -1, stop velocity : input = %f, output = %f, thr = %f",
+      input_stop_vel, output_stop_vel, over_stop_velocity_warn_thr_);
+  }
+
+  diagnostics_interface_->add_key_value(
+    "The velocity on the stop point is larger than 0.", is_stop_velocity_exceeded);
+}
+
+void VelocitySmootherNode::overwriteStopPoint(
+  const TrajectoryExperimental & input, TrajectoryExperimental & output) const
+{
+  autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
+
+  const auto stop_pos_opt =
+    autoware::experimental::trajectory::search_zero_velocity_position(input);
+  if (!stop_pos_opt) {
+    return;
+  }
+
+  const auto stop_pose = input.compute(*stop_pos_opt).pose;
+
+  const auto nearest_output_pos_opt = autoware::experimental::trajectory::find_first_nearest_index(
+    output, stop_pose, node_param_.ego_nearest_dist_threshold,
+    node_param_.ego_nearest_yaw_threshold);
+
+  // check over velocity
+  bool is_stop_velocity_exceeded{false};
+  double input_stop_vel{};
+  double output_stop_vel{};
+  if (nearest_output_pos_opt) {
+    const auto output_vel_at_stop =
+      output.compute(*nearest_output_pos_opt).longitudinal_velocity_mps;
+    is_stop_velocity_exceeded = (output_vel_at_stop > over_stop_velocity_warn_thr_);
+    const auto input_vel_at_stop = input.compute(*stop_pos_opt).longitudinal_velocity_mps;
+    input_stop_vel = input_vel_at_stop;
+    output_stop_vel = output_vel_at_stop;
+    if (*nearest_output_pos_opt < output.length()) {
+      output.longitudinal_velocity_mps().range(*nearest_output_pos_opt, output.length()).set(0.0);
+    }
+    RCLCPP_DEBUG(
+      get_logger(),
+      "replan : input_stop_pos = %f, stop velocity : input = %f, output = %f, thr = %f",
+      *stop_pos_opt, input_stop_vel, output_stop_vel, over_stop_velocity_warn_thr_);
+  } else {
+    input_stop_vel = -1.0;
+    output_stop_vel = -1.0;
+    RCLCPP_DEBUG(
+      get_logger(),
+      "replan : input_stop_pos = -1, stop velocity : input = %f, output = %f, thr = %f",
       input_stop_vel, output_stop_vel, over_stop_velocity_warn_thr_);
   }
 

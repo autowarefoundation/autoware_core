@@ -15,9 +15,11 @@
 #include "autoware/velocity_smoother/smoother/jerk_filtered_smoother.hpp"
 
 #include "autoware/qp_interface/proxqp_interface.hpp"
+#include "autoware/trajectory/trajectory_point.hpp"
 #include "autoware/velocity_smoother/trajectory_utils.hpp"
 
 #include <Eigen/Core>
+#include <autoware/trajectory/utils/pretty_build.hpp>
 
 #include <algorithm>
 #include <chrono>
@@ -32,6 +34,9 @@
 
 namespace autoware::velocity_smoother
 {
+using TrajectoryExperimental =
+  autoware::experimental::trajectory::Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>;
+
 JerkFilteredSmoother::JerkFilteredSmoother(
   rclcpp::Node & node, const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper)
 : SmootherBase(node, time_keeper)
@@ -355,75 +360,287 @@ bool JerkFilteredSmoother::apply(
   return true;
 }
 
-TrajectoryPoints JerkFilteredSmoother::forwardJerkFilter(
-  const double v0, const double a0, const double a_max, const double a_start, const double j_max,
-  const TrajectoryPoints & input) const
+bool JerkFilteredSmoother::apply(
+  const double v0, const double a0, const TrajectoryExperimental & input,
+  TrajectoryExperimental & output, std::vector<TrajectoryExperimental> & debug_trajectories,
+  const bool publish_debug_trajs)
 {
-  autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
+  // Guard: check if trajectory is empty and bases within valid range
+  const auto [bases, velocities] = input.longitudinal_velocity_mps().get_data();
+  if (bases.empty() || velocities.empty()) {
+    RCLCPP_WARN(logger_, "Input Trajectory to the jerk filtered optimization is empty.");
+    return false;
+  }
+  output = input;
 
-  auto applyLimits = [&input, &a_start](double & v, double & a, size_t i) {
-    double v_lim = input.at(i).longitudinal_velocity_mps;
-    static constexpr double ep = 1.0e-5;
-    if (v > v_lim + ep) {
-      v = v_lim;
-      a = 0.0;
+  if (bases.size() == 1) {
+    output.longitudinal_velocity_mps().range(bases[0], bases[0]).set(v0);
+    output.acceleration_mps2().range(bases[0], bases[0]).set(a0);
+    if (publish_debug_trajs) {
+      debug_trajectories.resize(3);
+      debug_trajectories[0] = output;
+      debug_trajectories[1] = output;
+      debug_trajectories[2] = output;
+    }
+    return true;
+  }
 
-      if (v_lim < 1e-3 && i < input.size() - 1) {
-        double next_v_lim = input.at(i + 1).longitudinal_velocity_mps;
-        if (next_v_lim >= 1e-3) {
-          a = a_start;  // start from stop velocity
-        }
+  const auto ts = std::chrono::system_clock::now();
+
+  const double a_max = base_param_.max_accel;
+  const double a_min = base_param_.min_decel;
+  const double a_stop_accel = 0.0;
+  const double a_stop_decel = base_param_.stop_decel;
+  const double j_max = base_param_.max_jerk;
+  const double j_min = base_param_.min_jerk;
+  const double over_j_weight = smoother_param_.over_j_weight;
+  const double over_v_weight = smoother_param_.over_v_weight;
+  const double over_a_weight = smoother_param_.over_a_weight;
+
+  // jerk filter
+  const auto forward_filtered =
+    forwardJerkFilter(v0, std::max(a0, a_min), a_max, a_stop_accel, j_max, input);
+  const auto backward_filtered = backwardJerkFilter(
+    input.longitudinal_velocity_mps().compute(bases.back()), a_stop_decel, a_min, a_stop_decel,
+    j_min, input);
+  const auto merged =
+    mergeFilteredTrajectory(v0, a0, a_min, j_min, forward_filtered, backward_filtered);
+
+  // Resample merged trajectory first to reduce number of points before optimization
+  // guard against restore failure or empty result
+  decltype(merged.restore()) merged_discrete;
+  try {
+    merged_discrete = merged.restore();
+  } catch (const std::exception & e) {
+    RCLCPP_WARN(logger_, "merged.restore() failed: %s", e.what());
+    return false;
+  }
+  if (merged_discrete.empty()) {
+    RCLCPP_WARN(logger_, "merged.restore() produced empty trajectory");
+    return false;
+  }
+  const auto initial_traj_pose = merged_discrete.front().pose;
+
+  auto merged_resampled_discrete = resampling::resampleTrajectory(
+    merged_discrete, v0, initial_traj_pose, std::numeric_limits<double>::max(),
+    std::numeric_limits<double>::max(), base_param_.resample_param);
+
+  // Ensure terminal velocity is zero
+  if (!merged_resampled_discrete.empty()) {
+    merged_resampled_discrete.back().longitudinal_velocity_mps = 0.0;
+  }
+
+  // Find stop point (match discrete behavior) and clip to that index
+  const auto zero_vel_id = autoware::motion_utils::searchZeroVelocityIndex(
+    merged_resampled_discrete, 1, merged_resampled_discrete.size());
+  if (!zero_vel_id) {
+    RCLCPP_WARN(logger_, "merged_resampled_discrete must have stop point.");
+    return false;
+  }
+  const size_t N = *zero_vel_id + 1;
+
+  // Convert back to continuous for optimization
+  auto opt_merged_resampled =
+    autoware::experimental::trajectory::pretty_build(merged_resampled_discrete);
+  if (!opt_merged_resampled) {
+    throw std::runtime_error("Failed to build merged resampled trajectory");
+  }
+  auto merged_resampled = opt_merged_resampled.value();
+
+  // For jerk filtering on continuous trajectory, use the arc-length information
+  const auto [merged_bases, merged_vels] = merged_resampled.longitudinal_velocity_mps().get_data();
+
+  std::vector<double> interval_dist_arr;
+  for (size_t i = 0; i < N - 1; ++i) {
+    interval_dist_arr.push_back(merged_bases[i + 1] - merged_bases[i]);
+  }
+  if (N > 0) {
+    interval_dist_arr.push_back(0.0);
+  }
+
+  std::vector<double> v_max_arr = merged_vels;
+
+  const uint32_t IDX_B0 = 0;
+  const uint32_t IDX_A0 = N;
+  const uint32_t IDX_DELTA0 = 2 * N;
+  const uint32_t IDX_SIGMA0 = 3 * N;
+  const uint32_t IDX_GAMMA0 = 4 * N;
+
+  const uint32_t l_variables = 5 * N;
+  const uint32_t l_constraints = 4 * N + 1;
+
+  Eigen::MatrixXd A = Eigen::MatrixXd::Zero(l_constraints, l_variables);
+  std::vector<double> lower_bound(l_constraints, 0.0);
+  std::vector<double> upper_bound(l_constraints, 0.0);
+
+  Eigen::MatrixXd P = Eigen::MatrixXd::Zero(l_variables, l_variables);
+  std::vector<double> q(l_variables, 0.0);
+
+  time_keeper_->start_track("initOptimization");
+  const double smooth_weight = smoother_param_.jerk_weight;
+  for (size_t i = 0; i < N - 1; ++i) {
+    const double ref_vel = 0.5 * (v_max_arr.at(i) + v_max_arr.at(i + 1));
+    const double interval_dist = std::max(interval_dist_arr.at(i), 0.0001);
+    const double w_x_ds_inv = (1.0 / interval_dist) * ref_vel;
+    P(IDX_A0 + i, IDX_A0 + i) += smooth_weight * w_x_ds_inv * w_x_ds_inv * interval_dist;
+    P(IDX_A0 + i, IDX_A0 + i + 1) -= smooth_weight * w_x_ds_inv * w_x_ds_inv * interval_dist;
+    P(IDX_A0 + i + 1, IDX_A0 + i) -= smooth_weight * w_x_ds_inv * w_x_ds_inv * interval_dist;
+    P(IDX_A0 + i + 1, IDX_A0 + i + 1) += smooth_weight * w_x_ds_inv * w_x_ds_inv * interval_dist;
+  }
+
+  for (size_t i = 0; i < N; ++i) {
+    if (v_max_arr.at(i) > 0.01) {
+      double v_weight_term = -1.0 / (v_max_arr.at(i) * v_max_arr.at(i));
+      if (i < N - 1) {
+        v_weight_term *= std::max(interval_dist_arr.at(i), 0.0001);
+      }
+      q.at(IDX_B0 + i) += v_weight_term;
+    }
+    P(IDX_DELTA0 + i, IDX_DELTA0 + i) += over_v_weight;
+    P(IDX_SIGMA0 + i, IDX_SIGMA0 + i) += over_a_weight;
+    P(IDX_GAMMA0 + i, IDX_GAMMA0 + i) += over_j_weight;
+  }
+
+  size_t constr_idx = 0;
+
+  for (size_t i = 0; i < N; ++i, ++constr_idx) {
+    A(constr_idx, IDX_B0 + i) = 1.0;
+    A(constr_idx, IDX_DELTA0 + i) = -1.0;
+    upper_bound[constr_idx] = v_max_arr.at(i) * v_max_arr.at(i);
+    lower_bound[constr_idx] = 0.0;
+  }
+
+  for (size_t i = 0; i < N; ++i, ++constr_idx) {
+    A(constr_idx, IDX_A0 + i) = 1.0;
+    A(constr_idx, IDX_SIGMA0 + i) = -1.0;
+
+    constexpr double stop_vel = 1e-3;
+    if (v_max_arr.at(i) < stop_vel) {
+      upper_bound[constr_idx] = a_stop_decel;
+      lower_bound[constr_idx] = a_stop_decel;
+    } else {
+      upper_bound[constr_idx] = a_max;
+      lower_bound[constr_idx] = a_min;
+    }
+  }
+
+  for (size_t i = 0; i < N - 1; ++i, ++constr_idx) {
+    const double ref_vel = 0.5 * (v_max_arr.at(i) + v_max_arr.at(i + 1));
+    const double ds = interval_dist_arr.at(i);
+    A(constr_idx, IDX_A0 + i) = -ref_vel;
+    A(constr_idx, IDX_A0 + i + 1) = ref_vel;
+    A(constr_idx, IDX_GAMMA0 + i) = -ds;
+    upper_bound[constr_idx] = j_max * ds;
+    lower_bound[constr_idx] = j_min * ds;
+  }
+
+  for (size_t i = 0; i < N - 1; ++i, ++constr_idx) {
+    A(constr_idx, IDX_B0 + i) = -1.0;
+    A(constr_idx, IDX_B0 + i + 1) = 1.0;
+    A(constr_idx, IDX_A0 + i) = -2.0 * interval_dist_arr.at(i);
+    upper_bound[constr_idx] = 0.0;
+    lower_bound[constr_idx] = 0.0;
+  }
+
+  {
+    A(constr_idx, IDX_B0) = 1.0;
+    upper_bound[constr_idx] = v0 * v0;
+    lower_bound[constr_idx] = v0 * v0;
+    ++constr_idx;
+
+    A(constr_idx, IDX_A0) = 1.0;
+    upper_bound[constr_idx] = a0;
+    lower_bound[constr_idx] = a0;
+  }
+
+  time_keeper_->end_track("initOptimization");
+
+  // execute optimization
+  time_keeper_->start_track("optimize");
+  const auto optval = qp_interface_->optimize(P, A, q, lower_bound, upper_bound);
+  time_keeper_->end_track("optimize");
+  if (!qp_interface_->isSolved()) {
+    RCLCPP_WARN(logger_, "optimization failed : %s", qp_interface_->getStatus().c_str());
+    return false;
+  }
+
+  const auto has_nan =
+    std::any_of(optval.begin(), optval.end(), [](const auto v) { return std::isnan(v); });
+  if (has_nan) {
+    RCLCPP_WARN(logger_, "optimization failed: result contains NaN values");
+    return false;
+  }
+
+  const auto tf1 = std::chrono::system_clock::now();
+  const double dt_ms1 =
+    std::chrono::duration_cast<std::chrono::nanoseconds>(tf1 - ts).count() * 1.0e-6;
+  RCLCPP_DEBUG(logger_, "optimization time = %f [ms]", dt_ms1);
+
+  output = merged_resampled;
+  const double safe_output_length = output.length() * 0.99;
+
+  for (size_t i = 0; i < N; ++i) {
+    double b = optval.at(IDX_B0 + i);
+    const double optimized_vel = std::sqrt(std::max(b, 0.0));
+    const double optimized_acc = optval.at(IDX_A0 + i);
+    output.longitudinal_velocity_mps().range(merged_bases[i], merged_bases[i]).set(optimized_vel);
+    output.acceleration_mps2().range(merged_bases[i], merged_bases[i]).set(optimized_acc);
+  }
+
+  // Clear before first optimization point (matches discrete version: [0, N))
+  if (!merged_bases.empty() && merged_bases[0] > 0.0) {
+    output.longitudinal_velocity_mps().range(0.0, merged_bases[0]).set(0.0);
+    output.acceleration_mps2().range(0.0, merged_bases[0]).set(a_stop_decel);
+  }
+
+  // Handle tail region beyond last optimized base point (matches discrete version: [N,
+  // output.length()))
+  if (!merged_bases.empty() && merged_bases.back() < input.length()) {
+    // Only set if range is valid
+    if (merged_bases.back() < safe_output_length) {
+      output.longitudinal_velocity_mps().range(merged_bases.back(), safe_output_length).set(0.0);
+      output.acceleration_mps2().range(merged_bases.back(), safe_output_length).set(a_stop_decel);
+    }
+  }
+
+  if (VERBOSE_TRAJECTORY_VELOCITY) {
+    std::vector<autoware_planning_msgs::msg::TrajectoryPoint> discrete_output;
+    try {
+      discrete_output = output.restore();
+    } catch (const std::exception & e) {
+      RCLCPP_WARN(logger_, "output.restore() failed in verbose block: %s", e.what());
+    }
+    if (!discrete_output.empty()) {
+      const auto s_output = trajectory_utils::calcArclengthArray(discrete_output);
+
+      std::cerr << "\n\n" << std::endl;
+      for (size_t i = 0; i < N; ++i) {
+        const auto v_opt = discrete_output.at(i).longitudinal_velocity_mps;
+        const auto a_opt = discrete_output.at(i).acceleration_mps2;
+        const auto ds = i < interval_dist_arr.size() ? interval_dist_arr.at(i) : 0.0;
+        const auto v_rs = i < merged_bases.size()
+                            ? merged_resampled.longitudinal_velocity_mps().compute(
+                                std::min(merged_bases[i], merged_resampled.length() * 0.99))
+                            : 0.0;
+        RCLCPP_INFO(
+          logger_, "i =  %4lu | s: %5f | ds: %5f | rs: %9f | op_v: %10f | op_a: %10f |", i,
+          s_output.at(i), ds, v_rs, v_opt, a_opt);
       }
     }
-
-    if (v < 0.0) {
-      v = a = 0.0;
-    }
-  };
-
-  auto output = input;
-
-  double current_vel = v0;
-  double current_acc = a0;
-  applyLimits(current_vel, current_acc, 0);
-
-  output.front().longitudinal_velocity_mps = current_vel;
-  output.front().acceleration_mps2 = current_acc;
-  for (size_t i = 1; i < input.size(); ++i) {
-    const double ds = autoware_utils_geometry::calc_distance2d(input.at(i), input.at(i - 1));
-    const double max_dt = std::pow(6.0 * ds / j_max, 1.0 / 3.0);  // assuming v0 = a0 = 0.
-    const double dt = std::min(ds / std::max(current_vel, 1.0e-6), max_dt);
-
-    if (current_acc + j_max * dt >= a_max) {
-      const double tmp_jerk = std::min((a_max - current_acc) / dt, j_max);
-      current_vel = current_vel + current_acc * dt + 0.5 * tmp_jerk * dt * dt;
-      current_acc = a_max;
-    } else {
-      current_vel = current_vel + current_acc * dt + 0.5 * j_max * dt * dt;
-      current_acc = current_acc + j_max * dt;
-    }
-    applyLimits(current_vel, current_acc, i);
-    output.at(i).longitudinal_velocity_mps = current_vel;
-    output.at(i).acceleration_mps2 = current_acc;
   }
-  return output;
-}
 
-TrajectoryPoints JerkFilteredSmoother::backwardJerkFilter(
-  const double v0, const double a0, const double a_min, const double a_stop, const double j_min,
-  const TrajectoryPoints & input) const
-{
-  autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
-
-  auto input_rev = input;
-  std::reverse(input_rev.begin(), input_rev.end());
-  auto filtered = forwardJerkFilter(
-    v0, std::fabs(a0), std::fabs(a_min), std::fabs(a_stop), std::fabs(j_min), input_rev);
-  std::reverse(filtered.begin(), filtered.end());
-  for (size_t i = 0; i < filtered.size(); ++i) {
-    filtered.at(i).acceleration_mps2 *= -1.0;  // Deceleration
+  // Set debug trajectories
+  if (publish_debug_trajs) {
+    debug_trajectories.resize(3);
+    debug_trajectories[0] =
+      forwardJerkFilter(v0, std::max(a0, a_min), a_max, a_stop_accel, j_max, input);
+    debug_trajectories[1] = backwardJerkFilter(
+      input.longitudinal_velocity_mps().compute(bases.empty() ? 0.0 : bases.back()), a_stop_decel,
+      a_min, a_stop_decel, j_min, input);
+    debug_trajectories[2] = merged_resampled;
   }
-  return filtered;
+
+  return true;
 }
 
 TrajectoryPoints JerkFilteredSmoother::mergeFilteredTrajectory(
@@ -479,6 +696,172 @@ TrajectoryPoints JerkFilteredSmoother::mergeFilteredTrajectory(
   return merged;
 }
 
+TrajectoryPoints JerkFilteredSmoother::forwardJerkFilter(
+  const double v0, const double a0, const double a_max, const double a_start, const double j_max,
+  const TrajectoryPoints & input) const
+{
+  autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
+
+  auto applyLimits = [&input, &a_start](double & v, double & a, size_t i) {
+    double v_lim = input.at(i).longitudinal_velocity_mps;
+    static constexpr double ep = 1.0e-5;
+    if (v > v_lim + ep) {
+      v = v_lim;
+      a = 0.0;
+
+      if (v_lim < 1e-3 && i < input.size() - 1) {
+        double next_v_lim = input.at(i + 1).longitudinal_velocity_mps;
+        if (next_v_lim >= 1e-3) {
+          a = a_start;  // start from stop velocity
+        }
+      }
+    }
+
+    if (v < 0.0) {
+      v = a = 0.0;
+    }
+  };
+
+  auto output = input;
+
+  double current_vel = v0;
+  double current_acc = a0;
+  applyLimits(current_vel, current_acc, 0);
+
+  output.front().longitudinal_velocity_mps = current_vel;
+  output.front().acceleration_mps2 = current_acc;
+  for (size_t i = 1; i < input.size(); ++i) {
+    const double ds = autoware_utils_geometry::calc_distance2d(input.at(i), input.at(i - 1));
+    const double max_dt = std::pow(6.0 * ds / j_max, 1.0 / 3.0);  // assuming v0 = a0 = 0.
+    const double dt = std::min(ds / std::max(current_vel, 1.0e-6), max_dt);
+
+    if (current_acc + j_max * dt >= a_max) {
+      const double tmp_jerk = std::min((a_max - current_acc) / dt, j_max);
+      current_vel = current_vel + current_acc * dt + 0.5 * tmp_jerk * dt * dt;
+      current_acc = a_max;
+    } else {
+      current_vel = current_vel + current_acc * dt + 0.5 * j_max * dt * dt;
+      current_acc = current_acc + j_max * dt;
+    }
+    applyLimits(current_vel, current_acc, i);
+    output.at(i).longitudinal_velocity_mps = current_vel;
+    output.at(i).acceleration_mps2 = current_acc;
+  }
+  return output;
+}
+
+TrajectoryExperimental JerkFilteredSmoother::forwardJerkFilter(
+  const double v0, const double a0, const double a_max, const double a_start, const double j_max,
+  const TrajectoryExperimental & input) const
+{
+  autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
+
+  auto output = input;
+  const auto [bases, velocities] = input.longitudinal_velocity_mps().get_data();
+
+  if (bases.empty()) {
+    return output;
+  }
+
+  auto applyLimits = [&velocities, &a_start](double & v, double & a, size_t i) {
+    double v_lim = velocities[i];
+    static constexpr double ep = 1.0e-5;
+    if (v > v_lim + ep) {
+      v = v_lim;
+      a = 0.0;
+
+      if (v_lim < 1e-3 && i < velocities.size() - 1) {
+        double next_v_lim = velocities[i + 1];
+        if (next_v_lim >= 1e-3) {
+          a = a_start;
+        }
+      }
+    }
+
+    if (v < 0.0) {
+      v = a = 0.0;
+    }
+  };
+
+  double current_vel = v0;
+  double current_acc = a0;
+  applyLimits(current_vel, current_acc, 0);
+  output.longitudinal_velocity_mps().range(bases[0], bases[0]).set(current_vel);
+  output.acceleration_mps2().range(bases[0], bases[0]).set(current_acc);
+
+  for (size_t i = 1; i < bases.size(); ++i) {
+    const double ds = bases[i] - bases[i - 1];
+    const double max_dt = std::pow(6.0 * ds / j_max, 1.0 / 3.0);
+    const double dt = std::min(ds / std::max(current_vel, 1.0e-6), max_dt);
+
+    if (current_acc + j_max * dt >= a_max) {
+      const double tmp_jerk = std::min((a_max - current_acc) / dt, j_max);
+      current_vel = current_vel + current_acc * dt + 0.5 * tmp_jerk * dt * dt;
+      current_acc = a_max;
+    } else {
+      current_vel = current_vel + current_acc * dt + 0.5 * j_max * dt * dt;
+      current_acc = current_acc + j_max * dt;
+    }
+    applyLimits(current_vel, current_acc, i);
+    output.longitudinal_velocity_mps().range(bases[i], bases[i]).set(current_vel);
+    output.acceleration_mps2().range(bases[i], bases[i]).set(current_acc);
+  }
+  return output;
+}
+
+TrajectoryPoints JerkFilteredSmoother::backwardJerkFilter(
+  const double v0, const double a0, const double a_min, const double a_stop, const double j_min,
+  const TrajectoryPoints & input) const
+{
+  autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
+
+  auto input_rev = input;
+  std::reverse(input_rev.begin(), input_rev.end());
+  auto filtered = forwardJerkFilter(
+    v0, std::fabs(a0), std::fabs(a_min), std::fabs(a_stop), std::fabs(j_min), input_rev);
+  std::reverse(filtered.begin(), filtered.end());
+  for (size_t i = 0; i < filtered.size(); ++i) {
+    filtered.at(i).acceleration_mps2 *= -1.0;  // Deceleration
+  }
+  return filtered;
+}
+
+TrajectoryExperimental JerkFilteredSmoother::backwardJerkFilter(
+  const double v0, const double a0, const double a_min, const double a_stop, const double j_min,
+  const TrajectoryExperimental & input) const
+{
+  autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
+
+  const auto [bases, vel] = input.longitudinal_velocity_mps().get_data();
+  const double len = input.length();
+  for (double b : bases) {
+    if (b < 0.0 || b > len) {
+      RCLCPP_WARN(
+        logger_, "backwardJerkFilter: input base %f outside [%f]; returning unmodified trajectory",
+        b, len);
+      return input;
+    }
+  }
+
+  TrajectoryPoints discrete;
+  try {
+    discrete = input.restore();
+  } catch (const std::exception & e) {
+    RCLCPP_WARN(logger_, "backwardJerkFilter restore failed: %s", e.what());
+    return input;
+  }
+
+  if (discrete.empty()) {
+    return input;
+  }
+  const auto filtered = backwardJerkFilter(v0, a0, a_min, a_stop, j_min, discrete);
+  TrajectoryExperimental output;
+  if (!output.build(filtered)) {
+    return input;  // Return input trajectory on build failure
+  }
+  return output;
+}
+
 TrajectoryPoints JerkFilteredSmoother::resampleTrajectory(
   const TrajectoryPoints & input, [[maybe_unused]] const double v0,
   const geometry_msgs::msg::Pose & current_pose, const double nearest_dist_threshold,
@@ -489,6 +872,76 @@ TrajectoryPoints JerkFilteredSmoother::resampleTrajectory(
   return resampling::resampleTrajectory(
     input, current_pose, nearest_dist_threshold, nearest_yaw_threshold, base_param_.resample_param,
     smoother_param_.jerk_filter_ds);
+}
+
+TrajectoryExperimental JerkFilteredSmoother::mergeFilteredTrajectory(
+  const double v0, const double a0, const double a_min, const double j_min,
+  const TrajectoryExperimental & forward_filtered,
+  const TrajectoryExperimental & backward_filtered) const
+{
+  autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
+
+  auto merged = forward_filtered;
+  const auto [fwd_bases_data, fwd_vels_data] =
+    forward_filtered.longitudinal_velocity_mps().get_data();
+  const auto [bwd_bases_data, bwd_vels_data] =
+    backward_filtered.longitudinal_velocity_mps().get_data();
+
+  size_t i = 0;
+
+  if (bwd_vels_data[0] < v0) {
+    double current_vel = v0;
+    double current_acc = a0;
+
+    while (bwd_vels_data[i] < current_vel && i < fwd_vels_data.size() - 1 &&
+           i < bwd_vels_data.size() - 1) {
+      // Set velocity and acceleration at this base point
+      merged.longitudinal_velocity_mps()
+        .range(fwd_bases_data[i], fwd_bases_data[i])
+        .set(current_vel);
+      merged.acceleration_mps2().range(fwd_bases_data[i], fwd_bases_data[i]).set(current_acc);
+
+      const double ds = fwd_bases_data[i + 1] - fwd_bases_data[i];
+      const double max_dt = std::pow(6.0 * ds / std::fabs(j_min), 1.0 / 3.0);
+      const double dt = std::min(ds / std::max(current_vel, 1.0e-6), max_dt);
+
+      if (current_acc + j_min * dt < a_min) {
+        const double tmp_jerk = std::max((a_min - current_acc) / dt, j_min);
+        current_vel = current_vel + current_acc * dt + 0.5 * tmp_jerk * dt * dt;
+        current_acc = std::max(current_acc + tmp_jerk * dt, a_min);
+      } else {
+        current_vel = current_vel + current_acc * dt + 0.5 * j_min * dt * dt;
+        current_acc = current_acc + j_min * dt;
+      }
+
+      if (current_vel > fwd_vels_data[i]) {
+        current_vel = fwd_vels_data[i];
+      }
+      ++i;
+    }
+  }
+
+  // Take smaller velocity point for remaining indices
+  for (; i < fwd_vels_data.size(); ++i) {
+    const double base = fwd_bases_data[i];
+    const double fwd_vel = fwd_vels_data[i];
+    // Guard: ensure we don't access bwd_vels_data out of bounds
+    const double bwd_vel = (i < bwd_vels_data.size()) ? bwd_vels_data[i] : 0.0;
+
+    if (fwd_vel < bwd_vel) {
+      // Use forward filtered values
+      const double fwd_acc = forward_filtered.acceleration_mps2().compute(base);
+      merged.longitudinal_velocity_mps().range(base, base).set(fwd_vel);
+      merged.acceleration_mps2().range(base, base).set(fwd_acc);
+    } else {
+      // Use backward filtered values
+      const double bwd_acc = backward_filtered.acceleration_mps2().compute(base);
+      merged.longitudinal_velocity_mps().range(base, base).set(bwd_vel);
+      merged.acceleration_mps2().range(base, base).set(bwd_acc);
+    }
+  }
+
+  return merged;
 }
 
 }  // namespace autoware::velocity_smoother
