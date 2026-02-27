@@ -21,7 +21,9 @@
 #include <autoware_adapi_v1_msgs/msg/response_status.hpp>
 #include <autoware_adapi_v1_msgs/srv/change_operation_mode.hpp>
 #include <autoware_vehicle_msgs/msg/gear_command.hpp>
+
 #include <rmw/types.h>
+
 #include <cstdint>
 
 namespace autoware::control::command_gate
@@ -46,8 +48,7 @@ struct OperationModeState
   using Message = autoware_adapi_v1_msgs::msg::OperationModeState;
   static constexpr char name[] = "/api/operation_mode/state";
   static constexpr size_t depth = 1;
-  static constexpr rmw_qos_reliability_policy_t reliability =
-    RMW_QOS_POLICY_RELIABILITY_RELIABLE;
+  static constexpr rmw_qos_reliability_policy_t reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
   static constexpr rmw_qos_durability_policy_t durability =
     RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL;
 };
@@ -69,10 +70,9 @@ public:
       "/control/command/gear_cmd", rclcpp::QoS{1});
 
     srv_stop_ = create_service<spec::ChangeToStop::Service>(
-      spec::ChangeToStop::name,
-      [this](
-        const spec::ChangeToStop::Service::Request::SharedPtr,
-        const spec::ChangeToStop::Service::Response::SharedPtr res) {
+      spec::ChangeToStop::name, [this](
+                                  const spec::ChangeToStop::Service::Request::SharedPtr,
+                                  const spec::ChangeToStop::Service::Response::SharedPtr res) {
         const builtin_interfaces::msg::Time stamp = now();
         const auto outputs = mode_builder_.make_stop(stamp);
         publish(outputs);

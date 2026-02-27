@@ -14,9 +14,11 @@
 
 #include "autoware/control/command_gate/command_gate_mode_builder.hpp"
 
+#include <builtin_interfaces/msg/time.hpp>
+
 #include <autoware_adapi_v1_msgs/msg/operation_mode_state.hpp>
 #include <autoware_vehicle_msgs/msg/gear_command.hpp>
-#include <builtin_interfaces/msg/time.hpp>
+
 #include <gtest/gtest.h>
 
 namespace autoware::control::command_gate

@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE_CONTROL_COMMAND_GATE__COMMAND_GATE_MODE_BUILDER_HPP_
-#define AUTOWARE_CONTROL_COMMAND_GATE__COMMAND_GATE_MODE_BUILDER_HPP_
+#ifndef AUTOWARE__CONTROL__COMMAND_GATE__COMMAND_GATE_MODE_BUILDER_HPP_
+#define AUTOWARE__CONTROL__COMMAND_GATE__COMMAND_GATE_MODE_BUILDER_HPP_
+
+#include <builtin_interfaces/msg/time.hpp>
 
 #include <autoware_adapi_v1_msgs/msg/operation_mode_state.hpp>
 #include <autoware_adapi_v1_msgs/msg/response_status.hpp>
 #include <autoware_vehicle_msgs/msg/gear_command.hpp>
-#include <builtin_interfaces/msg/time.hpp>
 
 #include <string>
 
@@ -50,4 +51,4 @@ private:
 
 }  // namespace autoware::control::command_gate
 
-#endif  // AUTOWARE_CONTROL_COMMAND_GATE__COMMAND_GATE_MODE_BUILDER_HPP_
+#endif  // AUTOWARE__CONTROL__COMMAND_GATE__COMMAND_GATE_MODE_BUILDER_HPP_
