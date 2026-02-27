@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__GROUND_FILTER__DATA_HPP_
-#define AUTOWARE__GROUND_FILTER__DATA_HPP_
+#ifndef DATA_HPP_
+#define DATA_HPP_
 
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
@@ -66,4 +66,4 @@ private:
 
 }  // namespace autoware::ground_filter
 
-#endif  // AUTOWARE__GROUND_FILTER__DATA_HPP_
+#endif  // DATA_HPP_
