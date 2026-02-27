@@ -319,7 +319,7 @@ std::optional<double> calcDecelDistWithJerkAndAccConstraints(
   }
 
   // The vehicle successfully reaches the maximum deceleration limit.
-  const double t2 = (negative_decel_limit - a1) / negative_jerk_limit;
+  const double t2 = std::max(0.0, (negative_decel_limit - a1) / negative_jerk_limit);
   const auto [x2, v2_final, a2_final] = update(x1, v1, a1, negative_jerk_limit, t2);
 
   // Phase 3: Constant maximum deceleration
