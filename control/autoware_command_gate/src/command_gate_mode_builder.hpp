@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__CONTROL__COMMAND_GATE__COMMAND_GATE_MODE_BUILDER_HPP_
-#define AUTOWARE__CONTROL__COMMAND_GATE__COMMAND_GATE_MODE_BUILDER_HPP_
+#ifndef COMMAND_GATE_MODE_BUILDER_HPP_
+#define COMMAND_GATE_MODE_BUILDER_HPP_
 
 #include <builtin_interfaces/msg/time.hpp>
 
@@ -51,4 +51,4 @@ private:
 
 }  // namespace autoware::control::command_gate
 
-#endif  // AUTOWARE__CONTROL__COMMAND_GATE__COMMAND_GATE_MODE_BUILDER_HPP_
+#endif  // COMMAND_GATE_MODE_BUILDER_HPP_
