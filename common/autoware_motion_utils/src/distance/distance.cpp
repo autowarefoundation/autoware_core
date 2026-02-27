@@ -312,7 +312,7 @@ std::optional<double> calcDecelDistWithJerkAndAccConstraints(
       return std::nullopt;
     }
 
-    const double t2 = -(a1 + std::sqrt(discriminant)) / negative_jerk_limit;
+    const double t2 = std::max(0.0, -(a1 + std::sqrt(discriminant)) / negative_jerk_limit);
     const auto [x_stop, v_stop, a_stop] = update(x1, v1, a1, negative_jerk_limit, t2);
 
     return std::max(0.0, x_stop);
