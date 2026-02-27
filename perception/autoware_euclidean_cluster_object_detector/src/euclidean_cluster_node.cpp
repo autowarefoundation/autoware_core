@@ -14,7 +14,7 @@
 
 #include "euclidean_cluster_node.hpp"
 
-#include <autoware/euclidean_cluster_object_detector/utils.hpp>
+#include "utils.hpp"
 
 #include <memory>
 #include <vector>
