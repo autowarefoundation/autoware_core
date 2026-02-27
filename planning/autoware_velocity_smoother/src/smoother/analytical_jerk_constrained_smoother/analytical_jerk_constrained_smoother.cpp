@@ -88,7 +88,8 @@ namespace autoware::velocity_smoother
 {
 AnalyticalJerkConstrainedSmoother::AnalyticalJerkConstrainedSmoother(
   rclcpp::Node & node, const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper)
-: SmootherBase(node, time_keeper)
+: SmootherBase(node, time_keeper),
+  logger_(node.get_logger().get_child("analytical_jerk_constrained_smoother"))
 {
   auto & p = smoother_param_;
   p.resample.ds_resample = node.declare_parameter<double>("resample.ds_resample");
@@ -260,23 +261,25 @@ bool AnalyticalJerkConstrainedSmoother::apply(
   [[maybe_unused]] std::vector<TrajectoryExperimental> & debug_trajectories,
   [[maybe_unused]] const bool publish_debug_trajs)
 {
-  RCLCPP_DEBUG(logger_, "-------------------- Start (Continuous) --------------------");
+  try {
+    const auto [bases, velocities] = input.longitudinal_velocity_mps().get_data();
+    if (bases.empty() || velocities.empty() || bases.size() != velocities.size()) {
+      return false;
+    }
 
-  // guard
-  const auto [bases, velocities] = input.longitudinal_velocity_mps().get_data();
-  if (bases.empty() || velocities.empty()) {
-    RCLCPP_DEBUG(logger_, "Fail. input trajectory is empty");
+  } catch (const std::bad_alloc &) {
+    return false;
+  } catch (const std::length_error &) {
     return false;
   }
 
+  RCLCPP_DEBUG(logger_, "-------------------- Start --------------------");
+
   // closest_distance = 0
   const double closest_distance = 0.0;
+  const auto [bases, velocities] = input.longitudinal_velocity_mps().get_data();
 
   if (bases.size() == 1) {
-    RCLCPP_DEBUG(
-      logger_,
-      "Input trajectory size is too short. Cannot find decel targets and "
-      "return v0, a0");
     output = input;
     output.longitudinal_velocity_mps().range(0.0, 0.0).set(initial_vel);
     output.acceleration_mps2().range(0.0, 0.0).set(initial_acc);
@@ -560,8 +563,9 @@ TrajectoryExperimental AnalyticalJerkConstrainedSmoother::applyLateralAccelerati
   [[maybe_unused]] const double a0, [[maybe_unused]] const bool enable_smooth_limit,
   const double input_distance_interval) const
 {
+  const auto trajectory_base = trajectory.base_arange(input_distance_interval);
   const auto curvature_v =
-    trajectory_utils::calcTrajectoryCurvatureFrom3Points(trajectory, input_distance_interval);
+    trajectory_utils::calcTrajectoryCurvatureFrom3Points(trajectory, trajectory_base);
 
   const auto lateral_acceleration_velocity_square_ratio_limits =
     computeLateralAccelerationVelocitySquareRatioLimits();
@@ -849,6 +853,15 @@ bool AnalyticalJerkConstrainedSmoother::applyBackwardDecelFilter(
   const double decel_target_vel, const Param & params, TrajectoryPoints & output_trajectory) const
 {
   const double ep = 0.001;
+
+  // Validate trajectory size to prevent bad_alloc
+  constexpr size_t MAX_TRAJECTORY_SIZE = 10000;
+  if (output_trajectory.empty() || output_trajectory.size() > MAX_TRAJECTORY_SIZE) {
+    RCLCPP_ERROR(
+      logger_, "Invalid output_trajectory size: %zu (MAX=%zu)", output_trajectory.size(),
+      MAX_TRAJECTORY_SIZE);
+    return false;
+  }
 
   double output_planning_jerk = -100.0;
   size_t output_start_index = 0;
