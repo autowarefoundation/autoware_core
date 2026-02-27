@@ -21,14 +21,55 @@
 
 #include <boost/geometry/index/rtree.hpp>
 
+#include <lanelet2_core/LaneletMap.h>
 #include <lanelet2_core/primitives/Lanelet.h>
 
 #include <limits>
 #include <optional>
 #include <utility>
+#include <vector>
 
 namespace autoware::experimental::lanelet2_utils
 {
+
+/**
+ * @brief returns the nearest lanelets to `search_pose` considering the 3D distance. The return
+ * vector is sorted by distance.
+ *
+ * @param layer LaneletLayer to search from.
+ * @param search_pose Pose to search for.
+ * @param count Maximum number of nearest lanelets to return. This value must be > 0.
+ * @param r_range Maximum radius to search in meters. This value must be > 0.
+ * @param z_range Maximum height difference to search in meters. This value must be > 0; if z_range
+ * <= 0.0, no height-based filtering is applied.
+ * @return std::vector<std::pair<double, lanelet::ConstLanelet>> Vector of nearest lanelets and
+ * their distances.
+ */
+std::vector<std::pair<double, lanelet::ConstLanelet>> find_nearest(
+  const lanelet::LaneletLayer & layer, const geometry_msgs::msg::Pose & search_pose, size_t count,
+  double r_range, double z_range);
+
+/**
+ * @brief returns the nearest lanelets to `search_pose` considering the 3D distance. The return
+ * vector is sorted by distance.
+ *
+ * Note that fixed lanelet search ranges are specified under the hood:
+ *  - `r_range=20.0[m]`
+ *  - `z_range=2.0[m]`
+ *
+ * @param layer LaneletLayer to search from.
+ * @param search_pose Pose to search for.
+ * @param count Maximum number of nearest lanelets to return. This value must be > 0.
+ * @return std::vector<std::pair<double, lanelet::ConstLanelet>> Vector of nearest lanelets and
+ * their distances.
+ */
+inline std::vector<std::pair<double, lanelet::ConstLanelet>> find_nearest(
+  const lanelet::LaneletLayer & layer, const geometry_msgs::msg::Pose & search_pose, size_t count)
+{
+  constexpr double r_range = 20.0;  // [m]
+  constexpr double z_range = 2.0;   // [m]
+  return find_nearest(layer, search_pose, count, r_range, z_range);
+}
 
 /**
  * @brief returns the closest lanelet to `search_pose`. If several lanelets give zero

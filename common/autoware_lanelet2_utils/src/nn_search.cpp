@@ -27,6 +27,7 @@
 #include <lanelet2_core/geometry/Lanelet.h>
 #include <lanelet2_core/primitives/Lanelet.h>
 
+#include <algorithm>
 #include <limits>
 #include <optional>
 #include <string>
@@ -35,6 +36,102 @@
 
 namespace autoware::experimental::lanelet2_utils
 {
+namespace
+{
+/**
+ * @brief Calculate the delta z between a point and a range. Return 0.0 if the point is within the
+ * range.
+ * @param z The point to calculate the distance from.
+ * @param z_min_max The range to calculate the distance to.
+ * @return The distance between the point and the range.
+ */
+double delta_z_from_range(double z, const std::pair<double, double> & z_min_max)
+{
+  const auto & [z_min, z_max] = z_min_max;
+  if (z < z_min) {
+    return z_min - z;
+  }
+  if (z > z_max) {
+    return z - z_max;
+  }
+  return 0.0;
+}
+
+/**
+ * @brief Calculate the z-range from the bounds of a lanelet.
+ * @param lanelet The lanelet to derive the z-range from.
+ * @return The z-range as a pair of minimum and maximum values, or std::nullopt if the z-range
+ * cannot be determined.
+ */
+std::optional<std::pair<double, double>> find_z_range(const lanelet::ConstLanelet & lanelet)
+{
+  double z_min = std::numeric_limits<double>::infinity();
+  double z_max = -std::numeric_limits<double>::infinity();
+
+  auto update_min_max = [&](const lanelet::ConstLineString3d & linestring) -> void {
+    for (const auto & point : linestring) {
+      z_min = std::min(z_min, point.z());
+      z_max = std::max(z_max, point.z());
+    }
+  };
+
+  update_min_max(lanelet.leftBound());
+  update_min_max(lanelet.rightBound());
+  if (lanelet.hasCustomCenterline()) {
+    update_min_max(lanelet.centerline());
+  }
+  return !std::isfinite(z_min) ? std::nullopt : std::make_optional(std::make_pair(z_min, z_max));
+}
+}  // namespace
+
+std::vector<std::pair<double, lanelet::ConstLanelet>> find_nearest(
+  const lanelet::LaneletLayer & layer, const geometry_msgs::msg::Pose & search_pose, size_t count,
+  double r_range, double z_range)
+{
+  constexpr double epsilon = std::numeric_limits<double>::epsilon();
+  if (count == 0 || r_range < -epsilon || z_range < -epsilon) {
+    return {};
+  }
+
+  std::vector<lanelet::ConstLanelet> candidates;
+  const lanelet::BasicPoint2d min_pt{
+    search_pose.position.x - r_range, search_pose.position.y - r_range};
+  const lanelet::BasicPoint2d max_pt{
+    search_pose.position.x + r_range, search_pose.position.y + r_range};
+  const lanelet::BasicPoint3d query3d = from_ros(search_pose);
+  for (const auto & llt : layer.search(lanelet::BoundingBox2d{min_pt, max_pt})) {
+    if (z_range <= epsilon) {
+      candidates.push_back(llt);
+      continue;
+    }
+    if (const auto z_min_max = find_z_range(llt);
+        z_min_max && delta_z_from_range(query3d.z(), *z_min_max) <= z_range) {
+      candidates.push_back(llt);
+    }
+  }
+
+  if (candidates.empty()) {
+    return {};
+  }
+
+  std::vector<std::pair<double, lanelet::ConstLanelet>> scored;
+  scored.reserve(candidates.size());
+  const lanelet::BasicPoint2d query2d{query3d.x(), query3d.y()};
+  for (const auto & llt : candidates) {
+    scored.emplace_back(lanelet::geometry::distance2d(llt, query2d), llt);
+  }
+
+  if (scored.size() > count) {
+    std::nth_element(
+      scored.begin(), scored.begin() + static_cast<std::ptrdiff_t>(count), scored.end(),
+      [](const auto & a, const auto & b) { return a.first < b.first; });
+    scored.resize(count);
+  }
+  std::sort(
+    scored.begin(), scored.end(), [](const auto & a, const auto & b) { return a.first < b.first; });
+
+  return scored;
+}
 
 std::optional<lanelet::ConstLanelet> get_closest_lanelet(
   const lanelet::ConstLanelets & lanelets, const geometry_msgs::msg::Pose & search_pose)
