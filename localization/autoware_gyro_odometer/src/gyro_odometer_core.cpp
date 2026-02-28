@@ -80,6 +80,16 @@ GyroOdometerNode::GyroOdometerNode(const rclcpp::NodeOptions & node_options)
 void GyroOdometerNode::callback_vehicle_twist(
   const geometry_msgs::msg::TwistWithCovarianceStamped::ConstSharedPtr vehicle_twist_msg_ptr)
 {
+  // Check for invalid velocity data
+  if (
+    std::isnan(vehicle_twist_msg_ptr->twist.twist.linear.x) ||
+    std::isnan(vehicle_twist_msg_ptr->twist.twist.linear.y) ||
+    std::isnan(vehicle_twist_msg_ptr->twist.twist.linear.z)) {
+    RCLCPP_WARN_STREAM_THROTTLE(
+      this->get_logger(), *this->get_clock(), 1000, "Invalid vehicle twist data received!");
+    return;
+  }
+
   vehicle_twist_arrived_ = true;
   latest_vehicle_twist_ros_time_ = vehicle_twist_msg_ptr->header.stamp;
   vehicle_twist_queue_.push_back(*vehicle_twist_msg_ptr);
@@ -88,6 +98,15 @@ void GyroOdometerNode::callback_vehicle_twist(
 
 void GyroOdometerNode::callback_imu(const sensor_msgs::msg::Imu::ConstSharedPtr imu_msg_ptr)
 {
+  // Check for invalid angular velocity data
+  if (
+    std::isnan(imu_msg_ptr->angular_velocity.x) || std::isnan(imu_msg_ptr->angular_velocity.y) ||
+    std::isnan(imu_msg_ptr->angular_velocity.z)) {
+    RCLCPP_WARN_STREAM_THROTTLE(
+      this->get_logger(), *this->get_clock(), 1000, "Invalid IMU angular velocity data received!");
+    return;
+  }
+
   imu_arrived_ = true;
   latest_imu_ros_time_ = imu_msg_ptr->header.stamp;
   gyro_queue_.push_back(*imu_msg_ptr);
