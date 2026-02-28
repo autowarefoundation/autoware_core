@@ -45,7 +45,7 @@ TEST(TestEkfDiagnostics, check_set_initialpose)
 
   is_set_initialpose = false;
   stat = check_set_initialpose(is_set_initialpose);
-  EXPECT_EQ(stat.level, diagnostic_msgs::msg::DiagnosticStatus::WARN);
+  EXPECT_EQ(stat.level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
 }
 
 TEST(TestEkfDiagnostics, check_measurement_updated)
