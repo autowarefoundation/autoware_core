@@ -16,6 +16,8 @@
 #include "autoware_test_utils/autoware_test_utils.hpp"
 #include "utils.hpp"
 
+#include <autoware/trajectory/utils/pretty_build.hpp>
+
 #include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
 #include <autoware_planning_msgs/msg/path_point.hpp>
 #include <geometry_msgs/msg/point.hpp>
@@ -23,6 +25,8 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
 #include <gtest/gtest.h>
+
+#include <vector>
 
 using namespace autoware::behavior_velocity_planner;                  // NOLINT
 using namespace autoware::behavior_velocity_planner::planning_utils;  // NOLINT
@@ -107,6 +111,56 @@ TEST(PlanningUtilsTest, createDetectionAreaPolygons)
 
   // Check the first polygon
   auto & polygon = da_polys.front();
+  EXPECT_EQ(polygon.outer().size(), 7);  // Each polygon should be a rectangle
+
+  // Check some specific points
+  EXPECT_NEAR(polygon.outer()[0].x(), 1.0, 0.1);  // Left inner bound
+  EXPECT_NEAR(polygon.outer()[0].y(), 1.0, 0.1);
+}
+
+TEST(PlanningUtilsTest, createDetectionAreaPolygonsTrajectory)
+{
+  // Input parameters
+  autoware::behavior_velocity_planner::DetectionRange da_range;
+  da_range.min_longitudinal_distance = 1.0;
+  da_range.max_longitudinal_distance = 10.0;
+  da_range.max_lateral_distance = 2.0;
+  da_range.interval = 5.0;
+  da_range.wheel_tread = 1.0;
+  da_range.left_overhang = 0.5;
+  da_range.right_overhang = 0.5;
+  da_range.use_left = true;
+  da_range.use_right = true;
+
+  const auto obstacle_vel_mps = 0.5;
+  const auto min_velocity = 1.0;
+
+  // Path with some points
+  std::vector<PathPointWithLaneId> path_points;
+  for (size_t i = 0; i < 4; ++i) {
+    autoware_internal_planning_msgs::msg::PathPointWithLaneId point;
+    point.point.pose.position.x = i * 5.0;
+    point.point.pose.position.y = 0.0;
+    point.point.longitudinal_velocity_mps = 1.0;
+    path_points.push_back(point);
+  }
+
+  const auto path = *autoware::experimental::trajectory::pretty_build(path_points);
+
+  // Call the function
+  Polygons2d da_polys;
+  const auto success =
+    createDetectionAreaPolygons(da_polys, path, 0, da_range, obstacle_vel_mps, min_velocity);
+
+  // Assert success
+  EXPECT_TRUE(success);
+
+  // Validate results
+  ASSERT_FALSE(da_polys.empty());
+  EXPECT_EQ(da_polys.size(), 4);  // Expect polygons for left and right bounds
+
+  // Check the first polygon
+  const auto & polygon = da_polys.front();
   EXPECT_EQ(polygon.outer().size(), 7);  // Each polygon should be a rectangle
 
   // Check some specific points
