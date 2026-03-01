@@ -10,6 +10,9 @@ Changelog for package autoware_pyplot
   ---------
 * Contributors: Mamoru Sobue
 
+1.7.0 (2026-02-14)
+------------------
+
 1.6.0 (2025-12-30)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

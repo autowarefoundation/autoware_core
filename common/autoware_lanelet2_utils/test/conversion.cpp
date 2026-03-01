@@ -211,6 +211,18 @@ TEST(ArtificialLaneletObjectConstruction, OnePointConstLaneletConstruct)
       const_left_points, const_right_points);
     EXPECT_FALSE(opt.has_value()) << "ConstPoint3d can construct with 1 point.";
   }
+
+  // ConstLineString3d
+  using autoware::experimental::lanelet2_utils::remove_const;
+  lanelet::ConstLineString3d const_left_ls(
+    lanelet::InvalId, {remove_const(const_p1), remove_const(const_p2)});
+  lanelet::ConstLineString3d const_right_ls(lanelet::InvalId, {remove_const(const_p3)});
+
+  {
+    const auto opt =
+      autoware::experimental::lanelet2_utils::create_safe_lanelet(const_left_ls, const_right_ls);
+    EXPECT_FALSE(opt.has_value()) << "ConstLineString3d can construct with 1 point.";
+  }
 }
 
 // Test 11: construct ConstLanelet - Normal
@@ -249,6 +261,26 @@ TEST(ArtificialLaneletObjectConstruction, ConstLaneletConstruct)
     const auto opt = autoware::experimental::lanelet2_utils::create_safe_lanelet(
       const_left_points, const_right_points);
     ASSERT_TRUE(opt.has_value()) << "ConstPoint3d can't construct normally.";
+
+    if (!opt.has_value()) {
+      GTEST_SKIP();
+    }
+    const auto ll = *opt;
+    for (size_t i = 0; i < left_points.size(); ++i) {
+      expect_point_eq(ll.leftBound()[i], left_points[i]);
+      expect_point_eq(ll.rightBound()[i], right_points[i]);
+    }
+  }
+
+  // ConstLineString3d
+  const auto const_left_ls =
+    *autoware::experimental::lanelet2_utils::create_safe_linestring(const_left_points);
+  const auto const_right_ls =
+    *autoware::experimental::lanelet2_utils::create_safe_linestring(const_right_points);
+  {
+    const auto opt =
+      autoware::experimental::lanelet2_utils::create_safe_lanelet(const_left_ls, const_right_ls);
+    ASSERT_TRUE(opt.has_value()) << "ConstLineString3d can't construct normally.";
 
     if (!opt.has_value()) {
       GTEST_SKIP();
