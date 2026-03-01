@@ -202,6 +202,9 @@ MultiGridNormalDistributionsTransform<
   gauss_d3_ = -log(gauss_c2);
   gauss_d1_ = -log(gauss_c1 + gauss_c2) - gauss_d3_;
   gauss_d2_ = -2 * log((-log(gauss_c1 * exp(-0.5) + gauss_c2) - gauss_d3_) / gauss_d1_);
+
+  // Set the search radius in advanced, so we don't have to do radius * radius multiple time
+  target_cells_.setSearchRadius(params_.resolution);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -390,7 +393,7 @@ double MultiGridNormalDistributionsTransform<PointSource, PointTarget>::computeD
     std::vector<TargetGridLeafConstPtr> neighborhood;
 
     // Neighborhood search method other than kdtree is disabled in multigrid_ndt_omp
-    target_cells_.radiusSearch(x_trans_pt, params_.resolution, neighborhood);
+    target_cells_.radiusSearch(x_trans_pt, neighborhood);
 
     if (neighborhood.empty()) {
       continue;
@@ -713,7 +716,7 @@ void MultiGridNormalDistributionsTransform<PointSource, PointTarget>::computeHes
     std::vector<TargetGridLeafConstPtr> neighborhood;
 
     // Neighborhood search method other than kdtree is disabled in multigrid_ndt_omp
-    target_cells_.radiusSearch(x_trans_pt, params_.resolution, neighborhood);
+    target_cells_.radiusSearch(x_trans_pt, neighborhood);
 
     if (neighborhood.empty()) {
       continue;
@@ -1078,7 +1081,7 @@ MultiGridNormalDistributionsTransform<PointSource, PointTarget>::calculateTransf
     std::vector<TargetGridLeafConstPtr> neighborhood;
 
     // Neighborhood search method other than kdtree is disabled in multigrid_ndt_omp
-    target_cells_.radiusSearch(x_trans_pt, params_.resolution, neighborhood);
+    target_cells_.radiusSearch(x_trans_pt, neighborhood);
 
     if (neighborhood.empty()) {
       continue;
@@ -1137,7 +1140,7 @@ double MultiGridNormalDistributionsTransform<PointSource, PointTarget>::
     std::vector<TargetGridLeafConstPtr> neighborhood;
 
     // Neighborhood search method other than kdtree is disabled in multigrid_ndt_omp
-    target_cells_.radiusSearch(x_trans_pt, params_.resolution, neighborhood);
+    target_cells_.radiusSearch(x_trans_pt, neighborhood);
 
     if (neighborhood.empty()) {
       continue;
@@ -1196,7 +1199,7 @@ pcl::PointCloud<pcl::PointXYZI> MultiGridNormalDistributionsTransform<PointSourc
     std::vector<TargetGridLeafConstPtr> neighborhood;
 
     // Neighborhood search method other than kdtree is disabled in multigrid_ndt_omp
-    target_cells_.radiusSearch(x_trans_pt, params_.resolution, neighborhood);
+    target_cells_.radiusSearch(x_trans_pt, neighborhood);
 
     if (neighborhood.empty()) {
       continue;

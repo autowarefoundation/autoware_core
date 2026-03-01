@@ -26,6 +26,7 @@
   <depend>diagnostic_msgs</depend>
   <depend>fmt</depend>
   <depend>geometry_msgs</depend>
+  <depend>libnanoflann-dev</depend>
   <depend>libpcl-all</depend>
   <depend>nav_msgs</depend>
   <depend>pcl_conversions</depend>
