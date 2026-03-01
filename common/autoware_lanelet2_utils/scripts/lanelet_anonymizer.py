@@ -60,7 +60,7 @@ def update_osm_latlon(osm_file, output_file, origin_id):
         print(f"could not find point of id {origin_id}")
         return
 
-    (old_origin_x, old_origin_y) = old_origin_local_xy
+    old_origin_x, old_origin_y = old_origin_local_xy
 
     mgrs_code = mgrs.MGRS().toMGRS(GLOBAL_ORIGIN_LAT, GLOBAL_ORIGIN_LON)
 
