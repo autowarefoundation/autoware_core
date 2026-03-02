@@ -360,19 +360,24 @@ rcl_interfaces::msg::SetParametersResult CropBoxFilter::param_callback(
 
 ValidationResult validate_pointcloud2(const PointCloud2ConstPtr & cloud)
 {
-  auto has_float32_field = [&cloud](const std::string & name) {
-    for (const auto & field : cloud->fields) {
-      if (
-        field.name == name && field.datatype == sensor_msgs::msg::PointField::FLOAT32 &&
-        field.count == 1) {
-        return true;
-      }
-    }
-    return false;
-  };
+  bool has_x = false;
+  bool has_y = false;
+  bool has_z = false;
 
-  if (!has_float32_field("x") || !has_float32_field("y") || !has_float32_field("z")) {
-    return {false, "The pointcloud does not have the required x, y, z FLOAT32 fields. Aborting"};
+  for (const auto & field : cloud->fields) {
+    if (field.datatype != sensor_msgs::msg::PointField::FLOAT32) {
+      continue;
+    }
+    if (field.name == "x")
+      has_x = true;
+    else if (field.name == "y")
+      has_y = true;
+    else if (field.name == "z")
+      has_z = true;
+  }
+
+  if (!has_x || !has_y || !has_z) {
+    return {false, "The pointcloud does not have the required x, y, z FLOAT32 fields."};
   }
 
   // verify the total size of the point cloud
