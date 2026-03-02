@@ -19,7 +19,6 @@
 #include <tf2_eigen/tf2_eigen.hpp>
 
 #include <memory>
-#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -356,41 +355,6 @@ rcl_interfaces::msg::SetParametersResult CropBoxFilter::param_callback(
   result.reason = "success";
 
   return result;
-}
-
-ValidationResult validate_pointcloud2(const PointCloud2ConstPtr & cloud)
-{
-  bool has_x = false;
-  bool has_y = false;
-  bool has_z = false;
-
-  for (const auto & field : cloud->fields) {
-    if (field.datatype != sensor_msgs::msg::PointField::FLOAT32) {
-      continue;
-    }
-    if (field.name == "x")
-      has_x = true;
-    else if (field.name == "y")
-      has_y = true;
-    else if (field.name == "z")
-      has_z = true;
-  }
-
-  if (!has_x || !has_y || !has_z) {
-    return {false, "The pointcloud does not have the required x, y, z FLOAT32 fields."};
-  }
-
-  // verify the total size of the point cloud
-  if (cloud->width * cloud->height * cloud->point_step != cloud->data.size()) {
-    std::ostringstream oss;
-    oss << "Invalid PointCloud (data = " << cloud->data.size() << ", width = " << cloud->width
-        << ", height = " << cloud->height << ", step = " << cloud->point_step << ") with stamp "
-        << rclcpp::Time(cloud->header.stamp).seconds() << ", and frame " << cloud->header.frame_id
-        << " received!";
-    return {false, oss.str()};
-  }
-
-  return {true, ""};
 }
 
 }  // namespace autoware::crop_box_filter

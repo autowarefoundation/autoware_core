@@ -17,6 +17,8 @@
 #ifndef CROP_BOX_FILTER_NODE_HPP_
 #define CROP_BOX_FILTER_NODE_HPP_
 
+#include "crop_box_filter.hpp"
+
 #include <Eigen/Eigen>
 #include <autoware_utils_debug/debug_publisher.hpp>
 #include <autoware_utils_debug/published_time_publisher.hpp>
@@ -24,26 +26,14 @@
 #include <autoware_utils_tf/transform_listener.hpp>
 
 #include <geometry_msgs/msg/polygon_stamped.hpp>
-#include <sensor_msgs/msg/point_cloud2.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
 
 #include <memory>
 #include <string>
 #include <vector>
 
-using PointCloud2 = sensor_msgs::msg::PointCloud2;
-using PointCloud2ConstPtr = sensor_msgs::msg::PointCloud2::ConstSharedPtr;
-
 namespace autoware::crop_box_filter
 {
-
-struct ValidationResult
-{
-  bool is_valid;
-  std::string reason;
-};
-
-ValidationResult validate_pointcloud2(const PointCloud2ConstPtr & cloud);
 
 class CropBoxFilter : public rclcpp::Node
 {
