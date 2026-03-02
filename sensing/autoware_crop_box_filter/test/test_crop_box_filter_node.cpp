@@ -249,6 +249,68 @@ TEST(CropBoxFilterTest, FilterExcludePointsOutsideBoxWhenPositive)
   run_crop_box_filter_test(params, input_points, expected_points);
 }
 
+sensor_msgs::msg::PointCloud2 make_cloud(
+  std::vector<sensor_msgs::msg::PointField> fields, uint32_t point_step, uint32_t n_points = 1)
+{
+  sensor_msgs::msg::PointCloud2 cloud;
+  cloud.fields = fields;
+  cloud.point_step = point_step;
+  cloud.width = n_points;
+  cloud.height = 1;
+  cloud.row_step = point_step * n_points;
+  cloud.data.resize(point_step * n_points, 0);
+  return cloud;
+}
+
+sensor_msgs::msg::PointField make_field(
+  const std::string & name, uint32_t offset, uint8_t datatype, uint32_t count = 1)
+{
+  sensor_msgs::msg::PointField f;
+  f.name = name;
+  f.offset = offset;
+  f.datatype = datatype;
+  f.count = count;
+  return f;
+}
+
+TEST(IsPointCloudValidForCropBoxFilterTest, AcceptsXyzOnly)
+{
+  auto node = create_crop_box_filter_node(CropBoxParams{});
+  auto cloud = make_cloud(
+    {make_field("x", 0, sensor_msgs::msg::PointField::FLOAT32),
+     make_field("y", 4, sensor_msgs::msg::PointField::FLOAT32),
+     make_field("z", 8, sensor_msgs::msg::PointField::FLOAT32)},
+    12);
+  auto ptr = std::make_shared<sensor_msgs::msg::PointCloud2>(cloud);
+  EXPECT_TRUE(node->is_valid(ptr));
+}
+
+TEST(IsPointCloudValidForCropBoxFilterTest, AcceptsXyzirc)
+{
+  auto node = create_crop_box_filter_node(CropBoxParams{});
+  auto cloud = make_cloud(
+    {make_field("x", 0, sensor_msgs::msg::PointField::FLOAT32),
+     make_field("y", 4, sensor_msgs::msg::PointField::FLOAT32),
+     make_field("z", 8, sensor_msgs::msg::PointField::FLOAT32),
+     make_field("intensity", 12, sensor_msgs::msg::PointField::UINT8),
+     make_field("return_type", 13, sensor_msgs::msg::PointField::UINT8),
+     make_field("channel", 14, sensor_msgs::msg::PointField::UINT16)},
+    16);
+  auto ptr = std::make_shared<sensor_msgs::msg::PointCloud2>(cloud);
+  EXPECT_TRUE(node->is_valid(ptr));
+}
+
+TEST(IsPointCloudValidForCropBoxFilterTest, RejectsMissingZ)
+{
+  auto node = create_crop_box_filter_node(CropBoxParams{});
+  auto cloud = make_cloud(
+    {make_field("x", 0, sensor_msgs::msg::PointField::FLOAT32),
+     make_field("y", 4, sensor_msgs::msg::PointField::FLOAT32)},
+    8);
+  auto ptr = std::make_shared<sensor_msgs::msg::PointCloud2>(cloud);
+  EXPECT_FALSE(node->is_valid(ptr));
+}
+
 int main(int argc, char ** argv)
 {
   rclcpp::init(0, nullptr);
