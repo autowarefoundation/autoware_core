@@ -19,6 +19,7 @@
 #include <tf2_eigen/tf2_eigen.hpp>
 
 #include <memory>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -230,8 +231,9 @@ void CropBoxFilter::filter_pointcloud(const PointCloud2ConstPtr & cloud, PointCl
 void CropBoxFilter::pointcloud_callback(const PointCloud2ConstPtr cloud)
 {
   // check whether the pointcloud is valid
-  if (!is_valid(cloud)) {
-    RCLCPP_ERROR(this->get_logger(), "[input_pointcloud_callback] Invalid input pointcloud!");
+  const auto validation = is_valid(cloud);
+  if (!validation.is_valid) {
+    RCLCPP_ERROR(this->get_logger(), "[input_pointcloud_callback] %s", validation.reason.c_str());
     return;
   }
 
@@ -356,7 +358,7 @@ rcl_interfaces::msg::SetParametersResult CropBoxFilter::param_callback(
   return result;
 }
 
-bool CropBoxFilter::is_valid(const PointCloud2ConstPtr & cloud)
+CropBoxFilter::ValidationResult CropBoxFilter::is_valid(const PointCloud2ConstPtr & cloud)
 {
   auto has_float32_field = [&cloud](const std::string & name) {
     for (const auto & field : cloud->fields) {
@@ -370,22 +372,20 @@ bool CropBoxFilter::is_valid(const PointCloud2ConstPtr & cloud)
   };
 
   if (!has_float32_field("x") || !has_float32_field("y") || !has_float32_field("z")) {
-    RCLCPP_ERROR(
-      get_logger(), "The pointcloud does not have the required x, y, z FLOAT32 fields. Aborting");
-    return false;
+    return {false, "The pointcloud does not have the required x, y, z FLOAT32 fields. Aborting"};
   }
 
   // verify the total size of the point cloud
   if (cloud->width * cloud->height * cloud->point_step != cloud->data.size()) {
-    RCLCPP_WARN(
-      this->get_logger(),
-      "Invalid PointCloud (data = %zu, width = %d, height = %d, step = %d) with stamp %f, "
-      "and frame %s received!",
-      cloud->data.size(), cloud->width, cloud->height, cloud->point_step,
-      rclcpp::Time(cloud->header.stamp).seconds(), cloud->header.frame_id.c_str());
-    return false;
+    std::ostringstream oss;
+    oss << "Invalid PointCloud (data = " << cloud->data.size() << ", width = " << cloud->width
+        << ", height = " << cloud->height << ", step = " << cloud->point_step << ") with stamp "
+        << rclcpp::Time(cloud->header.stamp).seconds() << ", and frame " << cloud->header.frame_id
+        << " received!";
+    return {false, oss.str()};
   }
-  return true;
+
+  return {true, ""};
 }
 
 }  // namespace autoware::crop_box_filter

@@ -118,10 +118,16 @@ private:
     return false;
   }
 
+  struct ValidationResult
+  {
+    bool is_valid;
+    std::string reason;
+  };
+
 public:
   explicit CropBoxFilter(const rclcpp::NodeOptions & node_options);
   void filter_pointcloud(const PointCloud2ConstPtr & cloud, PointCloud2 & output);
-  bool is_valid(const PointCloud2ConstPtr & cloud);
+  ValidationResult is_valid(const PointCloud2ConstPtr & cloud);
 };
 }  // namespace autoware::crop_box_filter
 
