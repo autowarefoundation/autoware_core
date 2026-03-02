@@ -32,12 +32,16 @@ static ValidationResult validate_xyz_fields(const PointCloud2 & cloud)
     if (field.datatype != sensor_msgs::msg::PointField::FLOAT32) {
       continue;
     }
-    if (field.name == "x")
+
+    if (field.name == "x") {
       has_x = true;
-    else if (field.name == "y")
+    } else if (field.name == "y") {
       has_y = true;
-    else if (field.name == "z")
+    } else if (field.name == "z") {
       has_z = true;
+    }
+
+    if (has_x && has_y && has_z) break;
   }
 
   if (!has_x || !has_y || !has_z) {
