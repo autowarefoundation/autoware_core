@@ -37,6 +37,14 @@ using PointCloud2ConstPtr = sensor_msgs::msg::PointCloud2::ConstSharedPtr;
 namespace autoware::crop_box_filter
 {
 
+struct ValidationResult
+{
+  bool is_valid;
+  std::string reason;
+};
+
+ValidationResult validate_pointcloud2(const PointCloud2ConstPtr & cloud);
+
 class CropBoxFilter : public rclcpp::Node
 {
 private:
@@ -118,16 +126,9 @@ private:
     return false;
   }
 
-  struct ValidationResult
-  {
-    bool is_valid;
-    std::string reason;
-  };
-
 public:
   explicit CropBoxFilter(const rclcpp::NodeOptions & node_options);
   void filter_pointcloud(const PointCloud2ConstPtr & cloud, PointCloud2 & output);
-  ValidationResult is_valid(const PointCloud2ConstPtr & cloud);
 };
 }  // namespace autoware::crop_box_filter
 

@@ -231,9 +231,9 @@ void CropBoxFilter::filter_pointcloud(const PointCloud2ConstPtr & cloud, PointCl
 void CropBoxFilter::pointcloud_callback(const PointCloud2ConstPtr cloud)
 {
   // check whether the pointcloud is valid
-  const auto validation = is_valid(cloud);
-  if (!validation.is_valid) {
-    RCLCPP_ERROR(this->get_logger(), "[input_pointcloud_callback] %s", validation.reason.c_str());
+  const ValidationResult result = validate_pointcloud2(cloud);
+  if (!result.is_valid) {
+    RCLCPP_ERROR(this->get_logger(), "[input_pointcloud_callback] %s", result.reason.c_str());
     return;
   }
 
@@ -358,7 +358,7 @@ rcl_interfaces::msg::SetParametersResult CropBoxFilter::param_callback(
   return result;
 }
 
-CropBoxFilter::ValidationResult CropBoxFilter::is_valid(const PointCloud2ConstPtr & cloud)
+ValidationResult validate_pointcloud2(const PointCloud2ConstPtr & cloud)
 {
   auto has_float32_field = [&cloud](const std::string & name) {
     for (const auto & field : cloud->fields) {

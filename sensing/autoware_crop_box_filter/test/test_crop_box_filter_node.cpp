@@ -275,19 +275,17 @@ sensor_msgs::msg::PointField make_field(
 
 TEST(IsPointCloudValidForCropBoxFilterTest, AcceptsXyzOnly)
 {
-  auto node = create_crop_box_filter_node(CropBoxParams{});
   auto cloud = make_cloud(
     {make_field("x", 0, sensor_msgs::msg::PointField::FLOAT32),
      make_field("y", 4, sensor_msgs::msg::PointField::FLOAT32),
      make_field("z", 8, sensor_msgs::msg::PointField::FLOAT32)},
     12);
   auto ptr = std::make_shared<sensor_msgs::msg::PointCloud2>(cloud);
-  EXPECT_TRUE(node->is_valid(ptr).is_valid);
+  EXPECT_TRUE(autoware::crop_box_filter::validate_pointcloud2(ptr).is_valid);
 }
 
 TEST(IsPointCloudValidForCropBoxFilterTest, AcceptsXyzirc)
 {
-  auto node = create_crop_box_filter_node(CropBoxParams{});
   auto cloud = make_cloud(
     {make_field("x", 0, sensor_msgs::msg::PointField::FLOAT32),
      make_field("y", 4, sensor_msgs::msg::PointField::FLOAT32),
@@ -297,18 +295,17 @@ TEST(IsPointCloudValidForCropBoxFilterTest, AcceptsXyzirc)
      make_field("channel", 14, sensor_msgs::msg::PointField::UINT16)},
     16);
   auto ptr = std::make_shared<sensor_msgs::msg::PointCloud2>(cloud);
-  EXPECT_TRUE(node->is_valid(ptr).is_valid);
+  EXPECT_TRUE(autoware::crop_box_filter::validate_pointcloud2(ptr).is_valid);
 }
 
 TEST(IsPointCloudValidForCropBoxFilterTest, RejectsMissingZ)
 {
-  auto node = create_crop_box_filter_node(CropBoxParams{});
   auto cloud = make_cloud(
     {make_field("x", 0, sensor_msgs::msg::PointField::FLOAT32),
      make_field("y", 4, sensor_msgs::msg::PointField::FLOAT32)},
     8);
   auto ptr = std::make_shared<sensor_msgs::msg::PointCloud2>(cloud);
-  EXPECT_FALSE(node->is_valid(ptr).is_valid);
+  EXPECT_FALSE(autoware::crop_box_filter::validate_pointcloud2(ptr).is_valid);
 }
 
 int main(int argc, char ** argv)
