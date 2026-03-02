@@ -144,9 +144,9 @@ void CropBoxFilter::filter_pointcloud(const PointCloud2ConstPtr & cloud, PointCl
   output.data.resize(cloud->data.size());
 
   // create output iterators for writing transformed coordinates
-  sensor_msgs::PointCloud2Iterator<float> out_x(output, "x");
-  sensor_msgs::PointCloud2Iterator<float> out_y(output, "y");
-  sensor_msgs::PointCloud2Iterator<float> out_z(output, "z");
+  sensor_msgs::PointCloud2Iterator<float> output_x(output, "x");
+  sensor_msgs::PointCloud2Iterator<float> output_y(output, "y");
+  sensor_msgs::PointCloud2Iterator<float> output_z(output, "z");
 
   size_t output_size = 0;
   int skipped_count = 0;
@@ -191,18 +191,18 @@ void CropBoxFilter::filter_pointcloud(const PointCloud2ConstPtr & cloud, PointCl
       // overwrite x, y, z with transformed coordinates using output iterators
       if (need_postprocess_transform_) {
         Eigen::Vector4f point_postprocessed = eigen_transform_postprocess_ * point_preprocessed;
-        *out_x = point_postprocessed[0];
-        *out_y = point_postprocessed[1];
-        *out_z = point_postprocessed[2];
+        *output_x = point_postprocessed[0];
+        *output_y = point_postprocessed[1];
+        *output_z = point_postprocessed[2];
       } else if (need_preprocess_transform_) {
-        *out_x = point_preprocessed[0];
-        *out_y = point_preprocessed[1];
-        *out_z = point_preprocessed[2];
+        *output_x = point_preprocessed[0];
+        *output_y = point_preprocessed[1];
+        *output_z = point_preprocessed[2];
       }
 
-      ++out_x;
-      ++out_y;
-      ++out_z;
+      ++output_x;
+      ++output_y;
+      ++output_z;
       output_size += cloud->point_step;
     }
   }
