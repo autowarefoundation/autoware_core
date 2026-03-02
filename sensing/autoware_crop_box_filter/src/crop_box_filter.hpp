@@ -1,5 +1,3 @@
-// Copyright(c) 2025 AutoCore Technology (Nanjing) Co., Ltd. All rights reserved.
-//
 // Copyright 2026 TIER IV, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
