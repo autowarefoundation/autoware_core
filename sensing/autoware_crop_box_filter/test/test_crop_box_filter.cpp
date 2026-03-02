@@ -16,7 +16,6 @@
 
 #include <gtest/gtest.h>
 
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -46,41 +45,41 @@ sensor_msgs::msg::PointField make_field(
 
 TEST(ValidatePointCloud2Test, AcceptsXyzOnly)
 {
-  const auto cloud = std::make_shared<sensor_msgs::msg::PointCloud2>(make_cloud(
+  const auto cloud = make_cloud(
     {make_field("x", 0, sensor_msgs::msg::PointField::FLOAT32),
      make_field("y", 4, sensor_msgs::msg::PointField::FLOAT32),
      make_field("z", 8, sensor_msgs::msg::PointField::FLOAT32)},
-    12));
+    12);
 
-  const auto result = autoware::crop_box_filter::validate_pointcloud2(*cloud);
+  const auto result = autoware::crop_box_filter::validate_pointcloud2(cloud);
 
   EXPECT_TRUE(result.is_valid);
 }
 
 TEST(ValidatePointCloud2Test, AcceptsXyzirc)
 {
-  const auto cloud = std::make_shared<sensor_msgs::msg::PointCloud2>(make_cloud(
+  const auto cloud = make_cloud(
     {make_field("x", 0, sensor_msgs::msg::PointField::FLOAT32),
      make_field("y", 4, sensor_msgs::msg::PointField::FLOAT32),
      make_field("z", 8, sensor_msgs::msg::PointField::FLOAT32),
      make_field("intensity", 12, sensor_msgs::msg::PointField::UINT8),
      make_field("return_type", 13, sensor_msgs::msg::PointField::UINT8),
      make_field("channel", 14, sensor_msgs::msg::PointField::UINT16)},
-    16));
+    16);
 
-  const auto result = autoware::crop_box_filter::validate_pointcloud2(*cloud);
+  const auto result = autoware::crop_box_filter::validate_pointcloud2(cloud);
 
   EXPECT_TRUE(result.is_valid);
 }
 
 TEST(ValidatePointCloud2Test, RejectsMissingZ)
 {
-  const auto cloud = std::make_shared<sensor_msgs::msg::PointCloud2>(make_cloud(
+  const auto cloud = make_cloud(
     {make_field("x", 0, sensor_msgs::msg::PointField::FLOAT32),
      make_field("y", 4, sensor_msgs::msg::PointField::FLOAT32)},
-    8));
+    8);
 
-  const auto result = autoware::crop_box_filter::validate_pointcloud2(*cloud);
+  const auto result = autoware::crop_box_filter::validate_pointcloud2(cloud);
 
   EXPECT_FALSE(result.is_valid);
 }
