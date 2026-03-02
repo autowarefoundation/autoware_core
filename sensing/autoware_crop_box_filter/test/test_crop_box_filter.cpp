@@ -14,8 +14,6 @@
 
 #include "crop_box_filter.hpp"
 
-#include <rclcpp/rclcpp.hpp>
-
 #include <gtest/gtest.h>
 
 #include <memory>
@@ -89,7 +87,6 @@ TEST(ValidatePointCloud2Test, RejectsMissingZ)
 
 int main(int argc, char ** argv)
 {
-  rclcpp::init(0, nullptr);
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
