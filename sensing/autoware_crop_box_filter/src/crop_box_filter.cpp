@@ -50,7 +50,7 @@ static ValidationResult validate_data_size(const PointCloud2 & cloud)
 {
   if (cloud.width * cloud.height * cloud.point_step != cloud.data.size()) {
     std::ostringstream oss;
-    oss << "Invalid PointCloud (data = " << cloud.data.size() << ", width = " << cloud.width
+    oss << "Invalid PointCloud (data.size = " << cloud.data.size() << ", width = " << cloud.width
         << ", height = " << cloud.height << ", step = " << cloud.point_step << ") with stamp "
         << cloud.header.stamp.sec + cloud.header.stamp.nanosec * 1e-9 << ", and frame "
         << cloud.header.frame_id << " received!";
