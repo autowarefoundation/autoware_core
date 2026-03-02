@@ -16,8 +16,6 @@
 
 #include "crop_box_filter.hpp"
 
-#include <rclcpp/rclcpp.hpp>
-
 #include <sensor_msgs/msg/point_field.hpp>
 
 #include <memory>
@@ -53,8 +51,8 @@ ValidationResult validate_pointcloud2(const PointCloud2ConstPtr & cloud)
     std::ostringstream oss;
     oss << "Invalid PointCloud (data = " << cloud->data.size() << ", width = " << cloud->width
         << ", height = " << cloud->height << ", step = " << cloud->point_step << ") with stamp "
-        << rclcpp::Time(cloud->header.stamp).seconds() << ", and frame " << cloud->header.frame_id
-        << " received!";
+        << cloud->header.stamp.sec + cloud->header.stamp.nanosec * 1e-9 << ", and frame "
+        << cloud->header.frame_id << " received!";
     return {false, oss.str()};
   }
 
