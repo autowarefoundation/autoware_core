@@ -31,7 +31,7 @@ struct ValidationResult
   std::string reason;
 };
 
-ValidationResult validate_pointcloud2(const PointCloud2ConstPtr & cloud);
+ValidationResult validate_pointcloud2(const PointCloud2 & cloud);
 
 }  // namespace autoware::crop_box_filter
 

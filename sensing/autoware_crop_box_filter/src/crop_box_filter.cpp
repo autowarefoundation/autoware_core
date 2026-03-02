@@ -22,13 +22,13 @@
 namespace autoware::crop_box_filter
 {
 
-static ValidationResult validate_xyz_fields(const PointCloud2ConstPtr & cloud)
+static ValidationResult validate_xyz_fields(const PointCloud2 & cloud)
 {
   bool has_x = false;
   bool has_y = false;
   bool has_z = false;
 
-  for (const auto & field : cloud->fields) {
+  for (const auto & field : cloud.fields) {
     if (field.datatype != sensor_msgs::msg::PointField::FLOAT32) {
       continue;
     }
@@ -46,20 +46,20 @@ static ValidationResult validate_xyz_fields(const PointCloud2ConstPtr & cloud)
   return {true, ""};
 }
 
-static ValidationResult validate_data_size(const PointCloud2ConstPtr & cloud)
+static ValidationResult validate_data_size(const PointCloud2 & cloud)
 {
-  if (cloud->width * cloud->height * cloud->point_step != cloud->data.size()) {
+  if (cloud.width * cloud.height * cloud.point_step != cloud.data.size()) {
     std::ostringstream oss;
-    oss << "Invalid PointCloud (data = " << cloud->data.size() << ", width = " << cloud->width
-        << ", height = " << cloud->height << ", step = " << cloud->point_step << ") with stamp "
-        << cloud->header.stamp.sec + cloud->header.stamp.nanosec * 1e-9 << ", and frame "
-        << cloud->header.frame_id << " received!";
+    oss << "Invalid PointCloud (data = " << cloud.data.size() << ", width = " << cloud.width
+        << ", height = " << cloud.height << ", step = " << cloud.point_step << ") with stamp "
+        << cloud.header.stamp.sec + cloud.header.stamp.nanosec * 1e-9 << ", and frame "
+        << cloud.header.frame_id << " received!";
     return {false, oss.str()};
   }
   return {true, ""};
 }
 
-ValidationResult validate_pointcloud2(const PointCloud2ConstPtr & cloud)
+ValidationResult validate_pointcloud2(const PointCloud2 & cloud)
 {
   const ValidationResult xyz_validation_result = validate_xyz_fields(cloud);
   if (!xyz_validation_result.is_valid) {

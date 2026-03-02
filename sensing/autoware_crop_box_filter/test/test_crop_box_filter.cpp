@@ -52,7 +52,7 @@ TEST(ValidatePointCloud2Test, AcceptsXyzOnly)
      make_field("z", 8, sensor_msgs::msg::PointField::FLOAT32)},
     12));
 
-  const auto result = autoware::crop_box_filter::validate_pointcloud2(cloud);
+  const auto result = autoware::crop_box_filter::validate_pointcloud2(*cloud);
 
   EXPECT_TRUE(result.is_valid);
 }
@@ -68,7 +68,7 @@ TEST(ValidatePointCloud2Test, AcceptsXyzirc)
      make_field("channel", 14, sensor_msgs::msg::PointField::UINT16)},
     16));
 
-  const auto result = autoware::crop_box_filter::validate_pointcloud2(cloud);
+  const auto result = autoware::crop_box_filter::validate_pointcloud2(*cloud);
 
   EXPECT_TRUE(result.is_valid);
 }
@@ -80,7 +80,7 @@ TEST(ValidatePointCloud2Test, RejectsMissingZ)
      make_field("y", 4, sensor_msgs::msg::PointField::FLOAT32)},
     8));
 
-  const auto result = autoware::crop_box_filter::validate_pointcloud2(cloud);
+  const auto result = autoware::crop_box_filter::validate_pointcloud2(*cloud);
 
   EXPECT_FALSE(result.is_valid);
 }
