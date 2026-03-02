@@ -16,7 +16,6 @@
 
 #include <sensor_msgs/msg/point_field.hpp>
 
-#include <memory>
 #include <sstream>
 
 namespace autoware::crop_box_filter
