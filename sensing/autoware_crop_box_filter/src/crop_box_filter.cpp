@@ -22,7 +22,7 @@
 namespace autoware::crop_box_filter
 {
 
-ValidationResult validate_pointcloud2(const PointCloud2ConstPtr & cloud)
+static ValidationResult validate_xyz_fields(const PointCloud2ConstPtr & cloud)
 {
   bool has_x = false;
   bool has_y = false;
@@ -43,8 +43,11 @@ ValidationResult validate_pointcloud2(const PointCloud2ConstPtr & cloud)
   if (!has_x || !has_y || !has_z) {
     return {false, "The pointcloud does not have the required x, y, z FLOAT32 fields."};
   }
+  return {true, ""};
+}
 
-  // verify the total size of the point cloud
+static ValidationResult validate_data_size(const PointCloud2ConstPtr & cloud)
+{
   if (cloud->width * cloud->height * cloud->point_step != cloud->data.size()) {
     std::ostringstream oss;
     oss << "Invalid PointCloud (data = " << cloud->data.size() << ", width = " << cloud->width
@@ -53,7 +56,19 @@ ValidationResult validate_pointcloud2(const PointCloud2ConstPtr & cloud)
         << cloud->header.frame_id << " received!";
     return {false, oss.str()};
   }
+  return {true, ""};
+}
 
+ValidationResult validate_pointcloud2(const PointCloud2ConstPtr & cloud)
+{
+  const ValidationResult xyz_validation_result = validate_xyz_fields(cloud);
+  if (!xyz_validation_result.is_valid) {
+    return xyz_validation_result;
+  }
+  const ValidationResult data_size_validation_result = validate_data_size(cloud);
+  if (!data_size_validation_result.is_valid) {
+    return data_size_validation_result;
+  }
   return {true, ""};
 }
 
