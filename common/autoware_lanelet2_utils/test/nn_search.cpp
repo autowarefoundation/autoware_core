@@ -39,10 +39,9 @@ protected:
       "test_data" / "test_nn_search_001.yaml";
     const auto test_case_data = autoware::test_utils::load_test_case(test_case_path.string());
 
-    lanelet::LaneletMapConstPtr lanelet_map =
-      lanelet2_utils::load_mgrs_coordinate_map(test_case_data.map_abs_path);
+    lanelet_map_ptr_ = lanelet2_utils::load_mgrs_coordinate_map(test_case_data.map_abs_path);
 
-    all_lanelets_ = lanelet_map->laneletLayer | ranges::to<std::vector>();
+    all_lanelets_ = lanelet_map_ptr_->laneletLayer | ranges::to<std::vector>();
     rtree_.emplace(lanelet2_utils::LaneletRTree(all_lanelets_));
 
     P0 = test_case_data.manual_poses.at("P0");
@@ -60,12 +59,61 @@ protected:
   geometry_msgs::msg::Pose P4;
   geometry_msgs::msg::Pose P5;
 
+  lanelet::LaneletMapConstPtr lanelet_map_ptr_;
   lanelet::ConstLanelets all_lanelets_;
   std::optional<lanelet2_utils::LaneletRTree> rtree_{};
 
   static constexpr double ego_nearest_dist_threshold = 3.0;
   static constexpr double ego_nearest_yaw_threshold = 1.046;
 };
+
+TEST_F(TestNNSearch001, find_nearest_against_P0)
+{
+  const auto nearests = lanelet2_utils::find_nearest(lanelet_map_ptr_->laneletLayer, P0, 1);
+  ASSERT_EQ(nearests.size(), 1);
+
+  ASSERT_EQ(nearests.front().second.id(), 2246);
+}
+
+TEST_F(TestNNSearch001, find_nearest_against_P1)
+{
+  const auto nearests = lanelet2_utils::find_nearest(lanelet_map_ptr_->laneletLayer, P1, 1);
+  ASSERT_EQ(nearests.size(), 1);
+
+  ASSERT_EQ(nearests.front().second.id(), 2267);
+}
+
+TEST_F(TestNNSearch001, find_nearest_against_P2)
+{
+  const auto nearests = lanelet2_utils::find_nearest(lanelet_map_ptr_->laneletLayer, P2, 1);
+  ASSERT_EQ(nearests.size(), 1);
+
+  ASSERT_EQ(nearests.front().second.id(), 2262);
+}
+
+TEST_F(TestNNSearch001, find_nearest_against_P3)
+{
+  const auto nearests = lanelet2_utils::find_nearest(lanelet_map_ptr_->laneletLayer, P3, 1);
+  ASSERT_EQ(nearests.size(), 1);
+
+  ASSERT_EQ(nearests.front().second.id(), 2312);
+}
+
+TEST_F(TestNNSearch001, find_nearest_against_P4)
+{
+  const auto nearests = lanelet2_utils::find_nearest(lanelet_map_ptr_->laneletLayer, P4, 1);
+  ASSERT_EQ(nearests.size(), 1);
+
+  ASSERT_EQ(nearests.front().second.id(), 2312);
+}
+
+TEST_F(TestNNSearch001, find_nearest_against_P5)
+{
+  const auto nearests = lanelet2_utils::find_nearest(lanelet_map_ptr_->laneletLayer, P5, 1);
+  ASSERT_EQ(nearests.size(), 1);
+
+  ASSERT_EQ(nearests.front().second.id(), 2311);
+}
 
 TEST_F(TestNNSearch001, get_closest_against_P0)
 {
@@ -307,10 +355,9 @@ protected:
       "test_data" / "test_nn_search_002.yaml";
     const auto test_case_data = autoware::test_utils::load_test_case(test_case_path.string());
 
-    lanelet::LaneletMapConstPtr lanelet_map =
-      lanelet2_utils::load_mgrs_coordinate_map(test_case_data.map_abs_path);
+    lanelet_map_ptr_ = lanelet2_utils::load_mgrs_coordinate_map(test_case_data.map_abs_path);
 
-    all_lanelets_ = lanelet_map->laneletLayer | ranges::to<std::vector>();
+    all_lanelets_ = lanelet_map_ptr_->laneletLayer | ranges::to<std::vector>();
     rtree_.emplace(lanelet2_utils::LaneletRTree(all_lanelets_));
 
     P0 = test_case_data.manual_poses.at("P0");
@@ -322,12 +369,37 @@ protected:
   geometry_msgs::msg::Pose P1;
   geometry_msgs::msg::Pose P2;
 
+  lanelet::LaneletMapConstPtr lanelet_map_ptr_;
   lanelet::ConstLanelets all_lanelets_;
   std::optional<lanelet2_utils::LaneletRTree> rtree_;
 
   static constexpr double ego_nearest_dist_threshold = 3.0;
   static constexpr double ego_nearest_yaw_threshold = 1.046;
 };
+
+TEST_F(TestNNSearch002, find_nearest_against_P0)
+{
+  const auto nearests = lanelet2_utils::find_nearest(lanelet_map_ptr_->laneletLayer, P0, 1);
+  ASSERT_EQ(nearests.size(), 1);
+
+  ASSERT_EQ(nearests.front().second.id(), 2270);
+}
+
+TEST_F(TestNNSearch002, find_nearest_against_P1)
+{
+  const auto nearests = lanelet2_utils::find_nearest(lanelet_map_ptr_->laneletLayer, P1, 1);
+  ASSERT_EQ(nearests.size(), 1);
+
+  ASSERT_EQ(nearests.front().second.id(), 2292);
+}
+
+TEST_F(TestNNSearch002, find_nearest_against_P2)
+{
+  const auto nearests = lanelet2_utils::find_nearest(lanelet_map_ptr_->laneletLayer, P2, 1);
+  ASSERT_EQ(nearests.size(), 1);
+
+  ASSERT_EQ(nearests.front().second.id(), 2268);
+}
 
 TEST_F(TestNNSearch002, get_closest_against_P0)
 {
