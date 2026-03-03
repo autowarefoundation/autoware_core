@@ -160,7 +160,11 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr filter_by_multi_trajectory_polygon(
       bg::envelope(one_step_polygon, bbox);
 
       std::vector<BoostValue> result_s;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+      // on NVIDIA DRIVE AGX Thor, boost::geometry triggers a false positive warning
       rtree.query(bgi::intersects(bbox), std::back_inserter(result_s));
+#pragma GCC diagnostic pop
 
       for (const auto & val : result_s) {
         const BoostPoint2D & pt = val.first;
