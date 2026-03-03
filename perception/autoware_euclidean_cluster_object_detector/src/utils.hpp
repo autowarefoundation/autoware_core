@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#ifndef UTILS_HPP_
+#define UTILS_HPP_
 
 #include <autoware_perception_msgs/msg/detected_objects.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
@@ -36,3 +37,5 @@ void convertClusters2SensorMsg(
   const std_msgs::msg::Header & header, const std::vector<pcl::PointCloud<pcl::PointXYZ>> & input,
   sensor_msgs::msg::PointCloud2 & output);
 }  // namespace autoware::euclidean_cluster
+
+#endif  // UTILS_HPP_

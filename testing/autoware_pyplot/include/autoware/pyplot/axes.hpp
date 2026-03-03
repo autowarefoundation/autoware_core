@@ -35,6 +35,14 @@ public:
     const pybind11::tuple & args = pybind11::tuple(),
     const pybind11::dict & kwargs = pybind11::dict()) const;
 
+  PyObjectWrapper axhline(
+    const pybind11::tuple & args = pybind11::tuple(),
+    const pybind11::dict & kwargs = pybind11::dict()) const;
+
+  PyObjectWrapper axvline(
+    const pybind11::tuple & args = pybind11::tuple(),
+    const pybind11::dict & kwargs = pybind11::dict()) const;
+
   PyObjectWrapper bar_label(
     const pybind11::tuple & args = pybind11::tuple(),
     const pybind11::dict & kwargs = pybind11::dict()) const;
@@ -131,6 +139,8 @@ private:
   void load_attrs();
 
   pybind11::object add_patch_attr;
+  pybind11::object axhline_attr;
+  pybind11::object axvline_attr;
   pybind11::object cla_attr;
   pybind11::object contour_attr;
   pybind11::object contourf_attr;
