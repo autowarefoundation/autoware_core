@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__GROUND_FILTER__GRID_HPP_
-#define AUTOWARE__GROUND_FILTER__GRID_HPP_
+#ifndef GRID_HPP_
+#define GRID_HPP_
 
 #include <autoware_utils_debug/time_keeper.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
@@ -500,4 +500,4 @@ private:
 
 }  // namespace autoware::ground_filter
 
-#endif  // AUTOWARE__GROUND_FILTER__GRID_HPP_
+#endif  // GRID_HPP_

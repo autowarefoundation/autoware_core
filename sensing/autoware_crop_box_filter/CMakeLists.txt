@@ -3,17 +3,16 @@ project(autoware_crop_box_filter)
 
 find_package(autoware_cmake REQUIRED)
 find_package(Eigen3 REQUIRED)
-find_package(PCL REQUIRED)
 
 autoware_package()
 
 include_directories(
   SYSTEM
-  ${PCL_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
 )
 
 ament_auto_add_library(crop_box_filter_node SHARED
+  src/crop_box_filter.cpp
   src/crop_box_filter_node.cpp
 )
 
@@ -23,6 +22,11 @@ rclcpp_components_register_node(crop_box_filter_node
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
+  ament_auto_add_gtest(test_crop_box_filter
+    test/test_crop_box_filter.cpp
+  )
+  target_include_directories(test_crop_box_filter PRIVATE src)
+
   ament_auto_add_gtest(test_crop_box_filter_node
     test/test_crop_box_filter_node.cpp
   )

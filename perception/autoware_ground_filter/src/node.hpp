@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__GROUND_FILTER__NODE_HPP_
-#define AUTOWARE__GROUND_FILTER__NODE_HPP_
+#ifndef NODE_HPP_
+#define NODE_HPP_
 
-#include "autoware/ground_filter/data.hpp"
-#include "autoware/ground_filter/ground_filter.hpp"
+#include "data.hpp"
+#include "ground_filter.hpp"
 
 #include <autoware_utils_debug/time_keeper.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info.hpp>
@@ -38,6 +38,7 @@
 #include <pcl_conversions/pcl_conversions.h>
 
 // PCL includes
+// cppcheck-suppress preprocessorErrorDirective
 #if __has_include(<message_filters/subscriber.hpp>)
 #include <message_filters/subscriber.hpp>
 #include <message_filters/sync_policies/approximate_time.hpp>
@@ -392,4 +393,4 @@ public:
 };
 }  // namespace autoware::ground_filter
 
-#endif  // AUTOWARE__GROUND_FILTER__NODE_HPP_
+#endif  // NODE_HPP_

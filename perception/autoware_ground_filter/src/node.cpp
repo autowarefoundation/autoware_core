@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/ground_filter/node.hpp"
+#include "node.hpp"
 
-#include "autoware/ground_filter/ground_filter.hpp"
-#include "autoware/ground_filter/sanity_check.hpp"
+#include "ground_filter.hpp"
+#include "sanity_check.hpp"
 
 #include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_utils_math/normalization.hpp>

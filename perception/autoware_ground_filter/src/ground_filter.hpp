@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__GROUND_FILTER__GROUND_FILTER_HPP_
-#define AUTOWARE__GROUND_FILTER__GROUND_FILTER_HPP_
+#ifndef GROUND_FILTER_HPP_
+#define GROUND_FILTER_HPP_
 
-#include "autoware/ground_filter/data.hpp"
-#include "autoware/ground_filter/grid.hpp"
+#include "data.hpp"
+#include "grid.hpp"
 
 #include <autoware_utils_debug/time_keeper.hpp>
 #include <pcl/impl/point_types.hpp>
@@ -218,4 +218,4 @@ private:
 
 }  // namespace autoware::ground_filter
 
-#endif  // AUTOWARE__GROUND_FILTER__GROUND_FILTER_HPP_
+#endif  // GROUND_FILTER_HPP_

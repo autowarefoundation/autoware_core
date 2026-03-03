@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include <autoware/lanelet2_utils/conversion.hpp>
+#include <autoware/lanelet2_utils/geometry.hpp>
 #include <autoware_lanelet2_extension/projection/mgrs_projector.hpp>
-#include <autoware_lanelet2_extension/utility/utilities.hpp>
 
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
@@ -55,9 +55,8 @@ lanelet::LaneletMapConstPtr load_mgrs_coordinate_map(
       const auto & centerline = lanelet_obj.centerline();
       lanelet_obj.setAttribute("waypoints", centerline.id());
     }
-    const auto fine_center_line =
-      lanelet::utils::generateFineCenterline(lanelet_obj, centerline_resolution);
-    lanelet_obj.setCenterline(fine_center_line);
+    const auto fine_center_line = get_fine_centerline(lanelet_obj, centerline_resolution);
+    lanelet_obj.setCenterline(remove_const(fine_center_line));
   }
   return lanelet::LaneletMapConstPtr{std::move(lanelet_map_ptr_mut)};
 }
@@ -259,6 +258,20 @@ std::optional<lanelet::ConstLanelet> create_safe_lanelet(
   lanelet::ConstLanelet cll(lanelet::InvalId, left_ls, right_ls);
 
   return cll;
+}
+
+std::optional<lanelet::ConstLanelet> create_safe_lanelet(
+  const lanelet::ConstLineString3d & left_linestring,
+  const lanelet::ConstLineString3d & right_linestring)
+{
+  if (left_linestring.size() < 2 || right_linestring.size() < 2) {
+    return std::nullopt;
+  }
+
+  const auto left_ls = remove_const(left_linestring);
+  const auto right_ls = remove_const(right_linestring);
+
+  return lanelet::ConstLanelet{lanelet::InvalId, left_ls, right_ls};
 }
 
 }  // namespace autoware::experimental::lanelet2_utils

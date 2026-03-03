@@ -35,6 +35,16 @@ PyObjectWrapper Axes::add_patch(const pybind11::tuple & args, const pybind11::di
   return PyObjectWrapper{add_patch_attr(*args, **kwargs)};
 }
 
+PyObjectWrapper Axes::axhline(const pybind11::tuple & args, const pybind11::dict & kwargs) const
+{
+  return PyObjectWrapper{axhline_attr(*args, **kwargs)};
+}
+
+PyObjectWrapper Axes::axvline(const pybind11::tuple & args, const pybind11::dict & kwargs) const
+{
+  return PyObjectWrapper{axvline_attr(*args, **kwargs)};
+}
+
 PyObjectWrapper Axes::cla(const pybind11::tuple & args, const pybind11::dict & kwargs) const
 {
   return PyObjectWrapper{cla_attr(*args, **kwargs)};
@@ -155,6 +165,8 @@ void Axes::view_init(const pybind11::tuple & args, const pybind11::dict & kwargs
 void Axes::load_attrs()
 {
   LOAD_FUNC_ATTR(add_patch, self_);
+  LOAD_FUNC_ATTR(axhline, self_);
+  LOAD_FUNC_ATTR(axvline, self_);
   LOAD_FUNC_ATTR(cla, self_);
   LOAD_FUNC_ATTR(contour, self_);
   LOAD_FUNC_ATTR(contourf, self_);

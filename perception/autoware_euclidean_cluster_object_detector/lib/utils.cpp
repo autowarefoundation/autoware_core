@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include <autoware/euclidean_cluster_object_detector/utils.hpp>
+#include "utils.hpp"
 
 #include <autoware_perception_msgs/msg/object_classification.hpp>
 #include <sensor_msgs/msg/point_field.hpp>
