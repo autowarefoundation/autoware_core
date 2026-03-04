@@ -217,10 +217,6 @@ bool calcStopVelocityWithConstantJerkAccLimit(
 
   const double trajectory_length = output_trajectory.length();
   const double start_s = std::clamp(start_distance, 0.0, trajectory_length);
-  if (trajectory_length < start_s) {
-    return true;
-  }
-
   if (xs.empty()) {
     const std::vector<double> s_range{start_s, trajectory_length};
     const std::vector<double> vel_range{decel_target_vel, decel_target_vel};
@@ -249,12 +245,15 @@ bool calcStopVelocityWithConstantJerkAccLimit(
     if (s > trajectory_length) {
       if (i > 0) {
         const double prev_s = start_s + xs.at(i - 1);
-        const double ratio = (trajectory_length - prev_s) / (s - prev_s);
-        const double interp_vel = vs.at(i - 1) + ratio * (vs.at(i) - vs.at(i - 1));
-        const double interp_acc = as.at(i - 1) + ratio * (as.at(i) - as.at(i - 1));
+        const std::vector<double> s_interp{prev_s, s};
+        const std::vector<double> vel_interp{vs.at(i - 1), vs.at(i)};
+        const std::vector<double> acc_interp{as.at(i - 1), as.at(i)};
+        const std::vector<double> query{trajectory_length};
+        const auto interp_vel_result = autoware::interpolation::lerp(s_interp, vel_interp, query);
+        const auto interp_acc_result = autoware::interpolation::lerp(s_interp, acc_interp, query);
         s_range.push_back(trajectory_length);
-        vel_range.push_back(interp_vel);
-        acc_range.push_back(interp_acc);
+        vel_range.push_back(interp_vel_result.front());
+        acc_range.push_back(interp_acc_result.front());
       }
       break;
     }

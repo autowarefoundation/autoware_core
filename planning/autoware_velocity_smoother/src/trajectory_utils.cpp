@@ -284,15 +284,7 @@ void applyMaximumVelocityLimit(
   const double begin_distance, const double end_distance, const double max_vel,
   Trajectory & trajectory)
 {
-  // Apply velocity limit only between begin_distance and end_distance
-  const double safe_begin = std::min(begin_distance, trajectory.length() * 0.95);
-  const double safe_end = std::min(end_distance, trajectory.length() * 0.95);
-  std::vector<double> s_range = {safe_begin, safe_end};
-  std::vector<double> vel_range(2, max_vel);
-
-  if (!trajectory.longitudinal_velocity_mps().build(s_range, vel_range)) {
-    return;
-  }
+  trajectory.longitudinal_velocity_mps().range(begin_distance, end_distance).clamp(max_vel);
 }
 
 bool calcStopDistWithJerkConstraints(
