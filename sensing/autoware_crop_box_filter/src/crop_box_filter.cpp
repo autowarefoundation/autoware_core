@@ -15,6 +15,7 @@
 #include "crop_box_filter.hpp"
 
 #include <sensor_msgs/msg/point_field.hpp>
+#include <sensor_msgs/point_cloud2_iterator.hpp>
 
 #include <sstream>
 #include <string>
@@ -127,6 +128,88 @@ geometry_msgs::msg::PolygonStamped generate_crop_box_polygon(
   polygon_msg.polygon.points.push_back(generate_point(x1, y1, z2));
 
   return polygon_msg;
+}
+
+CropBoxFilterResult filter_pointcloud(const PointCloud2 & cloud, const CropBoxFilterConfig & config)
+{
+  CropBoxFilterResult result;
+  auto & output = result.pointcloud;
+
+  // set up minimum output metadata required for creating iterators
+  output.fields = cloud.fields;
+  output.point_step = cloud.point_step;
+  output.data.resize(cloud.data.size());
+
+  // create output iterators for writing transformed coordinates
+  sensor_msgs::PointCloud2Iterator<float> output_x(output, "x");
+  sensor_msgs::PointCloud2Iterator<float> output_y(output, "y");
+  sensor_msgs::PointCloud2Iterator<float> output_z(output, "z");
+
+  size_t output_size = 0;
+
+  // create input iterators for reading coordinates
+  sensor_msgs::PointCloud2ConstIterator<float> input_x(cloud, "x");
+  sensor_msgs::PointCloud2ConstIterator<float> input_y(cloud, "y");
+  sensor_msgs::PointCloud2ConstIterator<float> input_z(cloud, "z");
+
+  for (size_t point_index = 0; input_x != input_x.end();
+       ++input_x, ++input_y, ++input_z, ++point_index) {
+    Eigen::Vector4f point;
+    point[0] = *input_x;
+    point[1] = *input_y;
+    point[2] = *input_z;
+    point[3] = 1;
+
+    if (!std::isfinite(point[0]) || !std::isfinite(point[1]) || !std::isfinite(point[2])) {
+      result.skipped_nan_count++;
+      continue;
+    }
+
+    Eigen::Vector4f point_preprocessed = point;
+
+    if (config.need_preprocess_transform) {
+      point_preprocessed = config.eigen_transform_preprocess * point;
+    }
+
+    bool point_is_inside =
+      point_preprocessed[2] > config.param.min_z && point_preprocessed[2] < config.param.max_z &&
+      point_preprocessed[1] > config.param.min_y && point_preprocessed[1] < config.param.max_y &&
+      point_preprocessed[0] > config.param.min_x && point_preprocessed[0] < config.param.max_x;
+
+    if ((!config.negative && point_is_inside) || (config.negative && !point_is_inside)) {
+      const size_t global_offset = point_index * cloud.point_step;
+
+      memcpy(&output.data[output_size], &cloud.data[global_offset], cloud.point_step);
+
+      if (config.need_postprocess_transform) {
+        Eigen::Vector4f point_postprocessed =
+          config.eigen_transform_postprocess * point_preprocessed;
+        *output_x = point_postprocessed[0];
+        *output_y = point_postprocessed[1];
+        *output_z = point_postprocessed[2];
+      } else if (config.need_preprocess_transform) {
+        *output_x = point_preprocessed[0];
+        *output_y = point_preprocessed[1];
+        *output_z = point_preprocessed[2];
+      }
+
+      ++output_x;
+      ++output_y;
+      ++output_z;
+      output_size += cloud.point_step;
+    }
+  }
+
+  output.data.resize(output_size);
+  output.header.frame_id = config.output_frame;
+  output.header.stamp = cloud.header.stamp;
+  output.height = 1;
+  output.is_bigendian = cloud.is_bigendian;
+  output.is_dense = cloud.is_dense;
+  output.width = static_cast<uint32_t>(output.data.size() / output.height / output.point_step);
+  output.row_step = static_cast<uint32_t>(output.data.size() / output.height);
+
+  return result;
 }
 
 }  // namespace autoware::crop_box_filter

@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "crop_box_filter_node.hpp"
+#include "crop_box_filter.hpp"
 
 #include <sensor_msgs/point_cloud2_iterator.hpp>
 
@@ -99,49 +99,32 @@ struct CropBoxParams
   int64_t max_queue_size = 5;
 };
 
-// Helper function to create crop box filter node with given parameters
-std::unique_ptr<autoware::crop_box_filter::CropBoxFilter> create_crop_box_filter_node(
-  const CropBoxParams & params)
-{
-  rclcpp::NodeOptions node_options;
-  node_options.parameter_overrides({
-    {"min_x", params.min_x},
-    {"min_y", params.min_y},
-    {"min_z", params.min_z},
-    {"max_x", params.max_x},
-    {"max_y", params.max_y},
-    {"max_z", params.max_z},
-    {"negative", params.negative},
-    {"input_pointcloud_frame", params.input_pointcloud_frame},
-    {"input_frame", params.input_frame},
-    {"output_frame", params.output_frame},
-    {"max_queue_size", params.max_queue_size},
-  });
-
-  return std::make_unique<autoware::crop_box_filter::CropBoxFilter>(node_options);
-}
-
 // Helper function to run crop box filter test
 void run_crop_box_filter_test(
   const CropBoxParams & params, const std::vector<std::array<float, 3>> & input_points,
   const std::vector<std::array<float, 3>> & expected_points)
 {
-  // Create the node with the specified options
-  auto node = create_crop_box_filter_node(params);
-
   // Create pointcloud using helper function
   auto mutable_input_points = const_cast<std::vector<std::array<float, 3>> &>(input_points);
   sensor_msgs::msg::PointCloud2 pointcloud = create_pointcloud2(mutable_input_points);
 
-  const sensor_msgs::msg::PointCloud2::ConstSharedPtr pointcloud_msg =
-    std::make_shared<sensor_msgs::msg::PointCloud2>(pointcloud);
+  // Build filter config from params
+  autoware::crop_box_filter::CropBoxFilterConfig filter_config;
+  filter_config.param.min_x = static_cast<float>(params.min_x);
+  filter_config.param.max_x = static_cast<float>(params.max_x);
+  filter_config.param.min_y = static_cast<float>(params.min_y);
+  filter_config.param.max_y = static_cast<float>(params.max_y);
+  filter_config.param.min_z = static_cast<float>(params.min_z);
+  filter_config.param.max_z = static_cast<float>(params.max_z);
+  filter_config.negative = params.negative;
+  filter_config.output_frame = params.output_frame;
 
-  auto output = sensor_msgs::msg::PointCloud2();
   // filtering
-  node->filter_pointcloud(pointcloud_msg, output);
+  auto filter_result = autoware::crop_box_filter::filter_pointcloud(pointcloud, filter_config);
 
   // Extract points from output using helper function
-  std::vector<std::array<float, 3>> output_points = extract_points_from_cloud(output);
+  std::vector<std::array<float, 3>> output_points =
+    extract_points_from_cloud(filter_result.pointcloud);
 
   // check if the points are inside/outside the box as expected
   EXPECT_TRUE(is_same_points(expected_points, output_points));
@@ -251,7 +234,6 @@ TEST(CropBoxFilterTest, FilterExcludePointsOutsideBoxWhenPositive)
 
 int main(int argc, char ** argv)
 {
-  rclcpp::init(0, nullptr);
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
