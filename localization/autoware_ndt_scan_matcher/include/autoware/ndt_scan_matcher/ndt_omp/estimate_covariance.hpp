@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef NDT_OMP__ESTIMATE_COVARIANCE_HPP_
-#define NDT_OMP__ESTIMATE_COVARIANCE_HPP_
+#ifndef AUTOWARE__NDT_SCAN_MATCHER__NDT_OMP__ESTIMATE_COVARIANCE_HPP_
+#define AUTOWARE__NDT_SCAN_MATCHER__NDT_OMP__ESTIMATE_COVARIANCE_HPP_
 
 #include "multigrid_ndt_omp.h"
 
@@ -79,4 +79,4 @@ Eigen::Matrix2d adjust_diagonal_covariance(
 
 }  // namespace pclomp
 
-#endif  // NDT_OMP__ESTIMATE_COVARIANCE_HPP_
+#endif  // AUTOWARE__NDT_SCAN_MATCHER__NDT_OMP__ESTIMATE_COVARIANCE_HPP_
