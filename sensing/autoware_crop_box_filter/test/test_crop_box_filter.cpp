@@ -84,6 +84,25 @@ TEST(ValidatePointCloud2Test, RejectsMissingZ)
   EXPECT_FALSE(result.is_valid);
 }
 
+TEST(GenerateCropBoxPolygonTest, SetsFrameIdStampAndPointCount)
+{
+  // Arrange
+  autoware::crop_box_filter::CropBoxParam param;
+  const std::string frame_id = "base_link";
+  builtin_interfaces::msg::Time stamp;
+  stamp.sec = 123;
+  stamp.nanosec = 456;
+
+  // Act
+  const auto polygon = autoware::crop_box_filter::generate_crop_box_polygon(param, frame_id, stamp);
+
+  // Assert
+  EXPECT_EQ(polygon.header.frame_id, frame_id);
+  EXPECT_EQ(polygon.header.stamp.sec, 123);
+  EXPECT_EQ(polygon.header.stamp.nanosec, 456u);
+  EXPECT_EQ(polygon.polygon.points.size(), 16u);
+}
+
 int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
