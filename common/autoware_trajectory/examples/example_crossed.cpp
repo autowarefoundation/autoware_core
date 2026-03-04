@@ -24,6 +24,7 @@
 #include <pybind11/stl.h>
 
 #include <algorithm>
+#include <iostream>
 #include <string>
 #include <vector>
 
@@ -246,8 +247,13 @@ void polygon()
 
 int main()
 {
-  pybind11::scoped_interpreter guard{};
-  linestring();
-  polygon();
+  try {
+    pybind11::scoped_interpreter guard{};
+    linestring();
+    polygon();
+  } catch (const std::exception & e) {
+    std::cerr << "Error: " << e.what() << std::endl;
+    return 1;
+  }
   return 0;
 }
