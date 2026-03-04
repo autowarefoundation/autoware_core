@@ -260,10 +260,14 @@ void following_and_previous_lanelet_sequences()
 
 int main()
 {
-  autoware::experimental::opposite_lanelet();
-  autoware::experimental::related_lanelets();
-  autoware::experimental::neighbor_lanelet();
-  autoware::experimental::following_and_previous_lanelet_sequences();
-
+  try {
+    autoware::experimental::opposite_lanelet();
+    autoware::experimental::related_lanelets();
+    autoware::experimental::neighbor_lanelet();
+    autoware::experimental::following_and_previous_lanelet_sequences();
+  } catch (const std::exception & e) {
+    std::cerr << "Error: " << e.what() << std::endl;
+    return 1;
+  }
   return 0;
 }
