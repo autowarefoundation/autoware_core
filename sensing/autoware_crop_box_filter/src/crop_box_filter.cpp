@@ -17,6 +17,7 @@
 #include <sensor_msgs/msg/point_field.hpp>
 
 #include <sstream>
+#include <string>
 
 namespace autoware::crop_box_filter
 {
@@ -73,6 +74,59 @@ ValidationResult validate_pointcloud2(const PointCloud2 & cloud)
     return data_size_validation_result;
   }
   return {true, ""};
+}
+
+geometry_msgs::msg::PolygonStamped generate_crop_box_polygon(
+  const CropBoxParam & param, const std::string & frame_id,
+  const builtin_interfaces::msg::Time & stamp)
+{
+  auto generate_point = [](double x, double y, double z) {
+    geometry_msgs::msg::Point32 point;
+    point.x = x;
+    point.y = y;
+    point.z = z;
+    return point;
+  };
+
+  const double x1 = param.max_x;
+  const double x2 = param.min_x;
+  const double x3 = param.min_x;
+  const double x4 = param.max_x;
+
+  const double y1 = param.max_y;
+  const double y2 = param.max_y;
+  const double y3 = param.min_y;
+  const double y4 = param.min_y;
+
+  const double z1 = param.min_z;
+  const double z2 = param.max_z;
+
+  geometry_msgs::msg::PolygonStamped polygon_msg;
+  polygon_msg.header.frame_id = frame_id;
+  polygon_msg.header.stamp = stamp;
+  polygon_msg.polygon.points.push_back(generate_point(x1, y1, z1));
+  polygon_msg.polygon.points.push_back(generate_point(x2, y2, z1));
+  polygon_msg.polygon.points.push_back(generate_point(x3, y3, z1));
+  polygon_msg.polygon.points.push_back(generate_point(x4, y4, z1));
+  polygon_msg.polygon.points.push_back(generate_point(x1, y1, z1));
+
+  polygon_msg.polygon.points.push_back(generate_point(x1, y1, z2));
+
+  polygon_msg.polygon.points.push_back(generate_point(x2, y2, z2));
+  polygon_msg.polygon.points.push_back(generate_point(x2, y2, z1));
+  polygon_msg.polygon.points.push_back(generate_point(x2, y2, z2));
+
+  polygon_msg.polygon.points.push_back(generate_point(x3, y3, z2));
+  polygon_msg.polygon.points.push_back(generate_point(x3, y3, z1));
+  polygon_msg.polygon.points.push_back(generate_point(x3, y3, z2));
+
+  polygon_msg.polygon.points.push_back(generate_point(x4, y4, z2));
+  polygon_msg.polygon.points.push_back(generate_point(x4, y4, z1));
+  polygon_msg.polygon.points.push_back(generate_point(x4, y4, z2));
+
+  polygon_msg.polygon.points.push_back(generate_point(x1, y1, z2));
+
+  return polygon_msg;
 }
 
 }  // namespace autoware::crop_box_filter

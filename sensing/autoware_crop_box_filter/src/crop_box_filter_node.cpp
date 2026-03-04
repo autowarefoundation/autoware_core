@@ -98,7 +98,7 @@ CropBoxFilter::CropBoxFilter(const rclcpp::NodeOptions & node_options)
     p.max_x = declare_parameter<double>("max_x");
     p.max_y = declare_parameter<double>("max_y");
     p.max_z = declare_parameter<double>("max_z");
-    p.negative = declare_parameter<bool>("negative");
+    negative_ = declare_parameter<bool>("negative");
     if (tf_input_frame_.empty()) {
       throw std::invalid_argument("Crop box requires non-empty input_frame");
     }
@@ -182,7 +182,7 @@ void CropBoxFilter::filter_pointcloud(const PointCloud2ConstPtr & cloud, PointCl
       point_preprocessed[2] > param_.min_z && point_preprocessed[2] < param_.max_z &&
       point_preprocessed[1] > param_.min_y && point_preprocessed[1] < param_.max_y &&
       point_preprocessed[0] > param_.min_x && point_preprocessed[0] < param_.max_x;
-    if ((!param_.negative && point_is_inside) || (param_.negative && !point_is_inside)) {
+    if ((!negative_ && point_is_inside) || (negative_ && !point_is_inside)) {
       const size_t global_offset = point_index * cloud->point_step;
 
       // copy all fields from input to output
@@ -254,7 +254,8 @@ void CropBoxFilter::pointcloud_callback(const PointCloud2ConstPtr cloud)
 
   // publish polygon if subscribers exist
   if (crop_box_polygon_pub_->get_subscription_count() > 0) {
-    publish_crop_box_polygon();
+    crop_box_polygon_pub_->publish(
+      generate_crop_box_polygon(param_, tf_input_frame_, get_clock()->now()));
   }
 
   // add processing time for debug
@@ -280,57 +281,6 @@ void CropBoxFilter::pointcloud_callback(const PointCloud2ConstPtr cloud)
   published_time_publisher_->publish_if_subscribed(pub_output_, cloud->header.stamp);
 }
 
-void CropBoxFilter::publish_crop_box_polygon()
-{
-  auto generatePoint = [](double x, double y, double z) {
-    geometry_msgs::msg::Point32 point;
-    point.x = x;
-    point.y = y;
-    point.z = z;
-    return point;
-  };
-
-  const double x1 = param_.max_x;
-  const double x2 = param_.min_x;
-  const double x3 = param_.min_x;
-  const double x4 = param_.max_x;
-
-  const double y1 = param_.max_y;
-  const double y2 = param_.max_y;
-  const double y3 = param_.min_y;
-  const double y4 = param_.min_y;
-
-  const double z1 = param_.min_z;
-  const double z2 = param_.max_z;
-
-  geometry_msgs::msg::PolygonStamped polygon_msg;
-  polygon_msg.header.frame_id = tf_input_frame_;
-  polygon_msg.header.stamp = get_clock()->now();
-  polygon_msg.polygon.points.push_back(generatePoint(x1, y1, z1));
-  polygon_msg.polygon.points.push_back(generatePoint(x2, y2, z1));
-  polygon_msg.polygon.points.push_back(generatePoint(x3, y3, z1));
-  polygon_msg.polygon.points.push_back(generatePoint(x4, y4, z1));
-  polygon_msg.polygon.points.push_back(generatePoint(x1, y1, z1));
-
-  polygon_msg.polygon.points.push_back(generatePoint(x1, y1, z2));
-
-  polygon_msg.polygon.points.push_back(generatePoint(x2, y2, z2));
-  polygon_msg.polygon.points.push_back(generatePoint(x2, y2, z1));
-  polygon_msg.polygon.points.push_back(generatePoint(x2, y2, z2));
-
-  polygon_msg.polygon.points.push_back(generatePoint(x3, y3, z2));
-  polygon_msg.polygon.points.push_back(generatePoint(x3, y3, z1));
-  polygon_msg.polygon.points.push_back(generatePoint(x3, y3, z2));
-
-  polygon_msg.polygon.points.push_back(generatePoint(x4, y4, z2));
-  polygon_msg.polygon.points.push_back(generatePoint(x4, y4, z1));
-  polygon_msg.polygon.points.push_back(generatePoint(x4, y4, z2));
-
-  polygon_msg.polygon.points.push_back(generatePoint(x1, y1, z2));
-
-  crop_box_polygon_pub_->publish(polygon_msg);
-}
-
 // update parameters dynamicly
 rcl_interfaces::msg::SetParametersResult CropBoxFilter::param_callback(
   const std::vector<rclcpp::Parameter> & p)
@@ -345,8 +295,8 @@ rcl_interfaces::msg::SetParametersResult CropBoxFilter::param_callback(
   new_param.max_x = get_param(p, "max_x", new_param.max_x) ? new_param.max_x : param_.max_x;
   new_param.max_y = get_param(p, "max_y", new_param.max_y) ? new_param.max_y : param_.max_y;
   new_param.max_z = get_param(p, "max_z", new_param.max_z) ? new_param.max_z : param_.max_z;
-  new_param.negative =
-    get_param(p, "negative", new_param.negative) ? new_param.negative : param_.negative;
+  bool new_negative = false;
+  negative_ = get_param(p, "negative", new_negative) ? new_negative : negative_;
 
   param_ = new_param;
 

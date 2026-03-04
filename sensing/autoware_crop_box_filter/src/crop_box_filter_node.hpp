@@ -66,16 +66,8 @@ private:
   Eigen::Matrix4f eigen_transform_preprocess_ = Eigen::Matrix4f::Identity(4, 4);
   Eigen::Matrix4f eigen_transform_postprocess_ = Eigen::Matrix4f::Identity(4, 4);
 
-  struct CropBoxParam
-  {
-    float min_x;
-    float max_x;
-    float min_y;
-    float max_y;
-    float min_z;
-    float max_z;
-    bool negative{false};
-  } param_;
+  CropBoxParam param_;
+  bool negative_{false};
 
   /** \brief Parameter service callback result : needed to be hold */
   OnSetParametersCallbackHandle::SharedPtr set_param_res_;
@@ -94,8 +86,6 @@ private:
   std::unique_ptr<autoware_utils_debug::PublishedTimePublisher> published_time_publisher_;
 
   // function declaration *************************************
-
-  void publish_crop_box_polygon();
 
   void pointcloud_callback(const PointCloud2ConstPtr cloud);
 
