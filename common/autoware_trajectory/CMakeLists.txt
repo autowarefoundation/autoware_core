@@ -35,6 +35,7 @@ ament_auto_add_library(autoware_trajectory SHARED
   src/interpolator/spherical_linear.cpp
   src/utils/closest.cpp
   src/utils/crossed.cpp
+  src/utils/find_if.cpp
   src/utils/find_intervals.cpp
   src/utils/pretty_build.cpp
   src/utils/shift.cpp
