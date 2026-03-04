@@ -24,9 +24,6 @@
 #include <autoware_utils_system/stop_watch.hpp>
 #include <autoware_utils_tf/transform_listener.hpp>
 
-#include <geometry_msgs/msg/polygon_stamped.hpp>
-#include <sensor_msgs/point_cloud2_iterator.hpp>
-
 #include <memory>
 #include <string>
 #include <vector>
