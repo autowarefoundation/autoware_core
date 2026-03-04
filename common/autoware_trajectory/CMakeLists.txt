@@ -98,6 +98,7 @@ include_directories(${autoware_test_utils_INCLUDE_DIRS})
 include_directories(${autoware_utils_geometry_INCLUDE_DIRS})
 
 set(example_files
+  examples/example_find_if.cpp
   examples/example_find_intervals.cpp
   examples/example_interpolator.cpp
   examples/example_path_point.cpp
