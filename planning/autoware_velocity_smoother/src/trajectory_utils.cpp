@@ -239,29 +239,18 @@ std::vector<double> calcTrajectoryCurvatureFrom3Points(
 std::vector<double> calcTrajectoryCurvatureFrom3Points(
   const Trajectory & trajectory, const std::vector<double> & s_values)
 {
-  using autoware_utils_geometry::calc_curvature;
-  using autoware_utils_geometry::get_point;
-
   if (s_values.size() < 3) {
     return std::vector<double>(s_values.size(), 0.0);
   }
 
-  std::vector<double> k_arr(s_values.size(), 0.0);
-
-  for (size_t i = 1; i + 1 < s_values.size(); i++) {
-    double curvature = 0.0;
-    try {
-      const auto p0 = get_point(trajectory.compute(s_values[i - 1]));
-      const auto p1 = get_point(trajectory.compute(s_values[i]));
-      const auto p2 = get_point(trajectory.compute(s_values[i + 1]));
-      curvature = calc_curvature(p0, p1, p2);
-    } catch (std::exception const & e) {
-      RCLCPP_WARN(
-        rclcpp::get_logger("autoware_velocity_smoother").get_child("trajectory_utils"), "%s",
-        e.what());
-      curvature = (i > 1) ? k_arr[i - 1] : 0.0;
-    }
-    k_arr[i] = curvature;
+  std::vector<double> k_arr;
+  try {
+    k_arr = trajectory.curvature(s_values);
+  } catch (std::exception const & e) {
+    RCLCPP_WARN(
+      rclcpp::get_logger("autoware_velocity_smoother").get_child("trajectory_utils"), "%s",
+      e.what());
+    return std::vector<double>(s_values.size(), 0.0);
   }
 
   k_arr[0] = k_arr[1];
