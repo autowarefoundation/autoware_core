@@ -61,17 +61,24 @@ int main()
       return 1;
     }
 
-    const auto index = autoware::experimental::trajectory::find_first_index_if(
-      *trajectory, [](const autoware_internal_planning_msgs::msg::PathPointWithLaneId & point) {
+    const auto constraint =
+      [](const autoware_internal_planning_msgs::msg::PathPointWithLaneId & point) {
         return point.lane_ids[0] == 1;
-      });
+      };
 
-    if (!index) {
+    const auto first_index =
+      autoware::experimental::trajectory::find_first_index_if(*trajectory, constraint);
+
+    const auto last_index =
+      autoware::experimental::trajectory::find_last_index_if(*trajectory, constraint);
+
+    if (!first_index || !last_index) {
       std::cerr << "Expected an index, but got none" << std::endl;
       return 1;
     }
 
-    const auto result = trajectory->compute(*index);
+    const auto first_point = trajectory->compute(*first_index).point.pose.position;
+    const auto last_point = trajectory->compute(*last_index).point.pose.position;
 
     std::vector<double> x_all;
     std::vector<double> y_all;
@@ -100,10 +107,13 @@ int main()
     plt.scatter(Args(x_id0, y_id0), Kwargs("color"_a = "blue", "label"_a = "lane_id = 0"));
     plt.scatter(Args(x_id1, y_id1), Kwargs("color"_a = "green", "label"_a = "lane_id = 1"));
     plt.scatter(
-      Args(result.point.pose.position.x, result.point.pose.position.y),
-      Kwargs(
-        "color"_a = "red", "marker"_a = "*", "zorder"_a = 3,
-        "label"_a = "first point where lane_id = 1"));
+      Args(first_point.x, first_point.y), Kwargs(
+                                            "color"_a = "red", "marker"_a = "<", "zorder"_a = 3,
+                                            "label"_a = "first point where lane_id = 1"));
+    plt.scatter(
+      Args(last_point.x, last_point.y), Kwargs(
+                                          "color"_a = "red", "marker"_a = ">", "zorder"_a = 3,
+                                          "label"_a = "last point where lane_id = 1"));
     plt.grid();
     plt.legend(Args(), Kwargs("loc"_a = "upper left"));
     plt.show();
@@ -125,22 +135,27 @@ int main()
     base_point.x = 0.0;
     base_point.y = 1.0;
 
-    const auto index = autoware::experimental::trajectory::find_first_index_if(
-      *trajectory,
-      [&](const PathPointWithLaneId & point) {
+    const auto constraint =
+      [&](const autoware_internal_planning_msgs::msg::PathPointWithLaneId & point) {
         return autoware_utils_geometry::calc_distance2d(point.point.pose.position, base_point) <
                2.0;
-      },
-      10);
+      };
 
-    if (!index) {
+    const auto first_index =
+      autoware::experimental::trajectory::find_first_index_if(*trajectory, constraint, 10);
+
+    const auto last_index =
+      autoware::experimental::trajectory::find_last_index_if(*trajectory, constraint, 10);
+
+    if (!first_index || !last_index) {
       std::cerr << "Expected an index, but got none" << std::endl;
       return 1;
     }
 
-    const auto result = trajectory->compute(*index);
+    std::cout << "First index: " << *first_index << ", Last index: " << *last_index << std::endl;
 
-    std::cout << "Index: " << *index << std::endl;
+    const auto first_point = trajectory->compute(*first_index).point.pose.position;
+    const auto last_point = trajectory->compute(*last_index).point.pose.position;
 
     std::vector<double> x_original;
     std::vector<double> y_original;
@@ -170,10 +185,15 @@ int main()
     plt.plot(Args(x, y), Kwargs("color"_a = "blue"));
     plt.plot(Args(x_circle, y_circle), Kwargs("color"_a = "green", "label"_a = "distance < 2.0"));
     plt.scatter(
-      Args(result.point.pose.position.x, result.point.pose.position.y),
+      Args(first_point.x, first_point.y),
       Kwargs(
-        "color"_a = "red", "marker"_a = "*", "zorder"_a = 3,
+        "color"_a = "red", "marker"_a = "<", "zorder"_a = 3,
         "label"_a = "first point where distance < 2.0 from center"));
+    plt.scatter(
+      Args(last_point.x, last_point.y),
+      Kwargs(
+        "color"_a = "red", "marker"_a = ">", "zorder"_a = 3,
+        "label"_a = "last point where distance < 2.0 from center"));
     plt.axis(Args("equal"));
     plt.grid();
     plt.legend(Args(), Kwargs("loc"_a = "upper left"));
