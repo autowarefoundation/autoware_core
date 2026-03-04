@@ -64,85 +64,90 @@ void plot_trajectory_with_underlying(
 
 int main()
 {
-  using autoware::experimental::trajectory::ShiftInterval;
-  using autoware::experimental::trajectory::ShiftParameters;
+  try {
+    using autoware::experimental::trajectory::ShiftInterval;
+    using autoware::experimental::trajectory::ShiftParameters;
 
-  pybind11::scoped_interpreter guard{};
-  auto plt = autoware::pyplot::import();
+    pybind11::scoped_interpreter guard{};
+    auto plt = autoware::pyplot::import();
 
-  std::vector<geometry_msgs::msg::Point> points = {point(0.0, 0.0),  point(1.0, 0.0),
-                                                   point(6.0, 0.0),  point(9.0, 0.0),
-                                                   point(12.0, 0.0), point(18.0, 0.0)};
+    std::vector<geometry_msgs::msg::Point> points = {point(0.0, 0.0),  point(1.0, 0.0),
+                                                     point(6.0, 0.0),  point(9.0, 0.0),
+                                                     point(12.0, 0.0), point(18.0, 0.0)};
 
-  auto trajectory =
-    autoware::experimental::trajectory::Trajectory<geometry_msgs::msg::Point>::Builder{}.build(
-      points);
+    auto trajectory =
+      autoware::experimental::trajectory::Trajectory<geometry_msgs::msg::Point>::Builder{}.build(
+        points);
 
-  if (!trajectory) {
-    return 1;
-  }
+    if (!trajectory) {
+      return 1;
+    }
 
-  /*
-    four points
+    /*
+      four points
+      const double longitudinal_velocity = 2.77;
+      const double lateral_jerk = 1.0;
+      const double lateral_shift = 2.5;
+      const double lateral_acc_limit = 5.0;
+
+      const double longitudinal_velocity = 2.77;
+      const double lateral_jerk = 1.5;
+      const double lateral_shift = 5.0;
+      const double lateral_acc_limit = 1.5;
+     */
+    // six points
     const double longitudinal_velocity = 2.77;
     const double lateral_jerk = 1.0;
     const double lateral_shift = 2.5;
     const double lateral_acc_limit = 5.0;
+    const double longitudinal_dist = autoware::motion_utils::calc_longitudinal_dist_from_jerk(
+      lateral_shift, lateral_jerk, longitudinal_velocity);
 
-    const double longitudinal_velocity = 2.77;
-    const double lateral_jerk = 1.5;
-    const double lateral_shift = 5.0;
-    const double lateral_acc_limit = 1.5;
-   */
-  // six points
-  const double longitudinal_velocity = 2.77;
-  const double lateral_jerk = 1.0;
-  const double lateral_shift = 2.5;
-  const double lateral_acc_limit = 5.0;
-  const double longitudinal_dist = autoware::motion_utils::calc_longitudinal_dist_from_jerk(
-    lateral_shift, lateral_jerk, longitudinal_velocity);
+    const auto start_s = 3.0;
+    const ShiftInterval shift_interval{start_s, start_s + longitudinal_dist, lateral_shift};
+    const ShiftParameters shift_parameter{
+      longitudinal_velocity,
+      lateral_acc_limit,
+    };
 
-  const auto start_s = 3.0;
-  const ShiftInterval shift_interval{start_s, start_s + longitudinal_dist, lateral_shift};
-  const ShiftParameters shift_parameter{
-    longitudinal_velocity,
-    lateral_acc_limit,
-  };
+    auto shifted_trajectory_info =
+      autoware::experimental::trajectory::shift(*trajectory, shift_interval, shift_parameter);
+    if (!shifted_trajectory_info) {
+      std::cout << shifted_trajectory_info.error().what << std::endl;
+      return 1;
+    }
+    const auto & shifted_trajectory = shifted_trajectory_info.value();
 
-  auto shifted_trajectory_info =
-    autoware::experimental::trajectory::shift(*trajectory, shift_interval, shift_parameter);
-  if (!shifted_trajectory_info) {
-    std::cout << shifted_trajectory_info.error().what << std::endl;
+    plot_trajectory_with_underlying(*trajectory, "blue", "original", plt);
+    plot_trajectory_with_underlying(shifted_trajectory, "red", "shifted", plt);
+
+    plt.axis(Args("equal"));
+    plt.grid();
+    plt.legend();
+    plt.show();
+
+    plt.clf();
+
+    const ShiftInterval shift_left_interval{start_s, start_s + longitudinal_dist, -lateral_shift};
+    auto shifted_trajectory_left_info =
+      autoware::experimental::trajectory::shift(*trajectory, shift_left_interval, shift_parameter);
+    if (!shifted_trajectory_info) {
+      std::cout << shifted_trajectory_info.error().what << std::endl;
+      return 1;
+    }
+    const auto & shifted_trajectory_left = shifted_trajectory_left_info.value();
+
+    plot_trajectory_with_underlying(*trajectory, "black", "original", plt);
+    plot_trajectory_with_underlying(shifted_trajectory, "red", "lateral_offset = +2.5", plt);
+    plot_trajectory_with_underlying(shifted_trajectory_left, "blue", "lateral_offset = -2.5", plt);
+    plt.axis(Args("equal"));
+    plt.grid();
+    plt.legend();
+    plt.show();
+  } catch (const std::exception & e) {
+    std::cerr << "Error: " << e.what() << std::endl;
     return 1;
   }
-  const auto & shifted_trajectory = shifted_trajectory_info.value();
-
-  plot_trajectory_with_underlying(*trajectory, "blue", "original", plt);
-  plot_trajectory_with_underlying(shifted_trajectory, "red", "shifted", plt);
-
-  plt.axis(Args("equal"));
-  plt.grid();
-  plt.legend();
-  plt.show();
-
-  plt.clf();
-
-  const ShiftInterval shift_left_interval{start_s, start_s + longitudinal_dist, -lateral_shift};
-  auto shifted_trajectory_left_info =
-    autoware::experimental::trajectory::shift(*trajectory, shift_left_interval, shift_parameter);
-  if (!shifted_trajectory_info) {
-    std::cout << shifted_trajectory_info.error().what << std::endl;
-    return 1;
-  }
-  const auto & shifted_trajectory_left = shifted_trajectory_left_info.value();
-
-  plot_trajectory_with_underlying(*trajectory, "black", "original", plt);
-  plot_trajectory_with_underlying(shifted_trajectory, "red", "lateral_offset = +2.5", plt);
-  plot_trajectory_with_underlying(shifted_trajectory_left, "blue", "lateral_offset = -2.5", plt);
-  plt.axis(Args("equal"));
-  plt.grid();
-  plt.legend();
-  plt.show();
 
   return 0;
 }
