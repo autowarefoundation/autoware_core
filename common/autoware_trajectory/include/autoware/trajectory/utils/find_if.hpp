@@ -18,6 +18,8 @@
 #include "autoware/trajectory/detail/types.hpp"
 #include "autoware/trajectory/forward.hpp"
 
+#include <range/v3/all.hpp>
+
 #include <functional>
 #include <optional>
 #include <utility>
@@ -44,13 +46,13 @@ std::optional<double> find_first_index_if_impl(
 }  // namespace detail::impl
 
 /**
- * @brief Finds intervals in a trajectory where the given constraint is satisfied.
+ * @brief Finds the first index in a trajectory where the given constraint is satisfied.
  * @tparam TrajectoryPointType The type of points in the trajectory.
  * @tparam Constraint A callable type that evaluates a constraint on a trajectory point.
  * @param trajectory The trajectory to evaluate.
  * @param constraint The constraint to apply to each point in the trajectory.
- * @return A vector of Interval objects representing the intervals where the constraint is
- * satisfied.
+ * @param max_iter The maximum number of iterations for the binary search.
+ * @return The first index where the constraint is satisfied (std::nullopt if not found).
  */
 template <class TrajectoryPointType, class Constraint>
 std::optional<double> find_first_index_if(
@@ -61,6 +63,31 @@ std::optional<double> find_first_index_if(
 
   return detail::impl::find_first_index_if_impl(
     trajectory.get_underlying_bases(),
+    [constraint = std::forward<Constraint>(constraint), &trajectory](const double & s) {
+      return constraint(trajectory.compute(s));
+    },
+    max_iter);
+}
+
+/**
+ * @brief Finds the last index in a trajectory where the given constraint is satisfied.
+ * @tparam TrajectoryPointType The type of points in the trajectory.
+ * @tparam Constraint A callable type that evaluates a constraint on a trajectory point.
+ * @param trajectory The trajectory to evaluate.
+ * @param constraint The constraint to apply to each point in the trajectory.
+ * @param max_iter The maximum number of iterations for the binary search.
+ * @return The last index where the constraint is satisfied (std::nullopt if not found).
+ */
+template <class TrajectoryPointType, class Constraint>
+std::optional<double> find_last_index_if(
+  const Trajectory<TrajectoryPointType> & trajectory, Constraint && constraint,
+  const size_t max_iter = 0)
+{
+  using autoware::experimental::trajectory::detail::to_point;
+
+  const auto & bases = trajectory.get_underlying_bases();
+  return detail::impl::find_first_index_if_impl(
+    bases | ranges::views::reverse | ranges::to<std::vector>(),
     [constraint = std::forward<Constraint>(constraint), &trajectory](const double & s) {
       return constraint(trajectory.compute(s));
     },
