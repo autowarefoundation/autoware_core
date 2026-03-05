@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.14)
 
 project(autoware_trajectory)
 
+option(BUILD_EXAMPLES "Build Examples (also requires BUILD_TESTING)" OFF)
+
 # cspell: ignore Warray, Wstringop, stringop
 # Disable array bounds warnings for GCC 13+ as they appear to be false positives
 # NOTE: workaround https://github.com/autowarefoundation/autoware_core/pull/644
@@ -76,7 +78,10 @@ if(BUILD_TESTING)
     )
   endforeach()
 
-  # Examples
+endif()
+
+# Examples
+if(BUILD_TESTING AND BUILD_EXAMPLES)
   find_package(
     Python3
     COMPONENTS Interpreter Development
