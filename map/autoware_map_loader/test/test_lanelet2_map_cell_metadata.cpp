@@ -15,7 +15,6 @@
 #include "../src/lanelet2_map_loader/lanelet2_map_cell_metadata.hpp"
 
 #include <gtest/gtest.h>
-
 #include <lanelet2_core/LaneletMap.h>
 #include <lanelet2_core/primitives/LineString.h>
 #include <lanelet2_core/primitives/Point.h>
