@@ -65,6 +65,7 @@ if(BUILD_TESTING)
   add_testcase(test/test_pointcloud_map_loader_module.cpp)
   add_testcase(test/test_partial_map_loader_module.cpp)
   add_testcase(test/test_differential_map_loader_module.cpp)
+  add_testcase(test/test_lanelet2_map_loader_utils.cpp)
 endif()
 
 install(PROGRAMS
