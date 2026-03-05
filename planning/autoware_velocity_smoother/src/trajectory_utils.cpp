@@ -253,9 +253,6 @@ std::vector<double> calcTrajectoryCurvatureFrom3Points(
     return std::vector<double>(s_values.size(), 0.0);
   }
 
-  k_arr[0] = k_arr[1];
-  k_arr.back() = k_arr[k_arr.size() - 2];
-
   return k_arr;
 }
 
