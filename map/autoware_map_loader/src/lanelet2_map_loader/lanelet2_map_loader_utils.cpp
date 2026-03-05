@@ -14,6 +14,8 @@
 
 #include "lanelet2_map_loader_utils.hpp"
 
+#include <rclcpp/logging.hpp>
+
 #include <lanelet2_core/LaneletMap.h>
 #include <lanelet2_core/primitives/Area.h>
 #include <lanelet2_core/primitives/Lanelet.h>
@@ -21,8 +23,6 @@
 #include <lanelet2_core/primitives/Point.h>
 #include <lanelet2_core/primitives/Polygon.h>
 #include <lanelet2_core/primitives/RegulatoryElement.h>
-
-#include <rclcpp/logging.hpp>
 
 #include <algorithm>
 #include <filesystem>
