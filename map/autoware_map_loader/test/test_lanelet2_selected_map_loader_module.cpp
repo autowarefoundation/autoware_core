@@ -101,8 +101,7 @@ TEST_F(TestLanelet2SelectedMapLoaderModule, LoadKnownCellReturnsNonEmptyMap)
   request->cell_ids = {test_map_path()};
 
   auto future = client_->async_send_request(request);
-  ASSERT_EQ(
-    rclcpp::spin_until_future_complete(node_, future), rclcpp::FutureReturnCode::SUCCESS);
+  ASSERT_EQ(rclcpp::spin_until_future_complete(node_, future), rclcpp::FutureReturnCode::SUCCESS);
 
   const auto response = future.get();
   EXPECT_EQ(response->header.frame_id, "map");
@@ -118,8 +117,7 @@ TEST_F(TestLanelet2SelectedMapLoaderModule, LoadUnknownCellReturnsFalse)
   request->cell_ids = {"/nonexistent/path/map.osm"};
 
   auto future = client_->async_send_request(request);
-  ASSERT_EQ(
-    rclcpp::spin_until_future_complete(node_, future), rclcpp::FutureReturnCode::SUCCESS);
+  ASSERT_EQ(rclcpp::spin_until_future_complete(node_, future), rclcpp::FutureReturnCode::SUCCESS);
 
   // Service returns false for unknown IDs; lanelet2_cells should be empty.
   const auto response = future.get();
