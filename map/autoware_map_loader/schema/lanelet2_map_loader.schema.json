@@ -25,6 +25,16 @@
           "type": "string",
           "description": "Path to a lanelet2 .osm map file, or a directory containing .osm files",
           "default": ""
+        },
+        "enable_selected_map_loading": {
+          "type": "boolean",
+          "description": "Expose service/get_selected_lanelet2_map and publish per-cell metadata.",
+          "default": false
+        },
+        "metadata_file_path": {
+          "type": "string",
+          "description": "Path to lanelet2_map_metadata.yaml. If empty or missing, bounding boxes are computed from the loaded map points.",
+          "default": ""
         }
       },
       "required": ["center_line_resolution", "use_waypoints", "lanelet2_map_path"],
