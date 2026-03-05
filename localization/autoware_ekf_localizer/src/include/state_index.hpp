@@ -12,26 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__EKF_LOCALIZER__NUMERIC_HPP_
-#define AUTOWARE__EKF_LOCALIZER__NUMERIC_HPP_
-
-#include <Eigen/Core>
-
-#include <cmath>
+#ifndef STATE_INDEX_HPP_
+#define STATE_INDEX_HPP_
 
 namespace autoware::ekf_localizer
 {
 
-inline bool has_inf(const Eigen::MatrixXd & v)
-{
-  return v.array().isInf().any();
-}
-
-inline bool has_nan(const Eigen::MatrixXd & v)
-{
-  return v.array().isNaN().any();
-}
+enum IDX {
+  X = 0,
+  Y = 1,
+  YAW = 2,
+  YAWB = 3,
+  VX = 4,
+  WZ = 5,
+};
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // AUTOWARE__EKF_LOCALIZER__NUMERIC_HPP_
+#endif  // STATE_INDEX_HPP_

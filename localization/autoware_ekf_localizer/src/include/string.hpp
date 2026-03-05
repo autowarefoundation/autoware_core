@@ -1,4 +1,4 @@
-// Copyright 2022 Autoware Foundation
+// Copyright 2023 Autoware Foundation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,20 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__EKF_LOCALIZER__MAHALANOBIS_HPP_
-#define AUTOWARE__EKF_LOCALIZER__MAHALANOBIS_HPP_
+#ifndef STRING_HPP_
+#define STRING_HPP_
 
-#include <Eigen/Core>
-#include <Eigen/Dense>
+#include <string>
 
 namespace autoware::ekf_localizer
 {
 
-double squared_mahalanobis(
-  const Eigen::VectorXd & x, const Eigen::VectorXd & y, const Eigen::MatrixXd & C);
-
-double mahalanobis(const Eigen::VectorXd & x, const Eigen::VectorXd & y, const Eigen::MatrixXd & C);
+inline std::string erase_leading_slash(const std::string & s)
+{
+  std::string a = s;
+  if (a.front() == '/') {
+    a.erase(0, 1);
+  }
+  return a;
+}
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // AUTOWARE__EKF_LOCALIZER__MAHALANOBIS_HPP_
+#endif  // STRING_HPP_
