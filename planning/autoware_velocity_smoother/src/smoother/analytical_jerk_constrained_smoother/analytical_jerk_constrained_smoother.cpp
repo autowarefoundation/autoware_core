@@ -77,7 +77,8 @@ bool applyMaxVelocity(
     return false;
   }
 
-  trajectory.longitudinal_velocity_mps().range(start_distance, end_distance).set(max_velocity);
+  trajectory.longitudinal_velocity_mps().range(start_distance, end_distance).clamp(max_velocity);
+  trajectory.acceleration_mps2().range(start_distance, end_distance).set(0.0);
 
   return true;
 }
@@ -857,9 +858,6 @@ bool AnalyticalJerkConstrainedSmoother::applyBackwardDecelFilter(
   // Validate trajectory size to prevent bad_alloc
   constexpr size_t MAX_TRAJECTORY_SIZE = 10000;
   if (output_trajectory.empty() || output_trajectory.size() > MAX_TRAJECTORY_SIZE) {
-    RCLCPP_ERROR(
-      logger_, "Invalid output_trajectory size: %zu (MAX=%zu)", output_trajectory.size(),
-      MAX_TRAJECTORY_SIZE);
     return false;
   }
 
