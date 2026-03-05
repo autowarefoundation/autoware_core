@@ -4,3 +4,5 @@
     center_line_resolution: 5.0                 # [m]
     use_waypoints: true                         # "centerline" in the Lanelet2 map will be used as a "waypoints" tag.
     lanelet2_map_path: $(var lanelet2_map_path) # Path to a lanelet2 .osm map file, or a directory containing .osm files
+    enable_selected_map_loading: false          # expose service/get_selected_lanelet2_map and publish cell metadata
+    metadata_file_path: $(var metadata_file_path) # path to lanelet2_map_metadata.yaml; if empty or missing, bboxes are computed from map points
