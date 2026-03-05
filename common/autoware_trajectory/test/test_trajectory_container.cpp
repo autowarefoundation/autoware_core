@@ -16,6 +16,7 @@
 #include "autoware/trajectory/utils/closest.hpp"
 #include "autoware/trajectory/utils/crossed.hpp"
 #include "autoware/trajectory/utils/curvature_utils.hpp"
+#include "autoware/trajectory/utils/find_if.hpp"
 #include "autoware/trajectory/utils/find_intervals.hpp"
 #include "autoware_utils_geometry/geometry.hpp"
 #include "lanelet2_core/primitives/LineString.h"
@@ -604,6 +605,64 @@ TEST_F(TrajectoryTest, crop)
   EXPECT_FLOAT_EQ(end_point_expect.point.pose.position.x, end_point_actual.point.pose.position.x);
   EXPECT_FLOAT_EQ(end_point_expect.point.pose.position.y, end_point_actual.point.pose.position.y);
   EXPECT_EQ(end_point_expect.lane_ids[0], end_point_actual.lane_ids[0]);
+}
+
+TEST_F(TrajectoryTest, find_if)
+{
+  geometry_msgs::msg::Point base_point;
+  base_point.x = 5.0;
+  base_point.y = 5.0;
+  const auto radius = 3.0;
+
+  {  // first index without binary search
+    const auto index = autoware::experimental::trajectory::find_first_index_if(
+      *trajectory, [&](const autoware_internal_planning_msgs::msg::PathPointWithLaneId & point) {
+        return autoware_utils_geometry::calc_distance2d(point.point.pose.position, base_point) <
+               radius;
+      });
+    ASSERT_TRUE(index.has_value());
+    const auto point = trajectory->compute(*index).point.pose.position;
+    EXPECT_FLOAT_EQ(point.x, 3.30);
+    EXPECT_FLOAT_EQ(point.y, 4.01);
+  }
+
+  {  // first index with binary search
+    const auto index = autoware::experimental::trajectory::find_first_index_if(
+      *trajectory,
+      [&](const autoware_internal_planning_msgs::msg::PathPointWithLaneId & point) {
+        return autoware_utils_geometry::calc_distance2d(point.point.pose.position, base_point) <
+               radius;
+      },
+      20);
+    ASSERT_TRUE(index.has_value());
+    const auto point = trajectory->compute(*index).point.pose.position;
+    EXPECT_NEAR(autoware_utils_geometry::calc_distance2d(point, base_point), radius, 1e-3);
+  }
+
+  {  // last index without binary search
+    const auto index = autoware::experimental::trajectory::find_last_index_if(
+      *trajectory, [&](const autoware_internal_planning_msgs::msg::PathPointWithLaneId & point) {
+        return autoware_utils_geometry::calc_distance2d(point.point.pose.position, base_point) <
+               radius;
+      });
+    ASSERT_TRUE(index.has_value());
+    const auto point = trajectory->compute(*index).point.pose.position;
+    EXPECT_FLOAT_EQ(point.x, 6.49);
+    EXPECT_FLOAT_EQ(point.y, 5.20);
+  }
+
+  {  // last index with binary search
+    const auto index = autoware::experimental::trajectory::find_last_index_if(
+      *trajectory,
+      [&](const autoware_internal_planning_msgs::msg::PathPointWithLaneId & point) {
+        return autoware_utils_geometry::calc_distance2d(point.point.pose.position, base_point) <
+               radius;
+      },
+      20);
+    ASSERT_TRUE(index.has_value());
+    const auto point = trajectory->compute(*index).point.pose.position;
+    EXPECT_NEAR(autoware_utils_geometry::calc_distance2d(point, base_point), radius, 1e-3);
+  }
 }
 
 TEST_F(TrajectoryTest, find_interval)
