@@ -1,6 +1,7 @@
 <launch>
   <arg name="lanelet2_map_loader_param_path" default="$(find-pkg-share autoware_map_loader)/config/lanelet2_map_loader.param.yaml"/>
   <arg name="lanelet2_map_path"/>
+  <arg name="metadata_file_path" default=""/>
   <arg name="lanelet2_map_topic" default="vector_map"/>
   <arg name="lanelet2_map_marker_topic" default="vector_map_marker"/>
 
