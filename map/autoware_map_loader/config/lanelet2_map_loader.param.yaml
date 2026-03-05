@@ -3,4 +3,4 @@
     allow_unsupported_version: true             # flag to load unsupported format_version anyway. If true, just prints warning.
     center_line_resolution: 5.0                 # [m]
     use_waypoints: true                         # "centerline" in the Lanelet2 map will be used as a "waypoints" tag.
-    lanelet2_map_path: $(var lanelet2_map_path) # The lanelet2 map path
+    lanelet2_map_path: $(var lanelet2_map_path) # Path to a lanelet2 .osm map file, or a directory containing .osm files
