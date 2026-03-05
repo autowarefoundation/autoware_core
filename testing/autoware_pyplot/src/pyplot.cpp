@@ -29,6 +29,8 @@ void PyPlot::load_attrs()
 {
   LOAD_FUNC_ATTR(axis, mod);
   LOAD_FUNC_ATTR(axes, mod);
+  LOAD_FUNC_ATTR(axhline, mod);
+  LOAD_FUNC_ATTR(axvline, mod);
   LOAD_FUNC_ATTR(cla, mod);
   LOAD_FUNC_ATTR(clf, mod);
   LOAD_FUNC_ATTR(figure, mod);
@@ -61,6 +63,16 @@ PyObjectWrapper PyPlot::axis(const pybind11::tuple & args, const pybind11::dict 
 axes::Axes PyPlot::axes(const pybind11::dict & kwargs)
 {
   return axes::Axes{axes_attr(**kwargs)};
+}
+
+PyObjectWrapper PyPlot::axhline(const pybind11::tuple & args, const pybind11::dict & kwargs)
+{
+  return PyObjectWrapper{axhline_attr(*args, **kwargs)};
+}
+
+PyObjectWrapper PyPlot::axvline(const pybind11::tuple & args, const pybind11::dict & kwargs)
+{
+  return PyObjectWrapper{axvline_attr(*args, **kwargs)};
 }
 
 PyObjectWrapper PyPlot::cla(const pybind11::tuple & args, const pybind11::dict & kwargs)

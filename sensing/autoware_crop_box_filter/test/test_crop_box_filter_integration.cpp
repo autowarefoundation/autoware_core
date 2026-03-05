@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/crop_box_filter/crop_box_filter_node.hpp"
+#include "crop_box_filter_node.hpp"
 
 #include <rclcpp/executors.hpp>
 

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/gnss_poser/gnss_poser_node.hpp"
+#include "gnss_poser_node.hpp"
 
 #include <rclcpp/rclcpp.hpp>
 #include <tf2_ros/transform_broadcaster.hpp>
