@@ -371,9 +371,18 @@ bool JerkFilteredSmoother::apply(
     RCLCPP_WARN(logger_, "Input Trajectory to the jerk filtered optimization is empty.");
     return false;
   }
+  const double len = input.length();
+  for (const double b : bases) {
+    if (b < 0.0 || b > len) {
+      RCLCPP_WARN(
+        logger_, "Input Trajectory base %f outside valid domain [0,%f] - aborting optimization", b,
+        len);
+      return false;
+    }
+  }
   output = input;
 
-  if (bases.size() == 1) {
+  if (bases.size() < 3) {
     output.longitudinal_velocity_mps().range(bases[0], bases[0]).set(v0);
     output.acceleration_mps2().range(bases[0], bases[0]).set(a0);
     if (publish_debug_trajs) {
@@ -831,18 +840,6 @@ TrajectoryExperimental JerkFilteredSmoother::backwardJerkFilter(
   const TrajectoryExperimental & input) const
 {
   autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
-
-  const auto [bases, vel] = input.longitudinal_velocity_mps().get_data();
-  const double len = input.length();
-  for (double b : bases) {
-    if (b < 0.0 || b > len) {
-      RCLCPP_WARN(
-        logger_, "backwardJerkFilter: input base %f outside [%f]; returning unmodified trajectory",
-        b, len);
-      return input;
-    }
-  }
-
   TrajectoryPoints discrete;
   try {
     discrete = input.restore();

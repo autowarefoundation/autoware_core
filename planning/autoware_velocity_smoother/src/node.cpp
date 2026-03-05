@@ -755,7 +755,7 @@ bool VelocitySmootherNode::smoothVelocityContinuous(
   if (!opt_input_continuous) {
     return false;
   }
-  auto input_continuous = opt_input_continuous.value();
+  const auto input_continuous = opt_input_continuous.value();
 
   constexpr bool enable_smooth_limit = true;
   constexpr bool use_resampling = true;
@@ -765,7 +765,6 @@ bool VelocitySmootherNode::smoothVelocityContinuous(
           input_continuous, initial_motion.vel, initial_motion.acc, enable_smooth_limit,
           use_resampling)
       : input_continuous;
-
   // Steering angle rate limit (Note: set use_resample = false since it is resampled above)
   const auto traj_steering_rate_limited =
     node_param_.enable_steering_rate_limit
@@ -783,12 +782,6 @@ bool VelocitySmootherNode::smoothVelocityContinuous(
   if (!traj_resampled.empty()) {
     traj_resampled.back().longitudinal_velocity_mps = 0.0;
   }
-
-  auto opt_traj_resampled_ = autoware::experimental::trajectory::pretty_build(traj_resampled);
-  if (!opt_traj_resampled_) {
-    return false;
-  }
-  auto traj_resampled_ = opt_traj_resampled_.value();
 
   publishClosestVelocity(
     traj_resampled, current_odometry_ptr_->pose.pose, debug_closest_max_velocity_);
