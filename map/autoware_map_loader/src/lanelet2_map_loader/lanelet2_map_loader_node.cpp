@@ -92,8 +92,7 @@ void Lanelet2MapLoaderNode::on_map_projector_info(
   const auto lanelet2_map_path = get_parameter("lanelet2_map_path").as_string();
   const auto center_line_resolution = get_parameter("center_line_resolution").as_double();
   const auto use_waypoints = get_parameter("use_waypoints").as_bool();
-  const auto enable_selected_map_loading =
-    get_parameter("enable_selected_map_loading").as_bool();
+  const auto enable_selected_map_loading = get_parameter("enable_selected_map_loading").as_bool();
   const auto metadata_file_path = get_parameter("metadata_file_path").as_string();
 
   // get lanelet2 file paths (handles both a single .osm file and a directory)

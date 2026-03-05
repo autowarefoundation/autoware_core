@@ -50,8 +50,8 @@ public:
   /// @param use_waypoints         If true, use waypoint-based centerline overwrite.
   Lanelet2SelectedMapLoaderModule(
     rclcpp::Node * node, std::map<std::string, Lanelet2FileMetaData> cell_metadata_dict,
-    const autoware_map_msgs::msg::MapProjectorInfo & projector_info,
-    double center_line_resolution, bool use_waypoints);
+    const autoware_map_msgs::msg::MapProjectorInfo & projector_info, double center_line_resolution,
+    bool use_waypoints);
 
 private:
   rclcpp::Logger logger_;

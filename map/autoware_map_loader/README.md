@@ -153,17 +153,17 @@ Cell IDs equal the absolute file path of the corresponding `.osm` file.
 The node determines bounding boxes for each cell in one of two ways:
 
 1. **From a metadata YAML file** — when `metadata_file_path` points to an
-   existing file.  The expected format is:
+   existing file. The expected format is:
 
    ```yaml
    x_resolution: 100.0
    y_resolution: 100.0
-   1.osm: [58700.0, 42500.0]   # [min_x, min_y] of this cell
+   1.osm: [58700.0, 42500.0] # [min_x, min_y] of this cell
    2.osm: [58800.0, 42500.0]
    ```
 
    Relative filenames are resolved against the directory that contains the
-   YAML file.  The bounding box of each cell is
+   YAML file. The bounding box of each cell is
    `[min_x, min_y, min_x + x_resolution, min_y + y_resolution]`.
 
 2. **Computed from the loaded map** — when `metadata_file_path` is empty or
@@ -181,11 +181,11 @@ The node determines bounding boxes for each cell in one of two ways:
 ### Published Topics
 
 - `/map/vector_map` (autoware_map_msgs/LaneletMapBin) : Merged binary Lanelet2 map
-- `output/lanelet2_map_metadata` (autoware_map_msgs/LaneletMapMetaData) : Per-cell bounding-box metadata *(only when `enable_selected_map_loading` is `true`)*
+- `output/lanelet2_map_metadata` (autoware_map_msgs/LaneletMapMetaData) : Per-cell bounding-box metadata _(only when `enable_selected_map_loading` is `true`)_
 
 ### Services
 
-- `service/get_selected_lanelet2_map` (autoware_map_msgs/srv/GetSelectedLanelet2Map) : Returns the binary map for a requested set of cell IDs *(only when `enable_selected_map_loading` is `true`)*
+- `service/get_selected_lanelet2_map` (autoware_map_msgs/srv/GetSelectedLanelet2Map) : Returns the binary map for a requested set of cell IDs _(only when `enable_selected_map_loading` is `true`)_
 
 ### Parameters
 
