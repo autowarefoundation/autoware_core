@@ -195,8 +195,6 @@ public:
     return ss;
   }
 
-  virtual void set_stopline([[maybe_unused]] const double start_point) {}
-
   class Builder
   {
   private:
