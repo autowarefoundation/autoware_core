@@ -117,7 +117,7 @@ public:
    * @brief set longitudinal velocity from start_point to end of the line zero (stopline)
    * @param start_point stopline start point
    */
-  void set_stopline(const double start_point);
+  void set_stopline(const double start_point) override;
 
   class Builder : BaseClass::Builder
   {
