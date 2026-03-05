@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef LANELET2_MAP_LOADER_UTILS_HPP_
-#define LANELET2_MAP_LOADER_UTILS_HPP_
+#ifndef LANELET2_MAP_LOADER__LANELET2_MAP_LOADER_UTILS_HPP_
+#define LANELET2_MAP_LOADER__LANELET2_MAP_LOADER_UTILS_HPP_
 
 #include <lanelet2_core/LaneletMap.h>
 
@@ -53,4 +53,4 @@ void merge_lanelet2_maps(lanelet::LaneletMap & merge_target, lanelet::LaneletMap
 
 }  // namespace autoware::map_loader::utils
 
-#endif  // LANELET2_MAP_LOADER_UTILS_HPP_
+#endif  // LANELET2_MAP_LOADER__LANELET2_MAP_LOADER_UTILS_HPP_

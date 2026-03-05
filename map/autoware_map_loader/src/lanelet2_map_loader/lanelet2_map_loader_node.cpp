@@ -84,8 +84,7 @@ void Lanelet2MapLoaderNode::on_map_projector_info(
   // get lanelet2 file paths (handles both a single .osm file and a directory)
   const std::vector<std::string> lanelet2_paths = utils::get_lanelet2_paths(lanelet2_map_path);
   if (lanelet2_paths.empty()) {
-    RCLCPP_ERROR(
-      get_logger(), "No lanelet2 map files found from %s", lanelet2_map_path.c_str());
+    RCLCPP_ERROR(get_logger(), "No lanelet2 map files found from %s", lanelet2_map_path.c_str());
     return;
   }
 

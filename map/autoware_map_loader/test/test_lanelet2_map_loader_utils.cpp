@@ -15,8 +15,8 @@
 #include "../src/lanelet2_map_loader/lanelet2_map_loader_utils.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
-#include <gtest/gtest.h>
 
+#include <gtest/gtest.h>
 #include <lanelet2_core/LaneletMap.h>
 #include <lanelet2_core/primitives/Area.h>
 #include <lanelet2_core/primitives/Lanelet.h>
