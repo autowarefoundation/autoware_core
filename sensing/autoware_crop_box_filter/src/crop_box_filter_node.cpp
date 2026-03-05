@@ -86,7 +86,7 @@ CropBoxFilter::CropBoxFilter(const rclcpp::NodeOptions & node_options)
     p.max_x = declare_parameter<double>("max_x");
     p.max_y = declare_parameter<double>("max_y");
     p.max_z = declare_parameter<double>("max_z");
-    config_.negative = declare_parameter<bool>("negative");
+    config_.keep_outside_box = declare_parameter<bool>("negative");
     if (tf_input_frame_.empty()) {
       throw std::invalid_argument("Crop box requires non-empty input_frame");
     }
@@ -197,8 +197,10 @@ rcl_interfaces::msg::SetParametersResult CropBoxFilter::param_callback(
   new_param.max_x = get_param(p, "max_x", new_param.max_x) ? new_param.max_x : config_.param.max_x;
   new_param.max_y = get_param(p, "max_y", new_param.max_y) ? new_param.max_y : config_.param.max_y;
   new_param.max_z = get_param(p, "max_z", new_param.max_z) ? new_param.max_z : config_.param.max_z;
-  bool new_negative = false;
-  config_.negative = get_param(p, "negative", new_negative) ? new_negative : config_.negative;
+  bool new_keep_outside_box = false;
+  config_.keep_outside_box = get_param(p, "negative", new_keep_outside_box)
+                               ? new_keep_outside_box
+                               : config_.keep_outside_box;
 
   config_.param = new_param;
 

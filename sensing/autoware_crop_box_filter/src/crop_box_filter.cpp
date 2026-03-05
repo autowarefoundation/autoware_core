@@ -176,7 +176,9 @@ CropBoxFilterResult filter_pointcloud(const PointCloud2 & cloud, const CropBoxFi
       point_preprocessed[1] > config.param.min_y && point_preprocessed[1] < config.param.max_y &&
       point_preprocessed[0] > config.param.min_x && point_preprocessed[0] < config.param.max_x;
 
-    if ((!config.negative && point_is_inside) || (config.negative && !point_is_inside)) {
+    if (
+      (!config.keep_outside_box && point_is_inside) ||
+      (config.keep_outside_box && !point_is_inside)) {
       const size_t global_offset = point_index * cloud.point_step;
 
       memcpy(&output.data[output_size], &cloud.data[global_offset], cloud.point_step);

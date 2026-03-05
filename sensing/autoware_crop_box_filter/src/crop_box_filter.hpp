@@ -49,7 +49,7 @@ struct CropBoxParam
 struct CropBoxFilterConfig
 {
   CropBoxParam param;
-  bool negative{false};
+  bool keep_outside_box{false};
   bool need_preprocess_transform{false};
   bool need_postprocess_transform{false};
   Eigen::Matrix4f eigen_transform_preprocess{Eigen::Matrix4f::Identity()};

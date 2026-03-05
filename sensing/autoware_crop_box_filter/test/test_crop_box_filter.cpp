@@ -159,7 +159,7 @@ TEST(CropBoxFilterTest, FilterZeroPointReturnZeroPoint)
   // Arrange
   autoware::crop_box_filter::CropBoxFilterConfig config;
   config.param = {-5.0f, 5.0f, -5.0f, 5.0f, -5.0f, 5.0f};
-  config.negative = true;
+  config.keep_outside_box = true;
   config.output_frame = "base_link";
 
   // Act
@@ -169,12 +169,12 @@ TEST(CropBoxFilterTest, FilterZeroPointReturnZeroPoint)
   EXPECT_TRUE(output_points.empty());
 }
 
-TEST(CropBoxFilterTest, FilterExcludePointsInsideBoxWhenNegative)
+TEST(CropBoxFilterTest, FilterExcludePointsInsideBoxWhenKeepOutsideBox)
 {
   // Arrange
   autoware::crop_box_filter::CropBoxFilterConfig config;
   config.param = {-5.0f, 5.0f, -5.0f, 5.0f, -5.0f, 5.0f};
-  config.negative = true;
+  config.keep_outside_box = true;
   config.output_frame = "base_link";
   // clang-format off
   PointXYZList input_points = {
@@ -217,12 +217,12 @@ TEST(CropBoxFilterTest, FilterExcludePointsInsideBoxWhenNegative)
   EXPECT_TRUE(is_same_points(expected_points, output_points));
 }
 
-TEST(CropBoxFilterTest, FilterExcludePointsOutsideBoxWhenPositive)
+TEST(CropBoxFilterTest, FilterExcludePointsOutsideBoxWhenKeepInsideBox)
 {
   // Arrange
   autoware::crop_box_filter::CropBoxFilterConfig config;
   config.param = {-5.0f, 5.0f, -5.0f, 5.0f, -5.0f, 5.0f};
-  config.negative = false;
+  config.keep_outside_box = false;
   config.output_frame = "base_link";
   // clang-format off
   PointXYZList input_points = {
