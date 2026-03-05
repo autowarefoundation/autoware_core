@@ -79,7 +79,7 @@ std::vector<double> calcVelocityProfileWithConstantJerkAndAccelerationLimit(
   const double acc_max, const double acc_min);
 
 std::vector<double> calcVelocityProfileWithConstantJerkAndAccelerationLimit(
-  Trajectory & trajectory, const double v0, const double a0, const double jerk,
+  const std::vector<double> & bases, const double v0, const double a0, const double jerk,
   const double acc_max, const double acc_min);
 
 double calcStopDistance(const TrajectoryPoints & trajectory, const size_t closest);

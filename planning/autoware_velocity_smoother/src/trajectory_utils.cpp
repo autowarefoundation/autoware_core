@@ -504,13 +504,10 @@ std::vector<double> calcVelocityProfileWithConstantJerkAndAccelerationLimit(
 }
 
 std::vector<double> calcVelocityProfileWithConstantJerkAndAccelerationLimit(
-  Trajectory & trajectory, const double v0, const double a0, const double jerk,
+  const std::vector<double> & bases, const double v0, const double a0, const double jerk,
   const double acc_max, const double acc_min)
 {
-  if (trajectory.length() == 0.0) return {};
-
-  const auto bases = trajectory.get_underlying_bases();
-  if (bases.size() < 2) return {};
+  if (bases.empty()) return {};
 
   std::vector<double> velocities;
   velocities.reserve(bases.size());
@@ -520,6 +517,10 @@ std::vector<double> calcVelocityProfileWithConstantJerkAndAccelerationLimit(
   auto curr_a = a0;
 
   for (size_t i = 1; i < bases.size(); ++i) {
+    if (bases.at(i) < bases.at(i - 1)) {
+      return {};
+    }
+
     const double interval = bases.at(i) - bases.at(i - 1);
     const auto t = interval / std::max(curr_v, 1.0e-5);
     curr_v = integ_v(curr_v, curr_a, jerk, t);
@@ -527,9 +528,6 @@ std::vector<double> calcVelocityProfileWithConstantJerkAndAccelerationLimit(
     curr_a = std::clamp(integ_a(curr_a, jerk, t), acc_min, acc_max);
   }
 
-  if (!trajectory.longitudinal_velocity_mps().build(bases, velocities)) {
-    return {};  // return empty vector on build failure
-  }
   return velocities;
 }
 
