@@ -29,6 +29,7 @@ rclcpp_components_register_node(pointcloud_map_loader_node
 
 ament_auto_add_library(lanelet2_map_loader_node SHARED
   src/lanelet2_map_loader/lanelet2_map_loader_node.cpp
+  src/lanelet2_map_loader/lanelet2_map_loader_utils.cpp
 )
 
 rclcpp_components_register_node(lanelet2_map_loader_node

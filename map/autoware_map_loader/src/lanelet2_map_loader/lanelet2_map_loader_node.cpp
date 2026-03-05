@@ -34,6 +34,7 @@
 #include "autoware/map_loader/lanelet2_map_loader_node.hpp"
 
 #include "lanelet2_local_projector.hpp"
+#include "lanelet2_map_loader_utils.hpp"
 
 #include <autoware/geography_utils/lanelet2_projector.hpp>
 #include <autoware/lanelet2_utils/conversion.hpp>
@@ -51,6 +52,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 namespace autoware::map_loader
 {
@@ -75,16 +77,39 @@ void Lanelet2MapLoaderNode::on_map_projector_info(
   const MapProjectorInfo::Message::ConstSharedPtr msg)
 {
   const auto allow_unsupported_version = get_parameter("allow_unsupported_version").as_bool();
-  const auto lanelet2_filename = get_parameter("lanelet2_map_path").as_string();
+  const auto lanelet2_map_path = get_parameter("lanelet2_map_path").as_string();
   const auto center_line_resolution = get_parameter("center_line_resolution").as_double();
   const auto use_waypoints = get_parameter("use_waypoints").as_bool();
 
-  // load map from file
-  const auto map = load_map(lanelet2_filename, *msg);
-  if (!map) {
-    RCLCPP_ERROR(get_logger(), "Failed to load lanelet2_map. Not published.");
+  // get lanelet2 file paths (handles both a single .osm file and a directory)
+  const std::vector<std::string> lanelet2_paths = utils::get_lanelet2_paths(lanelet2_map_path);
+  if (lanelet2_paths.empty()) {
+    RCLCPP_ERROR(
+      get_logger(), "No lanelet2 map files found from %s", lanelet2_map_path.c_str());
     return;
   }
+
+  // load maps from files
+  // Note: we cannot destroy loaded maps even after merging because lanelets expire when the map
+  // object is destructed
+  std::vector<lanelet::LaneletMapPtr> maps;
+  for (const auto & path : lanelet2_paths) {
+    auto map_tmp = load_map(path, *msg);
+    if (!map_tmp) {
+      RCLCPP_ERROR(get_logger(), "Failed to load lanelet2_map: %s", path.c_str());
+      return;
+    }
+    maps.push_back(map_tmp);
+  }
+
+  // merge all loaded maps into a new empty map
+  auto map = std::make_shared<lanelet::LaneletMap>();
+  for (auto & loaded_map : maps) {
+    utils::merge_lanelet2_maps(*map, *loaded_map);
+  }
+
+  // use the first file path for format/version metadata
+  const auto & lanelet2_filename = lanelet2_paths.front();
 
   std::string format_version{"null"}, map_version{""};
   lanelet::io_handlers::AutowareOsmParser::parseVersions(
