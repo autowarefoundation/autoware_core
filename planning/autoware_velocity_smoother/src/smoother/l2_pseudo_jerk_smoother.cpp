@@ -26,6 +26,9 @@
 
 namespace autoware::velocity_smoother
 {
+using TrajectoryExperimental =
+  autoware::experimental::trajectory::Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>;
+
 L2PseudoJerkSmoother::L2PseudoJerkSmoother(
   rclcpp::Node & node, const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper)
 : SmootherBase(node, time_keeper)
@@ -234,6 +237,157 @@ bool L2PseudoJerkSmoother::apply(
     std::chrono::duration_cast<std::chrono::nanoseconds>(tf2 - ts2).count() * 1.0e-6;
   RCLCPP_DEBUG(logger_, "init time = %f [ms], optimization time = %f [ms]", dt_ms1, dt_ms2);
 
+  return true;
+}
+
+bool L2PseudoJerkSmoother::apply(
+  const double initial_vel, const double initial_acc, const TrajectoryExperimental & input,
+  TrajectoryExperimental & output, std::vector<TrajectoryExperimental> & debug_trajectories,
+  const bool publish_debug_trajs)
+{
+  const auto [bases, velocities] = input.longitudinal_velocity_mps().get_data();
+  if (bases.empty() || velocities.empty()) {
+    RCLCPP_DEBUG(logger_, "Input trajectory is empty");
+    return false;
+  }
+
+  if (std::fabs(velocities.front()) < 0.1) {
+    RCLCPP_DEBUG(logger_, "closest v_max < 0.1. assume vehicle stopped. return.");
+    return true;
+  }
+
+  const size_t N = bases.size();
+  if (N < 2) {
+    RCLCPP_WARN(logger_, "trajectory length is not enough.");
+    return false;
+  }
+
+  std::vector<double> interval_dist_arr;
+  for (size_t i = 0; i < N - 1; ++i) {
+    interval_dist_arr.push_back(bases[i + 1] - bases[i]);
+  }
+  if (N > 0) {
+    interval_dist_arr.push_back(0.0);  // last interval is 0
+  }
+
+  std::vector<double> v_max = velocities;
+
+  const uint32_t l_variables = 4 * N;
+  const uint32_t l_constraints = 3 * N + 1;
+
+  Eigen::MatrixXd A = Eigen::MatrixXd::Zero(l_constraints, l_variables);
+  std::vector<double> lower_bound(l_constraints, 0.0);
+  std::vector<double> upper_bound(l_constraints, 0.0);
+
+  Eigen::MatrixXd P = Eigen::MatrixXd::Zero(l_variables, l_variables);
+  std::vector<double> q(l_variables, 0.0);
+
+  const double a_max = base_param_.max_accel;
+  const double a_min = base_param_.min_decel;
+  const double smooth_weight = smoother_param_.pseudo_jerk_weight;
+  const double over_v_weight = smoother_param_.over_v_weight;
+  const double over_a_weight = smoother_param_.over_a_weight;
+
+  for (unsigned int i = 0; i < N; ++i) {
+    q[i] = -1.0;  // minimize (-bi)
+  }
+
+  for (unsigned int i = N; i < 2 * N - 1; ++i) {
+    unsigned int j = i - N;
+    const double w_x_ds_inv = 1.0 / std::max(interval_dist_arr.at(j), 0.0001);
+    P(i, i) += w_x_ds_inv * w_x_ds_inv * smooth_weight;
+    P(i, i + 1) -= w_x_ds_inv * w_x_ds_inv * smooth_weight;
+    P(i + 1, i) -= w_x_ds_inv * w_x_ds_inv * smooth_weight;
+    P(i + 1, i + 1) += w_x_ds_inv * w_x_ds_inv * smooth_weight;
+  }
+
+  for (unsigned int i = 2 * N; i < 3 * N; ++i) {
+    P(i, i) += over_v_weight;
+  }
+
+  for (unsigned int i = 3 * N; i < 4 * N; ++i) {
+    P(i, i) += over_a_weight;
+  }
+
+  for (unsigned int i = 0; i < N; ++i) {
+    const int j = 2 * N + i;
+    A(i, i) = 1.0;
+    A(i, j) = -1.0;
+    upper_bound[i] = v_max[i] * v_max[i];
+    lower_bound[i] = 0.0;
+  }
+
+  for (unsigned int i = N; i < 2 * N; ++i) {
+    const int j = 2 * N + i;
+    A(i, i) = 1.0;
+    A(i, j) = -1.0;
+    if (i != N && v_max[i - N] < std::numeric_limits<double>::epsilon()) {
+      upper_bound[i] = 0.0;
+      lower_bound[i] = 0.0;
+    } else {
+      upper_bound[i] = a_max;
+      lower_bound[i] = a_min;
+    }
+  }
+
+  for (unsigned int i = 2 * N; i < 3 * N - 1; ++i) {
+    const unsigned int j = i - 2 * N;
+    const double ds_inv = 1.0 / std::max(interval_dist_arr.at(j), 0.0001);
+    A(i, j) = -ds_inv;
+    A(i, j + 1) = ds_inv;
+    A(i, j + N) = -2.0;
+    upper_bound[i] = 0.0;
+    lower_bound[i] = 0.0;
+  }
+
+  {
+    const unsigned int i = 3 * N - 1;
+    A(i, 0) = 1.0;
+    upper_bound[i] = initial_vel * initial_vel;
+    lower_bound[i] = initial_vel * initial_vel;
+
+    A(i + 1, N) = 1.0;
+    upper_bound[i + 1] = initial_acc;
+    lower_bound[i + 1] = initial_acc;
+  }
+
+  const auto result = qp_solver_.optimize(P, A, q, lower_bound, upper_bound);
+  const std::vector<double> optval = result.primal_solution;
+  const int status_val = result.solution_status;
+
+  if (status_val != 1) {
+    RCLCPP_WARN(logger_, "optimization failed : %s", qp_solver_.getStatusMessage().c_str());
+    return false;
+  }
+
+  const auto has_nan =
+    std::any_of(optval.begin(), optval.end(), [](const auto v) { return std::isnan(v); });
+  if (has_nan) {
+    RCLCPP_WARN(logger_, "optimization failed: result contains NaN values");
+    return false;
+  }
+
+  output = input;
+  for (unsigned int i = 0; i < N; ++i) {
+    double v = optval.at(i);
+    const double optimized_vel = std::sqrt(std::max(v, 0.0));
+    const double optimized_acc = optval.at(i + N);
+
+    output.longitudinal_velocity_mps().range(bases[i], bases[i]).set(optimized_vel);
+    output.acceleration_mps2().range(bases[i], bases[i]).set(optimized_acc);
+  }
+
+  if (bases.back() < input.length()) {
+    output.longitudinal_velocity_mps().range(bases.back(), input.length()).set(0.0);
+    output.acceleration_mps2().range(bases.back(), input.length()).set(0.0);
+  }
+
+  // Set debug trajectories
+  if (publish_debug_trajs) {
+    debug_trajectories.clear();
+  }
+
+  qp_solver_.logUnsolvedStatus("[autoware_velocity_smoother]");
   return true;
 }
 
