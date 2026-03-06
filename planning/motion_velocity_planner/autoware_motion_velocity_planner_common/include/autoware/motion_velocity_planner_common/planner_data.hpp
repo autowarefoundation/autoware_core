@@ -232,7 +232,7 @@ public:
       const TrajectoryPolygonCollisionCheck & trajectory_polygon_collision_check,
       const double ego_nearest_dist_threshold, const double ego_nearest_yaw_threshold)
     {
-      pointcloud = arg_pointcloud;
+      pointcloud = std::move(arg_pointcloud);
       const auto preprocessed_result = filter_and_cluster_point_clouds(
         raw_trajectory, current_odometry, min_deceleration_distance, vehicle_info,
         trajectory_polygon_collision_check, ego_nearest_dist_threshold, ego_nearest_yaw_threshold);
