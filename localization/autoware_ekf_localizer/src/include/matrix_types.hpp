@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__EKF_LOCALIZER__COVARIANCE_HPP_
-#define AUTOWARE__EKF_LOCALIZER__COVARIANCE_HPP_
+#ifndef MATRIX_TYPES_HPP_
+#define MATRIX_TYPES_HPP_
 
-#include "autoware/ekf_localizer/matrix_types.hpp"
+#include <Eigen/Core>
 
 namespace autoware::ekf_localizer
 {
 
-std::array<double, 36> ekf_covariance_to_pose_message_covariance(const Matrix6d & P);
-std::array<double, 36> ekf_covariance_to_twist_message_covariance(const Matrix6d & P);
+using Vector6d = Eigen::Matrix<double, 6, 1>;
+using Matrix6d = Eigen::Matrix<double, 6, 6>;
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // AUTOWARE__EKF_LOCALIZER__COVARIANCE_HPP_
+#endif  // MATRIX_TYPES_HPP_

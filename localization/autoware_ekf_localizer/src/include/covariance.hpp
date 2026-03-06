@@ -12,21 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__EKF_LOCALIZER__STATE_INDEX_HPP_
-#define AUTOWARE__EKF_LOCALIZER__STATE_INDEX_HPP_
+#ifndef COVARIANCE_HPP_
+#define COVARIANCE_HPP_
+
+#include "matrix_types.hpp"
 
 namespace autoware::ekf_localizer
 {
 
-enum IDX {
-  X = 0,
-  Y = 1,
-  YAW = 2,
-  YAWB = 3,
-  VX = 4,
-  WZ = 5,
-};
+std::array<double, 36> ekf_covariance_to_pose_message_covariance(const Matrix6d & P);
+std::array<double, 36> ekf_covariance_to_twist_message_covariance(const Matrix6d & P);
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // AUTOWARE__EKF_LOCALIZER__STATE_INDEX_HPP_
+#endif  // COVARIANCE_HPP_
