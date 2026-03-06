@@ -242,8 +242,7 @@ bool L2PseudoJerkSmoother::apply(
 
 bool L2PseudoJerkSmoother::apply(
   const double initial_vel, const double initial_acc, const TrajectoryExperimental & input,
-  TrajectoryExperimental & output,
-  std::vector<TrajectoryExperimental> & debug_trajectories,
+  TrajectoryExperimental & output, std::vector<TrajectoryExperimental> & debug_trajectories,
   const bool publish_debug_trajs)
 {
   const auto [bases, velocities] = input.longitudinal_velocity_mps().get_data();

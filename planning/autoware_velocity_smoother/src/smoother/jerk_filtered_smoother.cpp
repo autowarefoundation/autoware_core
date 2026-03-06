@@ -16,10 +16,10 @@
 
 #include "autoware/qp_interface/proxqp_interface.hpp"
 #include "autoware/trajectory/trajectory_point.hpp"
-#include <autoware/trajectory/utils/pretty_build.hpp>
 #include "autoware/velocity_smoother/trajectory_utils.hpp"
 
 #include <Eigen/Core>
+#include <autoware/trajectory/utils/pretty_build.hpp>
 
 #include <algorithm>
 #include <chrono>
@@ -362,8 +362,7 @@ bool JerkFilteredSmoother::apply(
 
 bool JerkFilteredSmoother::apply(
   const double v0, const double a0, const TrajectoryExperimental & input,
-  TrajectoryExperimental & output,
-  std::vector<TrajectoryExperimental> & debug_trajectories,
+  TrajectoryExperimental & output, std::vector<TrajectoryExperimental> & debug_trajectories,
   const bool publish_debug_trajs)
 {
   // Guard: check if trajectory is empty and bases within valid range
@@ -376,9 +375,8 @@ bool JerkFilteredSmoother::apply(
   for (const double b : bases) {
     if (b < 0.0 || b > len) {
       RCLCPP_WARN(
-        logger_,
-        "Input Trajectory base %f outside valid domain [0,%f] - aborting optimization",
-        b, len);
+        logger_, "Input Trajectory base %f outside valid domain [0,%f] - aborting optimization", b,
+        len);
       return false;
     }
   }
@@ -440,11 +438,11 @@ bool JerkFilteredSmoother::apply(
     return false;
   }
   const auto initial_traj_pose = merged_discrete.front().pose;
-  
+
   auto merged_resampled_discrete = resampling::resampleTrajectory(
     merged_discrete, v0, initial_traj_pose, std::numeric_limits<double>::max(),
     std::numeric_limits<double>::max(), base_param_.resample_param);
-  
+
   // Ensure terminal velocity is zero
   if (!merged_resampled_discrete.empty()) {
     merged_resampled_discrete.back().longitudinal_velocity_mps = 0.0;
@@ -460,7 +458,8 @@ bool JerkFilteredSmoother::apply(
   const size_t N = *zero_vel_id + 1;
 
   // Convert back to continuous for optimization
-  auto opt_merged_resampled = autoware::experimental::trajectory::pretty_build(merged_resampled_discrete);
+  auto opt_merged_resampled =
+    autoware::experimental::trajectory::pretty_build(merged_resampled_discrete);
   if (!opt_merged_resampled) {
     throw std::runtime_error("Failed to build merged resampled trajectory");
   }
@@ -597,7 +596,7 @@ bool JerkFilteredSmoother::apply(
 
   output = merged_resampled;
   const double safe_output_length = output.length() * 0.99;
-  
+
   for (size_t i = 0; i < N; ++i) {
     double b = optval.at(IDX_B0 + i);
     const double optimized_vel = std::sqrt(std::max(b, 0.0));
@@ -612,7 +611,8 @@ bool JerkFilteredSmoother::apply(
     output.acceleration_mps2().range(0.0, merged_bases[0]).set(a_stop_decel);
   }
 
-  // Handle tail region beyond last optimized base point (matches discrete version: [N, output.length()))
+  // Handle tail region beyond last optimized base point (matches discrete version: [N,
+  // output.length()))
   if (!merged_bases.empty() && merged_bases.back() < input.length()) {
     // Only set if range is valid
     if (merged_bases.back() < safe_output_length) {
@@ -661,10 +661,11 @@ bool JerkFilteredSmoother::apply(
   // Set debug trajectories
   if (publish_debug_trajs) {
     debug_trajectories.resize(3);
-    debug_trajectories[0] = forwardJerkFilter(v0, std::max(a0, a_min), a_max, a_stop_accel, j_max, input);
+    debug_trajectories[0] =
+      forwardJerkFilter(v0, std::max(a0, a_min), a_max, a_stop_accel, j_max, input);
     debug_trajectories[1] = backwardJerkFilter(
-      input.longitudinal_velocity_mps().compute(bases.empty() ? 0.0 : bases.back()), a_stop_decel, a_min, a_stop_decel,
-      j_min, input);
+      input.longitudinal_velocity_mps().compute(bases.empty() ? 0.0 : bases.back()), a_stop_decel,
+      a_min, a_stop_decel, j_min, input);
     debug_trajectories[2] = merged_resampled;
   }
 
@@ -917,7 +918,8 @@ TrajectoryExperimental JerkFilteredSmoother::backwardJerkFilter(
   filtered_accelerations.reserve(bases.size());
   for (const double base : bases) {
     const double mirrored_s = std::clamp((s_max + s_min) - base, rev_min, rev_max);
-    filtered_velocities.push_back(reversed_filtered.longitudinal_velocity_mps().compute(mirrored_s));
+    filtered_velocities.push_back(
+      reversed_filtered.longitudinal_velocity_mps().compute(mirrored_s));
     filtered_accelerations.push_back(-reversed_filtered.acceleration_mps2().compute(mirrored_s));
   }
 
@@ -962,9 +964,12 @@ TrajectoryExperimental JerkFilteredSmoother::mergeFilteredTrajectory(
     double current_vel = v0;
     double current_acc = a0;
 
-    while (bwd_vels_data[i] < current_vel && i < fwd_vels_data.size() - 1 && i < bwd_vels_data.size() - 1) {
+    while (bwd_vels_data[i] < current_vel && i < fwd_vels_data.size() - 1 &&
+           i < bwd_vels_data.size() - 1) {
       // Set velocity and acceleration at this base point
-      merged.longitudinal_velocity_mps().range(fwd_bases_data[i], fwd_bases_data[i]).set(current_vel);
+      merged.longitudinal_velocity_mps()
+        .range(fwd_bases_data[i], fwd_bases_data[i])
+        .set(current_vel);
       merged.acceleration_mps2().range(fwd_bases_data[i], fwd_bases_data[i]).set(current_acc);
 
       const double ds = fwd_bases_data[i + 1] - fwd_bases_data[i];
@@ -993,7 +998,7 @@ TrajectoryExperimental JerkFilteredSmoother::mergeFilteredTrajectory(
     const double fwd_vel = fwd_vels_data[i];
     // Guard: ensure we don't access bwd_vels_data out of bounds
     const double bwd_vel = (i < bwd_vels_data.size()) ? bwd_vels_data[i] : 0.0;
-    
+
     if (fwd_vel < bwd_vel) {
       // Use forward filtered values
       const double fwd_acc = forward_filtered.acceleration_mps2().compute(base);

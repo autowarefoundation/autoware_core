@@ -342,11 +342,8 @@ TrajectoryPoints SmootherBase::applyLateralAccelerationFilter(
 }
 
 TrajectoryExperimental SmootherBase::applyLateralAccelerationFilter(
-  const TrajectoryExperimental & input,
-  const double v0,
-  const double a0,
-  const bool enable_smooth_limit,
-  const bool use_resampling,
+  const TrajectoryExperimental & input, const double v0, const double a0,
+  const bool enable_smooth_limit, const bool use_resampling,
   const double input_points_interval) const
 {
   autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
@@ -364,7 +361,7 @@ TrajectoryExperimental SmootherBase::applyLateralAccelerationFilter(
   if (s_max <= s_min) return input;
 
   std::vector<TrajectoryPoint> eval_points;
-  
+
   auto append_sample = [&](const double s) {
     const double s_clamped = std::clamp(s, s_min, s_max);
     const auto point = input.compute(s_clamped);
@@ -386,7 +383,7 @@ TrajectoryExperimental SmootherBase::applyLateralAccelerationFilter(
       append_sample(s);
     }
   }
-  
+
   if (eval_points.size() < 3) return input;
 
   auto opt_eval_trajectory = TrajectoryExperimental::Builder().build(eval_points);
@@ -398,7 +395,8 @@ TrajectoryExperimental SmootherBase::applyLateralAccelerationFilter(
 
   const auto s_vec = eval_trajectory.get_underlying_bases();
 
-  const auto curvature_v = trajectory_utils::calcTrajectoryCurvatureFrom3Points(eval_trajectory, s_vec);
+  const auto curvature_v =
+    trajectory_utils::calcTrajectoryCurvatureFrom3Points(eval_trajectory, s_vec);
 
   const double before_dist = base_param_.decel_distance_before_curve;
   const double after_dist = base_param_.decel_distance_after_curve;
@@ -406,15 +404,10 @@ TrajectoryExperimental SmootherBase::applyLateralAccelerationFilter(
   const auto lateral_limits = computeLateralAccelerationVelocitySquareRatioLimits();
 
   const auto latacc_min_vel_arr =
-    enable_smooth_limit
-      ? trajectory_utils::calcVelocityProfileWithConstantJerkAndAccelerationLimit(
-          eval_trajectory,
-          v0,
-          a0,
-          base_param_.min_jerk,
-          base_param_.max_accel,
-          base_param_.min_decel_for_lateral_acc_lim_filter)
-      : std::vector<double>{};
+    enable_smooth_limit ? trajectory_utils::calcVelocityProfileWithConstantJerkAndAccelerationLimit(
+                            eval_trajectory, v0, a0, base_param_.min_jerk, base_param_.max_accel,
+                            base_param_.min_decel_for_lateral_acc_lim_filter)
+                        : std::vector<double>{};
 
   for (size_t i = 0; i < s_vec.size(); ++i) {
     double max_curvature = 0.0;
