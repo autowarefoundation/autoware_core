@@ -197,6 +197,8 @@ private:
 
   std::shared_ptr<NormalDistributionsTransform> ndt_ptr_;
 
+  pcl::shared_ptr<pcl::PointCloud<PointSource>> sensor_points_in_baselink_frame_;
+
   Eigen::Matrix4f base_to_sensor_matrix_;
 
   std::mutex ndt_ptr_mtx_;
