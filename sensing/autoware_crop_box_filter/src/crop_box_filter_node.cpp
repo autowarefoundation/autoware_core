@@ -44,61 +44,49 @@ CropBoxFilter::CropBoxFilter(const rclcpp::NodeOptions & node_options)
     tf_input_orig_frame_ =
       static_cast<std::string>(declare_parameter("input_pointcloud_frame", "base_link"));
     tf_input_frame_ = static_cast<std::string>(declare_parameter("input_frame", "base_link"));
-    tf_output_frame_ = static_cast<std::string>(declare_parameter("output_frame", "base_link"));
+    config_.output_frame = static_cast<std::string>(declare_parameter("output_frame", "base_link"));
 
     transform_listener_ = std::make_unique<autoware_utils_tf::TransformListener>(this);
 
-    if (tf_input_orig_frame_ == tf_input_frame_) {
-      need_preprocess_transform_ = false;
-      eigen_transform_preprocess_ = Eigen::Matrix4f::Identity(4, 4);
-    } else {
+    if (tf_input_orig_frame_ != tf_input_frame_) {
       auto tf_ptr = transform_listener_->get_transform(
         tf_input_frame_, tf_input_orig_frame_, this->now(), rclcpp::Duration::from_seconds(1.0));
       if (!tf_ptr) {
         RCLCPP_ERROR(
           this->get_logger(), "Cannot get transform from %s to %s. Please check your TF tree.",
           tf_input_orig_frame_.c_str(), tf_input_frame_.c_str());
-        // Set identity transform and disable preprocessing when TF acquisition fails
-        need_preprocess_transform_ = false;
-        eigen_transform_preprocess_ = Eigen::Matrix4f::Identity(4, 4);
       } else {
         auto eigen_tf = tf2::transformToEigen(*tf_ptr);
-        eigen_transform_preprocess_ = eigen_tf.matrix().cast<float>();
-        need_preprocess_transform_ = true;
+        config_.eigen_transform_preprocess = eigen_tf.matrix().cast<float>();
+        config_.need_preprocess_transform = true;
       }
     }
 
-    if (tf_input_frame_ == tf_output_frame_) {
-      need_postprocess_transform_ = false;
-      eigen_transform_postprocess_ = Eigen::Matrix4f::Identity(4, 4);
-    } else {
+    if (tf_input_frame_ != config_.output_frame) {
       auto tf_ptr = transform_listener_->get_transform(
-        tf_output_frame_, tf_input_frame_, this->now(), rclcpp::Duration::from_seconds(1.0));
+        config_.output_frame, tf_input_frame_, this->now(), rclcpp::Duration::from_seconds(1.0));
       if (!tf_ptr) {
         RCLCPP_ERROR(
           this->get_logger(), "Cannot get transform from %s to %s. Please check your TF tree.",
-          tf_input_frame_.c_str(), tf_output_frame_.c_str());
-        // Set identity transform and disable postprocessing when TF acquisition fails
-        need_postprocess_transform_ = false;
-        eigen_transform_postprocess_ = Eigen::Matrix4f::Identity(4, 4);
+          tf_input_frame_.c_str(), config_.output_frame.c_str());
       } else {
         auto eigen_tf = tf2::transformToEigen(*tf_ptr);
-        eigen_transform_postprocess_ = eigen_tf.matrix().cast<float>();
-        need_postprocess_transform_ = true;
+        config_.eigen_transform_postprocess = eigen_tf.matrix().cast<float>();
+        config_.need_postprocess_transform = true;
       }
     }
   }
 
   // get polygon parameters
   {
-    auto & p = param_;
+    auto & p = config_.param;
     p.min_x = declare_parameter<double>("min_x");
     p.min_y = declare_parameter<double>("min_y");
     p.min_z = declare_parameter<double>("min_z");
     p.max_x = declare_parameter<double>("max_x");
     p.max_y = declare_parameter<double>("max_y");
     p.max_z = declare_parameter<double>("max_z");
-    p.negative = declare_parameter<bool>("negative");
+    config_.keep_outside_box = declare_parameter<bool>("negative");
     if (tf_input_frame_.empty()) {
       throw std::invalid_argument("Crop box requires non-empty input_frame");
     }
@@ -136,97 +124,6 @@ CropBoxFilter::CropBoxFilter(const rclcpp::NodeOptions & node_options)
   RCLCPP_DEBUG(this->get_logger(), "[Filter Constructor] successfully created.");
 }
 
-void CropBoxFilter::filter_pointcloud(const PointCloud2ConstPtr & cloud, PointCloud2 & output)
-{
-  // set up minimum output metadata required for creating iterators
-  output.fields = cloud->fields;
-  output.point_step = cloud->point_step;
-  output.data.resize(cloud->data.size());
-
-  // create output iterators for writing transformed coordinates
-  sensor_msgs::PointCloud2Iterator<float> output_x(output, "x");
-  sensor_msgs::PointCloud2Iterator<float> output_y(output, "y");
-  sensor_msgs::PointCloud2Iterator<float> output_z(output, "z");
-
-  size_t output_size = 0;
-  int skipped_count = 0;
-
-  // create input iterators for reading coordinates
-  sensor_msgs::PointCloud2ConstIterator<float> iter_x(*cloud, "x");
-  sensor_msgs::PointCloud2ConstIterator<float> iter_y(*cloud, "y");
-  sensor_msgs::PointCloud2ConstIterator<float> iter_z(*cloud, "z");
-
-  for (size_t point_index = 0; iter_x != iter_x.end();
-       ++iter_x, ++iter_y, ++iter_z, ++point_index) {
-    // extract point data using iterators
-    Eigen::Vector4f point;
-    point[0] = *iter_x;
-    point[1] = *iter_y;
-    point[2] = *iter_z;
-    point[3] = 1;
-
-    if (!std::isfinite(point[0]) || !std::isfinite(point[1]) || !std::isfinite(point[2])) {
-      skipped_count++;
-      continue;
-    }
-
-    // preprocess point for filtering
-    Eigen::Vector4f point_preprocessed = point;
-
-    // apply pre-transform if needed
-    if (need_preprocess_transform_) {
-      point_preprocessed = eigen_transform_preprocess_ * point;
-    }
-
-    bool point_is_inside =
-      point_preprocessed[2] > param_.min_z && point_preprocessed[2] < param_.max_z &&
-      point_preprocessed[1] > param_.min_y && point_preprocessed[1] < param_.max_y &&
-      point_preprocessed[0] > param_.min_x && point_preprocessed[0] < param_.max_x;
-    if ((!param_.negative && point_is_inside) || (param_.negative && !point_is_inside)) {
-      const size_t global_offset = point_index * cloud->point_step;
-
-      // copy all fields from input to output
-      memcpy(&output.data[output_size], &cloud->data[global_offset], cloud->point_step);
-
-      // overwrite x, y, z with transformed coordinates using output iterators
-      if (need_postprocess_transform_) {
-        Eigen::Vector4f point_postprocessed = eigen_transform_postprocess_ * point_preprocessed;
-        *output_x = point_postprocessed[0];
-        *output_y = point_postprocessed[1];
-        *output_z = point_postprocessed[2];
-      } else if (need_preprocess_transform_) {
-        *output_x = point_preprocessed[0];
-        *output_y = point_preprocessed[1];
-        *output_z = point_preprocessed[2];
-      }
-
-      ++output_x;
-      ++output_y;
-      ++output_z;
-      output_size += cloud->point_step;
-    }
-  }
-
-  if (skipped_count > 0) {
-    RCLCPP_WARN_THROTTLE(
-      get_logger(), *get_clock(), 1000, "%d points contained NaN values and have been ignored",
-      skipped_count);
-  }
-
-  // construct output cloud
-  output.data.resize(output_size);
-
-  output.header.frame_id = tf_output_frame_;
-
-  output.header.stamp = cloud->header.stamp;
-
-  output.height = 1;
-  output.is_bigendian = cloud->is_bigendian;
-  output.is_dense = cloud->is_dense;
-  output.width = static_cast<uint32_t>(output.data.size() / output.height / output.point_step);
-  output.row_step = static_cast<uint32_t>(output.data.size() / output.height);
-}
-
 void CropBoxFilter::pointcloud_callback(const PointCloud2ConstPtr cloud)
 {
   // check whether the pointcloud is valid
@@ -244,17 +141,23 @@ void CropBoxFilter::pointcloud_callback(const PointCloud2ConstPtr cloud)
   // pointcloud check finished
 
   // pointcloud processing
-  auto output = PointCloud2();
-
   std::scoped_lock lock(mutex_);
   stop_watch_ptr_->toc("processing_time", true);
 
   // filtering
-  filter_pointcloud(cloud, output);
+  auto filter_result = filter_pointcloud(*cloud, config_);
+  auto & output = filter_result.pointcloud;
+
+  if (filter_result.skipped_nan_count > 0) {
+    RCLCPP_WARN_THROTTLE(
+      get_logger(), *get_clock(), 1000, "%d points contained NaN values and have been ignored",
+      filter_result.skipped_nan_count);
+  }
 
   // publish polygon if subscribers exist
   if (crop_box_polygon_pub_->get_subscription_count() > 0) {
-    publish_crop_box_polygon();
+    crop_box_polygon_pub_->publish(
+      generate_crop_box_polygon(config_.param, tf_input_frame_, get_clock()->now()));
   }
 
   // add processing time for debug
@@ -280,57 +183,6 @@ void CropBoxFilter::pointcloud_callback(const PointCloud2ConstPtr cloud)
   published_time_publisher_->publish_if_subscribed(pub_output_, cloud->header.stamp);
 }
 
-void CropBoxFilter::publish_crop_box_polygon()
-{
-  auto generatePoint = [](double x, double y, double z) {
-    geometry_msgs::msg::Point32 point;
-    point.x = x;
-    point.y = y;
-    point.z = z;
-    return point;
-  };
-
-  const double x1 = param_.max_x;
-  const double x2 = param_.min_x;
-  const double x3 = param_.min_x;
-  const double x4 = param_.max_x;
-
-  const double y1 = param_.max_y;
-  const double y2 = param_.max_y;
-  const double y3 = param_.min_y;
-  const double y4 = param_.min_y;
-
-  const double z1 = param_.min_z;
-  const double z2 = param_.max_z;
-
-  geometry_msgs::msg::PolygonStamped polygon_msg;
-  polygon_msg.header.frame_id = tf_input_frame_;
-  polygon_msg.header.stamp = get_clock()->now();
-  polygon_msg.polygon.points.push_back(generatePoint(x1, y1, z1));
-  polygon_msg.polygon.points.push_back(generatePoint(x2, y2, z1));
-  polygon_msg.polygon.points.push_back(generatePoint(x3, y3, z1));
-  polygon_msg.polygon.points.push_back(generatePoint(x4, y4, z1));
-  polygon_msg.polygon.points.push_back(generatePoint(x1, y1, z1));
-
-  polygon_msg.polygon.points.push_back(generatePoint(x1, y1, z2));
-
-  polygon_msg.polygon.points.push_back(generatePoint(x2, y2, z2));
-  polygon_msg.polygon.points.push_back(generatePoint(x2, y2, z1));
-  polygon_msg.polygon.points.push_back(generatePoint(x2, y2, z2));
-
-  polygon_msg.polygon.points.push_back(generatePoint(x3, y3, z2));
-  polygon_msg.polygon.points.push_back(generatePoint(x3, y3, z1));
-  polygon_msg.polygon.points.push_back(generatePoint(x3, y3, z2));
-
-  polygon_msg.polygon.points.push_back(generatePoint(x4, y4, z2));
-  polygon_msg.polygon.points.push_back(generatePoint(x4, y4, z1));
-  polygon_msg.polygon.points.push_back(generatePoint(x4, y4, z2));
-
-  polygon_msg.polygon.points.push_back(generatePoint(x1, y1, z2));
-
-  crop_box_polygon_pub_->publish(polygon_msg);
-}
-
 // update parameters dynamicly
 rcl_interfaces::msg::SetParametersResult CropBoxFilter::param_callback(
   const std::vector<rclcpp::Parameter> & p)
@@ -339,16 +191,18 @@ rcl_interfaces::msg::SetParametersResult CropBoxFilter::param_callback(
 
   CropBoxParam new_param{};
 
-  new_param.min_x = get_param(p, "min_x", new_param.min_x) ? new_param.min_x : param_.min_x;
-  new_param.min_y = get_param(p, "min_y", new_param.min_y) ? new_param.min_y : param_.min_y;
-  new_param.min_z = get_param(p, "min_z", new_param.min_z) ? new_param.min_z : param_.min_z;
-  new_param.max_x = get_param(p, "max_x", new_param.max_x) ? new_param.max_x : param_.max_x;
-  new_param.max_y = get_param(p, "max_y", new_param.max_y) ? new_param.max_y : param_.max_y;
-  new_param.max_z = get_param(p, "max_z", new_param.max_z) ? new_param.max_z : param_.max_z;
-  new_param.negative =
-    get_param(p, "negative", new_param.negative) ? new_param.negative : param_.negative;
+  new_param.min_x = get_param(p, "min_x", new_param.min_x) ? new_param.min_x : config_.param.min_x;
+  new_param.min_y = get_param(p, "min_y", new_param.min_y) ? new_param.min_y : config_.param.min_y;
+  new_param.min_z = get_param(p, "min_z", new_param.min_z) ? new_param.min_z : config_.param.min_z;
+  new_param.max_x = get_param(p, "max_x", new_param.max_x) ? new_param.max_x : config_.param.max_x;
+  new_param.max_y = get_param(p, "max_y", new_param.max_y) ? new_param.max_y : config_.param.max_y;
+  new_param.max_z = get_param(p, "max_z", new_param.max_z) ? new_param.max_z : config_.param.max_z;
+  bool new_keep_outside_box = false;
+  config_.keep_outside_box = get_param(p, "negative", new_keep_outside_box)
+                               ? new_keep_outside_box
+                               : config_.keep_outside_box;
 
-  param_ = new_param;
+  config_.param = new_param;
 
   rcl_interfaces::msg::SetParametersResult result;
   result.successful = true;

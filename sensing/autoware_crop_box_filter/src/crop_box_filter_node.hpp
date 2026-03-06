@@ -19,14 +19,10 @@
 
 #include "crop_box_filter.hpp"
 
-#include <Eigen/Eigen>
 #include <autoware_utils_debug/debug_publisher.hpp>
 #include <autoware_utils_debug/published_time_publisher.hpp>
 #include <autoware_utils_system/stop_watch.hpp>
 #include <autoware_utils_tf/transform_listener.hpp>
-
-#include <geometry_msgs/msg/polygon_stamped.hpp>
-#include <sensor_msgs/point_cloud2_iterator.hpp>
 
 #include <memory>
 #include <string>
@@ -50,32 +46,13 @@ private:
   /** \brief The original data input TF frame. */
   std::string tf_input_orig_frame_;
 
-  /** \brief The output TF frame the data should be transformed into,
-   * if input.header.frame_id is different. */
-  std::string tf_output_frame_;
-
   /** \brief The maximum queue size (default: 3). */
   size_t max_queue_size_ = 3;
 
   /** \brief Internal mutex. */
   std::mutex mutex_;
 
-  bool need_preprocess_transform_ = false;
-  bool need_postprocess_transform_ = false;
-
-  Eigen::Matrix4f eigen_transform_preprocess_ = Eigen::Matrix4f::Identity(4, 4);
-  Eigen::Matrix4f eigen_transform_postprocess_ = Eigen::Matrix4f::Identity(4, 4);
-
-  struct CropBoxParam
-  {
-    float min_x;
-    float max_x;
-    float min_y;
-    float max_y;
-    float min_z;
-    float max_z;
-    bool negative{false};
-  } param_;
+  CropBoxFilterConfig config_;
 
   /** \brief Parameter service callback result : needed to be hold */
   OnSetParametersCallbackHandle::SharedPtr set_param_res_;
@@ -94,8 +71,6 @@ private:
   std::unique_ptr<autoware_utils_debug::PublishedTimePublisher> published_time_publisher_;
 
   // function declaration *************************************
-
-  void publish_crop_box_polygon();
 
   void pointcloud_callback(const PointCloud2ConstPtr cloud);
 
@@ -118,7 +93,6 @@ private:
 
 public:
   explicit CropBoxFilter(const rclcpp::NodeOptions & node_options);
-  void filter_pointcloud(const PointCloud2ConstPtr & cloud, PointCloud2 & output);
 };
 }  // namespace autoware::crop_box_filter
 
