@@ -29,6 +29,9 @@ rclcpp_components_register_node(pointcloud_map_loader_node
 
 ament_auto_add_library(lanelet2_map_loader_node SHARED
   src/lanelet2_map_loader/lanelet2_map_loader_node.cpp
+  src/lanelet2_map_loader/lanelet2_map_loader_utils.cpp
+  src/lanelet2_map_loader/lanelet2_map_cell_metadata.cpp
+  src/lanelet2_map_loader/lanelet2_selected_map_loader_module.cpp
 )
 
 rclcpp_components_register_node(lanelet2_map_loader_node
@@ -64,6 +67,9 @@ if(BUILD_TESTING)
   add_testcase(test/test_pointcloud_map_loader_module.cpp)
   add_testcase(test/test_partial_map_loader_module.cpp)
   add_testcase(test/test_differential_map_loader_module.cpp)
+  add_testcase(test/test_lanelet2_map_loader_utils.cpp)
+  add_testcase(test/test_lanelet2_map_cell_metadata.cpp)
+  add_testcase(test/test_lanelet2_selected_map_loader_module.cpp)
 endif()
 
 install(PROGRAMS
