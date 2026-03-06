@@ -1388,35 +1388,35 @@ TEST(LaneletCheck, OrdinaryCaseIsInLanelet)
   // inside lanelet
   {
     auto query = make_pose(1.0, 1.0);
-    bool check = autoware::experimental::lanelet2_utils::is_in_lanelet(ll, query, 0);
+    bool check = autoware::experimental::lanelet2_utils::is_in_lanelet(query, ll, 0);
     EXPECT_TRUE(check);
   }
 
   // outside lanelet within radius of 1.0
   {
     auto query = make_pose(-1.0, 0.0);
-    bool check = autoware::experimental::lanelet2_utils::is_in_lanelet(ll, query, 1.0);
+    bool check = autoware::experimental::lanelet2_utils::is_in_lanelet(query, ll, 1.0);
     EXPECT_TRUE(check);
   }
 
   // outside lanelet within radius of 1.0 (negative value)
   {
     auto query = make_pose(-1.0, 0.0);
-    bool check = autoware::experimental::lanelet2_utils::is_in_lanelet(ll, query, -1.0);
+    bool check = autoware::experimental::lanelet2_utils::is_in_lanelet(query, ll, -1.0);
     EXPECT_TRUE(check);
   }
 
   // outside lanelet check if radius is expanded from the closest point
   {
     auto query = make_pose(0.0, 3.0);
-    bool check = autoware::experimental::lanelet2_utils::is_in_lanelet(ll, query, sqrt(2) / 2);
+    bool check = autoware::experimental::lanelet2_utils::is_in_lanelet(query, ll, sqrt(2) / 2);
     EXPECT_TRUE(check);
   }
 
   // outside lanelet outside radius range
   {
     auto query = make_pose(-2.0, 0.0);
-    bool check = autoware::experimental::lanelet2_utils::is_in_lanelet(ll, query, 1.0);
+    bool check = autoware::experimental::lanelet2_utils::is_in_lanelet(query, ll, 1.0);
     EXPECT_FALSE(check);
   }
 }

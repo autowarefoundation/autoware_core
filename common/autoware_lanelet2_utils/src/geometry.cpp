@@ -500,11 +500,15 @@ std::optional<lanelet::ConstLanelet> combine_lanelets_shape(const lanelet::Const
   }
 
   const auto combined_lanelet_opt = create_safe_lanelet(lefts, rights);
-  assert(combined_lanelet_opt.has_value() && "lefts or rights bound size is less than 2.");
+  if (!combined_lanelet_opt.has_value()) {
+    return std::nullopt;
+  }
   auto combined_lanelet = remove_const(*combined_lanelet_opt);
 
   const auto center_line_opt = create_safe_linestring(centers);
-  assert(center_line_opt.has_value() && "centers size is less than 2.");
+  if (!center_line_opt.has_value()) {
+    return std::nullopt;
+  }
   const auto center_line = remove_const(*center_line_opt);
 
   combined_lanelet.setCenterline(center_line);
@@ -721,7 +725,7 @@ lanelet::ConstLineString3d get_left_bound_with_offset(
 }
 
 bool is_in_lanelet(
-  const lanelet::ConstLanelet & lanelet, const geometry_msgs::msg::Pose & pose, const double radius)
+  const geometry_msgs::msg::Pose & pose, const lanelet::ConstLanelet & lanelet, const double radius)
 {
   constexpr double epsilon = 1.0e-9;
   const double abs_radius = radius >= 0 ? radius : std::fabs(radius);

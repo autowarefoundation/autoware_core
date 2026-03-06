@@ -565,7 +565,7 @@ void check_in_lanelet()
     query.position.x = 1.0;
     query.position.y = 2.0;
     query.position.z = 0;
-    const auto in_lanelet = autoware::experimental::lanelet2_utils::is_in_lanelet(ll, query, 0);
+    const auto in_lanelet = autoware::experimental::lanelet2_utils::is_in_lanelet(query, ll, 0);
     std::cout << (in_lanelet ? "YES, it's in lanelet." : "NO, it's not in lanelet.") << std::endl;
   }
 
@@ -577,7 +577,7 @@ void check_in_lanelet()
     query.position.z = 0;
     // the radius is calculated from the closest point to lanelet
     const auto in_lanelet =
-      autoware::experimental::lanelet2_utils::is_in_lanelet(ll, query, sqrt(2) / 2);
+      autoware::experimental::lanelet2_utils::is_in_lanelet(query, ll, sqrt(2) / 2);
     std::cout << (in_lanelet ? "YES, it's in lanelet." : "NO, it's not in lanelet.") << std::endl;
   }
 
@@ -587,7 +587,7 @@ void check_in_lanelet()
     query.position.x = 0.0;
     query.position.y = 3.0;
     query.position.z = 0;
-    const auto in_lanelet = autoware::experimental::lanelet2_utils::is_in_lanelet(ll, query, 0.5);
+    const auto in_lanelet = autoware::experimental::lanelet2_utils::is_in_lanelet(query, ll, 0.5);
     std::cout << (in_lanelet ? "YES, it's in lanelet." : "NO, it's not in lanelet.") << std::endl;
   }
 }
