@@ -415,26 +415,17 @@ bool JerkFilteredSmoother::apply(
   const auto merged =
     mergeFilteredTrajectory(v0, a0, a_min, j_min, forward_filtered, backward_filtered);
 
-  const auto merged_sample_bases = merged.get_underlying_bases();
-  if (merged_sample_bases.size() < 2) {
-    RCLCPP_WARN(logger_, "merged trajectory has too few bases");
+  // Resample merged trajectory first to reduce number of points before optimization
+  // guard against restore failure or empty result
+  if (merged.length() < 1e-6) {
+    RCLCPP_WARN(logger_, "merged trajectory too short, aborting");
     return false;
   }
-
   TrajectoryPoints merged_discrete;
-  merged_discrete.reserve(merged_sample_bases.size());
-  for (const double s : merged_sample_bases) {
-    if (!std::isfinite(s)) {
-      continue;
-    }
-    try {
-      merged_discrete.push_back(merged.compute(std::clamp(s, 0.0, merged.length())));
-    } catch (const std::exception &) {
-      // skip invalid sample
-    }
-  }
-  if (merged_discrete.size() < 2) {
-    RCLCPP_WARN(logger_, "failed to create valid merged discrete trajectory");
+  try {
+    merged_discrete = merged.restore();
+  } catch (const std::exception & e) {
+    RCLCPP_WARN(logger_, "merged.restore() failed: %s", e.what());
     return false;
   }
   const auto initial_traj_pose = merged_discrete.front().pose;
@@ -623,27 +614,20 @@ bool JerkFilteredSmoother::apply(
 
   if (VERBOSE_TRAJECTORY_VELOCITY) {
     std::vector<autoware_planning_msgs::msg::TrajectoryPoint> discrete_output;
-    if (output.length() < 1e-6 || merged_bases.empty()) {
+    if (output.length() < 1e-6) {
       RCLCPP_WARN(logger_, "merged trajectory too short, aborting");
       return false;
     }
-    discrete_output.reserve(merged_bases.size());
-    for (const double s : merged_bases) {
-      if (!std::isfinite(s)) {
-        continue;
-      }
-      try {
-        discrete_output.push_back(output.compute(std::clamp(s, 0.0, output.length())));
-      } catch (const std::exception &) {
-        // skip invalid sample in debug-only path
-      }
+    try {
+      discrete_output = output.restore();
+    } catch (const std::exception & e) {
+      RCLCPP_WARN(logger_, "output.restore() failed in verbose block: %s", e.what());
     }
     if (!discrete_output.empty()) {
       const auto s_output = trajectory_utils::calcArclengthArray(discrete_output);
 
       std::cerr << "\n\n" << std::endl;
-      const size_t loop_end = std::min(N, discrete_output.size());
-      for (size_t i = 0; i < loop_end; ++i) {
+      for (size_t i = 0; i < N; ++i) {
         const auto v_opt = discrete_output.at(i).longitudinal_velocity_mps;
         const auto a_opt = discrete_output.at(i).acceleration_mps2;
         const auto ds = i < interval_dist_arr.size() ? interval_dist_arr.at(i) : 0.0;
