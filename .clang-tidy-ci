@@ -2,7 +2,6 @@ Checks: "
   -*,
   bugprone-*,
   -bugprone-easily-swappable-parameters,
-  -bugprone-exception-escape,
   -bugprone-implicit-widening-of-multiplication-result,
   -bugprone-narrowing-conversions,
   -bugprone-optional-value-conversion,
