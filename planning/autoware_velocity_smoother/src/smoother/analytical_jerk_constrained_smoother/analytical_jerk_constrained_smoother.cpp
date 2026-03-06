@@ -267,7 +267,6 @@ bool AnalyticalJerkConstrainedSmoother::apply(
     if (bases.empty() || velocities.empty() || bases.size() != velocities.size()) {
       return false;
     }
-
   } catch (const std::bad_alloc &) {
     return false;
   } catch (const std::length_error &) {
