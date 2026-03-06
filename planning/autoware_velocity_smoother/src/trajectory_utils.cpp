@@ -148,10 +148,6 @@ Trajectory extractPathAroundPosition(
   const Trajectory & trajectory, const double arc_length_position, const double ahead_distance,
   const double behind_distance)
 {
-  const double start_s = std::max(0.0, arc_length_position - behind_distance);
-  const double length_s =
-    std::min(trajectory.length() - start_s, arc_length_position + ahead_distance - start_s);
-
   auto cropped_trajectory = trajectory;
   cropped_trajectory.crop(start_s, length_s);
 
@@ -524,10 +520,6 @@ std::vector<double> calcVelocityProfileWithConstantJerkAndAccelerationLimit(
     velocities.push_back(curr_v);
     curr_a = std::clamp(integ_a(curr_a, jerk, t), acc_min, acc_max);
   }
-
-  if (!trajectory.longitudinal_velocity_mps().build(bases, velocities)) {
-    return {};  // return empty vector on build failure
-  }
   return velocities;
 }
 
@@ -555,7 +547,8 @@ double calcStopDistance(const Trajectory & trajectory, const double closest_posi
     return std::numeric_limits<double>::max();
   }
 
-  return std::abs(*zero_vel_position - closest_position);
+  const double clamped_closest_position = std::clamp(closest_position, 0.0, trajectory.length());
+  return std::abs(*zero_vel_position - clamped_closest_position);
 }
 
 }  // namespace trajectory_utils
