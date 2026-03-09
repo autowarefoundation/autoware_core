@@ -225,7 +225,9 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
                     .as_lanelets();
 
   const auto & current_lanelet = route_manager_->current_lanelet();
-  auto s_ego = lanelet::utils::getArcCoordinates({current_lanelet}, current_pose).length;
+  auto s_ego =
+    autoware::experimental::lanelet2_utils::get_arc_coordinates({current_lanelet}, current_pose)
+      .length;
   auto s_start = s_ego - params.path_length.backward;
   auto s_end = s_ego + params.path_length.forward;
 

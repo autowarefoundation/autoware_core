@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/localization_util/smart_pose_buffer.hpp"
+#include <autoware/localization_util/smart_pose_buffer.hpp>
 
 namespace autoware::localization_util
 {

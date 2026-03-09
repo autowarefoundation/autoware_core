@@ -270,7 +270,7 @@ lanelet::ConstLineString3d get_left_bound_with_offset(
  * @param[in] radius given radius
  */
 bool is_in_lanelet(
-  const lanelet::ConstLanelet & lanelet, const geometry_msgs::msg::Pose & pose,
+  const geometry_msgs::msg::Pose & pose, const lanelet::ConstLanelet & lanelet,
   const double radius = 0.0);
 }  // namespace autoware::experimental::lanelet2_utils
 

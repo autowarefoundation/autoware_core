@@ -184,7 +184,7 @@ jobs:
           rosdistro: ${{ inputs.rosdistro }}
           cache-key-element: build-and-test-${{ inputs.cache-key-element }}${{ inputs.above && '-above' || '' }}
           target-packages: ${{ steps.get-self-packages.outputs.self-packages }}
-          clang-tidy-config-url: https://raw.githubusercontent.com/autowarefoundation/autoware/main/.clang-tidy-ci
+          clang-tidy-config-url: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/.clang-tidy-ci
           underlay-workspace: /opt/autoware
           artifact-name: clang-tidy-result-${{ inputs.rosdistro }}
 

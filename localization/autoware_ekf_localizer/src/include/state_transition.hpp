@@ -12,17 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__EKF_LOCALIZER__MATRIX_TYPES_HPP_
-#define AUTOWARE__EKF_LOCALIZER__MATRIX_TYPES_HPP_
+#ifndef STATE_TRANSITION_HPP_
+#define STATE_TRANSITION_HPP_
 
-#include <Eigen/Core>
+#include "matrix_types.hpp"
 
 namespace autoware::ekf_localizer
 {
 
-using Vector6d = Eigen::Matrix<double, 6, 1>;
-using Matrix6d = Eigen::Matrix<double, 6, 6>;
+double normalize_yaw(const double & yaw);
+Vector6d predict_next_state(const Vector6d & X_curr, const double dt);
+Matrix6d create_state_transition_matrix(const Vector6d & X_curr, const double dt);
+Matrix6d process_noise_covariance(
+  const double proc_cov_yaw_d, const double proc_cov_vx_d, const double proc_cov_wz_d);
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // AUTOWARE__EKF_LOCALIZER__MATRIX_TYPES_HPP_
+#endif  // STATE_TRANSITION_HPP_

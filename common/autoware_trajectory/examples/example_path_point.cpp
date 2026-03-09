@@ -93,7 +93,7 @@ int main()
     Args(crossed.pose.position.x, crossed.pose.position.y),
     Kwargs("label"_a = "Crossed on trajectory", "color"_a = "purple"));
 
-  trajectory->longitudinal_velocity_mps().range(s.at(0), trajectory->length()).set(0.0);
+  trajectory->set_stopline(s.at(0));
 
   std::vector<double> x;
   std::vector<double> y;

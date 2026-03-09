@@ -12,21 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "include/mahalanobis.hpp"
+#ifndef MEASUREMENT_HPP_
+#define MEASUREMENT_HPP_
+
+#include <Eigen/Core>
 
 namespace autoware::ekf_localizer
 {
 
-double squared_mahalanobis(
-  const Eigen::VectorXd & x, const Eigen::VectorXd & y, const Eigen::MatrixXd & C)
-{
-  const Eigen::VectorXd d = x - y;
-  return d.dot(C.inverse() * d);
-}
-
-double mahalanobis(const Eigen::VectorXd & x, const Eigen::VectorXd & y, const Eigen::MatrixXd & C)
-{
-  return std::sqrt(squared_mahalanobis(x, y, C));
-}
+Eigen::Matrix<double, 3, 6> pose_measurement_matrix();
+Eigen::Matrix<double, 2, 6> twist_measurement_matrix();
+Eigen::Matrix3d pose_measurement_covariance(
+  const std::array<double, 36ul> & covariance, const size_t smoothing_step);
+Eigen::Matrix2d twist_measurement_covariance(
+  const std::array<double, 36ul> & covariance, const size_t smoothing_step);
 
 }  // namespace autoware::ekf_localizer
+
+#endif  // MEASUREMENT_HPP_

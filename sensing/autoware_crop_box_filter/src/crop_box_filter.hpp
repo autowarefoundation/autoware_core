@@ -1,4 +1,4 @@
-// Copyright 2022 Autoware Foundation
+// Copyright 2026 TIER IV, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,26 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__EKF_LOCALIZER__NUMERIC_HPP_
-#define AUTOWARE__EKF_LOCALIZER__NUMERIC_HPP_
+#ifndef CROP_BOX_FILTER_HPP_
+#define CROP_BOX_FILTER_HPP_
 
-#include <Eigen/Core>
+#include <sensor_msgs/msg/point_cloud2.hpp>
 
-#include <cmath>
+#include <string>
 
-namespace autoware::ekf_localizer
+using PointCloud2 = sensor_msgs::msg::PointCloud2;
+using PointCloud2ConstPtr = sensor_msgs::msg::PointCloud2::ConstSharedPtr;
+
+namespace autoware::crop_box_filter
 {
 
-inline bool has_inf(const Eigen::MatrixXd & v)
+struct ValidationResult
 {
-  return v.array().isInf().any();
-}
+  bool is_valid;
+  std::string reason;
+};
 
-inline bool has_nan(const Eigen::MatrixXd & v)
-{
-  return v.array().isNaN().any();
-}
+ValidationResult validate_pointcloud2(const PointCloud2 & cloud);
 
-}  // namespace autoware::ekf_localizer
+}  // namespace autoware::crop_box_filter
 
-#endif  // AUTOWARE__EKF_LOCALIZER__NUMERIC_HPP_
+#endif  // CROP_BOX_FILTER_HPP_

@@ -17,22 +17,20 @@
 #ifndef CROP_BOX_FILTER_NODE_HPP_
 #define CROP_BOX_FILTER_NODE_HPP_
 
-#include <autoware/point_types/types.hpp>
+#include "crop_box_filter.hpp"
+
+#include <Eigen/Eigen>
 #include <autoware_utils_debug/debug_publisher.hpp>
 #include <autoware_utils_debug/published_time_publisher.hpp>
 #include <autoware_utils_system/stop_watch.hpp>
 #include <autoware_utils_tf/transform_listener.hpp>
 
 #include <geometry_msgs/msg/polygon_stamped.hpp>
-#include <sensor_msgs/msg/point_cloud2.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
 
 #include <memory>
 #include <string>
 #include <vector>
-
-using PointCloud2 = sensor_msgs::msg::PointCloud2;
-using PointCloud2ConstPtr = sensor_msgs::msg::PointCloud2::ConstSharedPtr;
 
 namespace autoware::crop_box_filter
 {
@@ -103,24 +101,6 @@ private:
 
   /** \brief Parameter service callback */
   rcl_interfaces::msg::SetParametersResult param_callback(const std::vector<rclcpp::Parameter> & p);
-
-  /** \brief Return whether the input PointCloud2 data has the same layout than PointXYZI. That is
-   * to say whether you can memcpy from the PointCloud2 data buffer to a PointXYZI */
-  bool is_data_layout_compatible_with_point_xyzi(const PointCloud2 & input);
-
-  /** \brief Return whether the input PointCloud2 data has the same layout than PointXYZIRC. That is
-   * to say whether you can memcpy from the PointCloud2 data buffer to a PointXYZIRC */
-  bool is_data_layout_compatible_with_point_xyzirc(const PointCloud2 & input);
-
-  /** \brief Return whether the input PointCloud2 data has the same layout than PointXYZIRADRT. That
-   * is to say whether you can memcpy from the PointCloud2 data buffer to a PointXYZIRADRT */
-  bool is_data_layout_compatible_with_point_xyziradrt(const PointCloud2 & input);
-
-  /** \brief Return whether the input PointCloud2 data has the same layout than PointXYZIRCAEDT.
-   * That is to say whether you can memcpy from the PointCloud2 data buffer to a PointXYZIRCAEDT */
-  bool is_data_layout_compatible_with_point_xyzircaedt(const PointCloud2 & input);
-
-  bool is_valid(const PointCloud2ConstPtr & cloud);
 
   /** \brief For parameter service callback */
   template <typename T>
