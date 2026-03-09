@@ -64,10 +64,10 @@ Lanelet2SelectedMapLoaderModule::Lanelet2SelectedMapLoaderModule(
   all_cell_metadata_dict_(std::move(cell_metadata_dict)),
   projector_info_(projector_info),
   center_line_resolution_(center_line_resolution),
-  use_waypoints_(use_waypoints)
+  use_waypoints_(use_waypoints),
+  pub_metadata_(node->create_publisher<autoware_map_msgs::msg::LaneletMapMetaData>(
+    "output/lanelet2_map_metadata", rclcpp::QoS{1}.transient_local()))
 {
-  pub_metadata_ = node->create_publisher<autoware_map_msgs::msg::LaneletMapMetaData>(
-    "output/lanelet2_map_metadata", rclcpp::QoS{1}.transient_local());
   pub_metadata_->publish(build_metadata_msg(all_cell_metadata_dict_, node->now()));
 
   service_ = node->create_service<GetSelectedLanelet2Map>(
