@@ -20,6 +20,7 @@
 #include <autoware_lanelet2_extension/utility/utilities.hpp>
 
 #include <filesystem>
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>

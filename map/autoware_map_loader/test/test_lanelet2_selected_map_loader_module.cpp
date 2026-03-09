@@ -23,9 +23,11 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 
 using autoware::map_loader::Lanelet2FileMetaData;
 using autoware::map_loader::Lanelet2SelectedMapLoaderModule;

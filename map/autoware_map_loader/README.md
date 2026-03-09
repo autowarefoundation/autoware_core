@@ -181,11 +181,11 @@ The node determines bounding boxes for each cell in one of two ways:
 ### Published Topics
 
 - `/map/vector_map` (autoware_map_msgs/LaneletMapBin) : Merged binary Lanelet2 map
-- `output/lanelet2_map_metadata` (autoware_map_msgs/LaneletMapMetaData) : Per-cell bounding-box metadata _(only when `enable_selected_map_loading` is `true`)_
+- `output/lanelet2_map_metadata` (autoware_map_msgs/LaneletMapMetaData) : Per-cell bounding-box metadata (only available when `enable_selected_map_loading` is `true`)
 
 ### Services
 
-- `service/get_selected_lanelet2_map` (autoware_map_msgs/srv/GetSelectedLanelet2Map) : Returns the binary map for a requested set of cell IDs _(only when `enable_selected_map_loading` is `true`)_
+- `service/get_selected_lanelet2_map` (autoware_map_msgs/srv/GetSelectedLanelet2Map) : Returns the binary map for a requested set of cell IDs (only available when `enable_selected_map_loading` is `true`)
 
 ### Parameters
 
