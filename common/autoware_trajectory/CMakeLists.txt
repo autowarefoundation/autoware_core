@@ -35,6 +35,7 @@ ament_auto_add_library(autoware_trajectory SHARED
   src/interpolator/spherical_linear.cpp
   src/utils/closest.cpp
   src/utils/crossed.cpp
+  src/utils/find_if.cpp
   src/utils/find_intervals.cpp
   src/utils/pretty_build.cpp
   src/utils/shift.cpp
@@ -98,6 +99,7 @@ include_directories(${autoware_test_utils_INCLUDE_DIRS})
 include_directories(${autoware_utils_geometry_INCLUDE_DIRS})
 
 set(example_files
+  examples/example_find_if.cpp
   examples/example_find_intervals.cpp
   examples/example_interpolator.cpp
   examples/example_path_point.cpp

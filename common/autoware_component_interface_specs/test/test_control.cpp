@@ -21,10 +21,10 @@ TEST(control, interface)
   size_t depth = 1;
   EXPECT_EQ(ControlCommand::depth, depth);
   EXPECT_EQ(ControlCommand::reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
-  EXPECT_EQ(ControlCommand::durability, RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
+  EXPECT_EQ(ControlCommand::durability, RMW_QOS_POLICY_DURABILITY_VOLATILE);
 
   const auto qos = autoware::component_interface_specs::get_qos<ControlCommand>();
   EXPECT_EQ(qos.depth(), depth);
   EXPECT_EQ(qos.reliability(), rclcpp::ReliabilityPolicy::Reliable);
-  EXPECT_EQ(qos.durability(), rclcpp::DurabilityPolicy::TransientLocal);
+  EXPECT_EQ(qos.durability(), rclcpp::DurabilityPolicy::Volatile);
 }
