@@ -32,6 +32,7 @@
 #include <pcl/filters/passthrough.h>
 
 #include <algorithm>
+#include <iostream>
 #include <limits>
 #include <memory>
 #include <unordered_set>
@@ -306,6 +307,12 @@ double PlannerData::Object::get_lon_vel_relative_to_traj(
   if (!lon_vel_relative_to_traj) {
     calc_vel_relative_to_traj(traj_points);
   }
+
+  if (!lon_vel_relative_to_traj) {
+    std::cerr << "Failed to calculate longitudinal velocity relative to trajectory" << std::endl;
+    return NAN;
+  }
+
   return *lon_vel_relative_to_traj;
 }
 
@@ -315,6 +322,12 @@ double PlannerData::Object::get_lat_vel_relative_to_traj(
   if (!lat_vel_relative_to_traj) {
     calc_vel_relative_to_traj(traj_points);
   }
+
+  if (!lat_vel_relative_to_traj) {
+    std::cerr << "Failed to calculate lateral velocity relative to trajectory" << std::endl;
+    return NAN;
+  }
+
   return *lat_vel_relative_to_traj;
 }
 
