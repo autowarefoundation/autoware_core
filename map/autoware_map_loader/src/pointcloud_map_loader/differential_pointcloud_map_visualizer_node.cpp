@@ -49,8 +49,8 @@ DifferentialPointCloudMapVisualizerNode::DifferentialPointCloudMapVisualizerNode
   }
 
   timer_ = create_wall_timer(
-    std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<double>(
-      std::max(update_interval_sec, 0.1))),
+    std::chrono::duration_cast<std::chrono::nanoseconds>(
+      std::chrono::duration<double>(std::max(update_interval_sec, 0.1))),
     std::bind(&DifferentialPointCloudMapVisualizerNode::on_timer, this));
 }
 
@@ -92,15 +92,14 @@ void DifferentialPointCloudMapVisualizerNode::on_timer()
 
   bool expected = false;
   if (!request_in_flight_.compare_exchange_strong(expected, true)) {
-    RCLCPP_WARN_THROTTLE(
-      get_logger(), *get_clock(), 3000, "Previous request is still in flight.");
+    RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 3000, "Previous request is still in flight.");
     return;
   }
 
   client_->async_send_request(
-    request, std::bind(
-               &DifferentialPointCloudMapVisualizerNode::on_service_response, this,
-               std::placeholders::_1));
+    request,
+    std::bind(
+      &DifferentialPointCloudMapVisualizerNode::on_service_response, this, std::placeholders::_1));
 }
 
 void DifferentialPointCloudMapVisualizerNode::on_service_response(
@@ -137,7 +136,8 @@ void DifferentialPointCloudMapVisualizerNode::on_service_response(
   publisher_->publish(merged_cloud);
 }
 
-void DifferentialPointCloudMapVisualizerNode::on_pose(const PoseWithCovarianceStamped::ConstSharedPtr msg)
+void DifferentialPointCloudMapVisualizerNode::on_pose(
+  const PoseWithCovarianceStamped::ConstSharedPtr msg)
 {
   std::lock_guard<std::mutex> lock(pose_mutex_);
   latest_pose_ = msg->pose.pose.position;

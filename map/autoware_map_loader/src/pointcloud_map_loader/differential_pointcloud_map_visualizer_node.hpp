@@ -15,17 +15,18 @@
 #ifndef POINTCLOUD_MAP_LOADER__DIFFERENTIAL_POINTCLOUD_MAP_VISUALIZER_NODE_HPP_
 #define POINTCLOUD_MAP_LOADER__DIFFERENTIAL_POINTCLOUD_MAP_VISUALIZER_NODE_HPP_
 
+#include <rclcpp/rclcpp.hpp>
+
 #include <autoware_map_msgs/srv/get_differential_point_cloud_map.hpp>
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
-#include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
+#include <atomic>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <unordered_map>
-#include <mutex>
-#include <atomic>
 
 namespace autoware::map_loader
 {

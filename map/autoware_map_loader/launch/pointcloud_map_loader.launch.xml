@@ -13,7 +13,13 @@
     <param from="$(var pointcloud_map_loader_param_path)" allow_substs="true"/>
   </node>
 
-  <node if="$(var enable_differential_pointcloud_map_visualizer)" pkg="autoware_map_loader" exec="autoware_differential_pointcloud_map_visualizer" name="differential_pointcloud_map_visualizer" output="both">
+  <node
+    if="$(var enable_differential_pointcloud_map_visualizer)"
+    pkg="autoware_map_loader"
+    exec="autoware_differential_pointcloud_map_visualizer"
+    name="differential_pointcloud_map_visualizer"
+    output="both"
+  >
     <param from="$(var differential_pointcloud_map_visualizer_param_path)" allow_substs="true"/>
     <remap from="output/differential_pointcloud_map" to="/map/differential_pointcloud_map"/>
   </node>
