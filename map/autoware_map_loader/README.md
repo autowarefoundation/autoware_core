@@ -125,25 +125,35 @@ Please see [the description of `GetSelectedPointCloudMap.srv`](https://github.co
 - pointcloud map file(s) (.pcd)
 - metadata of pointcloud map(s) (.yaml)
 
-### differential_pointcloud_map_visualizer
+## differential_pointcloud_map_visualizer
 
-This optional node calls `GetDifferentialPointCloudMap` periodically and publishes the merged result
-as `sensor_msgs/msg/PointCloud2` for RViz visualization.
+### Feature
 
-#### Parameters
+differential_pointcloud_map_visualizer periodically calls `GetDifferentialPointCloudMap` and
+publishes the merged result as `sensor_msgs/msg/PointCloud2` for RViz visualization.
 
-- `service_name` (string): Differential map service name
-- `output_topic` (string): Published pointcloud topic
+### How to run
+
+`ros2 run autoware_map_loader autoware_differential_pointcloud_map_visualizer`
+
+### Subscribed Topics
+
+- `pose_topic` (geometry_msgs/msg/PoseWithCovarianceStamped) : Pose input used when `use_pose` is true
+
+### Published Topics
+
+- `output/differential_pointcloud_map` (sensor_msgs/msg/PointCloud2) : Merged differential pointcloud map
+
+### Service Clients
+
+- `/map/get_differential_pointcloud_map` (autoware_map_msgs/srv/GetDifferentialPointCloudMap)
+
+### Parameters
+
 - `pose_topic` (string): Pose topic used when `use_pose = true`
 - `update_interval_sec` (double): Query period in seconds
 - `center_x`, `center_y`, `radius` (double): Query area used when `use_pose = false`
 - `use_pose` (bool): Use latest pose as query center
-
-#### Interfaces
-
-- Service client: `service_name` (autoware_map_msgs/srv/GetDifferentialPointCloudMap)
-- Topic publisher: `output_topic` (sensor_msgs/msg/PointCloud2)
-- Topic subscriber (optional): `pose_topic` (geometry_msgs/msg/PoseWithCovarianceStamped)
 
 ---
 
