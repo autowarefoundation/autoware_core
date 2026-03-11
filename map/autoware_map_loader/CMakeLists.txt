@@ -27,6 +27,15 @@ rclcpp_components_register_node(pointcloud_map_loader_node
   EXECUTABLE autoware_pointcloud_map_loader
 )
 
+ament_auto_add_library(differential_pointcloud_map_visualizer_node SHARED
+  src/pointcloud_map_loader/differential_pointcloud_map_visualizer_node.cpp
+)
+
+rclcpp_components_register_node(differential_pointcloud_map_visualizer_node
+  PLUGIN "autoware::map_loader::DifferentialPointCloudMapVisualizerNode"
+  EXECUTABLE autoware_differential_pointcloud_map_visualizer
+)
+
 ament_auto_add_library(lanelet2_map_loader_node SHARED
   src/lanelet2_map_loader/lanelet2_map_loader_node.cpp
 )

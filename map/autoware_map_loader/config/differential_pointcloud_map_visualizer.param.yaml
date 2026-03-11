@@ -1,0 +1,10 @@
+/**:
+  ros__parameters:
+    service_name: /map/get_differential_pointcloud_map
+    output_topic: output/differential_pointcloud_map
+    pose_topic: /localization/pose_estimator/pose_with_covariance
+    update_interval_sec: 1.0
+    center_x: 0.0
+    center_y: 0.0
+    radius: 150.0
+    use_pose: false
