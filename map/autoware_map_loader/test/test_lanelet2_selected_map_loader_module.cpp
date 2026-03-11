@@ -30,6 +30,7 @@
 #include <utility>
 
 using autoware::map_loader::Lanelet2FileMetaData;
+using autoware::map_loader::Lanelet2MapLoaderNode;
 using autoware::map_loader::Lanelet2SelectedMapLoaderModule;
 using autoware_map_msgs::srv::GetSelectedLanelet2Map;
 
