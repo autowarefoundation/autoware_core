@@ -45,7 +45,8 @@ std::optional<lanelet2_utils::MapHandler> load_map_handler(
   // convert to laneletMapBin
   auto map_msg_ = lanelet2_utils::to_autoware_map_msgs(lanelet_map_ptr_);
 
-  std::optional<lanelet2_utils::MapHandler> map_handler_opt_ = lanelet2_utils::MapHandler::create(map_msg_);
+  std::optional<lanelet2_utils::MapHandler> map_handler_opt_ =
+    lanelet2_utils::MapHandler::create(map_msg_);
   if (!map_handler_opt_.has_value()) {
     std::cerr << "Failed to create map handler" << std::endl;
     return std::nullopt;
