@@ -16,7 +16,6 @@
 #include <autoware/lanelet2_utils/geometry.hpp>
 #include <autoware/lanelet2_utils/kind.hpp>
 #include <autoware/lanelet2_utils/nn_search.hpp>
-#include <autoware_lanelet2_extension/utility/utilities.hpp>
 #include <autoware_utils_math/normalization.hpp>
 #include <range/v3/view/enumerate.hpp>
 #include <tf2/utils.hpp>
