@@ -22,6 +22,11 @@
 
 namespace autoware::map_loader
 {
+namespace
+{
+constexpr auto kKinematicStateTopic = "/localization/kinematic_state";
+}  // namespace
+
 DifferentialPointCloudMapVisualizerNode::DifferentialPointCloudMapVisualizerNode(
   const rclcpp::NodeOptions & options)
 : Node("differential_pointcloud_map_visualizer", options), frame_id_("map")
@@ -30,8 +35,6 @@ DifferentialPointCloudMapVisualizerNode::DifferentialPointCloudMapVisualizerNode
     declare_parameter<std::string>("service_name", "/map/get_differential_pointcloud_map");
   const auto output_topic =
     declare_parameter<std::string>("output_topic", "output/differential_pointcloud_map");
-  const auto pose_topic = declare_parameter<std::string>(
-    "pose_topic", "/localization/pose_estimator/pose_with_covariance");
   const auto update_interval_sec = declare_parameter<double>("update_interval_sec", 1.0);
   center_x_ = declare_parameter<double>("center_x", 0.0);
   center_y_ = declare_parameter<double>("center_y", 0.0);
@@ -43,8 +46,8 @@ DifferentialPointCloudMapVisualizerNode::DifferentialPointCloudMapVisualizerNode
   client_ = create_client<GetDifferentialPointCloudMap>(service_name_);
 
   if (use_pose_) {
-    pose_sub_ = create_subscription<PoseWithCovarianceStamped>(
-      pose_topic, rclcpp::QoS{1},
+    pose_sub_ = create_subscription<Odometry>(
+      kKinematicStateTopic, rclcpp::QoS{1},
       std::bind(&DifferentialPointCloudMapVisualizerNode::on_pose, this, std::placeholders::_1));
   }
 
@@ -136,8 +139,7 @@ void DifferentialPointCloudMapVisualizerNode::on_service_response(
   publisher_->publish(merged_cloud);
 }
 
-void DifferentialPointCloudMapVisualizerNode::on_pose(
-  const PoseWithCovarianceStamped::ConstSharedPtr msg)
+void DifferentialPointCloudMapVisualizerNode::on_pose(const Odometry::ConstSharedPtr msg)
 {
   std::lock_guard<std::mutex> lock(pose_mutex_);
   latest_pose_ = msg->pose.pose.position;

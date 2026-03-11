@@ -138,7 +138,7 @@ publishes the merged result as `sensor_msgs/msg/PointCloud2` for RViz visualizat
 
 ### Subscribed Topics
 
-- `pose_topic` (geometry_msgs/msg/PoseWithCovarianceStamped) : Pose input used when `use_pose` is true
+- `/localization/kinematic_state` (nav_msgs/msg/Odometry) : Pose input used when `use_pose` is true
 
 ### Published Topics
 
@@ -150,7 +150,6 @@ publishes the merged result as `sensor_msgs/msg/PointCloud2` for RViz visualizat
 
 ### Parameters
 
-- `pose_topic` (string): Pose topic used when `use_pose = true`
 - `update_interval_sec` (double): Query period in seconds
 - `center_x`, `center_y`, `radius` (double): Query area used when `use_pose = false`
 - `use_pose` (bool): Use latest pose as query center

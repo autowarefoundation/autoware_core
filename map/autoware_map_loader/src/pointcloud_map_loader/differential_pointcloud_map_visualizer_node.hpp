@@ -19,7 +19,7 @@
 
 #include <autoware_map_msgs/srv/get_differential_point_cloud_map.hpp>
 #include <geometry_msgs/msg/point.hpp>
-#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
+#include <nav_msgs/msg/odometry.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
 #include <atomic>
@@ -37,10 +37,10 @@ public:
 
 private:
   using GetDifferentialPointCloudMap = autoware_map_msgs::srv::GetDifferentialPointCloudMap;
-  using PoseWithCovarianceStamped = geometry_msgs::msg::PoseWithCovarianceStamped;
+  using Odometry = nav_msgs::msg::Odometry;
 
   void on_timer();
-  void on_pose(const PoseWithCovarianceStamped::ConstSharedPtr msg);
+  void on_pose(const Odometry::ConstSharedPtr msg);
   void on_service_response(rclcpp::Client<GetDifferentialPointCloudMap>::SharedFuture future);
   [[nodiscard]] sensor_msgs::msg::PointCloud2 create_merged_cloud() const;
 
@@ -49,7 +49,7 @@ private:
 
   rclcpp::Client<GetDifferentialPointCloudMap>::SharedPtr client_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr publisher_;
-  rclcpp::Subscription<PoseWithCovarianceStamped>::SharedPtr pose_sub_;
+  rclcpp::Subscription<Odometry>::SharedPtr pose_sub_;
   rclcpp::TimerBase::SharedPtr timer_;
 
   std::string service_name_;
