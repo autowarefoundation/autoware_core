@@ -148,6 +148,11 @@ Trajectory extractPathAroundPosition(
   const Trajectory & trajectory, const double arc_length_position, const double ahead_distance,
   const double behind_distance)
 {
+  const double clamped_position = std::clamp(arc_length_position, 0.0, trajectory.length());
+  const double start_s = std::max(0.0, clamped_position - behind_distance);
+  const double end_s = std::min(trajectory.length(), clamped_position + ahead_distance);
+  const double length_s = std::max(0.0, end_s - start_s);
+
   auto cropped_trajectory = trajectory;
   cropped_trajectory.crop(start_s, length_s);
 
