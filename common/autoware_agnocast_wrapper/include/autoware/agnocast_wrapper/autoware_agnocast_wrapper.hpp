@@ -247,6 +247,30 @@ public:
         ros2_options);
     }
   }
+
+  template <typename Func>
+  explicit Subscription(
+    agnocast::Node * node, const std::string & topic_name, const rclcpp::QoS & qos,
+    Func && callback, const agnocast::SubscriptionOptions & options)
+  {
+    static_assert(
+      std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
+        std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_SHARED_PTR(MessageT) &&>,
+      "callback should be invocable with an rvalue reference to either AUTOWARE_MESSAGE_UNIQUE_PTR "
+      "or AUTOWARE_MESSAGE_SHARED_PTR");
+
+    constexpr auto ownership =
+      std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&>
+        ? OwnershipType::Unique
+        : OwnershipType::Shared;
+
+    agnocast_sub_ = agnocast::create_subscription<MessageT>(
+      node, topic_name, qos,
+      [callback = std::forward<Func>(callback)](agnocast::ipc_shared_ptr<MessageT> && msg) {
+        callback(message_ptr<MessageT, ownership>(std::move(msg)));
+      },
+      options);
+  }
 };
 
 template <typename MessageT, typename Func>
@@ -288,6 +312,12 @@ class AgnocastPollingSubscriber : public PollingSubscriber<MessageT>
 public:
   explicit AgnocastPollingSubscriber(
     rclcpp::Node * node, const std::string & topic_name, const rclcpp::QoS & qos)
+  : subscriber_(agnocast::create_subscription<MessageT>(node, topic_name, qos))
+  {
+  }
+
+  explicit AgnocastPollingSubscriber(
+    agnocast::Node * node, const std::string & topic_name, const rclcpp::QoS & qos)
   : subscriber_(agnocast::create_subscription<MessageT>(node, topic_name, qos))
   {
   }
@@ -377,8 +407,9 @@ class AgnocastPublisher : public Publisher<MessageT>
   typename agnocast::Publisher<MessageT>::SharedPtr publisher_;
 
 public:
+  template <typename NodeT>
   explicit AgnocastPublisher(
-    rclcpp::Node * node, const std::string & topic_name, const rclcpp::QoS & qos,
+    NodeT * node, const std::string & topic_name, const rclcpp::QoS & qos,
     const agnocast::PublisherOptions & options)
   : publisher_(agnocast::create_publisher<MessageT>(node, topic_name, qos, options))
   {
