@@ -5,6 +5,7 @@ find_package(autoware_cmake REQUIRED)
 autoware_package()
 
 find_package(rclcpp REQUIRED)
+find_package(autoware_utils REQUIRED)
 
 if("$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
   find_package(agnocastlib REQUIRED)
@@ -31,6 +32,10 @@ endif()
 
 ament_export_include_directories(
   include
+)
+
+ament_export_dependencies(
+  autoware_utils
 )
 
 if("$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
