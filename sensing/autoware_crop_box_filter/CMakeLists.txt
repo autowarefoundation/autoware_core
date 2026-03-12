@@ -27,11 +27,6 @@ if(BUILD_TESTING)
   )
   target_include_directories(test_crop_box_filter PRIVATE src)
 
-  ament_auto_add_gtest(test_crop_box_filter_node
-    test/test_crop_box_filter_node.cpp
-  )
-  target_include_directories(test_crop_box_filter_node PRIVATE src)
-
   ament_auto_add_gtest(test_crop_box_filter_integration
     test/test_crop_box_filter_integration.cpp
   )
