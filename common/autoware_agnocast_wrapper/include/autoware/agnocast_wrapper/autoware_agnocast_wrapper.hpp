@@ -521,8 +521,9 @@ typename Publisher<MessageT>::SharedPtr create_publisher(
   this->create_publisher<message_type>(arg1, arg2)
 #define AUTOWARE_CREATE_PUBLISHER3(message_type, arg1, arg2, arg3) \
   this->create_publisher<message_type>(arg1, arg2, arg3)
-#define AUTOWARE_CREATE_POLLING_SUBSCRIBER(message_type, topic, qos) \
-  autoware_utils_rclcpp::InterProcessPollingSubscriber<message_type>::create_subscription(this, topic, qos)
+#define AUTOWARE_CREATE_POLLING_SUBSCRIBER(message_type, topic, qos)                       \
+  autoware_utils_rclcpp::InterProcessPollingSubscriber<message_type>::create_subscription( \
+    this, topic, qos)
 
 #define AUTOWARE_SUBSCRIPTION_OPTIONS rclcpp::SubscriptionOptions
 #define AUTOWARE_PUBLISHER_OPTIONS rclcpp::PublisherOptions
