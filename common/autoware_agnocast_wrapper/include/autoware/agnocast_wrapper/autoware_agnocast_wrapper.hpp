@@ -19,7 +19,7 @@
 
 #ifdef USE_AGNOCAST_ENABLED
 
-#include "autoware_utils/ros/polling_subscriber.hpp"
+#include "autoware_utils_rclcpp/polling_subscriber.hpp"
 
 #include <agnocast/agnocast.hpp>
 
@@ -308,13 +308,13 @@ public:
 template <typename MessageT>
 class ROS2PollingSubscriber : public PollingSubscriber<MessageT>
 {
-  typename autoware_utils::InterProcessPollingSubscriber<MessageT>::SharedPtr subscriber_;
+  typename autoware_utils_rclcpp::InterProcessPollingSubscriber<MessageT>::SharedPtr subscriber_;
 
 public:
   explicit ROS2PollingSubscriber(
     rclcpp::Node * node, const std::string & topic_name, const rclcpp::QoS & qos)
   : subscriber_(
-      autoware_utils::InterProcessPollingSubscriber<MessageT>::create_subscription(
+      autoware_utils_rclcpp::InterProcessPollingSubscriber<MessageT>::create_subscription(
         node, topic_name, qos))
   {
   }
@@ -501,7 +501,7 @@ typename Publisher<MessageT>::SharedPtr create_publisher(
 
 #else
 
-#include "autoware_utils/ros/polling_subscriber.hpp"
+#include "autoware_utils_rclcpp/polling_subscriber.hpp"
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -513,7 +513,7 @@ typename Publisher<MessageT>::SharedPtr create_publisher(
 #define AUTOWARE_SUBSCRIPTION_PTR(MessageT) typename rclcpp::Subscription<MessageT>::SharedPtr
 #define AUTOWARE_PUBLISHER_PTR(MessageT) typename rclcpp::Publisher<MessageT>::SharedPtr
 #define AUTOWARE_POLLING_SUBSCRIBER_PTR(MessageT) \
-  typename autoware_utils::InterProcessPollingSubscriber<MessageT>::SharedPtr
+  typename autoware_utils_rclcpp::InterProcessPollingSubscriber<MessageT>::SharedPtr
 
 #define AUTOWARE_CREATE_SUBSCRIPTION(message_type, topic, qos, callback, options) \
   this->create_subscription<message_type>(topic, qos, callback, options)
@@ -522,7 +522,7 @@ typename Publisher<MessageT>::SharedPtr create_publisher(
 #define AUTOWARE_CREATE_PUBLISHER3(message_type, arg1, arg2, arg3) \
   this->create_publisher<message_type>(arg1, arg2, arg3)
 #define AUTOWARE_CREATE_POLLING_SUBSCRIBER(message_type, topic, qos) \
-  autoware_utils::InterProcessPollingSubscriber<message_type>::create_subscription(this, topic, qos)
+  autoware_utils_rclcpp::InterProcessPollingSubscriber<message_type>::create_subscription(this, topic, qos)
 
 #define AUTOWARE_SUBSCRIPTION_OPTIONS rclcpp::SubscriptionOptions
 #define AUTOWARE_PUBLISHER_OPTIONS rclcpp::PublisherOptions
