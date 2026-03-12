@@ -274,6 +274,13 @@ private:
   }
 };
 
+/// @brief Get the underlying rclcpp::Node from a node that inherits agnocast_wrapper::Node.
+template <typename T>
+std::shared_ptr<rclcpp::Node> to_rclcpp_node(const std::shared_ptr<T> & node)
+{
+  return node->get_rclcpp_node();
+}
+
 }  // namespace autoware::agnocast_wrapper
 
 #else
@@ -282,6 +289,13 @@ namespace autoware::agnocast_wrapper
 {
 
 using Node = rclcpp::Node;
+
+/// @brief Get the underlying rclcpp::Node from a node that inherits rclcpp::Node.
+template <typename T>
+std::shared_ptr<rclcpp::Node> to_rclcpp_node(const std::shared_ptr<T> & node)
+{
+  return node;
+}
 
 }  // namespace autoware::agnocast_wrapper
 
