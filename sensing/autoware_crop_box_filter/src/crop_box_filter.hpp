@@ -15,6 +15,9 @@
 #ifndef CROP_BOX_FILTER_HPP_
 #define CROP_BOX_FILTER_HPP_
 
+#include <Eigen/Eigen>
+
+#include <geometry_msgs/msg/polygon_stamped.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
 #include <string>
@@ -32,6 +35,40 @@ struct ValidationResult
 };
 
 ValidationResult validate_pointcloud2(const PointCloud2 & cloud);
+
+struct CropBoxParam
+{
+  float min_x;
+  float max_x;
+  float min_y;
+  float max_y;
+  float min_z;
+  float max_z;
+};
+
+struct CropBoxFilterConfig
+{
+  CropBoxParam param;
+  bool keep_outside_box{false};
+  bool need_preprocess_transform{false};
+  bool need_postprocess_transform{false};
+  Eigen::Matrix4f eigen_transform_preprocess{Eigen::Matrix4f::Identity()};
+  Eigen::Matrix4f eigen_transform_postprocess{Eigen::Matrix4f::Identity()};
+  std::string output_frame;
+};
+
+struct CropBoxFilterResult
+{
+  PointCloud2 pointcloud;
+  int skipped_nan_count{0};
+};
+
+CropBoxFilterResult filter_pointcloud(
+  const PointCloud2 & cloud, const CropBoxFilterConfig & config);
+
+geometry_msgs::msg::PolygonStamped generate_crop_box_polygon(
+  const CropBoxParam & param, const std::string & frame_id,
+  const builtin_interfaces::msg::Time & stamp);
 
 }  // namespace autoware::crop_box_filter
 
