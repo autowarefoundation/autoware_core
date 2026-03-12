@@ -263,7 +263,7 @@ TEST(CropBoxFilterTest, FilterExcludePointsOutsideBoxWhenKeepInsideBox)
 TEST(GenerateCropBoxPolygonTest, SetsFrameIdStampAndPointCount)
 {
   // Arrange
-  autoware::crop_box_filter::CropBoxParam param;
+  autoware::crop_box_filter::CropBoxParam param = {-5.0f, 5.0f, -5.0f, 5.0f, -5.0f, 5.0f};
   const std::string frame_id = "base_link";
   builtin_interfaces::msg::Time stamp;
   stamp.sec = 123;
