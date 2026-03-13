@@ -467,10 +467,7 @@ public:
   }
 
   // See the comment on Publisher::publish(const MessageT &) for why this exists.
-  void publish(const MessageT & data) override
-  {
-    publisher_->publish(data);
-  }
+  void publish(const MessageT & data) override { publisher_->publish(data); }
 
   uint32_t get_subscription_count() const override { return publisher_->get_subscription_count(); }
   uint32_t get_intra_process_subscription_count() const override
