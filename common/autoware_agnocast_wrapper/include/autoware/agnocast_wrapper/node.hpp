@@ -18,6 +18,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 
+#include <map>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -133,7 +134,7 @@ public:
   {
     rclcpp::ParameterValue value{ParameterT{}};
     return declare_parameter(name, value.get_type(), descriptor, ignore_override)
-      .template get<ParameterT>();
+      .get<ParameterT>();
   }
 
   template <typename ParameterT>

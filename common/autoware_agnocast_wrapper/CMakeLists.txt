@@ -36,6 +36,7 @@ ament_export_include_directories(
 
 ament_export_dependencies(
   autoware_utils
+  rclcpp
 )
 
 if(DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
