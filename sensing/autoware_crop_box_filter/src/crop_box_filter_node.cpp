@@ -25,7 +25,7 @@
 
 namespace autoware::crop_box_filter
 {
-CropBoxFilter::CropBoxFilter(const rclcpp::NodeOptions & node_options)
+CropBoxFilterNode::CropBoxFilterNode(const rclcpp::NodeOptions & node_options)
 : rclcpp::Node("crop_box_filter", node_options),
   stop_watch_ptr_(std::make_unique<autoware_utils_system::StopWatch<std::chrono::milliseconds>>()),
   debug_publisher_(std::make_unique<autoware_utils_debug::DebugPublisher>(this, this->get_name())),
@@ -111,20 +111,20 @@ CropBoxFilter::CropBoxFilter(const rclcpp::NodeOptions & node_options)
   {
     using std::placeholders::_1;
     set_param_res_ =
-      this->add_on_set_parameters_callback(std::bind(&CropBoxFilter::param_callback, this, _1));
+      this->add_on_set_parameters_callback(std::bind(&CropBoxFilterNode::param_callback, this, _1));
   }
 
   // set input pointcloud callback
   {
     sub_input_ = this->create_subscription<PointCloud2>(
       "input", rclcpp::SensorDataQoS().keep_last(max_queue_size_),
-      std::bind(&CropBoxFilter::pointcloud_callback, this, std::placeholders::_1));
+      std::bind(&CropBoxFilterNode::pointcloud_callback, this, std::placeholders::_1));
   }
 
   RCLCPP_DEBUG(this->get_logger(), "[Filter Constructor] successfully created.");
 }
 
-void CropBoxFilter::pointcloud_callback(const PointCloud2ConstPtr cloud)
+void CropBoxFilterNode::pointcloud_callback(const PointCloud2ConstPtr cloud)
 {
   // check whether the pointcloud is valid
   const ValidationResult result = validate_pointcloud2(*cloud);
@@ -184,7 +184,7 @@ void CropBoxFilter::pointcloud_callback(const PointCloud2ConstPtr cloud)
 }
 
 // update parameters dynamicly
-rcl_interfaces::msg::SetParametersResult CropBoxFilter::param_callback(
+rcl_interfaces::msg::SetParametersResult CropBoxFilterNode::param_callback(
   const std::vector<rclcpp::Parameter> & p)
 {
   std::scoped_lock lock(mutex_);
@@ -214,4 +214,4 @@ rcl_interfaces::msg::SetParametersResult CropBoxFilter::param_callback(
 }  // namespace autoware::crop_box_filter
 
 #include <rclcpp_components/register_node_macro.hpp>
-RCLCPP_COMPONENTS_REGISTER_NODE(autoware::crop_box_filter::CropBoxFilter)
+RCLCPP_COMPONENTS_REGISTER_NODE(autoware::crop_box_filter::CropBoxFilterNode)

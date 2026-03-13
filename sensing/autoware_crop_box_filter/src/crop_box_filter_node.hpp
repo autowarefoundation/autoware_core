@@ -31,7 +31,7 @@
 namespace autoware::crop_box_filter
 {
 
-class CropBoxFilter : public rclcpp::Node
+class CropBoxFilterNode : public rclcpp::Node
 {
 private:
   // member variable declaration & definitions *************************************
@@ -92,7 +92,7 @@ private:
   }
 
 public:
-  explicit CropBoxFilter(const rclcpp::NodeOptions & node_options);
+  explicit CropBoxFilterNode(const rclcpp::NodeOptions & node_options);
 };
 }  // namespace autoware::crop_box_filter
 
