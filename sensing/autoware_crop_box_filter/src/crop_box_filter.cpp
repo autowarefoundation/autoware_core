@@ -83,9 +83,9 @@ geometry_msgs::msg::PolygonStamped generate_crop_box_polygon(
 {
   auto generate_point = [](double x, double y, double z) {
     geometry_msgs::msg::Point32 point;
-    point.x = x;
-    point.y = y;
-    point.z = z;
+    point.x = static_cast<float>(x);
+    point.y = static_cast<float>(y);
+    point.z = static_cast<float>(z);
     return point;
   };
 
