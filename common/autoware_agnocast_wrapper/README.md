@@ -151,19 +151,17 @@ After including `agnocast_env.launch.xml`, the following variables are available
 
 ### Launch Arguments
 
-| Argument                               | Default                                       | Description                                                                                                   |
-| -------------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `agnocast_heaphook_path`               | `/opt/ros/humble/lib/libagnocast_heaphook.so` | Path to the heaphook shared library                                                                           |
-| `use_multithread`                      | `false`                                       | Use the multi-threaded component container (`component_container_mt`)                                         |
-| `use_agnocast_component_container_cie` | `false`                                       | Use `agnocast_component_container_cie` (only effective when `ENABLE_AGNOCAST=1`; overrides `use_multithread`) |
+| Argument                 | Default                                       | Description                                                       |
+| ------------------------ | --------------------------------------------- | ----------------------------------------------------------------- |
+| `agnocast_heaphook_path` | `/opt/ros/humble/lib/libagnocast_heaphook.so` | Path to the heaphook shared library                               |
+| `use_multithread`        | `false`                                       | Use the multi-threaded component container (`component_container_mt`) |
 
 The `container_executable` is resolved as follows:
 
-| `use_multithread` | `use_agnocast_component_container_cie` | `ENABLE_AGNOCAST=0`                              | `ENABLE_AGNOCAST=1`                |
-| ----------------- | -------------------------------------- | ------------------------------------------------ | ---------------------------------- |
-| `false`           | `false`                                | `component_container`                            | `agnocast_component_container`     |
-| `true`            | `false`                                | `component_container_mt`                         | `agnocast_component_container_mt`  |
-| -                 | `true`                                 | `component_container` / `component_container_mt` | `agnocast_component_container_cie` |
+| `use_multithread` | `ENABLE_AGNOCAST=0`      | `ENABLE_AGNOCAST=1`                |
+| ----------------- | ------------------------ | ---------------------------------- |
+| `false`           | `component_container`    | `agnocast_component_container`     |
+| `true`            | `component_container_mt` | `agnocast_component_container_cie` |
 
 ### Examples
 
@@ -182,19 +180,6 @@ Using a component container with multi-threading:
 ```xml
 <include file="$(find-pkg-share autoware_agnocast_wrapper)/launch/agnocast_env.launch.xml">
   <arg name="use_multithread" value="true"/>
-</include>
-
-<node_container pkg="rclcpp_components" exec="$(var container_executable)" name="my_container">
-  <env name="LD_PRELOAD" value="$(var ld_preload_value)"/>
-</node_container>
-```
-
-Using a component container with component interface isolation (Agnocast only):
-
-```xml
-<include file="$(find-pkg-share autoware_agnocast_wrapper)/launch/agnocast_env.launch.xml">
-  <arg name="use_multithread" value="true"/>
-  <arg name="use_agnocast_component_container_cie" value="true"/>
 </include>
 
 <node_container pkg="rclcpp_components" exec="$(var container_executable)" name="my_container">

@@ -13,7 +13,6 @@
 
   <arg name="agnocast_heaphook_path" default="/opt/ros/humble/lib/libagnocast_heaphook.so"/>
   <arg name="use_multithread" default="false"/>
-  <arg name="use_agnocast_component_container_cie" default="false"/>
   <let name="use_agnocast" value="$(env ENABLE_AGNOCAST 0)"/>
 
   <!-- LD_PRELOAD -->
@@ -23,15 +22,6 @@
   <!-- Component container executable -->
   <let name="container_executable" value="component_container" if="$(eval &quot;'$(var use_agnocast)' != '1' and '$(var use_multithread)' != 'true'&quot;)"/>
   <let name="container_executable" value="component_container_mt" if="$(eval &quot;'$(var use_agnocast)' != '1' and '$(var use_multithread)' == 'true'&quot;)"/>
-  <let
-    name="container_executable"
-    value="agnocast_component_container"
-    if="$(eval &quot;'$(var use_agnocast)' == '1' and '$(var use_multithread)' != 'true' and '$(var use_agnocast_component_container_cie)' != 'true'&quot;)"
-  />
-  <let
-    name="container_executable"
-    value="agnocast_component_container_mt"
-    if="$(eval &quot;'$(var use_agnocast)' == '1' and '$(var use_multithread)' == 'true' and '$(var use_agnocast_component_container_cie)' != 'true'&quot;)"
-  />
-  <let name="container_executable" value="agnocast_component_container_cie" if="$(eval &quot;'$(var use_agnocast)' == '1' and '$(var use_agnocast_component_container_cie)' == 'true'&quot;)"/>
+  <let name="container_executable" value="agnocast_component_container" if="$(eval &quot;'$(var use_agnocast)' == '1' and '$(var use_multithread)' != 'true'&quot;)"/>
+  <let name="container_executable" value="agnocast_component_container_cie" if="$(eval &quot;'$(var use_agnocast)' == '1' and '$(var use_multithread)' == 'true'&quot;)"/>
 </launch>
