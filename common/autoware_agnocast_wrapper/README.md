@@ -88,3 +88,15 @@ Example:
 - B = `autoware_pointcloud_preprocessor`
 
 In such cases, rebuild both A and B with Agnocast **disabled** to ensure consistency. As a best practice, we recommend keeping the value of `ENABLE_AGNOCAST` consistent within a workspace to avoid unintentional mismatches and simplify build management.
+
+## How to Enable Agnocast at Runtime
+
+When Agnocast is enabled at build time, the heaphook shared library must be preloaded at runtime via `LD_PRELOAD`. This package provides a launch file that handles this automatically.
+
+Include the following in your node's launch file:
+
+```xml
+<include file="$(find-pkg-share autoware_agnocast_wrapper)/launch/agnocast_env.launch.xml"/>
+```
+
+This launch file checks the `ENABLE_AGNOCAST` environment variable (set to `1` to enable) and, when enabled, prepends the Agnocast heaphook library to `LD_PRELOAD`.
