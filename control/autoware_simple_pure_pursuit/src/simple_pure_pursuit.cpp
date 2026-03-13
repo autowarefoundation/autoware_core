@@ -109,9 +109,9 @@ autoware_control_msgs::msg::Longitudinal SimplePurePursuitNode::calc_longitudina
   const double current_longitudinal_vel = odom.twist.twist.linear.x;
 
   autoware_control_msgs::msg::Longitudinal longitudinal_control_command;
-  longitudinal_control_command.velocity = target_longitudinal_vel;
+  longitudinal_control_command.velocity = static_cast<float>(target_longitudinal_vel);
   longitudinal_control_command.acceleration =
-    speed_proportional_gain_ * (target_longitudinal_vel - current_longitudinal_vel);
+    static_cast<float>(speed_proportional_gain_ * (target_longitudinal_vel - current_longitudinal_vel));
 
   return longitudinal_control_command;
 }
@@ -133,7 +133,7 @@ autoware_control_msgs::msg::Lateral SimplePurePursuitNode::calc_lateral_control(
 
   // search lookahead point
   auto lookahead_point_itr = std::find_if(
-    traj.points.begin() + closest_traj_point_idx, traj.points.end(),
+    traj.points.begin() + static_cast<std::ptrdiff_t>(closest_traj_point_idx), traj.points.end(),
     [&](const TrajectoryPoint & point) {
       return std::hypot(point.pose.position.x - rear_x, point.pose.position.y - rear_y) >=
              lookahead_distance;
@@ -149,7 +149,7 @@ autoware_control_msgs::msg::Lateral SimplePurePursuitNode::calc_lateral_control(
   const double alpha = std::atan2(lookahead_point_y - rear_y, lookahead_point_x - rear_x) -
                        tf2::getYaw(odom.pose.pose.orientation);
   lateral_control_command.steering_tire_angle =
-    std::atan2(2.0 * vehicle_info_.wheel_base_m * std::sin(alpha), lookahead_distance);
+    static_cast<float>(std::atan2(2.0 * vehicle_info_.wheel_base_m * std::sin(alpha), lookahead_distance));
 
   return lateral_control_command;
 }
