@@ -70,7 +70,8 @@ lanelet::BasicPoints3d resample_points(
 
   lanelet::BasicPoints3d resampled_points;
   for (size_t i = 0; i <= num_segments; ++i) {
-    const double target_length = total_length * static_cast<double>(i) / static_cast<double>(num_segments);
+    const double target_length =
+      total_length * static_cast<double>(i) / static_cast<double>(num_segments);
 
     // Find two nearest points
     // (accumulated_lengths[idx-1] < target_length <= accumulated_lengths[idx])
