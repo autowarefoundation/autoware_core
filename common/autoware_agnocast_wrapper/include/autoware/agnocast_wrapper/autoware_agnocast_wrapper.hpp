@@ -274,8 +274,7 @@ public:
         if constexpr (ownership == OwnershipType::Unique) {
           callback(message_ptr<MessageT, ownership>(std::move(msg)));
         } else {
-          callback(
-            message_ptr<MessageT, ownership>(std::shared_ptr<MessageT>(std::move(msg))));
+          callback(message_ptr<MessageT, ownership>(std::shared_ptr<MessageT>(std::move(msg))));
         }
       },
       ros2_options);
