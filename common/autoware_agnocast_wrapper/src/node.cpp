@@ -14,6 +14,8 @@
 
 #include "autoware/agnocast_wrapper/node.hpp"
 
+#ifdef USE_AGNOCAST_ENABLED
+
 namespace autoware::agnocast_wrapper
 {
 
@@ -183,3 +185,5 @@ void Node::remove_on_set_parameters_callback(
 }
 
 }  // namespace autoware::agnocast_wrapper
+
+#endif
