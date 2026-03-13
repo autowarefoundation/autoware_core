@@ -66,15 +66,12 @@ TrajectoryPoint calcInterpolatedPoint(
     interpolated_point.lateral_velocity_mps = curr_pt.lateral_velocity_mps;
     interpolated_point.acceleration_mps2 = curr_pt.acceleration_mps2;
   } else {
-    interpolated_point.longitudinal_velocity_mps = static_cast<float>(
-      autoware::interpolation::lerp(
-        curr_pt.longitudinal_velocity_mps, next_pt.longitudinal_velocity_mps, clamped_ratio));
-    interpolated_point.lateral_velocity_mps = static_cast<float>(
-      autoware::interpolation::lerp(
-        curr_pt.lateral_velocity_mps, next_pt.lateral_velocity_mps, clamped_ratio));
-    interpolated_point.acceleration_mps2 = static_cast<float>(
-      autoware::interpolation::lerp(
-        curr_pt.acceleration_mps2, next_pt.acceleration_mps2, clamped_ratio));
+    interpolated_point.longitudinal_velocity_mps = static_cast<float>(autoware::interpolation::lerp(
+      curr_pt.longitudinal_velocity_mps, next_pt.longitudinal_velocity_mps, clamped_ratio));
+    interpolated_point.lateral_velocity_mps = static_cast<float>(autoware::interpolation::lerp(
+      curr_pt.lateral_velocity_mps, next_pt.lateral_velocity_mps, clamped_ratio));
+    interpolated_point.acceleration_mps2 = static_cast<float>(autoware::interpolation::lerp(
+      curr_pt.acceleration_mps2, next_pt.acceleration_mps2, clamped_ratio));
   }
 
   // heading rate interpolation
@@ -137,12 +134,12 @@ PathPointWithLaneId calcInterpolatedPoint(
     interpolated_point.point.longitudinal_velocity_mps = curr_pt.point.longitudinal_velocity_mps;
     interpolated_point.point.lateral_velocity_mps = curr_pt.point.lateral_velocity_mps;
   } else {
-    interpolated_point.point.longitudinal_velocity_mps = static_cast<float>(
-      autoware::interpolation::lerp(
+    interpolated_point.point.longitudinal_velocity_mps =
+      static_cast<float>(autoware::interpolation::lerp(
         curr_pt.point.longitudinal_velocity_mps, next_pt.point.longitudinal_velocity_mps,
         clamped_ratio));
-    interpolated_point.point.lateral_velocity_mps = static_cast<float>(
-      autoware::interpolation::lerp(
+    interpolated_point.point.lateral_velocity_mps =
+      static_cast<float>(autoware::interpolation::lerp(
         curr_pt.point.lateral_velocity_mps, next_pt.point.lateral_velocity_mps, clamped_ratio));
   }
 
