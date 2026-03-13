@@ -3,7 +3,8 @@
   <!--
     Configuration:
     - Checks ENABLE_AGNOCAST environment variable (set to "1" to enable)
-    - Uses default heaphook path: /opt/ros/humble/lib/libagnocast_heaphook.so
+    - Heaphook path is configurable via the agnocast_heaphook_path arg
+      (default: /opt/ros/humble/lib/libagnocast_heaphook.so)
 
     Provides the following variables:
     - ld_preload_value: LD_PRELOAD value with heaphook prepended when Agnocast is enabled
