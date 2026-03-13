@@ -35,24 +35,24 @@ CropBoxFilterNode::CropBoxFilterNode(const rclcpp::NodeOptions & node_options)
     stop_watch_ptr_->tic("processing_time");
   }
 
-  max_queue_size_ = static_cast<int64_t>(declare_parameter("max_queue_size", 5));
+  const auto max_queue_size = static_cast<size_t>(declare_parameter("max_queue_size", 5));
 
   // get transform info for pointcloud
   {
-    tf_input_orig_frame_ =
+    const auto tf_input_orig_frame =
       static_cast<std::string>(declare_parameter("input_pointcloud_frame", "base_link"));
     tf_input_frame_ = static_cast<std::string>(declare_parameter("input_frame", "base_link"));
     auto output_frame = static_cast<std::string>(declare_parameter("output_frame", "base_link"));
 
     transform_listener_ = std::make_unique<autoware_utils_tf::TransformListener>(this);
 
-    if (tf_input_orig_frame_ != tf_input_frame_) {
+    if (tf_input_orig_frame != tf_input_frame_) {
       auto tf_ptr = transform_listener_->get_transform(
-        tf_input_frame_, tf_input_orig_frame_, this->now(), rclcpp::Duration::from_seconds(1.0));
+        tf_input_frame_, tf_input_orig_frame, this->now(), rclcpp::Duration::from_seconds(1.0));
       if (!tf_ptr) {
         RCLCPP_ERROR(
           this->get_logger(), "Cannot get transform from %s to %s. Please check your TF tree.",
-          tf_input_orig_frame_.c_str(), tf_input_frame_.c_str());
+          tf_input_orig_frame.c_str(), tf_input_frame_.c_str());
       } else {
         config_.preprocess_transform = *tf_ptr;
       }
@@ -94,7 +94,7 @@ CropBoxFilterNode::CropBoxFilterNode(const rclcpp::NodeOptions & node_options)
     rclcpp::PublisherOptions pub_options;
     pub_options.qos_overriding_options = rclcpp::QosOverridingOptions::with_default_policies();
     pub_output_ = this->create_publisher<PointCloud2>(
-      "output", rclcpp::SensorDataQoS().keep_last(max_queue_size_), pub_options);
+      "output", rclcpp::SensorDataQoS().keep_last(max_queue_size), pub_options);
   }
 
   // set additional publishers
@@ -115,7 +115,7 @@ CropBoxFilterNode::CropBoxFilterNode(const rclcpp::NodeOptions & node_options)
   // set input pointcloud callback
   {
     sub_input_ = this->create_subscription<PointCloud2>(
-      "input", rclcpp::SensorDataQoS().keep_last(max_queue_size_),
+      "input", rclcpp::SensorDataQoS().keep_last(max_queue_size),
       std::bind(&CropBoxFilterNode::pointcloud_callback, this, std::placeholders::_1));
   }
 
