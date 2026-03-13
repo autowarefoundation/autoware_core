@@ -49,10 +49,10 @@ static Trajectory<geometry_msgs::msg::Pose> build_bow_trajectory(
   std::vector<geometry_msgs::msg::Pose> raw_poses;
   raw_poses.reserve(num_points);
 
-  auto delta_theta = total_angle / num_points;
+  auto delta_theta = total_angle / static_cast<double>(num_points);
 
   for (size_t i = 0; i < num_points; ++i) {
-    double theta = M_PI / 4 + i * delta_theta;
+    double theta = M_PI / 4 + static_cast<double>(i) * delta_theta;
 
     double x = size * cos(theta);
     double y = size * sin(theta) * cos(theta);
@@ -85,28 +85,28 @@ static Trajectory<geometry_msgs::msg::Pose> build_vertical_loop_trajectory(
   size_t second_part = static_cast<size_t>(num_points - first_part - last_part);
 
   // First part: going in (from right to left)
-  double rate = (start_x) / (first_part);
+  double rate = (start_x) / static_cast<double>(first_part);
   for (size_t i = 0u; i < first_part; ++i) {
-    double x = start_x - rate * i;
+    double x = start_x - rate * static_cast<double>(i);
     double y = offset;
     raw_poses.push_back(make_pose(x, y, M_PI));
   }
 
   // Second part: go in the loop
   double start_theta = M_PI * 3 / 2;
-  double loop_rate = 2 * M_PI / (second_part - 1);
+  double loop_rate = 2 * M_PI / static_cast<double>(second_part - 1);
   for (size_t i = 0u; i < second_part; ++i) {
     // from 3/2 pi to -1/2pi
-    double theta = start_theta - i * loop_rate;
+    double theta = start_theta - static_cast<double>(i) * loop_rate;
     double x = radius * cos(theta);
     double y = (offset + radius) + radius * sin(theta);
     raw_poses.push_back(make_pose(x, y, theta - M_PI / 2));
   }
 
   // Last part: go out to the left
-  double out_rate = (start_x) / (first_part);
+  double out_rate = (start_x) / static_cast<double>(first_part);
   for (size_t i = 1u; i <= last_part; ++i) {
-    double x = 0 - out_rate * i;
+    double x = 0 - out_rate * static_cast<double>(i);
     double y = offset;
     raw_poses.push_back(make_pose(x, y, M_PI));
   }
@@ -127,9 +127,9 @@ static Trajectory<geometry_msgs::msg::Pose> build_lollipop_trajectory(
   size_t second_part = static_cast<size_t>(num_points - first_part - last_part);
 
   // First part: go into bottom
-  double rate = (start_x) / (first_part);
+  double rate = (start_x) / static_cast<double>(first_part);
   for (size_t i = 0u; i < first_part; ++i) {
-    double x = start_x - rate * i;
+    double x = start_x - rate * static_cast<double>(i);
     double y = offset - radius * sin(phase_dif / 2);
     raw_poses.push_back(make_pose(x, y, M_PI));
   }
@@ -137,19 +137,19 @@ static Trajectory<geometry_msgs::msg::Pose> build_lollipop_trajectory(
   // Second part: go in the loop
   double start_theta = 2 * M_PI - phase_dif / 2;
   double end_theta = phase_dif / 2;
-  double loop_rate = (end_theta - start_theta) / (second_part - 1);
+  double loop_rate = (end_theta - start_theta) / static_cast<double>(second_part - 1);
   for (size_t i = 0u; i < second_part; ++i) {
     // from -phase_dif/2 to +phase_dif/2
-    double theta = start_theta + i * loop_rate;
+    double theta = start_theta + static_cast<double>(i) * loop_rate;
     double x = -radius * cos(phase_dif / 2) + radius * cos(theta);
     double y = offset + radius * sin(theta);
     raw_poses.push_back(make_pose(x, y, theta - M_PI / 2));
   }
 
   // Last part: go out from top
-  double out_rate = (start_x) / (last_part);
+  double out_rate = (start_x) / static_cast<double>(last_part);
   for (size_t i = 1u; i <= last_part; ++i) {
-    double x = 0 + out_rate * i;
+    double x = 0 + out_rate * static_cast<double>(i);
     double y = offset + radius * sin(phase_dif / 2);
     raw_poses.push_back(make_pose(x, y, 0));
   }
