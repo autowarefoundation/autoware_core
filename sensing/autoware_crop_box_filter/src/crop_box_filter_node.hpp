@@ -25,6 +25,7 @@
 #include <autoware_utils_tf/transform_listener.hpp>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -53,6 +54,7 @@ private:
   std::mutex mutex_;
 
   CropBoxFilterConfig config_;
+  std::optional<CropBoxFilter> crop_box_filter_;
 
   /** \brief Parameter service callback result : needed to be hold */
   OnSetParametersCallbackHandle::SharedPtr set_param_res_;

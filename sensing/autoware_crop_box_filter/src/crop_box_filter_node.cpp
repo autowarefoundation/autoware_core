@@ -16,8 +16,6 @@
 
 #include "crop_box_filter_node.hpp"
 
-#include <tf2_eigen/tf2_eigen.hpp>
-
 #include <memory>
 #include <string>
 #include <utility>
@@ -56,9 +54,7 @@ CropBoxFilterNode::CropBoxFilterNode(const rclcpp::NodeOptions & node_options)
           this->get_logger(), "Cannot get transform from %s to %s. Please check your TF tree.",
           tf_input_orig_frame_.c_str(), tf_input_frame_.c_str());
       } else {
-        auto eigen_tf = tf2::transformToEigen(*tf_ptr);
-        config_.eigen_transform_preprocess = eigen_tf.matrix().cast<float>();
-        config_.need_preprocess_transform = true;
+        config_.preprocess_transform = *tf_ptr;
       }
     }
 
@@ -70,9 +66,7 @@ CropBoxFilterNode::CropBoxFilterNode(const rclcpp::NodeOptions & node_options)
           this->get_logger(), "Cannot get transform from %s to %s. Please check your TF tree.",
           tf_input_frame_.c_str(), config_.output_frame.c_str());
       } else {
-        auto eigen_tf = tf2::transformToEigen(*tf_ptr);
-        config_.eigen_transform_postprocess = eigen_tf.matrix().cast<float>();
-        config_.need_postprocess_transform = true;
+        config_.postprocess_transform = *tf_ptr;
       }
     }
   }
@@ -91,6 +85,10 @@ CropBoxFilterNode::CropBoxFilterNode(const rclcpp::NodeOptions & node_options)
       throw std::invalid_argument("Crop box requires non-empty input_frame");
     }
   }
+
+  // construct CropBoxFilter with the completed config
+  crop_box_filter_.emplace(config_);
+
   // set output pointcloud publisher
   {
     rclcpp::PublisherOptions pub_options;
@@ -145,7 +143,7 @@ void CropBoxFilterNode::pointcloud_callback(const PointCloud2ConstPtr cloud)
   stop_watch_ptr_->toc("processing_time", true);
 
   // filtering
-  auto filter_result = filter_pointcloud(*cloud, config_);
+  auto filter_result = crop_box_filter_->filter(*cloud);
   auto & output = filter_result.pointcloud;
 
   if (filter_result.skipped_nan_count > 0) {
@@ -203,6 +201,9 @@ rcl_interfaces::msg::SetParametersResult CropBoxFilterNode::param_callback(
                                : config_.keep_outside_box;
 
   config_.param = new_param;
+
+  // recreate CropBoxFilter with updated config
+  crop_box_filter_.emplace(config_);
 
   rcl_interfaces::msg::SetParametersResult result;
   result.successful = true;

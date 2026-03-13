@@ -150,7 +150,8 @@ PointXYZList apply_crop_box_filter(
   const PointXYZList & points, const autoware::crop_box_filter::CropBoxFilterConfig & config)
 {
   const auto input_cloud = create_pointcloud2(const_cast<PointXYZList &>(points));
-  const auto result = autoware::crop_box_filter::filter_pointcloud(input_cloud, config);
+  const autoware::crop_box_filter::CropBoxFilter filter(config);
+  const auto result = filter.filter(input_cloud);
   return extract_points_from_cloud(result.pointcloud);
 }
 
