@@ -144,11 +144,11 @@ When Agnocast is enabled at build time, the heaphook shared library must be prel
 
 After including `agnocast_env.launch.xml`, the following variables are available:
 
-| Variable               | Description                                                                       |
-| ---------------------- | --------------------------------------------------------------------------------- |
-| `ld_preload_value`     | `LD_PRELOAD` value with the heaphook library prepended (when Agnocast is enabled) |
+| Variable               | Description                                                                              |
+| ---------------------- | ---------------------------------------------------------------------------------------- |
+| `ld_preload_value`     | `LD_PRELOAD` value with the heaphook library prepended (when Agnocast is enabled)        |
 | `container_package`    | Resolved component container package name (`rclcpp_components` or `agnocast_components`) |
-| `container_executable` | Resolved component container executable name                                      |
+| `container_executable` | Resolved component container executable name                                             |
 
 ### Launch Arguments
 
