@@ -1,4 +1,5 @@
 // Copyright 2021 TierIV
+// Copyright 2025 The Autoware Contributors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,201 +13,169 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "../src/vehicle_velocity_converter.hpp"
-
-#include <rclcpp/publisher.hpp>
-#include <rclcpp/rclcpp.hpp>
-#include <rclcpp/subscription.hpp>
-
-#include <autoware_vehicle_msgs/msg/velocity_report.hpp>
-#include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
+#include "autoware/vehicle_velocity_converter/vehicle_velocity_converter.hpp"
 
 #include <gtest/gtest.h>
 
-#include <memory>
-#include <string>
-#include <vector>
-
 using autoware::vehicle_velocity_converter::VehicleVelocityConverter;
 using autoware_vehicle_msgs::msg::VelocityReport;
-using geometry_msgs::msg::TwistWithCovarianceStamped;
-using std::chrono::milliseconds;
-using std::chrono::system_clock;
 
-class TestVehicleVelocityConverter : public ::testing::Test
+TEST(TestVehicleVelocityConverter, BasicConversion)
 {
-protected:
-  void SetUp() override
-  {
-    // Initialize ROS context for test
-    if (!rclcpp::ok()) {
-      rclcpp::init(0, nullptr);
-    }
+  VehicleVelocityConverter converter("base_link", 0.2, 0.1, 1.0);
 
-    // Create a test node
-    node_ptr_ = std::make_shared<rclcpp::Node>("test_vehicle_velocity_converter");
+  VelocityReport velocity_report;
+  velocity_report.header.stamp.sec = 123;
+  velocity_report.header.stamp.nanosec = 456000000;
+  velocity_report.header.frame_id = "base_link";
+  velocity_report.longitudinal_velocity = 10.0f;
+  velocity_report.lateral_velocity = 0.5f;
+  velocity_report.heading_rate = 0.1f;
 
-    // Create a publisher for velocity report
-    velocity_pub_ = node_ptr_->create_publisher<VelocityReport>("velocity_status", 10);
+  const auto result = converter.convert(velocity_report);
 
-    // Create a subscription to receive the converted twist
-    twist_sub_ = node_ptr_->create_subscription<TwistWithCovarianceStamped>(
-      "twist_with_covariance", 10,
-      [this](const TwistWithCovarianceStamped::SharedPtr msg) { received_twist_ = msg; });
-  }
+  // Check frame ID match
+  EXPECT_TRUE(result.frame_id_matched);
 
-  void TearDown() override
-  {
-    node_ptr_.reset();
-    // Do not shutdown ROS context here as it's shared between tests
-  }
+  // Check header
+  EXPECT_EQ(result.twist_with_covariance.header.frame_id, "base_link");
 
-  rclcpp::Node::SharedPtr node_ptr_{nullptr};
-  rclcpp::Publisher<VelocityReport>::SharedPtr velocity_pub_{nullptr};
-  rclcpp::Subscription<TwistWithCovarianceStamped>::SharedPtr twist_sub_{nullptr};
-  TwistWithCovarianceStamped::SharedPtr received_twist_{nullptr};
+  // Check velocities (use EXPECT_FLOAT_EQ because VelocityReport fields are float)
+  EXPECT_FLOAT_EQ(result.twist_with_covariance.twist.twist.linear.x, 10.0f);
+  EXPECT_FLOAT_EQ(result.twist_with_covariance.twist.twist.linear.y, 0.5f);
+  EXPECT_FLOAT_EQ(result.twist_with_covariance.twist.twist.angular.z, 0.1f);
 
-  void spinSome() { rclcpp::spin_some(node_ptr_); }
-
-  bool waitForTwistMessage(
-    const std::chrono::milliseconds & timeout = std::chrono::milliseconds(1000))
-  {
-    const auto start_time = system_clock::now();
-    received_twist_ = nullptr;
-
-    while (rclcpp::ok() && !received_twist_) {
-      spinSome();
-      if (system_clock::now() - start_time > timeout) {
-        return false;
-      }
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
-    return received_twist_ != nullptr;
-  }
-};
-
-TEST_F(TestVehicleVelocityConverter, NodeInstantiation)
-{
-  // Test node creation with default parameters
-  rclcpp::NodeOptions options;
-  options.parameter_overrides().push_back(rclcpp::Parameter("frame_id", "base_link"));
-  options.parameter_overrides().push_back(rclcpp::Parameter("velocity_stddev_xx", 0.2));
-  options.parameter_overrides().push_back(rclcpp::Parameter("angular_velocity_stddev_zz", 0.1));
-  options.parameter_overrides().push_back(rclcpp::Parameter("speed_scale_factor", 1.0));
-
-  auto vehicle_velocity_converter = std::make_shared<VehicleVelocityConverter>(options);
-  EXPECT_NE(vehicle_velocity_converter, nullptr);
+  // Check covariance diagonal elements
+  EXPECT_DOUBLE_EQ(result.twist_with_covariance.twist.covariance[0 + 0 * 6], 0.2 * 0.2);
+  EXPECT_DOUBLE_EQ(result.twist_with_covariance.twist.covariance[1 + 1 * 6], 10000.0);
+  EXPECT_DOUBLE_EQ(result.twist_with_covariance.twist.covariance[2 + 2 * 6], 10000.0);
+  EXPECT_DOUBLE_EQ(result.twist_with_covariance.twist.covariance[3 + 3 * 6], 10000.0);
+  EXPECT_DOUBLE_EQ(result.twist_with_covariance.twist.covariance[4 + 4 * 6], 10000.0);
+  EXPECT_DOUBLE_EQ(result.twist_with_covariance.twist.covariance[5 + 5 * 6], 0.1 * 0.1);
 }
 
-TEST_F(TestVehicleVelocityConverter, MessageConversion)
+TEST(TestVehicleVelocityConverter, SpeedScaleFactor)
 {
-  // Start the node with parameters
-  rclcpp::NodeOptions options;
-  options.parameter_overrides().push_back(rclcpp::Parameter("frame_id", "base_link"));
-  options.parameter_overrides().push_back(rclcpp::Parameter("velocity_stddev_xx", 0.2));
-  options.parameter_overrides().push_back(rclcpp::Parameter("angular_velocity_stddev_zz", 0.1));
-  options.parameter_overrides().push_back(rclcpp::Parameter("speed_scale_factor", 1.5));
+  VehicleVelocityConverter converter("base_link", 0.2, 0.1, 1.5);
 
-  auto vehicle_velocity_converter = std::make_shared<VehicleVelocityConverter>(options);
+  VelocityReport velocity_report;
+  velocity_report.header.frame_id = "base_link";
+  velocity_report.longitudinal_velocity = 2.0f;
+  velocity_report.lateral_velocity = 0.1f;
+  velocity_report.heading_rate = 0.3f;
 
-  // Create and publish a velocity report message
-  auto velocity_msg = std::make_shared<VelocityReport>();
-  velocity_msg->header.frame_id = "base_link";
-  velocity_msg->header.stamp = node_ptr_->now();
-  velocity_msg->longitudinal_velocity = 2.0;
-  velocity_msg->lateral_velocity = 0.1;
-  velocity_msg->heading_rate = 0.3;
+  const auto result = converter.convert(velocity_report);
 
-  // Use a separate thread for executor to process messages
-  std::thread executor_thread([&]() {
-    rclcpp::executors::SingleThreadedExecutor executor;
-    executor.add_node(vehicle_velocity_converter);
-    auto start_time = system_clock::now();
-    while (system_clock::now() - start_time < std::chrono::seconds(2)) {
-      executor.spin_some(std::chrono::milliseconds(100));
-    }
-  });
-
-  // Wait a moment for the executor to set up
-  std::this_thread::sleep_for(std::chrono::milliseconds(200));
-
-  // Publish the message
-  velocity_pub_->publish(*velocity_msg);
-
-  // Wait for the converted message
-  EXPECT_TRUE(waitForTwistMessage());
-
-  // Check that the conversion was correct
-  EXPECT_EQ(received_twist_->header.frame_id, velocity_msg->header.frame_id);
-  EXPECT_EQ(received_twist_->twist.twist.linear.x, velocity_msg->longitudinal_velocity * 1.5);
-  EXPECT_EQ(received_twist_->twist.twist.linear.y, velocity_msg->lateral_velocity);
-  EXPECT_EQ(received_twist_->twist.twist.angular.z, velocity_msg->heading_rate);
-
-  // Check covariance values
-  EXPECT_EQ(received_twist_->twist.covariance[0], 0.2 * 0.2);
-  EXPECT_EQ(received_twist_->twist.covariance[7], 10000.0);
-  EXPECT_EQ(received_twist_->twist.covariance[14], 10000.0);
-  EXPECT_EQ(received_twist_->twist.covariance[21], 10000.0);
-  EXPECT_EQ(received_twist_->twist.covariance[28], 10000.0);
-  EXPECT_EQ(received_twist_->twist.covariance[35], 0.1 * 0.1);
-
-  // Join the executor thread
-  executor_thread.join();
+  // Check that longitudinal velocity is scaled
+  EXPECT_FLOAT_EQ(result.twist_with_covariance.twist.twist.linear.x, 2.0f * 1.5f);
+  // Lateral velocity should not be scaled
+  EXPECT_FLOAT_EQ(result.twist_with_covariance.twist.twist.linear.y, 0.1f);
+  // Angular velocity should not be scaled
+  EXPECT_FLOAT_EQ(result.twist_with_covariance.twist.twist.angular.z, 0.3f);
 }
 
-TEST_F(TestVehicleVelocityConverter, DifferentFrameId)
+TEST(TestVehicleVelocityConverter, FrameIdMismatch)
 {
-  // Start the node with parameters
-  rclcpp::NodeOptions options;
-  options.parameter_overrides().push_back(rclcpp::Parameter("frame_id", "base_link"));
-  options.parameter_overrides().push_back(rclcpp::Parameter("velocity_stddev_xx", 0.2));
-  options.parameter_overrides().push_back(rclcpp::Parameter("angular_velocity_stddev_zz", 0.1));
-  options.parameter_overrides().push_back(rclcpp::Parameter("speed_scale_factor", 1.0));
+  VehicleVelocityConverter converter("base_link", 0.2, 0.1, 1.0);
 
-  auto vehicle_velocity_converter = std::make_shared<VehicleVelocityConverter>(options);
+  VelocityReport velocity_report;
+  velocity_report.header.frame_id = "different_frame";  // Not base_link
+  velocity_report.longitudinal_velocity = 5.0f;
+  velocity_report.lateral_velocity = 0.0f;
+  velocity_report.heading_rate = 0.0f;
 
-  // Create and publish a velocity report message with a different frame_id
-  auto velocity_msg = std::make_shared<VelocityReport>();
-  velocity_msg->header.frame_id = "different_frame";  // Not base_link
-  velocity_msg->header.stamp = node_ptr_->now();
-  velocity_msg->longitudinal_velocity = 2.0;
-  velocity_msg->lateral_velocity = 0.1;
-  velocity_msg->heading_rate = 0.3;
+  const auto result = converter.convert(velocity_report);
 
-  // Use a separate thread for executor to process messages
-  std::thread executor_thread([&]() {
-    rclcpp::executors::SingleThreadedExecutor executor;
-    executor.add_node(vehicle_velocity_converter);
-    auto start_time = system_clock::now();
-    while (system_clock::now() - start_time < std::chrono::seconds(2)) {
-      executor.spin_some(std::chrono::milliseconds(100));
+  // Frame ID should not match
+  EXPECT_FALSE(result.frame_id_matched);
+
+  // Conversion should still work
+  EXPECT_EQ(result.twist_with_covariance.header.frame_id, "different_frame");
+  EXPECT_FLOAT_EQ(result.twist_with_covariance.twist.twist.linear.x, 5.0f);
+}
+
+TEST(TestVehicleVelocityConverter, ZeroVelocity)
+{
+  VehicleVelocityConverter converter("base_link", 0.2, 0.1, 1.0);
+
+  VelocityReport velocity_report;
+  velocity_report.header.frame_id = "base_link";
+  velocity_report.longitudinal_velocity = 0.0f;
+  velocity_report.lateral_velocity = 0.0f;
+  velocity_report.heading_rate = 0.0f;
+
+  const auto result = converter.convert(velocity_report);
+
+  EXPECT_FLOAT_EQ(result.twist_with_covariance.twist.twist.linear.x, 0.0f);
+  EXPECT_FLOAT_EQ(result.twist_with_covariance.twist.twist.linear.y, 0.0f);
+  EXPECT_FLOAT_EQ(result.twist_with_covariance.twist.twist.angular.z, 0.0f);
+}
+
+TEST(TestVehicleVelocityConverter, NegativeVelocity)
+{
+  VehicleVelocityConverter converter("base_link", 0.2, 0.1, 1.0);
+
+  VelocityReport velocity_report;
+  velocity_report.header.frame_id = "base_link";
+  velocity_report.longitudinal_velocity = -5.0f;  // Reverse
+  velocity_report.lateral_velocity = -0.2f;
+  velocity_report.heading_rate = -0.5f;
+
+  const auto result = converter.convert(velocity_report);
+
+  EXPECT_FLOAT_EQ(result.twist_with_covariance.twist.twist.linear.x, -5.0f);
+  EXPECT_FLOAT_EQ(result.twist_with_covariance.twist.twist.linear.y, -0.2f);
+  EXPECT_FLOAT_EQ(result.twist_with_covariance.twist.twist.angular.z, -0.5f);
+}
+
+TEST(TestVehicleVelocityConverter, CovarianceValues)
+{
+  VehicleVelocityConverter converter("base_link", 0.5, 0.3, 1.0);
+
+  VelocityReport velocity_report;
+  velocity_report.header.frame_id = "base_link";
+  velocity_report.longitudinal_velocity = 1.0f;
+  velocity_report.lateral_velocity = 0.0f;
+  velocity_report.heading_rate = 0.0f;
+
+  const auto result = converter.convert(velocity_report);
+
+  // Check that covariance values are computed correctly (stddev^2)
+  EXPECT_DOUBLE_EQ(result.twist_with_covariance.twist.covariance[0 + 0 * 6], 0.5 * 0.5);
+  EXPECT_DOUBLE_EQ(result.twist_with_covariance.twist.covariance[5 + 5 * 6], 0.3 * 0.3);
+
+  // Check that large variance values are set for unmeasured dimensions
+  EXPECT_DOUBLE_EQ(result.twist_with_covariance.twist.covariance[1 + 1 * 6], 10000.0);
+  EXPECT_DOUBLE_EQ(result.twist_with_covariance.twist.covariance[2 + 2 * 6], 10000.0);
+  EXPECT_DOUBLE_EQ(result.twist_with_covariance.twist.covariance[3 + 3 * 6], 10000.0);
+  EXPECT_DOUBLE_EQ(result.twist_with_covariance.twist.covariance[4 + 4 * 6], 10000.0);
+}
+
+TEST(TestVehicleVelocityConverter, OffDiagonalCovarianceIsZero)
+{
+  VehicleVelocityConverter converter("base_link", 0.2, 0.1, 1.0);
+
+  VelocityReport velocity_report;
+  velocity_report.header.frame_id = "base_link";
+  velocity_report.longitudinal_velocity = 1.0f;
+  velocity_report.lateral_velocity = 0.0f;
+  velocity_report.heading_rate = 0.0f;
+
+  const auto result = converter.convert(velocity_report);
+
+  // Check that off-diagonal elements are zero
+  for (size_t i = 0; i < 36; ++i) {
+    // Skip diagonal elements (indices: 0, 7, 14, 21, 28, 35)
+    if (i == 0 || i == 7 || i == 14 || i == 21 || i == 28 || i == 35) {
+      continue;
     }
-  });
-
-  // Wait a moment for the executor to set up
-  std::this_thread::sleep_for(std::chrono::milliseconds(200));
-
-  // Publish the message
-  velocity_pub_->publish(*velocity_msg);
-
-  // Wait for the converted message
-  EXPECT_TRUE(waitForTwistMessage());
-
-  // Even with different frame_id, the conversion should still work
-  EXPECT_EQ(received_twist_->header.frame_id, velocity_msg->header.frame_id);
-  EXPECT_EQ(received_twist_->twist.twist.linear.x, velocity_msg->longitudinal_velocity);
-  EXPECT_EQ(received_twist_->twist.twist.linear.y, velocity_msg->lateral_velocity);
-  EXPECT_EQ(received_twist_->twist.twist.angular.z, velocity_msg->heading_rate);
-
-  // Join the executor thread
-  executor_thread.join();
+    EXPECT_DOUBLE_EQ(result.twist_with_covariance.twist.covariance[i], 0.0)
+      << "Off-diagonal element at index " << i << " should be zero";
+  }
 }
 
 int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
-  rclcpp::init(argc, argv);
-  int result = RUN_ALL_TESTS();
-  rclcpp::shutdown();
-  return result;
+  return RUN_ALL_TESTS();
 }
