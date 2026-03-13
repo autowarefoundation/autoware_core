@@ -17,8 +17,6 @@
 #include <string>
 #include <utility>
 
-#define USE_AGNOCAST_ENABLED
-
 #ifdef USE_AGNOCAST_ENABLED
 
 #include "autoware_utils_rclcpp/polling_subscriber.hpp"
