@@ -110,8 +110,8 @@ autoware_control_msgs::msg::Longitudinal SimplePurePursuitNode::calc_longitudina
 
   autoware_control_msgs::msg::Longitudinal longitudinal_control_command;
   longitudinal_control_command.velocity = static_cast<float>(target_longitudinal_vel);
-  longitudinal_control_command.acceleration =
-    static_cast<float>(speed_proportional_gain_ * (target_longitudinal_vel - current_longitudinal_vel));
+  longitudinal_control_command.acceleration = static_cast<float>(
+    speed_proportional_gain_ * (target_longitudinal_vel - current_longitudinal_vel));
 
   return longitudinal_control_command;
 }
@@ -148,8 +148,8 @@ autoware_control_msgs::msg::Lateral SimplePurePursuitNode::calc_lateral_control(
   autoware_control_msgs::msg::Lateral lateral_control_command;
   const double alpha = std::atan2(lookahead_point_y - rear_y, lookahead_point_x - rear_x) -
                        tf2::getYaw(odom.pose.pose.orientation);
-  lateral_control_command.steering_tire_angle =
-    static_cast<float>(std::atan2(2.0 * vehicle_info_.wheel_base_m * std::sin(alpha), lookahead_distance));
+  lateral_control_command.steering_tire_angle = static_cast<float>(
+    std::atan2(2.0 * vehicle_info_.wheel_base_m * std::sin(alpha), lookahead_distance));
 
   return lateral_control_command;
 }
