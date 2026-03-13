@@ -271,7 +271,12 @@ public:
     subscription_ = node->create_subscription<MessageT>(
       topic_name, qos,
       [callback = std::forward<Func>(callback)](std::unique_ptr<MessageT> msg) {
-        callback(message_ptr<MessageT, ownership>(std::move(msg)));
+        if constexpr (ownership == OwnershipType::Unique) {
+          callback(message_ptr<MessageT, ownership>(std::move(msg)));
+        } else {
+          callback(
+            message_ptr<MessageT, ownership>(std::shared_ptr<MessageT>(std::move(msg))));
+        }
       },
       ros2_options);
   }
