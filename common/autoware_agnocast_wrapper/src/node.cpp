@@ -14,6 +14,10 @@
 
 #include "autoware/agnocast_wrapper/node.hpp"
 
+#include <memory>
+#include <string>
+#include <vector>
+
 #ifdef USE_AGNOCAST_ENABLED
 
 namespace autoware::agnocast_wrapper
