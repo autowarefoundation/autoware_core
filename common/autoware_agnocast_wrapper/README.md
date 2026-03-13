@@ -7,7 +7,54 @@ The purpose of this package is to integrate Agnocast, a zero-copy middleware, in
 
 This package provides macros that wrap functions for publish/subscribe operations and smart pointer types for handling ROS 2 messages. When Autoware is built using the default build command, Agnocast is **not enabled**. However, setting the environment variable `ENABLE_AGNOCAST=1` enables Agnocast and results in a build that includes its integration. This design ensures backward compatibility for users who are unaware of Agnocast, minimizing disruption.
 
-## How to Use the Macros in This Package
+## Two Integration Approaches
+
+This package provides two approaches for integrating Agnocast. Both will coexist for the foreseeable future.
+
+### 1. Node Wrapper (`agnocast_wrapper::Node`)
+
+Use this when you want the **entire node** to transparently switch between `rclcpp::Node` and `agnocast::Node` at runtime. The node wrapper automatically selects the correct underlying implementation based on the `ENABLE_AGNOCAST` environment variable.
+
+Currently supported APIs:
+
+- Publisher / Subscription / PollingSubscriber
+- Parameters
+- Logger, Clock
+- Callback groups
+- Node interfaces (partial: `get_node_base_interface()`, `get_node_topics_interface()`, `get_node_parameters_interface()`)
+
+> **Note:** Timer (`create_wall_timer`, `create_timer`) is not yet supported and will be added in a future update.
+
+```cpp
+#include <autoware/agnocast_wrapper/node.hpp>
+
+class MyNode : public autoware::agnocast_wrapper::Node
+{
+public:
+  explicit MyNode(const rclcpp::NodeOptions & options)
+  : Node("my_node", options)
+  {
+    pub_ = create_publisher<std_msgs::msg::String>("output", 10);
+    sub_ = create_subscription<std_msgs::msg::String>(
+      "input", 10, [this](std::unique_ptr<const std_msgs::msg::String> msg) { /* ... */ });
+  }
+
+private:
+  autoware::agnocast_wrapper::Publisher<std_msgs::msg::String>::SharedPtr pub_;
+  autoware::agnocast_wrapper::Subscription<std_msgs::msg::String>::SharedPtr sub_;
+};
+```
+
+To use the Node wrapper in your package, add the following to your `CMakeLists.txt`:
+
+```cmake
+find_package(autoware_agnocast_wrapper REQUIRED)
+ament_target_dependencies(target autoware_agnocast_wrapper)
+```
+
+### 2. Macro + Free Function API
+
+Use this when only **specific topics** need Agnocast on an existing `rclcpp::Node`, without converting the entire node to `agnocast_wrapper::Node`.
 
 You can immediately understand how to use the macros just by looking at `autoware_agnocast_wrapper.hpp`. A typical callback and publisher setup looks like this:
 
