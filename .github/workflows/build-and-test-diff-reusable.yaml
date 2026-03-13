@@ -160,7 +160,7 @@ jobs:
       - name: Get changed files (existing files only, excluding header-only packages)
         id: get-changed-files
         run: |
-          changed_files=$(git diff --name-only "origin/${{ github.base_ref }}"...HEAD | { grep -E '\.(cpp|hpp)$' || true; } | while read -r file; do [ -e "$file" ] && echo -n "$file "; done)
+          changed_files=$(git diff --diff-filter=d --name-only "origin/${{ github.base_ref }}"...HEAD | { grep -E '\.(cpp|hpp)$' || true; } | while read -r file; do [ -e "$file" ] && echo -n "$file "; done)
 
           # Exclude files belonging to header-only packages (no .cpp in src/).
           # These packages don't generate compile_commands.json, which causes clang-tidy to fail.
