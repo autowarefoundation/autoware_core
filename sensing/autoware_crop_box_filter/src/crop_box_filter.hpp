@@ -52,7 +52,6 @@ struct CropBoxFilterConfig
 {
   CropBoxParam param;
   bool keep_outside_box{false};
-  std::string output_frame;
   std::optional<geometry_msgs::msg::TransformStamped> preprocess_transform{std::nullopt};
   std::optional<geometry_msgs::msg::TransformStamped> postprocess_transform{std::nullopt};
 };

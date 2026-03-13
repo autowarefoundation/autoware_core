@@ -42,7 +42,7 @@ CropBoxFilterNode::CropBoxFilterNode(const rclcpp::NodeOptions & node_options)
     tf_input_orig_frame_ =
       static_cast<std::string>(declare_parameter("input_pointcloud_frame", "base_link"));
     tf_input_frame_ = static_cast<std::string>(declare_parameter("input_frame", "base_link"));
-    config_.output_frame = static_cast<std::string>(declare_parameter("output_frame", "base_link"));
+    auto output_frame = static_cast<std::string>(declare_parameter("output_frame", "base_link"));
 
     transform_listener_ = std::make_unique<autoware_utils_tf::TransformListener>(this);
 
@@ -58,13 +58,13 @@ CropBoxFilterNode::CropBoxFilterNode(const rclcpp::NodeOptions & node_options)
       }
     }
 
-    if (tf_input_frame_ != config_.output_frame) {
+    if (tf_input_frame_ != output_frame) {
       auto tf_ptr = transform_listener_->get_transform(
-        config_.output_frame, tf_input_frame_, this->now(), rclcpp::Duration::from_seconds(1.0));
+        output_frame, tf_input_frame_, this->now(), rclcpp::Duration::from_seconds(1.0));
       if (!tf_ptr) {
         RCLCPP_ERROR(
           this->get_logger(), "Cannot get transform from %s to %s. Please check your TF tree.",
-          tf_input_frame_.c_str(), config_.output_frame.c_str());
+          tf_input_frame_.c_str(), output_frame.c_str());
       } else {
         config_.postprocess_transform = *tf_ptr;
       }

@@ -161,7 +161,6 @@ TEST(CropBoxFilterTest, FilterZeroPointReturnZeroPoint)
   autoware::crop_box_filter::CropBoxFilterConfig config;
   config.param = {-5.0f, 5.0f, -5.0f, 5.0f, -5.0f, 5.0f};
   config.keep_outside_box = true;
-  config.output_frame = "base_link";
 
   // Act
   const auto output_points = apply_crop_box_filter({}, config);
@@ -176,7 +175,7 @@ TEST(CropBoxFilterTest, FilterExcludePointsInsideBoxWhenKeepOutsideBox)
   autoware::crop_box_filter::CropBoxFilterConfig config;
   config.param = {-5.0f, 5.0f, -5.0f, 5.0f, -5.0f, 5.0f};
   config.keep_outside_box = true;
-  config.output_frame = "base_link";
+
   // clang-format off
   PointXYZList input_points = {
     // points inside the box
@@ -224,7 +223,7 @@ TEST(CropBoxFilterTest, FilterExcludePointsOutsideBoxWhenKeepInsideBox)
   autoware::crop_box_filter::CropBoxFilterConfig config;
   config.param = {-5.0f, 5.0f, -5.0f, 5.0f, -5.0f, 5.0f};
   config.keep_outside_box = false;
-  config.output_frame = "base_link";
+
   // clang-format off
   PointXYZList input_points = {
     // points inside the box

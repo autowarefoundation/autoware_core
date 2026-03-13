@@ -219,7 +219,13 @@ CropBoxFilterResult CropBoxFilter::filter(const PointCloud2 & cloud) const
   }
 
   output.data.resize(output_size);
-  output.header.frame_id = config_.output_frame;
+  if (config_.postprocess_transform.has_value()) {
+    output.header.frame_id = config_.postprocess_transform->header.frame_id;
+  } else if (config_.preprocess_transform.has_value()) {
+    output.header.frame_id = config_.preprocess_transform->header.frame_id;
+  } else {
+    output.header.frame_id = cloud.header.frame_id;
+  }
   output.header.stamp = cloud.header.stamp;
   output.height = 1;
   output.is_bigendian = cloud.is_bigendian;
