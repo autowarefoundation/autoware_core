@@ -147,6 +147,7 @@ After including `agnocast_env.launch.xml`, the following variables are available
 | Variable               | Description                                                                       |
 | ---------------------- | --------------------------------------------------------------------------------- |
 | `ld_preload_value`     | `LD_PRELOAD` value with the heaphook library prepended (when Agnocast is enabled) |
+| `container_package`    | Resolved component container package name (`rclcpp_components` or `agnocast_components`) |
 | `container_executable` | Resolved component container executable name                                      |
 
 ### Launch Arguments
@@ -182,7 +183,7 @@ Using a component container with multi-threading:
   <arg name="use_multithread" value="true"/>
 </include>
 
-<node_container pkg="rclcpp_components" exec="$(var container_executable)" name="my_container">
+<node_container pkg="$(var container_package)" exec="$(var container_executable)" name="my_container">
   <env name="LD_PRELOAD" value="$(var ld_preload_value)"/>
 </node_container>
 ```

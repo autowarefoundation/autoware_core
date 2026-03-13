@@ -8,6 +8,7 @@
 
     Provides the following variables:
     - ld_preload_value: LD_PRELOAD value with heaphook prepended when Agnocast is enabled
+    - container_package: resolved component container package name
     - container_executable: resolved component container executable name
   -->
 
@@ -19,7 +20,9 @@
   <let name="ld_preload_value" value="$(var agnocast_heaphook_path):$(env LD_PRELOAD '')" if="$(eval &quot;'$(var use_agnocast)' == '1'&quot;)"/>
   <let name="ld_preload_value" value="$(env LD_PRELOAD '')" unless="$(eval &quot;'$(var use_agnocast)' == '1'&quot;)"/>
 
-  <!-- Component container executable -->
+  <!-- Component container package and executable -->
+  <let name="container_package" value="rclcpp_components" unless="$(eval &quot;'$(var use_agnocast)' == '1'&quot;)"/>
+  <let name="container_package" value="agnocast_components" if="$(eval &quot;'$(var use_agnocast)' == '1'&quot;)"/>
   <let name="container_executable" value="component_container" if="$(eval &quot;'$(var use_agnocast)' != '1' and '$(var use_multithread)' != 'true'&quot;)"/>
   <let name="container_executable" value="component_container_mt" if="$(eval &quot;'$(var use_agnocast)' != '1' and '$(var use_multithread)' == 'true'&quot;)"/>
   <let name="container_executable" value="agnocast_component_container" if="$(eval &quot;'$(var use_agnocast)' == '1' and '$(var use_multithread)' != 'true'&quot;)"/>
