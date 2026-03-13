@@ -133,8 +133,7 @@ public:
     bool ignore_override = false)
   {
     rclcpp::ParameterValue value{ParameterT{}};
-    return declare_parameter(name, value.get_type(), descriptor, ignore_override)
-      .get<ParameterT>();
+    return declare_parameter(name, value.get_type(), descriptor, ignore_override).get<ParameterT>();
   }
 
   template <typename ParameterT>

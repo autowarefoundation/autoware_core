@@ -13,9 +13,9 @@
   <buildtool_depend>autoware_cmake</buildtool_depend>
 
   <build_depend condition="$ENABLE_AGNOCAST == 1">agnocastlib</build_depend>
-  <depend>rclcpp</depend>
   <depend>autoware_utils</depend>
   <depend>autoware_utils_rclcpp</depend>
+  <depend>rclcpp</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>autoware_lint_common</test_depend>
