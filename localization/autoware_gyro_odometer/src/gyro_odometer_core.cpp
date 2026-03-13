@@ -255,10 +255,13 @@ void GyroOdometerNode::publish_diagnostics()
   diagnostics_->clear();
 
   const auto vehicle_twist_time =
-    vehicle_twist_arrived_ ? static_cast<double>(static_cast<rclcpp::Time>(latest_vehicle_twist_ros_time_).nanoseconds())
-                           : std::nan("");
+    vehicle_twist_arrived_
+      ? static_cast<double>(static_cast<rclcpp::Time>(latest_vehicle_twist_ros_time_).nanoseconds())
+      : std::nan("");
   const auto imu_time =
-    imu_arrived_ ? static_cast<double>(static_cast<rclcpp::Time>(latest_imu_ros_time_).nanoseconds()) : std::nan("");
+    imu_arrived_
+      ? static_cast<double>(static_cast<rclcpp::Time>(latest_imu_ros_time_).nanoseconds())
+      : std::nan("");
   diagnostics_->add_key_value("latest_vehicle_twist_time_stamp", vehicle_twist_time);
   diagnostics_->add_key_value("latest_imu_time_stamp", imu_time);
   diagnostics_->add_key_value("is_arrived_first_vehicle_twist", vehicle_twist_arrived_);
