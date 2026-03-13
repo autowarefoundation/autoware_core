@@ -215,7 +215,8 @@ autoware_internal_planning_msgs::msg::PathWithLaneId resamplePath(
           resampling_arclength.at(j) = distance_to_resampling_point;
         } else {
           resampling_arclength.insert(
-            resampling_arclength.begin() + static_cast<std::ptrdiff_t>(j), distance_to_resampling_point);
+            resampling_arclength.begin() + static_cast<std::ptrdiff_t>(j),
+            distance_to_resampling_point);
         }
         break;
       }
@@ -413,7 +414,9 @@ autoware_internal_planning_msgs::msg::PathWithLaneId resamplePath(
           } else if (dist_to_following_point < autoware::motion_utils::overlap_threshold) {
             resampling_arclength.at(i) = *distance_to_stop_point;
           } else {
-            resampling_arclength.insert(resampling_arclength.begin() + static_cast<std::ptrdiff_t>(i), *distance_to_stop_point);
+            resampling_arclength.insert(
+              resampling_arclength.begin() + static_cast<std::ptrdiff_t>(i),
+              *distance_to_stop_point);
           }
           break;
         }
@@ -556,7 +559,9 @@ autoware_planning_msgs::msg::Path resamplePath(
           } else if (dist_to_following_point < autoware::motion_utils::overlap_threshold) {
             resampling_arclength.at(i) = *distance_to_stop_point;
           } else {
-            resampling_arclength.insert(resampling_arclength.begin() + static_cast<std::ptrdiff_t>(i), *distance_to_stop_point);
+            resampling_arclength.insert(
+              resampling_arclength.begin() + static_cast<std::ptrdiff_t>(i),
+              *distance_to_stop_point);
           }
           break;
         }
@@ -746,7 +751,9 @@ autoware_planning_msgs::msg::Trajectory resampleTrajectory(
           } else if (dist_to_following_point < autoware::motion_utils::overlap_threshold) {
             resampling_arclength.at(i) = *distance_to_stop_point;
           } else {
-            resampling_arclength.insert(resampling_arclength.begin() + static_cast<std::ptrdiff_t>(i), *distance_to_stop_point);
+            resampling_arclength.insert(
+              resampling_arclength.begin() + static_cast<std::ptrdiff_t>(i),
+              *distance_to_stop_point);
           }
           break;
         }
