@@ -91,12 +91,16 @@ In such cases, rebuild both A and B with Agnocast **disabled** to ensure consist
 
 ## How to Enable Agnocast at Runtime
 
-When Agnocast is enabled at build time, the heaphook shared library must be preloaded at runtime via `LD_PRELOAD`. This package provides a launch file that handles this automatically.
+When Agnocast is enabled at build time, the heaphook shared library must be preloaded at runtime via `LD_PRELOAD`. This package provides a launch file that computes the appropriate `LD_PRELOAD` value based on the `ENABLE_AGNOCAST` environment variable.
 
-Include the following in your node's launch file:
+In your node's launch file, first include the launch file, then apply `ld_preload_value` to each node that uses Agnocast:
 
 ```xml
 <include file="$(find-pkg-share autoware_agnocast_wrapper)/launch/agnocast_env.launch.xml"/>
+
+<node pkg="my_package" exec="my_node" name="my_node">
+  <env name="LD_PRELOAD" value="$(var ld_preload_value)"/>
+</node>
 ```
 
-This launch file checks the `ENABLE_AGNOCAST` environment variable (set to `1` to enable) and, when enabled, prepends the Agnocast heaphook library to `LD_PRELOAD`.
+This ensures that only the intended nodes receive the heaphook, rather than all nodes in the launch tree.
