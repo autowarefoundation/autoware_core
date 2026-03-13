@@ -96,8 +96,8 @@ std::vector<TrajectoryPoint> decimate_trajectory_points_from_ego(
   const size_t traj_ego_seg_idx =
     autoware::motion_utils::findFirstNearestSegmentIndexWithSoftConstraints(
       traj_points, current_pose, ego_nearest_dist_threshold, ego_nearest_yaw_threshold);
-  const auto traj_points_from_ego =
-    std::vector<TrajectoryPoint>(traj_points.begin() + static_cast<std::ptrdiff_t>(traj_ego_seg_idx), traj_points.end());
+  const auto traj_points_from_ego = std::vector<TrajectoryPoint>(
+    traj_points.begin() + static_cast<std::ptrdiff_t>(traj_ego_seg_idx), traj_points.end());
 
   // decimate trajectory
   const auto decimated_traj_points_from_ego =
