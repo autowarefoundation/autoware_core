@@ -412,7 +412,22 @@ public:
   virtual void publish(AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) && message) = 0;
   virtual void publish(AUTOWARE_MESSAGE_SHARED_PTR(MessageT) && message) = 0;
 
+  /// Publish by const reference (internally copies into allocated message).
+  /// Not truly deprecated — [[deprecated]] is used solely to emit a compile-time warning, as
+  /// __attribute__((warning)) does not work on virtual methods (vtable dispatch).
+  /// Prefer ALLOCATE_OUTPUT_MESSAGE_{UNIQUE,SHARED}(publisher) + the corresponding publish()
+  /// overload. This method exists to work around a circular dependency: autoware_utils_debug
+  /// cannot depend on autoware_agnocast_wrapper through autoware_utils.
+  [[deprecated(
+    "publish(const MessageT &) performs an implicit copy. Prefer "
+    "ALLOCATE_OUTPUT_MESSAGE_{UNIQUE,SHARED}(publisher) + the corresponding publish() overload, "
+    "unless avoiding a circular dependency.")]]
+  virtual void publish(const MessageT & data) = 0;
+
   virtual uint32_t get_subscription_count() const = 0;
+  virtual uint32_t get_intra_process_subscription_count() const = 0;
+  virtual const rmw_gid_t & get_gid() const = 0;
+  virtual const char * get_topic_name() const = 0;
 };
 
 template <typename MessageT>
@@ -449,7 +464,21 @@ public:
     publisher_->publish(std::move(message).move_agnocast_ptr());
   }
 
+  // See the comment on Publisher::publish(const MessageT &) for why this exists.
+  void publish(const MessageT & data) override
+  {
+    auto msg = publisher_->borrow_loaned_message();
+    *msg = data;
+    publisher_->publish(std::move(msg));
+  }
+
   uint32_t get_subscription_count() const override { return publisher_->get_subscription_count(); }
+  uint32_t get_intra_process_subscription_count() const override
+  {
+    return publisher_->get_intra_subscription_count();
+  }
+  const rmw_gid_t & get_gid() const override { return publisher_->get_gid(); }
+  const char * get_topic_name() const override { return publisher_->get_topic_name(); }
 };
 
 template <typename MessageT>
@@ -487,7 +516,16 @@ public:
     publisher_->publish(*message);
   }
 
+  // See the comment on Publisher::publish(const MessageT &) for why this exists.
+  void publish(const MessageT & data) override { publisher_->publish(data); }
+
   uint32_t get_subscription_count() const override { return publisher_->get_subscription_count(); }
+  uint32_t get_intra_process_subscription_count() const override
+  {
+    return publisher_->get_intra_process_subscription_count();
+  }
+  const rmw_gid_t & get_gid() const override { return publisher_->get_gid(); }
+  const char * get_topic_name() const override { return publisher_->get_topic_name(); }
 };
 
 template <typename MessageT>
