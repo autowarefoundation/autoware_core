@@ -102,8 +102,7 @@ void validateNonSharpAngle(
  * @return (forward / backward) driving (true / false)
  */
 template <class T>
-[[nodiscard]] std::optional<bool> isDrivingForward(
-  const T & points, const double min_dist = 0.05)
+[[nodiscard]] std::optional<bool> isDrivingForward(const T & points, const double min_dist = 0.01)
 {
   if (points.size() < 2) {
     return std::nullopt;
