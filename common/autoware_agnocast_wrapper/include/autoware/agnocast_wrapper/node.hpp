@@ -44,8 +44,7 @@ public:
   /// @param node_name The name of the node
   /// @param options Node options
   explicit Node(
-    const std::string & node_name,
-    const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
+    const std::string & node_name, const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
 
   /// @brief Constructor with node name and namespace
   /// @param node_name The name of the node
@@ -121,7 +120,8 @@ public:
       rcl_interfaces::msg::ParameterDescriptor{},
     bool ignore_override = false)
   {
-    return declare_parameter(name, rclcpp::ParameterValue(default_value), descriptor, ignore_override)
+    return declare_parameter(
+             name, rclcpp::ParameterValue(default_value), descriptor, ignore_override)
       .get<ParameterT>();
   }
 
