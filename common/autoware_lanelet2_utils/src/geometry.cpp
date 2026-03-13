@@ -70,7 +70,7 @@ lanelet::BasicPoints3d resample_points(
 
   lanelet::BasicPoints3d resampled_points;
   for (size_t i = 0; i <= num_segments; ++i) {
-    const double target_length = total_length * static_cast<double>(i) / num_segments;
+    const double target_length = total_length * static_cast<double>(i) / static_cast<double>(num_segments);
 
     // Find two nearest points
     // (accumulated_lengths[idx-1] < target_length <= accumulated_lengths[idx])
@@ -192,7 +192,7 @@ std::optional<lanelet::ConstLineString3d> get_linestring_from_arc_length(
     return std::nullopt;
   }
 
-  const double total_length = lanelet::geometry::length(linestring);
+  const double total_length = static_cast<double>(lanelet::geometry::length(linestring));
   if (s1 < 0.0 || s2 > total_length || s1 >= s2) {
     return std::nullopt;
   }
