@@ -75,8 +75,8 @@ rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr Node::get_node_topics_in
   return visit_node([](auto & n) { return n->get_node_topics_interface(); });
 }
 
-rclcpp::node_interfaces::NodeParametersInterface::SharedPtr
-Node::get_node_parameters_interface() const
+rclcpp::node_interfaces::NodeParametersInterface::SharedPtr Node::get_node_parameters_interface()
+  const
 {
   return visit_node([](const auto & n) { return n->get_node_parameters_interface(); });
 }
