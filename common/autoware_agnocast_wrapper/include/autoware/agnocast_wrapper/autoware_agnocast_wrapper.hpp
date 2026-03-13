@@ -207,14 +207,51 @@ inline bool use_agnocast()
 template <typename MessageT>
 class Subscription
 {
-  typename rclcpp::Subscription<MessageT>::SharedPtr ros2_sub_{nullptr};
-  typename agnocast::Subscription<MessageT>::SharedPtr agnocast_sub_{nullptr};
-
 public:
   using SharedPtr = std::shared_ptr<Subscription<MessageT>>;
 
+  virtual ~Subscription() = default;
+};
+
+template <typename MessageT>
+class AgnocastSubscription : public Subscription<MessageT>
+{
+  typename agnocast::Subscription<MessageT>::SharedPtr subscription_;
+
+public:
+  template <typename NodeT, typename Func>
+  explicit AgnocastSubscription(
+    NodeT * node, const std::string & topic_name, const rclcpp::QoS & qos, Func && callback,
+    const agnocast::SubscriptionOptions & options)
+  {
+    static_assert(
+      std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
+        std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_SHARED_PTR(MessageT) &&>,
+      "callback should be invocable with an rvalue reference to either AUTOWARE_MESSAGE_UNIQUE_PTR "
+      "or AUTOWARE_MESSAGE_SHARED_PTR");
+
+    constexpr auto ownership =
+      std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&>
+        ? OwnershipType::Unique
+        : OwnershipType::Shared;
+
+    subscription_ = agnocast::create_subscription<MessageT>(
+      node, topic_name, qos,
+      [callback = std::forward<Func>(callback)](agnocast::ipc_shared_ptr<MessageT> && msg) {
+        callback(message_ptr<MessageT, ownership>(std::move(msg)));
+      },
+      options);
+  }
+};
+
+template <typename MessageT>
+class ROS2Subscription : public Subscription<MessageT>
+{
+  typename rclcpp::Subscription<MessageT>::SharedPtr subscription_;
+
+public:
   template <typename Func>
-  explicit Subscription(
+  explicit ROS2Subscription(
     rclcpp::Node * node, const std::string & topic_name, const rclcpp::QoS & qos, Func && callback,
     const agnocast::SubscriptionOptions & options)
   {
@@ -229,23 +266,18 @@ public:
         ? OwnershipType::Unique
         : OwnershipType::Shared;
 
-    if (use_agnocast()) {
-      agnocast_sub_ = agnocast::create_subscription<MessageT>(
-        node, topic_name, qos,
-        [callback = std::forward<Func>(callback)](agnocast::ipc_shared_ptr<MessageT> && msg) {
+    rclcpp::SubscriptionOptions ros2_options;
+    ros2_options.callback_group = options.callback_group;
+    subscription_ = node->create_subscription<MessageT>(
+      topic_name, qos,
+      [callback = std::forward<Func>(callback)](std::unique_ptr<MessageT> msg) {
+        if constexpr (ownership == OwnershipType::Unique) {
           callback(message_ptr<MessageT, ownership>(std::move(msg)));
-        },
-        options);
-    } else {
-      rclcpp::SubscriptionOptions ros2_options;
-      ros2_options.callback_group = options.callback_group;
-      ros2_sub_ = node->create_subscription<MessageT>(
-        topic_name, qos,
-        [callback = std::forward<Func>(callback)](std::unique_ptr<MessageT> msg) {
-          callback(message_ptr<MessageT, ownership>(std::move(msg)));
-        },
-        ros2_options);
-    }
+        } else {
+          callback(message_ptr<MessageT, ownership>(std::shared_ptr<MessageT>(std::move(msg))));
+        }
+      },
+      ros2_options);
   }
 };
 
@@ -254,8 +286,13 @@ typename Subscription<MessageT>::SharedPtr create_subscription(
   rclcpp::Node * node, const std::string & topic_name, const rclcpp::QoS & qos, Func && callback,
   const agnocast::SubscriptionOptions & options)
 {
-  return std::make_shared<Subscription<MessageT>>(
-    node, topic_name, qos, std::forward<Func>(callback), options);
+  if (use_agnocast()) {
+    return std::make_shared<AgnocastSubscription<MessageT>>(
+      node, topic_name, qos, std::forward<Func>(callback), options);
+  } else {
+    return std::make_shared<ROS2Subscription<MessageT>>(
+      node, topic_name, qos, std::forward<Func>(callback), options);
+  }
 }
 
 template <typename MessageT, typename Func>
@@ -263,9 +300,15 @@ typename Subscription<MessageT>::SharedPtr create_subscription(
   rclcpp::Node * node, const std::string & topic_name, const size_t qos_history_depth,
   Func && callback, const agnocast::SubscriptionOptions & options)
 {
-  return std::make_shared<Subscription<MessageT>>(
-    node, topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)),
-    std::forward<Func>(callback), options);
+  if (use_agnocast()) {
+    return std::make_shared<AgnocastSubscription<MessageT>>(
+      node, topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)),
+      std::forward<Func>(callback), options);
+  } else {
+    return std::make_shared<ROS2Subscription<MessageT>>(
+      node, topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)),
+      std::forward<Func>(callback), options);
+  }
 }
 
 template <typename MessageT>
@@ -286,8 +329,9 @@ class AgnocastPollingSubscriber : public PollingSubscriber<MessageT>
   typename agnocast::PollingSubscriber<MessageT>::SharedPtr subscriber_;
 
 public:
+  template <typename NodeT>
   explicit AgnocastPollingSubscriber(
-    rclcpp::Node * node, const std::string & topic_name, const rclcpp::QoS & qos)
+    NodeT * node, const std::string & topic_name, const rclcpp::QoS & qos)
   : subscriber_(agnocast::create_subscription<MessageT>(node, topic_name, qos))
   {
   }
@@ -368,7 +412,22 @@ public:
   virtual void publish(AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) && message) = 0;
   virtual void publish(AUTOWARE_MESSAGE_SHARED_PTR(MessageT) && message) = 0;
 
+  /// Publish by const reference (internally copies into allocated message).
+  /// Not truly deprecated — [[deprecated]] is used solely to emit a compile-time warning, as
+  /// __attribute__((warning)) does not work on virtual methods (vtable dispatch).
+  /// Prefer ALLOCATE_OUTPUT_MESSAGE_{UNIQUE,SHARED}(publisher) + the corresponding publish()
+  /// overload. This method exists to work around a circular dependency: autoware_utils_debug
+  /// cannot depend on autoware_agnocast_wrapper through autoware_utils.
+  [[deprecated(
+    "publish(const MessageT &) performs an implicit copy. Prefer "
+    "ALLOCATE_OUTPUT_MESSAGE_{UNIQUE,SHARED}(publisher) + the corresponding publish() overload, "
+    "unless avoiding a circular dependency.")]]
+  virtual void publish(const MessageT & data) = 0;
+
   virtual uint32_t get_subscription_count() const = 0;
+  virtual uint32_t get_intra_process_subscription_count() const = 0;
+  virtual const rmw_gid_t & get_gid() const = 0;
+  virtual const char * get_topic_name() const = 0;
 };
 
 template <typename MessageT>
@@ -377,8 +436,9 @@ class AgnocastPublisher : public Publisher<MessageT>
   typename agnocast::Publisher<MessageT>::SharedPtr publisher_;
 
 public:
+  template <typename NodeT>
   explicit AgnocastPublisher(
-    rclcpp::Node * node, const std::string & topic_name, const rclcpp::QoS & qos,
+    NodeT * node, const std::string & topic_name, const rclcpp::QoS & qos,
     const agnocast::PublisherOptions & options)
   : publisher_(agnocast::create_publisher<MessageT>(node, topic_name, qos, options))
   {
@@ -404,7 +464,21 @@ public:
     publisher_->publish(std::move(message).move_agnocast_ptr());
   }
 
+  // See the comment on Publisher::publish(const MessageT &) for why this exists.
+  void publish(const MessageT & data) override
+  {
+    auto msg = publisher_->borrow_loaned_message();
+    *msg = data;
+    publisher_->publish(std::move(msg));
+  }
+
   uint32_t get_subscription_count() const override { return publisher_->get_subscription_count(); }
+  uint32_t get_intra_process_subscription_count() const override
+  {
+    return publisher_->get_intra_subscription_count();
+  }
+  const rmw_gid_t & get_gid() const override { return publisher_->get_gid(); }
+  const char * get_topic_name() const override { return publisher_->get_topic_name(); }
 };
 
 template <typename MessageT>
@@ -442,7 +516,16 @@ public:
     publisher_->publish(*message);
   }
 
+  // See the comment on Publisher::publish(const MessageT &) for why this exists.
+  void publish(const MessageT & data) override { publisher_->publish(data); }
+
   uint32_t get_subscription_count() const override { return publisher_->get_subscription_count(); }
+  uint32_t get_intra_process_subscription_count() const override
+  {
+    return publisher_->get_intra_process_subscription_count();
+  }
+  const rmw_gid_t & get_gid() const override { return publisher_->get_gid(); }
+  const char * get_topic_name() const override { return publisher_->get_topic_name(); }
 };
 
 template <typename MessageT>
