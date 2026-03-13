@@ -97,7 +97,7 @@ std::vector<TrajectoryPoint> decimate_trajectory_points_from_ego(
     autoware::motion_utils::findFirstNearestSegmentIndexWithSoftConstraints(
       traj_points, current_pose, ego_nearest_dist_threshold, ego_nearest_yaw_threshold);
   const auto traj_points_from_ego =
-    std::vector<TrajectoryPoint>(traj_points.begin() + traj_ego_seg_idx, traj_points.end());
+    std::vector<TrajectoryPoint>(traj_points.begin() + static_cast<std::ptrdiff_t>(traj_ego_seg_idx), traj_points.end());
 
   // decimate trajectory
   const auto decimated_traj_points_from_ego =
@@ -183,9 +183,10 @@ visualization_msgs::msg::Marker get_object_marker(
   const auto current_time = rclcpp::Clock().now();
 
   auto marker = autoware_utils_visualization::create_default_marker(
-    "map", current_time, ns, idx, visualization_msgs::msg::Marker::SPHERE,
+    "map", current_time, ns, static_cast<int32_t>(idx), visualization_msgs::msg::Marker::SPHERE,
     autoware_utils_visualization::create_marker_scale(2.0, 2.0, 2.0),
-    autoware_utils_visualization::create_marker_color(r, g, b, 0.8));
+    autoware_utils_visualization::create_marker_color(
+      static_cast<float>(r), static_cast<float>(g), static_cast<float>(b), 0.8));
 
   marker.pose = obj_pose;
 

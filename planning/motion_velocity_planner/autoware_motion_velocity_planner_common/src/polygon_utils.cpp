@@ -204,12 +204,12 @@ std::optional<std::pair<geometry_msgs::msg::Point, double>> get_collision_point(
   const Polygon2d & obj_polygon, const double x_offset_to_bumper)
 {
   assert(traj_points.size() == traj_polygons.size());
-  const double obj_maximum_length = boost::geometry::perimeter(obj_polygon) * 0.5;
+  const double obj_maximum_length = static_cast<double>(boost::geometry::perimeter(obj_polygon)) * 0.5;
 
   std::optional<std::pair<geometry_msgs::msg::Point, double>> nearest_collision{std::nullopt};
 
   for (size_t i = 0; i < traj_polygons.size(); ++i) {
-    const double ego_maximum_length = boost::geometry::perimeter(traj_polygons.at(i)) * 0.5;
+    const double ego_maximum_length = static_cast<double>(boost::geometry::perimeter(traj_polygons.at(i))) * 0.5;
     const double center_dist =
       autoware_utils_geometry::calc_distance2d(traj_points.at(i).pose.position, obj_position);
     if (center_dist > obj_maximum_length + ego_maximum_length) {
@@ -267,7 +267,7 @@ std::vector<PointWithStamp> get_collision_points(
     }
 
     const auto object_time =
-      rclcpp::Time(obstacle_stamp) + rclcpp::Duration(predicted_path.time_step) * i;
+      rclcpp::Time(obstacle_stamp) + rclcpp::Duration(predicted_path.time_step) * static_cast<int32_t>(i);
     // Ignore past position
     if ((object_time - current_time).seconds() < 0.0) {
       continue;
