@@ -89,10 +89,10 @@ TrajectoryPoint calcInterpolatedTrajectoryPoint(
     const auto & seg_pt = trajectory.at(seg_idx);
     const auto & next_pt = trajectory.at(seg_idx + 1);
     traj_p.pose = autoware_utils_geometry::calc_interpolated_pose(seg_pt.pose, next_pt.pose, prop);
-    traj_p.longitudinal_velocity_mps = autoware::interpolation::lerp(
-      seg_pt.longitudinal_velocity_mps, next_pt.longitudinal_velocity_mps, prop);
-    traj_p.acceleration_mps2 =
-      autoware::interpolation::lerp(seg_pt.acceleration_mps2, next_pt.acceleration_mps2, prop);
+    traj_p.longitudinal_velocity_mps = static_cast<float>(autoware::interpolation::lerp(
+      seg_pt.longitudinal_velocity_mps, next_pt.longitudinal_velocity_mps, prop));
+    traj_p.acceleration_mps2 = static_cast<float>(
+      autoware::interpolation::lerp(seg_pt.acceleration_mps2, next_pt.acceleration_mps2, prop));
   }
 
   return traj_p;
@@ -183,7 +183,7 @@ std::vector<double> calcTrajectoryCurvatureFrom3Points(
   }
 
   // if the idx size is not enough, change the idx_dist
-  const auto max_idx_dist = static_cast<size_t>(std::floor((trajectory.size() - 1) / 2.0));
+  const auto max_idx_dist = static_cast<size_t>(std::floor(static_cast<double>(trajectory.size() - 1) / 2.0));
   idx_dist = std::max(1ul, std::min(idx_dist, max_idx_dist));
 
   if (idx_dist < 1) {
@@ -225,7 +225,7 @@ void applyMaximumVelocityLimit(
 {
   for (size_t idx = begin; idx < end; ++idx) {
     if (trajectory.at(idx).longitudinal_velocity_mps > max_vel) {
-      trajectory.at(idx).longitudinal_velocity_mps = max_vel;
+      trajectory.at(idx).longitudinal_velocity_mps = static_cast<float>(max_vel);
     }
   }
 }
