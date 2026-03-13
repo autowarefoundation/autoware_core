@@ -28,6 +28,7 @@ if("$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
     agnocastlib
     autoware_utils
   )
+  target_compile_definitions(${PROJECT_NAME} PUBLIC USE_AGNOCAST_ENABLED)
 endif()
 
 ament_export_include_directories(

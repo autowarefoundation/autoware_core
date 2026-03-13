@@ -192,8 +192,14 @@ public:
     const agnocast::SubscriptionOptions & options = agnocast::SubscriptionOptions{})
   {
     return visit_node([&](auto & n) -> typename Subscription<MessageT>::SharedPtr {
-      return std::make_shared<Subscription<MessageT>>(
-        n.get(), topic_name, qos, std::forward<Func>(callback), options);
+      using NodeT = std::decay_t<decltype(*n)>;
+      if constexpr (std::is_same_v<NodeT, agnocast::Node>) {
+        return std::make_shared<AgnocastSubscription<MessageT>>(
+          n.get(), topic_name, qos, std::forward<Func>(callback), options);
+      } else {
+        return std::make_shared<ROS2Subscription<MessageT>>(
+          n.get(), topic_name, qos, std::forward<Func>(callback), options);
+      }
     });
   }
 
