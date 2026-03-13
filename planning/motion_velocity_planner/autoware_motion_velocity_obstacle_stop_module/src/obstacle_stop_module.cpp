@@ -359,7 +359,7 @@ std::optional<CollisionPointWithDist> ObstacleStopModule::get_nearest_collision_
   const auto & height_margin = pointcloud_segmentation_param_.height_margin;
   std::vector<geometry_msgs::msg::Point> collision_geom_points{};
   for (size_t traj_index = 0; traj_index < traj_points.size(); ++traj_index) {
-    const double rough_dist_th = boost::geometry::perimeter(traj_polygons.at(traj_index)) * 0.5;
+    const double rough_dist_th = static_cast<double>(boost::geometry::perimeter(traj_polygons.at(traj_index))) * 0.5;
     const double traj_height = traj_points.at(traj_index).pose.position.z;
 
     for (const auto & cluster : clusters) {
@@ -524,7 +524,7 @@ void ObstacleStopModule::upsert_pointcloud_stop_candidates(
         vel_vec.push_back(clamped_vel);
         if (vel_vec.size() >= vel_params.required_velocity_count) {
           stop_candidate->vel_lpf.reset(
-            std::accumulate(vel_vec.begin(), vel_vec.end(), 0.0) / vel_vec.size());
+            std::accumulate(vel_vec.begin(), vel_vec.end(), 0.0) / static_cast<double>(vel_vec.size()));
         }
       } else {
         stop_candidate->vel_lpf.filter(clamped_vel);
@@ -589,7 +589,7 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_point_clo
 
   // update pointcloud_stop_candidates
   const auto latest_point_cloud_time =
-    rclcpp::Time(point_cloud.pointcloud.header.stamp * static_cast<uint32_t>(1e3), RCL_ROS_TIME);
+    rclcpp::Time(static_cast<int64_t>(point_cloud.pointcloud.header.stamp * static_cast<uint32_t>(1e3)), RCL_ROS_TIME);
   if (nearest_collision_point) {
     upsert_pointcloud_stop_candidates(
       nearest_collision_point.value(), traj_points, latest_point_cloud_time);
@@ -1384,7 +1384,7 @@ double ObstacleStopModule::calc_margin_from_obstacle_on_curve(
     autoware::motion_utils::findNearestSegmentIndex(traj_points, stop_obstacle.collision_point);
   std::vector<TrajectoryPoint> short_traj_points{traj_points.at(obj_segment_idx + 1)};
   double sum_short_traj_length{0.0};
-  for (int i = obj_segment_idx; 0 <= i; --i) {
+  for (int i = static_cast<int>(obj_segment_idx); 0 <= i; --i) {
     short_traj_points.push_back(traj_points.at(i));
 
     if (
