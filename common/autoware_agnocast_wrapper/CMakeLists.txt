@@ -5,7 +5,7 @@ find_package(autoware_cmake REQUIRED)
 autoware_package()
 
 find_package(rclcpp REQUIRED)
-find_package(autoware_utils REQUIRED)
+find_package(autoware_utils_rclcpp REQUIRED)
 
 if(DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
   find_package(agnocastlib REQUIRED)
@@ -26,7 +26,7 @@ if("$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
   ament_target_dependencies(${PROJECT_NAME}
     rclcpp
     agnocastlib
-    autoware_utils
+    autoware_utils_rclcpp
   )
   target_compile_definitions(${PROJECT_NAME} PUBLIC USE_AGNOCAST_ENABLED)
 endif()

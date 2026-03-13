@@ -259,8 +259,8 @@ public:
       return *p;
     }
     throw std::runtime_error(
-      "get_rclcpp_node() called but rclcpp mode is not enabled. "
-      "Check is_using_agnocast() before calling this method.");
+      "get_rclcpp_node() called but the node is in agnocast mode. "
+      "Check !is_using_agnocast() before calling this method.");
   }
 
 private:
