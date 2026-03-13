@@ -5,6 +5,7 @@ find_package(autoware_cmake REQUIRED)
 autoware_package()
 
 find_package(rclcpp REQUIRED)
+find_package(autoware_utils_rclcpp REQUIRED)
 
 if(DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
   find_package(agnocastlib REQUIRED)
@@ -14,8 +15,34 @@ include_directories(
   include
 )
 
+ament_auto_add_library(${PROJECT_NAME} SHARED
+  src/node.cpp
+)
+target_include_directories(${PROJECT_NAME} PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+if("$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
+  ament_target_dependencies(${PROJECT_NAME}
+    rclcpp
+    agnocastlib
+    autoware_utils_rclcpp
+  )
+  target_compile_definitions(${PROJECT_NAME} PUBLIC USE_AGNOCAST_ENABLED)
+else()
+  ament_target_dependencies(${PROJECT_NAME}
+    rclcpp
+    autoware_utils_rclcpp
+  )
+endif()
+
 ament_export_include_directories(
   include
+)
+
+ament_export_dependencies(
+  autoware_utils_rclcpp
+  rclcpp
 )
 
 if(DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
