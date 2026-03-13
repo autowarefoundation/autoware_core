@@ -244,6 +244,7 @@ public:
     return std::holds_alternative<std::shared_ptr<agnocast::Node>>(node_);
   }
 
+  /// @throws std::runtime_error if Agnocast is not enabled (check is_using_agnocast() first)
   std::shared_ptr<agnocast::Node> get_agnocast_node() const
   {
     if (auto * p = std::get_if<std::shared_ptr<agnocast::Node>>(&node_)) {
@@ -254,6 +255,7 @@ public:
       "Check is_using_agnocast() before calling this method.");
   }
 
+  /// @throws std::runtime_error if the node is in agnocast mode (check !is_using_agnocast() first)
   std::shared_ptr<rclcpp::Node> get_rclcpp_node() const
   {
     if (auto * p = std::get_if<std::shared_ptr<rclcpp::Node>>(&node_)) {
@@ -282,6 +284,7 @@ private:
 };
 
 /// @brief Get the underlying rclcpp::Node from a node that inherits agnocast_wrapper::Node.
+/// @throws std::runtime_error if the node is in agnocast mode (check is_using_agnocast() first)
 template <typename T>
 std::shared_ptr<rclcpp::Node> to_rclcpp_node(const std::shared_ptr<T> & node)
 {
