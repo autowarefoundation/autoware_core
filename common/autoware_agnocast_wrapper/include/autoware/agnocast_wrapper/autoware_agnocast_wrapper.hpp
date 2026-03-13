@@ -368,11 +368,16 @@ public:
   virtual void publish(AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) && message) = 0;
   virtual void publish(AUTOWARE_MESSAGE_SHARED_PTR(MessageT) && message) = 0;
 
-  /// Convenience publish by const reference (internally copies into allocated message).
-  /// This exists here because autoware_utils_debug (e.g. PublishedTimePublisher) cannot depend on
-  /// autoware_agnocast_wrapper due to a circular dependency through autoware_utils. Once the
-  /// wrapper's dependency on autoware_utils is removed, this method could be eliminated by having
-  /// PublishedTimePublisher use allocate_output_message_unique() + publish(unique_ptr&&) instead.
+  /// Publish by const reference (internally copies into allocated message).
+  /// Not truly deprecated — [[deprecated]] is used solely to emit a compile-time warning, as
+  /// __attribute__((warning)) does not work on virtual methods (vtable dispatch).
+  /// Prefer ALLOCATE_OUTPUT_MESSAGE_{UNIQUE,SHARED}(publisher) + the corresponding publish()
+  /// overload. This method exists to work around a circular dependency: autoware_utils_debug
+  /// cannot depend on autoware_agnocast_wrapper through autoware_utils.
+  [[deprecated(
+    "publish(const MessageT &) performs an implicit copy. Prefer "
+    "ALLOCATE_OUTPUT_MESSAGE_{UNIQUE,SHARED}(publisher) + the corresponding publish() overload, "
+    "unless avoiding a circular dependency.")]]
   virtual void publish(const MessageT & data) = 0;
 
   virtual uint32_t get_subscription_count() const = 0;
