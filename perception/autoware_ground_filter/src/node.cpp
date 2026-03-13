@@ -126,7 +126,8 @@ GroundFilterComponent::GroundFilterComponent(const rclcpp::NodeOptions & options
       param.grid_size_m = grid_size_m_;
       param.grid_mode_switch_radius = grid_mode_switch_radius_;
       param.ground_grid_buffer_size = ground_grid_buffer_size_;
-      param.virtual_lidar_x = static_cast<float>(vehicle_info_.wheel_base_m) / 2.0f + center_pcl_shift_;
+      param.virtual_lidar_x =
+        static_cast<float>(vehicle_info_.wheel_base_m) / 2.0f + center_pcl_shift_;
       param.virtual_lidar_y = 0.0f;
       param.virtual_lidar_z = virtual_lidar_z_;
 

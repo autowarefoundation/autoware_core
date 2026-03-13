@@ -389,7 +389,9 @@ void GroundFilter::classify(pcl::PointIndices & out_no_ground_indices)
         grid_ptr_->getCell(grid_idcs.back()).radial_idx_ + static_cast<int>(grid_idcs.size());
       const float radial_diff_between_cells = cell.center_radius_ - prev_cell.center_radius_;
 
-      if (radial_diff_between_cells < static_cast<float>(param_.ground_grid_continual_thresh) * cell.radial_size_) {
+      if (
+        radial_diff_between_cells <
+        static_cast<float>(param_.ground_grid_continual_thresh) * cell.radial_size_) {
         if (cell.radial_idx_ - front_radial_id < param_.ground_grid_continual_thresh) {
           mode = SegmentationMode::CONTINUOUS;
         } else {
