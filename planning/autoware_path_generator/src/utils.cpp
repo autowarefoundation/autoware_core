@@ -465,7 +465,8 @@ double get_arc_length_on_path(
 
   for (auto [it, s] = std::make_tuple(lanelet_sequence.begin(), 0.); it != lanelet_sequence.end();
        ++it) {
-    const double centerline_length = static_cast<double>(lanelet::geometry::length(it->centerline2d()));
+    const double centerline_length =
+      static_cast<double>(lanelet::geometry::length(it->centerline2d()));
     if (s + centerline_length < s_centerline) {
       s += centerline_length;
       continue;
@@ -578,9 +579,12 @@ PathRange<double> get_arc_length_on_bounds(
   auto s_right = 0.;
 
   for (auto it = lanelet_sequence.begin(); it != lanelet_sequence.end(); ++it) {
-    const double centerline_length = static_cast<double>(lanelet::geometry::length(it->centerline2d()));
-    const double left_bound_length = static_cast<double>(lanelet::geometry::length(it->leftBound2d()));
-    const double right_bound_length = static_cast<double>(lanelet::geometry::length(it->rightBound2d()));
+    const double centerline_length =
+      static_cast<double>(lanelet::geometry::length(it->centerline2d()));
+    const double left_bound_length =
+      static_cast<double>(lanelet::geometry::length(it->leftBound2d()));
+    const double right_bound_length =
+      static_cast<double>(lanelet::geometry::length(it->rightBound2d()));
 
     if (s + centerline_length < s_centerline) {
       s += centerline_length;
@@ -634,8 +638,10 @@ PathRange<std::optional<double>> get_arc_length_on_centerline(
     }
 
     const double centerline_length = static_cast<double>(lanelet::geometry::length2d(*it));
-    const double left_bound_length = static_cast<double>(lanelet::geometry::length(it->leftBound2d()));
-    const double right_bound_length = static_cast<double>(lanelet::geometry::length(it->rightBound2d()));
+    const double left_bound_length =
+      static_cast<double>(lanelet::geometry::length(it->leftBound2d()));
+    const double right_bound_length =
+      static_cast<double>(lanelet::geometry::length(it->rightBound2d()));
 
     if (!is_left_done && s_left + left_bound_length > s_left_bound) {
       s_left_centerline = s + lanelet::geometry::toArcCoordinates(
