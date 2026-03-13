@@ -10,6 +10,6 @@
   <arg name="agnocast_heaphook_path" default="/opt/ros/humble/lib/libagnocast_heaphook.so"/>
   <let name="use_agnocast" value="$(env ENABLE_AGNOCAST 0)"/>
 
-  <let name="ld_preload_value" value="$(var agnocast_heaphook_path) $(env LD_PRELOAD '')" if="$(eval &quot;'$(var use_agnocast)' == '1'&quot;)"/>
+  <let name="ld_preload_value" value="$(var agnocast_heaphook_path):$(env LD_PRELOAD '')" if="$(eval &quot;'$(var use_agnocast)' == '1'&quot;)"/>
   <let name="ld_preload_value" value="$(env LD_PRELOAD '')" unless="$(eval &quot;'$(var use_agnocast)' == '1'&quot;)"/>
 </launch>
