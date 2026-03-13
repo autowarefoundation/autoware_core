@@ -207,14 +207,51 @@ inline bool use_agnocast()
 template <typename MessageT>
 class Subscription
 {
-  typename rclcpp::Subscription<MessageT>::SharedPtr ros2_sub_{nullptr};
-  typename agnocast::Subscription<MessageT>::SharedPtr agnocast_sub_{nullptr};
-
 public:
   using SharedPtr = std::shared_ptr<Subscription<MessageT>>;
 
+  virtual ~Subscription() = default;
+};
+
+template <typename MessageT>
+class AgnocastSubscription : public Subscription<MessageT>
+{
+  typename agnocast::Subscription<MessageT>::SharedPtr subscription_;
+
+public:
+  template <typename NodeT, typename Func>
+  explicit AgnocastSubscription(
+    NodeT * node, const std::string & topic_name, const rclcpp::QoS & qos, Func && callback,
+    const agnocast::SubscriptionOptions & options)
+  {
+    static_assert(
+      std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
+        std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_SHARED_PTR(MessageT) &&>,
+      "callback should be invocable with an rvalue reference to either AUTOWARE_MESSAGE_UNIQUE_PTR "
+      "or AUTOWARE_MESSAGE_SHARED_PTR");
+
+    constexpr auto ownership =
+      std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&>
+        ? OwnershipType::Unique
+        : OwnershipType::Shared;
+
+    subscription_ = agnocast::create_subscription<MessageT>(
+      node, topic_name, qos,
+      [callback = std::forward<Func>(callback)](agnocast::ipc_shared_ptr<MessageT> && msg) {
+        callback(message_ptr<MessageT, ownership>(std::move(msg)));
+      },
+      options);
+  }
+};
+
+template <typename MessageT>
+class ROS2Subscription : public Subscription<MessageT>
+{
+  typename rclcpp::Subscription<MessageT>::SharedPtr subscription_;
+
+public:
   template <typename Func>
-  explicit Subscription(
+  explicit ROS2Subscription(
     rclcpp::Node * node, const std::string & topic_name, const rclcpp::QoS & qos, Func && callback,
     const agnocast::SubscriptionOptions & options)
   {
@@ -229,23 +266,18 @@ public:
         ? OwnershipType::Unique
         : OwnershipType::Shared;
 
-    if (use_agnocast()) {
-      agnocast_sub_ = agnocast::create_subscription<MessageT>(
-        node, topic_name, qos,
-        [callback = std::forward<Func>(callback)](agnocast::ipc_shared_ptr<MessageT> && msg) {
+    rclcpp::SubscriptionOptions ros2_options;
+    ros2_options.callback_group = options.callback_group;
+    subscription_ = node->create_subscription<MessageT>(
+      topic_name, qos,
+      [callback = std::forward<Func>(callback)](std::unique_ptr<MessageT> msg) {
+        if constexpr (ownership == OwnershipType::Unique) {
           callback(message_ptr<MessageT, ownership>(std::move(msg)));
-        },
-        options);
-    } else {
-      rclcpp::SubscriptionOptions ros2_options;
-      ros2_options.callback_group = options.callback_group;
-      ros2_sub_ = node->create_subscription<MessageT>(
-        topic_name, qos,
-        [callback = std::forward<Func>(callback)](std::unique_ptr<MessageT> msg) {
-          callback(message_ptr<MessageT, ownership>(std::move(msg)));
-        },
-        ros2_options);
-    }
+        } else {
+          callback(message_ptr<MessageT, ownership>(std::shared_ptr<MessageT>(std::move(msg))));
+        }
+      },
+      ros2_options);
   }
 };
 
@@ -254,8 +286,13 @@ typename Subscription<MessageT>::SharedPtr create_subscription(
   rclcpp::Node * node, const std::string & topic_name, const rclcpp::QoS & qos, Func && callback,
   const agnocast::SubscriptionOptions & options)
 {
-  return std::make_shared<Subscription<MessageT>>(
-    node, topic_name, qos, std::forward<Func>(callback), options);
+  if (use_agnocast()) {
+    return std::make_shared<AgnocastSubscription<MessageT>>(
+      node, topic_name, qos, std::forward<Func>(callback), options);
+  } else {
+    return std::make_shared<ROS2Subscription<MessageT>>(
+      node, topic_name, qos, std::forward<Func>(callback), options);
+  }
 }
 
 template <typename MessageT, typename Func>
@@ -263,9 +300,15 @@ typename Subscription<MessageT>::SharedPtr create_subscription(
   rclcpp::Node * node, const std::string & topic_name, const size_t qos_history_depth,
   Func && callback, const agnocast::SubscriptionOptions & options)
 {
-  return std::make_shared<Subscription<MessageT>>(
-    node, topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)),
-    std::forward<Func>(callback), options);
+  if (use_agnocast()) {
+    return std::make_shared<AgnocastSubscription<MessageT>>(
+      node, topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)),
+      std::forward<Func>(callback), options);
+  } else {
+    return std::make_shared<ROS2Subscription<MessageT>>(
+      node, topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)),
+      std::forward<Func>(callback), options);
+  }
 }
 
 template <typename MessageT>
@@ -286,8 +329,9 @@ class AgnocastPollingSubscriber : public PollingSubscriber<MessageT>
   typename agnocast::PollingSubscriber<MessageT>::SharedPtr subscriber_;
 
 public:
+  template <typename NodeT>
   explicit AgnocastPollingSubscriber(
-    rclcpp::Node * node, const std::string & topic_name, const rclcpp::QoS & qos)
+    NodeT * node, const std::string & topic_name, const rclcpp::QoS & qos)
   : subscriber_(agnocast::create_subscription<MessageT>(node, topic_name, qos))
   {
   }
@@ -377,8 +421,9 @@ class AgnocastPublisher : public Publisher<MessageT>
   typename agnocast::Publisher<MessageT>::SharedPtr publisher_;
 
 public:
+  template <typename NodeT>
   explicit AgnocastPublisher(
-    rclcpp::Node * node, const std::string & topic_name, const rclcpp::QoS & qos,
+    NodeT * node, const std::string & topic_name, const rclcpp::QoS & qos,
     const agnocast::PublisherOptions & options)
   : publisher_(agnocast::create_publisher<MessageT>(node, topic_name, qos, options))
   {
