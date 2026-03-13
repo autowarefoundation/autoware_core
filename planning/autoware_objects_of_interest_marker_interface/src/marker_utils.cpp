@@ -37,8 +37,8 @@ Marker createArrowMarker(
   const double head_height = 0.5 * arrow_length;
 
   Marker marker = create_default_marker(
-    "map", rclcpp::Clock{RCL_ROS_TIME}.now(), name + "_arrow", static_cast<int32_t>(id), Marker::ARROW,
-    create_marker_scale(line_width, head_width, head_height), data.color);
+    "map", rclcpp::Clock{RCL_ROS_TIME}.now(), name + "_arrow", static_cast<int32_t>(id),
+    Marker::ARROW, create_marker_scale(line_width, head_width, head_height), data.color);
 
   const double height = 0.5 * data.shape.dimensions.z;
 
@@ -84,8 +84,9 @@ visualization_msgs::msg::Marker createNameTextMarker(
   const double height_offset, const double text_size)
 {
   Marker marker = create_default_marker(
-    "map", rclcpp::Clock{RCL_ROS_TIME}.now(), name + "_name_text", static_cast<int32_t>(id), Marker::TEXT_VIEW_FACING,
-    create_marker_scale(0.0, 0.0, text_size), coloring::getGray(data.color.a));
+    "map", rclcpp::Clock{RCL_ROS_TIME}.now(), name + "_name_text", static_cast<int32_t>(id),
+    Marker::TEXT_VIEW_FACING, create_marker_scale(0.0, 0.0, text_size),
+    coloring::getGray(data.color.a));
 
   marker.text = name;
 
