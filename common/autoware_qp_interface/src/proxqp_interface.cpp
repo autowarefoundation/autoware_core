@@ -65,19 +65,19 @@ void ProxQPInterface::initializeProblemImpl(
 
   qp_ptr_->settings = settings_;
 
-  Eigen::SparseMatrix<double> P_sparse(variables_num, constraints_num);
+  Eigen::SparseMatrix<double> P_sparse(static_cast<Eigen::Index>(variables_num), static_cast<Eigen::Index>(constraints_num));
   P_sparse = P.sparseView();
 
   // NOTE: const std vector cannot be converted to eigen vector
   std::vector<double> non_const_q = q;
   Eigen::VectorXd eigen_q =
-    Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(non_const_q.data(), non_const_q.size());
+    Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(non_const_q.data(), static_cast<Eigen::Index>(non_const_q.size()));
   std::vector<double> l_std_vec = l;
   Eigen::VectorXd eigen_l =
-    Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(l_std_vec.data(), l_std_vec.size());
+    Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(l_std_vec.data(), static_cast<Eigen::Index>(l_std_vec.size()));
   std::vector<double> u_std_vec = u;
   Eigen::VectorXd eigen_u =
-    Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(u_std_vec.data(), u_std_vec.size());
+    Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(u_std_vec.data(), static_cast<Eigen::Index>(u_std_vec.size()));
 
   if (enable_warm_start) {
     qp_ptr_->update(
@@ -114,7 +114,7 @@ bool ProxQPInterface::isSolved() const
 int ProxQPInterface::getIterationNumber() const
 {
   if (qp_ptr_) {
-    return qp_ptr_->results.info.iter;
+    return static_cast<int>(qp_ptr_->results.info.iter);
   }
   return 0;
 }
