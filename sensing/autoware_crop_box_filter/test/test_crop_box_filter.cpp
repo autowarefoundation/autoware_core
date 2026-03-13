@@ -111,6 +111,7 @@ sensor_msgs::msg::PointCloud2 create_pointcloud2(PointXYZList & points)
     ++iter_z;
   }
 
+  pointcloud.header.frame_id = "base_link";
   return pointcloud;
 }
 
@@ -146,13 +147,19 @@ bool is_same_points(const PointXYZList & points1, const PointXYZList & points2)
   return true;
 }
 
-PointXYZList apply_crop_box_filter(
+struct CropBoxFilterOutput
+{
+  PointXYZList points;
+  std::string frame_id;
+};
+
+CropBoxFilterOutput apply_crop_box_filter(
   const PointXYZList & points, const autoware::crop_box_filter::CropBoxFilterConfig & config)
 {
   const auto input_cloud = create_pointcloud2(const_cast<PointXYZList &>(points));
   const autoware::crop_box_filter::CropBoxFilter filter(config);
   const auto result = filter.filter(input_cloud);
-  return extract_points_from_cloud(result.pointcloud);
+  return {extract_points_from_cloud(result.pointcloud), result.pointcloud.header.frame_id};
 }
 
 TEST(CropBoxFilterTest, FilterZeroPointReturnZeroPoint)
@@ -163,10 +170,10 @@ TEST(CropBoxFilterTest, FilterZeroPointReturnZeroPoint)
   config.keep_outside_box = true;
 
   // Act
-  const auto output_points = apply_crop_box_filter({}, config);
+  const auto output = apply_crop_box_filter({}, config);
 
   // Assert
-  EXPECT_TRUE(output_points.empty());
+  EXPECT_TRUE(output.points.empty());
 }
 
 TEST(CropBoxFilterTest, FilterExcludePointsInsideBoxWhenKeepOutsideBox)
@@ -211,10 +218,10 @@ TEST(CropBoxFilterTest, FilterExcludePointsInsideBoxWhenKeepOutsideBox)
   // clang-format on
 
   // Act
-  const auto output_points = apply_crop_box_filter(input_points, config);
+  const auto output = apply_crop_box_filter(input_points, config);
 
   // Assert
-  EXPECT_TRUE(is_same_points(expected_points, output_points));
+  EXPECT_TRUE(is_same_points(expected_points, output.points));
 }
 
 TEST(CropBoxFilterTest, FilterExcludePointsOutsideBoxWhenKeepInsideBox)
@@ -254,10 +261,101 @@ TEST(CropBoxFilterTest, FilterExcludePointsOutsideBoxWhenKeepInsideBox)
   // clang-format on
 
   // Act
-  const auto output_points = apply_crop_box_filter(input_points, config);
+  const auto output = apply_crop_box_filter(input_points, config);
 
   // Assert
-  EXPECT_TRUE(is_same_points(expected_points, output_points));
+  EXPECT_TRUE(is_same_points(expected_points, output.points));
+}
+
+geometry_msgs::msg::TransformStamped make_translation_transform(
+  const std::string & frame_id, double tx, double ty, double tz)
+{
+  geometry_msgs::msg::TransformStamped transform;
+  transform.header.frame_id = frame_id;
+  transform.transform.translation.x = tx;
+  transform.transform.translation.y = ty;
+  transform.transform.translation.z = tz;
+  transform.transform.rotation.w = 1.0;
+  return transform;
+}
+
+TEST(CropBoxFilterTest, PreprocessTransformShiftsPointsBeforeCropping)
+{
+  // Arrange
+  autoware::crop_box_filter::CropBoxFilterConfig config;
+  config.param = {-1.0f, 1.0f, -1.0f, 1.0f, -1.0f, 1.0f};
+  config.keep_outside_box = false;
+  config.preprocess_transform = make_translation_transform("map", 5.0, 0.0, 0.0);
+
+  // clang-format off
+  PointXYZList input_points = {
+    {-4.5f, 0.5f, 0.5f},  // after preprocess: (0.5, 0.5, 0.5) → inside box → kept
+    {0.5f, 0.0f, 0.0f},   // after preprocess: (5.5, 0.0, 0.0) → outside box → filtered
+  };
+  PointXYZList expected_points = {
+    {0.5f, 0.5f, 0.5f},
+  };
+  // clang-format on
+
+  // Act
+  const auto output = apply_crop_box_filter(input_points, config);
+
+  // Assert
+  EXPECT_TRUE(is_same_points(expected_points, output.points));
+  EXPECT_EQ(output.frame_id, "map");
+}
+
+TEST(CropBoxFilterTest, PostprocessTransformShiftsPointsAfterCropping)
+{
+  // Arrange
+  autoware::crop_box_filter::CropBoxFilterConfig config;
+  config.param = {-1.0f, 1.0f, -1.0f, 1.0f, -1.0f, 1.0f};
+  config.keep_outside_box = false;
+  config.postprocess_transform = make_translation_transform("output_frame", 10.0, 10.0, 10.0);
+
+  // clang-format off
+  PointXYZList input_points = {
+    {0.5f, 0.5f, 0.5f},   // inside box → kept → postprocess: (10.5, 10.5, 10.5)
+    {5.0f, 5.0f, 5.0f},   // outside box → filtered
+  };
+  PointXYZList expected_points = {
+    {10.5f, 10.5f, 10.5f},
+  };
+  // clang-format on
+
+  // Act
+  const auto output = apply_crop_box_filter(input_points, config);
+
+  // Assert
+  EXPECT_TRUE(is_same_points(expected_points, output.points));
+  EXPECT_EQ(output.frame_id, "output_frame");
+}
+
+TEST(CropBoxFilterTest, PreprocessAndPostprocessTransformCombined)
+{
+  // Arrange
+  autoware::crop_box_filter::CropBoxFilterConfig config;
+  config.param = {-1.0f, 1.0f, -1.0f, 1.0f, -1.0f, 1.0f};
+  config.keep_outside_box = false;
+  config.preprocess_transform = make_translation_transform("intermediate", 5.0, 0.0, 0.0);
+  config.postprocess_transform = make_translation_transform("output_frame", 0.0, 10.0, 0.0);
+
+  // clang-format off
+  PointXYZList input_points = {
+    {-4.5f, 0.5f, 0.5f},  // preprocess: (0.5, 0.5, 0.5) → inside → postprocess: (0.5, 10.5, 0.5)
+    {0.5f, 0.5f, 0.5f},   // preprocess: (5.5, 0.5, 0.5) → outside → filtered
+  };
+  PointXYZList expected_points = {
+    {0.5f, 10.5f, 0.5f},
+  };
+  // clang-format on
+
+  // Act
+  const auto output = apply_crop_box_filter(input_points, config);
+
+  // Assert
+  EXPECT_TRUE(is_same_points(expected_points, output.points));
+  EXPECT_EQ(output.frame_id, "output_frame");
 }
 
 TEST(GenerateCropBoxPolygonTest, SetsFrameIdStampAndPointCount)
