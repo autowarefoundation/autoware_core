@@ -11,10 +11,6 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
 )
 target_link_libraries(${PROJECT_NAME} ${PCL_LIBRARIES})
 
-# When adding `<depend>autoware_lanelet2_extension</depend>` to package.xml, many warnings are generated.
-# These are treated as errors in compile, so pedantic warnings are disabled for this package.
-target_compile_options(${PROJECT_NAME} PRIVATE -Wno-pedantic)
-
 rclcpp_components_register_node(${PROJECT_NAME}
   PLUGIN "autoware::map_height_fitter::MapHeightFitterNode"
   EXECUTABLE ${PROJECT_NAME}_node
