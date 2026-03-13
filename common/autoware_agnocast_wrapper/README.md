@@ -151,9 +151,9 @@ After including `agnocast_env.launch.xml`, the following variables are available
 
 ### Launch Arguments
 
-| Argument                 | Default                                       | Description                                                       |
-| ------------------------ | --------------------------------------------- | ----------------------------------------------------------------- |
-| `agnocast_heaphook_path` | `/opt/ros/humble/lib/libagnocast_heaphook.so` | Path to the heaphook shared library                               |
+| Argument                 | Default                                       | Description                                                           |
+| ------------------------ | --------------------------------------------- | --------------------------------------------------------------------- |
+| `agnocast_heaphook_path` | `/opt/ros/humble/lib/libagnocast_heaphook.so` | Path to the heaphook shared library                                   |
 | `use_multithread`        | `false`                                       | Use the multi-threaded component container (`component_container_mt`) |
 
 The `container_executable` is resolved as follows:
