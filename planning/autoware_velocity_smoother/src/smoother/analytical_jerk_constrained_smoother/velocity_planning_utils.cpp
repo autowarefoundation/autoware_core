@@ -254,7 +254,8 @@ bool calcStopVelocityWithConstantJerkAccLimit(
   const auto jerk_at_wp = autoware::interpolation::lerp(xs, js, distances);
 
   for (size_t i = 0; i < vel_at_wp.size(); ++i) {
-    output_trajectory.at(start_index + i).longitudinal_velocity_mps = static_cast<float>(vel_at_wp.at(i));
+    output_trajectory.at(start_index + i).longitudinal_velocity_mps =
+      static_cast<float>(vel_at_wp.at(i));
     output_trajectory.at(start_index + i).acceleration_mps2 = static_cast<float>(acc_at_wp.at(i));
   }
   for (size_t i = start_index + vel_at_wp.size(); i < output_trajectory.size(); ++i) {

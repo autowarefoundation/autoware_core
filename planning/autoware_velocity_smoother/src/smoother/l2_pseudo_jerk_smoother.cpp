@@ -185,7 +185,8 @@ bool L2PseudoJerkSmoother::apply(
 
   const auto tf1 = std::chrono::system_clock::now();
   const double dt_ms1 =
-    static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(tf1 - ts).count()) * 1.0e-6;
+    static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(tf1 - ts).count()) *
+    1.0e-6;
 
   // execute optimization
   const auto ts2 = std::chrono::system_clock::now();
@@ -231,7 +232,8 @@ bool L2PseudoJerkSmoother::apply(
 
   const auto tf2 = std::chrono::system_clock::now();
   const double dt_ms2 =
-    static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(tf2 - ts2).count()) * 1.0e-6;
+    static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(tf2 - ts2).count()) *
+    1.0e-6;
   RCLCPP_DEBUG(logger_, "init time = %f [ms], optimization time = %f [ms]", dt_ms1, dt_ms2);
 
   return true;

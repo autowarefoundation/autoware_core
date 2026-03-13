@@ -268,7 +268,8 @@ TrajectoryPoints AnalyticalJerkConstrainedSmoother::resampleTrajectory(
 
       tp.pose = lerpByPose(tp0.pose, tp1.pose, s);
       tp.longitudinal_velocity_mps = tp0.longitudinal_velocity_mps;
-      tp.heading_rate_rps = static_cast<float>((1.0 - s) * tp0.heading_rate_rps + s * tp1.heading_rate_rps);
+      tp.heading_rate_rps =
+        static_cast<float>((1.0 - s) * tp0.heading_rate_rps + s * tp1.heading_rate_rps);
       tp.acceleration_mps2 = tp0.acceleration_mps2;
       // tp.accel.angular.z = (1.0 - s) * tp0.accel.angular.z + s * tp1.accel.angular.z;
 

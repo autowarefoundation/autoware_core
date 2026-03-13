@@ -183,7 +183,8 @@ std::vector<double> calcTrajectoryCurvatureFrom3Points(
   }
 
   // if the idx size is not enough, change the idx_dist
-  const auto max_idx_dist = static_cast<size_t>(std::floor(static_cast<double>(trajectory.size() - 1) / 2.0));
+  const auto max_idx_dist =
+    static_cast<size_t>(std::floor(static_cast<double>(trajectory.size() - 1) / 2.0));
   idx_dist = std::max(1ul, std::min(idx_dist, max_idx_dist));
 
   if (idx_dist < 1) {

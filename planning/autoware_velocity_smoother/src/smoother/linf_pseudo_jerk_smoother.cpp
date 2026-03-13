@@ -94,12 +94,14 @@ bool LinfPseudoJerkSmoother::apply(
   const size_t l_constraints{3 * N + 1 + 2 * (N - 1)};
 
   Eigen::MatrixXd A = Eigen::MatrixXd::Zero(
-    static_cast<Eigen::Index>(l_constraints), static_cast<Eigen::Index>(l_variables));  // the matrix size depends on constraint numbers.
+    static_cast<Eigen::Index>(l_constraints),
+    static_cast<Eigen::Index>(l_variables));  // the matrix size depends on constraint numbers.
 
   std::vector<double> lower_bound(l_constraints, 0.0);
   std::vector<double> upper_bound(l_constraints, 0.0);
 
-  Eigen::MatrixXd P = Eigen::MatrixXd::Zero(static_cast<Eigen::Index>(l_variables), static_cast<Eigen::Index>(l_variables));
+  Eigen::MatrixXd P = Eigen::MatrixXd::Zero(
+    static_cast<Eigen::Index>(l_variables), static_cast<Eigen::Index>(l_variables));
   std::vector<double> q(l_variables, 0.0);
 
   const double a_max{base_param_.max_accel};
@@ -200,7 +202,8 @@ bool LinfPseudoJerkSmoother::apply(
 
   const auto tf1 = std::chrono::system_clock::now();
   const double dt_ms1 =
-    static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(tf1 - ts).count()) * 1.0e-6;
+    static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(tf1 - ts).count()) *
+    1.0e-6;
 
   // execute optimization
   const auto ts2 = std::chrono::system_clock::now();
@@ -244,7 +247,8 @@ bool LinfPseudoJerkSmoother::apply(
 
   const auto tf2 = std::chrono::system_clock::now();
   const double dt_ms2 =
-    static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(tf2 - ts2).count()) * 1.0e-6;
+    static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(tf2 - ts2).count()) *
+    1.0e-6;
   RCLCPP_DEBUG(logger_, "init time = %f [ms], optimization time = %f [ms]", dt_ms1, dt_ms2);
   return true;
 }

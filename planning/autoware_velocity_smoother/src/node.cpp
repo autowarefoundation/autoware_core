@@ -658,7 +658,8 @@ bool VelocitySmootherNode::smoothVelocity(
   // Clip trajectory from closest point
   TrajectoryPoints clipped;
   clipped.insert(
-    clipped.end(), traj_resampled.begin() + static_cast<std::ptrdiff_t>(traj_resampled_closest), traj_resampled.end());
+    clipped.end(), traj_resampled.begin() + static_cast<std::ptrdiff_t>(traj_resampled_closest),
+    traj_resampled.end());
 
   // Set maximum acceleration before applying smoother. Depends on acceleration request from
   // external velocity limit
@@ -683,7 +684,8 @@ bool VelocitySmootherNode::smoothVelocity(
   overwriteStopPoint(clipped, traj_smoothed);
 
   traj_smoothed.insert(
-    traj_smoothed.begin(), traj_resampled.begin(), traj_resampled.begin() + static_cast<std::ptrdiff_t>(traj_resampled_closest));
+    traj_smoothed.begin(), traj_resampled.begin(),
+    traj_resampled.begin() + static_cast<std::ptrdiff_t>(traj_resampled_closest));
 
   // For the endpoint of the trajectory
   if (!traj_smoothed.empty()) {
