@@ -144,26 +144,26 @@ When Agnocast is enabled at build time, the heaphook shared library must be prel
 
 After including `agnocast_env.launch.xml`, the following variables are available:
 
-| Variable | Description |
-| --- | --- |
-| `ld_preload_value` | `LD_PRELOAD` value with the heaphook library prepended (when Agnocast is enabled) |
-| `container_executable` | Resolved component container executable name |
+| Variable               | Description                                                                       |
+| ---------------------- | --------------------------------------------------------------------------------- |
+| `ld_preload_value`     | `LD_PRELOAD` value with the heaphook library prepended (when Agnocast is enabled) |
+| `container_executable` | Resolved component container executable name                                      |
 
 ### Launch Arguments
 
-| Argument | Default | Description |
-| --- | --- | --- |
-| `agnocast_heaphook_path` | `/opt/ros/humble/lib/libagnocast_heaphook.so` | Path to the heaphook shared library |
-| `use_multithread` | `false` | Use the multi-threaded component container (`component_container_mt`) |
-| `use_agnocast_component_container_cie` | `false` | Use `agnocast_component_container_cie` (only effective when `ENABLE_AGNOCAST=1`; overrides `use_multithread`) |
+| Argument                               | Default                                       | Description                                                                                                   |
+| -------------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `agnocast_heaphook_path`               | `/opt/ros/humble/lib/libagnocast_heaphook.so` | Path to the heaphook shared library                                                                           |
+| `use_multithread`                      | `false`                                       | Use the multi-threaded component container (`component_container_mt`)                                         |
+| `use_agnocast_component_container_cie` | `false`                                       | Use `agnocast_component_container_cie` (only effective when `ENABLE_AGNOCAST=1`; overrides `use_multithread`) |
 
 The `container_executable` is resolved as follows:
 
-| `use_multithread` | `use_agnocast_component_container_cie` | `ENABLE_AGNOCAST=0` | `ENABLE_AGNOCAST=1` |
-| --- | --- | --- | --- |
-| `false` | `false` | `component_container` | `agnocast_component_container` |
-| `true` | `false` | `component_container_mt` | `agnocast_component_container_mt` |
-| - | `true` | `component_container` / `component_container_mt` | `agnocast_component_container_cie` |
+| `use_multithread` | `use_agnocast_component_container_cie` | `ENABLE_AGNOCAST=0`                              | `ENABLE_AGNOCAST=1`                |
+| ----------------- | -------------------------------------- | ------------------------------------------------ | ---------------------------------- |
+| `false`           | `false`                                | `component_container`                            | `agnocast_component_container`     |
+| `true`            | `false`                                | `component_container_mt`                         | `agnocast_component_container_mt`  |
+| -                 | `true`                                 | `component_container` / `component_container_mt` | `agnocast_component_container_cie` |
 
 ### Examples
 
