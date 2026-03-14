@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+  <!-- Essential parameters -->
+  <arg name="map_path" description="lanelet2 map directory path"/>
+
+  <!-- Global parameters -->
+  <arg name="use_sim_time" default="false" description="use_sim_time"/>
+  <arg name="vehicle_model" description="vehicle model name"/>
+  <arg name="sensor_model" description="sensor model name"/>
+  <arg name="pointcloud_container_name" default="pointcloud_container"/>
+
+  <!-- Optional parameters -->
+  <!-- Modules to be launched -->
+  <arg name="launch_map" default="true" description="launch map"/>
+  <arg name="launch_sensing" default="false" description="launch sensing"/>
+  <arg name="launch_sensing_driver" default="false" description="do launch sensing driver"/>
+  <arg name="launch_localization" default="true" description="launch localization"/>
+  <arg name="launch_perception" default="false" description="launch perception"/>
+  <arg name="launch_planning" default="true" description="launch planning"/>
+  <arg name="launch_control" default="true" description="launch control"/>
+  <arg name="launch_vehicle" default="true" description="launch vehicle"/>
+  <arg name="launch_api" default="true" description="launch api"/>
+
+  <!-- Configure if this is planning simulator -->
+  <arg name="is_planning_simulation" default="true" description="enable planning simulation if true (default is false)"/>
+
+  <!-- Configure if this is scenario simulation -->
+  <arg name="is_scenario_simulation" default="false" description="enable scenario simulation if true (default is false)"/>
+
+  <!-- Global parameters -->
+  <group scoped="false">
+    <include file="$(find-pkg-share autoware_global_parameter_loader)/launch/global_params.launch.py">
+      <arg name="use_sim_time" value="$(var use_sim_time)"/>
+      <arg name="vehicle_model" value="$(var vehicle_model)"/>
+      <arg name="is_planning_simulation" value="$(var is_planning_simulation)"/>
+    </include>
+  </group>
+
+  <!-- Map -->
+  <group if="$(var launch_map)">
+    <include file="$(find-pkg-share autoware_core_map)/launch/autoware_core_map.launch.xml">
+      <arg name="lanelet2_map_path" value="$(var map_path)/lanelet2_map.osm"/>
+      <arg name="map_projector_info_path" value="$(var map_path)/map_projector_info.yaml"/>
+      <arg name="pointcloud_map_path" value="$(var map_path)/pointcloud_map.pcd"/>
+      <arg name="pointcloud_map_metadata_path" value="$(var map_path)/pointcloud_map/metadata.yaml"/>
+    </include>
+  </group>
+
+  <!-- Sensing -->
+  <group if="$(var launch_sensing)">
+    <include file="$(find-pkg-share autoware_core_sensing)/launch/autoware_core_sensing.launch.xml">
+      <arg name="is_planning_simulation" value="$(var is_planning_simulation)"/>
+      <arg name="launch_driver" value="$(var launch_sensing_driver)"/>
+      <arg name="sensor_model" value="$(var sensor_model)"/>
+      <arg name="vehicle_mirror_param_file" value="$(find-pkg-share $(var vehicle_model)_description)/config/mirror.param.yaml"/>
+      <arg name="pointcloud_container_name" value="$(var pointcloud_container_name)"/>
+    </include>
+  </group>
+
+  <!-- Localization -->
+  <group if="$(var launch_localization)">
+    <include file="$(find-pkg-share autoware_core_localization)/launch/autoware_core_localization.launch.xml">
+      <arg name="is_planning_simulation" value="$(var is_planning_simulation)"/>
+    </include>
+  </group>
+
+  <!-- Perception -->
+  <group if="$(var launch_perception)">
+    <include file="$(find-pkg-share autoware_core_perception)/launch/autoware_core_perception.launch.xml"/>
+  </group>
+
+  <!-- Planning -->
+  <group if="$(var launch_planning)">
+    <include file="$(find-pkg-share autoware_core_planning)/launch/autoware_core_planning.launch.xml"/>
+  </group>
+
+  <!-- Control -->
+  <group if="$(var launch_control)">
+    <include file="$(find-pkg-share autoware_core_control)/launch/autoware_core_control.launch.xml"/>
+  </group>
+
+  <arg name="vehicle_id" default="$(env VEHICLE_ID default)" description="vehicle specific ID"/>
+  <group if="$(var launch_vehicle)">
+    <include file="$(find-pkg-share autoware_core_vehicle)/launch/autoware_core_vehicle.launch.xml">
+      <arg name="vehicle_id" value="$(var vehicle_id)"/>
+      <arg name="vehicle_model" value="$(var vehicle_model)"/>
+      <arg name="sensor_model" value="$(var sensor_model)"/>
+      <arg name="is_planning_simulation" value="$(var is_planning_simulation)"/>
+    </include>
+  </group>
+
+  <group if="$(var launch_api)">
+    <include file="$(find-pkg-share autoware_core_api)/launch/autoware_core_api.launch.xml">
+      <arg name="is_planning_simulation" value="$(var is_planning_simulation)"/>
+    </include>
+  </group>
+
+  <!-- Simulator: either planning simulation or scenario simulation -->
+  <group if="$(var is_planning_simulation)">
+    <arg
+      name="localization_sim_mode"
+      default="api"
+      description="Select localization mode. Options are 'none', 'api' or 'pose_twist_estimator'. 'pose_twist_estimator' starts most of the localization modules except for the ndt_scan_matcher. 'api' starts an external API for initial position estimation. 'none' does not start any localization-related process."
+    />
+
+    <!-- When scenario simulation is enabled -->
+    <group if="$(var is_scenario_simulation)">
+      <push-ros-namespace namespace="evaluation_adapter"/>
+      <include file="$(find-pkg-share autoware_evaluation_adapter)/launch/namespace.launch.py"/>
+
+      <node_container pkg="rclcpp_components" exec="component_container_mt" name="container" namespace=""/>
+      <load_composable_node target="$(var current_ros_namespace)/container">
+        <composable_node pkg="autoware_evaluation_adapter" plugin="autoware::evaluation_adapter::AutowareEngage" name="autoware_engage"/>
+        <composable_node pkg="autoware_evaluation_adapter" plugin="autoware::evaluation_adapter::VelocityLimit" name="velocity_limit"/>
+      </load_composable_node>
+    </group>
+
+    <!-- When scenario simulation is not enabled -->
+    <group unless="$(var is_scenario_simulation)">
+      <arg name="simulator_model" default="$(find-pkg-share $(var vehicle_model)_description)/config/simulator_model.param.yaml" description="path to the file of simulator model"/>
+      <!-- 'pose_only' mode publishes the pose topic as an alternative to ndt_localizer. 'full_motion' mode publishes the odometry and acceleration topics as an alternative to localization modules. -->
+      <let name="motion_publish_mode" value="pose_only" if="$(eval '&quot;$(var localization_sim_mode)&quot;==&quot;pose_twist_estimator&quot;')"/>
+      <let name="motion_publish_mode" value="full_motion" unless="$(eval '&quot;$(var localization_sim_mode)&quot;==&quot;pose_twist_estimator&quot;')"/>
+      <include file="$(find-pkg-share autoware_simple_planning_simulator)/launch/simple_planning_simulator.launch.py">
+        <arg name="vehicle_info_param_file" value="$(find-pkg-share $(var vehicle_model)_description)/config/vehicle_info.param.yaml"/>
+        <arg name="simulator_model_param_file" value="$(var simulator_model)"/>
+        <arg name="initial_engage_state" value="true"/>
+        <arg name="raw_vehicle_cmd_converter_param_path" value="$(find-pkg-share autoware_core)/config/vehicle/raw_vehicle_cmd_converter.param.yaml"/>
+        <arg name="motion_publish_mode" value="$(var motion_publish_mode)"/>
+      </include>
+    </group>
+
+    <!-- Dummy Perception -->
+    <arg name="perception/enable_detection_failure" default="true" description="enable to simulate detection failure when using dummy perception"/>
+    <arg name="perception/enable_object_recognition" default="false" description="enable object recognition"/>
+    <arg name="perception/use_base_link_z" default="true" description="dummy perception uses base_link z axis coordinate if it is true"/>
+    <arg name="sensing/visible_range" default="300.0" description="visible range when using dummy perception"/>
+    <include file="$(find-pkg-share autoware_dummy_perception_publisher)/launch/dummy_perception_publisher.launch.xml">
+      <arg name="real" value="$(var perception/enable_detection_failure)"/>
+      <arg name="use_object_recognition" value="$(var perception/enable_object_recognition)"/>
+      <arg name="use_base_link_z" value="$(var perception/use_base_link_z)"/>
+      <arg name="visible_range" value="$(var sensing/visible_range)"/>
+    </include>
+
+    <!-- publish empty objects instead of object recognition module -->
+    <group unless="$(var perception/enable_object_recognition)">
+      <push-ros-namespace namespace="object_recognition"/>
+      <node pkg="autoware_dummy_perception_publisher" exec="empty_objects_publisher" name="empty_objects_publisher" output="screen">
+        <remap from="~/output/objects" to="/perception/object_recognition/objects"/>
+      </node>
+    </group>
+  </group>
+
+  <!-- Tools -->
+  <group>
+    <node pkg="rviz2" exec="rviz2" name="rviz2" output="screen" args="-d $(find-pkg-share autoware_core)/rviz/autoware_core.rviz"/>
+  </group>
+</launch>
