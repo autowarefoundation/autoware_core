@@ -62,6 +62,7 @@ public:
     }
   }
 
+  // Internal API: used by ApproximateTimeSynchronizer. Not intended for downstream use.
   ::message_filters::Subscriber<M> & rclcpp_subscriber() { return rclcpp_sub_; }
   agnocast::message_filters::Subscriber<M> & agnocast_subscriber() { return agnocast_sub_; }
 
