@@ -16,6 +16,9 @@
   <depend>autoware_utils_rclcpp</depend>
   <depend>rclcpp</depend>
 
+  <exec_depend condition="$ENABLE_AGNOCAST == 1">agnocast_components</exec_depend>
+  <exec_depend>rclcpp_components</exec_depend>
+
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>autoware_lint_common</test_depend>
 

@@ -135,3 +135,57 @@ Example:
 - B = `autoware_pointcloud_preprocessor`
 
 In such cases, rebuild both A and B with Agnocast **disabled** to ensure consistency. As a best practice, we recommend keeping the value of `ENABLE_AGNOCAST` consistent within a workspace to avoid unintentional mismatches and simplify build management.
+
+## How to Enable Agnocast at Runtime
+
+When Agnocast is enabled at build time, the heaphook shared library must be preloaded at runtime via `LD_PRELOAD`, and component containers must be replaced with their Agnocast equivalents. This package provides `agnocast_env.launch.xml` which handles both of these concerns based on the `ENABLE_AGNOCAST` environment variable.
+
+### Provided Variables
+
+After including `agnocast_env.launch.xml`, the following variables are available:
+
+| Variable               | Description                                                                              |
+| ---------------------- | ---------------------------------------------------------------------------------------- |
+| `ld_preload_value`     | `LD_PRELOAD` value with the heaphook library prepended (when Agnocast is enabled)        |
+| `container_package`    | Resolved component container package name (`rclcpp_components` or `agnocast_components`) |
+| `container_executable` | Resolved component container executable name                                             |
+
+### Launch Arguments
+
+| Argument                 | Default                                       | Description                                                           |
+| ------------------------ | --------------------------------------------- | --------------------------------------------------------------------- |
+| `agnocast_heaphook_path` | `/opt/ros/humble/lib/libagnocast_heaphook.so` | Path to the heaphook shared library                                   |
+| `use_multithread`        | `false`                                       | Use the multi-threaded component container (`component_container_mt`) |
+
+The `container_executable` is resolved as follows:
+
+| `use_multithread` | `ENABLE_AGNOCAST=0`      | `ENABLE_AGNOCAST=1`                |
+| ----------------- | ------------------------ | ---------------------------------- |
+| `false`           | `component_container`    | `agnocast_component_container`     |
+| `true`            | `component_container_mt` | `agnocast_component_container_cie` |
+
+### Examples
+
+Basic usage with a single node:
+
+```xml
+<include file="$(find-pkg-share autoware_agnocast_wrapper)/launch/agnocast_env.launch.xml"/>
+
+<node pkg="my_package" exec="my_node" name="my_node">
+  <env name="LD_PRELOAD" value="$(var ld_preload_value)"/>
+</node>
+```
+
+Using a component container with multi-threading:
+
+```xml
+<include file="$(find-pkg-share autoware_agnocast_wrapper)/launch/agnocast_env.launch.xml">
+  <arg name="use_multithread" value="true"/>
+</include>
+
+<node_container pkg="$(var container_package)" exec="$(var container_executable)" name="my_container">
+  <env name="LD_PRELOAD" value="$(var ld_preload_value)"/>
+</node_container>
+```
+
+This ensures that only the intended nodes receive the heaphook, rather than all nodes in the launch tree.
