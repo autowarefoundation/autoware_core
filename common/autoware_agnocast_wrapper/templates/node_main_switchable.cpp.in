@@ -148,12 +148,12 @@ int main(int argc, char * argv[])
         ret = 1;
       }
     } else {
-      // Runtime fallback to ROS2 executor when ENABLE_AGNOCAST=0.
+      // Runtime fallback to ROS 2 executor when ENABLE_AGNOCAST=0.
       // Even though the binary was compiled with AgnocastOnly executor support,
-      // we fall back to the ROS2 executor at runtime when agnocast is disabled.
+      // we fall back to the ROS 2 executor at runtime when agnocast is disabled.
       RCLCPP_INFO(
         logger, "AgnocastOnly executor specified but ENABLE_AGNOCAST is not set, "
-        "falling back to ROS2 executor");
+        "falling back to ROS 2 executor");
       auto node_base = node_instance.get_node_base_interface();
 
       @_AWR_ros2_executor_type@ exec;
