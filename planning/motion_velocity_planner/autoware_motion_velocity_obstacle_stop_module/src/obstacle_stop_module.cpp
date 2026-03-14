@@ -956,7 +956,7 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::plan_stop(
         continue;
       }
     }
-    determined_zero_vel_dist = *candidate_zero_vel_dist;
+    determined_zero_vel_dist = candidate_zero_vel_dist;
     determined_stop_obstacle = stop_obstacle;
     determined_desired_stop_margin = desired_stop_margin;
   }

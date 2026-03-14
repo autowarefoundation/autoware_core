@@ -550,7 +550,7 @@ std::optional<size_t> findNearestSegmentIndex(
     return *nearest_idx - 1;
   }
 
-  return *nearest_idx;
+  return nearest_idx;
 }
 
 extern template std::optional<size_t>
