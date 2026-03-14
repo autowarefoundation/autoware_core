@@ -49,7 +49,105 @@ To use the Node wrapper in your package, add the following to your `CMakeLists.t
 
 ```cmake
 find_package(autoware_agnocast_wrapper REQUIRED)
-ament_target_dependencies(target autoware_agnocast_wrapper)
+ament_target_dependencies(my_node_component autoware_agnocast_wrapper)
+```
+
+#### Registering a Node with `autoware_agnocast_wrapper_register_node`
+
+Instead of calling `rclcpp_components_register_node` directly, use the `autoware_agnocast_wrapper_register_node` macro to register your component node. This macro:
+
+1. Registers the component with `rclcpp_components` (for component container support)
+2. Creates a standalone executable that can switch between `rclcpp::Node` and `agnocast::Node` at runtime based on the `ENABLE_AGNOCAST` environment variable
+
+When `ENABLE_AGNOCAST` is not set or set to `0`, this macro falls back to standard `rclcpp_components_register_node` behavior.
+
+```cmake
+find_package(autoware_agnocast_wrapper REQUIRED)
+
+ament_auto_add_library(my_node_component SHARED src/my_node.cpp)
+ament_target_dependencies(my_node_component autoware_agnocast_wrapper)
+
+autoware_agnocast_wrapper_register_node(my_node_component
+  PLUGIN "my_package::MyNode"
+  EXECUTABLE my_node
+)
+```
+
+**Parameters:**
+
+| Parameter           | Required | Default                          | Description                                         |
+| ------------------- | -------- | -------------------------------- | --------------------------------------------------- |
+| `PLUGIN`            | Yes      | -                                | Fully qualified class name of the component         |
+| `EXECUTABLE`        | Yes      | -                                | Executable name for the node                        |
+| `ROS2_EXECUTOR`     | No       | `SingleThreadedExecutor`         | Executor to use when `ENABLE_AGNOCAST=0` at runtime |
+| `AGNOCAST_EXECUTOR` | No       | `SingleThreadedAgnocastExecutor` | Executor to use when `ENABLE_AGNOCAST=1` at runtime |
+
+**Valid executor values:**
+
+- `ROS2_EXECUTOR`: `SingleThreadedExecutor`, `MultiThreadedExecutor`
+- `AGNOCAST_EXECUTOR`: `SingleThreadedAgnocastExecutor`, `MultiThreadedAgnocastExecutor`, `CallbackIsolatedAgnocastExecutor`, `AgnocastOnlySingleThreadedExecutor`, `AgnocastOnlyMultiThreadedExecutor`, `AgnocastOnlyCallbackIsolatedExecutor`
+
+**Node class requirements:**
+
+The required PLUGIN base class depends on the `AGNOCAST_EXECUTOR` type. The generated template enforces this via `if constexpr` at compile time:
+
+| AGNOCAST_EXECUTOR         | Required PLUGIN base class          |
+| ------------------------- | ----------------------------------- |
+| `AgnocastOnly*` executors | `autoware::agnocast_wrapper::Node`  |
+| Other agnocast executors  | Any `rclcpp::Node`-compatible class |
+
+Non-`AgnocastOnly` executors use `NodeInstanceWrapper::get_node_base_interface()` directly, which works with any node type (`rclcpp::Node`, `agnocast_wrapper::Node`, etc.) without requiring a cast. `AgnocastOnly` executors require `get_agnocast_node()`, which is only available on `autoware::agnocast_wrapper::Node`.
+
+**Behavior reference:**
+
+The tables below show the complete behavior for each combination of `ROS2_EXECUTOR`, `AGNOCAST_EXECUTOR`, and `ENABLE_AGNOCAST`. CMake emits a **WARN** when `ROS2_EXECUTOR` and `AGNOCAST_EXECUTOR` have mismatched threading models (single vs. multi), because the executor threading behavior will silently change depending on the runtime `ENABLE_AGNOCAST` value.
+
+Build-time `ENABLE_AGNOCAST=0` (or unset):
+
+| ROS2_EXECUTOR | AGNOCAST_EXECUTOR    | CMake | Runtime behavior         |
+| ------------- | -------------------- | ----- | ------------------------ |
+| `Single`      | Any consistent value | OK    | `SingleThreadedExecutor` |
+| `Multi`       | Any consistent value | OK    | `MultiThreadedExecutor`  |
+| `Single`      | Inconsistent value   | WARN  | `SingleThreadedExecutor` |
+| `Multi`       | Inconsistent value   | WARN  | `MultiThreadedExecutor`  |
+
+Runtime `ENABLE_AGNOCAST` has no effect in this mode — no switchable template is generated.
+
+Build-time `ENABLE_AGNOCAST=1`:
+
+| ROS 2<br>\_EXECUTOR | AGNOCAST<br>\_EXECUTOR         | CMake | Runtime<br>`ENABLE_AGNOCAST=0` | Runtime<br>`ENABLE_AGNOCAST=1` |
+| ------------------- | ------------------------------ | ----- | ------------------------------ | ------------------------------ |
+| `Single`            | `SingleThreadedAgnocast`       | OK    | `SingleThreaded`               | `SingleThreadedAgnocast`       |
+| `Multi`             | `MultiThreadedAgnocast`        | OK    | `MultiThreaded`                | `MultiThreadedAgnocast`        |
+| `Multi`             | `CallbackIsolatedAgnocast`     | OK    | `MultiThreaded`                | `CallbackIsolatedAgnocast`     |
+| `Single`            | `AgnocastOnlySingleThreaded`   | OK    | `SingleThreaded`               | `AgnocastOnlySingleThreaded`   |
+| `Multi`             | `AgnocastOnlyMultiThreaded`    | OK    | `MultiThreaded`                | `AgnocastOnlyMultiThreaded`    |
+| `Multi`             | `AgnocastOnlyCallbackIsolated` | OK    | `MultiThreaded`                | `AgnocastOnlyCallbackIsolated` |
+| `Single`            | `MultiThreadedAgnocast`        | WARN  | `SingleThreaded`               | `MultiThreadedAgnocast`        |
+| `Single`            | `CallbackIsolatedAgnocast`     | WARN  | `SingleThreaded`               | `CallbackIsolatedAgnocast`     |
+| `Single`            | `AgnocastOnlyMultiThreaded`    | WARN  | `SingleThreaded`               | `AgnocastOnlyMultiThreaded`    |
+| `Single`            | `AgnocastOnlyCallbackIsolated` | WARN  | `SingleThreaded`               | `AgnocastOnlyCallbackIsolated` |
+| `Multi`             | `SingleThreadedAgnocast`       | WARN  | `MultiThreaded`                | `SingleThreadedAgnocast`       |
+| `Multi`             | `AgnocastOnlySingleThreaded`   | WARN  | `MultiThreaded`                | `AgnocastOnlySingleThreaded`   |
+
+Example with `agnocast_wrapper::Node` (AgnocastOnly executor):
+
+```cmake
+autoware_agnocast_wrapper_register_node(my_node_component
+  PLUGIN "my_package::MyNode"
+  EXECUTABLE my_node
+  AGNOCAST_EXECUTOR AgnocastOnlyCallbackIsolatedExecutor
+)
+```
+
+Example with `rclcpp::Node` (no node changes required):
+
+```cmake
+autoware_agnocast_wrapper_register_node(my_node_component
+  PLUGIN "my_package::MyNode"
+  EXECUTABLE my_node
+  AGNOCAST_EXECUTOR CallbackIsolatedAgnocastExecutor
+)
 ```
 
 ### 2. Macro + Free Function API

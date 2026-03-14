@@ -42,7 +42,9 @@ ament_export_include_directories(
 
 ament_export_dependencies(
   autoware_utils_rclcpp
+  class_loader
   rclcpp
+  rclcpp_components
 )
 
 if(DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
@@ -58,6 +60,21 @@ list(APPEND ${PROJECT_NAME}_CONFIG_EXTRAS
 install(
   FILES cmake/agnocast_wrapper_config_extras.cmake
   DESTINATION share/${PROJECT_NAME}/cmake
+)
+
+install(
+  FILES cmake/autoware_agnocast_wrapper_register_node.cmake
+  DESTINATION share/${PROJECT_NAME}/cmake
+)
+
+install(
+  DIRECTORY templates
+  DESTINATION share/${PROJECT_NAME}
+)
+
+install(
+  DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME}
 )
 
 autoware_ament_auto_package()
