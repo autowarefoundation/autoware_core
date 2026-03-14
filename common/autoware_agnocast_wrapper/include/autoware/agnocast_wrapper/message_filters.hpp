@@ -29,6 +29,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <utility>
 
 namespace autoware::agnocast_wrapper
 {
