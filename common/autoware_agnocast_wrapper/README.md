@@ -117,18 +117,18 @@ Build-time `ENABLE_AGNOCAST=1`:
 
 | ROS 2<br>\_EXECUTOR | AGNOCAST<br>\_EXECUTOR         | CMake | Runtime<br>`ENABLE_AGNOCAST=0` | Runtime<br>`ENABLE_AGNOCAST=1` |
 | ------------------- | ------------------------------ | ----- | ------------------------------ | ------------------------------ |
-| `Single`           | `SingleThreadedAgnocast`       | OK    | `SingleThreaded`               | `SingleThreadedAgnocast`       |
-| `Multi`            | `MultiThreadedAgnocast`        | OK    | `MultiThreaded`                | `MultiThreadedAgnocast`        |
-| `Multi`            | `CallbackIsolatedAgnocast`     | OK    | `MultiThreaded`                | `CallbackIsolatedAgnocast`     |
-| `Single`           | `AgnocastOnlySingleThreaded`   | OK    | `SingleThreaded`               | `AgnocastOnlySingleThreaded`   |
-| `Multi`            | `AgnocastOnlyMultiThreaded`    | OK    | `MultiThreaded`                | `AgnocastOnlyMultiThreaded`    |
-| `Multi`            | `AgnocastOnlyCallbackIsolated` | OK    | `MultiThreaded`                | `AgnocastOnlyCallbackIsolated` |
-| `Single`           | `MultiThreadedAgnocast`        | WARN  | `SingleThreaded`               | `MultiThreadedAgnocast`        |
-| `Single`           | `CallbackIsolatedAgnocast`     | WARN  | `SingleThreaded`               | `CallbackIsolatedAgnocast`     |
-| `Single`           | `AgnocastOnlyMultiThreaded`    | WARN  | `SingleThreaded`               | `AgnocastOnlyMultiThreaded`    |
-| `Single`           | `AgnocastOnlyCallbackIsolated` | WARN  | `SingleThreaded`               | `AgnocastOnlyCallbackIsolated` |
-| `Multi`            | `SingleThreadedAgnocast`       | WARN  | `MultiThreaded`                | `SingleThreadedAgnocast`       |
-| `Multi`            | `AgnocastOnlySingleThreaded`   | WARN  | `MultiThreaded`                | `AgnocastOnlySingleThreaded`   |
+| `Single`            | `SingleThreadedAgnocast`       | OK    | `SingleThreaded`               | `SingleThreadedAgnocast`       |
+| `Multi`             | `MultiThreadedAgnocast`        | OK    | `MultiThreaded`                | `MultiThreadedAgnocast`        |
+| `Multi`             | `CallbackIsolatedAgnocast`     | OK    | `MultiThreaded`                | `CallbackIsolatedAgnocast`     |
+| `Single`            | `AgnocastOnlySingleThreaded`   | OK    | `SingleThreaded`               | `AgnocastOnlySingleThreaded`   |
+| `Multi`             | `AgnocastOnlyMultiThreaded`    | OK    | `MultiThreaded`                | `AgnocastOnlyMultiThreaded`    |
+| `Multi`             | `AgnocastOnlyCallbackIsolated` | OK    | `MultiThreaded`                | `AgnocastOnlyCallbackIsolated` |
+| `Single`            | `MultiThreadedAgnocast`        | WARN  | `SingleThreaded`               | `MultiThreadedAgnocast`        |
+| `Single`            | `CallbackIsolatedAgnocast`     | WARN  | `SingleThreaded`               | `CallbackIsolatedAgnocast`     |
+| `Single`            | `AgnocastOnlyMultiThreaded`    | WARN  | `SingleThreaded`               | `AgnocastOnlyMultiThreaded`    |
+| `Single`            | `AgnocastOnlyCallbackIsolated` | WARN  | `SingleThreaded`               | `AgnocastOnlyCallbackIsolated` |
+| `Multi`             | `SingleThreadedAgnocast`       | WARN  | `MultiThreaded`                | `SingleThreadedAgnocast`       |
+| `Multi`             | `AgnocastOnlySingleThreaded`   | WARN  | `MultiThreaded`                | `AgnocastOnlySingleThreaded`   |
 
 Example with `agnocast_wrapper::Node` (AgnocastOnly executor):
 
