@@ -97,31 +97,40 @@ void validateNonSharpAngle(
 /**
  * @brief checks whether a path of trajectory has forward driving direction
  * @param points points of trajectory, path, ...
+ * @param min_dist minimum distance to find a reference point for direction estimation.
+
  * @return (forward / backward) driving (true / false)
  */
 template <class T>
-[[nodiscard]] std::optional<bool> isDrivingForward(const T & points)
+[[nodiscard]] std::optional<bool> isDrivingForward(const T & points, const double min_dist = 0.01)
 {
   if (points.size() < 2) {
     return std::nullopt;
   }
 
-  // check the first point direction
   const auto & first_pose = autoware_utils_geometry::get_pose(points.at(0));
-  const auto & second_pose = autoware_utils_geometry::get_pose(points.at(1));
 
-  return autoware_utils_geometry::is_driving_forward(first_pose, second_pose);
+  // Find the first point that is at least min_dist away from the first point
+  for (size_t i = 1; i < points.size(); ++i) {
+    const auto & target_pose = autoware_utils_geometry::get_pose(points.at(i));
+    if (autoware_utils_geometry::calc_distance2d(first_pose, target_pose) >= min_dist) {
+      return autoware_utils_geometry::is_driving_forward(first_pose, target_pose);
+    }
+  }
+
+  // All points are within min_dist, cannot determine direction reliably
+  return std::nullopt;
 }
 
 extern template std::optional<bool>
 isDrivingForward<std::vector<autoware_planning_msgs::msg::PathPoint>>(
-  const std::vector<autoware_planning_msgs::msg::PathPoint> &);
+  const std::vector<autoware_planning_msgs::msg::PathPoint> &, const double);
 extern template std::optional<bool>
 isDrivingForward<std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId>>(
-  const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> &);
+  const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> &, const double);
 extern template std::optional<bool>
 isDrivingForward<std::vector<autoware_planning_msgs::msg::TrajectoryPoint>>(
-  const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> &);
+  const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> &, const double);
 
 /**
  * @brief checks whether a path of trajectory has forward driving direction using its longitudinal
