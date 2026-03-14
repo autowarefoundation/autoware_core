@@ -25,8 +25,6 @@ Provides the following launch configurations:
 - container_executable: resolved component container executable name
 """
 
-import os
-
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.actions import OpaqueFunction
@@ -39,7 +37,9 @@ def _resolve_agnocast_env(context):
     use_agnocast = context.launch_configurations.get("use_agnocast", "0")
     use_multithread = context.perform_substitution(LaunchConfiguration("use_multithread"))
     heaphook_path = context.perform_substitution(LaunchConfiguration("agnocast_heaphook_path"))
-    existing_ld_preload = os.environ.get("LD_PRELOAD", "")
+    existing_ld_preload = context.perform_substitution(
+        EnvironmentVariable("LD_PRELOAD", default_value="")
+    )
 
     if use_agnocast == "1":
         if existing_ld_preload:
