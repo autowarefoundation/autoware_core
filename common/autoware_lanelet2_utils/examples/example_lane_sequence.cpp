@@ -74,6 +74,10 @@ void lane_sequence_main()
   }
   {
     const auto opt = lanelet2_utils::LaneSequence::create({lane1, lane2}, routing_graph_ptr_);
+    if (!opt.has_value()) {
+      std::cerr << "Failed to create lane sequence from lane1 and lane2" << std::endl;
+      return;
+    }
     const auto seq = *opt;
     std::cout << "Created LaneSequence size is: " << seq.as_lanelets().size() << std::endl;
   }
