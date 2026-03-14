@@ -83,8 +83,7 @@ public:
   using Callback = std::function<void(
     AUTOWARE_MESSAGE_SHARED_PTR(const M0) &&, AUTOWARE_MESSAGE_SHARED_PTR(const M1) &&)>;
 
-  ApproximateTimeSynchronizer(
-    uint32_t queue_size, Subscriber<M0> & sub0, Subscriber<M1> & sub1)
+  ApproximateTimeSynchronizer(uint32_t queue_size, Subscriber<M0> & sub0, Subscriber<M1> & sub1)
   {
     if (use_agnocast()) {
       agnocast_sync_ = std::make_shared<AgnocastSync>(
@@ -99,11 +98,9 @@ public:
   {
     stored_callback_ = std::move(callback);
     if (use_agnocast()) {
-      agnocast_sync_->registerCallback(
-        &ApproximateTimeSynchronizer::agnocastCallbackAdapter, this);
+      agnocast_sync_->registerCallback(&ApproximateTimeSynchronizer::agnocastCallbackAdapter, this);
     } else {
-      rclcpp_sync_->registerCallback(
-        &ApproximateTimeSynchronizer::rclcppCallbackAdapter, this);
+      rclcpp_sync_->registerCallback(&ApproximateTimeSynchronizer::rclcppCallbackAdapter, this);
     }
   }
 
