@@ -413,15 +413,10 @@ public:
   virtual void publish(AUTOWARE_MESSAGE_SHARED_PTR(MessageT) && message) = 0;
 
   /// Publish by const reference (internally copies into allocated message).
-  /// Not truly deprecated — [[deprecated]] is used solely to emit a compile-time warning, as
-  /// __attribute__((warning)) does not work on virtual methods (vtable dispatch).
+  /// This method is discouraged because it performs an implicit copy.
   /// Prefer ALLOCATE_OUTPUT_MESSAGE_{UNIQUE,SHARED}(publisher) + the corresponding publish()
-  /// overload. This method exists to work around a circular dependency: autoware_utils_debug
-  /// cannot depend on autoware_agnocast_wrapper through autoware_utils.
-  [[deprecated(
-    "publish(const MessageT &) performs an implicit copy. Prefer "
-    "ALLOCATE_OUTPUT_MESSAGE_{UNIQUE,SHARED}(publisher) + the corresponding publish() overload, "
-    "unless avoiding a circular dependency.")]]
+  /// overload. May be marked [[deprecated]] in the future once autoware_cmake supports
+  /// suppressing deprecation warnings for test targets.
   virtual void publish(const MessageT & data) = 0;
 
   virtual uint32_t get_subscription_count() const = 0;
