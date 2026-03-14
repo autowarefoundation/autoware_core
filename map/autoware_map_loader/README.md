@@ -13,6 +13,7 @@ Currently, it supports the following two types:
 - Publish downsampled pointcloud map
 - Send partial pointcloud map loading via ROS 2 service
 - Send differential pointcloud map loading via ROS 2 service
+- Visualize differential pointcloud map loading via ROS 2 topic (optional node)
 
 NOTE: **We strongly recommend to use divided maps when using large pointcloud map to enable the latter two features (partial and differential load). Please go through the prerequisites section for more details, and follow the instruction for dividing the map and preparing the metadata.**
 
@@ -123,6 +124,35 @@ Please see [the description of `GetSelectedPointCloudMap.srv`](https://github.co
 - `service/get_selected_pcd_map` (autoware_map_msgs/srv/GetSelectedPointCloudMap) : Selected pointcloud map
 - pointcloud map file(s) (.pcd)
 - metadata of pointcloud map(s) (.yaml)
+
+## differential_pointcloud_map_visualizer
+
+### Feature
+
+differential_pointcloud_map_visualizer periodically calls `GetDifferentialPointCloudMap` and
+publishes the merged result as `sensor_msgs/msg/PointCloud2` for RViz visualization.
+
+### How to run
+
+`ros2 run autoware_map_loader autoware_differential_pointcloud_map_visualizer`
+
+### Subscribed Topics
+
+- `/localization/kinematic_state` (nav_msgs/msg/Odometry) : Pose input used when `use_pose` is true
+
+### Published Topics
+
+- `output/differential_pointcloud_map` (sensor_msgs/msg/PointCloud2) : Merged differential pointcloud map
+
+### Service Clients
+
+- `/map/get_differential_pointcloud_map` (autoware_map_msgs/srv/GetDifferentialPointCloudMap)
+
+### Parameters
+
+- `update_interval_sec` (double): Query period in seconds
+- `center_x`, `center_y`, `radius` (double): Query area used when `use_pose = false`
+- `use_pose` (bool): Use latest pose as query center
 
 ---
 

@@ -9,6 +9,8 @@
   <arg name="lanelet2_map_loader_param_path" default="$(find-pkg-share autoware_core_map)/config/lanelet2_map_loader.param.yaml"/>
   <arg name="map_projection_loader_param_path" default="$(find-pkg-share autoware_core_map)/config/map_projection_loader.param.yaml"/>
   <arg name="pointcloud_map_loader_param_path" default="$(find-pkg-share autoware_core_map)/config/pointcloud_map_loader.param.yaml"/>
+  <arg name="enable_differential_pointcloud_map_visualizer" default="false"/>
+  <arg name="differential_pointcloud_map_visualizer_param_path" default="$(find-pkg-share autoware_core_map)/config/differential_pointcloud_map_visualizer.param.yaml"/>
 
   <group>
     <push-ros-namespace namespace="map"/>
@@ -23,6 +25,11 @@
       <remap from="service/get_partial_pcd_map" to="/map/get_partial_pointcloud_map"/>
       <remap from="service/get_differential_pcd_map" to="/map/get_differential_pointcloud_map"/>
       <remap from="service/get_selected_pcd_map" to="/map/get_selected_pointcloud_map"/>
+    </node>
+
+    <node if="$(var enable_differential_pointcloud_map_visualizer)" pkg="autoware_map_loader" exec="autoware_differential_pointcloud_map_visualizer" name="differential_pointcloud_map_visualizer">
+      <param from="$(var differential_pointcloud_map_visualizer_param_path)"/>
+      <remap from="output/differential_pointcloud_map" to="differential_pointcloud_map"/>
     </node>
 
     <node pkg="autoware_map_loader" exec="autoware_lanelet2_map_loader" name="lanelet2_map_loader">

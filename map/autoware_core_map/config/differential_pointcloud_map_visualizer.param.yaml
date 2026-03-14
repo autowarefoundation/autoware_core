@@ -1,0 +1,7 @@
+/**:
+  ros__parameters:
+    update_interval_sec: 1.0
+    center_x: 0.0
+    center_y: 0.0
+    radius: 150.0
+    use_pose: false
