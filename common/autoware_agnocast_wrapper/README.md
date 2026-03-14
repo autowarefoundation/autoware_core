@@ -98,6 +98,38 @@ The required PLUGIN base class depends on the `AGNOCAST_EXECUTOR` type. The gene
 
 Non-`AgnocastOnly` executors use `NodeInstanceWrapper::get_node_base_interface()` directly, which works with any node type (`rclcpp::Node`, `agnocast_wrapper::Node`, etc.) without requiring a cast. `AgnocastOnly` executors require `get_agnocast_node()`, which is only available on `autoware::agnocast_wrapper::Node`.
 
+**Behavior reference:**
+
+The tables below show the complete behavior for each combination of `ROS2_EXECUTOR`, `AGNOCAST_EXECUTOR`, and `ENABLE_AGNOCAST`. CMake emits a **WARN** when `ROS2_EXECUTOR` and `AGNOCAST_EXECUTOR` have mismatched threading models (single vs. multi), because the executor threading behavior will silently change depending on the runtime `ENABLE_AGNOCAST` value.
+
+Build-time `ENABLE_AGNOCAST=0` (or unset):
+
+| ROS2_EXECUTOR | AGNOCAST_EXECUTOR | CMake | Runtime behavior |
+| --- | --- | --- | --- |
+| `Single` | Any consistent value | OK | `SingleThreadedExecutor` |
+| `Multi` | Any consistent value | OK | `MultiThreadedExecutor` |
+| `Single` | Inconsistent value | WARN | `SingleThreadedExecutor` |
+| `Multi` | Inconsistent value | WARN | `MultiThreadedExecutor` |
+
+Runtime `ENABLE_AGNOCAST` has no effect in this mode — no switchable template is generated.
+
+Build-time `ENABLE_AGNOCAST=1`:
+
+| ROS2<br>\_EXECUTOR | AGNOCAST<br>\_EXECUTOR | CMake | Runtime<br>`ENABLE_AGNOCAST=0` | Runtime<br>`ENABLE_AGNOCAST=1` |
+| --- | --- | --- | --- | --- |
+| `Single` | `SingleThreadedAgnocast` | OK | `SingleThreaded` | `SingleThreadedAgnocast` |
+| `Multi` | `MultiThreadedAgnocast` | OK | `MultiThreaded` | `MultiThreadedAgnocast` |
+| `Multi` | `CallbackIsolatedAgnocast` | OK | `MultiThreaded` | `CallbackIsolatedAgnocast` |
+| `Single` | `AgnocastOnlySingleThreaded` | OK | `SingleThreaded` | `AgnocastOnlySingleThreaded` |
+| `Multi` | `AgnocastOnlyMultiThreaded` | OK | `MultiThreaded` | `AgnocastOnlyMultiThreaded` |
+| `Multi` | `AgnocastOnlyCallbackIsolated` | OK | `MultiThreaded` | `AgnocastOnlyCallbackIsolated` |
+| `Single` | `MultiThreadedAgnocast` | WARN | `SingleThreaded` | `MultiThreadedAgnocast` |
+| `Single` | `CallbackIsolatedAgnocast` | WARN | `SingleThreaded` | `CallbackIsolatedAgnocast` |
+| `Single` | `AgnocastOnlyMultiThreaded` | WARN | `SingleThreaded` | `AgnocastOnlyMultiThreaded` |
+| `Single` | `AgnocastOnlyCallbackIsolated` | WARN | `SingleThreaded` | `AgnocastOnlyCallbackIsolated` |
+| `Multi` | `SingleThreadedAgnocast` | WARN | `MultiThreaded` | `SingleThreadedAgnocast` |
+| `Multi` | `AgnocastOnlySingleThreaded` | WARN | `MultiThreaded` | `AgnocastOnlySingleThreaded` |
+
 Example with `agnocast_wrapper::Node` (AgnocastOnly executor):
 
 ```cmake
