@@ -29,6 +29,9 @@ rclcpp_components_register_node(pointcloud_map_loader_node
 
 ament_auto_add_library(lanelet2_map_loader_node SHARED
   src/lanelet2_map_loader/lanelet2_map_loader_node.cpp
+  src/lanelet2_map_loader/lanelet2_map_loader_utils.cpp
+  src/lanelet2_map_loader/lanelet2_map_cell_metadata.cpp
+  src/lanelet2_map_loader/lanelet2_selected_map_loader_module.cpp
 )
 
 rclcpp_components_register_node(lanelet2_map_loader_node
@@ -53,10 +56,11 @@ if(BUILD_TESTING)
     target_include_directories(${test_name} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
     target_link_libraries(${test_name} ${${PROJECT_NAME}_LIBRARIES})
     target_link_libraries(${test_name} yaml-cpp)
-    ament_target_dependencies(${test_name} ${${PROJECT_NAME}_FOUND_BUILD_DEPENDS})
+    ament_target_dependencies(${test_name} ${${PROJECT_NAME}_FOUND_BUILD_DEPENDS} ament_index_cpp)
   endfunction()
 
   find_package(ament_lint_auto REQUIRED)
+  find_package(ament_index_cpp REQUIRED)
   ament_lint_auto_find_test_dependencies()
   add_testcase(test/test_cylinder_box_overlap.cpp)
   add_testcase(test/test_replace_with_absolute_path.cpp)
@@ -64,6 +68,9 @@ if(BUILD_TESTING)
   add_testcase(test/test_pointcloud_map_loader_module.cpp)
   add_testcase(test/test_partial_map_loader_module.cpp)
   add_testcase(test/test_differential_map_loader_module.cpp)
+  add_testcase(test/test_lanelet2_map_loader_utils.cpp)
+  add_testcase(test/test_lanelet2_map_cell_metadata.cpp)
+  add_testcase(test/test_lanelet2_selected_map_loader_module.cpp)
 endif()
 
 install(PROGRAMS
