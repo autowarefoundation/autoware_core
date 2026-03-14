@@ -17,6 +17,7 @@
 
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include "agnocast/agnocast.hpp"
@@ -124,9 +125,12 @@ int main(int argc, char * argv[])
   if constexpr (agnocast_only) {
     // AgnocastOnly executors require autoware::agnocast_wrapper::Node for get_agnocast_node().
     // The PLUGIN class MUST inherit from autoware::agnocast_wrapper::Node.
+    static_assert(
+      std::is_base_of_v<autoware::agnocast_wrapper::Node, @_AWR_component@>,
+      "AgnocastOnly executors require PLUGIN to inherit from autoware::agnocast_wrapper::Node");
+
     // static_pointer_cast is used because dynamic_pointer_cast from shared_ptr<void> is
-    // not possible. If the PLUGIN does not inherit from agnocast_wrapper::Node, this is
-    // undefined behavior — ensure the correct base class is used at the CMake level.
+    // not possible. The static_assert above guarantees this cast is valid.
     auto node_wrapper = std::static_pointer_cast<autoware::agnocast_wrapper::Node>(
       node_instance.get_node_instance());
 
