@@ -271,151 +271,158 @@ static void plot_nearest_point(
 
 int main()
 {
-  pybind11::scoped_interpreter guard{};
+  try {
+    pybind11::scoped_interpreter guard{};
 
-  // Bow Trajectory
-  {
-    auto plt = autoware::pyplot::import();
-    auto fig = plt.figure(Args(), Kwargs("figsize"_a = std::make_tuple(18, 6)));
+    // Bow Trajectory
+    {
+      auto plt = autoware::pyplot::import();
+      auto fig = plt.figure(Args(), Kwargs("figsize"_a = std::make_tuple(18, 6)));
 
-    const size_t num_points = 1000;
+      const size_t num_points = 1000;
 
-    auto traj = build_bow_trajectory(num_points, 3, 1.5 * M_PI);
+      auto traj = build_bow_trajectory(num_points, 3, 1.5 * M_PI);
 
-    std::vector<geometry_msgs::msg::Pose> queries;
-    std::vector<std::string> yaws;
-    std::vector<double> s_nearests;
-    plot_trajectory(plt, traj, "Bow");
-    plot_trajectory_base_with_orientation(plt, traj);
+      std::vector<geometry_msgs::msg::Pose> queries;
+      std::vector<std::string> yaws;
+      std::vector<double> s_nearests;
+      plot_trajectory(plt, traj, "Bow");
+      plot_trajectory_base_with_orientation(plt, traj);
 
-    auto yaw = calculate_bow_trajectory_yaw_from_x(1);
-    auto query = make_pose(1, 1, yaw);
-    queries.push_back(query);
-    yaws.push_back("-39/50 * M_PI");
+      auto yaw = calculate_bow_trajectory_yaw_from_x(1);
+      auto query = make_pose(1, 1, yaw);
+      queries.push_back(query);
+      yaws.push_back("-39/50 * M_PI");
 
-    yaw = calculate_bow_trajectory_yaw(M_PI / 2);
-    query = make_pose(-0.05, 0, yaw);
-    queries.push_back(query);
-    yaws.push_back("-3/4 * M_PI");
+      yaw = calculate_bow_trajectory_yaw(M_PI / 2);
+      query = make_pose(-0.05, 0, yaw);
+      queries.push_back(query);
+      yaws.push_back("-3/4 * M_PI");
 
-    yaw = calculate_bow_trajectory_yaw(M_PI * 3 / 2);
-    query = make_pose(-0.05, 0, yaw);
-    queries.push_back(query);
-    yaws.push_back("-1/4 * M_PI");
-    plot_queries_pose(plt, queries, yaws);
+      yaw = calculate_bow_trajectory_yaw(M_PI * 3 / 2);
+      query = make_pose(-0.05, 0, yaw);
+      queries.push_back(query);
+      yaws.push_back("-1/4 * M_PI");
+      plot_queries_pose(plt, queries, yaws);
 
-    for (const auto & q : queries) {
-      auto s_opt = find_first_nearest_index(traj, q, std::numeric_limits<double>::max(), 0.4);
-      double s_nearest = *s_opt;
-      s_nearests.push_back(s_nearest);
+      for (const auto & q : queries) {
+        auto s_opt = find_first_nearest_index(traj, q, std::numeric_limits<double>::max(), 0.4);
+        double s_nearest = *s_opt;
+        s_nearests.push_back(s_nearest);
+      }
+      plot_nearest_point(plt, traj, s_nearests);
+      plt.gca().set_aspect(Args("equal", "box"));
+      std::string title = "Bow Trajectory with Base Point of " + std::to_string(num_points);
+      plt.title(Args(title), Kwargs("fontsize"_a = 18));
+      plt.grid();
+      plt.legend(
+        Args(), Kwargs("loc"_a = "center left", "bbox_to_anchor"_a = std::make_tuple(1.0, 0.5)));
+      fig.tight_layout();
+      plt.show();
     }
-    plot_nearest_point(plt, traj, s_nearests);
-    plt.gca().set_aspect(Args("equal", "box"));
-    std::string title = "Bow Trajectory with Base Point of " + std::to_string(num_points);
-    plt.title(Args(title), Kwargs("fontsize"_a = 18));
-    plt.grid();
-    plt.legend(
-      Args(), Kwargs("loc"_a = "center left", "bbox_to_anchor"_a = std::make_tuple(1.0, 0.5)));
-    fig.tight_layout();
-    plt.show();
-  }
 
-  // Vertical Loop Trajectory
-  {
-    auto plt = autoware::pyplot::import();
-    auto fig = plt.figure(Args(), Kwargs("figsize"_a = std::make_tuple(18, 6)));
-    size_t num_points = 1000;
+    // Vertical Loop Trajectory
+    {
+      auto plt = autoware::pyplot::import();
+      auto fig = plt.figure(Args(), Kwargs("figsize"_a = std::make_tuple(18, 6)));
+      size_t num_points = 1000;
 
-    auto traj = build_vertical_loop_trajectory(num_points, 3, 3, 0);
+      auto traj = build_vertical_loop_trajectory(num_points, 3, 3, 0);
 
-    std::vector<geometry_msgs::msg::Pose> queries;
-    std::vector<std::string> yaws;
-    std::vector<double> s_nearests;
-    plot_trajectory(plt, traj, "Bow");
-    plot_trajectory_base_with_orientation(plt, traj);
+      std::vector<geometry_msgs::msg::Pose> queries;
+      std::vector<std::string> yaws;
+      std::vector<double> s_nearests;
+      plot_trajectory(plt, traj, "Bow");
+      plot_trajectory_base_with_orientation(plt, traj);
 
-    auto query = make_pose(1, 1, -M_PI);
-    queries.push_back(query);
-    yaws.push_back("-M_PI");
+      auto query = make_pose(1, 1, -M_PI);
+      queries.push_back(query);
+      yaws.push_back("-M_PI");
 
-    query = make_pose(0, 0.05, -M_PI);
-    queries.push_back(query);
-    yaws.push_back("-M_PI");
+      query = make_pose(0, 0.05, -M_PI);
+      queries.push_back(query);
+      yaws.push_back("-M_PI");
 
-    query = make_pose(0, -0.05, M_PI);
-    queries.push_back(query);
-    yaws.push_back("-M_PI");
-    plot_queries_pose(plt, queries, yaws);
+      query = make_pose(0, -0.05, M_PI);
+      queries.push_back(query);
+      yaws.push_back("-M_PI");
+      plot_queries_pose(plt, queries, yaws);
 
-    for (const auto & q : queries) {
-      auto s_opt = find_first_nearest_index(traj, q, std::numeric_limits<double>::max(), 0.4);
-      double s_nearest = *s_opt;
-      s_nearests.push_back(s_nearest);
+      for (const auto & q : queries) {
+        auto s_opt = find_first_nearest_index(traj, q, std::numeric_limits<double>::max(), 0.4);
+        double s_nearest = *s_opt;
+        s_nearests.push_back(s_nearest);
+      }
+      plot_nearest_point(plt, traj, s_nearests);
+      plt.gca().set_aspect(Args("equal", "box"));
+      std::string title =
+        "Vertical Loop Trajectory with Base Point of " + std::to_string(num_points);
+      plt.title(Args(title), Kwargs("fontsize"_a = 18));
+      fig.tight_layout();
+      plt.grid();
+      plt.legend(
+        Args(), Kwargs("loc"_a = "center left", "bbox_to_anchor"_a = std::make_tuple(1.0, 0.5)));
+
+      plt.show();
     }
-    plot_nearest_point(plt, traj, s_nearests);
-    plt.gca().set_aspect(Args("equal", "box"));
-    std::string title = "Vertical Loop Trajectory with Base Point of " + std::to_string(num_points);
-    plt.title(Args(title), Kwargs("fontsize"_a = 18));
-    fig.tight_layout();
-    plt.grid();
-    plt.legend(
-      Args(), Kwargs("loc"_a = "center left", "bbox_to_anchor"_a = std::make_tuple(1.0, 0.5)));
 
-    plt.show();
-  }
+    // Lollipop Trajectory
+    {
+      auto plt = autoware::pyplot::import();
+      auto fig = plt.figure(Args(), Kwargs("figsize"_a = std::make_tuple(18, 6)));
 
-  // Lollipop Trajectory
-  {
-    auto plt = autoware::pyplot::import();
-    auto fig = plt.figure(Args(), Kwargs("figsize"_a = std::make_tuple(18, 6)));
+      size_t num_points = 1000;
+      auto traj = build_lollipop_trajectory(num_points, 3);
 
-    size_t num_points = 1000;
-    auto traj = build_lollipop_trajectory(num_points, 3);
+      std::vector<geometry_msgs::msg::Pose> queries;
+      std::vector<std::string> yaws;
+      std::vector<double> s_nearests;
+      plot_trajectory(plt, traj, "Bow");
+      plot_trajectory_base_with_orientation(plt, traj);
 
-    std::vector<geometry_msgs::msg::Pose> queries;
-    std::vector<std::string> yaws;
-    std::vector<double> s_nearests;
-    plot_trajectory(plt, traj, "Bow");
-    plot_trajectory_base_with_orientation(plt, traj);
+      auto query = make_pose(1.5, 0, -M_PI);
+      queries.push_back(query);
+      yaws.push_back("-M_PI");
 
-    auto query = make_pose(1.5, 0, -M_PI);
-    queries.push_back(query);
-    yaws.push_back("-M_PI");
+      query = make_pose(1.5, 0, 0);
+      queries.push_back(query);
+      yaws.push_back("0");
 
-    query = make_pose(1.5, 0, 0);
-    queries.push_back(query);
-    yaws.push_back("0");
+      query = make_pose(-(3 * cos(M_PI / 12)), 0, M_PI);
+      queries.push_back(query);
+      yaws.push_back("M_PI");
 
-    query = make_pose(-(3 * cos(M_PI / 12)), 0, M_PI);
-    queries.push_back(query);
-    yaws.push_back("M_PI");
+      query = make_pose(-(3 * cos(M_PI / 12)), 0, M_PI / 2);
+      queries.push_back(query);
+      yaws.push_back("M_PI/2");
 
-    query = make_pose(-(3 * cos(M_PI / 12)), 0, M_PI / 2);
-    queries.push_back(query);
-    yaws.push_back("M_PI/2");
+      query = make_pose(-(3 * cos(M_PI / 12)), 0, -M_PI / 4);
+      queries.push_back(query);
+      yaws.push_back("-M_PI/4");
 
-    query = make_pose(-(3 * cos(M_PI / 12)), 0, -M_PI / 4);
-    queries.push_back(query);
-    yaws.push_back("-M_PI/4");
+      plot_queries_pose(plt, queries, yaws);
 
-    plot_queries_pose(plt, queries, yaws);
+      for (const auto & q : queries) {
+        auto s_opt =
+          find_first_nearest_index(traj, q, std::numeric_limits<double>::max(), M_PI / 3);
+        double s_nearest = *s_opt;
+        s_nearests.push_back(s_nearest);
+      }
+      plot_nearest_point(plt, traj, s_nearests);
+      plt.gca().set_aspect(Args("equal", "box"));
+      std::string title = "Lollipop Trajectory with Base Point of " + std::to_string(num_points);
+      plt.title(Args(title), Kwargs("fontsize"_a = 18));
+      plt.grid();
+      plt.legend(
+        Args(), Kwargs("loc"_a = "center left", "bbox_to_anchor"_a = std::make_tuple(1.0, 0.5)));
 
-    for (const auto & q : queries) {
-      auto s_opt = find_first_nearest_index(traj, q, std::numeric_limits<double>::max(), M_PI / 3);
-      double s_nearest = *s_opt;
-      s_nearests.push_back(s_nearest);
+      fig.tight_layout();
+
+      plt.show();
     }
-    plot_nearest_point(plt, traj, s_nearests);
-    plt.gca().set_aspect(Args("equal", "box"));
-    std::string title = "Lollipop Trajectory with Base Point of " + std::to_string(num_points);
-    plt.title(Args(title), Kwargs("fontsize"_a = 18));
-    plt.grid();
-    plt.legend(
-      Args(), Kwargs("loc"_a = "center left", "bbox_to_anchor"_a = std::make_tuple(1.0, 0.5)));
-
-    fig.tight_layout();
-
-    plt.show();
+  } catch (const std::exception & e) {
+    std::cerr << "Error: " << e.what() << std::endl;
+    return 1;
   }
 
   return 0;

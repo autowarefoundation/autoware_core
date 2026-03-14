@@ -29,6 +29,7 @@
 
 #include <algorithm>
 #include <fstream>
+#include <iostream>
 #include <limits>
 #include <string>
 #include <vector>
@@ -235,9 +236,14 @@ int main3()
 
 int main()
 {
-  pybind11::scoped_interpreter guard{};
-  main1();
-  main2();
-  main3();
+  try {
+    pybind11::scoped_interpreter guard{};
+    main1();
+    main2();
+    main3();
+  } catch (const std::exception & e) {
+    std::cerr << "Error: " << e.what() << std::endl;
+    return 1;
+  }
   return 0;
 }
