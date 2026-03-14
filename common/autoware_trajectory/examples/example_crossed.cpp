@@ -24,6 +24,7 @@
 #include <pybind11/stl.h>
 
 #include <algorithm>
+#include <iostream>
 #include <string>
 #include <vector>
 
@@ -162,9 +163,17 @@ static Trajectory<PathPointWithLaneId> build_trajectory()
     points.push_back(point);
   }
   const auto points4_result = autoware::experimental::trajectory::detail::populate4(points);
+  if (!points4_result.has_value()) {
+    std::cerr << "Failed to populate4" << std::endl;
+    return Trajectory<PathPointWithLaneId>{};
+  }
   const auto & points4 = points4_result.value();
 
   const auto trajectory_opt = autoware::experimental::trajectory::pretty_build(points4);
+  if (!trajectory_opt.has_value()) {
+    std::cerr << "Failed to pretty_build" << std::endl;
+    return Trajectory<PathPointWithLaneId>{};
+  }
   return trajectory_opt.value();
 }
 
