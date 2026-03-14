@@ -236,11 +236,11 @@ In such cases, rebuild both A and B with Agnocast **disabled** to ensure consist
 
 ## How to Enable Agnocast at Runtime
 
-When Agnocast is enabled at build time, the heaphook shared library must be preloaded at runtime via `LD_PRELOAD`, and component containers must be replaced with their Agnocast equivalents. This package provides `agnocast_env.launch.xml` which handles both of these concerns based on the `ENABLE_AGNOCAST` environment variable.
+When Agnocast is enabled at build time, the heaphook shared library must be preloaded at runtime via `LD_PRELOAD`, and component containers must be replaced with their Agnocast equivalents. This package provides `agnocast_env.launch.xml` (and its Python equivalent `agnocast_env.launch.py`) which handles both of these concerns based on the `ENABLE_AGNOCAST` environment variable.
 
 ### Provided Variables
 
-After including `agnocast_env.launch.xml`, the following variables are available:
+After including `agnocast_env.launch.xml` (or `agnocast_env.launch.py`), the following variables are available (in Python launch files, reference them via `LaunchConfiguration`):
 
 | Variable               | Description                                                                              |
 | ---------------------- | ---------------------------------------------------------------------------------------- |
@@ -262,7 +262,7 @@ The `container_executable` is resolved as follows:
 | `false`           | `component_container`    | `agnocast_component_container`     |
 | `true`            | `component_container_mt` | `agnocast_component_container_cie` |
 
-### Examples
+### Examples (XML)
 
 Basic usage with a single node:
 
@@ -284,6 +284,79 @@ Using a component container with multi-threading:
 <node_container pkg="$(var container_package)" exec="$(var container_executable)" name="my_container">
   <env name="LD_PRELOAD" value="$(var ld_preload_value)"/>
 </node_container>
+```
+
+### Examples (Python)
+
+A Python launch file (`agnocast_env.launch.py`) is also provided with the same functionality. It sets the same launch configurations (`ld_preload_value`, `container_package`, `container_executable`) that can be referenced via `LaunchConfiguration`.
+
+Basic usage with a single node:
+
+```python
+import os
+
+from launch import LaunchDescription
+from launch.actions import IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node
+from ament_index_python.packages import get_package_share_directory
+
+def generate_launch_description():
+    agnocast_env = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(
+                get_package_share_directory("autoware_agnocast_wrapper"),
+                "launch",
+                "agnocast_env.launch.py",
+            )
+        ),
+    )
+
+    my_node = Node(
+        package="my_package",
+        executable="my_node",
+        name="my_node",
+        additional_env={"LD_PRELOAD": LaunchConfiguration("ld_preload_value")},
+    )
+
+    return LaunchDescription([agnocast_env, my_node])
+```
+
+Using a component container with multi-threading:
+
+```python
+import os
+
+from launch import LaunchDescription
+from launch.actions import IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import ComposableNodeContainer
+from ament_index_python.packages import get_package_share_directory
+
+def generate_launch_description():
+    agnocast_env = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(
+                get_package_share_directory("autoware_agnocast_wrapper"),
+                "launch",
+                "agnocast_env.launch.py",
+            )
+        ),
+        launch_arguments={"use_multithread": "true"}.items(),
+    )
+
+    container = ComposableNodeContainer(
+        name="my_container",
+        namespace="",
+        package=LaunchConfiguration("container_package"),
+        executable=LaunchConfiguration("container_executable"),
+        additional_env={"LD_PRELOAD": LaunchConfiguration("ld_preload_value")},
+        composable_node_descriptions=[],
+    )
+
+    return LaunchDescription([agnocast_env, container])
 ```
 
 This ensures that only the intended nodes receive the heaphook, rather than all nodes in the launch tree.
