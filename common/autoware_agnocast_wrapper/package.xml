@@ -12,12 +12,13 @@
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
   <buildtool_depend>autoware_cmake</buildtool_depend>
 
-  <build_depend condition="$ENABLE_AGNOCAST == 1">agnocastlib</build_depend>
+  <depend condition="$ENABLE_AGNOCAST == 1">agnocastlib</depend>
   <depend>autoware_utils_rclcpp</depend>
+  <depend>class_loader</depend>
   <depend>rclcpp</depend>
+  <depend>rclcpp_components</depend>
 
   <exec_depend condition="$ENABLE_AGNOCAST == 1">agnocast_components</exec_depend>
-  <exec_depend>rclcpp_components</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>autoware_lint_common</test_depend>

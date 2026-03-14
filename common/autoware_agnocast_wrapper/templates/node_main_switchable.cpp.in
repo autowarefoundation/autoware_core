@@ -1,0 +1,191 @@
+// Copyright 2025 TIER IV, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Template file for autoware_agnocast_wrapper_register_node().
+// The .cpp output generated from this template is auto-generated — do not edit the output.
+
+#include <memory>
+#include <string>
+#include <vector>
+
+#include "agnocast/agnocast.hpp"
+#include "@_AWR_agnocast_executor_include@"
+#include "autoware/agnocast_wrapper/node.hpp"
+#include "class_loader/class_loader.hpp"
+#include "rclcpp/rclcpp.hpp"
+#include "rclcpp_components/node_factory.hpp"
+#include "rclcpp_components/node_factory_template.hpp"
+
+#define NODE_MAIN_LOGGER_NAME "@_AWR_node@"
+
+int main(int argc, char * argv[])
+{
+  constexpr bool agnocast_only = @_AWR_agnocast_only@;
+  const bool use_agnocast = autoware::agnocast_wrapper::use_agnocast();
+  const bool is_agnocast_only_mode = use_agnocast && agnocast_only;
+
+  // NOTE: rclcpp::get_logger() works without rclcpp::init() — it only requires the rclcpp
+  // library to be linked, not the ROS 2 context to be initialized.
+  rclcpp::Logger logger = rclcpp::get_logger(NODE_MAIN_LOGGER_NAME);
+  RCLCPP_INFO(
+    logger, "Starting node with %s mode (compiled with agnocast support)",
+    use_agnocast ? "agnocast" : "rclcpp");
+
+  // === Initialization ===
+  // When agnocast-only mode is active (agnocast_only=true AND use_agnocast=true at runtime),
+  // only agnocast::init() is called and rclcpp::init() is skipped. In this mode:
+  // - rclcpp::NodeOptions is default-constructed (arguments are not set)
+  // - The agnocast executor handles all communication without the ROS 2 middleware
+  // - rclcpp::shutdown() is NOT called at cleanup
+  std::vector<std::string> args;
+  if (is_agnocast_only_mode) {
+    agnocast::init(argc, argv);
+  } else {
+    args = rclcpp::init_and_remove_ros_arguments(argc, argv);
+  }
+
+  rclcpp::NodeOptions options;
+  if (!args.empty()) {
+    options.arguments(args);
+  }
+
+  // === Load component library and instantiate node ===
+  const std::string library_name = "@_AWR_library_name@";
+  const std::string class_name = "rclcpp_components::NodeFactoryTemplate<@_AWR_component@>";
+
+  RCLCPP_DEBUG(logger, "Load library %s", library_name.c_str());
+
+  // IMPORTANT: loader must outlive the node. ClassLoader owns the loaded shared library;
+  // destroying it before the node would unload the library code and cause a crash.
+  auto loader = std::make_unique<class_loader::ClassLoader>(library_name);
+  auto classes = loader->getAvailableClasses<rclcpp_components::NodeFactory>();
+
+  // node_instance keeps the node alive via its internal shared_ptr<void>.
+  rclcpp_components::NodeInstanceWrapper node_instance(nullptr, nullptr);
+  bool node_found = false;
+
+  for (const auto & candidate : classes) {
+    if (candidate.compare(class_name) != 0) {
+      continue;
+    }
+    RCLCPP_DEBUG(logger, "Instantiate class %s", candidate.c_str());
+    try {
+      auto node_factory = loader->createInstance<rclcpp_components::NodeFactory>(candidate);
+      node_instance = node_factory->create_node_instance(options);
+      node_found = true;
+    } catch (const std::exception & ex) {
+      RCLCPP_ERROR(logger, "Failed to load node class: %s", ex.what());
+      if (!is_agnocast_only_mode) {
+        rclcpp::shutdown();
+      }
+      return 1;
+    } catch (...) {
+      RCLCPP_ERROR(logger, "Failed to load node class (unknown exception)");
+      if (!is_agnocast_only_mode) {
+        rclcpp::shutdown();
+      }
+      return 1;
+    }
+    break;
+  }
+
+  if (!node_found) {
+    RCLCPP_ERROR(
+      logger,
+      "Failed to find node class: %s. "
+      "Ensure the PLUGIN class is registered via RCLCPP_COMPONENTS_REGISTER_NODE().",
+      class_name.c_str());
+    if (!classes.empty()) {
+      RCLCPP_ERROR(logger, "Available classes in the library:");
+      for (const auto & c : classes) {
+        RCLCPP_ERROR(logger, "  - %s", c.c_str());
+      }
+    }
+    if (!is_agnocast_only_mode) {
+      rclcpp::shutdown();
+    }
+    return 1;
+  }
+
+  // === Create executor and spin ===
+  int ret = 0;
+
+  if constexpr (agnocast_only) {
+    // AgnocastOnly executors require autoware::agnocast_wrapper::Node for get_agnocast_node().
+    // The PLUGIN class MUST inherit from autoware::agnocast_wrapper::Node.
+    // static_pointer_cast is used because dynamic_pointer_cast from shared_ptr<void> is
+    // not possible. If the PLUGIN does not inherit from agnocast_wrapper::Node, this is
+    // undefined behavior — ensure the correct base class is used at the CMake level.
+    auto node_wrapper = std::static_pointer_cast<autoware::agnocast_wrapper::Node>(
+      node_instance.get_node_instance());
+
+    @_AWR_agnocast_executor_type@ exec;
+    exec.add_node(node_wrapper->@_AWR_agnocast_add_node_expr@);
+
+    try {
+      exec.spin();
+    } catch (const std::exception & ex) {
+      RCLCPP_ERROR(logger, "Exception during spin: %s", ex.what());
+      ret = 1;
+    } catch (...) {
+      RCLCPP_ERROR(logger, "Unknown exception during spin");
+      ret = 1;
+    }
+  } else {
+    // Non-AgnocastOnly executors use get_node_base_interface(), which is provided by
+    // NodeInstanceWrapper via the stored callback. This works with any node type
+    // (rclcpp::Node, agnocast_wrapper::Node, or any class with get_node_base_interface()).
+    // No static_pointer_cast is needed — the type is checked implicitly by the interface.
+    auto node_base = node_instance.get_node_base_interface();
+
+    if (use_agnocast) {
+      @_AWR_agnocast_executor_type@ exec;
+      exec.add_node(node_base);
+
+      try {
+        exec.spin();
+      } catch (const std::exception & ex) {
+        RCLCPP_ERROR(logger, "Exception during spin: %s", ex.what());
+        ret = 1;
+      } catch (...) {
+        RCLCPP_ERROR(logger, "Unknown exception during spin");
+        ret = 1;
+      }
+
+      exec.remove_node(node_base);
+    } else {
+      @_AWR_ros2_executor_type@ exec;
+      exec.add_node(node_base);
+
+      try {
+        exec.spin();
+      } catch (const std::exception & ex) {
+        RCLCPP_ERROR(logger, "Exception during spin: %s", ex.what());
+        ret = 1;
+      } catch (...) {
+        RCLCPP_ERROR(logger, "Unknown exception during spin");
+        ret = 1;
+      }
+
+      exec.remove_node(node_base);
+    }
+  }
+
+  // === Cleanup ===
+  if (!is_agnocast_only_mode) {
+    rclcpp::shutdown();
+  }
+
+  return ret;
+}
