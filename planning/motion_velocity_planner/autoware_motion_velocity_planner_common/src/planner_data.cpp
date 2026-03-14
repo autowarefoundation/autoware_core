@@ -111,12 +111,14 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr crop_by_monolithic_trajectory_polygon(
   }
   crop_filter.setMin(
     Eigen::Vector4f(
-      x_min, y_min, lowest_traj_height - filter_by_trajectory_param.height_margin, 1.0f));
+      static_cast<float>(x_min), static_cast<float>(y_min),
+      static_cast<float>(lowest_traj_height - filter_by_trajectory_param.height_margin), 1.0f));
   crop_filter.setMax(
     Eigen::Vector4f(
-      x_max, y_max,
-      highest_traj_height + vehicle_info.vehicle_height_m +
-        filter_by_trajectory_param.height_margin,
+      static_cast<float>(x_max), static_cast<float>(y_max),
+      static_cast<float>(
+        highest_traj_height + vehicle_info.vehicle_height_m +
+        filter_by_trajectory_param.height_margin),
       1.0f));
 
   auto ret_pointcloud_ptr = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
@@ -189,7 +191,9 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr downsample_by_voxel_grid(
   pcl::VoxelGrid<pcl::PointXYZ> filter;
   filter.setInputCloud(input_pointcloud_ptr);
   filter.setLeafSize(
-    downsample_params.voxel_size_x, downsample_params.voxel_size_y, downsample_params.voxel_size_z);
+    static_cast<float>(downsample_params.voxel_size_x),
+    static_cast<float>(downsample_params.voxel_size_y),
+    static_cast<float>(downsample_params.voxel_size_z));
   auto ret_pointcloud_ptr = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
   filter.filter(*ret_pointcloud_ptr);
 
