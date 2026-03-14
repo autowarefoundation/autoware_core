@@ -113,7 +113,9 @@ void RandomDownsampleFilter::input_callback(const PointCloud2ConstPtr cloud)
 
 bool RandomDownsampleFilter::is_valid(const PointCloud2ConstPtr & cloud)
 {
-  if (cloud->width * cloud->height * cloud->point_step != cloud->data.size()) {
+  if (
+    static_cast<std::size_t>(cloud->width) * cloud->height * cloud->point_step !=
+    cloud->data.size()) {
     RCLCPP_WARN(
       this->get_logger(),
       "Invalid PointCloud (data = %zu, width = %d, height = %d, step = %d) with stamp %f, "
