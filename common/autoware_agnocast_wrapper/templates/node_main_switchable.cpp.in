@@ -129,22 +129,47 @@ int main(int argc, char * argv[])
       std::is_base_of_v<autoware::agnocast_wrapper::Node, @_AWR_component@>,
       "AgnocastOnly executors require PLUGIN to inherit from autoware::agnocast_wrapper::Node");
 
-    // static_pointer_cast is used because dynamic_pointer_cast from shared_ptr<void> is
-    // not possible. The static_assert above guarantees this cast is valid.
-    auto node_wrapper = std::static_pointer_cast<autoware::agnocast_wrapper::Node>(
-      node_instance.get_node_instance());
+    if (use_agnocast) {
+      // static_pointer_cast is used because dynamic_pointer_cast from shared_ptr<void> is
+      // not possible. The static_assert above guarantees this cast is valid.
+      auto node_wrapper = std::static_pointer_cast<autoware::agnocast_wrapper::Node>(
+        node_instance.get_node_instance());
 
-    @_AWR_agnocast_executor_type@ exec;
-    exec.add_node(node_wrapper->@_AWR_agnocast_add_node_expr@);
+      @_AWR_agnocast_executor_type@ exec;
+      exec.add_node(node_wrapper->@_AWR_agnocast_add_node_expr@);
 
-    try {
-      exec.spin();
-    } catch (const std::exception & ex) {
-      RCLCPP_ERROR(logger, "Exception during spin: %s", ex.what());
-      ret = 1;
-    } catch (...) {
-      RCLCPP_ERROR(logger, "Unknown exception during spin");
-      ret = 1;
+      try {
+        exec.spin();
+      } catch (const std::exception & ex) {
+        RCLCPP_ERROR(logger, "Exception during spin: %s", ex.what());
+        ret = 1;
+      } catch (...) {
+        RCLCPP_ERROR(logger, "Unknown exception during spin");
+        ret = 1;
+      }
+    } else {
+      // Runtime fallback to ROS2 executor when ENABLE_AGNOCAST=0.
+      // Even though the binary was compiled with AgnocastOnly executor support,
+      // we fall back to the ROS2 executor at runtime when agnocast is disabled.
+      RCLCPP_INFO(
+        logger, "AgnocastOnly executor specified but ENABLE_AGNOCAST is not set, "
+        "falling back to ROS2 executor");
+      auto node_base = node_instance.get_node_base_interface();
+
+      @_AWR_ros2_executor_type@ exec;
+      exec.add_node(node_base);
+
+      try {
+        exec.spin();
+      } catch (const std::exception & ex) {
+        RCLCPP_ERROR(logger, "Exception during spin: %s", ex.what());
+        ret = 1;
+      } catch (...) {
+        RCLCPP_ERROR(logger, "Unknown exception during spin");
+        ret = 1;
+      }
+
+      exec.remove_node(node_base);
     }
   } else {
     // Non-AgnocastOnly executors use get_node_base_interface(), which is provided by
