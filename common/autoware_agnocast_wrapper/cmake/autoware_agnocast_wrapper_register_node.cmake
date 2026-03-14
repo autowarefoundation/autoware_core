@@ -102,6 +102,28 @@ macro(autoware_agnocast_wrapper_register_node target)
     set(ARGS_AGNOCAST_EXECUTOR "SingleThreadedAgnocastExecutor")
   endif()
 
+  # --- Validate executor threading model consistency ---
+  # Warn if ROS2_EXECUTOR and AGNOCAST_EXECUTOR have different threading models,
+  # as this silently changes behavior depending on the runtime ENABLE_AGNOCAST value.
+  if("${ARGS_AGNOCAST_EXECUTOR}" MATCHES "SingleThreaded")
+    set(_AWR_agnocast_threading "single")
+  else()
+    set(_AWR_agnocast_threading "multi")
+  endif()
+  if("${ARGS_ROS2_EXECUTOR}" STREQUAL "SingleThreadedExecutor")
+    set(_AWR_ros2_threading "single")
+  else()
+    set(_AWR_ros2_threading "multi")
+  endif()
+  if(NOT "${_AWR_ros2_threading}" STREQUAL "${_AWR_agnocast_threading}")
+    message(WARNING
+      "autoware_agnocast_wrapper_register_node: ROS2_EXECUTOR '${ARGS_ROS2_EXECUTOR}' and "
+      "AGNOCAST_EXECUTOR '${ARGS_AGNOCAST_EXECUTOR}' have different threading models. "
+      "This means behavior will differ depending on the runtime ENABLE_AGNOCAST value.")
+  endif()
+  unset(_AWR_agnocast_threading)
+  unset(_AWR_ros2_threading)
+
   # --- Map ROS2_EXECUTOR to actual type ---
   # Variables prefixed with _AWR_ (Agnocast Wrapper Register) are template substitution
   # variables used by configure_file for @VAR@ replacement in node_main_switchable.cpp.in.
