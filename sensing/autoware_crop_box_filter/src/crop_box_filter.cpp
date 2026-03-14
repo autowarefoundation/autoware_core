@@ -53,7 +53,7 @@ static ValidationResult validate_xyz_fields(const PointCloud2 & cloud)
 
 static ValidationResult validate_data_size(const PointCloud2 & cloud)
 {
-  if (cloud.width * cloud.height * cloud.point_step > cloud.data.size()) {
+  if (static_cast<std::size_t>(cloud.width) * cloud.height * cloud.point_step > cloud.data.size()) {
     std::ostringstream oss;
     oss << "Invalid PointCloud (data.size = " << cloud.data.size() << ", width = " << cloud.width
         << ", height = " << cloud.height << ", step = " << cloud.point_step << ") with stamp "
