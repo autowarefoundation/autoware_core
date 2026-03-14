@@ -16,8 +16,6 @@
 
 #include "crop_box_filter_node.hpp"
 
-#include <tf2_eigen/tf2_eigen.hpp>
-
 #include <memory>
 #include <string>
 #include <utility>
@@ -25,7 +23,7 @@
 
 namespace autoware::crop_box_filter
 {
-CropBoxFilter::CropBoxFilter(const rclcpp::NodeOptions & node_options)
+CropBoxFilterNode::CropBoxFilterNode(const rclcpp::NodeOptions & node_options)
 : rclcpp::Node("crop_box_filter", node_options),
   stop_watch_ptr_(std::make_unique<autoware_utils_system::StopWatch<std::chrono::milliseconds>>()),
   debug_publisher_(std::make_unique<autoware_utils_debug::DebugPublisher>(this, this->get_name())),
@@ -37,42 +35,38 @@ CropBoxFilter::CropBoxFilter(const rclcpp::NodeOptions & node_options)
     stop_watch_ptr_->tic("processing_time");
   }
 
-  max_queue_size_ = static_cast<int64_t>(declare_parameter("max_queue_size", 5));
+  const auto max_queue_size = static_cast<size_t>(declare_parameter("max_queue_size", 5));
 
   // get transform info for pointcloud
   {
-    tf_input_orig_frame_ =
+    const auto tf_input_orig_frame =
       static_cast<std::string>(declare_parameter("input_pointcloud_frame", "base_link"));
     tf_input_frame_ = static_cast<std::string>(declare_parameter("input_frame", "base_link"));
-    config_.output_frame = static_cast<std::string>(declare_parameter("output_frame", "base_link"));
+    auto output_frame = static_cast<std::string>(declare_parameter("output_frame", "base_link"));
 
     transform_listener_ = std::make_unique<autoware_utils_tf::TransformListener>(this);
 
-    if (tf_input_orig_frame_ != tf_input_frame_) {
+    if (tf_input_orig_frame != tf_input_frame_) {
       auto tf_ptr = transform_listener_->get_transform(
-        tf_input_frame_, tf_input_orig_frame_, this->now(), rclcpp::Duration::from_seconds(1.0));
+        tf_input_frame_, tf_input_orig_frame, this->now(), rclcpp::Duration::from_seconds(1.0));
       if (!tf_ptr) {
         RCLCPP_ERROR(
           this->get_logger(), "Cannot get transform from %s to %s. Please check your TF tree.",
-          tf_input_orig_frame_.c_str(), tf_input_frame_.c_str());
+          tf_input_orig_frame.c_str(), tf_input_frame_.c_str());
       } else {
-        auto eigen_tf = tf2::transformToEigen(*tf_ptr);
-        config_.eigen_transform_preprocess = eigen_tf.matrix().cast<float>();
-        config_.need_preprocess_transform = true;
+        config_.preprocess_transform = *tf_ptr;
       }
     }
 
-    if (tf_input_frame_ != config_.output_frame) {
+    if (tf_input_frame_ != output_frame) {
       auto tf_ptr = transform_listener_->get_transform(
-        config_.output_frame, tf_input_frame_, this->now(), rclcpp::Duration::from_seconds(1.0));
+        output_frame, tf_input_frame_, this->now(), rclcpp::Duration::from_seconds(1.0));
       if (!tf_ptr) {
         RCLCPP_ERROR(
           this->get_logger(), "Cannot get transform from %s to %s. Please check your TF tree.",
-          tf_input_frame_.c_str(), config_.output_frame.c_str());
+          tf_input_frame_.c_str(), output_frame.c_str());
       } else {
-        auto eigen_tf = tf2::transformToEigen(*tf_ptr);
-        config_.eigen_transform_postprocess = eigen_tf.matrix().cast<float>();
-        config_.need_postprocess_transform = true;
+        config_.postprocess_transform = *tf_ptr;
       }
     }
   }
@@ -91,12 +85,16 @@ CropBoxFilter::CropBoxFilter(const rclcpp::NodeOptions & node_options)
       throw std::invalid_argument("Crop box requires non-empty input_frame");
     }
   }
+
+  // construct CropBoxFilter with the completed config
+  crop_box_filter_.emplace(config_);
+
   // set output pointcloud publisher
   {
     rclcpp::PublisherOptions pub_options;
     pub_options.qos_overriding_options = rclcpp::QosOverridingOptions::with_default_policies();
     pub_output_ = this->create_publisher<PointCloud2>(
-      "output", rclcpp::SensorDataQoS().keep_last(max_queue_size_), pub_options);
+      "output", rclcpp::SensorDataQoS().keep_last(max_queue_size), pub_options);
   }
 
   // set additional publishers
@@ -111,20 +109,20 @@ CropBoxFilter::CropBoxFilter(const rclcpp::NodeOptions & node_options)
   {
     using std::placeholders::_1;
     set_param_res_ =
-      this->add_on_set_parameters_callback(std::bind(&CropBoxFilter::param_callback, this, _1));
+      this->add_on_set_parameters_callback(std::bind(&CropBoxFilterNode::param_callback, this, _1));
   }
 
   // set input pointcloud callback
   {
     sub_input_ = this->create_subscription<PointCloud2>(
-      "input", rclcpp::SensorDataQoS().keep_last(max_queue_size_),
-      std::bind(&CropBoxFilter::pointcloud_callback, this, std::placeholders::_1));
+      "input", rclcpp::SensorDataQoS().keep_last(max_queue_size),
+      std::bind(&CropBoxFilterNode::pointcloud_callback, this, std::placeholders::_1));
   }
 
   RCLCPP_DEBUG(this->get_logger(), "[Filter Constructor] successfully created.");
 }
 
-void CropBoxFilter::pointcloud_callback(const PointCloud2ConstPtr cloud)
+void CropBoxFilterNode::pointcloud_callback(const PointCloud2ConstPtr cloud)
 {
   // check whether the pointcloud is valid
   const ValidationResult result = validate_pointcloud2(*cloud);
@@ -145,7 +143,7 @@ void CropBoxFilter::pointcloud_callback(const PointCloud2ConstPtr cloud)
   stop_watch_ptr_->toc("processing_time", true);
 
   // filtering
-  auto filter_result = filter_pointcloud(*cloud, config_);
+  auto filter_result = crop_box_filter_->filter(*cloud);
   auto & output = filter_result.pointcloud;
 
   if (filter_result.skipped_nan_count > 0) {
@@ -184,7 +182,7 @@ void CropBoxFilter::pointcloud_callback(const PointCloud2ConstPtr cloud)
 }
 
 // update parameters dynamicly
-rcl_interfaces::msg::SetParametersResult CropBoxFilter::param_callback(
+rcl_interfaces::msg::SetParametersResult CropBoxFilterNode::param_callback(
   const std::vector<rclcpp::Parameter> & p)
 {
   std::scoped_lock lock(mutex_);
@@ -204,6 +202,9 @@ rcl_interfaces::msg::SetParametersResult CropBoxFilter::param_callback(
 
   config_.param = new_param;
 
+  // recreate CropBoxFilter with updated config
+  crop_box_filter_.emplace(config_);
+
   rcl_interfaces::msg::SetParametersResult result;
   result.successful = true;
   result.reason = "success";
@@ -214,4 +215,4 @@ rcl_interfaces::msg::SetParametersResult CropBoxFilter::param_callback(
 }  // namespace autoware::crop_box_filter
 
 #include <rclcpp_components/register_node_macro.hpp>
-RCLCPP_COMPONENTS_REGISTER_NODE(autoware::crop_box_filter::CropBoxFilter)
+RCLCPP_COMPONENTS_REGISTER_NODE(autoware::crop_box_filter::CropBoxFilterNode)
