@@ -16,6 +16,10 @@
 
 #include "autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp"
 
+#include <message_filters/subscriber.h>
+#include <message_filters/sync_policies/approximate_time.h>
+#include <message_filters/synchronizer.h>
+
 #include <functional>
 #include <memory>
 #include <string>
@@ -26,10 +30,6 @@
 #include <agnocast/message_filters/subscriber.hpp>
 #include <agnocast/message_filters/sync_policies/approximate_time.hpp>
 #include <agnocast/message_filters/synchronizer.hpp>
-
-#include <message_filters/subscriber.h>
-#include <message_filters/sync_policies/approximate_time.h>
-#include <message_filters/synchronizer.h>
 
 namespace autoware::agnocast_wrapper
 {
@@ -173,10 +173,6 @@ public:
 }  // namespace autoware::agnocast_wrapper
 
 #else
-
-#include <message_filters/subscriber.h>
-#include <message_filters/sync_policies/approximate_time.h>
-#include <message_filters/synchronizer.h>
 
 namespace autoware::agnocast_wrapper
 {
