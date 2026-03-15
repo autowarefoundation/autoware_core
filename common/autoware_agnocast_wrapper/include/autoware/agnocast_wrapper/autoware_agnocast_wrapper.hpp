@@ -30,8 +30,13 @@
 #define AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) \
   autoware::agnocast_wrapper::message_ptr<    \
     MessageT, autoware::agnocast_wrapper::OwnershipType::Unique>
+// For publisher (mutable message)
 #define AUTOWARE_MESSAGE_SHARED_PTR(MessageT) \
   autoware::agnocast_wrapper::message_ptr<    \
+    MessageT, autoware::agnocast_wrapper::OwnershipType::Shared>
+// For subscription (read-only message)
+#define AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) \
+  autoware::agnocast_wrapper::message_ptr<           \
     MessageT, autoware::agnocast_wrapper::OwnershipType::Shared>
 #define AUTOWARE_SUBSCRIPTION_PTR(MessageT) \
   typename autoware::agnocast_wrapper::Subscription<MessageT>::SharedPtr
@@ -226,9 +231,10 @@ public:
   {
     static_assert(
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
-        std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_SHARED_PTR(MessageT) &&>,
-      "callback should be invocable with an rvalue reference to either AUTOWARE_MESSAGE_UNIQUE_PTR "
-      "or AUTOWARE_MESSAGE_SHARED_PTR");
+        std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_SHARED_PTR(MessageT) &&> ||
+        std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&>,
+      "callback should be invocable with an rvalue reference to either AUTOWARE_MESSAGE_UNIQUE_PTR, "
+      "AUTOWARE_MESSAGE_SHARED_PTR, or AUTOWARE_MESSAGE_CONST_SHARED_PTR");
 
     constexpr auto ownership =
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&>
@@ -257,9 +263,10 @@ public:
   {
     static_assert(
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
-        std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_SHARED_PTR(MessageT) &&>,
-      "callback should be invocable with an rvalue reference to either AUTOWARE_MESSAGE_UNIQUE_PTR "
-      "or AUTOWARE_MESSAGE_SHARED_PTR");
+        std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_SHARED_PTR(MessageT) &&> ||
+        std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&>,
+      "callback should be invocable with an rvalue reference to either AUTOWARE_MESSAGE_UNIQUE_PTR, "
+      "AUTOWARE_MESSAGE_SHARED_PTR, or AUTOWARE_MESSAGE_CONST_SHARED_PTR");
 
     constexpr auto ownership =
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&>
@@ -587,7 +594,10 @@ typename Publisher<MessageT>::SharedPtr create_publisher(
 #include <type_traits>
 
 #define AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) std::unique_ptr<MessageT>
+// For publisher (mutable message)
 #define AUTOWARE_MESSAGE_SHARED_PTR(MessageT) std::shared_ptr<MessageT>
+// For subscription (read-only message)
+#define AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) std::shared_ptr<const MessageT>
 #define AUTOWARE_SUBSCRIPTION_PTR(MessageT) typename rclcpp::Subscription<MessageT>::SharedPtr
 #define AUTOWARE_PUBLISHER_PTR(MessageT) typename rclcpp::Publisher<MessageT>::SharedPtr
 #define AUTOWARE_POLLING_SUBSCRIBER_PTR(MessageT) \
