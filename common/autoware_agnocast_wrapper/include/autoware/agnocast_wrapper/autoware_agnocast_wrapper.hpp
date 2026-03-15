@@ -36,7 +36,7 @@
     MessageT, autoware::agnocast_wrapper::OwnershipType::Shared>
 // For subscription (read-only message)
 #define AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) \
-  autoware::agnocast_wrapper::message_ptr<           \
+  autoware::agnocast_wrapper::message_ptr<          \
     MessageT, autoware::agnocast_wrapper::OwnershipType::Shared>
 #define AUTOWARE_SUBSCRIPTION_PTR(MessageT) \
   typename autoware::agnocast_wrapper::Subscription<MessageT>::SharedPtr
@@ -233,7 +233,8 @@ public:
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
         std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_SHARED_PTR(MessageT) &&> ||
         std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&>,
-      "callback should be invocable with an rvalue reference to either AUTOWARE_MESSAGE_UNIQUE_PTR, "
+      "callback should be invocable with an rvalue reference to either "
+      "AUTOWARE_MESSAGE_UNIQUE_PTR, "
       "AUTOWARE_MESSAGE_SHARED_PTR, or AUTOWARE_MESSAGE_CONST_SHARED_PTR");
 
     constexpr auto ownership =
@@ -265,7 +266,8 @@ public:
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
         std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_SHARED_PTR(MessageT) &&> ||
         std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&>,
-      "callback should be invocable with an rvalue reference to either AUTOWARE_MESSAGE_UNIQUE_PTR, "
+      "callback should be invocable with an rvalue reference to either "
+      "AUTOWARE_MESSAGE_UNIQUE_PTR, "
       "AUTOWARE_MESSAGE_SHARED_PTR, or AUTOWARE_MESSAGE_CONST_SHARED_PTR");
 
     constexpr auto ownership =
