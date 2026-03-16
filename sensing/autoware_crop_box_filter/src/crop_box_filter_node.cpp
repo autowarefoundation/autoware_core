@@ -39,20 +39,21 @@ CropBoxFilterNode::CropBoxFilterNode(const rclcpp::NodeOptions & node_options)
 
   // get transform info for pointcloud
   {
-    const auto tf_input_orig_frame =
+    const auto tf_input_pointcloud_frame =
       static_cast<std::string>(declare_parameter("input_pointcloud_frame", "base_link"));
     tf_input_frame_ = static_cast<std::string>(declare_parameter("input_frame", "base_link"));
     auto output_frame = static_cast<std::string>(declare_parameter("output_frame", "base_link"));
 
     transform_listener_ = std::make_unique<autoware_utils_tf::TransformListener>(this);
 
-    if (tf_input_orig_frame != tf_input_frame_) {
+    if (tf_input_pointcloud_frame != tf_input_frame_) {
       auto tf_ptr = transform_listener_->get_transform(
-        tf_input_frame_, tf_input_orig_frame, this->now(), rclcpp::Duration::from_seconds(1.0));
+        tf_input_frame_, tf_input_pointcloud_frame, this->now(),
+        rclcpp::Duration::from_seconds(1.0));
       if (!tf_ptr) {
         RCLCPP_ERROR(
           this->get_logger(), "Cannot get transform from %s to %s. Please check your TF tree.",
-          tf_input_orig_frame.c_str(), tf_input_frame_.c_str());
+          tf_input_pointcloud_frame.c_str(), tf_input_frame_.c_str());
       } else {
         config_.preprocess_transform = *tf_ptr;
       }
