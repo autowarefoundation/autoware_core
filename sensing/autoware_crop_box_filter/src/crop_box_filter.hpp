@@ -73,6 +73,7 @@ private:
   CropBoxFilterConfig config_;
   Eigen::Matrix4f eigen_transform_preprocess_{Eigen::Matrix4f::Identity()};
   Eigen::Matrix4f eigen_transform_postprocess_{Eigen::Matrix4f::Identity()};
+  std::optional<std::string> output_frame_id_;
 };
 
 geometry_msgs::msg::PolygonStamped generate_crop_box_polygon(
