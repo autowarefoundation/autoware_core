@@ -37,7 +37,7 @@
 // For subscription (read-only message)
 #define AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) \
   autoware::agnocast_wrapper::message_ptr<          \
-    MessageT, autoware::agnocast_wrapper::OwnershipType::Shared>
+    const MessageT, autoware::agnocast_wrapper::OwnershipType::Shared>
 #define AUTOWARE_SUBSCRIPTION_PTR(MessageT) \
   typename autoware::agnocast_wrapper::Subscription<MessageT>::SharedPtr
 #define AUTOWARE_PUBLISHER_PTR(MessageT) \
@@ -245,7 +245,8 @@ public:
     subscription_ = agnocast::create_subscription<MessageT>(
       node, topic_name, qos,
       [callback = std::forward<Func>(callback)](agnocast::ipc_shared_ptr<MessageT> && msg) {
-        callback(message_ptr<MessageT, ownership>(std::move(msg)));
+        callback(message_ptr<const MessageT, ownership>(
+          agnocast::ipc_shared_ptr<const MessageT>(std::move(msg))));
       },
       options);
   }
@@ -280,11 +281,8 @@ public:
     subscription_ = node->create_subscription<MessageT>(
       topic_name, qos,
       [callback = std::forward<Func>(callback)](std::unique_ptr<MessageT> msg) {
-        if constexpr (ownership == OwnershipType::Unique) {
-          callback(message_ptr<MessageT, ownership>(std::move(msg)));
-        } else {
-          callback(message_ptr<MessageT, ownership>(std::shared_ptr<MessageT>(std::move(msg))));
-        }
+        callback(message_ptr<const MessageT, ownership>(
+          std::shared_ptr<const MessageT>(std::move(msg))));
       },
       ros2_options);
   }
