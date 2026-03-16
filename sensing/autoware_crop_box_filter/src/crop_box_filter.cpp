@@ -134,11 +134,11 @@ geometry_msgs::msg::PolygonStamped generate_crop_box_polygon(
 
 CropBoxFilter::CropBoxFilter(const CropBoxFilterConfig & config) : config_(config)
 {
-  if (config_.preprocess_transform.has_value()) {
+  if (config_.preprocess_transform) {
     const auto eigen_transform = tf2::transformToEigen(config_.preprocess_transform.value());
     eigen_transform_preprocess_ = eigen_transform.matrix().cast<float>();
   }
-  if (config_.postprocess_transform.has_value()) {
+  if (config_.postprocess_transform) {
     const auto eigen_transform = tf2::transformToEigen(config_.postprocess_transform.value());
     eigen_transform_postprocess_ = eigen_transform.matrix().cast<float>();
   }
@@ -219,9 +219,9 @@ CropBoxFilterResult CropBoxFilter::filter(const PointCloud2 & cloud) const
   }
 
   output.data.resize(output_size);
-  if (config_.postprocess_transform.has_value()) {
+  if (config_.postprocess_transform) {
     output.header.frame_id = config_.postprocess_transform->header.frame_id;
-  } else if (config_.preprocess_transform.has_value()) {
+  } else if (config_.preprocess_transform) {
     output.header.frame_id = config_.preprocess_transform->header.frame_id;
   } else {
     output.header.frame_id = cloud.header.frame_id;
