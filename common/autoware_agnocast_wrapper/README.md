@@ -183,6 +183,62 @@ target_include_directories(target PRIVATE ${autoware_agnocast_wrapper_INCLUDE_DI
 autoware_agnocast_wrapper_setup(target)
 ```
 
+## Message Filters Support
+
+This package provides wrapper types for `message_filters` (`Subscriber`, `Synchronizer`, `ApproximateTimeSynchronizer`) in the `autoware::agnocast_wrapper::message_filters` namespace. These wrappers transparently switch between `::message_filters` and `agnocast::message_filters` at runtime.
+
+### Current limitations
+
+- Only `ApproximateTime` synchronization policy is supported (no `ExactTime`).
+- Maximum 2 message types per `Synchronizer`.
+- `connectInput()` is not supported; pass `Subscriber` references at construction time.
+
+### Usage example
+
+```cpp
+#include <autoware/agnocast_wrapper/message_filters.hpp>
+
+using namespace autoware::agnocast_wrapper::message_filters;
+
+// 1. Create subscribers
+Subscriber<sensor_msgs::msg::Image> image_sub;
+Subscriber<sensor_msgs::msg::CameraInfo> info_sub;
+image_sub.subscribe(node, "/camera/image", rmw_qos_profile_sensor_data);
+info_sub.subscribe(node, "/camera/info", rmw_qos_profile_sensor_data);
+
+// 2. Create synchronizer
+using Policy = sync_policies::ApproximateTime<
+    sensor_msgs::msg::Image, sensor_msgs::msg::CameraInfo>;
+Synchronizer<Policy> sync(Policy(10), image_sub, info_sub);
+
+// 3. Register callback (use std::bind, not a lambda — see migration note below)
+sync.registerCallback(
+  std::bind(&MyNode::onSynchronized, this, std::placeholders::_1, std::placeholders::_2));
+```
+
+The callback method signature should use `const` references:
+
+```cpp
+void onSynchronized(
+  const AUTOWARE_MESSAGE_SHARED_PTR(const sensor_msgs::msg::Image) & img,
+  const AUTOWARE_MESSAGE_SHARED_PTR(const sensor_msgs::msg::CameraInfo) & info);
+```
+
+### Migration guide (from `::message_filters`)
+
+| Before | After |
+|---|---|
+| `#include <message_filters/subscriber.h>` | `#include <autoware/agnocast_wrapper/message_filters.hpp>` |
+| `message_filters::Subscriber<M>` | `autoware::agnocast_wrapper::message_filters::Subscriber<M>` |
+| `message_filters::Synchronizer<Policy>` | `autoware::agnocast_wrapper::message_filters::Synchronizer<Policy>` |
+| `message_filters::sync_policies::ApproximateTime<M0, M1>` | `autoware::agnocast_wrapper::message_filters::sync_policies::ApproximateTime<M0, M1>` |
+
+> **Important:** Use `std::bind(&Method, this, _1, _2)` for `registerCallback`, not lambdas. The underlying `::message_filters::Signal9` internally re-wraps callbacks with `std::bind` using 9 placeholders, which fails for lambdas and `std::function` (fixed argument count), but works for `std::bind` results (extra arguments are silently ignored).
+
+### CMakeLists.txt
+
+The `message_filters` dependency is automatically exported by `autoware_agnocast_wrapper`. No additional `find_package(message_filters)` is needed in downstream packages.
+
 ## How to Enable/Disable Agnocast on Build
 
 To build Autoware **with** Agnocast:
