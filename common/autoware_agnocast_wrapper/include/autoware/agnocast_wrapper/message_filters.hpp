@@ -218,8 +218,8 @@ template <class M>
 using Subscriber = ::message_filters::Subscriber<M>;
 
 template <typename M0, typename M1>
-using ApproximateTimeSynchronizer = ::message_filters::Synchronizer<
-  ::message_filters::sync_policies::ApproximateTime<M0, M1>>;
+using ApproximateTimeSynchronizer =
+  ::message_filters::Synchronizer<::message_filters::sync_policies::ApproximateTime<M0, M1>>;
 
 namespace sync_policies
 {
