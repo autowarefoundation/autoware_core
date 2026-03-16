@@ -36,32 +36,8 @@ namespace autoware::agnocast_wrapper
 namespace message_filters
 {
 
-/// @brief Wrapper for message_filters Subscriber / Synchronizer that switches between
+/// @brief Wrapper message_filters Subscriber that switches between
 ///        rclcpp and agnocast message_filters at runtime.
-///
-/// @note Current limitations:
-///   - Only ApproximateTime synchronization policy is supported (no ExactTime).
-///   - Maximum 2 message types per Synchronizer.
-///   - connectInput() is not supported; pass Subscriber references at construction time.
-///
-/// @code
-/// using namespace autoware::agnocast_wrapper::message_filters;
-///
-/// Subscriber<sensor_msgs::msg::Image> image_sub;
-/// Subscriber<sensor_msgs::msg::CameraInfo> info_sub;
-/// image_sub.subscribe(node, "/camera/image", rmw_qos_profile_sensor_data);
-/// info_sub.subscribe(node, "/camera/info", rmw_qos_profile_sensor_data);
-///
-/// using Policy = sync_policies::ApproximateTime<
-///     sensor_msgs::msg::Image, sensor_msgs::msg::CameraInfo>;
-/// auto sync = std::make_shared<Synchronizer<Policy>>(Policy(10), image_sub, info_sub);
-///
-/// sync->registerCallback(
-///   [](const AUTOWARE_MESSAGE_SHARED_PTR(const sensor_msgs::msg::Image) & img,
-///      const AUTOWARE_MESSAGE_SHARED_PTR(const sensor_msgs::msg::CameraInfo) & info) {
-///     // Process synchronized messages
-///   });
-/// @endcode
 template <class M>
 class Subscriber
 {
@@ -102,6 +78,30 @@ private:
 ///                         const AUTOWARE_MESSAGE_SHARED_PTR(const M1)&)`.
 /// In agnocast mode, message_ptrs are created from the ipc_shared_ptrs,
 /// preserving zero-copy semantics during the callback lifetime.
+///
+/// @note Current limitations:
+///   - Only ApproximateTime synchronization policy is supported (no ExactTime).
+///   - Maximum 2 message types per Synchronizer.
+///   - connectInput() is not supported; pass Subscriber references at construction time.
+///
+/// @code
+/// using namespace autoware::agnocast_wrapper::message_filters;
+///
+/// Subscriber<sensor_msgs::msg::Image> image_sub;
+/// Subscriber<sensor_msgs::msg::CameraInfo> info_sub;
+/// image_sub.subscribe(node, "/camera/image", rmw_qos_profile_sensor_data);
+/// info_sub.subscribe(node, "/camera/info", rmw_qos_profile_sensor_data);
+///
+/// using Policy = sync_policies::ApproximateTime<
+///     sensor_msgs::msg::Image, sensor_msgs::msg::CameraInfo>;
+/// auto sync = std::make_shared<Synchronizer<Policy>>(Policy(10), image_sub, info_sub);
+///
+/// sync->registerCallback(
+///   [](const AUTOWARE_MESSAGE_SHARED_PTR(const sensor_msgs::msg::Image) & img,
+///      const AUTOWARE_MESSAGE_SHARED_PTR(const sensor_msgs::msg::CameraInfo) & info) {
+///     // Process synchronized messages
+///   });
+/// @endcode
 template <typename M0, typename M1>
 class ApproximateTimeSynchronizer
 {
