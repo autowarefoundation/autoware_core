@@ -72,6 +72,7 @@ class NDTScanMatcher : public rclcpp::Node
   using PointTarget = pcl::PointXYZ;
   using NormalDistributionsTransform =
     pclomp::MultiGridNormalDistributionsTransform<PointSource, PointTarget>;
+  using NdtResource = SharedNdtResource<NormalDistributionsTransform>;
 
 public:
   explicit NDTScanMatcher(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
@@ -195,11 +196,9 @@ private:
 
   rclcpp::CallbackGroup::SharedPtr timer_callback_group_;
 
-  std::shared_ptr<NormalDistributionsTransform> ndt_ptr_;
-
-  Eigen::Matrix4f base_to_sensor_matrix_;
-
-  std::mutex ndt_ptr_mtx_;
+  std::shared_ptr<NdtResource> ndt_resource_;
+  std::shared_ptr<NormalDistributionsTransform> & ndt_ptr_;
+  std::mutex & ndt_ptr_mtx_;
   std::unique_ptr<autoware::localization_util::SmartPoseBuffer> initial_pose_buffer_;
 
   // Keep latest position for dynamic map loading
