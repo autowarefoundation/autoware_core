@@ -191,7 +191,7 @@ If not found:
 sudo apt install agnocast-heaphook-v2.3  # Match the version in autoware.repos
 ```
 
-> The version can be found in the `middleware/external/agnocast` section of [`autoware.repos`](https://github.com/autowarefoundation/autoware/blob/main/autoware.repos). For instructions on building and installing from source, see the [Agnocast README](https://github.com/autowarefoundation/agnocast/blob/main/README.md).
+> The version can be found in the `middleware/external/agnocast` section of [`autoware.repos`](https://github.com/autowarefoundation/autoware/blob/main/repositories/autoware.repos). For instructions on building and installing from source, see the [Agnocast README](https://github.com/autowarefoundation/agnocast/blob/main/README.md).
 
 ---
 
