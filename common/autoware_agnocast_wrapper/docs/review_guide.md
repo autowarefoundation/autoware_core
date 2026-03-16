@@ -29,9 +29,7 @@ This document serves as a guide for reviewing PRs that apply [autoware_agnocast_
 - component_container and autoware_agnocast_wrapper_register_node
 - Executor Types and Selection
 - component_container Selection (agnocast_env.launch.xml)
-- message_filters Support
 - Build and Execution Procedures
-- Notes
 - References
 
 ---
@@ -302,7 +300,7 @@ All macros below are defined in [`autoware_agnocast_wrapper.hpp`](https://github
 | `AUTOWARE_SUBSCRIPTION_OPTIONS` | `agnocast::SubscriptionOptions` | `rclcpp::SubscriptionOptions` |
 | `AUTOWARE_PUBLISHER_OPTIONS` | `agnocast::PublisherOptions` | `rclcpp::PublisherOptions` |
 
-## 6. Two Integration Methods: Free Functions vs agnocast_wrapper::Node
+## 4. Two Integration Methods: Free Functions vs agnocast_wrapper::Node
 
 autoware_agnocast_wrapper provides two integration approaches.
 
@@ -385,7 +383,7 @@ using Node = rclcpp::Node;
 
 Therefore, code using Method 2 compiles and runs without issues as a regular `rclcpp::Node` when built with `ENABLE_AGNOCAST=0`. Backward compatibility is maintained even in environments without Agnocast support.
 
-## 7. component_container and autoware_agnocast_wrapper_register_node
+## 5. component_container and autoware_agnocast_wrapper_register_node
 
 ### autoware_agnocast_wrapper_register_node Macro
 
@@ -422,7 +420,7 @@ autoware_agnocast_wrapper_register_node(my_node_component
 | `ROS2_EXECUTOR` | No | Executor when `ENABLE_AGNOCAST=0` at runtime (default: `SingleThreadedExecutor`) |
 | `AGNOCAST_EXECUTOR` | No | Executor when `ENABLE_AGNOCAST=1` at runtime (default: `SingleThreadedAgnocastExecutor`) |
 
-## 8. Executor Types and Selection
+## 6. Executor Types and Selection
 
 ### ROS2_EXECUTOR (when ENABLE_AGNOCAST=0 at runtime)
 
@@ -453,7 +451,7 @@ If `ROS2_EXECUTOR` and `AGNOCAST_EXECUTOR` have different threading models, a WA
 - With `ENABLE_AGNOCAST=0`: single-threaded
 - With `ENABLE_AGNOCAST=1`: multi-threaded
 
-## 9. component_container Selection (agnocast_env.launch.xml)
+## 7. component_container Selection (agnocast_env.launch.xml)
 
 By including `agnocast_env.launch.xml`, the appropriate component container is automatically selected based on the `ENABLE_AGNOCAST` environment variable.
 
@@ -524,7 +522,7 @@ container = ComposableNodeContainer(
 | `agnocast_heaphook_path` | `/opt/ros/humble/lib/libagnocast_heaphook.so` | Path to the heaphook library |
 | `use_multithread` | `false` | Whether to use a multi-threaded container |
 
-## 10. Build and Execution Procedures
+## 8. Build and Execution Procedures
 
 ### Build with Agnocast Disabled (default)
 
@@ -556,7 +554,7 @@ source ~/autoware/install/setup.bash
 ros2 launch autoware_launch ...
 ```
 
-## 11. References
+## 9. References
 
 - [autoware_agnocast_wrapper Source Code & README](https://github.com/autowarefoundation/autoware_core/tree/main/common/autoware_agnocast_wrapper) - The package itself. The official README contains detailed build/execution procedures and executor configuration
 - [Agnocast Repository](https://github.com/autowarefoundation/agnocast) - Agnocast source code including kernel module, heaphook, bridge, etc.
