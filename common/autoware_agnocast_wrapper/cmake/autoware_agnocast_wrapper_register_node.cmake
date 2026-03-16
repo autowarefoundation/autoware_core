@@ -51,10 +51,10 @@
 #   The generated template enforces this via if constexpr at compile time.
 #
 # Generated targets:
-#   When ENABLE_AGNOCAST=1 (agnocast mode), two targets are created:
+#   When ENABLE_AGNOCAST=1 (agnocast mode):
 #     - <EXECUTABLE>            : standalone executable with runtime rclcpp/agnocast switching
-#     - <EXECUTABLE>_component  : standard rclcpp_components executable for component containers
-#   When ENABLE_AGNOCAST is not set (standard mode), only one target is created:
+#     - Component registration  : rclcpp_components resource index entry for component container loading
+#   When ENABLE_AGNOCAST is not set (standard mode):
 #     - <EXECUTABLE>            : standard rclcpp_components executable (delegates to
 #                                 rclcpp_components_register_node as-is)
 #   Launch files should always reference <EXECUTABLE> for consistent behavior across both modes.
@@ -188,12 +188,11 @@ macro(autoware_agnocast_wrapper_register_node target)
     set(_AGNOCAST_WRAPPER_COMPONENT ${ARGS_PLUGIN})
     set(_AGNOCAST_WRAPPER_NODE ${ARGS_EXECUTABLE})
 
-    # Register with rclcpp_components for standard component container support
-    # Note: This call will overwrite 'node', 'component', 'library_name' variables
-    rclcpp_components_register_node(${target}
-      PLUGIN ${_AGNOCAST_WRAPPER_COMPONENT}
-      EXECUTABLE ${_AGNOCAST_WRAPPER_NODE}_component
-      EXECUTOR ${ARGS_ROS2_EXECUTOR})
+    # Register with rclcpp_components for component container support (resource index only).
+    # Unlike rclcpp_components_register_node (singular), the plural form only populates
+    # the ament resource index without generating an unnecessary standalone executable.
+    rclcpp_components_register_nodes(${target}
+      ${_AGNOCAST_WRAPPER_COMPONENT})
 
     # Set template substitution variables (_AWR_ prefix) after rclcpp_components_register_node call
     set(_AWR_node ${_AGNOCAST_WRAPPER_NODE})
