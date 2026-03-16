@@ -57,8 +57,8 @@ namespace message_filters
 /// auto sync = std::make_shared<Synchronizer<Policy>>(Policy(10), image_sub, info_sub);
 ///
 /// sync->registerCallback(
-///   [](AUTOWARE_MESSAGE_SHARED_PTR(const sensor_msgs::msg::Image) && img,
-///      AUTOWARE_MESSAGE_SHARED_PTR(const sensor_msgs::msg::CameraInfo) && info) {
+///   [](const AUTOWARE_MESSAGE_SHARED_PTR(const sensor_msgs::msg::Image) & img,
+///      const AUTOWARE_MESSAGE_SHARED_PTR(const sensor_msgs::msg::CameraInfo) & info) {
 ///     // Process synchronized messages
 ///   });
 /// @endcode
@@ -98,16 +98,16 @@ private:
 /// @brief Wrapper ApproximateTime Synchronizer that switches between
 ///        rclcpp and agnocast message_filters at runtime.
 ///
-/// The callback receives `(AUTOWARE_MESSAGE_SHARED_PTR(const M0)&&,
-///                         AUTOWARE_MESSAGE_SHARED_PTR(const M1)&&)`.
-/// In agnocast mode, non-owning shared_ptrs are created from the ipc_shared_ptrs,
+/// The callback receives `(const AUTOWARE_MESSAGE_SHARED_PTR(const M0)&,
+///                         const AUTOWARE_MESSAGE_SHARED_PTR(const M1)&)`.
+/// In agnocast mode, message_ptrs are created from the ipc_shared_ptrs,
 /// preserving zero-copy semantics during the callback lifetime.
 template <typename M0, typename M1>
 class ApproximateTimeSynchronizer
 {
 public:
   using Callback = std::function<void(
-    AUTOWARE_MESSAGE_SHARED_PTR(const M0) &&, AUTOWARE_MESSAGE_SHARED_PTR(const M1) &&)>;
+    const AUTOWARE_MESSAGE_SHARED_PTR(const M0) &, const AUTOWARE_MESSAGE_SHARED_PTR(const M1) &)>;
 
   ApproximateTimeSynchronizer(uint32_t queue_size, Subscriber<M0> & sub0, Subscriber<M1> & sub1)
   {
@@ -139,19 +139,19 @@ private:
   void agnocastCallbackAdapter(const M0Event & e0, const M1Event & e1)
   {
     // Wrap ipc_shared_ptr in message_ptr (copies ipc_shared_ptr refcount, not data)
-    auto p0 =
+    const auto p0 =
       AUTOWARE_MESSAGE_SHARED_PTR(const M0)(agnocast::ipc_shared_ptr<const M0>(e0.getMessage()));
-    auto p1 =
+    const auto p1 =
       AUTOWARE_MESSAGE_SHARED_PTR(const M1)(agnocast::ipc_shared_ptr<const M1>(e1.getMessage()));
-    stored_callback_(std::move(p0), std::move(p1));
+    stored_callback_(p0, p1);
   }
 
   void rclcppCallbackAdapter(
     const typename M0::ConstSharedPtr & m0, const typename M1::ConstSharedPtr & m1)
   {
-    auto p0 = AUTOWARE_MESSAGE_SHARED_PTR(const M0)(std::shared_ptr<const M0>(m0));
-    auto p1 = AUTOWARE_MESSAGE_SHARED_PTR(const M1)(std::shared_ptr<const M1>(m1));
-    stored_callback_(std::move(p0), std::move(p1));
+    const auto p0 = AUTOWARE_MESSAGE_SHARED_PTR(const M0)(std::shared_ptr<const M0>(m0));
+    const auto p1 = AUTOWARE_MESSAGE_SHARED_PTR(const M1)(std::shared_ptr<const M1>(m1));
+    stored_callback_(p0, p1);
   }
 
   using RclcppPolicy = ::message_filters::sync_policies::ApproximateTime<M0, M1>;
@@ -215,20 +215,70 @@ namespace message_filters
 template <class M>
 using Subscriber = ::message_filters::Subscriber<M>;
 
+/// @brief Wrapper ApproximateTime Synchronizer for non-agnocast mode.
+///        ::message_filters::Signal9::addCallback(C&) internally uses std::bind with 9
+///        placeholders, which fails with lambdas/std::function that accept fewer arguments.
+///        This wrapper bridges that gap by wrapping the callback in std::bind with only 2
+///        placeholders before forwarding to ::message_filters. std::bind results silently
+///        ignore extra arguments, so the 9-placeholder nesting works correctly.
+template <typename M0, typename M1>
+class ApproximateTimeSynchronizer
+{
+public:
+  using Callback = std::function<void(
+    const AUTOWARE_MESSAGE_SHARED_PTR(const M0) &, const AUTOWARE_MESSAGE_SHARED_PTR(const M1) &)>;
+
+  ApproximateTimeSynchronizer(
+    uint32_t queue_size, ::message_filters::Subscriber<M0> & sub0,
+    ::message_filters::Subscriber<M1> & sub1)
+  : sync_(RclcppPolicy(queue_size), sub0, sub1)
+  {
+  }
+
+  void registerCallback(Callback callback)
+  {
+    auto bound =
+      std::bind(std::move(callback), std::placeholders::_1, std::placeholders::_2);
+    sync_.registerCallback(bound);
+  }
+
+private:
+  using RclcppPolicy = ::message_filters::sync_policies::ApproximateTime<M0, M1>;
+  ::message_filters::Synchronizer<RclcppPolicy> sync_;
+};
+
 namespace sync_policies
 {
 template <typename M0, typename M1>
-using ApproximateTime = ::message_filters::sync_policies::ApproximateTime<M0, M1>;
+struct ApproximateTime
+{
+  uint32_t queue_size;
+  explicit ApproximateTime(uint32_t qs) : queue_size(qs) {}
+};
 }  // namespace sync_policies
 
+/// @brief Primary Synchronizer template — only the ApproximateTime specialization is supported.
 template <typename Policy>
-using Synchronizer = ::message_filters::Synchronizer<Policy>;
+class Synchronizer
+{
+  static_assert(
+    sizeof(Policy) == 0,
+    "Only sync_policies::ApproximateTime<M0, M1> is supported. "
+    "ExactTime and policies with more than 2 message types are not implemented.");
+};
 
-/// @brief Alias for ApproximateTimeSynchronizer in non-agnocast mode.
-///        Wraps ::message_filters::Synchronizer with an ApproximateTime policy.
 template <typename M0, typename M1>
-using ApproximateTimeSynchronizer = ::message_filters::Synchronizer<
-  ::message_filters::sync_policies::ApproximateTime<M0, M1>>;
+class Synchronizer<sync_policies::ApproximateTime<M0, M1>>
+: public ApproximateTimeSynchronizer<M0, M1>
+{
+public:
+  Synchronizer(
+    sync_policies::ApproximateTime<M0, M1> policy, ::message_filters::Subscriber<M0> & sub0,
+    ::message_filters::Subscriber<M1> & sub1)
+  : ApproximateTimeSynchronizer<M0, M1>(policy.queue_size, sub0, sub1)
+  {
+  }
+};
 
 }  // namespace message_filters
 }  // namespace agnocast_wrapper
