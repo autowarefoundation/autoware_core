@@ -74,8 +74,8 @@ private:
 /// @brief Wrapper ApproximateTime Synchronizer that switches between
 ///        rclcpp and agnocast message_filters at runtime.
 ///
-/// The callback receives `(const AUTOWARE_MESSAGE_SHARED_PTR(const M0)&,
-///                         const AUTOWARE_MESSAGE_SHARED_PTR(const M1)&)`.
+/// The callback receives `(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M0)&,
+///                         const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M1)&)`.
 /// In agnocast mode, message_ptrs are created from the ipc_shared_ptrs,
 /// preserving zero-copy semantics during the callback lifetime.
 ///
@@ -101,15 +101,15 @@ private:
 ///
 /// // Where the callback method signature is:
 /// // void onSynchronized(
-/// //   const AUTOWARE_MESSAGE_SHARED_PTR(const sensor_msgs::msg::Image) & img,
-/// //   const AUTOWARE_MESSAGE_SHARED_PTR(const sensor_msgs::msg::CameraInfo) & info);
+/// //   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::Image) & img,
+/// //   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::CameraInfo) & info);
 /// @endcode
 template <typename M0, typename M1>
 class ApproximateTimeSynchronizer
 {
 public:
   using Callback = std::function<void(
-    const AUTOWARE_MESSAGE_SHARED_PTR(const M0) &, const AUTOWARE_MESSAGE_SHARED_PTR(const M1) &)>;
+    const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M0) &, const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M1) &)>;
 
   ApproximateTimeSynchronizer(uint32_t queue_size, Subscriber<M0> & sub0, Subscriber<M1> & sub1)
   {
@@ -142,17 +142,17 @@ private:
   {
     // Wrap ipc_shared_ptr in message_ptr (copies ipc_shared_ptr refcount, not data)
     const auto p0 =
-      AUTOWARE_MESSAGE_SHARED_PTR(const M0)(agnocast::ipc_shared_ptr<const M0>(e0.getMessage()));
+      AUTOWARE_MESSAGE_CONST_SHARED_PTR(M0)(agnocast::ipc_shared_ptr<const M0>(e0.getMessage()));
     const auto p1 =
-      AUTOWARE_MESSAGE_SHARED_PTR(const M1)(agnocast::ipc_shared_ptr<const M1>(e1.getMessage()));
+      AUTOWARE_MESSAGE_CONST_SHARED_PTR(M1)(agnocast::ipc_shared_ptr<const M1>(e1.getMessage()));
     stored_callback_(p0, p1);
   }
 
   void rclcppCallbackAdapter(
     const typename M0::ConstSharedPtr & m0, const typename M1::ConstSharedPtr & m1)
   {
-    const auto p0 = AUTOWARE_MESSAGE_SHARED_PTR(const M0)(std::shared_ptr<const M0>(m0));
-    const auto p1 = AUTOWARE_MESSAGE_SHARED_PTR(const M1)(std::shared_ptr<const M1>(m1));
+    const auto p0 = AUTOWARE_MESSAGE_CONST_SHARED_PTR(M0)(std::shared_ptr<const M0>(m0));
+    const auto p1 = AUTOWARE_MESSAGE_CONST_SHARED_PTR(M1)(std::shared_ptr<const M1>(m1));
     stored_callback_(p0, p1);
   }
 

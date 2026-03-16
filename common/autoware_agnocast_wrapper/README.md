@@ -220,8 +220,8 @@ The callback method signature should use `const` references:
 
 ```cpp
 void onSynchronized(
-  const AUTOWARE_MESSAGE_SHARED_PTR(const sensor_msgs::msg::Image) & img,
-  const AUTOWARE_MESSAGE_SHARED_PTR(const sensor_msgs::msg::CameraInfo) & info);
+  const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::Image) & img,
+  const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::CameraInfo) & info);
 ```
 
 ### Migration guide (from `::message_filters`)
