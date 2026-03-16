@@ -233,12 +233,6 @@ void onSynchronized(
 | `message_filters::Synchronizer<Policy>`                   | `autoware::agnocast_wrapper::message_filters::Synchronizer<Policy>`                   |
 | `message_filters::sync_policies::ApproximateTime<M0, M1>` | `autoware::agnocast_wrapper::message_filters::sync_policies::ApproximateTime<M0, M1>` |
 
-> **Important:** Use `std::bind(&Method, this, _1, _2)` for `registerCallback`, not lambdas. The underlying `::message_filters::Signal9` internally re-wraps callbacks with `std::bind` using 9 placeholders, which fails for lambdas and `std::function` (fixed argument count), but works for `std::bind` results (extra arguments are silently ignored).
-
-### CMakeLists.txt
-
-The `message_filters` dependency is automatically exported by `autoware_agnocast_wrapper`. No additional `find_package(message_filters)` is needed in downstream packages.
-
 ## How to Enable/Disable Agnocast on Build
 
 To build Autoware **with** Agnocast:
