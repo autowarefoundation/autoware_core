@@ -17,3 +17,15 @@ function(autoware_agnocast_wrapper_setup target)
     target_compile_definitions(${target} PUBLIC USE_AGNOCAST_ENABLED)
   endif()
 endfunction()
+
+# Set template path for node_main_switchable
+set(autoware_agnocast_wrapper_NODE_TEMPLATE
+  "${autoware_agnocast_wrapper_DIR}/../templates/node_main_switchable.cpp.in")
+if(NOT EXISTS "${autoware_agnocast_wrapper_NODE_TEMPLATE}")
+  message(FATAL_ERROR
+    "autoware_agnocast_wrapper: template file not found: "
+    "${autoware_agnocast_wrapper_NODE_TEMPLATE}")
+endif()
+
+# Include the register_node macro
+include("${autoware_agnocast_wrapper_DIR}/autoware_agnocast_wrapper_register_node.cmake")
