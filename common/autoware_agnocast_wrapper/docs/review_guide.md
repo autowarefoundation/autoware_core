@@ -45,7 +45,7 @@ This document serves as a guide for reviewing PRs that apply [autoware_agnocast_
 - **Built with `ENABLE_AGNOCAST=0` (or unset)**: Standard ROS 2 build. Macros expand directly to rclcpp APIs, and no Agnocast-related code is included
 - **Built with `ENABLE_AGNOCAST=1`**: Agnocast-enabled build. At runtime, communication switches between Agnocast and ROS 2 depending on the `ENABLE_AGNOCAST` value
 
-In other words, users who build with `ENABLE_AGNOCAST=0` are not affected at all, and backward compatibility is maintained (see Section 4 for details).
+In other words, users who build with `ENABLE_AGNOCAST=0` are not affected at all, and backward compatibility is maintained (see Part 2 Section 2 for details).
 
 ### Agnocast Bridge: Why Other Nodes Are Not Affected
 
@@ -95,7 +95,7 @@ Once identified, proceed to the corresponding review procedure below.
 
 ### Method 1: Macro + Free Function API Review Procedure
 
-#### Step 1: Code Changes (see Section 5)
+#### Step 1: Code Changes (see Part 2 Section 3)
 
 - [ ] `#include <autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp>` has been added
 - [ ] **Base class remains `rclcpp::Node`**
@@ -105,7 +105,7 @@ Once identified, proceed to the corresponding review procedure below.
 - [ ] Message allocation (if publisher exists): `std::make_unique<M>()` → `ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_)`
 - [ ] Options type: `rclcpp::SubscriptionOptions` → `AUTOWARE_SUBSCRIPTION_OPTIONS`
 
-#### Step 2: Verification (see Section 4, Section 11)
+#### Step 2: Verification (see Part 2 Section 2, Part 2 Section 8)
 
 Items 1 and 2 are **recommended**, item 3 is **if possible** (requires Agnocast environment).
 
@@ -197,9 +197,9 @@ sudo apt install agnocast-heaphook-v2.3  # Match the version in autoware.repos
 
 ### Method 2: agnocast_wrapper::Node Inheritance Review Procedure
 
-Node-wide migration to `agnocast_wrapper::Node` (see Section 6 Method 2).
+Node-wide migration to `agnocast_wrapper::Node` (see Part 2 Section 4 Method 2).
 
-#### Step 1: Code Changes (see Section 5, Section 6 Method 2)
+#### Step 1: Code Changes (see Part 2 Section 3, Part 2 Section 4 Method 2)
 
 - [ ] `#include <autoware/agnocast_wrapper/node.hpp>` has been added
 - [ ] Base class has been changed to `autoware::agnocast_wrapper::Node`
