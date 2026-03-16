@@ -245,8 +245,9 @@ public:
     subscription_ = agnocast::create_subscription<MessageT>(
       node, topic_name, qos,
       [callback = std::forward<Func>(callback)](agnocast::ipc_shared_ptr<MessageT> && msg) {
-        callback(message_ptr<const MessageT, ownership>(
-          agnocast::ipc_shared_ptr<const MessageT>(std::move(msg))));
+        callback(
+          message_ptr<const MessageT, ownership>(
+            agnocast::ipc_shared_ptr<const MessageT>(std::move(msg))));
       },
       options);
   }
@@ -281,8 +282,8 @@ public:
     subscription_ = node->create_subscription<MessageT>(
       topic_name, qos,
       [callback = std::forward<Func>(callback)](std::unique_ptr<MessageT> msg) {
-        callback(message_ptr<const MessageT, ownership>(
-          std::shared_ptr<const MessageT>(std::move(msg))));
+        callback(
+          message_ptr<const MessageT, ownership>(std::shared_ptr<const MessageT>(std::move(msg))));
       },
       ros2_options);
   }
