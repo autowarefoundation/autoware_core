@@ -227,8 +227,8 @@ using Synchronizer = ::message_filters::Synchronizer<Policy>;
 /// @brief Alias for ApproximateTimeSynchronizer in non-agnocast mode.
 ///        Wraps ::message_filters::Synchronizer with an ApproximateTime policy.
 template <typename M0, typename M1>
-using ApproximateTimeSynchronizer = ::message_filters::Synchronizer<
-  ::message_filters::sync_policies::ApproximateTime<M0, M1>>;
+using ApproximateTimeSynchronizer =
+  ::message_filters::Synchronizer<::message_filters::sync_policies::ApproximateTime<M0, M1>>;
 
 }  // namespace message_filters
 }  // namespace agnocast_wrapper
