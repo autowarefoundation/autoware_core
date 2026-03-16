@@ -68,7 +68,7 @@
 #   )
 #
 # NOTE: This is intentionally a macro (not a function) because it calls
-# rclcpp_components_register_node, which is also a macro and requires
+# rclcpp_components_register_node(s), which is also a macro and requires
 # access to the caller's variable scope for ament resource index registration.
 macro(autoware_agnocast_wrapper_register_node target)
   if(NOT TARGET ${target})
