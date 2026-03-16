@@ -248,8 +248,9 @@ public:
         if constexpr (ownership == OwnershipType::Unique) {
           callback(message_ptr<MessageT, ownership>(std::move(msg)));
         } else {
-          callback(message_ptr<const MessageT, ownership>(
-            agnocast::ipc_shared_ptr<const MessageT>(std::move(msg))));
+          callback(
+            message_ptr<const MessageT, ownership>(
+              agnocast::ipc_shared_ptr<const MessageT>(std::move(msg))));
         }
       },
       options);
@@ -288,8 +289,9 @@ public:
         if constexpr (ownership == OwnershipType::Unique) {
           callback(message_ptr<MessageT, ownership>(std::move(msg)));
         } else {
-          callback(message_ptr<const MessageT, ownership>(
-            std::shared_ptr<const MessageT>(std::move(msg))));
+          callback(
+            message_ptr<const MessageT, ownership>(
+              std::shared_ptr<const MessageT>(std::move(msg))));
         }
       },
       ros2_options);
