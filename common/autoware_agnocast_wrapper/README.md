@@ -226,11 +226,11 @@ void onSynchronized(
 
 ### Migration guide (from `::message_filters`)
 
-| Before | After |
-|---|---|
-| `#include <message_filters/subscriber.h>` | `#include <autoware/agnocast_wrapper/message_filters.hpp>` |
-| `message_filters::Subscriber<M>` | `autoware::agnocast_wrapper::message_filters::Subscriber<M>` |
-| `message_filters::Synchronizer<Policy>` | `autoware::agnocast_wrapper::message_filters::Synchronizer<Policy>` |
+| Before                                                    | After                                                                                 |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `#include <message_filters/subscriber.h>`                 | `#include <autoware/agnocast_wrapper/message_filters.hpp>`                            |
+| `message_filters::Subscriber<M>`                          | `autoware::agnocast_wrapper::message_filters::Subscriber<M>`                          |
+| `message_filters::Synchronizer<Policy>`                   | `autoware::agnocast_wrapper::message_filters::Synchronizer<Policy>`                   |
 | `message_filters::sync_policies::ApproximateTime<M0, M1>` | `autoware::agnocast_wrapper::message_filters::sync_policies::ApproximateTime<M0, M1>` |
 
 > **Important:** Use `std::bind(&Method, this, _1, _2)` for `registerCallback`, not lambdas. The underlying `::message_filters::Signal9` internally re-wraps callbacks with `std::bind` using 9 placeholders, which fails for lambdas and `std::function` (fixed argument count), but works for `std::bind` results (extra arguments are silently ignored).
