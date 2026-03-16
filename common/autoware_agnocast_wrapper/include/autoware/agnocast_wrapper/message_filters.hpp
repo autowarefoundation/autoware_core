@@ -97,10 +97,12 @@ private:
 /// auto sync = std::make_shared<Synchronizer<Policy>>(Policy(10), image_sub, info_sub);
 ///
 /// sync->registerCallback(
-///   [](const AUTOWARE_MESSAGE_SHARED_PTR(const sensor_msgs::msg::Image) & img,
-///      const AUTOWARE_MESSAGE_SHARED_PTR(const sensor_msgs::msg::CameraInfo) & info) {
-///     // Process synchronized messages
-///   });
+///   std::bind(&MyNode::onSynchronized, this, std::placeholders::_1, std::placeholders::_2));
+///
+/// // Where the callback method signature is:
+/// // void onSynchronized(
+/// //   const AUTOWARE_MESSAGE_SHARED_PTR(const sensor_msgs::msg::Image) & img,
+/// //   const AUTOWARE_MESSAGE_SHARED_PTR(const sensor_msgs::msg::CameraInfo) & info);
 /// @endcode
 template <typename M0, typename M1>
 class ApproximateTimeSynchronizer
@@ -215,69 +217,18 @@ namespace message_filters
 template <class M>
 using Subscriber = ::message_filters::Subscriber<M>;
 
-/// @brief Wrapper ApproximateTime Synchronizer for non-agnocast mode.
-///        ::message_filters::Signal9::addCallback(C&) internally uses std::bind with 9
-///        placeholders, which fails with lambdas/std::function that accept fewer arguments.
-///        This wrapper bridges that gap by wrapping the callback in std::bind with only 2
-///        placeholders before forwarding to ::message_filters. std::bind results silently
-///        ignore extra arguments, so the 9-placeholder nesting works correctly.
 template <typename M0, typename M1>
-class ApproximateTimeSynchronizer
-{
-public:
-  using Callback = std::function<void(
-    const AUTOWARE_MESSAGE_SHARED_PTR(const M0) &, const AUTOWARE_MESSAGE_SHARED_PTR(const M1) &)>;
-
-  ApproximateTimeSynchronizer(
-    uint32_t queue_size, ::message_filters::Subscriber<M0> & sub0,
-    ::message_filters::Subscriber<M1> & sub1)
-  : sync_(RclcppPolicy(queue_size), sub0, sub1)
-  {
-  }
-
-  void registerCallback(Callback callback)
-  {
-    auto bound = std::bind(std::move(callback), std::placeholders::_1, std::placeholders::_2);
-    sync_.registerCallback(bound);
-  }
-
-private:
-  using RclcppPolicy = ::message_filters::sync_policies::ApproximateTime<M0, M1>;
-  ::message_filters::Synchronizer<RclcppPolicy> sync_;
-};
+using ApproximateTimeSynchronizer = ::message_filters::Synchronizer<
+  ::message_filters::sync_policies::ApproximateTime<M0, M1>>;
 
 namespace sync_policies
 {
 template <typename M0, typename M1>
-struct ApproximateTime
-{
-  uint32_t queue_size;
-  explicit ApproximateTime(uint32_t qs) : queue_size(qs) {}
-};
+using ApproximateTime = ::message_filters::sync_policies::ApproximateTime<M0, M1>;
 }  // namespace sync_policies
 
-/// @brief Primary Synchronizer template — only the ApproximateTime specialization is supported.
 template <typename Policy>
-class Synchronizer
-{
-  static_assert(
-    sizeof(Policy) == 0,
-    "Only sync_policies::ApproximateTime<M0, M1> is supported. "
-    "ExactTime and policies with more than 2 message types are not implemented.");
-};
-
-template <typename M0, typename M1>
-class Synchronizer<sync_policies::ApproximateTime<M0, M1>>
-: public ApproximateTimeSynchronizer<M0, M1>
-{
-public:
-  Synchronizer(
-    sync_policies::ApproximateTime<M0, M1> policy, ::message_filters::Subscriber<M0> & sub0,
-    ::message_filters::Subscriber<M1> & sub1)
-  : ApproximateTimeSynchronizer<M0, M1>(policy.queue_size, sub0, sub1)
-  {
-  }
-};
+using Synchronizer = ::message_filters::Synchronizer<Policy>;
 
 }  // namespace message_filters
 }  // namespace agnocast_wrapper
