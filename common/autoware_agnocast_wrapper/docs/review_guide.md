@@ -2,13 +2,13 @@ This document serves as a guide for reviewing PRs that apply [autoware_agnocast_
 
 ## Related Links
 
-| Resource | URL |
-|---|---|
-| autoware_agnocast_wrapper (source code) | [autowarefoundation/autoware_core/.../autoware_agnocast_wrapper](https://github.com/autowarefoundation/autoware_core/tree/main/common/autoware_agnocast_wrapper) |
-| Agnocast repository | [autowarefoundation/agnocast](https://github.com/autowarefoundation/agnocast) |
-| Agnocast README | [agnocast/README.md](https://github.com/autowarefoundation/agnocast/blob/main/README.md) |
-| Autoware Discussion: Agnocast introduction proposal | [Discussion #5835 - Introduce True Zero-Copy Publish/Subscribe IPC to Autoware](https://github.com/orgs/autowarefoundation/discussions/5835) |
-| Agnocast ROS 2 rosdistro support | [Issue #5968 - Use ROS 2 packages in Agnocast released via rosdistro](https://github.com/autowarefoundation/autoware/issues/5968) |
+| Resource                                            | URL                                                                                                                                                              |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| autoware_agnocast_wrapper (source code)             | [autowarefoundation/autoware_core/.../autoware_agnocast_wrapper](https://github.com/autowarefoundation/autoware_core/tree/main/common/autoware_agnocast_wrapper) |
+| Agnocast repository                                 | [autowarefoundation/agnocast](https://github.com/autowarefoundation/agnocast)                                                                                    |
+| Agnocast README                                     | [agnocast/README.md](https://github.com/autowarefoundation/agnocast/blob/main/README.md)                                                                         |
+| Autoware Discussion: Agnocast introduction proposal | [Discussion #5835 - Introduce True Zero-Copy Publish/Subscribe IPC to Autoware](https://github.com/orgs/autowarefoundation/discussions/5835)                     |
+| Agnocast ROS 2 rosdistro support                    | [Issue #5968 - Use ROS 2 packages in Agnocast released via rosdistro](https://github.com/autowarefoundation/autoware/issues/5968)                                |
 
 ## Table of Contents
 
@@ -184,7 +184,7 @@ sudo modprobe agnocast
 **Agnocast heaphook check:**
 
 ```bash
-$ ls /opt/ros/humble/lib/libagnocast_heaphook.so
+ls /opt/ros/humble/lib/libagnocast_heaphook.so
 ```
 
 If not found:
@@ -240,17 +240,17 @@ autoware_agnocast_wrapper behaves differently depending on the `ENABLE_AGNOCAST`
 
 ### Build Time
 
-| ENABLE_AGNOCAST | Behavior |
-|---|---|
-| Unset or `0` | Standard ROS 2 build. `USE_AGNOCAST_ENABLED` is not defined. Macros expand directly to rclcpp APIs. |
-| `1` | Agnocast-enabled build. `USE_AGNOCAST_ENABLED` is defined. Macros expand to wrapper classes, and runtime-switchable templates are generated. |
+| ENABLE_AGNOCAST | Behavior                                                                                                                                     |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unset or `0`    | Standard ROS 2 build. `USE_AGNOCAST_ENABLED` is not defined. Macros expand directly to rclcpp APIs.                                          |
+| `1`             | Agnocast-enabled build. `USE_AGNOCAST_ENABLED` is defined. Macros expand to wrapper classes, and runtime-switchable templates are generated. |
 
 ### Runtime (when built with ENABLE_AGNOCAST=1)
 
-| ENABLE_AGNOCAST | Behavior |
-|---|---|
-| Unset or `0` | Communicates via ROS 2 (rclcpp) |
-| `1` | Communicates via Agnocast |
+| ENABLE_AGNOCAST | Behavior                        |
+| --------------- | ------------------------------- |
+| Unset or `0`    | Communicates via ROS 2 (rclcpp) |
+| `1`             | Communicates via Agnocast       |
 
 **Notes:**
 
@@ -263,44 +263,44 @@ All macros below are defined in [`autoware_agnocast_wrapper.hpp`](https://github
 
 ### Message Pointer Types
 
-| Macro | ENABLE_AGNOCAST=1 (Agnocast) | ENABLE_AGNOCAST=0 (ROS 2) |
-|---|---|---|
-| `AUTOWARE_MESSAGE_UNIQUE_PTR(MsgT)` | `message_ptr<MsgT, Unique>` | `std::unique_ptr<MsgT>` |
-| `AUTOWARE_MESSAGE_SHARED_PTR(MsgT)` | `message_ptr<MsgT, Shared>` | `std::shared_ptr<MsgT>` |
-| `AUTOWARE_MESSAGE_CONST_SHARED_PTR(MsgT)` | `message_ptr<MsgT, Shared>` | `std::shared_ptr<const MsgT>` |
+| Macro                                     | ENABLE_AGNOCAST=1 (Agnocast) | ENABLE_AGNOCAST=0 (ROS 2)     |
+| ----------------------------------------- | ---------------------------- | ----------------------------- |
+| `AUTOWARE_MESSAGE_UNIQUE_PTR(MsgT)`       | `message_ptr<MsgT, Unique>`  | `std::unique_ptr<MsgT>`       |
+| `AUTOWARE_MESSAGE_SHARED_PTR(MsgT)`       | `message_ptr<MsgT, Shared>`  | `std::shared_ptr<MsgT>`       |
+| `AUTOWARE_MESSAGE_CONST_SHARED_PTR(MsgT)` | `message_ptr<MsgT, Shared>`  | `std::shared_ptr<const MsgT>` |
 
 > `AUTOWARE_MESSAGE_SHARED_PTR` is for publishers (mutable messages), while `AUTOWARE_MESSAGE_CONST_SHARED_PTR` is for subscriptions (read-only messages).
 
 ### Publisher/Subscriber Types
 
-| Macro | ENABLE_AGNOCAST=1 (Agnocast) | ENABLE_AGNOCAST=0 (ROS 2) |
-|---|---|---|
-| `AUTOWARE_PUBLISHER_PTR(MsgT)` | `Publisher<MsgT>::SharedPtr` | `rclcpp::Publisher<MsgT>::SharedPtr` |
-| `AUTOWARE_SUBSCRIPTION_PTR(MsgT)` | `Subscription<MsgT>::SharedPtr` | `rclcpp::Subscription<MsgT>::SharedPtr` |
+| Macro                                   | ENABLE_AGNOCAST=1 (Agnocast)         | ENABLE_AGNOCAST=0 (ROS 2)                        |
+| --------------------------------------- | ------------------------------------ | ------------------------------------------------ |
+| `AUTOWARE_PUBLISHER_PTR(MsgT)`          | `Publisher<MsgT>::SharedPtr`         | `rclcpp::Publisher<MsgT>::SharedPtr`             |
+| `AUTOWARE_SUBSCRIPTION_PTR(MsgT)`       | `Subscription<MsgT>::SharedPtr`      | `rclcpp::Subscription<MsgT>::SharedPtr`          |
 | `AUTOWARE_POLLING_SUBSCRIBER_PTR(MsgT)` | `PollingSubscriber<MsgT>::SharedPtr` | `InterProcessPollingSubscriber<MsgT>::SharedPtr` |
 
 ### Publisher/Subscriber Creation
 
-| Macro | ENABLE_AGNOCAST=1 (Agnocast) | ENABLE_AGNOCAST=0 (ROS 2) |
-|---|---|---|
-| `AUTOWARE_CREATE_SUBSCRIPTION(msg_type, topic, qos, callback, options)` | `agnocast_wrapper::create_subscription<msg_type>(...)` | `this->create_subscription<msg_type>(...)` |
-| `AUTOWARE_CREATE_PUBLISHER2(msg_type, topic, qos)` | `agnocast_wrapper::create_publisher<msg_type>(...)` | `this->create_publisher<msg_type>(...)` |
-| `AUTOWARE_CREATE_PUBLISHER3(msg_type, topic, qos, options)` | `agnocast_wrapper::create_publisher<msg_type>(...)` | `this->create_publisher<msg_type>(...)` |
-| `AUTOWARE_CREATE_POLLING_SUBSCRIBER(msg_type, topic, qos)` | `agnocast_wrapper::create_polling_subscriber<msg_type>(...)` | `InterProcessPollingSubscriber::create_subscription(...)` |
+| Macro                                                                   | ENABLE_AGNOCAST=1 (Agnocast)                                 | ENABLE_AGNOCAST=0 (ROS 2)                                 |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------- |
+| `AUTOWARE_CREATE_SUBSCRIPTION(msg_type, topic, qos, callback, options)` | `agnocast_wrapper::create_subscription<msg_type>(...)`       | `this->create_subscription<msg_type>(...)`                |
+| `AUTOWARE_CREATE_PUBLISHER2(msg_type, topic, qos)`                      | `agnocast_wrapper::create_publisher<msg_type>(...)`          | `this->create_publisher<msg_type>(...)`                   |
+| `AUTOWARE_CREATE_PUBLISHER3(msg_type, topic, qos, options)`             | `agnocast_wrapper::create_publisher<msg_type>(...)`          | `this->create_publisher<msg_type>(...)`                   |
+| `AUTOWARE_CREATE_POLLING_SUBSCRIBER(msg_type, topic, qos)`              | `agnocast_wrapper::create_polling_subscriber<msg_type>(...)` | `InterProcessPollingSubscriber::create_subscription(...)` |
 
 ### Message Allocation
 
-| Macro | ENABLE_AGNOCAST=1 (Agnocast) | ENABLE_AGNOCAST=0 (ROS 2) |
-|---|---|---|
+| Macro                                       | ENABLE_AGNOCAST=1 (Agnocast)                                               | ENABLE_AGNOCAST=0 (ROS 2)            |
+| ------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------ |
 | `ALLOCATE_OUTPUT_MESSAGE_UNIQUE(publisher)` | `publisher->allocate_output_message_unique()` (allocates in shared memory) | `std::make_unique<ROSMessageType>()` |
 | `ALLOCATE_OUTPUT_MESSAGE_SHARED(publisher)` | `publisher->allocate_output_message_shared()` (allocates in shared memory) | `std::make_shared<ROSMessageType>()` |
 
 ### Options Types
 
-| Macro | ENABLE_AGNOCAST=1 (Agnocast) | ENABLE_AGNOCAST=0 (ROS 2) |
-|---|---|---|
+| Macro                           | ENABLE_AGNOCAST=1 (Agnocast)    | ENABLE_AGNOCAST=0 (ROS 2)     |
+| ------------------------------- | ------------------------------- | ----------------------------- |
 | `AUTOWARE_SUBSCRIPTION_OPTIONS` | `agnocast::SubscriptionOptions` | `rclcpp::SubscriptionOptions` |
-| `AUTOWARE_PUBLISHER_OPTIONS` | `agnocast::PublisherOptions` | `rclcpp::PublisherOptions` |
+| `AUTOWARE_PUBLISHER_OPTIONS`    | `agnocast::PublisherOptions`    | `rclcpp::PublisherOptions`    |
 
 ## 6. Two Integration Methods: Free Functions vs agnocast_wrapper::Node
 
@@ -367,12 +367,12 @@ private:
 
 ### Comparison Table
 
-| | Macro + Free Function | agnocast_wrapper::Node |
-|---|---|---|
-| Base class | `rclcpp::Node` | `agnocast_wrapper::Node` |
-| Scope of changes | Specific topics only | Entire node |
-| Amount of code changes | Small | Medium |
-| AgnocastOnly Executor | Not available | Available |
+|                        | Macro + Free Function | agnocast_wrapper::Node   |
+| ---------------------- | --------------------- | ------------------------ |
+| Base class             | `rclcpp::Node`        | `agnocast_wrapper::Node` |
+| Scope of changes       | Specific topics only  | Entire node              |
+| Amount of code changes | Small                 | Medium                   |
+| AgnocastOnly Executor  | Not available         | Available                |
 
 ### Method 2 Behavior with ENABLE_AGNOCAST=0
 
@@ -415,31 +415,31 @@ autoware_agnocast_wrapper_register_node(my_node_component
 
 ### Parameters
 
-| Parameter | Required | Description |
-|---|---|---|
-| `PLUGIN` | Yes | Fully qualified class name of the component |
-| `EXECUTABLE` | Yes | Executable name for the node |
-| `ROS2_EXECUTOR` | No | Executor when `ENABLE_AGNOCAST=0` at runtime (default: `SingleThreadedExecutor`) |
-| `AGNOCAST_EXECUTOR` | No | Executor when `ENABLE_AGNOCAST=1` at runtime (default: `SingleThreadedAgnocastExecutor`) |
+| Parameter           | Required | Description                                                                              |
+| ------------------- | -------- | ---------------------------------------------------------------------------------------- |
+| `PLUGIN`            | Yes      | Fully qualified class name of the component                                              |
+| `EXECUTABLE`        | Yes      | Executable name for the node                                                             |
+| `ROS2_EXECUTOR`     | No       | Executor when `ENABLE_AGNOCAST=0` at runtime (default: `SingleThreadedExecutor`)         |
+| `AGNOCAST_EXECUTOR` | No       | Executor when `ENABLE_AGNOCAST=1` at runtime (default: `SingleThreadedAgnocastExecutor`) |
 
 ## 8. Executor Types and Selection
 
 ### ROS2_EXECUTOR (when ENABLE_AGNOCAST=0 at runtime)
 
-| Executor | Description |
-|---|---|
+| Executor                 | Description                                      |
+| ------------------------ | ------------------------------------------------ |
 | `SingleThreadedExecutor` | Single-threaded, executes callbacks sequentially |
-| `MultiThreadedExecutor` | Multi-threaded, executes callbacks in parallel |
+| `MultiThreadedExecutor`  | Multi-threaded, executes callbacks in parallel   |
 
 ### AGNOCAST_EXECUTOR (when ENABLE_AGNOCAST=1 at runtime)
 
-| Executor | Description |
-|---|---|
-| `SingleThreadedAgnocastExecutor` | Single-threaded. Processes both ROS 2 and Agnocast callbacks |
-| `MultiThreadedAgnocastExecutor` | Multi-threaded. Processes both ROS 2 and Agnocast callbacks |
-| `CallbackIsolatedAgnocastExecutor` | Multi-threaded (callback isolated). Processes both ROS 2 and Agnocast callbacks |
-| `AgnocastOnlySingleThreadedExecutor` | Single-threaded. Processes Agnocast callbacks only. **Requires agnocast_wrapper::Node** |
-| `AgnocastOnlyMultiThreadedExecutor` | Multi-threaded. Processes Agnocast callbacks only. **Requires agnocast_wrapper::Node** |
+| Executor                               | Description                                                                                                |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `SingleThreadedAgnocastExecutor`       | Single-threaded. Processes both ROS 2 and Agnocast callbacks                                               |
+| `MultiThreadedAgnocastExecutor`        | Multi-threaded. Processes both ROS 2 and Agnocast callbacks                                                |
+| `CallbackIsolatedAgnocastExecutor`     | Multi-threaded (callback isolated). Processes both ROS 2 and Agnocast callbacks                            |
+| `AgnocastOnlySingleThreadedExecutor`   | Single-threaded. Processes Agnocast callbacks only. **Requires agnocast_wrapper::Node**                    |
+| `AgnocastOnlyMultiThreadedExecutor`    | Multi-threaded. Processes Agnocast callbacks only. **Requires agnocast_wrapper::Node**                     |
 | `AgnocastOnlyCallbackIsolatedExecutor` | Multi-threaded (callback isolated). Processes Agnocast callbacks only. **Requires agnocast_wrapper::Node** |
 
 > **About AgnocastOnly executors:** The PLUGIN must inherit from `autoware::agnocast_wrapper::Node`. The `get_agnocast_node()` method is used to add the node to the executor.
@@ -459,18 +459,18 @@ By including `agnocast_env.launch.xml`, the appropriate component container is a
 
 ### Provided Variables
 
-| Variable | Description |
-|---|---|
-| `ld_preload_value` | `LD_PRELOAD` value with heaphook prepended |
-| `container_package` | `rclcpp_components` or `agnocast_components` |
-| `container_executable` | Container executable name to use |
+| Variable               | Description                                  |
+| ---------------------- | -------------------------------------------- |
+| `ld_preload_value`     | `LD_PRELOAD` value with heaphook prepended   |
+| `container_package`    | `rclcpp_components` or `agnocast_components` |
+| `container_executable` | Container executable name to use             |
 
 ### container_executable Resolution
 
-| use_multithread | ENABLE_AGNOCAST=0 | ENABLE_AGNOCAST=1 |
-|---|---|---|
-| `false` | `component_container` | `agnocast_component_container` |
-| `true` | `component_container_mt` | `agnocast_component_container_cie` |
+| use_multithread | ENABLE_AGNOCAST=0        | ENABLE_AGNOCAST=1                  |
+| --------------- | ------------------------ | ---------------------------------- |
+| `false`         | `component_container`    | `agnocast_component_container`     |
+| `true`          | `component_container_mt` | `agnocast_component_container_cie` |
 
 ### Usage Examples
 
@@ -519,10 +519,10 @@ container = ComposableNodeContainer(
 
 ### Parameters
 
-| Parameter | Default | Description |
-|---|---|---|
-| `agnocast_heaphook_path` | `/opt/ros/humble/lib/libagnocast_heaphook.so` | Path to the heaphook library |
-| `use_multithread` | `false` | Whether to use a multi-threaded container |
+| Parameter                | Default                                       | Description                               |
+| ------------------------ | --------------------------------------------- | ----------------------------------------- |
+| `agnocast_heaphook_path` | `/opt/ros/humble/lib/libagnocast_heaphook.so` | Path to the heaphook library              |
+| `use_multithread`        | `false`                                       | Whether to use a multi-threaded container |
 
 ## 10. Build and Execution Procedures
 
