@@ -235,11 +235,9 @@ public:
     // CudaPointcloudPreprocessorNode which uses UNIQUE_PTR callbacks.
     static_assert(
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
-        std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_SHARED_PTR(MessageT) &&> ||
         std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&>,
       "callback should be invocable with an rvalue reference to either "
-      "AUTOWARE_MESSAGE_UNIQUE_PTR, "
-      "AUTOWARE_MESSAGE_SHARED_PTR, or AUTOWARE_MESSAGE_CONST_SHARED_PTR");
+      "AUTOWARE_MESSAGE_UNIQUE_PTR or AUTOWARE_MESSAGE_CONST_SHARED_PTR");
 
     constexpr auto ownership =
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&>
@@ -274,11 +272,9 @@ public:
   {
     static_assert(
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
-        std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_SHARED_PTR(MessageT) &&> ||
         std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&>,
       "callback should be invocable with an rvalue reference to either "
-      "AUTOWARE_MESSAGE_UNIQUE_PTR, "
-      "AUTOWARE_MESSAGE_SHARED_PTR, or AUTOWARE_MESSAGE_CONST_SHARED_PTR");
+      "AUTOWARE_MESSAGE_UNIQUE_PTR or AUTOWARE_MESSAGE_CONST_SHARED_PTR");
 
     constexpr auto ownership =
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&>
