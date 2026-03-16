@@ -184,19 +184,15 @@ macro(autoware_agnocast_wrapper_register_node target)
         "AgnocastOnlyMultiThreadedExecutor, AgnocastOnlyCallbackIsolatedExecutor")
     endif()
 
-    # Save the values with unique prefix to avoid collision with rclcpp_components_register_node
-    set(_AGNOCAST_WRAPPER_COMPONENT ${ARGS_PLUGIN})
-    set(_AGNOCAST_WRAPPER_NODE ${ARGS_EXECUTABLE})
-
     # Register with rclcpp_components for component container support (resource index only).
     # Unlike rclcpp_components_register_node (singular), the plural form only populates
     # the ament resource index without generating an unnecessary standalone executable.
     rclcpp_components_register_nodes(${target}
-      ${_AGNOCAST_WRAPPER_COMPONENT})
+      ${ARGS_PLUGIN})
 
-    # Set template substitution variables (_AWR_ prefix) after rclcpp_components_register_node call
-    set(_AWR_node ${_AGNOCAST_WRAPPER_NODE})
-    set(_AWR_component ${_AGNOCAST_WRAPPER_COMPONENT})
+    # Set template substitution variables (_AWR_ prefix)
+    set(_AWR_node ${ARGS_EXECUTABLE})
+    set(_AWR_component ${ARGS_PLUGIN})
     set(_AWR_library_name "$<TARGET_FILE_NAME:${target}>")
 
     # Two-pass template generation:
@@ -206,19 +202,19 @@ macro(autoware_agnocast_wrapper_register_node target)
     file(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/autoware_agnocast_wrapper")
     configure_file(
       ${autoware_agnocast_wrapper_NODE_TEMPLATE}
-      ${PROJECT_BINARY_DIR}/autoware_agnocast_wrapper/node_main_configured_${_AGNOCAST_WRAPPER_NODE}.cpp.in)
+      ${PROJECT_BINARY_DIR}/autoware_agnocast_wrapper/node_main_configured_${ARGS_EXECUTABLE}.cpp.in)
     file(GENERATE
-      OUTPUT ${PROJECT_BINARY_DIR}/autoware_agnocast_wrapper/node_main_${_AGNOCAST_WRAPPER_NODE}.cpp
-      INPUT ${PROJECT_BINARY_DIR}/autoware_agnocast_wrapper/node_main_configured_${_AGNOCAST_WRAPPER_NODE}.cpp.in)
+      OUTPUT ${PROJECT_BINARY_DIR}/autoware_agnocast_wrapper/node_main_${ARGS_EXECUTABLE}.cpp
+      INPUT ${PROJECT_BINARY_DIR}/autoware_agnocast_wrapper/node_main_configured_${ARGS_EXECUTABLE}.cpp.in)
 
     # Create runtime-switchable executable
-    add_executable(${_AGNOCAST_WRAPPER_NODE}
-      ${PROJECT_BINARY_DIR}/autoware_agnocast_wrapper/node_main_${_AGNOCAST_WRAPPER_NODE}.cpp)
+    add_executable(${ARGS_EXECUTABLE}
+      ${PROJECT_BINARY_DIR}/autoware_agnocast_wrapper/node_main_${ARGS_EXECUTABLE}.cpp)
 
-    target_link_libraries(${_AGNOCAST_WRAPPER_NODE}
+    target_link_libraries(${ARGS_EXECUTABLE}
       ${target})
 
-    ament_target_dependencies(${_AGNOCAST_WRAPPER_NODE}
+    ament_target_dependencies(${ARGS_EXECUTABLE}
       rclcpp
       rclcpp_components
       class_loader
@@ -229,10 +225,10 @@ macro(autoware_agnocast_wrapper_register_node target)
     # Both the component library and the executable must have USE_AGNOCAST_ENABLED defined
     # to ensure ABI consistency (ament_target_dependencies does not propagate PUBLIC definitions)
     autoware_agnocast_wrapper_setup(${target})
-    autoware_agnocast_wrapper_setup(${_AGNOCAST_WRAPPER_NODE})
+    autoware_agnocast_wrapper_setup(${ARGS_EXECUTABLE})
 
     # Install executable
-    install(TARGETS ${_AGNOCAST_WRAPPER_NODE}
+    install(TARGETS ${ARGS_EXECUTABLE}
       DESTINATION lib/${PROJECT_NAME})
 
   else()
@@ -252,6 +248,4 @@ macro(autoware_agnocast_wrapper_register_node target)
   unset(_AWR_node)
   unset(_AWR_component)
   unset(_AWR_library_name)
-  unset(_AGNOCAST_WRAPPER_COMPONENT)
-  unset(_AGNOCAST_WRAPPER_NODE)
 endmacro()
