@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.14)
 project(autoware_ekf_localizer)
 
 find_package(autoware_cmake REQUIRED)
+find_package(autoware_agnocast_wrapper REQUIRED)
 autoware_package()
 
 find_package(Eigen3 REQUIRED)
@@ -25,10 +26,21 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/ekf_module.cpp
 )
 
-rclcpp_components_register_node(${PROJECT_NAME}
+target_include_directories(${PROJECT_NAME} PRIVATE
+  ${autoware_agnocast_wrapper_INCLUDE_DIRS}
+)
+
+ament_target_dependencies(${PROJECT_NAME}
+  autoware_agnocast_wrapper
+)
+
+autoware_agnocast_wrapper_setup(${PROJECT_NAME})
+
+autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
   PLUGIN "autoware::ekf_localizer::EKFLocalizer"
   EXECUTABLE ${PROJECT_NAME}_node
-  EXECUTOR SingleThreadedExecutor
+  AGNOCAST_EXECUTOR CallbackIsolatedAgnocastExecutor
+  ROS2_EXECUTOR MultiThreadedExecutor
 )
 
 target_link_libraries(${PROJECT_NAME} Eigen3::Eigen)
