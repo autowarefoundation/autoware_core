@@ -237,8 +237,7 @@ public:
 
   void registerCallback(Callback callback)
   {
-    auto bound =
-      std::bind(std::move(callback), std::placeholders::_1, std::placeholders::_2);
+    auto bound = std::bind(std::move(callback), std::placeholders::_1, std::placeholders::_2);
     sync_.registerCallback(bound);
   }
 
