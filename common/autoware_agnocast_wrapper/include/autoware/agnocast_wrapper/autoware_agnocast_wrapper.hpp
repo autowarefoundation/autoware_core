@@ -229,6 +229,10 @@ public:
     NodeT * node, const std::string & topic_name, const rclcpp::QoS & qos, Func && callback,
     const agnocast::SubscriptionOptions & options)
   {
+    // TODO(Koichi98): AUTOWARE_MESSAGE_UNIQUE_PTR should be disallowed for Agnocast subscriptions.
+    // Agnocast uses shared memory, so mutable exclusive ownership is semantically incorrect and
+    // risks corrupting data read by other subscribers. Currently kept for compatibility with
+    // CudaPointcloudPreprocessorNode which uses UNIQUE_PTR callbacks.
     static_assert(
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
         std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_SHARED_PTR(MessageT) &&> ||
