@@ -20,7 +20,6 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include "autoware_map_msgs/srv/get_differential_point_cloud_map.hpp"
-
 #include <geometry_msgs/msg/point.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
@@ -32,9 +31,9 @@
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
 
+#include <map>
 #include <mutex>
 #include <optional>
-#include <map>
 #include <string>
 #include <unordered_map>
 #include <vector>

@@ -58,8 +58,8 @@ DifferentialMapLoaderModule::DifferentialMapLoaderModule(
   }
 
   visualization_timer_ = node->create_wall_timer(
-    std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<double>(
-      std::max(visualization_update_interval_sec_, 0.1))),
+    std::chrono::duration_cast<std::chrono::nanoseconds>(
+      std::chrono::duration<double>(std::max(visualization_update_interval_sec_, 0.1))),
     std::bind(&DifferentialMapLoaderModule::on_visualization_timer, this));
 }
 
@@ -136,7 +136,8 @@ void DifferentialMapLoaderModule::on_visualization_timer()
     if (!latest_pose_) {
       RCLCPP_WARN_THROTTLE(
         logger_, *node_->get_clock(), 3000,
-        "Waiting for /localization/kinematic_state. Internal differential visualization is not queried yet.");
+        "Waiting for /localization/kinematic_state. Internal differential visualization is not "
+        "queried yet.");
       return;
     }
     query_center_x = latest_pose_->x;
@@ -182,7 +183,8 @@ void DifferentialMapLoaderModule::on_visualization_timer()
   internal_visualization_pub_->publish(reusable_merged_cloud_);
 }
 
-void DifferentialMapLoaderModule::on_kinematic_state(const nav_msgs::msg::Odometry::ConstSharedPtr msg)
+void DifferentialMapLoaderModule::on_kinematic_state(
+  const nav_msgs::msg::Odometry::ConstSharedPtr msg)
 {
   std::lock_guard<std::mutex> lock(visualization_mutex_);
   latest_pose_ = msg->pose.pose.position;
@@ -234,8 +236,8 @@ void DifferentialMapLoaderModule::rebuild_merged_cloud_for_visualization()
     reusable_merged_cloud_.row_step = 0U;
     return;
   }
-  reusable_merged_cloud_.width = static_cast<uint32_t>(
-    reusable_merged_cloud_.data.size() / reusable_merged_cloud_.point_step);
+  reusable_merged_cloud_.width =
+    static_cast<uint32_t>(reusable_merged_cloud_.data.size() / reusable_merged_cloud_.point_step);
   reusable_merged_cloud_.row_step =
     reusable_merged_cloud_.point_step * reusable_merged_cloud_.width;
   reusable_merged_cloud_.is_dense = false;
