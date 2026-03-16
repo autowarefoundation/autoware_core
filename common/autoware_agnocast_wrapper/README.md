@@ -4,6 +4,7 @@ The purpose of this package is to integrate Agnocast, a zero-copy middleware, in
 
 - Agnocast Repository: <https://github.com/tier4/agnocast>
 - Discussion on Agnocast Integration into Autoware: <https://github.com/orgs/autowarefoundation/discussions/5835>
+- [Review Guide for Agnocast Wrapper PRs](docs/review_guide.md)
 
 This package provides macros that wrap functions for publish/subscribe operations and smart pointer types for handling ROS 2 messages. When Autoware is built using the default build command, Agnocast is **not enabled**. However, setting the environment variable `ENABLE_AGNOCAST=1` enables Agnocast and results in a build that includes its integration. This design ensures backward compatibility for users who are unaware of Agnocast, minimizing disruption.
 
