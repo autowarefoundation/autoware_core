@@ -18,8 +18,10 @@
 #include <Eigen/Eigen>
 
 #include <geometry_msgs/msg/polygon_stamped.hpp>
+#include <geometry_msgs/msg/transform_stamped.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
+#include <optional>
 #include <string>
 
 using PointCloud2 = sensor_msgs::msg::PointCloud2;
@@ -50,11 +52,8 @@ struct CropBoxFilterConfig
 {
   CropBoxParam param;
   bool keep_outside_box{false};
-  bool need_preprocess_transform{false};
-  bool need_postprocess_transform{false};
-  Eigen::Matrix4f eigen_transform_preprocess{Eigen::Matrix4f::Identity()};
-  Eigen::Matrix4f eigen_transform_postprocess{Eigen::Matrix4f::Identity()};
-  std::string output_frame;
+  std::optional<geometry_msgs::msg::TransformStamped> preprocess_transform{std::nullopt};
+  std::optional<geometry_msgs::msg::TransformStamped> postprocess_transform{std::nullopt};
 };
 
 struct CropBoxFilterResult
@@ -63,8 +62,18 @@ struct CropBoxFilterResult
   int skipped_nan_count{0};
 };
 
-CropBoxFilterResult filter_pointcloud(
-  const PointCloud2 & cloud, const CropBoxFilterConfig & config);
+class CropBoxFilter
+{
+public:
+  explicit CropBoxFilter(const CropBoxFilterConfig & config);
+
+  CropBoxFilterResult filter(const PointCloud2 & cloud) const;
+
+private:
+  CropBoxFilterConfig config_;
+  Eigen::Matrix4f eigen_transform_preprocess_{Eigen::Matrix4f::Identity()};
+  Eigen::Matrix4f eigen_transform_postprocess_{Eigen::Matrix4f::Identity()};
+};
 
 geometry_msgs::msg::PolygonStamped generate_crop_box_polygon(
   const CropBoxParam & param, const std::string & frame_id,
