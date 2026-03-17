@@ -187,7 +187,7 @@ protected:
     });
 
     crop_box_filter_node_ =
-      std::make_shared<autoware::crop_box_filter::CropBoxFilter>(node_options);
+      std::make_shared<autoware::crop_box_filter::CropBoxFilterNode>(node_options);
   }
 
   void setupPointCloudNodes()
@@ -247,7 +247,7 @@ protected:
   std::shared_ptr<tf2_ros::StaticTransformBroadcaster> static_tf_broadcaster_;
 
   // CropBoxFilter node
-  std::shared_ptr<autoware::crop_box_filter::CropBoxFilter> crop_box_filter_node_;
+  std::shared_ptr<autoware::crop_box_filter::CropBoxFilterNode> crop_box_filter_node_;
 
   // PointCloud2 nodes
   rclcpp::Node::SharedPtr pointcloud_publisher_node_;
