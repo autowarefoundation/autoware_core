@@ -1485,68 +1485,6 @@ std::vector<lanelet::ConstLanelets> RouteHandler::getPrecedingLaneletSequence(
     lanelet, routing_graph_ptr_, length, exclude_lanelets);
 }
 
-std::optional<lanelet::ConstLanelet> RouteHandler::getLaneChangeTarget(
-  const lanelet::ConstLanelets & lanelets, const Direction direction) const
-{
-  for (const auto & lanelet : lanelets) {
-    const int num = getNumLaneToPreferredLane(lanelet, direction);
-    if (num == 0) {
-      continue;
-    }
-
-    if (direction == Direction::NONE || direction == Direction::RIGHT) {
-      if (num < 0) {
-        const auto right_lanes = routing_graph_ptr_->right(lanelet);
-        if (!!right_lanes) {
-          return *right_lanes;
-        }
-      }
-    }
-
-    if (direction == Direction::NONE || direction == Direction::LEFT) {
-      if (num > 0) {
-        const auto left_lanes = routing_graph_ptr_->left(lanelet);
-        if (!!left_lanes) {
-          return *left_lanes;
-        }
-      }
-    }
-  }
-
-  return std::nullopt;
-}
-
-std::optional<lanelet::ConstLanelet> RouteHandler::getLaneChangeTargetExceptPreferredLane(
-  const lanelet::ConstLanelets & lanelets, const Direction direction) const
-{
-  for (const auto & lanelet : lanelets) {
-    if (direction == Direction::RIGHT) {
-      // Get right lanelet if preferred lane is on the left
-      if (getNumLaneToPreferredLane(lanelet, direction) < 0) {
-        continue;
-      }
-
-      const auto right_lanes = routing_graph_ptr_->right(lanelet);
-      if (!!right_lanes) {
-        return *right_lanes;
-      }
-    }
-
-    if (direction == Direction::LEFT) {
-      // Get left lanelet if preferred lane is on the right
-      if (getNumLaneToPreferredLane(lanelet, direction) > 0) {
-        continue;
-      }
-      const auto left_lanes = routing_graph_ptr_->left(lanelet);
-      if (!!left_lanes) {
-        return *left_lanes;
-      }
-    }
-  }
-
-  return std::nullopt;
-}
-
 std::optional<lanelet::ConstLanelet> RouteHandler::getPullOverTarget(const Pose & goal_pose) const
 {
   const lanelet::BasicPoint2d p(goal_pose.position.x, goal_pose.position.y);
