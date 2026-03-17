@@ -105,29 +105,29 @@ The tables below show the complete behavior for each configuration. When `ENABLE
 
 Build-time `ENABLE_AGNOCAST=0` (or unset):
 
-| ROS2_EXECUTOR              | Runtime behavior         |
-| -------------------------- | ------------------------ |
-| `SingleThreadedExecutor`   | `SingleThreadedExecutor` |
-| `MultiThreadedExecutor`    | `MultiThreadedExecutor`  |
+| ROS2_EXECUTOR            | Runtime behavior         |
+| ------------------------ | ------------------------ |
+| `SingleThreadedExecutor` | `SingleThreadedExecutor` |
+| `MultiThreadedExecutor`  | `MultiThreadedExecutor`  |
 
 Runtime `ENABLE_AGNOCAST` has no effect in this mode — no switchable template is generated.
 
 Build-time `ENABLE_AGNOCAST=1`:
 
-| ROS2<br>\_EXECUTOR           | AGNOCAST<br>\_EXECUTOR                  | Runtime<br>`ENABLE_AGNOCAST=0` | Runtime<br>`ENABLE_AGNOCAST=1`                  |
-| ---------------------------- | ---------------------------------------- | ------------------------------ | ---------------------------------------- |
-| `SingleThreadedExecutor`     | `SingleThreadedAgnocastExecutor`         | `SingleThreadedExecutor`       | `SingleThreadedAgnocastExecutor`         |
-| `MultiThreadedExecutor`      | `MultiThreadedAgnocastExecutor`          | `MultiThreadedExecutor`        | `MultiThreadedAgnocastExecutor`          |
-| `MultiThreadedExecutor`      | `CallbackIsolatedAgnocastExecutor`       | `MultiThreadedExecutor`        | `CallbackIsolatedAgnocastExecutor`       |
-| `SingleThreadedExecutor`     | `AgnocastOnlySingleThreadedExecutor`     | `SingleThreadedExecutor`       | `AgnocastOnlySingleThreadedExecutor`     |
-| `MultiThreadedExecutor`      | `AgnocastOnlyMultiThreadedExecutor`      | `MultiThreadedExecutor`        | `AgnocastOnlyMultiThreadedExecutor`      |
-| `MultiThreadedExecutor`      | `AgnocastOnlyCallbackIsolatedExecutor`   | `MultiThreadedExecutor`        | `AgnocastOnlyCallbackIsolatedExecutor`   |
-| `SingleThreadedExecutor`     | `MultiThreadedAgnocastExecutor`          | `SingleThreadedExecutor`       | `MultiThreadedAgnocastExecutor`          |
-| `SingleThreadedExecutor`     | `CallbackIsolatedAgnocastExecutor`       | `SingleThreadedExecutor`       | `CallbackIsolatedAgnocastExecutor`       |
-| `SingleThreadedExecutor`     | `AgnocastOnlyMultiThreadedExecutor`      | `SingleThreadedExecutor`       | `AgnocastOnlyMultiThreadedExecutor`      |
-| `SingleThreadedExecutor`     | `AgnocastOnlyCallbackIsolatedExecutor`   | `SingleThreadedExecutor`       | `AgnocastOnlyCallbackIsolatedExecutor`   |
-| `MultiThreadedExecutor`      | `SingleThreadedAgnocastExecutor`         | `MultiThreadedExecutor`        | `SingleThreadedAgnocastExecutor`         |
-| `MultiThreadedExecutor`      | `AgnocastOnlySingleThreadedExecutor`     | `MultiThreadedExecutor`        | `AgnocastOnlySingleThreadedExecutor`     |
+| ROS2<br>\_EXECUTOR       | AGNOCAST<br>\_EXECUTOR                 | Runtime<br>`ENABLE_AGNOCAST=0` | Runtime<br>`ENABLE_AGNOCAST=1`         |
+| ------------------------ | -------------------------------------- | ------------------------------ | -------------------------------------- |
+| `SingleThreadedExecutor` | `SingleThreadedAgnocastExecutor`       | `SingleThreadedExecutor`       | `SingleThreadedAgnocastExecutor`       |
+| `MultiThreadedExecutor`  | `MultiThreadedAgnocastExecutor`        | `MultiThreadedExecutor`        | `MultiThreadedAgnocastExecutor`        |
+| `MultiThreadedExecutor`  | `CallbackIsolatedAgnocastExecutor`     | `MultiThreadedExecutor`        | `CallbackIsolatedAgnocastExecutor`     |
+| `SingleThreadedExecutor` | `AgnocastOnlySingleThreadedExecutor`   | `SingleThreadedExecutor`       | `AgnocastOnlySingleThreadedExecutor`   |
+| `MultiThreadedExecutor`  | `AgnocastOnlyMultiThreadedExecutor`    | `MultiThreadedExecutor`        | `AgnocastOnlyMultiThreadedExecutor`    |
+| `MultiThreadedExecutor`  | `AgnocastOnlyCallbackIsolatedExecutor` | `MultiThreadedExecutor`        | `AgnocastOnlyCallbackIsolatedExecutor` |
+| `SingleThreadedExecutor` | `MultiThreadedAgnocastExecutor`        | `SingleThreadedExecutor`       | `MultiThreadedAgnocastExecutor`        |
+| `SingleThreadedExecutor` | `CallbackIsolatedAgnocastExecutor`     | `SingleThreadedExecutor`       | `CallbackIsolatedAgnocastExecutor`     |
+| `SingleThreadedExecutor` | `AgnocastOnlyMultiThreadedExecutor`    | `SingleThreadedExecutor`       | `AgnocastOnlyMultiThreadedExecutor`    |
+| `SingleThreadedExecutor` | `AgnocastOnlyCallbackIsolatedExecutor` | `SingleThreadedExecutor`       | `AgnocastOnlyCallbackIsolatedExecutor` |
+| `MultiThreadedExecutor`  | `SingleThreadedAgnocastExecutor`       | `MultiThreadedExecutor`        | `SingleThreadedAgnocastExecutor`       |
+| `MultiThreadedExecutor`  | `AgnocastOnlySingleThreadedExecutor`   | `MultiThreadedExecutor`        | `AgnocastOnlySingleThreadedExecutor`   |
 
 Example with `agnocast_wrapper::Node` (AgnocastOnly executor):
 
