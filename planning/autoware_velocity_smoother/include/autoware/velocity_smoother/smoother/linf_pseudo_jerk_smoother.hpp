@@ -17,6 +17,7 @@
 
 #include "autoware/motion_utils/trajectory/trajectory.hpp"
 #include "autoware/osqp_interface/osqp_interface.hpp"
+#include "autoware/trajectory/trajectory_point.hpp"
 #include "autoware/velocity_smoother/smoother/smoother_base.hpp"
 
 #include <autoware_utils_debug/time_keeper.hpp>
@@ -30,6 +31,9 @@
 
 namespace autoware::velocity_smoother
 {
+using TrajectoryExperimental =
+  autoware::experimental::trajectory::Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>;
+
 class LinfPseudoJerkSmoother : public SmootherBase
 {
 public:
@@ -47,6 +51,11 @@ public:
     const double initial_vel, const double initial_acc, const TrajectoryPoints & input,
     TrajectoryPoints & output, std::vector<TrajectoryPoints> & debug_trajectories,
     const bool publish_debug_trajs) override;
+
+  bool apply(
+    const double initial_vel, const double initial_acc, const TrajectoryExperimental & input,
+    TrajectoryExperimental & output, std::vector<TrajectoryExperimental> & debug_trajectories,
+    const bool publish_debug_trajs);
 
   TrajectoryPoints resampleTrajectory(
     const TrajectoryPoints & input, const double v0, const geometry_msgs::msg::Pose & current_pose,
