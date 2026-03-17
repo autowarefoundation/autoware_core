@@ -114,7 +114,7 @@ Runtime `ENABLE_AGNOCAST` has no effect in this mode — no switchable template 
 
 Build-time `ENABLE_AGNOCAST=1`:
 
-| ROS2<br>\_EXECUTOR       | AGNOCAST<br>\_EXECUTOR                 | Runtime<br>`ENABLE_AGNOCAST=0` | Runtime<br>`ENABLE_AGNOCAST=1`         |
+| ROS 2<br>\_EXECUTOR      | AGNOCAST<br>\_EXECUTOR                 | Runtime<br>`ENABLE_AGNOCAST=0` | Runtime<br>`ENABLE_AGNOCAST=1`         |
 | ------------------------ | -------------------------------------- | ------------------------------ | -------------------------------------- |
 | `SingleThreadedExecutor` | `SingleThreadedAgnocastExecutor`       | `SingleThreadedExecutor`       | `SingleThreadedAgnocastExecutor`       |
 | `MultiThreadedExecutor`  | `MultiThreadedAgnocastExecutor`        | `MultiThreadedExecutor`        | `MultiThreadedAgnocastExecutor`        |
