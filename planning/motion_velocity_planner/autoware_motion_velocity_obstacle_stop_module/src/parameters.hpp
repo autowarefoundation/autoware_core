@@ -114,6 +114,14 @@ struct ObstacleFilteringParam
     };
   } lateral_margin;
 
+  struct DetectionHeightParam
+  {
+    double top_limit{};
+    double bottom_limit{};
+  } detection_height;
+
+  double min_object_length{};
+
   double min_velocity_to_reach_collision_point{};
   double stop_obstacle_hold_time_threshold{};
 
@@ -154,6 +162,14 @@ struct ObstacleFilteringParam
       node, param_prefix + "lateral_margin.additional.is_stop_obstacle", label_str);
     lateral_margin.additional_is_moving_margin = get_object_parameter<double>(
       node, param_prefix + "lateral_margin.additional.is_moving_obstacle", label_str);
+
+    detection_height.top_limit =
+      get_object_parameter<double>(node, param_prefix + "detection_height.top_limit", label_str);
+    detection_height.bottom_limit =
+      get_object_parameter<double>(node, param_prefix + "detection_height.bottom_limit", label_str);
+
+    min_object_length =
+      get_object_parameter<double>(node, param_prefix + "min_object_length", label_str);
 
     min_velocity_to_reach_collision_point = get_object_parameter<double>(
       node, param_prefix + "min_velocity_to_reach_collision_point", label_str);

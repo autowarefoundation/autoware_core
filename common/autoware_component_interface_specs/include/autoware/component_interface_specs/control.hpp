@@ -29,7 +29,7 @@ struct ControlCommand
   static constexpr char name[] = "/control/command/control_cmd";
   static constexpr size_t depth = 1;
   static constexpr auto reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
-  static constexpr auto durability = RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL;
+  static constexpr auto durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
 };
 
 }  // namespace autoware::component_interface_specs::control

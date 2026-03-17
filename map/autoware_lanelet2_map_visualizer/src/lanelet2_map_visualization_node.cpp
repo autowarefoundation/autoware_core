@@ -35,7 +35,6 @@
 
 #include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware_lanelet2_extension/regulatory_elements/autoware_traffic_light.hpp>
-#include <autoware_lanelet2_extension/utility/message_conversion.hpp>
 #include <autoware_lanelet2_extension/utility/query.hpp>
 #include <autoware_lanelet2_extension/visualization/visualization.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -136,6 +135,8 @@ void Lanelet2MapVisualizationNode::on_map_bin(
   std::vector<lanelet::BusStopAreaConstPtr> bus_stop_reg_elems =
     lanelet::utils::query::busStopAreas(all_lanelets);
   lanelet::ConstLineStrings3d waypoints = lanelet::utils::query::getAllWaypoints(viz_lanelet_map);
+  lanelet::ConstPolygons3d obstacle_removal_areas =
+    lanelet::utils::query::getAllPolygonsByType(viz_lanelet_map, "obstacle_removal_area");
 
   std_msgs::msg::ColorRGBA cl_road;
   std_msgs::msg::ColorRGBA cl_shoulder;
@@ -165,6 +166,7 @@ void Lanelet2MapVisualizationNode::on_map_bin(
   std_msgs::msg::ColorRGBA cl_bus_stop_area;
   std_msgs::msg::ColorRGBA cl_bicycle_lane;
   std_msgs::msg::ColorRGBA cl_waypoints;
+  std_msgs::msg::ColorRGBA cl_obstacle_removal_area;
   set_color(&cl_road, 0.27, 0.27, 0.27, 0.999);
   set_color(&cl_shoulder, 0.15, 0.15, 0.15, 0.999);
   set_color(&cl_cross, 0.27, 0.3, 0.27, 0.5);
@@ -193,6 +195,7 @@ void Lanelet2MapVisualizationNode::on_map_bin(
   set_color(&cl_bus_stop_area, 0.863, 0.863, 0.863, 0.5);
   set_color(&cl_bicycle_lane, 0.0, 0.3843, 0.6274, 0.5);
   set_color(&cl_waypoints, 0.6, 0.4, 0.3, 0.999);
+  set_color(&cl_obstacle_removal_area, 0.2, 0.2, 0.5, 0.5);
 
   visualization_msgs::msg::MarkerArray map_marker_array;
 
@@ -324,6 +327,9 @@ void Lanelet2MapVisualizationNode::on_map_bin(
   insert_marker_array(
     &map_marker_array,
     lanelet::visualization::lineStringsAsMarkerArray(waypoints, "waypoints", cl_waypoints, 0.02));
+  insert_marker_array(
+    &map_marker_array, lanelet::visualization::obstacleRemovalAreaAsMarkerArray(
+                         obstacle_removal_areas, cl_obstacle_removal_area));
 
   pub_marker_->publish(map_marker_array);
 }

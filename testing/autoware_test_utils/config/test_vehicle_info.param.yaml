@@ -1,4 +1,4 @@
-# NOTE: this configuration is exactly the same as that of sample_vehicle_description
+# NOTE: this configuration is exactly the same as that of autoware_sample_vehicle_description
 /**:
   ros__parameters:
     wheel_radius: 0.383 # The radius of the wheel, primarily used for dead reckoning.

@@ -19,6 +19,7 @@
 
 #include <rclcpp/logging.hpp>
 
+#include <algorithm>
 #include <utility>
 #include <vector>
 

@@ -146,7 +146,13 @@ TEST(TestCollisionChecker, DISABLED_Benchmark)
     const auto cc_end = std::chrono::system_clock::now();
     const auto naive_start = std::chrono::system_clock::now();
     MultiPoint2d naive_collision_points;
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+    // on NVIDIA DRIVE AGX Thor, boost::geometry triggers a false positive warning
     boost::geometry::intersection(ego_footprints, obstacles, naive_collision_points);
+#pragma GCC diagnostic pop
+
     const auto naive_end = std::chrono::system_clock::now();
     const auto equal = all_within(cc_collision_points, naive_collision_points) &&
                        all_within(naive_collision_points, cc_collision_points);

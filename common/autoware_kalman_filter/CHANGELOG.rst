@@ -24,6 +24,9 @@ Changelog for package autoware_kalman_filter
   ---------
 * Contributors: RyuYamamoto, Yutaka Kondo
 
+1.7.0 (2026-02-14)
+------------------
+
 1.6.0 (2025-12-30)
 ------------------
 

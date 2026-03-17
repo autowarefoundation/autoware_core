@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+  <!--
+    Configuration:
+    - Checks ENABLE_AGNOCAST environment variable (set to "1" to enable)
+    - Heaphook path is configurable via the agnocast_heaphook_path arg
+      (default: /opt/ros/humble/lib/libagnocast_heaphook.so)
+
+    Provides the following variables:
+    - ld_preload_value: LD_PRELOAD value with heaphook prepended when Agnocast is enabled
+    - container_package: resolved component container package name
+    - container_executable: resolved component container executable name
+  -->
+
+  <arg name="agnocast_heaphook_path" default="/opt/ros/humble/lib/libagnocast_heaphook.so"/>
+  <arg name="use_multithread" default="false"/>
+  <let name="use_agnocast" value="$(env ENABLE_AGNOCAST 0)"/>
+
+  <!-- LD_PRELOAD -->
+  <let name="ld_preload_value" value="$(var agnocast_heaphook_path):$(env LD_PRELOAD '')" if="$(eval &quot;'$(var use_agnocast)' == '1'&quot;)"/>
+  <let name="ld_preload_value" value="$(env LD_PRELOAD '')" unless="$(eval &quot;'$(var use_agnocast)' == '1'&quot;)"/>
+
+  <!-- Component container package and executable -->
+  <let name="container_package" value="rclcpp_components" unless="$(eval &quot;'$(var use_agnocast)' == '1'&quot;)"/>
+  <let name="container_package" value="agnocast_components" if="$(eval &quot;'$(var use_agnocast)' == '1'&quot;)"/>
+  <let name="container_executable" value="component_container" if="$(eval &quot;'$(var use_agnocast)' != '1' and '$(var use_multithread)' != 'true'&quot;)"/>
+  <let name="container_executable" value="component_container_mt" if="$(eval &quot;'$(var use_agnocast)' != '1' and '$(var use_multithread)' == 'true'&quot;)"/>
+  <let name="container_executable" value="agnocast_component_container" if="$(eval &quot;'$(var use_agnocast)' == '1' and '$(var use_multithread)' != 'true'&quot;)"/>
+  <let name="container_executable" value="agnocast_component_container_cie" if="$(eval &quot;'$(var use_agnocast)' == '1' and '$(var use_multithread)' == 'true'&quot;)"/>
+</launch>

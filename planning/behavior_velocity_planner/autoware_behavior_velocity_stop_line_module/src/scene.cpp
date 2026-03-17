@@ -86,7 +86,7 @@ bool StopLineModule::modifyPathVelocity(PathWithLaneId * path)
     return true;
   }
 
-  trajectory->longitudinal_velocity_mps().range(*stop_point, trajectory->length()).set(0.0);
+  trajectory->set_stopline(*stop_point);
 
   path->points = trajectory->restore();
 
