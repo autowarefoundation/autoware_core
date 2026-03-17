@@ -14,6 +14,8 @@
 
 #include "crop_box_filter.hpp"
 
+#include <tf2_eigen/tf2_eigen.hpp>
+
 #include <sensor_msgs/msg/point_field.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
 
@@ -130,8 +132,23 @@ geometry_msgs::msg::PolygonStamped generate_crop_box_polygon(
   return polygon_msg;
 }
 
-CropBoxFilterResult filter_pointcloud(const PointCloud2 & cloud, const CropBoxFilterConfig & config)
+CropBoxFilter::CropBoxFilter(const CropBoxFilterConfig & config) : config_(config)
 {
+  if (config_.preprocess_transform) {
+    const auto eigen_transform = tf2::transformToEigen(config_.preprocess_transform.value());
+    eigen_transform_preprocess_ = eigen_transform.matrix().cast<float>();
+  }
+  if (config_.postprocess_transform) {
+    const auto eigen_transform = tf2::transformToEigen(config_.postprocess_transform.value());
+    eigen_transform_postprocess_ = eigen_transform.matrix().cast<float>();
+  }
+}
+
+CropBoxFilterResult CropBoxFilter::filter(const PointCloud2 & cloud) const
+{
+  const bool need_preprocess_transform = config_.preprocess_transform.has_value();
+  const bool need_postprocess_transform = config_.postprocess_transform.has_value();
+
   CropBoxFilterResult result;
   auto & output = result.pointcloud;
 
@@ -167,29 +184,28 @@ CropBoxFilterResult filter_pointcloud(const PointCloud2 & cloud, const CropBoxFi
 
     Eigen::Vector4f point_preprocessed = point;
 
-    if (config.need_preprocess_transform) {
-      point_preprocessed = config.eigen_transform_preprocess * point;
+    if (need_preprocess_transform) {
+      point_preprocessed = eigen_transform_preprocess_ * point;
     }
 
     bool point_is_inside =
-      point_preprocessed[2] > config.param.min_z && point_preprocessed[2] < config.param.max_z &&
-      point_preprocessed[1] > config.param.min_y && point_preprocessed[1] < config.param.max_y &&
-      point_preprocessed[0] > config.param.min_x && point_preprocessed[0] < config.param.max_x;
+      point_preprocessed[2] > config_.param.min_z && point_preprocessed[2] < config_.param.max_z &&
+      point_preprocessed[1] > config_.param.min_y && point_preprocessed[1] < config_.param.max_y &&
+      point_preprocessed[0] > config_.param.min_x && point_preprocessed[0] < config_.param.max_x;
 
     if (
-      (!config.keep_outside_box && point_is_inside) ||
-      (config.keep_outside_box && !point_is_inside)) {
+      (!config_.keep_outside_box && point_is_inside) ||
+      (config_.keep_outside_box && !point_is_inside)) {
       const size_t global_offset = point_index * cloud.point_step;
 
       memcpy(&output.data[output_size], &cloud.data[global_offset], cloud.point_step);
 
-      if (config.need_postprocess_transform) {
-        Eigen::Vector4f point_postprocessed =
-          config.eigen_transform_postprocess * point_preprocessed;
+      if (need_postprocess_transform) {
+        Eigen::Vector4f point_postprocessed = eigen_transform_postprocess_ * point_preprocessed;
         *output_x = point_postprocessed[0];
         *output_y = point_postprocessed[1];
         *output_z = point_postprocessed[2];
-      } else if (config.need_preprocess_transform) {
+      } else if (need_preprocess_transform) {
         *output_x = point_preprocessed[0];
         *output_y = point_preprocessed[1];
         *output_z = point_preprocessed[2];
@@ -203,7 +219,13 @@ CropBoxFilterResult filter_pointcloud(const PointCloud2 & cloud, const CropBoxFi
   }
 
   output.data.resize(output_size);
-  output.header.frame_id = config.output_frame;
+  if (config_.postprocess_transform) {
+    output.header.frame_id = config_.postprocess_transform->header.frame_id;
+  } else if (config_.preprocess_transform) {
+    output.header.frame_id = config_.preprocess_transform->header.frame_id;
+  } else {
+    output.header.frame_id = cloud.header.frame_id;
+  }
   output.header.stamp = cloud.header.stamp;
   output.height = 1;
   output.is_bigendian = cloud.is_bigendian;

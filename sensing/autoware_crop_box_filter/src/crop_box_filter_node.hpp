@@ -25,13 +25,14 @@
 #include <autoware_utils_tf/transform_listener.hpp>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 namespace autoware::crop_box_filter
 {
 
-class CropBoxFilter : public rclcpp::Node
+class CropBoxFilterNode : public rclcpp::Node
 {
 private:
   // member variable declaration & definitions *************************************
@@ -43,16 +44,11 @@ private:
    * if input.header.frame_id is different. */
   std::string tf_input_frame_;
 
-  /** \brief The original data input TF frame. */
-  std::string tf_input_orig_frame_;
-
-  /** \brief The maximum queue size (default: 3). */
-  size_t max_queue_size_ = 3;
-
   /** \brief Internal mutex. */
   std::mutex mutex_;
 
   CropBoxFilterConfig config_;
+  std::optional<CropBoxFilter> crop_box_filter_;
 
   /** \brief Parameter service callback result : needed to be hold */
   OnSetParametersCallbackHandle::SharedPtr set_param_res_;
@@ -92,7 +88,7 @@ private:
   }
 
 public:
-  explicit CropBoxFilter(const rclcpp::NodeOptions & node_options);
+  explicit CropBoxFilterNode(const rclcpp::NodeOptions & node_options);
 };
 }  // namespace autoware::crop_box_filter
 
