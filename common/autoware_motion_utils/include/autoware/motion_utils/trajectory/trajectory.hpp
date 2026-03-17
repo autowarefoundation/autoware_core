@@ -110,7 +110,7 @@ template <class T>
 
   const auto & first_pose = autoware_utils_geometry::get_pose(points.at(0));
 
-  // Find the first point that is at least min_dist away from the first point
+  // Find the target point that is at least min_dist away from the first point
   for (size_t i = 1; i < points.size(); ++i) {
     const auto & target_pose = autoware_utils_geometry::get_pose(points.at(i));
     if (autoware_utils_geometry::calc_distance2d(first_pose, target_pose) >= min_dist) {
