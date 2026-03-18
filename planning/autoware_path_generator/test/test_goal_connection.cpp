@@ -15,7 +15,6 @@
 #include "utils_test.hpp"
 
 #include <autoware/lanelet2_utils/geometry.hpp>
-#include <autoware_lanelet2_extension/utility/utilities.hpp>
 
 #include <gtest/gtest.h>
 #include <lanelet2_core/geometry/Lanelet.h>

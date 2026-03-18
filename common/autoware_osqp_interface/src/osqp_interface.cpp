@@ -362,7 +362,7 @@ int64_t OSQPInterface::initializeProblem(
 OSQPResult OSQPInterface::solve()
 {
   // Solve Problem
-  int32_t exit_flag = osqp_solve(m_work.get());
+  int32_t exit_flag = static_cast<int32_t>(osqp_solve(m_work.get()));
 
   /********************
    * EXTRACT SOLUTION
@@ -381,9 +381,9 @@ OSQPResult OSQPInterface::solve()
 
   result.primal_solution = sol_primal;
   result.lagrange_multipliers = sol_lagrange_multiplier;
-  result.polish_status = status_polish;
-  result.solution_status = status_solution;
-  result.iteration_status = status_iteration;
+  result.polish_status = static_cast<int>(status_polish);
+  result.solution_status = static_cast<int>(status_solution);
+  result.iteration_status = static_cast<int>(status_iteration);
   result.exit_flag = exit_flag;
 
   m_latest_work_info = *(m_work->info);
@@ -416,7 +416,7 @@ OSQPResult OSQPInterface::optimize(
 
 void OSQPInterface::logUnsolvedStatus(const std::string & prefix_message) const
 {
-  const int status = getStatus();
+  const int status = static_cast<int>(getStatus());
   if (status == 1) {
     // No need to log since optimization was solved.
     return;

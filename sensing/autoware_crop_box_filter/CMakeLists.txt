@@ -17,7 +17,7 @@ ament_auto_add_library(crop_box_filter_node SHARED
 )
 
 rclcpp_components_register_node(crop_box_filter_node
-  PLUGIN "autoware::crop_box_filter::CropBoxFilter"
+  PLUGIN "autoware::crop_box_filter::CropBoxFilterNode"
   EXECUTABLE crop_box_filter)
 
 if(BUILD_TESTING)
