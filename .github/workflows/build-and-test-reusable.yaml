@@ -121,6 +121,7 @@ jobs:
           rosdistro: ${{ inputs.rosdistro }}
           cache-key-element: build-and-test-${{ inputs.cache-key-element }}${{ inputs.above && '-above' || '' }}
           target-packages: ${{ steps.get-self-packages.outputs.self-packages }}
+          build-depends-repos: build_depends.repos
           packages-above-repos: ${{ inputs.above && 'packages_above.repos' || '' }}
           underlay-workspace: /opt/autoware
 
@@ -146,6 +147,7 @@ jobs:
         with:
           rosdistro: ${{ inputs.rosdistro }}
           target-packages: ${{ steps.get-self-packages.outputs.self-packages }}
+          build-depends-repos: build_depends.repos
           underlay-workspace: /opt/autoware
 
       - name: Upload coverage to CodeCov
