@@ -15,8 +15,6 @@ ament_target_dependencies(${PROJECT_NAME}
   autoware_agnocast_wrapper
 )
 
-autoware_agnocast_wrapper_setup(${PROJECT_NAME})
-
 if(BUILD_TESTING)
   ament_add_ros_isolated_gtest(test_gyro_odometer
     test/test_main.cpp
@@ -40,6 +38,8 @@ autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
   AGNOCAST_EXECUTOR CallbackIsolatedAgnocastExecutor
   ROS2_EXECUTOR SingleThreadedExecutor
 )
+
+autoware_agnocast_wrapper_setup(${PROJECT_NAME}_node)
 
 autoware_ament_auto_package(INSTALL_TO_SHARE
   launch
