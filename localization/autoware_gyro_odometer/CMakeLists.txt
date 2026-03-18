@@ -11,10 +11,6 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
 
 target_link_libraries(${PROJECT_NAME} fmt)
 
-target_include_directories(${PROJECT_NAME} PRIVATE
-  ${autoware_agnocast_wrapper_INCLUDE_DIRS}
-)
-
 ament_target_dependencies(${PROJECT_NAME}
   autoware_agnocast_wrapper
 )
