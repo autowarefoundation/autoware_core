@@ -157,10 +157,27 @@ jobs:
         id: get-modified-packages
         uses: autowarefoundation/autoware-github-actions/get-modified-packages@v1
 
-      - name: Get changed files (existing files only)
+      - name: Get changed files (existing files only, excluding header-only packages)
         id: get-changed-files
         run: |
-          echo "changed-files=$(git diff --name-only "origin/${{ github.base_ref }}"...HEAD | grep -E '\.(cpp|hpp)$' | while read -r file; do [ -e "$file" ] && echo -n "$file "; done)" >> $GITHUB_OUTPUT
+          changed_files=$(git diff --diff-filter=d --name-only "origin/${{ github.base_ref }}"...HEAD | { grep -E '\.(cpp|hpp)$' || true; } | while read -r file; do [ -e "$file" ] && echo -n "$file "; done)
+
+          # Exclude files belonging to header-only packages (no .cpp in src/).
+          # These packages don't generate compile_commands.json, which causes clang-tidy to fail.
+          filtered_files=""
+          for file in $changed_files; do
+            pkg_dir=$(colcon list --paths-only 2>/dev/null | while read -r pkg_path; do
+              case "$file" in "$pkg_path"/*) echo "$pkg_path"; break;; esac
+            done)
+            if [ -z "$pkg_dir" ]; then
+              filtered_files="$filtered_files $file"
+              continue
+            fi
+            if find "$pkg_dir/src" -name '*.cpp' 2>/dev/null | grep -q .; then
+              filtered_files="$filtered_files $file"
+            fi
+          done
+          echo "changed-files=$(echo "$filtered_files" | xargs)" >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Run clang-tidy
@@ -171,7 +188,7 @@ jobs:
           cache-key-element: build-and-test-diff${{ inputs.above && '-above' || '' }}
           target-packages: ${{ steps.get-modified-packages.outputs.modified-packages }}
           target-files: ${{ steps.get-changed-files.outputs.changed-files }}
-          clang-tidy-config-url: https://raw.githubusercontent.com/autowarefoundation/autoware/main/.clang-tidy-ci
+          clang-tidy-config-url: https://raw.githubusercontent.com/autowarefoundation/autoware_core/main/.clang-tidy-ci
           underlay-workspace: /opt/autoware
           artifact-name: clang-tidy-result-${{ inputs.rosdistro }}
 

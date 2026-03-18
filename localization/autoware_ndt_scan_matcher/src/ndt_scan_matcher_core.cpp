@@ -929,9 +929,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr NDTScanMatcher::visualize_point_score(
     point.z = nvs_points_in_map_ptr_i.points[i].z;
     std_msgs::msg::ColorRGBA color =
       exchange_color_crc((nvs_points_in_map_ptr_i.points[i].intensity - lower_nvs) / range);
-    point.r = color.r * 255;
-    point.g = color.g * 255;
-    point.b = color.b * 255;
+    point.r = static_cast<std::uint8_t>(color.r * 255);
+    point.g = static_cast<std::uint8_t>(color.g * 255);
+    point.b = static_cast<std::uint8_t>(color.b * 255);
     nvs_points_in_map_ptr_rgb->points.push_back(point);
   }
   return nvs_points_in_map_ptr_rgb;

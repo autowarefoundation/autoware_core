@@ -289,8 +289,6 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
     return std::nullopt;
   }
 
-  std::vector<PathPointWithLaneId> path_points_with_lane_id{};
-
   auto path = experimental::trajectory::build_reference_path(
     lanelet_sequence, route_manager_->current_lanelet(), current_pose,
     route_manager_->lanelet_map_ptr(), route_manager_->routing_graph_ptr(),
