@@ -389,21 +389,25 @@ std::optional<CollisionPointWithDist> ObstacleStopModule::get_nearest_collision_
 
     const auto bumper_pose = autoware_utils_geometry::calc_offset_pose(
       traj_points.at(traj_index).pose, x_offset_to_bumper, 0.0, 0.0);
+
     std::optional<double> max_collision_length = std::nullopt;
     std::optional<geometry_msgs::msg::Point> max_collision_point = std::nullopt;
+
     for (const auto & point : collision_geom_points) {
       const double dist_from_bumper =
         std::abs(autoware_utils_geometry::inverse_transform_point(point, bumper_pose).x);
-
-      if (!max_collision_length.has_value() || dist_from_bumper > *max_collision_length) {
+      if (
+        !max_collision_length.has_value() ||
+        dist_from_bumper > max_collision_length.value_or(-1.0)) {
         max_collision_length = dist_from_bumper;
         max_collision_point = point;
       }
     }
+
     return CollisionPointWithDist{
-      *max_collision_point,
+      max_collision_point.value_or(geometry_msgs::msg::Point{}),
       autoware::motion_utils::calcSignedArcLength(traj_points, 0, traj_index) -
-        *max_collision_length};
+        max_collision_length.value_or(-1.0)};
   }
   return std::nullopt;
 }
@@ -848,6 +852,10 @@ bool ObstacleStopModule::is_crossing_transient_obstacle(
   }
 
   //  calculate the time to reach the collision point
+  if (!collision_point.has_value()) {
+    RCLCPP_ERROR(logger_, "collision_point has no value");
+    return false;
+  }
   const double time_to_reach_stop_point = calc_time_to_reach_collision_point(
     odometry, collision_point->first, traj_points, x_offset_to_bumper,
     stop_planning_param_.min_behavior_stop_margin,
@@ -938,6 +946,10 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::plan_stop(
     }
 
     if (determined_stop_obstacle) {
+      if (!determined_zero_vel_dist.has_value()) {
+        RCLCPP_ERROR(logger_, "determined_zero_vel_dist has no value");
+        continue;
+      }
       const bool is_same_param_types =
         (stop_obstacle.classification == determined_stop_obstacle->classification);
       const auto point_cloud_suppression_margin = [&](const StopObstacle & obs) {
@@ -956,7 +968,7 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::plan_stop(
         continue;
       }
     }
-    determined_zero_vel_dist = *candidate_zero_vel_dist;
+    determined_zero_vel_dist = candidate_zero_vel_dist;
     determined_stop_obstacle = stop_obstacle;
     determined_desired_stop_margin = desired_stop_margin;
   }
@@ -1152,7 +1164,7 @@ void ObstacleStopModule::hold_previous_stop_if_necessary(
   if (
     std::abs(planner_data->current_odometry.twist.twist.linear.x) <
       stop_planning_param_.hold_stop_velocity_threshold &&
-    prev_stop_distance_info_) {
+    prev_stop_distance_info_ && determined_zero_vel_dist.has_value()) {
     // NOTE: We assume that the current trajectory's front point is ahead of the previous
     // trajectory's front point.
     const size_t traj_front_point_prev_seg_idx =
@@ -1177,15 +1189,25 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::calc_stop_point(
   const std::optional<StopObstacle> & determined_stop_obstacle,
   const std::optional<double> & determined_zero_vel_dist)
 {
+  if (!determined_stop_obstacle.has_value() || !determined_zero_vel_dist.has_value()) {
+    RCLCPP_ERROR(
+      logger_,
+      "Cannot calculate stop point: determined_stop_obstacle=%s, "
+      "determined_zero_vel_dist=%s",
+      determined_stop_obstacle.has_value() ? "valid" : "empty",
+      determined_zero_vel_dist.has_value() ? "valid" : "empty");
+    return std::nullopt;
+  }
+
   auto output_traj_points = traj_points;
 
   // insert stop point
   const auto zero_vel_idx = [&]() -> std::optional<size_t> {
-    if (determined_zero_vel_dist <= 0.0) {
+    if (determined_zero_vel_dist.value() <= 0.0) {
       return 0;
     }
     return autoware::motion_utils::insertStopPoint(
-      0, *determined_zero_vel_dist, output_traj_points);
+      0, determined_zero_vel_dist.value(), output_traj_points);
   }();
   if (!zero_vel_idx) {
     return std::nullopt;
@@ -1226,6 +1248,15 @@ void ObstacleStopModule::set_stop_planning_debug_info(
   const std::optional<StopObstacle> & determined_stop_obstacle,
   const std::optional<double> & determined_desired_stop_margin) const
 {
+  if (!determined_stop_obstacle.has_value() || !determined_desired_stop_margin.has_value()) {
+    RCLCPP_ERROR(
+      logger_,
+      "Cannot set debug info: determined_stop_obstacle=%s, "
+      "determined_desired_stop_margin=%s",
+      determined_stop_obstacle.has_value() ? "valid" : "empty",
+      determined_desired_stop_margin.has_value() ? "valid" : "empty");
+    return;
+  }
   stop_planning_debug_info_.set(
     StopPlanningDebugInfo::TYPE::STOP_CURRENT_OBSTACLE_DISTANCE,
     determined_stop_obstacle->dist_to_collide_on_decimated_traj);
