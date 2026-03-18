@@ -34,7 +34,7 @@ autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
   PLUGIN "autoware::ekf_localizer::EKFLocalizer"
   EXECUTABLE ${PROJECT_NAME}_node
   AGNOCAST_EXECUTOR CallbackIsolatedAgnocastExecutor
-  ROS2_EXECUTOR MultiThreadedExecutor
+  ROS2_EXECUTOR SingleThreadedExecutor
 )
 
 target_link_libraries(${PROJECT_NAME} Eigen3::Eigen)
