@@ -33,7 +33,9 @@
 #include <lanelet2_core/primitives/BoundingBox.h>
 #include <lanelet2_core/primitives/Lanelet.h>
 #include <lanelet2_core/primitives/Polygon.h>
+#include <lanelet2_core/primitives/LaneletOrArea.h>
 #include <lanelet2_routing/Forward.h>
+#include <lanelet2_routing/LaneletPath.h>
 #include <lanelet2_routing/RoutingCost.h>
 #include <lanelet2_traffic_rules/TrafficRules.h>
 
@@ -108,6 +110,10 @@ public:
   bool planPathLaneletsBetweenCheckpoints(
     const Pose & start_checkpoint, const Pose & goal_checkpoint,
     lanelet::ConstLanelets * path_lanelets, const bool consider_no_drivable_lanes = false) const;
+  bool planPathLaneletsBetweenCheckpoints(
+    const Pose & start_checkpoint, const Pose & goal_checkpoint,
+    lanelet::ConstLaneletOrAreas * path_lanelets_or_areas,
+    const bool consider_no_drivable_lanes = false) const;
   std::vector<LaneletSegment> createMapSegments(const lanelet::ConstLanelets & path_lanelets) const;
   static bool isRouteLooped(const RouteSections & route_sections);
 
@@ -408,6 +414,7 @@ private:
    * include any.
    */
   bool hasNoDrivableLaneInPath(const lanelet::routing::LaneletPath & path) const;
+  bool hasNoDrivableLaneInPath(const lanelet::routing::LaneletOrAreaPath & path) const;
   /**
    * @brief Searches for the shortest path between start and goal lanelets that does not include any
    * no_drivable_lane.
@@ -416,6 +423,8 @@ private:
    * @return the lanelet path (if found)
    */
   std::optional<lanelet::routing::LaneletPath> findDrivableLanePath(
+    const lanelet::ConstLanelet & start_lanelet, const lanelet::ConstLanelet & goal_lanelet) const;
+  std::optional<lanelet::routing::LaneletOrAreaPath> findDrivableLanePathIncludingAreas(
     const lanelet::ConstLanelet & start_lanelet, const lanelet::ConstLanelet & goal_lanelet) const;
 };
 
