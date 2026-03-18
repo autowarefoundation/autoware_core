@@ -329,7 +329,7 @@ void OSQPInterface::updateBounds(
 
 int OSQPInterface::getIterationNumber() const
 {
-  return work_->info->iter;
+  return static_cast<int>(work_->info->iter);
 }
 
 std::string OSQPInterface::getStatus() const

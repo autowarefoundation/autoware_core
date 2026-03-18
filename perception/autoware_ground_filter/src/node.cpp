@@ -109,7 +109,7 @@ GroundFilterComponent::GroundFilterComponent(const rclcpp::NodeOptions & options
     grid_mode_switch_radius_ =
       static_cast<float>(rclcpp::Node::declare_parameter<double>("grid_mode_switch_radius"));
     ground_grid_buffer_size_ = rclcpp::Node::declare_parameter<int>("ground_grid_buffer_size");
-    virtual_lidar_z_ = vehicle_info_.vehicle_height_m;
+    virtual_lidar_z_ = static_cast<float>(vehicle_info_.vehicle_height_m);
 
     // initialize grid filter
     {
@@ -126,7 +126,8 @@ GroundFilterComponent::GroundFilterComponent(const rclcpp::NodeOptions & options
       param.grid_size_m = grid_size_m_;
       param.grid_mode_switch_radius = grid_mode_switch_radius_;
       param.ground_grid_buffer_size = ground_grid_buffer_size_;
-      param.virtual_lidar_x = vehicle_info_.wheel_base_m / 2.0f + center_pcl_shift_;
+      param.virtual_lidar_x =
+        static_cast<float>(vehicle_info_.wheel_base_m) / 2.0f + center_pcl_shift_;
       param.virtual_lidar_y = 0.0f;
       param.virtual_lidar_z = virtual_lidar_z_;
 
@@ -452,7 +453,7 @@ void GroundFilterComponent::convertPointcloud(
 
 void GroundFilterComponent::calcVirtualGroundOrigin(pcl::PointXYZ & point) const
 {
-  point.x = vehicle_info_.wheel_base_m;
+  point.x = static_cast<float>(vehicle_info_.wheel_base_m);
   point.y = 0;
   point.z = 0;
 }
@@ -506,9 +507,9 @@ void GroundFilterComponent::classifyPointCloud(
         prev_gnd_slope = 0.0f;
         ground_cluster.initialize();
         non_ground_cluster.initialize();
-        points_distance = calc_distance3d(point_curr, prev_gnd_point);
+        points_distance = static_cast<float>(calc_distance3d(point_curr, prev_gnd_point));
       } else {
-        points_distance = calc_distance3d(point_curr, point_prev);
+        points_distance = static_cast<float>(calc_distance3d(point_curr, point_prev));
       }
 
       float radius_distance_from_gnd = pd.radius - prev_gnd_radius;
@@ -553,12 +554,12 @@ void GroundFilterComponent::classifyPointCloud(
         non_ground_cluster.initialize();
       }
       if (point_label_curr == PointLabel::NON_GROUND) {
-        out_no_ground_indices.indices.push_back(pd.data_index);
+        out_no_ground_indices.indices.push_back(static_cast<int>(pd.data_index));
       } else if (  // NOLINT
         (point_label_prev == PointLabel::NON_GROUND) &&
         (point_label_curr == PointLabel::POINT_FOLLOW)) {
         point_label_curr = PointLabel::NON_GROUND;
-        out_no_ground_indices.indices.push_back(pd.data_index);
+        out_no_ground_indices.indices.push_back(static_cast<int>(pd.data_index));
       } else if (  // NOLINT
         (point_label_prev == PointLabel::GROUND) &&
         (point_label_curr == PointLabel::POINT_FOLLOW)) {
@@ -670,7 +671,7 @@ rcl_interfaces::msg::SetParametersResult GroundFilterComponent::onParameter(
   }
   double global_slope_max_angle_deg{get_parameter("global_slope_max_angle_deg").as_double()};
   if (get_param(param, "global_slope_max_angle_deg", global_slope_max_angle_deg)) {
-    global_slope_max_angle_rad_ = deg2rad(global_slope_max_angle_deg);
+    global_slope_max_angle_rad_ = static_cast<float>(deg2rad(global_slope_max_angle_deg));
     global_slope_max_ratio_ = std::tan(global_slope_max_angle_rad_);
     RCLCPP_DEBUG(
       this->get_logger(), "Setting global_slope_max_angle_rad to: %f.",
@@ -680,7 +681,7 @@ rcl_interfaces::msg::SetParametersResult GroundFilterComponent::onParameter(
   }
   double local_slope_max_angle_deg{get_parameter("local_slope_max_angle_deg").as_double()};
   if (get_param(param, "local_slope_max_angle_deg", local_slope_max_angle_deg)) {
-    local_slope_max_angle_rad_ = deg2rad(local_slope_max_angle_deg);
+    local_slope_max_angle_rad_ = static_cast<float>(deg2rad(local_slope_max_angle_deg));
     local_slope_max_ratio_ = std::tan(local_slope_max_angle_rad_);
     RCLCPP_DEBUG(
       this->get_logger(), "Setting local_slope_max_angle_rad to: %f.", local_slope_max_angle_rad_);
@@ -689,7 +690,7 @@ rcl_interfaces::msg::SetParametersResult GroundFilterComponent::onParameter(
   }
   double radial_divider_angle_deg{get_parameter("radial_divider_angle_deg").as_double()};
   if (get_param(param, "radial_divider_angle_deg", radial_divider_angle_deg)) {
-    radial_divider_angle_rad_ = deg2rad(radial_divider_angle_deg);
+    radial_divider_angle_rad_ = static_cast<float>(deg2rad(radial_divider_angle_deg));
     radial_dividers_num_ = std::ceil(2.0 * M_PI / radial_divider_angle_rad_);
     // grid_ptr_->initialize(grid_size_m_, radial_divider_angle_rad_, grid_mode_switch_radius_);
     RCLCPP_DEBUG(

@@ -18,7 +18,7 @@
 
 #include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/trajectory/utils/reference_path.hpp>
-#include <autoware_lanelet2_extension/utility/utilities.hpp>
+#include <autoware_utils_geometry/geometry.hpp>
 
 #include <lanelet2_core/geometry/Lanelet.h>
 
@@ -276,8 +276,6 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
     RCLCPP_ERROR(get_logger(), "Route manager is not initialized");
     return std::nullopt;
   }
-
-  std::vector<PathPointWithLaneId> path_points_with_lane_id{};
 
   auto path = experimental::trajectory::build_reference_path(
     lanelet_sequence, route_manager_->current_lanelet(), current_pose,
