@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <numeric>
+#include <utility>
 #include <vector>
 
 namespace autoware::velocity_smoother
@@ -218,21 +219,10 @@ bool calcStopVelocityWithConstantJerkAccLimit(
   const double trajectory_length = output_trajectory.length();
   const double start_s = std::clamp(start_distance, 0.0, trajectory_length);
   if (xs.empty()) {
-    const std::vector<double> s_range{start_s, trajectory_length};
-    const std::vector<double> vel_range{decel_target_vel, decel_target_vel};
-    const std::vector<double> acc_range{0.0, 0.0};
-    if (!output_trajectory.longitudinal_velocity_mps().build(s_range, vel_range)) {
-      RCLCPP_WARN(
-        rclcpp::get_logger("velocity_planning_utils"),
-        "Failed to build velocity profile (empty xs case)");
-      return false;
-    }
-    if (!output_trajectory.acceleration_mps2().build(s_range, acc_range)) {
-      RCLCPP_WARN(
-        rclcpp::get_logger("velocity_planning_utils"),
-        "Failed to build acceleration profile (empty xs case)");
-      return false;
-    }
+    output_trajectory.longitudinal_velocity_mps()
+      .range(start_s, trajectory_length)
+      .set(decel_target_vel);
+    output_trajectory.acceleration_mps2().range(start_s, trajectory_length).set(0.0);
     return true;
   }
 
@@ -263,22 +253,10 @@ bool calcStopVelocityWithConstantJerkAccLimit(
   }
 
   if (s_range.empty()) {
-    const std::vector<double> s_range_fallback{start_s, trajectory_length};
-    const std::vector<double> vel_range_fallback{decel_target_vel, decel_target_vel};
-    const std::vector<double> acc_range_fallback{0.0, 0.0};
-    if (!output_trajectory.longitudinal_velocity_mps().build(
-          s_range_fallback, vel_range_fallback)) {
-      RCLCPP_WARN(
-        rclcpp::get_logger("velocity_planning_utils"),
-        "Failed to build velocity profile (empty s_range case)");
-      return false;
-    }
-    if (!output_trajectory.acceleration_mps2().build(s_range_fallback, acc_range_fallback)) {
-      RCLCPP_WARN(
-        rclcpp::get_logger("velocity_planning_utils"),
-        "Failed to build acceleration profile (empty s_range case)");
-      return false;
-    }
+    output_trajectory.longitudinal_velocity_mps()
+      .range(start_s, trajectory_length)
+      .set(decel_target_vel);
+    output_trajectory.acceleration_mps2().range(start_s, trajectory_length).set(0.0);
     return true;
   }
 
@@ -294,11 +272,37 @@ bool calcStopVelocityWithConstantJerkAccLimit(
     acc_range.push_back(0.0);
   }
 
-  if (!output_trajectory.longitudinal_velocity_mps().build(s_range, vel_range)) {
+  const auto merge_profile = [&s_range, start_s](
+                               const auto & profile, const std::vector<double> & new_values) {
+    const auto [orig_bases, orig_values] = profile.get_data();
+
+    std::vector<double> merged_bases;
+    std::vector<double> merged_values;
+
+    for (size_t i = 0; i < orig_bases.size(); ++i) {
+      if (orig_bases.at(i) >= start_s) {
+        break;
+      }
+      merged_bases.push_back(orig_bases.at(i));
+      merged_values.push_back(orig_values.at(i));
+    }
+
+    merged_bases.insert(merged_bases.end(), s_range.begin(), s_range.end());
+    merged_values.insert(merged_values.end(), new_values.begin(), new_values.end());
+
+    return std::make_pair(std::move(merged_bases), std::move(merged_values));
+  };
+
+  const auto [merged_vel_bases, merged_vel_values] =
+    merge_profile(output_trajectory.longitudinal_velocity_mps(), vel_range);
+  const auto [merged_acc_bases, merged_acc_values] =
+    merge_profile(output_trajectory.acceleration_mps2(), acc_range);
+
+  if (!output_trajectory.longitudinal_velocity_mps().build(merged_vel_bases, merged_vel_values)) {
     RCLCPP_WARN(rclcpp::get_logger("velocity_planning_utils"), "Failed to build velocity profile");
     return false;
   }
-  if (!output_trajectory.acceleration_mps2().build(s_range, acc_range)) {
+  if (!output_trajectory.acceleration_mps2().build(merged_acc_bases, merged_acc_values)) {
     RCLCPP_WARN(
       rclcpp::get_logger("velocity_planning_utils"), "Failed to build acceleration profile");
     return false;
