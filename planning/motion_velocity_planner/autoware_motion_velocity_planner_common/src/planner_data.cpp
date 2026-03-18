@@ -156,7 +156,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr filter_by_multi_trajectory_polygon(
 
   std::for_each(
     traj_polygons.begin(), traj_polygons.end(), [&](const Polygon2d & one_step_polygon) {
-      bg::model::box<BoostPoint2D> bbox;
+      bg::model::box<BoostPoint2D> bbox{};
       bg::envelope(one_step_polygon, bbox);
 
       std::vector<BoostValue> result_s;

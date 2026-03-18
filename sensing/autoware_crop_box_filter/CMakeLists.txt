@@ -17,7 +17,7 @@ ament_auto_add_library(crop_box_filter_node SHARED
 )
 
 rclcpp_components_register_node(crop_box_filter_node
-  PLUGIN "autoware::crop_box_filter::CropBoxFilter"
+  PLUGIN "autoware::crop_box_filter::CropBoxFilterNode"
   EXECUTABLE crop_box_filter)
 
 if(BUILD_TESTING)
@@ -26,11 +26,6 @@ if(BUILD_TESTING)
     test/test_crop_box_filter.cpp
   )
   target_include_directories(test_crop_box_filter PRIVATE src)
-
-  ament_auto_add_gtest(test_crop_box_filter_node
-    test/test_crop_box_filter_node.cpp
-  )
-  target_include_directories(test_crop_box_filter_node PRIVATE src)
 
   ament_auto_add_gtest(test_crop_box_filter_integration
     test/test_crop_box_filter_integration.cpp

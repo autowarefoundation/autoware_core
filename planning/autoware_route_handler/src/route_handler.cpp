@@ -1901,10 +1901,10 @@ void RouteHandler::removeOverlappedCenterlineWithWaypoints(
   const double front_arc_length_threshold = [&]() {
     const auto front_waypoint_arc_coordinates = calcArcCoordinates(
       lanelet_sequence.at(piecewise_waypoints_lanelet_sequence_index), piecewise_waypoints.front());
-    const double lanelet_arc_length = boost::geometry::length(
+    const double lanelet_arc_length = static_cast<double>(boost::geometry::length(
       lanelet::utils::to2D(lanelet_sequence.at(piecewise_waypoints_lanelet_sequence_index)
                              .centerline()
-                             .basicLineString()));
+                             .basicLineString())));
     return -lanelet_arc_length + front_waypoint_arc_coordinates.length -
            std::abs(front_waypoint_arc_coordinates.distance) *
              waypoints_interpolation_arc_margin_ratio;
@@ -1920,9 +1920,9 @@ void RouteHandler::removeOverlappedCenterlineWithWaypoints(
   int target_lanelet_sequence_index = static_cast<int>(piecewise_waypoints_lanelet_sequence_index);
   while (isIndexWithinVector(lanelet_sequence, target_lanelet_sequence_index)) {
     auto & target_piecewise_ref_points = piecewise_ref_points_vec.at(target_lanelet_sequence_index);
-    const double target_lanelet_arc_length = boost::geometry::length(
+    const double target_lanelet_arc_length = static_cast<double>(boost::geometry::length(
       lanelet::utils::to2D(
-        lanelet_sequence.at(target_lanelet_sequence_index).centerline().basicLineString()));
+        lanelet_sequence.at(target_lanelet_sequence_index).centerline().basicLineString())));
 
     // search overlapped ref points in the target lanelet
     std::vector<size_t> overlapped_ref_points_indices{};
