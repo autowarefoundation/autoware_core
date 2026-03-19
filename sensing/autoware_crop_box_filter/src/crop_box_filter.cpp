@@ -55,7 +55,7 @@ static ValidationResult validate_xyz_fields(const PointCloud2 & cloud)
 
 static ValidationResult validate_data_size(const PointCloud2 & cloud)
 {
-  if (cloud.width * cloud.height * cloud.point_step > cloud.data.size()) {
+  if (static_cast<std::size_t>(cloud.width) * cloud.height * cloud.point_step > cloud.data.size()) {
     std::ostringstream oss;
     oss << "Invalid PointCloud (data.size = " << cloud.data.size() << ", width = " << cloud.width
         << ", height = " << cloud.height << ", step = " << cloud.point_step << ") with stamp "
@@ -85,9 +85,9 @@ geometry_msgs::msg::PolygonStamped generate_crop_box_polygon(
 {
   auto generate_point = [](double x, double y, double z) {
     geometry_msgs::msg::Point32 point;
-    point.x = x;
-    point.y = y;
-    point.z = z;
+    point.x = static_cast<float>(x);
+    point.y = static_cast<float>(y);
+    point.z = static_cast<float>(z);
     return point;
   };
 

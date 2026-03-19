@@ -6,6 +6,12 @@ on:
       codecov-token:
         required: true
     inputs:
+      # Why is it a JSON string?
+      # https://github.com/orgs/community/discussions/11692#discussioncomment-3541856
+      runner:
+        type: string
+        default: "['ubuntu-latest']"
+        required: false
       container:
         required: true
         type: string
@@ -29,7 +35,7 @@ jobs:
   build-and-test-differential:
     name: build-and-test-diff
     if: ${{ inputs.run-condition }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJson(inputs.runner) }}
     container: ${{ inputs.container }}
     steps:
       - name: Set PR fetch depth
@@ -135,7 +141,7 @@ jobs:
     name: clang-tidy-diff
     needs: build-and-test-differential
     if: ${{ (inputs.above == false) && inputs.run-condition }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJson(inputs.runner) }}
     container: ${{ inputs.container }}
     steps:
       - name: Set PR fetch depth
