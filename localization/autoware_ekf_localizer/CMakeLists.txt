@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.14)
 project(autoware_ekf_localizer)
 
 find_package(autoware_cmake REQUIRED)
-find_package(autoware_agnocast_wrapper REQUIRED)
 autoware_package()
 
 find_package(Eigen3 REQUIRED)
