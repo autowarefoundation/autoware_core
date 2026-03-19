@@ -17,10 +17,6 @@ target_link_libraries(${PROJECT_NAME}_ros
   ${PROJECT_NAME}
 )
 
-ament_target_dependencies(${PROJECT_NAME}_ros
-  autoware_agnocast_wrapper
-)
-
 autoware_agnocast_wrapper_register_node(${PROJECT_NAME}_ros
   PLUGIN "autoware::stop_filter::StopFilterNode"
   EXECUTABLE ${PROJECT_NAME}_node
