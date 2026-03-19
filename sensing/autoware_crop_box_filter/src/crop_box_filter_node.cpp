@@ -75,12 +75,12 @@ CropBoxFilterNode::CropBoxFilterNode(const rclcpp::NodeOptions & node_options)
   // get polygon parameters
   {
     auto & p = config_.param;
-    p.min_x = declare_parameter<double>("min_x");
-    p.min_y = declare_parameter<double>("min_y");
-    p.min_z = declare_parameter<double>("min_z");
-    p.max_x = declare_parameter<double>("max_x");
-    p.max_y = declare_parameter<double>("max_y");
-    p.max_z = declare_parameter<double>("max_z");
+    p.min_x = static_cast<float>(declare_parameter<double>("min_x"));
+    p.min_y = static_cast<float>(declare_parameter<double>("min_y"));
+    p.min_z = static_cast<float>(declare_parameter<double>("min_z"));
+    p.max_x = static_cast<float>(declare_parameter<double>("max_x"));
+    p.max_y = static_cast<float>(declare_parameter<double>("max_y"));
+    p.max_z = static_cast<float>(declare_parameter<double>("max_z"));
     config_.keep_outside_box = declare_parameter<bool>("negative");
     if (tf_input_frame_.empty()) {
       throw std::invalid_argument("Crop box requires non-empty input_frame");
