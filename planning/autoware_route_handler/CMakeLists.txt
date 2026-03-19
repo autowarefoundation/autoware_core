@@ -10,7 +10,8 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
 
 if(BUILD_TESTING)
   ament_add_ros_isolated_gtest(test_autoware_route_handler
-    test/test_route_handler.cpp)
+    test/test_route_handler.cpp
+    test/test_getCenterLinePath.cpp)
 
   ament_target_dependencies(test_autoware_route_handler
     autoware_test_utils
@@ -23,5 +24,6 @@ if(BUILD_TESTING)
 endif()
 
 autoware_ament_auto_package(INSTALL_TO_SHARE
+  test_map
   test_route
 )
