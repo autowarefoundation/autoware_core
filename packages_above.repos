@@ -18,7 +18,7 @@ repositories:
   sensor_component/external/nebula:
     type: git
     url: https://github.com/tier4/nebula.git
-    version: v0.3.2
+    version: v0.3.2.2
   sensor_component/transport_drivers:
     type: git
     url: https://github.com/autowarefoundation/transport_drivers
@@ -47,7 +47,7 @@ repositories:
   universe/external/cuda_blackboard:
     type: git
     url: https://github.com/autowarefoundation/cuda_blackboard.git
-    version: v0.2.0
+    version: 0.3.0
   universe/external/negotiated:
     type: git
     url: https://github.com/osrf/negotiated.git
@@ -59,7 +59,7 @@ repositories:
   universe/external/eagleye:
     type: git
     url: https://github.com/MapIV/eagleye.git
-    version: c1919448336e86a8dd9c94a337032c05fcf6c381
+    version: 575136ebba99892946d36d8398f228aee2136af0
   universe/external/rtklib_ros_bridge:
     type: git
     url: https://github.com/MapIV/rtklib_ros_bridge.git
