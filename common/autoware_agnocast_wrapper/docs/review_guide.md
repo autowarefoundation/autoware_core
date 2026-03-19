@@ -608,17 +608,6 @@ autoware_agnocast_wrapper_register_node(my_node_component
 
 &nbsp;
 
-### Threading Model Warning
-
-If `ROS2_EXECUTOR` and `AGNOCAST_EXECUTOR` have different threading models, a WARNING is issued at CMake time. This warns that threading behavior will implicitly change depending on the runtime `ENABLE_AGNOCAST` value.
-
-**Example:** `ROS2_EXECUTOR=SingleThreadedExecutor` + `AGNOCAST_EXECUTOR=MultiThreadedAgnocastExecutor`
-
-- With `ENABLE_AGNOCAST=0`: single-threaded
-- With `ENABLE_AGNOCAST=1`: multi-threaded
-
-&nbsp;
-
 ## 7. component_container Selection (agnocast_env.launch.xml)
 
 By including `agnocast_env.launch.xml`, the appropriate component container is automatically selected based on the `ENABLE_AGNOCAST` environment variable.

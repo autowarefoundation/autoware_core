@@ -75,7 +75,8 @@ jobs:
     uses: ./.github/workflows/build-and-test-diff-reusable.yaml
     with:
       rosdistro: humble
-      container: ghcr.io/autowarefoundation/autoware:core-common-devel
+      runner: "['self-hosted', 'Linux', 'X64']"
+      container: ghcr.io/autowarefoundation/autoware:universe-devel
       above: true
       run-condition: ${{ needs.require-label.outputs.result == 'true' }}
     secrets:
@@ -101,7 +102,8 @@ jobs:
     uses: ./.github/workflows/build-and-test-diff-reusable.yaml
     with:
       rosdistro: jazzy
-      container: ghcr.io/autowarefoundation/autoware:core-common-devel-jazzy-amd64
+      runner: "['self-hosted', 'Linux', 'X64']"
+      container: ghcr.io/autowarefoundation/autoware:universe-devel-jazzy-amd64
       above: true
       run-condition: ${{ needs.require-label.outputs.result == 'true' }}
     secrets:
