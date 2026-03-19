@@ -19,7 +19,6 @@
 #include <autoware/lanelet2_utils/nn_search.hpp>
 #include <autoware/path_generator/utils.hpp>
 #include <autoware/trajectory/utils/reference_path.hpp>
-#include <autoware_lanelet2_extension/utility/utilities.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 
 #include <lanelet2_core/geometry/Lanelet.h>
