@@ -11,10 +11,6 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
 
 target_link_libraries(${PROJECT_NAME} fmt)
 
-ament_target_dependencies(${PROJECT_NAME}
-  autoware_agnocast_wrapper
-)
-
 if(BUILD_TESTING)
   ament_add_ros_isolated_gtest(test_gyro_odometer
     test/test_main.cpp
