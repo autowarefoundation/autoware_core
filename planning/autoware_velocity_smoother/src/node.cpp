@@ -91,7 +91,7 @@ VelocitySmootherNode::VelocitySmootherNode(const rclcpp::NodeOptions & node_opti
   // publish default max velocity
   VelocityLimit max_vel_msg{};
   max_vel_msg.stamp = this->now();
-  max_vel_msg.max_velocity = node_param_.max_velocity;
+  max_vel_msg.max_velocity = static_cast<float>(node_param_.max_velocity);
   pub_velocity_limit_->publish(max_vel_msg);
 
   clock_ = get_clock();
@@ -658,7 +658,8 @@ bool VelocitySmootherNode::smoothVelocity(
   // Clip trajectory from closest point
   TrajectoryPoints clipped;
   clipped.insert(
-    clipped.end(), traj_resampled.begin() + traj_resampled_closest, traj_resampled.end());
+    clipped.end(), traj_resampled.begin() + static_cast<std::ptrdiff_t>(traj_resampled_closest),
+    traj_resampled.end());
 
   // Set maximum acceleration before applying smoother. Depends on acceleration request from
   // external velocity limit
@@ -683,7 +684,8 @@ bool VelocitySmootherNode::smoothVelocity(
   overwriteStopPoint(clipped, traj_smoothed);
 
   traj_smoothed.insert(
-    traj_smoothed.begin(), traj_resampled.begin(), traj_resampled.begin() + traj_resampled_closest);
+    traj_smoothed.begin(), traj_resampled.begin(),
+    traj_resampled.begin() + static_cast<std::ptrdiff_t>(traj_resampled_closest));
 
   // For the endpoint of the trajectory
   if (!traj_smoothed.empty()) {
@@ -718,7 +720,7 @@ bool VelocitySmootherNode::smoothVelocity(
     for (auto & debug_trajectory : debug_trajectories) {
       debug_trajectory.insert(
         debug_trajectory.begin(), traj_resampled.begin(),
-        traj_resampled.begin() + traj_resampled_closest);
+        traj_resampled.begin() + static_cast<std::ptrdiff_t>(traj_resampled_closest));
       for (size_t i = 0; i < traj_resampled_closest; ++i) {
         debug_trajectory.at(i).longitudinal_velocity_mps =
           debug_trajectory.at(traj_resampled_closest).longitudinal_velocity_mps;
@@ -790,7 +792,7 @@ void VelocitySmootherNode::publishStopDistance(const TrajectoryPoints & trajecto
   }
   Float32Stamped dist_to_stopline{};
   dist_to_stopline.stamp = this->now();
-  dist_to_stopline.data = std::clamp(stop_dist, -stop_dist_lim, stop_dist_lim);
+  dist_to_stopline.data = static_cast<float>(std::clamp(stop_dist, -stop_dist_lim, stop_dist_lim));
   pub_dist_to_stopline_->publish(dist_to_stopline);
 }
 
@@ -983,7 +985,7 @@ void VelocitySmootherNode::applyStopApproachingVelocity(TrajectoryPoints & traj)
       break;
     }
     if (traj.at(i).longitudinal_velocity_mps > node_param_.stopping_velocity) {
-      traj.at(i).longitudinal_velocity_mps = node_param_.stopping_velocity;
+      traj.at(i).longitudinal_velocity_mps = static_cast<float>(node_param_.stopping_velocity);
     }
   }
 }
@@ -1029,7 +1031,7 @@ void VelocitySmootherNode::publishClosestState(const TrajectoryPoints & trajecto
   auto publishFloat = [=](const double data, const auto pub) {
     Float32Stamped msg{};
     msg.stamp = this->now();
-    msg.data = data;
+    msg.data = static_cast<float>(data);
     pub->publish(msg);
     return;
   };
