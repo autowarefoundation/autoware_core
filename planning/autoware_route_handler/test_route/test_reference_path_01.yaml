@@ -1,0 +1,28 @@
+header:
+  stamp:
+    sec: 1715936953
+    nanosec: 67206425
+  frame_id: map
+start_pose:
+  position:
+    x: 102
+    y: 100
+    z: 0.0
+  orientation:
+    x: 0.0
+    y: 0.7071
+    z: 0.0
+    w: 0.7071
+goal_pose:
+  position:
+    x: 102
+    y: 300
+    z: 0.0
+  orientation:
+    x: 0.0
+    y: 0.7071
+    z: 0.0
+    w: 0.7071
+segments:
+uuid:
+allow_modification: false
