@@ -212,7 +212,12 @@ int main2()
     points.push_back(point);
   }
 
-  auto trajectory = *autoware::experimental::trajectory::pretty_build(points);
+  auto trajectory_opt = autoware::experimental::trajectory::pretty_build(points);
+  if (!trajectory_opt.has_value()) {
+    std::cerr << "Failed to pretty build trajectory" << std::endl;
+    return 0;
+  }
+  auto trajectory = *trajectory_opt;
 
   auto [fig, axes] = plt.subplots(1, 2);
   auto & ax1 = axes[0];
