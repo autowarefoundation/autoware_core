@@ -4,6 +4,9 @@
     enable_downsampled_whole_load: false
     enable_partial_load: true
     enable_selected_load: false
+    enable_internal_differential_visualization: false
+    internal_visualization_update_interval_sec: 1.0
+    internal_visualization_radius: 150.0
 
     # only used when downsample_whole_load enabled
     leaf_size: 3.0 # downsample leaf size [m]
