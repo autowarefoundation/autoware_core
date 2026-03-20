@@ -11,5 +11,7 @@
       <remap from="~/input/trajectory" to="/planning/trajectory"/>
       <remap from="~/output/control_command" to="/control/command/control_cmd"/>
     </node>
+
+    <node pkg="autoware_command_gate" exec="autoware_command_gate_exe" name="autoware_command_gate" output="screen"/>
   </group>
 </launch>

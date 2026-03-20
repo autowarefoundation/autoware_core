@@ -1,9 +1,26 @@
 <launch>
+  <arg name="is_planning_simulation" description="enable planning simulation if true"/>
+  <arg name="launch_driver" default="true" description="do launch driver"/>
+  <arg name="sensor_model" default="sample_sensor_kit" description="sensor model name"/>
+  <arg name="vehicle_mirror_param_file" default="$(find-pkg-share autoware_vehicle_info_utils)/config/vehicle_mirror.param.yaml" description="path to the file of vehicle mirror position yaml"/>
+  <arg name="pointcloud_container_name" default="pointcloud_container"/>
+
+  <let name="sensor_launch_pkg" value="$(find-pkg-share $(var sensor_model)_launch)"/>
+
   <group>
     <push-ros-namespace namespace="sensing"/>
     <include file="$(find-pkg-share autoware_vehicle_velocity_converter)/launch/vehicle_velocity_converter.launch.xml">
       <arg name="input_vehicle_velocity_topic" value="/vehicle/status/velocity_status"/>
       <arg name="output_twist_with_covariance" value="/sensing/vehicle_velocity_converter/twist_with_covariance"/>
     </include>
+
+    <!-- Driver -->
+    <group unless="$(var is_planning_simulation)">
+      <include file="$(var sensor_launch_pkg)/launch/sensing.launch.xml">
+        <arg name="launch_driver" value="$(var launch_driver)"/>
+        <arg name="vehicle_mirror_param_file" value="$(var vehicle_mirror_param_file)"/>
+        <arg name="pointcloud_container_name" value="$(var pointcloud_container_name)"/>
+      </include>
+    </group>
   </group>
 </launch>

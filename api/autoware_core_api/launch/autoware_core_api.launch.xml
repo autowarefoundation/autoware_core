@@ -3,9 +3,20 @@
   <arg name="launch_default_adapi" default="true"/>
   <arg name="launch_rviz_adaptors" default="true"/>
 
+  <!-- Configure if this is planning simulation -->
+  <arg name="is_planning_simulation" description="enable planning simulation if true"/>
+
   <!-- AD API -->
   <group>
     <include file="$(find-pkg-share autoware_default_adapi)/launch/default_adapi.launch.py" if="$(var launch_default_adapi)"/>
-    <include file="$(find-pkg-share autoware_adapi_adaptors)/launch/rviz_adaptors.launch.xml" if="$(var launch_rviz_adaptors)"/>
+
+    <!-- RViz Adaptors -->
+    <group if="$(var launch_rviz_adaptors)">
+      <let name="rviz_initial_pose_auto_fix_target" value="vector_map" if="$(var is_planning_simulation)"/>
+      <let name="rviz_initial_pose_auto_fix_target" value="pointcloud_map" unless="$(var is_planning_simulation)"/>
+      <include file="$(find-pkg-share autoware_adapi_adaptors)/launch/rviz_adaptors.launch.xml">
+        <arg name="rviz_initial_pose_auto_fix_target" value="$(var rviz_initial_pose_auto_fix_target)"/>
+      </include>
+    </group>
   </group>
 </launch>
