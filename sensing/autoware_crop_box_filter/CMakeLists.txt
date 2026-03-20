@@ -33,7 +33,9 @@ if(BUILD_TESTING)
   target_include_directories(test_crop_box_filter_integration PRIVATE src)
 endif()
 
-autoware_ament_auto_package(INSTALL_TO_SHARE
+autoware_ament_auto_package(
+  USE_SCOPED_HEADER_INSTALL_DIR
+  INSTALL_TO_SHARE
   launch
   config
   test
