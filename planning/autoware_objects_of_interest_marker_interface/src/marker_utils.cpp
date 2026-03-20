@@ -37,8 +37,8 @@ Marker createArrowMarker(
   const double head_height = 0.5 * arrow_length;
 
   Marker marker = create_default_marker(
-    "map", rclcpp::Clock{RCL_ROS_TIME}.now(), name + "_arrow", id, Marker::ARROW,
-    create_marker_scale(line_width, head_width, head_height), data.color);
+    "map", rclcpp::Clock{RCL_ROS_TIME}.now(), name + "_arrow", static_cast<int32_t>(id),
+    Marker::ARROW, create_marker_scale(line_width, head_width, head_height), data.color);
 
   const double height = 0.5 * data.shape.dimensions.z;
 
@@ -59,7 +59,7 @@ Marker createCircleMarker(
   const double height_offset, const double line_width)
 {
   Marker marker = create_default_marker(
-    "map", rclcpp::Clock{RCL_ROS_TIME}.now(), name, id, Marker::LINE_STRIP,
+    "map", rclcpp::Clock{RCL_ROS_TIME}.now(), name, static_cast<int32_t>(id), Marker::LINE_STRIP,
     create_marker_scale(line_width, 0.0, 0.0), data.color);
 
   const double height = 0.5 * data.shape.dimensions.z;
@@ -69,8 +69,8 @@ Marker createCircleMarker(
     Point point;
     const double ratio = static_cast<double>(i) / static_cast<double>(num_points);
     const double theta = 2 * autoware_utils_math::pi * ratio;
-    point.x = data.pose.position.x + radius * autoware_utils_math::cos(theta);
-    point.y = data.pose.position.y + radius * autoware_utils_math::sin(theta);
+    point.x = data.pose.position.x + radius * autoware_utils_math::cos(static_cast<float>(theta));
+    point.y = data.pose.position.y + radius * autoware_utils_math::sin(static_cast<float>(theta));
     point.z = data.pose.position.z + height + height_offset;
     marker.points.push_back(point);
   }
@@ -84,8 +84,9 @@ visualization_msgs::msg::Marker createNameTextMarker(
   const double height_offset, const double text_size)
 {
   Marker marker = create_default_marker(
-    "map", rclcpp::Clock{RCL_ROS_TIME}.now(), name + "_name_text", id, Marker::TEXT_VIEW_FACING,
-    create_marker_scale(0.0, 0.0, text_size), coloring::getGray(data.color.a));
+    "map", rclcpp::Clock{RCL_ROS_TIME}.now(), name + "_name_text", static_cast<int32_t>(id),
+    Marker::TEXT_VIEW_FACING, create_marker_scale(0.0, 0.0, text_size),
+    coloring::getGray(data.color.a));
 
   marker.text = name;
 
