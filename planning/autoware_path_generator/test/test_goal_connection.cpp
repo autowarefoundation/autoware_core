@@ -32,9 +32,7 @@ TEST_F(UtilsTest, connectPathToGoalInsideLaneletSequence)
   auto s_goal = 0.;
   for (const auto & lanelet : route_manager_->preferred_lanelets()) {
     if (route_manager_->goal_lanelet().id() == lanelet.id()) {
-      s_goal +=
-        autoware::experimental::lanelet2_utils::get_arc_coordinates({lanelet}, route_->goal_pose)
-          .length;
+      s_goal += lanelet::utils::getArcCoordinates({lanelet}, route_->goal_pose).length;
       break;
     }
     s_goal += lanelet::geometry::length2d(lanelet);
@@ -83,9 +81,7 @@ TEST_F(UtilsTest, connectPathToGoal)
   auto s_goal = 0.;
   for (const auto & lanelet : route_manager_->preferred_lanelets()) {
     if (route_manager_->goal_lanelet().id() == lanelet.id()) {
-      s_goal +=
-        autoware::experimental::lanelet2_utils::get_arc_coordinates({lanelet}, route_->goal_pose)
-          .length;
+      s_goal += lanelet::utils::getArcCoordinates({lanelet}, route_->goal_pose).length;
       break;
     }
     s_goal += lanelet::geometry::length2d(lanelet);

@@ -12,18 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "utils.hpp"
+
 #include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/lanelet2_utils/geometry.hpp>
 #include <autoware/motion_utils/constants.hpp>
 #include <autoware/motion_utils/resample/resample.hpp>
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
-#include <autoware/path_generator/utils.hpp>
 #include <autoware/trajectory/interpolator/linear.hpp>
 #include <autoware/trajectory/utils/closest.hpp>
 #include <autoware/trajectory/utils/crop.hpp>
 #include <autoware/trajectory/utils/find_intervals.hpp>
 #include <autoware/trajectory/utils/pretty_build.hpp>
-#include <autoware_utils_geometry/geometry.hpp>
+#include <autoware_lanelet2_extension/utility/utilities.hpp>
 #include <autoware_utils_math/unit_conversion.hpp>
 
 #include <lanelet2_core/geometry/Lanelet.h>
@@ -715,8 +716,7 @@ experimental::trajectory::Trajectory<PathPointWithLaneId> connect_path_to_goal(
   const auto pre_goal_pose =
     autoware_utils_geometry::calc_offset_pose(goal_pose, -pre_goal_offset, 0.0, 0.0);
   auto pre_goal_lanelet = goal_lanelet;
-  while (rclcpp::ok() &&
-         !autoware::experimental::lanelet2_utils::is_in_lanelet(pre_goal_pose, pre_goal_lanelet)) {
+  while (rclcpp::ok() && !lanelet::utils::isInLanelet(pre_goal_pose, pre_goal_lanelet)) {
     const auto prev_lanelet = get_previous_lanelet_within_route(pre_goal_lanelet, route_manager);
     if (!prev_lanelet) {
       RCLCPP_WARN(
