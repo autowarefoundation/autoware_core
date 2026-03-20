@@ -26,6 +26,7 @@
 #include <pybind11/stl.h>
 
 #include <algorithm>
+#include <iostream>
 #include <string>
 #include <vector>
 
@@ -63,48 +64,55 @@ void plot_trajectory_base_with_orientation(
 
 int main()
 {
-  pybind11::scoped_interpreter guard{};
+  try {
+    pybind11::scoped_interpreter guard{};
 
-  auto plt = autoware::pyplot::import();
-  auto [fig, axes] = plt.subplots(1, 2);
-  auto & ax1 = axes[0];
-  auto & ax2 = axes[1];
+    auto plt = autoware::pyplot::import();
+    auto [fig, axes] = plt.subplots(1, 2);
+    auto & ax1 = axes[0];
+    auto & ax2 = axes[1];
 
-  std::vector<geometry_msgs::msg::Pose> poses = {
-    pose(0.49, 0.59), pose(0.61, 1.22), pose(0.86, 1.93), pose(1.20, 2.56), pose(1.51, 3.17),
-    pose(1.85, 3.76), pose(2.14, 4.26), pose(2.60, 4.56), pose(3.07, 4.55), pose(3.61, 4.30),
-    pose(3.95, 4.01), pose(4.29, 3.68), pose(4.90, 3.25), pose(5.54, 3.10), pose(6.24, 3.18),
-    pose(6.88, 3.54), pose(7.51, 4.25), pose(7.85, 4.93), pose(8.03, 5.73), pose(8.16, 6.52),
-    pose(8.31, 7.28), pose(8.45, 7.93), pose(8.68, 8.45), pose(8.96, 8.96), pose(9.32, 9.36)};
+    std::vector<geometry_msgs::msg::Pose> poses = {
+      pose(0.49, 0.59), pose(0.61, 1.22), pose(0.86, 1.93), pose(1.20, 2.56), pose(1.51, 3.17),
+      pose(1.85, 3.76), pose(2.14, 4.26), pose(2.60, 4.56), pose(3.07, 4.55), pose(3.61, 4.30),
+      pose(3.95, 4.01), pose(4.29, 3.68), pose(4.90, 3.25), pose(5.54, 3.10), pose(6.24, 3.18),
+      pose(6.88, 3.54), pose(7.51, 4.25), pose(7.85, 4.93), pose(8.03, 5.73), pose(8.16, 6.52),
+      pose(8.31, 7.28), pose(8.45, 7.93), pose(8.68, 8.45), pose(8.96, 8.96), pose(9.32, 9.36)};
 
-  using autoware::experimental::trajectory::Trajectory;
+    using autoware::experimental::trajectory::Trajectory;
 
-  auto trajectory = Trajectory<geometry_msgs::msg::Pose>::Builder{}.build(poses);
+    auto trajectory = Trajectory<geometry_msgs::msg::Pose>::Builder{}.build(poses);
 
-  plot_trajectory_base_with_orientation(*trajectory, "before", ax1);
-  trajectory->align_orientation_with_trajectory_direction();
-  plot_trajectory_base_with_orientation(
-    *trajectory, "after align_orientation_with_trajectory_direction()", ax2);
+    plot_trajectory_base_with_orientation(*trajectory, "before", ax1);
+    trajectory->align_orientation_with_trajectory_direction();
+    plot_trajectory_base_with_orientation(
+      *trajectory, "after align_orientation_with_trajectory_direction()", ax2);
 
-  {
-    std::vector<double> x;
-    std::vector<double> y;
+    {
+      std::vector<double> x;
+      std::vector<double> y;
 
-    for (double i = 0.0; i <= trajectory->length(); i += 0.01) {
-      auto p = trajectory->compute(i);
-      x.push_back(p.position.x);
-      y.push_back(p.position.y);
+      for (double i = 0.0; i <= trajectory->length(); i += 0.01) {
+        auto p = trajectory->compute(i);
+        x.push_back(p.position.x);
+        y.push_back(p.position.y);
+      }
+
+      ax1.plot(Args(x, y), Kwargs("label"_a = "Trajectory", "color"_a = "blue"));
+      ax2.plot(Args(x, y), Kwargs("label"_a = "Trajectory", "color"_a = "blue"));
     }
 
-    ax1.plot(Args(x, y), Kwargs("label"_a = "Trajectory", "color"_a = "blue"));
-    ax2.plot(Args(x, y), Kwargs("label"_a = "Trajectory", "color"_a = "blue"));
+    fig.tight_layout();
+    for (auto & ax : axes) {
+      ax.set_aspect(Args("equal"));
+      ax.grid();
+      ax.legend();
+    }
+    plt.show();
+  } catch (const std::exception & e) {
+    std::cerr << "Error: " << e.what() << std::endl;
+    return 1;
   }
 
-  fig.tight_layout();
-  for (auto & ax : axes) {
-    ax.set_aspect(Args("equal"));
-    ax.grid();
-    ax.legend();
-  }
-  plt.show();
+  return 0;
 }
