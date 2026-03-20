@@ -36,13 +36,10 @@ DifferentialMapLoaderModule::DifferentialMapLoaderModule(
       std::placeholders::_1, std::placeholders::_2));
 
   enable_internal_differential_visualization_ =
-    node->declare_parameter<bool>("enable_internal_differential_visualization", false);
-  visualization_use_pose_ = node->declare_parameter<bool>("internal_visualization_use_pose", false);
+    node->declare_parameter<bool>("enable_internal_differential_visualization");
   visualization_update_interval_sec_ =
-    node->declare_parameter<double>("internal_visualization_update_interval_sec", 1.0);
-  visualization_center_x_ = node->declare_parameter<double>("internal_visualization_center_x", 0.0);
-  visualization_center_y_ = node->declare_parameter<double>("internal_visualization_center_y", 0.0);
-  visualization_radius_ = node->declare_parameter<double>("internal_visualization_radius", 150.0);
+    node->declare_parameter<double>("internal_visualization_update_interval_sec");
+  visualization_radius_ = node->declare_parameter<double>("internal_visualization_radius");
 
   if (!enable_internal_differential_visualization_) {
     return;
@@ -51,11 +48,9 @@ DifferentialMapLoaderModule::DifferentialMapLoaderModule(
   internal_visualization_pub_ = node->create_publisher<sensor_msgs::msg::PointCloud2>(
     "output/differential_pointcloud_map_internal", rclcpp::QoS{1}.transient_local());
 
-  if (visualization_use_pose_) {
-    kinematic_state_sub_ = node->create_subscription<nav_msgs::msg::Odometry>(
-      "/localization/kinematic_state", rclcpp::QoS{1},
-      std::bind(&DifferentialMapLoaderModule::on_kinematic_state, this, std::placeholders::_1));
-  }
+  kinematic_state_sub_ = node->create_subscription<nav_msgs::msg::Odometry>(
+    "/localization/kinematic_state", rclcpp::QoS{1},
+    std::bind(&DifferentialMapLoaderModule::on_kinematic_state, this, std::placeholders::_1));
 
   visualization_timer_ = node->create_wall_timer(
     std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -128,10 +123,8 @@ DifferentialMapLoaderModule::load_point_cloud_map_cell_with_id(
 
 void DifferentialMapLoaderModule::on_visualization_timer()
 {
-  double query_center_x = visualization_center_x_;
-  double query_center_y = visualization_center_y_;
-
-  if (visualization_use_pose_) {
+  geometry_msgs::msg::Point latest_pose;
+  {
     std::lock_guard<std::mutex> lock(visualization_mutex_);
     if (!latest_pose_) {
       RCLCPP_WARN_THROTTLE(
@@ -140,8 +133,7 @@ void DifferentialMapLoaderModule::on_visualization_timer()
         "queried yet.");
       return;
     }
-    query_center_x = latest_pose_->x;
-    query_center_y = latest_pose_->y;
+    latest_pose = *latest_pose_;
   }
 
   auto response = std::make_shared<GetDifferentialPointCloudMap::Response>();
@@ -156,8 +148,8 @@ void DifferentialMapLoaderModule::on_visualization_timer()
   }
 
   autoware_map_msgs::msg::AreaInfo area;
-  area.center_x = static_cast<float>(query_center_x);
-  area.center_y = static_cast<float>(query_center_y);
+  area.center_x = static_cast<float>(latest_pose.x);
+  area.center_y = static_cast<float>(latest_pose.y);
   area.radius = static_cast<float>(visualization_radius_);
   differential_area_load(area, cached_ids, response);
 

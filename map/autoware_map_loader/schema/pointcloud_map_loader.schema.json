@@ -26,6 +26,21 @@
           "description": "Enable selected pointcloud map server",
           "default": false
         },
+        "enable_internal_differential_visualization": {
+          "type": "boolean",
+          "description": "Enable internal differential pointcloud map visualization",
+          "default": false
+        },
+        "internal_visualization_update_interval_sec": {
+          "type": "number",
+          "description": "Update interval of internal differential pointcloud map visualization [s]",
+          "default": 1.0
+        },
+        "internal_visualization_radius": {
+          "type": "number",
+          "description": "Query radius of internal differential pointcloud map visualization [m]",
+          "default": 150.0
+        },
         "leaf_size": {
           "type": "number",
           "description": "Downsampling leaf size (only used when enable_downsampled_whole_load is set true)",
@@ -47,6 +62,9 @@
         "enable_downsampled_whole_load",
         "enable_partial_load",
         "enable_selected_load",
+        "enable_internal_differential_visualization",
+        "internal_visualization_update_interval_sec",
+        "internal_visualization_radius",
         "leaf_size",
         "pcd_paths_or_directory",
         "pcd_metadata_path"

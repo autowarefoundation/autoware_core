@@ -55,12 +55,9 @@ private:
   rclcpp::Service<GetDifferentialPointCloudMap>::SharedPtr get_differential_pcd_maps_service_;
   rclcpp::Node * node_{nullptr};
 
-  bool enable_internal_differential_visualization_{false};
-  bool visualization_use_pose_{false};
-  double visualization_update_interval_sec_{1.0};
-  double visualization_center_x_{0.0};
-  double visualization_center_y_{0.0};
-  double visualization_radius_{150.0};
+  bool enable_internal_differential_visualization_;
+  double visualization_update_interval_sec_;
+  double visualization_radius_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr internal_visualization_pub_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr kinematic_state_sub_;
   rclcpp::TimerBase::SharedPtr visualization_timer_;
