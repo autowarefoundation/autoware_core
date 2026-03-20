@@ -64,15 +64,6 @@ repositories:
     type: git
     url: https://github.com/MapIV/rtklib_ros_bridge.git
     version: ef094407bba4f475a8032972e0c60cbb939b51b8
-  # middleware
-  # TODO(TIER IV): During the transition period of Agnocast introduction,
-  # the Agnocast ROS packages are provided as a source build.
-  # Once the transition stabilizes, use the packages released from the official ROS repository.
-  # Issue: https://github.com/autowarefoundation/autoware/issues/5968
-  middleware/external/agnocast:
-    type: git
-    url: https://github.com/tier4/agnocast.git
-    version: 2.3.1
   # Tools
   tools/autoware_tools:
     type: git
