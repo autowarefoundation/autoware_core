@@ -326,9 +326,15 @@ inline TestCaseFormat1 load_test_case(const std::string & test_case_file_path)
 
 int main()
 {
-  pybind11::scoped_interpreter guard{};
-  // main1();
-  // main2();
-  // main3();
-  main4();
+  try {
+    pybind11::scoped_interpreter guard{};
+    // main1();
+    // main2();
+    // main3();
+    main4();
+  } catch (const std::exception & e) {
+    std::cerr << "Error: " << e.what() << std::endl;
+    return 1;
+  }
+  return 0;
 }

@@ -24,97 +24,104 @@
 #include <pybind11/embed.h>
 #include <pybind11/stl.h>
 
+#include <iostream>
 #include <random>
 #include <vector>
 
 int main()
 {
-  pybind11::scoped_interpreter guard{};
-  auto plt = autoware::pyplot::import();
+  try {
+    pybind11::scoped_interpreter guard{};
+    auto plt = autoware::pyplot::import();
 
-  // create random values
-  std::vector<double> bases = {0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0};
-  std::vector<double> values;
-  std::random_device seed_gen;
-  std::mt19937 engine(seed_gen());
-  std::uniform_real_distribution<> dist(-1.0, 1.0);
-  values.reserve(bases.size());
-  for (size_t i = 0; i < bases.size(); ++i) {
-    values.push_back(dist(engine));
-  }
-  // Scatter Data
-  plt.scatter(Args(bases, values));
-
-  using autoware::experimental::trajectory::interpolator::InterpolatorInterface;
-  // Linear Interpolator
-  {
-    using autoware::experimental::trajectory::interpolator::Linear;
-    auto interpolator = *Linear::Builder{}.set_bases(bases).set_values(values).build();
-    std::vector<double> x;
-    std::vector<double> y;
-    for (double i = bases.front(); i < bases.back(); i += 0.01) {
-      x.push_back(i);
-      y.push_back(interpolator.compute(i));
+    // create random values
+    std::vector<double> bases = {0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0};
+    std::vector<double> values;
+    std::random_device seed_gen;
+    std::mt19937 engine(seed_gen());
+    std::uniform_real_distribution<> dist(-1.0, 1.0);
+    values.reserve(bases.size());
+    for (size_t i = 0; i < bases.size(); ++i) {
+      values.push_back(dist(engine));
     }
-    plt.plot(Args(x, y), Kwargs("label"_a = "Linear"));
-  }
+    // Scatter Data
+    plt.scatter(Args(bases, values));
 
-  // AkimaSpline Interpolator
-  {
-    using autoware::experimental::trajectory::interpolator::AkimaSpline;
-
-    auto interpolator = *AkimaSpline::Builder{}.set_bases(bases).set_values(values).build();
-    std::vector<double> x;
-    std::vector<double> y;
-    for (double i = bases.front(); i < bases.back(); i += 0.01) {
-      x.push_back(i);
-      y.push_back(interpolator.compute(i));
+    using autoware::experimental::trajectory::interpolator::InterpolatorInterface;
+    // Linear Interpolator
+    {
+      using autoware::experimental::trajectory::interpolator::Linear;
+      auto interpolator = *Linear::Builder{}.set_bases(bases).set_values(values).build();
+      std::vector<double> x;
+      std::vector<double> y;
+      for (double i = bases.front(); i < bases.back(); i += 0.01) {
+        x.push_back(i);
+        y.push_back(interpolator.compute(i));
+      }
+      plt.plot(Args(x, y), Kwargs("label"_a = "Linear"));
     }
-    plt.plot(Args(x, y), Kwargs("label"_a = "AkimaSpline"));
-  }
 
-  // CubicSpline Interpolator
-  {
-    using autoware::experimental::trajectory::interpolator::CubicSpline;
-    auto interpolator = *CubicSpline::Builder{}.set_bases(bases).set_values(values).build();
-    std::vector<double> x;
-    std::vector<double> y;
-    for (double i = bases.front(); i < bases.back(); i += 0.01) {
-      x.push_back(i);
-      y.push_back(interpolator.compute(i));
+    // AkimaSpline Interpolator
+    {
+      using autoware::experimental::trajectory::interpolator::AkimaSpline;
+
+      auto interpolator = *AkimaSpline::Builder{}.set_bases(bases).set_values(values).build();
+      std::vector<double> x;
+      std::vector<double> y;
+      for (double i = bases.front(); i < bases.back(); i += 0.01) {
+        x.push_back(i);
+        y.push_back(interpolator.compute(i));
+      }
+      plt.plot(Args(x, y), Kwargs("label"_a = "AkimaSpline"));
     }
-    plt.plot(Args(x, y), Kwargs("label"_a = "CubicSpline"));
-  }
 
-  // NearestNeighbor Interpolator
-  {
-    using autoware::experimental::trajectory::interpolator::NearestNeighbor;
-    auto interpolator =
-      *NearestNeighbor<double>::Builder{}.set_bases(bases).set_values(values).build();
-    std::vector<double> x;
-    std::vector<double> y;
-    for (double i = bases.front(); i < bases.back(); i += 0.01) {
-      x.push_back(i);
-      y.push_back(interpolator.compute(i));
+    // CubicSpline Interpolator
+    {
+      using autoware::experimental::trajectory::interpolator::CubicSpline;
+      auto interpolator = *CubicSpline::Builder{}.set_bases(bases).set_values(values).build();
+      std::vector<double> x;
+      std::vector<double> y;
+      for (double i = bases.front(); i < bases.back(); i += 0.01) {
+        x.push_back(i);
+        y.push_back(interpolator.compute(i));
+      }
+      plt.plot(Args(x, y), Kwargs("label"_a = "CubicSpline"));
     }
-    plt.plot(Args(x, y), Kwargs("label"_a = "NearestNeighbor"));
-  }
 
-  // Stairstep Interpolator
-  {
-    using autoware::experimental::trajectory::interpolator::Stairstep;
-    auto interpolator = *Stairstep<double>::Builder{}.set_bases(bases).set_values(values).build();
-    std::vector<double> x;
-    std::vector<double> y;
-    for (double i = bases.front(); i < bases.back(); i += 0.01) {
-      x.push_back(i);
-      y.push_back(interpolator.compute(i));
+    // NearestNeighbor Interpolator
+    {
+      using autoware::experimental::trajectory::interpolator::NearestNeighbor;
+      auto interpolator =
+        *NearestNeighbor<double>::Builder{}.set_bases(bases).set_values(values).build();
+      std::vector<double> x;
+      std::vector<double> y;
+      for (double i = bases.front(); i < bases.back(); i += 0.01) {
+        x.push_back(i);
+        y.push_back(interpolator.compute(i));
+      }
+      plt.plot(Args(x, y), Kwargs("label"_a = "NearestNeighbor"));
     }
-    plt.plot(Args(x, y), Kwargs("label"_a = "Stairstep"));
+
+    // Stairstep Interpolator
+    {
+      using autoware::experimental::trajectory::interpolator::Stairstep;
+      auto interpolator = *Stairstep<double>::Builder{}.set_bases(bases).set_values(values).build();
+      std::vector<double> x;
+      std::vector<double> y;
+      for (double i = bases.front(); i < bases.back(); i += 0.01) {
+        x.push_back(i);
+        y.push_back(interpolator.compute(i));
+      }
+      plt.plot(Args(x, y), Kwargs("label"_a = "Stairstep"));
+    }
+
+    plt.grid();
+    plt.legend();
+    plt.show();
+  } catch (const std::exception & e) {
+    std::cerr << "Error: " << e.what() << std::endl;
+    return 1;
   }
 
-  plt.grid();
-  plt.legend();
-  plt.show();
   return 0;
 }
