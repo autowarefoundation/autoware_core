@@ -125,6 +125,11 @@ void nn_search_main()
 
 int main()
 {
-  autoware::experimental::nn_search_main();
+  try {
+    autoware::experimental::nn_search_main();
+  } catch (const std::exception & e) {
+    std::cerr << "Error: " << e.what() << std::endl;
+    return 1;
+  }
   return 0;
 }
