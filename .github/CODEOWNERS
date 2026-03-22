@@ -4,6 +4,7 @@ api/autoware_adapi_specs/** isamu.takagi@tier4.jp ryohsuke.mitsudome@tier4.jp @a
 api/autoware_core_api/** mfc@autoware.org ryohsuke.mitsudome@tier4.jp yutaka.kondo@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 api/autoware_default_adapi/** isamu.takagi@tier4.jp junya.sasaki@tier4.jp ryohsuke.mitsudome@tier4.jp yukihiro.saito@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 autoware_core/** mfc@autoware.org ryohsuke.mitsudome@tier4.jp yutaka.kondo@tier4.jp @autowarefoundation/autoware-core-global-codeowners
+common/autoware_agnocast_wrapper/** sykwer@gmail.com koichi.imai.2@tier4.jp atsushi.yano.2@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 common/autoware_component_interface_specs/** isamu.takagi@tier4.jp ryohsuke.mitsudome@tier4.jp yukihiro.saito@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 common/autoware_geography_utils/** anh.nguyen.2@tier4.jp masahiro.sakamoto@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 common/autoware_global_parameter_loader/** ryohsuke.mitsudome@tier4.jp @autowarefoundation/autoware-core-global-codeowners
