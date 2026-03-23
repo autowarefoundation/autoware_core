@@ -20,9 +20,6 @@ autoware_package()
 # fmt must be linked explicitly because ament_auto_find_build_dependencies() uses legacy
 # variables (<pkg>_LIBRARIES, <pkg>_INCLUDE_DIRS), but fmt only provides a Modern CMake
 # imported target (fmt::fmt).
-# See:
-#   https://github.com/fmtlib/fmt/blob/ea85b81ccdb28dda636351e80a1888b1d279f325/support/cmake/fmt-config.cmake.in
-#   https://github.com/ament/ament_cmake/blob/2366f15479e37d552d4e225f09ccef1c6ccc8c4e/ament_cmake_auto/cmake/ament_auto_find_build_dependencies.cmake#L67-L73
 find_package(fmt REQUIRED)
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
