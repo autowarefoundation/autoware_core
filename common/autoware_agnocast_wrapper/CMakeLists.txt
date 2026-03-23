@@ -11,6 +11,7 @@ find_package(diagnostic_updater REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
+find_package(glog REQUIRED)
 
 if(DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
   find_package(agnocastlib REQUIRED)
@@ -37,6 +38,7 @@ if("$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
     geometry_msgs
     tf2
     tf2_ros
+    glog
   )
   target_compile_definitions(${PROJECT_NAME} PUBLIC USE_AGNOCAST_ENABLED)
 else()
@@ -48,6 +50,7 @@ else()
     geometry_msgs
     tf2
     tf2_ros
+    glog
   )
 endif()
 
@@ -65,6 +68,12 @@ ament_export_dependencies(
   diagnostic_updater
   tf2
   tf2_ros
+  glog
+)
+
+ament_export_libraries(
+  ${PROJECT_NAME}
+  glog
 )
 
 if(DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1")

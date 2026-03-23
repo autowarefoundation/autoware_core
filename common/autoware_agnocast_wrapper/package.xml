@@ -20,6 +20,7 @@
   <depend>class_loader</depend>
   <depend>diagnostic_updater</depend>
   <depend>geometry_msgs</depend>
+  <depend>libgoogle-glog-dev</depend>
   <depend>message_filters</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
