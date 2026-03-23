@@ -9,5 +9,5 @@ ament_auto_add_library(autoware_planning_factor_interface SHARED
 )
 
 autoware_ament_auto_package(
-  USE_SCOPED_HEADER_INSTALL_DIR  
+  USE_SCOPED_HEADER_INSTALL_DIR
 )
