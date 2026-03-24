@@ -56,17 +56,17 @@ EKFLocalizer::EKFLocalizer(const rclcpp::NodeOptions & node_options)
   ekf_dt_(params_.ekf_dt),
   pose_queue_(params_.pose_smoothing_steps, params_.max_pose_queue_size),
   twist_queue_(params_.twist_smoothing_steps, params_.max_twist_queue_size),
-  diagnostics_(this)
+  diagnostics_(this),
+  latched_diagnostic_timestamp_(0, 0, RCL_ROS_TIME),
+  last_diagnostics_publish_time_(0, 0, RCL_ROS_TIME),
+  last_pose_callback_time_(0, 0, RCL_ROS_TIME),
+  last_twist_callback_time_(0, 0, RCL_ROS_TIME)
 {
   is_activated_ = false;
   is_set_initialpose_ = false;
   diagnostics_publish_counter_ = 0.0;
   latched_diagnostic_status_.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
   latched_diagnostic_status_.message = "OK";
-  latched_diagnostic_timestamp_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
-  last_diagnostics_publish_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
-  last_pose_callback_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
-  last_twist_callback_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
 
   // Configure diagnostic updater
   diagnostics_.setHardwareID(this->get_name());
