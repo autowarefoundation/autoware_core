@@ -20,10 +20,10 @@
 #include <autoware/lanelet2_utils/nn_search.hpp>
 #include <autoware/lanelet2_utils/topology.hpp>
 #include <autoware_lanelet2_extension/io/autoware_osm_parser.hpp>
+#include <autoware_lanelet2_extension/traffic_rules/autoware_traffic_rules.hpp>
 #include <autoware_lanelet2_extension/utility/query.hpp>
 #include <autoware_lanelet2_extension/utility/route_checker.hpp>
 #include <autoware_lanelet2_extension/utility/utilities.hpp>
-#include <autoware_lanelet2_extension/traffic_rules/autoware_traffic_rules.hpp>
 #include <autoware_utils_geometry/boost_geometry.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_utils_math/normalization.hpp>
@@ -39,12 +39,12 @@
 #include <boost/geometry/index/distance_predicates.hpp>
 #include <boost/geometry/index/predicates.hpp>
 
+#include <lanelet2_core/geometry/Area.h>
 #include <lanelet2_core/geometry/BoundingBox.h>
 #include <lanelet2_core/geometry/Lanelet.h>
 #include <lanelet2_core/primitives/BoundingBox.h>
 #include <lanelet2_core/primitives/LaneletSequence.h>
 #include <lanelet2_core/primitives/Point.h>
-#include <lanelet2_core/geometry/Area.h>
 #include <lanelet2_routing/LaneletPath.h>
 #include <lanelet2_routing/Route.h>
 #include <lanelet2_routing/RoutingGraph.h>
@@ -2321,8 +2321,7 @@ std::optional<lanelet::routing::LaneletPath> RouteHandler::findDrivableLanePath(
   return {};
 }
 
-std::optional<lanelet::routing::LaneletOrAreaPath>
-RouteHandler::findDrivableLanePathIncludingAreas(
+std::optional<lanelet::routing::LaneletOrAreaPath> RouteHandler::findDrivableLanePathIncludingAreas(
   const lanelet::ConstLanelet & start_lanelet, const lanelet::ConstLanelet & goal_lanelet) const
 {
   const auto drivable_routing_graph_ptr = lanelet::routing::RoutingGraph::build(
@@ -2457,8 +2456,7 @@ bool RouteHandler::planPathLaneletsBetweenCheckpoints(
 
     bool is_proper_angle = angle_diff <= std::abs(yaw_threshold);
 
-    optional_path =
-      routing_graph_ptr_->shortestPathIncludingAreas(st_llt, goal_lanelet, 0);
+    optional_path = routing_graph_ptr_->shortestPathIncludingAreas(st_llt, goal_lanelet, 0);
     if (!optional_path || !is_proper_angle) {
       RCLCPP_DEBUG_STREAM(
         logger_, "Failed to find a proper route!"

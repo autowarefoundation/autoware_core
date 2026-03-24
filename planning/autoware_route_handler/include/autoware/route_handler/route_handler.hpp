@@ -32,8 +32,8 @@
 #include <lanelet2_core/geometry/BoundingBox.h>
 #include <lanelet2_core/primitives/BoundingBox.h>
 #include <lanelet2_core/primitives/Lanelet.h>
-#include <lanelet2_core/primitives/Polygon.h>
 #include <lanelet2_core/primitives/LaneletOrArea.h>
+#include <lanelet2_core/primitives/Polygon.h>
 #include <lanelet2_routing/Forward.h>
 #include <lanelet2_routing/LaneletPath.h>
 #include <lanelet2_routing/RoutingCost.h>
