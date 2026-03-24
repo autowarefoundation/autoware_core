@@ -17,10 +17,7 @@ endif()
 find_package(autoware_cmake REQUIRED)
 autoware_package()
 
-# fmt must be linked explicitly because ament_auto_find_build_dependencies() uses legacy
-# variables (<pkg>_LIBRARIES, <pkg>_INCLUDE_DIRS), but fmt only provides a Modern CMake
-# imported target (fmt::fmt).
-find_package(fmt REQUIRED)
+set(fmt_TARGETS fmt::fmt)
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
   src/threshold.cpp
@@ -50,10 +47,18 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/utils/velocity.cpp
 )
 
-target_link_libraries(${PROJECT_NAME} fmt::fmt)
-
 if(BUILD_TESTING)
   ament_auto_find_test_dependencies()
+
+  find_package(
+    Python3
+    COMPONENTS Interpreter Development
+    REQUIRED)
+  list(APPEND ${PROJECT_NAME}_FOUND_TEST_DEPENDS
+    Python3
+  )
+  set(Python3_TARGETS Python3::Python)
+  set(yaml-cpp_TARGETS yaml-cpp::yaml-cpp)
 
   set(test_files
     test/test_main.cpp
