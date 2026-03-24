@@ -138,6 +138,12 @@ void Lanelet2MapVisualizationNode::on_map_bin(
   lanelet::ConstPolygons3d obstacle_removal_areas =
     lanelet::utils::query::getAllPolygonsByType(viz_lanelet_map, "obstacle_removal_area");
 
+  std::vector<lanelet::ConstArea> lanelet_areas;
+  lanelet_areas.reserve(viz_lanelet_map->areaLayer.size());
+  for (const auto & area : viz_lanelet_map->areaLayer) {
+    lanelet_areas.push_back(area);
+  }
+
   std_msgs::msg::ColorRGBA cl_road;
   std_msgs::msg::ColorRGBA cl_shoulder;
   std_msgs::msg::ColorRGBA cl_cross;
@@ -167,6 +173,8 @@ void Lanelet2MapVisualizationNode::on_map_bin(
   std_msgs::msg::ColorRGBA cl_bicycle_lane;
   std_msgs::msg::ColorRGBA cl_waypoints;
   std_msgs::msg::ColorRGBA cl_obstacle_removal_area;
+  std_msgs::msg::ColorRGBA cl_lanelet_routing_area;
+  std_msgs::msg::ColorRGBA cl_lanelet_routing_area_outline;
   set_color(&cl_road, 0.27, 0.27, 0.27, 0.999);
   set_color(&cl_shoulder, 0.15, 0.15, 0.15, 0.999);
   set_color(&cl_cross, 0.27, 0.3, 0.27, 0.5);
@@ -196,6 +204,9 @@ void Lanelet2MapVisualizationNode::on_map_bin(
   set_color(&cl_bicycle_lane, 0.0, 0.3843, 0.6274, 0.5);
   set_color(&cl_waypoints, 0.6, 0.4, 0.3, 0.999);
   set_color(&cl_obstacle_removal_area, 0.2, 0.2, 0.5, 0.5);
+  // Static map fill for areaLayer namespace lanelet_routing_area; darker edge in lanelet_routing_area_outline
+  set_color(&cl_lanelet_routing_area, 0.8, 0.53, 0.25, 0.35);
+  set_color(&cl_lanelet_routing_area_outline, 0.45, 0.28, 0.12, 0.95);
 
   visualization_msgs::msg::MarkerArray map_marker_array;
 
@@ -330,6 +341,10 @@ void Lanelet2MapVisualizationNode::on_map_bin(
   insert_marker_array(
     &map_marker_array, lanelet::visualization::obstacleRemovalAreaAsMarkerArray(
                          obstacle_removal_areas, cl_obstacle_removal_area));
+
+  insert_marker_array(
+    &map_marker_array, lanelet::visualization::laneletAreasAsMarkerArray(
+                         lanelet_areas, cl_lanelet_routing_area, cl_lanelet_routing_area_outline));
 
   pub_marker_->publish(map_marker_array);
 }
