@@ -32,6 +32,7 @@
 
 #include <autoware_internal_planning_msgs/msg/path_point_with_lane_id.hpp>
 #include <autoware_planning_msgs/msg/lanelet_primitive.hpp>
+#include <autoware_planning_msgs/msg/lanelet_segment.hpp>
 #include <autoware_planning_msgs/msg/path.hpp>
 
 #include <boost/geometry/algorithms/detail/comparable_distance/interface.hpp>
@@ -71,6 +72,7 @@ using autoware::experimental::lanelet2_utils::is_bicycle_lane;
 using autoware_internal_planning_msgs::msg::PathPointWithLaneId;
 using autoware_internal_planning_msgs::msg::PathWithLaneId;
 using autoware_planning_msgs::msg::LaneletPrimitive;
+using autoware_planning_msgs::msg::LaneletSegment;
 using autoware_planning_msgs::msg::Path;
 using autoware_utils_geometry::create_point;
 using autoware_utils_geometry::create_quaternion_from_yaw;
@@ -95,6 +97,18 @@ bool exists(const lanelet::ConstLanelets & vectors, const lanelet::ConstLanelet 
     }
   }
   return false;
+}
+
+LaneletSegment make_area_segment(const lanelet::ConstArea & area)
+{
+  LaneletSegment seg;
+  seg.preferred_primitive.id = area.id();
+  seg.preferred_primitive.primitive_type = "area";
+  LaneletPrimitive p;
+  p.id = area.id();
+  p.primitive_type = "area";
+  seg.primitives.push_back(p);
+  return seg;
 }
 
 std::optional<geometry_msgs::msg::Point> getGeometryPointFrom2DArcLength(
@@ -423,6 +437,7 @@ void RouteHandler::setRouteLanelets(const lanelet::ConstLanelets & path_lanelets
 void RouteHandler::clearRoute()
 {
   route_lanelets_.clear();
+  route_areas_.clear();
   route_lanelets_rtree_.clear();
   preferred_lanelets_.clear();
   start_lanelets_.clear();
@@ -437,6 +452,7 @@ void RouteHandler::setLaneletsFromRouteMsg()
     return;
   }
   route_lanelets_.clear();
+  route_areas_.clear();
   route_lanelets_rtree_.clear();
   preferred_lanelets_.clear();
   const bool is_route_valid = lanelet::utils::route::isRouteValid(*route_ptr_, lanelet_map_ptr_);
@@ -444,46 +460,88 @@ void RouteHandler::setLaneletsFromRouteMsg()
     return;
   }
 
-  size_t primitive_size{0};
+  size_t lane_primitive_size = 0;
   for (const auto & route_section : route_ptr_->segments) {
-    primitive_size += route_section.primitives.size();
+    for (const auto & primitive : route_section.primitives) {
+      if (primitive.primitive_type != "area") {
+        ++lane_primitive_size;
+      }
+    }
   }
-  route_lanelets_.reserve(primitive_size);
+  route_lanelets_.reserve(lane_primitive_size);
   std::vector<RouteRtreeNode> rtree_nodes;
-  rtree_nodes.reserve(primitive_size);
+  rtree_nodes.reserve(lane_primitive_size);
   size_t i = 0;
+
+  const auto append_lane_primitive = [&](
+                                       const LaneletPrimitive & primitive,
+                                       const LaneletSegment & route_section) {
+    const auto id = primitive.id;
+    const auto & llt = lanelet_map_ptr_->laneletLayer.get(id);
+    route_lanelets_.push_back(llt);
+    rtree_nodes.emplace_back(
+      boost::geometry::return_envelope<autoware_utils_geometry::Box2d>(
+        llt.polygon2d().basicPolygon()),
+      i++);
+    if (id == route_section.preferred_primitive.id && primitive.primitive_type != "area") {
+      preferred_lanelets_.push_back(llt);
+    }
+  };
+
+  const auto append_area_primitive = [&](const LaneletPrimitive & primitive) {
+    const auto & ar = lanelet_map_ptr_->areaLayer.get(primitive.id);
+    route_areas_.push_back(ar);
+  };
 
   for (const auto & route_section : route_ptr_->segments) {
     for (const auto & primitive : route_section.primitives) {
-      const auto id = primitive.id;
-      const auto & llt = lanelet_map_ptr_->laneletLayer.get(id);
-      route_lanelets_.push_back(llt);
-      rtree_nodes.emplace_back(
-        boost::geometry::return_envelope<autoware_utils_geometry::Box2d>(
-          llt.polygon2d().basicPolygon()),
-        i++);
-      if (id == route_section.preferred_primitive.id) {
-        preferred_lanelets_.push_back(llt);
+      if (primitive.primitive_type == "area") {
+        append_area_primitive(primitive);
+      } else {
+        append_lane_primitive(primitive, route_section);
       }
     }
   }
   route_lanelets_rtree_ = RouteRtree(rtree_nodes);
+
+  const auto collect_lane_lanelets_from_segment =
+    [&](const autoware_planning_msgs::msg::LaneletSegment & seg, lanelet::ConstLanelets * out) {
+      for (const auto & primitive : seg.primitives) {
+        if (primitive.primitive_type == "area") {
+          continue;
+        }
+        out->push_back(lanelet_map_ptr_->laneletLayer.get(primitive.id));
+      }
+    };
+
   goal_lanelets_.clear();
   start_lanelets_.clear();
   if (!route_ptr_->segments.empty()) {
-    goal_lanelets_.reserve(route_ptr_->segments.back().primitives.size());
-    for (const auto & primitive : route_ptr_->segments.back().primitives) {
-      const auto id = primitive.id;
-      const auto & llt = lanelet_map_ptr_->laneletLayer.get(id);
-      goal_lanelets_.push_back(llt);
+    collect_lane_lanelets_from_segment(route_ptr_->segments.back(), &goal_lanelets_);
+    if (goal_lanelets_.empty()) {
+      for (auto it = route_ptr_->segments.rbegin(); it != route_ptr_->segments.rend(); ++it) {
+        collect_lane_lanelets_from_segment(*it, &goal_lanelets_);
+        if (!goal_lanelets_.empty()) {
+          break;
+        }
+      }
     }
-    start_lanelets_.reserve(route_ptr_->segments.front().primitives.size());
-    for (const auto & primitive : route_ptr_->segments.front().primitives) {
-      const auto id = primitive.id;
-      const auto & llt = lanelet_map_ptr_->laneletLayer.get(id);
-      start_lanelets_.push_back(llt);
+    collect_lane_lanelets_from_segment(route_ptr_->segments.front(), &start_lanelets_);
+    if (start_lanelets_.empty()) {
+      for (const auto & seg : route_ptr_->segments) {
+        collect_lane_lanelets_from_segment(seg, &start_lanelets_);
+        if (!start_lanelets_.empty()) {
+          break;
+        }
+      }
     }
   }
+
+  RCLCPP_DEBUG(
+    logger_,
+    "[Route Handler] setLaneletsFromRouteMsg: lane primitives=%zu, areas=%zu, segments=%zu",
+    route_lanelets_.size(), route_areas_.size(), route_ptr_->segments.size());
+
   is_handler_ready_ = true;
 }
 
@@ -621,6 +679,11 @@ lanelet::ConstLanelets RouteHandler::getLaneletsFromIds(const lanelet::Ids & ids
 lanelet::ConstLanelet RouteHandler::getLaneletsFromId(const lanelet::Id id) const
 {
   return lanelet_map_ptr_->laneletLayer.get(id);
+}
+
+lanelet::ConstArea RouteHandler::getAreaFromId(const lanelet::Id id) const
+{
+  return lanelet_map_ptr_->areaLayer.get(id);
 }
 
 bool RouteHandler::isDeadEndLanelet(const lanelet::ConstLanelet & lanelet) const
@@ -2253,6 +2316,23 @@ bool RouteHandler::planPathLaneletsBetweenCheckpoints(
   return is_route_found;
 }
 
+LaneletSegment RouteHandler::makeLaneSegmentFromMainLanelet(
+  const lanelet::ConstLanelet & main_llt) const
+{
+  LaneletSegment route_section_msg;
+  route_section_msg.preferred_primitive.id = main_llt.id();
+  route_section_msg.preferred_primitive.primitive_type = "lane";
+  const lanelet::ConstLanelets route_section_lanelets = getNeighborsWithinRoute(main_llt);
+  route_section_msg.primitives.reserve(route_section_lanelets.size());
+  for (const auto & section_llt : route_section_lanelets) {
+    LaneletPrimitive p;
+    p.id = section_llt.id();
+    p.primitive_type = "lane";
+    route_section_msg.primitives.push_back(p);
+  }
+  return route_section_msg;
+}
+
 std::vector<LaneletSegment> RouteHandler::createMapSegments(
   const lanelet::ConstLanelets & path_lanelets) const
 {
@@ -2266,19 +2346,85 @@ std::vector<LaneletSegment> RouteHandler::createMapSegments(
 
   route_sections.reserve(main_path.size());
   for (const auto & main_llt : main_path) {
-    LaneletSegment route_section_msg;
-    const lanelet::ConstLanelets route_section_lanelets = getNeighborsWithinRoute(main_llt);
-    route_section_msg.preferred_primitive.id = main_llt.id();
-    route_section_msg.primitives.reserve(route_section_lanelets.size());
-    for (const auto & section_llt : route_section_lanelets) {
-      LaneletPrimitive p;
-      p.id = section_llt.id();
-      p.primitive_type = "lane";
-      route_section_msg.primitives.push_back(p);
-    }
-    route_sections.push_back(route_section_msg);
+    route_sections.push_back(makeLaneSegmentFromMainLanelet(main_llt));
   }
   return route_sections;
+}
+
+std::vector<LaneletSegment> RouteHandler::createMapSegmentsFromLaneletOrAreaPath(
+  const lanelet::ConstLaneletOrAreas & path) const
+{
+  lanelet::ConstLanelets lane_only;
+  lane_only.reserve(path.size());
+  bool has_area = false;
+  for (const auto & elem : path) {
+    if (elem.isLanelet()) {
+      lane_only.push_back(static_cast<const lanelet::ConstLanelet &>(elem));
+    } else if (elem.isArea()) {
+      has_area = true;
+    }
+  }
+
+  if (!has_area) {
+    return createMapSegments(lane_only);
+  }
+
+  if (lane_only.empty()) {
+    std::vector<LaneletSegment> out;
+    out.reserve(path.size());
+    for (const auto & elem : path) {
+      if (elem.isArea()) {
+        out.push_back(
+          make_area_segment(static_cast<const lanelet::ConstArea &>(elem)));
+      }
+    }
+    RCLCPP_DEBUG(
+      logger_, "[Route Handler] createMapSegmentsFromLaneletOrAreaPath: area-only path, "
+               "segments=%zu",
+      out.size());
+    return out;
+  }
+
+  const auto main_path = getMainLanelets(lane_only);
+  std::vector<LaneletSegment> lane_segments;
+  lane_segments.reserve(main_path.size());
+  for (const auto & main_llt : main_path) {
+    lane_segments.push_back(makeLaneSegmentFromMainLanelet(main_llt));
+  }
+
+  std::vector<LaneletSegment> out;
+  out.reserve(path.size());
+  size_t main_idx = 0;
+
+  for (const auto & elem : path) {
+    if (elem.isArea()) {
+      out.push_back(make_area_segment(static_cast<const lanelet::ConstArea &>(elem)));
+      RCLCPP_DEBUG(
+        logger_, "[Route Handler] createMapSegmentsFromLaneletOrAreaPath: area id=%ld",
+        elem.id());
+      continue;
+    }
+    const auto & ll = static_cast<const lanelet::ConstLanelet &>(elem);
+    if (main_idx < main_path.size() && ll.id() == main_path[main_idx].id()) {
+      out.push_back(lane_segments[main_idx]);
+      ++main_idx;
+      RCLCPP_DEBUG(
+        logger_, "[Route Handler] createMapSegmentsFromLaneletOrAreaPath: main lane id=%ld",
+        ll.id());
+    } else {
+      out.push_back(makeLaneSegmentFromMainLanelet(ll));
+      RCLCPP_DEBUG(
+        logger_, "[Route Handler] createMapSegmentsFromLaneletOrAreaPath: non-main lane id=%ld",
+        ll.id());
+    }
+  }
+
+  RCLCPP_DEBUG(
+    logger_,
+    "[Route Handler] createMapSegmentsFromLaneletOrAreaPath: segments=%zu (lane_only main=%zu)",
+    out.size(), main_path.size());
+
+  return out;
 }
 
 lanelet::ConstLanelets RouteHandler::getMainLanelets(
