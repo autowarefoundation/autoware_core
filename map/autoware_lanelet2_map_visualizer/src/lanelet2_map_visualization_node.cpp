@@ -204,7 +204,8 @@ void Lanelet2MapVisualizationNode::on_map_bin(
   set_color(&cl_bicycle_lane, 0.0, 0.3843, 0.6274, 0.5);
   set_color(&cl_waypoints, 0.6, 0.4, 0.3, 0.999);
   set_color(&cl_obstacle_removal_area, 0.2, 0.2, 0.5, 0.5);
-  // Static map fill for areaLayer namespace lanelet_routing_area; darker edge in lanelet_routing_area_outline
+  // Static map fill for areaLayer namespace lanelet_routing_area; darker edge in
+  // lanelet_routing_area_outline
   set_color(&cl_lanelet_routing_area, 0.8, 0.53, 0.25, 0.35);
   set_color(&cl_lanelet_routing_area_outline, 0.45, 0.28, 0.12, 0.95);
 
