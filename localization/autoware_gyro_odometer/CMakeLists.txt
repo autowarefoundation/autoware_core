@@ -27,10 +27,11 @@ if(BUILD_TESTING)
   )
 endif()
 
-rclcpp_components_register_node(${PROJECT_NAME}
+autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
   PLUGIN "autoware::gyro_odometer::GyroOdometerNode"
   EXECUTABLE ${PROJECT_NAME}_node
-  EXECUTOR SingleThreadedExecutor
+  AGNOCAST_EXECUTOR CallbackIsolatedAgnocastExecutor
+  ROS2_EXECUTOR SingleThreadedExecutor
 )
 
 autoware_ament_auto_package(INSTALL_TO_SHARE
