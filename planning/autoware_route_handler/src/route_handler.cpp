@@ -473,20 +473,19 @@ void RouteHandler::setLaneletsFromRouteMsg()
   rtree_nodes.reserve(lane_primitive_size);
   size_t i = 0;
 
-  const auto append_lane_primitive = [&](
-                                       const LaneletPrimitive & primitive,
-                                       const LaneletSegment & route_section) {
-    const auto id = primitive.id;
-    const auto & llt = lanelet_map_ptr_->laneletLayer.get(id);
-    route_lanelets_.push_back(llt);
-    rtree_nodes.emplace_back(
-      boost::geometry::return_envelope<autoware_utils_geometry::Box2d>(
-        llt.polygon2d().basicPolygon()),
-      i++);
-    if (id == route_section.preferred_primitive.id && primitive.primitive_type != "area") {
-      preferred_lanelets_.push_back(llt);
-    }
-  };
+  const auto append_lane_primitive =
+    [&](const LaneletPrimitive & primitive, const LaneletSegment & route_section) {
+      const auto id = primitive.id;
+      const auto & llt = lanelet_map_ptr_->laneletLayer.get(id);
+      route_lanelets_.push_back(llt);
+      rtree_nodes.emplace_back(
+        boost::geometry::return_envelope<autoware_utils_geometry::Box2d>(
+          llt.polygon2d().basicPolygon()),
+        i++);
+      if (id == route_section.preferred_primitive.id && primitive.primitive_type != "area") {
+        preferred_lanelets_.push_back(llt);
+      }
+    };
 
   const auto append_area_primitive = [&](const LaneletPrimitive & primitive) {
     const auto & ar = lanelet_map_ptr_->areaLayer.get(primitive.id);
@@ -2374,13 +2373,13 @@ std::vector<LaneletSegment> RouteHandler::createMapSegmentsFromLaneletOrAreaPath
     out.reserve(path.size());
     for (const auto & elem : path) {
       if (elem.isArea()) {
-        out.push_back(
-          make_area_segment(static_cast<const lanelet::ConstArea &>(elem)));
+        out.push_back(make_area_segment(static_cast<const lanelet::ConstArea &>(elem)));
       }
     }
     RCLCPP_DEBUG(
-      logger_, "[Route Handler] createMapSegmentsFromLaneletOrAreaPath: area-only path, "
-               "segments=%zu",
+      logger_,
+      "[Route Handler] createMapSegmentsFromLaneletOrAreaPath: area-only path, "
+      "segments=%zu",
       out.size());
     return out;
   }
@@ -2400,8 +2399,7 @@ std::vector<LaneletSegment> RouteHandler::createMapSegmentsFromLaneletOrAreaPath
     if (elem.isArea()) {
       out.push_back(make_area_segment(static_cast<const lanelet::ConstArea &>(elem)));
       RCLCPP_DEBUG(
-        logger_, "[Route Handler] createMapSegmentsFromLaneletOrAreaPath: area id=%ld",
-        elem.id());
+        logger_, "[Route Handler] createMapSegmentsFromLaneletOrAreaPath: area id=%ld", elem.id());
       continue;
     }
     const auto & ll = static_cast<const lanelet::ConstLanelet &>(elem);
