@@ -63,7 +63,9 @@ autoware_internal_planning_msgs::msg::PathPointWithLaneId calcInterpolatedPoint(
  * @return resampled pose
  */
 template <class T>
-geometry_msgs::msg::Pose calcInterpolatedPose(const T & points, const double target_length)
+geometry_msgs::msg::Pose calcInterpolatedPose(
+  const T & points, const double target_length,
+  const bool set_orientation_from_position_direction = true)
 {
   if (points.empty()) {
     geometry_msgs::msg::Pose interpolated_pose;
@@ -81,7 +83,8 @@ geometry_msgs::msg::Pose calcInterpolatedPose(const T & points, const double tar
     const double length = autoware_utils_geometry::calc_distance3d(curr_pose, next_pose);
     if (accumulated_length + length > target_length) {
       const double ratio = (target_length - accumulated_length) / std::max(length, 1e-6);
-      return autoware_utils_geometry::calc_interpolated_pose(curr_pose, next_pose, ratio);
+      return autoware_utils_geometry::calc_interpolated_pose(
+        curr_pose, next_pose, ratio, set_orientation_from_position_direction);
     }
     accumulated_length += length;
   }
