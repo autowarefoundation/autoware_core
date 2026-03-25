@@ -508,9 +508,3 @@ INSTANTIATE_TEST_SUITE_P(
 // }
 
 }  // namespace autoware::experimental
-
-int main(int argc, char ** argv)
-{
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}
