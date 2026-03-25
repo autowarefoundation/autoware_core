@@ -33,8 +33,6 @@
 #include <string>
 #include <vector>
 
-#define PLOT 1
-
 #ifdef PLOT
 #include <autoware/pyplot/pyplot.hpp>
 #include <autoware_test_utils/visualization.hpp>
@@ -49,7 +47,7 @@ static constexpr auto inf = std::numeric_limits<double>::infinity();
 
 namespace autoware::experimental
 {
-
+#ifdef PLOT
 static void savefig(
   const trajectory::Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId> &
     reference_path,
@@ -85,6 +83,7 @@ static void savefig(
   ax.grid();
   plt.savefig(Args(filename));
 }
+#endif
 
 class TestWithVM_01_10_12_Map : public ::testing::TestWithParam<std::string>  // NOLINT
 {
@@ -1691,12 +1690,3 @@ INSTANTIATE_TEST_SUITE_P(
     "test_reference_path_valid_05.yaml", "test_reference_path_valid_06.yaml"));
 
 }  // namespace autoware::experimental
-
-int main(int argc, char ** argv)
-{
-#ifdef PLOT
-  pybind11::scoped_interpreter guard{};
-#endif
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}

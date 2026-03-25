@@ -16,10 +16,11 @@ target_link_libraries(${PROJECT_NAME}_ros
   ${PROJECT_NAME}
 )
 
-rclcpp_components_register_node(${PROJECT_NAME}_ros
+autoware_agnocast_wrapper_register_node(${PROJECT_NAME}_ros
   PLUGIN "autoware::stop_filter::StopFilterNode"
   EXECUTABLE ${PROJECT_NAME}_node
-  EXECUTOR SingleThreadedExecutor
+  AGNOCAST_EXECUTOR CallbackIsolatedAgnocastExecutor
+  ROS2_EXECUTOR SingleThreadedExecutor
 )
 
 if(BUILD_TESTING)
