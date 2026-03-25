@@ -990,4 +990,186 @@ TEST_F(EKFLocalizerTestSuite, callback_pose_and_twist_published_at_period_when_p
     << "Expected at least one callback_twist diagnostic at updater period when period > 0";
 }
 
+TEST_F(EKFLocalizerTestSuite, diagnostics_published_at_parameter_period)
+{
+  // Verify diagnostic_updater emits /diagnostics at roughly diagnostics_publish_period.
+  // Feed pose/twist occasionally so merged diagnostics stay OK: otherwise no_update_count rises,
+  // latch resets after each publish, and OK->ERROR repeats every EKF tick (force_update storm).
+  const double ekf_rate = 50.0;
+  const double diagnostics_publish_period = 0.2;  // 5 Hz
+
+  auto ekf_localizer =
+    create_ekf_localizer("test_diag_parameter_period", diagnostics_publish_period, ekf_rate);
+
+  rclcpp::Time current_time = ekf_localizer->now();
+  geometry_msgs::msg::PoseStamped current_ekf_pose;
+  current_ekf_pose.header.stamp = current_time;
+  current_ekf_pose.header.frame_id = "map";
+  current_ekf_pose.pose.position.x = 0.0;
+  current_ekf_pose.pose.position.y = 0.0;
+  current_ekf_pose.pose.position.z = 0.0;
+  current_ekf_pose.pose.orientation.w = 1.0;
+
+  geometry_msgs::msg::PoseWithCovarianceStamped initial_pose;
+  initial_pose.header.stamp = current_time;
+  initial_pose.header.frame_id = "map";
+  initial_pose.pose.pose = current_ekf_pose.pose;
+  for (size_t i = 0; i < 36; ++i) {
+    initial_pose.pose.covariance[i] = (i == 0 || i == 7 || i == 14) ? 0.01 : 0.0;
+  }
+  initialize_ekf_module(ekf_localizer.get(), initial_pose);
+  set_is_activated(ekf_localizer.get(), true);
+  set_is_set_initialpose(ekf_localizer.get(), true);
+
+  auto pub_pose = ekf_localizer->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(
+    "in_pose_with_covariance", 10);
+  auto pub_twist = ekf_localizer->create_publisher<geometry_msgs::msg::TwistWithCovarianceStamped>(
+    "in_twist_with_covariance", 10);
+
+  geometry_msgs::msg::PoseWithCovarianceStamped pose_feed;
+  pose_feed.header.frame_id = "map";
+  pose_feed.pose = initial_pose.pose;
+
+  geometry_msgs::msg::TwistWithCovarianceStamped twist_feed;
+  twist_feed.header.frame_id = "base_link";
+  twist_feed.twist.twist.linear.x = 0.0;
+  twist_feed.twist.twist.linear.y = 0.0;
+  twist_feed.twist.twist.linear.z = 0.0;
+  twist_feed.twist.twist.angular.z = 0.0;
+  for (size_t i = 0; i < 36; ++i) {
+    twist_feed.twist.covariance[i] = (i == 0 || i == 5 * 6 + 5) ? 0.01 : 0.0;
+  }
+
+  std::vector<std::chrono::steady_clock::time_point> receive_times;
+  auto sub = ekf_localizer->create_subscription<diagnostic_msgs::msg::DiagnosticArray>(
+    "/diagnostics", 10,
+    [&receive_times](diagnostic_msgs::msg::DiagnosticArray::ConstSharedPtr /* msg */) {
+      receive_times.push_back(std::chrono::steady_clock::now());
+    });
+
+  rclcpp::ExecutorOptions options;
+  rclcpp::executors::SingleThreadedExecutor executor(options);
+  executor.add_node(ekf_localizer);
+
+  const double spin_seconds = 1.15;
+  const auto spin_end =
+    std::chrono::steady_clock::now() + std::chrono::duration<double>(spin_seconds);
+  for (size_t iter = 0; std::chrono::steady_clock::now() < spin_end && rclcpp::ok(); ++iter) {
+    if (iter % 15 == 0) {
+      const rclcpp::Time stamp = ekf_localizer->now();
+      pose_feed.header.stamp = stamp;
+      twist_feed.header.stamp = stamp;
+      pub_pose->publish(pose_feed);
+      pub_twist->publish(twist_feed);
+    }
+    executor.spin_some(std::chrono::milliseconds(10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+  }
+
+  executor.remove_node(ekf_localizer);
+
+  const size_t min_expected = static_cast<size_t>(spin_seconds / diagnostics_publish_period) > 2
+                                ? static_cast<size_t>(spin_seconds / diagnostics_publish_period) - 2
+                                : 1;
+  EXPECT_GE(receive_times.size(), min_expected)
+    << "Expected about " << (spin_seconds / diagnostics_publish_period) << " periodic publishes in "
+    << spin_seconds << " s (allowing startup slack)";
+
+  ASSERT_GE(receive_times.size(), 4u)
+    << "Need several messages to check intervals between periodic publishes";
+
+  for (size_t i = 2; i < receive_times.size(); ++i) {
+    const double dt =
+      std::chrono::duration<double>(receive_times[i] - receive_times[i - 1]).count();
+    // Ignore sub-period gaps from diagnostic_updater task registration or batched delivery.
+    if (dt < diagnostics_publish_period * 0.15) {
+      continue;
+    }
+    EXPECT_GE(dt, diagnostics_publish_period * 0.25)
+      << "Consecutive /diagnostics arrived faster than the configured period (too dense)";
+    EXPECT_LE(dt, diagnostics_publish_period * 8.0)
+      << "Consecutive /diagnostics gap too large — periodic publish may be broken";
+  }
+}
+
+TEST_F(EKFLocalizerTestSuite, diagnostics_published_immediately_on_severity_increase)
+{
+  // With a very long updater period, only force_update() on severity increase should publish.
+  const double ekf_rate = 50.0;
+  const double slow_diagnostics_frequency = 0.01;  // 100 s period
+
+  auto ekf_localizer = std::make_shared<autoware::ekf_localizer::EKFLocalizer>(
+    make_ekf_localizer_options(slow_diagnostics_frequency, ekf_rate));
+
+  rclcpp::Time current_time = ekf_localizer->now();
+  geometry_msgs::msg::PoseStamped current_ekf_pose;
+  current_ekf_pose.header.stamp = current_time;
+  current_ekf_pose.header.frame_id = "map";
+  current_ekf_pose.pose.position.x = 0.0;
+  current_ekf_pose.pose.position.y = 0.0;
+  current_ekf_pose.pose.position.z = 0.0;
+  current_ekf_pose.pose.orientation.w = 1.0;
+
+  geometry_msgs::msg::PoseWithCovarianceStamped initial_pose;
+  initial_pose.header.stamp = current_time;
+  initial_pose.header.frame_id = "map";
+  initial_pose.pose.pose = current_ekf_pose.pose;
+  for (size_t i = 0; i < 36; ++i) {
+    initial_pose.pose.covariance[i] = (i == 0 || i == 7 || i == 14) ? 0.01 : 0.0;
+  }
+  initialize_ekf_module(ekf_localizer.get(), initial_pose);
+  set_is_activated(ekf_localizer.get(), true);
+  set_is_set_initialpose(ekf_localizer.get(), true);
+
+  int diag_count = 0;
+  bool saw_error_main_diag = false;
+  auto sub = ekf_localizer->create_subscription<diagnostic_msgs::msg::DiagnosticArray>(
+    "/diagnostics", 10,
+    [&diag_count, &saw_error_main_diag](diagnostic_msgs::msg::DiagnosticArray::ConstSharedPtr msg) {
+      ++diag_count;
+      for (const auto & st : msg->status) {
+        if (st.name.find("callback_") != std::string::npos) {
+          continue;
+        }
+        if (st.name.find("localization:") == std::string::npos) {
+          continue;
+        }
+        if (st.level >= diagnostic_msgs::msg::DiagnosticStatus::ERROR) {
+          saw_error_main_diag = true;
+        }
+      }
+    });
+
+  rclcpp::ExecutorOptions options;
+  rclcpp::executors::SingleThreadedExecutor executor(options);
+  executor.add_node(ekf_localizer);
+
+  for (int i = 0; i < 40 && rclcpp::ok(); ++i) {
+    executor.spin_some(std::chrono::milliseconds(10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(3));
+  }
+
+  const int count_before = diag_count;
+
+  saw_error_main_diag = false;
+  set_pose_diag_info_no_update_count(ekf_localizer.get(), 100);
+  call_timer_callback(ekf_localizer.get());
+
+  for (int i = 0; i < 80 && rclcpp::ok(); ++i) {
+    executor.spin_some(std::chrono::milliseconds(10));
+    if (diag_count > count_before) {
+      break;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+  }
+
+  executor.remove_node(ekf_localizer);
+
+  EXPECT_GT(diag_count, count_before)
+    << "Severity increase should trigger an immediate /diagnostics publish (force_update) even "
+       "when periodic publish is 100 s away";
+  EXPECT_TRUE(saw_error_main_diag)
+    << "Expected main ekf_localizer diagnostic status to report ERROR after severity increase";
+}
+
 }  // namespace autoware::ekf_localizer
