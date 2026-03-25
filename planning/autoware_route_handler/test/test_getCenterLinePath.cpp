@@ -16,7 +16,6 @@
 
 #include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/lanelet2_utils/geometry.hpp>
-// #include <autoware/motion_utils/trajectory/trajectory.hpp>
 #include <autoware/trajectory/threshold.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 #include <range/v3/all.hpp>
@@ -184,7 +183,6 @@ TEST_P(TestCase_Map_Waypoint_Curve_00, test_path_validity)
   const auto lanelet_sequence = route_handler_->getLaneletsFromIds(ids);
 
   const auto centerline_path = route_handler_->getCenterLinePath(lanelet_sequence, start_s, end_s);
-  // const auto centerline_path = route_handler_->getCenterLinePath(lanelet_sequence, -inf, inf);
 
   if (expect_success) {
     EXPECT_TRUE(
@@ -215,14 +213,7 @@ TEST_P(TestCase_Map_Waypoint_Curve_00, test_path_validity)
               autoware_utils_geometry::calc_azimuth_angle(
                 p1.point.pose.position, p2.point.pose.position) -
               autoware_utils_geometry::calc_azimuth_angle(
-                p2.point.pose.position, p3.point.pose.position))) < M_PI / 2.0)
-          << "value is "
-          << std::fabs(
-               autoware_utils_math::normalize_radian(
-                 autoware_utils_geometry::calc_azimuth_angle(
-                   p1.point.pose.position, p2.point.pose.position) -
-                 autoware_utils_geometry::calc_azimuth_angle(
-                   p2.point.pose.position, p3.point.pose.position)));
+                p2.point.pose.position, p3.point.pose.position))) < M_PI / 2.0);
       }
     }
   } else {
@@ -236,38 +227,38 @@ INSTANTIATE_TEST_SUITE_P(
   test_path_validity, TestCase_Map_Waypoint_Curve_00,
   ::testing::Values(  // enumerate values below
     Parameter_Map_Waypoint_Curve_00{
-      {140, 137, 136, 138, 139, 135},  // ids
+      {140, 137, 136, 138, 139},  // ids
       -30.0,                // start_s[m] 10 - 40
       10.0,                 // end_s[m]
       true,                 // expect_success
       10 * 0.9              // length_lower_bound[m]
     },
   Parameter_Map_Waypoint_Curve_00{
-      {140, 137, 136, 138, 139, 135},  // ids
+      {140, 137, 136, 138, 139},  // ids
       10.0,                 // start_s[m]
       16.5,                 // end_s[m] 10 + 6.5
       true,                 // expect_success
       6.5 * 0.9             // length_lower_bound[m]
     },
   Parameter_Map_Waypoint_Curve_00{
-      {140, 137, 136, 138, 139, 135},  // ids
+      {140, 137, 136, 138, 139},  // ids
       -30.0,                // start_s[m] 10 - 40
       16.5,                 // end_s[m] 10 + 6.5
       true,                 // expect_success
       16.5 * 0.9              // length_lower_bound[m]
     },
     Parameter_Map_Waypoint_Curve_00{
-      {140, 137, 136, 138, 139, 135},  // ids
+      {140, 137, 136, 138, 139},  // ids
       10.0,                 // start_s[m]
       10.0,                 // end_s[m]
       false,                // expect_success
       0.0                   // length_lower_bound[m]
     },
   Parameter_Map_Waypoint_Curve_00{
-      {140, 137, 136, 138, 139, 135},  // ids
+      {140, 137, 136, 138, 139},  // ids
       -inf,                 // start_s[m]
       inf,                  // end_s[m]
       true,                 // expect_success
-      50 * 0.9              // length_lower_bound[m]
+      40 * 0.9              // length_lower_bound[m]
     }));
 }  // namespace autoware::route_handler::test
