@@ -16,7 +16,6 @@
 #include "include/diagnostics.hpp"
 #include "include/ekf_localizer.hpp"
 
-#include <rclcpp/exceptions.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <diagnostic_msgs/msg/diagnostic_array.hpp>
@@ -260,8 +259,8 @@ protected:
     // Don't shutdown here as other tests might need rclcpp context
   }
 
-  static std::shared_ptr<autoware::ekf_localizer::EKFLocalizer> create_ekf_localizer(
-    const std::string & /* node_name */, double diagnostics_publish_period, double ekf_rate)
+  static rclcpp::NodeOptions make_ekf_localizer_options(
+    double diagnostics_publish_frequency, double ekf_rate)
   {
     rclcpp::NodeOptions options;
     options.parameter_overrides({
@@ -300,13 +299,19 @@ protected:
       {"diagnostics.warn_ellipse_size", 1.2},
       {"diagnostics.error_ellipse_size_lateral_direction", 0.3},
       {"diagnostics.warn_ellipse_size_lateral_direction", 0.25},
-      {"diagnostics.diagnostics_publish_frequency",
-       diagnostics_publish_period > 0.0 ? 1.0 / diagnostics_publish_period : 0.0},
+      {"diagnostics.diagnostics_publish_frequency", diagnostics_publish_frequency},
       // Misc parameters
       {"misc.threshold_observable_velocity_mps", 0.0},
       {"misc.pose_frame_id", "map"},
     });
-    return std::make_shared<autoware::ekf_localizer::EKFLocalizer>(options);
+    return options;
+  }
+
+  static std::shared_ptr<autoware::ekf_localizer::EKFLocalizer> create_ekf_localizer(
+    const std::string & /* node_name */, double diagnostics_publish_period, double ekf_rate)
+  {
+    return std::make_shared<autoware::ekf_localizer::EKFLocalizer>(
+      make_ekf_localizer_options(1.0 / diagnostics_publish_period, ekf_rate));
   }
 
   // Helper methods to access private members through friend class
@@ -983,171 +988,6 @@ TEST_F(EKFLocalizerTestSuite, callback_pose_and_twist_published_at_period_when_p
     << "Expected at least one callback_pose diagnostic at updater period when period > 0";
   EXPECT_TRUE(received_callback_twist_diag)
     << "Expected at least one callback_twist diagnostic at updater period when period > 0";
-}
-
-TEST_F(EKFLocalizerTestSuite, diagnostics_published_from_timer_callback_when_period_zero)
-{
-  // When diagnostics_publish_period <= 0 (default), timer_callback calls force_update() every
-  // tick so the latched ekf_localizer diagnostic is published at EKF rate. This test verifies
-  // that spinning the node (timer runs) yields at least one such diagnostic on /diagnostics.
-  const double ekf_rate = 100.0;
-  const double diagnostics_publish_period = 0.0;
-
-  auto ekf_localizer =
-    create_ekf_localizer("test_timer_diag_period_zero", diagnostics_publish_period, ekf_rate);
-
-  rclcpp::Time current_time = ekf_localizer->now();
-  geometry_msgs::msg::PoseStamped current_ekf_pose;
-  current_ekf_pose.header.stamp = current_time;
-  current_ekf_pose.header.frame_id = "map";
-  current_ekf_pose.pose.position.x = 0.0;
-  current_ekf_pose.pose.position.y = 0.0;
-  current_ekf_pose.pose.position.z = 0.0;
-  current_ekf_pose.pose.orientation.w = 1.0;
-
-  geometry_msgs::msg::PoseWithCovarianceStamped initial_pose;
-  initial_pose.header.stamp = current_time;
-  initial_pose.header.frame_id = "map";
-  initial_pose.pose.pose = current_ekf_pose.pose;
-  for (size_t i = 0; i < 36; ++i) {
-    initial_pose.pose.covariance[i] = (i == 0 || i == 7 || i == 14) ? 0.01 : 0.0;
-  }
-  initialize_ekf_module(ekf_localizer.get(), initial_pose);
-  set_is_activated(ekf_localizer.get(), true);
-  set_is_set_initialpose(ekf_localizer.get(), true);
-
-  bool received_latched_diag = false;
-  auto sub = ekf_localizer->create_subscription<diagnostic_msgs::msg::DiagnosticArray>(
-    "/diagnostics", 10,
-    [&received_latched_diag](diagnostic_msgs::msg::DiagnosticArray::ConstSharedPtr msg) {
-      for (const auto & status : msg->status) {
-        // Latched diagnostic from diagnose(): "localization: <node_name>" (no "callback_" in name)
-        if (
-          status.name.find("localization:") != std::string::npos &&
-          status.name.find("callback_") == std::string::npos) {
-          received_latched_diag = true;
-          break;
-        }
-      }
-    });
-
-  rclcpp::ExecutorOptions options;
-  rclcpp::executors::SingleThreadedExecutor executor(options);
-  executor.add_node(ekf_localizer);
-
-  const auto spin_duration = std::chrono::milliseconds(250);
-  const auto start = std::chrono::steady_clock::now();
-  while (std::chrono::steady_clock::now() - start < spin_duration && rclcpp::ok()) {
-    executor.spin_some(std::chrono::milliseconds(10));
-    std::this_thread::sleep_for(std::chrono::milliseconds(5));
-  }
-
-  executor.remove_node(ekf_localizer);
-
-  EXPECT_TRUE(received_latched_diag) << "Expected at least one latched ekf_localizer diagnostic "
-                                        "from timer_callback when period is 0";
-}
-
-TEST_F(EKFLocalizerTestSuite, diagnostics_published_from_pose_callback_when_period_zero)
-{
-  // When diagnostics_publish_period <= 0 (default), pose/twist callbacks also publish via
-  // pub_diag_. This test verifies that publishing pose triggers a callback_pose diagnostic.
-  const double ekf_rate = 100.0;
-  const double diagnostics_publish_period = 0.0;
-
-  auto ekf_localizer =
-    create_ekf_localizer("test_callback_diag", diagnostics_publish_period, ekf_rate);
-
-  set_is_activated(ekf_localizer.get(), true);
-
-  bool received_callback_pose_diag = false;
-  auto sub = ekf_localizer->create_subscription<diagnostic_msgs::msg::DiagnosticArray>(
-    "/diagnostics", 10,
-    [&received_callback_pose_diag](diagnostic_msgs::msg::DiagnosticArray::ConstSharedPtr msg) {
-      for (const auto & status : msg->status) {
-        if (status.name.find("callback_pose") != std::string::npos) {
-          received_callback_pose_diag = true;
-          break;
-        }
-      }
-    });
-
-  auto pub = ekf_localizer->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(
-    "in_pose_with_covariance", 1);
-
-  rclcpp::ExecutorOptions options;
-  rclcpp::executors::SingleThreadedExecutor executor(options);
-  executor.add_node(ekf_localizer);
-
-  geometry_msgs::msg::PoseWithCovarianceStamped pose_msg;
-  pose_msg.header.stamp = ekf_localizer->now();
-  pose_msg.header.frame_id = "map";
-  pose_msg.pose.pose.orientation.w = 1.0;
-  pub->publish(pose_msg);
-
-  const auto spin_duration = std::chrono::milliseconds(200);
-  const auto start = std::chrono::steady_clock::now();
-  while (std::chrono::steady_clock::now() - start < spin_duration && rclcpp::ok()) {
-    executor.spin_some(std::chrono::milliseconds(10));
-    std::this_thread::sleep_for(std::chrono::milliseconds(5));
-  }
-
-  executor.remove_node(ekf_localizer);
-
-  EXPECT_TRUE(received_callback_pose_diag)
-    << "Expected at least one /diagnostics message with callback_pose when pose is published and "
-       "period is 0";
-}
-
-TEST_F(EKFLocalizerTestSuite, diagnostics_published_from_twist_callback_when_period_zero)
-{
-  // When diagnostics_publish_period <= 0 (default), diagnostics are published only from
-  // pose/twist callbacks via pub_diag_. This test verifies that publishing twist triggers
-  // a callback_twist diagnostic on /diagnostics.
-  const double ekf_rate = 100.0;
-  const double diagnostics_publish_period = 0.0;
-
-  auto ekf_localizer =
-    create_ekf_localizer("test_callback_twist_diag", diagnostics_publish_period, ekf_rate);
-
-  set_is_activated(ekf_localizer.get(), true);
-
-  bool received_callback_twist_diag = false;
-  auto sub = ekf_localizer->create_subscription<diagnostic_msgs::msg::DiagnosticArray>(
-    "/diagnostics", 10,
-    [&received_callback_twist_diag](diagnostic_msgs::msg::DiagnosticArray::ConstSharedPtr msg) {
-      for (const auto & status : msg->status) {
-        if (status.name.find("callback_twist") != std::string::npos) {
-          received_callback_twist_diag = true;
-          break;
-        }
-      }
-    });
-
-  auto pub = ekf_localizer->create_publisher<geometry_msgs::msg::TwistWithCovarianceStamped>(
-    "in_twist_with_covariance", 1);
-
-  rclcpp::ExecutorOptions options;
-  rclcpp::executors::SingleThreadedExecutor executor(options);
-  executor.add_node(ekf_localizer);
-
-  geometry_msgs::msg::TwistWithCovarianceStamped twist_msg;
-  twist_msg.header.stamp = ekf_localizer->now();
-  twist_msg.header.frame_id = "base_link";
-  pub->publish(twist_msg);
-
-  const auto spin_duration = std::chrono::milliseconds(200);
-  const auto start = std::chrono::steady_clock::now();
-  while (std::chrono::steady_clock::now() - start < spin_duration && rclcpp::ok()) {
-    executor.spin_some(std::chrono::milliseconds(10));
-    std::this_thread::sleep_for(std::chrono::milliseconds(5));
-  }
-
-  executor.remove_node(ekf_localizer);
-
-  EXPECT_TRUE(received_callback_twist_diag)
-    << "Expected at least one /diagnostics message with callback_twist when twist is published and "
-       "period is 0";
 }
 
 }  // namespace autoware::ekf_localizer

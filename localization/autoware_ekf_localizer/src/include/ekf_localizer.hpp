@@ -32,7 +32,7 @@
 
 #include <autoware_internal_debug_msgs/msg/float64_multi_array_stamped.hpp>
 #include <autoware_internal_debug_msgs/msg/float64_stamped.hpp>
-#include <diagnostic_msgs/msg/diagnostic_array.hpp>
+#include <diagnostic_msgs/msg/diagnostic_status.hpp>
 #include <geometry_msgs/msg/pose_array.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
@@ -80,8 +80,6 @@ private:
   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pub_biased_pose_;
   //!< @brief ekf estimated yaw bias publisher
   rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr pub_biased_pose_cov_;
-  //!< @brief diagnostics publisher (for callback return diagnostics when period <= 0)
-  rclcpp::Publisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr pub_diag_;
   //!< @brief processing_time publisher
   rclcpp::Publisher<autoware_internal_debug_msgs::msg::Float64Stamped>::SharedPtr
     pub_processing_time_;
@@ -96,9 +94,6 @@ private:
   rclcpp::TimerBase::SharedPtr timer_control_;
   //!< @brief last predict time
   std::shared_ptr<const rclcpp::Time> last_predict_time_;
-  //!< @brief counter for diagnostics publish (to handle rosbag playback)
-  // Use double to handle fractional callbacks for accurate frequency control
-  double diagnostics_publish_counter_;
   //!< @brief trigger_node service
   rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr service_trigger_node_;
 
@@ -136,11 +131,11 @@ private:
   diagnostic_msgs::msg::DiagnosticStatus latched_diagnostic_status_;
   //!< @brief timestamp when the latched diagnostic status was first detected
   rclcpp::Time latched_diagnostic_timestamp_;
-  //!< @brief timestamp when diagnostics were last published (used to reset latch in timer_callback)
+  //!< @brief set in diagnose() when /diagnostics is published; latch is cleared on next EKF tick
   rclcpp::Time last_diagnostics_publish_time_;
-  //!< @brief last pose callback header stamp (for callback_pose diagnostic when period > 0)
+  //!< @brief last pose callback header stamp (for callback_pose diagnostic)
   rclcpp::Time last_pose_callback_time_;
-  //!< @brief last twist callback header stamp (for callback_twist diagnostic when period > 0)
+  //!< @brief last twist callback header stamp (for callback_twist diagnostic)
   rclcpp::Time last_twist_callback_time_;
 
   /**
@@ -185,15 +180,16 @@ private:
     const geometry_msgs::msg::TwistStamped & current_ekf_twist);
 
   /**
-   * @brief update diagnostic status and latch errors
-   * This is called every timer callback to ensure errors are latched even if they
-   * occur between diagnostics publishes
-   * @param diag_status_array Array of diagnostic statuses collected during processing
-   * @param current_time Current time for timestamp
+   * @brief Merge diagnostic items, update latch, and force an immediate publish when severity
+   * increases. Called every EKF timer cycle so short faults are not missed; steady publishing
+   * uses diagnostic_updater at diagnostics_publish_period.
    */
   void update_diagnostics(
     const std::vector<diagnostic_msgs::msg::DiagnosticStatus> & diag_status_array,
     const rclcpp::Time & current_time);
+
+  /** @brief Clear latch after diagnose() recorded a publish (see last_diagnostics_publish_time_) */
+  void reset_diagnostics_latch_if_published();
 
   /**
    * @brief diagnostic function called by diagnostic_updater::Updater
@@ -202,20 +198,14 @@ private:
   void diagnose(diagnostic_updater::DiagnosticStatusWrapper & stat);
 
   /**
-   * @brief diagnostic for callback_pose (used by updater when period > 0)
+   * @brief diagnostic for callback_pose (diagnostic_updater task)
    */
   void diagnose_callback_pose(diagnostic_updater::DiagnosticStatusWrapper & stat);
 
   /**
-   * @brief diagnostic for callback_twist (used by updater when period > 0)
+   * @brief diagnostic for callback_twist (diagnostic_updater task)
    */
   void diagnose_callback_twist(diagnostic_updater::DiagnosticStatusWrapper & stat);
-
-  /**
-   * @brief publish diagnostics message for callback return (pose/twist)
-   */
-  void publish_callback_return_diagnostics(
-    const std::string & callback_name, const rclcpp::Time & current_time);
 
   /**
    * @brief trigger node

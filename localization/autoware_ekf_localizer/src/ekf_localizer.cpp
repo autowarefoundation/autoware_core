@@ -36,10 +36,6 @@
 namespace autoware::ekf_localizer
 {
 
-/** Period [s] to disable diagnostic_updater internal timer when period <= 0 (original behavior:
- *  only callback publish). Large value to avoid next_fire_time overflow; 1e9 is safe. */
-constexpr double diagnostics_internal_timer_disabled_period_sec = 1e9;
-
 // clang-format off
 #define PRINT_MAT(X) std::cout << #X << ":\n" << X << std::endl << std::endl // NOLINT
 #define DEBUG_INFO(...) {if (params_.show_debug_info) {RCLCPP_INFO(__VA_ARGS__);}} // NOLINT
@@ -64,24 +60,15 @@ EKFLocalizer::EKFLocalizer(const rclcpp::NodeOptions & node_options)
 {
   is_activated_ = false;
   is_set_initialpose_ = false;
-  diagnostics_publish_counter_ = 0.0;
   latched_diagnostic_status_.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
   latched_diagnostic_status_.message = "OK";
 
   // Configure diagnostic updater
   diagnostics_.setHardwareID(this->get_name());
-  if (params_.diagnostics_publish_period > 0.0) {
-    diagnostics_.setPeriod(rclcpp::Duration::from_seconds(params_.diagnostics_publish_period));
-  } else {
-    // Period <= 0: original behavior — only callback publish; disable updater internal timer
-    diagnostics_.setPeriod(
-      rclcpp::Duration::from_seconds(diagnostics_internal_timer_disabled_period_sec));
-  }
+  diagnostics_.setPeriod(rclcpp::Duration::from_seconds(params_.diagnostics_publish_period));
   diagnostics_.add("ekf_localizer", this, &EKFLocalizer::diagnose);
-  if (params_.diagnostics_publish_period > 0.0) {
-    diagnostics_.add("callback_pose", this, &EKFLocalizer::diagnose_callback_pose);
-    diagnostics_.add("callback_twist", this, &EKFLocalizer::diagnose_callback_twist);
-  }
+  diagnostics_.add("callback_pose", this, &EKFLocalizer::diagnose_callback_pose);
+  diagnostics_.add("callback_twist", this, &EKFLocalizer::diagnose_callback_twist);
 
   /* initialize ros system */
   timer_control_ = rclcpp::create_timer(
@@ -100,7 +87,6 @@ EKFLocalizer::EKFLocalizer(const rclcpp::NodeOptions & node_options)
   pub_biased_pose_ = create_publisher<geometry_msgs::msg::PoseStamped>("ekf_biased_pose", 1);
   pub_biased_pose_cov_ = create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(
     "ekf_biased_pose_with_covariance", 1);
-  pub_diag_ = this->create_publisher<diagnostic_msgs::msg::DiagnosticArray>("/diagnostics", 10);
   pub_processing_time_ = create_publisher<autoware_internal_debug_msgs::msg::Float64Stamped>(
     "debug/processing_time_ms", 1);
   sub_initialpose_ = create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
@@ -177,9 +163,7 @@ void EKFLocalizer::timer_callback()
       "The node is not activated. Provide initial pose to pose_initializer", 2000);
     // Update diagnostics before early return to ensure current status is latched
     update_diagnostics(diag_status_array, current_time);
-    if (params_.diagnostics_publish_period <= 0.0) {
-      diagnostics_.force_update();
-    }
+    reset_diagnostics_latch_if_published();
     return;
   }
 
@@ -191,9 +175,7 @@ void EKFLocalizer::timer_callback()
       "Initial pose is not set. Provide initial pose to pose_initializer", 2000);
     // Update diagnostics before early return to ensure current status is latched
     update_diagnostics(diag_status_array, current_time);
-    if (params_.diagnostics_publish_period <= 0.0) {
-      diagnostics_.force_update();
-    }
+    reset_diagnostics_latch_if_published();
     return;
   }
 
@@ -311,24 +293,11 @@ void EKFLocalizer::timer_callback()
   /* publish ekf result */
   publish_estimate_result(current_ekf_pose, current_biased_ekf_pose, current_ekf_twist);
 
-  /* update diagnostics every timer callback to catch errors between publishes */
+  /* Latch merged diagnostics every EKF cycle; publishing is periodic via diagnostic_updater,
+   * plus force_update() inside update_diagnostics when severity increases. */
   update_diagnostics(diag_status_array, current_time);
 
-  /* When period <= 0 (default), publish latched diagnostic every timer like original behavior */
-  if (params_.diagnostics_publish_period <= 0.0) {
-    diagnostics_.force_update();
-  }
-
-  /* reset latch after diagnostics have been published */
-  /* This is done in timer_callback to avoid race conditions with diagnose() */
-  if (last_diagnostics_publish_time_.nanoseconds() > 0) {
-    // Diagnostics were published, reset the latch
-    latched_diagnostic_status_.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-    latched_diagnostic_status_.message = "OK";
-    latched_diagnostic_status_.values.clear();
-    latched_diagnostic_timestamp_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
-    last_diagnostics_publish_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
-  }
+  reset_diagnostics_latch_if_published();
 
   /* publish processing time */
   const double elapsed_time = stop_watch_timer_cb_.toc();
@@ -398,9 +367,6 @@ void EKFLocalizer::callback_pose_with_covariance(
   }
 
   last_pose_callback_time_ = msg->header.stamp;
-  if (params_.diagnostics_publish_period <= 0.0) {
-    publish_callback_return_diagnostics("pose", msg->header.stamp);
-  }
 }
 
 /*
@@ -429,9 +395,6 @@ void EKFLocalizer::callback_twist_with_covariance(
   }
 
   last_twist_callback_time_ = msg->header.stamp;
-  if (params_.diagnostics_publish_period <= 0.0) {
-    publish_callback_return_diagnostics("twist", msg->header.stamp);
-  }
 }
 
 /*
@@ -492,14 +455,10 @@ void EKFLocalizer::publish_estimate_result(
 
 void EKFLocalizer::diagnose(diagnostic_updater::DiagnosticStatusWrapper & stat)
 {
-  // Use latched diagnostic status that was updated by timer_callback
-  // Note: We don't call update_diagnostics() here to avoid race conditions
-  // with timer_callback(). The latch is updated every timer_callback() cycle.
+  // Latched status is updated in update_diagnostics() (each EKF timer tick). Publishing is driven
+  // by diagnostic_updater at diagnostics_publish_period, or force_update() on severity increase.
   //
-  // Thread safety: diagnostic_updater::Updater uses the node's default callback queue,
-  // so diagnose() and timer_callback() execute sequentially in single-threaded executor.
-  // However, we copy the latched status first to ensure we have a consistent snapshot
-  // even if a multi-threaded executor is used.
+  // Thread safety: copy latch first for a consistent snapshot if a multi-threaded executor is used.
   diagnostic_msgs::msg::DiagnosticStatus diag_merged_status = latched_diagnostic_status_;
   rclcpp::Time diag_timestamp = latched_diagnostic_timestamp_;
 
@@ -532,8 +491,6 @@ void EKFLocalizer::diagnose(diagnostic_updater::DiagnosticStatusWrapper & stat)
     stat.add(value.key, value.value);
   }
 
-  // Record the time when diagnostics are published
-  // The latch will be reset in timer_callback() to avoid race conditions
   last_diagnostics_publish_time_ = this->now();
 }
 
@@ -553,10 +510,26 @@ void EKFLocalizer::diagnose_callback_twist(diagnostic_updater::DiagnosticStatusW
   stat.add("topic_time_stamp", std::to_string(last_twist_callback_time_.nanoseconds()));
 }
 
+void EKFLocalizer::reset_diagnostics_latch_if_published()
+{
+  if (last_diagnostics_publish_time_.nanoseconds() == 0) {
+    return;
+  }
+  latched_diagnostic_status_.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+  latched_diagnostic_status_.message = "OK";
+  latched_diagnostic_status_.values.clear();
+  latched_diagnostic_timestamp_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
+  last_diagnostics_publish_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
+}
+
 void EKFLocalizer::update_diagnostics(
   const std::vector<diagnostic_msgs::msg::DiagnosticStatus> & diag_status_array,
   const rclcpp::Time & current_time)
 {
+  using diagnostic_msgs::msg::DiagnosticStatus;
+
+  const uint8_t level_before = latched_diagnostic_status_.level;
+
   diagnostic_msgs::msg::DiagnosticStatus diag_merged_status;
   diag_merged_status = merge_diagnostic_status(diag_status_array);
 
@@ -564,7 +537,7 @@ void EKFLocalizer::update_diagnostics(
   // Also update if latched status is OK (to allow continuous updates when OK)
   if (
     diag_merged_status.level > latched_diagnostic_status_.level ||
-    latched_diagnostic_status_.level == diagnostic_msgs::msg::DiagnosticStatus::OK) {
+    latched_diagnostic_status_.level == DiagnosticStatus::OK) {
     latched_diagnostic_status_ = diag_merged_status;
     latched_diagnostic_timestamp_ = current_time;
 
@@ -578,32 +551,18 @@ void EKFLocalizer::update_diagnostics(
       latched_diagnostic_status_.values.end());
 
     // Add error occurrence timestamp to values if error/warn is latched
-    if (latched_diagnostic_status_.level > diagnostic_msgs::msg::DiagnosticStatus::OK) {
+    if (latched_diagnostic_status_.level > DiagnosticStatus::OK) {
       diagnostic_msgs::msg::KeyValue error_timestamp_value;
       error_timestamp_value.key = "error_occurrence_timestamp";
       error_timestamp_value.value = std::to_string(latched_diagnostic_timestamp_.nanoseconds());
       latched_diagnostic_status_.values.push_back(error_timestamp_value);
     }
   }
-}
 
-void EKFLocalizer::publish_callback_return_diagnostics(
-  const std::string & callback_name, const rclcpp::Time & current_time)
-{
-  diagnostic_msgs::msg::KeyValue key_value;
-  key_value.key = "topic_time_stamp";
-  key_value.value = std::to_string(current_time.nanoseconds());
-  diagnostic_msgs::msg::DiagnosticStatus diag_status;
-  diag_status.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-  diag_status.name =
-    "localization: " + std::string(this->get_name()) + ": callback_" + callback_name;
-  diag_status.hardware_id = this->get_name();
-  diag_status.message = "OK";
-  diag_status.values.push_back(key_value);
-  diagnostic_msgs::msg::DiagnosticArray diag_msg;
-  diag_msg.header.stamp = current_time;
-  diag_msg.status.push_back(diag_status);
-  pub_diag_->publish(diag_msg);
+  const uint8_t level_after = latched_diagnostic_status_.level;
+  if (level_after > level_before) {
+    diagnostics_.force_update();
+  }
 }
 
 /**

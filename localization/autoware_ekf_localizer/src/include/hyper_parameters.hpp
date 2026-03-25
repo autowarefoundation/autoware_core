@@ -70,8 +70,7 @@ public:
       node->declare_parameter<double>("diagnostics.warn_ellipse_size_lateral_direction")),
     diagnostics_publish_frequency(
       node->declare_parameter<double>("diagnostics.diagnostics_publish_frequency")),
-    diagnostics_publish_period(
-      diagnostics_publish_frequency > 0.0 ? 1.0 / diagnostics_publish_frequency : 0.0),
+    diagnostics_publish_period(1.0 / diagnostics_publish_frequency),
     threshold_observable_velocity_mps(
       node->declare_parameter<double>("misc.threshold_observable_velocity_mps"))
   {
@@ -108,8 +107,7 @@ public:
   double error_ellipse_size_lateral_direction;
   double warn_ellipse_size_lateral_direction;
   const double diagnostics_publish_frequency;  //!< @brief diagnostics publish frequency [Hz]
-  const double diagnostics_publish_period;     //!< @brief diagnostics publish period [s] (0.0 if
-                                               //!< frequency is 0.0)
+  const double diagnostics_publish_period;     //!< @brief diagnostics publish period [s]
 
   const double threshold_observable_velocity_mps;
 };
