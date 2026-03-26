@@ -52,6 +52,7 @@ MapUpdateModule::MapUpdateModule(
   // and ndt_ptr_ is only locked when swapping its pointer with
   // secondary_ndt_ptr_.
   need_rebuild_ = true;
+  save_loaded_map_ = false;
 }
 
 void MapUpdateModule::callback_timer(
@@ -145,6 +146,13 @@ void MapUpdateModule::update_map(
   const geometry_msgs::msg::Point & position,
   std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr)
 {
+  if(loaded_pcd_pub_->get_subscription_count() > 0) {
+    save_loaded_map_ = true;
+  } else {
+    save_loaded_map_ = false;
+    loaded_map_.clear();
+  }
+
   diagnostics_ptr->add_key_value("is_need_rebuild", need_rebuild_);
 
   // If the current position is super far from the previous loading position,
@@ -226,7 +234,9 @@ void MapUpdateModule::update_map(
   last_update_position_mtx_.unlock();
 
   // Publish the new ndt maps
-  publish_partial_pcd_map();
+  if(save_loaded_map_) {
+    publish_partial_pcd_map();
+  }
 }
 
 bool MapUpdateModule::update_ndt(
@@ -292,11 +302,17 @@ bool MapUpdateModule::update_ndt(
 
     pcl::fromROSMsg(map.pointcloud, *cloud);
     ndt.addTarget(cloud, map.cell_id);
+    if(save_loaded_map_) {
+      loaded_map_[map.cell_id] = cloud;
+    }
   }
 
   // Remove pcd
   for (const std::string & map_id_to_remove : map_ids_to_remove) {
     ndt.removeTarget(map_id_to_remove);
+    if(save_loaded_map_) {
+      loaded_map_.erase(map_id_to_remove);
+    }
   }
 
   ndt.createVoxelKdtree();
@@ -313,11 +329,14 @@ bool MapUpdateModule::update_ndt(
 
 void MapUpdateModule::publish_partial_pcd_map()
 {
-  pcl::PointCloud<PointTarget> map_pcl = ndt_ptr_->getVoxelPCD();
+  pcl::PointCloud<PointTarget> map_pcl;
   sensor_msgs::msg::PointCloud2 map_msg;
+  for (const auto & map : loaded_map_) {
+    *map_pcl += *(map.second);
+  }
   pcl::toROSMsg(map_pcl, map_msg);
   map_msg.header.frame_id = "map";
-
+  map_msg.header.stamp = clock_->now();
   loaded_pcd_pub_->publish(map_msg);
 }
 
