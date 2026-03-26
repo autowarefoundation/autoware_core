@@ -97,6 +97,9 @@ private:
   bool need_rebuild_;
   // Keep the last_update_position_ unchanged while checking map range
   std::mutex last_update_position_mtx_;
+
+  bool save_loaded_map_;
+  std::map<std::string, pcl::PointCloud<PointTarget>::Ptr> loaded_map_;
 };
 
 }  // namespace autoware::ndt_scan_matcher
