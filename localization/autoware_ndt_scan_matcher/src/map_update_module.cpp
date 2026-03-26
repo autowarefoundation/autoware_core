@@ -332,7 +332,7 @@ void MapUpdateModule::publish_partial_pcd_map()
   pcl::PointCloud<PointTarget> map_pcl;
   sensor_msgs::msg::PointCloud2 map_msg;
   for (const auto & map : loaded_map_) {
-    *map_pcl += *(map.second);
+    map_pcl += *(map.second);
   }
   pcl::toROSMsg(map_pcl, map_msg);
   map_msg.header.frame_id = "map";
