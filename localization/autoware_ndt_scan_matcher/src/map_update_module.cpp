@@ -146,7 +146,7 @@ void MapUpdateModule::update_map(
   const geometry_msgs::msg::Point & position,
   std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr)
 {
-  if(loaded_pcd_pub_->get_subscription_count() > 0) {
+  if (loaded_pcd_pub_->get_subscription_count() > 0) {
     save_loaded_map_ = true;
   } else {
     save_loaded_map_ = false;
@@ -234,7 +234,7 @@ void MapUpdateModule::update_map(
   last_update_position_mtx_.unlock();
 
   // Publish the new ndt maps
-  if(save_loaded_map_) {
+  if (save_loaded_map_) {
     publish_partial_pcd_map();
   }
 }
@@ -302,7 +302,7 @@ bool MapUpdateModule::update_ndt(
 
     pcl::fromROSMsg(map.pointcloud, *cloud);
     ndt.addTarget(cloud, map.cell_id);
-    if(save_loaded_map_) {
+    if (save_loaded_map_) {
       loaded_map_[map.cell_id] = cloud;
     }
   }
@@ -310,7 +310,7 @@ bool MapUpdateModule::update_ndt(
   // Remove pcd
   for (const std::string & map_id_to_remove : map_ids_to_remove) {
     ndt.removeTarget(map_id_to_remove);
-    if(save_loaded_map_) {
+    if (save_loaded_map_) {
       loaded_map_.erase(map_id_to_remove);
     }
   }
