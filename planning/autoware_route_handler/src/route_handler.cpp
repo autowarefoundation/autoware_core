@@ -137,6 +137,8 @@ PathWithLaneId removeOverlappingPoints(const PathWithLaneId & input_path)
   PathWithLaneId filtered_path;
   filtered_path.points.reserve(input_path.points.size());
 
+  double previous_azimuth = 0;
+
   for (const auto & pt : input_path.points) {
     if (filtered_path.points.empty()) {
       filtered_path.points.push_back(pt);
@@ -144,8 +146,12 @@ PathWithLaneId removeOverlappingPoints(const PathWithLaneId & input_path)
     }
 
     constexpr double th_overlapping_dist = 0.001;
+    constexpr double th_overlapping_dist_discontinuity = 0.05;
     const double dist_between_points =
       autoware_utils_geometry::calc_distance3d(filtered_path.points.back().point, pt.point);
+
+    const double current_azimuth = autoware_utils_geometry::calc_azimuth_angle(
+      filtered_path.points.back().point.pose.position, pt.point.pose.position);
 
     if (dist_between_points < th_overlapping_dist) {
       filtered_path.points.back().lane_ids.push_back(pt.lane_ids.front());
@@ -154,7 +160,18 @@ PathWithLaneId removeOverlappingPoints(const PathWithLaneId & input_path)
       continue;
     }
 
+    if (
+      (std::fabs(autoware_utils_math::normalize_radian(previous_azimuth - current_azimuth)) >=
+       M_PI / 2) &&
+      (dist_between_points < th_overlapping_dist_discontinuity)) {
+      filtered_path.points.back().lane_ids.push_back(pt.lane_ids.front());
+      filtered_path.points.back().point.longitudinal_velocity_mps =
+        pt.point.longitudinal_velocity_mps;
+      continue;
+    }
+
     filtered_path.points.push_back(pt);
+    previous_azimuth = current_azimuth;
   }
 
   filtered_path.left_bound = input_path.left_bound;
