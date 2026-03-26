@@ -453,8 +453,9 @@ bool NDTScanMatcher::callback_sensor_points_main(
   }
 
   // Warn if the lidar has gone out of the map range
-  if (map_update_module_->out_of_map_range(
-        interpolation_result.interpolated_pose.pose.pose.position)) {
+  if (
+    map_update_module_->out_of_map_range(
+      interpolation_result.interpolated_pose.pose.pose.position)) {
     std::stringstream msg;
 
     msg << "Lidar has gone out of the map range";
@@ -1138,8 +1139,10 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
       ndt_result.nearest_voxel_transformation_likelihood, ndt_result.iteration_num);
     particle_array.push_back(particle);
     push_debug_markers(marker_array, get_clock()->now(), param_.frame.map_frame, particle, i);
+
     if (
-      (i + 1) % publish_interval == 0 || (i + 1) == param_.initial_pose_estimation.particles_num) {
+      (publish_interval != 0 && (i + 1) % publish_interval == 0) ||
+      (i + 1) == param_.initial_pose_estimation.particles_num) {
       ndt_monte_carlo_initial_pose_marker_pub_->publish(marker_array);
       marker_array.markers.clear();
     }
