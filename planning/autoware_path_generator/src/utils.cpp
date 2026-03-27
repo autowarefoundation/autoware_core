@@ -24,7 +24,6 @@
 #include <autoware/trajectory/utils/crop.hpp>
 #include <autoware/trajectory/utils/find_intervals.hpp>
 #include <autoware/trajectory/utils/pretty_build.hpp>
-#include <autoware_lanelet2_extension/utility/utilities.hpp>
 #include <autoware_utils_math/unit_conversion.hpp>
 
 #include <lanelet2_core/geometry/Lanelet.h>
