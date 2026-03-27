@@ -450,8 +450,8 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P1_forward_on_entire_lanes)  // NOL
 {
   using autoware::experimental::lanelet2_utils::combine_lanelets_shape;
 
-  const auto start_s = P1_s - inf;
-  const auto end_s = P1_s + 0.0;
+  const auto start_s = P1_s - 0.0;
+  const auto end_s = P1_s + inf;
 
   const auto lanelet_sequence = route_handler_->getLaneletsFromIds(ids);
 
@@ -489,7 +489,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P1_forward_on_entire_lanes)  // NOL
   //
   {
     const auto & non_border_point = non_border_points.at(0);
-    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 10 / 3.6);
+    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 15 / 3.6);
   }
 
 #ifdef PLOT
@@ -507,8 +507,8 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P2_forward_on_entire_lanes)  // NOL
 {
   using autoware::experimental::lanelet2_utils::combine_lanelets_shape;
 
-  const auto start_s = P2_s - inf;
-  const auto end_s = P2_s + 0.0;
+  const auto start_s = P2_s - 0.0;
+  const auto end_s = P2_s + inf;
 
   const auto lanelet_sequence = route_handler_->getLaneletsFromIds(ids);
 
@@ -546,7 +546,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P2_forward_on_entire_lanes)  // NOL
   //
   {
     const auto & non_border_point = non_border_points.at(0);
-    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 10 / 3.6);
+    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 25 / 3.6);
   }
 
 #ifdef PLOT
@@ -564,8 +564,8 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P3_forward_on_entire_lanes)  // NOL
 {
   using autoware::experimental::lanelet2_utils::combine_lanelets_shape;
 
-  const auto start_s = P3_s - inf;
-  const auto end_s = P3_s + 0.0;
+  const auto start_s = P3_s - 0.0;
+  const auto end_s = P3_s + inf;
 
   const auto lanelet_sequence = route_handler_->getLaneletsFromIds(ids);
 
@@ -603,7 +603,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P3_forward_on_entire_lanes)  // NOL
   //
   {
     const auto & non_border_point = non_border_points.at(0);
-    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 10 / 3.6);
+    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 25 / 3.6);
   }
 
 #ifdef PLOT
@@ -621,8 +621,8 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P4_forward_on_entire_lanes)  // NOL
 {
   using autoware::experimental::lanelet2_utils::combine_lanelets_shape;
 
-  const auto start_s = P4_s - inf;
-  const auto end_s = P4_s + 0.0;
+  const auto start_s = P4_s - 0.0;
+  const auto end_s = P4_s + inf;
 
   const auto lanelet_sequence = route_handler_->getLaneletsFromIds(ids);
 
@@ -660,7 +660,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P4_forward_on_entire_lanes)  // NOL
   //
   {
     const auto & non_border_point = non_border_points.at(0);
-    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 10 / 3.6);
+    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 30 / 3.6);
   }
 
 #ifdef PLOT

@@ -571,8 +571,8 @@ TEST_P(TestWithVM_01_10_12_Map, from_P1_forward_on_entire_lanes)  // NOLINT
 {
   using autoware::experimental::lanelet2_utils::combine_lanelets_shape;
 
-  const auto start_s = P1_s - inf;
-  const auto end_s = P1_s + 0.0;
+  const auto start_s = P1_s - 0.0;
+  const auto end_s = P1_s + inf;
 
   const auto lanelet_sequence = route_handler_->getLaneletsFromIds(ids);
 
@@ -610,7 +610,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P1_forward_on_entire_lanes)  // NOLINT
   //
   {
     const auto & non_border_point = non_border_points.at(0);
-    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 10 / 3.6);
+    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 15 / 3.6);
   }
 
 #ifdef PLOT
@@ -628,8 +628,8 @@ TEST_P(TestWithVM_01_10_12_Map, from_P2_forward_on_entire_lanes)  // NOLINT
 {
   using autoware::experimental::lanelet2_utils::combine_lanelets_shape;
 
-  const auto start_s = P2_s - inf;
-  const auto end_s = P2_s + 0.0;
+  const auto start_s = P2_s - 0.0;
+  const auto end_s = P2_s + inf;
 
   const auto lanelet_sequence = route_handler_->getLaneletsFromIds(ids);
 
@@ -667,7 +667,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P2_forward_on_entire_lanes)  // NOLINT
   //
   {
     const auto & non_border_point = non_border_points.at(0);
-    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 10 / 3.6);
+    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 20 / 3.6);
   }
 
 #ifdef PLOT
@@ -685,8 +685,8 @@ TEST_P(TestWithVM_01_10_12_Map, from_P3_forward_on_entire_lanes)  // NOLINT
 {
   using autoware::experimental::lanelet2_utils::combine_lanelets_shape;
 
-  const auto start_s = P3_s - inf;
-  const auto end_s = P3_s + 0.0;
+  const auto start_s = P3_s - 0.0;
+  const auto end_s = P3_s + inf;
 
   const auto lanelet_sequence = route_handler_->getLaneletsFromIds(ids);
 
@@ -724,7 +724,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P3_forward_on_entire_lanes)  // NOLINT
   //
   {
     const auto & non_border_point = non_border_points.at(0);
-    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 10 / 3.6);
+    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 25 / 3.6);
   }
 
 #ifdef PLOT
@@ -742,8 +742,8 @@ TEST_P(TestWithVM_01_10_12_Map, from_P4_forward_on_entire_lanes)  // NOLINT
 {
   using autoware::experimental::lanelet2_utils::combine_lanelets_shape;
 
-  const auto start_s = P4_s - inf;
-  const auto end_s = P4_s + 0.0;
+  const auto start_s = P4_s - 0.0;
+  const auto end_s = P4_s + inf;
 
   const auto lanelet_sequence = route_handler_->getLaneletsFromIds(ids);
 
@@ -781,7 +781,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P4_forward_on_entire_lanes)  // NOLINT
   //
   {
     const auto & non_border_point = non_border_points.at(0);
-    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 10 / 3.6);
+    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 30 / 3.6);
   }
 
 #ifdef PLOT
@@ -799,8 +799,8 @@ TEST_P(TestWithVM_01_10_12_Map, from_P5_forward_on_entire_lanes)  // NOLINT
 {
   using autoware::experimental::lanelet2_utils::combine_lanelets_shape;
 
-  const auto start_s = P5_s - inf;
-  const auto end_s = P5_s + 0.0;
+  const auto start_s = P5_s - 0.0;
+  const auto end_s = P5_s + inf;
 
   const auto lanelet_sequence = route_handler_->getLaneletsFromIds(ids);
 
@@ -838,7 +838,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P5_forward_on_entire_lanes)  // NOLINT
   //
   {
     const auto & non_border_point = non_border_points.at(0);
-    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 10 / 3.6);
+    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 30 / 3.6);
   }
 
 #ifdef PLOT
@@ -856,8 +856,8 @@ TEST_P(TestWithVM_01_10_12_Map, from_P6_forward_on_entire_lanes)  // NOLINT
 {
   using autoware::experimental::lanelet2_utils::combine_lanelets_shape;
 
-  const auto start_s = P6_s - inf;
-  const auto end_s = P6_s + 0.0;
+  const auto start_s = P6_s - 0.0;
+  const auto end_s = P6_s + inf;
 
   const auto lanelet_sequence = route_handler_->getLaneletsFromIds(ids);
 
@@ -895,7 +895,7 @@ TEST_P(TestWithVM_01_10_12_Map, from_P6_forward_on_entire_lanes)  // NOLINT
   //
   {
     const auto & non_border_point = non_border_points.at(0);
-    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 10 / 3.6);
+    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 35 / 3.6);
   }
 
 #ifdef PLOT

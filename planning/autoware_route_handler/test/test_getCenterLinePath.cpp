@@ -135,15 +135,15 @@ INSTANTIATE_TEST_SUITE_P(
   ::testing::Values(  // enumerate values below
     Parameter_Map_Waypoint_Straight_00{
       {1043, 1047, 1049},  // ids
-      0.0,                 // start_s[m]
-      200.0,               // end_s[m]
+      200.0,               // start_s[m]
+      400.0,               // end_s[m]
       true,                // expect_success
       200 * 0.9            // length_lower_bound[m]
     },
   Parameter_Map_Waypoint_Straight_00{
       {1043, 1047, 1049},  // ids
-      0.0,                 // start_s[m]
-      300.0,               // end_s[m]
+      100.0,               // start_s[m]
+      400.0,               // end_s[m]
       true,                // expect_success
       200 * 0.9            // length_lower_bound[m]
     },
@@ -227,35 +227,35 @@ INSTANTIATE_TEST_SUITE_P(
   test_path_validity, TestCase_Map_Waypoint_Curve_00,
   ::testing::Values(  // enumerate values below
     Parameter_Map_Waypoint_Curve_00{
-      {140, 137, 136, 138, 139},  // ids
-      -30.0,                // start_s[m] 10 - 40
-      10.0,                 // end_s[m]
+      {140, 137, 136, 138, 139, 135},  // ids
+      10.0,                // start_s[m] 10
+      50.0,                 // end_s[m] 10 + 40
       true,                 // expect_success
-      10 * 0.9              // length_lower_bound[m]
+      40 * 0.9              // length_lower_bound[m]
     },
   Parameter_Map_Waypoint_Curve_00{
-      {140, 137, 136, 138, 139},  // ids
-      10.0,                 // start_s[m]
-      16.5,                 // end_s[m] 10 + 6.5
+      {140, 137, 136, 138, 139, 135},  // ids
+      3.5,                 // start_s[m] 10 - 6.5
+      10.0,                 // end_s[m] 10
       true,                 // expect_success
       6.5 * 0.9             // length_lower_bound[m]
     },
   Parameter_Map_Waypoint_Curve_00{
-      {140, 137, 136, 138, 139},  // ids
-      -30.0,                // start_s[m] 10 - 40
-      16.5,                 // end_s[m] 10 + 6.5
+      {140, 137, 136, 138, 139, 135},  // ids
+      3.5,                // start_s[m] 10 - 6.5
+      50.0,                 // end_s[m] 10 + 40
       true,                 // expect_success
-      16.5 * 0.9              // length_lower_bound[m]
+      45 * 0.9              // length_lower_bound[m]
     },
     Parameter_Map_Waypoint_Curve_00{
-      {140, 137, 136, 138, 139},  // ids
+      {140, 137, 136, 138, 139, 135},  // ids
       10.0,                 // start_s[m]
       10.0,                 // end_s[m]
       false,                // expect_success
       0.0                   // length_lower_bound[m]
     },
   Parameter_Map_Waypoint_Curve_00{
-      {140, 137, 136, 138, 139},  // ids
+      {140, 137, 136, 138, 139, 135},  // ids
       -inf,                 // start_s[m]
       inf,                  // end_s[m]
       true,                 // expect_success
