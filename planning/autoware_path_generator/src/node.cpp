@@ -14,10 +14,10 @@
 
 #include "autoware/path_generator/node.hpp"
 
+#include "utils.hpp"
+
 #include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/lanelet2_utils/geometry.hpp>
-#include <autoware/lanelet2_utils/nn_search.hpp>
-#include <autoware/path_generator/utils.hpp>
 #include <autoware/trajectory/utils/reference_path.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 
@@ -132,14 +132,6 @@ PathGenerator::InputData PathGenerator::take_data()
   return input_data;
 }
 
-void PathGenerator::set_planner_data(const InputData & input_data)
-{
-  RouteManagerData route_manager_data;
-  route_manager_data.lanelet_map_bin_ptr = input_data.lanelet_map_bin_ptr;
-  route_manager_data.route_ptr = input_data.route_ptr;
-  initialize_route_manager(route_manager_data, input_data.odometry_ptr->pose.pose);
-}
-
 bool PathGenerator::is_data_ready(const InputData & input_data)
 {
   const auto notify_waiting = [this](const std::string & name) {
@@ -225,8 +217,7 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
 
   const auto & current_lanelet = route_manager_->current_lanelet();
   auto s_ego =
-    autoware::experimental::lanelet2_utils::get_arc_coordinates({current_lanelet}, current_pose)
-      .length;
+    experimental::lanelet2_utils::get_arc_coordinates({current_lanelet}, current_pose).length;
   auto s_start = s_ego - params.path_length.backward;
   auto s_end = s_ego + params.path_length.forward;
   auto current_lanelet_seen = false;
@@ -243,7 +234,7 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
       current_lanelet_seen = true;
     }
     if (goal_lanelet.id() == lane_id) {
-      const auto s_goal = s + autoware::experimental::lanelet2_utils::get_arc_coordinates(
+      const auto s_goal = s + experimental::lanelet2_utils::get_arc_coordinates(
                                 {goal_lanelet}, route_manager_data_.route_ptr->goal_pose)
                                 .length;
       if (s_goal < s_end) {
