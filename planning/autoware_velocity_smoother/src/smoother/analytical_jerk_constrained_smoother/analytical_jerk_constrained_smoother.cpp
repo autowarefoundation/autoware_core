@@ -586,7 +586,8 @@ TrajectoryExperimental AnalyticalJerkConstrainedSmoother::applyLateralAccelerati
     const double end_arc = std::min(trajectory.length(), arc_length_i + after_decel_dist);
 
     for (size_t j = 0; j < curvature_v.size(); ++j) {
-      const double arc_length_j = bases.at(j);  // Use bases instead of trajectory.arc_length(j)
+      const double arc_length_j =
+        trajectory_base.at(j);  // Use bases instead of trajectory.arc_length(j)
       if (arc_length_j >= start_arc && arc_length_j <= end_arc) {
         curvature = std::max(curvature, std::fabs(curvature_v.at(j)));
       }
@@ -711,6 +712,8 @@ bool AnalyticalJerkConstrainedSmoother::searchDecelTargetIndices(
   }
 
   std::vector<std::pair<double, double>> tmp_indices;
+  bool has_prev_velocity = start_idx > 0;
+  double prev_velocity = has_prev_velocity ? velocities.at(start_idx - 1) : 0.0;
 
   for (const auto [curr_distance, next_distance, curr_vel, next_vel] : ranges::views::zip(
          bases | ranges::views::drop(start_idx), bases | ranges::views::drop(start_idx + 1),
@@ -720,7 +723,7 @@ bool AnalyticalJerkConstrainedSmoother::searchDecelTargetIndices(
       break;
     }
 
-    const double dv_before = (start_idx > 0) ? (curr_vel - velocities.at(start_idx - 1)) : 0.0;
+    const double dv_before = has_prev_velocity ? (curr_vel - prev_velocity) : 0.0;
     const double dv_after = next_vel - curr_vel;
 
     if (dv_before < ep && dv_after > ep) {
@@ -728,6 +731,9 @@ bool AnalyticalJerkConstrainedSmoother::searchDecelTargetIndices(
         curr_distance - curr_vel * (next_distance - curr_distance) / (next_vel - curr_vel);
       tmp_indices.emplace_back(valley_distance, curr_vel);
     }
+
+    prev_velocity = curr_vel;
+    has_prev_velocity = true;
   }
 
   const size_t last_idx = velocities.size() - 1;
