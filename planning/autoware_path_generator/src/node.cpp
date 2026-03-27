@@ -17,6 +17,7 @@
 #include "utils.hpp"
 
 #include <autoware/lanelet2_utils/conversion.hpp>
+#include <autoware/lanelet2_utils/geometry.hpp>
 #include <autoware/trajectory/utils/reference_path.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 
@@ -215,7 +216,8 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
                     .as_lanelets();
 
   const auto & current_lanelet = route_manager_->current_lanelet();
-  auto s_ego = lanelet::utils::getArcCoordinates({current_lanelet}, current_pose).length;
+  auto s_ego =
+    experimental::lanelet2_utils::get_arc_coordinates({current_lanelet}, current_pose).length;
   auto s_start = s_ego - params.path_length.backward;
   auto s_end = s_ego + params.path_length.forward;
 
@@ -230,7 +232,7 @@ std::optional<PathWithLaneId> PathGenerator::generate_path(
       s_end += s;
     }
     if (goal_lanelet.id() == lane_id) {
-      const auto s_goal = s + lanelet::utils::getArcCoordinates(
+      const auto s_goal = s + experimental::lanelet2_utils::get_arc_coordinates(
                                 {goal_lanelet}, route_manager_data_.route_ptr->goal_pose)
                                 .length;
       if (s_goal < s_end) {

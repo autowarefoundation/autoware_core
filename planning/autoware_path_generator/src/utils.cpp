@@ -710,7 +710,8 @@ experimental::trajectory::Trajectory<PathPointWithLaneId> connect_path_to_goal(
   const auto pre_goal_pose =
     autoware_utils_geometry::calc_offset_pose(goal_pose, -pre_goal_offset, 0.0, 0.0);
   auto pre_goal_lanelet = goal_lanelet;
-  while (rclcpp::ok() && !lanelet::utils::isInLanelet(pre_goal_pose, pre_goal_lanelet)) {
+  while (rclcpp::ok() &&
+         !experimental::lanelet2_utils::is_in_lanelet(pre_goal_pose, pre_goal_lanelet)) {
     const auto prev_lanelet = get_previous_lanelet_within_route(pre_goal_lanelet, route_manager);
     if (!prev_lanelet) {
       RCLCPP_WARN(
