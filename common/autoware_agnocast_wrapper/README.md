@@ -101,35 +101,33 @@ Non-`AgnocastOnly` executors use `NodeInstanceWrapper::get_node_base_interface()
 
 **Behavior reference:**
 
-The tables below show the complete behavior for each combination of `ROS2_EXECUTOR`, `AGNOCAST_EXECUTOR`, and `ENABLE_AGNOCAST`. CMake emits a **WARN** when `ROS2_EXECUTOR` and `AGNOCAST_EXECUTOR` have mismatched threading models (single vs. multi), because the executor threading behavior will silently change depending on the runtime `ENABLE_AGNOCAST` value.
+The tables below show the complete behavior for each configuration. When `ENABLE_AGNOCAST=0` at build time, only `ROS2_EXECUTOR` matters. When `ENABLE_AGNOCAST=1`, the behavior depends on both `ROS2_EXECUTOR` and `AGNOCAST_EXECUTOR`, and can be switched at runtime via the `ENABLE_AGNOCAST` environment variable.
 
 Build-time `ENABLE_AGNOCAST=0` (or unset):
 
-| ROS2_EXECUTOR | AGNOCAST_EXECUTOR    | CMake | Runtime behavior         |
-| ------------- | -------------------- | ----- | ------------------------ |
-| `Single`      | Any consistent value | OK    | `SingleThreadedExecutor` |
-| `Multi`       | Any consistent value | OK    | `MultiThreadedExecutor`  |
-| `Single`      | Inconsistent value   | WARN  | `SingleThreadedExecutor` |
-| `Multi`       | Inconsistent value   | WARN  | `MultiThreadedExecutor`  |
+| ROS2_EXECUTOR            | Runtime behavior         |
+| ------------------------ | ------------------------ |
+| `SingleThreadedExecutor` | `SingleThreadedExecutor` |
+| `MultiThreadedExecutor`  | `MultiThreadedExecutor`  |
 
 Runtime `ENABLE_AGNOCAST` has no effect in this mode — no switchable template is generated.
 
 Build-time `ENABLE_AGNOCAST=1`:
 
-| ROS 2<br>\_EXECUTOR | AGNOCAST<br>\_EXECUTOR         | CMake | Runtime<br>`ENABLE_AGNOCAST=0` | Runtime<br>`ENABLE_AGNOCAST=1` |
-| ------------------- | ------------------------------ | ----- | ------------------------------ | ------------------------------ |
-| `Single`            | `SingleThreadedAgnocast`       | OK    | `SingleThreaded`               | `SingleThreadedAgnocast`       |
-| `Multi`             | `MultiThreadedAgnocast`        | OK    | `MultiThreaded`                | `MultiThreadedAgnocast`        |
-| `Multi`             | `CallbackIsolatedAgnocast`     | OK    | `MultiThreaded`                | `CallbackIsolatedAgnocast`     |
-| `Single`            | `AgnocastOnlySingleThreaded`   | OK    | `SingleThreaded`               | `AgnocastOnlySingleThreaded`   |
-| `Multi`             | `AgnocastOnlyMultiThreaded`    | OK    | `MultiThreaded`                | `AgnocastOnlyMultiThreaded`    |
-| `Multi`             | `AgnocastOnlyCallbackIsolated` | OK    | `MultiThreaded`                | `AgnocastOnlyCallbackIsolated` |
-| `Single`            | `MultiThreadedAgnocast`        | WARN  | `SingleThreaded`               | `MultiThreadedAgnocast`        |
-| `Single`            | `CallbackIsolatedAgnocast`     | WARN  | `SingleThreaded`               | `CallbackIsolatedAgnocast`     |
-| `Single`            | `AgnocastOnlyMultiThreaded`    | WARN  | `SingleThreaded`               | `AgnocastOnlyMultiThreaded`    |
-| `Single`            | `AgnocastOnlyCallbackIsolated` | WARN  | `SingleThreaded`               | `AgnocastOnlyCallbackIsolated` |
-| `Multi`             | `SingleThreadedAgnocast`       | WARN  | `MultiThreaded`                | `SingleThreadedAgnocast`       |
-| `Multi`             | `AgnocastOnlySingleThreaded`   | WARN  | `MultiThreaded`                | `AgnocastOnlySingleThreaded`   |
+| ROS 2<br>\_EXECUTOR      | AGNOCAST<br>\_EXECUTOR                 | Runtime<br>`ENABLE_AGNOCAST=0` | Runtime<br>`ENABLE_AGNOCAST=1`         |
+| ------------------------ | -------------------------------------- | ------------------------------ | -------------------------------------- |
+| `SingleThreadedExecutor` | `SingleThreadedAgnocastExecutor`       | `SingleThreadedExecutor`       | `SingleThreadedAgnocastExecutor`       |
+| `MultiThreadedExecutor`  | `MultiThreadedAgnocastExecutor`        | `MultiThreadedExecutor`        | `MultiThreadedAgnocastExecutor`        |
+| `MultiThreadedExecutor`  | `CallbackIsolatedAgnocastExecutor`     | `MultiThreadedExecutor`        | `CallbackIsolatedAgnocastExecutor`     |
+| `SingleThreadedExecutor` | `AgnocastOnlySingleThreadedExecutor`   | `SingleThreadedExecutor`       | `AgnocastOnlySingleThreadedExecutor`   |
+| `MultiThreadedExecutor`  | `AgnocastOnlyMultiThreadedExecutor`    | `MultiThreadedExecutor`        | `AgnocastOnlyMultiThreadedExecutor`    |
+| `MultiThreadedExecutor`  | `AgnocastOnlyCallbackIsolatedExecutor` | `MultiThreadedExecutor`        | `AgnocastOnlyCallbackIsolatedExecutor` |
+| `SingleThreadedExecutor` | `MultiThreadedAgnocastExecutor`        | `SingleThreadedExecutor`       | `MultiThreadedAgnocastExecutor`        |
+| `SingleThreadedExecutor` | `CallbackIsolatedAgnocastExecutor`     | `SingleThreadedExecutor`       | `CallbackIsolatedAgnocastExecutor`     |
+| `SingleThreadedExecutor` | `AgnocastOnlyMultiThreadedExecutor`    | `SingleThreadedExecutor`       | `AgnocastOnlyMultiThreadedExecutor`    |
+| `SingleThreadedExecutor` | `AgnocastOnlyCallbackIsolatedExecutor` | `SingleThreadedExecutor`       | `AgnocastOnlyCallbackIsolatedExecutor` |
+| `MultiThreadedExecutor`  | `SingleThreadedAgnocastExecutor`       | `MultiThreadedExecutor`        | `SingleThreadedAgnocastExecutor`       |
+| `MultiThreadedExecutor`  | `AgnocastOnlySingleThreadedExecutor`   | `MultiThreadedExecutor`        | `AgnocastOnlySingleThreadedExecutor`   |
 
 Example with `agnocast_wrapper::Node` (AgnocastOnly executor):
 
@@ -344,23 +342,22 @@ A Python launch file (`agnocast_env.launch.py`) is also provided with the same f
 Basic usage with a single node:
 
 ```python
-import os
-
 from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
+from launch.substitutions import PathJoinSubstitution
 from launch_ros.actions import Node
-from ament_index_python.packages import get_package_share_directory
+from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description():
     agnocast_env = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(
-                get_package_share_directory("autoware_agnocast_wrapper"),
+            PathJoinSubstitution([
+                FindPackageShare("autoware_agnocast_wrapper"),
                 "launch",
                 "agnocast_env.launch.py",
-            )
+            ])
         ),
     )
 
@@ -377,23 +374,22 @@ def generate_launch_description():
 Using a component container with multi-threading:
 
 ```python
-import os
-
 from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
+from launch.substitutions import PathJoinSubstitution
 from launch_ros.actions import ComposableNodeContainer
-from ament_index_python.packages import get_package_share_directory
+from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description():
     agnocast_env = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(
-                get_package_share_directory("autoware_agnocast_wrapper"),
+            PathJoinSubstitution([
+                FindPackageShare("autoware_agnocast_wrapper"),
                 "launch",
                 "agnocast_env.launch.py",
-            )
+            ])
         ),
         launch_arguments={"use_multithread": "true"}.items(),
     )

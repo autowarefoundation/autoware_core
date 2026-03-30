@@ -94,12 +94,14 @@ bool LinfPseudoJerkSmoother::apply(
   const size_t l_constraints{3 * N + 1 + 2 * (N - 1)};
 
   Eigen::MatrixXd A = Eigen::MatrixXd::Zero(
-    l_constraints, l_variables);  // the matrix size depends on constraint numbers.
+    static_cast<Eigen::Index>(l_constraints),
+    static_cast<Eigen::Index>(l_variables));  // the matrix size depends on constraint numbers.
 
   std::vector<double> lower_bound(l_constraints, 0.0);
   std::vector<double> upper_bound(l_constraints, 0.0);
 
-  Eigen::MatrixXd P = Eigen::MatrixXd::Zero(l_variables, l_variables);
+  Eigen::MatrixXd P = Eigen::MatrixXd::Zero(
+    static_cast<Eigen::Index>(l_variables), static_cast<Eigen::Index>(l_variables));
   std::vector<double> q(l_variables, 0.0);
 
   const double a_max{base_param_.max_accel};
@@ -133,7 +135,7 @@ bool LinfPseudoJerkSmoother::apply(
   b is almost 0, and is not a big problem.
   */
   for (unsigned int i = 0; i < N; ++i) {
-    const int j = 2 * N + i;
+    const int j = static_cast<int>(2 * N + i);
     A(i, i) = 1.0;   // b_i
     A(i, j) = -1.0;  // -delta_i
     upper_bound[i] = v_max[i] * v_max[i];
@@ -142,7 +144,7 @@ bool LinfPseudoJerkSmoother::apply(
 
   // a_min < a - sigma < a_max
   for (unsigned int i = N; i < 2 * N; ++i) {
-    const int j = 2 * N + i;
+    const int j = static_cast<int>(2 * N + i);
     A(i, i) = 1.0;   // a_i
     A(i, j) = -1.0;  // -sigma_i
     if (i != N && v_max[i - N] < std::numeric_limits<double>::epsilon()) {
@@ -160,7 +162,7 @@ bool LinfPseudoJerkSmoother::apply(
     const double ds_inv = 1.0 / std::max(interval_dist_arr.at(j), 0.0001);
     A(i, j) = -ds_inv;
     A(i, j + 1) = ds_inv;
-    A(i, j + N) = -2.0;
+    A(static_cast<Eigen::Index>(i), static_cast<Eigen::Index>(j + N)) = -2.0;
     upper_bound[i] = 0.0;
     lower_bound[i] = 0.0;
   }
@@ -173,7 +175,7 @@ bool LinfPseudoJerkSmoother::apply(
     upper_bound[i] = v0 * v0;
     lower_bound[i] = v0 * v0;
 
-    A(i + 1, N) = 1.0;  // a0
+    A(static_cast<Eigen::Index>(i) + 1, static_cast<Eigen::Index>(N)) = 1.0;  // a0
     upper_bound[i + 1] = initial_acc;
     lower_bound[i + 1] = initial_acc;
   }
@@ -191,16 +193,17 @@ bool LinfPseudoJerkSmoother::apply(
     lower_bound[i] = -OSQP_INFTY;
     upper_bound[i] = 0;
 
-    A(i + N - 1, ia) = ds_inv;
-    A(i + N - 1, ia + 1) = -ds_inv;
-    A(i + N - 1, ip) = -1;
+    A(static_cast<Eigen::Index>(i + N - 1), static_cast<Eigen::Index>(ia)) = ds_inv;
+    A(static_cast<Eigen::Index>(i + N - 1), static_cast<Eigen::Index>(ia + 1)) = -ds_inv;
+    A(static_cast<Eigen::Index>(i + N - 1), static_cast<Eigen::Index>(ip)) = -1;
     lower_bound[i + N - 1] = -OSQP_INFTY;
     upper_bound[i + N - 1] = 0;
   }
 
   const auto tf1 = std::chrono::system_clock::now();
   const double dt_ms1 =
-    std::chrono::duration_cast<std::chrono::nanoseconds>(tf1 - ts).count() * 1.0e-6;
+    static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(tf1 - ts).count()) *
+    1.0e-6;
 
   // execute optimization
   const auto ts2 = std::chrono::system_clock::now();
@@ -224,8 +227,8 @@ bool LinfPseudoJerkSmoother::apply(
   /* get velocity & acceleration */
   for (unsigned int i = 0; i < N; ++i) {
     double v = optval.at(i);
-    output.at(i).longitudinal_velocity_mps = std::sqrt(std::max(v, 0.0));
-    output.at(i).acceleration_mps2 = optval.at(i + N);
+    output.at(i).longitudinal_velocity_mps = static_cast<float>(std::sqrt(std::max(v, 0.0)));
+    output.at(i).acceleration_mps2 = static_cast<float>(optval.at(i + N));
   }
   for (unsigned int i = N; i < output.size(); ++i) {
     output.at(i).longitudinal_velocity_mps = 0.0;
@@ -244,7 +247,8 @@ bool LinfPseudoJerkSmoother::apply(
 
   const auto tf2 = std::chrono::system_clock::now();
   const double dt_ms2 =
-    std::chrono::duration_cast<std::chrono::nanoseconds>(tf2 - ts2).count() * 1.0e-6;
+    static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(tf2 - ts2).count()) *
+    1.0e-6;
   RCLCPP_DEBUG(logger_, "init time = %f [ms], optimization time = %f [ms]", dt_ms1, dt_ms2);
   return true;
 }
