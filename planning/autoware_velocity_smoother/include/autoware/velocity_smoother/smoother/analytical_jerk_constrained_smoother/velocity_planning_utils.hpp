@@ -16,6 +16,7 @@
 #define AUTOWARE__VELOCITY_SMOOTHER__SMOOTHER__ANALYTICAL_JERK_CONSTRAINED_SMOOTHER__VELOCITY_PLANNING_UTILS_HPP_  // NOLINT
 
 #include "autoware/motion_utils/trajectory/trajectory.hpp"
+#include "autoware/trajectory/trajectory_point.hpp"
 #include "rclcpp/rclcpp.hpp"
 
 #include "autoware_planning_msgs/msg/trajectory_point.hpp"
@@ -31,6 +32,8 @@ namespace analytical_velocity_planning_utils
 {
 using autoware_planning_msgs::msg::TrajectoryPoint;
 using TrajectoryPoints = std::vector<autoware_planning_msgs::msg::TrajectoryPoint>;
+using Trajectory =
+  autoware::experimental::trajectory::Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>;
 
 bool calcStopDistWithJerkAndAccConstraints(
   const double v0, const double a0, const double jerk_acc, const double jerk_dec,
@@ -39,6 +42,10 @@ bool calcStopDistWithJerkAndAccConstraints(
 bool validCheckCalcStopDist(
   const double v_end, const double a_end, const double v_target, const double a_target,
   const double v_margin, const double a_margin);
+bool calcStopVelocityWithConstantJerkAccLimit(
+  const double v0, const double a0, const double jerk_acc, const double jerk_dec,
+  const double min_acc, const double decel_target_vel, const int type,
+  const std::vector<double> & times, const double start_distance, Trajectory & output_trajectory);
 bool calcStopVelocityWithConstantJerkAccLimit(
   const double v0, const double a0, const double jerk_acc, const double jerk_dec,
   const double min_acc, const double decel_target_vel, const int type,
