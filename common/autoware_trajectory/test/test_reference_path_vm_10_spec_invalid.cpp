@@ -33,8 +33,6 @@
 #include <string>
 #include <vector>
 
-#define PLOT 1
-
 #ifdef PLOT
 #include <autoware/pyplot/pyplot.hpp>
 #include <autoware_test_utils/visualization.hpp>
@@ -49,6 +47,8 @@ static constexpr auto inf = std::numeric_limits<double>::infinity();
 
 namespace autoware::experimental
 {
+
+#ifdef PLOT
 
 static void savefig(
   const trajectory::Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId> &
@@ -86,7 +86,9 @@ static void savefig(
   plt.savefig(Args(filename));
 }
 
-class TestWithVM_01_10_12_Map : public ::testing::Test  // NOLINT
+#endif
+
+class TestWithVM_01_10_12_Map_Invalid : public ::testing::Test  // NOLINT
 {
 protected:
   void SetUp() override
@@ -119,7 +121,7 @@ protected:
   lanelet::traffic_rules::TrafficRulesPtr traffic_rules_{nullptr};
 };
 
-TEST_F(TestWithVM_01_10_12_Map, from_P0_on_entire_lanes)  // NOLINT
+TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P0_on_entire_lanes)  // NOLINT
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P0;
@@ -258,7 +260,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P0_on_entire_lanes)  // NOLINT
 #endif
 }
 
-TEST_F(TestWithVM_01_10_12_Map, from_P1_on_entire_lanes)
+TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P1_on_entire_lanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P1;
@@ -397,7 +399,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P1_on_entire_lanes)
 #endif
 }
 
-TEST_F(TestWithVM_01_10_12_Map, from_P2_on_entire_lanes)
+TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P2_on_entire_lanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P2;
@@ -536,7 +538,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P2_on_entire_lanes)
 #endif
 }
 
-TEST_F(TestWithVM_01_10_12_Map, from_P3_on_entire_lanes)
+TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P3_on_entire_lanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P3;
@@ -675,7 +677,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P3_on_entire_lanes)
 #endif
 }
 
-TEST_F(TestWithVM_01_10_12_Map, from_P4_on_entire_lanes)
+TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P4_on_entire_lanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P4;
@@ -814,7 +816,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P4_on_entire_lanes)
 #endif
 }
 
-TEST_F(TestWithVM_01_10_12_Map, from_P1_forward_on_entire_lanes)
+TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P1_forward_on_entire_lanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P1;
@@ -940,7 +942,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P1_forward_on_entire_lanes)
 #endif
 }
 
-TEST_F(TestWithVM_01_10_12_Map, from_P2_forward_on_entire_lanes)
+TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P2_forward_on_entire_lanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P2;
@@ -1040,7 +1042,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P2_forward_on_entire_lanes)
 #endif
 }
 
-TEST_F(TestWithVM_01_10_12_Map, from_P3_forward_on_entire_lanes)
+TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P3_forward_on_entire_lanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P3;
@@ -1140,7 +1142,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P3_forward_on_entire_lanes)
 #endif
 }
 
-TEST_F(TestWithVM_01_10_12_Map, from_P4_forward_on_entire_lanes)
+TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P4_forward_on_entire_lanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P4;
@@ -1228,12 +1230,3 @@ TEST_F(TestWithVM_01_10_12_Map, from_P4_forward_on_entire_lanes)
 }
 
 }  // namespace autoware::experimental
-
-int main(int argc, char ** argv)
-{
-#ifdef PLOT
-  pybind11::scoped_interpreter guard{};
-#endif
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}

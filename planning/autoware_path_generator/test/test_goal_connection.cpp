@@ -15,7 +15,6 @@
 #include "utils_test.hpp"
 
 #include <autoware/lanelet2_utils/geometry.hpp>
-#include <autoware_lanelet2_extension/utility/utilities.hpp>
 
 #include <gtest/gtest.h>
 #include <lanelet2_core/geometry/Lanelet.h>
@@ -34,8 +33,7 @@ TEST_F(UtilsTest, connectPathToGoalInsideLaneletSequence)
   for (const auto & lanelet : route_manager_->preferred_lanelets()) {
     if (route_manager_->goal_lanelet().id() == lanelet.id()) {
       s_goal +=
-        autoware::experimental::lanelet2_utils::get_arc_coordinates({lanelet}, route_->goal_pose)
-          .length;
+        experimental::lanelet2_utils::get_arc_coordinates({lanelet}, route_->goal_pose).length;
       break;
     }
     s_goal += lanelet::geometry::length2d(lanelet);
@@ -85,8 +83,7 @@ TEST_F(UtilsTest, connectPathToGoal)
   for (const auto & lanelet : route_manager_->preferred_lanelets()) {
     if (route_manager_->goal_lanelet().id() == lanelet.id()) {
       s_goal +=
-        autoware::experimental::lanelet2_utils::get_arc_coordinates({lanelet}, route_->goal_pose)
-          .length;
+        experimental::lanelet2_utils::get_arc_coordinates({lanelet}, route_->goal_pose).length;
       break;
     }
     s_goal += lanelet::geometry::length2d(lanelet);
