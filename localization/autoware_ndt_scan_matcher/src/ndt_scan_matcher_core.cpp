@@ -231,7 +231,7 @@ void NDTScanMatcher::callback_timer()
 
   diagnostics_map_update_->add_key_value("timer_callback_time_stamp", ros_time_now.nanoseconds());
 
-  // Avoid data race when reading and writing latest_ekf_position 
+  // Avoid data race when reading and writing latest_ekf_position
   // from multiple threads
   std::unique_lock<std::mutex> lock(latest_ekf_position_mtx_);
 
@@ -240,7 +240,8 @@ void NDTScanMatcher::callback_timer()
   lock.unlock();
 
   // Pass the copy of latest_ekf_position instead of the real one
-  map_update_module_->callback_timer(is_activated_, tmp_latest_ekf_position, diagnostics_map_update_);
+  map_update_module_->callback_timer(
+    is_activated_, tmp_latest_ekf_position, diagnostics_map_update_);
 
   diagnostics_map_update_->publish(ros_time_now);
 }
