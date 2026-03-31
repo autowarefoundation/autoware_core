@@ -14,8 +14,8 @@
 
 #include "../src/node.hpp"
 
-#include <autoware_motion_velocity_planner/srv/load_plugin.hpp>
-#include <autoware_motion_velocity_planner/srv/unload_plugin.hpp>
+#include <autoware_internal_planning_msgs/srv/load_plugin.hpp>
+#include <autoware_internal_planning_msgs/srv/unload_plugin.hpp>
 #include <autoware_test_utils/autoware_test_utils.hpp>
 #include <autoware_test_utils/mock_data_parser.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -339,12 +339,12 @@ protected:
 
   bool request_load_plugin()
   {
-    auto request = std::make_shared<autoware_motion_velocity_planner::srv::LoadPlugin::Request>();
-    auto response = std::make_shared<autoware_motion_velocity_planner::srv::LoadPlugin::Response>();
+    auto request = std::make_shared<autoware_internal_planning_msgs::srv::LoadPlugin::Request>();
+    auto response = std::make_shared<autoware_internal_planning_msgs::srv::LoadPlugin::Response>();
 
     request->plugin_name = "test_plugin";
 
-    auto client = node_->create_client<autoware_motion_velocity_planner::srv::LoadPlugin>(
+    auto client = node_->create_client<autoware_internal_planning_msgs::srv::LoadPlugin>(
       "/motion_velocity_planner/service/load_plugin");
 
     // auto future = client->async_send_request(request);
@@ -358,7 +358,7 @@ protected:
 
     client->async_send_request(
       request, [&response_received](
-                 rclcpp::Client<autoware_motion_velocity_planner::srv::LoadPlugin>::SharedFuture
+                 rclcpp::Client<autoware_internal_planning_msgs::srv::LoadPlugin>::SharedFuture
                    future_result) {
         auto response = future_result.get();
         if (response != nullptr) {
@@ -379,13 +379,13 @@ protected:
 
   bool request_unload_plugin()
   {
-    auto request = std::make_shared<autoware_motion_velocity_planner::srv::UnloadPlugin::Request>();
+    auto request = std::make_shared<autoware_internal_planning_msgs::srv::UnloadPlugin::Request>();
     auto response =
-      std::make_shared<autoware_motion_velocity_planner::srv::UnloadPlugin::Response>();
+      std::make_shared<autoware_internal_planning_msgs::srv::UnloadPlugin::Response>();
 
     request->plugin_name = "test_plugin";
 
-    auto client = node_->create_client<autoware_motion_velocity_planner::srv::UnloadPlugin>(
+    auto client = node_->create_client<autoware_internal_planning_msgs::srv::UnloadPlugin>(
       "/motion_velocity_planner/service/unload_plugin");
 
     if (!client->wait_for_service(std::chrono::seconds(1))) {
@@ -398,7 +398,7 @@ protected:
 
     client->async_send_request(
       request, [&response_received](
-                 rclcpp::Client<autoware_motion_velocity_planner::srv::UnloadPlugin>::SharedFuture
+                 rclcpp::Client<autoware_internal_planning_msgs::srv::UnloadPlugin>::SharedFuture
                    future_result) {
         auto response = future_result.get();
         if (response != nullptr) {
