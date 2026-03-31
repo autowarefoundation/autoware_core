@@ -37,6 +37,7 @@ if(BUILD_TESTING)
   ament_add_ros_isolated_gtest(test_ground_filter
     test/test_ground_filter.cpp
   )
+  target_include_directories(test_ground_filter PRIVATE src)
   target_link_libraries(test_ground_filter
     ${PROJECT_NAME}
   )
@@ -44,6 +45,7 @@ if(BUILD_TESTING)
   ament_add_ros_isolated_gtest(test_node
     test/test_node.cpp
   )
+  target_include_directories(test_node PRIVATE src)
   target_link_libraries(test_node
     ${PROJECT_NAME}
   )
@@ -51,6 +53,7 @@ if(BUILD_TESTING)
   ament_add_ros_isolated_gtest(test_sanity_check
     test/test_sanity_check.cpp
   )
+  target_include_directories(test_sanity_check PRIVATE src)
   target_link_libraries(test_sanity_check
     ${PROJECT_NAME}
   )

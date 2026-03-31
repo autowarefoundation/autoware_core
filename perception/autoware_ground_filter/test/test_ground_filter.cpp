@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/ground_filter/ground_filter.hpp"
+#include "ground_filter.hpp"
 
 #include <autoware/point_types/types.hpp>
 
@@ -65,7 +65,7 @@ protected:
     for (int i = 0; i < 50; ++i) {
       pcl::PointXYZ point;
       point.x = static_cast<float>(i % 10) - 5.0f;
-      point.y = static_cast<float>(i / 10) - 2.5f;
+      point.y = static_cast<float>(i / 10.0f) - 2.5f;
       point.z =
         0.0f + (static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX) - 0.5f) * 0.1f;
       pcl_cloud.push_back(point);
@@ -75,7 +75,7 @@ protected:
     for (int i = 0; i < 25; ++i) {
       pcl::PointXYZ point;
       point.x = static_cast<float>(i % 5) - 2.5f;
-      point.y = static_cast<float>(i / 5) - 2.5f;
+      point.y = static_cast<float>(i / 5.0f) - 2.5f;
       point.z = 0.5f + (static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX)) * 0.5f;
       pcl_cloud.push_back(point);
     }
@@ -280,7 +280,7 @@ TEST_F(GroundFilterTest, TestDifferentPointCloudLayouts)
   for (int i = 0; i < 30; ++i) {
     autoware::point_types::PointXYZIRC point;
     point.x = static_cast<float>(i % 6) - 3.0f;
-    point.y = static_cast<float>(i / 6) - 2.5f;
+    point.y = static_cast<float>(i / 6.0f) - 2.5f;
     point.z = (i < 15) ? 0.0f : 0.8f;  // Half ground, half elevated
     point.intensity = 100;
     point.return_type = 1;
