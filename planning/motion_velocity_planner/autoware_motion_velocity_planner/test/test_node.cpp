@@ -14,13 +14,13 @@
 
 #include "../src/node.hpp"
 
-#include <autoware_internal_planning_msgs/srv/load_plugin.hpp>
-#include <autoware_internal_planning_msgs/srv/unload_plugin.hpp>
 #include <autoware_test_utils/autoware_test_utils.hpp>
 #include <autoware_test_utils/mock_data_parser.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <autoware_internal_debug_msgs/msg/float64_stamped.hpp>
+#include <autoware_internal_planning_msgs/srv/load_plugin.hpp>
+#include <autoware_internal_planning_msgs/srv/unload_plugin.hpp>
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
 #include <autoware_perception_msgs/msg/predicted_objects.hpp>
 #include <autoware_perception_msgs/msg/traffic_light_group_array.hpp>
