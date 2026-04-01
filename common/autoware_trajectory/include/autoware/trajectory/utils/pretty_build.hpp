@@ -32,10 +32,15 @@ namespace autoware::experimental::trajectory
 {
 
 /**
- * @brief Build a trajectory with the default cubic or optional akima setting.
- * @param[in] points input points
- * @param[in] use_akima if true, use akima spline instead
- * @return return nullopt only if trajectory build fails
+ * @brief Build a trajectory while applying the package's preferred interpolator defaults.
+ * @param[in] points Input trajectory points.
+ * @param[in] use_akima If true, use Akima spline for XY interpolation.
+ * @return Built trajectory, or `std::nullopt` when the build fails.
+ * @details
+ * When `use_akima` is false, this delegates to `Trajectory<PointType>::Builder{}.build(points)`
+ * and rejects trajectories shorter than `k_points_minimum_dist_threshold`.
+ * When `use_akima` is true, this delegates to a builder configured with
+ * `interpolator::AkimaSpline` for XY interpolation and returns the build result as-is.
  */
 template <typename PointType>
 std::optional<Trajectory<PointType>> pretty_build(

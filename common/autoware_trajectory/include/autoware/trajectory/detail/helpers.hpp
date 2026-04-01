@@ -17,13 +17,15 @@
 
 #include "autoware/trajectory/interpolator/result.hpp"
 
-#include <cstddef>
 #include <functional>
 #include <utility>
 #include <vector>
 
 namespace autoware::experimental::trajectory::detail
 {
+/**
+ * @brief Return a failure when no fallback interpolator candidate remains.
+ */
 template <typename TargetPtr, typename ValueType>
 interpolator::InterpolationResult build_with_fallback_candidates(
   TargetPtr &, const std::vector<double> &, const std::vector<ValueType> &)
@@ -31,6 +33,15 @@ interpolator::InterpolationResult build_with_fallback_candidates(
   return tl::unexpected(interpolator::InterpolationFailure{"no available fallback interpolator"});
 }
 
+/**
+ * @brief Try fallback interpolator factories until one successfully builds.
+ * @param[out] target Interpolator pointer replaced with the successful candidate.
+ * @param[in] bases Interpolation bases.
+ * @param[in] values Interpolation values.
+ * @param[in] factory First fallback factory to try.
+ * @param[in] factories Remaining fallback factories.
+ * @return Successful interpolation result, or the last failure if all candidates fail.
+ */
 template <typename TargetPtr, typename ValueType, typename Factory, typename... Factories>
 interpolator::InterpolationResult build_with_fallback_candidates(
   TargetPtr & target, const std::vector<double> & bases, const std::vector<ValueType> & values,
@@ -51,6 +62,14 @@ interpolator::InterpolationResult build_with_fallback_candidates(
   }
 }
 
+/**
+ * @brief Build with the current interpolator and fall back to alternative factories on failure.
+ * @param[out] target Interpolator pointer to build, replaced if a fallback succeeds.
+ * @param[in] bases Interpolation bases.
+ * @param[in] values Interpolation values.
+ * @param[in] factories Fallback interpolator factories.
+ * @return Successful interpolation result, or a failure if all attempts fail.
+ */
 template <typename TargetPtr, typename ValueType, typename... Factories>
 interpolator::InterpolationResult build_with_fallback(
   TargetPtr & target, const std::vector<double> & bases, const std::vector<ValueType> & values,
@@ -64,6 +83,13 @@ interpolator::InterpolationResult build_with_fallback(
     target, bases, values, std::forward<Factories>(factories)...);
 }
 
+/**
+ * @brief Crop bases to the closed interval `[start, end]`, inserting boundaries if needed.
+ * @param[in] x Input bases.
+ * @param[in] start Crop start.
+ * @param[in] end Crop end.
+ * @return Cropped bases including start and end boundaries.
+ */
 std::vector<double> crop_bases(const std::vector<double> & x, const double start, const double end);
 }  // namespace autoware::experimental::trajectory::detail
 
