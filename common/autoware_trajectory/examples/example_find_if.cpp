@@ -139,7 +139,7 @@ int main()
       const auto constraint =
         [&](const autoware_internal_planning_msgs::msg::PathPointWithLaneId & point) {
           return autoware_utils_geometry::calc_distance2d(point.point.pose.position, base_point) <
-                2.0;
+                 2.0;
         };
 
       const auto first_index =
@@ -203,7 +203,7 @@ int main()
   } catch (const std::exception & e) {
     std::cerr << "Error: " << e.what() << std::endl;
     return 1;
-  }  
+  }
 
   return 0;
 }
