@@ -373,7 +373,11 @@ TEST_F(UtilsTest, buildCroppedTrajectory)
   }
 
   {  // line string has only 1 point
-    const auto result = utils::build_cropped_trajectory({geometry_msgs::msg::Point{}}, {}, {});
+    geometry_msgs::msg::Point point{};
+    point.x = 0.0;
+    point.y = 0.0;
+    point.z = 0.0;
+    const auto result = utils::build_cropped_trajectory({point}, {}, {});
 
     ASSERT_TRUE(result);
 
