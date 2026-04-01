@@ -189,9 +189,9 @@ void StopLineModule::updateStateAndStoppedTime(
       break;
     }
     case State::STOPPED: {
-      if (!stopped_time_.has_value()) {
-        logWarn("stopped_time_ has no value in STOPPED state");
-        stopped_time_ = now;
+      if (!stopped_time->has_value()) {
+        logWarn("stopped_time has no value in STOPPED state");
+        *stopped_time = now;
         break;
       }
       double stop_duration = (now - **stopped_time).seconds();
