@@ -70,6 +70,6 @@ std::optional<double> closest_with_constraint_impl(
 
   auto min_it = std::min_element(distances_from_segments.begin(), distances_from_segments.end());
 
-  return lengths_from_start_points[std::distance(distances_from_segments.begin(), min_it)];
+  return lengths_from_start_points.at(std::distance(distances_from_segments.begin(), min_it));
 }
 }  // namespace autoware::experimental::trajectory::detail::impl

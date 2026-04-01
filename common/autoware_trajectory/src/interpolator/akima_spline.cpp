@@ -81,21 +81,21 @@ bool AkimaSpline::build_impl(const std::vector<double> & bases, std::vector<doub
 double AkimaSpline::compute_impl(const double s) const
 {
   const int32_t i = this->get_index(s);
-  const double dx = s - this->bases_[i];
+  const double dx = s - this->bases_.at(i);
   return a_[i] + b_[i] * dx + c_[i] * dx * dx + d_[i] * dx * dx * dx;
 }
 
 double AkimaSpline::compute_first_derivative_impl(const double s) const
 {
   const int32_t i = this->get_index(s);
-  const double dx = s - this->bases_[i];
+  const double dx = s - this->bases_.at(i);
   return b_[i] + 2 * c_[i] * dx + 3 * d_[i] * dx * dx;
 }
 
 double AkimaSpline::compute_second_derivative_impl(const double s) const
 {
   const int32_t i = this->get_index(s);
-  const double dx = s - this->bases_[i];
+  const double dx = s - this->bases_.at(i);
   return 2 * c_[i] + 6 * d_[i] * dx;
 }
 

@@ -111,8 +111,8 @@ std::vector<int64_t> Trajectory<PointType>::get_contained_lane_ids() const
   const auto & [bases, values] = lane_ids_->get_data();
 
   for (size_t i = 0; i < bases.size(); i++) {
-    if (start_ <= bases[i] && bases[i] <= end_) {
-      for (const auto & lane_id : values[i]) {
+    if (start_ <= bases.at(i) && bases.at(i) <= end_) {
+      for (const auto & lane_id : values.at(i)) {
         if (contained_lane_ids.empty()) {
           contained_lane_ids.emplace_back(lane_id);
         } else {
