@@ -27,6 +27,10 @@ std::vector<double> fill_bases(const std::vector<double> & x, const size_t outpu
     return x;
   }
 
+  if (original_size <= 1) {
+    return x;
+  }
+
   // Basically we will insert `new_points_per_interval` to each interval
   const auto points_to_add = output_size_at_least - original_size;
   const auto num_input_interval = original_size - 1;
