@@ -62,7 +62,6 @@ if(BUILD_TESTING)
 
   set(test_files
     test/test_main.cpp
-    test/test_build_fallback.cpp
     test/test_crossed.cpp
     test/test_shift.cpp
     test/test_helpers.cpp

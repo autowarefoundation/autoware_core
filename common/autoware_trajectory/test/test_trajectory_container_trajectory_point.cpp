@@ -15,7 +15,6 @@
 #include "autoware/trajectory/utils/closest.hpp"
 #include "autoware/trajectory/utils/crossed.hpp"
 #include "autoware/trajectory/utils/curvature_utils.hpp"
-#include "autoware/trajectory/utils/pretty_build.hpp"
 #include "autoware_utils_geometry/geometry.hpp"
 #include "lanelet2_core/primitives/LineString.h"
 
@@ -34,20 +33,20 @@ autoware_planning_msgs::msg::TrajectoryPoint trajectory_point(double x, double y
   return point;
 }
 
-TEST(TrajectoryCreatorTestForTrajectoryPoint, create)
+TEST(TrajectoryCreatorTestForTrajectoryPoint, create_from_single_point)
 {
-  {
-    std::vector<autoware_planning_msgs::msg::TrajectoryPoint> points{trajectory_point(0.00, 0.00)};
-    auto trajectory = Trajectory::Builder{}.build(points);
-    ASSERT_TRUE(trajectory);
-  }
-  {
-    std::vector<autoware_planning_msgs::msg::TrajectoryPoint> points{
-      trajectory_point(0.00, 0.00), trajectory_point(0.81, 1.68), trajectory_point(1.65, 2.98),
-      trajectory_point(3.30, 4.01)};
-    auto trajectory = Trajectory::Builder{}.build(points);
-    ASSERT_TRUE(trajectory);
-  }
+  std::vector<autoware_planning_msgs::msg::TrajectoryPoint> points{trajectory_point(0.00, 0.00)};
+  auto trajectory = Trajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory);
+}
+
+TEST(TrajectoryCreatorTestForTrajectoryPoint, create_from_multiple_points)
+{
+  std::vector<autoware_planning_msgs::msg::TrajectoryPoint> points{
+    trajectory_point(0.00, 0.00), trajectory_point(0.81, 1.68), trajectory_point(1.65, 2.98),
+    trajectory_point(3.30, 4.01)};
+  auto trajectory = Trajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory);
 }
 
 class TrajectoryTestForTrajectoryPoint : public ::testing::Test
@@ -177,13 +176,13 @@ TEST_F(TrajectoryTestForTrajectoryPoint, max_curvature)
   EXPECT_LT(0, max_curvature);
 }
 
-TEST_F(TrajectoryTestForTrajectoryPoint, pretty_build_from_2_cubic)
+TEST_F(TrajectoryTestForTrajectoryPoint, build_from_two_points)
 {
   using autoware_utils_geometry::get_rpy;
 
   std::vector<autoware_planning_msgs::msg::TrajectoryPoint> points{
     trajectory_point(1.0, 1.0), trajectory_point(2.0, 2.0)};
-  auto trajectory_opt = autoware::experimental::trajectory::pretty_build(points);
+  auto trajectory_opt = Trajectory::Builder{}.build(points);
   EXPECT_EQ(trajectory_opt.has_value(), true);
 
   auto & trajectory = trajectory_opt.value();

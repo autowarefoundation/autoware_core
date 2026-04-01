@@ -86,21 +86,21 @@ TEST(TrajectoryCreatorTest, constructor)
   autoware::experimental::trajectory::Trajectory<geometry_msgs::msg::Pose> trj_pose(*trajectory);
 }
 
-TEST(TrajectoryCreatorTest, create)
+TEST(TrajectoryCreatorTest, create_from_single_point)
 {
-  {
-    std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points{
-      path_point_with_lane_id(0.00, 0.00, 0)};
-    auto trajectory = Trajectory::Builder{}.build(points);
-    ASSERT_TRUE(trajectory);
-  }
-  {
-    std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points{
-      path_point_with_lane_id(0.00, 0.00, 0), path_point_with_lane_id(0.81, 1.68, 0),
-      path_point_with_lane_id(1.65, 2.98, 0), path_point_with_lane_id(3.30, 4.01, 1)};
-    auto trajectory = Trajectory::Builder{}.build(points);
-    ASSERT_TRUE(trajectory);
-  }
+  std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points{
+    path_point_with_lane_id(0.00, 0.00, 0)};
+  auto trajectory = Trajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory);
+}
+
+TEST(TrajectoryCreatorTest, create_from_multiple_points)
+{
+  std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points{
+    path_point_with_lane_id(0.00, 0.00, 0), path_point_with_lane_id(0.81, 1.68, 0),
+    path_point_with_lane_id(1.65, 2.98, 0), path_point_with_lane_id(3.30, 4.01, 1)};
+  auto trajectory = Trajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory);
 }
 
 TEST(TrajectoryCreatorTest, almost_same_points_are_given)

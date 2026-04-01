@@ -15,6 +15,12 @@
 #include "autoware/trajectory/utils/pretty_build.hpp"
 #include "autoware_utils_geometry/geometry.hpp"
 
+#include <autoware_internal_planning_msgs/msg/path_point_with_lane_id.hpp>
+#include <autoware_planning_msgs/msg/path_point.hpp>
+#include <autoware_planning_msgs/msg/trajectory_point.hpp>
+#include <geometry_msgs/msg/point.hpp>
+#include <geometry_msgs/msg/pose.hpp>
+
 #include <gtest/gtest.h>
 
 #include <vector>
@@ -28,6 +34,42 @@ using geometry_msgs::msg::Pose;
 
 namespace
 {
+template <typename PointType>
+void expect_build_success_with_single_point(const PointType & point)
+{
+  using autoware::experimental::trajectory::Trajectory;
+
+  auto trajectory = Trajectory<PointType>();
+  const auto result = trajectory.build(std::vector<PointType>{point});
+  EXPECT_TRUE(result.has_value());
+}
+
+geometry_msgs::msg::Point make_point(const double x, const double y)
+{
+  geometry_msgs::msg::Point point;
+  point.x = x;
+  point.y = y;
+  return point;
+}
+
+geometry_msgs::msg::Pose make_pose(const double x, const double y)
+{
+  geometry_msgs::msg::Pose pose;
+  pose.position.x = x;
+  pose.position.y = y;
+  pose.position.z = 0.0;
+  return pose;
+}
+
+autoware_planning_msgs::msg::PathPoint make_path_point(const double x, const double y)
+{
+  autoware_planning_msgs::msg::PathPoint point;
+  point.pose.position.x = x;
+  point.pose.position.y = y;
+  point.longitudinal_velocity_mps = 1.0;
+  return point;
+}
+
 PathPointWithLaneId make_path_point_with_lane_id(const double x, const double y, const double yaw)
 {
   PathPointWithLaneId point;
@@ -41,9 +83,44 @@ PathPointWithLaneId make_path_point_with_lane_id(const double x, const double y,
   return point;
 }
 
+autoware_planning_msgs::msg::TrajectoryPoint make_trajectory_point(const double x, const double y)
+{
+  autoware_planning_msgs::msg::TrajectoryPoint point;
+  point.pose.position.x = x;
+  point.pose.position.y = y;
+  return point;
+}
+
 }  // namespace
 
-TEST(pretty_build, from_2_cubic)
+TEST(BuildFallback, point_single_point_succeeds)
+{
+  expect_build_success_with_single_point(make_point(0.49, 0.59));
+}
+
+TEST(BuildFallback, pose_single_point_succeeds)
+{
+  expect_build_success_with_single_point(make_pose(0.49, 0.59));
+}
+
+TEST(BuildFallback, path_point_single_point_succeeds)
+{
+  expect_build_success_with_single_point(make_path_point(0.49, 0.59));
+}
+
+TEST(BuildFallback, path_point_with_lane_id_single_point_succeeds)
+{
+  auto point = make_path_point_with_lane_id(0.49, 0.59, 0.0);
+  point.lane_ids = {1, 2};
+  expect_build_success_with_single_point(point);
+}
+
+TEST(BuildFallback, trajectory_point_single_point_succeeds)
+{
+  expect_build_success_with_single_point(make_trajectory_point(0.49, 0.59));
+}
+
+TEST(PrettyBuild, builds_from_two_points_with_default_interpolator)
 {
   const std::vector<PathPointWithLaneId> points{
     make_path_point_with_lane_id(1.0, 1.0, 0.0),
@@ -62,7 +139,7 @@ TEST(pretty_build, from_2_cubic)
   }
 }
 
-TEST(pretty_build, from_3_cubic)
+TEST(PrettyBuild, builds_from_three_points_with_default_interpolator)
 {
   const std::vector<PathPointWithLaneId> points{
     make_path_point_with_lane_id(1.0, 1.0, 0.0), make_path_point_with_lane_id(0.7, 0.3, 0.0),
@@ -80,7 +157,7 @@ TEST(pretty_build, from_3_cubic)
   }
 }
 
-TEST(pretty_build, from_4_akima)
+TEST(PrettyBuild, builds_from_four_points_with_akima)
 {
   const std::vector<PathPointWithLaneId> points{
     make_path_point_with_lane_id(1.0, 1.0, 0.0), make_path_point_with_lane_id(1.5, 0.5, 0.0),
@@ -99,7 +176,7 @@ TEST(pretty_build, from_4_akima)
   }
 }
 
-TEST(pretty_build, from_1_cubic_uses_fallback_interpolator)
+TEST(PrettyBuild, builds_from_single_point_with_default_fallback)
 {
   const std::vector<PathPointWithLaneId> points{make_path_point_with_lane_id(1.0, 1.0, 0.0)};
 
@@ -108,7 +185,7 @@ TEST(pretty_build, from_1_cubic_uses_fallback_interpolator)
   EXPECT_EQ(trajectory_opt->get_underlying_bases().size(), 1);
 }
 
-TEST(pretty_build, from_1_akima_uses_fallback_interpolator)
+TEST(PrettyBuild, builds_from_single_point_with_akima_fallback)
 {
   const std::vector<PathPointWithLaneId> points{make_path_point_with_lane_id(1.0, 1.0, 0.0)};
 
