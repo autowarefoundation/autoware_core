@@ -24,7 +24,7 @@ on:
         default: false
         required: false
       use-agnocast:
-        description: True if USE_AGNOCAST should be set to "1".
+        description: True if ENABLE_AGNOCAST should be set to "1".
         type: boolean
         default: false
         required: false
@@ -124,7 +124,7 @@ jobs:
           ENABLE_AGNOCAST: ${{ inputs.use-agnocast && '1' || '' }}
         with:
           rosdistro: ${{ inputs.rosdistro }}
-          cache-key-element: build-and-test-${{ inputs.cache-key-element }}${{ inputs.above && '-above' || '' }}
+          cache-key-element: build-and-test-${{ inputs.cache-key-element }}${{ inputs.above && '-above' || '' }}${{ inputs.use-agnocast && '-agnocast' || '' }}
           target-packages: ${{ steps.get-self-packages.outputs.self-packages }}
           packages-above-repos: ${{ inputs.above && 'packages_above.repos' || '' }}
           underlay-workspace: /opt/autoware

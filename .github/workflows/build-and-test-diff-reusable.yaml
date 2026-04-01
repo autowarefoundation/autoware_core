@@ -19,7 +19,7 @@ on:
         required: true
         type: boolean
       use-agnocast:
-        description: True if USE_AGNOCAST should be set to "1".
+        description: True if ENABLE_AGNOCAST should be set to "1".
         type: boolean
         default: false
         required: false

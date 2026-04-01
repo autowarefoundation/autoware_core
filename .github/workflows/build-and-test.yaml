@@ -30,7 +30,7 @@ jobs:
       cache-key-element: build
       above: ${{ matrix.above == 'repos-above' }}
       use-agnocast: ${{ matrix.use-agnocast == 'use-agnocast' }}
-      codecov-flag: total-${{ matrix.rosdistro }}
+      codecov-flag: total-${{ matrix.rosdistro }}${{ matrix.use-agnocast == 'use-agnocast' && '-agnocast' || '' }}
       concurrency-group: build-and-test-${{ matrix.rosdistro }}${{ matrix.above == 'repos-above' && '-above' || '' }}-${{ github.ref }}-${{ github.run_id }}
       runner: ${{ matrix.above == 'repos-above' && '["self-hosted","Linux","X64"]' || '["ubuntu-latest"]' }}
 
