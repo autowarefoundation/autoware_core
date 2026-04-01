@@ -12,6 +12,7 @@ jobs:
       matrix:
         rosdistro: [humble, jazzy]
         above: [false, true]
+        use-agnocast: [false, true]
         include:
           - rosdistro: humble
             container: ghcr.io/autowarefoundation/autoware:core-common-devel
@@ -28,6 +29,7 @@ jobs:
       push-ccache: true
       cache-key-element: build
       above: ${{ matrix.above }}
+      use-agnocast: ${{ matrix.use-agnocast }}
       codecov-flag: total-${{ matrix.rosdistro }}
       concurrency-group: build-and-test-${{ matrix.rosdistro }}${{ matrix.above && '-above' || '' }}-${{ github.ref }}-${{ github.run_id }}
       runner: ${{ matrix.above && '["self-hosted","Linux","X64"]' || '["ubuntu-latest"]' }}

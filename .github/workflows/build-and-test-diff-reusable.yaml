@@ -18,6 +18,11 @@ on:
       above:
         required: true
         type: boolean
+      use-agnocast:
+        description: True if USE_AGNOCAST should be set to "1".
+        type: boolean
+        default: false
+        required: false
       rosdistro:
         default: humble
         required: false
@@ -95,7 +100,7 @@ jobs:
         if: ${{ steps.get-modified-packages.outputs.modified-packages != '' }}
         uses: autowarefoundation/autoware-github-actions/colcon-build@v1
         env:
-          ENABLE_AGNOCAST: "1"
+          ENABLE_AGNOCAST: ${{ inputs.use-agnocast && '1' || '' }}
         with:
           rosdistro: ${{ inputs.rosdistro }}
           target-packages: ${{ steps.get-modified-packages.outputs.modified-packages }}
@@ -113,7 +118,7 @@ jobs:
         if: ${{ steps.get-modified-packages.outputs.modified-packages != '' }}
         uses: autowarefoundation/autoware-github-actions/colcon-test@v1
         env:
-          ENABLE_AGNOCAST: "1"
+          ENABLE_AGNOCAST: ${{ inputs.use-agnocast && '1' || '' }}
         with:
           rosdistro: ${{ inputs.rosdistro }}
           target-packages: ${{ steps.get-modified-packages.outputs.modified-packages }}
