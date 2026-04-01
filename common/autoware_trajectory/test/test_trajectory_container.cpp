@@ -118,7 +118,7 @@ TEST(TrajectoryCreatorTest, restore_single_point_trajectory)
   EXPECT_EQ(restored.front().lane_ids.front(), 7);
 }
 
-TEST(TrajectoryCreatorTest, restore_complete_duplicate_points_trajectory_as_single_point)
+TEST(TrajectoryCreatorTest, restore_complete_duplicate_points_trajectory_preserves_duplicates)
 {
   const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points{
     path_point_with_lane_id(1.0, 2.0, 7), path_point_with_lane_id(1.0, 2.0, 7),
@@ -127,14 +127,16 @@ TEST(TrajectoryCreatorTest, restore_complete_duplicate_points_trajectory_as_sing
   ASSERT_TRUE(trajectory);
 
   const auto restored = trajectory->restore();
-  ASSERT_EQ(restored.size(), 1UL);
-  EXPECT_DOUBLE_EQ(restored.front().point.pose.position.x, 1.0);
-  EXPECT_DOUBLE_EQ(restored.front().point.pose.position.y, 2.0);
-  ASSERT_EQ(restored.front().lane_ids.size(), 1UL);
-  EXPECT_EQ(restored.front().lane_ids.front(), 7);
+  ASSERT_EQ(restored.size(), 3UL);
+  for (const auto & point : restored) {
+    EXPECT_DOUBLE_EQ(point.point.pose.position.x, 1.0);
+    EXPECT_DOUBLE_EQ(point.point.pose.position.y, 2.0);
+    ASSERT_EQ(point.lane_ids.size(), 1UL);
+    EXPECT_EQ(point.lane_ids.front(), 7);
+  }
 }
 
-TEST(TrajectoryCreatorTest, restore_crop_to_zero_length_trajectory_as_single_point)
+TEST(TrajectoryCreatorTest, restore_crop_to_zero_length_trajectory_preserves_boundaries)
 {
   const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points{
     path_point_with_lane_id(0.0, 0.0, 0), path_point_with_lane_id(1.0, 1.0, 1),
@@ -146,14 +148,16 @@ TEST(TrajectoryCreatorTest, restore_crop_to_zero_length_trajectory_as_single_poi
   trajectory->crop(trajectory->length() / 2.0, 0.0);
 
   const auto restored = trajectory->restore();
-  ASSERT_EQ(restored.size(), 1UL);
-  EXPECT_DOUBLE_EQ(restored.front().point.pose.position.x, cropped_point.point.pose.position.x);
-  EXPECT_DOUBLE_EQ(restored.front().point.pose.position.y, cropped_point.point.pose.position.y);
-  ASSERT_EQ(restored.front().lane_ids.size(), cropped_point.lane_ids.size());
-  EXPECT_EQ(restored.front().lane_ids.front(), cropped_point.lane_ids.front());
+  ASSERT_EQ(restored.size(), 2UL);
+  for (const auto & point : restored) {
+    EXPECT_DOUBLE_EQ(point.point.pose.position.x, cropped_point.point.pose.position.x);
+    EXPECT_DOUBLE_EQ(point.point.pose.position.y, cropped_point.point.pose.position.y);
+    ASSERT_EQ(point.lane_ids.size(), cropped_point.lane_ids.size());
+    EXPECT_EQ(point.lane_ids.front(), cropped_point.lane_ids.front());
+  }
 }
 
-TEST(TrajectoryCreatorTest, restore_tiny_cropped_trajectory_as_single_point)
+TEST(TrajectoryCreatorTest, restore_tiny_cropped_trajectory_preserves_boundaries)
 {
   const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points{
     path_point_with_lane_id(0.0, 0.0, 0), path_point_with_lane_id(1.0, 1.0, 1),
@@ -169,17 +173,21 @@ TEST(TrajectoryCreatorTest, restore_tiny_cropped_trajectory_as_single_point)
   trajectory->crop(crop_start, tiny_length);
 
   const auto restored = trajectory->restore();
-  ASSERT_EQ(restored.size(), 1UL);
+  ASSERT_EQ(restored.size(), 2UL);
   EXPECT_DOUBLE_EQ(
     restored.front().point.pose.position.x, cropped_start_point.point.pose.position.x);
   EXPECT_DOUBLE_EQ(
     restored.front().point.pose.position.y, cropped_start_point.point.pose.position.y);
   ASSERT_EQ(restored.front().lane_ids.size(), cropped_start_point.lane_ids.size());
   EXPECT_EQ(restored.front().lane_ids.front(), cropped_start_point.lane_ids.front());
+  EXPECT_DOUBLE_EQ(restored.back().point.pose.position.x, cropped_end_point.point.pose.position.x);
+  EXPECT_DOUBLE_EQ(restored.back().point.pose.position.y, cropped_end_point.point.pose.position.y);
+  ASSERT_EQ(restored.back().lane_ids.size(), cropped_end_point.lane_ids.size());
+  EXPECT_EQ(restored.back().lane_ids.front(), cropped_end_point.lane_ids.front());
   EXPECT_LT(
     std::hypot(
-      cropped_end_point.point.pose.position.x - restored.front().point.pose.position.x,
-      cropped_end_point.point.pose.position.y - restored.front().point.pose.position.y),
+      restored.back().point.pose.position.x - restored.front().point.pose.position.x,
+      restored.back().point.pose.position.y - restored.front().point.pose.position.y),
     autoware::experimental::trajectory::k_points_minimum_dist_threshold);
 }
 
@@ -204,7 +212,7 @@ TEST(TrajectoryCreatorTest, almost_same_points_are_given)
   ASSERT_TRUE(trajectory);
   {
     const auto restored = trajectory->restore();
-    EXPECT_EQ(restored.size(), 3);
+    EXPECT_EQ(restored.size(), 5);
   }
 }
 

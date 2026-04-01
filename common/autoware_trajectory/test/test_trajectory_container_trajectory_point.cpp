@@ -64,7 +64,7 @@ TEST(TrajectoryCreatorTestForTrajectoryPoint, restore_single_point_trajectory)
 
 TEST(
   TrajectoryCreatorTestForTrajectoryPoint,
-  restore_complete_duplicate_points_trajectory_as_single_point)
+  restore_complete_duplicate_points_trajectory_preserves_duplicates)
 {
   const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> points{
     trajectory_point(1.0, 2.0), trajectory_point(1.0, 2.0), trajectory_point(1.0, 2.0)};
@@ -72,13 +72,16 @@ TEST(
   ASSERT_TRUE(trajectory);
 
   const auto restored = trajectory->restore();
-  ASSERT_EQ(restored.size(), 1UL);
-  EXPECT_DOUBLE_EQ(restored.front().pose.position.x, 1.0);
-  EXPECT_DOUBLE_EQ(restored.front().pose.position.y, 2.0);
+  ASSERT_EQ(restored.size(), 3UL);
+  for (const auto & point : restored) {
+    EXPECT_DOUBLE_EQ(point.pose.position.x, 1.0);
+    EXPECT_DOUBLE_EQ(point.pose.position.y, 2.0);
+  }
 }
 
 TEST(
-  TrajectoryCreatorTestForTrajectoryPoint, restore_crop_to_zero_length_trajectory_as_single_point)
+  TrajectoryCreatorTestForTrajectoryPoint,
+  restore_crop_to_zero_length_trajectory_preserves_boundaries)
 {
   const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> points{
     trajectory_point(0.0, 0.0), trajectory_point(1.0, 1.0), trajectory_point(2.0, 2.0),
@@ -90,12 +93,14 @@ TEST(
   trajectory->crop(trajectory->length() / 2.0, 0.0);
 
   const auto restored = trajectory->restore();
-  ASSERT_EQ(restored.size(), 1UL);
-  EXPECT_DOUBLE_EQ(restored.front().pose.position.x, cropped_point.pose.position.x);
-  EXPECT_DOUBLE_EQ(restored.front().pose.position.y, cropped_point.pose.position.y);
+  ASSERT_EQ(restored.size(), 2UL);
+  for (const auto & point : restored) {
+    EXPECT_DOUBLE_EQ(point.pose.position.x, cropped_point.pose.position.x);
+    EXPECT_DOUBLE_EQ(point.pose.position.y, cropped_point.pose.position.y);
+  }
 }
 
-TEST(TrajectoryCreatorTestForTrajectoryPoint, restore_tiny_cropped_trajectory_as_single_point)
+TEST(TrajectoryCreatorTestForTrajectoryPoint, restore_tiny_cropped_trajectory_preserves_boundaries)
 {
   const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> points{
     trajectory_point(0.0, 0.0), trajectory_point(1.0, 1.0), trajectory_point(2.0, 2.0),
@@ -111,13 +116,15 @@ TEST(TrajectoryCreatorTestForTrajectoryPoint, restore_tiny_cropped_trajectory_as
   trajectory->crop(crop_start, tiny_length);
 
   const auto restored = trajectory->restore();
-  ASSERT_EQ(restored.size(), 1UL);
+  ASSERT_EQ(restored.size(), 2UL);
   EXPECT_DOUBLE_EQ(restored.front().pose.position.x, cropped_start_point.pose.position.x);
   EXPECT_DOUBLE_EQ(restored.front().pose.position.y, cropped_start_point.pose.position.y);
+  EXPECT_DOUBLE_EQ(restored.back().pose.position.x, cropped_end_point.pose.position.x);
+  EXPECT_DOUBLE_EQ(restored.back().pose.position.y, cropped_end_point.pose.position.y);
   EXPECT_LT(
     std::hypot(
-      cropped_end_point.pose.position.x - restored.front().pose.position.x,
-      cropped_end_point.pose.position.y - restored.front().pose.position.y),
+      restored.back().pose.position.x - restored.front().pose.position.x,
+      restored.back().pose.position.y - restored.front().pose.position.y),
     autoware::experimental::trajectory::k_points_minimum_dist_threshold);
 }
 

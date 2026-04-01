@@ -167,10 +167,7 @@ std::vector<PointType> Trajectory<PointType>::restore() const
   const auto bases = get_underlying_bases();
   points.reserve(bases.size());
   for (const auto & s : bases) {
-    const auto point = compute(s);
-    if (points.empty() || !is_almost_same(point, points.back())) {
-      points.push_back(point);
-    }
+    points.push_back(compute(s));
   }
   return points;
 }

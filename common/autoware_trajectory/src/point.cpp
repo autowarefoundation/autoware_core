@@ -160,8 +160,10 @@ void Trajectory<PointType>::update_bases(const double s)
     // NOTE(soblin): the extension of base(or extrapolation) will be supported by other API.
     return;
   }
-  if (*it == s) {
-    // already inserted
+  if (std::fabs(*it - s) < k_points_minimum_dist_threshold) {
+    return;
+  }
+  if (it != bases_.begin() && std::fabs(*std::prev(it) - s) < k_points_minimum_dist_threshold) {
     return;
   }
   bases_.insert(it, s);
@@ -247,10 +249,7 @@ std::vector<PointType> Trajectory<PointType>::restore() const
   const auto bases = get_underlying_bases();
   points.reserve(bases.size());
   for (const auto & s : bases) {
-    const auto point = compute(s);
-    if (points.empty() || !is_almost_same(point, points.back())) {
-      points.push_back(point);
-    }
+    points.push_back(compute(s));
   }
   return points;
 }
