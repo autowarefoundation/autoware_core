@@ -38,7 +38,7 @@ env:
 
 jobs:
   build-and-test-differential:
-    name: build-and-test-diff
+    name: build-and-test-diff-${{ inputs.rosdistro }}${{ inputs.above && '-above' || '' }}${{ inputs.enable-agnocast && '-agnocast' || '' }}
     if: ${{ inputs.run-condition }}
     runs-on: ${{ fromJson(inputs.runner) }}
     container: ${{ inputs.container }}
@@ -112,7 +112,7 @@ jobs:
         with:
           rosdistro: ${{ inputs.rosdistro }}
           target-packages: ${{ steps.get-modified-packages.outputs.modified-packages }}
-          cache-key-element: build-and-test-diff${{ inputs.above && '-above' || '' }}
+          cache-key-element: build-and-test-diff${{ inputs.above && '-above' || '' }}${{ inputs.enable-agnocast && '-agnocast' || '' }}
           packages-above-repos: ${{ inputs.above && 'packages_above.repos' || '' }}
           underlay-workspace: /opt/autoware
 
@@ -147,9 +147,9 @@ jobs:
         shell: bash
 
   clang-tidy-differential:
-    name: clang-tidy-diff
+    name: clang-tidy-diff-${{ inputs.rosdistro }}${{ inputs.above && '-above' || '' }}${{ inputs.enable-agnocast && '-agnocast' || '' }}
     needs: build-and-test-differential
-    if: ${{ (inputs.above == false) && inputs.run-condition }}
+    if: ${{ !inputs.above && !inputs.enable-agnocast && inputs.run-condition }}
     runs-on: ${{ fromJson(inputs.runner) }}
     container: ${{ inputs.container }}
     steps:
@@ -200,7 +200,7 @@ jobs:
         uses: autowarefoundation/autoware-github-actions/clang-tidy@v1
         with:
           rosdistro: ${{ inputs.rosdistro }}
-          cache-key-element: build-and-test-diff${{ inputs.above && '-above' || '' }}
+          cache-key-element: build-and-test-diff${{ inputs.above && '-above' || '' }}${{ inputs.enable-agnocast && '-agnocast' || '' }}
           target-packages: ${{ steps.get-modified-packages.outputs.modified-packages }}
           target-files: ${{ steps.get-changed-files.outputs.changed-files }}
           clang-tidy-config-url: https://raw.githubusercontent.com/autowarefoundation/autoware_core/main/.clang-tidy-ci
