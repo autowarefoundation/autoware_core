@@ -596,23 +596,18 @@ void check_in_lanelet()
 
 int main()
 {
-  try {
-    autoware::experimental::extrapolation();
-    autoware::experimental::interpolation();
-    autoware::experimental::concatenation();
-    autoware::experimental::get_from_arc_length();
-    autoware::experimental::closest_segment();
-    autoware::experimental::lanelet_angle();
-    autoware::experimental::closest_center_pose();
-    autoware::experimental::arc_coordinates();
-    autoware::experimental::lateral_distance_related();
-    autoware::experimental::combine_lanelet();
-    autoware::experimental::expand_lanelet();
-    autoware::experimental::offset_bound();
-    autoware::experimental::check_in_lanelet();
-  } catch (const std::exception & e) {
-    std::cerr << "Error: " << e.what() << std::endl;
-    return 1;
-  }
+  autoware::experimental::extrapolation();
+  autoware::experimental::interpolation();
+  autoware::experimental::concatenation();
+  autoware::experimental::get_from_arc_length();
+  autoware::experimental::closest_segment();
+  autoware::experimental::lanelet_angle();
+  autoware::experimental::closest_center_pose();
+  autoware::experimental::arc_coordinates();
+  autoware::experimental::lateral_distance_related();
+  autoware::experimental::combine_lanelet();
+  autoware::experimental::expand_lanelet();
+  autoware::experimental::offset_bound();
+  autoware::experimental::check_in_lanelet();
   return 0;
 }

@@ -195,11 +195,6 @@ void route_manager_main()
 
 int main()
 {
-  try {
-    autoware::experimental::route_manager_main();
-  } catch (const std::exception & e) {
-    std::cerr << "Error: " << e.what() << std::endl;
-    return 1;
-  }
+  autoware::experimental::route_manager_main();
   return 0;
 }
