@@ -143,6 +143,10 @@ std::vector<PointType> Trajectory<PointType>::compute(const std::vector<double> 
 
 void Trajectory<PointType>::align_orientation_with_trajectory_direction()
 {
+  if (bases_.size() < 2) {
+    // Not enough points to determine trajectory direction, so we skip alignment.
+    return;
+  }
   std::vector<geometry_msgs::msg::Quaternion> aligned_orientations;
   for (const auto & s : bases_) {
     const double azimuth = this->azimuth(s);
