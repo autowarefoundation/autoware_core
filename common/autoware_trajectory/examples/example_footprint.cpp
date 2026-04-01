@@ -24,6 +24,7 @@
 #include <pybind11/stl.h>
 
 #include <algorithm>
+#include <string>
 #include <vector>
 
 using autoware::experimental::trajectory::Trajectory;
