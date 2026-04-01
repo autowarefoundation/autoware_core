@@ -18,6 +18,7 @@
 #include "autoware/trajectory/interpolator/akima_spline.hpp"
 #include "autoware/trajectory/path_point.hpp"
 #include "autoware/trajectory/path_point_with_lane_id.hpp"
+#include "autoware/trajectory/threshold.hpp"
 #include "autoware/trajectory/trajectory_point.hpp"
 
 #include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
@@ -53,6 +54,9 @@ std::optional<Trajectory<PointType>> pretty_build(
 
   const auto try_trajectory = Builder{}.build(points);
   if (!try_trajectory) {
+    return std::nullopt;
+  }
+  if (try_trajectory->length() < k_points_minimum_dist_threshold) {
     return std::nullopt;
   }
   return try_trajectory.value();
