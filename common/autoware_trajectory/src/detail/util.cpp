@@ -19,48 +19,6 @@
 
 namespace autoware::experimental::trajectory::detail
 {
-std::vector<double> fill_bases(const std::vector<double> & x, const size_t output_size_at_least)
-{
-  const auto original_size = x.size();
-
-  if (original_size >= output_size_at_least) {
-    return x;
-  }
-
-  if (original_size <= 1) {
-    return x;
-  }
-
-  // Basically we will insert `new_points_per_interval` to each interval
-  const auto points_to_add = output_size_at_least - original_size;
-  const auto num_input_interval = original_size - 1;
-  const size_t new_points_per_interval = points_to_add / num_input_interval;
-
-  // [`points_to_add / num_gaps`, `points_to_add / num_gaps`, ... `points_to_add / num_gaps`] of
-  // size `num_gaps`
-  std::vector<size_t> points_per_gap(num_input_interval, new_points_per_interval);
-  std::fill_n(points_per_gap.begin(), points_to_add % num_input_interval, points_per_gap[0] + 1);
-
-  std::vector<double> result;
-  result.reserve(output_size_at_least);
-
-  for (size_t i = 0; i < original_size - 1; ++i) {
-    result.push_back(x[i]);
-
-    const double start = x[i];
-    const double end = x[i + 1];
-    const double step = (end - start) / static_cast<int16_t>(points_per_gap[i] + 1);
-
-    for (size_t j = 0; j < points_per_gap[i]; ++j) {
-      result.push_back(start + static_cast<int16_t>(j + 1) * step);
-    }
-  }
-
-  result.push_back(x[original_size - 1]);
-
-  return result;
-}
-
 std::vector<double> crop_bases(const std::vector<double> & x, const double start, const double end)
 {
   std::vector<double> result;

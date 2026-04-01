@@ -56,7 +56,7 @@ TEST(TrajectoryCreatorTestForTrajectoryPoint, restore_single_point_trajectory)
   const auto trajectory = Trajectory::Builder{}.build(points);
   ASSERT_TRUE(trajectory);
 
-  const auto restored = trajectory->restore(4);
+  const auto restored = trajectory->restore();
   ASSERT_EQ(restored.size(), 1UL);
   EXPECT_DOUBLE_EQ(restored.front().pose.position.x, 0.0);
   EXPECT_DOUBLE_EQ(restored.front().pose.position.y, 0.0);
@@ -71,7 +71,7 @@ TEST(
   const auto trajectory = Trajectory::Builder{}.build(points);
   ASSERT_TRUE(trajectory);
 
-  const auto restored = trajectory->restore(4);
+  const auto restored = trajectory->restore();
   ASSERT_EQ(restored.size(), 1UL);
   EXPECT_DOUBLE_EQ(restored.front().pose.position.x, 1.0);
   EXPECT_DOUBLE_EQ(restored.front().pose.position.y, 2.0);
@@ -89,7 +89,7 @@ TEST(
   const auto cropped_point = trajectory->compute(trajectory->length() / 2.0);
   trajectory->crop(trajectory->length() / 2.0, 0.0);
 
-  const auto restored = trajectory->restore(4);
+  const auto restored = trajectory->restore();
   ASSERT_EQ(restored.size(), 1UL);
   EXPECT_DOUBLE_EQ(restored.front().pose.position.x, cropped_point.pose.position.x);
   EXPECT_DOUBLE_EQ(restored.front().pose.position.y, cropped_point.pose.position.y);
@@ -110,7 +110,7 @@ TEST(TrajectoryCreatorTestForTrajectoryPoint, restore_tiny_cropped_trajectory_as
   const auto cropped_end_point = trajectory->compute(crop_start + tiny_length);
   trajectory->crop(crop_start, tiny_length);
 
-  const auto restored = trajectory->restore(4);
+  const auto restored = trajectory->restore();
   ASSERT_EQ(restored.size(), 1UL);
   EXPECT_DOUBLE_EQ(restored.front().pose.position.x, cropped_start_point.pose.position.x);
   EXPECT_DOUBLE_EQ(restored.front().pose.position.y, cropped_start_point.pose.position.y);
@@ -229,7 +229,7 @@ TEST_F(TrajectoryTestForTrajectoryPoint, restore)
 {
   using autoware::experimental::trajectory::Trajectory;
   trajectory->longitudinal_velocity_mps().range(4.0, trajectory->length()).set(5.0);
-  auto points = trajectory->restore(0);
+  auto points = trajectory->restore();
   EXPECT_EQ(11, points.size());
 }
 

@@ -146,10 +146,9 @@ public:
 
   /**
    * @brief Restore the trajectory points
-   * @param min_points Minimum number of points
    * @return Vector of points
    */
-  std::vector<PointType> restore(const size_t min_points = 4) const;
+  std::vector<PointType> restore() const;
 
   void crop(const double start, const double length);
 
