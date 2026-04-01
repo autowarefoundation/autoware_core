@@ -69,7 +69,7 @@ namespace pclomp
 template <typename PointSource, typename PointTarget>
 MultiGridNormalDistributionsTransform<PointSource, PointTarget>::
   MultiGridNormalDistributionsTransform(const MultiGridNormalDistributionsTransform & other)
-: BaseRegType(other), target_cells_(other.target_cells_)
+: target_cells_(other.target_cells_)
 {
   params_ = other.params_;
   outlier_ratio_ = other.outlier_ratio_;
@@ -77,8 +77,6 @@ MultiGridNormalDistributionsTransform<PointSource, PointTarget>::
   gauss_d2_ = other.gauss_d2_;
   gauss_d3_ = other.gauss_d3_;
   trans_probability_ = other.trans_probability_;
-  // No need to copy j_ang_ and h_ang_, as those matrices are re-computed on every
-  // computeDerivatives() call
 
   hessian_ = other.hessian_;
   transformation_array_ = other.transformation_array_;
@@ -89,14 +87,19 @@ MultiGridNormalDistributionsTransform<PointSource, PointTarget>::
 
   regularization_pose_ = other.regularization_pose_;
   regularization_pose_translation_ = other.regularization_pose_translation_;
+
+  final_transformation_ = other.final_transformation_;
+  transformation_ = other.transformation_;
+  previous_transformation_ = other.previous_transformation_;
+  nr_iterations_ = other.nr_iterations_;
+  max_iterations_ = other.max_iterations_;
+  converged_ = other.converged_;
 }
 
 template <typename PointSource, typename PointTarget>
 MultiGridNormalDistributionsTransform<PointSource, PointTarget>::
   MultiGridNormalDistributionsTransform(MultiGridNormalDistributionsTransform && other) noexcept
-: BaseRegType(std::move(other)),
-  target_cells_(std::move(other.target_cells_)),
-  params_(std::move(other.params_))
+: target_cells_(std::move(other.target_cells_)), params_(std::move(other.params_))
 {
   outlier_ratio_ = other.outlier_ratio_;
   gauss_d1_ = other.gauss_d1_;
@@ -113,6 +116,13 @@ MultiGridNormalDistributionsTransform<PointSource, PointTarget>::
 
   regularization_pose_ = other.regularization_pose_;
   regularization_pose_translation_ = other.regularization_pose_translation_;
+
+  final_transformation_ = other.final_transformation_;
+  transformation_ = other.transformation_;
+  previous_transformation_ = other.previous_transformation_;
+  nr_iterations_ = other.nr_iterations_;
+  max_iterations_ = other.max_iterations_;
+  converged_ = other.converged_;
 }
 
 template <typename PointSource, typename PointTarget>
@@ -139,7 +149,12 @@ MultiGridNormalDistributionsTransform<PointSource, PointTarget>::operator=(
   regularization_pose_ = other.regularization_pose_;
   regularization_pose_translation_ = other.regularization_pose_translation_;
 
-  BaseRegType::operator=(other);
+  final_transformation_ = other.final_transformation_;
+  transformation_ = other.transformation_;
+  previous_transformation_ = other.previous_transformation_;
+  nr_iterations_ = other.nr_iterations_;
+  max_iterations_ = other.max_iterations_;
+  converged_ = other.converged_;
 
   return *this;
 }
@@ -168,7 +183,12 @@ MultiGridNormalDistributionsTransform<PointSource, PointTarget>::operator=(
   regularization_pose_ = other.regularization_pose_;
   regularization_pose_translation_ = other.regularization_pose_translation_;
 
-  BaseRegType::operator=(std::move(other));
+  final_transformation_ = other.final_transformation_;
+  transformation_ = other.transformation_;
+  previous_transformation_ = other.previous_transformation_;
+  nr_iterations_ = other.nr_iterations_;
+  max_iterations_ = other.max_iterations_;
+  converged_ = other.converged_;
 
   return *this;
 }
@@ -185,8 +205,6 @@ MultiGridNormalDistributionsTransform<
   trans_probability_(),
   regularization_pose_(boost::none)
 {
-  reg_name_ = "MultiGridNormalDistributionsTransform";
-
   params_.trans_epsilon = 0.1;
   params_.step_size = 0.1;
   params_.resolution = 1.0f;
@@ -206,8 +224,19 @@ MultiGridNormalDistributionsTransform<
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 template <typename PointSource, typename PointTarget>
+void MultiGridNormalDistributionsTransform<PointSource, PointTarget>::align(
+  PointCloudSource & output, const Eigen::Matrix4f & guess, const PointCloudSourceConstPtr & source)
+{
+  output = *source;
+  final_transformation_ = transformation_ = previous_transformation_ = Eigen::Matrix4f::Identity();
+  converged_ = false;
+  computeTransformation(output, guess, source);
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+template <typename PointSource, typename PointTarget>
 void MultiGridNormalDistributionsTransform<PointSource, PointTarget>::computeTransformation(
-  PointCloudSource & output, const Eigen::Matrix4f & guess)
+  PointCloudSource & output, const Eigen::Matrix4f & guess, const PointCloudSourceConstPtr & source)
 {
   nr_iterations_ = 0;
   converged_ = false;
@@ -223,7 +252,7 @@ void MultiGridNormalDistributionsTransform<PointSource, PointTarget>::computeTra
     // Initialise final transformation to the guessed one
     final_transformation_ = guess;
     // Apply guessed transformation prior to search for neighbours
-    transformPointCloud(output, output, guess);
+    pcl::transformPointCloud(output, output, guess);
   }
 
   Eigen::Transform<float, 3, Eigen::Affine, Eigen::ColMajor> eig_transformation;
@@ -257,7 +286,7 @@ void MultiGridNormalDistributionsTransform<PointSource, PointTarget>::computeTra
 
   // Calculate derivatives of initial transform vector, subsequent derivative calculations are done
   // in the step length determination.
-  score = computeDerivatives(score_gradient, hessian, output, p);
+  score = computeDerivatives(score_gradient, hessian, output, p, source);
 
   while (!converged_) {
     // Store previous transformation
@@ -273,10 +302,10 @@ void MultiGridNormalDistributionsTransform<PointSource, PointTarget>::computeTra
     double delta_p_norm = delta_p.norm();
 
     if (delta_p_norm == 0 || delta_p_norm != delta_p_norm) {
-      if (input_->empty()) {
+      if (source->empty()) {
         trans_probability_ = 0.0f;
       } else {
-        trans_probability_ = score / static_cast<double>(input_->size());
+        trans_probability_ = score / static_cast<double>(source->size());
       }
 
       converged_ = delta_p_norm == delta_p_norm;
@@ -286,7 +315,7 @@ void MultiGridNormalDistributionsTransform<PointSource, PointTarget>::computeTra
     delta_p.normalize();
     delta_p_norm = computeStepLengthMT(
       p, delta_p, delta_p_norm, params_.step_size, params_.trans_epsilon / 2.0, score,
-      score_gradient, hessian, output);
+      score_gradient, hessian, output, source);
     delta_p *= delta_p_norm;
 
     transformation_ =
@@ -302,10 +331,6 @@ void MultiGridNormalDistributionsTransform<PointSource, PointTarget>::computeTra
 
     p = p + delta_p;
 
-    // Update Visualizer (untested)
-    if (update_visualizer_ != 0)
-      update_visualizer_(output, std::vector<int>(), *target_, std::vector<int>());
-
     nr_iterations_++;
 
     if (
@@ -317,10 +342,10 @@ void MultiGridNormalDistributionsTransform<PointSource, PointTarget>::computeTra
 
   // Store transformation probability. The relative differences within each scan registration are
   // accurate but the normalization constants need to be modified for it to be globally accurate
-  if (input_->empty()) {
+  if (source->empty()) {
     trans_probability_ = 0.0f;
   } else {
-    trans_probability_ = score / static_cast<double>(input_->size());
+    trans_probability_ = score / static_cast<double>(source->size());
   }
 
   hessian_ = hessian;
@@ -341,7 +366,8 @@ int omp_get_thread_num()
 template <typename PointSource, typename PointTarget>
 double MultiGridNormalDistributionsTransform<PointSource, PointTarget>::computeDerivatives(
   Eigen::Matrix<double, 6, 1> & score_gradient, Eigen::Matrix<double, 6, 6> & hessian,
-  PointCloudSource & trans_cloud, Eigen::Matrix<double, 6, 1> & p, bool compute_hessian)
+  PointCloudSource & trans_cloud, Eigen::Matrix<double, 6, 1> & p,
+  const PointCloudSourceConstPtr & source, bool compute_hessian)
 {
   score_gradient.setZero();
   hessian.setZero();
@@ -383,7 +409,7 @@ double MultiGridNormalDistributionsTransform<PointSource, PointTarget>::computeD
 
   // Update gradient and hessian for each point, line 17 in Algorithm 2 [Magnusson 2009]
 #pragma omp parallel for num_threads(params_.num_threads) schedule(guided, 8)
-  for (size_t idx = 0; idx < input_->size(); ++idx) {
+  for (size_t idx = 0; idx < source->size(); ++idx) {
     int tid = omp_get_thread_num();
     // Searching for neighbors of the current transformed point
     auto & x_trans_pt = trans_cloud[idx];
@@ -397,7 +423,7 @@ double MultiGridNormalDistributionsTransform<PointSource, PointTarget>::computeD
     }
 
     // Original Point
-    auto & x_pt = (*input_)[idx];
+    auto & x_pt = (*source)[idx];
     // Original Point and Transformed Point (for math)
     Eigen::Vector3d x(x_pt.x, x_pt.y, x_pt.z);
     // Current Point Gradient and Hessian
@@ -490,7 +516,7 @@ double MultiGridNormalDistributionsTransform<PointSource, PointTarget>::computeD
   nearest_voxel_transformation_likelihood_array_.push_back(
     nearest_voxel_transformation_likelihood_);
   const float transform_probability =
-    (input_->points.empty() ? 0.0f : score / static_cast<double>(input_->points.size()));
+    (source->points.empty() ? 0.0f : score / static_cast<double>(source->points.size()));
   transform_probability_array_.push_back(transform_probability);
   return (score);
 }
@@ -683,7 +709,7 @@ double MultiGridNormalDistributionsTransform<PointSource, PointTarget>::updateDe
 template <typename PointSource, typename PointTarget>
 void MultiGridNormalDistributionsTransform<PointSource, PointTarget>::computeHessian(
   Eigen::Matrix<double, 6, 6> & hessian, PointCloudSource & trans_cloud,
-  Eigen::Matrix<double, 6, 1> &)
+  Eigen::Matrix<double, 6, 1> &, const PointCloudSourceConstPtr & source)
 {
   // Initialize Point Gradient and Hessian
   // Pre-allocate thread-wise point gradients and point hessians
@@ -705,7 +731,7 @@ void MultiGridNormalDistributionsTransform<PointSource, PointTarget>::computeHes
 
   // Update hessian for each point, line 17 in Algorithm 2 [Magnusson 2009]
 #pragma omp parallel for num_threads(params_.num_threads) schedule(guided, 8)
-  for (size_t idx = 0; idx < input_->size(); ++idx) {
+  for (size_t idx = 0; idx < source->size(); ++idx) {
     int tid = omp_get_thread_num();
     auto & x_trans_pt = trans_cloud[idx];
 
@@ -719,7 +745,7 @@ void MultiGridNormalDistributionsTransform<PointSource, PointTarget>::computeHes
       continue;
     }
 
-    auto & x_pt = (*input_)[idx];
+    auto & x_pt = (*source)[idx];
     // For math
     Eigen::Vector3d x(x_pt.x, x_pt.y, x_pt.z);
     const Eigen::Vector3d x_trans(x_trans_pt.x, x_trans_pt.y, x_trans_pt.z);
@@ -895,7 +921,8 @@ template <typename PointSource, typename PointTarget>
 double MultiGridNormalDistributionsTransform<PointSource, PointTarget>::computeStepLengthMT(
   const Eigen::Matrix<double, 6, 1> & x, Eigen::Matrix<double, 6, 1> & step_dir, double step_init,
   double step_max, double step_min, double & score, Eigen::Matrix<double, 6, 1> & score_gradient,
-  Eigen::Matrix<double, 6, 6> & hessian, PointCloudSource & trans_cloud)
+  Eigen::Matrix<double, 6, 6> & hessian, PointCloudSource & trans_cloud,
+  const PointCloudSourceConstPtr & source)
 {
   // Set the value of phi'(0), Equation 1.3 [More, Thuente 1994]
   double d_phi_0 = -(score_gradient.dot(step_dir));
@@ -926,12 +953,12 @@ double MultiGridNormalDistributionsTransform<PointSource, PointTarget>::computeS
       .matrix();
 
   // New transformed point cloud
-  transformPointCloud(*input_, trans_cloud, final_transformation_);
+  pcl::transformPointCloud(*source, trans_cloud, final_transformation_);
 
   // Updates score, gradient and hessian.  Hessian calculation is unnecessary but testing showed
   // that most step calculations use the initial step suggestion and recalculation the reusable
   // portions of the hessian would entail more computation time.
-  score = computeDerivatives(score_gradient, hessian, trans_cloud, x_t, true);
+  score = computeDerivatives(score_gradient, hessian, trans_cloud, x_t, source, true);
 
   // --------------------------------------------------------------------------------------------------------------------------------
   // FIXME(YamatoAndo):
@@ -1011,10 +1038,10 @@ double MultiGridNormalDistributionsTransform<PointSource, PointTarget>::computeS
 
       // New transformed point cloud
       // Done on final cloud to prevent wasted computation
-      transformPointCloud(*input_, trans_cloud, final_transformation_);
+      pcl::transformPointCloud(*source, trans_cloud, final_transformation_);
 
       // Updates score, gradient. Values stored to prevent wasted computation.
-      score = computeDerivatives(score_gradient, hessian, trans_cloud, x_t, false);
+      score = computeDerivatives(score_gradient, hessian, trans_cloud, x_t, source, false);
 
       // Calculate phi(alpha_t+)
       phi_t = -score;
@@ -1054,7 +1081,7 @@ double MultiGridNormalDistributionsTransform<PointSource, PointTarget>::computeS
   // If inner loop was run then hessian needs to be calculated.
   // Hessian is unnecessary for step length determination but gradients are required
   // so derivative and transform data is stored for the next iteration.
-  if (step_iterations) computeHessian(hessian, trans_cloud, x_t);
+  if (step_iterations) computeHessian(hessian, trans_cloud, x_t, source);
 
   return (a_t);
 }
