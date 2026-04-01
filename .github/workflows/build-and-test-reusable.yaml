@@ -63,7 +63,7 @@ env:
 
 jobs:
   build-and-test:
-    name: build-and-test-${{ inputs.rosdistro }}${{ inputs.above && '-above' || '' }}
+    name: build-and-test-${{ inputs.rosdistro }}${{ inputs.above && '-above' || '' }}${{ inputs.enable-agnocast && '-agnocast' || '' }}
     runs-on: ${{ fromJson(inputs.runner) }}
     container: ${{ inputs.container }}
     steps:
@@ -167,9 +167,9 @@ jobs:
         run: df -h
 
   clang-tidy:
-    name: clang-tidy-${{ inputs.rosdistro }}${{ inputs.above && '-above' || '' }}
+    name: clang-tidy-${{ inputs.rosdistro }}${{ inputs.above && '-above' || '' }}${{ inputs.enable-agnocast && '-agnocast' || '' }}
     needs: build-and-test
-    if: ${{ inputs.above == false }}
+    if: ${{ !inputs.above && !inputs.enable-agnocast }}
     runs-on: ubuntu-latest
     container: ${{ inputs.container }}
     steps:
