@@ -22,6 +22,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <vector>
 
 namespace
@@ -34,6 +35,20 @@ void expect_build_success_with_single_point(const PointType & point)
   auto trajectory = Trajectory<PointType>();
   const auto result = trajectory.build(std::vector<PointType>{point});
   EXPECT_TRUE(result.has_value());
+}
+
+template <typename PointType>
+void expect_single_point_derivatives_are_safe(const PointType & point)
+{
+  using autoware::experimental::trajectory::Trajectory;
+
+  auto trajectory = Trajectory<PointType>();
+  const auto result = trajectory.build(std::vector<PointType>{point});
+  ASSERT_TRUE(result.has_value());
+
+  EXPECT_TRUE(std::isfinite(trajectory.azimuth(0.0)));
+  EXPECT_TRUE(std::isfinite(trajectory.elevation(0.0)));
+  EXPECT_DOUBLE_EQ(trajectory.curvature(0.0), 0.0);
 }
 
 geometry_msgs::msg::Point make_point(const double x, const double y)
@@ -76,4 +91,19 @@ TEST(BuildFallback, pose_single_point_succeeds)
 TEST(BuildFallback, path_point_single_point_succeeds)
 {
   expect_build_success_with_single_point(make_path_point(0.49, 0.59));
+}
+
+TEST(BuildFallback, point_single_point_derivatives_are_safe)
+{
+  expect_single_point_derivatives_are_safe(make_point(0.49, 0.59));
+}
+
+TEST(BuildFallback, pose_single_point_derivatives_are_safe)
+{
+  expect_single_point_derivatives_are_safe(make_pose(0.49, 0.59));
+}
+
+TEST(BuildFallback, path_point_single_point_derivatives_are_safe)
+{
+  expect_single_point_derivatives_are_safe(make_path_point(0.49, 0.59));
 }

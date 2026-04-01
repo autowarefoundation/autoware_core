@@ -26,6 +26,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <limits>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -223,7 +224,11 @@ double Trajectory<PointType>::curvature(const double s) const
   const double ddx = x_interpolator_->compute_second_derivative(s_clamp);
   const double dy = y_interpolator_->compute_first_derivative(s_clamp);
   const double ddy = y_interpolator_->compute_second_derivative(s_clamp);
-  return (dx * ddy - dy * ddx) / std::pow(dx * dx + dy * dy, 1.5);
+  const double tangent_norm_squared = dx * dx + dy * dy;
+  if (tangent_norm_squared <= std::numeric_limits<double>::epsilon()) {
+    return 0.0;
+  }
+  return (dx * ddy - dy * ddx) / std::pow(tangent_norm_squared, 1.5);
 }
 
 std::vector<double> Trajectory<PointType>::curvature(const std::vector<double> & ss) const

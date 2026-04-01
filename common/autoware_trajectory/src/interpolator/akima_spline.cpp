@@ -14,6 +14,8 @@
 
 #include "autoware/trajectory/interpolator/akima_spline.hpp"
 
+#include "autoware/trajectory/detail/helpers.hpp"
+
 #include <Eigen/Dense>
 
 #include <cmath>
@@ -62,6 +64,9 @@ void AkimaSpline::compute_parameters(
 
 bool AkimaSpline::build_impl(const std::vector<double> & bases, const std::vector<double> & values)
 {
+  if (!::autoware::experimental::trajectory::detail::has_strictly_increasing_bases(bases)) {
+    return false;
+  }
   this->bases_ = bases;
   compute_parameters(
     Eigen::Map<const Eigen::VectorXd>(bases.data(), static_cast<Eigen::Index>(bases.size())),
@@ -71,6 +76,9 @@ bool AkimaSpline::build_impl(const std::vector<double> & bases, const std::vecto
 
 bool AkimaSpline::build_impl(const std::vector<double> & bases, std::vector<double> && values)
 {
+  if (!::autoware::experimental::trajectory::detail::has_strictly_increasing_bases(bases)) {
+    return false;
+  }
   this->bases_ = bases;
   compute_parameters(
     Eigen::Map<const Eigen::VectorXd>(bases.data(), static_cast<Eigen::Index>(bases.size())),

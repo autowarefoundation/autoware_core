@@ -38,6 +38,9 @@ std::optional<double> closest_with_constraint_impl(
     const double c1 = w.dot(v);
     const double c2 = v.dot(v);
     const auto length_from_start_point = [&]() {
+      if (c2 <= std::numeric_limits<double>::epsilon()) {
+        return bases.at(i - 1);
+      }
       if (c1 <= 0) {
         return bases.at(i - 1);
       }
@@ -47,6 +50,9 @@ std::optional<double> closest_with_constraint_impl(
       return bases.at(i - 1) + c1 / c2 * (p1 - p0).norm();
     }();
     const auto distance_from_segment = [&]() {
+      if (c2 <= std::numeric_limits<double>::epsilon()) {
+        return (point - p0).norm();
+      }
       if (c1 <= 0) {
         return (point - p0).norm();
       }
@@ -55,10 +61,6 @@ std::optional<double> closest_with_constraint_impl(
       }
       return (point - (p0 + (c1 / c2) * v)).norm();
     }();
-    if (constraint(length_from_start_point)) {
-      distances_from_segments.push_back(distance_from_segment);
-      lengths_from_start_points.push_back(length_from_start_point);
-    }
     if (constraint(length_from_start_point)) {
       distances_from_segments.push_back(distance_from_segment);
       lengths_from_start_points.push_back(length_from_start_point);

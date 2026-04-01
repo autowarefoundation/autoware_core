@@ -21,6 +21,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <set>
 #include <sstream>
 #include <utility>
@@ -115,17 +116,28 @@ tl::expected<std::pair<std::vector<double>, std::vector<double>>, ShiftError> ca
   const double L_lon = arc_length;          // NOLINT
   const double L = std::abs(shift_length);  // NOLINT
 
+  if (L_lon <= 0.0) {
+    return get_base_lengths_without_accel_limit(L_lon, shift_length);
+  }
+
   // Calculate total time (total_time) to travel 'target_arclength'
   // If effective_lon_acc is valid (> 0), use time from kinematic formula. Otherwise, use s/v
   const double T_total = (a_lon > acc_threshold)  // NOLINT
                            ? (-v_0_lon + std::sqrt(v_0_lon * v_0_lon + 2.0 * a_lon * L_lon)) / a_lon
                            : (L_lon / v_0_lon);
 
+  if (T_total <= std::numeric_limits<double>::epsilon()) {
+    return get_base_lengths_without_accel_limit(L_lon, shift_length);
+  }
+
   // Calculate the maximum lateral acceleration if we do not add further constraints
   const double max_lateral_acc = 8.0 * L / (T_total * T_total);
 
   // If the max_lateral_acc is already below the limit, no need to reduce it
   const double a_lim_lat = shift_parameters.lateral_acc_limit;
+  if (a_lim_lat <= std::numeric_limits<double>::epsilon()) {
+    return tl::unexpected(ShiftError{"Lateral acceleration limit must be positive"});
+  }
   if (max_lateral_acc < a_lim_lat) {
     RCLCPP_DEBUG_THROTTLE(
       get_logger(), get_clock(), 3000, "No need to consider lateral acc limit. max: %f, limit: %f",
@@ -134,10 +146,16 @@ tl::expected<std::pair<std::vector<double>, std::vector<double>>, ShiftError> ca
   }
 
   // Compute intermediate times (jerk_time / accel_time) and lateral jerk
+  const double lateral_time_denominator = a_lim_lat * T_total;
+  const double jerk_denominator = a_lim_lat * T_total * T_total - 4.0 * L;
+  if (
+    std::abs(lateral_time_denominator) <= std::numeric_limits<double>::epsilon() ||
+    std::abs(jerk_denominator) <= std::numeric_limits<double>::epsilon()) {
+    return tl::unexpected(ShiftError{"Shift parameters lead to a zero denominator"});
+  }
   const double T_j = T_total / 2.0 - 2.0 * L / (a_lim_lat * T_total);  // NOLINT
   const double T_a = 4.0 * L / (a_lim_lat * T_total) - T_total / 2.0;  // NOLINT
-  const double jerk =
-    (2.0 * a_lim_lat * a_lim_lat * T_total) / (a_lim_lat * T_total * T_total - 4.0 * L);
+  const double jerk = (2.0 * a_lim_lat * a_lim_lat * T_total) / jerk_denominator;
 
   // If computed times or jerk are invalid (negative or too small), skip the acc limit
   if (T_j < 0.0 || T_a < 0.0 || jerk < 0.0) {

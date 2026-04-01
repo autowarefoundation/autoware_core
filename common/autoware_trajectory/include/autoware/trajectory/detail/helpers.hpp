@@ -18,6 +18,7 @@
 #include "autoware/trajectory/interpolator/result.hpp"
 
 #include <functional>
+#include <limits>
 #include <utility>
 #include <vector>
 
@@ -81,6 +82,23 @@ interpolator::InterpolationResult build_with_fallback(
 
   return build_with_fallback_candidates(
     target, bases, values, std::forward<Factories>(factories)...);
+}
+
+/**
+ * @brief Check whether bases are strictly increasing with epsilon margin.
+ * @param[in] bases Interpolation bases.
+ * @param[in] epsilon Minimum required positive difference between adjacent bases.
+ * @return True when all adjacent base differences are greater than epsilon.
+ */
+inline bool has_strictly_increasing_bases(
+  const std::vector<double> & bases, const double epsilon = std::numeric_limits<double>::epsilon())
+{
+  for (size_t i = 1; i < bases.size(); ++i) {
+    if ((bases.at(i) - bases.at(i - 1)) <= epsilon) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /**
