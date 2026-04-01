@@ -63,8 +63,8 @@ jobs:
       fail-fast: false
       matrix:
         rosdistro: [humble, jazzy]
-        above: ['', repos-above]
-        use-agnocast: ['', use-agnocast]
+        above: ["", repos-above]
+        use-agnocast: ["", use-agnocast]
         include:
           - rosdistro: humble
             container: ghcr.io/autowarefoundation/autoware:core-common-devel
