@@ -92,7 +92,7 @@ TEST(TrajectoryCreatorTest, create)
     std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points{
       path_point_with_lane_id(0.00, 0.00, 0)};
     auto trajectory = Trajectory::Builder{}.build(points);
-    ASSERT_TRUE(!trajectory);
+    ASSERT_TRUE(trajectory);
   }
   {
     std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points{

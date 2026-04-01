@@ -19,7 +19,7 @@
 
 #include <vector>
 
-TEST(Point, PointFailure)
+TEST(Point, PointSinglePointSuccess)
 {
   auto pose = [](double x, double y) -> geometry_msgs::msg::Point {
     geometry_msgs::msg::Point p;
@@ -28,16 +28,16 @@ TEST(Point, PointFailure)
     return p;
   };
 
-  std::vector<geometry_msgs::msg::Point> points = {pose(0.49, 0.59), pose(0.61, 1.22)};
+  std::vector<geometry_msgs::msg::Point> points = {pose(0.49, 0.59)};
 
   using autoware::experimental::trajectory::Trajectory;
 
   auto trajectory = Trajectory<geometry_msgs::msg::Point>();
   const auto result = trajectory.build(points);
-  EXPECT_EQ(result.has_value(), false);
+  EXPECT_EQ(result.has_value(), true);
 }
 
-TEST(Pose, PoseFailure)
+TEST(Pose, PoseSinglePointSuccess)
 {
   auto pose = [](double x, double y) -> geometry_msgs::msg::Pose {
     geometry_msgs::msg::Pose p;
@@ -47,16 +47,16 @@ TEST(Pose, PoseFailure)
     return p;
   };
 
-  std::vector<geometry_msgs::msg::Pose> points = {pose(0.49, 0.59), pose(0.61, 1.22)};
+  std::vector<geometry_msgs::msg::Pose> points = {pose(0.49, 0.59)};
 
   using autoware::experimental::trajectory::Trajectory;
 
   auto trajectory = Trajectory<geometry_msgs::msg::Pose>();
   const auto result = trajectory.build(points);
-  EXPECT_EQ(result.has_value(), false);
+  EXPECT_EQ(result.has_value(), true);
 }
 
-TEST(PathPoint, PathPointFailure)
+TEST(PathPoint, PathPointSinglePointSuccess)
 {
   auto pose = [](double x, double y) -> autoware_planning_msgs::msg::PathPoint {
     autoware_planning_msgs::msg::PathPoint p;
@@ -66,16 +66,16 @@ TEST(PathPoint, PathPointFailure)
     return p;
   };
 
-  std::vector<autoware_planning_msgs::msg::PathPoint> points = {pose(0.49, 0.59), pose(0.61, 1.22)};
+  std::vector<autoware_planning_msgs::msg::PathPoint> points = {pose(0.49, 0.59)};
 
   using autoware::experimental::trajectory::Trajectory;
 
   auto trajectory = Trajectory<autoware_planning_msgs::msg::PathPoint>();
   const auto result = trajectory.build(points);
-  EXPECT_EQ(result.has_value(), false);
+  EXPECT_EQ(result.has_value(), true);
 }
 
-TEST(PathPointWithLaneId, PathPointWithLaneIdFailure)
+TEST(PathPointWithLaneId, PathPointWithLaneIdSinglePointSuccess)
 {
   auto pose = [](double x, double y) -> autoware_internal_planning_msgs::msg::PathPointWithLaneId {
     autoware_internal_planning_msgs::msg::PathPointWithLaneId p;
@@ -87,16 +87,16 @@ TEST(PathPointWithLaneId, PathPointWithLaneIdFailure)
   };
 
   std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points = {
-    pose(0.49, 0.59), pose(0.61, 1.22)};
+    pose(0.49, 0.59)};
 
   using autoware::experimental::trajectory::Trajectory;
 
   auto trajectory = Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>();
   const auto result = trajectory.build(points);
-  EXPECT_EQ(result.has_value(), false);
+  EXPECT_EQ(result.has_value(), true);
 }
 
-TEST(TrajectoryPoint, TrajectoryPointFailure)
+TEST(TrajectoryPoint, TrajectoryPointSinglePointSuccess)
 {
   auto pose = [](double x, double y) -> autoware_planning_msgs::msg::TrajectoryPoint {
     autoware_planning_msgs::msg::TrajectoryPoint point;
@@ -105,12 +105,11 @@ TEST(TrajectoryPoint, TrajectoryPointFailure)
     return point;
   };
 
-  std::vector<autoware_planning_msgs::msg::TrajectoryPoint> points = {
-    pose(0.49, 0.59), pose(0.61, 1.22)};
+  std::vector<autoware_planning_msgs::msg::TrajectoryPoint> points = {pose(0.49, 0.59)};
 
   using autoware::experimental::trajectory::Trajectory;
 
   auto trajectory = Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>();
   const auto result = trajectory.build(points);
-  EXPECT_EQ(result.has_value(), false);
+  EXPECT_EQ(result.has_value(), true);
 }

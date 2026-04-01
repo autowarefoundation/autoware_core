@@ -15,13 +15,55 @@
 #ifndef AUTOWARE__TRAJECTORY__DETAIL__HELPERS_HPP_
 #define AUTOWARE__TRAJECTORY__DETAIL__HELPERS_HPP_
 
+#include "autoware/trajectory/interpolator/result.hpp"
+
 #include <cstddef>
+#include <functional>
+#include <utility>
 #include <vector>
 
 namespace autoware::experimental::trajectory::detail
 {
-inline namespace helpers
+template <typename TargetPtr, typename ValueType>
+interpolator::InterpolationResult build_with_fallback_candidates(
+  TargetPtr &, const std::vector<double> &, const std::vector<ValueType> &)
 {
+  return tl::unexpected(interpolator::InterpolationFailure{"no available fallback interpolator"});
+}
+
+template <typename TargetPtr, typename ValueType, typename Factory, typename... Factories>
+interpolator::InterpolationResult build_with_fallback_candidates(
+  TargetPtr & target, const std::vector<double> & bases, const std::vector<ValueType> & values,
+  Factory && factory, Factories &&... factories)
+{
+  auto candidate = std::invoke(std::forward<Factory>(factory));
+  auto result = candidate->build(bases, values);
+  if (result) {
+    target = std::move(candidate);
+    return result;
+  }
+
+  if constexpr (sizeof...(factories) == 0) {
+    return tl::unexpected(interpolator::InterpolationFailure{result.error().what});
+  } else {
+    return build_with_fallback_candidates(
+      target, bases, values, std::forward<Factories>(factories)...);
+  }
+}
+
+template <typename TargetPtr, typename ValueType, typename... Factories>
+interpolator::InterpolationResult build_with_fallback(
+  TargetPtr & target, const std::vector<double> & bases, const std::vector<ValueType> & values,
+  Factories &&... factories)
+{
+  if (auto result = target->build(bases, values); result) {
+    return result;
+  }
+
+  return build_with_fallback_candidates(
+    target, bases, values, std::forward<Factories>(factories)...);
+}
+
 /**
  * @brief Ensures the output vector has at least a specified number of points by linearly
  * interpolating values between each input intervals
@@ -41,7 +83,6 @@ inline namespace helpers
 std::vector<double> fill_bases(const std::vector<double> & x, const size_t output_size_at_least);
 
 std::vector<double> crop_bases(const std::vector<double> & x, const double start, const double end);
-}  // namespace helpers
 }  // namespace autoware::experimental::trajectory::detail
 
 #endif  // AUTOWARE__TRAJECTORY__DETAIL__HELPERS_HPP_

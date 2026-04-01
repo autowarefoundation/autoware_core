@@ -16,6 +16,7 @@
 
 #include "autoware/trajectory/detail/helpers.hpp"
 #include "autoware/trajectory/forward.hpp"
+#include "autoware/trajectory/interpolator/nearest_neighbor.hpp"
 #include "autoware/trajectory/interpolator/spherical_linear.hpp"
 #include "autoware/trajectory/threshold.hpp"
 
@@ -94,7 +95,11 @@ interpolator::InterpolationResult Trajectory<PointType>::build(
     return tl::unexpected(
       interpolator::InterpolationFailure{"failed to interpolate Pose::points"} + result.error());
   }
-  if (const auto result = orientation_interpolator_->build(bases_, std::move(orientations));
+  if (const auto result = detail::build_with_fallback(
+        orientation_interpolator_, bases_, orientations,
+        [] {
+          return std::make_shared<interpolator::NearestNeighbor<geometry_msgs::msg::Quaternion>>();
+        });
       !result) {
     return tl::unexpected(
       interpolator::InterpolationFailure{"failed to interpolate Pose::orientation"} +

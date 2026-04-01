@@ -16,6 +16,7 @@
 
 #include "autoware/trajectory/detail/helpers.hpp"
 #include "autoware/trajectory/interpolator/lane_ids_interpolator.hpp"
+#include "autoware/trajectory/interpolator/nearest_neighbor.hpp"
 #include "autoware/trajectory/threshold.hpp"
 
 #include <cstddef>
@@ -89,11 +90,18 @@ interpolator::InterpolationResult Trajectory<PointType>::build(
       interpolator::InterpolationFailure{"failed to interpolate PathPointWithLaneId::point"} +
       result.error());
   }
-  if (const auto result = lane_ids().build(bases_, std::move(lane_ids_values)); !result) {
+  if (const auto result = detail::build_with_fallback(
+        lane_ids_, bases_, lane_ids_values,
+        [] {
+          return std::make_shared<detail::InterpolatedArray<std::vector<int64_t>>>(
+            std::make_shared<interpolator::NearestNeighbor<std::vector<int64_t>>>());
+        });
+      !result) {
     return tl::unexpected(
       interpolator::InterpolationFailure{"failed to interpolate PathPointWithLaneId::lane_id"});
   }
 
+  add_base_addition_callback();
   return interpolator::InterpolationSuccess{};
 }
 

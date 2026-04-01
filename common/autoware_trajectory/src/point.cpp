@@ -17,6 +17,7 @@
 #include "autoware/trajectory/detail/helpers.hpp"
 #include "autoware/trajectory/interpolator/cubic_spline.hpp"
 #include "autoware/trajectory/interpolator/linear.hpp"
+#include "autoware/trajectory/interpolator/nearest_neighbor.hpp"
 #include "autoware/trajectory/threshold.hpp"
 #include "autoware_utils_geometry/geometry.hpp"
 
@@ -103,15 +104,24 @@ interpolator::InterpolationResult Trajectory<PointType>::build(
   start_ = bases_.front();
   end_ = bases_.back();
 
-  if (const auto result = x_interpolator_->build(bases_, std::move(xs)); !result) {
+  if (const auto result = detail::build_with_fallback(
+        x_interpolator_, bases_, xs, [] { return std::make_shared<interpolator::Linear>(); },
+        [] { return std::make_shared<interpolator::NearestNeighbor<double>>(); });
+      !result) {
     return tl::unexpected(
       interpolator::InterpolationFailure{"failed to interpolate Point::x"} + result.error());
   }
-  if (const auto result = y_interpolator_->build(bases_, std::move(ys)); !result) {
+  if (const auto result = detail::build_with_fallback(
+        y_interpolator_, bases_, ys, [] { return std::make_shared<interpolator::Linear>(); },
+        [] { return std::make_shared<interpolator::NearestNeighbor<double>>(); });
+      !result) {
     return tl::unexpected(
       interpolator::InterpolationFailure{"failed to interpolate Point::y"} + result.error());
   }
-  if (const auto result = z_interpolator_->build(bases_, std::move(zs)); !result) {
+  if (const auto result = detail::build_with_fallback(
+        z_interpolator_, bases_, zs, [] { return std::make_shared<interpolator::Linear>(); },
+        [] { return std::make_shared<interpolator::NearestNeighbor<double>>(); });
+      !result) {
     return tl::unexpected(
       interpolator::InterpolationFailure{"failed to interpolate Point::z"} + result.error());
   }

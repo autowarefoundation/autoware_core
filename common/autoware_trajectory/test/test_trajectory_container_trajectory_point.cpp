@@ -39,7 +39,7 @@ TEST(TrajectoryCreatorTestForTrajectoryPoint, create)
   {
     std::vector<autoware_planning_msgs::msg::TrajectoryPoint> points{trajectory_point(0.00, 0.00)};
     auto trajectory = Trajectory::Builder{}.build(points);
-    ASSERT_TRUE(!trajectory);
+    ASSERT_TRUE(trajectory);
   }
   {
     std::vector<autoware_planning_msgs::msg::TrajectoryPoint> points{
@@ -177,7 +177,7 @@ TEST_F(TrajectoryTestForTrajectoryPoint, max_curvature)
   EXPECT_LT(0, max_curvature);
 }
 
-TEST_F(TrajectoryTestForTrajectoryPoint, pretty_build_from_3_cubic)
+TEST_F(TrajectoryTestForTrajectoryPoint, pretty_build_from_2_cubic)
 {
   using autoware_utils_geometry::get_rpy;
 
@@ -187,7 +187,7 @@ TEST_F(TrajectoryTestForTrajectoryPoint, pretty_build_from_3_cubic)
   EXPECT_EQ(trajectory_opt.has_value(), true);
 
   auto & trajectory = trajectory_opt.value();
-  EXPECT_EQ(trajectory.get_underlying_bases().size(), 4);
+  EXPECT_EQ(trajectory.get_underlying_bases().size(), 2);
 
   trajectory.align_orientation_with_trajectory_direction();
   for (const auto s : trajectory.get_underlying_bases()) {
