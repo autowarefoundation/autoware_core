@@ -375,7 +375,12 @@ TEST_F(UtilsTest, buildCroppedTrajectory)
   {  // line string has only 1 point
     const auto result = utils::build_cropped_trajectory({geometry_msgs::msg::Point{}}, {}, {});
 
-    ASSERT_FALSE(result);
+    ASSERT_TRUE(result);
+
+    const auto point = result->compute(0);  // NOLINT(bugprone-unchecked-optional-access)
+    ASSERT_NEAR(point.x, 0.0, epsilon);
+    ASSERT_NEAR(point.y, 0.0, epsilon);
+    ASSERT_NEAR(result->length(), 0.0, epsilon);  // NOLINT(bugprone-unchecked-optional-access)
   }
 
   {  // normal case
