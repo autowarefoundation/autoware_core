@@ -630,6 +630,11 @@ int main()
   */
   // main_coordinate_approximation();
   // main_curvature();
-  main_trajectory_overview();
+  try {
+    main_trajectory_overview();
+  } catch (const std::exception & e) {
+    std::cerr << "Error: " << e.what() << std::endl;
+    return 1;
+  }
 }
 // NOLINTEND
