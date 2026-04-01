@@ -77,7 +77,7 @@ jobs:
       rosdistro: humble
       container: ghcr.io/autowarefoundation/autoware:core-common-devel
       above: false
-      use-agnocast: true
+      enable-agnocast: true
       run-condition: ${{ needs.require-label.outputs.result == 'true' }}
     secrets:
       codecov-token: ${{ secrets.CODECOV_TOKEN }}
@@ -118,7 +118,7 @@ jobs:
       rosdistro: jazzy
       container: ghcr.io/autowarefoundation/autoware:core-common-devel-jazzy
       above: false
-      use-agnocast: true
+      enable-agnocast: true
       run-condition: ${{ needs.require-label.outputs.result == 'true' }}
     secrets:
       codecov-token: ${{ secrets.CODECOV_TOKEN }}

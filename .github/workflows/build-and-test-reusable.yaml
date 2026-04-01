@@ -23,7 +23,7 @@ on:
         type: boolean
         default: false
         required: false
-      use-agnocast:
+      enable-agnocast:
         description: True if ENABLE_AGNOCAST should be set to "1".
         type: boolean
         default: false
@@ -121,10 +121,10 @@ jobs:
         if: ${{ steps.get-self-packages.outputs.self-packages != '' }}
         uses: autowarefoundation/autoware-github-actions/colcon-build@v1
         env:
-          ENABLE_AGNOCAST: ${{ inputs.use-agnocast && '1' || '' }}
+          ENABLE_AGNOCAST: ${{ inputs.enable-agnocast && '1' || '' }}
         with:
           rosdistro: ${{ inputs.rosdistro }}
-          cache-key-element: build-and-test-${{ inputs.cache-key-element }}${{ inputs.above && '-above' || '' }}${{ inputs.use-agnocast && '-agnocast' || '' }}
+          cache-key-element: build-and-test-${{ inputs.cache-key-element }}${{ inputs.above && '-above' || '' }}${{ inputs.enable-agnocast && '-agnocast' || '' }}
           target-packages: ${{ steps.get-self-packages.outputs.self-packages }}
           packages-above-repos: ${{ inputs.above && 'packages_above.repos' || '' }}
           underlay-workspace: /opt/autoware
@@ -147,7 +147,7 @@ jobs:
         id: test
         uses: autowarefoundation/autoware-github-actions/colcon-test@v1
         env:
-          ENABLE_AGNOCAST: ${{ inputs.use-agnocast && '1' || '' }}
+          ENABLE_AGNOCAST: ${{ inputs.enable-agnocast && '1' || '' }}
         with:
           rosdistro: ${{ inputs.rosdistro }}
           target-packages: ${{ steps.get-self-packages.outputs.self-packages }}
