@@ -11,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "autoware/trajectory/forward.hpp"
 #include "autoware/trajectory/path_point_with_lane_id.hpp"
 #include "autoware/trajectory/threshold.hpp"
 #include "autoware/trajectory/utils/closest.hpp"
@@ -22,14 +21,11 @@
 #include "autoware_utils_geometry/geometry.hpp"
 #include "lanelet2_core/primitives/LineString.h"
 
-#include <geometry_msgs/msg/detail/point__struct.hpp>
-#include <geometry_msgs/msg/detail/pose__struct.hpp>
 #include <geometry_msgs/msg/point.hpp>
 
 #include <gtest/gtest.h>
 
 #include <cmath>
-#include <utility>
 #include <vector>
 namespace
 {

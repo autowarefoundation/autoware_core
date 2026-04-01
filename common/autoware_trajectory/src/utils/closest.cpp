@@ -25,7 +25,6 @@ std::optional<double> closest_with_constraint_impl(
   const std::vector<double> & bases, const Eigen::Vector3d & point,
   const std::function<bool(const double &)> & constraint)
 {
-  using trajectory::detail::to_point;
   std::vector<double> distances_from_segments;
   std::vector<double> lengths_from_start_points;
 

@@ -18,7 +18,6 @@
 #include "autoware/trajectory/forward.hpp"
 #include "autoware/trajectory/interpolator/nearest_neighbor.hpp"
 #include "autoware/trajectory/interpolator/spherical_linear.hpp"
-#include "autoware/trajectory/threshold.hpp"
 
 #include <tf2/LinearMath/Quaternion.hpp>
 #include <tf2/LinearMath/Vector3.hpp>

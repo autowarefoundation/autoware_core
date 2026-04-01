@@ -12,17 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/motion_utils/trajectory/trajectory.hpp"
-#include "autoware/trajectory/detail/types.hpp"
 #include "autoware/trajectory/pose.hpp"
 #include "autoware/trajectory/threshold.hpp"
 #include "autoware/trajectory/utils/find_nearest.hpp"
 
 #include <gtest/gtest.h>
 
-#include <fstream>
+#include <cmath>
 #include <limits>
-#include <string>
 #include <vector>
 
 namespace
@@ -32,14 +29,13 @@ using autoware::experimental::trajectory::find_first_nearest_index;
 using autoware::experimental::trajectory::find_nearest_index;
 using autoware::experimental::trajectory::k_points_minimum_dist_threshold;
 using autoware::experimental::trajectory::Trajectory;
-using autoware_utils_geometry::calc_squared_distance2d;
 using autoware_utils_geometry::create_point;
 using autoware_utils_geometry::create_quaternion_from_rpy;
 using autoware_utils_geometry::get_rpy;
 
 // ============================== Helper Function ======================================== //
 
-static geometry_msgs::msg::Pose make_pose(double x, double y, double yaw = 0.0)
+geometry_msgs::msg::Pose make_pose(double x, double y, double yaw = 0.0)
 {
   geometry_msgs::msg::Pose p;
   p.position = create_point(x, y, 0.0);
@@ -47,53 +43,35 @@ static geometry_msgs::msg::Pose make_pose(double x, double y, double yaw = 0.0)
   return p;
 }
 
-static bool is_within_distance_constraint(
-  Trajectory<geometry_msgs::msg::Pose> traj, double s, geometry_msgs::msg::Pose query,
-  double criteria)
+bool is_within_distance_constraint(
+  const Trajectory<geometry_msgs::msg::Pose> & traj, const double s,
+  const geometry_msgs::msg::Pose & query, const double criteria)
 {
-  auto target_pose = traj.compute(s);
-  auto target_pos = target_pose.position;
-  auto query_pos = query.position;
-
-  if (
-    autoware_utils_geometry::calc_squared_distance2d(query_pos, target_pos) <=
-    criteria * criteria) {
-    return true;
-  } else {
-    return false;
-  }
+  const auto target_pos = traj.compute(s).position;
+  return autoware_utils_geometry::calc_squared_distance2d(query.position, target_pos) <=
+         criteria * criteria;
 }
 
-static bool is_within_yaw_constraint(
-  Trajectory<geometry_msgs::msg::Pose> traj, double s, geometry_msgs::msg::Pose query,
-  double criteria)
+bool is_within_yaw_constraint(
+  const Trajectory<geometry_msgs::msg::Pose> & traj, const double s,
+  const geometry_msgs::msg::Pose & query, const double criteria)
 {
-  auto target_pose = traj.compute(s);
-  auto target_yaw = get_rpy(target_pose.orientation).z;
-  auto query_yaw = get_rpy(query.orientation).z;
-
-  if (std::fabs(autoware_utils_math::normalize_radian(query_yaw - target_yaw)) <= criteria) {
-    return true;
-  } else {
-    return false;
-  }
+  const auto target_yaw = get_rpy(traj.compute(s).orientation).z;
+  const auto query_yaw = get_rpy(query.orientation).z;
+  return std::fabs(autoware_utils_math::normalize_radian(query_yaw - target_yaw)) <= criteria;
 }
 
-static bool is_within_yaw_and_distance_constraint(
-  Trajectory<geometry_msgs::msg::Pose> traj, double s, geometry_msgs::msg::Pose query,
-  double distance_criteria = std::numeric_limits<double>::max(),
-  double yaw_criteria = std::numeric_limits<double>::max())
+bool is_within_yaw_and_distance_constraint(
+  const Trajectory<geometry_msgs::msg::Pose> & traj, const double s,
+  const geometry_msgs::msg::Pose & query,
+  const double distance_criteria = std::numeric_limits<double>::max(),
+  const double yaw_criteria = std::numeric_limits<double>::max())
 {
-  if (
-    is_within_yaw_constraint(traj, s, query, yaw_criteria) &&
-    is_within_distance_constraint(traj, s, query, distance_criteria)) {
-    return true;
-  } else {
-    return false;
-  }
+  return is_within_yaw_constraint(traj, s, query, yaw_criteria) &&
+         is_within_distance_constraint(traj, s, query, distance_criteria);
 }
 
-static Trajectory<geometry_msgs::msg::Pose> build_curved_trajectory(
+Trajectory<geometry_msgs::msg::Pose> build_curved_trajectory(
   const size_t num_points, const double interval, const double delta_theta)
 {
   std::vector<geometry_msgs::msg::Pose> raw_poses;
@@ -113,7 +91,7 @@ static Trajectory<geometry_msgs::msg::Pose> build_curved_trajectory(
   return traj.value();
 }
 
-static Trajectory<geometry_msgs::msg::Pose> build_parabolic_trajectory(
+Trajectory<geometry_msgs::msg::Pose> build_parabolic_trajectory(
   const size_t num_points, const double interval)
 {
   std::vector<geometry_msgs::msg::Pose> raw_poses;
@@ -134,7 +112,7 @@ static Trajectory<geometry_msgs::msg::Pose> build_parabolic_trajectory(
   return traj.value();
 }
 
-static Trajectory<geometry_msgs::msg::Pose> build_bow_trajectory(
+Trajectory<geometry_msgs::msg::Pose> build_bow_trajectory(
   const size_t num_points, const double size, const double total_angle)
 {
   std::vector<geometry_msgs::msg::Pose> raw_poses;
@@ -154,18 +132,18 @@ static Trajectory<geometry_msgs::msg::Pose> build_bow_trajectory(
   return traj.value();
 }
 
-static double calculate_bow_trajectory_yaw(const double theta)
+double calculate_bow_trajectory_yaw(const double theta)
 {
   return std::atan2(cos(2 * theta), -1 * sin(theta));
 }
 
-static double calculate_bow_trajectory_yaw_from_x(const double x, double size = 3)
+double calculate_bow_trajectory_yaw_from_x(const double x, double size = 3)
 {
   auto theta = std::acos(x / size);
   return calculate_bow_trajectory_yaw(theta);
 }
 
-static Trajectory<geometry_msgs::msg::Pose> build_vertical_loop_trajectory(
+Trajectory<geometry_msgs::msg::Pose> build_vertical_loop_trajectory(
   const size_t num_points, const double radius, const double start_x, const double offset)
 {
   std::vector<geometry_msgs::msg::Pose> raw_poses;
@@ -206,7 +184,7 @@ static Trajectory<geometry_msgs::msg::Pose> build_vertical_loop_trajectory(
   return traj.value();
 }
 
-static Trajectory<geometry_msgs::msg::Pose> build_lollipop_trajectory(
+Trajectory<geometry_msgs::msg::Pose> build_lollipop_trajectory(
   const size_t num_points, const double radius, const double phase_dif = M_PI / 6,
   const double start_x = 3, const double offset = 0)
 {

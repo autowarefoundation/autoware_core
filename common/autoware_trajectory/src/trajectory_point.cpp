@@ -21,7 +21,6 @@
 #include "autoware/trajectory/interpolator/nearest_neighbor.hpp"
 #include "autoware/trajectory/interpolator/stairstep.hpp"
 #include "autoware/trajectory/pose.hpp"
-#include "autoware/trajectory/threshold.hpp"
 
 #include <autoware_planning_msgs/msg/trajectory.hpp>
 

@@ -15,7 +15,6 @@
 #ifndef AUTOWARE__TRAJECTORY__UTILS__FIND_NEAREST_HPP_
 #define AUTOWARE__TRAJECTORY__UTILS__FIND_NEAREST_HPP_
 
-#include "autoware/trajectory/detail/types.hpp"
 #include "autoware/trajectory/forward.hpp"
 #include "autoware/trajectory/path_point.hpp"
 #include "autoware/trajectory/path_point_with_lane_id.hpp"
@@ -26,7 +25,10 @@
 #include "autoware_utils_geometry/geometry.hpp"
 #include "autoware_utils_geometry/pose_deviation.hpp"
 
+#include <cmath>
+#include <cstddef>
 #include <limits>
+#include <optional>
 #include <vector>
 
 namespace autoware::experimental::trajectory

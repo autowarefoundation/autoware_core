@@ -20,6 +20,8 @@
 
 #include <Eigen/Core>
 
+#include <cmath>
+#include <functional>
 #include <limits>
 #include <utility>
 #include <vector>

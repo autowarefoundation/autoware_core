@@ -17,7 +17,6 @@
 #include "autoware/trajectory/detail/helpers.hpp"
 #include "autoware/trajectory/interpolator/lane_ids_interpolator.hpp"
 #include "autoware/trajectory/interpolator/nearest_neighbor.hpp"
-#include "autoware/trajectory/threshold.hpp"
 
 #include <cstddef>
 #include <memory>

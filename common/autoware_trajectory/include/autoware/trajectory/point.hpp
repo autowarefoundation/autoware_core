@@ -21,7 +21,6 @@
 #include <geometry_msgs/msg/point.hpp>
 
 #include <algorithm>
-#include <cstddef>
 #include <memory>
 #include <utility>
 #include <vector>
