@@ -63,8 +63,8 @@ jobs:
       fail-fast: false
       matrix:
         rosdistro: [humble, jazzy]
-        above: [false, true]
-        use-agnocast: [false, true]
+        above: ['', repos-above]
+        use-agnocast: ['', use-agnocast]
         include:
           - rosdistro: humble
             container: ghcr.io/autowarefoundation/autoware:core-common-devel
@@ -75,8 +75,8 @@ jobs:
     with:
       rosdistro: ${{ matrix.rosdistro }}
       container: ${{ matrix.container }}
-      above: ${{ matrix.above }}
-      use-agnocast: ${{ matrix.use-agnocast }}
+      above: ${{ matrix.above == 'repos-above' }}
+      use-agnocast: ${{ matrix.use-agnocast == 'use-agnocast' }}
       run-condition: ${{ needs.require-label.outputs.result == 'true' }}
     secrets:
       codecov-token: ${{ secrets.CODECOV_TOKEN }}
