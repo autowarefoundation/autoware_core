@@ -528,7 +528,8 @@ TEST_F(EKFLocalizerTestSuite, update_diagnostics_latches_higher_level_error)
       has_timestamp = true;
       EXPECT_EQ(
         value.value,
-        std::to_string(get_merged_diagnostic_last_transition_time(ekf_localizer.get()).nanoseconds()));
+        std::to_string(
+          get_merged_diagnostic_last_transition_time(ekf_localizer.get()).nanoseconds()));
       break;
     }
   }
@@ -551,8 +552,7 @@ TEST_F(EKFLocalizerTestSuite, update_diagnostics_deescalates_error_to_warn_when_
   std::vector<diagnostic_msgs::msg::DiagnosticStatus> diag;
   diag.push_back(check_process_activated(true));
   diag.push_back(check_set_initialpose(true));
-  diag.push_back(
-    check_measurement_updated("pose", thr_e, thr_w, thr_e));  // ERROR
+  diag.push_back(check_measurement_updated("pose", thr_e, thr_w, thr_e));  // ERROR
   diag.push_back(check_measurement_updated("twist", 0, thr_w, thr_e));
   update_diagnostics_raw(ekf_localizer.get(), diag, current_time);
   auto latched_status_before = get_merged_diagnostic_status(ekf_localizer.get());
@@ -634,7 +634,8 @@ TEST_F(EKFLocalizerTestSuite, update_diagnostics_updates_when_latched_is_ok)
 
 TEST_F(EKFLocalizerTestSuite, latch_follows_ok_when_merge_ok)
 {
-  // When merged diagnostics return OK, latch updates to OK (no need to reset latch to OK after publish)
+  // When merged diagnostics return OK, latch updates to OK (no need to reset latch to OK after
+  // publish)
   const double ekf_rate = 100.0;
   const double diagnostics_publish_period = 0.1;
 
@@ -677,7 +678,8 @@ TEST_F(EKFLocalizerTestSuite, latch_follows_ok_when_merge_ok)
 
 TEST_F(EKFLocalizerTestSuite, latch_resets_after_publish)
 {
-  // After publish, next timer with healthy merge sets latch to OK via update_diagnostics (not via forced OK reset)
+  // After publish, next timer with healthy merge sets latch to OK via update_diagnostics (not via
+  // forced OK reset)
   const double ekf_rate = 100.0;
   const double diagnostics_publish_period = 0.1;
 
@@ -781,7 +783,8 @@ TEST_F(EKFLocalizerTestSuite, error_timestamp_added_to_latched_status)
 
   // Verify timestamp matches the error time
   EXPECT_EQ(
-    get_merged_diagnostic_last_transition_time(ekf_localizer.get()).nanoseconds(), error_time.nanoseconds());
+    get_merged_diagnostic_last_transition_time(ekf_localizer.get()).nanoseconds(),
+    error_time.nanoseconds());
 }
 
 TEST_F(EKFLocalizerTestSuite, diagnostics_updated_when_not_activated)
