@@ -128,7 +128,7 @@ private:
   //!< @brief Merged diagnostic status from the latest EKF cycle (message/values refresh every tick)
   diagnostic_msgs::msg::DiagnosticStatus merged_diagnostic_status_;
   //!< @brief Wall time of the latest merged diagnostic level change vs. the previous EKF tick
-  //!< (includes recovery to OK); published as last_level_transition_timestamp when non-OK
+  //!< (includes recovery to OK); published as last_level_transition_timestamp once non-zero
   rclcpp::Time merged_diagnostic_last_transition_time_;
   //!< @brief last pose callback header stamp (for callback_pose diagnostic)
   rclcpp::Time last_pose_callback_time_;

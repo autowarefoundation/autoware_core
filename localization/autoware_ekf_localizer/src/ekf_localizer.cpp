@@ -502,7 +502,7 @@ void EKFLocalizer::update_diagnostics(
     merged_diagnostic_last_transition_time_ = current_time;
   }
 
-  // Remove transition timestamp keys if present (re-added below when non-OK)
+  // Remove transition timestamp keys if present (re-added below when we have a stored time)
   merged_diagnostic_status_.values.erase(
     std::remove_if(
       merged_diagnostic_status_.values.begin(), merged_diagnostic_status_.values.end(),
@@ -511,7 +511,7 @@ void EKFLocalizer::update_diagnostics(
       }),
     merged_diagnostic_status_.values.end());
 
-  if (merged_diagnostic_status_.level > DiagnosticStatus::OK) {
+  if (merged_diagnostic_last_transition_time_.nanoseconds() != 0) {
     diagnostic_msgs::msg::KeyValue transition_ts;
     transition_ts.key = "last_level_transition_timestamp";
     transition_ts.value = std::to_string(merged_diagnostic_last_transition_time_.nanoseconds());

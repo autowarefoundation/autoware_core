@@ -4,7 +4,7 @@
   "definitions": {
     "diagnostics": {
       "type": "object",
-      "description": "Thresholds for per-check diagnostic status and the diagnostic_updater publish cadence. The main ekf_localizer task reflects merged status each EKF cycle; when merged level is WARN or ERROR it may include KeyValue last_level_transition_timestamp (RCL ns). diagnostic_updater publishes /diagnostics at 1/diagnostics_publish_frequency [s], and may publish immediately when merged severity increases versus the previous EKF tick.",
+      "description": "Thresholds for per-check diagnostic status and the diagnostic_updater publish cadence. The main ekf_localizer task reflects merged status each EKF cycle; after at least one merged level change it includes KeyValue last_level_transition_timestamp (RCL ns), including while merged level is OK. diagnostic_updater publishes /diagnostics at 1/diagnostics_publish_frequency [s], and may publish immediately when merged severity increases versus the previous EKF tick.",
       "properties": {
         "pose_no_update_count_threshold_warn": {
           "type": "integer",

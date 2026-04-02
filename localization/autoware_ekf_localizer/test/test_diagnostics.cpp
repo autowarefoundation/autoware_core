@@ -723,10 +723,21 @@ TEST_F(EKFLocalizerTestSuite, latch_resets_after_publish)
   auto latched_status_after = get_merged_diagnostic_status(ekf_localizer.get());
   EXPECT_EQ(latched_status_after.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
   EXPECT_EQ(latched_status_after.message, "OK");
+  bool found_transition_ts = false;
   for (const auto & kv : latched_status_after.values) {
-    EXPECT_NE(kv.key, "last_level_transition_timestamp");
     EXPECT_NE(kv.key, "error_occurrence_timestamp");
+    if (kv.key == "last_level_transition_timestamp") {
+      EXPECT_FALSE(found_transition_ts);
+      found_transition_ts = true;
+      EXPECT_EQ(
+        kv.value,
+        std::to_string(get_merged_diagnostic_last_transition_time(ekf_localizer.get()).nanoseconds()));
+      EXPECT_EQ(
+        get_merged_diagnostic_last_transition_time(ekf_localizer.get()).nanoseconds(),
+        current_time.nanoseconds());
+    }
   }
+  EXPECT_TRUE(found_transition_ts);
 }
 
 TEST_F(EKFLocalizerTestSuite, last_level_transition_timestamp_when_non_ok)
