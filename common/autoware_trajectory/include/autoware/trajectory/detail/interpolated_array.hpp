@@ -22,7 +22,6 @@
 
 #include <algorithm>
 #include <memory>
-#include <optional>
 #include <utility>
 #include <vector>
 
@@ -164,7 +163,8 @@ public:
       }
 
       // Insert into values at the corresponding position
-      values.insert(values.begin() + index, values.at(index - 1));
+      const auto value_index = (index == 0) ? 0 : index - 1;
+      values.insert(values.begin() + index, values.at(value_index));
       return index;
     }
 
