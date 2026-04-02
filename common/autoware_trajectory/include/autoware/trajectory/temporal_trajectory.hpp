@@ -27,6 +27,13 @@
 namespace autoware::experimental::trajectory
 {
 
+/**
+ * @brief Trajectory wrapper that parameterizes a spatial trajectory by time.
+ * @details
+ * `TemporalTrajectory` keeps a `Trajectory<TrajectoryPoint>` for spatial interpolation and an
+ * additional time-to-distance interpolator so callers can evaluate the trajectory from either time
+ * or arc length.
+ */
 class TemporalTrajectory
 {
 public:
@@ -41,36 +48,109 @@ public:
   TemporalTrajectory & operator=(const TemporalTrajectory & rhs);
   TemporalTrajectory & operator=(TemporalTrajectory && rhs) noexcept = default;
 
+  /**
+   * @brief Build the temporal trajectory from ordered trajectory points.
+   * @param[in] points Input points sorted by `time_from_start`.
+   * @return Success, or an interpolation failure.
+   */
   [[nodiscard]] interpolator::InterpolationResult build(const std::vector<PointType> & points);
 
+  /** @brief Return the spatial trajectory length in meters. */
   [[nodiscard]] double length() const;
+  /** @brief Return the covered duration in seconds. */
   [[nodiscard]] double duration() const;
+  /** @brief Return the absolute start time in seconds. */
   [[nodiscard]] double start_time() const;
+  /** @brief Return the absolute end time in seconds. */
   [[nodiscard]] double end_time() const;
+  /** @brief Return the user-configured time offset in seconds. */
+  [[nodiscard]] double time_offset() const;
 
+  /**
+   * @brief Set a time offset applied to exported absolute times.
+   * @param[in] offset Time offset in seconds.
+   */
+  void set_time_offset(double offset);
+
+  /** @brief Return the stored time bases. */
   [[nodiscard]] std::vector<double> get_underlying_time_bases() const;
+  /** @brief Return the stored distance bases. */
   [[nodiscard]] std::vector<double> get_underlying_distance_bases() const;
 
+  /**
+   * @brief Compute a point at a given time.
+   * @param[in] t Query time in seconds.
+   * @return Interpolated trajectory point.
+   */
   [[nodiscard]] PointType compute_from_time(const double t) const;
+  /**
+   * @brief Compute points at the given times.
+   * @param[in] ts Query times in seconds.
+   * @return Interpolated trajectory points.
+   */
   [[nodiscard]] std::vector<PointType> compute_from_time(const std::vector<double> & ts) const;
 
+  /**
+   * @brief Compute a point at a given arc length.
+   * @param[in] s Query arc length in meters.
+   * @return Interpolated trajectory point.
+   */
   [[nodiscard]] PointType compute_from_distance(const double s) const;
+  /**
+   * @brief Compute points at the given arc lengths.
+   * @param[in] ss Query arc lengths in meters.
+   * @return Interpolated trajectory points.
+   */
   [[nodiscard]] std::vector<PointType> compute_from_distance(const std::vector<double> & ss) const;
 
+  /**
+   * @brief Convert time to arc length.
+   * @param[in] t Query time in seconds.
+   * @return Arc length in meters.
+   */
   [[nodiscard]] double time_to_distance(const double t) const;
-  [[nodiscard]] std::vector<double> time_to_distance(const std::vector<double> & ts) const;
 
+  /**
+   * @brief Convert arc length to time.
+   * @param[in] s Query arc length in meters.
+   * @return Time in seconds, or `std::nullopt` when the mapping is not uniquely invertible.
+   */
   [[nodiscard]] std::optional<double> distance_to_time(const double s) const;
 
+  /**
+   * @brief Restore the trajectory at its underlying time bases.
+   * @return Restored trajectory points.
+   */
   [[nodiscard]] std::vector<PointType> restore() const;
 
+  /**
+   * @brief Crop the trajectory to a time interval and rebase the result to zero.
+   * @param[in] start_time Crop start time in seconds.
+   * @param[in] duration Crop duration in seconds.
+   */
   void crop_time(const double start_time, const double duration);
 
+  /**
+   * @brief Insert a stopline that collapses all later points to the stop pose.
+   * @param[in] arc_length Stopline position in meters.
+   */
   void set_stopline(const double arc_length);
+  /**
+   * @brief Insert a stopline with an additional wait duration.
+   * @param[in] arc_length Stopline position in meters.
+   * @param[in] duration Stop duration in seconds.
+   */
   void set_stopline(const double arc_length, const double duration);
 
+  /** @brief Return the underlying spatial trajectory. */
   [[nodiscard]] const SpatialTrajectory & spatial_trajectory() const;
 
+  /**
+   * @brief Builder for `TemporalTrajectory`.
+   * @details
+   * This wraps `Trajectory<PointType>::Builder` for spatial interpolation and additionally manages
+   * the time-to-distance interpolator.
+   */
   class Builder
   {
   private:
@@ -80,8 +160,16 @@ public:
   public:
     Builder();
 
+    /**
+     * @brief Apply the default interpolator configuration.
+     * @param[in,out] trajectory Target trajectory.
+     */
     static void defaults(TemporalTrajectory * trajectory);
 
+    /**
+     * @brief Set the time-to-distance interpolator type.
+     * @return This builder.
+     */
     template <class InterpolatorType, class... Args>
     Builder & set_time_to_distance_interpolator(Args &&... args)
     {
@@ -90,6 +178,7 @@ public:
       return *this;
     }
 
+    /** @brief Set the XY interpolator used by the spatial trajectory builder. */
     template <class InterpolatorType, class... Args>
     Builder & set_xy_interpolator(Args &&... args)
     {
@@ -98,6 +187,7 @@ public:
       return *this;
     }
 
+    /** @brief Set the Z interpolator used by the spatial trajectory builder. */
     template <class InterpolatorType, class... Args>
     Builder & set_z_interpolator(Args &&... args)
     {
@@ -106,6 +196,7 @@ public:
       return *this;
     }
 
+    /** @brief Set the orientation interpolator used by the spatial trajectory builder. */
     template <class InterpolatorType, class... Args>
     Builder & set_orientation_interpolator(Args &&... args)
     {
@@ -114,6 +205,7 @@ public:
       return *this;
     }
 
+    /** @brief Set the longitudinal velocity interpolator used by the spatial builder. */
     template <class InterpolatorType, class... Args>
     Builder & set_longitudinal_velocity_interpolator(Args &&... args)
     {
@@ -122,6 +214,7 @@ public:
       return *this;
     }
 
+    /** @brief Set the lateral velocity interpolator used by the spatial builder. */
     template <class InterpolatorType, class... Args>
     Builder & set_lateral_velocity_interpolator(Args &&... args)
     {
@@ -130,6 +223,7 @@ public:
       return *this;
     }
 
+    /** @brief Set the heading rate interpolator used by the spatial builder. */
     template <class InterpolatorType, class... Args>
     Builder & set_heading_rate_interpolator(Args &&... args)
     {
@@ -138,6 +232,7 @@ public:
       return *this;
     }
 
+    /** @brief Set the acceleration interpolator used by the spatial builder. */
     template <class InterpolatorType, class... Args>
     Builder & set_acceleration_interpolator(Args &&... args)
     {
@@ -146,6 +241,7 @@ public:
       return *this;
     }
 
+    /** @brief Set the front wheel angle interpolator used by the spatial builder. */
     template <class InterpolatorType, class... Args>
     Builder & set_front_wheel_angle_interpolator(Args &&... args)
     {
@@ -154,6 +250,7 @@ public:
       return *this;
     }
 
+    /** @brief Set the rear wheel angle interpolator used by the spatial builder. */
     template <class InterpolatorType, class... Args>
     Builder & set_rear_wheel_angle_interpolator(Args &&... args)
     {
@@ -162,6 +259,11 @@ public:
       return *this;
     }
 
+    /**
+     * @brief Build a temporal trajectory from points.
+     * @param[in] points Input trajectory points.
+     * @return Built temporal trajectory, or an interpolation failure.
+     */
     [[nodiscard]] tl::expected<TemporalTrajectory, interpolator::InterpolationFailure> build(
       const std::vector<PointType> & points);
   };
@@ -171,6 +273,10 @@ private:
   std::shared_ptr<InterpolatorInterface> time_to_distance_{nullptr};
   std::vector<double> time_bases_;
   std::vector<double> distance_bases_;
+  double start_time_{0.0};
+  double end_time_{0.0};
+  double time_offset_{0.0};
+  double distance_offset_{0.0};
 
   [[nodiscard]] double clamp_time(const double t, bool show_warning = false) const;
 };
