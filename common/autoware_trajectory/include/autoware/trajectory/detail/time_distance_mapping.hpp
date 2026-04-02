@@ -126,7 +126,7 @@ public:
   /**
    * @brief Convert an absolute distance to time.
    * @param[in] absolute_distance Query absolute distance in meters.
-   * @return Time in seconds, or `std::nullopt` when not invertible in range.
+   * @return Time in seconds. Distance is clamped to the valid range if out of bounds.
    */
   [[nodiscard]] std::optional<double> time_at_distance(double absolute_distance) const;
 
