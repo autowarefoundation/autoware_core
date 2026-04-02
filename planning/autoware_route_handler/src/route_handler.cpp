@@ -240,10 +240,57 @@ std::string convertLaneletsIdToString(const lanelet::ConstLanelets & lanelets)
 }
 }  // namespace
 
+RouteHandler::RouteHandler(const lanelet::LaneletMapConstPtr & lanelet_map_ptr)
+{
+  setMap(lanelet_map_ptr);
+  route_ptr_ = nullptr;
+}
+
 RouteHandler::RouteHandler(const LaneletMapBin & map_msg)
 {
   setMap(map_msg);
   route_ptr_ = nullptr;
+}
+
+void RouteHandler::setMap(const lanelet::LaneletMapConstPtr & lanelet_map_ptr)
+{
+  lanelet_map_ptr_ = autoware::experimental::lanelet2_utils::remove_const(lanelet_map_ptr);
+  const auto & map_msg =
+    autoware::experimental::lanelet2_utils::to_autoware_map_msgs(lanelet_map_ptr_);
+  auto routing_graph_and_traffic_rules =
+    autoware::experimental::lanelet2_utils::instantiate_routing_graph_and_traffic_rules(
+      lanelet_map_ptr_);
+  routing_graph_ptr_ =
+    autoware::experimental::lanelet2_utils::remove_const(routing_graph_and_traffic_rules.first);
+  traffic_rules_ptr_ = routing_graph_and_traffic_rules.second;
+  const auto map_major_version_opt =
+    lanelet::io_handlers::parseMajorVersion(map_msg.version_map_format);
+  if (!map_major_version_opt) {
+    RCLCPP_WARN(
+      logger_, "setMap() for invalid version map: %s", map_msg.version_map_format.c_str());
+  } else if (map_major_version_opt.value() > static_cast<uint64_t>(lanelet::autoware::version)) {
+    RCLCPP_WARN(
+      logger_, "setMap() for a map(version %s) newer than lanelet2_extension support version(%d)",
+      map_msg.version_map_format.c_str(), static_cast<int>(lanelet::autoware::version));
+  }
+
+  const auto traffic_rules = lanelet::traffic_rules::TrafficRulesFactory::create(
+    lanelet::Locations::Germany, lanelet::Participants::Vehicle);
+  const auto pedestrian_rules = lanelet::traffic_rules::TrafficRulesFactory::create(
+    lanelet::Locations::Germany, lanelet::Participants::Pedestrian);
+  const lanelet::routing::RoutingGraphConstPtr vehicle_graph =
+    lanelet::routing::RoutingGraph::build(*lanelet_map_ptr_, *traffic_rules);
+  const lanelet::routing::RoutingGraphConstPtr pedestrian_graph =
+    lanelet::routing::RoutingGraph::build(*lanelet_map_ptr_, *pedestrian_rules);
+  const lanelet::routing::RoutingGraphContainer overall_graphs({vehicle_graph, pedestrian_graph});
+  overall_graphs_ptr_ =
+    std::make_shared<const lanelet::routing::RoutingGraphContainer>(overall_graphs);
+  lanelet::ConstLanelets all_lanelets = lanelet::utils::query::laneletLayer(lanelet_map_ptr_);
+
+  is_map_msg_ready_ = true;
+  is_handler_ready_ = false;
+
+  setLaneletsFromRouteMsg();
 }
 
 void RouteHandler::setMap(const LaneletMapBin & map_msg)

@@ -79,9 +79,11 @@ class RouteHandler
 {
 public:
   RouteHandler() = default;
+  explicit RouteHandler(const lanelet::LaneletMapConstPtr & lanelet_map_ptr);
   explicit RouteHandler(const LaneletMapBin & map_msg);
 
   // non-const methods
+  void setMap(const lanelet::LaneletMapConstPtr & lanelet_map_ptr);
   void setMap(const LaneletMapBin & map_msg);
   void setRoute(const LaneletRoute & route_msg);
   void setRouteLanelets(const lanelet::ConstLanelets & path_lanelets);
