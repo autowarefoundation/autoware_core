@@ -19,7 +19,6 @@
 #include "autoware/trajectory/path_point_with_lane_id.hpp"
 #include "autoware/trajectory/point.hpp"
 #include "autoware/trajectory/pose.hpp"
-#include "autoware/trajectory/threshold.hpp"
 #include "autoware/trajectory/trajectory_point.hpp"
 #include "autoware_utils_geometry/geometry.hpp"
 
@@ -27,29 +26,27 @@
 
 #include <boost/geometry/algorithms/correct.hpp>
 
+#include <algorithm>
 #include <vector>
 
-namespace
+namespace autoware::experimental::trajectory
 {
+
 /** @brief convert LinearRing2d to Polygon2d
  *  @param footprint LinearRing2d
  *  @return Polygon2d
  */
 inline autoware_utils_geometry::Polygon2d convert_linear_ring_to_polygon(
-  autoware_utils_geometry::LinearRing2d footprint)
+  const autoware_utils_geometry::LinearRing2d & footprint)
 {
   autoware_utils_geometry::Polygon2d footprint_polygon;
-  for (auto point : footprint) {
+  for (const auto & point : footprint) {
     footprint_polygon.outer().push_back(point);
   }
 
   boost::geometry::correct(footprint_polygon);
   return footprint_polygon;
 }
-}  // namespace
-
-namespace autoware::experimental::trajectory
-{
 
 /** @brief create long polygon along trajectory from start_s to end_s with designated width
  *  @param trajectory trajectory
@@ -116,7 +113,7 @@ std::vector<autoware_utils_geometry::Polygon2d> build_path_footprints(
   const double interval, const autoware_utils_geometry::LinearRing2d & base_footprint)
 {
   std::vector<autoware_utils_geometry::Polygon2d> footprints;
-  auto footprint_size = (end_s - start_s) / interval;
+  const auto footprint_size = static_cast<std::size_t>(std::max(0.0, (end_s - start_s) / interval));
   footprints.reserve(footprint_size);
   for (auto target_s = start_s; target_s <= end_s; target_s += interval) {
     const auto p = autoware_utils_geometry::get_pose(trajectory.compute(target_s));

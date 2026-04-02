@@ -16,6 +16,7 @@
 #define AUTOWARE__TRAJECTORY__UTILS__CROSSED_HPP_
 #include "autoware/trajectory/detail/types.hpp"
 #include "autoware/trajectory/forward.hpp"
+#include "autoware/trajectory/temporal_trajectory.hpp"
 #include "autoware/trajectory/threshold.hpp"
 
 #include <Eigen/Core>
@@ -142,6 +143,14 @@ template <class TrajectoryPointType, class LineStringType>
 {
   return crossed_with_constraint(
     trajectory, linestring, [](const TrajectoryPointType &) { return true; }, start, end_inclusive);
+}
+
+template <class LineStringType>
+[[nodiscard]] std::vector<double> crossed(
+  const TemporalTrajectory & trajectory, const LineStringType & linestring,
+  const double start = 0.0, const double end_inclusive = std::numeric_limits<double>::infinity())
+{
+  return crossed(trajectory.spatial_trajectory(), linestring, start, end_inclusive);
 }
 
 /**

@@ -15,6 +15,7 @@
 #include "autoware/trajectory/utils/pretty_build.hpp"
 
 #include <vector>
+
 namespace autoware::experimental::trajectory
 {
 
@@ -28,5 +29,27 @@ template std::optional<Trajectory<autoware_planning_msgs::msg::PathPoint>> prett
 
 template std::optional<Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>> pretty_build(
   const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points, const bool use_akima);
+
+std::optional<TemporalTrajectory> pretty_build_temporal(
+  const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points, const bool use_akima)
+{
+  if (use_akima) {
+    const auto try_trajectory =
+      TemporalTrajectory::Builder{}.set_xy_interpolator<interpolator::AkimaSpline>().build(points);
+    if (!try_trajectory) {
+      return std::nullopt;
+    }
+    return try_trajectory.value();
+  }
+
+  const auto try_trajectory = TemporalTrajectory::Builder{}.build(points);
+  if (!try_trajectory) {
+    return std::nullopt;
+  }
+  if (try_trajectory->length() < k_points_minimum_dist_threshold) {
+    return std::nullopt;
+  }
+  return try_trajectory.value();
+}
 
 }  // namespace autoware::experimental::trajectory
