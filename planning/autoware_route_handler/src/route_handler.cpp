@@ -1745,6 +1745,10 @@ PathWithLaneId RouteHandler::getCenterLinePath(
   const lanelet::ConstLanelets & lanelet_sequence, const double s_start, const double s_end,
   bool use_exact) const
 {
+  using autoware::experimental::lanelet2_utils::create_safe_linestring;
+  using autoware::experimental::lanelet2_utils::from_ros;
+  using autoware::experimental::lanelet2_utils::interpolate_point;
+  using autoware::experimental::lanelet2_utils::to_ros;
   using lanelet::utils::to2D;
 
   // 1. calculate reference points by lanelets' centerline
@@ -1849,6 +1853,8 @@ PathWithLaneId RouteHandler::getCenterLinePath(
       const auto & ref_point = piecewise_ref_points.at(ref_point_idx);
       const auto & next_ref_point = (ref_point_idx + 1 < piecewise_ref_points.size())
                                       ? piecewise_ref_points.at(ref_point_idx + 1)
+                                    : (lanelet_idx + 1 < lanelet_sequence.size())
+                                      ? piecewise_ref_points_vec.at(lanelet_idx + 1).at(0)
                                       : piecewise_ref_points.at(ref_point_idx);
 
       const double distance =
@@ -1857,7 +1863,23 @@ PathWithLaneId RouteHandler::getCenterLinePath(
       if (s < s_start && s + distance > s_start) {
         const auto p_opt = getGeometryPointFrom2DArcLength(lanelet_sequence, s_start);
         if (p_opt.has_value()) {
-          const auto p = use_exact ? p_opt.value() : ref_point.point;
+          // convert geometry_msgs to ros_msg
+          const auto ref_pt = from_ros(ref_point.point);
+          const auto next_pt = from_ros(next_ref_point.point);
+          const auto on_centerline_pt = to2D(from_ros(p_opt.value())).basicPoint();
+
+          lanelet::ConstPoints3d segment{ref_pt, next_pt};
+          const auto ls_opt = create_safe_linestring(segment);
+          geometry_msgs::msg::Point p = ref_point.point;
+          // find interpolated point on "waypoint" if there is.
+          if (ls_opt.has_value()) {
+            const auto ls = to2D(*ls_opt);
+
+            const auto arc_coord = lanelet::geometry::toArcCoordinates(ls, on_centerline_pt);
+            const auto interpolated_pt_opt = interpolate_point(ref_pt, next_pt, arc_coord.length);
+            p = (use_exact && interpolated_pt_opt.has_value()) ? to_ros(interpolated_pt_opt.value())
+                                                               : ref_point.point;
+          }
           add_path_point(p, lanelet, speed_limit);
         } else {
           add_path_point(ref_point.point, lanelet, speed_limit);
