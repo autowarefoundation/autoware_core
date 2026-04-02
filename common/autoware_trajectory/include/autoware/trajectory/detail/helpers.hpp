@@ -109,6 +109,84 @@ inline bool has_strictly_increasing_bases(
  * @return Cropped bases including start and end boundaries.
  */
 std::vector<double> crop_bases(const std::vector<double> & x, const double start, const double end);
+
+/**
+ * @brief Find the first position where predicate becomes true using binary search.
+ *
+ * This function performs binary search where the predicate transitions from false to true.
+ * It searches for the point where:
+ * - predicate(x) is false for x < result
+ * - predicate(x) is true for x >= result
+ *
+ * @tparam Predicate Callable that takes a double and returns bool
+ * @param low Lower bound (predicate should be false here)
+ * @param high Upper bound (predicate should be true here)
+ * @param predicate Function to evaluate at each midpoint
+ * @param max_iter Maximum number of iterations
+ * @param tolerance Convergence tolerance (search stops when high - low <= tolerance)
+ * @return Value where predicate transitions from false to true (returns high)
+ *
+ * @note If predicate is already true at low, returns low
+ * @note If predicate is false at high, returns high (no valid transition found)
+ */
+template <typename Predicate>
+inline double lower_bound_by_predicate(
+  double low, double high, Predicate predicate, size_t max_iter,
+  double tolerance = std::numeric_limits<double>::epsilon())
+{
+  for (size_t i = 0; i < max_iter; ++i) {
+    if (high - low <= tolerance || i == max_iter - 1) {
+      break;
+    }
+
+    const double mid = 0.5 * (low + high);
+    if (predicate(mid)) {
+      high = mid;
+    } else {
+      low = mid;
+    }
+  }
+
+  return high;
+}
+
+/**
+ * @brief Find the last position where predicate is true using binary search.
+ *
+ * This function performs binary search where the predicate transitions from true to false.
+ * It searches for the point where:
+ * - predicate(x) is true for x <= result
+ * - predicate(x) is false for x > result
+ *
+ * @tparam Predicate Callable that takes a double and returns bool
+ * @param low Lower bound (predicate should be true here)
+ * @param high Upper bound (predicate should be false here)
+ * @param predicate Function to evaluate at each midpoint
+ * @param max_iter Maximum number of iterations
+ * @param tolerance Convergence tolerance
+ * @return Value where predicate transitions from true to false (returns low)
+ */
+template <typename Predicate>
+inline double upper_bound_by_predicate(
+  double low, double high, Predicate predicate, size_t max_iter,
+  double tolerance = std::numeric_limits<double>::epsilon())
+{
+  for (size_t i = 0; i < max_iter; ++i) {
+    if (high - low <= tolerance || i == max_iter - 1) {
+      break;
+    }
+
+    const double mid = 0.5 * (low + high);
+    if (predicate(mid)) {
+      low = mid;
+    } else {
+      high = mid;
+    }
+  }
+
+  return low;
+}
+
 }  // namespace autoware::experimental::trajectory::detail
 
 #endif  // AUTOWARE__TRAJECTORY__DETAIL__HELPERS_HPP_
