@@ -730,8 +730,8 @@ TEST_F(EKFLocalizerTestSuite, latch_resets_after_publish)
       EXPECT_FALSE(found_transition_ts);
       found_transition_ts = true;
       EXPECT_EQ(
-        kv.value,
-        std::to_string(get_merged_diagnostic_last_transition_time(ekf_localizer.get()).nanoseconds()));
+        kv.value, std::to_string(
+                    get_merged_diagnostic_last_transition_time(ekf_localizer.get()).nanoseconds()));
       EXPECT_EQ(
         get_merged_diagnostic_last_transition_time(ekf_localizer.get()).nanoseconds(),
         current_time.nanoseconds());
