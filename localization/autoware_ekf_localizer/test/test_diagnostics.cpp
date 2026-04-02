@@ -445,8 +445,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, merged_diagnostic_reflects_pose_no_update_wa
   const double ekf_rate = 100.0;
   const double diagnostics_publish_period = 0.1;
 
-  auto ekf_localizer =
-    create_ekf_localizer(diagnostics_publish_period, ekf_rate);
+  auto ekf_localizer = create_ekf_localizer(diagnostics_publish_period, ekf_rate);
 
   rclcpp::Time current_time = ekf_localizer->now();
   geometry_msgs::msg::PoseStamped current_ekf_pose;
@@ -520,8 +519,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, update_diagnostics_deescalates_error_to_warn
   const double ekf_rate = 100.0;
   const double diagnostics_publish_period = 0.1;
 
-  auto ekf_localizer =
-    create_ekf_localizer(diagnostics_publish_period, ekf_rate);
+  auto ekf_localizer = create_ekf_localizer(diagnostics_publish_period, ekf_rate);
 
   rclcpp::Time current_time = ekf_localizer->now();
   const size_t thr_w = 50;
@@ -550,12 +548,12 @@ TEST_F(EKFLocalizerDiagnosticsTest, update_diagnostics_deescalates_error_to_warn
 
 TEST_F(EKFLocalizerDiagnosticsTest, merged_diagnostic_updates_when_previous_merge_was_ok)
 {
-  // When previous merged status was OK, the next update_diagnostics reflects new severity (OK→WARN).
+  // When previous merged status was OK, the next update_diagnostics reflects new severity
+  // (OK→WARN).
   const double ekf_rate = 100.0;
   const double diagnostics_publish_period = 0.1;
 
-  auto ekf_localizer =
-    create_ekf_localizer(diagnostics_publish_period, ekf_rate);
+  auto ekf_localizer = create_ekf_localizer(diagnostics_publish_period, ekf_rate);
 
   rclcpp::Time current_time = ekf_localizer->now();
   geometry_msgs::msg::PoseStamped current_ekf_pose;
@@ -616,8 +614,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, merged_diagnostic_ok_when_only_activation_an
   const double ekf_rate = 100.0;
   const double diagnostics_publish_period = 0.1;
 
-  auto ekf_localizer =
-    create_ekf_localizer(diagnostics_publish_period, ekf_rate);
+  auto ekf_localizer = create_ekf_localizer(diagnostics_publish_period, ekf_rate);
 
   rclcpp::Time current_time = ekf_localizer->now();
   geometry_msgs::msg::PoseStamped current_ekf_pose;
@@ -660,8 +657,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, merged_diagnostic_ok_after_force_update_and_
   const double ekf_rate = 100.0;
   const double diagnostics_publish_period = 0.1;
 
-  auto ekf_localizer =
-    create_ekf_localizer(diagnostics_publish_period, ekf_rate);
+  auto ekf_localizer = create_ekf_localizer(diagnostics_publish_period, ekf_rate);
 
   rclcpp::Time current_time = ekf_localizer->now();
   geometry_msgs::msg::PoseStamped current_ekf_pose;
@@ -723,8 +719,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, last_level_transition_timestamp_when_non_ok)
   const double ekf_rate = 100.0;
   const double diagnostics_publish_period = 0.1;
 
-  auto ekf_localizer =
-    create_ekf_localizer(diagnostics_publish_period, ekf_rate);
+  auto ekf_localizer = create_ekf_localizer(diagnostics_publish_period, ekf_rate);
 
   rclcpp::Time error_time = ekf_localizer->now();
   geometry_msgs::msg::PoseStamped current_ekf_pose;
@@ -781,8 +776,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_updated_when_not_activated)
   const double ekf_rate = 100.0;
   const double diagnostics_publish_period = 0.1;
 
-  auto ekf_localizer =
-    create_ekf_localizer(diagnostics_publish_period, ekf_rate);
+  auto ekf_localizer = create_ekf_localizer(diagnostics_publish_period, ekf_rate);
 
   rclcpp::Time current_time = ekf_localizer->now();
   geometry_msgs::msg::PoseStamped current_ekf_pose;
@@ -817,8 +811,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_updated_when_initialpose_not_set
   const double ekf_rate = 100.0;
   const double diagnostics_publish_period = 0.1;
 
-  auto ekf_localizer =
-    create_ekf_localizer(diagnostics_publish_period, ekf_rate);
+  auto ekf_localizer = create_ekf_localizer(diagnostics_publish_period, ekf_rate);
 
   rclcpp::Time current_time = ekf_localizer->now();
   geometry_msgs::msg::PoseStamped current_ekf_pose;
@@ -853,8 +846,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_at_specified_period)
   const double ekf_rate = 100.0;
   const double diagnostics_publish_period = 0.1;  // 10 Hz
 
-  auto ekf_localizer =
-    create_ekf_localizer(diagnostics_publish_period, ekf_rate);
+  auto ekf_localizer = create_ekf_localizer(diagnostics_publish_period, ekf_rate);
 
   rclcpp::Time current_time = ekf_localizer->now();
   geometry_msgs::msg::PoseStamped current_ekf_pose;
@@ -897,7 +889,8 @@ TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_at_specified_period)
   EXPECT_GE(diag_count, 1) << "Expected at least one /diagnostics message within 250 ms at 10 Hz";
 }
 
-TEST_F(EKFLocalizerDiagnosticsTest, callback_pose_and_twist_published_at_period_when_period_positive)
+TEST_F(
+  EKFLocalizerDiagnosticsTest, callback_pose_and_twist_published_at_period_when_period_positive)
 {
   // When diagnostics_publish_period > 0, callback_pose and callback_twist are published at the
   // updater period via diagnose_callback_pose and diagnose_callback_twist. This test verifies that
@@ -906,8 +899,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, callback_pose_and_twist_published_at_period_
   const double ekf_rate = 100.0;
   const double diagnostics_publish_period = 0.1;  // 10 Hz
 
-  auto ekf_localizer =
-    create_ekf_localizer(diagnostics_publish_period, ekf_rate);
+  auto ekf_localizer = create_ekf_localizer(diagnostics_publish_period, ekf_rate);
 
   rclcpp::Time current_time = ekf_localizer->now();
   geometry_msgs::msg::PoseStamped current_ekf_pose;
@@ -984,12 +976,12 @@ TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_at_parameter_period)
 {
   // Verify diagnostic_updater emits /diagnostics at roughly diagnostics_publish_period.
   // Feed pose/twist occasionally so merged diagnostics stay OK: otherwise no_update_count rises,
-  // merged status returns OK after each publish, and OK->ERROR repeats every EKF tick (force_update storm).
+  // merged status returns OK after each publish, and OK->ERROR repeats every EKF tick (force_update
+  // storm).
   const double ekf_rate = 50.0;
   const double diagnostics_publish_period = 0.2;  // 5 Hz
 
-  auto ekf_localizer =
-    create_ekf_localizer(diagnostics_publish_period, ekf_rate);
+  auto ekf_localizer = create_ekf_localizer(diagnostics_publish_period, ekf_rate);
 
   rclcpp::Time current_time = ekf_localizer->now();
   geometry_msgs::msg::PoseStamped current_ekf_pose;
