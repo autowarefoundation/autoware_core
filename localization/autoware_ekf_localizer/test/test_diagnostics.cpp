@@ -521,10 +521,10 @@ TEST_F(EKFLocalizerTestSuite, update_diagnostics_latches_higher_level_error)
   EXPECT_EQ(latched_status.level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
   EXPECT_TRUE(latched_status.message.find("pose is not updated") != std::string::npos);
 
-  // Verify error occurrence timestamp is added
+  // Verify last_level_transition_timestamp is added
   bool has_timestamp = false;
   for (const auto & value : latched_status.values) {
-    if (value.key == "error_occurrence_timestamp") {
+    if (value.key == "last_level_transition_timestamp") {
       has_timestamp = true;
       EXPECT_EQ(
         value.value,
@@ -724,13 +724,14 @@ TEST_F(EKFLocalizerTestSuite, latch_resets_after_publish)
   EXPECT_EQ(latched_status_after.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
   EXPECT_EQ(latched_status_after.message, "OK");
   for (const auto & kv : latched_status_after.values) {
+    EXPECT_NE(kv.key, "last_level_transition_timestamp");
     EXPECT_NE(kv.key, "error_occurrence_timestamp");
   }
 }
 
-TEST_F(EKFLocalizerTestSuite, error_timestamp_added_to_latched_status)
+TEST_F(EKFLocalizerTestSuite, last_level_transition_timestamp_when_non_ok)
 {
-  // Test that error occurrence timestamp is added to latched status
+  // last_level_transition_timestamp KeyValue matches merged_diagnostic_last_transition_time_
   const double ekf_rate = 100.0;
   const double diagnostics_publish_period = 0.1;
 
@@ -763,14 +764,13 @@ TEST_F(EKFLocalizerTestSuite, error_timestamp_added_to_latched_status)
   set_pose_diag_info_no_update_count(ekf_localizer.get(), 100);  // threshold_error = 100
   update_diagnostics(ekf_localizer.get(), current_ekf_pose, error_time);
 
-  // Verify error occurrence timestamp is added
   auto latched_status = get_merged_diagnostic_status(ekf_localizer.get());
   EXPECT_GE(latched_status.level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
 
   bool has_timestamp = false;
   std::string timestamp_value;
   for (const auto & value : latched_status.values) {
-    if (value.key == "error_occurrence_timestamp") {
+    if (value.key == "last_level_transition_timestamp") {
       has_timestamp = true;
       timestamp_value = value.value;
       break;
