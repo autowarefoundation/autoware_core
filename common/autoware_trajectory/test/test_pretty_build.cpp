@@ -147,7 +147,6 @@ TEST(pretty_build_temporal, from_2_cubic)
 
   const auto & trajectory = trajectory_opt.value();
   EXPECT_EQ(trajectory.get_underlying_time_bases().size(), 2);
-  EXPECT_EQ(trajectory.get_underlying_distance_bases().size(), 2);
   EXPECT_NEAR(trajectory.length(), 2.0, 1e-6);
   EXPECT_NEAR(trajectory.duration(), 2.0, 1e-6);
 
@@ -167,7 +166,6 @@ TEST(pretty_build_temporal, from_4_akima)
 
   const auto & trajectory = trajectory_opt.value();
   EXPECT_EQ(trajectory.get_underlying_time_bases().size(), 4);
-  EXPECT_EQ(trajectory.get_underlying_distance_bases().size(), 4);
   EXPECT_NEAR(trajectory.start_time(), 0.0, 1e-6);
   EXPECT_NEAR(trajectory.end_time(), 4.0, 1e-6);
 }

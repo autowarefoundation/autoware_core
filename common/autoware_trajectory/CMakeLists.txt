@@ -21,6 +21,7 @@ set(fmt_TARGETS fmt::fmt)
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
   src/detail/logging.cpp
+  src/detail/time_distance_mapping.cpp
   src/detail/types.cpp
   src/detail/util.cpp
   src/interpolator/akima_spline.cpp

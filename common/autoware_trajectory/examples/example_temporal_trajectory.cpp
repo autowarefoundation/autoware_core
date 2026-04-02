@@ -25,6 +25,7 @@
 #include <pybind11/stl.h>
 
 #include <iostream>
+#include <iterator>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -75,9 +76,19 @@ std::vector<double> sample_times(const TemporalTrajectory & trajectory)
   return times;
 }
 
-std::pair<std::vector<double>, std::vector<double>> sample_xy(const TemporalTrajectory & trajectory)
+std::vector<TrajectoryPoint> collect_plot_points(
+  const TemporalTrajectory & trajectory, const bool use_restore_points)
 {
-  const auto points = trajectory.compute_from_time(sample_times(trajectory));
+  if (use_restore_points) {
+    return trajectory.restore();
+  }
+  return trajectory.compute_from_time(sample_times(trajectory));
+}
+
+std::pair<std::vector<double>, std::vector<double>> sample_xy(
+  const TemporalTrajectory & trajectory, const bool use_restore_points)
+{
+  const auto points = collect_plot_points(trajectory, use_restore_points);
   std::vector<double> x;
   std::vector<double> y;
   x.reserve(points.size());
@@ -90,9 +101,9 @@ std::pair<std::vector<double>, std::vector<double>> sample_xy(const TemporalTraj
 }
 
 std::pair<std::vector<double>, std::vector<double>> sample_time_distance(
-  const TemporalTrajectory & trajectory)
+  const TemporalTrajectory & trajectory, const bool use_restore_points)
 {
-  const auto points = trajectory.compute_from_time(sample_times(trajectory));
+  const auto points = collect_plot_points(trajectory, use_restore_points);
   std::vector<double> time;
   std::vector<double> distance;
   time.reserve(points.size());
@@ -106,9 +117,9 @@ std::pair<std::vector<double>, std::vector<double>> sample_time_distance(
 }
 
 std::pair<std::vector<double>, std::vector<double>> sample_time_velocity(
-  const TemporalTrajectory & trajectory)
+  const TemporalTrajectory & trajectory, const bool use_restore_points)
 {
-  const auto points = trajectory.compute_from_time(sample_times(trajectory));
+  const auto points = collect_plot_points(trajectory, use_restore_points);
   std::vector<double> time;
   std::vector<double> velocity;
   time.reserve(points.size());
@@ -122,9 +133,9 @@ std::pair<std::vector<double>, std::vector<double>> sample_time_velocity(
 
 void plot_spatial_trajectory(
   autoware::pyplot::Axes & ax, const TemporalTrajectory & trajectory, const std::string & label,
-  const std::string & color)
+  const std::string & color, const bool use_restore_points)
 {
-  const auto [x, y] = sample_xy(trajectory);
+  const auto [x, y] = sample_xy(trajectory, use_restore_points);
   ax.plot(Args(x, y), Kwargs("label"_a = label, "color"_a = color, "marker"_a = "o"));
 }
 
@@ -135,10 +146,13 @@ void plot_time_series(
   ax.plot(Args(x, y), Kwargs("label"_a = label, "color"_a = color, "marker"_a = "o"));
 }
 
-int main()
+int main(int argc, char ** argv)
 {
   pybind11::scoped_interpreter guard{};
   auto plt = autoware::pyplot::import();
+
+  const std::vector<std::string> args(argv, argv + argc);
+  const bool use_restore_points = std::find(args.begin(), args.end(), "--restore") != args.end();
 
   const auto original = build_temporal_trajectory();
 
@@ -160,22 +174,31 @@ int main()
   stop_with_wait.set_stopline(stop_length, 2.0);
 
   const auto crossed_point = original.compute_from_distance(stop_length);
-  const auto [original_time, original_distance] = sample_time_distance(original);
-  const auto [immediate_time, immediate_distance] = sample_time_distance(stop_immediate);
-  const auto [wait_time, wait_distance] = sample_time_distance(stop_with_wait);
-  const auto [original_vel_time, original_vel] = sample_time_velocity(original);
-  const auto [immediate_vel_time, immediate_vel] = sample_time_velocity(stop_immediate);
-  const auto [wait_vel_time, wait_vel] = sample_time_velocity(stop_with_wait);
+  const auto [original_time, original_distance] =
+    sample_time_distance(original, use_restore_points);
+  const auto [immediate_time, immediate_distance] =
+    sample_time_distance(stop_immediate, use_restore_points);
+  const auto [wait_time, wait_distance] = sample_time_distance(stop_with_wait, use_restore_points);
+  const auto [original_vel_time, original_vel] = sample_time_velocity(original, use_restore_points);
+  const auto [immediate_vel_time, immediate_vel] =
+    sample_time_velocity(stop_immediate, use_restore_points);
+  const auto [wait_vel_time, wait_vel] = sample_time_velocity(stop_with_wait, use_restore_points);
   const auto wait_stop_points =
     autoware::experimental::trajectory::find_stop_points(stop_with_wait);
+
+  std::cout << "Plot mode: "
+            << (use_restore_points ? "restored underlying points" : "uniform time samples")
+            << std::endl;
 
   auto [fig, axes] = plt.subplots(1, 3, Kwargs("figsize"_a = std::make_tuple(18, 6)));
 
   {
     auto ax = axes[0];
-    plot_spatial_trajectory(ax, original, "original", "navy");
-    plot_spatial_trajectory(ax, stop_immediate, "set_stopline(length)", "darkorange");
-    plot_spatial_trajectory(ax, stop_with_wait, "set_stopline(length, duration)", "crimson");
+    plot_spatial_trajectory(ax, original, "original", "navy", use_restore_points);
+    plot_spatial_trajectory(
+      ax, stop_immediate, "set_stopline(length)", "darkorange", use_restore_points);
+    plot_spatial_trajectory(
+      ax, stop_with_wait, "set_stopline(length, duration)", "crimson", use_restore_points);
     ax.plot(
       Args(
         std::vector<double>{stop_line[0].x(), stop_line[1].x()},
