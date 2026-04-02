@@ -63,7 +63,7 @@ TEST(TestEkfDiagnostics, check_measurement_updated)
 {
   diagnostic_msgs::msg::DiagnosticStatus stat;
 
-  const std::string measurement_type = "pose";  // not effect for stat.level
+  const std::string measurement_type = "pose";  // no effect for stat.level
   const size_t no_update_count_threshold_warn = 50;
   const size_t no_update_count_threshold_error = 250;
 
@@ -108,13 +108,13 @@ TEST(TestEkfDiagnostics, check_measurement_queue_size)
 {
   diagnostic_msgs::msg::DiagnosticStatus stat;
 
-  const std::string measurement_type = "pose";  // not effect for stat.level
+  const std::string measurement_type = "pose";  // no effect for stat.level
 
-  size_t queue_size = 0;  // not effect for stat.level
+  size_t queue_size = 0;  // no effect for stat.level
   stat = check_measurement_queue_size(measurement_type, queue_size);
   EXPECT_EQ(stat.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
 
-  queue_size = 1;  // not effect for stat.level
+  queue_size = 1;  // no effect for stat.level
   stat = check_measurement_queue_size(measurement_type, queue_size);
   EXPECT_EQ(stat.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
 }
@@ -123,9 +123,9 @@ TEST(TestEkfDiagnostics, check_measurement_delay_gate)
 {
   diagnostic_msgs::msg::DiagnosticStatus stat;
 
-  const std::string measurement_type = "pose";  // not effect for stat.level
-  const double delay_time = 0.1;                // not effect for stat.level
-  const double delay_time_threshold = 1.0;      // not effect for stat.level
+  const std::string measurement_type = "pose";  // no effect for stat.level
+  const double delay_time = 0.1;                // no effect for stat.level
+  const double delay_time_threshold = 1.0;      // no effect for stat.level
 
   bool is_passed_delay_gate = true;
   stat = check_measurement_delay_gate(
@@ -142,9 +142,9 @@ TEST(TestEkfDiagnostics, check_measurement_mahalanobis_gate)
 {
   diagnostic_msgs::msg::DiagnosticStatus stat;
 
-  const std::string measurement_type = "pose";        // not effect for stat.level
-  const double mahalanobis_distance = 0.1;            // not effect for stat.level
-  const double mahalanobis_distance_threshold = 1.0;  // not effect for stat.level
+  const std::string measurement_type = "pose";        // no effect for stat.level
+  const double mahalanobis_distance = 0.1;            // no effect for stat.level
+  const double mahalanobis_distance_threshold = 1.0;  // no effect for stat.level
 
   bool is_passed_mahalanobis_gate = true;
   stat = check_measurement_mahalanobis_gate(
@@ -159,7 +159,7 @@ TEST(TestEkfDiagnostics, check_measurement_mahalanobis_gate)
   EXPECT_EQ(stat.level, diagnostic_msgs::msg::DiagnosticStatus::WARN);
 }
 
-TEST(TestLocalizationErrorMonitorDiagnostics, merge_diagnostic_status)
+TEST(TestEkfDiagnostics, merge_diagnostic_status)
 {
   diagnostic_msgs::msg::DiagnosticStatus merged_stat;
   std::vector<diagnostic_msgs::msg::DiagnosticStatus> stat_array(2);
@@ -221,30 +221,8 @@ TEST(TestLocalizationErrorMonitorDiagnostics, merge_diagnostic_status)
   EXPECT_EQ(merged_stat.message, "ERROR0; ERROR1");
 }
 
-class TestEkfDiagnosticsWithNode : public ::testing::Test
-{
-protected:
-  void SetUp() override
-  {
-    if (!rclcpp::ok()) {
-      rclcpp::init(0, nullptr);
-    }
-  }
-
-  void TearDown() override
-  {
-    // Don't shutdown here as other tests might need rclcpp context
-  }
-
-  static std::shared_ptr<rclcpp::Node> create_test_node(const std::string & node_name)
-  {
-    // Create a new node - parameters will be declared by HyperParameters constructor
-    return std::make_shared<rclcpp::Node>(node_name);
-  }
-};
-
 // Friend class to access private members of EKFLocalizer for testing
-class EKFLocalizerTestSuite : public ::testing::Test
+class EKFLocalizerDiagnosticsTest : public ::testing::Test
 {
 protected:
   void SetUp() override
@@ -308,7 +286,7 @@ protected:
   }
 
   static std::shared_ptr<autoware::ekf_localizer::EKFLocalizer> create_ekf_localizer(
-    const std::string & /* node_name */, double diagnostics_publish_period, double ekf_rate)
+    double diagnostics_publish_period, double ekf_rate)
   {
     return std::make_shared<autoware::ekf_localizer::EKFLocalizer>(
       make_ekf_localizer_options(1.0 / diagnostics_publish_period, ekf_rate));
@@ -388,8 +366,8 @@ protected:
     ekf_localizer->update_diagnostics(diag_status_array, current_time);
   }
 
-  /** Merge is OK (only activation / initialpose checks) — for testing latch follow-OK behavior */
-  static void update_diagnostics_merge_ok_minimal(
+  /** Only activation and initial-pose checks (merged OK) — for tests that need merged status OK. */
+  static void update_diagnostics_activation_and_initialpose_only(
     autoware::ekf_localizer::EKFLocalizer * ekf_localizer, const rclcpp::Time & current_time)
   {
     std::vector<diagnostic_msgs::msg::DiagnosticStatus> diag_status_array;
@@ -461,14 +439,14 @@ protected:
 // The period is set via setPeriod() and the updater automatically calls
 // diagnose() at the configured interval.
 
-TEST_F(EKFLocalizerTestSuite, update_diagnostics_latches_higher_level_error)
+TEST_F(EKFLocalizerDiagnosticsTest, merged_diagnostic_reflects_pose_no_update_warn_then_error)
 {
-  // Test that update_diagnostics latches higher level errors
+  // Merged diagnostic reflects pose no-update WARN then ERROR as stale count crosses thresholds.
   const double ekf_rate = 100.0;
   const double diagnostics_publish_period = 0.1;
 
   auto ekf_localizer =
-    create_ekf_localizer("test_update_diagnostics_latch", diagnostics_publish_period, ekf_rate);
+    create_ekf_localizer(diagnostics_publish_period, ekf_rate);
 
   rclcpp::Time current_time = ekf_localizer->now();
   geometry_msgs::msg::PoseStamped current_ekf_pose;
@@ -494,36 +472,36 @@ TEST_F(EKFLocalizerTestSuite, update_diagnostics_latches_higher_level_error)
   set_is_activated(ekf_localizer.get(), true);
   set_is_set_initialpose(ekf_localizer.get(), true);
 
-  // Initially latched status should be OK
-  auto latched_status = get_merged_diagnostic_status(ekf_localizer.get());
-  EXPECT_EQ(latched_status.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
+  // Initially merged status should be OK
+  auto merged_status = get_merged_diagnostic_status(ekf_localizer.get());
+  EXPECT_EQ(merged_status.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
 
   // Simulate WARN condition: pose not updated for threshold_warn count
   set_pose_diag_info_no_update_count(ekf_localizer.get(), 50);  // threshold_warn = 50
   update_diagnostics(ekf_localizer.get(), current_ekf_pose, current_time);
 
-  // Latched status should be updated to WARN (or ERROR if covariance ellipse check fails)
-  latched_status = get_merged_diagnostic_status(ekf_localizer.get());
+  // Merged status should be WARN (or ERROR if covariance ellipse check fails)
+  merged_status = get_merged_diagnostic_status(ekf_localizer.get());
   // Note: If covariance ellipse check returns ERROR, merged status will be ERROR
   // So we check that the level is at least WARN
-  EXPECT_GE(latched_status.level, diagnostic_msgs::msg::DiagnosticStatus::WARN);
+  EXPECT_GE(merged_status.level, diagnostic_msgs::msg::DiagnosticStatus::WARN);
   // Verify that pose error message is included (may be merged with covariance error)
   EXPECT_TRUE(
-    latched_status.message.find("pose is not updated") != std::string::npos ||
-    latched_status.message.find("cov_ellipse") != std::string::npos);
+    merged_status.message.find("pose is not updated") != std::string::npos ||
+    merged_status.message.find("cov_ellipse") != std::string::npos);
 
   // Simulate ERROR condition: pose not updated for threshold_error count
   set_pose_diag_info_no_update_count(ekf_localizer.get(), 100);  // threshold_error = 100
   update_diagnostics(ekf_localizer.get(), current_ekf_pose, current_time);
 
-  // Latched status should be updated to ERROR (higher level)
-  latched_status = get_merged_diagnostic_status(ekf_localizer.get());
-  EXPECT_EQ(latched_status.level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
-  EXPECT_TRUE(latched_status.message.find("pose is not updated") != std::string::npos);
+  // Merged status should be ERROR
+  merged_status = get_merged_diagnostic_status(ekf_localizer.get());
+  EXPECT_EQ(merged_status.level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
+  EXPECT_TRUE(merged_status.message.find("pose is not updated") != std::string::npos);
 
   // Verify last_level_transition_timestamp is added
   bool has_timestamp = false;
-  for (const auto & value : latched_status.values) {
+  for (const auto & value : merged_status.values) {
     if (value.key == "last_level_transition_timestamp") {
       has_timestamp = true;
       EXPECT_EQ(
@@ -536,14 +514,14 @@ TEST_F(EKFLocalizerTestSuite, update_diagnostics_latches_higher_level_error)
   EXPECT_TRUE(has_timestamp);
 }
 
-TEST_F(EKFLocalizerTestSuite, update_diagnostics_deescalates_error_to_warn_when_merge_warn)
+TEST_F(EKFLocalizerDiagnosticsTest, update_diagnostics_deescalates_error_to_warn_when_merge_warn)
 {
   // ERROR→WARN when merge worst is WARN (covariance ellipse etc. omitted — controlled merge).
   const double ekf_rate = 100.0;
   const double diagnostics_publish_period = 0.1;
 
-  auto ekf_localizer = create_ekf_localizer(
-    "test_update_diagnostics_err_to_warn", diagnostics_publish_period, ekf_rate);
+  auto ekf_localizer =
+    create_ekf_localizer(diagnostics_publish_period, ekf_rate);
 
   rclcpp::Time current_time = ekf_localizer->now();
   const size_t thr_w = 50;
@@ -555,8 +533,8 @@ TEST_F(EKFLocalizerTestSuite, update_diagnostics_deescalates_error_to_warn_when_
   diag.push_back(check_measurement_updated("pose", thr_e, thr_w, thr_e));  // ERROR
   diag.push_back(check_measurement_updated("twist", 0, thr_w, thr_e));
   update_diagnostics_raw(ekf_localizer.get(), diag, current_time);
-  auto latched_status_before = get_merged_diagnostic_status(ekf_localizer.get());
-  EXPECT_EQ(latched_status_before.level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
+  auto merged_status_before = get_merged_diagnostic_status(ekf_localizer.get());
+  EXPECT_EQ(merged_status_before.level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
 
   diag.clear();
   diag.push_back(check_process_activated(true));
@@ -565,19 +543,19 @@ TEST_F(EKFLocalizerTestSuite, update_diagnostics_deescalates_error_to_warn_when_
   diag.push_back(check_measurement_updated("twist", 0, thr_w, thr_e));
   update_diagnostics_raw(ekf_localizer.get(), diag, current_time);
 
-  auto latched_status_after = get_merged_diagnostic_status(ekf_localizer.get());
-  EXPECT_EQ(latched_status_after.level, diagnostic_msgs::msg::DiagnosticStatus::WARN);
-  EXPECT_TRUE(latched_status_after.message.find("pose is not updated") != std::string::npos);
+  auto merged_status_after = get_merged_diagnostic_status(ekf_localizer.get());
+  EXPECT_EQ(merged_status_after.level, diagnostic_msgs::msg::DiagnosticStatus::WARN);
+  EXPECT_TRUE(merged_status_after.message.find("pose is not updated") != std::string::npos);
 }
 
-TEST_F(EKFLocalizerTestSuite, update_diagnostics_updates_when_latched_is_ok)
+TEST_F(EKFLocalizerDiagnosticsTest, merged_diagnostic_updates_when_previous_merge_was_ok)
 {
-  // Test that update_diagnostics updates latch when latched status is OK (continuous updates)
+  // When previous merged status was OK, the next update_diagnostics reflects new severity (OK→WARN).
   const double ekf_rate = 100.0;
   const double diagnostics_publish_period = 0.1;
 
   auto ekf_localizer =
-    create_ekf_localizer("test_update_diagnostics_ok_update", diagnostics_publish_period, ekf_rate);
+    create_ekf_localizer(diagnostics_publish_period, ekf_rate);
 
   rclcpp::Time current_time = ekf_localizer->now();
   geometry_msgs::msg::PoseStamped current_ekf_pose;
@@ -603,44 +581,43 @@ TEST_F(EKFLocalizerTestSuite, update_diagnostics_updates_when_latched_is_ok)
   set_is_activated(ekf_localizer.get(), true);
   set_is_set_initialpose(ekf_localizer.get(), true);
 
-  // Initially latched status should be OK
-  auto latched_status = get_merged_diagnostic_status(ekf_localizer.get());
-  EXPECT_EQ(latched_status.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
+  // Initially merged status should be OK
+  auto merged_status = get_merged_diagnostic_status(ekf_localizer.get());
+  EXPECT_EQ(merged_status.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
 
   // Update with OK status
   set_pose_diag_info_no_update_count(ekf_localizer.get(), 0);
   update_diagnostics(ekf_localizer.get(), current_ekf_pose, current_time);
 
-  // Latched status should remain OK (but updated)
+  // Merged status should remain OK (or ERROR if covariance ellipse check fails)
   // Note: If covariance ellipse check returns ERROR, merged status will be ERROR
-  latched_status = get_merged_diagnostic_status(ekf_localizer.get());
+  merged_status = get_merged_diagnostic_status(ekf_localizer.get());
   // If covariance ellipse check fails, level might be ERROR, but we check that it's at least OK
-  EXPECT_GE(latched_status.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
+  EXPECT_GE(merged_status.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
 
-  // Update with WARN status (when latched is OK, it should update)
+  // Update with WARN status (when previous merge was OK, merged status should update)
   set_pose_diag_info_no_update_count(ekf_localizer.get(), 50);  // threshold_warn = 50
   update_diagnostics(ekf_localizer.get(), current_ekf_pose, current_time);
 
-  // Latched status should be updated to WARN (or ERROR if covariance ellipse check fails)
-  latched_status = get_merged_diagnostic_status(ekf_localizer.get());
+  // Merged status should be WARN (or ERROR if covariance ellipse check fails)
+  merged_status = get_merged_diagnostic_status(ekf_localizer.get());
   // Note: If covariance ellipse check returns ERROR, merged status will be ERROR
   // So we check that the level is at least WARN
-  EXPECT_GE(latched_status.level, diagnostic_msgs::msg::DiagnosticStatus::WARN);
+  EXPECT_GE(merged_status.level, diagnostic_msgs::msg::DiagnosticStatus::WARN);
   // Verify that pose error message is included (may be merged with covariance error)
   EXPECT_TRUE(
-    latched_status.message.find("pose is not updated") != std::string::npos ||
-    latched_status.message.find("cov_ellipse") != std::string::npos);
+    merged_status.message.find("pose is not updated") != std::string::npos ||
+    merged_status.message.find("cov_ellipse") != std::string::npos);
 }
 
-TEST_F(EKFLocalizerTestSuite, latch_follows_ok_when_merge_ok)
+TEST_F(EKFLocalizerDiagnosticsTest, merged_diagnostic_ok_when_only_activation_and_initialpose_ok)
 {
-  // When merged diagnostics return OK, latch updates to OK (no need to reset latch to OK after
-  // publish)
+  // Minimal OK merge (activation + initial pose only) sets merged diagnostic to OK even after ERROR
   const double ekf_rate = 100.0;
   const double diagnostics_publish_period = 0.1;
 
   auto ekf_localizer =
-    create_ekf_localizer("test_latch_follows_ok", diagnostics_publish_period, ekf_rate);
+    create_ekf_localizer(diagnostics_publish_period, ekf_rate);
 
   rclcpp::Time current_time = ekf_localizer->now();
   geometry_msgs::msg::PoseStamped current_ekf_pose;
@@ -665,26 +642,26 @@ TEST_F(EKFLocalizerTestSuite, latch_follows_ok_when_merge_ok)
 
   set_pose_diag_info_no_update_count(ekf_localizer.get(), 100);  // threshold_error = 100
   update_diagnostics(ekf_localizer.get(), current_ekf_pose, current_time);
-  auto latched_status_before = get_merged_diagnostic_status(ekf_localizer.get());
-  EXPECT_GE(latched_status_before.level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
+  auto merged_status_before = get_merged_diagnostic_status(ekf_localizer.get());
+  EXPECT_GE(merged_status_before.level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
 
-  // Full pose/ellipse merge may stay non-OK; explicit OK merge must clear the latch
-  update_diagnostics_merge_ok_minimal(ekf_localizer.get(), current_time);
+  // Full pose/ellipse merge may stay non-OK; activation-only merge must yield OK merged status
+  update_diagnostics_activation_and_initialpose_only(ekf_localizer.get(), current_time);
 
-  auto latched_status_after = get_merged_diagnostic_status(ekf_localizer.get());
-  EXPECT_EQ(latched_status_after.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
-  EXPECT_EQ(latched_status_after.message, "OK");
+  auto merged_status_after = get_merged_diagnostic_status(ekf_localizer.get());
+  EXPECT_EQ(merged_status_after.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
+  EXPECT_EQ(merged_status_after.message, "OK");
 }
 
-TEST_F(EKFLocalizerTestSuite, latch_resets_after_publish)
+TEST_F(EKFLocalizerDiagnosticsTest, merged_diagnostic_ok_after_force_update_and_minimal_merge)
 {
-  // After publish, next timer with healthy merge sets latch to OK via update_diagnostics (not via
-  // forced OK reset)
+  // After force_update(), activation-only update_diagnostics sets merged status to OK (no special
+  // reset path)
   const double ekf_rate = 100.0;
   const double diagnostics_publish_period = 0.1;
 
   auto ekf_localizer =
-    create_ekf_localizer("test_latch_reset", diagnostics_publish_period, ekf_rate);
+    create_ekf_localizer(diagnostics_publish_period, ekf_rate);
 
   rclcpp::Time current_time = ekf_localizer->now();
   geometry_msgs::msg::PoseStamped current_ekf_pose;
@@ -708,23 +685,23 @@ TEST_F(EKFLocalizerTestSuite, latch_resets_after_publish)
   set_is_activated(ekf_localizer.get(), true);
   set_is_set_initialpose(ekf_localizer.get(), true);
 
-  // Latch an ERROR
+  // Merged ERROR from pose no-update
   set_pose_diag_info_no_update_count(ekf_localizer.get(), 100);  // threshold_error = 100
   update_diagnostics(ekf_localizer.get(), current_ekf_pose, current_time);
-  auto latched_status_before = get_merged_diagnostic_status(ekf_localizer.get());
-  EXPECT_GE(latched_status_before.level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
+  auto merged_status_before = get_merged_diagnostic_status(ekf_localizer.get());
+  EXPECT_GE(merged_status_before.level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
 
   force_diagnostics_update(ekf_localizer.get());
 
   set_pose_diag_info_no_update_count(ekf_localizer.get(), 0);
-  // Same as timer_callback after force_diagnostics_update: merge on next tick (no forced OK reset)
-  update_diagnostics_merge_ok_minimal(ekf_localizer.get(), current_time);
+  // Next update_diagnostics with minimal OK merge (as after a publish tick)
+  update_diagnostics_activation_and_initialpose_only(ekf_localizer.get(), current_time);
 
-  auto latched_status_after = get_merged_diagnostic_status(ekf_localizer.get());
-  EXPECT_EQ(latched_status_after.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
-  EXPECT_EQ(latched_status_after.message, "OK");
+  auto merged_status_after = get_merged_diagnostic_status(ekf_localizer.get());
+  EXPECT_EQ(merged_status_after.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
+  EXPECT_EQ(merged_status_after.message, "OK");
   bool found_transition_ts = false;
-  for (const auto & kv : latched_status_after.values) {
+  for (const auto & kv : merged_status_after.values) {
     EXPECT_NE(kv.key, "error_occurrence_timestamp");
     if (kv.key == "last_level_transition_timestamp") {
       EXPECT_FALSE(found_transition_ts);
@@ -740,14 +717,14 @@ TEST_F(EKFLocalizerTestSuite, latch_resets_after_publish)
   EXPECT_TRUE(found_transition_ts);
 }
 
-TEST_F(EKFLocalizerTestSuite, last_level_transition_timestamp_when_non_ok)
+TEST_F(EKFLocalizerDiagnosticsTest, last_level_transition_timestamp_when_non_ok)
 {
   // last_level_transition_timestamp KeyValue matches merged_diagnostic_last_transition_time_
   const double ekf_rate = 100.0;
   const double diagnostics_publish_period = 0.1;
 
   auto ekf_localizer =
-    create_ekf_localizer("test_error_timestamp", diagnostics_publish_period, ekf_rate);
+    create_ekf_localizer(diagnostics_publish_period, ekf_rate);
 
   rclcpp::Time error_time = ekf_localizer->now();
   geometry_msgs::msg::PoseStamped current_ekf_pose;
@@ -771,16 +748,16 @@ TEST_F(EKFLocalizerTestSuite, last_level_transition_timestamp_when_non_ok)
   set_is_activated(ekf_localizer.get(), true);
   set_is_set_initialpose(ekf_localizer.get(), true);
 
-  // Latch an ERROR
+  // Merged ERROR from pose no-update
   set_pose_diag_info_no_update_count(ekf_localizer.get(), 100);  // threshold_error = 100
   update_diagnostics(ekf_localizer.get(), current_ekf_pose, error_time);
 
-  auto latched_status = get_merged_diagnostic_status(ekf_localizer.get());
-  EXPECT_GE(latched_status.level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
+  auto merged_status = get_merged_diagnostic_status(ekf_localizer.get());
+  EXPECT_GE(merged_status.level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
 
   bool has_timestamp = false;
   std::string timestamp_value;
-  for (const auto & value : latched_status.values) {
+  for (const auto & value : merged_status.values) {
     if (value.key == "last_level_transition_timestamp") {
       has_timestamp = true;
       timestamp_value = value.value;
@@ -798,14 +775,14 @@ TEST_F(EKFLocalizerTestSuite, last_level_transition_timestamp_when_non_ok)
     error_time.nanoseconds());
 }
 
-TEST_F(EKFLocalizerTestSuite, diagnostics_updated_when_not_activated)
+TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_updated_when_not_activated)
 {
   // Test that diagnostics are updated even when is_activated_ is false (early return case)
   const double ekf_rate = 100.0;
   const double diagnostics_publish_period = 0.1;
 
   auto ekf_localizer =
-    create_ekf_localizer("test_not_activated", diagnostics_publish_period, ekf_rate);
+    create_ekf_localizer(diagnostics_publish_period, ekf_rate);
 
   rclcpp::Time current_time = ekf_localizer->now();
   geometry_msgs::msg::PoseStamped current_ekf_pose;
@@ -819,29 +796,29 @@ TEST_F(EKFLocalizerTestSuite, diagnostics_updated_when_not_activated)
   // Update diagnostics (simulating early return in timer_callback)
   update_diagnostics(ekf_localizer.get(), current_ekf_pose, current_time);
 
-  // Latched status should reflect that process is not activated (WARN)
-  auto latched_status = get_merged_diagnostic_status(ekf_localizer.get());
-  EXPECT_EQ(latched_status.level, diagnostic_msgs::msg::DiagnosticStatus::WARN);
-  EXPECT_TRUE(latched_status.message.find("process is not activated") != std::string::npos);
+  // Merged status should reflect that process is not activated (WARN)
+  auto merged_status = get_merged_diagnostic_status(ekf_localizer.get());
+  EXPECT_EQ(merged_status.level, diagnostic_msgs::msg::DiagnosticStatus::WARN);
+  EXPECT_TRUE(merged_status.message.find("process is not activated") != std::string::npos);
 
   force_diagnostics_update(ekf_localizer.get());
 
   set_is_activated(ekf_localizer.get(), true);
   set_is_set_initialpose(ekf_localizer.get(), true);
-  update_diagnostics_merge_ok_minimal(ekf_localizer.get(), current_time);
+  update_diagnostics_activation_and_initialpose_only(ekf_localizer.get(), current_time);
 
-  latched_status = get_merged_diagnostic_status(ekf_localizer.get());
-  EXPECT_EQ(latched_status.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
+  merged_status = get_merged_diagnostic_status(ekf_localizer.get());
+  EXPECT_EQ(merged_status.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
 }
 
-TEST_F(EKFLocalizerTestSuite, diagnostics_updated_when_initialpose_not_set)
+TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_updated_when_initialpose_not_set)
 {
   // Test that diagnostics are updated even when is_set_initialpose_ is false (early return case)
   const double ekf_rate = 100.0;
   const double diagnostics_publish_period = 0.1;
 
   auto ekf_localizer =
-    create_ekf_localizer("test_no_initialpose", diagnostics_publish_period, ekf_rate);
+    create_ekf_localizer(diagnostics_publish_period, ekf_rate);
 
   rclcpp::Time current_time = ekf_localizer->now();
   geometry_msgs::msg::PoseStamped current_ekf_pose;
@@ -855,21 +832,21 @@ TEST_F(EKFLocalizerTestSuite, diagnostics_updated_when_initialpose_not_set)
   // Update diagnostics (simulating early return in timer_callback)
   update_diagnostics(ekf_localizer.get(), current_ekf_pose, current_time);
 
-  // Latched status should reflect that initial pose is not set (WARN)
-  auto latched_status = get_merged_diagnostic_status(ekf_localizer.get());
-  EXPECT_EQ(latched_status.level, diagnostic_msgs::msg::DiagnosticStatus::WARN);
-  EXPECT_TRUE(latched_status.message.find("initial pose is not set") != std::string::npos);
+  // Merged status should reflect that initial pose is not set (WARN)
+  auto merged_status = get_merged_diagnostic_status(ekf_localizer.get());
+  EXPECT_EQ(merged_status.level, diagnostic_msgs::msg::DiagnosticStatus::WARN);
+  EXPECT_TRUE(merged_status.message.find("initial pose is not set") != std::string::npos);
 
   force_diagnostics_update(ekf_localizer.get());
 
   set_is_set_initialpose(ekf_localizer.get(), true);
-  update_diagnostics_merge_ok_minimal(ekf_localizer.get(), current_time);
+  update_diagnostics_activation_and_initialpose_only(ekf_localizer.get(), current_time);
 
-  latched_status = get_merged_diagnostic_status(ekf_localizer.get());
-  EXPECT_EQ(latched_status.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
+  merged_status = get_merged_diagnostic_status(ekf_localizer.get());
+  EXPECT_EQ(merged_status.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
 }
 
-TEST_F(EKFLocalizerTestSuite, diagnostics_published_at_specified_period)
+TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_at_specified_period)
 {
   // When diagnostics_publish_period > 0, diagnostic_updater's internal timer publishes at that
   // period
@@ -877,7 +854,7 @@ TEST_F(EKFLocalizerTestSuite, diagnostics_published_at_specified_period)
   const double diagnostics_publish_period = 0.1;  // 10 Hz
 
   auto ekf_localizer =
-    create_ekf_localizer("test_period_specified", diagnostics_publish_period, ekf_rate);
+    create_ekf_localizer(diagnostics_publish_period, ekf_rate);
 
   rclcpp::Time current_time = ekf_localizer->now();
   geometry_msgs::msg::PoseStamped current_ekf_pose;
@@ -920,7 +897,7 @@ TEST_F(EKFLocalizerTestSuite, diagnostics_published_at_specified_period)
   EXPECT_GE(diag_count, 1) << "Expected at least one /diagnostics message within 250 ms at 10 Hz";
 }
 
-TEST_F(EKFLocalizerTestSuite, callback_pose_and_twist_published_at_period_when_period_positive)
+TEST_F(EKFLocalizerDiagnosticsTest, callback_pose_and_twist_published_at_period_when_period_positive)
 {
   // When diagnostics_publish_period > 0, callback_pose and callback_twist are published at the
   // updater period via diagnose_callback_pose and diagnose_callback_twist. This test verifies that
@@ -930,7 +907,7 @@ TEST_F(EKFLocalizerTestSuite, callback_pose_and_twist_published_at_period_when_p
   const double diagnostics_publish_period = 0.1;  // 10 Hz
 
   auto ekf_localizer =
-    create_ekf_localizer("test_callback_at_period", diagnostics_publish_period, ekf_rate);
+    create_ekf_localizer(diagnostics_publish_period, ekf_rate);
 
   rclcpp::Time current_time = ekf_localizer->now();
   geometry_msgs::msg::PoseStamped current_ekf_pose;
@@ -1003,16 +980,16 @@ TEST_F(EKFLocalizerTestSuite, callback_pose_and_twist_published_at_period_when_p
     << "Expected at least one callback_twist diagnostic at updater period when period > 0";
 }
 
-TEST_F(EKFLocalizerTestSuite, diagnostics_published_at_parameter_period)
+TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_at_parameter_period)
 {
   // Verify diagnostic_updater emits /diagnostics at roughly diagnostics_publish_period.
   // Feed pose/twist occasionally so merged diagnostics stay OK: otherwise no_update_count rises,
-  // latch resets after each publish, and OK->ERROR repeats every EKF tick (force_update storm).
+  // merged status returns OK after each publish, and OK->ERROR repeats every EKF tick (force_update storm).
   const double ekf_rate = 50.0;
   const double diagnostics_publish_period = 0.2;  // 5 Hz
 
   auto ekf_localizer =
-    create_ekf_localizer("test_diag_parameter_period", diagnostics_publish_period, ekf_rate);
+    create_ekf_localizer(diagnostics_publish_period, ekf_rate);
 
   rclcpp::Time current_time = ekf_localizer->now();
   geometry_msgs::msg::PoseStamped current_ekf_pose;
@@ -1105,10 +1082,10 @@ TEST_F(EKFLocalizerTestSuite, diagnostics_published_at_parameter_period)
   }
 }
 
-TEST_F(EKFLocalizerTestSuite, diagnostics_published_immediately_on_severity_increase)
+TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_immediately_on_severity_increase)
 {
   // With a very long updater period, only force_update() on severity increase should publish.
-  // Slow EKF timer so executor-driven ticks do not pre-latch ERROR before we inject it.
+  // Slow EKF timer so executor-driven ticks do not merge to ERROR before we inject it.
   const double ekf_rate = 0.01;
   const double slow_diagnostics_frequency = 0.01;  // 100 s period
 

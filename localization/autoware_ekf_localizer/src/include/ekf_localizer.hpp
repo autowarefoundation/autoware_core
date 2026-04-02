@@ -211,7 +211,7 @@ private:
   autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_;
   autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_timer_cb_;
 
-  friend class EKFLocalizerTestSuite;  // for test code
+  friend class EKFLocalizerDiagnosticsTest;  // for test code
 };
 
 }  // namespace autoware::ekf_localizer
