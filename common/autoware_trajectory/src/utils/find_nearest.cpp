@@ -14,12 +14,6 @@
 
 #include "autoware/trajectory/utils/find_nearest.hpp"
 
-#include "autoware/trajectory/detail/types.hpp"
-#include "autoware/trajectory/forward.hpp"
-#include "autoware/trajectory/threshold.hpp"
-#include "autoware_utils_geometry/geometry.hpp"
-#include "autoware_utils_geometry/pose_deviation.hpp"
-
 namespace autoware::experimental::trajectory
 {
 

@@ -15,7 +15,6 @@
 #ifndef AUTOWARE__TRAJECTORY__UTILS__FIND_INTERVALS_HPP_
 #define AUTOWARE__TRAJECTORY__UTILS__FIND_INTERVALS_HPP_
 
-#include "autoware/trajectory/detail/types.hpp"
 #include "autoware/trajectory/forward.hpp"
 
 #include <functional>
@@ -65,8 +64,6 @@ template <class TrajectoryPointType, class Constraint>
 std::vector<Interval> find_intervals(
   const Trajectory<TrajectoryPointType> & trajectory, Constraint && constraint, int max_iter = 0)
 {
-  using autoware::experimental::trajectory::detail::to_point;
-
   return detail::impl::find_intervals_impl(
     trajectory.get_underlying_bases(),
     [constraint = std::forward<Constraint>(constraint), &trajectory](const double & s) {

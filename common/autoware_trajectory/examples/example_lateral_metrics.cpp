@@ -12,10 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/motion_utils/trajectory/trajectory.hpp"
-#include "autoware/trajectory/detail/types.hpp"
 #include "autoware/trajectory/pose.hpp"
-#include "autoware/trajectory/threshold.hpp"
 #include "autoware/trajectory/utils/find_nearest.hpp"
 #include "autoware/trajectory/utils/lateral_metrics.hpp"
 
@@ -27,7 +24,6 @@
 #include <pybind11/stl.h>
 
 #include <algorithm>
-#include <fstream>
 #include <limits>
 #include <string>
 #include <vector>

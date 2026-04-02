@@ -15,7 +15,6 @@
 #include "autoware/trajectory/utils/find_intervals.hpp"
 
 #include <cstddef>
-#include <optional>
 #include <vector>
 
 namespace autoware::experimental::trajectory::detail::impl
