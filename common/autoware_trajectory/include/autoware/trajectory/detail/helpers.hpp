@@ -135,7 +135,7 @@ inline double lower_bound_by_predicate(
   double tolerance = std::numeric_limits<double>::epsilon())
 {
   for (size_t i = 0; i < max_iter; ++i) {
-    if (high - low <= tolerance || i == max_iter - 1) {
+    if (high - low <= tolerance) {
       break;
     }
 
@@ -172,7 +172,7 @@ inline double upper_bound_by_predicate(
   double tolerance = std::numeric_limits<double>::epsilon())
 {
   for (size_t i = 0; i < max_iter; ++i) {
-    if (high - low <= tolerance || i == max_iter - 1) {
+    if (high - low <= tolerance) {
       break;
     }
 
