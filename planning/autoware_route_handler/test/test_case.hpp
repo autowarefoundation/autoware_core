@@ -35,12 +35,16 @@ namespace autoware::test_utils
 struct TestCaseFormat1
 {
   std::string map_rel_path;
+  std::string map_abs_path;
   std::unordered_map<std::string, geometry_msgs::msg::Pose> manual_poses;
 };
 
 inline TestCaseFormat1 load_test_case_format1(const YAML::Node & node)
 {
   const auto map_rel_path = node["map_rel_path"].as<std::string>();
+  const auto map_abs_path =
+    std::filesystem::path(ament_index_cpp::get_package_share_directory("autoware_lanelet2_utils")) /
+    "sample_map" / map_rel_path;
   int cnt = 0;
   std::unordered_map<std::string, geometry_msgs::msg::Pose> manual_poses;
   for (const auto & pose : node["manual_poses"]) {
@@ -48,7 +52,7 @@ inline TestCaseFormat1 load_test_case_format1(const YAML::Node & node)
     manual_poses[name] = autoware::test_utils::parse<geometry_msgs::msg::Pose>(pose);
     cnt++;
   }
-  return {map_rel_path, manual_poses};
+  return {map_rel_path, map_abs_path.string(), manual_poses};
 }
 
 inline TestCaseFormat1 load_test_case(const std::string & test_case_file_path)
