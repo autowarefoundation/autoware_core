@@ -340,7 +340,6 @@ protected:
   bool request_load_plugin()
   {
     auto request = std::make_shared<autoware_internal_planning_msgs::srv::LoadPlugin::Request>();
-    auto response = std::make_shared<autoware_internal_planning_msgs::srv::LoadPlugin::Response>();
 
     request->plugin_name = "test_plugin";
 
@@ -370,7 +369,7 @@ protected:
     EXPECT_EQ(status, std::future_status::ready);
 
     if (status != std::future_status::ready) {
-      ADD_FAILURE() << "Service response not timeout";
+      ADD_FAILURE() << "Service response timeout";
       return false;
     }
 
@@ -380,8 +379,6 @@ protected:
   bool request_unload_plugin()
   {
     auto request = std::make_shared<autoware_internal_planning_msgs::srv::UnloadPlugin::Request>();
-    auto response =
-      std::make_shared<autoware_internal_planning_msgs::srv::UnloadPlugin::Response>();
 
     request->plugin_name = "test_plugin";
 
@@ -410,7 +407,7 @@ protected:
     EXPECT_EQ(status, std::future_status::ready);
 
     if (status != std::future_status::ready) {
-      ADD_FAILURE() << "Service response not timeout";
+      ADD_FAILURE() << "Service response timeout";
       return false;
     }
 
@@ -493,7 +490,15 @@ TEST_F(TestMotionVelocityPlannerNode, trigger_main_logic)
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
   publisher_node_->publish_trajectory();
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(400));
+  auto start = std::chrono::steady_clock::now();
+  while (std::chrono::steady_clock::now() - start < std::chrono::seconds(5)) {
+    if (
+      listener_node_->received_trajectory_ || listener_node_->received_velocity_limit_ ||
+      listener_node_->received_clear_velocity_limit_)
+      break;
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  }
+
   EXPECT_TRUE(rclcpp::ok());
   EXPECT_TRUE(
     listener_node_->received_trajectory_ || listener_node_->received_velocity_limit_ ||
@@ -525,12 +530,21 @@ TEST_F(TestMotionVelocityPlannerNode, trigger_traffic_light_logic)
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
   publisher_node_->publish_trajectory();
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(400));
+  auto start = std::chrono::steady_clock::now();
+  while (std::chrono::steady_clock::now() - start < std::chrono::seconds(5)) {
+    if (
+      listener_node_->received_trajectory_ || listener_node_->received_velocity_limit_ ||
+      listener_node_->received_clear_velocity_limit_)
+      break;
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  }
+
   EXPECT_TRUE(rclcpp::ok());
   EXPECT_TRUE(
     listener_node_->received_trajectory_ || listener_node_->received_velocity_limit_ ||
     listener_node_->received_clear_velocity_limit_);
 }
+
 int main(int argc, char ** argv)
 {
   ::testing::InitGoogleTest(&argc, argv);
