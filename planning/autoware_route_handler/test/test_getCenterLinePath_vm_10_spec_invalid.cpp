@@ -27,6 +27,7 @@
 #include <filesystem>
 #include <iostream>
 #include <limits>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -82,8 +83,9 @@ static void savefig(
   autoware::test_utils::plot_autoware_object(path, ax, path_plot_config);
   ax.set_title(Args(
     fmt::format(
-      "start_s = {}, end_s = {}(actual length = {})", start_s, end_s,
-      calculate_path_with_lane_id_length(path))));
+      "GetCenterLinePath with load_mgrs_coordinates_map\nstart_s = {}, end_s = {}(actual length = "
+      "{})",
+      start_s, end_s, calculate_path_with_lane_id_length(path))));
   for (const auto & route_lanelet : lanelet_sequence) {
     autoware::test_utils::plot_lanelet2_object(route_lanelet, ax, lane_plot_config);
   }
@@ -102,30 +104,23 @@ static void savefig(
 }
 #endif
 
-class TestWithVM_01_10_12_Map_Invalid : public TestRouteHandler
+class TestWithVM_01_10_12_Map_Invalid : public ::testing::Test
 {
 protected:
   void SetUp() override
   {
     using autoware::experimental::lanelet2_utils::from_ros;
     using autoware::experimental::lanelet2_utils::get_arc_coordinates;
+    using autoware::experimental::lanelet2_utils::load_mgrs_coordinate_map;
     // Load test case
     const auto test_case_path =
       std::filesystem::path(
         ament_index_cpp::get_package_share_directory("autoware_route_handler")) /
       "test_data" / "test_route_handler_centerline_path_invalid_01.yaml";
     const auto test_case_data = autoware::test_utils::load_test_case(test_case_path.string());
-
-    // Load route_handler and set route
-    autoware_test_utils_dir = "autoware_route_handler";
-    lane_change_right_test_route_filename = "test_reference_path_01.yaml";
-
-    set_route_handler(test_case_data.map_rel_path);
-    try {
-      set_test_route(lane_change_right_test_route_filename);
-    } catch (const std::exception & e) {
-      std::cerr << e.what() << '\n';
-    }
+    std::cout << "Load map from " << test_case_data.map_abs_path << std::endl;
+    const auto lanelet_map_ = load_mgrs_coordinate_map(test_case_data.map_abs_path);
+    route_handler_ = std::make_shared<RouteHandler>(lanelet_map_);
 
     // Retrieve target arc-length to test
     std::vector<geometry_msgs::msg::Pose> manual_poses;
@@ -159,6 +154,8 @@ protected:
   double P2_s;
   double P3_s;
   double P4_s;
+
+  std::shared_ptr<RouteHandler> route_handler_;
 };
 
 TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P0_on_entire_lanes)  // NOLINT
@@ -204,7 +201,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P0_on_entire_lanes)  // NOLINT
   //
   {
     const auto & non_border_point = non_border_points.at(0);
-    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 10 / 3.6);
+    EXPECT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 10 / 3.6);
   }
 
 #ifdef PLOT
@@ -261,7 +258,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P1_on_entire_lanes)  // NOLINT
   //
   {
     const auto & non_border_point = non_border_points.at(0);
-    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 10 / 3.6);
+    EXPECT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 10 / 3.6);
   }
 
 #ifdef PLOT
@@ -318,7 +315,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P2_on_entire_lanes)  // NOLINT
   //
   {
     const auto & non_border_point = non_border_points.at(0);
-    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 10 / 3.6);
+    EXPECT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 10 / 3.6);
   }
 
 #ifdef PLOT
@@ -375,7 +372,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P3_on_entire_lanes)  // NOLINT
   //
   {
     const auto & non_border_point = non_border_points.at(0);
-    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 10 / 3.6);
+    EXPECT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 10 / 3.6);
   }
 
 #ifdef PLOT
@@ -432,7 +429,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P4_on_entire_lanes)  // NOLINT
   //
   {
     const auto & non_border_point = non_border_points.at(0);
-    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 10 / 3.6);
+    EXPECT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 10 / 3.6);
   }
 
 #ifdef PLOT
@@ -487,9 +484,10 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P1_forward_on_entire_lanes)  // NOL
   //  Velocity of path points is set the Lanelet speed limit, and increase at the border point in
   //  step-function manner
   //
+  // Since border part is not well consolidated, this point become on lanelet 56 not 57.
   {
     const auto & non_border_point = non_border_points.at(0);
-    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 15 / 3.6);
+    EXPECT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 20 / 3.6);
   }
 
 #ifdef PLOT
@@ -546,7 +544,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P2_forward_on_entire_lanes)  // NOL
   //
   {
     const auto & non_border_point = non_border_points.at(0);
-    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 25 / 3.6);
+    EXPECT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 25 / 3.6);
   }
 
 #ifdef PLOT
@@ -603,7 +601,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P3_forward_on_entire_lanes)  // NOL
   //
   {
     const auto & non_border_point = non_border_points.at(0);
-    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 25 / 3.6);
+    EXPECT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 25 / 3.6);
   }
 
 #ifdef PLOT
@@ -660,7 +658,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P4_forward_on_entire_lanes)  // NOL
   //
   {
     const auto & non_border_point = non_border_points.at(0);
-    ASSERT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 30 / 3.6);
+    EXPECT_FLOAT_EQ(non_border_point.point.longitudinal_velocity_mps, 30 / 3.6);
   }
 
 #ifdef PLOT
