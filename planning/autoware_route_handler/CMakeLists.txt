@@ -35,7 +35,6 @@ if(BUILD_TESTING)
 endif()
 
 autoware_ament_auto_package(INSTALL_TO_SHARE
-  test_map
   test_route
   test_data
 )

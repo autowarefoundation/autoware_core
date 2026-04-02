@@ -26,6 +26,7 @@
 #include <filesystem>
 #include <iostream>
 #include <limits>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -51,19 +52,20 @@ static double calculate_path_with_lane_id_length(
 template <typename Parameter>
 class TestCase : public TestRouteHandler, public ::testing::WithParamInterface<Parameter>
 {
+protected:
   void SetUp() override
   {
-    autoware_test_utils_dir = "autoware_route_handler";
-    lane_change_right_test_route_filename = "test_reference_path_01.yaml";
-
-    const auto map_path = static_cast<std::string>(Parameter::dir) + "/" + "lanelet2_map.osm";
-    set_route_handler(map_path);
-    try {
-      set_test_route(lane_change_right_test_route_filename);
-    } catch (const std::exception & e) {
-      std::cerr << e.what() << '\n';
-    }
+    using autoware::experimental::lanelet2_utils::load_mgrs_coordinate_map;
+    const auto map_rel_path = static_cast<std::string>(Parameter::dir) + "/" + "lanelet2_map.osm";
+    const auto map_abs_path =
+      fs::path(ament_index_cpp::get_package_share_directory("autoware_lanelet2_utils")) /
+      "sample_map" / map_rel_path;
+    std::cout << "Load map from " << map_abs_path << std::endl;
+    const auto lanelet_map_ = load_mgrs_coordinate_map(map_abs_path);
+    route_handler_ = std::make_shared<RouteHandler>(lanelet_map_);
   }
+
+  std::shared_ptr<RouteHandler> route_handler_;
 };
 
 struct Parameter_Map_Waypoint_Straight_00  // NOLINT
