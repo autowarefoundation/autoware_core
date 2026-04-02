@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "autoware/trajectory/temporal_trajectory.hpp"
 #include "autoware/trajectory/threshold.hpp"
 #include "autoware/trajectory/trajectory_point.hpp"
 #include "autoware/trajectory/utils/add_offset.hpp"
@@ -231,6 +232,91 @@ TEST(add_offset, zero_heading_rate_no_velocity_change)
     EXPECT_NEAR(orig.longitudinal_velocity_mps, offset.longitudinal_velocity_mps, 1e-6);
     EXPECT_NEAR(orig.lateral_velocity_mps, offset.lateral_velocity_mps, 1e-6);
   }
+}
+
+// TemporalTrajectory tests
+
+static TrajectoryPoint make_temporal_point(
+  double x, double y, double yaw, double vx, double time_from_start)
+{
+  TrajectoryPoint point;
+  point.pose = build<Pose>()
+                 .position(build<Point>().x(x).y(y).z(0.0))
+                 .orientation(create_quaternion_from_yaw(yaw));
+  point.longitudinal_velocity_mps = vx;
+  point.lateral_velocity_mps = 0.0;
+  point.heading_rate_rps = 0.0;
+  point.time_from_start = rclcpp::Duration::from_seconds(time_from_start);
+  return point;
+}
+
+TEST(add_offset, temporal_trajectory_forward_offset)
+{
+  std::vector<TrajectoryPoint> points;
+  points.push_back(make_temporal_point(0.0, 0.0, 0.0, 5.0, 0.0));
+  points.push_back(make_temporal_point(1.0, 0.0, 0.0, 5.0, 0.2));
+  points.push_back(make_temporal_point(2.0, 0.0, 0.0, 5.0, 0.4));
+
+  auto traj = TemporalTrajectory::Builder{}.build(points).value();
+  const double forward_offset = 2.0;
+
+  auto offset_traj = add_offset(traj, forward_offset, 0.0);
+
+  // Position should be shifted
+  EXPECT_NEAR(offset_traj.compute_from_time(0.0).pose.position.x, 2.0, 1e-6);
+  EXPECT_NEAR(offset_traj.compute_from_time(0.0).pose.position.y, 0.0, 1e-6);
+
+  // Duration should be preserved
+  EXPECT_NEAR(offset_traj.duration(), traj.duration(), 1e-6);
+}
+
+TEST(add_offset, temporal_trajectory_velocity_adjustment)
+{
+  std::vector<TrajectoryPoint> points;
+  const double heading_rate = 0.5;  // rad/s
+  const double vx = 5.0;
+
+  TrajectoryPoint p1;
+  p1.pose = build<Pose>()
+              .position(build<Point>().x(0.0).y(0.0).z(0.0))
+              .orientation(create_quaternion_from_yaw(0.0));
+  p1.longitudinal_velocity_mps = vx;
+  p1.lateral_velocity_mps = 0.0;
+  p1.heading_rate_rps = heading_rate;
+  p1.time_from_start = rclcpp::Duration::from_seconds(0.0);
+  points.push_back(p1);
+
+  TrajectoryPoint p2;
+  p2.pose = build<Pose>()
+              .position(build<Point>().x(1.0).y(0.0).z(0.0))
+              .orientation(create_quaternion_from_yaw(0.1));
+  p2.longitudinal_velocity_mps = vx;
+  p2.lateral_velocity_mps = 0.0;
+  p2.heading_rate_rps = heading_rate;
+  p2.time_from_start = rclcpp::Duration::from_seconds(0.2);
+  points.push_back(p2);
+
+  TrajectoryPoint p3;
+  p3.pose = build<Pose>()
+              .position(build<Point>().x(2.0).y(0.0).z(0.0))
+              .orientation(create_quaternion_from_yaw(0.2));
+  p3.longitudinal_velocity_mps = vx;
+  p3.lateral_velocity_mps = 0.0;
+  p3.heading_rate_rps = heading_rate;
+  p3.time_from_start = rclcpp::Duration::from_seconds(0.4);
+  points.push_back(p3);
+
+  auto traj = TemporalTrajectory::Builder{}.build(points).value();
+
+  // Lateral offset
+  auto offset_traj_left = add_offset(traj, 0.0, 1.0);
+  // v_lon_offset = 5.0 - 0.5 * 1.0 = 4.5
+  EXPECT_NEAR(offset_traj_left.compute_from_time(0.0).longitudinal_velocity_mps, 4.5, 1e-3);
+
+  // Forward offset
+  auto offset_traj_front = add_offset(traj, 2.0, 0.0);
+  // v_lat_offset = 0.0 + 0.5 * 2.0 = 1.0
+  EXPECT_NEAR(offset_traj_front.compute_from_time(0.0).lateral_velocity_mps, 1.0, 1e-3);
 }
 
 }  // namespace autoware::experimental::trajectory

@@ -17,6 +17,7 @@
 
 #include "autoware/trajectory/detail/types.hpp"
 #include "autoware/trajectory/forward.hpp"
+#include "autoware/trajectory/temporal_trajectory.hpp"
 
 #include <autoware_internal_planning_msgs/msg/path_point_with_lane_id.hpp>
 #include <autoware_planning_msgs/msg/path_point.hpp>
@@ -166,6 +167,63 @@ trajectory::Trajectory<PointType> add_offset(
   auto offset_trajectory = reference_trajectory;
   [[maybe_unused]] const auto result = offset_trajectory.build(offset_points);
   // build() should succeed because we preserved the same number and ordering of bases
+  return offset_trajectory;
+}
+
+/**
+ * @brief Compute a TemporalTrajectory offset from the base_link by a fixed vehicle-frame offset.
+ * @details
+ * Given a TemporalTrajectory whose points represent the base_link pose, this function computes a
+ * new TemporalTrajectory where each point is translated by `(offset_x, offset_y)` expressed in the
+ * **local vehicle frame** (i.e., forward is +x, left is +y). The orientation and time mapping of
+ * each pose is preserved.
+ *
+ * Velocity is adjusted using the rigid body kinematics:
+ * - longitudinal_velocity = v_lon - heading_rate * offset_y
+ * - lateral_velocity = v_lat + heading_rate * offset_x
+ *
+ * This is useful for obtaining the time-parameterized path of the vehicle front, rear, or side
+ * edges from a base_link-centered trajectory.
+ *
+ * @param reference_trajectory The input TemporalTrajectory (base_link centered).
+ * @param offset_x Forward offset in the vehicle frame [m].
+ * @param offset_y Lateral offset in the vehicle frame [m].
+ * @return A new TemporalTrajectory with the offset applied.
+ */
+inline TemporalTrajectory add_offset(
+  const TemporalTrajectory & reference_trajectory, const double offset_x, const double offset_y)
+{
+  const auto & spatial_traj = reference_trajectory.spatial_trajectory();
+  const auto underlying_bases = spatial_traj.get_underlying_bases();
+
+  std::vector<TemporalTrajectory::PointType> offset_points;
+  offset_points.reserve(underlying_bases.size());
+
+  for (const auto s : underlying_bases) {
+    auto point = spatial_traj.compute(s);
+
+    // Use pose orientation from the trajectory point
+    const double yaw = detail::get_yaw_from_point_type(point);
+
+    // Rotate the vehicle-frame offset into the global frame
+    const double global_offset_x = std::cos(yaw) * offset_x - std::sin(yaw) * offset_y;
+    const double global_offset_y = std::sin(yaw) * offset_x + std::cos(yaw) * offset_y;
+
+    detail::to_point(point).x += global_offset_x;
+    detail::to_point(point).y += global_offset_y;
+
+    // Adjust velocity for rotational motion
+    detail::adjust_velocity_for_offset(point, offset_x, offset_y);
+
+    offset_points.emplace_back(std::move(point));
+  }
+
+  auto offset_trajectory =
+    TemporalTrajectory::Builder{}.build(offset_points).value_or(TemporalTrajectory{});  // NOLINT
+
+  // Copy time offset from original
+  offset_trajectory.set_time_offset(reference_trajectory.time_offset());
+
   return offset_trajectory;
 }
 
