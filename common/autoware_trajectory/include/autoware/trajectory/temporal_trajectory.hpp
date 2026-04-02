@@ -41,11 +41,37 @@ public:
   using SpatialTrajectory = Trajectory<PointType>;
   using InterpolatorInterface = interpolator::InterpolatorInterface<double>;
 
+private:
+  class TimeDistanceMapping
+  {
+  public:
+    TimeDistanceMapping() = default;
+    TimeDistanceMapping(const TimeDistanceMapping & rhs);
+    TimeDistanceMapping(TimeDistanceMapping && rhs) noexcept = default;
+    TimeDistanceMapping & operator=(const TimeDistanceMapping & rhs);
+    TimeDistanceMapping & operator=(TimeDistanceMapping && rhs) noexcept = default;
+
+    void set_interpolator(std::shared_ptr<InterpolatorInterface> interpolator);
+    [[nodiscard]] bool has_interpolator() const;
+    [[nodiscard]] interpolator::InterpolationResult build(
+      const std::vector<double> & time_bases, const std::vector<double> & distance_bases);
+    [[nodiscard]] double compute_distance(const double time) const;
+    [[nodiscard]] bool empty() const;
+    [[nodiscard]] const std::vector<double> & time_bases() const;
+    [[nodiscard]] const std::vector<double> & distance_bases() const;
+
+  private:
+    std::shared_ptr<InterpolatorInterface> interpolator_{nullptr};
+    std::vector<double> time_bases_;
+    std::vector<double> distance_bases_;
+  };
+
+public:
   TemporalTrajectory();
   ~TemporalTrajectory() = default;
-  TemporalTrajectory(const TemporalTrajectory & rhs);
+  TemporalTrajectory(const TemporalTrajectory & rhs) = default;
   TemporalTrajectory(TemporalTrajectory && rhs) noexcept = default;
-  TemporalTrajectory & operator=(const TemporalTrajectory & rhs);
+  TemporalTrajectory & operator=(const TemporalTrajectory & rhs) = default;
   TemporalTrajectory & operator=(TemporalTrajectory && rhs) noexcept = default;
 
   /**
@@ -173,8 +199,8 @@ public:
     template <class InterpolatorType, class... Args>
     Builder & set_time_to_distance_interpolator(Args &&... args)
     {
-      trajectory_->time_to_distance_ =
-        std::make_shared<InterpolatorType>(std::forward<Args>(args)...);
+      trajectory_->time_distance_mapping_.set_interpolator(
+        std::make_shared<InterpolatorType>(std::forward<Args>(args)...));
       return *this;
     }
 
@@ -270,14 +296,14 @@ public:
 
 private:
   SpatialTrajectory spatial_trajectory_;
-  std::shared_ptr<InterpolatorInterface> time_to_distance_{nullptr};
-  std::vector<double> time_bases_;
-  std::vector<double> distance_bases_;
+  TimeDistanceMapping time_distance_mapping_;
   double start_time_{0.0};
   double end_time_{0.0};
   double time_offset_{0.0};
   double distance_offset_{0.0};
 
+  [[nodiscard]] interpolator::InterpolationResult set_time_distance_bases(
+    const std::vector<double> & time_bases, const std::vector<double> & distance_bases);
   [[nodiscard]] double clamp_time(const double t, bool show_warning = false) const;
 };
 

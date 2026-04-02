@@ -671,6 +671,14 @@ TEST_F(TrajectoryTest, restore)
   EXPECT_EQ(11, points.size());
 }
 
+TEST_F(TrajectoryTest, set_velocity_at_single_point)
+{
+  const auto target_s = trajectory->length() * 0.5;
+  trajectory->longitudinal_velocity_mps().at(target_s).set(7.0);
+
+  EXPECT_DOUBLE_EQ(7.0, trajectory->longitudinal_velocity_mps().compute(target_s));
+}
+
 TEST_F(TrajectoryTest, crossed)
 {
   lanelet::LineString2d line_string;

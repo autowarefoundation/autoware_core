@@ -52,100 +52,74 @@ size_t find_time_index(const std::vector<double> & time_bases, const double time
     time_bases.begin(), std::lower_bound(time_bases.begin(), time_bases.end(), time)));
 }
 
-size_t insert_or_replace_point_at_time(
-  std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points,
-  const std::vector<double> & time_bases, const double time,
-  const autoware_planning_msgs::msg::TrajectoryPoint & point)
+void insert_or_replace_base_at_time(
+  std::vector<double> & time_bases, std::vector<double> & values, const double time,
+  const double value)
 {
   const auto insert_index = find_time_index(time_bases, time);
   if (insert_index == time_bases.size() || !has_same_time(time_bases.at(insert_index), time)) {
-    points.insert(points.begin() + static_cast<std::ptrdiff_t>(insert_index), point);
-    return insert_index;
+    time_bases.insert(time_bases.begin() + static_cast<std::ptrdiff_t>(insert_index), time);
+    values.insert(values.begin() + static_cast<std::ptrdiff_t>(insert_index), value);
+    return;
   }
-  points.at(insert_index) = point;
-  return insert_index;
-}
 
-bool has_time_base(const std::vector<double> & time_bases, const double time)
-{
-  const auto index = find_time_index(time_bases, time);
-  return index < time_bases.size() && has_same_time(time_bases.at(index), time);
-}
-
-TemporalTrajectory::PointType make_stop_point(
-  const TemporalTrajectory::SpatialTrajectory & stopped_spatial_trajectory, const double arc_length,
-  const double stop_time)
-{
-  auto stop_point = stopped_spatial_trajectory.compute(arc_length);
-  stop_point.time_from_start = to_duration_msg(stop_time);
-  return stop_point;
+  time_bases.at(insert_index) = time;
+  values.at(insert_index) = value;
 }
 }  // namespace
 
-TemporalTrajectory::TemporalTrajectory()
-{
-  Builder::defaults(this);
-}
-
-TemporalTrajectory::TemporalTrajectory(const TemporalTrajectory & rhs)
-: spatial_trajectory_(rhs.spatial_trajectory_),
-  time_to_distance_(rhs.time_to_distance_ ? rhs.time_to_distance_->clone() : nullptr),
+TemporalTrajectory::TimeDistanceMapping::TimeDistanceMapping(
+  const TemporalTrajectory::TimeDistanceMapping & rhs)
+: interpolator_(rhs.interpolator_ ? rhs.interpolator_->clone() : nullptr),
   time_bases_(rhs.time_bases_),
-  distance_bases_(rhs.distance_bases_),
-  start_time_(rhs.start_time_),
-  end_time_(rhs.end_time_),
-  time_offset_(rhs.time_offset_),
-  distance_offset_(rhs.distance_offset_)
+  distance_bases_(rhs.distance_bases_)
 {
 }
 
-TemporalTrajectory & TemporalTrajectory::operator=(const TemporalTrajectory & rhs)
+TemporalTrajectory::TimeDistanceMapping & TemporalTrajectory::TimeDistanceMapping::operator=(
+  const TemporalTrajectory::TimeDistanceMapping & rhs)
 {
   if (this != &rhs) {
-    spatial_trajectory_ = rhs.spatial_trajectory_;
-    time_to_distance_ = rhs.time_to_distance_ ? rhs.time_to_distance_->clone() : nullptr;
+    interpolator_ = rhs.interpolator_ ? rhs.interpolator_->clone() : nullptr;
     time_bases_ = rhs.time_bases_;
     distance_bases_ = rhs.distance_bases_;
-    start_time_ = rhs.start_time_;
-    end_time_ = rhs.end_time_;
-    time_offset_ = rhs.time_offset_;
-    distance_offset_ = rhs.distance_offset_;
   }
   return *this;
 }
 
-interpolator::InterpolationResult TemporalTrajectory::build(const std::vector<PointType> & points)
+void TemporalTrajectory::TimeDistanceMapping::set_interpolator(
+  std::shared_ptr<TemporalTrajectory::InterpolatorInterface> interpolator)
 {
-  if (!time_to_distance_) {
+  interpolator_ = std::move(interpolator);
+}
+
+bool TemporalTrajectory::TimeDistanceMapping::has_interpolator() const
+{
+  return static_cast<bool>(interpolator_);
+}
+
+interpolator::InterpolationResult TemporalTrajectory::TimeDistanceMapping::build(
+  const std::vector<double> & time_bases, const std::vector<double> & distance_bases)
+{
+  if (!interpolator_) {
     return tl::unexpected(
       interpolator::InterpolationFailure{"time_to_distance interpolator is nullptr"});
   }
 
-  if (const auto result = spatial_trajectory_.build(points); !result) {
-    return tl::unexpected(
-      interpolator::InterpolationFailure{"failed to interpolate temporal spatial trajectory"} +
-      result.error());
-  }
-
-  time_bases_.clear();
-  time_bases_.reserve(points.size());
-  for (const auto & point : points) {
-    time_bases_.push_back(to_seconds(point.time_from_start));
-  }
-
-  if (time_bases_.empty()) {
+  if (time_bases.empty()) {
     return tl::unexpected(interpolator::InterpolationFailure{"cannot interpolate 0 size points"});
   }
-  if (!std::is_sorted(time_bases_.begin(), time_bases_.end())) {
+  if (time_bases.size() != distance_bases.size()) {
+    return tl::unexpected(
+      interpolator::InterpolationFailure{"time and distance bases must have the same size"});
+  }
+  if (!std::is_sorted(time_bases.begin(), time_bases.end())) {
     return tl::unexpected(
       interpolator::InterpolationFailure{"time_from_start must be sorted in ascending order"});
   }
 
-  distance_bases_ = spatial_trajectory_.get_underlying_bases();
-  start_time_ = time_bases_.front();
-  end_time_ = time_bases_.back();
-  time_offset_ = 0.0;
-  distance_offset_ = 0.0;
+  time_bases_ = time_bases;
+  distance_bases_ = distance_bases;
 
   std::vector<double> sanitized_time_bases;
   std::vector<double> sanitized_distance_bases;
@@ -170,7 +144,7 @@ interpolator::InterpolationResult TemporalTrajectory::build(const std::vector<Po
     sanitized_distance_bases.push_back(distance_bases_.at(i));
   }
 
-  if (const auto result = time_to_distance_->build(sanitized_time_bases, sanitized_distance_bases);
+  if (const auto result = interpolator_->build(sanitized_time_bases, sanitized_distance_bases);
       !result) {
     return tl::unexpected(
       interpolator::InterpolationFailure{
@@ -181,6 +155,62 @@ interpolator::InterpolationResult TemporalTrajectory::build(const std::vector<Po
   return interpolator::InterpolationSuccess{};
 }
 
+double TemporalTrajectory::TimeDistanceMapping::compute_distance(const double time) const
+{
+  return interpolator_->compute(time);
+}
+
+bool TemporalTrajectory::TimeDistanceMapping::empty() const
+{
+  return time_bases_.empty();
+}
+
+const std::vector<double> & TemporalTrajectory::TimeDistanceMapping::time_bases() const
+{
+  return time_bases_;
+}
+
+const std::vector<double> & TemporalTrajectory::TimeDistanceMapping::distance_bases() const
+{
+  return distance_bases_;
+}
+
+TemporalTrajectory::TemporalTrajectory()
+{
+  Builder::defaults(this);
+}
+
+interpolator::InterpolationResult TemporalTrajectory::build(const std::vector<PointType> & points)
+{
+  if (const auto result = spatial_trajectory_.build(points); !result) {
+    return tl::unexpected(
+      interpolator::InterpolationFailure{"failed to interpolate temporal spatial trajectory"} +
+      result.error());
+  }
+
+  std::vector<double> time_bases;
+  time_bases.reserve(points.size());
+  for (const auto & point : points) {
+    time_bases.push_back(to_seconds(point.time_from_start));
+  }
+
+  time_offset_ = 0.0;
+  distance_offset_ = 0.0;
+  return set_time_distance_bases(time_bases, spatial_trajectory_.get_underlying_bases());
+}
+
+interpolator::InterpolationResult TemporalTrajectory::set_time_distance_bases(
+  const std::vector<double> & time_bases, const std::vector<double> & distance_bases)
+{
+  if (const auto result = time_distance_mapping_.build(time_bases, distance_bases); !result) {
+    return result;
+  }
+
+  start_time_ = time_distance_mapping_.time_bases().front();
+  end_time_ = time_distance_mapping_.time_bases().back();
+  return interpolator::InterpolationSuccess{};
+}
+
 double TemporalTrajectory::length() const
 {
   return spatial_trajectory_.length();
@@ -188,17 +218,17 @@ double TemporalTrajectory::length() const
 
 double TemporalTrajectory::duration() const
 {
-  return time_bases_.empty() ? 0.0 : end_time_ - start_time_;
+  return time_distance_mapping_.empty() ? 0.0 : end_time_ - start_time_;
 }
 
 double TemporalTrajectory::start_time() const
 {
-  return time_bases_.empty() ? 0.0 : start_time_ - time_offset_;
+  return time_distance_mapping_.empty() ? 0.0 : start_time_ - time_offset_;
 }
 
 double TemporalTrajectory::end_time() const
 {
-  return time_bases_.empty() ? 0.0 : end_time_ - time_offset_;
+  return time_distance_mapping_.empty() ? 0.0 : end_time_ - time_offset_;
 }
 
 double TemporalTrajectory::time_offset() const
@@ -213,7 +243,7 @@ void TemporalTrajectory::set_time_offset(const double offset)
 
 std::vector<double> TemporalTrajectory::get_underlying_time_bases() const
 {
-  auto time_bases = detail::crop_bases(time_bases_, start_time_, end_time_);
+  auto time_bases = detail::crop_bases(time_distance_mapping_.time_bases(), start_time_, end_time_);
   std::transform(time_bases.begin(), time_bases.end(), time_bases.begin(), [this](const double t) {
     return t - time_offset_;
   });
@@ -222,14 +252,45 @@ std::vector<double> TemporalTrajectory::get_underlying_time_bases() const
 
 std::vector<double> TemporalTrajectory::get_underlying_distance_bases() const
 {
-  return spatial_trajectory_.get_underlying_bases();
+  if (time_distance_mapping_.empty()) {
+    return {};
+  }
+
+  std::vector<double> distance_bases;
+  const auto & time_bases = time_distance_mapping_.time_bases();
+  const auto & mapped_distance_bases = time_distance_mapping_.distance_bases();
+
+  if (time_bases.empty() || time_bases.size() != mapped_distance_bases.size()) {
+    return {};
+  }
+
+  if (std::none_of(time_bases.begin(), time_bases.end(), [this](const double t) {
+        return has_same_time(t, start_time_);
+      })) {
+    distance_bases.push_back(
+      time_distance_mapping_.compute_distance(start_time_) - distance_offset_);
+  }
+
+  for (size_t i = 0; i < time_bases.size(); ++i) {
+    if (time_bases.at(i) >= start_time_ && time_bases.at(i) <= end_time_) {
+      distance_bases.push_back(mapped_distance_bases.at(i) - distance_offset_);
+    }
+  }
+
+  if (std::none_of(time_bases.begin(), time_bases.end(), [this](const double t) {
+        return has_same_time(t, end_time_);
+      })) {
+    distance_bases.push_back(time_distance_mapping_.compute_distance(end_time_) - distance_offset_);
+  }
+
+  return distance_bases;
 }
 
 TemporalTrajectory::PointType TemporalTrajectory::compute_from_time(const double t) const
 {
   const auto t_clamped = clamp_time(t, true);
-  auto point =
-    spatial_trajectory_.compute(time_to_distance_->compute(t_clamped) - distance_offset_);
+  auto point = spatial_trajectory_.compute(
+    time_distance_mapping_.compute_distance(t_clamped) - distance_offset_);
   point.time_from_start = to_duration_msg(t_clamped - time_offset_);
   return point;
 }
@@ -268,7 +329,7 @@ std::vector<TemporalTrajectory::PointType> TemporalTrajectory::compute_from_dist
 
 double TemporalTrajectory::time_to_distance(const double t) const
 {
-  return time_to_distance_->compute(clamp_time(t, true)) - distance_offset_;
+  return time_distance_mapping_.compute_distance(clamp_time(t, true)) - distance_offset_;
 }
 
 std::optional<double> TemporalTrajectory::distance_to_time(const double s) const
@@ -277,8 +338,9 @@ std::optional<double> TemporalTrajectory::distance_to_time(const double s) const
   const auto absolute_distance = s_clamped + distance_offset_;
 
   if (
-    distance_bases_.empty() || time_bases_.empty() ||
-    distance_bases_.size() != time_bases_.size()) {
+    time_distance_mapping_.distance_bases().empty() ||
+    time_distance_mapping_.time_bases().empty() ||
+    time_distance_mapping_.distance_bases().size() != time_distance_mapping_.time_bases().size()) {
     return std::nullopt;
   }
 
@@ -290,8 +352,8 @@ std::optional<double> TemporalTrajectory::distance_to_time(const double s) const
 
   const auto start_time = start_time_;
   const auto end_time = end_time_;
-  const auto start_distance = time_to_distance_->compute(start_time);
-  const auto end_distance = time_to_distance_->compute(end_time);
+  const auto start_distance = time_distance_mapping_.compute_distance(start_time);
+  const auto end_distance = time_distance_mapping_.compute_distance(end_time);
 
   if (
     absolute_distance < start_distance - k_same_time_threshold ||
@@ -312,7 +374,7 @@ std::optional<double> TemporalTrajectory::distance_to_time(const double s) const
   constexpr size_t k_max_iterations = 100;
   for (size_t i = 0; i < k_max_iterations; ++i) {
     const auto mid_time = 0.5 * (lower_time + upper_time);
-    const auto mid_distance = time_to_distance_->compute(mid_time);
+    const auto mid_distance = time_distance_mapping_.compute_distance(mid_time);
 
     if (std::abs(mid_distance - absolute_distance) <= k_same_time_threshold) {
       return mid_time - time_offset_;
@@ -334,7 +396,7 @@ std::optional<double> TemporalTrajectory::distance_to_time(const double s) const
 
 std::vector<TemporalTrajectory::PointType> TemporalTrajectory::restore() const
 {
-  if (time_bases_.empty()) {
+  if (time_distance_mapping_.empty()) {
     return {};
   }
 
@@ -352,7 +414,7 @@ std::vector<TemporalTrajectory::PointType> TemporalTrajectory::restore() const
 
 void TemporalTrajectory::crop_time(const double start_time, const double duration)
 {
-  if (time_bases_.empty() || duration <= k_same_time_threshold) {
+  if (time_distance_mapping_.empty() || duration <= k_same_time_threshold) {
     return;
   }
 
@@ -362,8 +424,8 @@ void TemporalTrajectory::crop_time(const double start_time, const double duratio
     return;
   }
 
-  const auto absolute_start_distance = time_to_distance_->compute(absolute_start_time);
-  const auto absolute_end_distance = time_to_distance_->compute(absolute_end_time);
+  const auto absolute_start_distance = time_distance_mapping_.compute_distance(absolute_start_time);
+  const auto absolute_end_distance = time_distance_mapping_.compute_distance(absolute_end_time);
   spatial_trajectory_.crop(
     absolute_start_distance - distance_offset_, absolute_end_distance - absolute_start_distance);
   start_time_ = absolute_start_time;
@@ -378,29 +440,33 @@ void TemporalTrajectory::set_stopline(const double arc_length)
     return;
   }
 
-  auto stopped_spatial_trajectory = spatial_trajectory_;
-  stopped_spatial_trajectory.set_stopline(arc_length);
-
-  const auto view_time_bases = get_underlying_time_bases();
-  const auto original_points = compute_from_time(view_time_bases);
-  auto points = original_points;
-  const auto stop_point = make_stop_point(stopped_spatial_trajectory, arc_length, *stop_time);
-  const auto has_existing_stop_time = has_time_base(view_time_bases, *stop_time);
-  const auto insert_index =
-    insert_or_replace_point_at_time(points, view_time_bases, *stop_time, stop_point);
-
-  for (size_t i = insert_index; i < points.size(); ++i) {
-    points.at(i) = stop_point;
-    if (i == insert_index) {
-      points.at(i).time_from_start = to_duration_msg(*stop_time);
-      continue;
-    }
-
-    const auto original_index = has_existing_stop_time ? i : i - 1;
-    points.at(i).time_from_start = original_points.at(original_index).time_from_start;
+  auto time_bases = get_underlying_time_bases();
+  auto distance_bases = get_underlying_distance_bases();
+  if (time_bases.empty()) {
+    return;
   }
 
-  (void)build(points);
+  const auto stop_distance = std::clamp(arc_length, 0.0, length());
+  spatial_trajectory_.crop(0.0, stop_distance);
+  spatial_trajectory_.longitudinal_velocity_mps().at(spatial_trajectory_.length()).set(0.0);
+  insert_or_replace_base_at_time(time_bases, distance_bases, *stop_time, stop_distance);
+
+  const auto stop_index = find_time_index(time_bases, *stop_time);
+  std::fill(
+    distance_bases.begin() + static_cast<std::ptrdiff_t>(stop_index), distance_bases.end(),
+    stop_distance);
+
+  std::transform(time_bases.begin(), time_bases.end(), time_bases.begin(), [this](const double t) {
+    return t + time_offset_;
+  });
+  std::transform(
+    distance_bases.begin(), distance_bases.end(), distance_bases.begin(),
+    [this](const double s) { return s + distance_offset_; });
+
+  if (const auto result = set_time_distance_bases(time_bases, distance_bases); !result) {
+    RCLCPP_WARN(
+      rclcpp::get_logger("TemporalTrajectory"), "Failed to update stopline time-distance bases");
+  }
 }
 
 void TemporalTrajectory::set_stopline(const double arc_length, const double duration)
@@ -412,32 +478,40 @@ void TemporalTrajectory::set_stopline(const double arc_length, const double dura
 
   const auto stop_duration = std::max(duration, 0.0);
   const auto target_time = *stop_time + stop_duration;
-  auto stopped_spatial_trajectory = spatial_trajectory_;
-  stopped_spatial_trajectory.set_stopline(arc_length);
+  auto time_bases = get_underlying_time_bases();
+  auto distance_bases = get_underlying_distance_bases();
+  if (time_bases.empty()) {
+    return;
+  }
 
-  const auto view_time_bases = get_underlying_time_bases();
-  const auto original_points = compute_from_time(view_time_bases);
-  auto points = original_points;
-  const auto stop_point = make_stop_point(stopped_spatial_trajectory, arc_length, *stop_time);
-  const auto has_existing_stop_time = has_time_base(view_time_bases, *stop_time);
-  const auto insert_index =
-    insert_or_replace_point_at_time(points, view_time_bases, *stop_time, stop_point);
+  const auto stop_distance = std::clamp(arc_length, 0.0, length());
+  spatial_trajectory_.longitudinal_velocity_mps().at(stop_distance).set(0.0);
+  insert_or_replace_base_at_time(time_bases, distance_bases, *stop_time, stop_distance);
+  const auto stop_index = find_time_index(time_bases, *stop_time);
 
   if (stop_duration > k_same_time_threshold) {
-    auto delayed_stop_point = stop_point;
-    delayed_stop_point.time_from_start = to_duration_msg(target_time);
-    points.insert(
-      points.begin() + static_cast<std::ptrdiff_t>(insert_index + 1), delayed_stop_point);
+    time_bases.insert(
+      time_bases.begin() + static_cast<std::ptrdiff_t>(stop_index + 1), target_time);
+    distance_bases.insert(
+      distance_bases.begin() + static_cast<std::ptrdiff_t>(stop_index + 1), stop_distance);
 
-    for (size_t i = insert_index + 2; i < points.size(); ++i) {
-      const auto original_index = has_existing_stop_time ? i - 1 : i - 2;
-      const auto shifted_time =
-        to_seconds(original_points.at(original_index).time_from_start) + stop_duration;
-      points.at(i).time_from_start = to_duration_msg(shifted_time);
+    for (size_t i = stop_index + 2; i < time_bases.size(); ++i) {
+      time_bases.at(i) += stop_duration;
     }
   }
 
-  (void)build(points);
+  std::transform(time_bases.begin(), time_bases.end(), time_bases.begin(), [this](const double t) {
+    return t + time_offset_;
+  });
+  std::transform(
+    distance_bases.begin(), distance_bases.end(), distance_bases.begin(),
+    [this](const double s) { return s + distance_offset_; });
+
+  if (const auto result = set_time_distance_bases(time_bases, distance_bases); !result) {
+    RCLCPP_WARN(
+      rclcpp::get_logger("TemporalTrajectory"),
+      "Failed to update stopline time-distance bases with duration");
+  }
 }
 
 const TemporalTrajectory::SpatialTrajectory & TemporalTrajectory::spatial_trajectory() const
@@ -447,7 +521,7 @@ const TemporalTrajectory::SpatialTrajectory & TemporalTrajectory::spatial_trajec
 
 double TemporalTrajectory::clamp_time(const double t, const bool show_warning) const
 {
-  if (time_bases_.empty()) {
+  if (time_distance_mapping_.empty()) {
     return t;
   }
 
@@ -469,7 +543,7 @@ TemporalTrajectory::Builder::Builder() : trajectory_(std::make_unique<TemporalTr
 
 void TemporalTrajectory::Builder::defaults(TemporalTrajectory * trajectory)
 {
-  trajectory->time_to_distance_ = std::make_shared<interpolator::Linear>();
+  trajectory->time_distance_mapping_.set_interpolator(std::make_shared<interpolator::Linear>());
 }
 
 tl::expected<TemporalTrajectory, interpolator::InterpolationFailure>
