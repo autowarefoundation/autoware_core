@@ -129,6 +129,13 @@ public:
   void crop_time(const double start_time, const double duration);
 
   /**
+   * @brief Crop the trajectory to a distance interval and rebase the result to zero.
+   * @param[in] start_distance Crop start distance in meters.
+   * @param[in] length Crop length in meters.
+   */
+  void crop_distance(const double start_distance, const double length);
+
+  /**
    * @brief Insert a stopline that collapses all later points to the stop pose.
    * @param[in] arc_length Stopline position in meters.
    */
