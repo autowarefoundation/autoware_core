@@ -292,7 +292,7 @@ double TimeDistanceMapping::time_at_distance(const double distance) const
 
   // Use binary search to find the time where distance is reached
   constexpr size_t k_max_iterations = 100;
-  const auto result_time = binary_search(
+  const auto result_time = lower_bound_by_predicate(
     start_time_, end_time_,
     [this, clamped_distance](double time) { return compute_distance(time) >= clamped_distance; },
     k_max_iterations, k_same_time_threshold);
