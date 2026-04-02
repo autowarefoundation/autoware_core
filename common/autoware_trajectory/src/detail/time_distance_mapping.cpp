@@ -274,7 +274,7 @@ std::vector<double> TimeDistanceMapping::cropped_time_bases() const
   return time_bases;
 }
 
-std::optional<double> TimeDistanceMapping::time_at_distance(const double distance) const
+double TimeDistanceMapping::time_at_distance(const double distance) const
 {
   const auto start_distance_value = start_distance();
   const auto end_distance_value = end_distance();

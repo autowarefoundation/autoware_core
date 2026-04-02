@@ -18,7 +18,6 @@
 #include "autoware/trajectory/interpolator/interpolator.hpp"
 
 #include <memory>
-#include <optional>
 #include <vector>
 
 namespace autoware::experimental::trajectory::detail
@@ -128,7 +127,7 @@ public:
    * @param[in] absolute_distance Query absolute distance in meters.
    * @return Time in seconds. Distance is clamped to the valid range if out of bounds.
    */
-  [[nodiscard]] std::optional<double> time_at_distance(double absolute_distance) const;
+  [[nodiscard]] double time_at_distance(double absolute_distance) const;
 
 private:
   [[nodiscard]] double compute_distance(double internal_time) const;
