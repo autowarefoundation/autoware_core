@@ -53,15 +53,14 @@ EKFLocalizer::EKFLocalizer(const rclcpp::NodeOptions & node_options)
   pose_queue_(params_.pose_smoothing_steps, params_.max_pose_queue_size),
   twist_queue_(params_.twist_smoothing_steps, params_.max_twist_queue_size),
   diagnostics_(this),
-  latched_diagnostic_timestamp_(0, 0, RCL_ROS_TIME),
-  last_diagnostics_publish_time_(0, 0, RCL_ROS_TIME),
+  merged_diagnostic_last_transition_time_(0, 0, RCL_ROS_TIME),
   last_pose_callback_time_(0, 0, RCL_ROS_TIME),
   last_twist_callback_time_(0, 0, RCL_ROS_TIME)
 {
   is_activated_ = false;
   is_set_initialpose_ = false;
-  latched_diagnostic_status_.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-  latched_diagnostic_status_.message = "OK";
+  merged_diagnostic_status_.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+  merged_diagnostic_status_.message = "OK";
 
   // Configure diagnostic updater
   diagnostics_.setHardwareID(this->get_name());
@@ -163,7 +162,6 @@ void EKFLocalizer::timer_callback()
       "The node is not activated. Provide initial pose to pose_initializer", 2000);
     // Update diagnostics before early return to ensure current status is latched
     update_diagnostics(diag_status_array, current_time);
-    reset_diagnostics_latch_if_published();
     return;
   }
 
@@ -175,7 +173,6 @@ void EKFLocalizer::timer_callback()
       "Initial pose is not set. Provide initial pose to pose_initializer", 2000);
     // Update diagnostics before early return to ensure current status is latched
     update_diagnostics(diag_status_array, current_time);
-    reset_diagnostics_latch_if_published();
     return;
   }
 
@@ -296,8 +293,6 @@ void EKFLocalizer::timer_callback()
   /* Latch merged diagnostics every EKF cycle; publishing is periodic via diagnostic_updater,
    * plus force_update() inside update_diagnostics when severity increases. */
   update_diagnostics(diag_status_array, current_time);
-
-  reset_diagnostics_latch_if_published();
 
   /* publish processing time */
   const double elapsed_time = stop_watch_timer_cb_.toc();
@@ -455,43 +450,20 @@ void EKFLocalizer::publish_estimate_result(
 
 void EKFLocalizer::diagnose(diagnostic_updater::DiagnosticStatusWrapper & stat)
 {
-  // Latched status is updated in update_diagnostics() (each EKF timer tick). Publishing is driven
-  // by diagnostic_updater at diagnostics_publish_period, or force_update() on severity increase.
+  // merged_diagnostic_status_ is updated in update_diagnostics() each EKF tick. Publishing is
+  // driven by diagnostic_updater at diagnostics_publish_period, or force_update() on severity
+  // increase vs. the previous tick.
   //
-  // Thread safety: copy latch first for a consistent snapshot if a multi-threaded executor is used.
-  diagnostic_msgs::msg::DiagnosticStatus diag_merged_status = latched_diagnostic_status_;
-  rclcpp::Time diag_timestamp = latched_diagnostic_timestamp_;
+  // Thread safety: copy first for a consistent snapshot if a multi-threaded executor is used.
+  const diagnostic_msgs::msg::DiagnosticStatus snapshot = merged_diagnostic_status_;
 
-  // Set name and hardware_id
   stat.name = "localization: " + std::string(this->get_name());
   stat.hardware_id = this->get_name();
+  stat.summary(snapshot);
 
-  // Set summary based on latched status level
-  using diagnostic_msgs::msg::DiagnosticStatus;
-  switch (diag_merged_status.level) {
-    case DiagnosticStatus::OK:
-      stat.summary(DiagnosticStatus::OK, diag_merged_status.message);
-      break;
-    case DiagnosticStatus::WARN:
-      stat.summary(DiagnosticStatus::WARN, diag_merged_status.message);
-      break;
-    case DiagnosticStatus::ERROR:
-      stat.summary(DiagnosticStatus::ERROR, diag_merged_status.message);
-      break;
-    case DiagnosticStatus::STALE:
-      stat.summary(DiagnosticStatus::STALE, diag_merged_status.message);
-      break;
-    default:
-      stat.summary(DiagnosticStatus::ERROR, diag_merged_status.message);
-      break;
-  }
-
-  // Copy values from latched status
-  for (const auto & value : diag_merged_status.values) {
+  for (const auto & value : snapshot.values) {
     stat.add(value.key, value.value);
   }
-
-  last_diagnostics_publish_time_ = this->now();
 }
 
 void EKFLocalizer::diagnose_callback_pose(diagnostic_updater::DiagnosticStatusWrapper & stat)
@@ -510,57 +482,44 @@ void EKFLocalizer::diagnose_callback_twist(diagnostic_updater::DiagnosticStatusW
   stat.add("topic_time_stamp", std::to_string(last_twist_callback_time_.nanoseconds()));
 }
 
-void EKFLocalizer::reset_diagnostics_latch_if_published()
-{
-  if (last_diagnostics_publish_time_.nanoseconds() == 0) {
-    return;
-  }
-  latched_diagnostic_status_.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-  latched_diagnostic_status_.message = "OK";
-  latched_diagnostic_status_.values.clear();
-  latched_diagnostic_timestamp_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
-  last_diagnostics_publish_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
-}
-
 void EKFLocalizer::update_diagnostics(
   const std::vector<diagnostic_msgs::msg::DiagnosticStatus> & diag_status_array,
   const rclcpp::Time & current_time)
 {
   using diagnostic_msgs::msg::DiagnosticStatus;
 
-  const uint8_t level_before = latched_diagnostic_status_.level;
+  const uint8_t level_before = merged_diagnostic_status_.level;
 
   diagnostic_msgs::msg::DiagnosticStatus diag_merged_status;
   diag_merged_status = merge_diagnostic_status(diag_status_array);
+  const uint8_t level_merged = diag_merged_status.level;
 
-  // Update latched status if current level is higher than latched level
-  // Also update if latched status is OK (to allow continuous updates when OK)
-  if (
-    diag_merged_status.level > latched_diagnostic_status_.level ||
-    latched_diagnostic_status_.level == DiagnosticStatus::OK) {
-    latched_diagnostic_status_ = diag_merged_status;
-    latched_diagnostic_timestamp_ = current_time;
-
-    // Remove existing error_occurrence_timestamp if present (will be re-added if error/warn)
-    latched_diagnostic_status_.values.erase(
-      std::remove_if(
-        latched_diagnostic_status_.values.begin(), latched_diagnostic_status_.values.end(),
-        [](const diagnostic_msgs::msg::KeyValue & kv) {
-          return kv.key == "error_occurrence_timestamp";
-        }),
-      latched_diagnostic_status_.values.end());
-
-    // Add error occurrence timestamp to values if error/warn is latched
-    if (latched_diagnostic_status_.level > DiagnosticStatus::OK) {
-      diagnostic_msgs::msg::KeyValue error_timestamp_value;
-      error_timestamp_value.key = "error_occurrence_timestamp";
-      error_timestamp_value.value = std::to_string(latched_diagnostic_timestamp_.nanoseconds());
-      latched_diagnostic_status_.values.push_back(error_timestamp_value);
-    }
+  // merged_diagnostic_status_ always tracks merge: ERROR→WARN when merge worst is WARN,
+  // ERROR/WARN→OK when merge is all OK, same level refreshes message/values.
+  merged_diagnostic_status_ = diag_merged_status;
+  // last_transition_time: any level change; force_update below: severity increase only
+  if (level_merged != level_before) {
+    merged_diagnostic_last_transition_time_ = current_time;
   }
 
-  const uint8_t level_after = latched_diagnostic_status_.level;
-  if (level_after > level_before) {
+  // Remove existing error_occurrence_timestamp if present (will be re-added if error/warn)
+  merged_diagnostic_status_.values.erase(
+    std::remove_if(
+      merged_diagnostic_status_.values.begin(), merged_diagnostic_status_.values.end(),
+      [](const diagnostic_msgs::msg::KeyValue & kv) {
+        return kv.key == "error_occurrence_timestamp";
+      }),
+    merged_diagnostic_status_.values.end());
+
+  if (merged_diagnostic_status_.level > DiagnosticStatus::OK) {
+    diagnostic_msgs::msg::KeyValue error_timestamp_value;
+    error_timestamp_value.key = "error_occurrence_timestamp";
+    error_timestamp_value.value =
+      std::to_string(merged_diagnostic_last_transition_time_.nanoseconds());
+    merged_diagnostic_status_.values.push_back(error_timestamp_value);
+  }
+
+  if (level_merged > level_before) {
     diagnostics_.force_update();
   }
 }

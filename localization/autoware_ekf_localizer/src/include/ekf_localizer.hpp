@@ -125,14 +125,11 @@ private:
 
   //!< @brief diagnostic updater for publishing diagnostics at configured period
   diagnostic_updater::Updater diagnostics_;
-  //!< @brief latched diagnostic status to prevent transient errors from being missed
-  //!< when diagnostics publish period is longer than the error duration
-  //!< Stores the highest level (ERROR > WARN > OK) and its details seen since last publish
-  diagnostic_msgs::msg::DiagnosticStatus latched_diagnostic_status_;
-  //!< @brief timestamp when the latched diagnostic status was first detected
-  rclcpp::Time latched_diagnostic_timestamp_;
-  //!< @brief set in diagnose() when /diagnostics is published; latch is cleared on next EKF tick
-  rclcpp::Time last_diagnostics_publish_time_;
+  //!< @brief Merged diagnostic status from the latest EKF cycle (message/values refresh every tick)
+  diagnostic_msgs::msg::DiagnosticStatus merged_diagnostic_status_;
+  //!< @brief Wall time of the latest merged diagnostic level change vs. the previous EKF tick
+  //!< (includes recovery to OK); drives error_occurrence_timestamp when non-OK
+  rclcpp::Time merged_diagnostic_last_transition_time_;
   //!< @brief last pose callback header stamp (for callback_pose diagnostic)
   rclcpp::Time last_pose_callback_time_;
   //!< @brief last twist callback header stamp (for callback_twist diagnostic)
@@ -180,16 +177,13 @@ private:
     const geometry_msgs::msg::TwistStamped & current_ekf_twist);
 
   /**
-   * @brief Merge diagnostic items, update latch, and force an immediate publish when severity
-   * increases. Called every EKF timer cycle so short faults are not missed; steady publishing
-   * uses diagnostic_updater at diagnostics_publish_period.
+   * @brief Overwrite merged_diagnostic_status_ from merged diagnostics each tick;
+   * force_update() when merged severity increases vs. the previous EKF tick
+   * (last transition time updates on any level change).
    */
   void update_diagnostics(
     const std::vector<diagnostic_msgs::msg::DiagnosticStatus> & diag_status_array,
     const rclcpp::Time & current_time);
-
-  /** @brief Clear latch after diagnose() recorded a publish (see last_diagnostics_publish_time_) */
-  void reset_diagnostics_latch_if_published();
 
   /**
    * @brief diagnostic function called by diagnostic_updater::Updater
