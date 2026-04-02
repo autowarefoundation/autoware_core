@@ -42,10 +42,7 @@ def _resolve_agnocast_env(context):
     )
 
     if use_agnocast == "1":
-        if existing_ld_preload:
-            ld_preload_value = f"{heaphook_path}:{existing_ld_preload}"
-        else:
-            ld_preload_value = heaphook_path
+        ld_preload_value = f"{heaphook_path}:{existing_ld_preload}"
         container_package = "agnocast_components"
         if use_multithread == "true":
             container_executable = "agnocast_component_container_cie"

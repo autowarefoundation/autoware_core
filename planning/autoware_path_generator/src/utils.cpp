@@ -12,18 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "utils.hpp"
+
 #include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/lanelet2_utils/geometry.hpp>
 #include <autoware/motion_utils/constants.hpp>
 #include <autoware/motion_utils/resample/resample.hpp>
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
-#include <autoware/path_generator/utils.hpp>
 #include <autoware/trajectory/interpolator/linear.hpp>
 #include <autoware/trajectory/utils/closest.hpp>
 #include <autoware/trajectory/utils/crop.hpp>
 #include <autoware/trajectory/utils/find_intervals.hpp>
 #include <autoware/trajectory/utils/pretty_build.hpp>
-#include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_utils_math/unit_conversion.hpp>
 
 #include <lanelet2_core/geometry/Lanelet.h>
@@ -291,7 +291,7 @@ std::optional<double> get_first_self_intersection_arc_length(
     }
 
     const auto current_segment = lanelet::BasicSegment2d{line_string.at(i), line_string.at(i + 1)};
-    s += lanelet::geometry::length(current_segment);
+    s += static_cast<double>(lanelet::geometry::length(current_segment));
 
     lanelet::BasicPoints2d self_intersections{};
     for (size_t j = i + 1; j < line_string.size() - 1; ++j) {
@@ -465,7 +465,8 @@ double get_arc_length_on_path(
 
   for (auto [it, s] = std::make_tuple(lanelet_sequence.begin(), 0.); it != lanelet_sequence.end();
        ++it) {
-    const double centerline_length = lanelet::geometry::length(it->centerline2d());
+    const double centerline_length =
+      static_cast<double>(lanelet::geometry::length(it->centerline2d()));
     if (s + centerline_length < s_centerline) {
       s += centerline_length;
       continue;
@@ -578,9 +579,12 @@ PathRange<double> get_arc_length_on_bounds(
   auto s_right = 0.;
 
   for (auto it = lanelet_sequence.begin(); it != lanelet_sequence.end(); ++it) {
-    const double centerline_length = lanelet::geometry::length(it->centerline2d());
-    const double left_bound_length = lanelet::geometry::length(it->leftBound2d());
-    const double right_bound_length = lanelet::geometry::length(it->rightBound2d());
+    const double centerline_length =
+      static_cast<double>(lanelet::geometry::length(it->centerline2d()));
+    const double left_bound_length =
+      static_cast<double>(lanelet::geometry::length(it->leftBound2d()));
+    const double right_bound_length =
+      static_cast<double>(lanelet::geometry::length(it->rightBound2d()));
 
     if (s + centerline_length < s_centerline) {
       s += centerline_length;
@@ -633,9 +637,11 @@ PathRange<std::optional<double>> get_arc_length_on_centerline(
       break;
     }
 
-    const double centerline_length = lanelet::geometry::length2d(*it);
-    const double left_bound_length = lanelet::geometry::length(it->leftBound2d());
-    const double right_bound_length = lanelet::geometry::length(it->rightBound2d());
+    const double centerline_length = static_cast<double>(lanelet::geometry::length2d(*it));
+    const double left_bound_length =
+      static_cast<double>(lanelet::geometry::length(it->leftBound2d()));
+    const double right_bound_length =
+      static_cast<double>(lanelet::geometry::length(it->rightBound2d()));
 
     if (!is_left_done && s_left + left_bound_length > s_left_bound) {
       s_left_centerline = s + lanelet::geometry::toArcCoordinates(
@@ -710,7 +716,7 @@ experimental::trajectory::Trajectory<PathPointWithLaneId> connect_path_to_goal(
     autoware_utils_geometry::calc_offset_pose(goal_pose, -pre_goal_offset, 0.0, 0.0);
   auto pre_goal_lanelet = goal_lanelet;
   while (rclcpp::ok() &&
-         !autoware::experimental::lanelet2_utils::is_in_lanelet(pre_goal_pose, pre_goal_lanelet)) {
+         !experimental::lanelet2_utils::is_in_lanelet(pre_goal_pose, pre_goal_lanelet)) {
     const auto prev_lanelet = get_previous_lanelet_within_route(pre_goal_lanelet, route_manager);
     if (!prev_lanelet) {
       RCLCPP_WARN(
@@ -746,7 +752,7 @@ experimental::trajectory::Trajectory<PathPointWithLaneId> connect_path_to_goal(
       get_arc_length_on_path(lanelet_sequence, path, s_goal - connection_section_length);
     const auto cropped_path =
       autoware::experimental::trajectory::crop(path, 0, s_connection_section_start);
-    path_points_to_goal = cropped_path.restore(1);
+    path_points_to_goal = cropped_path.restore();
   }
 
   if (s_goal > pre_goal_offset) {

@@ -18,6 +18,8 @@
 
 #include <rclcpp/rclcpp.hpp>
 
+#include <rclcpp/version.h>
+
 #include <map>
 #include <memory>
 #include <stdexcept>
@@ -33,6 +35,16 @@
 
 namespace autoware::agnocast_wrapper
 {
+
+// rclcpp 28+ (Jazzy) renamed OnParametersSetCallbackType to OnSetParametersCallbackType
+// and removed the old name from NodeParametersInterface. Humble uses rclcpp 16.x with the old name.
+#if RCLCPP_VERSION_MAJOR >= 28
+using OnSetParametersCallbackType =
+  rclcpp::node_interfaces::NodeParametersInterface::OnSetParametersCallbackType;
+#else
+using OnSetParametersCallbackType =
+  rclcpp::node_interfaces::NodeParametersInterface::OnParametersSetCallbackType;
+#endif
 
 /// @brief Node wrapper class that can switch between rclcpp::Node and agnocast::Node at runtime
 /// based on the ENABLE_AGNOCAST environment variable.
@@ -109,7 +121,7 @@ public:
     const std::vector<std::string> & prefixes, uint64_t depth) const;
 
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr add_on_set_parameters_callback(
-    rclcpp::node_interfaces::NodeParametersInterface::OnParametersSetCallbackType callback);
+    OnSetParametersCallbackType callback);
   void remove_on_set_parameters_callback(
     const rclcpp::node_interfaces::OnSetParametersCallbackHandle * const handler);
 

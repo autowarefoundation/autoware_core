@@ -45,7 +45,6 @@ MissionPlanner::MissionPlanner(const rclcpp::NodeOptions & options)
   map_ptr_(nullptr)
 {
   using std::placeholders::_1;
-  using std::placeholders::_2;
 
   // cppcheck-suppress useInitializationList
   map_frame_ = declare_parameter<std::string>("map_frame");

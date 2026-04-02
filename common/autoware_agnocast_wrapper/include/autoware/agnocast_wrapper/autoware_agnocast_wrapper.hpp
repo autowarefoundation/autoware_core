@@ -37,7 +37,7 @@
 // For subscription (read-only message)
 #define AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) \
   autoware::agnocast_wrapper::message_ptr<          \
-    MessageT, autoware::agnocast_wrapper::OwnershipType::Shared>
+    const MessageT, autoware::agnocast_wrapper::OwnershipType::Shared>
 #define AUTOWARE_SUBSCRIPTION_PTR(MessageT) \
   typename autoware::agnocast_wrapper::Subscription<MessageT>::SharedPtr
 #define AUTOWARE_PUBLISHER_PTR(MessageT) \
@@ -229,13 +229,15 @@ public:
     NodeT * node, const std::string & topic_name, const rclcpp::QoS & qos, Func && callback,
     const agnocast::SubscriptionOptions & options)
   {
+    // TODO(Koichi98): AUTOWARE_MESSAGE_UNIQUE_PTR should be disallowed for Agnocast subscriptions.
+    // Agnocast uses shared memory, so mutable exclusive ownership is semantically incorrect and
+    // risks corrupting data read by other subscribers. Currently kept for compatibility with
+    // CudaPointcloudPreprocessorNode which uses UNIQUE_PTR callbacks.
     static_assert(
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
-        std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_SHARED_PTR(MessageT) &&> ||
         std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&>,
       "callback should be invocable with an rvalue reference to either "
-      "AUTOWARE_MESSAGE_UNIQUE_PTR, "
-      "AUTOWARE_MESSAGE_SHARED_PTR, or AUTOWARE_MESSAGE_CONST_SHARED_PTR");
+      "AUTOWARE_MESSAGE_UNIQUE_PTR or AUTOWARE_MESSAGE_CONST_SHARED_PTR");
 
     constexpr auto ownership =
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&>
@@ -245,7 +247,13 @@ public:
     subscription_ = agnocast::create_subscription<MessageT>(
       node, topic_name, qos,
       [callback = std::forward<Func>(callback)](agnocast::ipc_shared_ptr<MessageT> && msg) {
-        callback(message_ptr<MessageT, ownership>(std::move(msg)));
+        if constexpr (ownership == OwnershipType::Unique) {
+          callback(message_ptr<MessageT, ownership>(std::move(msg)));
+        } else {
+          callback(
+            message_ptr<const MessageT, ownership>(
+              agnocast::ipc_shared_ptr<const MessageT>(std::move(msg))));
+        }
       },
       options);
   }
@@ -264,11 +272,9 @@ public:
   {
     static_assert(
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
-        std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_SHARED_PTR(MessageT) &&> ||
         std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&>,
       "callback should be invocable with an rvalue reference to either "
-      "AUTOWARE_MESSAGE_UNIQUE_PTR, "
-      "AUTOWARE_MESSAGE_SHARED_PTR, or AUTOWARE_MESSAGE_CONST_SHARED_PTR");
+      "AUTOWARE_MESSAGE_UNIQUE_PTR or AUTOWARE_MESSAGE_CONST_SHARED_PTR");
 
     constexpr auto ownership =
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&>
@@ -283,7 +289,9 @@ public:
         if constexpr (ownership == OwnershipType::Unique) {
           callback(message_ptr<MessageT, ownership>(std::move(msg)));
         } else {
-          callback(message_ptr<MessageT, ownership>(std::shared_ptr<MessageT>(std::move(msg))));
+          callback(
+            message_ptr<const MessageT, ownership>(
+              std::shared_ptr<const MessageT>(std::move(msg))));
         }
       },
       ros2_options);

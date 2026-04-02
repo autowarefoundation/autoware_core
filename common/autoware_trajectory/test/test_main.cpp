@@ -1,4 +1,4 @@
-// Copyright 2025 TIER IV, Inc.
+// Copyright 2026 TIER IV, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/trajectory/interpolator/result.hpp"
+#include <gtest/gtest.h>
+#include <pybind11/embed.h>
 
-#include <sstream>
-
-namespace autoware::experimental::trajectory::interpolator
+int main(int argc, char ** argv)
 {
-
-InterpolationFailure operator+(
-  const InterpolationFailure & primary, const InterpolationFailure & nested)
-{
-  std::stringstream ss;
-  ss << primary.what << "." << std::endl << "\tReason: " << nested.what << std::endl;
-  return InterpolationFailure{ss.str()};
+#ifdef PLOT
+  pybind11::scoped_interpreter guard{};
+#endif
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
 }
-
-}  // namespace autoware::experimental::trajectory::interpolator

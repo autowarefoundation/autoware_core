@@ -5,7 +5,6 @@ Checks: "
   -bugprone-exception-escape,
   -bugprone-implicit-widening-of-multiplication-result,
   -bugprone-narrowing-conversions,
-  -bugprone-optional-value-conversion,
   -bugprone-reserved-identifier,
   -bugprone-unchecked-optional-access"
 
