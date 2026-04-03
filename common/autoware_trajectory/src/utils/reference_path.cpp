@@ -395,7 +395,7 @@ static ReferencePoints sanitize_and_crop(
 static bool has_passed_lanelet_border(
   const ReferencePoint & prev_point, const lanelet::Id adding_point_located_lanelet_id)
 {
-  if (prev_point.is_border_point() && prev_point.next_lanelet_id.has_value()) {
+  if (prev_point.next_lanelet_id.has_value()) {
     return prev_point.next_lanelet_id.value() != adding_point_located_lanelet_id;
   }
   return prev_point.located_lanelet_id != adding_point_located_lanelet_id;
