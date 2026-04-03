@@ -42,6 +42,8 @@ namespace detail::impl
  * constraint.
  * @param bases A vector of double values representing the sequence of bases.
  * @param constraint A function that evaluates whether a given base satisfies the constraint.
+ * @param max_iter Maximum number of iterations for the binary search when finding interval
+ * boundaries.
  * @return A vector of Interval objects representing the intervals where the constraint is
  * satisfied.
  */
@@ -57,6 +59,8 @@ std::vector<Interval> find_intervals_impl(
  * @tparam Constraint A callable type that evaluates a constraint on a trajectory point.
  * @param trajectory The trajectory to evaluate.
  * @param constraint The constraint to apply to each point in the trajectory.
+ * @param max_iter Maximum number of iterations for the binary search when finding interval
+ * boundaries.
  * @return A vector of Interval objects representing the intervals where the constraint is
  * satisfied.
  */
