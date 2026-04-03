@@ -1,0 +1,122 @@
+/**:
+  ros__parameters:
+    obstacle_stop:
+      option:
+        ignore_crossing_obstacle: true
+        suppress_sudden_stop: false
+
+      stop_planning:
+        stop_margin : 5.0 # longitudinal margin to obstacle [m]
+        terminal_stop_margin : 3.0 # Stop margin at the goal. This value cannot exceed stop margin. [m]
+        min_behavior_stop_margin: 3.0 # [m]
+        behavior_stop_margin_hold_time: 2.0 # [s] time to hold the min_behavior_stop_margin after disappearing the behavior stop point
+
+        max_negative_velocity: -1.0 # [m/s] maximum velocity of opposing traffic to consider stop planning
+        stop_margin_opposing_traffic: 10.0 # Ideal stop-margin from moving opposing obstacle when ego comes to a stop
+        effective_deceleration_opposing_traffic: 4.0 # Setting a higher value brings the final stop-margin closer to the ideal value above
+
+        min_on_duration: 0.3  # [s] minimum duration needed before a decision can be triggered
+        min_off_duration: 1.0  # [s] minimum duration needed before a decision can be canceled
+        update_distance_th: 0.5 # [m] minimum distance threshold to update stop point
+
+        hold_stop_velocity_threshold: 0.01 # The maximum ego velocity to hold stopping [m/s]
+        hold_stop_distance_threshold: 0.3 # The ego keeps stopping if the distance to stop changes within the threshold [m]
+        pointcloud_suppression_distance_margin: 0.2
+
+        stop_on_curve:
+          enable_approaching: false
+          additional_stop_margin: 3.0 # [m]
+          min_stop_margin: 3.0 # [m]
+
+        object_type_specified_params:
+          types: # For the listed types, the node try to read the following type specified values
+            - "default"
+            - "unknown"
+          # default: For the default type, which denotes the other types listed above, the following param is defined implicitly, and the other type-specified parameters are not defined.
+            # limit_min_acc: common_param.yaml/limit.min_acc
+          unknown:
+            limit_min_acc: -1.2 # overwrite the deceleration limit, in usually, common_param.yaml/limit.min_acc is referred.
+            sudden_object_acc_threshold: -1.1 # If a stop can be achieved by a deceleration smaller than this value, it is not considered as "sudden stop".
+            sudden_object_dist_threshold: 1000.0 # If a stop distance is longer than this value, it is not considered as "sudden stop".
+            abandon_to_stop: false # If true, the planner gives up to stop when it cannot avoid to run over while maintaining the deceleration limit.
+
+        rss_params:
+          use_rss_stop: true
+          two_wheel_objects_deceleration: -3.0 # [m/ss] for BICYCLE, MOTORCYCLE
+          vehicle_objects_deceleration: -1.2 # [m/ss] for CAR, TRUCK, etc
+          no_wheel_objects_deceleration: -10.0 # [m/ss] for PEDESTRIAN, UNKNOWN
+          pointcloud_deceleration: -1.0 # [m/ss] for pointcloud
+          velocity_offset: -1.0 # [m/s]
+
+        obstacle_velocity_threshold_enter_fixed_stop: 3.0  # [m/s] obstacle velocity threshold to use its current position for stop point decision
+        obstacle_velocity_threshold_exit_fixed_stop: 3.5  # [m/s] obstacle velocity threshold to use its braking distance (if use_rss_stop is true) for stop point decision
+
+      obstacle_filtering: # All parameters under this namespace can be set for each object type. If you want to set a value different from the default, please add a line.
+        check_inside: # If true, the planner checks if the obstacle is inside the ego's footprint; can be tuned for each object type
+          default: true
+          pointcloud: false
+        check_outside: # If true, the planner checks if the obstacle is outside the ego's footprint. pointcloud obstacles are not supported.
+          default: true
+          unknown: false
+
+        trim_trajectory:
+          enable_trimming:
+            default: false
+            pointcloud: true
+          min_trajectory_length: 30.0  # [m] minimum trajectory length to trim trajectory
+          braking_distance_scale_factor: 1.5  # scale factor for brake distance to trim trajectory
+
+        lateral_margin: # lateral margin between the obstacles and ego's footprint
+          nominal:
+            default: 0.3
+            unknown: 0.3
+            pointcloud: 0.3
+          additional: # additional stop margin to the obstacle.
+            wheel_off_track_scale: # scale factor for additional stop margin against ego's wheel off-track. Even if this value is set to 0.0, the planner considers the nominal wheel off-track.
+              default: 0.0
+            is_moving_threshold_velocity: 0.5 # [m/s] threshold to consider the obstacle as a moving obstacle. Pointcloud obstacles are always considered as stop obstacles.
+            is_stop_obstacle: # [m] additional stop margin for stop obstacle
+              default: 0.0
+            is_moving_obstacle: # [m] additional stop margin for moving obstacle
+              default: 0.0
+
+        detection_height: # [m] height range for collision detection from the ground.
+          top_limit:
+            default: 50.0
+            unknown: 1.0
+          bottom_limit: -50.0
+
+        min_object_length: 0.1 # [m] minimum object length to consider for stop planning
+
+        min_velocity_to_reach_collision_point: 2.0 # minimum velocity margin to calculate time to reach collision [m/s]
+        stop_obstacle_hold_time_threshold : 1.0 # maximum time for holding closest stop obstacle
+
+        outside_obstacle: # Parameters for predicting if an obstacle will cut in. Pointcloud obstacles are not supported.
+          estimation_time_horizon: 1.0
+          max_lateral_velocity: 5.0 # maximum lateral velocity to consider the obstacle as a stop obstacle [m/s]
+          min_longitudinal_velocity: -8.0 # minimum longitudinal velocity to consider the obstacle as a stop obstacle [m/s]
+          max_moving_direction_angle: 2.44 # [rad] = 140 [deg], maximum angle of moving direction to consider the obstacle as a stop obstacle
+          deceleration: # planner perceives the object will stop with this rate to avoid unnecessary stops [m/ss]
+            default: 0.0
+            pedestrian: 1.0
+            bicycle: 2.0
+
+        crossing_obstacle: # Parameters for predicting if an obstacle will cross. Pointcloud obstacles are not supported.
+          collision_time_margin : 1.0 # time threshold of collision between obstacle and ego for cruise or stop [s]
+          traj_angle_threshold: 0.523599 # [rad] = 70 [deg], yaw threshold of crossing obstacle against the nearest trajectory point for cruise or stop
+
+      pointcloud_segmentation:
+        time_series_association:
+          max_time_diff: 0.35
+          min_velocity: -5.0
+          max_velocity: 30.0
+          position_diff: 1.0
+        velocity_estimation:
+          use_estimated_velocity: false
+          min_clamp_velocity: 0.0
+          max_clamp_velocity: 20.0
+          required_velocity_count: 5
+          lpf_gain: 0.9
+        height_margin:
+          margin_from_top: 0.5 # [m] margin from the top of the ego vehicle
+          margin_from_bottom: 0.5 # [m] margin from the bottom of the ego vehicle

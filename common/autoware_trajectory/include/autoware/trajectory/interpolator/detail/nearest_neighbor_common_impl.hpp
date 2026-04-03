@@ -48,8 +48,11 @@ protected:
    */
   T compute_impl(const double s) const override
   {
+    if (this->values_.size() == 1) {
+      return this->values_.front();
+    }
     const int32_t idx = this->get_index(s);
-    return (std::abs(s - this->bases_[idx]) <= std::abs(s - this->bases_[idx + 1]))
+    return (std::abs(s - this->bases_.at(idx)) <= std::abs(s - this->bases_.at(idx + 1)))
              ? this->values_.at(idx)
              : this->values_.at(idx + 1);
   }

@@ -78,7 +78,7 @@ public:
    */
   std::vector<PointType> compute(const std::vector<double> & ss) const;
 
-  std::vector<PointType> restore(const size_t min_points = 4) const;
+  std::vector<PointType> restore() const;
 
   /**
    * @brief Align the orientation with the direction

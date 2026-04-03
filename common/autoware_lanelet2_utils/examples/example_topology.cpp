@@ -59,6 +59,10 @@ void opposite_lanelet()
     std::tie(lanelet_map_ptr_, routing_graph_ptr_) = set_up_lanelet_map_ptr(false);
     const auto opt = lanelet2_utils::left_opposite_lanelet(
       lanelet_map_ptr_->laneletLayer.get(2311), lanelet_map_ptr_);
+    if (!opt.has_value()) {
+      std::cerr << "Failed to get left opposite lanelet" << std::endl;
+      return;
+    }
     const auto lane = *opt;
     std::cout << "The left opposite lanelet id is : " << lane.id() << std::endl;
   }
@@ -70,6 +74,10 @@ void opposite_lanelet()
     std::tie(lanelet_map_ptr_, routing_graph_ptr_) = set_up_lanelet_map_ptr();
     const auto opt = lanelet2_utils::right_opposite_lanelet(
       lanelet_map_ptr_->laneletLayer.get(2288), lanelet_map_ptr_);
+    if (!opt.has_value()) {
+      std::cerr << "Failed to get right opposite lanelet" << std::endl;
+      return;
+    }
     const auto lane = *opt;
     std::cout << "The right opposite lanelet id is : " << lane.id() << std::endl;
   }
@@ -260,10 +268,14 @@ void following_and_previous_lanelet_sequences()
 
 int main()
 {
-  autoware::experimental::opposite_lanelet();
-  autoware::experimental::related_lanelets();
-  autoware::experimental::neighbor_lanelet();
-  autoware::experimental::following_and_previous_lanelet_sequences();
-
+  try {
+    autoware::experimental::opposite_lanelet();
+    autoware::experimental::related_lanelets();
+    autoware::experimental::neighbor_lanelet();
+    autoware::experimental::following_and_previous_lanelet_sequences();
+  } catch (const std::exception & e) {
+    std::cerr << "Error: " << e.what() << std::endl;
+    return 1;
+  }
   return 0;
 }

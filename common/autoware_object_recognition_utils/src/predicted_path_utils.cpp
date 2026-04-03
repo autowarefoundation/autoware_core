@@ -36,8 +36,8 @@ boost::optional<geometry_msgs::msg::Pose> calcInterpolatedPose(
   for (size_t path_idx = 1; path_idx < path.path.size(); ++path_idx) {
     const auto & pt = path.path.at(path_idx);
     const auto & prev_pt = path.path.at(path_idx - 1);
-    if (relative_time - epsilon < time_step * path_idx) {
-      const double offset = relative_time - time_step * (path_idx - 1);
+    if (relative_time - epsilon < time_step * static_cast<double>(path_idx)) {
+      const double offset = relative_time - time_step * static_cast<double>(path_idx - 1);
       const double ratio = std::clamp(offset / time_step, 0.0, 1.0);
       return autoware_utils_geometry::calc_interpolated_pose(prev_pt, pt, ratio, false);
     }
@@ -62,7 +62,7 @@ autoware_perception_msgs::msg::PredictedPath resamplePredictedPath(
   std::vector<double> z(path.path.size());
   std::vector<geometry_msgs::msg::Quaternion> quat(path.path.size());
   for (size_t i = 0; i < path.path.size(); ++i) {
-    input_time.at(i) = time_step * i;
+    input_time.at(i) = time_step * static_cast<double>(i);
     x.at(i) = path.path.at(i).position.x;
     y.at(i) = path.path.at(i).position.y;
     z.at(i) = path.path.at(i).position.z;

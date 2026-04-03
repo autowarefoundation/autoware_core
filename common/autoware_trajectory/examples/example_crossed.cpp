@@ -161,10 +161,7 @@ static Trajectory<PathPointWithLaneId> build_trajectory()
     point.lane_ids = std::vector<std::int64_t>{2};
     points.push_back(point);
   }
-  const auto points4_result = autoware::experimental::trajectory::detail::populate4(points);
-  const auto & points4 = points4_result.value();
-
-  const auto trajectory_opt = autoware::experimental::trajectory::pretty_build(points4);
+  const auto trajectory_opt = autoware::experimental::trajectory::pretty_build(points);
   return trajectory_opt.value();
 }
 

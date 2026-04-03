@@ -62,6 +62,7 @@ if(BUILD_TESTING)
 
   set(test_files
     test/test_main.cpp
+    test/test_build.cpp
     test/test_crossed.cpp
     test/test_shift.cpp
     test/test_helpers.cpp
@@ -75,6 +76,7 @@ if(BUILD_TESTING)
     test/test_utils_find_nearest.cpp
     test/test_utils_lateral_metrics.cpp
     test/test_utils_footprint.cpp
+    test/test_utils_velocity.cpp
   )
 
   ament_auto_add_gtest(test_${PROJECT_NAME} ${test_files})

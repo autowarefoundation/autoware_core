@@ -11,8 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "autoware/trajectory/forward.hpp"
 #include "autoware/trajectory/path_point_with_lane_id.hpp"
+#include "autoware/trajectory/threshold.hpp"
 #include "autoware/trajectory/utils/closest.hpp"
 #include "autoware/trajectory/utils/crossed.hpp"
 #include "autoware/trajectory/utils/curvature_utils.hpp"
@@ -21,8 +21,6 @@
 #include "autoware_utils_geometry/geometry.hpp"
 #include "lanelet2_core/primitives/LineString.h"
 
-#include <geometry_msgs/msg/detail/point__struct.hpp>
-#include <geometry_msgs/msg/detail/pose__struct.hpp>
 #include <geometry_msgs/msg/point.hpp>
 
 #include <gtest/gtest.h>
@@ -51,6 +49,14 @@ geometry_msgs::msg::Point point(double x, double y)
   p.x = x;
   p.y = y;
   return p;
+}
+
+void expect_strictly_increasing(const std::vector<double> & bases)
+{
+  ASSERT_FALSE(bases.empty());
+  for (size_t i = 1; i < bases.size(); ++i) {
+    EXPECT_LT(bases[i - 1], bases[i]);
+  }
 }
 
 void check_if_equals(const Trajectory & trajectory1, const Trajectory & trajectory2)
@@ -86,21 +92,109 @@ TEST(TrajectoryCreatorTest, constructor)
   autoware::experimental::trajectory::Trajectory<geometry_msgs::msg::Pose> trj_pose(*trajectory);
 }
 
-TEST(TrajectoryCreatorTest, create)
+TEST(TrajectoryCreatorTest, create_from_single_point)
 {
-  {
-    std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points{
-      path_point_with_lane_id(0.00, 0.00, 0)};
-    auto trajectory = Trajectory::Builder{}.build(points);
-    ASSERT_TRUE(!trajectory);
+  std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points{
+    path_point_with_lane_id(0.00, 0.00, 0)};
+  auto trajectory = Trajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory);
+}
+
+TEST(TrajectoryCreatorTest, restore_single_point_trajectory)
+{
+  const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points{
+    path_point_with_lane_id(0.00, 0.00, 7)};
+  const auto trajectory = Trajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory);
+
+  const auto restored = trajectory->restore();
+  ASSERT_EQ(restored.size(), 1UL);
+  EXPECT_DOUBLE_EQ(restored.front().point.pose.position.x, 0.0);
+  EXPECT_DOUBLE_EQ(restored.front().point.pose.position.y, 0.0);
+  ASSERT_EQ(restored.front().lane_ids.size(), 1UL);
+  EXPECT_EQ(restored.front().lane_ids.front(), 7);
+}
+
+TEST(TrajectoryCreatorTest, restore_complete_duplicate_points_trajectory_preserves_duplicates)
+{
+  const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points{
+    path_point_with_lane_id(1.0, 2.0, 7), path_point_with_lane_id(1.0, 2.0, 7),
+    path_point_with_lane_id(1.0, 2.0, 7)};
+  const auto trajectory = Trajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory);
+
+  const auto restored = trajectory->restore();
+  ASSERT_EQ(restored.size(), 3UL);
+  for (const auto & point : restored) {
+    EXPECT_DOUBLE_EQ(point.point.pose.position.x, 1.0);
+    EXPECT_DOUBLE_EQ(point.point.pose.position.y, 2.0);
+    ASSERT_EQ(point.lane_ids.size(), 1UL);
+    EXPECT_EQ(point.lane_ids.front(), 7);
   }
-  {
-    std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points{
-      path_point_with_lane_id(0.00, 0.00, 0), path_point_with_lane_id(0.81, 1.68, 0),
-      path_point_with_lane_id(1.65, 2.98, 0), path_point_with_lane_id(3.30, 4.01, 1)};
-    auto trajectory = Trajectory::Builder{}.build(points);
-    ASSERT_TRUE(trajectory);
+}
+
+TEST(TrajectoryCreatorTest, restore_crop_to_zero_length_trajectory_preserves_boundaries)
+{
+  const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points{
+    path_point_with_lane_id(0.0, 0.0, 0), path_point_with_lane_id(1.0, 1.0, 1),
+    path_point_with_lane_id(2.0, 2.0, 2), path_point_with_lane_id(3.0, 3.0, 3)};
+  auto trajectory = Trajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory);
+
+  const auto cropped_point = trajectory->compute(trajectory->length() / 2.0);
+  trajectory->crop(trajectory->length() / 2.0, 0.0);
+
+  const auto restored = trajectory->restore();
+  ASSERT_EQ(restored.size(), 2UL);
+  for (const auto & point : restored) {
+    EXPECT_DOUBLE_EQ(point.point.pose.position.x, cropped_point.point.pose.position.x);
+    EXPECT_DOUBLE_EQ(point.point.pose.position.y, cropped_point.point.pose.position.y);
+    ASSERT_EQ(point.lane_ids.size(), cropped_point.lane_ids.size());
+    EXPECT_EQ(point.lane_ids.front(), cropped_point.lane_ids.front());
   }
+}
+
+TEST(TrajectoryCreatorTest, restore_tiny_cropped_trajectory_preserves_boundaries)
+{
+  const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points{
+    path_point_with_lane_id(0.0, 0.0, 0), path_point_with_lane_id(1.0, 1.0, 1),
+    path_point_with_lane_id(2.0, 2.0, 2), path_point_with_lane_id(3.0, 3.0, 3)};
+  auto trajectory = Trajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory);
+
+  constexpr double tiny_length =
+    autoware::experimental::trajectory::k_points_minimum_dist_threshold / 10.0;
+  const double crop_start = trajectory->length() / 2.0;
+  const auto cropped_start_point = trajectory->compute(crop_start);
+  const auto cropped_end_point = trajectory->compute(crop_start + tiny_length);
+  trajectory->crop(crop_start, tiny_length);
+
+  const auto restored = trajectory->restore();
+  ASSERT_EQ(restored.size(), 2UL);
+  EXPECT_DOUBLE_EQ(
+    restored.front().point.pose.position.x, cropped_start_point.point.pose.position.x);
+  EXPECT_DOUBLE_EQ(
+    restored.front().point.pose.position.y, cropped_start_point.point.pose.position.y);
+  ASSERT_EQ(restored.front().lane_ids.size(), cropped_start_point.lane_ids.size());
+  EXPECT_EQ(restored.front().lane_ids.front(), cropped_start_point.lane_ids.front());
+  EXPECT_DOUBLE_EQ(restored.back().point.pose.position.x, cropped_end_point.point.pose.position.x);
+  EXPECT_DOUBLE_EQ(restored.back().point.pose.position.y, cropped_end_point.point.pose.position.y);
+  ASSERT_EQ(restored.back().lane_ids.size(), cropped_end_point.lane_ids.size());
+  EXPECT_EQ(restored.back().lane_ids.front(), cropped_end_point.lane_ids.front());
+  EXPECT_LT(
+    std::hypot(
+      restored.back().point.pose.position.x - restored.front().point.pose.position.x,
+      restored.back().point.pose.position.y - restored.front().point.pose.position.y),
+    autoware::experimental::trajectory::k_points_minimum_dist_threshold);
+}
+
+TEST(TrajectoryCreatorTest, create_from_multiple_points)
+{
+  std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points{
+    path_point_with_lane_id(0.00, 0.00, 0), path_point_with_lane_id(0.81, 1.68, 0),
+    path_point_with_lane_id(1.65, 2.98, 0), path_point_with_lane_id(3.30, 4.01, 1)};
+  auto trajectory = Trajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory);
 }
 
 TEST(TrajectoryCreatorTest, almost_same_points_are_given)
@@ -114,13 +208,37 @@ TEST(TrajectoryCreatorTest, almost_same_points_are_given)
   auto trajectory = Trajectory::Builder{}.build(points);
   ASSERT_TRUE(trajectory);
   {
-    const auto restored = trajectory->restore(3);
-    EXPECT_EQ(restored.size(), 3);
+    const auto restored = trajectory->restore();
+    EXPECT_EQ(restored.size(), 5);
   }
-  {
-    const auto restored = trajectory->restore(4);
-    EXPECT_EQ(restored.size(), 4);
-  }
+}
+
+TEST(TrajectoryCreatorTest, create_from_complete_duplicate_points_with_increasing_bases)
+{
+  std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points{
+    path_point_with_lane_id(1.0, 2.0, 0), path_point_with_lane_id(1.0, 2.0, 0),
+    path_point_with_lane_id(1.0, 2.0, 1)};
+
+  const auto trajectory = Trajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory);
+
+  const auto bases = trajectory->get_underlying_bases();
+  EXPECT_EQ(bases.size(), points.size());
+  expect_strictly_increasing(bases);
+}
+
+TEST(TrajectoryCreatorTest, create_from_partially_duplicate_points_with_increasing_bases)
+{
+  std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points{
+    path_point_with_lane_id(0.0, 0.0, 0), path_point_with_lane_id(1.0, 1.0, 0),
+    path_point_with_lane_id(1.0, 1.0, 1), path_point_with_lane_id(2.0, 2.0, 1)};
+
+  const auto trajectory = Trajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory);
+
+  const auto bases = trajectory->get_underlying_bases();
+  EXPECT_EQ(bases.size(), points.size());
+  expect_strictly_increasing(bases);
 }
 
 class TrajectoryTest : public ::testing::Test
@@ -549,7 +667,7 @@ TEST_F(TrajectoryTest, restore)
 {
   using autoware::experimental::trajectory::Trajectory;
   trajectory->longitudinal_velocity_mps().range(4.0, trajectory->length()).set(5.0);
-  auto points = trajectory->restore(0);
+  auto points = trajectory->restore();
   EXPECT_EQ(11, points.size());
 }
 

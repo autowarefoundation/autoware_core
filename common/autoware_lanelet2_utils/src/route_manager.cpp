@@ -70,6 +70,7 @@ std::optional<RouteManager> RouteManager::create(
   if (!closest_lanelet_opt) {
     return std::nullopt;
   }
+  const auto & closest_lanelet = *closest_lanelet_opt;
 
   std::unordered_map<lanelet::Id, double> all_route_length_cache;
   for (const auto & route_lanelet : all_route_lanelets) {
@@ -87,7 +88,7 @@ std::optional<RouteManager> RouteManager::create(
   return RouteManager(
     lanelet_map, routing_graph, traffic_rules, std::move(all_route_lanelets),
     std::move(all_route_length_cache), std::move(preferred_lanelets), start_lanelet, goal_lanelet,
-    initial_pose, closest_lanelet_opt.value(), route_submap_ptr, std::move(route_subgraph_ptr));
+    initial_pose, closest_lanelet, route_submap_ptr, std::move(route_subgraph_ptr));
 }
 
 std::optional<RouteManager> RouteManager::update_current_pose(

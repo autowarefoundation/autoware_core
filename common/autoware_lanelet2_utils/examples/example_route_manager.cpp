@@ -95,6 +95,10 @@ void route_manager_main()
               << std::endl;
 
     // get current_lanelet
+    if (!route_manager_opt.has_value()) {
+      std::cerr << "Failed to create route manager" << std::endl;
+      return;
+    }
     const auto & route_manager = route_manager_opt.value();
     const auto initial_lanelet = route_manager.current_lanelet();
     std::cout << "Current lanelet (initial) id is " << initial_lanelet.id() << std::endl;
@@ -121,10 +125,18 @@ void route_manager_main()
     static constexpr double ego_nearest_dist_threshold = 3.0;
     static constexpr double ego_nearest_yaw_threshold = 1.046;
     {
+      if (!route_manager_opt.has_value()) {
+        std::cerr << "Failed to create route manager for update" << std::endl;
+        return;
+      }
       route_manager_opt =
         std::move(route_manager_opt.value())
           .update_current_pose(P1, ego_nearest_dist_threshold, ego_nearest_yaw_threshold);
 
+      if (!route_manager_opt.has_value()) {
+        std::cerr << "Failed to update current pose" << std::endl;
+        return;
+      }
       const auto & route_manager = route_manager_opt.value();
       const auto & current_lanelet = route_manager.current_lanelet();
       std::cout << "Current lanelet (moved) id is " << current_lanelet.id() << std::endl;
@@ -141,7 +153,15 @@ void route_manager_main()
     P5.orientation.z = -0.6826331781647528;
 
     {
+      if (!route_manager_opt.has_value()) {
+        std::cerr << "Failed to get route manager for lane change" << std::endl;
+        return;
+      }
       route_manager_opt = std::move(route_manager_opt.value()).commit_lane_change_success(P5);
+      if (!route_manager_opt.has_value()) {
+        std::cerr << "Failed to commit lane change" << std::endl;
+        return;
+      }
       const auto & route_manager = route_manager_opt.value();
       const auto & lane_changed_lanelet = route_manager.current_lanelet();
       std::cout << "Current lanelet (lane changed) id is " << lane_changed_lanelet.id()
@@ -152,6 +172,10 @@ void route_manager_main()
   // reset route_manager_opt
   const auto route_manager_opt =
     lanelet2_utils::RouteManager::create(map_msg_, route_msg_, initial_pose_);
+  if (!route_manager_opt.has_value()) {
+    std::cerr << "Failed to create route manager for lanelet sequence queries" << std::endl;
+    return;
+  }
   const auto & route_manager = route_manager_opt.value();
 
   // get lanelet_sequence
@@ -177,6 +201,10 @@ void route_manager_main()
   {
     {
       const auto lane_opt = route_manager.get_closest_preferred_route_lanelet(initial_pose_);
+      if (!lane_opt.has_value()) {
+        std::cerr << "Failed to get closest preferred route lanelet" << std::endl;
+        return;
+      }
       auto lane = *lane_opt;
       std::cout << "Closest preferred route lanelet id is " << lane.id() << std::endl;
     }
@@ -186,6 +214,10 @@ void route_manager_main()
       static constexpr double ego_nearest_yaw_threshold = 1.046;
       const auto lane_opt = route_manager.get_closest_route_lanelet_within_constraints(
         initial_pose_, ego_nearest_dist_threshold, ego_nearest_yaw_threshold);
+      if (!lane_opt.has_value()) {
+        std::cerr << "Failed to get closest route lanelet within constraints" << std::endl;
+        return;
+      }
       auto lane = *lane_opt;
       std::cout << "Closest route lanelet (with constraint) id is " << lane.id() << std::endl;
     }
@@ -195,6 +227,11 @@ void route_manager_main()
 
 int main()
 {
-  autoware::experimental::route_manager_main();
+  try {
+    autoware::experimental::route_manager_main();
+  } catch (const std::exception & e) {
+    std::cerr << "Error: " << e.what() << std::endl;
+    return 1;
+  }
   return 0;
 }
