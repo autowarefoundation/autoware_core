@@ -68,6 +68,8 @@
 #include <pcl/registration/registration.h>
 
 #include <iostream>
+#include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -138,11 +140,22 @@ public:
     // This is to avoid segmentation fault when setting null input
     // No idea why PCL does not check the nullity of input
     if (input) {
-      BaseRegType::setInputSource(input);
+      // Deep-copy to avoid data races when the producer mutates the cloud after passing it in.
+      auto copied = std::make_shared<PointCloudSource>(*input);
+      {
+        std::lock_guard<std::mutex> lock(input_source_mutex_);
+        BaseRegType::setInputSource(copied);
+      }
     } else {
       std::cerr << "Error: Null input source cloud is not allowed" << std::endl;
       exit(EXIT_FAILURE);
     }
+  }
+
+  inline PointCloudSourceConstPtr getInputSource()
+  {
+    std::lock_guard<std::mutex> lock(input_source_mutex_);
+    return BaseRegType::getInputSource();
   }
 
   inline void setInputTarget(const PointCloudTargetConstPtr & cloud)
@@ -490,6 +503,8 @@ protected:
   Eigen::Vector3f regularization_pose_translation_;
 
   NdtParams params_;
+
+  mutable std::mutex input_source_mutex_;
 
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
