@@ -24,6 +24,8 @@
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/pose.hpp>
 
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2/LinearMath/Vector3.h>
 #include <tf2/utils.h>
 
 #include <cmath>
@@ -37,26 +39,28 @@ namespace autoware::experimental::trajectory
 namespace detail
 {
 
-// Extract yaw from orientation quaternion for types that have pose
-inline double get_yaw_from_point_type(const geometry_msgs::msg::Pose & pose)
+inline tf2::Quaternion get_orientation_from_point_type(const geometry_msgs::msg::Pose & pose)
 {
-  return tf2::getYaw(pose.orientation);
+  return tf2::Quaternion(
+    pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w);
 }
 
-inline double get_yaw_from_point_type(const autoware_planning_msgs::msg::PathPoint & point)
+inline tf2::Quaternion get_orientation_from_point_type(
+  const autoware_planning_msgs::msg::PathPoint & point)
 {
-  return tf2::getYaw(point.pose.orientation);
+  return get_orientation_from_point_type(point.pose);
 }
 
-inline double get_yaw_from_point_type(const autoware_planning_msgs::msg::TrajectoryPoint & point)
+inline tf2::Quaternion get_orientation_from_point_type(
+  const autoware_planning_msgs::msg::TrajectoryPoint & point)
 {
-  return tf2::getYaw(point.pose.orientation);
+  return get_orientation_from_point_type(point.pose);
 }
 
-inline double get_yaw_from_point_type(
+inline tf2::Quaternion get_orientation_from_point_type(
   const autoware_internal_planning_msgs::msg::PathPointWithLaneId & point)
 {
-  return tf2::getYaw(point.point.pose.orientation);
+  return get_orientation_from_point_type(point.point.pose);
 }
 
 }  // namespace detail
@@ -65,12 +69,16 @@ inline double get_yaw_from_point_type(
  * @brief Compute a trajectory offset from the base_link by a fixed vehicle-frame offset.
  * @details
  * Given a trajectory whose points represent the base_link pose, this function computes a new
- * trajectory where each point is translated by `(offset_x, offset_y)` expressed in the **local
- * vehicle frame** (i.e., forward is +x, left is +y). The orientation of each pose is preserved.
+ * trajectory where each point is translated by `(offset_x, offset_y, offset_z)` expressed in the
+ * **local vehicle frame** (i.e., forward is +x, left is +y, up is +z). The orientation of each
+ * pose is preserved.
+ *
+ * The vehicle-frame offset is rotated into the global frame using the point's full orientation
+ * quaternion. This means roll, pitch, and yaw are all respected when available.
  *
  * For point types with orientation (Pose, PathPoint, TrajectoryPoint, PathPointWithLaneId), the
- * pose's orientation is used to determine the heading. For `geometry_msgs::msg::Point`, the
- * trajectory's azimuth (tangent direction) is used instead.
+ * pose's full orientation is used. For `geometry_msgs::msg::Point`, the trajectory's azimuth
+ * (tangent direction) and elevation are used to synthesize an orientation with zero roll.
  *
  * This is useful for obtaining the path of the vehicle front, rear, or side edges from a
  * base_link-centered trajectory.
@@ -79,12 +87,13 @@ inline double get_yaw_from_point_type(
  * @param reference_trajectory The input trajectory (base_link centered).
  * @param offset_x Forward offset in the vehicle frame [m].
  * @param offset_y Lateral offset in the vehicle frame [m].
+ * @param offset_z Vertical offset in the vehicle frame [m].
  * @return A new trajectory with the offset applied.
  */
 template <typename PointType>
 trajectory::Trajectory<PointType> add_offset(
   const trajectory::Trajectory<PointType> & reference_trajectory, const double offset_x,
-  const double offset_y)
+  const double offset_y, const double offset_z = 0.0)
 {
   const auto underlying_bases = reference_trajectory.get_underlying_bases();
 
@@ -94,22 +103,22 @@ trajectory::Trajectory<PointType> add_offset(
   for (const auto s : underlying_bases) {
     auto point = reference_trajectory.compute(s);
 
-    // Use pose orientation for types with orientation, or trajectory azimuth for Point
-    double yaw = 0.0;
+    // Use pose orientation for types with orientation, or synthesize one from the tangent for
+    // Point trajectories.
+    tf2::Quaternion orientation;
     if constexpr (std::is_same_v<PointType, geometry_msgs::msg::Point>) {
-      // For Point type, use the trajectory's azimuth (tangent direction)
-      yaw = reference_trajectory.azimuth(s);
+      orientation.setRPY(0.0, reference_trajectory.elevation(s), reference_trajectory.azimuth(s));
     } else {
-      // For Pose, PathPoint, TrajectoryPoint, PathPointWithLaneId, use the pose's orientation
-      yaw = detail::get_yaw_from_point_type(point);
+      orientation = detail::get_orientation_from_point_type(point);
     }
 
-    // Rotate the vehicle-frame offset into the global frame
-    const double global_offset_x = std::cos(yaw) * offset_x - std::sin(yaw) * offset_y;
-    const double global_offset_y = std::sin(yaw) * offset_x + std::cos(yaw) * offset_y;
+    orientation.normalize();
+    const auto global_offset =
+      tf2::quatRotate(orientation, tf2::Vector3(offset_x, offset_y, offset_z));
 
-    detail::to_point(point).x += global_offset_x;
-    detail::to_point(point).y += global_offset_y;
+    detail::to_point(point).x += global_offset.x();
+    detail::to_point(point).y += global_offset.y();
+    detail::to_point(point).z += global_offset.z();
 
     offset_points.emplace_back(std::move(point));
   }
