@@ -23,6 +23,7 @@
 #include <range/v3/all.hpp>
 
 #include <algorithm>
+#include <iterator>
 #include <memory>
 #include <string>
 #include <tuple>
@@ -575,7 +576,7 @@ TrajectoryExperimental AnalyticalJerkConstrainedSmoother::applyLateralAccelerati
 
   // calculate and apply velocity limits based on curvature
   const auto velocity_data = trajectory.longitudinal_velocity_mps().get_data();
-  const auto [bases, velocities] = velocity_data;
+  const auto & [bases, velocities] = velocity_data;
 
   std::vector<std::pair<double, double>> filtered_points;  // arc_length and velocity
   for (size_t i = 0; i < bases.size(); ++i) {
@@ -586,8 +587,8 @@ TrajectoryExperimental AnalyticalJerkConstrainedSmoother::applyLateralAccelerati
     const double end_arc = std::min(trajectory.length(), arc_length_i + after_decel_dist);
 
     for (size_t j = 0; j < curvature_v.size(); ++j) {
-      const double arc_length_j =
-        trajectory_base.at(j);  // Use bases instead of trajectory.arc_length(j)
+      // Use the curvature sampling bases instead of trajectory.arc_length(j).
+      const double arc_length_j = trajectory_base.at(j);
       if (arc_length_j >= start_arc && arc_length_j <= end_arc) {
         curvature = std::max(curvature, std::fabs(curvature_v.at(j)));
       }
@@ -703,27 +704,24 @@ bool AnalyticalJerkConstrainedSmoother::searchDecelTargetIndices(
     return true;
   }
 
-  size_t start_idx = 0;
-  for (size_t i = 0; i < bases.size(); ++i) {
-    if (bases.at(i) >= start_distance) {
-      start_idx = i;
-      break;
-    }
+  const auto start_it = std::lower_bound(bases.begin(), bases.end(), start_distance);
+  if (start_it == bases.end()) {
+    return true;
   }
+  const size_t start_idx = static_cast<size_t>(std::distance(bases.begin(), start_it));
+  const size_t search_start_idx = std::max<size_t>(1, start_idx);
 
   std::vector<std::pair<double, double>> tmp_indices;
-  bool has_prev_velocity = start_idx > 0;
-  double prev_velocity = has_prev_velocity ? velocities.at(start_idx - 1) : 0.0;
-
-  for (const auto [curr_distance, next_distance, curr_vel, next_vel] : ranges::views::zip(
-         bases | ranges::views::drop(start_idx), bases | ranges::views::drop(start_idx + 1),
-         velocities | ranges::views::drop(start_idx),
-         velocities | ranges::views::drop(start_idx + 1))) {
+  for (size_t i = search_start_idx; i < velocities.size() - 1; ++i) {
+    const double curr_distance = bases.at(i);
     if (curr_distance > traj_length) {
       break;
     }
 
-    const double dv_before = has_prev_velocity ? (curr_vel - prev_velocity) : 0.0;
+    const double next_distance = bases.at(i + 1);
+    const double curr_vel = velocities.at(i);
+    const double next_vel = velocities.at(i + 1);
+    const double dv_before = curr_vel - velocities.at(i - 1);
     const double dv_after = next_vel - curr_vel;
 
     if (dv_before < ep && dv_after > ep) {
@@ -731,25 +729,24 @@ bool AnalyticalJerkConstrainedSmoother::searchDecelTargetIndices(
         curr_distance - curr_vel * (next_distance - curr_distance) / (next_vel - curr_vel);
       tmp_indices.emplace_back(valley_distance, curr_vel);
     }
-
-    prev_velocity = curr_vel;
-    has_prev_velocity = true;
   }
 
   const size_t last_idx = velocities.size() - 1;
-  if (last_idx > 0) {
+  if (last_idx >= search_start_idx) {
     const double dv_before_last = velocities.at(last_idx) - velocities.at(last_idx - 1);
     if (dv_before_last < ep) {
       tmp_indices.emplace_back(bases.at(last_idx), velocities.at(last_idx));
     }
   }
 
-  const double arc_dist_threshold = 10.0;
+  // Keep the same nearby-target suppression as the point-based overload,
+  // but compare in arc length here.
+  constexpr double min_target_spacing = 10.0;
   if (!tmp_indices.empty()) {
     for (unsigned int j = 0; j < tmp_indices.size() - 1; ++j) {
       const double arc_dist = tmp_indices.at(j + 1).first - tmp_indices.at(j).first;
       if (
-        (arc_dist < arc_dist_threshold) &&
+        (arc_dist < min_target_spacing) &&
         (tmp_indices.at(j + 1).second < tmp_indices.at(j).second)) {
         continue;
       }
@@ -979,9 +976,12 @@ bool AnalyticalJerkConstrainedSmoother::applyBackwardDecelFilter(
     double actual_start_distance = start_distance;
     const auto [bases, velocities] = output_trajectory.longitudinal_velocity_mps().get_data();
 
-    for (const auto [curr_arc, next_arc, curr_vel, next_vel] : ranges::views::zip(
-           bases, bases | ranges::views::drop(1), velocities,
-           velocities | ranges::views::drop(1))) {
+    for (size_t i = 0; i + 1 < bases.size(); ++i) {
+      const double curr_arc = bases.at(i);
+      const double next_arc = bases.at(i + 1);
+      const double curr_vel = velocities.at(i);
+      const double next_vel = velocities.at(i + 1);
+
       if (curr_arc >= start_distance && next_arc <= decel_target_distance) {
         if (
           (curr_vel >= decel_target_vel && next_vel <= decel_target_vel) ||
