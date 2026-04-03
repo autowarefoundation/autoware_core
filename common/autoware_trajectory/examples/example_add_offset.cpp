@@ -23,12 +23,10 @@
 #include <pybind11/stl.h>
 
 #include <algorithm>
-#include <iostream>
 #include <string>
 #include <vector>
 
 using autoware_planning_msgs::msg::TrajectoryPoint;
-using autoware_utils_geometry::create_quaternion_from_yaw;
 using geometry_msgs::build;
 using geometry_msgs::msg::Point;
 using geometry_msgs::msg::Pose;
@@ -82,26 +80,18 @@ int main()
 
   // Create a circular arc trajectory
   std::vector<TrajectoryPoint> points;
-  const double radius = 20.0;               // radius of the circle [m]
-  const double vx = 5.0;                    // m/s
-  const double heading_rate = vx / radius;  // ω = v/r [rad/s]
-  const double start_angle = 0.0;           // start angle [rad]
-  const double end_angle = M_PI_2;          // 90 degree arc
-  const double step_angle = 0.1;            // angle step [rad]
+  const double radius = 20.0;       // radius of the circle [m]
+  const double start_angle = 0.0;   // start angle [rad]
+  const double end_angle = M_PI_2;  // 90 degree arc
+  const double step_angle = 0.1;    // angle step [rad]
 
   for (double angle = start_angle; angle <= end_angle; angle += step_angle) {
     // Circle centered at (0, radius) so it starts at origin going in +x direction
     const double x = radius * std::sin(angle);
     const double y = radius * (1.0 - std::cos(angle));
-    const double yaw = angle;  // tangent direction of circle
 
     TrajectoryPoint point;
-    point.pose = build<Pose>()
-                   .position(build<Point>().x(x).y(y).z(0.0))
-                   .orientation(create_quaternion_from_yaw(yaw));
-    point.longitudinal_velocity_mps = vx;
-    point.lateral_velocity_mps = 0.0;
-    point.heading_rate_rps = heading_rate;
+    point.pose.position = build<Point>().x(x).y(y).z(0.0);
     points.push_back(point);
   }
 
@@ -109,7 +99,7 @@ int main()
                       .build(points)
                       .value();
 
-  std::cout << "Original trajectory length: " << trajectory.length() << " m" << std::endl;
+  trajectory.align_orientation_with_trajectory_direction();
 
   // Get offset trajectories
   auto front_trajectory =
@@ -148,22 +138,6 @@ int main()
   plt.legend();
   plt.title(Args("Lateral Offset Trajectories"));
   plt.show();
-
-  // Print sample velocity values
-  const double sample_s = trajectory.length() / 2.0;  // midpoint of trajectory
-  std::cout << "\nVelocity comparison at s=" << sample_s << "m:" << std::endl;
-  auto orig_point = trajectory.compute(sample_s);
-  auto front_point = front_trajectory.compute(sample_s);
-  auto left_point = left_trajectory.compute(sample_s);
-
-  std::cout << "  Original: v_lon=" << orig_point.longitudinal_velocity_mps
-            << ", v_lat=" << orig_point.lateral_velocity_mps
-            << ", heading_rate=" << orig_point.heading_rate_rps << std::endl;
-  std::cout << "  Front (+" << front_offset
-            << "m x): v_lon=" << front_point.longitudinal_velocity_mps
-            << ", v_lat=" << front_point.lateral_velocity_mps << std::endl;
-  std::cout << "  Left (+" << left_offset << "m y): v_lon=" << left_point.longitudinal_velocity_mps
-            << ", v_lat=" << left_point.lateral_velocity_mps << std::endl;
 
   return 0;
 }
