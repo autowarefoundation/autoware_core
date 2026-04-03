@@ -165,4 +165,158 @@ TEST_F(StopLineModuleTest, TestUpdateStateAndStoppedTime)
   // Verify state transition to START
   EXPECT_EQ(state, StopLineModule::State::START);
   EXPECT_FALSE(stopped_time.has_value());
+
+  // Test different combinations of state transitions
+
+  // Case 1: APPROACH state with non-stopped vehicle
+  {
+    StopLineModule::State state = StopLineModule::State::APPROACH;
+    std::optional<rclcpp::Time> stopped_time;
+    double distance_to_stop_point = 0.1;
+    bool is_vehicle_stopped = false;  // Vehicle is not stopped
+
+    auto test_time = clock_->now();
+
+    module_->updateStateAndStoppedTime(
+      &state, &stopped_time, test_time, distance_to_stop_point, is_vehicle_stopped);
+
+    // Should remain in APPROACH state
+    EXPECT_EQ(state, StopLineModule::State::APPROACH);
+    EXPECT_FALSE(stopped_time.has_value());
+  }
+
+  // Case 2: APPROACH state with distance too far
+  {
+    StopLineModule::State state = StopLineModule::State::APPROACH;
+    std::optional<rclcpp::Time> stopped_time;
+    double distance_to_stop_point = 2.0;  // Distance is far enough
+    bool is_vehicle_stopped = true;
+
+    auto test_time = clock_->now();
+
+    module_->updateStateAndStoppedTime(
+      &state, &stopped_time, test_time, distance_to_stop_point, is_vehicle_stopped);
+
+    // Should remain in APPROACH state
+    EXPECT_EQ(state, StopLineModule::State::APPROACH);
+    EXPECT_FALSE(stopped_time.has_value());
+  }
+
+  // Case 3: Vehicle starts moving from STOPPED state
+  {
+    StopLineModule::State state = StopLineModule::State::STOPPED;
+    std::optional<rclcpp::Time> stopped_time = clock_->now();
+    double distance_to_stop_point = 0.1;
+    bool is_vehicle_stopped = false;  // Vehicle starts moving
+
+    auto test_time = clock_->now();
+
+    module_->updateStateAndStoppedTime(
+      &state, &stopped_time, test_time, distance_to_stop_point, is_vehicle_stopped);
+
+    // In actual code, when vehicle starts moving, state remains STOPPED until stop time is long
+    // enough So we expect the state to still be STOPPED and stopped_time to still exist
+    EXPECT_EQ(state, StopLineModule::State::STOPPED);
+    EXPECT_TRUE(stopped_time.has_value());
+  }
+}
+
+TEST_F(StopLineModuleTest, TestCreateDebugMarkerArray)
+{
+  // This test verifies that createDebugMarkerArray returns an empty marker array
+  auto markers = module_->createDebugMarkerArray();
+  EXPECT_EQ(markers.markers.size(), 0);
+}
+
+TEST_F(StopLineModuleTest, TestCreateVirtualWalls)
+{
+  // Test the virtual walls creation functionality
+  auto virtual_walls = module_->createVirtualWalls();
+  // Since no processing has been done, we expect no virtual walls
+  EXPECT_EQ(virtual_walls.size(), 0);
+
+  // Set debug data and verify wall creation
+  StopLineModule::DebugData debug_data;
+  geometry_msgs::msg::Pose stop_pose;
+  stop_pose.position.x = 7.0;
+  stop_pose.position.y = 0.0;
+
+  module_->updateDebugData(&debug_data, stop_pose, StopLineModule::State::APPROACH);
+
+  // Verify debug data was updated correctly
+  EXPECT_TRUE(debug_data.stop_pose.has_value());
+  EXPECT_DOUBLE_EQ(debug_data.stop_pose->position.x, stop_pose.position.x);
+  EXPECT_DOUBLE_EQ(debug_data.stop_pose->position.y, stop_pose.position.y);
+  EXPECT_DOUBLE_EQ(
+    debug_data.base_link2front, planner_data_->vehicle_info_.max_longitudinal_offset_m);
+}
+
+TEST_F(StopLineModuleTest, TestGetEgoAndStopPointStartState)
+{
+  // Test with START state (should return no stop point)
+  geometry_msgs::msg::Pose ego_pose;
+  ego_pose.position.x = 5.0;
+  ego_pose.position.y = 0.0;
+
+  const auto [ego_s, stop_point_s] =
+    module_->getEgoAndStopPoint(trajectory_, path_, ego_pose, StopLineModule::State::START);
+
+  EXPECT_DOUBLE_EQ(ego_s, 5.0);
+  EXPECT_FALSE(stop_point_s.has_value());
+}
+
+TEST_F(StopLineModuleTest, TestModifyPathVelocity)
+{
+  // Create a copy of the path to modify
+  auto test_path = path_;
+
+  // Setup odometry data
+  auto odometry = std::make_shared<geometry_msgs::msg::PoseStamped>();
+  odometry->pose.position.x = 5.0;
+  odometry->pose.position.y = 0.0;
+  planner_data_->current_odometry = odometry;
+
+  // Create and set velocity data
+  auto velocity = std::make_shared<geometry_msgs::msg::TwistStamped>();
+  velocity->twist.linear.x = 0.0;  // Stopped
+  planner_data_->current_velocity = velocity;
+
+  EXPECT_TRUE(module_->modifyPathVelocity(&test_path));
+  EXPECT_GT(test_path.points.size(), 0);
+}
+
+TEST_F(StopLineModuleTest, TestUpdateDebugData)
+{
+  // Test debug data update for different states
+
+  // First, set debug_data members
+  StopLineModule::DebugData debug_data;
+  debug_data.base_link2front = planner_data_->vehicle_info_.max_longitudinal_offset_m;
+
+  geometry_msgs::msg::Pose stop_pose;
+  stop_pose.position.x = 7.0;
+  stop_pose.position.y = 0.0;
+
+  // APPROACH state
+  module_->updateDebugData(&debug_data, stop_pose, StopLineModule::State::APPROACH);
+  EXPECT_TRUE(debug_data.stop_pose.has_value());
+  EXPECT_DOUBLE_EQ(debug_data.stop_pose->position.x, stop_pose.position.x);
+
+  // Reinitialize debug_data to test STOPPED state
+  StopLineModule::DebugData debug_data2;
+  debug_data2.base_link2front = planner_data_->vehicle_info_.max_longitudinal_offset_m;
+  debug_data2.stop_pose = stop_pose;  // Must manually set stop_pose
+
+  // STOPPED state
+  module_->updateDebugData(&debug_data2, stop_pose, StopLineModule::State::STOPPED);
+  EXPECT_TRUE(debug_data2.stop_pose.has_value());
+
+  // Reinitialize debug_data to test START state
+  StopLineModule::DebugData debug_data3;
+  debug_data3.base_link2front = planner_data_->vehicle_info_.max_longitudinal_offset_m;
+  debug_data3.stop_pose = stop_pose;  // Must manually set stop_pose
+
+  // START state - In START state, stop_pose will be reset to std::nullopt
+  module_->updateDebugData(&debug_data3, stop_pose, StopLineModule::State::START);
+  EXPECT_FALSE(debug_data3.stop_pose.has_value());
 }
