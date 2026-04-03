@@ -14,10 +14,10 @@
 
 #include "command_gate_mode_builder.hpp"
 
+#include <autoware/component_interface_specs/system.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_components/register_node_macro.hpp>
 
-#include <autoware/component_interface_specs/system.hpp>
 #include <autoware_adapi_v1_msgs/msg/operation_mode_state.hpp>
 #include <autoware_adapi_v1_msgs/msg/response_status.hpp>
 #include <autoware_adapi_v1_msgs/srv/change_operation_mode.hpp>
@@ -69,13 +69,15 @@ struct OperationModeState
 
 class AutowareCommandGateNode : public rclcpp::Node
 {
-  using SystemChangeOperationMode = autoware::component_interface_specs::system::ChangeOperationMode;
+  using SystemChangeOperationMode =
+    autoware::component_interface_specs::system::ChangeOperationMode;
 
 public:
   explicit AutowareCommandGateNode(const rclcpp::NodeOptions & options)
   : rclcpp::Node("autoware_command_gate", options)
   {
-    // The depth of the state topic is set to 1 to ensure that the latest state is always delivered to subscribers.
+    // The depth of the state topic is set to 1 to ensure that the latest state is always delivered
+    // to subscribers.
     static constexpr size_t depth = 1;
 
     // Publishers
@@ -85,8 +87,8 @@ public:
 
     state_pub_ = create_publisher<spec::OperationModeState::Message>(
       spec::OperationModeState::name, state_qos);
-    gear_pub_ = create_publisher<spec::GearCommand::Message>(
-      spec::GearCommand::name, rclcpp::QoS{depth});
+    gear_pub_ =
+      create_publisher<spec::GearCommand::Message>(spec::GearCommand::name, rclcpp::QoS{depth});
 
     srv_stop_ = create_service<spec::ChangeToStop::Service>(
       spec::ChangeToStop::name, [this](

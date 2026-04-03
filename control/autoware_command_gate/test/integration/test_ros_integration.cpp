@@ -217,9 +217,8 @@ TEST_F(CommandGateRosIntegrationTest, SystemChangeToLocalPublishesStateAndGear)
     "/control/command/gear_cmd", rclcpp::QoS{1},
     [&gear_msg](const GearCommand::SharedPtr msg) { gear_msg = *msg; });
 
-  auto client =
-    test_node_->create_client<SystemChangeOperationMode>(
-      "/system/operation_mode/change_operation_mode");
+  auto client = test_node_->create_client<SystemChangeOperationMode>(
+    "/system/operation_mode/change_operation_mode");
   ASSERT_TRUE(spin_until(
     executor_, [&client]() { return client->wait_for_service(std::chrono::seconds(0)); },
     std::chrono::seconds(2)));
@@ -268,9 +267,8 @@ TEST_F(CommandGateRosIntegrationTest, SystemChangeToRemotePublishesStateAndGear)
     "/control/command/gear_cmd", rclcpp::QoS{1},
     [&gear_msg](const GearCommand::SharedPtr msg) { gear_msg = *msg; });
 
-  auto client =
-    test_node_->create_client<SystemChangeOperationMode>(
-      "/system/operation_mode/change_operation_mode");
+  auto client = test_node_->create_client<SystemChangeOperationMode>(
+    "/system/operation_mode/change_operation_mode");
   ASSERT_TRUE(spin_until(
     executor_, [&client]() { return client->wait_for_service(std::chrono::seconds(0)); },
     std::chrono::seconds(2)));
