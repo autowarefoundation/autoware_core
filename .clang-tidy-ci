@@ -2,9 +2,7 @@ Checks: "
   -*,
   bugprone-*,
   -bugprone-easily-swappable-parameters,
-  -bugprone-exception-escape,
-  -bugprone-reserved-identifier,
-  -bugprone-unchecked-optional-access"
+  -bugprone-reserved-identifier"
 
 WarningsAsErrors: "*"
 
