@@ -14,10 +14,7 @@
 
 #include "autoware/trajectory/utils/velocity.hpp"
 
-#include "autoware/trajectory/forward.hpp"
 #include "autoware/trajectory/trajectory_point.hpp"
-
-#include "autoware_planning_msgs/msg/trajectory_point.hpp"
 
 namespace autoware::experimental::trajectory
 {

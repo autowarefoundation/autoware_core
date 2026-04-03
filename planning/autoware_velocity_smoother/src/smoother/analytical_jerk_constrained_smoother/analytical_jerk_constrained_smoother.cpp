@@ -95,7 +95,7 @@ AnalyticalJerkConstrainedSmoother::AnalyticalJerkConstrainedSmoother(
 {
   auto & p = smoother_param_;
   p.resample.ds_resample = node.declare_parameter<double>("resample.ds_resample");
-  p.resample.num_resample = node.declare_parameter<int>("resample.num_resample");
+  p.resample.num_resample = static_cast<int>(node.declare_parameter<int>("resample.num_resample"));
   p.resample.delta_yaw_threshold = node.declare_parameter<double>("resample.delta_yaw_threshold");
   p.latacc.enable_constant_velocity_while_turning =
     node.declare_parameter<bool>("latacc.enable_constant_velocity_while_turning");
@@ -147,8 +147,8 @@ bool AnalyticalJerkConstrainedSmoother::apply(
       "Input trajectory size is too short. Cannot find decel targets and "
       "return v0, a0");
     output = input;
-    output.front().longitudinal_velocity_mps = initial_vel;
-    output.front().acceleration_mps2 = initial_acc;
+    output.front().longitudinal_velocity_mps = static_cast<float>(initial_vel);
+    output.front().acceleration_mps2 = static_cast<float>(initial_acc);
     return true;
   }
   std::vector<std::pair<size_t, double>> decel_target_indices;
@@ -184,7 +184,7 @@ bool AnalyticalJerkConstrainedSmoother::apply(
     size_t bwd_start_index = closest_index;
     double bwd_start_vel = initial_vel;
     double bwd_start_acc = initial_acc;
-    for (int j = i; j >= 0; --j) {
+    for (int j = static_cast<int>(i); j >= 0; --j) {
       if (j == 0) {
         bwd_start_index = closest_index;
         bwd_start_vel = initial_vel;
@@ -430,7 +430,8 @@ TrajectoryPoints AnalyticalJerkConstrainedSmoother::resampleTrajectory(
 
       tp.pose = lerpByPose(tp0.pose, tp1.pose, s);
       tp.longitudinal_velocity_mps = tp0.longitudinal_velocity_mps;
-      tp.heading_rate_rps = (1.0 - s) * tp0.heading_rate_rps + s * tp1.heading_rate_rps;
+      tp.heading_rate_rps =
+        static_cast<float>((1.0 - s) * tp0.heading_rate_rps + s * tp1.heading_rate_rps);
       tp.acceleration_mps2 = tp0.acceleration_mps2;
       // tp.accel.angular.z = (1.0 - s) * tp0.accel.angular.z + s * tp1.accel.angular.z;
 
@@ -501,8 +502,8 @@ TrajectoryPoints AnalyticalJerkConstrainedSmoother::applyLateralAccelerationFilt
       curvature, lateral_acceleration_velocity_square_ratio_limits);
     v_curvature_max = std::max(v_curvature_max, base_param_.min_curve_velocity);
     if (output.at(i).longitudinal_velocity_mps > v_curvature_max) {
-      output.at(i).longitudinal_velocity_mps = v_curvature_max;
-      filtered_points.push_back(i);
+      output.at(i).longitudinal_velocity_mps = static_cast<float>(v_curvature_max);
+      filtered_points.push_back(static_cast<int>(i));
     }
   }
 
@@ -550,7 +551,7 @@ TrajectoryPoints AnalyticalJerkConstrainedSmoother::applyLateralAccelerationFilt
       if (
         filtered_start_index <= i && i <= filtered_end_index &&
         smoother_param_.latacc.enable_constant_velocity_while_turning) {
-        output.at(i).longitudinal_velocity_mps = filtered_min_latacc_velocity;
+        output.at(i).longitudinal_velocity_mps = static_cast<float>(filtered_min_latacc_velocity);
         break;
       }
     }
@@ -764,8 +765,8 @@ bool AnalyticalJerkConstrainedSmoother::applyForwardJerkFilter(
   const TrajectoryPoints & base_trajectory, const size_t start_index, const double initial_vel,
   const double initial_acc, const Param & params, TrajectoryPoints & output_trajectory) const
 {
-  output_trajectory.at(start_index).longitudinal_velocity_mps = initial_vel;
-  output_trajectory.at(start_index).acceleration_mps2 = initial_acc;
+  output_trajectory.at(start_index).longitudinal_velocity_mps = static_cast<float>(initial_vel);
+  output_trajectory.at(start_index).acceleration_mps2 = static_cast<float>(initial_acc);
 
   for (size_t i = start_index + 1; i < base_trajectory.size(); ++i) {
     const double prev_vel = output_trajectory.at(i - 1).longitudinal_velocity_mps;
@@ -786,8 +787,8 @@ bool AnalyticalJerkConstrainedSmoother::applyForwardJerkFilter(
 
     const double curr_acc = prev_acc + limited_jerk * dt;
 
-    output_trajectory.at(i).longitudinal_velocity_mps = curr_vel;
-    output_trajectory.at(i).acceleration_mps2 = curr_acc;
+    output_trajectory.at(i).longitudinal_velocity_mps = static_cast<float>(curr_vel);
+    output_trajectory.at(i).acceleration_mps2 = static_cast<float>(curr_acc);
   }
 
   return true;

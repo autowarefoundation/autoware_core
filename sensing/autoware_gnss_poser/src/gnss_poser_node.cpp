@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/gnss_poser/gnss_poser_node.hpp"
+#include "gnss_poser_node.hpp"
 
 #include <autoware/geography_utils/height.hpp>
 #include <autoware/geography_utils/projection.hpp>
@@ -182,24 +182,25 @@ void GNSSPoser::callback_nav_sat_fix(
   geometry_msgs::msg::PoseWithCovarianceStamped gnss_base_pose_cov_msg;
   gnss_base_pose_cov_msg.header = gnss_base_pose_msg.header;
   gnss_base_pose_cov_msg.pose.pose = gnss_base_pose_msg.pose;
-  gnss_base_pose_cov_msg.pose.covariance[7 * 0] =
+  constexpr std::size_t diagonal_stride = 7;
+  gnss_base_pose_cov_msg.pose.covariance[diagonal_stride * 0] =
     can_get_covariance(*nav_sat_fix_msg_ptr) ? nav_sat_fix_msg_ptr->position_covariance[0] : 10.0;
-  gnss_base_pose_cov_msg.pose.covariance[7 * 1] =
+  gnss_base_pose_cov_msg.pose.covariance[diagonal_stride * 1] =
     can_get_covariance(*nav_sat_fix_msg_ptr) ? nav_sat_fix_msg_ptr->position_covariance[4] : 10.0;
-  gnss_base_pose_cov_msg.pose.covariance[7 * 2] =
+  gnss_base_pose_cov_msg.pose.covariance[diagonal_stride * 2] =
     can_get_covariance(*nav_sat_fix_msg_ptr) ? nav_sat_fix_msg_ptr->position_covariance[8] : 10.0;
 
   if (use_gnss_ins_orientation_) {
-    gnss_base_pose_cov_msg.pose.covariance[7 * 3] =
+    gnss_base_pose_cov_msg.pose.covariance[diagonal_stride * 3] =
       std::pow(msg_gnss_ins_orientation_stamped_->orientation.rmse_rotation_x, 2);
-    gnss_base_pose_cov_msg.pose.covariance[7 * 4] =
+    gnss_base_pose_cov_msg.pose.covariance[diagonal_stride * 4] =
       std::pow(msg_gnss_ins_orientation_stamped_->orientation.rmse_rotation_y, 2);
-    gnss_base_pose_cov_msg.pose.covariance[7 * 5] =
+    gnss_base_pose_cov_msg.pose.covariance[diagonal_stride * 5] =
       std::pow(msg_gnss_ins_orientation_stamped_->orientation.rmse_rotation_z, 2);
   } else {
-    gnss_base_pose_cov_msg.pose.covariance[7 * 3] = 0.1;
-    gnss_base_pose_cov_msg.pose.covariance[7 * 4] = 0.1;
-    gnss_base_pose_cov_msg.pose.covariance[7 * 5] = 1.0;
+    gnss_base_pose_cov_msg.pose.covariance[diagonal_stride * 3] = 0.1;
+    gnss_base_pose_cov_msg.pose.covariance[diagonal_stride * 4] = 0.1;
+    gnss_base_pose_cov_msg.pose.covariance[diagonal_stride * 5] = 1.0;
   }
 
   pose_cov_pub_->publish(gnss_base_pose_cov_msg);

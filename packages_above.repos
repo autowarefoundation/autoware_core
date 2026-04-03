@@ -7,18 +7,18 @@ repositories:
     type: git
     url: https://github.com/autowarefoundation/autoware_adapi_msgs.git
     version: main
-  universe/external/tier4_ad_api_adaptor: # TODO(TIER IV): Migrate to AD API and remove this repository entry.
-    type: git
-    url: https://github.com/tier4/tier4_ad_api_adaptor.git
-    version: 0.46.0
   launcher/autoware_launch:
     type: git
     url: https://github.com/autowarefoundation/autoware_launch.git
     version: main
+  sensor_component/external/sync_tooling_msgs:
+    type: git
+    url: https://github.com/tier4/sync_tooling_msgs.git
+    version: 0.2.6
   sensor_component/external/nebula:
     type: git
     url: https://github.com/tier4/nebula.git
-    version: v0.2.6
+    version: v0.3.2.2
   sensor_component/transport_drivers:
     type: git
     url: https://github.com/autowarefoundation/transport_drivers
@@ -26,7 +26,7 @@ repositories:
   universe/external/bevdet_vendor: # TODO: wrap the original bevdet-tensorrt-cpp source code as a vendor package and provide it to autoware_tensorrt_bevdet package
     type: git
     url: https://github.com/autowarefoundation/bevdet_vendor.git
-    version: bevdet_vendor-ros2
+    version: 0.1.0
   universe/external/tier4_autoware_msgs:
     type: git
     url: https://github.com/tier4/tier4_autoware_msgs.git
@@ -47,7 +47,7 @@ repositories:
   universe/external/cuda_blackboard:
     type: git
     url: https://github.com/autowarefoundation/cuda_blackboard.git
-    version: v0.2.0
+    version: 0.3.0
   universe/external/negotiated:
     type: git
     url: https://github.com/osrf/negotiated.git
@@ -59,7 +59,7 @@ repositories:
   universe/external/eagleye:
     type: git
     url: https://github.com/MapIV/eagleye.git
-    version: c1919448336e86a8dd9c94a337032c05fcf6c381
+    version: 575136ebba99892946d36d8398f228aee2136af0
   universe/external/rtklib_ros_bridge:
     type: git
     url: https://github.com/MapIV/rtklib_ros_bridge.git
@@ -72,7 +72,7 @@ repositories:
   middleware/external/agnocast:
     type: git
     url: https://github.com/tier4/agnocast.git
-    version: main # TODO(TIER IV): to be updated to v1.1.0
+    version: 2.3.1
   # Tools
   tools/autoware_tools:
     type: git

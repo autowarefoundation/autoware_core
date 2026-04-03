@@ -16,9 +16,10 @@
 
 #include "autoware/trajectory/detail/helpers.hpp"
 #include "autoware/trajectory/forward.hpp"
+#include "autoware/trajectory/interpolator/linear.hpp"
+#include "autoware/trajectory/interpolator/nearest_neighbor.hpp"
 #include "autoware/trajectory/interpolator/stairstep.hpp"
 #include "autoware/trajectory/pose.hpp"
-#include "autoware/trajectory/threshold.hpp"
 
 #include <autoware_planning_msgs/msg/path_point.hpp>
 
@@ -112,26 +113,51 @@ interpolator::InterpolationResult Trajectory<PointType>::build(
     return tl::unexpected(
       interpolator::InterpolationFailure{"failed to interpolate PathPoint::pose"} + result.error());
   }
-  if (const auto result = this->longitudinal_velocity_mps().build(
-        bases_, std::move(longitudinal_velocity_mps_values));
+  if (const auto result = detail::build_with_fallback(
+        longitudinal_velocity_mps_, bases_, longitudinal_velocity_mps_values,
+        [] {
+          return std::make_shared<detail::InterpolatedArray<double>>(
+            std::make_shared<interpolator::Linear>());
+        },
+        [] {
+          return std::make_shared<detail::InterpolatedArray<double>>(
+            std::make_shared<interpolator::NearestNeighbor<double>>());
+        });
       !result) {
     return tl::unexpected(
       interpolator::InterpolationFailure{
         "failed to interpolate PathPoint::longitudinal_velocity_mps"});
   }
-  if (const auto result =
-        this->lateral_velocity_mps().build(bases_, std::move(lateral_velocity_mps_values));
+  if (const auto result = detail::build_with_fallback(
+        lateral_velocity_mps_, bases_, lateral_velocity_mps_values,
+        [] {
+          return std::make_shared<detail::InterpolatedArray<double>>(
+            std::make_shared<interpolator::Linear>());
+        },
+        [] {
+          return std::make_shared<detail::InterpolatedArray<double>>(
+            std::make_shared<interpolator::NearestNeighbor<double>>());
+        });
       !result) {
     return tl::unexpected(
       interpolator::InterpolationFailure{"failed to interpolate PathPoint::lateral_velocity_mps"});
   }
-  if (const auto result =
-        this->heading_rate_rps().build(bases_, std::move(heading_rate_rps_values));
+  if (const auto result = detail::build_with_fallback(
+        heading_rate_rps_, bases_, heading_rate_rps_values,
+        [] {
+          return std::make_shared<detail::InterpolatedArray<double>>(
+            std::make_shared<interpolator::Linear>());
+        },
+        [] {
+          return std::make_shared<detail::InterpolatedArray<double>>(
+            std::make_shared<interpolator::NearestNeighbor<double>>());
+        });
       !result) {
     return tl::unexpected(
       interpolator::InterpolationFailure{"failed to interpolate PathPoint::heading_rate_rps"});
   }
 
+  add_base_addition_callback();
   return interpolator::InterpolationSuccess{};
 }
 
@@ -170,37 +196,20 @@ std::vector<PointType> Trajectory<PointType>::compute(const std::vector<double> 
   return points;
 }
 
-std::vector<PointType> Trajectory<PointType>::restore(const size_t min_points) const
+std::vector<PointType> Trajectory<PointType>::restore() const
 {
-  std::vector<double> sanitized_bases{};
-  {
-    const auto bases = detail::fill_bases(get_underlying_bases(), min_points);
-    std::vector<PointType> points;
-
-    points.reserve(bases.size());
-    for (const auto & s : bases) {
-      const auto point = compute(s);
-      if (points.empty() || !is_almost_same(point, points.back())) {
-        points.push_back(point);
-        sanitized_bases.push_back(s);
-      }
-    }
-    if (points.size() >= min_points) {
-      return points;
-    }
-  }
-
-  // retry to satisfy min_point requirement as much as possible
-  const auto bases = detail::fill_bases(sanitized_bases, min_points);
   std::vector<PointType> points;
+  const auto bases = get_underlying_bases();
   points.reserve(bases.size());
   for (const auto & s : bases) {
-    const auto point = compute(s);
-    if (points.empty() || !is_almost_same(point, points.back())) {
-      points.push_back(point);
-    }
+    points.push_back(compute(s));
   }
   return points;
+}
+
+void Trajectory<PointType>::set_stopline(const double start_point)
+{
+  longitudinal_velocity_mps_->range(start_point, this->length()).set(0.0);
 }
 
 Trajectory<PointType>::Builder::Builder() : trajectory_(std::make_unique<Trajectory<PointType>>())

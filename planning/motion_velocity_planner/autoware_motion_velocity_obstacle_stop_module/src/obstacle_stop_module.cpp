@@ -359,7 +359,8 @@ std::optional<CollisionPointWithDist> ObstacleStopModule::get_nearest_collision_
   const auto & height_margin = pointcloud_segmentation_param_.height_margin;
   std::vector<geometry_msgs::msg::Point> collision_geom_points{};
   for (size_t traj_index = 0; traj_index < traj_points.size(); ++traj_index) {
-    const double rough_dist_th = boost::geometry::perimeter(traj_polygons.at(traj_index)) * 0.5;
+    const double rough_dist_th =
+      static_cast<double>(boost::geometry::perimeter(traj_polygons.at(traj_index))) * 0.5;
     const double traj_height = traj_points.at(traj_index).pose.position.z;
 
     for (const auto & cluster : clusters) {
@@ -389,21 +390,25 @@ std::optional<CollisionPointWithDist> ObstacleStopModule::get_nearest_collision_
 
     const auto bumper_pose = autoware_utils_geometry::calc_offset_pose(
       traj_points.at(traj_index).pose, x_offset_to_bumper, 0.0, 0.0);
+
     std::optional<double> max_collision_length = std::nullopt;
     std::optional<geometry_msgs::msg::Point> max_collision_point = std::nullopt;
+
     for (const auto & point : collision_geom_points) {
       const double dist_from_bumper =
         std::abs(autoware_utils_geometry::inverse_transform_point(point, bumper_pose).x);
-
-      if (!max_collision_length.has_value() || dist_from_bumper > *max_collision_length) {
+      if (
+        !max_collision_length.has_value() ||
+        dist_from_bumper > max_collision_length.value_or(-1.0)) {
         max_collision_length = dist_from_bumper;
         max_collision_point = point;
       }
     }
+
     return CollisionPointWithDist{
-      *max_collision_point,
+      max_collision_point.value_or(geometry_msgs::msg::Point{}),
       autoware::motion_utils::calcSignedArcLength(traj_points, 0, traj_index) -
-        *max_collision_length};
+        max_collision_length.value_or(-1.0)};
   }
   return std::nullopt;
 }
@@ -524,7 +529,8 @@ void ObstacleStopModule::upsert_pointcloud_stop_candidates(
         vel_vec.push_back(clamped_vel);
         if (vel_vec.size() >= vel_params.required_velocity_count) {
           stop_candidate->vel_lpf.reset(
-            std::accumulate(vel_vec.begin(), vel_vec.end(), 0.0) / vel_vec.size());
+            std::accumulate(vel_vec.begin(), vel_vec.end(), 0.0) /
+            static_cast<double>(vel_vec.size()));
         }
       } else {
         stop_candidate->vel_lpf.filter(clamped_vel);
@@ -588,8 +594,9 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_point_clo
     point_cloud, x_offset_to_bumper, vehicle_info);
 
   // update pointcloud_stop_candidates
-  const auto latest_point_cloud_time =
-    rclcpp::Time(point_cloud.pointcloud.header.stamp * static_cast<uint32_t>(1e3), RCL_ROS_TIME);
+  const auto latest_point_cloud_time = rclcpp::Time(
+    static_cast<int64_t>(point_cloud.pointcloud.header.stamp * static_cast<uint32_t>(1e3)),
+    RCL_ROS_TIME);
   if (nearest_collision_point) {
     upsert_pointcloud_stop_candidates(
       nearest_collision_point.value(), traj_points, latest_point_cloud_time);
@@ -685,6 +692,31 @@ std::optional<StopObstacle> ObstacleStopModule::pick_stop_obstacle_from_predicte
     RCLCPP_DEBUG(
       logger_,
       "[Stop] Ignore obstacle (%s) since the lateral distance to the trajectory is too large.",
+      obj_uuid_str.substr(0, 4).c_str());
+    return std::nullopt;
+  }
+
+  // 3. filter by height and size
+  const double obj_nearest_traj_height =
+    traj_points.at(motion_utils::findNearestIndex(traj_points, obj_pose.position)).pose.position.z;
+  if (
+    obj_pose.position.z - predicted_object.shape.dimensions.z * 0.5 - obj_nearest_traj_height >
+      filtering_params.detection_height.top_limit ||
+    obj_pose.position.z + predicted_object.shape.dimensions.z * 0.5 - obj_nearest_traj_height <
+      filtering_params.detection_height.bottom_limit) {
+    RCLCPP_DEBUG(
+      logger_,
+      "[Stop] Ignore obstacle (%s) since the height is out of range of the detection height.",
+      obj_uuid_str.substr(0, 4).c_str());
+    return std::nullopt;
+  }
+  if (
+    utils::calc_object_possible_max_dist_from_center(predicted_object.shape) * 2.0 <
+    filtering_params.min_object_length) {
+    RCLCPP_DEBUG(
+      logger_,
+      "[Stop] Ignore obstacle (%s) since the object size is smaller than the minimum object "
+      "length.",
       obj_uuid_str.substr(0, 4).c_str());
     return std::nullopt;
   }
@@ -823,6 +855,10 @@ bool ObstacleStopModule::is_crossing_transient_obstacle(
   }
 
   //  calculate the time to reach the collision point
+  if (!collision_point.has_value()) {
+    RCLCPP_ERROR(logger_, "collision_point has no value");
+    return false;
+  }
   const double time_to_reach_stop_point = calc_time_to_reach_collision_point(
     odometry, collision_point->first, traj_points, x_offset_to_bumper,
     stop_planning_param_.min_behavior_stop_margin,
@@ -913,6 +949,10 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::plan_stop(
     }
 
     if (determined_stop_obstacle) {
+      if (!determined_zero_vel_dist.has_value()) {
+        RCLCPP_ERROR(logger_, "determined_zero_vel_dist has no value");
+        continue;
+      }
       const bool is_same_param_types =
         (stop_obstacle.classification == determined_stop_obstacle->classification);
       const auto point_cloud_suppression_margin = [&](const StopObstacle & obs) {
@@ -931,7 +971,7 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::plan_stop(
         continue;
       }
     }
-    determined_zero_vel_dist = *candidate_zero_vel_dist;
+    determined_zero_vel_dist = candidate_zero_vel_dist;
     determined_stop_obstacle = stop_obstacle;
     determined_desired_stop_margin = desired_stop_margin;
   }
@@ -1127,7 +1167,7 @@ void ObstacleStopModule::hold_previous_stop_if_necessary(
   if (
     std::abs(planner_data->current_odometry.twist.twist.linear.x) <
       stop_planning_param_.hold_stop_velocity_threshold &&
-    prev_stop_distance_info_) {
+    prev_stop_distance_info_ && determined_zero_vel_dist.has_value()) {
     // NOTE: We assume that the current trajectory's front point is ahead of the previous
     // trajectory's front point.
     const size_t traj_front_point_prev_seg_idx =
@@ -1152,15 +1192,25 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::calc_stop_point(
   const std::optional<StopObstacle> & determined_stop_obstacle,
   const std::optional<double> & determined_zero_vel_dist)
 {
+  if (!determined_stop_obstacle.has_value() || !determined_zero_vel_dist.has_value()) {
+    RCLCPP_ERROR(
+      logger_,
+      "Cannot calculate stop point: determined_stop_obstacle=%s, "
+      "determined_zero_vel_dist=%s",
+      determined_stop_obstacle.has_value() ? "valid" : "empty",
+      determined_zero_vel_dist.has_value() ? "valid" : "empty");
+    return std::nullopt;
+  }
+
   auto output_traj_points = traj_points;
 
   // insert stop point
   const auto zero_vel_idx = [&]() -> std::optional<size_t> {
-    if (determined_zero_vel_dist <= 0.0) {
+    if (determined_zero_vel_dist.value() <= 0.0) {
       return 0;
     }
     return autoware::motion_utils::insertStopPoint(
-      0, *determined_zero_vel_dist, output_traj_points);
+      0, determined_zero_vel_dist.value(), output_traj_points);
   }();
   if (!zero_vel_idx) {
     return std::nullopt;
@@ -1201,6 +1251,15 @@ void ObstacleStopModule::set_stop_planning_debug_info(
   const std::optional<StopObstacle> & determined_stop_obstacle,
   const std::optional<double> & determined_desired_stop_margin) const
 {
+  if (!determined_stop_obstacle.has_value() || !determined_desired_stop_margin.has_value()) {
+    RCLCPP_ERROR(
+      logger_,
+      "Cannot set debug info: determined_stop_obstacle=%s, "
+      "determined_desired_stop_margin=%s",
+      determined_stop_obstacle.has_value() ? "valid" : "empty",
+      determined_desired_stop_margin.has_value() ? "valid" : "empty");
+    return;
+  }
   stop_planning_debug_info_.set(
     StopPlanningDebugInfo::TYPE::STOP_CURRENT_OBSTACLE_DISTANCE,
     determined_stop_obstacle->dist_to_collide_on_decimated_traj);
@@ -1359,7 +1418,7 @@ double ObstacleStopModule::calc_margin_from_obstacle_on_curve(
     autoware::motion_utils::findNearestSegmentIndex(traj_points, stop_obstacle.collision_point);
   std::vector<TrajectoryPoint> short_traj_points{traj_points.at(obj_segment_idx + 1)};
   double sum_short_traj_length{0.0};
-  for (int i = obj_segment_idx; 0 <= i; --i) {
+  for (int i = static_cast<int>(obj_segment_idx); 0 <= i; --i) {
     short_traj_points.push_back(traj_points.at(i));
 
     if (

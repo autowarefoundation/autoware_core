@@ -9,6 +9,7 @@ find_package(Eigen3 REQUIRED)
 include_directories(
   SYSTEM
     ${EIGEN3_INCLUDE_DIR}
+    src/
 )
 
 ament_auto_find_build_dependencies()
@@ -24,10 +25,11 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/ekf_module.cpp
 )
 
-rclcpp_components_register_node(${PROJECT_NAME}
+autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
   PLUGIN "autoware::ekf_localizer::EKFLocalizer"
   EXECUTABLE ${PROJECT_NAME}_node
-  EXECUTOR SingleThreadedExecutor
+  AGNOCAST_EXECUTOR CallbackIsolatedAgnocastExecutor
+  ROS2_EXECUTOR SingleThreadedExecutor
 )
 
 target_link_libraries(${PROJECT_NAME} Eigen3::Eigen)

@@ -14,7 +14,7 @@
 
 #include "voxel_grid_based_euclidean_cluster_node.hpp"
 
-#include <autoware/euclidean_cluster_object_detector/utils.hpp>
+#include "utils.hpp"
 
 #include <memory>
 #include <vector>
@@ -26,11 +26,12 @@ VoxelGridBasedEuclideanClusterNode::VoxelGridBasedEuclideanClusterNode(
 : Node("voxel_grid_based_euclidean_cluster_node", options)
 {
   const bool use_height = this->declare_parameter("use_height", false);
-  const int min_cluster_size = this->declare_parameter("min_cluster_size", 1);
-  const int max_cluster_size = this->declare_parameter("max_cluster_size", 500);
-  const float tolerance = this->declare_parameter("tolerance", 1.0);
-  const float voxel_leaf_size = this->declare_parameter("voxel_leaf_size", 0.5);
-  const int min_points_number_per_voxel = this->declare_parameter("min_points_number_per_voxel", 3);
+  const int min_cluster_size = static_cast<int>(this->declare_parameter("min_cluster_size", 1));
+  const int max_cluster_size = static_cast<int>(this->declare_parameter("max_cluster_size", 500));
+  const float tolerance = static_cast<float>(this->declare_parameter("tolerance", 1.0));
+  const float voxel_leaf_size = static_cast<float>(this->declare_parameter("voxel_leaf_size", 0.5));
+  const int min_points_number_per_voxel =
+    static_cast<int>(this->declare_parameter("min_points_number_per_voxel", 3));
 
   cluster_ = std::make_shared<VoxelGridBasedEuclideanCluster>(
     use_height, min_cluster_size, max_cluster_size, tolerance, voxel_leaf_size,

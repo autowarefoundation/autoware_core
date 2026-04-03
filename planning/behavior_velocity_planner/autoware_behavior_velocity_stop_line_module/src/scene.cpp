@@ -86,7 +86,7 @@ bool StopLineModule::modifyPathVelocity(PathWithLaneId * path)
     return true;
   }
 
-  trajectory->longitudinal_velocity_mps().range(*stop_point, trajectory->length()).set(0.0);
+  trajectory->set_stopline(*stop_point);
 
   path->points = trajectory->restore();
 
@@ -189,6 +189,11 @@ void StopLineModule::updateStateAndStoppedTime(
       break;
     }
     case State::STOPPED: {
+      if (!stopped_time->has_value()) {
+        logWarn("stopped_time has no value in STOPPED state");
+        *stopped_time = now;
+        break;
+      }
       double stop_duration = (now - **stopped_time).seconds();
       if (stop_duration > planner_param_.required_stop_duration_sec) {
         *state = State::START;

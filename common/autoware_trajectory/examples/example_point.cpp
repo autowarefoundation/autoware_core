@@ -128,7 +128,7 @@ int main()
       Kwargs("label"_a = "Crossed on trajectory", "color"_a = "purple"));
   }
   {
-    auto restored = trajectory->restore(50);
+    auto restored = trajectory->restore();
     std::vector<double> x;
     std::vector<double> y;
     for (const auto & p : restored) {

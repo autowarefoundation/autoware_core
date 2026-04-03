@@ -6,6 +6,12 @@ on:
       codecov-token:
         required: true
     inputs:
+      # Why is it a JSON string?
+      # https://github.com/orgs/community/discussions/11692#discussioncomment-3541856
+      runner:
+        type: string
+        default: "['ubuntu-latest']"
+        required: false
       container:
         required: true
         type: string
@@ -29,7 +35,7 @@ jobs:
   build-and-test-differential:
     name: build-and-test-diff
     if: ${{ inputs.run-condition }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJson(inputs.runner) }}
     container: ${{ inputs.container }}
     steps:
       - name: Set PR fetch depth
@@ -100,6 +106,7 @@ jobs:
           rosdistro: ${{ inputs.rosdistro }}
           target-packages: ${{ steps.get-modified-packages.outputs.modified-packages }}
           cache-key-element: build-and-test-diff${{ inputs.above && '-above' || '' }}
+          packages-above-repos: ${{ inputs.above && 'packages_above.repos' || '' }}
           underlay-workspace: /opt/autoware
 
       - name: Show ccache stats after build
@@ -134,7 +141,7 @@ jobs:
     name: clang-tidy-diff
     needs: build-and-test-differential
     if: ${{ (inputs.above == false) && inputs.run-condition }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJson(inputs.runner) }}
     container: ${{ inputs.container }}
     steps:
       - name: Set PR fetch depth
@@ -156,10 +163,27 @@ jobs:
         id: get-modified-packages
         uses: autowarefoundation/autoware-github-actions/get-modified-packages@v1
 
-      - name: Get changed files (existing files only)
+      - name: Get changed files (existing files only, excluding header-only packages)
         id: get-changed-files
         run: |
-          echo "changed-files=$(git diff --name-only "origin/${{ github.base_ref }}"...HEAD | grep -E '\.(cpp|hpp)$' | while read -r file; do [ -e "$file" ] && echo -n "$file "; done)" >> $GITHUB_OUTPUT
+          changed_files=$(git diff --diff-filter=d --name-only "origin/${{ github.base_ref }}"...HEAD | { grep -E '\.(cpp|hpp)$' || true; } | while read -r file; do [ -e "$file" ] && echo -n "$file "; done)
+
+          # Exclude files belonging to header-only packages (no .cpp in src/).
+          # These packages don't generate compile_commands.json, which causes clang-tidy to fail.
+          filtered_files=""
+          for file in $changed_files; do
+            pkg_dir=$(colcon list --paths-only 2>/dev/null | while read -r pkg_path; do
+              case "$file" in "$pkg_path"/*) echo "$pkg_path"; break;; esac
+            done)
+            if [ -z "$pkg_dir" ]; then
+              filtered_files="$filtered_files $file"
+              continue
+            fi
+            if find "$pkg_dir/src" -name '*.cpp' 2>/dev/null | grep -q .; then
+              filtered_files="$filtered_files $file"
+            fi
+          done
+          echo "changed-files=$(echo "$filtered_files" | xargs)" >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Run clang-tidy
@@ -170,7 +194,7 @@ jobs:
           cache-key-element: build-and-test-diff${{ inputs.above && '-above' || '' }}
           target-packages: ${{ steps.get-modified-packages.outputs.modified-packages }}
           target-files: ${{ steps.get-changed-files.outputs.changed-files }}
-          clang-tidy-config-url: https://raw.githubusercontent.com/autowarefoundation/autoware/main/.clang-tidy-ci
+          clang-tidy-config-url: https://raw.githubusercontent.com/autowarefoundation/autoware_core/main/.clang-tidy-ci
           underlay-workspace: /opt/autoware
           artifact-name: clang-tidy-result-${{ inputs.rosdistro }}
 

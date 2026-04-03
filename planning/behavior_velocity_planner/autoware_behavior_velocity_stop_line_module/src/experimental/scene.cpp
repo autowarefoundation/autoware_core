@@ -73,7 +73,7 @@ bool StopLineModule::modifyPathVelocity(
     return true;
   }
 
-  path.longitudinal_velocity_mps().range(*stop_point, path.length()).set(0.0);
+  path.set_stopline(*stop_point);
 
   // TODO(soblin): PlanningFactorInterface use trajectory class
   planning_factor_interface_->add(
@@ -173,6 +173,11 @@ void StopLineModule::updateStateAndStoppedTime(
       break;
     }
     case State::STOPPED: {
+      if (!stopped_time_.has_value()) {
+        logWarn("stopped_time_ has no value in STOPPED state");
+        stopped_time_ = now;
+        break;
+      }
       double stop_duration = (now - *stopped_time_).seconds();
       if (stop_duration > planner_param_.required_stop_duration_sec) {
         state_ = State::START;

@@ -71,6 +71,10 @@ void interpolation()
     double half_of_segment_length = std::hypot(4.0 - 1.0, 5.0 - 2.0, 6.0 - 3.0) / 2;
 
     auto opt = lanelet2_utils::interpolate_point(p1, p2, half_of_segment_length);
+    if (!opt.has_value()) {
+      std::cerr << "Failed to interpolate point" << std::endl;
+      return;
+    }
     auto interpolated_pt = *opt;
     std::cout << "Interpolated Point (Half length)" << std::endl;
     std::cout << "x: " << interpolated_pt.x() << std::endl;
@@ -81,6 +85,10 @@ void interpolation()
   {
     const auto ll = lanelet_map_ptr_->laneletLayer.get(2287);
     auto opt_pt = lanelet2_utils::interpolate_lanelet(ll, 3.0);
+    if (!opt_pt.has_value()) {
+      std::cerr << "Failed to interpolate lanelet" << std::endl;
+      return;
+    }
     auto interpolated_pt = *opt_pt;
     std::cout << "Interpolated Point (From Lanelet)" << std::endl;
     std::cout << "x: " << interpolated_pt.x() << std::endl;
@@ -95,6 +103,10 @@ void interpolation()
       lanelets.push_back(lanelet_map_ptr_->laneletLayer.get(id));
     }
     auto opt_pt = lanelet2_utils::interpolate_lanelet_sequence(lanelets, 3.0);
+    if (!opt_pt.has_value()) {
+      std::cerr << "Failed to interpolate lanelet sequence" << std::endl;
+      return;
+    }
     auto interpolated_pt = *opt_pt;
     std::cout << "Interpolated Point (From LaneletSequence)" << std::endl;
     std::cout << "x: " << interpolated_pt.x() << std::endl;
@@ -114,6 +126,10 @@ void concatenation()
   }
 
   auto opt_ls = lanelet2_utils::concatenate_center_line(lanelets);
+  if (!opt_ls.has_value()) {
+    std::cerr << "Failed to concatenate center line" << std::endl;
+    return;
+  }
 
   const auto & ls = *opt_ls;
 
@@ -147,6 +163,10 @@ void get_from_arc_length()
     lanelet::ConstLineString3d line{lanelet::InvalId, pts};
     auto opt =
       autoware::experimental::lanelet2_utils::get_linestring_from_arc_length(line, 0.5, 1.5);
+    if (!opt.has_value()) {
+      std::cerr << "Failed to get linestring from arc length" << std::endl;
+      return;
+    }
     const auto & out = *opt;
 
     std::cout << "Get linestring from 0.5 to 1.5" << std::endl;
@@ -165,6 +185,10 @@ void get_from_arc_length()
     }
     auto opt_pose =
       autoware::experimental::lanelet2_utils::get_pose_from_2d_arc_length(lanelets, 3.0);
+    if (!opt_pose.has_value()) {
+      std::cerr << "Failed to get pose from 2D arc length" << std::endl;
+      return;
+    }
     const auto & p = *opt_pose;
     std::cout << "Pose from arc-length" << std::endl;
     std::cout << "x: " << p.position.x << std::endl;
@@ -174,6 +198,53 @@ void get_from_arc_length()
     std::cout << "orientation y: " << p.orientation.y << std::endl;
     std::cout << "orientation z: " << p.orientation.z << std::endl;
     std::cout << "orientation w: " << p.orientation.w << std::endl;
+  }
+
+  // get_polygon_from_arc_length
+  {
+    using autoware::experimental::lanelet2_utils::create_safe_lanelet;
+    auto p1 = lanelet::BasicPoint3d(0.0, 2.0, 0.0);
+    auto p2 = lanelet::BasicPoint3d(3.0, 2.0, 0.0);
+    auto p3 = lanelet::BasicPoint3d(0.0, 0.0, 0.0);
+    auto p4 = lanelet::BasicPoint3d(3.0, 0.0, 0.0);
+
+    std::vector<lanelet::BasicPoint3d> left_points1 = {p1, p2};
+    std::vector<lanelet::BasicPoint3d> right_points1 = {p3, p4};
+
+    auto ll1 = create_safe_lanelet(left_points1, right_points1);
+    if (!ll1.has_value()) {
+      std::cerr << "Failed to create safe lanelet for polygon (ll1)" << std::endl;
+      return;
+    }
+
+    auto p5 = lanelet::BasicPoint3d(3.0, 2.0, 0.0);
+    auto p6 = lanelet::BasicPoint3d(6.0, 2.0, 0.0);
+    auto p7 = lanelet::BasicPoint3d(3.0, 0.0, 0.0);
+    auto p8 = lanelet::BasicPoint3d(6.0, 0.0, 0.0);
+
+    std::vector<lanelet::BasicPoint3d> left_points2 = {p5, p6};
+    std::vector<lanelet::BasicPoint3d> right_points2 = {p7, p8};
+
+    auto ll2 = create_safe_lanelet(left_points2, right_points2);
+    if (!ll2.has_value()) {
+      std::cerr << "Failed to create safe lanelet for polygon (ll2)" << std::endl;
+      return;
+    }
+
+    const auto lanelet_sequence = lanelet::ConstLanelets{*ll1, *ll2};
+    const auto opt_polygon =
+      autoware::experimental::lanelet2_utils::get_polygon_from_arc_length(lanelet_sequence, 1, 3);
+    if (opt_polygon.has_value()) {
+      std::cout << "Polygon found!" << std::endl;
+      const auto & poly = opt_polygon.value();
+      std::cout << "Polygon points: " << poly.size() << std::endl;
+      std::cout << "These are points " << std::endl;
+      for (const auto & point : poly) {
+        std::cout << "(" << point.x() << ", " << point.y() << ")" << std::endl;
+      }
+    } else {
+      std::cout << "No Polygon found." << std::endl;
+    }
   }
 }
 
@@ -216,6 +287,10 @@ void closest_center_pose()
   std::vector<lanelet::BasicPoint3d> left_points = {p1, p2};
   std::vector<lanelet::BasicPoint3d> right_points = {p3, p4};
   auto ll = create_safe_lanelet(left_points, right_points);
+  if (!ll.has_value()) {
+    std::cerr << "Failed to create safe lanelet for closest center pose" << std::endl;
+    return;
+  }
 
   auto search_pt = lanelet::BasicPoint3d(1.2, 1.0, 0.0);
   auto p = autoware::experimental::lanelet2_utils::get_closest_center_pose(*ll, search_pt);
@@ -228,16 +303,402 @@ void closest_center_pose()
   std::cout << "orientation z: " << p.orientation.z << std::endl;
   std::cout << "orientation w: " << p.orientation.w << std::endl;
 }
+
+void arc_coordinates()
+{
+  using autoware::experimental::lanelet2_utils::create_safe_lanelet;
+  auto p1 = lanelet::BasicPoint3d(0.0, 2.0, 0.0);
+  auto p2 = lanelet::BasicPoint3d(3.0, 2.0, 0.0);
+  auto p3 = lanelet::BasicPoint3d(0.0, 0.0, 0.0);
+  auto p4 = lanelet::BasicPoint3d(3.0, 0.0, 0.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points1 = {p1, p2};
+  std::vector<lanelet::BasicPoint3d> right_points1 = {p3, p4};
+
+  auto ll1_opt = create_safe_lanelet(left_points1, right_points1);
+  if (!ll1_opt.has_value()) {
+    std::cerr << "Failed to create safe lanelet for arc coordinates (ll1)" << std::endl;
+    return;
+  }
+  auto ll1 = *ll1_opt;
+
+  auto p5 = lanelet::BasicPoint3d(3.0, 2.0, 0.0);
+  auto p6 = lanelet::BasicPoint3d(6.0, 2.0, 0.0);
+  auto p7 = lanelet::BasicPoint3d(3.0, 0.0, 0.0);
+  auto p8 = lanelet::BasicPoint3d(6.0, 0.0, 0.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points2 = {p5, p6};
+  std::vector<lanelet::BasicPoint3d> right_points2 = {p7, p8};
+
+  auto ll2_opt = create_safe_lanelet(left_points2, right_points2);
+  if (!ll2_opt.has_value()) {
+    std::cerr << "Failed to create safe lanelet for arc coordinates (ll2)" << std::endl;
+    return;
+  }
+  auto ll2 = *ll2_opt;
+
+  auto lanelet_sequence = lanelet::ConstLanelets{ll1, ll2};
+
+  // query is above the center of the first lanelet
+  {
+    geometry_msgs::msg::Pose query;
+    query.position.x = 1.5;
+    query.position.y = 1.1;
+    query.position.z = 0;
+    auto arc_coord =
+      autoware::experimental::lanelet2_utils::get_arc_coordinates(lanelet_sequence, query);
+    std::cout << "ArcCoordinates length is " << arc_coord.length << std::endl;
+    std::cout << "ArcCoordinates distance is " << arc_coord.distance << std::endl;
+  }
+
+  {
+    auto lanelet_map_ptr_ = set_up_lanelet_map_ptr();
+    geometry_msgs::msg::Pose query;
+    query.position.x = 1.5;
+    query.position.y = 1.1;
+    query.position.z = 0;
+    auto arc_coord = autoware::experimental::lanelet2_utils::get_arc_coordinates_on_ego_centerline(
+      lanelet_sequence, query, lanelet_map_ptr_);
+    std::cout << "ArcCoordinates length is " << arc_coord.length << std::endl;
+    std::cout << "ArcCoordinates distance is " << arc_coord.distance << std::endl;
+  }
+}
+
+void lateral_distance_related()
+{
+  using autoware::experimental::lanelet2_utils::create_safe_lanelet;
+  auto p1 = lanelet::BasicPoint3d(0.0, 2.0, 0.0);
+  auto p2 = lanelet::BasicPoint3d(3.0, 2.0, 0.0);
+  auto p3 = lanelet::BasicPoint3d(0.0, 0.0, 0.0);
+  auto p4 = lanelet::BasicPoint3d(3.0, 0.0, 0.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points1 = {p1, p2};
+  std::vector<lanelet::BasicPoint3d> right_points1 = {p3, p4};
+
+  auto ll1_opt = create_safe_lanelet(left_points1, right_points1);
+  if (!ll1_opt.has_value()) {
+    std::cerr << "Failed to create safe lanelet for lateral distance (ll1)" << std::endl;
+    return;
+  }
+  auto ll1 = *ll1_opt;
+
+  auto p5 = lanelet::BasicPoint3d(3.0, 2.0, 0.0);
+  auto p6 = lanelet::BasicPoint3d(6.0, 2.0, 0.0);
+  auto p7 = lanelet::BasicPoint3d(3.0, 0.0, 0.0);
+  auto p8 = lanelet::BasicPoint3d(6.0, 0.0, 0.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points2 = {p5, p6};
+  std::vector<lanelet::BasicPoint3d> right_points2 = {p7, p8};
+
+  auto ll2_opt = create_safe_lanelet(left_points2, right_points2);
+  if (!ll2_opt.has_value()) {
+    std::cerr << "Failed to create safe lanelet for lateral distance (ll2)" << std::endl;
+    return;
+  }
+  auto ll2 = *ll2_opt;
+
+  auto lanelet_sequence = lanelet::ConstLanelets{ll1, ll2};
+
+  // query is above the center of lanelet
+  {
+    geometry_msgs::msg::Pose query;
+    query.position.x = 1.5;
+    query.position.y = 1.1;
+    query.position.z = 0;
+    auto distance =
+      autoware::experimental::lanelet2_utils::get_lateral_distance_to_centerline(ll1, query);
+    std::cout << "Distance (to lanelet) is " << distance << std::endl;
+  }
+
+  // query is below the center of the second lanelet
+  {
+    geometry_msgs::msg::Pose query;
+    query.position.x = 4.5;
+    query.position.y = 0.9;
+    query.position.z = 0;
+    auto distance = autoware::experimental::lanelet2_utils::get_lateral_distance_to_centerline(
+      lanelet_sequence, query);
+    std::cout << "Distance (to lanelet sequence) is " << distance << std::endl;
+  }
+}
+
+void combine_lanelet()
+{
+  using autoware::experimental::lanelet2_utils::create_safe_lanelet;
+  auto p1 = lanelet::BasicPoint3d(0.0, 2.0, 0.0);
+  auto p2 = lanelet::BasicPoint3d(3.0, 2.0, 0.0);
+  auto p3 = lanelet::BasicPoint3d(0.0, 0.0, 0.0);
+  auto p4 = lanelet::BasicPoint3d(3.0, 0.0, 0.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points1 = {p1, p2};
+  std::vector<lanelet::BasicPoint3d> right_points1 = {p3, p4};
+
+  auto ll1_opt = create_safe_lanelet(left_points1, right_points1);
+  if (!ll1_opt.has_value()) {
+    std::cerr << "Failed to create safe lanelet for combine (ll1)" << std::endl;
+    return;
+  }
+  auto ll1 = *ll1_opt;
+
+  auto p5 = lanelet::BasicPoint3d(3.0, 2.0, 0.0);
+  auto p6 = lanelet::BasicPoint3d(6.0, 2.0, 0.0);
+  auto p7 = lanelet::BasicPoint3d(3.0, 0.0, 0.0);
+  auto p8 = lanelet::BasicPoint3d(6.0, 0.0, 0.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points2 = {p5, p6};
+  std::vector<lanelet::BasicPoint3d> right_points2 = {p7, p8};
+
+  auto ll2_opt = create_safe_lanelet(left_points2, right_points2);
+  if (!ll2_opt.has_value()) {
+    std::cerr << "Failed to create safe lanelet for combine (ll2)" << std::endl;
+    return;
+  }
+  auto ll2 = *ll2_opt;
+
+  const auto one_lanelet_opt =
+    autoware::experimental::lanelet2_utils::combine_lanelets_shape({ll1, ll2});
+  if (one_lanelet_opt.has_value()) {
+    const auto one_lanelet = one_lanelet_opt.value();
+    std::cout << ((typeid(one_lanelet) == typeid(lanelet::ConstLanelet))
+                    ? "Lanelet Type is ConstLanelet."
+                    : "Lanelet Type is not ConstLanelet.")
+              << std::endl;
+    std::cout << "There is duplicate point, thus, the bound size becomes" << std::endl;
+    std::cout << "left: " << one_lanelet.leftBound().size() << std::endl;
+    std::cout << "right: " << one_lanelet.rightBound().size() << std::endl;
+  }
+}
+
+void expand_lanelet()
+{
+  using autoware::experimental::lanelet2_utils::create_safe_lanelet;
+  auto p1 = lanelet::BasicPoint3d(0.0, 2.0, 1.0);
+  auto p2 = lanelet::BasicPoint3d(3.0, 2.0, 1.0);
+  auto p3 = lanelet::BasicPoint3d(0.0, 0.0, 1.0);
+  auto p4 = lanelet::BasicPoint3d(3.0, 0.0, 1.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points1 = {p1, p2};
+  std::vector<lanelet::BasicPoint3d> right_points1 = {p3, p4};
+  auto ll1_opt = create_safe_lanelet(left_points1, right_points1);
+  if (!ll1_opt.has_value()) {
+    std::cerr << "Failed to create safe lanelet for expand (ll1)" << std::endl;
+    return;
+  }
+  auto ll1 = *ll1_opt;
+
+  auto p5 = lanelet::BasicPoint3d(3.0, 2.0, 1.0);
+  auto p6 = lanelet::BasicPoint3d(6.0, 2.0, 1.0);
+  auto p7 = lanelet::BasicPoint3d(3.0, 0.0, 1.0);
+  auto p8 = lanelet::BasicPoint3d(6.0, 0.0, 1.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points2 = {p5, p6};
+  std::vector<lanelet::BasicPoint3d> right_points2 = {p7, p8};
+
+  auto ll2_opt = create_safe_lanelet(left_points2, right_points2);
+  if (!ll2_opt.has_value()) {
+    std::cerr << "Failed to create safe lanelet for expand (ll2)" << std::endl;
+    return;
+  }
+  auto ll2 = *ll2_opt;
+
+  auto lls = lanelet::ConstLanelets{ll1, ll2};
+
+  {
+    auto expanded_lanelet_opt =
+      autoware::experimental::lanelet2_utils::get_dirty_expanded_lanelet(ll1, 1, -1);
+
+    if (expanded_lanelet_opt.has_value()) {
+      auto expanded_lanelet = expanded_lanelet_opt.value();
+      auto expanded_left_bound = expanded_lanelet.leftBound();
+      auto expanded_right_bound = expanded_lanelet.rightBound();
+
+      // check left bound
+      {
+        // check front
+        std::cout << "Expanded (lanelet) left bound x: " << expanded_left_bound.front().x()
+                  << std::endl;
+        std::cout << "Expanded (lanelet) left bound y: " << expanded_left_bound.front().y()
+                  << std::endl;
+        std::cout << "Expanded (lanelet) left bound z: " << expanded_left_bound.front().z()
+                  << std::endl;
+      }
+      // check right bound
+      {
+        // check front
+        std::cout << "Expanded (lanelet) right bound x: " << expanded_right_bound.front().x()
+                  << std::endl;
+        std::cout << "Expanded (lanelet) right bound y: " << expanded_right_bound.front().y()
+                  << std::endl;
+        std::cout << "Expanded (lanelet) right bound z: " << expanded_right_bound.front().z()
+                  << std::endl;
+      }
+    }
+  }
+  {
+    auto expanded_lanelets_opt =
+      autoware::experimental::lanelet2_utils::get_dirty_expanded_lanelets(lls, 1, -1);
+    if (expanded_lanelets_opt.has_value()) {
+      auto expanded_lanelets = expanded_lanelets_opt.value();
+      auto expanded_left_bound = expanded_lanelets[0].leftBound();
+      auto expanded_right_bound = expanded_lanelets[0].rightBound();
+      {
+        // check front
+        std::cout << "Expanded (lanelet sequence) left bound x: " << expanded_left_bound.front().x()
+                  << std::endl;
+        std::cout << "Expanded (lanelet sequence) left bound y: " << expanded_left_bound.front().y()
+                  << std::endl;
+        std::cout << "Expanded (lanelet sequence) left bound z: " << expanded_left_bound.front().z()
+                  << std::endl;
+      }
+      // check right bound
+      {
+        // check front
+        std::cout << "Expanded (lanelet sequence) right bound x: "
+                  << expanded_right_bound.front().x() << std::endl;
+        std::cout << "Expanded (lanelet sequence) right bound y: "
+                  << expanded_right_bound.front().y() << std::endl;
+        std::cout << "Expanded (lanelet sequence) right bound z: "
+                  << expanded_right_bound.front().z() << std::endl;
+      }
+    }
+  }
+}
+
+void offset_bound()
+{
+  using autoware::experimental::lanelet2_utils::create_safe_lanelet;
+  auto p1 = lanelet::BasicPoint3d(0.0, 2.0, 0.0);
+  auto p2 = lanelet::BasicPoint3d(2.0, 4.0, 0.0);
+  auto p3 = lanelet::BasicPoint3d(0.0, 0.0, 0.0);
+  auto p4 = lanelet::BasicPoint3d(2.0, 2.0, 0.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points = {p1, p2};
+  std::vector<lanelet::BasicPoint3d> right_points = {p3, p4};
+  auto ll_opt = create_safe_lanelet(left_points, right_points);
+  if (!ll_opt.has_value()) {
+    std::cerr << "Failed to create safe lanelet for offset bound" << std::endl;
+    return;
+  }
+  auto ll = *ll_opt;
+
+  // fine centerline
+  {
+    auto centerline =
+      autoware::experimental::lanelet2_utils::get_centerline_with_offset(ll, 0.5, sqrt(2));
+    std::cout << "Size of centerline: " << centerline.size() << std::endl;
+    {
+      std::cout << "centerline first point, x: " << centerline[0].x() << std::endl;
+      std::cout << "centerline first point, y: " << centerline[0].y() << std::endl;
+      std::cout << "centerline first point, z: " << centerline[0].z() << std::endl;
+    }
+  }
+
+  // centerline shift left
+  {
+    auto centerline =
+      autoware::experimental::lanelet2_utils::get_centerline_with_offset(ll, 0.5, sqrt(2));
+    std::cout << "Size of centerline: " << centerline.size() << std::endl;
+    {
+      std::cout << "centerline first point, x: " << centerline[0].x() << std::endl;
+      std::cout << "centerline first point, y: " << centerline[0].y() << std::endl;
+      std::cout << "centerline first point, z: " << centerline[0].z() << std::endl;
+    }
+  }
+  // right_bound shift **left**
+  {
+    auto right_bound =
+      autoware::experimental::lanelet2_utils::get_right_bound_with_offset(ll, -0.5, sqrt(2));
+    std::cout << "Size of right bound: " << right_bound.size() << std::endl;
+    {
+      std::cout << "right bound first point, x: " << right_bound[0].x() << std::endl;
+      std::cout << "right bound first point, y: " << right_bound[0].y() << std::endl;
+      std::cout << "right bound first point, z: " << right_bound[0].z() << std::endl;
+    }
+  }
+  // left_bound shift **right**
+  {
+    auto left_bound =
+      autoware::experimental::lanelet2_utils::get_left_bound_with_offset(ll, -0.5, sqrt(2));
+    std::cout << "Size of left bound: " << left_bound.size() << std::endl;
+    {
+      std::cout << "left bound first point, x: " << left_bound[0].x() << std::endl;
+      std::cout << "left bound first point, y: " << left_bound[0].y() << std::endl;
+      std::cout << "left bound first point, z: " << left_bound[0].z() << std::endl;
+    }
+  }
+}
+
+void check_in_lanelet()
+{
+  using autoware::experimental::lanelet2_utils::create_safe_lanelet;
+  auto p1 = lanelet::BasicPoint3d(0.0, 2.0, 0.0);
+  auto p2 = lanelet::BasicPoint3d(2.0, 4.0, 0.0);
+  auto p3 = lanelet::BasicPoint3d(0.0, 0.0, 0.0);
+  auto p4 = lanelet::BasicPoint3d(2.0, 2.0, 0.0);
+
+  std::vector<lanelet::BasicPoint3d> left_points = {p1, p2};
+  std::vector<lanelet::BasicPoint3d> right_points = {p3, p4};
+  auto ll_opt = create_safe_lanelet(left_points, right_points);
+  if (!ll_opt.has_value()) {
+    std::cerr << "Failed to create safe lanelet for in-lanelet check" << std::endl;
+    return;
+  }
+  auto ll = *ll_opt;
+
+  // inside
+  {
+    geometry_msgs::msg::Pose query;
+    query.position.x = 1.0;
+    query.position.y = 2.0;
+    query.position.z = 0;
+    const auto in_lanelet = autoware::experimental::lanelet2_utils::is_in_lanelet(query, ll, 0);
+    std::cout << (in_lanelet ? "YES, it's in lanelet." : "NO, it's not in lanelet.") << std::endl;
+  }
+
+  // outside but within radius
+  {
+    geometry_msgs::msg::Pose query;
+    query.position.x = 0.0;
+    query.position.y = 3.0;
+    query.position.z = 0;
+    // the radius is calculated from the closest point to lanelet
+    const auto in_lanelet =
+      autoware::experimental::lanelet2_utils::is_in_lanelet(query, ll, sqrt(2) / 2);
+    std::cout << (in_lanelet ? "YES, it's in lanelet." : "NO, it's not in lanelet.") << std::endl;
+  }
+
+  // outside and outside radius
+  {
+    geometry_msgs::msg::Pose query;
+    query.position.x = 0.0;
+    query.position.y = 3.0;
+    query.position.z = 0;
+    const auto in_lanelet = autoware::experimental::lanelet2_utils::is_in_lanelet(query, ll, 0.5);
+    std::cout << (in_lanelet ? "YES, it's in lanelet." : "NO, it's not in lanelet.") << std::endl;
+  }
+}
+
 }  // namespace autoware::experimental
 
 int main()
 {
-  autoware::experimental::extrapolation();
-  autoware::experimental::interpolation();
-  autoware::experimental::concatenation();
-  autoware::experimental::get_from_arc_length();
-  autoware::experimental::closest_segment();
-  autoware::experimental::lanelet_angle();
-  autoware::experimental::closest_center_pose();
+  try {
+    autoware::experimental::extrapolation();
+    autoware::experimental::interpolation();
+    autoware::experimental::concatenation();
+    autoware::experimental::get_from_arc_length();
+    autoware::experimental::closest_segment();
+    autoware::experimental::lanelet_angle();
+    autoware::experimental::closest_center_pose();
+    autoware::experimental::arc_coordinates();
+    autoware::experimental::lateral_distance_related();
+    autoware::experimental::combine_lanelet();
+    autoware::experimental::expand_lanelet();
+    autoware::experimental::offset_bound();
+    autoware::experimental::check_in_lanelet();
+  } catch (const std::exception & e) {
+    std::cerr << "Error: " << e.what() << std::endl;
+    return 1;
+  }
   return 0;
 }

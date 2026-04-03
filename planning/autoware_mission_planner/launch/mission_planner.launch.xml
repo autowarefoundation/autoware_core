@@ -11,6 +11,5 @@
       <remap from="~/input/operation_mode_state" to="/system/operation_mode/state"/>
       <remap from="~/debug/route_marker" to="$(var visualization_topic_name)"/>
     </composable_node>
-    <composable_node pkg="autoware_glog_component" plugin="autoware::glog_component::GlogComponent" name="glog_component" namespace=""/>
   </node_container>
 </launch>

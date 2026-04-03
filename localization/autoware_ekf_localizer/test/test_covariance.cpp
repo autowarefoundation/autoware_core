@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/ekf_localizer/covariance.hpp"
+#include "include/covariance.hpp"
 
 #include <gtest/gtest.h>
 

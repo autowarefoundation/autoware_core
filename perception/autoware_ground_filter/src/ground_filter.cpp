@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/ground_filter/ground_filter.hpp"
+#include "ground_filter.hpp"
 
-#include "autoware/ground_filter/data.hpp"
+#include "data.hpp"
 
 #include <pcl/PointIndices.h>
 
@@ -135,7 +135,7 @@ void GroundFilter::initializeGround(pcl::PointIndices & out_no_ground_indices)
   const auto grid_size = grid_ptr_->getGridSize();
   // loop over grid cells
   for (size_t idx = 0; idx < grid_size; idx++) {
-    auto & cell = grid_ptr_->getCell(idx);
+    auto & cell = grid_ptr_->getCell(static_cast<int>(idx));
     if (cell.is_ground_initialized_) continue;
     // if the cell is empty, skip
     if (cell.isEmpty()) continue;
@@ -161,7 +161,7 @@ void GroundFilter::initializeGround(pcl::PointIndices & out_no_ground_indices)
       const float global_slope_threshold = param_.global_slope_max_ratio * radius;
       if (height >= global_slope_threshold && height > param_.non_ground_height_threshold) {
         // this point is obstacle
-        out_no_ground_indices.indices.push_back(pt_idx);
+        out_no_ground_indices.indices.push_back(static_cast<int>(pt_idx));
       } else if (
         abs(height) < global_slope_threshold && abs(height) < param_.non_ground_height_threshold) {
         // this point is ground
@@ -194,7 +194,7 @@ void GroundFilter::SegmentContinuousCell(
   const Cell & cell, PointsCentroid & ground_bin, pcl::PointIndices & out_no_ground_indices)
 {
   const Cell & prev_cell = grid_ptr_->getCell(cell.scan_grid_root_idx_);
-  const float local_thresh_angle_ratio = std::tan(DEG2RAD(5.0));
+  const float local_thresh_angle_ratio = static_cast<float>(std::tan(DEG2RAD(5.0)));
 
   // loop over points in the cell
   for (const auto & pt : cell.point_list_) {
@@ -212,7 +212,7 @@ void GroundFilter::SegmentContinuousCell(
     // 2. the angle is exceed the global slope threshold
     if (height > param_.global_slope_max_ratio * radius) {
       // this point is obstacle
-      out_no_ground_indices.indices.push_back(pt_idx);
+      out_no_ground_indices.indices.push_back(static_cast<int>(pt_idx));
       // go to the next point
       continue;
     }
@@ -233,7 +233,7 @@ void GroundFilter::SegmentContinuousCell(
     const float gnd_z_threshold = param_.non_ground_height_threshold + gnd_z_local_thresh;
     if (delta_gnd_z > gnd_z_threshold) {
       // this point is obstacle
-      out_no_ground_indices.indices.push_back(pt_idx);
+      out_no_ground_indices.indices.push_back(static_cast<int>(pt_idx));
       // go to the next point
       continue;
     }
@@ -269,7 +269,7 @@ void GroundFilter::SegmentDiscontinuousCell(
     // 2. the angle is exceed the global slope threshold
     if (height > param_.global_slope_max_ratio * radius) {
       // this point is obstacle
-      out_no_ground_indices.indices.push_back(pt_idx);
+      out_no_ground_indices.indices.push_back(static_cast<int>(pt_idx));
       // go to the next point
       continue;
     }
@@ -299,7 +299,7 @@ void GroundFilter::SegmentDiscontinuousCell(
     // 5. obstacle from local slope
     if (delta_avg_z >= global_slope_threshold) {
       // this point is obstacle
-      out_no_ground_indices.indices.push_back(pt_idx);
+      out_no_ground_indices.indices.push_back(static_cast<int>(pt_idx));
       // go to the next point
       continue;
     }
@@ -329,7 +329,7 @@ void GroundFilter::SegmentBreakCell(
     // 2. the angle is exceed the global slope threshold
     if (height > param_.global_slope_max_ratio * radius) {
       // this point is obstacle
-      out_no_ground_indices.indices.push_back(pt_idx);
+      out_no_ground_indices.indices.push_back(static_cast<int>(pt_idx));
       // go to the next point
       continue;
     }
@@ -345,7 +345,7 @@ void GroundFilter::SegmentBreakCell(
     }
     if (delta_z >= global_slope_threshold) {
       // this point is obstacle
-      out_no_ground_indices.indices.push_back(pt_idx);
+      out_no_ground_indices.indices.push_back(static_cast<int>(pt_idx));
       // go to the next point
       continue;
     }
@@ -362,7 +362,7 @@ void GroundFilter::classify(pcl::PointIndices & out_no_ground_indices)
   // loop over grid cells
   const auto grid_size = grid_ptr_->getGridSize();
   for (size_t idx = 0; idx < grid_size; idx++) {
-    auto & cell = grid_ptr_->getCell(idx);
+    auto & cell = grid_ptr_->getCell(static_cast<int>(idx));
     // if the cell is empty, skip
     if (cell.isEmpty()) continue;
     if (cell.is_processed_) continue;
@@ -386,10 +386,12 @@ void GroundFilter::classify(pcl::PointIndices & out_no_ground_indices)
     SegmentationMode mode = SegmentationMode::NONE;
     {
       const int front_radial_id =
-        grid_ptr_->getCell(grid_idcs.back()).radial_idx_ + grid_idcs.size();
+        grid_ptr_->getCell(grid_idcs.back()).radial_idx_ + static_cast<int>(grid_idcs.size());
       const float radial_diff_between_cells = cell.center_radius_ - prev_cell.center_radius_;
 
-      if (radial_diff_between_cells < param_.ground_grid_continual_thresh * cell.radial_size_) {
+      if (
+        radial_diff_between_cells <
+        static_cast<float>(param_.ground_grid_continual_thresh) * cell.radial_size_) {
         if (cell.radial_idx_ - front_radial_id < param_.ground_grid_continual_thresh) {
           mode = SegmentationMode::CONTINUOUS;
         } else {
@@ -434,7 +436,7 @@ void GroundFilter::classify(pcl::PointIndices & out_no_ground_indices)
         for (size_t j = 0; j < height_list.size(); ++j) {
           if (height_list.at(j) >= threshold) {
             // fill the non-ground indices
-            out_no_ground_indices.indices.push_back(gnd_indices.at(j));
+            out_no_ground_indices.indices.push_back(static_cast<int>(gnd_indices.at(j)));
             // mark the point as non-ground
             ground_bin.is_ground_list.at(j) = false;
           }

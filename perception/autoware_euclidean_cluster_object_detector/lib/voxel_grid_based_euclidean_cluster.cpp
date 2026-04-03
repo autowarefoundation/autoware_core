@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <autoware/euclidean_cluster_object_detector/voxel_grid_based_euclidean_cluster.hpp>
+#include "voxel_grid_based_euclidean_cluster.hpp"
+
 #include <rclcpp/node.hpp>
 
 #include <pcl/kdtree/kdtree.h>
@@ -98,7 +99,7 @@ bool VoxelGridBasedEuclideanCluster::cluster(
 
   // create voxel
   pcl::PointCloud<pcl::PointXYZ>::Ptr pointcloud(new pcl::PointCloud<pcl::PointXYZ>);
-  int point_step = pointcloud_msg->point_step;
+  int point_step = static_cast<int>(pointcloud_msg->point_step);
   pcl::fromROSMsg(*pointcloud_msg, *pointcloud);
   pcl::PointCloud<pcl::PointXYZ>::Ptr voxel_map_ptr(new pcl::PointCloud<pcl::PointXYZ>);
   voxel_grid_.setLeafSize(voxel_leaf_size_, voxel_leaf_size_, 100000.0);
@@ -141,7 +142,7 @@ bool VoxelGridBasedEuclideanCluster::cluster(
     const auto & cluster = cluster_indices.at(cluster_idx);
     auto & temporary_cluster = temporary_clusters.at(cluster_idx);
     for (const auto & point_idx : cluster.indices) {
-      map[point_idx] = cluster_idx;
+      map[point_idx] = static_cast<int>(cluster_idx);
     }
     temporary_cluster.height = pointcloud_msg->height;
     temporary_cluster.fields = pointcloud_msg->fields;

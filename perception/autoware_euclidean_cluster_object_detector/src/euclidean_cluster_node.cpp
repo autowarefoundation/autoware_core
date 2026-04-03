@@ -14,7 +14,7 @@
 
 #include "euclidean_cluster_node.hpp"
 
-#include <autoware/euclidean_cluster_object_detector/utils.hpp>
+#include "utils.hpp"
 
 #include <memory>
 #include <vector>
@@ -25,9 +25,9 @@ EuclideanClusterNode::EuclideanClusterNode(const rclcpp::NodeOptions & options)
 : Node("euclidean_cluster_node", options)
 {
   const bool use_height = this->declare_parameter("use_height", false);
-  const int min_cluster_size = this->declare_parameter("min_cluster_size", 3);
-  const int max_cluster_size = this->declare_parameter("max_cluster_size", 200);
-  const float tolerance = this->declare_parameter("tolerance", 1.0);
+  const int min_cluster_size = static_cast<int>(this->declare_parameter("min_cluster_size", 3));
+  const int max_cluster_size = static_cast<int>(this->declare_parameter("max_cluster_size", 200));
+  const float tolerance = static_cast<float>(this->declare_parameter("tolerance", 1.0));
   cluster_ =
     std::make_shared<EuclideanCluster>(use_height, min_cluster_size, max_cluster_size, tolerance);
 
