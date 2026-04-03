@@ -42,7 +42,8 @@ static double calculate_path_with_lane_id_length(
 {
   auto & path_points = path.points;
   double length = 0;
-  for (const auto [p1, p2] : ranges::view::zip(path_points, path_points | ranges::view::drop(1))) {
+  for (const auto [p1, p2] :
+       ranges::views::zip(path_points, path_points | ranges::views::drop(1))) {
     length += autoware_utils_geometry::calc_distance3d(p1, p2);
   }
 
