@@ -26,7 +26,6 @@
 
 using autoware_planning_msgs::msg::TrajectoryPoint;
 using autoware_utils_geometry::create_quaternion_from_rpy;
-using autoware_utils_geometry::create_quaternion_from_yaw;
 using geometry_msgs::build;
 using geometry_msgs::msg::Point;
 using geometry_msgs::msg::Pose;
@@ -34,28 +33,8 @@ using geometry_msgs::msg::Pose;
 namespace autoware::experimental::trajectory
 {
 
-static TrajectoryPoint make_trajectory_point(double x, double y, double yaw)
-{
-  TrajectoryPoint point;
-  point.pose = build<Pose>()
-                 .position(build<Point>().x(x).y(y).z(0.0))
-                 .orientation(create_quaternion_from_yaw(yaw));
-  return point;
-}
-
-static TrajectoryPoint make_trajectory_point_with_pitch(
-  double x, double y, double z, double yaw, double pitch)
-{
-  TrajectoryPoint point;
-  point.pose = build<Pose>()
-                 .position(build<Point>().x(x).y(y).z(z))
-                 .orientation(create_quaternion_from_rpy(0.0, pitch, yaw));
-
-  return point;
-}
-
-static TrajectoryPoint make_trajectory_point_with_orientation(
-  double x, double y, double z, double roll, double pitch, double yaw)
+static TrajectoryPoint make_trajectory_point(
+  double x, double y, double z = 0.0, double roll = 0.0, double pitch = 0.0, double yaw = 0.0)
 {
   TrajectoryPoint point;
   point.pose = build<Pose>()
@@ -88,9 +67,9 @@ TEST(add_offset, forward_offset_shifts_along_heading)
 {
   // Straight trajectory along +x axis
   std::vector<TrajectoryPoint> points;
-  points.emplace_back(make_trajectory_point(0.0, 0.0, 0.0));
-  points.emplace_back(make_trajectory_point(1.0, 0.0, 0.0));
-  points.emplace_back(make_trajectory_point(2.0, 0.0, 0.0));
+  points.emplace_back(make_trajectory_point(0.0, 0.0));
+  points.emplace_back(make_trajectory_point(1.0, 0.0));
+  points.emplace_back(make_trajectory_point(2.0, 0.0));
 
   auto traj = Trajectory<TrajectoryPoint>::Builder().build(points).value();
   const double forward_offset = 2.0;  // 2m forward
@@ -103,9 +82,9 @@ TEST(add_offset, lateral_offset_shifts_to_left)
 {
   // Straight trajectory along +x axis
   std::vector<TrajectoryPoint> points;
-  points.emplace_back(make_trajectory_point(0.0, 0.0, 0.0));
-  points.emplace_back(make_trajectory_point(1.0, 0.0, 0.0));
-  points.emplace_back(make_trajectory_point(2.0, 0.0, 0.0));
+  points.emplace_back(make_trajectory_point(0.0, 0.0));
+  points.emplace_back(make_trajectory_point(1.0, 0.0));
+  points.emplace_back(make_trajectory_point(2.0, 0.0));
 
   auto traj = Trajectory<TrajectoryPoint>::Builder().build(points).value();
   const double lateral_offset = 1.5;  // 1.5m to the left
@@ -119,9 +98,9 @@ TEST(add_offset, combined_offset_respects_heading_rotation)
   // Trajectory with 90 degree heading (+y direction)
   std::vector<TrajectoryPoint> points;
   const double yaw_90 = M_PI_2;
-  points.emplace_back(make_trajectory_point(0.0, 0.0, yaw_90));
-  points.emplace_back(make_trajectory_point(0.0, 1.0, yaw_90));
-  points.emplace_back(make_trajectory_point(0.0, 2.0, yaw_90));
+  points.emplace_back(make_trajectory_point(0.0, 0.0, 0.0, 0.0, 0.0, yaw_90));
+  points.emplace_back(make_trajectory_point(0.0, 1.0, 0.0, 0.0, 0.0, yaw_90));
+  points.emplace_back(make_trajectory_point(0.0, 2.0, 0.0, 0.0, 0.0, yaw_90));
 
   auto traj = Trajectory<TrajectoryPoint>::Builder().build(points).value();
   const double forward_offset = 1.0;  // 1m forward (in vehicle frame = +y in global)
@@ -134,9 +113,9 @@ TEST(add_offset, combined_offset_respects_heading_rotation)
 TEST(add_offset, preserves_trajectory_length)
 {
   std::vector<TrajectoryPoint> points;
-  points.emplace_back(make_trajectory_point(0.0, 0.0, 0.0));
-  points.emplace_back(make_trajectory_point(1.0, 0.0, 0.0));
-  points.emplace_back(make_trajectory_point(2.0, 0.0, 0.0));
+  points.emplace_back(make_trajectory_point(0.0, 0.0));
+  points.emplace_back(make_trajectory_point(1.0, 0.0));
+  points.emplace_back(make_trajectory_point(2.0, 0.0));
 
   auto traj = Trajectory<TrajectoryPoint>::Builder().build(points).value();
   auto offset_traj = add_offset(traj, 1.0, 0.5);
@@ -148,9 +127,9 @@ TEST(add_offset, preserves_trajectory_length)
 TEST(add_offset, zero_offset_returns_identical_trajectory)
 {
   std::vector<TrajectoryPoint> points;
-  points.emplace_back(make_trajectory_point(0.0, 0.0, 0.0));
-  points.emplace_back(make_trajectory_point(1.0, 0.0, 0.0));
-  points.emplace_back(make_trajectory_point(2.0, 0.0, 0.0));
+  points.emplace_back(make_trajectory_point(0.0, 0.0));
+  points.emplace_back(make_trajectory_point(1.0, 0.0));
+  points.emplace_back(make_trajectory_point(2.0, 0.0));
 
   auto traj = Trajectory<TrajectoryPoint>::Builder().build(points).value();
   auto offset_traj = add_offset(traj, 0.0, 0.0);
@@ -169,9 +148,9 @@ TEST(add_offset, negative_lateral_offset_shifts_right)
 {
   // Straight trajectory along +x axis
   std::vector<TrajectoryPoint> points;
-  points.emplace_back(make_trajectory_point(0.0, 0.0, 0.0));
-  points.emplace_back(make_trajectory_point(1.0, 0.0, 0.0));
-  points.emplace_back(make_trajectory_point(2.0, 0.0, 0.0));
+  points.emplace_back(make_trajectory_point(0.0, 0.0));
+  points.emplace_back(make_trajectory_point(1.0, 0.0));
+  points.emplace_back(make_trajectory_point(2.0, 0.0));
 
   auto traj = Trajectory<TrajectoryPoint>::Builder().build(points).value();
   const double lateral_offset = -1.0;  // 1m to the right
@@ -186,7 +165,7 @@ TEST(add_offset, single_point_combined_offset)
   const double yaw = M_PI_4;        // 45 degrees
   const double pitch = M_PI / 6.0;  // 30 degrees
   std::vector<TrajectoryPoint> points;
-  points.emplace_back(make_trajectory_point_with_pitch(1.0, 2.0, 0.5, yaw, pitch));
+  points.emplace_back(make_trajectory_point(1.0, 2.0, 0.5, 0.0, pitch, yaw));
 
   auto traj = Trajectory<TrajectoryPoint>::Builder().build(points).value();
 
@@ -209,9 +188,9 @@ TEST(add_offset, vertical_offset_shifts_z_at_zero_pitch)
 {
   // Flat trajectory (zero pitch) along +x axis: offset_z should translate directly into global z
   std::vector<TrajectoryPoint> points;
-  points.emplace_back(make_trajectory_point(0.0, 0.0, 0.0));
-  points.emplace_back(make_trajectory_point(1.0, 0.0, 0.0));
-  points.emplace_back(make_trajectory_point(2.0, 0.0, 0.0));
+  points.emplace_back(make_trajectory_point(0.0, 0.0));
+  points.emplace_back(make_trajectory_point(1.0, 0.0));
+  points.emplace_back(make_trajectory_point(2.0, 0.0));
 
   auto traj = Trajectory<TrajectoryPoint>::Builder().build(points).value();
   const double offset_z = 1.5;  // 1.5m up in vehicle frame
@@ -225,9 +204,9 @@ TEST(add_offset, forward_offset_on_pitched_trajectory_shifts_z)
   // Pitched trajectory (nose-up 30 deg, heading 0): forward offset_x should lift the z
   const double pitch = M_PI / 6.0;  // 30 degrees nose-up
   std::vector<TrajectoryPoint> points;
-  points.emplace_back(make_trajectory_point_with_pitch(0.0, 0.0, 0.0, 0.0, pitch));
-  points.emplace_back(make_trajectory_point_with_pitch(1.0, 0.0, 0.0, 0.0, pitch));
-  points.emplace_back(make_trajectory_point_with_pitch(2.0, 0.0, 0.0, 0.0, pitch));
+  points.emplace_back(make_trajectory_point(0.0, 0.0, 0.0, 0.0, pitch));
+  points.emplace_back(make_trajectory_point(1.0, 0.0, 0.0, 0.0, pitch));
+  points.emplace_back(make_trajectory_point(2.0, 0.0, 0.0, 0.0, pitch));
 
   auto traj = Trajectory<TrajectoryPoint>::Builder().build(points).value();
   const double offset_x = 2.0;  // 2m forward in vehicle frame
@@ -239,9 +218,9 @@ TEST(add_offset, explicit_zero_offset_z_matches_default_argument)
 {
   // Verify that omitting offset_z behaves exactly the same as passing 0.0 explicitly.
   std::vector<TrajectoryPoint> points;
-  points.emplace_back(make_trajectory_point_with_pitch(0.0, 0.0, 1.0, 0.0, 0.1));
-  points.emplace_back(make_trajectory_point_with_pitch(1.0, 0.0, 1.0, 0.0, 0.1));
-  points.emplace_back(make_trajectory_point_with_pitch(2.0, 0.0, 1.0, 0.0, 0.1));
+  points.emplace_back(make_trajectory_point(0.0, 0.0, 1.0, 0.0, 0.1));
+  points.emplace_back(make_trajectory_point(1.0, 0.0, 1.0, 0.0, 0.1));
+  points.emplace_back(make_trajectory_point(2.0, 0.0, 1.0, 0.0, 0.1));
 
   auto traj = Trajectory<TrajectoryPoint>::Builder().build(points).value();
   auto default_offset_traj = add_offset(traj, 1.0, 0.5);
@@ -261,9 +240,9 @@ TEST(add_offset, lateral_offset_on_rolled_trajectory_shifts_z)
   // With positive roll, a left offset should also move upward in the global frame.
   const double roll = M_PI / 6.0;  // 30 degrees
   std::vector<TrajectoryPoint> points;
-  points.emplace_back(make_trajectory_point_with_orientation(0.0, 0.0, 0.0, roll, 0.0, 0.0));
-  points.emplace_back(make_trajectory_point_with_orientation(1.0, 0.0, 0.0, roll, 0.0, 0.0));
-  points.emplace_back(make_trajectory_point_with_orientation(2.0, 0.0, 0.0, roll, 0.0, 0.0));
+  points.emplace_back(make_trajectory_point(0.0, 0.0, 0.0, roll, 0.0, 0.0));
+  points.emplace_back(make_trajectory_point(1.0, 0.0, 0.0, roll, 0.0, 0.0));
+  points.emplace_back(make_trajectory_point(2.0, 0.0, 0.0, roll, 0.0, 0.0));
 
   auto traj = Trajectory<TrajectoryPoint>::Builder().build(points).value();
   const double offset_y = 2.0;
