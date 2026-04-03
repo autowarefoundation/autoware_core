@@ -115,8 +115,7 @@ protected:
     using autoware::experimental::lanelet2_utils::load_mgrs_coordinate_map;
     // Load test case
     const auto test_case_path =
-      std::filesystem::path(
-        ament_index_cpp::get_package_share_directory("autoware_route_handler")) /
+      std::filesystem::path(ament_index_cpp::get_package_share_directory("autoware_trajectory")) /
       "test_data" / GetParam();
     const auto test_case_data = autoware::test_utils::load_test_case(test_case_path.string());
 
@@ -911,11 +910,8 @@ TEST_P(TestWithVM_01_10_12_Map, from_P6_forward_on_entire_lanes)  // NOLINT
 INSTANTIATE_TEST_SUITE_P(
   getCenterlinePathMap, TestWithVM_01_10_12_Map,
   ::testing::Values(
-    "test_route_handler_centerline_path_valid_01.yaml",
-    "test_route_handler_centerline_path_valid_02.yaml",
-    "test_route_handler_centerline_path_valid_03.yaml",
-    "test_route_handler_centerline_path_valid_04.yaml",
-    "test_route_handler_centerline_path_valid_05.yaml",
-    "test_route_handler_centerline_path_valid_06.yaml"));
+    "test_reference_path_valid_01.yaml", "test_reference_path_valid_02.yaml",
+    "test_reference_path_valid_03.yaml", "test_reference_path_valid_04.yaml",
+    "test_reference_path_valid_05.yaml", "test_reference_path_valid_06.yaml"));
 
 }  // namespace autoware::route_handler::test

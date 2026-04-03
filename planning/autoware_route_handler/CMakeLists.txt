@@ -36,5 +36,4 @@ endif()
 
 autoware_ament_auto_package(INSTALL_TO_SHARE
   test_route
-  test_data
 )

@@ -114,9 +114,8 @@ protected:
     using autoware::experimental::lanelet2_utils::load_mgrs_coordinate_map;
     // Load test case
     const auto test_case_path =
-      std::filesystem::path(
-        ament_index_cpp::get_package_share_directory("autoware_route_handler")) /
-      "test_data" / "test_route_handler_centerline_path_invalid_01.yaml";
+      std::filesystem::path(ament_index_cpp::get_package_share_directory("autoware_trajectory")) /
+      "test_data/test_reference_path_invalid_01.yaml";
     const auto test_case_data = autoware::test_utils::load_test_case(test_case_path.string());
     std::cout << "Load map from " << test_case_data.map_abs_path << std::endl;
     const auto lanelet_map_ = load_mgrs_coordinate_map(test_case_data.map_abs_path);
@@ -208,7 +207,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P0_on_entire_lanes)  // NOLINT
   {
     std::string filename =
       std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
-      "test_route_handler_centerline_path_invalid_01.yaml" + ".svg";
+      "test_reference_path_invalid_01.yaml" + ".svg";
     std::replace(filename.begin(), filename.end(), '/', '_');
     savefig(centerline_path, start_s, end_s, P0_s, lanelet_sequence, filename);
   }
@@ -265,7 +264,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P1_on_entire_lanes)  // NOLINT
   {
     std::string filename =
       std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
-      "test_route_handler_centerline_path_invalid_01.yaml" + ".svg";
+      "test_reference_path_invalid_01.yaml" + ".svg";
     std::replace(filename.begin(), filename.end(), '/', '_');
     savefig(centerline_path, start_s, end_s, P1_s, lanelet_sequence, filename);
   }
@@ -322,7 +321,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P2_on_entire_lanes)  // NOLINT
   {
     std::string filename =
       std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
-      "test_route_handler_centerline_path_invalid_01.yaml" + ".svg";
+      "test_reference_path_invalid_01.yaml" + ".svg";
     std::replace(filename.begin(), filename.end(), '/', '_');
     savefig(centerline_path, start_s, end_s, P2_s, lanelet_sequence, filename);
   }
@@ -379,7 +378,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P3_on_entire_lanes)  // NOLINT
   {
     std::string filename =
       std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
-      "test_route_handler_centerline_path_invalid_01.yaml" + ".svg";
+      "test_reference_path_invalid_01.yaml" + ".svg";
     std::replace(filename.begin(), filename.end(), '/', '_');
     savefig(centerline_path, start_s, end_s, P3_s, lanelet_sequence, filename);
   }
@@ -436,7 +435,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P4_on_entire_lanes)  // NOLINT
   {
     std::string filename =
       std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
-      "test_route_handler_centerline_path_invalid_01.yaml" + ".svg";
+      "test_reference_path_invalid_01.yaml" + ".svg";
     std::replace(filename.begin(), filename.end(), '/', '_');
     savefig(centerline_path, start_s, end_s, P4_s, lanelet_sequence, filename);
   }
@@ -494,7 +493,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P1_forward_on_entire_lanes)  // NOL
   {
     std::string filename =
       std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
-      "test_route_handler_centerline_path_invalid_01.yaml" + ".svg";
+      "test_reference_path_invalid_01.yaml" + ".svg";
     std::replace(filename.begin(), filename.end(), '/', '_');
     savefig(centerline_path, start_s, end_s, P1_s, lanelet_sequence, filename);
   }
@@ -551,7 +550,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P2_forward_on_entire_lanes)  // NOL
   {
     std::string filename =
       std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
-      "test_route_handler_centerline_path_invalid_01.yaml" + ".svg";
+      "test_reference_path_invalid_01.yaml" + ".svg";
     std::replace(filename.begin(), filename.end(), '/', '_');
     savefig(centerline_path, start_s, end_s, P2_s, lanelet_sequence, filename);
   }
@@ -608,7 +607,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P3_forward_on_entire_lanes)  // NOL
   {
     std::string filename =
       std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
-      "test_route_handler_centerline_path_invalid_01.yaml" + ".svg";
+      "test_reference_path_invalid_01.yaml" + ".svg";
     std::replace(filename.begin(), filename.end(), '/', '_');
     savefig(centerline_path, start_s, end_s, P3_s, lanelet_sequence, filename);
   }
@@ -665,7 +664,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P4_forward_on_entire_lanes)  // NOL
   {
     std::string filename =
       std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
-      "test_route_handler_centerline_path_invalid_01.yaml" + ".svg";
+      "test_reference_path_invalid_01.yaml" + ".svg";
     std::replace(filename.begin(), filename.end(), '/', '_');
     savefig(centerline_path, start_s, end_s, P4_s, lanelet_sequence, filename);
   }
