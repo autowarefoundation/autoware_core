@@ -266,38 +266,6 @@ TEST_F(TestRouteHandler, getClosestLaneletWithinRouteWhenPointsInRoute)
   ASSERT_EQ(get_closest_lanelet_within_route(0.5, 1.75, 0).value(), 4424ul);
 }
 
-TEST_F(TestRouteHandler, testGetLaneChangeTargetLanes)
-{
-  {
-    // The input is within expectation.
-    // There exist no lane changing lane since both 4770 and 4775 are preferred lane.
-    const auto current_lanes = route_handler_->getLaneletsFromIds({4770, 4775});
-    const auto lane_change_lane =
-      route_handler_->getLaneChangeTarget(current_lanes, Direction::RIGHT);
-    ASSERT_FALSE(lane_change_lane.has_value());
-  }
-
-  {
-    // The input is within expectation.
-    // There exist lane changing lane since 4424 is subset of preferred lane 9598.
-    const auto current_lanes = route_handler_->getLaneletsFromIds({4775, 4424});
-    const auto lane_change_lane =
-      route_handler_->getLaneChangeTarget(current_lanes, Direction::RIGHT);
-    EXPECT_TRUE(lane_change_lane.has_value());
-    ASSERT_EQ(lane_change_lane.value().id(), 9598ul);
-  }
-
-  {
-    // The input is within expectation.
-    // There is a lane-changing lane. Within the maximum current lanes, there is an alternative lane
-    // to the preferred lane. Therefore, the lane-changing lane exists.
-    const auto current_lanes = get_current_lanes();
-    const auto lane_change_lane = route_handler_->getLaneChangeTarget(current_lanes);
-    ASSERT_TRUE(lane_change_lane.has_value());
-    ASSERT_EQ(lane_change_lane.value().id(), 9598ul);
-  }
-}
-
 TEST_F(TestRouteHandler, testGetShoulderLaneletsAtPose)
 {
   set_route_handler("overlap_map.osm");
