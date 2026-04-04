@@ -13,6 +13,7 @@ Currently, it supports the following two types:
 - Publish downsampled pointcloud map
 - Send partial pointcloud map loading via ROS 2 service
 - Send differential pointcloud map loading via ROS 2 service
+- Optionally publish internally visualized differential pointcloud map for RViz
 
 NOTE: **We strongly recommend to use divided maps when using large pointcloud map to enable the latter two features (partial and differential load). Please go through the prerequisites section for more details, and follow the instruction for dividing the map and preparing the metadata.**
 
@@ -102,6 +103,16 @@ Here, we assume that the pointcloud maps are divided into grids.
 Given a query and set of map IDs, the node sends a set of pointcloud maps that overlap with the queried area and are not included in the set of map IDs.
 Please see [the description of `GetDifferentialPointCloudMap.srv`](https://github.com/autowarefoundation/autoware_msgs/tree/main/autoware_map_msgs#getdifferentialpointcloudmapsrv) for details.
 
+#### Publish internally visualized differential pointcloud map (ROS 2 topic)
+
+When `enable_internal_differential_visualization` is enabled, `pointcloud_map_loader` subscribes to
+`/localization/kinematic_state`, queries differential pointcloud map cells around the latest pose,
+merges the loaded cells into a single `sensor_msgs/msg/PointCloud2`, and publishes the result for
+RViz.
+
+This feature is intended for visualization and debugging of differential map loading behavior
+without launching a separate visualizer node.
+
 #### Send selected pointcloud map (ROS 2 service)
 
 Here, we assume that the pointcloud maps are divided into grids.
@@ -121,6 +132,7 @@ Please see [the description of `GetSelectedPointCloudMap.srv`](https://github.co
 - `service/get_partial_pcd_map` (autoware_map_msgs/srv/GetPartialPointCloudMap) : Partial pointcloud map
 - `service/get_differential_pcd_map` (autoware_map_msgs/srv/GetDifferentialPointCloudMap) : Differential pointcloud map
 - `service/get_selected_pcd_map` (autoware_map_msgs/srv/GetSelectedPointCloudMap) : Selected pointcloud map
+- `output/differential_pointcloud_map_internal` (sensor_msgs/msg/PointCloud2) : Internally visualized differential pointcloud map for RViz
 - pointcloud map file(s) (.pcd)
 - metadata of pointcloud map(s) (.yaml)
 
