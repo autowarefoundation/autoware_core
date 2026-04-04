@@ -16,6 +16,7 @@
 #include <autoware/lanelet2_utils/kind.hpp>
 #include <autoware/lanelet2_utils/map_handler.hpp>
 #include <autoware/lanelet2_utils/topology.hpp>
+#include <autoware_lanelet2_extension/traffic_rules/autoware_traffic_rules.hpp>
 #include <rclcpp/logging.hpp>
 
 #include <lanelet2_core/geometry/Lanelet.h>
@@ -133,7 +134,7 @@ std::optional<MapHandler> MapHandler::create(const autoware_map_msgs::msg::Lanel
     return std::nullopt;
   }
   const auto [routing_graph, traffic_rules] =
-    instantiate_routing_graph_and_traffic_rules(lanelet_map);
+    instantiate_routing_graph_and_traffic_rules(lanelet_map, lanelet::autoware::DefaultLocation);
 
   return MapHandler(lanelet_map, routing_graph, traffic_rules);
 }
