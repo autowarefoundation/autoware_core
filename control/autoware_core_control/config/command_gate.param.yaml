@@ -1,0 +1,5 @@
+/**:
+  ros__parameters:
+    # Set true when running autoware_core control only.
+    # Keep false when running with autoware_universe to avoid conflicting control.
+    launch_command_gate: false
