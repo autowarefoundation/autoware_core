@@ -26,6 +26,7 @@
 
 #include <gtest/gtest.h>
 
+#include <atomic>
 #include <memory>
 #include <string>
 #include <vector>
@@ -150,11 +151,6 @@ protected:
     publisher_executor_ = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
     publisher_executor_->add_node(publisher_node_);
 
-    // Create subscribers
-    pose_received_ = false;
-    pose_cov_received_ = false;
-    fixed_status_received_ = false;
-
     auto pose_callback = [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
       last_pose_ = *msg;
       pose_received_ = true;
@@ -239,9 +235,9 @@ protected:
   geometry_msgs::msg::PoseWithCovarianceStamped last_pose_cov_;
   autoware_internal_debug_msgs::msg::BoolStamped last_fixed_status_;
 
-  bool pose_received_;
-  bool pose_cov_received_;
-  bool fixed_status_received_;
+  std::atomic<bool> pose_received_{false};
+  std::atomic<bool> pose_cov_received_{false};
+  std::atomic<bool> fixed_status_received_{false};
 };
 
 // Test GNSS fixed status handling
@@ -252,22 +248,23 @@ TEST_F(GNSSPoserTest, TestFixedGNSS)
   publisher_node_->fix_pub_->publish(nav_sat_fix);
 
   // Wait for message
-  EXPECT_FALSE(
-    waitForMessage([this]() { return fixed_status_received_; }, std::chrono::milliseconds(500)));
+  EXPECT_FALSE(waitForMessage(
+    [this]() { return fixed_status_received_.load(); }, std::chrono::milliseconds(500)));
 
   auto map_projector_info = createMapProjectorInfoMsg();
   publisher_node_->map_projector_pub_->publish(map_projector_info);
   std::this_thread::sleep_for(std::chrono::milliseconds(100));  // Wait for message propagation
 
   publisher_node_->fix_pub_->publish(nav_sat_fix);
-  EXPECT_TRUE(
-    waitForMessage([this]() { return fixed_status_received_; }, std::chrono::milliseconds(500)));
+  EXPECT_TRUE(waitForMessage(
+    [this]() { return fixed_status_received_.load(); }, std::chrono::milliseconds(500)));
 
   // Verify GNSS fixed flag
   EXPECT_TRUE(last_fixed_status_.data);
 
   // If position is published, check if it's valid
-  EXPECT_TRUE(waitForMessage([this]() { return pose_received_; }, std::chrono::milliseconds(500)));
+  EXPECT_TRUE(
+    waitForMessage([this]() { return pose_received_.load(); }, std::chrono::milliseconds(500)));
   EXPECT_NE(last_pose_.pose.position.x, 0.0);
   EXPECT_NE(last_pose_.pose.position.y, 0.0);
 }
@@ -289,8 +286,8 @@ TEST_F(GNSSPoserTest, TestNonFixedGNSS)
   publisher_node_->fix_pub_->publish(non_fixed_nav_sat_fix);
 
   // Wait for fixed status message
-  EXPECT_TRUE(
-    waitForMessage([this]() { return fixed_status_received_; }, std::chrono::milliseconds(500)));
+  EXPECT_TRUE(waitForMessage(
+    [this]() { return fixed_status_received_.load(); }, std::chrono::milliseconds(500)));
 
   // Verify GNSS non-fixed flag
   EXPECT_FALSE(last_fixed_status_.data);
@@ -319,10 +316,11 @@ TEST_F(GNSSPoserTest, TestGNSSFixProcessing)
   publisher_node_->fix_pub_->publish(nav_sat_fix);
 
   // Verify fixed status and position publishing
-  EXPECT_TRUE(
-    waitForMessage([this]() { return fixed_status_received_; }, std::chrono::milliseconds(500)));
+  EXPECT_TRUE(waitForMessage(
+    [this]() { return fixed_status_received_.load(); }, std::chrono::milliseconds(500)));
   EXPECT_TRUE(last_fixed_status_.data);
-  EXPECT_TRUE(waitForMessage([this]() { return pose_received_; }, std::chrono::milliseconds(500)));
+  EXPECT_TRUE(
+    waitForMessage([this]() { return pose_received_.load(); }, std::chrono::milliseconds(500)));
 
   // Reset status
   fixed_status_received_ = false;
@@ -334,8 +332,8 @@ TEST_F(GNSSPoserTest, TestGNSSFixProcessing)
   publisher_node_->fix_pub_->publish(non_fixed_nav_sat_fix);
 
   // Verify non-fixed status and no position publishing
-  EXPECT_TRUE(
-    waitForMessage([this]() { return fixed_status_received_; }, std::chrono::milliseconds(500)));
+  EXPECT_TRUE(waitForMessage(
+    [this]() { return fixed_status_received_.load(); }, std::chrono::milliseconds(500)));
   EXPECT_FALSE(last_fixed_status_.data);
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
   EXPECT_FALSE(pose_received_);
@@ -367,7 +365,7 @@ TEST_F(GNSSPoserTest, TestCovarianceProcessing)
   publisher_node_->fix_pub_->publish(nav_sat_fix);
 
   EXPECT_TRUE(
-    waitForMessage([this]() { return pose_cov_received_; }, std::chrono::milliseconds(500)));
+    waitForMessage([this]() { return pose_cov_received_.load(); }, std::chrono::milliseconds(500)));
 
   // Verify covariance values are correctly passed
   EXPECT_NEAR(last_pose_cov_.pose.covariance[0], 2.0, 1e-6);
@@ -381,7 +379,7 @@ TEST_F(GNSSPoserTest, TestCovarianceProcessing)
   publisher_node_->fix_pub_->publish(nav_sat_fix);
 
   EXPECT_TRUE(
-    waitForMessage([this]() { return pose_cov_received_; }, std::chrono::milliseconds(500)));
+    waitForMessage([this]() { return pose_cov_received_.load(); }, std::chrono::milliseconds(500)));
 
   // Verify default covariance values are used
   EXPECT_NEAR(last_pose_cov_.pose.covariance[0], 10.0, 1e-6);
@@ -398,6 +396,7 @@ TEST_F(GNSSPoserTest, TestOrientationSources)
     executor_thread_.join();
   }
   gnss_poser_node_.reset();
+  executor_.reset();
 
   // Create node without using GNSS-INS orientation
   rclcpp::NodeOptions options;
@@ -409,6 +408,7 @@ TEST_F(GNSSPoserTest, TestOrientationSources)
   options.append_parameter_override("gnss_pose_pub_method", 0);
 
   gnss_poser_node_ = std::make_shared<autoware::gnss_poser::GNSSPoser>(options);
+  executor_ = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
   executor_->add_node(gnss_poser_node_);
 
   // Reset subscription
@@ -421,8 +421,11 @@ TEST_F(GNSSPoserTest, TestOrientationSources)
   pose_sub_ = gnss_poser_node_->create_subscription<geometry_msgs::msg::PoseStamped>(
     "gnss_pose", rclcpp::QoS(1), pose_callback);
 
-  // Restart executor
+  // Start fresh executor
   executor_thread_ = std::thread([this]() { executor_->spin(); });
+
+  // Re-publish TF for the new node's tf_buffer
+  publisher_node_->publishTF("gnss", "base_link");
 
   // Publish map projection info
   auto map_projector_info = createMapProjectorInfoMsg();
@@ -435,14 +438,16 @@ TEST_F(GNSSPoserTest, TestOrientationSources)
   auto nav_sat_fix1 = createNavSatFixMsg(35.681236, 139.767125, 41.0);
   publisher_node_->fix_pub_->publish(nav_sat_fix1);
 
-  EXPECT_TRUE(waitForMessage([this]() { return pose_received_; }, std::chrono::milliseconds(500)));
+  EXPECT_TRUE(
+    waitForMessage([this]() { return pose_received_.load(); }, std::chrono::milliseconds(500)));
   pose_received_ = false;
 
   // Publish second position point (moving north)
   auto nav_sat_fix2 = createNavSatFixMsg(35.682236, 139.767125, 41.0);
   publisher_node_->fix_pub_->publish(nav_sat_fix2);
 
-  EXPECT_TRUE(waitForMessage([this]() { return pose_received_; }, std::chrono::milliseconds(500)));
+  EXPECT_TRUE(
+    waitForMessage([this]() { return pose_received_.load(); }, std::chrono::milliseconds(500)));
 
   // Verify orientation (facing north, positive y-axis direction)
   tf2::Quaternion quat;
@@ -452,12 +457,6 @@ TEST_F(GNSSPoserTest, TestOrientationSources)
 
   // Moving north should result in yaw angle of approximately 90 degrees (PI/2)
   EXPECT_NEAR(std::abs(yaw), M_PI / 2.0, 0.1);
-
-  // Clean up
-  executor_->cancel();
-  if (executor_thread_.joinable()) {
-    executor_thread_.join();
-  }
 }
 
 // Test different publishing methods
@@ -469,6 +468,7 @@ TEST_F(GNSSPoserTest, TestPositionBufferMethods)
     executor_thread_.join();
   }
   gnss_poser_node_.reset();
+  executor_.reset();
 
   // Create node using position buffer
   rclcpp::NodeOptions options;
@@ -480,6 +480,7 @@ TEST_F(GNSSPoserTest, TestPositionBufferMethods)
   options.append_parameter_override("gnss_pose_pub_method", 1);  // Use averaging method
 
   gnss_poser_node_ = std::make_shared<autoware::gnss_poser::GNSSPoser>(options);
+  executor_ = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
   executor_->add_node(gnss_poser_node_);
 
   // Reset subscription
@@ -491,8 +492,11 @@ TEST_F(GNSSPoserTest, TestPositionBufferMethods)
   pose_sub_ = gnss_poser_node_->create_subscription<geometry_msgs::msg::PoseStamped>(
     "gnss_pose", rclcpp::QoS(1), pose_callback);
 
-  // Restart executor
+  // Start fresh executor
   executor_thread_ = std::thread([this]() { executor_->spin(); });
+
+  // Re-publish TF for the new node's tf_buffer
+  publisher_node_->publishTF("gnss", "base_link");
 
   // Publish map projection info
   auto map_projector_info = createMapProjectorInfoMsg();
@@ -513,14 +517,9 @@ TEST_F(GNSSPoserTest, TestPositionBufferMethods)
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
   // Wait for position message (should be published after buffer is filled)
-  EXPECT_TRUE(waitForMessage([this]() { return pose_received_; }, std::chrono::milliseconds(500)));
+  EXPECT_TRUE(
+    waitForMessage([this]() { return pose_received_.load(); }, std::chrono::milliseconds(500)));
   EXPECT_EQ(last_pose_.header.frame_id, "map");
-
-  // Clean up
-  executor_->cancel();
-  if (executor_thread_.joinable()) {
-    executor_thread_.join();
-  }
 }
 
 // Add new test case to test static transform functionality
@@ -551,7 +550,8 @@ TEST_F(GNSSPoserTest, TestStaticTransform)
   publisher_node_->fix_pub_->publish(nav_sat_fix);
 
   // Wait for position message to be published
-  EXPECT_TRUE(waitForMessage([this]() { return pose_received_; }, std::chrono::milliseconds(500)));
+  EXPECT_TRUE(
+    waitForMessage([this]() { return pose_received_.load(); }, std::chrono::milliseconds(500)));
 
   // If get_static_transform successfully found and applied the TF, the final position will be
   // affected because GNSS position is calculated through a transform based on the custom TF Check
@@ -569,7 +569,8 @@ TEST_F(GNSSPoserTest, TestStaticTransform)
   publisher_node_->fix_pub_->publish(same_frame_nav_sat_fix);
 
   // Wait for position message to be published
-  EXPECT_TRUE(waitForMessage([this]() { return pose_received_; }, std::chrono::milliseconds(500)));
+  EXPECT_TRUE(
+    waitForMessage([this]() { return pose_received_.load(); }, std::chrono::milliseconds(500)));
 
   // Position should still be valid
   EXPECT_NE(last_pose_.pose.position.x, 0.0);
@@ -585,6 +586,7 @@ TEST_F(GNSSPoserTest, TestMedianPosition)
     executor_thread_.join();
   }
   gnss_poser_node_.reset();
+  executor_.reset();
 
   // Create node using median method
   rclcpp::NodeOptions options;
@@ -596,6 +598,7 @@ TEST_F(GNSSPoserTest, TestMedianPosition)
   options.append_parameter_override("gnss_pose_pub_method", 2);  // Use median method
 
   gnss_poser_node_ = std::make_shared<autoware::gnss_poser::GNSSPoser>(options);
+  executor_ = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
   executor_->add_node(gnss_poser_node_);
 
   // Reset subscription
@@ -608,8 +611,11 @@ TEST_F(GNSSPoserTest, TestMedianPosition)
   pose_sub_ = gnss_poser_node_->create_subscription<geometry_msgs::msg::PoseStamped>(
     "gnss_pose", rclcpp::QoS(1), pose_callback);
 
-  // Restart executor
+  // Start fresh executor
   executor_thread_ = std::thread([this]() { executor_->spin(); });
+
+  // Re-publish TF for the new node's tf_buffer
+  publisher_node_->publishTF("gnss", "base_link");
 
   // Publish map projection info
   auto map_projector_info = createMapProjectorInfoMsg();
@@ -637,7 +643,8 @@ TEST_F(GNSSPoserTest, TestMedianPosition)
   }
 
   // Wait for position message (should be published after buffer is filled)
-  EXPECT_TRUE(waitForMessage([this]() { return pose_received_; }, std::chrono::milliseconds(500)));
+  EXPECT_TRUE(
+    waitForMessage([this]() { return pose_received_.load(); }, std::chrono::milliseconds(500)));
 
   // Since we can't directly verify median calculation results, we can check:
   // 1. Position message was published
@@ -646,12 +653,6 @@ TEST_F(GNSSPoserTest, TestMedianPosition)
   EXPECT_TRUE(pose_received_);
   EXPECT_NE(last_pose_.pose.position.x, 0.0);
   EXPECT_NE(last_pose_.pose.position.y, 0.0);
-
-  // Clean up
-  executor_->cancel();
-  if (executor_thread_.joinable()) {
-    executor_thread_.join();
-  }
 }
 
 int main(int argc, char ** argv)
