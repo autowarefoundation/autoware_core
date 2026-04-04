@@ -405,7 +405,6 @@ void GroundFilterComponent::convertPointcloud(
     st_ptr = std::make_unique<autoware_utils_debug::ScopedTimeTrack>(__func__, *time_keeper_);
 
   out_radial_ordered_points.resize(radial_dividers_num_);
-  PointData current_point;
 
   const auto inv_radial_divider_angle_rad = 1.0f / radial_divider_angle_rad_;
 
@@ -429,12 +428,9 @@ void GroundFilterComponent::convertPointcloud(
       auto theta{normalize_radian(std::atan2(input_point.x, input_point.y), 0.0)};
       auto radial_div{static_cast<size_t>(std::floor(theta * inv_radial_divider_angle_rad))};
 
-      current_point.radius = radius;
-      current_point.point_state = PointLabel::INIT;
-      current_point.data_index = data_index;
-
       // store the point in the corresponding radial division
-      out_radial_ordered_points[radial_div].emplace_back(current_point);
+      out_radial_ordered_points[radial_div].emplace_back(
+        PointData{radius, PointLabel::INIT, 0U, data_index});
     }
   }
 
