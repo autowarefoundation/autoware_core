@@ -15,11 +15,11 @@
 #ifndef AUTOWARE__TRAJECTORY__UTILS__FIND_IF_HPP_
 #define AUTOWARE__TRAJECTORY__UTILS__FIND_IF_HPP_
 
-#include "autoware/trajectory/detail/types.hpp"
 #include "autoware/trajectory/forward.hpp"
 
 #include <range/v3/all.hpp>
 
+#include <cstddef>
 #include <functional>
 #include <optional>
 #include <utility>
@@ -59,8 +59,6 @@ std::optional<double> find_first_index_if(
   const Trajectory<TrajectoryPointType> & trajectory, Constraint && constraint,
   const size_t max_iter = 0)
 {
-  using autoware::experimental::trajectory::detail::to_point;
-
   return detail::impl::find_first_index_if_impl(
     trajectory.get_underlying_bases(),
     [constraint = std::forward<Constraint>(constraint), &trajectory](const double & s) {
@@ -83,8 +81,6 @@ std::optional<double> find_last_index_if(
   const Trajectory<TrajectoryPointType> & trajectory, Constraint && constraint,
   const size_t max_iter = 0)
 {
-  using autoware::experimental::trajectory::detail::to_point;
-
   const auto & bases = trajectory.get_underlying_bases();
   return detail::impl::find_first_index_if_impl(
     bases | ranges::views::reverse | ranges::to<std::vector>(),

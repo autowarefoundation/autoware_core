@@ -55,7 +55,7 @@ visualization_msgs::msg::Marker create_autoware_geometry_marker(
   const geometry_msgs::msg::Vector3 & scale, const std_msgs::msg::ColorRGBA & color, double z)
 {
   visualization_msgs::msg::Marker marker =
-    create_default_marker("map", stamp, ns, id, marker_type, scale, color);
+    create_default_marker("map", stamp, ns, id, static_cast<int32_t>(marker_type), scale, color);
 
   if (marker_type == visualization_msgs::msg::Marker::LINE_LIST) {
     for (size_t i = 0; i < polygon.outer().size(); ++i) {
@@ -148,7 +148,8 @@ visualization_msgs::msg::MarkerArray create_geometry_msgs_marker_array(
   const std_msgs::msg::ColorRGBA & color)
 {
   visualization_msgs::msg::MarkerArray marker_array;
-  auto marker = create_default_marker("map", stamp, ns, id, marker_type, scale, color);
+  auto marker =
+    create_default_marker("map", stamp, ns, id, static_cast<int32_t>(marker_type), scale, color);
 
   const auto & points = polygon.points;
   const size_t N = points.size();
@@ -198,7 +199,8 @@ visualization_msgs::msg::MarkerArray create_geometry_msgs_marker_array(
   const std_msgs::msg::ColorRGBA & color)
 {
   visualization_msgs::msg::MarkerArray marker_array;
-  auto marker = create_default_marker("map", stamp, ns, id, marker_type, scale, color);
+  auto marker =
+    create_default_marker("map", stamp, ns, id, static_cast<int32_t>(marker_type), scale, color);
 
   marker.pose.position = point;
   marker.pose.position.z += 2.0;
@@ -216,7 +218,8 @@ visualization_msgs::msg::MarkerArray create_geometry_msgs_marker_array(
   visualization_msgs::msg::MarkerArray marker_array;
 
   visualization_msgs::msg::Marker marker_line = create_default_marker(
-    "map", stamp, ns + "_line", id, visualization_msgs::msg::Marker::LINE_STRIP, scale, color);
+    "map", stamp, ns + "_line", static_cast<int32_t>(id),
+    visualization_msgs::msg::Marker::LINE_STRIP, scale, color);
 
   constexpr double a = 3.0;
   geometry_msgs::msg::Point p0 =
@@ -251,14 +254,16 @@ visualization_msgs::msg::MarkerArray create_geometry_msgs_marker_array(
         rclcpp::get_logger("autoware_marker_utils").get_child("marker_conversion"),
         "ARROW type Marker requires exactly 2 points. Too many points, use the first two points.");
     }
-    auto marker = create_default_marker("map", stamp, ns + "_line", id, marker_type, scale, color);
+    auto marker = create_default_marker(
+      "map", stamp, ns + "_line", id, static_cast<int32_t>(marker_type), scale, color);
 
     marker.points.push_back(points.at(0));
     marker.points.push_back(points.at(1));
 
     marker_array.markers.push_back(marker);
   } else if (marker_type == visualization_msgs::msg::Marker::SPHERE) {
-    auto marker = create_default_marker("map", stamp, ns, id, marker_type, scale, color);
+    auto marker =
+      create_default_marker("map", stamp, ns, id, static_cast<int32_t>(marker_type), scale, color);
 
     // Put each point to each marker
     for (size_t i = 0; i < points.size(); ++i) {
@@ -268,7 +273,8 @@ visualization_msgs::msg::MarkerArray create_geometry_msgs_marker_array(
     }
   } else if (marker_type == visualization_msgs::msg::Marker::LINE_STRIP) {
     // Put all points in one marker
-    auto marker = create_default_marker("map", stamp, ns, id, marker_type, scale, color);
+    auto marker =
+      create_default_marker("map", stamp, ns, id, static_cast<int32_t>(marker_type), scale, color);
     for (const auto & point : points) {
       marker.points.push_back(point);
     }
@@ -303,7 +309,8 @@ visualization_msgs::msg::MarkerArray create_autoware_geometry_marker_array(
   const geometry_msgs::msg::Vector3 & scale, const std_msgs::msg::ColorRGBA & color)
 {
   visualization_msgs::msg::MarkerArray marker_array;
-  auto marker = create_default_marker("map", stamp, ns, id, marker_type, scale, color);
+  auto marker =
+    create_default_marker("map", stamp, ns, id, static_cast<int32_t>(marker_type), scale, color);
 
   for (size_t i = 0; i < ring.size(); ++i) {
     geometry_msgs::msg::Point pt;
@@ -385,7 +392,7 @@ visualization_msgs::msg::MarkerArray create_lanelet_linestring_marker_array(
 {
   visualization_msgs::msg::MarkerArray marker_array;
   for (auto j = 0ul; j < mls.size(); ++j) {
-    int32_t uid = id + j;
+    int32_t uid = id + static_cast<int32_t>(j);
     auto marker = create_autoware_geometry_marker(mls[j], stamp, ns, uid, scale, color, z);
     marker_array.markers.push_back(marker);
   }
@@ -438,7 +445,8 @@ visualization_msgs::msg::MarkerArray create_lanelet_polygon_marker_array(
   const std_msgs::msg::ColorRGBA & color, double z)
 {
   visualization_msgs::msg::MarkerArray marker_array;
-  auto marker = create_default_marker("map", stamp, ns, id, marker_type, scale, color);
+  auto marker =
+    create_default_marker("map", stamp, ns, id, static_cast<int32_t>(marker_type), scale, color);
 
   if (polygons.empty()) return visualization_msgs::msg::MarkerArray{};
 
@@ -489,7 +497,7 @@ visualization_msgs::msg::MarkerArray create_predicted_objects_marker_array(
   auto marker = create_default_marker(
     "map", stamp, ns, 0, visualization_msgs::msg::Marker::CUBE, create_marker_scale(3.0, 1.0, 1.0),
     color);
-  int32_t uid = bitShift(id);
+  int32_t uid = static_cast<int32_t>(bitShift(id));
 
   for (size_t i = 0; i < objects.objects.size(); ++i) {
     const auto & object = objects.objects.at(i);
@@ -516,7 +524,7 @@ visualization_msgs::msg::MarkerArray create_vehicle_trajectory_point_marker_arra
 
   visualization_msgs::msg::MarkerArray marker_array;
   for (size_t i = 0; i < trajectory.size(); ++i) {
-    marker.id = i;
+    marker.id = static_cast<int32_t>(i);
     marker.points.clear();
 
     const auto & traj_point = trajectory.at(i);
@@ -549,7 +557,7 @@ visualization_msgs::msg::MarkerArray create_predicted_path_marker_array(
   const double base_to_rear = vehicle_info.rear_overhang_m;
 
   for (size_t i = 0; i < path.size(); ++i) {
-    marker.id = i + id;
+    marker.id = static_cast<int32_t>(i) + id;
     marker.points.clear();
 
     const auto & predicted_path_pose = path.at(i);
@@ -565,7 +573,7 @@ visualization_msgs::msg::MarkerArray create_path_with_lane_id_marker_array(
   const int64_t id, const rclcpp::Time & now, const geometry_msgs::msg::Vector3 scale,
   const std_msgs::msg::ColorRGBA & color, const bool with_text)
 {
-  int32_t uid = bitShift(id);
+  int32_t uid = static_cast<int32_t>(bitShift(id));
   int32_t idx = 0;
   int32_t i = 0;
   visualization_msgs::msg::MarkerArray msg;

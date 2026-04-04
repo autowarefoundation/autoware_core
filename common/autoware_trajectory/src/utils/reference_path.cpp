@@ -62,6 +62,9 @@ struct ReferencePoint
   std::optional<lanelet::Id> next_lanelet_id{std::nullopt};  // only for border point
 
   bool is_border_point() const { return next_lanelet_id.has_value(); }
+
+  /// @brief Returns the next lanelet ID for border points, or the current lanelet ID otherwise.
+  lanelet::Id effective_lanelet_id() const { return next_lanelet_id.value_or(located_lanelet_id); }
 };
 
 using ReferencePoints = std::vector<ReferencePoint>;
@@ -395,10 +398,7 @@ static ReferencePoints sanitize_and_crop(
 static bool has_passed_lanelet_border(
   const ReferencePoint & prev_point, const lanelet::Id adding_point_located_lanelet_id)
 {
-  if (prev_point.is_border_point()) {
-    return prev_point.next_lanelet_id.value() != adding_point_located_lanelet_id;
-  }
-  return prev_point.located_lanelet_id != adding_point_located_lanelet_id;
+  return prev_point.effective_lanelet_id() != adding_point_located_lanelet_id;
 }
 
 static std::string append_reference_points_no_check(
@@ -658,10 +658,8 @@ consolidate_user_defined_waypoints_and_native_centerline(
       const auto a = s_start - s_p1;
       const auto b = s_p2 - s_start;
       const auto precise_point = (p1.point.basicPoint() * b + p2.point.basicPoint() * a) / (a + b);
-      const auto lane_id =
-        p1.is_border_point() ? p1.next_lanelet_id.value() : p1.located_lanelet_id;
-      monotonic_reference_points.front() =
-        ReferencePoint{lanelet::ConstPoint3d(lanelet::InvalId, precise_point), lane_id};
+      monotonic_reference_points.front() = ReferencePoint{
+        lanelet::ConstPoint3d(lanelet::InvalId, precise_point), p1.effective_lanelet_id()};
     }
   }
   {
@@ -673,10 +671,8 @@ consolidate_user_defined_waypoints_and_native_centerline(
       const auto a = s_end - s_p1;
       const auto b = s_p2 - s_end;
       const auto precise_point = (p1.point.basicPoint() * b + p2.point.basicPoint() * a) / (a + b);
-      const auto lane_id =
-        p1.is_border_point() ? p1.next_lanelet_id.value() : p1.located_lanelet_id;
-      monotonic_reference_points.back() =
-        ReferencePoint{lanelet::ConstPoint3d(lanelet::InvalId, precise_point), lane_id};
+      monotonic_reference_points.back() = ReferencePoint{
+        lanelet::ConstPoint3d(lanelet::InvalId, precise_point), p1.effective_lanelet_id()};
     }
   }
   return {monotonic_reference_points, warning};
@@ -865,20 +861,16 @@ build_reference_path(
       {
         // longitudinal_velocity
         const auto lane_speed =
-          reference_point.is_border_point()
-            ? traffic_rules
-                ->speedLimit(lanelet_map->laneletLayer.get(reference_point.next_lanelet_id.value()))
-                .speedLimit.value()
-            : traffic_rules
-                ->speedLimit(lanelet_map->laneletLayer.get(reference_point.located_lanelet_id))
-                .speedLimit.value();
+          traffic_rules
+            ->speedLimit(lanelet_map->laneletLayer.get(reference_point.effective_lanelet_id()))
+            .speedLimit.value();
         point.point.longitudinal_velocity_mps = lane_speed;
       }
       {
         // lane_ids
         point.lane_ids.push_back(reference_point.located_lanelet_id);
         if (reference_point.is_border_point()) {
-          point.lane_ids.push_back(reference_point.next_lanelet_id.value());
+          point.lane_ids.push_back(reference_point.effective_lanelet_id());
         }
       }
       return point;
