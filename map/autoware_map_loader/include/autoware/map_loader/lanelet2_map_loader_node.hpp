@@ -29,6 +29,10 @@
 
 namespace autoware::map_loader
 {
+
+// Forward declaration — full definition lives in the private source directory.
+class Lanelet2SelectedMapLoaderModule;
+
 class Lanelet2MapLoaderNode : public rclcpp::Node
 {
 public:
@@ -36,6 +40,7 @@ public:
 
 public:
   explicit Lanelet2MapLoaderNode(const rclcpp::NodeOptions & options);
+  ~Lanelet2MapLoaderNode();  // defined in .cpp so unique_ptr can see the full module type
 
   static lanelet::LaneletMapPtr load_map(
     const std::string & lanelet2_filename,
@@ -51,6 +56,8 @@ private:
 
   rclcpp::Subscription<MapProjectorInfo::Message>::SharedPtr sub_map_projector_info_;
   rclcpp::Publisher<VectorMap::Message>::SharedPtr pub_map_bin_;
+
+  std::unique_ptr<Lanelet2SelectedMapLoaderModule> selected_map_loader_module_;
 };
 }  // namespace autoware::map_loader
 
