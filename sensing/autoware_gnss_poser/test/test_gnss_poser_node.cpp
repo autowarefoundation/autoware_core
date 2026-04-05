@@ -69,10 +69,6 @@ autoware_map_msgs::msg::MapProjectorInfo createMapProjectorInfoMsg()
 
 class GNSSPoserConstructorTest : public ::testing::Test
 {
-protected:
-  void SetUp() override { rclcpp::init(0, nullptr); }
-
-  void TearDown() override { rclcpp::shutdown(); }
 };
 
 // Test node creation
@@ -133,8 +129,6 @@ class GNSSPoserTest : public ::testing::Test
 protected:
   void SetUp() override
   {
-    rclcpp::init(0, nullptr);
-
     // Create publisher node
     publisher_node_ = std::make_shared<TestPublisherNode>();
 
@@ -213,8 +207,8 @@ protected:
     fixed_sub_.reset();
     publisher_node_.reset();
     gnss_poser_node_.reset();
+    publisher_executor_.reset();
     executor_.reset();
-    rclcpp::shutdown();
   }
 
   // Utility function: Wait for message
@@ -663,5 +657,8 @@ TEST_F(GNSSPoserTest, TestMedianPosition)
 int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
+  rclcpp::init(argc, argv);
+  const int result = RUN_ALL_TESTS();
+  rclcpp::shutdown();
+  return result;
 }
