@@ -453,16 +453,7 @@ bool NDTScanMatcher::callback_sensor_points_main(
   }
 
   // Warn if the lidar has gone out of the map range
-  if (map_update_module_->out_of_map_range(
-        interpolation_result.interpolated_pose.pose.pose.position)) {
-    std::stringstream msg;
-
-    msg << "Lidar has gone out of the map range";
-    diagnostics_scan_points_->update_level_and_message(
-      diagnostic_msgs::msg::DiagnosticStatus::WARN, msg.str());
-
-    RCLCPP_WARN_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 1000, msg.str());
-  }
+  check_out_of_map_range_warning(interpolation_result);
 
   // check is_set_map_points
   const bool is_set_map_points = (ndt_ptr_->getInputTarget() != nullptr);
@@ -1177,6 +1168,43 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
   diagnostics_ndt_align_->add_key_value("best_particle_score", best_particle_ptr->score);
 
   return std::make_tuple(result_pose_with_cov_msg, best_particle_ptr->score);
+}
+
+void NDTScanMatcher::check_out_of_map_range_warning(
+  const autoware::localization_util::SmartPoseBuffer::InterpolateResult & interpolation_result)
+{
+  // Get last update position with lock (acquired only once)
+  const auto last_update_position = map_update_module_->get_last_update_position();
+
+  // Check if map information is available
+  if (!last_update_position.has_value()) {
+    const std::string msg =
+      "Map information is not available (last_update_position_ is null). Cannot check if lidar is "
+      "out of map range.";
+    diagnostics_scan_points_->update_level_and_message(
+      diagnostic_msgs::msg::DiagnosticStatus::WARN, msg);
+    RCLCPP_WARN_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 1000, msg);
+    return;
+  }
+
+  // Warn if the lidar has gone out of the map range
+  if (map_update_module_->out_of_map_range(
+        last_update_position, interpolation_result.interpolated_pose.pose.pose.position)) {
+    std::stringstream msg;
+
+    const auto & position = interpolation_result.interpolated_pose.pose.pose.position;
+    const auto & orientation = interpolation_result.interpolated_pose.pose.pose.orientation;
+
+    msg << "Lidar has gone out of the map range. "
+        << "Position: (" << std::fixed << std::setprecision(3) << position.x << ", " << position.y
+        << ", " << position.z << "), "
+        << "Orientation: (" << orientation.x << ", " << orientation.y << ", " << orientation.z
+        << ", " << orientation.w << ")";
+    diagnostics_scan_points_->update_level_and_message(
+      diagnostic_msgs::msg::DiagnosticStatus::WARN, msg.str());
+
+    RCLCPP_WARN_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 1000, msg.str());
+  }
 }
 
 }  // namespace autoware::ndt_scan_matcher
