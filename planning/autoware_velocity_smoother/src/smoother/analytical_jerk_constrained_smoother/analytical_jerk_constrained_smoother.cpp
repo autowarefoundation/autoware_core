@@ -509,9 +509,10 @@ bool AnalyticalJerkConstrainedSmoother::applyBackwardDecelFilter(
     bool is_enough_dist = false;
     for (planning_jerk = params.backward.start_jerk; planning_jerk > params.backward.min_jerk - ep;
          planning_jerk += params.backward.span_jerk) {
-      if (calcEnoughDistForDecel(
-            output_trajectory, start_index, decel_target_vel, planning_jerk, params, dist_to_target,
-            is_enough_dist, type, times, stop_dist)) {
+      if (
+        calcEnoughDistForDecel(
+          output_trajectory, start_index, decel_target_vel, planning_jerk, params, dist_to_target,
+          is_enough_dist, type, times, stop_dist)) {
         break;
       }
     }
@@ -546,9 +547,10 @@ bool AnalyticalJerkConstrainedSmoother::applyBackwardDecelFilter(
     for (size_t i = decel_target_index - 1; i >= output_start_index; --i) {
       bool is_enough_dist = false;
       double stop_dist;
-      if (calcEnoughDistForDecel(
-            output_trajectory, i, decel_target_vel, output_planning_jerk, params,
-            output_dist_to_target, is_enough_dist, output_type, output_times, stop_dist)) {
+      if (
+        calcEnoughDistForDecel(
+          output_trajectory, i, decel_target_vel, output_planning_jerk, params,
+          output_dist_to_target, is_enough_dist, output_type, output_times, stop_dist)) {
         decel_start_index = i;
         break;
       }

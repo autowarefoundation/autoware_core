@@ -2097,9 +2097,10 @@ bool RouteHandler::planPathLaneletsBetweenCheckpoints(
       std::remove_if(
         candidates.begin(), candidates.end(), [&](const auto & l) { return !isRoadLanelet(l); }),
       candidates.end());
-    if (const auto closest_lanelet =
-          experimental::lanelet2_utils::get_closest_lanelet(candidates, start_checkpoint);
-        closest_lanelet) {
+    if (
+      const auto closest_lanelet =
+        experimental::lanelet2_utils::get_closest_lanelet(candidates, start_checkpoint);
+      closest_lanelet) {
       start_lanelet = closest_lanelet.value();
       start_lanelets = {start_lanelet};
     }
@@ -2130,8 +2131,9 @@ bool RouteHandler::planPathLaneletsBetweenCheckpoints(
   const auto findGoalClosestPreferredLanelet = [&]() -> std::optional<lanelet::ConstLanelet> {
     if (const auto closest_lanelet = getClosestPreferredLaneletWithinRoute(goal_checkpoint)) {
       if (std::find(candidates.begin(), candidates.end(), closest_lanelet) != candidates.end()) {
-        if (autoware::experimental::lanelet2_utils::is_in_lanelet(
-              goal_checkpoint, closest_lanelet.value())) {
+        if (
+          autoware::experimental::lanelet2_utils::is_in_lanelet(
+            goal_checkpoint, closest_lanelet.value())) {
           return closest_lanelet;
         }
       }
@@ -2139,8 +2141,8 @@ bool RouteHandler::planPathLaneletsBetweenCheckpoints(
     lanelet::ConstLanelet closest_lanelet;
     if (getClosestLaneletWithinRoute(goal_checkpoint, &closest_lanelet)) {
       if (std::find(candidates.begin(), candidates.end(), closest_lanelet) != candidates.end()) {
-        if (autoware::experimental::lanelet2_utils::is_in_lanelet(
-              goal_checkpoint, closest_lanelet)) {
+        if (
+          autoware::experimental::lanelet2_utils::is_in_lanelet(goal_checkpoint, closest_lanelet)) {
           std::stringstream preferred_lanelets_str;
           for (const auto & preferred_lanelet : preferred_lanelets_) {
             preferred_lanelets_str << preferred_lanelet.id() << ", ";

@@ -155,92 +155,98 @@ interpolator::InterpolationResult Trajectory<PointType>::build(
       interpolator::InterpolationFailure{"failed to interpolate TrajectoryPoint::pose"} +
       result.error());
   }
-  if (const auto result = detail::build_with_fallback(
-        longitudinal_velocity_mps_, bases_, longitudinal_velocity_mps_values,
-        [] {
-          return std::make_shared<detail::InterpolatedArray<double>>(
-            std::make_shared<interpolator::Linear>());
-        },
-        [] {
-          return std::make_shared<detail::InterpolatedArray<double>>(
-            std::make_shared<interpolator::NearestNeighbor<double>>());
-        });
-      !result) {
+  if (
+    const auto result = detail::build_with_fallback(
+      longitudinal_velocity_mps_, bases_, longitudinal_velocity_mps_values,
+      [] {
+        return std::make_shared<detail::InterpolatedArray<double>>(
+          std::make_shared<interpolator::Linear>());
+      },
+      [] {
+        return std::make_shared<detail::InterpolatedArray<double>>(
+          std::make_shared<interpolator::NearestNeighbor<double>>());
+      });
+    !result) {
     return tl::unexpected(
       interpolator::InterpolationFailure{
         "failed to interpolate TrajectoryPoint::longitudinal_velocity_mps"});
   }
-  if (const auto result = detail::build_with_fallback(
-        lateral_velocity_mps_, bases_, lateral_velocity_mps_values,
-        [] {
-          return std::make_shared<detail::InterpolatedArray<double>>(
-            std::make_shared<interpolator::Linear>());
-        },
-        [] {
-          return std::make_shared<detail::InterpolatedArray<double>>(
-            std::make_shared<interpolator::NearestNeighbor<double>>());
-        });
-      !result) {
+  if (
+    const auto result = detail::build_with_fallback(
+      lateral_velocity_mps_, bases_, lateral_velocity_mps_values,
+      [] {
+        return std::make_shared<detail::InterpolatedArray<double>>(
+          std::make_shared<interpolator::Linear>());
+      },
+      [] {
+        return std::make_shared<detail::InterpolatedArray<double>>(
+          std::make_shared<interpolator::NearestNeighbor<double>>());
+      });
+    !result) {
     return tl::unexpected(
       interpolator::InterpolationFailure{
         "failed to interpolate TrajectoryPoint::lateral_velocity_mps"});
   }
-  if (const auto result = detail::build_with_fallback(
-        heading_rate_rps_, bases_, heading_rate_rps_values,
-        [] {
-          return std::make_shared<detail::InterpolatedArray<double>>(
-            std::make_shared<interpolator::Linear>());
-        },
-        [] {
-          return std::make_shared<detail::InterpolatedArray<double>>(
-            std::make_shared<interpolator::NearestNeighbor<double>>());
-        });
-      !result) {
+  if (
+    const auto result = detail::build_with_fallback(
+      heading_rate_rps_, bases_, heading_rate_rps_values,
+      [] {
+        return std::make_shared<detail::InterpolatedArray<double>>(
+          std::make_shared<interpolator::Linear>());
+      },
+      [] {
+        return std::make_shared<detail::InterpolatedArray<double>>(
+          std::make_shared<interpolator::NearestNeighbor<double>>());
+      });
+    !result) {
     return tl::unexpected(
       interpolator::InterpolationFailure{
         "failed to interpolate TrajectoryPoint::heading_rate_rps"});
   }
-  if (const auto result = detail::build_with_fallback(
-        acceleration_mps2_, bases_, acceleration_mps2_values,
-        [] {
-          return std::make_shared<detail::InterpolatedArray<double>>(
-            std::make_shared<interpolator::Linear>());
-        },
-        [] {
-          return std::make_shared<detail::InterpolatedArray<double>>(
-            std::make_shared<interpolator::NearestNeighbor<double>>());
-        });
-      !result) {
+  if (
+    const auto result = detail::build_with_fallback(
+      acceleration_mps2_, bases_, acceleration_mps2_values,
+      [] {
+        return std::make_shared<detail::InterpolatedArray<double>>(
+          std::make_shared<interpolator::Linear>());
+      },
+      [] {
+        return std::make_shared<detail::InterpolatedArray<double>>(
+          std::make_shared<interpolator::NearestNeighbor<double>>());
+      });
+    !result) {
     return tl::unexpected(
       interpolator::InterpolationFailure{
         "failed to interpolate TrajectoryPoint::acceleration_mps2"});
   }
-  if (const auto result = detail::build_with_fallback(
-        front_wheel_angle_rad_, bases_, front_wheel_angle_rad_values,
-        [] {
-          return std::make_shared<detail::InterpolatedArray<double>>(
-            std::make_shared<interpolator::Linear>());
-        },
-        [] {
-          return std::make_shared<detail::InterpolatedArray<double>>(
-            std::make_shared<interpolator::NearestNeighbor<double>>());
-        });
-      !result) {
+  if (
+    const auto result = detail::build_with_fallback(
+      front_wheel_angle_rad_, bases_, front_wheel_angle_rad_values,
+      [] {
+        return std::make_shared<detail::InterpolatedArray<double>>(
+          std::make_shared<interpolator::Linear>());
+      },
+      [] {
+        return std::make_shared<detail::InterpolatedArray<double>>(
+          std::make_shared<interpolator::NearestNeighbor<double>>());
+      });
+    !result) {
     return tl::unexpected(
       interpolator::InterpolationFailure{
         "failed to interpolate TrajectoryPoint::front_wheel_angle_rad"});
   }
-  if (const auto result = detail::build_with_fallback(
-        rear_wheel_angle_rad_, bases_, rear_wheel_angle_rad_values,
-        [] {
-          return std::make_shared<detail::InterpolatedArray<double>>(
-            std::make_shared<interpolator::Linear>());
-        },
-        [] {
-          return std::make_shared<detail::InterpolatedArray<double>>(
-            std::make_shared<interpolator::NearestNeighbor<double>>());
-        });
-      !result) {
+  if (
+    const auto result = detail::build_with_fallback(
+      rear_wheel_angle_rad_, bases_, rear_wheel_angle_rad_values,
+      [] {
+        return std::make_shared<detail::InterpolatedArray<double>>(
+          std::make_shared<interpolator::Linear>());
+      },
+      [] {
+        return std::make_shared<detail::InterpolatedArray<double>>(
+          std::make_shared<interpolator::NearestNeighbor<double>>());
+      });
+    !result) {
     return tl::unexpected(
       interpolator::InterpolationFailure{
         "failed to interpolate TrajectoryPoint::rear_wheel_angle_rad"});
