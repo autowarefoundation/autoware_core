@@ -124,8 +124,13 @@ trajectory::Trajectory<PointType> add_offset(
   }
 
   auto offset_trajectory = reference_trajectory;
-  [[maybe_unused]] const auto result = offset_trajectory.build(offset_points);
-  // build() should succeed because we preserved the same number and ordering of bases
+  const auto result = offset_trajectory.build(offset_points);
+  assert(
+    result.has_value() &&
+    "add_offset: failed to build trajectory with offset points");  // The build should never fail
+                                                                   // since the offset points are
+                                                                   // generated from a valid
+                                                                   // trajectory.
   return offset_trajectory;
 }
 
