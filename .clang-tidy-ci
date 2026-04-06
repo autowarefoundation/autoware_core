@@ -2,7 +2,6 @@ Checks: "
   -*,
   bugprone-*,
   -bugprone-easily-swappable-parameters,
-  -bugprone-narrowing-conversions,
   -bugprone-reserved-identifier"
 
 WarningsAsErrors: "*"

@@ -144,6 +144,10 @@ void CropBoxFilterNode::pointcloud_callback(const PointCloud2ConstPtr cloud)
   stop_watch_ptr_->toc("processing_time", true);
 
   // filtering
+  if (!crop_box_filter_) {
+    RCLCPP_ERROR(this->get_logger(), "CropBoxFilter is not initialized.");
+    return;
+  }
   auto filter_result = crop_box_filter_->filter(*cloud);
   auto & output = filter_result.pointcloud;
 
