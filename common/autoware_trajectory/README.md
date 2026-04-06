@@ -257,6 +257,31 @@ common/autoware_trajectory/examples/example_pretty_build.cpp:93:97
 --8<--
 ```
 
+#### <span style="font-size: 1.2em;">`<autoware/trajectory/utils/add_offset.hpp>`</span>
+
+| Function                       | Description                                                                                                                                                                                                                                                                                                                                                                                                                          | Detail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| <ul><li>`add_offset`</li></ul> | Compute a new trajectory by translating each underlying point by a fixed offset expressed in the vehicle frame.<br>Vehicle-frame axes are defined as `+x`: forward, `+y`: left, `+z`: up.<br>For pose-based types, the offset is rotated into the global frame using the point's full orientation, so roll, pitch, and yaw are all respected.<br>Only the position is shifted; orientation and other point properties are preserved. | For `Trajectory<geometry_msgs::msg::Point>`, roll is unavailable, so the function synthesizes orientation from the trajectory `azimuth()` and `elevation()` with zero roll.<br>As a result, lateral offset can affect global `z` on a rolled trajectory, and longitudinal offset can affect global `z` on a pitched trajectory.<br><br>![add_offset](./images/utils/add_offset.drawio.svg)[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/add_offset.drawio.svg") }}) |
+
+##### <span style="font-size: 1.2em;">Example Usage of `add_offset`</span>
+
+`add_offset` is useful when the reference trajectory is defined at `base_link`, but another point on the vehicle body is needed, such as the front axle, rear axle, vehicle edges.
+
+```cpp
+using autoware::experimental::trajectory::add_offset;
+
+// 5.0 m in front of base_link
+const auto front_trajectory = add_offset(trajectory, 5.0, 0.0);
+
+// 1.0 m to the left of base_link
+const auto left_trajectory = add_offset(trajectory, 0.0, 1.0);
+
+// 0.5 m above base_link
+const auto roof_trajectory = add_offset(trajectory, 0.0, 0.0, 0.5);
+```
+
+See also: [`example_add_offset.cpp`](./examples/example_add_offset.cpp)
+
 #### <span style="font-size: 1.2em;">`<autoware/trajectory/utils/reference_path.hpp>`</span>
 
 | Function                                 | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Detail                                                                                                                                                                |
