@@ -267,9 +267,9 @@ common/autoware_trajectory/examples/example_pretty_build.cpp:93:97
 
 `add_offset` is useful when the reference trajectory is defined at `base_link`, but another point on the vehicle body is needed, such as the front axle, rear axle, vehicle edges.
 
-```cpp title="./examples/example_add_offset.cpp:104:112"
+```cpp title="./examples/example_add_offset.cpp:107:115"
 --8<--
-common/autoware_trajectory/examples/example_add_offset.cpp:104:112
+common/autoware_trajectory/examples/example_add_offset.cpp:107:115
 --8<--
 ```
 
