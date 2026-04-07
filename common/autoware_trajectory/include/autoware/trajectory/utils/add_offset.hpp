@@ -28,6 +28,7 @@
 #include <tf2/LinearMath/Vector3.h>
 #include <tf2/utils.h>
 
+#include <cassert>
 #include <cmath>
 #include <type_traits>
 #include <utility>
