@@ -401,22 +401,18 @@ autoware_internal_planning_msgs::msg::PathWithLaneId resamplePath(
     const auto distance_to_stop_point =
       autoware::motion_utils::calcDistanceToForwardStopPoint(transformed_input_path, 0);
     if (distance_to_stop_point && !resampling_arclength.empty()) {
+      const double stop_dist = *distance_to_stop_point;
       for (size_t i = 1; i < resampling_arclength.size(); ++i) {
-        if (
-          resampling_arclength.at(i - 1) <= *distance_to_stop_point &&
-          *distance_to_stop_point < resampling_arclength.at(i)) {
-          const double dist_to_prev_point =
-            std::fabs(*distance_to_stop_point - resampling_arclength.at(i - 1));
-          const double dist_to_following_point =
-            std::fabs(resampling_arclength.at(i) - *distance_to_stop_point);
+        if (resampling_arclength.at(i - 1) <= stop_dist && stop_dist < resampling_arclength.at(i)) {
+          const double dist_to_prev_point = std::fabs(stop_dist - resampling_arclength.at(i - 1));
+          const double dist_to_following_point = std::fabs(resampling_arclength.at(i) - stop_dist);
           if (dist_to_prev_point < autoware::motion_utils::overlap_threshold) {
-            resampling_arclength.at(i - 1) = *distance_to_stop_point;
+            resampling_arclength.at(i - 1) = stop_dist;
           } else if (dist_to_following_point < autoware::motion_utils::overlap_threshold) {
-            resampling_arclength.at(i) = *distance_to_stop_point;
+            resampling_arclength.at(i) = stop_dist;
           } else {
             resampling_arclength.insert(
-              resampling_arclength.begin() + static_cast<std::ptrdiff_t>(i),
-              *distance_to_stop_point);
+              resampling_arclength.begin() + static_cast<std::ptrdiff_t>(i), stop_dist);
           }
           break;
         }
@@ -546,22 +542,18 @@ autoware_planning_msgs::msg::Path resamplePath(
     const auto distance_to_stop_point =
       autoware::motion_utils::calcDistanceToForwardStopPoint(input_path.points, 0);
     if (distance_to_stop_point && !resampling_arclength.empty()) {
+      const double stop_dist = *distance_to_stop_point;
       for (size_t i = 1; i < resampling_arclength.size(); ++i) {
-        if (
-          resampling_arclength.at(i - 1) <= *distance_to_stop_point &&
-          *distance_to_stop_point < resampling_arclength.at(i)) {
-          const double dist_to_prev_point =
-            std::fabs(*distance_to_stop_point - resampling_arclength.at(i - 1));
-          const double dist_to_following_point =
-            std::fabs(resampling_arclength.at(i) - *distance_to_stop_point);
+        if (resampling_arclength.at(i - 1) <= stop_dist && stop_dist < resampling_arclength.at(i)) {
+          const double dist_to_prev_point = std::fabs(stop_dist - resampling_arclength.at(i - 1));
+          const double dist_to_following_point = std::fabs(resampling_arclength.at(i) - stop_dist);
           if (dist_to_prev_point < autoware::motion_utils::overlap_threshold) {
-            resampling_arclength.at(i - 1) = *distance_to_stop_point;
+            resampling_arclength.at(i - 1) = stop_dist;
           } else if (dist_to_following_point < autoware::motion_utils::overlap_threshold) {
-            resampling_arclength.at(i) = *distance_to_stop_point;
+            resampling_arclength.at(i) = stop_dist;
           } else {
             resampling_arclength.insert(
-              resampling_arclength.begin() + static_cast<std::ptrdiff_t>(i),
-              *distance_to_stop_point);
+              resampling_arclength.begin() + static_cast<std::ptrdiff_t>(i), stop_dist);
           }
           break;
         }
@@ -738,22 +730,18 @@ autoware_planning_msgs::msg::Trajectory resampleTrajectory(
     const auto distance_to_stop_point =
       autoware::motion_utils::calcDistanceToForwardStopPoint(input_trajectory.points, 0);
     if (distance_to_stop_point && !resampling_arclength.empty()) {
+      const double stop_dist = *distance_to_stop_point;
       for (size_t i = 1; i < resampling_arclength.size(); ++i) {
-        if (
-          resampling_arclength.at(i - 1) <= *distance_to_stop_point &&
-          *distance_to_stop_point < resampling_arclength.at(i)) {
-          const double dist_to_prev_point =
-            std::fabs(*distance_to_stop_point - resampling_arclength.at(i - 1));
-          const double dist_to_following_point =
-            std::fabs(resampling_arclength.at(i) - *distance_to_stop_point);
+        if (resampling_arclength.at(i - 1) <= stop_dist && stop_dist < resampling_arclength.at(i)) {
+          const double dist_to_prev_point = std::fabs(stop_dist - resampling_arclength.at(i - 1));
+          const double dist_to_following_point = std::fabs(resampling_arclength.at(i) - stop_dist);
           if (dist_to_prev_point < autoware::motion_utils::overlap_threshold) {
-            resampling_arclength.at(i - 1) = *distance_to_stop_point;
+            resampling_arclength.at(i - 1) = stop_dist;
           } else if (dist_to_following_point < autoware::motion_utils::overlap_threshold) {
-            resampling_arclength.at(i) = *distance_to_stop_point;
+            resampling_arclength.at(i) = stop_dist;
           } else {
             resampling_arclength.insert(
-              resampling_arclength.begin() + static_cast<std::ptrdiff_t>(i),
-              *distance_to_stop_point);
+              resampling_arclength.begin() + static_cast<std::ptrdiff_t>(i), stop_dist);
           }
           break;
         }
