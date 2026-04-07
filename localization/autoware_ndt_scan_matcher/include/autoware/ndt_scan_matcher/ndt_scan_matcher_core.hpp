@@ -17,6 +17,7 @@
 
 #define FMT_HEADER_ONLY
 
+#include "guarded.hpp"
 #include "hyper_parameters.hpp"
 #include "map_update_module.hpp"
 #include "ndt_omp/multigrid_ndt_omp.h"
@@ -112,7 +113,8 @@ private:
     autoware_internal_localization_msgs::srv::PoseWithCovarianceStamped::Response::SharedPtr res);
 
   std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> align_pose(
-    const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_with_cov);
+    const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_with_cov,
+    NormalDistributionsTransform & ndt_ref);
 
   void transform_sensor_measurement(
     const std::string & source_frame, const std::string & target_frame,
@@ -128,7 +130,8 @@ private:
     const rclcpp::Time & sensor_ros_time, const std::string & frame_id,
     const pcl::shared_ptr<pcl::PointCloud<PointSource>> & sensor_points_in_map_ptr);
   void publish_marker(
-    const rclcpp::Time & sensor_ros_time, const std::vector<geometry_msgs::msg::Pose> & pose_array);
+    const rclcpp::Time & sensor_ros_time, const std::vector<geometry_msgs::msg::Pose> & pose_array,
+    NormalDistributionsTransform & ndt_ref);
   void publish_initial_to_result(
     const rclcpp::Time & sensor_ros_time, const geometry_msgs::msg::Pose & result_pose_msg,
     const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_cov_msg,
@@ -139,13 +142,19 @@ private:
 
   Eigen::Matrix2d estimate_covariance(
     const pclomp::NdtResult & ndt_result, const Eigen::Matrix4f & initial_pose_matrix,
-    const rclcpp::Time & sensor_ros_time);
+    const rclcpp::Time & sensor_ros_time,
+    const std::shared_ptr<NormalDistributionsTransform> & ndt_ptr);
 
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr visualize_point_score(
     const pcl::shared_ptr<pcl::PointCloud<PointSource>> & sensor_points_in_map_ptr,
-    const float & lower_nvs, const float & upper_nvs);
+    const float & lower_nvs, const float & upper_nvs,
+    NormalDistributionsTransform & ndt_ref);
 
-  void add_regularization_pose(const rclcpp::Time & sensor_ros_time);
+  void add_regularization_pose(
+    const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform & ndt_ref);
+
+  // Install a new NDT map into the guarded slot, preserving the current input source.
+  void install_new_ndt(std::shared_ptr<NormalDistributionsTransform> new_ndt);
 
   rclcpp::TimerBase::SharedPtr map_update_timer_;
   rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr initial_pose_sub_;
@@ -195,16 +204,14 @@ private:
 
   rclcpp::CallbackGroup::SharedPtr timer_callback_group_;
 
-  std::shared_ptr<NormalDistributionsTransform> ndt_ptr_;
+  Guarded<std::shared_ptr<NormalDistributionsTransform>> ndt_;
 
   Eigen::Matrix4f base_to_sensor_matrix_;
 
-  std::mutex ndt_ptr_mtx_;
   std::unique_ptr<autoware::localization_util::SmartPoseBuffer> initial_pose_buffer_;
 
   // Keep latest position for dynamic map loading
-  std::mutex latest_ekf_position_mtx_;
-  std::optional<geometry_msgs::msg::Point> latest_ekf_position_ = std::nullopt;
+  Guarded<std::optional<geometry_msgs::msg::Point>> latest_ekf_position_;
 
   std::unique_ptr<autoware::localization_util::SmartPoseBuffer> regularization_pose_buffer_;
 
