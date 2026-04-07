@@ -36,8 +36,6 @@
 #include <autoware_test_utils/visualization.hpp>
 
 #include <fmt/format.h>
-#include <pybind11/embed.h>
-#include <pybind11/stl.h>
 
 #endif
 
