@@ -21,11 +21,8 @@ namespace autoware::ndt_scan_matcher
 {
 
 MapUpdateModule::MapUpdateModule(
-  rclcpp::Node * node, const NdtPtrType & initial_ndt,
-  HyperParameters::DynamicMapLoading param)
-: logger_(node->get_logger()),
-  clock_(node->get_clock()),
-  param_(param)
+  rclcpp::Node * node, const NdtPtrType & initial_ndt, HyperParameters::DynamicMapLoading param)
+: logger_(node->get_logger()), clock_(node->get_clock()), param_(param)
 {
   loaded_pcd_pub_ = node->create_publisher<sensor_msgs::msg::PointCloud2>(
     "debug/loaded_pointcloud_map", rclcpp::QoS{1}.transient_local());
@@ -42,15 +39,13 @@ MapUpdateModule::MapUpdateModule(
 
   ndt_params_ = initial_ndt->getParams();
 
-  builder_state_.with([&](auto & state) {
-    state.secondary_ndt_ptr = std::make_shared<NdtType>(*initial_ndt);
-  });
+  builder_state_.with(
+    [&](auto & state) { state.secondary_ndt_ptr = std::make_shared<NdtType>(*initial_ndt); });
 }
 
 bool MapUpdateModule::should_update_map(
   const geometry_msgs::msg::Point & position,
-  std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr,
-  BuilderState & state)
+  std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr, BuilderState & state)
 {
   // Caller holds builder_state_ lock.
 
@@ -102,54 +97,53 @@ MapUpdateModule::NdtPtrType MapUpdateModule::build_if_needed(
   std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr)
 {
   return builder_state_.with([&](auto & state) -> NdtPtrType {
-  if (!should_update_map(position, diagnostics_ptr, state)) {
-    return nullptr;
-  }
-
-  diagnostics_ptr->add_key_value("is_need_rebuild", state.need_rebuild);
-
-  if (state.need_rebuild) {
-    // Full rebuild: create a new NDT from scratch.
-    // ndt_params_ is immutable after construction — no race.
-    // input_source is NOT set here; install_new_ndt() transfers it from old to new.
-    auto new_ndt = std::make_shared<NdtType>();
-    new_ndt->setParams(ndt_params_);
-
-    const bool updated = update_ndt(position, *new_ndt, diagnostics_ptr);
-    diagnostics_ptr->add_key_value("is_updated_map", updated);
-    if (!updated) {
-      std::stringstream message;
-      message
-        << "update_ndt failed. If this happens with initial position estimation, make sure that"
-        << "(1) the initial position matches the pcd map and (2) the map_loader is working "
-           "properly.";
-      diagnostics_ptr->update_level_and_message(
-        diagnostic_msgs::msg::DiagnosticStatus::ERROR, message.str());
-      RCLCPP_ERROR_STREAM_THROTTLE(logger_, *clock_, 1000, message.str());
-      last_update_position_.with([&](auto & pos) { pos = position; });
+    if (!should_update_map(position, diagnostics_ptr, state)) {
       return nullptr;
     }
 
-    state.need_rebuild = false;
-    last_update_position_.with([&](auto & pos) { pos = position; });
-    state.secondary_ndt_ptr = std::make_shared<NdtType>(*new_ndt);
-    return new_ndt;
+    diagnostics_ptr->add_key_value("is_need_rebuild", state.need_rebuild);
 
-  } else {
-    // Swap path: build on the secondary (background), then return it for installation.
-    const bool updated = update_ndt(position, *state.secondary_ndt_ptr, diagnostics_ptr);
-    diagnostics_ptr->add_key_value("is_updated_map", updated);
-    if (!updated) {
+    if (state.need_rebuild) {
+      // Full rebuild: create a new NDT from scratch.
+      // ndt_params_ is immutable after construction — no race.
+      // input_source is NOT set here; install_new_ndt() transfers it from old to new.
+      auto new_ndt = std::make_shared<NdtType>();
+      new_ndt->setParams(ndt_params_);
+
+      const bool updated = update_ndt(position, *new_ndt, diagnostics_ptr);
+      diagnostics_ptr->add_key_value("is_updated_map", updated);
+      if (!updated) {
+        std::stringstream message;
+        message
+          << "update_ndt failed. If this happens with initial position estimation, make sure that"
+          << "(1) the initial position matches the pcd map and (2) the map_loader is working "
+             "properly.";
+        diagnostics_ptr->update_level_and_message(
+          diagnostic_msgs::msg::DiagnosticStatus::ERROR, message.str());
+        RCLCPP_ERROR_STREAM_THROTTLE(logger_, *clock_, 1000, message.str());
+        last_update_position_.with([&](auto & pos) { pos = position; });
+        return nullptr;
+      }
+
+      state.need_rebuild = false;
       last_update_position_.with([&](auto & pos) { pos = position; });
-      return nullptr;
+      state.secondary_ndt_ptr = std::make_shared<NdtType>(*new_ndt);
+      return new_ndt;
+
+    } else {
+      // Swap path: build on the secondary (background), then return it for installation.
+      const bool updated = update_ndt(position, *state.secondary_ndt_ptr, diagnostics_ptr);
+      diagnostics_ptr->add_key_value("is_updated_map", updated);
+      if (!updated) {
+        last_update_position_.with([&](auto & pos) { pos = position; });
+        return nullptr;
+      }
+
+      auto result = state.secondary_ndt_ptr;
+      last_update_position_.with([&](auto & pos) { pos = position; });
+      state.secondary_ndt_ptr = std::make_shared<NdtType>(*result);
+      return result;
     }
-
-    auto result = state.secondary_ndt_ptr;
-    last_update_position_.with([&](auto & pos) { pos = position; });
-    state.secondary_ndt_ptr = std::make_shared<NdtType>(*result);
-    return result;
-  }
-
   });  // builder_state_.with
 }
 

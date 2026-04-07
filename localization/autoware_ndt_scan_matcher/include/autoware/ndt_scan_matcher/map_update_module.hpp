@@ -54,8 +54,7 @@ class MapUpdateModule
 
 public:
   MapUpdateModule(
-    rclcpp::Node * node, const NdtPtrType & initial_ndt,
-    HyperParameters::DynamicMapLoading param);
+    rclcpp::Node * node, const NdtPtrType & initial_ndt, HyperParameters::DynamicMapLoading param);
 
   // Build a new NDT map if the vehicle has moved far enough from the last update position.
   // Returns a new NDT to install, or nullptr if no update was performed.
@@ -81,8 +80,7 @@ private:
 
   [[nodiscard]] bool should_update_map(
     const geometry_msgs::msg::Point & position,
-    std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr,
-    BuilderState & state);
+    std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr, BuilderState & state);
 
   // Load/remove PCD tiles into the given NDT object.
   bool update_ndt(

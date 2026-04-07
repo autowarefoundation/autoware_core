@@ -147,8 +147,7 @@ private:
 
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr visualize_point_score(
     const pcl::shared_ptr<pcl::PointCloud<PointSource>> & sensor_points_in_map_ptr,
-    const float & lower_nvs, const float & upper_nvs,
-    NormalDistributionsTransform & ndt_ref);
+    const float & lower_nvs, const float & upper_nvs, NormalDistributionsTransform & ndt_ref);
 
   void add_regularization_pose(
     const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform & ndt_ref);
