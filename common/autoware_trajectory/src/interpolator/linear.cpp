@@ -14,6 +14,8 @@
 
 #include "autoware/trajectory/interpolator/linear.hpp"
 
+#include "autoware/trajectory/detail/helpers.hpp"
+
 #include <Eigen/Dense>
 
 #include <utility>
@@ -24,6 +26,9 @@ namespace autoware::experimental::trajectory::interpolator
 
 bool Linear::build_impl(const std::vector<double> & bases, const std::vector<double> & values)
 {
+  if (!::autoware::experimental::trajectory::detail::has_strictly_increasing_bases(bases)) {
+    return false;
+  }
   this->bases_ = bases;
   this->values_ =
     Eigen::Map<const Eigen::VectorXd>(values.data(), static_cast<Eigen::Index>(values.size()));
@@ -32,6 +37,9 @@ bool Linear::build_impl(const std::vector<double> & bases, const std::vector<dou
 
 bool Linear::build_impl(const std::vector<double> & bases, std::vector<double> && values)
 {
+  if (!::autoware::experimental::trajectory::detail::has_strictly_increasing_bases(bases)) {
+    return false;
+  }
   this->bases_ = bases;
   this->values_ =
     Eigen::Map<const Eigen::VectorXd>(values.data(), static_cast<Eigen::Index>(values.size()));

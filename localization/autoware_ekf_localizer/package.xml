@@ -18,6 +18,7 @@
 
   <build_depend>eigen</build_depend>
 
+  <depend>autoware_agnocast_wrapper</depend>
   <depend>autoware_internal_debug_msgs</depend>
   <depend>autoware_kalman_filter</depend>
   <depend>autoware_localization_util</depend>
@@ -25,6 +26,7 @@
   <depend>autoware_utils_logging</depend>
   <depend>autoware_utils_system</depend>
   <depend>diagnostic_msgs</depend>
+  <depend>diagnostic_updater</depend>
   <depend>fmt</depend>
   <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>

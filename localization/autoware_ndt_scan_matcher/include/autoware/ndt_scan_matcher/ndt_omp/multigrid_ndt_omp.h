@@ -68,6 +68,8 @@
 #include <pcl/point_cloud.h>
 
 #include <iostream>
+#include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -131,6 +133,12 @@ public:
 
   /** \brief Empty destructor */
   ~MultiGridNormalDistributionsTransform() = default;
+
+  inline PointCloudSourceConstPtr getInputSource()
+  {
+    std::lock_guard<std::mutex> lock(input_source_mutex_);
+    return BaseRegType::getInputSource();
+  }
 
   inline void setInputTarget(const PointCloudTargetConstPtr & cloud)
   {

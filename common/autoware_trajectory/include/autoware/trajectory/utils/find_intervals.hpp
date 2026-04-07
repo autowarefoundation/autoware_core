@@ -15,7 +15,6 @@
 #ifndef AUTOWARE__TRAJECTORY__UTILS__FIND_INTERVALS_HPP_
 #define AUTOWARE__TRAJECTORY__UTILS__FIND_INTERVALS_HPP_
 
-#include "autoware/trajectory/detail/types.hpp"
 #include "autoware/trajectory/forward.hpp"
 
 #include <functional>
@@ -43,6 +42,8 @@ namespace detail::impl
  * constraint.
  * @param bases A vector of double values representing the sequence of bases.
  * @param constraint A function that evaluates whether a given base satisfies the constraint.
+ * @param max_iter Maximum number of iterations for the binary search when finding interval
+ * boundaries.
  * @return A vector of Interval objects representing the intervals where the constraint is
  * satisfied.
  */
@@ -58,6 +59,8 @@ std::vector<Interval> find_intervals_impl(
  * @tparam Constraint A callable type that evaluates a constraint on a trajectory point.
  * @param trajectory The trajectory to evaluate.
  * @param constraint The constraint to apply to each point in the trajectory.
+ * @param max_iter Maximum number of iterations for the binary search when finding interval
+ * boundaries.
  * @return A vector of Interval objects representing the intervals where the constraint is
  * satisfied.
  */
@@ -65,8 +68,6 @@ template <class TrajectoryPointType, class Constraint>
 std::vector<Interval> find_intervals(
   const Trajectory<TrajectoryPointType> & trajectory, Constraint && constraint, int max_iter = 0)
 {
-  using autoware::experimental::trajectory::detail::to_point;
-
   return detail::impl::find_intervals_impl(
     trajectory.get_underlying_bases(),
     [constraint = std::forward<Constraint>(constraint), &trajectory](const double & s) {
