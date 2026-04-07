@@ -15,11 +15,19 @@
 #include <gtest/gtest.h>
 #include <pybind11/embed.h>
 
+#include <iostream>
+
 int main(int argc, char ** argv)
 {
+  try {
 #ifdef PLOT
-  pybind11::scoped_interpreter guard{};
+    pybind11::scoped_interpreter guard{};
 #endif
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+  } catch (const std::exception & e) {
+    std::cerr << "Exception: " << e.what() << std::endl;
+  } catch (...) {
+    std::cerr << "Unknown exception\n";
+  }
 }
