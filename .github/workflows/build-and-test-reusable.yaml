@@ -135,7 +135,7 @@ jobs:
         shell: bash
 
       - name: Push the ccache cache
-        if: ${{ inputs.push-ccache == true }}
+        if: ${{ inputs.push-ccache == true && !inputs.enable-agnocast }}
         uses: actions/cache/save@v5
         with:
           path: |
