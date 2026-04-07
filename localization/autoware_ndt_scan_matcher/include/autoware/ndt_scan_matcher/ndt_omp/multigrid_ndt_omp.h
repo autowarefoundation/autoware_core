@@ -134,12 +134,6 @@ public:
   /** \brief Empty destructor */
   ~MultiGridNormalDistributionsTransform() = default;
 
-  inline PointCloudSourceConstPtr getInputSource()
-  {
-    std::lock_guard<std::mutex> lock(input_source_mutex_);
-    return BaseRegType::getInputSource();
-  }
-
   inline void setInputTarget(const PointCloudTargetConstPtr & cloud)
   {
     const std::string default_target_id = "default";
