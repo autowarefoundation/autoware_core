@@ -33,6 +33,7 @@
 #include <fmt/format.h>
 #include <pcl_conversions/pcl_conversions.h>
 
+#include <chrono>
 #include <map>
 #include <memory>
 #include <optional>
@@ -44,16 +45,77 @@ namespace autoware::ndt_scan_matcher
 {
 using DiagnosticsInterface = autoware_utils_diagnostics::DiagnosticsInterface;
 
+template <typename CloudPtrT>
+struct MapUpdateDiffTemplate
+{
+  struct Addition
+  {
+    CloudPtrT cloud;
+    std::string id;
+  };
+
+  std::vector<Addition> additions;
+  std::vector<std::string> removals;
+};
+
+struct MapUpdateResult
+{
+  std::size_t added{0};
+  std::size_t removed{0};
+  bool updated{false};
+  double execution_time_ms{0.0};
+};
+
+// Shared NDT resource so callers and the map updater coordinate on a single mutex/instance.
+template <typename NdtT>
+struct SharedNdtResource
+{
+  std::shared_ptr<NdtT> ndt_ptr;
+  std::mutex mutex;
+};
+
 class MapUpdateModule
 {
   using PointSource = pcl::PointXYZ;
   using PointTarget = pcl::PointXYZ;
   using NdtType = pclomp::MultiGridNormalDistributionsTransform<PointSource, PointTarget>;
   using NdtPtrType = std::shared_ptr<NdtType>;
+  using TargetCloudPtr = typename pcl::PointCloud<PointTarget>::Ptr;
+  using NdtResource = SharedNdtResource<NdtType>;
 
 public:
+  using MapUpdateDiff = MapUpdateDiffTemplate<TargetCloudPtr>;
+  template <typename NdtT, typename DiffT>
+  static MapUpdateResult apply_map_update(NdtT & ndt, const DiffT & diff)
+  {
+    const auto start = std::chrono::steady_clock::now();
+
+    std::size_t added = 0;
+    for (const auto & addition : diff.additions) {
+      ndt.addTarget(addition.cloud, addition.id);
+      ++added;
+    }
+
+    std::size_t removed = 0;
+    for (const auto & id : diff.removals) {
+      ndt.removeTarget(id);
+      ++removed;
+    }
+
+    const bool updated = (added + removed) > 0;
+    if (updated) {
+      ndt.createVoxelKdtree();
+    }
+
+    const auto end = std::chrono::steady_clock::now();
+    const double execution_ms =
+      std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(end - start).count();
+
+    return MapUpdateResult{added, removed, updated, execution_ms};
+  }
+
   MapUpdateModule(
-    rclcpp::Node * node, std::mutex * ndt_ptr_mutex, NdtPtrType & ndt_ptr,
+    rclcpp::Node * node, const std::shared_ptr<NdtResource> & ndt_resource,
     HyperParameters::DynamicMapLoading param);
 
   bool out_of_map_range(const geometry_msgs::msg::Point & position);
@@ -83,8 +145,9 @@ private:
   rclcpp::Client<autoware_map_msgs::srv::GetDifferentialPointCloudMap>::SharedPtr
     pcd_loader_client_;
 
+  std::shared_ptr<NdtResource> ndt_resource_;
   NdtPtrType & ndt_ptr_;
-  std::mutex * ndt_ptr_mutex_;
+  std::mutex & ndt_ptr_mutex_;
   rclcpp::Logger logger_;
   rclcpp::Clock::SharedPtr clock_;
 
