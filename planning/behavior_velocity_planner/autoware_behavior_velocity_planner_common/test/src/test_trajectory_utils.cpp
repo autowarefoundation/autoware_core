@@ -16,19 +16,18 @@
 #include "autoware/velocity_smoother/smoother/jerk_filtered_smoother.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
-#include <autoware_utils_debug/time_keeper.hpp>
-#include <rclcpp/node.hpp>
-
-#include <geometry_msgs/msg/accel_stamped.hpp>
-#include <geometry_msgs/msg/accel_with_covariance_stamped.hpp>
+#include <autoware/trajectory/utils/find_if.hpp>
+#include <autoware/trajectory/utils/pretty_build.hpp>
 
 #include <gtest/gtest.h>
 
 #include <memory>
+#include <vector>
 
 TEST(smoothPath, nominal)
 {
   using autoware::behavior_velocity_planner::smoothPath;
+  using autoware::behavior_velocity_planner::Trajectory;
   using autoware_internal_planning_msgs::msg::PathPointWithLaneId;
   using autoware_internal_planning_msgs::msg::PathWithLaneId;
 
@@ -79,35 +78,73 @@ TEST(smoothPath, nominal)
     std::make_shared<autoware::velocity_smoother::JerkFilteredSmoother>(
       *node, std::make_shared<autoware_utils_debug::TimeKeeper>());
 
-  // Input path
-  PathWithLaneId in_path;
+  std::vector<PathPointWithLaneId> path_points;
   for (double i = 0; i <= 10.0; i += 1.0) {
     PathPointWithLaneId point;
     point.point.pose.position.x = i;
     point.point.pose.position.y = 0.0;
     point.point.longitudinal_velocity_mps = 5.0;  // Set constant velocity
-    in_path.points.emplace_back(point);
+    path_points.push_back(point);
   }
 
-  // Output path
-  PathWithLaneId out_path;
+  {
+    // Input path
+    PathWithLaneId in_path;
+    in_path.points = path_points;
 
-  // Execute smoothing
-  auto result = smoothPath(in_path, out_path, planner_data);
+    // Output path
+    PathWithLaneId out_path;
 
-  // Check results
-  EXPECT_TRUE(result);
+    // Execute smoothing
+    auto result = smoothPath(in_path, out_path, planner_data);
 
-  // Check initial and last points
-  EXPECT_DOUBLE_EQ(out_path.points.front().point.pose.position.x, 0.0);
-  EXPECT_DOUBLE_EQ(out_path.points.front().point.pose.position.y, 0.0);
-  EXPECT_DOUBLE_EQ(out_path.points.back().point.pose.position.x, 10.0);
-  EXPECT_DOUBLE_EQ(out_path.points.back().point.pose.position.y, 0.0);
+    // Check results
+    EXPECT_TRUE(result);
 
-  for (auto & point : out_path.points) {
+    // Check initial and last points
+    EXPECT_DOUBLE_EQ(out_path.points.front().point.pose.position.x, 0.0);
+    EXPECT_DOUBLE_EQ(out_path.points.front().point.pose.position.y, 0.0);
+    EXPECT_DOUBLE_EQ(out_path.points.back().point.pose.position.x, 10.0);
+    EXPECT_DOUBLE_EQ(out_path.points.back().point.pose.position.y, 0.0);
+
+    for (auto & point : out_path.points) {
+      // Check velocities
+      EXPECT_LE(
+        point.point.longitudinal_velocity_mps,
+        5.0);  // Smoothed velocity must not exceed initial
+    }
+  }
+
+  {
+    // Input path
+    const auto in_path = autoware::experimental::trajectory::pretty_build(path_points).value();
+
+    // Output path
+    Trajectory out_path;
+
+    // Execute smoothing
+    auto result = smoothPath(in_path, out_path, planner_data);
+
+    // Check results
+    EXPECT_TRUE(result);
+
+    // Check first and last points
+    const auto first_point = out_path.compute(0);
+    const auto last_point = out_path.compute(out_path.length());
+    EXPECT_DOUBLE_EQ(first_point.point.pose.position.x, path_points.front().point.pose.position.x);
+    EXPECT_DOUBLE_EQ(first_point.point.pose.position.y, path_points.front().point.pose.position.y);
+    EXPECT_DOUBLE_EQ(last_point.point.pose.position.x, path_points.back().point.pose.position.x);
+    EXPECT_DOUBLE_EQ(last_point.point.pose.position.y, path_points.back().point.pose.position.y);
+
     // Check velocities
-    EXPECT_LE(
-      point.point.longitudinal_velocity_mps,
-      5.0);  // Smoothed velocity must not exceed initial
+    EXPECT_FALSE(
+      autoware::experimental::trajectory::find_first_index_if(
+        out_path,
+        [&](const PathPointWithLaneId & point) {
+          // Smoothed velocity must not exceed initial
+          return point.point.longitudinal_velocity_mps >
+                 path_points.front().point.longitudinal_velocity_mps;
+        })
+        .has_value());
   }
 }
