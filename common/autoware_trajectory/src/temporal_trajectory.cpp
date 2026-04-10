@@ -60,17 +60,7 @@ interpolator::InterpolationResult TemporalTrajectory::build(const std::vector<Po
 
   time_distance_mapping_.set_time_offset(0.0);
   distance_offset_ = 0.0;
-  return set_time_distance_bases(time_bases, spatial_trajectory_.get_underlying_bases());
-}
-
-interpolator::InterpolationResult TemporalTrajectory::set_time_distance_bases(
-  const std::vector<double> & time_bases, const std::vector<double> & distance_bases)
-{
-  if (const auto result = time_distance_mapping_.build(time_bases, distance_bases); !result) {
-    return result;
-  }
-
-  return interpolator::InterpolationSuccess{};
+  return time_distance_mapping_.build(time_bases, spatial_trajectory_.get_underlying_bases());
 }
 
 double TemporalTrajectory::length() const
@@ -110,7 +100,7 @@ std::vector<double> TemporalTrajectory::get_underlying_time_bases() const
 
 TemporalTrajectory::PointType TemporalTrajectory::compute_from_time(const double t) const
 {
-  const auto t_clamped = clamp_time(t, true);
+  const auto t_clamped = time_distance_mapping_.clamp_time(t, true);
   auto point =
     spatial_trajectory_.compute(time_distance_mapping_.distance_at(t_clamped) - distance_offset_);
   point.time_from_start = to_duration_msg(t_clamped);
@@ -149,7 +139,8 @@ std::vector<TemporalTrajectory::PointType> TemporalTrajectory::compute_from_dist
 
 double TemporalTrajectory::time_to_distance(const double t) const
 {
-  return time_distance_mapping_.distance_at(clamp_time(t, true)) - distance_offset_;
+  return time_distance_mapping_.distance_at(time_distance_mapping_.clamp_time(t, true)) -
+         distance_offset_;
 }
 
 double TemporalTrajectory::distance_to_time(const double s) const
@@ -175,8 +166,8 @@ std::vector<TemporalTrajectory::PointType> TemporalTrajectory::restore() const
 
 void TemporalTrajectory::crop_time(const double start_time, const double duration)
 {
-  const auto clamped_start_time = clamp_time(start_time, false);
-  const auto clamped_end_time = clamp_time(start_time + duration, false);
+  const auto clamped_start_time = time_distance_mapping_.clamp_time(start_time, false);
+  const auto clamped_end_time = time_distance_mapping_.clamp_time(start_time + duration, false);
 
   const auto absolute_start_distance = time_distance_mapping_.distance_at(clamped_start_time);
   const auto absolute_end_distance = time_distance_mapping_.distance_at(clamped_end_time);
@@ -225,11 +216,6 @@ void TemporalTrajectory::set_stopline(const double arc_length, const double dura
 const TemporalTrajectory::SpatialTrajectory & TemporalTrajectory::spatial_trajectory() const
 {
   return spatial_trajectory_;
-}
-
-double TemporalTrajectory::clamp_time(const double t, const bool show_warning) const
-{
-  return time_distance_mapping_.clamp_time(t, show_warning);
 }
 
 TemporalTrajectory::Builder::Builder() : trajectory_(std::make_unique<TemporalTrajectory>())

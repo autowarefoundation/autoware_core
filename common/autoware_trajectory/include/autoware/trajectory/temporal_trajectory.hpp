@@ -275,10 +275,6 @@ private:
   SpatialTrajectory spatial_trajectory_;
   detail::TimeDistanceMapping time_distance_mapping_;
   double distance_offset_{0.0};
-
-  [[nodiscard]] interpolator::InterpolationResult set_time_distance_bases(
-    const std::vector<double> & time_bases, const std::vector<double> & distance_bases);
-  [[nodiscard]] double clamp_time(const double t, bool show_warning = false) const;
 };
 
 }  // namespace autoware::experimental::trajectory
