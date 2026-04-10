@@ -60,7 +60,7 @@ using Interpolators = testing::Types<
 
 TYPED_TEST_SUITE(TestInterpolator, Interpolators, );
 
-TYPED_TEST(TestInterpolator, compute)
+TYPED_TEST(TestInterpolator, Compute)
 {
   this->interpolator =
     typename TypeParam::Builder().set_bases(this->bases).set_values(this->values).build().value();
@@ -82,7 +82,7 @@ template class TestInterpolator<
  * Test LaneIds interpolator
  */
 
-TEST(TestLaneIdsInterpolator, compute)
+TEST(TestLaneIdsInterpolator, Compute)
 {
   using autoware::experimental::trajectory::interpolator::LaneIdsInterpolator;
 
@@ -135,7 +135,7 @@ geometry_msgs::msg::Quaternion create_quaternion(double w, double x, double y, d
   return q;
 }
 
-TEST(TestSphericalLinearInterpolator, compute)
+TEST(TestSphericalLinearInterpolator, Compute)
 {
   using autoware::experimental::trajectory::interpolator::SphericalLinear;
 

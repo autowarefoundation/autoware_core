@@ -121,7 +121,7 @@ protected:
   lanelet::traffic_rules::TrafficRulesPtr traffic_rules_{nullptr};
 };
 
-TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P0_on_entire_lanes)  // NOLINT
+TEST_F(TestWithVM_01_10_12_Map_Invalid, FromP0OnEntireLanes)  // NOLINT
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P0;
@@ -260,7 +260,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P0_on_entire_lanes)  // NOLINT
 #endif
 }
 
-TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P1_on_entire_lanes)
+TEST_F(TestWithVM_01_10_12_Map_Invalid, FromP1OnEntireLanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P1;
@@ -399,7 +399,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P1_on_entire_lanes)
 #endif
 }
 
-TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P2_on_entire_lanes)
+TEST_F(TestWithVM_01_10_12_Map_Invalid, FromP2OnEntireLanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P2;
@@ -538,7 +538,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P2_on_entire_lanes)
 #endif
 }
 
-TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P3_on_entire_lanes)
+TEST_F(TestWithVM_01_10_12_Map_Invalid, FromP3OnEntireLanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P3;
@@ -677,7 +677,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P3_on_entire_lanes)
 #endif
 }
 
-TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P4_on_entire_lanes)
+TEST_F(TestWithVM_01_10_12_Map_Invalid, FromP4OnEntireLanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P4;
@@ -816,7 +816,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P4_on_entire_lanes)
 #endif
 }
 
-TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P1_forward_on_entire_lanes)
+TEST_F(TestWithVM_01_10_12_Map_Invalid, FromP1ForwardOnEntireLanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P1;
@@ -942,7 +942,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P1_forward_on_entire_lanes)
 #endif
 }
 
-TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P2_forward_on_entire_lanes)
+TEST_F(TestWithVM_01_10_12_Map_Invalid, FromP2ForwardOnEntireLanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P2;
@@ -1042,7 +1042,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P2_forward_on_entire_lanes)
 #endif
 }
 
-TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P3_forward_on_entire_lanes)
+TEST_F(TestWithVM_01_10_12_Map_Invalid, FromP3ForwardOnEntireLanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P3;
@@ -1142,7 +1142,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P3_forward_on_entire_lanes)
 #endif
 }
 
-TEST_F(TestWithVM_01_10_12_Map_Invalid, from_P4_forward_on_entire_lanes)
+TEST_F(TestWithVM_01_10_12_Map_Invalid, FromP4ForwardOnEntireLanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P4;

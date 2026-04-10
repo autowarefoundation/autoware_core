@@ -63,7 +63,7 @@ static void expect_offset_at(
   EXPECT_NEAR(shifted.pose.position.z, original.pose.position.z + expected_offset.z(), tolerance);
 }
 
-TEST(add_offset, forward_offset_shifts_along_heading)
+TEST(AddOffset, ForwardOffsetShiftsAlongHeading)
 {
   // Straight trajectory along +x axis
   std::vector<TrajectoryPoint> points;
@@ -78,7 +78,7 @@ TEST(add_offset, forward_offset_shifts_along_heading)
   expect_offset_at(traj, traj.length(), forward_offset, 0.0);
 }
 
-TEST(add_offset, lateral_offset_shifts_to_left)
+TEST(AddOffset, LateralOffsetShiftsToLeft)
 {
   // Straight trajectory along +x axis
   std::vector<TrajectoryPoint> points;
@@ -93,7 +93,7 @@ TEST(add_offset, lateral_offset_shifts_to_left)
   expect_offset_at(traj, traj.length(), 0.0, lateral_offset);
 }
 
-TEST(add_offset, combined_offset_respects_heading_rotation)
+TEST(AddOffset, CombinedOffsetRespectsHeadingRotation)
 {
   // Trajectory with 90 degree heading (+y direction)
   std::vector<TrajectoryPoint> points;
@@ -110,7 +110,7 @@ TEST(add_offset, combined_offset_respects_heading_rotation)
   expect_offset_at(traj, traj.length(), forward_offset, lateral_offset);
 }
 
-TEST(add_offset, preserves_trajectory_length)
+TEST(AddOffset, PreservesTrajectoryLength)
 {
   std::vector<TrajectoryPoint> points;
   points.emplace_back(make_trajectory_point(0.0, 0.0));
@@ -124,7 +124,7 @@ TEST(add_offset, preserves_trajectory_length)
   EXPECT_NEAR(offset_traj.length(), traj.length(), 1e-6);
 }
 
-TEST(add_offset, zero_offset_returns_identical_trajectory)
+TEST(AddOffset, ZeroOffsetReturnsIdenticalTrajectory)
 {
   std::vector<TrajectoryPoint> points;
   points.emplace_back(make_trajectory_point(0.0, 0.0));
@@ -144,7 +144,7 @@ TEST(add_offset, zero_offset_returns_identical_trajectory)
   }
 }
 
-TEST(add_offset, negative_lateral_offset_shifts_right)
+TEST(AddOffset, NegativeLateralOffsetShiftsRight)
 {
   // Straight trajectory along +x axis
   std::vector<TrajectoryPoint> points;
@@ -159,7 +159,7 @@ TEST(add_offset, negative_lateral_offset_shifts_right)
   expect_offset_at(traj, traj.length(), 0.0, lateral_offset);
 }
 
-TEST(add_offset, single_point_combined_offset)
+TEST(AddOffset, SinglePointCombinedOffset)
 {
   // Single point trajectory at (1.0, 2.0, 0.5) with 45-degree yaw and 30-degree pitch
   const double yaw = M_PI_4;        // 45 degrees
@@ -184,7 +184,7 @@ TEST(add_offset, single_point_combined_offset)
   EXPECT_NEAR(offset_traj.length(), 0.0, 1e-9);
 }
 
-TEST(add_offset, vertical_offset_shifts_z_at_zero_pitch)
+TEST(AddOffset, VerticalOffsetShiftsZAtZeroPitch)
 {
   // Flat trajectory (zero pitch) along +x axis: offset_z should translate directly into global z
   std::vector<TrajectoryPoint> points;
@@ -199,7 +199,7 @@ TEST(add_offset, vertical_offset_shifts_z_at_zero_pitch)
   expect_offset_at(traj, traj.length(), 0.0, 0.0, offset_z);
 }
 
-TEST(add_offset, forward_offset_on_pitched_trajectory_shifts_z)
+TEST(AddOffset, ForwardOffsetOnPitchedTrajectoryShiftsZ)
 {
   // Pitched trajectory (nose-up 30 deg, heading 0): forward offset_x should lift the z
   const double pitch = M_PI / 6.0;  // 30 degrees nose-up
@@ -214,7 +214,7 @@ TEST(add_offset, forward_offset_on_pitched_trajectory_shifts_z)
   expect_offset_at(traj, 0.0, offset_x, 0.0, 0.0);
 }
 
-TEST(add_offset, explicit_zero_offset_z_matches_default_argument)
+TEST(AddOffset, ExplicitZeroOffsetZMatchesDefaultArgument)
 {
   // Verify that omitting offset_z behaves exactly the same as passing 0.0 explicitly.
   std::vector<TrajectoryPoint> points;
@@ -235,7 +235,7 @@ TEST(add_offset, explicit_zero_offset_z_matches_default_argument)
   }
 }
 
-TEST(add_offset, lateral_offset_on_rolled_trajectory_shifts_z)
+TEST(AddOffset, LateralOffsetOnRolledTrajectoryShiftsZ)
 {
   // With positive roll, a left offset should also move upward in the global frame.
   const double roll = M_PI / 6.0;  // 30 degrees
