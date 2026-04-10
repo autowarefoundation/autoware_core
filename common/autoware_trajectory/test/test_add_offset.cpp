@@ -252,4 +252,36 @@ TEST(AddOffset, LateralOffsetOnRolledTrajectoryShiftsZ)
   expect_offset_at(traj, 0.0, 0.0, offset_y, 0.0);
 }
 
+TEST(add_offset, single_point_combined_offset)
+{
+  // Single point trajectory at (1.0, 2.0) with 45-degree heading
+  const double yaw = M_PI_4;  // 45 degrees
+  std::vector<TrajectoryPoint> points;
+  points.push_back(make_trajectory_point(1.0, 2.0, yaw));
+
+  auto traj = Trajectory<TrajectoryPoint>::Builder().build(points).value();
+
+  const double offset_x = 3.0;  // 3m forward in vehicle frame
+  const double offset_y = 1.0;  // 1m left in vehicle frame
+
+  auto offset_traj = add_offset(traj, offset_x, offset_y);
+
+  // Compute expected global offsets:
+  // global_offset_x = cos(45deg)*3 - sin(45deg)*1 = (sqrt(2)/2)*(3-1) = sqrt(2)
+  // global_offset_y = sin(45deg)*3 + cos(45deg)*1 = (sqrt(2)/2)*(3+1) = 2*sqrt(2)
+  const double expected_x = 1.0 + std::cos(yaw) * offset_x - std::sin(yaw) * offset_y;
+  const double expected_y = 2.0 + std::sin(yaw) * offset_x + std::cos(yaw) * offset_y;
+
+  const auto result = offset_traj.compute(0.0);
+  EXPECT_NEAR(result.pose.position.x, expected_x, 1e-6);
+  EXPECT_NEAR(result.pose.position.y, expected_y, 1e-6);
+  EXPECT_NEAR(result.pose.position.z, 0.0, 1e-6);
+
+  // Trajectory should have exactly one underlying base
+  EXPECT_EQ(offset_traj.get_underlying_bases().size(), 1u);
+
+  // Length of a single-point trajectory is zero
+  EXPECT_NEAR(offset_traj.length(), 0.0, 1e-9);
+}
+
 }  // namespace autoware::experimental::trajectory
