@@ -20,6 +20,9 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include "autoware_map_msgs/srv/get_differential_point_cloud_map.hpp"
+#include <geometry_msgs/msg/point.hpp>
+#include <nav_msgs/msg/odometry.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
 
 #include <pcl/common/common.h>
 #include <pcl/filters/voxel_grid.h>
@@ -29,7 +32,10 @@
 #include <pcl_conversions/pcl_conversions.h>
 
 #include <map>
+#include <mutex>
+#include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace autoware::map_loader
@@ -47,6 +53,20 @@ private:
 
   std::map<std::string, PCDFileMetadata> all_pcd_file_metadata_dict_;
   rclcpp::Service<GetDifferentialPointCloudMap>::SharedPtr get_differential_pcd_maps_service_;
+  rclcpp::Node * node_{nullptr};
+
+  bool enable_internal_differential_visualization_;
+  double visualization_update_interval_sec_;
+  double visualization_radius_;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr internal_visualization_pub_;
+  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr kinematic_state_sub_;
+  rclcpp::TimerBase::SharedPtr visualization_timer_;
+  std::optional<geometry_msgs::msg::Point> latest_pose_;
+  std::unordered_map<std::string, sensor_msgs::msg::PointCloud2> loaded_cells_for_visualization_;
+  sensor_msgs::msg::PointCloud2 reusable_merged_cloud_;
+  std::vector<uint8_t> reusable_merge_buffer_;
+  bool has_merged_cloud_for_visualization_{false};
+  mutable std::mutex visualization_mutex_;
 
   [[nodiscard]] bool on_service_get_differential_point_cloud_map(
     GetDifferentialPointCloudMap::Request::SharedPtr req,
@@ -56,6 +76,11 @@ private:
     const GetDifferentialPointCloudMap::Response::SharedPtr & response) const;
   [[nodiscard]] autoware_map_msgs::msg::PointCloudMapCellWithID load_point_cloud_map_cell_with_id(
     const std::string & path, const std::string & map_id) const;
+  void on_visualization_timer();
+  void on_kinematic_state(const nav_msgs::msg::Odometry::ConstSharedPtr msg);
+  void rebuild_merged_cloud_for_visualization();
+  [[nodiscard]] static bool is_compatible_pointcloud_layout(
+    const sensor_msgs::msg::PointCloud2 & lhs, const sensor_msgs::msg::PointCloud2 & rhs);
 };
 }  // namespace autoware::map_loader
 
