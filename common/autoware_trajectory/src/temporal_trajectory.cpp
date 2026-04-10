@@ -191,6 +191,27 @@ void TemporalTrajectory::crop_time(const double start_time, const double duratio
   distance_offset_ = absolute_start_distance;
 }
 
+void TemporalTrajectory::crop_distance(const double start_distance, const double length)
+{
+  const auto clamped_start_distance = std::clamp(start_distance, 0.0, this->length());
+  const auto clamped_end_distance = std::clamp(start_distance + length, 0.0, this->length());
+  if (clamped_end_distance - clamped_start_distance <= k_same_time_threshold) {
+    return;
+  }
+
+  // Convert distance to time for the time-distance mapping
+  const auto start_time_opt = distance_to_time(clamped_start_distance);
+  const auto end_time_opt = distance_to_time(clamped_end_distance);
+
+  if (!start_time_opt.has_value() || !end_time_opt.has_value()) {
+    return;
+  }
+
+  spatial_trajectory_.crop(clamped_start_distance, clamped_end_distance - clamped_start_distance);
+  time_distance_mapping_.set_time_range(*start_time_opt, *end_time_opt);
+  distance_offset_ = clamped_start_distance + distance_offset_;
+}
+
 void TemporalTrajectory::set_stopline(const double arc_length)
 {
   const auto stop_time = distance_to_time(arc_length);
