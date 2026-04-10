@@ -164,23 +164,6 @@ TEST_F(PlanningFactorTest, TestWithPointCloudObstacle)
 {
   InitializeEgoData();
 
-  // prepare point cloud obstacle
-  pcl::PointCloud<pcl::PointXYZ>::Ptr single_point(new pcl::PointCloud<pcl::PointXYZ>);
-
-  single_point->width = 1;
-  single_point->height = 1;
-  single_point->is_dense = true;
-  single_point->header.frame_id = "map";
-
-  const float point_x = 20.0f;
-  const float point_y = 0.0f;
-  const float point_z = 1.0f;
-
-  single_point->points.resize(single_point->width * single_point->height);
-  single_point->points[0].x = point_x;
-  single_point->points[0].y = point_y;
-  single_point->points[0].z = point_z;
-
   auto planner_data = std::make_shared<autoware::motion_velocity_planner::PlannerData>(*node_);
   planner_data->current_odometry = odometry_;
 
@@ -191,9 +174,25 @@ TEST_F(PlanningFactorTest, TestWithPointCloudObstacle)
     node_->get_clock()->now().seconds() * 1e6 + node_->get_clock()->now().nanoseconds() / 1e3);
   constexpr uint64_t pointcloud_period_us = 1e5;
 
+  const float point_x = 20.0f;
+  const float point_y = 0.0f;
+  const float point_z = 1.0f;
+
   for (size_t i = 0; i < count + 1; ++i) {
     module_->publish_planning_factor();
+
+    // prepare point cloud obstacle
+    pcl::PointCloud<pcl::PointXYZ>::Ptr single_point(new pcl::PointCloud<pcl::PointXYZ>);
     single_point->header.stamp = time_us + i * pointcloud_period_us;
+    single_point->width = 1;
+    single_point->height = 1;
+    single_point->is_dense = true;
+    single_point->header.frame_id = "map";
+    single_point->points.resize(1);
+    single_point->points[0].x = point_x;
+    single_point->points[0].y = point_y;
+    single_point->points[0].z = point_z;
+
     planner_data->no_ground_pointcloud.preprocess_pointcloud(
       std::move(*single_point), trajectory_.points, odometry_, 100.0, planner_data->vehicle_info_,
       planner_data->trajectory_polygon_collision_check, planner_data->ego_nearest_dist_threshold,
