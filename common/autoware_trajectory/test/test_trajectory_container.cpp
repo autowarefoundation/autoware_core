@@ -681,6 +681,14 @@ TEST_F(TrajectoryTest, Restore)
   EXPECT_EQ(11, points.size());
 }
 
+TEST_F(TrajectoryTest, SetVelocityAtSinglePoint)
+{
+  const auto target_s = trajectory->length() * 0.5;
+  trajectory->longitudinal_velocity_mps().at(target_s).set(7.0);
+
+  EXPECT_DOUBLE_EQ(7.0, trajectory->longitudinal_velocity_mps().compute(target_s));
+}
+
 TEST_F(TrajectoryTest, Crossed)
 {
   ASSERT_TRUE(trajectory);

@@ -105,6 +105,7 @@ if(BUILD_TESTING)
     examples/example_crossed.cpp
     examples/example_add_offset.cpp
     examples/example_temporal_trajectory.cpp
+    examples/example_temporal_crop.cpp
   )
 
   foreach(example_file ${example_files})
