@@ -56,8 +56,7 @@ TEST(temporal_trajectory, compute_from_time_and_distance)
   EXPECT_NEAR(rclcpp::Duration(from_distance.time_from_start).seconds(), 3.0, 1e-6);
 
   const auto time = trajectory.distance_to_time(2.5);
-  ASSERT_TRUE(time.has_value());
-  EXPECT_NEAR(*time, 3.0, 1e-6);
+  EXPECT_NEAR(time, 3.0, 1e-6);
   EXPECT_NEAR(trajectory.start_time(), 0.0, 1e-6);
   EXPECT_NEAR(trajectory.end_time(), 4.0, 1e-6);
 }
@@ -115,9 +114,8 @@ TEST(temporal_trajectory, duplicate_timestamp_with_different_distance_extends_ti
   EXPECT_DOUBLE_EQ(time_bases.at(3), 2.0);
 
   const auto mapped_time = trajectory.distance_to_time(1.5);
-  ASSERT_TRUE(mapped_time.has_value());
-  EXPECT_GE(*mapped_time, 1.0);
-  EXPECT_LE(*mapped_time, 2.0);
+  EXPECT_GE(mapped_time, 1.0);
+  EXPECT_LE(mapped_time, 2.0);
 }
 
 TEST(temporal_trajectory, crossed_uses_spatial_trajectory)
@@ -196,6 +194,89 @@ TEST(temporal_trajectory, distance_to_time_returns_first_stop_time)
   trajectory.set_stopline(1.5, 1.5);
 
   const auto stop_time = trajectory.distance_to_time(1.5);
-  ASSERT_TRUE(stop_time.has_value());
-  EXPECT_NEAR(*stop_time, 1.5, 1e-6);
+  EXPECT_NEAR(stop_time, 1.5, 1e-6);
+}
+
+// Test: distance_to_time clamps distance below range (returns start_time)
+TEST(temporal_trajectory, distance_to_time_clamps_below_range)
+{
+  const std::vector<TrajectoryPoint> points{
+    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+
+  auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
+
+  // Request distance below 0 should return start_time
+  const auto time = trajectory.distance_to_time(-1.0);
+  EXPECT_NEAR(time, trajectory.start_time(), 1e-6);
+}
+
+// Test: distance_to_time clamps distance above range (returns end_time)
+TEST(temporal_trajectory, distance_to_time_clamps_above_range)
+{
+  const std::vector<TrajectoryPoint> points{
+    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+
+  auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
+
+  // Request distance above length should return end_time
+  const auto time = trajectory.distance_to_time(100.0);
+  EXPECT_NEAR(time, trajectory.end_time(), 1e-6);
+}
+
+// Test: compute_from_distance at trajectory boundaries
+TEST(temporal_trajectory, compute_from_distance_at_boundaries)
+{
+  const std::vector<TrajectoryPoint> points{
+    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+
+  auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
+
+  // At s=0
+  const auto at_start = trajectory.compute_from_distance(0.0);
+  EXPECT_NEAR(at_start.pose.position.x, 0.0, 1e-6);
+  EXPECT_NEAR(rclcpp::Duration(at_start.time_from_start).seconds(), 0.0, 1e-6);
+
+  // At s=length
+  const auto at_end = trajectory.compute_from_distance(trajectory.length());
+  EXPECT_NEAR(at_end.pose.position.x, 3.0, 1e-6);
+  EXPECT_NEAR(rclcpp::Duration(at_end.time_from_start).seconds(), 3.0, 1e-6);
+}
+
+// Test: compute_from_time at trajectory boundaries
+TEST(temporal_trajectory, compute_from_time_at_boundaries)
+{
+  const std::vector<TrajectoryPoint> points{
+    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+
+  auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
+
+  // At t=start_time
+  const auto at_start = trajectory.compute_from_time(trajectory.start_time());
+  EXPECT_NEAR(at_start.pose.position.x, 0.0, 1e-6);
+  EXPECT_NEAR(rclcpp::Duration(at_start.time_from_start).seconds(), 0.0, 1e-6);
+
+  // At t=end_time
+  const auto at_end = trajectory.compute_from_time(trajectory.end_time());
+  EXPECT_NEAR(at_end.pose.position.x, 3.0, 1e-6);
+  EXPECT_NEAR(rclcpp::Duration(at_end.time_from_start).seconds(), 3.0, 1e-6);
+}
+
+// Test: restore after crop_time returns cropped trajectory points
+TEST(temporal_trajectory, restore_after_crop_time)
+{
+  const std::vector<TrajectoryPoint> points{
+    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+
+  auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
+  trajectory.crop_time(1.0, 1.0);  // Crop from t=1.0 for duration 1.0
+
+  const auto restored = trajectory.restore();
+  ASSERT_FALSE(restored.empty());
+
+  // All restored points should have time_from_start in [1.0, 2.0]
+  for (const auto & point : restored) {
+    const auto t = rclcpp::Duration(point.time_from_start).seconds();
+    EXPECT_GE(t, 1.0 - 1e-6);
+    EXPECT_LE(t, 2.0 + 1e-6);
+  }
 }
