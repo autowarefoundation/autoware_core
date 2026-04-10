@@ -55,7 +55,7 @@ Trajectory<geometry_msgs::msg::Pose> build_parabolic_trajectory(
 }
 
 // Test 1: check type of long path polygon from build_path_polygon
-TEST(trajectoryFootprint, LongPolygon)
+TEST(TrajectoryFootprint, LongPolygon)
 {
   auto traj = build_parabolic_trajectory(11, 0.5);
   const auto polygon = autoware::experimental::trajectory::build_path_polygon(
@@ -66,7 +66,7 @@ TEST(trajectoryFootprint, LongPolygon)
 }
 
 // Test 2: count numbers of footprint trace with default interval
-TEST(trajectoryFootprint, FootprintTraceDefault)
+TEST(TrajectoryFootprint, FootprintTraceDefault)
 {
   autoware_utils_geometry::Point2d left_front{-0.5, 0.25};
   autoware_utils_geometry::Point2d right_front{0.5, 0.25};
@@ -104,7 +104,7 @@ TEST(trajectoryFootprint, FootprintTraceDefault)
 }
 
 // Test 3: count numbers of footprint trace with designated interval
-TEST(trajectoryFootprint, FootprintTraceAdjustInterval)
+TEST(TrajectoryFootprint, FootprintTraceAdjustInterval)
 {
   autoware_utils_geometry::Point2d left_front{-0.5, 0.25};
   autoware_utils_geometry::Point2d right_front{0.5, 0.25};

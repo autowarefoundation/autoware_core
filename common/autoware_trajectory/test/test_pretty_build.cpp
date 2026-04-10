@@ -45,7 +45,7 @@ PathPointWithLaneId make_path_point_with_lane_id(const double x, const double y,
 
 }  // namespace
 
-TEST(PrettyBuild, builds_from_two_points_with_default_interpolator)
+TEST(PrettyBuild, BuildsFromTwoPointsWithDefaultInterpolator)
 {
   const std::vector<PathPointWithLaneId> points{
     make_path_point_with_lane_id(1.0, 1.0, 0.0),
@@ -64,7 +64,7 @@ TEST(PrettyBuild, builds_from_two_points_with_default_interpolator)
   }
 }
 
-TEST(PrettyBuild, builds_from_three_points_with_default_interpolator)
+TEST(PrettyBuild, BuildsFromThreePointsWithDefaultInterpolator)
 {
   const std::vector<PathPointWithLaneId> points{
     make_path_point_with_lane_id(1.0, 1.0, 0.0), make_path_point_with_lane_id(0.7, 0.3, 0.0),
@@ -82,7 +82,7 @@ TEST(PrettyBuild, builds_from_three_points_with_default_interpolator)
   }
 }
 
-TEST(PrettyBuild, builds_from_four_points_with_akima)
+TEST(PrettyBuild, BuildsFromFourPointsWithAkima)
 {
   const std::vector<PathPointWithLaneId> points{
     make_path_point_with_lane_id(1.0, 1.0, 0.0), make_path_point_with_lane_id(1.5, 0.5, 0.0),
@@ -101,7 +101,7 @@ TEST(PrettyBuild, builds_from_four_points_with_akima)
   }
 }
 
-TEST(PrettyBuild, rejects_single_point_with_default_interpolator)
+TEST(PrettyBuild, RejectsSinglePointWithDefaultInterpolator)
 {
   const std::vector<PathPointWithLaneId> points{make_path_point_with_lane_id(1.0, 1.0, 0.0)};
 
@@ -109,7 +109,7 @@ TEST(PrettyBuild, rejects_single_point_with_default_interpolator)
   EXPECT_FALSE(trajectory_opt.has_value());
 }
 
-TEST(PrettyBuild, builds_from_single_point_with_akima_fallback)
+TEST(PrettyBuild, BuildsFromSinglePointWithAkimaFallback)
 {
   const std::vector<PathPointWithLaneId> points{make_path_point_with_lane_id(1.0, 1.0, 0.0)};
 

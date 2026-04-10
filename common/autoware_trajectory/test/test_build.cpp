@@ -78,32 +78,32 @@ autoware_planning_msgs::msg::PathPoint make_path_point(const double x, const dou
 }
 }  // namespace
 
-TEST(BuildFallback, point_single_point_succeeds)
+TEST(BuildFallback, PointSinglePointSucceeds)
 {
   expect_build_success_with_single_point(make_point(0.49, 0.59));
 }
 
-TEST(BuildFallback, pose_single_point_succeeds)
+TEST(BuildFallback, PoseSinglePointSucceeds)
 {
   expect_build_success_with_single_point(make_pose(0.49, 0.59));
 }
 
-TEST(BuildFallback, path_point_single_point_succeeds)
+TEST(BuildFallback, PathPointSinglePointSucceeds)
 {
   expect_build_success_with_single_point(make_path_point(0.49, 0.59));
 }
 
-TEST(BuildFallback, point_single_point_derivatives_are_safe)
+TEST(BuildFallback, PointSinglePointDerivativesAreSafe)
 {
   expect_single_point_derivatives_are_safe(make_point(0.49, 0.59));
 }
 
-TEST(BuildFallback, pose_single_point_derivatives_are_safe)
+TEST(BuildFallback, PoseSinglePointDerivativesAreSafe)
 {
   expect_single_point_derivatives_are_safe(make_pose(0.49, 0.59));
 }
 
-TEST(BuildFallback, path_point_single_point_derivatives_are_safe)
+TEST(BuildFallback, PathPointSinglePointDerivativesAreSafe)
 {
   expect_single_point_derivatives_are_safe(make_path_point(0.49, 0.59));
 }
