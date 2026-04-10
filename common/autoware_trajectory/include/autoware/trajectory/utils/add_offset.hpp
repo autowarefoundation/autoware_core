@@ -79,8 +79,8 @@ inline tf2::Quaternion get_orientation_from_point_type(
  * quaternion. This means roll, pitch, and yaw are all respected when available.
  *
  * For point types with orientation (Pose, PathPoint, TrajectoryPoint, PathPointWithLaneId), the
- * pose's orientation is used to determine the heading. For `geometry_msgs::msg::Point`, the
- * trajectory's azimuth (tangent direction) is used instead.
+ * pose's full orientation is used. For `geometry_msgs::msg::Point`, the trajectory's azimuth
+ * (tangent direction) and elevation are used to synthesize an orientation with zero roll.
  *
  * This is useful for obtaining the path of the vehicle front, rear, or side edges from a
  * base_link-centered trajectory.
