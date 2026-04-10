@@ -18,7 +18,7 @@
 
 #include <vector>
 
-TEST(TestHelpers, crop_bases)
+TEST(TestHelpers, CropBases)
 {
   using autoware::experimental::trajectory::detail::crop_bases;
 

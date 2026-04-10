@@ -42,7 +42,7 @@ static TrajectoryPoint make_trajectory_point(double x, double y, double vx, doub
 namespace autoware::experimental::trajectory
 {
 
-TEST(search_zero_velocity_position, found_at_exact_base_point)
+TEST(SearchZeroVelocityPosition, FoundAtExactBasePoint)
 {
   std::vector<TrajectoryPoint> points;
   points.push_back(make_trajectory_point(0.0, 0.0, 10.0));
@@ -57,7 +57,7 @@ TEST(search_zero_velocity_position, found_at_exact_base_point)
   EXPECT_NEAR(result.value(), traj.length() * 2.0 / 3.0, k_zero_velocity_threshold);
 }
 
-TEST(search_zero_velocity_position, found_at_zero_crossing)
+TEST(SearchZeroVelocityPosition, FoundAtZeroCrossing)
 {
   std::vector<TrajectoryPoint> points;
   points.push_back(make_trajectory_point(0.0, 0.0, 10.0));
@@ -73,7 +73,7 @@ TEST(search_zero_velocity_position, found_at_zero_crossing)
   EXPECT_LT(result.value(), traj.length());
 }
 
-TEST(search_zero_velocity_position, not_found_monotonic_positive)
+TEST(SearchZeroVelocityPosition, NotFoundMonotonicPositive)
 {
   std::vector<TrajectoryPoint> points;
   points.push_back(make_trajectory_point(0.0, 0.0, 10.0));
@@ -87,7 +87,7 @@ TEST(search_zero_velocity_position, not_found_monotonic_positive)
   EXPECT_FALSE(result.has_value());
 }
 
-TEST(search_zero_velocity_position, not_found_monotonic_negative)
+TEST(SearchZeroVelocityPosition, NotFoundMonotonicNegative)
 {
   std::vector<TrajectoryPoint> points;
   points.push_back(make_trajectory_point(0.0, 0.0, -10.0));
@@ -101,7 +101,7 @@ TEST(search_zero_velocity_position, not_found_monotonic_negative)
   EXPECT_FALSE(result.has_value());
 }
 
-TEST(search_zero_velocity_position, found_at_first_point)
+TEST(SearchZeroVelocityPosition, FoundAtFirstPoint)
 {
   std::vector<TrajectoryPoint> points;
   points.push_back(make_trajectory_point(0.0, 0.0, 0.0));
@@ -116,7 +116,7 @@ TEST(search_zero_velocity_position, found_at_first_point)
   EXPECT_NEAR(result.value(), 0.0, k_zero_velocity_threshold);
 }
 
-TEST(search_zero_velocity_position, found_at_last_point)
+TEST(SearchZeroVelocityPosition, FoundAtLastPoint)
 {
   std::vector<TrajectoryPoint> points;
   points.push_back(make_trajectory_point(0.0, 0.0, 2.0));
@@ -131,7 +131,7 @@ TEST(search_zero_velocity_position, found_at_last_point)
   EXPECT_NEAR(result.value(), traj.length(), k_zero_velocity_threshold);
 }
 
-TEST(search_zero_velocity_position, found_with_interval)
+TEST(SearchZeroVelocityPosition, FoundWithInterval)
 {
   std::vector<TrajectoryPoint> points;
   points.push_back(make_trajectory_point(0.0, 0.0, 10.0));
