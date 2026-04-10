@@ -263,6 +263,8 @@ public:
 
 TEST_F(TrajectoryTest, Compute)
 {
+  ASSERT_TRUE(trajectory);
+
   double length = trajectory->length();
 
   trajectory->longitudinal_velocity_mps()
@@ -281,6 +283,7 @@ TEST_F(TrajectoryTest, Compute)
 
 TEST_F(TrajectoryTest, ManipulateLongitudinalVelocity)
 {
+  ASSERT_TRUE(trajectory);
   trajectory->longitudinal_velocity_mps() = 10.0;
   trajectory->longitudinal_velocity_mps()
     .range(trajectory->length() / 3, 2.0 * trajectory->length() / 3)
@@ -296,6 +299,7 @@ TEST_F(TrajectoryTest, ManipulateLongitudinalVelocity)
 
 TEST_F(TrajectoryTest, ManipulateLateralVelocity)
 {
+  ASSERT_TRUE(trajectory);
   trajectory->lateral_velocity_mps()
     .range(trajectory->length() / 3, 2.0 * trajectory->length() / 3)
     .set(5.0);
@@ -315,6 +319,7 @@ TEST_F(TrajectoryTest, ManipulateLateralVelocity)
 
 TEST_F(TrajectoryTest, ClampLongitudinalVelocity)
 {
+  ASSERT_TRUE(trajectory);
   trajectory->longitudinal_velocity_mps() = 10.0;
   trajectory->longitudinal_velocity_mps()
     .range(trajectory->length() / 3, 2 * trajectory->length() / 3)
@@ -337,6 +342,7 @@ TEST_F(TrajectoryTest, ClampLongitudinalVelocity)
 
 TEST_F(TrajectoryTest, ManipulateVelocities)
 {
+  ASSERT_TRUE(trajectory);
   // longitudinal velocity = 1.0 [0.3, 0.7]
   trajectory->longitudinal_velocity_mps()
     .range(trajectory->length() * 0.3, trajectory->length() * 0.7)
@@ -399,6 +405,7 @@ TEST_F(TrajectoryTest, ManipulateVelocities)
 
 TEST_F(TrajectoryTest, ManipulateVelocitiesWithCopyCtor)
 {
+  ASSERT_TRUE(trajectory);
   Trajectory trajectory2(*trajectory);
   // longitudinal velocity = 1.0 [0.3, 0.7]
   trajectory2.longitudinal_velocity_mps()
@@ -651,6 +658,7 @@ TEST_F(TrajectoryTest, ManipulateVelocitiesWithMoveAssignment)
 
 TEST_F(TrajectoryTest, Direction)
 {
+  ASSERT_TRUE(trajectory);
   double dir = trajectory->azimuth(0.0);
   EXPECT_LT(0, dir);
   EXPECT_LT(dir, M_PI / 2);
@@ -658,6 +666,7 @@ TEST_F(TrajectoryTest, Direction)
 
 TEST_F(TrajectoryTest, Curvature)
 {
+  ASSERT_TRUE(trajectory);
   double curvature_val = trajectory->curvature(0.0);
   EXPECT_LT(-1.0, curvature_val);
   EXPECT_LT(curvature_val, 1.0);
@@ -665,6 +674,7 @@ TEST_F(TrajectoryTest, Curvature)
 
 TEST_F(TrajectoryTest, Restore)
 {
+  ASSERT_TRUE(trajectory);
   using autoware::experimental::trajectory::Trajectory;
   trajectory->longitudinal_velocity_mps().range(4.0, trajectory->length()).set(5.0);
   auto points = trajectory->restore();
@@ -673,6 +683,7 @@ TEST_F(TrajectoryTest, Restore)
 
 TEST_F(TrajectoryTest, Crossed)
 {
+  ASSERT_TRUE(trajectory);
   lanelet::LineString2d line_string;
   line_string.push_back(lanelet::Point3d(lanelet::InvalId, 0.0, 10.0, 0.0));
   line_string.push_back(lanelet::Point3d(lanelet::InvalId, 10.0, 0.0, 0.0));
@@ -686,6 +697,7 @@ TEST_F(TrajectoryTest, Crossed)
 
 TEST_F(TrajectoryTest, Closest)
 {
+  ASSERT_TRUE(trajectory);
   geometry_msgs::msg::Pose pose;
   pose.position.x = 5.0;
   pose.position.y = 5.0;
@@ -702,6 +714,7 @@ TEST_F(TrajectoryTest, Closest)
 
 TEST_F(TrajectoryTest, Crop)
 {
+  ASSERT_TRUE(trajectory);
   double length = trajectory->length();
 
   auto start_point_expect = trajectory->compute(length / 3.0);
@@ -727,6 +740,7 @@ TEST_F(TrajectoryTest, Crop)
 
 TEST_F(TrajectoryTest, FindIf)
 {
+  ASSERT_TRUE(trajectory);
   geometry_msgs::msg::Point base_point;
   base_point.x = 5.0;
   base_point.y = 5.0;
@@ -785,6 +799,7 @@ TEST_F(TrajectoryTest, FindIf)
 
 TEST_F(TrajectoryTest, FindInterval)
 {
+  ASSERT_TRUE(trajectory);
   auto intervals = autoware::experimental::trajectory::find_intervals(
     *trajectory, [](const autoware_internal_planning_msgs::msg::PathPointWithLaneId & point) {
       return point.lane_ids[0] == 1;
@@ -797,6 +812,7 @@ TEST_F(TrajectoryTest, FindInterval)
 
 TEST_F(TrajectoryTest, FindIntervalWithBinarySearch)
 {
+  ASSERT_TRUE(trajectory);
   geometry_msgs::msg::Point base_point;
   base_point.x = 6.0;
   base_point.y = 2.0;
@@ -838,12 +854,14 @@ TEST_F(TrajectoryTest, FindIntervalWithBinarySearch)
 
 TEST_F(TrajectoryTest, MaxCurvature)
 {
+  ASSERT_TRUE(trajectory);
   double max_curvature = autoware::experimental::trajectory::max_curvature(*trajectory);
   EXPECT_LT(0, max_curvature);
 }
 
 TEST_F(TrajectoryTest, GetContainedLaneIds)
 {
+  ASSERT_TRUE(trajectory);
   auto contained_lane_ids = trajectory->get_contained_lane_ids();
   EXPECT_EQ(2, contained_lane_ids.size());
   EXPECT_EQ(0, contained_lane_ids[0]);
@@ -852,6 +870,7 @@ TEST_F(TrajectoryTest, GetContainedLaneIds)
 
 TEST_F(TrajectoryTest, CopyCtor)
 {
+  ASSERT_TRUE(trajectory);
   const auto trajectory2(*trajectory);
 
   check_if_equals(*trajectory, trajectory2);
@@ -859,6 +878,7 @@ TEST_F(TrajectoryTest, CopyCtor)
 
 TEST_F(TrajectoryTest, CopyAssignment)
 {
+  ASSERT_TRUE(trajectory);
   const auto trajectory2 = Trajectory::Builder{}.build(
     {path_point_with_lane_id(0.00, 0.00, 1), path_point_with_lane_id(1.68, 0.81, 1),
      path_point_with_lane_id(2.98, 1.65, 1), path_point_with_lane_id(4.01, 3.30, 0)});
@@ -870,6 +890,7 @@ TEST_F(TrajectoryTest, CopyAssignment)
 
 TEST_F(TrajectoryTest, MoveCtor)
 {
+  ASSERT_TRUE(trajectory);
   const auto trajectory1(*trajectory);
   const auto trajectory2(std::move(*trajectory));
 
@@ -878,6 +899,7 @@ TEST_F(TrajectoryTest, MoveCtor)
 
 TEST_F(TrajectoryTest, MoveAssignment)
 {
+  ASSERT_TRUE(trajectory);
   auto trajectory1 = Trajectory::Builder{}.build(
     {path_point_with_lane_id(0.00, 0.00, 1), path_point_with_lane_id(1.68, 0.81, 1),
      path_point_with_lane_id(2.98, 1.65, 1), path_point_with_lane_id(4.01, 3.30, 0)});

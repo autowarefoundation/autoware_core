@@ -183,6 +183,7 @@ public:
 
 TEST_F(TrajectoryTestForTrajectoryPoint, Compute)
 {
+  ASSERT_TRUE(trajectory);
   double length = trajectory->length();
 
   trajectory->longitudinal_velocity_mps()
@@ -199,6 +200,7 @@ TEST_F(TrajectoryTestForTrajectoryPoint, Compute)
 
 TEST_F(TrajectoryTestForTrajectoryPoint, ManipulateVelocity)
 {
+  ASSERT_TRUE(trajectory);
   trajectory->longitudinal_velocity_mps() = 10.0;
   trajectory->longitudinal_velocity_mps()
     .range(trajectory->length() / 3, 2.0 * trajectory->length() / 3)
@@ -214,6 +216,7 @@ TEST_F(TrajectoryTestForTrajectoryPoint, ManipulateVelocity)
 
 TEST_F(TrajectoryTestForTrajectoryPoint, Direction)
 {
+  ASSERT_TRUE(trajectory);
   double dir = trajectory->azimuth(0.0);
   EXPECT_LT(0, dir);
   EXPECT_LT(dir, M_PI / 2);
@@ -221,6 +224,7 @@ TEST_F(TrajectoryTestForTrajectoryPoint, Direction)
 
 TEST_F(TrajectoryTestForTrajectoryPoint, Curvature)
 {
+  ASSERT_TRUE(trajectory);
   double curvature_val = trajectory->curvature(0.0);
   EXPECT_LT(-1.0, curvature_val);
   EXPECT_LT(curvature_val, 1.0);
@@ -228,6 +232,7 @@ TEST_F(TrajectoryTestForTrajectoryPoint, Curvature)
 
 TEST_F(TrajectoryTestForTrajectoryPoint, Restore)
 {
+  ASSERT_TRUE(trajectory);
   using autoware::experimental::trajectory::Trajectory;
   trajectory->longitudinal_velocity_mps().range(4.0, trajectory->length()).set(5.0);
   auto points = trajectory->restore();
@@ -236,6 +241,7 @@ TEST_F(TrajectoryTestForTrajectoryPoint, Restore)
 
 TEST_F(TrajectoryTestForTrajectoryPoint, Crossed)
 {
+  ASSERT_TRUE(trajectory);
   lanelet::LineString2d line_string;
   line_string.push_back(lanelet::Point3d(lanelet::InvalId, 0.0, 10.0, 0.0));
   line_string.push_back(lanelet::Point3d(lanelet::InvalId, 10.0, 0.0, 0.0));
@@ -249,6 +255,7 @@ TEST_F(TrajectoryTestForTrajectoryPoint, Crossed)
 
 TEST_F(TrajectoryTestForTrajectoryPoint, Closest)
 {
+  ASSERT_TRUE(trajectory);
   geometry_msgs::msg::Pose pose;
   pose.position.x = 5.0;
   pose.position.y = 5.0;
@@ -264,6 +271,7 @@ TEST_F(TrajectoryTestForTrajectoryPoint, Closest)
 
 TEST_F(TrajectoryTestForTrajectoryPoint, Crop)
 {
+  ASSERT_TRUE(trajectory);
   double length = trajectory->length();
 
   auto start_point_expect = trajectory->compute(length / 3.0);
@@ -285,12 +293,14 @@ TEST_F(TrajectoryTestForTrajectoryPoint, Crop)
 
 TEST_F(TrajectoryTestForTrajectoryPoint, MaxCurvature)
 {
+  ASSERT_TRUE(trajectory);
   double max_curvature = autoware::experimental::trajectory::max_curvature(*trajectory);
   EXPECT_LT(0, max_curvature);
 }
 
 TEST_F(TrajectoryTestForTrajectoryPoint, BuildFromTwoPoints)
 {
+  ASSERT_TRUE(trajectory);
   using autoware_utils_geometry::get_rpy;
 
   std::vector<autoware_planning_msgs::msg::TrajectoryPoint> points{
