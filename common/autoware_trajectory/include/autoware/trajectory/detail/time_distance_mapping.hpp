@@ -87,19 +87,16 @@ public:
    * @brief Extend the schedule at a given time by inserting a constant-distance plateau.
    * @param[in] time Pivot time in seconds.
    * @param[in] delta_time Additional duration in seconds.
-   * @return Success, or an interpolation failure.
    */
-  [[nodiscard]] interpolator::InterpolationResult extend_time_at(double time, double delta_time);
+  void extend_time_at(double time, double delta_time);
 
   /**
    * @brief Set a time range to a constant absolute distance.
    * @param[in] start_time Range start time in seconds.
    * @param[in] end_time Range end time in seconds.
    * @param[in] distance Absolute distance in meters.
-   * @return Success, or an interpolation failure.
    */
-  [[nodiscard]] interpolator::InterpolationResult set_distance_range(
-    double start_time, double end_time, double distance);
+  void set_distance_range(double start_time, double end_time, double distance);
 
   /**
    * @brief Restrict the visible time range.
@@ -133,9 +130,6 @@ private:
   [[nodiscard]] double compute_distance(double internal_time) const;
   [[nodiscard]] double start_distance() const;
   [[nodiscard]] double end_distance() const;
-  [[nodiscard]] bool empty() const;
-  [[nodiscard]] std::vector<double> cropped_internal_time_bases() const;
-  [[nodiscard]] std::vector<double> cropped_absolute_distance_bases() const;
   [[nodiscard]] double clamp_time_without_warning(double time) const;
   [[nodiscard]] double to_internal_time(double time) const;
   [[nodiscard]] double to_public_time(double internal_time) const;

@@ -18,9 +18,6 @@
 #include "autoware/trajectory/threshold.hpp"
 #include "autoware/trajectory/utils/find_intervals.hpp"
 
-#include <rclcpp/duration.hpp>
-#include <rclcpp/logging.hpp>
-
 #include <algorithm>
 #include <cmath>
 #include <memory>
@@ -210,13 +207,8 @@ void TemporalTrajectory::set_stopline(const double arc_length)
   const auto stop_distance = std::clamp(arc_length, 0.0, length());
   spatial_trajectory_.crop(0.0, stop_distance);
   spatial_trajectory_.longitudinal_velocity_mps().at(spatial_trajectory_.length()).set(0.0);
-
-  if (const auto result = time_distance_mapping_.set_distance_range(
-        stop_time, time_distance_mapping_.end_time(), stop_distance + distance_offset_);
-      !result) {
-    RCLCPP_WARN(
-      rclcpp::get_logger("TemporalTrajectory"), "Failed to update stopline time-distance bases");
-  }
+  time_distance_mapping_.set_distance_range(
+    stop_time, time_distance_mapping_.end_time(), stop_distance + distance_offset_);
 }
 
 void TemporalTrajectory::set_stopline(const double arc_length, const double duration)
@@ -227,13 +219,7 @@ void TemporalTrajectory::set_stopline(const double arc_length, const double dura
 
   const auto stop_distance = std::clamp(arc_length, 0.0, length());
   spatial_trajectory_.longitudinal_velocity_mps().at(stop_distance).set(0.0);
-  if (const auto result = time_distance_mapping_.extend_time_at(stop_time, stop_duration);
-      !result) {
-    RCLCPP_WARN(
-      rclcpp::get_logger("TemporalTrajectory"),
-      "Failed to extend stopline time-distance bases with duration");
-    return;
-  }
+  time_distance_mapping_.extend_time_at(stop_time, stop_duration);
 }
 
 const TemporalTrajectory::SpatialTrajectory & TemporalTrajectory::spatial_trajectory() const

@@ -21,6 +21,7 @@
 #include <rclcpp/logging.hpp>
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <memory>
 #include <utility>
@@ -57,62 +58,57 @@ size_t insert_or_replace_base_at_time(
 }
 }  // namespace
 
-interpolator::InterpolationResult TimeDistanceMapping::extend_time_at(
-  const double time, const double delta_time)
+void TimeDistanceMapping::extend_time_at(const double time, const double delta_time)
 {
-  if (delta_time <= k_same_time_threshold) {
-    return interpolator::InterpolationSuccess{};
-  }
-
-  auto time_bases = cropped_time_bases();
-  auto distance_bases = cropped_absolute_distance_bases();
+  const auto original_start_time = start_time();
+  const auto original_end_time = end_time();
   const auto clamped_time = clamp_time_without_warning(time);
-  const auto pivot_distance = distance_at(clamped_time);
+  const auto pivot_internal_time = to_internal_time(clamped_time);
+  const auto pivot_distance = compute_distance(pivot_internal_time);
+  auto time_bases = time_bases_;
+  auto distance_bases = distance_bases_;
   const auto pivot_index =
-    insert_or_replace_base_at_time(time_bases, distance_bases, clamped_time, pivot_distance);
+    insert_or_replace_base_at_time(time_bases, distance_bases, pivot_internal_time, pivot_distance);
   for (size_t i = pivot_index + 1; i < time_bases.size(); ++i) {
     time_bases.at(i) += delta_time;
   }
 
   const auto end_index = insert_or_replace_base_at_time(
-    time_bases, distance_bases, clamped_time + delta_time, pivot_distance);
+    time_bases, distance_bases, pivot_internal_time + delta_time, pivot_distance);
   std::fill(
     distance_bases.begin() + static_cast<std::ptrdiff_t>(pivot_index),
     distance_bases.begin() + static_cast<std::ptrdiff_t>(end_index + 1), pivot_distance);
 
-  std::transform(time_bases.begin(), time_bases.end(), time_bases.begin(), [this](const double t) {
-    return to_internal_time(t);
-  });
-  return build(time_bases, distance_bases);
+  const auto result = build(time_bases, distance_bases);
+  assert(result);
+  set_time_range(original_start_time, original_end_time + delta_time);
 }
 
-interpolator::InterpolationResult TimeDistanceMapping::set_distance_range(
+void TimeDistanceMapping::set_distance_range(
   const double start_time, const double end_time, const double distance)
 {
-  if (empty()) {
-    return interpolator::InterpolationSuccess{};
-  }
-
-  auto time_bases = cropped_time_bases();
-  auto distance_bases = cropped_absolute_distance_bases();
-
+  const auto original_start_time = this->start_time();
+  const auto original_end_time = this->end_time();
   const auto clamped_start = clamp_time_without_warning(start_time);
   const auto range_end = std::max(end_time, clamped_start);
   const auto clamped_end =
     (range_end <= this->end_time()) ? clamp_time_without_warning(range_end) : range_end;
+  auto time_bases = time_bases_;
+  auto distance_bases = distance_bases_;
+  const auto clamped_start_internal = to_internal_time(clamped_start);
+  const auto clamped_end_internal = to_internal_time(clamped_end);
 
   const auto start_index =
-    insert_or_replace_base_at_time(time_bases, distance_bases, clamped_start, distance);
+    insert_or_replace_base_at_time(time_bases, distance_bases, clamped_start_internal, distance);
   const auto end_index =
-    insert_or_replace_base_at_time(time_bases, distance_bases, clamped_end, distance);
+    insert_or_replace_base_at_time(time_bases, distance_bases, clamped_end_internal, distance);
   std::fill(
     distance_bases.begin() + static_cast<std::ptrdiff_t>(start_index),
     distance_bases.begin() + static_cast<std::ptrdiff_t>(end_index + 1), distance);
 
-  std::transform(time_bases.begin(), time_bases.end(), time_bases.begin(), [this](const double t) {
-    return to_internal_time(t);
-  });
-  return build(time_bases, distance_bases);
+  const auto result = build(time_bases, distance_bases);
+  assert(result);
+  set_time_range(original_start_time, original_end_time);
 }
 
 TimeDistanceMapping::TimeDistanceMapping(const TimeDistanceMapping & rhs)
@@ -249,10 +245,6 @@ void TimeDistanceMapping::set_time_range(const double start_time, const double e
 
 double TimeDistanceMapping::clamp_time(const double time, const bool show_warning) const
 {
-  if (empty()) {
-    return time;
-  }
-
   constexpr double eps = 1e-5;
   const auto public_start = start_time_ - time_offset_;
   const auto public_end = end_time_ - time_offset_;
@@ -267,7 +259,7 @@ double TimeDistanceMapping::clamp_time(const double time, const bool show_warnin
 
 std::vector<double> TimeDistanceMapping::cropped_time_bases() const
 {
-  auto time_bases = cropped_internal_time_bases();
+  auto time_bases = crop_bases(time_bases_, start_time_, end_time_);
   std::transform(time_bases.begin(), time_bases.end(), time_bases.begin(), [this](const double t) {
     return to_public_time(t);
   });
@@ -298,27 +290,6 @@ double TimeDistanceMapping::time_at_distance(const double distance) const
     k_max_iterations, k_same_time_threshold);
 
   return to_public_time(result_time);
-}
-
-bool TimeDistanceMapping::empty() const
-{
-  return time_bases_.empty();
-}
-
-std::vector<double> TimeDistanceMapping::cropped_internal_time_bases() const
-{
-  return crop_bases(time_bases_, start_time_, end_time_);
-}
-
-std::vector<double> TimeDistanceMapping::cropped_absolute_distance_bases() const
-{
-  const auto time_bases = crop_bases(time_bases_, start_time_, end_time_);
-  std::vector<double> distance_bases;
-  distance_bases.reserve(time_bases.size());
-  for (const auto t : time_bases) {
-    distance_bases.emplace_back(compute_distance(t));
-  }
-  return distance_bases;
 }
 
 double TimeDistanceMapping::clamp_time_without_warning(const double time) const
