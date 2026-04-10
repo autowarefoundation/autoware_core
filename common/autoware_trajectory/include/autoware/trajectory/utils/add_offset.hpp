@@ -65,48 +65,6 @@ inline tf2::Quaternion get_orientation_from_point_type(
   return get_orientation_from_point_type(point.point.pose);
 }
 
-// Velocity adjustment helpers for types with heading_rate_rps
-template <typename PointType>
-void adjust_velocity_for_offset(PointType & /*point*/, double /*offset_x*/, double /*offset_y*/)
-{
-  // No velocity adjustment for types without heading_rate_rps
-}
-
-inline void adjust_velocity_for_offset(
-  autoware_planning_msgs::msg::TrajectoryPoint & point, double offset_x, double offset_y)
-{
-  // v_offset = v_base + ω × r
-  // longitudinal: v_lon - heading_rate * offset_y
-  // lateral: v_lat + heading_rate * offset_x
-  const double heading_rate = point.heading_rate_rps;
-  point.longitudinal_velocity_mps = static_cast<decltype(point.longitudinal_velocity_mps)>(
-    point.longitudinal_velocity_mps - heading_rate * offset_y);
-  point.lateral_velocity_mps = static_cast<decltype(point.lateral_velocity_mps)>(
-    point.lateral_velocity_mps + heading_rate * offset_x);
-}
-
-inline void adjust_velocity_for_offset(
-  autoware_planning_msgs::msg::PathPoint & point, double offset_x, double offset_y)
-{
-  const double heading_rate = point.heading_rate_rps;
-  point.longitudinal_velocity_mps = static_cast<decltype(point.longitudinal_velocity_mps)>(
-    point.longitudinal_velocity_mps - heading_rate * offset_y);
-  point.lateral_velocity_mps = static_cast<decltype(point.lateral_velocity_mps)>(
-    point.lateral_velocity_mps + heading_rate * offset_x);
-}
-
-inline void adjust_velocity_for_offset(
-  autoware_internal_planning_msgs::msg::PathPointWithLaneId & point, double offset_x,
-  double offset_y)
-{
-  const double heading_rate = point.point.heading_rate_rps;
-  point.point.longitudinal_velocity_mps =
-    static_cast<decltype(point.point.longitudinal_velocity_mps)>(
-      point.point.longitudinal_velocity_mps - heading_rate * offset_y);
-  point.point.lateral_velocity_mps = static_cast<decltype(point.point.lateral_velocity_mps)>(
-    point.point.lateral_velocity_mps + heading_rate * offset_x);
-}
-
 }  // namespace detail
 
 /**
@@ -123,10 +81,6 @@ inline void adjust_velocity_for_offset(
  * For point types with orientation (Pose, PathPoint, TrajectoryPoint, PathPointWithLaneId), the
  * pose's orientation is used to determine the heading. For `geometry_msgs::msg::Point`, the
  * trajectory's azimuth (tangent direction) is used instead.
- *
- * Velocity is adjusted for types with heading_rate_rps using the rigid body kinematics:
- * - longitudinal_velocity = v_lon - heading_rate * offset_y
- * - lateral_velocity = v_lat + heading_rate * offset_x
  *
  * This is useful for obtaining the path of the vehicle front, rear, or side edges from a
  * base_link-centered trajectory.
@@ -168,9 +122,6 @@ trajectory::Trajectory<PointType> add_offset(
     detail::to_point(point).y += global_offset.y();
     detail::to_point(point).z += global_offset.z();
 
-    // Adjust velocity for rotational motion
-    detail::adjust_velocity_for_offset(point, offset_x, offset_y);
-
     offset_points.emplace_back(std::move(point));
   }
 
@@ -195,10 +146,6 @@ trajectory::Trajectory<PointType> add_offset(
  *
  * The vehicle-frame offset is rotated into the global frame using the point's full orientation
  * quaternion. This means roll, pitch, and yaw are all respected.
- *
- * Velocity is adjusted using the rigid body kinematics:
- * - longitudinal_velocity = v_lon - heading_rate * offset_y
- * - lateral_velocity = v_lat + heading_rate * offset_x
  *
  * This is useful for obtaining the time-parameterized path of the vehicle front, rear, or side
  * edges from a base_link-centered trajectory.
@@ -233,9 +180,6 @@ inline TemporalTrajectory add_offset(
     detail::to_point(point).x += global_offset.x();
     detail::to_point(point).y += global_offset.y();
     detail::to_point(point).z += global_offset.z();
-
-    // Adjust velocity for rotational motion
-    detail::adjust_velocity_for_offset(point, offset_x, offset_y);
 
     offset_points.emplace_back(point);
   }
