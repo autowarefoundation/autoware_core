@@ -70,9 +70,9 @@ TEST(find_intervals_temporal, returns_stop_interval_with_distance)
              autoware::experimental::trajectory::k_zero_velocity_threshold;
     });
   ASSERT_EQ(intervals.size(), 1U);
-  EXPECT_NEAR(intervals.front().start_time, 2.0, 1e-6);
-  EXPECT_NEAR(intervals.front().end_time, 3.0, 1e-6);
-  EXPECT_NEAR(intervals.front().start_distance, 2.0, 1e-3);
+  EXPECT_NEAR(intervals.front().start.time, 2.0, 1e-6);
+  EXPECT_NEAR(intervals.front().end.time, 3.0, 1e-6);
+  EXPECT_NEAR(intervals.front().start.distance, 2.0, 1e-3);
 }
 
 TEST(find_intervals_temporal, respects_velocity_threshold)
@@ -88,6 +88,6 @@ TEST(find_intervals_temporal, respects_velocity_threshold)
     trajectory_result.value(),
     [](const auto & point) { return std::abs(point.longitudinal_velocity_mps) <= 0.25; });
   ASSERT_EQ(intervals.size(), 1U);
-  EXPECT_NEAR(intervals.front().start_time, 1.0, 1e-6);
-  EXPECT_NEAR(intervals.front().end_time, 2.0, 1e-6);
+  EXPECT_NEAR(intervals.front().start.time, 1.0, 1e-6);
+  EXPECT_NEAR(intervals.front().end.time, 2.0, 1e-6);
 }

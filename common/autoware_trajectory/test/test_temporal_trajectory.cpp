@@ -134,7 +134,8 @@ TEST(temporal_trajectory, crossed_uses_spatial_trajectory)
 
   const auto crossed_points = autoware::experimental::trajectory::crossed(trajectory, line_string);
   ASSERT_EQ(crossed_points.size(), 1U);
-  EXPECT_NEAR(crossed_points.front(), 1.5, 1e-6);
+  EXPECT_NEAR(crossed_points.front().distance, 1.5, 1e-6);
+  EXPECT_NEAR(crossed_points.front().time, 1.5, 1e-6);
 }
 
 TEST(temporal_trajectory, find_intervals_uses_time_axis)
@@ -152,10 +153,10 @@ TEST(temporal_trajectory, find_intervals_uses_time_axis)
     });
 
   ASSERT_EQ(intervals.size(), 1U);
-  EXPECT_NEAR(intervals.front().start_distance, 1.0, 1e-6);
-  EXPECT_NEAR(intervals.front().end_distance, 2.0, 1e-6);
-  EXPECT_NEAR(intervals.front().start_time, 1.0, 1e-6);
-  EXPECT_NEAR(intervals.front().end_time, 2.0, 1e-6);
+  EXPECT_NEAR(intervals.front().start.distance, 1.0, 1e-6);
+  EXPECT_NEAR(intervals.front().end.distance, 2.0, 1e-6);
+  EXPECT_NEAR(intervals.front().start.time, 1.0, 1e-6);
+  EXPECT_NEAR(intervals.front().end.time, 2.0, 1e-6);
 }
 
 TEST(temporal_trajectory, crop_time_rebases_time_axis)

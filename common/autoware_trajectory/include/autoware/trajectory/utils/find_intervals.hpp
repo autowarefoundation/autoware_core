@@ -41,10 +41,8 @@ struct Interval
  */
 struct TemporalInterval
 {
-  const double start_distance;  ///< Start distance of the interval.
-  const double end_distance;    ///< End distance of the interval.
-  const double start_time;      ///< Start time of the interval.
-  const double end_time;        ///< End time of the interval.
+  TimeDistancePair start;  ///< Start point of the interval on both axes.
+  TimeDistancePair end;    ///< End point of the interval on both axes.
 };
 
 namespace detail::impl
@@ -115,8 +113,8 @@ std::vector<TemporalInterval> find_intervals(
   for (const auto & interval : time_intervals) {
     intervals.emplace_back(
       TemporalInterval{
-        trajectory.time_to_distance(interval.start), trajectory.time_to_distance(interval.end),
-        interval.start, interval.end});
+        TimeDistancePair{interval.start, trajectory.time_to_distance(interval.start)},
+        TimeDistancePair{interval.end, trajectory.time_to_distance(interval.end)}});
   }
 
   return intervals;

@@ -167,7 +167,7 @@ int main(int argc, char ** argv)
     std::cerr << "Failed to find a stopline intersection" << std::endl;
     return 1;
   }
-  const auto stop_length = crossed_points.front();
+  const auto stop_length = crossed_points.front().distance;
 
   auto stop_immediate = original;
   stop_immediate.set_stopline(stop_length);
@@ -244,13 +244,13 @@ int main(int argc, char ** argv)
       ax.plot(
         Args(
           std::vector<double>{
-            wait_stop_intervals.front().start_time, wait_stop_intervals.front().start_time},
+            wait_stop_intervals.front().start.time, wait_stop_intervals.front().start.time},
           std::vector<double>{0.0, 3.5}),
         Kwargs("color"_a = "grey", "linestyle"_a = "--", "label"_a = "stop start/end"));
       ax.plot(
         Args(
           std::vector<double>{
-            wait_stop_intervals.front().end_time, wait_stop_intervals.front().end_time},
+            wait_stop_intervals.front().end.time, wait_stop_intervals.front().end.time},
           std::vector<double>{0.0, 3.5}),
         Kwargs("color"_a = "grey", "linestyle"_a = "--"));
     }

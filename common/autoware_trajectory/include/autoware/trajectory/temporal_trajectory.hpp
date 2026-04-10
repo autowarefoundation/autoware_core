@@ -26,6 +26,12 @@
 namespace autoware::experimental::trajectory
 {
 
+struct TimeDistancePair
+{
+  double time;      ///< Time in seconds.
+  double distance;  ///< Distance in meters.
+};
+
 /**
  * @brief Trajectory wrapper that parameterizes a spatial trajectory by time.
  * @details
