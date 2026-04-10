@@ -23,8 +23,6 @@
 #include <pybind11/stl.h>
 
 #include <algorithm>
-#include <exception>
-#include <iostream>
 #include <string>
 #include <vector>
 
@@ -71,82 +69,75 @@ void plot_trajectory_with_underlying(
 
 int main()
 {
-  try {
-    pybind11::scoped_interpreter guard{};
-    auto plt = autoware::pyplot::import();
+  pybind11::scoped_interpreter guard{};
+  auto plt = autoware::pyplot::import();
 
-    // Offset parameters
-    constexpr double front_offset = 5.0;   // forward offset from base_link [m]
-    constexpr double rear_offset = -5.0;   // rear offset from base_link [m]
-    constexpr double left_offset = 1.0;    // left offset from base_link [m]
-    constexpr double right_offset = -1.0;  // right offset from base_link [m]
+  // Offset parameters
+  constexpr double front_offset = 5.0;   // forward offset from base_link [m]
+  constexpr double rear_offset = -5.0;   // rear offset from base_link [m]
+  constexpr double left_offset = 1.0;    // left offset from base_link [m]
+  constexpr double right_offset = -1.0;  // right offset from base_link [m]
 
-    // Create a circular arc trajectory
-    std::vector<TrajectoryPoint> points;
-    const double radius = 20.0;       // radius of the circle [m]
-    const double start_angle = 0.0;   // start angle [rad]
-    const double end_angle = M_PI_2;  // 90 degree arc
-    const double step_angle = 0.1;    // angle step [rad]
+  // Create a circular arc trajectory
+  std::vector<TrajectoryPoint> points;
+  const double radius = 20.0;       // radius of the circle [m]
+  const double start_angle = 0.0;   // start angle [rad]
+  const double end_angle = M_PI_2;  // 90 degree arc
+  const double step_angle = 0.1;    // angle step [rad]
 
-    for (double angle = start_angle; angle <= end_angle; angle += step_angle) {
-      // Circle centered at (0, radius) so it starts at origin going in +x direction
-      const double x = radius * std::sin(angle);
-      const double y = radius * (1.0 - std::cos(angle));
+  for (double angle = start_angle; angle <= end_angle; angle += step_angle) {
+    // Circle centered at (0, radius) so it starts at origin going in +x direction
+    const double x = radius * std::sin(angle);
+    const double y = radius * (1.0 - std::cos(angle));
 
-      TrajectoryPoint point;
-      point.pose.position = build<Point>().x(x).y(y).z(0.0);
-      points.push_back(point);
-    }
-
-    auto trajectory = autoware::experimental::trajectory::Trajectory<TrajectoryPoint>::Builder{}
-                        .build(points)
-                        .value();
-
-    trajectory.align_orientation_with_trajectory_direction();
-
-    // Get offset trajectories
-    auto front_trajectory =
-      autoware::experimental::trajectory::add_offset(trajectory, front_offset, 0.0);
-    auto rear_trajectory =
-      autoware::experimental::trajectory::add_offset(trajectory, rear_offset, 0.0);
-    auto left_trajectory =
-      autoware::experimental::trajectory::add_offset(trajectory, 0.0, left_offset);
-    auto right_trajectory =
-      autoware::experimental::trajectory::add_offset(trajectory, 0.0, right_offset);
-
-    // Plot 1: Forward and rear offsets
-    plot_trajectory_with_underlying(trajectory, "black", "base_link", plt);
-    plot_trajectory_with_underlying(
-      front_trajectory, "red", "front (+" + std::to_string(front_offset) + "m)", plt);
-    plot_trajectory_with_underlying(
-      rear_trajectory, "blue", "rear (" + std::to_string(rear_offset) + "m)", plt);
-
-    plt.axis(Args("equal"));
-    plt.grid();
-    plt.legend();
-    plt.title(Args("Forward/Rear Offset Trajectories"));
-    plt.show();
-
-    plt.clf();
-
-    // Plot 2: Left and right offsets
-    plot_trajectory_with_underlying(trajectory, "black", "base_link", plt);
-    plot_trajectory_with_underlying(
-      left_trajectory, "red", "left (+" + std::to_string(left_offset) + "m)", plt);
-    plot_trajectory_with_underlying(
-      right_trajectory, "blue", "right (" + std::to_string(right_offset) + "m)", plt);
-
-    plt.axis(Args("equal"));
-    plt.grid();
-    plt.legend();
-    plt.title(Args("Lateral Offset Trajectories"));
-    plt.show();
-
-    return 0;
-  } catch (const std::exception & ex) {
-    std::cerr << "example_add_offset failed: " << ex.what() << '\n';
-  } catch (...) {
-    std::cerr << "example_add_offset failed with an unknown exception\n";
+    TrajectoryPoint point;
+    point.pose.position = build<Point>().x(x).y(y).z(0.0);
+    points.push_back(point);
   }
-  return 1;
+
+  auto trajectory = autoware::experimental::trajectory::Trajectory<TrajectoryPoint>::Builder{}
+                      .build(points)
+                      .value();
+
+  trajectory.align_orientation_with_trajectory_direction();
+
+  // Get offset trajectories
+  auto front_trajectory =
+    autoware::experimental::trajectory::add_offset(trajectory, front_offset, 0.0);
+  auto rear_trajectory =
+    autoware::experimental::trajectory::add_offset(trajectory, rear_offset, 0.0);
+  auto left_trajectory =
+    autoware::experimental::trajectory::add_offset(trajectory, 0.0, left_offset);
+  auto right_trajectory =
+    autoware::experimental::trajectory::add_offset(trajectory, 0.0, right_offset);
+
+  // Plot 1: Forward and rear offsets
+  plot_trajectory_with_underlying(trajectory, "black", "base_link", plt);
+  plot_trajectory_with_underlying(
+    front_trajectory, "red", "front (+" + std::to_string(front_offset) + "m)", plt);
+  plot_trajectory_with_underlying(
+    rear_trajectory, "blue", "rear (" + std::to_string(rear_offset) + "m)", plt);
+
+  plt.axis(Args("equal"));
+  plt.grid();
+  plt.legend();
+  plt.title(Args("Forward/Rear Offset Trajectories"));
+  plt.show();
+
+  plt.clf();
+
+  // Plot 2: Left and right offsets
+  plot_trajectory_with_underlying(trajectory, "black", "base_link", plt);
+  plot_trajectory_with_underlying(
+    left_trajectory, "red", "left (+" + std::to_string(left_offset) + "m)", plt);
+  plot_trajectory_with_underlying(
+    right_trajectory, "blue", "right (" + std::to_string(right_offset) + "m)", plt);
+
+  plt.axis(Args("equal"));
+  plt.grid();
+  plt.legend();
+  plt.title(Args("Lateral Offset Trajectories"));
+  plt.show();
+
+  return 0;
 }
