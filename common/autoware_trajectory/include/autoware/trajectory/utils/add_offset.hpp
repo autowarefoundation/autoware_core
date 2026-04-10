@@ -17,6 +17,7 @@
 
 #include "autoware/trajectory/detail/types.hpp"
 #include "autoware/trajectory/forward.hpp"
+#include "autoware/trajectory/temporal_trajectory.hpp"
 
 #include <autoware_internal_planning_msgs/msg/path_point_with_lane_id.hpp>
 #include <autoware_planning_msgs/msg/path_point.hpp>
@@ -61,7 +62,7 @@ inline tf2::Quaternion get_orientation_from_point_type(
 inline tf2::Quaternion get_orientation_from_point_type(
   const autoware_internal_planning_msgs::msg::PathPointWithLaneId & point)
 {
-  return tf2::getYaw(point.point.pose.orientation);
+  return get_orientation_from_point_type(point.point.pose);
 }
 
 // Velocity adjustment helpers for types with heading_rate_rps
@@ -163,8 +164,9 @@ trajectory::Trajectory<PointType> add_offset(
     const auto global_offset =
       tf2::quatRotate(orientation, tf2::Vector3(offset_x, offset_y, offset_z));
 
-    detail::to_point(point).x += global_offset_x;
-    detail::to_point(point).y += global_offset_y;
+    detail::to_point(point).x += global_offset.x();
+    detail::to_point(point).y += global_offset.y();
+    detail::to_point(point).z += global_offset.z();
 
     // Adjust velocity for rotational motion
     detail::adjust_velocity_for_offset(point, offset_x, offset_y);
@@ -187,9 +189,12 @@ trajectory::Trajectory<PointType> add_offset(
  * @brief Compute a TemporalTrajectory offset from the base_link by a fixed vehicle-frame offset.
  * @details
  * Given a TemporalTrajectory whose points represent the base_link pose, this function computes a
- * new TemporalTrajectory where each point is translated by `(offset_x, offset_y)` expressed in the
- * **local vehicle frame** (i.e., forward is +x, left is +y). The orientation and time mapping of
- * each pose is preserved.
+ * new TemporalTrajectory where each point is translated by `(offset_x, offset_y, offset_z)`
+ * expressed in the **local vehicle frame** (i.e., forward is +x, left is +y, up is +z). The
+ * orientation and time mapping of each pose is preserved.
+ *
+ * The vehicle-frame offset is rotated into the global frame using the point's full orientation
+ * quaternion. This means roll, pitch, and yaw are all respected.
  *
  * Velocity is adjusted using the rigid body kinematics:
  * - longitudinal_velocity = v_lon - heading_rate * offset_y
@@ -201,10 +206,12 @@ trajectory::Trajectory<PointType> add_offset(
  * @param reference_trajectory The input TemporalTrajectory (base_link centered).
  * @param offset_x Forward offset in the vehicle frame [m].
  * @param offset_y Lateral offset in the vehicle frame [m].
+ * @param offset_z Vertical offset in the vehicle frame [m].
  * @return A new TemporalTrajectory with the offset applied.
  */
 inline TemporalTrajectory add_offset(
-  const TemporalTrajectory & reference_trajectory, const double offset_x, const double offset_y)
+  const TemporalTrajectory & reference_trajectory, const double offset_x, const double offset_y,
+  const double offset_z = 0.0)
 {
   const auto & spatial_traj = reference_trajectory.spatial_trajectory();
   const auto underlying_bases = spatial_traj.get_underlying_bases();
@@ -217,19 +224,21 @@ inline TemporalTrajectory add_offset(
     auto point = reference_trajectory.compute_from_distance(s);
 
     // Use pose orientation from the trajectory point
-    const double yaw = detail::get_yaw_from_point_type(point);
+    auto orientation = detail::get_orientation_from_point_type(point);
+    orientation.normalize();
 
-    // Rotate the vehicle-frame offset into the global frame
-    const double global_offset_x = std::cos(yaw) * offset_x - std::sin(yaw) * offset_y;
-    const double global_offset_y = std::sin(yaw) * offset_x + std::cos(yaw) * offset_y;
+    // Rotate the vehicle-frame offset into the global frame using quaternion
+    const auto global_offset =
+      tf2::quatRotate(orientation, tf2::Vector3(offset_x, offset_y, offset_z));
 
-    detail::to_point(point).x += global_offset_x;
-    detail::to_point(point).y += global_offset_y;
+    detail::to_point(point).x += global_offset.x();
+    detail::to_point(point).y += global_offset.y();
+    detail::to_point(point).z += global_offset.z();
 
     // Adjust velocity for rotational motion
     detail::adjust_velocity_for_offset(point, offset_x, offset_y);
 
-    offset_points.emplace_back(std::move(point));
+    offset_points.emplace_back(point);
   }
 
   auto offset_trajectory =
