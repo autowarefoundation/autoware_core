@@ -12,17 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/trajectory/utils/temporal/find_stop_points.hpp"
+#include "autoware/trajectory/threshold.hpp"
+#include "autoware/trajectory/utils/find_intervals.hpp"
 
 #include <rclcpp/duration.hpp>
 
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <vector>
 
 namespace
 {
-using autoware::experimental::trajectory::find_stop_points;
 using autoware::experimental::trajectory::TemporalTrajectory;
 using autoware_planning_msgs::msg::TrajectoryPoint;
 
@@ -37,7 +38,7 @@ TrajectoryPoint make_point(const double x, const double time_from_start, const f
 }
 }  // namespace
 
-TEST(find_stop_points, returns_empty_when_no_stop_interval)
+TEST(find_intervals_temporal, returns_empty_when_no_stop_interval)
 {
   const std::vector<TrajectoryPoint> points{
     make_point(0.0, 0.0, 2.0F), make_point(1.0, 1.0, 2.0F), make_point(2.0, 2.0, 1.0F),
@@ -46,11 +47,15 @@ TEST(find_stop_points, returns_empty_when_no_stop_interval)
   const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
   ASSERT_TRUE(trajectory_result.has_value());
 
-  const auto stop_points = find_stop_points(trajectory_result.value());
-  EXPECT_TRUE(stop_points.empty());
+  const auto intervals = autoware::experimental::trajectory::find_intervals(
+    trajectory_result.value(), [](const auto & point) {
+      return std::abs(point.longitudinal_velocity_mps) <=
+             autoware::experimental::trajectory::k_zero_velocity_threshold;
+    });
+  EXPECT_TRUE(intervals.empty());
 }
 
-TEST(find_stop_points, returns_stop_interval_with_distance)
+TEST(find_intervals_temporal, returns_stop_interval_with_distance)
 {
   const std::vector<TrajectoryPoint> points{
     make_point(0.0, 0.0, 2.0F), make_point(1.0, 1.0, 1.0F), make_point(2.0, 2.0, 0.0F),
@@ -59,14 +64,18 @@ TEST(find_stop_points, returns_stop_interval_with_distance)
   const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
   ASSERT_TRUE(trajectory_result.has_value());
 
-  const auto stop_points = find_stop_points(trajectory_result.value());
-  ASSERT_EQ(stop_points.size(), 1U);
-  EXPECT_NEAR(stop_points.front().start_time, 2.0, 1e-6);
-  EXPECT_NEAR(stop_points.front().end_time, 3.0, 1e-6);
-  EXPECT_NEAR(stop_points.front().distance, 2.0, 1e-3);
+  const auto intervals = autoware::experimental::trajectory::find_intervals(
+    trajectory_result.value(), [](const auto & point) {
+      return std::abs(point.longitudinal_velocity_mps) <=
+             autoware::experimental::trajectory::k_zero_velocity_threshold;
+    });
+  ASSERT_EQ(intervals.size(), 1U);
+  EXPECT_NEAR(intervals.front().start_time, 2.0, 1e-6);
+  EXPECT_NEAR(intervals.front().end_time, 3.0, 1e-6);
+  EXPECT_NEAR(intervals.front().start_distance, 2.0, 1e-3);
 }
 
-TEST(find_stop_points, respects_velocity_threshold)
+TEST(find_intervals_temporal, respects_velocity_threshold)
 {
   const std::vector<TrajectoryPoint> points{
     make_point(0.0, 0.0, 2.0F), make_point(1.0, 1.0, 0.2F), make_point(2.0, 2.0, 0.1F),
@@ -75,8 +84,10 @@ TEST(find_stop_points, respects_velocity_threshold)
   const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
   ASSERT_TRUE(trajectory_result.has_value());
 
-  const auto stop_points = find_stop_points(trajectory_result.value(), 0.25);
-  ASSERT_EQ(stop_points.size(), 1U);
-  EXPECT_NEAR(stop_points.front().start_time, 1.0, 1e-6);
-  EXPECT_NEAR(stop_points.front().end_time, 2.0, 1e-6);
+  const auto intervals = autoware::experimental::trajectory::find_intervals(
+    trajectory_result.value(),
+    [](const auto & point) { return std::abs(point.longitudinal_velocity_mps) <= 0.25; });
+  ASSERT_EQ(intervals.size(), 1U);
+  EXPECT_NEAR(intervals.front().start_time, 1.0, 1e-6);
+  EXPECT_NEAR(intervals.front().end_time, 2.0, 1e-6);
 }

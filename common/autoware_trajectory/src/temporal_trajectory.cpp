@@ -16,7 +16,7 @@
 
 #include "autoware/trajectory/interpolator/linear.hpp"
 #include "autoware/trajectory/threshold.hpp"
-#include "autoware/trajectory/utils/temporal/find_stop_points.hpp"
+#include "autoware/trajectory/utils/find_intervals.hpp"
 
 #include <rclcpp/duration.hpp>
 #include <rclcpp/logging.hpp>
@@ -160,9 +160,12 @@ double TemporalTrajectory::distance_to_time(const double s) const
   const auto s_clamped = std::clamp(s, 0.0, length());
   const auto absolute_distance = s_clamped + distance_offset_;
 
-  for (const auto & stop_point : find_stop_points(*this)) {
-    if (std::abs(s_clamped - stop_point.distance) <= k_same_time_threshold) {
-      return stop_point.start_time;
+  const auto stop_intervals = find_intervals(*this, [](const auto & point) {
+    return std::abs(point.longitudinal_velocity_mps) <= k_zero_velocity_threshold;
+  });
+  for (const auto & stop_interval : stop_intervals) {
+    if (std::abs(s_clamped - stop_interval.start_distance) <= k_same_time_threshold) {
+      return stop_interval.start_time;
     }
   }
   return time_distance_mapping_.time_at_distance(absolute_distance);

@@ -14,6 +14,7 @@
 
 #include "autoware/trajectory/temporal_trajectory.hpp"
 #include "autoware/trajectory/utils/crossed.hpp"
+#include "autoware/trajectory/utils/find_intervals.hpp"
 
 #include <rclcpp/duration.hpp>
 
@@ -134,6 +135,27 @@ TEST(temporal_trajectory, crossed_uses_spatial_trajectory)
   const auto crossed_points = autoware::experimental::trajectory::crossed(trajectory, line_string);
   ASSERT_EQ(crossed_points.size(), 1U);
   EXPECT_NEAR(crossed_points.front(), 1.5, 1e-6);
+}
+
+TEST(temporal_trajectory, find_intervals_uses_time_axis)
+{
+  const std::vector<TrajectoryPoint> points{
+    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+
+  const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  const auto & trajectory = trajectory_result.value();
+
+  const auto intervals = autoware::experimental::trajectory::find_intervals(
+    trajectory, [](const TrajectoryPoint & point) {
+      return point.pose.position.x >= 1.0 && point.pose.position.x <= 2.0;
+    });
+
+  ASSERT_EQ(intervals.size(), 1U);
+  EXPECT_NEAR(intervals.front().start_distance, 1.0, 1e-6);
+  EXPECT_NEAR(intervals.front().end_distance, 2.0, 1e-6);
+  EXPECT_NEAR(intervals.front().start_time, 1.0, 1e-6);
+  EXPECT_NEAR(intervals.front().end_time, 2.0, 1e-6);
 }
 
 TEST(temporal_trajectory, crop_time_rebases_time_axis)

@@ -13,9 +13,10 @@
 // limitations under the License.
 
 #include "autoware/trajectory/temporal_trajectory.hpp"
+#include "autoware/trajectory/threshold.hpp"
 #include "autoware/trajectory/utils/crossed.hpp"
+#include "autoware/trajectory/utils/find_intervals.hpp"
 #include "autoware/trajectory/utils/pretty_build.hpp"
-#include "autoware/trajectory/utils/temporal/find_stop_points.hpp"
 
 #include <autoware/pyplot/pyplot.hpp>
 #include <rclcpp/duration.hpp>
@@ -24,6 +25,7 @@
 #include <pybind11/embed.h>
 #include <pybind11/stl.h>
 
+#include <cmath>
 #include <iostream>
 #include <iterator>
 #include <string>
@@ -183,8 +185,11 @@ int main(int argc, char ** argv)
   const auto [immediate_vel_time, immediate_vel] =
     sample_time_velocity(stop_immediate, use_restore_points);
   const auto [wait_vel_time, wait_vel] = sample_time_velocity(stop_with_wait, use_restore_points);
-  const auto wait_stop_points =
-    autoware::experimental::trajectory::find_stop_points(stop_with_wait);
+  const auto wait_stop_intervals =
+    autoware::experimental::trajectory::find_intervals(stop_with_wait, [](const auto & point) {
+      return std::abs(point.longitudinal_velocity_mps) <=
+             autoware::experimental::trajectory::k_zero_velocity_threshold;
+    });
 
   std::cout << "Plot mode: "
             << (use_restore_points ? "restored underlying points" : "uniform time samples")
@@ -235,16 +240,17 @@ int main(int argc, char ** argv)
     plot_time_series(ax, original_vel_time, original_vel, "original", "navy");
     plot_time_series(ax, immediate_vel_time, immediate_vel, "set_stopline(length)", "darkorange");
     plot_time_series(ax, wait_vel_time, wait_vel, "set_stopline(length, duration)", "crimson");
-    if (!wait_stop_points.empty()) {
+    if (!wait_stop_intervals.empty()) {
       ax.plot(
         Args(
           std::vector<double>{
-            wait_stop_points.front().start_time, wait_stop_points.front().start_time},
+            wait_stop_intervals.front().start_time, wait_stop_intervals.front().start_time},
           std::vector<double>{0.0, 3.5}),
         Kwargs("color"_a = "grey", "linestyle"_a = "--", "label"_a = "stop start/end"));
       ax.plot(
         Args(
-          std::vector<double>{wait_stop_points.front().end_time, wait_stop_points.front().end_time},
+          std::vector<double>{
+            wait_stop_intervals.front().end_time, wait_stop_intervals.front().end_time},
           std::vector<double>{0.0, 3.5}),
         Kwargs("color"_a = "grey", "linestyle"_a = "--"));
     }

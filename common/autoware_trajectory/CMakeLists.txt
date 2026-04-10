@@ -46,7 +46,6 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/utils/pretty_build.cpp
   src/utils/reference_path.cpp
   src/utils/shift.cpp
-  src/utils/temporal/find_stop_points.cpp
   src/utils/velocity.cpp
 )
 

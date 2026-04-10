@@ -16,6 +16,7 @@
 #define AUTOWARE__TRAJECTORY__UTILS__FIND_INTERVALS_HPP_
 
 #include "autoware/trajectory/forward.hpp"
+#include "autoware/trajectory/temporal_trajectory.hpp"
 
 #include <functional>
 #include <utility>
@@ -32,6 +33,18 @@ struct Interval
 {
   const double start;  ///< Start value of the interval.
   const double end;    ///< End value of the interval.
+};
+
+/**
+ * @struct TemporalInterval
+ * @brief Represents an interval on both distance and time axes.
+ */
+struct TemporalInterval
+{
+  const double start_distance;  ///< Start distance of the interval.
+  const double end_distance;    ///< End distance of the interval.
+  const double start_time;      ///< Start time of the interval.
+  const double end_time;        ///< End time of the interval.
 };
 
 namespace detail::impl
@@ -74,6 +87,39 @@ std::vector<Interval> find_intervals(
       return constraint(trajectory.compute(s));
     },
     max_iter);
+}
+
+/**
+ * @brief Finds intervals in a temporal trajectory where the given constraint is satisfied.
+ * @tparam Constraint A callable type that evaluates a constraint on a temporal trajectory point.
+ * @param trajectory The temporal trajectory to evaluate.
+ * @param constraint The constraint to apply to each point in the temporal trajectory.
+ * @param max_iter Maximum number of iterations for the binary search when finding interval
+ * boundaries.
+ * @return A vector of TemporalInterval objects representing the distance and time intervals where
+ * the constraint is satisfied.
+ */
+template <class Constraint>
+std::vector<TemporalInterval> find_intervals(
+  const TemporalTrajectory & trajectory, Constraint && constraint, int max_iter = 0)
+{
+  const auto time_intervals = detail::impl::find_intervals_impl(
+    trajectory.get_underlying_time_bases(),
+    [constraint = std::forward<Constraint>(constraint), &trajectory](const double & t) {
+      return constraint(trajectory.compute_from_time(t));
+    },
+    max_iter);
+
+  std::vector<TemporalInterval> intervals;
+  intervals.reserve(time_intervals.size());
+  for (const auto & interval : time_intervals) {
+    intervals.emplace_back(
+      TemporalInterval{
+        trajectory.time_to_distance(interval.start), trajectory.time_to_distance(interval.end),
+        interval.start, interval.end});
+  }
+
+  return intervals;
 }
 
 }  // namespace autoware::experimental::trajectory
