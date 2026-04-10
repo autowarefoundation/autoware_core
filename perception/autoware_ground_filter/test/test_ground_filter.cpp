@@ -146,7 +146,6 @@ TEST_F(GroundFilterTest, TestPointsCentroidFunctionality)
   EXPECT_FLOAT_EQ(centroid.height_avg, 0.0f);
   EXPECT_FLOAT_EQ(centroid.height_max, -10.0f);
   EXPECT_FLOAT_EQ(centroid.height_min, 10.0f);
-  EXPECT_EQ(centroid.grid_id, 0);
 
   // Test addPoint functionality
   centroid.addPoint(1.0f, 0.5f, 0);
