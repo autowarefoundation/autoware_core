@@ -62,13 +62,62 @@ TEST(temporal_trajectory, compute_from_time_and_distance)
   EXPECT_NEAR(trajectory.end_time(), 4.0, 1e-6);
 }
 
-TEST(temporal_trajectory, duplicate_timestamp_with_different_distance_fails)
+TEST(temporal_trajectory, builder_builds_from_single_point)
+{
+  const std::vector<TrajectoryPoint> points{make_point(1.0, 2.0)};
+
+  const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+
+  const auto & trajectory = trajectory_result.value();
+  EXPECT_NEAR(trajectory.start_time(), 2.0, 1e-6);
+  EXPECT_NEAR(trajectory.end_time(), 2.0, 1e-6);
+  EXPECT_NEAR(trajectory.duration(), 0.0, 1e-6);
+
+  const auto restored = trajectory.restore();
+  ASSERT_EQ(restored.size(), 1U);
+  EXPECT_NEAR(restored.front().pose.position.x, 1.0, 1e-6);
+  EXPECT_NEAR(rclcpp::Duration(restored.front().time_from_start).seconds(), 2.0, 1e-6);
+}
+
+TEST(temporal_trajectory, builder_builds_from_two_points)
+{
+  const std::vector<TrajectoryPoint> points{make_point(1.0, 2.0), make_point(3.0, 5.0)};
+
+  const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+
+  const auto & trajectory = trajectory_result.value();
+  EXPECT_NEAR(trajectory.start_time(), 2.0, 1e-6);
+  EXPECT_NEAR(trajectory.end_time(), 5.0, 1e-6);
+  EXPECT_NEAR(trajectory.duration(), 3.0, 1e-6);
+
+  const auto point_at_mid_time = trajectory.compute_from_time(3.5);
+  EXPECT_NEAR(point_at_mid_time.pose.position.x, 2.0, 1e-6);
+  EXPECT_NEAR(rclcpp::Duration(point_at_mid_time.time_from_start).seconds(), 3.5, 1e-6);
+}
+
+TEST(temporal_trajectory, duplicate_timestamp_with_different_distance_extends_time_bases)
 {
   const std::vector<TrajectoryPoint> points{
     make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 1.0), make_point(3.0, 2.0)};
 
   const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
-  EXPECT_FALSE(trajectory_result.has_value());
+  ASSERT_TRUE(trajectory_result.has_value());
+
+  const auto & trajectory = trajectory_result.value();
+  const auto time_bases = trajectory.get_underlying_time_bases();
+
+  ASSERT_EQ(time_bases.size(), points.size());
+  EXPECT_DOUBLE_EQ(time_bases.at(0), 0.0);
+  EXPECT_DOUBLE_EQ(time_bases.at(1), 1.0);
+  EXPECT_GT(time_bases.at(2), time_bases.at(1));
+  EXPECT_DOUBLE_EQ(time_bases.at(3), 2.0);
+
+  const auto mapped_time = trajectory.distance_to_time(1.5);
+  ASSERT_TRUE(mapped_time.has_value());
+  EXPECT_GE(*mapped_time, 1.0);
+  EXPECT_LE(*mapped_time, 2.0);
 }
 
 TEST(temporal_trajectory, crossed_uses_spatial_trajectory)

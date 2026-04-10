@@ -15,6 +15,7 @@
 #ifndef AUTOWARE__TRAJECTORY__TEMPORAL_TRAJECTORY_HPP_
 #define AUTOWARE__TRAJECTORY__TEMPORAL_TRAJECTORY_HPP_
 
+#include "autoware/trajectory/detail/time_distance_mapping.hpp"
 #include "autoware/trajectory/interpolator/interpolator.hpp"
 #include "autoware/trajectory/trajectory_point.hpp"
 
@@ -39,34 +40,7 @@ class TemporalTrajectory
 public:
   using PointType = autoware_planning_msgs::msg::TrajectoryPoint;
   using SpatialTrajectory = Trajectory<PointType>;
-  using InterpolatorInterface = interpolator::InterpolatorInterface<double>;
 
-private:
-  class TimeDistanceMapping
-  {
-  public:
-    TimeDistanceMapping() = default;
-    TimeDistanceMapping(const TimeDistanceMapping & rhs);
-    TimeDistanceMapping(TimeDistanceMapping && rhs) noexcept = default;
-    TimeDistanceMapping & operator=(const TimeDistanceMapping & rhs);
-    TimeDistanceMapping & operator=(TimeDistanceMapping && rhs) noexcept = default;
-
-    void set_interpolator(std::shared_ptr<InterpolatorInterface> interpolator);
-    [[nodiscard]] bool has_interpolator() const;
-    [[nodiscard]] interpolator::InterpolationResult build(
-      const std::vector<double> & time_bases, const std::vector<double> & distance_bases);
-    [[nodiscard]] double compute_distance(const double time) const;
-    [[nodiscard]] bool empty() const;
-    [[nodiscard]] const std::vector<double> & time_bases() const;
-    [[nodiscard]] const std::vector<double> & distance_bases() const;
-
-  private:
-    std::shared_ptr<InterpolatorInterface> interpolator_{nullptr};
-    std::vector<double> time_bases_;
-    std::vector<double> distance_bases_;
-  };
-
-public:
   TemporalTrajectory();
   ~TemporalTrajectory() = default;
   TemporalTrajectory(const TemporalTrajectory & rhs) = default;
@@ -100,8 +74,6 @@ public:
 
   /** @brief Return the stored time bases. */
   [[nodiscard]] std::vector<double> get_underlying_time_bases() const;
-  /** @brief Return the stored distance bases. */
-  [[nodiscard]] std::vector<double> get_underlying_distance_bases() const;
 
   /**
    * @brief Compute a point at a given time.
@@ -296,10 +268,7 @@ public:
 
 private:
   SpatialTrajectory spatial_trajectory_;
-  TimeDistanceMapping time_distance_mapping_;
-  double start_time_{0.0};
-  double end_time_{0.0};
-  double time_offset_{0.0};
+  detail::TimeDistanceMapping time_distance_mapping_;
   double distance_offset_{0.0};
 
   [[nodiscard]] interpolator::InterpolationResult set_time_distance_bases(
