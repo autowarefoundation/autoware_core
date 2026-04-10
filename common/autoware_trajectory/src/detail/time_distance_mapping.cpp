@@ -278,17 +278,15 @@ std::optional<double> TimeDistanceMapping::time_at_distance(const double distanc
 {
   const auto start_distance_value = start_distance();
   const auto end_distance_value = end_distance();
-  if (
-    distance < start_distance_value - k_same_time_threshold ||
-    distance > end_distance_value + k_same_time_threshold) {
-    return std::nullopt;
-  }
 
-  if (std::abs(distance - start_distance_value) <= k_same_time_threshold) {
+  // Clamp distance to valid range
+  const auto clamped_distance = std::clamp(distance, start_distance_value, end_distance_value);
+
+  if (std::abs(clamped_distance - start_distance_value) <= k_same_time_threshold) {
     return start_time();
   }
 
-  if (std::abs(distance - end_distance_value) <= k_same_time_threshold) {
+  if (std::abs(clamped_distance - end_distance_value) <= k_same_time_threshold) {
     return end_time();
   }
 
@@ -296,8 +294,8 @@ std::optional<double> TimeDistanceMapping::time_at_distance(const double distanc
   constexpr size_t k_max_iterations = 100;
   const auto result_time = binary_search(
     start_time_, end_time_,
-    [this, distance](double time) { return compute_distance(time) >= distance; }, k_max_iterations,
-    k_same_time_threshold);
+    [this, clamped_distance](double time) { return compute_distance(time) >= clamped_distance; },
+    k_max_iterations, k_same_time_threshold);
 
   return to_public_time(result_time);
 }
