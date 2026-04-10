@@ -107,6 +107,8 @@ void Lanelet2MapLoaderNode::on_map_projector_info(
     utils::merge_lanelet2_maps(*map, *loaded_map);
   }
 
+  // TODO(Yamato Ando): perform a format/version consistency check on all lanelet files.
+  
   // use the first file path for format/version metadata
   const auto & lanelet2_filename = lanelet2_paths.front();
 
