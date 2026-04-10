@@ -58,18 +58,18 @@ size_t insert_or_replace_point_at_time(
   const autoware_planning_msgs::msg::TrajectoryPoint & point)
 {
   const auto insert_index = find_time_index(time_bases, time);
-  if (insert_index == time_bases.size() || !has_same_time(time_bases[insert_index], time)) {
+  if (insert_index == time_bases.size() || !has_same_time(time_bases.at(insert_index), time)) {
     points.insert(points.begin() + static_cast<std::ptrdiff_t>(insert_index), point);
     return insert_index;
   }
-  points[insert_index] = point;
+  points.at(insert_index) = point;
   return insert_index;
 }
 
 bool has_time_base(const std::vector<double> & time_bases, const double time)
 {
   const auto index = find_time_index(time_bases, time);
-  return index < time_bases.size() && has_same_time(time_bases[index], time);
+  return index < time_bases.size() && has_same_time(time_bases.at(index), time);
 }
 
 TemporalTrajectory::PointType make_stop_point(
@@ -155,18 +155,19 @@ interpolator::InterpolationResult TemporalTrajectory::build(const std::vector<Po
   for (size_t i = 0; i < time_bases_.size(); ++i) {
     if (
       !sanitized_time_bases.empty() &&
-      std::abs(time_bases_[i] - sanitized_time_bases.back()) <= k_same_time_threshold) {
-      if (std::abs(distance_bases_[i] - sanitized_distance_bases.back()) > k_same_time_threshold) {
+      std::abs(time_bases_.at(i) - sanitized_time_bases.back()) <= k_same_time_threshold) {
+      if (
+        std::abs(distance_bases_.at(i) - sanitized_distance_bases.back()) > k_same_time_threshold) {
         return tl::unexpected(
           interpolator::InterpolationFailure{
             "time_from_start contains duplicate timestamps with different distances"});
       }
-      sanitized_time_bases.back() = time_bases_[i];
-      sanitized_distance_bases.back() = distance_bases_[i];
+      sanitized_time_bases.back() = time_bases_.at(i);
+      sanitized_distance_bases.back() = distance_bases_.at(i);
       continue;
     }
-    sanitized_time_bases.push_back(time_bases_[i]);
-    sanitized_distance_bases.push_back(distance_bases_[i]);
+    sanitized_time_bases.push_back(time_bases_.at(i));
+    sanitized_distance_bases.push_back(distance_bases_.at(i));
   }
 
   if (const auto result = time_to_distance_->build(sanitized_time_bases, sanitized_distance_bases);
@@ -389,14 +390,14 @@ void TemporalTrajectory::set_stopline(const double arc_length)
     insert_or_replace_point_at_time(points, view_time_bases, *stop_time, stop_point);
 
   for (size_t i = insert_index; i < points.size(); ++i) {
-    points[i] = stop_point;
+    points.at(i) = stop_point;
     if (i == insert_index) {
-      points[i].time_from_start = to_duration_msg(*stop_time);
+      points.at(i).time_from_start = to_duration_msg(*stop_time);
       continue;
     }
 
     const auto original_index = has_existing_stop_time ? i : i - 1;
-    points[i].time_from_start = original_points[original_index].time_from_start;
+    points.at(i).time_from_start = original_points.at(original_index).time_from_start;
   }
 
   (void)build(points);
@@ -431,8 +432,8 @@ void TemporalTrajectory::set_stopline(const double arc_length, const double dura
     for (size_t i = insert_index + 2; i < points.size(); ++i) {
       const auto original_index = has_existing_stop_time ? i - 1 : i - 2;
       const auto shifted_time =
-        to_seconds(original_points[original_index].time_from_start) + stop_duration;
-      points[i].time_from_start = to_duration_msg(shifted_time);
+        to_seconds(original_points.at(original_index).time_from_start) + stop_duration;
+      points.at(i).time_from_start = to_duration_msg(shifted_time);
     }
   }
 
