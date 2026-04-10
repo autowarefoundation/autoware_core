@@ -68,8 +68,7 @@ private:
   {
     const auto success = interpolator_->build(bases_, values_);
     if (!success) {
-      throw std::runtime_error(
-        "Failed to build interpolator.");  // This Exception should not be thrown.
+      assert(success && "InterpolatedArray::rebuild: failed to rebuild interpolator.");
     }
   }
 
