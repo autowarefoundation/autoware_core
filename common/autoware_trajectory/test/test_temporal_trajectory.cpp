@@ -39,7 +39,7 @@ TrajectoryPoint make_point(const double x, const double time_from_start)
 }
 }  // namespace
 
-TEST(temporal_trajectory, compute_from_time_and_distance)
+TEST(TemporalTrajectory, ComputeFromTimeAndDistance)
 {
   const std::vector<TrajectoryPoint> points{
     make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 4.0)};
@@ -62,7 +62,7 @@ TEST(temporal_trajectory, compute_from_time_and_distance)
   EXPECT_NEAR(trajectory.end_time(), 4.0, 1e-6);
 }
 
-TEST(temporal_trajectory, builder_builds_from_single_point)
+TEST(TemporalTrajectory, BuilderBuildsFromSinglePoint)
 {
   const std::vector<TrajectoryPoint> points{make_point(1.0, 2.0)};
 
@@ -80,7 +80,7 @@ TEST(temporal_trajectory, builder_builds_from_single_point)
   EXPECT_NEAR(rclcpp::Duration(restored.front().time_from_start).seconds(), 2.0, 1e-6);
 }
 
-TEST(temporal_trajectory, builder_builds_from_two_points)
+TEST(TemporalTrajectory, BuilderBuildsFromTwoPoints)
 {
   const std::vector<TrajectoryPoint> points{make_point(1.0, 2.0), make_point(3.0, 5.0)};
 
@@ -97,7 +97,7 @@ TEST(temporal_trajectory, builder_builds_from_two_points)
   EXPECT_NEAR(rclcpp::Duration(point_at_mid_time.time_from_start).seconds(), 3.5, 1e-6);
 }
 
-TEST(temporal_trajectory, duplicate_timestamp_with_different_distance_extends_time_bases)
+TEST(TemporalTrajectory, DuplicateTimestampWithDifferentDistanceExtendsTimeBases)
 {
   const std::vector<TrajectoryPoint> points{
     make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 1.0), make_point(3.0, 2.0)};
@@ -119,7 +119,7 @@ TEST(temporal_trajectory, duplicate_timestamp_with_different_distance_extends_ti
   EXPECT_LE(mapped_time, 2.0);
 }
 
-TEST(temporal_trajectory, crossed_uses_spatial_trajectory)
+TEST(TemporalTrajectory, CrossedUsesSpatialTrajectory)
 {
   const std::vector<TrajectoryPoint> points{
     make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
@@ -138,7 +138,7 @@ TEST(temporal_trajectory, crossed_uses_spatial_trajectory)
   EXPECT_NEAR(crossed_points.front().time, 1.5, 1e-6);
 }
 
-TEST(temporal_trajectory, find_intervals_uses_time_axis)
+TEST(TemporalTrajectory, FindIntervalsUsesTimeAxis)
 {
   const std::vector<TrajectoryPoint> points{
     make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
@@ -159,7 +159,7 @@ TEST(temporal_trajectory, find_intervals_uses_time_axis)
   EXPECT_NEAR(intervals.front().end.time, 2.0, 1e-6);
 }
 
-TEST(temporal_trajectory, crop_time_rebases_time_axis)
+TEST(TemporalTrajectory, CropTimeRebasesTimeAxis)
 {
   const std::vector<TrajectoryPoint> points{
     make_point(0.0, -1.0), make_point(1.0, 0.0), make_point(2.0, 1.0), make_point(3.0, 2.0)};
@@ -176,7 +176,7 @@ TEST(temporal_trajectory, crop_time_rebases_time_axis)
   EXPECT_NEAR(restored.back().pose.position.x, 3.0, 1e-6);
 }
 
-TEST(temporal_trajectory, set_stopline_collapses_following_points)
+TEST(TemporalTrajectory, SetStoplineCollapsesFollowingPoints)
 {
   const std::vector<TrajectoryPoint> points{
     make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
@@ -191,7 +191,7 @@ TEST(temporal_trajectory, set_stopline_collapses_following_points)
   EXPECT_NEAR(point_after_stop.longitudinal_velocity_mps, 0.0, 1e-6);
 }
 
-TEST(temporal_trajectory, set_stopline_with_time_extends_schedule)
+TEST(TemporalTrajectory, SetStoplineWithTimeExtendsSchedule)
 {
   const std::vector<TrajectoryPoint> points{
     make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
@@ -208,7 +208,7 @@ TEST(temporal_trajectory, set_stopline_with_time_extends_schedule)
   EXPECT_GT(point_after_stop.pose.position.x, 1.5);
 }
 
-TEST(temporal_trajectory, distance_to_time_returns_first_stop_time)
+TEST(TemporalTrajectory, DistanceToTimeReturnsFirstStopTime)
 {
   const std::vector<TrajectoryPoint> points{
     make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
@@ -221,7 +221,7 @@ TEST(temporal_trajectory, distance_to_time_returns_first_stop_time)
 }
 
 // Test: distance_to_time clamps distance below range (returns start_time)
-TEST(temporal_trajectory, distance_to_time_clamps_below_range)
+TEST(TemporalTrajectory, DistanceToTimeClampsBelowRange)
 {
   const std::vector<TrajectoryPoint> points{
     make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
@@ -234,7 +234,7 @@ TEST(temporal_trajectory, distance_to_time_clamps_below_range)
 }
 
 // Test: distance_to_time clamps distance above range (returns end_time)
-TEST(temporal_trajectory, distance_to_time_clamps_above_range)
+TEST(TemporalTrajectory, DistanceToTimeClampsAboveRange)
 {
   const std::vector<TrajectoryPoint> points{
     make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
@@ -247,7 +247,7 @@ TEST(temporal_trajectory, distance_to_time_clamps_above_range)
 }
 
 // Test: compute_from_distance at trajectory boundaries
-TEST(temporal_trajectory, compute_from_distance_at_boundaries)
+TEST(TemporalTrajectory, ComputeFromDistanceAtBoundaries)
 {
   const std::vector<TrajectoryPoint> points{
     make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
@@ -266,7 +266,7 @@ TEST(temporal_trajectory, compute_from_distance_at_boundaries)
 }
 
 // Test: compute_from_time at trajectory boundaries
-TEST(temporal_trajectory, compute_from_time_at_boundaries)
+TEST(TemporalTrajectory, ComputeFromTimeAtBoundaries)
 {
   const std::vector<TrajectoryPoint> points{
     make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
@@ -285,7 +285,7 @@ TEST(temporal_trajectory, compute_from_time_at_boundaries)
 }
 
 // Test: restore after crop_time returns cropped trajectory points
-TEST(temporal_trajectory, restore_after_crop_time)
+TEST(TemporalTrajectory, RestoreAfterCropTime)
 {
   const std::vector<TrajectoryPoint> points{
     make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};

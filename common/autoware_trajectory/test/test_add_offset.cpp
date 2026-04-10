@@ -288,7 +288,7 @@ static void expect_temporal_offset_at(
   EXPECT_NEAR(shifted.pose.position.z, original.pose.position.z + expected_offset.z(), tolerance);
 }
 
-TEST(add_offset_temporal, combined_offset_respects_heading_rotation)
+TEST(AddOffsetTemporal, CombinedOffsetRespectsHeadingRotation)
 {
   // Trajectory with 90 degree heading (+y direction)
   std::vector<TrajectoryPoint> points;
@@ -308,7 +308,7 @@ TEST(add_offset_temporal, combined_offset_respects_heading_rotation)
   expect_temporal_offset_at(traj, traj.length(), forward_offset, lateral_offset);
 }
 
-TEST(add_offset_temporal, preserves_time_mapping)
+TEST(AddOffsetTemporal, PreservesTimeMapping)
 {
   // Create trajectory with varying time intervals
   std::vector<TrajectoryPoint> points;
@@ -335,7 +335,7 @@ TEST(add_offset_temporal, preserves_time_mapping)
   EXPECT_NEAR(offset_traj.time_to_distance(2.0), traj.time_to_distance(2.0), 1e-6);
 }
 
-TEST(add_offset_temporal, vertical_offset_with_full_orientation)
+TEST(AddOffsetTemporal, VerticalOffsetWithFullOrientation)
 {
   // Test with roll, pitch, and yaw to verify 3D quaternion rotation
   const double roll = M_PI / 6.0;   // 30 degrees

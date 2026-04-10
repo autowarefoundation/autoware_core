@@ -137,7 +137,7 @@ TEST(PrettyBuild, BuildsFromSinglePointWithAkimaFallback)
   EXPECT_EQ(trajectory_opt->get_underlying_bases().size(), 1);
 }
 
-TEST(pretty_build_temporal, from_2_cubic)
+TEST(PrettyBuildTemporal, From2Cubic)
 {
   const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> points{
     make_temporal_trajectory_point(0.0, 0.0, 0.0), make_temporal_trajectory_point(2.0, 0.0, 2.0)};
@@ -155,7 +155,7 @@ TEST(pretty_build_temporal, from_2_cubic)
   EXPECT_NEAR(rclcpp::Duration(middle_point.time_from_start).seconds(), 1.0, 1e-6);
 }
 
-TEST(pretty_build_temporal, from_4_akima)
+TEST(PrettyBuildTemporal, From4Akima)
 {
   const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> points{
     make_temporal_trajectory_point(0.0, 0.0, 0.0), make_temporal_trajectory_point(1.0, 0.5, 1.0),
@@ -170,7 +170,7 @@ TEST(pretty_build_temporal, from_4_akima)
   EXPECT_NEAR(trajectory.end_time(), 4.0, 1e-6);
 }
 
-TEST(pretty_build_temporal, fail_because_points_are_too_few)
+TEST(PrettyBuildTemporal, FailBecausePointsAreTooFew)
 {
   const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> points{
     make_temporal_trajectory_point(0.0, 0.0, 0.0)};

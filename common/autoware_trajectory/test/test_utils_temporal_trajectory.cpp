@@ -38,7 +38,7 @@ TrajectoryPoint make_point(const double x, const double time_from_start, const f
 }
 }  // namespace
 
-TEST(find_intervals_temporal, returns_empty_when_no_stop_interval)
+TEST(FindIntervalsTemporal, ReturnsEmptyWhenNoStopInterval)
 {
   const std::vector<TrajectoryPoint> points{
     make_point(0.0, 0.0, 2.0F), make_point(1.0, 1.0, 2.0F), make_point(2.0, 2.0, 1.0F),
@@ -55,7 +55,7 @@ TEST(find_intervals_temporal, returns_empty_when_no_stop_interval)
   EXPECT_TRUE(intervals.empty());
 }
 
-TEST(find_intervals_temporal, returns_stop_interval_with_distance)
+TEST(FindIntervalsTemporal, ReturnsStopIntervalWithDistance)
 {
   const std::vector<TrajectoryPoint> points{
     make_point(0.0, 0.0, 2.0F), make_point(1.0, 1.0, 1.0F), make_point(2.0, 2.0, 0.0F),
@@ -75,7 +75,7 @@ TEST(find_intervals_temporal, returns_stop_interval_with_distance)
   EXPECT_NEAR(intervals.front().start.distance, 2.0, 1e-3);
 }
 
-TEST(find_intervals_temporal, respects_velocity_threshold)
+TEST(FindIntervalsTemporal, RespectsVelocityThreshold)
 {
   const std::vector<TrajectoryPoint> points{
     make_point(0.0, 0.0, 2.0F), make_point(1.0, 1.0, 0.2F), make_point(2.0, 2.0, 0.1F),
