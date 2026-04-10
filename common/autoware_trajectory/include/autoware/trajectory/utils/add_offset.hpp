@@ -213,15 +213,14 @@ inline TemporalTrajectory add_offset(
   const TemporalTrajectory & reference_trajectory, const double offset_x, const double offset_y,
   const double offset_z = 0.0)
 {
-  const auto & spatial_traj = reference_trajectory.spatial_trajectory();
-  const auto underlying_bases = spatial_traj.get_underlying_bases();
+  const auto underlying_time_bases = reference_trajectory.get_underlying_time_bases();
 
   std::vector<TemporalTrajectory::PointType> offset_points;
-  offset_points.reserve(underlying_bases.size());
+  offset_points.reserve(underlying_time_bases.size());
 
-  for (const auto s : underlying_bases) {
+  for (const auto t : underlying_time_bases) {
     // Use compute_from_distance to get the full point including time_from_start
-    auto point = reference_trajectory.compute_from_distance(s);
+    auto point = reference_trajectory.compute_from_time(t);
 
     // Use pose orientation from the trajectory point
     auto orientation = detail::get_orientation_from_point_type(point);
@@ -241,12 +240,16 @@ inline TemporalTrajectory add_offset(
     offset_points.emplace_back(point);
   }
 
-  auto offset_trajectory =
-    TemporalTrajectory::Builder{}.build(offset_points).value_or(TemporalTrajectory{});  // NOLINT
-
-  // Copy time offset from original
-  offset_trajectory.set_time_offset(reference_trajectory.time_offset());
-
+  auto offset_trajectory = reference_trajectory;
+  const auto result = offset_trajectory.build(offset_points);
+  assert(
+    result.has_value() &&
+    "add_offset: failed to build TemporalTrajectory with offset points");  // The build should
+                                                                           // never fail
+                                                                           // since the
+                                                                           // offset points are
+                                                                           // generated from a
+                                                                           // valid trajectory.
   return offset_trajectory;
 }
 
