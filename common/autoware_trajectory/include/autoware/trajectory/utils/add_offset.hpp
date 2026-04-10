@@ -213,7 +213,8 @@ inline TemporalTrajectory add_offset(
   offset_points.reserve(underlying_bases.size());
 
   for (const auto s : underlying_bases) {
-    auto point = spatial_traj.compute(s);
+    // Use compute_from_distance to get the full point including time_from_start
+    auto point = reference_trajectory.compute_from_distance(s);
 
     // Use pose orientation from the trajectory point
     const double yaw = detail::get_yaw_from_point_type(point);
