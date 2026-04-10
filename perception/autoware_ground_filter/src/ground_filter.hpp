@@ -41,16 +41,12 @@ struct PointsCentroid
   float height_avg;
   float height_max;
   float height_min;
-  uint16_t grid_id;
   std::vector<size_t> pcl_indices;
   std::vector<float> height_list;
   std::vector<float> radius_list;
   std::vector<bool> is_ground_list;
 
-  PointsCentroid()
-  : radius_avg(0.0f), height_avg(0.0f), height_max(-10.0f), height_min(10.0f), grid_id(0)
-  {
-  }
+  PointsCentroid() : radius_avg(0.0f), height_avg(0.0f), height_max(-10.0f), height_min(10.0f) {}
 
   void initialize()
   {
@@ -58,7 +54,6 @@ struct PointsCentroid
     height_avg = 0.0f;
     height_max = -10.0f;
     height_min = 10.0f;
-    grid_id = 0;
     pcl_indices.clear();
     height_list.clear();
     radius_list.clear();
