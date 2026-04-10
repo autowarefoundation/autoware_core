@@ -33,7 +33,7 @@ static TrajectoryPoint make_trajectory_point(double x, double y, double vx, doub
   point.pose = build<Pose>()
                  .position(build<Point>().x(x).y(y).z(0.0))
                  .orientation(create_quaternion_from_yaw(yaw));
-  point.longitudinal_velocity_mps = vx;
+  point.longitudinal_velocity_mps = static_cast<float>(vx);
   point.lateral_velocity_mps = 0.0;
   point.heading_rate_rps = 0.0;
   return point;
