@@ -112,8 +112,7 @@ protected:
    * @param s The input value for which to find the interval index.
    * @param end_inclusive Whether to include the end value in the last interval. Defaults to true.
    * @return The index of the interval containing the input value.
-   *
-   * @throw std::out_of_range if the input value is outside the range of the bases array.
+   * @pre The interpolator has been built and `bases_` is non-empty.
    */
   int32_t get_index(const double s, bool end_inclusive = true) const
   {
@@ -182,7 +181,8 @@ public:
    *
    * @param s The point at which to compute the interpolated value.
    * @return The interpolated value.
-   * @throw std::runtime_error if the interpolator has not been built.
+   * @pre The interpolator has been built.
+   * @note Input values outside the interpolation range are clamped after emitting a warning.
    */
   T compute(const double s) const
   {
@@ -195,7 +195,8 @@ public:
    *
    * @param s The point at which to compute the interpolated value.
    * @return The interpolated value.
-   * @throw std::runtime_error if the interpolator has not been built.
+   * @pre The interpolator has been built.
+   * @note Each input value is processed by `compute(const double)`, including range clamping.
    */
   std::vector<T> compute(const std::vector<double> & ss) const
   {
