@@ -177,9 +177,6 @@ void TemporalTrajectory::crop_time(const double start_time, const double duratio
 {
   const auto clamped_start_time = clamp_time(start_time, false);
   const auto clamped_end_time = clamp_time(start_time + duration, false);
-  if (clamped_end_time - clamped_start_time <= k_same_time_threshold) {
-    return;
-  }
 
   const auto absolute_start_distance = time_distance_mapping_.distance_at(clamped_start_time);
   const auto absolute_end_distance = time_distance_mapping_.distance_at(clamped_end_time);
@@ -193,9 +190,6 @@ void TemporalTrajectory::crop_distance(const double start_distance, const double
 {
   const auto clamped_start_distance = std::clamp(start_distance, 0.0, this->length());
   const auto clamped_end_distance = std::clamp(start_distance + length, 0.0, this->length());
-  if (clamped_end_distance - clamped_start_distance <= k_same_time_threshold) {
-    return;
-  }
 
   // Convert distance to time for the time-distance mapping
   const auto start_time = distance_to_time(clamped_start_distance);
