@@ -16,13 +16,11 @@
 #define AUTOWARE__TRAJECTORY__TEMPORAL_TRAJECTORY_HPP_
 
 #include "autoware/trajectory/detail/time_distance_mapping.hpp"
-#include "autoware/trajectory/interpolator/interpolator.hpp"
 #include "autoware/trajectory/trajectory_point.hpp"
 
 #include <tl_expected/expected.hpp>
 
 #include <memory>
-#include <optional>
 #include <utility>
 #include <vector>
 namespace autoware::experimental::trajectory
@@ -111,9 +109,9 @@ public:
   /**
    * @brief Convert arc length to time.
    * @param[in] s Query arc length in meters.
-   * @return Time in seconds, or `std::nullopt` when the mapping is not uniquely invertible.
+   * @return Time in seconds. Distance is clamped to the valid range if out of bounds.
    */
-  [[nodiscard]] std::optional<double> distance_to_time(const double s) const;
+  [[nodiscard]] double distance_to_time(const double s) const;
 
   /**
    * @brief Restore the trajectory at its underlying time bases.

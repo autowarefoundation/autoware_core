@@ -135,9 +135,7 @@ TemporalTrajectory::PointType TemporalTrajectory::compute_from_distance(const do
 {
   auto point = spatial_trajectory_.compute(s);
   const auto t = distance_to_time(s);
-  if (t.has_value()) {
-    point.time_from_start = to_duration_msg(*t);
-  }
+  point.time_from_start = to_duration_msg(t);
   return point;
 }
 
@@ -157,7 +155,7 @@ double TemporalTrajectory::time_to_distance(const double t) const
   return time_distance_mapping_.distance_at(clamp_time(t, true)) - distance_offset_;
 }
 
-std::optional<double> TemporalTrajectory::distance_to_time(const double s) const
+double TemporalTrajectory::distance_to_time(const double s) const
 {
   const auto s_clamped = std::clamp(s, 0.0, length());
   const auto absolute_distance = s_clamped + distance_offset_;
@@ -200,31 +198,24 @@ void TemporalTrajectory::crop_distance(const double start_distance, const double
   }
 
   // Convert distance to time for the time-distance mapping
-  const auto start_time_opt = distance_to_time(clamped_start_distance);
-  const auto end_time_opt = distance_to_time(clamped_end_distance);
-
-  if (!start_time_opt.has_value() || !end_time_opt.has_value()) {
-    return;
-  }
+  const auto start_time = distance_to_time(clamped_start_distance);
+  const auto end_time = distance_to_time(clamped_end_distance);
 
   spatial_trajectory_.crop(clamped_start_distance, clamped_end_distance - clamped_start_distance);
-  time_distance_mapping_.set_time_range(*start_time_opt, *end_time_opt);
+  time_distance_mapping_.set_time_range(start_time, end_time);
   distance_offset_ = clamped_start_distance + distance_offset_;
 }
 
 void TemporalTrajectory::set_stopline(const double arc_length)
 {
   const auto stop_time = distance_to_time(arc_length);
-  if (!stop_time.has_value()) {
-    return;
-  }
 
   const auto stop_distance = std::clamp(arc_length, 0.0, length());
   spatial_trajectory_.crop(0.0, stop_distance);
   spatial_trajectory_.longitudinal_velocity_mps().at(spatial_trajectory_.length()).set(0.0);
 
   if (const auto result = time_distance_mapping_.set_distance_range(
-        *stop_time, time_distance_mapping_.end_time(), stop_distance + distance_offset_);
+        stop_time, time_distance_mapping_.end_time(), stop_distance + distance_offset_);
       !result) {
     RCLCPP_WARN(
       rclcpp::get_logger("TemporalTrajectory"), "Failed to update stopline time-distance bases");
@@ -234,15 +225,12 @@ void TemporalTrajectory::set_stopline(const double arc_length)
 void TemporalTrajectory::set_stopline(const double arc_length, const double duration)
 {
   const auto stop_time = distance_to_time(arc_length);
-  if (!stop_time.has_value()) {
-    return;
-  }
 
   const auto stop_duration = std::max(duration, 0.0);
 
   const auto stop_distance = std::clamp(arc_length, 0.0, length());
   spatial_trajectory_.longitudinal_velocity_mps().at(stop_distance).set(0.0);
-  if (const auto result = time_distance_mapping_.extend_time_at(*stop_time, stop_duration);
+  if (const auto result = time_distance_mapping_.extend_time_at(stop_time, stop_duration);
       !result) {
     RCLCPP_WARN(
       rclcpp::get_logger("TemporalTrajectory"),
