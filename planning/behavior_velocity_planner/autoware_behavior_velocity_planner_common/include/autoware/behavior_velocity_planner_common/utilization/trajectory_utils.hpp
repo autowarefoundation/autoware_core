@@ -16,19 +16,17 @@
 #define AUTOWARE__BEHAVIOR_VELOCITY_PLANNER_COMMON__UTILIZATION__TRAJECTORY_UTILS_HPP_
 
 #include <autoware/behavior_velocity_planner_common/planner_data.hpp>
+#include <autoware/trajectory/path_point_with_lane_id.hpp>
 
 #include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
-#include <autoware_planning_msgs/msg/trajectory.hpp>
-#include <autoware_planning_msgs/msg/trajectory_point.hpp>
-#include <geometry_msgs/msg/quaternion.hpp>
 
 #include <memory>
-#include <utility>
-#include <vector>
 
 namespace autoware::behavior_velocity_planner
 {
 using autoware_internal_planning_msgs::msg::PathWithLaneId;
+using Trajectory = autoware::experimental::trajectory::Trajectory<
+  autoware_internal_planning_msgs::msg::PathPointWithLaneId>;
 
 //! smooth path point with lane id starts from ego position on path to the path end
 bool smoothPath(
@@ -36,6 +34,8 @@ bool smoothPath(
   const std::shared_ptr<const PlannerData> & planner_data);
 bool smoothPath(
   const PathWithLaneId & in_path, PathWithLaneId & out_path, const PlannerData & planner_data);
+bool smoothPath(
+  const Trajectory & in_path, Trajectory & out_path, const PlannerData & planner_data);
 }  // namespace autoware::behavior_velocity_planner
 
 #endif  // AUTOWARE__BEHAVIOR_VELOCITY_PLANNER_COMMON__UTILIZATION__TRAJECTORY_UTILS_HPP_
