@@ -15,6 +15,7 @@
 #ifndef AUTOWARE__NDT_SCAN_MATCHER__MAP_UPDATE_MODULE_HPP_
 #define AUTOWARE__NDT_SCAN_MATCHER__MAP_UPDATE_MODULE_HPP_
 
+#include "guarded.hpp"
 #include "hyper_parameters.hpp"
 #include "ndt_omp/multigrid_ndt_omp.h"
 #include "particle.hpp"
@@ -53,50 +54,55 @@ class MapUpdateModule
 
 public:
   MapUpdateModule(
-    rclcpp::Node * node, std::mutex * ndt_ptr_mutex, NdtPtrType & ndt_ptr,
-    HyperParameters::DynamicMapLoading param);
+    rclcpp::Node * node, const NdtPtrType & initial_ndt, HyperParameters::DynamicMapLoading param);
 
+  // Build a new NDT map if the vehicle has moved far enough from the last update position.
+  // Returns a new NDT to install, or nullptr if no update was performed.
+  // Thread-safe: can be called from any callback group.
+  NdtPtrType build_if_needed(
+    const geometry_msgs::msg::Point & position,
+    std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr);
+
+  // Check if the given position is outside the loaded map range.
+  // Thread-safe.
   bool out_of_map_range(const geometry_msgs::msg::Point & position);
 
-private:
-  friend class NDTScanMatcher;
+  // Publish the voxelized PCD of the given NDT for debugging visualization.
+  void publish_partial_pcd_map(const NdtType & ndt);
 
-  void callback_timer(
-    const bool is_activated, const std::optional<geometry_msgs::msg::Point> & position,
-    std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr);
+private:
+  // Heavy map-building state. build_if_needed() holds this for the duration of PCD loading.
+  struct BuilderState
+  {
+    NdtPtrType secondary_ndt_ptr;
+    bool need_rebuild = true;
+  };
 
   [[nodiscard]] bool should_update_map(
     const geometry_msgs::msg::Point & position,
-    std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr);
+    std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr, BuilderState & state);
 
-  void update_map(
-    const geometry_msgs::msg::Point & position,
-    std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr);
-  // Update the specified NDT
+  // Load/remove PCD tiles into the given NDT object.
   bool update_ndt(
     const geometry_msgs::msg::Point & position, NdtType & ndt,
     std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr);
-  void publish_partial_pcd_map();
 
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr loaded_pcd_pub_;
 
   rclcpp::Client<autoware_map_msgs::srv::GetDifferentialPointCloudMap>::SharedPtr
     pcd_loader_client_;
 
-  NdtPtrType & ndt_ptr_;
-  std::mutex * ndt_ptr_mutex_;
   rclcpp::Logger logger_;
   rclcpp::Clock::SharedPtr clock_;
 
-  std::optional<geometry_msgs::msg::Point> last_update_position_ = std::nullopt;
-
   HyperParameters::DynamicMapLoading param_;
+  pclomp::NdtParams ndt_params_;  // Immutable after construction; used to init new NDT objects.
 
-  // Indicate if there is a prefetch thread waiting for being collected
-  NdtPtrType secondary_ndt_ptr_;
-  bool need_rebuild_;
-  // Keep the last_update_position_ unchanged while checking map range
-  std::mutex last_update_position_mtx_;
+  Guarded<BuilderState> builder_state_;
+
+  // Separate from mtx_ so that out_of_map_range() (called from sensor callback
+  // while holding ndt_.lock()) does not block on PCD loading.
+  Guarded<std::optional<geometry_msgs::msg::Point>> last_update_position_;
 };
 
 }  // namespace autoware::ndt_scan_matcher
