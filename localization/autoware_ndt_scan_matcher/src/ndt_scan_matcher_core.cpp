@@ -231,7 +231,17 @@ void NDTScanMatcher::callback_timer()
 
   diagnostics_map_update_->add_key_value("timer_callback_time_stamp", ros_time_now.nanoseconds());
 
-  map_update_module_->callback_timer(is_activated_, latest_ekf_position_, diagnostics_map_update_);
+  // Avoid data race when reading and writing latest_ekf_position
+  // from multiple threads
+  std::unique_lock<std::mutex> lock(latest_ekf_position_mtx_);
+
+  auto tmp_latest_ekf_position = latest_ekf_position_;
+
+  lock.unlock();
+
+  // Pass the copy of latest_ekf_position instead of the real one
+  map_update_module_->callback_timer(
+    is_activated_, tmp_latest_ekf_position, diagnostics_map_update_);
 
   diagnostics_map_update_->publish(ros_time_now);
 }
