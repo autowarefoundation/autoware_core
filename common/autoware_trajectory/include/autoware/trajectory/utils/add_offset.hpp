@@ -17,6 +17,7 @@
 
 #include "autoware/trajectory/detail/types.hpp"
 #include "autoware/trajectory/forward.hpp"
+#include "autoware/trajectory/temporal_trajectory.hpp"
 
 #include <autoware_internal_planning_msgs/msg/path_point_with_lane_id.hpp>
 #include <autoware_planning_msgs/msg/path_point.hpp>
@@ -132,6 +133,67 @@ trajectory::Trajectory<PointType> add_offset(
                                                                    // since the offset points are
                                                                    // generated from a valid
                                                                    // trajectory.
+  return offset_trajectory;
+}
+
+/**
+ * @brief Compute a TemporalTrajectory offset from the base_link by a fixed vehicle-frame offset.
+ * @details
+ * Given a TemporalTrajectory whose points represent the base_link pose, this function computes a
+ * new TemporalTrajectory where each point is translated by `(offset_x, offset_y, offset_z)`
+ * expressed in the **local vehicle frame** (i.e., forward is +x, left is +y, up is +z). The
+ * orientation and time mapping of each pose is preserved.
+ *
+ * The vehicle-frame offset is rotated into the global frame using the point's full orientation
+ * quaternion. This means roll, pitch, and yaw are all respected.
+ *
+ * This is useful for obtaining the time-parameterized path of the vehicle front, rear, or side
+ * edges from a base_link-centered trajectory.
+ *
+ * @param reference_trajectory The input TemporalTrajectory (base_link centered).
+ * @param offset_x Forward offset in the vehicle frame [m].
+ * @param offset_y Lateral offset in the vehicle frame [m].
+ * @param offset_z Vertical offset in the vehicle frame [m].
+ * @return A new TemporalTrajectory with the offset applied.
+ */
+inline TemporalTrajectory add_offset(
+  const TemporalTrajectory & reference_trajectory, const double offset_x, const double offset_y,
+  const double offset_z = 0.0)
+{
+  const auto underlying_time_bases = reference_trajectory.get_underlying_time_bases();
+
+  std::vector<TemporalTrajectory::PointType> offset_points;
+  offset_points.reserve(underlying_time_bases.size());
+
+  for (const auto t : underlying_time_bases) {
+    // Use compute_from_distance to get the full point including time_from_start
+    auto point = reference_trajectory.compute_from_time(t);
+
+    // Use pose orientation from the trajectory point
+    auto orientation = detail::get_orientation_from_point_type(point);
+    orientation.normalize();
+
+    // Rotate the vehicle-frame offset into the global frame using quaternion
+    const auto global_offset =
+      tf2::quatRotate(orientation, tf2::Vector3(offset_x, offset_y, offset_z));
+
+    detail::to_point(point).x += global_offset.x();
+    detail::to_point(point).y += global_offset.y();
+    detail::to_point(point).z += global_offset.z();
+
+    offset_points.emplace_back(point);
+  }
+
+  auto offset_trajectory = reference_trajectory;
+  const auto result = offset_trajectory.build(offset_points);
+  assert(
+    result.has_value() &&
+    "add_offset: failed to build TemporalTrajectory with offset points");  // The build should
+                                                                           // never fail
+                                                                           // since the
+                                                                           // offset points are
+                                                                           // generated from a
+                                                                           // valid trajectory.
   return offset_trajectory;
 }
 

@@ -16,6 +16,7 @@
 #define AUTOWARE__TRAJECTORY__UTILS__CROSSED_HPP_
 #include "autoware/trajectory/detail/types.hpp"
 #include "autoware/trajectory/forward.hpp"
+#include "autoware/trajectory/temporal_trajectory.hpp"
 #include "autoware/trajectory/threshold.hpp"
 
 #include <Eigen/Core>
@@ -142,6 +143,70 @@ template <class TrajectoryPointType, class LineStringType>
 {
   return crossed_with_constraint(
     trajectory, linestring, [](const TrajectoryPointType &) { return true; }, start, end_inclusive);
+}
+
+template <class LineStringType>
+[[nodiscard]] std::vector<TimeDistancePair> crossed(
+  const TemporalTrajectory & trajectory, const LineStringType & linestring,
+  const double start = 0.0, const double end_inclusive = std::numeric_limits<double>::infinity())
+{
+  using autoware::experimental::trajectory::detail::to_point;
+
+  std::function<Eigen::Vector2d(const double & time)> trajectory_compute =
+    [&trajectory](const double & time) {
+      const auto point = trajectory.compute_from_time(time);
+      Eigen::Vector2d result;
+      result << to_point(point).x, to_point(point).y;
+      return result;
+    };
+
+  std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>> linestring_eigen;
+
+  if (linestring.end() - linestring.begin() < 2) {
+    return {};
+  }
+
+  auto point_it = linestring.begin();
+  auto point_it_next = linestring.begin() + 1;
+
+  for (; point_it_next != linestring.end(); ++point_it, ++point_it_next) {
+    Eigen::Vector2d line_start;
+    Eigen::Vector2d line_end;
+    line_start << point_it->x(), point_it->y();
+    line_end << point_it_next->x(), point_it_next->y();
+    linestring_eigen.emplace_back(line_start, line_end);
+  }
+
+  const auto & bases = trajectory.get_underlying_time_bases();
+  std::vector<double> base_range;
+  for (const auto & base : bases) {
+    if (base < start) {
+      continue;
+    }
+    if (base_range.empty()) {
+      base_range.push_back(start);
+    }
+    if (base > end_inclusive) {
+      if (!is_almost_same(end_inclusive, base_range.back())) {
+        base_range.push_back(end_inclusive);
+      }
+      break;
+    }
+    if (!is_almost_same(base, base_range.back())) {
+      base_range.push_back(base);
+    }
+  }
+
+  const auto crossed_times = detail::impl::crossed_with_constraint_impl(
+    trajectory_compute, base_range, linestring_eigen, [](const double &) { return true; });
+
+  std::vector<TimeDistancePair> crossed_points;
+  crossed_points.reserve(crossed_times.size());
+  for (const auto crossed_time : crossed_times) {
+    crossed_points.push_back(
+      TimeDistancePair{crossed_time, trajectory.time_to_distance(crossed_time)});
+  }
+  return crossed_points;
 }
 
 /**

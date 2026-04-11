@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "autoware/trajectory/temporal_trajectory.hpp"
 #include "autoware/trajectory/trajectory_point.hpp"
 #include "autoware/trajectory/utils/add_offset.hpp"
 
 #include <autoware_utils_geometry/geometry.hpp>
+#include <rclcpp/duration.hpp>
 
 #include <gtest/gtest.h>
 #include <tf2/LinearMath/Quaternion.h>
@@ -250,6 +252,108 @@ TEST(AddOffset, LateralOffsetOnRolledTrajectoryShiftsZ)
   auto offset_traj = add_offset(traj, 0.0, offset_y, 0.0);
 
   expect_offset_at(traj, 0.0, 0.0, offset_y, 0.0);
+}
+
+// Helper to create a TrajectoryPoint with time_from_start for TemporalTrajectory
+static TrajectoryPoint make_temporal_trajectory_point(
+  double x, double y, double z = 0.0, double roll = 0.0, double pitch = 0.0, double yaw = 0.0,
+  double time_from_start = 0.0, float velocity = 0.0f)
+{
+  TrajectoryPoint point;
+  point.pose = build<Pose>()
+                 .position(build<Point>().x(x).y(y).z(z))
+                 .orientation(create_quaternion_from_rpy(roll, pitch, yaw));
+  point.longitudinal_velocity_mps = velocity;
+  point.time_from_start = rclcpp::Duration::from_seconds(time_from_start);
+  return point;
+}
+
+static void expect_temporal_offset_at(
+  const TemporalTrajectory & trajectory, const double s, const double offset_x,
+  const double offset_y, const double offset_z = 0.0, const double tolerance = 1e-6)
+{
+  const auto original = trajectory.compute_from_distance(s);
+  const auto offset_trajectory = add_offset(trajectory, offset_x, offset_y, offset_z);
+  const auto shifted = offset_trajectory.compute_from_distance(s);
+
+  tf2::Quaternion orientation(
+    original.pose.orientation.x, original.pose.orientation.y, original.pose.orientation.z,
+    original.pose.orientation.w);
+  orientation.normalize();
+  const auto expected_offset =
+    tf2::quatRotate(orientation, tf2::Vector3(offset_x, offset_y, offset_z));
+
+  EXPECT_NEAR(shifted.pose.position.x, original.pose.position.x + expected_offset.x(), tolerance);
+  EXPECT_NEAR(shifted.pose.position.y, original.pose.position.y + expected_offset.y(), tolerance);
+  EXPECT_NEAR(shifted.pose.position.z, original.pose.position.z + expected_offset.z(), tolerance);
+}
+
+TEST(AddOffsetTemporal, CombinedOffsetRespectsHeadingRotation)
+{
+  // Trajectory with 90 degree heading (+y direction)
+  std::vector<TrajectoryPoint> points;
+  const double yaw_90 = M_PI_2;
+  points.emplace_back(make_temporal_trajectory_point(0.0, 0.0, 0.0, 0.0, 0.0, yaw_90, 0.0, 1.0f));
+  points.emplace_back(make_temporal_trajectory_point(0.0, 1.0, 0.0, 0.0, 0.0, yaw_90, 1.0, 1.0f));
+  points.emplace_back(make_temporal_trajectory_point(0.0, 2.0, 0.0, 0.0, 0.0, yaw_90, 2.0, 1.0f));
+
+  auto traj_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(traj_result.has_value());
+  auto traj = traj_result.value();
+
+  const double forward_offset = 1.0;  // 1m forward (in vehicle frame = +y in global)
+  const double lateral_offset = 0.5;  // 0.5m left (in vehicle frame = -x in global)
+
+  expect_temporal_offset_at(traj, 0.0, forward_offset, lateral_offset);
+  expect_temporal_offset_at(traj, traj.length(), forward_offset, lateral_offset);
+}
+
+TEST(AddOffsetTemporal, PreservesTimeMapping)
+{
+  // Create trajectory with varying time intervals
+  std::vector<TrajectoryPoint> points;
+  points.emplace_back(make_temporal_trajectory_point(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0f));
+  points.emplace_back(
+    make_temporal_trajectory_point(1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.0, 1.0f));  // 2s
+  points.emplace_back(
+    make_temporal_trajectory_point(2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 3.0, 1.0f));  // 1s
+
+  auto traj_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(traj_result.has_value());
+  auto traj = traj_result.value();
+
+  auto offset_traj = add_offset(traj, 1.0, 0.5, 0.5);
+
+  // Duration should be preserved
+  EXPECT_NEAR(offset_traj.duration(), traj.duration(), 1e-6);
+
+  // Time offset should be preserved (default is 0)
+  EXPECT_NEAR(offset_traj.time_offset(), traj.time_offset(), 1e-6);
+
+  // Check time_to_distance conversion still works
+  EXPECT_NEAR(offset_traj.time_to_distance(0.0), traj.time_to_distance(0.0), 1e-6);
+  EXPECT_NEAR(offset_traj.time_to_distance(2.0), traj.time_to_distance(2.0), 1e-6);
+}
+
+TEST(AddOffsetTemporal, VerticalOffsetWithFullOrientation)
+{
+  // Test with roll, pitch, and yaw to verify 3D quaternion rotation
+  const double roll = M_PI / 6.0;   // 30 degrees
+  const double pitch = M_PI / 4.0;  // 45 degrees
+  const double yaw = M_PI_2;        // 90 degrees
+  std::vector<TrajectoryPoint> points;
+  points.emplace_back(make_temporal_trajectory_point(0.0, 0.0, 0.0, roll, pitch, yaw, 0.0, 1.0f));
+  points.emplace_back(make_temporal_trajectory_point(0.0, 1.0, 0.0, roll, pitch, yaw, 1.0, 1.0f));
+
+  auto traj_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(traj_result.has_value());
+  auto traj = traj_result.value();
+
+  const double offset_x = 1.0;
+  const double offset_y = 0.5;
+  const double offset_z = 0.3;
+
+  expect_temporal_offset_at(traj, 0.0, offset_x, offset_y, offset_z);
 }
 
 }  // namespace autoware::experimental::trajectory

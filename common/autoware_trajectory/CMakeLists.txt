@@ -20,13 +20,8 @@ autoware_package()
 set(fmt_TARGETS fmt::fmt)
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
-  src/threshold.cpp
-  src/point.cpp
-  src/pose.cpp
-  src/path_point.cpp
-  src/path_point_with_lane_id.cpp
-  src/trajectory_point.cpp
   src/detail/logging.cpp
+  src/detail/time_distance_mapping.cpp
   src/detail/types.cpp
   src/detail/util.cpp
   src/interpolator/akima_spline.cpp
@@ -35,15 +30,22 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/interpolator/linear.cpp
   src/interpolator/result.cpp
   src/interpolator/spherical_linear.cpp
+  src/path_point.cpp
+  src/path_point_with_lane_id.cpp
+  src/point.cpp
+  src/pose.cpp
+  src/temporal_trajectory.cpp
+  src/threshold.cpp
+  src/trajectory_point.cpp
   src/utils/closest.cpp
   src/utils/crossed.cpp
   src/utils/find_if.cpp
   src/utils/find_intervals.cpp
-  src/utils/pretty_build.cpp
-  src/utils/shift.cpp
-  src/utils/reference_path.cpp
   src/utils/find_nearest.cpp
   src/utils/footprint.cpp
+  src/utils/pretty_build.cpp
+  src/utils/reference_path.cpp
+  src/utils/shift.cpp
   src/utils/velocity.cpp
 )
 
@@ -102,6 +104,8 @@ if(BUILD_TESTING)
     examples/example_footprint.cpp
     examples/example_crossed.cpp
     examples/example_add_offset.cpp
+    examples/example_temporal_trajectory.cpp
+    examples/example_temporal_crop.cpp
   )
 
   foreach(example_file ${example_files})
