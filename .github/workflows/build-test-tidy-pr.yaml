@@ -95,6 +95,20 @@ jobs:
     secrets:
       codecov-token: ${{ secrets.CODECOV_TOKEN }}
 
+  build-and-test-diff-jazzy-agnocast:
+    if: ${{ always() }}
+    needs:
+      - require-label
+    uses: ./.github/workflows/build-and-test-diff-reusable.yaml
+    with:
+      rosdistro: jazzy
+      container: ghcr.io/autowarefoundation/autoware:core-common-devel-jazzy
+      above: false
+      enable-agnocast: true
+      run-condition: ${{ needs.require-label.outputs.result == 'true' }}
+    secrets:
+      codecov-token: ${{ secrets.CODECOV_TOKEN }}
+
   build-and-test-diff-jazzy-above:
     if: ${{ always() }}
     needs:

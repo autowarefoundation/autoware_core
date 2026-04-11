@@ -18,6 +18,11 @@ on:
       above:
         required: true
         type: boolean
+      enable-agnocast:
+        description: True if ENABLE_AGNOCAST should be set to "1".
+        type: boolean
+        default: false
+        required: false
       rosdistro:
         default: humble
         required: false
@@ -94,10 +99,12 @@ jobs:
       - name: Build
         if: ${{ steps.get-modified-packages.outputs.modified-packages != '' }}
         uses: autowarefoundation/autoware-github-actions/colcon-build@v1
+        env:
+          ENABLE_AGNOCAST: ${{ inputs.enable-agnocast && '1' || '' }}
         with:
           rosdistro: ${{ inputs.rosdistro }}
           target-packages: ${{ steps.get-modified-packages.outputs.modified-packages }}
-          cache-key-element: build-and-test-diff${{ inputs.above && '-above' || '' }}
+          cache-key-element: build-and-test-diff${{ inputs.above && '-above' || '' }}${{ inputs.enable-agnocast && '-agnocast' || '' }}
           packages-above-repos: ${{ inputs.above && 'packages_above.repos' || '' }}
           underlay-workspace: /opt/autoware
 
@@ -110,6 +117,8 @@ jobs:
         id: test
         if: ${{ steps.get-modified-packages.outputs.modified-packages != '' }}
         uses: autowarefoundation/autoware-github-actions/colcon-test@v1
+        env:
+          ENABLE_AGNOCAST: ${{ inputs.enable-agnocast && '1' || '' }}
         with:
           rosdistro: ${{ inputs.rosdistro }}
           target-packages: ${{ steps.get-modified-packages.outputs.modified-packages }}
@@ -132,7 +141,7 @@ jobs:
   clang-tidy-differential:
     name: clang-tidy-diff
     needs: build-and-test-differential
-    if: ${{ (inputs.above == false) && inputs.run-condition }}
+    if: ${{ !inputs.above && !inputs.enable-agnocast && inputs.run-condition }}
     runs-on: ${{ fromJson(inputs.runner) }}
     container: ${{ inputs.container }}
     steps:
@@ -183,7 +192,7 @@ jobs:
         uses: autowarefoundation/autoware-github-actions/clang-tidy@v1
         with:
           rosdistro: ${{ inputs.rosdistro }}
-          cache-key-element: build-and-test-diff${{ inputs.above && '-above' || '' }}
+          cache-key-element: build-and-test-diff${{ inputs.above && '-above' || '' }}${{ inputs.enable-agnocast && '-agnocast' || '' }}
           target-packages: ${{ steps.get-modified-packages.outputs.modified-packages }}
           target-files: ${{ steps.get-changed-files.outputs.changed-files }}
           clang-tidy-config-url: https://raw.githubusercontent.com/autowarefoundation/autoware_core/main/.clang-tidy-ci
