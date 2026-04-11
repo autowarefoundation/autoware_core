@@ -96,9 +96,10 @@ std::optional<RouteManager> RouteManager::update_current_pose(
 {
   const auto neighbors_seq = get_lanelet_sequence_on_route(search_window, search_window);
   const auto & neighbors = neighbors_seq.as_lanelets();
-  if (const auto closest_lane = get_closest_lanelet_within_constraint(
-        neighbors, current_pose, dist_threshold_soft, yaw_threshold_soft);
-      closest_lane) {
+  if (
+    const auto closest_lane = get_closest_lanelet_within_constraint(
+      neighbors, current_pose, dist_threshold_soft, yaw_threshold_soft);
+    closest_lane) {
     return RouteManager(
       lanelet_map_ptr_, routing_graph_ptr_, traffic_rules_ptr_, std::move(all_route_lanelets_),
       std::move(all_route_length_cache_), std::move(preferred_lanelets_), start_lanelet_,
@@ -230,8 +231,9 @@ LaneSequence RouteManager::get_lanelet_sequence_outward_route(
       break;
     }
 
-    if (const auto route_cache = all_route_length_cache_.find(prev_lane.id());
-        route_cache != all_route_length_cache_.end()) {
+    if (
+      const auto route_cache = all_route_length_cache_.find(prev_lane.id());
+      route_cache != all_route_length_cache_.end()) {
       // traverse on route lanelets
       sequence.insert(sequence.begin(), prev_lane);
       acc_dist += route_cache->second;
@@ -273,8 +275,9 @@ LaneSequence RouteManager::get_lanelet_sequence_outward_route(
       break;
     }
 
-    if (const auto route_cache = all_route_length_cache_.find(next_lane.id());
-        route_cache != all_route_length_cache_.end()) {
+    if (
+      const auto route_cache = all_route_length_cache_.find(next_lane.id());
+      route_cache != all_route_length_cache_.end()) {
       // traverse on route lanelets
       sequence.push_back(next_lane);
       acc_dist += route_cache->second;

@@ -91,12 +91,13 @@ interpolator::InterpolationResult Trajectory<PointType>::build(
     return tl::unexpected(
       interpolator::InterpolationFailure{"failed to interpolate Pose::points"} + result.error());
   }
-  if (const auto result = detail::build_with_fallback(
-        orientation_interpolator_, bases_, orientations,
-        [] {
-          return std::make_shared<interpolator::NearestNeighbor<geometry_msgs::msg::Quaternion>>();
-        });
-      !result) {
+  if (
+    const auto result = detail::build_with_fallback(
+      orientation_interpolator_, bases_, orientations,
+      [] {
+        return std::make_shared<interpolator::NearestNeighbor<geometry_msgs::msg::Quaternion>>();
+      });
+    !result) {
     return tl::unexpected(
       interpolator::InterpolationFailure{"failed to interpolate Pose::orientation"} +
       result.error());
