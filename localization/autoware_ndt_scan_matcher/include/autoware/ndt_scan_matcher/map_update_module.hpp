@@ -15,6 +15,7 @@
 #ifndef AUTOWARE__NDT_SCAN_MATCHER__MAP_UPDATE_MODULE_HPP_
 #define AUTOWARE__NDT_SCAN_MATCHER__MAP_UPDATE_MODULE_HPP_
 
+#include "guarded.hpp"
 #include "hyper_parameters.hpp"
 #include "ndt_omp/multigrid_ndt_omp.h"
 #include "particle.hpp"
@@ -88,15 +89,13 @@ private:
   rclcpp::Logger logger_;
   rclcpp::Clock::SharedPtr clock_;
 
-  std::optional<geometry_msgs::msg::Point> last_update_position_ = std::nullopt;
+  Guarded<std::optional<geometry_msgs::msg::Point>> last_update_position_{std::nullopt};
 
   HyperParameters::DynamicMapLoading param_;
 
   // Indicate if there is a prefetch thread waiting for being collected
   NdtPtrType secondary_ndt_ptr_;
   bool need_rebuild_;
-  // Keep the last_update_position_ unchanged while checking map range
-  std::mutex last_update_position_mtx_;
 };
 
 }  // namespace autoware::ndt_scan_matcher
