@@ -65,10 +65,15 @@ jobs:
   build-and-test:
     name: build-and-test-${{ inputs.rosdistro }}${{ inputs.above && '-above' || '' }}${{ inputs.enable-agnocast && '-agnocast' || '' }}
     runs-on: ${{ fromJson(inputs.runner) }}
-    container: ${{ inputs.container }}
+    container:
+      image: ${{ inputs.container }}
+      options: --cap-add=NET_ADMIN
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+
+      - name: Tune DDS network settings
+        uses: ./.github/actions/tune-dds-network
 
       - name: Show disk space before the tasks
         if: ${{ always() }}
@@ -115,6 +120,18 @@ jobs:
         run: |
           du -sh ${CCACHE_DIR} && ccache -s
           ccache --zero-stats
+        shell: bash
+
+      - name: Remove self packages from underlay
+        if: ${{ inputs.above }}
+        run: |
+          for pkg_xml in $(find . -name package.xml); do
+            pkg_name=$(xmllint --xpath 'string(//package/name)' "$pkg_xml")
+            if [ -d "/opt/autoware/$pkg_name" ]; then
+              echo "Removing /opt/autoware/$pkg_name"
+              sudo rm -rf "/opt/autoware/$pkg_name"
+            fi
+          done
         shell: bash
 
       - name: Build
