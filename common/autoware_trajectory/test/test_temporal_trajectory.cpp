@@ -119,7 +119,7 @@ TEST(TemporalTrajectory, DuplicateTimestampWithDifferentDistanceExtendsTimeBases
   EXPECT_LE(mapped_time, 2.0);
 }
 
-TEST(TemporalTrajectory, CrossedUsesSpatialTrajectory)
+TEST(TemporalTrajectory, Crossed)
 {
   const std::vector<TrajectoryPoint> points{
     make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
@@ -138,7 +138,7 @@ TEST(TemporalTrajectory, CrossedUsesSpatialTrajectory)
   EXPECT_NEAR(crossed_points.front().time, 1.5, 1e-6);
 }
 
-TEST(TemporalTrajectory, FindIntervalsUsesTimeAxis)
+TEST(TemporalTrajectory, FindIntervals)
 {
   const std::vector<TrajectoryPoint> points{
     make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
@@ -159,7 +159,7 @@ TEST(TemporalTrajectory, FindIntervalsUsesTimeAxis)
   EXPECT_NEAR(intervals.front().end.time, 2.0, 1e-6);
 }
 
-TEST(TemporalTrajectory, CropTimeRebasesTimeAxis)
+TEST(TemporalTrajectory, CropTimeRebases)
 {
   const std::vector<TrajectoryPoint> points{
     make_point(0.0, -1.0), make_point(1.0, 0.0), make_point(2.0, 1.0), make_point(3.0, 2.0)};
