@@ -21,12 +21,17 @@ namespace autoware::experimental::trajectory
 {
 
 template <class PointType>
-trajectory::Trajectory<PointType> crop(
-  trajectory::Trajectory<PointType> trajectory, const double & start, const double & end)
+Trajectory<PointType> crop(
+  Trajectory<PointType> trajectory, const double & start, const double & end)
 {
   trajectory.crop(start, end);
   return trajectory;
 }
+
+TemporalTrajectory crop_time(TemporalTrajectory trajectory, double start_time, double duration);
+
+TemporalTrajectory crop_distance(
+  TemporalTrajectory trajectory, double start_distance, double length);
 
 }  // namespace autoware::experimental::trajectory
 

@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "autoware/trajectory/temporal_trajectory.hpp"
+#include "autoware/trajectory/utils/crop.hpp"
 #include "autoware/trajectory/utils/pretty_build.hpp"
+#include "autoware/trajectory/utils/set_time_offset.hpp"
 #include "autoware_utils_geometry/geometry.hpp"
 
 #include <autoware/pyplot/pyplot.hpp>
@@ -114,14 +116,12 @@ int main()
 
   const auto original = make_trajectory();
 
-  auto early_window = original;
-  early_window.crop_time(0.8, 2.4);
+  const auto early_window = autoware::experimental::trajectory::crop_time(original, 0.8, 2.4);
 
-  auto late_window = original;
-  late_window.crop_time(2.8, 2.2);
+  const auto late_window = autoware::experimental::trajectory::crop_time(original, 2.8, 2.2);
 
-  auto rebased_early_window = early_window;
-  rebased_early_window.set_time_offset(early_window.start_time());
+  const auto rebased_early_window =
+    autoware::experimental::trajectory::set_time_offset(early_window, early_window.start_time());
 
   std::cout << "original: [" << original.start_time() << ", " << original.end_time() << "]\n";
   std::cout << "early_window: [" << early_window.start_time() << ", " << early_window.end_time()

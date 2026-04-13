@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "autoware/trajectory/temporal_trajectory.hpp"
+#include "autoware/trajectory/utils/crop.hpp"
 #include "autoware/trajectory/utils/crossed.hpp"
 #include "autoware/trajectory/utils/find_intervals.hpp"
+#include "autoware/trajectory/utils/set_stopline.hpp"
 
 #include <rclcpp/duration.hpp>
 
@@ -164,8 +166,7 @@ TEST(TemporalTrajectory, CropTimeRebases)
   const std::vector<TrajectoryPoint> points{
     make_point(0.0, -1.0), make_point(1.0, 0.0), make_point(2.0, 1.0), make_point(3.0, 2.0)};
 
-  auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
-  trajectory.crop_time(0.0, 2.0);
+  const auto trajectory = crop_time(TemporalTrajectory::Builder{}.build(points).value(), 0.0, 2.0);
 
   const auto restored = trajectory.restore();
   ASSERT_FALSE(restored.empty());
@@ -181,8 +182,7 @@ TEST(TemporalTrajectory, SetStoplineCollapsesFollowingPoints)
   const std::vector<TrajectoryPoint> points{
     make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
 
-  auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
-  trajectory.set_stopline(1.5);
+  const auto trajectory = set_stopline(TemporalTrajectory::Builder{}.build(points).value(), 1.5);
 
   const auto stop_point = trajectory.compute_from_distance(1.5);
   const auto point_after_stop = trajectory.compute_from_time(2.5);
@@ -196,8 +196,8 @@ TEST(TemporalTrajectory, SetStoplineWithTimeExtendsSchedule)
   const std::vector<TrajectoryPoint> points{
     make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
 
-  auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
-  trajectory.set_stopline(1.5, 1.5);
+  const auto trajectory =
+    set_stopline(TemporalTrajectory::Builder{}.build(points).value(), 1.5, 1.5);
 
   const auto stop_point = trajectory.compute_from_time(3.0);
   EXPECT_NEAR(stop_point.pose.position.x, 1.5, 1e-3);
@@ -213,8 +213,8 @@ TEST(TemporalTrajectory, DistanceToTimeReturnsFirstStopTime)
   const std::vector<TrajectoryPoint> points{
     make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
 
-  auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
-  trajectory.set_stopline(1.5, 1.5);
+  const auto trajectory =
+    set_stopline(TemporalTrajectory::Builder{}.build(points).value(), 1.5, 1.5);
 
   const auto stop_time = trajectory.distance_to_time(1.5);
   EXPECT_NEAR(stop_time, 1.5, 1e-6);
@@ -290,8 +290,7 @@ TEST(TemporalTrajectory, RestoreAfterCropTime)
   const std::vector<TrajectoryPoint> points{
     make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
 
-  auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
-  trajectory.crop_time(1.0, 1.0);  // Crop from t=1.0 for duration 1.0
+  const auto trajectory = crop_time(TemporalTrajectory::Builder{}.build(points).value(), 1.0, 1.0);
 
   const auto restored = trajectory.restore();
   ASSERT_FALSE(restored.empty());

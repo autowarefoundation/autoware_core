@@ -38,6 +38,7 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/threshold.cpp
   src/trajectory_point.cpp
   src/utils/closest.cpp
+  src/utils/crop.cpp
   src/utils/crossed.cpp
   src/utils/find_if.cpp
   src/utils/find_intervals.cpp
@@ -45,6 +46,8 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/utils/footprint.cpp
   src/utils/pretty_build.cpp
   src/utils/reference_path.cpp
+  src/utils/set_stopline.cpp
+  src/utils/set_time_offset.cpp
   src/utils/shift.cpp
   src/utils/velocity.cpp
 )

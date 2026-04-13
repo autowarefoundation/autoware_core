@@ -17,6 +17,7 @@
 #include "autoware/trajectory/utils/crossed.hpp"
 #include "autoware/trajectory/utils/find_intervals.hpp"
 #include "autoware/trajectory/utils/pretty_build.hpp"
+#include "autoware/trajectory/utils/set_stopline.hpp"
 
 #include <autoware/pyplot/pyplot.hpp>
 #include <range/v3/all.hpp>
@@ -170,11 +171,11 @@ int main(int argc, char ** argv)
   }
   const auto stop_length = crossed_points.front().distance;
 
-  auto stop_immediate = original;
-  stop_immediate.set_stopline(stop_length);
+  const auto stop_immediate =
+    autoware::experimental::trajectory::set_stopline(original, stop_length);
 
-  auto stop_with_wait = original;
-  stop_with_wait.set_stopline(stop_length, 2.0);
+  const auto stop_with_wait =
+    autoware::experimental::trajectory::set_stopline(original, stop_length, 2.0);
 
   const auto crossed_point = original.compute_from_distance(stop_length);
   const auto [original_time, original_distance] =

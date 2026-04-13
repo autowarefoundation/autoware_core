@@ -70,12 +70,6 @@ public:
   /** @brief Return the user-configured time offset in seconds. */
   [[nodiscard]] double time_offset() const;
 
-  /**
-   * @brief Set a time offset applied to exported absolute times.
-   * @param[in] offset Time offset in seconds.
-   */
-  void set_time_offset(double offset);
-
   /** @brief Return the stored time bases. */
   [[nodiscard]] std::vector<double> get_underlying_time_bases() const;
 
@@ -112,32 +106,6 @@ public:
    * @return Restored trajectory points.
    */
   [[nodiscard]] std::vector<PointType> restore() const;
-
-  /**
-   * @brief Crop the trajectory to a time interval and rebase the result to zero.
-   * @param[in] start_time Crop start time in seconds.
-   * @param[in] duration Crop duration in seconds.
-   */
-  void crop_time(const double start_time, const double duration);
-
-  /**
-   * @brief Crop the trajectory to a distance interval and rebase the result to zero.
-   * @param[in] start_distance Crop start distance in meters.
-   * @param[in] length Crop length in meters.
-   */
-  void crop_distance(const double start_distance, const double length);
-
-  /**
-   * @brief Insert a stopline that collapses all later points to the stop pose.
-   * @param[in] arc_length Stopline position in meters.
-   */
-  void set_stopline(const double arc_length);
-  /**
-   * @brief Insert a stopline with an additional wait duration.
-   * @param[in] arc_length Stopline position in meters.
-   * @param[in] duration Stop duration in seconds.
-   */
-  void set_stopline(const double arc_length, const double duration);
 
   /** @brief Return the underlying spatial trajectory. */
   [[nodiscard]] const SpatialTrajectory & spatial_trajectory() const;
@@ -266,6 +234,15 @@ public:
   };
 
 private:
+  friend TemporalTrajectory crop_time(
+    TemporalTrajectory trajectory, double start_time, double duration);
+  friend TemporalTrajectory crop_distance(
+    TemporalTrajectory trajectory, double start_distance, double length);
+  friend TemporalTrajectory set_stopline(TemporalTrajectory trajectory, double arc_length);
+  friend TemporalTrajectory set_stopline(
+    TemporalTrajectory trajectory, double arc_length, double duration);
+  friend TemporalTrajectory set_time_offset(TemporalTrajectory trajectory, double offset);
+
   SpatialTrajectory spatial_trajectory_;
   detail::TimeDistanceMapping time_distance_mapping_;
   double distance_offset_{0.0};
