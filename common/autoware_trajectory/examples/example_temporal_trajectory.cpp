@@ -98,14 +98,10 @@ std::pair<std::vector<double>, std::vector<double>> sample_xy(
   const TemporalTrajectory & trajectory, const bool use_restore_points)
 {
   const auto points = collect_plot_points(trajectory, use_restore_points);
-  std::vector<double> x;
-  std::vector<double> y;
-  x.reserve(points.size());
-  y.reserve(points.size());
-  for (const auto & point : points) {
-    x.push_back(point.pose.position.x);
-    y.push_back(point.pose.position.y);
-  }
+  const auto x = points | transform([](const auto & point) { return point.pose.position.x; }) |
+                 to<std::vector<double>>();
+  const auto y = points | transform([](const auto & point) { return point.pose.position.y; }) |
+                 to<std::vector<double>>();
   return {x, y};
 }
 
@@ -113,15 +109,13 @@ std::pair<std::vector<double>, std::vector<double>> sample_time_distance(
   const TemporalTrajectory & trajectory, const bool use_restore_points)
 {
   const auto points = collect_plot_points(trajectory, use_restore_points);
-  std::vector<double> time;
-  std::vector<double> distance;
-  time.reserve(points.size());
-  distance.reserve(points.size());
-  for (const auto & point : points) {
-    const auto t = rclcpp::Duration(point.time_from_start).seconds();
-    time.push_back(t);
-    distance.push_back(trajectory.time_to_distance(t));
-  }
+  const auto time = points | transform([](const auto & point) {
+                      return rclcpp::Duration(point.time_from_start).seconds();
+                    }) |
+                    to<std::vector<double>>();
+  const auto distance =
+    time | transform([&trajectory](const double t) { return trajectory.time_to_distance(t); }) |
+    to<std::vector<double>>();
   return {time, distance};
 }
 
@@ -129,14 +123,14 @@ std::pair<std::vector<double>, std::vector<double>> sample_time_velocity(
   const TemporalTrajectory & trajectory, const bool use_restore_points)
 {
   const auto points = collect_plot_points(trajectory, use_restore_points);
-  std::vector<double> time;
-  std::vector<double> velocity;
-  time.reserve(points.size());
-  velocity.reserve(points.size());
-  for (const auto & point : points) {
-    time.push_back(rclcpp::Duration(point.time_from_start).seconds());
-    velocity.push_back(point.longitudinal_velocity_mps);
-  }
+  const auto time = points | transform([](const auto & point) {
+                      return rclcpp::Duration(point.time_from_start).seconds();
+                    }) |
+                    to<std::vector<double>>();
+  const auto velocity = points | transform([](const auto & point) {
+                          return static_cast<double>(point.longitudinal_velocity_mps);
+                        }) |
+                        to<std::vector<double>>();
   return {time, velocity};
 }
 
