@@ -231,7 +231,8 @@ void NDTScanMatcher::callback_timer()
 
   diagnostics_map_update_->add_key_value("timer_callback_time_stamp", ros_time_now.nanoseconds());
 
-  map_update_module_->callback_timer(is_activated_, latest_ekf_position_, diagnostics_map_update_);
+  const auto latest_ekf_position = latest_ekf_position_.with([](const auto & pos) { return pos; });
+  map_update_module_->callback_timer(is_activated_, latest_ekf_position, diagnostics_map_update_);
 
   diagnostics_map_update_->publish(ros_time_now);
 }
@@ -279,11 +280,9 @@ void NDTScanMatcher::callback_initial_pose_main(
 
   initial_pose_buffer_->push_back(initial_pose_msg_ptr);
 
-  {
-    // latest_ekf_position_ is also used by callback_timer, so it is necessary to acquire the lock
-    std::lock_guard<std::mutex> lock(latest_ekf_position_mtx_);
-    latest_ekf_position_ = initial_pose_msg_ptr->pose.pose.position;
-  }
+  latest_ekf_position_.with([&](auto & pos) {
+    pos = initial_pose_msg_ptr->pose.pose.position;
+  });
 }
 
 void NDTScanMatcher::callback_regularization_pose(

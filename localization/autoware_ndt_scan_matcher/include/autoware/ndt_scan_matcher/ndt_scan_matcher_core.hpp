@@ -17,6 +17,7 @@
 
 #define FMT_HEADER_ONLY
 
+#include "guarded.hpp"
 #include "hyper_parameters.hpp"
 #include "map_update_module.hpp"
 #include "ndt_omp/multigrid_ndt_omp.h"
@@ -205,8 +206,7 @@ private:
   std::unique_ptr<autoware::localization_util::SmartPoseBuffer> initial_pose_buffer_;
 
   // Keep latest position for dynamic map loading
-  std::mutex latest_ekf_position_mtx_;
-  std::optional<geometry_msgs::msg::Point> latest_ekf_position_ = std::nullopt;
+  Guarded<std::optional<geometry_msgs::msg::Point>> latest_ekf_position_{std::nullopt};
 
   std::unique_ptr<autoware::localization_util::SmartPoseBuffer> regularization_pose_buffer_;
 
