@@ -105,7 +105,6 @@ private:
   {
     float radius;  // cylindrical coords on XY Plane
     PointLabel point_state{PointLabel::INIT};
-    uint16_t grid_id;   // id of grid in vertical
     size_t data_index;  // index of this point data in the source pointcloud
   };
   using PointCloudVector = std::vector<PointData>;
@@ -119,7 +118,6 @@ private:
     float height_max;
     float height_min;
     uint32_t point_num;
-    uint16_t grid_id;
     std::vector<size_t> pcl_indices;
     std::vector<float> height_list;
     std::vector<float> radius_list;
@@ -131,8 +129,7 @@ private:
       height_avg(0.0f),
       height_max(-10.0f),
       height_min(10.0f),
-      point_num(0),
-      grid_id(0)
+      point_num(0)
     {
     }
 
@@ -145,7 +142,6 @@ private:
       height_max = -10.0f;
       height_min = 10.0f;
       point_num = 0;
-      grid_id = 0;
       pcl_indices.clear();
       height_list.clear();
     }

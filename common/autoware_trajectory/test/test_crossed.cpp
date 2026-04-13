@@ -32,7 +32,7 @@ using autoware_utils_geometry::LineString2d;
 using autoware_utils_geometry::Point2d;
 using autoware_utils_geometry::Polygon2d;
 
-TEST(crossed, linestring)
+TEST(Crossed, Linestring)
 {
   std::vector<PathPointWithLaneId> points;
   {
@@ -77,7 +77,7 @@ TEST(crossed, linestring)
   }
 }
 
-TEST(crossed, open_polygon)
+TEST(Crossed, OpenPolygon)
 {
   std::vector<PathPointWithLaneId> points;
   {
@@ -142,7 +142,7 @@ TEST(crossed, open_polygon)
   }
 }
 
-TEST(crossed, closed_polygon)
+TEST(Crossed, ClosedPolygon)
 {
   std::vector<PathPointWithLaneId> points;
   {
@@ -207,7 +207,7 @@ TEST(crossed, closed_polygon)
   }
 }
 
-TEST(crossed, post_condition_001)
+TEST(Crossed, PostCondition001)
 {
   std::vector<PathPointWithLaneId> points;
   {
