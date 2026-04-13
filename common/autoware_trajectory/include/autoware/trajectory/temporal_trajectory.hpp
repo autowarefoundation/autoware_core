@@ -85,12 +85,6 @@ public:
    * @return Interpolated trajectory point.
    */
   [[nodiscard]] PointType compute_from_time(const double t) const;
-  /**
-   * @brief Compute points at the given times.
-   * @param[in] ts Query times in seconds.
-   * @return Interpolated trajectory points.
-   */
-  [[nodiscard]] std::vector<PointType> compute_from_time(const std::vector<double> & ts) const;
 
   /**
    * @brief Compute a point at a given arc length.
@@ -98,12 +92,6 @@ public:
    * @return Interpolated trajectory point.
    */
   [[nodiscard]] PointType compute_from_distance(const double s) const;
-  /**
-   * @brief Compute points at the given arc lengths.
-   * @param[in] ss Query arc lengths in meters.
-   * @return Interpolated trajectory points.
-   */
-  [[nodiscard]] std::vector<PointType> compute_from_distance(const std::vector<double> & ss) const;
 
   /**
    * @brief Convert time to arc length.

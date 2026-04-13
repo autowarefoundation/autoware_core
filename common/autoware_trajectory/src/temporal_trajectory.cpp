@@ -18,6 +18,9 @@
 #include "autoware/trajectory/threshold.hpp"
 #include "autoware/trajectory/utils/find_intervals.hpp"
 
+#include <range/v3/to_container.hpp>
+#include <range/v3/view/transform.hpp>
+
 #include <algorithm>
 #include <cmath>
 #include <memory>
@@ -107,34 +110,12 @@ TemporalTrajectory::PointType TemporalTrajectory::compute_from_time(const double
   return point;
 }
 
-std::vector<TemporalTrajectory::PointType> TemporalTrajectory::compute_from_time(
-  const std::vector<double> & ts) const
-{
-  std::vector<PointType> points;
-  points.reserve(ts.size());
-  for (const auto t : ts) {
-    points.emplace_back(compute_from_time(t));
-  }
-  return points;
-}
-
 TemporalTrajectory::PointType TemporalTrajectory::compute_from_distance(const double s) const
 {
   auto point = spatial_trajectory_.compute(s);
   const auto t = distance_to_time(s);
   point.time_from_start = to_duration_msg(t);
   return point;
-}
-
-std::vector<TemporalTrajectory::PointType> TemporalTrajectory::compute_from_distance(
-  const std::vector<double> & ss) const
-{
-  std::vector<PointType> points;
-  points.reserve(ss.size());
-  for (const auto s : ss) {
-    points.emplace_back(compute_from_distance(s));
-  }
-  return points;
 }
 
 double TemporalTrajectory::time_to_distance(const double t) const
@@ -161,7 +142,10 @@ double TemporalTrajectory::distance_to_time(const double s) const
 
 std::vector<TemporalTrajectory::PointType> TemporalTrajectory::restore() const
 {
-  return compute_from_time(get_underlying_time_bases());
+  const auto time_bases = get_underlying_time_bases();
+  return time_bases |
+         ranges::views::transform([this](const double t) { return compute_from_time(t); }) |
+         ranges::to<std::vector>();
 }
 
 void TemporalTrajectory::crop_time(const double start_time, const double duration)

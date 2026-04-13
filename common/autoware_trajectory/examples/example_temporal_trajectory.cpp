@@ -19,15 +19,16 @@
 #include "autoware/trajectory/utils/pretty_build.hpp"
 
 #include <autoware/pyplot/pyplot.hpp>
+#include <range/v3/all.hpp>
 #include <rclcpp/duration.hpp>
 
 #include <lanelet2_core/primitives/LineString.h>
 #include <pybind11/embed.h>
 #include <pybind11/stl.h>
 
+#include <algorithm>
 #include <cmath>
 #include <iostream>
-#include <iterator>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -35,6 +36,8 @@
 
 using autoware::experimental::trajectory::TemporalTrajectory;
 using autoware_planning_msgs::msg::TrajectoryPoint;
+using ranges::to;
+using ranges::views::transform;
 
 constexpr size_t num_plot_samples = 30;
 
@@ -84,7 +87,11 @@ std::vector<TrajectoryPoint> collect_plot_points(
   if (use_restore_points) {
     return trajectory.restore();
   }
-  return trajectory.compute_from_time(sample_times(trajectory));
+  const auto times = sample_times(trajectory);
+  return times | transform([&trajectory](const double time) {
+           return trajectory.compute_from_time(time);
+         }) |
+         to<std::vector>();
 }
 
 std::pair<std::vector<double>, std::vector<double>> sample_xy(
