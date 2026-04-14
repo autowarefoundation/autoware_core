@@ -83,7 +83,8 @@ private:
   //!< @brief processing_time publisher
   rclcpp::Publisher<autoware_internal_debug_msgs::msg::Float64Stamped>::SharedPtr
     pub_processing_time_;
-  //!< @brief /diagnostics publisher (manual DiagnosticArray; same absolute topic as former diagnostic_updater)
+  //!< @brief /diagnostics publisher (manual DiagnosticArray; same absolute topic as former
+  //!< diagnostic_updater)
   rclcpp::Publisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr pub_diagnostics_;
   //!< @brief initial pose subscriber
   rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr sub_initialpose_;

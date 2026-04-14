@@ -80,8 +80,7 @@ EKFLocalizer::EKFLocalizer(const rclcpp::NodeOptions & node_options)
     "ekf_biased_pose_with_covariance", 1);
   pub_processing_time_ = create_publisher<autoware_internal_debug_msgs::msg::Float64Stamped>(
     "debug/processing_time_ms", 1);
-  pub_diagnostics_ =
-    create_publisher<diagnostic_msgs::msg::DiagnosticArray>("/diagnostics", 1);
+  pub_diagnostics_ = create_publisher<diagnostic_msgs::msg::DiagnosticArray>("/diagnostics", 1);
   diagnostics_publish_timer_ = rclcpp::create_timer(
     this, get_clock(), rclcpp::Duration::from_seconds(params_.diagnostics_publish_period),
     [this]() { publish_diagnostics(); });
@@ -287,8 +286,9 @@ void EKFLocalizer::timer_callback()
   /* publish ekf result */
   publish_estimate_result(current_ekf_pose, current_biased_ekf_pose, current_ekf_twist);
 
-  /* Latch merged diagnostics every EKF cycle; publishing is periodic via diagnostics_publish_timer_,
-   * plus publish_diagnostics() inside update_diagnostics when severity increases. */
+  /* Latch merged diagnostics every EKF cycle; publishing is periodic via
+   * diagnostics_publish_timer_, plus publish_diagnostics() inside update_diagnostics when severity
+   * increases. */
   update_diagnostics(diag_status_array, current_time);
 
   /* publish processing time */

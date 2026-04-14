@@ -440,7 +440,6 @@ protected:
     ekf_localizer->publish_diagnostics();
   }
 
-
   static void call_timer_callback(autoware::ekf_localizer::EKFLocalizer * ekf_localizer)
   {
     ekf_localizer->timer_callback();
@@ -901,7 +900,8 @@ TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_at_specified_period)
 
 TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_message_names)
 {
-  // publish_diagnostics() uses names "localization: <node>" (+ ": callback_*" for the two callbacks).
+  // publish_diagnostics() uses names "localization: <node>" (+ ": callback_*" for the two
+  // callbacks).
   const double ekf_rate = 100.0;
   const double diagnostics_publish_period = 0.1;  // 10 Hz
 
@@ -1174,8 +1174,9 @@ TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_at_parameter_period)
 
 TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_immediately_on_severity_increase)
 {
-  // With a very long diagnostics period, only publish_diagnostics() on severity increase should publish /diagnostics.
-  // Slow EKF timer so executor-driven ticks do not merge to ERROR before we inject it.
+  // With a very long diagnostics period, only publish_diagnostics() on severity increase should
+  // publish /diagnostics. Slow EKF timer so executor-driven ticks do not merge to ERROR before we
+  // inject it.
   const double ekf_rate = 0.01;
   const double slow_diagnostics_frequency = 0.01;  // 100 s period
 
