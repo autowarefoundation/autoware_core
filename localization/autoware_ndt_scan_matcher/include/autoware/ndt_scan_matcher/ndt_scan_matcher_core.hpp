@@ -140,7 +140,7 @@ private:
 
   Eigen::Matrix2d estimate_covariance(
     const pclomp::NdtResult & ndt_result, const Eigen::Matrix4f & initial_pose_matrix,
-    const rclcpp::Time & sensor_ros_time, const std::shared_ptr<NormalDistributionsTransform> & ndt_ptr);
+    const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform & ndt_ref);
 
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr visualize_point_score(
     const pcl::shared_ptr<pcl::PointCloud<PointSource>> & sensor_points_in_map_ptr,
