@@ -430,7 +430,7 @@ void GroundFilterComponent::convertPointcloud(
 
       // store the point in the corresponding radial division
       out_radial_ordered_points[radial_div].emplace_back(
-        PointData{radius, PointLabel::INIT, 0U, data_index});
+        PointData{radius, PointLabel::INIT, data_index});
     }
   }
 

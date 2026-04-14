@@ -77,7 +77,7 @@ Trajectory<geometry_msgs::msg::Pose> build_parabolic_trajectory(
 }
 
 // Test 1: Simple test on horizontal line
-TEST(lateral_metrics, horizontalLine)
+TEST(LateralMetrics, HorizontalLine)
 {
   auto traj = build_horizontal_line(10, 1.0);
   geometry_msgs::msg::Point target_point;
@@ -96,7 +96,7 @@ TEST(lateral_metrics, horizontalLine)
 }
 
 // Test 2: Parabolic Trajectory (not at nearest index)
-TEST(lateral_metrics, parabolicTrajectoryNotNearest)
+TEST(LateralMetrics, ParabolicTrajectoryNotNearest)
 {
   auto traj = build_parabolic_trajectory(11, 0.5);
   geometry_msgs::msg::Point target_point;
