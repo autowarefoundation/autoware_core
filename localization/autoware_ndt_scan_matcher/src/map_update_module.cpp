@@ -21,10 +21,9 @@ namespace autoware::ndt_scan_matcher
 {
 
 MapUpdateModule::MapUpdateModule(
-  rclcpp::Node * node, std::mutex * ndt_ptr_mutex, NdtPtrType & ndt_ptr,
+  rclcpp::Node * node, Guarded<NdtPtrType> & ndt_ptr,
   HyperParameters::DynamicMapLoading param)
 : ndt_ptr_(ndt_ptr),
-  ndt_ptr_mutex_(ndt_ptr_mutex),
   logger_(node->get_logger()),
   clock_(node->get_clock()),
   param_(param)
@@ -37,9 +36,16 @@ MapUpdateModule::MapUpdateModule(
 
   secondary_ndt_ptr_.reset(new NdtType);
 
-  if (ndt_ptr_) {
-    *secondary_ndt_ptr_ = *ndt_ptr_;
-  } else {
+  const bool copied = ndt_ptr_.with([&](const auto & ptr) {
+    if (ptr) {
+      *secondary_ndt_ptr_ = *ptr;
+      return true;
+    } else {
+      return false;
+    }
+  });
+
+  if (!copied) {
     std::stringstream message;
     message << "Error at MapUpdateModule::MapUpdateModule."
             << "`ndt_ptr_` is a null NDT pointer.";
@@ -143,15 +149,17 @@ void MapUpdateModule::update_map(
   // If the current position is super far from the previous loading position,
   // lock and rebuild ndt_ptr_
   if (need_rebuild_) {
-    ndt_ptr_mutex_->lock();
+    bool updated = false;
+    ndt_ptr_.with([&](auto & ndt_ptr) {
 
-    auto param = ndt_ptr_->getParams();
+      auto param = ndt_ptr->getParams();
 
-    ndt_ptr_.reset(new NdtType);
+      ndt_ptr.reset(new NdtType);
 
-    ndt_ptr_->setParams(param);
+      ndt_ptr->setParams(param);
 
-    const bool updated = update_ndt(position, *ndt_ptr_, diagnostics_ptr);
+      updated = update_ndt(position, *ndt_ptr, diagnostics_ptr);
+    });
 
     // check is_updated_map
     diagnostics_ptr->add_key_value("is_updated_map", updated);
@@ -160,18 +168,17 @@ void MapUpdateModule::update_map(
       message
         << "update_ndt failed. If this happens with initial position estimation, make sure that"
         << "(1) the initial position matches the pcd map and (2) the map_loader is working "
-           "properly.";
+            "properly.";
       diagnostics_ptr->update_level_and_message(
         diagnostic_msgs::msg::DiagnosticStatus::ERROR, message.str());
       RCLCPP_ERROR_STREAM_THROTTLE(logger_, *clock_, 1000, message.str());
-      ndt_ptr_mutex_->unlock();
+    }
 
+    if (!updated) {
       last_update_position_.with([&](auto & pos) { pos = position; });
-
       return;
     }
 
-    ndt_ptr_mutex_->unlock();
     need_rebuild_ = false;
 
   } else {
@@ -190,16 +197,19 @@ void MapUpdateModule::update_map(
       return;
     }
 
-    ndt_ptr_mutex_->lock();
-    auto dummy_ptr = ndt_ptr_;
-    ndt_ptr_ = secondary_ndt_ptr_;
-    ndt_ptr_mutex_->unlock();
-
-    dummy_ptr.reset();
+    // Swap secondary_ndt_ptr_ and ndt_ptr.
+    // secondary_ndt_ptr_ will be reset immediately afterwards, triggering its destructor.
+    // Since this happens outside the ndt_ptr lock, the heavy destruction 
+    // process will not hold the lock for a long time.
+    ndt_ptr_.with([&](auto & ndt_ptr) {
+      std::swap(ndt_ptr, secondary_ndt_ptr_);
+    });
   }
 
   secondary_ndt_ptr_.reset(new NdtType);
-  *secondary_ndt_ptr_ = *ndt_ptr_;
+  ndt_ptr_.with([&](auto & ndt_ptr) {
+    *secondary_ndt_ptr_ = *ndt_ptr;
+  });
 
   // Memorize the position of the last update
   last_update_position_.with([&](auto & pos) { pos = position; });
@@ -292,7 +302,7 @@ bool MapUpdateModule::update_ndt(
 
 void MapUpdateModule::publish_partial_pcd_map()
 {
-  pcl::PointCloud<PointTarget> map_pcl = ndt_ptr_->getVoxelPCD();
+  auto map_pcl = ndt_ptr_.with([&](auto & ndt_ptr) { return ndt_ptr->getVoxelPCD(); });
   sensor_msgs::msg::PointCloud2 map_msg;
   pcl::toROSMsg(map_pcl, map_msg);
   map_msg.header.frame_id = "map";

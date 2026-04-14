@@ -54,7 +54,7 @@ class MapUpdateModule
 
 public:
   MapUpdateModule(
-    rclcpp::Node * node, std::mutex * ndt_ptr_mutex, NdtPtrType & ndt_ptr,
+    rclcpp::Node * node, Guarded<NdtPtrType> & ndt_ptr,
     HyperParameters::DynamicMapLoading param);
 
   bool out_of_map_range(const geometry_msgs::msg::Point & position);
@@ -84,8 +84,7 @@ private:
   rclcpp::Client<autoware_map_msgs::srv::GetDifferentialPointCloudMap>::SharedPtr
     pcd_loader_client_;
 
-  NdtPtrType & ndt_ptr_;
-  std::mutex * ndt_ptr_mutex_;
+  Guarded<NdtPtrType> & ndt_ptr_;
   rclcpp::Logger logger_;
   rclcpp::Clock::SharedPtr clock_;
 
