@@ -16,17 +16,14 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 namespace autoware::ndt_scan_matcher
 {
 
 MapUpdateModule::MapUpdateModule(
-  rclcpp::Node * node, Guarded<NdtPtrType> & ndt_ptr,
-  HyperParameters::DynamicMapLoading param)
-: ndt_ptr_(ndt_ptr),
-  logger_(node->get_logger()),
-  clock_(node->get_clock()),
-  param_(param)
+  rclcpp::Node * node, Guarded<NdtPtrType> & ndt_ptr, HyperParameters::DynamicMapLoading param)
+: ndt_ptr_(ndt_ptr), logger_(node->get_logger()), clock_(node->get_clock()), param_(param)
 {
   loaded_pcd_pub_ = node->create_publisher<sensor_msgs::msg::PointCloud2>(
     "debug/loaded_pointcloud_map", rclcpp::QoS{1}.transient_local());
@@ -95,8 +92,8 @@ bool MapUpdateModule::should_update_map(
   const geometry_msgs::msg::Point & position,
   std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr)
 {
-  const auto last_update_position = last_update_position_.with(
-    [](const auto & pos) { return pos; });
+  const auto last_update_position =
+    last_update_position_.with([](const auto & pos) { return pos; });
 
   if (last_update_position == std::nullopt) {
     need_rebuild_ = true;
@@ -125,8 +122,8 @@ bool MapUpdateModule::should_update_map(
 
 bool MapUpdateModule::out_of_map_range(const geometry_msgs::msg::Point & position)
 {
-  const auto last_update_position = last_update_position_.with(
-    [](const auto & pos) { return pos; });
+  const auto last_update_position =
+    last_update_position_.with([](const auto & pos) { return pos; });
 
   if (last_update_position == std::nullopt) {
     return true;
@@ -151,7 +148,6 @@ void MapUpdateModule::update_map(
   if (need_rebuild_) {
     bool updated = false;
     ndt_ptr_.with([&](auto & ndt_ptr) {
-
       auto param = ndt_ptr->getParams();
 
       ndt_ptr.reset(new NdtType);
@@ -168,7 +164,7 @@ void MapUpdateModule::update_map(
       message
         << "update_ndt failed. If this happens with initial position estimation, make sure that"
         << "(1) the initial position matches the pcd map and (2) the map_loader is working "
-            "properly.";
+           "properly.";
       diagnostics_ptr->update_level_and_message(
         diagnostic_msgs::msg::DiagnosticStatus::ERROR, message.str());
       RCLCPP_ERROR_STREAM_THROTTLE(logger_, *clock_, 1000, message.str());
@@ -199,17 +195,13 @@ void MapUpdateModule::update_map(
 
     // Swap secondary_ndt_ptr_ and ndt_ptr.
     // secondary_ndt_ptr_ will be reset immediately afterwards, triggering its destructor.
-    // Since this happens outside the ndt_ptr lock, the heavy destruction 
+    // Since this happens outside the ndt_ptr lock, the heavy destruction
     // process will not hold the lock for a long time.
-    ndt_ptr_.with([&](auto & ndt_ptr) {
-      std::swap(ndt_ptr, secondary_ndt_ptr_);
-    });
+    ndt_ptr_.with([&](auto & ndt_ptr) { std::swap(ndt_ptr, secondary_ndt_ptr_); });
   }
 
   secondary_ndt_ptr_.reset(new NdtType);
-  ndt_ptr_.with([&](auto & ndt_ptr) {
-    *secondary_ndt_ptr_ = *ndt_ptr;
-  });
+  ndt_ptr_.with([&](auto & ndt_ptr) { *secondary_ndt_ptr_ = *ndt_ptr; });
 
   // Memorize the position of the last update
   last_update_position_.with([&](auto & pos) { pos = position; });

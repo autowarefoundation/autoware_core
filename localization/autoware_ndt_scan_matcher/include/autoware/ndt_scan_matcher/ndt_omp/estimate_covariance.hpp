@@ -40,8 +40,7 @@ Eigen::Matrix2d estimate_xy_covariance_by_laplace_approximation(
 ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt(
   const NdtResult & ndt_result,
   pclomp::MultiGridNormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ> & ndt_ref,
-  
-  
+
   const std::vector<Eigen::Matrix4f> & poses_to_search,
   const pcl::shared_ptr<const pcl::PointCloud<pcl::PointXYZ>> & source);
 ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt_score(

@@ -54,8 +54,7 @@ class MapUpdateModule
 
 public:
   MapUpdateModule(
-    rclcpp::Node * node, Guarded<NdtPtrType> & ndt_ptr,
-    HyperParameters::DynamicMapLoading param);
+    rclcpp::Node * node, Guarded<NdtPtrType> & ndt_ptr, HyperParameters::DynamicMapLoading param);
 
   bool out_of_map_range(const geometry_msgs::msg::Point & position);
 

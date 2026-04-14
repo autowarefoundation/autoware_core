@@ -279,9 +279,7 @@ void NDTScanMatcher::callback_initial_pose_main(
 
   initial_pose_buffer_->push_back(initial_pose_msg_ptr);
 
-  latest_ekf_position_.with([&](auto & pos) {
-    pos = initial_pose_msg_ptr->pose.pose.position;
-  });
+  latest_ekf_position_.with([&](auto & pos) { pos = initial_pose_msg_ptr->pose.pose.position; });
 }
 
 void NDTScanMatcher::callback_regularization_pose(
@@ -431,9 +429,9 @@ bool NDTScanMatcher::callback_sensor_points_main(
     if (!is_succeed_interpolate_initial_pose) {
       std::stringstream message;
       message << "Couldn't interpolate pose. Please verify that "
-                "(1) the initial pose topic (primarily come from the EKF) is being published, and "
-                "(2) the timestamps of the sensor PCD messages and pose messages are synchronized "
-                "correctly.";
+                 "(1) the initial pose topic (primarily come from the EKF) is being published, and "
+                 "(2) the timestamps of the sensor PCD messages and pose messages are synchronized "
+                 "correctly.";
       diagnostics_scan_points_->update_level_and_message(
         diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
       return false;
@@ -501,7 +499,8 @@ bool NDTScanMatcher::callback_sensor_points_main(
     const int oscillation_num = count_oscillation(transformation_msg_array);
     diagnostics_scan_points_->add_key_value(
       "local_optimal_solution_oscillation_num", oscillation_num);
-    const bool is_local_optimal_solution_oscillation = (oscillation_num > oscillation_num_threshold);
+    const bool is_local_optimal_solution_oscillation =
+      (oscillation_num > oscillation_num_threshold);
     if (is_local_optimal_solution_oscillation) {
       std::stringstream message;
       message << "There is a possibility of oscillation in a local minimum";
@@ -513,7 +512,8 @@ bool NDTScanMatcher::callback_sensor_points_main(
     diagnostics_scan_points_->add_key_value(
       "transform_probability", ndt_result.transform_probability);
     diagnostics_scan_points_->add_key_value(
-      "nearest_voxel_transformation_likelihood", ndt_result.nearest_voxel_transformation_likelihood);
+      "nearest_voxel_transformation_likelihood",
+      ndt_result.nearest_voxel_transformation_likelihood);
     double score = 0.0;
     double score_threshold = 0.0;
     if (param_.score_estimation.converged_param_type == ConvergedParamType::TRANSFORM_PROBABILITY) {
@@ -527,7 +527,8 @@ bool NDTScanMatcher::callback_sensor_points_main(
         param_.score_estimation.converged_param_nearest_voxel_transformation_likelihood;
     } else {
       std::stringstream message;
-      message << "Unknown converged param type. Please check `score_estimation.converged_param_type`";
+      message
+        << "Unknown converged param type. Please check `score_estimation.converged_param_type`";
       diagnostics_scan_points_->update_level_and_message(
         diagnostic_msgs::msg::DiagnosticStatus::ERROR, message.str());
       return false;
@@ -548,7 +549,8 @@ bool NDTScanMatcher::callback_sensor_points_main(
       diagnostics_scan_points_->add_key_value("transform_probability_diff", diff);
       diagnostics_scan_points_->add_key_value("transform_probability_before", tp_array.front());
     }
-    const std::vector<float> & nvtl_array = ndt_result.nearest_voxel_transformation_likelihood_array;
+    const std::vector<float> & nvtl_array =
+      ndt_result.nearest_voxel_transformation_likelihood_array;
     if (static_cast<int>(nvtl_array.size()) != ndt_result.iteration_num + 1) {
       // only publish warning to /diagnostics, not skip publishing pose
       std::stringstream message;
@@ -576,7 +578,8 @@ bool NDTScanMatcher::callback_sensor_points_main(
     }
 
     // check is_converged
-    bool is_converged = (is_ok_iteration_num || is_local_optimal_solution_oscillation) && is_ok_score;
+    bool is_converged =
+      (is_ok_iteration_num || is_local_optimal_solution_oscillation) && is_ok_score;
 
     // covariance estimation
     const Eigen::Quaterniond map_to_base_link_quat = Eigen::Quaterniond(
@@ -607,7 +610,8 @@ bool NDTScanMatcher::callback_sensor_points_main(
     // check distance_initial_to_result
     const auto distance_initial_to_result = static_cast<double>(autoware::localization_util::norm(
       interpolation_result.interpolated_pose.pose.pose.position, result_pose_msg.position));
-    diagnostics_scan_points_->add_key_value("distance_initial_to_result", distance_initial_to_result);
+    diagnostics_scan_points_->add_key_value(
+      "distance_initial_to_result", distance_initial_to_result);
     if (distance_initial_to_result > param_.validation.initial_to_result_distance_tolerance_m) {
       std::stringstream message;
       message << "distance_initial_to_result is too large (" << distance_initial_to_result
@@ -913,12 +917,10 @@ Eigen::Matrix2d NDTScanMatcher::estimate_covariance(
 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr NDTScanMatcher::visualize_point_score(
   const pcl::shared_ptr<pcl::PointCloud<PointSource>> & sensor_points_in_map_ptr,
-  const float & lower_nvs, const float & upper_nvs,
-  NormalDistributionsTransform & ndt_ref)
+  const float & lower_nvs, const float & upper_nvs, NormalDistributionsTransform & ndt_ref)
 {
   pcl::PointCloud<pcl::PointXYZI> nvs_points_in_map_ptr_i;
-  nvs_points_in_map_ptr_i =
-    ndt_ref.calculateNearestVoxelScoreEachPoint(*sensor_points_in_map_ptr);
+  nvs_points_in_map_ptr_i = ndt_ref.calculateNearestVoxelScoreEachPoint(*sensor_points_in_map_ptr);
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr nvs_points_in_map_ptr_rgb{
     new pcl::PointCloud<pcl::PointXYZRGB>};
 
@@ -938,8 +940,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr NDTScanMatcher::visualize_point_score(
   return nvs_points_in_map_ptr_rgb;
 }
 
-void NDTScanMatcher::add_regularization_pose(const rclcpp::Time & sensor_ros_time,
-NormalDistributionsTransform & ndt_ref)
+void NDTScanMatcher::add_regularization_pose(
+  const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform & ndt_ref)
 {
   ndt_ref.unsetRegularizationPose();
   std::optional<SmartPoseBuffer::InterpolateResult> interpolation_result_opt =
@@ -1079,8 +1081,7 @@ void NDTScanMatcher::service_ndt_align_main(
 
 std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher::align_pose(
   const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_with_cov,
-  NormalDistributionsTransform & ndt_ref
-)
+  NormalDistributionsTransform & ndt_ref)
 {
   autoware::localization_util::output_pose_with_cov_to_log(
     get_logger(), "align_pose_input", initial_pose_with_cov);
