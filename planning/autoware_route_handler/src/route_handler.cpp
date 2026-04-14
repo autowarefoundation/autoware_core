@@ -160,6 +160,10 @@ PathWithLaneId removeOverlappingPoints(const PathWithLaneId & input_path)
       continue;
     }
 
+    // If the direction changes sharply (not smooth) but the points are very close,
+    // treat it as an overlap.
+    // This can occur at joints between a waypoint and an auto-generated centerline.
+    // It's not considered overlap in ordinary case, thus, this case relax the condition.
     if (
       (std::fabs(autoware_utils_math::normalize_radian(previous_azimuth - current_azimuth)) >=
        M_PI / 2) &&
