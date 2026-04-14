@@ -180,6 +180,8 @@ void MapUpdateModule::update_map_internal(
 
     builder_state.need_rebuild = false;
 
+    builder_state.secondary_ndt_ptr.reset(new NdtType);
+    ndt_ptr_.with([&](const auto & ndt_ptr) { *builder_state.secondary_ndt_ptr = *ndt_ptr; });
   } else {
     // Load map to the secondary_ndt_ptr, which does not require a mutex lock
     // Since the update of the secondary ndt ptr and the NDT align (done on
@@ -196,15 +198,25 @@ void MapUpdateModule::update_map_internal(
       return;
     }
 
-    // Swap secondary_ndt_ptr and ndt_ptr.
-    // secondary_ndt_ptr will be reset immediately afterwards, triggering its destructor.
-    // Since this happens outside the ndt_ptr lock, the heavy destruction
-    // process will not hold the lock for a long time.
-    ndt_ptr_.with([&](auto & ndt_ptr) { std::swap(ndt_ptr, builder_state.secondary_ndt_ptr); });
-  }
+    // Update the NDT map pointer with minimal lock duration to prevent latency spikes.
+    // Heavy memory operations (cloning and destruction) are executed outside the ndt_ptr_'slock,
+    // while only the fast pointer swap is performed inside the lock scope.
 
-  builder_state.secondary_ndt_ptr.reset(new NdtType);
-  ndt_ptr_.with([&](const auto & ndt_ptr) { *builder_state.secondary_ndt_ptr = *ndt_ptr; });
+    // 1. Clone the contents of secondary_ndt_ptr to create new_ndt_ptr.
+    auto new_ndt_ptr = std::make_shared<NdtType>(*builder_state.secondary_ndt_ptr);
+
+    // 2. Swap the pointers inside the ndt_ptr_'s lock.
+    // - During the swap, the reference count does not decrease to zero,
+    //   so the heavy destructor is not called here.
+    // - This prevents the align process of NDTScanMatcher from being
+    //   blocked for a long time.
+    ndt_ptr_.with([&](auto & ndt_ptr) { std::swap(ndt_ptr, new_ndt_ptr); });
+
+    // 3. Handle potential destruction outside the lock.
+    // - new_ndt_ptr now holds the old NDT. Even if its heavy destructor
+    //   is triggered when this block ends, it happens safely outside the lock.
+    new_ndt_ptr.reset();
+  }
 
   // Memorize the position of the last update
   last_update_position_.with([&](auto & pos) { pos = position; });
