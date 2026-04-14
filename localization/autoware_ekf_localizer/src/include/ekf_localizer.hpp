@@ -92,6 +92,8 @@ private:
     sub_twist_with_cov_;
   //!< @brief time for ekf calculation callback
   rclcpp::TimerBase::SharedPtr timer_control_;
+  //!< @brief calls diagnostics_.force_update() at diagnostics_publish_period (Updater internal timer off)
+  rclcpp::TimerBase::SharedPtr diagnostics_publish_timer_;
   //!< @brief last predict time
   std::shared_ptr<const rclcpp::Time> last_predict_time_;
   //!< @brief trigger_node service
@@ -186,19 +188,14 @@ private:
     const rclcpp::Time & current_time);
 
   /**
-   * @brief diagnostic function called by diagnostic_updater::Updater
-   * @param stat diagnostic status wrapper to fill
+   * @brief diagnostic function invoked via diagnostics_.force_update() (diagnostic_updater task)
    */
   void diagnose(diagnostic_updater::DiagnosticStatusWrapper & stat);
 
-  /**
-   * @brief diagnostic for callback_pose (diagnostic_updater task)
-   */
+  /** @brief callback_pose diagnostic task */
   void diagnose_callback_pose(diagnostic_updater::DiagnosticStatusWrapper & stat);
 
-  /**
-   * @brief diagnostic for callback_twist (diagnostic_updater task)
-   */
+  /** @brief callback_twist diagnostic task */
   void diagnose_callback_twist(diagnostic_updater::DiagnosticStatusWrapper & stat);
 
   /**

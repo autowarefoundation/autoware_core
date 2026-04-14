@@ -62,12 +62,17 @@ EKFLocalizer::EKFLocalizer(const rclcpp::NodeOptions & node_options)
   merged_diagnostic_status_.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
   merged_diagnostic_status_.message = "OK";
 
-  // Configure diagnostic updater
+  // diagnostic_updater: keep tasks/publisher; disable its internal timer (setPeriod very large).
+  // This node's diagnostics_publish_timer_ calls force_update() at diagnostics_publish_period.
   diagnostics_.setHardwareID(this->get_name());
-  diagnostics_.setPeriod(rclcpp::Duration::from_seconds(params_.diagnostics_publish_period));
-  diagnostics_.add("ekf_localizer", this, &EKFLocalizer::diagnose);
-  diagnostics_.add("callback_pose", this, &EKFLocalizer::diagnose_callback_pose);
-  diagnostics_.add("callback_twist", this, &EKFLocalizer::diagnose_callback_twist);
+  diagnostics_.setPeriod(rclcpp::Duration::from_seconds(1e9));
+  const std::string diag_base = "localization: " + std::string(this->get_name());
+  diagnostics_.add(diag_base, this, &EKFLocalizer::diagnose);
+  diagnostics_.add(diag_base + ": callback_pose", this, &EKFLocalizer::diagnose_callback_pose);
+  diagnostics_.add(diag_base + ": callback_twist", this, &EKFLocalizer::diagnose_callback_twist);
+  diagnostics_publish_timer_ = rclcpp::create_timer(
+    this, get_clock(), rclcpp::Duration::from_seconds(params_.diagnostics_publish_period),
+    [this]() { diagnostics_.force_update(); });
 
   /* initialize ros system */
   timer_control_ = rclcpp::create_timer(
@@ -451,13 +456,12 @@ void EKFLocalizer::publish_estimate_result(
 void EKFLocalizer::diagnose(diagnostic_updater::DiagnosticStatusWrapper & stat)
 {
   // merged_diagnostic_status_ is updated in update_diagnostics() each EKF tick. Publishing is
-  // driven by diagnostic_updater at diagnostics_publish_period, or force_update() on severity
-  // increase vs. the previous tick.
+  // driven by diagnostics_publish_timer_ at diagnostics_publish_period, or force_update() on
+  // severity increase vs. the previous tick.
   //
   // Thread safety: copy first for a consistent snapshot if a multi-threaded executor is used.
   const diagnostic_msgs::msg::DiagnosticStatus snapshot = merged_diagnostic_status_;
 
-  stat.name = "localization: " + std::string(this->get_name());
   stat.hardware_id = this->get_name();
   stat.summary(snapshot);
 
@@ -468,7 +472,6 @@ void EKFLocalizer::diagnose(diagnostic_updater::DiagnosticStatusWrapper & stat)
 
 void EKFLocalizer::diagnose_callback_pose(diagnostic_updater::DiagnosticStatusWrapper & stat)
 {
-  stat.name = "localization: " + std::string(this->get_name()) + ": callback_pose";
   stat.hardware_id = this->get_name();
   stat.summary(diagnostic_msgs::msg::DiagnosticStatus::OK, "OK");
   stat.add("topic_time_stamp", std::to_string(last_pose_callback_time_.nanoseconds()));
@@ -476,7 +479,6 @@ void EKFLocalizer::diagnose_callback_pose(diagnostic_updater::DiagnosticStatusWr
 
 void EKFLocalizer::diagnose_callback_twist(diagnostic_updater::DiagnosticStatusWrapper & stat)
 {
-  stat.name = "localization: " + std::string(this->get_name()) + ": callback_twist";
   stat.hardware_id = this->get_name();
   stat.summary(diagnostic_msgs::msg::DiagnosticStatus::OK, "OK");
   stat.add("topic_time_stamp", std::to_string(last_twist_callback_time_.nanoseconds()));
