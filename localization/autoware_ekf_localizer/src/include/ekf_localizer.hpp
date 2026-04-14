@@ -22,7 +22,6 @@
 
 #include <autoware_utils_logging/logger_level_configure.hpp>
 #include <autoware_utils_system/stop_watch.hpp>
-#include <diagnostic_updater/diagnostic_updater.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <tf2/LinearMath/Quaternion.hpp>
 #include <tf2/utils.hpp>
@@ -84,8 +83,8 @@ private:
   //!< @brief processing_time publisher
   rclcpp::Publisher<autoware_internal_debug_msgs::msg::Float64Stamped>::SharedPtr
     pub_processing_time_;
-  //!< @brief manual DiagnosticArray publisher (diagnostics_manual); diagnostic_updater still uses /diagnostics
-  rclcpp::Publisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr pub_diagnostics_manual_;
+  //!< @brief /diagnostics publisher (manual DiagnosticArray; same absolute topic as former diagnostic_updater)
+  rclcpp::Publisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr pub_diagnostics_;
   //!< @brief initial pose subscriber
   rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr sub_initialpose_;
   //!< @brief measurement pose with covariance subscriber
@@ -95,7 +94,7 @@ private:
     sub_twist_with_cov_;
   //!< @brief time for ekf calculation callback
   rclcpp::TimerBase::SharedPtr timer_control_;
-  //!< @brief calls diagnostics_.force_update() and publish_diagnostics_manual() at diagnostics_publish_period
+  //!< @brief calls publish_diagnostics() at diagnostics_publish_period
   rclcpp::TimerBase::SharedPtr diagnostics_publish_timer_;
   //!< @brief last predict time
   std::shared_ptr<const rclcpp::Time> last_predict_time_;
@@ -127,9 +126,6 @@ private:
 
   AgedObjectQueue<geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr> pose_queue_;
   AgedObjectQueue<geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr> twist_queue_;
-
-  //!< @brief diagnostic updater for /diagnostics (internal timer disabled; EKF timer calls force_update)
-  diagnostic_updater::Updater diagnostics_;
 
   //!< @brief Merged diagnostic status from the latest EKF cycle (message/values refresh every tick)
   diagnostic_msgs::msg::DiagnosticStatus merged_diagnostic_status_;
@@ -184,22 +180,15 @@ private:
 
   /**
    * @brief Overwrite merged_diagnostic_status_ from merged diagnostics each tick;
-   * force_update() and publish_diagnostics_manual() when merged severity increases vs. the previous EKF tick
+   * publish_diagnostics() when merged severity increases vs. the previous EKF tick
    * (last transition time updates on any level change).
    */
   void update_diagnostics(
     const std::vector<diagnostic_msgs::msg::DiagnosticStatus> & diag_status_array,
     const rclcpp::Time & current_time);
 
-  /**
-   * @brief Build and publish the same diagnostic content as the updater tasks to diagnostics_manual
-   * (diagnostic_updater continues to publish /diagnostics).
-   */
-  void publish_diagnostics_manual();
-
-  void diagnose(diagnostic_updater::DiagnosticStatusWrapper & stat);
-  void diagnose_callback_pose(diagnostic_updater::DiagnosticStatusWrapper & stat);
-  void diagnose_callback_twist(diagnostic_updater::DiagnosticStatusWrapper & stat);
+  /** @brief Build and publish /diagnostics (main merged + callback_pose + callback_twist) */
+  void publish_diagnostics();
 
   /**
    * @brief trigger node

@@ -437,8 +437,7 @@ protected:
 
   static void force_diagnostics_update(autoware::ekf_localizer::EKFLocalizer * ekf_localizer)
   {
-    ekf_localizer->diagnostics_.force_update();
-    ekf_localizer->publish_diagnostics_manual();
+    ekf_localizer->publish_diagnostics();
   }
 
 
@@ -448,8 +447,7 @@ protected:
   }
 };
 
-// Note: Periodic /diagnostics uses an EKF node timer calling diagnostics_.force_update() (updater
-// internal timer disabled). The same timer also publishes diagnostics_manual via publish_diagnostics_manual().
+// Note: Periodic /diagnostics uses an EKF node timer calling publish_diagnostics().
 
 TEST_F(EKFLocalizerDiagnosticsTest, merged_diagnostic_reflects_pose_no_update_warn_then_error)
 {
@@ -664,7 +662,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, merged_diagnostic_ok_when_only_activation_an
 
 TEST_F(EKFLocalizerDiagnosticsTest, merged_diagnostic_ok_after_force_update_and_minimal_merge)
 {
-  // After force_update() (+ manual mirror), activation-only update_diagnostics sets merged status to OK
+  // After publish_diagnostics(), activation-only update_diagnostics sets merged status to OK
   // (no special reset path)
   const double ekf_rate = 100.0;
   const double diagnostics_publish_period = 0.1;
@@ -854,7 +852,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_updated_when_initialpose_not_set
 TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_at_specified_period)
 {
   // When diagnostics_publish_period > 0, EKF node's diagnostics_publish_timer_ publishes at that
-  // period (via diagnostics_.force_update())
+  // period (via publish_diagnostics())
   const double ekf_rate = 100.0;
   const double diagnostics_publish_period = 0.1;  // 10 Hz
 
@@ -903,8 +901,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_at_specified_period)
 
 TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_message_names)
 {
-  // /diagnostics: diagnostic_updater prepends "<node_name>: " to each add() task name.
-  // diagnostics_manual: publish_diagnostics_manual() uses names "localization: <node>" (+ ": callback_*").
+  // publish_diagnostics() uses names "localization: <node>" (+ ": callback_*" for the two callbacks).
   const double ekf_rate = 100.0;
   const double diagnostics_publish_period = 0.1;  // 10 Hz
 
@@ -930,7 +927,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_message_names)
   set_is_activated(ekf_localizer.get(), true);
   set_is_set_initialpose(ekf_localizer.get(), true);
 
-  // Wait for a full update (three tasks) from the periodic diagnostics_publish_timer_ / force_update path.
+  // Wait for a full update (three tasks) from the periodic diagnostics_publish_timer_ path.
   diagnostic_msgs::msg::DiagnosticArray::SharedPtr full_diag_msg;
   auto sub = ekf_localizer->create_subscription<diagnostic_msgs::msg::DiagnosticArray>(
     "/diagnostics", 10,
@@ -956,10 +953,9 @@ TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_message_names)
     << "Expected a /diagnostics message with three tasks (main, callback_pose, callback_twist)";
 
   const std::string node_name = ekf_localizer->get_name();
-  const std::string task_base = "localization: " + node_name;
-  const std::string expected_main = node_name + ": " + task_base;
-  const std::string expected_pose = node_name + ": " + task_base + ": callback_pose";
-  const std::string expected_twist = node_name + ": " + task_base + ": callback_twist";
+  const std::string expected_main = "localization: " + node_name;
+  const std::string expected_pose = expected_main + ": callback_pose";
+  const std::string expected_twist = expected_main + ": callback_twist";
 
   std::cout << "[diagnostics_published_message_names] node_name='" << node_name << "'\n";
   std::cout << "[diagnostics_published_message_names] observed " << full_diag_msg->status.size()
@@ -995,7 +991,7 @@ TEST_F(
   EKFLocalizerDiagnosticsTest, callback_pose_and_twist_published_at_period_when_period_positive)
 {
   // When diagnostics_publish_period > 0, callback_pose and callback_twist are published at the
-  // configured period via diagnostic_updater. This test verifies that
+  // configured period via publish_diagnostics(). This test verifies that
   // after publishing pose and twist, spinning yields both callback_pose and callback_twist on
   // /diagnostics at the configured period.
   const double ekf_rate = 100.0;
@@ -1178,7 +1174,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_at_parameter_period)
 
 TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_immediately_on_severity_increase)
 {
-  // With a very long updater period, only force_update() on severity increase should publish /diagnostics.
+  // With a very long diagnostics period, only publish_diagnostics() on severity increase should publish /diagnostics.
   // Slow EKF timer so executor-driven ticks do not merge to ERROR before we inject it.
   const double ekf_rate = 0.01;
   const double slow_diagnostics_frequency = 0.01;  // 100 s period
@@ -1251,7 +1247,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_immediately_on_severit
   executor.remove_node(ekf_localizer);
 
   EXPECT_GT(diag_count, count_before)
-    << "Severity increase should trigger an immediate /diagnostics publish (force_update) even "
+    << "Severity increase should trigger an immediate /diagnostics publish even "
        "when periodic publish is 100 s away";
   EXPECT_TRUE(saw_error_main_diag)
     << "Expected main ekf_localizer diagnostic status to report ERROR after severity increase";
