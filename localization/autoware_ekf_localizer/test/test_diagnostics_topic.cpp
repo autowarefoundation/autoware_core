@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/ekf_localizer/ekf_localizer.hpp"
+#include "include/ekf_localizer.hpp"
 
 #include <diagnostic_msgs/msg/diagnostic_array.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -61,6 +61,7 @@ static rclcpp::NodeOptions make_minimal_ekf_options()
     {"diagnostics.warn_ellipse_size", 1.2},
     {"diagnostics.error_ellipse_size_lateral_direction", 0.3},
     {"diagnostics.warn_ellipse_size_lateral_direction", 0.25},
+    {"diagnostics.diagnostics_publish_frequency", 10.0},
     {"misc.threshold_observable_velocity_mps", 0.0},
   });
   return options;
