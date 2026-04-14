@@ -1872,13 +1872,13 @@ PathWithLaneId RouteHandler::getCenterLinePath(
           const auto ls_opt = create_safe_linestring(segment);
           geometry_msgs::msg::Point p = ref_point.point;
           // find interpolated point on "waypoint" if there is.
-          if (ls_opt.has_value()) {
+          if (use_exact && ls_opt.has_value()) {
             const auto ls = to2D(*ls_opt);
 
             const auto arc_coord = lanelet::geometry::toArcCoordinates(ls, on_centerline_pt);
             const auto interpolated_pt_opt = interpolate_point(ref_pt, next_pt, arc_coord.length);
-            p = (use_exact && interpolated_pt_opt.has_value()) ? to_ros(interpolated_pt_opt.value())
-                                                               : ref_point.point;
+            p = interpolated_pt_opt.has_value() ? to_ros(interpolated_pt_opt.value())
+                                                : ref_point.point;
           }
           add_path_point(p, lanelet, speed_limit);
         } else {
