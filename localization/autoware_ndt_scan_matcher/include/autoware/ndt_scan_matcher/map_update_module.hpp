@@ -52,6 +52,12 @@ class MapUpdateModule
   using NdtType = pclomp::MultiGridNormalDistributionsTransform<PointSource, PointTarget>;
   using NdtPtrType = std::shared_ptr<NdtType>;
 
+  struct BuilderState
+  {
+    bool need_rebuild{true};
+    NdtPtrType secondary_ndt_ptr;
+  };
+
 public:
   MapUpdateModule(
     rclcpp::Node * node, Guarded<NdtPtrType> & ndt_ptr, HyperParameters::DynamicMapLoading param);
@@ -66,9 +72,14 @@ private:
     std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr);
 
   [[nodiscard]] bool should_update_map(
-    const geometry_msgs::msg::Point & position,
+    BuilderState & builder_state, const geometry_msgs::msg::Point & position,
     std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr);
 
+  void update_map_internal(
+    BuilderState & builder_state, const geometry_msgs::msg::Point & position,
+    std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr);
+
+  // Do not call this function while holding the lock for ndt_ptr_.
   void update_map(
     const geometry_msgs::msg::Point & position,
     std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr);
@@ -83,17 +94,17 @@ private:
   rclcpp::Client<autoware_map_msgs::srv::GetDifferentialPointCloudMap>::SharedPtr
     pcd_loader_client_;
 
+  // To prevent deadlocks, acquire locks in the following order:
+  // 1. builder_state_ -> ndt_ptr_
+  // 2. builder_state_ -> last_update_position_
   Guarded<NdtPtrType> & ndt_ptr_;
+  Guarded<BuilderState> builder_state_;
+  Guarded<std::optional<geometry_msgs::msg::Point>> last_update_position_{std::nullopt};
+
   rclcpp::Logger logger_;
   rclcpp::Clock::SharedPtr clock_;
 
-  Guarded<std::optional<geometry_msgs::msg::Point>> last_update_position_{std::nullopt};
-
   HyperParameters::DynamicMapLoading param_;
-
-  // Indicate if there is a prefetch thread waiting for being collected
-  NdtPtrType secondary_ndt_ptr_;
-  bool need_rebuild_;
 };
 
 }  // namespace autoware::ndt_scan_matcher

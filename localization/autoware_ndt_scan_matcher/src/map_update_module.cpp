@@ -31,15 +31,23 @@ MapUpdateModule::MapUpdateModule(
   pcd_loader_client_ =
     node->create_client<autoware_map_msgs::srv::GetDifferentialPointCloudMap>("pcd_loader_service");
 
-  secondary_ndt_ptr_.reset(new NdtType);
+  auto copied = builder_state_.with([&](auto & builder_state) {
+    // Initially, a direct map update on ndt_ptr_ is needed.
+    // ndt_ptr_'s mutex is locked until it is fully rebuilt.
+    // From the second update, the update is done on secondary_ndt_ptr_,
+    // and ndt_ptr_ is only locked when swapping its pointer with
+    // secondary_ndt_ptr_.
+    builder_state.need_rebuild = true;
+    builder_state.secondary_ndt_ptr.reset(new NdtType);
 
-  const bool copied = ndt_ptr_.with([&](const auto & ptr) {
-    if (ptr) {
-      *secondary_ndt_ptr_ = *ptr;
-      return true;
-    } else {
-      return false;
-    }
+    return ndt_ptr_.with([&](const auto & ptr) {
+      if (ptr) {
+        *builder_state.secondary_ndt_ptr = *ptr;
+        return true;
+      } else {
+        return false;
+      }
+    });
   });
 
   if (!copied) {
@@ -48,13 +56,6 @@ MapUpdateModule::MapUpdateModule(
             << "`ndt_ptr_` is a null NDT pointer.";
     throw std::runtime_error(message.str());
   }
-
-  // Initially, a direct map update on ndt_ptr_ is needed.
-  // ndt_ptr_'s mutex is locked until it is fully rebuilt.
-  // From the second update, the update is done on secondary_ndt_ptr_,
-  // and ndt_ptr_ is only locked when swapping its pointer with
-  // secondary_ndt_ptr_.
-  need_rebuild_ = true;
 }
 
 void MapUpdateModule::callback_timer(
@@ -83,20 +84,22 @@ void MapUpdateModule::callback_timer(
     return;
   }
 
-  if (should_update_map(position.value(), diagnostics_ptr)) {
-    update_map(position.value(), diagnostics_ptr);
-  }
+  builder_state_.with([&](auto & builder_state) {
+    if (should_update_map(builder_state, position.value(), diagnostics_ptr)) {
+      update_map_internal(builder_state, position.value(), diagnostics_ptr);
+    }
+  });
 }
 
 bool MapUpdateModule::should_update_map(
-  const geometry_msgs::msg::Point & position,
+  BuilderState & builder_state, const geometry_msgs::msg::Point & position,
   std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr)
 {
   const auto last_update_position =
     last_update_position_.with([](const auto & pos) { return pos; });
 
   if (last_update_position == std::nullopt) {
-    need_rebuild_ = true;
+    builder_state.need_rebuild = true;
     return true;
   }
 
@@ -114,7 +117,7 @@ bool MapUpdateModule::should_update_map(
 
     // If the map does not keep up with the current position,
     // lock ndt_ptr_ entirely until it is fully rebuilt.
-    need_rebuild_ = true;
+    builder_state.need_rebuild = true;
   }
 
   return distance > param_.update_distance;
@@ -137,15 +140,15 @@ bool MapUpdateModule::out_of_map_range(const geometry_msgs::msg::Point & positio
   return (distance + param_.lidar_radius > param_.map_radius);
 }
 
-void MapUpdateModule::update_map(
-  const geometry_msgs::msg::Point & position,
+void MapUpdateModule::update_map_internal(
+  BuilderState & builder_state, const geometry_msgs::msg::Point & position,
   std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr)
 {
-  diagnostics_ptr->add_key_value("is_need_rebuild", need_rebuild_);
+  diagnostics_ptr->add_key_value("is_need_rebuild", builder_state.need_rebuild);
 
   // If the current position is super far from the previous loading position,
   // lock and rebuild ndt_ptr_
-  if (need_rebuild_) {
+  if (builder_state.need_rebuild) {
     bool updated = false;
     ndt_ptr_.with([&](auto & ndt_ptr) {
       auto param = ndt_ptr->getParams();
@@ -175,7 +178,7 @@ void MapUpdateModule::update_map(
       return;
     }
 
-    need_rebuild_ = false;
+    builder_state.need_rebuild = false;
 
   } else {
     // Load map to the secondary_ndt_ptr, which does not require a mutex lock
@@ -183,7 +186,7 @@ void MapUpdateModule::update_map(
     // the main ndt_ptr_) overlap, the latency of updating/alignment reduces partly.
     // If the updating is done the main ndt_ptr_, either the update or the NDT
     // align will be blocked by the other.
-    const bool updated = update_ndt(position, *secondary_ndt_ptr_, diagnostics_ptr);
+    const bool updated = update_ndt(position, *builder_state.secondary_ndt_ptr, diagnostics_ptr);
 
     // check is_updated_map
     diagnostics_ptr->add_key_value("is_updated_map", updated);
@@ -193,21 +196,29 @@ void MapUpdateModule::update_map(
       return;
     }
 
-    // Swap secondary_ndt_ptr_ and ndt_ptr.
-    // secondary_ndt_ptr_ will be reset immediately afterwards, triggering its destructor.
+    // Swap secondary_ndt_ptr and ndt_ptr.
+    // secondary_ndt_ptr will be reset immediately afterwards, triggering its destructor.
     // Since this happens outside the ndt_ptr lock, the heavy destruction
     // process will not hold the lock for a long time.
-    ndt_ptr_.with([&](auto & ndt_ptr) { std::swap(ndt_ptr, secondary_ndt_ptr_); });
+    ndt_ptr_.with([&](auto & ndt_ptr) { std::swap(ndt_ptr, builder_state.secondary_ndt_ptr); });
   }
 
-  secondary_ndt_ptr_.reset(new NdtType);
-  ndt_ptr_.with([&](auto & ndt_ptr) { *secondary_ndt_ptr_ = *ndt_ptr; });
+  builder_state.secondary_ndt_ptr.reset(new NdtType);
+  ndt_ptr_.with([&](const auto & ndt_ptr) { *builder_state.secondary_ndt_ptr = *ndt_ptr; });
 
   // Memorize the position of the last update
   last_update_position_.with([&](auto & pos) { pos = position; });
 
   // Publish the new ndt maps
   publish_partial_pcd_map();
+}
+
+void MapUpdateModule::update_map(
+  const geometry_msgs::msg::Point & position,
+  std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr)
+{
+  builder_state_.with(
+    [&](auto & builder_state) { update_map_internal(builder_state, position, diagnostics_ptr); });
 }
 
 bool MapUpdateModule::update_ndt(
