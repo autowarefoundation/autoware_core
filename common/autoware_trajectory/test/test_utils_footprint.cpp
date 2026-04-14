@@ -12,17 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/motion_utils/trajectory/trajectory.hpp"
-#include "autoware/trajectory/detail/types.hpp"
 #include "autoware/trajectory/pose.hpp"
-#include "autoware/trajectory/threshold.hpp"
 #include "autoware/trajectory/utils/footprint.hpp"
 
 #include <gtest/gtest.h>
 
-#include <fstream>
-#include <limits>
-#include <string>
 #include <vector>
 
 namespace
@@ -31,7 +25,7 @@ using autoware::experimental::trajectory::Trajectory;
 using autoware_utils_geometry::create_point;
 using autoware_utils_geometry::create_quaternion_from_rpy;
 
-static Trajectory<geometry_msgs::msg::Pose> build_parabolic_trajectory(
+Trajectory<geometry_msgs::msg::Pose> build_parabolic_trajectory(
   const size_t num_points, const double interval, const bool reverse = false)
 {
   std::vector<geometry_msgs::msg::Pose> raw_poses;

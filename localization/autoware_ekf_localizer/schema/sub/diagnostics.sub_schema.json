@@ -4,6 +4,7 @@
   "definitions": {
     "diagnostics": {
       "type": "object",
+      "description": "Thresholds for per-check diagnostic status and the diagnostic_updater publish cadence. The main ekf_localizer task reflects merged status each EKF cycle; after at least one merged level change it includes KeyValue last_level_transition_timestamp (RCL ns), including while merged level is OK. diagnostic_updater publishes /diagnostics at 1/diagnostics_publish_frequency [s], and may publish immediately when merged severity increases versus the previous EKF tick.",
       "properties": {
         "pose_no_update_count_threshold_warn": {
           "type": "integer",
@@ -49,6 +50,12 @@
           "type": "number",
           "description": "The lateral direction size of the error ellipse to trigger a WARN state",
           "default": 0.25
+        },
+        "diagnostics_publish_frequency": {
+          "type": "number",
+          "description": "Diagnostics publish frequency [Hz] for diagnostic_updater::Updater (period = 1/frequency). Must be strictly positive; matches config/ekf_localizer.param.yaml package default. When merged diagnostic severity increases versus the previous EKF timer tick, an extra immediate publish is triggered in addition to this rate.",
+          "default": 10.0,
+          "exclusiveMinimum": 0
         }
       },
       "required": [

@@ -16,8 +16,8 @@
 
 #include "autoware/trajectory/detail/helpers.hpp"
 #include "autoware/trajectory/forward.hpp"
+#include "autoware/trajectory/interpolator/nearest_neighbor.hpp"
 #include "autoware/trajectory/interpolator/spherical_linear.hpp"
-#include "autoware/trajectory/threshold.hpp"
 
 #include <tf2/LinearMath/Quaternion.hpp>
 #include <tf2/LinearMath/Vector3.hpp>
@@ -25,6 +25,7 @@
 
 #include <tf2_geometry_msgs/tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
+#include <cassert>
 #include <cmath>
 #include <memory>
 #include <utility>
@@ -56,14 +57,10 @@ Trajectory<PointType>::Trajectory(const Trajectory<geometry_msgs::msg::Point> & 
   // build mock orientations
   std::vector<geometry_msgs::msg::Quaternion> orientations(bases_.size());
   for (size_t i = 0; i < bases_.size(); ++i) {
-    orientations[i].w = 1.0;
+    orientations.at(i).w = 1.0;
   }
   auto success = orientation_interpolator_->build(bases_, orientations);
-
-  if (!success) {
-    throw std::runtime_error(
-      "Failed to build orientation interpolator.");  // This Exception should not be thrown.
-  }
+  assert(success && "Trajectory<Pose>: failed to build orientation interpolator");
 
   // align orientation with trajectory direction
   align_orientation_with_trajectory_direction();
@@ -94,7 +91,11 @@ interpolator::InterpolationResult Trajectory<PointType>::build(
     return tl::unexpected(
       interpolator::InterpolationFailure{"failed to interpolate Pose::points"} + result.error());
   }
-  if (const auto result = orientation_interpolator_->build(bases_, std::move(orientations));
+  if (const auto result = detail::build_with_fallback(
+        orientation_interpolator_, bases_, orientations,
+        [] {
+          return std::make_shared<interpolator::NearestNeighbor<geometry_msgs::msg::Quaternion>>();
+        });
       !result) {
     return tl::unexpected(
       interpolator::InterpolationFailure{"failed to interpolate Pose::orientation"} +
@@ -138,6 +139,10 @@ std::vector<PointType> Trajectory<PointType>::compute(const std::vector<double> 
 
 void Trajectory<PointType>::align_orientation_with_trajectory_direction()
 {
+  if (bases_.size() < 2) {
+    // Not enough points to determine trajectory direction, so we skip alignment.
+    return;
+  }
   std::vector<geometry_msgs::msg::Quaternion> aligned_orientations;
   for (const auto & s : bases_) {
     const double azimuth = this->azimuth(s);
@@ -189,41 +194,19 @@ void Trajectory<PointType>::align_orientation_with_trajectory_direction()
     aligned_orientations.emplace_back(aligned_orientation);
   }
   const auto success = orientation_interpolator_->build(bases_, std::move(aligned_orientations));
-  if (!success) {
-    throw std::runtime_error(
-      "Failed to build orientation interpolator.");  // This exception should not be thrown.
-  }
+  assert(
+    success &&
+    "Trajectory<Pose>::align_orientation_with_trajectory_direction: failed to build "
+    "orientation interpolator");
 }
 
-std::vector<PointType> Trajectory<PointType>::restore(const size_t min_points) const
+std::vector<PointType> Trajectory<PointType>::restore() const
 {
-  std::vector<double> sanitized_bases{};
-  {
-    const auto bases = detail::fill_bases(get_underlying_bases(), min_points);
-    std::vector<PointType> points;
-
-    points.reserve(bases.size());
-    for (const auto & s : bases) {
-      const auto point = compute(s);
-      if (points.empty() || !is_almost_same(point, points.back())) {
-        points.push_back(point);
-        sanitized_bases.push_back(s);
-      }
-    }
-    if (points.size() >= min_points) {
-      return points;
-    }
-  }
-
-  // retry to satisfy min_point requirement as much as possible
-  const auto bases = detail::fill_bases(sanitized_bases, min_points);
   std::vector<PointType> points;
+  const auto bases = get_underlying_bases();
   points.reserve(bases.size());
   for (const auto & s : bases) {
-    const auto point = compute(s);
-    if (points.empty() || !is_almost_same(point, points.back())) {
-      points.push_back(point);
-    }
+    points.push_back(compute(s));
   }
   return points;
 }

@@ -24,7 +24,7 @@ jobs:
 
       - name: Get changed files
         id: changed-files
-        uses: step-security/changed-files@v46
+        uses: step-security/changed-files@v47
         with:
           since_last_remote_commit: true
           files_ignore: |

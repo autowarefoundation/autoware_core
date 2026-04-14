@@ -16,8 +16,6 @@
 #include "autoware/trajectory/point.hpp"
 #include "autoware/trajectory/utils/shift.hpp"
 
-#include "geometry_msgs/msg/detail/point__struct.hpp"
-
 #include <gtest/gtest.h>
 
 #include <vector>

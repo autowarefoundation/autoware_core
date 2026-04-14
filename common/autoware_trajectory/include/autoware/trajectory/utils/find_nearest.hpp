@@ -15,7 +15,6 @@
 #ifndef AUTOWARE__TRAJECTORY__UTILS__FIND_NEAREST_HPP_
 #define AUTOWARE__TRAJECTORY__UTILS__FIND_NEAREST_HPP_
 
-#include "autoware/trajectory/detail/types.hpp"
 #include "autoware/trajectory/forward.hpp"
 #include "autoware/trajectory/path_point.hpp"
 #include "autoware/trajectory/path_point_with_lane_id.hpp"
@@ -26,7 +25,10 @@
 #include "autoware_utils_geometry/geometry.hpp"
 #include "autoware_utils_geometry/pose_deviation.hpp"
 
+#include <cmath>
+#include <cstddef>
 #include <limits>
+#include <optional>
 #include <vector>
 
 namespace autoware::experimental::trajectory
@@ -48,8 +50,9 @@ template <class TrajectoryPointType>
 {
   const auto bases = trajectory.get_underlying_bases();
 
-  double search_start = (min_idx == 0) ? bases[0ul] : bases[min_idx - 1];
-  double search_end = (min_idx == bases.size() - 1) ? bases[bases.size() - 1] : bases[min_idx + 1];
+  double search_start = (min_idx == 0) ? bases.at(0) : bases.at(min_idx - 1);
+  double search_end =
+    (min_idx == bases.size() - 1) ? bases.at(bases.size() - 1) : bases.at(min_idx + 1);
 
   double min_dist = std::numeric_limits<double>::infinity();
   double min_s = (search_start + search_end) * 0.5;
@@ -105,8 +108,9 @@ std::optional<double> find_precise_index(
 
   double squared_dist_threshold = dist_threshold * dist_threshold;
 
-  double search_start = (min_idx == 0) ? bases[0ul] : bases[min_idx - 1];
-  double search_end = (min_idx == bases.size() - 1) ? bases[bases.size() - 1] : bases[min_idx + 1];
+  double search_start = (min_idx == 0) ? bases.at(0) : bases.at(min_idx - 1);
+  double search_end =
+    (min_idx == bases.size() - 1) ? bases.at(bases.size() - 1) : bases.at(min_idx + 1);
 
   double min_dist = std::numeric_limits<double>::infinity();
   double min_s = (search_start + search_end) * 0.5;
@@ -175,7 +179,7 @@ template <class TrajectoryPointType>
   size_t min_idx = 0;
 
   for (size_t i = 0; i < bases.size(); ++i) {
-    auto pnt = trajectory.compute(bases[i]);
+    auto pnt = trajectory.compute(bases.at(i));
     const auto dist = autoware_utils_geometry::calc_squared_distance2d(pnt, point);
     if (dist < min_dist) {
       min_dist = dist;
@@ -210,7 +214,7 @@ template <class TrajectoryPointType>
     size_t min_idx = 0;
     bool is_within_constraints = false;
     for (size_t i = 0; i < bases.size(); ++i) {
-      const auto point = trajectory.compute(bases[i]);
+      const auto point = trajectory.compute(bases.at(i));
       const auto squared_dist =
         autoware_utils_geometry::calc_squared_distance2d(point, pose.position);
       const auto yaw_dev =

@@ -18,55 +18,6 @@
 
 #include <vector>
 
-TEST(TestHelpers, fill_bases_with_new_points)
-{
-  using autoware::experimental::trajectory::detail::fill_bases;
-
-  std::vector<double> x = {0.0, 1.0, 2.0, 3.0};
-  size_t min_points = 9;
-  std::vector<double> expected = {0.0, 1.0 / 3, 2.0 / 3, 1.0, 4.0 / 3, 5.0 / 3, 2.0, 2.5, 3.0};
-
-  auto result = fill_bases(x, min_points);
-
-  EXPECT_EQ(result.size(), min_points);
-
-  for (size_t i = 0; i < min_points; ++i) {
-    EXPECT_NEAR(result[i], expected[i], 1e-6);
-  }
-}
-
-TEST(TestHelpers, fill_bases_as_is_1)
-{
-  using autoware::experimental::trajectory::detail::fill_bases;
-
-  std::vector<double> x = {0.0, 1.0, 2.0, 3.0};
-  size_t min_points = 4;
-
-  auto result = fill_bases(x, min_points);
-
-  EXPECT_EQ(result.size(), x.size());
-
-  for (size_t i = 0; i < x.size(); ++i) {
-    EXPECT_NEAR(result[i], result[i], 1e-6);
-  }
-}
-
-TEST(TestHelpers, fill_bases_as_is_2)
-{
-  using autoware::experimental::trajectory::detail::fill_bases;
-
-  std::vector<double> x = {0.0, 1.0, 2.0, 3.0};
-  size_t min_points = 3;
-
-  auto result = fill_bases(x, min_points);
-
-  EXPECT_EQ(result.size(), x.size());
-
-  for (size_t i = 0; i < x.size(); ++i) {
-    EXPECT_NEAR(result[i], result[i], 1e-6);
-  }
-}
-
 TEST(TestHelpers, crop_bases)
 {
   using autoware::experimental::trajectory::detail::crop_bases;

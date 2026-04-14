@@ -20,6 +20,8 @@
 
 #include <Eigen/Core>
 
+#include <cmath>
+#include <functional>
 #include <limits>
 #include <utility>
 #include <vector>
@@ -162,6 +164,9 @@ template <class TrajectoryPointType, class PolygonClosurePointsType>
   const double end_inclusive = std::numeric_limits<double>::infinity())
 {
   // TODO(soblin): can we statically dispatch for Boost.Geometry objects ?
+  if (open_or_closed_boundary.empty()) {
+    return {};
+  }
   const auto & front_point = open_or_closed_boundary.front();
   const auto & last_point = open_or_closed_boundary.back();
   const double d = std::hypot(front_point.x() - last_point.x(), front_point.y() - last_point.y());

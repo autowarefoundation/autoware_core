@@ -342,23 +342,22 @@ A Python launch file (`agnocast_env.launch.py`) is also provided with the same f
 Basic usage with a single node:
 
 ```python
-import os
-
 from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
+from launch.substitutions import PathJoinSubstitution
 from launch_ros.actions import Node
-from ament_index_python.packages import get_package_share_directory
+from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description():
     agnocast_env = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(
-                get_package_share_directory("autoware_agnocast_wrapper"),
+            PathJoinSubstitution([
+                FindPackageShare("autoware_agnocast_wrapper"),
                 "launch",
                 "agnocast_env.launch.py",
-            )
+            ])
         ),
     )
 
@@ -375,23 +374,22 @@ def generate_launch_description():
 Using a component container with multi-threading:
 
 ```python
-import os
-
 from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
+from launch.substitutions import PathJoinSubstitution
 from launch_ros.actions import ComposableNodeContainer
-from ament_index_python.packages import get_package_share_directory
+from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description():
     agnocast_env = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(
-                get_package_share_directory("autoware_agnocast_wrapper"),
+            PathJoinSubstitution([
+                FindPackageShare("autoware_agnocast_wrapper"),
                 "launch",
                 "agnocast_env.launch.py",
-            )
+            ])
         ),
         launch_arguments={"use_multithread": "true"}.items(),
     )
