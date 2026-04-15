@@ -21,6 +21,7 @@
 #include <rclcpp/logging.hpp>
 
 #include <algorithm>
+#include <cassert>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -196,10 +197,7 @@ public:
       std::fill(values.begin() + start_index, values.begin() + end_index + 1, value);
 
       const auto success = parent_.interpolator_->build(bases, values);
-      if (!success) {
-        throw std::runtime_error(
-          "Failed to build interpolator.");  // This Exception should not be thrown.
-      }
+      assert(success && "InterpolatedArray::Segment::set: failed to build interpolator");
     }
 
     void clamp(const T & max)
@@ -219,10 +217,7 @@ public:
       }
 
       const auto success = parent_.interpolator_->build(bases, values);
-      if (!success) {
-        throw std::runtime_error(
-          "Failed to build interpolator.");  // This Exception should not be thrown.
-      }
+      assert(success && "InterpolatedArray::Segment::clamp: failed to build interpolator");
     }
   };
 
@@ -254,10 +249,7 @@ public:
   {
     std::fill(values_.begin(), values_.end(), value);
     const auto success = interpolator_->build(bases_, values_);
-    if (!success) {
-      throw std::runtime_error(
-        "Failed to build interpolator.");  // This Exception should not be thrown.
-    }
+    assert(success && "InterpolatedArray::operator=: failed to build interpolator");
     return *this;
   }
 
