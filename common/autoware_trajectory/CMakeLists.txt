@@ -83,6 +83,8 @@ if(BUILD_TESTING)
     test/test_utils_footprint.cpp
     test/test_utils_velocity.cpp
     test/test_add_offset.cpp
+    test/test_temporal_trajectory.cpp
+    test/test_utils_temporal_trajectory.cpp
   )
 
   ament_auto_add_gtest(test_${PROJECT_NAME} ${test_files})
