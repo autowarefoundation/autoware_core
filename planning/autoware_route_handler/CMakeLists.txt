@@ -23,8 +23,11 @@ if(BUILD_TESTING)
     autoware_test_utils
     autoware_pyplot
     fmt
-    yaml-cpp
   )
+
+  target_link_libraries(test_autoware_route_handler
+  yaml-cpp
+)
 
   target_compile_definitions(test_${PROJECT_NAME}
     PUBLIC PLOT
