@@ -14,7 +14,6 @@ jobs:
         above: [false, true]
         enable-agnocast: [false, true]
         exclude:
-          # Agnocast is verified per-repository; drop -above-agnocast combinations.
           - above: true
             enable-agnocast: true
         include:
