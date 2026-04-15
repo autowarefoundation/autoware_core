@@ -10,6 +10,7 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
 
 if(BUILD_TESTING)
   set(fmt_TARGETS fmt::fmt)
+  find_package(yaml-cpp REQUIRED)
 
   ament_add_ros_isolated_gtest(test_autoware_route_handler
     test/test_main.cpp
@@ -22,6 +23,7 @@ if(BUILD_TESTING)
     autoware_test_utils
     autoware_pyplot
     fmt
+    yaml-cpp
   )
 
   target_compile_definitions(test_${PROJECT_NAME}
