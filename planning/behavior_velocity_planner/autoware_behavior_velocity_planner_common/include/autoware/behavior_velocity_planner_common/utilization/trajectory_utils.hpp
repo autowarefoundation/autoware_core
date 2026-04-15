@@ -21,6 +21,7 @@
 #include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
 
 #include <memory>
+#include <optional>
 
 namespace autoware::behavior_velocity_planner
 {
@@ -34,8 +35,7 @@ bool smoothPath(
   const std::shared_ptr<const PlannerData> & planner_data);
 bool smoothPath(
   const PathWithLaneId & in_path, PathWithLaneId & out_path, const PlannerData & planner_data);
-bool smoothPath(
-  const Trajectory & in_path, Trajectory & out_path, const PlannerData & planner_data);
+std::optional<Trajectory> smoothPath(const Trajectory & in_path, const PlannerData & planner_data);
 }  // namespace autoware::behavior_velocity_planner
 
 #endif  // AUTOWARE__BEHAVIOR_VELOCITY_PLANNER_COMMON__UTILIZATION__TRAJECTORY_UTILS_HPP_

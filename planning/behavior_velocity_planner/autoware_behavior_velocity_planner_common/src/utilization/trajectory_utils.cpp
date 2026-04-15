@@ -84,7 +84,7 @@ bool smoothPath(
   return true;
 }
 
-bool smoothPath(const Trajectory & in_path, Trajectory & out_path, const PlannerData & planner_data)
+std::optional<Trajectory> smoothPath(const Trajectory & in_path, const PlannerData & planner_data)
 {
   const auto & current_pose = planner_data.current_odometry->pose;
   const auto & v0 = planner_data.current_velocity->twist.linear.x;
@@ -127,7 +127,7 @@ bool smoothPath(const Trajectory & in_path, Trajectory & out_path, const Planner
 
   if (!smoother->apply(v0, a0, clipped, traj_smoothed, debug_trajectories, false)) {
     std::cerr << "[behavior_velocity][trajectory_utils]: failed to smooth" << std::endl;
-    return false;
+    return std::nullopt;
   }
 
   traj_smoothed.insert(
@@ -149,14 +149,7 @@ bool smoothPath(const Trajectory & in_path, Trajectory & out_path, const Planner
       return p;
     });
 
-  const auto out_path_opt = autoware::experimental::trajectory::pretty_build(out_path_points);
-  if (!out_path_opt) {
-    std::cerr << "[behavior_velocity][trajectory_utils]: failed to build trajectory" << std::endl;
-    return false;
-  }
-  out_path = out_path_opt.value();
-
-  return true;
+  return autoware::experimental::trajectory::pretty_build(out_path_points);
 }
 
 }  // namespace autoware::behavior_velocity_planner
