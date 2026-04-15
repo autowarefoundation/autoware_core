@@ -119,16 +119,14 @@ TEST(smoothPath, nominal)
     // Input path
     const auto in_path = autoware::experimental::trajectory::pretty_build(path_points).value();
 
-    // Output path
-    Trajectory out_path;
-
     // Execute smoothing
-    auto result = smoothPath(in_path, out_path, planner_data);
+    const auto result = smoothPath(in_path, planner_data);
 
     // Check results
-    EXPECT_TRUE(result);
+    EXPECT_TRUE(result.has_value());
 
     // Check first and last points
+    const auto & out_path = result.value();
     const auto first_point = out_path.compute(0);
     const auto last_point = out_path.compute(out_path.length());
     EXPECT_DOUBLE_EQ(first_point.point.pose.position.x, path_points.front().point.pose.position.x);
