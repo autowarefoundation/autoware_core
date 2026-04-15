@@ -24,7 +24,6 @@
 
 #include <gtest/gtest.h>
 
-#include <cmath>
 #include <chrono>
 #include <iostream>
 #include <memory>
@@ -464,7 +463,8 @@ protected:
     ekf_localizer->timer_callback();
   }
 
-  /** Values that initialize_diagnostic_info() clears each timer tick (regression: early return too). */
+  /** Values that initialize_diagnostic_info() clears each timer tick (regression: early return
+   * too). */
   static void set_stale_pose_twist_measurement_diag_fields(
     autoware::ekf_localizer::EKFLocalizer * ekf_localizer)
   {
