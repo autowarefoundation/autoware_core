@@ -77,6 +77,7 @@ public:
    * @brief Compute a point at a given time.
    * @param[in] t Query time in seconds.
    * @return Interpolated trajectory point.
+   * @throw std::out_of_range If t is outside [start_time(), end_time()].
    */
   [[nodiscard]] PointType compute_from_time(const double t) const;
 
@@ -84,6 +85,7 @@ public:
    * @brief Compute a point at a given arc length.
    * @param[in] s Query arc length in meters.
    * @return Interpolated trajectory point.
+   * @throw std::out_of_range If s is outside [0, length()].
    */
   [[nodiscard]] PointType compute_from_distance(const double s) const;
 
@@ -91,13 +93,15 @@ public:
    * @brief Convert time to arc length.
    * @param[in] t Query time in seconds.
    * @return Arc length in meters.
+   * @throw std::out_of_range If t is outside [start_time(), end_time()].
    */
   [[nodiscard]] double time_to_distance(const double t) const;
 
   /**
    * @brief Convert arc length to time.
    * @param[in] s Query arc length in meters.
-   * @return Time in seconds. Distance is clamped to the valid range if out of bounds.
+   * @return Time in seconds.
+   * @throw std::out_of_range If s is outside [0, length()].
    */
   [[nodiscard]] double distance_to_time(const double s) const;
 

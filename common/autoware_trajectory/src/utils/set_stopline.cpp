@@ -14,38 +14,40 @@
 
 #include "autoware/trajectory/utils/set_stopline.hpp"
 
+#include "autoware/trajectory/detail/validate_range.hpp"
 #include "autoware/trajectory/temporal_trajectory.hpp"
 
 #include <algorithm>
+#include <limits>
 
 namespace autoware::experimental::trajectory
 {
 
 TemporalTrajectory set_stopline(TemporalTrajectory trajectory, const double arc_length)
 {
-  const auto stop_time = trajectory.distance_to_time(arc_length);
+  detail::throw_if_out_of_range(arc_length, 0.0, trajectory.length(), "arc_length");
 
-  const auto stop_distance = std::clamp(arc_length, 0.0, trajectory.length());
-  trajectory.spatial_trajectory_.crop(0.0, stop_distance);
+  const auto stop_time = trajectory.distance_to_time(arc_length);
+  trajectory.spatial_trajectory_.crop(0.0, arc_length);
   trajectory.spatial_trajectory_.longitudinal_velocity_mps()
     .at(trajectory.spatial_trajectory_.length())
     .set(0.0);
   trajectory.time_distance_mapping_.set_distance_range(
     stop_time, trajectory.time_distance_mapping_.end_time(),
-    stop_distance + trajectory.distance_offset_);
+    arc_length + trajectory.distance_offset_);
   return trajectory;
 }
 
 TemporalTrajectory set_stopline(
   TemporalTrajectory trajectory, const double arc_length, const double duration)
 {
+  detail::throw_if_out_of_range(arc_length, 0.0, trajectory.length(), "arc_length");
+  detail::throw_if_out_of_range(duration, 0.0, std::numeric_limits<double>::infinity(), "duration");
+
   const auto stop_time = trajectory.distance_to_time(arc_length);
 
-  const auto stop_duration = std::max(duration, 0.0);
-
-  const auto stop_distance = std::clamp(arc_length, 0.0, trajectory.length());
-  trajectory.spatial_trajectory_.longitudinal_velocity_mps().at(stop_distance).set(0.0);
-  trajectory.time_distance_mapping_.extend_time_at(stop_time, stop_duration);
+  trajectory.spatial_trajectory_.longitudinal_velocity_mps().at(arc_length).set(0.0);
+  trajectory.time_distance_mapping_.extend_time_at(stop_time, duration);
   return trajectory;
 }
 

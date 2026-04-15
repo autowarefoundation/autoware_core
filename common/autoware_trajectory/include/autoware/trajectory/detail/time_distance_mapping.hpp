@@ -62,6 +62,7 @@ public:
    * @brief Evaluate distance at the given time.
    * @param[in] time Query time in seconds.
    * @return Absolute distance in meters.
+   * @throw std::out_of_range If time is outside [start_time(), end_time()].
    */
   [[nodiscard]] double distance_at(double time) const;
 
@@ -87,6 +88,7 @@ public:
    * @brief Extend the schedule at a given time by inserting a constant-distance plateau.
    * @param[in] time Pivot time in seconds.
    * @param[in] delta_time Additional duration in seconds.
+   * @throw std::out_of_range If time is outside [start_time(), end_time()].
    */
   void extend_time_at(double time, double delta_time);
 
@@ -95,6 +97,8 @@ public:
    * @param[in] start_time Range start time in seconds.
    * @param[in] end_time Range end time in seconds.
    * @param[in] distance Absolute distance in meters.
+   * @throw std::out_of_range If start_time or end_time is outside [start_time(), end_time()].
+   * @throw std::invalid_argument If end_time < start_time.
    */
   void set_distance_range(double start_time, double end_time, double distance);
 
@@ -102,16 +106,10 @@ public:
    * @brief Restrict the visible time range.
    * @param[in] start_time Visible start time in seconds.
    * @param[in] end_time Visible end time in seconds.
+   * @throw std::out_of_range If start_time or end_time is outside [start_time(), end_time()].
+   * @throw std::invalid_argument If end_time < start_time.
    */
   void set_time_range(double start_time, double end_time);
-
-  /**
-   * @brief Clamp a time to the visible range.
-   * @param[in] time Query time in seconds.
-   * @param[in] show_warning Whether to emit a warning when clamping occurs.
-   * @return Clamped time in seconds.
-   */
-  [[nodiscard]] double clamp_time(double time, bool show_warning = false) const;
 
   /**
    * @brief Return cropped time bases within the visible range.
@@ -122,7 +120,8 @@ public:
   /**
    * @brief Convert an absolute distance to time.
    * @param[in] absolute_distance Query absolute distance in meters.
-   * @return Time in seconds. Distance is clamped to the valid range if out of bounds.
+   * @return Time in seconds.
+   * @throw std::out_of_range If absolute_distance is outside [start_distance(), end_distance()].
    */
   [[nodiscard]] double time_at_distance(double absolute_distance) const;
 
@@ -130,7 +129,6 @@ private:
   [[nodiscard]] double compute_distance(double internal_time) const;
   [[nodiscard]] double start_distance() const;
   [[nodiscard]] double end_distance() const;
-  [[nodiscard]] double clamp_time_without_warning(double time) const;
   [[nodiscard]] double to_internal_time(double time) const;
   [[nodiscard]] double to_public_time(double internal_time) const;
 

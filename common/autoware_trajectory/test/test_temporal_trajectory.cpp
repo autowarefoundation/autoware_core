@@ -220,30 +220,57 @@ TEST(TemporalTrajectory, DistanceToTimeReturnsFirstStopTime)
   EXPECT_NEAR(stop_time, 1.5, 1e-6);
 }
 
-// Test: distance_to_time clamps distance below range (returns start_time)
-TEST(TemporalTrajectory, DistanceToTimeClampsBelowRange)
+// Test: distance_to_time throws when distance is below range
+TEST(TemporalTrajectory, DistanceToTimeThrowsBelowRange)
 {
   const std::vector<TrajectoryPoint> points{
     make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
 
   auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
-
-  // Request distance below 0 should return start_time
-  const auto time = trajectory.distance_to_time(-1.0);
-  EXPECT_NEAR(time, trajectory.start_time(), 1e-6);
+  EXPECT_THROW(static_cast<void>(trajectory.distance_to_time(-1.0)), std::out_of_range);
 }
 
-// Test: distance_to_time clamps distance above range (returns end_time)
-TEST(TemporalTrajectory, DistanceToTimeClampsAboveRange)
+// Test: distance_to_time throws when distance is above range
+TEST(TemporalTrajectory, DistanceToTimeThrowsAboveRange)
 {
   const std::vector<TrajectoryPoint> points{
     make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
 
   auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
+  EXPECT_THROW(static_cast<void>(trajectory.distance_to_time(100.0)), std::out_of_range);
+}
 
-  // Request distance above length should return end_time
-  const auto time = trajectory.distance_to_time(100.0);
-  EXPECT_NEAR(time, trajectory.end_time(), 1e-6);
+// Test: compute_from_time throws when time is out of range
+TEST(TemporalTrajectory, ComputeFromTimeThrowsOutOfRange)
+{
+  const std::vector<TrajectoryPoint> points{
+    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+
+  auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
+  EXPECT_THROW(static_cast<void>(trajectory.compute_from_time(-1.0)), std::out_of_range);
+  EXPECT_THROW(static_cast<void>(trajectory.compute_from_time(5.0)), std::out_of_range);
+}
+
+// Test: compute_from_distance throws when distance is out of range
+TEST(TemporalTrajectory, ComputeFromDistanceThrowsOutOfRange)
+{
+  const std::vector<TrajectoryPoint> points{
+    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+
+  auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
+  EXPECT_THROW(static_cast<void>(trajectory.compute_from_distance(-1.0)), std::out_of_range);
+  EXPECT_THROW(static_cast<void>(trajectory.compute_from_distance(100.0)), std::out_of_range);
+}
+
+// Test: time_to_distance throws when time is out of range
+TEST(TemporalTrajectory, TimeToDistanceThrowsOutOfRange)
+{
+  const std::vector<TrajectoryPoint> points{
+    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+
+  auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
+  EXPECT_THROW(static_cast<void>(trajectory.time_to_distance(-1.0)), std::out_of_range);
+  EXPECT_THROW(static_cast<void>(trajectory.time_to_distance(5.0)), std::out_of_range);
 }
 
 // Test: compute_from_distance at trajectory boundaries

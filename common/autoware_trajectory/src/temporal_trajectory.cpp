@@ -14,6 +14,7 @@
 
 #include "autoware/trajectory/temporal_trajectory.hpp"
 
+#include "autoware/trajectory/detail/validate_range.hpp"
 #include "autoware/trajectory/interpolator/linear.hpp"
 #include "autoware/trajectory/threshold.hpp"
 #include "autoware/trajectory/utils/find_intervals.hpp"
@@ -98,15 +99,16 @@ std::vector<double> TemporalTrajectory::get_underlying_time_bases() const
 
 TemporalTrajectory::PointType TemporalTrajectory::compute_from_time(const double t) const
 {
-  const auto t_clamped = time_distance_mapping_.clamp_time(t, true);
+  detail::throw_if_out_of_range(t, start_time(), end_time(), "time");
   auto point =
-    spatial_trajectory_.compute(time_distance_mapping_.distance_at(t_clamped) - distance_offset_);
-  point.time_from_start = to_duration_msg(t_clamped);
+    spatial_trajectory_.compute(time_distance_mapping_.distance_at(t) - distance_offset_);
+  point.time_from_start = to_duration_msg(t);
   return point;
 }
 
 TemporalTrajectory::PointType TemporalTrajectory::compute_from_distance(const double s) const
 {
+  detail::throw_if_out_of_range(s, 0.0, length(), "distance");
   auto point = spatial_trajectory_.compute(s);
   const auto t = distance_to_time(s);
   point.time_from_start = to_duration_msg(t);
@@ -115,20 +117,20 @@ TemporalTrajectory::PointType TemporalTrajectory::compute_from_distance(const do
 
 double TemporalTrajectory::time_to_distance(const double t) const
 {
-  return time_distance_mapping_.distance_at(time_distance_mapping_.clamp_time(t, true)) -
-         distance_offset_;
+  detail::throw_if_out_of_range(t, start_time(), end_time(), "time");
+  return time_distance_mapping_.distance_at(t) - distance_offset_;
 }
 
 double TemporalTrajectory::distance_to_time(const double s) const
 {
-  const auto s_clamped = std::clamp(s, 0.0, length());
-  const auto absolute_distance = s_clamped + distance_offset_;
+  detail::throw_if_out_of_range(s, 0.0, length(), "distance");
+  const auto absolute_distance = s + distance_offset_;
 
   const auto stop_intervals = find_intervals(*this, [](const auto & point) {
     return std::abs(point.longitudinal_velocity_mps) <= k_zero_velocity_threshold;
   });
   for (const auto & stop_interval : stop_intervals) {
-    if (std::abs(s_clamped - stop_interval.start.distance) <= k_same_time_threshold) {
+    if (std::abs(s - stop_interval.start.distance) <= k_same_time_threshold) {
       return stop_interval.start.time;
     }
   }

@@ -15,6 +15,7 @@
 #include "autoware/trajectory/detail/time_distance_mapping.hpp"
 
 #include "autoware/trajectory/detail/helpers.hpp"
+#include "autoware/trajectory/detail/validate_range.hpp"
 #include "autoware/trajectory/interpolator/nearest_neighbor.hpp"
 #include "autoware/trajectory/threshold.hpp"
 
@@ -62,8 +63,8 @@ void TimeDistanceMapping::extend_time_at(const double time, const double delta_t
 {
   const auto original_start_time = start_time();
   const auto original_end_time = end_time();
-  const auto clamped_time = clamp_time_without_warning(time);
-  const auto pivot_internal_time = to_internal_time(clamped_time);
+  throw_if_out_of_range(time, original_start_time, original_end_time, "time");
+  const auto pivot_internal_time = to_internal_time(time);
   const auto pivot_distance = compute_distance(pivot_internal_time);
   auto time_bases = time_bases_;
   auto distance_bases = distance_bases_;
@@ -89,19 +90,20 @@ void TimeDistanceMapping::set_distance_range(
 {
   const auto original_start_time = this->start_time();
   const auto original_end_time = this->end_time();
-  const auto clamped_start = clamp_time_without_warning(start_time);
-  const auto range_end = std::max(end_time, clamped_start);
-  const auto clamped_end =
-    (range_end <= this->end_time()) ? clamp_time_without_warning(range_end) : range_end;
+  throw_if_out_of_range(start_time, original_start_time, original_end_time, "start_time");
+  throw_if_out_of_range(end_time, original_start_time, original_end_time, "end_time");
+  if (end_time < start_time) {
+    throw std::invalid_argument("end_time must be greater than or equal to start_time");
+  }
   auto time_bases = time_bases_;
   auto distance_bases = distance_bases_;
-  const auto clamped_start_internal = to_internal_time(clamped_start);
-  const auto clamped_end_internal = to_internal_time(clamped_end);
+  const auto start_internal = to_internal_time(start_time);
+  const auto end_internal = to_internal_time(end_time);
 
   const auto start_index =
-    insert_or_replace_base_at_time(time_bases, distance_bases, clamped_start_internal, distance);
+    insert_or_replace_base_at_time(time_bases, distance_bases, start_internal, distance);
   const auto end_index =
-    insert_or_replace_base_at_time(time_bases, distance_bases, clamped_end_internal, distance);
+    insert_or_replace_base_at_time(time_bases, distance_bases, end_internal, distance);
   std::fill(
     distance_bases.begin() + static_cast<std::ptrdiff_t>(start_index),
     distance_bases.begin() + static_cast<std::ptrdiff_t>(end_index + 1), distance);
@@ -192,7 +194,8 @@ interpolator::InterpolationResult TimeDistanceMapping::build(
 
 double TimeDistanceMapping::distance_at(const double time) const
 {
-  return compute_distance(to_internal_time(clamp_time(time)));
+  throw_if_out_of_range(time, start_time(), end_time(), "time");
+  return compute_distance(to_internal_time(time));
 }
 
 double TimeDistanceMapping::compute_distance(const double time) const
@@ -237,24 +240,13 @@ void TimeDistanceMapping::set_time_offset(const double offset)
 
 void TimeDistanceMapping::set_time_range(const double start_time, const double end_time)
 {
-  const auto clamped_start_time = clamp_time(start_time);
-  const auto clamped_end_time = std::max(clamp_time(end_time), clamped_start_time);
-  start_time_ = to_internal_time(clamped_start_time);
-  end_time_ = to_internal_time(clamped_end_time);
-}
-
-double TimeDistanceMapping::clamp_time(const double time, const bool show_warning) const
-{
-  constexpr double eps = 1e-5;
-  const auto public_start = start_time_ - time_offset_;
-  const auto public_end = end_time_ - time_offset_;
-  if (show_warning && (time < public_start - eps || time > public_end + eps)) {
-    RCLCPP_WARN(
-      rclcpp::get_logger("TemporalTrajectory"),
-      "The time %f is out of the trajectory duration range [%f, %f]", time, public_start,
-      public_end);
+  throw_if_out_of_range(start_time, this->start_time(), this->end_time(), "start_time");
+  throw_if_out_of_range(end_time, this->start_time(), this->end_time(), "end_time");
+  if (end_time < start_time) {
+    throw std::invalid_argument("end_time must be greater than or equal to start_time");
   }
-  return std::clamp(time, public_start, public_end);
+  start_time_ = to_internal_time(start_time);
+  end_time_ = to_internal_time(end_time);
 }
 
 std::vector<double> TimeDistanceMapping::cropped_time_bases() const
@@ -271,14 +263,13 @@ double TimeDistanceMapping::time_at_distance(const double distance) const
   const auto start_distance_value = start_distance();
   const auto end_distance_value = end_distance();
 
-  // Clamp distance to valid range
-  const auto clamped_distance = std::clamp(distance, start_distance_value, end_distance_value);
+  throw_if_out_of_range(distance, start_distance_value, end_distance_value, "absolute_distance");
 
-  if (std::abs(clamped_distance - start_distance_value) <= k_same_time_threshold) {
+  if (std::abs(distance - start_distance_value) <= k_same_time_threshold) {
     return start_time();
   }
 
-  if (std::abs(clamped_distance - end_distance_value) <= k_same_time_threshold) {
+  if (std::abs(distance - end_distance_value) <= k_same_time_threshold) {
     return end_time();
   }
 
@@ -286,15 +277,10 @@ double TimeDistanceMapping::time_at_distance(const double distance) const
   constexpr size_t k_max_iterations = 100;
   const auto result_time = lower_bound_by_predicate(
     start_time_, end_time_,
-    [this, clamped_distance](double time) { return compute_distance(time) >= clamped_distance; },
-    k_max_iterations, k_same_time_threshold);
+    [this, distance](double time) { return compute_distance(time) >= distance; }, k_max_iterations,
+    k_same_time_threshold);
 
   return to_public_time(result_time);
-}
-
-double TimeDistanceMapping::clamp_time_without_warning(const double time) const
-{
-  return std::clamp(time, start_time(), end_time());
 }
 
 double TimeDistanceMapping::to_internal_time(const double time) const

@@ -28,8 +28,25 @@ Trajectory<PointType> crop(
   return trajectory;
 }
 
+/**
+ * @brief Crop a temporal trajectory to a time window.
+ * @param[in] trajectory Input temporal trajectory.
+ * @param[in] start_time Window start time in seconds.
+ * @param[in] duration Window duration in seconds.
+ * @return Cropped temporal trajectory.
+ * @throw std::out_of_range If start_time or start_time + duration is outside the trajectory time
+ * range.
+ */
 TemporalTrajectory crop_time(TemporalTrajectory trajectory, double start_time, double duration);
 
+/**
+ * @brief Crop a temporal trajectory to a distance window.
+ * @param[in] trajectory Input temporal trajectory.
+ * @param[in] start_distance Window start distance in meters.
+ * @param[in] length Window length in meters.
+ * @return Cropped temporal trajectory.
+ * @throw std::out_of_range If start_distance or start_distance + length is outside [0, length()].
+ */
 TemporalTrajectory crop_distance(
   TemporalTrajectory trajectory, double start_distance, double length);
 
