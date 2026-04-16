@@ -35,6 +35,8 @@ common/autoware_trajectory/examples/example_readme.cpp:109:119
 
 In such cases the result `expected` object contains `InterpolationFailure` type with an error message like **"base size 3 is less than minimum required 4"**.
 
+For `Linear`, `CubicSpline`, `AkimaSpline`, and `SphericalLinear`, consecutive input points whose base difference is smaller than `k_points_minimum_dist_threshold` are automatically removed as duplicates before interpolation. If the cleaned number of points falls below `minimum_required_points()`, the build fails and falls back to the next candidate interpolator when `build_with_fallback` is used.
+
 ### Trajectory class
 
 The _Trajectory_ class provides mathematical continuous representation and object oriented interface for discrete array of following point types
@@ -219,6 +221,30 @@ trajectory->longitudinal_velocity_mps(3.0, 5.0) = 0.0;
 std::vector<autoware_planning_msgs::msg::PathPoint> points = trajectory->restore();
 ```
 
+### TemporalTrajectory class
+
+`TemporalTrajectory` wraps a spatial `Trajectory<TrajectoryPoint>` with an additional **time-to-distance mapping**, allowing the trajectory to be queried by either **time** (`t`) or **arc length** (`s`).
+
+| Class / Method                      | Description                                                                                                                                               |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TemporalTrajectory::build(points)` | Build from a `TrajectoryPoint` array sorted by `time_from_start`.                                                                                         |
+| `compute_from_time(t)`              | Compute the interpolated point at absolute time `t` [s].                                                                                                  |
+| `compute_from_distance(s)`          | Compute the interpolated point at arc length `s` [m].                                                                                                     |
+| `time_to_distance(t)`               | Convert time to absolute distance [m].                                                                                                                    |
+| `distance_to_time(s)`               | Convert absolute distance to time [s]. <br> **Note:** If the vehicle is stopped at distance `s`, this returns the **first** stop time to avoid ambiguity. |
+| `length()`                          | Return the spatial trajectory length [m].                                                                                                                 |
+| `duration()`                        | Return the covered duration [s].                                                                                                                          |
+| `start_time()` / `end_time()`       | Return the absolute time bounds [s].                                                                                                                      |
+| `restore()`                         | Restore the underlying `TrajectoryPoint` array at the time bases.                                                                                         |
+| `spatial_trajectory()`              | Return a const reference to the internal spatial trajectory.                                                                                              |
+| `TemporalTrajectory::Builder`       | Fluent builder that delegates spatial interpolation to `Trajectory<TrajectoryPoint>::Builder` and manages the time-to-distance interpolator.              |
+
+```cpp title="./examples/example_temporal_trajectory.cpp:55:67"
+--8<--
+common/autoware_trajectory/examples/example_temporal_trajectory.cpp:55:67
+--8<--
+```
+
 ### Utility functions
 
 #### <span style="font-size: 1.2em;">`<autoware/trajectory/utils/shift.hpp>`</span>
@@ -257,11 +283,19 @@ common/autoware_trajectory/examples/example_pretty_build.cpp:93:97
 --8<--
 ```
 
+`pretty_build_temporal` provides the same convenience for `TemporalTrajectory`.
+
+```cpp title="./examples/example_temporal_crop.cpp:58:61"
+--8<--
+common/autoware_trajectory/examples/example_temporal_crop.cpp:58:61
+--8<--
+```
+
 #### <span style="font-size: 1.2em;">`<autoware/trajectory/utils/add_offset.hpp>`</span>
 
-| Function                       | Description                                                                                                                                                                                                                                                                                                                                                                                                                          | Detail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| <ul><li>`add_offset`</li></ul> | Compute a new trajectory by translating each underlying point by a fixed offset expressed in the vehicle frame.<br>Vehicle-frame axes are defined as `+x`: forward, `+y`: left, `+z`: up.<br>For pose-based types, the offset is rotated into the global frame using the point's full orientation, so roll, pitch, and yaw are all respected.<br>Only the position is shifted; orientation and other point properties are preserved. | For `Trajectory<geometry_msgs::msg::Point>`, roll is unavailable, so the function synthesizes orientation from the trajectory `azimuth()` and `elevation()` with zero roll.<br>As a result, lateral offset can affect global `z` on a rolled trajectory, and longitudinal offset can affect global `z` on a pitched trajectory.<br><br>![add_offset](./images/utils/add_offset.drawio.svg)[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/add_offset.drawio.svg") }}) |
+| Function                       | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | Detail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| <ul><li>`add_offset`</li></ul> | Compute a new trajectory by translating each underlying point by a fixed offset expressed in the vehicle frame.<br>Vehicle-frame axes are defined as `+x`: forward, `+y`: left, `+z`: up.<br>For pose-based types, the offset is rotated into the global frame using the point's full orientation, so roll, pitch, and yaw are all respected.<br>Only the position is shifted; orientation and other point properties are preserved.<br>Also available for `TemporalTrajectory`. | For `Trajectory<geometry_msgs::msg::Point>`, roll is unavailable, so the function synthesizes orientation from the trajectory `azimuth()` and `elevation()` with zero roll.<br>As a result, lateral offset can affect global `z` on a rolled trajectory, and longitudinal offset can affect global `z` on a pitched trajectory.<br><br>![add_offset](./images/utils/add_offset.drawio.svg)[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/add_offset.drawio.svg") }}) |
 
 ##### <span style="font-size: 1.2em;">Example Usage of `add_offset`</span>
 
@@ -274,6 +308,41 @@ common/autoware_trajectory/examples/example_add_offset.cpp:107:115
 ```
 
 See also: [`example_add_offset.cpp`](./examples/example_add_offset.cpp)
+
+#### <span style="font-size: 1.2em;">`<autoware/trajectory/utils/crop.hpp>`</span>
+
+In addition to the spatial `crop(trajectory, start, end)` free function, the header provides temporal variants that return a new cropped trajectory without mutating the input.
+
+| Function                                            | Description                                           |
+| --------------------------------------------------- | ----------------------------------------------------- |
+| `crop_time(trajectory, start_time, duration)`       | Crop a `TemporalTrajectory` to a time window [s].     |
+| `crop_distance(trajectory, start_distance, length)` | Crop a `TemporalTrajectory` to a distance window [m]. |
+
+```cpp title="./examples/example_temporal_crop.cpp:117:121"
+--8<--
+common/autoware_trajectory/examples/example_temporal_crop.cpp:117:121
+--8<--
+```
+
+#### <span style="font-size: 1.2em;">`<autoware/trajectory/utils/set_stopline.hpp>`</span>
+
+| Function                                         | Description                                                                                                               |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| `set_stopline(trajectory, arc_length)`           | Insert a stopline at the given arc length by setting the velocity profile to zero around the stop point.                  |
+| `set_stopline(trajectory, arc_length, duration)` | Same as above, but additionally extend the schedule so that the vehicle remains stopped for the specified `duration` [s]. |
+
+#### <span style="font-size: 1.2em;">`<autoware/trajectory/utils/set_time_offset.hpp>`</span>
+
+| Function                              | Description                                                              |
+| ------------------------------------- | ------------------------------------------------------------------------ |
+| `set_time_offset(trajectory, offset)` | Shift the absolute time bases of a `TemporalTrajectory` by `offset` [s]. |
+
+#### <span style="font-size: 1.2em;">`<autoware/trajectory/utils/find_intervals.hpp>`</span>
+
+| Function                                          | Description                                                                                                                                                                                 |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `find_intervals(trajectory, constraint)`          | Find contiguous arc-length intervals on a spatial `Trajectory` where `constraint(point)` is true. Returns `vector<Interval>`.                                                               |
+| `find_intervals(temporal_trajectory, constraint)` | Find contiguous time intervals on a `TemporalTrajectory` where `constraint(point)` is true. Returns `vector<TemporalInterval>` (each entry contains both `TimeDistancePair` start and end). |
 
 #### <span style="font-size: 1.2em;">`<autoware/trajectory/utils/reference_path.hpp>`</span>
 
@@ -365,11 +434,12 @@ common/autoware_trajectory/examples/example_footprint.cpp:187:188
 
 #### <span style="font-size: 1.2em;">`<autoware/trajectory/utils/crossed.hpp>`</span>
 
-| Function                                    | Description                                                                                                                                                                                                           | Detail                                                                                                                                                                      |
-| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| <ul><li>`crossed_with_constraint`</li></ul> | A utility function that finds intersections between a trajectory and a linestring where the given constraint is satisfied.                                                                                            |                                                                                                                                                                             |
-| <ul><li>`crossed`</li></ul>                 | A utility function that finds intersections between a trajectory and a linestring regardless of constraint. <br> **Post-condition** <ul><li> The output is sorted in ascending order along the trajectory. </ul></li> | ![crossed_linestring](./images/utils/crossed_linestring.drawio.svg)[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/crossed_linestring.drawio.svg") }}) |
-| <ul><li>`crossed_with_polygon`</li></ul>    | A utility function that finds intersections between a trajectory and a polygon. <br> **Post-condition** <ul><li> The output is sorted in ascending order along the trajectory. </ul></li>                             | ![crossed_polygon](./images/utils/crossed_polygon.drawio.svg)[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/crossed_polygon.drawio.svg") }})          |
+| Function                                                     | Description                                                                                                                                                                                                           | Detail                                                                                                                                                                      |
+| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| <ul><li>`crossed_with_constraint`</li></ul>                  | A utility function that finds intersections between a trajectory and a linestring where the given constraint is satisfied.                                                                                            |                                                                                                                                                                             |
+| <ul><li>`crossed`</li></ul>                                  | A utility function that finds intersections between a trajectory and a linestring regardless of constraint. <br> **Post-condition** <ul><li> The output is sorted in ascending order along the trajectory. </ul></li> | ![crossed_linestring](./images/utils/crossed_linestring.drawio.svg)[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/crossed_linestring.drawio.svg") }}) |
+| <ul><li>`crossed(temporal_trajectory, linestring)`</li></ul> | A utility function that finds intersections between a `TemporalTrajectory` and a linestring. Returns `vector<TimeDistancePair>`.                                                                                      |                                                                                                                                                                             |
+| <ul><li>`crossed_with_polygon`</li></ul>                     | A utility function that finds intersections between a trajectory and a polygon. <br> **Post-condition** <ul><li> The output is sorted in ascending order along the trajectory. </ul></li>                             | ![crossed_polygon](./images/utils/crossed_polygon.drawio.svg)[View in Drawio]({{ drawio("/common/autoware_trajectory/images/utils/crossed_polygon.drawio.svg") }})          |
 
 ##### <span style="font-size: 1.2em;">Example Usage of `crossed`</span>
 
