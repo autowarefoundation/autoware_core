@@ -22,6 +22,7 @@
 
 #include <autoware_utils_logging/logger_level_configure.hpp>
 #include <autoware_utils_system/stop_watch.hpp>
+#include <diagnostic_updater/diagnostic_updater.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <tf2/LinearMath/Quaternion.hpp>
 #include <tf2/utils.hpp>
@@ -31,7 +32,7 @@
 
 #include <autoware_internal_debug_msgs/msg/float64_multi_array_stamped.hpp>
 #include <autoware_internal_debug_msgs/msg/float64_stamped.hpp>
-#include <diagnostic_msgs/msg/diagnostic_array.hpp>
+#include <diagnostic_msgs/msg/diagnostic_status.hpp>
 #include <geometry_msgs/msg/pose_array.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
@@ -42,9 +43,7 @@
 #include <std_srvs/srv/set_bool.hpp>
 
 #include <chrono>
-#include <iostream>
 #include <memory>
-#include <queue>
 #include <string>
 #include <vector>
 
@@ -81,8 +80,6 @@ private:
   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pub_biased_pose_;
   //!< @brief ekf estimated yaw bias publisher
   rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr pub_biased_pose_cov_;
-  //!< @brief diagnostics publisher
-  rclcpp::Publisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr pub_diag_;
   //!< @brief processing_time publisher
   rclcpp::Publisher<autoware_internal_debug_msgs::msg::Float64Stamped>::SharedPtr
     pub_processing_time_;
@@ -126,6 +123,18 @@ private:
   AgedObjectQueue<geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr> pose_queue_;
   AgedObjectQueue<geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr> twist_queue_;
 
+  //!< @brief diagnostic updater for publishing diagnostics at configured period
+  diagnostic_updater::Updater diagnostics_;
+  //!< @brief Merged diagnostic status from the latest EKF cycle (message/values refresh every tick)
+  diagnostic_msgs::msg::DiagnosticStatus merged_diagnostic_status_;
+  //!< @brief Wall time of the latest merged diagnostic level change vs. the previous EKF tick
+  //!< (includes recovery to OK); published as last_level_transition_timestamp once non-zero
+  rclcpp::Time merged_diagnostic_last_transition_time_;
+  //!< @brief last pose callback header stamp (for callback_pose diagnostic)
+  rclcpp::Time last_pose_callback_time_;
+  //!< @brief last twist callback header stamp (for callback_twist diagnostic)
+  rclcpp::Time last_twist_callback_time_;
+
   /**
    * @brief computes update & prediction of EKF for each ekf_dt_[s] time
    */
@@ -168,16 +177,29 @@ private:
     const geometry_msgs::msg::TwistStamped & current_ekf_twist);
 
   /**
-   * @brief publish diagnostics message
+   * @brief Overwrite merged_diagnostic_status_ from merged diagnostics each tick;
+   * force_update() when merged severity increases vs. the previous EKF tick
+   * (last transition time updates on any level change).
    */
-  void publish_diagnostics(
-    const geometry_msgs::msg::PoseStamped & current_ekf_pose, const rclcpp::Time & current_time);
+  void update_diagnostics(
+    const std::vector<diagnostic_msgs::msg::DiagnosticStatus> & diag_status_array,
+    const rclcpp::Time & current_time);
 
   /**
-   * @brief publish diagnostics message for return
+   * @brief diagnostic function called by diagnostic_updater::Updater
+   * @param stat diagnostic status wrapper to fill
    */
-  void publish_callback_return_diagnostics(
-    const std::string & callback_name, const rclcpp::Time & current_time);
+  void diagnose(diagnostic_updater::DiagnosticStatusWrapper & stat);
+
+  /**
+   * @brief diagnostic for callback_pose (diagnostic_updater task)
+   */
+  void diagnose_callback_pose(diagnostic_updater::DiagnosticStatusWrapper & stat);
+
+  /**
+   * @brief diagnostic for callback_twist (diagnostic_updater task)
+   */
+  void diagnose_callback_twist(diagnostic_updater::DiagnosticStatusWrapper & stat);
 
   /**
    * @brief trigger node
@@ -189,7 +211,7 @@ private:
   autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_;
   autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_timer_cb_;
 
-  friend class EKFLocalizerTestSuite;  // for test code
+  friend class EKFLocalizerDiagnosticsTest;  // for test code
 };
 
 }  // namespace autoware::ekf_localizer

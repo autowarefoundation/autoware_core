@@ -77,6 +77,7 @@ if(BUILD_TESTING)
     test/test_utils_lateral_metrics.cpp
     test/test_utils_footprint.cpp
     test/test_utils_velocity.cpp
+    test/test_add_offset.cpp
   )
 
   ament_auto_add_gtest(test_${PROJECT_NAME} ${test_files})
@@ -100,6 +101,7 @@ if(BUILD_TESTING)
     examples/example_lateral_metrics.cpp
     examples/example_footprint.cpp
     examples/example_crossed.cpp
+    examples/example_add_offset.cpp
   )
 
   foreach(example_file ${example_files})
