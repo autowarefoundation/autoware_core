@@ -160,6 +160,10 @@ PathWithLaneId removeOverlappingPoints(const PathWithLaneId & input_path)
       continue;
     }
 
+    // If the direction changes sharply (not smooth) but the points are very close,
+    // treat it as an overlap.
+    // This can occur at joints between a waypoint and an auto-generated centerline.
+    // It's not considered overlap in ordinary case, thus, this case relax the condition.
     if (
       (std::fabs(autoware_utils_math::normalize_radian(previous_azimuth - current_azimuth)) >=
        M_PI / 2) &&
@@ -1877,8 +1881,8 @@ PathWithLaneId RouteHandler::getCenterLinePath(
 
             const auto arc_coord = lanelet::geometry::toArcCoordinates(ls, on_centerline_pt);
             const auto interpolated_pt_opt = interpolate_point(ref_pt, next_pt, arc_coord.length);
-            p = (use_exact && interpolated_pt_opt.has_value()) ? to_ros(interpolated_pt_opt.value())
-                                                               : ref_point.point;
+            p = interpolated_pt_opt.has_value() ? to_ros(interpolated_pt_opt.value())
+                                                : ref_point.point;
           }
           add_path_point(p, lanelet, speed_limit);
         } else {
