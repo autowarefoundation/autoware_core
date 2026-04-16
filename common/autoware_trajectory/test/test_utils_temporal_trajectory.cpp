@@ -13,11 +13,15 @@
 // limitations under the License.
 
 #include "autoware/trajectory/threshold.hpp"
+#include "autoware/trajectory/utils/crop.hpp"
+#include "autoware/trajectory/utils/crossed.hpp"
 #include "autoware/trajectory/utils/find_intervals.hpp"
+#include "autoware/trajectory/utils/set_stopline.hpp"
 
 #include <rclcpp/duration.hpp>
 
 #include <gtest/gtest.h>
+#include <lanelet2_core/primitives/LineString.h>
 
 #include <cmath>
 #include <vector>
@@ -27,7 +31,8 @@ namespace
 using autoware::experimental::trajectory::TemporalTrajectory;
 using autoware_planning_msgs::msg::TrajectoryPoint;
 
-TrajectoryPoint make_point(const double x, const double time_from_start, const float velocity)
+TrajectoryPoint make_point(
+  const double x, const double time_from_start, const float velocity = 1.0F)
 {
   TrajectoryPoint point;
   point.pose.position.x = x;
@@ -37,6 +42,46 @@ TrajectoryPoint make_point(const double x, const double time_from_start, const f
   return point;
 }
 }  // namespace
+
+TEST(CrossedTemporal, ReturnsCrossedPoint)
+{
+  const std::vector<TrajectoryPoint> points{
+    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+
+  const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  const auto & trajectory = trajectory_result.value();
+
+  lanelet::LineString2d line_string(lanelet::InvalId);
+  line_string.push_back(lanelet::Point3d(lanelet::InvalId, 1.5, -1.0, 0.0));
+  line_string.push_back(lanelet::Point3d(lanelet::InvalId, 1.5, 1.0, 0.0));
+
+  const auto crossed_points = autoware::experimental::trajectory::crossed(trajectory, line_string);
+  ASSERT_EQ(crossed_points.size(), 1U);
+  EXPECT_NEAR(crossed_points.front().distance, 1.5, 1e-6);
+  EXPECT_NEAR(crossed_points.front().time, 1.5, 1e-6);
+}
+
+TEST(CrossedTemporal, ReturnsCrossedPointDuplicatedPoint)
+{
+  const std::vector<TrajectoryPoint> points{
+    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0),
+    make_point(2.0, 3.0), make_point(3.0, 4.0),
+  };
+
+  const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  const auto & trajectory = trajectory_result.value();
+
+  lanelet::LineString2d line_string(lanelet::InvalId);
+  line_string.push_back(lanelet::Point3d(lanelet::InvalId, 2.0, -1.0, 0.0));
+  line_string.push_back(lanelet::Point3d(lanelet::InvalId, 2.0, 1.0, 0.0));
+
+  const auto crossed_points = autoware::experimental::trajectory::crossed(trajectory, line_string);
+  ASSERT_EQ(crossed_points.size(), 1U);
+  EXPECT_NEAR(crossed_points.front().distance, 2, 1e-6);
+  EXPECT_NEAR(crossed_points.front().time, 2.0, 1e-6);
+}
 
 TEST(FindIntervalsTemporal, ReturnsEmptyWhenNoStopInterval)
 {
@@ -90,4 +135,143 @@ TEST(FindIntervalsTemporal, RespectsVelocityThreshold)
   ASSERT_EQ(intervals.size(), 1U);
   EXPECT_NEAR(intervals.front().start.time, 1.0, 1e-6);
   EXPECT_NEAR(intervals.front().end.time, 2.0, 1e-6);
+}
+
+TEST(FindIntervalsTemporal, FindIntervalsByPosition)
+{
+  const std::vector<TrajectoryPoint> points{
+    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+
+  const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  const auto & trajectory = trajectory_result.value();
+
+  const auto intervals = autoware::experimental::trajectory::find_intervals(
+    trajectory, [](const TrajectoryPoint & point) {
+      return point.pose.position.x >= 1.0 && point.pose.position.x <= 2.0;
+    });
+
+  ASSERT_EQ(intervals.size(), 1U);
+  EXPECT_NEAR(intervals.front().start.distance, 1.0, 1e-6);
+  EXPECT_NEAR(intervals.front().end.distance, 2.0, 1e-6);
+  EXPECT_NEAR(intervals.front().start.time, 1.0, 1e-6);
+  EXPECT_NEAR(intervals.front().end.time, 2.0, 1e-6);
+}
+
+TEST(CropTemporal, CropTimeRebases)
+{
+  const std::vector<TrajectoryPoint> points{
+    make_point(0.0, -1.0), make_point(1.0, 0.0), make_point(2.0, 1.0), make_point(3.0, 2.0)};
+
+  const auto trajectory = crop_time(TemporalTrajectory::Builder{}.build(points).value(), 0.0, 2.0);
+
+  const auto restored = trajectory.restore();
+  ASSERT_FALSE(restored.empty());
+  EXPECT_EQ(restored.size(), 3U);
+  EXPECT_NEAR(rclcpp::Duration(restored.front().time_from_start).seconds(), 0.0, 1e-6);
+  EXPECT_NEAR(restored.front().pose.position.x, 1.0, 1e-6);
+  EXPECT_NEAR(rclcpp::Duration(restored.back().time_from_start).seconds(), 2.0, 1e-6);
+  EXPECT_NEAR(restored.back().pose.position.x, 3.0, 1e-6);
+}
+
+TEST(CropTemporal, RestoreAfterCropTime)
+{
+  const std::vector<TrajectoryPoint> points{
+    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+
+  const auto trajectory = crop_time(TemporalTrajectory::Builder{}.build(points).value(), 1.0, 1.0);
+
+  const auto restored = trajectory.restore();
+  ASSERT_FALSE(restored.empty());
+
+  for (const auto & point : restored) {
+    const auto t = rclcpp::Duration(point.time_from_start).seconds();
+    EXPECT_GE(t, 1.0 - 1e-6);
+    EXPECT_LE(t, 2.0 + 1e-6);
+  }
+}
+
+TEST(CropTemporal, CropDistanceRebases)
+{
+  const std::vector<TrajectoryPoint> points{
+    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+
+  const auto trajectory =
+    crop_distance(TemporalTrajectory::Builder{}.build(points).value(), 1.0, 1.0);
+
+  EXPECT_NEAR(trajectory.start_time(), 1.0, 1e-6);
+  EXPECT_NEAR(trajectory.end_time(), 2.0, 1e-6);
+  EXPECT_NEAR(trajectory.length(), 1.0, 1e-6);
+
+  const auto restored = trajectory.restore();
+  ASSERT_FALSE(restored.empty());
+
+  for (const auto & point : restored) {
+    const auto t = rclcpp::Duration(point.time_from_start).seconds();
+    EXPECT_GE(t, 1.0 - 1e-6);
+    EXPECT_LE(t, 2.0 + 1e-6);
+  }
+}
+
+TEST(CropTemporal, CropDistanceThrowsOnInvalidStartDistance)
+{
+  const std::vector<TrajectoryPoint> points{
+    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+
+  const auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
+  EXPECT_THROW(static_cast<void>(crop_distance(trajectory, -1.0, 1.0)), std::out_of_range);
+  EXPECT_THROW(static_cast<void>(crop_distance(trajectory, 4.0, 1.0)), std::out_of_range);
+}
+
+TEST(CropTemporal, CropDistanceThrowsOnInvalidLength)
+{
+  const std::vector<TrajectoryPoint> points{
+    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+
+  const auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
+  EXPECT_THROW(static_cast<void>(crop_distance(trajectory, 1.0, -0.1)), std::out_of_range);
+  EXPECT_THROW(static_cast<void>(crop_distance(trajectory, 1.0, 3.0)), std::out_of_range);
+}
+
+TEST(SetStoplineTemporal, SetStoplineCollapsesFollowingPoints)
+{
+  const std::vector<TrajectoryPoint> points{
+    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+
+  const auto trajectory = set_stopline(TemporalTrajectory::Builder{}.build(points).value(), 1.5);
+
+  const auto stop_point = trajectory.compute_from_distance(1.5);
+  const auto point_after_stop = trajectory.compute_from_time(2.5);
+  EXPECT_NEAR(stop_point.pose.position.x, 1.5, 1e-3);
+  EXPECT_NEAR(point_after_stop.pose.position.x, stop_point.pose.position.x, 1e-3);
+  EXPECT_NEAR(point_after_stop.longitudinal_velocity_mps, 0.0, 1e-6);
+}
+
+TEST(SetStoplineTemporal, SetStoplineWithTimeExtendsSchedule)
+{
+  const std::vector<TrajectoryPoint> points{
+    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+
+  const auto trajectory =
+    set_stopline(TemporalTrajectory::Builder{}.build(points).value(), 1.5, 1.5);
+
+  const auto stop_point = trajectory.compute_from_time(3.0);
+  EXPECT_NEAR(stop_point.pose.position.x, 1.5, 1e-3);
+  EXPECT_NEAR(stop_point.longitudinal_velocity_mps, 0.0, 1e-6);
+  EXPECT_NEAR(trajectory.duration(), 4.5, 1e-6);
+
+  const auto point_after_stop = trajectory.compute_from_time(4.0);
+  EXPECT_GT(point_after_stop.pose.position.x, 1.5);
+}
+
+TEST(SetStoplineTemporal, DistanceToTimeReturnsFirstStopTime)
+{
+  const std::vector<TrajectoryPoint> points{
+    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+
+  const auto trajectory =
+    set_stopline(TemporalTrajectory::Builder{}.build(points).value(), 1.5, 1.5);
+
+  const auto stop_time = trajectory.distance_to_time(1.5);
+  EXPECT_NEAR(stop_time, 1.5, 1e-6);
 }

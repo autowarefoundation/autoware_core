@@ -111,6 +111,7 @@ if(BUILD_TESTING)
     examples/example_add_offset.cpp
     examples/example_temporal_trajectory.cpp
     examples/example_temporal_crop.cpp
+    examples/example_temporal_curvature.cpp
   )
 
   foreach(example_file ${example_files})

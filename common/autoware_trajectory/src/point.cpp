@@ -95,7 +95,7 @@ interpolator::InterpolationResult Trajectory<PointType>::build(
     */
     const auto dist = std::max<double>(
       autoware_utils_geometry::calc_distance3d(points.at(i), points.at(i - 1)),
-      k_points_minimum_dist_threshold);
+      std::numeric_limits<double>::epsilon());
     bases_.emplace_back(bases_.back() + dist);
     xs.emplace_back(points.at(i).x);
     ys.emplace_back(points.at(i).y);
@@ -222,15 +222,9 @@ double Trajectory<PointType>::elevation(const double s) const
 double Trajectory<PointType>::curvature(const double s) const
 {
   const auto s_clamp = clamp(s, true);
-  const double dx = x_interpolator_->compute_first_derivative(s_clamp);
   const double ddx = x_interpolator_->compute_second_derivative(s_clamp);
-  const double dy = y_interpolator_->compute_first_derivative(s_clamp);
   const double ddy = y_interpolator_->compute_second_derivative(s_clamp);
-  const double tangent_norm_squared = dx * dx + dy * dy;
-  if (tangent_norm_squared <= std::numeric_limits<double>::epsilon()) {
-    return 0.0;
-  }
-  return (dx * ddy - dy * ddx) / std::pow(tangent_norm_squared, 1.5);
+  return std::hypot(ddx, ddy);
 }
 
 std::vector<double> Trajectory<PointType>::curvature(const std::vector<double> & ss) const
