@@ -81,7 +81,7 @@ void check_if_equals(const Trajectory & trajectory1, const Trajectory & trajecto
   EXPECT_EQ(trajectory1.lane_ids().end(), trajectory2.lane_ids().end());
 }
 }  // namespace
-TEST(TrajectoryCreatorTest, constructor)
+TEST(TrajectoryCreatorTest, Constructor)
 {
   std::vector<geometry_msgs::msg::Point> points{
     point(0.00, 0.00), point(0.81, 1.68), point(1.65, 2.98), point(3.30, 4.01)};
@@ -92,7 +92,7 @@ TEST(TrajectoryCreatorTest, constructor)
   autoware::experimental::trajectory::Trajectory<geometry_msgs::msg::Pose> trj_pose(*trajectory);
 }
 
-TEST(TrajectoryCreatorTest, create_from_single_point)
+TEST(TrajectoryCreatorTest, CreateFromSinglePoint)
 {
   std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points{
     path_point_with_lane_id(0.00, 0.00, 0)};
@@ -100,7 +100,7 @@ TEST(TrajectoryCreatorTest, create_from_single_point)
   ASSERT_TRUE(trajectory);
 }
 
-TEST(TrajectoryCreatorTest, restore_single_point_trajectory)
+TEST(TrajectoryCreatorTest, RestoreSinglePointTrajectory)
 {
   const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points{
     path_point_with_lane_id(0.00, 0.00, 7)};
@@ -115,7 +115,7 @@ TEST(TrajectoryCreatorTest, restore_single_point_trajectory)
   EXPECT_EQ(restored.front().lane_ids.front(), 7);
 }
 
-TEST(TrajectoryCreatorTest, restore_complete_duplicate_points_trajectory_preserves_duplicates)
+TEST(TrajectoryCreatorTest, RestoreCompleteDuplicatePointsTrajectoryPreservesDuplicates)
 {
   const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points{
     path_point_with_lane_id(1.0, 2.0, 7), path_point_with_lane_id(1.0, 2.0, 7),
@@ -133,7 +133,7 @@ TEST(TrajectoryCreatorTest, restore_complete_duplicate_points_trajectory_preserv
   }
 }
 
-TEST(TrajectoryCreatorTest, restore_crop_to_zero_length_trajectory_preserves_boundaries)
+TEST(TrajectoryCreatorTest, RestoreCropToZeroLengthTrajectoryPreservesBoundaries)
 {
   const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points{
     path_point_with_lane_id(0.0, 0.0, 0), path_point_with_lane_id(1.0, 1.0, 1),
@@ -154,7 +154,7 @@ TEST(TrajectoryCreatorTest, restore_crop_to_zero_length_trajectory_preserves_bou
   }
 }
 
-TEST(TrajectoryCreatorTest, restore_tiny_cropped_trajectory_preserves_boundaries)
+TEST(TrajectoryCreatorTest, RestoreTinyCroppedTrajectoryPreservesBoundaries)
 {
   const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points{
     path_point_with_lane_id(0.0, 0.0, 0), path_point_with_lane_id(1.0, 1.0, 1),
@@ -188,7 +188,7 @@ TEST(TrajectoryCreatorTest, restore_tiny_cropped_trajectory_preserves_boundaries
     autoware::experimental::trajectory::k_points_minimum_dist_threshold);
 }
 
-TEST(TrajectoryCreatorTest, create_from_multiple_points)
+TEST(TrajectoryCreatorTest, CreateFromMultiplePoints)
 {
   std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points{
     path_point_with_lane_id(0.00, 0.00, 0), path_point_with_lane_id(0.81, 1.68, 0),
@@ -197,7 +197,7 @@ TEST(TrajectoryCreatorTest, create_from_multiple_points)
   ASSERT_TRUE(trajectory);
 }
 
-TEST(TrajectoryCreatorTest, almost_same_points_are_given)
+TEST(TrajectoryCreatorTest, AlmostSamePointsAreGiven)
 {
   const double nano_meter = 1e-9;
   std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points{
@@ -213,7 +213,7 @@ TEST(TrajectoryCreatorTest, almost_same_points_are_given)
   }
 }
 
-TEST(TrajectoryCreatorTest, create_from_complete_duplicate_points_with_increasing_bases)
+TEST(TrajectoryCreatorTest, CreateFromCompleteDuplicatePointsWithIncreasingBases)
 {
   std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points{
     path_point_with_lane_id(1.0, 2.0, 0), path_point_with_lane_id(1.0, 2.0, 0),
@@ -227,7 +227,7 @@ TEST(TrajectoryCreatorTest, create_from_complete_duplicate_points_with_increasin
   expect_strictly_increasing(bases);
 }
 
-TEST(TrajectoryCreatorTest, create_from_partially_duplicate_points_with_increasing_bases)
+TEST(TrajectoryCreatorTest, CreateFromPartiallyDuplicatePointsWithIncreasingBases)
 {
   std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> points{
     path_point_with_lane_id(0.0, 0.0, 0), path_point_with_lane_id(1.0, 1.0, 0),
@@ -261,8 +261,10 @@ public:
   }
 };
 
-TEST_F(TrajectoryTest, compute)
+TEST_F(TrajectoryTest, Compute)
 {
+  ASSERT_TRUE(trajectory);
+
   double length = trajectory->length();
 
   trajectory->longitudinal_velocity_mps()
@@ -279,8 +281,9 @@ TEST_F(TrajectoryTest, compute)
   EXPECT_EQ(1, point.lane_ids[0]);
 }
 
-TEST_F(TrajectoryTest, manipulate_longitudinal_velocity)
+TEST_F(TrajectoryTest, ManipulateLongitudinalVelocity)
 {
+  ASSERT_TRUE(trajectory);
   trajectory->longitudinal_velocity_mps() = 10.0;
   trajectory->longitudinal_velocity_mps()
     .range(trajectory->length() / 3, 2.0 * trajectory->length() / 3)
@@ -294,8 +297,9 @@ TEST_F(TrajectoryTest, manipulate_longitudinal_velocity)
   EXPECT_FLOAT_EQ(10.0, point3.point.longitudinal_velocity_mps);
 }
 
-TEST_F(TrajectoryTest, manipulate_lateral_velocity)
+TEST_F(TrajectoryTest, ManipulateLateralVelocity)
 {
+  ASSERT_TRUE(trajectory);
   trajectory->lateral_velocity_mps()
     .range(trajectory->length() / 3, 2.0 * trajectory->length() / 3)
     .set(5.0);
@@ -313,8 +317,9 @@ TEST_F(TrajectoryTest, manipulate_lateral_velocity)
   EXPECT_FLOAT_EQ(0.0, point4.point.lateral_velocity_mps);
 }
 
-TEST_F(TrajectoryTest, clamp_longitudinal_velocity)
+TEST_F(TrajectoryTest, ClampLongitudinalVelocity)
 {
+  ASSERT_TRUE(trajectory);
   trajectory->longitudinal_velocity_mps() = 10.0;
   trajectory->longitudinal_velocity_mps()
     .range(trajectory->length() / 3, 2 * trajectory->length() / 3)
@@ -335,8 +340,9 @@ TEST_F(TrajectoryTest, clamp_longitudinal_velocity)
   EXPECT_FLOAT_EQ(10.0, point5.point.longitudinal_velocity_mps);
 }
 
-TEST_F(TrajectoryTest, manipulate_velocities)
+TEST_F(TrajectoryTest, ManipulateVelocities)
 {
+  ASSERT_TRUE(trajectory);
   // longitudinal velocity = 1.0 [0.3, 0.7]
   trajectory->longitudinal_velocity_mps()
     .range(trajectory->length() * 0.3, trajectory->length() * 0.7)
@@ -397,8 +403,9 @@ TEST_F(TrajectoryTest, manipulate_velocities)
   }
 }
 
-TEST_F(TrajectoryTest, manipulate_velocities_with_copy_ctor)
+TEST_F(TrajectoryTest, ManipulateVelocitiesWithCopyCtor)
 {
+  ASSERT_TRUE(trajectory);
   Trajectory trajectory2(*trajectory);
   // longitudinal velocity = 1.0 [0.3, 0.7]
   trajectory2.longitudinal_velocity_mps()
@@ -460,7 +467,7 @@ TEST_F(TrajectoryTest, manipulate_velocities_with_copy_ctor)
   }
 }
 
-TEST_F(TrajectoryTest, manipulate_velocities_with_copy_assignment)
+TEST_F(TrajectoryTest, ManipulateVelocitiesWithCopyAssignment)
 {
   auto trajectory2 = *trajectory;
   // longitudinal velocity = 1.0 [0.3, 0.7]
@@ -523,7 +530,7 @@ TEST_F(TrajectoryTest, manipulate_velocities_with_copy_assignment)
   }
 }
 
-TEST_F(TrajectoryTest, manipulate_velocities_with_move_ctor)
+TEST_F(TrajectoryTest, ManipulateVelocitiesWithMoveCtor)
 {
   auto trajectory2(std::move(*trajectory));
   // longitudinal velocity = 1.0 [0.3, 0.7]
@@ -586,7 +593,7 @@ TEST_F(TrajectoryTest, manipulate_velocities_with_move_ctor)
   }
 }
 
-TEST_F(TrajectoryTest, manipulate_velocities_with_move_assignment)
+TEST_F(TrajectoryTest, ManipulateVelocitiesWithMoveAssignment)
 {
   auto trajectory2 = std::move(*trajectory);
   // longitudinal velocity = 1.0 [0.3, 0.7]
@@ -649,30 +656,34 @@ TEST_F(TrajectoryTest, manipulate_velocities_with_move_assignment)
   }
 }
 
-TEST_F(TrajectoryTest, direction)
+TEST_F(TrajectoryTest, Direction)
 {
+  ASSERT_TRUE(trajectory);
   double dir = trajectory->azimuth(0.0);
   EXPECT_LT(0, dir);
   EXPECT_LT(dir, M_PI / 2);
 }
 
-TEST_F(TrajectoryTest, curvature)
+TEST_F(TrajectoryTest, Curvature)
 {
+  ASSERT_TRUE(trajectory);
   double curvature_val = trajectory->curvature(0.0);
   EXPECT_LT(-1.0, curvature_val);
   EXPECT_LT(curvature_val, 1.0);
 }
 
-TEST_F(TrajectoryTest, restore)
+TEST_F(TrajectoryTest, Restore)
 {
+  ASSERT_TRUE(trajectory);
   using autoware::experimental::trajectory::Trajectory;
   trajectory->longitudinal_velocity_mps().range(4.0, trajectory->length()).set(5.0);
   auto points = trajectory->restore();
   EXPECT_EQ(11, points.size());
 }
 
-TEST_F(TrajectoryTest, crossed)
+TEST_F(TrajectoryTest, Crossed)
 {
+  ASSERT_TRUE(trajectory);
   lanelet::LineString2d line_string;
   line_string.push_back(lanelet::Point3d(lanelet::InvalId, 0.0, 10.0, 0.0));
   line_string.push_back(lanelet::Point3d(lanelet::InvalId, 10.0, 0.0, 0.0));
@@ -684,8 +695,9 @@ TEST_F(TrajectoryTest, crossed)
   EXPECT_LT(crossed_point.at(0), trajectory->length());
 }
 
-TEST_F(TrajectoryTest, closest)
+TEST_F(TrajectoryTest, Closest)
 {
+  ASSERT_TRUE(trajectory);
   geometry_msgs::msg::Pose pose;
   pose.position.x = 5.0;
   pose.position.y = 5.0;
@@ -700,8 +712,9 @@ TEST_F(TrajectoryTest, closest)
   EXPECT_LT(distance, 3.0);
 }
 
-TEST_F(TrajectoryTest, crop)
+TEST_F(TrajectoryTest, Crop)
 {
+  ASSERT_TRUE(trajectory);
   double length = trajectory->length();
 
   auto start_point_expect = trajectory->compute(length / 3.0);
@@ -725,8 +738,9 @@ TEST_F(TrajectoryTest, crop)
   EXPECT_EQ(end_point_expect.lane_ids[0], end_point_actual.lane_ids[0]);
 }
 
-TEST_F(TrajectoryTest, find_if)
+TEST_F(TrajectoryTest, FindIf)
 {
+  ASSERT_TRUE(trajectory);
   geometry_msgs::msg::Point base_point;
   base_point.x = 5.0;
   base_point.y = 5.0;
@@ -783,8 +797,9 @@ TEST_F(TrajectoryTest, find_if)
   }
 }
 
-TEST_F(TrajectoryTest, find_interval)
+TEST_F(TrajectoryTest, FindInterval)
 {
+  ASSERT_TRUE(trajectory);
   auto intervals = autoware::experimental::trajectory::find_intervals(
     *trajectory, [](const autoware_internal_planning_msgs::msg::PathPointWithLaneId & point) {
       return point.lane_ids[0] == 1;
@@ -795,8 +810,9 @@ TEST_F(TrajectoryTest, find_interval)
   EXPECT_NEAR(intervals[0].end, trajectory->length(), 0.1);
 }
 
-TEST_F(TrajectoryTest, find_interval_with_binary_search)
+TEST_F(TrajectoryTest, FindIntervalWithBinarySearch)
 {
+  ASSERT_TRUE(trajectory);
   geometry_msgs::msg::Point base_point;
   base_point.x = 6.0;
   base_point.y = 2.0;
@@ -836,29 +852,33 @@ TEST_F(TrajectoryTest, find_interval_with_binary_search)
   EXPECT_GT(interval_0_end_error_decrease, 0);
 }
 
-TEST_F(TrajectoryTest, max_curvature)
+TEST_F(TrajectoryTest, MaxCurvature)
 {
+  ASSERT_TRUE(trajectory);
   double max_curvature = autoware::experimental::trajectory::max_curvature(*trajectory);
   EXPECT_LT(0, max_curvature);
 }
 
-TEST_F(TrajectoryTest, get_contained_lane_ids)
+TEST_F(TrajectoryTest, GetContainedLaneIds)
 {
+  ASSERT_TRUE(trajectory);
   auto contained_lane_ids = trajectory->get_contained_lane_ids();
   EXPECT_EQ(2, contained_lane_ids.size());
   EXPECT_EQ(0, contained_lane_ids[0]);
   EXPECT_EQ(1, contained_lane_ids[1]);
 }
 
-TEST_F(TrajectoryTest, copy_ctor)
+TEST_F(TrajectoryTest, CopyCtor)
 {
+  ASSERT_TRUE(trajectory);
   const auto trajectory2(*trajectory);
 
   check_if_equals(*trajectory, trajectory2);
 }
 
-TEST_F(TrajectoryTest, copy_assignment)
+TEST_F(TrajectoryTest, CopyAssignment)
 {
+  ASSERT_TRUE(trajectory);
   const auto trajectory2 = Trajectory::Builder{}.build(
     {path_point_with_lane_id(0.00, 0.00, 1), path_point_with_lane_id(1.68, 0.81, 1),
      path_point_with_lane_id(2.98, 1.65, 1), path_point_with_lane_id(4.01, 3.30, 0)});
@@ -868,16 +888,18 @@ TEST_F(TrajectoryTest, copy_assignment)
   check_if_equals(*trajectory, *trajectory2);
 }
 
-TEST_F(TrajectoryTest, move_ctor)
+TEST_F(TrajectoryTest, MoveCtor)
 {
+  ASSERT_TRUE(trajectory);
   const auto trajectory1(*trajectory);
   const auto trajectory2(std::move(*trajectory));
 
   check_if_equals(trajectory1, trajectory2);
 }
 
-TEST_F(TrajectoryTest, move_assignment)
+TEST_F(TrajectoryTest, MoveAssignment)
 {
+  ASSERT_TRUE(trajectory);
   auto trajectory1 = Trajectory::Builder{}.build(
     {path_point_with_lane_id(0.00, 0.00, 1), path_point_with_lane_id(1.68, 0.81, 1),
      path_point_with_lane_id(2.98, 1.65, 1), path_point_with_lane_id(4.01, 3.30, 0)});

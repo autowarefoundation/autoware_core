@@ -56,7 +56,7 @@ TEST(TestEkfDiagnostics, check_set_initialpose)
 
   is_set_initialpose = false;
   stat = check_set_initialpose(is_set_initialpose);
-  EXPECT_EQ(stat.level, diagnostic_msgs::msg::DiagnosticStatus::WARN);
+  EXPECT_EQ(stat.level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
 }
 
 TEST(TestEkfDiagnostics, check_measurement_updated)
@@ -298,14 +298,24 @@ protected:
     autoware::ekf_localizer::EKFLocalizer * ekf_localizer,
     const geometry_msgs::msg::PoseStamped & current_ekf_pose, const rclcpp::Time & current_time)
   {
-    // Create diagnostic status array similar to timer_callback
+    // Create diagnostic status array matching timer_callback early-return logic
     std::vector<diagnostic_msgs::msg::DiagnosticStatus> diag_status_array;
 
     // Check process activation status
     diag_status_array.push_back(check_process_activated(ekf_localizer->is_activated_));
 
+    if (!ekf_localizer->is_activated_) {
+      ekf_localizer->update_diagnostics(diag_status_array, current_time);
+      return;
+    }
+
     // Check initial pose status
     diag_status_array.push_back(check_set_initialpose(ekf_localizer->is_set_initialpose_));
+
+    if (!ekf_localizer->is_set_initialpose_) {
+      ekf_localizer->update_diagnostics(diag_status_array, current_time);
+      return;
+    }
 
     // Add diagnostics for pose and twist if activated and initial pose is set
     if (ekf_localizer->is_activated_ && ekf_localizer->is_set_initialpose_) {
@@ -825,9 +835,9 @@ TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_updated_when_initialpose_not_set
   // Update diagnostics (simulating early return in timer_callback)
   update_diagnostics(ekf_localizer.get(), current_ekf_pose, current_time);
 
-  // Merged status should reflect that initial pose is not set (WARN)
+  // Merged status should reflect that initial pose is not set (ERROR)
   auto merged_status = get_merged_diagnostic_status(ekf_localizer.get());
-  EXPECT_EQ(merged_status.level, diagnostic_msgs::msg::DiagnosticStatus::WARN);
+  EXPECT_EQ(merged_status.level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
   EXPECT_TRUE(merged_status.message.find("initial pose is not set") != std::string::npos);
 
   force_diagnostics_update(ekf_localizer.get());
