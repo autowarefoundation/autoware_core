@@ -17,6 +17,7 @@
 #include "autoware/trajectory/utils/crossed.hpp"
 #include "autoware/trajectory/utils/find_intervals.hpp"
 #include "autoware/trajectory/utils/set_stopline.hpp"
+#include "autoware/trajectory/utils/set_time_offset.hpp"
 
 #include <rclcpp/duration.hpp>
 
@@ -274,4 +275,28 @@ TEST(SetStoplineTemporal, DistanceToTimeReturnsFirstStopTime)
 
   const auto stop_time = trajectory.distance_to_time(1.5);
   EXPECT_NEAR(stop_time, 1.5, 1e-6);
+}
+
+TEST(SetTimeOffset, ShiftsNegativeRangeToPositive)
+{
+  const std::vector<TrajectoryPoint> points{
+    make_point(-1.0, -1.0), make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0)};
+
+  const auto trajectory = autoware::experimental::trajectory::set_time_offset(
+    TemporalTrajectory::Builder{}.build(points).value(), -1.0);
+
+  const auto start_time = trajectory.start_time();
+  const auto end_time = trajectory.end_time();
+  const auto duration = trajectory.duration();
+  const auto at_zero = trajectory.compute_from_time(0.0);
+  const auto at_mid = trajectory.compute_from_time(1.5);
+  const auto at_end = trajectory.compute_from_time(3.0);
+
+  EXPECT_NEAR(start_time, 0.0, 1e-6);
+  EXPECT_NEAR(end_time, 3.0, 1e-6);
+  EXPECT_NEAR(duration, 3.0, 1e-6);
+  EXPECT_NEAR(at_zero.pose.position.x, -1.0, 1e-6);
+  EXPECT_NEAR(rclcpp::Duration(at_zero.time_from_start).seconds(), 0.0, 1e-6);
+  EXPECT_NEAR(at_mid.pose.position.x, 0.5, 1e-6);
+  EXPECT_NEAR(at_end.pose.position.x, 2.0, 1e-6);
 }
