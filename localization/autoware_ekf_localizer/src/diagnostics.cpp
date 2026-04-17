@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/ekf_localizer/diagnostics.hpp"
+#include "include/diagnostics.hpp"
 
 #include <diagnostic_msgs/msg/diagnostic_status.hpp>
 
@@ -53,8 +53,8 @@ diagnostic_msgs::msg::DiagnosticStatus check_set_initialpose(const bool is_set_i
   stat.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
   stat.message = "OK";
   if (!is_set_initialpose) {
-    stat.level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
-    stat.message = "[WARN]initial pose is not set";
+    stat.level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+    stat.message = "[ERROR]initial pose is not set";
   }
 
   return stat;

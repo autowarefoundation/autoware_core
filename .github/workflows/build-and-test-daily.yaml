@@ -17,7 +17,7 @@ jobs:
             container: ghcr.io/autowarefoundation/autoware:core-common-devel
 
           - rosdistro: jazzy
-            container: ghcr.io/autowarefoundation/autoware:core-common-devel-jazzy-amd64
+            container: ghcr.io/autowarefoundation/autoware:core-common-devel-jazzy
 
     uses: ./.github/workflows/build-and-test-reusable.yaml
 

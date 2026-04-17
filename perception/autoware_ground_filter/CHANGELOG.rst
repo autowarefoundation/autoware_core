@@ -11,6 +11,9 @@ Changelog for package autoware_ground_filter
   Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
 * Contributors: Amadeusz Szymko
 
+1.7.0 (2026-02-14)
+------------------
+
 1.6.0 (2025-12-30)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

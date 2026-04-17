@@ -22,6 +22,7 @@
 #include <lanelet2_io/Io.h>
 
 #include <filesystem>
+#include <limits>
 #include <set>
 #include <string>
 #include <vector>
@@ -86,6 +87,23 @@ TEST_F(TestWithIntersectionCrossingMap, left_lanelet_with_lc_permission)
   EXPECT_EQ(lane.value().id(), 2244);
 }
 
+TEST_F(TestWithIntersectionCrossingMap, left_lanelets)
+{
+  const auto lanes =
+    lanelet2_utils::left_lanelets(lanelet_map_ptr_->laneletLayer.get(2246), routing_graph_ptr_);
+  ASSERT_TRUE(lanes.has_value());
+  ASSERT_EQ(lanes.value().size(), 2);
+  EXPECT_EQ(lanes.value()[0].id(), 2245);
+  EXPECT_EQ(lanes.value()[1].id(), 2244);
+}
+
+TEST_F(TestWithIntersectionCrossingMap, left_lanelets_not_exist)
+{
+  const auto lanes =
+    lanelet2_utils::left_lanelets(lanelet_map_ptr_->laneletLayer.get(2244), routing_graph_ptr_);
+  ASSERT_FALSE(lanes.has_value());
+}
+
 TEST_F(TestWithIntersectionCrossingMap, right_lanelet_without_lc_permission)
 {
   const auto lane =
@@ -98,6 +116,70 @@ TEST_F(TestWithIntersectionCrossingMap, right_lanelet_with_lc_permission)
   const auto lane =
     lanelet2_utils::right_lanelet(lanelet_map_ptr_->laneletLayer.get(2244), routing_graph_ptr_);
   EXPECT_EQ(lane.value().id(), 2245);
+}
+
+TEST_F(TestWithIntersectionCrossingMap, right_lanelets)
+{
+  const auto lanes =
+    lanelet2_utils::right_lanelets(lanelet_map_ptr_->laneletLayer.get(2246), routing_graph_ptr_);
+  ASSERT_TRUE(lanes.has_value());
+  ASSERT_EQ(lanes.value().size(), 2);
+  EXPECT_EQ(lanes.value()[0].id(), 2247);
+  EXPECT_EQ(lanes.value()[1].id(), 2248);
+}
+
+TEST_F(TestWithIntersectionCrossingMap, right_lanelets_not_exist)
+{
+  const auto lanes =
+    lanelet2_utils::right_lanelets(lanelet_map_ptr_->laneletLayer.get(2248), routing_graph_ptr_);
+  ASSERT_FALSE(lanes.has_value());
+}
+
+TEST_F(TestWithIntersectionCrossingMap, all_neighbor_lanelets)
+{
+  const auto lanes = lanelet2_utils::all_neighbor_lanelets(
+    lanelet_map_ptr_->laneletLayer.get(2246), routing_graph_ptr_);
+  ASSERT_EQ(lanes.size(), 5);
+  // Left
+  EXPECT_EQ(lanes[0].id(), 2244);
+  EXPECT_EQ(lanes[1].id(), 2245);
+  // Itself
+  EXPECT_EQ(lanes[2].id(), 2246);
+  // Right
+  EXPECT_EQ(lanes[3].id(), 2247);
+  EXPECT_EQ(lanes[4].id(), 2248);
+
+  // check that the first lane is leftmost
+  {
+    auto leftmost_opt = lanelet2_utils::left_lanelet(
+      lanelet_map_ptr_->laneletLayer.get(lanes.front().id()), routing_graph_ptr_);
+    EXPECT_FALSE(leftmost_opt.has_value());
+  }
+  // check that the last lane is leftmost
+  {
+    auto rightmost_opt = lanelet2_utils::right_lanelet(
+      lanelet_map_ptr_->laneletLayer.get(lanes.back().id()), routing_graph_ptr_);
+    EXPECT_FALSE(rightmost_opt.has_value());
+  }
+}
+
+TEST_F(TestWithIntersectionCrossingMap, lane_changeable_neighbors_with_lc_permission)
+{
+  const auto lanes = lanelet2_utils::lane_changeable_neighbors(
+    lanelet_map_ptr_->laneletLayer.get(2254), routing_graph_ptr_);
+  ASSERT_EQ(lanes.size(), 4);
+  std::vector<int64_t> expected_id = {2253, 2254, 2255, 2256};
+  for (auto i = 0ul; i < lanes.size(); ++i) {
+    EXPECT_EQ(lanes[i].id(), expected_id[i]);
+  }
+}
+
+TEST_F(TestWithIntersectionCrossingMap, lane_changeable_neighbors_without_lc_permission)
+{
+  const auto lanes = lanelet2_utils::lane_changeable_neighbors(
+    lanelet_map_ptr_->laneletLayer.get(2258), routing_graph_ptr_);
+  ASSERT_EQ(lanes.size(), 1);
+  EXPECT_EQ(lanes.front().id(), 2258);
 }
 
 TEST_F(TestWithIntersectionCrossingMap, right_opposite_lanelet_valid)
@@ -245,6 +327,215 @@ TEST_F(TestWithIntersectionCrossingMap, ordinary_conflicting_lanelet)
   EXPECT_EQ(conflicting_ids.find(2271) != conflicting_ids.end(), false) << "id 2271 exists (wrong)";
 }
 
+TEST_F(TestWithIntersectionCrossingMap, empty_succeeding_lanelet_sequences)
+{
+  const auto succeeding_lanelet_sequences = lanelet2_utils::get_succeeding_lanelet_sequences(
+    lanelet_map_ptr_->laneletLayer.get(2274), routing_graph_ptr_,
+    std::numeric_limits<double>::max());
+  EXPECT_EQ(succeeding_lanelet_sequences.size(), 0);
+}
+
+TEST_F(TestWithIntersectionCrossingMap, ordinary_succeeding_lanelet_sequences)
+{
+  const auto succeeding_lanelet_sequences = lanelet2_utils::get_succeeding_lanelet_sequences(
+    lanelet_map_ptr_->laneletLayer.get(2244), routing_graph_ptr_,
+    std::numeric_limits<double>::max());
+  EXPECT_EQ(succeeding_lanelet_sequences.size(), 2);
+  // 2265, 2249
+  // check the first lanelet sequence
+  ASSERT_EQ(succeeding_lanelet_sequences.front().size(), 2);
+  EXPECT_EQ(succeeding_lanelet_sequences.front().front().id(), 2265);
+  EXPECT_EQ(succeeding_lanelet_sequences.front().back().id(), 2249);
+
+  // 2271
+  // check the last lanelet sequence
+  ASSERT_EQ(succeeding_lanelet_sequences.back().size(), 1);
+  EXPECT_EQ(succeeding_lanelet_sequences.back().front().id(), 2271);
+}
+
+TEST_F(TestWithIntersectionCrossingMap, ordinary_succeeding_lanelet_sequences_with_length)
+{
+  // with length = 0 (only the next lanelet)
+  {
+    const auto succeeding_lanelet_sequences = lanelet2_utils::get_succeeding_lanelet_sequences(
+      lanelet_map_ptr_->laneletLayer.get(2244), routing_graph_ptr_, 49);
+    EXPECT_EQ(succeeding_lanelet_sequences.size(), 2);
+    // 2265, 2249
+    // check the first lanelet sequence
+    ASSERT_EQ(succeeding_lanelet_sequences.front().size(), 1);
+    EXPECT_EQ(succeeding_lanelet_sequences.front().front().id(), 2265);
+
+    // 2271
+    // check the last lanelet sequence
+    ASSERT_EQ(succeeding_lanelet_sequences.back().size(), 1);
+    EXPECT_EQ(succeeding_lanelet_sequences.back().front().id(), 2271);
+  }
+
+  // centerline of lanelet 2265 is (126.3859, 208.2609), (126.6293, 158.9185) -> distance 49.343
+  // slightly **less** than first following lanelet
+  {
+    const auto succeeding_lanelet_sequences = lanelet2_utils::get_succeeding_lanelet_sequences(
+      lanelet_map_ptr_->laneletLayer.get(2244), routing_graph_ptr_, 49);
+    EXPECT_EQ(succeeding_lanelet_sequences.size(), 2);
+    // check the first lanelet sequence
+    ASSERT_EQ(succeeding_lanelet_sequences.front().size(), 1);
+    EXPECT_EQ(succeeding_lanelet_sequences.front().front().id(), 2265);
+
+    // check the last lanelet sequence
+    ASSERT_EQ(succeeding_lanelet_sequences.back().size(), 1);
+    EXPECT_EQ(succeeding_lanelet_sequences.back().front().id(), 2271);
+  }
+
+  // slightly **more** than first following lanelet
+  {
+    const auto succeeding_lanelet_sequences = lanelet2_utils::get_succeeding_lanelet_sequences(
+      lanelet_map_ptr_->laneletLayer.get(2244), routing_graph_ptr_, 50);
+    EXPECT_EQ(succeeding_lanelet_sequences.size(), 2);
+    // check the first lanelet sequence
+    ASSERT_EQ(succeeding_lanelet_sequences.front().size(), 2);
+    EXPECT_EQ(succeeding_lanelet_sequences.front().front().id(), 2265);
+    EXPECT_EQ(succeeding_lanelet_sequences.front().back().id(), 2249);
+
+    // check the last lanelet sequence
+    ASSERT_EQ(succeeding_lanelet_sequences.back().size(), 1);
+    EXPECT_EQ(succeeding_lanelet_sequences.back().front().id(), 2271);
+  }
+}
+
+TEST_F(TestWithIntersectionCrossingMap, empty_preceding_lanelet_sequences)
+{
+  const auto preceding_lanelet_sequences = lanelet2_utils::get_preceding_lanelet_sequences(
+    lanelet_map_ptr_->laneletLayer.get(2240), routing_graph_ptr_,
+    std::numeric_limits<double>::max());
+  EXPECT_EQ(preceding_lanelet_sequences.size(), 0);
+}
+
+TEST_F(TestWithIntersectionCrossingMap, ordinary_preceding_lanelet_sequences)
+{
+  const auto preceding_lanelet_sequences = lanelet2_utils::get_preceding_lanelet_sequences(
+    lanelet_map_ptr_->laneletLayer.get(2249), routing_graph_ptr_,
+    std::numeric_limits<double>::max());
+  ASSERT_EQ(preceding_lanelet_sequences.size(), 3);
+  // closest->furthest order
+  // 2265, 2244, 2301, 2239
+  // 2270, 2286, 2296
+  // 2283
+  // check the first lanelet sequence
+  ASSERT_EQ(preceding_lanelet_sequences.front().size(), 4);
+  EXPECT_EQ(preceding_lanelet_sequences.front()[0].id(), 2239);
+  EXPECT_EQ(preceding_lanelet_sequences.front()[1].id(), 2301);
+  EXPECT_EQ(preceding_lanelet_sequences.front()[2].id(), 2244);
+  EXPECT_EQ(preceding_lanelet_sequences.front()[3].id(), 2265);
+
+  // check the second lanelet sequence
+  ASSERT_EQ(preceding_lanelet_sequences[1].size(), 3);
+  EXPECT_EQ(preceding_lanelet_sequences[1][0].id(), 2296);
+  EXPECT_EQ(preceding_lanelet_sequences[1][1].id(), 2286);
+  EXPECT_EQ(preceding_lanelet_sequences[1][2].id(), 2270);
+
+  // check the last lanelet sequence
+  ASSERT_EQ(preceding_lanelet_sequences.back().size(), 1);
+  EXPECT_EQ(preceding_lanelet_sequences.back()[0].id(), 2283);
+}
+
+TEST_F(TestWithIntersectionCrossingMap, ordinary_preceding_lanelet_sequences_with_length)
+{
+  // with length = 0 (only the previous lanelet)
+  {
+    const auto preceding_lanelet_sequences = lanelet2_utils::get_preceding_lanelet_sequences(
+      lanelet_map_ptr_->laneletLayer.get(2249), routing_graph_ptr_, 0);
+    ASSERT_EQ(preceding_lanelet_sequences.size(), 3);
+    // closest->furthest order
+    // 2265, 2244, 2301, 2239
+    // 2270, 2286, 2296
+    // 2283
+    // check the first lanelet sequence
+    ASSERT_EQ(preceding_lanelet_sequences.front().size(), 1);
+    EXPECT_EQ(preceding_lanelet_sequences.front()[0].id(), 2265);
+
+    // check the second lanelet sequence
+    ASSERT_EQ(preceding_lanelet_sequences[1].size(), 1);
+    EXPECT_EQ(preceding_lanelet_sequences[1][0].id(), 2270);
+
+    // check the last lanelet sequence
+    ASSERT_EQ(preceding_lanelet_sequences.back().size(), 1);
+    EXPECT_EQ(preceding_lanelet_sequences.back()[0].id(), 2283);
+  }
+
+  // slightly **less** than lanelet 2265
+  // centerline of lanelet 2265 is (126.3859, 208.2609), (126.6293, 158.9185) -> distance 49.343
+  {
+    const auto preceding_lanelet_sequences = lanelet2_utils::get_preceding_lanelet_sequences(
+      lanelet_map_ptr_->laneletLayer.get(2249), routing_graph_ptr_, 49);
+    ASSERT_EQ(preceding_lanelet_sequences.size(), 3);
+    // closest->furthest order
+    // 2265, 2244, 2301, 2239
+    // 2270, 2286, 2296
+    // 2283
+    // check the first lanelet sequence
+    ASSERT_EQ(preceding_lanelet_sequences.front().size(), 1);
+    EXPECT_EQ(preceding_lanelet_sequences.front()[0].id(), 2265);
+
+    // check the second lanelet sequence
+    ASSERT_EQ(preceding_lanelet_sequences[1].size(), 2);
+    EXPECT_EQ(preceding_lanelet_sequences[1][0].id(), 2286);
+    EXPECT_EQ(preceding_lanelet_sequences[1][1].id(), 2270);
+
+    // check the last lanelet sequence
+    ASSERT_EQ(preceding_lanelet_sequences.back().size(), 1);
+    EXPECT_EQ(preceding_lanelet_sequences.back()[0].id(), 2283);
+  }
+
+  // slightly **more** than lanelet 2265
+  {
+    const auto preceding_lanelet_sequences = lanelet2_utils::get_preceding_lanelet_sequences(
+      lanelet_map_ptr_->laneletLayer.get(2249), routing_graph_ptr_, 50);
+    ASSERT_EQ(preceding_lanelet_sequences.size(), 3);
+    // closest->furthest order
+    // 2265, 2244, 2301, 2239
+    // 2270, 2286, 2296
+    // 2283
+    // check the first lanelet sequence
+    ASSERT_EQ(preceding_lanelet_sequences.front().size(), 2);
+    EXPECT_EQ(preceding_lanelet_sequences.front()[0].id(), 2244);
+    EXPECT_EQ(preceding_lanelet_sequences.front()[1].id(), 2265);
+
+    // check the second lanelet sequence
+    ASSERT_EQ(preceding_lanelet_sequences[1].size(), 2);
+    EXPECT_EQ(preceding_lanelet_sequences[1][0].id(), 2286);
+    EXPECT_EQ(preceding_lanelet_sequences[1][1].id(), 2270);
+
+    // check the last lanelet sequence
+    ASSERT_EQ(preceding_lanelet_sequences.back().size(), 1);
+    EXPECT_EQ(preceding_lanelet_sequences.back()[0].id(), 2283);
+  }
+}
+
+TEST_F(TestWithIntersectionCrossingMap, ordinary_preceding_lanelet_sequences_exclude_lanelets)
+{
+  lanelet::ConstLanelets exclude_lanelets;
+  // lanelet in the first lanelet sequence
+  exclude_lanelets.push_back(lanelet_map_ptr_->laneletLayer.get(2301));
+  // initial lanelet in the second lanelet sequence
+  exclude_lanelets.push_back(lanelet_map_ptr_->laneletLayer.get(2270));
+
+  const auto preceding_lanelet_sequences = lanelet2_utils::get_preceding_lanelet_sequences(
+    lanelet_map_ptr_->laneletLayer.get(2249), routing_graph_ptr_,
+    std::numeric_limits<double>::max(), exclude_lanelets);
+  ASSERT_EQ(preceding_lanelet_sequences.size(), 2);
+  // closest->furthest order
+  // 1 - 2265, 2244, *2301*, 2239
+  // 2 - *2270*, 2286, 2296
+  // 3 - 2283 (become second after excluding)
+  // check the first lanelet sequence
+  ASSERT_EQ(preceding_lanelet_sequences.front().size(), 2);
+  EXPECT_EQ(preceding_lanelet_sequences.front()[0].id(), 2244);
+  EXPECT_EQ(preceding_lanelet_sequences.front()[1].id(), 2265);
+
+  // check the last lanelet sequence
+  ASSERT_EQ(preceding_lanelet_sequences.back().size(), 1);
+  EXPECT_EQ(preceding_lanelet_sequences.back()[0].id(), 2283);
+}
 }  // namespace autoware::experimental
 
 int main(int argc, char ** argv)

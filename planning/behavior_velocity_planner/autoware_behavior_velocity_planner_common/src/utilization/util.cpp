@@ -17,6 +17,7 @@
 #include "autoware/behavior_velocity_planner_common/utilization/boost_geometry_helper.hpp"
 #include "autoware/motion_utils/trajectory/trajectory.hpp"
 
+#include <autoware/lanelet2_utils/nn_search.hpp>
 #include <autoware/lanelet2_utils/topology.hpp>
 #include <autoware/trajectory/utils/pretty_build.hpp>
 #include <autoware_lanelet2_extension/utility/query.hpp>
@@ -278,7 +279,7 @@ void insertVelocity(
     std::min(static_cast<int>(insert_index + 1), static_cast<int>(path.points.size() - 1));
   for (int i = min_idx; i <= max_idx; i++) {
     if (calc_distance2d(path.points.at(static_cast<size_t>(i)), path_point) < min_distance) {
-      path.points.at(i).point.longitudinal_velocity_mps = v;
+      path.points.at(i).point.longitudinal_velocity_mps = static_cast<float>(v);
       already_has_path_point = true;
       insert_index = static_cast<size_t>(i);
       // set velocity from is going to insert min velocity later
@@ -287,7 +288,7 @@ void insertVelocity(
   }
   //! insert velocity point only if there is no close point on path
   if (!already_has_path_point) {
-    path.points.insert(path.points.begin() + insert_index, path_point);
+    path.points.insert(path.points.begin() + static_cast<std::ptrdiff_t>(insert_index), path_point);
   }
   // set zero velocity from insert index
   setVelocityFromIndex(insert_index, v, &path);
@@ -646,9 +647,10 @@ std::optional<int64_t> getNearestLaneId(
     lanes.push_back(lanelet_map->laneletLayer.get(lane_id));
   }
 
-  lanelet::Lanelet closest_lane;
-  if (lanelet::utils::query::getClosestLanelet(lanes, current_pose, &closest_lane)) {
-    return closest_lane.id();
+  if (
+    const auto closest_lanelet_opt =
+      experimental::lanelet2_utils::get_closest_lanelet(lanes, current_pose)) {
+    return closest_lanelet_opt.value().id();
   }
   return std::nullopt;
 }

@@ -2,19 +2,17 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>autoware_route_handler</name>
-  <version>1.6.0</version>
+  <version>1.7.0</version>
   <description>The route_handling package</description>
-  <maintainer email="fumiya.watanabe@tier4.jp">Fumiya Watanabe</maintainer>
   <maintainer email="zulfaqar.azmi@tier4.jp">Zulfaqar Azmi</maintainer>
   <maintainer email="kosuke.takeuchi@tier4.jp">Kosuke Takeuchi</maintainer>
-  <maintainer email="takayuki.murooka@tier4.jp">Takayuki Murooka</maintainer>
   <maintainer email="mamoru.sobue@tier4.jp">Mamoru Sobue</maintainer>
-  <maintainer email="go.sakayori@tier4.jp">Go Sakayori</maintainer>
   <maintainer email="alqudah.mohammad@tier4.jp">Alqudah Mohammad</maintainer>
 
   <license>Apache License 2.0</license>
 
   <author email="fumiya.watanabe@tier4.jp">Fumiya Watanabe</author>
+  <author email="takayuki.murooka@tier4.jp">Takayuki Murooka</author>
 
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
   <buildtool_depend>autoware_cmake</buildtool_depend>

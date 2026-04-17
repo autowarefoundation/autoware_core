@@ -17,6 +17,7 @@
 #include "autoware/trajectory/detail/helpers.hpp"
 #include "autoware/trajectory/interpolator/cubic_spline.hpp"
 #include "autoware/trajectory/interpolator/linear.hpp"
+#include "autoware/trajectory/interpolator/nearest_neighbor.hpp"
 #include "autoware/trajectory/threshold.hpp"
 #include "autoware_utils_geometry/geometry.hpp"
 
@@ -25,6 +26,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <limits>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -79,9 +81,9 @@ interpolator::InterpolationResult Trajectory<PointType>::build(
   zs.reserve(points.size() + 1);
 
   bases_.emplace_back(0.0);
-  xs.emplace_back(points[0].x);
-  ys.emplace_back(points[0].y);
-  zs.emplace_back(points[0].z);
+  xs.emplace_back(points.at(0).x);
+  ys.emplace_back(points.at(0).y);
+  zs.emplace_back(points.at(0).z);
 
   for (size_t i = 1; i < points.size(); ++i) {
     /**
@@ -92,26 +94,35 @@ interpolator::InterpolationResult Trajectory<PointType>::build(
        the interval of k_points_minimum_dist_threshold and interpolation is continued.
     */
     const auto dist = std::max<double>(
-      autoware_utils_geometry::calc_distance3d(points[i], points[i - 1]),
+      autoware_utils_geometry::calc_distance3d(points.at(i), points.at(i - 1)),
       k_points_minimum_dist_threshold);
     bases_.emplace_back(bases_.back() + dist);
-    xs.emplace_back(points[i].x);
-    ys.emplace_back(points[i].y);
-    zs.emplace_back(points[i].z);
+    xs.emplace_back(points.at(i).x);
+    ys.emplace_back(points.at(i).y);
+    zs.emplace_back(points.at(i).z);
   }
 
   start_ = bases_.front();
   end_ = bases_.back();
 
-  if (const auto result = x_interpolator_->build(bases_, std::move(xs)); !result) {
+  if (const auto result = detail::build_with_fallback(
+        x_interpolator_, bases_, xs, [] { return std::make_shared<interpolator::Linear>(); },
+        [] { return std::make_shared<interpolator::NearestNeighbor<double>>(); });
+      !result) {
     return tl::unexpected(
       interpolator::InterpolationFailure{"failed to interpolate Point::x"} + result.error());
   }
-  if (const auto result = y_interpolator_->build(bases_, std::move(ys)); !result) {
+  if (const auto result = detail::build_with_fallback(
+        y_interpolator_, bases_, ys, [] { return std::make_shared<interpolator::Linear>(); },
+        [] { return std::make_shared<interpolator::NearestNeighbor<double>>(); });
+      !result) {
     return tl::unexpected(
       interpolator::InterpolationFailure{"failed to interpolate Point::y"} + result.error());
   }
-  if (const auto result = z_interpolator_->build(bases_, std::move(zs)); !result) {
+  if (const auto result = detail::build_with_fallback(
+        z_interpolator_, bases_, zs, [] { return std::make_shared<interpolator::Linear>(); },
+        [] { return std::make_shared<interpolator::NearestNeighbor<double>>(); });
+      !result) {
     return tl::unexpected(
       interpolator::InterpolationFailure{"failed to interpolate Point::z"} + result.error());
   }
@@ -149,8 +160,10 @@ void Trajectory<PointType>::update_bases(const double s)
     // NOTE(soblin): the extension of base(or extrapolation) will be supported by other API.
     return;
   }
-  if (*it == s) {
-    // already inserted
+  if (std::fabs(*it - s) < k_points_minimum_dist_threshold) {
+    return;
+  }
+  if (it != bases_.begin() && std::fabs(*std::prev(it) - s) < k_points_minimum_dist_threshold) {
     return;
   }
   bases_.insert(it, s);
@@ -213,7 +226,11 @@ double Trajectory<PointType>::curvature(const double s) const
   const double ddx = x_interpolator_->compute_second_derivative(s_clamp);
   const double dy = y_interpolator_->compute_first_derivative(s_clamp);
   const double ddy = y_interpolator_->compute_second_derivative(s_clamp);
-  return (dx * ddy - dy * ddx) / std::pow(dx * dx + dy * dy, 1.5);
+  const double tangent_norm_squared = dx * dx + dy * dy;
+  if (tangent_norm_squared <= std::numeric_limits<double>::epsilon()) {
+    return 0.0;
+  }
+  return (dx * ddy - dy * ddx) / std::pow(tangent_norm_squared, 1.5);
 }
 
 std::vector<double> Trajectory<PointType>::curvature(const std::vector<double> & ss) const
@@ -226,35 +243,13 @@ std::vector<double> Trajectory<PointType>::curvature(const std::vector<double> &
   return ks;
 }
 
-std::vector<PointType> Trajectory<PointType>::restore(const size_t min_points) const
+std::vector<PointType> Trajectory<PointType>::restore() const
 {
-  std::vector<double> sanitized_bases{};
-  {
-    const auto bases = detail::fill_bases(get_underlying_bases(), min_points);
-    std::vector<PointType> points;
-
-    points.reserve(bases.size());
-    for (const auto & s : bases) {
-      const auto point = compute(s);
-      if (points.empty() || !is_almost_same(point, points.back())) {
-        points.push_back(point);
-        sanitized_bases.push_back(s);
-      }
-    }
-    if (points.size() >= min_points) {
-      return points;
-    }
-  }
-
-  // retry to satisfy min_point requirement as much as possible
-  const auto bases = detail::fill_bases(sanitized_bases, min_points);
   std::vector<PointType> points;
+  const auto bases = get_underlying_bases();
   points.reserve(bases.size());
   for (const auto & s : bases) {
-    const auto point = compute(s);
-    if (points.empty() || !is_almost_same(point, points.back())) {
-      points.push_back(point);
-    }
+    points.push_back(compute(s));
   }
   return points;
 }

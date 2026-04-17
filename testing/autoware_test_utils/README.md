@@ -93,7 +93,7 @@ ros2 launch autoware_test_utils psim_road_shoulder.launch.xml
 ros2 launch autoware_test_utils psim_intersection.launch.xml
 ```
 
-It uses the autoware `sample_vehicle_description` and `sample_sensor_kit` by default, and `autoware_test_utils/config/test_vehicle_info.param.yaml` is exactly the same as that of `sample_vehicle_description`. If specified, `vehicle_model`/`sensor_model` argument is available.
+It uses the autoware `autoware_sample_vehicle_description` and `autoware_sample_sensor_kit` by default, and `autoware_test_utils/config/test_vehicle_info.param.yaml` is exactly the same as that of `autoware_sample_vehicle_description`. If specified, `vehicle_model`/`sensor_model` argument is available.
 
 ```bash
 ros2 service call /autoware_test_utils/topic_snapshot_saver std_srvs/srv/Empty \{\}

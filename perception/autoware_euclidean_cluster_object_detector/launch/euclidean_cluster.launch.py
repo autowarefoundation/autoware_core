@@ -38,7 +38,7 @@ def launch_setup(context, *args, **kwargs):
     low_height_cropbox_filter_component = ComposableNode(
         package="autoware_crop_box_filter",
         namespace=ns,
-        plugin="autoware::crop_box_filter::CropBoxFilter",
+        plugin="autoware::crop_box_filter::CropBoxFilterNode",
         name="low_height_crop_box_filter",
         remappings=[
             ("input", LaunchConfiguration("input_pointcloud")),
@@ -118,8 +118,8 @@ def generate_launch_description():
             add_launch_arg(
                 "euclidean_param_path",
                 [
-                    FindPackageShare("autoware_launch"),
-                    "/config/perception/object_recognition/detection/clustering/euclidean_cluster.param.yaml",
+                    FindPackageShare("autoware_euclidean_cluster_object_detector"),
+                    "/config/euclidean_cluster.param.yaml",
                 ],
             ),
             OpaqueFunction(function=launch_setup),

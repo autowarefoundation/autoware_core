@@ -26,10 +26,10 @@ std::vector<int64_t> LaneIdsInterpolator::compute_impl(const double s) const
   const int32_t idx = this->get_index(s);
 
   // Check for exact matches at base points
-  if (s == this->bases_[idx]) {
+  if (s == this->bases_.at(idx)) {
     return values_.at(idx);
   }
-  if (s == this->bases_[idx + 1]) {
+  if (s == this->bases_.at(idx + 1)) {
     return values_.at(idx + 1);
   }
 
@@ -45,8 +45,8 @@ std::vector<int64_t> LaneIdsInterpolator::compute_impl(const double s) const
   if (left_value.size() > 1 && right_value.size() == 1) {
     return right_value;
   }  // If both are single or both are multiple, choose the closest one
-  const double left_distance = s - this->bases_[idx];
-  const double right_distance = this->bases_[idx + 1] - s;
+  const double left_distance = s - this->bases_.at(idx);
+  const double right_distance = this->bases_.at(idx + 1) - s;
   return (left_distance <= right_distance) ? left_value : right_value;
 }
 

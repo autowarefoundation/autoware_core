@@ -14,8 +14,6 @@
 
 #include "autoware/path_generator/node.hpp"
 
-#include <autoware_lanelet2_extension/utility/message_conversion.hpp>
-#include <autoware_lanelet2_extension/utility/query.hpp>
 #include <autoware_test_utils/autoware_test_utils.hpp>
 #include <autoware_test_utils/mock_data_parser.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info.hpp>
@@ -29,9 +27,9 @@ namespace autoware::path_generator
 {
 namespace
 {
-PathGenerator::InputData create_input_data()
+PathGenerator::RouteManagerData create_route_manager_data()
 {
-  PathGenerator::InputData input_data;
+  PathGenerator::RouteManagerData route_manager_data;
 
   const auto lanelet_map_path =
     ament_index_cpp::get_package_share_directory("autoware_lanelet2_utils") +
@@ -41,7 +39,7 @@ PathGenerator::InputData create_input_data()
     throw std::runtime_error(
       "Frame ID of the map is empty. The file might not exist or be corrupted:" + lanelet_map_path);
   }
-  input_data.lanelet_map_bin_ptr = std::make_shared<LaneletMapBin>(lanelet_map_bin);
+  route_manager_data.lanelet_map_bin_ptr = std::make_shared<LaneletMapBin>(lanelet_map_bin);
 
   const auto route_path = autoware::test_utils::get_absolute_path_to_route(
     "autoware_path_generator", "dense_centerline_route.yaml");
@@ -52,9 +50,9 @@ PathGenerator::InputData create_input_data()
     throw std::runtime_error(
       "Failed to parse YAML file: " + route_path + ". The file might be corrupted.");
   }
-  input_data.route_ptr = std::make_shared<LaneletRoute>(*route);
+  route_manager_data.route_ptr = std::make_shared<LaneletRoute>(*route);
 
-  return input_data;
+  return route_manager_data;
 }
 }  // namespace
 
@@ -77,8 +75,9 @@ TEST(DenseCenterlineTest, generatePath)
 
   PathGenerator path_generator(node_options);
 
-  const auto input_data = create_input_data();
-  path_generator.set_planner_data(input_data);
+  const auto route_manager_data = create_route_manager_data();
+  path_generator.initialize_route_manager(
+    route_manager_data, route_manager_data.route_ptr->start_pose);
 
   Params params;
   path_generator.get_parameter("path_length.backward", params.path_length.backward);
@@ -91,7 +90,7 @@ TEST(DenseCenterlineTest, generatePath)
   path_generator.get_parameter(
     "smooth_goal_connection.pre_goal_offset", params.goal_connection.pre_goal_offset);
 
-  const auto path = path_generator.generate_path(input_data.route_ptr->start_pose, params);
+  const auto path = path_generator.generate_path(route_manager_data.route_ptr->start_pose, params);
 
   ASSERT_TRUE(path.has_value());
   ASSERT_FALSE(path->points.empty());

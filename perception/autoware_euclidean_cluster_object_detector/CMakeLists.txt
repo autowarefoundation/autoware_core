@@ -7,7 +7,7 @@ autoware_package()
 find_package(PCL REQUIRED)
 
 include_directories(
-  include
+  src
   SYSTEM
   ${PCL_COMMON_INCLUDE_DIRS}
   ${PCL_INCLUDE_DIRS}
@@ -24,9 +24,8 @@ target_link_libraries(${PROJECT_NAME}_lib
 )
 
 target_include_directories(${PROJECT_NAME}_lib
-  PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
+  PRIVATE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
 )
 
 ament_auto_add_library(${PROJECT_NAME}_node_core SHARED

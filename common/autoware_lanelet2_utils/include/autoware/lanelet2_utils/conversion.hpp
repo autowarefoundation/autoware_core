@@ -107,6 +107,16 @@ std::optional<lanelet::ConstLanelet> create_safe_lanelet(
   const std::vector<lanelet::ConstPoint3d> & right_points);
 
 /**
+ * @brief construct ConstLanelet from ConstLineString3d
+ * @param left_linestring ConstLineString3d (for left side)
+ * @param right_linestring ConstLineString3d (for right side)
+ * @return ConstLanelet
+ */
+std::optional<lanelet::ConstLanelet> create_safe_lanelet(
+  const lanelet::ConstLineString3d & left_linestring,
+  const lanelet::ConstLineString3d & right_linestring);
+
+/**
  * @brief remove the const keyword from several types of data
  */
 lanelet::Point3d remove_const(const lanelet::ConstPoint3d & const_map_ptr);
@@ -115,6 +125,8 @@ lanelet::LaneletMapPtr remove_const(const lanelet::LaneletMapConstPtr & const_ma
 
 lanelet::routing::RoutingGraphPtr remove_const(
   const lanelet::routing::RoutingGraphConstPtr & const_routing_graph_ptr);
+
+lanelet::LineString3d remove_const(const lanelet::ConstLineString3d & const_linestring);
 
 lanelet::Lanelet remove_const(const lanelet::ConstLanelet & const_lanelet);
 

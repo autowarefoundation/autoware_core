@@ -63,6 +63,18 @@ Changelog for package autoware_path_generator
 * feat(autoware_path_generator): use autoware_trajectory for cropping bounds (`#349 <https://github.com/autowarefoundation/autoware_core/issues/349>`_)
 * Contributors: Kazunori-Nakajima, Mamoru Sobue, Mitsuhiro Sakamoto, Yukinari Hisaki
 
+1.7.0 (2026-02-14)
+------------------
+* Merge remote-tracking branch 'origin/main' into humble
+* refactor(planning): deprecate lanelet_extension geometry conversion function (`#834 <https://github.com/autowarefoundation/autoware_core/issues/834>`_)
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* chore: reflect the move of the description packages (`#811 <https://github.com/autowarefoundation/autoware_core/issues/811>`_)
+* refactor(planning, common): replace lanelet2_extension function (`#796 <https://github.com/autowarefoundation/autoware_core/issues/796>`_)
+* revert: feat(path_generator): use `route_manager` to handle route data `#725 <https://github.com/autowarefoundation/autoware_core/issues/725>`_ (`#801 <https://github.com/autowarefoundation/autoware_core/issues/801>`_)
+  This reverts commit 2403cb5952d33db8e4a403d6cc7b368521d47f5e.
+* feat(path_generator): use `route_manager` to handle route data (`#725 <https://github.com/autowarefoundation/autoware_core/issues/725>`_)
+* Contributors: Mamoru Sobue, Mitsuhiro Sakamoto, Ryohsuke Mitsudome, Takagi, Isamu
+
 1.6.0 (2025-12-30)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

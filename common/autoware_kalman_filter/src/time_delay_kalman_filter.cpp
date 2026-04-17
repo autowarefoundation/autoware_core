@@ -23,15 +23,16 @@ void TimeDelayKalmanFilter::init(
   const Eigen::MatrixXd & x, const Eigen::MatrixXd & P0, const int max_delay_step)
 {
   max_delay_step_ = max_delay_step;
-  dim_x_ = x.rows();
+  dim_x_ = static_cast<int>(x.rows());
   dim_x_ex_ = dim_x_ * max_delay_step;
 
   x_ = Eigen::MatrixXd::Zero(dim_x_ex_, 1);
   P_ = Eigen::MatrixXd::Zero(dim_x_ex_, dim_x_ex_);
 
   for (int i = 0; i < max_delay_step_; ++i) {
-    x_.block(i * dim_x_, 0, dim_x_, 1) = x;
-    P_.block(i * dim_x_, i * dim_x_, dim_x_, dim_x_) = P0;
+    const Eigen::Index offset = static_cast<Eigen::Index>(i) * dim_x_;
+    x_.block(offset, 0, dim_x_, 1) = x;
+    P_.block(offset, offset, dim_x_, dim_x_) = P0;
   }
 }
 
@@ -90,11 +91,11 @@ bool TimeDelayKalmanFilter::updateWithDelay(
     return false;
   }
 
-  const int dim_y = y.rows();
+  const int dim_y = static_cast<int>(y.rows());
 
   /* set measurement matrix */
   Eigen::MatrixXd C_ex = Eigen::MatrixXd::Zero(dim_y, dim_x_ex_);
-  C_ex.block(0, dim_x_ * delay_step, dim_y, dim_x_) = C;
+  C_ex.block(0, static_cast<Eigen::Index>(dim_x_) * delay_step, dim_y, dim_x_) = C;
 
   return update(y, C_ex, R);
 }
