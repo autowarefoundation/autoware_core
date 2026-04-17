@@ -111,53 +111,58 @@ void plot_time_distance(
 
 int main()
 {
-  pybind11::scoped_interpreter guard{};
-  auto plt = autoware::pyplot::import();
+  try {
+    pybind11::scoped_interpreter guard{};
+    auto plt = autoware::pyplot::import();
 
-  const auto original = make_trajectory();
+    const auto original = make_trajectory();
 
-  const auto early_window = autoware::experimental::trajectory::crop_time(original, 0.8, 2.4);
+    const auto early_window = autoware::experimental::trajectory::crop_time(original, 0.8, 2.4);
 
-  const auto late_window = autoware::experimental::trajectory::crop_time(original, 2.8, 2.2);
+    const auto late_window = autoware::experimental::trajectory::crop_time(original, 2.8, 2.2);
 
-  const auto rebased_early_window =
-    autoware::experimental::trajectory::set_time_offset(early_window, early_window.start_time());
+    const auto rebased_early_window =
+      autoware::experimental::trajectory::set_time_offset(early_window, early_window.start_time());
 
-  std::cout << "original: [" << original.start_time() << ", " << original.end_time() << "]\n";
-  std::cout << "early_window: [" << early_window.start_time() << ", " << early_window.end_time()
-            << "]\n";
-  std::cout << "rebased_early_window: [" << rebased_early_window.start_time() << ", "
-            << rebased_early_window.end_time() << "]\n";
-  std::cout << "late_window: [" << late_window.start_time() << ", " << late_window.end_time()
-            << "]\n";
+    std::cout << "original: [" << original.start_time() << ", " << original.end_time() << "]\n";
+    std::cout << "early_window: [" << early_window.start_time() << ", " << early_window.end_time()
+              << "]\n";
+    std::cout << "rebased_early_window: [" << rebased_early_window.start_time() << ", "
+              << rebased_early_window.end_time() << "]\n";
+    std::cout << "late_window: [" << late_window.start_time() << ", " << late_window.end_time()
+              << "]\n";
 
-  auto [fig, axes] = plt.subplots(1, 2, Kwargs("figsize"_a = std::make_tuple(14, 6)));
+    auto [fig, axes] = plt.subplots(1, 2, Kwargs("figsize"_a = std::make_tuple(14, 6)));
 
-  {
-    auto ax = axes[0];
-    plot_xy(ax, original, "original", "navy");
-    plot_xy(ax, early_window, "window [0.8, 3.2]", "darkorange");
-    plot_xy(ax, late_window, "window [2.8, 5.0]", "crimson");
-    ax.set_title(Args("Spatial Windows From crop_time"));
-    ax.grid();
-    ax.legend();
-    ax.set_aspect(Args("equal"));
+    {
+      auto ax = axes[0];
+      plot_xy(ax, original, "original", "navy");
+      plot_xy(ax, early_window, "window [0.8, 3.2]", "darkorange");
+      plot_xy(ax, late_window, "window [2.8, 5.0]", "crimson");
+      ax.set_title(Args("Spatial Windows From crop_time"));
+      ax.grid();
+      ax.legend();
+      ax.set_aspect(Args("equal"));
+    }
+
+    {
+      auto ax = axes[1];
+      plot_time_distance(ax, original, "original", "navy");
+      plot_time_distance(ax, early_window, "window [0.8, 3.2]", "darkorange");
+      plot_time_distance(ax, late_window, "window [2.8, 5.0]", "crimson");
+      ax.set_title(Args("Absolute Time / Cropped Distance"));
+      ax.set_xlabel(Args("time [s]"));
+      ax.set_ylabel(Args("distance [m]"));
+      ax.grid();
+      ax.legend();
+    }
+
+    fig.tight_layout();
+    plt.savefig(Args("temporal_trajectory_crop.svg"));
+    plt.show();
+    return 0;
+  } catch (const std::exception & e) {
+    std::cerr << "Exception: " << e.what() << std::endl;
+    return 1;
   }
-
-  {
-    auto ax = axes[1];
-    plot_time_distance(ax, original, "original", "navy");
-    plot_time_distance(ax, early_window, "window [0.8, 3.2]", "darkorange");
-    plot_time_distance(ax, late_window, "window [2.8, 5.0]", "crimson");
-    ax.set_title(Args("Absolute Time / Cropped Distance"));
-    ax.set_xlabel(Args("time [s]"));
-    ax.set_ylabel(Args("distance [m]"));
-    ax.grid();
-    ax.legend();
-  }
-
-  fig.tight_layout();
-  plt.savefig(Args("temporal_trajectory_crop.svg"));
-  plt.show();
-  return 0;
 }
