@@ -135,8 +135,10 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
         std::bind(&NDTScanMatcher::callback_regularization_pose, this, std::placeholders::_1),
         initial_pose_sub_opt);
     const double value_as_unlimited = 1000.0;
-    regularization_pose_buffer_ =
-      std::make_unique<SmartPoseBuffer>(this->get_logger(), value_as_unlimited, value_as_unlimited);
+    regularization_pose_buffer_.with([&](auto & regularization_pose_buffer) {
+      regularization_pose_buffer = std::make_unique<SmartPoseBuffer>(
+        this->get_logger(), value_as_unlimited, value_as_unlimited);
+    });
 
     diagnostics_regularization_pose_ =
       std::make_unique<DiagnosticsInterface>(this, "regularization_pose_subscriber_status");
@@ -290,7 +292,9 @@ void NDTScanMatcher::callback_regularization_pose(
   diagnostics_regularization_pose_->add_key_value(
     "topic_time_stamp", static_cast<rclcpp::Time>(pose_conv_msg_ptr->header.stamp).nanoseconds());
 
-  regularization_pose_buffer_->push_back(pose_conv_msg_ptr);
+  regularization_pose_buffer_.with([&](auto & regularization_pose_buffer) {
+    regularization_pose_buffer->push_back(pose_conv_msg_ptr);
+  });
 
   diagnostics_regularization_pose_->publish(pose_conv_msg_ptr->header.stamp);
 }
@@ -443,7 +447,9 @@ bool NDTScanMatcher::callback_sensor_points_main(
 
     // if regularization is enabled and available, set pose to NDT for regularization
     if (param_.ndt_regularization_enable) {
-      add_regularization_pose(sensor_ros_time, *ndt_ptr);
+      regularization_pose_buffer_.with([&](auto & regularization_pose_buffer) {
+        add_regularization_pose(sensor_ros_time, *regularization_pose_buffer, *ndt_ptr);
+      });
     }
 
     // Warn if the lidar has gone out of the map range
@@ -941,15 +947,16 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr NDTScanMatcher::visualize_point_score(
 }
 
 void NDTScanMatcher::add_regularization_pose(
-  const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform & ndt_ref)
+  const rclcpp::Time & sensor_ros_time, SmartPoseBuffer & regularization_pose_buffer,
+  NormalDistributionsTransform & ndt_ref)
 {
   ndt_ref.unsetRegularizationPose();
   std::optional<SmartPoseBuffer::InterpolateResult> interpolation_result_opt =
-    regularization_pose_buffer_->interpolate(sensor_ros_time);
+    regularization_pose_buffer.interpolate(sensor_ros_time);
   if (!interpolation_result_opt) {
     return;
   }
-  regularization_pose_buffer_->pop_old(sensor_ros_time);
+  regularization_pose_buffer.pop_old(sensor_ros_time);
   const SmartPoseBuffer::InterpolateResult & interpolation_result =
     interpolation_result_opt.value();
   const Eigen::Matrix4f pose = pose_to_matrix4f(interpolation_result.interpolated_pose.pose.pose);

@@ -149,7 +149,9 @@ private:
     const float & lower_nvs, const float & upper_nvs, NormalDistributionsTransform & ndt_ref);
 
   void add_regularization_pose(
-    const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform & ndt_ref);
+    const rclcpp::Time & sensor_ros_time,
+    autoware::localization_util::SmartPoseBuffer & regularization_pose_buffer,
+    NormalDistributionsTransform & ndt_ref);
 
   rclcpp::TimerBase::SharedPtr map_update_timer_;
   rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr initial_pose_sub_;
@@ -211,7 +213,8 @@ private:
   // Keep latest position for dynamic map loading
   Guarded<std::optional<geometry_msgs::msg::Point>> latest_ekf_position_{std::nullopt};
 
-  std::unique_ptr<autoware::localization_util::SmartPoseBuffer> regularization_pose_buffer_;
+  Guarded<std::unique_ptr<autoware::localization_util::SmartPoseBuffer>>
+    regularization_pose_buffer_;
 
   std::atomic<bool> is_activated_;
   std::unique_ptr<DiagnosticsInterface> diagnostics_scan_points_;
