@@ -208,7 +208,7 @@ private:
 
   Eigen::Matrix4f base_to_sensor_matrix_;
 
-  std::unique_ptr<autoware::localization_util::SmartPoseBuffer> initial_pose_buffer_;
+  Guarded<std::unique_ptr<autoware::localization_util::SmartPoseBuffer>> initial_pose_buffer_;
 
   // Keep latest position for dynamic map loading
   Guarded<std::optional<geometry_msgs::msg::Point>> latest_ekf_position_{std::nullopt};

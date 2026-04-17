@@ -206,9 +206,11 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
 
   ndt_ptr_.with([&](const auto & ndt_ptr) { ndt_ptr->setParams(param_.ndt); });
 
-  initial_pose_buffer_ = std::make_unique<SmartPoseBuffer>(
-    this->get_logger(), param_.validation.initial_pose_timeout_sec,
-    param_.validation.initial_pose_distance_tolerance_m);
+  initial_pose_buffer_.with([&](auto & initial_pose_buffer) {
+    initial_pose_buffer = std::make_unique<SmartPoseBuffer>(
+      this->get_logger(), param_.validation.initial_pose_timeout_sec,
+      param_.validation.initial_pose_distance_tolerance_m);
+  });
 
   map_update_module_ =
     std::make_unique<MapUpdateModule>(this, ndt_ptr_, param_.dynamic_map_loading);
@@ -279,7 +281,8 @@ void NDTScanMatcher::callback_initial_pose_main(
     return;
   }
 
-  initial_pose_buffer_->push_back(initial_pose_msg_ptr);
+  initial_pose_buffer_.with(
+    [&](auto & initial_pose_buffer) { initial_pose_buffer->push_back(initial_pose_msg_ptr); });
 
   latest_ekf_position_.with([&](auto & pos) { pos = initial_pose_msg_ptr->pose.pose.position; });
 }
@@ -424,7 +427,13 @@ bool NDTScanMatcher::callback_sensor_points_main(
 
     // calculate initial pose
     std::optional<SmartPoseBuffer::InterpolateResult> interpolation_result_opt =
-      initial_pose_buffer_->interpolate(sensor_ros_time);
+      initial_pose_buffer_.with([&](auto & initial_pose_buffer) {
+        auto interpolation_result_opt = initial_pose_buffer->interpolate(sensor_ros_time);
+        if (interpolation_result_opt) {
+          initial_pose_buffer->pop_old(sensor_ros_time);
+        }
+        return interpolation_result_opt;
+      });
 
     // check is_succeed_interpolate_initial_pose
     const bool is_succeed_interpolate_initial_pose = (interpolation_result_opt != std::nullopt);
@@ -440,8 +449,6 @@ bool NDTScanMatcher::callback_sensor_points_main(
         diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
       return false;
     }
-
-    initial_pose_buffer_->pop_old(sensor_ros_time);
     const SmartPoseBuffer::InterpolateResult & interpolation_result =
       interpolation_result_opt.value();
 
@@ -974,7 +981,7 @@ void NDTScanMatcher::service_trigger_node(
 
   is_activated_ = req->data;
   if (is_activated_) {
-    initial_pose_buffer_->clear();
+    initial_pose_buffer_.with([&](auto & initial_pose_buffer) { initial_pose_buffer->clear(); });
   }
   res->success = true;
 
