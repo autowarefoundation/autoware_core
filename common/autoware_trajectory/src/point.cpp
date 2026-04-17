@@ -87,11 +87,8 @@ interpolator::InterpolationResult Trajectory<PointType>::build(
 
   for (size_t i = 1; i < points.size(); ++i) {
     /**
-       NOTE:
-       this sanitization is essential for avoiding zero division and NaN in later interpolation.
-
-       if there are 100 points with the interval of 1nm, then they are treated as 100 points with
-       the interval of k_points_minimum_dist_threshold and interpolation is continued.
+       NOTE: This sanitisation is essential for avoiding the same base. The process of avoiding zero
+       division is handled by each interpolator.
     */
     const auto dist = std::max<double>(
       autoware_utils_geometry::calc_distance3d(points.at(i), points.at(i - 1)),
@@ -160,10 +157,12 @@ void Trajectory<PointType>::update_bases(const double s)
     // NOTE(soblin): the extension of base(or extrapolation) will be supported by other API.
     return;
   }
-  if (std::fabs(*it - s) < k_points_minimum_dist_threshold) {
+  if (std::fabs(*it - s) < std::numeric_limits<double>::epsilon()) {
     return;
   }
-  if (it != bases_.begin() && std::fabs(*std::prev(it) - s) < k_points_minimum_dist_threshold) {
+  if (
+    it != bases_.begin() &&
+    std::fabs(*std::prev(it) - s) < std::numeric_limits<double>::epsilon()) {
     return;
   }
   bases_.insert(it, s);

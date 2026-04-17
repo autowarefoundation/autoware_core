@@ -46,21 +46,28 @@ private:
 
   size_t insert_base_if_not_present(const double base)
   {
-    auto it = std::lower_bound(bases_.begin(), bases_.end(), base);
-    const auto index = static_cast<size_t>(std::distance(bases_.begin(), it));
+    auto & bases = bases_;
+    auto & values = values_;
 
-    if (it != bases_.end() && *it == base) {
+    const auto it = std::lower_bound(bases.begin(), bases.end(), base);
+    const auto index = std::distance(bases.begin(), it);
+
+    if (it != bases.end() && *it == base) {
+      // Return the index if the value already exists
       return index;
     }
 
-    bases_.insert(it, base);
+    // Insert into bases
+    bases.insert(it, base);
 
+    // execute the callback to notify that a new base has been added
     if (base_addition_callback_slot_) {
       std::invoke(base_addition_callback_slot_, base);
     }
 
+    // Insert into values at the corresponding position
     const auto value_index = (index == 0) ? 0 : index - 1;
-    values_.insert(values_.begin() + static_cast<std::ptrdiff_t>(index), values_.at(value_index));
+    values.insert(values.begin() + index, values.at(value_index));
     return index;
   }
 
@@ -129,7 +136,7 @@ public:
       bases_ = other.bases_;
       values_ = other.values_;
       interpolator_ = other.interpolator_->clone();
-      base_addition_callback_slot_ = other.base_addition_callback_slot_;
+      base_addition_callback_slot_ = nullptr;
     }
     return *this;
   }
