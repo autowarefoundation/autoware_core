@@ -297,7 +297,7 @@ public:
     processing_inputs_.resize(thread_num_);
   }
 
-  void setSearchRadius(double radius) { kdtree_.setSeachRadius(radius); }
+  void setSearchRadius(double radius) { kdtree_.setSearchRadius(radius); }
 
   double getSearchRadius() const { return kdtree_.getSearchRadius(); }
 
