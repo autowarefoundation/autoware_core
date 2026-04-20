@@ -363,6 +363,48 @@ TEST(SetStoplineTemporal, DistanceToTimeReturnsFirstStopTime)
   EXPECT_NEAR(stop_time, 1.5, 1e-6);
 }
 
+TEST(SetStoplineTemporal, TwoArgIdempotent)
+{
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {2.0, 2.0},
+    {3.0, 3.0},
+  });
+
+  const auto t1 = set_stopline(TemporalTrajectory::Builder{}.build(points).value(), 1.5);
+  const auto t2 = set_stopline(t1, 1.5);
+  const auto stop_point = t2.compute_from_distance(1.5);
+
+  EXPECT_NEAR(t2.length(), 1.5, 1e-3);
+  EXPECT_NEAR(t2.duration(), t1.duration(), 1e-6);
+  EXPECT_NEAR(stop_point.pose.position.x, 1.5, 1e-3);
+  EXPECT_NEAR(stop_point.longitudinal_velocity_mps, 0.0, 1e-6);
+}
+
+TEST(SetStoplineTemporal, ThreeArgAdditive)
+{
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {2.0, 2.0},
+    {3.0, 3.0},
+  });
+
+  const auto t1 = set_stopline(TemporalTrajectory::Builder{}.build(points).value(), 1.5, 1.5);
+  const auto t2 = set_stopline(t1, 1.5, 1.5);
+  const auto at_stop = t2.compute_from_time(1.5);
+  const auto during_second_plateau = t2.compute_from_time(3.5);
+  const auto after_stop = t2.compute_from_time(4.6);
+
+  EXPECT_NEAR(t2.duration(), 6.0, 1e-6);
+  EXPECT_NEAR(at_stop.pose.position.x, 1.5, 1e-3);
+  EXPECT_NEAR(at_stop.longitudinal_velocity_mps, 0.0, 1e-6);
+  EXPECT_NEAR(during_second_plateau.pose.position.x, 1.5, 1e-3);
+  EXPECT_NEAR(during_second_plateau.longitudinal_velocity_mps, 0.0, 1e-6);
+  EXPECT_GT(after_stop.pose.position.x, 1.5);
+}
+
 TEST(SetTimeOffset, ShiftsNegativeRangeToPositive)
 {
   const auto points = make_points({
