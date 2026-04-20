@@ -44,6 +44,7 @@
 
 // cspell:ignore nanoflann, dists
 
+// clang-format off
 #include <pcl/pcl_macros.h>
 // clang-format on
 
