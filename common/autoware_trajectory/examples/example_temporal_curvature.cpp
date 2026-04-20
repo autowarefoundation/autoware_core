@@ -70,7 +70,8 @@ int main()
     double stop_y = 0.0;
 
     for (size_t i = 0; i < num_arc_points; ++i) {
-      const double angle = start_angle + (end_angle - start_angle) * i / (num_arc_points - 1);
+      const double angle = start_angle + (end_angle - start_angle) * static_cast<double>(i) /
+                                           static_cast<double>(num_arc_points - 1);
       const double x = center_x + radius * std::cos(angle);
       const double y = center_y + radius * std::sin(angle);
       const double yaw = angle + M_PI_2;  // tangent direction
@@ -122,7 +123,8 @@ int main()
     std::vector<double> sample_times;
     sample_times.reserve(num_samples);
     for (size_t i = 0; i < num_samples; ++i) {
-      sample_times.push_back(start_time + duration * i / (num_samples - 1));
+      sample_times.push_back(
+        start_time + duration * static_cast<double>(i) / static_cast<double>(num_samples - 1));
     }
 
     std::vector<double> sample_x;

@@ -46,17 +46,18 @@ TEST(TemporalTrajectory, ComputeFromTimeAndDistance)
   const auto & trajectory = trajectory_result.value();
 
   const auto from_time = trajectory.compute_from_time(3.0);
+  const auto from_distance = trajectory.compute_from_distance(2.5);
+  const auto time = trajectory.distance_to_time(2.5);
+  const auto start_time = trajectory.start_time();
+  const auto end_time = trajectory.end_time();
+
   EXPECT_NEAR(from_time.pose.position.x, 2.5, 1e-6);
   EXPECT_NEAR(rclcpp::Duration(from_time.time_from_start).seconds(), 3.0, 1e-6);
-
-  const auto from_distance = trajectory.compute_from_distance(2.5);
   EXPECT_NEAR(from_distance.pose.position.x, 2.5, 1e-6);
   EXPECT_NEAR(rclcpp::Duration(from_distance.time_from_start).seconds(), 3.0, 1e-6);
-
-  const auto time = trajectory.distance_to_time(2.5);
   EXPECT_NEAR(time, 3.0, 1e-6);
-  EXPECT_NEAR(trajectory.start_time(), 0.0, 1e-6);
-  EXPECT_NEAR(trajectory.end_time(), 4.0, 1e-6);
+  EXPECT_NEAR(start_time, 0.0, 1e-6);
+  EXPECT_NEAR(end_time, 4.0, 1e-6);
 }
 
 TEST(TemporalTrajectory, BuilderBuildsFromSinglePoint)
@@ -67,12 +68,12 @@ TEST(TemporalTrajectory, BuilderBuildsFromSinglePoint)
   ASSERT_TRUE(trajectory_result.has_value());
 
   const auto & trajectory = trajectory_result.value();
+  const auto restored = trajectory.restore();
+  ASSERT_EQ(restored.size(), 1U);
+
   EXPECT_NEAR(trajectory.start_time(), 2.0, 1e-6);
   EXPECT_NEAR(trajectory.end_time(), 2.0, 1e-6);
   EXPECT_NEAR(trajectory.duration(), 0.0, 1e-6);
-
-  const auto restored = trajectory.restore();
-  ASSERT_EQ(restored.size(), 1U);
   EXPECT_NEAR(restored.front().pose.position.x, 1.0, 1e-6);
   EXPECT_NEAR(rclcpp::Duration(restored.front().time_from_start).seconds(), 2.0, 1e-6);
 }
@@ -85,11 +86,11 @@ TEST(TemporalTrajectory, BuilderBuildsFromTwoPoints)
   ASSERT_TRUE(trajectory_result.has_value());
 
   const auto & trajectory = trajectory_result.value();
+  const auto point_at_mid_time = trajectory.compute_from_time(3.5);
+
   EXPECT_NEAR(trajectory.start_time(), 2.0, 1e-6);
   EXPECT_NEAR(trajectory.end_time(), 5.0, 1e-6);
   EXPECT_NEAR(trajectory.duration(), 3.0, 1e-6);
-
-  const auto point_at_mid_time = trajectory.compute_from_time(3.5);
   EXPECT_NEAR(point_at_mid_time.pose.position.x, 2.0, 1e-6);
   EXPECT_NEAR(rclcpp::Duration(point_at_mid_time.time_from_start).seconds(), 3.5, 1e-6);
 }
@@ -104,14 +105,13 @@ TEST(TemporalTrajectory, DuplicateTimestampWithDifferentDistanceExtendsTimeBases
 
   const auto & trajectory = trajectory_result.value();
   const auto time_bases = trajectory.get_underlying_time_bases();
+  const auto mapped_time = trajectory.distance_to_time(1.5);
 
   ASSERT_EQ(time_bases.size(), points.size());
   EXPECT_DOUBLE_EQ(time_bases.at(0), 0.0);
   EXPECT_DOUBLE_EQ(time_bases.at(1), 1.0);
   EXPECT_GT(time_bases.at(2), time_bases.at(1));
   EXPECT_DOUBLE_EQ(time_bases.at(3), 2.0);
-
-  const auto mapped_time = trajectory.distance_to_time(1.5);
   EXPECT_GE(mapped_time, 1.0);
   EXPECT_LE(mapped_time, 2.0);
 }
@@ -177,13 +177,11 @@ TEST(TemporalTrajectory, ComputeFromDistanceAtBoundaries)
 
   auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
 
-  // At s=0
   const auto at_start = trajectory.compute_from_distance(0.0);
+  const auto at_end = trajectory.compute_from_distance(trajectory.length());
+
   EXPECT_NEAR(at_start.pose.position.x, 0.0, 1e-6);
   EXPECT_NEAR(rclcpp::Duration(at_start.time_from_start).seconds(), 0.0, 1e-6);
-
-  // At s=length
-  const auto at_end = trajectory.compute_from_distance(trajectory.length());
   EXPECT_NEAR(at_end.pose.position.x, 3.0, 1e-6);
   EXPECT_NEAR(rclcpp::Duration(at_end.time_from_start).seconds(), 3.0, 1e-6);
 }
@@ -196,13 +194,11 @@ TEST(TemporalTrajectory, ComputeFromTimeAtBoundaries)
 
   auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
 
-  // At t=start_time
   const auto at_start = trajectory.compute_from_time(trajectory.start_time());
+  const auto at_end = trajectory.compute_from_time(trajectory.end_time());
+
   EXPECT_NEAR(at_start.pose.position.x, 0.0, 1e-6);
   EXPECT_NEAR(rclcpp::Duration(at_start.time_from_start).seconds(), 0.0, 1e-6);
-
-  // At t=end_time
-  const auto at_end = trajectory.compute_from_time(trajectory.end_time());
   EXPECT_NEAR(at_end.pose.position.x, 3.0, 1e-6);
   EXPECT_NEAR(rclcpp::Duration(at_end.time_from_start).seconds(), 3.0, 1e-6);
 }

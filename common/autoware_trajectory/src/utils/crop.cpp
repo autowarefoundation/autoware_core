@@ -27,15 +27,18 @@ TemporalTrajectory crop_time(
 {
   detail::throw_if_out_of_range(
     start_time, trajectory.start_time(), trajectory.end_time(), "start_time");
-  detail::throw_if_out_of_range(duration, 0.0, trajectory.end_time() - start_time, "duration");
+  if (duration < 0.0) {
+    throw std::out_of_range("duration must be non-negative");
+  }
+  const auto clamped_duration = std::min(duration, trajectory.end_time() - start_time);
 
   const auto absolute_start_distance = trajectory.time_distance_mapping_.distance_at(start_time);
   const auto absolute_end_distance =
-    trajectory.time_distance_mapping_.distance_at(start_time + duration);
+    trajectory.time_distance_mapping_.distance_at(start_time + clamped_duration);
   trajectory.spatial_trajectory_.crop(
     absolute_start_distance - trajectory.distance_offset_,
     absolute_end_distance - absolute_start_distance);
-  trajectory.time_distance_mapping_.set_time_range(start_time, start_time + duration);
+  trajectory.time_distance_mapping_.set_time_range(start_time, start_time + clamped_duration);
   trajectory.distance_offset_ = absolute_start_distance;
   return trajectory;
 }
@@ -44,12 +47,15 @@ TemporalTrajectory crop_distance(
   TemporalTrajectory trajectory, const double start_distance, const double length)
 {
   detail::throw_if_out_of_range(start_distance, 0.0, trajectory.length(), "start_distance");
-  detail::throw_if_out_of_range(length, 0.0, trajectory.length() - start_distance, "length");
+  if (length < 0.0) {
+    throw std::out_of_range("length must be non-negative");
+  }
+  const auto clamped_length = std::min(length, trajectory.length() - start_distance);
 
   const auto start_time = trajectory.distance_to_time(start_distance);
-  const auto end_time = trajectory.distance_to_time(start_distance + length);
+  const auto end_time = trajectory.distance_to_time(start_distance + clamped_length);
 
-  trajectory.spatial_trajectory_.crop(start_distance, length);
+  trajectory.spatial_trajectory_.crop(start_distance, clamped_length);
   trajectory.time_distance_mapping_.set_time_range(start_time, end_time);
   trajectory.distance_offset_ = start_distance + trajectory.distance_offset_;
   return trajectory;

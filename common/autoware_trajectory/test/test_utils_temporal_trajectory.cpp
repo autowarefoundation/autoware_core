@@ -224,14 +224,32 @@ TEST(CropTemporal, CropDistanceThrowsOnInvalidStartDistance)
   EXPECT_THROW(static_cast<void>(crop_distance(trajectory, 4.0, 1.0)), std::out_of_range);
 }
 
-TEST(CropTemporal, CropDistanceThrowsOnInvalidLength)
+TEST(CropTemporal, CropDistanceClampsExcessiveLength)
 {
   const std::vector<TrajectoryPoint> points{
     make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
 
   const auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
   EXPECT_THROW(static_cast<void>(crop_distance(trajectory, 1.0, -0.1)), std::out_of_range);
-  EXPECT_THROW(static_cast<void>(crop_distance(trajectory, 1.0, 3.0)), std::out_of_range);
+
+  const auto cropped = crop_distance(trajectory, 1.0, 3.0);
+  EXPECT_NEAR(cropped.length(), 2.0, 1e-6);
+  EXPECT_NEAR(cropped.start_time(), 1.0, 1e-6);
+  EXPECT_NEAR(cropped.end_time(), 3.0, 1e-6);
+}
+
+TEST(CropTemporal, CropTimeClampsExcessiveDuration)
+{
+  const std::vector<TrajectoryPoint> points{
+    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+
+  const auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
+  EXPECT_THROW(static_cast<void>(crop_time(trajectory, 1.0, -0.1)), std::out_of_range);
+
+  const auto cropped = crop_time(trajectory, 1.0, 5.0);
+  EXPECT_NEAR(cropped.duration(), 2.0, 1e-6);
+  EXPECT_NEAR(cropped.start_time(), 1.0, 1e-6);
+  EXPECT_NEAR(cropped.end_time(), 3.0, 1e-6);
 }
 
 TEST(SetStoplineTemporal, SetStoplineCollapsesFollowingPoints)

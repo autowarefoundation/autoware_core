@@ -152,119 +152,127 @@ void plot_time_series(
 
 int main(int argc, char ** argv)
 {
-  pybind11::scoped_interpreter guard{};
-  auto plt = autoware::pyplot::import();
+  try {
+    pybind11::scoped_interpreter guard{};
+    auto plt = autoware::pyplot::import();
 
-  const std::vector<std::string> args(argv, argv + argc);
-  const bool use_restore_points = std::find(args.begin(), args.end(), "--restore") != args.end();
+    const std::vector<std::string> args(argv, argv + argc);
+    const bool use_restore_points = std::find(args.begin(), args.end(), "--restore") != args.end();
 
-  const auto original = build_temporal_trajectory();
+    const auto original = build_temporal_trajectory();
 
-  lanelet::LineString2d stop_line(lanelet::InvalId);
-  stop_line.push_back(lanelet::Point3d(lanelet::InvalId, 4.1, 0.4, 0.0));
-  stop_line.push_back(lanelet::Point3d(lanelet::InvalId, 4.1, 3.5, 0.0));
+    lanelet::LineString2d stop_line(lanelet::InvalId);
+    stop_line.push_back(lanelet::Point3d(lanelet::InvalId, 4.1, 0.4, 0.0));
+    stop_line.push_back(lanelet::Point3d(lanelet::InvalId, 4.1, 3.5, 0.0));
 
-  const auto crossed_points = autoware::experimental::trajectory::crossed(original, stop_line);
-  if (crossed_points.empty()) {
-    std::cerr << "Failed to find a stopline intersection" << std::endl;
+    const auto crossed_points = autoware::experimental::trajectory::crossed(original, stop_line);
+    if (crossed_points.empty()) {
+      std::cerr << "Failed to find a stopline intersection" << std::endl;
+      return 1;
+    }
+    const auto stop_length = crossed_points.front().distance;
+
+    const auto stop_immediate =
+      autoware::experimental::trajectory::set_stopline(original, stop_length);
+
+    const auto stop_with_wait =
+      autoware::experimental::trajectory::set_stopline(original, stop_length, 2.0);
+
+    const auto crossed_point = original.compute_from_distance(stop_length);
+    const auto [original_time, original_distance] =
+      sample_time_distance(original, use_restore_points);
+    const auto [immediate_time, immediate_distance] =
+      sample_time_distance(stop_immediate, use_restore_points);
+    const auto [wait_time, wait_distance] =
+      sample_time_distance(stop_with_wait, use_restore_points);
+    const auto [original_vel_time, original_vel] =
+      sample_time_velocity(original, use_restore_points);
+    const auto [immediate_vel_time, immediate_vel] =
+      sample_time_velocity(stop_immediate, use_restore_points);
+    const auto [wait_vel_time, wait_vel] = sample_time_velocity(stop_with_wait, use_restore_points);
+    const auto wait_stop_intervals =
+      autoware::experimental::trajectory::find_intervals(stop_with_wait, [](const auto & point) {
+        return std::abs(point.longitudinal_velocity_mps) <=
+               autoware::experimental::trajectory::k_zero_velocity_threshold;
+      });
+
+    std::cout << "Plot mode: "
+              << (use_restore_points ? "restored underlying points" : "uniform time samples")
+              << std::endl;
+
+    auto [fig, axes] = plt.subplots(1, 3, Kwargs("figsize"_a = std::make_tuple(18, 6)));
+
+    {
+      auto ax = axes[0];
+      plot_spatial_trajectory(ax, original, "original", "navy", use_restore_points);
+      plot_spatial_trajectory(
+        ax, stop_immediate, "set_stopline(length)", "darkorange", use_restore_points);
+      plot_spatial_trajectory(
+        ax, stop_with_wait, "set_stopline(length, duration)", "crimson", use_restore_points);
+      ax.plot(
+        Args(
+          std::vector<double>{stop_line[0].x(), stop_line[1].x()},
+          std::vector<double>{stop_line[0].y(), stop_line[1].y()}),
+        Kwargs("color"_a = "forestgreen", "linestyle"_a = "--", "label"_a = "stop line"));
+      ax.scatter(
+        Args(crossed_point.pose.position.x, crossed_point.pose.position.y),
+        Kwargs("color"_a = "black", "s"_a = 60, "label"_a = "crossing point"));
+      ax.set_title(Args("Spatial Trajectories"));
+      ax.grid();
+      ax.legend();
+      ax.set_aspect(Args("equal"));
+    }
+
+    {
+      auto ax = axes[1];
+      plot_time_series(ax, original_time, original_distance, "original", "navy");
+      plot_time_series(
+        ax, immediate_time, immediate_distance, "set_stopline(length)", "darkorange");
+      plot_time_series(ax, wait_time, wait_distance, "set_stopline(length, duration)", "crimson");
+      ax.scatter(
+        Args(
+          std::vector<double>{rclcpp::Duration(crossed_point.time_from_start).seconds()},
+          std::vector<double>{stop_length}),
+        Kwargs("color"_a = "black", "s"_a = 60, "label"_a = "crossing point"));
+      ax.set_title(Args("Time to Distance"));
+      ax.set_xlabel(Args("time [s]"));
+      ax.set_ylabel(Args("distance [m]"));
+      ax.grid();
+      ax.legend();
+    }
+
+    {
+      auto ax = axes[2];
+      plot_time_series(ax, original_vel_time, original_vel, "original", "navy");
+      plot_time_series(ax, immediate_vel_time, immediate_vel, "set_stopline(length)", "darkorange");
+      plot_time_series(ax, wait_vel_time, wait_vel, "set_stopline(length, duration)", "crimson");
+      if (!wait_stop_intervals.empty()) {
+        ax.plot(
+          Args(
+            std::vector<double>{
+              wait_stop_intervals.front().start.time, wait_stop_intervals.front().start.time},
+            std::vector<double>{0.0, 3.5}),
+          Kwargs("color"_a = "grey", "linestyle"_a = "--", "label"_a = "stop start/end"));
+        ax.plot(
+          Args(
+            std::vector<double>{
+              wait_stop_intervals.front().end.time, wait_stop_intervals.front().end.time},
+            std::vector<double>{0.0, 3.5}),
+          Kwargs("color"_a = "grey", "linestyle"_a = "--"));
+      }
+      ax.set_title(Args("Velocity Profile"));
+      ax.set_xlabel(Args("time [s]"));
+      ax.set_ylabel(Args("velocity [m/s]"));
+      ax.grid();
+      ax.legend();
+    }
+
+    fig.tight_layout();
+    plt.savefig(Args("temporal_trajectory_stopline.svg"));
+    plt.show();
+    return 0;
+  } catch (const std::exception & e) {
+    std::cerr << "Exception: " << e.what() << std::endl;
     return 1;
   }
-  const auto stop_length = crossed_points.front().distance;
-
-  const auto stop_immediate =
-    autoware::experimental::trajectory::set_stopline(original, stop_length);
-
-  const auto stop_with_wait =
-    autoware::experimental::trajectory::set_stopline(original, stop_length, 2.0);
-
-  const auto crossed_point = original.compute_from_distance(stop_length);
-  const auto [original_time, original_distance] =
-    sample_time_distance(original, use_restore_points);
-  const auto [immediate_time, immediate_distance] =
-    sample_time_distance(stop_immediate, use_restore_points);
-  const auto [wait_time, wait_distance] = sample_time_distance(stop_with_wait, use_restore_points);
-  const auto [original_vel_time, original_vel] = sample_time_velocity(original, use_restore_points);
-  const auto [immediate_vel_time, immediate_vel] =
-    sample_time_velocity(stop_immediate, use_restore_points);
-  const auto [wait_vel_time, wait_vel] = sample_time_velocity(stop_with_wait, use_restore_points);
-  const auto wait_stop_intervals =
-    autoware::experimental::trajectory::find_intervals(stop_with_wait, [](const auto & point) {
-      return std::abs(point.longitudinal_velocity_mps) <=
-             autoware::experimental::trajectory::k_zero_velocity_threshold;
-    });
-
-  std::cout << "Plot mode: "
-            << (use_restore_points ? "restored underlying points" : "uniform time samples")
-            << std::endl;
-
-  auto [fig, axes] = plt.subplots(1, 3, Kwargs("figsize"_a = std::make_tuple(18, 6)));
-
-  {
-    auto ax = axes[0];
-    plot_spatial_trajectory(ax, original, "original", "navy", use_restore_points);
-    plot_spatial_trajectory(
-      ax, stop_immediate, "set_stopline(length)", "darkorange", use_restore_points);
-    plot_spatial_trajectory(
-      ax, stop_with_wait, "set_stopline(length, duration)", "crimson", use_restore_points);
-    ax.plot(
-      Args(
-        std::vector<double>{stop_line[0].x(), stop_line[1].x()},
-        std::vector<double>{stop_line[0].y(), stop_line[1].y()}),
-      Kwargs("color"_a = "forestgreen", "linestyle"_a = "--", "label"_a = "stop line"));
-    ax.scatter(
-      Args(crossed_point.pose.position.x, crossed_point.pose.position.y),
-      Kwargs("color"_a = "black", "s"_a = 60, "label"_a = "crossing point"));
-    ax.set_title(Args("Spatial Trajectories"));
-    ax.grid();
-    ax.legend();
-    ax.set_aspect(Args("equal"));
-  }
-
-  {
-    auto ax = axes[1];
-    plot_time_series(ax, original_time, original_distance, "original", "navy");
-    plot_time_series(ax, immediate_time, immediate_distance, "set_stopline(length)", "darkorange");
-    plot_time_series(ax, wait_time, wait_distance, "set_stopline(length, duration)", "crimson");
-    ax.scatter(
-      Args(
-        std::vector<double>{rclcpp::Duration(crossed_point.time_from_start).seconds()},
-        std::vector<double>{stop_length}),
-      Kwargs("color"_a = "black", "s"_a = 60, "label"_a = "crossing point"));
-    ax.set_title(Args("Time to Distance"));
-    ax.set_xlabel(Args("time [s]"));
-    ax.set_ylabel(Args("distance [m]"));
-    ax.grid();
-    ax.legend();
-  }
-
-  {
-    auto ax = axes[2];
-    plot_time_series(ax, original_vel_time, original_vel, "original", "navy");
-    plot_time_series(ax, immediate_vel_time, immediate_vel, "set_stopline(length)", "darkorange");
-    plot_time_series(ax, wait_vel_time, wait_vel, "set_stopline(length, duration)", "crimson");
-    if (!wait_stop_intervals.empty()) {
-      ax.plot(
-        Args(
-          std::vector<double>{
-            wait_stop_intervals.front().start.time, wait_stop_intervals.front().start.time},
-          std::vector<double>{0.0, 3.5}),
-        Kwargs("color"_a = "grey", "linestyle"_a = "--", "label"_a = "stop start/end"));
-      ax.plot(
-        Args(
-          std::vector<double>{
-            wait_stop_intervals.front().end.time, wait_stop_intervals.front().end.time},
-          std::vector<double>{0.0, 3.5}),
-        Kwargs("color"_a = "grey", "linestyle"_a = "--"));
-    }
-    ax.set_title(Args("Velocity Profile"));
-    ax.set_xlabel(Args("time [s]"));
-    ax.set_ylabel(Args("velocity [m/s]"));
-    ax.grid();
-    ax.legend();
-  }
-
-  fig.tight_layout();
-  plt.savefig(Args("temporal_trajectory_stopline.svg"));
-  plt.show();
-  return 0;
 }
