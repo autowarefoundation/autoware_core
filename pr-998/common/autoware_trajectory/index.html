@@ -8167,8 +8167,8 @@ std::vector&lt;autoware_planning_msgs::msg::PathPoint&gt; points = trajectory-&g
 <td>Convert time to absolute distance [m].</td>
 </tr>
 <tr>
-<td><code>distance_to_time(s)</code></td>
-<td>Convert absolute distance to time [s]. <br> <strong>Note:</strong> If the vehicle is stopped at distance <code>s</code>, this returns the <strong>first</strong> stop time to avoid ambiguity.</td>
+<td><code>distance_to_time(s, return_end_time=false)</code></td>
+<td>Convert absolute distance to time [s]. <br> <strong>Note:</strong> If the vehicle is stopped at distance <code>s</code>, the default returns the <strong>first</strong> stop time to avoid ambiguity. Setting <code>return_end_time=true</code> returns the time when the stop ends.</td>
 </tr>
 <tr>
 <td><code>length()</code></td>
