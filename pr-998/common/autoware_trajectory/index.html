@@ -8630,7 +8630,47 @@ s_{1} &amp;= v_{\mathrm{lon}}t + \frac{1}{2} a_{\mathrm{lon}}t^2, &amp; l_{1} &a
 s_{2} &amp;= s_{1} + 2 (v_{0} + a_{\mathrm{lon}}t)t + 2a_{\mathrm{lon}}t^2, &amp; l_{2} &amp;= \frac{11L}{12} \\
 s_{3} &amp;= L_{\mathrm{lon}}, &amp; l_{3} &amp;= L
 \end{align}
-\]</div></div>
+\]</div>
+<h4 id="handling-of-duplicate-points">Handling of duplicate points<a class="headerlink" href="#handling-of-duplicate-points" title="Permanent link">#</a></h4>
+<p>This package handles duplicate or almost-duplicate input points at two stages: when the trajectory bases are built from the raw points, and when each interpolator is constructed.</p>
+<h5 id="1-base-sanitisation-in-trajectorypointbuild">1. Base sanitisation in <code>Trajectory&lt;Point&gt;::build</code><a class="headerlink" href="#1-base-sanitisation-in-trajectorypointbuild" title="Permanent link">#</a></h5>
+<p><code>Trajectory&lt;Point&gt;::build</code> (and the derived builders that reuse it) converts the input point array into arc-length bases. Consecutive points whose 3D Euclidean distance is zero (or smaller than <code>std::numeric_limits&lt;double&gt;::epsilon()</code>) would produce identical bases, which leads to division-by-zero inside the interpolators. To avoid this, the build step clamps every segment length to at least machine epsilon:</p>
+<p><code>cpp
+const auto dist = std::max&lt;double&gt;(
+  autoware_utils_geometry::calc_distance3d(points.at(i), points.at(i - 1)),
+  std::numeric_limits&lt;double&gt;::epsilon());
+bases_.emplace_back(bases_.back() + dist);</code></p>
+<p>This sanitisation <strong>preserves every input point</strong>; it only inflates the base coordinate of coincident points by a tiny amount so that the base vector stays strictly increasing.</p>
+<h5 id="2-duplicate-removal-inside-interpolator-build_impl">2. Duplicate removal inside interpolator <code>build_impl</code><a class="headerlink" href="#2-duplicate-removal-inside-interpolator-build_impl" title="Permanent link">#</a></h5>
+<p>Most scalar interpolators (<code>Linear</code>, <code>CubicSpline</code>, <code>AkimaSpline</code>, and <code>SphericalLinear</code>) additionally remove true duplicates before they interpolate, as such duplicates can lead to numerical instability (e.g., division by very small intervals or ill-conditioned systems). Their <code>build_impl</code> functions call:</p>
+<p><code>cpp
+auto [cleaned_bases, cleaned_values] =
+  ::autoware::experimental::trajectory::detail::remove_duplicate_points(bases, values);</code></p>
+<p><code>remove_duplicate_points</code> scans the bases from front to back and drops any point whose base difference from the last kept point is <strong>not larger than</strong> <code>k_points_minimum_dist_threshold</code> (0.005 m). The first point of a duplicate run is retained, the rest are discarded.</p>
+<h5 id="3-interpolators-that-do-not-deduplicate">3. Interpolators that do not deduplicate<a class="headerlink" href="#3-interpolators-that-do-not-deduplicate" title="Permanent link">#</a></h5>
+<p><code>LaneIdsInterpolator</code> and <code>Stairstep</code> do <strong>not</strong> invoke <code>remove_duplicate_points</code>; they operate on the bases exactly as provided by the trajectory build step. The base sanitisation described in stage 1 is therefore the only duplicate protection for these interpolators.</p>
+<h5 id="summary-of-thresholds">Summary of thresholds<a class="headerlink" href="#summary-of-thresholds" title="Permanent link">#</a></h5>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Threshold</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Trajectory base construction</td>
+<td><code>std::numeric_limits&lt;double&gt;::epsilon()</code></td>
+<td>Minimum base increment to avoid identical bases</td>
+</tr>
+<tr>
+<td>Interpolator deduplication</td>
+<td><code>k_points_minimum_dist_threshold</code></td>
+<td>Points closer than this in base are treated as duplicates and removed</td>
+</tr>
+</tbody>
+</table></div>
 
 
 
