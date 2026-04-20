@@ -117,6 +117,17 @@ jobs:
           ccache --zero-stats
         shell: bash
 
+      - name: Realign fastcdr / rosidl typesupport (Jazzy ABI fix)
+        if: ${{ inputs.rosdistro == 'jazzy' }}
+        run: |
+          apt-get update
+          apt-get install --reinstall -y \
+            libfastcdr-dev \
+            ros-jazzy-rosidl-typesupport-fastrtps-cpp \
+            ros-jazzy-rosidl-typesupport-fastrtps-c \
+            ros-jazzy-builtin-interfaces
+        shell: bash
+
       - name: Build
         if: ${{ steps.get-self-packages.outputs.self-packages != '' }}
         uses: autowarefoundation/autoware-github-actions/colcon-build@v1
