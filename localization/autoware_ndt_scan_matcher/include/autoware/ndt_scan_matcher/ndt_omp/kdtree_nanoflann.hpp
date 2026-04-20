@@ -50,7 +50,6 @@
 
 #include <nanoflann.hpp>
 
-#include <pcl/filters/boost.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/point_types.h>
 
