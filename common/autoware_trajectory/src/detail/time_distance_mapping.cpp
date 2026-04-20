@@ -262,7 +262,8 @@ std::vector<double> TimeDistanceMapping::cropped_time_bases() const
   return time_bases;
 }
 
-double TimeDistanceMapping::time_at_distance(const double distance) const
+double TimeDistanceMapping::time_at_distance(
+  const double distance, const bool return_end_time) const
 {
   const auto start_distance_value = start_distance();
   const auto end_distance_value = end_distance();
@@ -273,8 +274,11 @@ double TimeDistanceMapping::time_at_distance(const double distance) const
   constexpr size_t k_max_iterations = 100;
   const auto result_time = lower_bound_by_predicate(
     start_time_, end_time_,
-    [this, distance](double time) { return compute_distance(time) >= distance; }, k_max_iterations,
-    std::numeric_limits<double>::epsilon());
+    [this, distance, return_end_time](const double time) {
+      return return_end_time ? compute_distance(time) > distance
+                             : compute_distance(time) >= distance;
+    },
+    k_max_iterations, std::numeric_limits<double>::epsilon());
 
   return to_public_time(result_time);
 }

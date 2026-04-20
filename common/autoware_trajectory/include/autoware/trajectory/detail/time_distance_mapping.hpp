@@ -120,10 +120,12 @@ public:
   /**
    * @brief Convert an absolute distance to time.
    * @param[in] absolute_distance Query absolute distance in meters.
+   * @param[in] return_end_time When true, return the last time for a constant-distance plateau.
    * @return Time in seconds.
    * @throw std::out_of_range If absolute_distance is outside [start_distance(), end_distance()].
    */
-  [[nodiscard]] double time_at_distance(double absolute_distance) const;
+  [[nodiscard]] double time_at_distance(
+    double absolute_distance, bool return_end_time = false) const;
 
 private:
   [[nodiscard]] double compute_distance(double internal_time) const;

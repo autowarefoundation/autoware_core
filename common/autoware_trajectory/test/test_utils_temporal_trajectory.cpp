@@ -201,7 +201,9 @@ TEST(CropTemporal, CropTimeRebases)
     {2.0, 3.0},
   });
 
-  const auto trajectory = crop_time(TemporalTrajectory::Builder{}.build(points).value(), 0.0, 2.0);
+  auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  const auto trajectory = crop_time(trajectory_result.value(), 0.0, 2.0);
 
   const auto restored = trajectory.restore();
   ASSERT_FALSE(restored.empty());
@@ -221,7 +223,9 @@ TEST(CropTemporal, RestoreAfterCropTime)
     {3.0, 3.0},
   });
 
-  const auto trajectory = crop_time(TemporalTrajectory::Builder{}.build(points).value(), 1.0, 1.0);
+  auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  const auto trajectory = crop_time(trajectory_result.value(), 1.0, 1.0);
 
   const auto restored = trajectory.restore();
   ASSERT_FALSE(restored.empty());
@@ -242,8 +246,9 @@ TEST(CropTemporal, CropDistanceRebases)
     {3.0, 3.0},
   });
 
-  const auto trajectory =
-    crop_distance(TemporalTrajectory::Builder{}.build(points).value(), 1.0, 1.0);
+  auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  const auto trajectory = crop_distance(trajectory_result.value(), 1.0, 1.0);
 
   EXPECT_NEAR(trajectory.start_time(), 1.0, 1e-6);
   EXPECT_NEAR(trajectory.end_time(), 2.0, 1e-6);
@@ -268,7 +273,9 @@ TEST(CropTemporal, CropDistanceThrowsOnInvalidStartDistance)
     {3.0, 3.0},
   });
 
-  const auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
+  auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  auto trajectory = trajectory_result.value();
   EXPECT_THROW(static_cast<void>(crop_distance(trajectory, -1.0, 1.0)), std::out_of_range);
   EXPECT_THROW(static_cast<void>(crop_distance(trajectory, 4.0, 1.0)), std::out_of_range);
 }
@@ -282,7 +289,9 @@ TEST(CropTemporal, CropDistanceClampsExcessiveLength)
     {3.0, 3.0},
   });
 
-  const auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
+  auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  auto trajectory = trajectory_result.value();
   EXPECT_THROW(static_cast<void>(crop_distance(trajectory, 1.0, -0.1)), std::out_of_range);
 
   const auto cropped = crop_distance(trajectory, 1.0, 3.0);
@@ -300,13 +309,35 @@ TEST(CropTemporal, CropTimeClampsExcessiveDuration)
     {3.0, 3.0},
   });
 
-  const auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
+  auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  auto trajectory = trajectory_result.value();
   EXPECT_THROW(static_cast<void>(crop_time(trajectory, 1.0, -0.1)), std::out_of_range);
 
   const auto cropped = crop_time(trajectory, 1.0, 5.0);
   EXPECT_NEAR(cropped.duration(), 2.0, 1e-6);
   EXPECT_NEAR(cropped.start_time(), 1.0, 1e-6);
   EXPECT_NEAR(cropped.end_time(), 3.0, 1e-6);
+}
+
+TEST(CropTemporal, CropDistanceEndsAtStopPointWithPlateau)
+{
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 0.0},
+    {2.0, 1.0},
+    {3.0, 2.0},
+    {4.0, 2.0},
+    {5.0, 2.0},
+  });
+
+  auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  const auto cropped = crop_distance(trajectory_result.value(), 0.0, 2.0);
+
+  EXPECT_NEAR(cropped.length(), 2.0, 1e-3);
+  EXPECT_NEAR(cropped.start_time(), 0.0, 1e-6);
+  EXPECT_NEAR(cropped.end_time(), 5.0, 1e-6);
 }
 
 TEST(SetStoplineTemporal, SetStoplineCollapsesFollowingPoints)
@@ -318,7 +349,9 @@ TEST(SetStoplineTemporal, SetStoplineCollapsesFollowingPoints)
     {3.0, 3.0},
   });
 
-  const auto trajectory = set_stopline(TemporalTrajectory::Builder{}.build(points).value(), 1.5);
+  auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  const auto trajectory = set_stopline(trajectory_result.value(), 1.5);
 
   const auto stop_point = trajectory.compute_from_distance(1.5);
   const auto point_after_stop = trajectory.compute_from_time(2.5);
@@ -336,8 +369,9 @@ TEST(SetStoplineTemporal, SetStoplineWithTimeExtendsSchedule)
     {3.0, 3.0},
   });
 
-  const auto trajectory =
-    set_stopline(TemporalTrajectory::Builder{}.build(points).value(), 1.5, 1.5);
+  auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  const auto trajectory = set_stopline(trajectory_result.value(), 1.5, 1.5);
 
   const auto stop_point = trajectory.compute_from_time(3.0);
   EXPECT_NEAR(stop_point.pose.position.x, 1.5, 1e-3);
@@ -357,11 +391,46 @@ TEST(SetStoplineTemporal, DistanceToTimeReturnsFirstStopTime)
     {3.0, 3.0},
   });
 
-  const auto trajectory =
-    set_stopline(TemporalTrajectory::Builder{}.build(points).value(), 1.5, 1.5);
+  auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  const auto trajectory = set_stopline(trajectory_result.value(), 1.5, 1.5);
 
   const auto stop_time = trajectory.distance_to_time(1.5);
   EXPECT_NEAR(stop_time, 1.5, 1e-6);
+}
+
+TEST(SetStoplineTemporal, DistanceToTimeReturnsEndTimeAfterThreeArgStopline)
+{
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {2.0, 2.0},
+    {3.0, 3.0},
+  });
+
+  auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  const auto stopped = set_stopline(trajectory_result.value(), 1.5, 1.5);
+
+  EXPECT_NEAR(stopped.distance_to_time(1.5), 1.5, 1e-6);
+  EXPECT_NEAR(stopped.distance_to_time(1.5, true), 3.0, 1e-6);
+}
+
+TEST(SetStoplineTemporal, DistanceToTimeReturnsEndTimeAfterTwoArgStopline)
+{
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {2.0, 2.0},
+    {3.0, 3.0},
+  });
+
+  auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  const auto stopped = set_stopline(trajectory_result.value(), 1.5);
+
+  EXPECT_NEAR(stopped.distance_to_time(1.5), 1.5, 1e-6);
+  EXPECT_NEAR(stopped.distance_to_time(1.5, true), 3.0, 1e-6);
 }
 
 TEST(SetStoplineTemporal, TwoArgIdempotent)
@@ -373,7 +442,9 @@ TEST(SetStoplineTemporal, TwoArgIdempotent)
     {3.0, 3.0},
   });
 
-  const auto t1 = set_stopline(TemporalTrajectory::Builder{}.build(points).value(), 1.5);
+  auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  const auto t1 = set_stopline(trajectory_result.value(), 1.5);
   const auto t2 = set_stopline(t1, 1.5);
   const auto stop_point = t2.compute_from_distance(1.5);
 
@@ -392,7 +463,9 @@ TEST(SetStoplineTemporal, ThreeArgAdditive)
     {3.0, 3.0},
   });
 
-  const auto t1 = set_stopline(TemporalTrajectory::Builder{}.build(points).value(), 1.5, 1.5);
+  auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  const auto t1 = set_stopline(trajectory_result.value(), 1.5, 1.5);
   const auto t2 = set_stopline(t1, 1.5, 1.5);
   const auto at_stop = t2.compute_from_time(1.5);
   const auto during_second_plateau = t2.compute_from_time(3.5);
@@ -406,6 +479,82 @@ TEST(SetStoplineTemporal, ThreeArgAdditive)
   EXPECT_GT(after_stop.pose.position.x, 1.5);
 }
 
+TEST(SetStoplineTemporal, FindIntervalsAfterTwoArgStopline)
+{
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {2.0, 2.0},
+    {3.0, 3.0},
+  });
+
+  auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  const auto trajectory = set_stopline(trajectory_result.value(), 1.5);
+
+  const auto intervals =
+    autoware::experimental::trajectory::find_intervals(trajectory, [](const auto & point) {
+      return std::abs(point.longitudinal_velocity_mps) <=
+             autoware::experimental::trajectory::k_zero_velocity_threshold;
+    });
+  ASSERT_EQ(intervals.size(), 1U);
+  EXPECT_NEAR(intervals.front().start.time, 1.5, 1e-3);
+  EXPECT_NEAR(intervals.front().start.distance, 1.5, 1e-3);
+  EXPECT_NEAR(intervals.front().end.time, 3.0, 1e-3);
+  EXPECT_NEAR(intervals.front().end.distance, 1.5, 1e-3);
+}
+
+TEST(SetStoplineTemporal, FindIntervalsAfterThreeArgStopline)
+{
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {2.0, 2.0},
+    {3.0, 3.0},
+  });
+
+  auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  const auto trajectory = set_stopline(trajectory_result.value(), 1.5, 1.5);
+
+  const auto intervals =
+    autoware::experimental::trajectory::find_intervals(trajectory, [](const auto & point) {
+      return std::abs(point.longitudinal_velocity_mps) <=
+             autoware::experimental::trajectory::k_zero_velocity_threshold;
+    });
+  ASSERT_EQ(intervals.size(), 1U);
+  EXPECT_NEAR(intervals.front().start.time, 1.5, 1e-3);
+  EXPECT_NEAR(intervals.front().start.distance, 1.5, 1e-3);
+  EXPECT_NEAR(intervals.front().end.time, 3.0, 1e-3);
+  EXPECT_NEAR(intervals.front().end.distance, 1.5, 1e-3);
+}
+
+TEST(SetStoplineTemporal, FindIntervalsAfterAdditiveStopline)
+{
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {2.0, 2.0},
+    {3.0, 3.0},
+  });
+
+  auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  const auto t1 = set_stopline(trajectory_result.value(), 1.5, 1.5);
+  const auto t2 = set_stopline(t1, 1.5, 1.5);
+
+  const auto intervals =
+    autoware::experimental::trajectory::find_intervals(t2, [](const auto & point) {
+      return std::abs(point.longitudinal_velocity_mps) <=
+             autoware::experimental::trajectory::k_zero_velocity_threshold;
+    });
+  ASSERT_EQ(intervals.size(), 1U);
+  EXPECT_NEAR(intervals.front().start.time, 1.5, 1e-3);
+  EXPECT_NEAR(intervals.front().start.distance, 1.5, 1e-3);
+  EXPECT_NEAR(intervals.front().end.time, 4.5, 1e-3);
+  EXPECT_NEAR(intervals.front().end.distance, 1.5, 1e-3);
+}
+
 TEST(SetTimeOffset, ShiftsNegativeRangeToPositive)
 {
   const auto points = make_points({
@@ -415,8 +564,10 @@ TEST(SetTimeOffset, ShiftsNegativeRangeToPositive)
     {2.0, 2.0},
   });
 
-  const auto trajectory = autoware::experimental::trajectory::set_time_offset(
-    TemporalTrajectory::Builder{}.build(points).value(), -1.0);
+  auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  const auto trajectory =
+    autoware::experimental::trajectory::set_time_offset(trajectory_result.value(), -1.0);
 
   const auto start_time = trajectory.start_time();
   const auto end_time = trajectory.end_time();

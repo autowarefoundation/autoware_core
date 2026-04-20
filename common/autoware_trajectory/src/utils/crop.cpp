@@ -53,7 +53,7 @@ TemporalTrajectory crop_distance(
   const auto clamped_length = std::min(length, trajectory.length() - start_distance);
 
   const auto start_time = trajectory.distance_to_time(start_distance);
-  const auto end_time = trajectory.distance_to_time(start_distance + clamped_length);
+  const auto end_time = trajectory.distance_to_time(start_distance + clamped_length, true);
 
   trajectory.spatial_trajectory_.crop(start_distance, clamped_length);
   trajectory.time_distance_mapping_.set_time_range(start_time, end_time);

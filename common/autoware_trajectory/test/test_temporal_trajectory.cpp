@@ -135,6 +135,24 @@ TEST(TemporalTrajectory, DistanceToTimeAtDuplicatePoints)
   EXPECT_NEAR(at_stop, 2.0, 1e-6);
 }
 
+TEST(TemporalTrajectory, DistanceToTimeReturnsEndTimeAtStopPoint)
+{
+  const auto points = make_points({
+    {0.0, 0.0, 1.0F},
+    {1.0, 1.0, 1.0F},
+    {2.0, 2.0, 0.0F},
+    {3.0, 2.0, 0.0F},
+    {4.0, 2.0, 0.0F},
+  });
+
+  const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  const auto & trajectory = trajectory_result.value();
+
+  EXPECT_NEAR(trajectory.distance_to_time(2.0), 2.0, 1e-6);
+  EXPECT_NEAR(trajectory.distance_to_time(2.0, true), 4.0, 1e-6);
+}
+
 TEST(TemporalTrajectory, ComputeFromTimeDuringDuplicateInterval)
 {
   const auto points = make_points({

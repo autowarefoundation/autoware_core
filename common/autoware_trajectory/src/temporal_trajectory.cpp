@@ -120,11 +120,11 @@ double TemporalTrajectory::time_to_distance(const double t) const
   return time_distance_mapping_.distance_at(t) - distance_offset_;
 }
 
-double TemporalTrajectory::distance_to_time(const double s) const
+double TemporalTrajectory::distance_to_time(const double s, const bool return_end_time) const
 {
   detail::throw_if_out_of_range(s, 0.0, length(), "distance");
   const auto absolute_distance = s + distance_offset_;
-  return time_distance_mapping_.time_at_distance(absolute_distance);
+  return time_distance_mapping_.time_at_distance(absolute_distance, return_end_time);
 }
 
 std::vector<TemporalTrajectory::PointType> TemporalTrajectory::restore() const

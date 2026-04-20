@@ -100,10 +100,12 @@ public:
   /**
    * @brief Convert arc length to time.
    * @param[in] s Query arc length in meters.
+   * @param[in] return_end_time If true and the vehicle is stopped at distance @p s, returns the
+   *            time when the stop ends instead of the time when it starts.
    * @return Time in seconds.
    * @throw std::out_of_range If s is outside [0, length()].
    */
-  [[nodiscard]] double distance_to_time(const double s) const;
+  [[nodiscard]] double distance_to_time(const double s, bool return_end_time = false) const;
 
   /**
    * @brief Restore the trajectory at its underlying time bases.
