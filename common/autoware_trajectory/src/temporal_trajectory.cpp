@@ -56,11 +56,10 @@ interpolator::InterpolationResult TemporalTrajectory::build(const std::vector<Po
       result.error());
   }
 
-  std::vector<double> time_bases;
-  time_bases.reserve(points.size());
-  for (const auto & point : points) {
-    time_bases.emplace_back(to_seconds(point.time_from_start));
-  }
+  auto time_bases =
+    points |
+    ranges::views::transform([](const auto & point) { return to_seconds(point.time_from_start); }) |
+    ranges::to<std::vector<double>>();
 
   time_distance_mapping_.set_time_offset(0.0);
   distance_offset_ = 0.0;

@@ -24,6 +24,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <limits>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -32,7 +33,6 @@ namespace autoware::experimental::trajectory::detail
 {
 namespace
 {
-constexpr double k_minimum_time_base_extension = k_same_time_threshold;
 
 size_t find_time_index(const std::vector<double> & time_bases, const double time)
 {
@@ -166,13 +166,17 @@ interpolator::InterpolationResult TimeDistanceMapping::build(
   time_bases_.reserve(time_bases.size());
   distance_bases_.reserve(distance_bases.size());
 
-  for (size_t i = 0; i < time_bases.size(); ++i) {
-    auto sanitized_time = time_bases.at(i);
-    if (!time_bases_.empty() && (sanitized_time - time_bases_.back()) <= k_same_time_threshold) {
-      sanitized_time = time_bases_.back() + k_minimum_time_base_extension;
-    }
+  time_bases_.emplace_back(time_bases.front());
+  distance_bases_.emplace_back(distance_bases.front());
 
-    time_bases_.emplace_back(sanitized_time);
+  for (size_t i = 1; i < time_bases.size(); ++i) {
+    /**
+       NOTE: This sanitisation is essential for avoiding the same base. The process of avoiding zero
+       division is handled by each interpolator.
+    */
+    const auto time_diff =
+      std::max(time_bases.at(i) - time_bases_.back(), std::numeric_limits<double>::epsilon());
+    time_bases_.emplace_back(time_bases_.back() + time_diff);
     distance_bases_.emplace_back(distance_bases.at(i));
   }
 
