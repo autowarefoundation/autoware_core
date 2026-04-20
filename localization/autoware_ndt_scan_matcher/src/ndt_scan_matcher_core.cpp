@@ -233,11 +233,12 @@ void NDTScanMatcher::callback_timer()
 
   // Avoid data race when reading and writing latest_ekf_position
   // from multiple threads
-  std::unique_lock<std::mutex> lock(latest_ekf_position_mtx_);
-
-  auto tmp_latest_ekf_position = latest_ekf_position_;
-
-  lock.unlock();
+  // Copy latest_ekf_position under lock to avoid data race with callback_initial_pose
+  std::optional<geometry_msgs::msg::Point> tmp_latest_ekf_position;
+  {
+    std::lock_guard<std::mutex> lock(latest_ekf_position_mtx_);
+    tmp_latest_ekf_position = latest_ekf_position_;
+  }
 
   // Pass the copy of latest_ekf_position instead of the real one
   map_update_module_->callback_timer(
