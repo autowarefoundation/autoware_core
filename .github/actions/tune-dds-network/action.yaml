@@ -9,34 +9,28 @@ runs:
   steps:
     - name: 📡 Enable multicast on loopback
       run: |
-        echo "::group::📡 Enabling multicast on lo"
         if ip link set lo multicast on; then
           echo "✅ multicast enabled on lo"
         else
           echo "::warning title=DDS tuning::could not enable multicast on lo (NET_ADMIN missing?)"
         fi
-        echo "::endgroup::"
       shell: bash
 
     - name: 🩹 Relax CycloneDDS receive buffer requirement
       # Bridge until autowarefoundation/autoware ships min="default" in cyclonedds.xml.
       run: |
-        echo "::group::🩹 Patching /home/aw/cyclonedds.xml"
         if [ -f /home/aw/cyclonedds.xml ]; then
           sed -i 's|min="10MB"|min="default"|' /home/aw/cyclonedds.xml
           echo "✅ patched: SocketReceiveBufferSize min=\"default\""
         else
           echo "::notice title=DDS tuning::/home/aw/cyclonedds.xml not present, skipping patch"
         fi
-        echo "::endgroup::"
       shell: bash
 
     - name: 🔍 Show effective DDS-relevant settings
       run: |
-        echo "::group::🔍 Effective DDS-relevant settings"
         printf '  %-22s = %s\n' "net.core.rmem_max"     "$(cat /proc/sys/net/core/rmem_max         2>/dev/null || echo unknown)"
         printf '  %-22s = %s\n' "net.ipv4.ipfrag_time"  "$(cat /proc/sys/net/ipv4/ipfrag_time      2>/dev/null || echo unknown)"
         printf '  %-22s = %s\n' "net.ipv4.ipfrag_high"  "$(cat /proc/sys/net/ipv4/ipfrag_high_thresh 2>/dev/null || echo unknown)"
         printf '  %-22s : %s\n' "lo flags"              "$(ip -o link show lo 2>/dev/null | head -1 || echo unknown)"
-        echo "::endgroup::"
       shell: bash
