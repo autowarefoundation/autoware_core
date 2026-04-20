@@ -25,21 +25,37 @@ namespace
 using autoware::experimental::trajectory::TemporalTrajectory;
 using autoware_planning_msgs::msg::TrajectoryPoint;
 
-TrajectoryPoint make_point(const double x, const double time_from_start)
+struct PointParam
 {
-  TrajectoryPoint point;
-  point.pose.position.x = x;
-  point.pose.position.y = 0.0;
-  point.longitudinal_velocity_mps = 1.0F;
-  point.time_from_start = rclcpp::Duration::from_seconds(time_from_start);
-  return point;
+  double time{};
+  double x{};
+  float velocity = 1.0F;
+};
+
+std::vector<TrajectoryPoint> make_points(const std::initializer_list<PointParam> & inits)
+{
+  std::vector<TrajectoryPoint> points;
+  points.reserve(inits.size());
+  for (const auto & init : inits) {
+    TrajectoryPoint point;
+    point.pose.position.x = init.x;
+    point.pose.position.y = 0.0;
+    point.longitudinal_velocity_mps = init.velocity;
+    point.time_from_start = rclcpp::Duration::from_seconds(init.time);
+    points.push_back(point);
+  }
+  return points;
 }
 }  // namespace
 
 TEST(TemporalTrajectory, ComputeFromTimeAndDistance)
 {
-  const std::vector<TrajectoryPoint> points{
-    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 4.0)};
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {2.0, 2.0},
+    {4.0, 3.0},
+  });
 
   const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
   ASSERT_TRUE(trajectory_result.has_value());
@@ -62,7 +78,7 @@ TEST(TemporalTrajectory, ComputeFromTimeAndDistance)
 
 TEST(TemporalTrajectory, BuilderBuildsFromSinglePoint)
 {
-  const std::vector<TrajectoryPoint> points{make_point(1.0, 2.0)};
+  const auto points = make_points({{2.0, 1.0}});
 
   const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
   ASSERT_TRUE(trajectory_result.has_value());
@@ -80,7 +96,10 @@ TEST(TemporalTrajectory, BuilderBuildsFromSinglePoint)
 
 TEST(TemporalTrajectory, BuilderBuildsFromTwoPoints)
 {
-  const std::vector<TrajectoryPoint> points{make_point(1.0, 2.0), make_point(3.0, 5.0)};
+  const auto points = make_points({
+    {2.0, 1.0},
+    {5.0, 3.0},
+  });
 
   const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
   ASSERT_TRUE(trajectory_result.has_value());
@@ -97,8 +116,12 @@ TEST(TemporalTrajectory, BuilderBuildsFromTwoPoints)
 
 TEST(TemporalTrajectory, DuplicateTimestampWithDifferentDistanceExtendsTimeBases)
 {
-  const std::vector<TrajectoryPoint> points{
-    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 1.0), make_point(3.0, 2.0)};
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {1.0, 2.0},
+    {2.0, 3.0},
+  });
 
   const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
   ASSERT_TRUE(trajectory_result.has_value());
@@ -119,8 +142,12 @@ TEST(TemporalTrajectory, DuplicateTimestampWithDifferentDistanceExtendsTimeBases
 // Test: distance_to_time throws when distance is below range
 TEST(TemporalTrajectory, DistanceToTimeThrowsBelowRange)
 {
-  const std::vector<TrajectoryPoint> points{
-    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {2.0, 2.0},
+    {3.0, 3.0},
+  });
 
   auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
   EXPECT_THROW(static_cast<void>(trajectory.distance_to_time(-1.0)), std::out_of_range);
@@ -129,8 +156,12 @@ TEST(TemporalTrajectory, DistanceToTimeThrowsBelowRange)
 // Test: distance_to_time throws when distance is above range
 TEST(TemporalTrajectory, DistanceToTimeThrowsAboveRange)
 {
-  const std::vector<TrajectoryPoint> points{
-    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {2.0, 2.0},
+    {3.0, 3.0},
+  });
 
   auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
   EXPECT_THROW(static_cast<void>(trajectory.distance_to_time(100.0)), std::out_of_range);
@@ -139,8 +170,12 @@ TEST(TemporalTrajectory, DistanceToTimeThrowsAboveRange)
 // Test: compute_from_time throws when time is out of range
 TEST(TemporalTrajectory, ComputeFromTimeThrowsOutOfRange)
 {
-  const std::vector<TrajectoryPoint> points{
-    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {2.0, 2.0},
+    {3.0, 3.0},
+  });
 
   auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
   EXPECT_THROW(static_cast<void>(trajectory.compute_from_time(-1.0)), std::out_of_range);
@@ -150,8 +185,12 @@ TEST(TemporalTrajectory, ComputeFromTimeThrowsOutOfRange)
 // Test: compute_from_distance throws when distance is out of range
 TEST(TemporalTrajectory, ComputeFromDistanceThrowsOutOfRange)
 {
-  const std::vector<TrajectoryPoint> points{
-    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {2.0, 2.0},
+    {3.0, 3.0},
+  });
 
   auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
   EXPECT_THROW(static_cast<void>(trajectory.compute_from_distance(-1.0)), std::out_of_range);
@@ -161,8 +200,12 @@ TEST(TemporalTrajectory, ComputeFromDistanceThrowsOutOfRange)
 // Test: time_to_distance throws when time is out of range
 TEST(TemporalTrajectory, TimeToDistanceThrowsOutOfRange)
 {
-  const std::vector<TrajectoryPoint> points{
-    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {2.0, 2.0},
+    {3.0, 3.0},
+  });
 
   auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
   EXPECT_THROW(static_cast<void>(trajectory.time_to_distance(-1.0)), std::out_of_range);
@@ -172,8 +215,12 @@ TEST(TemporalTrajectory, TimeToDistanceThrowsOutOfRange)
 // Test: compute_from_distance at trajectory boundaries
 TEST(TemporalTrajectory, ComputeFromDistanceAtBoundaries)
 {
-  const std::vector<TrajectoryPoint> points{
-    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {2.0, 2.0},
+    {3.0, 3.0},
+  });
 
   auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
 
@@ -189,8 +236,12 @@ TEST(TemporalTrajectory, ComputeFromDistanceAtBoundaries)
 // Test: compute_from_time at trajectory boundaries
 TEST(TemporalTrajectory, ComputeFromTimeAtBoundaries)
 {
-  const std::vector<TrajectoryPoint> points{
-    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {2.0, 2.0},
+    {3.0, 3.0},
+  });
 
   auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
 

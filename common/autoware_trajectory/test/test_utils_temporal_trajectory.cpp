@@ -32,22 +32,37 @@ namespace
 using autoware::experimental::trajectory::TemporalTrajectory;
 using autoware_planning_msgs::msg::TrajectoryPoint;
 
-TrajectoryPoint make_point(
-  const double x, const double time_from_start, const float velocity = 1.0F)
+struct PointParam
 {
-  TrajectoryPoint point;
-  point.pose.position.x = x;
-  point.pose.position.y = 0.0;
-  point.longitudinal_velocity_mps = velocity;
-  point.time_from_start = rclcpp::Duration::from_seconds(time_from_start);
-  return point;
+  double time{};
+  double x{};
+  float velocity = 1.0F;
+};
+
+std::vector<TrajectoryPoint> make_points(const std::initializer_list<PointParam> & inits)
+{
+  std::vector<TrajectoryPoint> points;
+  points.reserve(inits.size());
+  for (const auto & init : inits) {
+    TrajectoryPoint point;
+    point.pose.position.x = init.x;
+    point.pose.position.y = 0.0;
+    point.longitudinal_velocity_mps = init.velocity;
+    point.time_from_start = rclcpp::Duration::from_seconds(init.time);
+    points.push_back(point);
+  }
+  return points;
 }
 }  // namespace
 
 TEST(CrossedTemporal, ReturnsCrossedPoint)
 {
-  const std::vector<TrajectoryPoint> points{
-    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {2.0, 2.0},
+    {3.0, 3.0},
+  });
 
   const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
   ASSERT_TRUE(trajectory_result.has_value());
@@ -65,10 +80,13 @@ TEST(CrossedTemporal, ReturnsCrossedPoint)
 
 TEST(CrossedTemporal, ReturnsCrossedPointDuplicatedPoint)
 {
-  const std::vector<TrajectoryPoint> points{
-    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0),
-    make_point(2.0, 3.0), make_point(3.0, 4.0),
-  };
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {2.0, 2.0},
+    {3.0, 2.0},
+    {4.0, 3.0},
+  });
 
   const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
   ASSERT_TRUE(trajectory_result.has_value());
@@ -86,9 +104,12 @@ TEST(CrossedTemporal, ReturnsCrossedPointDuplicatedPoint)
 
 TEST(FindIntervalsTemporal, ReturnsEmptyWhenNoStopInterval)
 {
-  const std::vector<TrajectoryPoint> points{
-    make_point(0.0, 0.0, 2.0F), make_point(1.0, 1.0, 2.0F), make_point(2.0, 2.0, 1.0F),
-    make_point(3.0, 3.0, 0.5F)};
+  const auto points = make_points({
+    {0.0, 0.0, 2.0F},
+    {1.0, 1.0, 2.0F},
+    {2.0, 2.0, 1.0F},
+    {3.0, 3.0, 0.5F},
+  });
 
   const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
   ASSERT_TRUE(trajectory_result.has_value());
@@ -103,9 +124,13 @@ TEST(FindIntervalsTemporal, ReturnsEmptyWhenNoStopInterval)
 
 TEST(FindIntervalsTemporal, ReturnsStopIntervalWithDistance)
 {
-  const std::vector<TrajectoryPoint> points{
-    make_point(0.0, 0.0, 2.0F), make_point(1.0, 1.0, 1.0F), make_point(2.0, 2.0, 0.0F),
-    make_point(2.0, 3.0, 0.0F), make_point(3.0, 4.0, 1.0F)};
+  const auto points = make_points({
+    {0.0, 0.0, 2.0F},
+    {1.0, 1.0, 1.0F},
+    {2.0, 2.0, 0.0F},
+    {3.0, 2.0, 0.0F},
+    {4.0, 3.0, 1.0F},
+  });
 
   const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
   ASSERT_TRUE(trajectory_result.has_value());
@@ -123,9 +148,12 @@ TEST(FindIntervalsTemporal, ReturnsStopIntervalWithDistance)
 
 TEST(FindIntervalsTemporal, RespectsVelocityThreshold)
 {
-  const std::vector<TrajectoryPoint> points{
-    make_point(0.0, 0.0, 2.0F), make_point(1.0, 1.0, 0.2F), make_point(2.0, 2.0, 0.1F),
-    make_point(3.0, 3.0, 0.3F)};
+  const auto points = make_points({
+    {0.0, 0.0, 2.0F},
+    {1.0, 1.0, 0.2F},
+    {2.0, 2.0, 0.1F},
+    {3.0, 3.0, 0.3F},
+  });
 
   const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
   ASSERT_TRUE(trajectory_result.has_value());
@@ -140,8 +168,12 @@ TEST(FindIntervalsTemporal, RespectsVelocityThreshold)
 
 TEST(FindIntervalsTemporal, FindIntervalsByPosition)
 {
-  const std::vector<TrajectoryPoint> points{
-    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {2.0, 2.0},
+    {3.0, 3.0},
+  });
 
   const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
   ASSERT_TRUE(trajectory_result.has_value());
@@ -161,8 +193,12 @@ TEST(FindIntervalsTemporal, FindIntervalsByPosition)
 
 TEST(CropTemporal, CropTimeRebases)
 {
-  const std::vector<TrajectoryPoint> points{
-    make_point(0.0, -1.0), make_point(1.0, 0.0), make_point(2.0, 1.0), make_point(3.0, 2.0)};
+  const auto points = make_points({
+    {-1.0, 0.0},
+    {0.0, 1.0},
+    {1.0, 2.0},
+    {2.0, 3.0},
+  });
 
   const auto trajectory = crop_time(TemporalTrajectory::Builder{}.build(points).value(), 0.0, 2.0);
 
@@ -177,8 +213,12 @@ TEST(CropTemporal, CropTimeRebases)
 
 TEST(CropTemporal, RestoreAfterCropTime)
 {
-  const std::vector<TrajectoryPoint> points{
-    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {2.0, 2.0},
+    {3.0, 3.0},
+  });
 
   const auto trajectory = crop_time(TemporalTrajectory::Builder{}.build(points).value(), 1.0, 1.0);
 
@@ -194,8 +234,12 @@ TEST(CropTemporal, RestoreAfterCropTime)
 
 TEST(CropTemporal, CropDistanceRebases)
 {
-  const std::vector<TrajectoryPoint> points{
-    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {2.0, 2.0},
+    {3.0, 3.0},
+  });
 
   const auto trajectory =
     crop_distance(TemporalTrajectory::Builder{}.build(points).value(), 1.0, 1.0);
@@ -216,8 +260,12 @@ TEST(CropTemporal, CropDistanceRebases)
 
 TEST(CropTemporal, CropDistanceThrowsOnInvalidStartDistance)
 {
-  const std::vector<TrajectoryPoint> points{
-    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {2.0, 2.0},
+    {3.0, 3.0},
+  });
 
   const auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
   EXPECT_THROW(static_cast<void>(crop_distance(trajectory, -1.0, 1.0)), std::out_of_range);
@@ -226,8 +274,12 @@ TEST(CropTemporal, CropDistanceThrowsOnInvalidStartDistance)
 
 TEST(CropTemporal, CropDistanceClampsExcessiveLength)
 {
-  const std::vector<TrajectoryPoint> points{
-    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {2.0, 2.0},
+    {3.0, 3.0},
+  });
 
   const auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
   EXPECT_THROW(static_cast<void>(crop_distance(trajectory, 1.0, -0.1)), std::out_of_range);
@@ -240,8 +292,12 @@ TEST(CropTemporal, CropDistanceClampsExcessiveLength)
 
 TEST(CropTemporal, CropTimeClampsExcessiveDuration)
 {
-  const std::vector<TrajectoryPoint> points{
-    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {2.0, 2.0},
+    {3.0, 3.0},
+  });
 
   const auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
   EXPECT_THROW(static_cast<void>(crop_time(trajectory, 1.0, -0.1)), std::out_of_range);
@@ -254,8 +310,12 @@ TEST(CropTemporal, CropTimeClampsExcessiveDuration)
 
 TEST(SetStoplineTemporal, SetStoplineCollapsesFollowingPoints)
 {
-  const std::vector<TrajectoryPoint> points{
-    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {2.0, 2.0},
+    {3.0, 3.0},
+  });
 
   const auto trajectory = set_stopline(TemporalTrajectory::Builder{}.build(points).value(), 1.5);
 
@@ -268,8 +328,12 @@ TEST(SetStoplineTemporal, SetStoplineCollapsesFollowingPoints)
 
 TEST(SetStoplineTemporal, SetStoplineWithTimeExtendsSchedule)
 {
-  const std::vector<TrajectoryPoint> points{
-    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {2.0, 2.0},
+    {3.0, 3.0},
+  });
 
   const auto trajectory =
     set_stopline(TemporalTrajectory::Builder{}.build(points).value(), 1.5, 1.5);
@@ -285,8 +349,12 @@ TEST(SetStoplineTemporal, SetStoplineWithTimeExtendsSchedule)
 
 TEST(SetStoplineTemporal, DistanceToTimeReturnsFirstStopTime)
 {
-  const std::vector<TrajectoryPoint> points{
-    make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0), make_point(3.0, 3.0)};
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {2.0, 2.0},
+    {3.0, 3.0},
+  });
 
   const auto trajectory =
     set_stopline(TemporalTrajectory::Builder{}.build(points).value(), 1.5, 1.5);
@@ -297,8 +365,12 @@ TEST(SetStoplineTemporal, DistanceToTimeReturnsFirstStopTime)
 
 TEST(SetTimeOffset, ShiftsNegativeRangeToPositive)
 {
-  const std::vector<TrajectoryPoint> points{
-    make_point(-1.0, -1.0), make_point(0.0, 0.0), make_point(1.0, 1.0), make_point(2.0, 2.0)};
+  const auto points = make_points({
+    {-1.0, -1.0},
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {2.0, 2.0},
+  });
 
   const auto trajectory = autoware::experimental::trajectory::set_time_offset(
     TemporalTrajectory::Builder{}.build(points).value(), -1.0);
