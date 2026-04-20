@@ -516,3 +516,42 @@ s_{2} &= s_{1} + 2 (v_{0} + a_{\mathrm{lon}}t)t + 2a_{\mathrm{lon}}t^2, & l_{2} 
 s_{3} &= L_{\mathrm{lon}}, & l_{3} &= L
 \end{align}
 $$
+
+#### Handling of duplicate points
+
+This package handles duplicate or almost-duplicate input points at two stages: when the trajectory bases are built from the raw points, and when each interpolator is constructed.
+
+##### 1. Base sanitisation in `Trajectory<Point>::build`
+
+`Trajectory<Point>::build` (and the derived builders that reuse it) converts the input point array into arc-length bases. Consecutive points whose 3D Euclidean distance is zero (or smaller than `std::numeric_limits<double>::epsilon()`) would produce identical bases, which leads to division-by-zero inside the interpolators. To avoid this, the build step clamps every segment length to at least machine epsilon:
+
+```cpp
+const auto dist = std::max<double>(
+  autoware_utils_geometry::calc_distance3d(points.at(i), points.at(i - 1)),
+  std::numeric_limits<double>::epsilon());
+bases_.emplace_back(bases_.back() + dist);
+```
+
+This sanitisation **preserves every input point**; it only inflates the base coordinate of coincident points by a tiny amount so that the base vector stays strictly increasing.
+
+##### 2. Duplicate removal inside interpolator `build_impl`
+
+Most scalar interpolators (`Linear`, `CubicSpline`, `AkimaSpline`, and `SphericalLinear`) additionally remove true duplicates before they interpolate, as such duplicates can lead to numerical instability (e.g., division by very small intervals or ill-conditioned systems). Their `build_impl` functions call:
+
+```cpp
+auto [cleaned_bases, cleaned_values] =
+  ::autoware::experimental::trajectory::detail::remove_duplicate_points(bases, values);
+```
+
+`remove_duplicate_points` scans the bases from front to back and drops any point whose base difference from the last kept point is **not larger than** `k_points_minimum_dist_threshold` (0.005 m). The first point of a duplicate run is retained, the rest are discarded.
+
+##### 3. Interpolators that do not deduplicate
+
+`LaneIdsInterpolator` and `Stairstep` do **not** invoke `remove_duplicate_points`; they operate on the bases exactly as provided by the trajectory build step. The base sanitisation described in stage 1 is therefore the only duplicate protection for these interpolators.
+
+##### Summary of thresholds
+
+| Stage                        | Threshold                                | Meaning                                                               |
+| ---------------------------- | ---------------------------------------- | --------------------------------------------------------------------- |
+| Trajectory base construction | `std::numeric_limits<double>::epsilon()` | Minimum base increment to avoid identical bases                       |
+| Interpolator deduplication   | `k_points_minimum_dist_threshold`        | Points closer than this in base are treated as duplicates and removed |
