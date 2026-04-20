@@ -215,7 +215,7 @@ MultiGridNormalDistributionsTransform<
   gauss_d1_ = -log(gauss_c1 + gauss_c2) - gauss_d3_;
   gauss_d2_ = -2 * log((-log(gauss_c1 * exp(-0.5) + gauss_c2) - gauss_d3_) / gauss_d1_);
 
-  // Set the search radius in advanced, so we don't have to do radius * radius multiple time
+  // Set the search radius in advance, so we don't have to compute radius * radius multiple times
   target_cells_.setSearchRadius(params_.resolution);
 }
 
