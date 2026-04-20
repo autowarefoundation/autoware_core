@@ -123,7 +123,7 @@ class KdTreeNanoflann
   std::shared_ptr<PointCloudNanoflann> cloud_ptr_;
   nanoflann::SearchParams params_;
   // Cache the squared radius, so we don't have to do radius * radius for every point search
-  // The downside is we will have to call setSeachRadius manually
+  // The downside is we will have to call setSearchRadius manually
   double sqr_search_radius_;
 
 public:
