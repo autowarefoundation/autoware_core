@@ -124,15 +124,6 @@ double TemporalTrajectory::distance_to_time(const double s) const
 {
   detail::throw_if_out_of_range(s, 0.0, length(), "distance");
   const auto absolute_distance = s + distance_offset_;
-
-  const auto stop_intervals = find_intervals(*this, [](const auto & point) {
-    return std::abs(point.longitudinal_velocity_mps) <= k_zero_velocity_threshold;
-  });
-  for (const auto & stop_interval : stop_intervals) {
-    if (std::abs(s - stop_interval.start.distance) <= k_same_time_threshold) {
-      return stop_interval.start.time;
-    }
-  }
   return time_distance_mapping_.time_at_distance(absolute_distance);
 }
 

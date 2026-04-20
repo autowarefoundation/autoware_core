@@ -117,7 +117,45 @@ TEST(TemporalTrajectory, DistanceToTime)
   EXPECT_NEAR(trajectory.distance_to_time(2.5), 3.0, 1e-6);
 }
 
-TEST(TemporalTrajectory, DistanceToTimeInDuplicatedPoints)
+TEST(TemporalTrajectory, DistanceToTimeAtDuplicatePoints)
+{
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {2.0, 2.0},
+    {3.0, 2.0},
+    {4.0, 2.0},
+  });
+
+  const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+
+  const auto & trajectory = trajectory_result.value();
+  const auto at_stop = trajectory.distance_to_time(2.0);
+  EXPECT_NEAR(at_stop, 2.0, 1e-6);
+}
+
+TEST(TemporalTrajectory, ComputeFromTimeDuringDuplicateInterval)
+{
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {2.0, 2.0},
+    {3.0, 2.0},
+    {4.0, 3.0},
+  });
+
+  const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  const auto & trajectory = trajectory_result.value();
+  const auto at_t2_5 = trajectory.compute_from_time(2.5);
+  const auto at_t3_5 = trajectory.compute_from_time(3.5);
+
+  EXPECT_NEAR(at_t2_5.pose.position.x, 2.0, 1e-3);
+  EXPECT_NEAR(at_t3_5.pose.position.x, 2.5, 1e-3);
+}
+
+TEST(TemporalTrajectory, ComputeFromDistanceAtDuplicateInterval)
 {
   const auto points = make_points({
     {0.0, 0.0},
@@ -134,7 +172,7 @@ TEST(TemporalTrajectory, DistanceToTimeInDuplicatedPoints)
   EXPECT_NEAR(trajectory.distance_to_time(2.0), 2.0, 1e-6);
 }
 
-TEST(TemporalTrajectory, BuilderBuildsFromSinglePoint)
+TEST(TemporalTrajectory, BuildFromSinglePoint)
 {
   const auto points = make_points({{2.0, 1.0}});
 
@@ -152,7 +190,7 @@ TEST(TemporalTrajectory, BuilderBuildsFromSinglePoint)
   EXPECT_NEAR(rclcpp::Duration(restored.front().time_from_start).seconds(), 2.0, 1e-6);
 }
 
-TEST(TemporalTrajectory, BuilderBuildsFromTwoPoints)
+TEST(TemporalTrajectory, BuildFromTwoPoints)
 {
   const auto points = make_points({
     {2.0, 1.0},
@@ -182,7 +220,9 @@ TEST(TemporalTrajectory, DistanceToTimeThrowsBelowRange)
     {3.0, 3.0},
   });
 
-  auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
+  auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  auto trajectory = trajectory_result.value();
   EXPECT_THROW(static_cast<void>(trajectory.distance_to_time(-1.0)), std::out_of_range);
 }
 
@@ -196,7 +236,9 @@ TEST(TemporalTrajectory, DistanceToTimeThrowsAboveRange)
     {3.0, 3.0},
   });
 
-  auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
+  auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  auto trajectory = trajectory_result.value();
   EXPECT_THROW(static_cast<void>(trajectory.distance_to_time(100.0)), std::out_of_range);
 }
 
@@ -210,7 +252,9 @@ TEST(TemporalTrajectory, ComputeFromTimeThrowsOutOfRange)
     {3.0, 3.0},
   });
 
-  auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
+  auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  auto trajectory = trajectory_result.value();
   EXPECT_THROW(static_cast<void>(trajectory.compute_from_time(-1.0)), std::out_of_range);
   EXPECT_THROW(static_cast<void>(trajectory.compute_from_time(5.0)), std::out_of_range);
 }
@@ -225,7 +269,9 @@ TEST(TemporalTrajectory, ComputeFromDistanceThrowsOutOfRange)
     {3.0, 3.0},
   });
 
-  auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
+  auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  auto trajectory = trajectory_result.value();
   EXPECT_THROW(static_cast<void>(trajectory.compute_from_distance(-1.0)), std::out_of_range);
   EXPECT_THROW(static_cast<void>(trajectory.compute_from_distance(100.0)), std::out_of_range);
 }
@@ -240,7 +286,9 @@ TEST(TemporalTrajectory, TimeToDistanceThrowsOutOfRange)
     {3.0, 3.0},
   });
 
-  auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
+  auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  auto trajectory = trajectory_result.value();
   EXPECT_THROW(static_cast<void>(trajectory.time_to_distance(-1.0)), std::out_of_range);
   EXPECT_THROW(static_cast<void>(trajectory.time_to_distance(5.0)), std::out_of_range);
 }
@@ -255,7 +303,9 @@ TEST(TemporalTrajectory, ComputeFromDistanceAtBoundaries)
     {3.0, 3.0},
   });
 
-  auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
+  auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  auto trajectory = trajectory_result.value();
 
   const auto at_start = trajectory.compute_from_distance(0.0);
   const auto at_end = trajectory.compute_from_distance(trajectory.length());
@@ -276,7 +326,9 @@ TEST(TemporalTrajectory, ComputeFromTimeAtBoundaries)
     {3.0, 3.0},
   });
 
-  auto trajectory = TemporalTrajectory::Builder{}.build(points).value();
+  auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  auto trajectory = trajectory_result.value();
 
   const auto at_start = trajectory.compute_from_time(trajectory.start_time());
   const auto at_end = trajectory.compute_from_time(trajectory.end_time());

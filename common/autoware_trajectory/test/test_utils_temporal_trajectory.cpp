@@ -144,6 +144,7 @@ TEST(FindIntervalsTemporal, ReturnsStopIntervalWithDistance)
   EXPECT_NEAR(intervals.front().start.time, 2.0, 1e-6);
   EXPECT_NEAR(intervals.front().end.time, 3.0, 1e-6);
   EXPECT_NEAR(intervals.front().start.distance, 2.0, 1e-3);
+  EXPECT_NEAR(intervals.front().end.distance, 2.0, 1e-3);
 }
 
 TEST(FindIntervalsTemporal, RespectsVelocityThreshold)
