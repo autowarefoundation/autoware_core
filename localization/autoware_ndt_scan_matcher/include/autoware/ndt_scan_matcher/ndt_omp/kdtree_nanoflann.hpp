@@ -170,7 +170,7 @@ public:
       3, *cloud_ptr_, nanoflann::KDTreeSingleIndexAdaptorParams(15 /* max leaf */));
   }
 
-  void setSeachRadius(double radius) { sqr_search_radius_ = radius * radius; }
+  void setSearchRadius(double radius) { sqr_search_radius_ = radius * radius; }
 
   double getSearchRadius() const { return std::sqrt(sqr_search_radius_); }
 
