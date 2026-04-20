@@ -60,6 +60,7 @@ concurrency:
 env:
   CC: /usr/lib/ccache/gcc
   CXX: /usr/lib/ccache/g++
+  RMW_IMPLEMENTATION: rmw_cyclonedds_cpp
 
 jobs:
   build-and-test:
