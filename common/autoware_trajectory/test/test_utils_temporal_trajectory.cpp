@@ -229,15 +229,14 @@ TEST(CropTemporal, RestoreAfterCropTime)
 
   const auto restored = trajectory.restore();
   ASSERT_FALSE(restored.empty());
-
-  for (const auto & point : restored) {
-    const auto t = rclcpp::Duration(point.time_from_start).seconds();
-    EXPECT_GE(t, 1.0 - 1e-6);
-    EXPECT_LE(t, 2.0 + 1e-6);
-  }
+  ASSERT_EQ(restored.size(), 2U);
+  EXPECT_NEAR(rclcpp::Duration(restored.front().time_from_start).seconds(), 1.0, 1e-6);
+  EXPECT_NEAR(restored.front().pose.position.x, 1.0, 1e-6);
+  EXPECT_NEAR(rclcpp::Duration(restored.back().time_from_start).seconds(), 2.0, 1e-6);
+  EXPECT_NEAR(restored.back().pose.position.x, 2.0, 1e-6);
 }
 
-TEST(CropTemporal, CropDistanceRebases)
+TEST(CropTemporal, CropDistance)
 {
   const auto points = make_points({
     {0.0, 0.0},
@@ -253,15 +252,28 @@ TEST(CropTemporal, CropDistanceRebases)
   EXPECT_NEAR(trajectory.start_time(), 1.0, 1e-6);
   EXPECT_NEAR(trajectory.end_time(), 2.0, 1e-6);
   EXPECT_NEAR(trajectory.length(), 1.0, 1e-6);
+}
+
+TEST(CropTemporal, ResoreAfterCropDistance)
+{
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {2.0, 2.0},
+    {3.0, 3.0},
+  });
+
+  auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  const auto trajectory = crop_distance(trajectory_result.value(), 1.0, 1.0);
 
   const auto restored = trajectory.restore();
   ASSERT_FALSE(restored.empty());
-
-  for (const auto & point : restored) {
-    const auto t = rclcpp::Duration(point.time_from_start).seconds();
-    EXPECT_GE(t, 1.0 - 1e-6);
-    EXPECT_LE(t, 2.0 + 1e-6);
-  }
+  ASSERT_EQ(restored.size(), 2U);
+  EXPECT_NEAR(rclcpp::Duration(restored.front().time_from_start).seconds(), 1.0, 1e-6);
+  EXPECT_NEAR(restored.front().pose.position.x, 1.0, 1e-6);
+  EXPECT_NEAR(rclcpp::Duration(restored.back().time_from_start).seconds(), 2.0, 1e-6);
+  EXPECT_NEAR(restored.back().pose.position.x, 2.0, 1e-6);
 }
 
 TEST(CropTemporal, CropDistanceThrowsOnInvalidStartDistance)
