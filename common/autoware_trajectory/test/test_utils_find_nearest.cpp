@@ -12,17 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/motion_utils/trajectory/trajectory.hpp"
-#include "autoware/trajectory/detail/types.hpp"
 #include "autoware/trajectory/pose.hpp"
 #include "autoware/trajectory/threshold.hpp"
 #include "autoware/trajectory/utils/find_nearest.hpp"
 
 #include <gtest/gtest.h>
 
-#include <fstream>
+#include <cmath>
 #include <limits>
-#include <string>
 #include <vector>
 
 namespace
@@ -32,14 +29,13 @@ using autoware::experimental::trajectory::find_first_nearest_index;
 using autoware::experimental::trajectory::find_nearest_index;
 using autoware::experimental::trajectory::k_points_minimum_dist_threshold;
 using autoware::experimental::trajectory::Trajectory;
-using autoware_utils_geometry::calc_squared_distance2d;
 using autoware_utils_geometry::create_point;
 using autoware_utils_geometry::create_quaternion_from_rpy;
 using autoware_utils_geometry::get_rpy;
 
 // ============================== Helper Function ======================================== //
 
-static geometry_msgs::msg::Pose make_pose(double x, double y, double yaw = 0.0)
+geometry_msgs::msg::Pose make_pose(double x, double y, double yaw = 0.0)
 {
   geometry_msgs::msg::Pose p;
   p.position = create_point(x, y, 0.0);
@@ -47,60 +43,42 @@ static geometry_msgs::msg::Pose make_pose(double x, double y, double yaw = 0.0)
   return p;
 }
 
-static bool is_within_distance_constraint(
-  Trajectory<geometry_msgs::msg::Pose> traj, double s, geometry_msgs::msg::Pose query,
-  double criteria)
+bool is_within_distance_constraint(
+  const Trajectory<geometry_msgs::msg::Pose> & traj, const double s,
+  const geometry_msgs::msg::Pose & query, const double criteria)
 {
-  auto target_pose = traj.compute(s);
-  auto target_pos = target_pose.position;
-  auto query_pos = query.position;
-
-  if (
-    autoware_utils_geometry::calc_squared_distance2d(query_pos, target_pos) <=
-    criteria * criteria) {
-    return true;
-  } else {
-    return false;
-  }
+  const auto target_pos = traj.compute(s).position;
+  return autoware_utils_geometry::calc_squared_distance2d(query.position, target_pos) <=
+         criteria * criteria;
 }
 
-static bool is_within_yaw_constraint(
-  Trajectory<geometry_msgs::msg::Pose> traj, double s, geometry_msgs::msg::Pose query,
-  double criteria)
+bool is_within_yaw_constraint(
+  const Trajectory<geometry_msgs::msg::Pose> & traj, const double s,
+  const geometry_msgs::msg::Pose & query, const double criteria)
 {
-  auto target_pose = traj.compute(s);
-  auto target_yaw = get_rpy(target_pose.orientation).z;
-  auto query_yaw = get_rpy(query.orientation).z;
-
-  if (std::fabs(autoware_utils_math::normalize_radian(query_yaw - target_yaw)) <= criteria) {
-    return true;
-  } else {
-    return false;
-  }
+  const auto target_yaw = get_rpy(traj.compute(s).orientation).z;
+  const auto query_yaw = get_rpy(query.orientation).z;
+  return std::fabs(autoware_utils_math::normalize_radian(query_yaw - target_yaw)) <= criteria;
 }
 
-static bool is_within_yaw_and_distance_constraint(
-  Trajectory<geometry_msgs::msg::Pose> traj, double s, geometry_msgs::msg::Pose query,
-  double distance_criteria = std::numeric_limits<double>::max(),
-  double yaw_criteria = std::numeric_limits<double>::max())
+bool is_within_yaw_and_distance_constraint(
+  const Trajectory<geometry_msgs::msg::Pose> & traj, const double s,
+  const geometry_msgs::msg::Pose & query,
+  const double distance_criteria = std::numeric_limits<double>::max(),
+  const double yaw_criteria = std::numeric_limits<double>::max())
 {
-  if (
-    is_within_yaw_constraint(traj, s, query, yaw_criteria) &&
-    is_within_distance_constraint(traj, s, query, distance_criteria)) {
-    return true;
-  } else {
-    return false;
-  }
+  return is_within_yaw_constraint(traj, s, query, yaw_criteria) &&
+         is_within_distance_constraint(traj, s, query, distance_criteria);
 }
 
-static Trajectory<geometry_msgs::msg::Pose> build_curved_trajectory(
+Trajectory<geometry_msgs::msg::Pose> build_curved_trajectory(
   const size_t num_points, const double interval, const double delta_theta)
 {
   std::vector<geometry_msgs::msg::Pose> raw_poses;
   raw_poses.reserve(num_points);
 
   for (size_t i = 0; i < num_points; ++i) {
-    double theta = i * delta_theta;
+    double theta = static_cast<double>(i) * delta_theta;
     double x = static_cast<double>(i) * interval * std::cos(theta);
     double y = static_cast<double>(i) * interval * std::sin(theta);
     geometry_msgs::msg::Pose p;
@@ -113,7 +91,7 @@ static Trajectory<geometry_msgs::msg::Pose> build_curved_trajectory(
   return traj.value();
 }
 
-static Trajectory<geometry_msgs::msg::Pose> build_parabolic_trajectory(
+Trajectory<geometry_msgs::msg::Pose> build_parabolic_trajectory(
   const size_t num_points, const double interval)
 {
   std::vector<geometry_msgs::msg::Pose> raw_poses;
@@ -134,16 +112,16 @@ static Trajectory<geometry_msgs::msg::Pose> build_parabolic_trajectory(
   return traj.value();
 }
 
-static Trajectory<geometry_msgs::msg::Pose> build_bow_trajectory(
+Trajectory<geometry_msgs::msg::Pose> build_bow_trajectory(
   const size_t num_points, const double size, const double total_angle)
 {
   std::vector<geometry_msgs::msg::Pose> raw_poses;
   raw_poses.reserve(num_points);
 
-  auto delta_theta = total_angle / num_points;
+  auto delta_theta = total_angle / static_cast<double>(num_points);
 
   for (size_t i = 0; i < num_points; ++i) {
-    double theta = M_PI / 4 + i * delta_theta;
+    double theta = M_PI / 4 + static_cast<double>(i) * delta_theta;
 
     double x = size * cos(theta);
     double y = size * sin(theta) * cos(theta);
@@ -154,18 +132,18 @@ static Trajectory<geometry_msgs::msg::Pose> build_bow_trajectory(
   return traj.value();
 }
 
-static double calculate_bow_trajectory_yaw(const double theta)
+double calculate_bow_trajectory_yaw(const double theta)
 {
   return std::atan2(cos(2 * theta), -1 * sin(theta));
 }
 
-static double calculate_bow_trajectory_yaw_from_x(const double x, double size = 3)
+double calculate_bow_trajectory_yaw_from_x(const double x, double size = 3)
 {
   auto theta = std::acos(x / size);
   return calculate_bow_trajectory_yaw(theta);
 }
 
-static Trajectory<geometry_msgs::msg::Pose> build_vertical_loop_trajectory(
+Trajectory<geometry_msgs::msg::Pose> build_vertical_loop_trajectory(
   const size_t num_points, const double radius, const double start_x, const double offset)
 {
   std::vector<geometry_msgs::msg::Pose> raw_poses;
@@ -176,28 +154,28 @@ static Trajectory<geometry_msgs::msg::Pose> build_vertical_loop_trajectory(
   size_t second_part = static_cast<size_t>(num_points - first_part - last_part);
 
   // First part: going in (from right to left)
-  double rate = (start_x) / (first_part);
+  double rate = (start_x) / static_cast<double>(first_part);
   for (size_t i = 0u; i < first_part; ++i) {
-    double x = start_x - rate * i;
+    double x = start_x - rate * static_cast<double>(i);
     double y = offset;
     raw_poses.push_back(make_pose(x, y, M_PI));
   }
 
   // Second part: go in the loop
   double start_theta = M_PI * 3 / 2;
-  double loop_rate = 2 * M_PI / (second_part - 1);
+  double loop_rate = 2 * M_PI / static_cast<double>(second_part - 1);
   for (size_t i = 0u; i < second_part; ++i) {
     // from 3/2 pi to -1/2pi
-    double theta = start_theta - i * loop_rate;
+    double theta = start_theta - static_cast<double>(i) * loop_rate;
     double x = radius * cos(theta);
     double y = (offset + radius) + radius * sin(theta);
     raw_poses.push_back(make_pose(x, y, theta - M_PI / 2));
   }
 
   // Last part: go out to the left
-  double out_rate = (start_x) / (first_part);
+  double out_rate = (start_x) / static_cast<double>(first_part);
   for (size_t i = 1u; i <= last_part; ++i) {
-    double x = 0 - out_rate * i;
+    double x = 0 - out_rate * static_cast<double>(i);
     double y = offset;
     raw_poses.push_back(make_pose(x, y, M_PI));
   }
@@ -206,7 +184,7 @@ static Trajectory<geometry_msgs::msg::Pose> build_vertical_loop_trajectory(
   return traj.value();
 }
 
-static Trajectory<geometry_msgs::msg::Pose> build_lollipop_trajectory(
+Trajectory<geometry_msgs::msg::Pose> build_lollipop_trajectory(
   const size_t num_points, const double radius, const double phase_dif = M_PI / 6,
   const double start_x = 3, const double offset = 0)
 {
@@ -218,9 +196,9 @@ static Trajectory<geometry_msgs::msg::Pose> build_lollipop_trajectory(
   size_t second_part = static_cast<size_t>(num_points - first_part - last_part);
 
   // First part: go into bottom
-  double rate = (start_x) / (first_part);
+  double rate = (start_x) / static_cast<double>(first_part);
   for (size_t i = 0u; i < first_part; ++i) {
-    double x = start_x - rate * i;
+    double x = start_x - rate * static_cast<double>(i);
     double y = offset - radius * sin(phase_dif / 2);
     raw_poses.push_back(make_pose(x, y, M_PI));
   }
@@ -228,19 +206,19 @@ static Trajectory<geometry_msgs::msg::Pose> build_lollipop_trajectory(
   // Second part: go in the loop
   double start_theta = 2 * M_PI - phase_dif / 2;
   double end_theta = phase_dif / 2;
-  double loop_rate = (end_theta - start_theta) / (second_part - 1);
+  double loop_rate = (end_theta - start_theta) / static_cast<double>(second_part - 1);
   for (size_t i = 0u; i < second_part; ++i) {
     // from -phase_dif/2 to +phase_dif/2
-    double theta = start_theta + i * loop_rate;
+    double theta = start_theta + static_cast<double>(i) * loop_rate;
     double x = -radius * cos(phase_dif / 2) + radius * cos(theta);
     double y = offset + radius * sin(theta);
     raw_poses.push_back(make_pose(x, y, theta - M_PI / 2));
   }
 
   // Last part: go out from top
-  double out_rate = (start_x) / (last_part);
+  double out_rate = (start_x) / static_cast<double>(last_part);
   for (size_t i = 1u; i <= last_part; ++i) {
-    double x = 0 + out_rate * i;
+    double x = 0 + out_rate * static_cast<double>(i);
     double y = offset + radius * sin(phase_dif / 2);
     raw_poses.push_back(make_pose(x, y, 0));
   }
@@ -251,7 +229,7 @@ static Trajectory<geometry_msgs::msg::Pose> build_lollipop_trajectory(
 // ======================================== TEST ============================================//
 
 // Test 1: Point-based queries find_nearest_index on a curved trajectory (no threshold)
-TEST(trajectory, find_nearest_index_Point_CurvedTrajectory)
+TEST(Trajectory, FindNearestIndexPointCurvedTrajectory)
 {
   auto traj = build_curved_trajectory(10, 1.0, 0.1);
   {
@@ -286,7 +264,7 @@ TEST(trajectory, find_nearest_index_Point_CurvedTrajectory)
 }
 
 // Test 2: find_first_nearest_index on a curved trajectory (no thresholds)
-TEST(trajectory, find_first_nearest_index_CurvedTrajectory)
+TEST(Trajectory, FindFirstNearestIndexCurvedTrajectory)
 {
   auto traj = build_curved_trajectory(10, 1.0, 0.1);
 
@@ -326,7 +304,7 @@ TEST(trajectory, find_first_nearest_index_CurvedTrajectory)
 }
 
 // Test 3: Pose-based queries on curved trajectory with no threshold
-TEST(trajectory, find_first_nearest_index_Pose_NoThreshold)
+TEST(Trajectory, FindFirstNearestIndexPoseNoThreshold)
 {
   auto traj = build_curved_trajectory(10, 1.0, 0.1);
 
@@ -386,7 +364,7 @@ TEST(trajectory, find_first_nearest_index_Pose_NoThreshold)
 }
 
 // Test 4: Pose-based queries on curved trajectory with distance threshold
-TEST(trajectory, find_first_nearest_index_Pose_DistThreshold)
+TEST(Trajectory, FindFirstNearestIndexPoseDistThreshold)
 {
   auto traj = build_curved_trajectory(10, 1.0, 0.1);
 
@@ -408,7 +386,7 @@ TEST(trajectory, find_first_nearest_index_Pose_DistThreshold)
 }
 
 // Pose-based queries on curved trajectory with yaw threshold
-TEST(trajectory, find_first_nearest_index_Pose_YawThreshold)
+TEST(Trajectory, FindFirstNearestIndexPoseYawThreshold)
 {
   auto traj = build_curved_trajectory(10, 1.0, 0.1);
   const double max_d = std::numeric_limits<double>::max();
@@ -431,7 +409,7 @@ TEST(trajectory, find_first_nearest_index_Pose_YawThreshold)
 }
 
 // Test 5: Pose-based queries on curved trajectory with both distance & yaw thresholds
-TEST(trajectory, find_first_nearest_index_Pose_DistAndYawThreshold)
+TEST(Trajectory, FindFirstNearestIndexPoseDistAndYawThreshold)
 {
   auto traj = build_curved_trajectory(10, 1.0, 0.1);
 
@@ -453,7 +431,7 @@ TEST(trajectory, find_first_nearest_index_Pose_DistAndYawThreshold)
 }
 
 // Test 6: Pose-based queries on curved trajectory with both distance & yaw thresholds
-TEST(trajectory, find_first_nearest_index_Pose_TwoMinimaDistAndYawThreshold)
+TEST(Trajectory, FindFirstNearestIndexPoseTwoMinimaDistAndYawThreshold)
 {
   auto traj = build_curved_trajectory(10, 1.0, 0.1);
 
@@ -475,7 +453,7 @@ TEST(trajectory, find_first_nearest_index_Pose_TwoMinimaDistAndYawThreshold)
 }
 
 // Test 7: Two equal distance nearest points on a parabolic trajectory
-TEST(trajectory, find_first_nearest_index_ParabolicTrajectory_AboveMinima)
+TEST(Trajectory, FindFirstNearestIndexParabolicTrajectoryAboveMinima)
 {
   auto traj = build_parabolic_trajectory(11, 1.0);
   {
@@ -490,7 +468,7 @@ TEST(trajectory, find_first_nearest_index_ParabolicTrajectory_AboveMinima)
 }
 
 // Test 8: Two equal distance nearest points at the self-intersecting trajectory (less bases)
-TEST(trajectory, find_first_nearest_index_BowTrajectoryLessBases)
+TEST(Trajectory, FindFirstNearestIndexBowTrajectoryLessBases)
 {
   // ALL FAILED WITH SMALL INACCURATE
   auto traj = build_bow_trajectory(10, 3, 1.5 * M_PI);
@@ -526,7 +504,7 @@ TEST(trajectory, find_first_nearest_index_BowTrajectoryLessBases)
 }
 
 // Test 9: Two equal distance nearest points at the self-intersecting trajectory (many bases)
-TEST(trajectory, find_first_nearest_index_BowTrajectoryManyBases)
+TEST(Trajectory, FindFirstNearestIndexBowTrajectoryManyBases)
 {
   auto traj = build_bow_trajectory(1000, 3, 1.5 * M_PI);
   {
@@ -561,7 +539,7 @@ TEST(trajectory, find_first_nearest_index_BowTrajectoryManyBases)
 }
 
 // Test 10: find_first_nearest_index on vertical loop trajectory
-TEST(trajectory, find_first_nearest_index_VerticalLoop)
+TEST(Trajectory, FindFirstNearestIndexVerticalLoop)
 {
   {
     auto traj = build_vertical_loop_trajectory(10, 3, 3, 0);
@@ -638,7 +616,7 @@ TEST(trajectory, find_first_nearest_index_VerticalLoop)
 }
 
 // TEST 11: Test Lollipop trajectory find_first_nearest_index
-TEST(trajectory, find_first_nearest_index_LollipopTrajectory)
+TEST(Trajectory, FindFirstNearestIndexLollipopTrajectory)
 {
   auto traj = build_lollipop_trajectory(1000, 3);
   {

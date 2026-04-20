@@ -752,7 +752,7 @@ experimental::trajectory::Trajectory<PathPointWithLaneId> connect_path_to_goal(
       get_arc_length_on_path(lanelet_sequence, path, s_goal - connection_section_length);
     const auto cropped_path =
       autoware::experimental::trajectory::crop(path, 0, s_connection_section_start);
-    path_points_to_goal = cropped_path.restore(1);
+    path_points_to_goal = cropped_path.restore();
   }
 
   if (s_goal > pre_goal_offset) {

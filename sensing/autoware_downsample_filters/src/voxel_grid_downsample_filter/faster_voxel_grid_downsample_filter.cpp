@@ -40,9 +40,9 @@ void FasterVoxelGridDownsampleFilter::set_voxel_size(
 void FasterVoxelGridDownsampleFilter::set_field_offsets(
   const PointCloud2ConstPtr & input, const rclcpp::Logger & logger)
 {
-  x_offset_ = input->fields[pcl::getFieldIndex(*input, "x")].offset;
-  y_offset_ = input->fields[pcl::getFieldIndex(*input, "y")].offset;
-  z_offset_ = input->fields[pcl::getFieldIndex(*input, "z")].offset;
+  x_offset_ = static_cast<int>(input->fields[pcl::getFieldIndex(*input, "x")].offset);
+  y_offset_ = static_cast<int>(input->fields[pcl::getFieldIndex(*input, "y")].offset);
+  z_offset_ = static_cast<int>(input->fields[pcl::getFieldIndex(*input, "z")].offset);
   intensity_index_ = pcl::getFieldIndex(*input, "intensity");
 
   if (
@@ -55,7 +55,7 @@ void FasterVoxelGridDownsampleFilter::set_field_offsets(
   }
 
   if (intensity_index_ != -1) {
-    intensity_offset_ = input->fields[intensity_index_].offset;
+    intensity_offset_ = static_cast<int>(input->fields[intensity_index_].offset);
   } else {
     intensity_offset_ = -1;
   }
@@ -167,9 +167,12 @@ FasterVoxelGridDownsampleFilter::calc_centroids_each_voxel(
     Eigen::Vector4f point = get_point_from_global_offset(input, global_offset);
     if (std::isfinite(point[0]) && std::isfinite(point[1]), std::isfinite(point[2])) {
       // Calculate the voxel index to which the point belongs
-      int ijk0 = static_cast<int>(std::floor(point[0] * inverse_voxel_size_[0]) - min_voxel[0]);
-      int ijk1 = static_cast<int>(std::floor(point[1] * inverse_voxel_size_[1]) - min_voxel[1]);
-      int ijk2 = static_cast<int>(std::floor(point[2] * inverse_voxel_size_[2]) - min_voxel[2]);
+      int ijk0 = static_cast<int>(
+        std::floor(point[0] * inverse_voxel_size_[0]) - static_cast<float>(min_voxel[0]));
+      int ijk1 = static_cast<int>(
+        std::floor(point[1] * inverse_voxel_size_[1]) - static_cast<float>(min_voxel[1]));
+      int ijk2 = static_cast<int>(
+        std::floor(point[2] * inverse_voxel_size_[2]) - static_cast<float>(min_voxel[2]));
       uint32_t voxel_id = ijk0 * div_b_mul[0] + ijk1 * div_b_mul[1] + ijk2 * div_b_mul[2];
 
       // Add the point to the corresponding centroid

@@ -72,12 +72,24 @@ void nn_search_main()
   // get_closest_lanelet (without rtree)
   {
     auto opt = lanelet2_utils::get_closest_lanelet(all_lanelets_, P0);
+    if (!opt.has_value()) {
+      std::cerr << "Failed to get closest lanelet (without rtree)" << std::endl;
+      return;
+    }
     auto closest = *opt;
     std::cout << "Closest Lanelet id is: " << closest.id() << std::endl;
   }
   // get_closest_lanelet (using rtree)
   {
+    if (!rtree_.has_value()) {
+      std::cerr << "Failed to get rtree value" << std::endl;
+      return;
+    }
     auto opt = rtree_->get_closest_lanelet(P0);
+    if (!opt.has_value()) {
+      std::cerr << "Failed to get closest lanelet (using rtree)" << std::endl;
+      return;
+    }
     auto closest = *opt;
     std::cout << "Closest Lanelet id is: " << closest.id() << std::endl;
   }
@@ -89,13 +101,25 @@ void nn_search_main()
   {
     auto opt = lanelet2_utils::get_closest_lanelet_within_constraint(
       all_lanelets_, P0, ego_nearest_dist_threshold, ego_nearest_yaw_threshold);
+    if (!opt.has_value()) {
+      std::cerr << "Failed to get closest lanelet within constraint (without rtree)" << std::endl;
+      return;
+    }
     auto closest = *opt;
     std::cout << "Closest Lanelet id is: " << closest.id() << std::endl;
   }
   // get_closest_lanelet_within_constraint (using rtree)
   {
+    if (!rtree_.has_value()) {
+      std::cerr << "Failed to get rtree value for constraint search" << std::endl;
+      return;
+    }
     auto opt = rtree_->get_closest_lanelet_within_constraint(
       P0, ego_nearest_dist_threshold, ego_nearest_yaw_threshold);
+    if (!opt.has_value()) {
+      std::cerr << "Failed to get closest lanelet within constraint (using rtree)" << std::endl;
+      return;
+    }
     auto closest = *opt;
     std::cout << "Closest Lanelet id is: " << closest.id() << std::endl;
   }

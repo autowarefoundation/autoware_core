@@ -71,6 +71,10 @@ void interpolation()
     double half_of_segment_length = std::hypot(4.0 - 1.0, 5.0 - 2.0, 6.0 - 3.0) / 2;
 
     auto opt = lanelet2_utils::interpolate_point(p1, p2, half_of_segment_length);
+    if (!opt.has_value()) {
+      std::cerr << "Failed to interpolate point" << std::endl;
+      return;
+    }
     auto interpolated_pt = *opt;
     std::cout << "Interpolated Point (Half length)" << std::endl;
     std::cout << "x: " << interpolated_pt.x() << std::endl;
@@ -81,6 +85,10 @@ void interpolation()
   {
     const auto ll = lanelet_map_ptr_->laneletLayer.get(2287);
     auto opt_pt = lanelet2_utils::interpolate_lanelet(ll, 3.0);
+    if (!opt_pt.has_value()) {
+      std::cerr << "Failed to interpolate lanelet" << std::endl;
+      return;
+    }
     auto interpolated_pt = *opt_pt;
     std::cout << "Interpolated Point (From Lanelet)" << std::endl;
     std::cout << "x: " << interpolated_pt.x() << std::endl;
@@ -95,6 +103,10 @@ void interpolation()
       lanelets.push_back(lanelet_map_ptr_->laneletLayer.get(id));
     }
     auto opt_pt = lanelet2_utils::interpolate_lanelet_sequence(lanelets, 3.0);
+    if (!opt_pt.has_value()) {
+      std::cerr << "Failed to interpolate lanelet sequence" << std::endl;
+      return;
+    }
     auto interpolated_pt = *opt_pt;
     std::cout << "Interpolated Point (From LaneletSequence)" << std::endl;
     std::cout << "x: " << interpolated_pt.x() << std::endl;
@@ -114,6 +126,10 @@ void concatenation()
   }
 
   auto opt_ls = lanelet2_utils::concatenate_center_line(lanelets);
+  if (!opt_ls.has_value()) {
+    std::cerr << "Failed to concatenate center line" << std::endl;
+    return;
+  }
 
   const auto & ls = *opt_ls;
 
@@ -147,6 +163,10 @@ void get_from_arc_length()
     lanelet::ConstLineString3d line{lanelet::InvalId, pts};
     auto opt =
       autoware::experimental::lanelet2_utils::get_linestring_from_arc_length(line, 0.5, 1.5);
+    if (!opt.has_value()) {
+      std::cerr << "Failed to get linestring from arc length" << std::endl;
+      return;
+    }
     const auto & out = *opt;
 
     std::cout << "Get linestring from 0.5 to 1.5" << std::endl;
@@ -165,6 +185,10 @@ void get_from_arc_length()
     }
     auto opt_pose =
       autoware::experimental::lanelet2_utils::get_pose_from_2d_arc_length(lanelets, 3.0);
+    if (!opt_pose.has_value()) {
+      std::cerr << "Failed to get pose from 2D arc length" << std::endl;
+      return;
+    }
     const auto & p = *opt_pose;
     std::cout << "Pose from arc-length" << std::endl;
     std::cout << "x: " << p.position.x << std::endl;
@@ -188,6 +212,10 @@ void get_from_arc_length()
     std::vector<lanelet::BasicPoint3d> right_points1 = {p3, p4};
 
     auto ll1 = create_safe_lanelet(left_points1, right_points1);
+    if (!ll1.has_value()) {
+      std::cerr << "Failed to create safe lanelet for polygon (ll1)" << std::endl;
+      return;
+    }
 
     auto p5 = lanelet::BasicPoint3d(3.0, 2.0, 0.0);
     auto p6 = lanelet::BasicPoint3d(6.0, 2.0, 0.0);
@@ -198,6 +226,10 @@ void get_from_arc_length()
     std::vector<lanelet::BasicPoint3d> right_points2 = {p7, p8};
 
     auto ll2 = create_safe_lanelet(left_points2, right_points2);
+    if (!ll2.has_value()) {
+      std::cerr << "Failed to create safe lanelet for polygon (ll2)" << std::endl;
+      return;
+    }
 
     const auto lanelet_sequence = lanelet::ConstLanelets{*ll1, *ll2};
     const auto opt_polygon =
@@ -255,6 +287,10 @@ void closest_center_pose()
   std::vector<lanelet::BasicPoint3d> left_points = {p1, p2};
   std::vector<lanelet::BasicPoint3d> right_points = {p3, p4};
   auto ll = create_safe_lanelet(left_points, right_points);
+  if (!ll.has_value()) {
+    std::cerr << "Failed to create safe lanelet for closest center pose" << std::endl;
+    return;
+  }
 
   auto search_pt = lanelet::BasicPoint3d(1.2, 1.0, 0.0);
   auto p = autoware::experimental::lanelet2_utils::get_closest_center_pose(*ll, search_pt);
@@ -279,7 +315,12 @@ void arc_coordinates()
   std::vector<lanelet::BasicPoint3d> left_points1 = {p1, p2};
   std::vector<lanelet::BasicPoint3d> right_points1 = {p3, p4};
 
-  auto ll1 = *create_safe_lanelet(left_points1, right_points1);
+  auto ll1_opt = create_safe_lanelet(left_points1, right_points1);
+  if (!ll1_opt.has_value()) {
+    std::cerr << "Failed to create safe lanelet for arc coordinates (ll1)" << std::endl;
+    return;
+  }
+  auto ll1 = *ll1_opt;
 
   auto p5 = lanelet::BasicPoint3d(3.0, 2.0, 0.0);
   auto p6 = lanelet::BasicPoint3d(6.0, 2.0, 0.0);
@@ -289,7 +330,12 @@ void arc_coordinates()
   std::vector<lanelet::BasicPoint3d> left_points2 = {p5, p6};
   std::vector<lanelet::BasicPoint3d> right_points2 = {p7, p8};
 
-  auto ll2 = *create_safe_lanelet(left_points2, right_points2);
+  auto ll2_opt = create_safe_lanelet(left_points2, right_points2);
+  if (!ll2_opt.has_value()) {
+    std::cerr << "Failed to create safe lanelet for arc coordinates (ll2)" << std::endl;
+    return;
+  }
+  auto ll2 = *ll2_opt;
 
   auto lanelet_sequence = lanelet::ConstLanelets{ll1, ll2};
 
@@ -329,7 +375,12 @@ void lateral_distance_related()
   std::vector<lanelet::BasicPoint3d> left_points1 = {p1, p2};
   std::vector<lanelet::BasicPoint3d> right_points1 = {p3, p4};
 
-  auto ll1 = *create_safe_lanelet(left_points1, right_points1);
+  auto ll1_opt = create_safe_lanelet(left_points1, right_points1);
+  if (!ll1_opt.has_value()) {
+    std::cerr << "Failed to create safe lanelet for lateral distance (ll1)" << std::endl;
+    return;
+  }
+  auto ll1 = *ll1_opt;
 
   auto p5 = lanelet::BasicPoint3d(3.0, 2.0, 0.0);
   auto p6 = lanelet::BasicPoint3d(6.0, 2.0, 0.0);
@@ -339,7 +390,12 @@ void lateral_distance_related()
   std::vector<lanelet::BasicPoint3d> left_points2 = {p5, p6};
   std::vector<lanelet::BasicPoint3d> right_points2 = {p7, p8};
 
-  auto ll2 = *create_safe_lanelet(left_points2, right_points2);
+  auto ll2_opt = create_safe_lanelet(left_points2, right_points2);
+  if (!ll2_opt.has_value()) {
+    std::cerr << "Failed to create safe lanelet for lateral distance (ll2)" << std::endl;
+    return;
+  }
+  auto ll2 = *ll2_opt;
 
   auto lanelet_sequence = lanelet::ConstLanelets{ll1, ll2};
 
@@ -377,7 +433,12 @@ void combine_lanelet()
   std::vector<lanelet::BasicPoint3d> left_points1 = {p1, p2};
   std::vector<lanelet::BasicPoint3d> right_points1 = {p3, p4};
 
-  auto ll1 = *create_safe_lanelet(left_points1, right_points1);
+  auto ll1_opt = create_safe_lanelet(left_points1, right_points1);
+  if (!ll1_opt.has_value()) {
+    std::cerr << "Failed to create safe lanelet for combine (ll1)" << std::endl;
+    return;
+  }
+  auto ll1 = *ll1_opt;
 
   auto p5 = lanelet::BasicPoint3d(3.0, 2.0, 0.0);
   auto p6 = lanelet::BasicPoint3d(6.0, 2.0, 0.0);
@@ -387,7 +448,12 @@ void combine_lanelet()
   std::vector<lanelet::BasicPoint3d> left_points2 = {p5, p6};
   std::vector<lanelet::BasicPoint3d> right_points2 = {p7, p8};
 
-  auto ll2 = *create_safe_lanelet(left_points2, right_points2);
+  auto ll2_opt = create_safe_lanelet(left_points2, right_points2);
+  if (!ll2_opt.has_value()) {
+    std::cerr << "Failed to create safe lanelet for combine (ll2)" << std::endl;
+    return;
+  }
+  auto ll2 = *ll2_opt;
 
   const auto one_lanelet_opt =
     autoware::experimental::lanelet2_utils::combine_lanelets_shape({ll1, ll2});
@@ -413,7 +479,12 @@ void expand_lanelet()
 
   std::vector<lanelet::BasicPoint3d> left_points1 = {p1, p2};
   std::vector<lanelet::BasicPoint3d> right_points1 = {p3, p4};
-  auto ll1 = *create_safe_lanelet(left_points1, right_points1);
+  auto ll1_opt = create_safe_lanelet(left_points1, right_points1);
+  if (!ll1_opt.has_value()) {
+    std::cerr << "Failed to create safe lanelet for expand (ll1)" << std::endl;
+    return;
+  }
+  auto ll1 = *ll1_opt;
 
   auto p5 = lanelet::BasicPoint3d(3.0, 2.0, 1.0);
   auto p6 = lanelet::BasicPoint3d(6.0, 2.0, 1.0);
@@ -423,7 +494,12 @@ void expand_lanelet()
   std::vector<lanelet::BasicPoint3d> left_points2 = {p5, p6};
   std::vector<lanelet::BasicPoint3d> right_points2 = {p7, p8};
 
-  auto ll2 = *create_safe_lanelet(left_points2, right_points2);
+  auto ll2_opt = create_safe_lanelet(left_points2, right_points2);
+  if (!ll2_opt.has_value()) {
+    std::cerr << "Failed to create safe lanelet for expand (ll2)" << std::endl;
+    return;
+  }
+  auto ll2 = *ll2_opt;
 
   auto lls = lanelet::ConstLanelets{ll1, ll2};
 
@@ -498,7 +574,12 @@ void offset_bound()
 
   std::vector<lanelet::BasicPoint3d> left_points = {p1, p2};
   std::vector<lanelet::BasicPoint3d> right_points = {p3, p4};
-  auto ll = *create_safe_lanelet(left_points, right_points);
+  auto ll_opt = create_safe_lanelet(left_points, right_points);
+  if (!ll_opt.has_value()) {
+    std::cerr << "Failed to create safe lanelet for offset bound" << std::endl;
+    return;
+  }
+  auto ll = *ll_opt;
 
   // fine centerline
   {
@@ -557,7 +638,12 @@ void check_in_lanelet()
 
   std::vector<lanelet::BasicPoint3d> left_points = {p1, p2};
   std::vector<lanelet::BasicPoint3d> right_points = {p3, p4};
-  auto ll = *create_safe_lanelet(left_points, right_points);
+  auto ll_opt = create_safe_lanelet(left_points, right_points);
+  if (!ll_opt.has_value()) {
+    std::cerr << "Failed to create safe lanelet for in-lanelet check" << std::endl;
+    return;
+  }
+  auto ll = *ll_opt;
 
   // inside
   {
