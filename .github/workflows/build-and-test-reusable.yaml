@@ -23,6 +23,11 @@ on:
         type: boolean
         default: false
         required: false
+      enable-agnocast:
+        description: True if ENABLE_AGNOCAST should be set to "1".
+        type: boolean
+        default: false
+        required: false
       push-ccache:
         type: boolean
         default: false
@@ -58,7 +63,7 @@ env:
 
 jobs:
   build-and-test:
-    name: build-and-test-${{ inputs.rosdistro }}${{ inputs.above && '-above' || '' }}
+    name: build-and-test-${{ inputs.rosdistro }}${{ inputs.above && '-above' || '' }}${{ inputs.enable-agnocast && '-agnocast' || '' }}
     runs-on: ${{ fromJson(inputs.runner) }}
     container: ${{ inputs.container }}
     steps:
@@ -115,9 +120,11 @@ jobs:
       - name: Build
         if: ${{ steps.get-self-packages.outputs.self-packages != '' }}
         uses: autowarefoundation/autoware-github-actions/colcon-build@v1
+        env:
+          ENABLE_AGNOCAST: ${{ inputs.enable-agnocast && '1' || '' }}
         with:
           rosdistro: ${{ inputs.rosdistro }}
-          cache-key-element: build-and-test-${{ inputs.cache-key-element }}${{ inputs.above && '-above' || '' }}
+          cache-key-element: build-and-test-${{ inputs.cache-key-element }}${{ inputs.above && '-above' || '' }}${{ inputs.enable-agnocast && '-agnocast' || '' }}
           target-packages: ${{ steps.get-self-packages.outputs.self-packages }}
           packages-above-repos: ${{ inputs.above && 'packages_above.repos' || '' }}
           underlay-workspace: /opt/autoware
@@ -128,7 +135,7 @@ jobs:
         shell: bash
 
       - name: Push the ccache cache
-        if: ${{ inputs.push-ccache == true }}
+        if: ${{ inputs.push-ccache == true && !inputs.enable-agnocast }}
         uses: actions/cache/save@v5
         with:
           path: |
@@ -139,6 +146,8 @@ jobs:
         if: ${{ steps.get-self-packages.outputs.self-packages != '' }}
         id: test
         uses: autowarefoundation/autoware-github-actions/colcon-test@v1
+        env:
+          ENABLE_AGNOCAST: ${{ inputs.enable-agnocast && '1' || '' }}
         with:
           rosdistro: ${{ inputs.rosdistro }}
           target-packages: ${{ steps.get-self-packages.outputs.self-packages }}
@@ -158,9 +167,9 @@ jobs:
         run: df -h
 
   clang-tidy:
-    name: clang-tidy-${{ inputs.rosdistro }}${{ inputs.above && '-above' || '' }}
+    name: clang-tidy-${{ inputs.rosdistro }}${{ inputs.above && '-above' || '' }}${{ inputs.enable-agnocast && '-agnocast' || '' }}
     needs: build-and-test
-    if: ${{ inputs.above == false }}
+    if: ${{ !inputs.above && !inputs.enable-agnocast }}
     runs-on: ubuntu-latest
     container: ${{ inputs.container }}
     steps:
