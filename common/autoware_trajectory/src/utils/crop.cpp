@@ -18,6 +18,7 @@
 #include "autoware/trajectory/temporal_trajectory.hpp"
 
 #include <algorithm>
+#include <limits>
 
 namespace autoware::experimental::trajectory
 {
@@ -27,9 +28,7 @@ TemporalTrajectory crop_time(
 {
   detail::throw_if_out_of_range(
     start_time, trajectory.start_time(), trajectory.end_time(), "start_time");
-  if (duration < 0.0) {
-    throw std::out_of_range("duration must be non-negative");
-  }
+  detail::throw_if_out_of_range(duration, 0.0, std::numeric_limits<double>::infinity(), "duration");
   const auto clamped_duration = std::min(duration, trajectory.end_time() - start_time);
 
   const auto absolute_start_distance = trajectory.time_distance_mapping_.distance_at(start_time);
@@ -47,9 +46,7 @@ TemporalTrajectory crop_distance(
   TemporalTrajectory trajectory, const double start_distance, const double length)
 {
   detail::throw_if_out_of_range(start_distance, 0.0, trajectory.length(), "start_distance");
-  if (length < 0.0) {
-    throw std::out_of_range("length must be non-negative");
-  }
+  detail::throw_if_out_of_range(length, 0.0, std::numeric_limits<double>::infinity(), "length");
   const auto clamped_length = std::min(length, trajectory.length() - start_distance);
 
   const auto start_time = trajectory.distance_to_time(start_distance);

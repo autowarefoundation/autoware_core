@@ -254,7 +254,7 @@ TEST(CropTemporal, CropDistance)
   EXPECT_NEAR(trajectory.length(), 1.0, 1e-6);
 }
 
-TEST(CropTemporal, ResoreAfterCropDistance)
+TEST(CropTemporal, RestoreAfterCropDistance)
 {
   const auto points = make_points({
     {0.0, 0.0},

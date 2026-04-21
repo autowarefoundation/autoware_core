@@ -270,16 +270,23 @@ double TimeDistanceMapping::time_at_distance(
 
   throw_if_out_of_range(distance, start_distance_value, end_distance_value, "absolute_distance");
 
-  // Use binary search to find the time where distance is reached
   constexpr size_t k_max_iterations = 100;
-  const auto result_time = lower_bound_by_predicate(
-    start_time_, end_time_,
-    [this, distance, return_end_time](const double time) {
-      return return_end_time ? compute_distance(time) > distance
-                             : compute_distance(time) >= distance;
-    },
-    k_max_iterations, std::numeric_limits<double>::epsilon());
 
+  if (!return_end_time) {
+    const auto result_time = lower_bound_by_predicate(
+      start_time_, end_time_,
+      [this, distance](const double time) { return compute_distance(time) >= distance; },
+      k_max_iterations, std::numeric_limits<double>::epsilon());
+    return to_public_time(result_time);
+  }
+  if (std::abs(distance - end_distance_value) <= std::numeric_limits<double>::epsilon()) {
+    return to_public_time(end_time_);
+  }
+
+  const auto result_time = upper_bound_by_predicate(
+    start_time_, end_time_,
+    [this, distance](const double time) { return compute_distance(time) <= distance; },
+    k_max_iterations, std::numeric_limits<double>::epsilon());
   return to_public_time(result_time);
 }
 

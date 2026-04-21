@@ -119,8 +119,30 @@ public:
 
   /**
    * @brief Convert an absolute distance to time.
+   *
+   * The distance-to-time mapping is monotonic non-decreasing, but may contain
+   * plateaus (intervals where the vehicle is stopped and the distance remains constant).
+   *
+   * For a queried distance:
+   *
+   * - If the distance lies on a strictly increasing segment (no plateau, unique solution t*):
+   *   - return_end_time == false:
+   *       Returns the smallest time t such that distance(t) >= query.
+   *       Due to numerical tolerance, the returned value may be slightly larger than t*.
+   *   - return_end_time == true:
+   *       Returns the largest time t such that distance(t) <= query.
+   *       Due to numerical tolerance, the returned value may be slightly smaller than t*.
+   *
+   * - If the distance lies on a plateau (multiple valid times):
+   *   - return_end_time == false:
+   *       Returns the earliest time in the plateau (start of the plateau).
+   *       The returned value may be slightly larger than the exact start time.
+   *   - return_end_time == true:
+   *       Returns the latest time in the plateau (end of the plateau).
+   *       The returned value may be slightly smaller than the exact end time.
+   *
    * @param[in] absolute_distance Query absolute distance in meters.
-   * @param[in] return_end_time When true, return the last time for a constant-distance plateau.
+   * @param[in] return_end_time When true, return the last time for a plateau.
    * @return Time in seconds.
    * @throw std::out_of_range If absolute_distance is outside [start_distance(), end_distance()].
    */
