@@ -7720,7 +7720,7 @@
 <span class="w">      </span><span class="p">.</span><span class="n">build</span><span class="p">();</span><span class="w">        </span><span class="c1">// finally, call build()</span>
 </code></pre></div>
 <p>In such cases the result <code>expected</code> object contains <code>InterpolationFailure</code> type with an error message like <strong>"base size 3 is less than minimum required 4"</strong>.</p>
-<p>For <code>Linear</code>, <code>CubicSpline</code>, <code>AkimaSpline</code>, and <code>SphericalLinear</code>, consecutive input points whose base difference is smaller than <code>k_points_minimum_dist_threshold</code> are automatically removed as duplicates before interpolation. If the cleaned number of points falls below <code>minimum_required_points()</code>, the build fails and falls back to the next candidate interpolator when <code>build_with_fallback</code> is used.</p>
+<p>For <code>Linear</code>, <code>CubicSpline</code>, <code>AkimaSpline</code>, and <code>SphericalLinear</code>, consecutive input points whose base difference is smaller than the interpolator epsilon are automatically removed as duplicates before interpolation. The default spatial builders use <code>k_epsilon_distance</code>, while temporal time-base handling uses <code>k_epsilon_time</code>. If the cleaned number of points falls below <code>minimum_required_points()</code>, the build fails and falls back to the next candidate interpolator when <code>build_with_fallback</code> is used.</p>
 <h3 id="trajectory-class">Trajectory class<a class="headerlink" href="#trajectory-class" title="Permanent link">#</a></h3>
 <p>The <em>Trajectory</em> class provides mathematical continuous representation and object oriented interface for discrete array of following point types</p>
 <ul class="task-list">
@@ -7784,13 +7784,18 @@
 <td><img alt="curvature" src="images/nomenclature/curvature.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fpr-998%2Fcommon%2Fautoware_trajectory%2Fimages%2Fnomenclature%2Fcurvature.drawio.svg">View in Drawio</a></td>
 </tr>
 <tr>
-<td><code>k_points_minimum_dist_threshold</code></td>
-<td>This is a constant threshold that is used to check if two points or values are same and to avoid zero division.</td>
+<td><code>k_epsilon_distance</code></td>
+<td>Distance epsilon used for spatial duplicate handling and geometric <code>almost-same</code> checks.</td>
+<td></td>
+</tr>
+<tr>
+<td><code>k_epsilon_time</code></td>
+<td>Time epsilon used for temporal duplicate handling in time-parameterized utilities.</td>
 <td></td>
 </tr>
 <tr>
 <td><code>almost-same</code></td>
-<td>The pair of two points <span class="arithmatex">\(P_{1}\)</span> and <span class="arithmatex">\(P_{2}\)</span>, or the pair of two base values <span class="arithmatex">\(s_{1}\)</span> and <span class="arithmatex">\(s_{2}\)</span> are called <code>almost-same</code> if their distance or difference are less than <code>k_points_minimum_dist_threshold</code></td>
+<td>The pair of two points <span class="arithmatex">\(P_{1}\)</span> and <span class="arithmatex">\(P_{2}\)</span>, the pair of two base values <span class="arithmatex">\(s_{1}\)</span> and <span class="arithmatex">\(s_{2}\)</span>, or the pair of two quaternions are called <code>almost-same</code> if their distance, difference, or represented rotation difference are less than the corresponding epsilon for that quantity.</td>
 <td></td>
 </tr>
 </tbody>
@@ -8634,21 +8639,33 @@ s_{3} &amp;= L_{\mathrm{lon}}, &amp; l_{3} &amp;= L
 <h4 id="handling-of-duplicate-points">Handling of duplicate points<a class="headerlink" href="#handling-of-duplicate-points" title="Permanent link">#</a></h4>
 <p>This package handles duplicate or almost-duplicate input points at two stages: when the trajectory bases are built from the raw points, and when each interpolator is constructed.</p>
 <h5 id="1-base-sanitisation-in-trajectorypointbuild">1. Base sanitisation in <code>Trajectory&lt;Point&gt;::build</code><a class="headerlink" href="#1-base-sanitisation-in-trajectorypointbuild" title="Permanent link">#</a></h5>
-<p><code>Trajectory&lt;Point&gt;::build</code> (and the derived builders that reuse it) converts the input point array into arc-length bases. Consecutive points whose 3D Euclidean distance is zero (or smaller than <code>std::numeric_limits&lt;double&gt;::epsilon()</code>) would produce identical bases, which leads to division-by-zero inside the interpolators. To avoid this, the build step clamps every segment length to at least machine epsilon:</p>
+<p><code>Trajectory&lt;Point&gt;::build</code> (and the derived builders that reuse it) converts the input point array into arc-length bases. Consecutive points whose 3D Euclidean distance is zero would produce identical bases, which breaks the strict monotonicity expected by later interpolation steps. To avoid this, the build step clamps every segment length to at least machine epsilon:</p>
 <p><code>cpp
 const auto dist = std::max&lt;double&gt;(
   autoware_utils_geometry::calc_distance3d(points.at(i), points.at(i - 1)),
   std::numeric_limits&lt;double&gt;::epsilon());
 bases_.emplace_back(bases_.back() + dist);</code></p>
-<p>This sanitisation <strong>preserves every input point</strong>; it only inflates the base coordinate of coincident points by a tiny amount so that the base vector stays strictly increasing.</p>
+<p>This sanitisation preserves every input point; it only nudges the generated base coordinate enough to keep the base vector strictly increasing. The actual zero-division avoidance and stronger duplicate filtering are handled later by each interpolator's own <code>build_impl</code>.</p>
+<p><code>TimeDistanceMapping::build</code> applies the same idea to time bases as well. In the current implementation it also clamps each time increment to at least <code>std::numeric_limits&lt;double&gt;::epsilon()</code> before handing the bases to the interpolator.</p>
 <h5 id="2-duplicate-removal-inside-interpolator-build_impl">2. Duplicate removal inside interpolator <code>build_impl</code><a class="headerlink" href="#2-duplicate-removal-inside-interpolator-build_impl" title="Permanent link">#</a></h5>
 <p>Most scalar interpolators (<code>Linear</code>, <code>CubicSpline</code>, <code>AkimaSpline</code>, and <code>SphericalLinear</code>) additionally remove true duplicates before they interpolate, as such duplicates can lead to numerical instability (e.g., division by very small intervals or ill-conditioned systems). Their <code>build_impl</code> functions call:</p>
 <p><code>cpp
 auto [cleaned_bases, cleaned_values] =
-  ::autoware::experimental::trajectory::detail::remove_duplicate_points(bases, values);</code></p>
-<p><code>remove_duplicate_points</code> scans the bases from front to back and drops any point whose base difference from the last kept point is <strong>not larger than</strong> <code>k_points_minimum_dist_threshold</code> (0.005 m). The first point of a duplicate run is retained, the rest are discarded.</p>
+  ::autoware::experimental::trajectory::detail::remove_duplicate_points(bases, values, epsilon_);</code></p>
+<p><code>remove_duplicate_points</code> scans the bases from front to back and drops any point whose base difference from the last kept point is not larger than the interpolator's configured epsilon. The first point of a duplicate run is retained, the rest are discarded.</p>
+<p>For the current default settings:</p>
+<ul>
+<li>spatial trajectory builders use <code>k_epsilon_distance</code></li>
+<li>the internal time-to-distance <code>Linear</code> interpolator of <code>TemporalTrajectory</code> uses <code>k_epsilon_time</code></li>
+</ul>
 <h5 id="3-interpolators-that-do-not-deduplicate">3. Interpolators that do not deduplicate<a class="headerlink" href="#3-interpolators-that-do-not-deduplicate" title="Permanent link">#</a></h5>
 <p><code>LaneIdsInterpolator</code> and <code>Stairstep</code> do <strong>not</strong> invoke <code>remove_duplicate_points</code>; they operate on the bases exactly as provided by the trajectory build step. The base sanitisation described in stage 1 is therefore the only duplicate protection for these interpolators.</p>
+<p>The <code>is_almost_same</code> helpers use quantity-specific thresholds:</p>
+<ul>
+<li>point / pose / path-point / trajectory-point position comparisons use <code>k_epsilon_distance</code></li>
+<li>quaternion rotation comparison uses <code>k_epsilon_angle</code></li>
+<li>temporal equality checks that are implemented explicitly in temporal utilities use <code>k_epsilon_time</code></li>
+</ul>
 <h5 id="summary-of-thresholds">Summary of thresholds<a class="headerlink" href="#summary-of-thresholds" title="Permanent link">#</a></h5>
 <table>
 <thead>
@@ -8660,14 +8677,34 @@ auto [cleaned_bases, cleaned_values] =
 </thead>
 <tbody>
 <tr>
-<td>Trajectory base construction</td>
+<td>Spatial trajectory base construction</td>
 <td><code>std::numeric_limits&lt;double&gt;::epsilon()</code></td>
-<td>Minimum base increment to avoid identical bases</td>
+<td>Minimum base increment to keep arc-length bases increasing</td>
 </tr>
 <tr>
-<td>Interpolator deduplication</td>
-<td><code>k_points_minimum_dist_threshold</code></td>
-<td>Points closer than this in base are treated as duplicates and removed</td>
+<td>Temporal time base construction</td>
+<td><code>std::numeric_limits&lt;double&gt;::epsilon()</code></td>
+<td>Minimum base increment to keep time bases increasing</td>
+</tr>
+<tr>
+<td>Spatial interpolator deduplication</td>
+<td><code>k_epsilon_distance</code></td>
+<td>Spatial bases closer than this are treated as duplicates</td>
+</tr>
+<tr>
+<td>Temporal interpolator deduplication</td>
+<td><code>k_epsilon_time</code></td>
+<td>Time bases closer than this are treated as duplicates</td>
+</tr>
+<tr>
+<td>Geometric <code>is_almost_same</code> checks</td>
+<td><code>k_epsilon_distance</code></td>
+<td>Position-based equality threshold</td>
+</tr>
+<tr>
+<td>Quaternion <code>is_almost_same</code> checks</td>
+<td><code>k_epsilon_angle</code></td>
+<td>Rotation-equivalence threshold</td>
 </tr>
 </tbody>
 </table></div>
