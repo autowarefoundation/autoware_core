@@ -16,13 +16,10 @@
 
 #include "autoware/trajectory/detail/validate_range.hpp"
 #include "autoware/trajectory/interpolator/linear.hpp"
-#include "autoware/trajectory/threshold.hpp"
-#include "autoware/trajectory/utils/find_intervals.hpp"
 
 #include <range/v3/to_container.hpp>
 #include <range/v3/view/transform.hpp>
 
-#include <algorithm>
 #include <cmath>
 #include <memory>
 #include <utility>
