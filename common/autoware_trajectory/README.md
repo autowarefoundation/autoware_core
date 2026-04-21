@@ -327,10 +327,10 @@ common/autoware_trajectory/examples/example_temporal_crop.cpp:117:121
 
 #### <span style="font-size: 1.2em;">`<autoware/trajectory/utils/set_stopline.hpp>`</span>
 
-| Function                                         | Description                                                                                                               |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
-| `set_stopline(trajectory, arc_length)`           | Insert a stopline at the given arc length by setting the velocity profile to zero around the stop point.                  |
-| `set_stopline(trajectory, arc_length, duration)` | Same as above, but additionally extend the schedule so that the vehicle remains stopped for the specified `duration` [s]. |
+| Function                                                 | Description                                                                                                               |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `set_stopline(trajectory, arc_length)`                   | Insert a stopline at the given arc length by setting the velocity profile to zero around the stop point.                  |
+| `insert_stop_duration(trajectory, arc_length, duration)` | Same as above, but additionally extend the schedule so that the vehicle remains stopped for the specified `duration` [s]. |
 
 #### <span style="font-size: 1.2em;">`<autoware/trajectory/utils/set_time_offset.hpp>`</span>
 

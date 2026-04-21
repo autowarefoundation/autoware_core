@@ -383,7 +383,7 @@ TEST(SetStoplineTemporal, SetStoplineWithTimeExtendsSchedule)
 
   auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
   ASSERT_TRUE(trajectory_result.has_value());
-  const auto trajectory = set_stopline(trajectory_result.value(), 1.5, 1.5);
+  const auto trajectory = insert_stop_duration(trajectory_result.value(), 1.5, 1.5);
 
   const auto stop_point = trajectory.compute_from_time(3.0);
   EXPECT_NEAR(stop_point.pose.position.x, 1.5, 1e-3);
@@ -405,7 +405,7 @@ TEST(SetStoplineTemporal, DistanceToTimeReturnsFirstStopTime)
 
   auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
   ASSERT_TRUE(trajectory_result.has_value());
-  const auto trajectory = set_stopline(trajectory_result.value(), 1.5, 1.5);
+  const auto trajectory = insert_stop_duration(trajectory_result.value(), 1.5, 1.5);
 
   const auto stop_time = trajectory.distance_to_time(1.5);
   EXPECT_NEAR(stop_time, 1.5, 1e-6);
@@ -422,7 +422,7 @@ TEST(SetStoplineTemporal, DistanceToTimeReturnsEndTimeAfterThreeArgStopline)
 
   auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
   ASSERT_TRUE(trajectory_result.has_value());
-  const auto stopped = set_stopline(trajectory_result.value(), 1.5, 1.5);
+  const auto stopped = insert_stop_duration(trajectory_result.value(), 1.5, 1.5);
 
   EXPECT_NEAR(stopped.distance_to_time(1.5), 1.5, 1e-6);
   EXPECT_NEAR(stopped.distance_to_time(1.5, true), 3.0, 1e-6);
@@ -477,8 +477,8 @@ TEST(SetStoplineTemporal, ThreeArgAdditive)
 
   auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
   ASSERT_TRUE(trajectory_result.has_value());
-  const auto t1 = set_stopline(trajectory_result.value(), 1.5, 1.5);
-  const auto t2 = set_stopline(t1, 1.5, 1.5);
+  const auto t1 = insert_stop_duration(trajectory_result.value(), 1.5, 1.5);
+  const auto t2 = insert_stop_duration(t1, 1.5, 1.5);
   const auto at_stop = t2.compute_from_time(1.5);
   const auto during_second_plateau = t2.compute_from_time(3.5);
   const auto after_stop = t2.compute_from_time(4.6);
@@ -527,7 +527,7 @@ TEST(SetStoplineTemporal, FindIntervalsAfterThreeArgStopline)
 
   auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
   ASSERT_TRUE(trajectory_result.has_value());
-  const auto trajectory = set_stopline(trajectory_result.value(), 1.5, 1.5);
+  const auto trajectory = insert_stop_duration(trajectory_result.value(), 1.5, 1.5);
 
   const auto intervals =
     autoware::experimental::trajectory::find_intervals(trajectory, [](const auto & point) {
@@ -552,8 +552,8 @@ TEST(SetStoplineTemporal, FindIntervalsAfterAdditiveStopline)
 
   auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
   ASSERT_TRUE(trajectory_result.has_value());
-  const auto t1 = set_stopline(trajectory_result.value(), 1.5, 1.5);
-  const auto t2 = set_stopline(t1, 1.5, 1.5);
+  const auto t1 = insert_stop_duration(trajectory_result.value(), 1.5, 1.5);
+  const auto t2 = insert_stop_duration(t1, 1.5, 1.5);
 
   const auto intervals =
     autoware::experimental::trajectory::find_intervals(t2, [](const auto & point) {

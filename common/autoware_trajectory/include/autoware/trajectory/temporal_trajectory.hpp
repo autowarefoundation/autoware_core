@@ -245,7 +245,7 @@ private:
   friend TemporalTrajectory crop_distance(
     TemporalTrajectory trajectory, double start_distance, double length);
   friend TemporalTrajectory set_stopline(TemporalTrajectory trajectory, double arc_length);
-  friend TemporalTrajectory set_stopline(
+  friend TemporalTrajectory insert_stop_duration(
     TemporalTrajectory trajectory, double arc_length, double duration);
   friend TemporalTrajectory set_time_offset(TemporalTrajectory trajectory, double offset);
 

@@ -22,7 +22,8 @@ namespace autoware::experimental::trajectory
 
 TemporalTrajectory set_stopline(TemporalTrajectory trajectory, double arc_length);
 
-TemporalTrajectory set_stopline(TemporalTrajectory trajectory, double arc_length, double duration);
+TemporalTrajectory insert_stop_duration(
+  TemporalTrajectory trajectory, double arc_length, double duration);
 
 }  // namespace autoware::experimental::trajectory
 

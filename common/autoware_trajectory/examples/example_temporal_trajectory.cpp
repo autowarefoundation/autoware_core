@@ -176,7 +176,7 @@ int main(int argc, char ** argv)
       autoware::experimental::trajectory::set_stopline(original, stop_length);
 
     const auto stop_with_wait =
-      autoware::experimental::trajectory::set_stopline(original, stop_length, 2.0);
+      autoware::experimental::trajectory::insert_stop_duration(original, stop_length, 2.0);
 
     const auto crossed_point = original.compute_from_distance(stop_length);
     const auto [original_time, original_distance] =

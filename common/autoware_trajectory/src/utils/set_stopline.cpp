@@ -38,7 +38,7 @@ TemporalTrajectory set_stopline(TemporalTrajectory trajectory, const double arc_
   return trajectory;
 }
 
-TemporalTrajectory set_stopline(
+TemporalTrajectory insert_stop_duration(
   TemporalTrajectory trajectory, const double arc_length, const double duration)
 {
   detail::throw_if_out_of_range(arc_length, 0.0, trajectory.length(), "arc_length");
