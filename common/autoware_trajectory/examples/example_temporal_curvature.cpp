@@ -152,7 +152,7 @@ int main()
     const auto stop_intervals =
       autoware::experimental::trajectory::find_intervals(trajectory, [](const TrajectoryPoint & p) {
         return std::abs(p.longitudinal_velocity_mps) <=
-               autoware::experimental::trajectory::k_zero_velocity_threshold;
+               autoware::experimental::trajectory::k_epsilon_velocity;
       });
     const bool has_stop = !stop_intervals.empty();
     const double stop_time = has_stop ? stop_intervals.front().start.time : 0.0;

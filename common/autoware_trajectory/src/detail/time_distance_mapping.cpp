@@ -47,7 +47,7 @@ size_t insert_or_replace_base_at_time(
   const auto insert_index = find_time_index(time_bases, time);
   if (
     insert_index == time_bases.size() ||
-    std::abs(time_bases.at(insert_index) - time) > k_same_time_threshold) {
+    std::abs(time_bases.at(insert_index) - time) > k_epsilon_time) {
     time_bases.insert(time_bases.begin() + static_cast<std::ptrdiff_t>(insert_index), time);
     values.insert(values.begin() + static_cast<std::ptrdiff_t>(insert_index), value);
     return insert_index;

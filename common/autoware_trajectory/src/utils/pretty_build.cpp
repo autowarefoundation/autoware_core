@@ -46,7 +46,7 @@ std::optional<TemporalTrajectory> pretty_build_temporal(
   if (!try_trajectory) {
     return std::nullopt;
   }
-  if (try_trajectory->length() < k_points_minimum_dist_threshold) {
+  if (try_trajectory->length() < k_epsilon_distance) {
     return std::nullopt;
   }
   return try_trajectory.value();

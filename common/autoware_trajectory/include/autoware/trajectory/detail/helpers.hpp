@@ -16,7 +16,6 @@
 #define AUTOWARE__TRAJECTORY__DETAIL__HELPERS_HPP_
 
 #include "autoware/trajectory/interpolator/result.hpp"
-#include "autoware/trajectory/threshold.hpp"
 
 #include <functional>
 #include <limits>
@@ -110,7 +109,7 @@ inline bool has_strictly_increasing_bases(
  */
 template <typename T>
 inline std::pair<std::vector<double>, std::vector<T>> remove_duplicate_points(
-  const std::vector<double> & bases, const std::vector<T> & values)
+  const std::vector<double> & bases, const std::vector<T> & values, const double epsilon)
 {
   std::vector<double> out_bases;
   std::vector<T> out_values;
@@ -122,7 +121,7 @@ inline std::pair<std::vector<double>, std::vector<T>> remove_duplicate_points(
   out_bases.push_back(bases.front());
   out_values.push_back(values.front());
   for (size_t i = 1; i < bases.size(); ++i) {
-    if (bases[i] - out_bases.back() > k_points_minimum_dist_threshold) {
+    if (bases[i] - out_bases.back() > epsilon) {
       out_bases.push_back(bases[i]);
       out_values.push_back(values[i]);
     }

@@ -193,7 +193,7 @@ int main(int argc, char ** argv)
     const auto wait_stop_intervals =
       autoware::experimental::trajectory::find_intervals(stop_with_wait, [](const auto & point) {
         return std::abs(point.longitudinal_velocity_mps) <=
-               autoware::experimental::trajectory::k_zero_velocity_threshold;
+               autoware::experimental::trajectory::k_epsilon_velocity;
       });
 
     std::cout << "Plot mode: "

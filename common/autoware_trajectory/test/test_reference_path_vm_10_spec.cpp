@@ -152,7 +152,7 @@ TEST_P(TestWithVM_01_10_12_Map, FromP0OnEntireLanes)  // NOLINT
          path_points_with_lane_id | ranges::views::drop(2))) {
     EXPECT_TRUE(
       autoware_utils_geometry::calc_distance3d(p1, p2) >=
-      autoware::experimental::trajectory::k_points_minimum_dist_threshold);
+      autoware::experimental::trajectory::k_epsilon_distance);
     EXPECT_TRUE(
       std::fabs(
         autoware_utils_math::normalize_radian(
@@ -291,7 +291,7 @@ TEST_P(TestWithVM_01_10_12_Map, FromP1OnEntireLanes)
          path_points_with_lane_id | ranges::views::drop(2))) {
     EXPECT_TRUE(
       autoware_utils_geometry::calc_distance3d(p1, p2) >=
-      autoware::experimental::trajectory::k_points_minimum_dist_threshold);
+      autoware::experimental::trajectory::k_epsilon_distance);
     EXPECT_TRUE(
       std::fabs(
         autoware_utils_math::normalize_radian(
@@ -430,7 +430,7 @@ TEST_P(TestWithVM_01_10_12_Map, FromP2OnEntireLanes)
          path_points_with_lane_id | ranges::views::drop(2))) {
     EXPECT_TRUE(
       autoware_utils_geometry::calc_distance3d(p1, p2) >=
-      autoware::experimental::trajectory::k_points_minimum_dist_threshold);
+      autoware::experimental::trajectory::k_epsilon_distance);
     EXPECT_TRUE(
       std::fabs(
         autoware_utils_math::normalize_radian(
@@ -569,7 +569,7 @@ TEST_P(TestWithVM_01_10_12_Map, FromP3OnEntireLanes)
          path_points_with_lane_id | ranges::views::drop(2))) {
     EXPECT_TRUE(
       autoware_utils_geometry::calc_distance3d(p1, p2) >=
-      autoware::experimental::trajectory::k_points_minimum_dist_threshold);
+      autoware::experimental::trajectory::k_epsilon_distance);
     EXPECT_TRUE(
       std::fabs(
         autoware_utils_math::normalize_radian(
@@ -708,7 +708,7 @@ TEST_P(TestWithVM_01_10_12_Map, FromP4OnEntireLanes)
          path_points_with_lane_id | ranges::views::drop(2))) {
     EXPECT_TRUE(
       autoware_utils_geometry::calc_distance3d(p1, p2) >=
-      autoware::experimental::trajectory::k_points_minimum_dist_threshold);
+      autoware::experimental::trajectory::k_epsilon_distance);
     EXPECT_TRUE(
       std::fabs(
         autoware_utils_math::normalize_radian(
@@ -847,7 +847,7 @@ TEST_P(TestWithVM_01_10_12_Map, FromP5OnEntireLanes)
          path_points_with_lane_id | ranges::views::drop(2))) {
     EXPECT_TRUE(
       autoware_utils_geometry::calc_distance3d(p1, p2) >=
-      autoware::experimental::trajectory::k_points_minimum_dist_threshold);
+      autoware::experimental::trajectory::k_epsilon_distance);
     EXPECT_TRUE(
       std::fabs(
         autoware_utils_math::normalize_radian(
@@ -986,7 +986,7 @@ TEST_P(TestWithVM_01_10_12_Map, FromP6OnEntireLanes)
          path_points_with_lane_id | ranges::views::drop(2))) {
     EXPECT_TRUE(
       autoware_utils_geometry::calc_distance3d(p1, p2) >=
-      autoware::experimental::trajectory::k_points_minimum_dist_threshold);
+      autoware::experimental::trajectory::k_epsilon_distance);
     EXPECT_TRUE(
       std::fabs(
         autoware_utils_math::normalize_radian(
@@ -1125,7 +1125,7 @@ TEST_P(TestWithVM_01_10_12_Map, FromP1ForwardOnEntireLanes)
          path_points_with_lane_id | ranges::views::drop(2))) {
     EXPECT_TRUE(
       autoware_utils_geometry::calc_distance3d(p1, p2) >=
-      autoware::experimental::trajectory::k_points_minimum_dist_threshold);
+      autoware::experimental::trajectory::k_epsilon_distance);
     EXPECT_TRUE(
       std::fabs(
         autoware_utils_math::normalize_radian(
@@ -1251,7 +1251,7 @@ TEST_P(TestWithVM_01_10_12_Map, FromP2ForwardOnEntireLanes)
          path_points_with_lane_id | ranges::views::drop(2))) {
     EXPECT_TRUE(
       autoware_utils_geometry::calc_distance3d(p1, p2) >=
-      autoware::experimental::trajectory::k_points_minimum_dist_threshold);
+      autoware::experimental::trajectory::k_epsilon_distance);
     EXPECT_TRUE(
       std::fabs(
         autoware_utils_math::normalize_radian(
@@ -1364,7 +1364,7 @@ TEST_P(TestWithVM_01_10_12_Map, FromP3ForwardOnEntireLanes)
          path_points_with_lane_id | ranges::views::drop(2))) {
     EXPECT_TRUE(
       autoware_utils_geometry::calc_distance3d(p1, p2) >=
-      autoware::experimental::trajectory::k_points_minimum_dist_threshold);
+      autoware::experimental::trajectory::k_epsilon_distance);
     EXPECT_TRUE(
       std::fabs(
         autoware_utils_math::normalize_radian(
@@ -1464,7 +1464,7 @@ TEST_P(TestWithVM_01_10_12_Map, FromP4ForwardOnEntireLanes)
          path_points_with_lane_id | ranges::views::drop(2))) {
     EXPECT_TRUE(
       autoware_utils_geometry::calc_distance3d(p1, p2) >=
-      autoware::experimental::trajectory::k_points_minimum_dist_threshold);
+      autoware::experimental::trajectory::k_epsilon_distance);
     EXPECT_TRUE(
       std::fabs(
         autoware_utils_math::normalize_radian(
@@ -1551,7 +1551,7 @@ TEST_P(TestWithVM_01_10_12_Map, FromP5ForwardOnEntireLanes)
          path_points_with_lane_id | ranges::views::drop(2))) {
     EXPECT_TRUE(
       autoware_utils_geometry::calc_distance3d(p1, p2) >=
-      autoware::experimental::trajectory::k_points_minimum_dist_threshold);
+      autoware::experimental::trajectory::k_epsilon_distance);
     EXPECT_TRUE(
       std::fabs(
         autoware_utils_math::normalize_radian(
@@ -1638,7 +1638,7 @@ TEST_P(TestWithVM_01_10_12_Map, FromP6ForwardOnEntireLanes)
          path_points_with_lane_id | ranges::views::drop(2))) {
     EXPECT_TRUE(
       autoware_utils_geometry::calc_distance3d(p1, p2) >=
-      autoware::experimental::trajectory::k_points_minimum_dist_threshold);
+      autoware::experimental::trajectory::k_epsilon_distance);
     EXPECT_TRUE(
       std::fabs(
         autoware_utils_math::normalize_radian(

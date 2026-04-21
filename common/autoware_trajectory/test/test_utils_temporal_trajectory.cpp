@@ -117,7 +117,7 @@ TEST(FindIntervalsTemporal, ReturnsEmptyWhenNoStopInterval)
   const auto intervals = autoware::experimental::trajectory::find_intervals(
     trajectory_result.value(), [](const auto & point) {
       return std::abs(point.longitudinal_velocity_mps) <=
-             autoware::experimental::trajectory::k_zero_velocity_threshold;
+             autoware::experimental::trajectory::k_epsilon_velocity;
     });
   EXPECT_TRUE(intervals.empty());
 }
@@ -138,7 +138,7 @@ TEST(FindIntervalsTemporal, ReturnsStopIntervalWithDistance)
   const auto intervals = autoware::experimental::trajectory::find_intervals(
     trajectory_result.value(), [](const auto & point) {
       return std::abs(point.longitudinal_velocity_mps) <=
-             autoware::experimental::trajectory::k_zero_velocity_threshold;
+             autoware::experimental::trajectory::k_epsilon_velocity;
     });
   ASSERT_EQ(intervals.size(), 1U);
   EXPECT_NEAR(intervals.front().start.time, 2.0, 1e-6);
@@ -507,7 +507,7 @@ TEST(SetStoplineTemporal, FindIntervalsAfterTwoArgStopline)
   const auto intervals =
     autoware::experimental::trajectory::find_intervals(trajectory, [](const auto & point) {
       return std::abs(point.longitudinal_velocity_mps) <=
-             autoware::experimental::trajectory::k_zero_velocity_threshold;
+             autoware::experimental::trajectory::k_epsilon_velocity;
     });
   ASSERT_EQ(intervals.size(), 1U);
   EXPECT_NEAR(intervals.front().start.time, 1.5, 1e-3);
@@ -532,7 +532,7 @@ TEST(SetStoplineTemporal, FindIntervalsAfterThreeArgStopline)
   const auto intervals =
     autoware::experimental::trajectory::find_intervals(trajectory, [](const auto & point) {
       return std::abs(point.longitudinal_velocity_mps) <=
-             autoware::experimental::trajectory::k_zero_velocity_threshold;
+             autoware::experimental::trajectory::k_epsilon_velocity;
     });
   ASSERT_EQ(intervals.size(), 1U);
   EXPECT_NEAR(intervals.front().start.time, 1.5, 1e-3);
@@ -558,7 +558,7 @@ TEST(SetStoplineTemporal, FindIntervalsAfterAdditiveStopline)
   const auto intervals =
     autoware::experimental::trajectory::find_intervals(t2, [](const auto & point) {
       return std::abs(point.longitudinal_velocity_mps) <=
-             autoware::experimental::trajectory::k_zero_velocity_threshold;
+             autoware::experimental::trajectory::k_epsilon_velocity;
     });
   ASSERT_EQ(intervals.size(), 1U);
   EXPECT_NEAR(intervals.front().start.time, 1.5, 1e-3);

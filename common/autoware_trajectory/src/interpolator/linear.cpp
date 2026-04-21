@@ -27,11 +27,12 @@ namespace autoware::experimental::trajectory::interpolator
 bool Linear::build_impl(const std::vector<double> & bases, const std::vector<double> & values)
 {
   auto [cleaned_bases, cleaned_values] =
-    ::autoware::experimental::trajectory::detail::remove_duplicate_points(bases, values);
+    ::autoware::experimental::trajectory::detail::remove_duplicate_points(bases, values, epsilon_);
   if (cleaned_bases.size() < minimum_required_points()) {
     return false;
   }
-  if (!::autoware::experimental::trajectory::detail::has_strictly_increasing_bases(cleaned_bases)) {
+  if (!::autoware::experimental::trajectory::detail::has_strictly_increasing_bases(
+        cleaned_bases, epsilon_)) {
     return false;
   }
   this->bases_ = std::move(cleaned_bases);
@@ -43,11 +44,12 @@ bool Linear::build_impl(const std::vector<double> & bases, const std::vector<dou
 bool Linear::build_impl(const std::vector<double> & bases, std::vector<double> && values)
 {
   auto [cleaned_bases, cleaned_values] =
-    ::autoware::experimental::trajectory::detail::remove_duplicate_points(bases, values);
+    ::autoware::experimental::trajectory::detail::remove_duplicate_points(bases, values, epsilon_);
   if (cleaned_bases.size() < minimum_required_points()) {
     return false;
   }
-  if (!::autoware::experimental::trajectory::detail::has_strictly_increasing_bases(cleaned_bases)) {
+  if (!::autoware::experimental::trajectory::detail::has_strictly_increasing_bases(
+        cleaned_bases, epsilon_)) {
     return false;
   }
   this->bases_ = std::move(cleaned_bases);

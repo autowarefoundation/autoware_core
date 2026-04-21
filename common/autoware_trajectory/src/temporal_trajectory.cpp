@@ -16,6 +16,7 @@
 
 #include "autoware/trajectory/detail/validate_range.hpp"
 #include "autoware/trajectory/interpolator/linear.hpp"
+#include "autoware/trajectory/threshold.hpp"
 
 #include <range/v3/to_container.hpp>
 #include <range/v3/view/transform.hpp>
@@ -144,7 +145,8 @@ TemporalTrajectory::Builder::Builder() : trajectory_(std::make_unique<TemporalTr
 
 void TemporalTrajectory::Builder::defaults(TemporalTrajectory * trajectory)
 {
-  trajectory->time_distance_mapping_.set_interpolator(std::make_shared<interpolator::Linear>());
+  trajectory->time_distance_mapping_.set_interpolator(
+    std::make_shared<interpolator::Linear>(k_epsilon_time));
 }
 
 tl::expected<TemporalTrajectory, interpolator::InterpolationFailure>

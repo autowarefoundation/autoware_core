@@ -49,7 +49,8 @@ std::vector<double> crossed_with_constraint_impl(
   const std::function<Eigen::Vector2d(const double & s)> & trajectory_compute,
   const std::vector<double> & bases,  //
   const std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>> & linestring,
-  const std::function<bool(const double &)> & constraint);
+  const std::function<bool(const double &)> & constraint,
+  const std::function<bool(const double &, const double &)> & is_almost_same);
 }  // namespace detail::impl
 
 /**
@@ -100,7 +101,10 @@ template <class TrajectoryPointType, class LineStringType, class Constraint>
 
   return detail::impl::crossed_with_constraint_impl(
     trajectory_compute, bases, linestring_eigen,
-    [&constraint, &trajectory](const double & s) { return constraint(trajectory.compute(s)); });
+    [&constraint, &trajectory](const double & s) { return constraint(trajectory.compute(s)); },
+    [&trajectory](const double & lhs, const double & rhs) {
+      return is_almost_same(trajectory.compute(lhs), trajectory.compute(rhs));
+    });
 }
 
 /**

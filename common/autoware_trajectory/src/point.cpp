@@ -266,9 +266,9 @@ Trajectory<PointType>::Builder::Builder() : trajectory_(std::make_unique<Traject
 
 void Trajectory<PointType>::Builder::defaults(Trajectory<PointType> * trajectory)
 {
-  trajectory->x_interpolator_ = std::make_shared<interpolator::CubicSpline>();
-  trajectory->y_interpolator_ = std::make_shared<interpolator::CubicSpline>();
-  trajectory->z_interpolator_ = std::make_shared<interpolator::Linear>();
+  trajectory->x_interpolator_ = std::make_shared<interpolator::CubicSpline>(k_epsilon_distance);
+  trajectory->y_interpolator_ = std::make_shared<interpolator::CubicSpline>(k_epsilon_distance);
+  trajectory->z_interpolator_ = std::make_shared<interpolator::Linear>(k_epsilon_distance);
 }
 
 tl::expected<Trajectory<PointType>, interpolator::InterpolationFailure>
