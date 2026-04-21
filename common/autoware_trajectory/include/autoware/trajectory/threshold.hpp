@@ -32,6 +32,8 @@ static constexpr double k_epsilon_distance = 0.005;  // meter
 static constexpr double k_epsilon_velocity = 1e-6;   // m/s
 static constexpr double k_epsilon_angle = 1e-6;      // rad
 
+[[deprecated]] static constexpr double k_points_minimum_dist_threshold = k_epsilon_distance;
+
 /**
  * @brief check if two points are almost-same
  */
