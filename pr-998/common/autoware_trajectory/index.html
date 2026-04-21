@@ -8376,7 +8376,7 @@ std::vector&lt;autoware_planning_msgs::msg::PathPoint&gt; points = trajectory-&g
 <td>Insert a stopline at the given arc length by setting the velocity profile to zero around the stop point.</td>
 </tr>
 <tr>
-<td><code>set_stopline(trajectory, arc_length, duration)</code></td>
+<td><code>insert_stop_duration(trajectory, arc_length, duration)</code></td>
 <td>Same as above, but additionally extend the schedule so that the vehicle remains stopped for the specified <code>duration</code> [s].</td>
 </tr>
 </tbody>
