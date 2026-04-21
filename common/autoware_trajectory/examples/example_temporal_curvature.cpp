@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/trajectory/interpolator/akima_spline.hpp"
 #include "autoware/trajectory/temporal_trajectory.hpp"
 #include "autoware/trajectory/threshold.hpp"
 #include "autoware/trajectory/utils/find_intervals.hpp"
@@ -107,9 +106,7 @@ int main()
     }
 
     const auto trajectory_opt =
-      autoware::experimental::trajectory::TemporalTrajectory::Builder{}
-        .set_xy_interpolator<autoware::experimental::trajectory::interpolator::AkimaSpline>()
-        .build(points);
+      autoware::experimental::trajectory::TemporalTrajectory::Builder{}.build(points);
     if (!trajectory_opt) {
       std::cerr << "Failed to build temporal trajectory" << std::endl;
       return 1;
