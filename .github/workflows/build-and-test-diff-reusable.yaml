@@ -35,13 +35,16 @@ on:
 env:
   CC: /usr/lib/ccache/gcc
   CXX: /usr/lib/ccache/g++
+  CCACHE_DIR: /root/.ccache
 
 jobs:
   build-and-test-differential:
     name: build-and-test-diff
     if: ${{ inputs.run-condition }}
     runs-on: ${{ fromJson(inputs.runner) }}
-    container: ${{ inputs.container }}
+    container:
+      image: ${{ inputs.container }}
+      options: --cap-add=NET_ADMIN
     steps:
       - name: Set PR fetch depth
         run: echo "PR_FETCH_DEPTH=$(( ${{ github.event.pull_request.commits }} + 1 ))" >> "${GITHUB_ENV}"
@@ -52,6 +55,9 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: ${{ env.PR_FETCH_DEPTH }}
+
+      - name: Tune DDS network settings
+        uses: ./.github/actions/tune-dds-network
 
       - name: Show disk space before the tasks
         if: ${{ always() }}
@@ -94,6 +100,18 @@ jobs:
         run: |
           du -sh ${CCACHE_DIR} && ccache -s
           ccache --zero-stats
+        shell: bash
+
+      - name: Remove self packages from underlay
+        if: ${{ inputs.above }}
+        run: |
+          for pkg_xml in $(find . -name package.xml); do
+            pkg_name=$(xmllint --xpath 'string(//package/name)' "$pkg_xml")
+            if [ -d "/opt/autoware/$pkg_name" ]; then
+              echo "Removing /opt/autoware/$pkg_name"
+              sudo rm -rf "/opt/autoware/$pkg_name"
+            fi
+          done
         shell: bash
 
       - name: Build
