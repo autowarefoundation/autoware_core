@@ -16,6 +16,7 @@
 #include "autoware/trajectory/threshold.hpp"
 #include "autoware/trajectory/utils/reference_path.hpp"
 #include "test_case.hpp"
+#include "test_plot.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <autoware/lanelet2_utils/conversion.hpp>
@@ -250,7 +251,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, FromP0OnEntireLanes)  // NOLINT
   }
 
 #ifdef PLOT
-  {
+  if (autoware::test_utils::plot_enabled()) {
     std::string filename =
       std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
       "test_reference_path_invalid_01.svg";
@@ -389,7 +390,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, FromP1OnEntireLanes)
   }
 
 #ifdef PLOT
-  {
+  if (autoware::test_utils::plot_enabled()) {
     std::string filename =
       std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
       "test_reference_path_invalid_01.svg";
@@ -528,7 +529,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, FromP2OnEntireLanes)
   }
 
 #ifdef PLOT
-  {
+  if (autoware::test_utils::plot_enabled()) {
     std::string filename =
       std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
       "test_reference_path_invalid_01.svg";
@@ -667,7 +668,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, FromP3OnEntireLanes)
   }
 
 #ifdef PLOT
-  {
+  if (autoware::test_utils::plot_enabled()) {
     std::string filename =
       std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
       "test_reference_path_invalid_01.svg";
@@ -806,7 +807,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, FromP4OnEntireLanes)
   }
 
 #ifdef PLOT
-  {
+  if (autoware::test_utils::plot_enabled()) {
     std::string filename =
       std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
       "test_reference_path_invalid_01.svg";
@@ -932,7 +933,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, FromP1ForwardOnEntireLanes)
   }
 
 #ifdef PLOT
-  {
+  if (autoware::test_utils::plot_enabled()) {
     std::string filename =
       std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
       "test_reference_path_invalid_01.svg";
@@ -1032,7 +1033,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, FromP2ForwardOnEntireLanes)
   }
 
 #ifdef PLOT
-  {
+  if (autoware::test_utils::plot_enabled()) {
     std::string filename =
       std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
       "test_reference_path_invalid_01.svg";
@@ -1132,7 +1133,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, FromP3ForwardOnEntireLanes)
   }
 
 #ifdef PLOT
-  {
+  if (autoware::test_utils::plot_enabled()) {
     std::string filename =
       std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
       "test_reference_path_invalid_01.svg";
@@ -1219,7 +1220,7 @@ TEST_F(TestWithVM_01_10_12_Map_Invalid, FromP4ForwardOnEntireLanes)
   }
 
 #ifdef PLOT
-  {
+  if (autoware::test_utils::plot_enabled()) {
     std::string filename =
       std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
       "test_reference_path_invalid_01.svg";
