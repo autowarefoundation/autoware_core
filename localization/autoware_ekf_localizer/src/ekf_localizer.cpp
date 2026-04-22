@@ -52,7 +52,6 @@ EKFLocalizer::EKFLocalizer(const rclcpp::NodeOptions & node_options)
   ekf_dt_(params_.ekf_dt),
   pose_queue_(params_.pose_smoothing_steps, params_.max_pose_queue_size),
   twist_queue_(params_.twist_smoothing_steps, params_.max_twist_queue_size),
-  diagnostics_(this),
   merged_diagnostic_last_transition_time_(0, 0, RCL_ROS_TIME),
   last_pose_callback_time_(0, 0, RCL_ROS_TIME),
   last_twist_callback_time_(0, 0, RCL_ROS_TIME)
@@ -61,13 +60,6 @@ EKFLocalizer::EKFLocalizer(const rclcpp::NodeOptions & node_options)
   is_set_initialpose_ = false;
   merged_diagnostic_status_.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
   merged_diagnostic_status_.message = "OK";
-
-  // Configure diagnostic updater
-  diagnostics_.setHardwareID(this->get_name());
-  diagnostics_.setPeriod(rclcpp::Duration::from_seconds(params_.diagnostics_publish_period));
-  diagnostics_.add("ekf_localizer", this, &EKFLocalizer::diagnose);
-  diagnostics_.add("callback_pose", this, &EKFLocalizer::diagnose_callback_pose);
-  diagnostics_.add("callback_twist", this, &EKFLocalizer::diagnose_callback_twist);
 
   /* initialize ros system */
   timer_control_ = rclcpp::create_timer(
@@ -88,6 +80,10 @@ EKFLocalizer::EKFLocalizer(const rclcpp::NodeOptions & node_options)
     "ekf_biased_pose_with_covariance", 1);
   pub_processing_time_ = create_publisher<autoware_internal_debug_msgs::msg::Float64Stamped>(
     "debug/processing_time_ms", 1);
+  pub_diagnostics_ = create_publisher<diagnostic_msgs::msg::DiagnosticArray>("/diagnostics", 1);
+  diagnostics_publish_timer_ = rclcpp::create_timer(
+    this, get_clock(), rclcpp::Duration::from_seconds(params_.diagnostics_publish_period),
+    [this]() { publish_diagnostics(); });
   sub_initialpose_ = create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
     "initialpose", 1, std::bind(&EKFLocalizer::callback_initial_pose, this, _1));
   sub_pose_with_cov_ = create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
@@ -290,8 +286,9 @@ void EKFLocalizer::timer_callback()
   /* publish ekf result */
   publish_estimate_result(current_ekf_pose, current_biased_ekf_pose, current_ekf_twist);
 
-  /* Latch merged diagnostics every EKF cycle; publishing is periodic via diagnostic_updater,
-   * plus force_update() inside update_diagnostics when severity increases. */
+  /* Latch merged diagnostics every EKF cycle; publishing is periodic via
+   * diagnostics_publish_timer_, plus publish_diagnostics() inside update_diagnostics when severity
+   * increases. */
   update_diagnostics(diag_status_array, current_time);
 
   /* publish processing time */
@@ -448,38 +445,49 @@ void EKFLocalizer::publish_estimate_result(
   tf_br_->sendTransform(transform_stamped);
 }
 
-void EKFLocalizer::diagnose(diagnostic_updater::DiagnosticStatusWrapper & stat)
+void EKFLocalizer::publish_diagnostics()
 {
-  // merged_diagnostic_status_ is updated in update_diagnostics() each EKF tick. Publishing is
-  // driven by diagnostic_updater at diagnostics_publish_period, or force_update() on severity
-  // increase vs. the previous tick.
-  //
-  // Thread safety: copy first for a consistent snapshot if a multi-threaded executor is used.
-  const diagnostic_msgs::msg::DiagnosticStatus snapshot = merged_diagnostic_status_;
+  const std::string node_name = this->get_name();
+  const std::string main_name = "localization: " + node_name;
+  const std::string pose_name = main_name + ": callback_pose";
+  const std::string twist_name = main_name + ": callback_twist";
 
-  stat.name = "localization: " + std::string(this->get_name());
-  stat.hardware_id = this->get_name();
-  stat.summary(snapshot);
+  // Thread safety: snapshot merged status for a consistent array if a multi-threaded executor is
+  // used.
+  diagnostic_msgs::msg::DiagnosticStatus main_st = merged_diagnostic_status_;
+  main_st.name = main_name;
+  main_st.hardware_id = node_name;
 
-  for (const auto & value : snapshot.values) {
-    stat.add(value.key, value.value);
+  diagnostic_msgs::msg::DiagnosticStatus pose_st;
+  pose_st.name = pose_name;
+  pose_st.hardware_id = node_name;
+  pose_st.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+  pose_st.message = "OK";
+  {
+    diagnostic_msgs::msg::KeyValue kv;
+    kv.key = "topic_time_stamp";
+    kv.value = std::to_string(last_pose_callback_time_.nanoseconds());
+    pose_st.values.push_back(kv);
   }
-}
 
-void EKFLocalizer::diagnose_callback_pose(diagnostic_updater::DiagnosticStatusWrapper & stat)
-{
-  stat.name = "localization: " + std::string(this->get_name()) + ": callback_pose";
-  stat.hardware_id = this->get_name();
-  stat.summary(diagnostic_msgs::msg::DiagnosticStatus::OK, "OK");
-  stat.add("topic_time_stamp", std::to_string(last_pose_callback_time_.nanoseconds()));
-}
+  diagnostic_msgs::msg::DiagnosticStatus twist_st;
+  twist_st.name = twist_name;
+  twist_st.hardware_id = node_name;
+  twist_st.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+  twist_st.message = "OK";
+  {
+    diagnostic_msgs::msg::KeyValue kv;
+    kv.key = "topic_time_stamp";
+    kv.value = std::to_string(last_twist_callback_time_.nanoseconds());
+    twist_st.values.push_back(kv);
+  }
 
-void EKFLocalizer::diagnose_callback_twist(diagnostic_updater::DiagnosticStatusWrapper & stat)
-{
-  stat.name = "localization: " + std::string(this->get_name()) + ": callback_twist";
-  stat.hardware_id = this->get_name();
-  stat.summary(diagnostic_msgs::msg::DiagnosticStatus::OK, "OK");
-  stat.add("topic_time_stamp", std::to_string(last_twist_callback_time_.nanoseconds()));
+  diagnostic_msgs::msg::DiagnosticArray msg;
+  msg.header.stamp = this->now();
+  msg.status.push_back(main_st);
+  msg.status.push_back(pose_st);
+  msg.status.push_back(twist_st);
+  pub_diagnostics_->publish(msg);
 }
 
 void EKFLocalizer::update_diagnostics(
@@ -497,7 +505,7 @@ void EKFLocalizer::update_diagnostics(
   // merged_diagnostic_status_ always tracks merge: ERROR→WARN when merge worst is WARN,
   // ERROR/WARN→OK when merge is all OK, same level refreshes message/values.
   merged_diagnostic_status_ = diag_merged_status;
-  // last_transition_time: any level change; force_update below: severity increase only
+  // last_transition_time: any level change; immediate publish below: severity increase only
   if (level_merged != level_before) {
     merged_diagnostic_last_transition_time_ = current_time;
   }
@@ -519,7 +527,7 @@ void EKFLocalizer::update_diagnostics(
   }
 
   if (level_merged > level_before) {
-    diagnostics_.force_update();
+    publish_diagnostics();
   }
 }
 
