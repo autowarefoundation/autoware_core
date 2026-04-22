@@ -106,8 +106,7 @@ TEST(TrajectoryCreatorTestForTrajectoryPoint, RestoreTinyCroppedTrajectoryPreser
   auto trajectory = Trajectory::Builder{}.build(points);
   ASSERT_TRUE(trajectory);
 
-  constexpr double tiny_length =
-    autoware::experimental::trajectory::k_points_minimum_dist_threshold / 10.0;
+  constexpr double tiny_length = autoware::experimental::trajectory::k_epsilon_distance / 10.0;
   const double crop_start = trajectory->length() / 2.0;
   const auto cropped_start_point = trajectory->compute(crop_start);
   const auto cropped_end_point = trajectory->compute(crop_start + tiny_length);
@@ -123,7 +122,7 @@ TEST(TrajectoryCreatorTestForTrajectoryPoint, RestoreTinyCroppedTrajectoryPreser
     std::hypot(
       restored.back().pose.position.x - restored.front().pose.position.x,
       restored.back().pose.position.y - restored.front().pose.position.y),
-    autoware::experimental::trajectory::k_points_minimum_dist_threshold);
+    autoware::experimental::trajectory::k_epsilon_distance);
 }
 
 TEST(TrajectoryCreatorTestForTrajectoryPoint, CreateFromMultiplePoints)

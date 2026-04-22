@@ -54,7 +54,7 @@ TEST(SearchZeroVelocityPosition, FoundAtExactBasePoint)
 
   auto result = search_zero_velocity_position(traj, 0.0, traj.length());
   ASSERT_TRUE(result.has_value());
-  EXPECT_NEAR(result.value(), traj.length() * 2.0 / 3.0, k_zero_velocity_threshold);
+  EXPECT_NEAR(result.value(), traj.length() * 2.0 / 3.0, k_epsilon_velocity);
 }
 
 TEST(SearchZeroVelocityPosition, FoundAtZeroCrossing)
@@ -113,7 +113,7 @@ TEST(SearchZeroVelocityPosition, FoundAtFirstPoint)
 
   auto result = search_zero_velocity_position(traj, 0.0, traj.length());
   ASSERT_TRUE(result.has_value());
-  EXPECT_NEAR(result.value(), 0.0, k_zero_velocity_threshold);
+  EXPECT_NEAR(result.value(), 0.0, k_epsilon_velocity);
 }
 
 TEST(SearchZeroVelocityPosition, FoundAtLastPoint)
@@ -128,7 +128,7 @@ TEST(SearchZeroVelocityPosition, FoundAtLastPoint)
 
   auto result = search_zero_velocity_position(traj, 0.0, traj.length());
   ASSERT_TRUE(result.has_value());
-  EXPECT_NEAR(result.value(), traj.length(), k_zero_velocity_threshold);
+  EXPECT_NEAR(result.value(), traj.length(), k_epsilon_velocity);
 }
 
 TEST(SearchZeroVelocityPosition, FoundWithInterval)
