@@ -33,6 +33,7 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/interpolator/cubic_spline.cpp
   src/interpolator/lane_ids_interpolator.cpp
   src/interpolator/linear.cpp
+  src/interpolator/pchip.cpp
   src/interpolator/result.cpp
   src/interpolator/spherical_linear.cpp
   src/utils/closest.cpp
@@ -90,6 +91,7 @@ if(BUILD_TESTING)
     examples/example_find_if.cpp
     examples/example_find_intervals.cpp
     examples/example_interpolator.cpp
+examples/example_pchip_vs_cubic_spline.cpp
     examples/example_path_point.cpp
     examples/example_point.cpp
     examples/example_pose.cpp
