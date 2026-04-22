@@ -171,9 +171,7 @@ void MapUpdateModule::update_map_internal(
       diagnostics_ptr->update_level_and_message(
         diagnostic_msgs::msg::DiagnosticStatus::ERROR, message.str());
       RCLCPP_ERROR_STREAM_THROTTLE(logger_, *clock_, 1000, message.str());
-    }
 
-    if (!updated) {
       last_update_position_.with([&](auto & pos) { pos = position; });
       return;
     }
