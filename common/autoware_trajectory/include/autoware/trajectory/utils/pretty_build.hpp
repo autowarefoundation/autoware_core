@@ -18,6 +18,7 @@
 #include "autoware/trajectory/interpolator/akima_spline.hpp"
 #include "autoware/trajectory/path_point.hpp"
 #include "autoware/trajectory/path_point_with_lane_id.hpp"
+#include "autoware/trajectory/temporal_trajectory.hpp"
 #include "autoware/trajectory/threshold.hpp"
 #include "autoware/trajectory/trajectory_point.hpp"
 
@@ -66,6 +67,10 @@ std::optional<Trajectory<PointType>> pretty_build(
   }
   return try_trajectory.value();
 }
+
+std::optional<TemporalTrajectory> pretty_build_temporal(
+  const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points,
+  const bool use_akima = false);
 
 extern template std::optional<Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>>
 pretty_build(

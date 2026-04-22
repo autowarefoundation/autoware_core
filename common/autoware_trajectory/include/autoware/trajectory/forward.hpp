@@ -23,6 +23,8 @@ class Trajectory
 {
 };
 
+class TemporalTrajectory;
+
 }  // namespace autoware::experimental::trajectory
 
 #endif  // AUTOWARE__TRAJECTORY__FORWARD_HPP_

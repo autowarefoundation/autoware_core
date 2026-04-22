@@ -27,6 +27,7 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/path_point_with_lane_id.cpp
   src/trajectory_point.cpp
   src/detail/logging.cpp
+  src/detail/time_distance_mapping.cpp
   src/detail/types.cpp
   src/detail/util.cpp
   src/interpolator/akima_spline.cpp
@@ -36,6 +37,7 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/interpolator/pchip.cpp
   src/interpolator/result.cpp
   src/interpolator/spherical_linear.cpp
+  src/temporal_trajectory.cpp
   src/utils/closest.cpp
   src/utils/crossed.cpp
   src/utils/find_if.cpp
@@ -79,6 +81,7 @@ if(BUILD_TESTING)
     test/test_utils_footprint.cpp
     test/test_utils_velocity.cpp
     test/test_add_offset.cpp
+    test/test_temporal_trajectory.cpp
   )
 
   ament_auto_add_gtest(test_${PROJECT_NAME} ${test_files})
