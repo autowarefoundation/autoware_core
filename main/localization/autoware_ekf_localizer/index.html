@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../../docs/assets/images/autoware-foundation.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.6">
     
     
       
@@ -8319,7 +8319,7 @@
 <tr>
 <td>diagnostics_publish_frequency</td>
 <td>float</td>
-<td>Diagnostics publish frequency [Hz] for diagnostic_updater::Updater (period = 1/frequency). Must be strictly positive; matches config/ekf_localizer.param.yaml package default. When merged diagnostic severity increases versus the previous EKF timer tick, an extra immediate publish is triggered in addition to this rate.</td>
+<td>Diagnostics publish frequency [Hz] (period = 1/frequency) for the EKF node timer that publishes /diagnostics. Must be strictly positive; matches config/ekf_localizer.param.yaml package default. When merged diagnostic severity increases versus the previous EKF timer tick, an extra immediate publish is triggered in addition to this rate.</td>
 <td>10</td>
 <td>&gt;0</td>
 </tr>
