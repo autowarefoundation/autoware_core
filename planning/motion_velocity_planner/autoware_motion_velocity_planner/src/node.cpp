@@ -168,16 +168,18 @@ bool MotionVelocityPlannerNode::update_planner_data(
   processing_times["update_planner_data.accel"] = sw.toc(true);
 
   const auto predicted_objects_ptr = sub_predicted_objects_.take_data();
-  if (check_with_log(
-        predicted_objects_ptr, "Waiting for predicted objects",
-        required_subscriptions.predicted_objects))
+  if (
+    check_with_log(
+      predicted_objects_ptr, "Waiting for predicted objects",
+      required_subscriptions.predicted_objects))
     planner_data_->process_predicted_objects(*predicted_objects_ptr);
   processing_times["update_planner_data.pred_obj"] = sw.toc(true);
 
   const auto no_ground_pointcloud_ptr = sub_no_ground_pointcloud_.take_data();
-  if (check_with_log(
-        no_ground_pointcloud_ptr, "Waiting for pointcloud",
-        required_subscriptions.no_ground_pointcloud)) {
+  if (
+    check_with_log(
+      no_ground_pointcloud_ptr, "Waiting for pointcloud",
+      required_subscriptions.no_ground_pointcloud)) {
     sw.tic("process_no_ground_pointcloud");
     auto no_ground_pointcloud = process_no_ground_pointcloud(no_ground_pointcloud_ptr);
     processing_times["update_planner_data.pointcloud.affine_transform"] =
@@ -196,9 +198,10 @@ bool MotionVelocityPlannerNode::update_planner_data(
   processing_times["update_planner_data.pointcloud"] = sw.toc(true);
 
   const auto occupancy_grid_ptr = sub_occupancy_grid_.take_data();
-  if (check_with_log(
-        occupancy_grid_ptr, "Waiting for the occupancy grid",
-        required_subscriptions.occupancy_grid_map))
+  if (
+    check_with_log(
+      occupancy_grid_ptr, "Waiting for the occupancy grid",
+      required_subscriptions.occupancy_grid_map))
     planner_data_->occupancy_grid = *occupancy_grid_ptr;
   processing_times["update_planner_data.occ_grid"] = sw.toc(true);
 

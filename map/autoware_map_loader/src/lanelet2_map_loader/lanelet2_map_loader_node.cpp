@@ -98,8 +98,9 @@ void Lanelet2MapLoaderNode::on_map_projector_info(
       throw std::invalid_argument(
         "allow_unsupported_version is false, so stop loading lanelet map");
     }
-  } else if (const auto map_major_ver_opt = lanelet::io_handlers::parseMajorVersion(format_version);
-             map_major_ver_opt.has_value()) {
+  } else if (
+    const auto map_major_ver_opt = lanelet::io_handlers::parseMajorVersion(format_version);
+    map_major_ver_opt.has_value()) {
     const auto map_major_ver = map_major_ver_opt.value();
     if (map_major_ver > static_cast<uint64_t>(lanelet::autoware::version)) {
       RCLCPP_WARN(
