@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../../docs/assets/images/autoware-foundation.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.6">
     
     
       
@@ -7660,7 +7660,8 @@ P_{k|k} = (I - K_k C) P_{k|k-1}
 <li><span class="arithmatex">\(P_{k|k}\)</span> is the posterior covariance matrix.</li>
 </ul>
 <h3 id="extension-to-time-delay-kalman-filter">Extension to Time Delay Kalman Filter<a class="headerlink" href="#extension-to-time-delay-kalman-filter" title="Permanent link">#</a></h3>
-<p>For the Time Delay Kalman filter, it is assumed that there may be a maximum delay of step (<span class="arithmatex">\(d\)</span>) in the measured value. To handle this delay, we extend the state vector to:</p>
+<p>For the Time Delay Kalman filter, it is assumed that there may be a maximum delay of <span class="arithmatex">\(d\)</span> steps in the measured value (<code>max_delay_step</code> <span class="arithmatex">\(= d\)</span>). To handle this delay, we extend the state vector to include past states. The valid delay step range is <span class="arithmatex">\(0, 1, \ldots, d-1\)</span>.</p>
+<p><strong>Augmented State Vector:</strong></p>
 <div class="arithmatex">\[
 (x_{k})_e = \begin{bmatrix}
 x_k \\
@@ -7669,7 +7670,7 @@ x_{k-1} \\
 x_{k-d+1}
 \end{bmatrix}
 \]</div>
-<p>The corresponding state transition matrix (<span class="arithmatex">\(A_e\)</span>) and process noise covariance matrix (<span class="arithmatex">\(Q_e\)</span>) are also expanded:</p>
+<p><strong>Augmented Transition Matrix (<span class="arithmatex">\(A_e\)</span>) and Process Noise (<span class="arithmatex">\(Q_e\)</span>):</strong></p>
 <div class="arithmatex">\[
 A_e = \begin{bmatrix}
 A &amp; 0 &amp; 0 &amp; \cdots &amp; 0 \\
@@ -7687,117 +7688,54 @@ Q &amp; 0 &amp; 0 &amp; \cdots &amp; 0 \\
 \end{bmatrix}
 \]</div>
 <h4 id="prediction-step_1">Prediction Step<a class="headerlink" href="#prediction-step_1" title="Permanent link">#</a></h4>
-<p>The prediction step consists of updating the extended state and covariance matrices.</p>
-<p>Update extension status:</p>
+<p>The prediction step shifts the history of states and predicts the new current state.</p>
+<p>Update extended state:</p>
 <div class="arithmatex">\[
-(x_{k|k-1})_e = \begin{bmatrix}
-A &amp; 0 &amp; 0 &amp; \cdots &amp; 0 \\
-I &amp; 0 &amp; 0 &amp; \cdots &amp; 0 \\
-0 &amp; I &amp; 0 &amp; \cdots &amp; 0 \\
-\vdots &amp; \vdots &amp; \vdots &amp; \ddots &amp; \vdots \\
-0 &amp; 0 &amp; 0 &amp; \cdots &amp; 0
-\end{bmatrix}
-\begin{bmatrix}
-x_{k-1|k-1} \\
-x_{k-2|k-1} \\
-\vdots \\
-x_{k-d|k-1}
-\end{bmatrix}
+(x_{k|k-1})_e = A_e (x_{k-1|k-1})_e + \begin{bmatrix} B u_k \\ 0 \\ \vdots \end{bmatrix}
 \]</div>
 <p>Update extended covariance matrix:</p>
 <div class="arithmatex">\[
-(P_{k|k-1})_e = \begin{bmatrix}
-A &amp; 0 &amp; 0 &amp; \cdots &amp; 0 \\
-I &amp; 0 &amp; 0 &amp; \cdots &amp; 0 \\
-0 &amp; I &amp; 0 &amp; \cdots &amp; 0 \\
-\vdots &amp; \vdots &amp; \vdots &amp; \ddots &amp; \vdots \\
-0 &amp; 0 &amp; 0 &amp; \cdots &amp; 0
-\end{bmatrix}
-\begin{bmatrix}
-P_{k-1|k-1}^{(1)} &amp; P_{k-1|k-1}^{(1,2)} &amp; \cdots &amp; P_{k-1|k-1}^{(1,d)} \\
-P_{k-1|k-1}^{(2,1)} &amp; P_{k-1|k-1}^{(2)} &amp; \cdots &amp; P_{k-1|k-1}^{(2,d)} \\
-\vdots &amp; \vdots &amp; \ddots &amp; \vdots \\
-P_{k-1|k-1}^{(d,1)} &amp; P_{k-1|k-1}^{(d,2)} &amp; \cdots &amp; P_{k-1|k-1}^{(d)}
-\end{bmatrix}
-\begin{bmatrix}
- A^T &amp; I &amp; 0 &amp; \cdots &amp; 0 \\
- 0 &amp; 0 &amp; I &amp; \cdots &amp; 0 \\
- 0 &amp; 0 &amp; 0 &amp; \cdots &amp; 0 \\
- \vdots &amp; \vdots &amp; \vdots &amp; \ddots &amp; \vdots \\
- 0 &amp; 0 &amp; 0 &amp; \cdots &amp; 0
- \end{bmatrix} +
- \begin{bmatrix}
- Q &amp; 0 &amp; 0 &amp; \cdots &amp; 0 \\
- 0 &amp; 0 &amp; 0 &amp; \cdots &amp; 0 \\
- 0 &amp; 0 &amp; 0 &amp; \cdots &amp; 0 \\
- \vdots &amp; \vdots &amp; \vdots &amp; \ddots &amp; \vdots \\
- 0 &amp; 0 &amp; 0 &amp; \cdots &amp; 0
- \end{bmatrix}
+(P_{k|k-1})_e = A_e (P_{k-1|k-1})_e A_e^T + Q_e
 \]</div>
-<p><span class="arithmatex">\(\Longrightarrow\)</span></p>
+<p>This operation essentially computes the new top-left block as <span class="arithmatex">\(A P_{0,0} A^T + Q\)</span> and shifts the cross-covariance blocks <span class="arithmatex">\(P_{i,j}\)</span> accordingly.</p>
+<h4 id="update-step-efficient-implementation">Update Step (Efficient Implementation)<a class="headerlink" href="#update-step-efficient-implementation" title="Permanent link">#</a></h4>
+<p>When receiving a measurement value <span class="arithmatex">\(y_k\)</span> corresponding to a delayed state <span class="arithmatex">\(x_{k-ds}\)</span> (where <span class="arithmatex">\(ds\)</span> is the delay step), we exploit the sparsity of the observation matrix.</p>
+<p>The effective observation matrix <span class="arithmatex">\(H\)</span> for the augmented state is sparse:
+<span class="arithmatex">\(<span class="arithmatex">\(H = \begin{bmatrix} 0 &amp; \cdots &amp; C &amp; \cdots &amp; 0 \end{bmatrix}\)</span>\)</span>
+where <span class="arithmatex">\(C\)</span> is located at the block index corresponding to the delay <span class="arithmatex">\(ds\)</span>.</p>
+<p>Instead of performing full matrix multiplications with zeros, we calculate the update using specific blocks:</p>
+<p><strong>1. Innovation Covariance (<span class="arithmatex">\(S\)</span>):</strong></p>
+<p>Using the diagonal block of the covariance matrix corresponding to the delayed state (<span class="arithmatex">\(P_{ds, ds}\)</span>):</p>
 <div class="arithmatex">\[
-(P_{k|k-1})_e = \begin{bmatrix} A P_{k-1|k-1}^{(1)} A^T + Q &amp; A P_{k-1|k-1}^{(1,2)} &amp; \cdots &amp; A P_{k-1|k-1}^{(1,d)} \\ P_{k-1|k-1}^{(2,1)} A^T &amp; P_{k-1|k-1}^{(2)} &amp; \cdots &amp; P_{k-1|k-1}^{(2,d)} \\ \vdots &amp; \vdots &amp; \ddots &amp; \vdots \\ P_{k-1|k-1}^{(d,1)} A^T &amp; P_{k-1|k-1}^{(d,2)} &amp; \cdots &amp; P_{k-1|k-1}^{(d)} \end{bmatrix}
+S = C P_{ds, ds} C^T + R
+\]</div>
+<p><strong>2. Kalman Gain (<span class="arithmatex">\(K_k\)</span>):</strong></p>
+<p>We calculate the gain using the column block of the covariance matrix (<span class="arithmatex">\(P_{:, ds}\)</span>) which represents the correlation between <strong>all states</strong> (current and past) and the <strong>delayed state</strong>.</p>
+<div class="arithmatex">\[
+P_{CT} = P_{:, ds} C^T
+\]</div>
+<div class="arithmatex">\[
+K_k = P_{CT} S^{-1}
+\]</div>
+<p><em>Note: In implementation, <span class="arithmatex">\(S^{-1}\)</span> is solved via Cholesky decomposition.</em></p>
+<p><strong>3. Update State:</strong></p>
+<p>The innovation is calculated against the delayed state estimate <span class="arithmatex">\(x_{ds}\)</span>.</p>
+<div class="arithmatex">\[
+e = y_k - C x_{ds}
+\]</div>
+<div class="arithmatex">\[
+(x_{k|k})_e = (x_{k|k-1})_e + K_k e
+\]</div>
+<p><strong>4. Update Covariance:</strong></p>
+<p>We update the full covariance matrix using the computed terms. This is computationally equivalent to <span class="arithmatex">\(P - K S K^T\)</span> but more efficient.</p>
+<div class="arithmatex">\[
+(P_{k|k})_e = (P_{k|k-1})_e - P_{CT} K_k^T
 \]</div>
 <p>where,</p>
 <ul>
-<li><span class="arithmatex">\((x_{k|k-1})_e\)</span> is the priori extended state estimate.</li>
-<li><span class="arithmatex">\((P_{k|k-1})_e\)</span> is the priori extended covariance matrix.</li>
-</ul>
-<h4 id="update-step_1">Update Step<a class="headerlink" href="#update-step_1" title="Permanent link">#</a></h4>
-<p>When receiving the measurement value ( <span class="arithmatex">\(y_{k}\)</span> ) with a delay of ( <span class="arithmatex">\(ds\)</span> ), the update steps are as follows:</p>
-<p>Update kalman gain:</p>
-<div class="arithmatex">\[
-K_k = \begin{bmatrix}
-P_{k|k-1}^{(1)} C^T \\
-P_{k|k-1}^{(2)} C^T \\
-\vdots \\
-P_{k|k-1}^{(ds)} C^T \\
-\vdots \\
-P_{k|k-1}^{(d)} C^T
-\end{bmatrix}
-(C P_{k|k-1}^{(ds)} C^T + R)^{-1}
-\]</div>
-<p>Update extension status:</p>
-<div class="arithmatex">\[
-(x_{k|k})_e = \begin{bmatrix}
-x_{k|k-1} \\
-x_{k-1|k-1} \\
-\vdots \\
-x_{k-d+1|k-1}
-\end{bmatrix} +
-\begin{bmatrix}
-K_k^{(1)} \\
-K_k^{(2)} \\
-\vdots \\
-K_k^{(ds)} \\
-\vdots \\
-K_k^{(d)}
-\end{bmatrix} (y_k - C x_{k-ds|k-1})
-\]</div>
-<p>Update extended covariance matrix:</p>
-<div class="arithmatex">\[
- (P_{k|k})_e = \left(I -
- \begin{bmatrix}
- K_k^{(1)} C \\
- K_k^{(2)} C \\
- \vdots \\
- K_k^{(ds)} C \\
- \vdots \\
- K_k^{(d)} C
- \end{bmatrix}\right)
- \begin{bmatrix}
- P_{k|k-1}^{(1)} &amp; P_{k|k-1}^{(1,2)} &amp; \cdots &amp; P_{k|k-1}^{(1,d)} \\
- P_{k|k-1}^{(2,1)} &amp; P_{k|k-1}^{(2)} &amp; \cdots &amp; P_{k|k-1}^{(2,d)} \\
- \vdots &amp; \vdots &amp; \ddots &amp; \vdots \\
- P_{k|k-1}^{(d,1)} &amp; P_{k|k-1}^{(d,2)} &amp; \cdots &amp; P_{k|k-1}^{(d)}
- \end{bmatrix}
-\]</div>
-<p>where,</p>
-<ul>
-<li><span class="arithmatex">\(K_k\)</span> is the Kalman gain.</li>
-<li><span class="arithmatex">\((x_{k|k})_e\)</span> is the posterior extended state estimate.</li>
-<li><span class="arithmatex">\((P_{k|k})_e\)</span> is the posterior extended covariance matrix.</li>
-<li><span class="arithmatex">\(C\)</span> is the measurement matrix, which only applies to the delayed state part.</li>
+<li><span class="arithmatex">\(P_{ds, ds}\)</span> is the covariance block of the delayed state.</li>
+<li><span class="arithmatex">\(P_{:, ds}\)</span> is the rectangular block of covariance (entire column corresponding to delay).</li>
+<li><span class="arithmatex">\(P_{CT}\)</span> corresponds to <span class="arithmatex">\(P H^T\)</span>.</li>
 </ul>
 <h2 id="example-usage">Example Usage<a class="headerlink" href="#example-usage" title="Permanent link">#</a></h2>
 <p>This section describes Example Usage of KalmanFilter.</p>
@@ -7830,30 +7768,7 @@ R *= 1.0;</p>
 <p>// Initialize Kalman filter
 autoware::kalman_filter::KalmanFilter kf;
 kf.init(x0, P0);
-```</p>
-<ul>
-<li>Predict step</li>
-</ul>
-<p><code>cpp
-const Eigen::MatrixXd x_next = A * x0;
-kf.predict(x_next, A, Q);</code></p>
-<ul>
-<li>Update step</li>
-</ul>
-<p><code>cpp
-// Measured value
-Eigen::MatrixXd y = Eigen::MatrixXd::Zero(dim_y, 1);
-kf.update(y, C, R);</code></p>
-<ul>
-<li>Get the current estimated state and covariance matrix</li>
-</ul>
-<p><code>cpp
-Eigen::MatrixXd x_curr = kf.getX();
-Eigen::MatrixXd P_curr = kf.getP();</code></p>
-<h2 id="assumptions-known-limits">Assumptions / Known limits<a class="headerlink" href="#assumptions-known-limits" title="Permanent link">#</a></h2>
-<ul>
-<li>Delay Step Check: Ensure that the <code>delay_step</code> provided during the update does not exceed the maximum delay steps set during initialization.</li>
-</ul></div>
+```</p></div>
 
 
 
