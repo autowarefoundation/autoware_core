@@ -16,6 +16,7 @@
 #define AUTOWARE__TRAJECTORY__UTILS__CROSSED_HPP_
 #include "autoware/trajectory/detail/types.hpp"
 #include "autoware/trajectory/forward.hpp"
+#include "autoware/trajectory/temporal_trajectory.hpp"
 #include "autoware/trajectory/threshold.hpp"
 
 #include <Eigen/Core>
@@ -118,6 +119,19 @@ template <class TrajectoryPointType, class LineStringType>
 {
   return crossed_with_constraint(
     trajectory, linestring, [](const TrajectoryPointType &) { return true; });
+}
+
+template <class LineStringType>
+[[nodiscard]] std::vector<TimeDistancePair> crossed(
+  const TemporalTrajectory & trajectory, const LineStringType & linestring)
+{
+  const auto crossed_distances = crossed(trajectory.spatial_trajectory(), linestring);
+  std::vector<TimeDistancePair> crossed_points;
+  crossed_points.reserve(crossed_distances.size());
+  for (const auto distance : crossed_distances) {
+    crossed_points.push_back(TimeDistancePair{trajectory.distance_to_time(distance), distance});
+  }
+  return crossed_points;
 }
 
 /**

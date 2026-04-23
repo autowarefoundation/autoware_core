@@ -240,6 +240,15 @@ public:
   };
 
 private:
+  friend TemporalTrajectory crop_time(
+    TemporalTrajectory trajectory, double start_time, double duration);
+  friend TemporalTrajectory crop_distance(
+    TemporalTrajectory trajectory, double start_distance, double length);
+  friend TemporalTrajectory set_stopline(TemporalTrajectory trajectory, double arc_length);
+  friend TemporalTrajectory insert_stop_duration(
+    TemporalTrajectory trajectory, double arc_length, double duration);
+  friend TemporalTrajectory set_time_offset(TemporalTrajectory trajectory, double offset);
+
   SpatialTrajectory spatial_trajectory_;
   detail::TimeDistanceMapping time_distance_mapping_;
   double distance_offset_{0.0};
