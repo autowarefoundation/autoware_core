@@ -1,4 +1,4 @@
-// Copyright 2024 TIER IV, Inc.
+// Copyright 2026 TIER IV, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__TRAJECTORY__FORWARD_HPP_
-#define AUTOWARE__TRAJECTORY__FORWARD_HPP_
+#ifndef AUTOWARE__TRAJECTORY__UTILS__SET_STOPLINE_HPP_
+#define AUTOWARE__TRAJECTORY__UTILS__SET_STOPLINE_HPP_
+
+#include "autoware/trajectory/forward.hpp"
 
 namespace autoware::experimental::trajectory
 {
 
-template <typename PointType>
-class Trajectory
-{
-};
+TemporalTrajectory set_stopline(TemporalTrajectory trajectory, double arc_length);
 
-class TemporalTrajectory;
+TemporalTrajectory insert_stop_duration(
+  TemporalTrajectory trajectory, double arc_length, double duration);
 
 }  // namespace autoware::experimental::trajectory
 
-#endif  // AUTOWARE__TRAJECTORY__FORWARD_HPP_
+#endif  // AUTOWARE__TRAJECTORY__UTILS__SET_STOPLINE_HPP_

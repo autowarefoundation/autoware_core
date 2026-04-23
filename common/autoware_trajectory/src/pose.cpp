@@ -18,6 +18,7 @@
 #include "autoware/trajectory/forward.hpp"
 #include "autoware/trajectory/interpolator/nearest_neighbor.hpp"
 #include "autoware/trajectory/interpolator/spherical_linear.hpp"
+#include "autoware/trajectory/threshold.hpp"
 
 #include <tf2/LinearMath/Quaternion.hpp>
 #include <tf2/LinearMath/Vector3.hpp>
@@ -219,7 +220,8 @@ Trajectory<PointType>::Builder::Builder() : trajectory_(std::make_unique<Traject
 void Trajectory<PointType>::Builder::defaults(Trajectory<PointType> * trajectory)
 {
   BaseClass::Builder::defaults(trajectory);
-  trajectory->orientation_interpolator_ = std::make_shared<interpolator::SphericalLinear>();
+  trajectory->orientation_interpolator_ =
+    std::make_shared<interpolator::SphericalLinear>(k_epsilon_distance);
 }
 
 tl::expected<Trajectory<PointType>, interpolator::InterpolationFailure>

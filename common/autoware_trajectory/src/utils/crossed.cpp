@@ -65,7 +65,8 @@ std::vector<double> crossed_with_constraint_impl(
   const std::function<Eigen::Vector2d(const double & s)> & trajectory_compute,
   const std::vector<double> & bases,  //
   const std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>> & linestring,
-  const std::function<bool(const double &)> & constraint)
+  const std::function<bool(const double &)> & constraint,
+  const std::function<bool(const double &, const double &)> & is_almost_same)
 {
   std::vector<double> intersections;
 
