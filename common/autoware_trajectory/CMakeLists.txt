@@ -45,6 +45,7 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/utils/find_intervals.cpp
   src/utils/find_nearest.cpp
   src/utils/footprint.cpp
+  src/utils/align_orientation.cpp
   src/utils/pretty_build.cpp
   src/utils/reference_path.cpp
   src/utils/set_stopline.cpp

@@ -36,23 +36,10 @@ namespace autoware::experimental::trajectory
 namespace detail
 {
 
-template <class TrajectoryType, class = void>
-struct HasAlignOrientationWithTrajectoryDirection : std::false_type
+template <class PointType>
+void align_orientation_with_trajectory_direction_if_supported(Trajectory<PointType> & trajectory)
 {
-};
-
-template <class TrajectoryType>
-struct HasAlignOrientationWithTrajectoryDirection<
-  TrajectoryType, std::void_t<decltype(std::declval<TrajectoryType &>()
-                                         .align_orientation_with_trajectory_direction())>>
-: std::true_type
-{
-};
-
-template <class TrajectoryType>
-void align_orientation_with_trajectory_direction_if_supported(TrajectoryType & trajectory)
-{
-  if constexpr (HasAlignOrientationWithTrajectoryDirection<TrajectoryType>::value) {
+  if constexpr (!std::is_same_v<PointType, geometry_msgs::msg::Point>) {
     trajectory.align_orientation_with_trajectory_direction();
   }
 }
@@ -63,7 +50,7 @@ void align_orientation_with_trajectory_direction_if_supported(TrajectoryType & t
  * @brief Build a trajectory while applying the package's preferred interpolator defaults.
  * @param[in] points Input trajectory points.
  * @param[in] use_akima If true, use Akima spline for XY interpolation.
- * @param[in] align_orientation_with_trajectory_direction If true, align the orientation with the
+ * @param[in] do_align_orientation If true, align the orientation with the
  * trajectory direction when the built trajectory type supports it.
  * @return Built trajectory, or `std::nullopt` when the build fails.
  * @details
@@ -75,7 +62,7 @@ void align_orientation_with_trajectory_direction_if_supported(TrajectoryType & t
 template <typename PointType>
 std::optional<Trajectory<PointType>> pretty_build(
   const std::vector<PointType> & points, const bool use_akima = false,
-  const bool align_orientation_with_trajectory_direction = true)
+  const bool do_align_orientation = true)
 {
   using Builder = typename Trajectory<PointType>::Builder;
 
@@ -86,7 +73,7 @@ std::optional<Trajectory<PointType>> pretty_build(
       return std::nullopt;
     }
     auto trajectory = try_trajectory.value();
-    if (align_orientation_with_trajectory_direction) {
+    if (do_align_orientation) {
       detail::align_orientation_with_trajectory_direction_if_supported(trajectory);
     }
     return trajectory;
@@ -100,7 +87,7 @@ std::optional<Trajectory<PointType>> pretty_build(
     return std::nullopt;
   }
   auto trajectory = try_trajectory.value();
-  if (align_orientation_with_trajectory_direction) {
+  if (do_align_orientation) {
     detail::align_orientation_with_trajectory_direction_if_supported(trajectory);
   }
   return trajectory;
@@ -108,21 +95,21 @@ std::optional<Trajectory<PointType>> pretty_build(
 
 std::optional<TemporalTrajectory> pretty_build_temporal(
   const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points,
-  const bool use_akima = false, const bool align_orientation_with_trajectory_direction = true);
+  const bool use_akima = false, const bool do_align_orientation = true);
 
 extern template std::optional<Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>>
 pretty_build(
   const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & points,
-  const bool use_akima, const bool align_orientation_with_trajectory_direction);
+  const bool use_akima, const bool do_align_orientation);
 
 extern template std::optional<Trajectory<autoware_planning_msgs::msg::PathPoint>> pretty_build(
   const std::vector<autoware_planning_msgs::msg::PathPoint> & points, const bool use_akima,
-  const bool align_orientation_with_trajectory_direction);
+  const bool do_align_orientation);
 
 extern template std::optional<Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>>
 pretty_build(
   const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points, const bool use_akima,
-  const bool align_orientation_with_trajectory_direction);
+  const bool do_align_orientation);
 
 }  // namespace autoware::experimental::trajectory
 

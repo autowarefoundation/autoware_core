@@ -14,6 +14,8 @@
 
 #include "autoware/trajectory/utils/pretty_build.hpp"
 
+#include "autoware/trajectory/utils/align_orientation.hpp"
+
 #include <vector>
 
 namespace autoware::experimental::trajectory
@@ -22,19 +24,19 @@ namespace autoware::experimental::trajectory
 template std::optional<Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>>
 pretty_build(
   const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & points,
-  const bool use_akima, const bool align_orientation_with_trajectory_direction);
+  const bool use_akima, const bool do_align_orientation);
 
 template std::optional<Trajectory<autoware_planning_msgs::msg::PathPoint>> pretty_build(
   const std::vector<autoware_planning_msgs::msg::PathPoint> & points, const bool use_akima,
-  const bool align_orientation_with_trajectory_direction);
+  const bool do_align_orientation);
 
 template std::optional<Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>> pretty_build(
   const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points, const bool use_akima,
-  const bool align_orientation_with_trajectory_direction);
+  const bool do_align_orientation);
 
 std::optional<TemporalTrajectory> pretty_build_temporal(
   const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points, const bool use_akima,
-  const bool align_orientation_with_trajectory_direction)
+  const bool do_align_orientation)
 {
   if (use_akima) {
     const auto try_trajectory =
@@ -43,8 +45,8 @@ std::optional<TemporalTrajectory> pretty_build_temporal(
       return std::nullopt;
     }
     auto trajectory = try_trajectory.value();
-    if (align_orientation_with_trajectory_direction) {
-      trajectory.align_orientation_with_trajectory_direction();
+    if (do_align_orientation) {
+      trajectory = align_orientation_with_trajectory_direction(trajectory);
     }
     return trajectory;
   }
@@ -57,8 +59,8 @@ std::optional<TemporalTrajectory> pretty_build_temporal(
     return std::nullopt;
   }
   auto trajectory = try_trajectory.value();
-  if (align_orientation_with_trajectory_direction) {
-    trajectory.align_orientation_with_trajectory_direction();
+  if (do_align_orientation) {
+    trajectory = align_orientation_with_trajectory_direction(trajectory);
   }
   return trajectory;
 }

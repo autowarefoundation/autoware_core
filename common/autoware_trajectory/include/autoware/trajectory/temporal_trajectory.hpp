@@ -74,11 +74,6 @@ public:
   [[nodiscard]] std::vector<double> get_underlying_time_bases() const;
 
   /**
-   * @brief Align the spatial trajectory orientation with the trajectory direction.
-   */
-  void align_orientation_with_trajectory_direction();
-
-  /**
    * @brief Compute a point at a given time.
    * @param[in] t Query time in seconds.
    * @return Interpolated trajectory point.
@@ -253,6 +248,8 @@ private:
   friend TemporalTrajectory insert_stop_duration(
     TemporalTrajectory trajectory, double arc_length, double duration);
   friend TemporalTrajectory set_time_offset(TemporalTrajectory trajectory, double offset);
+  friend TemporalTrajectory align_orientation_with_trajectory_direction(
+    TemporalTrajectory trajectory);
 
   SpatialTrajectory spatial_trajectory_;
   detail::TimeDistanceMapping time_distance_mapping_;
