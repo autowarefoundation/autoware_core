@@ -12,36 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gtest/gtest.h>
-#include <pybind11/embed.h>
+#ifndef TEST_PLOT_HPP_
+#define TEST_PLOT_HPP_
 
-#include <cstdlib>
-#include <string>
-
-#ifdef PLOT
-#include "test_plot.hpp"
-
-#include <optional>
-#endif
 namespace autoware::test_utils
 {
 
-bool plot_enabled()
-{
-  const char * env = std::getenv("ENABLE_TEST_PLOT");
-  return env && std::string(env) == "1";
-}
+bool plot_enabled();
 
 }  // namespace autoware::test_utils
 
-int main(int argc, char ** argv)
-{
-#ifdef PLOT
-  std::optional<pybind11::scoped_interpreter> guard;
-  if (autoware::test_utils::plot_enabled()) {
-    guard.emplace();
-  }
-#endif
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}
+#endif  // TEST_PLOT_HPP_

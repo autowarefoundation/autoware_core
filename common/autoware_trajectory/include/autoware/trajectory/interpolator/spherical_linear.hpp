@@ -19,8 +19,8 @@
 
 #include <geometry_msgs/msg/quaternion.hpp>
 
+#include <limits>
 #include <vector>
-
 namespace autoware::experimental::trajectory::interpolator
 {
 
@@ -33,6 +33,7 @@ class SphericalLinear
 : public detail::InterpolatorMixin<SphericalLinear, geometry_msgs::msg::Quaternion>
 {
 private:
+  double epsilon_{};  ///< Duplicate-base tolerance.
   std::vector<geometry_msgs::msg::Quaternion> quaternions_;
 
   /**
@@ -69,7 +70,10 @@ public:
   /**
    * @brief Default constructor.
    */
-  SphericalLinear() = default;
+  explicit SphericalLinear(const double epsilon = std::numeric_limits<double>::epsilon())
+  : epsilon_(epsilon)
+  {
+  }
 
   /**
    * @brief Get the minimum number of required points for the interpolator.
