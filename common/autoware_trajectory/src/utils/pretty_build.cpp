@@ -14,8 +14,6 @@
 
 #include "autoware/trajectory/utils/pretty_build.hpp"
 
-#include "autoware/trajectory/utils/align_orientation.hpp"
-
 #include <vector>
 
 namespace autoware::experimental::trajectory
