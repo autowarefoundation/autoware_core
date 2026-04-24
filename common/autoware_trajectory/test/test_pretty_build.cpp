@@ -83,6 +83,36 @@ TEST(PrettyBuild, BuildsFromTwoPointsWithDefaultInterpolator)
   }
 }
 
+TEST(PrettyBuild, DoesNotAlignOrientationByDefault)
+{
+  const std::vector<PathPointWithLaneId> points{
+    make_path_point_with_lane_id(1.0, 1.0, 0.0),
+    make_path_point_with_lane_id(2.0, 2.0, M_PI / 2.0)};
+
+  auto trajectory_opt = autoware::experimental::trajectory::pretty_build(points);
+  ASSERT_TRUE(trajectory_opt.has_value());
+
+  const auto & trajectory = trajectory_opt.value();
+  const auto first_s = trajectory.get_underlying_bases().front();
+  EXPECT_NE(
+    trajectory.azimuth(first_s), get_rpy(trajectory.compute(first_s).point.pose.orientation).z);
+}
+
+TEST(PrettyBuild, AlignsOrientationWithTrajectoryDirection)
+{
+  const std::vector<PathPointWithLaneId> points{
+    make_path_point_with_lane_id(1.0, 1.0, 0.0),
+    make_path_point_with_lane_id(2.0, 2.0, M_PI / 2.0)};
+
+  auto trajectory_opt = autoware::experimental::trajectory::pretty_build(points, false, true);
+  ASSERT_TRUE(trajectory_opt.has_value());
+
+  const auto & trajectory = trajectory_opt.value();
+  for (const auto s : trajectory.get_underlying_bases()) {
+    EXPECT_FLOAT_EQ(trajectory.azimuth(s), get_rpy(trajectory.compute(s).point.pose.orientation).z);
+  }
+}
+
 TEST(PrettyBuild, BuildsFromThreePointsWithDefaultInterpolator)
 {
   const std::vector<PathPointWithLaneId> points{
@@ -153,6 +183,24 @@ TEST(PrettyBuildTemporal, From2Cubic)
   const auto middle_point = trajectory.compute_from_time(1.0);
   EXPECT_NEAR(middle_point.pose.position.x, 1.0, 1e-6);
   EXPECT_NEAR(rclcpp::Duration(middle_point.time_from_start).seconds(), 1.0, 1e-6);
+}
+
+TEST(PrettyBuildTemporal, AlignsOrientationWithTrajectoryDirection)
+{
+  const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> points{
+    make_temporal_trajectory_point(0.0, 0.0, 0.0), make_temporal_trajectory_point(1.0, 1.0, 1.0)};
+
+  auto trajectory_opt =
+    autoware::experimental::trajectory::pretty_build_temporal(points, false, true);
+  ASSERT_TRUE(trajectory_opt.has_value());
+
+  const auto & trajectory = trajectory_opt.value();
+  for (const auto t : trajectory.get_underlying_time_bases()) {
+    const auto point = trajectory.compute_from_time(t);
+    EXPECT_FLOAT_EQ(
+      trajectory.spatial_trajectory().azimuth(trajectory.time_to_distance(t)),
+      get_rpy(point.pose.orientation).z);
+  }
 }
 
 TEST(PrettyBuildTemporal, From4Akima)

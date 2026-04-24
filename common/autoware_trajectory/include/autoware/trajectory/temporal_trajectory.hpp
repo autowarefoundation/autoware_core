@@ -74,6 +74,11 @@ public:
   [[nodiscard]] std::vector<double> get_underlying_time_bases() const;
 
   /**
+   * @brief Align the spatial trajectory orientation with the trajectory direction.
+   */
+  void align_orientation_with_trajectory_direction();
+
+  /**
    * @brief Compute a point at a given time.
    * @param[in] t Query time in seconds.
    * @return Interpolated trajectory point.

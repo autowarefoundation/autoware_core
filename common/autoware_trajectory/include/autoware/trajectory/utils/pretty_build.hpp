@@ -27,15 +27,44 @@
 #include <autoware_planning_msgs/msg/trajectory.hpp>
 
 #include <optional>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace autoware::experimental::trajectory
 {
+namespace detail
+{
+
+template <class TrajectoryType, class = void>
+struct HasAlignOrientationWithTrajectoryDirection : std::false_type
+{
+};
+
+template <class TrajectoryType>
+struct HasAlignOrientationWithTrajectoryDirection<
+  TrajectoryType, std::void_t<decltype(std::declval<TrajectoryType &>()
+                                         .align_orientation_with_trajectory_direction())>>
+: std::true_type
+{
+};
+
+template <class TrajectoryType>
+void align_orientation_with_trajectory_direction_if_supported(TrajectoryType & trajectory)
+{
+  if constexpr (HasAlignOrientationWithTrajectoryDirection<TrajectoryType>::value) {
+    trajectory.align_orientation_with_trajectory_direction();
+  }
+}
+
+}  // namespace detail
 
 /**
  * @brief Build a trajectory while applying the package's preferred interpolator defaults.
  * @param[in] points Input trajectory points.
  * @param[in] use_akima If true, use Akima spline for XY interpolation.
+ * @param[in] align_orientation_with_trajectory_direction If true, align the orientation with the
+ * trajectory direction when the built trajectory type supports it.
  * @return Built trajectory, or `std::nullopt` when the build fails.
  * @details
  * When `use_akima` is false, this delegates to `Trajectory<PointType>::Builder{}.build(points)`
@@ -45,7 +74,8 @@ namespace autoware::experimental::trajectory
  */
 template <typename PointType>
 std::optional<Trajectory<PointType>> pretty_build(
-  const std::vector<PointType> & points, const bool use_akima = false)
+  const std::vector<PointType> & points, const bool use_akima = false,
+  const bool align_orientation_with_trajectory_direction = true)
 {
   using Builder = typename Trajectory<PointType>::Builder;
 
@@ -55,7 +85,11 @@ std::optional<Trajectory<PointType>> pretty_build(
     if (!try_trajectory) {
       return std::nullopt;
     }
-    return try_trajectory.value();
+    auto trajectory = try_trajectory.value();
+    if (align_orientation_with_trajectory_direction) {
+      detail::align_orientation_with_trajectory_direction_if_supported(trajectory);
+    }
+    return trajectory;
   }
 
   const auto try_trajectory = Builder{}.build(points);
@@ -65,24 +99,30 @@ std::optional<Trajectory<PointType>> pretty_build(
   if (try_trajectory->length() < k_epsilon_distance) {
     return std::nullopt;
   }
-  return try_trajectory.value();
+  auto trajectory = try_trajectory.value();
+  if (align_orientation_with_trajectory_direction) {
+    detail::align_orientation_with_trajectory_direction_if_supported(trajectory);
+  }
+  return trajectory;
 }
 
 std::optional<TemporalTrajectory> pretty_build_temporal(
   const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points,
-  const bool use_akima = false);
+  const bool use_akima = false, const bool align_orientation_with_trajectory_direction = true);
 
 extern template std::optional<Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>>
 pretty_build(
   const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & points,
-  const bool use_akima);
+  const bool use_akima, const bool align_orientation_with_trajectory_direction);
 
 extern template std::optional<Trajectory<autoware_planning_msgs::msg::PathPoint>> pretty_build(
-  const std::vector<autoware_planning_msgs::msg::PathPoint> & points, const bool use_akima);
+  const std::vector<autoware_planning_msgs::msg::PathPoint> & points, const bool use_akima,
+  const bool align_orientation_with_trajectory_direction);
 
 extern template std::optional<Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>>
 pretty_build(
-  const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points, const bool use_akima);
+  const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points, const bool use_akima,
+  const bool align_orientation_with_trajectory_direction);
 
 }  // namespace autoware::experimental::trajectory
 

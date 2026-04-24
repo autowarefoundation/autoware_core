@@ -94,6 +94,11 @@ std::vector<double> TemporalTrajectory::get_underlying_time_bases() const
   return time_distance_mapping_.cropped_time_bases();
 }
 
+void TemporalTrajectory::align_orientation_with_trajectory_direction()
+{
+  spatial_trajectory_.align_orientation_with_trajectory_direction();
+}
+
 TemporalTrajectory::PointType TemporalTrajectory::compute_from_time(const double t) const
 {
   detail::throw_if_out_of_range(t, start_time(), end_time(), "time");
