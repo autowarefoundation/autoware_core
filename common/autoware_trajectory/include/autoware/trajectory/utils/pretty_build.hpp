@@ -27,31 +27,15 @@
 #include <autoware_planning_msgs/msg/trajectory.hpp>
 
 #include <optional>
-#include <type_traits>
-#include <utility>
 #include <vector>
 
 namespace autoware::experimental::trajectory
 {
-namespace detail
-{
-
-template <class PointType>
-void align_orientation_with_trajectory_direction_if_supported(Trajectory<PointType> & trajectory)
-{
-  if constexpr (!std::is_same_v<PointType, geometry_msgs::msg::Point>) {
-    trajectory.align_orientation_with_trajectory_direction();
-  }
-}
-
-}  // namespace detail
 
 /**
  * @brief Build a trajectory while applying the package's preferred interpolator defaults.
  * @param[in] points Input trajectory points.
  * @param[in] use_akima If true, use Akima spline for XY interpolation.
- * @param[in] do_align_orientation If true, align the orientation with the
- * trajectory direction when the built trajectory type supports it.
  * @return Built trajectory, or `std::nullopt` when the build fails.
  * @details
  * When `use_akima` is false, this delegates to `Trajectory<PointType>::Builder{}.build(points)`
@@ -61,8 +45,7 @@ void align_orientation_with_trajectory_direction_if_supported(Trajectory<PointTy
  */
 template <typename PointType>
 std::optional<Trajectory<PointType>> pretty_build(
-  const std::vector<PointType> & points, const bool use_akima = false,
-  const bool do_align_orientation = true)
+  const std::vector<PointType> & points, const bool use_akima = false)
 {
   using Builder = typename Trajectory<PointType>::Builder;
 
@@ -72,11 +55,7 @@ std::optional<Trajectory<PointType>> pretty_build(
     if (!try_trajectory) {
       return std::nullopt;
     }
-    auto trajectory = try_trajectory.value();
-    if (do_align_orientation) {
-      detail::align_orientation_with_trajectory_direction_if_supported(trajectory);
-    }
-    return trajectory;
+    return try_trajectory.value();
   }
 
   const auto try_trajectory = Builder{}.build(points);
@@ -86,30 +65,24 @@ std::optional<Trajectory<PointType>> pretty_build(
   if (try_trajectory->length() < k_epsilon_distance) {
     return std::nullopt;
   }
-  auto trajectory = try_trajectory.value();
-  if (do_align_orientation) {
-    detail::align_orientation_with_trajectory_direction_if_supported(trajectory);
-  }
-  return trajectory;
+  return try_trajectory.value();
 }
 
 std::optional<TemporalTrajectory> pretty_build_temporal(
   const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points,
-  const bool use_akima = false, const bool do_align_orientation = true);
+  const bool use_akima = false);
 
 extern template std::optional<Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>>
 pretty_build(
   const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & points,
-  const bool use_akima, const bool do_align_orientation);
+  const bool use_akima);
 
 extern template std::optional<Trajectory<autoware_planning_msgs::msg::PathPoint>> pretty_build(
-  const std::vector<autoware_planning_msgs::msg::PathPoint> & points, const bool use_akima,
-  const bool do_align_orientation);
+  const std::vector<autoware_planning_msgs::msg::PathPoint> & points, const bool use_akima);
 
 extern template std::optional<Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>>
 pretty_build(
-  const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points, const bool use_akima,
-  const bool do_align_orientation);
+  const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points, const bool use_akima);
 
 }  // namespace autoware::experimental::trajectory
 

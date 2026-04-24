@@ -62,6 +62,9 @@ Trajectory<PointType>::Trajectory(const Trajectory<geometry_msgs::msg::Point> & 
   }
   auto success = orientation_interpolator_->build(bases_, orientations);
   assert(success && "Trajectory<Pose>: failed to build orientation interpolator");
+
+  // align orientation with trajectory direction
+  align_orientation_with_trajectory_direction();
 }
 
 Trajectory<PointType> & Trajectory<PointType>::operator=(const Trajectory & rhs)

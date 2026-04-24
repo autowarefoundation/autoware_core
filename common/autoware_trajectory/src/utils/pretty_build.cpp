@@ -24,19 +24,16 @@ namespace autoware::experimental::trajectory
 template std::optional<Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>>
 pretty_build(
   const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> & points,
-  const bool use_akima, const bool do_align_orientation);
+  const bool use_akima);
 
 template std::optional<Trajectory<autoware_planning_msgs::msg::PathPoint>> pretty_build(
-  const std::vector<autoware_planning_msgs::msg::PathPoint> & points, const bool use_akima,
-  const bool do_align_orientation);
+  const std::vector<autoware_planning_msgs::msg::PathPoint> & points, const bool use_akima);
 
 template std::optional<Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>> pretty_build(
-  const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points, const bool use_akima,
-  const bool do_align_orientation);
+  const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points, const bool use_akima);
 
 std::optional<TemporalTrajectory> pretty_build_temporal(
-  const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points, const bool use_akima,
-  const bool do_align_orientation)
+  const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points, const bool use_akima)
 {
   if (use_akima) {
     const auto try_trajectory =
@@ -44,11 +41,7 @@ std::optional<TemporalTrajectory> pretty_build_temporal(
     if (!try_trajectory) {
       return std::nullopt;
     }
-    auto trajectory = try_trajectory.value();
-    if (do_align_orientation) {
-      trajectory = align_orientation_with_trajectory_direction(trajectory);
-    }
-    return trajectory;
+    return try_trajectory.value();
   }
 
   const auto try_trajectory = TemporalTrajectory::Builder{}.build(points);
@@ -58,11 +51,7 @@ std::optional<TemporalTrajectory> pretty_build_temporal(
   if (try_trajectory->length() < k_epsilon_distance) {
     return std::nullopt;
   }
-  auto trajectory = try_trajectory.value();
-  if (do_align_orientation) {
-    trajectory = align_orientation_with_trajectory_direction(trajectory);
-  }
-  return trajectory;
+  return try_trajectory.value();
 }
 
 }  // namespace autoware::experimental::trajectory
