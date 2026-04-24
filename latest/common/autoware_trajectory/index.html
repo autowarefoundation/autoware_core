@@ -7618,6 +7618,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#temporaltrajectory-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TemporalTrajectory class
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#utility-functions" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -7709,6 +7720,7 @@
 <span class="w">      </span><span class="p">.</span><span class="n">build</span><span class="p">();</span><span class="w">        </span><span class="c1">// finally, call build()</span>
 </code></pre></div>
 <p>In such cases the result <code>expected</code> object contains <code>InterpolationFailure</code> type with an error message like <strong>"base size 3 is less than minimum required 4"</strong>.</p>
+<p>For <code>Linear</code>, <code>CubicSpline</code>, <code>AkimaSpline</code>, and <code>SphericalLinear</code>, consecutive input points whose base difference is smaller than the interpolator epsilon are automatically removed as duplicates before interpolation. The default spatial builders use <code>k_epsilon_distance</code>, while temporal time-base handling uses <code>k_epsilon_time</code>. If the cleaned number of points falls below <code>minimum_required_points()</code>, the build fails and falls back to the next candidate interpolator when <code>build_with_fallback</code> is used.</p>
 <h3 id="trajectory-class">Trajectory class<a class="headerlink" href="#trajectory-class" title="Permanent link">#</a></h3>
 <p>The <em>Trajectory</em> class provides mathematical continuous representation and object oriented interface for discrete array of following point types</p>
 <ul class="task-list">
@@ -7772,13 +7784,18 @@
 <td><img alt="curvature" src="images/nomenclature/curvature.drawio.svg"><br><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Flatest%2Fcommon%2Fautoware_trajectory%2Fimages%2Fnomenclature%2Fcurvature.drawio.svg">View in Drawio</a></td>
 </tr>
 <tr>
-<td><code>k_points_minimum_dist_threshold</code></td>
-<td>This is a constant threshold that is used to check if two points or values are same and to avoid zero division.</td>
+<td><code>k_epsilon_distance</code></td>
+<td>Distance epsilon used for spatial duplicate handling and geometric <code>almost-same</code> checks.</td>
+<td></td>
+</tr>
+<tr>
+<td><code>k_epsilon_time</code></td>
+<td>Time epsilon used for temporal duplicate handling in time-parameterized utilities.</td>
 <td></td>
 </tr>
 <tr>
 <td><code>almost-same</code></td>
-<td>The pair of two points <span class="arithmatex">\(P_{1}\)</span> and <span class="arithmatex">\(P_{2}\)</span>, or the pair of two base values <span class="arithmatex">\(s_{1}\)</span> and <span class="arithmatex">\(s_{2}\)</span> are called <code>almost-same</code> if their distance or difference are less than <code>k_points_minimum_dist_threshold</code></td>
+<td>The pair of two points <span class="arithmatex">\(P_{1}\)</span> and <span class="arithmatex">\(P_{2}\)</span>, the pair of two base values <span class="arithmatex">\(s_{1}\)</span> and <span class="arithmatex">\(s_{2}\)</span>, or the pair of two quaternions are called <code>almost-same</code> if their distance, difference, or represented rotation difference are less than the corresponding epsilon for that quantity.</td>
 <td></td>
 </tr>
 </tbody>
@@ -8128,6 +8145,76 @@ trajectory-&gt;longitudinal_velocity_mps(3.0, 5.0) = 0.0;</code></p>
 <h5 id="restore-points"><span style="font-size: 1.2em;">Restore points</span><a class="headerlink" href="#restore-points" title="Permanent link">#</a></h5>
 <p><code>cpp
 std::vector&lt;autoware_planning_msgs::msg::PathPoint&gt; points = trajectory-&gt;restore();</code></p>
+<h3 id="temporaltrajectory-class">TemporalTrajectory class<a class="headerlink" href="#temporaltrajectory-class" title="Permanent link">#</a></h3>
+<p><code>TemporalTrajectory</code> wraps a spatial <code>Trajectory&lt;TrajectoryPoint&gt;</code> with an additional <strong>time-to-distance mapping</strong>, allowing the trajectory to be queried by either <strong>time</strong> (<code>t</code>) or <strong>arc length</strong> (<code>s</code>).</p>
+<table>
+<thead>
+<tr>
+<th>Class / Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TemporalTrajectory::build(points)</code></td>
+<td>Build from a <code>TrajectoryPoint</code> array sorted by <code>time_from_start</code>.</td>
+</tr>
+<tr>
+<td><code>compute_from_time(t)</code></td>
+<td>Compute the interpolated point at absolute time <code>t</code> [s].</td>
+</tr>
+<tr>
+<td><code>compute_from_distance(s)</code></td>
+<td>Compute the interpolated point at arc length <code>s</code> [m].</td>
+</tr>
+<tr>
+<td><code>time_to_distance(t)</code></td>
+<td>Convert time to absolute distance [m].</td>
+</tr>
+<tr>
+<td><code>distance_to_time(s, return_end_time=false)</code></td>
+<td>Convert absolute distance to time [s]. <br> <strong>Note:</strong> If the vehicle is stopped at distance <code>s</code>, the default returns the <strong>first</strong> stop time to avoid ambiguity. Setting <code>return_end_time=true</code> returns the time when the stop ends.</td>
+</tr>
+<tr>
+<td><code>length()</code></td>
+<td>Return the spatial trajectory length [m].</td>
+</tr>
+<tr>
+<td><code>duration()</code></td>
+<td>Return the covered duration [s].</td>
+</tr>
+<tr>
+<td><code>start_time()</code> / <code>end_time()</code></td>
+<td>Return the absolute time bounds [s].</td>
+</tr>
+<tr>
+<td><code>restore()</code></td>
+<td>Restore the underlying <code>TrajectoryPoint</code> array at the time bases.</td>
+</tr>
+<tr>
+<td><code>spatial_trajectory()</code></td>
+<td>Return a const reference to the internal spatial trajectory.</td>
+</tr>
+<tr>
+<td><code>TemporalTrajectory::Builder</code></td>
+<td>Fluent builder that delegates spatial interpolation to <code>Trajectory&lt;TrajectoryPoint&gt;::Builder</code> and manages the time-to-distance interpolator.</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><span class="filename">./examples/example_temporal_trajectory.cpp:55:67</span><pre><span></span><code><span class="n">TemporalTrajectory</span><span class="w"> </span><span class="nf">build_temporal_trajectory</span><span class="p">()</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">TrajectoryPoint</span><span class="o">&gt;</span><span class="w"> </span><span class="n">points</span><span class="p">{</span><span class="n">make_point</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">),</span><span class="w"> </span><span class="n">make_point</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.3</span><span class="p">,</span><span class="w"> </span><span class="mf">0.8</span><span class="p">),</span>
+<span class="w">                                            </span><span class="n">make_point</span><span class="p">(</span><span class="mf">2.2</span><span class="p">,</span><span class="w"> </span><span class="mf">1.2</span><span class="p">,</span><span class="w"> </span><span class="mf">1.7</span><span class="p">),</span><span class="w"> </span><span class="n">make_point</span><span class="p">(</span><span class="mf">3.4</span><span class="p">,</span><span class="w"> </span><span class="mf">2.1</span><span class="p">,</span><span class="w"> </span><span class="mf">2.5</span><span class="p">),</span>
+<span class="w">                                            </span><span class="n">make_point</span><span class="p">(</span><span class="mf">4.8</span><span class="p">,</span><span class="w"> </span><span class="mf">2.6</span><span class="p">,</span><span class="w"> </span><span class="mf">3.4</span><span class="p">),</span><span class="w"> </span><span class="n">make_point</span><span class="p">(</span><span class="mf">6.2</span><span class="p">,</span><span class="w"> </span><span class="mf">2.2</span><span class="p">,</span><span class="w"> </span><span class="mf">4.3</span><span class="p">),</span>
+<span class="w">                                            </span><span class="n">make_point</span><span class="p">(</span><span class="mf">7.6</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">5.2</span><span class="p">)};</span>
+
+<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">trajectory</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autoware</span><span class="o">::</span><span class="n">experimental</span><span class="o">::</span><span class="n">trajectory</span><span class="o">::</span><span class="n">pretty_build_temporal</span><span class="p">(</span><span class="n">points</span><span class="p">);</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">trajectory</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">throw</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">"failed to pretty-build temporal trajectory"</span><span class="p">);</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="o">*</span><span class="n">trajectory</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
 <h3 id="utility-functions">Utility functions<a class="headerlink" href="#utility-functions" title="Permanent link">#</a></h3>
 <h4 id="autowaretrajectoryutilsshifthpp"><span style="font-size: 1.2em;"><code>&lt;autoware/trajectory/utils/shift.hpp&gt;</code></span><a class="headerlink" href="#autowaretrajectoryutilsshifthpp" title="Permanent link">#</a></h4>
 <table>
@@ -8215,6 +8302,12 @@ std::vector&lt;autoware_planning_msgs::msg::PathPoint&gt; points = trajectory-&g
 <span class="w">  </span><span class="p">}</span>
 <span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">trajectory</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">trajectory_opt</span><span class="p">.</span><span class="n">value</span><span class="p">();</span>
 </code></pre></div>
+<p><code>pretty_build_temporal</code> provides the same convenience for <code>TemporalTrajectory</code>.</p>
+<div class="highlight"><span class="filename">./examples/example_temporal_crop.cpp:58:61</span><pre><span></span><code><span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">trajectory</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autoware</span><span class="o">::</span><span class="n">experimental</span><span class="o">::</span><span class="n">trajectory</span><span class="o">::</span><span class="n">pretty_build_temporal</span><span class="p">(</span><span class="n">points</span><span class="p">,</span><span class="w"> </span><span class="nb">true</span><span class="p">);</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">trajectory</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">throw</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">"failed to pretty-build temporal trajectory"</span><span class="p">);</span>
+<span class="w">  </span><span class="p">}</span>
+</code></pre></div>
 <h4 id="autowaretrajectoryutilsadd_offsethpp"><span style="font-size: 1.2em;"><code>&lt;autoware/trajectory/utils/add_offset.hpp&gt;</code></span><a class="headerlink" href="#autowaretrajectoryutilsadd_offsethpp" title="Permanent link">#</a></h4>
 <table>
 <thead>
@@ -8227,7 +8320,7 @@ std::vector&lt;autoware_planning_msgs::msg::PathPoint&gt; points = trajectory-&g
 <tbody>
 <tr>
 <td><ul><li><code>add_offset</code></li></ul></td>
-<td>Compute a new trajectory by translating each underlying point by a fixed offset expressed in the vehicle frame.<br>Vehicle-frame axes are defined as <code>+x</code>: forward, <code>+y</code>: left, <code>+z</code>: up.<br>For pose-based types, the offset is rotated into the global frame using the point's full orientation, so roll, pitch, and yaw are all respected.<br>Only the position is shifted; orientation and other point properties are preserved.</td>
+<td>Compute a new trajectory by translating each underlying point by a fixed offset expressed in the vehicle frame.<br>Vehicle-frame axes are defined as <code>+x</code>: forward, <code>+y</code>: left, <code>+z</code>: up.<br>For pose-based types, the offset is rotated into the global frame using the point's full orientation, so roll, pitch, and yaw are all respected.<br>Only the position is shifted; orientation and other point properties are preserved.<br>Also available for <code>TemporalTrajectory</code>.</td>
 <td>For <code>Trajectory&lt;geometry_msgs::msg::Point&gt;</code>, roll is unavailable, so the function synthesizes orientation from the trajectory <code>azimuth()</code> and <code>elevation()</code> with zero roll.<br>As a result, lateral offset can affect global <code>z</code> on a rolled trajectory, and longitudinal offset can affect global <code>z</code> on a pitched trajectory.<br><br><img alt="add_offset" src="images/utils/add_offset.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Flatest%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Fadd_offset.drawio.svg">View in Drawio</a></td>
 </tr>
 </tbody>
@@ -8245,6 +8338,83 @@ std::vector&lt;autoware_planning_msgs::msg::PathPoint&gt; points = trajectory-&g
 <span class="w">      </span><span class="n">autoware</span><span class="o">::</span><span class="n">experimental</span><span class="o">::</span><span class="n">trajectory</span><span class="o">::</span><span class="n">add_offset</span><span class="p">(</span><span class="n">trajectory</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="n">right_offset</span><span class="p">);</span>
 </code></pre></div>
 <p>See also: <a href="./examples/example_add_offset.cpp"><code>example_add_offset.cpp</code></a></p>
+<h4 id="autowaretrajectoryutilscrophpp"><span style="font-size: 1.2em;"><code>&lt;autoware/trajectory/utils/crop.hpp&gt;</code></span><a class="headerlink" href="#autowaretrajectoryutilscrophpp" title="Permanent link">#</a></h4>
+<p>In addition to the spatial <code>crop(trajectory, start, end)</code> free function, the header provides temporal variants that return a new cropped trajectory without mutating the input.</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>crop_time(trajectory, start_time, duration)</code></td>
+<td>Crop a <code>TemporalTrajectory</code> to a time window [s].</td>
+</tr>
+<tr>
+<td><code>crop_distance(trajectory, start_distance, length)</code></td>
+<td>Crop a <code>TemporalTrajectory</code> to a distance window [m].</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><span class="filename">./examples/example_temporal_crop.cpp:117:121</span><pre><span></span><code><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">original</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">make_trajectory</span><span class="p">();</span>
+
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">early_window</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autoware</span><span class="o">::</span><span class="n">experimental</span><span class="o">::</span><span class="n">trajectory</span><span class="o">::</span><span class="n">crop_time</span><span class="p">(</span><span class="n">original</span><span class="p">,</span><span class="w"> </span><span class="mf">0.8</span><span class="p">,</span><span class="w"> </span><span class="mf">2.4</span><span class="p">);</span>
+</code></pre></div>
+<h4 id="autowaretrajectoryutilsset_stoplinehpp"><span style="font-size: 1.2em;"><code>&lt;autoware/trajectory/utils/set_stopline.hpp&gt;</code></span><a class="headerlink" href="#autowaretrajectoryutilsset_stoplinehpp" title="Permanent link">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>set_stopline(trajectory, arc_length)</code></td>
+<td>Insert a stopline at the given arc length by setting the velocity profile to zero around the stop point.</td>
+</tr>
+<tr>
+<td><code>insert_stop_duration(trajectory, arc_length, duration)</code></td>
+<td>Same as above, but additionally extend the schedule so that the vehicle remains stopped for the specified <code>duration</code> [s].</td>
+</tr>
+</tbody>
+</table>
+<h4 id="autowaretrajectoryutilsset_time_offsethpp"><span style="font-size: 1.2em;"><code>&lt;autoware/trajectory/utils/set_time_offset.hpp&gt;</code></span><a class="headerlink" href="#autowaretrajectoryutilsset_time_offsethpp" title="Permanent link">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>set_time_offset(trajectory, offset)</code></td>
+<td>Shift the absolute time bases of a <code>TemporalTrajectory</code> by <code>offset</code> [s].</td>
+</tr>
+</tbody>
+</table>
+<h4 id="autowaretrajectoryutilsfind_intervalshpp"><span style="font-size: 1.2em;"><code>&lt;autoware/trajectory/utils/find_intervals.hpp&gt;</code></span><a class="headerlink" href="#autowaretrajectoryutilsfind_intervalshpp" title="Permanent link">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>find_intervals(trajectory, constraint)</code></td>
+<td>Find contiguous arc-length intervals on a spatial <code>Trajectory</code> where <code>constraint(point)</code> is true. Returns <code>vector&lt;Interval&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>find_intervals(temporal_trajectory, constraint)</code></td>
+<td>Find contiguous time intervals on a <code>TemporalTrajectory</code> where <code>constraint(point)</code> is true. Returns <code>vector&lt;TemporalInterval&gt;</code> (each entry contains both <code>TimeDistancePair</code> start and end).</td>
+</tr>
+</tbody>
+</table>
 <h4 id="autowaretrajectoryutilsreference_pathhpp"><span style="font-size: 1.2em;"><code>&lt;autoware/trajectory/utils/reference_path.hpp&gt;</code></span><a class="headerlink" href="#autowaretrajectoryutilsreference_pathhpp" title="Permanent link">#</a></h4>
 <table>
 <thead>
@@ -8394,6 +8564,11 @@ auto s_nearest = find_nearest_index(traj, query);</code></p>
 <td><img alt="crossed_linestring" src="images/utils/crossed_linestring.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Flatest%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Fcrossed_linestring.drawio.svg">View in Drawio</a></td>
 </tr>
 <tr>
+<td><ul><li><code>crossed(temporal_trajectory, linestring)</code></li></ul></td>
+<td>A utility function that finds intersections between a <code>TemporalTrajectory</code> and a linestring. Returns <code>vector&lt;TimeDistancePair&gt;</code>.</td>
+<td></td>
+</tr>
+<tr>
 <td><ul><li><code>crossed_with_polygon</code></li></ul></td>
 <td>A utility function that finds intersections between a trajectory and a polygon. <br> <strong>Post-condition</strong> <ul><li> The output is sorted in ascending order along the trajectory. </li></ul></td>
 <td><img alt="crossed_polygon" src="images/utils/crossed_polygon.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Flatest%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Fcrossed_polygon.drawio.svg">View in Drawio</a></td>
@@ -8460,7 +8635,79 @@ s_{1} &amp;= v_{\mathrm{lon}}t + \frac{1}{2} a_{\mathrm{lon}}t^2, &amp; l_{1} &a
 s_{2} &amp;= s_{1} + 2 (v_{0} + a_{\mathrm{lon}}t)t + 2a_{\mathrm{lon}}t^2, &amp; l_{2} &amp;= \frac{11L}{12} \\
 s_{3} &amp;= L_{\mathrm{lon}}, &amp; l_{3} &amp;= L
 \end{align}
-\]</div></div>
+\]</div>
+<h4 id="handling-of-duplicate-points">Handling of duplicate points<a class="headerlink" href="#handling-of-duplicate-points" title="Permanent link">#</a></h4>
+<p>This package handles duplicate or almost-duplicate input points at two stages: when the trajectory bases are built from the raw points, and when each interpolator is constructed.</p>
+<h5 id="1-base-sanitisation-in-trajectorypointbuild">1. Base sanitisation in <code>Trajectory&lt;Point&gt;::build</code><a class="headerlink" href="#1-base-sanitisation-in-trajectorypointbuild" title="Permanent link">#</a></h5>
+<p><code>Trajectory&lt;Point&gt;::build</code> (and the derived builders that reuse it) converts the input point array into arc-length bases. Consecutive points whose 3D Euclidean distance is zero would produce identical bases, which breaks the strict monotonicity expected by later interpolation steps. To avoid this, the build step clamps every segment length to at least machine epsilon:</p>
+<p><code>cpp
+const auto dist = std::max&lt;double&gt;(
+  autoware_utils_geometry::calc_distance3d(points.at(i), points.at(i - 1)),
+  std::numeric_limits&lt;double&gt;::epsilon());
+bases_.emplace_back(bases_.back() + dist);</code></p>
+<p>This sanitisation preserves every input point; it only nudges the generated base coordinate enough to keep the base vector strictly increasing. The actual zero-division avoidance and stronger duplicate filtering are handled later by each interpolator's own <code>build_impl</code>.</p>
+<p><code>TimeDistanceMapping::build</code> applies the same idea to time bases as well. In the current implementation it also clamps each time increment to at least <code>std::numeric_limits&lt;double&gt;::epsilon()</code> before handing the bases to the interpolator.</p>
+<h5 id="2-duplicate-removal-inside-interpolator-build_impl">2. Duplicate removal inside interpolator <code>build_impl</code><a class="headerlink" href="#2-duplicate-removal-inside-interpolator-build_impl" title="Permanent link">#</a></h5>
+<p>Most scalar interpolators (<code>Linear</code>, <code>CubicSpline</code>, <code>AkimaSpline</code>, and <code>SphericalLinear</code>) additionally remove true duplicates before they interpolate, as such duplicates can lead to numerical instability (e.g., division by very small intervals or ill-conditioned systems). Their <code>build_impl</code> functions call:</p>
+<p><code>cpp
+auto [cleaned_bases, cleaned_values] =
+  ::autoware::experimental::trajectory::detail::remove_duplicate_points(bases, values, epsilon_);</code></p>
+<p><code>remove_duplicate_points</code> scans the bases from front to back and drops any point whose base difference from the last kept point is not larger than the interpolator's configured epsilon. The first point of a duplicate run is retained, the rest are discarded.</p>
+<p>For the current default settings:</p>
+<ul>
+<li>spatial trajectory builders use <code>k_epsilon_distance</code></li>
+<li>the internal time-to-distance <code>Linear</code> interpolator of <code>TemporalTrajectory</code> uses <code>k_epsilon_time</code></li>
+</ul>
+<h5 id="3-interpolators-that-do-not-deduplicate">3. Interpolators that do not deduplicate<a class="headerlink" href="#3-interpolators-that-do-not-deduplicate" title="Permanent link">#</a></h5>
+<p><code>LaneIdsInterpolator</code> and <code>Stairstep</code> do <strong>not</strong> invoke <code>remove_duplicate_points</code>; they operate on the bases exactly as provided by the trajectory build step. The base sanitisation described in stage 1 is therefore the only duplicate protection for these interpolators.</p>
+<p>The <code>is_almost_same</code> helpers use quantity-specific thresholds:</p>
+<ul>
+<li>point / pose / path-point / trajectory-point position comparisons use <code>k_epsilon_distance</code></li>
+<li>quaternion rotation comparison uses <code>k_epsilon_angle</code></li>
+<li>temporal equality checks that are implemented explicitly in temporal utilities use <code>k_epsilon_time</code></li>
+</ul>
+<h5 id="summary-of-thresholds">Summary of thresholds<a class="headerlink" href="#summary-of-thresholds" title="Permanent link">#</a></h5>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Threshold</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Spatial trajectory base construction</td>
+<td><code>std::numeric_limits&lt;double&gt;::epsilon()</code></td>
+<td>Minimum base increment to keep arc-length bases increasing</td>
+</tr>
+<tr>
+<td>Temporal time base construction</td>
+<td><code>std::numeric_limits&lt;double&gt;::epsilon()</code></td>
+<td>Minimum base increment to keep time bases increasing</td>
+</tr>
+<tr>
+<td>Spatial interpolator deduplication</td>
+<td><code>k_epsilon_distance</code></td>
+<td>Spatial bases closer than this are treated as duplicates</td>
+</tr>
+<tr>
+<td>Temporal interpolator deduplication</td>
+<td><code>k_epsilon_time</code></td>
+<td>Time bases closer than this are treated as duplicates</td>
+</tr>
+<tr>
+<td>Geometric <code>is_almost_same</code> checks</td>
+<td><code>k_epsilon_distance</code></td>
+<td>Position-based equality threshold</td>
+</tr>
+<tr>
+<td>Quaternion <code>is_almost_same</code> checks</td>
+<td><code>k_epsilon_angle</code></td>
+<td>Rotation-equivalence threshold</td>
+</tr>
+</tbody>
+</table></div>
 
 
 
