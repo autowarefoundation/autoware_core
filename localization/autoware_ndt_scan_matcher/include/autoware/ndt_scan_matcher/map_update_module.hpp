@@ -56,7 +56,10 @@ public:
     rclcpp::Node * node, std::mutex * ndt_ptr_mutex, NdtPtrType & ndt_ptr,
     HyperParameters::DynamicMapLoading param);
 
-  bool out_of_map_range(const geometry_msgs::msg::Point & position);
+  [[nodiscard]] std::optional<geometry_msgs::msg::Point> get_last_update_position() const;
+  [[nodiscard]] bool out_of_map_range(
+    const std::optional<geometry_msgs::msg::Point> & last_update_position,
+    const geometry_msgs::msg::Point & position) const;
 
 private:
   friend class NDTScanMatcher;
@@ -96,7 +99,7 @@ private:
   NdtPtrType secondary_ndt_ptr_;
   bool need_rebuild_;
   // Keep the last_update_position_ unchanged while checking map range
-  std::mutex last_update_position_mtx_;
+  mutable std::mutex last_update_position_mtx_;
 };
 
 }  // namespace autoware::ndt_scan_matcher
