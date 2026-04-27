@@ -19,11 +19,61 @@
 
 #include <functional>
 #include <limits>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
 namespace autoware::experimental::trajectory::detail
 {
+template <class>
+inline constexpr bool always_false_v = false;
+
+template <
+  class Callable, class PointType, bool = std::is_invocable_v<Callable &, const PointType &>>
+struct InvokeWithPointOrParameterResult
+{
+  using type = std::invoke_result_t<Callable &, const PointType &>;
+};
+
+template <class Callable, class PointType>
+struct InvokeWithPointOrParameterResult<Callable, PointType, false>
+{
+  using type = std::invoke_result_t<Callable &, const double &>;
+};
+
+template <class Callable, class PointType>
+using point_or_parameter_invoke_result_t =
+  std::decay_t<typename InvokeWithPointOrParameterResult<Callable, PointType>::type>;
+
+/**
+ * @brief Invoke a callable with a trajectory point or trajectory parameter.
+ * @details If the callable accepts the point type returned by `point_getter`, the point is computed
+ * and passed to the callable. Otherwise, if the callable accepts a `double`, the trajectory
+ * parameter is passed without computing the point.
+ * @tparam Callable Callable type to invoke.
+ * @tparam PointGetter Callable type that returns a trajectory point for the given parameter.
+ * @param callable Callable to invoke.
+ * @param parameter Trajectory parameter such as arc length `s` or time `t`.
+ * @param point_getter Lazy getter used only when `callable(point)` is valid.
+ * @return Result of the callable.
+ */
+template <class Callable, class PointGetter>
+decltype(auto) invoke_with_point_or_parameter(
+  Callable & callable, const double & parameter, PointGetter && point_getter)
+{
+  using PointType = std::decay_t<std::invoke_result_t<PointGetter &>>;
+
+  if constexpr (std::is_invocable_v<Callable &, const PointType &>) {
+    return std::invoke(callable, std::invoke(std::forward<PointGetter>(point_getter)));
+  } else if constexpr (std::is_invocable_v<Callable &, const double &>) {
+    return std::invoke(callable, parameter);
+  } else {
+    static_assert(
+      always_false_v<Callable>,
+      "callable must be callable with either the trajectory point type or double");
+  }
+}
+
 /**
  * @brief Return a failure when no fallback interpolator candidate remains.
  */

@@ -75,6 +75,21 @@ TEST(Crossed, Linestring)
     EXPECT_EQ(crossed_line.size(), 1);
     EXPECT_FLOAT_EQ(crossed_line.front(), 3.0 * std::sqrt(2.0));
   }
+
+  {
+    const LineString2d line{Point2d{3.0, 0.0}, Point2d{3.0, 4.0}};
+    const auto crossed_line = autoware::experimental::trajectory::crossed_with_constraint(
+      trajectory, line, [](const double s) { return s > 4.0; });
+    EXPECT_EQ(crossed_line.size(), 1);
+    EXPECT_FLOAT_EQ(crossed_line.front(), 3.0 * std::sqrt(2.0));
+  }
+
+  {
+    const LineString2d line{Point2d{3.0, 0.0}, Point2d{3.0, 4.0}};
+    const auto crossed_line = autoware::experimental::trajectory::crossed_with_constraint(
+      trajectory, line, [](const double s) { return s < 4.0; });
+    EXPECT_TRUE(crossed_line.empty());
+  }
 }
 
 TEST(Crossed, OpenPolygon)

@@ -192,6 +192,28 @@ TEST(FindIntervalsTemporal, FindIntervalsByPosition)
   EXPECT_NEAR(intervals.front().end.time, 2.0, 1e-6);
 }
 
+TEST(FindIntervalsTemporal, FindIntervalsByTime)
+{
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {2.0, 2.0},
+    {3.0, 3.0},
+  });
+
+  const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+
+  const auto intervals = autoware::experimental::trajectory::find_intervals(
+    trajectory_result.value(), [](const double t) { return 1.0 <= t && t <= 2.0; });
+
+  ASSERT_EQ(intervals.size(), 1U);
+  EXPECT_NEAR(intervals.front().start.time, 1.0, 1e-6);
+  EXPECT_NEAR(intervals.front().end.time, 2.0, 1e-6);
+  EXPECT_NEAR(intervals.front().start.distance, 1.0, 1e-6);
+  EXPECT_NEAR(intervals.front().end.distance, 2.0, 1e-6);
+}
+
 TEST(CropTemporal, CropTimeRebases)
 {
   const auto points = make_points({

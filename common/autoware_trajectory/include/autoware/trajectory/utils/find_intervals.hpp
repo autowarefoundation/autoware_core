@@ -15,6 +15,7 @@
 #ifndef AUTOWARE__TRAJECTORY__UTILS__FIND_INTERVALS_HPP_
 #define AUTOWARE__TRAJECTORY__UTILS__FIND_INTERVALS_HPP_
 
+#include "autoware/trajectory/detail/helpers.hpp"
 #include "autoware/trajectory/forward.hpp"
 #include "autoware/trajectory/temporal_trajectory.hpp"
 
@@ -67,9 +68,10 @@ std::vector<Interval> find_intervals_impl(
 /**
  * @brief Finds intervals in a trajectory where the given constraint is satisfied.
  * @tparam TrajectoryPointType The type of points in the trajectory.
- * @tparam Constraint A callable type that evaluates a constraint on a trajectory point.
+ * @tparam Constraint A callable type that evaluates a constraint on a trajectory point or arc
+ * length `s`.
  * @param trajectory The trajectory to evaluate.
- * @param constraint The constraint to apply to each point in the trajectory.
+ * @param constraint The constraint to apply to each point or arc length `s` in the trajectory.
  * @param max_iter Maximum number of iterations for the binary search when finding interval
  * boundaries.
  * @return A vector of Interval objects representing the intervals where the constraint is
@@ -82,16 +84,18 @@ std::vector<Interval> find_intervals(
   return detail::impl::find_intervals_impl(
     trajectory.get_underlying_bases(),
     [constraint = std::forward<Constraint>(constraint), &trajectory](const double & s) {
-      return constraint(trajectory.compute(s));
+      return detail::invoke_with_point_or_parameter(
+        constraint, s, [&trajectory, &s]() { return trajectory.compute(s); });
     },
     max_iter);
 }
 
 /**
  * @brief Finds intervals in a temporal trajectory where the given constraint is satisfied.
- * @tparam Constraint A callable type that evaluates a constraint on a temporal trajectory point.
+ * @tparam Constraint A callable type that evaluates a constraint on a temporal trajectory point or
+ * time `t`.
  * @param trajectory The temporal trajectory to evaluate.
- * @param constraint The constraint to apply to each point in the temporal trajectory.
+ * @param constraint The constraint to apply to each point or time `t` in the temporal trajectory.
  * @param max_iter Maximum number of iterations for the binary search when finding interval
  * boundaries.
  * @return A vector of TemporalInterval objects representing the distance and time intervals where
@@ -104,7 +108,8 @@ std::vector<TemporalInterval> find_intervals(
   const auto time_intervals = detail::impl::find_intervals_impl(
     trajectory.get_underlying_time_bases(),
     [constraint = std::forward<Constraint>(constraint), &trajectory](const double & t) {
-      return constraint(trajectory.compute_from_time(t));
+      return detail::invoke_with_point_or_parameter(
+        constraint, t, [&trajectory, &t]() { return trajectory.compute_from_time(t); });
     },
     max_iter);
 
