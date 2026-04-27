@@ -87,7 +87,7 @@ void PrintTo(const Parameter_Map_Waypoint_Straight_00 & param, ::std::ostream * 
 
 using TestCase_Map_Waypoint_Straight_00 = TestCase<Parameter_Map_Waypoint_Straight_00>;  // NOLINT
 
-TEST_P(TestCase_Map_Waypoint_Straight_00, test_path_validity)
+TEST_P(TestCase_Map_Waypoint_Straight_00, TestPathValidity)
 {
   auto
     [FORWARD_LENGTH, BACKWARD_LENGTH, ids, current_id, x, y, z, quat, expect_success,
@@ -132,7 +132,7 @@ TEST_P(TestCase_Map_Waypoint_Straight_00, test_path_validity)
              points, points | ranges::views::drop(1), points | ranges::views::drop(2))) {
         EXPECT_TRUE(
           autoware_utils_geometry::calc_distance3d(p1, p2) >=
-          autoware::experimental::trajectory::k_points_minimum_dist_threshold);
+          autoware::experimental::trajectory::k_epsilon_distance);
         EXPECT_TRUE(
           boost::geometry::within(
             lanelet::utils::to2D(lanelet2_utils::from_ros(p2.point.pose.position)),
@@ -153,7 +153,7 @@ TEST_P(TestCase_Map_Waypoint_Straight_00, test_path_validity)
 }
 
 INSTANTIATE_TEST_SUITE_P(
-  test_path_validity, TestCase_Map_Waypoint_Straight_00,
+  TestPathValidity, TestCase_Map_Waypoint_Straight_00,
   ::testing::Values(  // enumerate values below
     Parameter_Map_Waypoint_Straight_00{
       200,                   // [m]
@@ -229,7 +229,7 @@ void PrintTo(const Parameter_Map_Waypoint_Curve_00 & param, ::std::ostream * os)
 
 using TestCase_Map_Waypoint_Curve_00 = TestCase<Parameter_Map_Waypoint_Curve_00>;  // NOLINT
 
-TEST_P(TestCase_Map_Waypoint_Curve_00, test_path_validity)
+TEST_P(TestCase_Map_Waypoint_Curve_00, TestPathValidity)
 {
   auto
     [FORWARD_LENGTH, BACKWARD_LENGTH, ids, current_id, x, y, z, quat, expect_success,
@@ -274,7 +274,7 @@ TEST_P(TestCase_Map_Waypoint_Curve_00, test_path_validity)
              points, points | ranges::views::drop(1), points | ranges::views::drop(2))) {
         EXPECT_TRUE(
           autoware_utils_geometry::calc_distance3d(p1, p2) >=
-          autoware::experimental::trajectory::k_points_minimum_dist_threshold);
+          autoware::experimental::trajectory::k_epsilon_distance);
 
         // use p2, because p1/p3 at the end may well be slightly outside of the Lanelets by error
         EXPECT_TRUE(
@@ -298,7 +298,7 @@ TEST_P(TestCase_Map_Waypoint_Curve_00, test_path_validity)
 }
 
 INSTANTIATE_TEST_SUITE_P(
-  test_path_validity, TestCase_Map_Waypoint_Curve_00,
+  TestPathValidity, TestCase_Map_Waypoint_Curve_00,
   ::testing::Values(  // enumerate values below
                       // here are the cases where current_pose is on a normal lanelet
     Parameter_Map_Waypoint_Curve_00{
@@ -484,7 +484,7 @@ INSTANTIATE_TEST_SUITE_P(
 //              points, points | ranges::views::drop(1), points | ranges::views::drop(2))) {
 //         EXPECT_TRUE(
 //           autoware_utils_geometry::calc_distance3d(p1, p2) >=
-//           autoware::experimental::trajectory::k_points_minimum_dist_threshold);
+//           autoware::experimental::trajectory::k_epsilon_distance);
 
 //         // use p2, because p1/p3 at the end may well be slightly outside of the Lanelets by error
 //         EXPECT_TRUE(

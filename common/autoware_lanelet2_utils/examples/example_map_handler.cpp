@@ -45,14 +45,23 @@ std::optional<lanelet2_utils::MapHandler> load_map_handler(
   // convert to laneletMapBin
   auto map_msg_ = lanelet2_utils::to_autoware_map_msgs(lanelet_map_ptr_);
 
-  std::optional<lanelet2_utils::MapHandler> map_handler_opt_;
-  map_handler_opt_.emplace(lanelet2_utils::MapHandler::create(map_msg_).value());
+  std::optional<lanelet2_utils::MapHandler> map_handler_opt_ =
+    lanelet2_utils::MapHandler::create(map_msg_);
+  if (!map_handler_opt_.has_value()) {
+    std::cerr << "Failed to create map handler" << std::endl;
+    return std::nullopt;
+  }
   return map_handler_opt_;
 }
 
 void map_handler_main()
 {
-  auto map_handler = load_map_handler().value();
+  auto map_handler_opt = load_map_handler();
+  if (!map_handler_opt.has_value()) {
+    std::cerr << "Failed to load map handler" << std::endl;
+    return;
+  }
+  auto map_handler = std::move(map_handler_opt).value();
   auto lanelet_map_ptr = map_handler.lanelet_map_ptr();
 
   // for left_lanelet
@@ -67,6 +76,10 @@ void map_handler_main()
   {
     const auto lane = map_handler.left_lanelet(
       lanelet_map_ptr->laneletLayer.get(2257), false, lanelet2_utils::ExtraVRU::Shoulder);
+    if (!lane.has_value()) {
+      std::cerr << "Failed to get left lanelet with Shoulder" << std::endl;
+      return;
+    }
     std::cout << "Shoulder lane id is " << (*lane).id() << std::endl;
   }
 
@@ -85,6 +98,10 @@ void map_handler_main()
     std::cout << (opt.has_value() ? "There is left lane that is Shoulder and Bicycle Lane"
                                   : "There is no left lane that is Shoulder and Bicycle Lane")
               << std::endl;
+    if (!opt.has_value()) {
+      std::cerr << "Failed to get left lanelet with ShoulderAndBicycleLane" << std::endl;
+      return;
+    }
     auto lane = *opt;
     std::cout << "Shoulder and Bicycle lane id is " << lane.id() << std::endl;
   }
@@ -93,6 +110,10 @@ void map_handler_main()
   {
     const auto opt = map_handler.right_lanelet(
       lanelet_map_ptr->laneletLayer.get(2245), false, lanelet2_utils::ExtraVRU::RoadOnly);
+    if (!opt.has_value()) {
+      std::cerr << "Failed to get right lanelet with RoadOnly" << std::endl;
+      return;
+    }
     auto lane = *opt;
     std::cout << "Right Road only lane id is " << lane.id() << std::endl;
   }
@@ -101,6 +122,10 @@ void map_handler_main()
   {
     const auto opt = map_handler.leftmost_lanelet(
       lanelet_map_ptr->laneletLayer.get(2288), false, lanelet2_utils::ExtraVRU::RoadOnly);
+    if (!opt.has_value()) {
+      std::cerr << "Failed to get leftmost lanelet with RoadOnly" << std::endl;
+      return;
+    }
     auto lane = *opt;
     std::cout << "Leftmost Road only lane id is " << lane.id() << std::endl;
   }
@@ -109,6 +134,10 @@ void map_handler_main()
   {
     const auto opt = map_handler.rightmost_lanelet(
       lanelet_map_ptr->laneletLayer.get(2286), false, lanelet2_utils::ExtraVRU::RoadOnly);
+    if (!opt.has_value()) {
+      std::cerr << "Failed to get rightmost lanelet with RoadOnly" << std::endl;
+      return;
+    }
     auto lane = *opt;
     std::cout << "Rightmost Road only lane id is " << lane.id() << std::endl;
   }
@@ -135,7 +164,12 @@ void map_handler_main()
 
   // for get_shoulder_lanelet_sequence
   {
-    auto map_handler002 = load_map_handler("vm_01_15-16/highway/lanelet2_map.osm").value();
+    auto map_handler002_opt = load_map_handler("vm_01_15-16/highway/lanelet2_map.osm");
+    if (!map_handler002_opt.has_value()) {
+      std::cerr << "Failed to load map handler for highway map" << std::endl;
+      return;
+    }
+    auto map_handler002 = std::move(map_handler002_opt).value();
     auto lanelet_map_ptr002 = map_handler002.lanelet_map_ptr();
     const auto seq =
       map_handler002.get_shoulder_lanelet_sequence(lanelet_map_ptr002->laneletLayer.get(48));

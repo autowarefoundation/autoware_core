@@ -14,6 +14,8 @@
 
 #include "autoware/trajectory/interpolator/cubic_spline.hpp"
 
+#include "autoware/trajectory/detail/helpers.hpp"
+
 #include <Eigen/Dense>
 
 namespace autoware::experimental::trajectory::interpolator
@@ -63,20 +65,41 @@ void CubicSpline::compute_parameters(
 
 bool CubicSpline::build_impl(const std::vector<double> & bases, const std::vector<double> & values)
 {
-  this->bases_ = bases;
+  auto [cleaned_bases, cleaned_values] =
+    ::autoware::experimental::trajectory::detail::remove_duplicate_points(bases, values, epsilon_);
+  if (cleaned_bases.size() < minimum_required_points()) {
+    return false;
+  }
+  if (!::autoware::experimental::trajectory::detail::has_strictly_increasing_bases(
+        cleaned_bases, epsilon_)) {
+    return false;
+  }
+  this->bases_ = std::move(cleaned_bases);
   compute_parameters(
-    Eigen::Map<const Eigen::VectorXd>(bases.data(), static_cast<Eigen::Index>(bases.size())),
-    Eigen::Map<const Eigen::VectorXd>(values.data(), static_cast<Eigen::Index>(values.size())));
+    Eigen::Map<const Eigen::VectorXd>(
+      this->bases_.data(), static_cast<Eigen::Index>(this->bases_.size())),
+    Eigen::Map<const Eigen::VectorXd>(
+      cleaned_values.data(), static_cast<Eigen::Index>(cleaned_values.size())));
   return true;
 }
 
 bool CubicSpline::build_impl(const std::vector<double> & bases, std::vector<double> && values)
 {
-  this->bases_ = bases;
+  auto [cleaned_bases, cleaned_values] =
+    ::autoware::experimental::trajectory::detail::remove_duplicate_points(bases, values, epsilon_);
+  if (cleaned_bases.size() < minimum_required_points()) {
+    return false;
+  }
+  if (!::autoware::experimental::trajectory::detail::has_strictly_increasing_bases(
+        cleaned_bases, epsilon_)) {
+    return false;
+  }
+  this->bases_ = std::move(cleaned_bases);
   compute_parameters(
     Eigen::Map<const Eigen::VectorXd>(
       this->bases_.data(), static_cast<Eigen::Index>(this->bases_.size())),
-    Eigen::Map<const Eigen::VectorXd>(values.data(), static_cast<Eigen::Index>(values.size())));
+    Eigen::Map<const Eigen::VectorXd>(
+      cleaned_values.data(), static_cast<Eigen::Index>(cleaned_values.size())));
   return true;
 }
 

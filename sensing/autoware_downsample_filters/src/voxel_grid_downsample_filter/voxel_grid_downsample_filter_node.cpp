@@ -35,9 +35,9 @@ namespace autoware::downsample_filters
 {
 VoxelGridDownsampleFilter::VoxelGridDownsampleFilter(const rclcpp::NodeOptions & options)
 : rclcpp::Node("VoxelGridDownsampleFilter", options),
-  voxel_size_x_(declare_parameter<float>("voxel_size_x")),
-  voxel_size_y_(declare_parameter<float>("voxel_size_y")),
-  voxel_size_z_(declare_parameter<float>("voxel_size_z")),
+  voxel_size_x_(static_cast<float>(declare_parameter<double>("voxel_size_x"))),
+  voxel_size_y_(static_cast<float>(declare_parameter<double>("voxel_size_y"))),
+  voxel_size_z_(static_cast<float>(declare_parameter<double>("voxel_size_z"))),
   tf_input_frame_(declare_parameter<std::string>("input_frame")),
   tf_output_frame_(declare_parameter<std::string>("output_frame")),
   max_queue_size_(static_cast<std::size_t>(declare_parameter<int64_t>("max_queue_size")))
@@ -97,7 +97,9 @@ void VoxelGridDownsampleFilter::input_callback(const PointCloud2ConstPtr cloud)
 
 bool VoxelGridDownsampleFilter::is_valid(const PointCloud2ConstPtr & cloud)
 {
-  if (cloud->width * cloud->height * cloud->point_step != cloud->data.size()) {
+  if (
+    static_cast<std::size_t>(cloud->width) * cloud->height * cloud->point_step !=
+    cloud->data.size()) {
     RCLCPP_WARN(
       this->get_logger(),
       "Invalid PointCloud (data = %zu, width = %d, height = %d, step = %d) with stamp %f, "

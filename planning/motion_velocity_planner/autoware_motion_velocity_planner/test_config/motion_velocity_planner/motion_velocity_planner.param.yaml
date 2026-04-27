@@ -1,0 +1,33 @@
+/**:
+  ros__parameters:
+    smooth_velocity_before_planning: true  # [-] if true, smooth the velocity profile of the input trajectory before planning
+
+    trajectory_polygon_collision_check: # used by obstacle_*_modules
+      decimate_trajectory_step_length : 2.0 # longitudinal step length to calculate trajectory polygon for collision checking
+      goal_extended_trajectory_length: 6.0
+
+      # consider the current ego pose (it is not the nearest pose on the reference trajectory)
+      # Both the lateral error and the yaw error are assumed to decrease to zero by the time duration "time_to_convergence"
+      # The both errors decrease with constant rates against the time.
+      consider_current_pose:
+        enable_to_consider_current_pose: true
+        time_to_convergence: 1.5 #[s]
+
+    pointcloud_preprocessing:
+      filter_by_trajectory_polygon:
+        enable_monolithic_crop_box: false  # [-] if true, crop pointcloud using trajectory polygon
+        enable_multi_polygon_filtering: true  # [-] if true, filter pointcloud using trajectory polygon
+        min_trajectory_length: 30.0  # [m] minimum trajectory length to crop pointcloud
+        braking_distance_scale_factor: 1.5  # scale factor for brake distance to crop pointcloud
+        lateral_margin: 2.0  # lateral margin to mask pointcloud
+        height_margin: 1.0  # height margin to mask pointcloud
+      downsample_by_voxel_grid:
+        enable_downsample: true  # [-] if true, downsample
+        voxel_size_x: 0.05
+        voxel_size_y: 0.05
+        voxel_size_z: 100000.0
+      euclidean_clustering:
+        enable_clustering: true  # [-] if true, cluster pointcloud by euclidean distance, even if false, dummy indexes are prepared.
+        cluster_tolerance: 1.0 # [m] clustering tolerance
+        min_cluster_size: 1  # minimum cluster size
+        max_cluster_size: 100000  # maximum cluster size

@@ -14,6 +14,8 @@
 
 #include "autoware/trajectory/interpolator/linear.hpp"
 
+#include "autoware/trajectory/detail/helpers.hpp"
+
 #include <Eigen/Dense>
 
 #include <utility>
@@ -24,17 +26,35 @@ namespace autoware::experimental::trajectory::interpolator
 
 bool Linear::build_impl(const std::vector<double> & bases, const std::vector<double> & values)
 {
-  this->bases_ = bases;
-  this->values_ =
-    Eigen::Map<const Eigen::VectorXd>(values.data(), static_cast<Eigen::Index>(values.size()));
+  auto [cleaned_bases, cleaned_values] =
+    ::autoware::experimental::trajectory::detail::remove_duplicate_points(bases, values, epsilon_);
+  if (cleaned_bases.size() < minimum_required_points()) {
+    return false;
+  }
+  if (!::autoware::experimental::trajectory::detail::has_strictly_increasing_bases(
+        cleaned_bases, epsilon_)) {
+    return false;
+  }
+  this->bases_ = std::move(cleaned_bases);
+  this->values_ = Eigen::Map<const Eigen::VectorXd>(
+    cleaned_values.data(), static_cast<Eigen::Index>(cleaned_values.size()));
   return true;
 }
 
 bool Linear::build_impl(const std::vector<double> & bases, std::vector<double> && values)
 {
-  this->bases_ = bases;
-  this->values_ =
-    Eigen::Map<const Eigen::VectorXd>(values.data(), static_cast<Eigen::Index>(values.size()));
+  auto [cleaned_bases, cleaned_values] =
+    ::autoware::experimental::trajectory::detail::remove_duplicate_points(bases, values, epsilon_);
+  if (cleaned_bases.size() < minimum_required_points()) {
+    return false;
+  }
+  if (!::autoware::experimental::trajectory::detail::has_strictly_increasing_bases(
+        cleaned_bases, epsilon_)) {
+    return false;
+  }
+  this->bases_ = std::move(cleaned_bases);
+  this->values_ = Eigen::Map<const Eigen::VectorXd>(
+    cleaned_values.data(), static_cast<Eigen::Index>(cleaned_values.size()));
   return true;
 }
 

@@ -21,8 +21,8 @@
 #include <rclcpp/logging.hpp>
 
 #include <algorithm>
+#include <cassert>
 #include <memory>
-#include <optional>
 #include <utility>
 #include <vector>
 
@@ -43,6 +43,41 @@ private:
   std::vector<T> values_;
   std::shared_ptr<interpolator::InterpolatorInterface<T>> interpolator_;
   std::function<void(const double s)> base_addition_callback_slot_{nullptr};
+
+  size_t insert_base_if_not_present(const double base)
+  {
+    auto & bases = bases_;
+    auto & values = values_;
+
+    const auto it = std::lower_bound(bases.begin(), bases.end(), base);
+    const auto index = std::distance(bases.begin(), it);
+
+    if (it != bases.end() && *it == base) {
+      // Return the index if the value already exists
+      return index;
+    }
+
+    // Insert into bases
+    bases.insert(it, base);
+
+    // execute the callback to notify that a new base has been added
+    if (base_addition_callback_slot_) {
+      std::invoke(base_addition_callback_slot_, base);
+    }
+
+    // Insert into values at the corresponding position
+    const auto value_index = (index == 0) ? 0 : index - 1;
+    values.insert(values.begin() + index, values.at(value_index));
+    return index;
+  }
+
+  void rebuild()
+  {
+    const auto success = interpolator_->build(bases_, values_);
+    if (!success) {
+      assert(success && "InterpolatedArray::rebuild: failed to rebuild interpolator.");
+    }
+  }
 
 public:
   /**
@@ -101,7 +136,7 @@ public:
       bases_ = other.bases_;
       values_ = other.values_;
       interpolator_ = other.interpolator_->clone();
-      base_addition_callback_slot_ = other.base_addition_callback_slot_;
+      base_addition_callback_slot_ = nullptr;
     }
     return *this;
   }
@@ -142,39 +177,13 @@ public:
     }
 
   private:
-    size_t insert_base_if_not_present(const double base)
-    {
-      auto & bases = parent_.bases_;
-      auto & values = parent_.values_;
-
-      const auto it = std::lower_bound(bases.begin(), bases.end(), base);
-      const auto index = std::distance(bases.begin(), it);
-
-      if (it != bases.end() && *it == base) {
-        // Return the index if the value already exists
-        return index;
-      }
-
-      // Insert into bases
-      bases.insert(it, base);
-
-      // execute the callback to notify that a new base has been added
-      if (parent_.base_addition_callback_slot_) {
-        std::invoke(parent_.base_addition_callback_slot_, base);
-      }
-
-      // Insert into values at the corresponding position
-      values.insert(values.begin() + index, values.at(index - 1));
-      return index;
-    }
-
     std::array<size_t, 2> get_or_insert_bound_indices()
     {
       // Insert the start value if not present
-      auto start_index = insert_base_if_not_present(start_);
+      auto start_index = parent_.insert_base_if_not_present(start_);
 
       // Insert the end value if not present
-      auto end_index = insert_base_if_not_present(end_);
+      auto end_index = parent_.insert_base_if_not_present(end_);
 
       // Ensure the indices are in ascending order
       if (start_index > end_index) {
@@ -189,24 +198,17 @@ public:
     {
       const auto [start_index, end_index] = get_or_insert_bound_indices();
 
-      auto & bases = parent_.bases_;
       auto & values = parent_.values_;
 
       // Set the values in the specified range
       std::fill(values.begin() + start_index, values.begin() + end_index + 1, value);
-
-      const auto success = parent_.interpolator_->build(bases, values);
-      if (!success) {
-        throw std::runtime_error(
-          "Failed to build interpolator.");  // This Exception should not be thrown.
-      }
+      parent_.rebuild();
     }
 
     void clamp(const T & max)
     {
       const auto [start_index, end_index] = get_or_insert_bound_indices();
 
-      auto & bases = parent_.bases_;
       auto & values = parent_.values_;
 
       // Clamp the values in the specified range
@@ -217,12 +219,25 @@ public:
           values.begin() + start_index, values.begin() + end_index + 1,
           [&](const T & v) { return v > max; }, max);
       }
+      parent_.rebuild();
+    }
+  };
 
-      const auto success = parent_.interpolator_->build(bases, values);
-      if (!success) {
-        throw std::runtime_error(
-          "Failed to build interpolator.");  // This Exception should not be thrown.
-      }
+  class Point
+  {
+    friend class InterpolatedArray;
+
+    const double base_;
+    InterpolatedArray<T> & parent_;
+
+    Point(InterpolatedArray<T> & parent, const double base) : base_(base), parent_(parent) {}
+
+  public:
+    void set(const T & value)
+    {
+      const auto index = parent_.insert_base_if_not_present(base_);
+      parent_.values_.at(index) = value;
+      parent_.rebuild();
     }
   };
 
@@ -245,6 +260,17 @@ public:
     return Segment{*this, start, end};
   }
 
+  Point at(double base)
+  {
+    if (base < this->start() || base > this->end()) {
+      RCLCPP_WARN(
+        get_logger(), "The point %f is out of the array range [%f, %f]", base, this->start(),
+        this->end());
+      base = std::clamp(base, this->start(), this->end());
+    }
+    return Point{*this, base};
+  }
+
   /**
    * @brief Assign a value to the entire array.
    * @param value Value to be assigned.
@@ -253,11 +279,7 @@ public:
   InterpolatedArray & operator=(const T & value)
   {
     std::fill(values_.begin(), values_.end(), value);
-    const auto success = interpolator_->build(bases_, values_);
-    if (!success) {
-      throw std::runtime_error(
-        "Failed to build interpolator.");  // This Exception should not be thrown.
-    }
+    rebuild();
     return *this;
   }
 

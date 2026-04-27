@@ -137,6 +137,10 @@ void create_safe_object()
     auto p3 = lanelet::BasicPoint3d(3.0, 3.0, 3.0);
     std::vector<lanelet::BasicPoint3d> vector_points = {p1, p2, p3};
     auto opt = autoware::experimental::lanelet2_utils::create_safe_linestring(vector_points);
+    if (!opt.has_value()) {
+      std::cerr << "Failed to create safe linestring from BasicPoint3d" << std::endl;
+      return;
+    }
     auto basic_linestring = *opt;
   }
 
@@ -147,6 +151,10 @@ void create_safe_object()
     auto p3 = lanelet::ConstPoint3d(lanelet::Point3d(lanelet::InvalId, 3.0, 3.0, 3.0));
     std::vector<lanelet::ConstPoint3d> vector_points = {p1, p2, p3};
     auto opt = autoware::experimental::lanelet2_utils::create_safe_linestring(vector_points);
+    if (!opt.has_value()) {
+      std::cerr << "Failed to create safe linestring from ConstPoint3d" << std::endl;
+      return;
+    }
     auto const_linestring = *opt;
     std::cout << "Construct ConstLinestring3d from ConstPoints3d." << std::endl;
   }
@@ -162,6 +170,10 @@ void create_safe_object()
 
     const auto opt =
       autoware::experimental::lanelet2_utils::create_safe_lanelet(left_points, right_points);
+    if (!opt.has_value()) {
+      std::cerr << "Failed to create safe lanelet from BasicPoints3d" << std::endl;
+      return;
+    }
     auto lanelet = *opt;
     std::cout << "Construct ConstLanelet from BasicPoints3d." << std::endl;
   }
@@ -177,6 +189,10 @@ void create_safe_object()
     std::vector<lanelet::BasicPoint3d> right_points = {p3, p4};
     const auto opt =
       autoware::experimental::lanelet2_utils::create_safe_lanelet(left_points, right_points);
+    if (!opt.has_value()) {
+      std::cerr << "Failed to create safe lanelet from ConstPoints3d" << std::endl;
+      return;
+    }
     auto lanelet = *opt;
     std::cout << "Construct ConstLanelet from ConstPoints3d." << std::endl;
   }
