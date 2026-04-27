@@ -214,6 +214,63 @@ TEST(FindIntervalsTemporal, FindIntervalsByTime)
   EXPECT_NEAR(intervals.front().end.distance, 2.0, 1e-6);
 }
 
+TEST(FindIntervalsTemporal, FindsHighCurvatureInterval)
+{
+  constexpr double radius = 5.0;
+  constexpr double curvature_threshold = 0.1;
+  constexpr double expected_curve_start_time = 10.0;
+  constexpr double expected_curve_end_time = expected_curve_start_time + radius * M_PI_2;
+
+  const auto make_point = [](const double time, const double x, const double y) {
+    TrajectoryPoint point;
+    point.pose.position.x = x;
+    point.pose.position.y = y;
+    point.longitudinal_velocity_mps = 1.0F;
+    point.time_from_start = rclcpp::Duration::from_seconds(time);
+    return point;
+  };
+
+  std::vector<TrajectoryPoint> points;
+  points.reserve(19);
+
+  for (int i = 0; i <= 5; ++i) {
+    const double x = -10.0 + 2.0 * static_cast<double>(i);
+    points.push_back(make_point(x + 10.0, x, 0.0));
+  }
+
+  for (int i = 1; i <= 7; ++i) {
+    const double angle = -M_PI_2 + M_PI_2 * static_cast<double>(i) / 8.0;
+    const double time = expected_curve_start_time + radius * (angle + M_PI_2);
+    points.push_back(make_point(time, radius * std::cos(angle), radius + radius * std::sin(angle)));
+  }
+
+  for (int i = 0; i <= 5; ++i) {
+    const double y = radius + 2.0 * static_cast<double>(i);
+    points.push_back(make_point(expected_curve_end_time + y - radius, radius, y));
+  }
+
+  const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  const auto & trajectory = trajectory_result.value();
+
+  const auto intervals = autoware::experimental::trajectory::find_intervals(
+    trajectory,
+    [&trajectory](const double t) {
+      return std::abs(trajectory.curvature_from_time(t)) >= curvature_threshold;
+    },
+    20);
+
+  ASSERT_EQ(intervals.size(), 1U);
+  EXPECT_NEAR(intervals.front().start.time, expected_curve_start_time, 1.0);
+  EXPECT_NEAR(intervals.front().end.time, expected_curve_end_time, 1.0);
+
+  const auto mid_time = 0.5 * (intervals.front().start.time + intervals.front().end.time);
+  EXPECT_GE(std::abs(trajectory.curvature_from_time(mid_time)), curvature_threshold);
+  EXPECT_LT(std::abs(trajectory.curvature_from_time(2.0)), curvature_threshold);
+  EXPECT_LT(
+    std::abs(trajectory.curvature_from_time(expected_curve_end_time + 2.0)), curvature_threshold);
+}
+
 TEST(CropTemporal, CropTimeRebases)
 {
   const auto points = make_points({
