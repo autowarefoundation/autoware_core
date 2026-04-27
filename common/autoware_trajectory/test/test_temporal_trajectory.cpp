@@ -18,6 +18,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <vector>
 
 namespace
@@ -29,6 +30,8 @@ struct PointParam
 {
   double time{};
   double x{};
+  double y = 0.0;
+  double z = 0.0;
   float velocity = 1.0F;
 };
 
@@ -39,7 +42,8 @@ std::vector<TrajectoryPoint> make_points(const std::initializer_list<PointParam>
   for (const auto & init : inits) {
     TrajectoryPoint point;
     point.pose.position.x = init.x;
-    point.pose.position.y = 0.0;
+    point.pose.position.y = init.y;
+    point.pose.position.z = init.z;
     point.longitudinal_velocity_mps = init.velocity;
     point.time_from_start = rclcpp::Duration::from_seconds(init.time);
     points.push_back(point);
@@ -142,11 +146,11 @@ TEST(TemporalTrajectory, DistanceToTimeAtDuplicatePoints)
 TEST(TemporalTrajectory, DistanceToTimeReturnsEndTimeAtStopPoint)
 {
   const auto points = make_points({
-    {0.0, 0.0, 1.0F},
-    {1.0, 1.0, 1.0F},
-    {2.0, 2.0, 0.0F},
-    {3.0, 2.0, 0.0F},
-    {4.0, 2.0, 0.0F},
+    {0.0, 0.0, 0.0, 0.0, 1.0F},
+    {1.0, 1.0, 0.0, 0.0, 1.0F},
+    {2.0, 2.0, 0.0, 0.0, 0.0F},
+    {3.0, 2.0, 0.0, 0.0, 0.0F},
+    {4.0, 2.0, 0.0, 0.0, 0.0F},
   });
 
   const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
@@ -361,4 +365,108 @@ TEST(TemporalTrajectory, ComputeFromTimeAtBoundaries)
   EXPECT_NEAR(rclcpp::Duration(at_start.time_from_start).seconds(), 0.0, 1e-6);
   EXPECT_NEAR(at_end.pose.position.x, 3.0, 1e-6);
   EXPECT_NEAR(rclcpp::Duration(at_end.time_from_start).seconds(), 3.0, 1e-6);
+}
+
+TEST(TemporalTrajectory, AzimuthFromDistance)
+{
+  const auto points = make_points({
+    {0.0, 0.0, 0.0},
+    {1.0, 1.0, 1.0},
+    {2.0, 2.0, 2.0},
+  });
+
+  const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  const auto & trajectory = trajectory_result.value();
+
+  EXPECT_NEAR(trajectory.azimuth_from_distance(0.5), M_PI / 4.0, M_PI / 10.0);
+  EXPECT_NEAR(trajectory.azimuth_from_distance(1.5), M_PI / 4.0, M_PI / 10.0);
+}
+
+TEST(TemporalTrajectory, AzimuthFromTime)
+{
+  const auto points = make_points({
+    {0.0, 0.0, 0.0},
+    {1.0, 1.0, 1.0},
+    {2.0, 2.0, 2.0},
+  });
+
+  const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  const auto & trajectory = trajectory_result.value();
+
+  EXPECT_NEAR(trajectory.azimuth_from_time(0.5), M_PI / 4.0, M_PI / 10.0);
+  EXPECT_NEAR(trajectory.azimuth_from_time(1.5), M_PI / 4.0, M_PI / 10.0);
+}
+
+TEST(TemporalTrajectory, ElevationFromDistance)
+{
+  const auto points = make_points({
+    {0.0, 0.0, 0.0, 0.0},
+    {1.0, 1.0, 0.0, 1.0},
+    {2.0, 2.0, 0.0, 2.0},
+  });
+
+  const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  const auto & trajectory = trajectory_result.value();
+
+  const auto e1 = trajectory.elevation_from_distance(0.5);
+  const auto e2 = trajectory.elevation_from_distance(1.5);
+  EXPECT_NEAR(e1, M_PI / 4.0, M_PI / 10.0);
+  EXPECT_NEAR(e2, M_PI / 4.0, M_PI / 10.0);
+}
+
+TEST(TemporalTrajectory, ElevationFromTime)
+{
+  const auto points = make_points({
+    {0.0, 0.0, 0.0, 0.0},
+    {1.0, 1.0, 0.0, 1.0},
+    {2.0, 2.0, 0.0, 2.0},
+  });
+
+  const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  const auto & trajectory = trajectory_result.value();
+
+  const auto e1 = trajectory.elevation_from_time(0.5);
+  const auto e2 = trajectory.elevation_from_time(1.5);
+  EXPECT_NEAR(e1, M_PI / 4.0, M_PI / 10.0);
+  EXPECT_NEAR(e2, M_PI / 4.0, M_PI / 10.0);
+}
+
+TEST(TemporalTrajectory, CurvatureFromDistance)
+{
+  constexpr double radius = 5.0;
+  const auto points = make_points({
+    {0.0, radius, 0.0},
+    {1.0, radius * std::cos(M_PI / 6.0), radius * std::sin(M_PI / 6.0)},
+    {2.0, radius * std::cos(M_PI / 3.0), radius * std::sin(M_PI / 3.0)},
+    {3.0, 0.0, radius},
+  });
+
+  const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  const auto & trajectory = trajectory_result.value();
+
+  const auto curvature = trajectory.curvature_from_distance(1.5);
+  EXPECT_NEAR(curvature, 1.0 / radius, 1e-1);
+}
+
+TEST(TemporalTrajectory, CurvatureFromTime)
+{
+  constexpr double radius = 5.0;
+  const auto points = make_points({
+    {0.0, radius, 0.0},
+    {1.0, radius * std::cos(M_PI / 6.0), radius * std::sin(M_PI / 6.0)},
+    {2.0, radius * std::cos(M_PI / 3.0), radius * std::sin(M_PI / 3.0)},
+    {3.0, 0.0, radius},
+  });
+
+  const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+  const auto & trajectory = trajectory_result.value();
+
+  const auto curvature = trajectory.curvature_from_time(1.5);
+  EXPECT_NEAR(curvature, 1.0 / radius, 1e-1);
 }

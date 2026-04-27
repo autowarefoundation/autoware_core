@@ -90,6 +90,54 @@ public:
   [[nodiscard]] PointType compute_from_distance(const double s) const;
 
   /**
+   * @brief Compute the azimuth angle at a given time.
+   * @param[in] t Query time in seconds.
+   * @return Azimuth in radians.
+   * @throw std::out_of_range If t is outside [start_time(), end_time()].
+   */
+  [[nodiscard]] double azimuth_from_time(const double t) const;
+
+  /**
+   * @brief Compute the azimuth angle at a given arc length.
+   * @param[in] s Query arc length in meters.
+   * @return Azimuth in radians.
+   * @throw std::out_of_range If s is outside [0, length()].
+   */
+  [[nodiscard]] double azimuth_from_distance(const double s) const;
+
+  /**
+   * @brief Compute the elevation angle at a given time.
+   * @param[in] t Query time in seconds.
+   * @return Elevation in radians.
+   * @throw std::out_of_range If t is outside [start_time(), end_time()].
+   */
+  [[nodiscard]] double elevation_from_time(const double t) const;
+
+  /**
+   * @brief Compute the elevation angle at a given arc length.
+   * @param[in] s Query arc length in meters.
+   * @return Elevation in radians.
+   * @throw std::out_of_range If s is outside [0, length()].
+   */
+  [[nodiscard]] double elevation_from_distance(const double s) const;
+
+  /**
+   * @brief Compute the curvature at a given time.
+   * @param[in] t Query time in seconds.
+   * @return Curvature.
+   * @throw std::out_of_range If t is outside [start_time(), end_time()].
+   */
+  [[nodiscard]] double curvature_from_time(const double t) const;
+
+  /**
+   * @brief Compute the curvature at a given arc length.
+   * @param[in] s Query arc length in meters.
+   * @return Curvature.
+   * @throw std::out_of_range If s is outside [0, length()].
+   */
+  [[nodiscard]] double curvature_from_distance(const double s) const;
+
+  /**
    * @brief Convert time to arc length.
    * @param[in] t Query time in seconds.
    * @return Arc length in meters.

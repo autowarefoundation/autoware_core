@@ -112,6 +112,39 @@ TemporalTrajectory::PointType TemporalTrajectory::compute_from_distance(const do
   return point;
 }
 
+double TemporalTrajectory::azimuth_from_time(const double t) const
+{
+  return spatial_trajectory_.azimuth(time_to_distance(t));
+}
+
+double TemporalTrajectory::azimuth_from_distance(const double s) const
+{
+  detail::throw_if_out_of_range(s, 0.0, length(), "distance");
+  return spatial_trajectory_.azimuth(s);
+}
+
+double TemporalTrajectory::elevation_from_time(const double t) const
+{
+  return spatial_trajectory_.elevation(time_to_distance(t));
+}
+
+double TemporalTrajectory::elevation_from_distance(const double s) const
+{
+  detail::throw_if_out_of_range(s, 0.0, length(), "distance");
+  return spatial_trajectory_.elevation(s);
+}
+
+double TemporalTrajectory::curvature_from_time(const double t) const
+{
+  return spatial_trajectory_.curvature(time_to_distance(t));
+}
+
+double TemporalTrajectory::curvature_from_distance(const double s) const
+{
+  detail::throw_if_out_of_range(s, 0.0, length(), "distance");
+  return spatial_trajectory_.curvature(s);
+}
+
 double TemporalTrajectory::time_to_distance(const double t) const
 {
   detail::throw_if_out_of_range(t, start_time(), end_time(), "time");
