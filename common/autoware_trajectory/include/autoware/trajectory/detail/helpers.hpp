@@ -102,6 +102,34 @@ inline bool has_strictly_increasing_bases(
 }
 
 /**
+ * @brief Remove consecutive duplicate points whose base differences are too small.
+ * @param[in] bases Interpolation bases.
+ * @param[in] values Interpolation values corresponding to bases.
+ * @return Pair of cleaned bases and cleaned values.
+ */
+template <typename T>
+inline std::pair<std::vector<double>, std::vector<T>> remove_duplicate_points(
+  const std::vector<double> & bases, const std::vector<T> & values, const double epsilon)
+{
+  std::vector<double> out_bases;
+  std::vector<T> out_values;
+  if (bases.empty()) {
+    return {out_bases, out_values};
+  }
+  out_bases.reserve(bases.size());
+  out_values.reserve(values.size());
+  out_bases.push_back(bases.front());
+  out_values.push_back(values.front());
+  for (size_t i = 1; i < bases.size(); ++i) {
+    if (bases[i] - out_bases.back() > epsilon) {
+      out_bases.push_back(bases[i]);
+      out_values.push_back(values[i]);
+    }
+  }
+  return {std::move(out_bases), std::move(out_values)};
+}
+
+/**
  * @brief Crop bases to the closed interval `[start, end]`, inserting boundaries if needed.
  * @param[in] x Input bases.
  * @param[in] start Crop start.

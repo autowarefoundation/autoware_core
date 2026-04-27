@@ -1,4 +1,4 @@
-// Copyright 2024 TIER IV, Inc.
+// Copyright 2026 TIER IV, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__TRAJECTORY__FORWARD_HPP_
-#define AUTOWARE__TRAJECTORY__FORWARD_HPP_
+#include "autoware/trajectory/utils/align_orientation.hpp"
 
 namespace autoware::experimental::trajectory
 {
 
-template <typename PointType>
-class Trajectory
+TemporalTrajectory align_orientation_with_trajectory_direction(TemporalTrajectory trajectory)
 {
-};
-
-class TemporalTrajectory;
+  trajectory.spatial_trajectory_.align_orientation_with_trajectory_direction();
+  return trajectory;
+}
 
 }  // namespace autoware::experimental::trajectory
-
-#endif  // AUTOWARE__TRAJECTORY__FORWARD_HPP_

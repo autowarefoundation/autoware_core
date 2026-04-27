@@ -19,6 +19,7 @@
 
 #include <Eigen/Dense>
 
+#include <limits>
 #include <vector>
 
 namespace autoware::experimental::trajectory::interpolator
@@ -32,6 +33,7 @@ namespace autoware::experimental::trajectory::interpolator
 class Linear : public detail::InterpolatorMixin<Linear, double>
 {
 private:
+  double epsilon_{};        ///< Duplicate-base tolerance.
   Eigen::VectorXd values_;  ///< Interpolation values.
 
   /**
@@ -82,7 +84,9 @@ public:
   /**
    * @brief Default constructor.
    */
-  Linear() = default;
+  explicit Linear(const double epsilon = std::numeric_limits<double>::epsilon()) : epsilon_(epsilon)
+  {
+  }
 
   /**
    * @brief Get the minimum number of required points for the interpolator.
