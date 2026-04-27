@@ -8407,11 +8407,11 @@ std::vector&lt;autoware_planning_msgs::msg::PathPoint&gt; points = trajectory-&g
 <tbody>
 <tr>
 <td><code>find_intervals(trajectory, constraint)</code></td>
-<td>Find contiguous arc-length intervals on a spatial <code>Trajectory</code> where <code>constraint(point)</code> is true. Returns <code>vector&lt;Interval&gt;</code>.</td>
+<td>Find contiguous arc-length intervals on a spatial <code>Trajectory</code> where <code>constraint(point)</code> or <code>constraint(s)</code> is true. Returns <code>vector&lt;Interval&gt;</code>.</td>
 </tr>
 <tr>
 <td><code>find_intervals(temporal_trajectory, constraint)</code></td>
-<td>Find contiguous time intervals on a <code>TemporalTrajectory</code> where <code>constraint(point)</code> is true. Returns <code>vector&lt;TemporalInterval&gt;</code> (each entry contains both <code>TimeDistancePair</code> start and end).</td>
+<td>Find contiguous time intervals on a <code>TemporalTrajectory</code> where <code>constraint(point)</code> or <code>constraint(t)</code> is true. Returns <code>vector&lt;TemporalInterval&gt;</code> (each entry contains both <code>TimeDistancePair</code> start and end).</td>
 </tr>
 </tbody>
 </table>
@@ -8555,7 +8555,7 @@ auto s_nearest = find_nearest_index(traj, query);</code></p>
 <tbody>
 <tr>
 <td><ul><li><code>crossed_with_constraint</code></li></ul></td>
-<td>A utility function that finds intersections between a trajectory and a linestring where the given constraint is satisfied.</td>
+<td>A utility function that finds intersections between a trajectory and a linestring where the given constraint is satisfied. The constraint may accept either a trajectory point or arc length <code>s</code>.</td>
 <td></td>
 </tr>
 <tr>
