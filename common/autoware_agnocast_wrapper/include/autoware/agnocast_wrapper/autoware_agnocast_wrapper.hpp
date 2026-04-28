@@ -257,9 +257,10 @@ public:
   message_ptr & operator=(const message_ptr & r)
   {
     if (this != &r) {
-      ptr_ = nullptr;
       if (r.ptr_ != nullptr) {
         ptr_ = r.ptr_->clone();
+      } else {
+        ptr_ = nullptr;
       }
     }
     return *this;
