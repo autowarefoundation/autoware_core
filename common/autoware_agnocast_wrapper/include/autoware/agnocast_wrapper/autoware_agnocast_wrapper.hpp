@@ -128,7 +128,7 @@ public:
   ros2_ptr_t move_ros2_ptr() && noexcept override { return ros2_ptr_t{}; }
 
   // Can only be called with shared ownership.
-  std::unique_ptr<message_interface<MessageT, OwnershipType::Shared>> clone() const
+  std::unique_ptr<message_interface<MessageT, OwnershipType::Shared>> clone() const override
   {
     return std::make_unique<agnocast_message<MessageT, Ownership>>(*this);
   }
@@ -158,7 +158,7 @@ public:
   }
 
   // Can only be called with shared ownership.
-  std::unique_ptr<message_interface<MessageT, OwnershipType::Shared>> clone() const
+  std::unique_ptr<message_interface<MessageT, OwnershipType::Shared>> clone() const override
   {
     return std::make_unique<ros2_message<MessageT, Ownership>>(*this);
   }
