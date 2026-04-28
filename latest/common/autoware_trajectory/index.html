@@ -8415,6 +8415,33 @@ std::vector&lt;autoware_planning_msgs::msg::PathPoint&gt; points = trajectory-&g
 </tr>
 </tbody>
 </table>
+<h4 id="autowaretrajectoryutilsmaxhpp"><span style="font-size: 1.2em;"><code>&lt;autoware/trajectory/utils/max.hpp&gt;</code></span><a class="headerlink" href="#autowaretrajectoryutilsmaxhpp" title="Permanent link">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>max(trajectory, evaluator)</code></td>
+<td>Find the underlying arc length <code>s</code> where <code>evaluator(point)</code> or <code>evaluator(s)</code> is maximized on a spatial <code>Trajectory</code>. Returns <code>MaxResult&lt;double, ValueType&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>max&lt;MaxSearchMethod::FixedInterval&gt;(trajectory, evaluator, interval)</code></td>
+<td>Find the arc length <code>s</code> where <code>evaluator(point)</code> or <code>evaluator(s)</code> is maximized by searching with a fixed arc-length interval.</td>
+</tr>
+<tr>
+<td><code>max(temporal_trajectory, evaluator)</code></td>
+<td>Find the underlying time-distance pair where <code>evaluator(point)</code> or <code>evaluator(t)</code> is maximized on a <code>TemporalTrajectory</code>. Returns <code>MaxResult&lt;TimeDistancePair, ValueType&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>max&lt;MaxSearchMethod::FixedInterval&gt;(temporal_trajectory, evaluator, interval)</code></td>
+<td>Find the time-distance pair where <code>evaluator(point)</code> or <code>evaluator(t)</code> is maximized by searching with a fixed time interval.</td>
+</tr>
+</tbody>
+</table>
 <h4 id="autowaretrajectoryutilsreference_pathhpp"><span style="font-size: 1.2em;"><code>&lt;autoware/trajectory/utils/reference_path.hpp&gt;</code></span><a class="headerlink" href="#autowaretrajectoryutilsreference_pathhpp" title="Permanent link">#</a></h4>
 <table>
 <thead>
