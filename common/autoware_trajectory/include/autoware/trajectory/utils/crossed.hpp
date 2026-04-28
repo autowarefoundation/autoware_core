@@ -139,11 +139,33 @@ template <class LineStringType>
   return crossed_points;
 }
 
+template <class PathPointType, class LineStringType>
+[[nodiscard]] std::vector<double> crossed(
+  const std::vector<PathPointType> & points, const LineStringType & linestring)
+{
+  using Builder = typename Trajectory<PathPointType>::Builder;
+
+  auto trajectory = Builder{}.build(points);
+  if (!trajectory.has_value()) {
+    return {};
+  }
+  return crossed(*trajectory, linestring);
+}
+
+template <class PathType, class LineStringType>
+[[nodiscard]] std::vector<double> crossed(const PathType & path, const LineStringType & linestring)
+{
+  if (path.points.size() == 0) {
+    return {};
+  }
+  return crossed(path.points, linestring);
+}
+
 /**
  * @brief Finds intersections between a trajectory and a polygon,
  * @tparam TrajectoryPointType The type of points in the trajectory.
- * @tparam PolygonClosurePointsType The type of the polygon. If the polygon is open, pass it AS-IS.
- * If the polygon is closed, pass its .outer()
+ * @tparam PolygonClosurePointsType The type of the polygon. If the polygon is open, pass it
+ * AS-IS. If the polygon is closed, pass its .outer()
  * @param trajectory The trajectory to evaluate.
  * @param linestring The linestring to intersect with the trajectory.
  * @return A vector of double values representing the parameters `s` where the trajectory intersects
@@ -171,6 +193,30 @@ template <class TrajectoryPointType, class PolygonClosurePointsType>
   boundary.push_back(front_point);
   return crossed_with_constraint(
     trajectory, boundary, [](const TrajectoryPointType &) { return true; });
+}
+
+template <class PathPointType, class PolygonClosurePointsType>
+[[nodiscard]] std::vector<double> crossed_with_polygon(
+  const std::vector<PathPointType> & points,
+  const PolygonClosurePointsType & open_or_closed_boundary)
+{
+  using Builder = typename Trajectory<PathPointType>::Builder;
+
+  auto trajectory = Builder{}.build(points);
+  if (!trajectory.has_value()) {
+    return {};
+  }
+  return crossed_with_polygon(*trajectory, open_or_closed_boundary);
+}
+
+template <class PathType, class PolygonClosurePointsType>
+[[nodiscard]] std::vector<double> crossed_with_polygon(
+  const PathType & path, const PolygonClosurePointsType & open_or_closed_boundary)
+{
+  if (path.points.size() == 0) {
+    return {};
+  }
+  return crossed_with_polygon(path.points, open_or_closed_boundary);
 }
 
 }  // namespace autoware::experimental::trajectory
