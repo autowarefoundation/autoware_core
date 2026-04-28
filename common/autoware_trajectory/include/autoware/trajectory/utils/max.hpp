@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <cassert>
 #include <iterator>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -53,61 +54,32 @@ struct MaxResult
 namespace detail
 {
 
-template <class TrajectoryPointType, class Evaluator>
+template <class Evaluator, class ComputePoint>
 [[nodiscard]] auto max_at_bases(
-  const Trajectory<TrajectoryPointType> & trajectory, Evaluator & evaluator,
-  const std::vector<double> & bases)
-  -> MaxResult<double, point_or_parameter_invoke_result_t<Evaluator, TrajectoryPointType>>
+  Evaluator & evaluator, const std::vector<double> & bases, ComputePoint && compute_point)
 {
-  using EvaluatorResult = point_or_parameter_invoke_result_t<Evaluator, TrajectoryPointType>;
+  using ComputedPoint = std::invoke_result_t<ComputePoint &, double>;
+  using PointType = std::decay_t<ComputedPoint>;
+  using EvaluatorResult = point_or_parameter_invoke_result_t<Evaluator, PointType>;
 
   assert(!bases.empty() && "max: trajectory has no search bases");
 
-  double max_s = bases.front();
+  double max_base = bases.front();
   EvaluatorResult max_value = invoke_with_point_or_parameter(
-    evaluator, max_s, [&trajectory, &max_s]() { return trajectory.compute(max_s); });
+    evaluator, max_base, [&compute_point, &max_base]() { return compute_point(max_base); });
 
   for (auto it = std::next(bases.begin()); it != bases.end(); ++it) {
-    const auto s = *it;
+    const auto base = *it;
     EvaluatorResult value = invoke_with_point_or_parameter(
-      evaluator, s, [&trajectory, &s]() { return trajectory.compute(s); });
+      evaluator, base, [&compute_point, &base]() { return compute_point(base); });
+
     if (max_value < value) {
-      max_s = s;
+      max_base = base;
       max_value = std::move(value);
     }
   }
 
-  return MaxResult<double, EvaluatorResult>{max_s, std::move(max_value)};
-}
-
-template <class Evaluator>
-[[nodiscard]] auto max_at_time_bases(
-  const TemporalTrajectory & trajectory, Evaluator & evaluator, const std::vector<double> & bases)
-  -> MaxResult<
-    TimeDistancePair, point_or_parameter_invoke_result_t<Evaluator, TemporalTrajectory::PointType>>
-{
-  using EvaluatorResult =
-    point_or_parameter_invoke_result_t<Evaluator, TemporalTrajectory::PointType>;
-
-  assert(!bases.empty() && "max: temporal trajectory has no search bases");
-
-  double max_time = bases.front();
-  EvaluatorResult max_value = invoke_with_point_or_parameter(
-    evaluator, max_time,
-    [&trajectory, &max_time]() { return trajectory.compute_from_time(max_time); });
-
-  for (auto it = std::next(bases.begin()); it != bases.end(); ++it) {
-    const auto time = *it;
-    EvaluatorResult value = invoke_with_point_or_parameter(
-      evaluator, time, [&trajectory, &time]() { return trajectory.compute_from_time(time); });
-    if (max_value < value) {
-      max_time = time;
-      max_value = std::move(value);
-    }
-  }
-
-  return MaxResult<TimeDistancePair, EvaluatorResult>{
-    TimeDistancePair{max_time, trajectory.time_to_distance(max_time)}, std::move(max_value)};
+  return MaxResult<double, EvaluatorResult>{max_base, std::move(max_value)};
 }
 
 }  // namespace detail
@@ -130,7 +102,9 @@ template <
   -> MaxResult<double, detail::point_or_parameter_invoke_result_t<Evaluator, TrajectoryPointType>>
 {
   static_assert(Method == MaxSearchMethod::UnderlyingBases, "max: interval is required");
-  return detail::max_at_bases(trajectory, evaluator, trajectory.get_underlying_bases());
+  return detail::max_at_bases(
+    evaluator, trajectory.get_underlying_bases(),
+    [&trajectory](const double s) { return trajectory.compute(s); });
 }
 
 /**
@@ -159,7 +133,8 @@ template <MaxSearchMethod Method, class TrajectoryPointType, class Evaluator>
     bases.push_back(s);
   }
   bases.push_back(end);
-  return detail::max_at_bases(trajectory, evaluator, bases);
+  return detail::max_at_bases(
+    evaluator, bases, [&trajectory](const double s) { return trajectory.compute(s); });
 }
 
 /**
@@ -178,7 +153,13 @@ template <MaxSearchMethod Method = MaxSearchMethod::UnderlyingBases, class Evalu
   detail::point_or_parameter_invoke_result_t<Evaluator, TemporalTrajectory::PointType>>
 {
   static_assert(Method == MaxSearchMethod::UnderlyingBases, "max: interval is required");
-  return detail::max_at_time_bases(trajectory, evaluator, trajectory.get_underlying_time_bases());
+  const auto result = detail::max_at_bases(
+    evaluator, trajectory.get_underlying_time_bases(),
+    [&trajectory](const double time) { return trajectory.compute_from_time(time); });
+
+  return MaxResult<TimeDistancePair, decltype(result.value)>{
+    TimeDistancePair{result.point, trajectory.time_to_distance(result.point)},
+    std::move(result.value)};
 }
 
 /**
@@ -209,7 +190,13 @@ template <MaxSearchMethod Method, class Evaluator>
     bases.push_back(t);
   }
   bases.push_back(end);
-  return detail::max_at_time_bases(trajectory, evaluator, bases);
+  const auto result = detail::max_at_bases(evaluator, bases, [&trajectory](const double time) {
+    return trajectory.compute_from_time(time);
+  });
+
+  return MaxResult<TimeDistancePair, decltype(result.value)>{
+    TimeDistancePair{result.point, trajectory.time_to_distance(result.point)},
+    std::move(result.value)};
 }
 
 }  // namespace autoware::experimental::trajectory
