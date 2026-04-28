@@ -18,6 +18,7 @@
 #include "autoware/trajectory/interpolator/akima_spline.hpp"
 #include "autoware/trajectory/path_point.hpp"
 #include "autoware/trajectory/path_point_with_lane_id.hpp"
+#include "autoware/trajectory/temporal_trajectory.hpp"
 #include "autoware/trajectory/threshold.hpp"
 #include "autoware/trajectory/trajectory_point.hpp"
 
@@ -38,7 +39,7 @@ namespace autoware::experimental::trajectory
  * @return Built trajectory, or `std::nullopt` when the build fails.
  * @details
  * When `use_akima` is false, this delegates to `Trajectory<PointType>::Builder{}.build(points)`
- * and rejects trajectories shorter than `k_points_minimum_dist_threshold`.
+ * and rejects trajectories shorter than `k_epsilon_distance`.
  * When `use_akima` is true, this delegates to a builder configured with
  * `interpolator::AkimaSpline` for XY interpolation and returns the build result as-is.
  */
@@ -61,11 +62,15 @@ std::optional<Trajectory<PointType>> pretty_build(
   if (!try_trajectory) {
     return std::nullopt;
   }
-  if (try_trajectory->length() < k_points_minimum_dist_threshold) {
+  if (try_trajectory->length() < k_epsilon_distance) {
     return std::nullopt;
   }
   return try_trajectory.value();
 }
+
+std::optional<TemporalTrajectory> pretty_build_temporal(
+  const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> & points,
+  const bool use_akima = false);
 
 extern template std::optional<Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId>>
 pretty_build(

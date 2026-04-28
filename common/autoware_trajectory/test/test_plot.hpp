@@ -1,4 +1,4 @@
-// Copyright 2024 TIER IV, Inc.
+// Copyright 2026 TIER IV, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__TRAJECTORY__FORWARD_HPP_
-#define AUTOWARE__TRAJECTORY__FORWARD_HPP_
+#ifndef TEST_PLOT_HPP_
+#define TEST_PLOT_HPP_
 
-namespace autoware::experimental::trajectory
+namespace autoware::test_utils
 {
 
-template <typename PointType>
-class Trajectory
-{
-};
+bool plot_enabled();
 
-class TemporalTrajectory;
+}  // namespace autoware::test_utils
 
-}  // namespace autoware::experimental::trajectory
-
-#endif  // AUTOWARE__TRAJECTORY__FORWARD_HPP_
+#endif  // TEST_PLOT_HPP_
