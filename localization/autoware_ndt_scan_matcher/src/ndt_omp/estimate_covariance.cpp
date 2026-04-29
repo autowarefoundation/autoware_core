@@ -34,8 +34,7 @@ Eigen::Matrix2d estimate_xy_covariance_by_laplace_approximation(
 
 ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt(
   const NdtResult & ndt_result,
-  const std::shared_ptr<
-    pclomp::MultiGridNormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ>> & ndt_ptr,
+  pclomp::MultiGridNormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ> & ndt_ref,
   const std::vector<Eigen::Matrix4f> & poses_to_search,
   const pcl::shared_ptr<const pcl::PointCloud<pcl::PointXYZ>> & source)
 {
@@ -47,8 +46,8 @@ ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt(
   std::vector<NdtResult> ndt_results;
   for (const Eigen::Matrix4f & curr_pose : poses_to_search) {
     auto sub_output_cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-    ndt_ptr->align(*sub_output_cloud, curr_pose, source);
-    const NdtResult sub_ndt_result = ndt_ptr->getResult();
+    ndt_ref.align(*sub_output_cloud, curr_pose, source);
+    const NdtResult sub_ndt_result = ndt_ref.getResult();
     ndt_results.push_back(sub_ndt_result);
 
     const Eigen::Matrix4f sub_ndt_pose = sub_ndt_result.pose;
@@ -71,8 +70,7 @@ ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt(
 
 ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt_score(
   const NdtResult & ndt_result,
-  const std::shared_ptr<
-    pclomp::MultiGridNormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ>> & ndt_ptr,
+  pclomp::MultiGridNormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ> & ndt_ref,
   const std::vector<Eigen::Matrix4f> & poses_to_search,
   const pcl::shared_ptr<const pcl::PointCloud<pcl::PointXYZ>> & source, const double temperature)
 {
@@ -90,7 +88,7 @@ ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt_score(
     ndt_pose_2d_vec.emplace_back(sub_ndt_pose_2d);
 
     pcl::transformPointCloud(*source, trans_cloud, curr_pose);
-    const double nvtl = ndt_ptr->calculateNearestVoxelTransformationLikelihood(trans_cloud);
+    const double nvtl = ndt_ref.calculateNearestVoxelTransformationLikelihood(trans_cloud);
     score_vec.emplace_back(nvtl);
 
     NdtResult sub_ndt_result{};
