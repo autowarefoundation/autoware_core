@@ -31,7 +31,7 @@
   <depend>rclcpp</depend>
   <depend>tf2</depend>
   <depend>tf2_geometry_msgs</depend>
-  <depend>tl_expected</depend>
+  <depend>libexpected-dev</depend>
 
   <test_depend>ament_cmake_auto</test_depend>
   <test_depend>ament_index_cpp</test_depend>
