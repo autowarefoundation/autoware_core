@@ -144,10 +144,15 @@ jobs:
       - name: Create target branch
         env:
           TARGET_BRANCH: ${{ inputs.target_branch }}
+          NEW_VERSION: ${{ steps.bump_version.outputs.version }}
         run: |
           git checkout "origin/${TARGET_BRANCH}"
           git checkout -b chore/bot/bump_version
-          git merge tmp/bot/bump_version_base
+          # Squash the working branch into a single commit so the PR has a
+          # clean history (one commit for the bump) regardless of how many
+          # intermediate commits catkin_prepare_release created.
+          git merge --squash tmp/bot/bump_version_base
+          git commit -m "chore: bump version to ${NEW_VERSION}"
           git push origin chore/bot/bump_version --force
         shell: bash
 
