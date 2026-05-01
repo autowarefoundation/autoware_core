@@ -103,32 +103,28 @@ jobs:
           git fetch origin "${TARGET_BRANCH}"
           git merge "origin/${TARGET_BRANCH}"
 
-          # Align package.xml versions to the base version so that
-          # catkin_generate_changelog / catkin_prepare_release do not fail
-          # on packages that have diverged from the base version.
-          while IFS= read -r -d '' pkg; do
-            current_version=$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' "${pkg}" | head -n 1)
-            if [ "${current_version}" != "${BASE_VERSION}" ]; then
-              sed -i "0,/<version>[^<]*<\/version>/s//<version>${BASE_VERSION}<\/version>/" "${pkg}"
-            fi
-          done < <(find . -name package.xml -not -path "./.git/*" -print0)
-
-          # Remove existing CHANGELOG.rst files to avoid errors during
-          # catkin_generate_changelog when histories conflict. Collect the
-          # affected package names so reviewers can see which packages had
-          # their changelog reset.
+          # For packages whose version diverged from BASE_VERSION:
+          #   - rewrite package.xml's <version> to BASE_VERSION, and
+          #   - delete the package's CHANGELOG.rst
+          # so that catkin_generate_changelog / catkin_prepare_release do not
+          # fail. Collect the affected package names so reviewers can see
+          # which packages had their changelog reset.
           deleted_changelog_packages_file="${RUNNER_TEMP:-/tmp}/deleted_changelog_packages.txt"
           : > "${deleted_changelog_packages_file}"
-          while IFS= read -r -d '' changelog; do
-            pkg_xml="$(dirname "${changelog}")/package.xml"
-            if [ -f "${pkg_xml}" ]; then
-              pkg_name=$(sed -n 's:.*<name>\(.*\)</name>.*:\1:p' "${pkg_xml}" | head -n 1)
-            else
-              pkg_name=$(dirname "${changelog}")
+          while IFS= read -r -d '' pkg; do
+            current_version=$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' "${pkg}" | head -n 1)
+            if [ "${current_version}" = "${BASE_VERSION}" ]; then
+              continue
             fi
-            echo "${pkg_name}" >> "${deleted_changelog_packages_file}"
-            rm -f "${changelog}"
-          done < <(find . -name CHANGELOG.rst -not -path "./.git/*" -print0)
+            sed -i "0,/<version>[^<]*<\/version>/s//<version>${BASE_VERSION}<\/version>/" "${pkg}"
+            changelog="$(dirname "${pkg}")/CHANGELOG.rst"
+            if [ -f "${changelog}" ]; then
+              pkg_name=$(sed -n 's:.*<name>\(.*\)</name>.*:\1:p' "${pkg}" | head -n 1)
+              [ -z "${pkg_name}" ] && pkg_name=$(dirname "${pkg}")
+              echo "${pkg_name}" >> "${deleted_changelog_packages_file}"
+              rm -f "${changelog}"
+            fi
+          done < <(find . -name package.xml -not -path "./.git/*" -print0)
           sort -u -o "${deleted_changelog_packages_file}" "${deleted_changelog_packages_file}"
           echo "deleted_changelog_packages_file=${deleted_changelog_packages_file}" >> $GITHUB_OUTPUT
 
