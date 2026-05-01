@@ -20,7 +20,7 @@ on:
         default: humble
         type: string
       sync-target-branch:
-        description: Branch to sync from (the source of changes).
+        description: Branch or commit SHA to sync from (the source of changes).
         required: false
         default: main
         type: string
