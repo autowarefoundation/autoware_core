@@ -77,8 +77,10 @@ jobs:
 
       - name: Resolve base version
         id: resolve_base_version
+        env:
+          INPUT_BASE_VERSION: ${{ inputs.base_version }}
         run: |
-          base_version="${{ inputs.base_version }}"
+          base_version="${INPUT_BASE_VERSION}"
           if [ -z "${base_version}" ]; then
             base_version=$(git tag --list --sort=-v:refname | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1)
           fi
@@ -98,6 +100,7 @@ jobs:
         env:
           BASE_VERSION: ${{ steps.resolve_base_version.outputs.base_version }}
           TARGET_BRANCH: ${{ inputs.target_branch }}
+          VERSION_PART: ${{ inputs.version_part }}
         run: |
           git checkout -b tmp/bot/bump_version_base "refs/tags/${BASE_VERSION}"
           git fetch origin "${TARGET_BRANCH}"
@@ -136,7 +139,7 @@ jobs:
           catkin_generate_changelog -y
           git add -A
           git commit -m "update CHANGELOG.rst"
-          catkin_prepare_release -y --bump ${{ inputs.version_part }} --no-push
+          catkin_prepare_release -y --bump "${VERSION_PART}" --no-push
           version=$(git describe --tags)
           echo "version=${version}" >> $GITHUB_OUTPUT
         shell: bash
@@ -186,13 +189,14 @@ jobs:
 
       - name: Create PR
         id: create_pr
-        run: >
-          gh
-          pr
-          create
-          --base=${{ inputs.target_branch }}
-          --body-file=${{ steps.build_pr_body.outputs.body_file }}
-          --title="chore: bump version to ${{ steps.bump_version.outputs.version }}"
-          --head=chore/bot/bump_version
         env:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+          TARGET_BRANCH: ${{ inputs.target_branch }}
+          BODY_FILE: ${{ steps.build_pr_body.outputs.body_file }}
+          NEW_VERSION: ${{ steps.bump_version.outputs.version }}
+        run: |
+          gh pr create \
+            --base="${TARGET_BRANCH}" \
+            --body-file="${BODY_FILE}" \
+            --title="chore: bump version to ${NEW_VERSION}" \
+            --head=chore/bot/bump_version
