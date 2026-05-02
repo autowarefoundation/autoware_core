@@ -30,6 +30,8 @@ template <>
 class Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>
 : public Trajectory<geometry_msgs::msg::Pose>
 {
+  friend class TemporalTrajectory;
+
   using BaseClass = Trajectory<geometry_msgs::msg::Pose>;
   using PointType = autoware_planning_msgs::msg::TrajectoryPoint;
 
@@ -133,10 +135,15 @@ public:
 
   /**
    * @brief Restore the trajectory points
-   * @param min_points Minimum number of points
    * @return Vector of points
    */
-  std::vector<PointType> restore(const size_t min_points = 4) const;
+  std::vector<PointType> restore() const;
+
+  /**
+   * @brief set longitudinal velocity from start_point to end of the line zero (stopline)
+   * @param start_point stopline start point
+   */
+  void set_stopline(const double start_point);
 
   class Builder : public BaseClass::Builder
   {

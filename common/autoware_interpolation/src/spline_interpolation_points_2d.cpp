@@ -322,7 +322,7 @@ void SplineInterpolationPoints2d::extendLinearlyForward(
 
   // Add extended knots and linearly extrapolated values
   for (size_t i = 0; i < n_missing; ++i) {
-    const double new_s = s_end + (i + 1) * delta_s;
+    const double new_s = s_end + static_cast<double>(i + 1) * delta_s;
     extended_s.push_back(new_s);
 
     // Linear extrapolation: value = end_value + derivative * (new_s - s_end)

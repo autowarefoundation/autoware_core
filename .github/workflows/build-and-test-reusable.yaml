@@ -23,6 +23,11 @@ on:
         type: boolean
         default: false
         required: false
+      enable-agnocast:
+        description: True if ENABLE_AGNOCAST should be set to "1".
+        type: boolean
+        default: false
+        required: false
       push-ccache:
         type: boolean
         default: false
@@ -55,15 +60,21 @@ concurrency:
 env:
   CC: /usr/lib/ccache/gcc
   CXX: /usr/lib/ccache/g++
+  CCACHE_DIR: /root/.ccache
 
 jobs:
   build-and-test:
-    name: build-and-test-${{ inputs.rosdistro }}${{ inputs.above && '-above' || '' }}
+    name: build-and-test-${{ inputs.rosdistro }}${{ inputs.above && '-above' || '' }}${{ inputs.enable-agnocast && '-agnocast' || '' }}
     runs-on: ${{ fromJson(inputs.runner) }}
-    container: ${{ inputs.container }}
+    container:
+      image: ${{ inputs.container }}
+      options: --cap-add=NET_ADMIN
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+
+      - name: Tune DDS network settings
+        uses: ./.github/actions/tune-dds-network
 
       - name: Show disk space before the tasks
         if: ${{ always() }}
@@ -81,11 +92,6 @@ jobs:
 
       - name: Create ccache directory
         run: |
-          if [ -z "${CCACHE_DIR}" ]; then
-            apt-get update
-            apt-get install -y ccache
-            export CCACHE_DIR=/root/.ccache
-          fi
           mkdir -p ${CCACHE_DIR}
           du -sh ${CCACHE_DIR} && ccache -s
         shell: bash
@@ -112,12 +118,26 @@ jobs:
           ccache --zero-stats
         shell: bash
 
+      - name: Remove self packages from underlay
+        if: ${{ inputs.above }}
+        run: |
+          for pkg_xml in $(find . -name package.xml); do
+            pkg_name=$(xmllint --xpath 'string(//package/name)' "$pkg_xml")
+            if [ -d "/opt/autoware/$pkg_name" ]; then
+              echo "Removing /opt/autoware/$pkg_name"
+              sudo rm -rf "/opt/autoware/$pkg_name"
+            fi
+          done
+        shell: bash
+
       - name: Build
         if: ${{ steps.get-self-packages.outputs.self-packages != '' }}
         uses: autowarefoundation/autoware-github-actions/colcon-build@v1
+        env:
+          ENABLE_AGNOCAST: ${{ inputs.enable-agnocast && '1' || '' }}
         with:
           rosdistro: ${{ inputs.rosdistro }}
-          cache-key-element: build-and-test-${{ inputs.cache-key-element }}${{ inputs.above && '-above' || '' }}
+          cache-key-element: build-and-test-${{ inputs.cache-key-element }}${{ inputs.above && '-above' || '' }}${{ inputs.enable-agnocast && '-agnocast' || '' }}
           target-packages: ${{ steps.get-self-packages.outputs.self-packages }}
           packages-above-repos: ${{ inputs.above && 'packages_above.repos' || '' }}
           underlay-workspace: /opt/autoware
@@ -128,7 +148,7 @@ jobs:
         shell: bash
 
       - name: Push the ccache cache
-        if: ${{ inputs.push-ccache == true }}
+        if: ${{ inputs.push-ccache == true && !inputs.enable-agnocast }}
         uses: actions/cache/save@v5
         with:
           path: |
@@ -139,6 +159,8 @@ jobs:
         if: ${{ steps.get-self-packages.outputs.self-packages != '' }}
         id: test
         uses: autowarefoundation/autoware-github-actions/colcon-test@v1
+        env:
+          ENABLE_AGNOCAST: ${{ inputs.enable-agnocast && '1' || '' }}
         with:
           rosdistro: ${{ inputs.rosdistro }}
           target-packages: ${{ steps.get-self-packages.outputs.self-packages }}
@@ -158,9 +180,9 @@ jobs:
         run: df -h
 
   clang-tidy:
-    name: clang-tidy-${{ inputs.rosdistro }}${{ inputs.above && '-above' || '' }}
+    name: clang-tidy-${{ inputs.rosdistro }}${{ inputs.above && '-above' || '' }}${{ inputs.enable-agnocast && '-agnocast' || '' }}
     needs: build-and-test
-    if: ${{ inputs.above == false }}
+    if: ${{ !inputs.above && !inputs.enable-agnocast }}
     runs-on: ubuntu-latest
     container: ${{ inputs.container }}
     steps:
@@ -184,7 +206,7 @@ jobs:
           rosdistro: ${{ inputs.rosdistro }}
           cache-key-element: build-and-test-${{ inputs.cache-key-element }}${{ inputs.above && '-above' || '' }}
           target-packages: ${{ steps.get-self-packages.outputs.self-packages }}
-          clang-tidy-config-url: https://raw.githubusercontent.com/autowarefoundation/autoware/main/.clang-tidy-ci
+          clang-tidy-config-url: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/.clang-tidy-ci
           underlay-workspace: /opt/autoware
           artifact-name: clang-tidy-result-${{ inputs.rosdistro }}
 

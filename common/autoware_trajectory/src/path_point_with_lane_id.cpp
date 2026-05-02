@@ -16,7 +16,7 @@
 
 #include "autoware/trajectory/detail/helpers.hpp"
 #include "autoware/trajectory/interpolator/lane_ids_interpolator.hpp"
-#include "autoware/trajectory/threshold.hpp"
+#include "autoware/trajectory/interpolator/nearest_neighbor.hpp"
 
 #include <cstddef>
 #include <memory>
@@ -89,11 +89,18 @@ interpolator::InterpolationResult Trajectory<PointType>::build(
       interpolator::InterpolationFailure{"failed to interpolate PathPointWithLaneId::point"} +
       result.error());
   }
-  if (const auto result = lane_ids().build(bases_, std::move(lane_ids_values)); !result) {
+  if (const auto result = detail::build_with_fallback(
+        lane_ids_, bases_, lane_ids_values,
+        [] {
+          return std::make_shared<detail::InterpolatedArray<std::vector<int64_t>>>(
+            std::make_shared<interpolator::NearestNeighbor<std::vector<int64_t>>>());
+        });
+      !result) {
     return tl::unexpected(
       interpolator::InterpolationFailure{"failed to interpolate PathPointWithLaneId::lane_id"});
   }
 
+  add_base_addition_callback();
   return interpolator::InterpolationSuccess{};
 }
 
@@ -103,8 +110,8 @@ std::vector<int64_t> Trajectory<PointType>::get_contained_lane_ids() const
   const auto & [bases, values] = lane_ids_->get_data();
 
   for (size_t i = 0; i < bases.size(); i++) {
-    if (start_ <= bases[i] && bases[i] <= end_) {
-      for (const auto & lane_id : values[i]) {
+    if (start_ <= bases.at(i) && bases.at(i) <= end_) {
+      for (const auto & lane_id : values.at(i)) {
         if (contained_lane_ids.empty()) {
           contained_lane_ids.emplace_back(lane_id);
         } else {
@@ -153,37 +160,20 @@ std::vector<PointType> Trajectory<PointType>::compute(const std::vector<double> 
   return points;
 }
 
-std::vector<PointType> Trajectory<PointType>::restore(const size_t min_points) const
+std::vector<PointType> Trajectory<PointType>::restore() const
 {
-  std::vector<double> sanitized_bases{};
-  {
-    const auto bases = detail::fill_bases(get_underlying_bases(), min_points);
-    std::vector<PointType> points;
-
-    points.reserve(bases.size());
-    for (const auto & s : bases) {
-      const auto point = compute(s);
-      if (points.empty() || !is_almost_same(point, points.back())) {
-        points.push_back(point);
-        sanitized_bases.push_back(s);
-      }
-    }
-    if (points.size() >= min_points) {
-      return points;
-    }
-  }
-
-  // retry to satisfy min_point requirement as much as possible
-  const auto bases = detail::fill_bases(sanitized_bases, min_points);
   std::vector<PointType> points;
+  const auto bases = get_underlying_bases();
   points.reserve(bases.size());
   for (const auto & s : bases) {
-    const auto point = compute(s);
-    if (points.empty() || !is_almost_same(point, points.back())) {
-      points.push_back(point);
-    }
+    points.push_back(compute(s));
   }
   return points;
+}
+
+void Trajectory<PointType>::set_stopline(const double start_point)
+{
+  longitudinal_velocity_mps_->range(start_point, this->length()).set(0.0);
 }
 
 Trajectory<PointType>::Builder::Builder() : trajectory_(std::make_unique<Trajectory<PointType>>())

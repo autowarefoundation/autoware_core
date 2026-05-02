@@ -14,7 +14,6 @@
 
 #include "autoware/trajectory/interpolator/result.hpp"
 
-#include <iostream>
 #include <sstream>
 
 namespace autoware::experimental::trajectory::interpolator

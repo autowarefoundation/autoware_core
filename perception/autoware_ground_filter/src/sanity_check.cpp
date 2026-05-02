@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/ground_filter/sanity_check.hpp"
+#include "sanity_check.hpp"
 
 #include <autoware/point_types/types.hpp>
 

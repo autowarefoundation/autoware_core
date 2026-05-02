@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/localization_util/smart_pose_buffer.hpp"
-#include "autoware/localization_util/util_func.hpp"
-
 #include <ament_index_cpp/get_package_share_directory.hpp>
+#include <autoware/localization_util/smart_pose_buffer.hpp>
+#include <autoware/localization_util/util_func.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <gtest/gtest.h>

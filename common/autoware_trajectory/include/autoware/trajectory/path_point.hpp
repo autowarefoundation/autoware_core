@@ -108,10 +108,15 @@ public:
 
   /**
    * @brief Restore the trajectory points
-   * @param min_points Minimum number of points
    * @return Vector of points
    */
-  std::vector<PointType> restore(const size_t min_points = 4) const;
+  std::vector<PointType> restore() const;
+
+  /**
+   * @brief set longitudinal velocity from start_point to end of the line zero (stopline)
+   * @param start_point stopline start point
+   */
+  void set_stopline(const double start_point);
 
   class Builder : BaseClass::Builder
   {

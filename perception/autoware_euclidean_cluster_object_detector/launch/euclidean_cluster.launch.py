@@ -38,7 +38,7 @@ def launch_setup(context, *args, **kwargs):
     low_height_cropbox_filter_component = ComposableNode(
         package="autoware_crop_box_filter",
         namespace=ns,
-        plugin="autoware::crop_box_filter::CropBoxFilter",
+        plugin="autoware::crop_box_filter::CropBoxFilterNode",
         name="low_height_crop_box_filter",
         remappings=[
             ("input", LaunchConfiguration("input_pointcloud")),

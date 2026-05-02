@@ -6,12 +6,23 @@ on:
       codecov-token:
         required: true
     inputs:
+      # Why is it a JSON string?
+      # https://github.com/orgs/community/discussions/11692#discussioncomment-3541856
+      runner:
+        type: string
+        default: "['ubuntu-latest']"
+        required: false
       container:
         required: true
         type: string
       above:
         required: true
         type: boolean
+      enable-agnocast:
+        description: True if ENABLE_AGNOCAST should be set to "1".
+        type: boolean
+        default: false
+        required: false
       rosdistro:
         default: humble
         required: false
@@ -24,13 +35,16 @@ on:
 env:
   CC: /usr/lib/ccache/gcc
   CXX: /usr/lib/ccache/g++
+  CCACHE_DIR: /root/.ccache
 
 jobs:
   build-and-test-differential:
     name: build-and-test-diff
     if: ${{ inputs.run-condition }}
-    runs-on: ubuntu-latest
-    container: ${{ inputs.container }}
+    runs-on: ${{ fromJson(inputs.runner) }}
+    container:
+      image: ${{ inputs.container }}
+      options: --cap-add=NET_ADMIN
     steps:
       - name: Set PR fetch depth
         run: echo "PR_FETCH_DEPTH=$(( ${{ github.event.pull_request.commits }} + 1 ))" >> "${GITHUB_ENV}"
@@ -41,6 +55,9 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: ${{ env.PR_FETCH_DEPTH }}
+
+      - name: Tune DDS network settings
+        uses: ./.github/actions/tune-dds-network
 
       - name: Show disk space before the tasks
         if: ${{ always() }}
@@ -57,14 +74,6 @@ jobs:
       - name: Get modified packages
         id: get-modified-packages
         uses: autowarefoundation/autoware-github-actions/get-modified-packages@v1
-
-      - name: Use ros2-testing packages
-        run: |
-          if [ "${{ inputs.rosdistro }}" = "jazzy" ]; then
-            sed -i 's|http://packages.ros.org/ros2/ubuntu|http://packages.ros.org/ros2-testing/ubuntu|g' /etc/apt/sources.list.d/ros2.sources
-            apt-get update
-          fi
-        shell: bash
 
       - name: Create ccache directory
         run: |
@@ -93,13 +102,27 @@ jobs:
           ccache --zero-stats
         shell: bash
 
+      - name: Remove self packages from underlay
+        if: ${{ inputs.above }}
+        run: |
+          for pkg_xml in $(find . -name package.xml); do
+            pkg_name=$(xmllint --xpath 'string(//package/name)' "$pkg_xml")
+            if [ -d "/opt/autoware/$pkg_name" ]; then
+              echo "Removing /opt/autoware/$pkg_name"
+              sudo rm -rf "/opt/autoware/$pkg_name"
+            fi
+          done
+        shell: bash
+
       - name: Build
         if: ${{ steps.get-modified-packages.outputs.modified-packages != '' }}
         uses: autowarefoundation/autoware-github-actions/colcon-build@v1
+        env:
+          ENABLE_AGNOCAST: ${{ inputs.enable-agnocast && '1' || '' }}
         with:
           rosdistro: ${{ inputs.rosdistro }}
           target-packages: ${{ steps.get-modified-packages.outputs.modified-packages }}
-          cache-key-element: build-and-test-diff${{ inputs.above && '-above' || '' }}
+          cache-key-element: build-and-test-diff${{ inputs.above && '-above' || '' }}${{ inputs.enable-agnocast && '-agnocast' || '' }}
           packages-above-repos: ${{ inputs.above && 'packages_above.repos' || '' }}
           underlay-workspace: /opt/autoware
 
@@ -112,6 +135,8 @@ jobs:
         id: test
         if: ${{ steps.get-modified-packages.outputs.modified-packages != '' }}
         uses: autowarefoundation/autoware-github-actions/colcon-test@v1
+        env:
+          ENABLE_AGNOCAST: ${{ inputs.enable-agnocast && '1' || '' }}
         with:
           rosdistro: ${{ inputs.rosdistro }}
           target-packages: ${{ steps.get-modified-packages.outputs.modified-packages }}
@@ -134,8 +159,8 @@ jobs:
   clang-tidy-differential:
     name: clang-tidy-diff
     needs: build-and-test-differential
-    if: ${{ (inputs.above == false) && inputs.run-condition }}
-    runs-on: ubuntu-latest
+    if: ${{ !inputs.above && !inputs.enable-agnocast && inputs.run-condition }}
+    runs-on: ${{ fromJson(inputs.runner) }}
     container: ${{ inputs.container }}
     steps:
       - name: Set PR fetch depth
@@ -157,10 +182,27 @@ jobs:
         id: get-modified-packages
         uses: autowarefoundation/autoware-github-actions/get-modified-packages@v1
 
-      - name: Get changed files (existing files only)
+      - name: Get changed files (existing files only, excluding header-only packages)
         id: get-changed-files
         run: |
-          echo "changed-files=$(git diff --name-only "origin/${{ github.base_ref }}"...HEAD | grep -E '\.(cpp|hpp)$' | while read -r file; do [ -e "$file" ] && echo -n "$file "; done)" >> $GITHUB_OUTPUT
+          changed_files=$(git diff --diff-filter=d --name-only "origin/${{ github.base_ref }}"...HEAD | { grep -E '\.(cpp|hpp)$' || true; } | { grep -Ev '(^|/)test/' || true; } | while read -r file; do [ -e "$file" ] && echo -n "$file "; done)
+
+          # Exclude files belonging to header-only packages (no .cpp in src/).
+          # These packages don't generate compile_commands.json, which causes clang-tidy to fail.
+          filtered_files=""
+          for file in $changed_files; do
+            pkg_dir=$(colcon list --paths-only 2>/dev/null | while read -r pkg_path; do
+              case "$file" in "$pkg_path"/*) echo "$pkg_path"; break;; esac
+            done)
+            if [ -z "$pkg_dir" ]; then
+              filtered_files="$filtered_files $file"
+              continue
+            fi
+            if find "$pkg_dir/src" -name '*.cpp' 2>/dev/null | grep -q .; then
+              filtered_files="$filtered_files $file"
+            fi
+          done
+          echo "changed-files=$(echo "$filtered_files" | xargs)" >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Run clang-tidy
@@ -168,10 +210,10 @@ jobs:
         uses: autowarefoundation/autoware-github-actions/clang-tidy@v1
         with:
           rosdistro: ${{ inputs.rosdistro }}
-          cache-key-element: build-and-test-diff${{ inputs.above && '-above' || '' }}
+          cache-key-element: build-and-test-diff${{ inputs.above && '-above' || '' }}${{ inputs.enable-agnocast && '-agnocast' || '' }}
           target-packages: ${{ steps.get-modified-packages.outputs.modified-packages }}
           target-files: ${{ steps.get-changed-files.outputs.changed-files }}
-          clang-tidy-config-url: https://raw.githubusercontent.com/autowarefoundation/autoware/main/.clang-tidy-ci
+          clang-tidy-config-url: https://raw.githubusercontent.com/autowarefoundation/autoware_core/main/.clang-tidy-ci
           underlay-workspace: /opt/autoware
           artifact-name: clang-tidy-result-${{ inputs.rosdistro }}
 

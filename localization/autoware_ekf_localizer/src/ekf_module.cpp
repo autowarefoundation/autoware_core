@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/ekf_localizer/ekf_module.hpp"
+#include "include/ekf_module.hpp"
 
-#include "autoware/ekf_localizer/covariance.hpp"
-#include "autoware/ekf_localizer/mahalanobis.hpp"
-#include "autoware/ekf_localizer/matrix_types.hpp"
-#include "autoware/ekf_localizer/measurement.hpp"
-#include "autoware/ekf_localizer/numeric.hpp"
-#include "autoware/ekf_localizer/state_transition.hpp"
-#include "autoware/ekf_localizer/warning_message.hpp"
+#include "include/covariance.hpp"
+#include "include/mahalanobis.hpp"
+#include "include/matrix_types.hpp"
+#include "include/measurement.hpp"
+#include "include/numeric.hpp"
+#include "include/state_transition.hpp"
+#include "include/warning_message.hpp"
 
 #include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_utils_geometry/msg/covariance.hpp>
@@ -44,7 +44,8 @@ EKFModule::EKFModule(std::shared_ptr<Warning> warning, const HyperParameters & p
   dim_x_(6),  // x, y, yaw, yaw_bias, vx, wz
   accumulated_delay_times_(params.extend_state_step, 1.0E15),
   params_(params),
-  last_angular_velocity_(0.0, 0.0, 0.0)
+  last_angular_velocity_(0.0, 0.0, 0.0),
+  ekf_dt_(0.0)
 {
   Eigen::MatrixXd x = Eigen::MatrixXd::Zero(dim_x_, 1);
   Eigen::MatrixXd p = Eigen::MatrixXd::Identity(dim_x_, dim_x_) * 1.0E15;  // for x & y
@@ -255,6 +256,8 @@ bool EKFModule::measurement_update_pose(
 
   pose_diag_info.delay_time = std::max(delay_time, pose_diag_info.delay_time);
   pose_diag_info.delay_time_threshold = accumulated_delay_times_.back();
+  // is_passed_delay_gate is initialized true before the first calling measurement_update_pose
+  // every ekf_localizer call.
   if (delay_step >= params_.extend_state_step) {
     pose_diag_info.is_passed_delay_gate = false;
     warning_->warn_throttle(
@@ -291,6 +294,8 @@ bool EKFModule::measurement_update_pose(
 
   const double distance = mahalanobis(y_ekf, y, p_y);
   pose_diag_info.mahalanobis_distance = std::max(distance, pose_diag_info.mahalanobis_distance);
+  // is_passed_mahalanobis_gate is initialized true before the first calling measurement_update_pose
+  // every ekf_localizer call.
   if (distance > params_.pose_gate_dist) {
     pose_diag_info.is_passed_mahalanobis_gate = false;
     warning_->warn_throttle(mahalanobis_warning_message(distance, params_.pose_gate_dist), 2000);
@@ -383,6 +388,8 @@ bool EKFModule::measurement_update_twist(
 
   twist_diag_info.delay_time = std::max(delay_time, twist_diag_info.delay_time);
   twist_diag_info.delay_time_threshold = accumulated_delay_times_.back();
+  // is_passed_delay_gate is initialized true before the first calling measurement_update_twist
+  // every ekf_localizer call.
   if (delay_step >= params_.extend_state_step) {
     twist_diag_info.is_passed_delay_gate = false;
     warning_->warn_throttle(
@@ -410,6 +417,8 @@ bool EKFModule::measurement_update_twist(
 
   const double distance = mahalanobis(y_ekf, y, p_y);
   twist_diag_info.mahalanobis_distance = std::max(distance, twist_diag_info.mahalanobis_distance);
+  // is_passed_mahalanobis_gate is initialized true before the first calling
+  // measurement_update_twist every ekf_localizer call.
   if (distance > params_.twist_gate_dist) {
     twist_diag_info.is_passed_mahalanobis_gate = false;
     warning_->warn_throttle(mahalanobis_warning_message(distance, params_.twist_gate_dist), 2000);

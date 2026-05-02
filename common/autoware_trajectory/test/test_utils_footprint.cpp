@@ -12,17 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/motion_utils/trajectory/trajectory.hpp"
-#include "autoware/trajectory/detail/types.hpp"
 #include "autoware/trajectory/pose.hpp"
-#include "autoware/trajectory/threshold.hpp"
 #include "autoware/trajectory/utils/footprint.hpp"
 
 #include <gtest/gtest.h>
 
-#include <fstream>
-#include <limits>
-#include <string>
 #include <vector>
 
 namespace
@@ -31,7 +25,7 @@ using autoware::experimental::trajectory::Trajectory;
 using autoware_utils_geometry::create_point;
 using autoware_utils_geometry::create_quaternion_from_rpy;
 
-static Trajectory<geometry_msgs::msg::Pose> build_parabolic_trajectory(
+Trajectory<geometry_msgs::msg::Pose> build_parabolic_trajectory(
   const size_t num_points, const double interval, const bool reverse = false)
 {
   std::vector<geometry_msgs::msg::Pose> raw_poses;
@@ -61,7 +55,7 @@ static Trajectory<geometry_msgs::msg::Pose> build_parabolic_trajectory(
 }
 
 // Test 1: check type of long path polygon from build_path_polygon
-TEST(trajectoryFootprint, LongPolygon)
+TEST(TrajectoryFootprint, LongPolygon)
 {
   auto traj = build_parabolic_trajectory(11, 0.5);
   const auto polygon = autoware::experimental::trajectory::build_path_polygon(
@@ -72,7 +66,7 @@ TEST(trajectoryFootprint, LongPolygon)
 }
 
 // Test 2: count numbers of footprint trace with default interval
-TEST(trajectoryFootprint, FootprintTraceDefault)
+TEST(TrajectoryFootprint, FootprintTraceDefault)
 {
   autoware_utils_geometry::Point2d left_front{-0.5, 0.25};
   autoware_utils_geometry::Point2d right_front{0.5, 0.25};
@@ -110,7 +104,7 @@ TEST(trajectoryFootprint, FootprintTraceDefault)
 }
 
 // Test 3: count numbers of footprint trace with designated interval
-TEST(trajectoryFootprint, FootprintTraceAdjustInterval)
+TEST(TrajectoryFootprint, FootprintTraceAdjustInterval)
 {
   autoware_utils_geometry::Point2d left_front{-0.5, 0.25};
   autoware_utils_geometry::Point2d right_front{0.5, 0.25};

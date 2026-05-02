@@ -32,13 +32,13 @@ template void validateNonEmpty<std::vector<autoware_planning_msgs::msg::Trajecto
 
 //
 template std::optional<bool> isDrivingForward<std::vector<autoware_planning_msgs::msg::PathPoint>>(
-  const std::vector<autoware_planning_msgs::msg::PathPoint> &);
+  const std::vector<autoware_planning_msgs::msg::PathPoint> &, const double);
 template std::optional<bool>
 isDrivingForward<std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId>>(
-  const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> &);
+  const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> &, const double);
 template std::optional<bool>
 isDrivingForward<std::vector<autoware_planning_msgs::msg::TrajectoryPoint>>(
-  const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> &);
+  const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> &, const double);
 
 //
 template std::optional<bool>

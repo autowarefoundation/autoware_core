@@ -32,7 +32,15 @@ public:
 
   axes::Axes axes(const pybind11::dict & kwargs = pybind11::dict());
 
+  PyObjectWrapper axhline(
+    const pybind11::tuple & args = pybind11::tuple(),
+    const pybind11::dict & kwargs = pybind11::dict());
+
   PyObjectWrapper axis(
+    const pybind11::tuple & args = pybind11::tuple(),
+    const pybind11::dict & kwargs = pybind11::dict());
+
+  PyObjectWrapper axvline(
     const pybind11::tuple & args = pybind11::tuple(),
     const pybind11::dict & kwargs = pybind11::dict());
 
@@ -128,6 +136,8 @@ private:
   pybind11::module mod;
   pybind11::object axis_attr;
   pybind11::object axes_attr;
+  pybind11::object axhline_attr;
+  pybind11::object axvline_attr;
   pybind11::object cla_attr;
   pybind11::object clf_attr;
   pybind11::object figure_attr;

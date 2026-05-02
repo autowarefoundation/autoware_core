@@ -16,6 +16,7 @@
 #include "autoware/trajectory/threshold.hpp"
 #include "autoware/trajectory/utils/reference_path.hpp"
 #include "test_case.hpp"
+#include "test_plot.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <autoware/lanelet2_utils/conversion.hpp>
@@ -33,8 +34,6 @@
 #include <string>
 #include <vector>
 
-#define PLOT 1
-
 #ifdef PLOT
 #include <autoware/pyplot/pyplot.hpp>
 #include <autoware_test_utils/visualization.hpp>
@@ -49,6 +48,8 @@ static constexpr auto inf = std::numeric_limits<double>::infinity();
 
 namespace autoware::experimental
 {
+
+#ifdef PLOT
 
 static void savefig(
   const trajectory::Trajectory<autoware_internal_planning_msgs::msg::PathPointWithLaneId> &
@@ -86,7 +87,9 @@ static void savefig(
   plt.savefig(Args(filename));
 }
 
-class TestWithVM_01_10_12_Map : public ::testing::Test  // NOLINT
+#endif
+
+class TestWithVM_01_10_12_Map_Invalid : public ::testing::Test  // NOLINT
 {
 protected:
   void SetUp() override
@@ -119,7 +122,7 @@ protected:
   lanelet::traffic_rules::TrafficRulesPtr traffic_rules_{nullptr};
 };
 
-TEST_F(TestWithVM_01_10_12_Map, from_P0_on_entire_lanes)  // NOLINT
+TEST_F(TestWithVM_01_10_12_Map_Invalid, FromP0OnEntireLanes)  // NOLINT
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P0;
@@ -148,7 +151,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P0_on_entire_lanes)  // NOLINT
          path_points_with_lane_id | ranges::views::drop(2))) {
     EXPECT_TRUE(
       autoware_utils_geometry::calc_distance3d(p1, p2) >=
-      autoware::experimental::trajectory::k_points_minimum_dist_threshold);
+      autoware::experimental::trajectory::k_epsilon_distance);
     EXPECT_TRUE(
       std::fabs(
         autoware_utils_math::normalize_radian(
@@ -248,7 +251,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P0_on_entire_lanes)  // NOLINT
   }
 
 #ifdef PLOT
-  {
+  if (autoware::test_utils::plot_enabled()) {
     std::string filename =
       std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
       "test_reference_path_invalid_01.svg";
@@ -258,7 +261,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P0_on_entire_lanes)  // NOLINT
 #endif
 }
 
-TEST_F(TestWithVM_01_10_12_Map, from_P1_on_entire_lanes)
+TEST_F(TestWithVM_01_10_12_Map_Invalid, FromP1OnEntireLanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P1;
@@ -287,7 +290,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P1_on_entire_lanes)
          path_points_with_lane_id | ranges::views::drop(2))) {
     EXPECT_TRUE(
       autoware_utils_geometry::calc_distance3d(p1, p2) >=
-      autoware::experimental::trajectory::k_points_minimum_dist_threshold);
+      autoware::experimental::trajectory::k_epsilon_distance);
     EXPECT_TRUE(
       std::fabs(
         autoware_utils_math::normalize_radian(
@@ -387,7 +390,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P1_on_entire_lanes)
   }
 
 #ifdef PLOT
-  {
+  if (autoware::test_utils::plot_enabled()) {
     std::string filename =
       std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
       "test_reference_path_invalid_01.svg";
@@ -397,7 +400,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P1_on_entire_lanes)
 #endif
 }
 
-TEST_F(TestWithVM_01_10_12_Map, from_P2_on_entire_lanes)
+TEST_F(TestWithVM_01_10_12_Map_Invalid, FromP2OnEntireLanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P2;
@@ -426,7 +429,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P2_on_entire_lanes)
          path_points_with_lane_id | ranges::views::drop(2))) {
     EXPECT_TRUE(
       autoware_utils_geometry::calc_distance3d(p1, p2) >=
-      autoware::experimental::trajectory::k_points_minimum_dist_threshold);
+      autoware::experimental::trajectory::k_epsilon_distance);
     EXPECT_TRUE(
       std::fabs(
         autoware_utils_math::normalize_radian(
@@ -526,7 +529,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P2_on_entire_lanes)
   }
 
 #ifdef PLOT
-  {
+  if (autoware::test_utils::plot_enabled()) {
     std::string filename =
       std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
       "test_reference_path_invalid_01.svg";
@@ -536,7 +539,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P2_on_entire_lanes)
 #endif
 }
 
-TEST_F(TestWithVM_01_10_12_Map, from_P3_on_entire_lanes)
+TEST_F(TestWithVM_01_10_12_Map_Invalid, FromP3OnEntireLanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P3;
@@ -565,7 +568,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P3_on_entire_lanes)
          path_points_with_lane_id | ranges::views::drop(2))) {
     EXPECT_TRUE(
       autoware_utils_geometry::calc_distance3d(p1, p2) >=
-      autoware::experimental::trajectory::k_points_minimum_dist_threshold);
+      autoware::experimental::trajectory::k_epsilon_distance);
     EXPECT_TRUE(
       std::fabs(
         autoware_utils_math::normalize_radian(
@@ -665,7 +668,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P3_on_entire_lanes)
   }
 
 #ifdef PLOT
-  {
+  if (autoware::test_utils::plot_enabled()) {
     std::string filename =
       std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
       "test_reference_path_invalid_01.svg";
@@ -675,7 +678,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P3_on_entire_lanes)
 #endif
 }
 
-TEST_F(TestWithVM_01_10_12_Map, from_P4_on_entire_lanes)
+TEST_F(TestWithVM_01_10_12_Map_Invalid, FromP4OnEntireLanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P4;
@@ -704,7 +707,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P4_on_entire_lanes)
          path_points_with_lane_id | ranges::views::drop(2))) {
     EXPECT_TRUE(
       autoware_utils_geometry::calc_distance3d(p1, p2) >=
-      autoware::experimental::trajectory::k_points_minimum_dist_threshold);
+      autoware::experimental::trajectory::k_epsilon_distance);
     EXPECT_TRUE(
       std::fabs(
         autoware_utils_math::normalize_radian(
@@ -804,7 +807,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P4_on_entire_lanes)
   }
 
 #ifdef PLOT
-  {
+  if (autoware::test_utils::plot_enabled()) {
     std::string filename =
       std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
       "test_reference_path_invalid_01.svg";
@@ -814,7 +817,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P4_on_entire_lanes)
 #endif
 }
 
-TEST_F(TestWithVM_01_10_12_Map, from_P1_forward_on_entire_lanes)
+TEST_F(TestWithVM_01_10_12_Map_Invalid, FromP1ForwardOnEntireLanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P1;
@@ -843,7 +846,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P1_forward_on_entire_lanes)
          path_points_with_lane_id | ranges::views::drop(2))) {
     EXPECT_TRUE(
       autoware_utils_geometry::calc_distance3d(p1, p2) >=
-      autoware::experimental::trajectory::k_points_minimum_dist_threshold);
+      autoware::experimental::trajectory::k_epsilon_distance);
     EXPECT_TRUE(
       std::fabs(
         autoware_utils_math::normalize_radian(
@@ -930,7 +933,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P1_forward_on_entire_lanes)
   }
 
 #ifdef PLOT
-  {
+  if (autoware::test_utils::plot_enabled()) {
     std::string filename =
       std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
       "test_reference_path_invalid_01.svg";
@@ -940,7 +943,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P1_forward_on_entire_lanes)
 #endif
 }
 
-TEST_F(TestWithVM_01_10_12_Map, from_P2_forward_on_entire_lanes)
+TEST_F(TestWithVM_01_10_12_Map_Invalid, FromP2ForwardOnEntireLanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P2;
@@ -969,7 +972,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P2_forward_on_entire_lanes)
          path_points_with_lane_id | ranges::views::drop(2))) {
     EXPECT_TRUE(
       autoware_utils_geometry::calc_distance3d(p1, p2) >=
-      autoware::experimental::trajectory::k_points_minimum_dist_threshold);
+      autoware::experimental::trajectory::k_epsilon_distance);
     EXPECT_TRUE(
       std::fabs(
         autoware_utils_math::normalize_radian(
@@ -1030,7 +1033,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P2_forward_on_entire_lanes)
   }
 
 #ifdef PLOT
-  {
+  if (autoware::test_utils::plot_enabled()) {
     std::string filename =
       std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
       "test_reference_path_invalid_01.svg";
@@ -1040,7 +1043,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P2_forward_on_entire_lanes)
 #endif
 }
 
-TEST_F(TestWithVM_01_10_12_Map, from_P3_forward_on_entire_lanes)
+TEST_F(TestWithVM_01_10_12_Map_Invalid, FromP3ForwardOnEntireLanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P3;
@@ -1069,7 +1072,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P3_forward_on_entire_lanes)
          path_points_with_lane_id | ranges::views::drop(2))) {
     EXPECT_TRUE(
       autoware_utils_geometry::calc_distance3d(p1, p2) >=
-      autoware::experimental::trajectory::k_points_minimum_dist_threshold);
+      autoware::experimental::trajectory::k_epsilon_distance);
     EXPECT_TRUE(
       std::fabs(
         autoware_utils_math::normalize_radian(
@@ -1130,7 +1133,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P3_forward_on_entire_lanes)
   }
 
 #ifdef PLOT
-  {
+  if (autoware::test_utils::plot_enabled()) {
     std::string filename =
       std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
       "test_reference_path_invalid_01.svg";
@@ -1140,7 +1143,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P3_forward_on_entire_lanes)
 #endif
 }
 
-TEST_F(TestWithVM_01_10_12_Map, from_P4_forward_on_entire_lanes)
+TEST_F(TestWithVM_01_10_12_Map_Invalid, FromP4ForwardOnEntireLanes)
 {
   const std::vector<lanelet::Id> ids = {60, 57, 56, 58, 59, 55};
   const auto ego_pose = P4;
@@ -1169,7 +1172,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P4_forward_on_entire_lanes)
          path_points_with_lane_id | ranges::views::drop(2))) {
     EXPECT_TRUE(
       autoware_utils_geometry::calc_distance3d(p1, p2) >=
-      autoware::experimental::trajectory::k_points_minimum_dist_threshold);
+      autoware::experimental::trajectory::k_epsilon_distance);
     EXPECT_TRUE(
       std::fabs(
         autoware_utils_math::normalize_radian(
@@ -1217,7 +1220,7 @@ TEST_F(TestWithVM_01_10_12_Map, from_P4_forward_on_entire_lanes)
   }
 
 #ifdef PLOT
-  {
+  if (autoware::test_utils::plot_enabled()) {
     std::string filename =
       std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()) +
       "test_reference_path_invalid_01.svg";
@@ -1228,12 +1231,3 @@ TEST_F(TestWithVM_01_10_12_Map, from_P4_forward_on_entire_lanes)
 }
 
 }  // namespace autoware::experimental
-
-int main(int argc, char ** argv)
-{
-#ifdef PLOT
-  pybind11::scoped_interpreter guard{};
-#endif
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}

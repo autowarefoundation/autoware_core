@@ -67,8 +67,6 @@ std::vector<double> crossed_with_constraint_impl(
   const std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>> & linestring,
   const std::function<bool(const double &)> & constraint)
 {
-  using trajectory::detail::to_point;
-
   std::vector<double> intersections;
 
   for (const auto & line : linestring) {

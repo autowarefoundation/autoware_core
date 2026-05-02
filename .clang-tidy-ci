@@ -1,0 +1,13 @@
+Checks: "
+  -*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-reserved-identifier"
+
+WarningsAsErrors: "*"
+
+ExtraArgsBefore:
+  - -Wno-unknown-warning-option
+
+ExtraArgs:
+  - -Wno-c11-extensions
