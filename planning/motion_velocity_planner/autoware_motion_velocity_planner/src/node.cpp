@@ -230,6 +230,12 @@ std::optional<pcl::PointCloud<pcl::PointXYZ>>
 MotionVelocityPlannerNode::process_no_ground_pointcloud(
   const sensor_msgs::msg::PointCloud2::ConstSharedPtr msg)
 {
+  if (msg->width == 0 || msg->height == 0) {
+    // 3 seconds throttle to avoid spamming logs when the point cloud is empty for some reason 
+    RCLCPP_INFO_SKIPFIRST_THROTTLE(get_logger(), *get_clock(), 3000, "[MotionVelocityPlanner]: Received empty point cloud for no_ground_pointcloud");
+    return std::nullopt;
+  }
+
   geometry_msgs::msg::TransformStamped transform;
   const bool is_pcl_time_valid = (this->get_clock()->now() - rclcpp::Time(msg->header.stamp)) <
                                  rclcpp::Duration::from_seconds(1.0);
