@@ -25,6 +25,4 @@ if(BUILD_TESTING)
   endforeach()
 endif()
 
-autoware_ament_auto_package(
-  USE_SCOPED_HEADER_INSTALL_DIR
-)
+autoware_ament_auto_package()
