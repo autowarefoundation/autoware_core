@@ -26,6 +26,4 @@ if(BUILD_TESTING)
   target_link_libraries(test_${PROJECT_NAME} ${PROJECT_NAME})
 endif()
 
-autoware_ament_auto_package(
-  USE_SCOPED_HEADER_INSTALL_DIR
-)
+autoware_ament_auto_package()
