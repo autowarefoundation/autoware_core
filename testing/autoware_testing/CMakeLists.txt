@@ -9,6 +9,5 @@ list(APPEND ${PROJECT_NAME}_CONFIG_EXTRAS
 )
 
 autoware_ament_auto_package(
-  USE_SCOPED_HEADER_INSTALL_DIR
   INSTALL_TO_SHARE cmake autoware_testing
 )
