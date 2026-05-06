@@ -106,7 +106,6 @@ private:
 
   HyperParameters::DynamicMapLoading param_;
 
-  bool save_loaded_map_;
   std::map<std::string, pcl::PointCloud<PointTarget>::Ptr> loaded_map_;
 };
 
