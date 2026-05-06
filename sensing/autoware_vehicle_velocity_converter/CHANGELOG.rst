@@ -5,6 +5,16 @@ Changelog for package autoware_vehicle_velocity_converter
 1.1.0 (2025-05-01)
 ------------------
 
+1.8.0 (2026-05-01)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* refactor(autoware_core): add USE_SCOPED_HEADER_INSTALL_DIR to sensing packages (`#985 <https://github.com/mitsudome-r/autoware_core/issues/985>`_)
+  Co-authored-by: github-actions <github-actions@github.com>
+* feat(autoware_vehicle_velocity_converter): adopt cie (`#965 <https://github.com/mitsudome-r/autoware_core/issues/965>`_)
+  Co-authored-by: Koichi Imai <45482193+Koichi98@users.noreply.github.com>
+  Co-authored-by: Ryohsuke Mitsudome <43976834+mitsudome-r@users.noreply.github.com>
+* Contributors: Tetsuhiro Kawaguchi, Vishal Chauhan, github-actions
+
 1.7.0 (2026-02-14)
 ------------------
 

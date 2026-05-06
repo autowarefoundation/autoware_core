@@ -57,7 +57,7 @@ template <class TrajectoryPointType>
   double min_dist = std::numeric_limits<double>::infinity();
   double min_s = (search_start + search_end) * 0.5;
 
-  while (search_end - search_start > k_points_minimum_dist_threshold) {
+  while (search_end - search_start > k_epsilon_distance) {
     const double mid1 = search_start + (search_end - search_start) / 3.0;
     const double mid2 = search_end - (search_end - search_start) / 3.0;
 
@@ -115,7 +115,7 @@ std::optional<double> find_precise_index(
   double min_dist = std::numeric_limits<double>::infinity();
   double min_s = (search_start + search_end) * 0.5;
 
-  while (search_end - search_start > k_points_minimum_dist_threshold) {
+  while (search_end - search_start > k_epsilon_distance) {
     const double mid1 = search_start + (search_end - search_start) / 3.0;
     const double mid2 = search_end - (search_end - search_start) / 3.0;
 

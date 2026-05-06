@@ -14,6 +14,8 @@
 
 #include "autoware/trajectory/interpolator/spherical_linear.hpp"
 
+#include "autoware/trajectory/detail/helpers.hpp"
+
 #include <Eigen/Geometry>
 
 #include <utility>
@@ -26,16 +28,36 @@ bool SphericalLinear::build_impl(
   const std::vector<double> & bases,
   const std::vector<geometry_msgs::msg::Quaternion> & quaternions)
 {
-  this->bases_ = bases;
-  this->quaternions_ = quaternions;
+  auto [cleaned_bases, cleaned_quaternions] =
+    ::autoware::experimental::trajectory::detail::remove_duplicate_points(
+      bases, quaternions, epsilon_);
+  if (cleaned_bases.size() < minimum_required_points()) {
+    return false;
+  }
+  if (!::autoware::experimental::trajectory::detail::has_strictly_increasing_bases(
+        cleaned_bases, epsilon_)) {
+    return false;
+  }
+  this->bases_ = std::move(cleaned_bases);
+  this->quaternions_ = std::move(cleaned_quaternions);
   return true;
 }
 
 bool SphericalLinear::build_impl(
   const std::vector<double> & bases, std::vector<geometry_msgs::msg::Quaternion> && quaternions)
 {
-  this->bases_ = bases;
-  this->quaternions_ = std::move(quaternions);
+  auto [cleaned_bases, cleaned_quaternions] =
+    ::autoware::experimental::trajectory::detail::remove_duplicate_points(
+      bases, quaternions, epsilon_);
+  if (cleaned_bases.size() < minimum_required_points()) {
+    return false;
+  }
+  if (!::autoware::experimental::trajectory::detail::has_strictly_increasing_bases(
+        cleaned_bases, epsilon_)) {
+    return false;
+  }
+  this->bases_ = std::move(cleaned_bases);
+  this->quaternions_ = std::move(cleaned_quaternions);
   return true;
 }
 
