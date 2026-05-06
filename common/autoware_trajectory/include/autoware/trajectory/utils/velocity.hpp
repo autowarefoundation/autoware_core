@@ -59,7 +59,7 @@ template <class PointT>
       break;
     }
 
-    if (std::abs(curr_vel) < k_zero_velocity_threshold) {
+    if (std::abs(curr_vel) < k_epsilon_velocity) {
       return curr_distance;
     }
 
@@ -85,7 +85,7 @@ template <class PointT>
   const double last_vel = velocities.back();
   if (
     last_distance >= start_distance && last_distance <= end_distance &&
-    std::abs(last_vel) < k_zero_velocity_threshold) {
+    std::abs(last_vel) < k_epsilon_velocity) {
     return last_distance;
   }
 

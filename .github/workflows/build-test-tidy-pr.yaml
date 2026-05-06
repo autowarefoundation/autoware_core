@@ -62,7 +62,7 @@ jobs:
     uses: ./.github/workflows/build-and-test-diff-reusable.yaml
     with:
       rosdistro: humble
-      container: ghcr.io/autowarefoundation/autoware:core-common-devel
+      container: ghcr.io/autowarefoundation/autoware:core-dependencies-humble
       above: false
       run-condition: ${{ needs.require-label.outputs.result == 'true' }}
     secrets:
@@ -76,7 +76,7 @@ jobs:
     with:
       rosdistro: humble
       runner: "['self-hosted', 'Linux', 'X64']"
-      container: ghcr.io/autowarefoundation/autoware:core-common-devel
+      container: ghcr.io/autowarefoundation/autoware:universe-dependencies-humble
       above: true
       run-condition: ${{ needs.require-label.outputs.result == 'true' }}
     secrets:
@@ -89,7 +89,7 @@ jobs:
     uses: ./.github/workflows/build-and-test-diff-reusable.yaml
     with:
       rosdistro: jazzy
-      container: ghcr.io/autowarefoundation/autoware:core-common-devel-jazzy
+      container: ghcr.io/autowarefoundation/autoware:core-dependencies-jazzy
       above: false
       run-condition: ${{ needs.require-label.outputs.result == 'true' }}
     secrets:
@@ -102,7 +102,7 @@ jobs:
     uses: ./.github/workflows/build-and-test-diff-reusable.yaml
     with:
       rosdistro: jazzy
-      container: ghcr.io/autowarefoundation/autoware:core-common-devel-jazzy
+      container: ghcr.io/autowarefoundation/autoware:core-dependencies-jazzy
       above: false
       enable-agnocast: true
       run-condition: ${{ needs.require-label.outputs.result == 'true' }}
@@ -117,7 +117,7 @@ jobs:
     with:
       rosdistro: jazzy
       runner: "['self-hosted', 'Linux', 'X64']"
-      container: ghcr.io/autowarefoundation/autoware:core-common-devel-jazzy
+      container: ghcr.io/autowarefoundation/autoware:universe-dependencies-jazzy
       above: true
       run-condition: ${{ needs.require-label.outputs.result == 'true' }}
     secrets:

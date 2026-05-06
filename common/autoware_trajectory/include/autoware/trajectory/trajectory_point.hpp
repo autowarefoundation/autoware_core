@@ -30,6 +30,8 @@ template <>
 class Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>
 : public Trajectory<geometry_msgs::msg::Pose>
 {
+  friend class TemporalTrajectory;
+
   using BaseClass = Trajectory<geometry_msgs::msg::Pose>;
   using PointType = autoware_planning_msgs::msg::TrajectoryPoint;
 

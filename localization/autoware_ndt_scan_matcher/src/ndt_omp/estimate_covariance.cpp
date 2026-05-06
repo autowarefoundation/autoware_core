@@ -34,9 +34,9 @@ Eigen::Matrix2d estimate_xy_covariance_by_laplace_approximation(
 
 ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt(
   const NdtResult & ndt_result,
-  const std::shared_ptr<
-    pclomp::MultiGridNormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ>> & ndt_ptr,
-  const std::vector<Eigen::Matrix4f> & poses_to_search)
+  pclomp::MultiGridNormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ> & ndt_ref,
+  const std::vector<Eigen::Matrix4f> & poses_to_search,
+  const pcl::shared_ptr<const pcl::PointCloud<pcl::PointXYZ>> & source)
 {
   // initialize by the main result
   const Eigen::Vector2d ndt_pose_2d(ndt_result.pose(0, 3), ndt_result.pose(1, 3));
@@ -46,8 +46,8 @@ ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt(
   std::vector<NdtResult> ndt_results;
   for (const Eigen::Matrix4f & curr_pose : poses_to_search) {
     auto sub_output_cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-    ndt_ptr->align(*sub_output_cloud, curr_pose);
-    const NdtResult sub_ndt_result = ndt_ptr->getResult();
+    ndt_ref.align(*sub_output_cloud, curr_pose, source);
+    const NdtResult sub_ndt_result = ndt_ref.getResult();
     ndt_results.push_back(sub_ndt_result);
 
     const Eigen::Matrix4f sub_ndt_pose = sub_ndt_result.pose;
@@ -70,16 +70,15 @@ ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt(
 
 ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt_score(
   const NdtResult & ndt_result,
-  const std::shared_ptr<
-    pclomp::MultiGridNormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ>> & ndt_ptr,
-  const std::vector<Eigen::Matrix4f> & poses_to_search, const double temperature)
+  pclomp::MultiGridNormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ> & ndt_ref,
+  const std::vector<Eigen::Matrix4f> & poses_to_search,
+  const pcl::shared_ptr<const pcl::PointCloud<pcl::PointXYZ>> & source, const double temperature)
 {
   // initialize by the main result
   const Eigen::Vector2d ndt_pose_2d(ndt_result.pose(0, 3), ndt_result.pose(1, 3));
   std::vector<Eigen::Vector2d> ndt_pose_2d_vec{ndt_pose_2d};
   std::vector<double> score_vec{ndt_result.nearest_voxel_transformation_likelihood};
 
-  const pcl::PointCloud<pcl::PointXYZ>::ConstPtr input_cloud = ndt_ptr->getInputCloud();
   pcl::PointCloud<pcl::PointXYZ> trans_cloud;
 
   // multiple searches
@@ -88,8 +87,8 @@ ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt_score(
     const Eigen::Vector2d sub_ndt_pose_2d = curr_pose.topRightCorner<2, 1>().cast<double>();
     ndt_pose_2d_vec.emplace_back(sub_ndt_pose_2d);
 
-    transformPointCloud(*input_cloud, trans_cloud, curr_pose);
-    const double nvtl = ndt_ptr->calculateNearestVoxelTransformationLikelihood(trans_cloud);
+    pcl::transformPointCloud(*source, trans_cloud, curr_pose);
+    const double nvtl = ndt_ref.calculateNearestVoxelTransformationLikelihood(trans_cloud);
     score_vec.emplace_back(nvtl);
 
     NdtResult sub_ndt_result{};

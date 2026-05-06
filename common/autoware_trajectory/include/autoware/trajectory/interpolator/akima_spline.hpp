@@ -19,6 +19,7 @@
 
 #include <Eigen/Dense>
 
+#include <limits>
 #include <vector>
 
 namespace autoware::experimental::trajectory::interpolator
@@ -32,6 +33,7 @@ namespace autoware::experimental::trajectory::interpolator
 class AkimaSpline : public detail::InterpolatorMixin<AkimaSpline, double>
 {
 private:
+  double epsilon_{};               ///< Duplicate-base tolerance.
   Eigen::VectorXd a_, b_, c_, d_;  ///< Coefficients for the Akima spline.
 
   /**
@@ -89,7 +91,10 @@ private:
   double compute_second_derivative_impl(const double s) const override;
 
 public:
-  AkimaSpline() = default;
+  explicit AkimaSpline(const double epsilon = std::numeric_limits<double>::epsilon())
+  : epsilon_(epsilon)
+  {
+  }
 
   /**
    * @brief Get the minimum number of required points for the interpolator.

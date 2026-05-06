@@ -162,8 +162,7 @@ TEST(TrajectoryCreatorTest, RestoreTinyCroppedTrajectoryPreservesBoundaries)
   auto trajectory = Trajectory::Builder{}.build(points);
   ASSERT_TRUE(trajectory);
 
-  constexpr double tiny_length =
-    autoware::experimental::trajectory::k_points_minimum_dist_threshold / 10.0;
+  constexpr double tiny_length = autoware::experimental::trajectory::k_epsilon_distance / 10.0;
   const double crop_start = trajectory->length() / 2.0;
   const auto cropped_start_point = trajectory->compute(crop_start);
   const auto cropped_end_point = trajectory->compute(crop_start + tiny_length);
@@ -185,7 +184,7 @@ TEST(TrajectoryCreatorTest, RestoreTinyCroppedTrajectoryPreservesBoundaries)
     std::hypot(
       restored.back().point.pose.position.x - restored.front().point.pose.position.x,
       restored.back().point.pose.position.y - restored.front().point.pose.position.y),
-    autoware::experimental::trajectory::k_points_minimum_dist_threshold);
+    autoware::experimental::trajectory::k_epsilon_distance);
 }
 
 TEST(TrajectoryCreatorTest, CreateFromMultiplePoints)
@@ -681,6 +680,14 @@ TEST_F(TrajectoryTest, Restore)
   EXPECT_EQ(11, points.size());
 }
 
+TEST_F(TrajectoryTest, SetVelocityAtSinglePoint)
+{
+  const auto target_s = trajectory->length() * 0.5;
+  trajectory->longitudinal_velocity_mps().at(target_s).set(7.0);
+
+  EXPECT_DOUBLE_EQ(7.0, trajectory->longitudinal_velocity_mps().compute(target_s));
+}
+
 TEST_F(TrajectoryTest, Crossed)
 {
   ASSERT_TRUE(trajectory);
@@ -710,6 +717,21 @@ TEST_F(TrajectoryTest, Closest)
     closest_pose.point.pose.position.y - pose.position.y);
 
   EXPECT_LT(distance, 3.0);
+}
+
+TEST_F(TrajectoryTest, ClosestWithDistanceConstraint)
+{
+  ASSERT_TRUE(trajectory);
+  geometry_msgs::msg::Pose pose;
+  pose.position.x = 5.0;
+  pose.position.y = 5.0;
+
+  const double max_s = trajectory->length() * 0.5;
+  const auto closest_s = autoware::experimental::trajectory::closest_with_constraint(
+    *trajectory, pose, [max_s](const double s) { return s < max_s; });
+
+  ASSERT_TRUE(closest_s.has_value());
+  EXPECT_LT(*closest_s, max_s);
 }
 
 TEST_F(TrajectoryTest, Crop)
@@ -808,6 +830,21 @@ TEST_F(TrajectoryTest, FindInterval)
   EXPECT_LT(0, intervals[0].start);
   EXPECT_LT(intervals[0].start, intervals[0].end);
   EXPECT_NEAR(intervals[0].end, trajectory->length(), 0.1);
+}
+
+TEST_F(TrajectoryTest, FindIntervalWithDistanceConstraint)
+{
+  ASSERT_TRUE(trajectory);
+  const double start_s = trajectory->length() * 0.25;
+  const double end_s = trajectory->length() * 0.75;
+
+  const auto intervals = autoware::experimental::trajectory::find_intervals(
+    *trajectory, [start_s, end_s](const double s) { return start_s <= s && s <= end_s; });
+
+  ASSERT_EQ(intervals.size(), 1);
+  EXPECT_LE(start_s, intervals[0].start);
+  EXPECT_LE(intervals[0].start, intervals[0].end);
+  EXPECT_LE(intervals[0].end, end_s);
 }
 
 TEST_F(TrajectoryTest, FindIntervalWithBinarySearch)
