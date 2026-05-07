@@ -14,6 +14,8 @@
 
 #ifndef AUTOWARE__TRAJECTORY__UTILS__CROSSED_HPP_
 #define AUTOWARE__TRAJECTORY__UTILS__CROSSED_HPP_
+
+#include "autoware/trajectory/detail/helpers.hpp"
 #include "autoware/trajectory/detail/types.hpp"
 #include "autoware/trajectory/forward.hpp"
 #include "autoware/trajectory/temporal_trajectory.hpp"
@@ -57,10 +59,11 @@ std::vector<double> crossed_with_constraint_impl(
  * satisfied.
  * @tparam TrajectoryPointType The type of points in the trajectory.
  * @tparam LineStringType The type of the linestring.
- * @tparam Constraint A callable type that evaluates a constraint on a trajectory point.
+ * @tparam Constraint A callable type that evaluates a constraint on a trajectory point or arc
+ * length `s`.
  * @param trajectory The trajectory to evaluate.
  * @param linestring The linestring to intersect with the trajectory.
- * @param constraint The constraint to apply to each point in the trajectory.
+ * @param constraint The constraint to apply to each point or arc length `s` in the trajectory.
  * @return A vector of double values representing the parameters `s` where the trajectory intersects
  * the linestring and satisfies the constraint.
  */
@@ -99,8 +102,10 @@ template <class TrajectoryPointType, class LineStringType, class Constraint>
   const auto & bases = trajectory.get_underlying_bases();
 
   return detail::impl::crossed_with_constraint_impl(
-    trajectory_compute, bases, linestring_eigen,
-    [&constraint, &trajectory](const double & s) { return constraint(trajectory.compute(s)); });
+    trajectory_compute, bases, linestring_eigen, [&constraint, &trajectory](const double & s) {
+      return detail::invoke_with_point_or_parameter(
+        constraint, s, [&trajectory, &s]() { return trajectory.compute(s); });
+    });
 }
 
 /**
