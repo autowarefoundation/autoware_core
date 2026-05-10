@@ -2,6 +2,9 @@
 Changelog for package autoware_sample_vehicle_description
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.8.0 (2026-05-01)
+------------------
+
 1.7.0 (2026-02-14)
 ------------------
 * chore: match all package versions and remove old CHANGELOG.rst
