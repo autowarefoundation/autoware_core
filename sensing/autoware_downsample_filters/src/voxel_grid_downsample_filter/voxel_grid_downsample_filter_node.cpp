@@ -21,7 +21,7 @@
 #include <pcl_ros/transforms.hpp>
 #include <tf2_eigen/tf2_eigen.hpp>
 
-#include <pcl/io/io.h>
+#include <pcl/common/io.h>
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/search/kdtree.h>
 #include <pcl/segmentation/segment_differences.h>
