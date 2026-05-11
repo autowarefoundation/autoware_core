@@ -438,6 +438,19 @@ private:
     const lanelet::ConstLanelet & start_lanelet, const lanelet::ConstLanelet & goal_lanelet) const;
   std::optional<lanelet::routing::LaneletOrAreaPath> findDrivableLanePathIncludingAreas(
     const lanelet::ConstLanelet & start_lanelet, const lanelet::ConstLanelet & goal_lanelet) const;
+
+  lanelet::ConstLanelets getStartRoadLaneletsForCheckpoint(const Pose & start_checkpoint) const;
+  std::optional<lanelet::ConstLanelet> getGoalRoadLaneletForCheckpoint(
+    const Pose & goal_checkpoint) const;
+  bool planLaneletPathBetweenResolvedEndpoints(
+    const Pose & start_checkpoint, const Pose & goal_checkpoint,
+    const lanelet::ConstLanelets & start_lanelets, const lanelet::ConstLanelet & goal_lanelet,
+    const bool consider_no_drivable_lanes, lanelet::ConstLanelets * path_lanelets) const;
+  bool planLaneletOrAreaPathBetweenResolvedEndpoints(
+    const Pose & start_checkpoint, const Pose & goal_checkpoint,
+    const lanelet::ConstLanelets & start_lanelets, const lanelet::ConstLanelet & goal_lanelet,
+    const bool consider_no_drivable_lanes, lanelet::ConstLaneletOrAreas * path_lanelets_or_areas)
+    const;
 };
 
 /// @brief custom routing cost with infinity cost for no drivable lanes
