@@ -449,8 +449,8 @@ private:
   bool planLaneletOrAreaPathBetweenResolvedEndpoints(
     const Pose & start_checkpoint, const Pose & goal_checkpoint,
     const lanelet::ConstLanelets & start_lanelets, const lanelet::ConstLanelet & goal_lanelet,
-    const bool consider_no_drivable_lanes, lanelet::ConstLaneletOrAreas * path_lanelets_or_areas)
-    const;
+    const bool consider_no_drivable_lanes,
+    lanelet::ConstLaneletOrAreas * path_lanelets_or_areas) const;
 };
 
 /// @brief custom routing cost with infinity cost for no drivable lanes

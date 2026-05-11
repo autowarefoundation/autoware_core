@@ -2310,8 +2310,9 @@ std::optional<lanelet::ConstLanelet> RouteHandler::getGoalRoadLaneletForCheckpoi
   if (auto closest_lanelet = findGoalClosestPreferredLanelet()) {
     return closest_lanelet.value();
   }
-  if (const auto closest_lanelet =
-        experimental::lanelet2_utils::get_closest_lanelet(candidates, goal_checkpoint)) {
+  if (
+    const auto closest_lanelet =
+      experimental::lanelet2_utils::get_closest_lanelet(candidates, goal_checkpoint)) {
     return closest_lanelet.value();
   }
   return std::nullopt;
@@ -2404,8 +2405,8 @@ bool RouteHandler::planLaneletPathBetweenResolvedEndpoints(
 bool RouteHandler::planLaneletOrAreaPathBetweenResolvedEndpoints(
   const Pose & start_checkpoint, const Pose & goal_checkpoint,
   const lanelet::ConstLanelets & start_lanelets, const lanelet::ConstLanelet & goal_lanelet,
-  const bool consider_no_drivable_lanes, lanelet::ConstLaneletOrAreas * path_lanelets_or_areas)
-  const
+  const bool consider_no_drivable_lanes,
+  lanelet::ConstLaneletOrAreas * path_lanelets_or_areas) const
 {
   lanelet::Optional<lanelet::routing::LaneletOrAreaPath> optional_path;
   lanelet::routing::LaneletOrAreaPath shortest_path;
