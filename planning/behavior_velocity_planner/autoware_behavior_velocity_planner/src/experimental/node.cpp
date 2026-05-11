@@ -132,8 +132,7 @@ void BehaviorVelocityPlannerNode::onParam()
 bool BehaviorVelocityPlannerNode::processNoGroundPointCloud(
   const sensor_msgs::msg::PointCloud2::ConstSharedPtr msg)
 {
-
-  if(msg->width == 0 || msg->height == 0) {
+  if (msg->width == 0 || msg->height == 0) {
     RCLCPP_INFO_SKIPFIRST_THROTTLE(
       get_logger(), *get_clock(), logger_throttle_interval,
       "Received empty no_ground_pointcloud, skipping processing");
