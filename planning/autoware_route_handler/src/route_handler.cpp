@@ -570,45 +570,23 @@ void RouteHandler::setLaneletsFromRouteMsg()
     }
   }
   route_lanelets_rtree_ = RouteRtree(rtree_nodes);
-
-  const auto collect_lane_lanelets_from_segment =
-    [&](const autoware_planning_msgs::msg::LaneletSegment & seg, lanelet::ConstLanelets * out) {
-      for (const auto & primitive : seg.primitives) {
-        if (primitive.primitive_type == "area") {
-          continue;
-        }
-        out->push_back(lanelet_map_ptr_->laneletLayer.get(primitive.id));
-      }
-    };
-
   goal_lanelets_.clear();
   start_lanelets_.clear();
   if (!route_ptr_->segments.empty()) {
-    collect_lane_lanelets_from_segment(route_ptr_->segments.back(), &goal_lanelets_);
-    if (goal_lanelets_.empty()) {
-      for (auto it = route_ptr_->segments.rbegin(); it != route_ptr_->segments.rend(); ++it) {
-        collect_lane_lanelets_from_segment(*it, &goal_lanelets_);
-        if (!goal_lanelets_.empty()) {
-          break;
-        }
-      }
+    goal_lanelets_.reserve(route_ptr_->segments.back().primitives.size());
+    for (const auto & primitive : route_ptr_->segments.back().primitives) {
+      const auto id = primitive.id;
+      const auto & llt = lanelet_map_ptr_->laneletLayer.get(id);
+      goal_lanelets_.push_back(llt);
     }
-    collect_lane_lanelets_from_segment(route_ptr_->segments.front(), &start_lanelets_);
-    if (start_lanelets_.empty()) {
-      for (const auto & seg : route_ptr_->segments) {
-        collect_lane_lanelets_from_segment(seg, &start_lanelets_);
-        if (!start_lanelets_.empty()) {
-          break;
-        }
-      }
+    start_lanelets_.reserve(route_ptr_->segments.front().primitives.size());
+    for (const auto & primitive : route_ptr_->segments.front().primitives) {
+      const auto id = primitive.id;
+      const auto & llt = lanelet_map_ptr_->laneletLayer.get(id);
+      start_lanelets_.push_back(llt);
     }
   }
-
-  RCLCPP_DEBUG(
-    logger_,
-    "[Route Handler] setLaneletsFromRouteMsg: lane primitives=%zu, areas=%zu, segments=%zu",
-    route_lanelets_.size(), route_areas_.size(), route_ptr_->segments.size());
-
+  
   is_handler_ready_ = true;
 }
 
@@ -2310,9 +2288,8 @@ std::optional<lanelet::ConstLanelet> RouteHandler::getGoalRoadLaneletForCheckpoi
   if (auto closest_lanelet = findGoalClosestPreferredLanelet()) {
     return closest_lanelet.value();
   }
-  if (
-    const auto closest_lanelet =
-      experimental::lanelet2_utils::get_closest_lanelet(candidates, goal_checkpoint)) {
+  if (const auto closest_lanelet =
+        experimental::lanelet2_utils::get_closest_lanelet(candidates, goal_checkpoint)) {
     return closest_lanelet.value();
   }
   return std::nullopt;
@@ -2405,8 +2382,8 @@ bool RouteHandler::planLaneletPathBetweenResolvedEndpoints(
 bool RouteHandler::planLaneletOrAreaPathBetweenResolvedEndpoints(
   const Pose & start_checkpoint, const Pose & goal_checkpoint,
   const lanelet::ConstLanelets & start_lanelets, const lanelet::ConstLanelet & goal_lanelet,
-  const bool consider_no_drivable_lanes,
-  lanelet::ConstLaneletOrAreas * path_lanelets_or_areas) const
+  const bool consider_no_drivable_lanes, lanelet::ConstLaneletOrAreas * path_lanelets_or_areas)
+  const
 {
   lanelet::Optional<lanelet::routing::LaneletOrAreaPath> optional_path;
   lanelet::routing::LaneletOrAreaPath shortest_path;
