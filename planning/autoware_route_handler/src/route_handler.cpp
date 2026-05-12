@@ -2286,12 +2286,12 @@ std::optional<lanelet::ConstLanelet> RouteHandler::getGoalRoadLaneletForCheckpoi
     return std::nullopt;
   };
   if (auto closest_lanelet = findGoalClosestPreferredLanelet()) {
-    return closest_lanelet.value();
+    return closest_lanelet;
   }
   if (
     const auto closest_lanelet =
       experimental::lanelet2_utils::get_closest_lanelet(candidates, goal_checkpoint)) {
-    return closest_lanelet.value();
+    return closest_lanelet;
   }
   return std::nullopt;
 }
