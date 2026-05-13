@@ -20,8 +20,12 @@
 #include "autoware/trajectory/forward.hpp"
 #include "autoware/trajectory/temporal_trajectory.hpp"
 #include "autoware/trajectory/threshold.hpp"
+#include "autoware_utils_geometry/geometry.hpp"
 
 #include <Eigen/Core>
+
+#include <boost/geometry/algorithms/correct.hpp>
+#include <boost/geometry/algorithms/intersects.hpp>
 
 #include <cmath>
 #include <functional>
@@ -217,6 +221,27 @@ template <class PathType, class PolygonClosurePointsType>
     return {};
   }
   return crossed_with_polygon(path.points, open_or_closed_boundary);
+}
+
+template <class PolygonType, class LinearRingType>
+bool crossed_with_footprint(
+  const geometry_msgs::msg::Pose & pose, const PolygonType & polygon,
+  const LinearRingType & base_footprint)
+{
+  auto transformed_footprint = autoware_utils_geometry::transform_vector(
+    base_footprint, autoware_utils_geometry::pose2transform(pose));
+  boost::geometry::correct(transformed_footprint);
+
+  // use disjoint instead of intersect to allow MultiPolygon
+  return !boost::geometry::disjoint(transformed_footprint, polygon);
+}
+
+template <class PolygonType, class PointType>
+bool crossed_with_footprint(
+  const geometry_msgs::msg::Pose & pose, const PolygonType & polygon,
+  const boost::geometry::model::polygon<PointType> & base_footprint)
+{
+  return crossed_with_footprint(pose, polygon, base_footprint.outer());
 }
 
 }  // namespace autoware::experimental::trajectory
