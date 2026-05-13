@@ -551,6 +551,9 @@ void ObstacleStopModule::upsert_pointcloud_stop_candidates(
   new_stop_candidate.latest_collision_point = nearest_collision_point;
   new_stop_candidate.latest_collision_pointcloud_time = latest_point_cloud_time;
   new_stop_candidate.vel_lpf.setGain(vel_params.lpf_gain);
+  if (vel_params.required_velocity_count == 0) {
+    new_stop_candidate.vel_lpf.reset(0.0);
+  }
   pointcloud_stop_candidates.push_back(new_stop_candidate);
 }
 
