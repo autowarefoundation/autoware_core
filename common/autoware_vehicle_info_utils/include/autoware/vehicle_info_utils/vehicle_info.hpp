@@ -17,6 +17,10 @@
 
 #include <autoware_utils_geometry/boost_geometry.hpp>
 
+#include "geometry_msgs/msg/pose.hpp"
+
+#include <optional>
+
 namespace autoware::vehicle_info_utils
 {
 /// Data class for vehicle info
@@ -59,7 +63,8 @@ struct VehicleInfo
    * @param margin the longitudinal and lateral inflation margin
    */
   [[nodiscard]] autoware_utils_geometry::LinearRing2d createFootprint(
-    const double margin = 0.0) const;
+    const double margin = 0.0,
+    const std::optional<geometry_msgs::msg::Pose> & base_pose = std::nullopt) const;
 
   /**
    * @brief calculate the vehicle footprint in clockwise manner starting from the front-left edge,
@@ -68,7 +73,8 @@ struct VehicleInfo
    * @param margin the longitudinal and lateral inflation margin
    */
   [[nodiscard]] autoware_utils_geometry::LinearRing2d createFootprint(
-    const double lat_margin, const double lon_margin) const;
+    const double lat_margin, const double lon_margin,
+    const std::optional<geometry_msgs::msg::Pose> & base_pose = std::nullopt) const;
 
   /**
    * @brief Calculate the vehicle footprint in a clockwise manner, starting from the front-left
@@ -86,7 +92,8 @@ struct VehicleInfo
   [[nodiscard]] autoware_utils_geometry::LinearRing2d createFootprint(
     const double front_lat_margin, const double center_lat_margin, const double rear_lat_margin,
     const double front_lon_margin, const double rear_lon_margin,
-    const bool center_at_base_link = false) const;
+    const bool center_at_base_link = false,
+    const std::optional<geometry_msgs::msg::Pose> & base_pose = std::nullopt) const;
 
   [[nodiscard]] double calcMaxCurvature() const;
   [[nodiscard]] double calcCurvatureFromSteerAngle(const double steer_angle) const;

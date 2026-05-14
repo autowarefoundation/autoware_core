@@ -14,6 +14,8 @@
 
 #include "autoware/vehicle_info_utils/vehicle_info.hpp"
 
+#include "autoware_utils_geometry/geometry.hpp"
+
 #include <autoware_utils_geometry/boost_geometry.hpp>
 #include <rclcpp/rclcpp.hpp>
 
@@ -21,20 +23,26 @@
 
 namespace autoware::vehicle_info_utils
 {
-autoware_utils_geometry::LinearRing2d VehicleInfo::createFootprint(const double margin) const
+autoware_utils_geometry::LinearRing2d VehicleInfo::createFootprint(
+  const double margin, const std::optional<geometry_msgs::msg::Pose> & base_pose) const
 {
-  return createFootprint(margin, margin);
+  return createFootprint(margin, margin, base_pose);
 }
 
 autoware_utils_geometry::LinearRing2d VehicleInfo::createFootprint(
-  const double lat_margin, const double lon_margin) const
+  const double lat_margin, const double lon_margin,
+  const std::optional<geometry_msgs::msg::Pose> & base_pose) const
 {
-  return createFootprint(lat_margin, lat_margin, lat_margin, lon_margin, lon_margin);
+  // set default value of center_base_link
+  const bool center_at_base_link = false;
+  return createFootprint(
+    lat_margin, lat_margin, lat_margin, lon_margin, lon_margin, center_at_base_link, base_pose);
 }
 
 autoware_utils_geometry::LinearRing2d VehicleInfo::createFootprint(
   const double front_lat_margin, const double center_lat_margin, const double rear_lat_margin,
-  const double front_lon_margin, const double rear_lon_margin, const bool center_at_base_link) const
+  const double front_lon_margin, const double rear_lon_margin, const bool center_at_base_link,
+  const std::optional<geometry_msgs::msg::Pose> & base_pose) const
 {
   using autoware_utils_geometry::LinearRing2d;
   using autoware_utils_geometry::Point2d;
@@ -62,6 +70,13 @@ autoware_utils_geometry::LinearRing2d VehicleInfo::createFootprint(
   footprint.emplace_back(x_rear, y_left_rear);
   footprint.emplace_back(x_center, y_left_center);
   footprint.emplace_back(x_front, y_left_front);
+
+  // only transform if input pose exist, if not return simple base footprint
+  if (base_pose.has_value()) {
+    auto transformed_footprint = autoware_utils_geometry::transform_vector(
+      footprint, autoware_utils_geometry::pose2transform(base_pose.value()));
+    return transformed_footprint;
+  }
 
   return footprint;
 }
