@@ -136,19 +136,21 @@ template <typename PointT>
 MultiVoxelGridCovariance<PointT> & pclomp::MultiVoxelGridCovariance<PointT>::operator=(
   MultiVoxelGridCovariance && other) noexcept
 {
-  voxel_centroids_ptr_ = std::move(other.voxel_centroids_ptr_);
-  sid_to_iid_ = std::move(other.sid_to_iid_);
-  grid_list_ = std::move(other.grid_list_);
-  kdtree_ = std::move(other.kdtree_);
-  leaf_ptrs_ = std::move(other.leaf_ptrs_);
+  if (this != &other) {
+    voxel_centroids_ptr_ = std::move(other.voxel_centroids_ptr_);
+    sid_to_iid_ = std::move(other.sid_to_iid_);
+    grid_list_ = std::move(other.grid_list_);
+    kdtree_ = std::move(other.kdtree_);
+    leaf_ptrs_ = std::move(other.leaf_ptrs_);
 
-  min_points_per_voxel_ = other.min_points_per_voxel_;
-  min_covar_eigvalue_mult_ = other.min_covar_eigvalue_mult_;
+    min_points_per_voxel_ = other.min_points_per_voxel_;
+    min_covar_eigvalue_mult_ = other.min_covar_eigvalue_mult_;
 
-  setThreadNum(other.thread_num_);
-  last_check_tid_ = -1;
+    setThreadNum(other.thread_num_);
+    last_check_tid_ = -1;
 
-  pcl::VoxelGrid<PointT>::operator=(std::move(other));
+    pcl::VoxelGrid<PointT>::operator=(std::move(other));
+  }
 
   return *this;
 }
@@ -250,8 +252,7 @@ void MultiVoxelGridCovariance<PointT>::createKdtree()
 
 template <typename PointT>
 int MultiVoxelGridCovariance<PointT>::radiusSearch(
-  const PointT & point, double radius, std::vector<LeafConstPtr> & k_leaves,
-  unsigned int max_nn) const
+  const PointT & point, std::vector<LeafConstPtr> & k_leaves, unsigned int max_nn) const
 {
   k_leaves.clear();
 
@@ -261,9 +262,9 @@ int MultiVoxelGridCovariance<PointT>::radiusSearch(
   }
 
   // Search from the kdtree to find neighbors of @point
-  std::vector<float> k_sqr_distances;
-  std::vector<int> k_indices;
-  const int k = kdtree_.radiusSearch(point, radius, k_indices, k_sqr_distances, max_nn);
+  std::vector<nanoflann::SearchResultItem<size_t, float>> nn_result;
+
+  const int k = kdtree_.radiusSearch(point, nn_result, max_nn);
 
   if (k <= 0) {
     return 0;
@@ -271,8 +272,8 @@ int MultiVoxelGridCovariance<PointT>::radiusSearch(
 
   k_leaves.reserve(k);
 
-  for (auto & nn_idx : k_indices) {
-    k_leaves.push_back(leaf_ptrs_[nn_idx]);
+  for (auto & nn : nn_result) {
+    k_leaves.push_back(leaf_ptrs_[nn.first]);
   }
 
   return k_leaves.size();
@@ -280,14 +281,14 @@ int MultiVoxelGridCovariance<PointT>::radiusSearch(
 
 template <typename PointT>
 int MultiVoxelGridCovariance<PointT>::radiusSearch(
-  const PointCloud & cloud, int index, double radius, std::vector<LeafConstPtr> & k_leaves,
+  const PointCloud & cloud, int index, std::vector<LeafConstPtr> & k_leaves,
   unsigned int max_nn) const
 {
   if (index >= static_cast<int>(cloud.size()) || index < 0) {
     return 0;
   }
 
-  return (radiusSearch(cloud[index], radius, k_leaves, max_nn));
+  return (radiusSearch(cloud[index], k_leaves, max_nn));
 }
 
 template <typename PointT>
