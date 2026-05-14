@@ -7814,9 +7814,11 @@ Please see <a href="https://github.com/autowarefoundation/autoware_msgs/tree/mai
 <hr>
 <h2 id="lanelet2_map_loader">lanelet2_map_loader<a class="headerlink" href="#lanelet2_map_loader" title="Permanent link">#</a></h2>
 <h3 id="feature_1">Feature<a class="headerlink" href="#feature_1" title="Permanent link">#</a></h3>
-<p>lanelet2_map_loader loads Lanelet2 file and publishes the map data as autoware_map_msgs/LaneletMapBin message.
-The node projects lan/lon coordinates into arbitrary coordinates defined in <code>/map/map_projector_info</code> from <code>map_projection_loader</code>.
+<p><code>lanelet2_map_loader</code> loads one or more Lanelet2 <code>.osm</code> files and publishes the merged map as an <code>autoware_map_msgs/LaneletMapBin</code> message.
+The node projects lat/lon coordinates into the frame defined in <code>/map/map_projector_info</code> from <code>map_projection_loader</code>.
 Please see <a href="https://github.com/autowarefoundation/autoware_msgs/blob/main/autoware_map_msgs/msg/MapProjectorInfo.msg">autoware_map_msgs/msg/MapProjectorInfo.msg</a> for supported projector types.</p>
+<p><code>lanelet2_map_path</code> can point to either a single <code>.osm</code> file or a directory.
+When a directory is given, all <code>.osm</code> files inside are loaded and merged into a single map before publishing.</p>
 <h3 id="how-to-run">How to run<a class="headerlink" href="#how-to-run" title="Permanent link">#</a></h3>
 <p><code>ros2 run autoware_map_loader lanelet2_map_loader --ros-args -p lanelet2_map_path:=path/to/map.osm</code></p>
 <h3 id="subscribed-topics">Subscribed Topics<a class="headerlink" href="#subscribed-topics" title="Permanent link">#</a></h3>
@@ -7863,7 +7865,7 @@ Please see <a href="https://github.com/autowarefoundation/autoware_msgs/blob/mai
 <tr>
 <td>lanelet2_map_path</td>
 <td>string</td>
-<td>The lanelet2 map path pointing to the .osm file</td>
+<td>Path to a lanelet2 .osm map file, or a directory containing .osm files</td>
 <td></td>
 <td>N/A</td>
 </tr>
