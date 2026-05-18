@@ -14,8 +14,6 @@
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <autoware/marker_utils/marker_conversion.hpp>
-#include <autoware_lanelet2_extension/regulatory_elements/detection_area.hpp>
-#include <autoware_lanelet2_extension/regulatory_elements/no_stopping_area.hpp>
 #include <autoware_utils_geometry/boost_polygon_utils.hpp>
 #include <autoware_utils_visualization/marker_helper.hpp>
 #include <rclcpp/clock.hpp>

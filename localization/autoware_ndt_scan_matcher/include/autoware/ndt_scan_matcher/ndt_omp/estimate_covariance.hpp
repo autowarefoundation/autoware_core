@@ -39,14 +39,15 @@ Eigen::Matrix2d estimate_xy_covariance_by_laplace_approximation(
   const Eigen::Matrix<double, 6, 6> & hessian);
 ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt(
   const NdtResult & ndt_result,
-  const std::shared_ptr<
-    pclomp::MultiGridNormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ>> & ndt_ptr,
-  const std::vector<Eigen::Matrix4f> & poses_to_search);
+  pclomp::MultiGridNormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ> & ndt_ref,
+
+  const std::vector<Eigen::Matrix4f> & poses_to_search,
+  const pcl::shared_ptr<const pcl::PointCloud<pcl::PointXYZ>> & source);
 ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt_score(
   const NdtResult & ndt_result,
-  const std::shared_ptr<
-    pclomp::MultiGridNormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ>> & ndt_ptr,
-  const std::vector<Eigen::Matrix4f> & poses_to_search, const double temperature);
+  pclomp::MultiGridNormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ> & ndt_ref,
+  const std::vector<Eigen::Matrix4f> & poses_to_search,
+  const pcl::shared_ptr<const pcl::PointCloud<pcl::PointXYZ>> & source, const double temperature);
 
 /** \brief Propose poses to search.
  * (1) Compute covariance by Laplace approximation

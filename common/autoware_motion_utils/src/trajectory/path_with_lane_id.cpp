@@ -67,7 +67,8 @@ size_t findNearestIndexFromLaneId(
     validateNonEmpty(path.points);
 
     const auto sub_points = std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId>{
-      path.points.begin() + start_idx, path.points.begin() + end_idx + 1};
+      path.points.begin() + static_cast<std::ptrdiff_t>(start_idx),
+      path.points.begin() + static_cast<std::ptrdiff_t>(end_idx + 1)};
     validateNonEmpty(sub_points);
 
     return start_idx + findNearestIndex(sub_points, pos);

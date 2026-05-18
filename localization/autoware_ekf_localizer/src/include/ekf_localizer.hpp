@@ -32,6 +32,7 @@
 #include <autoware_internal_debug_msgs/msg/float64_multi_array_stamped.hpp>
 #include <autoware_internal_debug_msgs/msg/float64_stamped.hpp>
 #include <diagnostic_msgs/msg/diagnostic_array.hpp>
+#include <diagnostic_msgs/msg/diagnostic_status.hpp>
 #include <geometry_msgs/msg/pose_array.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
@@ -42,9 +43,7 @@
 #include <std_srvs/srv/set_bool.hpp>
 
 #include <chrono>
-#include <iostream>
 #include <memory>
-#include <queue>
 #include <string>
 #include <vector>
 
@@ -81,11 +80,12 @@ private:
   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pub_biased_pose_;
   //!< @brief ekf estimated yaw bias publisher
   rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr pub_biased_pose_cov_;
-  //!< @brief diagnostics publisher
-  rclcpp::Publisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr pub_diag_;
   //!< @brief processing_time publisher
   rclcpp::Publisher<autoware_internal_debug_msgs::msg::Float64Stamped>::SharedPtr
     pub_processing_time_;
+  //!< @brief /diagnostics publisher (manual DiagnosticArray; same absolute topic as former
+  //!< diagnostic_updater)
+  rclcpp::Publisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr pub_diagnostics_;
   //!< @brief initial pose subscriber
   rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr sub_initialpose_;
   //!< @brief measurement pose with covariance subscriber
@@ -95,6 +95,8 @@ private:
     sub_twist_with_cov_;
   //!< @brief time for ekf calculation callback
   rclcpp::TimerBase::SharedPtr timer_control_;
+  //!< @brief calls publish_diagnostics() at diagnostics_publish_period
+  rclcpp::TimerBase::SharedPtr diagnostics_publish_timer_;
   //!< @brief last predict time
   std::shared_ptr<const rclcpp::Time> last_predict_time_;
   //!< @brief trigger_node service
@@ -125,6 +127,16 @@ private:
 
   AgedObjectQueue<geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr> pose_queue_;
   AgedObjectQueue<geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr> twist_queue_;
+
+  //!< @brief Merged diagnostic status from the latest EKF cycle (message/values refresh every tick)
+  diagnostic_msgs::msg::DiagnosticStatus merged_diagnostic_status_;
+  //!< @brief Wall time of the latest merged diagnostic level change vs. the previous EKF tick
+  //!< (includes recovery to OK); published as last_level_transition_timestamp once non-zero
+  rclcpp::Time merged_diagnostic_last_transition_time_;
+  //!< @brief last pose callback header stamp (for callback_pose diagnostic)
+  rclcpp::Time last_pose_callback_time_;
+  //!< @brief last twist callback header stamp (for callback_twist diagnostic)
+  rclcpp::Time last_twist_callback_time_;
 
   /**
    * @brief computes update & prediction of EKF for each ekf_dt_[s] time
@@ -168,16 +180,16 @@ private:
     const geometry_msgs::msg::TwistStamped & current_ekf_twist);
 
   /**
-   * @brief publish diagnostics message
+   * @brief Overwrite merged_diagnostic_status_ from merged diagnostics each tick;
+   * publish_diagnostics() when merged severity increases vs. the previous EKF tick
+   * (last transition time updates on any level change).
    */
-  void publish_diagnostics(
-    const geometry_msgs::msg::PoseStamped & current_ekf_pose, const rclcpp::Time & current_time);
+  void update_diagnostics(
+    const std::vector<diagnostic_msgs::msg::DiagnosticStatus> & diag_status_array,
+    const rclcpp::Time & current_time);
 
-  /**
-   * @brief publish diagnostics message for return
-   */
-  void publish_callback_return_diagnostics(
-    const std::string & callback_name, const rclcpp::Time & current_time);
+  /** @brief Build and publish /diagnostics (main merged + callback_pose + callback_twist) */
+  void publish_diagnostics();
 
   /**
    * @brief trigger node
@@ -189,7 +201,12 @@ private:
   autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_;
   autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_timer_cb_;
 
-  friend class EKFLocalizerTestSuite;  // for test code
+  void initialize_diagnostic_info(
+    EKFDiagnosticInfo & pose_diag_info, EKFDiagnosticInfo & twist_diag_info,
+    const AgedObjectQueue<geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr> & pose_queue,
+    const AgedObjectQueue<geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr> & twist_queue);
+
+  friend class EKFLocalizerDiagnosticsTest;  // for test code
 };
 
 }  // namespace autoware::ekf_localizer

@@ -16,8 +16,6 @@
 #include "autoware/trajectory/point.hpp"
 #include "autoware/trajectory/utils/shift.hpp"
 
-#include "geometry_msgs/msg/detail/point__struct.hpp"
-
 #include <gtest/gtest.h>
 
 #include <vector>
@@ -33,7 +31,7 @@ geometry_msgs::msg::Point point(double x, double y)
 namespace autoware::experimental::trajectory
 {
 
-TEST(ShiftInvalid, error_shift_start_is_less_than_end)
+TEST(ShiftInvalid, ErrorShiftStartIsLessThanEnd)
 {
   std::vector<geometry_msgs::msg::Point> points = {point(0.0, 0.0),  point(3.0, 0.0),
                                                    point(6.0, 0.0),  point(9.0, 0.0),
@@ -60,7 +58,7 @@ TEST(ShiftInvalid, error_shift_start_is_less_than_end)
   EXPECT_NEAR(end_point.y, -lateral_shift, 1e-3);
 }
 
-TEST(ShiftInvalid, error_shift_end_is_less_than_end)
+TEST(ShiftInvalid, ErrorShiftEndIsLessThanEnd)
 {
   std::vector<geometry_msgs::msg::Point> points = {point(0.0, 0.0),  point(3.0, 0.0),
                                                    point(6.0, 0.0),  point(9.0, 0.0),
@@ -87,7 +85,7 @@ TEST(ShiftInvalid, error_shift_end_is_less_than_end)
   EXPECT_GT(end_point.y, -lateral_shift);
 }
 
-TEST(ShiftInvalid, error_interval_is_backward)
+TEST(ShiftInvalid, ErrorIntervalIsBackward)
 {
   std::vector<geometry_msgs::msg::Point> points = {point(0.0, 0.0),  point(3.0, 0.0),
                                                    point(6.0, 0.0),  point(9.0, 0.0),
@@ -108,7 +106,7 @@ TEST(ShiftInvalid, error_interval_is_backward)
   ASSERT_TRUE(!shifted_trajectory);
 }
 
-TEST(ShiftInvalid, error_longitudinal_velocity_is_negative)
+TEST(ShiftInvalid, ErrorLongitudinalVelocityIsNegative)
 {
   std::vector<geometry_msgs::msg::Point> points = {point(0.0, 0.0),  point(3.0, 0.0),
                                                    point(6.0, 0.0),  point(9.0, 0.0),
@@ -129,7 +127,7 @@ TEST(ShiftInvalid, error_longitudinal_velocity_is_negative)
   ASSERT_TRUE(!shifted_trajectory_info);
 }
 
-TEST(ShiftSuccess, shift_end_meets_given_lateral_longitudinal_distance_4points)
+TEST(ShiftSuccess, ShiftEndMeetsGivenLateralLongitudinalDistance4Points)
 {
   std::vector<geometry_msgs::msg::Point> points = {point(0.0, 0.0),  point(3.0, 0.0),
                                                    point(6.0, 0.0),  point(9.0, 0.0),
@@ -159,7 +157,7 @@ TEST(ShiftSuccess, shift_end_meets_given_lateral_longitudinal_distance_4points)
   EXPECT_FLOAT_EQ(shifted_trajectory.compute(shifted_trajectory.length()).y, -lateral_shift);
 }
 
-TEST(ShiftSuccess, shift_end_meets_given_lateral_longitudinal_distance_6points)
+TEST(ShiftSuccess, ShiftEndMeetsGivenLateralLongitudinalDistance6Points)
 {
   std::vector<geometry_msgs::msg::Point> points = {point(0.0, 0.0),  point(3.0, 0.0),
                                                    point(6.0, 0.0),  point(9.0, 0.0),
@@ -184,7 +182,7 @@ TEST(ShiftSuccess, shift_end_meets_given_lateral_longitudinal_distance_6points)
   ASSERT_TRUE(shifted_trajectory_info);
 }
 
-TEST(ShiftInvalid, multiple_shift)
+TEST(ShiftInvalid, MultipleShift)
 {
   std::vector<geometry_msgs::msg::Point> points = {point(0.0, 0.0),  point(3.0, 0.0),
                                                    point(6.0, 0.0),  point(9.0, 0.0),

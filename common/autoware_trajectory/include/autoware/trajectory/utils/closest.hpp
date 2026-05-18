@@ -15,11 +15,13 @@
 #ifndef AUTOWARE__TRAJECTORY__UTILS__CLOSEST_HPP_
 #define AUTOWARE__TRAJECTORY__UTILS__CLOSEST_HPP_
 
+#include "autoware/trajectory/detail/helpers.hpp"
 #include "autoware/trajectory/detail/types.hpp"
 #include "autoware/trajectory/forward.hpp"
 
 #include <Eigen/Core>
 
+#include <cassert>
 #include <functional>
 #include <optional>
 #include <utility>
@@ -52,10 +54,11 @@ std::optional<double> closest_with_constraint_impl(
  * satisfied.
  * @tparam TrajectoryPointType The type of points in the trajectory.
  * @tparam ArgPointType The type of the input point.
- * @tparam Constraint A callable type that evaluates a constraint on a trajectory point.
+ * @tparam Constraint A callable type that evaluates a constraint on a trajectory point or arc
+ * length `s`.
  * @param trajectory The trajectory to evaluate.
  * @param point The point to which the closest point on the trajectory is to be found.
- * @param constraint The constraint to apply to each point in the trajectory.
+ * @param constraint The constraint to apply to each point or arc length `s` in the trajectory.
  * @return An optional double value representing the parameter `s` of the closest point on the
  * trajectory that satisfies the constraint, or `std::nullopt` if no such point exists.
  */
@@ -75,7 +78,8 @@ std::optional<double> closest_with_constraint(
     },
     trajectory.get_underlying_bases(), {to_point(point).x, to_point(point).y, to_point(point).z},
     [constraint = std::forward<Constraint>(constraint), &trajectory](const double & s) {
-      return constraint(trajectory.compute(s));
+      return detail::invoke_with_point_or_parameter(
+        constraint, s, [&trajectory, &s]() { return trajectory.compute(s); });
     });
 }
 
@@ -93,9 +97,7 @@ double closest(
 {
   std::optional<double> s =
     closest_with_constraint(trajectory, point, [](const TrajectoryPointType &) { return true; });
-  if (!s) {
-    throw std::runtime_error("No closest point found.");  // This Exception should not be thrown.
-  }
+  assert(s.has_value() && "closest: no closest point found");
   return *s;
 }
 }  // namespace autoware::experimental::trajectory

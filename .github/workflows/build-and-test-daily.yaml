@@ -14,10 +14,18 @@ jobs:
         above: [false, true]
         include:
           - rosdistro: humble
-            container: ghcr.io/autowarefoundation/autoware:core-common-devel
+            above: false
+            container: ghcr.io/autowarefoundation/autoware:core-dependencies-humble
+          - rosdistro: humble
+            above: true
+            container: ghcr.io/autowarefoundation/autoware:universe-dependencies-humble
 
           - rosdistro: jazzy
-            container: ghcr.io/autowarefoundation/autoware:core-common-devel-jazzy-amd64
+            above: false
+            container: ghcr.io/autowarefoundation/autoware:core-dependencies-jazzy
+          - rosdistro: jazzy
+            above: true
+            container: ghcr.io/autowarefoundation/autoware:universe-dependencies-jazzy
 
     uses: ./.github/workflows/build-and-test-reusable.yaml
 

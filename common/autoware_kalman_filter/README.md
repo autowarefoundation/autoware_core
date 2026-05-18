@@ -60,7 +60,9 @@ where,
 
 ### Extension to Time Delay Kalman Filter
 
-For the Time Delay Kalman filter, it is assumed that there may be a maximum delay of step ($d$) in the measured value. To handle this delay, we extend the state vector to:
+For the Time Delay Kalman filter, it is assumed that there may be a maximum delay of $d$ steps in the measured value (`max_delay_step` $= d$). To handle this delay, we extend the state vector to include past states. The valid delay step range is $0, 1, \ldots, d-1$.
+
+**Augmented State Vector:**
 
 $$
 (x_{k})_e = \begin{bmatrix}
@@ -71,7 +73,7 @@ x_{k-d+1}
 \end{bmatrix}
 $$
 
-The corresponding state transition matrix ($A_e$) and process noise covariance matrix ($Q_e$) are also expanded:
+**Augmented Transition Matrix ($A_e$) and Process Noise ($Q_e$):**
 
 $$
 A_e = \begin{bmatrix}
@@ -92,132 +94,79 @@ $$
 
 #### Prediction Step
 
-The prediction step consists of updating the extended state and covariance matrices.
+The prediction step shifts the history of states and predicts the new current state.
 
-Update extension status:
+Update extended state:
 
 $$
-(x_{k|k-1})_e = \begin{bmatrix}
-A & 0 & 0 & \cdots & 0 \\
-I & 0 & 0 & \cdots & 0 \\
-0 & I & 0 & \cdots & 0 \\
-\vdots & \vdots & \vdots & \ddots & \vdots \\
-0 & 0 & 0 & \cdots & 0
-\end{bmatrix}
-\begin{bmatrix}
-x_{k-1|k-1} \\
-x_{k-2|k-1} \\
-\vdots \\
-x_{k-d|k-1}
-\end{bmatrix}
+(x_{k|k-1})_e = A_e (x_{k-1|k-1})_e + \begin{bmatrix} B u_k \\ 0 \\ \vdots \end{bmatrix}
 $$
 
 Update extended covariance matrix:
 
 $$
-(P_{k|k-1})_e = \begin{bmatrix}
-A & 0 & 0 & \cdots & 0 \\
-I & 0 & 0 & \cdots & 0 \\
-0 & I & 0 & \cdots & 0 \\
-\vdots & \vdots & \vdots & \ddots & \vdots \\
-0 & 0 & 0 & \cdots & 0
-\end{bmatrix}
-\begin{bmatrix}
-P_{k-1|k-1}^{(1)} & P_{k-1|k-1}^{(1,2)} & \cdots & P_{k-1|k-1}^{(1,d)} \\
-P_{k-1|k-1}^{(2,1)} & P_{k-1|k-1}^{(2)} & \cdots & P_{k-1|k-1}^{(2,d)} \\
-\vdots & \vdots & \ddots & \vdots \\
-P_{k-1|k-1}^{(d,1)} & P_{k-1|k-1}^{(d,2)} & \cdots & P_{k-1|k-1}^{(d)}
-\end{bmatrix}
-\begin{bmatrix}
- A^T & I & 0 & \cdots & 0 \\
- 0 & 0 & I & \cdots & 0 \\
- 0 & 0 & 0 & \cdots & 0 \\
- \vdots & \vdots & \vdots & \ddots & \vdots \\
- 0 & 0 & 0 & \cdots & 0
- \end{bmatrix} +
- \begin{bmatrix}
- Q & 0 & 0 & \cdots & 0 \\
- 0 & 0 & 0 & \cdots & 0 \\
- 0 & 0 & 0 & \cdots & 0 \\
- \vdots & \vdots & \vdots & \ddots & \vdots \\
- 0 & 0 & 0 & \cdots & 0
- \end{bmatrix}
+(P_{k|k-1})_e = A_e (P_{k-1|k-1})_e A_e^T + Q_e
 $$
 
-$\Longrightarrow$
+This operation essentially computes the new top-left block as $A P_{0,0} A^T + Q$ and shifts the cross-covariance blocks $P_{i,j}$ accordingly.
+
+#### Update Step (Efficient Implementation)
+
+When receiving a measurement value $y_k$ corresponding to a delayed state $x_{k-ds}$ (where $ds$ is the delay step), we exploit the sparsity of the observation matrix.
+
+The effective observation matrix $H$ for the augmented state is sparse:
+$$H = \begin{bmatrix} 0 & \cdots & C & \cdots & 0 \end{bmatrix}$$
+where $C$ is located at the block index corresponding to the delay $ds$.
+
+Instead of performing full matrix multiplications with zeros, we calculate the update using specific blocks:
+
+**1. Innovation Covariance ($S$):**
+
+Using the diagonal block of the covariance matrix corresponding to the delayed state ($P_{ds, ds}$):
 
 $$
-(P_{k|k-1})_e = \begin{bmatrix} A P_{k-1|k-1}^{(1)} A^T + Q & A P_{k-1|k-1}^{(1,2)} & \cdots & A P_{k-1|k-1}^{(1,d)} \\ P_{k-1|k-1}^{(2,1)} A^T & P_{k-1|k-1}^{(2)} & \cdots & P_{k-1|k-1}^{(2,d)} \\ \vdots & \vdots & \ddots & \vdots \\ P_{k-1|k-1}^{(d,1)} A^T & P_{k-1|k-1}^{(d,2)} & \cdots & P_{k-1|k-1}^{(d)} \end{bmatrix}
+S = C P_{ds, ds} C^T + R
 $$
 
-where,
+**2. Kalman Gain ($K_k$):**
 
-- $(x_{k|k-1})_e$ is the priori extended state estimate.
-- $(P_{k|k-1})_e$ is the priori extended covariance matrix.
-
-#### Update Step
-
-When receiving the measurement value ( $y_{k}$ ) with a delay of ( $ds$ ), the update steps are as follows:
-
-Update kalman gain:
+We calculate the gain using the column block of the covariance matrix ($P_{:, ds}$) which represents the correlation between **all states** (current and past) and the **delayed state**.
 
 $$
-K_k = \begin{bmatrix}
-P_{k|k-1}^{(1)} C^T \\
-P_{k|k-1}^{(2)} C^T \\
-\vdots \\
-P_{k|k-1}^{(ds)} C^T \\
-\vdots \\
-P_{k|k-1}^{(d)} C^T
-\end{bmatrix}
-(C P_{k|k-1}^{(ds)} C^T + R)^{-1}
+P_{CT} = P_{:, ds} C^T
 $$
 
-Update extension status:
-
 $$
-(x_{k|k})_e = \begin{bmatrix}
-x_{k|k-1} \\
-x_{k-1|k-1} \\
-\vdots \\
-x_{k-d+1|k-1}
-\end{bmatrix} +
-\begin{bmatrix}
-K_k^{(1)} \\
-K_k^{(2)} \\
-\vdots \\
-K_k^{(ds)} \\
-\vdots \\
-K_k^{(d)}
-\end{bmatrix} (y_k - C x_{k-ds|k-1})
+K_k = P_{CT} S^{-1}
 $$
 
-Update extended covariance matrix:
+_Note: In implementation, $S^{-1}$ is solved via Cholesky decomposition._
+
+**3. Update State:**
+
+The innovation is calculated against the delayed state estimate $x_{ds}$.
 
 $$
- (P_{k|k})_e = \left(I -
- \begin{bmatrix}
- K_k^{(1)} C \\
- K_k^{(2)} C \\
- \vdots \\
- K_k^{(ds)} C \\
- \vdots \\
- K_k^{(d)} C
- \end{bmatrix}\right)
- \begin{bmatrix}
- P_{k|k-1}^{(1)} & P_{k|k-1}^{(1,2)} & \cdots & P_{k|k-1}^{(1,d)} \\
- P_{k|k-1}^{(2,1)} & P_{k|k-1}^{(2)} & \cdots & P_{k|k-1}^{(2,d)} \\
- \vdots & \vdots & \ddots & \vdots \\
- P_{k|k-1}^{(d,1)} & P_{k|k-1}^{(d,2)} & \cdots & P_{k|k-1}^{(d)}
- \end{bmatrix}
+e = y_k - C x_{ds}
+$$
+
+$$
+(x_{k|k})_e = (x_{k|k-1})_e + K_k e
+$$
+
+**4. Update Covariance:**
+
+We update the full covariance matrix using the computed terms. This is computationally equivalent to $P - K S K^T$ but more efficient.
+
+$$
+(P_{k|k})_e = (P_{k|k-1})_e - P_{CT} K_k^T
 $$
 
 where,
 
-- $K_k$ is the Kalman gain.
-- $(x_{k|k})_e$ is the posterior extended state estimate.
-- $(P_{k|k})_e$ is the posterior extended covariance matrix.
-- $C$ is the measurement matrix, which only applies to the delayed state part.
+- $P_{ds, ds}$ is the covariance block of the delayed state.
+- $P_{:, ds}$ is the rectangular block of covariance (entire column corresponding to delay).
+- $P_{CT}$ corresponds to $P H^T$.
 
 ## Example Usage
 
@@ -260,29 +209,3 @@ R *= 1.0;
 autoware::kalman_filter::KalmanFilter kf;
 kf.init(x0, P0);
 ```
-
-- Predict step
-
-```cpp
-const Eigen::MatrixXd x_next = A * x0;
-kf.predict(x_next, A, Q);
-```
-
-- Update step
-
-```cpp
-// Measured value
-Eigen::MatrixXd y = Eigen::MatrixXd::Zero(dim_y, 1);
-kf.update(y, C, R);
-```
-
-- Get the current estimated state and covariance matrix
-
-```cpp
-Eigen::MatrixXd x_curr = kf.getX();
-Eigen::MatrixXd P_curr = kf.getP();
-```
-
-## Assumptions / Known limits
-
-- Delay Step Check: Ensure that the `delay_step` provided during the update does not exceed the maximum delay steps set during initialization.

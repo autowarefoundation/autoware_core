@@ -18,9 +18,9 @@ namespace
 {
 std_msgs::msg::ColorRGBA convertFromColorCode(const uint64_t code, const float alpha)
 {
-  const float r = static_cast<int>(code >> 16) / 255.0;
-  const float g = static_cast<int>((code << 48) >> 56) / 255.0;
-  const float b = static_cast<int>((code << 56) >> 56) / 255.0;
+  const float r = static_cast<float>(static_cast<int>(code >> 16) / 255.0);
+  const float g = static_cast<float>(static_cast<int>((code << 48) >> 56) / 255.0);
+  const float b = static_cast<float>(static_cast<int>((code << 56) >> 56) / 255.0);
 
   return autoware_utils_visualization::create_marker_color(r, g, b, alpha);
 }

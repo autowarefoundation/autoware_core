@@ -333,7 +333,7 @@ TrajectoryPoints SmootherBase::applyLateralAccelerationFilter(
       v_curvature_max = std::max(v_curvature_max, latacc_min_vel_arr.at(i));
     }
     if (output.at(i).longitudinal_velocity_mps > v_curvature_max) {
-      output.at(i).longitudinal_velocity_mps = v_curvature_max;
+      output.at(i).longitudinal_velocity_mps = static_cast<float>(v_curvature_max);
     }
   }
   return output;
@@ -370,8 +370,8 @@ TrajectoryPoints SmootherBase::applySteeringRateLimit(
     auto & steer_back = output.at(i).front_wheel_angle_rad;
 
     // calculate the just 2 steering angle
-    steer_front = std::atan(base_param_.wheel_base * curvature_v.at(i + 1));
-    steer_back = std::atan(base_param_.wheel_base * curvature_v.at(i));
+    steer_front = static_cast<float>(std::atan(base_param_.wheel_base * curvature_v.at(i + 1)));
+    steer_back = static_cast<float>(std::atan(base_param_.wheel_base * curvature_v.at(i)));
 
     const auto steering_diff = std::fabs(steer_front - steer_back);
 
@@ -407,9 +407,9 @@ TrajectoryPoints SmootherBase::applySteeringRateLimit(
 
     for (size_t k = 0; k < 2; k++) {
       auto & velocity = output.at(i + k).longitudinal_velocity_mps;
-      const float target_velocity = std::max(
+      const float target_velocity = static_cast<float>(std::max(
         base_param_.min_curve_velocity,
-        std::min(local_velocity_limit, velocity * (local_velocity_limit / mean_vel)));
+        std::min(local_velocity_limit, velocity * (local_velocity_limit / mean_vel))));
       velocity = std::min(velocity, target_velocity);
     }
   }

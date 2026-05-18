@@ -16,6 +16,7 @@
 #include "autoware/trajectory/utils/pretty_build.hpp"
 
 #include <autoware_utils_geometry/boost_geometry.hpp>
+#include <autoware_utils_geometry/geometry.hpp>
 
 #include <gtest/gtest.h>
 
@@ -31,7 +32,7 @@ using autoware_utils_geometry::LineString2d;
 using autoware_utils_geometry::Point2d;
 using autoware_utils_geometry::Polygon2d;
 
-TEST(crossed, linestring)
+TEST(Crossed, Linestring)
 {
   std::vector<PathPointWithLaneId> points;
   {
@@ -56,13 +57,10 @@ TEST(crossed, linestring)
     point.lane_ids = std::vector<std::int64_t>{2};
     points.push_back(point);
   }
-  const auto points4_result = autoware::experimental::trajectory::detail::populate4(points);
-  const auto & points4 = points4_result.value();
-
-  const auto trajectory_opt = autoware::experimental::trajectory::pretty_build(points4);
+  const auto trajectory_opt = autoware::experimental::trajectory::pretty_build(points);
   EXPECT_EQ(trajectory_opt.has_value(), true);
   const auto & trajectory = trajectory_opt.value();
-  EXPECT_EQ(trajectory.get_underlying_bases().size(), 4);
+  EXPECT_EQ(trajectory.get_underlying_bases().size(), 2);
 
   {
     const LineString2d line{Point2d{4.0, 0.0}, Point2d{0.0, 4.0}};
@@ -77,9 +75,24 @@ TEST(crossed, linestring)
     EXPECT_EQ(crossed_line.size(), 1);
     EXPECT_FLOAT_EQ(crossed_line.front(), 3.0 * std::sqrt(2.0));
   }
+
+  {
+    const LineString2d line{Point2d{3.0, 0.0}, Point2d{3.0, 4.0}};
+    const auto crossed_line = autoware::experimental::trajectory::crossed_with_constraint(
+      trajectory, line, [](const double s) { return s > 4.0; });
+    EXPECT_EQ(crossed_line.size(), 1);
+    EXPECT_FLOAT_EQ(crossed_line.front(), 3.0 * std::sqrt(2.0));
+  }
+
+  {
+    const LineString2d line{Point2d{3.0, 0.0}, Point2d{3.0, 4.0}};
+    const auto crossed_line = autoware::experimental::trajectory::crossed_with_constraint(
+      trajectory, line, [](const double s) { return s < 4.0; });
+    EXPECT_TRUE(crossed_line.empty());
+  }
 }
 
-TEST(crossed, open_polygon)
+TEST(Crossed, OpenPolygon)
 {
   std::vector<PathPointWithLaneId> points;
   {
@@ -104,13 +117,10 @@ TEST(crossed, open_polygon)
     point.lane_ids = std::vector<std::int64_t>{2};
     points.push_back(point);
   }
-  const auto points4_result = autoware::experimental::trajectory::detail::populate4(points);
-  const auto & points4 = points4_result.value();
-
-  const auto trajectory_opt = autoware::experimental::trajectory::pretty_build(points4);
+  const auto trajectory_opt = autoware::experimental::trajectory::pretty_build(points);
   EXPECT_EQ(trajectory_opt.has_value(), true);
   const auto & trajectory = trajectory_opt.value();
-  EXPECT_EQ(trajectory.get_underlying_bases().size(), 4);
+  EXPECT_EQ(trajectory.get_underlying_bases().size(), 2);
 
   const std::vector<Point2d> open_polygon{
     Point2d{1.0, 1.0}, Point2d{3.0, 1.0}, Point2d{3.0, 3.0}, Point2d{1.0, 3.0}};
@@ -122,32 +132,44 @@ TEST(crossed, open_polygon)
     EXPECT_FLOAT_EQ(crossed_line.back(), 3.0 * std::sqrt(2.0));
   }
   {
-    const auto crossed_line = autoware::experimental::trajectory::crossed_with_polygon(
-      trajectory, open_polygon, 1.0, trajectory.length() - 1.0);
+    auto cropped = trajectory;
+    const double crop_start = 1.0;
+    cropped.crop(crop_start, trajectory.length() - 2.0);
+    const auto crossed_line =
+      autoware::experimental::trajectory::crossed_with_polygon(cropped, open_polygon);
     EXPECT_EQ(crossed_line.size(), 2);
-    EXPECT_FLOAT_EQ(crossed_line.front(), 1.0 * std::sqrt(2.0));
-    EXPECT_FLOAT_EQ(crossed_line.back(), 3.0 * std::sqrt(2.0));
+    EXPECT_FLOAT_EQ(crossed_line.front() + crop_start, 1.0 * std::sqrt(2.0));
+    EXPECT_FLOAT_EQ(crossed_line.back() + crop_start, 3.0 * std::sqrt(2.0));
   }
   {
-    const auto crossed_line = autoware::experimental::trajectory::crossed_with_polygon(
-      trajectory, open_polygon, 2.0 * std::sqrt(2.0) - 0.5, 2.0 * std::sqrt(2.0) + 0.5);
+    auto cropped = trajectory;
+    const double crop_start = 2.0 * std::sqrt(2.0) - 0.5;
+    cropped.crop(crop_start, 1.0);
+    const auto crossed_line =
+      autoware::experimental::trajectory::crossed_with_polygon(cropped, open_polygon);
     EXPECT_EQ(crossed_line.size(), 0);
   }
   {
-    const auto crossed_line = autoware::experimental::trajectory::crossed_with_polygon(
-      trajectory, open_polygon, 0.0, 2.0 * std::sqrt(2.0) - 0.5);
+    auto cropped = trajectory;
+    const double crop_start = 0.0;
+    cropped.crop(crop_start, 2.0 * std::sqrt(2.0) - 0.5);
+    const auto crossed_line =
+      autoware::experimental::trajectory::crossed_with_polygon(cropped, open_polygon);
     EXPECT_EQ(crossed_line.size(), 1);
-    EXPECT_EQ(crossed_line.front(), std::sqrt(2.0));
+    EXPECT_EQ(crossed_line.front() + crop_start, std::sqrt(2.0));
   }
   {
-    const auto crossed_line = autoware::experimental::trajectory::crossed_with_polygon(
-      trajectory, open_polygon, 2.0 * std::sqrt(2.0) + 0.5);
+    auto cropped = trajectory;
+    const double crop_start = 2.0 * std::sqrt(2.0) + 0.5;
+    cropped.crop(crop_start, trajectory.length() - crop_start);
+    const auto crossed_line =
+      autoware::experimental::trajectory::crossed_with_polygon(cropped, open_polygon);
     EXPECT_EQ(crossed_line.size(), 1);
-    EXPECT_EQ(crossed_line.front(), 3 * std::sqrt(2.0));
+    EXPECT_EQ(crossed_line.front() + crop_start, 3 * std::sqrt(2.0));
   }
 }
 
-TEST(crossed, closed_polygon)
+TEST(Crossed, ClosedPolygon)
 {
   std::vector<PathPointWithLaneId> points;
   {
@@ -172,13 +194,10 @@ TEST(crossed, closed_polygon)
     point.lane_ids = std::vector<std::int64_t>{2};
     points.push_back(point);
   }
-  const auto points4_result = autoware::experimental::trajectory::detail::populate4(points);
-  const auto & points4 = points4_result.value();
-
-  const auto trajectory_opt = autoware::experimental::trajectory::pretty_build(points4);
+  const auto trajectory_opt = autoware::experimental::trajectory::pretty_build(points);
   EXPECT_EQ(trajectory_opt.has_value(), true);
   const auto & trajectory = trajectory_opt.value();
-  EXPECT_EQ(trajectory.get_underlying_bases().size(), 4);
+  EXPECT_EQ(trajectory.get_underlying_bases().size(), 2);
 
   const std::vector<Point2d> open_polygon{
     Point2d{1.0, 1.0}, Point2d{3.0, 1.0}, Point2d{3.0, 3.0}, Point2d{1.0, 3.0}, Point2d{1.0, 1.0}};
@@ -190,32 +209,44 @@ TEST(crossed, closed_polygon)
     EXPECT_FLOAT_EQ(crossed_line.back(), 3.0 * std::sqrt(2.0));
   }
   {
-    const auto crossed_line = autoware::experimental::trajectory::crossed_with_polygon(
-      trajectory, open_polygon, 1.0, trajectory.length() - 1.0);
+    auto cropped = trajectory;
+    const double crop_start = 1.0;
+    cropped.crop(crop_start, trajectory.length() - 2.0);
+    const auto crossed_line =
+      autoware::experimental::trajectory::crossed_with_polygon(cropped, open_polygon);
     EXPECT_EQ(crossed_line.size(), 2);
-    EXPECT_FLOAT_EQ(crossed_line.front(), 1.0 * std::sqrt(2.0));
-    EXPECT_FLOAT_EQ(crossed_line.back(), 3.0 * std::sqrt(2.0));
+    EXPECT_FLOAT_EQ(crossed_line.front() + crop_start, 1.0 * std::sqrt(2.0));
+    EXPECT_FLOAT_EQ(crossed_line.back() + crop_start, 3.0 * std::sqrt(2.0));
   }
   {
-    const auto crossed_line = autoware::experimental::trajectory::crossed_with_polygon(
-      trajectory, open_polygon, 2.0 * std::sqrt(2.0) - 0.5, 2.0 * std::sqrt(2.0) + 0.5);
+    auto cropped = trajectory;
+    const double crop_start = 2.0 * std::sqrt(2.0) - 0.5;
+    cropped.crop(crop_start, 1.0);
+    const auto crossed_line =
+      autoware::experimental::trajectory::crossed_with_polygon(cropped, open_polygon);
     EXPECT_EQ(crossed_line.size(), 0);
   }
   {
-    const auto crossed_line = autoware::experimental::trajectory::crossed_with_polygon(
-      trajectory, open_polygon, 0.0, 2.0 * std::sqrt(2.0) - 0.5);
+    auto cropped = trajectory;
+    const double crop_start = 0.0;
+    cropped.crop(crop_start, 2.0 * std::sqrt(2.0) - 0.5);
+    const auto crossed_line =
+      autoware::experimental::trajectory::crossed_with_polygon(cropped, open_polygon);
     EXPECT_EQ(crossed_line.size(), 1);
-    EXPECT_EQ(crossed_line.front(), std::sqrt(2.0));
+    EXPECT_EQ(crossed_line.front() + crop_start, std::sqrt(2.0));
   }
   {
-    const auto crossed_line = autoware::experimental::trajectory::crossed_with_polygon(
-      trajectory, open_polygon, 2.0 * std::sqrt(2.0) + 0.5);
+    auto cropped = trajectory;
+    const double crop_start = 2.0 * std::sqrt(2.0) + 0.5;
+    cropped.crop(crop_start, trajectory.length() - crop_start);
+    const auto crossed_line =
+      autoware::experimental::trajectory::crossed_with_polygon(cropped, open_polygon);
     EXPECT_EQ(crossed_line.size(), 1);
-    EXPECT_EQ(crossed_line.front(), 3 * std::sqrt(2.0));
+    EXPECT_EQ(crossed_line.front() + crop_start, 3 * std::sqrt(2.0));
   }
 }
 
-TEST(crossed, post_condition_001)
+TEST(Crossed, PostCondition001)
 {
   std::vector<PathPointWithLaneId> points;
   {
@@ -240,13 +271,10 @@ TEST(crossed, post_condition_001)
     point.lane_ids = std::vector<std::int64_t>{2};
     points.push_back(point);
   }
-  const auto points4_result = autoware::experimental::trajectory::detail::populate4(points);
-  const auto & points4 = points4_result.value();
-
-  const auto trajectory_opt = autoware::experimental::trajectory::pretty_build(points4);
+  const auto trajectory_opt = autoware::experimental::trajectory::pretty_build(points);
   EXPECT_EQ(trajectory_opt.has_value(), true);
   const auto & trajectory = trajectory_opt.value();
-  EXPECT_EQ(trajectory.get_underlying_bases().size(), 4);
+  EXPECT_EQ(trajectory.get_underlying_bases().size(), 2);
 
   const std::vector<Point2d> open_polygon{
     Point2d{1.0, 1.0}, Point2d{3.0, 1.0}, Point2d{3.0, 3.0}, Point2d{1.0, 3.0}, Point2d{1.0, 1.0}};
@@ -259,11 +287,14 @@ TEST(crossed, post_condition_001)
     ASSERT_TRUE(crossed_line.front() < crossed_line.back());
   }
   {
-    const auto crossed_line = autoware::experimental::trajectory::crossed_with_polygon(
-      trajectory, open_polygon, 1.0, trajectory.length() - 1.0);
+    auto cropped = trajectory;
+    const double crop_start = 1.0;
+    cropped.crop(crop_start, trajectory.length() - 2.0);
+    const auto crossed_line =
+      autoware::experimental::trajectory::crossed_with_polygon(cropped, open_polygon);
     EXPECT_EQ(crossed_line.size(), 2);
-    EXPECT_FLOAT_EQ(crossed_line.front(), 1.0 * std::sqrt(2.0));
-    EXPECT_FLOAT_EQ(crossed_line.back(), 3.0 * std::sqrt(2.0));
+    EXPECT_FLOAT_EQ(crossed_line.front() + crop_start, 1.0 * std::sqrt(2.0));
+    EXPECT_FLOAT_EQ(crossed_line.back() + crop_start, 3.0 * std::sqrt(2.0));
     ASSERT_TRUE(crossed_line.front() < crossed_line.back());
   }
 }

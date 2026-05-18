@@ -14,6 +14,8 @@
 
 #include "autoware/trajectory/interpolator/akima_spline.hpp"
 
+#include "autoware/trajectory/detail/helpers.hpp"
+
 #include <Eigen/Dense>
 
 #include <cmath>
@@ -62,40 +64,62 @@ void AkimaSpline::compute_parameters(
 
 bool AkimaSpline::build_impl(const std::vector<double> & bases, const std::vector<double> & values)
 {
-  this->bases_ = bases;
+  auto [cleaned_bases, cleaned_values] =
+    ::autoware::experimental::trajectory::detail::remove_duplicate_points(bases, values, epsilon_);
+  if (cleaned_bases.size() < minimum_required_points()) {
+    return false;
+  }
+  if (!::autoware::experimental::trajectory::detail::has_strictly_increasing_bases(
+        cleaned_bases, epsilon_)) {
+    return false;
+  }
+  this->bases_ = std::move(cleaned_bases);
   compute_parameters(
-    Eigen::Map<const Eigen::VectorXd>(bases.data(), static_cast<Eigen::Index>(bases.size())),
-    Eigen::Map<const Eigen::VectorXd>(values.data(), static_cast<Eigen::Index>(values.size())));
+    Eigen::Map<const Eigen::VectorXd>(
+      this->bases_.data(), static_cast<Eigen::Index>(this->bases_.size())),
+    Eigen::Map<const Eigen::VectorXd>(
+      cleaned_values.data(), static_cast<Eigen::Index>(cleaned_values.size())));
   return true;
 }
 
 bool AkimaSpline::build_impl(const std::vector<double> & bases, std::vector<double> && values)
 {
-  this->bases_ = bases;
+  auto [cleaned_bases, cleaned_values] =
+    ::autoware::experimental::trajectory::detail::remove_duplicate_points(bases, values, epsilon_);
+  if (cleaned_bases.size() < minimum_required_points()) {
+    return false;
+  }
+  if (!::autoware::experimental::trajectory::detail::has_strictly_increasing_bases(
+        cleaned_bases, epsilon_)) {
+    return false;
+  }
+  this->bases_ = std::move(cleaned_bases);
   compute_parameters(
-    Eigen::Map<const Eigen::VectorXd>(bases.data(), static_cast<Eigen::Index>(bases.size())),
-    Eigen::Map<const Eigen::VectorXd>(values.data(), static_cast<Eigen::Index>(values.size())));
+    Eigen::Map<const Eigen::VectorXd>(
+      this->bases_.data(), static_cast<Eigen::Index>(this->bases_.size())),
+    Eigen::Map<const Eigen::VectorXd>(
+      cleaned_values.data(), static_cast<Eigen::Index>(cleaned_values.size())));
   return true;
 }
 
 double AkimaSpline::compute_impl(const double s) const
 {
   const int32_t i = this->get_index(s);
-  const double dx = s - this->bases_[i];
+  const double dx = s - this->bases_.at(i);
   return a_[i] + b_[i] * dx + c_[i] * dx * dx + d_[i] * dx * dx * dx;
 }
 
 double AkimaSpline::compute_first_derivative_impl(const double s) const
 {
   const int32_t i = this->get_index(s);
-  const double dx = s - this->bases_[i];
+  const double dx = s - this->bases_.at(i);
   return b_[i] + 2 * c_[i] * dx + 3 * d_[i] * dx * dx;
 }
 
 double AkimaSpline::compute_second_derivative_impl(const double s) const
 {
   const int32_t i = this->get_index(s);
-  const double dx = s - this->bases_[i];
+  const double dx = s - this->bases_.at(i);
   return 2 * c_[i] + 6 * d_[i] * dx;
 }
 
