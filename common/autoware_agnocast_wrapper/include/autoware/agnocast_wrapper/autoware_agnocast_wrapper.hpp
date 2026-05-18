@@ -23,7 +23,9 @@
 
 #include <agnocast/agnocast.hpp>
 
+#include <chrono>
 #include <cstdlib>
+#include <future>
 #include <memory>
 #include <type_traits>
 
@@ -38,12 +40,22 @@
 #define AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) \
   autoware::agnocast_wrapper::message_ptr<          \
     const MessageT, autoware::agnocast_wrapper::OwnershipType::Shared>
+#define AUTOWARE_SERVICE_REQUEST_PTR(ServiceT) \
+  autoware::agnocast_wrapper::message_ptr<     \
+    typename ServiceT::Request, autoware::agnocast_wrapper::OwnershipType::Shared>
+#define AUTOWARE_SERVICE_RESPONSE_PTR(ServiceT) \
+  autoware::agnocast_wrapper::message_ptr<      \
+    typename ServiceT::Response, autoware::agnocast_wrapper::OwnershipType::Shared>
 #define AUTOWARE_SUBSCRIPTION_PTR(MessageT) \
   typename autoware::agnocast_wrapper::Subscription<MessageT>::SharedPtr
 #define AUTOWARE_PUBLISHER_PTR(MessageT) \
   typename autoware::agnocast_wrapper::Publisher<MessageT>::SharedPtr
 #define AUTOWARE_POLLING_SUBSCRIBER_PTR(MessageT) \
   typename autoware::agnocast_wrapper::PollingSubscriber<MessageT>::SharedPtr
+#define AUTOWARE_CLIENT_PTR(ServiceT) \
+  typename autoware::agnocast_wrapper::Client<ServiceT>::SharedPtr
+#define AUTOWARE_SERVICE_PTR(ServiceT) \
+  typename autoware::agnocast_wrapper::Service<ServiceT>::SharedPtr
 
 #define AUTOWARE_CREATE_SUBSCRIPTION(message_type, topic, qos, callback, options) \
   autoware::agnocast_wrapper::create_subscription<message_type>(this, topic, qos, callback, options)
@@ -53,12 +65,25 @@
   autoware::agnocast_wrapper::create_publisher<message_type>(this, arg1, arg2, arg3)
 #define AUTOWARE_CREATE_POLLING_SUBSCRIBER(message_type, topic, qos) \
   autoware::agnocast_wrapper::create_polling_subscriber<message_type>(this, topic, qos)
+#define AUTOWARE_CREATE_CLIENT1(service_type, service_name) \
+  autoware::agnocast_wrapper::create_client<service_type>(this, service_name)
+#define AUTOWARE_CREATE_CLIENT2(service_type, service_name, qos) \
+  autoware::agnocast_wrapper::create_client<service_type>(this, service_name, qos)
+#define AUTOWARE_CREATE_CLIENT3(service_type, service_name, qos, group) \
+  autoware::agnocast_wrapper::create_client<service_type>(this, service_name, qos, group)
+#define AUTOWARE_CREATE_SERVICE2(service_type, service_name, callback) \
+  autoware::agnocast_wrapper::create_service<service_type>(this, service_name, callback)
+#define AUTOWARE_CREATE_SERVICE3(service_type, service_name, callback, qos) \
+  autoware::agnocast_wrapper::create_service<service_type>(this, service_name, callback, qos)
+#define AUTOWARE_CREATE_SERVICE4(service_type, service_name, callback, qos, group) \
+  autoware::agnocast_wrapper::create_service<service_type>(this, service_name, callback, qos, group)
 
 #define AUTOWARE_SUBSCRIPTION_OPTIONS agnocast::SubscriptionOptions
 #define AUTOWARE_PUBLISHER_OPTIONS agnocast::PublisherOptions
 
 #define ALLOCATE_OUTPUT_MESSAGE_UNIQUE(publisher) publisher->allocate_output_message_unique()
 #define ALLOCATE_OUTPUT_MESSAGE_SHARED(publisher) publisher->allocate_output_message_shared()
+#define ALLOCATE_OUTPUT_SERVICE_REQUEST(client) client->allocate_output_service_request()
 
 namespace autoware::agnocast_wrapper
 {
@@ -727,6 +752,298 @@ typename Publisher<MessageT>::SharedPtr create_publisher(
   }
 }
 
+template <typename ServiceT>
+class Client
+{
+protected:
+  virtual bool wait_for_service_impl(std::chrono::nanoseconds timeout) const = 0;
+
+public:
+  using SharedPtr = std::shared_ptr<Publisher<MessageT>>;
+
+  using Future = std::future<AUTOWARE_SERVICE_RESPONSE_PTR(ServiceT)>;
+  using SharedFuture = std::shared_future<AUTOWARE_SERVICE_RESPONSE_PTR(ServiceT)>;
+
+  struct FutureAndRequestId : rclcpp::detail::FutureAndRequestId<Future>
+  {
+    using rclcpp::detail::FutureAndRequestId<Future>::FutureAndRequestId;
+    SharedFuture share() noexcept { return this->future.share(); }
+  };
+  struct SharedFutureAndRequestId : rclcpp::detail::FutureAndRequestId<SharedFuture>
+  {
+    using rclcpp::detail::FutureAndRequestId<SharedFuture>;
+  }
+
+  virtual ~Client() = default;
+
+  virtual AUTOWARE_SERVICE_REQUEST_PTR(ServiceT) allocate_output_service_request() = 0;
+
+  virtual const char * get_service_name() const = 0;
+
+  virtual bool service_is_ready() const = 0;
+
+  template <typename RepT, typename RatioT>
+  bool wait_for_service(
+    std::chrono::duration<RepT, RatioT> timeout = std::chrono::nanoseconds(-1)) const
+  {
+    return wait_for_service_impl(std::chrono::duration_cast<std::chrono::nanoseconds>(timeout));
+  }
+
+  virtual FutureAndRequestId async_send_request(
+    AUTOWARE_SERVICE_REQUEST_PTR(ServiceT) && request) = 0;
+  virtual SharedFutureAndRequestId async_send_request(
+    AUTOWARE_SERVICE_REQUEST_PTR(ServiceT) && request,
+    std::function<void(SharedFuture)> callback) = 0;
+};
+
+template <typename ServiceT>
+class AgnocastClient : public Client<ServiceT>
+{
+  typename agnocast::Client<ServiceT>::SharedPtr client_;
+
+protected:
+  bool wait_for_service_impl(std::chrono::nanoseconds timeout) const override
+  {
+    return client_->wait_for_service(timeout);
+  }
+
+public:
+  template <typename NodeT>
+  explicit AgnocastClient(
+    NodeT * node, const std::string & service_name, const rclcpp::QoS & qos,
+    rclcpp::CallbackGroup::SharedPtr group)
+  : client_(agnocast::create_client<ServiceT>(node, service_name, qos, group))
+  {
+  }
+
+  AUTOWARE_SERVICE_REQUEST_PTR(ServiceT) allocate_output_service_request() override
+  {
+    return AUTOWARE_SERVICE_REQUEST_PTR(ServiceT){client_->borrow_loaned_request()};
+  }
+
+  const char * get_service_name() const override { return client_->get_service_name(); }
+
+  bool service_is_ready() const override { return client_->service_is_ready(); }
+
+  FutureAndRequestId async_send_request(AUTOWARE_SERVICE_REQUEST_PTR(ServiceT) && request) override
+  {
+    std::promise<AUTOWARE_SERVICE_RESPONSE_PTR(ServiceT)> promise;
+    Future future = promise.get_future();
+
+    auto agnocast_request = std::move(request).move_agnocast_ptr();
+    auto request_id =
+      client_
+        ->async_send_request(
+          std::move(agnocast_request),
+          [promise =
+             std::move(promise)](agnocast::Client<ServiceT>::SharedFuture agnocast_shared_future) {
+            agnocast::ipc_shared_ptr<typename ServiceT::Response> agnocast_response =
+              agnocast_shared_future.get();
+            promise.set_value(
+              AUTOWARE_SERVICE_RESPONSE_PTR(ServiceT){std::move(agnocast_response)});
+          })
+        .request_id;
+
+    return FutureAndRequestId(std::move(future), request_id);
+  }
+
+  SharedFutureAndRequestId async_send_request(
+    AUTOWARE_SERVICE_REQUEST_PTR(ServiceT) && request,
+    std::function<void(SharedFuture)> callback) override
+  {
+    std::promise<AUTOWARE_SERVICE_RESPONSE_PTR(ServiceT)> promise;
+    SharedFuture shared_future = promise.get_future().share();
+
+    auto agnocast_request = std::move(request).move_agnocast_ptr();
+    auto request_id =
+      client_
+        ->async_send_request(
+          std::move(agnocast_request),
+          [callback = std::move(callback), promise = std::move(promise),
+           shared_future](agnocast::Client<ServiceT>::SharedFuture agnocast_shared_future) {
+            agnocast::ipc_shared_ptr<typename ServiceT::Response> agnocast_response =
+              agnocast_shared_future.get();
+            promise.set_value(
+              AUTOWARE_SERVICE_RESPONSE_PTR(ServiceT){std::move(agnocast_response)});
+            callback(std::move(shared_future));
+          })
+        .request_id;
+
+    return SharedFutureAndRequestId(std::move(shared_future), request_id);
+  }
+};
+
+template <typename ServiceT>
+class ROS2Client : public Client<ServiceT>
+{
+  typename rclcpp::Client<ServiceT>::SharedPtr client_;
+
+protected:
+  bool wait_for_service_impl(std::chrono::nanoseconds timeout) const override
+  {
+    return client_->wait_for_service(timeout);
+  }
+
+public:
+  explicit ROS2Client(
+    rclcpp::Node * node, const std::string & service_name, const rclcpp::QoS & qos,
+    rclcpp::CallbackGroup::SharedPtr group)
+  : client_(node->create_client<ServiceT>(service_name, qos, group))
+  {
+  }
+
+  AUTOWARE_SERVICE_REQUEST_PTR(ServiceT) allocate_output_service_request() override
+  {
+    return AUTOWARE_SERVICE_REQUEST_PTR(ServiceT){std::make_shared<typename ServiceT::Request>()};
+  }
+
+  const char * get_service_name() const override { return client_->get_service_name(); }
+
+  bool service_is_ready() const override { return client_->service_is_ready(); }
+
+  FutureAndRequestId async_send_request(AUTOWARE_SERVICE_REQUEST_PTR(ServiceT) && request) override
+  {
+    std::promise<AUTOWARE_SERVICE_RESPONSE_PTR(ServiceT)> promise;
+    Future future = promise.get_future();
+
+    auto ros2_request = std::move(request).move_ros2_ptr();
+    auto request_id =
+      client_
+        ->async_send_request(
+          std::move(ros2_request),
+          [promise =
+             std::move(promise)](rclcpp::Client<ServiceT>::SharedFuture ros2_shared_future) {
+            typename ServiceT::Response::SharedPtr ros2_response = ros2_shared_future.get();
+            promise.set_value(AUTOWARE_SERVICE_RESPONSE_PTR(ServiceT){std::move(ros2_response)});
+          })
+        .request_id;
+
+    return FutureAndRequestId(std::move(future), request_id);
+  }
+
+  SharedFutureAndRequestId async_send_request(
+    AUTOWARE_SERVICE_REQUEST_PTR(ServiceT) && request,
+    std::function<void(SharedFuture)> callback) override
+  {
+    std::promise<AUTOWARE_SERVICE_RESPONSE_PTR(ServiceT)> promise;
+    SharedFuture shared_future = promise.get_future().share();
+
+    auto ros2_request = std::move(request).move_ros2_ptr();
+    auto request_id =
+      client_
+        ->async_send_request(
+          std::move(ros2_request),
+          [callback = std::move(callback), promise = std::move(promise),
+           shared_future](rclcpp::Client<ServiceT>::SharedFuture ros2_shared_future) {
+            typename ServiceT::Response::SharedPtr ros2_response = ros2_shared_future.get();
+            promise.set_value(AUTOWARE_SERVICE_RESPONSE_PTR(ServiceT){std::move(ros2_response)});
+            callback(std::move(shared_future));
+          })
+        .request_id;
+
+    return SharedFutureAndRequestId(std::move(shared_future), request_id);
+  }
+};
+
+template <typename ServiceT>
+AUTOWARE_CLIENT_PTR(ServiceT)
+create_client(
+  rclcpp::Node * node, const std::string & service_name,
+  const rclcpp::QoS & qos = rclcpp::ServicesQoS(), rclcpp::CallbackGroup::SharedPtr group = nullptr)
+{
+  if (use_agnocast()) {
+    return std::make_shared<AgnocastClient<ServiceT>>(node, service_name, qos, group);
+  } else {
+    return std::make_shared<ROS2Client<ServiceT>>(node, service_name, qos, group);
+  }
+}
+
+template <typename ServiceT>
+class Service
+{
+public:
+  using SharedPtr = std::shared_ptr<Service<ServiceT>>;
+
+  virtual ~Subscription() = default;
+};
+
+template <typename ServiceT>
+class AgnocastService : public Service<ServiceT>
+{
+  typename agnocast::Service<ServiceT>::SharedPtr srv_;
+
+public:
+  template <typename NodeT, typename Func>
+  explicit AgnocastService(
+    NodeT * node, const std::string & service_name, Func && callback, const rclcpp::QoS & qos,
+    rclcpp::CallbackGroup::SharedPtr group)
+  {
+    static_assert(
+      std::is_invocable_v<
+        std::decay_t<Func>, AUTOWARE_SERVICE_REQUEST_PTR(ServiceT) &&,
+        AUTOWARE_SERVICE_RESPONSE_PTR(ServiceT) &&>
+      "Callback should be invocable with AUTOWARE_SERVICE_REQUEST_PTR and "
+      "AUTOWARE_SERVICE_RESPONSE_PTR (const&, &&, or by-value)");
+
+    srv_ = agnocast::create_service<ServiceT>(
+      node, service_name,
+      [callback = std::forward<Func>(callback)](
+        agnocast::ipc_shared_ptr<typename ServiceT::Request> && agnocast_request,
+        agnocast::ipc_shared_ptr<typename ServiceT::Response> && agnocast_response) {
+        callback(
+          AUTOWARE_SERVICE_REQUEST_PTR(ServiceT){std::move(agnocast_request)},
+          AUTOWARE_SERVICE_RESPONSE_PTR(ServiceT){std::move(agnocast_response)});
+      },
+      qos, group);
+  }
+};
+
+template <typename ServiceT>
+class ROS2Service : public Service<ServiceT>
+{
+  typename rclcpp::Service<ServiceT>::SharedPtr srv_;
+
+public:
+  template <typename Func>
+  explicit ROS2Service(
+    rclcpp::Node * node, const std::string & service_name, Func && callback,
+    const rclcpp::QoS & qos, rclcpp::CallbackGroup::SharedPtr group)
+  {
+    static_assert(
+      std::is_invocable_v<
+        std::decay_t<Func>, AUTOWARE_SERVICE_REQUEST_PTR(ServiceT) &&,
+        AUTOWARE_SERVICE_RESPONSE_PTR(ServiceT) &&>
+      "Callback should be invocable with AUTOWARE_SERVICE_REQUEST_PTR and "
+      "AUTOWARE_SERVICE_RESPONSE_PTR (const&, &&, or by-value)");
+
+    srv_ = node->create_service<ServiceT>(
+      service_name,
+      [callback = std::forward<Func>(callback)](
+        std::shared_ptr<typename ServiceT::Request> && ros2_request,
+        std::shared_ptr<typename ServiceT::Response> && ros2_response) {
+        callback(
+          AUTOWARE_SERVICE_REQUEST_PTR(ServiceT){std::move(ros2_request)},
+          AUTOWARE_SERVICE_RESPONSE_PTR(ServiceT){std::move(ros2_response)});
+      },
+      qos, group);
+  }
+};
+
+template <typename ServiceT, typename Func>
+AUTOWARE_SERVICE_PTR(ServiceT)
+create_service(
+  rclcpp::Node * node, const std::string & service_name, Func && callback,
+  const rclcpp::QoS & qos = rclcpp::ServiceQoS(), rclcpp::CallbackGroup::SharedPtr group = nullptr)
+{
+  if (use_agnocast()) {
+    return std::make_shared<AgnocastService<ServiceT>>(
+      node, service_name, std::forward<Func>(callback), qos, group);
+  } else {
+    return std::make_shared<ROS2Service<ServiceT>>(
+      node, service_name, std::forward<Func>(callback), qos, group);
+  }
+}
+
 }  // namespace autoware::agnocast_wrapper
 
 #else
@@ -743,6 +1060,8 @@ typename Publisher<MessageT>::SharedPtr create_publisher(
 #define AUTOWARE_MESSAGE_SHARED_PTR(MessageT) std::shared_ptr<MessageT>
 // For subscription (read-only message)
 #define AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) std::shared_ptr<const MessageT>
+#define AUTOWARE_SERVICE_REQUEST_PTR(ServiceT) std::shared_ptr<typename ServiceT::Request>
+#define AUTOWARE_SERVICE_RESPONSE_PTR(ServiceT) std::shared_ptr<typename ServiceT::Response>
 #define AUTOWARE_SUBSCRIPTION_PTR(MessageT) typename rclcpp::Subscription<MessageT>::SharedPtr
 #define AUTOWARE_PUBLISHER_PTR(MessageT) typename rclcpp::Publisher<MessageT>::SharedPtr
 #define AUTOWARE_POLLING_SUBSCRIBER_PTR(MessageT) \
@@ -765,5 +1084,7 @@ typename Publisher<MessageT>::SharedPtr create_publisher(
   std::make_unique<typename std::remove_reference<decltype(*publisher)>::type::ROSMessageType>()
 #define ALLOCATE_OUTPUT_MESSAGE_SHARED(publisher) \
   std::make_shared<typename std::remove_reference<decltype(*publisher)>::type::ROSMessageType>()
+#define ALLOCATE_OUTPUT_SERVICE_REQUEST(client) \
+  std::make_shared<typename std::remove_reference<decltype(*client)>::type::Request>()
 
 #endif
