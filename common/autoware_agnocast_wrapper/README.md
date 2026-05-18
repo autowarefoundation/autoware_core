@@ -19,7 +19,7 @@ Use this when you want the **entire node** to transparently switch between `rclc
 Currently supported APIs:
 
 - Publisher / Subscription / PollingSubscriber
-- Client / Service
+- Client / Service (experimental)
 - Parameters
 - Logger, Clock
 - Callback groups
