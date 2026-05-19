@@ -103,7 +103,7 @@ struct HyperParameters
     double update_distance{};
     double map_radius{};
     double lidar_radius{};
-    bool save_loaded_map{};
+    bool publish_loaded_map{};
   } dynamic_map_loading{};
 
 public:
@@ -192,8 +192,8 @@ public:
       node->declare_parameter<double>("dynamic_map_loading.map_radius");
     dynamic_map_loading.lidar_radius =
       node->declare_parameter<double>("dynamic_map_loading.lidar_radius");
-    dynamic_map_loading.save_loaded_map =
-      node->declare_parameter<bool>("dynamic_map_loading.save_loaded_map");
+    dynamic_map_loading.publish_loaded_map =
+      node->declare_parameter<bool>("dynamic_map_loading.publish_loaded_map");
   }
 };
 

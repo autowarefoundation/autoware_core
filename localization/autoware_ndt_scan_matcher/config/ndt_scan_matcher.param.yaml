@@ -133,6 +133,6 @@
       # Radius of input LiDAR range (used for diagnostics of dynamic map loading)
       lidar_radius: 100.0
 
-      # Save the dynamic map loaded by NDT in memory.
-      # Enabling this will publish debug/loaded_pointcloud_map.
-      save_loaded_map: false
+      # Publish debug/loaded_pointcloud_map.
+      # Enabling this will save the dynamic map loaded by NDT in memory.
+      publish_loaded_map: false
