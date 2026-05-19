@@ -31,6 +31,7 @@
   <depend>yaml-cpp</depend>
 
   <test_depend>ament_cmake_gmock</test_depend>
+  <test_depend>ament_index_cpp</test_depend>
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>autoware_lint_common</test_depend>
   <test_depend>launch_testing_ament_cmake</test_depend>
