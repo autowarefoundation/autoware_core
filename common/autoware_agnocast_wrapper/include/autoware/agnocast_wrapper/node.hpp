@@ -252,7 +252,7 @@ public:
   template <typename ServiceT>
   AUTOWARE_CLIENT_PTR(ServiceT)
   create_client(
-    const std::string & service_name, const rclcpp::QoS & qos = rclcpp::ClientQoS(),
+    const std::string & service_name, const rclcpp::QoS & qos = rclcpp::ServicesQoS(),
     rclcpp::CallbackGroup::SharedPtr group = nullptr)
   {
     return visit_node([&](auto & n) -> AUTOWARE_CLIENT_PTR(ServiceT) {
@@ -269,7 +269,7 @@ public:
   AUTOWARE_SERVICE_PTR(ServiceT)
   create_service(
     const std::string & service_name, Func && callback,
-    const rclcpp::QoS & qos = rclcpp::ServiceQoS(),
+    const rclcpp::QoS & qos = rclcpp::ServicesQoS(),
     rclcpp::CallbackGroup::SharedPtr group = nullptr)
   {
     return visit_node([&](auto & n) -> AUTOWARE_SERVICE_PTR(ServiceT) {
