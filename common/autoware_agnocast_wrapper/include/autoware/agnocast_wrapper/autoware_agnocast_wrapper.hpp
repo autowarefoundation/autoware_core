@@ -858,8 +858,8 @@ public:
 
   bool service_is_ready() const override { return client_->service_is_ready(); }
 
-  AUTOWARE_CLIENT_FUTURE_AND_REQUEST_ID(ServiceT) async_send_request(
-    AUTOWARE_SERVICE_REQUEST_PTR(ServiceT) && request) override
+  AUTOWARE_CLIENT_FUTURE_AND_REQUEST_ID(ServiceT)
+  async_send_request(AUTOWARE_SERVICE_REQUEST_PTR(ServiceT) && request) override
   {
     std::promise<AUTOWARE_SERVICE_RESPONSE_PTR(ServiceT)> promise;
     AUTOWARE_CLIENT_FUTURE(ServiceT) future = promise.get_future();
@@ -881,7 +881,8 @@ public:
     return AUTOWARE_CLIENT_FUTURE_AND_REQUEST_ID(ServiceT)(std::move(future), request_id);
   }
 
-  AUTOWARE_CLIENT_SHARED_FUTURE_AND_REQUEST_ID(ServiceT) async_send_request(
+  AUTOWARE_CLIENT_SHARED_FUTURE_AND_REQUEST_ID(ServiceT)
+  async_send_request(
     AUTOWARE_SERVICE_REQUEST_PTR(ServiceT) && request,
     std::function<void(AUTOWARE_CLIENT_SHARED_FUTURE(ServiceT))> callback) override
   {
@@ -903,8 +904,8 @@ public:
           })
         .request_id;
 
-    return
-      AUTOWARE_CLIENT_SHARED_FUTURE_AND_REQUEST_ID(ServiceT)(std::move(shared_future), request_id);
+    return AUTOWARE_CLIENT_SHARED_FUTURE_AND_REQUEST_ID(ServiceT)(
+      std::move(shared_future), request_id);
   }
 };
 
@@ -936,8 +937,8 @@ public:
 
   bool service_is_ready() const override { return client_->service_is_ready(); }
 
-  AUTOWARE_CLIENT_FUTURE_AND_REQUEST_ID(ServiceT) async_send_request(
-    AUTOWARE_SERVICE_REQUEST_PTR(ServiceT) && request) override
+  AUTOWARE_CLIENT_FUTURE_AND_REQUEST_ID(ServiceT)
+  async_send_request(AUTOWARE_SERVICE_REQUEST_PTR(ServiceT) && request) override
   {
     std::promise<AUTOWARE_SERVICE_RESPONSE_PTR(ServiceT)> promise;
     AUTOWARE_CLIENT_FUTURE(ServiceT) future = promise.get_future();
@@ -957,7 +958,8 @@ public:
     return AUTOWARE_CLIENT_FUTURE_AND_REQUEST_ID(ServiceT)(std::move(future), request_id);
   }
 
-  AUTOWARE_CLIENT_SHARED_FUTURE_AND_REQUEST_ID(ServiceT) async_send_request(
+  AUTOWARE_CLIENT_SHARED_FUTURE_AND_REQUEST_ID(ServiceT)
+  async_send_request(
     AUTOWARE_SERVICE_REQUEST_PTR(ServiceT) && request,
     std::function<void(AUTOWARE_CLIENT_SHARED_FUTURE(ServiceT))> callback) override
   {
@@ -977,8 +979,8 @@ public:
           })
         .request_id;
 
-    return
-      AUTOWARE_CLIENT_SHARED_FUTURE_AND_REQUEST_ID(ServiceT)(std::move(shared_future), request_id);
+    return AUTOWARE_CLIENT_SHARED_FUTURE_AND_REQUEST_ID(ServiceT)(
+      std::move(shared_future), request_id);
   }
 };
 
@@ -1105,10 +1107,8 @@ create_service(
   typename autoware_utils_rclcpp::InterProcessPollingSubscriber<MessageT>::SharedPtr
 #define AUTOWARE_CLIENT_PTR(ServiceT) typename rclcpp::Client<ServiceT>::SharedPtr
 #define AUTOWARE_SERVICE_PTR(ServiceT) typename rclcpp::Service<ServiceT>::SharedPtr
-#define AUTOWARE_CLIENT_FUTURE(ServiceT) \
-  typename rclcpp::Client<ServiceT>::Future
-#define AUTOWARE_CLIENT_SHARED_FUTURE(ServiceT) \
-  typename rclcpp::Client<ServiceT>::SharedFuture
+#define AUTOWARE_CLIENT_FUTURE(ServiceT) typename rclcpp::Client<ServiceT>::Future
+#define AUTOWARE_CLIENT_SHARED_FUTURE(ServiceT) typename rclcpp::Client<ServiceT>::SharedFuture
 #define AUTOWARE_CLIENT_FUTURE_AND_REQUEST_ID(SerivecT) \
   typename rclcpp::Client<ServiceT>::FutureAndRequestId
 #define AUTOWARE_CLIENT_SHARED_FUTURE_AND_REQUEST_ID(ServiceT) \
