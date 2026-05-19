@@ -260,7 +260,7 @@ To rebuild a specific package **without** Agnocast after it was previously built
 ```bash
 rm -Rf ./install/<package_name> ./build/<package_name>
 export ENABLE_AGNOCAST=0
-colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --package-select <package_name>
+colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-select <package_name>
 ```
 
 To rebuild a specific package **with** Agnocast after it was previously built without it:
@@ -268,7 +268,7 @@ To rebuild a specific package **with** Agnocast after it was previously built wi
 ```bash
 rm -Rf ./install/<package_name> ./build/<package_name>
 export ENABLE_AGNOCAST=1
-colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --package-select <package_name>
+colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-select <package_name>
 ```
 
 Please note that the `ENABLE_AGNOCAST` environment variable may not behave as expected in the following scenario:
