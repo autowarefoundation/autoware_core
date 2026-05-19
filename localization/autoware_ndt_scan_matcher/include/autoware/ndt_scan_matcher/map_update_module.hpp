@@ -106,6 +106,7 @@ private:
 
   HyperParameters::DynamicMapLoading param_;
 
+  // All accesses must occur while builder_state_'s lock is held
   std::map<std::string, pcl::PointCloud<PointTarget>::Ptr> loaded_map_;
 };
 
