@@ -326,6 +326,11 @@ void MapUpdateModule::publish_partial_pcd_map()
 {
   pcl::PointCloud<PointTarget> map_pcl;
   sensor_msgs::msg::PointCloud2 map_msg;
+  size_t total_points = 0;
+  for (const auto & map : loaded_map_) {
+    total_points += map.second->size();
+  }
+  map_pcl.points.reserve(total_points);
   for (const auto & map : loaded_map_) {
     map_pcl += *(map.second);
   }
