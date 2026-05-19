@@ -154,6 +154,7 @@ void MapUpdateModule::update_map_internal(
       auto param = ndt_ptr->getParams();
 
       ndt_ptr.reset(new NdtType);
+      loaded_map_.clear();
 
       ndt_ptr->setParams(param);
 
