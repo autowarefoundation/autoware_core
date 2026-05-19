@@ -61,7 +61,7 @@ protected:
     node_options.parameter_overrides().emplace_back(
       "initial_pose_estimation.particles_num", particles_num_for_test());
     node_options.parameter_overrides().emplace_back(
-      "n_startup_trials", n_startup_trials_for_test());
+      "initial_pose_estimation.n_startup_trials", n_startup_trials_for_test());
     node_ = std::make_shared<autoware::ndt_scan_matcher::NDTScanMatcher>(node_options);
     rcl_yaml_node_struct_fini(params_st);
 
