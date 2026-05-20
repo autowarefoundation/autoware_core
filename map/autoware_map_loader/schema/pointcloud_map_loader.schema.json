@@ -34,12 +34,14 @@
         "internal_visualization_update_interval_sec": {
           "type": "number",
           "description": "Update interval of internal differential pointcloud map visualization [s]",
-          "default": 1.0
+          "default": 1.0,
+          "minimum": 0.1
         },
         "internal_visualization_radius": {
           "type": "number",
           "description": "Query radius of internal differential pointcloud map visualization [m]",
-          "default": 150.0
+          "default": 150.0,
+          "minimum": 0.0
         },
         "leaf_size": {
           "type": "number",

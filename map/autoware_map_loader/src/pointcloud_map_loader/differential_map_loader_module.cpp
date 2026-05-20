@@ -45,6 +45,13 @@ DifferentialMapLoaderModule::DifferentialMapLoaderModule(
     return;
   }
 
+  if (visualization_radius_ < 0.0) {
+    RCLCPP_WARN(
+      logger_, "internal_visualization_radius is negative (%f). Clamping to 0.0.",
+      visualization_radius_);
+    visualization_radius_ = 0.0;
+  }
+
   internal_visualization_pub_ = node->create_publisher<sensor_msgs::msg::PointCloud2>(
     "output/differential_pointcloud_map_internal", rclcpp::QoS{1}.transient_local());
 
@@ -52,9 +59,19 @@ DifferentialMapLoaderModule::DifferentialMapLoaderModule(
     "/localization/kinematic_state", rclcpp::QoS{1},
     std::bind(&DifferentialMapLoaderModule::on_kinematic_state, this, std::placeholders::_1));
 
+  const double safe_interval =
+    std::isfinite(visualization_update_interval_sec_)
+      ? std::max(visualization_update_interval_sec_, 0.1)
+      : 1.0;
+  if (!std::isfinite(visualization_update_interval_sec_)) {
+    RCLCPP_WARN(
+      logger_,
+      "internal_visualization_update_interval_sec is non-finite (%f). Falling back to 1.0 s.",
+      visualization_update_interval_sec_);
+  }
   visualization_timer_ = node->create_wall_timer(
     std::chrono::duration_cast<std::chrono::nanoseconds>(
-      std::chrono::duration<double>(std::max(visualization_update_interval_sec_, 0.1))),
+      std::chrono::duration<double>(safe_interval)),
     std::bind(&DifferentialMapLoaderModule::on_visualization_timer, this));
 }
 
