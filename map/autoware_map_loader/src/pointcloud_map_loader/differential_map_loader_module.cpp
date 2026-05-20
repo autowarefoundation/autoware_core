@@ -59,10 +59,9 @@ DifferentialMapLoaderModule::DifferentialMapLoaderModule(
     "/localization/kinematic_state", rclcpp::QoS{1},
     std::bind(&DifferentialMapLoaderModule::on_kinematic_state, this, std::placeholders::_1));
 
-  const double safe_interval =
-    std::isfinite(visualization_update_interval_sec_)
-      ? std::max(visualization_update_interval_sec_, 0.1)
-      : 1.0;
+  const double safe_interval = std::isfinite(visualization_update_interval_sec_)
+                                 ? std::max(visualization_update_interval_sec_, 0.1)
+                                 : 1.0;
   if (!std::isfinite(visualization_update_interval_sec_)) {
     RCLCPP_WARN(
       logger_,
