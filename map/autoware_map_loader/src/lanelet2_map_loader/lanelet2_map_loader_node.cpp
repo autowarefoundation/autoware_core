@@ -116,20 +116,27 @@ void Lanelet2MapLoaderNode::on_map_projector_info(
     maps.push_back(map_tmp);
   }
 
+  // Load cell metadata unconditionally so that all downstream loaders
+  // (selected / future differential / etc.) can share the same dictionary.
+  std::map<std::string, Lanelet2FileMetaData> cell_metadata_dict;
+  const auto yaml_metadata = utils::load_cell_metadata_from_yaml(metadata_file_path);
+  if (yaml_metadata) {
+    cell_metadata_dict = *yaml_metadata;
+    RCLCPP_INFO(get_logger(), "Loaded cell metadata from %s.", metadata_file_path.c_str());
+  } else if (lanelet2_paths.size() == 1) {
+    // An exception when using a single lanelet2 map so that the users do not have to provide
+    // a metadata file.
+    // Note that this should ideally be avoided and thus eventually be removed by someone, until
+    // Autoware users get used to handling the lanelet2 file(s) with metadata.
+    RCLCPP_DEBUG_STREAM(
+      get_logger(), "Create lanelet2 cell metadata, as the map is a single file.");
+    cell_metadata_dict[lanelet2_paths[0]] =
+      utils::compute_cell_metadata(lanelet2_paths[0], *maps[0]);
+  } else {
+    throw std::runtime_error("Lanelet2 metadata file not found: " + metadata_file_path);
+  }
+
   if (enable_selected_map_loading) {
-    std::map<std::string, Lanelet2FileMetaData> cell_metadata_dict;
-
-    const auto yaml_metadata = utils::load_cell_metadata_from_yaml(metadata_file_path);
-    if (yaml_metadata) {
-      cell_metadata_dict = *yaml_metadata;
-      RCLCPP_INFO(get_logger(), "Loaded cell metadata from %s.", metadata_file_path.c_str());
-    } else {
-      for (size_t i = 0; i < lanelet2_paths.size(); ++i) {
-        cell_metadata_dict[lanelet2_paths[i]] =
-          utils::compute_cell_metadata(lanelet2_paths[i], *maps[i]);
-      }
-    }
-
     selected_map_loader_module_ = std::make_unique<Lanelet2SelectedMapLoaderModule>(
       this, std::move(cell_metadata_dict), *msg, center_line_resolution, use_waypoints);
 
