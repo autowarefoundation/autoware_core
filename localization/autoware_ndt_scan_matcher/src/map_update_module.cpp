@@ -154,6 +154,7 @@ void MapUpdateModule::update_map_internal(
       auto param = ndt_ptr->getParams();
 
       ndt_ptr.reset(new NdtType);
+      loaded_map_.clear();
 
       ndt_ptr->setParams(param);
 
@@ -220,7 +221,9 @@ void MapUpdateModule::update_map_internal(
   last_update_position_.with([&](auto & pos) { pos = position; });
 
   // Publish the new ndt maps
-  publish_partial_pcd_map();
+  if (param_.publish_loaded_map) {
+    publish_partial_pcd_map();
+  }
 }
 
 void MapUpdateModule::update_map(
@@ -294,11 +297,17 @@ bool MapUpdateModule::update_ndt(
 
     pcl::fromROSMsg(map.pointcloud, *cloud);
     ndt.addTarget(cloud, map.cell_id);
+    if (param_.publish_loaded_map) {
+      loaded_map_[map.cell_id] = cloud;
+    }
   }
 
   // Remove pcd
   for (const std::string & map_id_to_remove : map_ids_to_remove) {
     ndt.removeTarget(map_id_to_remove);
+    if (param_.publish_loaded_map) {
+      loaded_map_.erase(map_id_to_remove);
+    }
   }
 
   ndt.createVoxelKdtree();
@@ -315,11 +324,19 @@ bool MapUpdateModule::update_ndt(
 
 void MapUpdateModule::publish_partial_pcd_map()
 {
-  auto map_pcl = ndt_ptr_.with([&](auto & ndt_ptr) { return ndt_ptr->getVoxelPCD(); });
+  pcl::PointCloud<PointTarget> map_pcl;
   sensor_msgs::msg::PointCloud2 map_msg;
+  size_t total_points = 0;
+  for (const auto & map : loaded_map_) {
+    total_points += map.second->size();
+  }
+  map_pcl.points.reserve(total_points);
+  for (const auto & map : loaded_map_) {
+    map_pcl += *(map.second);
+  }
   pcl::toROSMsg(map_pcl, map_msg);
   map_msg.header.frame_id = "map";
-
+  map_msg.header.stamp = clock_->now();
   loaded_pcd_pub_->publish(map_msg);
 }
 
