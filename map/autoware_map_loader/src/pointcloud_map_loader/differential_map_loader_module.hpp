@@ -62,9 +62,9 @@ private:
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr kinematic_state_sub_;
   rclcpp::TimerBase::SharedPtr visualization_timer_;
   std::optional<geometry_msgs::msg::Point> latest_pose_;
-  std::unordered_map<std::string, sensor_msgs::msg::PointCloud2> loaded_cells_for_visualization_;
+  std::unordered_map<std::string, sensor_msgs::msg::PointCloud2::SharedPtr>
+    loaded_cells_for_visualization_;
   sensor_msgs::msg::PointCloud2 reusable_merged_cloud_;
-  std::vector<uint8_t> reusable_merge_buffer_;
   bool has_merged_cloud_for_visualization_{false};
   mutable std::mutex visualization_mutex_;
 

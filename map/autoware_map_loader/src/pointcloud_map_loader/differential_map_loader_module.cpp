@@ -158,19 +158,18 @@ void DifferentialMapLoaderModule::on_visualization_timer()
       cache_changed |= loaded_cells_for_visualization_.erase(id_to_remove) > 0U;
     }
     for (const auto & pcd_with_id : response->new_pointcloud_with_ids) {
-      loaded_cells_for_visualization_[pcd_with_id.cell_id] = pcd_with_id.pointcloud;
+      loaded_cells_for_visualization_[pcd_with_id.cell_id] =
+        std::make_shared<sensor_msgs::msg::PointCloud2>(pcd_with_id.pointcloud);
       cache_changed = true;
     }
   }
 
   if (cache_changed || !has_merged_cloud_for_visualization_) {
     rebuild_merged_cloud_for_visualization();
+    reusable_merged_cloud_.header.stamp = node_->now();
+    reusable_merged_cloud_.header.frame_id = "map";
+    internal_visualization_pub_->publish(reusable_merged_cloud_);
   }
-
-  const auto stamp = node_->now();
-  reusable_merged_cloud_.header.stamp = stamp;
-  reusable_merged_cloud_.header.frame_id = "map";
-  internal_visualization_pub_->publish(reusable_merged_cloud_);
 }
 
 void DifferentialMapLoaderModule::on_kinematic_state(
@@ -182,55 +181,60 @@ void DifferentialMapLoaderModule::on_kinematic_state(
 
 void DifferentialMapLoaderModule::rebuild_merged_cloud_for_visualization()
 {
+  std::vector<sensor_msgs::msg::PointCloud2::ConstSharedPtr> snapshot;
   {
     std::lock_guard<std::mutex> lock(visualization_mutex_);
-    if (loaded_cells_for_visualization_.empty()) {
-      reusable_merged_cloud_ = sensor_msgs::msg::PointCloud2{};
-      has_merged_cloud_for_visualization_ = true;
-      return;
+    snapshot.reserve(loaded_cells_for_visualization_.size());
+    for (const auto & [id, cloud_ptr] : loaded_cells_for_visualization_) {
+      if (cloud_ptr) snapshot.push_back(cloud_ptr);
     }
-
-    const auto first_itr = loaded_cells_for_visualization_.begin();
-    reusable_merged_cloud_ = first_itr->second;
-
-    size_t total_data_size = 0U;
-    for (const auto & [cell_id, cloud] : loaded_cells_for_visualization_) {
-      static_cast<void>(cell_id);
-      if (!is_compatible_pointcloud_layout(reusable_merged_cloud_, cloud)) {
-        continue;
-      }
-      total_data_size += cloud.data.size();
-    }
-
-    reusable_merge_buffer_.clear();
-    reusable_merge_buffer_.reserve(total_data_size);
-
-    for (const auto & [cell_id, cloud] : loaded_cells_for_visualization_) {
-      if (!is_compatible_pointcloud_layout(reusable_merged_cloud_, cloud)) {
-        RCLCPP_WARN_STREAM(
-          logger_,
-          "Skipped internal visualization cell due to incompatible layout. cell_id: " << cell_id);
-        continue;
-      }
-      reusable_merge_buffer_.insert(
-        reusable_merge_buffer_.end(), cloud.data.begin(), cloud.data.end());
-    }
-
-    reusable_merged_cloud_.data.swap(reusable_merge_buffer_);
-    has_merged_cloud_for_visualization_ = true;
   }
 
-  reusable_merged_cloud_.height = 1;
-  if (reusable_merged_cloud_.point_step == 0U) {
-    reusable_merged_cloud_.width = 0U;
-    reusable_merged_cloud_.row_step = 0U;
+  sensor_msgs::msg::PointCloud2 merged;
+  bool has_any = false;
+
+  for (const auto & c : snapshot) {
+    if (c && !c->fields.empty() && c->point_step != 0U) {
+      merged = *c;
+      merged.data.clear();
+      has_any = true;
+      break;
+    }
+  }
+  if (!has_any) {
+    std::lock_guard<std::mutex> lock(visualization_mutex_);
+    reusable_merged_cloud_ = sensor_msgs::msg::PointCloud2{};
+    has_merged_cloud_for_visualization_ = true;
     return;
   }
-  reusable_merged_cloud_.width =
-    static_cast<uint32_t>(reusable_merged_cloud_.data.size() / reusable_merged_cloud_.point_step);
-  reusable_merged_cloud_.row_step =
-    reusable_merged_cloud_.point_step * reusable_merged_cloud_.width;
-  reusable_merged_cloud_.is_dense = false;
+
+  size_t total = 0;
+  for (const auto & c : snapshot) {
+    if (!c) continue;
+    if (!is_compatible_pointcloud_layout(merged, *c)) continue;
+    total += c->data.size();
+  }
+
+  std::vector<uint8_t> buf;
+  buf.reserve(total);
+  for (const auto & c : snapshot) {
+    if (!c) continue;
+    if (!is_compatible_pointcloud_layout(merged, *c)) continue;
+    buf.insert(buf.end(), c->data.begin(), c->data.end());
+  }
+
+  merged.data = std::move(buf);
+  merged.height = 1;
+  merged.width =
+    merged.point_step ? static_cast<uint32_t>(merged.data.size() / merged.point_step) : 0U;
+  merged.row_step = merged.point_step * merged.width;
+  merged.is_dense = false;
+
+  {
+    std::lock_guard<std::mutex> lock(visualization_mutex_);
+    reusable_merged_cloud_ = std::move(merged);
+    has_merged_cloud_for_visualization_ = true;
+  }
 }
 
 bool DifferentialMapLoaderModule::is_compatible_pointcloud_layout(
