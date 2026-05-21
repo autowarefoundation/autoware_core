@@ -1116,7 +1116,8 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
   // publish the estimated poses in 20 times to see the progress and to avoid dropping data
   visualization_msgs::msg::MarkerArray marker_array;
   constexpr int64_t publish_num = 20;
-  const int64_t publish_interval = param_.initial_pose_estimation.particles_num / publish_num;
+  const int64_t publish_interval =
+    std::max<int64_t>(param_.initial_pose_estimation.particles_num / publish_num, 1);
 
   for (int64_t i = 0; i < param_.initial_pose_estimation.particles_num; i++) {
     const TreeStructuredParzenEstimator::Input input = tpe.get_next_input();
@@ -1142,6 +1143,7 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
       ndt_result.nearest_voxel_transformation_likelihood, ndt_result.iteration_num);
     particle_array.push_back(particle);
     push_debug_markers(marker_array, get_clock()->now(), param_.frame.map_frame, particle, i);
+
     if (
       (i + 1) % publish_interval == 0 || (i + 1) == param_.initial_pose_estimation.particles_num) {
       ndt_monte_carlo_initial_pose_marker_pub_->publish(marker_array);
