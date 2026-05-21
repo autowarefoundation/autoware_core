@@ -283,22 +283,6 @@ Visualization Manager:
               Width: 550
           Enabled: true
           Name: Vehicle
-        - Class: rviz_plugins/MrmSummaryOverlayDisplay
-          Enabled: false
-          Font Size: 10
-          Left: 512
-          Max Letter Num: 100
-          Name: MRM Summary
-          Text Color: 25; 255; 240
-          Top: 64
-          Topic:
-            Depth: 5
-            Durability Policy: Volatile
-            History Policy: Keep Last
-            Reliability Policy: Reliable
-            Value: /system/emergency/hazard_status
-          Value: false
-          Value height offset: 0
       Enabled: true
       Name: System
     - Class: rviz_common/Group

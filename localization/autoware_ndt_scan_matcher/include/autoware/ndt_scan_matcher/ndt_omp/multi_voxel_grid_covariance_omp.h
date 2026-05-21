@@ -61,7 +61,8 @@
 // clang-format off
 #include <pcl/pcl_macros.h>
 // clang-format on
-#include <pcl/filters/boost.h>
+#include <boost/shared_ptr.hpp>
+
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/point_types.h>

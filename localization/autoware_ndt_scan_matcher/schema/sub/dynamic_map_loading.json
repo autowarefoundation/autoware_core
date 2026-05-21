@@ -22,9 +22,14 @@
           "description": "Radius of input LiDAR range (used for diagnostics of dynamic map loading).",
           "default": 100.0,
           "minimum": 0.0
+        },
+        "publish_loaded_map": {
+          "type": "boolean",
+          "description": "Publish debug/loaded_pointcloud_map. Enabling this will save the dynamic map loaded by NDT in memory.",
+          "default": false
         }
       },
-      "required": ["update_distance", "map_radius", "lidar_radius"],
+      "required": ["update_distance", "map_radius", "lidar_radius", "publish_loaded_map"],
       "additionalProperties": false
     }
   }
