@@ -238,7 +238,6 @@ MotionVelocityPlannerNode::process_no_ground_pointcloud(
     RCLCPP_DEBUG_SKIPFIRST_THROTTLE(
       get_logger(), *get_clock(), 5000,  // 5 seconds
       "Received empty no_ground_pointcloud, skipping processing");
-    planner_data_->no_ground_pointcloud = std::make_shared < pcl::PointCloud<pcl::PointXYZ>();
     return std::nullopt;
   }
 
