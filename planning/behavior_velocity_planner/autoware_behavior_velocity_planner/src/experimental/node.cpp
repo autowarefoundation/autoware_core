@@ -133,7 +133,7 @@ bool BehaviorVelocityPlannerNode::processNoGroundPointCloud(
   const sensor_msgs::msg::PointCloud2::ConstSharedPtr msg)
 {
   if (msg->width == 0 || msg->height == 0) {
-    RCLCPP_INFO_SKIPFIRST_THROTTLE(
+    RCLCPP_DEBUG_SKIPFIRST_THROTTLE(
       get_logger(), *get_clock(), logger_throttle_interval,
       "Received empty no_ground_pointcloud, skipping processing");
     planner_data_.no_ground_pointcloud = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
