@@ -52,18 +52,23 @@ public:
     subscribe(node, topic, qos);
   }
 
+  /// @note The backend mode is captured here and reused by unsubscribe().
+  ///       The wrapper Node's backend mode is fixed at construction and does not
+  ///       change for the lifetime of the Node, so the captured value remains valid.
   void subscribe(
     autoware::agnocast_wrapper::Node * node, const std::string & topic,
     const rmw_qos_profile_t qos = rmw_qos_profile_default)
   {
-    using_agnocast_ = node->is_using_agnocast();
-    if (using_agnocast_) {
+    const bool tmp_agnocast = node->is_using_agnocast();
+    if (tmp_agnocast) {
       agnocast_sub_.subscribe(node->get_agnocast_node().get(), topic, qos);
     } else {
       rclcpp_sub_.subscribe(node->get_rclcpp_node().get(), topic, qos);
     }
+    using_agnocast_ = tmp_agnocast;
   }
 
+  /// @note Uses the backend mode captured during the preceding subscribe() call.
   void unsubscribe()
   {
     if (using_agnocast_) {
