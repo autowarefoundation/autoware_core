@@ -234,11 +234,11 @@ MotionVelocityPlannerNode::process_no_ground_pointcloud(
   const bool is_pcl_time_valid = (this->get_clock()->now() - rclcpp::Time(msg->header.stamp)) <
                                  rclcpp::Duration::from_seconds(1.0);
 
-  if(msg->width == 0 || msg->height == 0) {
+  if (msg->width == 0 || msg->height == 0) {
     RCLCPP_INFO_SKIPFIRST_THROTTLE(
       get_logger(), *get_clock(), 5000,  // 5 seconds
       "Received empty no_ground_pointcloud, skipping processing");
-    planner_data_->no_ground_pointcloud = std::make_shared<pcl::PointCloud<pcl::PointXYZ>();
+    planner_data_->no_ground_pointcloud = std::make_shared < pcl::PointCloud<pcl::PointXYZ>();
     return std::nullopt;
   }
 
