@@ -56,7 +56,8 @@ public:
     autoware::agnocast_wrapper::Node * node, const std::string & topic,
     const rmw_qos_profile_t qos = rmw_qos_profile_default)
   {
-    if (use_agnocast()) {
+    using_agnocast_ = node->is_using_agnocast();
+    if (using_agnocast_) {
       agnocast_sub_.subscribe(node->get_agnocast_node().get(), topic, qos);
     } else {
       rclcpp_sub_.subscribe(node->get_rclcpp_node().get(), topic, qos);
@@ -65,7 +66,7 @@ public:
 
   void unsubscribe()
   {
-    if (use_agnocast()) {
+    if (using_agnocast_) {
       agnocast_sub_.unsubscribe();
     } else {
       rclcpp_sub_.unsubscribe();
@@ -80,6 +81,7 @@ public:
   }
 
 private:
+  bool using_agnocast_ = false;
   ::message_filters::Subscriber<M, rclcpp::Node> rclcpp_sub_;
   agnocast::message_filters::Subscriber<M, agnocast::Node> agnocast_sub_;
 };
