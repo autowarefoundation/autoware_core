@@ -40,6 +40,8 @@ def generate_test_description():
                 "center_line_resolution": 5.0,
                 "use_waypoints": True,
                 "allow_unsupported_version": True,
+                "enable_selected_map_loading": False,
+                "metadata_file_path": "",
             }
         ],
     )
