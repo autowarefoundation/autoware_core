@@ -17,7 +17,9 @@
 #include <autoware_utils_geometry/boost_geometry.hpp>
 #include <rclcpp/rclcpp.hpp>
 
+#include <algorithm>
 #include <limits>
+#include <utility>
 
 namespace autoware::vehicle_info_utils
 {
@@ -136,6 +138,13 @@ VehicleInfo createVehicleInfo(
     max_height_offset_m_,
   };
 }
+VehicleInfo extendVehicleInfo(const VehicleInfo & input_vehicle_info, const double margin)
+{
+  return VehicleInfo::createVehicleInfoForVehicleShape(
+    input_vehicle_info.vehicle_length_m + margin, input_vehicle_info.vehicle_width_m + margin,
+    input_vehicle_info.wheel_base_m, input_vehicle_info.max_steer_angle_rad,
+    input_vehicle_info.rear_overhang_m + margin / 2.0);
+}
 
 double VehicleInfo::calcMaxCurvature() const
 {
@@ -168,5 +177,19 @@ double VehicleInfo::calcSteerAngleFromCurvature(const double curvature) const
 
   const double radius = 1.0 / curvature;
   return std::atan2(wheel_base_m, radius);
+}
+
+std::pair<double, double> VehicleInfo::calcMaxMinDimension() const
+{
+  const auto base2front = vehicle_length_m - rear_overhang_m;
+  double max_dimension, min_dimension;
+  if (rear_overhang_m <= base2front) {
+    min_dimension = std::min(0.5 * vehicle_width_m, rear_overhang_m);
+    max_dimension = std::hypot(base2front, 0.5 * vehicle_width_m);
+  } else {
+    min_dimension = std::min(0.5 * vehicle_width_m, base2front);
+    max_dimension = std::hypot(rear_overhang_m, 0.5 * vehicle_width_m);
+  }
+  return std::make_pair(max_dimension, min_dimension);
 }
 }  // namespace autoware::vehicle_info_utils
