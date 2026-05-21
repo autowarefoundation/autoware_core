@@ -61,6 +61,7 @@ struct VehicleInfo
    * through front-right edge, center-right point, to front-left edge again to form a enclosed
    * polygon
    * @param margin the longitudinal and lateral inflation margin
+   * @param base_pose optional pose used to transform footprint
    */
   [[nodiscard]] autoware_utils_geometry::LinearRing2d createFootprint(
     const double margin = 0.0,
@@ -71,6 +72,7 @@ struct VehicleInfo
    * through front-right edge, center-right point, to front-left edge again to form a enclosed
    * polygon
    * @param margin the longitudinal and lateral inflation margin
+   * @param base_pose optional pose used to transform footprint
    */
   [[nodiscard]] autoware_utils_geometry::LinearRing2d createFootprint(
     const double lat_margin, const double lon_margin,
@@ -88,6 +90,7 @@ struct VehicleInfo
    * @param rear_lon_margin longitudinal inflation margin at the rear section
    * @param center_at_base_link if true, center point is aligned at base_link (x=0), otherwise
    * placed at wheelbase center
+   * @param base_pose optional pose used to transform footprint
    */
   [[nodiscard]] autoware_utils_geometry::LinearRing2d createFootprint(
     const double front_lat_margin, const double center_lat_margin, const double rear_lat_margin,
