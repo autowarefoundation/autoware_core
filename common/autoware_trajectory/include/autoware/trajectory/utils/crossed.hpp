@@ -159,7 +159,7 @@ template <class PathPointType, class LineStringType>
 template <class PathType, class LineStringType>
 [[nodiscard]] std::vector<double> crossed(const PathType & path, const LineStringType & linestring)
 {
-  if (path.points.size() == 0) {
+  if (path.points.size() < 2) {
     return {};
   }
   return crossed(path.points, linestring);
@@ -217,7 +217,7 @@ template <class PathType, class PolygonClosurePointsType>
 [[nodiscard]] std::vector<double> crossed_with_polygon(
   const PathType & path, const PolygonClosurePointsType & open_or_closed_boundary)
 {
-  if (path.points.size() == 0) {
+  if (path.points.size() < 2) {
     return {};
   }
   return crossed_with_polygon(path.points, open_or_closed_boundary);
