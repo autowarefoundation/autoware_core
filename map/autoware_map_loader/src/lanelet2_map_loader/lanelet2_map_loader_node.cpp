@@ -79,7 +79,7 @@ Lanelet2MapLoaderNode::Lanelet2MapLoaderNode(const rclcpp::NodeOptions & options
   declare_parameter<double>("center_line_resolution");
   declare_parameter<bool>("use_waypoints");
   declare_parameter<bool>("enable_selected_map_loading");
-  declare_parameter<std::string>("metadata_file_path");
+  declare_parameter<std::string>("lanelet2_map_metadata_path");
 }
 
 // Defined here so the compiler sees the full type of Lanelet2SelectedMapLoaderModule
@@ -94,7 +94,7 @@ void Lanelet2MapLoaderNode::on_map_projector_info(
   const auto center_line_resolution = get_parameter("center_line_resolution").as_double();
   const auto use_waypoints = get_parameter("use_waypoints").as_bool();
   const auto enable_selected_map_loading = get_parameter("enable_selected_map_loading").as_bool();
-  const auto metadata_file_path = get_parameter("metadata_file_path").as_string();
+  const auto lanelet2_map_metadata_path = get_parameter("lanelet2_map_metadata_path").as_string();
 
   // get lanelet2 file paths (handles both a single .osm file and a directory)
   const std::vector<std::string> lanelet2_paths = utils::get_lanelet2_paths(lanelet2_map_path);
@@ -119,10 +119,10 @@ void Lanelet2MapLoaderNode::on_map_projector_info(
   // Load cell metadata unconditionally so that all downstream loaders
   // (selected / future differential / etc.) can share the same dictionary.
   std::map<std::string, Lanelet2FileMetaData> cell_metadata_dict;
-  const auto yaml_metadata = utils::load_cell_metadata_from_yaml(metadata_file_path);
+  const auto yaml_metadata = utils::load_cell_metadata_from_yaml(lanelet2_map_metadata_path);
   if (yaml_metadata) {
     cell_metadata_dict = *yaml_metadata;
-    RCLCPP_INFO(get_logger(), "Loaded cell metadata from %s.", metadata_file_path.c_str());
+    RCLCPP_INFO(get_logger(), "Loaded cell metadata from %s.", lanelet2_map_metadata_path.c_str());
   } else if (lanelet2_paths.size() == 1) {
     // An exception when using a single lanelet2 map so that the users do not have to provide
     // a metadata file.
@@ -133,7 +133,7 @@ void Lanelet2MapLoaderNode::on_map_projector_info(
     cell_metadata_dict[lanelet2_paths[0]] =
       utils::compute_cell_metadata(lanelet2_paths[0], *maps[0]);
   } else {
-    throw std::runtime_error("Lanelet2 metadata file not found: " + metadata_file_path);
+    throw std::runtime_error("Lanelet2 metadata file not found: " + lanelet2_map_metadata_path);
   }
 
   if (enable_selected_map_loading) {

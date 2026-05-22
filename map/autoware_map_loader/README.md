@@ -145,7 +145,7 @@ map loading) can share the same information.
 
 The bounding boxes are determined in one of two ways:
 
-1. **From a metadata YAML file** — when `metadata_file_path` points to an
+1. **From a metadata YAML file** — when `lanelet2_map_metadata_path` points to an
    existing file. The expected format is:
 
    ```yaml
@@ -160,7 +160,7 @@ The bounding boxes are determined in one of two ways:
    `[min_x, min_y, min_x + x_resolution, min_y + y_resolution]`.
 
 2. **Computed from the loaded map (single-file only)** — when
-   `metadata_file_path` is empty or the file does not exist **and only a
+   `lanelet2_map_metadata_path` is empty or the file does not exist **and only a
    single `.osm` file is loaded**, the axis-aligned bounding box is derived
    from all points in that map. This is an exception so that users do not
    have to provide a metadata file for single-file maps.

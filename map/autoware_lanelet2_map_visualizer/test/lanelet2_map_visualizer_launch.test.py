@@ -42,7 +42,7 @@ def generate_test_description():
                 "use_waypoints": True,
                 "allow_unsupported_version": True,
                 "enable_selected_map_loading": False,
-                "metadata_file_path": "",
+                "lanelet2_map_metadata_path": "",
             }
         ],
     )
