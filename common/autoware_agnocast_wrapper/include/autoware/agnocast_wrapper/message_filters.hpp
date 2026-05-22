@@ -41,6 +41,11 @@ namespace message_filters
 
 /// @brief Wrapper message_filters Subscriber that switches between
 ///        rclcpp and agnocast message_filters at runtime.
+///
+/// @invariant The backend is selected from use_agnocast() at construction and never
+///            changes, so the held subscriber object keeps a stable identity for the
+///            Subscriber's lifetime. subscribe() may therefore be called repeatedly
+///            without invalidating a Synchronizer already wired to this Subscriber.
 template <class M>
 class Subscriber
 {
@@ -48,11 +53,17 @@ public:
   using RclcppSubscriber = ::message_filters::Subscriber<M, rclcpp::Node>;
   using AgnocastSubscriber = agnocast::message_filters::Subscriber<M, agnocast::Node>;
 
-  Subscriber() = default;
+  Subscriber()
+  {
+    if (use_agnocast()) {
+      sub_.template emplace<AgnocastSubscriber>();
+    }
+  }
 
   Subscriber(
     autoware::agnocast_wrapper::Node * node, const std::string & topic,
     const rmw_qos_profile_t qos = rmw_qos_profile_default)
+  : Subscriber()
   {
     subscribe(node, topic, qos);
   }
@@ -61,21 +72,21 @@ public:
     autoware::agnocast_wrapper::Node * node, const std::string & topic,
     const rmw_qos_profile_t qos = rmw_qos_profile_default)
   {
-    if (node->is_using_agnocast()) {
-      sub_.template emplace<AgnocastSubscriber>().subscribe(
-        node->get_agnocast_node().get(), topic, qos);
-    } else {
-      sub_.template emplace<RclcppSubscriber>().subscribe(
-        node->get_rclcpp_node().get(), topic, qos);
-    }
+    std::visit(
+      [&](auto & sub) {
+        if constexpr (std::is_same_v<std::decay_t<decltype(sub)>, AgnocastSubscriber>) {
+          sub.subscribe(node->get_agnocast_node().get(), topic, qos);
+        } else {
+          sub.subscribe(node->get_rclcpp_node().get(), topic, qos);
+        }
+      },
+      sub_);
   }
 
   void unsubscribe()
   {
     std::visit([](auto & sub) { sub.unsubscribe(); }, sub_);
   }
-
-  bool is_using_agnocast() const { return std::holds_alternative<AgnocastSubscriber>(sub_); }
 
   // Internal API: used by ApproximateTimeSynchronizer. Not intended for downstream use.
   RclcppSubscriber & rclcpp_subscriber() { return std::get<RclcppSubscriber>(sub_); }
@@ -127,7 +138,7 @@ public:
 
   ApproximateTimeSynchronizer(uint32_t queue_size, Subscriber<M0> & sub0, Subscriber<M1> & sub1)
   {
-    if (sub0.is_using_agnocast()) {
+    if (use_agnocast()) {
       sync_.template emplace<std::unique_ptr<AgnocastSync>>(
         std::make_unique<AgnocastSync>(
           AgnocastPolicy(queue_size), sub0.agnocast_subscriber(), sub1.agnocast_subscriber()));
