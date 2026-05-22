@@ -139,13 +139,11 @@ public:
   ApproximateTimeSynchronizer(uint32_t queue_size, Subscriber<M0> & sub0, Subscriber<M1> & sub1)
   {
     if (use_agnocast()) {
-      sync_.template emplace<std::unique_ptr<AgnocastSync>>(
-        std::make_unique<AgnocastSync>(
-          AgnocastPolicy(queue_size), sub0.agnocast_subscriber(), sub1.agnocast_subscriber()));
+      sync_.template emplace<std::unique_ptr<AgnocastSync>>(std::make_unique<AgnocastSync>(
+        AgnocastPolicy(queue_size), sub0.agnocast_subscriber(), sub1.agnocast_subscriber()));
     } else {
-      sync_.template emplace<std::unique_ptr<RclcppSync>>(
-        std::make_unique<RclcppSync>(
-          RclcppPolicy(queue_size), sub0.rclcpp_subscriber(), sub1.rclcpp_subscriber()));
+      sync_.template emplace<std::unique_ptr<RclcppSync>>(std::make_unique<RclcppSync>(
+        RclcppPolicy(queue_size), sub0.rclcpp_subscriber(), sub1.rclcpp_subscriber()));
     }
   }
 
