@@ -865,6 +865,9 @@ public:
   AUTOWARE_CLIENT_FUTURE_AND_REQUEST_ID(ServiceT)
   async_send_request(AUTOWARE_SERVICE_REQUEST_PTR(ServiceT) && request) override
   {
+    // Wrap the promise in a shared_ptr so that the callback lambda can call set_value()
+    // through the pointer without needing 'mutable'. A unique_ptr wouldn't work here because
+    // the lambda is stored in a std::function, which requires its callable to be copyable.
     auto promise_ptr = std::make_shared<std::promise<AUTOWARE_SERVICE_RESPONSE_PTR(ServiceT)>>();
     AUTOWARE_CLIENT_FUTURE(ServiceT) future = promise_ptr->get_future();
 
