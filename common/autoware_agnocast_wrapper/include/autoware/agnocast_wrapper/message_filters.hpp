@@ -69,6 +69,7 @@ public:
   }
 
   /// @note Uses the backend mode captured during the preceding subscribe() call.
+  ///       Calling this before subscribe() is a harmless no-op.
   void unsubscribe()
   {
     if (using_agnocast_) {
