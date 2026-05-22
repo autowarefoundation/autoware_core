@@ -24,7 +24,9 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <utility>
+#include <variant>
 
 #ifdef USE_AGNOCAST_ENABLED
 
@@ -43,6 +45,9 @@ template <class M>
 class Subscriber
 {
 public:
+  using RclcppSubscriber = ::message_filters::Subscriber<M, rclcpp::Node>;
+  using AgnocastSubscriber = agnocast::message_filters::Subscriber<M, agnocast::Node>;
+
   Subscriber() = default;
 
   Subscriber(
@@ -52,44 +57,32 @@ public:
     subscribe(node, topic, qos);
   }
 
-  /// @note The backend mode is captured here and reused by unsubscribe().
-  ///       The wrapper Node's backend mode is fixed at construction and does not
-  ///       change for the lifetime of the Node, so the captured value remains valid.
   void subscribe(
     autoware::agnocast_wrapper::Node * node, const std::string & topic,
     const rmw_qos_profile_t qos = rmw_qos_profile_default)
   {
-    const bool tmp_agnocast = node->is_using_agnocast();
-    if (tmp_agnocast) {
-      agnocast_sub_.subscribe(node->get_agnocast_node().get(), topic, qos);
+    if (node->is_using_agnocast()) {
+      sub_.template emplace<AgnocastSubscriber>().subscribe(
+        node->get_agnocast_node().get(), topic, qos);
     } else {
-      rclcpp_sub_.subscribe(node->get_rclcpp_node().get(), topic, qos);
+      sub_.template emplace<RclcppSubscriber>().subscribe(
+        node->get_rclcpp_node().get(), topic, qos);
     }
-    using_agnocast_ = tmp_agnocast;
   }
 
-  /// @note Uses the backend mode captured during the preceding subscribe() call.
-  ///       Calling this before subscribe() is a harmless no-op.
   void unsubscribe()
   {
-    if (using_agnocast_) {
-      agnocast_sub_.unsubscribe();
-    } else {
-      rclcpp_sub_.unsubscribe();
-    }
+    std::visit([](auto & sub) { sub.unsubscribe(); }, sub_);
   }
+
+  bool is_using_agnocast() const { return std::holds_alternative<AgnocastSubscriber>(sub_); }
 
   // Internal API: used by ApproximateTimeSynchronizer. Not intended for downstream use.
-  ::message_filters::Subscriber<M, rclcpp::Node> & rclcpp_subscriber() { return rclcpp_sub_; }
-  agnocast::message_filters::Subscriber<M, agnocast::Node> & agnocast_subscriber()
-  {
-    return agnocast_sub_;
-  }
+  RclcppSubscriber & rclcpp_subscriber() { return std::get<RclcppSubscriber>(sub_); }
+  AgnocastSubscriber & agnocast_subscriber() { return std::get<AgnocastSubscriber>(sub_); }
 
 private:
-  bool using_agnocast_ = false;
-  ::message_filters::Subscriber<M, rclcpp::Node> rclcpp_sub_;
-  agnocast::message_filters::Subscriber<M, agnocast::Node> agnocast_sub_;
+  std::variant<RclcppSubscriber, AgnocastSubscriber> sub_;
 };
 
 /// @brief Wrapper ApproximateTime Synchronizer that switches between
@@ -134,23 +127,30 @@ public:
 
   ApproximateTimeSynchronizer(uint32_t queue_size, Subscriber<M0> & sub0, Subscriber<M1> & sub1)
   {
-    if (use_agnocast()) {
-      agnocast_sync_ = std::make_unique<AgnocastSync>(
-        AgnocastPolicy(queue_size), sub0.agnocast_subscriber(), sub1.agnocast_subscriber());
+    if (sub0.is_using_agnocast()) {
+      sync_.template emplace<std::unique_ptr<AgnocastSync>>(
+        std::make_unique<AgnocastSync>(
+          AgnocastPolicy(queue_size), sub0.agnocast_subscriber(), sub1.agnocast_subscriber()));
     } else {
-      rclcpp_sync_ = std::make_unique<RclcppSync>(
-        RclcppPolicy(queue_size), sub0.rclcpp_subscriber(), sub1.rclcpp_subscriber());
+      sync_.template emplace<std::unique_ptr<RclcppSync>>(
+        std::make_unique<RclcppSync>(
+          RclcppPolicy(queue_size), sub0.rclcpp_subscriber(), sub1.rclcpp_subscriber()));
     }
   }
 
   void registerCallback(Callback callback)
   {
     stored_callback_ = std::move(callback);
-    if (use_agnocast()) {
-      agnocast_sync_->registerCallback(&ApproximateTimeSynchronizer::agnocastCallbackAdapter, this);
-    } else {
-      rclcpp_sync_->registerCallback(&ApproximateTimeSynchronizer::rclcppCallbackAdapter, this);
-    }
+    std::visit(
+      [this](auto & sync) {
+        using SyncT = typename std::decay_t<decltype(sync)>::element_type;
+        if constexpr (std::is_same_v<SyncT, AgnocastSync>) {
+          sync->registerCallback(&ApproximateTimeSynchronizer::agnocastCallbackAdapter, this);
+        } else {
+          sync->registerCallback(&ApproximateTimeSynchronizer::rclcppCallbackAdapter, this);
+        }
+      },
+      sync_);
   }
 
 private:
@@ -179,11 +179,11 @@ private:
 
   using RclcppPolicy = ::message_filters::sync_policies::ApproximateTime<M0, M1>;
   using RclcppSync = ::message_filters::Synchronizer<RclcppPolicy>;
-  std::unique_ptr<RclcppSync> rclcpp_sync_;
 
   using AgnocastPolicy = agnocast::message_filters::sync_policies::ApproximateTime<M0, M1>;
   using AgnocastSync = agnocast::message_filters::Synchronizer<AgnocastPolicy>;
-  std::unique_ptr<AgnocastSync> agnocast_sync_;
+
+  std::variant<std::unique_ptr<RclcppSync>, std::unique_ptr<AgnocastSync>> sync_;
 };
 
 /// @brief Policy and Synchronizer types that mirror the rclcpp message_filters API.
