@@ -17,6 +17,9 @@
 
 #include <autoware_utils_geometry/boost_geometry.hpp>
 
+#include "geometry_msgs/msg/pose.hpp"
+
+#include <optional>
 #include <utility>
 
 namespace autoware::vehicle_info_utils
@@ -61,18 +64,22 @@ struct VehicleInfo
    * through front-right edge, center-right point, to front-left edge again to form a enclosed
    * polygon
    * @param margin the longitudinal and lateral inflation margin
+   * @param base_pose optional pose used to transform footprint
    */
   [[nodiscard]] autoware_utils_geometry::LinearRing2d createFootprint(
-    const double margin = 0.0) const;
+    const double margin = 0.0,
+    const std::optional<geometry_msgs::msg::Pose> & base_pose = std::nullopt) const;
 
   /**
    * @brief calculate the vehicle footprint in clockwise manner starting from the front-left edge,
    * through front-right edge, center-right point, to front-left edge again to form a enclosed
    * polygon
    * @param margin the longitudinal and lateral inflation margin
+   * @param base_pose optional pose used to transform footprint
    */
   [[nodiscard]] autoware_utils_geometry::LinearRing2d createFootprint(
-    const double lat_margin, const double lon_margin) const;
+    const double lat_margin, const double lon_margin,
+    const std::optional<geometry_msgs::msg::Pose> & base_pose = std::nullopt) const;
 
   /**
    * @brief Calculate the vehicle footprint in a clockwise manner, starting from the front-left
@@ -86,11 +93,13 @@ struct VehicleInfo
    * @param rear_lon_margin longitudinal inflation margin at the rear section
    * @param center_at_base_link if true, center point is aligned at base_link (x=0), otherwise
    * placed at wheelbase center
+   * @param base_pose optional pose used to transform footprint
    */
   [[nodiscard]] autoware_utils_geometry::LinearRing2d createFootprint(
     const double front_lat_margin, const double center_lat_margin, const double rear_lat_margin,
     const double front_lon_margin, const double rear_lon_margin,
-    const bool center_at_base_link = false) const;
+    const bool center_at_base_link = false,
+    const std::optional<geometry_msgs::msg::Pose> & base_pose = std::nullopt) const;
 
   [[nodiscard]] double calcMaxCurvature() const;
   [[nodiscard]] double calcCurvatureFromSteerAngle(const double steer_angle) const;
