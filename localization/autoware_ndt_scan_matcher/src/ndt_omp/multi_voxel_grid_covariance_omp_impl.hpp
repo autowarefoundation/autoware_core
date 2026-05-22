@@ -56,7 +56,6 @@
 
 #include <autoware/ndt_scan_matcher/ndt_omp/multi_voxel_grid_covariance_omp.h>
 #include <pcl/common/common.h>
-#include <pcl/filters/boost.h>
 
 #include <limits>
 #include <map>

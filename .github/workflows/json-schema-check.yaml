@@ -11,7 +11,7 @@ jobs:
       run-check: ${{ steps.paths_filter.outputs.json_or_yaml }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@v4
         id: paths_filter
         with:
           filters: |
