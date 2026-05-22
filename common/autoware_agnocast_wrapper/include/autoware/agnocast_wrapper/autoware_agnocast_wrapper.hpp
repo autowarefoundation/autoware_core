@@ -22,7 +22,11 @@
 #include "autoware_utils_rclcpp/polling_subscriber.hpp"
 
 #include <agnocast/agnocast.hpp>
+#include <rclcpp/exceptions/exceptions.hpp>
 
+#include <rcl/timer.h>
+
+#include <chrono>
 #include <cstdlib>
 #include <memory>
 #include <type_traits>
@@ -44,6 +48,7 @@
   typename autoware::agnocast_wrapper::Publisher<MessageT>::SharedPtr
 #define AUTOWARE_POLLING_SUBSCRIBER_PTR(MessageT) \
   typename autoware::agnocast_wrapper::PollingSubscriber<MessageT>::SharedPtr
+#define AUTOWARE_TIMER_PTR autoware::agnocast_wrapper::Timer::SharedPtr
 
 #define AUTOWARE_CREATE_SUBSCRIPTION(message_type, topic, qos, callback, options) \
   autoware::agnocast_wrapper::create_subscription<message_type>(this, topic, qos, callback, options)
@@ -727,16 +732,108 @@ typename Publisher<MessageT>::SharedPtr create_publisher(
   }
 }
 
+class Timer
+{
+public:
+  using SharedPtr = std::shared_ptr<Timer>;
+  virtual ~Timer() = default;
+
+  virtual void cancel() = 0;
+  virtual void reset() = 0;
+  virtual bool is_canceled() const = 0;
+  virtual std::chrono::nanoseconds time_until_trigger() const = 0;
+
+private:
+  // Private so callers must use the free set_period() function, which also works in the
+  // non-agnocast build (where AUTOWARE_TIMER_PTR is a plain rclcpp::TimerBase, no set_period).
+  virtual void set_period(std::chrono::nanoseconds period) = 0;
+  friend void set_period(const SharedPtr & timer, std::chrono::nanoseconds period);
+};
+
+class AgnocastTimer : public Timer
+{
+  std::shared_ptr<agnocast::TimerBase> timer_;
+
+public:
+  explicit AgnocastTimer(std::shared_ptr<agnocast::TimerBase> timer) : timer_(std::move(timer)) {}
+
+  void cancel() override { timer_->cancel(); }
+  void reset() override { timer_->reset(); }
+  bool is_canceled() const override { return timer_->is_canceled(); }
+  std::chrono::nanoseconds time_until_trigger() const override
+  {
+    return timer_->time_until_trigger();
+  }
+
+private:
+  void set_period(std::chrono::nanoseconds period) override { timer_->set_period(period); }
+};
+
+class ROS2Timer : public Timer
+{
+  rclcpp::TimerBase::SharedPtr timer_;
+
+public:
+  explicit ROS2Timer(rclcpp::TimerBase::SharedPtr timer) : timer_(std::move(timer)) {}
+
+  void cancel() override { timer_->cancel(); }
+  void reset() override { timer_->reset(); }
+  bool is_canceled() const override { return timer_->is_canceled(); }
+  std::chrono::nanoseconds time_until_trigger() const override
+  {
+    return timer_->time_until_trigger();
+  }
+
+private:
+  // rclcpp::TimerBase does not expose a set_period API; fall back to the rcl C API and
+  // convert the rcl_ret_t to an rclcpp::exceptions::RCLError (matching the throw style used
+  // by the other rclcpp timer methods such as cancel/reset/time_until_trigger).
+  void set_period(std::chrono::nanoseconds period) override
+  {
+    int64_t old_period = 0;
+    const rcl_ret_t ret =
+      rcl_timer_exchange_period(timer_->get_timer_handle().get(), period.count(), &old_period);
+    if (ret != RCL_RET_OK) {
+      rclcpp::exceptions::throw_from_rcl_error(ret, "Failed to set timer period");
+    }
+  }
+};
+
+inline void set_period(const Timer::SharedPtr & timer, std::chrono::nanoseconds period)
+{
+  timer->set_period(period);
+}
+
 }  // namespace autoware::agnocast_wrapper
 
 #else
 
 #include "autoware_utils_rclcpp/polling_subscriber.hpp"
 
+#include <rclcpp/exceptions/exceptions.hpp>
 #include <rclcpp/rclcpp.hpp>
 
+#include <rcl/timer.h>
+
+#include <chrono>
 #include <memory>
 #include <type_traits>
+
+namespace autoware::agnocast_wrapper
+{
+
+// rclcpp::TimerBase has no set_period API; fall back to the rcl C API.
+inline void set_period(const rclcpp::TimerBase::SharedPtr & timer, std::chrono::nanoseconds period)
+{
+  int64_t old_period = 0;
+  const rcl_ret_t ret =
+    rcl_timer_exchange_period(timer->get_timer_handle().get(), period.count(), &old_period);
+  if (ret != RCL_RET_OK) {
+    rclcpp::exceptions::throw_from_rcl_error(ret, "Failed to set timer period");
+  }
+}
+
+}  // namespace autoware::agnocast_wrapper
 
 #define AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) std::unique_ptr<MessageT>
 // For publisher (mutable message)
@@ -747,6 +844,7 @@ typename Publisher<MessageT>::SharedPtr create_publisher(
 #define AUTOWARE_PUBLISHER_PTR(MessageT) typename rclcpp::Publisher<MessageT>::SharedPtr
 #define AUTOWARE_POLLING_SUBSCRIBER_PTR(MessageT) \
   typename autoware_utils_rclcpp::InterProcessPollingSubscriber<MessageT>::SharedPtr
+#define AUTOWARE_TIMER_PTR rclcpp::TimerBase::SharedPtr
 
 #define AUTOWARE_CREATE_SUBSCRIPTION(message_type, topic, qos, callback, options) \
   this->create_subscription<message_type>(topic, qos, callback, options)

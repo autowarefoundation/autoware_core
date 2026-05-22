@@ -20,6 +20,7 @@
 
 #include <rclcpp/version.h>
 
+#include <chrono>
 #include <map>
 #include <memory>
 #include <stdexcept>
@@ -248,6 +249,24 @@ public:
       topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)));
   }
 
+  // ===== Timer =====
+  template <typename DurationRepT = int64_t, typename DurationT = std::milli, typename CallbackT>
+  Timer::SharedPtr create_wall_timer(
+    std::chrono::duration<DurationRepT, DurationT> period, CallbackT && callback,
+    rclcpp::CallbackGroup::SharedPtr group = nullptr)
+  {
+    return visit_node([&](auto & n) -> Timer::SharedPtr {
+      using NodeT = std::decay_t<decltype(*n)>;
+      if constexpr (std::is_same_v<NodeT, agnocast::Node>) {
+        return std::make_shared<AgnocastTimer>(
+          n->create_wall_timer(period, std::forward<CallbackT>(callback), group));
+      } else {
+        return std::make_shared<ROS2Timer>(
+          n->create_wall_timer(period, std::forward<CallbackT>(callback), group));
+      }
+    });
+  }
+
   // ===== Internal node access (for Executor) =====
   // Callers must check is_using_agnocast() before calling get_agnocast_node()/get_rclcpp_node().
   // Accessing the inactive variant will throw std::runtime_error.
@@ -303,6 +322,19 @@ std::shared_ptr<rclcpp::Node> to_rclcpp_node(const std::shared_ptr<T> & node)
   return node->get_rclcpp_node();
 }
 
+template <typename CallbackT>
+Timer::SharedPtr create_timer(
+  Node * node, rclcpp::Clock::SharedPtr clock, rclcpp::Duration period, CallbackT && callback,
+  rclcpp::CallbackGroup::SharedPtr group = nullptr)
+{
+  if (node->is_using_agnocast()) {
+    return std::make_shared<AgnocastTimer>(agnocast::create_timer(
+      node->get_agnocast_node().get(), clock, period, std::forward<CallbackT>(callback), group));
+  }
+  return std::make_shared<ROS2Timer>(rclcpp::create_timer(
+    node->get_rclcpp_node().get(), clock, period, std::forward<CallbackT>(callback), group));
+}
+
 }  // namespace autoware::agnocast_wrapper
 
 #else
@@ -317,6 +349,14 @@ template <typename T>
 std::shared_ptr<rclcpp::Node> to_rclcpp_node(const std::shared_ptr<T> & node)
 {
   return node;
+}
+
+template <typename CallbackT>
+rclcpp::TimerBase::SharedPtr create_timer(
+  Node * node, rclcpp::Clock::SharedPtr clock, rclcpp::Duration period, CallbackT && callback,
+  rclcpp::CallbackGroup::SharedPtr group = nullptr)
+{
+  return rclcpp::create_timer(node, clock, period, std::forward<CallbackT>(callback), group);
 }
 
 }  // namespace autoware::agnocast_wrapper
