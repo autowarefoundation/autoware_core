@@ -814,6 +814,12 @@ private:
   }
 };
 
+/// @brief Set the timer period.
+///
+/// Provided as a free function so the same call site compiles in both builds:
+/// in non-Agnocast builds rclcpp::TimerBase has no set_period member, so a
+/// free overload is the only portable form. Timer::set_period is private to
+/// prevent member-style calls that would not survive the non-Agnocast build.
 inline void set_period(const Timer::SharedPtr & timer, std::chrono::nanoseconds period)
 {
   timer->set_period(period);
@@ -837,7 +843,11 @@ inline void set_period(const Timer::SharedPtr & timer, std::chrono::nanoseconds 
 namespace autoware::agnocast_wrapper
 {
 
-// rclcpp::TimerBase has no set_period API; fall back to the rcl C API.
+/// @brief Set the timer period (non-Agnocast build).
+///
+/// rclcpp::TimerBase has no set_period member, so we provide a free overload
+/// that falls back to the rcl C API. Mirrors the Agnocast-build overload on
+/// Timer::SharedPtr so the same call site works in both builds.
 inline void set_period(const rclcpp::TimerBase::SharedPtr & timer, std::chrono::nanoseconds period)
 {
   int64_t old_period = 0;

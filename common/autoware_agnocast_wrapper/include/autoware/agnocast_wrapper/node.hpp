@@ -322,6 +322,12 @@ std::shared_ptr<rclcpp::Node> to_rclcpp_node(const std::shared_ptr<T> & node)
   return node->get_rclcpp_node();
 }
 
+/// @brief Create a timer driven by an explicit clock.
+///
+/// Provided as a free function rather than a Node member because
+/// rclcpp::Node::create_timer was added in Jazzy and does not exist on Humble;
+/// the free rclcpp::create_timer() is available on both. Mirrors the
+/// non-Agnocast-build overload so the same call site works in both builds.
 template <typename CallbackT>
 Timer::SharedPtr create_timer(
   Node * node, rclcpp::Clock::SharedPtr clock, rclcpp::Duration period, CallbackT && callback,
@@ -351,6 +357,11 @@ std::shared_ptr<rclcpp::Node> to_rclcpp_node(const std::shared_ptr<T> & node)
   return node;
 }
 
+/// @brief Create a timer driven by an explicit clock (non-Agnocast build).
+///
+/// Provided as a free function rather than a Node member because
+/// rclcpp::Node::create_timer was added in Jazzy and does not exist on Humble;
+/// the free rclcpp::create_timer() is available on both.
 template <typename CallbackT>
 rclcpp::TimerBase::SharedPtr create_timer(
   Node * node, rclcpp::Clock::SharedPtr clock, rclcpp::Duration period, CallbackT && callback,
