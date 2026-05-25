@@ -763,8 +763,8 @@ public:
 
   virtual void cancel() = 0;
   virtual void reset() = 0;
-  virtual bool is_canceled() const = 0;
-  virtual std::chrono::nanoseconds time_until_trigger() const = 0;
+  virtual bool is_canceled() = 0;
+  virtual std::chrono::nanoseconds time_until_trigger() = 0;
 
 private:
   // Private so callers must use the free set_period() function, which also works in the
@@ -782,11 +782,8 @@ public:
 
   void cancel() override { timer_->cancel(); }
   void reset() override { timer_->reset(); }
-  bool is_canceled() const override { return timer_->is_canceled(); }
-  std::chrono::nanoseconds time_until_trigger() const override
-  {
-    return timer_->time_until_trigger();
-  }
+  bool is_canceled() override { return timer_->is_canceled(); }
+  std::chrono::nanoseconds time_until_trigger() override { return timer_->time_until_trigger(); }
 
 private:
   void set_period(std::chrono::nanoseconds period) override { timer_->set_period(period); }
@@ -801,11 +798,8 @@ public:
 
   void cancel() override { timer_->cancel(); }
   void reset() override { timer_->reset(); }
-  bool is_canceled() const override { return timer_->is_canceled(); }
-  std::chrono::nanoseconds time_until_trigger() const override
-  {
-    return timer_->time_until_trigger();
-  }
+  bool is_canceled() override { return timer_->is_canceled(); }
+  std::chrono::nanoseconds time_until_trigger() override { return timer_->time_until_trigger(); }
 
 private:
   // rclcpp::TimerBase does not expose a set_period API; fall back to the rcl C API and
