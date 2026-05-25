@@ -15,6 +15,7 @@
 #pragma once
 
 #include "autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp"
+#include "autoware/agnocast_wrapper/node.hpp"
 
 #include <message_filters/subscriber.h>
 #include <message_filters/sync_policies/approximate_time.h>
@@ -45,30 +46,50 @@ public:
   Subscriber() = default;
 
   Subscriber(
-    rclcpp::Node * node, const std::string & topic,
+    autoware::agnocast_wrapper::Node * node, const std::string & topic,
     const rmw_qos_profile_t qos = rmw_qos_profile_default)
   {
     subscribe(node, topic, qos);
   }
 
+  /// @note The backend mode is captured here and reused by unsubscribe().
+  ///       The wrapper Node's backend mode is fixed at construction and does not
+  ///       change for the lifetime of the Node, so the captured value remains valid.
   void subscribe(
-    rclcpp::Node * node, const std::string & topic,
+    autoware::agnocast_wrapper::Node * node, const std::string & topic,
     const rmw_qos_profile_t qos = rmw_qos_profile_default)
   {
-    if (use_agnocast()) {
-      agnocast_sub_.subscribe(node, topic, qos);
+    const bool tmp_agnocast = node->is_using_agnocast();
+    if (tmp_agnocast) {
+      agnocast_sub_.subscribe(node->get_agnocast_node().get(), topic, qos);
     } else {
-      rclcpp_sub_.subscribe(node, topic, qos);
+      rclcpp_sub_.subscribe(node->get_rclcpp_node().get(), topic, qos);
+    }
+    using_agnocast_ = tmp_agnocast;
+  }
+
+  /// @note Uses the backend mode captured during the preceding subscribe() call.
+  ///       Calling this before subscribe() is a harmless no-op.
+  void unsubscribe()
+  {
+    if (using_agnocast_) {
+      agnocast_sub_.unsubscribe();
+    } else {
+      rclcpp_sub_.unsubscribe();
     }
   }
 
   // Internal API: used by ApproximateTimeSynchronizer. Not intended for downstream use.
-  ::message_filters::Subscriber<M> & rclcpp_subscriber() { return rclcpp_sub_; }
-  agnocast::message_filters::Subscriber<M> & agnocast_subscriber() { return agnocast_sub_; }
+  ::message_filters::Subscriber<M, rclcpp::Node> & rclcpp_subscriber() { return rclcpp_sub_; }
+  agnocast::message_filters::Subscriber<M, agnocast::Node> & agnocast_subscriber()
+  {
+    return agnocast_sub_;
+  }
 
 private:
-  ::message_filters::Subscriber<M> rclcpp_sub_;
-  agnocast::message_filters::Subscriber<M> agnocast_sub_;
+  bool using_agnocast_ = false;
+  ::message_filters::Subscriber<M, rclcpp::Node> rclcpp_sub_;
+  agnocast::message_filters::Subscriber<M, agnocast::Node> agnocast_sub_;
 };
 
 /// @brief Wrapper ApproximateTime Synchronizer that switches between
