@@ -42,7 +42,7 @@
 namespace autoware::agnocast_wrapper
 {
 
-// TODO: agnocast::Buffer currently does not implement waitForTransform, so it has no
+// TODO(Koichi98): agnocast::Buffer currently does not implement waitForTransform, so it has no
 // dependency on the agnocast executor — that lets us alias it directly here, which surfaces
 // the AgnocastOnly-safety constraint at compile time (the async API simply does not exist
 // on the wrapper type). Once waitForTransform is added, this alias must become a
