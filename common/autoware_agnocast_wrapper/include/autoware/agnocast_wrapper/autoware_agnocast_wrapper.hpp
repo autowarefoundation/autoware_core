@@ -29,6 +29,7 @@
 #include <chrono>
 #include <cstdlib>
 #include <memory>
+#include <stdexcept>
 #include <type_traits>
 
 #define AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) \
@@ -747,6 +748,13 @@ typename Publisher<MessageT>::SharedPtr create_publisher(
 /// Calling any other rclcpp::TimerBase method compiles in non-Agnocast builds
 /// but breaks once Agnocast is enabled. Stay within the wrapper's surface to
 /// remain portable.
+///
+/// Exception contract: the exception type and "throw vs no-op" behavior of
+/// these methods is not normalized across backends — the rclcpp backend tends
+/// to throw rclcpp::exceptions::RCLError on rcl failure, while the Agnocast
+/// backend may throw std::runtime_error or silently return a sentinel. This
+/// asymmetry exists across the wrapper as a whole (not Timer-specific) and is
+/// expected to be normalized in a follow-up.
 class Timer
 {
 public:
@@ -820,8 +828,18 @@ private:
 /// in non-Agnocast builds rclcpp::TimerBase has no set_period member, so a
 /// free overload is the only portable form. Timer::set_period is private to
 /// prevent member-style calls that would not survive the non-Agnocast build.
+///
+/// @throws std::invalid_argument if period is negative or equal to
+///   std::chrono::nanoseconds::max() (mirrors rclcpp::create_wall_timer's
+///   precondition 0 <= period < nanoseconds::max()).
 inline void set_period(const Timer::SharedPtr & timer, std::chrono::nanoseconds period)
 {
+  if (period < std::chrono::nanoseconds::zero()) {
+    throw std::invalid_argument{"timer period cannot be negative"};
+  }
+  if (period == std::chrono::nanoseconds::max()) {
+    throw std::invalid_argument{"timer period must be less than std::chrono::nanoseconds::max()"};
+  }
   timer->set_period(period);
 }
 
@@ -838,6 +856,7 @@ inline void set_period(const Timer::SharedPtr & timer, std::chrono::nanoseconds 
 
 #include <chrono>
 #include <memory>
+#include <stdexcept>
 #include <type_traits>
 
 namespace autoware::agnocast_wrapper
@@ -848,8 +867,19 @@ namespace autoware::agnocast_wrapper
 /// rclcpp::TimerBase has no set_period member, so we provide a free overload
 /// that falls back to the rcl C API. Mirrors the Agnocast-build overload on
 /// Timer::SharedPtr so the same call site works in both builds.
+///
+/// @throws std::invalid_argument if period is negative or equal to
+///   std::chrono::nanoseconds::max() (mirrors rclcpp::create_wall_timer's
+///   precondition 0 <= period < nanoseconds::max()).
+/// @throws rclcpp::exceptions::RCLError on rcl-level failure.
 inline void set_period(const rclcpp::TimerBase::SharedPtr & timer, std::chrono::nanoseconds period)
 {
+  if (period < std::chrono::nanoseconds::zero()) {
+    throw std::invalid_argument{"timer period cannot be negative"};
+  }
+  if (period == std::chrono::nanoseconds::max()) {
+    throw std::invalid_argument{"timer period must be less than std::chrono::nanoseconds::max()"};
+  }
   int64_t old_period = 0;
   const rcl_ret_t ret =
     rcl_timer_exchange_period(timer->get_timer_handle().get(), period.count(), &old_period);
