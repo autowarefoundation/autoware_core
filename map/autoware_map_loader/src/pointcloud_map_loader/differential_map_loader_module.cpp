@@ -36,10 +36,10 @@ DifferentialMapLoaderModule::DifferentialMapLoaderModule(
       std::placeholders::_1, std::placeholders::_2));
 
   enable_internal_differential_visualization_ =
-    node->declare_parameter<bool>("enable_internal_differential_visualization");
+    node->declare_parameter<bool>("enable_internal_differential_visualization", false);
   visualization_update_interval_sec_ =
-    node->declare_parameter<double>("internal_visualization_update_interval_sec");
-  visualization_radius_ = node->declare_parameter<double>("internal_visualization_radius");
+    node->declare_parameter<double>("internal_visualization_update_interval_sec", 1.0);
+  visualization_radius_ = node->declare_parameter<double>("internal_visualization_radius", 150.0);
 
   if (!enable_internal_differential_visualization_) {
     return;
@@ -53,7 +53,7 @@ DifferentialMapLoaderModule::DifferentialMapLoaderModule(
   }
 
   internal_visualization_pub_ = node->create_publisher<sensor_msgs::msg::PointCloud2>(
-    "output/differential_pointcloud_map_internal", rclcpp::QoS{1}.transient_local());
+    "output/differential_pointcloud_map_internal", rclcpp::QoS{1});
 
   kinematic_state_sub_ = node->create_subscription<nav_msgs::msg::Odometry>(
     "/localization/kinematic_state", rclcpp::QoS{1},
@@ -121,6 +121,8 @@ bool DifferentialMapLoaderModule::on_service_get_differential_point_cloud_map(
 void DifferentialMapLoaderModule::on_visualization_timer()
 {
   geometry_msgs::msg::Point latest_pose;
+  bool has_merged_cloud_for_visualization = false;
+  std::unordered_set<std::string> current_active_ids;
   {
     std::lock_guard<std::mutex> lock(visualization_mutex_);
     if (!latest_pose_) {
@@ -131,39 +133,61 @@ void DifferentialMapLoaderModule::on_visualization_timer()
       return;
     }
     latest_pose = *latest_pose_;
-  }
-
-  auto response = std::make_shared<GetDifferentialPointCloudMap::Response>();
-  std::vector<std::string> cached_ids;
-  {
-    std::lock_guard<std::mutex> lock(visualization_mutex_);
-    cached_ids.reserve(loaded_cells_for_visualization_.size());
-    for (const auto & [cell_id, cloud] : loaded_cells_for_visualization_) {
-      static_cast<void>(cloud);
-      cached_ids.push_back(cell_id);
-    }
+    has_merged_cloud_for_visualization = has_merged_cloud_for_visualization_;
+    current_active_ids = active_cell_ids_for_visualization_;
   }
 
   autoware_map_msgs::msg::AreaInfo area;
   area.center_x = static_cast<float>(latest_pose.x);
   area.center_y = static_cast<float>(latest_pose.y);
   area.radius = static_cast<float>(visualization_radius_);
-  differential_area_load(area, cached_ids, response);
 
-  bool cache_changed = false;
-  {
-    std::lock_guard<std::mutex> lock(visualization_mutex_);
-    for (const auto & id_to_remove : response->ids_to_remove) {
-      cache_changed |= loaded_cells_for_visualization_.erase(id_to_remove) > 0U;
-    }
-    for (const auto & pcd_with_id : response->new_pointcloud_with_ids) {
-      loaded_cells_for_visualization_[pcd_with_id.cell_id] =
-        std::make_shared<sensor_msgs::msg::PointCloud2>(pcd_with_id.pointcloud);
-      cache_changed = true;
+  std::unordered_set<std::string> desired_active_ids;
+  desired_active_ids.reserve(all_pcd_file_metadata_dict_.size());
+  for (const auto & [path, metadata] : all_pcd_file_metadata_dict_) {
+    if (is_grid_within_queried_area(area, metadata)) {
+      desired_active_ids.insert(path);
     }
   }
 
-  if (cache_changed || !has_merged_cloud_for_visualization_) {
+  std::vector<std::string> ids_to_load;
+  ids_to_load.reserve(desired_active_ids.size());
+  for (const auto & cell_id : desired_active_ids) {
+    if (current_active_ids.count(cell_id) != 0U) {
+      continue;
+    }
+
+    std::lock_guard<std::mutex> lock(visualization_mutex_);
+    if (loaded_cells_for_visualization_.count(cell_id) == 0U) {
+      ids_to_load.push_back(cell_id);
+    }
+  }
+
+  for (const auto & cell_id : ids_to_load) {
+    auto pointcloud_map_cell_with_id = load_point_cloud_map_cell_with_id(cell_id, cell_id);
+    auto cloud_ptr =
+      std::make_shared<sensor_msgs::msg::PointCloud2>(std::move(pointcloud_map_cell_with_id.pointcloud));
+
+    std::lock_guard<std::mutex> lock(visualization_mutex_);
+    loaded_cells_for_visualization_.try_emplace(cell_id, std::move(cloud_ptr));
+  }
+
+  bool active_cells_changed = desired_active_ids != current_active_ids;
+  {
+    std::lock_guard<std::mutex> lock(visualization_mutex_);
+    for (auto it = loaded_cells_for_visualization_.begin();
+         it != loaded_cells_for_visualization_.end();) {
+      if (desired_active_ids.count(it->first) == 0U) {
+        it = loaded_cells_for_visualization_.erase(it);
+        active_cells_changed = true;
+      } else {
+        ++it;
+      }
+    }
+    active_cell_ids_for_visualization_ = std::move(desired_active_ids);
+  }
+
+  if (active_cells_changed || !has_merged_cloud_for_visualization) {
     rebuild_merged_cloud_for_visualization();
     reusable_merged_cloud_.header.stamp = node_->now();
     reusable_merged_cloud_.header.frame_id = "map";
@@ -183,9 +207,12 @@ void DifferentialMapLoaderModule::rebuild_merged_cloud_for_visualization()
   std::vector<sensor_msgs::msg::PointCloud2::ConstSharedPtr> snapshot;
   {
     std::lock_guard<std::mutex> lock(visualization_mutex_);
-    snapshot.reserve(loaded_cells_for_visualization_.size());
-    for (const auto & [id, cloud_ptr] : loaded_cells_for_visualization_) {
-      if (cloud_ptr) snapshot.push_back(cloud_ptr);
+    snapshot.reserve(active_cell_ids_for_visualization_.size());
+    for (const auto & cell_id : active_cell_ids_for_visualization_) {
+      const auto it = loaded_cells_for_visualization_.find(cell_id);
+      if (it != loaded_cells_for_visualization_.end() && it->second) {
+        snapshot.push_back(it->second);
+      }
     }
   }
 

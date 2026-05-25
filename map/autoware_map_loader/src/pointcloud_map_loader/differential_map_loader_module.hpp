@@ -36,6 +36,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace autoware::map_loader
@@ -64,6 +65,7 @@ private:
   std::optional<geometry_msgs::msg::Point> latest_pose_;
   std::unordered_map<std::string, sensor_msgs::msg::PointCloud2::SharedPtr>
     loaded_cells_for_visualization_;
+  std::unordered_set<std::string> active_cell_ids_for_visualization_;
   sensor_msgs::msg::PointCloud2 reusable_merged_cloud_;
   bool has_merged_cloud_for_visualization_{false};
   mutable std::mutex visualization_mutex_;
