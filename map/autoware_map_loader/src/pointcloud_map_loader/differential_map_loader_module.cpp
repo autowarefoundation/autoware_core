@@ -165,8 +165,8 @@ void DifferentialMapLoaderModule::on_visualization_timer()
 
   for (const auto & cell_id : ids_to_load) {
     auto pointcloud_map_cell_with_id = load_point_cloud_map_cell_with_id(cell_id, cell_id);
-    auto cloud_ptr =
-      std::make_shared<sensor_msgs::msg::PointCloud2>(std::move(pointcloud_map_cell_with_id.pointcloud));
+    auto cloud_ptr = std::make_shared<sensor_msgs::msg::PointCloud2>(
+      std::move(pointcloud_map_cell_with_id.pointcloud));
 
     std::lock_guard<std::mutex> lock(visualization_mutex_);
     loaded_cells_for_visualization_.try_emplace(cell_id, std::move(cloud_ptr));
