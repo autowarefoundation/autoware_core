@@ -53,19 +53,23 @@ using Buffer = agnocast::Buffer;
 class TransformListener
 {
 public:
+  using RclcppImpl = std::unique_ptr<tf2_ros::TransformListener>;
+  using AgnocastImpl = std::unique_ptr<agnocast::TransformListener>;
+
   TransformListener(
     tf2::BufferCore & buffer, Node & node, bool spin_thread = true,
     const rclcpp::QoS & qos = tf2_ros::DynamicListenerQoS(),
     const rclcpp::QoS & static_qos = tf2_ros::StaticListenerQoS())
   : impl_(
-      use_agnocast() ? decltype(impl_)(
-                         std::in_place_index<1>,
-                         std::make_unique<agnocast::TransformListener>(
-                           buffer, *node.get_agnocast_node(), spin_thread, qos, static_qos))
-                     : decltype(impl_)(
-                         std::in_place_index<0>,
-                         std::make_unique<tf2_ros::TransformListener>(
-                           buffer, node.get_rclcpp_node().get(), spin_thread, qos, static_qos)))
+      use_agnocast()
+        ? decltype(impl_)(
+            std::in_place_type<AgnocastImpl>, std::make_unique<agnocast::TransformListener>(
+                                                buffer, *node.get_agnocast_node(), spin_thread,
+                                                qos, static_qos))
+        : decltype(impl_)(
+            std::in_place_type<RclcppImpl>, std::make_unique<tf2_ros::TransformListener>(
+                                              buffer, node.get_rclcpp_node().get(), spin_thread,
+                                              qos, static_qos)))
   {
   }
 
@@ -78,9 +82,9 @@ public:
   : impl_(
       use_agnocast()
         ? decltype(impl_)(
-            std::in_place_index<1>, std::make_unique<agnocast::TransformListener>(
-                                      buffer, *node.get_agnocast_node(), spin_thread, qos,
-                                      static_qos, options, static_options))
+            std::in_place_type<AgnocastImpl>, std::make_unique<agnocast::TransformListener>(
+                                                buffer, *node.get_agnocast_node(), spin_thread,
+                                                qos, static_qos, options, static_options))
         : [&] {
             rclcpp::SubscriptionOptions ros2_options;
             ros2_options.callback_group = options.callback_group;
@@ -89,9 +93,10 @@ public:
             ros2_static_options.callback_group = static_options.callback_group;
             ros2_static_options.qos_overriding_options = static_options.qos_overriding_options;
             return decltype(impl_)(
-              std::in_place_index<0>, std::make_unique<tf2_ros::TransformListener>(
-                                        buffer, node.get_rclcpp_node().get(), spin_thread, qos,
-                                        static_qos, ros2_options, ros2_static_options));
+              std::in_place_type<RclcppImpl>, std::make_unique<tf2_ros::TransformListener>(
+                                                buffer, node.get_rclcpp_node().get(), spin_thread,
+                                                qos, static_qos, ros2_options,
+                                                ros2_static_options));
           }())
   {
   }
@@ -99,12 +104,13 @@ public:
   /// @brief Buffer-only constructor; the underlying listener creates its own node internally.
   explicit TransformListener(tf2::BufferCore & buffer, bool spin_thread = true)
   : impl_(
-      use_agnocast() ? decltype(impl_)(
-                         std::in_place_index<1>,
-                         std::make_unique<agnocast::TransformListener>(buffer, spin_thread))
-                     : decltype(impl_)(
-                         std::in_place_index<0>,
-                         std::make_unique<tf2_ros::TransformListener>(buffer, spin_thread)))
+      use_agnocast()
+        ? decltype(impl_)(
+            std::in_place_type<AgnocastImpl>,
+            std::make_unique<agnocast::TransformListener>(buffer, spin_thread))
+        : decltype(impl_)(
+            std::in_place_type<RclcppImpl>,
+            std::make_unique<tf2_ros::TransformListener>(buffer, spin_thread)))
   {
   }
 
@@ -114,9 +120,7 @@ public:
   TransformListener & operator=(TransformListener &&) = delete;
 
 private:
-  std::variant<
-    std::unique_ptr<tf2_ros::TransformListener>, std::unique_ptr<agnocast::TransformListener>>
-    impl_;
+  std::variant<RclcppImpl, AgnocastImpl> impl_;
 };
 
 /// @brief TransformBroadcaster wrapper; requires a Method 2 node
@@ -124,15 +128,19 @@ private:
 class TransformBroadcaster
 {
 public:
+  using RclcppImpl = std::unique_ptr<tf2_ros::TransformBroadcaster>;
+  using AgnocastImpl = std::unique_ptr<agnocast::TransformBroadcaster>;
+
   explicit TransformBroadcaster(
     Node & node, const rclcpp::QoS & qos = tf2_ros::DynamicBroadcasterQoS())
   : impl_(
-      use_agnocast() ? decltype(impl_)(
-                         std::in_place_index<1>, std::make_unique<agnocast::TransformBroadcaster>(
-                                                   *node.get_agnocast_node(), qos))
-                     : decltype(impl_)(
-                         std::in_place_index<0>, std::make_unique<tf2_ros::TransformBroadcaster>(
-                                                   node.get_rclcpp_node().get(), qos)))
+      use_agnocast()
+        ? decltype(impl_)(
+            std::in_place_type<AgnocastImpl>,
+            std::make_unique<agnocast::TransformBroadcaster>(*node.get_agnocast_node(), qos))
+        : decltype(impl_)(
+            std::in_place_type<RclcppImpl>,
+            std::make_unique<tf2_ros::TransformBroadcaster>(node.get_rclcpp_node().get(), qos)))
   {
   }
 
@@ -141,14 +149,14 @@ public:
   : impl_(
       use_agnocast()
         ? decltype(impl_)(
-            std::in_place_index<1>, std::make_unique<agnocast::TransformBroadcaster>(
-                                      *node.get_agnocast_node(), qos, options))
+            std::in_place_type<AgnocastImpl>, std::make_unique<agnocast::TransformBroadcaster>(
+                                                *node.get_agnocast_node(), qos, options))
         : [&] {
             rclcpp::PublisherOptions ros2_options;
             ros2_options.qos_overriding_options = options.qos_overriding_options;
             return decltype(impl_)(
-              std::in_place_index<0>, std::make_unique<tf2_ros::TransformBroadcaster>(
-                                        node.get_rclcpp_node().get(), qos, ros2_options));
+              std::in_place_type<RclcppImpl>, std::make_unique<tf2_ros::TransformBroadcaster>(
+                                                node.get_rclcpp_node().get(), qos, ros2_options));
           }())
   {
   }
@@ -169,25 +177,27 @@ public:
   }
 
 private:
-  std::variant<
-    std::unique_ptr<tf2_ros::TransformBroadcaster>, std::unique_ptr<agnocast::TransformBroadcaster>>
-    impl_;
+  std::variant<RclcppImpl, AgnocastImpl> impl_;
 };
 
 /// @brief StaticTransformBroadcaster wrapper; requires a Method 2 node.
 class StaticTransformBroadcaster
 {
 public:
+  using RclcppImpl = std::unique_ptr<tf2_ros::StaticTransformBroadcaster>;
+  using AgnocastImpl = std::unique_ptr<agnocast::StaticTransformBroadcaster>;
+
   explicit StaticTransformBroadcaster(
     Node & node, const rclcpp::QoS & qos = tf2_ros::StaticBroadcasterQoS())
   : impl_(
-      use_agnocast()
-        ? decltype(impl_)(
-            std::in_place_index<1>,
-            std::make_unique<agnocast::StaticTransformBroadcaster>(*node.get_agnocast_node(), qos))
-        : decltype(impl_)(
-            std::in_place_index<0>, std::make_unique<tf2_ros::StaticTransformBroadcaster>(
-                                      node.get_rclcpp_node().get(), qos)))
+      use_agnocast() ? decltype(impl_)(
+                         std::in_place_type<AgnocastImpl>,
+                         std::make_unique<agnocast::StaticTransformBroadcaster>(
+                           *node.get_agnocast_node(), qos))
+                     : decltype(impl_)(
+                         std::in_place_type<RclcppImpl>,
+                         std::make_unique<tf2_ros::StaticTransformBroadcaster>(
+                           node.get_rclcpp_node().get(), qos)))
   {
   }
 
@@ -196,8 +206,8 @@ public:
   : impl_(
       use_agnocast()
         ? decltype(impl_)(
-            std::in_place_index<1>, std::make_unique<agnocast::StaticTransformBroadcaster>(
-                                      *node.get_agnocast_node(), qos, options))
+            std::in_place_type<AgnocastImpl>, std::make_unique<agnocast::StaticTransformBroadcaster>(
+                                                *node.get_agnocast_node(), qos, options))
         : [&] {
             rclcpp::PublisherOptions ros2_options;
             ros2_options.qos_overriding_options = options.qos_overriding_options;
@@ -208,8 +218,9 @@ public:
             ros2_options.use_intra_process_comm = rclcpp::IntraProcessSetting::Disable;
 #endif
             return decltype(impl_)(
-              std::in_place_index<0>, std::make_unique<tf2_ros::StaticTransformBroadcaster>(
-                                        node.get_rclcpp_node().get(), qos, ros2_options));
+              std::in_place_type<RclcppImpl>,
+              std::make_unique<tf2_ros::StaticTransformBroadcaster>(
+                node.get_rclcpp_node().get(), qos, ros2_options));
           }())
   {
   }
@@ -230,10 +241,7 @@ public:
   }
 
 private:
-  std::variant<
-    std::unique_ptr<tf2_ros::StaticTransformBroadcaster>,
-    std::unique_ptr<agnocast::StaticTransformBroadcaster>>
-    impl_;
+  std::variant<RclcppImpl, AgnocastImpl> impl_;
 };
 
 }  // namespace autoware::agnocast_wrapper
