@@ -42,15 +42,18 @@ namespace autoware::agnocast_wrapper
 class Updater
 {
 public:
+  using RclcppImpl = std::unique_ptr<diagnostic_updater::Updater>;
+  using AgnocastImpl = std::unique_ptr<agnocast::Updater>;
+
   explicit Updater(autoware::agnocast_wrapper::Node * node, double period = 1.0)
   : logger_(node->get_logger()),
     impl_(
-      node->is_using_agnocast()
+      use_agnocast()
         ? decltype(impl_)(
-            std::in_place_index<1>,
+            std::in_place_type<AgnocastImpl>,
             std::make_unique<agnocast::Updater>(*node->get_agnocast_node(), period))
         : decltype(impl_)(
-            std::in_place_index<0>,
+            std::in_place_type<RclcppImpl>,
             std::make_unique<diagnostic_updater::Updater>(node->get_rclcpp_node(), period))),
     verbose_(std::visit([](auto & impl) -> bool & { return impl->verbose_; }, impl_))
   {
@@ -128,8 +131,7 @@ public:
 
 private:
   rclcpp::Logger logger_;
-  std::variant<std::unique_ptr<diagnostic_updater::Updater>, std::unique_ptr<agnocast::Updater>>
-    impl_;
+  std::variant<RclcppImpl, AgnocastImpl> impl_;
 
 public:
   // Mirrors `diagnostic_updater::Updater::verbose_` / `agnocast::Updater::verbose_`.
