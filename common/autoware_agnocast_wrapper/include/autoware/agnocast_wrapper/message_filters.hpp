@@ -138,13 +138,12 @@ public:
 
   ApproximateTimeSynchronizer(uint32_t queue_size, Subscriber<M0> & sub0, Subscriber<M1> & sub1)
   : sync_(
-      use_agnocast()
-        ? decltype(sync_)(
-            std::in_place_type<AgnocastSync>, AgnocastPolicy(queue_size),
-            sub0.agnocast_subscriber(), sub1.agnocast_subscriber())
-        : decltype(sync_)(
-            std::in_place_type<RclcppSync>, RclcppPolicy(queue_size),
-            sub0.rclcpp_subscriber(), sub1.rclcpp_subscriber()))
+      use_agnocast() ? decltype(sync_)(
+                         std::in_place_type<AgnocastSync>, AgnocastPolicy(queue_size),
+                         sub0.agnocast_subscriber(), sub1.agnocast_subscriber())
+                     : decltype(sync_)(
+                         std::in_place_type<RclcppSync>, RclcppPolicy(queue_size),
+                         sub0.rclcpp_subscriber(), sub1.rclcpp_subscriber()))
   {
   }
 
