@@ -147,6 +147,11 @@ public:
   {
   }
 
+  // Non-movable: registerCallback() passes `this` to the internal synchronizer, so the
+  // wrapper's address must remain stable for the lifetime of the internal synchronizer.
+  ApproximateTimeSynchronizer(ApproximateTimeSynchronizer &&) = delete;
+  ApproximateTimeSynchronizer & operator=(ApproximateTimeSynchronizer &&) = delete;
+
   void registerCallback(Callback callback)
   {
     stored_callback_ = std::move(callback);
