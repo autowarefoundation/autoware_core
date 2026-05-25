@@ -7,6 +7,7 @@ autoware_package()
 find_package(rclcpp REQUIRED)
 find_package(autoware_utils_rclcpp REQUIRED)
 find_package(message_filters REQUIRED)
+find_package(diagnostic_updater REQUIRED)
 
 if(DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
   find_package(agnocastlib REQUIRED)
@@ -29,6 +30,7 @@ if("$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
     agnocastlib
     autoware_utils_rclcpp
     message_filters
+    diagnostic_updater
   )
   target_compile_definitions(${PROJECT_NAME} PUBLIC USE_AGNOCAST_ENABLED)
 else()
@@ -36,6 +38,7 @@ else()
     rclcpp
     autoware_utils_rclcpp
     message_filters
+    diagnostic_updater
   )
 endif()
 
@@ -49,6 +52,7 @@ ament_export_dependencies(
   message_filters
   rclcpp
   rclcpp_components
+  diagnostic_updater
 )
 
 if(DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
