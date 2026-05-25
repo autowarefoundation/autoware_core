@@ -137,14 +137,15 @@ public:
     const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M0) &, const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M1) &)>;
 
   ApproximateTimeSynchronizer(uint32_t queue_size, Subscriber<M0> & sub0, Subscriber<M1> & sub1)
+  : sync_(
+      use_agnocast()
+        ? decltype(sync_)(
+            std::in_place_type<AgnocastSync>, AgnocastPolicy(queue_size),
+            sub0.agnocast_subscriber(), sub1.agnocast_subscriber())
+        : decltype(sync_)(
+            std::in_place_type<RclcppSync>, RclcppPolicy(queue_size),
+            sub0.rclcpp_subscriber(), sub1.rclcpp_subscriber()))
   {
-    if (use_agnocast()) {
-      sync_.template emplace<std::unique_ptr<AgnocastSync>>(std::make_unique<AgnocastSync>(
-        AgnocastPolicy(queue_size), sub0.agnocast_subscriber(), sub1.agnocast_subscriber()));
-    } else {
-      sync_.template emplace<std::unique_ptr<RclcppSync>>(std::make_unique<RclcppSync>(
-        RclcppPolicy(queue_size), sub0.rclcpp_subscriber(), sub1.rclcpp_subscriber()));
-    }
   }
 
   void registerCallback(Callback callback)
@@ -152,11 +153,11 @@ public:
     stored_callback_ = std::move(callback);
     std::visit(
       [this](auto & sync) {
-        using SyncT = typename std::decay_t<decltype(sync)>::element_type;
+        using SyncT = std::decay_t<decltype(sync)>;
         if constexpr (std::is_same_v<SyncT, AgnocastSync>) {
-          sync->registerCallback(&ApproximateTimeSynchronizer::agnocastCallbackAdapter, this);
+          sync.registerCallback(&ApproximateTimeSynchronizer::agnocastCallbackAdapter, this);
         } else {
-          sync->registerCallback(&ApproximateTimeSynchronizer::rclcppCallbackAdapter, this);
+          sync.registerCallback(&ApproximateTimeSynchronizer::rclcppCallbackAdapter, this);
         }
       },
       sync_);
@@ -192,7 +193,7 @@ private:
   using AgnocastPolicy = agnocast::message_filters::sync_policies::ApproximateTime<M0, M1>;
   using AgnocastSync = agnocast::message_filters::Synchronizer<AgnocastPolicy>;
 
-  std::variant<std::unique_ptr<RclcppSync>, std::unique_ptr<AgnocastSync>> sync_;
+  std::variant<RclcppSync, AgnocastSync> sync_;
 };
 
 /// @brief Policy and Synchronizer types that mirror the rclcpp message_filters API.
