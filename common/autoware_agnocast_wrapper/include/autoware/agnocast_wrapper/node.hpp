@@ -345,7 +345,7 @@ Timer::SharedPtr create_timer(
   Node * node, rclcpp::Clock::SharedPtr clock, rclcpp::Duration period, CallbackT && callback,
   rclcpp::CallbackGroup::SharedPtr group = nullptr)
 {
-  if (node->is_using_agnocast()) {
+  if (use_agnocast()) {
     return std::make_shared<AgnocastTimer>(agnocast::create_timer(
       node->get_agnocast_node().get(), clock, period, std::forward<CallbackT>(callback), group));
   }
