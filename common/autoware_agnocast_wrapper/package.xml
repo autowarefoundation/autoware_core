@@ -7,6 +7,9 @@
   <maintainer email="sykwer@gmail.com">Takahiro Ishikawa-Aso</maintainer>
   <maintainer email="koichi.imai.2@tier4.jp">Koichi Imai</maintainer>
   <maintainer email="atsushi.yano.2@tier4.jp">Atsushi Yano</maintainer>
+  <maintainer email="yutaro.kobayashi.2@tier4.jp">Yutaro Kobayashi</maintainer>
+  <maintainer email="primenumber_2_3_5@yahoo.co.jp">Takumi Jin</maintainer>
+  <maintainer email="tetsuhiro.kawaguchi@tier4.jp">Tetsuhiro Kawaguchi</maintainer>
   <license>Apache License 2.0</license>
 
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
