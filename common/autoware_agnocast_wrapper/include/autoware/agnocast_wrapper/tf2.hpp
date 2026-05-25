@@ -74,8 +74,8 @@ public:
   /// forward nothing, so each backend keeps its own non-trivial option defaults.
   TransformListener(
     tf2::BufferCore & buffer, Node & node, bool spin_thread, const rclcpp::QoS & qos,
-    const rclcpp::QoS & static_qos, const agnocast::SubscriptionOptions & options,
-    const agnocast::SubscriptionOptions & static_options)
+    const rclcpp::QoS & static_qos, const AUTOWARE_SUBSCRIPTION_OPTIONS & options,
+    const AUTOWARE_SUBSCRIPTION_OPTIONS & static_options)
   : impl_(
       use_agnocast()
         ? decltype(impl_)(
@@ -141,7 +141,7 @@ public:
   }
 
   TransformBroadcaster(
-    Node & node, const rclcpp::QoS & qos, const agnocast::PublisherOptions & options)
+    Node & node, const rclcpp::QoS & qos, const AUTOWARE_PUBLISHER_OPTIONS & options)
   : impl_(
       use_agnocast()
         ? decltype(impl_)(
@@ -198,7 +198,7 @@ public:
   }
 
   StaticTransformBroadcaster(
-    Node & node, const rclcpp::QoS & qos, const agnocast::PublisherOptions & options)
+    Node & node, const rclcpp::QoS & qos, const AUTOWARE_PUBLISHER_OPTIONS & options)
   : impl_(
       use_agnocast()
         ? decltype(impl_)(
@@ -267,8 +267,8 @@ public:
 
   TransformListener(
     tf2::BufferCore & buffer, Node & node, bool spin_thread, const rclcpp::QoS & qos,
-    const rclcpp::QoS & static_qos, const rclcpp::SubscriptionOptions & options,
-    const rclcpp::SubscriptionOptions & static_options)
+    const rclcpp::QoS & static_qos, const AUTOWARE_SUBSCRIPTION_OPTIONS & options,
+    const AUTOWARE_SUBSCRIPTION_OPTIONS & static_options)
   : impl_(buffer, &node, spin_thread, qos, static_qos, options, static_options)
   {
   }
@@ -297,7 +297,7 @@ public:
   }
 
   TransformBroadcaster(
-    Node & node, const rclcpp::QoS & qos, const rclcpp::PublisherOptions & options)
+    Node & node, const rclcpp::QoS & qos, const AUTOWARE_PUBLISHER_OPTIONS & options)
   : impl_(&node, qos, options)
   {
   }
@@ -331,7 +331,7 @@ public:
   }
 
   StaticTransformBroadcaster(
-    Node & node, const rclcpp::QoS & qos, const rclcpp::PublisherOptions & options)
+    Node & node, const rclcpp::QoS & qos, const AUTOWARE_PUBLISHER_OPTIONS & options)
   : impl_(&node, qos, options)
   {
   }

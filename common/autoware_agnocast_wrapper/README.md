@@ -248,7 +248,8 @@ The node-taking constructors require a Method 2 node (`autoware::agnocast_wrappe
 class MyNode : public autoware::agnocast_wrapper::Node
 {
 public:
-  MyNode() : autoware::agnocast_wrapper::Node("my_node")
+  MyNode()
+  : autoware::agnocast_wrapper::Node("my_node"), tf_buffer_(this->get_clock())
   {
     // `*this` is a node derived from autoware::agnocast_wrapper::Node.
     tf_listener_ = std::make_unique<autoware::agnocast_wrapper::TransformListener>(
@@ -257,7 +258,7 @@ public:
   }
 
 private:
-  autoware::agnocast_wrapper::Buffer tf_buffer_{this->get_clock()};
+  autoware::agnocast_wrapper::Buffer tf_buffer_;
   std::unique_ptr<autoware::agnocast_wrapper::TransformListener> tf_listener_;
   std::unique_ptr<autoware::agnocast_wrapper::TransformBroadcaster> tf_broadcaster_;
 };
