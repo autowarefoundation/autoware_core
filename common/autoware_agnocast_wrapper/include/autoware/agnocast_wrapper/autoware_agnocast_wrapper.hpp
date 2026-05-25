@@ -732,6 +732,14 @@ typename Publisher<MessageT>::SharedPtr create_publisher(
   }
 }
 
+/// Cross-build portability note
+///
+/// In non-Agnocast builds, AUTOWARE_TIMER_PTR resolves to
+/// rclcpp::TimerBase::SharedPtr and exposes the full rclcpp API. In Agnocast
+/// builds it resolves to the Timer wrapper, which only exposes cancel/reset/
+/// is_canceled/time_until_trigger and the free set_period(). Calling any other
+/// rclcpp::TimerBase method compiles in non-Agnocast builds but breaks once
+/// Agnocast is enabled. Stay within the wrapper's surface to remain portable.
 class Timer
 {
 public:
