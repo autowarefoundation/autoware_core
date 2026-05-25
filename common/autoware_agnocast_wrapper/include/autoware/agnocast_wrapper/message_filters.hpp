@@ -54,10 +54,10 @@ public:
   using AgnocastSubscriber = agnocast::message_filters::Subscriber<M, agnocast::Node>;
 
   Subscriber()
+  : sub_(
+      use_agnocast() ? decltype(sub_)(std::in_place_type<AgnocastSubscriber>)
+                     : decltype(sub_)(std::in_place_type<RclcppSubscriber>))
   {
-    if (use_agnocast()) {
-      sub_.template emplace<AgnocastSubscriber>();
-    }
   }
 
   Subscriber(
