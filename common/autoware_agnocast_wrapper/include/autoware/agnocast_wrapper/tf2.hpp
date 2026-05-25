@@ -85,9 +85,11 @@ public:
             rclcpp::SubscriptionOptions ros2_options;
             ros2_options.callback_group = options.callback_group;
             ros2_options.qos_overriding_options = options.qos_overriding_options;
+            ros2_options.ignore_local_publications = options.ignore_local_publications;
             rclcpp::SubscriptionOptions ros2_static_options;
             ros2_static_options.callback_group = static_options.callback_group;
             ros2_static_options.qos_overriding_options = static_options.qos_overriding_options;
+            ros2_static_options.ignore_local_publications = static_options.ignore_local_publications;
             return decltype(impl_)(
               std::in_place_index<0>, std::make_unique<tf2_ros::TransformListener>(
                                         buffer, node.get_rclcpp_node().get(), spin_thread, qos,
