@@ -101,6 +101,19 @@ private:
 
 /// @brief Common synchronizer wrapper parameterized by the underlying policy types.
 ///        Use through ApproximateTimeSynchronizer or ExactTimeSynchronizer.
+///
+/// At construction, use_agnocast() selects which backend synchronizer to instantiate
+/// inside the internal std::variant; the choice is fixed for the wrapper's lifetime
+/// and all subsequent calls (e.g. registerCallback) are dispatched via std::visit to
+/// the active backend. To add a third policy, instantiate this template with the
+/// corresponding rclcpp and agnocast policy types.
+///
+/// @tparam RclcppPolicy   ::message_filters sync policy type used when running on rclcpp
+///                        (e.g. ::message_filters::sync_policies::ApproximateTime<M0, M1>).
+/// @tparam AgnocastPolicy agnocast::message_filters sync policy type used when running on
+///                        agnocast (e.g. agnocast::message_filters::sync_policies::ExactTime<M0, M1>).
+/// @tparam M0             First message type to synchronize.
+/// @tparam M1             Second message type to synchronize.
 template <typename RclcppPolicy, typename AgnocastPolicy, typename M0, typename M1>
 class PolicySynchronizer
 {
@@ -210,6 +223,8 @@ using ApproximateTimeSynchronizer = PolicySynchronizer<
 ///
 /// Same callback signature and zero-copy semantics as ApproximateTimeSynchronizer;
 /// only the sync policy differs (messages must share identical timestamps).
+/// @note Subject to the same limitations as ApproximateTimeSynchronizer
+///       (max 2 message types, connectInput() not supported).
 /// @see ApproximateTimeSynchronizer for a usage example.
 template <typename M0, typename M1>
 using ExactTimeSynchronizer = PolicySynchronizer<
@@ -223,17 +238,35 @@ using ExactTimeSynchronizer = PolicySynchronizer<
 ///          sync = std::make_shared<Sync>(SyncPolicy(10), sub0, sub1);
 namespace sync_policies
 {
+/// @brief Wrapper-layer ApproximateTime policy tag.
+///
+/// Carries only the queue size; the underlying rclcpp/agnocast policy is selected
+/// inside Synchronizer<ApproximateTime<M0, M1>>. Distinct from
+/// ::message_filters::sync_policies::ApproximateTime and
+/// agnocast::message_filters::sync_policies::ApproximateTime.
+///
+/// @tparam M0 First message type to synchronize.
+/// @tparam M1 Second message type to synchronize.
 template <typename M0, typename M1>
 struct ApproximateTime
 {
-  uint32_t queue_size;
+  uint32_t queue_size;  ///< Queue size forwarded to the underlying sync policy.
   explicit ApproximateTime(uint32_t qs) : queue_size(qs) {}
 };
 
+/// @brief Wrapper-layer ExactTime policy tag.
+///
+/// Carries only the queue size; the underlying rclcpp/agnocast policy is selected
+/// inside Synchronizer<ExactTime<M0, M1>>. Distinct from
+/// ::message_filters::sync_policies::ExactTime and
+/// agnocast::message_filters::sync_policies::ExactTime.
+///
+/// @tparam M0 First message type to synchronize.
+/// @tparam M1 Second message type to synchronize.
 template <typename M0, typename M1>
 struct ExactTime
 {
-  uint32_t queue_size;
+  uint32_t queue_size;  ///< Queue size forwarded to the underlying sync policy.
   explicit ExactTime(uint32_t qs) : queue_size(qs) {}
 };
 }  // namespace sync_policies
