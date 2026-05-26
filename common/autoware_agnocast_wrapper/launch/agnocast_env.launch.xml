@@ -4,7 +4,7 @@
     Configuration:
     - Checks ENABLE_AGNOCAST environment variable (set to "1" to enable)
     - Heaphook path is configurable via the agnocast_heaphook_path arg
-      (default: /opt/ros/humble/lib/libagnocast_heaphook.so)
+      (default: /opt/ros/$ROS_DISTRO/lib/libagnocast_heaphook.so, falls back to humble)
 
     Provides the following variables:
     - ld_preload_value: LD_PRELOAD value with heaphook prepended when Agnocast is enabled
@@ -12,7 +12,7 @@
     - container_executable: resolved component container executable name
   -->
 
-  <arg name="agnocast_heaphook_path" default="/opt/ros/humble/lib/libagnocast_heaphook.so"/>
+  <arg name="agnocast_heaphook_path" default="/opt/ros/$(env ROS_DISTRO humble)/lib/libagnocast_heaphook.so"/>
   <arg name="use_multithread" default="false"/>
   <let name="use_agnocast" value="$(env ENABLE_AGNOCAST 0)"/>
 
