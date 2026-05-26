@@ -231,6 +231,53 @@ void onSynchronized(
 | `message_filters::Synchronizer<Policy>`                   | `autoware::agnocast_wrapper::message_filters::Synchronizer<Policy>`                   |
 | `message_filters::sync_policies::ApproximateTime<M0, M1>` | `autoware::agnocast_wrapper::message_filters::sync_policies::ApproximateTime<M0, M1>` |
 
+## Diagnostic Updater Support
+
+This package provides a wrapper `autoware::agnocast_wrapper::diagnostic_updater::Updater` for `diagnostic_updater::Updater`. The wrapper transparently switches between `diagnostic_updater::Updater` and `agnocast::Updater` at runtime, so nodes inheriting from `autoware::agnocast_wrapper::Node` can use the same idiom in both modes.
+
+The `diagnostic_updater.period` and `diagnostic_updater.use_fqn` parameters are declared identically in both modes, so behavior remains consistent.
+
+### Current limitations
+
+- Only the `Updater(autoware::agnocast_wrapper::Node*, double)` constructor is supported. The upstream interface-pointer constructor and `Updater(NodeT, double)` template overload are intentionally hidden in both modes, so source code stays portable between agnocast-enabled and disabled builds.
+- The wrapper does **not** inherit from `DiagnosticTaskVector`, so `getTasks()` is not available.
+- The wrapper is non-copyable and non-movable; `verbose_` is bound by reference to the underlying impl.
+
+### Usage example
+
+```cpp
+#include <autoware/agnocast_wrapper/diagnostic_updater.hpp>
+
+class MyNode : public autoware::agnocast_wrapper::Node
+{
+public:
+  explicit MyNode(const rclcpp::NodeOptions & options)
+  : Node("my_node", options), updater_(this)
+  {
+    updater_.setHardwareID("my_hardware");
+    updater_.add("status", this, &MyNode::diagnose);
+  }
+
+private:
+  void diagnose(diagnostic_updater::DiagnosticStatusWrapper & stat) {
+    stat.summary(diagnostic_msgs::msg::DiagnosticStatus::OK, "running");
+  }
+
+  autoware::agnocast_wrapper::diagnostic_updater::Updater updater_;
+};
+```
+
+### Migration guide (from `diagnostic_updater::Updater`)
+
+| Before                                                 | After                                                                       |
+| ------------------------------------------------------ | --------------------------------------------------------------------------- |
+| `#include <diagnostic_updater/diagnostic_updater.hpp>` | `#include <autoware/agnocast_wrapper/diagnostic_updater.hpp>`               |
+| `diagnostic_updater::Updater updater_{this};`          | `autoware::agnocast_wrapper::diagnostic_updater::Updater updater_{this};`   |
+
+The `add()` / `removeByName()` / `setHardwareID()` / `setHardwareIDf()` / `broadcast()` / `force_update()` / `setPeriod()` / `getPeriod()` APIs and the `verbose_` field behave the same as the upstream `diagnostic_updater::Updater`.
+
+> **Note:** `DiagnosticTask` subclasses (e.g. `FrequencyStatus`, `TimeStampStatus`, `Heartbeat`) defined in `diagnostic_updater` can be added via `updater_.add(task)` unchanged.
+
 ## How to Enable/Disable Agnocast on Build
 
 To build Autoware **with** Agnocast:
