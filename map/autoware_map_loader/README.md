@@ -105,7 +105,7 @@ Please see [the description of `GetDifferentialPointCloudMap.srv`](https://githu
 
 #### Publish internally visualized differential pointcloud map (ROS 2 topic)
 
-When `enable_internal_differential_visualization` is enabled, `pointcloud_map_loader` subscribes to
+When `enable_differential_pcd_map_visualization` is enabled, `pointcloud_map_loader` subscribes to
 `/localization/kinematic_state`, queries differential pointcloud map cells around the latest pose,
 merges the loaded cells into a single `sensor_msgs/msg/PointCloud2`, and publishes the result for
 RViz.

@@ -38,21 +38,22 @@ DifferentialMapLoaderModule::DifferentialMapLoaderModule(
       &DifferentialMapLoaderModule::on_service_get_differential_point_cloud_map, this,
       std::placeholders::_1, std::placeholders::_2));
 
-  enable_internal_differential_visualization_ =
-    node->declare_parameter<bool>("enable_internal_differential_visualization", false);
-  visualization_update_interval_sec_ =
-    node->declare_parameter<double>("internal_visualization_update_interval_sec", 1.0);
-  visualization_radius_ = node->declare_parameter<double>("internal_visualization_radius", 50.0);
+  enable_differential_pcd_map_visualization_ =
+    node->declare_parameter<bool>("enable_differential_pcd_map_visualization", false);
+  differential_pcd_map_visualization_update_interval_sec_ =
+    node->declare_parameter<double>("differential_pcd_map_visualization_update_interval_sec", 1.0);
+  differential_pcd_map_visualization_radius_ =
+    node->declare_parameter<double>("differential_pcd_map_visualization_radius", 50.0);
 
-  if (!enable_internal_differential_visualization_) {
+  if (!enable_differential_pcd_map_visualization_) {
     return;
   }
 
-  if (visualization_radius_ < 0.0) {
+  if (differential_pcd_map_visualization_radius_ < 0.0) {
     RCLCPP_WARN(
-      logger_, "internal_visualization_radius is negative (%f). Clamping to 0.0.",
-      visualization_radius_);
-    visualization_radius_ = 0.0;
+      logger_, "differential_pcd_map_visualization_radius is negative (%f). Clamping to 0.0.",
+      differential_pcd_map_visualization_radius_);
+    differential_pcd_map_visualization_radius_ = 0.0;
   }
 
   internal_visualization_pub_ = node->create_publisher<sensor_msgs::msg::PointCloud2>(
@@ -62,14 +63,16 @@ DifferentialMapLoaderModule::DifferentialMapLoaderModule(
     "/localization/kinematic_state", rclcpp::QoS{1},
     std::bind(&DifferentialMapLoaderModule::on_kinematic_state, this, std::placeholders::_1));
 
-  const double safe_interval = std::isfinite(visualization_update_interval_sec_)
-                                 ? std::max(visualization_update_interval_sec_, 0.1)
+  const double safe_interval =
+    std::isfinite(differential_pcd_map_visualization_update_interval_sec_)
+      ? std::max(differential_pcd_map_visualization_update_interval_sec_, 0.1)
                                  : 1.0;
-  if (!std::isfinite(visualization_update_interval_sec_)) {
+  if (!std::isfinite(differential_pcd_map_visualization_update_interval_sec_)) {
     RCLCPP_WARN(
       logger_,
-      "internal_visualization_update_interval_sec is non-finite (%f). Falling back to 1.0 s.",
-      visualization_update_interval_sec_);
+      "differential_pcd_map_visualization_update_interval_sec is non-finite (%f). Falling back to "
+      "1.0 s.",
+      differential_pcd_map_visualization_update_interval_sec_);
   }
   visualization_timer_ = node->create_wall_timer(
     std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -143,7 +146,7 @@ void DifferentialMapLoaderModule::on_visualization_timer()
   autoware_map_msgs::msg::AreaInfo area;
   area.center_x = static_cast<float>(latest_pose.x);
   area.center_y = static_cast<float>(latest_pose.y);
-  area.radius = static_cast<float>(visualization_radius_);
+  area.radius = static_cast<float>(differential_pcd_map_visualization_radius_);
 
   std::unordered_set<std::string> desired_active_ids;
   desired_active_ids.reserve(all_pcd_file_metadata_dict_.size());
