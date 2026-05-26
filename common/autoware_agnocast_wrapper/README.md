@@ -183,11 +183,11 @@ autoware_agnocast_wrapper_setup(target)
 
 ## Message Filters Support
 
-This package provides wrapper types for `message_filters` (`Subscriber`, `Synchronizer`, `ApproximateTimeSynchronizer`) in the `autoware::agnocast_wrapper::message_filters` namespace. These wrappers transparently switch between `::message_filters` and `agnocast::message_filters` at runtime.
+This package provides wrapper types for `message_filters` (`Subscriber`, `Synchronizer`, `ApproximateTimeSynchronizer`, `ExactTimeSynchronizer`) in the `autoware::agnocast_wrapper::message_filters` namespace. These wrappers transparently switch between `::message_filters` and `agnocast::message_filters` at runtime.
 
 ### Current limitations
 
-- Only `ApproximateTime` synchronization policy is supported (no `ExactTime`).
+- Only `ApproximateTime` and `ExactTime` synchronization policies are supported.
 - Maximum 2 message types per `Synchronizer`.
 - `connectInput()` is not supported; pass `Subscriber` references at construction time.
 
@@ -230,6 +230,7 @@ void onSynchronized(
 | `message_filters::Subscriber<M>`                          | `autoware::agnocast_wrapper::message_filters::Subscriber<M>`                          |
 | `message_filters::Synchronizer<Policy>`                   | `autoware::agnocast_wrapper::message_filters::Synchronizer<Policy>`                   |
 | `message_filters::sync_policies::ApproximateTime<M0, M1>` | `autoware::agnocast_wrapper::message_filters::sync_policies::ApproximateTime<M0, M1>` |
+| `message_filters::sync_policies::ExactTime<M0, M1>`       | `autoware::agnocast_wrapper::message_filters::sync_policies::ExactTime<M0, M1>`       |
 
 ## How to Enable/Disable Agnocast on Build
 
