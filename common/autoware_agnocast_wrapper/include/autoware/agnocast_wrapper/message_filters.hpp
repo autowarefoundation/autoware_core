@@ -251,7 +251,7 @@ template <typename M0, typename M1>
 struct ApproximateTime
 {
   uint32_t queue_size;  ///< Queue size forwarded to the underlying sync policy.
-  explicit ApproximateTime(uint32_t qs) : queue_size(qs) {}
+  explicit ApproximateTime(uint32_t qs) noexcept : queue_size(qs) {}
 };
 
 /// @brief Wrapper-layer ExactTime policy tag.
@@ -267,7 +267,7 @@ template <typename M0, typename M1>
 struct ExactTime
 {
   uint32_t queue_size;  ///< Queue size forwarded to the underlying sync policy.
-  explicit ExactTime(uint32_t qs) : queue_size(qs) {}
+  explicit ExactTime(uint32_t qs) noexcept : queue_size(qs) {}
 };
 }  // namespace sync_policies
 
