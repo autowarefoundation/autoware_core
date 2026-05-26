@@ -14,10 +14,11 @@
 
 #include "differential_map_loader_module.hpp"
 
+#include <malloc.h>
+
 #include <algorithm>
 #include <chrono>
 #include <cstring>
-#include <malloc.h>
 #include <map>
 #include <string>
 #include <utility>
