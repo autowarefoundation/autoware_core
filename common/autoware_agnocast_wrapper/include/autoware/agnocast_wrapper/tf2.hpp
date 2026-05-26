@@ -42,6 +42,10 @@
 namespace autoware::agnocast_wrapper
 {
 
+/// @brief Buffer alias — agnocast::Buffer here, tf2_ros::Buffer in the disabled build.
+///        Unlike the listener / broadcaster wrappers, there is no runtime dispatch; the
+///        choice is fixed at build time, and agnocast::Buffer omits APIs that would break
+///        under an AgnocastOnly executor (e.g. waitForTransform) so misuse fails to compile.
 // TODO(Koichi98): agnocast::Buffer currently does not implement waitForTransform, so it has no
 // dependency on the agnocast executor — that lets us alias it directly here, which surfaces
 // the AgnocastOnly-safety constraint at compile time (the async API simply does not exist
@@ -49,7 +53,16 @@ namespace autoware::agnocast_wrapper
 // runtime-dispatched wrapper class.
 using Buffer = agnocast::Buffer;
 
-/// @brief TransformListener wrapper; requires a Method 2 node (autoware::agnocast_wrapper::Node).
+/// @brief Wrapper TransformListener that switches between tf2_ros and agnocast
+///        TransformListener implementations at runtime.
+///
+/// @invariant The backend is selected from use_agnocast() at construction and never
+///            changes, so the held impl's identity is stable for the wrapper's lifetime.
+///
+/// The node-taking constructors require a Method 2 node (autoware::agnocast_wrapper::Node)
+/// because an AgnocastOnly executor does not spin a plain tf2_ros::TransformListener; in
+/// Agnocast-enabled mode the agnocast backend must own the /tf subscription instead.
+/// See the README for a usage example.
 class TransformListener
 {
 public:
@@ -72,8 +85,10 @@ public:
   {
   }
 
-  /// @brief A separate overload, not defaulted options parameters: the no-options constructors
-  /// forward nothing, so each backend keeps its own non-trivial option defaults.
+  /// @brief Options-taking overload. Kept separate (not defaulted parameters) so the
+  ///        no-options ctor preserves each backend's own non-trivial option defaults.
+  ///        On the rclcpp path only the subset shared with agnocast::SubscriptionOptions
+  ///        is forwarded; other rclcpp fields stay at their rclcpp defaults.
   TransformListener(
     tf2::BufferCore & buffer, Node & node, bool spin_thread, const rclcpp::QoS & qos,
     const rclcpp::QoS & static_qos, const AUTOWARE_SUBSCRIPTION_OPTIONS & options,
@@ -115,6 +130,8 @@ public:
   {
   }
 
+  // Non-copyable and non-movable: matches the wrapped tf2_ros / agnocast types, which own
+  // subscriptions bound to the supplied node at construction.
   TransformListener(const TransformListener &) = delete;
   TransformListener & operator=(const TransformListener &) = delete;
   TransformListener(TransformListener &&) = delete;
@@ -124,8 +141,12 @@ private:
   std::variant<RclcppImpl, AgnocastImpl> impl_;
 };
 
-/// @brief TransformBroadcaster wrapper; requires a Method 2 node
-/// (autoware::agnocast_wrapper::Node).
+/// @brief Wrapper TransformBroadcaster that switches between tf2_ros and agnocast
+///        TransformBroadcaster implementations at runtime.
+///
+/// Same backend-fixed-at-construction guarantee as TransformListener. Requires a
+/// Method 2 node so the agnocast backend can own the /tf publisher under an
+/// AgnocastOnly executor. sendTransform() dispatches via std::visit to the active impl.
 class TransformBroadcaster
 {
 public:
@@ -145,6 +166,8 @@ public:
   {
   }
 
+  /// @brief Options-taking overload; same separate-overload rationale as TransformListener.
+  ///        Only qos_overriding_options crosses to the rclcpp side (the shared field).
   TransformBroadcaster(
     Node & node, const rclcpp::QoS & qos, const AUTOWARE_PUBLISHER_OPTIONS & options)
   : impl_(
@@ -162,6 +185,8 @@ public:
   {
   }
 
+  // Non-copyable and non-movable: matches the wrapped types, which own the /tf publisher
+  // bound to the supplied node at construction.
   TransformBroadcaster(const TransformBroadcaster &) = delete;
   TransformBroadcaster & operator=(const TransformBroadcaster &) = delete;
   TransformBroadcaster(TransformBroadcaster &&) = delete;
@@ -181,7 +206,10 @@ private:
   std::variant<RclcppImpl, AgnocastImpl> impl_;
 };
 
-/// @brief StaticTransformBroadcaster wrapper; requires a Method 2 node.
+/// @brief Wrapper StaticTransformBroadcaster mirroring TransformBroadcaster, but for
+///        /tf_static. Same backend-fixed-at-construction guarantee and Method-2-node
+///        requirement; the options-taking ctor has a Humble-specific intra-process tweak
+///        (see the inline comment on that branch).
 class StaticTransformBroadcaster
 {
 public:
@@ -201,6 +229,8 @@ public:
   {
   }
 
+  /// @brief Options-taking overload; same rationale as TransformBroadcaster's. Humble adds
+  ///        an intra-process tweak on the rclcpp side (see the #if branch below).
   StaticTransformBroadcaster(
     Node & node, const rclcpp::QoS & qos, const AUTOWARE_PUBLISHER_OPTIONS & options)
   : impl_(
@@ -225,6 +255,8 @@ public:
   {
   }
 
+  // Non-copyable and non-movable: matches the wrapped types, which own the /tf_static
+  // publisher bound to the supplied node at construction.
   StaticTransformBroadcaster(const StaticTransformBroadcaster &) = delete;
   StaticTransformBroadcaster & operator=(const StaticTransformBroadcaster &) = delete;
   StaticTransformBroadcaster(StaticTransformBroadcaster &&) = delete;
