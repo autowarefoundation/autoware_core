@@ -42,7 +42,7 @@ DifferentialMapLoaderModule::DifferentialMapLoaderModule(
     node->declare_parameter<bool>("enable_internal_differential_visualization", false);
   visualization_update_interval_sec_ =
     node->declare_parameter<double>("internal_visualization_update_interval_sec", 1.0);
-  visualization_radius_ = node->declare_parameter<double>("internal_visualization_radius", 150.0);
+  visualization_radius_ = node->declare_parameter<double>("internal_visualization_radius", 50.0);
 
   if (!enable_internal_differential_visualization_) {
     return;

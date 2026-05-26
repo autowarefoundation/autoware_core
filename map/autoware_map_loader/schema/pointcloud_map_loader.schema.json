@@ -40,7 +40,7 @@
         "internal_visualization_radius": {
           "type": "number",
           "description": "Query radius of internal differential pointcloud map visualization [m]",
-          "default": 150.0,
+          "default": 50.0,
           "minimum": 0.0
         },
         "leaf_size": {
