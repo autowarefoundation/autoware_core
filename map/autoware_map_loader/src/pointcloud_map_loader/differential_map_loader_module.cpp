@@ -66,7 +66,7 @@ DifferentialMapLoaderModule::DifferentialMapLoaderModule(
   const double safe_interval =
     std::isfinite(differential_pcd_map_visualization_update_interval_sec_)
       ? std::max(differential_pcd_map_visualization_update_interval_sec_, 0.1)
-                                 : 1.0;
+      : 1.0;
   if (!std::isfinite(differential_pcd_map_visualization_update_interval_sec_)) {
     RCLCPP_WARN(
       logger_,
