@@ -131,14 +131,20 @@ private:
 /// //   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::Image) & img,
 /// //   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::CameraInfo) & info);
 /// @endcode
-template <typename M0, typename M1>
-class ApproximateTimeSynchronizer
+namespace detail
+{
+/// @brief Common synchronizer wrapper parameterized by the underlying policy types.
+///
+/// Both ApproximateTime and ExactTime variants are obtained as `using` aliases of this
+/// template. Only the policy / synchronizer typedefs differ between them.
+template <typename RclcppPolicy, typename AgnocastPolicy, typename M0, typename M1>
+class PolicySynchronizer
 {
 public:
   using Callback = std::function<void(
     const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M0) &, const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M1) &)>;
 
-  ApproximateTimeSynchronizer(uint32_t queue_size, Subscriber<M0> & sub0, Subscriber<M1> & sub1)
+  PolicySynchronizer(uint32_t queue_size, Subscriber<M0> & sub0, Subscriber<M1> & sub1)
   : sync_(
       use_agnocast() ? decltype(sync_)(
                          std::in_place_type<AgnocastSync>, AgnocastPolicy(queue_size),
@@ -151,8 +157,8 @@ public:
 
   // Non-movable: registerCallback() passes `this` to the internal synchronizer, so the
   // wrapper's address must remain stable for the lifetime of the internal synchronizer.
-  ApproximateTimeSynchronizer(ApproximateTimeSynchronizer &&) = delete;
-  ApproximateTimeSynchronizer & operator=(ApproximateTimeSynchronizer &&) = delete;
+  PolicySynchronizer(PolicySynchronizer &&) = delete;
+  PolicySynchronizer & operator=(PolicySynchronizer &&) = delete;
 
   void registerCallback(Callback callback)
   {
@@ -161,9 +167,9 @@ public:
       [this](auto & sync) {
         using SyncT = std::decay_t<decltype(sync)>;
         if constexpr (std::is_same_v<SyncT, AgnocastSync>) {
-          sync.registerCallback(&ApproximateTimeSynchronizer::agnocastCallbackAdapter, this);
+          sync.registerCallback(&PolicySynchronizer::agnocastCallbackAdapter, this);
         } else {
-          sync.registerCallback(&ApproximateTimeSynchronizer::rclcppCallbackAdapter, this);
+          sync.registerCallback(&PolicySynchronizer::rclcppCallbackAdapter, this);
         }
       },
       sync_);
@@ -193,88 +199,26 @@ private:
     stored_callback_(p0, p1);
   }
 
-  using RclcppPolicy = ::message_filters::sync_policies::ApproximateTime<M0, M1>;
   using RclcppSync = ::message_filters::Synchronizer<RclcppPolicy>;
-
-  using AgnocastPolicy = agnocast::message_filters::sync_policies::ApproximateTime<M0, M1>;
   using AgnocastSync = agnocast::message_filters::Synchronizer<AgnocastPolicy>;
 
   std::variant<RclcppSync, AgnocastSync> sync_;
 };
+}  // namespace detail
+
+template <typename M0, typename M1>
+using ApproximateTimeSynchronizer = detail::PolicySynchronizer<
+  ::message_filters::sync_policies::ApproximateTime<M0, M1>,
+  agnocast::message_filters::sync_policies::ApproximateTime<M0, M1>, M0, M1>;
 
 /// @brief Wrapper ExactTime Synchronizer mirroring ApproximateTimeSynchronizer.
 ///
 /// Same callback signature and zero-copy semantics as ApproximateTimeSynchronizer;
 /// only the sync policy differs (messages must share identical timestamps).
 template <typename M0, typename M1>
-class ExactTimeSynchronizer
-{
-public:
-  using Callback = std::function<void(
-    const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M0) &, const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M1) &)>;
-
-  ExactTimeSynchronizer(uint32_t queue_size, Subscriber<M0> & sub0, Subscriber<M1> & sub1)
-  : sync_(
-      use_agnocast() ? decltype(sync_)(
-                         std::in_place_type<AgnocastSync>, AgnocastPolicy(queue_size),
-                         sub0.agnocast_subscriber(), sub1.agnocast_subscriber())
-                     : decltype(sync_)(
-                         std::in_place_type<RclcppSync>, RclcppPolicy(queue_size),
-                         sub0.rclcpp_subscriber(), sub1.rclcpp_subscriber()))
-  {
-  }
-
-  // Non-movable: registerCallback() passes `this` to the internal synchronizer, so the
-  // wrapper's address must remain stable for the lifetime of the internal synchronizer.
-  ExactTimeSynchronizer(ExactTimeSynchronizer &&) = delete;
-  ExactTimeSynchronizer & operator=(ExactTimeSynchronizer &&) = delete;
-
-  void registerCallback(Callback callback)
-  {
-    stored_callback_ = std::move(callback);
-    std::visit(
-      [this](auto & sync) {
-        using SyncT = std::decay_t<decltype(sync)>;
-        if constexpr (std::is_same_v<SyncT, AgnocastSync>) {
-          sync.registerCallback(&ExactTimeSynchronizer::agnocastCallbackAdapter, this);
-        } else {
-          sync.registerCallback(&ExactTimeSynchronizer::rclcppCallbackAdapter, this);
-        }
-      },
-      sync_);
-  }
-
-private:
-  Callback stored_callback_;
-
-  using M0Event = agnocast::message_filters::MessageEvent<const M0>;
-  using M1Event = agnocast::message_filters::MessageEvent<const M1>;
-
-  void agnocastCallbackAdapter(const M0Event & e0, const M1Event & e1)
-  {
-    const auto p0 =
-      AUTOWARE_MESSAGE_CONST_SHARED_PTR(M0)(agnocast::ipc_shared_ptr<const M0>(e0.getMessage()));
-    const auto p1 =
-      AUTOWARE_MESSAGE_CONST_SHARED_PTR(M1)(agnocast::ipc_shared_ptr<const M1>(e1.getMessage()));
-    stored_callback_(p0, p1);
-  }
-
-  void rclcppCallbackAdapter(
-    const typename M0::ConstSharedPtr & m0, const typename M1::ConstSharedPtr & m1)
-  {
-    const auto p0 = AUTOWARE_MESSAGE_CONST_SHARED_PTR(M0)(std::shared_ptr<const M0>(m0));
-    const auto p1 = AUTOWARE_MESSAGE_CONST_SHARED_PTR(M1)(std::shared_ptr<const M1>(m1));
-    stored_callback_(p0, p1);
-  }
-
-  using RclcppPolicy = ::message_filters::sync_policies::ExactTime<M0, M1>;
-  using RclcppSync = ::message_filters::Synchronizer<RclcppPolicy>;
-
-  using AgnocastPolicy = agnocast::message_filters::sync_policies::ExactTime<M0, M1>;
-  using AgnocastSync = agnocast::message_filters::Synchronizer<AgnocastPolicy>;
-
-  std::variant<RclcppSync, AgnocastSync> sync_;
-};
+using ExactTimeSynchronizer = detail::PolicySynchronizer<
+  ::message_filters::sync_policies::ExactTime<M0, M1>,
+  agnocast::message_filters::sync_policies::ExactTime<M0, M1>, M0, M1>;
 
 /// @brief Policy and Synchronizer types that mirror the rclcpp message_filters API.
 ///        Allows node code to use the same pattern as rclcpp:
