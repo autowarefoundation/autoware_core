@@ -131,8 +131,6 @@ private:
 /// //   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::Image) & img,
 /// //   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::CameraInfo) & info);
 /// @endcode
-namespace detail
-{
 /// @brief Common synchronizer wrapper parameterized by the underlying policy types.
 ///
 /// Both ApproximateTime and ExactTime variants are obtained as `using` aliases of this
@@ -204,10 +202,9 @@ private:
 
   std::variant<RclcppSync, AgnocastSync> sync_;
 };
-}  // namespace detail
 
 template <typename M0, typename M1>
-using ApproximateTimeSynchronizer = detail::PolicySynchronizer<
+using ApproximateTimeSynchronizer = PolicySynchronizer<
   ::message_filters::sync_policies::ApproximateTime<M0, M1>,
   agnocast::message_filters::sync_policies::ApproximateTime<M0, M1>, M0, M1>;
 
@@ -216,7 +213,7 @@ using ApproximateTimeSynchronizer = detail::PolicySynchronizer<
 /// Same callback signature and zero-copy semantics as ApproximateTimeSynchronizer;
 /// only the sync policy differs (messages must share identical timestamps).
 template <typename M0, typename M1>
-using ExactTimeSynchronizer = detail::PolicySynchronizer<
+using ExactTimeSynchronizer = PolicySynchronizer<
   ::message_filters::sync_policies::ExactTime<M0, M1>,
   agnocast::message_filters::sync_policies::ExactTime<M0, M1>, M0, M1>;
 
