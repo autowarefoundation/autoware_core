@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstring>
+#include <malloc.h>
 #include <map>
 #include <string>
 #include <utility>
@@ -193,6 +194,7 @@ void DifferentialMapLoaderModule::on_visualization_timer()
     reusable_merged_cloud_.header.stamp = node_->now();
     reusable_merged_cloud_.header.frame_id = "map";
     internal_visualization_pub_->publish(reusable_merged_cloud_);
+    malloc_trim(0);
   }
 }
 
