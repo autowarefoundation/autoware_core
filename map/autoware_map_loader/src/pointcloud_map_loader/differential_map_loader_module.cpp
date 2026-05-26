@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstring>
 #include <map>
 #include <string>
 #include <utility>
@@ -205,6 +206,7 @@ void DifferentialMapLoaderModule::on_kinematic_state(
 void DifferentialMapLoaderModule::rebuild_merged_cloud_for_visualization()
 {
   std::vector<sensor_msgs::msg::PointCloud2::ConstSharedPtr> snapshot;
+  std::vector<uint8_t> reusable_data;
   {
     std::lock_guard<std::mutex> lock(visualization_mutex_);
     snapshot.reserve(active_cell_ids_for_visualization_.size());
@@ -214,6 +216,7 @@ void DifferentialMapLoaderModule::rebuild_merged_cloud_for_visualization()
         snapshot.push_back(it->second);
       }
     }
+    reusable_data = std::move(reusable_merged_cloud_.data);
   }
 
   sensor_msgs::msg::PointCloud2 merged;
@@ -222,7 +225,7 @@ void DifferentialMapLoaderModule::rebuild_merged_cloud_for_visualization()
   for (const auto & c : snapshot) {
     if (c && !c->fields.empty() && c->point_step != 0U) {
       merged = *c;
-      merged.data.clear();
+      merged.data = std::move(reusable_data);
       has_any = true;
       break;
     }
@@ -230,6 +233,8 @@ void DifferentialMapLoaderModule::rebuild_merged_cloud_for_visualization()
   if (!has_any) {
     std::lock_guard<std::mutex> lock(visualization_mutex_);
     reusable_merged_cloud_ = sensor_msgs::msg::PointCloud2{};
+    reusable_merged_cloud_.data = std::move(reusable_data);
+    reusable_merged_cloud_.data.clear();
     has_merged_cloud_for_visualization_ = true;
     return;
   }
@@ -241,15 +246,16 @@ void DifferentialMapLoaderModule::rebuild_merged_cloud_for_visualization()
     total += c->data.size();
   }
 
-  std::vector<uint8_t> buf;
-  buf.reserve(total);
+  merged.data.resize(total);
+
+  size_t offset = 0;
   for (const auto & c : snapshot) {
     if (!c) continue;
     if (!is_compatible_pointcloud_layout(merged, *c)) continue;
-    buf.insert(buf.end(), c->data.begin(), c->data.end());
+    std::memcpy(merged.data.data() + offset, c->data.data(), c->data.size());
+    offset += c->data.size();
   }
 
-  merged.data = std::move(buf);
   merged.height = 1;
   merged.width =
     merged.point_step ? static_cast<uint32_t>(merged.data.size() / merged.point_step) : 0U;
