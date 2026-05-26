@@ -269,10 +269,10 @@ private:
 
 ### Migration guide (from `diagnostic_updater::Updater`)
 
-| Before                                                 | After                                                                       |
-| ------------------------------------------------------ | --------------------------------------------------------------------------- |
-| `#include <diagnostic_updater/diagnostic_updater.hpp>` | `#include <autoware/agnocast_wrapper/diagnostic_updater.hpp>`               |
-| `diagnostic_updater::Updater updater_{this};`          | `autoware::agnocast_wrapper::diagnostic_updater::Updater updater_{this};`   |
+| Before                                                 | After                                                                     |
+| ------------------------------------------------------ | ------------------------------------------------------------------------- |
+| `#include <diagnostic_updater/diagnostic_updater.hpp>` | `#include <autoware/agnocast_wrapper/diagnostic_updater.hpp>`             |
+| `diagnostic_updater::Updater updater_{this};`          | `autoware::agnocast_wrapper::diagnostic_updater::Updater updater_{this};` |
 
 The `add()` / `removeByName()` / `setHardwareID()` / `setHardwareIDf()` / `broadcast()` / `force_update()` / `setPeriod()` / `getPeriod()` APIs and the `verbose_` field behave the same as the upstream `diagnostic_updater::Updater`.
 

@@ -77,8 +77,7 @@ public:
 
   template <class T>
   void add(
-    const std::string name, T * c,
-    void (T::*f)(::diagnostic_updater::DiagnosticStatusWrapper &))
+    const std::string name, T * c, void (T::*f)(::diagnostic_updater::DiagnosticStatusWrapper &))
   {
     std::visit([&](auto & impl) { impl->add(name, c, f); }, impl_);
   }
