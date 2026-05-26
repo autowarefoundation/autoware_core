@@ -287,7 +287,8 @@ class Synchronizer<sync_policies::ApproximateTime<M0, M1>>
 {
 public:
   Synchronizer(
-    sync_policies::ApproximateTime<M0, M1> policy, Subscriber<M0> & sub0, Subscriber<M1> & sub1)
+    const sync_policies::ApproximateTime<M0, M1> & policy, Subscriber<M0> & sub0,
+    Subscriber<M1> & sub1)
   : ApproximateTimeSynchronizer<M0, M1>(policy.queue_size, sub0, sub1)
   {
   }
@@ -298,7 +299,7 @@ class Synchronizer<sync_policies::ExactTime<M0, M1>> : public ExactTimeSynchroni
 {
 public:
   Synchronizer(
-    sync_policies::ExactTime<M0, M1> policy, Subscriber<M0> & sub0, Subscriber<M1> & sub1)
+    const sync_policies::ExactTime<M0, M1> & policy, Subscriber<M0> & sub0, Subscriber<M1> & sub1)
   : ExactTimeSynchronizer<M0, M1>(policy.queue_size, sub0, sub1)
   {
   }
