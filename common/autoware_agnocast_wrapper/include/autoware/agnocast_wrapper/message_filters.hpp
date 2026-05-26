@@ -111,7 +111,8 @@ private:
 /// @tparam RclcppPolicy   ::message_filters sync policy type used when running on rclcpp
 ///                        (e.g. ::message_filters::sync_policies::ApproximateTime<M0, M1>).
 /// @tparam AgnocastPolicy agnocast::message_filters sync policy type used when running on
-///                        agnocast (e.g. agnocast::message_filters::sync_policies::ExactTime<M0, M1>).
+///                        agnocast (e.g. agnocast::message_filters::sync_policies::ExactTime<M0,
+///                        M1>).
 /// @tparam M0             First message type to synchronize.
 /// @tparam M1             Second message type to synchronize.
 template <typename RclcppPolicy, typename AgnocastPolicy, typename M0, typename M1>
