@@ -931,7 +931,11 @@ public:
   explicit ROS2Client(
     rclcpp::Node * node, const std::string & service_name, const rclcpp::QoS & qos,
     rclcpp::CallbackGroup::SharedPtr group)
+#if RCLCPP_VERSION_MAJOR >= 28
+  : client_(node->create_client<ServiceT>(service_name, qos, group))
+#else
   : client_(node->create_client<ServiceT>(service_name, qos.get_rmw_qos_profile(), group))
+#endif
   {
   }
 
@@ -1073,7 +1077,11 @@ public:
           AUTOWARE_SERVICE_REQUEST_PTR(ServiceT){std::move(ros2_request)},
           AUTOWARE_SERVICE_RESPONSE_PTR(ServiceT){std::move(ros2_response)});
       },
+#if RCLCPP_VERSION_MAJOR >= 28
+      qos, group);
+#else
       qos.get_rmw_qos_profile(), group);
+#endif
   }
 };
 
