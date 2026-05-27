@@ -13,7 +13,7 @@
       <remap from="~/output/control_command" to="/control/command/control_cmd"/>
     </node>
 
-    <group if="$(arg launch_command_gate)">
+    <group if="$(var launch_command_gate)">
       <node pkg="autoware_command_gate" exec="autoware_command_gate_exe" name="autoware_command_gate" output="screen"/>
     </group>
   </group>
