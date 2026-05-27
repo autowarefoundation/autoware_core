@@ -7923,10 +7923,10 @@ ament_target_dependencies(target autoware_agnocast_wrapper)
 target_include_directories(target PRIVATE ${autoware_agnocast_wrapper_INCLUDE_DIRS})
 autoware_agnocast_wrapper_setup(target)</code></p>
 <h2 id="message-filters-support">Message Filters Support<a class="headerlink" href="#message-filters-support" title="Permanent link">#</a></h2>
-<p>This package provides wrapper types for <code>message_filters</code> (<code>Subscriber</code>, <code>Synchronizer</code>, <code>ApproximateTimeSynchronizer</code>) in the <code>autoware::agnocast_wrapper::message_filters</code> namespace. These wrappers transparently switch between <code>::message_filters</code> and <code>agnocast::message_filters</code> at runtime.</p>
+<p>This package provides wrapper types for <code>message_filters</code> (<code>Subscriber</code>, <code>Synchronizer</code>, <code>ApproximateTimeSynchronizer</code>, <code>ExactTimeSynchronizer</code>) in the <code>autoware::agnocast_wrapper::message_filters</code> namespace. These wrappers transparently switch between <code>::message_filters</code> and <code>agnocast::message_filters</code> at runtime.</p>
 <h3 id="current-limitations">Current limitations<a class="headerlink" href="#current-limitations" title="Permanent link">#</a></h3>
 <ul>
-<li>Only <code>ApproximateTime</code> synchronization policy is supported (no <code>ExactTime</code>).</li>
+<li>Only <code>ApproximateTime</code> and <code>ExactTime</code> synchronization policies are supported.</li>
 <li>Maximum 2 message types per <code>Synchronizer</code>.</li>
 <li><code>connectInput()</code> is not supported; pass <code>Subscriber</code> references at construction time.</li>
 </ul>
@@ -7976,6 +7976,10 @@ void onSynchronized(
 <tr>
 <td><code>message_filters::sync_policies::ApproximateTime&lt;M0, M1&gt;</code></td>
 <td><code>autoware::agnocast_wrapper::message_filters::sync_policies::ApproximateTime&lt;M0, M1&gt;</code></td>
+</tr>
+<tr>
+<td><code>message_filters::sync_policies::ExactTime&lt;M0, M1&gt;</code></td>
+<td><code>autoware::agnocast_wrapper::message_filters::sync_policies::ExactTime&lt;M0, M1&gt;</code></td>
 </tr>
 </tbody>
 </table>
