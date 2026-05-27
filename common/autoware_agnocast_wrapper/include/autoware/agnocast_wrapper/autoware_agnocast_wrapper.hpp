@@ -17,18 +17,20 @@
 #include <string>
 #include <utility>
 
-#ifdef USE_AGNOCAST_ENABLED
-
 #include "autoware_utils_rclcpp/polling_subscriber.hpp"
 
-#include <agnocast/agnocast.hpp>
 #include <rclcpp/rclcpp.hpp>
+
+#include <memory>
+#include <type_traits>
+
+#ifdef USE_AGNOCAST_ENABLED
+
+#include <agnocast/agnocast.hpp>
 
 #include <chrono>
 #include <cstdlib>
 #include <future>
-#include <memory>
-#include <type_traits>
 
 #define AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) \
   autoware::agnocast_wrapper::message_ptr<    \
@@ -1103,13 +1105,6 @@ create_service(
 }  // namespace autoware::agnocast_wrapper
 
 #else
-
-#include "autoware_utils_rclcpp/polling_subscriber.hpp"
-
-#include <rclcpp/rclcpp.hpp>
-
-#include <memory>
-#include <type_traits>
 
 #define AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) std::unique_ptr<MessageT>
 // For publisher (mutable message)
