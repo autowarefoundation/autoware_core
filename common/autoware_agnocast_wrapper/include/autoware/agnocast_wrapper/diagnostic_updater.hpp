@@ -20,15 +20,15 @@
 
 #include <diagnostic_updater/diagnostic_updater.hpp>
 
-#ifdef USE_AGNOCAST_ENABLED
-
-#include <agnocast/node/diagnostic_updater/diagnostic_updater.hpp>
-
 #include <cstdarg>
 #include <cstdio>
 #include <memory>
 #include <string>
 #include <variant>
+
+#ifdef USE_AGNOCAST_ENABLED
+
+#include <agnocast/node/diagnostic_updater/diagnostic_updater.hpp>
 
 namespace autoware::agnocast_wrapper
 {
