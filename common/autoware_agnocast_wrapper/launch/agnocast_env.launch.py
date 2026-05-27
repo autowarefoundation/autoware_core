@@ -17,13 +17,15 @@
 Configuration:
 - Checks ENABLE_AGNOCAST environment variable (set to "1" to enable)
 - Heaphook path is configurable via the agnocast_heaphook_path arg
-  (default: /opt/ros/humble/lib/libagnocast_heaphook.so)
+  (default: /opt/ros/$ROS_DISTRO/lib/libagnocast_heaphook.so, falls back to humble)
 
 Provides the following launch configurations:
 - ld_preload_value: LD_PRELOAD value with heaphook prepended when Agnocast is enabled
 - container_package: resolved component container package name
 - container_executable: resolved component container executable name
 """
+
+import os
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
@@ -68,7 +70,7 @@ def generate_launch_description():
         [
             DeclareLaunchArgument(
                 "agnocast_heaphook_path",
-                default_value="/opt/ros/humble/lib/libagnocast_heaphook.so",
+                default_value=f"/opt/ros/{os.environ.get('ROS_DISTRO', 'humble')}/lib/libagnocast_heaphook.so",
             ),
             DeclareLaunchArgument(
                 "use_multithread",

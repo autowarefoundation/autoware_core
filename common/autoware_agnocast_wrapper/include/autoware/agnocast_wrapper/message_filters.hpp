@@ -15,6 +15,7 @@
 #pragma once
 
 #include "autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp"
+#include "autoware/agnocast_wrapper/node.hpp"
 
 #include <message_filters/subscriber.h>
 #include <message_filters/sync_policies/approximate_time.h>
@@ -23,7 +24,9 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <utility>
+#include <variant>
 
 #ifdef USE_AGNOCAST_ENABLED
 
@@ -38,37 +41,59 @@ namespace message_filters
 
 /// @brief Wrapper message_filters Subscriber that switches between
 ///        rclcpp and agnocast message_filters at runtime.
+///
+/// @invariant The backend is selected from use_agnocast() at construction and never
+///            changes, so the held subscriber object keeps a stable identity for the
+///            Subscriber's lifetime. subscribe() may therefore be called repeatedly
+///            without invalidating a Synchronizer already wired to this Subscriber.
 template <class M>
 class Subscriber
 {
 public:
-  Subscriber() = default;
+  using RclcppSubscriber = ::message_filters::Subscriber<M, rclcpp::Node>;
+  using AgnocastSubscriber = agnocast::message_filters::Subscriber<M, agnocast::Node>;
+
+  Subscriber()
+  : sub_(
+      use_agnocast() ? decltype(sub_)(std::in_place_type<AgnocastSubscriber>)
+                     : decltype(sub_)(std::in_place_type<RclcppSubscriber>))
+  {
+  }
 
   Subscriber(
-    rclcpp::Node * node, const std::string & topic,
+    autoware::agnocast_wrapper::Node * node, const std::string & topic,
     const rmw_qos_profile_t qos = rmw_qos_profile_default)
+  : Subscriber()
   {
     subscribe(node, topic, qos);
   }
 
   void subscribe(
-    rclcpp::Node * node, const std::string & topic,
+    autoware::agnocast_wrapper::Node * node, const std::string & topic,
     const rmw_qos_profile_t qos = rmw_qos_profile_default)
   {
-    if (use_agnocast()) {
-      agnocast_sub_.subscribe(node, topic, qos);
-    } else {
-      rclcpp_sub_.subscribe(node, topic, qos);
-    }
+    std::visit(
+      [&](auto & sub) {
+        if constexpr (std::is_same_v<std::decay_t<decltype(sub)>, AgnocastSubscriber>) {
+          sub.subscribe(node->get_agnocast_node().get(), topic, qos);
+        } else {
+          sub.subscribe(node->get_rclcpp_node().get(), topic, qos);
+        }
+      },
+      sub_);
+  }
+
+  void unsubscribe()
+  {
+    std::visit([](auto & sub) { sub.unsubscribe(); }, sub_);
   }
 
   // Internal API: used by ApproximateTimeSynchronizer. Not intended for downstream use.
-  ::message_filters::Subscriber<M> & rclcpp_subscriber() { return rclcpp_sub_; }
-  agnocast::message_filters::Subscriber<M> & agnocast_subscriber() { return agnocast_sub_; }
+  RclcppSubscriber & rclcpp_subscriber() { return std::get<RclcppSubscriber>(sub_); }
+  AgnocastSubscriber & agnocast_subscriber() { return std::get<AgnocastSubscriber>(sub_); }
 
 private:
-  ::message_filters::Subscriber<M> rclcpp_sub_;
-  agnocast::message_filters::Subscriber<M> agnocast_sub_;
+  std::variant<RclcppSubscriber, AgnocastSubscriber> sub_;
 };
 
 /// @brief Wrapper ApproximateTime Synchronizer that switches between
@@ -112,24 +137,34 @@ public:
     const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M0) &, const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M1) &)>;
 
   ApproximateTimeSynchronizer(uint32_t queue_size, Subscriber<M0> & sub0, Subscriber<M1> & sub1)
+  : sync_(
+      use_agnocast() ? decltype(sync_)(
+                         std::in_place_type<AgnocastSync>, AgnocastPolicy(queue_size),
+                         sub0.agnocast_subscriber(), sub1.agnocast_subscriber())
+                     : decltype(sync_)(
+                         std::in_place_type<RclcppSync>, RclcppPolicy(queue_size),
+                         sub0.rclcpp_subscriber(), sub1.rclcpp_subscriber()))
   {
-    if (use_agnocast()) {
-      agnocast_sync_ = std::make_unique<AgnocastSync>(
-        AgnocastPolicy(queue_size), sub0.agnocast_subscriber(), sub1.agnocast_subscriber());
-    } else {
-      rclcpp_sync_ = std::make_unique<RclcppSync>(
-        RclcppPolicy(queue_size), sub0.rclcpp_subscriber(), sub1.rclcpp_subscriber());
-    }
   }
+
+  // Non-movable: registerCallback() passes `this` to the internal synchronizer, so the
+  // wrapper's address must remain stable for the lifetime of the internal synchronizer.
+  ApproximateTimeSynchronizer(ApproximateTimeSynchronizer &&) = delete;
+  ApproximateTimeSynchronizer & operator=(ApproximateTimeSynchronizer &&) = delete;
 
   void registerCallback(Callback callback)
   {
     stored_callback_ = std::move(callback);
-    if (use_agnocast()) {
-      agnocast_sync_->registerCallback(&ApproximateTimeSynchronizer::agnocastCallbackAdapter, this);
-    } else {
-      rclcpp_sync_->registerCallback(&ApproximateTimeSynchronizer::rclcppCallbackAdapter, this);
-    }
+    std::visit(
+      [this](auto & sync) {
+        using SyncT = std::decay_t<decltype(sync)>;
+        if constexpr (std::is_same_v<SyncT, AgnocastSync>) {
+          sync.registerCallback(&ApproximateTimeSynchronizer::agnocastCallbackAdapter, this);
+        } else {
+          sync.registerCallback(&ApproximateTimeSynchronizer::rclcppCallbackAdapter, this);
+        }
+      },
+      sync_);
   }
 
 private:
@@ -158,11 +193,11 @@ private:
 
   using RclcppPolicy = ::message_filters::sync_policies::ApproximateTime<M0, M1>;
   using RclcppSync = ::message_filters::Synchronizer<RclcppPolicy>;
-  std::unique_ptr<RclcppSync> rclcpp_sync_;
 
   using AgnocastPolicy = agnocast::message_filters::sync_policies::ApproximateTime<M0, M1>;
   using AgnocastSync = agnocast::message_filters::Synchronizer<AgnocastPolicy>;
-  std::unique_ptr<AgnocastSync> agnocast_sync_;
+
+  std::variant<RclcppSync, AgnocastSync> sync_;
 };
 
 /// @brief Policy and Synchronizer types that mirror the rclcpp message_filters API.

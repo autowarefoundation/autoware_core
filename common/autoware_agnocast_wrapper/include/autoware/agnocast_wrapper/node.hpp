@@ -48,6 +48,13 @@ using OnSetParametersCallbackType =
 
 /// @brief Node wrapper class that can switch between rclcpp::Node and agnocast::Node at runtime
 /// based on the ENABLE_AGNOCAST environment variable.
+///
+/// @invariant The backend variant (rclcpp::Node or agnocast::Node) is chosen at construction
+///            based on use_agnocast() and never mutates for the lifetime of the Node.
+/// @invariant `use_agnocast() == true`  iff `get_agnocast_node()` returns a valid
+///            shared_ptr without throwing.
+/// @invariant `use_agnocast() == false` iff `get_rclcpp_node()`   returns a valid
+///            shared_ptr without throwing.
 class Node
 {
 public:
@@ -249,14 +256,13 @@ public:
   }
 
   // ===== Internal node access (for Executor) =====
-  // Callers must check is_using_agnocast() before calling get_agnocast_node()/get_rclcpp_node().
+  // Callers must check use_agnocast() before calling get_agnocast_node()/get_rclcpp_node().
   // Accessing the inactive variant will throw std::runtime_error.
-  bool is_using_agnocast() const
-  {
-    return std::holds_alternative<std::shared_ptr<agnocast::Node>>(node_);
-  }
+  // The return value is fixed for the lifetime of the Node (see class-level @invariant).
 
-  /// @throws std::runtime_error if Agnocast is not enabled (check is_using_agnocast() first)
+  /// @pre `use_agnocast() == true`. Under this precondition, this method is guaranteed
+  ///      to return a valid non-null shared_ptr without throwing.
+  /// @throws std::runtime_error if Agnocast is not enabled (check use_agnocast() first)
   std::shared_ptr<agnocast::Node> get_agnocast_node() const
   {
     if (auto * p = std::get_if<std::shared_ptr<agnocast::Node>>(&node_)) {
@@ -264,10 +270,12 @@ public:
     }
     throw std::runtime_error(
       "get_agnocast_node() called but Agnocast is not enabled. "
-      "Check is_using_agnocast() before calling this method.");
+      "Check use_agnocast() before calling this method.");
   }
 
-  /// @throws std::runtime_error if the node is in agnocast mode (check !is_using_agnocast() first)
+  /// @pre `use_agnocast() == false`. Under this precondition, this method is guaranteed
+  ///      to return a valid non-null shared_ptr without throwing.
+  /// @throws std::runtime_error if the node is in agnocast mode (check !use_agnocast() first)
   std::shared_ptr<rclcpp::Node> get_rclcpp_node() const
   {
     if (auto * p = std::get_if<std::shared_ptr<rclcpp::Node>>(&node_)) {
@@ -275,7 +283,7 @@ public:
     }
     throw std::runtime_error(
       "get_rclcpp_node() called but the node is in agnocast mode. "
-      "Check !is_using_agnocast() before calling this method.");
+      "Check !use_agnocast() before calling this method.");
   }
 
 private:
@@ -296,7 +304,7 @@ private:
 };
 
 /// @brief Get the underlying rclcpp::Node from a node that inherits agnocast_wrapper::Node.
-/// @throws std::runtime_error if the node is in agnocast mode (check is_using_agnocast() first)
+/// @throws std::runtime_error if the node is in agnocast mode (check !use_agnocast() first)
 template <typename T>
 std::shared_ptr<rclcpp::Node> to_rclcpp_node(const std::shared_ptr<T> & node)
 {
