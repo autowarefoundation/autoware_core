@@ -27,8 +27,6 @@ namespace autoware::vehicle_info_utils
 /// Data class for vehicle info
 struct VehicleInfo
 {
-  VehicleInfo() = default;
-
   // Base parameters. These describe the vehicle's bounding box and the
   // position and radius of the wheels.
   double wheel_radius_m{};       //<! should be positive
