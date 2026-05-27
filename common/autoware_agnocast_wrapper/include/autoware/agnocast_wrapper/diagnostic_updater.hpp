@@ -97,6 +97,12 @@ public:
   ///               an rclcpp::Node.
   /// @param period Default update period in seconds; overridden by the
   ///               `diagnostic_updater.period` ros2 parameter if set.
+  ///
+  /// @note The upstream `::diagnostic_updater::Updater` exposes a third
+  ///       `starting_up_status` parameter (the DiagnosticStatus level sent as
+  ///       the first message). It is intentionally not surfaced here because
+  ///       `::agnocast::Updater` does not support it, and the wrapper keeps a
+  ///       single signature shared by both backends.
   explicit Updater(autoware::agnocast_wrapper::Node * node, double period = 1.0)
   : logger_(node->get_logger()),
     impl_(
@@ -282,6 +288,12 @@ public:
   /// @param node   Wrapper node (alias for rclcpp::Node in this build).
   /// @param period Default update period in seconds; overridden by the
   ///               `diagnostic_updater.period` ros2 parameter if set.
+  ///
+  /// @note The upstream `::diagnostic_updater::Updater` exposes a third
+  ///       `starting_up_status` parameter (the DiagnosticStatus level sent as
+  ///       the first message). It is intentionally not surfaced here because
+  ///       `::agnocast::Updater` does not support it, and the wrapper keeps a
+  ///       single signature shared by both backends.
   explicit Updater(autoware::agnocast_wrapper::Node * node, double period = 1.0)
   : ::diagnostic_updater::Updater(node, period)
   {
