@@ -14,15 +14,14 @@
 
 #pragma once
 
-#include <string>
-#include <utility>
-
 #include "autoware_utils_rclcpp/polling_subscriber.hpp"
 
 #include <rclcpp/rclcpp.hpp>
 
 #include <memory>
+#include <string>
 #include <type_traits>
+#include <utility>
 
 #ifdef USE_AGNOCAST_ENABLED
 
