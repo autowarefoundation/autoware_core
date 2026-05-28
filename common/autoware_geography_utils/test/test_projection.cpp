@@ -160,6 +160,34 @@ TEST(GeographyUtilsProjection, ProjectForwardAndReverseLocalCartesianUTMOrigin)
   EXPECT_NEAR(converted_geo_point.altitude, geo_point.altitude, 0.0001);
 }
 
+TEST(GeographyUtilsProjection, ProjectForwardAndReverseTransverseMercator)
+{
+  // source point
+  geographic_msgs::msg::GeoPoint geo_point;
+  geo_point.latitude = 35.62426;
+  geo_point.longitude = 139.74252;
+  geo_point.altitude = 10.0;
+
+  // projector info
+  autoware_map_msgs::msg::MapProjectorInfo projector_info;
+  projector_info.projector_type = autoware_map_msgs::msg::MapProjectorInfo::TRANSVERSE_MERCATOR;
+  projector_info.vertical_datum = autoware_map_msgs::msg::MapProjectorInfo::WGS84;
+  projector_info.scale_factor = 0.9996;
+  projector_info.map_origin.latitude = 35.0;
+  projector_info.map_origin.longitude = 139.0;
+  projector_info.map_origin.altitude = 0.0;
+
+  // conversion
+  const geometry_msgs::msg::Point converted_local_point =
+    autoware::geography_utils::project_forward(geo_point, projector_info);
+  const geographic_msgs::msg::GeoPoint converted_geo_point =
+    autoware::geography_utils::project_reverse(converted_local_point, projector_info);
+
+  EXPECT_NEAR(converted_geo_point.latitude, geo_point.latitude, 0.0001);
+  EXPECT_NEAR(converted_geo_point.longitude, geo_point.longitude, 0.0001);
+  EXPECT_NEAR(converted_geo_point.altitude, geo_point.altitude, 0.0001);
+}
+
 TEST(GeographyUtilsProjection, ProjectForwardToLocalCartesianOrigin)
 {
   // source point
