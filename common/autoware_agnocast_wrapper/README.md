@@ -183,7 +183,7 @@ autoware_agnocast_wrapper_setup(target)
 
 ## Message Filters Support
 
-This package provides wrapper types for `message_filters` (`Subscriber`, `Synchronizer`, `ApproximateTimeSynchronizer`, `ExactTimeSynchronizer`) in the `autoware::agnocast_wrapper::message_filters` namespace. These wrappers transparently switch between `::message_filters` and `agnocast::message_filters` at runtime.
+This package provides wrapper types for `message_filters` (`Subscriber`, `Synchronizer`) in the `autoware::agnocast_wrapper::message_filters` namespace. These wrappers transparently switch between `::message_filters` and `agnocast::message_filters` at runtime.
 
 ### Current limitations
 
@@ -209,9 +209,15 @@ using Policy = sync_policies::ApproximateTime<
     sensor_msgs::msg::Image, sensor_msgs::msg::CameraInfo>;
 Synchronizer<Policy> sync(Policy(10), image_sub, info_sub);
 
-// 3. Register callback (use std::bind, not a lambda — see migration note below)
-sync.registerCallback(
-  std::bind(&MyNode::onSynchronized, this, std::placeholders::_1, std::placeholders::_2));
+// 3. Register callback. Mirrors `::message_filters::Synchronizer::registerCallback` —
+//    pass a member-function pointer and `this`, or a `std::bind` result, or any other
+//    callable convertible to `void(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M0) &,
+//                                    const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M1) &)`.
+//    Returns a `::message_filters::Connection` for later `.disconnect()`.
+auto conn = sync.registerCallback(&MyNode::onSynchronized, this);
+// Equivalent form (still supported):
+// sync.registerCallback(std::bind(
+//   &MyNode::onSynchronized, this, std::placeholders::_1, std::placeholders::_2));
 ```
 
 The callback method signature should use `const` references:
