@@ -19,12 +19,11 @@ Use this when you want the **entire node** to transparently switch between `rclc
 Currently supported APIs:
 
 - Publisher / Subscription / PollingSubscriber
+- Timer (`create_wall_timer`, free `create_timer()`, free `set_period()`)
 - Parameters
 - Logger, Clock
 - Callback groups
 - Node interfaces (partial: `get_node_base_interface()`, `get_node_topics_interface()`, `get_node_parameters_interface()`)
-
-> **Note:** Timer (`create_wall_timer`, `create_timer`) is not yet supported and will be added in a future update.
 
 ```cpp
 #include <autoware/agnocast_wrapper/node.hpp>
@@ -38,12 +37,31 @@ public:
     pub_ = create_publisher<std_msgs::msg::String>("output", 10);
     sub_ = create_subscription<std_msgs::msg::String>(
       "input", 10, [this](std::unique_ptr<const std_msgs::msg::String> msg) { /* ... */ });
+
+    timer_ = create_wall_timer(
+      std::chrono::milliseconds(100), [this]() { /* ... */ });
   }
 
 private:
   autoware::agnocast_wrapper::Publisher<std_msgs::msg::String>::SharedPtr pub_;
   autoware::agnocast_wrapper::Subscription<std_msgs::msg::String>::SharedPtr sub_;
+  autoware::agnocast_wrapper::Timer::SharedPtr timer_;
 };
+```
+
+#### Timer notes
+
+`create_timer()` is provided as a **free function** (not a member) because `rclcpp::Node::create_timer` was added in Jazzy and does not exist on Humble. The free form is portable across both:
+
+```cpp
+timer_ = autoware::agnocast_wrapper::create_timer(
+  this, this->get_clock(), rclcpp::Duration::from_seconds(0.1), [this]() { /* ... */ });
+```
+
+`set_period()` is likewise a **free function**. `rclcpp::TimerBase` has no `set_period` member, so the free form is the only portable spelling across both builds:
+
+```cpp
+autoware::agnocast_wrapper::set_period(timer_, std::chrono::milliseconds(200));
 ```
 
 To use the Node wrapper in your package, add the following to your `CMakeLists.txt`:

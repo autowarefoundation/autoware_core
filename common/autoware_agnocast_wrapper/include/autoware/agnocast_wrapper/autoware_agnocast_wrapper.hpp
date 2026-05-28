@@ -826,6 +826,9 @@ private:
 /// @throws std::invalid_argument if period is negative or equal to
 ///   std::chrono::nanoseconds::max() (mirrors rclcpp::create_wall_timer's
 ///   precondition 0 <= period < nanoseconds::max()).
+/// @throws rclcpp::exceptions::RCLError on rcl-level failure when the ROS 2
+///   backend is active (see Timer's class-level note on exception asymmetry
+///   between backends).
 inline void set_period(const Timer::SharedPtr & timer, std::chrono::nanoseconds period)
 {
   if (period < std::chrono::nanoseconds::zero()) {
