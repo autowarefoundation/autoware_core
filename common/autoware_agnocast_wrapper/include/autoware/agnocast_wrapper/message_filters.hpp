@@ -259,8 +259,7 @@ private:
     // Wrap upstream's Connection so the user's disconnect also drops our adapter entry.
     return ::message_filters::Connection(
       ::message_filters::Connection::VoidDisconnectFunction(
-        [this, adapter = std::move(adapter),
-         upstream_conn = std::move(upstream_conn)]() mutable {
+        [this, adapter = std::move(adapter), upstream_conn = std::move(upstream_conn)]() mutable {
           upstream_conn.disconnect();
           std::lock_guard<std::mutex> lock(adapters_mutex_);
           adapters_.erase(
