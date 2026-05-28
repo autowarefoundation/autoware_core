@@ -24,9 +24,9 @@
 
   <!-- Global parameters -->
   <group scoped="false">
-    <include file="$(find-pkg-share autoware_global_parameter_loader)/launch/global_params.launch.py">
+    <include file="$(find-pkg-share autoware_global_parameter_loader)/launch/global_params.launch.xml">
       <arg name="use_sim_time" value="$(var use_sim_time)"/>
-      <arg name="vehicle_model" value="$(var vehicle_model)"/>
+      <arg name="vehicle_info_param_file" value="$(var vehicle_info_param_file)"/>
     </include>
   </group>
 
