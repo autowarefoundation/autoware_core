@@ -15,6 +15,7 @@
 #include "autoware/qp_interface/osqp_interface.hpp"
 
 #include "autoware/qp_interface/osqp_csc_matrix_conv.hpp"
+#include "osqp_interface_status.hpp"
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -25,6 +26,38 @@
 
 namespace autoware::qp_interface
 {
+std::string status_to_string(c_int status_val)
+{
+  switch (status_val) {
+    case OSQP_SOLVED:
+      return "OSQP_SOLVED";
+    case OSQP_SOLVED_INACCURATE:
+      return "OSQP_SOLVED_INACCURATE";
+    case OSQP_MAX_ITER_REACHED:
+      return "OSQP_MAX_ITER_REACHED";
+    case OSQP_PRIMAL_INFEASIBLE:
+      return "OSQP_PRIMAL_INFEASIBLE";
+    case OSQP_PRIMAL_INFEASIBLE_INACCURATE:
+      return "OSQP_PRIMAL_INFEASIBLE_INACCURATE";
+    case OSQP_DUAL_INFEASIBLE:
+      return "OSQP_DUAL_INFEASIBLE";
+    case OSQP_DUAL_INFEASIBLE_INACCURATE:
+      return "OSQP_DUAL_INFEASIBLE_INACCURATE";
+    case OSQP_SIGINT:
+      return "OSQP_SIGINT";
+    case OSQP_NON_CVX:
+      return "OSQP_NON_CVX";
+    case OSQP_UNSOLVED:
+      return "OSQP_UNSOLVED";
+#ifdef OSQP_TIME_LIMIT_REACHED
+    case OSQP_TIME_LIMIT_REACHED:
+      return "OSQP_TIME_LIMIT_REACHED";
+#endif
+    default:
+      return "OSQP_UNKNOWN";
+  }
+}
+
 OSQPInterface::OSQPInterface(
   const bool enable_warm_start, const int max_iteration, const c_float eps_abs,
   const c_float eps_rel, const bool polish, const bool verbose)
@@ -46,6 +79,10 @@ OSQPInterface::OSQPInterface(
     settings_->polish = polish;
   }
   exitflag_ = 0;
+  // latest_work_info_ is value-initialized (all members zeroed) at its declaration. status_val == 0
+  // is not a meaningful OSQP status, so explicitly set it to OSQP_UNSOLVED so that a pre-solve
+  // getStatus()/isSolved() is deterministic and reports "not solved".
+  latest_work_info_.status_val = OSQP_UNSOLVED;
 }
 
 OSQPInterface::OSQPInterface(
@@ -298,33 +335,25 @@ void OSQPInterface::updateCscA(const CSC_Matrix & A_csc)
 
 void OSQPInterface::updateQ(const std::vector<double> & q_new)
 {
-  std::vector<double> q_tmp(q_new.begin(), q_new.end());
-  double * q_dyn = q_tmp.data();
-  osqp_update_lin_cost(work_.get(), q_dyn);
+  // OSQP takes a const c_float* (== const double*), so the vector data can be
+  // passed directly without copying into a temporary.
+  osqp_update_lin_cost(work_.get(), q_new.data());
 }
 
 void OSQPInterface::updateL(const std::vector<double> & l_new)
 {
-  std::vector<double> l_tmp(l_new.begin(), l_new.end());
-  double * l_dyn = l_tmp.data();
-  osqp_update_lower_bound(work_.get(), l_dyn);
+  osqp_update_lower_bound(work_.get(), l_new.data());
 }
 
 void OSQPInterface::updateU(const std::vector<double> & u_new)
 {
-  std::vector<double> u_tmp(u_new.begin(), u_new.end());
-  double * u_dyn = u_tmp.data();
-  osqp_update_upper_bound(work_.get(), u_dyn);
+  osqp_update_upper_bound(work_.get(), u_new.data());
 }
 
 void OSQPInterface::updateBounds(
   const std::vector<double> & l_new, const std::vector<double> & u_new)
 {
-  std::vector<double> l_tmp(l_new.begin(), l_new.end());
-  std::vector<double> u_tmp(u_new.begin(), u_new.end());
-  double * l_dyn = l_tmp.data();
-  double * u_dyn = u_tmp.data();
-  osqp_update_bounds(work_.get(), l_dyn, u_dyn);
+  osqp_update_bounds(work_.get(), l_new.data(), u_new.data());
 }
 
 int OSQPInterface::getIterationNumber() const
@@ -334,7 +363,7 @@ int OSQPInterface::getIterationNumber() const
 
 std::string OSQPInterface::getStatus() const
 {
-  return "OSQP_SOLVED";
+  return status_to_string(latest_work_info_.status_val);
 }
 
 bool OSQPInterface::isSolved() const

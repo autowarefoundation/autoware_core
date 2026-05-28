@@ -52,12 +52,15 @@ ament_export_libraries(osqp::osqp)
 if(BUILD_TESTING)
   set(TEST_SOURCES
     test/test_osqp_interface.cpp
+    test/test_osqp_interface_status.cpp
     test/test_csc_matrix_conv.cpp
     test/test_proxqp_interface.cpp
     test/test_qp_interface.cpp
   )
   set(TEST_OSQP_INTERFACE_EXE test_osqp_interface)
   ament_add_ros_isolated_gtest(${TEST_OSQP_INTERFACE_EXE} ${TEST_SOURCES})
+  # allow tests to reach the internal (non-installed) headers under src/
+  target_include_directories(${TEST_OSQP_INTERFACE_EXE} PRIVATE src)
   target_link_libraries(${TEST_OSQP_INTERFACE_EXE} ${PROJECT_NAME})
 endif()
 

@@ -256,7 +256,13 @@ TEST(TestOsqpInterface, UpdateSettingsAfterInitialization)
   const auto solution = osqp.optimize(P_csc_new, A_csc_new, q, l, u);
   const auto status = osqp.getStatus();
 
-  EXPECT_EQ(status, "OSQP_SOLVED");
+  // The redefined problem (P = ones(2, 2), A = ones(4, 2) with the original
+  // bounds) is primal infeasible: the first constraint forces x0 + x1 == 1
+  // while the second and third force x0 + x1 <= 0.7. Now that getStatus()
+  // reports the real solver status (instead of the previously hardcoded
+  // "OSQP_SOLVED"), assert the true outcome.
+  EXPECT_EQ(status, "OSQP_PRIMAL_INFEASIBLE");
+  EXPECT_FALSE(osqp.isSolved());
 }
 
 }  // namespace
