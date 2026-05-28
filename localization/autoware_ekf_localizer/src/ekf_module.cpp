@@ -215,8 +215,7 @@ void EKFModule::accumulate_delay_time(const double dt)
 
 void EKFModule::predict_with_delay(const double dt)
 {
-  const Eigen::MatrixXd x_curr = kalman_filter_.getLatestX();
-  const Eigen::MatrixXd p_curr = kalman_filter_.getLatestP();
+  const Vector6d x_curr = kalman_filter_.getLatestX();
 
   const double proc_cov_vx_d = std::pow(params_.proc_stddev_vx_c * dt, 2.0);
   const double proc_cov_wz_d = std::pow(params_.proc_stddev_wz_c * dt, 2.0);

@@ -26,6 +26,20 @@ namespace autoware::ekf_localizer
 class HyperParameters
 {
 public:
+  // Additive seam: a default constructor so the parameters can be hand-set in a unit test
+  // without a live rclcpp::Node. The fields below are intentionally non-const so a test can
+  // populate them directly. The node-based constructor still fully initializes every field.
+  //
+  // The in-class member initializers below give the default-constructed instance SAFE, non-zero
+  // values for every field that EKFModule relies on at construction time. In particular
+  // extend_state_step must be >= 1: EKFModule sizes accumulated_delay_times_ as
+  // std::vector<double>(extend_state_step, 1.0E15), and find_closest_delay_time_index()
+  // dereferences accumulated_delay_times_.back(), which is undefined behaviour (a crash) on an
+  // empty vector. The other sizing/rate defaults (ekf_rate/ekf_dt, smoothing steps, queue sizes,
+  // gate distances, process/filter noise) are likewise non-zero so a default-constructed instance
+  // is immediately usable.
+  HyperParameters() = default;
+
   explicit HyperParameters(rclcpp::Node * node)
   : show_debug_info(node->declare_parameter<bool>("node.show_debug_info")),
     ekf_rate(node->declare_parameter<double>("node.predict_frequency")),
@@ -76,40 +90,43 @@ public:
   {
   }
 
-  const bool show_debug_info;
-  const double ekf_rate;  // ekf update frequency = predict_frequency [Hz]
-  const double ekf_dt;    // ekf update period [s]
-  const double tf_rate_;
-  const bool enable_yaw_bias_estimation;
-  const size_t extend_state_step;
-  const std::string pose_frame_id;
-  const double pose_additional_delay;
-  const double pose_gate_dist;
-  const size_t pose_smoothing_steps;
-  const size_t max_pose_queue_size;
-  const double twist_additional_delay;
-  const double twist_gate_dist;
-  const size_t twist_smoothing_steps;
-  const size_t max_twist_queue_size;
-  const double proc_stddev_vx_c;   //!< @brief  vx process noise
-  const double proc_stddev_wz_c;   //!< @brief  wz process noise
-  const double proc_stddev_yaw_c;  //!< @brief  yaw process noise
-  const double z_filter_proc_dev;
-  const double roll_filter_proc_dev;
-  const double pitch_filter_proc_dev;
-  const size_t pose_no_update_count_threshold_warn;
-  const size_t pose_no_update_count_threshold_error;
-  const size_t twist_no_update_count_threshold_warn;
-  const size_t twist_no_update_count_threshold_error;
-  double ellipse_scale;
-  double error_ellipse_size;
-  double warn_ellipse_size;
-  double error_ellipse_size_lateral_direction;
-  double warn_ellipse_size_lateral_direction;
-  const double diagnostics_publish_frequency;  //!< @brief diagnostics publish frequency [Hz]
-  const double diagnostics_publish_period;     //!< @brief diagnostics publish period [s]
+  // NOTE: these members are non-const so the default constructor (additive test seam) can set
+  // them. The node-based constructor still initializes all of them in its member initializer list.
+  bool show_debug_info{false};
+  double ekf_rate{50.0};      // ekf update frequency = predict_frequency [Hz]
+  double ekf_dt{1.0 / 50.0};  // ekf update period [s]
+  double tf_rate_{10.0};
+  bool enable_yaw_bias_estimation{true};
+  // Must be >= 1: EKFModule sizes accumulated_delay_times_ to this length and calls .back() on it.
+  size_t extend_state_step{50};
+  std::string pose_frame_id{"map"};
+  double pose_additional_delay{0.0};
+  double pose_gate_dist{10000.0};
+  size_t pose_smoothing_steps{5};
+  size_t max_pose_queue_size{5};
+  double twist_additional_delay{0.0};
+  double twist_gate_dist{10000.0};
+  size_t twist_smoothing_steps{2};
+  size_t max_twist_queue_size{5};
+  double proc_stddev_vx_c{10.0};    //!< @brief  vx process noise
+  double proc_stddev_wz_c{5.0};     //!< @brief  wz process noise
+  double proc_stddev_yaw_c{0.005};  //!< @brief  yaw process noise
+  double z_filter_proc_dev{1.0};
+  double roll_filter_proc_dev{0.01};
+  double pitch_filter_proc_dev{0.01};
+  size_t pose_no_update_count_threshold_warn{0};
+  size_t pose_no_update_count_threshold_error{0};
+  size_t twist_no_update_count_threshold_warn{0};
+  size_t twist_no_update_count_threshold_error{0};
+  double ellipse_scale{0.0};
+  double error_ellipse_size{0.0};
+  double warn_ellipse_size{0.0};
+  double error_ellipse_size_lateral_direction{0.0};
+  double warn_ellipse_size_lateral_direction{0.0};
+  double diagnostics_publish_frequency{0.0};  //!< @brief diagnostics publish frequency [Hz]
+  double diagnostics_publish_period{0.0};     //!< @brief diagnostics publish period [s]
 
-  const double threshold_observable_velocity_mps;
+  double threshold_observable_velocity_mps{0.0};
 };
 
 }  // namespace autoware::ekf_localizer
