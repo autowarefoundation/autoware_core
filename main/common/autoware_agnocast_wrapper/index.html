@@ -7670,14 +7670,12 @@
 <p>Currently supported APIs:</p>
 <ul>
 <li>Publisher / Subscription / PollingSubscriber</li>
+<li>Timer (<code>create_wall_timer</code>, free <code>create_timer()</code>, free <code>set_period()</code>)</li>
 <li>Parameters</li>
 <li>Logger, Clock</li>
 <li>Callback groups</li>
 <li>Node interfaces (partial: <code>get_node_base_interface()</code>, <code>get_node_topics_interface()</code>, <code>get_node_parameters_interface()</code>)</li>
 </ul>
-<blockquote>
-<p><strong>Note:</strong> Timer (<code>create_wall_timer</code>, <code>create_timer</code>) is not yet supported and will be added in a future update.</p>
-</blockquote>
 <p>```cpp</p>
 <h1 id="include">include <autoware agnocast_wrapper node.hpp><a class="headerlink" href="#include" title="Permanent link">#</a></autoware></h1>
 <p>class MyNode : public autoware::agnocast_wrapper::Node
@@ -7688,13 +7686,26 @@ public:
   {
     pub_ = create_publisher<std_msgs::msg::string>("output", 10);
     sub_ = create_subscription<std_msgs::msg::string>(
-      "input", 10, <a href="std::unique_ptr&lt;const%20std_msgs::msg::String&gt;%20msg">this</a> { /<em> ... </em>/ });
-  }</std_msgs::msg::string></std_msgs::msg::string></p>
+      "input", 10, <a href="std::unique_ptr&lt;const%20std_msgs::msg::String&gt;%20msg">this</a> { /<em> ... </em>/ });</std_msgs::msg::string></std_msgs::msg::string></p>
+<div class="codehilite"><pre><span></span><code>timer_ = create_wall_timer(
+  std::chrono::milliseconds(100), [this]() { /* ... */ });
+</code></pre></div>
+
+<p>}</p>
 <p>private:
   autoware::agnocast_wrapper::Publisher<std_msgs::msg::string>::SharedPtr pub_;
   autoware::agnocast_wrapper::Subscription<std_msgs::msg::string>::SharedPtr sub_;
+  autoware::agnocast_wrapper::Timer::SharedPtr timer_;
 };
 ```</std_msgs::msg::string></std_msgs::msg::string></p>
+<h4 id="timer-notes">Timer notes<a class="headerlink" href="#timer-notes" title="Permanent link">#</a></h4>
+<p><code>create_timer()</code> is provided as a <strong>free function</strong> (not a member) because <code>rclcpp::Node::create_timer</code> was added in Jazzy and does not exist on Humble. The free form is portable across both:</p>
+<p><code>cpp
+timer_ = autoware::agnocast_wrapper::create_timer(
+  this, this-&gt;get_clock(), rclcpp::Duration::from_seconds(0.1), [this]() { /* ... */ });</code></p>
+<p><code>set_period()</code> is likewise a <strong>free function</strong>. <code>rclcpp::TimerBase</code> has no <code>set_period</code> member, so the free form is the only portable spelling across both builds:</p>
+<p><code>cpp
+autoware::agnocast_wrapper::set_period(timer_, std::chrono::milliseconds(200));</code></p>
 <p>To use the Node wrapper in your package, add the following to your <code>CMakeLists.txt</code>:</p>
 <p><code>cmake
 find_package(autoware_agnocast_wrapper REQUIRED)
@@ -8051,6 +8062,57 @@ public:
 </tr>
 </tbody>
 </table>
+<h2 id="diagnostic-updater-support">Diagnostic Updater Support<a class="headerlink" href="#diagnostic-updater-support" title="Permanent link">#</a></h2>
+<p>This package provides a wrapper <code>autoware::agnocast_wrapper::diagnostic_updater::Updater</code> for <code>diagnostic_updater::Updater</code>. The wrapper transparently switches between <code>diagnostic_updater::Updater</code> and <code>agnocast::Updater</code> at runtime, so nodes inheriting from <code>autoware::agnocast_wrapper::Node</code> can use the same idiom in both modes.</p>
+<p>The <code>diagnostic_updater.period</code> and <code>diagnostic_updater.use_fqn</code> parameters are declared identically in both modes, so behavior remains consistent.</p>
+<h3 id="current-limitations_1">Current limitations<a class="headerlink" href="#current-limitations_1" title="Permanent link">#</a></h3>
+<ul>
+<li>Only the <code>Updater(autoware::agnocast_wrapper::Node*, double)</code> constructor is supported. The upstream interface-pointer constructor and <code>Updater(NodeT, double)</code> template overload are intentionally hidden in both modes, so source code stays portable between agnocast-enabled and disabled builds.</li>
+<li>The wrapper does <strong>not</strong> inherit from <code>DiagnosticTaskVector</code>, so <code>getTasks()</code> is not available.</li>
+<li>The wrapper is non-copyable and non-movable; <code>verbose_</code> is bound by reference to the underlying impl.</li>
+</ul>
+<h3 id="usage-example_2">Usage example<a class="headerlink" href="#usage-example_2" title="Permanent link">#</a></h3>
+<p>```cpp</p>
+<h1 id="include_5">include <autoware agnocast_wrapper diagnostic_updater.hpp><a class="headerlink" href="#include_5" title="Permanent link">#</a></autoware></h1>
+<p>class MyNode : public autoware::agnocast_wrapper::Node
+{
+public:
+  explicit MyNode(const rclcpp::NodeOptions &amp; options)
+  : Node("my_node", options), updater_(this)
+  {
+    updater_.setHardwareID("my_hardware");
+    updater_.add("status", this, &amp;MyNode::diagnose);
+  }</p>
+<p>private:
+  void diagnose(diagnostic_updater::DiagnosticStatusWrapper &amp; stat) {
+    stat.summary(diagnostic_msgs::msg::DiagnosticStatus::OK, "running");
+  }</p>
+<p>autoware::agnocast_wrapper::diagnostic_updater::Updater updater_;
+};
+```</p>
+<h3 id="migration-guide-from-diagnostic_updaterupdater">Migration guide (from <code>diagnostic_updater::Updater</code>)<a class="headerlink" href="#migration-guide-from-diagnostic_updaterupdater" title="Permanent link">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Before</th>
+<th>After</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>#include &lt;diagnostic_updater/diagnostic_updater.hpp&gt;</code></td>
+<td><code>#include &lt;autoware/agnocast_wrapper/diagnostic_updater.hpp&gt;</code></td>
+</tr>
+<tr>
+<td><code>diagnostic_updater::Updater updater_{this};</code></td>
+<td><code>autoware::agnocast_wrapper::diagnostic_updater::Updater updater_{this};</code></td>
+</tr>
+</tbody>
+</table>
+<p>The <code>add()</code> / <code>removeByName()</code> / <code>setHardwareID()</code> / <code>setHardwareIDf()</code> / <code>broadcast()</code> / <code>force_update()</code> / <code>setPeriod()</code> / <code>getPeriod()</code> APIs and the <code>verbose_</code> field behave the same as the upstream <code>diagnostic_updater::Updater</code>.</p>
+<blockquote>
+<p><strong>Note:</strong> <code>DiagnosticTask</code> subclasses (e.g. <code>FrequencyStatus</code>, <code>TimeStampStatus</code>, <code>Heartbeat</code>) defined in <code>diagnostic_updater</code> can be added via <code>updater_.add(task)</code> unchanged.</p>
+</blockquote>
 <h2 id="how-to-enabledisable-agnocast-on-build">How to Enable/Disable Agnocast on Build<a class="headerlink" href="#how-to-enabledisable-agnocast-on-build" title="Permanent link">#</a></h2>
 <p>To build Autoware <strong>with</strong> Agnocast:</p>
 <p><code>bash
