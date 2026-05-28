@@ -22,12 +22,15 @@
 #include <message_filters/sync_policies/exact_time.h>
 #include <message_filters/synchronizer.h>
 
+#include <algorithm>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <type_traits>
 #include <utility>
 #include <variant>
+#include <vector>
 
 #ifdef USE_AGNOCAST_ENABLED
 
@@ -132,35 +135,43 @@ public:
                          std::in_place_type<RclcppSync>, RclcppPolicy(queue_size),
                          sub0.rclcpp_subscriber(), sub1.rclcpp_subscriber()))
   {
+    // Register the per-backend adapter exactly once on the underlying synchronizer.
+    // User-supplied callables are accumulated in callbacks_ and invoked from the adapter
+    // (see the agnocast/rclcpp adapters below).
+    std::visit(
+      [this](auto & sync) {
+        using SyncT = std::decay_t<decltype(sync)>;
+        if constexpr (std::is_same_v<SyncT, AgnocastSync>) {
+          sync.registerCallback(&PolicySynchronizer::agnocastCallbackAdapter, this);
+        } else {
+          sync.registerCallback(&PolicySynchronizer::rclcppCallbackAdapter, this);
+        }
+      },
+      sync_);
   }
 
   // Non-copyable and non-movable: the internal synchronizer holds `this` (registered
   // via the adapter callback), so the wrapper's address must remain stable for the
-  // lifetime of the internal synchronizer. Spelled out (Rule of 5) for readability and
-  // future-proofing — declaring just the move ops implicitly deletes the copy ops, but
-  // that fact is non-obvious to readers and brittle under later edits.
+  // lifetime of the internal synchronizer.
   ~PolicySynchronizer() = default;
   PolicySynchronizer(const PolicySynchronizer &) = delete;
   PolicySynchronizer & operator=(const PolicySynchronizer &) = delete;
   PolicySynchronizer(PolicySynchronizer &&) = delete;
   PolicySynchronizer & operator=(PolicySynchronizer &&) = delete;
 
-  /// @brief Register a callable invoked on each matching tuple. Mirrors the four
+  /// @brief Register a callable for each matching tuple. Mirrors the four upstream
   ///        `::message_filters::Synchronizer::registerCallback` overloads (free callable
-  ///        or member-function-pointer + instance; const and non-const reference).
+  ///        or member-fn-ptr + instance; const and non-const).
   ///
-  /// Callable signature: `void(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M0) &,
-  ///                           const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M1) &)`.
-  /// Returns a `::message_filters::Connection`; call `.disconnect()` to stop callbacks.
-  /// The returned Connection is NOT RAII — it must be explicitly disconnected; letting
-  /// it go out of scope does not unregister.
+  /// Signature: `void(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M0) &,
+  ///                  const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M1) &)`.
+  /// Returns `::message_filters::Connection` whose `.disconnect()` removes THIS callable
+  /// only (not RAII — scope exit does NOT unregister).
   ///
-  /// @note Repeated calls overwrite the stored callable; the same Connection is returned
-  ///       each time (only one callable active at a time).
-  /// @note Not thread-safe: registerCallback assigns the stored callable without
-  ///       synchronization, so it must not race with callback invocation from the
-  ///       executor. Register before spinning, or hold an external lock if you need
-  ///       to swap callbacks at runtime.
+  /// @note Multiple callables can be registered; all fire on each matching tuple, in
+  ///       registration order. Mirrors upstream signal9 semantics.
+  /// @note The returned Connection captures `this`; do not invoke `.disconnect()` after
+  ///       this Synchronizer has been destroyed.
   template <class C>
   ::message_filters::Connection registerCallback(C & callback)
   {
@@ -186,7 +197,7 @@ public:
   }
 
 private:
-  Callback stored_callback_;
+  using CallbackEntry = std::shared_ptr<Callback>;
 
   using RclcppSync = ::message_filters::Synchronizer<RclcppPolicy>;
   using AgnocastSync = agnocast::message_filters::Synchronizer<AgnocastPolicy>;
@@ -202,29 +213,39 @@ private:
 
   ::message_filters::Connection registerCallbackInternal(Callback callback)
   {
-    stored_callback_ = std::move(callback);
-    if (!adapter_registered_) {
-      adapter_connection_ = std::visit(
-        [this](auto & sync) -> ::message_filters::Connection {
-          using SyncT = std::decay_t<decltype(sync)>;
-          if constexpr (std::is_same_v<SyncT, AgnocastSync>) {
-            return sync.registerCallback(&PolicySynchronizer::agnocastCallbackAdapter, this);
-          } else {
-            return sync.registerCallback(&PolicySynchronizer::rclcppCallbackAdapter, this);
-          }
-        },
-        sync_);
-      adapter_registered_ = true;
+    auto entry = std::make_shared<Callback>(std::move(callback));
+    {
+      std::lock_guard<std::mutex> lock(callbacks_mutex_);
+      callbacks_.push_back(entry);
     }
-    return adapter_connection_;
+    // Bind a remove function tied to this specific entry. `this` is captured; the
+    // Connection must not outlive the Synchronizer (mirrors upstream signal9 semantics).
+    return ::message_filters::Connection(
+      ::message_filters::Connection::VoidDisconnectFunction(
+        [this, entry]() { this->removeCallback(entry); }));
+  }
+
+  void removeCallback(const CallbackEntry & entry)
+  {
+    std::lock_guard<std::mutex> lock(callbacks_mutex_);
+    auto it = std::find(callbacks_.begin(), callbacks_.end(), entry);
+    if (it != callbacks_.end()) {
+      callbacks_.erase(it);
+    }
+  }
+
+  // Snapshot the current callback list under lock, then invoke outside the lock so that
+  // user callbacks may freely call registerCallback / disconnect without deadlocking on
+  // callbacks_mutex_.
+  std::vector<CallbackEntry> snapshotCallbacks()
+  {
+    std::lock_guard<std::mutex> lock(callbacks_mutex_);
+    return callbacks_;
   }
 
   using M0Event = agnocast::message_filters::MessageEvent<const M0>;
   using M1Event = agnocast::message_filters::MessageEvent<const M1>;
 
-  // stored_callback_ is guaranteed non-empty here: registerCallbackInternal assigns it
-  // before performing the (one-time) adapter registration on the underlying synchronizer,
-  // so this adapter cannot fire without a stored callable. No emptiness guard needed.
   void agnocastCallbackAdapter(const M0Event & e0, const M1Event & e1)
   {
     // Wrap ipc_shared_ptr in message_ptr (copies ipc_shared_ptr refcount, not data)
@@ -232,7 +253,9 @@ private:
       AUTOWARE_MESSAGE_CONST_SHARED_PTR(M0)(agnocast::ipc_shared_ptr<const M0>(e0.getMessage()));
     const auto p1 =
       AUTOWARE_MESSAGE_CONST_SHARED_PTR(M1)(agnocast::ipc_shared_ptr<const M1>(e1.getMessage()));
-    stored_callback_(p0, p1);
+    for (const auto & entry : snapshotCallbacks()) {
+      (*entry)(p0, p1);
+    }
   }
 
   void rclcppCallbackAdapter(
@@ -240,11 +263,13 @@ private:
   {
     const auto p0 = AUTOWARE_MESSAGE_CONST_SHARED_PTR(M0)(std::shared_ptr<const M0>(m0));
     const auto p1 = AUTOWARE_MESSAGE_CONST_SHARED_PTR(M1)(std::shared_ptr<const M1>(m1));
-    stored_callback_(p0, p1);
+    for (const auto & entry : snapshotCallbacks()) {
+      (*entry)(p0, p1);
+    }
   }
 
-  bool adapter_registered_ = false;
-  ::message_filters::Connection adapter_connection_;
+  std::mutex callbacks_mutex_;
+  std::vector<CallbackEntry> callbacks_;
   std::variant<RclcppSync, AgnocastSync> sync_;
 };
 
