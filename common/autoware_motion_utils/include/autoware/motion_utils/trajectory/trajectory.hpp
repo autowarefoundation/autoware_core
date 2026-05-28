@@ -432,20 +432,35 @@ double calcLongitudinalOffsetToSegment(
     return std::nan("");
   }
 
-  const auto overlap_removed_points = removeOverlapPoints(points, seg_idx);
-
   if (throw_exception) {
-    validateNonEmpty(overlap_removed_points);
+    validateNonEmpty(points);
   } else {
     try {
-      validateNonEmpty(overlap_removed_points);
+      validateNonEmpty(points);
     } catch (const std::exception & e) {
       RCLCPP_DEBUG(get_logger(), "%s", e.what());
       return std::nan("");
     }
   }
 
-  if (seg_idx >= overlap_removed_points.size() - 1) {
+  // Equivalent to removeOverlapPoints(points, seg_idx) but allocation-free: indices up to seg_idx
+  // are kept as-is, and the back point is the first point after seg_idx that is not coincident
+  // with the point at seg_idx (the previously kept point). Only the two points at the resulting
+  // overlap-removed indices seg_idx and seg_idx + 1 are needed here.
+  const auto p_front = autoware_utils_geometry::get_point(points.at(seg_idx));
+  constexpr double overlap_eps = 1.0E-08;
+  size_t back_idx = seg_idx + 1;
+  while (back_idx < points.size()) {
+    const auto candidate = autoware_utils_geometry::get_point(points.at(back_idx));
+    if (
+      std::abs(p_front.x - candidate.x) >= overlap_eps ||
+      std::abs(p_front.y - candidate.y) >= overlap_eps) {
+      break;
+    }
+    ++back_idx;
+  }
+
+  if (back_idx >= points.size()) {
     const std::string error_message(
       "[autoware_motion_utils] " + std::string(__func__) +
       ": Longitudinal offset calculation is not supported for the same points.");
@@ -460,8 +475,7 @@ double calcLongitudinalOffsetToSegment(
     return std::nan("");
   }
 
-  const auto p_front = autoware_utils_geometry::get_point(overlap_removed_points.at(seg_idx));
-  const auto p_back = autoware_utils_geometry::get_point(overlap_removed_points.at(seg_idx + 1));
+  const auto p_back = autoware_utils_geometry::get_point(points.at(back_idx));
 
   const Eigen::Vector3d segment_vec{p_back.x - p_front.x, p_back.y - p_front.y, 0};
   const Eigen::Vector3d target_vec{p_target.x - p_front.x, p_target.y - p_front.y, 0};
@@ -578,6 +592,91 @@ findNearestSegmentIndex<std::vector<autoware_planning_msgs::msg::TrajectoryPoint
   const geometry_msgs::msg::Pose & pose, const double max_dist = std::numeric_limits<double>::max(),
   const double max_yaw = std::numeric_limits<double>::max());
 
+namespace detail
+{
+/**
+ * @brief result of an allocation-free walk that mirrors removeOverlapPoints(points, 0) and locates
+ * the two original-container indices used by calcLateralOffset.
+ */
+struct OverlapRemovedLateralIndices
+{
+  size_t removed_size{0};  //!< number of points after overlap removal
+  size_t front_orig_idx{0};
+  size_t back_orig_idx{0};
+};
+
+/**
+ * @brief Single forward pass equivalent to removeOverlapPoints(points, 0) that returns the
+ * overlap-removed size and the original-container indices that calcLateralOffset would index with
+ * (p_front_idx = min(seg_idx, removed_size - 2), p_back_idx = p_front_idx + 1). Allocation-free.
+ */
+template <class T>
+OverlapRemovedLateralIndices computeOverlapRemovedLateralIndices(const T & points, size_t seg_idx)
+{
+  OverlapRemovedLateralIndices result;
+  if (points.empty()) {
+    return result;
+  }
+
+  constexpr double overlap_eps = 1.0E-08;
+
+  // Index 0 is always kept (start_idx = 0), mirroring removeOverlapPoints.
+  size_t kept_count = 1;
+  size_t last_kept_orig = 0;
+  size_t prev_kept_orig = 0;
+  size_t recorded_front_orig = 0;
+  size_t recorded_back_orig = 0;
+  // Initialize the recorded indices for kept positions 0 and 1 if they are the requested ones.
+  if (seg_idx == 0) {
+    recorded_front_orig = 0;
+  }
+
+  // Cache the last-kept point's coordinates so that the inner loop does not re-fetch
+  // points.at(last_kept_orig) on every iteration (it only changes when a new point is kept).
+  const auto last_kept_p = autoware_utils_geometry::get_point(points.at(last_kept_orig));
+  double last_kept_x = last_kept_p.x;
+  double last_kept_y = last_kept_p.y;
+
+  for (size_t i = 1; i < points.size(); ++i) {
+    const auto curr_p = autoware_utils_geometry::get_point(points.at(i));
+    if (
+      std::abs(last_kept_x - curr_p.x) < overlap_eps &&
+      std::abs(last_kept_y - curr_p.y) < overlap_eps) {
+      continue;
+    }
+    prev_kept_orig = last_kept_orig;
+    last_kept_orig = i;
+    last_kept_x = curr_p.x;
+    last_kept_y = curr_p.y;
+    const size_t kept_pos = kept_count;  // dedup position of this newly kept point
+    ++kept_count;
+    if (kept_pos == seg_idx) {
+      recorded_front_orig = i;
+    }
+    if (kept_pos == seg_idx + 1) {
+      recorded_back_orig = i;
+    }
+  }
+
+  result.removed_size = kept_count;
+  if (kept_count == 1) {
+    return result;
+  }
+
+  const size_t p_indices = kept_count - 2;
+  if (p_indices > seg_idx) {
+    // p_front_idx == seg_idx, p_back_idx == seg_idx + 1 -> use recorded indices.
+    result.front_orig_idx = recorded_front_orig;
+    result.back_orig_idx = recorded_back_orig;
+  } else {
+    // p_front_idx clamped to p_indices == removed_size - 2 -> the last two kept points.
+    result.front_orig_idx = prev_kept_orig;
+    result.back_orig_idx = last_kept_orig;
+  }
+  return result;
+}
+}  // namespace detail
+
 /**
  * @brief calculate lateral offset from p_target (length from p_target to trajectory) using given
  * segment index. Segment is straight path between two continuous points of trajectory.
@@ -592,13 +691,11 @@ double calcLateralOffset(
   const T & points, const geometry_msgs::msg::Point & p_target, const size_t seg_idx,
   const bool throw_exception = false)
 {
-  const auto overlap_removed_points = removeOverlapPoints(points, 0);
-
   if (throw_exception) {
-    validateNonEmpty(overlap_removed_points);
+    validateNonEmpty(points);
   } else {
     try {
-      validateNonEmpty(overlap_removed_points);
+      validateNonEmpty(points);
     } catch (const std::exception & e) {
       RCLCPP_DEBUG(
         get_logger(),
@@ -608,7 +705,11 @@ double calcLateralOffset(
     }
   }
 
-  if (overlap_removed_points.size() == 1) {
+  // Allocation-free equivalent of removeOverlapPoints(points, 0) restricted to the two indices that
+  // are actually read below.
+  const auto indices = detail::computeOverlapRemovedLateralIndices(points, seg_idx);
+
+  if (indices.removed_size == 1) {
     const std::string error_message(
       "[autoware_motion_utils] " + std::string(__func__) +
       ": Lateral offset calculation is not supported for the same points.");
@@ -623,12 +724,8 @@ double calcLateralOffset(
     return std::nan("");
   }
 
-  const auto p_indices = overlap_removed_points.size() - 2;
-  const auto p_front_idx = (p_indices > seg_idx) ? seg_idx : p_indices;
-  const auto p_back_idx = p_front_idx + 1;
-
-  const auto p_front = autoware_utils_geometry::get_point(overlap_removed_points.at(p_front_idx));
-  const auto p_back = autoware_utils_geometry::get_point(overlap_removed_points.at(p_back_idx));
+  const auto p_front = autoware_utils_geometry::get_point(points.at(indices.front_orig_idx));
+  const auto p_back = autoware_utils_geometry::get_point(points.at(indices.back_orig_idx));
 
   const Eigen::Vector3d segment_vec{p_back.x - p_front.x, p_back.y - p_front.y, 0.0};
   const Eigen::Vector3d target_vec{p_target.x - p_front.x, p_target.y - p_front.y, 0.0};
@@ -773,9 +870,13 @@ template <class T>
     return {};
   }
 
-  if (src_idx + 1 > dst_idx) {
-    auto copied = points;
-    std::reverse(copied.begin(), copied.end());
+  // Zero-length range: the partial-sum sequence is a single cumulative sum of 0.0. Handle this
+  // explicitly so that src_idx == dst_idx does not recurse into itself (infinite recursion).
+  if (src_idx == dst_idx) {
+    return {0.0};
+  }
+
+  if (src_idx > dst_idx) {
     return calcSignedArcLengthPartialSum(points, dst_idx, src_idx);
   }
 
