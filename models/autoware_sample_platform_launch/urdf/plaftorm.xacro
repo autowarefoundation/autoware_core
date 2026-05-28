@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<robot name="vehicle" xmlns:xacro="http://ros.org/wiki/xacro">
+  <xacro:include filename="$(find autoware_sample_platform_launch)/urdf/vehicle.xacro"/>
+  <xacro:include filename="$(find autoware_sample_platform_launch)/urdf/sensors.xacro"/>
+</robot>
