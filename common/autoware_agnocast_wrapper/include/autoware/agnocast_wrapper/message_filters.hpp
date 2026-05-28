@@ -160,7 +160,9 @@ public:
   ///       is delegated to the underlying rclcpp/agnocast signal9, so ordering and
   ///       concurrency semantics match upstream.
   /// @note The returned Connection captures `this`; do not invoke `.disconnect()` after
-  ///       this Synchronizer has been destroyed.
+  ///       this Synchronizer has been destroyed. Mirrors upstream
+  ///       `::message_filters::Synchronizer`, whose Connection also captures the inner
+  ///       `Signal9*` and has the same lifetime contract.
   template <class C>
   ::message_filters::Connection registerCallback(C & callback)
   {
