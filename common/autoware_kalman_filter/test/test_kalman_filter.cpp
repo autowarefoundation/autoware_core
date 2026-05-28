@@ -280,6 +280,22 @@ TEST(kalman_filter, update_matches_closed_form_with_correlated_covariance)
   EXPECT_TRUE(p_out.isApprox(p_expected, 1e-10));
 }
 
+TEST(kalman_filter, update_rejects_non_positive_definite_innovation_covariance)
+{
+  // A negative-definite measurement covariance R makes the innovation covariance
+  // S = R + C P C^T non-positive-definite. Such an update is invalid and must be rejected
+  // to avoid corrupting the state, rather than silently applying a meaningless gain.
+  KalmanFilter kf;
+  const Eigen::MatrixXd x = Eigen::MatrixXd::Zero(2, 1);
+  const Eigen::MatrixXd p = Eigen::MatrixXd::Identity(2, 2);
+  ASSERT_TRUE(kf.init(x, p));
+
+  const Eigen::MatrixXd y = Eigen::MatrixXd::Zero(2, 1);
+  const Eigen::MatrixXd c = Eigen::MatrixXd::Identity(2, 2);
+  const Eigen::MatrixXd r = -2.0 * Eigen::MatrixXd::Identity(2, 2);  // S = -I, non-PD
+  EXPECT_FALSE(kf.update(y, c, r));
+}
+
 int main(int argc, char * argv[])
 {
   testing::InitGoogleTest(&argc, argv);

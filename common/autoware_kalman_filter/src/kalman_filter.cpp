@@ -14,6 +14,8 @@
 
 #include "autoware/kalman_filter/kalman_filter.hpp"
 
+#include <Eigen/Cholesky>
+
 namespace autoware::kalman_filter
 {
 KalmanFilter::KalmanFilter(
@@ -95,7 +97,11 @@ bool KalmanFilter::predict(
     return false;
   }
   x_ = x_next;
-  P_ = A * P_ * A.transpose() + Q;
+  // P_ = A P_ A^T + Q, evaluated through a temporary so noalias() can drop the intermediate
+  // Eigen products in this hot per-cycle path.
+  const Eigen::MatrixXd AP = A * P_;
+  P_.noalias() = AP * A.transpose();
+  P_ += Q;
   return true;
 }
 bool KalmanFilter::predict(const Eigen::MatrixXd & x_next, const Eigen::MatrixXd & A)
@@ -128,14 +134,28 @@ bool KalmanFilter::update(
     return false;
   }
   const Eigen::MatrixXd PCT = P_ * C.transpose();
-  const Eigen::MatrixXd K = PCT * ((R + C * PCT).inverse());
+
+  // Innovation covariance S = C P C^T + R.
+  Eigen::MatrixXd S = R;
+  S.noalias() += C * PCT;
+
+  // Compute the Kalman gain K = PCT * S^-1 via a Cholesky (LLT) solve rather than an explicit
+  // inverse: it is faster and numerically more stable, and a failed decomposition rejects updates
+  // whose innovation covariance is not positive definite (which would otherwise corrupt the state).
+  // S is symmetric, so K^T solves S * K^T = PCT^T.
+  const Eigen::LLT<Eigen::MatrixXd> llt_of_s(S);
+  if (llt_of_s.info() != Eigen::Success) {
+    return false;
+  }
+  const Eigen::MatrixXd K = llt_of_s.solve(PCT.transpose()).transpose();
 
   if (K.array().isNaN().any() || K.array().isInf().any()) {
     return false;
   }
 
-  x_ = x_ + K * (y - y_pred);
-  P_ = P_ - K * (C * P_);
+  x_.noalias() += K * (y - y_pred);
+  const Eigen::MatrixXd CP = C * P_;
+  P_.noalias() -= K * CP;
   return true;
 }
 
