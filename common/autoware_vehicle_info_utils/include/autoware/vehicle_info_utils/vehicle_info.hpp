@@ -20,6 +20,7 @@
 #include "geometry_msgs/msg/pose.hpp"
 
 #include <optional>
+#include <utility>
 
 namespace autoware::vehicle_info_utils
 {
@@ -101,6 +102,20 @@ struct VehicleInfo
   [[nodiscard]] double calcMaxCurvature() const;
   [[nodiscard]] double calcCurvatureFromSteerAngle(const double steer_angle) const;
   [[nodiscard]] double calcSteerAngleFromCurvature(const double curvature) const;
+
+  std::pair<double, double> calcMaxMinDimension() const;
+
+  static VehicleInfo createVehicleInfoForVehicleShape(
+    double length, double width, double base_length, double max_steering, double base2back)
+  {
+    VehicleInfo vehicle_info;
+    vehicle_info.vehicle_length_m = length;
+    vehicle_info.vehicle_width_m = width;
+    vehicle_info.wheel_base_m = base_length;
+    vehicle_info.max_steer_angle_rad = max_steering;
+    vehicle_info.rear_overhang_m = base2back;
+    return vehicle_info;
+  }
 };
 
 /// Create vehicle info from base parameters
@@ -110,6 +125,8 @@ struct VehicleInfo
   const double left_overhang_m, const double right_overhang_m, const double vehicle_height_m,
   const double max_steer_angle_rad);
 
+// Extend vehicle_info with margin referring to VehicleShape
+VehicleInfo extendVehicleInfo(const VehicleInfo & input_vehicle_info, const double margin = 0.0);
 }  // namespace autoware::vehicle_info_utils
 
 #endif  // AUTOWARE__VEHICLE_INFO_UTILS__VEHICLE_INFO_HPP_

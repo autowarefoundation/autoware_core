@@ -19,6 +19,7 @@
 
 #include <message_filters/subscriber.h>
 #include <message_filters/sync_policies/approximate_time.h>
+#include <message_filters/sync_policies/exact_time.h>
 #include <message_filters/synchronizer.h>
 
 #include <functional>
@@ -32,6 +33,7 @@
 
 #include <agnocast/message_filters/subscriber.hpp>
 #include <agnocast/message_filters/sync_policies/approximate_time.hpp>
+#include <agnocast/message_filters/sync_policies/exact_time.hpp>
 #include <agnocast/message_filters/synchronizer.hpp>
 
 namespace autoware::agnocast_wrapper
@@ -88,7 +90,8 @@ public:
     std::visit([](auto & sub) { sub.unsubscribe(); }, sub_);
   }
 
-  // Internal API: used by ApproximateTimeSynchronizer. Not intended for downstream use.
+  // Internal API: used by ApproximateTimeSynchronizer / ExactTimeSynchronizer.
+  // Not intended for downstream use.
   RclcppSubscriber & rclcpp_subscriber() { return std::get<RclcppSubscriber>(sub_); }
   AgnocastSubscriber & agnocast_subscriber() { return std::get<AgnocastSubscriber>(sub_); }
 
@@ -96,47 +99,30 @@ private:
   std::variant<RclcppSubscriber, AgnocastSubscriber> sub_;
 };
 
-/// @brief Wrapper ApproximateTime Synchronizer that switches between
-///        rclcpp and agnocast message_filters at runtime.
+/// @brief Common synchronizer wrapper parameterized by the underlying policy types.
+///        Use through ApproximateTimeSynchronizer or ExactTimeSynchronizer.
 ///
-/// The callback receives `(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M0)&,
-///                         const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M1)&)`.
-/// In agnocast mode, message_ptrs are created from the ipc_shared_ptrs,
-/// preserving zero-copy semantics during the callback lifetime.
+/// At construction, use_agnocast() selects which backend synchronizer to instantiate
+/// inside the internal std::variant; the choice is fixed for the wrapper's lifetime
+/// and all subsequent calls (e.g. registerCallback) are dispatched via std::visit to
+/// the active backend. To add a third policy, instantiate this template with the
+/// corresponding rclcpp and agnocast policy types.
 ///
-/// @note Current limitations:
-///   - Only ApproximateTime synchronization policy is supported (no ExactTime).
-///   - Maximum 2 message types per Synchronizer.
-///   - connectInput() is not supported; pass Subscriber references at construction time.
-///
-/// @code
-/// using namespace autoware::agnocast_wrapper::message_filters;
-///
-/// Subscriber<sensor_msgs::msg::Image> image_sub;
-/// Subscriber<sensor_msgs::msg::CameraInfo> info_sub;
-/// image_sub.subscribe(node, "/camera/image", rmw_qos_profile_sensor_data);
-/// info_sub.subscribe(node, "/camera/info", rmw_qos_profile_sensor_data);
-///
-/// using Policy = sync_policies::ApproximateTime<
-///     sensor_msgs::msg::Image, sensor_msgs::msg::CameraInfo>;
-/// auto sync = std::make_shared<Synchronizer<Policy>>(Policy(10), image_sub, info_sub);
-///
-/// sync->registerCallback(
-///   std::bind(&MyNode::onSynchronized, this, std::placeholders::_1, std::placeholders::_2));
-///
-/// // Where the callback method signature is:
-/// // void onSynchronized(
-/// //   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::Image) & img,
-/// //   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::CameraInfo) & info);
-/// @endcode
-template <typename M0, typename M1>
-class ApproximateTimeSynchronizer
+/// @tparam RclcppPolicy   ::message_filters sync policy type used when running on rclcpp
+///                        (e.g. ::message_filters::sync_policies::ApproximateTime<M0, M1>).
+/// @tparam AgnocastPolicy agnocast::message_filters sync policy type used when running on
+///                        agnocast (e.g. agnocast::message_filters::sync_policies::ExactTime<M0,
+///                        M1>).
+/// @tparam M0             First message type to synchronize.
+/// @tparam M1             Second message type to synchronize.
+template <typename RclcppPolicy, typename AgnocastPolicy, typename M0, typename M1>
+class PolicySynchronizer
 {
 public:
   using Callback = std::function<void(
     const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M0) &, const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M1) &)>;
 
-  ApproximateTimeSynchronizer(uint32_t queue_size, Subscriber<M0> & sub0, Subscriber<M1> & sub1)
+  PolicySynchronizer(uint32_t queue_size, Subscriber<M0> & sub0, Subscriber<M1> & sub1)
   : sync_(
       use_agnocast() ? decltype(sync_)(
                          std::in_place_type<AgnocastSync>, AgnocastPolicy(queue_size),
@@ -149,8 +135,8 @@ public:
 
   // Non-movable: registerCallback() passes `this` to the internal synchronizer, so the
   // wrapper's address must remain stable for the lifetime of the internal synchronizer.
-  ApproximateTimeSynchronizer(ApproximateTimeSynchronizer &&) = delete;
-  ApproximateTimeSynchronizer & operator=(ApproximateTimeSynchronizer &&) = delete;
+  PolicySynchronizer(PolicySynchronizer &&) = delete;
+  PolicySynchronizer & operator=(PolicySynchronizer &&) = delete;
 
   void registerCallback(Callback callback)
   {
@@ -159,9 +145,9 @@ public:
       [this](auto & sync) {
         using SyncT = std::decay_t<decltype(sync)>;
         if constexpr (std::is_same_v<SyncT, AgnocastSync>) {
-          sync.registerCallback(&ApproximateTimeSynchronizer::agnocastCallbackAdapter, this);
+          sync.registerCallback(&PolicySynchronizer::agnocastCallbackAdapter, this);
         } else {
-          sync.registerCallback(&ApproximateTimeSynchronizer::rclcppCallbackAdapter, this);
+          sync.registerCallback(&PolicySynchronizer::rclcppCallbackAdapter, this);
         }
       },
       sync_);
@@ -191,14 +177,60 @@ private:
     stored_callback_(p0, p1);
   }
 
-  using RclcppPolicy = ::message_filters::sync_policies::ApproximateTime<M0, M1>;
   using RclcppSync = ::message_filters::Synchronizer<RclcppPolicy>;
-
-  using AgnocastPolicy = agnocast::message_filters::sync_policies::ApproximateTime<M0, M1>;
   using AgnocastSync = agnocast::message_filters::Synchronizer<AgnocastPolicy>;
 
   std::variant<RclcppSync, AgnocastSync> sync_;
 };
+
+/// @brief Wrapper ApproximateTime Synchronizer that switches between
+///        rclcpp and agnocast message_filters at runtime.
+///
+/// The callback receives `(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M0)&,
+///                         const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M1)&)`.
+/// In agnocast mode, message_ptrs are created from the ipc_shared_ptrs,
+/// preserving zero-copy semantics during the callback lifetime.
+///
+/// @note Current limitations:
+///   - Maximum 2 message types per Synchronizer.
+///   - connectInput() is not supported; pass Subscriber references at construction time.
+///
+/// @code
+/// using namespace autoware::agnocast_wrapper::message_filters;
+///
+/// Subscriber<sensor_msgs::msg::Image> image_sub;
+/// Subscriber<sensor_msgs::msg::CameraInfo> info_sub;
+/// image_sub.subscribe(node, "/camera/image", rmw_qos_profile_sensor_data);
+/// info_sub.subscribe(node, "/camera/info", rmw_qos_profile_sensor_data);
+///
+/// using Policy = sync_policies::ApproximateTime<
+///     sensor_msgs::msg::Image, sensor_msgs::msg::CameraInfo>;
+/// auto sync = std::make_shared<Synchronizer<Policy>>(Policy(10), image_sub, info_sub);
+///
+/// sync->registerCallback(
+///   std::bind(&MyNode::onSynchronized, this, std::placeholders::_1, std::placeholders::_2));
+///
+/// // Where the callback method signature is:
+/// // void onSynchronized(
+/// //   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::Image) & img,
+/// //   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::CameraInfo) & info);
+/// @endcode
+template <typename M0, typename M1>
+using ApproximateTimeSynchronizer = PolicySynchronizer<
+  ::message_filters::sync_policies::ApproximateTime<M0, M1>,
+  agnocast::message_filters::sync_policies::ApproximateTime<M0, M1>, M0, M1>;
+
+/// @brief Wrapper ExactTime Synchronizer mirroring ApproximateTimeSynchronizer.
+///
+/// Same callback signature and zero-copy semantics as ApproximateTimeSynchronizer;
+/// only the sync policy differs (messages must share identical timestamps).
+/// @note Subject to the same limitations as ApproximateTimeSynchronizer
+///       (max 2 message types, connectInput() not supported).
+/// @see ApproximateTimeSynchronizer for a usage example.
+template <typename M0, typename M1>
+using ExactTimeSynchronizer = PolicySynchronizer<
+  ::message_filters::sync_policies::ExactTime<M0, M1>,
+  agnocast::message_filters::sync_policies::ExactTime<M0, M1>, M0, M1>;
 
 /// @brief Policy and Synchronizer types that mirror the rclcpp message_filters API.
 ///        Allows node code to use the same pattern as rclcpp:
@@ -207,22 +239,47 @@ private:
 ///          sync = std::make_shared<Sync>(SyncPolicy(10), sub0, sub1);
 namespace sync_policies
 {
+/// @brief Wrapper-layer ApproximateTime policy tag.
+///
+/// Carries only the queue size; the underlying rclcpp/agnocast policy is selected
+/// inside Synchronizer<ApproximateTime<M0, M1>>. Distinct from
+/// ::message_filters::sync_policies::ApproximateTime and
+/// agnocast::message_filters::sync_policies::ApproximateTime.
+///
+/// @tparam M0 First message type to synchronize.
+/// @tparam M1 Second message type to synchronize.
 template <typename M0, typename M1>
 struct ApproximateTime
 {
-  uint32_t queue_size;
-  explicit ApproximateTime(uint32_t qs) : queue_size(qs) {}
+  uint32_t queue_size;  ///< Queue size forwarded to the underlying sync policy.
+  explicit ApproximateTime(uint32_t qs) noexcept : queue_size(qs) {}
+};
+
+/// @brief Wrapper-layer ExactTime policy tag.
+///
+/// Carries only the queue size; the underlying rclcpp/agnocast policy is selected
+/// inside Synchronizer<ExactTime<M0, M1>>. Distinct from
+/// ::message_filters::sync_policies::ExactTime and
+/// agnocast::message_filters::sync_policies::ExactTime.
+///
+/// @tparam M0 First message type to synchronize.
+/// @tparam M1 Second message type to synchronize.
+template <typename M0, typename M1>
+struct ExactTime
+{
+  uint32_t queue_size;  ///< Queue size forwarded to the underlying sync policy.
+  explicit ExactTime(uint32_t qs) noexcept : queue_size(qs) {}
 };
 }  // namespace sync_policies
 
-/// @brief Primary Synchronizer template — only the ApproximateTime specialization is supported.
+/// @brief Primary Synchronizer template — supports ApproximateTime and ExactTime specializations.
 template <typename Policy>
 class Synchronizer
 {
   static_assert(
     sizeof(Policy) == 0,
-    "Only sync_policies::ApproximateTime<M0, M1> is supported. "
-    "ExactTime and policies with more than 2 message types are not implemented.");
+    "Only sync_policies::ApproximateTime<M0, M1> and sync_policies::ExactTime<M0, M1> "
+    "are supported. Policies with more than 2 message types are not implemented.");
 };
 
 template <typename M0, typename M1>
@@ -231,8 +288,20 @@ class Synchronizer<sync_policies::ApproximateTime<M0, M1>>
 {
 public:
   Synchronizer(
-    sync_policies::ApproximateTime<M0, M1> policy, Subscriber<M0> & sub0, Subscriber<M1> & sub1)
+    const sync_policies::ApproximateTime<M0, M1> & policy, Subscriber<M0> & sub0,
+    Subscriber<M1> & sub1)
   : ApproximateTimeSynchronizer<M0, M1>(policy.queue_size, sub0, sub1)
+  {
+  }
+};
+
+template <typename M0, typename M1>
+class Synchronizer<sync_policies::ExactTime<M0, M1>> : public ExactTimeSynchronizer<M0, M1>
+{
+public:
+  Synchronizer(
+    const sync_policies::ExactTime<M0, M1> & policy, Subscriber<M0> & sub0, Subscriber<M1> & sub1)
+  : ExactTimeSynchronizer<M0, M1>(policy.queue_size, sub0, sub1)
   {
   }
 };
@@ -256,10 +325,16 @@ template <typename M0, typename M1>
 using ApproximateTimeSynchronizer =
   ::message_filters::Synchronizer<::message_filters::sync_policies::ApproximateTime<M0, M1>>;
 
+template <typename M0, typename M1>
+using ExactTimeSynchronizer =
+  ::message_filters::Synchronizer<::message_filters::sync_policies::ExactTime<M0, M1>>;
+
 namespace sync_policies
 {
 template <typename M0, typename M1>
 using ApproximateTime = ::message_filters::sync_policies::ApproximateTime<M0, M1>;
+template <typename M0, typename M1>
+using ExactTime = ::message_filters::sync_policies::ExactTime<M0, M1>;
 }  // namespace sync_policies
 
 template <typename Policy>
