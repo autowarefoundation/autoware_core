@@ -256,13 +256,12 @@ private:
 
     // Wrap upstream's Connection so the user's disconnect also drops our adapter entry.
     return ::message_filters::Connection(
-      ::message_filters::Connection::VoidDisconnectFunction(
-        [this, adapter, upstream_conn]() mutable {
-          upstream_conn.disconnect();
-          std::lock_guard<std::mutex> lock(adapters_mutex_);
-          adapters_.erase(
-            std::remove(adapters_.begin(), adapters_.end(), adapter), adapters_.end());
-        }));
+      ::message_filters::Connection::VoidDisconnectFunction([this, adapter,
+                                                             upstream_conn]() mutable {
+        upstream_conn.disconnect();
+        std::lock_guard<std::mutex> lock(adapters_mutex_);
+        adapters_.erase(std::remove(adapters_.begin(), adapters_.end(), adapter), adapters_.end());
+      }));
   }
 
   std::mutex adapters_mutex_;
