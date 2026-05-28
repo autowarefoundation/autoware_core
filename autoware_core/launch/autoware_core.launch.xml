@@ -8,6 +8,9 @@
   <arg name="vehicle_model" description="vehicle model name"/>
   <arg name="sensor_model" description="sensor model name"/>
 
+  <let name="vehicle_description_path" value="$(find-pkg-share $(var vehicle_model)_description)"/>
+  <let name="vehicle_info_param_file" value="$(var vehicle_description_path)/config/vehicle_info.param.yaml"/>
+
   <!-- Optional parameters -->
   <!-- Modules to be launched -->
   <arg name="launch_map" default="true" description="launch map"/>
