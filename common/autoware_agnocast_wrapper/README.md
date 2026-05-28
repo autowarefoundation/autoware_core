@@ -201,11 +201,11 @@ autoware_agnocast_wrapper_setup(target)
 
 ## Message Filters Support
 
-This package provides wrapper types for `message_filters` (`Subscriber`, `Synchronizer`, `ApproximateTimeSynchronizer`) in the `autoware::agnocast_wrapper::message_filters` namespace. These wrappers transparently switch between `::message_filters` and `agnocast::message_filters` at runtime.
+This package provides wrapper types for `message_filters` (`Subscriber`, `Synchronizer`, `ApproximateTimeSynchronizer`, `ExactTimeSynchronizer`) in the `autoware::agnocast_wrapper::message_filters` namespace. These wrappers transparently switch between `::message_filters` and `agnocast::message_filters` at runtime.
 
 ### Current limitations
 
-- Only `ApproximateTime` synchronization policy is supported (no `ExactTime`).
+- Only `ApproximateTime` and `ExactTime` synchronization policies are supported.
 - Maximum 2 message types per `Synchronizer`.
 - `connectInput()` is not supported; pass `Subscriber` references at construction time.
 
@@ -248,6 +248,53 @@ void onSynchronized(
 | `message_filters::Subscriber<M>`                          | `autoware::agnocast_wrapper::message_filters::Subscriber<M>`                          |
 | `message_filters::Synchronizer<Policy>`                   | `autoware::agnocast_wrapper::message_filters::Synchronizer<Policy>`                   |
 | `message_filters::sync_policies::ApproximateTime<M0, M1>` | `autoware::agnocast_wrapper::message_filters::sync_policies::ApproximateTime<M0, M1>` |
+| `message_filters::sync_policies::ExactTime<M0, M1>`       | `autoware::agnocast_wrapper::message_filters::sync_policies::ExactTime<M0, M1>`       |
+
+## tf2 Support
+
+This package provides wrapper types for tf2 (`TransformListener`, `TransformBroadcaster`, `StaticTransformBroadcaster`, `Buffer`) in the `autoware::agnocast_wrapper` namespace. The listener and broadcasters transparently switch between their `tf2_ros` and `agnocast` implementations at runtime, depending on whether the given node is running in Agnocast mode.
+
+The node-taking constructors require a Method 2 node (`autoware::agnocast_wrapper::Node`). This is needed because an AgnocastOnly executor does not spin a plain `tf2_ros::TransformListener` (a ROS 2 subscription); routing `/tf` through Agnocast keeps tf callbacks firing.
+
+`Buffer` aliases to `agnocast::Buffer` in Agnocast-enabled builds and `tf2_ros::Buffer` otherwise. The agnocast variant intentionally omits APIs that would silently break under an AgnocastOnly executor (currently `waitForTransform` / `setCreateTimerInterface` and the `/tf2_frames` debug service), so misuse is caught at compile time.
+
+### Usage example
+
+```cpp
+#include <autoware/agnocast_wrapper/node.hpp>
+#include <autoware/agnocast_wrapper/tf2.hpp>
+
+class MyNode : public autoware::agnocast_wrapper::Node
+{
+public:
+  MyNode()
+  : autoware::agnocast_wrapper::Node("my_node"), tf_buffer_(this->get_clock())
+  {
+    // `*this` is a node derived from autoware::agnocast_wrapper::Node.
+    tf_listener_ = std::make_unique<autoware::agnocast_wrapper::TransformListener>(
+      tf_buffer_, *this);
+    tf_broadcaster_ = std::make_unique<autoware::agnocast_wrapper::TransformBroadcaster>(*this);
+  }
+
+private:
+  autoware::agnocast_wrapper::Buffer tf_buffer_;
+  std::unique_ptr<autoware::agnocast_wrapper::TransformListener> tf_listener_;
+  std::unique_ptr<autoware::agnocast_wrapper::TransformBroadcaster> tf_broadcaster_;
+};
+```
+
+### Migration guide (from `tf2_ros`)
+
+| Before                                                | After                                                    |
+| ----------------------------------------------------- | -------------------------------------------------------- |
+| `#include <tf2_ros/transform_listener.hpp>`           | `#include <autoware/agnocast_wrapper/tf2.hpp>`           |
+| `#include <tf2_ros/buffer.hpp>`                       | `#include <autoware/agnocast_wrapper/tf2.hpp>`           |
+| `#include <tf2_ros/transform_broadcaster.hpp>`        | `#include <autoware/agnocast_wrapper/tf2.hpp>`           |
+| `#include <tf2_ros/static_transform_broadcaster.hpp>` | `#include <autoware/agnocast_wrapper/tf2.hpp>`           |
+| `tf2_ros::TransformListener`                          | `autoware::agnocast_wrapper::TransformListener`          |
+| `tf2_ros::Buffer`                                     | `autoware::agnocast_wrapper::Buffer`                     |
+| `tf2_ros::TransformBroadcaster`                       | `autoware::agnocast_wrapper::TransformBroadcaster`       |
+| `tf2_ros::StaticTransformBroadcaster`                 | `autoware::agnocast_wrapper::StaticTransformBroadcaster` |
 
 ## How to Enable/Disable Agnocast on Build
 
