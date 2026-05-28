@@ -16,6 +16,8 @@
 
 #include <gtest/gtest.h>
 
+#include <string>
+
 using autoware::kalman_filter::TimeDelayKalmanFilter;
 
 namespace
@@ -318,4 +320,69 @@ TEST_F(TimeDelayKalmanFilterTest, ZeroInitialState)
 
   EXPECT_TRUE(x_check.isApprox(x_zero, kEpsilon));
   EXPECT_TRUE(P_check.isApprox(P_zero, kEpsilon));
+}
+
+TEST_F(TimeDelayKalmanFilterTest, UpdateRejectsNonColumnMeasurement)
+{
+  td_kf_.init(x_t_, P_t_, kMaxDelayStep);
+  ASSERT_TRUE(td_kf_.predictWithDelay(x_next_, A_, Q_));
+
+  const Eigen::MatrixXd y_not_column = Eigen::MatrixXd::Zero(kDimX, 2);  // y.cols() != 1
+  testing::internal::CaptureStderr();
+  const bool ok = td_kf_.updateWithDelay(y_not_column, C_, R_, 0);
+  const std::string err = testing::internal::GetCapturedStderr();
+
+  EXPECT_FALSE(ok);
+  EXPECT_NE(err.find("column vector"), std::string::npos);
+}
+
+TEST_F(TimeDelayKalmanFilterTest, UpdateRejectsNonSquareMeasurementCovariance)
+{
+  td_kf_.init(x_t_, P_t_, kMaxDelayStep);
+  ASSERT_TRUE(td_kf_.predictWithDelay(x_next_, A_, Q_));
+
+  Eigen::MatrixXd y(kDimX, 1);
+  y << 1.0, 2.0, 3.0;
+  const Eigen::MatrixXd r_non_square = Eigen::MatrixXd::Zero(kDimX, kDimX + 1);
+  testing::internal::CaptureStderr();
+  const bool ok = td_kf_.updateWithDelay(y, C_, r_non_square, 0);
+  const std::string err = testing::internal::GetCapturedStderr();
+
+  EXPECT_FALSE(ok);
+  EXPECT_NE(err.find("must be square"), std::string::npos);
+}
+
+TEST_F(TimeDelayKalmanFilterTest, UpdateRejectsMismatchedMeasurementCovarianceRows)
+{
+  td_kf_.init(x_t_, P_t_, kMaxDelayStep);
+  ASSERT_TRUE(td_kf_.predictWithDelay(x_next_, A_, Q_));
+
+  Eigen::MatrixXd y(kDimX, 1);
+  y << 1.0, 2.0, 3.0;
+  // Square, but its dimension differs from C.rows().
+  const Eigen::MatrixXd r_wrong = Eigen::MatrixXd::Identity(kDimX + 1, kDimX + 1);
+  testing::internal::CaptureStderr();
+  const bool ok = td_kf_.updateWithDelay(y, C_, r_wrong, 0);
+  const std::string err = testing::internal::GetCapturedStderr();
+
+  EXPECT_FALSE(ok);
+  EXPECT_NE(err.find("covariance R and"), std::string::npos);
+}
+
+TEST_F(TimeDelayKalmanFilterTest, UpdateRejectsNonPositiveDefiniteInnovationCovariance)
+{
+  td_kf_.init(x_t_, P_t_, kMaxDelayStep);
+  ASSERT_TRUE(td_kf_.predictWithDelay(x_next_, A_, Q_));
+
+  Eigen::MatrixXd y(kDimX, 1);
+  y << 1.0, 2.0, 3.0;
+  // A negative-definite R makes the innovation covariance S = R + C P C^T non-PD,
+  // so the Cholesky (LLT) decomposition must fail and the update must be rejected.
+  const Eigen::MatrixXd r_negative = -1.0 * Eigen::MatrixXd::Identity(kDimX, kDimX);
+  testing::internal::CaptureStderr();
+  const bool ok = td_kf_.updateWithDelay(y, C_, r_negative, 0);
+  const std::string err = testing::internal::GetCapturedStderr();
+
+  EXPECT_FALSE(ok);
+  EXPECT_NE(err.find("LLT decomposition failed"), std::string::npos);
 }
