@@ -17,6 +17,7 @@
 #include <autoware/localization_util/util_func.hpp>
 #include <autoware/ndt_scan_matcher/ndt_omp/estimate_covariance.hpp>
 #include <autoware/ndt_scan_matcher/ndt_scan_matcher_core.hpp>
+#include <autoware/ndt_scan_matcher/ndt_scan_matcher_helper.hpp>
 #include <autoware/ndt_scan_matcher/particle.hpp>
 #include <autoware/qos_utils/qos_compatibility.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
@@ -45,7 +46,6 @@ namespace autoware::ndt_scan_matcher
 {
 using autoware::localization_util::exchange_color_crc;
 using autoware::localization_util::matrix4f_to_pose;
-using autoware::localization_util::point_to_vector3d;
 using autoware::localization_util::pose_to_matrix4f;
 
 using autoware::localization_util::SmartPoseBuffer;
@@ -64,28 +64,6 @@ autoware_internal_debug_msgs::msg::Int32Stamped make_int32_stamped(
 {
   using T = autoware_internal_debug_msgs::msg::Int32Stamped;
   return autoware_internal_debug_msgs::build<T>().stamp(stamp).data(data);
-}
-
-std::array<double, 36> rotate_covariance(
-  const std::array<double, 36> & src_covariance, const Eigen::Matrix3d & rotation)
-{
-  std::array<double, 36> ret_covariance = src_covariance;
-
-  Eigen::Matrix3d src_cov;
-  src_cov << src_covariance[0], src_covariance[1], src_covariance[2], src_covariance[6],
-    src_covariance[7], src_covariance[8], src_covariance[12], src_covariance[13],
-    src_covariance[14];
-
-  Eigen::Matrix3d ret_cov;
-  ret_cov = rotation * src_cov * rotation.transpose();
-
-  for (Eigen::Index i = 0; i < 3; ++i) {
-    ret_covariance[i] = ret_cov(0, i);
-    ret_covariance[i + 6] = ret_cov(1, i);
-    ret_covariance[i + 12] = ret_cov(2, i);
-  }
-
-  return ret_covariance;
 }
 
 NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
@@ -674,10 +652,15 @@ bool NDTScanMatcher::callback_sensor_points_main(
       // remove ground
       pcl::shared_ptr<pcl::PointCloud<PointSource>> no_ground_points_in_map_ptr(
         new pcl::PointCloud<PointSource>);
+      no_ground_points_in_map_ptr->points.reserve(sensor_points_in_map_ptr->size());
+      // The aligned pose z is constant over the loop; the translation z of the 4x4 matrix equals
+      // matrix4f_to_pose(ndt_result.pose).position.z. Hoist it to avoid rebuilding a full Pose
+      // (including a quaternion extraction) for every point in the scan.
+      const double result_pose_z = ndt_result.pose(2, 3);
       for (std::size_t i = 0; i < sensor_points_in_map_ptr->size(); i++) {
         const float point_z = sensor_points_in_map_ptr->points[i].z;  // NOLINT
         if (
-          point_z - matrix4f_to_pose(ndt_result.pose).position.z >
+          point_z - result_pose_z >
           param_.score_estimation.no_ground_points.z_margin_for_ground_removal) {
           no_ground_points_in_map_ptr->points.push_back(sensor_points_in_map_ptr->points[i]);
         }
@@ -835,28 +818,7 @@ void NDTScanMatcher::publish_initial_to_result(
 int NDTScanMatcher::count_oscillation(
   const std::vector<geometry_msgs::msg::Pose> & result_pose_msg_array)
 {
-  constexpr double inversion_vector_threshold = -0.9;
-
-  int oscillation_cnt = 0;
-  int max_oscillation_cnt = 0;
-
-  for (size_t i = 2; i < result_pose_msg_array.size(); ++i) {
-    const Eigen::Vector3d current_pose = point_to_vector3d(result_pose_msg_array.at(i).position);
-    const Eigen::Vector3d prev_pose = point_to_vector3d(result_pose_msg_array.at(i - 1).position);
-    const Eigen::Vector3d prev_prev_pose =
-      point_to_vector3d(result_pose_msg_array.at(i - 2).position);
-    const auto current_vec = (current_pose - prev_pose).normalized();
-    const auto prev_vec = (prev_pose - prev_prev_pose).normalized();
-    const double cosine_value = current_vec.dot(prev_vec);
-    const bool oscillation = cosine_value < inversion_vector_threshold;
-    if (oscillation) {
-      oscillation_cnt++;  // count consecutive oscillation
-    } else {
-      oscillation_cnt = 0;  // reset
-    }
-    max_oscillation_cnt = std::max(max_oscillation_cnt, oscillation_cnt);
-  }
-  return max_oscillation_cnt;
+  return autoware::ndt_scan_matcher::count_oscillation(result_pose_msg_array);
 }
 
 Eigen::Matrix2d NDTScanMatcher::estimate_covariance(
