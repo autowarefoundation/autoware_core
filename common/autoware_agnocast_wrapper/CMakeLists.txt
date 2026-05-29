@@ -7,6 +7,7 @@ autoware_package()
 find_package(rclcpp REQUIRED)
 find_package(autoware_utils_rclcpp REQUIRED)
 find_package(message_filters REQUIRED)
+find_package(diagnostic_updater REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
@@ -32,6 +33,7 @@ if("$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
     agnocastlib
     autoware_utils_rclcpp
     message_filters
+    diagnostic_updater
     geometry_msgs
     tf2
     tf2_ros
@@ -42,6 +44,7 @@ else()
     rclcpp
     autoware_utils_rclcpp
     message_filters
+    diagnostic_updater
     geometry_msgs
     tf2
     tf2_ros
@@ -59,6 +62,7 @@ ament_export_dependencies(
   message_filters
   rclcpp
   rclcpp_components
+  diagnostic_updater
   tf2
   tf2_ros
 )

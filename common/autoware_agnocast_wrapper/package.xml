@@ -18,6 +18,7 @@
   <depend condition="$ENABLE_AGNOCAST == 1">agnocastlib</depend>
   <depend>autoware_utils_rclcpp</depend>
   <depend>class_loader</depend>
+  <depend>diagnostic_updater</depend>
   <depend>geometry_msgs</depend>
   <depend>message_filters</depend>
   <depend>rclcpp</depend>
