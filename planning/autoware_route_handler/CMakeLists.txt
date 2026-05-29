@@ -24,11 +24,13 @@ if(BUILD_TESTING)
   ament_add_ros_isolated_gtest(test_autoware_route_handler
     test/test_main.cpp
     test/test_route_handler.cpp
+    test/test_set_map.cpp
     test/test_getCenterLinePath.cpp
     test/test_getCenterLinePath_vm_10_spec.cpp
     test/test_getCenterLinePath_vm_10_spec_invalid.cpp)
 
   ament_target_dependencies(test_autoware_route_handler
+    ament_index_cpp
     autoware_test_utils
     autoware_pyplot
     fmt
