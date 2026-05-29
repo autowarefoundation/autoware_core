@@ -151,9 +151,9 @@ geometry_msgs::msg::Point SplineInterpolationPoints2d::getSplineInterpolatedPoin
     whole_s = base_s_vec_.back();
   }
 
-  const double x = spline_x_.getSplineInterpolatedValues({whole_s}).at(0);
-  const double y = spline_y_.getSplineInterpolatedValues({whole_s}).at(0);
-  const double z = spline_z_.getSplineInterpolatedValues({whole_s}).at(0);
+  const double x = spline_x_.getSplineInterpolatedValue(whole_s);
+  const double y = spline_y_.getSplineInterpolatedValue(whole_s);
+  const double z = spline_z_.getSplineInterpolatedValue(whole_s);
 
   geometry_msgs::msg::Point geom_point;
   geom_point.x = x;
@@ -171,8 +171,8 @@ double SplineInterpolationPoints2d::getSplineInterpolatedYaw(const size_t idx, c
   const double whole_s =
     std::clamp(base_s_vec_.at(idx) + s, base_s_vec_.front(), base_s_vec_.back());
 
-  const double diff_x = spline_x_.getSplineInterpolatedDiffValues({whole_s}).at(0);
-  const double diff_y = spline_y_.getSplineInterpolatedDiffValues({whole_s}).at(0);
+  const double diff_x = spline_x_.getSplineInterpolatedDiffValue(whole_s);
+  const double diff_y = spline_y_.getSplineInterpolatedDiffValue(whole_s);
 
   return std::atan2(diff_y, diff_x);
 }
@@ -180,6 +180,7 @@ double SplineInterpolationPoints2d::getSplineInterpolatedYaw(const size_t idx, c
 std::vector<double> SplineInterpolationPoints2d::getSplineInterpolatedYaws() const
 {
   std::vector<double> yaw_vec;
+  yaw_vec.reserve(spline_x_.getSize());
   for (size_t i = 0; i < spline_x_.getSize(); ++i) {
     const double yaw = getSplineInterpolatedYaw(i, 0.0);
     yaw_vec.push_back(yaw);
@@ -197,11 +198,11 @@ double SplineInterpolationPoints2d::getSplineInterpolatedCurvature(
   const double whole_s =
     std::clamp(base_s_vec_.at(idx) + s, base_s_vec_.front(), base_s_vec_.back());
 
-  const double diff_x = spline_x_.getSplineInterpolatedDiffValues({whole_s}).at(0);
-  const double diff_y = spline_y_.getSplineInterpolatedDiffValues({whole_s}).at(0);
+  const double diff_x = spline_x_.getSplineInterpolatedDiffValue(whole_s);
+  const double diff_y = spline_y_.getSplineInterpolatedDiffValue(whole_s);
 
-  const double quad_diff_x = spline_x_.getSplineInterpolatedQuadDiffValues({whole_s}).at(0);
-  const double quad_diff_y = spline_y_.getSplineInterpolatedQuadDiffValues({whole_s}).at(0);
+  const double quad_diff_x = spline_x_.getSplineInterpolatedQuadDiffValue(whole_s);
+  const double quad_diff_y = spline_y_.getSplineInterpolatedQuadDiffValue(whole_s);
 
   return (diff_x * quad_diff_y - quad_diff_x * diff_y) /
          std::pow(std::pow(diff_x, 2) + std::pow(diff_y, 2), 1.5);
@@ -269,11 +270,11 @@ void SplineInterpolationPoints2d::updateCurvatureSpline()
   curvature_values.reserve(base_s_vec_.size());
 
   for (const auto & s : base_s_vec_) {
-    const double diff_x = spline_x_.getSplineInterpolatedDiffValues({s}).at(0);
-    const double diff_y = spline_y_.getSplineInterpolatedDiffValues({s}).at(0);
+    const double diff_x = spline_x_.getSplineInterpolatedDiffValue(s);
+    const double diff_y = spline_y_.getSplineInterpolatedDiffValue(s);
 
-    const double quad_diff_x = spline_x_.getSplineInterpolatedQuadDiffValues({s}).at(0);
-    const double quad_diff_y = spline_y_.getSplineInterpolatedQuadDiffValues({s}).at(0);
+    const double quad_diff_x = spline_x_.getSplineInterpolatedQuadDiffValue(s);
+    const double quad_diff_y = spline_y_.getSplineInterpolatedQuadDiffValue(s);
 
     const double denom = std::pow(diff_x, 2) + std::pow(diff_y, 2);
     if (denom < 1e-10) {
@@ -299,13 +300,13 @@ void SplineInterpolationPoints2d::extendLinearlyForward(
 
   // Get the end value and derivative from the last segment
   const double s_end = base_s_vec_.back();
-  const double x_end = spline_x_.getSplineInterpolatedValues({s_end}).at(0);
-  const double y_end = spline_y_.getSplineInterpolatedValues({s_end}).at(0);
-  const double z_end = spline_z_.getSplineInterpolatedValues({s_end}).at(0);
+  const double x_end = spline_x_.getSplineInterpolatedValue(s_end);
+  const double y_end = spline_y_.getSplineInterpolatedValue(s_end);
+  const double z_end = spline_z_.getSplineInterpolatedValue(s_end);
 
-  const double dx_ds = spline_x_.getSplineInterpolatedDiffValues({s_end}).at(0);
-  const double dy_ds = spline_y_.getSplineInterpolatedDiffValues({s_end}).at(0);
-  const double dz_ds = spline_z_.getSplineInterpolatedDiffValues({s_end}).at(0);
+  const double dx_ds = spline_x_.getSplineInterpolatedDiffValue(s_end);
+  const double dy_ds = spline_y_.getSplineInterpolatedDiffValue(s_end);
+  const double dz_ds = spline_z_.getSplineInterpolatedDiffValue(s_end);
 
   // Build extended knots and values
   std::vector<double> extended_s = base_s_vec_;
@@ -314,10 +315,13 @@ void SplineInterpolationPoints2d::extendLinearlyForward(
   std::vector<double> extended_z;
 
   // Get original values at existing knots
+  extended_x.reserve(target_n_knots);
+  extended_y.reserve(target_n_knots);
+  extended_z.reserve(target_n_knots);
   for (const auto & s : base_s_vec_) {
-    extended_x.push_back(spline_x_.getSplineInterpolatedValues({s}).at(0));
-    extended_y.push_back(spline_y_.getSplineInterpolatedValues({s}).at(0));
-    extended_z.push_back(spline_z_.getSplineInterpolatedValues({s}).at(0));
+    extended_x.push_back(spline_x_.getSplineInterpolatedValue(s));
+    extended_y.push_back(spline_y_.getSplineInterpolatedValue(s));
+    extended_z.push_back(spline_z_.getSplineInterpolatedValue(s));
   }
 
   // Add extended knots and linearly extrapolated values
@@ -348,8 +352,8 @@ std::pair<double, double> SplineInterpolationPoints2d::projectPointOntoSpline(
   const auto & knots = spline_x_.getKnots();
   double min_dist = std::numeric_limits<double>::max();
   for (const auto & s_knot : knots) {
-    double dx = spline_x_.getSplineInterpolatedValues({s_knot}).at(0) - x_i;
-    double dy = spline_y_.getSplineInterpolatedValues({s_knot}).at(0) - y_i;
+    double dx = spline_x_.getSplineInterpolatedValue(s_knot) - x_i;
+    double dy = spline_y_.getSplineInterpolatedValue(s_knot) - y_i;
     double dist = std::hypot(dx, dy);
     if (dist < min_dist) {
       min_dist = dist;
@@ -359,14 +363,14 @@ std::pair<double, double> SplineInterpolationPoints2d::projectPointOntoSpline(
 
   // Newton iteration with proper second derivative
   for (int iter = 0; iter < max_iter; ++iter) {
-    const double x_s = spline_x_.getSplineInterpolatedValues({s}).at(0);
-    const double y_s = spline_y_.getSplineInterpolatedValues({s}).at(0);
+    const double x_s = spline_x_.getSplineInterpolatedValue(s);
+    const double y_s = spline_y_.getSplineInterpolatedValue(s);
 
-    const double dx_ds = spline_x_.getSplineInterpolatedDiffValues({s}).at(0);
-    const double dy_ds = spline_y_.getSplineInterpolatedDiffValues({s}).at(0);
+    const double dx_ds = spline_x_.getSplineInterpolatedDiffValue(s);
+    const double dy_ds = spline_y_.getSplineInterpolatedDiffValue(s);
 
-    const double d2x_ds2 = spline_x_.getSplineInterpolatedQuadDiffValues({s}).at(0);
-    const double d2y_ds2 = spline_y_.getSplineInterpolatedQuadDiffValues({s}).at(0);
+    const double d2x_ds2 = spline_x_.getSplineInterpolatedQuadDiffValue(s);
+    const double d2y_ds2 = spline_y_.getSplineInterpolatedQuadDiffValue(s);
 
     // f'(s) = d/ds[||p(s) - p_i||^2] = 2[(x_s - x_i)·dx_ds + (y_s - y_i)·dy_ds]
     const double df_ds = (x_s - x_i) * dx_ds + (y_s - y_i) * dy_ds;
@@ -394,8 +398,8 @@ std::pair<double, double> SplineInterpolationPoints2d::projectPointOntoSpline(
   }
 
   // Compute cross-track error eY
-  double x_s = spline_x_.getSplineInterpolatedValues({s}).at(0);
-  double y_s = spline_y_.getSplineInterpolatedValues({s}).at(0);
+  double x_s = spline_x_.getSplineInterpolatedValue(s);
+  double y_s = spline_y_.getSplineInterpolatedValue(s);
   double psi_s = getSplineInterpolatedYaw(0, s);
 
   double eY = -(x_i - x_s) * std::sin(psi_s) + (y_i - y_s) * std::cos(psi_s);
