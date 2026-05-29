@@ -25,10 +25,17 @@
 #include <utility>
 #include <vector>
 
-namespace
+// Forward declaration of the test fixture so it can be befriended by Grid,
+// giving unit tests direct access to the otherwise-private index math without
+// changing the public API.
+class GridTest;
+
+namespace autoware::ground_filter
+{
+namespace detail
 {
 
-float pseudoArcTan2(const float y, const float x)
+inline float pseudoArcTan2(const float y, const float x)
 {
   // lightweight arc tangent
 
@@ -71,7 +78,7 @@ float pseudoArcTan2(const float y, const float x)
   }
 }
 
-float pseudoTan(const float theta)
+inline float pseudoTan(const float theta)
 {
   // lightweight tangent
 
@@ -92,10 +99,9 @@ float pseudoTan(const float theta)
   }
   return std::copysign(M_PI_4f / (M_PI_2f - std::abs(normalized_theta)), normalized_theta);
 }
-}  // namespace
 
-namespace autoware::ground_filter
-{
+}  // namespace detail
+
 using autoware_utils_debug::ScopedTimeTrack;
 
 struct Point
@@ -171,8 +177,8 @@ public:
 
     // calculate grid parameters
     grid_dist_size_rad_ =
-      pseudoArcTan2(grid_linearity_switch_radius_ + grid_dist_size_, origin_z_) -
-      pseudoArcTan2(grid_linearity_switch_radius_, origin_z_);
+      detail::pseudoArcTan2(grid_linearity_switch_radius_ + grid_dist_size_, origin_z_) -
+      detail::pseudoArcTan2(grid_linearity_switch_radius_, origin_z_);
     grid_dist_size_inv_ = 1.0f / grid_dist_size_;
 
     // generate grid geometry
@@ -195,7 +201,7 @@ public:
     const float x_fixed = x - origin_x_;
     const float y_fixed = y - origin_y_;
     const float radius = std::sqrt(x_fixed * x_fixed + y_fixed * y_fixed);
-    const float azimuth = pseudoArcTan2(y_fixed, x_fixed);
+    const float azimuth = detail::pseudoArcTan2(y_fixed, x_fixed);
 
     // calculate the grid id
     const int grid_idx = getGridIdx(radius, azimuth);
@@ -304,13 +310,14 @@ private:
         grid_radial_boundaries_.push_back(i * grid_dist_size_);
       }
       // constant angle
-      grid_linearity_switch_angle_ = pseudoArcTan2(grid_linearity_switch_radius_, origin_z_);
+      grid_linearity_switch_angle_ =
+        detail::pseudoArcTan2(grid_linearity_switch_radius_, origin_z_);
       float angle = grid_linearity_switch_angle_;
       const float grid_angle_interval =
-        pseudoArcTan2(grid_linearity_switch_radius_ + grid_dist_size_, origin_z_) - angle;
+        detail::pseudoArcTan2(grid_linearity_switch_radius_ + grid_dist_size_, origin_z_) - angle;
       grid_size_rad_inv_ = 1.0f / grid_angle_interval;
       while (angle < M_PI_2) {
-        const float dist = pseudoTan(angle) * origin_z_;
+        const float dist = detail::pseudoTan(angle) * origin_z_;
         grid_radial_boundaries_.push_back(dist);
         if (dist > grid_radial_limit_) {
           break;
@@ -392,7 +399,7 @@ private:
     if (radius < grid_linearity_switch_radius_) {
       grid_rad_idx = static_cast<int>(radius * grid_dist_size_inv_);
     } else if (radius < grid_radial_limit_) {
-      const float angle = pseudoArcTan2(radius, origin_z_);
+      const float angle = detail::pseudoArcTan2(radius, origin_z_);
       grid_rad_idx = grid_linearity_switch_num_ +
                      static_cast<int>((angle - grid_linearity_switch_angle_) * grid_size_rad_inv_);
     }
@@ -496,6 +503,9 @@ private:
       cell.scan_grid_root_idx_ = -1;
     }
   }
+
+  // for test
+  friend ::GridTest;
 };
 
 }  // namespace autoware::ground_filter

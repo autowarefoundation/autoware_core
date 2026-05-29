@@ -50,6 +50,14 @@ if(BUILD_TESTING)
     ${PROJECT_NAME}
   )
 
+  ament_add_ros_isolated_gtest(test_grid
+    test/test_grid.cpp
+  )
+  target_include_directories(test_grid PRIVATE src)
+  target_link_libraries(test_grid
+    ${PROJECT_NAME}
+  )
+
   ament_add_ros_isolated_gtest(test_sanity_check
     test/test_sanity_check.cpp
   )
