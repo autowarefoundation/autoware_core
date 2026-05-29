@@ -130,6 +130,63 @@ TEST_F(EuclideanClusterTest, TestClusteringWithMinSizeFilter)
   EXPECT_EQ(clusters.size(), 0);  // No clusters should pass the size filter
 }
 
+// Characterization test: pin exact cluster membership and per-point coordinates so the
+// in-place output-building refactor (no 'new', no deep copy, reserve) is proven equivalent.
+TEST_F(EuclideanClusterTest, TestClusterMembershipAndPointValues)
+{
+  autoware::euclidean_cluster::EuclideanCluster cluster(true, 1, 100, 0.5);
+
+  std::vector<pcl::PointCloud<pcl::PointXYZ>> clusters;
+  ASSERT_TRUE(cluster.cluster(test_cloud_, clusters));
+  ASSERT_EQ(clusters.size(), 2u);
+
+  // Each output cluster must carry exactly 5 points and have the PointCloud2-style metadata
+  // (width == point count, height == 1, is_dense == false) set on it.
+  for (const auto & c : clusters) {
+    EXPECT_EQ(c.points.size(), 5u);
+    EXPECT_EQ(c.width, 5u);
+    EXPECT_EQ(c.height, 1u);
+    EXPECT_FALSE(c.is_dense);
+  }
+
+  // The two ground-truth clusters from SetUp(): near-origin and around (10,10,10).
+  // Collect every output point and verify each belongs to exactly one expected group,
+  // and that all 10 input points are reproduced verbatim (coordinates preserved).
+  size_t near_origin_count = 0;
+  size_t far_count = 0;
+  for (const auto & c : clusters) {
+    for (const auto & point : c.points) {
+      if (point.x < 1.0f) {
+        ++near_origin_count;
+        // near-origin points are i*0.1 for i in [0,5)
+        EXPECT_FLOAT_EQ(point.x, point.y);
+        EXPECT_FLOAT_EQ(point.y, point.z);
+      } else {
+        ++far_count;
+        // far points are 10 + i*0.1 for i in [5,10)
+        EXPECT_GE(point.x, 10.0f);
+        EXPECT_FLOAT_EQ(point.x, point.y);
+        EXPECT_FLOAT_EQ(point.y, point.z);
+      }
+    }
+  }
+  EXPECT_EQ(near_origin_count, 5u);
+  EXPECT_EQ(far_count, 5u);
+}
+
+// Characterization test for the previously-untested empty-input path of the implemented overload.
+TEST_F(EuclideanClusterTest, TestClusteringEmptyInput)
+{
+  autoware::euclidean_cluster::EuclideanCluster cluster(true, 1, 100, 0.5);
+
+  pcl::PointCloud<pcl::PointXYZ>::ConstPtr empty_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+  std::vector<pcl::PointCloud<pcl::PointXYZ>> clusters;
+
+  bool result = cluster.cluster(empty_cloud, clusters);
+  EXPECT_TRUE(result);
+  EXPECT_EQ(clusters.size(), 0u);
+}
+
 TEST_F(EuclideanClusterTest, TestUnimplementedMethods)
 {
   autoware::euclidean_cluster::EuclideanCluster cluster(true, 1, 100, 0.5);
