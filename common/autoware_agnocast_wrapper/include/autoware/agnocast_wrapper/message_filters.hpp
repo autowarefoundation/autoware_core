@@ -137,10 +137,8 @@ public:
   {
   }
 
-  // Non-copyable and non-movable: each CallbackAdapter we register with the underlying
-  // synchronizer is held by `adapters_`, and upstream stores raw pointers to those
-  // adapters, so this wrapper's address (which owns `adapters_` and `sync_`) must remain
-  // stable for the lifetime of the registrations.
+  // Non-copyable and non-movable: upstream holds raw pointers into this object
+  // (see CallbackAdapter), so its address must stay stable for the registrations' lifetime.
   ~PolicySynchronizer() = default;
   PolicySynchronizer(const PolicySynchronizer &) = delete;
   PolicySynchronizer & operator=(const PolicySynchronizer &) = delete;
@@ -157,12 +155,11 @@ public:
   /// only (not RAII — scope exit does NOT unregister).
   ///
   /// @note Multiple callables can be registered; all fire on each matching tuple. Dispatch
-  ///       is delegated to the underlying rclcpp/agnocast signal9, so ordering and
+  ///       is delegated to the underlying rclcpp/agnocast synchronizer, so ordering and
   ///       concurrency semantics match upstream.
   /// @note The returned Connection captures `this`; do not invoke `.disconnect()` after
   ///       this Synchronizer has been destroyed. Mirrors upstream
-  ///       `::message_filters::Synchronizer`, whose Connection also captures the inner
-  ///       `Signal9*` and has the same lifetime contract.
+  ///       `::message_filters::Synchronizer`, whose Connection has the same lifetime contract.
   template <class C>
   ::message_filters::Connection registerCallback(C & callback)
   {
@@ -188,11 +185,9 @@ public:
   }
 
 private:
-  // Per-registration adapter object. Each adapter is registered as its own slot in the
-  // underlying signal9 (one upstream slot per user callback). Owns the user-supplied
-  // callable and bridges upstream's MessageEvent / ConstSharedPtr arguments to the
-  // wrapper's message_ptr type. Stored in `adapters_` (shared_ptr) so the adapter
-  // outlives the raw pointer upstream's std::bind retains.
+  // Per-registration adapter: owns the user callable and bridges upstream's MessageEvent /
+  // ConstSharedPtr arguments to the wrapper's message_ptr type. Upstream keeps only a raw
+  // pointer (adapter.get()), so it is held in `adapters_` to keep it alive.
   struct CallbackAdapter
   {
     Callback fn;
@@ -237,9 +232,6 @@ private:
     auto adapter = std::make_shared<CallbackAdapter>();
     adapter->fn = std::move(callback);
 
-    // Register this adapter as its own slot on the underlying signal9. Dispatch is done
-    // by upstream — we never iterate here. Upstream stores `adapter.get()` as a raw
-    // pointer via std::bind, so we keep the adapter alive in `adapters_` below.
     auto upstream_conn = std::visit(
       [&adapter](auto & sync) -> ::message_filters::Connection {
         using SyncT = std::decay_t<decltype(sync)>;
