@@ -14,6 +14,8 @@
 
 #include "autoware/map_height_fitter/map_height_fitter.hpp"
 
+#include "autoware/map_height_fitter/map_height_fitter_kernel.hpp"
+
 #include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/qos_utils/qos_compatibility.hpp>
 #include <tf2_ros/transform_listener.hpp>
@@ -29,7 +31,7 @@
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
 
-#include <algorithm>
+#include <cstddef>
 #include <memory>
 #include <string>
 
@@ -57,6 +59,7 @@ struct MapHeightFitter::Impl
   // for fitting by pointcloud_map_loader
   rclcpp::CallbackGroup::SharedPtr group_;
   pcl::PointCloud<pcl::PointXYZ>::Ptr map_cloud_;
+  pcl::KdTreeFLANN<pcl::PointXYZ> map_cloud_kdtree_;
   rclcpp::Client<autoware_map_msgs::srv::GetPartialPointCloudMap>::SharedPtr cli_pcd_map_;
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_pcd_map_;
   rclcpp::AsyncParametersClient::SharedPtr params_pcd_map_loader_;
@@ -113,6 +116,7 @@ void MapHeightFitter::Impl::on_pcd_map(const sensor_msgs::msg::PointCloud2::Cons
   map_frame_ = msg->header.frame_id;
   map_cloud_ = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
   pcl::fromROSMsg(*msg, *map_cloud_);
+  map_cloud_kdtree_ = build_pointcloud_xy_kdtree(*map_cloud_);
 }
 
 bool MapHeightFitter::Impl::get_partial_point_cloud_map(const Point & point)
@@ -150,6 +154,11 @@ bool MapHeightFitter::Impl::get_partial_point_cloud_map(const Point & point)
     res->new_pointcloud_with_ids.size());
 
   sensor_msgs::msg::PointCloud2 pcd_msg;
+  std::size_t total_data_size = 0;
+  for (const auto & pcd_with_id : res->new_pointcloud_with_ids) {
+    total_data_size += pcd_with_id.pointcloud.data.size();
+  }
+  pcd_msg.data.reserve(total_data_size);
   for (const auto & pcd_with_id : res->new_pointcloud_with_ids) {
     if (pcd_msg.width == 0) {
       pcd_msg = pcd_with_id.pointcloud;
@@ -163,6 +172,7 @@ bool MapHeightFitter::Impl::get_partial_point_cloud_map(const Point & point)
   map_frame_ = res->header.frame_id;
   map_cloud_ = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
   pcl::fromROSMsg(pcd_msg, *map_cloud_);
+  map_cloud_kdtree_ = build_pointcloud_xy_kdtree(*map_cloud_);
   return true;
 }
 
@@ -181,38 +191,21 @@ double MapHeightFitter::Impl::get_ground_height(const Point & point) const
   const double x = point.x;
   const double y = point.y;
 
-  double height = INFINITY;
   if (fit_target_ == "pointcloud_map") {
-    // find distance d to closest point
-    double min_dist2 = INFINITY;
-    for (const auto & p : map_cloud_->points) {
-      const double dx = x - p.x;
-      const double dy = y - p.y;
-      const double sd = (dx * dx) + (dy * dy);
-      min_dist2 = std::min(min_dist2, sd);
-    }
-
-    // find lowest height within radius (d+1.0)
-    const double radius2 = std::pow(std::sqrt(min_dist2) + 1.0, 2.0);
-
-    for (const auto & p : map_cloud_->points) {
-      const double dx = x - p.x;
-      const double dy = y - p.y;
-      const double sd = (dx * dx) + (dy * dy);
-      if (sd < radius2) {
-        height = std::min(height, static_cast<double>(p.z));
-      }
-    }
-  } else if (fit_target_ == "vector_map") {
-    const auto closest_points = vector_map_->pointLayer.nearest(lanelet::BasicPoint2d{x, y}, 1);
-    if (closest_points.empty()) {
+    return get_ground_height_from_pointcloud(*map_cloud_, map_cloud_kdtree_, x, y, point.z);
+  }
+  if (fit_target_ == "vector_map") {
+    // The kernel runs the nearest-point search once; std::nullopt means no closest lanelet, in
+    // which case we warn and fall back to the original point.z (matching the original behavior).
+    const auto height = get_ground_height_from_vector_map(*vector_map_, x, y, point.z);
+    if (!height) {
       RCLCPP_WARN_STREAM(logger, "failed to get closest lanelet");
       return point.z;
     }
-    height = closest_points.front().z();
+    return *height;
   }
 
-  return std::isfinite(height) ? height : point.z;
+  return point.z;  // unreachable: fit() validates fit_target_ before calling get_ground_height
 }
 
 std::optional<Point> MapHeightFitter::Impl::fit(const Point & position, const std::string & frame)
