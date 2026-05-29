@@ -733,9 +733,9 @@ experimental::trajectory::Trajectory<PathPointWithLaneId> connect_path_to_goal(
     path, pre_goal_pose, [&](const PathPointWithLaneId & point) {
       return exists(point.lane_ids, pre_goal_lanelet.id());
     });
-  const auto s_pre_goal =
-    s_pre_goal_constrained ? *s_pre_goal_constrained
-                           : autoware::experimental::trajectory::closest(path, pre_goal_pose);
+  const auto s_pre_goal = s_pre_goal_constrained
+                            ? *s_pre_goal_constrained
+                            : autoware::experimental::trajectory::closest(path, pre_goal_pose);
 
   PathPointWithLaneId pre_goal;
   pre_goal.lane_ids = {pre_goal_lanelet.id()};
