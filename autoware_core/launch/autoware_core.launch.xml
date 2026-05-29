@@ -2,10 +2,10 @@
 <launch>
   <!-- Essential parameters -->
   <arg name="map_path" description="lanelet2 map directory path"/>
+  <arg name="vehicle_info_param_file" description="vehicle info parameter file path"/>
 
   <!-- Global parameters -->
   <arg name="use_sim_time" default="false" description="use_sim_time"/>
-  <let name="vehicle_info_param_file" value="$(var vehicle_description_path)/config/vehicle_info.param.yaml"/>
 
   <!-- Optional parameters -->
   <!-- Modules to be launched -->
@@ -42,12 +42,16 @@
 
   <!-- Perception -->
   <group if="$(var launch_perception)">
-    <include file="$(find-pkg-share autoware_core_perception)/launch/autoware_core_perception.launch.xml"/>
+    <include file="$(find-pkg-share autoware_core_perception)/launch/autoware_core_perception.launch.xml">
+      <arg name="vehicle_info_param_file" value="$(var vehicle_info_param_file)"/>
+    </include>
   </group>
 
   <!-- Planning -->
   <group if="$(var launch_planning)">
-    <include file="$(find-pkg-share autoware_core_planning)/launch/autoware_core_planning.launch.xml"/>
+    <include file="$(find-pkg-share autoware_core_planning)/launch/autoware_core_planning.launch.xml">
+      <arg name="vehicle_info_param_file" value="$(var vehicle_info_param_file)"/>
+    </include>
   </group>
 
   <!-- Control -->
