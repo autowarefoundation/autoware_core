@@ -5,11 +5,13 @@
   <arg name="launch_vehicle" default="true"/>
   <arg name="launch_sensing" default="true"/>
 
-  <!-- robot description -->
-  <group>
-    <node name="robot_state_publisher" pkg="robot_state_publisher" exec="robot_state_publisher">
-      <param name="robot_description" value="$(command 'xacro $(find-pkg-share autoware_sample_platform_launch)/description/platform/urdf/platform.xacro' 'warn')"/>
-    </node>
+  <!-- include first for global parameters  -->
+  <group scoped="false">
+    <include file="$(find-pkg-share autoware_core)/launch/autoware_core.launch.xml">
+      <arg name="use_sim_time" value="$(var use_sim_time)"/>
+      <arg name="map_path" value="$(var map_path)"/>
+      <arg name="vehicle_info_param_file" value="$(find-pkg-share autoware_sample_platform_launch)/config/vehicle_info.param.yaml"/>
+    </include>
   </group>
 
   <!-- vehicle -->
@@ -22,12 +24,10 @@
     <include file="$(find-pkg-share autoware_sample_platform_launch)/launch/sensing.launch.xml"/>
   </group>
 
-  <!-- other components -->
+  <!-- robot description -->
   <group>
-    <include file="$(find-pkg-share autoware_core)/launch/autoware_core.launch.xml">
-      <arg name="use_sim_time" value="$(var use_sim_time)"/>
-      <arg name="map_path" value="$(var map_path)"/>
-      <arg name="vehicle_info_param_file" value="$(find-pkg-share autoware_sample_platform_launch)/config/vehicle_info.param.yaml"/>
-    </include>
+    <node name="robot_state_publisher" pkg="robot_state_publisher" exec="robot_state_publisher">
+      <param name="robot_description" value="$(command 'xacro $(find-pkg-share autoware_sample_platform_launch)/description/platform/urdf/platform.xacro' 'warn')"/>
+    </node>
   </group>
 </launch>
