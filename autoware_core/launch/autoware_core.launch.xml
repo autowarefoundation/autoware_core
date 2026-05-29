@@ -5,22 +5,17 @@
 
   <!-- Global parameters -->
   <arg name="use_sim_time" default="false" description="use_sim_time"/>
-  <arg name="vehicle_model" description="vehicle model name"/>
-  <arg name="sensor_model" description="sensor model name"/>
-
-  <let name="vehicle_description_path" value="$(find-pkg-share $(var vehicle_model)_description)"/>
   <let name="vehicle_info_param_file" value="$(var vehicle_description_path)/config/vehicle_info.param.yaml"/>
 
   <!-- Optional parameters -->
   <!-- Modules to be launched -->
   <arg name="launch_map" default="true" description="launch map"/>
-  <arg name="launch_sensing" default="true" description="launch sensing"/>
   <arg name="launch_localization" default="true" description="launch localization"/>
   <arg name="launch_perception" default="true" description="launch perception"/>
   <arg name="launch_planning" default="true" description="launch planning"/>
   <arg name="launch_control" default="true" description="launch control"/>
-  <arg name="launch_vehicle" default="true" description="launch vehicle"/>
   <arg name="launch_api" default="true" description="launch api"/>
+  <arg name="launch_rviz" default="true" description="launch rviz"/>
 
   <!-- Global parameters -->
   <group scoped="false">
@@ -38,11 +33,6 @@
       <arg name="pointcloud_map_path" value="$(var map_path)/pointcloud_map.pcd"/>
       <arg name="pointcloud_map_metadata_path" value="$(var map_path)/pointcloud_map/metadata.yaml"/>
     </include>
-  </group>
-
-  <!-- Sensing -->
-  <group if="$(var launch_sensing)">
-    <include file="$(find-pkg-share autoware_core_sensing)/launch/autoware_core_sensing.launch.xml"/>
   </group>
 
   <!-- Localization -->
@@ -65,19 +55,13 @@
     <include file="$(find-pkg-share autoware_core_control)/launch/autoware_core_control.launch.xml"/>
   </group>
 
-  <group if="$(var launch_vehicle)">
-    <include file="$(find-pkg-share autoware_core_vehicle)/launch/autoware_core_vehicle.launch.xml">
-      <arg name="vehicle_model" value="$(var vehicle_model)"/>
-      <arg name="sensor_model" value="$(var sensor_model)"/>
-    </include>
-  </group>
-
+  <!-- API -->
   <group if="$(var launch_api)">
     <include file="$(find-pkg-share autoware_core_api)/launch/autoware_core_api.launch.xml"/>
   </group>
 
   <!-- Tools -->
-  <group>
+  <group if="$(var launch_rviz)">
     <node pkg="rviz2" exec="rviz2" name="rviz2" output="screen" args="-d $(find-pkg-share autoware_core)/rviz/autoware_core.rviz"/>
   </group>
 </launch>

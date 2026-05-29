@@ -2,12 +2,12 @@
 <robot xmlns:xacro="http://ros.org/wiki/xacro">
   <xacro:macro name="sensor_kit_macro" params="parent x y z roll pitch yaw">
     <xacro:include filename="$(find velodyne_description)/urdf/VLP-16.urdf.xacro"/>
-    <xacro:include filename="$(find sample_sensor_kit_description)/sensor/vls/urdf/VLS-128.urdf.xacro"/>
-    <xacro:include filename="$(find sample_sensor_kit_description)/sensor/camera/urdf/monocular_camera.xacro"/>
-    <xacro:include filename="$(find sample_sensor_kit_description)/sensor/imu/urdf/imu.xacro"/>
+    <xacro:include filename="$(find autoware_sample_platform_launch)/description/sensors/vls/urdf/VLS-128.urdf.xacro"/>
+    <xacro:include filename="$(find autoware_sample_platform_launch)/description/sensors/camera/urdf/monocular_camera.xacro"/>
+    <xacro:include filename="$(find autoware_sample_platform_launch)/description/sensors/imu/urdf/imu.xacro"/>
 
     <xacro:arg name="gpu" default="false"/>
-    <xacro:arg name="config_dir" default="$(find sample_sensor_kit_description)/config"/>
+    <xacro:arg name="config_dir" default="$(find autoware_sample_platform_launch)/config"/>
 
     <joint name="sensor_kit_base_link_joint" type="fixed">
       <origin rpy="${roll} ${pitch} ${yaw}" xyz="${x} ${y} ${z}"/>

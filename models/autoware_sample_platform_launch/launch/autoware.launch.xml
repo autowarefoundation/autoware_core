@@ -2,21 +2,36 @@
 <launch>
   <arg name="use_sim_time" default="false"/>
   <arg name="map_path"/>
-
-  <include file="$(find-pkg-share autoware_core)/launch/autoware_core.launch.xml">
-    <arg name="use_sim_time" value="$(var use_sim_time)"/>
-    <arg name="map_path" value="$(var map_path)"/>
-
-    <!-- TODO(isamu-takagi): remove -->
-    <arg name="vehicle_model" value="autoware_sample_vehicle"/>
-    <arg name="sensor_model" value="autoware_awsim_sensor_kit"/>
-    <arg name="launch_vehicle" value="false"/>
-  </include>
+  <arg name="launch_sensing" default="true"/>
+  <arg name="launch_vehicle" default="true"/>
 
   <!-- robot description -->
   <group>
     <node name="robot_state_publisher" pkg="robot_state_publisher" exec="robot_state_publisher">
       <param name="robot_description" value="$(command 'xacro $(find-pkg-share autoware_sample_platform_launch)/description/platform/urdf/platform.xacro' 'warn')"/>
     </node>
+  </group>
+
+  <!-- sensing -->
+  <group if="$(arg launch_sensing)">
+    <include file="$(find-pkg-share autoware_sample_platform_launch)/launch/sensing.launch.xml"/>
+  </group>
+
+  <!-- vehicle -->
+  <group if="$(arg launch_vehicle)">
+    <include file="$(find-pkg-share autoware_sample_platform_launch)/launch/vehicle.launch.xml"/>
+  </group>
+
+  <!-- other components -->
+  <group>
+    <include file="$(find-pkg-share autoware_core)/launch/autoware_core.launch.xml">
+      <arg name="use_sim_time" value="$(var use_sim_time)"/>
+      <arg name="map_path" value="$(var map_path)"/>
+
+      <!-- TODO(isamu-takagi): remove -->
+      <arg name="vehicle_model" value="autoware_sample_vehicle"/>
+      <arg name="sensor_model" value="autoware_awsim_sensor_kit"/>
+      <arg name="launch_vehicle" value="false"/>
+    </include>
   </group>
 </launch>

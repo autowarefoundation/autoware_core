@@ -26,12 +26,12 @@
       </inertial>
       <visual>
         <geometry>
-          <mesh filename="package://sample_sensor_kit_description/sensor/vls/meshes/VLS128_base_1.dae"/>
+          <mesh filename="package://autoware_sample_platform_launch/description/sensors/vls/meshes/VLS128_base_1.dae"/>
         </geometry>
       </visual>
       <visual>
         <geometry>
-          <mesh filename="package://sample_sensor_kit_description/sensor/vls/meshes/VLS128_base_2.dae"/>
+          <mesh filename="package://autoware_sample_platform_launch/description/sensors/vls/meshes/VLS128_base_2.dae"/>
         </geometry>
       </visual>
       <collision>
@@ -57,7 +57,7 @@
       <visual>
         <origin xyz="0 0 -0.06611"/>
         <geometry>
-          <mesh filename="package://sample_sensor_kit_description/sensor/vls/meshes/VLS128_scan.dae"/>
+          <mesh filename="package://autoware_sample_platform_launch/description/sensors/vls/meshes/VLS128_scan.dae"/>
         </geometry>
       </visual>
     </link>
