@@ -31,8 +31,9 @@
 
 namespace detail
 {
-[[maybe_unused]] inline boost::optional<geometry_msgs::msg::Transform> getTransform(
-  const tf2_ros::Buffer & tf_buffer, const std::string & source_frame_id,
+template <class BufferT>
+[[maybe_unused]] boost::optional<geometry_msgs::msg::Transform> getTransform(
+  const BufferT & tf_buffer, const std::string & source_frame_id,
   const std::string & target_frame_id, const rclcpp::Time & time)
 {
   try {
@@ -46,9 +47,10 @@ namespace detail
   }
 }
 
-[[maybe_unused]] inline boost::optional<Eigen::Matrix4f> getTransformMatrix(
+template <class BufferT>
+[[maybe_unused]] boost::optional<Eigen::Matrix4f> getTransformMatrix(
   const std::string & in_target_frame, const std_msgs::msg::Header & in_cloud_header,
-  const tf2_ros::Buffer & tf_buffer)
+  const BufferT & tf_buffer)
 {
   try {
     geometry_msgs::msg::TransformStamped transform_stamped;
@@ -66,9 +68,9 @@ namespace detail
 
 namespace autoware::object_recognition_utils
 {
-template <class T>
+template <class T, class BufferT>
 bool transformObjects(
-  const T & input_msg, const std::string & target_frame_id, const tf2_ros::Buffer & tf_buffer,
+  const T & input_msg, const std::string & target_frame_id, const BufferT & tf_buffer,
   T & output_msg)
 {
   output_msg = input_msg;
@@ -99,9 +101,9 @@ bool transformObjects(
   }
   return true;
 }
-template <class T>
+template <class T, class BufferT>
 bool transformObjectsWithFeature(
-  const T & input_msg, const std::string & target_frame_id, const tf2_ros::Buffer & tf_buffer,
+  const T & input_msg, const std::string & target_frame_id, const BufferT & tf_buffer,
   T & output_msg)
 {
   output_msg = input_msg;
