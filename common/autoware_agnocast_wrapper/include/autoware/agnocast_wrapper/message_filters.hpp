@@ -244,23 +244,37 @@ private:
       },
       sync_);
 
-    {
-      std::lock_guard<std::mutex> lock(adapters_mutex_);
-      adapters_.push_back(std::move(adapter));
-    }
+    // Upstream now holds `adapter_raw`; any throw before return would leave it
+    // dangling (Connection's dtor does not auto-disconnect). `upstream_conn` is
+    // copy-captured (not moved) so the catch handler still has a live local if
+    // the closure / Connection construction throws.
+    try {
+      {
+        std::lock_guard<std::mutex> lock(adapters_mutex_);
+        adapters_.push_back(std::move(adapter));
+      }
 
-    // Wrap upstream's Connection so the user's disconnect also drops our adapter entry.
-    return ::message_filters::Connection(
-      ::message_filters::Connection::VoidDisconnectFunction(
-        [this, adapter_raw, upstream_conn = std::move(upstream_conn)]() mutable {
-          upstream_conn.disconnect();
-          std::lock_guard<std::mutex> lock(adapters_mutex_);
-          adapters_.erase(
-            std::remove_if(
-              adapters_.begin(), adapters_.end(),
-              [adapter_raw](const AdapterPtr & p) { return p.get() == adapter_raw; }),
-            adapters_.end());
-        }));
+      return ::message_filters::Connection(
+        ::message_filters::Connection::VoidDisconnectFunction(
+          [this, adapter_raw, upstream_conn]() mutable {
+            upstream_conn.disconnect();
+            std::lock_guard<std::mutex> lock(adapters_mutex_);
+            adapters_.erase(
+              std::remove_if(
+                adapters_.begin(), adapters_.end(),
+                [adapter_raw](const AdapterPtr & p) { return p.get() == adapter_raw; }),
+              adapters_.end());
+          }));
+    } catch (...) {
+      upstream_conn.disconnect();
+      std::lock_guard<std::mutex> lock(adapters_mutex_);
+      adapters_.erase(
+        std::remove_if(
+          adapters_.begin(), adapters_.end(),
+          [adapter_raw](const AdapterPtr & p) { return p.get() == adapter_raw; }),
+        adapters_.end());
+      throw;
+    }
   }
 
   std::mutex adapters_mutex_;
