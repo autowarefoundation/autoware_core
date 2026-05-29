@@ -233,6 +233,8 @@ Synchronizer<Policy> sync(Policy(10), image_sub, info_sub);
 //                                    const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M1) &)`.
 //    Returns a `::message_filters::Connection` for later `.disconnect()`.
 auto conn = sync.registerCallback(&MyNode::onSynchronized, this);
+// Note: `conn` going out of scope does NOT unregister the callback.
+// Call conn.disconnect() explicitly if you need to remove it later.
 // Equivalent form (still supported):
 // sync.registerCallback(std::bind(
 //   &MyNode::onSynchronized, this, std::placeholders::_1, std::placeholders::_2));
