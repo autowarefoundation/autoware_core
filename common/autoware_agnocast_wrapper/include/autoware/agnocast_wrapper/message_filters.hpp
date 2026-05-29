@@ -214,7 +214,7 @@ private:
     }
   };
 
-  using AdapterPtr = std::shared_ptr<CallbackAdapter>;
+  using AdapterPtr = std::unique_ptr<CallbackAdapter>;
   using RclcppSync = ::message_filters::Synchronizer<RclcppPolicy>;
   using AgnocastSync = agnocast::message_filters::Synchronizer<AgnocastPolicy>;
 
@@ -229,33 +229,37 @@ private:
 
   ::message_filters::Connection registerCallbackInternal(Callback callback)
   {
-    auto adapter = std::make_shared<CallbackAdapter>();
+    auto adapter = std::make_unique<CallbackAdapter>();
     adapter->fn = std::move(callback);
+    auto * const adapter_raw = adapter.get();
 
     auto upstream_conn = std::visit(
-      [&adapter](auto & sync) -> ::message_filters::Connection {
+      [adapter_raw](auto & sync) -> ::message_filters::Connection {
         using SyncT = std::decay_t<decltype(sync)>;
         if constexpr (std::is_same_v<SyncT, AgnocastSync>) {
-          return sync.registerCallback(&CallbackAdapter::agnocastInvoke, adapter.get());
+          return sync.registerCallback(&CallbackAdapter::agnocastInvoke, adapter_raw);
         } else {
-          return sync.registerCallback(&CallbackAdapter::rclcppInvoke, adapter.get());
+          return sync.registerCallback(&CallbackAdapter::rclcppInvoke, adapter_raw);
         }
       },
       sync_);
 
     {
       std::lock_guard<std::mutex> lock(adapters_mutex_);
-      adapters_.push_back(adapter);
+      adapters_.push_back(std::move(adapter));
     }
 
     // Wrap upstream's Connection so the user's disconnect also drops our adapter entry.
     return ::message_filters::Connection(
       ::message_filters::Connection::VoidDisconnectFunction(
-        [this, adapter = std::move(adapter), upstream_conn = std::move(upstream_conn)]() mutable {
+        [this, adapter_raw, upstream_conn = std::move(upstream_conn)]() mutable {
           upstream_conn.disconnect();
           std::lock_guard<std::mutex> lock(adapters_mutex_);
           adapters_.erase(
-            std::remove(adapters_.begin(), adapters_.end(), adapter), adapters_.end());
+            std::remove_if(
+              adapters_.begin(), adapters_.end(),
+              [adapter_raw](const AdapterPtr & p) { return p.get() == adapter_raw; }),
+            adapters_.end());
         }));
   }
 
