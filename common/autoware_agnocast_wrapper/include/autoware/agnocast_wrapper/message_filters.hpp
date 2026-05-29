@@ -219,15 +219,15 @@ private:
   using AgnocastSync = agnocast::message_filters::Synchronizer<AgnocastPolicy>;
 
   template <class C, typename T>
-  static Callback bindMemberCallback(C callback, T * t)
+  static Callback bindMemberCallback(C && callback, T * t)
   {
     return Callback{
-      [callback = std::move(callback), t](
+      [callback = std::forward<C>(callback), t](
         const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M0) & m0,
         const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M1) & m1) { (t->*callback)(m0, m1); }};
   }
 
-  ::message_filters::Connection registerCallbackInternal(Callback callback)
+  ::message_filters::Connection registerCallbackInternal(Callback && callback)
   {
     auto adapter = std::make_unique<CallbackAdapter>();
     adapter->fn = std::move(callback);
