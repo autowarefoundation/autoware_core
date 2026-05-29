@@ -19,8 +19,10 @@
 #include <algorithm>
 #include <chrono>
 #include <cstring>
+#include <memory>
 #include <map>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -231,7 +233,6 @@ void DifferentialMapLoaderModule::rebuild_merged_cloud_for_visualization()
   for (const auto & c : snapshot) {
     if (c && !c->fields.empty() && c->point_step != 0U) {
       merged = *c;
-      merged.data = std::move(reusable_data);
       has_any = true;
       break;
     }
@@ -244,6 +245,8 @@ void DifferentialMapLoaderModule::rebuild_merged_cloud_for_visualization()
     has_merged_cloud_for_visualization_ = true;
     return;
   }
+
+  merged.data = std::move(reusable_data);
 
   size_t total = 0;
   for (const auto & c : snapshot) {
