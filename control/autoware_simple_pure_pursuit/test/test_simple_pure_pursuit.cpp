@@ -61,6 +61,12 @@ protected:
     return node_->create_control_command(odom, traj);
   }
 
+  static autoware_control_msgs::msg::Control create_control_command(
+    SimplePurePursuitNode & node, const Odometry & odom, const Trajectory & traj)
+  {
+    return node.create_control_command(odom, traj);
+  }
+
   autoware_control_msgs::msg::Longitudinal calc_longitudinal_control(
     const Odometry & odom, const double target_longitudinal_vel) const
   {
@@ -161,5 +167,46 @@ TEST_F(SimplePurePursuitNodeTest, calc_lateral_control)
 
     EXPECT_DOUBLE_EQ(result.steering_tire_angle, 0.0f);
   }
+
+  {  // off-axis odometry on a straight trajectory yields a non-zero steering angle.
+    // The ego is laterally offset by +1 m from the straight (x-axis) trajectory and faces
+    // forward, so pure pursuit must steer to the right (negative) to converge back.
+    const auto odom = makeOdometry(0.0, 1.0, 0.0);
+    const auto target_longitudinal_vel = 1.0;
+    const size_t closest_traj_point_idx = 0;
+
+    const auto result =
+      calc_lateral_control(odom, traj, target_longitudinal_vel, closest_traj_point_idx);
+
+    EXPECT_LT(result.steering_tire_angle, 0.0f);
+  }
+}
+
+TEST_F(SimplePurePursuitNodeTest, create_control_command_external_target_vel)
+{
+  // The shipped config sets use_external_target_vel: false, so the external-velocity branch
+  // (target velocity from the external_target_vel_ parameter) is otherwise never exercised.
+  const auto autoware_test_utils_dir =
+    ament_index_cpp::get_package_share_directory("autoware_test_utils");
+  const auto autoware_simple_pure_pursuit_dir =
+    ament_index_cpp::get_package_share_directory("autoware_simple_pure_pursuit");
+
+  auto node_options = rclcpp::NodeOptions{};
+  autoware::test_utils::updateNodeOptions(
+    node_options, {autoware_test_utils_dir + "/config/test_vehicle_info.param.yaml",
+                   autoware_simple_pure_pursuit_dir + "/config/simple_pure_pursuit.param.yaml"});
+  node_options.append_parameter_override("use_external_target_vel", true);
+  node_options.append_parameter_override("external_target_vel", 5.0);
+
+  const auto node = std::make_shared<SimplePurePursuitNode>(node_options);
+
+  const auto odom = makeOdometry(0.0, 0.0, 0.0);
+  // trajectory points carry longitudinal_velocity_mps = 1.0
+  const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(10, 1.0, 1.0);
+
+  const auto result = create_control_command(*node, odom, traj);
+
+  // velocity comes from external_target_vel_ (5.0), not the trajectory point (1.0)
+  EXPECT_DOUBLE_EQ(result.longitudinal.velocity, 5.0);
 }
 }  // namespace autoware::control::simple_pure_pursuit

@@ -20,6 +20,13 @@ if(BUILD_TESTING)
   target_link_libraries(${PROJECT_NAME}_test
     ${PROJECT_NAME}_lib
   )
+
+  ament_auto_add_gtest(${PROJECT_NAME}_util_test
+    test/test_pure_pursuit_util.cpp
+  )
+  target_link_libraries(${PROJECT_NAME}_util_test
+    ${PROJECT_NAME}_lib
+  )
 endif()
 
 autoware_ament_auto_package(
