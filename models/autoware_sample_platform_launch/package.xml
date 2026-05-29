@@ -10,6 +10,8 @@
   <license>Apache 2.0 License</license>
 
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
+  <exec_depend>autoware_core</exec_depend>
+  <exec_depend>autoware_vehicle_velocity_converter</exec_depend>
   <exec_depend>xacro</exec_depend>
 
   <export>
