@@ -22,6 +22,8 @@
 #include <autoware_utils_math/constants.hpp>
 #include <autoware_utils_math/trigonometry.hpp>
 #include <autoware_utils_visualization/marker_helper.hpp>
+#include <rclcpp/clock.hpp>
+#include <rclcpp/time.hpp>
 
 #include <autoware_perception_msgs/msg/predicted_object.hpp>
 #include <geometry_msgs/msg/pose.hpp>
@@ -39,10 +41,12 @@ namespace autoware::objects_of_interest_marker_interface::marker_utils
  * @param name Module name
  * @param height_offset Height offset of arrow marker
  * @param arrow_length Length of arrow marker
+ * @param stamp Header stamp of the marker (defaults to the current ROS time)
  */
 visualization_msgs::msg::Marker createArrowMarker(
   const size_t id, const ObjectMarkerData & data, const std::string & name,
-  const double height_offset, const double arrow_length = 1.0);
+  const double height_offset, const double arrow_length = 1.0,
+  const rclcpp::Time & stamp = rclcpp::Clock{RCL_ROS_TIME}.now());
 
 /**
  * @brief Create circle marker from object marker data
@@ -52,10 +56,12 @@ visualization_msgs::msg::Marker createArrowMarker(
  * @param radius Radius of circle marker
  * @param height_offset Height offset of circle marker
  * @param line_width Line width of circle marker
+ * @param stamp Header stamp of the marker (defaults to the current ROS time)
  */
 visualization_msgs::msg::Marker createCircleMarker(
   const size_t id, const ObjectMarkerData & data, const std::string & name, const double radius,
-  const double height_offset, const double line_width = 0.1);
+  const double height_offset, const double line_width = 0.1,
+  const rclcpp::Time & stamp = rclcpp::Clock{RCL_ROS_TIME}.now());
 
 /**
  * @brief Create text marker visualizing module name
@@ -64,10 +70,12 @@ visualization_msgs::msg::Marker createCircleMarker(
  * @param name Module name
  * @param height_offset Height offset of target marker
  * @param text_size Text size
+ * @param stamp Header stamp of the marker (defaults to the current ROS time)
  */
 visualization_msgs::msg::Marker createNameTextMarker(
   const size_t id, const ObjectMarkerData & data, const std::string & name,
-  const double height_offset, const double text_size = 0.5);
+  const double height_offset, const double text_size = 0.5,
+  const rclcpp::Time & stamp = rclcpp::Clock{RCL_ROS_TIME}.now());
 
 /**
  * @brief Create target marker from object marker data
@@ -77,10 +85,12 @@ visualization_msgs::msg::Marker createNameTextMarker(
  * @param height_offset Height offset of target marker
  * @param arrow_length Length of arrow marker
  * @param line_width Line width of circle marker
+ * @param stamp Header stamp shared by all markers (defaults to the current ROS time)
  */
 visualization_msgs::msg::MarkerArray createTargetMarker(
   const size_t id, const ObjectMarkerData & data, const std::string & name,
-  const double height_offset, const double arrow_length = 1.0, const double line_width = 0.1);
+  const double height_offset, const double arrow_length = 1.0, const double line_width = 0.1,
+  const rclcpp::Time & stamp = rclcpp::Clock{RCL_ROS_TIME}.now());
 }  // namespace autoware::objects_of_interest_marker_interface::marker_utils
 
 #endif  // AUTOWARE__OBJECTS_OF_INTEREST_MARKER_INTERFACE__MARKER_UTILS_HPP_
