@@ -15,9 +15,9 @@
 #include "voxel_grid_downsample_filter_node.hpp"
 
 #include "faster_voxel_grid_downsample_filter.hpp"
-#include "memory.hpp"
 #include "transform_info.hpp"
 
+#include <autoware/point_types/memory.hpp>
 #include <pcl_ros/transforms.hpp>
 #include <tf2_eigen/tf2_eigen.hpp>
 
@@ -110,20 +110,20 @@ bool VoxelGridDownsampleFilter::is_valid(const PointCloud2ConstPtr & cloud)
   }
 
   if (
-    !utils::is_data_layout_compatible_with_point_xyzircaedt(*cloud) &&
-    !utils::is_data_layout_compatible_with_point_xyzirc(*cloud)) {
+    !autoware::point_types::is_data_layout_compatible_with_point_xyzircaedt(*cloud) &&
+    !autoware::point_types::is_data_layout_compatible_with_point_xyzirc(*cloud)) {
     RCLCPP_ERROR(
       get_logger(),
       "The pointcloud layout is not compatible with PointXYZIRCAEDT or PointXYZIRC. Aborting");
 
-    if (utils::is_data_layout_compatible_with_point_xyziradrt(*cloud)) {
+    if (autoware::point_types::is_data_layout_compatible_with_point_xyziradrt(*cloud)) {
       RCLCPP_ERROR(
         get_logger(),
         "The pointcloud layout is compatible with PointXYZIRADRT. You may be using legacy "
         "code/data");
     }
 
-    if (utils::is_data_layout_compatible_with_point_xyzi(*cloud)) {
+    if (autoware::point_types::is_data_layout_compatible_with_point_xyzi(*cloud)) {
       RCLCPP_ERROR(
         get_logger(),
         "The pointcloud layout is compatible with PointXYZI. You may be using legacy "
