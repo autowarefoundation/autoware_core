@@ -81,32 +81,12 @@ bool SelectedMapLoaderModule::on_service_get_selected_point_cloud_map(
     const std::string path = requested_selected_map_iterator->first;
     // assume that the map ID = map path (for now)
     const std::string & map_id = path;
-    PCDFileMetadata metadata = requested_selected_map_iterator->second;
+    const PCDFileMetadata & metadata = requested_selected_map_iterator->second;
 
-    autoware_map_msgs::msg::PointCloudMapCellWithID pointcloud_map_cell_with_id =
-      load_point_cloud_map_cell_with_id(path, map_id);
-    pointcloud_map_cell_with_id.metadata.min_x = metadata.min.x;
-    pointcloud_map_cell_with_id.metadata.min_y = metadata.min.y;
-    pointcloud_map_cell_with_id.metadata.max_x = metadata.max.x;
-    pointcloud_map_cell_with_id.metadata.max_y = metadata.max.y;
-
-    res->new_pointcloud_with_ids.push_back(pointcloud_map_cell_with_id);
+    res->new_pointcloud_with_ids.push_back(
+      load_point_cloud_map_cell_with_id(logger_, path, map_id, metadata));
   }
   res->header.frame_id = "map";
   return true;
-}
-
-autoware_map_msgs::msg::PointCloudMapCellWithID
-SelectedMapLoaderModule::load_point_cloud_map_cell_with_id(
-  const std::string & path, const std::string & map_id) const
-{
-  sensor_msgs::msg::PointCloud2 pcd;
-  if (pcl::io::loadPCDFile(path, pcd) == -1) {
-    RCLCPP_ERROR_STREAM(logger_, "PCD load failed: " << path);
-  }
-  autoware_map_msgs::msg::PointCloudMapCellWithID pointcloud_map_cell_with_id;
-  pointcloud_map_cell_with_id.pointcloud = pcd;
-  pointcloud_map_cell_with_id.cell_id = map_id;
-  return pointcloud_map_cell_with_id;
 }
 }  // namespace autoware::map_loader
