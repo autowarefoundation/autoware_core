@@ -16,7 +16,9 @@
 
 #include <gtest/gtest.h>
 
+#include <chrono>
 #include <memory>
+#include <utility>
 
 nav_msgs::msg::Odometry::SharedPtr createOdometryMessage(
   double linear_x, double linear_y, double linear_z, double angular_x, double angular_y,
@@ -70,88 +72,105 @@ TEST(StopFilterProcessorTest, TestCreateFilteredMsgStopped)
   ASSERT_EQ(filtered_msg.header.stamp, input_msg->header.stamp);
 }
 
-// Test for stop detection in StopFilterNode
-// This test is disabled by default due to its reliance on real-time execution
-// To run this test, you need to enable it manually by removing the DISABLED_ prefix
-TEST(StopFilterNodeTest, DISABLED_TestStopDetection)
+// End-to-end node test fixture.
+//
+// This replaces the previously DISABLED_ real-time test (background spin thread +
+// wall-clock sleeps) with a deterministic SingleThreadedExecutor / spin_some loop:
+// one Odometry message is published, the executor is pumped with spin_some() until
+// both outputs arrive (bounded by a generous wall-clock safety net rather than a
+// fixed sleep), and the published values are asserted.
+class StopFilterNodeTest : public ::testing::Test
 {
-  // Initialize ROS 2 context
-  rclcpp::init(0, nullptr);
+protected:
+  void SetUp() override { rclcpp::init(0, nullptr); }
+  void TearDown() override { rclcpp::shutdown(); }
 
-  // Variable to hold received messages
-  std::shared_ptr<nav_msgs::msg::Odometry> received_odom;
-  std::shared_ptr<autoware_internal_debug_msgs::msg::BoolStamped> received_stop_flag;
-  bool odom_received = false;
-  bool stop_flag_received = false;
-  std::mutex msg_mutex;
+  // Publishes a single Odometry message into the StopFilterNode, deterministically
+  // pumps the executor, and returns the (filtered odometry, stop flag) outputs.
+  std::pair<nav_msgs::msg::Odometry, autoware_internal_debug_msgs::msg::BoolStamped> run_once(
+    double vx_threshold, double wz_threshold, const nav_msgs::msg::Odometry::SharedPtr & input)
+  {
+    nav_msgs::msg::Odometry received_odom;
+    autoware_internal_debug_msgs::msg::BoolStamped received_stop_flag;
+    bool odom_received = false;
+    bool stop_flag_received = false;
 
-  // Subscription to receive output messages
-  std::shared_ptr<rclcpp::Node> test_control_node =
-    std::make_shared<rclcpp::Node>("test_control_node");
-  auto odom_subscription = test_control_node->create_subscription<nav_msgs::msg::Odometry>(
-    "output/odom", 10, [&](const nav_msgs::msg::Odometry::SharedPtr msg) {
-      std::lock_guard<std::mutex> lock(msg_mutex);
-      received_odom = msg;
-      odom_received = true;
-    });
-
-  auto stop_flag_subscription =
-    test_control_node->create_subscription<autoware_internal_debug_msgs::msg::BoolStamped>(
-      "debug/stop_flag", 10,
-      [&](const autoware_internal_debug_msgs::msg::BoolStamped::SharedPtr msg) {
-        std::lock_guard<std::mutex> lock(msg_mutex);
-        received_stop_flag = msg;
-        stop_flag_received = true;
+    auto test_node = std::make_shared<rclcpp::Node>("test_stop_filter_helper_node");
+    auto odom_sub = test_node->create_subscription<nav_msgs::msg::Odometry>(
+      "output/odom", 10, [&](const nav_msgs::msg::Odometry::SharedPtr msg) {
+        received_odom = *msg;
+        odom_received = true;
       });
+    auto stop_flag_sub =
+      test_node->create_subscription<autoware_internal_debug_msgs::msg::BoolStamped>(
+        "debug/stop_flag", 10,
+        [&](const autoware_internal_debug_msgs::msg::BoolStamped::SharedPtr msg) {
+          received_stop_flag = *msg;
+          stop_flag_received = true;
+        });
+    auto publisher = test_node->create_publisher<nav_msgs::msg::Odometry>("input/odom", 10);
 
-  // Create stop filter node and register subscriptions
-  rclcpp::NodeOptions options;
-  options.parameter_overrides({{"vx_threshold", 1.0}, {"wz_threshold", 1.0}});
-  std::shared_ptr<autoware::stop_filter::StopFilterNode> stop_filter_node =
-    std::make_shared<autoware::stop_filter::StopFilterNode>(options);
+    rclcpp::NodeOptions options;
+    options.parameter_overrides({{"vx_threshold", vx_threshold}, {"wz_threshold", wz_threshold}});
+    auto stop_filter_node = std::make_shared<autoware::stop_filter::StopFilterNode>(options);
 
-  // Create executor and register nodes
-  rclcpp::executors::SingleThreadedExecutor executor;
-  executor.add_node(stop_filter_node);
-  executor.add_node(test_control_node);
+    rclcpp::executors::SingleThreadedExecutor executor;
+    executor.add_node(stop_filter_node);
+    executor.add_node(test_node);
 
-  // Run executor in separate thread
-  std::thread executor_thread([&]() { executor.spin(); });
+    // Pump until both publishers/subscribers are matched so the published message
+    // is not dropped before delivery.
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+    while (publisher->get_subscription_count() == 0 &&
+           std::chrono::steady_clock::now() < deadline) {
+      executor.spin_some();
+    }
+    EXPECT_GT(publisher->get_subscription_count(), 0u)
+      << "StopFilterNode did not subscribe to input/odom";
 
-  // Create publisher for input messages
-  auto publisher = test_control_node->create_publisher<nav_msgs::msg::Odometry>("input/odom", 10);
+    publisher->publish(*input);
 
-  // Wait for connection to be established
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    while ((!odom_received || !stop_flag_received) && std::chrono::steady_clock::now() < deadline) {
+      executor.spin_some();
+    }
 
-  // Create and publish stop state test message
-  auto stop_msg = nav_msgs::msg::Odometry();
-  stop_msg.header.frame_id = "base_link";
-  stop_msg.header.stamp = rclcpp::Clock().now();
-  stop_msg.twist.twist.linear.x = 0.2;   // below threshold
-  stop_msg.twist.twist.angular.z = 0.2;  // below threshold
-  publisher->publish(stop_msg);
+    EXPECT_TRUE(odom_received) << "output/odom message was not received";
+    EXPECT_TRUE(stop_flag_received) << "debug/stop_flag message was not received";
 
-  // Wait for messages to be received
-  auto start_time = std::chrono::steady_clock::now();
-  while ((!odom_received || !stop_flag_received) &&
-         std::chrono::steady_clock::now() - start_time < std::chrono::seconds(4)) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    return {received_odom, received_stop_flag};
   }
+};
 
-  // Stop executor
-  executor.cancel();
-  if (executor_thread.joinable()) {
-    executor_thread.join();
-  }
-  rclcpp::shutdown();
+TEST_F(StopFilterNodeTest, ZeroesTwistAndRaisesFlagWhenStopped)
+{
+  // Velocities below the configured thresholds -> treated as stopped.
+  auto input = createOdometryMessage(0.05, 0.0, 0.0, 0.0, 0.0, 0.05);
+  auto [odom, stop_flag] = run_once(0.1, 0.1, input);
 
-  // Verify results
-  ASSERT_TRUE(odom_received) << "Odometry message was not received within timeout";
-  ASSERT_TRUE(stop_flag_received) << "Stop flag message was not received within timeout";
-  ASSERT_NE(received_odom, nullptr);
-  ASSERT_NE(received_stop_flag, nullptr);
-  ASSERT_EQ(received_odom->twist.twist.linear.x, 0.0);
-  ASSERT_EQ(received_odom->twist.twist.angular.z, 0.0);
-  ASSERT_TRUE(received_stop_flag->data);
+  // Longitudinal/yaw twist is zeroed and the stop flag is raised.
+  EXPECT_EQ(odom.twist.twist.linear.x, 0.0);
+  EXPECT_EQ(odom.twist.twist.linear.y, 0.0);
+  EXPECT_EQ(odom.twist.twist.linear.z, 0.0);
+  EXPECT_EQ(odom.twist.twist.angular.x, 0.0);
+  EXPECT_EQ(odom.twist.twist.angular.y, 0.0);
+  EXPECT_EQ(odom.twist.twist.angular.z, 0.0);
+  EXPECT_TRUE(stop_flag.data);
+
+  // Header is preserved end-to-end.
+  EXPECT_EQ(odom.header.frame_id, input->header.frame_id);
+  EXPECT_EQ(odom.header.stamp, input->header.stamp);
+  EXPECT_EQ(stop_flag.stamp, input->header.stamp);
+}
+
+TEST_F(StopFilterNodeTest, PassesTwistThroughAndClearsFlagWhenMoving)
+{
+  // Velocities above the configured thresholds -> treated as moving.
+  auto input = createOdometryMessage(0.2, 0.0, 0.0, 0.0, 0.0, 0.2);
+  auto [odom, stop_flag] = run_once(0.1, 0.1, input);
+
+  // Twist passes through unchanged and the stop flag stays low.
+  EXPECT_EQ(odom.twist.twist.linear.x, 0.2);
+  EXPECT_EQ(odom.twist.twist.angular.z, 0.2);
+  EXPECT_FALSE(stop_flag.data);
+  EXPECT_EQ(stop_flag.stamp, input->header.stamp);
 }

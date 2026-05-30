@@ -29,13 +29,23 @@ class StopFilterProcessor
 {
 public:
   StopFilterProcessor(double linear_x_threshold, double angular_z_threshold);
+
+  /// @brief Compute the stop filter result for the given odometry message.
+  FilterResult apply_filter(const nav_msgs::msg::Odometry::SharedPtr input) const;
+
   autoware_internal_debug_msgs::msg::BoolStamped create_stop_flag_msg(
     const nav_msgs::msg::Odometry::SharedPtr input) const;
   nav_msgs::msg::Odometry create_filtered_msg(const nav_msgs::msg::Odometry::SharedPtr input) const;
 
+  /// @brief Build the stop flag message from an already computed filter result.
+  static autoware_internal_debug_msgs::msg::BoolStamped create_stop_flag_msg(
+    const nav_msgs::msg::Odometry::SharedPtr input, const FilterResult & result);
+  /// @brief Build the filtered odometry message from an already computed filter result.
+  static nav_msgs::msg::Odometry create_filtered_msg(
+    const nav_msgs::msg::Odometry::SharedPtr input, const FilterResult & result);
+
 private:
   StopFilter stop_filter_;
-  FilterResult apply_filter(const nav_msgs::msg::Odometry::SharedPtr input) const;
 };
 
 class StopFilterNode : public rclcpp::Node

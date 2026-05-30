@@ -35,10 +35,14 @@ FilterResult StopFilterProcessor::apply_filter(const nav_msgs::msg::Odometry::Sh
 autoware_internal_debug_msgs::msg::BoolStamped StopFilterProcessor::create_stop_flag_msg(
   const nav_msgs::msg::Odometry::SharedPtr input) const
 {
+  return create_stop_flag_msg(input, apply_filter(input));
+}
+
+autoware_internal_debug_msgs::msg::BoolStamped StopFilterProcessor::create_stop_flag_msg(
+  const nav_msgs::msg::Odometry::SharedPtr input, const FilterResult & result)
+{
   autoware_internal_debug_msgs::msg::BoolStamped stop_flag_msg;
   stop_flag_msg.stamp = input->header.stamp;
-
-  FilterResult result = apply_filter(input);
   stop_flag_msg.data = result.was_stopped;
 
   return stop_flag_msg;
@@ -47,9 +51,14 @@ autoware_internal_debug_msgs::msg::BoolStamped StopFilterProcessor::create_stop_
 nav_msgs::msg::Odometry StopFilterProcessor::create_filtered_msg(
   const nav_msgs::msg::Odometry::SharedPtr input) const
 {
+  return create_filtered_msg(input, apply_filter(input));
+}
+
+nav_msgs::msg::Odometry StopFilterProcessor::create_filtered_msg(
+  const nav_msgs::msg::Odometry::SharedPtr input, const FilterResult & result)
+{
   nav_msgs::msg::Odometry filtered_msg = *input;
 
-  FilterResult result = apply_filter(input);
   filtered_msg.twist.twist.linear.x = result.linear_velocity.x;
   filtered_msg.twist.twist.linear.y = result.linear_velocity.y;
   filtered_msg.twist.twist.linear.z = result.linear_velocity.z;
@@ -75,8 +84,9 @@ StopFilterNode::StopFilterNode(const rclcpp::NodeOptions & node_options)
 
 void StopFilterNode::callback_odometry(const nav_msgs::msg::Odometry::SharedPtr msg)
 {
-  pub_stop_flag_->publish(message_processor_.create_stop_flag_msg(msg));
-  pub_odom_->publish(message_processor_.create_filtered_msg(msg));
+  const FilterResult result = message_processor_.apply_filter(msg);
+  pub_stop_flag_->publish(message_processor_.create_stop_flag_msg(msg, result));
+  pub_odom_->publish(message_processor_.create_filtered_msg(msg, result));
 }
 }  // namespace autoware::stop_filter
 
