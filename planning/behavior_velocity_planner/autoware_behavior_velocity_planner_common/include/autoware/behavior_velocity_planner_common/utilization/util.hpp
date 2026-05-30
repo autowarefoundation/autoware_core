@@ -129,6 +129,21 @@ double findReachTime(
 std::vector<geometry_msgs::msg::Point> toRosPoints(const PredictedObjects & object);
 
 /**
+ * @brief Format regulatory-element, lanelet and line ids into a human-readable id tag.
+ *
+ * Each non-empty id group is rendered as "[<prefix>: id0, id1, ...]" and the groups are
+ * concatenated in the order reg / lane / line. Empty groups are skipped entirely.
+ *
+ * @param regulatory_element_ids ids rendered under the "Reg" prefix
+ * @param lanelet_ids ids rendered under the "Lane" prefix
+ * @param line_ids ids rendered under the "Line" prefix
+ * @return concatenated id tag (empty string when all groups are empty)
+ */
+std::string formatIds(
+  const std::vector<int64_t> & regulatory_element_ids, const std::vector<int64_t> & lanelet_ids,
+  const std::vector<int64_t> & line_ids);
+
+/**
  * @brief Extend segment until it intersects with two bounds
  * @param segment Segment to extend
  * @param bound1 First bound

@@ -447,7 +447,7 @@ double calcDecelerationVelocityFromDistanceToTarget(
   const double max_slowdown_jerk, const double max_slowdown_accel, const double current_accel,
   const double current_velocity, const double distance_to_target)
 {
-  if (max_slowdown_jerk > 0 || max_slowdown_accel > 0) {
+  if (max_slowdown_jerk >= 0 || max_slowdown_accel >= 0) {
     throw std::logic_error("max_slowdown_jerk and max_slowdown_accel should be negative");
   }
   // case0: distance to target is behind ego
@@ -494,6 +494,28 @@ std::vector<geometry_msgs::msg::Point> toRosPoints(const PredictedObjects & obje
     points.emplace_back(obj.kinematics.initial_pose_with_covariance.pose.position);
   }
   return points;
+}
+
+std::string formatIds(
+  const std::vector<int64_t> & regulatory_element_ids, const std::vector<int64_t> & lanelet_ids,
+  const std::vector<int64_t> & line_ids)
+{
+  const auto format_id_group =
+    [](const std::vector<int64_t> & ids, const char * prefix) -> std::string {
+    if (ids.empty()) {
+      return "";
+    }
+    std::string result = "[";
+    result += prefix;
+    for (size_t i = 0; i < ids.size(); ++i) {
+      result += (i == 0 ? ": " : ", ") + std::to_string(ids[i]);
+    }
+    result += "]";
+    return result;
+  };
+
+  return format_id_group(regulatory_element_ids, "Reg") + format_id_group(lanelet_ids, "Lane") +
+         format_id_group(line_ids, "Line");
 }
 
 LineString2d extendSegmentToBounds(
