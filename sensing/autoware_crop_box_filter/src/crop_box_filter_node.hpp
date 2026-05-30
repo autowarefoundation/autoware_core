@@ -73,20 +73,6 @@ private:
   /** \brief Parameter service callback */
   rcl_interfaces::msg::SetParametersResult param_callback(const std::vector<rclcpp::Parameter> & p);
 
-  /** \brief For parameter service callback */
-  template <typename T>
-  bool get_param(const std::vector<rclcpp::Parameter> & p, const std::string & name, T & value)
-  {
-    auto it = std::find_if(p.cbegin(), p.cend(), [&name](const rclcpp::Parameter & parameter) {
-      return parameter.get_name() == name;
-    });
-    if (it != p.cend()) {
-      value = it->template get_value<T>();
-      return true;
-    }
-    return false;
-  }
-
 public:
   explicit CropBoxFilterNode(const rclcpp::NodeOptions & node_options);
 };

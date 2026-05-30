@@ -16,6 +16,7 @@
 #define CROP_BOX_FILTER_HPP_
 
 #include <Eigen/Eigen>
+#include <rclcpp/parameter.hpp>
 
 #include <geometry_msgs/msg/polygon_stamped.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
@@ -23,6 +24,7 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 using PointCloud2 = sensor_msgs::msg::PointCloud2;
 using PointCloud2ConstPtr = sensor_msgs::msg::PointCloud2::ConstSharedPtr;
@@ -73,12 +75,22 @@ private:
   CropBoxFilterConfig config_;
   Eigen::Matrix4f eigen_transform_preprocess_{Eigen::Matrix4f::Identity()};
   Eigen::Matrix4f eigen_transform_postprocess_{Eigen::Matrix4f::Identity()};
+  bool has_preprocess_{false};
+  bool has_postprocess_{false};
   std::optional<std::string> output_frame_id_;
 };
 
 geometry_msgs::msg::PolygonStamped generate_crop_box_polygon(
   const CropBoxParam & param, const std::string & frame_id,
   const builtin_interfaces::msg::Time & stamp);
+
+/// \brief Merge a SetParameters request into an existing crop-box configuration.
+///
+/// Each crop-box bound and the keep_outside_box flag is taken from \p params when present,
+/// otherwise it falls back to the corresponding value in \p current. The pre/post-process
+/// transforms in \p current are preserved unchanged.
+CropBoxFilterConfig merge_crop_box_params(
+  const CropBoxFilterConfig & current, const std::vector<rclcpp::Parameter> & params);
 
 }  // namespace autoware::crop_box_filter
 

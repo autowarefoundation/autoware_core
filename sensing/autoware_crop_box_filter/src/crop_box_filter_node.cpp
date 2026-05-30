@@ -192,20 +192,7 @@ rcl_interfaces::msg::SetParametersResult CropBoxFilterNode::param_callback(
 {
   std::scoped_lock lock(mutex_);
 
-  CropBoxParam new_param{};
-
-  new_param.min_x = get_param(p, "min_x", new_param.min_x) ? new_param.min_x : config_.param.min_x;
-  new_param.min_y = get_param(p, "min_y", new_param.min_y) ? new_param.min_y : config_.param.min_y;
-  new_param.min_z = get_param(p, "min_z", new_param.min_z) ? new_param.min_z : config_.param.min_z;
-  new_param.max_x = get_param(p, "max_x", new_param.max_x) ? new_param.max_x : config_.param.max_x;
-  new_param.max_y = get_param(p, "max_y", new_param.max_y) ? new_param.max_y : config_.param.max_y;
-  new_param.max_z = get_param(p, "max_z", new_param.max_z) ? new_param.max_z : config_.param.max_z;
-  bool new_keep_outside_box = false;
-  config_.keep_outside_box = get_param(p, "negative", new_keep_outside_box)
-                               ? new_keep_outside_box
-                               : config_.keep_outside_box;
-
-  config_.param = new_param;
+  config_ = merge_crop_box_params(config_, p);
 
   // recreate CropBoxFilter with updated config
   crop_box_filter_.emplace(config_);

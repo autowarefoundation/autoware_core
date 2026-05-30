@@ -14,12 +14,16 @@
 
 #include "crop_box_filter.hpp"
 
+#include <rclcpp/parameter.hpp>
+
 #include <sensor_msgs/point_cloud2_iterator.hpp>
 
 #include <gtest/gtest.h>
 
 #include <algorithm>
 #include <array>
+#include <cmath>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -375,6 +379,187 @@ TEST(GenerateCropBoxPolygonTest, SetsFrameIdStampAndPointCount)
   EXPECT_EQ(polygon.header.stamp.sec, 123);
   EXPECT_EQ(polygon.header.stamp.nanosec, 456u);
   EXPECT_EQ(polygon.polygon.points.size(), 16u);
+}
+
+TEST(ValidatePointCloud2Test, RejectsTruncatedData)
+{
+  // width * height * point_step = 1 * 1 * 12 = 12, but data is only 8 bytes long.
+  auto cloud = make_cloud(
+    {make_field("x", 0, sensor_msgs::msg::PointField::FLOAT32),
+     make_field("y", 4, sensor_msgs::msg::PointField::FLOAT32),
+     make_field("z", 8, sensor_msgs::msg::PointField::FLOAT32)},
+    12);
+  cloud.data.resize(8);
+
+  const auto result = autoware::crop_box_filter::validate_pointcloud2(cloud);
+
+  EXPECT_FALSE(result.is_valid);
+}
+
+TEST(CropBoxFilterTest, SkipsNonFinitePointsAndCountsThem)
+{
+  // Arrange
+  autoware::crop_box_filter::CropBoxFilterConfig config;
+  config.param = {-5.0f, 5.0f, -5.0f, 5.0f, -5.0f, 5.0f};
+  config.keep_outside_box = false;
+
+  // The two finite points are inside the box and kept; the three non-finite points are skipped.
+  PointXYZList input_points = {
+    {0.5f, 0.5f, 0.5f},
+    {std::numeric_limits<float>::quiet_NaN(), 0.0f, 0.0f},
+    {0.0f, std::numeric_limits<float>::infinity(), 0.0f},
+    {0.0f, 0.0f, -std::numeric_limits<float>::infinity()},
+    {1.0f, 1.0f, 1.0f},
+  };
+
+  const auto input_cloud = create_pointcloud2(input_points);
+  const autoware::crop_box_filter::CropBoxFilter filter(config);
+
+  // Act
+  const auto result = filter.filter(input_cloud);
+  const auto kept_points = extract_points_from_cloud(result.pointcloud);
+
+  // Assert
+  EXPECT_EQ(result.skipped_nan_count, 3);
+  PointXYZList expected_points = {{0.5f, 0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}};
+  EXPECT_TRUE(is_same_points(expected_points, kept_points));
+}
+
+TEST(CropBoxFilterTest, PointExactlyOnBoundaryIsTreatedAsOutside)
+{
+  // The inside test uses strict < and > on all six bounds, so a point sitting exactly on a
+  // bound is excluded. keep_outside_box = false → only strictly-inside points are kept.
+  autoware::crop_box_filter::CropBoxFilterConfig config;
+  config.param = {-1.0f, 1.0f, -1.0f, 1.0f, -1.0f, 1.0f};
+  config.keep_outside_box = false;
+
+  PointXYZList input_points = {
+    {1.0f, 0.0f, 0.0f},   // exactly on max_x → outside → filtered
+    {-1.0f, 0.0f, 0.0f},  // exactly on min_x → outside → filtered
+    {0.0f, 1.0f, 0.0f},   // exactly on max_y → outside → filtered
+    {0.0f, 0.0f, 1.0f},   // exactly on max_z → outside → filtered
+    {0.5f, 0.5f, 0.5f},   // strictly inside → kept
+  };
+
+  const auto output = apply_crop_box_filter(input_points, config);
+
+  PointXYZList expected_points = {{0.5f, 0.5f, 0.5f}};
+  EXPECT_TRUE(is_same_points(expected_points, output.points));
+}
+
+TEST(CropBoxFilterTest, IdentityFastPathKeepsCoordinatesUnchanged)
+{
+  // With no transform configured, the kept point's coordinates must equal the input exactly
+  // and the output frame must fall back to the input cloud frame.
+  autoware::crop_box_filter::CropBoxFilterConfig config;
+  config.param = {-5.0f, 5.0f, -5.0f, 5.0f, -5.0f, 5.0f};
+  config.keep_outside_box = false;
+
+  PointXYZList input_points = {{1.25f, -2.5f, 3.75f}};
+
+  const auto output = apply_crop_box_filter(input_points, config);
+
+  ASSERT_EQ(output.points.size(), 1u);
+  EXPECT_FLOAT_EQ(output.points[0][0], 1.25f);
+  EXPECT_FLOAT_EQ(output.points[0][1], -2.5f);
+  EXPECT_FLOAT_EQ(output.points[0][2], 3.75f);
+  EXPECT_EQ(output.frame_id, "base_link");
+}
+
+autoware::crop_box_filter::CropBoxFilterConfig make_default_merge_config()
+{
+  autoware::crop_box_filter::CropBoxFilterConfig config;
+  config.param = {-1.0f, 1.0f, -2.0f, 2.0f, -3.0f, 3.0f};
+  config.keep_outside_box = false;
+  return config;
+}
+
+TEST(MergeCropBoxParamsTest, EmptyUpdateIsNoOp)
+{
+  const auto current = make_default_merge_config();
+
+  const auto merged = autoware::crop_box_filter::merge_crop_box_params(current, {});
+
+  EXPECT_FLOAT_EQ(merged.param.min_x, current.param.min_x);
+  EXPECT_FLOAT_EQ(merged.param.max_x, current.param.max_x);
+  EXPECT_FLOAT_EQ(merged.param.min_y, current.param.min_y);
+  EXPECT_FLOAT_EQ(merged.param.max_y, current.param.max_y);
+  EXPECT_FLOAT_EQ(merged.param.min_z, current.param.min_z);
+  EXPECT_FLOAT_EQ(merged.param.max_z, current.param.max_z);
+  EXPECT_EQ(merged.keep_outside_box, current.keep_outside_box);
+}
+
+TEST(MergeCropBoxParamsTest, PartialUpdateKeepsUntouchedFields)
+{
+  const auto current = make_default_merge_config();
+
+  const std::vector<rclcpp::Parameter> params = {
+    rclcpp::Parameter("min_x", -10.0), rclcpp::Parameter("max_z", 30.0)};
+
+  const auto merged = autoware::crop_box_filter::merge_crop_box_params(current, params);
+
+  // Updated fields
+  EXPECT_FLOAT_EQ(merged.param.min_x, -10.0f);
+  EXPECT_FLOAT_EQ(merged.param.max_z, 30.0f);
+  // Untouched fields keep current values
+  EXPECT_FLOAT_EQ(merged.param.max_x, current.param.max_x);
+  EXPECT_FLOAT_EQ(merged.param.min_y, current.param.min_y);
+  EXPECT_FLOAT_EQ(merged.param.max_y, current.param.max_y);
+  EXPECT_FLOAT_EQ(merged.param.min_z, current.param.min_z);
+  EXPECT_EQ(merged.keep_outside_box, current.keep_outside_box);
+}
+
+TEST(MergeCropBoxParamsTest, FullUpdateReplacesAllFields)
+{
+  const auto current = make_default_merge_config();
+
+  const std::vector<rclcpp::Parameter> params = {
+    rclcpp::Parameter("min_x", -11.0),   rclcpp::Parameter("max_x", 11.0),
+    rclcpp::Parameter("min_y", -12.0),   rclcpp::Parameter("max_y", 12.0),
+    rclcpp::Parameter("min_z", -13.0),   rclcpp::Parameter("max_z", 13.0),
+    rclcpp::Parameter("negative", true),
+  };
+
+  const auto merged = autoware::crop_box_filter::merge_crop_box_params(current, params);
+
+  EXPECT_FLOAT_EQ(merged.param.min_x, -11.0f);
+  EXPECT_FLOAT_EQ(merged.param.max_x, 11.0f);
+  EXPECT_FLOAT_EQ(merged.param.min_y, -12.0f);
+  EXPECT_FLOAT_EQ(merged.param.max_y, 12.0f);
+  EXPECT_FLOAT_EQ(merged.param.min_z, -13.0f);
+  EXPECT_FLOAT_EQ(merged.param.max_z, 13.0f);
+  EXPECT_TRUE(merged.keep_outside_box);
+}
+
+TEST(MergeCropBoxParamsTest, NegativeToggleUpdatesKeepOutsideBox)
+{
+  auto current = make_default_merge_config();
+  current.keep_outside_box = true;
+
+  const std::vector<rclcpp::Parameter> params = {rclcpp::Parameter("negative", false)};
+
+  const auto merged = autoware::crop_box_filter::merge_crop_box_params(current, params);
+
+  EXPECT_FALSE(merged.keep_outside_box);
+  // Box bounds untouched
+  EXPECT_FLOAT_EQ(merged.param.min_x, current.param.min_x);
+}
+
+TEST(MergeCropBoxParamsTest, PreservesConfiguredTransforms)
+{
+  auto current = make_default_merge_config();
+  current.preprocess_transform = make_translation_transform("intermediate", 5.0, 0.0, 0.0);
+  current.postprocess_transform = make_translation_transform("output_frame", 0.0, 10.0, 0.0);
+
+  const std::vector<rclcpp::Parameter> params = {rclcpp::Parameter("min_x", -7.0)};
+
+  const auto merged = autoware::crop_box_filter::merge_crop_box_params(current, params);
+
+  ASSERT_TRUE(merged.preprocess_transform.has_value());
+  ASSERT_TRUE(merged.postprocess_transform.has_value());
+  EXPECT_EQ(merged.preprocess_transform->header.frame_id, "intermediate");
+  EXPECT_EQ(merged.postprocess_transform->header.frame_id, "output_frame");
+  EXPECT_FLOAT_EQ(merged.param.min_x, -7.0f);
 }
 
 int main(int argc, char ** argv)
