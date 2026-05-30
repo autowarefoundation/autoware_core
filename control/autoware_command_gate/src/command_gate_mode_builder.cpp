@@ -14,10 +14,30 @@
 
 #include "command_gate_mode_builder.hpp"
 
+#include <optional>
 #include <string>
 
 namespace autoware::control::command_gate
 {
+
+std::optional<ModeOutputs> CommandGateModeBuilder::dispatch_mode(
+  uint16_t mode, const builtin_interfaces::msg::Time & stamp)
+{
+  using Request = autoware_system_msgs::srv::ChangeOperationMode::Request;
+
+  switch (mode) {
+    case Request::STOP:
+      return make_stop(stamp);
+    case Request::AUTONOMOUS:
+      return make_autonomous(stamp);
+    case Request::LOCAL:
+      return make_local(stamp);
+    case Request::REMOTE:
+      return make_remote(stamp);
+    default:
+      return std::nullopt;
+  }
+}
 
 ModeOutputs CommandGateModeBuilder::make_stop(const builtin_interfaces::msg::Time & stamp)
 {

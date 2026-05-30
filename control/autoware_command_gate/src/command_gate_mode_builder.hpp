@@ -19,8 +19,11 @@
 
 #include <autoware_adapi_v1_msgs/msg/operation_mode_state.hpp>
 #include <autoware_adapi_v1_msgs/msg/response_status.hpp>
+#include <autoware_system_msgs/srv/change_operation_mode.hpp>
 #include <autoware_vehicle_msgs/msg/gear_command.hpp>
 
+#include <cstdint>
+#include <optional>
 #include <string>
 
 namespace autoware::control::command_gate
@@ -40,6 +43,13 @@ public:
   static ModeOutputs make_autonomous(const builtin_interfaces::msg::Time & stamp);
   static ModeOutputs make_local(const builtin_interfaces::msg::Time & stamp);
   static ModeOutputs make_remote(const builtin_interfaces::msg::Time & stamp);
+
+  /// Map an operation-mode request value to its outputs.
+  /// Returns std::nullopt for unknown/unsupported modes so callers can emit a
+  /// PARAMETER_ERROR response. The accepted values mirror the constants of
+  /// autoware_system_msgs::srv::ChangeOperationMode::Request (STOP/AUTONOMOUS/LOCAL/REMOTE).
+  static std::optional<ModeOutputs> dispatch_mode(
+    uint16_t mode, const builtin_interfaces::msg::Time & stamp);
 
 private:
   static void fill_state(

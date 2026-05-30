@@ -17,6 +17,7 @@
 #include <builtin_interfaces/msg/time.hpp>
 
 #include <autoware_adapi_v1_msgs/msg/operation_mode_state.hpp>
+#include <autoware_system_msgs/srv/change_operation_mode.hpp>
 #include <autoware_vehicle_msgs/msg/gear_command.hpp>
 
 #include <gtest/gtest.h>
@@ -134,6 +135,71 @@ TEST(CommandGateModeBuilder, MakeRemote)
   EXPECT_TRUE(outputs.status.success);
   EXPECT_EQ(outputs.status.code, 0);
   EXPECT_EQ(outputs.status.message, "Switched to REMOTE");
+}
+
+TEST(CommandGateModeBuilder, DispatchModeStop)
+{
+  using Request = autoware_system_msgs::srv::ChangeOperationMode::Request;
+  builtin_interfaces::msg::Time stamp;
+  stamp.sec = 5;
+  stamp.nanosec = 50;
+
+  const auto outputs = CommandGateModeBuilder::dispatch_mode(Request::STOP, stamp);
+
+  ASSERT_TRUE(outputs.has_value());
+  EXPECT_EQ(outputs->state.mode, autoware_adapi_v1_msgs::msg::OperationModeState::STOP);
+  EXPECT_FALSE(outputs->state.is_autoware_control_enabled);
+  EXPECT_EQ(outputs->gear.command, autoware_vehicle_msgs::msg::GearCommand::PARK);
+  EXPECT_EQ(outputs->state.stamp.sec, stamp.sec);
+  EXPECT_EQ(outputs->state.stamp.nanosec, stamp.nanosec);
+}
+
+TEST(CommandGateModeBuilder, DispatchModeAutonomous)
+{
+  using Request = autoware_system_msgs::srv::ChangeOperationMode::Request;
+  builtin_interfaces::msg::Time stamp;
+
+  const auto outputs = CommandGateModeBuilder::dispatch_mode(Request::AUTONOMOUS, stamp);
+
+  ASSERT_TRUE(outputs.has_value());
+  EXPECT_EQ(outputs->state.mode, autoware_adapi_v1_msgs::msg::OperationModeState::AUTONOMOUS);
+  EXPECT_TRUE(outputs->state.is_autoware_control_enabled);
+  EXPECT_EQ(outputs->gear.command, autoware_vehicle_msgs::msg::GearCommand::DRIVE);
+}
+
+TEST(CommandGateModeBuilder, DispatchModeLocal)
+{
+  using Request = autoware_system_msgs::srv::ChangeOperationMode::Request;
+  builtin_interfaces::msg::Time stamp;
+
+  const auto outputs = CommandGateModeBuilder::dispatch_mode(Request::LOCAL, stamp);
+
+  ASSERT_TRUE(outputs.has_value());
+  EXPECT_EQ(outputs->state.mode, autoware_adapi_v1_msgs::msg::OperationModeState::LOCAL);
+  EXPECT_EQ(outputs->gear.command, autoware_vehicle_msgs::msg::GearCommand::NONE);
+}
+
+TEST(CommandGateModeBuilder, DispatchModeRemote)
+{
+  using Request = autoware_system_msgs::srv::ChangeOperationMode::Request;
+  builtin_interfaces::msg::Time stamp;
+
+  const auto outputs = CommandGateModeBuilder::dispatch_mode(Request::REMOTE, stamp);
+
+  ASSERT_TRUE(outputs.has_value());
+  EXPECT_EQ(outputs->state.mode, autoware_adapi_v1_msgs::msg::OperationModeState::REMOTE);
+  EXPECT_EQ(outputs->gear.command, autoware_vehicle_msgs::msg::GearCommand::NONE);
+}
+
+TEST(CommandGateModeBuilder, DispatchModeUnknownReturnsNullopt)
+{
+  builtin_interfaces::msg::Time stamp;
+
+  // 0 is reserved (no mode constant) and any value outside STOP/AUTONOMOUS/LOCAL/REMOTE
+  // must be rejected so the node can report a PARAMETER_ERROR.
+  EXPECT_FALSE(CommandGateModeBuilder::dispatch_mode(0, stamp).has_value());
+  EXPECT_FALSE(CommandGateModeBuilder::dispatch_mode(5, stamp).has_value());
+  EXPECT_FALSE(CommandGateModeBuilder::dispatch_mode(255, stamp).has_value());
 }
 
 }  // namespace autoware::control::command_gate
