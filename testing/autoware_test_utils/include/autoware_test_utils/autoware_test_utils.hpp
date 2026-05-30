@@ -551,7 +551,7 @@ void setSubscriber(
 template <typename T>
 void publishToTargetNode(
   rclcpp::Node::SharedPtr test_node, rclcpp::Node::SharedPtr target_node, std::string topic_name,
-  typename rclcpp::Publisher<T>::SharedPtr publisher, T data, const int repeat_count = 3)
+  typename rclcpp::Publisher<T>::SharedPtr publisher, const T & data, const int repeat_count = 3)
 {
   if (topic_name.empty()) {
     int status = 1;
