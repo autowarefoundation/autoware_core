@@ -16,6 +16,7 @@ find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 
 ament_auto_add_library(planning_topic_converter SHARED
+  src/conversion.cpp
   src/path_to_trajectory.cpp
 )
 
@@ -23,5 +24,11 @@ rclcpp_components_register_node(planning_topic_converter
   PLUGIN "autoware::planning_topic_converter::PathToTrajectory"
   EXECUTABLE path_to_trajectory_converter
 )
+
+if(BUILD_TESTING)
+  ament_auto_add_gtest(test_conversion
+    test/test_conversion.cpp
+  )
+endif()
 
 autoware_ament_auto_package()

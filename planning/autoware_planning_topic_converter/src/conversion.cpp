@@ -12,26 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <autoware/motion_utils/trajectory/conversion.hpp>
 #include <autoware/planning_topic_converter/conversion.hpp>
-#include <autoware/planning_topic_converter/path_to_trajectory.hpp>
+#include <autoware_utils_geometry/geometry.hpp>
+
+#include <vector>
 
 namespace autoware::planning_topic_converter
 {
 
-PathToTrajectory::PathToTrajectory(const rclcpp::NodeOptions & options)
-: ConverterBase("path_to_trajectory_converter", options)
+TrajectoryPoint convertToTrajectoryPoint(const PathPoint & point)
 {
+  TrajectoryPoint traj_point;
+  traj_point.pose = autoware_utils_geometry::get_pose(point);
+  traj_point.longitudinal_velocity_mps = point.longitudinal_velocity_mps;
+  traj_point.lateral_velocity_mps = point.lateral_velocity_mps;
+  traj_point.heading_rate_rps = point.heading_rate_rps;
+  return traj_point;
 }
 
-void PathToTrajectory::process(const Path::ConstSharedPtr msg)
+std::vector<TrajectoryPoint> convertToTrajectoryPoints(const std::vector<PathPoint> & points)
 {
-  const auto trajectory_points = convertToTrajectoryPoints(msg->points);
-  const auto output = autoware::motion_utils::convertToTrajectory(trajectory_points, msg->header);
-  pub_->publish(output);
+  std::vector<TrajectoryPoint> traj_points;
+  traj_points.reserve(points.size());
+  for (const auto & point : points) {
+    traj_points.emplace_back(convertToTrajectoryPoint(point));
+  }
+  return traj_points;
 }
 
 }  // namespace autoware::planning_topic_converter
-
-#include <rclcpp_components/register_node_macro.hpp>
-RCLCPP_COMPONENTS_REGISTER_NODE(autoware::planning_topic_converter::PathToTrajectory)
