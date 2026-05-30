@@ -97,4 +97,13 @@ install(
   DESTINATION share/${PROJECT_NAME}
 )
 
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  ament_lint_auto_find_test_dependencies()
+
+  ament_auto_add_gtest(test_${PROJECT_NAME}
+    test/test_agnocast_wrapper.cpp
+  )
+endif()
+
 autoware_ament_auto_package()

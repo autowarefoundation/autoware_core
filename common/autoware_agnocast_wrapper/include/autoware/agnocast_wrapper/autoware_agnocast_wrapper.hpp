@@ -14,8 +14,53 @@
 
 #pragma once
 
+#include <chrono>
+#include <cstdlib>
+#include <stdexcept>
 #include <string>
 #include <utility>
+
+namespace autoware::agnocast_wrapper::detail
+{
+
+/// @brief Parse the ENABLE_AGNOCAST environment-variable value.
+///
+/// Pure helper shared by both build variants so the parse rule is unit-testable
+/// without an Agnocast toolchain. Mirrors the historical getenv()+atoi()
+/// behavior: a missing (null) value parses to 0, otherwise the value is parsed
+/// with std::atoi() (leading whitespace skipped, trailing garbage ignored,
+/// non-numeric leading text yielding 0).
+///
+/// @param value The raw environment-variable string, or nullptr if unset.
+/// @return The parsed integer; 0 when @p value is nullptr.
+inline int parse_enable_agnocast(const char * value)
+{
+  if (value != nullptr) {
+    return std::atoi(value);
+  }
+  return 0;
+}
+
+/// @brief Validate a timer period against the rclcpp create_wall_timer precondition.
+///
+/// Pure helper shared by both build variants so the throw/no-throw boundary is
+/// unit-testable without constructing a node, clock, or timer handle. Mirrors
+/// rclcpp::create_wall_timer's precondition 0 <= period < nanoseconds::max().
+///
+/// @param period The requested timer period.
+/// @throws std::invalid_argument if @p period is negative or equal to
+///   std::chrono::nanoseconds::max().
+inline void validate_timer_period(std::chrono::nanoseconds period)
+{
+  if (period < std::chrono::nanoseconds::zero()) {
+    throw std::invalid_argument{"timer period cannot be negative"};
+  }
+  if (period == std::chrono::nanoseconds::max()) {
+    throw std::invalid_argument{"timer period must be less than std::chrono::nanoseconds::max()"};
+  }
+}
+
+}  // namespace autoware::agnocast_wrapper::detail
 
 #ifdef USE_AGNOCAST_ENABLED
 
@@ -26,10 +71,7 @@
 
 #include <rcl/timer.h>
 
-#include <chrono>
-#include <cstdlib>
 #include <memory>
-#include <stdexcept>
 #include <type_traits>
 
 #define AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) \
@@ -337,11 +379,7 @@ public:
 // Defaults to zero if the environment variable is missing or invalid.
 inline int get_ENABLE_AGNOCAST()
 {
-  const char * env = std::getenv("ENABLE_AGNOCAST");
-  if (env) {
-    return std::atoi(env);
-  }
-  return 0;
+  return detail::parse_enable_agnocast(std::getenv("ENABLE_AGNOCAST"));
 }
 
 inline bool use_agnocast()
@@ -831,12 +869,7 @@ private:
 ///   between backends).
 inline void set_period(const Timer::SharedPtr & timer, std::chrono::nanoseconds period)
 {
-  if (period < std::chrono::nanoseconds::zero()) {
-    throw std::invalid_argument{"timer period cannot be negative"};
-  }
-  if (period == std::chrono::nanoseconds::max()) {
-    throw std::invalid_argument{"timer period must be less than std::chrono::nanoseconds::max()"};
-  }
+  detail::validate_timer_period(period);
   timer->set_period(period);
 }
 
@@ -851,9 +884,7 @@ inline void set_period(const Timer::SharedPtr & timer, std::chrono::nanoseconds 
 
 #include <rcl/timer.h>
 
-#include <chrono>
 #include <memory>
-#include <stdexcept>
 #include <type_traits>
 
 namespace autoware::agnocast_wrapper
@@ -871,12 +902,7 @@ namespace autoware::agnocast_wrapper
 /// @throws rclcpp::exceptions::RCLError on rcl-level failure.
 inline void set_period(const rclcpp::TimerBase::SharedPtr & timer, std::chrono::nanoseconds period)
 {
-  if (period < std::chrono::nanoseconds::zero()) {
-    throw std::invalid_argument{"timer period cannot be negative"};
-  }
-  if (period == std::chrono::nanoseconds::max()) {
-    throw std::invalid_argument{"timer period must be less than std::chrono::nanoseconds::max()"};
-  }
+  detail::validate_timer_period(period);
   int64_t old_period = 0;
   const rcl_ret_t ret =
     rcl_timer_exchange_period(timer->get_timer_handle().get(), period.count(), &old_period);
