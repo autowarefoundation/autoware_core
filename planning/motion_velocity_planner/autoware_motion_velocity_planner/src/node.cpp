@@ -230,7 +230,6 @@ std::optional<pcl::PointCloud<pcl::PointXYZ>>
 MotionVelocityPlannerNode::process_no_ground_pointcloud(
   const sensor_msgs::msg::PointCloud2::ConstSharedPtr msg)
 {
-
   if (msg->width == 0 || msg->height == 0) {
     RCLCPP_DEBUG_SKIPFIRST_THROTTLE(
       get_logger(), *get_clock(), 5000,  // 5 seconds
@@ -244,8 +243,6 @@ MotionVelocityPlannerNode::process_no_ground_pointcloud(
   geometry_msgs::msg::TransformStamped transform;
   const bool is_pcl_time_valid = (this->get_clock()->now() - rclcpp::Time(msg->header.stamp)) <
                                  rclcpp::Duration::from_seconds(1.0);
-
-
 
   if (
     is_pcl_time_valid && tf_buffer_.canTransform("map", msg->header.frame_id, msg->header.stamp)) {
