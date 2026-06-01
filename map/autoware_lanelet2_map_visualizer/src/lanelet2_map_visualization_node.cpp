@@ -345,7 +345,7 @@ void Lanelet2MapVisualizationNode::on_map_bin(
                          obstacle_removal_areas, cl_obstacle_removal_area));
   insert_marker_array(
     &map_marker_array, lanelet::visualization::laneletAreasAsMarkerArray(
-                        lanelet_areas, cl_lanelet_routing_area, cl_lanelet_routing_area_outline));         
+                         lanelet_areas, cl_lanelet_routing_area, cl_lanelet_routing_area_outline));
 
   pub_marker_->publish(map_marker_array);
 }
