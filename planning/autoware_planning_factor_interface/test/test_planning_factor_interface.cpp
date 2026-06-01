@@ -13,13 +13,13 @@
 // limitations under the License.
 
 #include <autoware/planning_factor_interface/planning_factor_interface.hpp>
+#include <autoware_utils_geometry/geometry.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <autoware_internal_planning_msgs/msg/planning_factor.hpp>
 #include <autoware_internal_planning_msgs/msg/planning_factor_array.hpp>
 #include <autoware_internal_planning_msgs/msg/safety_factor_array.hpp>
 #include <autoware_planning_msgs/msg/trajectory_point.hpp>
-#include <autoware_utils_geometry/geometry.hpp>
 #include <geometry_msgs/msg/pose.hpp>
 
 #include <gtest/gtest.h>
