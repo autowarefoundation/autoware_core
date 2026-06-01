@@ -1184,15 +1184,13 @@ TEST_F(GroundFilterComponentTest, TestParameterUpdateBranches)
   // Constructing a second GroundFilterComponent here collided with the still-alive node_
   // because the component name is hardcoded as "GroundFilter", making the test
   // timing-sensitive in CI. Reuse node_, matching TestParameterUpdate.
-  auto result1 =
-    node_->set_parameter(rclcpp::Parameter("local_slope_max_angle_deg", 20.0));
+  auto result1 = node_->set_parameter(rclcpp::Parameter("local_slope_max_angle_deg", 20.0));
   EXPECT_TRUE(result1.successful);
 
   auto result2 = node_->set_parameter(rclcpp::Parameter("radial_divider_angle_deg", 2.0));
   EXPECT_TRUE(result2.successful);
 
-  auto result3 =
-    node_->set_parameter(rclcpp::Parameter("split_points_distance_tolerance", 0.3));
+  auto result3 = node_->set_parameter(rclcpp::Parameter("split_points_distance_tolerance", 0.3));
   EXPECT_TRUE(result3.successful);
 
   auto result4 = node_->set_parameter(rclcpp::Parameter("split_height_distance", 0.3));
