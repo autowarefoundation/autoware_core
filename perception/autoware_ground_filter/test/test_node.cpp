@@ -1180,67 +1180,28 @@ TEST_F(GroundFilterComponentTest, TestTransformCalculation)
 
 TEST_F(GroundFilterComponentTest, TestParameterUpdateBranches)
 {
-  rclcpp::NodeOptions options;
-
-  options.append_parameter_override("elevation_grid_mode", true);
-  options.append_parameter_override("radial_divider_angle_deg", 1.0);
-  options.append_parameter_override("global_slope_max_angle_deg", 15.0);
-  options.append_parameter_override("local_slope_max_angle_deg", 15.0);
-  options.append_parameter_override("split_points_distance_tolerance", 0.2);
-  options.append_parameter_override("use_virtual_ground_point", true);
-  options.append_parameter_override("split_height_distance", 0.2);
-  options.append_parameter_override("use_recheck_ground_cluster", true);
-  options.append_parameter_override("use_lowest_point", true);
-  options.append_parameter_override("detection_range_z_max", 2.0);
-  options.append_parameter_override("low_priority_region_x", 0.0);
-  options.append_parameter_override("center_pcl_shift", 0.0);
-  options.append_parameter_override("non_ground_height_threshold", 0.2);
-  options.append_parameter_override("grid_size_m", 0.5);
-  options.append_parameter_override("grid_mode_switch_radius", 20.0);
-  options.append_parameter_override("ground_grid_buffer_size", 3);
-  options.append_parameter_override("publish_processing_time_detail", false);
-  options.append_parameter_override("input_frame", "base_link");
-  options.append_parameter_override("output_frame", "base_link");
-  options.append_parameter_override("max_queue_size", 5);
-  options.append_parameter_override("use_indices", false);
-  options.append_parameter_override("latched_indices", false);
-  options.append_parameter_override("approximate_sync", false);
-
-  options.append_parameter_override("wheel_radius", 0.4);
-  options.append_parameter_override("wheel_width", 0.2);
-  options.append_parameter_override("wheel_base", 2.8);
-  options.append_parameter_override("wheel_tread", 1.6);
-  options.append_parameter_override("front_overhang", 0.9);
-  options.append_parameter_override("rear_overhang", 1.1);
-  options.append_parameter_override("left_overhang", 0.1);
-  options.append_parameter_override("right_overhang", 0.1);
-  options.append_parameter_override("vehicle_height", 2.0);
-  options.append_parameter_override("max_steer_angle", 0.7);
-
-  auto node = std::make_shared<GroundFilterComponent>(options);
-
-  auto local_slope_param = rclcpp::Parameter("local_slope_max_angle_deg", 20.0);
-  auto result1 = node->set_parameter(local_slope_param);
+  // Exercise each branch in GroundFilterComponent::onParameter on the fixture node.
+  // Constructing a second GroundFilterComponent here collided with the still-alive node_
+  // because the component name is hardcoded as "GroundFilter", making the test
+  // timing-sensitive in CI. Reuse node_, matching TestParameterUpdate.
+  auto result1 =
+    node_->set_parameter(rclcpp::Parameter("local_slope_max_angle_deg", 20.0));
   EXPECT_TRUE(result1.successful);
 
-  auto radial_param = rclcpp::Parameter("radial_divider_angle_deg", 2.0);
-  auto result2 = node->set_parameter(radial_param);
+  auto result2 = node_->set_parameter(rclcpp::Parameter("radial_divider_angle_deg", 2.0));
   EXPECT_TRUE(result2.successful);
 
-  auto split_distance_param = rclcpp::Parameter("split_points_distance_tolerance", 0.3);
-  auto result3 = node->set_parameter(split_distance_param);
+  auto result3 =
+    node_->set_parameter(rclcpp::Parameter("split_points_distance_tolerance", 0.3));
   EXPECT_TRUE(result3.successful);
 
-  auto split_height_param = rclcpp::Parameter("split_height_distance", 0.3);
-  auto result4 = node->set_parameter(split_height_param);
+  auto result4 = node_->set_parameter(rclcpp::Parameter("split_height_distance", 0.3));
   EXPECT_TRUE(result4.successful);
 
-  auto virtual_ground_param = rclcpp::Parameter("use_virtual_ground_point", false);
-  auto result5 = node->set_parameter(virtual_ground_param);
+  auto result5 = node_->set_parameter(rclcpp::Parameter("use_virtual_ground_point", false));
   EXPECT_TRUE(result5.successful);
 
-  auto recheck_param = rclcpp::Parameter("use_recheck_ground_cluster", false);
-  auto result6 = node->set_parameter(recheck_param);
+  auto result6 = node_->set_parameter(rclcpp::Parameter("use_recheck_ground_cluster", false));
   EXPECT_TRUE(result6.successful);
 }
 
