@@ -36,7 +36,8 @@ public:
   {
     pub_ = create_publisher<std_msgs::msg::String>("output", 10);
     sub_ = create_subscription<std_msgs::msg::String>(
-      "input", 10, [this](std::unique_ptr<const std_msgs::msg::String> msg) { /* ... */ });
+      "input", 10,
+      [this](AUTOWARE_MESSAGE_CONST_SHARED_PTR(std_msgs::msg::String) && msg) { /* ... */ });
 
     timer_ = create_wall_timer(
       std::chrono::milliseconds(100), [this]() { /* ... */ });

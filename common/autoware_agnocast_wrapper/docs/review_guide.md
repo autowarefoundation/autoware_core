@@ -305,6 +305,8 @@ Node-wide migration to `agnocast_wrapper::Node` (see Part 2 Section 4 Method 2).
 
 - [ ] Message allocation (if publisher exists): `std::make_unique<M>()` → `ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_)`
 
+- [ ] If the node also uses message_filters, timers, tf2, or diagnostic_updater, they have been migrated to the corresponding `autoware::agnocast_wrapper::*` wrappers (see the [README](../README.md) for usage and current limitations)
+
 - [ ] If the original CMakeLists.txt used `rclcpp_components_register_node()`, it has been replaced with `autoware_agnocast_wrapper_register_node()` (see Part 2 Section 5)
 
 &nbsp;
@@ -389,11 +391,11 @@ All macros below are defined in [`autoware_agnocast_wrapper.hpp`](https://github
 
 ### Message Pointer Types
 
-| Macro                                     | ENABLE_AGNOCAST=1 (Agnocast) | ENABLE_AGNOCAST=0 (ROS 2)     |
-| ----------------------------------------- | ---------------------------- | ----------------------------- |
-| `AUTOWARE_MESSAGE_UNIQUE_PTR(MsgT)`       | `message_ptr<MsgT, Unique>`  | `std::unique_ptr<MsgT>`       |
-| `AUTOWARE_MESSAGE_SHARED_PTR(MsgT)`       | `message_ptr<MsgT, Shared>`  | `std::shared_ptr<MsgT>`       |
-| `AUTOWARE_MESSAGE_CONST_SHARED_PTR(MsgT)` | `message_ptr<MsgT, Shared>`  | `std::shared_ptr<const MsgT>` |
+| Macro                                     | ENABLE_AGNOCAST=1 (Agnocast)      | ENABLE_AGNOCAST=0 (ROS 2)     |
+| ----------------------------------------- | --------------------------------- | ----------------------------- |
+| `AUTOWARE_MESSAGE_UNIQUE_PTR(MsgT)`       | `message_ptr<MsgT, Unique>`       | `std::unique_ptr<MsgT>`       |
+| `AUTOWARE_MESSAGE_SHARED_PTR(MsgT)`       | `message_ptr<MsgT, Shared>`       | `std::shared_ptr<MsgT>`       |
+| `AUTOWARE_MESSAGE_CONST_SHARED_PTR(MsgT)` | `message_ptr<const MsgT, Shared>` | `std::shared_ptr<const MsgT>` |
 
 > `AUTOWARE_MESSAGE_SHARED_PTR` is for publishers (mutable messages), while `AUTOWARE_MESSAGE_CONST_SHARED_PTR` is for subscriptions (read-only messages).
 
