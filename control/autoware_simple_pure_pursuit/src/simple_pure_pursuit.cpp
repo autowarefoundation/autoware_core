@@ -130,7 +130,7 @@ autoware_control_msgs::msg::Lateral SimplePurePursuitNode::calc_lateral_control(
     calc_rear_position(odom.pose.pose, vehicle_info_.wheel_base_m, vehicle_heading);
 
   // search lookahead point
-  const auto lookahead_point =
+  const auto & lookahead_point =
     find_lookahead_point(traj.points, closest_traj_point_idx, rear_position, lookahead_distance);
 
   // calculate steering angle

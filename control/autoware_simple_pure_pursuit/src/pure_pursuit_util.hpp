@@ -67,8 +67,9 @@ geometry_msgs::msg::Point calc_rear_position(
 /// @param closest_traj_point_idx index of the closest trajectory point
 /// @param rear_position rear-axle center position
 /// @param lookahead_distance lookahead distance [m]
-/// @return the selected lookahead trajectory point
-TrajectoryPoint find_lookahead_point(
+/// @return const reference to the selected lookahead trajectory point within @p points (the
+/// reference is valid for as long as @p points and its elements remain alive)
+const TrajectoryPoint & find_lookahead_point(
   const std::vector<TrajectoryPoint> & points, const size_t closest_traj_point_idx,
   const geometry_msgs::msg::Point & rear_position, const double lookahead_distance);
 

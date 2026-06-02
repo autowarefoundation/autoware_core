@@ -52,7 +52,7 @@ geometry_msgs::msg::Point calc_rear_position(
     base_link_pose.position.y - wheel_base / 2.0 * std::sin(yaw), base_link_pose.position.z);
 }
 
-TrajectoryPoint find_lookahead_point(
+const TrajectoryPoint & find_lookahead_point(
   const std::vector<TrajectoryPoint> & points, const size_t closest_traj_point_idx,
   const geometry_msgs::msg::Point & rear_position, const double lookahead_distance)
 {

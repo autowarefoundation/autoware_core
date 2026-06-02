@@ -84,7 +84,8 @@ TEST(PurePursuitUtil, find_lookahead_point_normal)
     make_traj_point(3.0, 0.0)};
 
   // first point at or beyond 1.5 m from rear (0, 0) is (2, 0)
-  const auto p = find_lookahead_point(points, 0, make_point(0.0, 0.0), 1.5);
+  const auto rear_position = make_point(0.0, 0.0);
+  const auto & p = find_lookahead_point(points, 0, rear_position, 1.5);
   EXPECT_DOUBLE_EQ(p.pose.position.x, 2.0);
   EXPECT_DOUBLE_EQ(p.pose.position.y, 0.0);
 }
@@ -95,7 +96,8 @@ TEST(PurePursuitUtil, find_lookahead_point_fallback_to_last)
     make_traj_point(0.0, 0.0), make_traj_point(1.0, 0.0), make_traj_point(2.0, 0.0)};
 
   // no point reaches a 100 m lookahead distance -> clamp to the last point (2, 0)
-  const auto p = find_lookahead_point(points, 0, make_point(0.0, 0.0), 100.0);
+  const auto rear_position = make_point(0.0, 0.0);
+  const auto & p = find_lookahead_point(points, 0, rear_position, 100.0);
   EXPECT_DOUBLE_EQ(p.pose.position.x, 2.0);
   EXPECT_DOUBLE_EQ(p.pose.position.y, 0.0);
 }
