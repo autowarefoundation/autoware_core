@@ -75,9 +75,10 @@ TEST(GroundFilterGridTrig, PseudoArcTan2SpecialCases)
   EXPECT_FLOAT_EQ(detail::pseudoArcTan2(0.0f, 1.0f), 0.0f);
   EXPECT_FLOAT_EQ(detail::pseudoArcTan2(0.0f, -1.0f), M_PIf);
 
-  // x == 0 branch (note: this returns +/- pi/2, NOT the [0, 2pi) convention)
+  // x == 0 branch: both axis directions stay within the [0, 2pi) convention so
+  // the negative-Y axis bins consistently instead of falling out of range.
   EXPECT_FLOAT_EQ(detail::pseudoArcTan2(1.0f, 0.0f), M_PI_2f);
-  EXPECT_FLOAT_EQ(detail::pseudoArcTan2(-1.0f, 0.0f), -M_PI_2f);
+  EXPECT_FLOAT_EQ(detail::pseudoArcTan2(-1.0f, 0.0f), 3.0f * M_PI_2f);
 }
 
 // ---------------------------------------------------------------------------
@@ -187,6 +188,12 @@ TEST_F(GridTest, GridIdxFromRadiusAzimuth)
   const int idx = getGridIdx(5.0f, 0.5f);
   EXPECT_GE(idx, 0);
   EXPECT_LT(idx, grid_size);
+
+  // Negative-Y axis (azimuth 3*pi/2 from pseudoArcTan2(-1, 0)) is in range and
+  // must bin into a valid cell rather than being rejected as out-of-range.
+  const int neg_y_axis_idx = getGridIdx(5.0f, detail::pseudoArcTan2(-1.0f, 0.0f));
+  EXPECT_GE(neg_y_axis_idx, 0);
+  EXPECT_LT(neg_y_axis_idx, grid_size);
 
   // Out-of-range radius: -1 irrespective of azimuth.
   EXPECT_EQ(getGridIdx(1.0e4f, 0.5f), -1);

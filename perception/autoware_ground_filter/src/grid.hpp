@@ -44,9 +44,15 @@ inline float pseudoArcTan2(const float y, const float x)
     if (x >= 0.0f) return 0.0f;
     return M_PIf;
   }
+  constexpr float M_3PI_2f = 3.0f * M_PI_2f;
   if (x == 0.0f) {
     if (y >= 0.0f) return M_PI_2f;
-    return -M_PI_2f;
+    // Negative-Y axis: return 3*pi/2 to stay within the [0, 2*pi) convention
+    // used everywhere else in this function. Returning -pi/2 here would make the
+    // negative-Y axis the only direction with a negative azimuth, which
+    // getAzimuthGridIdx() floors into a negative bin and getGridIdx() then
+    // rejects as out-of-range, dropping points exactly on that axis.
+    return M_3PI_2f;
   }
 
   const float x_abs = std::abs(x);
@@ -54,7 +60,6 @@ inline float pseudoArcTan2(const float y, const float x)
 
   // divide to 8 zones
   constexpr float M_2PIf = 2.0f * M_PIf;
-  constexpr float M_3PI_2f = 3.0f * M_PI_2f;
   if (x_abs > y_abs) {
     const float ratio = y_abs / x_abs;
     const float angle = ratio * M_PI_4f;
