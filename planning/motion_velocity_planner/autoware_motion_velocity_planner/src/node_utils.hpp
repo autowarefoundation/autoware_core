@@ -20,7 +20,7 @@
 #include <autoware_perception_msgs/msg/traffic_light_group_array.hpp>
 #include <autoware_planning_msgs/msg/trajectory_point.hpp>
 
-#include <lanelet2_core/primitives/Lanelet.h>
+#include <lanelet2_core/Forward.h>
 
 #include <map>
 #include <vector>

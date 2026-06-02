@@ -246,7 +246,10 @@ MotionVelocityPlannerNode::process_no_ground_pointcloud(
       break;
     case utils::PointcloudTransformSource::AtTimeZero:
       transform = tf_buffer_.lookupTransform("map", msg->header.frame_id, tf2::TimePointZero);
-      RCLCPP_DEBUG(get_logger(), "pcl time is invalid, using tf2::TimePointZero");
+      RCLCPP_DEBUG(
+        get_logger(),
+        "transform at the pointcloud stamp is unavailable (stale stamp or no transform at stamp), "
+        "falling back to tf2::TimePointZero");
       break;
     case utils::PointcloudTransformSource::None:
       RCLCPP_WARN(get_logger(), "no transform found for no_ground_pointcloud");
