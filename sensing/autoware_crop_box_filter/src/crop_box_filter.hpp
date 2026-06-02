@@ -86,9 +86,10 @@ geometry_msgs::msg::PolygonStamped generate_crop_box_polygon(
 
 /// \brief Merge a SetParameters request into an existing crop-box configuration.
 ///
-/// Each crop-box bound and the keep_outside_box flag is taken from \p params when present,
-/// otherwise it falls back to the corresponding value in \p current. The pre/post-process
-/// transforms in \p current are preserved unchanged.
+/// Each crop-box bound is taken from \p params when present (parameter names \c min_x ...
+/// \c max_z), and the \c keep_outside_box flag is taken from the \c negative parameter when
+/// present; otherwise each value falls back to the corresponding value in \p current. The
+/// pre/post-process transforms in \p current are preserved unchanged.
 CropBoxFilterConfig merge_crop_box_params(
   const CropBoxFilterConfig & current, const std::vector<rclcpp::Parameter> & params);
 

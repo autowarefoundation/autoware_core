@@ -20,6 +20,7 @@
 #include <sensor_msgs/msg/point_field.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
 
+#include <cmath>
 #include <sstream>
 #include <string>
 #include <vector>
