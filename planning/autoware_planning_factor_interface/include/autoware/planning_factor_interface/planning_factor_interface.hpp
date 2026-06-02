@@ -140,13 +140,13 @@ public:
                                  .shift_length(shift_length)
                                  .distance(distance);
 
-    const auto factor = autoware_internal_planning_msgs::build<PlanningFactor>()
-                          .module(name_)
-                          .is_driving_forward(is_driving_forward)
-                          .control_points({control_point})
-                          .behavior(behavior)
-                          .detail(detail)
-                          .safety_factors(safety_factors);
+    auto factor = autoware_internal_planning_msgs::build<PlanningFactor>()
+                    .module(name_)
+                    .is_driving_forward(is_driving_forward)
+                    .control_points({control_point})
+                    .behavior(behavior)
+                    .detail(detail)
+                    .safety_factors(safety_factors);
 
     factors_.push_back(std::move(factor));
   }
@@ -186,13 +186,13 @@ public:
                                      .shift_length(end_shift_length)
                                      .distance(end_distance);
 
-    const auto factor = autoware_internal_planning_msgs::build<PlanningFactor>()
-                          .module(name_)
-                          .is_driving_forward(is_driving_forward)
-                          .control_points({control_start_point, control_end_point})
-                          .behavior(behavior)
-                          .detail(detail)
-                          .safety_factors(safety_factors);
+    auto factor = autoware_internal_planning_msgs::build<PlanningFactor>()
+                    .module(name_)
+                    .is_driving_forward(is_driving_forward)
+                    .control_points({control_start_point, control_end_point})
+                    .behavior(behavior)
+                    .detail(detail)
+                    .safety_factors(safety_factors);
 
     factors_.push_back(std::move(factor));
   }
