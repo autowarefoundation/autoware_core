@@ -19,6 +19,8 @@
 
 #include <gtest/gtest.h>
 
+#include <cmath>
+
 namespace autoware_planning_test_manager::utils
 {
 namespace
