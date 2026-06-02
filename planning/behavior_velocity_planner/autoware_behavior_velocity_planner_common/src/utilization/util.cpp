@@ -15,8 +15,8 @@
 #include "autoware/behavior_velocity_planner_common/utilization/util.hpp"
 
 #include "autoware/behavior_velocity_planner_common/utilization/boost_geometry_helper.hpp"
-#include "utilization/util_internal.hpp"
 #include "autoware/motion_utils/trajectory/trajectory.hpp"
+#include "utilization/util_internal.hpp"
 
 #include <autoware/lanelet2_utils/nn_search.hpp>
 #include <autoware/lanelet2_utils/topology.hpp>
