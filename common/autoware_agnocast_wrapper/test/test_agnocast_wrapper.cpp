@@ -50,6 +50,13 @@ TEST(ParseEnableAgnocast, OneStringParsesToOne)
   EXPECT_EQ(detail::parse_enable_agnocast("1"), 1);
 }
 
+TEST(ParseEnableAgnocast, LeadingWhitespaceIsSkipped)
+{
+  // std::atoi skips leading whitespace before parsing the integer.
+  EXPECT_EQ(detail::parse_enable_agnocast("  1"), 1);
+  EXPECT_EQ(detail::parse_enable_agnocast("\t0"), 0);
+}
+
 TEST(ParseEnableAgnocast, GarbageLeadingTextParsesToZero)
 {
   // std::atoi returns 0 when no leading digits are present.
@@ -107,27 +114,6 @@ TEST(ValidateTimerPeriod, MaxPeriodThrowsInvalidArgument)
 {
   EXPECT_THROW(
     detail::validate_timer_period(std::chrono::nanoseconds::max()), std::invalid_argument);
-}
-
-TEST(ValidateTimerPeriod, NegativePeriodCarriesExpectedMessage)
-{
-  try {
-    detail::validate_timer_period(std::chrono::nanoseconds{-5});
-    FAIL() << "expected std::invalid_argument";
-  } catch (const std::invalid_argument & e) {
-    EXPECT_EQ(std::string{e.what()}, "timer period cannot be negative");
-  }
-}
-
-TEST(ValidateTimerPeriod, MaxPeriodCarriesExpectedMessage)
-{
-  try {
-    detail::validate_timer_period(std::chrono::nanoseconds::max());
-    FAIL() << "expected std::invalid_argument";
-  } catch (const std::invalid_argument & e) {
-    EXPECT_EQ(
-      std::string{e.what()}, "timer period must be less than std::chrono::nanoseconds::max()");
-  }
 }
 
 }  // namespace

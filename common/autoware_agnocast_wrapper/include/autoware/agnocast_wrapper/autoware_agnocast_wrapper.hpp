@@ -31,6 +31,11 @@ namespace autoware::agnocast_wrapper::detail
 /// with std::atoi() (leading whitespace skipped, trailing garbage ignored,
 /// non-numeric leading text yielding 0).
 ///
+/// @note The value is parsed with std::atoi(), whose behavior is undefined when
+///   the parsed integer falls outside the range of int (e.g. "9999999999").
+///   Callers must supply a value within int range; in practice ENABLE_AGNOCAST
+///   is always "0" or "1".
+///
 /// @param value The raw environment-variable string, or nullptr if unset.
 /// @return The parsed integer; 0 when @p value is nullptr.
 inline int parse_enable_agnocast(const char * value)
