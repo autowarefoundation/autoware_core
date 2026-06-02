@@ -38,8 +38,10 @@ namespace
 using sensor_msgs::msg::PointCloud2;
 using sensor_msgs::msg::PointField;
 
-// A point matching the PointXYZIRC memory layout (point_step == 16):
-//   x,y,z : FLOAT32, intensity,return_type : UINT8, channel : UINT16
+// The only PointXYZIRC fields the tests populate and validate.
+// The full PointXYZIRC layout (point_step == 16) also has return_type (UINT8) and channel
+// (UINT16); make_cloud declares those fields and leaves their bytes zeroed, but they are not
+// represented here because the downsample logic under test does not touch them.
 struct TestPoint
 {
   float x;
