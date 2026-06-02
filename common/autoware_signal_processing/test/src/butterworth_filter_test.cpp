@@ -248,6 +248,7 @@ TEST_F(ButterWorthTestFixture, polyKnownSecondOrderDenominator)
     ASSERT_DOUBLE_EQ(an_bn.Bn[k], Bn[k]);
   }
 
+  // cspell:ignore monic
   // poly() expands roots into a monic polynomial; the discrete denominator therefore starts at 1.
   ASSERT_NEAR(An[0], 1.0, tol);
 }
@@ -282,4 +283,14 @@ TEST_F(ButterWorthTestFixture, butterDefinedSamplingOrder3)
     ASSERT_NEAR(An[k], An_ground_truth[k], tol);
     ASSERT_NEAR(Bn[k], Bn_ground_truth[k], tol);
   }
+}
+
+TEST_F(ButterWorthTestFixture, printContinuousTimeTFBeforeComputeDoesNotOverrun)
+{
+  // printContinuousTimeTF() is public and indexes the denominator at [N]. Before
+  // computeContinuousTimeTF() runs, the denominator still has its default size, so it must not
+  // read past the end. The order is left at its default (N = 1), where [N] would otherwise be
+  // out of bounds for the size-1 default denominator.
+  ButterworthFilter bf;
+  ASSERT_NO_THROW(bf.printContinuousTimeTF());
 }
