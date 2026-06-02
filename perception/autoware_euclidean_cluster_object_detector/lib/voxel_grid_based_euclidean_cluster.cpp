@@ -116,7 +116,7 @@ bool VoxelGridBasedEuclideanCluster::cluster(
     point2d.x = point.x;
     point2d.y = point.y;
     point2d.z = 0.0;
-    pointcloud_2d_ptr->emplace_back(point2d);
+    pointcloud_2d_ptr->push_back(point2d);
   }
 
   // create tree

@@ -315,7 +315,7 @@ TEST(VoxelGridBasedEuclideanClusterTest, ClusterOutputMatchesObjects)
     EXPECT_LE(point.z, 30.0f);
   }
 
-  // The object centroid must also fall within the same region.
+  // The object centroid's x/y must fall within the same region as the input points.
   const auto & position = output.objects.front().kinematics.pose_with_covariance.pose.position;
   EXPECT_GE(position.x, 0.0);
   EXPECT_LE(position.x, 0.3);
