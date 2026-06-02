@@ -109,6 +109,10 @@ inline uint8_t toLabel(const std::string & class_name)
     return ObjectClassification::BICYCLE;
   } else if (class_name == "PEDESTRIAN") {
     return ObjectClassification::PEDESTRIAN;
+  } else if (class_name == "ANIMAL") {
+    return ObjectClassification::ANIMAL;
+  } else if (class_name == "HAZARD") {
+    return ObjectClassification::HAZARD;
   } else {
     throw std::runtime_error("Invalid Classification label.");
   }
@@ -147,6 +151,10 @@ inline std::string convertLabelToString(const uint8_t label)
     return "BICYCLE";
   } else if (label == ObjectClassification::PEDESTRIAN) {
     return "PEDESTRIAN";
+  } else if (label == ObjectClassification::ANIMAL) {
+    return "ANIMAL";
+  } else if (label == ObjectClassification::HAZARD) {
+    return "HAZARD";
   } else {
     return "UNKNOWN";
   }
