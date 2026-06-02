@@ -27,6 +27,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -895,23 +896,31 @@ TEST(ParseFunction, ParsePathWithLaneID)
 
 namespace
 {
-// Writes the given YAML content to a unique temporary file and returns its path,
-// or an empty string if the file could not be created or written.
+// Writes the given YAML content to a unique temporary file and returns its path.
+// Throws std::runtime_error on any open/write failure so that a test-setup
+// problem is reported loudly at its source instead of surfacing as a confusing
+// downstream assertion. The mkstemp()-created file is unlinked on failure so it
+// is not leaked into /tmp across CI or repeated local test runs.
 std::string write_temp_yaml(const std::string & content)
 {
   char path_template[] = "/tmp/autoware_test_utils_XXXXXX";
   const int fd = mkstemp(path_template);
   if (fd == -1) {
-    return {};
+    throw std::runtime_error("write_temp_yaml: mkstemp() failed to create a temporary file");
   }
   ::close(fd);
   const std::string path = path_template;
   std::ofstream ofs(path);
   if (!ofs) {
-    return {};
+    ::unlink(path.c_str());
+    throw std::runtime_error("write_temp_yaml: failed to open temporary file for writing: " + path);
   }
   ofs << content;
   ofs.close();
+  if (!ofs) {
+    ::unlink(path.c_str());
+    throw std::runtime_error("write_temp_yaml: failed to write content to temporary file: " + path);
+  }
   return path;
 }
 }  // namespace
