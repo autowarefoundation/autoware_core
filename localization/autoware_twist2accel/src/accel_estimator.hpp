@@ -27,7 +27,7 @@ namespace autoware::twist2accel
 /// avoid division by (near-)zero when stamps are equal or out of order.
 constexpr double g_min_dt = 1.0e-3;
 
-/// @brief Pure, ROS-free acceleration estimator.
+/// @brief Pure acceleration estimator with no rclcpp::Node / spinning dependency.
 ///
 /// Estimates acceleration by finite-differencing two successive twist samples
 /// and smoothing each of the six components with a first-order low-pass filter.
