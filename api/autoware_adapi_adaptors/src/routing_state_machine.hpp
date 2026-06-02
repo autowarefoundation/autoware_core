@@ -39,7 +39,7 @@ enum class RoutingAction : std::uint8_t {
 struct RoutingDecision
 {
   RoutingAction action;
-  int request_timing_control;
+  int number_of_requests_for_timing_control;
 };
 
 /// Pure merge-window state-machine for RoutingAdaptor::on_timer.
@@ -48,26 +48,28 @@ struct RoutingDecision
 /// the route state is UNSET, decide the next action and the updated counter. This isolates
 /// the branching from the ROS node so it can be unit-tested directly.
 ///
-/// @param request_timing_control current merge-window counter (0 means idle).
+/// @param number_of_requests_for_timing_control current merge-window counter (0 means idle).
 /// @param calling_service true while a previous async service call has not completed.
 /// @param state_is_unset true when the route state equals RouteState::UNSET.
 inline RoutingDecision decide_routing_action(
-  int request_timing_control, bool calling_service, bool state_is_unset)
+  int number_of_requests_for_timing_control, bool calling_service, bool state_is_unset)
 {
   // Wait a moment to combine consecutive goals and checkpoints into a single request.
-  if (0 < request_timing_control && request_timing_control < g_routing_request_delay_count) {
-    ++request_timing_control;
+  if (
+    0 < number_of_requests_for_timing_control &&
+    number_of_requests_for_timing_control < g_routing_request_delay_count) {
+    ++number_of_requests_for_timing_control;
   }
-  if (request_timing_control != g_routing_request_delay_count) {
-    return {RoutingAction::None, request_timing_control};
+  if (number_of_requests_for_timing_control != g_routing_request_delay_count) {
+    return {RoutingAction::None, number_of_requests_for_timing_control};
   }
 
   if (calling_service) {
-    return {RoutingAction::None, request_timing_control};
+    return {RoutingAction::None, number_of_requests_for_timing_control};
   }
 
   if (!state_is_unset) {
-    return {RoutingAction::CallClear, request_timing_control};
+    return {RoutingAction::CallClear, number_of_requests_for_timing_control};
   }
   return {RoutingAction::CallRoute, 0};
 }

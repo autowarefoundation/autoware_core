@@ -24,18 +24,18 @@
 namespace autoware::adapi_adaptors
 {
 
-/// Validate that the vector has exactly N elements and copy it into a fixed-size array.
+/// Validate that the input has exactly N elements and copy it into a fixed-size array.
 ///
 /// This is the pure, node-independent part of the covariance parameter parsing so that
 /// the size-validation throw branch can be unit-tested without a live rclcpp::Node.
 template <typename T, std::size_t N>
-std::array<T, N> vector_to_array(const std::vector<T> & vector)
+std::array<T, N> vector_to_array(const std::vector<T> & values)
 {
-  if (vector.size() != N) {
+  if (values.size() != N) {
     throw std::invalid_argument("The covariance parameter size is not " + std::to_string(N) + ".");
   }
   std::array<T, N> array;
-  std::copy_n(vector.begin(), N, array.begin());
+  std::copy_n(values.begin(), N, array.begin());
   return array;
 }
 
