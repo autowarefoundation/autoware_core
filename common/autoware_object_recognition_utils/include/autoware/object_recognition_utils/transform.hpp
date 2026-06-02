@@ -145,8 +145,10 @@ bool transformObjects(
       }
       tf2::fromMsg(*ros_target2objects_world, tf_target2objects_world);
     }
+    // Pass output_msg (already a copy of input_msg) as the helper input to avoid a second deep
+    // copy. The transform is applied in-place per object, so input == output aliasing is safe.
     detail::applyTransformToObjects(
-      input_msg, target_frame_id, tf_target2objects_world, output_msg);
+      output_msg, target_frame_id, tf_target2objects_world, output_msg);
   }
   return true;
 }
@@ -173,8 +175,11 @@ bool transformObjectsWithFeature(
         rclcpp::get_logger("object_recognition_utils:"), "failed to get transformed matrix");
       return false;
     }
+    // Pass output_msg (already a copy of input_msg) as the helper input to avoid a second deep
+    // copy of the (potentially large) feature point clouds. The transform is applied in-place per
+    // feature object, so input == output aliasing is safe.
     detail::applyTransformToFeatureObjects(
-      input_msg, target_frame_id, tf_target2objects_world, *tf_matrix, output_msg);
+      output_msg, target_frame_id, tf_target2objects_world, *tf_matrix, output_msg);
   }
   return true;
 }
