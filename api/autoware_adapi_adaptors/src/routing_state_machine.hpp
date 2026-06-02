@@ -22,7 +22,7 @@ namespace autoware::adapi_adaptors
 
 /// Number of timer ticks to wait before issuing a request so that consecutive
 /// goals and checkpoints are merged into a single request.
-/// At 5 Hz this corresponds to rate * (value - 1) = 0.4 seconds.
+/// At 5 Hz this corresponds to (g_routing_request_delay_count - 1) / 5 = 0.4 seconds.
 constexpr int g_routing_request_delay_count = 3;
 
 /// The action the routing timer should take on a single tick.
