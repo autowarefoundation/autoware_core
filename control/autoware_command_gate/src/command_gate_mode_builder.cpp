@@ -14,6 +14,8 @@
 
 #include "command_gate_mode_builder.hpp"
 
+#include <autoware_system_msgs/srv/change_operation_mode.hpp>
+
 #include <optional>
 #include <string>
 

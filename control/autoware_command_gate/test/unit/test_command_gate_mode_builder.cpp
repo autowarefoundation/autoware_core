@@ -158,6 +158,8 @@ TEST(CommandGateModeBuilder, DispatchModeAutonomous)
 {
   using Request = autoware_system_msgs::srv::ChangeOperationMode::Request;
   builtin_interfaces::msg::Time stamp;
+  stamp.sec = 99;
+  stamp.nanosec = 1;
 
   const auto outputs = CommandGateModeBuilder::dispatch_mode(Request::AUTONOMOUS, stamp);
 
@@ -165,30 +167,40 @@ TEST(CommandGateModeBuilder, DispatchModeAutonomous)
   EXPECT_EQ(outputs->state.mode, autoware_adapi_v1_msgs::msg::OperationModeState::AUTONOMOUS);
   EXPECT_TRUE(outputs->state.is_autoware_control_enabled);
   EXPECT_EQ(outputs->gear.command, autoware_vehicle_msgs::msg::GearCommand::DRIVE);
+  EXPECT_EQ(outputs->state.stamp.sec, stamp.sec);
+  EXPECT_EQ(outputs->state.stamp.nanosec, stamp.nanosec);
 }
 
 TEST(CommandGateModeBuilder, DispatchModeLocal)
 {
   using Request = autoware_system_msgs::srv::ChangeOperationMode::Request;
   builtin_interfaces::msg::Time stamp;
+  stamp.sec = 7;
+  stamp.nanosec = 77;
 
   const auto outputs = CommandGateModeBuilder::dispatch_mode(Request::LOCAL, stamp);
 
   ASSERT_TRUE(outputs.has_value());
   EXPECT_EQ(outputs->state.mode, autoware_adapi_v1_msgs::msg::OperationModeState::LOCAL);
   EXPECT_EQ(outputs->gear.command, autoware_vehicle_msgs::msg::GearCommand::NONE);
+  EXPECT_EQ(outputs->state.stamp.sec, stamp.sec);
+  EXPECT_EQ(outputs->state.stamp.nanosec, stamp.nanosec);
 }
 
 TEST(CommandGateModeBuilder, DispatchModeRemote)
 {
   using Request = autoware_system_msgs::srv::ChangeOperationMode::Request;
   builtin_interfaces::msg::Time stamp;
+  stamp.sec = 13;
+  stamp.nanosec = 130;
 
   const auto outputs = CommandGateModeBuilder::dispatch_mode(Request::REMOTE, stamp);
 
   ASSERT_TRUE(outputs.has_value());
   EXPECT_EQ(outputs->state.mode, autoware_adapi_v1_msgs::msg::OperationModeState::REMOTE);
   EXPECT_EQ(outputs->gear.command, autoware_vehicle_msgs::msg::GearCommand::NONE);
+  EXPECT_EQ(outputs->state.stamp.sec, stamp.sec);
+  EXPECT_EQ(outputs->state.stamp.nanosec, stamp.nanosec);
 }
 
 TEST(CommandGateModeBuilder, DispatchModeUnknownReturnsNullopt)
