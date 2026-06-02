@@ -194,6 +194,45 @@ TEST(MapHeightFitterKernel, MatchesReferenceOverRandomClouds)
   }
 }
 
+// --- Characterization at large coordinates / near-ties (float-vs-double divergence regime) -------
+
+TEST(MapHeightFitterKernel, MatchesReferenceAtLargeCoordinates)
+{
+  // Autoware map frames can place points at large coordinates (MGRS/UTM-derived, up to ~1e6) where
+  // the float grid spacing the KdTree searches on is coarse (sub-decimeter). Combined with
+  // near-tied candidate points this is exactly where a naive float nearest/radius search diverges
+  // from the original double-precision two-pass scan. The kernel must still match bit-for-bit.
+  std::mt19937 rng(20260602);
+  std::uniform_real_distribution<double> center(-2.0e6, 2.0e6);
+  std::uniform_real_distribution<double> offset(-30.0, 30.0);
+  std::uniform_real_distribution<float> zdist(-50.0F, 50.0F);
+  std::uniform_int_distribution<int> npts(1, 24);
+
+  for (int trial = 0; trial < 5000; ++trial) {
+    const double cx = center(rng);
+    const double cy = center(rng);
+    const int n = npts(rng);
+    pcl::PointCloud<pcl::PointXYZ> cloud;
+    cloud.points.reserve(n);
+    for (int i = 0; i < n; ++i) {
+      cloud.points.emplace_back(
+        static_cast<float>(cx + offset(rng)), static_cast<float>(cy + offset(rng)), zdist(rng));
+    }
+    cloud.width = static_cast<std::uint32_t>(cloud.points.size());
+    cloud.height = 1;
+
+    const double qx = cx + offset(rng);
+    const double qy = cy + offset(rng);
+    const double fallback = 12345.0;
+
+    const double expected = reference_ground_height_from_pointcloud(cloud, qx, qy, fallback);
+    const auto kdtree = autoware::map_height_fitter::build_pointcloud_xy_kdtree(cloud);
+    const double actual = get_ground_height_from_pointcloud(cloud, kdtree, qx, qy, fallback);
+    EXPECT_DOUBLE_EQ(actual, expected) << "large-coord trial " << trial << " n=" << n << " center=("
+                                       << cx << "," << cy << ") q=(" << qx << "," << qy << ")";
+  }
+}
+
 // --- Vector-map branch --------------------------------------------------------------------------
 
 TEST(MapHeightFitterKernel, VectorMapReturnsNearestPointHeight)
