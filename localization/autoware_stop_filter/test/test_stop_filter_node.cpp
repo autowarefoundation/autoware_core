@@ -118,19 +118,32 @@ protected:
     executor.add_node(stop_filter_node);
     executor.add_node(test_node);
 
-    // Pump until both publishers/subscribers are matched so the published message
-    // is not dropped before delivery.
-    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
-    while (publisher->get_subscription_count() == 0 &&
-           std::chrono::steady_clock::now() < deadline) {
+    // Pump until the pub/sub graph is fully matched in BOTH directions before
+    // publishing, otherwise the node may emit its outputs in the input callback
+    // before the test's subscriptions are connected and the messages get dropped:
+    //   - the test's input/odom publisher must see the node's subscription, and
+    //   - the test's output/odom and debug/stop_flag subscriptions must each see
+    //     the node's publisher.
+    const auto discovery_deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+    while ((publisher->get_subscription_count() == 0 || odom_sub->get_publisher_count() == 0 ||
+            stop_flag_sub->get_publisher_count() == 0) &&
+           std::chrono::steady_clock::now() < discovery_deadline) {
       executor.spin_some();
     }
     EXPECT_GT(publisher->get_subscription_count(), 0u)
       << "StopFilterNode did not subscribe to input/odom";
+    EXPECT_GT(odom_sub->get_publisher_count(), 0u)
+      << "StopFilterNode did not advertise output/odom";
+    EXPECT_GT(stop_flag_sub->get_publisher_count(), 0u)
+      << "StopFilterNode did not advertise debug/stop_flag";
 
     publisher->publish(*input);
 
-    while ((!odom_received || !stop_flag_received) && std::chrono::steady_clock::now() < deadline) {
+    // Use a fresh deadline for the receive phase so discovery time does not eat
+    // into the receive timeout.
+    const auto receive_deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+    while ((!odom_received || !stop_flag_received) &&
+           std::chrono::steady_clock::now() < receive_deadline) {
       executor.spin_some();
     }
 
