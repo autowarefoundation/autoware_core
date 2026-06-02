@@ -13,8 +13,7 @@
 // limitations under the License.
 
 #include "autoware/behavior_velocity_planner_common/experimental/scene_module_interface.hpp"
-
-#include <autoware/behavior_velocity_planner_common/utilization/util.hpp>
+#include "utilization/util_internal.hpp"
 
 #include <cstdio>
 #include <memory>
