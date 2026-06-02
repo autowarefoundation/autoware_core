@@ -310,6 +310,7 @@ void SplineInterpolationPoints2d::extendLinearlyForward(
 
   // Build extended knots and values
   std::vector<double> extended_s = base_s_vec_;
+  extended_s.reserve(target_n_knots);
   std::vector<double> extended_x;
   std::vector<double> extended_y;
   std::vector<double> extended_z;

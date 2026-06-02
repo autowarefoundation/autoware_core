@@ -16,6 +16,7 @@
 
 #include <gtest/gtest.h>
 
+#include <stdexcept>
 #include <vector>
 
 using autoware::interpolation::SplineInterpolation;
@@ -80,4 +81,16 @@ TEST(spline_interpolation_scalar, value_at_two_knot_segment)
   // first derivative is the constant slope, second derivative is zero on this segment
   EXPECT_DOUBLE_EQ(s.getSplineInterpolatedDiffValue(1.0), 2.0);
   EXPECT_DOUBLE_EQ(s.getSplineInterpolatedQuadDiffValue(1.0), 0.0);
+}
+
+// Calling a scalar overload on an un-built (default-constructed) spline must throw rather than
+// read out of bounds. The vector overloads already throw via validateKeys() for too-few knots;
+// the scalar overloads skip query-key range validation but enforce the same built-spline
+// precondition through get_index().
+TEST(spline_interpolation_scalar, throws_on_unbuilt_spline)
+{
+  const SplineInterpolation s;  // default-constructed: base_keys_ is empty
+  EXPECT_THROW(s.getSplineInterpolatedValue(0.0), std::runtime_error);
+  EXPECT_THROW(s.getSplineInterpolatedDiffValue(0.0), std::runtime_error);
+  EXPECT_THROW(s.getSplineInterpolatedQuadDiffValue(0.0), std::runtime_error);
 }
