@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__NDT_SCAN_MATCHER__NDT_SCAN_MATCHER_HELPER_HPP_
-#define AUTOWARE__NDT_SCAN_MATCHER__NDT_SCAN_MATCHER_HELPER_HPP_
+#ifndef NDT_SCAN_MATCHER_HELPER_HPP_
+#define NDT_SCAN_MATCHER_HELPER_HPP_
 
 #include <Eigen/Core>
 
@@ -38,4 +38,4 @@ int count_oscillation(const std::vector<geometry_msgs::msg::Pose> & result_pose_
 
 }  // namespace autoware::ndt_scan_matcher
 
-#endif  // AUTOWARE__NDT_SCAN_MATCHER__NDT_SCAN_MATCHER_HELPER_HPP_
+#endif  // NDT_SCAN_MATCHER_HELPER_HPP_

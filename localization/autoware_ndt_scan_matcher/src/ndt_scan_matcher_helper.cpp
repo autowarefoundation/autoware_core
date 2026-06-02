@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "ndt_scan_matcher_helper.hpp"
+
 #include <autoware/localization_util/util_func.hpp>
-#include <autoware/ndt_scan_matcher/ndt_scan_matcher_helper.hpp>
 
 #include <algorithm>
 #include <array>
@@ -58,9 +59,15 @@ int count_oscillation(const std::vector<geometry_msgs::msg::Pose> & result_pose_
     const Eigen::Vector3d prev_pose = point_to_vector3d(result_pose_msg_array.at(i - 1).position);
     const Eigen::Vector3d prev_prev_pose =
       point_to_vector3d(result_pose_msg_array.at(i - 2).position);
-    const auto current_vec = (current_pose - prev_pose).normalized();
-    const auto prev_vec = (prev_pose - prev_prev_pose).normalized();
-    const double cosine_value = current_vec.dot(prev_vec);
+    const Eigen::Vector3d current_step = current_pose - prev_pose;
+    const Eigen::Vector3d prev_step = prev_pose - prev_prev_pose;
+    // A zero-length step (e.g. repeated poses) has no direction. normalized() on a zero vector
+    // yields NaNs, so guard against it and treat such steps as non-oscillations.
+    if (current_step.norm() == 0.0 || prev_step.norm() == 0.0) {
+      oscillation_cnt = 0;  // reset
+      continue;
+    }
+    const double cosine_value = current_step.normalized().dot(prev_step.normalized());
     const bool oscillation = cosine_value < inversion_vector_threshold;
     if (oscillation) {
       oscillation_cnt++;  // count consecutive oscillation

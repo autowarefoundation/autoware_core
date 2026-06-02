@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "../src/ndt_scan_matcher_helper.hpp"
+
 #include <Eigen/Core>
 #include <Eigen/Geometry>
-#include <autoware/ndt_scan_matcher/ndt_scan_matcher_helper.hpp>
 
 #include <geometry_msgs/msg/pose.hpp>
 
@@ -121,4 +122,29 @@ TEST(NdtScanMatcherHelper, CountOscillationTooFewPosesIsZero)  // NOLINT
   poses.push_back(make_pose_xyz(0.0, 0.0, 0.0));
   poses.push_back(make_pose_xyz(1.0, 0.0, 0.0));
   EXPECT_EQ(autoware::ndt_scan_matcher::count_oscillation(poses), 0);
+}
+
+// Repeated (identical) poses produce zero-length motion vectors. Normalizing those would yield
+// NaNs and an unreliable cosine; the guard must treat such steps as non-oscillations and return a
+// finite count of 0 rather than reacting to NaN comparisons.
+TEST(NdtScanMatcherHelper, CountOscillationZeroLengthStepsAreNotOscillations)  // NOLINT
+{
+  std::vector<geometry_msgs::msg::Pose> poses;
+  // All identical -> every step has zero length.
+  for (int i = 0; i < 5; ++i) {
+    poses.push_back(make_pose_xyz(1.0, 2.0, 3.0));
+  }
+  EXPECT_EQ(autoware::ndt_scan_matcher::count_oscillation(poses), 0);
+}
+
+// A zero-length step interleaved with real motion must not be counted as an oscillation and must
+// reset the running consecutive-inversion count.
+TEST(NdtScanMatcherHelper, CountOscillationResetsOnZeroLengthStep)  // NOLINT
+{
+  // x: 0 -> 1 -> 0 (reversal, cnt 1) -> 0 (zero-length step, reset) -> 1 (no prior direction yet)
+  std::vector<geometry_msgs::msg::Pose> poses;
+  for (const double x : {0.0, 1.0, 0.0, 0.0, 1.0}) {
+    poses.push_back(make_pose_xyz(x, 0.0, 0.0));
+  }
+  EXPECT_EQ(autoware::ndt_scan_matcher::count_oscillation(poses), 1);
 }
