@@ -158,6 +158,22 @@ TEST(TestEKFModule, FindClosestDelayTimeIndex)
   EXPECT_EQ(module->find_closest_delay_time_index(beyond), params.extend_state_step);
 }
 
+// Degenerate configuration: extend_state_step == 0 leaves accumulated_delay_times_ empty.
+// find_closest_delay_time_index() must not dereference .back() on the empty table; it returns the
+// safe index 0 (== size()) for any target instead of crashing. The default of 50 must NOT mask
+// this, so the test sets extend_state_step to 0 explicitly.
+TEST(TestEKFModule, FindClosestDelayTimeIndexEmptyTable)
+{
+  HyperParameters params = make_params();
+  params.extend_state_step = 0;
+  auto module = make_module(params);
+
+  EXPECT_EQ(module->find_closest_delay_time_index(-1.0), 0u);
+  EXPECT_EQ(module->find_closest_delay_time_index(0.0), 0u);
+  EXPECT_EQ(module->find_closest_delay_time_index(1.0), 0u);
+  EXPECT_EQ(module->find_closest_delay_time_index(1.0e15), 0u);
+}
+
 // ---------------------------------------------------------------------------
 // accumulate_delay_time: copy_backward shift + accumulation
 // ---------------------------------------------------------------------------
@@ -307,8 +323,19 @@ protected:
 
 TEST_F(MeasurementUpdatePose, AcceptsValidMeasurement)
 {
+  using COV_IDX = autoware_utils_geometry::xyzrpy_covariance_index::XYZRPY_COV_IDX;
   const rclcpp::Time t_curr(100, 0, RCL_ROS_TIME);
-  auto pose = make_pose(0.0, 0.0, 0.0, "map", t_curr);
+
+  // Feed a measurement offset from the predicted state (origin) so a real Kalman update has an
+  // externally-observable effect: the state must move toward the measurement and the position
+  // covariance must shrink. A silent no-op after passing the gates would leave the state at the
+  // origin and the covariance unchanged, failing these postconditions.
+  auto pose = make_pose(1.0, 2.0, 0.0, "map", t_curr);
+
+  const auto pose_before = module_->get_current_pose(t_curr, false);
+  const auto cov_before = module_->get_current_pose_covariance();
+  EXPECT_DOUBLE_EQ(pose_before.pose.position.x, 0.0);
+  EXPECT_DOUBLE_EQ(pose_before.pose.position.y, 0.0);
 
   EKFDiagnosticInfo diag;
   const bool ok = module_->measurement_update_pose(pose, t_curr, diag);
@@ -316,6 +343,19 @@ TEST_F(MeasurementUpdatePose, AcceptsValidMeasurement)
   EXPECT_TRUE(ok);
   EXPECT_TRUE(diag.is_passed_delay_gate);
   EXPECT_TRUE(diag.is_passed_mahalanobis_gate);
+
+  // Postcondition: the state is blended toward the measurement (strictly between the prior
+  // estimate and the measurement), not snapped to it.
+  const auto pose_after = module_->get_current_pose(t_curr, false);
+  EXPECT_GT(pose_after.pose.position.x, 0.0);
+  EXPECT_LT(pose_after.pose.position.x, 1.0);
+  EXPECT_GT(pose_after.pose.position.y, 0.0);
+  EXPECT_LT(pose_after.pose.position.y, 2.0);
+
+  // Postcondition: the position covariance is reduced by incorporating the measurement.
+  const auto cov_after = module_->get_current_pose_covariance();
+  EXPECT_LT(cov_after[COV_IDX::X_X], cov_before[COV_IDX::X_X]);
+  EXPECT_LT(cov_after[COV_IDX::Y_Y], cov_before[COV_IDX::Y_Y]);
 }
 
 TEST_F(MeasurementUpdatePose, RejectsOnDelayGate)
@@ -407,8 +447,17 @@ protected:
 
 TEST_F(MeasurementUpdateTwist, AcceptsValidMeasurement)
 {
+  using COV_IDX = autoware_utils_geometry::xyzrpy_covariance_index::XYZRPY_COV_IDX;
   const rclcpp::Time t_curr(100, 0, RCL_ROS_TIME);
-  auto twist = make_twist(0.0, 0.0, "base_link", t_curr);
+
+  // Feed a velocity offset from the predicted state (vx == wz == 0) so the update is observable:
+  // the velocity estimate must move toward the measurement and the velocity covariance shrink.
+  auto twist = make_twist(3.0, 1.0, "base_link", t_curr);
+
+  const auto twist_before = module_->get_current_twist(t_curr);
+  const auto cov_before = module_->get_current_twist_covariance();
+  EXPECT_DOUBLE_EQ(twist_before.twist.linear.x, 0.0);
+  EXPECT_DOUBLE_EQ(twist_before.twist.angular.z, 0.0);
 
   EKFDiagnosticInfo diag;
   const bool ok = module_->measurement_update_twist(twist, t_curr, diag);
@@ -416,6 +465,17 @@ TEST_F(MeasurementUpdateTwist, AcceptsValidMeasurement)
   EXPECT_TRUE(ok);
   EXPECT_TRUE(diag.is_passed_delay_gate);
   EXPECT_TRUE(diag.is_passed_mahalanobis_gate);
+
+  // Postcondition: the velocity estimate is blended toward the measurement, not snapped to it.
+  const auto twist_after = module_->get_current_twist(t_curr);
+  EXPECT_GT(twist_after.twist.linear.x, 0.0);
+  EXPECT_LT(twist_after.twist.linear.x, 3.0);
+  EXPECT_GT(twist_after.twist.angular.z, 0.0);
+  EXPECT_LT(twist_after.twist.angular.z, 1.0);
+
+  // Postcondition: the velocity covariance (vx maps to twist covariance X_X) is reduced.
+  const auto cov_after = module_->get_current_twist_covariance();
+  EXPECT_LT(cov_after[COV_IDX::X_X], cov_before[COV_IDX::X_X]);
 }
 
 TEST_F(MeasurementUpdateTwist, RejectsOnDelayGate)

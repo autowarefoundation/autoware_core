@@ -173,6 +173,14 @@ double EKFModule::get_yaw_bias() const
 
 size_t EKFModule::find_closest_delay_time_index(double target_value) const
 {
+  // Additive safety guard: accumulated_delay_times_ is sized to params_.extend_state_step in the
+  // constructor. A misconfigured extend_state_step == 0 leaves the table empty, and the
+  // accumulated_delay_times_.back() dereference below would be undefined behaviour. Treat an empty
+  // table as "no delay slots", returning 0 (== size()) instead of crashing.
+  if (accumulated_delay_times_.empty()) {
+    return 0;
+  }
+
   // If target_value is too large, return last index + 1
   if (target_value > accumulated_delay_times_.back()) {
     return accumulated_delay_times_.size();

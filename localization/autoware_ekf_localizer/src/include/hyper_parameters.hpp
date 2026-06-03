@@ -32,12 +32,14 @@ public:
   //
   // The in-class member initializers below give the default-constructed instance SAFE, non-zero
   // values for every field that EKFModule relies on at construction time. In particular
-  // extend_state_step must be >= 1: EKFModule sizes accumulated_delay_times_ as
-  // std::vector<double>(extend_state_step, 1.0E15), and find_closest_delay_time_index()
-  // dereferences accumulated_delay_times_.back(), which is undefined behaviour (a crash) on an
-  // empty vector. The other sizing/rate defaults (ekf_rate/ekf_dt, smoothing steps, queue sizes,
-  // gate distances, process/filter noise) are likewise non-zero so a default-constructed instance
-  // is immediately usable.
+  // extend_state_step is set to a realistic >= 1 value: EKFModule sizes accumulated_delay_times_
+  // as std::vector<double>(extend_state_step, 1.0E15) and find_closest_delay_time_index() reads
+  // accumulated_delay_times_.back(). A misconfigured extend_state_step == 0 would leave that table
+  // empty; find_closest_delay_time_index() now guards the empty table (returns 0) instead of
+  // dereferencing .back(), so the degenerate configuration no longer triggers undefined behaviour.
+  // The other sizing/rate defaults (ekf_rate/ekf_dt, smoothing steps, queue sizes, gate distances,
+  // process/filter noise) are likewise non-zero so a default-constructed instance is immediately
+  // usable.
   HyperParameters() = default;
 
   explicit HyperParameters(rclcpp::Node * node)
@@ -97,7 +99,8 @@ public:
   double ekf_dt{1.0 / 50.0};  // ekf update period [s]
   double tf_rate_{10.0};
   bool enable_yaw_bias_estimation{true};
-  // Must be >= 1: EKFModule sizes accumulated_delay_times_ to this length and calls .back() on it.
+  // Sizes accumulated_delay_times_ to this length; 0 leaves the table empty, which
+  // find_closest_delay_time_index() guards against (see ekf_module.cpp).
   size_t extend_state_step{50};
   std::string pose_frame_id{"map"};
   double pose_additional_delay{0.0};
