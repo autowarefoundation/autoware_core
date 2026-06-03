@@ -20,12 +20,11 @@ Currently supported APIs:
 
 - Publisher / Subscription / PollingSubscriber
 - Client / Service (experimental)
+- Timer (`create_wall_timer`, free `create_timer()`, free `set_period()`)
 - Parameters
 - Logger, Clock
 - Callback groups
 - Node interfaces (partial: `get_node_base_interface()`, `get_node_topics_interface()`, `get_node_parameters_interface()`)
-
-> **Note:** Timer (`create_wall_timer`, `create_timer`) is not yet supported and will be added in a future update.
 
 ```cpp
 #include <autoware/agnocast_wrapper/node.hpp>
@@ -39,12 +38,31 @@ public:
     pub_ = create_publisher<std_msgs::msg::String>("output", 10);
     sub_ = create_subscription<std_msgs::msg::String>(
       "input", 10, [this](std::unique_ptr<const std_msgs::msg::String> msg) { /* ... */ });
+
+    timer_ = create_wall_timer(
+      std::chrono::milliseconds(100), [this]() { /* ... */ });
   }
 
 private:
   autoware::agnocast_wrapper::Publisher<std_msgs::msg::String>::SharedPtr pub_;
   autoware::agnocast_wrapper::Subscription<std_msgs::msg::String>::SharedPtr sub_;
+  autoware::agnocast_wrapper::Timer::SharedPtr timer_;
 };
+```
+
+#### Timer notes
+
+`create_timer()` is provided as a **free function** (not a member) because `rclcpp::Node::create_timer` was added in Jazzy and does not exist on Humble. The free form is portable across both:
+
+```cpp
+timer_ = autoware::agnocast_wrapper::create_timer(
+  this, this->get_clock(), rclcpp::Duration::from_seconds(0.1), [this]() { /* ... */ });
+```
+
+`set_period()` is likewise a **free function**. `rclcpp::TimerBase` has no `set_period` member, so the free form is the only portable spelling across both builds:
+
+```cpp
+autoware::agnocast_wrapper::set_period(timer_, std::chrono::milliseconds(200));
 ```
 
 To use the Node wrapper in your package, add the following to your `CMakeLists.txt`:
@@ -184,11 +202,11 @@ autoware_agnocast_wrapper_setup(target)
 
 ## Message Filters Support
 
-This package provides wrapper types for `message_filters` (`Subscriber`, `Synchronizer`, `ApproximateTimeSynchronizer`) in the `autoware::agnocast_wrapper::message_filters` namespace. These wrappers transparently switch between `::message_filters` and `agnocast::message_filters` at runtime.
+This package provides wrapper types for `message_filters` (`Subscriber`, `Synchronizer`) in the `autoware::agnocast_wrapper::message_filters` namespace. These wrappers transparently switch between `::message_filters` and `agnocast::message_filters` at runtime.
 
 ### Current limitations
 
-- Only `ApproximateTime` synchronization policy is supported (no `ExactTime`).
+- Only `ApproximateTime` and `ExactTime` synchronization policies are supported.
 - Maximum 2 message types per `Synchronizer`.
 - `connectInput()` is not supported; pass `Subscriber` references at construction time.
 
@@ -210,9 +228,17 @@ using Policy = sync_policies::ApproximateTime<
     sensor_msgs::msg::Image, sensor_msgs::msg::CameraInfo>;
 Synchronizer<Policy> sync(Policy(10), image_sub, info_sub);
 
-// 3. Register callback (use std::bind, not a lambda — see migration note below)
-sync.registerCallback(
-  std::bind(&MyNode::onSynchronized, this, std::placeholders::_1, std::placeholders::_2));
+// 3. Register callback. Mirrors `::message_filters::Synchronizer::registerCallback` —
+//    pass a member-function pointer and `this`, or a `std::bind` result, or any other
+//    callable convertible to `void(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M0) &,
+//                                    const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M1) &)`.
+//    Returns a `::message_filters::Connection` for later `.disconnect()`.
+auto conn = sync.registerCallback(&MyNode::onSynchronized, this);
+// Note: `conn` going out of scope does NOT unregister the callback.
+// Call conn.disconnect() explicitly if you need to remove it later.
+// Equivalent form (still supported):
+// sync.registerCallback(std::bind(
+//   &MyNode::onSynchronized, this, std::placeholders::_1, std::placeholders::_2));
 ```
 
 The callback method signature should use `const` references:
@@ -231,6 +257,100 @@ void onSynchronized(
 | `message_filters::Subscriber<M>`                          | `autoware::agnocast_wrapper::message_filters::Subscriber<M>`                          |
 | `message_filters::Synchronizer<Policy>`                   | `autoware::agnocast_wrapper::message_filters::Synchronizer<Policy>`                   |
 | `message_filters::sync_policies::ApproximateTime<M0, M1>` | `autoware::agnocast_wrapper::message_filters::sync_policies::ApproximateTime<M0, M1>` |
+| `message_filters::sync_policies::ExactTime<M0, M1>`       | `autoware::agnocast_wrapper::message_filters::sync_policies::ExactTime<M0, M1>`       |
+
+## tf2 Support
+
+This package provides wrapper types for tf2 (`TransformListener`, `TransformBroadcaster`, `StaticTransformBroadcaster`, `Buffer`) in the `autoware::agnocast_wrapper` namespace. The listener and broadcasters transparently switch between their `tf2_ros` and `agnocast` implementations at runtime, depending on whether the given node is running in Agnocast mode.
+
+The node-taking constructors require a Method 2 node (`autoware::agnocast_wrapper::Node`). This is needed because an AgnocastOnly executor does not spin a plain `tf2_ros::TransformListener` (a ROS 2 subscription); routing `/tf` through Agnocast keeps tf callbacks firing.
+
+`Buffer` aliases to `agnocast::Buffer` in Agnocast-enabled builds and `tf2_ros::Buffer` otherwise. The agnocast variant intentionally omits APIs that would silently break under an AgnocastOnly executor (currently `waitForTransform` / `setCreateTimerInterface` and the `/tf2_frames` debug service), so misuse is caught at compile time.
+
+### Usage example
+
+```cpp
+#include <autoware/agnocast_wrapper/node.hpp>
+#include <autoware/agnocast_wrapper/tf2.hpp>
+
+class MyNode : public autoware::agnocast_wrapper::Node
+{
+public:
+  MyNode()
+  : autoware::agnocast_wrapper::Node("my_node"), tf_buffer_(this->get_clock())
+  {
+    // `*this` is a node derived from autoware::agnocast_wrapper::Node.
+    tf_listener_ = std::make_unique<autoware::agnocast_wrapper::TransformListener>(
+      tf_buffer_, *this);
+    tf_broadcaster_ = std::make_unique<autoware::agnocast_wrapper::TransformBroadcaster>(*this);
+  }
+
+private:
+  autoware::agnocast_wrapper::Buffer tf_buffer_;
+  std::unique_ptr<autoware::agnocast_wrapper::TransformListener> tf_listener_;
+  std::unique_ptr<autoware::agnocast_wrapper::TransformBroadcaster> tf_broadcaster_;
+};
+```
+
+### Migration guide (from `tf2_ros`)
+
+| Before                                                | After                                                    |
+| ----------------------------------------------------- | -------------------------------------------------------- |
+| `#include <tf2_ros/transform_listener.hpp>`           | `#include <autoware/agnocast_wrapper/tf2.hpp>`           |
+| `#include <tf2_ros/buffer.hpp>`                       | `#include <autoware/agnocast_wrapper/tf2.hpp>`           |
+| `#include <tf2_ros/transform_broadcaster.hpp>`        | `#include <autoware/agnocast_wrapper/tf2.hpp>`           |
+| `#include <tf2_ros/static_transform_broadcaster.hpp>` | `#include <autoware/agnocast_wrapper/tf2.hpp>`           |
+| `tf2_ros::TransformListener`                          | `autoware::agnocast_wrapper::TransformListener`          |
+| `tf2_ros::Buffer`                                     | `autoware::agnocast_wrapper::Buffer`                     |
+| `tf2_ros::TransformBroadcaster`                       | `autoware::agnocast_wrapper::TransformBroadcaster`       |
+| `tf2_ros::StaticTransformBroadcaster`                 | `autoware::agnocast_wrapper::StaticTransformBroadcaster` |
+
+## Diagnostic Updater Support
+
+This package provides a wrapper `autoware::agnocast_wrapper::diagnostic_updater::Updater` for `diagnostic_updater::Updater`. The wrapper transparently switches between `diagnostic_updater::Updater` and `agnocast::Updater` at runtime, so nodes inheriting from `autoware::agnocast_wrapper::Node` can use the same idiom in both modes.
+
+The `diagnostic_updater.period` and `diagnostic_updater.use_fqn` parameters are declared identically in both modes, so behavior remains consistent.
+
+### Current limitations
+
+- Only the `Updater(autoware::agnocast_wrapper::Node*, double)` constructor is supported. The upstream interface-pointer constructor and `Updater(NodeT, double)` template overload are intentionally hidden in both modes, so source code stays portable between agnocast-enabled and disabled builds.
+- The wrapper does **not** inherit from `DiagnosticTaskVector`, so `getTasks()` is not available.
+- The wrapper is non-copyable and non-movable; `verbose_` is bound by reference to the underlying impl.
+
+### Usage example
+
+```cpp
+#include <autoware/agnocast_wrapper/diagnostic_updater.hpp>
+
+class MyNode : public autoware::agnocast_wrapper::Node
+{
+public:
+  explicit MyNode(const rclcpp::NodeOptions & options)
+  : Node("my_node", options), updater_(this)
+  {
+    updater_.setHardwareID("my_hardware");
+    updater_.add("status", this, &MyNode::diagnose);
+  }
+
+private:
+  void diagnose(diagnostic_updater::DiagnosticStatusWrapper & stat) {
+    stat.summary(diagnostic_msgs::msg::DiagnosticStatus::OK, "running");
+  }
+
+  autoware::agnocast_wrapper::diagnostic_updater::Updater updater_;
+};
+```
+
+### Migration guide (from `diagnostic_updater::Updater`)
+
+| Before                                                 | After                                                                     |
+| ------------------------------------------------------ | ------------------------------------------------------------------------- |
+| `#include <diagnostic_updater/diagnostic_updater.hpp>` | `#include <autoware/agnocast_wrapper/diagnostic_updater.hpp>`             |
+| `diagnostic_updater::Updater updater_{this};`          | `autoware::agnocast_wrapper::diagnostic_updater::Updater updater_{this};` |
+
+The `add()` / `removeByName()` / `setHardwareID()` / `setHardwareIDf()` / `broadcast()` / `force_update()` / `setPeriod()` / `getPeriod()` APIs and the `verbose_` field behave the same as the upstream `diagnostic_updater::Updater`.
+
+> **Note:** `DiagnosticTask` subclasses (e.g. `FrequencyStatus`, `TimeStampStatus`, `Heartbeat`) defined in `diagnostic_updater` can be added via `updater_.add(task)` unchanged.
 
 ## How to Enable/Disable Agnocast on Build
 
