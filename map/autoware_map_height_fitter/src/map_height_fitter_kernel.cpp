@@ -58,6 +58,13 @@ double get_ground_height_from_pointcloud(
     return fallback_z;
   }
 
+  // A non-finite query makes every squared distance non-finite, so the original double-precision
+  // scan rejected every point and fell back. Guard here as well: pcl::KdTreeFLANN asserts on a
+  // NaN/Inf query point, so we must not hand one to the tree.
+  if (!std::isfinite(x) || !std::isfinite(y)) {
+    return fallback_z;
+  }
+
   pcl::PointXYZ query;
   query.x = static_cast<float>(x);
   query.y = static_cast<float>(y);

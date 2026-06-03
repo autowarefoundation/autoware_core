@@ -233,6 +233,97 @@ TEST(MapHeightFitterKernel, MatchesReferenceAtLargeCoordinates)
   }
 }
 
+// --- Non-finite degenerate inputs (must still match the original double-precision scan) ----------
+
+TEST(MapHeightFitterKernel, NonFiniteCloudCoordinatesAreIgnored)
+{
+  // A realistic degenerate map cloud: some points carry NaN/Inf x or y (e.g. from a corrupt sensor
+  // frame). The original two-pass scan tolerated such points: a NaN squared distance is dropped by
+  // std::min (which keeps its first argument) and fails the strict sd < radius2 test, so the
+  // non-finite points never participate in the nearest-point or lowest-z selection. The KdTree path
+  // must stay bit-for-bit faithful to that behavior and still return the lowest z among the finite
+  // points within the radius (here z = -3.0 at the finite point closest to the origin).
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+  const double inf = std::numeric_limits<double>::infinity();
+  const auto cloud = make_cloud({
+    {{static_cast<float>(nan), 0.0F, 99.0F}},   // NaN x: must be ignored
+    {{0.0F, static_cast<float>(inf), 88.0F}},   // Inf y: must be ignored
+    {{static_cast<float>(-inf), 0.0F, 77.0F}},  // -Inf x: must be ignored
+    {{1.0F, 0.0F, -3.0F}},                      // finite, nearest to origin
+    {{0.0F, 1.5F, 4.0F}},                       // finite, within radius
+  });
+  const double fallback = 12345.0;
+  const double expected = reference_ground_height_from_pointcloud(cloud, 0.0, 0.0, fallback);
+  const auto kdtree = autoware::map_height_fitter::build_pointcloud_xy_kdtree(cloud);
+  EXPECT_DOUBLE_EQ(get_ground_height_from_pointcloud(cloud, kdtree, 0.0, 0.0, fallback), expected);
+  EXPECT_DOUBLE_EQ(get_ground_height_from_pointcloud(cloud, 0.0, 0.0, fallback), expected);
+}
+
+TEST(MapHeightFitterKernel, AllNonFiniteCloudCoordinatesReturnFallback)
+{
+  // When EVERY point has a non-finite coordinate, no point participates in the scan: min_dist2
+  // stays +inf, radius2 is +inf, and the strict sd < radius2 test still rejects every NaN/Inf sd,
+  // so the lowest-z stays +inf and the fallback is returned. The KdTree path must agree.
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+  const double inf = std::numeric_limits<double>::infinity();
+  const auto cloud = make_cloud({
+    {{static_cast<float>(nan), 0.0F, 1.0F}},
+    {{0.0F, static_cast<float>(inf), 2.0F}},
+  });
+  const double fallback = 55.5;
+  const double expected = reference_ground_height_from_pointcloud(cloud, 0.0, 0.0, fallback);
+  EXPECT_DOUBLE_EQ(expected, fallback);  // pin the oracle's fallback decision
+  const auto kdtree = autoware::map_height_fitter::build_pointcloud_xy_kdtree(cloud);
+  EXPECT_DOUBLE_EQ(get_ground_height_from_pointcloud(cloud, kdtree, 0.0, 0.0, fallback), expected);
+  EXPECT_DOUBLE_EQ(get_ground_height_from_pointcloud(cloud, 0.0, 0.0, fallback), expected);
+}
+
+TEST(MapHeightFitterKernel, NonFiniteQueryReturnsFallback)
+{
+  // A non-finite QUERY (x or y is NaN/Inf) makes every squared distance non-finite, so the original
+  // scan rejects every point and falls back. The KdTree path (whose FLANN search over a NaN/Inf
+  // query is otherwise unspecified) must reproduce that fallback.
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+  const double inf = std::numeric_limits<double>::infinity();
+  const auto cloud = make_cloud({
+    {{1.0F, 0.0F, 5.0F}},
+    {{0.0F, 1.5F, 2.0F}},
+    {{3.0F, 0.0F, -9.0F}},
+  });
+  const double fallback = 678.0;
+  for (const auto & q : std::vector<std::array<double, 2>>{
+         {nan, 0.0}, {0.0, nan}, {inf, 0.0}, {0.0, -inf}, {nan, nan}}) {
+    const double expected = reference_ground_height_from_pointcloud(cloud, q[0], q[1], fallback);
+    EXPECT_DOUBLE_EQ(expected, fallback);  // pin the oracle's fallback decision
+    const auto kdtree = autoware::map_height_fitter::build_pointcloud_xy_kdtree(cloud);
+    EXPECT_DOUBLE_EQ(
+      get_ground_height_from_pointcloud(cloud, kdtree, q[0], q[1], fallback), expected)
+      << "query=(" << q[0] << "," << q[1] << ")";
+    EXPECT_DOUBLE_EQ(get_ground_height_from_pointcloud(cloud, q[0], q[1], fallback), expected)
+      << "query=(" << q[0] << "," << q[1] << ")";
+  }
+}
+
+TEST(MapHeightFitterKernel, FiniteCoordinateNonFiniteHeightFallsBack)
+{
+  // Mirrors VectorMapNonFiniteHeightFallsBack for the pointcloud branch: the nearest point has
+  // finite (x, y) but a non-finite z. The original scan sets height = min(+inf, -inf) = -inf inside
+  // the radius, then the final std::isfinite(height) guard returns fallback_z. The KdTree path must
+  // reproduce that guard return for both -Inf and NaN z.
+  const double inf = std::numeric_limits<double>::infinity();
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+  for (const float bad_z : {static_cast<float>(-inf), static_cast<float>(nan)}) {
+    const auto cloud = make_cloud({{{0.0F, 0.0F, bad_z}}});
+    const double fallback = -100.0;
+    const double expected = reference_ground_height_from_pointcloud(cloud, 0.0, 0.0, fallback);
+    EXPECT_DOUBLE_EQ(expected, fallback);  // pin the oracle's guard return
+    const auto kdtree = autoware::map_height_fitter::build_pointcloud_xy_kdtree(cloud);
+    EXPECT_DOUBLE_EQ(
+      get_ground_height_from_pointcloud(cloud, kdtree, 0.0, 0.0, fallback), expected);
+    EXPECT_DOUBLE_EQ(get_ground_height_from_pointcloud(cloud, 0.0, 0.0, fallback), expected);
+  }
+}
+
 // --- Vector-map branch --------------------------------------------------------------------------
 
 TEST(MapHeightFitterKernel, VectorMapReturnsNearestPointHeight)
