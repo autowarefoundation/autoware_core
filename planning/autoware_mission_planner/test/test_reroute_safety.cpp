@@ -216,3 +216,78 @@ TEST_F(CheckRerouteSafetyTest, SafetyLengthScalesWithVelocity)
   EXPECT_FALSE(check_reroute_safety(
     original, target, map_, 30.0, kRerouteTimeThreshold, kMinimumRerouteLength, test_logger()));
 }
+
+// ---------------------------------------------------------------------------------------------
+// Start-segment selection branch.
+//
+// The common-segment search returns the FIRST (original_idx, target_idx) pair whose primitives
+// match. When that match is NOT at the front of the target route (start_idx_target != 0) and lands
+// beyond the second original segment (start_idx_original > 1), the accumulation must start from the
+// segment immediately BEFORE the common segment (start_idx_original - 1), because the front of the
+// target route is then conflicting with original_route.segments[start_idx_original - 1]. This pins
+// that `start_idx_original - 1` branch, which every preceding test leaves unexercised (they all
+// build target.front() == original.front(), forcing start_idx_target == 0 and the `else` branch).
+// ---------------------------------------------------------------------------------------------
+
+TEST_F(CheckRerouteSafetyTest, AccumulatesFromSegmentBeforeCommonWhenTargetStartsMidRoute)
+{
+  // Add lanelet 4: a "conflicting" lane occupying the same x in [100, 200] region as lanelet 2. Ego
+  // placed at x=190 is inside lanelet 4 (the target front) and inside lanelet 2, while sitting just
+  // before the start of lanelet 3.
+  map_->add(make_straight_lanelet(4, 100.0, 200.0));
+
+  // original: {1}, {2}, {3}   target: {4}, {3}
+  // The common-segment search (i over original, j over target) finds its FIRST match at original
+  // {3}
+  // == target {3}: i=2, j=1. Hence start_idx_original = 2 (> 1) and start_idx_target = 1 (!= 0), so
+  // the `start_idx_original - 1` branch must select original segment 1 == lanelet 2 [100, 200] as
+  // the start segment (the lane the target front conflicts with), not segment 2 == lanelet 3.
+  LaneletRoute original;
+  original.start_pose = make_pose(190.0);
+  original.goal_pose = make_pose(290.0, 50.0);
+  original.segments = {make_segment({1}), make_segment({2}), make_segment({3})};
+
+  LaneletRoute target;
+  target.start_pose = make_pose(190.0);       // inside lanelet 4 (target front) and lanelet 2
+  target.goal_pose = make_pose(290.0, 50.0);  // y=50 lies outside every lanelet -> no goal subtract
+  target.segments = {make_segment({4}), make_segment({3})};
+
+  // The extension loop body never runs (end_idx == start_idx), and the goal lies outside lanelet 3,
+  // so accumulated == the remaining arc length of the start segment alone:
+  //   `-1` branch (correct): start = lanelet 2 [100, 200], ego x=190 -> remaining 10 m.
+  //   regression to start_idx_original: start = lanelet 3 [200, 300], ego x=190 projects onto its
+  //     start (clamped) -> remaining 100 m.
+  // safety_length = max(5 * 10, 30) = 50. The correct branch (10 m) is below it -> false; the
+  // regression (100 m) would be above it -> true. Asserting false is RED against a regression that
+  // drops the `- 1` and always uses start_idx_original.
+  EXPECT_FALSE(check_reroute_safety(
+    original, target, map_, 5.0, kRerouteTimeThreshold, kMinimumRerouteLength, test_logger()));
+}
+
+// ---------------------------------------------------------------------------------------------
+// Degenerate intermediate segment (empty primitives) inside the accumulation loop.
+//
+// The accumulation loop over (start_idx_original, end_idx_original] breaks on the first segment
+// with no primitives. This pins that break: an empty intermediate segment stops accumulation
+// cleanly (no crash, deterministic decision) instead of running std::min_element over an empty
+// vector.
+// ---------------------------------------------------------------------------------------------
+
+TEST_F(CheckRerouteSafetyTest, StopsAccumulationOnEmptyIntermediateSegment)
+{
+  // original == target == {1}, {}(empty), {3}. The match is at the front (i=0, j=0), so the start
+  // segment is lanelet 1 and the accumulation loop runs over segments 1 and 2. Segment 1 has empty
+  // primitives, so the loop breaks immediately, leaving accumulated = start-segment length only.
+  LaneletRoute route;
+  route.start_pose = make_pose(10.0);  // inside lanelet 1 (route front)
+  route.goal_pose = make_pose(250.0);  // inside lanelet 3 (terminal)
+  route.segments = {make_segment({1}), LaneletSegment{}, make_segment({3})};
+
+  // start segment = lanelet 1 [0, 100]; ego at x=10 leaves 90 m. The empty segment 1 breaks the
+  // accumulation, so segment 3 is NOT added. Goal at x=250 is 50 m into lanelet 3: but the terminal
+  // (end_idx_target == 2 -> lanelet 3) goal subtraction applies, accumulated = max(90 - 50, 0)
+  // = 40. safety_length = max(5 * 10, 30) = 50; 40 <= 50 -> unsafe -> false, and the call does not
+  // crash.
+  EXPECT_FALSE(check_reroute_safety(
+    route, route, map_, 5.0, kRerouteTimeThreshold, kMinimumRerouteLength, test_logger()));
+}
