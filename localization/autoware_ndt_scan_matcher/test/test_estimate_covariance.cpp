@@ -115,12 +115,21 @@ TEST(EstimateCovariance, RotateCovarianceMapAndBaseLinkAreInverses)  // NOLINT
   Eigen::Matrix2d cov;
   cov << 4.0, 1.0, 1.0, 9.0;
 
-  const Eigen::Matrix2d rot = pose.topLeftCorner<2, 2>().cast<double>();
-  const Eigen::Matrix2d expected_map = rot * cov * rot.transpose();
-
   const Eigen::Matrix2d cov_map = pclomp::rotate_covariance_to_map(cov, pose);
+
+  // Independent oracle: explicit scalar expansion of R * cov * R^T with
+  // R = [[c, -s], [s, c]], cov = [[4, 1], [1, 9]]. These literals are derived by hand
+  // from the rotation algebra, not from the matrix product the production code evaluates.
+  const double c = std::cos(theta);
+  const double s = std::sin(theta);
+  const double exp00 = c * c * 4.0 - 2.0 * c * s * 1.0 + s * s * 9.0;
+  const double exp01 = c * s * 4.0 + (c * c - s * s) * 1.0 - c * s * 9.0;
+  const double exp11 = s * s * 4.0 + 2.0 * c * s * 1.0 + c * c * 9.0;
   // The pose rotation is stored as float, so the achievable precision is limited to ~float eps.
-  EXPECT_TRUE(cov_map.isApprox(expected_map, 1e-6));
+  EXPECT_NEAR(cov_map(0, 0), exp00, 1e-6);
+  EXPECT_NEAR(cov_map(0, 1), exp01, 1e-6);
+  EXPECT_NEAR(cov_map(1, 0), exp01, 1e-6);
+  EXPECT_NEAR(cov_map(1, 1), exp11, 1e-6);
 
   // Rotating back to base_link must recover the original covariance.
   const Eigen::Matrix2d round_trip = pclomp::rotate_covariance_to_base_link(cov_map, pose);
