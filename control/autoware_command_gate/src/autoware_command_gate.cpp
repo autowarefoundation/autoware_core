@@ -20,8 +20,6 @@
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_components/register_node_macro.hpp>
 
-#include <autoware_adapi_v1_msgs/msg/response_status.hpp>
-#include <autoware_common_msgs/msg/response_status.hpp>
 #include <autoware_vehicle_msgs/msg/gear_command.hpp>
 
 #include <rmw/types.h>
@@ -77,19 +75,11 @@ public:
         const SystemChangeOperationMode::Service::Request::SharedPtr req,
         const SystemChangeOperationMode::Service::Response::SharedPtr res) {
         const builtin_interfaces::msg::Time stamp = now();
-        const auto outputs = CommandGateModeBuilder::dispatch_mode(req->mode, stamp);
-
-        if (!outputs) {
-          res->status.success = false;
-          res->status.code = autoware_common_msgs::msg::ResponseStatus::PARAMETER_ERROR;
-          res->status.message = "Unknown operation mode requested.";
-          return;
+        const auto outputs = CommandGateModeBuilder::create_mode_output(*req, stamp);
+        if (outputs) {
+          publish(*outputs);
         }
-
-        publish(*outputs);
-        res->status.success = true;
-        res->status.code = 0;
-        res->status.message = outputs->status.message;
+        *res = CommandGateModeBuilder::create_response(*req, stamp);
       });
   }
 
