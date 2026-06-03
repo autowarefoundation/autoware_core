@@ -98,8 +98,7 @@ double lanelet_selection_angle_diff(
   if (!has_direction_change_tag(lanelet)) {
     return angle_diff;
   }
-  return std::min(
-    angle_diff, std::fabs(autoware_utils_math::normalize_radian(angle_diff - M_PI)));
+  return std::min(angle_diff, std::fabs(autoware_utils_math::normalize_radian(angle_diff - M_PI)));
 }
 
 bool is_preferred_on_equal_angle(
@@ -180,14 +179,14 @@ std::optional<lanelet::ConstLanelet> get_closest_lanelet(
       which is used to only compare distance
       stackoverflow.com/questions/51267577/boost-geometry-polygon-distance-for-inside-point
      */
-    const double distance = boost::geometry::comparable_distance(
-      llt.polygon2d().basicPolygon(), search_point_2d);
+    const double distance =
+      boost::geometry::comparable_distance(llt.polygon2d().basicPolygon(), search_point_2d);
     min_distance = std::min(min_distance, distance);
   }
-    /*
-      NOTE(soblin): this line is intended to push all lanelets on which search_point is located to
-      candidate, and later judge by angle
-    */
+  /*
+    NOTE(soblin): this line is intended to push all lanelets on which search_point is located to
+    candidate, and later judge by angle
+  */
 
   lanelet::ConstLanelets candidate_lanelets;
   const auto add_candidate = [&](const lanelet::ConstLanelet & llt) {
@@ -199,8 +198,8 @@ std::optional<lanelet::ConstLanelet> get_closest_lanelet(
   };
 
   for (const auto & llt : lanelets) {
-    const double distance = boost::geometry::comparable_distance(
-      llt.polygon2d().basicPolygon(), search_point_2d);
+    const double distance =
+      boost::geometry::comparable_distance(llt.polygon2d().basicPolygon(), search_point_2d);
     const bool inside = lanelet::geometry::inside(llt, search_point_2d);
     if (inside || std::fabs(distance - min_distance) <= std::numeric_limits<double>::epsilon()) {
       add_candidate(llt);
@@ -227,8 +226,9 @@ std::optional<lanelet::ConstLanelet> get_closest_lanelet(
       closest_lanelet = llt;
       continue;
     }
-    if (std::fabs(angle_diff - min_angle) <= std::numeric_limits<double>::epsilon() &&
-        is_preferred_on_equal_angle(closest_lanelet.value(), llt)) {
+    if (
+      std::fabs(angle_diff - min_angle) <= std::numeric_limits<double>::epsilon() &&
+      is_preferred_on_equal_angle(closest_lanelet.value(), llt)) {
       closest_lanelet = llt;
     }
   }

@@ -634,10 +634,12 @@ protected:
   void SetUp() override
   {
     const std::vector<lanelet::BasicPoint3d> left = {
-      {0.0, 1.0, 0.0}, {10.0, 1.0, 0.0},
+      {0.0, 1.0, 0.0},
+      {10.0, 1.0, 0.0},
     };
     const std::vector<lanelet::BasicPoint3d> right = {
-      {0.0, -1.0, 0.0}, {10.0, -1.0, 0.0},
+      {0.0, -1.0, 0.0},
+      {10.0, -1.0, 0.0},
     };
     forward_lanelet_ = make_lanelet(forward_lanelet_id_, left, right, false);
     direction_change_lanelet_ = make_lanelet(direction_change_lanelet_id_, left, right, true);
@@ -669,7 +671,8 @@ TEST_F(TestDirectionChangeOverlap, overlapping_lanelets_contain_pose)
 
 TEST_F(TestDirectionChangeOverlap, forward_goal_prefers_forward_lanelet)
 {
-  const auto closest = lanelet2_utils::get_closest_lanelet(overlapping_lanelets_, forward_goal_pose_);
+  const auto closest =
+    lanelet2_utils::get_closest_lanelet(overlapping_lanelets_, forward_goal_pose_);
   ASSERT_TRUE(closest.has_value());
   EXPECT_EQ(closest->id(), forward_lanelet_id_);
 
