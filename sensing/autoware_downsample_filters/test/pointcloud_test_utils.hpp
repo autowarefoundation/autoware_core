@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE_DOWNSAMPLE_FILTERS__TEST__POINTCLOUD_TEST_UTILS_HPP_
-#define AUTOWARE_DOWNSAMPLE_FILTERS__TEST__POINTCLOUD_TEST_UTILS_HPP_
+#ifndef POINTCLOUD_TEST_UTILS_HPP_
+#define POINTCLOUD_TEST_UTILS_HPP_
 
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
@@ -35,10 +35,10 @@ inline sensor_msgs::msg::PointCloud2 create_pointcloud2(const std::vector<PointX
   sensor_msgs::msg::PointCloud2 cloud;
   sensor_msgs::PointCloud2Modifier modifier(cloud);
   modifier.setPointCloud2Fields(
-    6, "x", 1, sensor_msgs::msg::PointField::FLOAT32, "y", 1,
-    sensor_msgs::msg::PointField::FLOAT32, "z", 1, sensor_msgs::msg::PointField::FLOAT32,
-    "intensity", 1, sensor_msgs::msg::PointField::UINT8, "return_type", 1,
-    sensor_msgs::msg::PointField::UINT8, "channel", 1, sensor_msgs::msg::PointField::UINT16);
+    6, "x", 1, sensor_msgs::msg::PointField::FLOAT32, "y", 1, sensor_msgs::msg::PointField::FLOAT32,
+    "z", 1, sensor_msgs::msg::PointField::FLOAT32, "intensity", 1,
+    sensor_msgs::msg::PointField::UINT8, "return_type", 1, sensor_msgs::msg::PointField::UINT8,
+    "channel", 1, sensor_msgs::msg::PointField::UINT16);
   modifier.resize(points.size());
 
   sensor_msgs::PointCloud2Iterator<float> iter_x(cloud, "x");
@@ -101,4 +101,4 @@ inline void expect_points_near(
 
 }  // namespace autoware::downsample_filters::test_utils
 
-#endif  // AUTOWARE_DOWNSAMPLE_FILTERS__TEST__POINTCLOUD_TEST_UTILS_HPP_
+#endif  // POINTCLOUD_TEST_UTILS_HPP_

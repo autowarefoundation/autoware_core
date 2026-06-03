@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "pointcloud_test_utils.hpp"
 #include "voxel_grid_downsample_filter/faster_voxel_grid_downsample_filter.hpp"
 #include "voxel_grid_downsample_filter/transform_info.hpp"
 
-#include "pointcloud_test_utils.hpp"
-
 #include <sensor_msgs/msg/point_cloud2.hpp>
+
 #include <gtest/gtest.h>
 
 #include <vector>
@@ -26,10 +26,10 @@ namespace
 {
 using autoware::downsample_filters::FasterVoxelGridDownsampleFilter;
 using autoware::downsample_filters::TransformInfo;
-using autoware::downsample_filters::test_utils::PointXYZ;
 using autoware::downsample_filters::test_utils::create_pointcloud2;
 using autoware::downsample_filters::test_utils::expect_points_near;
 using autoware::downsample_filters::test_utils::extract_points_from_cloud;
+using autoware::downsample_filters::test_utils::PointXYZ;
 }  // namespace
 
 TEST(FasterVoxelGridDownsampleFilterTest, ReturnsCentroidForSingleVoxel)

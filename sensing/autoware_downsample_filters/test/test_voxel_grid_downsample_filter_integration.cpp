@@ -12,9 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "voxel_grid_downsample_filter/voxel_grid_downsample_filter_node.hpp"
-
 #include "pointcloud_test_utils.hpp"
+#include "voxel_grid_downsample_filter/voxel_grid_downsample_filter_node.hpp"
 
 #include <rclcpp/executors.hpp>
 
@@ -34,10 +33,10 @@
 #include <thread>
 #include <vector>
 
-using autoware::downsample_filters::test_utils::PointXYZ;
 using autoware::downsample_filters::test_utils::create_pointcloud2;
 using autoware::downsample_filters::test_utils::expect_points_near;
 using autoware::downsample_filters::test_utils::extract_points_from_cloud;
+using autoware::downsample_filters::test_utils::PointXYZ;
 
 class VoxelGridIntegrationHarness
 {
