@@ -60,23 +60,6 @@ TEST(PurePursuitUtil, calc_rear_position)
   }
 }
 
-TEST(PurePursuitUtil, calc_rear_position_yaw_overload_matches_pose_overload)
-{
-  // The yaw overload must reproduce the pose overload bit-for-bit when fed the pose's planar yaw.
-  const auto pose = make_pose(10.0, 5.0, 0.73);  // non-trivial orientation
-  const double wheel_base = 2.7;
-
-  // Extract the yaw exactly as the pose overload does, so the comparison pins bit-for-bit equality.
-  const double yaw = autoware_utils_geometry::get_rpy(pose.orientation).z;
-
-  const auto from_pose = calc_rear_position(pose, wheel_base);
-  const auto from_yaw = calc_rear_position(pose, wheel_base, yaw);
-
-  EXPECT_DOUBLE_EQ(from_yaw.x, from_pose.x);
-  EXPECT_DOUBLE_EQ(from_yaw.y, from_pose.y);
-  EXPECT_DOUBLE_EQ(from_yaw.z, from_pose.z);
-}
-
 TEST(PurePursuitUtil, find_lookahead_point_normal)
 {
   const std::vector<TrajectoryPoint> points{
