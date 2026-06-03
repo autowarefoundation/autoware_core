@@ -26,6 +26,7 @@
 #include <lanelet2_core/primitives/Lanelet.h>
 #include <lanelet2_routing/RoutingGraph.h>
 #include <lanelet2_routing/RoutingGraphContainer.h>
+#include <lanelet2_traffic_rules/TrafficRulesFactory.h>
 
 #include <algorithm>
 #include <filesystem>
@@ -98,11 +99,13 @@ TEST(RouteHandlerSetMap, ptrOverloadPopulatesTwoNonNullOverallGraphs)
   EXPECT_NE(overall_graphs->routingGraphs().at(1), nullptr);
 }
 
-// For the LaneletMapConstPtr overload, the primary routing graph and the
-// vehicle slot of the overall-graph container are built from the same map with
-// the same (Germany/Vehicle) traffic rules, so they must encode identical
-// following relations for every lanelet. This is the invariant that lets the
-// refactor reuse the already-built routing_graph_ptr_ as the vehicle slot.
+// For the LaneletMapConstPtr overload, the refactor reuses the already-built
+// routing_graph_ptr_ as the vehicle slot of the overall-graph container. That
+// reuse is only valid if the reused graph is equivalent to one built
+// independently with Germany/Vehicle traffic rules. We therefore compare the
+// production routing graph against a SEPARATE reference graph built here (the
+// way the pre-refactor code built the vehicle slot), so the oracle does not
+// depend on the object under test.
 TEST(RouteHandlerSetMap, ptrOverloadVehicleGraphMatchesRoutingGraph)
 {
   const auto map = load_straight_sample_map();
@@ -116,17 +119,19 @@ TEST(RouteHandlerSetMap, ptrOverloadVehicleGraphMatchesRoutingGraph)
   const auto routing_graph = route_handler.getRoutingGraphPtr();
   ASSERT_NE(routing_graph, nullptr);
 
-  const auto overall_graphs = route_handler.getOverallGraphPtr();
-  ASSERT_NE(overall_graphs, nullptr);
-  ASSERT_EQ(overall_graphs->routingGraphs().size(), 2u);
-  const auto vehicle_graph = overall_graphs->routingGraphs().at(0);
-  ASSERT_NE(vehicle_graph, nullptr);
+  // Independent reference: build a fresh Germany/Vehicle routing graph from the
+  // same map, exactly as the original (pre-refactor) code constructed the
+  // vehicle slot. This is the oracle the reused production graph must match.
+  const auto ref_rules = lanelet::traffic_rules::TrafficRulesFactory::create(
+    lanelet::Locations::Germany, lanelet::Participants::Vehicle);
+  const auto ref_vehicle_graph = lanelet::routing::RoutingGraph::build(*lanelet_map, *ref_rules);
+  ASSERT_NE(ref_vehicle_graph, nullptr);
 
   const auto routing_following = collect_following_ids(lanelet_map, *routing_graph);
-  const auto vehicle_following = collect_following_ids(lanelet_map, *vehicle_graph);
+  const auto ref_following = collect_following_ids(lanelet_map, *ref_vehicle_graph);
 
-  ASSERT_EQ(routing_following.size(), vehicle_following.size());
-  EXPECT_EQ(routing_following, vehicle_following);
+  ASSERT_EQ(routing_following.size(), ref_following.size());
+  EXPECT_EQ(routing_following, ref_following);
 
   // Sanity: at least one lanelet has a successor, so the equality above is not
   // a comparison of two empty relation sets.
@@ -134,6 +139,14 @@ TEST(RouteHandlerSetMap, ptrOverloadVehicleGraphMatchesRoutingGraph)
     routing_following.begin(), routing_following.end(),
     [](const auto & entry) { return !entry.second.empty(); });
   EXPECT_TRUE(any_following);
+
+  // Document the intended pointer identity (the vehicle slot reuses
+  // routing_graph_ptr_). This is in addition to, not a substitute for, the
+  // independent-reference equivalence check above.
+  const auto overall_graphs = route_handler.getOverallGraphPtr();
+  ASSERT_NE(overall_graphs, nullptr);
+  ASSERT_EQ(overall_graphs->routingGraphs().size(), 2u);
+  EXPECT_EQ(overall_graphs->routingGraphs().at(0).get(), routing_graph.get());
 }
 
 // Reconstructing the handler from the same map must yield byte-for-byte
