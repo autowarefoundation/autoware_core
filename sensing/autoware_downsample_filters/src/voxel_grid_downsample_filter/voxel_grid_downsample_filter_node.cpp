@@ -219,9 +219,7 @@ void VoxelGridDownsampleFilter::filter(
   faster_voxel_filter.set_voxel_size(voxel_size_x_, voxel_size_y_, voxel_size_z_);
 
   const auto offset_status = faster_voxel_filter.set_field_offsets(input);
-  if (
-    offset_status ==
-    FasterVoxelGridDownsampleFilter::Status::kIntensityFieldNotFoundOrInvalidType) {
+  if (offset_status == FasterVoxelGridDownsampleFilter::Status::kIntensityFieldNotFoundOrInvalidType) {
     RCLCPP_ERROR(
       this->get_logger(),
       "There is no intensity field in the input point cloud or the intensity field is not of type "
