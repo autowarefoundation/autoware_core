@@ -35,14 +35,17 @@ using geometry_msgs::msg::Pose;
 using nav_msgs::msg::Odometry;
 using RouteSections = std::vector<autoware_planning_msgs::msg::LaneletSegment>;
 
-// Compute the mid-lanelet pose for the given lanelet id using an already-loaded RouteHandler.
-// The orientation is derived from the heading between the two central centerline points.
-inline Pose createPoseFromLaneID(const RouteHandler & route_handler, const lanelet::Id & lane_id)
+// Compute the mid-centerline pose for a lanelet centerline. This is the ROS/map-free core of
+// createPoseFromLaneID: it operates purely on the centerline points so every branch (including
+// the degenerate empty / single-point / two-point cases) is unit-testable without a RouteHandler.
+//
+// Postconditions:
+//   - empty centerline      -> zero position with identity orientation (w == 1).
+//   - single-point          -> that point's position with identity orientation (no heading).
+//   - two-point             -> middle point's position; heading from the preceding segment.
+//   - three-or-more points  -> middle point's position; heading from the forward segment.
+inline Pose poseFromCenterline(const lanelet::ConstLineString3d & center_line)
 {
-  // get middle idx of the lanelet
-  const auto lanelet = route_handler.getLaneletsFromId(lane_id);
-  const auto center_line = lanelet.centerline();
-
   geometry_msgs::msg::Pose middle_pose;
   // Pose default-constructs its quaternion to (0,0,0,0), which is invalid; start from identity
   // so degenerate centerlines (empty / single point) still return a valid orientation.
@@ -51,6 +54,7 @@ inline Pose createPoseFromLaneID(const RouteHandler & route_handler, const lanel
     return middle_pose;
   }
 
+  // get middle idx of the lanelet
   const size_t middle_point_idx = static_cast<size_t>(std::floor(center_line.size() / 2.0));
 
   // get middle position of the lanelet
@@ -85,6 +89,14 @@ inline Pose createPoseFromLaneID(const RouteHandler & route_handler, const lanel
   middle_pose.orientation = autoware_utils_geometry::create_quaternion_from_yaw(yaw);
 
   return middle_pose;
+}
+
+// Compute the mid-lanelet pose for the given lanelet id using an already-loaded RouteHandler.
+// The orientation is derived from the heading between the two central centerline points.
+inline Pose createPoseFromLaneID(const RouteHandler & route_handler, const lanelet::Id & lane_id)
+{
+  const auto lanelet = route_handler.getLaneletsFromId(lane_id);
+  return poseFromCenterline(lanelet.centerline());
 }
 
 inline Pose createPoseFromLaneID(

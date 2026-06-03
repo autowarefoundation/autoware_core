@@ -18,8 +18,13 @@
 #include <autoware_test_utils/autoware_test_utils.hpp>
 
 #include <gtest/gtest.h>
+#include <lanelet2_core/LaneletMap.h>
+#include <lanelet2_core/primitives/LineString.h>
+#include <lanelet2_core/primitives/Point.h>
 
 #include <cmath>
+#include <utility>
+#include <vector>
 
 namespace autoware_planning_test_manager::utils
 {
@@ -30,6 +35,18 @@ namespace
 // by autoware_test_utils::makeBehaviorGoalOnLeftSideRoute().
 constexpr lanelet::Id g_start_lane_id = 9102;
 constexpr lanelet::Id g_goal_lane_id = 112;
+
+// Build an in-process centerline (no map / RouteHandler) from (x, y) pairs so the
+// poseFromCenterline branch logic can be exercised directly.
+lanelet::ConstLineString3d make_centerline(const std::vector<std::pair<double, double>> & xy)
+{
+  std::vector<lanelet::Point3d> points;
+  points.reserve(xy.size());
+  for (const auto & [x, y] : xy) {
+    points.emplace_back(lanelet::utils::getId(), x, y, 0.0);
+  }
+  return lanelet::ConstLineString3d(lanelet::utils::getId(), points);
+}
 }  // namespace
 
 TEST(PlanningTestManagerUtils, CreatePoseFromLaneIdReturnsPoseOnCenterline)
@@ -99,6 +116,63 @@ TEST(PlanningTestManagerUtils, MakeInitialPoseFromLaneIdSetsMapFrame)
   EXPECT_EQ(odometry.header.frame_id, "map");
   EXPECT_NE(odometry.pose.pose.position.x, 0.0);
   EXPECT_NE(odometry.pose.pose.position.y, 0.0);
+}
+
+// --- poseFromCenterline branch coverage (ROS/map-free degenerate-centerline cases) ---
+
+TEST(PlanningTestManagerUtils, PoseFromCenterlineEmptyReturnsIdentity)
+{
+  // empty centerline -> zero position with identity orientation (w == 1)
+  const auto pose = poseFromCenterline(make_centerline({}));
+
+  EXPECT_DOUBLE_EQ(pose.position.x, 0.0);
+  EXPECT_DOUBLE_EQ(pose.position.y, 0.0);
+  EXPECT_DOUBLE_EQ(pose.position.z, 0.0);
+  EXPECT_DOUBLE_EQ(pose.orientation.x, 0.0);
+  EXPECT_DOUBLE_EQ(pose.orientation.y, 0.0);
+  EXPECT_DOUBLE_EQ(pose.orientation.z, 0.0);
+  EXPECT_DOUBLE_EQ(pose.orientation.w, 1.0);
+}
+
+TEST(PlanningTestManagerUtils, PoseFromCenterlineSinglePointKeepsIdentityOrientation)
+{
+  // single point -> that point's position, identity orientation (a point has no heading)
+  const auto pose = poseFromCenterline(make_centerline({{5.0, 7.0}}));
+
+  EXPECT_DOUBLE_EQ(pose.position.x, 5.0);
+  EXPECT_DOUBLE_EQ(pose.position.y, 7.0);
+  EXPECT_DOUBLE_EQ(pose.orientation.x, 0.0);
+  EXPECT_DOUBLE_EQ(pose.orientation.y, 0.0);
+  EXPECT_DOUBLE_EQ(pose.orientation.z, 0.0);
+  EXPECT_DOUBLE_EQ(pose.orientation.w, 1.0);
+}
+
+TEST(PlanningTestManagerUtils, PoseFromCenterlineTwoPointsUsesPrecedingSegmentHeading)
+{
+  // two points -> middle idx is 1 (the last point), so the heading falls back to the
+  // preceding segment (0 -> 1). Segment (0,0) -> (2,2) has yaw = +pi/4.
+  const auto pose = poseFromCenterline(make_centerline({{0.0, 0.0}, {2.0, 2.0}}));
+
+  EXPECT_DOUBLE_EQ(pose.position.x, 2.0);
+  EXPECT_DOUBLE_EQ(pose.position.y, 2.0);
+
+  constexpr double expected_yaw = M_PI_4;
+  EXPECT_NEAR(pose.orientation.z, std::sin(expected_yaw / 2.0), 1e-9);
+  EXPECT_NEAR(pose.orientation.w, std::cos(expected_yaw / 2.0), 1e-9);
+}
+
+TEST(PlanningTestManagerUtils, PoseFromCenterlineMultiPointUsesForwardSegmentHeading)
+{
+  // three points -> middle idx is 1, heading from the forward segment (1 -> 2).
+  // Segment (1,1) -> (1,2) points straight up: yaw = +pi/2.
+  const auto pose = poseFromCenterline(make_centerline({{0.0, 0.0}, {1.0, 1.0}, {1.0, 2.0}}));
+
+  EXPECT_DOUBLE_EQ(pose.position.x, 1.0);
+  EXPECT_DOUBLE_EQ(pose.position.y, 1.0);
+
+  constexpr double expected_yaw = M_PI_2;
+  EXPECT_NEAR(pose.orientation.z, std::sin(expected_yaw / 2.0), 1e-9);
+  EXPECT_NEAR(pose.orientation.w, std::cos(expected_yaw / 2.0), 1e-9);
 }
 
 }  // namespace autoware_planning_test_manager::utils
