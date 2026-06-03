@@ -26,6 +26,12 @@ rclcpp_components_register_node(${PROJECT_NAME}
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
+
+  ament_auto_add_gtest(test_faster_voxel_grid_downsample_filter
+    test/test_faster_voxel_grid_downsample_filter.cpp
+  )
+  target_include_directories(test_faster_voxel_grid_downsample_filter PRIVATE src)
+
   ament_auto_add_gtest(test_voxel_grid_downsample_filter_integration
     test/test_voxel_grid_downsample_filter_integration.cpp
   )

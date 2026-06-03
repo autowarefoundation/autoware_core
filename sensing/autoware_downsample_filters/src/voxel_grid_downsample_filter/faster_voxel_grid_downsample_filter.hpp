@@ -33,12 +33,18 @@ class FasterVoxelGridDownsampleFilter
   using PointCloud2ConstPtr = sensor_msgs::msg::PointCloud2::ConstSharedPtr;
 
 public:
+  enum class Status
+  {
+    kSuccess,
+    kIntensityFieldNotFoundOrInvalidType,
+    kVoxelIndexWouldOverflow,
+  };
+
   FasterVoxelGridDownsampleFilter();
   void set_voxel_size(float voxel_size_x, float voxel_size_y, float voxel_size_z);
-  void set_field_offsets(const PointCloud2ConstPtr & input, const rclcpp::Logger & logger);
-  void filter(
-    const PointCloud2ConstPtr & input, PointCloud2 & output, const TransformInfo & transform_info,
-    const rclcpp::Logger & logger);
+  Status set_field_offsets(const PointCloud2ConstPtr & input);
+  Status filter(
+    const PointCloud2ConstPtr & input, PointCloud2 & output, const TransformInfo & transform_info);
 
 private:
   struct Centroid

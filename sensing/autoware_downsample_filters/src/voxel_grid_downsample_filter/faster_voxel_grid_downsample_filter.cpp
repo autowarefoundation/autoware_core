@@ -37,8 +37,8 @@ void FasterVoxelGridDownsampleFilter::set_voxel_size(
     Eigen::Array3f::Ones() / Eigen::Array3f(voxel_size_x, voxel_size_y, voxel_size_z);
 }
 
-void FasterVoxelGridDownsampleFilter::set_field_offsets(
-  const PointCloud2ConstPtr & input, const rclcpp::Logger & logger)
+FasterVoxelGridDownsampleFilter::Status FasterVoxelGridDownsampleFilter::set_field_offsets(
+  const PointCloud2ConstPtr & input)
 {
   x_offset_ = static_cast<int>(input->fields[pcl::getFieldIndex(*input, "x")].offset);
   y_offset_ = static_cast<int>(input->fields[pcl::getFieldIndex(*input, "y")].offset);
@@ -48,10 +48,7 @@ void FasterVoxelGridDownsampleFilter::set_field_offsets(
   if (
     intensity_index_ < 0 || input->fields[pcl::getFieldIndex(*input, "intensity")].datatype !=
                               sensor_msgs::msg::PointField::UINT8) {
-    RCLCPP_ERROR(
-      logger,
-      "There is no intensity field in the input point cloud or the intensity field is not of type "
-      "UINT8.");
+    return Status::kIntensityFieldNotFoundOrInvalidType;
   }
 
   if (intensity_index_ != -1) {
@@ -60,26 +57,25 @@ void FasterVoxelGridDownsampleFilter::set_field_offsets(
     intensity_offset_ = -1;
   }
   offset_initialized_ = true;
+  return Status::kSuccess;
 }
 
-void FasterVoxelGridDownsampleFilter::filter(
-  const PointCloud2ConstPtr & input, PointCloud2 & output, const TransformInfo & transform_info,
-  const rclcpp::Logger & logger)
+FasterVoxelGridDownsampleFilter::Status FasterVoxelGridDownsampleFilter::filter(
+  const PointCloud2ConstPtr & input, PointCloud2 & output, const TransformInfo & transform_info)
 {
   // Check if the field offset has been set
   if (!offset_initialized_) {
-    set_field_offsets(input, logger);
+    const auto offset_status = set_field_offsets(input);
+    if (offset_status != Status::kSuccess) {
+      return offset_status;
+    }
   }
 
   // Compute the minimum and maximum voxel coordinates
   Eigen::Vector3i min_voxel, max_voxel;
   if (!get_min_max_voxel(input, min_voxel, max_voxel)) {
-    RCLCPP_ERROR(
-      logger,
-      "Voxel size is too small for the input dataset. "
-      "Integer indices would overflow.");
     output = *input;
-    return;
+    return Status::kVoxelIndexWouldOverflow;
   }
 
   // Storage for mapping voxel coordinates to centroids
@@ -98,6 +94,8 @@ void FasterVoxelGridDownsampleFilter::filter(
 
   // Copy the centroids to the output
   copy_centroids_to_output(voxel_centroid_map, output, transform_info);
+
+  return Status::kSuccess;
 }
 
 Eigen::Vector4f FasterVoxelGridDownsampleFilter::get_point_from_global_offset(
