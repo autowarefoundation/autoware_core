@@ -160,6 +160,15 @@ TEST_F(GridTest, RadialIdxOutOfRange)
   // Far beyond the configured radial limit (200 m) -> invalid.
   EXPECT_EQ(getRadialIdx(1.0e4f), -1);
 
+  // Exactly at the configured radial limit (grid_radial_limit_ == 200 m): the
+  // limit is exclusive (radius < grid_radial_limit_ in both branches), so the
+  // boundary value falls through to -1 just like out-of-range radii.
+  EXPECT_EQ(getRadialIdx(200.0f), -1);
+
+  // Just below the limit -> valid (non-negative) index, pinning the open
+  // boundary on the in-range side.
+  EXPECT_GE(getRadialIdx(199.9f), 0);
+
   // Within the constant-distance region radial index is floor(radius / size).
   EXPECT_EQ(getRadialIdx(0.0f), 0);
   EXPECT_EQ(getRadialIdx(0.4f), 0);  // < grid_dist_size (0.5)
@@ -209,6 +218,50 @@ TEST_F(GridTest, GridIdxFromRadiusAzimuth)
   // reset to bin 0 by the loop-back clause. This exercises the
   // (azimuth_grid_idx == azimuth_grid_num) reset, not just the trivial bin-0 case.
   EXPECT_EQ(getAzimuthGridIdx(0, 2.0f * M_PIf), 0);
+}
+
+// ---------------------------------------------------------------------------
+// Grid::addPoint on the origin's negative-Y axis: this is the external
+// postcondition of the pseudoArcTan2 negative-Y-axis fix. A point with
+// x_fixed == 0 and y_fixed < 0 yields azimuth 3*pi/2 (was -pi/2), so it now
+// bins into a valid cell and is KEPT.
+//
+// Prior behavior (regression guard): pseudoArcTan2 returned -pi/2 for this axis,
+// the only negative azimuth the function produced. getAzimuthGridIdx floored it
+// into a negative bin, getGridIdx returned -1, and addPoint DROPPED the point
+// (the destination cell stayed empty). This test pins that the point is now
+// retained in a non-empty cell.
+// ---------------------------------------------------------------------------
+TEST_F(GridTest, AddPointOnNegativeYAxisIsKept)
+{
+  // Point exactly on the origin's negative-Y axis: x == origin_x_ (x_fixed == 0)
+  // and y < origin_y_ (y_fixed < 0). radius == 5 m is inside the switch radius.
+  const float x = kOriginX;
+  const float y = kOriginY - 5.0f;
+  const float z = 0.0f;
+  const size_t point_idx = 7;
+
+  const float x_fixed = x - kOriginX;
+  const float y_fixed = y - kOriginY;
+  const float radius = std::sqrt(x_fixed * x_fixed + y_fixed * y_fixed);
+  const float azimuth = detail::pseudoArcTan2(y_fixed, x_fixed);
+
+  // Sanity: this branch is the negative-Y axis with the fixed [0, 2*pi) value.
+  ASSERT_FLOAT_EQ(x_fixed, 0.0f);
+  EXPECT_FLOAT_EQ(azimuth, 3.0f * M_PI_2f);
+
+  // The destination cell index is valid (>= 0); under the old -pi/2 value this
+  // would have been -1 and the point dropped.
+  const int grid_idx = getGridIdx(radius, azimuth);
+  ASSERT_GE(grid_idx, 0);
+
+  // Adding the point lands it in that cell, which becomes non-empty.
+  grid_->addPoint(x, y, z, point_idx);
+
+  auto & cell = grid_->getCell(grid_idx);
+  EXPECT_FALSE(cell.isEmpty());
+  ASSERT_EQ(cell.point_list_.size(), 1u);
+  EXPECT_EQ(cell.point_list_.front().index, point_idx);
 }
 
 int main(int argc, char ** argv)

@@ -206,6 +206,10 @@ public:
     const float x_fixed = x - origin_x_;
     const float y_fixed = y - origin_y_;
     const float radius = std::sqrt(x_fixed * x_fixed + y_fixed * y_fixed);
+    // A point exactly on the origin's negative-Y axis (x_fixed == 0, y_fixed < 0)
+    // now yields azimuth 3*pi/2 and is kept. Previously pseudoArcTan2 returned
+    // -pi/2 for this axis, which getGridIdx() rejected as out-of-range, dropping
+    // the point below.
     const float azimuth = detail::pseudoArcTan2(y_fixed, x_fixed);
 
     // calculate the grid id
