@@ -61,49 +61,48 @@ TEST(kalman_filter, kf)
   // Initialize the filter and check if initialization was successful
   EXPECT_TRUE(kf_.init(x_t, A_t, B_t, C_t, Q_t, R_t, P_t));
 
-  // Perform prediction
+  // Perform prediction with A = B = I, so x_pred = x + u and P_pred = P + Q.
+  //   x_pred = [1 + 0.1, 2 + 0.1]      = [1.1, 2.1]
+  //   P_pred = I + 0.01 I (diagonal)   = diag(1.01, 1.01)
   Eigen::MatrixXd u_t(2, 1);
   u_t << 0.1, 0.1;
   EXPECT_TRUE(kf_.predict(u_t));
 
-  // Check the updated state and covariance matrix
-  Eigen::MatrixXd x_predict_expected = A_t * x_t + B_t * u_t;
-  Eigen::MatrixXd P_predict_expected = A_t * P_t * A_t.transpose() + Q_t;
-
+  // Check the predicted state and covariance against hand-computed literals.
   Eigen::MatrixXd x_predict;
   kf_.getX(x_predict);
   Eigen::MatrixXd P_predict;
   kf_.getP(P_predict);
 
-  EXPECT_NEAR(x_predict(0, 0), x_predict_expected(0, 0), 1e-5);
-  EXPECT_NEAR(x_predict(1, 0), x_predict_expected(1, 0), 1e-5);
-  EXPECT_NEAR(P_predict(0, 0), P_predict_expected(0, 0), 1e-5);
-  EXPECT_NEAR(P_predict(1, 1), P_predict_expected(1, 1), 1e-5);
+  EXPECT_NEAR(x_predict(0, 0), 1.1, 1e-5);
+  EXPECT_NEAR(x_predict(1, 0), 2.1, 1e-5);
+  EXPECT_NEAR(P_predict(0, 0), 1.01, 1e-5);
+  EXPECT_NEAR(P_predict(1, 1), 1.01, 1e-5);
 
-  // Perform update
+  // Perform update with C = I, R = 0.09 I, y = [1.05, 2.05].
+  //   S    = R + C P_pred C^T = diag(1.01 + 0.09)      = diag(1.1)
+  //   K    = P_pred C^T S^-1  = diag(1.01 / 1.1)        = diag(0.918181..)
+  //   x_up = x_pred + K (y - x_pred)
+  //        = 1.1 + (1.01/1.1)*(1.05 - 1.1)              = 1.05409090909..  (dim 0)
+  //        = 2.1 + (1.01/1.1)*(2.05 - 2.1)              = 2.05409090909..  (dim 1)
+  //   P_up = P_pred - K (C P_pred)
+  //        = 1.01 - (1.01/1.1)*1.01                     = 0.08263636363..  (diagonal)
   Eigen::MatrixXd y_t(2, 1);
   y_t << 1.05, 2.05;
   EXPECT_TRUE(kf_.update(y_t));
-
-  // Check the updated state and covariance matrix
-  const Eigen::MatrixXd PCT_t = P_predict_expected * C_t.transpose();
-  const Eigen::MatrixXd K_t = PCT_t * ((R_t + C_t * PCT_t).inverse());
-  const Eigen::MatrixXd y_pred = C_t * x_predict_expected;
-  Eigen::MatrixXd x_update_expected = x_predict_expected + K_t * (y_t - y_pred);
-  Eigen::MatrixXd P_update_expected = P_predict_expected - K_t * (C_t * P_predict_expected);
 
   Eigen::MatrixXd x_update;
   kf_.getX(x_update);
   Eigen::MatrixXd P_update;
   kf_.getP(P_update);
 
-  EXPECT_NEAR(x_update(0, 0), x_update_expected(0, 0), 1e-5);
-  EXPECT_NEAR(x_update(1, 0), x_update_expected(1, 0), 1e-5);
-  EXPECT_NEAR(P_update(0, 0), P_update_expected(0, 0), 1e-5);
-  EXPECT_NEAR(P_update(1, 1), P_update_expected(1, 1), 1e-5);
+  EXPECT_NEAR(x_update(0, 0), 1.0540909090909092, 1e-5);
+  EXPECT_NEAR(x_update(1, 0), 2.0540909090909087, 1e-5);
+  EXPECT_NEAR(P_update(0, 0), 0.08263636363636362, 1e-5);
+  EXPECT_NEAR(P_update(1, 1), 0.08263636363636362, 1e-5);
 
-  // Add tests to cover missed lines
-
+  // Exercise the value constructor and the explicit-A predict overload. With a fresh state
+  // initialized to (x_t, P_t) and A = I, Q = 0.01 I, the covariance becomes P + Q = diag(1.01).
   KalmanFilter kf_new(x_t, A_t, B_t, C_t, Q_t, R_t, P_t);
   kf_new.init(x_t, P_t);
   kf_new.setA(A_t);
@@ -112,11 +111,12 @@ TEST(kalman_filter, kf)
   kf_new.setQ(Q_t);
   kf_new.setR(R_t);
 
-  EXPECT_TRUE(kf_new.predict(x_predict_expected, A_t));
-  P_predict_expected = A_t * P_t * A_t.transpose() + Q_t;
+  Eigen::MatrixXd x_next(2, 1);
+  x_next << 1.1, 2.1;
+  EXPECT_TRUE(kf_new.predict(x_next, A_t));
   kf_new.getP(P_predict);
-  EXPECT_NEAR(P_predict(0, 0), P_predict_expected(0, 0), 1e-5);
-  EXPECT_NEAR(P_predict(1, 1), P_predict_expected(1, 1), 1e-5);
+  EXPECT_NEAR(P_predict(0, 0), 1.01, 1e-5);
+  EXPECT_NEAR(P_predict(1, 1), 1.01, 1e-5);
 }
 
 TEST(kalman_filter, init_full_rejects_empty_matrix)
