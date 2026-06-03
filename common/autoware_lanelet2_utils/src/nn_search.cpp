@@ -188,7 +188,6 @@ std::optional<lanelet::ConstLanelet> get_closest_lanelet(
     candidate, and later judge by angle
   */
 
-  lanelet::ConstLanelets candidate_lanelets;
   const auto add_candidate = [&](const lanelet::ConstLanelet & llt) {
     if (
       std::find(candidate_lanelets.begin(), candidate_lanelets.end(), llt) ==
