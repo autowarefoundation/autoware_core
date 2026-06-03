@@ -323,6 +323,38 @@ TEST(VoxelGridBasedEuclideanClusterTest, ClusterOutputMatchesObjects)
   EXPECT_LE(position.y, 0.3);
 }
 
+// Characterization test for the previously-untested empty-input path of the implemented
+// `cluster(pointcloud_msg, objects, clusters)` overload. An empty cloud (fields and point_step
+// set, no data, width 0) must flow through fromROSMsg -> voxel filter -> KdTree -> extraction
+// without crashing and pin the degenerate-input contract: the call returns true and produces no
+// objects and no clusters.
+TEST(VoxelGridBasedEuclideanClusterTest, ClusterEmptyInput)
+{
+  sensor_msgs::msg::PointCloud2 pointcloud;
+  setPointCloud2Fields(pointcloud);
+  pointcloud.data.clear();
+  pointcloud.width = 0;
+  pointcloud.row_step = 0;
+
+  const sensor_msgs::msg::PointCloud2::ConstSharedPtr pointcloud_msg =
+    std::make_shared<sensor_msgs::msg::PointCloud2>(pointcloud);
+  autoware_perception_msgs::msg::DetectedObjects objects;
+  float tolerance = 0.7;
+  float voxel_leaf_size = 0.3;
+  int min_points_number_per_voxel = 1;
+  int min_cluster_size = 1;
+  int max_cluster_size = 100;
+  bool use_height = false;
+  auto cluster_ = std::make_shared<autoware::euclidean_cluster::VoxelGridBasedEuclideanCluster>(
+    use_height, min_cluster_size, max_cluster_size, tolerance, voxel_leaf_size,
+    min_points_number_per_voxel);
+
+  std::vector<pcl::PointCloud<pcl::PointXYZ>> clusters;
+  EXPECT_TRUE(cluster_->cluster(pointcloud_msg, objects, clusters));
+  EXPECT_EQ(objects.objects.size(), 0u);
+  EXPECT_EQ(clusters.size(), 0u);
+}
+
 // Test exceeding max_cluster_size case
 TEST(VoxelGridBasedEuclideanClusterTest, ExceedMaxClusterSize)
 {
