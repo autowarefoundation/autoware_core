@@ -33,8 +33,7 @@ class FasterVoxelGridDownsampleFilter
   using PointCloud2ConstPtr = sensor_msgs::msg::PointCloud2::ConstSharedPtr;
 
 public:
-  enum class Status
-  {
+  enum class Status {
     kSuccess,
     kIntensityFieldNotFoundOrInvalidType,
     kVoxelIndexWouldOverflow,
