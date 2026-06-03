@@ -27,6 +27,7 @@
 #include <lanelet2_core/primitives/Lanelet.h>
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <optional>
 #include <string>
@@ -80,6 +81,31 @@ std::optional<std::pair<double, double>> find_z_range(const lanelet::ConstLanele
     update_min_max(lanelet.centerline());
   }
   return !std::isfinite(z_min) ? std::nullopt : std::make_optional(std::make_pair(z_min, z_max));
+}
+
+bool has_direction_change_tag(const lanelet::ConstLanelet & lanelet)
+{
+  const std::string direction_change_tag = lanelet.attributeOr("direction_change", "none");
+  return direction_change_tag == "yes";
+}
+
+double lanelet_selection_angle_diff(
+  const double segment_angle, const double pose_yaw, const lanelet::ConstLanelet & lanelet)
+{
+  const double angle_diff =
+    std::fabs(autoware_utils_math::normalize_radian(segment_angle - pose_yaw));
+
+  if (!has_direction_change_tag(lanelet)) {
+    return angle_diff;
+  }
+  return std::min(
+    angle_diff, std::fabs(autoware_utils_math::normalize_radian(angle_diff - M_PI)));
+}
+
+bool is_preferred_on_equal_angle(
+  const lanelet::ConstLanelet & current, const lanelet::ConstLanelet & candidate)
+{
+  return has_direction_change_tag(current) && !has_direction_change_tag(candidate);
 }
 }  // namespace
 
@@ -140,6 +166,8 @@ std::optional<lanelet::ConstLanelet> get_closest_lanelet(
   }
 
   const lanelet::BasicPoint3d search_point = from_ros(search_pose);
+  const lanelet::BasicPoint2d search_point_2d = lanelet::utils::to2D(search_point);
+  const double pose_yaw = tf2::getYaw(search_pose.orientation);
 
   lanelet::ConstLanelets candidate_lanelets;
   double min_distance = std::numeric_limits<double>::max();
@@ -153,18 +181,29 @@ std::optional<lanelet::ConstLanelet> get_closest_lanelet(
       stackoverflow.com/questions/51267577/boost-geometry-polygon-distance-for-inside-point
      */
     const double distance = boost::geometry::comparable_distance(
-      llt.polygon2d().basicPolygon(), lanelet::utils::to2D(search_point));
-
+      llt.polygon2d().basicPolygon(), search_point_2d);
+    min_distance = std::min(min_distance, distance);
+  }
     /*
       NOTE(soblin): this line is intended to push all lanelets on which search_point is located to
       candidate, and later judge by angle
-     */
-    if (std::fabs(distance - min_distance) <= std::numeric_limits<double>::epsilon()) {
+    */
+
+  lanelet::ConstLanelets candidate_lanelets;
+  const auto add_candidate = [&](const lanelet::ConstLanelet & llt) {
+    if (
+      std::find(candidate_lanelets.begin(), candidate_lanelets.end(), llt) ==
+      candidate_lanelets.end()) {
       candidate_lanelets.push_back(llt);
-    } else if (distance < min_distance) {
-      candidate_lanelets.clear();
-      candidate_lanelets.push_back(llt);
-      min_distance = distance;
+    }
+  };
+
+  for (const auto & llt : lanelets) {
+    const double distance = boost::geometry::comparable_distance(
+      llt.polygon2d().basicPolygon(), search_point_2d);
+    const bool inside = lanelet::geometry::inside(llt, search_point_2d);
+    if (inside || std::fabs(distance - min_distance) <= std::numeric_limits<double>::epsilon()) {
+      add_candidate(llt);
     }
   }
 
@@ -172,8 +211,7 @@ std::optional<lanelet::ConstLanelet> get_closest_lanelet(
     return candidate_lanelets.front();
   }
 
-  // find by angle
-  const double pose_yaw = tf2::getYaw(search_pose.orientation);
+  // find by angle; direction_change lanelets also accept reverse alignment
   double min_angle = std::numeric_limits<double>::max();
   std::optional<lanelet::ConstLanelet> closest_lanelet{};
   for (const auto & llt : candidate_lanelets) {
@@ -183,10 +221,14 @@ std::optional<lanelet::ConstLanelet> get_closest_lanelet(
     }
     const auto segment_angle = std::atan2(
       segment.back().y() - segment.front().y(), segment.back().x() - segment.front().x());
-    const auto angle_diff =
-      std::fabs(autoware_utils_math::normalize_radian(segment_angle - pose_yaw));
-    if (angle_diff < min_angle) {
+    const double angle_diff = lanelet_selection_angle_diff(segment_angle, pose_yaw, llt);
+    if (!closest_lanelet.has_value() || angle_diff < min_angle) {
       min_angle = angle_diff;
+      closest_lanelet = llt;
+      continue;
+    }
+    if (std::fabs(angle_diff - min_angle) <= std::numeric_limits<double>::epsilon() &&
+        is_preferred_on_equal_angle(closest_lanelet.value(), llt)) {
       closest_lanelet = llt;
     }
   }
