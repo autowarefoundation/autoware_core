@@ -23,7 +23,6 @@
 
 #include <gtest/gtest.h>
 
-#include <algorithm>
 #include <cmath>
 
 namespace
@@ -51,13 +50,21 @@ TEST(VehicleInfoPure, create_vehicle_info_derived_values)
   EXPECT_DOUBLE_EQ(info.wheel_base_m, 2.74);
   EXPECT_DOUBLE_EQ(info.max_steer_angle_rad, 0.7);
 
-  // Derived parameters.
-  EXPECT_DOUBLE_EQ(info.vehicle_length_m, 1.0 + 2.74 + 1.03);
-  EXPECT_DOUBLE_EQ(info.vehicle_width_m, 1.63 + 0.1 + 0.1);
+  // Derived parameters, hand-computed from the nominal inputs (front_overhang 1.0,
+  // wheel_base 2.74, rear_overhang 1.03, wheel_tread 1.63, left/right_overhang 0.1,
+  // vehicle_height 2.5). Tolerances absorb binary floating-point rounding of the literals.
+  // vehicle_length = front_overhang + wheel_base + rear_overhang = 1.0 + 2.74 + 1.03 = 4.77.
+  EXPECT_NEAR(info.vehicle_length_m, 4.77, 1e-9);
+  // vehicle_width = wheel_tread + left_overhang + right_overhang = 1.63 + 0.1 + 0.1 = 1.83.
+  EXPECT_NEAR(info.vehicle_width_m, 1.83, 1e-9);
+  // min_longitudinal_offset = -rear_overhang = -1.03.
   EXPECT_DOUBLE_EQ(info.min_longitudinal_offset_m, -1.03);
-  EXPECT_DOUBLE_EQ(info.max_longitudinal_offset_m, 1.0 + 2.74);
-  EXPECT_DOUBLE_EQ(info.min_lateral_offset_m, -(1.63 / 2.0 + 0.1));
-  EXPECT_DOUBLE_EQ(info.max_lateral_offset_m, 1.63 / 2.0 + 0.1);
+  // max_longitudinal_offset = front_overhang + wheel_base = 1.0 + 2.74 = 3.74.
+  EXPECT_NEAR(info.max_longitudinal_offset_m, 3.74, 1e-9);
+  // min_lateral_offset = -(wheel_tread / 2 + right_overhang) = -(0.815 + 0.1) = -0.915.
+  EXPECT_NEAR(info.min_lateral_offset_m, -0.915, 1e-9);
+  // max_lateral_offset = wheel_tread / 2 + left_overhang = 0.815 + 0.1 = 0.915.
+  EXPECT_NEAR(info.max_lateral_offset_m, 0.915, 1e-9);
   EXPECT_DOUBLE_EQ(info.min_height_offset_m, 0.0);
   EXPECT_DOUBLE_EQ(info.max_height_offset_m, 2.5);
 }
@@ -73,9 +80,12 @@ TEST(VehicleInfoPure, create_vehicle_info_clamps_zero_wheel_base)
     /*max_steer_angle_rad=*/0.7);
 
   EXPECT_DOUBLE_EQ(info.wheel_base_m, min_wheel_base);
-  // Derived values reflect the clamped wheel_base.
-  EXPECT_DOUBLE_EQ(info.vehicle_length_m, 1.0 + min_wheel_base + 1.03);
-  EXPECT_DOUBLE_EQ(info.max_longitudinal_offset_m, 1.0 + min_wheel_base);
+  // Derived values reflect the clamped wheel_base (1e-6). Hand-computed:
+  // vehicle_length = front_overhang + clamped_wheel_base + rear_overhang
+  //                = 1.0 + 1e-6 + 1.03 = 2.030001.
+  EXPECT_NEAR(info.vehicle_length_m, 2.030001, 1e-12);
+  // max_longitudinal_offset = front_overhang + clamped_wheel_base = 1.0 + 1e-6 = 1.000001.
+  EXPECT_NEAR(info.max_longitudinal_offset_m, 1.000001, 1e-12);
 }
 
 // createVehicleInfo: tiny negative wheel_base (|value| < 1e-6) is also clamped.
@@ -115,23 +125,30 @@ TEST(VehicleInfoPure, create_vehicle_info_non_positive_values_pass_through)
     /*max_steer_angle_rad=*/0.7);
 
   // Non-positive front_overhang is preserved (not clamped) and flows into derived values.
+  // Hand-computed from front_overhang -1.0, wheel_base 2.74, rear_overhang 1.03:
   EXPECT_DOUBLE_EQ(info.front_overhang_m, -1.0);
-  EXPECT_DOUBLE_EQ(info.vehicle_length_m, -1.0 + 2.74 + 1.03);
-  EXPECT_DOUBLE_EQ(info.max_longitudinal_offset_m, -1.0 + 2.74);
+  // vehicle_length = -1.0 + 2.74 + 1.03 = 2.77.
+  EXPECT_NEAR(info.vehicle_length_m, 2.77, 1e-9);
+  // max_longitudinal_offset = -1.0 + 2.74 = 1.74.
+  EXPECT_NEAR(info.max_longitudinal_offset_m, 1.74, 1e-9);
 }
 
 // calcMaxMinDimension: branch where rear_overhang_m <= base2front.
 TEST(VehicleInfoPure, calc_max_min_dimension_rear_overhang_le_base2front)
 {
   const auto info = makeNominalVehicleInfo();
-  // vehicle_length_m = 4.77, rear_overhang_m = 1.03 -> base2front = 3.74.
-  // 1.03 <= 3.74, so the first branch is taken.
-  const double base2front = info.vehicle_length_m - info.rear_overhang_m;
-  ASSERT_LE(info.rear_overhang_m, base2front);
+  // Independently hand-computed from the nominal inputs:
+  //   vehicle_length = 1.0 + 2.74 + 1.03 = 4.77, rear_overhang = 1.03,
+  //   base2front = 4.77 - 1.03 = 3.74. Since 1.03 <= 3.74, the first branch is taken.
+  //   half_width = vehicle_width / 2 = 1.83 / 2 = 0.915.
+  ASSERT_LE(info.rear_overhang_m, info.vehicle_length_m - info.rear_overhang_m);
 
   const auto [max_dimension, min_dimension] = info.calcMaxMinDimension();
-  EXPECT_DOUBLE_EQ(min_dimension, std::min(0.5 * info.vehicle_width_m, info.rear_overhang_m));
-  EXPECT_DOUBLE_EQ(max_dimension, std::hypot(base2front, 0.5 * info.vehicle_width_m));
+  // min = min(half_width, rear_overhang) = min(0.915, 1.03) = 0.915.
+  EXPECT_NEAR(min_dimension, 0.915, 1e-9);
+  // max = hypot(base2front, half_width) = hypot(3.74, 0.915); inputs chosen by the test,
+  // only the stdlib is shared with the implementation.
+  EXPECT_NEAR(max_dimension, std::hypot(3.74, 0.915), 1e-9);
 }
 
 // calcMaxMinDimension: branch where rear_overhang_m > base2front.
@@ -142,14 +159,15 @@ TEST(VehicleInfoPure, calc_max_min_dimension_rear_overhang_gt_base2front)
   const auto info = VehicleInfo::createVehicleInfoForVehicleShape(
     /*length=*/4.0, /*width=*/2.0, /*base_length=*/2.0, /*max_steering=*/0.5,
     /*base2back=*/3.0);
-  const double base2front = info.vehicle_length_m - info.rear_overhang_m;
-  ASSERT_GT(info.rear_overhang_m, base2front);
+  // Independently hand-computed: base2front = length - rear_overhang = 4.0 - 3.0 = 1.0,
+  // so rear_overhang (3.0) > base2front (1.0) and the else branch is taken.
+  ASSERT_GT(info.rear_overhang_m, info.vehicle_length_m - info.rear_overhang_m);
 
   const auto [max_dimension, min_dimension] = info.calcMaxMinDimension();
-  EXPECT_DOUBLE_EQ(min_dimension, std::min(0.5 * info.vehicle_width_m, base2front));
-  EXPECT_DOUBLE_EQ(max_dimension, std::hypot(info.rear_overhang_m, 0.5 * info.vehicle_width_m));
-  // Concrete values: width 2.0 -> half 1.0; min(1.0, 1.0) = 1.0; hypot(3.0, 1.0).
+  // half_width = width / 2 = 2.0 / 2 = 1.0; min = min(half_width, base2front) = min(1.0, 1.0)
+  // = 1.0.
   EXPECT_DOUBLE_EQ(min_dimension, 1.0);
+  // max = hypot(rear_overhang, half_width) = hypot(3.0, 1.0); inputs chosen by the test.
   EXPECT_DOUBLE_EQ(max_dimension, std::hypot(3.0, 1.0));
 }
 
@@ -205,39 +223,51 @@ TEST(VehicleInfoPure, create_footprint_asymmetric_margins_center_at_base_link)
 
   ASSERT_EQ(footprint.size(), 7u);
 
-  const double x_front = info.front_overhang_m + info.wheel_base_m + front_lon;  // 1.0+2.74+0.5
-  const double x_center = 0.0;                               // center_at_base_link
-  const double x_rear = -(info.rear_overhang_m + rear_lon);  // -(1.03+0.6)
+  // All expected coordinates are hand-computed from the nominal inputs and the chosen
+  // margins, independently of the implementation's expressions:
+  //   front_overhang 1.0, wheel_base 2.74, rear_overhang 1.03, half_tread 1.63/2 = 0.815,
+  //   left/right_overhang 0.1.
+  // x_front  = front_overhang + wheel_base + front_lon = 1.0 + 2.74 + 0.5 = 4.24.
+  // x_center = 0.0 (center_at_base_link).
+  // x_rear   = -(rear_overhang + rear_lon) = -(1.03 + 0.6) = -1.63.
+  constexpr double x_front = 4.24;
+  constexpr double x_center = 0.0;
+  constexpr double x_rear = -1.63;
 
-  const double half_tread = info.wheel_tread_m * 0.5;  // 0.815
-  const double y_left_front = half_tread + info.left_overhang_m + front_lat;
-  const double y_right_front = -(half_tread + info.right_overhang_m + front_lat);
-  const double y_left_center = half_tread + info.left_overhang_m + center_lat;
-  const double y_right_center = -(half_tread + info.right_overhang_m + center_lat);
-  const double y_left_rear = half_tread + info.left_overhang_m + rear_lat;
-  const double y_right_rear = -(half_tread + info.right_overhang_m + rear_lat);
+  // y_left_*  = half_tread + left_overhang  + lat_margin =  0.815 + 0.1 + lat_margin.
+  // y_right_* = -(half_tread + right_overhang + lat_margin) = -(0.815 + 0.1 + lat_margin).
+  // front (lat 0.2): 0.815 + 0.1 + 0.2 = 1.115.
+  // center (lat 0.3): 0.815 + 0.1 + 0.3 = 1.215.
+  // rear (lat 0.4): 0.815 + 0.1 + 0.4 = 1.315.
+  constexpr double y_left_front = 1.115;
+  constexpr double y_right_front = -1.115;
+  constexpr double y_left_center = 1.215;
+  constexpr double y_right_center = -1.215;
+  constexpr double y_left_rear = 1.315;
+  constexpr double y_right_rear = -1.315;
 
+  constexpr double tol = 1e-9;
   // Index 0: front-left
-  EXPECT_DOUBLE_EQ(footprint.at(0).x(), x_front);
-  EXPECT_DOUBLE_EQ(footprint.at(0).y(), y_left_front);
+  EXPECT_NEAR(footprint.at(0).x(), x_front, tol);
+  EXPECT_NEAR(footprint.at(0).y(), y_left_front, tol);
   // Index 1: front-right
-  EXPECT_DOUBLE_EQ(footprint.at(1).x(), x_front);
-  EXPECT_DOUBLE_EQ(footprint.at(1).y(), y_right_front);
+  EXPECT_NEAR(footprint.at(1).x(), x_front, tol);
+  EXPECT_NEAR(footprint.at(1).y(), y_right_front, tol);
   // Index 2: center-right
-  EXPECT_DOUBLE_EQ(footprint.at(2).x(), x_center);
-  EXPECT_DOUBLE_EQ(footprint.at(2).y(), y_right_center);
+  EXPECT_NEAR(footprint.at(2).x(), x_center, tol);
+  EXPECT_NEAR(footprint.at(2).y(), y_right_center, tol);
   // Index 3: rear-right
-  EXPECT_DOUBLE_EQ(footprint.at(3).x(), x_rear);
-  EXPECT_DOUBLE_EQ(footprint.at(3).y(), y_right_rear);
+  EXPECT_NEAR(footprint.at(3).x(), x_rear, tol);
+  EXPECT_NEAR(footprint.at(3).y(), y_right_rear, tol);
   // Index 4: rear-left
-  EXPECT_DOUBLE_EQ(footprint.at(4).x(), x_rear);
-  EXPECT_DOUBLE_EQ(footprint.at(4).y(), y_left_rear);
+  EXPECT_NEAR(footprint.at(4).x(), x_rear, tol);
+  EXPECT_NEAR(footprint.at(4).y(), y_left_rear, tol);
   // Index 5: center-left
-  EXPECT_DOUBLE_EQ(footprint.at(5).x(), x_center);
-  EXPECT_DOUBLE_EQ(footprint.at(5).y(), y_left_center);
+  EXPECT_NEAR(footprint.at(5).x(), x_center, tol);
+  EXPECT_NEAR(footprint.at(5).y(), y_left_center, tol);
   // Index 6: closing point == front-left
-  EXPECT_DOUBLE_EQ(footprint.at(6).x(), x_front);
-  EXPECT_DOUBLE_EQ(footprint.at(6).y(), y_left_front);
+  EXPECT_NEAR(footprint.at(6).x(), x_front, tol);
+  EXPECT_NEAR(footprint.at(6).y(), y_left_front, tol);
 }
 
 // createFootprint (5-margin overload): with center_at_base_link=false the center
@@ -252,8 +282,9 @@ TEST(VehicleInfoPure, create_footprint_center_at_wheelbase_center)
 
   ASSERT_EQ(footprint.size(), 7u);
   // Center points (indices 2 and 5) sit at wheel_base/2 when not aligned to base_link.
-  EXPECT_DOUBLE_EQ(footprint.at(2).x(), info.wheel_base_m / 2.0);
-  EXPECT_DOUBLE_EQ(footprint.at(5).x(), info.wheel_base_m / 2.0);
+  // Hand-computed: wheel_base 2.74 / 2 = 1.37.
+  EXPECT_NEAR(footprint.at(2).x(), 1.37, 1e-9);
+  EXPECT_NEAR(footprint.at(5).x(), 1.37, 1e-9);
 }
 
 // calcCurvatureFromSteerAngle: NaN guard when wheel_base_m < 1e-6.
@@ -269,5 +300,7 @@ TEST(VehicleInfoPure, calc_curvature_from_steer_angle_nan_guard)
 TEST(VehicleInfoPure, calc_curvature_from_steer_angle_valid)
 {
   const auto info = makeNominalVehicleInfo();
-  EXPECT_DOUBLE_EQ(info.calcCurvatureFromSteerAngle(0.3), std::tan(0.3) / info.wheel_base_m);
+  // Independently hand-computed: curvature = tan(steer) / wheel_base = tan(0.3) / 2.74.
+  // tan(0.3) = 0.30933624960962325 (stdlib), / 2.74 = 0.11289644146336614.
+  EXPECT_NEAR(info.calcCurvatureFromSteerAngle(0.3), 0.11289644146336614, 1e-12);
 }
