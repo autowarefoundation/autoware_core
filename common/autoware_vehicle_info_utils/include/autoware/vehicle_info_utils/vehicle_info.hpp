@@ -99,6 +99,51 @@ struct VehicleInfo
     const bool center_at_base_link = false,
     const std::optional<geometry_msgs::msg::Pose> & base_pose = std::nullopt) const;
 
+  /**
+   * @brief Calculate the vehicle footprint (type Polygon2d) in a clockwise manner, starting from
+   * the front-left edge. The polygon is formed by tracing from front-left edge → front-right edge →
+   * rear-right edge → rear-left edge → front-left edge to form a closed shape.
+   * @param margin the longitudinal and lateral inflation margin
+   * @param base_pose optional pose used to transform footprint
+   */
+  [[nodiscard]]
+  autoware_utils_geometry::Polygon2d createFootprintPolygon(
+    const double margin = 0,
+    const std::optional<geometry_msgs::msg::Pose> & base_pose = std::nullopt) const;
+
+  /**
+   * @brief Calculate the vehicle footprint (type Polygon2d) in a clockwise manner, starting from
+   * the front-left edge. The polygon is formed by tracing from front-left edge → front-right edge →
+   * rear-right edge → rear-left edge → front-left edge to form a closed shape.
+   * @param left_margin lateral inflation margin on left side
+   * @param right_margin lateral inflation margin on right side
+   * @param front_lon_margin longitudinal inflation margin at the front section
+   * @param rear_lon_margin longitudinal inflation margin at the rear section
+   * @param base_pose optional pose used to transform footprint
+   */
+  [[nodiscard]]
+  autoware_utils_geometry::Polygon2d createFootprintPolygon(
+    const double left_margin, const double right_margin, const double front_lon_margin,
+    const double rear_lon_margin,
+    const std::optional<geometry_msgs::msg::Pose> & base_pose = std::nullopt) const;
+
+  /**
+   * @brief Calculate the vehicle footprint (type Polygon2d) in a clockwise manner, starting from
+   * the front-left edge. The polygon is formed by tracing from front-left edge → front-right edge →
+   * rear-right edge → rear-left edge → front-left edge to form a closed shape.
+   * @param front_left_margin lateral inflation margin at the front section on left side
+   * @param front_right_margin lateral inflation margin at the front section on right side
+   * @param rear_left_margin lateral inflation margin at the rear section on left side
+   * @param rear_right_margin lateral inflation margin at the rear section on right side
+   * @param front_lon_margin longitudinal inflation margin at the front section
+   * @param rear_lon_margin longitudinal inflation margin at the rear section
+   * @param base_pose optional pose used to transform footprint
+   */
+  [[nodiscard]] autoware_utils_geometry::Polygon2d createFootprintPolygon(
+    const double front_left_margin, const double front_right_margin, const double rear_left_margin,
+    const double rear_right_margin, const double front_lon_margin, const double rear_lon_margin,
+    const std::optional<geometry_msgs::msg::Pose> & base_pose = std::nullopt) const;
+
   [[nodiscard]] double calcMaxCurvature() const;
   [[nodiscard]] double calcCurvatureFromSteerAngle(const double steer_angle) const;
   [[nodiscard]] double calcSteerAngleFromCurvature(const double curvature) const;
