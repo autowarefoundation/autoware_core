@@ -303,6 +303,8 @@ Node-wide migration to `agnocast_wrapper::Node` (see Part 2 Section 4 Method 2).
 
 - [ ] Creation: Use `agnocast_wrapper::Node` member functions `create_publisher` / `create_subscription` directly (**`AUTOWARE_CREATE_*` macros are not needed**)
 
+- [ ] Callback arguments: `const SharedPtr` / `UniquePtr` → `AUTOWARE_MESSAGE_CONST_SHARED_PTR` / `AUTOWARE_MESSAGE_UNIQUE_PTR`
+
 - [ ] Message allocation (if publisher exists): `std::make_unique<M>()` → `ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_)`
 
 - [ ] If the node also uses message_filters, timers, tf2, or diagnostic_updater, they have been migrated to the corresponding `autoware::agnocast_wrapper::*` wrappers (see the [README](../README.md) for usage and current limitations)
