@@ -299,7 +299,7 @@ Node-wide migration to `agnocast_wrapper::Node` (see Part 2 Section 4 Method 2).
 
 - [ ] Base class has been changed to `autoware::agnocast_wrapper::Node`
 
-- [ ] Member variable types: `AUTOWARE_*_PTR` macros or `autoware::agnocast_wrapper::Publisher<M>::SharedPtr` etc.
+- [ ] Member variable types: `AUTOWARE_*_PTR` macros (e.g. `AUTOWARE_PUBLISHER_PTR(M)`)
 
 - [ ] Creation: Use `agnocast_wrapper::Node` member functions `create_publisher` / `create_subscription` directly (**`AUTOWARE_CREATE_*` macros are not needed**)
 
@@ -500,12 +500,13 @@ public:
   {
     pub_ = create_publisher<std_msgs::msg::String>("output", 10);
     sub_ = create_subscription<std_msgs::msg::String>(
-      "input", 10, [this](auto msg) { /* ... */ });
+      "input", 10,
+      [this](AUTOWARE_MESSAGE_CONST_SHARED_PTR(std_msgs::msg::String) && msg) { /* ... */ });
   }
 
 private:
-  autoware::agnocast_wrapper::Publisher<std_msgs::msg::String>::SharedPtr pub_;
-  autoware::agnocast_wrapper::Subscription<std_msgs::msg::String>::SharedPtr sub_;
+  AUTOWARE_PUBLISHER_PTR(std_msgs::msg::String) pub_;
+  AUTOWARE_SUBSCRIPTION_PTR(std_msgs::msg::String) sub_;
 };
 ```
 

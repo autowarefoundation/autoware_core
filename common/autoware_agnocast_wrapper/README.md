@@ -44,9 +44,9 @@ public:
   }
 
 private:
-  autoware::agnocast_wrapper::Publisher<std_msgs::msg::String>::SharedPtr pub_;
-  autoware::agnocast_wrapper::Subscription<std_msgs::msg::String>::SharedPtr sub_;
-  autoware::agnocast_wrapper::Timer::SharedPtr timer_;
+  AUTOWARE_PUBLISHER_PTR(std_msgs::msg::String) pub_;
+  AUTOWARE_SUBSCRIPTION_PTR(std_msgs::msg::String) sub_;
+  AUTOWARE_TIMER_PTR timer_;
 };
 ```
 
