@@ -32,6 +32,7 @@
 
 #include <chrono>
 #include <cstdlib>
+#include <functional>
 #include <future>
 #include <memory>
 #include <stdexcept>
