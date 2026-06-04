@@ -17,6 +17,7 @@
 #include "faster_voxel_grid_downsample_filter.hpp"
 #include "memory.hpp"
 #include "transform_info.hpp"
+
 #include <pcl/common/io.h>
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/search/kdtree.h>
@@ -120,8 +121,7 @@ bool VoxelGridDownsampleFilter::is_valid(const PointCloud2ConstPtr & cloud)
   return true;
 }
 
-void VoxelGridDownsampleFilter::filter(
-  const PointCloud2ConstPtr & input, PointCloud2 & output)
+void VoxelGridDownsampleFilter::filter(const PointCloud2ConstPtr & input, PointCloud2 & output)
 {
   std::scoped_lock lock(mutex_);
   FasterVoxelGridDownsampleFilter faster_voxel_filter;

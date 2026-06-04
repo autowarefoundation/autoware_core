@@ -75,7 +75,6 @@ private:
   /** \param cloud point cloud */
   /** \return true if point cloud is valid, false otherwise */
   bool is_valid(const PointCloud2ConstPtr & cloud);
-
 };
 }  // namespace autoware::downsample_filters
 
