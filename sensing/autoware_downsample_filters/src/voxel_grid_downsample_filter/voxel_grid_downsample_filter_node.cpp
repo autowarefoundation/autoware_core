@@ -217,8 +217,24 @@ void VoxelGridDownsampleFilter::filter(
   std::scoped_lock lock(mutex_);
   FasterVoxelGridDownsampleFilter faster_voxel_filter;
   faster_voxel_filter.set_voxel_size(voxel_size_x_, voxel_size_y_, voxel_size_z_);
-  faster_voxel_filter.set_field_offsets(input, this->get_logger());
-  faster_voxel_filter.filter(input, output, transform_info, this->get_logger());
+
+  const auto offset_status = faster_voxel_filter.set_field_offsets(input);
+  if (
+    offset_status ==
+    FasterVoxelGridDownsampleFilter::Status::kIntensityFieldNotFoundOrInvalidType) {
+    RCLCPP_ERROR(
+      this->get_logger(),
+      "There is no intensity field in the input point cloud or the intensity field is not of type "
+      "UINT8.");
+    return;
+  }
+
+  const auto filter_status = faster_voxel_filter.filter(input, output, transform_info);
+  if (filter_status == FasterVoxelGridDownsampleFilter::Status::kVoxelIndexWouldOverflow) {
+    RCLCPP_ERROR(
+      this->get_logger(),
+      "Voxel size is too small for the input dataset. Integer indices would overflow.");
+  }
 }
 }  // namespace autoware::downsample_filters
 
