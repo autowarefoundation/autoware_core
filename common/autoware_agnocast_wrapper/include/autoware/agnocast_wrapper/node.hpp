@@ -264,7 +264,7 @@ public:
     rclcpp::CallbackGroup::SharedPtr group = nullptr)
   {
     return visit_node([&](auto & n) -> AUTOWARE_CLIENT_PTR(ServiceT) {
-      using NodeT = std::decay_t<decltype(n)>;
+      using NodeT = std::decay_t<decltype(*n)>;
       if constexpr (std::is_same_v<NodeT, agnocast::Node>) {
         return std::make_shared<AgnocastClient<ServiceT>>(n.get(), service_name, qos, group);
       } else {
@@ -281,7 +281,7 @@ public:
     rclcpp::CallbackGroup::SharedPtr group = nullptr)
   {
     return visit_node([&](auto & n) -> AUTOWARE_SERVICE_PTR(ServiceT) {
-      using NodeT = std::decay_t<decltype(n)>;
+      using NodeT = std::decay_t<decltype(*n)>;
       if constexpr (std::is_same_v<NodeT, agnocast::Node>) {
         return std::make_shared<AgnocastService<ServiceT>>(
           n.get(), service_name, std::forward<Func>(callback), qos, group);
