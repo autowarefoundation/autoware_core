@@ -57,6 +57,14 @@ struct VehicleInfo
   static constexpr size_t RearRightIndex = 3;   //<! the point index of rear-right > front-right
   static constexpr size_t RearLeftIndex = 4;    //<! the point index of rear-left > rear-right
 
+  // Value for Polygon Index (excluding center)
+  static constexpr size_t PolygonFrontLeftIndex = 0;  //<! the point index of front-left edge == 0
+  static constexpr size_t PolygonFrontRightIndex =
+    1;  //<! the point index of front-right > front-left
+  static constexpr size_t PolygonRearRightIndex =
+    2;  //<! the point index of rear-right > front-right
+  static constexpr size_t PolygonRearLeftIndex = 3;  //<! the point index of rear-left > rear-right
+
   /**
    * @brief calculate the vehicle footprint in clockwise manner starting from the front-left edge,
    * through front-right edge, center-right point, to front-left edge again to form a enclosed
