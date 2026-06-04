@@ -45,17 +45,15 @@ FasterVoxelGridDownsampleFilter::Status FasterVoxelGridDownsampleFilter::set_fie
   z_offset_ = static_cast<int>(input->fields[pcl::getFieldIndex(*input, "z")].offset);
   intensity_index_ = pcl::getFieldIndex(*input, "intensity");
 
-  if (
-    intensity_index_ < 0 || input->fields[pcl::getFieldIndex(*input, "intensity")].datatype !=
-                              sensor_msgs::msg::PointField::UINT8) {
+  if (intensity_index_ < 0) {
     return Status::kIntensityFieldNotFoundOrInvalidType;
   }
 
-  if (intensity_index_ != -1) {
-    intensity_offset_ = static_cast<int>(input->fields[intensity_index_].offset);
-  } else {
-    intensity_offset_ = -1;
+  if (input->fields[intensity_index_].datatype != sensor_msgs::msg::PointField::UINT8) {
+    return Status::kIntensityFieldNotFoundOrInvalidType;
   }
+
+  intensity_offset_ = static_cast<int>(input->fields[intensity_index_].offset);
   offset_initialized_ = true;
   return Status::kSuccess;
 }
