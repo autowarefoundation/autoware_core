@@ -30,8 +30,8 @@
  * Authors: Simon Thompson, Ryohsuke Mitsudome
  *
  */
-#ifndef AUTOWARE__MAP_LOADER__PLUGINS__LANELET2_MAP_VISUALIZATION_PLUGIN_HPP_
-#define AUTOWARE__MAP_LOADER__PLUGINS__LANELET2_MAP_VISUALIZATION_PLUGIN_HPP_
+#ifndef AUTOWARE__MAP_LOADER__PLUGINS__LANELET2_VISUALIZATION_PLUGIN_HPP_
+#define AUTOWARE__MAP_LOADER__PLUGINS__LANELET2_VISUALIZATION_PLUGIN_HPP_
 
 #include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware_lanelet2_extension/regulatory_elements/autoware_traffic_light.hpp>
@@ -313,4 +313,4 @@ visualization_msgs::msg::MarkerArray create_vector_map_marker_array(
   return map_marker_array;
 }
 }  // namespace autoware::lanelet2_map_visualizer
-#endif  // AUTOWARE__MAP_LOADER__PLUGINS__LANELET2_MAP_VISUALIZATION_PLUGIN_HPP_
+#endif  // AUTOWARE__MAP_LOADER__PLUGINS__LANELET2_VISUALIZATION_PLUGIN_HPP_
