@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "../src/parameter_helper.hpp"
+#include "../src/request_state_machine.hpp"
 #include "../src/route_builder.hpp"
-#include "../src/routing_state_machine.hpp"
 
 #include <autoware_adapi_v1_msgs/srv/set_route_points.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
@@ -80,10 +80,10 @@ TEST(VectorToArray, ThrowsWhenEmpty)
 
 TEST(DecideRoutingAction, IdleCounterStaysIdleAndDoesNothing)
 {
-  // number_of_requests_for_timing_control_ == 0 means no pending request; nothing happens.
+  // elapsed_count_from_last_request_ == 0 means no pending request; nothing happens.
   const auto decision = decide_routing_action(0, false, true);
   EXPECT_EQ(decision.action, RoutingAction::None);
-  EXPECT_EQ(decision.number_of_requests_for_timing_control, 0);
+  EXPECT_EQ(decision.elapsed_count_from_last_request, 0);
 }
 
 TEST(DecideRoutingAction, CounterIncrementsUntilDelayCount)
@@ -91,41 +91,41 @@ TEST(DecideRoutingAction, CounterIncrementsUntilDelayCount)
   // 1 -> 2: still within the merge window, no action yet.
   auto decision = decide_routing_action(1, false, true);
   EXPECT_EQ(decision.action, RoutingAction::None);
-  EXPECT_EQ(decision.number_of_requests_for_timing_control, 2);
+  EXPECT_EQ(decision.elapsed_count_from_last_request, 2);
 
   // 2 -> 3 (== delay_count): fires the route call and resets the counter.
   decision = decide_routing_action(2, false, true);
   EXPECT_EQ(decision.action, RoutingAction::CallRoute);
-  EXPECT_EQ(decision.number_of_requests_for_timing_control, 0);
+  EXPECT_EQ(decision.elapsed_count_from_last_request, 0);
 }
 
 TEST(DecideRoutingAction, ReachesDelayCountAndCallsRouteWhenUnset)
 {
   // At delay_count with state UNSET: send the SetRoutePoints request, reset counter.
-  const auto decision = decide_routing_action(g_routing_request_delay_count, false, true);
+  const auto decision = decide_routing_action(g_waiting_count_from_last_request, false, true);
   EXPECT_EQ(decision.action, RoutingAction::CallRoute);
-  EXPECT_EQ(decision.number_of_requests_for_timing_control, 0);
+  EXPECT_EQ(decision.elapsed_count_from_last_request, 0);
 }
 
 TEST(DecideRoutingAction, ReachesDelayCountAndCallsClearWhenNotUnset)
 {
   // At delay_count with state not UNSET: must clear the existing route first.
   // The counter is NOT reset so the next tick retries until the route is cleared.
-  const auto decision = decide_routing_action(g_routing_request_delay_count, false, false);
+  const auto decision = decide_routing_action(g_waiting_count_from_last_request, false, false);
   EXPECT_EQ(decision.action, RoutingAction::CallClear);
-  EXPECT_EQ(decision.number_of_requests_for_timing_control, g_routing_request_delay_count);
+  EXPECT_EQ(decision.elapsed_count_from_last_request, g_waiting_count_from_last_request);
 }
 
 TEST(DecideRoutingAction, DoesNothingWhileServiceCallInFlight)
 {
   // calling_service_ == true gates both the clear and route calls.
-  auto decision = decide_routing_action(g_routing_request_delay_count, true, true);
+  auto decision = decide_routing_action(g_waiting_count_from_last_request, true, true);
   EXPECT_EQ(decision.action, RoutingAction::None);
-  EXPECT_EQ(decision.number_of_requests_for_timing_control, g_routing_request_delay_count);
+  EXPECT_EQ(decision.elapsed_count_from_last_request, g_waiting_count_from_last_request);
 
-  decision = decide_routing_action(g_routing_request_delay_count, true, false);
+  decision = decide_routing_action(g_waiting_count_from_last_request, true, false);
   EXPECT_EQ(decision.action, RoutingAction::None);
-  EXPECT_EQ(decision.number_of_requests_for_timing_control, g_routing_request_delay_count);
+  EXPECT_EQ(decision.elapsed_count_from_last_request, g_waiting_count_from_last_request);
 }
 
 // --- set_goal -----------------------------------------------------------------------------------

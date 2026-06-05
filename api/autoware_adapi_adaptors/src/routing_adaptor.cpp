@@ -14,8 +14,8 @@
 
 #include "routing_adaptor.hpp"
 
+#include "request_state_machine.hpp"
 #include "route_builder.hpp"
-#include "routing_state_machine.hpp"
 
 #include <autoware/qos_utils/qos_compatibility.hpp>
 
@@ -63,8 +63,8 @@ RoutingAdaptor::RoutingAdaptor(const rclcpp::NodeOptions & options)
 void RoutingAdaptor::on_timer()
 {
   const auto decision = decide_routing_action(
-    number_of_requests_for_timing_control_, calling_service_, state_ == RouteState::Message::UNSET);
-  number_of_requests_for_timing_control_ = decision.number_of_requests_for_timing_control;
+    elapsed_count_from_last_request_, calling_service_, state_ == RouteState::Message::UNSET);
+  elapsed_count_from_last_request_ = decision.elapsed_count_from_last_request;
 
   switch (decision.action) {
     case RoutingAction::None:
@@ -90,13 +90,13 @@ void RoutingAdaptor::on_timer()
 
 void RoutingAdaptor::on_fixed_goal(const PoseStamped::ConstSharedPtr pose)
 {
-  number_of_requests_for_timing_control_ = 1;
+  elapsed_count_from_last_request_ = 1;
   set_goal(*route_, *pose, false);
 }
 
 void RoutingAdaptor::on_rough_goal(const PoseStamped::ConstSharedPtr pose)
 {
-  number_of_requests_for_timing_control_ = 1;
+  elapsed_count_from_last_request_ = 1;
   set_goal(*route_, *pose, true);
 }
 
@@ -106,7 +106,7 @@ void RoutingAdaptor::on_waypoint(const PoseStamped::ConstSharedPtr pose)
     RCLCPP_ERROR_STREAM(get_logger(), "The waypoint frame does not match the goal.");
     return;
   }
-  number_of_requests_for_timing_control_ = 1;
+  elapsed_count_from_last_request_ = 1;
 }
 
 void RoutingAdaptor::on_reroute(const PoseStamped::ConstSharedPtr pose)
