@@ -37,11 +37,12 @@ namespace autoware::ekf_localizer
 
 namespace
 {
-// Build a HyperParameters instance with hand-set values via the additive default-constructor
-// seam, so EKFModule can be exercised without a live rclcpp::Node.
+// Build a HyperParameters instance with hand-set values, so EKFModule can be exercised without a
+// live rclcpp::Node. HyperParameters is a plain data struct (no rclcpp dependency); the test owns
+// the values it cares about and value-initializes the rest to zero/empty.
 HyperParameters make_params()
 {
-  HyperParameters params;
+  HyperParameters params{};  // value-initialize every field to zero/empty
   params.show_debug_info = false;
   params.ekf_rate = 50.0;
   params.ekf_dt = 1.0 / 50.0;

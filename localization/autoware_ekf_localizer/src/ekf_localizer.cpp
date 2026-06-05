@@ -49,7 +49,7 @@ EKFLocalizer::EKFLocalizer(const rclcpp::NodeOptions & node_options)
   warning_(std::make_shared<Warning>(this)),
   tf2_buffer_(this->get_clock()),
   tf2_listener_(tf2_buffer_),
-  params_(this),
+  params_(load_hyper_parameters(this)),
   ekf_dt_(params_.ekf_dt),
   pose_queue_(params_.pose_smoothing_steps, params_.max_pose_queue_size),
   twist_queue_(params_.twist_smoothing_steps, params_.max_twist_queue_size),
