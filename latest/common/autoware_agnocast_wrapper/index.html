@@ -7686,18 +7686,19 @@ public:
   {
     pub_ = create_publisher<std_msgs::msg::string>("output", 10);
     sub_ = create_subscription<std_msgs::msg::string>(
-      "input", 10, <a href="std::unique_ptr&lt;const%20std_msgs::msg::String&gt;%20msg">this</a> { /<em> ... </em>/ });</std_msgs::msg::string></std_msgs::msg::string></p>
+      "input", 10,
+      <a href="AUTOWARE_MESSAGE_CONST_SHARED_PTR(std_msgs::msg::String)%20&amp;&amp;%20msg">this</a> { /<em> ... </em>/ });</std_msgs::msg::string></std_msgs::msg::string></p>
 <div class="codehilite"><pre><span></span><code>timer_ = create_wall_timer(
   std::chrono::milliseconds(100), [this]() { /* ... */ });
 </code></pre></div>
 
 <p>}</p>
 <p>private:
-  autoware::agnocast_wrapper::Publisher<std_msgs::msg::string>::SharedPtr pub_;
-  autoware::agnocast_wrapper::Subscription<std_msgs::msg::string>::SharedPtr sub_;
-  autoware::agnocast_wrapper::Timer::SharedPtr timer_;
+  AUTOWARE_PUBLISHER_PTR(std_msgs::msg::String) pub_;
+  AUTOWARE_SUBSCRIPTION_PTR(std_msgs::msg::String) sub_;
+  AUTOWARE_TIMER_PTR timer_;
 };
-```</std_msgs::msg::string></std_msgs::msg::string></p>
+```</p>
 <h4 id="timer-notes">Timer notes<a class="headerlink" href="#timer-notes" title="Permanent link">#</a></h4>
 <p><code>create_timer()</code> is provided as a <strong>free function</strong> (not a member) because <code>rclcpp::Node::create_timer</code> was added in Jazzy and does not exist on Humble. The free form is portable across both:</p>
 <p><code>cpp

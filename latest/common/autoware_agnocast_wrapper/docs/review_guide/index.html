@@ -9305,13 +9305,19 @@ sudo apt install agnocast-heaphook-v2.3  # Match the version in autoware.repos</
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Base class has been changed to <code>autoware::agnocast_wrapper::Node</code></li>
 </ul>
 <ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Member variable types: <code>AUTOWARE_*_PTR</code> macros or <code>autoware::agnocast_wrapper::Publisher&lt;M&gt;::SharedPtr</code> etc.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Member variable types: <code>AUTOWARE_*_PTR</code> macros (e.g. <code>AUTOWARE_PUBLISHER_PTR(M)</code>)</li>
 </ul>
 <ul class="task-list">
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Creation: Use <code>agnocast_wrapper::Node</code> member functions <code>create_publisher</code> / <code>create_subscription</code> directly (<strong><code>AUTOWARE_CREATE_*</code> macros are not needed</strong>)</li>
 </ul>
 <ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Callback arguments: <code>const SharedPtr</code> / <code>UniquePtr</code> → <code>AUTOWARE_MESSAGE_CONST_SHARED_PTR</code> / <code>AUTOWARE_MESSAGE_UNIQUE_PTR</code></li>
+</ul>
+<ul class="task-list">
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Message allocation (if publisher exists): <code>std::make_unique&lt;M&gt;()</code> → <code>ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_)</code></li>
+</ul>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> If the node also uses message_filters, timers, tf2, or diagnostic_updater, they have been migrated to the corresponding <code>autoware::agnocast_wrapper::*</code> wrappers (see the <a href="../../">README</a> for usage and current limitations)</li>
 </ul>
 <ul class="task-list">
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> If the original CMakeLists.txt used <code>rclcpp_components_register_node()</code>, it has been replaced with <code>autoware_agnocast_wrapper_register_node()</code> (see Part 2 Section 5)</li>
@@ -9427,7 +9433,7 @@ sudo apt install agnocast-heaphook-v2.3  # Match the version in autoware.repos</
 </tr>
 <tr>
 <td><code>AUTOWARE_MESSAGE_CONST_SHARED_PTR(MsgT)</code></td>
-<td><code>message_ptr&lt;MsgT, Shared&gt;</code></td>
+<td><code>message_ptr&lt;const MsgT, Shared&gt;</code></td>
 <td><code>std::shared_ptr&lt;const MsgT&gt;</code></td>
 </tr>
 </tbody>
@@ -9583,13 +9589,14 @@ public:
   {
     pub_ = create_publisher<std_msgs::msg::string>("output", 10);
     sub_ = create_subscription<std_msgs::msg::string>(
-      "input", 10, <a href="auto%20msg">this</a> { /<em> ... </em>/ });
+      "input", 10,
+      <a href="AUTOWARE_MESSAGE_CONST_SHARED_PTR(std_msgs::msg::String)%20&amp;&amp;%20msg">this</a> { /<em> ... </em>/ });
   }</std_msgs::msg::string></std_msgs::msg::string></p>
 <p>private:
-  autoware::agnocast_wrapper::Publisher<std_msgs::msg::string>::SharedPtr pub_;
-  autoware::agnocast_wrapper::Subscription<std_msgs::msg::string>::SharedPtr sub_;
+  AUTOWARE_PUBLISHER_PTR(std_msgs::msg::String) pub_;
+  AUTOWARE_SUBSCRIPTION_PTR(std_msgs::msg::String) sub_;
 };
-```</std_msgs::msg::string></std_msgs::msg::string></p>
+```</p>
 <p> </p>
 <h3 id="comparison-table">Comparison Table<a class="headerlink" href="#comparison-table" title="Permanent link">#</a></h3>
 <table>
