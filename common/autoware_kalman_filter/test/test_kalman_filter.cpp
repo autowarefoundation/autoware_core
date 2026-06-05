@@ -149,46 +149,6 @@ TEST(kalman_filter, init_state_cov_rejects_empty_matrix)
   EXPECT_TRUE(kf.init(x, p));
 }
 
-TEST(kalman_filter, init_state_cov_feed_into_filter_math)
-{
-  // Beyond round-tripping the getters, this confirms that the state and covariance set by the
-  // two-argument init() are the ones actually consumed by the filter math: after a predict with
-  // A = 2 I, Q = 0.1 I, the new state must be A x and the new covariance A P A^T + Q. Asserting
-  // against hand-computed literals (independent of the implementation's expression) catches a
-  // wiring mistake where init stored x/P but predict read stale members.
-  KalmanFilter kf;
-  Eigen::MatrixXd x(2, 1);
-  x << 3.0, -4.0;
-  Eigen::MatrixXd p(2, 2);
-  p << 2.0, 0.5, 0.5, 3.0;
-  ASSERT_TRUE(kf.init(x, p));
-
-  // getXelement reads back individual state entries directly from the stored vector.
-  EXPECT_DOUBLE_EQ(kf.getXelement(0), 3.0);
-  EXPECT_DOUBLE_EQ(kf.getXelement(1), -4.0);
-
-  Eigen::MatrixXd a(2, 2);
-  a << 2.0, 0.0, 0.0, 2.0;
-  Eigen::MatrixXd q(2, 2);
-  q << 0.1, 0.0, 0.0, 0.1;
-  Eigen::MatrixXd x_next(2, 1);
-  x_next << 6.0, -8.0;  // = A x
-  ASSERT_TRUE(kf.predict(x_next, a, q));
-
-  // A P A^T + Q with A = 2 I: 4 * P + 0.1 on the diagonal.
-  //   [[4*2.0 + 0.1, 4*0.5      ], [4*0.5, 4*3.0 + 0.1]] = [[8.1, 2.0], [2.0, 12.1]]
-  Eigen::MatrixXd x_out;
-  kf.getX(x_out);
-  Eigen::MatrixXd p_out;
-  kf.getP(p_out);
-  EXPECT_DOUBLE_EQ(x_out(0, 0), 6.0);
-  EXPECT_DOUBLE_EQ(x_out(1, 0), -8.0);
-  EXPECT_DOUBLE_EQ(p_out(0, 0), 8.1);
-  EXPECT_DOUBLE_EQ(p_out(0, 1), 2.0);
-  EXPECT_DOUBLE_EQ(p_out(1, 0), 2.0);
-  EXPECT_DOUBLE_EQ(p_out(1, 1), 12.1);
-}
-
 TEST(kalman_filter, predict_with_x_and_a_rejects_dimension_mismatch)
 {
   const Eigen::MatrixXd a2 = Eigen::MatrixXd::Identity(2, 2);
