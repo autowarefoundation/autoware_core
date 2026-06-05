@@ -45,6 +45,8 @@ struct StopObstacleClassification
     MOTORCYCLE,
     BICYCLE,
     PEDESTRIAN,
+    ANIMAL,
+    HAZARD,
     POINTCLOUD
   };
 
@@ -53,6 +55,7 @@ struct StopObstacleClassification
     {Type::TRUCK, "truck"},          {Type::BUS, "bus"},
     {Type::TRAILER, "trailer"},      {Type::MOTORCYCLE, "motorcycle"},
     {Type::BICYCLE, "bicycle"},      {Type::PEDESTRIAN, "pedestrian"},
+    {Type::ANIMAL, "animal"},        {Type::HAZARD, "hazard"},
     {Type::POINTCLOUD, "pointcloud"}};
 
   explicit StopObstacleClassification(const ObjectClassification object_classification)
@@ -81,6 +84,12 @@ struct StopObstacleClassification
         break;
       case ObjectClassification::PEDESTRIAN:
         label = Type::PEDESTRIAN;
+        break;
+      case ObjectClassification::ANIMAL:
+        label = Type::ANIMAL;
+        break;
+      case ObjectClassification::HAZARD:
+        label = Type::HAZARD;
         break;
       default:
         throw std::invalid_argument("Undefined ObjectClassification label");
