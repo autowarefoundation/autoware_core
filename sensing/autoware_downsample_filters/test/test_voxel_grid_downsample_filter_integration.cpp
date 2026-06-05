@@ -374,8 +374,7 @@ TEST(
 }
 
 TEST(
-  VoxelGridDownsampleFilterIntegrationTest,
-  OutputFrameParameterShouldSetOutputFrameIdToOutputFrame)
+  VoxelGridDownsampleFilterIntegrationTest, OutputFrameParameterShouldSetOutputFrameIdToOutputFrame)
 {
   rclcpp::NodeOptions options;
   options.parameter_overrides({
