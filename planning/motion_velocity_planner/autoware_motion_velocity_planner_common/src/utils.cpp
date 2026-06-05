@@ -146,11 +146,16 @@ std::vector<uint8_t> get_target_object_type(rclcpp::Node & node, const std::stri
     {"unknown", ObjectClassification::UNKNOWN}, {"car", ObjectClassification::CAR},
     {"truck", ObjectClassification::TRUCK},     {"bus", ObjectClassification::BUS},
     {"trailer", ObjectClassification::TRAILER}, {"motorcycle", ObjectClassification::MOTORCYCLE},
-    {"bicycle", ObjectClassification::BICYCLE}, {"pedestrian", ObjectClassification::PEDESTRIAN}};
+    {"bicycle", ObjectClassification::BICYCLE}, {"pedestrian", ObjectClassification::PEDESTRIAN},
+    {"animal", ObjectClassification::ANIMAL},   {"hazard", ObjectClassification::HAZARD}};
 
   std::vector<uint8_t> types;
   for (const auto & type : types_map) {
-    if (node.declare_parameter<bool>(param_prefix + type.first)) {
+    const auto param_name = param_prefix + type.first;
+    const bool is_target_object = node.has_parameter(param_name)
+                                    ? node.get_parameter(param_name).as_bool()
+                                    : node.declare_parameter<bool>(param_name, false);
+    if (is_target_object) {
       types.push_back(type.second);
     }
   }

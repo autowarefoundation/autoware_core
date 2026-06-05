@@ -16,9 +16,11 @@
 #define AUTOWARE__OBJECT_RECOGNITION_UTILS__TRANSFORM_HPP_
 
 #include <pcl_ros/transforms.hpp>
+#include <rclcpp/duration.hpp>
+#include <rclcpp/logging.hpp>
+#include <rclcpp/time.hpp>
+#include <tf2/exceptions.hpp>
 #include <tf2_eigen/tf2_eigen.hpp>
-#include <tf2_ros/buffer.hpp>
-#include <tf2_ros/transform_listener.hpp>
 
 #include <geometry_msgs/msg/transform.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
@@ -31,8 +33,9 @@
 
 namespace detail
 {
-[[maybe_unused]] inline boost::optional<geometry_msgs::msg::Transform> getTransform(
-  const tf2_ros::Buffer & tf_buffer, const std::string & source_frame_id,
+template <class BufferT>
+[[maybe_unused]] boost::optional<geometry_msgs::msg::Transform> getTransform(
+  const BufferT & tf_buffer, const std::string & source_frame_id,
   const std::string & target_frame_id, const rclcpp::Time & time)
 {
   try {
@@ -46,9 +49,10 @@ namespace detail
   }
 }
 
-[[maybe_unused]] inline boost::optional<Eigen::Matrix4f> getTransformMatrix(
+template <class BufferT>
+[[maybe_unused]] boost::optional<Eigen::Matrix4f> getTransformMatrix(
   const std::string & in_target_frame, const std_msgs::msg::Header & in_cloud_header,
-  const tf2_ros::Buffer & tf_buffer)
+  const BufferT & tf_buffer)
 {
   try {
     geometry_msgs::msg::TransformStamped transform_stamped;
@@ -66,9 +70,9 @@ namespace detail
 
 namespace autoware::object_recognition_utils
 {
-template <class T>
+template <class T, class BufferT>
 bool transformObjects(
-  const T & input_msg, const std::string & target_frame_id, const tf2_ros::Buffer & tf_buffer,
+  const T & input_msg, const std::string & target_frame_id, const BufferT & tf_buffer,
   T & output_msg)
 {
   output_msg = input_msg;
@@ -99,9 +103,9 @@ bool transformObjects(
   }
   return true;
 }
-template <class T>
+template <class T, class BufferT>
 bool transformObjectsWithFeature(
-  const T & input_msg, const std::string & target_frame_id, const tf2_ros::Buffer & tf_buffer,
+  const T & input_msg, const std::string & target_frame_id, const BufferT & tf_buffer,
   T & output_msg)
 {
   output_msg = input_msg;
