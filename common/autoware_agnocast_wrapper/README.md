@@ -36,16 +36,17 @@ public:
   {
     pub_ = create_publisher<std_msgs::msg::String>("output", 10);
     sub_ = create_subscription<std_msgs::msg::String>(
-      "input", 10, [this](std::unique_ptr<const std_msgs::msg::String> msg) { /* ... */ });
+      "input", 10,
+      [this](AUTOWARE_MESSAGE_CONST_SHARED_PTR(std_msgs::msg::String) && msg) { /* ... */ });
 
     timer_ = create_wall_timer(
       std::chrono::milliseconds(100), [this]() { /* ... */ });
   }
 
 private:
-  autoware::agnocast_wrapper::Publisher<std_msgs::msg::String>::SharedPtr pub_;
-  autoware::agnocast_wrapper::Subscription<std_msgs::msg::String>::SharedPtr sub_;
-  autoware::agnocast_wrapper::Timer::SharedPtr timer_;
+  AUTOWARE_PUBLISHER_PTR(std_msgs::msg::String) pub_;
+  AUTOWARE_SUBSCRIPTION_PTR(std_msgs::msg::String) sub_;
+  AUTOWARE_TIMER_PTR timer_;
 };
 ```
 
