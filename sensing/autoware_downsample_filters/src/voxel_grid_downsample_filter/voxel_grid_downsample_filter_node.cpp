@@ -185,6 +185,7 @@ bool VoxelGridDownsampleFilter::convert_output_costly(std::unique_ptr<PointCloud
     auto eigen_tf = tf2::transformToEigen(*tf_ptr);
     pcl_ros::transformPointCloud(eigen_tf.matrix().cast<float>(), *output, *cloud_transformed);
     output = std::move(cloud_transformed);
+    output->header.frame_id = tf_output_frame_;
   }
 
   if (tf_output_frame_.empty() && output->header.frame_id != tf_input_orig_frame_) {
@@ -206,6 +207,7 @@ bool VoxelGridDownsampleFilter::convert_output_costly(std::unique_ptr<PointCloud
     auto eigen_tf = tf2::transformToEigen(*tf_ptr);
     pcl_ros::transformPointCloud(eigen_tf.matrix().cast<float>(), *output, *cloud_transformed);
     output = std::move(cloud_transformed);
+    output->header.frame_id = tf_input_orig_frame_;
   }
 
   return true;
