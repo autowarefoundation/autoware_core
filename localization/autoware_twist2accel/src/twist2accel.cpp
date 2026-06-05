@@ -16,7 +16,6 @@
 
 #include "accel_estimator.hpp"
 
-#include <autoware_utils_geometry/msg/covariance.hpp>
 #include <rclcpp/logging.hpp>
 
 #include <functional>
@@ -24,7 +23,6 @@
 
 namespace autoware::twist2accel
 {
-using autoware_utils_geometry::xyzrpy_covariance_index::XYZRPY_COV_IDX;
 using std::placeholders::_1;
 
 Twist2Accel::Twist2Accel(const rclcpp::NodeOptions & node_options)
@@ -73,15 +71,7 @@ void Twist2Accel::estimate_accel(const geometry_msgs::msg::TwistStamped & twist)
     const double dt =
       (rclcpp::Time(twist.header.stamp) - rclcpp::Time(prev_twist_->header.stamp)).seconds();
 
-    accel_msg.accel.accel = accel_estimator_->estimate(prev_twist_->twist, twist.twist, dt);
-
-    // Ideally speaking, these covariance should be properly estimated.
-    accel_msg.accel.covariance[XYZRPY_COV_IDX::X_X] = 1.0;
-    accel_msg.accel.covariance[XYZRPY_COV_IDX::Y_Y] = 1.0;
-    accel_msg.accel.covariance[XYZRPY_COV_IDX::Z_Z] = 1.0;
-    accel_msg.accel.covariance[XYZRPY_COV_IDX::ROLL_ROLL] = 0.05;
-    accel_msg.accel.covariance[XYZRPY_COV_IDX::PITCH_PITCH] = 0.05;
-    accel_msg.accel.covariance[XYZRPY_COV_IDX::YAW_YAW] = 0.05;
+    accel_msg.accel = accel_estimator_->estimate(prev_twist_->twist, twist.twist, dt);
   }
 
   pub_accel_->publish(accel_msg);

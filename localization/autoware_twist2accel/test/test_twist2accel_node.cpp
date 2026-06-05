@@ -22,7 +22,9 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <chrono>
+#include <cstddef>
 #include <memory>
 #include <thread>
 #include <vector>
@@ -167,6 +169,23 @@ TEST_F(Twist2AccelNodeTest, UseOdomTrueRoutesOdomAndIgnoresTwist)
 
   ASSERT_EQ(received.size(), 2u);
   EXPECT_DOUBLE_EQ(received.back().accel.accel.linear.x, 1.0);
+
+  // Characterization: the published covariance must stay byte-for-byte what the
+  // node emitted before the covariance logic moved into the pure core, i.e. a
+  // constant diagonal (linear variance 1.0, angular variance 0.05) with all
+  // off-diagonal terms zero. The literals below are hand-written, not read back
+  // from the estimator. Diagonal of a row-major 6x6 lives at row * 6 + row.
+  const auto & cov = received.back().accel.covariance;
+  std::array<double, 36> expected{};  // value-initialized to all zeros
+  expected[0] = 1.0;                  // linear x variance
+  expected[7] = 1.0;                  // linear y variance
+  expected[14] = 1.0;                 // linear z variance
+  expected[21] = 0.05;                // roll variance
+  expected[28] = 0.05;                // pitch variance
+  expected[35] = 0.05;                // yaw variance
+  for (std::size_t i = 0; i < expected.size(); ++i) {
+    EXPECT_DOUBLE_EQ(cov[i], expected[i]) << "covariance index " << i;
+  }
 }
 
 // With use_odom=false the twist callback drives estimation while the odom
