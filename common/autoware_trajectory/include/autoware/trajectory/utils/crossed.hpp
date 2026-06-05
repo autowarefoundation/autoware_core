@@ -168,8 +168,8 @@ template <class PathType, class LineStringType>
 /**
  * @brief Finds intersections between a trajectory and a polygon,
  * @tparam TrajectoryPointType The type of points in the trajectory.
- * @tparam PolygonClosurePointsType The type of the polygon. If the polygon is open, pass it
- * AS-IS. If the polygon is closed, pass its .outer()
+ * @tparam PolygonClosurePointsType The type of the polygon. If the polygon is open, pass it AS-IS.
+ * If the polygon is closed, pass its .outer()
  * @param trajectory The trajectory to evaluate.
  * @param linestring The linestring to intersect with the trajectory.
  * @return A vector of double values representing the parameters `s` where the trajectory intersects
