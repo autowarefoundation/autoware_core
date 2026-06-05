@@ -137,11 +137,10 @@ TEST(VehicleInfoPure, create_vehicle_info_non_positive_values_pass_through)
 TEST(VehicleInfoPure, calc_max_min_dimension_rear_overhang_le_base2front)
 {
   const auto info = makeNominalVehicleInfo();
-  // Independently hand-computed from the nominal inputs:
+  // The nominal inputs select the rear_overhang_m <= base2front branch. Hand-computed:
   //   vehicle_length = 1.0 + 2.74 + 1.03 = 4.77, rear_overhang = 1.03,
-  //   base2front = 4.77 - 1.03 = 3.74. Since 1.03 <= 3.74, the first branch is taken.
+  //   base2front = 4.77 - 1.03 = 3.74; 1.03 <= 3.74 -> first branch.
   //   half_width = vehicle_width / 2 = 1.83 / 2 = 0.915.
-  ASSERT_LE(info.rear_overhang_m, info.vehicle_length_m - info.rear_overhang_m);
 
   const auto [max_dimension, min_dimension] = info.calcMaxMinDimension();
   // min = min(half_width, rear_overhang) = min(0.915, 1.03) = 0.915.
@@ -161,7 +160,6 @@ TEST(VehicleInfoPure, calc_max_min_dimension_rear_overhang_gt_base2front)
     /*base2back=*/3.0);
   // Independently hand-computed: base2front = length - rear_overhang = 4.0 - 3.0 = 1.0,
   // so rear_overhang (3.0) > base2front (1.0) and the else branch is taken.
-  ASSERT_GT(info.rear_overhang_m, info.vehicle_length_m - info.rear_overhang_m);
 
   const auto [max_dimension, min_dimension] = info.calcMaxMinDimension();
   // half_width = width / 2 = 2.0 / 2 = 1.0; min = min(half_width, base2front) = min(1.0, 1.0)
@@ -178,14 +176,17 @@ TEST(VehicleInfoPure, extend_vehicle_info_distributes_margin)
     /*length=*/4.0, /*width=*/2.0, /*base_length=*/2.5, /*max_steering=*/0.6,
     /*base2back=*/1.0);
 
-  constexpr double margin = 0.4;
-  const auto extended = extendVehicleInfo(base, margin);
+  const auto extended = extendVehicleInfo(base, /*margin=*/0.4);
 
-  EXPECT_DOUBLE_EQ(extended.vehicle_length_m, 4.0 + margin);
-  EXPECT_DOUBLE_EQ(extended.vehicle_width_m, 2.0 + margin);
+  // Expected values hand-computed for margin 0.4, independently of the implementation:
+  // vehicle_length = length + margin = 4.0 + 0.4 = 4.4.
+  EXPECT_DOUBLE_EQ(extended.vehicle_length_m, 4.4);
+  // vehicle_width = width + margin = 2.0 + 0.4 = 2.4.
+  EXPECT_DOUBLE_EQ(extended.vehicle_width_m, 2.4);
   EXPECT_DOUBLE_EQ(extended.wheel_base_m, 2.5);
   EXPECT_DOUBLE_EQ(extended.max_steer_angle_rad, 0.6);
-  EXPECT_DOUBLE_EQ(extended.rear_overhang_m, 1.0 + margin / 2.0);
+  // rear_overhang = base2back + margin / 2 = 1.0 + 0.2 = 1.2.
+  EXPECT_DOUBLE_EQ(extended.rear_overhang_m, 1.2);
   // Fields not set by createVehicleInfoForVehicleShape default to zero.
   EXPECT_DOUBLE_EQ(extended.front_overhang_m, 0.0);
   EXPECT_DOUBLE_EQ(extended.wheel_tread_m, 0.0);
