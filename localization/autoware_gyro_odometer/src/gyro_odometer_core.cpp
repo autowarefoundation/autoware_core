@@ -14,34 +14,18 @@
 
 #include "gyro_odometer_core.hpp"
 
+#include "gyro_odometer_fusion.hpp"
+
 #include <rclcpp/rclcpp.hpp>
 
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
-#include <fmt/core.h>
-
-#include <algorithm>
 #include <cmath>
 #include <memory>
-#include <sstream>
 #include <string>
 
 namespace autoware::gyro_odometer
 {
-
-std::array<double, 9> transform_covariance(const std::array<double, 9> & cov)
-{
-  using COV_IDX = autoware_utils_geometry::xyz_covariance_index::XYZ_COV_IDX;
-
-  double max_cov = std::max({cov[COV_IDX::X_X], cov[COV_IDX::Y_Y], cov[COV_IDX::Z_Z]});
-
-  std::array<double, 9> cov_transformed = {};
-  cov_transformed.fill(0.);
-  cov_transformed[COV_IDX::X_X] = max_cov;
-  cov_transformed[COV_IDX::Y_Y] = max_cov;
-  cov_transformed[COV_IDX::Z_Z] = max_cov;
-  return cov_transformed;
-}
 
 GyroOdometerNode::GyroOdometerNode(const rclcpp::NodeOptions & node_options)
 : Node("gyro_odometer", node_options),
@@ -159,61 +143,9 @@ void GyroOdometerNode::concat_gyro_and_odometer()
     gyro.angular_velocity_covariance = transform_covariance(gyro.angular_velocity_covariance);
   }
 
-  using COV_IDX_XYZ = autoware_utils_geometry::xyz_covariance_index::XYZ_COV_IDX;
-  using COV_IDX_XYZRPY = autoware_utils_geometry::xyzrpy_covariance_index::XYZRPY_COV_IDX;
-
-  // calc mean, covariance
-  double vx_mean = 0;
-  geometry_msgs::msg::Vector3 gyro_mean{};
-  double vx_covariance_original = 0;
-  geometry_msgs::msg::Vector3 gyro_covariance_original{};
-  for (const auto & vehicle_twist : vehicle_twist_queue_) {
-    vx_mean += vehicle_twist.twist.twist.linear.x;
-    vx_covariance_original += vehicle_twist.twist.covariance[0 * 6 + 0];
-  }
-  vx_mean /= static_cast<double>(vehicle_twist_queue_.size());
-  vx_covariance_original /= static_cast<double>(vehicle_twist_queue_.size());
-
-  for (const auto & gyro : gyro_queue_) {
-    gyro_mean.x += gyro.angular_velocity.x;
-    gyro_mean.y += gyro.angular_velocity.y;
-    gyro_mean.z += gyro.angular_velocity.z;
-    gyro_covariance_original.x += gyro.angular_velocity_covariance[COV_IDX_XYZ::X_X];
-    gyro_covariance_original.y += gyro.angular_velocity_covariance[COV_IDX_XYZ::Y_Y];
-    gyro_covariance_original.z += gyro.angular_velocity_covariance[COV_IDX_XYZ::Z_Z];
-  }
-  gyro_mean.x /= static_cast<double>(gyro_queue_.size());
-  gyro_mean.y /= static_cast<double>(gyro_queue_.size());
-  gyro_mean.z /= static_cast<double>(gyro_queue_.size());
-  gyro_covariance_original.x /= static_cast<double>(gyro_queue_.size());
-  gyro_covariance_original.y /= static_cast<double>(gyro_queue_.size());
-  gyro_covariance_original.z /= static_cast<double>(gyro_queue_.size());
-
-  // concat
-  geometry_msgs::msg::TwistWithCovarianceStamped twist_with_cov;
-  const auto latest_vehicle_twist_stamp = rclcpp::Time(vehicle_twist_queue_.back().header.stamp);
-  const auto latest_imu_stamp = rclcpp::Time(gyro_queue_.back().header.stamp);
-  if (latest_vehicle_twist_stamp < latest_imu_stamp) {
-    twist_with_cov.header.stamp = latest_imu_stamp;
-  } else {
-    twist_with_cov.header.stamp = latest_vehicle_twist_stamp;
-  }
-  twist_with_cov.header.frame_id = gyro_queue_.front().header.frame_id;
-  twist_with_cov.twist.twist.linear.x = vx_mean;
-  twist_with_cov.twist.twist.angular = gyro_mean;
-
-  // From a statistical point of view, here we reduce the covariances according to the number of
-  // observed data
-  twist_with_cov.twist.covariance[COV_IDX_XYZRPY::X_X] =
-    vx_covariance_original / static_cast<double>(vehicle_twist_queue_.size());
-  twist_with_cov.twist.covariance[COV_IDX_XYZRPY::Y_Y] = 100000.0;
-  twist_with_cov.twist.covariance[COV_IDX_XYZRPY::Z_Z] = 100000.0;
-  twist_with_cov.twist.covariance[COV_IDX_XYZRPY::ROLL_ROLL] =
-    gyro_covariance_original.x / static_cast<double>(gyro_queue_.size());
-  twist_with_cov.twist.covariance[COV_IDX_XYZRPY::PITCH_PITCH] =
-    gyro_covariance_original.y / static_cast<double>(gyro_queue_.size());
-  twist_with_cov.twist.covariance[COV_IDX_XYZRPY::YAW_YAW] =
-    gyro_covariance_original.z / static_cast<double>(gyro_queue_.size());
+  // fuse the vehicle twist and the (already transformed) gyro queue
+  const geometry_msgs::msg::TwistWithCovarianceStamped twist_with_cov =
+    fuse_twist(vehicle_twist_queue_, gyro_queue_);
 
   publish_data(twist_with_cov);
 
@@ -231,20 +163,13 @@ void GyroOdometerNode::publish_data(
   twist_raw_pub_->publish(twist_raw);
   twist_with_covariance_raw_pub_->publish(twist_with_cov_raw);
 
-  geometry_msgs::msg::TwistWithCovarianceStamped twist_with_covariance = twist_with_cov_raw;
-  geometry_msgs::msg::TwistStamped twist = twist_raw;
-
   // clear imu yaw bias if vehicle is stopped
-  if (
-    std::fabs(twist_with_cov_raw.twist.twist.angular.z) < 0.01 &&
-    std::fabs(twist_with_cov_raw.twist.twist.linear.x) < 0.01) {
-    twist.twist.angular.x = 0.0;
-    twist.twist.angular.y = 0.0;
-    twist.twist.angular.z = 0.0;
-    twist_with_covariance.twist.twist.angular.x = 0.0;
-    twist_with_covariance.twist.twist.angular.y = 0.0;
-    twist_with_covariance.twist.twist.angular.z = 0.0;
-  }
+  const geometry_msgs::msg::TwistWithCovarianceStamped twist_with_covariance =
+    apply_stop_compensation(twist_with_cov_raw);
+
+  geometry_msgs::msg::TwistStamped twist;
+  twist.header = twist_with_covariance.header;
+  twist.twist = twist_with_covariance.twist.twist;
 
   twist_pub_->publish(twist);
   twist_with_covariance_pub_->publish(twist_with_covariance);
@@ -272,49 +197,28 @@ void GyroOdometerNode::publish_diagnostics()
   diagnostics_->add_key_value("imu_queue_size", latest_imu_queue_size_);
   diagnostics_->add_key_value("is_succeed_transform_imu", is_succeed_transform_imu_);
 
-  uint8_t level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-  std::string log_message = "";
+  DiagnosticsState state;
+  state.vehicle_twist_arrived = vehicle_twist_arrived_;
+  state.imu_arrived = imu_arrived_;
+  state.is_succeed_transform_imu = is_succeed_transform_imu_;
+  state.latest_vehicle_twist_dt = latest_vehicle_twist_dt_;
+  state.latest_imu_dt = latest_imu_dt_;
+  state.message_timeout_sec = message_timeout_sec_;
+  state.output_frame = output_frame_;
 
-  if (!vehicle_twist_arrived_) {
-    const std::string message = "Twist msg has not been arrived yet.";
-    diagnostics_->update_level_and_message(diagnostic_msgs::msg::DiagnosticStatus::WARN, message);
-    log_message += message;
-    log_message += "; ";
-  }
-  if (!imu_arrived_) {
-    const std::string message = "IMU msg has not been arrived yet.";
-    diagnostics_->update_level_and_message(diagnostic_msgs::msg::DiagnosticStatus::WARN, message);
-    log_message += message;
-    log_message += "; ";
-  }
-  if (latest_vehicle_twist_dt_ > message_timeout_sec_) {
-    const std::string message = fmt::format(
-      "Vehicle twist msg is timeout. vehicle_twist_dt: {}[sec], tolerance {}[sec]",
-      latest_vehicle_twist_dt_, message_timeout_sec_);
-    diagnostics_->update_level_and_message(diagnostic_msgs::msg::DiagnosticStatus::ERROR, message);
-    log_message += message;
-    log_message += "; ";
-  }
-  if (latest_imu_dt_ > message_timeout_sec_) {
-    const std::string message = fmt::format(
-      "IMU msg is timeout. imu_dt: {}[sec], tolerance {}[sec]", latest_imu_dt_,
-      message_timeout_sec_);
-    diagnostics_->update_level_and_message(diagnostic_msgs::msg::DiagnosticStatus::ERROR, message);
-    log_message += message;
-    log_message += "; ";
-  }
-  if (!is_succeed_transform_imu_) {
-    const std::string message = "Please publish TF from " + output_frame_ + " to frame of IMU.";
-    diagnostics_->update_level_and_message(diagnostic_msgs::msg::DiagnosticStatus::ERROR, message);
-    log_message += message;
-    log_message += "; ";
+  const DiagnosticsResult diagnostics_result = determine_diagnostics(state);
+
+  for (const auto & entry : diagnostics_result.entries) {
+    diagnostics_->update_level_and_message(entry.level, entry.message);
   }
 
-  if (level == diagnostic_msgs::msg::DiagnosticStatus::WARN)
-    RCLCPP_WARN_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 1000, log_message);
+  if (diagnostics_result.level == diagnostic_msgs::msg::DiagnosticStatus::WARN)
+    RCLCPP_WARN_STREAM_THROTTLE(
+      this->get_logger(), *this->get_clock(), 1000, diagnostics_result.log_message);
 
-  if (level == diagnostic_msgs::msg::DiagnosticStatus::ERROR)
-    RCLCPP_ERROR_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 1000, log_message);
+  if (diagnostics_result.level == diagnostic_msgs::msg::DiagnosticStatus::ERROR)
+    RCLCPP_ERROR_STREAM_THROTTLE(
+      this->get_logger(), *this->get_clock(), 1000, diagnostics_result.log_message);
 
   diagnostics_->publish(this->now());
 }
