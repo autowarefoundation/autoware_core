@@ -14,8 +14,7 @@
 
 #include "include/measurement.hpp"
 
-#include "include/state_index.hpp"
-
+#include <autoware/ekf_localizer/state_index.hpp>
 #include <autoware_utils_geometry/msg/covariance.hpp>
 
 namespace autoware::ekf_localizer

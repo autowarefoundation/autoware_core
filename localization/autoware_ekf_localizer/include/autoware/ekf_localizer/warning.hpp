@@ -1,4 +1,4 @@
-// Copyright 2018-2019 Autoware Foundation
+// Copyright 2022 Autoware Foundation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,27 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef EKF_LOCALIZER_HPP_
-#define EKF_LOCALIZER_HPP_
-
-#include "autoware/ekf_localizer/ekf_localizer_core.hpp"
+#ifndef AUTOWARE__EKF_LOCALIZER__WARNING_HPP_
+#define AUTOWARE__EKF_LOCALIZER__WARNING_HPP_
 
 #include <rclcpp/rclcpp.hpp>
+
+#include <string>
 
 namespace autoware::ekf_localizer
 {
 
-class EKFLocalizer : public rclcpp::Node
+class Warning
 {
 public:
-  explicit EKFLocalizer(const rclcpp::NodeOptions & options);
+  explicit Warning(rclcpp::Node * node) : node_(node) {}
 
-  std::chrono::nanoseconds time_until_trigger() const { return core_.time_until_trigger(); }
+  void warn(const std::string & message) const
+  {
+    RCLCPP_WARN(node_->get_logger(), "%s", message.c_str());
+  }
+
+  void warn_throttle(const std::string & message, const int duration_milliseconds) const
+  {
+    RCLCPP_WARN_THROTTLE(
+      node_->get_logger(), *(node_->get_clock()),
+      std::chrono::milliseconds(duration_milliseconds).count(), "%s", message.c_str());
+  }
 
 private:
-  EKFLocalizerCore core_;
+  rclcpp::Node * node_;
 };
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // EKF_LOCALIZER_HPP_
+#endif  // AUTOWARE__EKF_LOCALIZER__WARNING_HPP_

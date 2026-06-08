@@ -15,7 +15,8 @@
 #include "include/state_transition.hpp"
 
 #include "include/matrix_types.hpp"
-#include "include/state_index.hpp"
+
+#include <autoware/ekf_localizer/state_index.hpp>
 
 #include <cmath>
 

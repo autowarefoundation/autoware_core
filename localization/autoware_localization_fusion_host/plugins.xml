@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<library path="autoware_localization_fusion_host_plugins">
+  <class type="autoware::localization_fusion_host::plugin::StopFilterPlugin"
+         base_class_type="autoware::localization_fusion_host::plugin::LocalizationFusionPluginBase">
+    <description>Zeroes twist when the vehicle is stopped; publishes /localization/kinematic_state.</description>
+  </class>
+  <class type="autoware::localization_fusion_host::plugin::Twist2AccelPlugin"
+         base_class_type="autoware::localization_fusion_host::plugin::LocalizationFusionPluginBase">
+    <description>Estimates acceleration from kinematic state; publishes /localization/acceleration.</description>
+  </class>
+</library>

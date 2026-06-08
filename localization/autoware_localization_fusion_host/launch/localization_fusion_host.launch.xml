@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="param_file" default="$(find-pkg-share autoware_localization_fusion_host)/config/localization_fusion_host.param.yaml"/>
+  <arg name="ekf_param_file" default="$(find-pkg-share autoware_ekf_localizer)/config/ekf_localizer.param.yaml"/>
+  <!-- <arg name="stop_filter_param_file" default="$(find-pkg-share autoware_stop_filter)/config/stop_filter.param.yaml"/>
+  <arg name="twist2accel_param_file" default="$(find-pkg-share autoware_twist2accel)/config/twist2accel.param.yaml"/> -->
+
+  <arg name="input_initial_pose_name" default="/initialpose3d"/>
+  <arg name="input_pose_with_cov_name" default="/localization/pose_estimator/pose_with_covariance"/>
+  <arg name="input_twist_with_cov_name" default="/localization/twist_estimator/twist_with_covariance"/>
+  <arg name="input_twist_estimator_name" default="/localization/twist_estimator/twist_with_covariance"/>
+
+  <arg name="output_pose_name" default="pose"/>
+  <arg name="output_pose_with_covariance_name" default="/localization/pose_with_covariance"/>
+  <arg name="output_biased_pose_name" default="biased_pose"/>
+  <arg name="output_biased_pose_with_covariance_name" default="biased_pose_with_covariance"/>
+  <arg name="output_twist_name" default="twist"/>
+  <arg name="output_twist_with_covariance_name" default="twist_with_covariance"/>
+  <arg name="output_kinematic_state_name" default="/localization/kinematic_state"/>
+  <arg name="output_acceleration_name" default="/localization/acceleration"/>
+
+  <node pkg="autoware_localization_fusion_host" exec="autoware_localization_fusion_host" output="both">
+    <remap from="initialpose" to="$(var input_initial_pose_name)"/>
+    <remap from="in_pose_with_covariance" to="$(var input_pose_with_cov_name)"/>
+    <remap from="in_twist_with_covariance" to="$(var input_twist_with_cov_name)"/>
+    <remap from="input/twist_estimator" to="$(var input_twist_estimator_name)"/>
+
+    <remap from="ekf_pose" to="$(var output_pose_name)"/>
+    <remap from="ekf_pose_with_covariance" to="$(var output_pose_with_covariance_name)"/>
+    <remap from="ekf_biased_pose" to="$(var output_biased_pose_name)"/>
+    <remap from="ekf_biased_pose_with_covariance" to="$(var output_biased_pose_with_covariance_name)"/>
+    <remap from="ekf_twist" to="$(var output_twist_name)"/>
+    <remap from="ekf_twist_with_covariance" to="$(var output_twist_with_covariance_name)"/>
+    <remap from="output/kinematic_state" to="$(var output_kinematic_state_name)"/>
+    <remap from="output/acceleration" to="$(var output_acceleration_name)"/>
+
+    <param from="$(var ekf_param_file)"/>
+    <param from="$(var param_file)"/>
+    <!-- <param from="$(var stop_filter_param_file)"/>
+    <param from="$(var twist2accel_param_file)"/> -->
+  </node>
+</launch>

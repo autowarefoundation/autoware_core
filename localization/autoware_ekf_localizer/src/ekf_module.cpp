@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "include/ekf_module.hpp"
-
 #include "include/covariance.hpp"
 #include "include/mahalanobis.hpp"
 #include "include/matrix_types.hpp"
@@ -22,6 +20,7 @@
 #include "include/state_transition.hpp"
 #include "include/warning_message.hpp"
 
+#include <autoware/ekf_localizer/ekf_module.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_utils_geometry/msg/covariance.hpp>
 #include <tf2/LinearMath/Quaternion.hpp>

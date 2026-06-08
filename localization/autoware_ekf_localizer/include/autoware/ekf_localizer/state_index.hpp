@@ -12,37 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef WARNING_HPP_
-#define WARNING_HPP_
-
-#include <rclcpp/rclcpp.hpp>
-
-#include <string>
+#ifndef AUTOWARE__EKF_LOCALIZER__STATE_INDEX_HPP_
+#define AUTOWARE__EKF_LOCALIZER__STATE_INDEX_HPP_
 
 namespace autoware::ekf_localizer
 {
 
-class Warning
-{
-public:
-  explicit Warning(rclcpp::Node * node) : node_(node) {}
-
-  void warn(const std::string & message) const
-  {
-    RCLCPP_WARN(node_->get_logger(), "%s", message.c_str());
-  }
-
-  void warn_throttle(const std::string & message, const int duration_milliseconds) const
-  {
-    RCLCPP_WARN_THROTTLE(
-      node_->get_logger(), *(node_->get_clock()),
-      std::chrono::milliseconds(duration_milliseconds).count(), "%s", message.c_str());
-  }
-
-private:
-  rclcpp::Node * node_;
+enum IDX {
+  X = 0,
+  Y = 1,
+  YAW = 2,
+  YAWB = 3,
+  VX = 4,
+  WZ = 5,
 };
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // WARNING_HPP_
+#endif  // AUTOWARE__EKF_LOCALIZER__STATE_INDEX_HPP_

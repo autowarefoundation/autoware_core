@@ -1,0 +1,20 @@
+/**:
+  ros__parameters:
+    plugin_names:
+      - "autoware::localization_fusion_host::plugin::StopFilterPlugin"
+      - "autoware::localization_fusion_host::plugin::Twist2AccelPlugin"
+
+    use_stop_filter: true
+    use_twist2accel: true
+    publish_intermediate_outputs: false
+
+    node:
+      diagnostics_hardware_id: "ekf_localizer"
+
+    stop_filter:
+      vx_threshold: 0.1
+      wz_threshold: 0.02
+
+    twist2accel:
+      use_odom: true
+      accel_lowpass_gain: 0.9
