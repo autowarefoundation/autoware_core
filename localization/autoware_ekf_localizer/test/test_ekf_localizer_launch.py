@@ -148,10 +148,10 @@ class TestEKFLocalizer(unittest.TestCase):
         ]
         pub_init_pose.publish(init_pose)
 
-        # Receive Odometry
+        # Receive kinematic state from stop_filter plugin (ekf_odom gated when use_stop_filter)
         msg_buffer = []
         self.test_node.create_subscription(
-            Odometry, "/ekf_odom", lambda msg: msg_buffer.append(msg), 10
+            Odometry, "/output/kinematic_state", lambda msg: msg_buffer.append(msg), 10
         )
 
         # Wait until the node publishes some topic
@@ -159,7 +159,7 @@ class TestEKFLocalizer(unittest.TestCase):
         while time.time() < end_time:
             rclpy.spin_once(self.test_node, timeout_sec=0.1)
 
-        # Check if the EKF outputs some Odometry
+        # Check if the EKF pipeline outputs kinematic state odometry
         self.assertTrue(len(msg_buffer) > 0)
 
 
