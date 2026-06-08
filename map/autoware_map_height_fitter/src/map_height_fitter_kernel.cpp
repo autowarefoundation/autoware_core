@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// cspell:ignore dists
+
 #include "autoware/map_height_fitter/map_height_fitter_kernel.hpp"
 
 #include <lanelet2_core/LaneletMap.h>
