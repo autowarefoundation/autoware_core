@@ -59,6 +59,8 @@
 
 #include <autoware/ndt_scan_matcher/ndt_omp/multigrid_ndt_omp.h>
 
+#include <omp.h>
+
 #include <algorithm>
 #include <utility>
 #include <vector>
