@@ -420,11 +420,11 @@ After including `agnocast_env.launch.xml` (or `agnocast_env.launch.py`), the fol
 
 ### Launch Arguments
 
-| Argument                 | Default                                       | Description                                                                                             |
-| ------------------------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Argument                 | Default                                                                     | Description                                                                                             |
+| ------------------------ | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | `agnocast_heaphook_path` | `/opt/ros/$ROS_DISTRO/lib/libagnocast_heaphook.so` (falls back to `humble`) | Path to the heaphook shared library                                                                     |
-| `use_multithread`        | `false`                                       | Use the multi-threaded component container (`component_container_mt`)                                   |
-| `use_agnocast`           | `$(env ENABLE_AGNOCAST 0)`                    | Per-node override (`1`/`0`). Usually left unset; defaults to the `ENABLE_AGNOCAST` environment variable |
+| `use_multithread`        | `false`                                                                     | Use the multi-threaded component container (`component_container_mt`)                                   |
+| `use_agnocast`           | `$(env ENABLE_AGNOCAST 0)`                                                  | Per-node override (`1`/`0`). Usually left unset; defaults to the `ENABLE_AGNOCAST` environment variable |
 
 The `container_executable` is resolved as follows:
 
