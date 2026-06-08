@@ -373,10 +373,8 @@ TEST(
   expect_points_near(output_points, expected_points, 0.01f);
 }
 
-// TODO(sasakisasaki): Re-enable after fixing the bug
 TEST(
-  VoxelGridDownsampleFilterIntegrationTest,
-  DISABLED_OutputFrameParameterShouldSetOutputFrameIdToOutputFrame)
+  VoxelGridDownsampleFilterIntegrationTest, OutputFrameParameterShouldSetOutputFrameIdToOutputFrame)
 {
   rclcpp::NodeOptions options;
   options.parameter_overrides({
@@ -403,7 +401,6 @@ TEST(
   ASSERT_NE(harness.received_cloud(), nullptr);
 
   const auto output_points = extract_points_from_cloud(*harness.received_cloud());
-  // FIXME: Expected behavior after bug fix: output cloud should use output_frame in header.
   EXPECT_EQ(harness.received_cloud()->header.frame_id, "map");
   expect_points_near(output_points, expected_points, 1.0e-4f);
 }
