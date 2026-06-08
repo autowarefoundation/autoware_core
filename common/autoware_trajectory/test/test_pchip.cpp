@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// cspell:ignore Fritsch
+
 #include "autoware/trajectory/interpolator/pchip.hpp"
 
 #include <gtest/gtest.h>
@@ -36,7 +38,7 @@ using autoware::experimental::trajectory::interpolator::Pchip;
 constexpr double k_tol = 1e-12;
 }  // namespace
 
-// The interpolant must pass through every data point exactly, and the interior
+// The interpolated curve must pass through every data point exactly, and the interior
 // knot derivatives must equal the Fritsch-Carlson weighted-harmonic-mean
 // slopes. Dataset: y = x^2 sampled on [0, 4].
 TEST(TestPchip, InterpolatesThroughDataPointsAndKnotDerivatives)
@@ -68,7 +70,7 @@ TEST(TestPchip, InterpolatesThroughDataPointsAndKnotDerivatives)
   EXPECT_NEAR(pchip.compute(3.5), 12.229166666666666, k_tol);
 }
 
-// On strictly increasing data the interpolant must stay monotone increasing
+// On strictly increasing data the interpolated curve must stay monotone increasing
 // between knots (no spurious dips).
 TEST(TestPchip, PreservesMonotonicity)
 {
@@ -80,7 +82,7 @@ TEST(TestPchip, PreservesMonotonicity)
   const auto & pchip = result.value();
 
   // Small absolute tolerance to absorb floating-point roundoff (tiny negative
-  // steps even when the interpolant is monotone in theory). It is many orders
+  // steps even when the interpolated curve is monotone in theory). It is many orders
   // of magnitude below the data scale (values up to 16, secant slopes up to 8
   // over a step of 0.01), so a genuine monotonicity violation is still caught.
   constexpr double k_monotonicity_tol = 1e-9;
@@ -94,7 +96,7 @@ TEST(TestPchip, PreservesMonotonicity)
 }
 
 // At a local maximum the interior derivative must be zeroed (the
-// delta_prev > 0 && delta_next < 0 sign-change branch), and the interpolant
+// delta_prev > 0 && delta_next < 0 sign-change branch), and the interpolated curve
 // must not overshoot the data (shape preservation). Dataset has a peak at
 // x = 2.
 TEST(TestPchip, ZeroesDerivativeAtLocalExtremumAndDoesNotOvershoot)
