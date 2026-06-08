@@ -14,7 +14,7 @@
 
 #include "autoware/map_height_fitter/map_height_fitter.hpp"
 
-#include "autoware/map_height_fitter/map_height_fitter_kernel.hpp"
+#include "map_height_fitter_kernel.hpp"
 
 #include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/qos_utils/qos_compatibility.hpp>

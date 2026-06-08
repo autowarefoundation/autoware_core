@@ -23,6 +23,8 @@ if(BUILD_TESTING)
     test/test_map_height_fitter_kernel.cpp
   )
   target_link_libraries(test_${PROJECT_NAME}_kernel ${PROJECT_NAME} ${PCL_LIBRARIES})
+  # map_height_fitter_kernel.hpp is an internal (non-installed) header under src/.
+  target_include_directories(test_${PROJECT_NAME}_kernel PRIVATE src)
 endif()
 
 autoware_ament_auto_package(

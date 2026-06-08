@@ -14,7 +14,7 @@
 
 // cspell:ignore npts qdist zdist
 
-#include "autoware/map_height_fitter/map_height_fitter_kernel.hpp"
+#include "map_height_fitter_kernel.hpp"
 
 #include <gtest/gtest.h>
 #include <lanelet2_core/LaneletMap.h>

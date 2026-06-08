@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__MAP_HEIGHT_FITTER__MAP_HEIGHT_FITTER_KERNEL_HPP_
-#define AUTOWARE__MAP_HEIGHT_FITTER__MAP_HEIGHT_FITTER_KERNEL_HPP_
+#ifndef MAP_HEIGHT_FITTER_KERNEL_HPP_
+#define MAP_HEIGHT_FITTER_KERNEL_HPP_
 
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/point_cloud.h>
@@ -91,4 +91,4 @@ std::optional<double> get_ground_height_from_vector_map(
 
 }  // namespace autoware::map_height_fitter
 
-#endif  // AUTOWARE__MAP_HEIGHT_FITTER__MAP_HEIGHT_FITTER_KERNEL_HPP_
+#endif  // MAP_HEIGHT_FITTER_KERNEL_HPP_

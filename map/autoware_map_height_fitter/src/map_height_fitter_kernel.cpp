@@ -14,7 +14,7 @@
 
 // cspell:ignore dists
 
-#include "autoware/map_height_fitter/map_height_fitter_kernel.hpp"
+#include "map_height_fitter_kernel.hpp"
 
 #include <lanelet2_core/LaneletMap.h>
 #include <lanelet2_core/primitives/Point.h>
