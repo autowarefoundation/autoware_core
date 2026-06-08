@@ -8196,13 +8196,18 @@ colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --package
 <tbody>
 <tr>
 <td><code>agnocast_heaphook_path</code></td>
-<td><code>/opt/ros/humble/lib/libagnocast_heaphook.so</code></td>
+<td><code>/opt/ros/$ROS_DISTRO/lib/libagnocast_heaphook.so</code> (falls back to <code>humble</code>)</td>
 <td>Path to the heaphook shared library</td>
 </tr>
 <tr>
 <td><code>use_multithread</code></td>
 <td><code>false</code></td>
 <td>Use the multi-threaded component container (<code>component_container_mt</code>)</td>
+</tr>
+<tr>
+<td><code>use_agnocast</code></td>
+<td><code>$(env ENABLE_AGNOCAST 0)</code></td>
+<td>Per-node override (<code>1</code>/<code>0</code>). Usually left unset; defaults to the <code>ENABLE_AGNOCAST</code> environment variable</td>
 </tr>
 </tbody>
 </table>
@@ -8245,8 +8250,18 @@ colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --package
   <env name="LD_PRELOAD" value="$(var ld_preload_value)"></env>
 </node_container>
 ```</p>
+<p>Disabling Agnocast for a single include (debugging / emergency fallback):</p>
+<p>```xml
+<include file="$(find-pkg-share autoware_agnocast_wrapper)/launch/agnocast_env.launch.xml">
+  <arg name="use_agnocast" value="0"></arg>
+</include></p>
+<p><node pkg="my_package" exec="my_node" name="my_node">
+  <env name="LD_PRELOAD" value="$(var ld_preload_value)"></env>
+</node>
+```</p>
+<p>Even when the workspace is built with <code>ENABLE_AGNOCAST=1</code>, passing <code>use_agnocast</code> to a single include forces that node (or container) back to the plain <code>rclcpp</code> path without touching the rest of the launch tree. Use it to temporarily disable Agnocast for one node while debugging, or as an emergency fallback when a specific node misbehaves under Agnocast.</p>
 <h3 id="examples-python">Examples (Python)<a class="headerlink" href="#examples-python" title="Permanent link">#</a></h3>
-<p>A Python launch file (<code>agnocast_env.launch.py</code>) is also provided with the same functionality. It sets the same launch configurations (<code>ld_preload_value</code>, <code>container_package</code>, <code>container_executable</code>) that can be referenced via <code>LaunchConfiguration</code>.</p>
+<p>A Python launch file (<code>agnocast_env.launch.py</code>) is also provided with the same functionality. It accepts the same <code>use_agnocast</code> argument and sets the same launch configurations (<code>ld_preload_value</code>, <code>container_package</code>, <code>container_executable</code>) that can be referenced via <code>LaunchConfiguration</code>.</p>
 <p>Basic usage with a single node:</p>
 <p>```python
 from launch import LaunchDescription
@@ -8310,6 +8325,7 @@ return LaunchDescription([agnocast_env, container])
 </code></pre></div>
 
 <p>```</p>
+<p>The same <code>use_agnocast</code> override works here too, via <code>launch_arguments={"use_agnocast": "0"}.items()</code>.</p>
 <p>This ensures that only the intended nodes receive the heaphook, rather than all nodes in the launch tree.</p></div>
 
 
