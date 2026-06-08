@@ -27,6 +27,7 @@
 
 #include <filesystem>
 #include <string>
+#include <vector>
 namespace fs = std::filesystem;
 
 namespace autoware::experimental
