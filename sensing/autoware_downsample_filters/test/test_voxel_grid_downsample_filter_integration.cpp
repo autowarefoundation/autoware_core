@@ -263,7 +263,9 @@ TEST(VoxelGridDownsampleFilterIntegrationTest, CollapsesPointsInSameVoxelToSingl
   expect_points_near(output_points, expected_points, 1.0e-4f);
 }
 
-TEST(VoxelGridDownsampleFilterIntegrationTest, DoesNotPublishWhenInputTransformIsMissing)
+TEST(
+  VoxelGridDownsampleFilterIntegrationTest,
+  PublishesOutputEvenWhenInputFrameParameterCannotBeTransformed)
 {
   rclcpp::NodeOptions options;
   options.parameter_overrides({
@@ -281,10 +283,17 @@ TEST(VoxelGridDownsampleFilterIntegrationTest, DoesNotPublishWhenInputTransformI
     {0.1f, 0.1f, 0.1f},
     {0.2f, 0.2f, 0.2f},
   };
+  const std::vector<PointXYZ> expected_points = {
+    {0.15f, 0.15f, 0.15f},
+  };
   harness.publish_points(input_points, "missing_source_frame");
 
-  EXPECT_FALSE(harness.wait_for_output(std::chrono::milliseconds(1000)));
-  EXPECT_EQ(harness.received_cloud(), nullptr);
+  ASSERT_TRUE(harness.wait_for_output(std::chrono::milliseconds(5000)));
+  ASSERT_NE(harness.received_cloud(), nullptr);
+
+  const auto output_points = extract_points_from_cloud(*harness.received_cloud());
+  EXPECT_EQ(harness.received_cloud()->header.frame_id, "missing_source_frame");
+  expect_points_near(output_points, expected_points, 1.0e-4f);
 }
 
 TEST(VoxelGridDownsampleFilterIntegrationTest, EmptyInputResultsInEmptyOutput)
@@ -374,7 +383,8 @@ TEST(
 }
 
 TEST(
-  VoxelGridDownsampleFilterIntegrationTest, OutputFrameParameterShouldSetOutputFrameIdToOutputFrame)
+  VoxelGridDownsampleFilterIntegrationTest,
+  OutputFrameParameterDoesNotRewriteFrameIdOrTransformPoints)
 {
   rclcpp::NodeOptions options;
   options.parameter_overrides({
@@ -393,7 +403,7 @@ TEST(
     {1.0f, 2.0f, 3.0f},
   };
   const std::vector<PointXYZ> expected_points = {
-    {2.5f, 2.0f, 3.0f},
+    {1.0f, 2.0f, 3.0f},
   };
   harness.publish_points(input_points, "sensor_frame");
 
@@ -401,7 +411,7 @@ TEST(
   ASSERT_NE(harness.received_cloud(), nullptr);
 
   const auto output_points = extract_points_from_cloud(*harness.received_cloud());
-  EXPECT_EQ(harness.received_cloud()->header.frame_id, "map");
+  EXPECT_EQ(harness.received_cloud()->header.frame_id, "sensor_frame");
   expect_points_near(output_points, expected_points, 1.0e-4f);
 }
 
