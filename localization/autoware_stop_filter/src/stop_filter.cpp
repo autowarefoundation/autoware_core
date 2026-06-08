@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "stop_filter.hpp"
+#include "autoware/stop_filter/stop_filter.hpp"
 
 #include <cmath>
 

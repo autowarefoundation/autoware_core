@@ -109,6 +109,19 @@ EKFLocalizer::EKFLocalizer(const rclcpp::NodeOptions & node_options)
 
   ekf_module_ = std::make_unique<EKFModule>(warning_, params_);
   logger_configure_ = std::make_unique<autoware_utils_logging::LoggerLevelConfigure>(this);
+
+  plugin_loader_ = std::make_unique<pluginlib::ClassLoader<plugin::PostEstimatePluginBase>>(
+    "autoware_ekf_localizer", "autoware::ekf_localizer::plugin::PostEstimatePluginBase");
+
+  set_up_pipeline_params();
+  load_plugins();
+
+  set_param_res_ = add_on_set_parameters_callback(
+    std::bind(&EKFLocalizer::on_parameter, this, std::placeholders::_1));
+
+  twist_estimator_sub_ = create_subscription<geometry_msgs::msg::TwistWithCovarianceStamped>(
+    "input/twist_estimator", 10,
+    std::bind(&EKFLocalizer::on_twist_estimator, this, std::placeholders::_1));
 }
 
 /*
@@ -432,7 +445,12 @@ void EKFLocalizer::publish_estimate_result(
   odometry.child_frame_id = "base_link";
   odometry.pose = pose_cov.pose;
   odometry.twist = twist_cov.twist;
-  pub_odom_->publish(odometry);
+
+  run_downstream_pipeline(odometry, twist_cov);
+
+  if (publish_ekf_odom_topic_) {
+    pub_odom_->publish(odometry);
+  }
 
   /* publish tf */
   const geometry_msgs::msg::TransformStamped transform_stamped =
@@ -564,6 +582,92 @@ void EKFLocalizer::initialize_diagnostic_info(
   twist_diag_info.delay_time_threshold = std::numeric_limits<double>::quiet_NaN();
   twist_diag_info.is_passed_mahalanobis_gate = false;
   twist_diag_info.mahalanobis_distance = std::numeric_limits<double>::quiet_NaN();
+}
+
+void EKFLocalizer::set_up_pipeline_params()
+{
+  const std::vector<std::string> default_plugins = {
+    "autoware::ekf_localizer::plugin::StopFilterPlugin",
+    "autoware::ekf_localizer::plugin::Twist2AccelPlugin",
+  };
+  declare_parameter("plugin_names", default_plugins);
+  use_stop_filter_ = declare_parameter<bool>("use_stop_filter", true);
+  use_twist2accel_ = declare_parameter<bool>("use_twist2accel", true);
+  publish_intermediate_outputs_ = declare_parameter<bool>("publish_intermediate_outputs", false);
+  update_publish_ekf_odom_topic();
+}
+
+void EKFLocalizer::load_plugins()
+{
+  const auto plugin_names = get_parameter("plugin_names").as_string_array();
+
+  for (const auto & plugin_name : plugin_names) {
+    try {
+      auto plugin = plugin_loader_->createSharedInstance(plugin_name);
+      plugin->initialize(plugin_name, this);
+      pipeline_plugins_.push_back(plugin);
+      RCLCPP_INFO_STREAM(get_logger(), "Loaded plugin: " << plugin_name);
+    } catch (const pluginlib::CreateClassException & e) {
+      RCLCPP_ERROR_STREAM(
+        get_logger(), "Failed to load plugin '" << plugin_name << "': " << e.what());
+    }
+  }
+}
+
+void EKFLocalizer::update_publish_ekf_odom_topic()
+{
+  publish_ekf_odom_topic_ = publish_intermediate_outputs_ || !use_stop_filter_;
+}
+
+void EKFLocalizer::on_twist_estimator(
+  geometry_msgs::msg::TwistWithCovarianceStamped::ConstSharedPtr msg)
+{
+  fusion_data_.twist_estimator = *msg;
+  fusion_data_.has_twist_estimator = true;
+}
+
+void EKFLocalizer::run_downstream_pipeline(
+  const nav_msgs::msg::Odometry & ekf_odom,
+  const geometry_msgs::msg::TwistWithCovarianceStamped & ekf_twist_cov)
+{
+  fusion_data_.ekf_odom = ekf_odom;
+  fusion_data_.ekf_twist_cov = ekf_twist_cov;
+  fusion_data_.has_ekf_estimate = true;
+  fusion_data_.has_kinematic_state = false;
+
+  if (!use_stop_filter_) {
+    fusion_data_.kinematic_state = ekf_odom;
+    fusion_data_.has_kinematic_state = true;
+  }
+
+  for (auto & plugin : pipeline_plugins_) {
+    plugin->process(fusion_data_);
+  }
+}
+
+rcl_interfaces::msg::SetParametersResult EKFLocalizer::on_parameter(
+  const std::vector<rclcpp::Parameter> & parameters)
+{
+  for (const auto & param : parameters) {
+    if (param.get_name() == "use_stop_filter") {
+      use_stop_filter_ = param.as_bool();
+    } else if (param.get_name() == "use_twist2accel") {
+      use_twist2accel_ = param.as_bool();
+    } else if (param.get_name() == "publish_intermediate_outputs") {
+      publish_intermediate_outputs_ = param.as_bool();
+    }
+  }
+
+  update_publish_ekf_odom_topic();
+
+  for (auto & plugin : pipeline_plugins_) {
+    plugin->on_parameter(parameters);
+  }
+
+  rcl_interfaces::msg::SetParametersResult result;
+  result.successful = true;
+  result.reason = "success";
+  return result;
 }
 
 }  // namespace autoware::ekf_localizer

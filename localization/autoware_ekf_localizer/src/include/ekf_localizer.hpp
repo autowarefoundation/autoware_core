@@ -17,11 +17,14 @@
 
 #include "aged_object_queue.hpp"
 #include "ekf_module.hpp"
+#include "fusion_data.hpp"
 #include "hyper_parameters.hpp"
+#include "post_estimate_plugin_base.hpp"
 #include "warning.hpp"
 
 #include <autoware_utils_logging/logger_level_configure.hpp>
 #include <autoware_utils_system/stop_watch.hpp>
+#include <pluginlib/class_loader.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <tf2/LinearMath/Quaternion.hpp>
 #include <tf2/utils.hpp>
@@ -121,6 +124,18 @@ private:
 
   bool is_activated_;
   bool is_set_initialpose_;
+  bool publish_ekf_odom_topic_{true};
+
+  bool use_stop_filter_{true};
+  bool use_twist2accel_{true};
+  bool publish_intermediate_outputs_{false};
+
+  std::unique_ptr<pluginlib::ClassLoader<plugin::PostEstimatePluginBase>> plugin_loader_;
+  std::vector<std::shared_ptr<plugin::PostEstimatePluginBase>> pipeline_plugins_;
+  FusionData fusion_data_;
+  rclcpp::Subscription<geometry_msgs::msg::TwistWithCovarianceStamped>::SharedPtr
+    twist_estimator_sub_;
+  OnSetParametersCallbackHandle::SharedPtr set_param_res_;
 
   EKFDiagnosticInfo pose_diag_info_;
   EKFDiagnosticInfo twist_diag_info_;
@@ -205,6 +220,16 @@ private:
     EKFDiagnosticInfo & pose_diag_info, EKFDiagnosticInfo & twist_diag_info,
     const AgedObjectQueue<geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr> & pose_queue,
     const AgedObjectQueue<geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr> & twist_queue);
+
+  void set_up_pipeline_params();
+  void load_plugins();
+  void update_publish_ekf_odom_topic();
+  void run_downstream_pipeline(
+    const nav_msgs::msg::Odometry & ekf_odom,
+    const geometry_msgs::msg::TwistWithCovarianceStamped & ekf_twist_cov);
+  void on_twist_estimator(geometry_msgs::msg::TwistWithCovarianceStamped::ConstSharedPtr msg);
+  rcl_interfaces::msg::SetParametersResult on_parameter(
+    const std::vector<rclcpp::Parameter> & parameters);
 
   friend class EKFLocalizerDiagnosticsTest;  // for test code
 };

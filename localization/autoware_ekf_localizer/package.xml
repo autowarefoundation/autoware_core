@@ -22,6 +22,8 @@
   <depend>autoware_internal_debug_msgs</depend>
   <depend>autoware_kalman_filter</depend>
   <depend>autoware_localization_util</depend>
+  <depend>autoware_stop_filter</depend>
+  <depend>autoware_twist2accel</depend>
   <depend>autoware_utils_geometry</depend>
   <depend>autoware_utils_logging</depend>
   <depend>autoware_utils_system</depend>
@@ -29,6 +31,7 @@
   <depend>fmt</depend>
   <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
+  <depend>pluginlib</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
   <depend>std_srvs</depend>

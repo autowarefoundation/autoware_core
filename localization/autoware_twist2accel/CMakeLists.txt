@@ -6,6 +6,7 @@ autoware_package()
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
   src/twist2accel.cpp
+  src/twist2accel_processor.cpp
 )
 
 autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
@@ -16,7 +17,6 @@ autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
 )
 
 autoware_ament_auto_package(
-  USE_SCOPED_HEADER_INSTALL_DIR
   INSTALL_TO_SHARE
   launch
   config

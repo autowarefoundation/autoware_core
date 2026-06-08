@@ -29,6 +29,24 @@
             },
             "misc": {
               "$ref": "sub/misc.sub_schema.json#/definitions/misc"
+            },
+            "plugin_names": {
+              "$ref": "sub/pipeline.sub_schema.json#/definitions/pipeline/properties/plugin_names"
+            },
+            "use_stop_filter": {
+              "$ref": "sub/pipeline.sub_schema.json#/definitions/pipeline/properties/use_stop_filter"
+            },
+            "use_twist2accel": {
+              "$ref": "sub/pipeline.sub_schema.json#/definitions/pipeline/properties/use_twist2accel"
+            },
+            "publish_intermediate_outputs": {
+              "$ref": "sub/pipeline.sub_schema.json#/definitions/pipeline/properties/publish_intermediate_outputs"
+            },
+            "stop_filter": {
+              "$ref": "sub/pipeline.sub_schema.json#/definitions/pipeline/properties/stop_filter"
+            },
+            "twist2accel": {
+              "$ref": "sub/pipeline.sub_schema.json#/definitions/pipeline/properties/twist2accel"
             }
           },
           "required": [
@@ -38,7 +56,13 @@
             "process_noise",
             "simple_1d_filter_parameters",
             "diagnostics",
-            "misc"
+            "misc",
+            "plugin_names",
+            "use_stop_filter",
+            "use_twist2accel",
+            "publish_intermediate_outputs",
+            "stop_filter",
+            "twist2accel"
           ],
           "additionalProperties": false
         }

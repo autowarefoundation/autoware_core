@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "pipeline": {
+      "type": "object",
+      "properties": {
+        "plugin_names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "use_stop_filter": {
+          "type": "boolean"
+        },
+        "use_twist2accel": {
+          "type": "boolean"
+        },
+        "publish_intermediate_outputs": {
+          "type": "boolean"
+        },
+        "stop_filter": {
+          "type": "object",
+          "properties": {
+            "vx_threshold": {
+              "type": "number"
+            },
+            "wz_threshold": {
+              "type": "number"
+            }
+          },
+          "required": ["vx_threshold", "wz_threshold"],
+          "additionalProperties": false
+        },
+        "twist2accel": {
+          "type": "object",
+          "properties": {
+            "use_odom": {
+              "type": "boolean"
+            },
+            "accel_lowpass_gain": {
+              "type": "number"
+            }
+          },
+          "required": ["use_odom", "accel_lowpass_gain"],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "plugin_names",
+        "use_stop_filter",
+        "use_twist2accel",
+        "publish_intermediate_outputs",
+        "stop_filter",
+        "twist2accel"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

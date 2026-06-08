@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<library path="autoware_ekf_localizer_plugins">
+  <class type="autoware::ekf_localizer::plugin::StopFilterPlugin"
+         base_class_type="autoware::ekf_localizer::plugin::PostEstimatePluginBase">
+    <description>Zeroes twist when the vehicle is stopped; publishes kinematic state.</description>
+  </class>
+  <class type="autoware::ekf_localizer::plugin::Twist2AccelPlugin"
+         base_class_type="autoware::ekf_localizer::plugin::PostEstimatePluginBase">
+    <description>Estimates acceleration from kinematic state; publishes acceleration.</description>
+  </class>
+</library>

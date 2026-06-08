@@ -6,6 +6,7 @@ autoware_package()
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
   src/stop_filter.cpp
+  src/stop_filter_processor.cpp
 )
 
 ament_auto_add_library(${PROJECT_NAME}_ros SHARED

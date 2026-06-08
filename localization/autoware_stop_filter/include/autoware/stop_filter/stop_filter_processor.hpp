@@ -12,12 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef STOP_FILTER_NODE_HPP_
-#define STOP_FILTER_NODE_HPP_
+#ifndef AUTOWARE__STOP_FILTER__STOP_FILTER_PROCESSOR_HPP_
+#define AUTOWARE__STOP_FILTER__STOP_FILTER_PROCESSOR_HPP_
 
-#include "autoware/stop_filter/stop_filter_processor.hpp"
-
-#include <rclcpp/rclcpp.hpp>
+#include "autoware/stop_filter/stop_filter.hpp"
 
 #include <autoware_internal_debug_msgs/msg/bool_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
@@ -25,21 +23,19 @@
 namespace autoware::stop_filter
 {
 
-class StopFilterNode : public rclcpp::Node
+class StopFilterProcessor
 {
 public:
-  explicit StopFilterNode(const rclcpp::NodeOptions & node_options);
+  StopFilterProcessor(double linear_x_threshold, double angular_z_threshold);
+  autoware_internal_debug_msgs::msg::BoolStamped create_stop_flag_msg(
+    const nav_msgs::msg::Odometry & input) const;
+  nav_msgs::msg::Odometry create_filtered_msg(const nav_msgs::msg::Odometry & input) const;
 
 private:
-  rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr pub_odom_;
-  rclcpp::Publisher<autoware_internal_debug_msgs::msg::BoolStamped>::SharedPtr pub_stop_flag_;
-  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr sub_odom_;
-
-  StopFilterProcessor message_processor_;
-
-  void callback_odometry(const nav_msgs::msg::Odometry::SharedPtr msg);
+  StopFilter stop_filter_;
+  FilterResult apply_filter(const nav_msgs::msg::Odometry & input) const;
 };
 
 }  // namespace autoware::stop_filter
 
-#endif  // STOP_FILTER_NODE_HPP_
+#endif  // AUTOWARE__STOP_FILTER__STOP_FILTER_PROCESSOR_HPP_

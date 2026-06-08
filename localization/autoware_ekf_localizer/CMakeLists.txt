@@ -14,6 +14,13 @@ include_directories(
 
 ament_auto_find_build_dependencies()
 
+pluginlib_export_plugin_description_file(${PROJECT_NAME} plugins.xml)
+
+ament_auto_add_library(${PROJECT_NAME}_plugins SHARED
+  src/plugins/stop_filter_plugin.cpp
+  src/plugins/twist2accel_plugin.cpp
+)
+
 ament_auto_add_library(${PROJECT_NAME} SHARED
   src/ekf_localizer.cpp
   src/covariance.cpp

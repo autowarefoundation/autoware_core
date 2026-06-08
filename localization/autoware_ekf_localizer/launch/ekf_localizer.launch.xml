@@ -7,9 +7,12 @@
   <!-- input topic name -->
   <arg name="input_pose_with_cov_name" default="in_pose_with_covariance"/>
   <arg name="input_twist_with_cov_name" default="in_twist_with_covariance"/>
+  <arg name="input_twist_estimator_name" default="input/twist_estimator"/>
 
   <!-- output topic name -->
   <arg name="output_odom_name" default="ekf_odom"/>
+  <arg name="output_kinematic_state_name" default="output/kinematic_state"/>
+  <arg name="output_acceleration_name" default="output/acceleration"/>
   <arg name="output_pose_name" default="ekf_pose"/>
   <arg name="output_pose_with_covariance_name" default="ekf_pose_with_covariance"/>
   <arg name="output_biased_pose_name" default="ekf_biased_pose"/>
@@ -26,7 +29,11 @@
     <remap from="initialpose" to="$(var input_initial_pose_name)"/>
     <remap from="trigger_node_srv" to="$(var input_trigger_node_service_name)"/>
 
+    <remap from="input/twist_estimator" to="$(var input_twist_estimator_name)"/>
+
     <remap from="ekf_odom" to="$(var output_odom_name)"/>
+    <remap from="output/kinematic_state" to="$(var output_kinematic_state_name)"/>
+    <remap from="output/acceleration" to="$(var output_acceleration_name)"/>
     <remap from="ekf_pose" to="$(var output_pose_name)"/>
     <remap from="ekf_pose_with_covariance" to="$(var output_pose_with_covariance_name)"/>
     <remap from="ekf_biased_pose" to="$(var output_biased_pose_name)"/>

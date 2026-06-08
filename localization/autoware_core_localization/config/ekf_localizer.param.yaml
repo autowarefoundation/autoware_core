@@ -52,3 +52,18 @@
       # for velocity measurement limitation (Set 0.0 if you want to ignore)
       threshold_observable_velocity_mps: 0.0 # [m/s]
       pose_frame_id: "map"
+
+    plugin_names:
+      - "autoware::ekf_localizer::plugin::StopFilterPlugin"
+      - "autoware::ekf_localizer::plugin::Twist2AccelPlugin"
+    use_stop_filter: true
+    use_twist2accel: true
+    publish_intermediate_outputs: false
+
+    stop_filter:
+      vx_threshold: 0.1
+      wz_threshold: 0.02
+
+    twist2accel:
+      use_odom: true
+      accel_lowpass_gain: 0.9
