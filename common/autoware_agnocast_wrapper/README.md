@@ -420,10 +420,11 @@ After including `agnocast_env.launch.xml` (or `agnocast_env.launch.py`), the fol
 
 ### Launch Arguments
 
-| Argument                 | Default                                       | Description                                                           |
-| ------------------------ | --------------------------------------------- | --------------------------------------------------------------------- |
-| `agnocast_heaphook_path` | `/opt/ros/humble/lib/libagnocast_heaphook.so` | Path to the heaphook shared library                                   |
-| `use_multithread`        | `false`                                       | Use the multi-threaded component container (`component_container_mt`) |
+| Argument                 | Default                                       | Description                                                                                             |
+| ------------------------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `agnocast_heaphook_path` | `/opt/ros/$ROS_DISTRO/lib/libagnocast_heaphook.so` (falls back to `humble`) | Path to the heaphook shared library                                                                     |
+| `use_multithread`        | `false`                                       | Use the multi-threaded component container (`component_container_mt`)                                   |
+| `use_agnocast`           | `$(env ENABLE_AGNOCAST 0)`                    | Per-node override (`1`/`0`). Usually left unset; defaults to the `ENABLE_AGNOCAST` environment variable |
 
 The `container_executable` is resolved as follows:
 
@@ -458,7 +459,7 @@ Using a component container with multi-threading:
 
 ### Examples (Python)
 
-A Python launch file (`agnocast_env.launch.py`) is also provided with the same functionality. It sets the same launch configurations (`ld_preload_value`, `container_package`, `container_executable`) that can be referenced via `LaunchConfiguration`.
+A Python launch file (`agnocast_env.launch.py`) is also provided with the same functionality. It accepts the same `use_agnocast` argument and sets the same launch configurations (`ld_preload_value`, `container_package`, `container_executable`) that can be referenced via `LaunchConfiguration`.
 
 Basic usage with a single node:
 

@@ -2,7 +2,9 @@
 <launch>
   <!--
     Configuration:
-    - Checks ENABLE_AGNOCAST environment variable (set to "1" to enable)
+    - use_agnocast arg overrides the ENABLE_AGNOCAST environment variable per include
+      (set to "1" to enable). When not passed by the including launch file, it defaults to the
+      ENABLE_AGNOCAST environment variable (which itself defaults to "0").
     - Heaphook path is configurable via the agnocast_heaphook_path arg
       (default: /opt/ros/$ROS_DISTRO/lib/libagnocast_heaphook.so, falls back to humble)
 
@@ -14,7 +16,7 @@
 
   <arg name="agnocast_heaphook_path" default="/opt/ros/$(env ROS_DISTRO humble)/lib/libagnocast_heaphook.so"/>
   <arg name="use_multithread" default="false"/>
-  <let name="use_agnocast" value="$(env ENABLE_AGNOCAST 0)"/>
+  <arg name="use_agnocast" default="$(env ENABLE_AGNOCAST 0)"/>
 
   <!-- LD_PRELOAD -->
   <let name="ld_preload_value" value="$(var agnocast_heaphook_path):$(env LD_PRELOAD '')" if="$(eval &quot;'$(var use_agnocast)' == '1'&quot;)"/>
