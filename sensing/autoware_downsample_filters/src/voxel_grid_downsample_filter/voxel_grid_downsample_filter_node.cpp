@@ -121,8 +121,7 @@ bool VoxelGridDownsampleFilter::is_valid(const PointCloud2ConstPtr & cloud)
   return true;
 }
 
-void VoxelGridDownsampleFilter::filter(
-  const PointCloud2ConstPtr & input, PointCloud2 & output)
+void VoxelGridDownsampleFilter::filter(const PointCloud2ConstPtr & input, PointCloud2 & output)
 {
   std::scoped_lock lock(mutex_);
   FasterVoxelGridDownsampleFilter faster_voxel_filter;
