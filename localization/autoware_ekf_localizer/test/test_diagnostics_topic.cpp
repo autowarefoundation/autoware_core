@@ -25,6 +25,7 @@
 #include <memory>
 #include <string>
 #include <thread>
+#include <vector>
 
 namespace autoware::ekf_localizer
 {
@@ -64,6 +65,10 @@ static rclcpp::NodeOptions make_minimal_ekf_options()
     {"diagnostics.warn_ellipse_size_lateral_direction", 0.25},
     {"diagnostics.diagnostics_publish_frequency", 10.0},
     {"misc.threshold_observable_velocity_mps", 0.0},
+    {"plugin_names", std::vector<std::string>{}},
+    {"use_stop_filter", false},
+    {"use_twist2accel", false},
+    {"publish_intermediate_outputs", false},
   });
   return options;
 }

@@ -41,7 +41,7 @@ TEST(StopFilterProcessorTest, TestCreateStopFlagMsgMoving)
   auto input_msg = createOdometryMessage(0.2, 0.0, 0.0, 0.0, 0.0, 0.2);
 
   // Test stop flag creation
-  auto stop_flag_msg = message_filter_->create_stop_flag_msg(input_msg);
+  auto stop_flag_msg = message_filter_->create_stop_flag_msg(*input_msg);
 
   // Verify stop flag is false (vehicle is moving)
   ASSERT_FALSE(stop_flag_msg.data);
@@ -55,7 +55,7 @@ TEST(StopFilterProcessorTest, TestCreateFilteredMsgStopped)
   auto input_msg = createOdometryMessage(0.05, 0.02, 0.01, 0.03, 0.04, 0.05);
 
   // Test filtered message creation
-  auto filtered_msg = message_filter_->create_filtered_msg(input_msg);
+  auto filtered_msg = message_filter_->create_filtered_msg(*input_msg);
 
   // Verify velocities are set to zero when stopped
   ASSERT_EQ(filtered_msg.twist.twist.linear.x, 0.0);

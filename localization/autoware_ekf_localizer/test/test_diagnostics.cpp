@@ -283,6 +283,11 @@ protected:
       // Misc parameters
       {"misc.threshold_observable_velocity_mps", 0.0},
       {"misc.pose_frame_id", "map"},
+      // Pipeline plugins disabled in unit tests
+      {"plugin_names", std::vector<std::string>{}},
+      {"use_stop_filter", false},
+      {"use_twist2accel", false},
+      {"publish_intermediate_outputs", false},
     });
     return options;
   }
