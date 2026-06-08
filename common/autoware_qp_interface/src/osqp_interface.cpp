@@ -15,7 +15,6 @@
 #include "autoware/qp_interface/osqp_interface.hpp"
 
 #include "autoware/qp_interface/osqp_csc_matrix_conv.hpp"
-#include "osqp_interface_status.hpp"
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -24,8 +23,10 @@
 #include <string>
 #include <vector>
 
-namespace autoware::qp_interface
+namespace
 {
+// Map an OSQP solver status value to its canonical string name. Kept with internal linkage
+// (anonymous namespace) since it is an implementation detail of OSQPInterface::getStatus().
 std::string status_to_string(c_int status_val)
 {
   switch (status_val) {
@@ -57,7 +58,10 @@ std::string status_to_string(c_int status_val)
       return "OSQP_UNKNOWN";
   }
 }
+}  // namespace
 
+namespace autoware::qp_interface
+{
 OSQPInterface::OSQPInterface(
   const bool enable_warm_start, const int max_iteration, const c_float eps_abs,
   const c_float eps_rel, const bool polish, const bool verbose)
