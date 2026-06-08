@@ -16,9 +16,14 @@
 
 #include "autoware_utils_rclcpp/polling_subscriber.hpp"
 
+#include <rclcpp/exceptions/exceptions.hpp>
 #include <rclcpp/rclcpp.hpp>
 
+#include <rcl/timer.h>
+
+#include <chrono>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -26,17 +31,10 @@
 #ifdef USE_AGNOCAST_ENABLED
 
 #include <agnocast/agnocast.hpp>
-#include <rclcpp/exceptions/exceptions.hpp>
 
-#include <rcl/timer.h>
-
-#include <chrono>
 #include <cstdlib>
 #include <functional>
 #include <future>
-#include <memory>
-#include <stdexcept>
-#include <type_traits>
 
 #define AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) \
   autoware::agnocast_wrapper::message_ptr<    \
@@ -1219,18 +1217,6 @@ inline void set_period(const Timer::SharedPtr & timer, std::chrono::nanoseconds 
 }  // namespace autoware::agnocast_wrapper
 
 #else
-
-#include "autoware_utils_rclcpp/polling_subscriber.hpp"
-
-#include <rclcpp/exceptions/exceptions.hpp>
-#include <rclcpp/rclcpp.hpp>
-
-#include <rcl/timer.h>
-
-#include <chrono>
-#include <memory>
-#include <stdexcept>
-#include <type_traits>
 
 namespace autoware::agnocast_wrapper
 {
