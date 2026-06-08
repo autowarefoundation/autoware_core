@@ -39,21 +39,21 @@ std::tuple<PoseWithCovarianceStamped, bool> LocalizationModule::align_pose(
   req->pose_with_covariance = pose;
 
   if (!cli_align_->service_is_ready()) {
-    autoware_adapi_v1_msgs::msg::ResponseStatus respose_status;
-    respose_status.success = false;
-    respose_status.code = autoware_adapi_v1_msgs::msg::ResponseStatus::SERVICE_UNREADY;
-    respose_status.message = "align server is not ready.";
-    throw respose_status;
+    autoware_adapi_v1_msgs::msg::ResponseStatus response_status;
+    response_status.success = false;
+    response_status.code = autoware_adapi_v1_msgs::msg::ResponseStatus::SERVICE_UNREADY;
+    response_status.message = "align server is not ready.";
+    throw response_status;
   }
 
   RCLCPP_INFO(logger_, "Call align server.");
   const auto res = cli_align_->async_send_request(req).get();
   if (!res->success) {
-    autoware_adapi_v1_msgs::msg::ResponseStatus respose_status;
-    respose_status.success = false;
-    respose_status.code = Initialize::Service::Response::ERROR_ESTIMATION;
-    respose_status.message = "align server failed.";
-    throw respose_status;
+    autoware_adapi_v1_msgs::msg::ResponseStatus response_status;
+    response_status.success = false;
+    response_status.code = Initialize::Service::Response::ERROR_ESTIMATION;
+    response_status.message = "align server failed.";
+    throw response_status;
   }
   RCLCPP_INFO(logger_, "align server succeeded.");
 

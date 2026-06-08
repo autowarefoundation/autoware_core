@@ -53,11 +53,11 @@ void LocalizationTriggerModule::send_request(bool flag, bool need_spin) const
   }
 
   if (!client_trigger_->service_is_ready()) {
-    autoware_adapi_v1_msgs::msg::ResponseStatus respose_status;
-    respose_status.success = false;
-    respose_status.code = autoware_adapi_v1_msgs::msg::ResponseStatus::SERVICE_UNREADY;
-    respose_status.message = label_ + " triggering service is not ready";
-    throw respose_status;
+    autoware_adapi_v1_msgs::msg::ResponseStatus response_status;
+    response_status.success = false;
+    response_status.code = autoware_adapi_v1_msgs::msg::ResponseStatus::SERVICE_UNREADY;
+    response_status.message = label_ + " triggering service is not ready";
+    throw response_status;
   }
 
   auto future = client_trigger_->async_send_request(req);
@@ -70,11 +70,11 @@ void LocalizationTriggerModule::send_request(bool flag, bool need_spin) const
     RCLCPP_INFO(node_->get_logger(), "%s %s succeeded", label_.c_str(), command_name.c_str());
   } else {
     RCLCPP_INFO(node_->get_logger(), "%s %s failed", label_.c_str(), command_name.c_str());
-    autoware_adapi_v1_msgs::msg::ResponseStatus respose_status;
-    respose_status.success = false;
-    respose_status.code = Initialize::Service::Response::ERROR_ESTIMATION;
-    respose_status.message = label_ + " " + command_name + " failed";
-    throw respose_status;
+    autoware_adapi_v1_msgs::msg::ResponseStatus response_status;
+    response_status.success = false;
+    response_status.code = Initialize::Service::Response::ERROR_ESTIMATION;
+    response_status.message = label_ + " " + command_name + " failed";
+    throw response_status;
   }
 }
 }  // namespace autoware::pose_initializer

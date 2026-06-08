@@ -43,19 +43,19 @@ geometry_msgs::msg::PoseWithCovarianceStamped GnssModule::get_pose()
   using Initialize = autoware::component_interface_specs::localization::Initialize;
 
   if (!pose_) {
-    autoware_adapi_v1_msgs::msg::ResponseStatus respose_status;
-    respose_status.success = false;
-    respose_status.code = Initialize::Service::Response::ERROR_GNSS;
-    respose_status.message = "The GNSS pose has not arrived.";
-    throw respose_status;
+    autoware_adapi_v1_msgs::msg::ResponseStatus response_status;
+    response_status.success = false;
+    response_status.code = Initialize::Service::Response::ERROR_GNSS;
+    response_status.message = "The GNSS pose has not arrived.";
+    throw response_status;
   }
 
   if (is_pose_stale(rclcpp::Time(pose_->header.stamp), clock_->now(), timeout_)) {
-    autoware_adapi_v1_msgs::msg::ResponseStatus respose_status;
-    respose_status.success = false;
-    respose_status.code = Initialize::Service::Response::ERROR_GNSS;
-    respose_status.message = "The GNSS pose is out of date.";
-    throw respose_status;
+    autoware_adapi_v1_msgs::msg::ResponseStatus response_status;
+    response_status.success = false;
+    response_status.code = Initialize::Service::Response::ERROR_GNSS;
+    response_status.message = "The GNSS pose is out of date.";
+    throw response_status;
   }
 
   PoseWithCovarianceStamped pose = *pose_;
