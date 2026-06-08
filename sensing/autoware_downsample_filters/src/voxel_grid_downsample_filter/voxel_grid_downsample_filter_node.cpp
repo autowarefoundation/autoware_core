@@ -121,7 +121,85 @@ bool VoxelGridDownsampleFilter::is_valid(const PointCloud2ConstPtr & cloud)
   return true;
 }
 
-void VoxelGridDownsampleFilter::filter(const PointCloud2ConstPtr & input, PointCloud2 & output)
+bool VoxelGridDownsampleFilter::calculate_transform_matrix(
+  const std::string & target_frame, const sensor_msgs::msg::PointCloud2 & from,
+  TransformInfo & transform_info)
+{
+  transform_info.need_transform = false;
+
+  if (target_frame.empty() || from.header.frame_id == target_frame) return true;
+
+  RCLCPP_DEBUG(
+    this->get_logger(), "[get_transform_matrix] Transforming input dataset from %s to %s.",
+    from.header.frame_id.c_str(), target_frame.c_str());
+
+  auto tf_ptr = transform_listener_->get_transform(
+    target_frame, from.header.frame_id, from.header.stamp, rclcpp::Duration::from_seconds(1.0));
+
+  if (!tf_ptr) {
+    return false;
+  }
+
+  auto eigen_tf = tf2::transformToEigen(*tf_ptr);
+  transform_info.eigen_transform = eigen_tf.matrix().cast<float>();
+  transform_info.need_transform = true;
+  return true;
+}
+
+bool VoxelGridDownsampleFilter::convert_output_costly(std::unique_ptr<PointCloud2> & output)
+{
+  if (!tf_output_frame_.empty() && output->header.frame_id != tf_output_frame_) {
+    RCLCPP_DEBUG(
+      this->get_logger(), "[convert_output_costly] Transforming output dataset from %s to %s.",
+      output->header.frame_id.c_str(), tf_output_frame_.c_str());
+
+    // Convert the cloud into the different frame
+    auto cloud_transformed = std::make_unique<PointCloud2>();
+
+    auto tf_ptr = transform_listener_->get_transform(
+      tf_output_frame_, output->header.frame_id, output->header.stamp,
+      rclcpp::Duration::from_seconds(1.0));
+    if (!tf_ptr) {
+      RCLCPP_ERROR(
+        this->get_logger(),
+        "[convert_output_costly] Error converting output dataset from %s to %s.",
+        output->header.frame_id.c_str(), tf_output_frame_.c_str());
+      return false;
+    }
+
+    auto eigen_tf = tf2::transformToEigen(*tf_ptr);
+    pcl_ros::transformPointCloud(eigen_tf.matrix().cast<float>(), *output, *cloud_transformed);
+    output = std::move(cloud_transformed);
+    output->header.frame_id = tf_output_frame_;
+  }
+
+  if (tf_output_frame_.empty() && output->header.frame_id != tf_input_orig_frame_) {
+    // No tf_output_frame given, transform the dataset to its original frame
+    RCLCPP_DEBUG(
+      this->get_logger(), "[convert_output_costly] Transforming output dataset from %s back to %s.",
+      output->header.frame_id.c_str(), tf_input_orig_frame_.c_str());
+
+    auto cloud_transformed = std::make_unique<sensor_msgs::msg::PointCloud2>();
+
+    auto tf_ptr = transform_listener_->get_transform(
+      tf_input_orig_frame_, output->header.frame_id, output->header.stamp,
+      rclcpp::Duration::from_seconds(1.0));
+
+    if (!tf_ptr) {
+      return false;
+    }
+
+    auto eigen_tf = tf2::transformToEigen(*tf_ptr);
+    pcl_ros::transformPointCloud(eigen_tf.matrix().cast<float>(), *output, *cloud_transformed);
+    output = std::move(cloud_transformed);
+    output->header.frame_id = tf_input_orig_frame_;
+  }
+
+  return true;
+}
+
+void VoxelGridDownsampleFilter::filter(
+  const PointCloud2ConstPtr & input, PointCloud2 & output, const TransformInfo & transform_info)
 {
   std::scoped_lock lock(mutex_);
   FasterVoxelGridDownsampleFilter faster_voxel_filter;

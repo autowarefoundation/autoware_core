@@ -35,6 +35,11 @@
 
 namespace autoware::map_loader
 {
+// Build the durable map-metadata message published on construction from the PCD metadata dict.
+// Declared here so it can be unit-tested directly without instantiating the module.
+autoware_map_msgs::msg::PointCloudMapMetaData create_metadata(
+  const std::map<std::string, PCDFileMetadata> & pcd_file_metadata_dict);
+
 class SelectedMapLoaderModule
 {
   using GetSelectedPointCloudMap = autoware_map_msgs::srv::GetSelectedPointCloudMap;
@@ -54,8 +59,6 @@ private:
   [[nodiscard]] bool on_service_get_selected_point_cloud_map(
     GetSelectedPointCloudMap::Request::SharedPtr req,
     GetSelectedPointCloudMap::Response::SharedPtr res) const;
-  [[nodiscard]] autoware_map_msgs::msg::PointCloudMapCellWithID load_point_cloud_map_cell_with_id(
-    const std::string & path, const std::string & map_id) const;
 };
 }  // namespace autoware::map_loader
 
