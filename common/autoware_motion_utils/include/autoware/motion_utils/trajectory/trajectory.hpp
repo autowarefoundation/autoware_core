@@ -648,7 +648,7 @@ OverlapRemovedLateralIndices computeOverlapRemovedLateralIndices(const T & point
     last_kept_orig = i;
     last_kept_x = curr_p.x;
     last_kept_y = curr_p.y;
-    const size_t kept_pos = kept_count;  // dedup position of this newly kept point
+    const size_t kept_pos = kept_count;  // deduplicated position of this newly kept point
     ++kept_count;
     if (kept_pos == seg_idx) {
       recorded_front_orig = i;
