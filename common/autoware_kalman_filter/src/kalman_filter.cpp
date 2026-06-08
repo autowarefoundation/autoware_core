@@ -16,6 +16,8 @@
 
 #include <Eigen/Cholesky>
 
+#include <iostream>
+
 namespace autoware::kalman_filter
 {
 KalmanFilter::KalmanFilter(
@@ -145,6 +147,7 @@ bool KalmanFilter::update(
   // S is symmetric, so K^T solves S * K^T = PCT^T.
   const Eigen::LLT<Eigen::MatrixXd> llt_of_s(S);
   if (llt_of_s.info() != Eigen::Success) {
+    std::cerr << "LLT decomposition failed. S matrix might not be positive definite." << std::endl;
     return false;
   }
   const Eigen::MatrixXd K = llt_of_s.solve(PCT.transpose()).transpose();
