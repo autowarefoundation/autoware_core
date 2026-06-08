@@ -166,11 +166,12 @@ TEST(AccelEstimatorTest, ChannelsAreIndependent)
 }
 
 // The estimator fills in a constant diagonal covariance for the acceleration:
-// variance 1.0 on the three linear (x, y, z) channels and 0.05 on the three
-// angular (roll, pitch, yaw) channels, with every off-diagonal term zero. The
-// expected entries below are hand-written literals derived from the documented
-// constants, not read back from the estimator. The covariance is a flat
-// row-major 6x6 matrix, so element (row, col) lives at index row * 6 + col.
+// g_linear_accel_variance on the three linear (x, y, z) channels and
+// g_angular_accel_variance on the three angular (roll, pitch, yaw) channels,
+// with every off-diagonal term zero. This test pins that structure -- which
+// diagonal index carries which variance, and that every other entry stays zero.
+// The covariance is a flat row-major 6x6 matrix, so element (row, col) lives at
+// index row * 6 + col.
 TEST(AccelEstimatorTest, CovarianceIsConstantDiagonal)
 {
   AccelEstimator estimator(0.9);
@@ -179,23 +180,18 @@ TEST(AccelEstimatorTest, CovarianceIsConstantDiagonal)
 
   const geometry_msgs::msg::AccelWithCovariance accel = estimator.estimate(prev, curr, 0.5);
 
-  // Hand-written expectation: a 36-entry array that is zero everywhere except
-  // the six diagonal variances. The diagonal of a row-major 6x6 lives at
-  // indices 0, 7, 14, 21, 28, 35.
-  std::array<double, 36> expected{};  // value-initialized to all zeros
-  expected[0] = 1.0;                  // X_X    (linear x)  index 0 * 6 + 0
-  expected[7] = 1.0;                  // Y_Y    (linear y)  index 1 * 6 + 1
-  expected[14] = 1.0;                 // Z_Z    (linear z)  index 2 * 6 + 2
-  expected[21] = 0.05;                // R_R    (roll)      index 3 * 6 + 3
-  expected[28] = 0.05;                // P_P    (pitch)     index 4 * 6 + 4
-  expected[35] = 0.05;                // Y_Y    (yaw)       index 5 * 6 + 5
+  // Expected: a 36-entry array that is zero everywhere except the six diagonal
+  // variances, set to the named public constants. The diagonal of a row-major
+  // 6x6 lives at indices 0, 7, 14, 21, 28, 35.
+  std::array<double, 36> expected{};        // value-initialized to all zeros
+  expected[0] = g_linear_accel_variance;    // X_X  (linear x)
+  expected[7] = g_linear_accel_variance;    // Y_Y  (linear y)
+  expected[14] = g_linear_accel_variance;   // Z_Z  (linear z)
+  expected[21] = g_angular_accel_variance;  // R_R  (roll)
+  expected[28] = g_angular_accel_variance;  // P_P  (pitch)
+  expected[35] = g_angular_accel_variance;  // Y_Y  (yaw)
 
   for (std::size_t i = 0; i < expected.size(); ++i) {
     EXPECT_NEAR(accel.covariance[i], expected[i], kTol) << "covariance index " << i;
   }
-
-  // Cross-check the magnitudes against the named public constants so a future
-  // change to either the literals above or the constants is caught.
-  EXPECT_DOUBLE_EQ(g_linear_accel_variance, 1.0);
-  EXPECT_DOUBLE_EQ(g_angular_accel_variance, 0.05);
 }
