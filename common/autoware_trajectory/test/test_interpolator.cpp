@@ -17,6 +17,7 @@
 #include "autoware/trajectory/interpolator/lane_ids_interpolator.hpp"
 #include "autoware/trajectory/interpolator/linear.hpp"
 #include "autoware/trajectory/interpolator/nearest_neighbor.hpp"
+#include "autoware/trajectory/interpolator/pchip.hpp"
 #include "autoware/trajectory/interpolator/spherical_linear.hpp"
 #include "autoware/trajectory/interpolator/stairstep.hpp"
 
@@ -55,6 +56,7 @@ using Interpolators = testing::Types<
   autoware::experimental::trajectory::interpolator::CubicSpline,
   autoware::experimental::trajectory::interpolator::AkimaSpline,
   autoware::experimental::trajectory::interpolator::Linear,
+  autoware::experimental::trajectory::interpolator::Pchip,
   autoware::experimental::trajectory::interpolator::NearestNeighbor<double>,
   autoware::experimental::trajectory::interpolator::Stairstep<double>>;
 
@@ -73,6 +75,7 @@ TYPED_TEST(TestInterpolator, Compute)
 template class TestInterpolator<autoware::experimental::trajectory::interpolator::CubicSpline>;
 template class TestInterpolator<autoware::experimental::trajectory::interpolator::AkimaSpline>;
 template class TestInterpolator<autoware::experimental::trajectory::interpolator::Linear>;
+template class TestInterpolator<autoware::experimental::trajectory::interpolator::Pchip>;
 template class TestInterpolator<
   autoware::experimental::trajectory::interpolator::NearestNeighbor<double>>;
 template class TestInterpolator<
