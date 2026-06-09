@@ -8140,12 +8140,12 @@ unset ENABLE_AGNOCAST</p>
 <p><code>bash
 rm -Rf ./install/&lt;package_name&gt; ./build/&lt;package_name&gt;
 export ENABLE_AGNOCAST=0
-colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --package-select &lt;package_name&gt;</code></p>
+colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-select &lt;package_name&gt;</code></p>
 <p>To rebuild a specific package <strong>with</strong> Agnocast after it was previously built without it:</p>
 <p><code>bash
 rm -Rf ./install/&lt;package_name&gt; ./build/&lt;package_name&gt;
 export ENABLE_AGNOCAST=1
-colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --package-select &lt;package_name&gt;</code></p>
+colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-select &lt;package_name&gt;</code></p>
 <p>Please note that the <code>ENABLE_AGNOCAST</code> environment variable may not behave as expected in the following scenario:</p>
 <ul>
 <li>Package A depends on build artifacts from Package B</li>
