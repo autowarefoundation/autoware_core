@@ -207,6 +207,18 @@ TEST(TestEKFModule, AccumulateDelayTime)
 }
 
 // ---------------------------------------------------------------------------
+// Warning: no-op logger constructed without a node
+// ---------------------------------------------------------------------------
+TEST(Warning, NoOpWhenConstructedWithNullptr)
+{
+  const Warning warning{nullptr};
+
+  // node_ == nullptr: warn/warn_throttle silently return without a ROS runtime.
+  EXPECT_NO_THROW(warning.warn("ignored"));
+  EXPECT_NO_THROW(warning.warn_throttle("ignored", 1000));
+}
+
+// ---------------------------------------------------------------------------
 // Simple1DFilter init + update
 // ---------------------------------------------------------------------------
 TEST(TestSimple1DFilter, InitAndUpdate)
