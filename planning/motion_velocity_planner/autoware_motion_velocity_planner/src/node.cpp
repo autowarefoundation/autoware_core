@@ -235,25 +235,16 @@ MotionVelocityPlannerNode::process_no_ground_pointcloud(
   const bool is_pcl_time_valid = (this->get_clock()->now() - rclcpp::Time(msg->header.stamp)) <
                                  rclcpp::Duration::from_seconds(1.0);
 
-  const auto transform_source = utils::select_pointcloud_transform_source(
-    is_pcl_time_valid, tf_buffer_.canTransform("map", msg->header.frame_id, msg->header.stamp),
-    tf_buffer_.canTransform("map", msg->header.frame_id, tf2::TimePointZero));
-
-  switch (transform_source) {
-    case utils::PointcloudTransformSource::AtStamp:
-      transform = tf_buffer_.lookupTransform(
-        "map", msg->header.frame_id, msg->header.stamp, rclcpp::Duration::from_seconds(0.05));
-      break;
-    case utils::PointcloudTransformSource::AtTimeZero:
-      transform = tf_buffer_.lookupTransform("map", msg->header.frame_id, tf2::TimePointZero);
-      RCLCPP_DEBUG(
-        get_logger(),
-        "transform at the pointcloud stamp is unavailable (stale stamp or no transform at stamp), "
-        "falling back to tf2::TimePointZero");
-      break;
-    case utils::PointcloudTransformSource::None:
-      RCLCPP_WARN(get_logger(), "no transform found for no_ground_pointcloud");
-      return std::nullopt;
+  if (
+    is_pcl_time_valid && tf_buffer_.canTransform("map", msg->header.frame_id, msg->header.stamp)) {
+    transform = tf_buffer_.lookupTransform(
+      "map", msg->header.frame_id, msg->header.stamp, rclcpp::Duration::from_seconds(0.05));
+  } else if (tf_buffer_.canTransform("map", msg->header.frame_id, tf2::TimePointZero)) {
+    transform = tf_buffer_.lookupTransform("map", msg->header.frame_id, tf2::TimePointZero);
+    RCLCPP_DEBUG(get_logger(), "pcl time is invalid, using tf2::TimePointZero");
+  } else {
+    RCLCPP_WARN(get_logger(), "no transform found for no_ground_pointcloud");
+    return std::nullopt;
   }
 
   pcl::PointCloud<pcl::PointXYZ> pc_input;

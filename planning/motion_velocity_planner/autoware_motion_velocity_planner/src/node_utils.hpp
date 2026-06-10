@@ -40,16 +40,6 @@ struct ProcessedTrafficSignals
   TrafficLightIdMap last_observed;
 };
 
-/// @brief which transform to use when transforming the no-ground pointcloud into the map frame
-enum class PointcloudTransformSource {
-  /// @brief use the transform at the pointcloud message stamp
-  AtStamp,
-  /// @brief the message stamp is stale or unavailable; fall back to the latest available transform
-  AtTimeZero,
-  /// @brief no transform is available; the pointcloud must be dropped
-  None,
-};
-
 /// @brief turn a raw TrafficLightGroupArray observation into the raw and last-observed maps
 /// @param msg incoming traffic light group array
 /// @param last_observed_old the previous last-observed map (used to keep the body of UNKNOWN
@@ -67,14 +57,6 @@ ProcessedTrafficSignals process_traffic_signals(
 /// @return the decimated trajectory points (empty if the input is empty)
 TrajectoryPoints resample_trajectory_by_min_interval(
   const TrajectoryPoints & trajectory_points, double min_interval_squared);
-
-/// @brief choose which transform source to use for the no-ground pointcloud
-/// @param is_pcl_time_valid whether the pointcloud stamp is recent enough to be trusted
-/// @param can_transform_at_stamp whether a transform is available at the pointcloud stamp
-/// @param can_transform_at_time_zero whether a transform is available at the latest time
-/// @return the transform source to use
-PointcloudTransformSource select_pointcloud_transform_source(
-  bool is_pcl_time_valid, bool can_transform_at_stamp, bool can_transform_at_time_zero);
 
 }  // namespace autoware::motion_velocity_planner::utils
 

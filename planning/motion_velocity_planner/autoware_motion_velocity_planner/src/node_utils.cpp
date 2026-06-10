@@ -68,17 +68,4 @@ TrajectoryPoints resample_trajectory_by_min_interval(
   return resampled;
 }
 
-PointcloudTransformSource select_pointcloud_transform_source(
-  const bool is_pcl_time_valid, const bool can_transform_at_stamp,
-  const bool can_transform_at_time_zero)
-{
-  if (is_pcl_time_valid && can_transform_at_stamp) {
-    return PointcloudTransformSource::AtStamp;
-  }
-  if (can_transform_at_time_zero) {
-    return PointcloudTransformSource::AtTimeZero;
-  }
-  return PointcloudTransformSource::None;
-}
-
 }  // namespace autoware::motion_velocity_planner::utils

@@ -26,10 +26,8 @@
 namespace
 {
 using autoware::motion_velocity_planner::TrafficSignalStamped;
-using autoware::motion_velocity_planner::utils::PointcloudTransformSource;
 using autoware::motion_velocity_planner::utils::process_traffic_signals;
 using autoware::motion_velocity_planner::utils::resample_trajectory_by_min_interval;
-using autoware::motion_velocity_planner::utils::select_pointcloud_transform_source;
 using autoware::motion_velocity_planner::utils::TrafficLightIdMap;
 using autoware::motion_velocity_planner::utils::TrajectoryPoints;
 using autoware_perception_msgs::msg::TrafficLightElement;
@@ -206,38 +204,4 @@ TEST(ResampleTrajectoryByMinInterval, ExactlyAtThresholdIsDropped)
   const auto out = resample_trajectory_by_min_interval(in, 0.5 * 0.5);
   ASSERT_EQ(out.size(), 1U);
   EXPECT_DOUBLE_EQ(out.front().pose.position.x, 0.0);
-}
-
-// ---------------------------------------------------------------------------
-// select_pointcloud_transform_source
-// ---------------------------------------------------------------------------
-
-TEST(SelectPointcloudTransformSource, ValidTimeAndStampTransformUsesStamp)
-{
-  EXPECT_EQ(
-    select_pointcloud_transform_source(true, true, true), PointcloudTransformSource::AtStamp);
-  EXPECT_EQ(
-    select_pointcloud_transform_source(true, true, false), PointcloudTransformSource::AtStamp);
-}
-
-TEST(SelectPointcloudTransformSource, InvalidTimeFallsBackToTimeZero)
-{
-  EXPECT_EQ(
-    select_pointcloud_transform_source(false, true, true), PointcloudTransformSource::AtTimeZero);
-}
-
-TEST(SelectPointcloudTransformSource, ValidTimeButNoStampTransformFallsBackToTimeZero)
-{
-  EXPECT_EQ(
-    select_pointcloud_transform_source(true, false, true), PointcloudTransformSource::AtTimeZero);
-}
-
-TEST(SelectPointcloudTransformSource, NoTransformAvailableReturnsNone)
-{
-  EXPECT_EQ(
-    select_pointcloud_transform_source(true, false, false), PointcloudTransformSource::None);
-  EXPECT_EQ(
-    select_pointcloud_transform_source(false, true, false), PointcloudTransformSource::None);
-  EXPECT_EQ(
-    select_pointcloud_transform_source(false, false, false), PointcloudTransformSource::None);
 }
