@@ -517,7 +517,8 @@ template <typename M0, typename M1>
 class Synchronizer<sync_policies::ApproximateTime<M0, M1>>
 : public PolicySynchronizer<::message_filters::sync_policies::ApproximateTime<M0, M1>, M0, M1>
 {
-  using Base = PolicySynchronizer<::message_filters::sync_policies::ApproximateTime<M0, M1>, M0, M1>;
+  using Base =
+    PolicySynchronizer<::message_filters::sync_policies::ApproximateTime<M0, M1>, M0, M1>;
 
 public:
   Synchronizer(
