@@ -18,6 +18,8 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <array>
 #include <iostream>
 #include <memory>
 #include <vector>
@@ -29,30 +31,50 @@ class EuclideanClusterTest : public ::testing::Test
 protected:
   void SetUp() override
   {
-    // Create a test point cloud with 10 points in 3D space
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-    cloud->width = 10;
-    cloud->height = 1;
-    cloud->points.resize(cloud->width * cloud->height);
-
-    // Add points that form a single cluster (close to each other)
+    // Build the two ground-truth point sets that the test cloud is composed of.
+    // near_points_: a tight cluster around the origin (i*0.1 for i in [0,5)).
     for (size_t i = 0; i < 5; ++i) {
-      cloud->points[i].x = 0.1 * static_cast<float>(i);
-      cloud->points[i].y = 0.1 * static_cast<float>(i);
-      cloud->points[i].z = 0.1 * static_cast<float>(i);
+      const float v = 0.1f * static_cast<float>(i);
+      near_points_.push_back({v, v, v});
     }
 
-    // Add points that form another cluster (far from the first cluster)
+    // far_points_: a tight cluster around (10,10,10) (10 + i*0.1 for i in [5,10)).
     for (size_t i = 5; i < 10; ++i) {
-      cloud->points[i].x = 10.0 + 0.1 * static_cast<float>(i);
-      cloud->points[i].y = 10.0 + 0.1 * static_cast<float>(i);
-      cloud->points[i].z = 10.0 + 0.1 * static_cast<float>(i);
+      const float v = 10.0f + 0.1f * static_cast<float>(i);
+      far_points_.push_back({v, v, v});
     }
+
+    // Build the test cloud from the two named point sets so the input is the single
+    // source of truth for the expected clustering output.
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+    for (const auto & p : near_points_) {
+      cloud->points.push_back(pcl::PointXYZ(p[0], p[1], p[2]));
+    }
+    for (const auto & p : far_points_) {
+      cloud->points.push_back(pcl::PointXYZ(p[0], p[1], p[2]));
+    }
+    cloud->width = static_cast<uint32_t>(cloud->points.size());
+    cloud->height = 1;
 
     test_cloud_ = cloud;
   }
 
+  // Copy the {x, y, z} coordinates of every point in a cluster into a sorted vector so
+  // clusters can be compared as deterministic sets regardless of point ordering.
+  template <typename Cluster>
+  static std::vector<std::array<float, 3>> sorted_points(const Cluster & cluster)
+  {
+    std::vector<std::array<float, 3>> points;
+    for (const auto & p : cluster.points) {
+      points.push_back({p.x, p.y, p.z});
+    }
+    std::sort(points.begin(), points.end());
+    return points;
+  }
+
   pcl::PointCloud<pcl::PointXYZ>::Ptr test_cloud_;
+  std::vector<std::array<float, 3>> near_points_;
+  std::vector<std::array<float, 3>> far_points_;
 };
 
 TEST_F(EuclideanClusterTest, TestClusteringWithDefaultParams)
@@ -149,29 +171,17 @@ TEST_F(EuclideanClusterTest, TestClusterMembershipAndPointValues)
     EXPECT_FALSE(c.is_dense);
   }
 
-  // The two ground-truth clusters from SetUp(): near-origin and around (10,10,10).
-  // Collect every output point and verify each belongs to exactly one expected group,
-  // and that all 10 input points are reproduced verbatim (coordinates preserved).
-  size_t near_origin_count = 0;
-  size_t far_count = 0;
+  // The input point sets are the single source of truth. Sort the points within each
+  // cluster and sort the clusters themselves, then compare against the expected set
+  // {near_points_, far_points_} (both pre-sorted; near < far lexicographically).
+  std::vector<std::vector<std::array<float, 3>>> actual;
   for (const auto & c : clusters) {
-    for (const auto & point : c.points) {
-      if (point.x < 1.0f) {
-        ++near_origin_count;
-        // near-origin points are i*0.1 for i in [0,5)
-        EXPECT_FLOAT_EQ(point.x, point.y);
-        EXPECT_FLOAT_EQ(point.y, point.z);
-      } else {
-        ++far_count;
-        // far points are 10 + i*0.1 for i in [5,10)
-        EXPECT_GE(point.x, 10.0f);
-        EXPECT_FLOAT_EQ(point.x, point.y);
-        EXPECT_FLOAT_EQ(point.y, point.z);
-      }
-    }
+    actual.push_back(sorted_points(c));
   }
-  EXPECT_EQ(near_origin_count, 5u);
-  EXPECT_EQ(far_count, 5u);
+  std::sort(actual.begin(), actual.end());
+
+  const std::vector<std::vector<std::array<float, 3>>> expected = {near_points_, far_points_};
+  EXPECT_EQ(actual, expected);
 }
 
 // Characterization test for the previously-untested empty-input path of the implemented overload.
