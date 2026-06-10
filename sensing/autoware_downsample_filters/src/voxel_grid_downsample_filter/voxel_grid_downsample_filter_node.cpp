@@ -22,10 +22,11 @@ namespace autoware::downsample_filters
 {
 VoxelGridDownsampleFilter::VoxelGridDownsampleFilter(const rclcpp::NodeOptions & options)
 : rclcpp::Node("VoxelGridDownsampleFilter", options),
-  filter_core_(VoxelGridDownsampleFilterCore::Parameters{
-    static_cast<float>(declare_parameter<double>("voxel_size_x")),
-    static_cast<float>(declare_parameter<double>("voxel_size_y")),
-    static_cast<float>(declare_parameter<double>("voxel_size_z"))}),
+  filter_core_(
+    VoxelGridDownsampleFilterCore::Parameters{
+      static_cast<float>(declare_parameter<double>("voxel_size_x")),
+      static_cast<float>(declare_parameter<double>("voxel_size_y")),
+      static_cast<float>(declare_parameter<double>("voxel_size_z"))}),
   max_queue_size_(static_cast<std::size_t>(declare_parameter<int64_t>("max_queue_size")))
 {
   // Set publishers

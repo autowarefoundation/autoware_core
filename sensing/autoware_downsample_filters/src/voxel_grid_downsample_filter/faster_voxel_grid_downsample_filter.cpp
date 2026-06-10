@@ -37,7 +37,8 @@ void FasterVoxelGridDownsampleFilter::set_voxel_size(
     Eigen::Array3f::Ones() / Eigen::Array3f(voxel_size_x, voxel_size_y, voxel_size_z);
 }
 
-ValidationResult FasterVoxelGridDownsampleFilter::set_field_offsets(const PointCloud2ConstPtr & input)
+ValidationResult FasterVoxelGridDownsampleFilter::set_field_offsets(
+  const PointCloud2ConstPtr & input)
 {
   const int x_index = pcl::getFieldIndex(*input, "x");
   const int y_index = pcl::getFieldIndex(*input, "y");

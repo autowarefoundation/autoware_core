@@ -30,7 +30,8 @@ VoxelGridDownsampleFilterCore::VoxelGridDownsampleFilterCore(const Parameters & 
 
 ValidationResult VoxelGridDownsampleFilterCore::validate_input(const PointCloud2 & cloud) const
 {
-  if (static_cast<std::size_t>(cloud.width) * cloud.height * cloud.point_step != cloud.data.size()) {
+  if (
+    static_cast<std::size_t>(cloud.width) * cloud.height * cloud.point_step != cloud.data.size()) {
     std::ostringstream oss;
     oss << "Invalid PointCloud (data = " << cloud.data.size() << ", width = " << cloud.width
         << ", height = " << cloud.height << ", step = " << cloud.point_step << ")";
@@ -44,13 +45,13 @@ ValidationResult VoxelGridDownsampleFilterCore::validate_input(const PointCloud2
       "The pointcloud layout is not compatible with PointXYZIRCAEDT or PointXYZIRC.";
 
     if (utils::is_data_layout_compatible_with_point_xyziradrt(cloud)) {
-      error_message += " Layout is compatible with PointXYZIRADRT. You may be using legacy "
-                       "code/data.";
+      error_message +=
+        " Layout is compatible with PointXYZIRADRT. You may be using legacy "
+        "code/data.";
     }
 
     if (utils::is_data_layout_compatible_with_point_xyzi(cloud)) {
-      error_message +=
-        " Layout is compatible with PointXYZI. You may be using legacy code/data.";
+      error_message += " Layout is compatible with PointXYZI. You may be using legacy code/data.";
     }
 
     return {false, error_message};

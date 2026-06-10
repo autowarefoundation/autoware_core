@@ -17,8 +17,9 @@
 
 #include "voxel_grid_downsample_filter_core.hpp"
 
-#include <memory>
 #include <rclcpp/rclcpp.hpp>
+
+#include <memory>
 #include <string>
 
 // PCL includes
