@@ -12,6 +12,7 @@ set(VOXEL_GRID voxel_grid_downsample_filter)
 ament_auto_add_library(${PROJECT_NAME} SHARED
   src/random_downsample_filter/random_downsample_filter_node.cpp
   src/voxel_grid_downsample_filter/voxel_grid_downsample_filter_node.cpp
+  src/voxel_grid_downsample_filter/voxel_grid_downsample_filter_core.cpp
   src/voxel_grid_downsample_filter/faster_voxel_grid_downsample_filter.cpp
   src/voxel_grid_downsample_filter/memory.cpp
 )
