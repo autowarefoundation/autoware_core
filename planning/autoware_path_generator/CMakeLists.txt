@@ -27,7 +27,7 @@ rclcpp_components_register_node(${PROJECT_NAME}
 
 if(BUILD_TESTING)
   # The node-interface test spins real ROS nodes (pub/sub, executor, 10Hz timer).
-  # It finishes in ~3s locally, but on the buildfarm it intermittently stalls for
+  # It finishes in ~3s locally, but on the ROS build farm it intermittently stalls for
   # tens of seconds (resource contention / DDS discovery) and exceeds the default
   # 60s gtest timeout. Give it more headroom so CI slowdowns don't fail the build.
   ament_add_ros_isolated_gtest(test_${PROJECT_NAME}
