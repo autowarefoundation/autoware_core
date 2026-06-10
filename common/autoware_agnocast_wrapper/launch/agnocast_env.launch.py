@@ -25,16 +25,25 @@ Provides the following launch configurations:
 - ld_preload_value: LD_PRELOAD value with heaphook prepended when Agnocast is enabled
 - container_package: resolved component container package name
 - container_executable: resolved component container executable name
+
+Side effect (when ENABLE_AGNOCAST=1): emits exactly one
+``agnocast_discovery_agent`` per ``ros2 launch`` invocation. The actual spawn
+(and its tree-wide deduplication) lives in ``discovery_agent.launch.py``, which
+this file includes.
 """
 
 import os
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
+from launch.actions import IncludeLaunchDescription
 from launch.actions import OpaqueFunction
 from launch.actions import SetLaunchConfiguration
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import EnvironmentVariable
 from launch.substitutions import LaunchConfiguration
+from launch.substitutions import PathJoinSubstitution
+from launch_ros.substitutions import FindPackageShare
 
 
 def _resolve_agnocast_env(context):
@@ -83,5 +92,16 @@ def generate_launch_description():
                 default_value=EnvironmentVariable("ENABLE_AGNOCAST", default_value="0"),
             ),
             OpaqueFunction(function=_resolve_agnocast_env),
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    PathJoinSubstitution(
+                        [
+                            FindPackageShare("autoware_agnocast_wrapper"),
+                            "launch",
+                            "discovery_agent.launch.py",
+                        ]
+                    )
+                )
+            ),
         ]
     )
