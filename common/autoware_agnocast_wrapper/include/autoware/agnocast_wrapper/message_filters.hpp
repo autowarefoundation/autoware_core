@@ -420,16 +420,128 @@ namespace message_filters
 template <class M>
 using Subscriber = ::message_filters::Subscriber<M>;
 
+// The wrapper-layer policy tags and Synchronizer are redefined here (rather than aliased
+// directly to ::message_filters) so the public API is identical to the agnocast-enabled
+// build. Without this, upstream-only APIs (more-than-2-type policies, connectInput(),
+// setName(), getPolicy()->setMaxIntervalDuration(), ...) would compile under
+// ENABLE_AGNOCAST=0 but fail under ENABLE_AGNOCAST=1.
 namespace sync_policies
 {
+/// @brief Wrapper-layer ApproximateTime policy tag. Carries only the queue size; the
+///        underlying ::message_filters policy is selected inside Synchronizer.
+/// @tparam M0 First message type to synchronize.
+/// @tparam M1 Second message type to synchronize.
 template <typename M0, typename M1>
-using ApproximateTime = ::message_filters::sync_policies::ApproximateTime<M0, M1>;
+struct ApproximateTime
+{
+  uint32_t queue_size;  ///< Queue size forwarded to the underlying sync policy.
+  explicit ApproximateTime(uint32_t qs) noexcept : queue_size(qs) {}
+};
+
+/// @brief Wrapper-layer ExactTime policy tag. Carries only the queue size; the underlying
+///        ::message_filters policy is selected inside Synchronizer.
+/// @tparam M0 First message type to synchronize.
+/// @tparam M1 Second message type to synchronize.
 template <typename M0, typename M1>
-using ExactTime = ::message_filters::sync_policies::ExactTime<M0, M1>;
+struct ExactTime
+{
+  uint32_t queue_size;  ///< Queue size forwarded to the underlying sync policy.
+  explicit ExactTime(uint32_t qs) noexcept : queue_size(qs) {}
+};
 }  // namespace sync_policies
 
+/// @brief Thin wrapper over ::message_filters::Synchronizer exposing only the same public
+///        surface (construction + registerCallback) as the agnocast-enabled PolicySynchronizer.
+///        Upstream-only APIs are intentionally hidden so the API matches across build configs.
+///
+/// @tparam UpstreamPolicy ::message_filters sync policy used internally.
+/// @tparam M0             First message type to synchronize.
+/// @tparam M1             Second message type to synchronize.
+template <typename UpstreamPolicy, typename M0, typename M1>
+class PolicySynchronizer
+{
+public:
+  PolicySynchronizer(uint32_t queue_size, Subscriber<M0> & sub0, Subscriber<M1> & sub1)
+  : sync_(UpstreamPolicy(queue_size), sub0, sub1)
+  {
+  }
+
+  /// @brief Register a callable. Mirrors the four upstream
+  ///        `::message_filters::Synchronizer::registerCallback` overloads and the
+  ///        agnocast-enabled build. The callback receives
+  ///        `(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M0) &,
+  ///          const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M1) &)` (a plain ConstSharedPtr in this
+  ///        build), and the returned Connection follows upstream's lifetime contract.
+  template <class C>
+  ::message_filters::Connection registerCallback(C & callback)
+  {
+    return sync_.registerCallback(callback);
+  }
+
+  template <class C>
+  ::message_filters::Connection registerCallback(const C & callback)
+  {
+    return sync_.registerCallback(callback);
+  }
+
+  template <class C, typename T>
+  ::message_filters::Connection registerCallback(C & callback, T * t)
+  {
+    return sync_.registerCallback(callback, t);
+  }
+
+  template <class C, typename T>
+  ::message_filters::Connection registerCallback(const C & callback, T * t)
+  {
+    return sync_.registerCallback(callback, t);
+  }
+
+private:
+  // Held by value: ::message_filters::Synchronizer is noncopyable/nonmovable, which makes
+  // this wrapper noncopyable/nonmovable too — matching the agnocast-enabled PolicySynchronizer.
+  ::message_filters::Synchronizer<UpstreamPolicy> sync_;
+};
+
+/// @brief Primary Synchronizer template — supports ApproximateTime and ExactTime specializations.
 template <typename Policy>
-using Synchronizer = ::message_filters::Synchronizer<Policy>;
+class Synchronizer
+{
+  static_assert(
+    sizeof(Policy) == 0,
+    "Only sync_policies::ApproximateTime<M0, M1> and sync_policies::ExactTime<M0, M1> "
+    "are supported. Policies with more than 2 message types are not implemented.");
+};
+
+/// @brief Synchronizer specialization for the wrapper-layer ApproximateTime policy.
+template <typename M0, typename M1>
+class Synchronizer<sync_policies::ApproximateTime<M0, M1>>
+: public PolicySynchronizer<::message_filters::sync_policies::ApproximateTime<M0, M1>, M0, M1>
+{
+  using Base = PolicySynchronizer<::message_filters::sync_policies::ApproximateTime<M0, M1>, M0, M1>;
+
+public:
+  Synchronizer(
+    const sync_policies::ApproximateTime<M0, M1> & policy, Subscriber<M0> & sub0,
+    Subscriber<M1> & sub1)
+  : Base(policy.queue_size, sub0, sub1)
+  {
+  }
+};
+
+/// @brief Synchronizer specialization for the wrapper-layer ExactTime policy.
+template <typename M0, typename M1>
+class Synchronizer<sync_policies::ExactTime<M0, M1>>
+: public PolicySynchronizer<::message_filters::sync_policies::ExactTime<M0, M1>, M0, M1>
+{
+  using Base = PolicySynchronizer<::message_filters::sync_policies::ExactTime<M0, M1>, M0, M1>;
+
+public:
+  Synchronizer(
+    const sync_policies::ExactTime<M0, M1> & policy, Subscriber<M0> & sub0, Subscriber<M1> & sub1)
+  : Base(policy.queue_size, sub0, sub1)
+  {
+  }
+};
 
 }  // namespace message_filters
 }  // namespace agnocast_wrapper
