@@ -23,6 +23,7 @@
   <depend>ament_cmake_xmllint</depend>
   <depend>pcl_ros</depend>
   <depend>point_cloud_msg_wrapper</depend>
+  <depend>sensor_msgs</depend>
 
   <test_depend>ament_cmake_ros</test_depend>
   <test_depend>ament_lint_auto</test_depend>

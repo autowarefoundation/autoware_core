@@ -36,16 +36,17 @@ public:
   {
     pub_ = create_publisher<std_msgs::msg::String>("output", 10);
     sub_ = create_subscription<std_msgs::msg::String>(
-      "input", 10, [this](std::unique_ptr<const std_msgs::msg::String> msg) { /* ... */ });
+      "input", 10,
+      [this](AUTOWARE_MESSAGE_CONST_SHARED_PTR(std_msgs::msg::String) && msg) { /* ... */ });
 
     timer_ = create_wall_timer(
       std::chrono::milliseconds(100), [this]() { /* ... */ });
   }
 
 private:
-  autoware::agnocast_wrapper::Publisher<std_msgs::msg::String>::SharedPtr pub_;
-  autoware::agnocast_wrapper::Subscription<std_msgs::msg::String>::SharedPtr sub_;
-  autoware::agnocast_wrapper::Timer::SharedPtr timer_;
+  AUTOWARE_PUBLISHER_PTR(std_msgs::msg::String) pub_;
+  AUTOWARE_SUBSCRIPTION_PTR(std_msgs::msg::String) sub_;
+  AUTOWARE_TIMER_PTR timer_;
 };
 ```
 
@@ -201,7 +202,7 @@ autoware_agnocast_wrapper_setup(target)
 
 ## Message Filters Support
 
-This package provides wrapper types for `message_filters` (`Subscriber`, `Synchronizer`, `ApproximateTimeSynchronizer`, `ExactTimeSynchronizer`) in the `autoware::agnocast_wrapper::message_filters` namespace. These wrappers transparently switch between `::message_filters` and `agnocast::message_filters` at runtime.
+This package provides wrapper types for `message_filters` (`Subscriber`, `Synchronizer`) in the `autoware::agnocast_wrapper::message_filters` namespace. These wrappers transparently switch between `::message_filters` and `agnocast::message_filters` at runtime.
 
 ### Current limitations
 
@@ -227,9 +228,17 @@ using Policy = sync_policies::ApproximateTime<
     sensor_msgs::msg::Image, sensor_msgs::msg::CameraInfo>;
 Synchronizer<Policy> sync(Policy(10), image_sub, info_sub);
 
-// 3. Register callback (use std::bind, not a lambda — see migration note below)
-sync.registerCallback(
-  std::bind(&MyNode::onSynchronized, this, std::placeholders::_1, std::placeholders::_2));
+// 3. Register callback. Mirrors `::message_filters::Synchronizer::registerCallback` —
+//    pass a member-function pointer and `this`, or a `std::bind` result, or any other
+//    callable convertible to `void(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M0) &,
+//                                    const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M1) &)`.
+//    Returns a `::message_filters::Connection` for later `.disconnect()`.
+auto conn = sync.registerCallback(&MyNode::onSynchronized, this);
+// Note: `conn` going out of scope does NOT unregister the callback.
+// Call conn.disconnect() explicitly if you need to remove it later.
+// Equivalent form (still supported):
+// sync.registerCallback(std::bind(
+//   &MyNode::onSynchronized, this, std::placeholders::_1, std::placeholders::_2));
 ```
 
 The callback method signature should use `const` references:
@@ -371,7 +380,7 @@ To rebuild a specific package **without** Agnocast after it was previously built
 ```bash
 rm -Rf ./install/<package_name> ./build/<package_name>
 export ENABLE_AGNOCAST=0
-colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --package-select <package_name>
+colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-select <package_name>
 ```
 
 To rebuild a specific package **with** Agnocast after it was previously built without it:
@@ -379,7 +388,7 @@ To rebuild a specific package **with** Agnocast after it was previously built wi
 ```bash
 rm -Rf ./install/<package_name> ./build/<package_name>
 export ENABLE_AGNOCAST=1
-colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --package-select <package_name>
+colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-select <package_name>
 ```
 
 Please note that the `ENABLE_AGNOCAST` environment variable may not behave as expected in the following scenario:
@@ -411,10 +420,11 @@ After including `agnocast_env.launch.xml` (or `agnocast_env.launch.py`), the fol
 
 ### Launch Arguments
 
-| Argument                 | Default                                       | Description                                                           |
-| ------------------------ | --------------------------------------------- | --------------------------------------------------------------------- |
-| `agnocast_heaphook_path` | `/opt/ros/humble/lib/libagnocast_heaphook.so` | Path to the heaphook shared library                                   |
-| `use_multithread`        | `false`                                       | Use the multi-threaded component container (`component_container_mt`) |
+| Argument                 | Default                                                                     | Description                                                                                             |
+| ------------------------ | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `agnocast_heaphook_path` | `/opt/ros/$ROS_DISTRO/lib/libagnocast_heaphook.so` (falls back to `humble`) | Path to the heaphook shared library                                                                     |
+| `use_multithread`        | `false`                                                                     | Use the multi-threaded component container (`component_container_mt`)                                   |
+| `use_agnocast`           | `$(env ENABLE_AGNOCAST 0)`                                                  | Per-node override (`1`/`0`). Usually left unset; defaults to the `ENABLE_AGNOCAST` environment variable |
 
 The `container_executable` is resolved as follows:
 
@@ -447,9 +457,23 @@ Using a component container with multi-threading:
 </node_container>
 ```
 
+Disabling Agnocast for a single include (debugging / emergency fallback):
+
+```xml
+<include file="$(find-pkg-share autoware_agnocast_wrapper)/launch/agnocast_env.launch.xml">
+  <arg name="use_agnocast" value="0"/>
+</include>
+
+<node pkg="my_package" exec="my_node" name="my_node">
+  <env name="LD_PRELOAD" value="$(var ld_preload_value)"/>
+</node>
+```
+
+Even when the workspace is built with `ENABLE_AGNOCAST=1`, passing `use_agnocast` to a single include forces that node (or container) back to the plain `rclcpp` path without touching the rest of the launch tree. Use it to temporarily disable Agnocast for one node while debugging, or as an emergency fallback when a specific node misbehaves under Agnocast.
+
 ### Examples (Python)
 
-A Python launch file (`agnocast_env.launch.py`) is also provided with the same functionality. It sets the same launch configurations (`ld_preload_value`, `container_package`, `container_executable`) that can be referenced via `LaunchConfiguration`.
+A Python launch file (`agnocast_env.launch.py`) is also provided with the same functionality. It accepts the same `use_agnocast` argument and sets the same launch configurations (`ld_preload_value`, `container_package`, `container_executable`) that can be referenced via `LaunchConfiguration`.
 
 Basic usage with a single node:
 
@@ -517,5 +541,7 @@ def generate_launch_description():
 
     return LaunchDescription([agnocast_env, container])
 ```
+
+The same `use_agnocast` override works here too, via `launch_arguments={"use_agnocast": "0"}.items()`.
 
 This ensures that only the intended nodes receive the heaphook, rather than all nodes in the launch tree.
