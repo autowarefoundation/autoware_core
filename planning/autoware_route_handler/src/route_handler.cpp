@@ -296,18 +296,18 @@ void RouteHandler::setMap(const lanelet::LaneletMapConstPtr & lanelet_map_ptr)
       map_msg.version_map_format.c_str(), static_cast<int>(lanelet::autoware::version));
   }
 
-  const auto traffic_rules = lanelet::traffic_rules::TrafficRulesFactory::create(
-    lanelet::Locations::Germany, lanelet::Participants::Vehicle);
+  // The vehicle routing graph for the overall-graph container is identical to
+  // routing_graph_ptr_ (same map, same Germany/Vehicle traffic rules built by
+  // instantiate_routing_graph_and_traffic_rules above), so reuse it instead of
+  // rebuilding a second whole-map RoutingGraph.
   const auto pedestrian_rules = lanelet::traffic_rules::TrafficRulesFactory::create(
     lanelet::Locations::Germany, lanelet::Participants::Pedestrian);
-  const lanelet::routing::RoutingGraphConstPtr vehicle_graph =
-    lanelet::routing::RoutingGraph::build(*lanelet_map_ptr_, *traffic_rules);
   const lanelet::routing::RoutingGraphConstPtr pedestrian_graph =
     lanelet::routing::RoutingGraph::build(*lanelet_map_ptr_, *pedestrian_rules);
-  const lanelet::routing::RoutingGraphContainer overall_graphs({vehicle_graph, pedestrian_graph});
+  const lanelet::routing::RoutingGraphContainer overall_graphs(
+    {routing_graph_ptr_, pedestrian_graph});
   overall_graphs_ptr_ =
     std::make_shared<const lanelet::routing::RoutingGraphContainer>(overall_graphs);
-  lanelet::ConstLanelets all_lanelets = lanelet::utils::query::laneletLayer(lanelet_map_ptr_);
 
   is_map_msg_ready_ = true;
   is_handler_ready_ = false;
@@ -336,6 +336,10 @@ void RouteHandler::setMap(const LaneletMapBin & map_msg)
       map_msg.version_map_format.c_str(), static_cast<int>(lanelet::autoware::version));
   }
 
+  // NOTE: routing_graph_ptr_ above is built with the Autoware participant rules
+  // (lanelet::autoware::DefaultLocation), which permit routing through areas. The
+  // overall-graph container intentionally keeps the plain Germany/Vehicle vehicle
+  // graph here, so it is built separately rather than reusing routing_graph_ptr_.
   const auto traffic_rules = lanelet::traffic_rules::TrafficRulesFactory::create(
     lanelet::Locations::Germany, lanelet::Participants::Vehicle);
   const auto pedestrian_rules = lanelet::traffic_rules::TrafficRulesFactory::create(
@@ -347,7 +351,6 @@ void RouteHandler::setMap(const LaneletMapBin & map_msg)
   const lanelet::routing::RoutingGraphContainer overall_graphs({vehicle_graph, pedestrian_graph});
   overall_graphs_ptr_ =
     std::make_shared<const lanelet::routing::RoutingGraphContainer>(overall_graphs);
-  lanelet::ConstLanelets all_lanelets = lanelet::utils::query::laneletLayer(lanelet_map_ptr_);
 
   is_map_msg_ready_ = true;
   is_handler_ready_ = false;
