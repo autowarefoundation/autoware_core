@@ -25,7 +25,7 @@
 namespace autoware::point_types
 {
 
-bool is_data_layout_compatible_with_point_xyzi(
+inline bool is_data_layout_compatible_with_point_xyzi(
   const std::vector<sensor_msgs::msg::PointField> & fields)
 {
   using PointIndex = autoware::point_types::PointXYZIIndex;
@@ -58,12 +58,12 @@ bool is_data_layout_compatible_with_point_xyzi(
   return same_layout;
 }
 
-bool is_data_layout_compatible_with_point_xyzi(const sensor_msgs::msg::PointCloud2 & input)
+inline bool is_data_layout_compatible_with_point_xyzi(const sensor_msgs::msg::PointCloud2 & input)
 {
   return is_data_layout_compatible_with_point_xyzi(input.fields);
 }
 
-bool is_data_layout_compatible_with_point_xyzirc(
+inline bool is_data_layout_compatible_with_point_xyzirc(
   const std::vector<sensor_msgs::msg::PointField> & fields)
 {
   using PointIndex = autoware::point_types::PointXYZIRCIndex;
@@ -106,12 +106,12 @@ bool is_data_layout_compatible_with_point_xyzirc(
   return same_layout;
 }
 
-bool is_data_layout_compatible_with_point_xyzirc(const sensor_msgs::msg::PointCloud2 & input)
+inline bool is_data_layout_compatible_with_point_xyzirc(const sensor_msgs::msg::PointCloud2 & input)
 {
   return is_data_layout_compatible_with_point_xyzirc(input.fields);
 }
 
-bool is_data_layout_compatible_with_point_xyziradrt(
+inline bool is_data_layout_compatible_with_point_xyziradrt(
   const std::vector<sensor_msgs::msg::PointField> & fields)
 {
   using PointIndex = autoware::point_types::PointXYZIRADRTIndex;
@@ -169,12 +169,13 @@ bool is_data_layout_compatible_with_point_xyziradrt(
   return same_layout;
 }
 
-bool is_data_layout_compatible_with_point_xyziradrt(const sensor_msgs::msg::PointCloud2 & input)
+inline bool is_data_layout_compatible_with_point_xyziradrt(
+  const sensor_msgs::msg::PointCloud2 & input)
 {
   return is_data_layout_compatible_with_point_xyziradrt(input.fields);
 }
 
-bool is_data_layout_compatible_with_point_xyzircaedt(
+inline bool is_data_layout_compatible_with_point_xyzircaedt(
   const std::vector<sensor_msgs::msg::PointField> & fields)
 {
   using PointIndex = autoware::point_types::PointXYZIRCAEDTIndex;
@@ -237,12 +238,13 @@ bool is_data_layout_compatible_with_point_xyzircaedt(
   return same_layout;
 }
 
-bool is_data_layout_compatible_with_point_xyzircaedt(const sensor_msgs::msg::PointCloud2 & input)
+inline bool is_data_layout_compatible_with_point_xyzircaedt(
+  const sensor_msgs::msg::PointCloud2 & input)
 {
   return is_data_layout_compatible_with_point_xyzircaedt(input.fields);
 }
 
-std::vector<sensor_msgs::msg::PointField> create_fields_point_xyzi()
+inline std::vector<sensor_msgs::msg::PointField> create_fields_point_xyzi()
 {
   using PointIndex = autoware::point_types::PointXYZIIndex;
   using PointType = autoware::point_types::PointXYZI;
@@ -269,7 +271,7 @@ std::vector<sensor_msgs::msg::PointField> create_fields_point_xyzi()
   return fields;
 }
 
-std::vector<sensor_msgs::msg::PointField> create_fields_point_xyzirc()
+inline std::vector<sensor_msgs::msg::PointField> create_fields_point_xyzirc()
 {
   using PointIndex = autoware::point_types::PointXYZIRCIndex;
   using PointType = autoware::point_types::PointXYZIRC;
@@ -307,7 +309,7 @@ std::vector<sensor_msgs::msg::PointField> create_fields_point_xyzirc()
   return fields;
 }
 
-std::vector<sensor_msgs::msg::PointField> create_fields_point_xyziradrt()
+inline std::vector<sensor_msgs::msg::PointField> create_fields_point_xyziradrt()
 {
   using PointIndex = autoware::point_types::PointXYZIRADRTIndex;
   using PointType = autoware::point_types::PointXYZIRADRT;
@@ -360,7 +362,7 @@ std::vector<sensor_msgs::msg::PointField> create_fields_point_xyziradrt()
   return fields;
 }
 
-std::vector<sensor_msgs::msg::PointField> create_fields_point_xyzircaedt()
+inline std::vector<sensor_msgs::msg::PointField> create_fields_point_xyzircaedt()
 {
   using PointIndex = autoware::point_types::PointXYZIRCAEDTIndex;
   using PointType = autoware::point_types::PointXYZIRCAEDT;

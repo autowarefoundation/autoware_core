@@ -15,27 +15,17 @@
 #ifndef TWIST2ACCEL_HPP_
 #define TWIST2ACCEL_HPP_
 
-#include "autoware/signal_processing/lowpass_filter_1d.hpp"
+#include "accel_estimator.hpp"
 
 #include <rclcpp/rclcpp.hpp>
-#include <tf2/LinearMath/Quaternion.hpp>
-#include <tf2/utils.hpp>
 
 #include <geometry_msgs/msg/accel_with_covariance_stamped.hpp>
 #include <geometry_msgs/msg/twist_stamped.hpp>
 #include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 
-#include <chrono>
-#include <fstream>
-#include <iostream>
 #include <memory>
-#include <mutex>
-#include <queue>
-#include <string>
-#include <vector>
-
-using autoware::signal_processing::LowpassFilter1d;
+#include <optional>
 
 namespace autoware::twist2accel
 {
@@ -52,15 +42,9 @@ private:
   rclcpp::Subscription<geometry_msgs::msg::TwistWithCovarianceStamped>::SharedPtr
     sub_twist_;  //!< @brief measurement odometry subscriber
 
-  geometry_msgs::msg::TwistStamped::SharedPtr prev_twist_ptr_;
-  double accel_lowpass_gain_;
+  std::optional<geometry_msgs::msg::TwistStamped> prev_twist_;
   bool use_odom_;
-  std::shared_ptr<LowpassFilter1d> lpf_aax_ptr_;
-  std::shared_ptr<LowpassFilter1d> lpf_aay_ptr_;
-  std::shared_ptr<LowpassFilter1d> lpf_aaz_ptr_;
-  std::shared_ptr<LowpassFilter1d> lpf_alx_ptr_;
-  std::shared_ptr<LowpassFilter1d> lpf_aly_ptr_;
-  std::shared_ptr<LowpassFilter1d> lpf_alz_ptr_;
+  std::unique_ptr<AccelEstimator> accel_estimator_;
 
   /**
    * @brief set odometry measurement
@@ -68,7 +52,7 @@ private:
   void callback_twist_with_covariance(
     const geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr msg);
   void callback_odometry(const nav_msgs::msg::Odometry::SharedPtr msg);
-  void estimate_accel(const geometry_msgs::msg::TwistStamped::SharedPtr msg);
+  void estimate_accel(const geometry_msgs::msg::TwistStamped & twist);
 };
 }  // namespace autoware::twist2accel
 #endif  // TWIST2ACCEL_HPP_

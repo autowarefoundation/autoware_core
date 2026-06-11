@@ -16,12 +16,10 @@
 
 #include <rclcpp/executors.hpp>
 
-#include <geometry_msgs/msg/transform_stamped.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
 
 #include <gtest/gtest.h>
-#include <tf2_ros/static_transform_broadcaster.h>
 
 #include <algorithm>
 #include <array>
@@ -114,9 +112,6 @@ public:
   {
     executor_ = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
 
-    tf_node_ = rclcpp::Node::make_shared("voxel_grid_tf_publisher");
-    static_tf_broadcaster_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(tf_node_);
-
     filter_node_ =
       std::make_shared<autoware::downsample_filters::VoxelGridDownsampleFilter>(filter_options);
 
@@ -132,7 +127,6 @@ public:
         is_received_.store(true);
       });
 
-    executor_->add_node(tf_node_);
     executor_->add_node(filter_node_);
     executor_->add_node(input_pub_node_);
     executor_->add_node(output_sub_node_);
@@ -150,29 +144,9 @@ public:
 
     output_sub_.reset();
     input_pub_.reset();
-    static_tf_broadcaster_.reset();
     output_sub_node_.reset();
     input_pub_node_.reset();
     filter_node_.reset();
-    tf_node_.reset();
-  }
-
-  void publish_static_transform(
-    const std::string & parent_frame, const std::string & child_frame, const double tx,
-    const double ty, const double tz)
-  {
-    geometry_msgs::msg::TransformStamped transform;
-    transform.header.stamp = tf_node_->get_clock()->now();
-    transform.header.frame_id = parent_frame;
-    transform.child_frame_id = child_frame;
-    transform.transform.translation.x = tx;
-    transform.transform.translation.y = ty;
-    transform.transform.translation.z = tz;
-    transform.transform.rotation.x = 0.0;
-    transform.transform.rotation.y = 0.0;
-    transform.transform.rotation.z = 0.0;
-    transform.transform.rotation.w = 1.0;
-    static_tf_broadcaster_->sendTransform(transform);
   }
 
   void publish_points(const std::vector<PointXYZ> & points, const std::string & frame_id)
@@ -217,9 +191,6 @@ private:
   std::shared_ptr<rclcpp::executors::SingleThreadedExecutor> executor_;
   std::thread executor_thread_;
 
-  rclcpp::Node::SharedPtr tf_node_;
-  std::shared_ptr<tf2_ros::StaticTransformBroadcaster> static_tf_broadcaster_;
-
   std::shared_ptr<autoware::downsample_filters::VoxelGridDownsampleFilter> filter_node_;
 
   rclcpp::Node::SharedPtr input_pub_node_;
@@ -263,7 +234,9 @@ TEST(VoxelGridDownsampleFilterIntegrationTest, CollapsesPointsInSameVoxelToSingl
   expect_points_near(output_points, expected_points, 1.0e-4f);
 }
 
-TEST(VoxelGridDownsampleFilterIntegrationTest, DoesNotPublishWhenInputTransformIsMissing)
+TEST(
+  VoxelGridDownsampleFilterIntegrationTest,
+  PublishesOutputEvenWhenInputFrameParameterCannotBeTransformed)
 {
   rclcpp::NodeOptions options;
   options.parameter_overrides({
@@ -281,10 +254,17 @@ TEST(VoxelGridDownsampleFilterIntegrationTest, DoesNotPublishWhenInputTransformI
     {0.1f, 0.1f, 0.1f},
     {0.2f, 0.2f, 0.2f},
   };
+  const std::vector<PointXYZ> expected_points = {
+    {0.15f, 0.15f, 0.15f},
+  };
   harness.publish_points(input_points, "missing_source_frame");
 
-  EXPECT_FALSE(harness.wait_for_output(std::chrono::milliseconds(1000)));
-  EXPECT_EQ(harness.received_cloud(), nullptr);
+  ASSERT_TRUE(harness.wait_for_output(std::chrono::milliseconds(5000)));
+  ASSERT_NE(harness.received_cloud(), nullptr);
+
+  const auto output_points = extract_points_from_cloud(*harness.received_cloud());
+  EXPECT_EQ(harness.received_cloud()->header.frame_id, "missing_source_frame");
+  expect_points_near(output_points, expected_points, 1.0e-4f);
 }
 
 TEST(VoxelGridDownsampleFilterIntegrationTest, EmptyInputResultsInEmptyOutput)
@@ -373,10 +353,9 @@ TEST(
   expect_points_near(output_points, expected_points, 0.01f);
 }
 
-// TODO(sasakisasaki): Re-enable after fixing the bug
 TEST(
   VoxelGridDownsampleFilterIntegrationTest,
-  DISABLED_OutputFrameParameterShouldSetOutputFrameIdToOutputFrame)
+  OutputFrameParameterDoesNotRewriteFrameIdOrTransformPoints)
 {
   rclcpp::NodeOptions options;
   options.parameter_overrides({
@@ -389,13 +368,12 @@ TEST(
   });
 
   VoxelGridIntegrationHarness harness(options);
-  harness.publish_static_transform("map", "sensor_frame", 1.5, 0.0, 0.0);
 
   const std::vector<PointXYZ> input_points = {
     {1.0f, 2.0f, 3.0f},
   };
   const std::vector<PointXYZ> expected_points = {
-    {2.5f, 2.0f, 3.0f},
+    {1.0f, 2.0f, 3.0f},
   };
   harness.publish_points(input_points, "sensor_frame");
 
@@ -403,8 +381,7 @@ TEST(
   ASSERT_NE(harness.received_cloud(), nullptr);
 
   const auto output_points = extract_points_from_cloud(*harness.received_cloud());
-  // FIXME: Expected behavior after bug fix: output cloud should use output_frame in header.
-  EXPECT_EQ(harness.received_cloud()->header.frame_id, "map");
+  EXPECT_EQ(harness.received_cloud()->header.frame_id, "sensor_frame");
   expect_points_near(output_points, expected_points, 1.0e-4f);
 }
 
