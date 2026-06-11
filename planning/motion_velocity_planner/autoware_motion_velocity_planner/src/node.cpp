@@ -15,6 +15,7 @@
 #include "node.hpp"
 
 #include "autoware/motion_velocity_planner_common/utils.hpp"
+#include "node_utils.hpp"
 
 #include <autoware/motion_utils/resample/resample.hpp>
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
@@ -287,36 +288,10 @@ void MotionVelocityPlannerNode::on_lanelet_map(
 void MotionVelocityPlannerNode::process_traffic_signals(
   const autoware_perception_msgs::msg::TrafficLightGroupArray::ConstSharedPtr msg)
 {
-  // clear previous observation
-  planner_data_->traffic_light_id_map_raw_.clear();
-  const auto traffic_light_id_map_last_observed_old =
-    planner_data_->traffic_light_id_map_last_observed_;
-  planner_data_->traffic_light_id_map_last_observed_.clear();
-  for (const auto & signal : msg->traffic_light_groups) {
-    TrafficSignalStamped traffic_signal;
-    traffic_signal.stamp = msg->stamp;
-    traffic_signal.signal = signal;
-    planner_data_->traffic_light_id_map_raw_[signal.traffic_light_group_id] = traffic_signal;
-    const bool is_unknown_observation =
-      std::any_of(signal.elements.begin(), signal.elements.end(), [](const auto & element) {
-        return element.color == autoware_perception_msgs::msg::TrafficLightElement::UNKNOWN;
-      });
-    // if the observation is UNKNOWN and past observation is available, only update the timestamp
-    // and keep the body of the info
-    const auto old_data =
-      traffic_light_id_map_last_observed_old.find(signal.traffic_light_group_id);
-    if (is_unknown_observation && old_data != traffic_light_id_map_last_observed_old.end()) {
-      // copy last observation
-      planner_data_->traffic_light_id_map_last_observed_[signal.traffic_light_group_id] =
-        old_data->second;
-      // update timestamp
-      planner_data_->traffic_light_id_map_last_observed_[signal.traffic_light_group_id].stamp =
-        msg->stamp;
-    } else {
-      planner_data_->traffic_light_id_map_last_observed_[signal.traffic_light_group_id] =
-        traffic_signal;
-    }
-  }
+  auto processed =
+    utils::process_traffic_signals(*msg, planner_data_->traffic_light_id_map_last_observed_);
+  planner_data_->traffic_light_id_map_raw_ = std::move(processed.raw);
+  planner_data_->traffic_light_id_map_last_observed_ = std::move(processed.last_observed);
 }
 
 void MotionVelocityPlannerNode::on_trajectory(
@@ -429,20 +404,10 @@ autoware_planning_msgs::msg::Trajectory MotionVelocityPlannerNode::generate_traj
   processing_times["velocity_smoothing"] = stop_watch.toc("smooth");
 
   stop_watch.tic("resample");
-  TrajectoryPoints resampled_smoothed_trajectory_points;
   // skip points that are too close together to make computation easier
-  if (!smoothed_trajectory_points.empty()) {
-    resampled_smoothed_trajectory_points.push_back(smoothed_trajectory_points.front());
-    constexpr auto min_interval_squared = 0.5 * 0.5;  // TODO(Maxime): change to a parameter
-    for (auto i = 1UL; i < smoothed_trajectory_points.size(); ++i) {
-      const auto & p = smoothed_trajectory_points[i];
-      const auto dist_to_prev_point = autoware_utils_geometry::calc_squared_distance2d(
-        resampled_smoothed_trajectory_points.back(), p);
-      if (dist_to_prev_point > min_interval_squared) {
-        resampled_smoothed_trajectory_points.push_back(p);
-      }
-    }
-  }
+  constexpr auto min_interval_squared = 0.5 * 0.5;  // TODO(Maxime): change to a parameter
+  auto resampled_smoothed_trajectory_points =
+    utils::resample_trajectory_by_min_interval(smoothed_trajectory_points, min_interval_squared);
   processing_times["resample"] = stop_watch.toc("resample");
   stop_watch.tic("calculate_time_from_start");
   motion_utils::calculate_time_from_start(
