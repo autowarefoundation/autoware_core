@@ -335,7 +335,7 @@ namespace autoware::control::simple_pure_pursuit
 
             // ================== TESTING AREA HERE ==================
 
-            // Standard happy case test:
+            // TEST 1. Standard happy case test:
             // - Straight trajectory
             // - Vehicle starts at beginning, 0 yaw, 1 m/s velocity
             // => Expect to receive 1 m/s velocity, and 0 steering angle within timeout
@@ -396,7 +396,7 @@ namespace autoware::control::simple_pure_pursuit
 
             };
 
-            // Synchronization safety check
+            // TEST 2. Synchronization safety check
             // Same standard happy case as above, but delayed between odom and traj publishes
             TEST(
                 SimplePurePursuitIntegrationTest, 
@@ -439,7 +439,7 @@ namespace autoware::control::simple_pure_pursuit
 
             };
 
-            // Goal stop command test
+            // TEST 3. Goal stop command test
             // Same straight traj, vehicle starts at traj end
             // Expected 0 velocity
             TEST(
@@ -488,6 +488,51 @@ namespace autoware::control::simple_pure_pursuit
                 );
                 EXPECT_TRUE(control->longitudinal.is_defined_acceleration);
 
+            };
+
+            // TEST 4. Empty trajectory safety check
+            // Same vehicle state as TEST 1 & 2 but empty trajectory
+            // Expect to receive 0 velocity command within timeout (at least it ain't no command or crash)
+            TEST(
+                SimplePurePursuitIntegrationTest, 
+                PublishesZeroCommandForEmptyTrajectory
+            ) {
+                
+                SimplePurePursuitIntegrationHarness harness(make_node_options());
+
+                const auto stamp = harness.now();
+                const auto odom = make_odometry(
+                    0.0, 0.0, 0.0, 0.0, 
+                    stamp
+                );
+                // Empty traj
+                Trajectory traj;
+                traj.header.frame_id = "map";
+                traj.header.stamp = stamp;
+                
+                harness.publish_inputs(odom, traj);
+
+                // Check receiving control command within timeout
+                ASSERT_TRUE(
+                    harness.wait_for_output(
+                        std::chrono::duration_cast<std::chrono::milliseconds>(output_timeout)
+                    )
+                );
+
+                // Check non-nullptr and expected values
+                const auto control = harness.received_control();
+                ASSERT_NE(control, nullptr);
+
+                // Expected 0 velocity and 0 accel
+                EXPECT_FLOAT_EQ(
+                    control->longitudinal.velocity, 
+                    0.0F
+                );
+                EXPECT_FLOAT_EQ(
+                    control->longitudinal.acceleration, 
+                    0.0F
+                );
+                
             }
 
     }; // namespace
