@@ -394,6 +394,49 @@ namespace autoware::control::simple_pure_pursuit
 
             };
 
+            // Synchronization safety check
+            // Same standard happy case as above, but delayed between odom and traj publishes
+            TEST(
+                SimplePurePursuitIntegrationTest, 
+                DoesNotPublishUntilBothInputsAreAvailable
+            ) {
+                
+                SimplePurePursuitIntegrationHarness harness(make_node_options());
+
+                const auto stamp = harness.now();
+                const auto odom = make_odometry(
+                    0.0, 0.0, 0.0, 0.0, 
+                    stamp
+                );
+                const auto traj = make_straight_trajectory(
+                    {0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0}, 
+                    1.0, 
+                    stamp
+                );
+
+                // Publish odom first
+                // Expect no received command cuz traj is not published yet
+                harness.publish_odometry(odom);
+                EXPECT_FALSE(
+                    harness.wait_for_output(
+                        std::chrono::duration_cast<std::chrono::milliseconds>(no_output_timeout)
+                    )
+                );
+
+                // Then publish traj
+                // Expect to receive command within timeout
+                harness.publish_inputs(
+                    odom, 
+                    traj
+                );
+                ASSERT_TRUE(
+                    harness.wait_for_output(
+                        std::chrono::duration_cast<std::chrono::milliseconds>(output_timeout)
+                    )
+                );
+
+            };
+
     }; // namespace
 
 }; // namespace autoware::control::simple_pure_pursuit
