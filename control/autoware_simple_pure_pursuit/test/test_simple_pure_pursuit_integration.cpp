@@ -575,7 +575,8 @@ namespace autoware::control::simple_pure_pursuit
                 // Check non-nullptr and expected values
                 ASSERT_NE(control, nullptr);
 
-                // Expected ext. vel 2.5 m/s, not traj's 1.0 m/s
+                // Expected ext. vel 2.5 m/s, not traj's 1.0 m/s or car's current 0.5 m/s
+                // Basically ext. vel is used properly
                 EXPECT_FLOAT_EQ(
                     control->longitudinal.velocity, 
                     2.5F
