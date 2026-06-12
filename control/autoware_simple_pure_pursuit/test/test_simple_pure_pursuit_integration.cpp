@@ -11,3 +11,20 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+#include "simple_pure_pursuit.hpp"
+
+#include <ament_index_cpp/get_package_share_directory.hpp>
+#include <autoware_test_utils/autoware_test_utils.hpp>
+
+#include <autoware_control_msgs/msg/control.hpp>
+#include <autoware_planning_msgs/msg/trajectory.hpp>
+#include <nav_msgs/msg/odometry.hpp>
+
+#include <gtest/gtest.h>
+#include <rclcpp/executors.hpp>
+#include <rclcpp/rclcpp.hpp>
+
+#include <cmath>
+#include <memory>
+
