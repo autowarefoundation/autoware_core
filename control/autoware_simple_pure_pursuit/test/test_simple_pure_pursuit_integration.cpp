@@ -106,6 +106,39 @@ namespace autoware::control::simple_pure_pursuit
 
         };
 
+        /**
+        * @brief Create a NodeOptions with some given overrides and some default config files.
+        *
+        * @param overrides a vector of pairs of <param name, param value> to override default ones.
+        *
+        * @return NodeOptions with given overrides and default config files.
+        */
+        rclcpp::NodeOptions make_node_options(
+            const std::vector<std::pair<std::string, rclcpp::ParameterValue>> & overrides = {}
+        ) {
+            
+            const auto autoware_test_utils_dir =
+                ament_index_cpp::get_package_share_directory("autoware_test_utils");
+            const auto autoware_simple_pure_pursuit_dir =
+                ament_index_cpp::get_package_share_directory("autoware_simple_pure_pursuit");
+
+            auto node_options = rclcpp::NodeOptions{};
+            autoware::test_utils::updateNodeOptions(
+                node_options,
+                {
+                    autoware_test_utils_dir + "/config/test_vehicle_info.param.yaml",
+                    autoware_simple_pure_pursuit_dir + "/config/simple_pure_pursuit.param.yaml"
+                }
+            );
+
+            for (const auto & [name, value] : overrides) {
+                node_options.append_parameter_override(name, value);
+            }
+
+            return node_options;
+
+        };
+
     }; // namespace
 
 }; // namespace autoware::control::simple_pure_pursuit
