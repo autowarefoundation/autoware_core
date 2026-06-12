@@ -436,6 +436,34 @@ TEST(SimplePurePursuitIntegrationTest, UsesExternalTargetVelocityWhenEnabled)
   EXPECT_FLOAT_EQ(control->lateral.steering_tire_angle, 0.0F);
 };
 
+// TEST 6. Lateral offset check
+// Straight traj along Y=0, but vehicle starts at Y=1.0 (1 m offset to the left of traj), facing +X, stopped
+// Expect to receive control command with negative steering angle (right turn) within timeout
+// (that it can calculate correct steering for lateral offset and not just output 0)
+TEST(SimplePurePursuitIntegrationTest, PublishesNonZeroSteeringForLateralOffset)
+{
+  SimplePurePursuitIntegrationHarness harness(make_node_options());
+
+  const auto stamp = harness.now();
+  const auto odom = make_odometry(0.0, 1.0, 0.0, 0.0, stamp);
+  const auto traj = make_straight_trajectory({0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0}, 1.0, stamp);
+
+  harness.publish_inputs(odom, traj);
+
+  // Check receiving control command within timeout
+  ASSERT_TRUE(
+    harness.wait_for_output(std::chrono::duration_cast<std::chrono::milliseconds>(output_timeout)));
+
+  // Check non-nullptr and expected values
+  const auto control = harness.received_control();
+  ASSERT_NE(control, nullptr);
+
+  // Expected negative steering angle to correct 1 m lateral offset to the right, not 0
+  // Already confirmed via test run during dev
+  EXPECT_NEAR(control->lateral.steering_tire_angle, -0.82152F, 1e-2F);
+
+};
+
 };  // namespace
 
 };  // namespace autoware::control::simple_pure_pursuit
