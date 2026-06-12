@@ -14,17 +14,76 @@
 
 #include "command_gate_mode_builder.hpp"
 
+#include <autoware_common_msgs/msg/response_status.hpp>
+
+#include <optional>
 #include <string>
 
 namespace autoware::control::command_gate
 {
+
+std::optional<ModeOutputs> CommandGateModeBuilder::create_mode_output(
+  const Request & request, const builtin_interfaces::msg::Time & stamp)
+{
+  return dispatch_mode(request.mode, stamp);
+}
+
+CommandGateModeBuilder::Response CommandGateModeBuilder::create_response(
+  const Request & request, const builtin_interfaces::msg::Time & /*stamp*/)
+{
+  Response response;
+  const auto message = success_message(request.mode);
+  if (!message) {
+    response.status.success = false;
+    response.status.code = autoware_common_msgs::msg::ResponseStatus::PARAMETER_ERROR;
+    response.status.message = "Unknown operation mode requested.";
+    return response;
+  }
+
+  response.status.success = true;
+  response.status.code = 0;  // 0 represents success (no specific success code defined)
+  response.status.message = *message;
+  return response;
+}
+
+std::optional<std::string> CommandGateModeBuilder::success_message(uint16_t mode)
+{
+  switch (mode) {
+    case Request::STOP:
+      return "Switched to STOP";
+    case Request::AUTONOMOUS:
+      return "Switched to AUTONOMOUS";
+    case Request::LOCAL:
+      return "Switched to LOCAL";
+    case Request::REMOTE:
+      return "Switched to REMOTE";
+    default:
+      return std::nullopt;
+  }
+}
+
+std::optional<ModeOutputs> CommandGateModeBuilder::dispatch_mode(
+  uint16_t mode, const builtin_interfaces::msg::Time & stamp)
+{
+  switch (mode) {
+    case Request::STOP:
+      return make_stop(stamp);
+    case Request::AUTONOMOUS:
+      return make_autonomous(stamp);
+    case Request::LOCAL:
+      return make_local(stamp);
+    case Request::REMOTE:
+      return make_remote(stamp);
+    default:
+      return std::nullopt;
+  }
+}
 
 ModeOutputs CommandGateModeBuilder::make_stop(const builtin_interfaces::msg::Time & stamp)
 {
   ModeOutputs outputs;
   fill_state(outputs.state, autoware_adapi_v1_msgs::msg::OperationModeState::STOP, stamp);
   fill_gear(outputs.gear, autoware_vehicle_msgs::msg::GearCommand::PARK, stamp);
-  outputs.status = make_status("Switched to STOP");
   return outputs;
 }
 
@@ -33,7 +92,6 @@ ModeOutputs CommandGateModeBuilder::make_autonomous(const builtin_interfaces::ms
   ModeOutputs outputs;
   fill_state(outputs.state, autoware_adapi_v1_msgs::msg::OperationModeState::AUTONOMOUS, stamp);
   fill_gear(outputs.gear, autoware_vehicle_msgs::msg::GearCommand::DRIVE, stamp);
-  outputs.status = make_status("Switched to AUTONOMOUS");
   return outputs;
 }
 
@@ -42,7 +100,6 @@ ModeOutputs CommandGateModeBuilder::make_local(const builtin_interfaces::msg::Ti
   ModeOutputs outputs;
   fill_state(outputs.state, autoware_adapi_v1_msgs::msg::OperationModeState::LOCAL, stamp);
   fill_gear(outputs.gear, autoware_vehicle_msgs::msg::GearCommand::NONE, stamp);
-  outputs.status = make_status("Switched to LOCAL");
   return outputs;
 }
 
@@ -51,7 +108,6 @@ ModeOutputs CommandGateModeBuilder::make_remote(const builtin_interfaces::msg::T
   ModeOutputs outputs;
   fill_state(outputs.state, autoware_adapi_v1_msgs::msg::OperationModeState::REMOTE, stamp);
   fill_gear(outputs.gear, autoware_vehicle_msgs::msg::GearCommand::NONE, stamp);
-  outputs.status = make_status("Switched to REMOTE");
   return outputs;
 }
 
@@ -76,16 +132,6 @@ void CommandGateModeBuilder::fill_gear(
 {
   msg.stamp = stamp;
   msg.command = command;
-}
-
-autoware_adapi_v1_msgs::msg::ResponseStatus CommandGateModeBuilder::make_status(
-  const std::string & message)
-{
-  autoware_adapi_v1_msgs::msg::ResponseStatus status;
-  status.success = true;
-  status.code = 0;  // 0 represents success (no specific success code defined)
-  status.message = message;
-  return status;
 }
 
 }  // namespace autoware::control::command_gate
