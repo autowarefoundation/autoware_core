@@ -532,8 +532,69 @@ namespace autoware::control::simple_pure_pursuit
                     control->longitudinal.acceleration, 
                     0.0F
                 );
+
+            };
+
+            // TEST 5. External target velocity test
+            // Same straight traj and vehicle state as TEST 1, but with external target velocity enabled at 2.5 m/s
+            // Expect to receive 2.5 m/s velocity command within timeout (that ext. vel is used properly)
+            TEST(
+                SimplePurePursuitIntegrationTest, 
+                UsesExternalTargetVelocityWhenEnabled
+            ) {
                 
-            }
+                SimplePurePursuitIntegrationHarness harness(
+                    make_node_options({
+                        {"use_external_target_vel", rclcpp::ParameterValue{true}},
+                        {"external_target_vel", rclcpp::ParameterValue{2.5}},
+                    })
+                );
+
+                const auto stamp = harness.now();
+                const auto odom = make_odometry(
+                    0.0, 0.0, 0.0, 0.5, 
+                    stamp
+                );
+                const auto traj = make_straight_trajectory(
+                    {0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0}, 
+                    1.0, 
+                    stamp
+                );
+
+                harness.publish_inputs(odom, traj);
+
+                // Check receiving control command within timeout
+                ASSERT_TRUE(
+                    harness.wait_for_output(
+                        std::chrono::duration_cast<std::chrono::milliseconds>(output_timeout)
+                    )
+                );
+
+                const auto control = harness.received_control();
+
+                // Check non-nullptr and expected values
+                ASSERT_NE(control, nullptr);
+
+                // Expected ext. vel 2.5 m/s, not traj's 1.0 m/s
+                EXPECT_FLOAT_EQ(
+                    control->longitudinal.velocity, 
+                    2.5F
+                );
+
+                // Car goin 0.5 m/s, target 2.5 m/s, so expect accel 2.0 m/s^2
+                // Already confirmed via test run during dev
+                EXPECT_FLOAT_EQ(
+                    control->longitudinal.acceleration, 
+                    2.0F
+                );
+
+                // Expected 0 steering angle for straight traj
+                EXPECT_FLOAT_EQ(
+                    control->lateral.steering_tire_angle, 
+                    0.0F
+                );
+
+            };
 
     }; // namespace
 
