@@ -28,3 +28,20 @@
 #include <cmath>
 #include <memory>
 
+
+namespace autoware::control::simple_pure_pursuit
+{
+
+    using autoware_control_msgs::msg::Control;
+    using autoware_planning_msgs::msg::Trajectory;
+    using autoware_planning_msgs::msg::TrajectoryPoint;
+    using nav_msgs::msg::Odometry;
+
+    namespace
+    {
+
+        
+
+    }
+
+}
