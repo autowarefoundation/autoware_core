@@ -19,15 +19,29 @@
 #include <memory>
 #include <string>
 
-TEST(PlanningTestManager, CommunicationTest)
+class PlanningTestManagerTest : public ::testing::Test
+{
+protected:
+  void SetUp() override
+  {
+    rclcpp::init(0, nullptr);
+  }
+
+  void TearDown() override
+  {
+    if (rclcpp::ok()) {
+      rclcpp::shutdown();
+    }
+  }
+};
+
+TEST_F(PlanningTestManagerTest, CommunicationTest)
 {
   using autoware_internal_planning_msgs::msg::PathWithLaneId;
   using autoware_planning_msgs::msg::LaneletRoute;
   using autoware_planning_msgs::msg::Path;
   using autoware_planning_msgs::msg::Trajectory;
   using nav_msgs::msg::Odometry;
-
-  rclcpp::init(0, nullptr);
 
   // instantiate test_manager with PlanningInterfaceTestManager type
   auto test_manager =
@@ -97,17 +111,12 @@ TEST(PlanningTestManager, CommunicationTest)
   test_manager->subscribeOutput<Odometry>("off_track_odometry_for_test");
   test_manager->testWithOffTrackOdometry(test_target_node, "off_track_odometry_for_test");
   EXPECT_GE(test_manager->getReceivedTopicNum(), 1);
-
-  // shutdown ROS context
-  rclcpp::shutdown();
 }
 
-TEST(PlanningTestManager, CallbackSubscriptionTest)
+TEST_F(PlanningTestManagerTest, CallbackSubscriptionTest)
 {
   using nav_msgs::msg::Odometry;
   const std::string off_track_odometry_topic = "off_track_odometry_for_test";
-
-  rclcpp::init(0, nullptr);
 
   auto test_manager =
     std::make_shared<autoware::planning_test_manager::PlanningInterfaceTestManager>();
@@ -120,15 +129,12 @@ TEST(PlanningTestManager, CallbackSubscriptionTest)
     [&off_track_odometry](const Odometry::ConstSharedPtr & msg) { off_track_odometry = *msg; });
   test_manager->testWithOffTrackOdometry(test_target_node, off_track_odometry_topic);
   ASSERT_TRUE(off_track_odometry.has_value());
-
-  rclcpp::shutdown();
 }
 
-TEST(PlanningTestManager, CallbackSubscriptionTestWithMsgValidation)
+TEST_F(PlanningTestManagerTest, CallbackSubscriptionTestWithMsgValidation)
 {
   using nav_msgs::msg::Odometry;
   const std::string off_track_odometry_topic = "off_track_odometry_for_test";
-  rclcpp::init(0, nullptr);
 
   auto test_manager =
     std::make_shared<autoware::planning_test_manager::PlanningInterfaceTestManager>();
@@ -144,6 +150,4 @@ TEST(PlanningTestManager, CallbackSubscriptionTestWithMsgValidation)
   test_manager->publishInput(test_target_node, off_track_odometry_topic, msg);
   ASSERT_TRUE(off_track_odometry.has_value());
   EXPECT_DOUBLE_EQ(off_track_odometry->pose.pose.position.x, 10.0);
-
-  rclcpp::shutdown();
 }
