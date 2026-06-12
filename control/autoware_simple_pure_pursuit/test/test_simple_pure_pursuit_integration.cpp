@@ -440,9 +440,9 @@ TEST(SimplePurePursuitIntegrationTest, UsesExternalTargetVelocityWhenEnabled)
 };
 
 // TEST 6. Lateral offset check
-// Straight traj along Y=0, but vehicle starts at Y=1.0 (1 m offset to the left of traj), facing +X, stopped
-// Expect to receive control command with negative steering angle (right turn) within timeout
-// (that it can calculate correct steering for lateral offset and not just output 0)
+// Straight traj along Y=0, but vehicle starts at Y=1.0 (1 m offset to the left of traj), facing +X,
+// stopped Expect to receive control command with negative steering angle (right turn) within
+// timeout (that it can calculate correct steering for lateral offset and not just output 0)
 TEST(SimplePurePursuitIntegrationTest, PublishesNonZeroSteeringForLateralOffset)
 {
   SimplePurePursuitIntegrationHarness harness(make_node_options());
@@ -464,7 +464,6 @@ TEST(SimplePurePursuitIntegrationTest, PublishesNonZeroSteeringForLateralOffset)
   // Expected negative steering angle to correct 1 m lateral offset to the right, not 0
   // Already confirmed via test run during dev
   EXPECT_NEAR(control->lateral.steering_tire_angle, -0.82152F, near_tol);
-
 };
 
 };  // namespace
