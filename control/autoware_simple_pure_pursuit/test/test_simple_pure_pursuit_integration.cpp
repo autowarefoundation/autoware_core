@@ -473,18 +473,20 @@ namespace autoware::control::simple_pure_pursuit
                 const auto control = harness.received_control();
                 ASSERT_NE(control, nullptr);
 
-                // // Expected 0 velocity
-                // EXPECT_FLOAT_EQ(
-                //     control->longitudinal.velocity, 
-                //     0.0F
-                // );
+                // Expected 0 velocity
+                EXPECT_FLOAT_EQ(
+                    control->longitudinal.velocity, 
+                    0.0F
+                );
 
-                // // Expected strong deceleration
-                // EXPECT_FLOAT_EQ(control->longitudinal.acceleration, -10.0F);
-                // EXPECT_TRUE(control->longitudinal.is_defined_acceleration);
-
-                std::cout << "GOLDEN MASTER TERMINAL VELOCITY: " << control->longitudinal.velocity << std::endl;
-                std::cout << "GOLDEN MASTER TERMINAL ACCELERATION: " << control->longitudinal.acceleration << std::endl;
+                // Expected strong deceleration
+                // Here I already checked during development that terminal decel value is -10
+                // Seems like this module hard-coded this value. Imma freezin it here as characterization test
+                EXPECT_FLOAT_EQ(
+                    control->longitudinal.acceleration, 
+                    -10.0F
+                );
+                EXPECT_TRUE(control->longitudinal.is_defined_acceleration);
 
             }
 
