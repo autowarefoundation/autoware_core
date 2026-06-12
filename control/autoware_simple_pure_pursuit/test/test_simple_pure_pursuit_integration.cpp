@@ -164,36 +164,36 @@ namespace autoware::control::simple_pure_pursuit
                     
                     executor_ = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
 
-                    target_node = std::make_shared<SimplePurePursuitNode>(node_options);
-                    input_pub_node = rclcpp::Node::make_shared("simple_pure_pursuit_test_input_publisher");
-                    output_sub_node = rclcpp::Node::make_shared("simple_pure_pursuit_test_output_subscriber");
+                    target_node_ = std::make_shared<SimplePurePursuitNode>(node_options);
+                    input_pub_node_ = rclcpp::Node::make_shared("simple_pure_pursuit_test_input_publisher");
+                    output_sub_node_ = rclcpp::Node::make_shared("simple_pure_pursuit_test_output_subscriber");
 
-                    odom_pub = input_pub_node -> create_publisher<Odometry>(
+                    odom_pub_ = input_pub_node_ -> create_publisher<Odometry>(
                         "/simple_pure_pursuit/input/odometry", 
                         rclcpp::QoS{1}
                     );
-                    traj_pub = input_pub_node -> create_publisher<Trajectory>(
+                    traj_pub_ = input_pub_node_ -> create_publisher<Trajectory>(
                         "/simple_pure_pursuit/input/trajectory", 
                         rclcpp::QoS{1}
                     );
-                    control_sub = output_sub_node -> create_subscription<Control>(
+                    control_sub_ = output_sub_node_ -> create_subscription<Control>(
                         "/simple_pure_pursuit/output/control_command", 
                         rclcpp::QoS{1}.transient_local(),
                         [this](const Control::SharedPtr msg) {
                             {
-                            std::scoped_lock lock(received_control_mutex);
-                            received_control = msg;
+                            std::scoped_lock lock(received_control_mutex_);
+                            received_control_ = msg;
                             }
                             is_received_.store(true);
                         }
                     );
 
-                    executor -> add_node(target_node);
-                    executor -> add_node(input_pub_node);
-                    executor -> add_node(output_sub_node);
+                    executor_ -> add_node(target_node_);
+                    executor_ -> add_node(input_pub_node_);
+                    executor_ -> add_node(output_sub_node_);
 
                     // Spin it up!
-                    executor_thread = std::thread([this]() { executor -> spin(); });
+                    executor_thread_ = std::thread([this]() { executor_ -> spin(); });
                     (void)wait_for_connections(connection_timeout);
 
                 };
@@ -208,25 +208,25 @@ namespace autoware::control::simple_pure_pursuit
                 ~SimplePurePursuitIntegrationHarness()
                 {
                     
-                    executor -> cancel();
-                    if (executor_thread.joinable()) {
-                        executor_thread.join();
+                    executor_ -> cancel();
+                    if (executor_thread_.joinable()) {
+                        executor_thread_.join();
                     }
 
-                    control_sub.reset();
-                    traj_pub.reset();
-                    odom_pub.reset();
-                    output_sub_node.reset();
-                    input_pub_node.reset();
-                    target_node.reset();
-                    executor.reset();
+                    control_sub_.reset();
+                    traj_pub_.reset();
+                    odom_pub_.reset();
+                    output_sub_node_.reset();
+                    input_pub_node_.reset();
+                    target_node_.reset();
+                    executor_.reset();
 
                 };
 
                 // Get time now from input_pub_node's clock
                 [[nodiscard]] builtin_interfaces::msg::Time now() const
                 {
-                    return input_pub_node -> get_clock() -> now();
+                    return input_pub_node_ -> get_clock() -> now();
                 };
 
                 // Funcs to publish odometry, trajectory or both as inputs to target node
@@ -234,14 +234,14 @@ namespace autoware::control::simple_pure_pursuit
                     const Odometry & odom
                 ) {
                     clear_received_control();
-                    odom_pub -> publish(odom);
+                    odom_pub_ -> publish(odom);
                 };
 
                 void publish_trajectory(
                     const Trajectory & traj
                 ) {
                     clear_received_control();
-                    traj_pub -> publish(traj);
+                    traj_pub_ -> publish(traj);
                 };
 
                 void publish_inputs(
@@ -249,8 +249,8 @@ namespace autoware::control::simple_pure_pursuit
                     const Trajectory & traj
                 ) {
                     clear_received_control();
-                    odom_pub -> publish(odom);
-                    traj_pub -> publish(traj);
+                    odom_pub_ -> publish(odom);
+                    traj_pub_ -> publish(traj);
                 };
 
                 // Return true if received control command within timeout, false otherwise
@@ -274,8 +274,8 @@ namespace autoware::control::simple_pure_pursuit
                 // Return true if control command received
                 [[nodiscard]] Control::SharedPtr received_control() const
                 {
-                    std::scoped_lock lock(received_control_mutex);
-                    return received_control;
+                    std::scoped_lock lock(received_control_mutex_);
+                    return received_control_;
                 };
 
             private:
@@ -283,9 +283,9 @@ namespace autoware::control::simple_pure_pursuit
                 // Simple nuke received control command to prepare for next test case
                 void clear_received_control()
                 {
-                    is_received.store(false);
-                    std::scoped_lock lock(received_control_mutex);
-                    received_control.reset();
+                    is_received_.store(false);
+                    std::scoped_lock lock(received_control_mutex_);
+                    received_control_.reset();
                 };
 
                 // Wait until all publishers and subscribers are connected or timeout happens, 
@@ -298,9 +298,9 @@ namespace autoware::control::simple_pure_pursuit
                     // Wait until all connections are established or timeout happens
                     while (
                         (
-                            (odom_pub -> get_subscription_count() == 0U) || 
-                            (traj_pub -> get_subscription_count() == 0U) ||
-                            (control_sub -> get_publisher_count() == 0U)
+                            (odom_pub_ -> get_subscription_count() == 0U) || 
+                            (traj_pub_ -> get_subscription_count() == 0U) ||
+                            (control_sub_ -> get_publisher_count() == 0U)
                         ) && (
                             (std::chrono::steady_clock::now() - start <= timeout)
                         )
@@ -309,27 +309,29 @@ namespace autoware::control::simple_pure_pursuit
                     }
 
                     return (
-                        (odom_pub -> get_subscription_count() > 0U) && 
-                        (traj_pub -> get_subscription_count() > 0U) &&
+                        (odom_pub_ -> get_subscription_count() > 0U) && 
+                        (traj_pub_ -> get_subscription_count() > 0U) &&
                         (control_sub_->get_publisher_count() > 0U)
                     );
 
                 };
 
                 // Consts for connection and receiving timeouts and spin sleep duration
-                std::shared_ptr<rclcpp::executors::SingleThreadedExecutor> executor{nullptr};
-                std::thread executor_thread;
+                std::shared_ptr<rclcpp::executors::SingleThreadedExecutor> executor_{nullptr};
+                std::thread executor_thread_;
 
-                std::shared_ptr<SimplePurePursuitNode> target_node{nullptr};
-                rclcpp::Node::SharedPtr input_pub_node{nullptr};
-                rclcpp::Node::SharedPtr output_sub_node{nullptr};
-                rclcpp::Publisher<Odometry>::SharedPtr odom_pub{nullptr};
-                rclcpp::Publisher<Trajectory>::SharedPtr traj_pub{nullptr};
-                rclcpp::Subscription<Control>::SharedPtr control_sub{nullptr};
+                std::shared_ptr<SimplePurePursuitNode> target_node_{nullptr};
+                rclcpp::Node::SharedPtr input_pub_node_{nullptr};
+                rclcpp::Node::SharedPtr output_sub_node_{nullptr};
+                rclcpp::Publisher<Odometry>::SharedPtr odom_pub_{nullptr};
+                rclcpp::Publisher<Trajectory>::SharedPtr traj_pub_{nullptr};
+                rclcpp::Subscription<Control>::SharedPtr control_sub_{nullptr};
 
-                mutable std::mutex received_control_mutex;
-                std::atomic_bool is_received{false};
-                Control::SharedPtr received_control;
+                mutable std::mutex received_control_mutex_;
+                std::atomic_bool is_received_{false};
+                Control::SharedPtr received_control_;
+
+            };
 
             // ================== TESTING AREA HERE ==================
 
@@ -437,6 +439,67 @@ namespace autoware::control::simple_pure_pursuit
 
             };
 
+            // Goal stop command test
+            // Same straight traj, vehicle starts at traj end
+            // Expected 0 velocity
+            TEST(
+                SimplePurePursuitIntegrationTest, 
+                PublishesGoalStopCommandAtTrajectoryEnd
+            ) {
+            
+                SimplePurePursuitIntegrationHarness harness(make_node_options());
+
+                const auto stamp = harness.now();
+                const auto odom = make_odometry(
+                    6.0, 0.0, 0.0, 0.0, 
+                    stamp
+                );
+                const auto traj = make_straight_trajectory(
+                    {0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0}, 
+                    1.0, 
+                    stamp
+                );
+
+                harness.publish_inputs(odom, traj);
+
+                // Receive control command within timeout
+                ASSERT_TRUE(
+                    harness.wait_for_output(
+                        std::chrono::duration_cast<std::chrono::milliseconds>(output_timeout)
+                    )
+                );
+
+                // Check non-nullptr and expected values
+                const auto control = harness.received_control();
+                ASSERT_NE(control, nullptr);
+
+                // // Expected 0 velocity
+                // EXPECT_FLOAT_EQ(
+                //     control->longitudinal.velocity, 
+                //     0.0F
+                // );
+
+                // // Expected strong deceleration
+                // EXPECT_FLOAT_EQ(control->longitudinal.acceleration, -10.0F);
+                // EXPECT_TRUE(control->longitudinal.is_defined_acceleration);
+
+                std::cout << "GOLDEN MASTER TERMINAL VELOCITY: " << control->longitudinal.velocity << std::endl;
+                std::cout << "GOLDEN MASTER TERMINAL ACCELERATION: " << control->longitudinal.acceleration << std::endl;
+
+            }
+
     }; // namespace
 
 }; // namespace autoware::control::simple_pure_pursuit
+
+int main(int argc, char ** argv) {
+
+    rclcpp::init(argc, argv);
+    testing::InitGoogleTest(&argc, argv);
+
+    const auto result = RUN_ALL_TESTS();
+
+    rclcpp::shutdown();
+    return result;
+
+}
