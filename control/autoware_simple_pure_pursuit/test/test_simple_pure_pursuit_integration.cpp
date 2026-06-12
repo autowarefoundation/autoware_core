@@ -175,8 +175,8 @@ namespace autoware::control::simple_pure_pursuit
                     rclcpp::QoS{1}.transient_local(),
                     [this](const Control::SharedPtr msg) {
                         {
-                        std::scoped_lock lock(received_control_mutex_);
-                        received_control_ = msg;
+                        std::scoped_lock lock(received_control_mutex);
+                        received_control = msg;
                         }
                         is_received_.store(true);
                     }
@@ -203,21 +203,19 @@ namespace autoware::control::simple_pure_pursuit
             {
                 
                 executor -> cancel();
-                if (executor_thread_.joinable()) {
-                    executor_thread_.join();
+                if (executor_thread.joinable()) {
+                    executor_thread.join();
                 }
 
-                control_sub_.reset();
-                traj_pub_.reset();
-                odom_pub_.reset();
-                output_sub_node_.reset();
-                input_pub_node_.reset();
-                target_node_.reset();
-                executor_.reset();
+                control_sub.reset();
+                traj_pub.reset();
+                odom_pub.reset();
+                output_sub_node.reset();
+                input_pub_node.reset();
+                target_node.reset();
+                executor.reset();
 
             };
-
-            // Some helper functions for testing
 
             // Get time now from input_pub_node's clock
             [[nodiscard]] builtin_interfaces::msg::Time now() const
@@ -247,6 +245,31 @@ namespace autoware::control::simple_pure_pursuit
                 clear_received_control();
                 odom_pub -> publish(odom);
                 traj_pub -> publish(traj);
+            };
+
+            // Return true if received control command within timeout, false otherwise
+            [[nodiscard]] bool wait_for_output(
+                const std::chrono::milliseconds timeout
+            ) const {
+                
+                const auto start = std::chrono::steady_clock::now();
+
+                while (!is_received_.load()) {
+                    if (std::chrono::steady_clock::now() - start > timeout) {
+                        return false;
+                    }
+                    std::this_thread::sleep_for(spin_sleep);
+                }
+
+                return true;
+                
+            };
+
+            // Return true if control command received
+            [[nodiscard]] Control::SharedPtr received_control() const
+            {
+                std::scoped_lock lock(received_control_mutex);
+                return received_control;
             };
 
     }; // namespace
