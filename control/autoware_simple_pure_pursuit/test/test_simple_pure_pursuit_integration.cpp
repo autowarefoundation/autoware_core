@@ -145,132 +145,170 @@ namespace autoware::control::simple_pure_pursuit
             
             public:
 
-            /**
-            * @brief Construct a new SimplePurePursuitIntegrationHarness object, 
-                     which sets up test env for integration testing of SimplePurePursuitNode.
-            *
-            * @param node_options NodeOptions to construct target SimplePurePursuitNode, 
-                                  can be used to override some default params if needed.
-            */
-            explicit SimplePurePursuitIntegrationHarness(
-                const rclcpp::NodeOptions & node_options
-            ) {
-                
-                executor_ = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
+                /**
+                * @brief Construct a new SimplePurePursuitIntegrationHarness object, 
+                        which sets up test env for integration testing of SimplePurePursuitNode.
+                *
+                * @param node_options NodeOptions to construct target SimplePurePursuitNode, 
+                                    can be used to override some default params if needed.
+                */
+                explicit SimplePurePursuitIntegrationHarness(
+                    const rclcpp::NodeOptions & node_options
+                ) {
+                    
+                    executor_ = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
 
-                target_node = std::make_shared<SimplePurePursuitNode>(node_options);
-                input_pub_node = rclcpp::Node::make_shared("simple_pure_pursuit_test_input_publisher");
-                output_sub_node = rclcpp::Node::make_shared("simple_pure_pursuit_test_output_subscriber");
+                    target_node = std::make_shared<SimplePurePursuitNode>(node_options);
+                    input_pub_node = rclcpp::Node::make_shared("simple_pure_pursuit_test_input_publisher");
+                    output_sub_node = rclcpp::Node::make_shared("simple_pure_pursuit_test_output_subscriber");
 
-                odom_pub = input_pub_node -> create_publisher<Odometry>(
-                    "/simple_pure_pursuit/input/odometry", 
-                    rclcpp::QoS{1}
-                );
-                traj_pub = input_pub_node -> create_publisher<Trajectory>(
-                    "/simple_pure_pursuit/input/trajectory", 
-                    rclcpp::QoS{1}
-                );
-                control_sub = output_sub_node -> create_subscription<Control>(
-                    "/simple_pure_pursuit/output/control_command", 
-                    rclcpp::QoS{1}.transient_local(),
-                    [this](const Control::SharedPtr msg) {
-                        {
-                        std::scoped_lock lock(received_control_mutex);
-                        received_control = msg;
+                    odom_pub = input_pub_node -> create_publisher<Odometry>(
+                        "/simple_pure_pursuit/input/odometry", 
+                        rclcpp::QoS{1}
+                    );
+                    traj_pub = input_pub_node -> create_publisher<Trajectory>(
+                        "/simple_pure_pursuit/input/trajectory", 
+                        rclcpp::QoS{1}
+                    );
+                    control_sub = output_sub_node -> create_subscription<Control>(
+                        "/simple_pure_pursuit/output/control_command", 
+                        rclcpp::QoS{1}.transient_local(),
+                        [this](const Control::SharedPtr msg) {
+                            {
+                            std::scoped_lock lock(received_control_mutex);
+                            received_control = msg;
+                            }
+                            is_received_.store(true);
                         }
-                        is_received_.store(true);
+                    );
+
+                    executor -> add_node(target_node);
+                    executor -> add_node(input_pub_node);
+                    executor -> add_node(output_sub_node);
+
+                    // Spin it up!
+                    executor_thread = std::thread([this]() { executor -> spin(); });
+                    (void)wait_for_connections(connection_timeout);
+
+                };
+
+                // Delete copy and move constructors/assignment operators
+                SimplePurePursuitIntegrationHarness(const SimplePurePursuitIntegrationHarness &) = delete;
+                SimplePurePursuitIntegrationHarness & operator=(const SimplePurePursuitIntegrationHarness &) = delete;
+                SimplePurePursuitIntegrationHarness(SimplePurePursuitIntegrationHarness &&) = delete;
+                SimplePurePursuitIntegrationHarness & operator=(SimplePurePursuitIntegrationHarness &&) = delete;
+
+                // Just simple destructor to clean up env resources
+                ~SimplePurePursuitIntegrationHarness()
+                {
+                    
+                    executor -> cancel();
+                    if (executor_thread.joinable()) {
+                        executor_thread.join();
                     }
-                );
 
-                executor -> add_node(target_node);
-                executor -> add_node(input_pub_node);
-                executor -> add_node(output_sub_node);
+                    control_sub.reset();
+                    traj_pub.reset();
+                    odom_pub.reset();
+                    output_sub_node.reset();
+                    input_pub_node.reset();
+                    target_node.reset();
+                    executor.reset();
 
-                // Spin it up!
-                executor_thread = std::thread([this]() { executor -> spin(); });
-                (void)wait_for_connections(connection_timeout);
+                };
 
-            };
+                // Get time now from input_pub_node's clock
+                [[nodiscard]] builtin_interfaces::msg::Time now() const
+                {
+                    return input_pub_node -> get_clock() -> now();
+                };
 
-            // Delete copy and move constructors/assignment operators
-            SimplePurePursuitIntegrationHarness(const SimplePurePursuitIntegrationHarness &) = delete;
-            SimplePurePursuitIntegrationHarness & operator=(const SimplePurePursuitIntegrationHarness &) = delete;
-            SimplePurePursuitIntegrationHarness(SimplePurePursuitIntegrationHarness &&) = delete;
-            SimplePurePursuitIntegrationHarness & operator=(SimplePurePursuitIntegrationHarness &&) = delete;
+                // Funcs to publish odometry, trajectory or both as inputs to target node
+                void publish_odometry(
+                    const Odometry & odom
+                ) {
+                    clear_received_control();
+                    odom_pub -> publish(odom);
+                };
 
-            // Just simple destructor to clean up env resources
-            ~SimplePurePursuitIntegrationHarness()
-            {
-                
-                executor -> cancel();
-                if (executor_thread.joinable()) {
-                    executor_thread.join();
-                }
+                void publish_trajectory(
+                    const Trajectory & traj
+                ) {
+                    clear_received_control();
+                    traj_pub -> publish(traj);
+                };
 
-                control_sub.reset();
-                traj_pub.reset();
-                odom_pub.reset();
-                output_sub_node.reset();
-                input_pub_node.reset();
-                target_node.reset();
-                executor.reset();
+                void publish_inputs(
+                    const Odometry & odom, 
+                    const Trajectory & traj
+                ) {
+                    clear_received_control();
+                    odom_pub -> publish(odom);
+                    traj_pub -> publish(traj);
+                };
 
-            };
+                // Return true if received control command within timeout, false otherwise
+                [[nodiscard]] bool wait_for_output(
+                    const std::chrono::milliseconds timeout
+                ) const {
+                    
+                    const auto start = std::chrono::steady_clock::now();
 
-            // Get time now from input_pub_node's clock
-            [[nodiscard]] builtin_interfaces::msg::Time now() const
-            {
-                return input_pub_node -> get_clock() -> now();
-            };
-
-            // Funcs to publish odometry, trajectory or both as inputs to target node
-            void publish_odometry(
-                const Odometry & odom
-            ) {
-                clear_received_control();
-                odom_pub -> publish(odom);
-            };
-
-            void publish_trajectory(
-                const Trajectory & traj
-            ) {
-                clear_received_control();
-                traj_pub -> publish(traj);
-            };
-
-            void publish_inputs(
-                const Odometry & odom, 
-                const Trajectory & traj
-            ) {
-                clear_received_control();
-                odom_pub -> publish(odom);
-                traj_pub -> publish(traj);
-            };
-
-            // Return true if received control command within timeout, false otherwise
-            [[nodiscard]] bool wait_for_output(
-                const std::chrono::milliseconds timeout
-            ) const {
-                
-                const auto start = std::chrono::steady_clock::now();
-
-                while (!is_received_.load()) {
-                    if (std::chrono::steady_clock::now() - start > timeout) {
-                        return false;
+                    while (!is_received_.load()) {
+                        if (std::chrono::steady_clock::now() - start > timeout) {
+                            return false;
+                        }
+                        std::this_thread::sleep_for(spin_sleep);
                     }
-                    std::this_thread::sleep_for(spin_sleep);
-                }
 
-                return true;
+                    return true;
+                    
+                };
+
+                // Return true if control command received
+                [[nodiscard]] Control::SharedPtr received_control() const
+                {
+                    std::scoped_lock lock(received_control_mutex);
+                    return received_control;
+                };
+
+            private:
                 
-            };
+                // Simple nuke received control command to prepare for next test case
+                void clear_received_control()
+                {
+                    is_received.store(false);
+                    std::scoped_lock lock(received_control_mutex);
+                    received_control.reset();
+                };
 
-            // Return true if control command received
-            [[nodiscard]] Control::SharedPtr received_control() const
-            {
-                std::scoped_lock lock(received_control_mutex);
-                return received_control;
-            };
+                // Wait until all publishers and subscribers are connected or timeout happens, 
+                // return true if all connected, false otherwise
+                bool wait_for_connections(
+                    const std::chrono::milliseconds timeout
+                ) {
+                    
+                    const auto start = std::chrono::steady_clock::now();
+                    // Wait until all connections are established or timeout happens
+                    while (
+                        (
+                            (odom_pub -> get_subscription_count() == 0U) || 
+                            (traj_pub -> get_subscription_count() == 0U) ||
+                            (control_sub -> get_publisher_count() == 0U)
+                        ) && (
+                            (std::chrono::steady_clock::now() - start <= timeout)
+                        )
+                    ) {
+                        std::this_thread::sleep_for(spin_sleep);
+                    }
+
+                    return (
+                        (odom_pub -> get_subscription_count() > 0U) && 
+                        (traj_pub -> get_subscription_count() > 0U) &&
+                        (control_sub_->get_publisher_count() > 0U)
+                    );
+
+                };
 
     }; // namespace
 
