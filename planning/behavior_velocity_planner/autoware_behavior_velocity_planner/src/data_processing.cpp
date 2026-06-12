@@ -1,4 +1,4 @@
-// Copyright 2025 Autoware Foundation
+// Copyright 2026 Autoware Foundation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 #include <autoware/behavior_velocity_planner_common/planner_data.hpp>
 
 #include <algorithm>
+#include <deque>
 
 namespace autoware::behavior_velocity_planner::data_processing
 {
