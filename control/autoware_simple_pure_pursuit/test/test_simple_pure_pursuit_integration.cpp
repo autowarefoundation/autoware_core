@@ -40,6 +40,12 @@ namespace autoware::control::simple_pure_pursuit
     namespace
     {
 
+        constexpr auto connection_timeout = std::chrono::seconds(3);
+        constexpr auto output_timeout = std::chrono::seconds(5);
+        constexpr auto no_output_timeout = std::chrono::milliseconds(250);
+        constexpr auto spin_sleep = std::chrono::milliseconds(10);
+
+
         /**
         * @brief Create a dummy Odometry message with some given params.
         * This dummy one is a pose on the x-y plane with a yaw angle, and a longitudinal velocity.
@@ -325,8 +331,68 @@ namespace autoware::control::simple_pure_pursuit
                 std::atomic_bool is_received{false};
                 Control::SharedPtr received_control;
 
+            // ================== TESTING AREA HERE ==================
 
-            
+            // Standard happy case test:
+            // - Straight trajectory
+            // - Vehicle starts at beginning, 0 yaw, 1 m/s velocity
+            // => Expect to receive 1 m/s velocity, and 0 steering angle within timeout
+            TEST(
+                SimplePurePursuitIntegrationTest, 
+                PublishesControlCommandForStraightTrajectory
+            ) {
+
+                SimplePurePursuitIntegrationHarness harness(make_node_options());
+
+                const auto stamp = harness.now();
+                const auto odom = make_odometry(
+                    0.0, 0.0, 0.0, 0.0, 
+                    stamp
+                );
+                const auto traj = make_straight_trajectory(
+                    {0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0}, 
+                    1.0, 
+                    stamp
+                );
+
+                harness.publish_inputs(
+                    odom, 
+                    traj
+                );
+
+                // Receive control command within timeout
+                ASSERT_TRUE(
+                    harness.wait_for_output(
+                        std::chrono::duration_cast<std::chrono::milliseconds>(output_timeout)
+                    )
+                );
+                
+                // Check non-nullptr and expected values 
+                const auto control = harness.received_control();
+                ASSERT_NE(
+                    control, 
+                    nullptr
+                );
+
+                // Check expected values
+                EXPECT_EQ(
+                    control->stamp, 
+                    stamp
+                );
+                EXPECT_FLOAT_EQ(
+                    control->longitudinal.velocity, 
+                    1.0F
+                );
+                EXPECT_FLOAT_EQ(
+                    control->longitudinal.acceleration, 
+                    1.0F
+                );
+                EXPECT_FLOAT_EQ(
+                    control->lateral.steering_tire_angle, 
+                    0.0F
+                );
+
+            };
 
     }; // namespace
 
