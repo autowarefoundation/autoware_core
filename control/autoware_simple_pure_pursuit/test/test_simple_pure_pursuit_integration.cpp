@@ -192,6 +192,31 @@ namespace autoware::control::simple_pure_pursuit
 
             };
 
+            // Delete copy and move constructors/assignment operators
+            SimplePurePursuitIntegrationHarness(const SimplePurePursuitIntegrationHarness &) = delete;
+            SimplePurePursuitIntegrationHarness & operator=(const SimplePurePursuitIntegrationHarness &) = delete;
+            SimplePurePursuitIntegrationHarness(SimplePurePursuitIntegrationHarness &&) = delete;
+            SimplePurePursuitIntegrationHarness & operator=(SimplePurePursuitIntegrationHarness &&) = delete;
+
+            // Just simple destructor to clean up env resources
+            ~SimplePurePursuitIntegrationHarness()
+            {
+                
+                executor -> cancel();
+                if (executor_thread_.joinable()) {
+                    executor_thread_.join();
+                }
+
+                control_sub_.reset();
+                traj_pub_.reset();
+                odom_pub_.reset();
+                output_sub_node_.reset();
+                input_pub_node_.reset();
+                target_node_.reset();
+                executor_.reset();
+
+            };
+
     }; // namespace
 
 }; // namespace autoware::control::simple_pure_pursuit
