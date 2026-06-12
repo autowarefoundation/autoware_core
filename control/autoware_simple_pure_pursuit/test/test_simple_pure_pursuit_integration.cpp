@@ -40,7 +40,37 @@ namespace autoware::control::simple_pure_pursuit
     namespace
     {
 
-        
+        /**
+        * @brief Create a dummy Odometry message with some given params.
+        *
+        * @param x dummy odometry's x position.
+        * @param y dummy odometry's y position.
+        * @param yaw dummy odometry's yaw angle.
+        * @param longitudinal_velocity dummy odometry's longitudinal velocity.
+        * @param stamp dummy odometry's timestamp.
+        *
+        * @return Odometry dummy message.
+        */
+        Odometry make_odometry(
+            const double x, 
+            const double y, 
+            const double yaw, 
+            const double longitudinal_velocity,
+            const builtin_interfaces::msg::Time & stamp
+        ) {
+            
+            Odometry odom;
+            odom.header.frame_id = "map";
+            odom.header.stamp = stamp;
+            odom.pose.pose.position.x = x;
+            odom.pose.pose.position.y = y;
+            odom.pose.pose.orientation.z = std::sin(yaw / 2.0);
+            odom.pose.pose.orientation.w = std::cos(yaw / 2.0);
+            odom.twist.twist.linear.x = longitudinal_velocity;
+
+            return odom;
+
+        }
 
     }
 
