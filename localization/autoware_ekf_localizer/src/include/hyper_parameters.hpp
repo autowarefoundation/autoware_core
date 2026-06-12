@@ -15,102 +15,61 @@
 #ifndef HYPER_PARAMETERS_HPP_
 #define HYPER_PARAMETERS_HPP_
 
-#include <rclcpp/rclcpp.hpp>
-
-#include <algorithm>
+#include <cstddef>
 #include <string>
+
+namespace rclcpp
+{
+class Node;
+}  // namespace rclcpp
 
 namespace autoware::ekf_localizer
 {
 
-class HyperParameters
+// Plain data struct: it carries the tuned hyper-parameters and has no rclcpp dependency. Parsing
+// lives in the free function load_hyper_parameters() below, so production has a single construction
+// path (params_(load_hyper_parameters(this))) and a unit test can build the struct by hand.
+struct HyperParameters
 {
-public:
-  explicit HyperParameters(rclcpp::Node * node)
-  : show_debug_info(node->declare_parameter<bool>("node.show_debug_info")),
-    ekf_rate(node->declare_parameter<double>("node.predict_frequency")),
-    ekf_dt(1.0 / std::max(ekf_rate, 0.1)),
-    tf_rate_(node->declare_parameter<double>("node.tf_rate")),
-    enable_yaw_bias_estimation(node->declare_parameter<bool>("node.enable_yaw_bias_estimation")),
-    extend_state_step(node->declare_parameter<int>("node.extend_state_step")),
-    pose_frame_id(node->declare_parameter<std::string>("misc.pose_frame_id")),
-    pose_additional_delay(
-      node->declare_parameter<double>("pose_measurement.pose_additional_delay")),
-    pose_gate_dist(node->declare_parameter<double>("pose_measurement.pose_gate_dist")),
-    pose_smoothing_steps(node->declare_parameter<int>("pose_measurement.pose_smoothing_steps")),
-    max_pose_queue_size(node->declare_parameter<int>("pose_measurement.max_pose_queue_size")),
-    twist_additional_delay(
-      node->declare_parameter<double>("twist_measurement.twist_additional_delay")),
-    twist_gate_dist(node->declare_parameter<double>("twist_measurement.twist_gate_dist")),
-    twist_smoothing_steps(node->declare_parameter<int>("twist_measurement.twist_smoothing_steps")),
-    max_twist_queue_size(node->declare_parameter<int>("twist_measurement.max_twist_queue_size")),
-    proc_stddev_vx_c(node->declare_parameter<double>("process_noise.proc_stddev_vx_c")),
-    proc_stddev_wz_c(node->declare_parameter<double>("process_noise.proc_stddev_wz_c")),
-    proc_stddev_yaw_c(node->declare_parameter<double>("process_noise.proc_stddev_yaw_c")),
-    z_filter_proc_dev(
-      node->declare_parameter<double>("simple_1d_filter_parameters.z_filter_proc_dev")),
-    roll_filter_proc_dev(
-      node->declare_parameter<double>("simple_1d_filter_parameters.roll_filter_proc_dev")),
-    pitch_filter_proc_dev(
-      node->declare_parameter<double>("simple_1d_filter_parameters.pitch_filter_proc_dev")),
-    pose_no_update_count_threshold_warn(
-      node->declare_parameter<int>("diagnostics.pose_no_update_count_threshold_warn")),
-    pose_no_update_count_threshold_error(
-      node->declare_parameter<int>("diagnostics.pose_no_update_count_threshold_error")),
-    twist_no_update_count_threshold_warn(
-      node->declare_parameter<int>("diagnostics.twist_no_update_count_threshold_warn")),
-    twist_no_update_count_threshold_error(
-      node->declare_parameter<int>("diagnostics.twist_no_update_count_threshold_error")),
-    ellipse_scale(node->declare_parameter<double>("diagnostics.ellipse_scale")),
-    error_ellipse_size(node->declare_parameter<double>("diagnostics.error_ellipse_size")),
-    warn_ellipse_size(node->declare_parameter<double>("diagnostics.warn_ellipse_size")),
-    error_ellipse_size_lateral_direction(
-      node->declare_parameter<double>("diagnostics.error_ellipse_size_lateral_direction")),
-    warn_ellipse_size_lateral_direction(
-      node->declare_parameter<double>("diagnostics.warn_ellipse_size_lateral_direction")),
-    diagnostics_publish_frequency(
-      node->declare_parameter<double>("diagnostics.diagnostics_publish_frequency")),
-    diagnostics_publish_period(1.0 / diagnostics_publish_frequency),
-    threshold_observable_velocity_mps(
-      node->declare_parameter<double>("misc.threshold_observable_velocity_mps"))
-  {
-  }
-
-  const bool show_debug_info;
-  const double ekf_rate;  // ekf update frequency = predict_frequency [Hz]
-  const double ekf_dt;    // ekf update period [s]
-  const double tf_rate_;
-  const bool enable_yaw_bias_estimation;
-  const size_t extend_state_step;
-  const std::string pose_frame_id;
-  const double pose_additional_delay;
-  const double pose_gate_dist;
-  const size_t pose_smoothing_steps;
-  const size_t max_pose_queue_size;
-  const double twist_additional_delay;
-  const double twist_gate_dist;
-  const size_t twist_smoothing_steps;
-  const size_t max_twist_queue_size;
-  const double proc_stddev_vx_c;   //!< @brief  vx process noise
-  const double proc_stddev_wz_c;   //!< @brief  wz process noise
-  const double proc_stddev_yaw_c;  //!< @brief  yaw process noise
-  const double z_filter_proc_dev;
-  const double roll_filter_proc_dev;
-  const double pitch_filter_proc_dev;
-  const size_t pose_no_update_count_threshold_warn;
-  const size_t pose_no_update_count_threshold_error;
-  const size_t twist_no_update_count_threshold_warn;
-  const size_t twist_no_update_count_threshold_error;
+  bool show_debug_info;
+  double ekf_rate;  // ekf update frequency = predict_frequency [Hz]
+  double ekf_dt;    // ekf update period [s]
+  double tf_rate_;
+  bool enable_yaw_bias_estimation;
+  size_t extend_state_step;
+  std::string pose_frame_id;
+  double pose_additional_delay;
+  double pose_gate_dist;
+  size_t pose_smoothing_steps;
+  size_t max_pose_queue_size;
+  double twist_additional_delay;
+  double twist_gate_dist;
+  size_t twist_smoothing_steps;
+  size_t max_twist_queue_size;
+  double proc_stddev_vx_c;   //!< @brief  vx process noise
+  double proc_stddev_wz_c;   //!< @brief  wz process noise
+  double proc_stddev_yaw_c;  //!< @brief  yaw process noise
+  double z_filter_proc_dev;
+  double roll_filter_proc_dev;
+  double pitch_filter_proc_dev;
+  size_t pose_no_update_count_threshold_warn;
+  size_t pose_no_update_count_threshold_error;
+  size_t twist_no_update_count_threshold_warn;
+  size_t twist_no_update_count_threshold_error;
   double ellipse_scale;
   double error_ellipse_size;
   double warn_ellipse_size;
   double error_ellipse_size_lateral_direction;
   double warn_ellipse_size_lateral_direction;
-  const double diagnostics_publish_frequency;  //!< @brief diagnostics publish frequency [Hz]
-  const double diagnostics_publish_period;     //!< @brief diagnostics publish period [s]
+  double diagnostics_publish_frequency;  //!< @brief diagnostics publish frequency [Hz]
+  double diagnostics_publish_period;     //!< @brief diagnostics publish period [s]
 
-  const double threshold_observable_velocity_mps;
+  double threshold_observable_velocity_mps;
 };
+
+// Declares all of the node parameters and returns a fully-populated HyperParameters. This is the
+// only place that touches rclcpp, keeping HyperParameters itself a plain data struct.
+HyperParameters load_hyper_parameters(rclcpp::Node * node);
 
 }  // namespace autoware::ekf_localizer
 

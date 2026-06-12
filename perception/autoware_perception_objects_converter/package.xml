@@ -14,7 +14,7 @@
   <buildtool_depend>autoware_cmake</buildtool_depend>
 
   <depend>autoware_perception_msgs</depend>
-  <depend>boost</depend>
+  <depend>autoware_utils_uuid</depend>
   <depend>geometry_msgs</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>

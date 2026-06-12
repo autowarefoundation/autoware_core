@@ -15,6 +15,8 @@
 #include <autoware/pyplot/figure.hpp>
 #include <autoware/pyplot/loader.hpp>
 
+#include <utility>
+
 namespace autoware::pyplot
 {
 inline namespace figure
@@ -23,7 +25,7 @@ Figure::Figure(const pybind11::object & object) : PyObjectWrapper(object)
 {
   load_attrs();
 }
-Figure::Figure(pybind11::object && object) : PyObjectWrapper(object)
+Figure::Figure(pybind11::object && object) : PyObjectWrapper(std::move(object))
 {
   load_attrs();
 }

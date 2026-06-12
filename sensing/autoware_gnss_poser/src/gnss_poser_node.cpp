@@ -147,9 +147,12 @@ void GNSSPoser::callback_nav_sat_fix(
   if (use_gnss_ins_orientation_) {
     orientation = msg_gnss_ins_orientation_stamped_->orientation.orientation;
   } else {
-    static auto prev_position = gnss_antenna_pose.position;
-    orientation = get_quaternion_by_position_difference(gnss_antenna_pose.position, prev_position);
-    prev_position = gnss_antenna_pose.position;
+    if (!has_prev_position_) {
+      prev_position_ = gnss_antenna_pose.position;
+      has_prev_position_ = true;
+    }
+    orientation = get_quaternion_by_position_difference(gnss_antenna_pose.position, prev_position_);
+    prev_position_ = gnss_antenna_pose.position;
   }
 
   gnss_antenna_pose.orientation = orientation;
@@ -276,23 +279,6 @@ geometry_msgs::msg::Point GNSSPoser::get_average_position(
   return average_point;
 }
 
-geometry_msgs::msg::Quaternion GNSSPoser::get_quaternion_by_heading(const int heading)
-{
-  int heading_conv = 0;
-  // convert heading[0(North)~360] to yaw[-M_PI(West)~M_PI]
-  if (heading >= 0 && heading <= 27000000) {
-    heading_conv = 9000000 - heading;
-  } else {
-    heading_conv = 45000000 - heading;
-  }
-  const double yaw = (heading_conv * 1e-5) * M_PI / 180.0;
-
-  tf2::Quaternion quaternion;
-  quaternion.setRPY(0, 0, yaw);
-
-  return tf2::toMsg(quaternion);
-}
-
 geometry_msgs::msg::Quaternion GNSSPoser::get_quaternion_by_position_difference(
   const geometry_msgs::msg::Point & point, const geometry_msgs::msg::Point & prev_point)
 {
@@ -300,49 +286,6 @@ geometry_msgs::msg::Quaternion GNSSPoser::get_quaternion_by_position_difference(
   tf2::Quaternion quaternion;
   quaternion.setRPY(0, 0, yaw);
   return tf2::toMsg(quaternion);
-}
-
-bool GNSSPoser::get_transform(
-  const std::string & target_frame, const std::string & source_frame,
-  const geometry_msgs::msg::TransformStamped::SharedPtr transform_stamped_ptr)
-{
-  if (target_frame == source_frame) {
-    transform_stamped_ptr->header.stamp = this->now();
-    transform_stamped_ptr->header.frame_id = target_frame;
-    transform_stamped_ptr->child_frame_id = source_frame;
-    transform_stamped_ptr->transform.translation.x = 0.0;
-    transform_stamped_ptr->transform.translation.y = 0.0;
-    transform_stamped_ptr->transform.translation.z = 0.0;
-    transform_stamped_ptr->transform.rotation.x = 0.0;
-    transform_stamped_ptr->transform.rotation.y = 0.0;
-    transform_stamped_ptr->transform.rotation.z = 0.0;
-    transform_stamped_ptr->transform.rotation.w = 1.0;
-    return true;
-  }
-
-  try {
-    *transform_stamped_ptr =
-      tf2_buffer_.lookupTransform(target_frame, source_frame, tf2::TimePointZero);
-  } catch (tf2::TransformException & ex) {
-    RCLCPP_WARN_STREAM_THROTTLE(
-      this->get_logger(), *this->get_clock(), std::chrono::milliseconds(1000).count(), ex.what());
-    RCLCPP_WARN_STREAM_THROTTLE(
-      this->get_logger(), *this->get_clock(), std::chrono::milliseconds(1000).count(),
-      "Please publish TF " << target_frame.c_str() << " to " << source_frame.c_str());
-
-    transform_stamped_ptr->header.stamp = this->now();
-    transform_stamped_ptr->header.frame_id = target_frame;
-    transform_stamped_ptr->child_frame_id = source_frame;
-    transform_stamped_ptr->transform.translation.x = 0.0;
-    transform_stamped_ptr->transform.translation.y = 0.0;
-    transform_stamped_ptr->transform.translation.z = 0.0;
-    transform_stamped_ptr->transform.rotation.x = 0.0;
-    transform_stamped_ptr->transform.rotation.y = 0.0;
-    transform_stamped_ptr->transform.rotation.z = 0.0;
-    transform_stamped_ptr->transform.rotation.w = 1.0;
-    return false;
-  }
-  return true;
 }
 
 bool GNSSPoser::get_static_transform(
