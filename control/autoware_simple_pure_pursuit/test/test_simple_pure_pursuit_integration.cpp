@@ -44,6 +44,9 @@ constexpr auto output_timeout = std::chrono::seconds(5);
 constexpr auto no_output_timeout = std::chrono::milliseconds(250);
 constexpr auto spin_sleep = std::chrono::milliseconds(10);
 
+// Floating point tolerance at EXCEPT_NEAR checks (thanks Ishikawa-san for the suggestion!)
+constexpr float near_tol = 1e-4F;
+
 /**
  * @brief Create a dummy Odometry message with some given params.
  * This dummy one is a pose on the x-y plane with a yaw angle, and a longitudinal velocity.
@@ -311,9 +314,9 @@ TEST(SimplePurePursuitIntegrationTest, PublishesControlCommandForStraightTraject
 
   // Check expected values
   EXPECT_EQ(control->stamp, stamp);
-  EXPECT_FLOAT_EQ(control->longitudinal.velocity, 1.0F);
-  EXPECT_FLOAT_EQ(control->longitudinal.acceleration, 1.0F);
-  EXPECT_FLOAT_EQ(control->lateral.steering_tire_angle, 0.0F);
+  EXPECT_NEAR(control->longitudinal.velocity, 1.0F, near_tol);
+  EXPECT_NEAR(control->longitudinal.acceleration, 1.0F, near_tol);
+  EXPECT_NEAR(control->lateral.steering_tire_angle, 0.0F, near_tol);
 };
 
 // TEST 2. Synchronization safety check
@@ -361,12 +364,12 @@ TEST(SimplePurePursuitIntegrationTest, PublishesGoalStopCommandAtTrajectoryEnd)
   ASSERT_NE(control, nullptr);
 
   // Expected 0 velocity
-  EXPECT_FLOAT_EQ(control->longitudinal.velocity, 0.0F);
+  EXPECT_NEAR(control->longitudinal.velocity, 0.0F, near_tol);
 
   // Expected strong deceleration
   // Here I already checked during development that terminal decel value is -10
   // Seems like this module hard-coded this value. Imma freezin it here as characterization test
-  EXPECT_FLOAT_EQ(control->longitudinal.acceleration, -10.0F);
+  EXPECT_NEAR(control->longitudinal.acceleration, -10.0F, near_tol);
   EXPECT_TRUE(control->longitudinal.is_defined_acceleration);
 };
 
@@ -395,8 +398,8 @@ TEST(SimplePurePursuitIntegrationTest, PublishesZeroCommandForEmptyTrajectory)
   ASSERT_NE(control, nullptr);
 
   // Expected 0 velocity and 0 accel
-  EXPECT_FLOAT_EQ(control->longitudinal.velocity, 0.0F);
-  EXPECT_FLOAT_EQ(control->longitudinal.acceleration, 0.0F);
+  EXPECT_NEAR(control->longitudinal.velocity, 0.0F, near_tol);
+  EXPECT_NEAR(control->longitudinal.acceleration, 0.0F, near_tol);
 };
 
 // TEST 5. External target velocity test
@@ -426,14 +429,14 @@ TEST(SimplePurePursuitIntegrationTest, UsesExternalTargetVelocityWhenEnabled)
 
   // Expected ext. vel 2.5 m/s, not traj's 1.0 m/s or car's current 0.5 m/s
   // Basically ext. vel is used properly
-  EXPECT_FLOAT_EQ(control->longitudinal.velocity, 2.5F);
+  EXPECT_NEAR(control->longitudinal.velocity, 2.5F, near_tol);
 
   // Car goin 0.5 m/s, target 2.5 m/s, so expect accel 2.0 m/s^2
   // Already confirmed via test run during dev
-  EXPECT_FLOAT_EQ(control->longitudinal.acceleration, 2.0F);
+  EXPECT_NEAR(control->longitudinal.acceleration, 2.0F, near_tol);
 
   // Expected 0 steering angle for straight traj
-  EXPECT_FLOAT_EQ(control->lateral.steering_tire_angle, 0.0F);
+  EXPECT_NEAR(control->lateral.steering_tire_angle, 0.0F, near_tol);
 };
 
 // TEST 6. Lateral offset check
@@ -460,7 +463,7 @@ TEST(SimplePurePursuitIntegrationTest, PublishesNonZeroSteeringForLateralOffset)
 
   // Expected negative steering angle to correct 1 m lateral offset to the right, not 0
   // Already confirmed via test run during dev
-  EXPECT_NEAR(control->lateral.steering_tire_angle, -0.82152F, 1e-2F);
+  EXPECT_NEAR(control->lateral.steering_tire_angle, -0.82152F, near_tol);
 
 };
 
