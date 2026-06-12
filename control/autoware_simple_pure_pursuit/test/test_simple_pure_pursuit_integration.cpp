@@ -139,6 +139,59 @@ namespace autoware::control::simple_pure_pursuit
 
         };
 
+
+        class SimplePurePursuitIntegrationHarness
+        {
+            
+            public:
+
+            /**
+            * @brief Construct a new SimplePurePursuitIntegrationHarness object, 
+                     which sets up test env for integration testing of SimplePurePursuitNode.
+            *
+            * @param node_options NodeOptions to construct target SimplePurePursuitNode, 
+                                  can be used to override some default params if needed.
+            */
+            explicit SimplePurePursuitIntegrationHarness(
+                const rclcpp::NodeOptions & node_options
+            ) {
+                
+                executor_ = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
+
+                target_node = std::make_shared<SimplePurePursuitNode>(node_options);
+                input_pub_node = rclcpp::Node::make_shared("simple_pure_pursuit_test_input_publisher");
+                output_sub_node = rclcpp::Node::make_shared("simple_pure_pursuit_test_output_subscriber");
+
+                odom_pub = input_pub_node -> create_publisher<Odometry>(
+                    "/simple_pure_pursuit/input/odometry", 
+                    rclcpp::QoS{1}
+                );
+                traj_pub = input_pub_node -> create_publisher<Trajectory>(
+                    "/simple_pure_pursuit/input/trajectory", 
+                    rclcpp::QoS{1}
+                );
+                control_sub = output_sub_node -> create_subscription<Control>(
+                    "/simple_pure_pursuit/output/control_command", 
+                    rclcpp::QoS{1}.transient_local(),
+                    [this](const Control::SharedPtr msg) {
+                        {
+                        std::scoped_lock lock(received_control_mutex_);
+                        received_control_ = msg;
+                        }
+                        is_received_.store(true);
+                    }
+                );
+
+                executor -> add_node(target_node);
+                executor -> add_node(input_pub_node);
+                executor -> add_node(output_sub_node);
+
+                // Spin it up!
+                executor_thread = std::thread([this]() { executor -> spin(); });
+                (void)wait_for_connections(connection_timeout);
+
+            };
+
     }; // namespace
 
 }; // namespace autoware::control::simple_pure_pursuit
