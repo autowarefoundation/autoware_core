@@ -15,10 +15,9 @@
 #include "pose_initializer_core.hpp"
 
 #include "copy_vector_to_array.hpp"
-#include "ekf_localization_trigger_module.hpp"
 #include "gnss_module.hpp"
 #include "localization_module.hpp"
-#include "ndt_localization_trigger_module.hpp"
+#include "localization_trigger_module.hpp"
 #include "pose_error_check_module.hpp"
 #include "stop_check_module.hpp"
 
@@ -53,7 +52,8 @@ PoseInitializer::PoseInitializer(const rclcpp::NodeOptions & options)
     this, "pose_initializer_status");
 
   if (declare_parameter<bool>("ekf_enabled")) {
-    ekf_localization_trigger_ = std::make_unique<EkfLocalizationTriggerModule>(this);
+    ekf_localization_trigger_ =
+      std::make_unique<LocalizationTriggerModule>(this, "ekf_trigger_node", "EKF");
   }
   if (declare_parameter<bool>("gnss_enabled")) {
     gnss_ = std::make_unique<GnssModule>(this);
@@ -63,7 +63,8 @@ PoseInitializer::PoseInitializer(const rclcpp::NodeOptions & options)
   }
   if (declare_parameter<bool>("ndt_enabled")) {
     ndt_ = std::make_unique<LocalizationModule>(this, "ndt_align");
-    ndt_localization_trigger_ = std::make_unique<NdtLocalizationTriggerModule>(this);
+    ndt_localization_trigger_ =
+      std::make_unique<LocalizationTriggerModule>(this, "ndt_trigger_node", "NDT");
   }
   if (declare_parameter<bool>("stop_check_enabled")) {
     // Add 1.0 sec margin for twist buffer.

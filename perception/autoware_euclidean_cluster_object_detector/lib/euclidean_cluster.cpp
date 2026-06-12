@@ -64,6 +64,7 @@ bool EuclideanCluster::cluster(
   pcl::PointCloud<pcl::PointXYZ>::ConstPtr pointcloud_ptr(new pcl::PointCloud<pcl::PointXYZ>);
   if (!use_height_) {
     pcl::PointCloud<pcl::PointXYZ>::Ptr pointcloud_2d_ptr(new pcl::PointCloud<pcl::PointXYZ>);
+    pointcloud_2d_ptr->points.reserve(pointcloud->points.size());
     for (const auto & point : pointcloud->points) {
       pcl::PointXYZ point2d;
       point2d.x = point.x;
@@ -92,15 +93,18 @@ bool EuclideanCluster::cluster(
 
   // build output
   {
+    clusters.reserve(clusters.size() + cluster_indices.size());
     for (const auto & cluster : cluster_indices) {
-      pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster(new pcl::PointCloud<pcl::PointXYZ>);
+      // Build the output cluster in place to avoid a heap allocation plus a full deep copy
+      // per cluster on every frame.
+      auto & cloud_cluster = clusters.emplace_back();
+      cloud_cluster.points.reserve(cluster.indices.size());
       for (const auto & point_idx : cluster.indices) {
-        cloud_cluster->points.push_back(pointcloud->points[point_idx]);
+        cloud_cluster.points.push_back(pointcloud->points[point_idx]);
       }
-      clusters.push_back(*cloud_cluster);
-      clusters.back().width = cloud_cluster->points.size();
-      clusters.back().height = 1;
-      clusters.back().is_dense = false;
+      cloud_cluster.width = cloud_cluster.points.size();
+      cloud_cluster.height = 1;
+      cloud_cluster.is_dense = false;
     }
   }
   return true;
