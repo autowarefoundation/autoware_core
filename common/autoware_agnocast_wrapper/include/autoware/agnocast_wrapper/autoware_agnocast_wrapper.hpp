@@ -53,12 +53,22 @@
 
 #define AUTOWARE_CREATE_SUBSCRIPTION(message_type, topic, qos, callback, options) \
   autoware::agnocast_wrapper::create_subscription<message_type>(this, topic, qos, callback, options)
+#define AUTOWARE_CREATE_SUBSCRIPTION_ON_NODE(message_type, node, topic, qos, callback, options) \
+  autoware::agnocast_wrapper::create_subscription<message_type>(node, topic, qos, callback, options)
+
 #define AUTOWARE_CREATE_PUBLISHER2(message_type, arg1, arg2) \
   autoware::agnocast_wrapper::create_publisher<message_type>(this, arg1, arg2)
 #define AUTOWARE_CREATE_PUBLISHER3(message_type, arg1, arg2, arg3) \
   autoware::agnocast_wrapper::create_publisher<message_type>(this, arg1, arg2, arg3)
+#define AUTOWARE_CREATE_PUBLISHER2_ON_NODE(message_type, node, arg1, arg2) \
+  autoware::agnocast_wrapper::create_publisher<message_type>(node, arg1, arg2)
+#define AUTOWARE_CREATE_PUBLISHER3_ON_NODE(message_type, node, arg1, arg2, arg3) \
+  autoware::agnocast_wrapper::create_publisher<message_type>(node, arg1, arg2, arg3)
+
 #define AUTOWARE_CREATE_POLLING_SUBSCRIBER(message_type, topic, qos) \
   autoware::agnocast_wrapper::create_polling_subscriber<message_type>(this, topic, qos)
+#define AUTOWARE_CREATE_POLLING_SUBSCRIBER_ON_NODE(message_type, node, topic, qos) \
+  autoware::agnocast_wrapper::create_polling_subscriber<message_type>(node, topic, qos)
 
 #define AUTOWARE_SUBSCRIPTION_OPTIONS agnocast::SubscriptionOptions
 #define AUTOWARE_PUBLISHER_OPTIONS agnocast::PublisherOptions
@@ -900,13 +910,24 @@ inline void set_period(const rclcpp::TimerBase::SharedPtr & timer, std::chrono::
 
 #define AUTOWARE_CREATE_SUBSCRIPTION(message_type, topic, qos, callback, options) \
   this->create_subscription<message_type>(topic, qos, callback, options)
+#define AUTOWARE_CREATE_SUBSCRIPTION_ON_NODE(message_type, node, topic, qos, callback, options) \
+  node->create_subscription<message_type>(topic, qos, callback, options)
+
 #define AUTOWARE_CREATE_PUBLISHER2(message_type, arg1, arg2) \
   this->create_publisher<message_type>(arg1, arg2)
 #define AUTOWARE_CREATE_PUBLISHER3(message_type, arg1, arg2, arg3) \
   this->create_publisher<message_type>(arg1, arg2, arg3)
+#define AUTOWARE_CREATE_PUBLISHER2_ON_NODE(message_type, node, arg1, arg2) \
+  node->create_publisher<message_type>(arg1, arg2)
+#define AUTOWARE_CREATE_PUBLISHER3_ON_NODE(message_type, node, arg1, arg2, arg3) \
+  node->create_publisher<message_type>(arg1, arg2, arg3)
+
 #define AUTOWARE_CREATE_POLLING_SUBSCRIBER(message_type, topic, qos)                       \
   autoware_utils_rclcpp::InterProcessPollingSubscriber<message_type>::create_subscription( \
     this, topic, qos)
+#define AUTOWARE_CREATE_POLLING_SUBSCRIBER_ON_NODE(message_type, node, topic, qos)         \
+  autoware_utils_rclcpp::InterProcessPollingSubscriber<message_type>::create_subscription( \
+    node, topic, qos)
 
 #define AUTOWARE_SUBSCRIPTION_OPTIONS rclcpp::SubscriptionOptions
 #define AUTOWARE_PUBLISHER_OPTIONS rclcpp::PublisherOptions

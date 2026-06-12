@@ -20,6 +20,7 @@
   <depend>autoware_lanelet2_extension</depend>
   <depend>autoware_lanelet2_utils</depend>
   <depend>autoware_map_msgs</depend>
+  <depend>autoware_utils_visualization</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
   <depend>visualization_msgs</depend>
