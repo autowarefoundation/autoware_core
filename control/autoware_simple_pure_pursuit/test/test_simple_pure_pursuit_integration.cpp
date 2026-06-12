@@ -310,6 +310,24 @@ namespace autoware::control::simple_pure_pursuit
 
                 };
 
+                // Consts for connection and receiving timeouts and spin sleep duration
+                std::shared_ptr<rclcpp::executors::SingleThreadedExecutor> executor{nullptr};
+                std::thread executor_thread;
+
+                std::shared_ptr<SimplePurePursuitNode> target_node{nullptr};
+                rclcpp::Node::SharedPtr input_pub_node{nullptr};
+                rclcpp::Node::SharedPtr output_sub_node{nullptr};
+                rclcpp::Publisher<Odometry>::SharedPtr odom_pub{nullptr};
+                rclcpp::Publisher<Trajectory>::SharedPtr traj_pub{nullptr};
+                rclcpp::Subscription<Control>::SharedPtr control_sub{nullptr};
+
+                mutable std::mutex received_control_mutex;
+                std::atomic_bool is_received{false};
+                Control::SharedPtr received_control;
+
+
+            
+
     }; // namespace
 
 }; // namespace autoware::control::simple_pure_pursuit
