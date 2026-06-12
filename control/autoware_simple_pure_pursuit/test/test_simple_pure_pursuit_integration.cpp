@@ -217,6 +217,38 @@ namespace autoware::control::simple_pure_pursuit
 
             };
 
+            // Some helper functions for testing
+
+            // Get time now from input_pub_node's clock
+            [[nodiscard]] builtin_interfaces::msg::Time now() const
+            {
+                return input_pub_node -> get_clock() -> now();
+            };
+
+            // Funcs to publish odometry, trajectory or both as inputs to target node
+            void publish_odometry(
+                const Odometry & odom
+            ) {
+                clear_received_control();
+                odom_pub -> publish(odom);
+            };
+
+            void publish_trajectory(
+                const Trajectory & traj
+            ) {
+                clear_received_control();
+                traj_pub -> publish(traj);
+            };
+
+            void publish_inputs(
+                const Odometry & odom, 
+                const Trajectory & traj
+            ) {
+                clear_received_control();
+                odom_pub -> publish(odom);
+                traj_pub -> publish(traj);
+            };
+
     }; // namespace
 
 }; // namespace autoware::control::simple_pure_pursuit
