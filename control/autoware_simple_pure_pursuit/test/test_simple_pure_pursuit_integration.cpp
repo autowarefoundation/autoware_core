@@ -42,6 +42,7 @@ namespace autoware::control::simple_pure_pursuit
 
         /**
         * @brief Create a dummy Odometry message with some given params.
+        * This dummy one is a pose on the x-y plane with a yaw angle, and a longitudinal velocity.
         *
         * @param x dummy odometry's x position.
         * @param y dummy odometry's y position.
@@ -70,8 +71,41 @@ namespace autoware::control::simple_pure_pursuit
 
             return odom;
 
-        }
+        };
 
-    }
+        /**
+        * @brief Create a dummy Trajectory message with some given params.
+        * This dummy one is a straight line along x-axis,
+        * so all y's are 0.0 and all yaw angles are 0.0.
+        *
+        * @param x_positions dummy trajectory's x positions.
+        * @param longitudinal_velocity dummy trajectory's longitudinal velocity.
+        * @param stamp dummy trajectory's timestamp.
+        *
+        * @return Trajectory dummy message.
+        */
+        Trajectory make_straight_trajectory(
+            const std::vector<double> & x_positions,
+            const double longitudinal_velocity,
+            const builtin_interfaces::msg::Time & stamp
+        ) {
 
-}
+            Trajectory traj;
+            traj.header.frame_id = "map";
+            traj.header.stamp = stamp;
+
+            for (const auto x : x_positions) {
+                TrajectoryPoint point;
+                point.pose.position.x = x;
+                point.pose.position.y = 0.0;
+                point.longitudinal_velocity_mps = static_cast<float>(longitudinal_velocity);
+                traj.points.push_back(point);
+            }
+
+            return traj;
+
+        };
+
+    }; // namespace
+
+}; // namespace autoware::control::simple_pure_pursuit
