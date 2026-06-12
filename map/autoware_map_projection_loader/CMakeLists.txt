@@ -54,6 +54,7 @@ if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
   add_testcase(test/test_load_info_from_lanelet2_map.cpp)
+  add_testcase(test/test_load_info_from_yaml.cpp)
 endif()
 
 autoware_ament_auto_package(

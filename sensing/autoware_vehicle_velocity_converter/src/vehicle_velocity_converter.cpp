@@ -14,10 +14,33 @@
 
 #include "vehicle_velocity_converter.hpp"
 
+#include <autoware_utils_geometry/msg/covariance.hpp>
+
 #include <string>
 
 namespace autoware::vehicle_velocity_converter
 {
+geometry_msgs::msg::TwistWithCovarianceStamped convert(
+  const autoware_vehicle_msgs::msg::VelocityReport & msg, const double speed_scale_factor,
+  const double stddev_vx, const double stddev_wz)
+{
+  using COV_IDX = autoware_utils_geometry::xyzrpy_covariance_index::XYZRPY_COV_IDX;
+
+  geometry_msgs::msg::TwistWithCovarianceStamped twist_with_covariance_msg;
+  twist_with_covariance_msg.header = msg.header;
+  twist_with_covariance_msg.twist.twist.linear.x = msg.longitudinal_velocity * speed_scale_factor;
+  twist_with_covariance_msg.twist.twist.linear.y = msg.lateral_velocity;
+  twist_with_covariance_msg.twist.twist.angular.z = msg.heading_rate;
+  twist_with_covariance_msg.twist.covariance[COV_IDX::X_X] = stddev_vx * stddev_vx;
+  twist_with_covariance_msg.twist.covariance[COV_IDX::Y_Y] = 10000.0;
+  twist_with_covariance_msg.twist.covariance[COV_IDX::Z_Z] = 10000.0;
+  twist_with_covariance_msg.twist.covariance[COV_IDX::ROLL_ROLL] = 10000.0;
+  twist_with_covariance_msg.twist.covariance[COV_IDX::PITCH_PITCH] = 10000.0;
+  twist_with_covariance_msg.twist.covariance[COV_IDX::YAW_YAW] = stddev_wz * stddev_wz;
+
+  return twist_with_covariance_msg;
+}
+
 VehicleVelocityConverter::VehicleVelocityConverter(const rclcpp::NodeOptions & options)
 : rclcpp::Node("vehicle_velocity_converter", options),
   frame_id_(declare_parameter<std::string>("frame_id")),
@@ -41,19 +64,7 @@ void VehicleVelocityConverter::callback_velocity_report(
   }
 
   // set twist with covariance msg from vehicle report msg
-  geometry_msgs::msg::TwistWithCovarianceStamped twist_with_covariance_msg;
-  twist_with_covariance_msg.header = msg->header;
-  twist_with_covariance_msg.twist.twist.linear.x = msg->longitudinal_velocity * speed_scale_factor_;
-  twist_with_covariance_msg.twist.twist.linear.y = msg->lateral_velocity;
-  twist_with_covariance_msg.twist.twist.angular.z = msg->heading_rate;
-  twist_with_covariance_msg.twist.covariance[0 + 0 * 6] = stddev_vx_ * stddev_vx_;
-  twist_with_covariance_msg.twist.covariance[1 + 1 * 6] = 10000.0;
-  twist_with_covariance_msg.twist.covariance[2 + 2 * 6] = 10000.0;
-  twist_with_covariance_msg.twist.covariance[3 + 3 * 6] = 10000.0;
-  twist_with_covariance_msg.twist.covariance[4 + 4 * 6] = 10000.0;
-  twist_with_covariance_msg.twist.covariance[5 + 5 * 6] = stddev_wz_ * stddev_wz_;
-
-  twist_with_covariance_pub_->publish(twist_with_covariance_msg);
+  twist_with_covariance_pub_->publish(convert(*msg, speed_scale_factor_, stddev_vx_, stddev_wz_));
 }
 }  // namespace autoware::vehicle_velocity_converter
 

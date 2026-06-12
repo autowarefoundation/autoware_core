@@ -1,4 +1,4 @@
-// Copyright 2023 The Autoware Contributors
+// Copyright 2022 The Autoware Contributors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "ndt_localization_trigger_module.hpp"
+#include "localization_trigger_module.hpp"
 
 #include <autoware/component_interface_specs/localization.hpp>
 
@@ -25,20 +25,23 @@ namespace autoware::pose_initializer
 {
 using Initialize = autoware::component_interface_specs::localization::Initialize;
 
-NdtLocalizationTriggerModule::NdtLocalizationTriggerModule(rclcpp::Node * node) : node_(node)
+LocalizationTriggerModule::LocalizationTriggerModule(
+  rclcpp::Node * node, const std::string & service_name, const std::string & label)
+: node_(node), label_(label)
 {
-  client_ndt_trigger_ = node_->create_client<SetBool>("ndt_trigger_node");
+  client_trigger_ = node_->create_client<SetBool>(service_name);
 }
 
-void NdtLocalizationTriggerModule::wait_for_service()
+void LocalizationTriggerModule::wait_for_service()
 {
-  while (!client_ndt_trigger_->wait_for_service(std::chrono::seconds(1))) {
-    RCLCPP_INFO(node_->get_logger(), "NDT triggering service is not available, waiting...");
+  while (!client_trigger_->wait_for_service(std::chrono::seconds(1))) {
+    RCLCPP_INFO(
+      node_->get_logger(), "%s triggering service is not available, waiting...", label_.c_str());
   }
-  RCLCPP_INFO(node_->get_logger(), "NDT triggering service is available!");
+  RCLCPP_INFO(node_->get_logger(), "%s triggering service is available!", label_.c_str());
 }
 
-void NdtLocalizationTriggerModule::send_request(bool flag, bool need_spin) const
+void LocalizationTriggerModule::send_request(bool flag, bool need_spin) const
 {
   const auto req = std::make_shared<SetBool::Request>();
   std::string command_name;
@@ -49,28 +52,28 @@ void NdtLocalizationTriggerModule::send_request(bool flag, bool need_spin) const
     command_name = "Deactivation";
   }
 
-  if (!client_ndt_trigger_->service_is_ready()) {
+  if (!client_trigger_->service_is_ready()) {
     autoware_adapi_v1_msgs::msg::ResponseStatus respose_status;
     respose_status.success = false;
     respose_status.code = autoware_adapi_v1_msgs::msg::ResponseStatus::SERVICE_UNREADY;
-    respose_status.message = "NDT triggering service is not ready";
+    respose_status.message = label_ + " triggering service is not ready";
     throw respose_status;
   }
 
-  auto future_ndt = client_ndt_trigger_->async_send_request(req);
+  auto future = client_trigger_->async_send_request(req);
 
   if (need_spin) {
-    rclcpp::spin_until_future_complete(node_->get_node_base_interface(), future_ndt);
+    rclcpp::spin_until_future_complete(node_->get_node_base_interface(), future);
   }
 
-  if (future_ndt.get()->success) {
-    RCLCPP_INFO(node_->get_logger(), "NDT %s succeeded", command_name.c_str());
+  if (future.get()->success) {
+    RCLCPP_INFO(node_->get_logger(), "%s %s succeeded", label_.c_str(), command_name.c_str());
   } else {
-    RCLCPP_INFO(node_->get_logger(), "NDT %s failed", command_name.c_str());
+    RCLCPP_INFO(node_->get_logger(), "%s %s failed", label_.c_str(), command_name.c_str());
     autoware_adapi_v1_msgs::msg::ResponseStatus respose_status;
     respose_status.success = false;
     respose_status.code = Initialize::Service::Response::ERROR_ESTIMATION;
-    respose_status.message = "NDT " + command_name + " failed";
+    respose_status.message = label_ + " " + command_name + " failed";
     throw respose_status;
   }
 }
