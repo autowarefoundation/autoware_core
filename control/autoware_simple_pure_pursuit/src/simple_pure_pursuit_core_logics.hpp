@@ -44,7 +44,7 @@ struct SimplePurePursuitParameters {
 class SimplePurePursuitCoreLogics
 {
 
-    public:
+public:
   
     // Constructor
     explicit SimplePurePursuitCoreLogics(const SimplePurePursuitParameters & parameters);
@@ -65,6 +65,42 @@ class SimplePurePursuitCoreLogics
         const autoware_planning_msgs::msg::Trajectory & traj
     ) const;
 
+private:
+
+    SimplePurePursuitParameters params_;
+
+    /**
+    * @brief Calculate longitudinal control command
+    *
+    * @param odom Current odometry of vehicle
+    * @param target_longitudinal_vel Target longitudinal velocity to achieve
+    *
+    * @return Longitudinal control command
+    */
+    autoware_control_msgs::msg::Longitudinal calc_longitudinal_control(
+        const nav_msgs::msg::Odometry & odom, 
+        const double target_longitudinal_vel
+    ) const;
+
+    /**
+    * @brief Calculate lateral control command
+    *
+    * @param odom Current odometry of vehicle
+    * @param traj Current trajectory to follow
+    * @param target_longitudinal_vel Target longitudinal velocity to achieve
+    * @param closest_traj_point_idx Index of closest trajectory point to current vehicle position
+    *
+    * @return Lateral control command
+    */
+    autoware_control_msgs::msg::Lateral calc_lateral_control(
+        const nav_msgs::msg::Odometry & odom, 
+        const autoware_planning_msgs::msg::Trajectory & traj, 
+        const double target_longitudinal_vel,
+        const size_t closest_traj_point_idx
+    ) const;
+
 };
 
 }; // namespace autoware::control::simple_pure_pursuit
+
+#endif  // SIMPLE_PURE_PURSUIT_CORE_LOGICS_HPP_
