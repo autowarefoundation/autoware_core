@@ -79,6 +79,33 @@ namespace autoware::control::simple_pure_pursuit
 
         return control_command;
 
+    };
+
+    // Core logic for calculating longitudinal control command
+    autoware_control_msgs::msg::Longitudinal SimplePurePursuitCoreLogics::calc_longitudinal_control(
+        const nav_msgs::msg::Odometry & odom, 
+        const double target_longitudinal_vel
+    ) const {
+        
+        autoware_control_msgs::msg::Longitudinal longitudinal_control_command;
+        const double current_velocity = odom.twist.twist.linear.x;
+
+        if (params_.use_external_target_vel) {
+
+            longitudinal_control_command.velocity = static_cast<float>(params_.external_target_vel);
+            longitudinal_control_command.acceleration =
+            static_cast<float>((params_.external_target_vel - current_velocity) * params_.speed_proportional_gain);
+        
+        } else {
+
+            longitudinal_control_command.velocity = static_cast<float>(target_longitudinal_vel);
+            longitudinal_control_command.acceleration =
+            static_cast<float>((target_longitudinal_vel - current_velocity) * params_.speed_proportional_gain);
+        
+        }
+        
+        return longitudinal_control_command;
+
     }
 
 }; // namespace autoware::control::simple_pure_pursuit
