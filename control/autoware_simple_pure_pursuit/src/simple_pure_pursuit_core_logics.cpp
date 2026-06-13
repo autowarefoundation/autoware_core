@@ -12,3 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "simple_pure_pursuit_core_logics.hpp"
+
+#include <autoware/motion_utils/trajectory/trajectory.hpp>
+#include <tf2/utils.hpp>
+#include <algorithm>
+
+namespace autoware::control::simple_pure_pursuit
+{
+
+    SimplePurePursuitCoreLogics::SimplePurePursuitCoreLogics(const SimplePurePursuitParameters & params)
+    : params_(params)
+    {
+    }
+
+    void SimplePurePursuitCoreLogics::set_params(const SimplePurePursuitParameters & params)
+    {
+        params_ = params;
+    }
+
+}; // namespace autoware::control::simple_pure_pursuit

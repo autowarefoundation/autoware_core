@@ -47,10 +47,10 @@ class SimplePurePursuitCoreLogics
 public:
   
     // Constructor
-    explicit SimplePurePursuitCoreLogics(const SimplePurePursuitParameters & parameters);
+    explicit SimplePurePursuitCoreLogics(const SimplePurePursuitParameters & params);
     
     // Set param struct for algorithm
-    void set_parameters(const SimplePurePursuitParameters & parameters);
+    void set_params(const SimplePurePursuitParameters & params);
 
     /**
     * @brief Create control command based on current odom and traj
