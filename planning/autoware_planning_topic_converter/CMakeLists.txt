@@ -24,4 +24,6 @@ rclcpp_components_register_node(planning_topic_converter
   EXECUTABLE path_to_trajectory_converter
 )
 
-autoware_ament_auto_package()
+autoware_ament_auto_package(
+  USE_SCOPED_HEADER_INSTALL_DIR
+)
