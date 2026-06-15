@@ -26,7 +26,7 @@ using autoware::motion_utils::findNearestIndex;
 
 // Constructor
 SimplePurePursuitCoreLogics::SimplePurePursuitCoreLogics(const SimplePurePursuitParameters & params)
-: params_(params) {};
+: params_(params) {}
 
 // Params setter
 void SimplePurePursuitCoreLogics::set_params(const SimplePurePursuitParameters & params)
