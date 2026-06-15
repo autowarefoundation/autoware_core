@@ -26,7 +26,7 @@ namespace autoware::twist2accel
 using std::placeholders::_1;
 
 Twist2Accel::Twist2Accel(const rclcpp::NodeOptions & node_options)
-: rclcpp::Node("twist2accel", node_options)
+: autoware::agnocast_wrapper::Node("twist2accel", node_options)
 {
   sub_odom_ = create_subscription<nav_msgs::msg::Odometry>(
     "input/odom", 1, std::bind(&Twist2Accel::callback_odometry, this, _1));
@@ -41,7 +41,8 @@ Twist2Accel::Twist2Accel(const rclcpp::NodeOptions & node_options)
   accel_estimator_ = std::make_unique<AccelEstimator>(accel_lowpass_gain);
 }
 
-void Twist2Accel::callback_odometry(const nav_msgs::msg::Odometry::SharedPtr msg)
+void Twist2Accel::callback_odometry(
+  const AUTOWARE_MESSAGE_CONST_SHARED_PTR(nav_msgs::msg::Odometry) msg)
 {
   if (!use_odom_) return;
 
@@ -52,7 +53,7 @@ void Twist2Accel::callback_odometry(const nav_msgs::msg::Odometry::SharedPtr msg
 }
 
 void Twist2Accel::callback_twist_with_covariance(
-  const geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr msg)
+  const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::TwistWithCovarianceStamped) msg)
 {
   if (use_odom_) return;
 
@@ -64,17 +65,17 @@ void Twist2Accel::callback_twist_with_covariance(
 
 void Twist2Accel::estimate_accel(const geometry_msgs::msg::TwistStamped & twist)
 {
-  geometry_msgs::msg::AccelWithCovarianceStamped accel_msg;
-  accel_msg.header = twist.header;
+  auto accel_msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_accel_);
+  accel_msg->header = twist.header;
 
   if (prev_twist_.has_value()) {
     const double dt =
       (rclcpp::Time(twist.header.stamp) - rclcpp::Time(prev_twist_->header.stamp)).seconds();
 
-    accel_msg.accel = accel_estimator_->estimate(prev_twist_->twist, twist.twist, dt);
+    accel_msg->accel = accel_estimator_->estimate(prev_twist_->twist, twist.twist, dt);
   }
 
-  pub_accel_->publish(accel_msg);
+  pub_accel_->publish(std::move(accel_msg));
   prev_twist_ = twist;
 }
 }  // namespace autoware::twist2accel

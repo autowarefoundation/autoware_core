@@ -4,15 +4,18 @@ project(autoware_twist2accel)
 find_package(autoware_cmake REQUIRED)
 autoware_package()
 
+find_package(autoware_agnocast_wrapper REQUIRED)
+
 ament_auto_add_library(${PROJECT_NAME} SHARED
   src/accel_estimator.cpp
   src/twist2accel.cpp
 )
+ament_target_dependencies(${PROJECT_NAME} autoware_agnocast_wrapper)
 
 autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
   PLUGIN "autoware::twist2accel::Twist2Accel"
   EXECUTABLE ${PROJECT_NAME}_node
-  AGNOCAST_EXECUTOR CallbackIsolatedAgnocastExecutor
+  AGNOCAST_EXECUTOR AgnocastOnlyCallbackIsolatedExecutor
   ROS2_EXECUTOR SingleThreadedExecutor
 )
 
