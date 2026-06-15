@@ -15,6 +15,8 @@
 #ifndef SIMPLE_PURE_PURSUIT_HPP_
 #define SIMPLE_PURE_PURSUIT_HPP_
 
+#include "simple_pure_pursuit_core_logics.hpp"
+
 #include <autoware_utils_rclcpp/polling_subscriber.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -23,6 +25,8 @@
 #include <autoware_planning_msgs/msg/trajectory.hpp>
 #include <autoware_planning_msgs/msg/trajectory_point.hpp>
 #include <nav_msgs/msg/odometry.hpp>
+
+#include <memory>
 
 namespace autoware::control::simple_pure_pursuit
 {
@@ -48,8 +52,8 @@ private:
   // timer
   rclcpp::TimerBase::SharedPtr timer_;
 
-  // vehicle info
-  const autoware::vehicle_info_utils::VehicleInfo vehicle_info_;
+  // simple_pure_pursuit core logics
+  std::unique_ptr<SimplePurePursuitCoreLogics> core_logics_;
 
   // pure pursuit parameters
   const double lookahead_gain_;
@@ -60,16 +64,7 @@ private:
 
   // functions
   void on_timer();
-  autoware_control_msgs::msg::Control create_control_command(
-    const Odometry & odom, const Trajectory & traj);
-  autoware_control_msgs::msg::Longitudinal calc_longitudinal_control(
-    const Odometry & odom, const double target_longitudinal_vel) const;
-  autoware_control_msgs::msg::Lateral calc_lateral_control(
-    const Odometry & odom, const Trajectory & traj, const double target_longitudinal_vel,
-    const size_t closest_traj_point_idx) const;
 
-public:
-  friend class SimplePurePursuitNodeTest;
 };
 
 }  // namespace autoware::control::simple_pure_pursuit
