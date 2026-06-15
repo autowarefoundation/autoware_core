@@ -73,7 +73,7 @@ Odometry make_odometry(
   odom.twist.twist.linear.x = longitudinal_velocity;
 
   return odom;
-};
+}
 
 /**
  * @brief Create a dummy Trajectory message with some given params.
