@@ -1291,6 +1291,8 @@ inline void set_period(const rclcpp::TimerBase::SharedPtr & timer, std::chrono::
   autoware_utils_rclcpp::InterProcessPollingSubscriber<message_type>::create_subscription( \
     node, topic, qos)
 
+#if RCLCPP_VERSION_MAJOR >= 28
+
 #define AUTOWARE_CREATE_CLIENT1(service_type, service_name) \
   this->create_client<service_type>(service_name)
 #define AUTOWARE_CREATE_CLIENT2(service_type, service_name, qos) \
@@ -1316,6 +1318,36 @@ inline void set_period(const rclcpp::TimerBase::SharedPtr & timer, std::chrono::
   node->create_service<service_type>(service_name, callback, qos)
 #define AUTOWARE_CREATE_SERVICE4_ON_NODE(service_type, node, service_name, callback, qos, group) \
   node->create_service<service_type>(service_name, callback, qos, group)
+
+#else
+
+#define AUTOWARE_CREATE_CLIENT1(service_type, service_name) \
+  this->create_client<service_type>(service_name)
+#define AUTOWARE_CREATE_CLIENT2(service_type, service_name, qos) \
+  this->create_client<service_type>(service_name, qos.get_rmw_qos_profile())
+#define AUTOWARE_CREATE_CLIENT3(service_type, service_name, qos, group) \
+  this->create_client<service_type>(service_name, qos.get_rmw_qos_profile(), group)
+#define AUTOWARE_CREATE_CLIENT1_ON_NODE(service_type, node, service_name) \
+  node->create_client<service_type>(service_name)
+#define AUTOWARE_CREATE_CLIENT2_ON_NODE(service_type, node, service_name, qos) \
+  node->create_client<service_type>(service_name, qos.get_rmw_qos_profile())
+#define AUTOWARE_CREATE_CLIENT3_ON_NODE(service_type, node, service_name, qos, group) \
+  node->create_client<service_type>(service_name, qos.get_rmw_qos_profile(), group)
+
+#define AUTOWARE_CREATE_SERVICE2(service_type, service_name, callback) \
+  this->create_service<service_type>(service_name, callback)
+#define AUTOWARE_CREATE_SERVICE3(service_type, service_name, callback, qos) \
+  this->create_service<service_type>(service_name, callback, qos.get_rmw_qos_profile())
+#define AUTOWARE_CREATE_SERVICE4(service_type, service_name, callback, qos, group) \
+  this->create_service<service_type>(service_name, callback, qos.get_rmw_qos_profile(), group)
+#define AUTOWARE_CREATE_SERVICE2_ON_NODE(service_type, node, service_name, callback) \
+  node->create_service<service_type>(service_name, callback)
+#define AUTOWARE_CREATE_SERVICE3_ON_NODE(service_type, node, service_name, callback, qos) \
+  node->create_service<service_type>(service_name, callback, qos.get_rmw_qos_profile())
+#define AUTOWARE_CREATE_SERVICE4_ON_NODE(service_type, node, service_name, callback, qos, group) \
+  node->create_service<service_type>(service_name, callback, qos.get_rmw_qos_profile(), group)
+
+#endif
 
 #define AUTOWARE_SUBSCRIPTION_OPTIONS rclcpp::SubscriptionOptions
 #define AUTOWARE_PUBLISHER_OPTIONS rclcpp::PublisherOptions
