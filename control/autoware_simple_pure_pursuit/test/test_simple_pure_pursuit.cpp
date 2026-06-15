@@ -160,7 +160,7 @@ TEST_F(SimplePurePursuitCoreLogicsTest, GenerateNonZeroSteeringForLateralOffset)
 
 }
 
-// TEST 6. Lookahead distance clamp case
+// TEST 6. Lookahead distance clamp case [fallback branch coverage]
 // Car at (0, 0.5), facing long x-axis, crawling at 0.5 m/s
 // Lookahead gain 1.0, so calculated lookahead distance = 0.5 * 1.0  0.5m < min lookahead distance 1.0m
 // Expects clamping to min lookahead distance
@@ -177,6 +177,27 @@ TEST_F(SimplePurePursuitCoreLogicsTest, ClampToLookaheadMinDistance)
 
   // Note: current lookahead calculation is a bit weird. Confirmed with Ishikawa-san. We will fix it later. Not now.
   // Fow now just keep it, focusing only on refactoring. Thus I had to resort to above infinity check. Still legit I guess.
+
+}
+
+// TEST 7. Lookahead point search exceeds trajectory length case [fallback branch coverage]
+// Car at origin, facing long x-axis, yuge target speed 50 m/s (to push lookahead distance to 50m)
+// Same trajectory as STEP 1, which is shorter than lookahead distance
+// Expects fallback to bind lookahead point to trajectory's end nicely
+TEST_F(SimplePurePursuitCoreLogicsTest, FallbackWhenLookaheadExceedsTrajectoryLength)
+{
+  
+  set_external_target_velocity(50.0); 
+  
+  const auto odom = makeOdometry(0.0, 0.0, 0.0);
+  const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(10, 1.0, 1.0);
+
+  const auto result = create_control_command(odom, traj);
+
+  // Fallback branch `lookahead_point_itr == traj.points.end()` should activate
+  // and bind lookahead to final point without triggering a segfault
+  // Abuse infinity check again
+  EXPECT_TRUE(std::isfinite(result.lateral.steering_tire_angle));
 
 }
 
