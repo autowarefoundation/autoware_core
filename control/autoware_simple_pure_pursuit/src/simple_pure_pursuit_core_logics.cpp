@@ -109,27 +109,21 @@ namespace autoware::control::simple_pure_pursuit
     };
 
     // Core logic for calculating lateral control command
-    autoware_control_msgs::msg::Lateral PurePursuit::calc_lateral_control(
+    autoware_control_msgs::msg::Lateral SimplePurePursuitCoreLogics::calc_lateral_control(
         const nav_msgs::msg::Odometry & odom, 
         const autoware_planning_msgs::msg::Trajectory & traj,
         const double target_longitudinal_vel, 
         const size_t closest_traj_point_idx
     ) const {
-
-        const double current_velocity = odom.twist.twist.linear.x;
         
-        // Calculate dynamic lookahead distance
-        double lookahead_distance = params_.lookahead_gain * current_velocity;
-        if (lookahead_distance < params_.lookahead_min_distance) {
-            lookahead_distance = params_.lookahead_min_distance;
-        }
+        // Calculate lookahead distance
+        const double lookahead_distance =
+            params_.lookahead_gain * target_longitudinal_vel + params_.lookahead_min_distance;
 
-        // Calculate vehicle rear axle position using kinematic bicycle model
+        // Calculate center coordinate of rear wheel
         const double vehicle_heading = tf2::getYaw(odom.pose.pose.orientation);
-        const double rear_x =
-            odom.pose.pose.position.x - params_.wheel_base_m / 2.0 * std::cos(vehicle_heading);
-        const double rear_y =
-            odom.pose.pose.position.y - params_.wheel_base_m / 2.0 * std::sin(vehicle_heading);
+        const double rear_x = odom.pose.pose.position.x - params_.wheel_base_m / 2.0 * std::cos(vehicle_heading);
+        const double rear_y = odom.pose.pose.position.y - params_.wheel_base_m / 2.0 * std::sin(vehicle_heading);
 
         // Search for the lookahead point on the trajectory
         auto lookahead_point_itr = std::find_if(
@@ -151,11 +145,13 @@ namespace autoware::control::simple_pure_pursuit
         // Calculate pure pursuit steering angle
         autoware_control_msgs::msg::Lateral lateral_control_command;
         const double alpha = std::atan2(lookahead_point_y - rear_y, lookahead_point_x - rear_x) -
-                            tf2::getYaw(odom.pose.pose.orientation);
+                             tf2::getYaw(odom.pose.pose.orientation);
                             
-        lateral_control_command.steering_tire_angle = std::atan2(
-            2.0 * params_.wheel_base_m * std::sin(alpha), 
-            lookahead_distance
+        lateral_control_command.steering_tire_angle = static_cast<float>(
+            std::atan2(
+                2.0 * params_.wheel_base_m * std::sin(alpha), 
+                lookahead_distance
+            )
         );
 
         return lateral_control_command;
