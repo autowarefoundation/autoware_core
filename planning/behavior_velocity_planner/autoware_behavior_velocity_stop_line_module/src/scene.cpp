@@ -15,8 +15,7 @@
 #include "scene.hpp"
 
 #include "autoware/behavior_velocity_planner_common/utilization/util.hpp"
-#include "autoware/trajectory/utils/closest.hpp"
-#include "autoware/trajectory/utils/crossed.hpp"
+#include "stop_line_util.hpp"
 
 #include <autoware/route_handler/route_handler.hpp>
 #include <rclcpp/logging.hpp>
@@ -29,21 +28,10 @@
 #include <cstdarg>
 #include <memory>
 #include <optional>
-#include <set>
 #include <utility>
 
 namespace autoware::behavior_velocity_planner
 {
-
-bool hasIntersection(const std::set<lanelet::Id> & a, const std::set<lanelet::Id> & b)
-{
-  for (const auto & id : a) {
-    if (b.find(id) != b.end()) {
-      return true;
-    }
-  }
-  return false;
-}
 
 StopLineModule::StopLineModule(
   const int64_t module_id,                                                //
@@ -113,100 +101,55 @@ std::pair<double, std::optional<double>> StopLineModule::getEgoAndStopPoint(
   const Trajectory & trajectory, const PathWithLaneId & path,
   const geometry_msgs::msg::Pose & ego_pose, const State & state) const
 {
-  const double ego_s = autoware::experimental::trajectory::closest(trajectory, ego_pose);
-  std::optional<double> stop_point_s;
-
-  switch (state) {
-    case State::APPROACH: {
-      const double base_link2front = planner_data_->vehicle_info_.max_longitudinal_offset_m;
-      const LineString2d stop_line = planning_utils::extendSegmentToBounds(
-        lanelet::utils::to2D(stop_line_).basicLineString(), path.left_bound, path.right_bound);
-
-      lanelet::Ids connected_lanelet_ids;
-
-      if (planner_data_->route_handler_) {
-        connected_lanelet_ids = planning_utils::collectConnectedLaneIds(
-          linked_lanelet_id_, planner_data_->route_handler_);
-      } else {
-        connected_lanelet_ids = {linked_lanelet_id_};
-      }
-
-      // Calculate intersection with stop line
-      const auto trajectory_stop_line_intersection =
-        autoware::experimental::trajectory::crossed_with_constraint(
-          trajectory, stop_line,
-          [&](const autoware_internal_planning_msgs::msg::PathPointWithLaneId & point) {
-            return hasIntersection(
-              {connected_lanelet_ids.begin(), connected_lanelet_ids.end()},
-              {point.lane_ids.begin(), point.lane_ids.end()});
-          });
-
-      // If no collision found, do nothing
-      if (trajectory_stop_line_intersection.size() == 0) {
-        stop_point_s = std::nullopt;
-        break;
-      }
-
-      stop_point_s =
-        trajectory_stop_line_intersection.at(0) -
-        (base_link2front + planner_param_.stop_margin);  // consider vehicle length and stop margin
-
-      if (*stop_point_s < 0.0) {
-        stop_point_s = std::nullopt;
-      }
-      break;
-    }
-
-    case State::STOPPED: {
-      stop_point_s = ego_s;
-      break;
-    }
-
-    case State::START: {
-      stop_point_s = std::nullopt;
-      break;
-    }
+  lanelet::Ids connected_lanelet_ids;
+  if (planner_data_->route_handler_) {
+    connected_lanelet_ids =
+      planning_utils::collectConnectedLaneIds(linked_lanelet_id_, planner_data_->route_handler_);
+  } else {
+    connected_lanelet_ids = {linked_lanelet_id_};
   }
-  return {ego_s, stop_point_s};
+
+  return stop_line_utils::compute_ego_and_stop_point(
+    trajectory, path.left_bound, path.right_bound, stop_line_, ego_pose, state,
+    connected_lanelet_ids, planner_data_->vehicle_info_.max_longitudinal_offset_m,
+    planner_param_.stop_margin);
 }
 
 void StopLineModule::updateStateAndStoppedTime(
   State * state, std::optional<rclcpp::Time> * stopped_time, const rclcpp::Time & now,
   const double & distance_to_stop_point, const bool & is_vehicle_stopped) const
 {
-  switch (*state) {
-    case State::APPROACH: {
-      if (distance_to_stop_point < planner_param_.hold_stop_margin_distance && is_vehicle_stopped) {
-        *state = State::STOPPED;
-        *stopped_time = now;
-        logInfo("State transition: APPROACH -> STOPPED | Distance: %.2fm", distance_to_stop_point);
-        if (distance_to_stop_point < 0.0) {
-          logWarn("Vehicle stopped after stop line | Distance: %.2fm", distance_to_stop_point);
-        }
-      } else {
-        logInfoThrottle(10000, "State: APPROACH | Distance: %.2fm", distance_to_stop_point);
+  const auto result = stop_line_utils::advance_state(
+    *state, *stopped_time, now, distance_to_stop_point, is_vehicle_stopped,
+    planner_param_.hold_stop_margin_distance, planner_param_.required_stop_duration_sec);
+
+  switch (result.transition) {
+    case stop_line_utils::StateTransition::APPROACH_TO_STOPPED: {
+      logInfo("State transition: APPROACH -> STOPPED | Distance: %.2fm", distance_to_stop_point);
+      if (distance_to_stop_point < 0.0) {
+        logWarn("Vehicle stopped after stop line | Distance: %.2fm", distance_to_stop_point);
       }
       break;
     }
-    case State::STOPPED: {
-      if (!stopped_time->has_value()) {
-        logWarn("stopped_time has no value in STOPPED state");
-        *stopped_time = now;
-        break;
-      }
-      double stop_duration = (now - **stopped_time).seconds();
-      if (stop_duration > planner_param_.required_stop_duration_sec) {
-        *state = State::START;
-        stopped_time->reset();
-        logInfo("State transition: STOPPED -> START | Duration: %.2fs", stop_duration);
-      } else {
-        logInfoThrottle(
-          5000, "State: STOPPED | Distance: %.2fm | Duration: %.2fs", distance_to_stop_point,
-          stop_duration);
-      }
+    case stop_line_utils::StateTransition::APPROACH_STAY: {
+      logInfoThrottle(10000, "State: APPROACH | Distance: %.2fm", distance_to_stop_point);
       break;
     }
-    case State::START: {
+    case stop_line_utils::StateTransition::STOPPED_TIME_RECOVERY: {
+      logWarn("stopped_time has no value in STOPPED state");
+      break;
+    }
+    case stop_line_utils::StateTransition::STOPPED_TO_START: {
+      logInfo("State transition: STOPPED -> START | Duration: %.2fs", result.stop_duration);
+      break;
+    }
+    case stop_line_utils::StateTransition::STOPPED_STAY: {
+      logInfoThrottle(
+        5000, "State: STOPPED | Distance: %.2fm | Duration: %.2fs", distance_to_stop_point,
+        result.stop_duration);
+      break;
+    }
+    case stop_line_utils::StateTransition::START: {
       logDebug("State: START | Distance: %.2fm", distance_to_stop_point);
       break;
     }

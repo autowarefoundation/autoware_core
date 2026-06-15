@@ -17,6 +17,8 @@
 
 #define EIGEN_MPL2_ONLY
 
+#include "../stop_line_util.hpp"
+
 #include <autoware/behavior_velocity_planner_common/experimental/scene_module_interface.hpp>
 
 #include <memory>
@@ -30,7 +32,7 @@ class StopLineModule : public SceneModuleInterface
 public:
   using StopLineWithLaneId = std::pair<lanelet::ConstLineString3d, int64_t>;
 
-  enum class State { APPROACH, STOPPED, START };
+  using State = stop_line_utils::State;
 
   struct DebugData
   {

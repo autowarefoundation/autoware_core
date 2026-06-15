@@ -20,6 +20,7 @@
   <depend>class_loader</depend>
   <depend>diagnostic_updater</depend>
   <depend>geometry_msgs</depend>
+  <depend>libgoogle-glog-dev</depend>
   <depend>message_filters</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
@@ -27,7 +28,11 @@
   <depend>tf2_ros</depend>
 
   <exec_depend condition="$ENABLE_AGNOCAST == 1">agnocast_components</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend condition="$ENABLE_AGNOCAST == 1">ros2agnocast_discovery_agent</exec_depend>
 
+  <test_depend>ament_cmake_pytest</test_depend>
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>autoware_lint_common</test_depend>
 

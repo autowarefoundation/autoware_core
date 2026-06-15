@@ -16,6 +16,7 @@
 #include <autoware/pyplot/loader.hpp>
 
 #include <tuple>
+#include <utility>
 
 namespace autoware::pyplot
 {
@@ -25,7 +26,7 @@ Axes::Axes(const pybind11::object & object) : PyObjectWrapper(object)
 {
   load_attrs();
 }
-Axes::Axes(pybind11::object && object) : PyObjectWrapper(object)
+Axes::Axes(pybind11::object && object) : PyObjectWrapper(std::move(object))
 {
   load_attrs();
 }
@@ -45,6 +46,11 @@ PyObjectWrapper Axes::axvline(const pybind11::tuple & args, const pybind11::dict
   return PyObjectWrapper{axvline_attr(*args, **kwargs)};
 }
 
+PyObjectWrapper Axes::bar_label(const pybind11::tuple & args, const pybind11::dict & kwargs) const
+{
+  return PyObjectWrapper{bar_label_attr(*args, **kwargs)};
+}
+
 PyObjectWrapper Axes::cla(const pybind11::tuple & args, const pybind11::dict & kwargs) const
 {
   return PyObjectWrapper{cla_attr(*args, **kwargs)};
@@ -53,6 +59,16 @@ PyObjectWrapper Axes::cla(const pybind11::tuple & args, const pybind11::dict & k
 PyObjectWrapper Axes::contour(const pybind11::tuple & args, const pybind11::dict & kwargs) const
 {
   return PyObjectWrapper{contour_attr(*args, **kwargs)};
+}
+
+PyObjectWrapper Axes::contourf(const pybind11::tuple & args, const pybind11::dict & kwargs) const
+{
+  return PyObjectWrapper{contourf_attr(*args, **kwargs)};
+}
+
+PyObjectWrapper Axes::errorbar(const pybind11::tuple & args, const pybind11::dict & kwargs) const
+{
+  return PyObjectWrapper{errorbar_attr(*args, **kwargs)};
 }
 
 PyObjectWrapper Axes::fill(const pybind11::tuple & args, const pybind11::dict & kwargs) const
@@ -167,9 +183,11 @@ void Axes::load_attrs()
   LOAD_FUNC_ATTR(add_patch, self_);
   LOAD_FUNC_ATTR(axhline, self_);
   LOAD_FUNC_ATTR(axvline, self_);
+  LOAD_FUNC_ATTR(bar_label, self_);
   LOAD_FUNC_ATTR(cla, self_);
   LOAD_FUNC_ATTR(contour, self_);
   LOAD_FUNC_ATTR(contourf, self_);
+  LOAD_FUNC_ATTR(errorbar, self_);
   LOAD_FUNC_ATTR(fill, self_);
   LOAD_FUNC_ATTR(fill_between, self_);
   LOAD_FUNC_ATTR(get_xlim, self_);

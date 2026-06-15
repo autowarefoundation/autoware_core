@@ -78,9 +78,9 @@ public:
   virtual ~Node() = default;
 
   // ===== Basic information =====
-  std::string get_name() const;
-  std::string get_namespace() const;
-  std::string get_fully_qualified_name() const;
+  const char * get_name() const;
+  const char * get_namespace() const;
+  const char * get_fully_qualified_name() const;
   rclcpp::Logger get_logger() const;
 
   // ===== Time =====
