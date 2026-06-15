@@ -55,13 +55,6 @@ private:
   // simple_pure_pursuit core logics
   std::unique_ptr<SimplePurePursuitCoreLogics> core_logics_;
 
-  // pure pursuit parameters
-  const double lookahead_gain_;
-  const double lookahead_min_distance_;
-  const double speed_proportional_gain_;
-  const bool use_external_target_vel_;
-  const double external_target_vel_;
-
   // functions
   void on_timer();
 
