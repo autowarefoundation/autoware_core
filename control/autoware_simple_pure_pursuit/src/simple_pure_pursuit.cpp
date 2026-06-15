@@ -16,6 +16,8 @@
 
 #include "simple_pure_pursuit_core_logics.hpp"
 
+#include <memory>
+
 namespace autoware::control::simple_pure_pursuit
 {
 
