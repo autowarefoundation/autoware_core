@@ -367,7 +367,7 @@ TEST(SimplePurePursuitIntegrationTest, PublishesGoalStopCommandAtTrajectoryEnd)
   // Expected 0 velocity
   EXPECT_NEAR(control->longitudinal.velocity, 0.0F, near_tol);
 
-  // Expected strong decelerationeration
+  // Expected strong deceleration
   // Here I already checked during development that terminal deceleration value is -10
   // Seems like this module hard-coded this value. I will freeze it here as characterization test
   EXPECT_NEAR(control->longitudinal.acceleration, -10.0F, near_tol);
