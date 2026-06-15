@@ -20,14 +20,14 @@
 #include "hyper_parameters.hpp"
 #include "warning.hpp"
 
+#include <autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp>
+#include <autoware/agnocast_wrapper/node.hpp>
+#include <autoware/agnocast_wrapper/tf2.hpp>
 #include <autoware_utils_logging/logger_level_configure.hpp>
 #include <autoware_utils_system/stop_watch.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <tf2/LinearMath/Quaternion.hpp>
 #include <tf2/utils.hpp>
-#include <tf2_ros/buffer.hpp>
-#include <tf2_ros/transform_broadcaster.hpp>
-#include <tf2_ros/transform_listener.hpp>
 
 #include <autoware_internal_debug_msgs/msg/float64_multi_array_stamped.hpp>
 #include <autoware_internal_debug_msgs/msg/float64_stamped.hpp>
@@ -50,7 +50,7 @@
 namespace autoware::ekf_localizer
 {
 
-class EKFLocalizer : public rclcpp::Node
+class EKFLocalizer : public autoware::agnocast_wrapper::Node
 {
 public:
   explicit EKFLocalizer(const rclcpp::NodeOptions & node_options);
@@ -65,52 +65,52 @@ private:
   const std::shared_ptr<Warning> warning_;
 
   //!< @brief ekf estimated pose publisher
-  rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pub_pose_;
+  AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::PoseStamped) pub_pose_;
   //!< @brief estimated ekf pose with covariance publisher
-  rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr pub_pose_cov_;
+  AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::PoseWithCovarianceStamped) pub_pose_cov_;
   //!< @brief estimated ekf odometry publisher
-  rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr pub_odom_;
+  AUTOWARE_PUBLISHER_PTR(nav_msgs::msg::Odometry) pub_odom_;
   //!< @brief ekf estimated twist publisher
-  rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr pub_twist_;
+  AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::TwistStamped) pub_twist_;
   //!< @brief ekf estimated twist with covariance publisher
-  rclcpp::Publisher<geometry_msgs::msg::TwistWithCovarianceStamped>::SharedPtr pub_twist_cov_;
+  AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::TwistWithCovarianceStamped) pub_twist_cov_;
   //!< @brief ekf estimated yaw bias publisher
-  rclcpp::Publisher<autoware_internal_debug_msgs::msg::Float64Stamped>::SharedPtr pub_yaw_bias_;
+  AUTOWARE_PUBLISHER_PTR(autoware_internal_debug_msgs::msg::Float64Stamped) pub_yaw_bias_;
   //!< @brief ekf estimated yaw bias publisher
-  rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pub_biased_pose_;
+  AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::PoseStamped) pub_biased_pose_;
   //!< @brief ekf estimated yaw bias publisher
-  rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr pub_biased_pose_cov_;
+  AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::PoseWithCovarianceStamped) pub_biased_pose_cov_;
   //!< @brief processing_time publisher
-  rclcpp::Publisher<autoware_internal_debug_msgs::msg::Float64Stamped>::SharedPtr
-    pub_processing_time_;
+  AUTOWARE_PUBLISHER_PTR(autoware_internal_debug_msgs::msg::Float64Stamped) pub_processing_time_;
   //!< @brief /diagnostics publisher (manual DiagnosticArray; same absolute topic as former
   //!< diagnostic_updater)
-  rclcpp::Publisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr pub_diagnostics_;
+  AUTOWARE_PUBLISHER_PTR(diagnostic_msgs::msg::DiagnosticArray) pub_diagnostics_;
   //!< @brief initial pose subscriber
-  rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr sub_initialpose_;
+  AUTOWARE_SUBSCRIPTION_PTR(geometry_msgs::msg::PoseWithCovarianceStamped) sub_initialpose_;
   //!< @brief measurement pose with covariance subscriber
-  rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr sub_pose_with_cov_;
+  AUTOWARE_SUBSCRIPTION_PTR(geometry_msgs::msg::PoseWithCovarianceStamped) sub_pose_with_cov_;
   //!< @brief measurement twist with covariance subscriber
-  rclcpp::Subscription<geometry_msgs::msg::TwistWithCovarianceStamped>::SharedPtr
-    sub_twist_with_cov_;
+  AUTOWARE_SUBSCRIPTION_PTR(geometry_msgs::msg::TwistWithCovarianceStamped) sub_twist_with_cov_;
   //!< @brief time for ekf calculation callback
-  rclcpp::TimerBase::SharedPtr timer_control_;
+  AUTOWARE_TIMER_PTR timer_control_;
   //!< @brief calls publish_diagnostics() at diagnostics_publish_period
-  rclcpp::TimerBase::SharedPtr diagnostics_publish_timer_;
+  AUTOWARE_TIMER_PTR diagnostics_publish_timer_;
   //!< @brief last predict time
   std::shared_ptr<const rclcpp::Time> last_predict_time_;
   //!< @brief trigger_node service
-  rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr service_trigger_node_;
+  AUTOWARE_SERVICE_PTR(std_srvs::srv::SetBool) service_trigger_node_;
 
   //!< @brief tf broadcaster
-  std::shared_ptr<tf2_ros::TransformBroadcaster> tf_br_;
+  std::shared_ptr<autoware::agnocast_wrapper::TransformBroadcaster> tf_br_;
   //!< @brief tf buffer
-  tf2_ros::Buffer tf2_buffer_;
+  autoware::agnocast_wrapper::Buffer tf2_buffer_;
   //!< @brief tf listener
-  tf2_ros::TransformListener tf2_listener_;
+  autoware::agnocast_wrapper::TransformListener tf2_listener_;
 
   //!< @brief logger configure module
-  std::unique_ptr<autoware_utils_logging::LoggerLevelConfigure> logger_configure_;
+  std::unique_ptr<
+    autoware_utils_logging::LoggerLevelConfigureImpl<autoware::agnocast_wrapper::Node>>
+    logger_configure_;
 
   //!< @brief  extended kalman filter instance.
   std::unique_ptr<EKFModule> ekf_module_;
@@ -146,18 +146,20 @@ private:
   /**
    * @brief set pose with covariance measurement
    */
-  void callback_pose_with_covariance(geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg);
+  void callback_pose_with_covariance(
+    const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::PoseWithCovarianceStamped) msg);
 
   /**
    * @brief set twist with covariance measurement
    */
   void callback_twist_with_covariance(
-    geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr msg);
+    const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::TwistWithCovarianceStamped) msg);
 
   /**
    * @brief set initial_pose to current EKF pose
    */
-  void callback_initial_pose(geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg);
+  void callback_initial_pose(
+    const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::PoseWithCovarianceStamped) msg);
 
   /**
    * @brief update predict frequency
@@ -195,8 +197,8 @@ private:
    * @brief trigger node
    */
   void service_trigger_node(
-    const std_srvs::srv::SetBool::Request::SharedPtr req,
-    std_srvs::srv::SetBool::Response::SharedPtr res);
+    const AUTOWARE_SERVICE_REQUEST_PTR(std_srvs::srv::SetBool) req,
+    AUTOWARE_SERVICE_RESPONSE_PTR(std_srvs::srv::SetBool) res);
 
   autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_;
   autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_timer_cb_;
