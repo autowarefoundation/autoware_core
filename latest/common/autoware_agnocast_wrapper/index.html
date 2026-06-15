@@ -7939,7 +7939,7 @@ autoware_agnocast_wrapper_setup(target)</code></p>
 <h3 id="current-limitations">Current limitations<a class="headerlink" href="#current-limitations" title="Permanent link">#</a></h3>
 <ul>
 <li>Only <code>ApproximateTime</code> and <code>ExactTime</code> synchronization policies are supported.</li>
-<li>Maximum 2 message types per <code>Synchronizer</code>.</li>
+<li>2 to 8 message types per <code>Synchronizer</code>. Upstream <code>message_filters</code> supports up to 9, but the registration path this wrapper uses caps it at 8.</li>
 <li><code>connectInput()</code> is not supported; pass <code>Subscriber</code> references at construction time.</li>
 </ul>
 <h3 id="usage-example">Usage example<a class="headerlink" href="#usage-example" title="Permanent link">#</a></h3>
