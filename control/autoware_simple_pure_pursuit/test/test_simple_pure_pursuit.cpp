@@ -108,4 +108,21 @@ TEST_F(SimplePurePursuitCoreLogicsTest, GoalReachedTerminalBrake)
 
 }
 
+// TEST 3. Too short trajectory case
+// Car at origin, facing long x-axis
+// Straight trajectory along x-axis, only 5 points, 1m apart, 1m/s target speed
+// Expects 0 velocity, strong negative acceleration (braking), 0 steering angle (trajectory way too short to look ahead)
+TEST_F(SimplePurePursuitCoreLogicsTest, TooShortTrajectoryTerminalBrake)
+{
+
+  const auto odom = makeOdometry(0.0, 0.0, 0.0);
+  const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(5, 1.0, 1.0);
+
+  const auto result = create_control_command(odom, traj);
+
+  EXPECT_NEAR(result.longitudinal.velocity, 0.0, near_tol);
+  EXPECT_NEAR(result.longitudinal.acceleration, -10.0, near_tol);
+
+}
+
 }  // namespace autoware::control::simple_pure_pursuit
