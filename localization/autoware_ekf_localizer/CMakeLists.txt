@@ -16,6 +16,7 @@ ament_auto_find_build_dependencies()
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
   src/ekf_localizer.cpp
+  src/hyper_parameters.cpp
   src/covariance.cpp
   src/diagnostics.cpp
   src/mahalanobis.cpp
