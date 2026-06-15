@@ -17,6 +17,8 @@
 
 #include "utils.hpp"
 
+#include <autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp>
+#include <autoware/agnocast_wrapper/node.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <autoware_map_msgs/msg/point_cloud_map_meta_data.hpp>
@@ -46,19 +48,20 @@ class SelectedMapLoaderModule
 
 public:
   explicit SelectedMapLoaderModule(
-    rclcpp::Node * node, std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict);
+    autoware::agnocast_wrapper::Node * node,
+    std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict);
 
 private:
   rclcpp::Logger logger_;
 
   std::map<std::string, PCDFileMetadata> all_pcd_file_metadata_dict_;
-  rclcpp::Service<GetSelectedPointCloudMap>::SharedPtr get_selected_pcd_maps_service_;
+  AUTOWARE_SERVICE_PTR(GetSelectedPointCloudMap) get_selected_pcd_maps_service_;
 
-  rclcpp::Publisher<autoware_map_msgs::msg::PointCloudMapMetaData>::SharedPtr pub_metadata_;
+  AUTOWARE_PUBLISHER_PTR(autoware_map_msgs::msg::PointCloudMapMetaData) pub_metadata_;
 
   [[nodiscard]] bool on_service_get_selected_point_cloud_map(
-    GetSelectedPointCloudMap::Request::SharedPtr req,
-    GetSelectedPointCloudMap::Response::SharedPtr res) const;
+    AUTOWARE_SERVICE_REQUEST_PTR(GetSelectedPointCloudMap) req,
+    AUTOWARE_SERVICE_RESPONSE_PTR(GetSelectedPointCloudMap) res) const;
 };
 }  // namespace autoware::map_loader
 

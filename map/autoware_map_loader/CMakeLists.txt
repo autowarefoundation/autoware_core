@@ -22,9 +22,11 @@ target_include_directories(pointcloud_map_loader_node
   ${PCL_INCLUDE_DIRS}
 )
 
-rclcpp_components_register_node(pointcloud_map_loader_node
+autoware_agnocast_wrapper_register_node(pointcloud_map_loader_node
   PLUGIN "autoware::map_loader::PointCloudMapLoaderNode"
   EXECUTABLE autoware_pointcloud_map_loader
+  ROS2_EXECUTOR SingleThreadedExecutor
+  AGNOCAST_EXECUTOR AgnocastOnlyCallbackIsolatedExecutor
 )
 
 ament_auto_add_library(lanelet2_map_loader_node SHARED

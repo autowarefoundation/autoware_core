@@ -20,10 +20,10 @@
 
 namespace autoware::map_loader
 {
-autoware_map_msgs::msg::PointCloudMapMetaData create_metadata(
-  const std::map<std::string, PCDFileMetadata> & pcd_file_metadata_dict)
+void create_metadata(
+  const std::map<std::string, PCDFileMetadata> & pcd_file_metadata_dict,
+  autoware_map_msgs::msg::PointCloudMapMetaData & metadata_msg)
 {
-  autoware_map_msgs::msg::PointCloudMapMetaData metadata_msg;
   metadata_msg.header.frame_id = "map";
   metadata_msg.header.stamp = rclcpp::Clock().now();
 
@@ -42,12 +42,11 @@ autoware_map_msgs::msg::PointCloudMapMetaData create_metadata(
 
     metadata_msg.metadata_list.push_back(cell_metadata_with_id);
   }
-
-  return metadata_msg;
 }
 
 SelectedMapLoaderModule::SelectedMapLoaderModule(
-  rclcpp::Node * node, std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict)
+  autoware::agnocast_wrapper::Node * node,
+  std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict)
 : logger_(node->get_logger()), all_pcd_file_metadata_dict_(std::move(pcd_file_metadata_dict))
 {
   get_selected_pcd_maps_service_ = node->create_service<GetSelectedPointCloudMap>(
@@ -61,12 +60,15 @@ SelectedMapLoaderModule::SelectedMapLoaderModule(
   durable_qos.transient_local();
   pub_metadata_ = node->create_publisher<autoware_map_msgs::msg::PointCloudMapMetaData>(
     "output/pointcloud_map_metadata", durable_qos);
-  pub_metadata_->publish(create_metadata(all_pcd_file_metadata_dict_));
+  AUTOWARE_MESSAGE_SHARED_PTR(autoware_map_msgs::msg::PointCloudMapMetaData) metadata_msg =
+    ALLOCATE_OUTPUT_MESSAGE_SHARED(pub_metadata_);
+  create_metadata(all_pcd_file_metadata_dict_, *metadata_msg);
+  pub_metadata_->publish(std::move(metadata_msg));
 }
 
 bool SelectedMapLoaderModule::on_service_get_selected_point_cloud_map(
-  GetSelectedPointCloudMap::Request::SharedPtr req,
-  GetSelectedPointCloudMap::Response::SharedPtr res) const
+  AUTOWARE_SERVICE_REQUEST_PTR(GetSelectedPointCloudMap) req,
+  AUTOWARE_SERVICE_RESPONSE_PTR(GetSelectedPointCloudMap) res) const
 {
   const auto request_ids = req->cell_ids;
   for (const auto & request_id : request_ids) {
