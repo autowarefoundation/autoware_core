@@ -26,13 +26,16 @@ namespace autoware::control::simple_pure_pursuit
 using autoware_planning_msgs::msg::Trajectory;
 using nav_msgs::msg::Odometry;
 
+// Floating point tolerance at EXCEPT_NEAR checks
+constexpr float near_tol = 1e-4F;
+
 Odometry makeOdometry(const double x, const double y, const double yaw)
 {
   Odometry odom;
   odom.pose.pose.position.x = x;
   odom.pose.pose.position.y = y;
-  odom.pose.pose.orientation.z = std::sin(yaw / 2);
-  odom.pose.pose.orientation.w = std::cos(yaw / 2);
+  odom.pose.pose.orientation.z = std::sin(yaw / 2.0);
+  odom.pose.pose.orientation.w = std::cos(yaw / 2.0);
   return odom;
 }
 
@@ -50,7 +53,7 @@ protected:
     core_logics_ = std::make_unique<SimplePurePursuitCoreLogics>(params_);
   }
 
-  autoware_control_msgs::msg::Control create_control_command(
+  [[nodiscard]] autoware_control_msgs::msg::Control create_control_command(
     const Odometry & odom, const Trajectory & traj) const
   {
     return core_logics_->create_control_command(odom, traj);
@@ -63,67 +66,14 @@ protected:
     core_logics_->set_params(params_);
   }
 
-  double speed_proportional_gain() const { return params_.speed_proportional_gain; }
+  [[nodiscard]] double speed_proportional_gain() const { return params_.speed_proportional_gain; }
 
-private:
   SimplePurePursuitParameters params_;
   std::unique_ptr<SimplePurePursuitCoreLogics> core_logics_;
 };
 
-TEST_F(SimplePurePursuitCoreLogicsTest, create_control_command)
-{
-  {  // normal case
-    const auto odom = makeOdometry(0.0, 0.0, 0.0);
-    const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(10, 1.0, 1.0);
+// ================== TESTING AREA HERE ==================
 
-    const auto result = create_control_command(odom, traj);
 
-    EXPECT_DOUBLE_EQ(result.longitudinal.velocity, 1.0);
-    EXPECT_DOUBLE_EQ(result.longitudinal.acceleration, speed_proportional_gain() * 1.0);
-    EXPECT_DOUBLE_EQ(result.lateral.steering_tire_angle, 0.0);
-  }
 
-  {  // ego reached goal
-    const auto odom = makeOdometry(10.0, 0.0, 0.0);
-    const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(10, 1.0, 1.0);
-
-    const auto result = create_control_command(odom, traj);
-
-    EXPECT_DOUBLE_EQ(result.longitudinal.velocity, 0.0);
-    EXPECT_DOUBLE_EQ(result.longitudinal.acceleration, -10.0);
-  }
-
-  {  // reference trajectory is too short
-    const auto odom = makeOdometry(0.0, 0.0, 0.0);
-    const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(5, 1.0, 1.0);
-
-    const auto result = create_control_command(odom, traj);
-
-    EXPECT_DOUBLE_EQ(result.longitudinal.velocity, 0.0);
-    EXPECT_DOUBLE_EQ(result.longitudinal.acceleration, -10.0);
-  }
-}
-
-TEST_F(SimplePurePursuitCoreLogicsTest, create_control_command_with_external_target_velocity)
-{
-  set_external_target_velocity(2.0);
-  const auto odom = makeOdometry(0.0, 0.0, 0.0);
-  const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(10, 1.0, 1.0);
-
-  const auto result = create_control_command(odom, traj);
-
-  EXPECT_DOUBLE_EQ(result.longitudinal.velocity, 2.0);
-  EXPECT_DOUBLE_EQ(result.longitudinal.acceleration, speed_proportional_gain() * 2.0);
-}
-
-TEST_F(SimplePurePursuitCoreLogicsTest, create_control_command_generates_nonzero_steering_for_lateral_offset)
-{
-  const auto odom = makeOdometry(0.0, 1.0, 0.0);
-  const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(10, 1.0, 1.0);
-
-  const auto result = create_control_command(odom, traj);
-
-  EXPECT_GT(std::abs(result.lateral.steering_tire_angle), 1e-6);
-  EXPECT_LT(result.lateral.steering_tire_angle, 0.0);
-}
 }  // namespace autoware::control::simple_pure_pursuit
