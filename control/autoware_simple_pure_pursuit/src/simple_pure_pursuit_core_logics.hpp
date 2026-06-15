@@ -32,7 +32,8 @@ namespace autoware::control::simple_pure_pursuit
 * @param external_target_vel External target velocity to use when use_external_target_vel is true
 * @param wheel_base_m Wheel base of vehicle in meters
 */
-struct SimplePurePursuitParameters {
+struct SimplePurePursuitParameters
+{
   double lookahead_gain;
   double lookahead_min_distance;
   double speed_proportional_gain;
@@ -43,64 +44,54 @@ struct SimplePurePursuitParameters {
 
 class SimplePurePursuitCoreLogics
 {
-
 public:
-  
-    // Constructor
-    explicit SimplePurePursuitCoreLogics(const SimplePurePursuitParameters & params);
-    
-    // Set param struct for algorithm
-    void set_params(const SimplePurePursuitParameters & params);
+  // Constructor
+  explicit SimplePurePursuitCoreLogics(const SimplePurePursuitParameters & params);
 
-    /**
-    * @brief Create control command based on current odom and traj
-    *
-    * @param odom Current odometry of vehicle
-    * @param traj Current trajectory to follow
-    *
-    * @return Control command to be published
-    */
-    [[nodiscard]] autoware_control_msgs::msg::Control create_control_command(
-        const nav_msgs::msg::Odometry & odom, 
-        const autoware_planning_msgs::msg::Trajectory & traj
-    ) const;
+  // Set param struct for algorithm
+  void set_params(const SimplePurePursuitParameters & params);
+
+  /**
+   * @brief Create control command based on current odom and traj
+   *
+   * @param odom Current odometry of vehicle
+   * @param traj Current trajectory to follow
+   *
+   * @return Control command to be published
+   */
+  [[nodiscard]] autoware_control_msgs::msg::Control create_control_command(
+    const nav_msgs::msg::Odometry & odom,
+    const autoware_planning_msgs::msg::Trajectory & traj) const;
 
 private:
+  SimplePurePursuitParameters params_;
 
-    SimplePurePursuitParameters params_;
+  /**
+   * @brief Calculate longitudinal control command
+   *
+   * @param odom Current odometry of vehicle
+   * @param target_longitudinal_vel Target longitudinal velocity to achieve
+   *
+   * @return Longitudinal control command
+   */
+  [[nodiscard]] autoware_control_msgs::msg::Longitudinal calc_longitudinal_control(
+    const nav_msgs::msg::Odometry & odom, const double target_longitudinal_vel) const;
 
-    /**
-    * @brief Calculate longitudinal control command
-    *
-    * @param odom Current odometry of vehicle
-    * @param target_longitudinal_vel Target longitudinal velocity to achieve
-    *
-    * @return Longitudinal control command
-    */
-    [[nodiscard]] autoware_control_msgs::msg::Longitudinal calc_longitudinal_control(
-        const nav_msgs::msg::Odometry & odom, 
-        const double target_longitudinal_vel
-    ) const;
-
-    /**
-    * @brief Calculate lateral control command
-    *
-    * @param odom Current odometry of vehicle
-    * @param traj Current trajectory to follow
-    * @param target_longitudinal_vel Target longitudinal velocity to achieve
-    * @param closest_traj_point_idx Index of closest trajectory point to current vehicle position
-    *
-    * @return Lateral control command
-    */
-    [[nodiscard]] autoware_control_msgs::msg::Lateral calc_lateral_control(
-        const nav_msgs::msg::Odometry & odom, 
-        const autoware_planning_msgs::msg::Trajectory & traj, 
-        const double target_longitudinal_vel,
-        const size_t closest_traj_point_idx
-    ) const;
-
+  /**
+   * @brief Calculate lateral control command
+   *
+   * @param odom Current odometry of vehicle
+   * @param traj Current trajectory to follow
+   * @param target_longitudinal_vel Target longitudinal velocity to achieve
+   * @param closest_traj_point_idx Index of closest trajectory point to current vehicle position
+   *
+   * @return Lateral control command
+   */
+  [[nodiscard]] autoware_control_msgs::msg::Lateral calc_lateral_control(
+    const nav_msgs::msg::Odometry & odom, const autoware_planning_msgs::msg::Trajectory & traj,
+    const double target_longitudinal_vel, const size_t closest_traj_point_idx) const;
 };
 
-}; // namespace autoware::control::simple_pure_pursuit
+};  // namespace autoware::control::simple_pure_pursuit
 
 #endif  // SIMPLE_PURE_PURSUIT_CORE_LOGICS_HPP_

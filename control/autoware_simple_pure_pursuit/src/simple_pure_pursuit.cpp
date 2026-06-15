@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "simple_pure_pursuit.hpp"
+
 #include "simple_pure_pursuit_core_logics.hpp"
 
 namespace autoware::control::simple_pure_pursuit
@@ -22,11 +23,8 @@ SimplePurePursuitNode::SimplePurePursuitNode(const rclcpp::NodeOptions & node_op
 : Node("simple_pure_pursuit", node_options),
   pub_control_command_(
     create_publisher<autoware_control_msgs::msg::Control>(
-      "~/output/control_command", rclcpp::QoS(1).transient_local()
-    )
-  )  
+      "~/output/control_command", rclcpp::QoS(1).transient_local()))
 {
-
   // Vehicle info is now fetch locally
   const auto vehicle_info = autoware::vehicle_info_utils::VehicleInfoUtils(*this).getVehicleInfo();
 
@@ -62,7 +60,6 @@ void SimplePurePursuitNode::on_timer()
 
   // 3. Input validation
   if (traj.points.empty()) {
-
     RCLCPP_WARN_THROTTLE(
       get_logger(), *get_clock(), 5000,
       "Received empty trajectory, returning zero velocity command.");
@@ -74,7 +71,6 @@ void SimplePurePursuitNode::on_timer()
     pub_control_command_->publish(cmd);
 
     return;
-
   }
 
   // 4. Delegate to core logics
@@ -82,20 +78,13 @@ void SimplePurePursuitNode::on_timer()
 
   // 5. Goal reached ROS2 check and notify
   if (
-    (control_command.longitudinal.velocity == 0.0) && 
-    (control_command.longitudinal.acceleration == -10.0)
-  ) {
-
-    RCLCPP_DEBUG_THROTTLE(
-      get_logger(), *get_clock(), 5000, 
-      "reached to the goal"
-    );
-
+    (control_command.longitudinal.velocity == 0.0) &&
+    (control_command.longitudinal.acceleration == -10.0)) {
+    RCLCPP_DEBUG_THROTTLE(get_logger(), *get_clock(), 5000, "reached to the goal");
   }
 
   // 6. Publish control command
   pub_control_command_->publish(control_command);
-
 }
 
 }  // namespace autoware::control::simple_pure_pursuit

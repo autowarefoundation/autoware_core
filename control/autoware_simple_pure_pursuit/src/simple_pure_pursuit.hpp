@@ -57,7 +57,6 @@ private:
 
   // functions
   void on_timer();
-
 };
 
 }  // namespace autoware::control::simple_pure_pursuit
