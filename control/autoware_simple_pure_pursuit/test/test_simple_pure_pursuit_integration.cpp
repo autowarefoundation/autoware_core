@@ -27,7 +27,8 @@
 
 #include <cmath>
 #include <memory>
-
+#include <string>
+#include <vector>
 namespace autoware::control::simple_pure_pursuit
 {
 
