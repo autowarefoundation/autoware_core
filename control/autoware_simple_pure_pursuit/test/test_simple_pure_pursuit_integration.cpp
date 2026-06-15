@@ -367,9 +367,9 @@ TEST(SimplePurePursuitIntegrationTest, PublishesGoalStopCommandAtTrajectoryEnd)
   // Expected 0 velocity
   EXPECT_NEAR(control->longitudinal.velocity, 0.0F, near_tol);
 
-  // Expected strong deceleration
-  // Here I already checked during development that terminal decel value is -10
-  // Seems like this module hard-coded this value. Imma freezin it here as characterization test
+  // Expected strong decelerationeration
+  // Here I already checked during development that terminal deceleration value is -10
+  // Seems like this module hard-coded this value. I will freeze it here as characterization test
   EXPECT_NEAR(control->longitudinal.acceleration, -10.0F, near_tol);
   EXPECT_TRUE(control->longitudinal.is_defined_acceleration);
 };
@@ -398,7 +398,7 @@ TEST(SimplePurePursuitIntegrationTest, PublishesZeroCommandForEmptyTrajectory)
   const auto control = harness.received_control();
   ASSERT_NE(control, nullptr);
 
-  // Expected 0 velocity and 0 accel
+  // Expected 0 velocity and 0 acceleration
   EXPECT_NEAR(control->longitudinal.velocity, 0.0F, near_tol);
   EXPECT_NEAR(control->longitudinal.acceleration, 0.0F, near_tol);
 };
@@ -432,7 +432,7 @@ TEST(SimplePurePursuitIntegrationTest, UsesExternalTargetVelocityWhenEnabled)
   // Basically ext. vel is used properly
   EXPECT_NEAR(control->longitudinal.velocity, 2.5F, near_tol);
 
-  // Car goin 0.5 m/s, target 2.5 m/s, so expect accel 2.0 m/s^2
+  // Car going at 0.5 m/s, target velocity 2.5 m/s, so expect acceleration as 2.0 m/s^2
   // Already confirmed via test run during dev
   EXPECT_NEAR(control->longitudinal.acceleration, 2.0F, near_tol);
 
