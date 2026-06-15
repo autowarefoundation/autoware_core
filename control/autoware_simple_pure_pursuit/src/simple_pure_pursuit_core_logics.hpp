@@ -60,7 +60,7 @@ public:
     *
     * @return Control command to be published
     */
-    autoware_control_msgs::msg::Control create_control_command(
+    [[nodiscard]] autoware_control_msgs::msg::Control create_control_command(
         const nav_msgs::msg::Odometry & odom, 
         const autoware_planning_msgs::msg::Trajectory & traj
     ) const;
@@ -77,7 +77,7 @@ private:
     *
     * @return Longitudinal control command
     */
-    autoware_control_msgs::msg::Longitudinal calc_longitudinal_control(
+    [[nodiscard]] autoware_control_msgs::msg::Longitudinal calc_longitudinal_control(
         const nav_msgs::msg::Odometry & odom, 
         const double target_longitudinal_vel
     ) const;
@@ -92,7 +92,7 @@ private:
     *
     * @return Lateral control command
     */
-    autoware_control_msgs::msg::Lateral calc_lateral_control(
+    [[nodiscard]] autoware_control_msgs::msg::Lateral calc_lateral_control(
         const nav_msgs::msg::Odometry & odom, 
         const autoware_planning_msgs::msg::Trajectory & traj, 
         const double target_longitudinal_vel,
