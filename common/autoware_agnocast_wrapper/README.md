@@ -19,7 +19,7 @@ Use this when you want the **entire node** to transparently switch between `rclc
 Currently supported APIs:
 
 - Publisher / Subscription / PollingSubscriber
-- Client / Service (experimental)
+- Client / Service
 - Timer (`create_wall_timer`, free `create_timer()`, free `set_period()`)
 - Parameters
 - Logger, Clock
