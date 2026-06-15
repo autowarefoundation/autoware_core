@@ -131,7 +131,7 @@ TEST_F(SimplePurePursuitCoreLogicsTest, TooShortTrajectoryTerminalBrake)
 // Expects 2.0 m/s velocity, 0 steering angle, acceleration proportional to 2.0 m/s speed diff
 TEST_F(SimplePurePursuitCoreLogicsTest, ExternalTargetVelocity)
 {
-  
+
   set_external_target_velocity(2.0);
   const auto odom = makeOdometry(0.0, 0.0, 0.0);
   const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(10, 1.0, 1.0);
@@ -142,5 +142,24 @@ TEST_F(SimplePurePursuitCoreLogicsTest, ExternalTargetVelocity)
   EXPECT_NEAR(result.longitudinal.acceleration, speed_proportional_gain() * 2.0, near_tol);
 
 }
+
+// TEST 5. Lateral offset case
+// Car at (0,1), facing long x-axis (1m lateral offset from trajectory along x-axis)
+// Same trajectory as STEP 1
+// Expects non-zero negative steering angle to correct leftward offset
+TEST_F(SimplePurePursuitCoreLogicsTest, GenerateNonZeroSteeringForLateralOffset)
+{
+  
+  const auto odom = makeOdometry(0.0, 1.0, 0.0);
+  const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(10, 1.0, 1.0);
+
+  const auto result = create_control_command(odom, traj);
+
+  EXPECT_GT(std::abs(result.lateral.steering_tire_angle), 1e-6);
+  EXPECT_LT(result.lateral.steering_tire_angle, 0.0);
+
+}
+
+
 
 }  // namespace autoware::control::simple_pure_pursuit
