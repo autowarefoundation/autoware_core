@@ -182,7 +182,7 @@ TEST_F(SimplePurePursuitCoreLogicsTest, ClampToLookaheadMinDistance)
 }
 
 // TEST 7. Lookahead point search exceeds trajectory length case [fallback branch coverage]
-// Car at origin, facing long x-axis, yuge target speed 50 m/s (to push lookahead distance to 50m)
+// Car at origin, facing long x-axis, huge target speed 50 m/s (to push lookahead distance to 50m)
 // Same trajectory as STEP 1, which is shorter than lookahead distance
 // Expects fallback to bind lookahead point to trajectory's end nicely
 TEST_F(SimplePurePursuitCoreLogicsTest, FallbackWhenLookaheadExceedsTrajectoryLength)

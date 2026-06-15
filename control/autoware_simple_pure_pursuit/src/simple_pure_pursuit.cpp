@@ -76,7 +76,7 @@ void SimplePurePursuitNode::on_timer()
   // 4. Delegate to core logics
   const auto control_command = core_logics_->create_control_command(odom, traj);
 
-  // 5. Goal reached ROS2 check and notify
+  // 5. Goal reached ROS check and notify
   if (
     (control_command.longitudinal.velocity == 0.0) &&
     (control_command.longitudinal.acceleration == -10.0)) {
