@@ -74,6 +74,22 @@ protected:
 
 // ================== TESTING AREA HERE ==================
 
+// TEST 1. Normal case happy tracking
+// Car at origin, facing long x-axis
+// Straight trajectory along x-axis, 10 points, 1m apart, 1m/s target speed
+// Expects 1m/s velocity, 0 steering angle, acceleration proportional to target-current speed diff
+TEST_F(SimplePurePursuitCoreLogicsTest, NormalCaseTracking)
+{
+  
+  const auto odom = makeOdometry(0.0, 0.0, 0.0);
+  const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(10, 1.0, 1.0);
 
+  const auto result = create_control_command(odom, traj);
+
+  EXPECT_NEAR(result.longitudinal.velocity, 1.0, near_tol);
+  EXPECT_NEAR(result.longitudinal.acceleration, speed_proportional_gain() * 1.0, near_tol);
+  EXPECT_NEAR(result.lateral.steering_tire_angle, 0.0, near_tol);
+
+}
 
 }  // namespace autoware::control::simple_pure_pursuit
