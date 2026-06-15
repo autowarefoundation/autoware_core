@@ -15,8 +15,7 @@ rclcpp_components_register_node(${PROJECT_NAME}_lib
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
-  ament_auto_add_gtest(
-    test_simple_pure_pursuit_integration
+  ament_add_ros_isolated_gtest(test_simple_pure_pursuit_integration
     test/test_simple_pure_pursuit_integration.cpp
   )
   target_include_directories(test_simple_pure_pursuit_integration PRIVATE src)
