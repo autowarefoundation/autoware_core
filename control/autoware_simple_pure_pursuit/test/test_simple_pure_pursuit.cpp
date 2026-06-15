@@ -125,4 +125,22 @@ TEST_F(SimplePurePursuitCoreLogicsTest, TooShortTrajectoryTerminalBrake)
 
 }
 
+// TEST 4. External target velocity override case
+// Same odometry and trajectory as TEST 1
+// Now with external target velocity set to 2.0 m/s
+// Expects 2.0 m/s velocity, 0 steering angle, acceleration proportional to 2.0 m/s speed diff
+TEST_F(SimplePurePursuitCoreLogicsTest, ExternalTargetVelocity)
+{
+  
+  set_external_target_velocity(2.0);
+  const auto odom = makeOdometry(0.0, 0.0, 0.0);
+  const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(10, 1.0, 1.0);
+
+  const auto result = create_control_command(odom, traj);
+
+  EXPECT_NEAR(result.longitudinal.velocity, 2.0, near_tol);
+  EXPECT_NEAR(result.longitudinal.acceleration, speed_proportional_gain() * 2.0, near_tol);
+
+}
+
 }  // namespace autoware::control::simple_pure_pursuit
