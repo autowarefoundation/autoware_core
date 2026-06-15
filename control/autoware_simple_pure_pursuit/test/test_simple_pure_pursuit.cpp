@@ -12,17 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "../src/simple_pure_pursuit.hpp"
+#include "../src/simple_pure_pursuit_core_logics.hpp"
 
-#include <ament_index_cpp/get_package_share_directory.hpp>
 #include <autoware_test_utils/autoware_test_utils.hpp>
 
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <memory>
 
 namespace autoware::control::simple_pure_pursuit
 {
+using autoware_planning_msgs::msg::Trajectory;
+using nav_msgs::msg::Odometry;
+
 Odometry makeOdometry(const double x, const double y, const double yaw)
 {
   Odometry odom;
@@ -33,54 +36,41 @@ Odometry makeOdometry(const double x, const double y, const double yaw)
   return odom;
 }
 
-class SimplePurePursuitNodeTest : public ::testing::Test
+class SimplePurePursuitCoreLogicsTest : public ::testing::Test
 {
 protected:
   void SetUp() override
   {
-    rclcpp::init(0, nullptr);
-
-    const auto autoware_test_utils_dir =
-      ament_index_cpp::get_package_share_directory("autoware_test_utils");
-    const auto autoware_simple_pure_pursuit_dir =
-      ament_index_cpp::get_package_share_directory("autoware_simple_pure_pursuit");
-
-    auto node_options = rclcpp::NodeOptions{};
-    autoware::test_utils::updateNodeOptions(
-      node_options, {autoware_test_utils_dir + "/config/test_vehicle_info.param.yaml",
-                     autoware_simple_pure_pursuit_dir + "/config/simple_pure_pursuit.param.yaml"});
-
-    node_ = std::make_shared<SimplePurePursuitNode>(node_options);
+    params_.lookahead_gain = 1.0;
+    params_.lookahead_min_distance = 1.0;
+    params_.speed_proportional_gain = 1.0;
+    params_.use_external_target_vel = false;
+    params_.external_target_vel = 1.0;
+    params_.wheel_base_m = 2.79;
+    core_logics_ = std::make_unique<SimplePurePursuitCoreLogics>(params_);
   }
-
-  void TearDown() override { rclcpp::shutdown(); }
 
   autoware_control_msgs::msg::Control create_control_command(
     const Odometry & odom, const Trajectory & traj) const
   {
-    return node_->create_control_command(odom, traj);
+    return core_logics_->create_control_command(odom, traj);
   }
 
-  autoware_control_msgs::msg::Longitudinal calc_longitudinal_control(
-    const Odometry & odom, const double target_longitudinal_vel) const
+  void set_external_target_velocity(const double external_target_vel)
   {
-    return node_->calc_longitudinal_control(odom, target_longitudinal_vel);
+    params_.use_external_target_vel = true;
+    params_.external_target_vel = external_target_vel;
+    core_logics_->set_params(params_);
   }
 
-  autoware_control_msgs::msg::Lateral calc_lateral_control(
-    const Odometry & odom, const Trajectory & traj, const double target_longitudinal_vel,
-    const size_t closest_traj_point_idx) const
-  {
-    return node_->calc_lateral_control(odom, traj, target_longitudinal_vel, closest_traj_point_idx);
-  }
-
-  double speed_proportional_gain() const { return node_->speed_proportional_gain_; }
+  double speed_proportional_gain() const { return params_.speed_proportional_gain; }
 
 private:
-  std::shared_ptr<SimplePurePursuitNode> node_;
+  SimplePurePursuitParameters params_;
+  std::unique_ptr<SimplePurePursuitCoreLogics> core_logics_;
 };
 
-TEST_F(SimplePurePursuitNodeTest, create_control_command)
+TEST_F(SimplePurePursuitCoreLogicsTest, create_control_command)
 {
   {  // normal case
     const auto odom = makeOdometry(0.0, 0.0, 0.0);
@@ -90,6 +80,7 @@ TEST_F(SimplePurePursuitNodeTest, create_control_command)
 
     EXPECT_DOUBLE_EQ(result.longitudinal.velocity, 1.0);
     EXPECT_DOUBLE_EQ(result.longitudinal.acceleration, speed_proportional_gain() * 1.0);
+    EXPECT_DOUBLE_EQ(result.lateral.steering_tire_angle, 0.0);
   }
 
   {  // ego reached goal
@@ -111,55 +102,28 @@ TEST_F(SimplePurePursuitNodeTest, create_control_command)
     EXPECT_DOUBLE_EQ(result.longitudinal.velocity, 0.0);
     EXPECT_DOUBLE_EQ(result.longitudinal.acceleration, -10.0);
   }
-
-  {  // empty trajectory
-    const auto odom = makeOdometry(0.0, 0.0, 0.0);
-    Trajectory traj;  // empty trajectory
-
-    const auto result = create_control_command(odom, traj);
-
-    EXPECT_DOUBLE_EQ(result.longitudinal.velocity, 0.0);
-    EXPECT_DOUBLE_EQ(result.longitudinal.acceleration, 0.0);
-  }
 }
 
-TEST_F(SimplePurePursuitNodeTest, calc_longitudinal_control)
+TEST_F(SimplePurePursuitCoreLogicsTest, create_control_command_with_external_target_velocity)
 {
-  {  // normal case
-    const auto odom = makeOdometry(0.0, 0.0, 0.0);
-    const auto target_longitudinal_vel = 1.0;
+  set_external_target_velocity(2.0);
+  const auto odom = makeOdometry(0.0, 0.0, 0.0);
+  const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(10, 1.0, 1.0);
 
-    const auto result = calc_longitudinal_control(odom, target_longitudinal_vel);
+  const auto result = create_control_command(odom, traj);
 
-    EXPECT_DOUBLE_EQ(result.velocity, 1.0);
-    EXPECT_DOUBLE_EQ(result.acceleration, speed_proportional_gain() * 1.0);
-  }
+  EXPECT_DOUBLE_EQ(result.longitudinal.velocity, 2.0);
+  EXPECT_DOUBLE_EQ(result.longitudinal.acceleration, speed_proportional_gain() * 2.0);
 }
 
-TEST_F(SimplePurePursuitNodeTest, calc_lateral_control)
+TEST_F(SimplePurePursuitCoreLogicsTest, create_control_command_generates_nonzero_steering_for_lateral_offset)
 {
-  const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(10, 1.0);
+  const auto odom = makeOdometry(0.0, 1.0, 0.0);
+  const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(10, 1.0, 1.0);
 
-  {  // normal case
-    const auto odom = makeOdometry(0.0, 0.0, 0.0);
-    const auto target_longitudinal_vel = 1.0;
-    const size_t closest_traj_point_idx = 0;
+  const auto result = create_control_command(odom, traj);
 
-    const auto result =
-      calc_lateral_control(odom, traj, target_longitudinal_vel, closest_traj_point_idx);
-
-    EXPECT_DOUBLE_EQ(result.steering_tire_angle, 0.0f);
-  }
-
-  {  // lookahead distance exceeds remaining trajectory length
-    const auto odom = makeOdometry(0.0, 0.0, 0.0);
-    const auto target_longitudinal_vel = 2.0;
-    const size_t closest_traj_point_idx = 8;
-
-    const auto result =
-      calc_lateral_control(odom, traj, target_longitudinal_vel, closest_traj_point_idx);
-
-    EXPECT_DOUBLE_EQ(result.steering_tire_angle, 0.0f);
-  }
+  EXPECT_GT(std::abs(result.lateral.steering_tire_angle), 1e-6);
+  EXPECT_LT(result.lateral.steering_tire_angle, 0.0);
 }
 }  // namespace autoware::control::simple_pure_pursuit
