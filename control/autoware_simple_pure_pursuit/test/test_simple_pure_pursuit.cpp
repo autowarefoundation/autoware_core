@@ -92,4 +92,20 @@ TEST_F(SimplePurePursuitCoreLogicsTest, NormalCaseTracking)
 
 }
 
+// TEST 2. Goal reached case
+// Same odometry and trajectory as TEST 1, but car at trajectory's end
+// Expects 0 velocity, strong negative acceleration (braking), 0 steering angle
+TEST_F(SimplePurePursuitCoreLogicsTest, GoalReachedTerminalBrake)
+{
+
+  const auto odom = makeOdometry(10.0, 0.0, 0.0);
+  const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(10, 1.0, 1.0);
+
+  const auto result = create_control_command(odom, traj);
+
+  EXPECT_NEAR(result.longitudinal.velocity, 0.0, near_tol);
+  EXPECT_NEAR(result.longitudinal.acceleration, -10.0, near_tol);
+
+}
+
 }  // namespace autoware::control::simple_pure_pursuit
