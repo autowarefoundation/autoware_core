@@ -31,7 +31,7 @@ SimplePurePursuitNode::SimplePurePursuitNode(const rclcpp::NodeOptions & node_op
   const auto vehicle_info = autoware::vehicle_info_utils::VehicleInfoUtils(*this).getVehicleInfo();
 
   // Read ROS params, fetch them into struct
-  SimplePurePursuitParameters params;
+  SimplePurePursuitParameters params{};
   params.lookahead_gain = declare_parameter<float>("lookahead_gain");
   params.lookahead_min_distance = declare_parameter<float>("lookahead_min_distance");
   params.speed_proportional_gain = declare_parameter<float>("speed_proportional_gain");
@@ -57,8 +57,8 @@ void SimplePurePursuitNode::on_timer()
   }
 
   // 2. Extract subscribed data
-  const auto odom = *odom_ptr;
-  const auto traj = *traj_ptr;
+  const auto & odom = *odom_ptr;
+  const auto & traj = *traj_ptr;
 
   // 3. Input validation
   if (traj.points.empty()) {
