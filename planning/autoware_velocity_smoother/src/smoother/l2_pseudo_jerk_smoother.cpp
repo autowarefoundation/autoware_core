@@ -268,9 +268,9 @@ bool L2PseudoJerkSmoother::apply(
   for (size_t i = 0; i < N - 1; ++i) {
     interval_dist_arr.push_back(bases[i + 1] - bases[i]);
   }
-  if (N > 0) {
-    interval_dist_arr.push_back(0.0);  // last interval is 0
-  }
+
+  // last interval is 0
+  interval_dist_arr.push_back(0.0);
 
   std::vector<double> v_max = velocities;
 

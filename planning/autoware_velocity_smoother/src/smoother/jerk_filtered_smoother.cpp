@@ -963,8 +963,8 @@ TrajectoryExperimental JerkFilteredSmoother::mergeFilteredTrajectory(
     double current_vel = v0;
     double current_acc = a0;
 
-    while (bwd_vels_data[i] < current_vel && i < fwd_vels_data.size() - 1 &&
-           i < bwd_vels_data.size() - 1) {
+    while (i + 1 < bwd_vels_data.size() && bwd_vels_data[i] < current_vel &&
+           i + 1 < fwd_vels_data.size()) {
       // Set velocity and acceleration at this base point
       merged.longitudinal_velocity_mps()
         .range(fwd_bases_data[i], fwd_bases_data[i])
