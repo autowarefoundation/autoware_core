@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef SIMPLE_PURE_PURSUIT_CORE_logic_HPP_
-#define SIMPLE_PURE_PURSUIT_CORE_logic_HPP_
+#ifndef SIMPLE_PURE_PURSUIT_CORE_LOGIC_HPP_
+#define SIMPLE_PURE_PURSUIT_CORE_LOGIC_HPP_
 
 #include <autoware_control_msgs/msg/control.hpp>
 #include <autoware_planning_msgs/msg/trajectory.hpp>
@@ -94,4 +94,4 @@ private:
 
 };  // namespace autoware::control::simple_pure_pursuit
 
-#endif  // SIMPLE_PURE_PURSUIT_CORE_logic_HPP_
+#endif  // SIMPLE_PURE_PURSUIT_CORE_LOGIC_HPP_
