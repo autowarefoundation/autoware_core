@@ -15,7 +15,7 @@
 #ifndef SIMPLE_PURE_PURSUIT_HPP_
 #define SIMPLE_PURE_PURSUIT_HPP_
 
-#include "simple_pure_pursuit_core_logics.hpp"
+#include "simple_pure_pursuit_core_logic.hpp"
 
 #include <autoware_utils_rclcpp/polling_subscriber.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
@@ -52,8 +52,8 @@ private:
   // timer
   rclcpp::TimerBase::SharedPtr timer_;
 
-  // simple_pure_pursuit core logics
-  std::unique_ptr<SimplePurePursuitCoreLogics> core_logics_;
+  // simple_pure_pursuit core logic
+  std::unique_ptr<SimplePurePursuitCorelogic> core_logic_;
 
   // functions
   void on_timer();

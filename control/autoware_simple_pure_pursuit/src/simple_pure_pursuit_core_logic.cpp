@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "simple_pure_pursuit_core_logics.hpp"
+#include "simple_pure_pursuit_core_logic.hpp"
 
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
 #include <tf2/utils.hpp>
@@ -25,19 +25,19 @@ namespace autoware::control::simple_pure_pursuit
 using autoware::motion_utils::findNearestIndex;
 
 // Constructor
-SimplePurePursuitCoreLogics::SimplePurePursuitCoreLogics(const SimplePurePursuitParameters & params)
+SimplePurePursuitCorelogic::SimplePurePursuitCorelogic(const SimplePurePursuitParameters & params)
 : params_(params)
 {
 }
 
 // Params setter
-void SimplePurePursuitCoreLogics::set_params(const SimplePurePursuitParameters & params)
+void SimplePurePursuitCorelogic::set_params(const SimplePurePursuitParameters & params)
 {
   params_ = params;
 };
 
 // Core logic for creating control command based on current odom and traj
-autoware_control_msgs::msg::Control SimplePurePursuitCoreLogics::create_control_command(
+autoware_control_msgs::msg::Control SimplePurePursuitCorelogic::create_control_command(
   const nav_msgs::msg::Odometry & odom, const autoware_planning_msgs::msg::Trajectory & traj) const
 {
   const size_t closest_traj_point_idx = findNearestIndex(traj.points, odom.pose.pose.position);
@@ -70,7 +70,7 @@ autoware_control_msgs::msg::Control SimplePurePursuitCoreLogics::create_control_
 };
 
 // Core logic for calculating longitudinal control command
-autoware_control_msgs::msg::Longitudinal SimplePurePursuitCoreLogics::calc_longitudinal_control(
+autoware_control_msgs::msg::Longitudinal SimplePurePursuitCorelogic::calc_longitudinal_control(
   const nav_msgs::msg::Odometry & odom, const double target_longitudinal_vel) const
 {
   autoware_control_msgs::msg::Longitudinal longitudinal_control_command;
@@ -91,7 +91,7 @@ autoware_control_msgs::msg::Longitudinal SimplePurePursuitCoreLogics::calc_longi
 };
 
 // Core logic for calculating lateral control command
-autoware_control_msgs::msg::Lateral SimplePurePursuitCoreLogics::calc_lateral_control(
+autoware_control_msgs::msg::Lateral SimplePurePursuitCorelogic::calc_lateral_control(
   const nav_msgs::msg::Odometry & odom, const autoware_planning_msgs::msg::Trajectory & traj,
   const double target_longitudinal_vel, const size_t closest_traj_point_idx) const
 {

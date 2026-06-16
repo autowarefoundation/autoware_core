@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef SIMPLE_PURE_PURSUIT_CORE_LOGICS_HPP_
-#define SIMPLE_PURE_PURSUIT_CORE_LOGICS_HPP_
+#ifndef SIMPLE_PURE_PURSUIT_CORE_logic_HPP_
+#define SIMPLE_PURE_PURSUIT_CORE_logic_HPP_
 
 #include <autoware_control_msgs/msg/control.hpp>
 #include <autoware_planning_msgs/msg/trajectory.hpp>
@@ -42,11 +42,11 @@ struct SimplePurePursuitParameters
   double wheel_base_m;
 };
 
-class SimplePurePursuitCoreLogics
+class SimplePurePursuitCorelogic
 {
 public:
   // Constructor
-  explicit SimplePurePursuitCoreLogics(const SimplePurePursuitParameters & params);
+  explicit SimplePurePursuitCorelogic(const SimplePurePursuitParameters & params);
 
   // Set param struct for algorithm
   void set_params(const SimplePurePursuitParameters & params);
@@ -94,4 +94,4 @@ private:
 
 };  // namespace autoware::control::simple_pure_pursuit
 
-#endif  // SIMPLE_PURE_PURSUIT_CORE_LOGICS_HPP_
+#endif  // SIMPLE_PURE_PURSUIT_CORE_logic_HPP_

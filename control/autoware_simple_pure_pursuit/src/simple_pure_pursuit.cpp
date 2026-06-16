@@ -14,7 +14,7 @@
 
 #include "simple_pure_pursuit.hpp"
 
-#include "simple_pure_pursuit_core_logics.hpp"
+#include "simple_pure_pursuit_core_logic.hpp"
 
 #include <memory>
 
@@ -39,8 +39,8 @@ SimplePurePursuitNode::SimplePurePursuitNode(const rclcpp::NodeOptions & node_op
   params.external_target_vel = declare_parameter<float>("external_target_vel");
   params.wheel_base_m = vehicle_info.wheel_base_m;
 
-  // Init core logics
-  core_logics_ = std::make_unique<SimplePurePursuitCoreLogics>(params);
+  // Init core logic
+  core_logic_ = std::make_unique<SimplePurePursuitCorelogic>(params);
 
   using namespace std::literals::chrono_literals;
   timer_ = rclcpp::create_timer(
@@ -75,8 +75,8 @@ void SimplePurePursuitNode::on_timer()
     return;
   }
 
-  // 4. Delegate to core logics
-  const auto control_command = core_logics_->create_control_command(odom, traj);
+  // 4. Delegate to core logic
+  const auto control_command = core_logic_->create_control_command(odom, traj);
 
   // 5. Goal reached ROS check and notify
   if (
