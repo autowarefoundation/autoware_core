@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef SIMPLE_PURE_PURSUIT_HPP_
-#define SIMPLE_PURE_PURSUIT_HPP_
+#ifndef SIMPLE_PURE_PURSUIT_NODE_HPP_
+#define SIMPLE_PURE_PURSUIT_NODE_HPP_
 
 #include "simple_pure_pursuit.hpp"
 
@@ -61,4 +61,4 @@ private:
 
 }  // namespace autoware::control::simple_pure_pursuit_node
 
-#endif  // SIMPLE_PURE_PURSUIT_HPP_
+#endif  // SIMPLE_PURE_PURSUIT_NODE_HPP_

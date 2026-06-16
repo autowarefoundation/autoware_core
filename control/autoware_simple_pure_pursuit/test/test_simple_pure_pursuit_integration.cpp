@@ -123,8 +123,9 @@ rclcpp::NodeOptions make_node_options(
 
   auto node_options = rclcpp::NodeOptions{};
   autoware::test_utils::updateNodeOptions(
-    node_options, {autoware_test_utils_dir + "/config/test_vehicle_info.param.yaml",
-                   autoware_simple_pure_pursuit_dir + "/config/simple_pure_pursuit_node.param.yaml"});
+    node_options,
+    {autoware_test_utils_dir + "/config/test_vehicle_info.param.yaml",
+     autoware_simple_pure_pursuit_dir + "/config/simple_pure_pursuit_node.param.yaml"});
 
   for (const auto & [name, value] : overrides) {
     node_options.append_parameter_override(name, value);

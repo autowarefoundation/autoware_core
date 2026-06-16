@@ -25,8 +25,7 @@ namespace autoware::control::simple_pure_pursuit_node
 using autoware::motion_utils::findNearestIndex;
 
 // Constructor
-SimplePurePursuit::SimplePurePursuit(const SimplePurePursuitParameters & params)
-: params_(params)
+SimplePurePursuit::SimplePurePursuit(const SimplePurePursuitParameters & params) : params_(params)
 {
 }
 
