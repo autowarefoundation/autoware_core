@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "simple_pure_pursuit.hpp"
+#include "simple_pure_pursuit_node.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <autoware_test_utils/autoware_test_utils.hpp>
@@ -29,7 +29,7 @@
 #include <memory>
 #include <string>
 #include <vector>
-namespace autoware::control::simple_pure_pursuit
+namespace autoware::control::simple_pure_pursuit_node
 {
 
 using autoware_control_msgs::msg::Control;
@@ -124,7 +124,7 @@ rclcpp::NodeOptions make_node_options(
   auto node_options = rclcpp::NodeOptions{};
   autoware::test_utils::updateNodeOptions(
     node_options, {autoware_test_utils_dir + "/config/test_vehicle_info.param.yaml",
-                   autoware_simple_pure_pursuit_dir + "/config/simple_pure_pursuit.param.yaml"});
+                   autoware_simple_pure_pursuit_dir + "/config/simple_pure_pursuit_node.param.yaml"});
 
   for (const auto & [name, value] : overrides) {
     node_options.append_parameter_override(name, value);
@@ -152,11 +152,11 @@ public:
     output_sub_node_ = rclcpp::Node::make_shared("simple_pure_pursuit_test_output_subscriber");
 
     odom_pub_ = input_pub_node_->create_publisher<Odometry>(
-      "/simple_pure_pursuit/input/odometry", rclcpp::QoS{1});
+      "/simple_pure_pursuit_node/input/odometry", rclcpp::QoS{1});
     traj_pub_ = input_pub_node_->create_publisher<Trajectory>(
-      "/simple_pure_pursuit/input/trajectory", rclcpp::QoS{1});
+      "/simple_pure_pursuit_node/input/trajectory", rclcpp::QoS{1});
     control_sub_ = output_sub_node_->create_subscription<Control>(
-      "/simple_pure_pursuit/output/control_command", rclcpp::QoS{1}.transient_local(),
+      "/simple_pure_pursuit_node/output/control_command", rclcpp::QoS{1}.transient_local(),
       [this](const Control::SharedPtr msg) {
         {
           std::scoped_lock lock(received_control_mutex_);
@@ -469,7 +469,7 @@ TEST(SimplePurePursuitIntegrationTest, PublishesNonZeroSteeringForLateralOffset)
 
 };  // namespace
 
-};  // namespace autoware::control::simple_pure_pursuit
+};  // namespace autoware::control::simple_pure_pursuit_node
 
 int main(int argc, char ** argv)
 {

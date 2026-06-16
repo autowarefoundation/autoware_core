@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "../src/simple_pure_pursuit_core_logic.hpp"
+#include "../src/simple_pure_pursuit.hpp"
 
 #include <autoware_test_utils/autoware_test_utils.hpp>
 
@@ -21,7 +21,7 @@
 #include <cmath>
 #include <memory>
 
-namespace autoware::control::simple_pure_pursuit
+namespace autoware::control::simple_pure_pursuit_node
 {
 
 using autoware_planning_msgs::msg::Trajectory;
@@ -61,7 +61,7 @@ protected:
     params_.use_external_target_vel = false;
     params_.external_target_vel = 1.0;
     params_.wheel_base_m = 2.79;
-    core_logic_ = std::make_unique<SimplePurePursuitCorelogic>(params_);
+    core_logic_ = std::make_unique<SimplePurePursuit>(params_);
   }
 
   [[nodiscard]] autoware_control_msgs::msg::Control create_control_command(
@@ -80,7 +80,7 @@ protected:
   [[nodiscard]] double speed_proportional_gain() const { return params_.speed_proportional_gain; }
 
   SimplePurePursuitParameters params_;
-  std::unique_ptr<SimplePurePursuitCorelogic> core_logic_;
+  std::unique_ptr<SimplePurePursuit> core_logic_;
 };
 
 // ================== TESTING AREA HERE ==================
@@ -200,4 +200,4 @@ TEST_F(SimplePurePursuitCorelogicTest, FallbackWhenLookaheadExceedsTrajectoryLen
   EXPECT_TRUE(std::isfinite(result.lateral.steering_tire_angle));
 }
 
-}  // namespace autoware::control::simple_pure_pursuit
+}  // namespace autoware::control::simple_pure_pursuit_node

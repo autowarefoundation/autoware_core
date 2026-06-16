@@ -14,82 +14,122 @@
 
 #include "simple_pure_pursuit.hpp"
 
-#include "simple_pure_pursuit_core_logic.hpp"
+#include <autoware/motion_utils/trajectory/trajectory.hpp>
+#include <tf2/utils.hpp>
 
-#include <memory>
+#include <algorithm>
 
-namespace autoware::control::simple_pure_pursuit
+namespace autoware::control::simple_pure_pursuit_node
 {
 
-SimplePurePursuitNode::SimplePurePursuitNode(const rclcpp::NodeOptions & node_options)
-: Node("simple_pure_pursuit", node_options),
-  pub_control_command_(
-    create_publisher<autoware_control_msgs::msg::Control>(
-      "~/output/control_command", rclcpp::QoS(1).transient_local()))
+using autoware::motion_utils::findNearestIndex;
+
+// Constructor
+SimplePurePursuit::SimplePurePursuit(const SimplePurePursuitParameters & params)
+: params_(params)
 {
-  // Vehicle info is now fetch locally
-  const auto vehicle_info = autoware::vehicle_info_utils::VehicleInfoUtils(*this).getVehicleInfo();
-
-  // Read ROS params, fetch them into struct
-  SimplePurePursuitParameters params{};
-  params.lookahead_gain = declare_parameter<float>("lookahead_gain");
-  params.lookahead_min_distance = declare_parameter<float>("lookahead_min_distance");
-  params.speed_proportional_gain = declare_parameter<float>("speed_proportional_gain");
-  params.use_external_target_vel = declare_parameter<bool>("use_external_target_vel");
-  params.external_target_vel = declare_parameter<float>("external_target_vel");
-  params.wheel_base_m = vehicle_info.wheel_base_m;
-
-  // Init core logic
-  core_logic_ = std::make_unique<SimplePurePursuitCorelogic>(params);
-
-  using namespace std::literals::chrono_literals;
-  timer_ = rclcpp::create_timer(
-    this, get_clock(), 30ms, std::bind(&SimplePurePursuitNode::on_timer, this));
 }
 
-void SimplePurePursuitNode::on_timer()
+// Params setter
+void SimplePurePursuit::set_params(const SimplePurePursuitParameters & params)
 {
-  // 1. Subscribe data
-  const auto odom_ptr = odom_sub_.take_data();
-  const auto traj_ptr = traj_sub_.take_data();
-  if (!odom_ptr || !traj_ptr) {
-    return;
+  params_ = params;
+};
+
+// Core logic for creating control command based on current odom and traj
+autoware_control_msgs::msg::Control SimplePurePursuit::create_control_command(
+  const nav_msgs::msg::Odometry & odom, const autoware_planning_msgs::msg::Trajectory & traj) const
+{
+  const size_t closest_traj_point_idx = findNearestIndex(traj.points, odom.pose.pose.position);
+
+  // When ego reaches goal or traj is too short, stop vehicle
+  if ((closest_traj_point_idx == traj.points.size() - 1) || (traj.points.size() <= 5)) {
+    autoware_control_msgs::msg::Control control_command;
+    control_command.stamp = odom.header.stamp;
+    control_command.longitudinal.velocity = 0.0;
+    control_command.longitudinal.acceleration = -10.0;
+    control_command.longitudinal.is_defined_acceleration = true;
+
+    return control_command;
   }
 
-  // 2. Extract subscribed data
-  const auto & odom = *odom_ptr;
-  const auto & traj = *traj_ptr;
+  // Calculate target longitudinal velocity
+  const double target_longitudinal_vel =
+    params_.use_external_target_vel
+      ? params_.external_target_vel
+      : traj.points.at(closest_traj_point_idx).longitudinal_velocity_mps;
 
-  // 3. Input validation
-  if (traj.points.empty()) {
-    RCLCPP_WARN_THROTTLE(
-      get_logger(), *get_clock(), 5000,
-      "Received empty trajectory, returning zero velocity command.");
+  // Calculate control command
+  autoware_control_msgs::msg::Control control_command;
+  control_command.stamp = odom.header.stamp;
+  control_command.longitudinal = calc_longitudinal_control(odom, target_longitudinal_vel);
+  control_command.lateral =
+    calc_lateral_control(odom, traj, target_longitudinal_vel, closest_traj_point_idx);
 
-    autoware_control_msgs::msg::Control cmd;
-    cmd.stamp = odom.header.stamp;
-    cmd.longitudinal.velocity = 0.0;
-    cmd.longitudinal.acceleration = 0.0;
-    pub_control_command_->publish(cmd);
+  return control_command;
+};
 
-    return;
+// Core logic for calculating longitudinal control command
+autoware_control_msgs::msg::Longitudinal SimplePurePursuit::calc_longitudinal_control(
+  const nav_msgs::msg::Odometry & odom, const double target_longitudinal_vel) const
+{
+  autoware_control_msgs::msg::Longitudinal longitudinal_control_command;
+  const double current_velocity = odom.twist.twist.linear.x;
+
+  if (params_.use_external_target_vel) {
+    longitudinal_control_command.velocity = static_cast<float>(params_.external_target_vel);
+    longitudinal_control_command.acceleration = static_cast<float>(
+      (params_.external_target_vel - current_velocity) * params_.speed_proportional_gain);
+
+  } else {
+    longitudinal_control_command.velocity = static_cast<float>(target_longitudinal_vel);
+    longitudinal_control_command.acceleration = static_cast<float>(
+      (target_longitudinal_vel - current_velocity) * params_.speed_proportional_gain);
   }
 
-  // 4. Delegate to core logic
-  const auto control_command = core_logic_->create_control_command(odom, traj);
+  return longitudinal_control_command;
+};
 
-  // 5. Goal reached ROS check and notify
-  if (
-    (control_command.longitudinal.velocity == 0.0) &&
-    (control_command.longitudinal.acceleration == -10.0)) {
-    RCLCPP_DEBUG_THROTTLE(get_logger(), *get_clock(), 5000, "reached to the goal");
+// Core logic for calculating lateral control command
+autoware_control_msgs::msg::Lateral SimplePurePursuit::calc_lateral_control(
+  const nav_msgs::msg::Odometry & odom, const autoware_planning_msgs::msg::Trajectory & traj,
+  const double target_longitudinal_vel, const size_t closest_traj_point_idx) const
+{
+  // Calculate lookahead distance
+  const double lookahead_distance =
+    params_.lookahead_gain * target_longitudinal_vel + params_.lookahead_min_distance;
+
+  // Calculate center coordinate of rear wheel
+  const double vehicle_heading = tf2::getYaw(odom.pose.pose.orientation);
+  const double rear_x =
+    odom.pose.pose.position.x - params_.wheel_base_m / 2.0 * std::cos(vehicle_heading);
+  const double rear_y =
+    odom.pose.pose.position.y - params_.wheel_base_m / 2.0 * std::sin(vehicle_heading);
+
+  // Search for the lookahead point on the trajectory
+  auto lookahead_point_itr = std::find_if(
+    traj.points.begin() + static_cast<std::ptrdiff_t>(closest_traj_point_idx), traj.points.end(),
+    [&](const autoware_planning_msgs::msg::TrajectoryPoint & point) {
+      return std::hypot(point.pose.position.x - rear_x, point.pose.position.y - rear_y) >=
+             lookahead_distance;
+    });
+
+  if (lookahead_point_itr == traj.points.end()) {
+    lookahead_point_itr = traj.points.end() - 1;
   }
 
-  // 6. Publish control command
-  pub_control_command_->publish(control_command);
+  const double lookahead_point_x = lookahead_point_itr->pose.position.x;
+  const double lookahead_point_y = lookahead_point_itr->pose.position.y;
+
+  // Calculate pure pursuit steering angle
+  autoware_control_msgs::msg::Lateral lateral_control_command;
+  const double alpha = std::atan2(lookahead_point_y - rear_y, lookahead_point_x - rear_x) -
+                       tf2::getYaw(odom.pose.pose.orientation);
+
+  lateral_control_command.steering_tire_angle = static_cast<float>(
+    std::atan2(2.0 * params_.wheel_base_m * std::sin(alpha), lookahead_distance));
+
+  return lateral_control_command;
 }
 
-}  // namespace autoware::control::simple_pure_pursuit
-
-#include <rclcpp_components/register_node_macro.hpp>
-RCLCPP_COMPONENTS_REGISTER_NODE(autoware::control::simple_pure_pursuit::SimplePurePursuitNode)
+};  // namespace autoware::control::simple_pure_pursuit_node
