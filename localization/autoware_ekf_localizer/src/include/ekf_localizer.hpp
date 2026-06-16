@@ -201,6 +201,11 @@ private:
   autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_;
   autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_timer_cb_;
 
+  void initialize_diagnostic_info(
+    EKFDiagnosticInfo & pose_diag_info, EKFDiagnosticInfo & twist_diag_info,
+    const AgedObjectQueue<geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr> & pose_queue,
+    const AgedObjectQueue<geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr> & twist_queue);
+
   friend class EKFLocalizerDiagnosticsTest;  // for test code
 };
 

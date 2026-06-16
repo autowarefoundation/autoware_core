@@ -27,7 +27,7 @@ namespace
 
 using autoware::experimental::trajectory::find_first_nearest_index;
 using autoware::experimental::trajectory::find_nearest_index;
-using autoware::experimental::trajectory::k_points_minimum_dist_threshold;
+using autoware::experimental::trajectory::k_epsilon_distance;
 using autoware::experimental::trajectory::Trajectory;
 using autoware_utils_geometry::create_point;
 using autoware_utils_geometry::create_quaternion_from_rpy;
@@ -241,7 +241,7 @@ TEST(Trajectory, FindNearestIndexPointCurvedTrajectory)
 
     auto query = create_point(qx, qy, 0);
     auto s_opt = find_nearest_index(traj, query);
-    EXPECT_NEAR(s_opt, 5.2850123, k_points_minimum_dist_threshold);
+    EXPECT_NEAR(s_opt, 5.2850123, k_epsilon_distance);
   }
 
   {
@@ -259,7 +259,7 @@ TEST(Trajectory, FindNearestIndexPointCurvedTrajectory)
 
     auto query = create_point(qx, qy, 0);
     auto s_opt = find_nearest_index(traj, query);
-    EXPECT_NEAR(s_opt, 3.60253801, k_points_minimum_dist_threshold);
+    EXPECT_NEAR(s_opt, 3.60253801, k_epsilon_distance);
   }
 }
 
@@ -278,7 +278,7 @@ TEST(Trajectory, FindFirstNearestIndexCurvedTrajectory)
     auto query = make_pose(qx, qy, true_theta);
     auto s_opt = find_first_nearest_index(traj, query);
     ASSERT_TRUE(s_opt.has_value());
-    EXPECT_NEAR(*s_opt, 5.2850123, k_points_minimum_dist_threshold);
+    EXPECT_NEAR(*s_opt, 5.2850123, k_epsilon_distance);
     EXPECT_TRUE(is_within_yaw_and_distance_constraint(traj, *s_opt, query));
   }
 
@@ -298,7 +298,7 @@ TEST(Trajectory, FindFirstNearestIndexCurvedTrajectory)
     auto query = make_pose(qx, qy, avg_theta);
     auto s_opt = find_first_nearest_index(traj, query);
     ASSERT_TRUE(s_opt.has_value());
-    EXPECT_NEAR(*s_opt, 3.60253801, k_points_minimum_dist_threshold);
+    EXPECT_NEAR(*s_opt, 3.60253801, k_epsilon_distance);
     EXPECT_TRUE(is_within_yaw_and_distance_constraint(traj, *s_opt, query));
   }
 }
@@ -313,7 +313,7 @@ TEST(Trajectory, FindFirstNearestIndexPoseNoThreshold)
     auto query = make_pose(0.0, 0.0);
     auto s_opt = find_first_nearest_index(traj, query);
     ASSERT_TRUE(s_opt.has_value());
-    EXPECT_NEAR(*s_opt, 4.4552394e-05, k_points_minimum_dist_threshold);
+    EXPECT_NEAR(*s_opt, 4.4552394e-05, k_epsilon_distance);
     EXPECT_TRUE(is_within_yaw_and_distance_constraint(traj, *s_opt, query));
   }
 
@@ -322,7 +322,7 @@ TEST(Trajectory, FindFirstNearestIndexPoseNoThreshold)
     auto query = make_pose(9.0, 9.0);
     auto s_opt = find_first_nearest_index(traj, query);
     ASSERT_TRUE(s_opt.has_value());
-    EXPECT_NEAR(*s_opt, 10.0846927, k_points_minimum_dist_threshold);
+    EXPECT_NEAR(*s_opt, 10.0846927, k_epsilon_distance);
     EXPECT_TRUE(is_within_yaw_and_distance_constraint(traj, *s_opt, query));
   }
 
@@ -331,7 +331,7 @@ TEST(Trajectory, FindFirstNearestIndexPoseNoThreshold)
     auto query = make_pose(0.5, 0.5);
     auto s_opt = find_first_nearest_index(traj, query);
     ASSERT_TRUE(s_opt.has_value());
-    EXPECT_NEAR(*s_opt, 0.54431653, k_points_minimum_dist_threshold);
+    EXPECT_NEAR(*s_opt, 0.54431653, k_epsilon_distance);
     EXPECT_TRUE(is_within_yaw_and_distance_constraint(traj, *s_opt, query));
   }
 
@@ -340,7 +340,7 @@ TEST(Trajectory, FindFirstNearestIndexPoseNoThreshold)
     auto query = make_pose(0.51, 0.51);
     auto s_opt = find_first_nearest_index(traj, query);
     ASSERT_TRUE(s_opt.has_value());
-    EXPECT_NEAR(*s_opt, 0.55598476, k_points_minimum_dist_threshold);
+    EXPECT_NEAR(*s_opt, 0.55598476, k_epsilon_distance);
     EXPECT_TRUE(is_within_yaw_and_distance_constraint(traj, *s_opt, query));
   }
 
@@ -349,7 +349,7 @@ TEST(Trajectory, FindFirstNearestIndexPoseNoThreshold)
     auto query = make_pose(-4.0, 5.0);
     auto s_opt = find_first_nearest_index(traj, query);
     ASSERT_TRUE(s_opt.has_value());
-    EXPECT_NEAR(*s_opt, 4.4552394e-05, k_points_minimum_dist_threshold);
+    EXPECT_NEAR(*s_opt, 4.4552394e-05, k_epsilon_distance);
     EXPECT_TRUE(is_within_yaw_and_distance_constraint(traj, *s_opt, query));
   }
 
@@ -358,7 +358,7 @@ TEST(Trajectory, FindFirstNearestIndexPoseNoThreshold)
     auto query = make_pose(100.0, -3.0);
     auto s_opt = find_first_nearest_index(traj, query);
     ASSERT_TRUE(s_opt.has_value());
-    EXPECT_NEAR(*s_opt, 8.72879934, k_points_minimum_dist_threshold);
+    EXPECT_NEAR(*s_opt, 8.72879934, k_epsilon_distance);
     EXPECT_TRUE(is_within_yaw_and_distance_constraint(traj, *s_opt, query));
   }
 }
@@ -380,7 +380,7 @@ TEST(Trajectory, FindFirstNearestIndexPoseDistThreshold)
     auto query = make_pose(3.0, 0.9);
     auto s_opt = find_first_nearest_index(traj, query, 2.0);
     ASSERT_TRUE(s_opt.has_value());
-    EXPECT_NEAR(*s_opt, 3.1567543, k_points_minimum_dist_threshold);
+    EXPECT_NEAR(*s_opt, 3.1567543, k_epsilon_distance);
     EXPECT_TRUE(is_within_yaw_and_distance_constraint(traj, *s_opt, query, 2.0));
   }
 }
@@ -403,7 +403,7 @@ TEST(Trajectory, FindFirstNearestIndexPoseYawThreshold)
     auto query = make_pose(3.0, 0.0, 0.9);
     auto s_opt = find_first_nearest_index(traj, query, max_d, 2.0);
     ASSERT_TRUE(s_opt.has_value());
-    EXPECT_NEAR(*s_opt, 2.70806359, k_points_minimum_dist_threshold);
+    EXPECT_NEAR(*s_opt, 2.70806359, k_epsilon_distance);
     EXPECT_TRUE(is_within_yaw_and_distance_constraint(traj, *s_opt, query, 2.0));
   }
 }
@@ -418,7 +418,7 @@ TEST(Trajectory, FindFirstNearestIndexPoseDistAndYawThreshold)
     auto query = make_pose(3.0, 0.9, 1.2678071089);
     auto s_opt = find_first_nearest_index(traj, query, 2.0);
     ASSERT_TRUE(s_opt.has_value());
-    EXPECT_NEAR(*s_opt, 3.1567543, k_points_minimum_dist_threshold);
+    EXPECT_NEAR(*s_opt, 3.1567543, k_epsilon_distance);
     EXPECT_TRUE(is_within_yaw_and_distance_constraint(traj, *s_opt, query, 2.0));
   }
 
@@ -440,7 +440,7 @@ TEST(Trajectory, FindFirstNearestIndexPoseTwoMinimaDistAndYawThreshold)
     auto query = make_pose(3.0, 0.9, 1.2678071089);
     auto s_opt = find_first_nearest_index(traj, query, 2.0);
     ASSERT_TRUE(s_opt.has_value());
-    EXPECT_NEAR(*s_opt, 3.1567543, k_points_minimum_dist_threshold);
+    EXPECT_NEAR(*s_opt, 3.1567543, k_epsilon_distance);
     EXPECT_TRUE(is_within_yaw_and_distance_constraint(traj, *s_opt, query, 2.0));
   }
 
@@ -461,7 +461,7 @@ TEST(Trajectory, FindFirstNearestIndexParabolicTrajectoryAboveMinima)
     auto s_opt =
       find_first_nearest_index(traj, query, std::numeric_limits<double>::max(), 1.2707963267948966);
     ASSERT_TRUE(s_opt.has_value());
-    EXPECT_NEAR(*s_opt, 29.944142653, k_points_minimum_dist_threshold);
+    EXPECT_NEAR(*s_opt, 29.944142653, k_epsilon_distance);
     EXPECT_TRUE(is_within_yaw_and_distance_constraint(
       traj, *s_opt, query, std::numeric_limits<double>::max(), 1.2707963267948966));
   }
@@ -477,7 +477,7 @@ TEST(Trajectory, FindFirstNearestIndexBowTrajectoryLessBases)
     auto query = make_pose(1, 1, yaw);
     auto s_opt = find_first_nearest_index(traj, query);
     ASSERT_TRUE(s_opt.has_value());
-    EXPECT_NEAR(*s_opt, 1.2181577509092187, k_points_minimum_dist_threshold);
+    EXPECT_NEAR(*s_opt, 1.2181577509092187, k_epsilon_distance);
     EXPECT_TRUE(is_within_yaw_and_distance_constraint(traj, *s_opt, query));
   }
   // At intersection, first round
@@ -486,7 +486,7 @@ TEST(Trajectory, FindFirstNearestIndexBowTrajectoryLessBases)
     auto query = make_pose(-0.05, 0, yaw);
     auto s_opt = find_first_nearest_index(traj, query, std::numeric_limits<double>::max(), 1.046);
     ASSERT_TRUE(s_opt.has_value());
-    EXPECT_NEAR(*s_opt, 2.6770152278921948, k_points_minimum_dist_threshold);
+    EXPECT_NEAR(*s_opt, 2.6770152278921948, k_epsilon_distance);
     EXPECT_TRUE(is_within_yaw_and_distance_constraint(
       traj, *s_opt, query, std::numeric_limits<double>::max(), 1.046));
   }
@@ -497,7 +497,7 @@ TEST(Trajectory, FindFirstNearestIndexBowTrajectoryLessBases)
     auto query = make_pose(-0.05, 0, yaw);
     auto s_opt = find_first_nearest_index(traj, query, std::numeric_limits<double>::max(), 1.046);
     ASSERT_TRUE(s_opt.has_value());
-    EXPECT_NEAR(*s_opt, 11.501379660920705, k_points_minimum_dist_threshold);
+    EXPECT_NEAR(*s_opt, 11.501379660920705, k_epsilon_distance);
     EXPECT_TRUE(is_within_yaw_and_distance_constraint(
       traj, *s_opt, query, std::numeric_limits<double>::max(), 1.046));
   }
@@ -512,7 +512,7 @@ TEST(Trajectory, FindFirstNearestIndexBowTrajectoryManyBases)
     auto query = make_pose(1, 1, yaw);
     auto s_opt = find_first_nearest_index(traj, query);
     ASSERT_TRUE(s_opt.has_value());
-    EXPECT_NEAR(*s_opt, 1.2381368903716181, k_points_minimum_dist_threshold);
+    EXPECT_NEAR(*s_opt, 1.2381368903716181, k_epsilon_distance);
     EXPECT_TRUE(is_within_yaw_and_distance_constraint(traj, *s_opt, query));
   }
   // At intersection, first round
@@ -521,7 +521,7 @@ TEST(Trajectory, FindFirstNearestIndexBowTrajectoryManyBases)
     auto query = make_pose(-0.05, 0, yaw);
     auto s_opt = find_first_nearest_index(traj, query, std::numeric_limits<double>::max(), 1.046);
     ASSERT_TRUE(s_opt.has_value());
-    EXPECT_NEAR(*s_opt, 2.6851636870536018, k_points_minimum_dist_threshold);
+    EXPECT_NEAR(*s_opt, 2.6851636870536018, k_epsilon_distance);
     EXPECT_TRUE(is_within_yaw_and_distance_constraint(
       traj, *s_opt, query, std::numeric_limits<double>::max(), 1.046));
   }
@@ -532,7 +532,7 @@ TEST(Trajectory, FindFirstNearestIndexBowTrajectoryManyBases)
     auto query = make_pose(-0.05, 0, yaw);
     auto s_opt = find_first_nearest_index(traj, query, std::numeric_limits<double>::max(), 1.046);
     ASSERT_TRUE(s_opt.has_value());
-    EXPECT_NEAR(*s_opt, 11.760225108845566, k_points_minimum_dist_threshold);
+    EXPECT_NEAR(*s_opt, 11.760225108845566, k_epsilon_distance);
     EXPECT_TRUE(is_within_yaw_and_distance_constraint(
       traj, *s_opt, query, std::numeric_limits<double>::max(), 1.046));
   }
@@ -547,21 +547,21 @@ TEST(Trajectory, FindFirstNearestIndexVerticalLoop)
       auto query = make_pose(1, 1, -M_PI);
       auto s_opt = find_first_nearest_index(traj, query, 2.0, 1.046);
       ASSERT_TRUE(s_opt.has_value());
-      EXPECT_NEAR(*s_opt, 1.96171, k_points_minimum_dist_threshold);
+      EXPECT_NEAR(*s_opt, 1.96171, k_epsilon_distance);
       EXPECT_TRUE(is_within_yaw_and_distance_constraint(traj, *s_opt, query, 2, 1.046));
     }
     {
       auto query = make_pose(0, 0.05, -M_PI);
       auto s_opt = find_first_nearest_index(traj, query, 2.0, 1.046);
       ASSERT_TRUE(s_opt.has_value());
-      EXPECT_NEAR(*s_opt, 3.00769, k_points_minimum_dist_threshold);
+      EXPECT_NEAR(*s_opt, 3.00769, k_epsilon_distance);
       EXPECT_TRUE(is_within_yaw_and_distance_constraint(traj, *s_opt, query, 2, 1.046));
     }
     {
       auto query = make_pose(0, -0.05, -M_PI);
       auto s_opt = find_first_nearest_index(traj, query, 2.0, 1.046);
       ASSERT_TRUE(s_opt.has_value());
-      EXPECT_NEAR(*s_opt, 2.99234, k_points_minimum_dist_threshold);
+      EXPECT_NEAR(*s_opt, 2.99234, k_epsilon_distance);
       EXPECT_TRUE(is_within_yaw_and_distance_constraint(traj, *s_opt, query, 2, 1.046));
     }
   }
@@ -571,21 +571,21 @@ TEST(Trajectory, FindFirstNearestIndexVerticalLoop)
       auto query = make_pose(1, 1, -M_PI);
       auto s_opt = find_first_nearest_index(traj, query, 2.0, 1.046);
       ASSERT_TRUE(s_opt.has_value());
-      EXPECT_NEAR(*s_opt, 1.99964, k_points_minimum_dist_threshold);
+      EXPECT_NEAR(*s_opt, 1.99964, k_epsilon_distance);
       EXPECT_TRUE(is_within_yaw_and_distance_constraint(traj, *s_opt, query, 2, 1.046));
     }
     {
       auto query = make_pose(0, 0.05, -M_PI);
       auto s_opt = find_first_nearest_index(traj, query, 2.0, 1.046);
       ASSERT_TRUE(s_opt.has_value());
-      EXPECT_NEAR(*s_opt, 3.00024, k_points_minimum_dist_threshold);
+      EXPECT_NEAR(*s_opt, 3.00024, k_epsilon_distance);
       EXPECT_TRUE(is_within_yaw_and_distance_constraint(traj, *s_opt, query, 2, 1.046));
     }
     {
       auto query = make_pose(0, -0.05, -M_PI);
       auto s_opt = find_first_nearest_index(traj, query, 2.0, 1.046);
       ASSERT_TRUE(s_opt.has_value());
-      EXPECT_NEAR(*s_opt, 2.99981, k_points_minimum_dist_threshold);
+      EXPECT_NEAR(*s_opt, 2.99981, k_epsilon_distance);
       EXPECT_TRUE(is_within_yaw_and_distance_constraint(traj, *s_opt, query, 2, 1.046));
     }
   }
@@ -595,21 +595,21 @@ TEST(Trajectory, FindFirstNearestIndexVerticalLoop)
       auto query = make_pose(1, 1, -M_PI);
       auto s_opt = find_first_nearest_index(traj, query, 2.0, 1.046);
       ASSERT_TRUE(s_opt.has_value());
-      EXPECT_NEAR(*s_opt, 1.99967, k_points_minimum_dist_threshold);
+      EXPECT_NEAR(*s_opt, 1.99967, k_epsilon_distance);
       EXPECT_TRUE(is_within_yaw_and_distance_constraint(traj, *s_opt, query, 2, 1.046));
     }
     {
       auto query = make_pose(0, 0.05, -M_PI);
       auto s_opt = find_first_nearest_index(traj, query, 2.0, 1.046);
       ASSERT_TRUE(s_opt.has_value());
-      EXPECT_NEAR(*s_opt, 3.00011, k_points_minimum_dist_threshold);
+      EXPECT_NEAR(*s_opt, 3.00011, k_epsilon_distance);
       EXPECT_TRUE(is_within_yaw_and_distance_constraint(traj, *s_opt, query, 2, 1.046));
     }
     {
       auto query = make_pose(0, -0.05, -M_PI);
       auto s_opt = find_first_nearest_index(traj, query, 2.0, 1.046);
       ASSERT_TRUE(s_opt.has_value());
-      EXPECT_NEAR(*s_opt, 3.00011, k_points_minimum_dist_threshold);
+      EXPECT_NEAR(*s_opt, 3.00011, k_epsilon_distance);
       EXPECT_TRUE(is_within_yaw_and_distance_constraint(traj, *s_opt, query, 2, 1.046));
     }
   }
@@ -624,7 +624,7 @@ TEST(Trajectory, FindFirstNearestIndexLollipopTrajectory)
     auto s_opt =
       find_first_nearest_index(traj, query, std::numeric_limits<double>::max(), M_PI / 3);
     ASSERT_TRUE(s_opt.has_value());
-    EXPECT_NEAR(*s_opt, 1.50006, k_points_minimum_dist_threshold);
+    EXPECT_NEAR(*s_opt, 1.50006, k_epsilon_distance);
     EXPECT_TRUE(is_within_yaw_and_distance_constraint(
       traj, *s_opt, query, std::numeric_limits<double>::max(), M_PI / 3));
   }
@@ -633,7 +633,7 @@ TEST(Trajectory, FindFirstNearestIndexLollipopTrajectory)
     auto s_opt =
       find_first_nearest_index(traj, query, std::numeric_limits<double>::max(), M_PI / 3);
     ASSERT_TRUE(s_opt.has_value());
-    EXPECT_NEAR(*s_opt, 19.4914, k_points_minimum_dist_threshold);
+    EXPECT_NEAR(*s_opt, 19.4914, k_epsilon_distance);
     EXPECT_TRUE(is_within_yaw_and_distance_constraint(
       traj, *s_opt, query, std::numeric_limits<double>::max(), M_PI / 3));
   }
@@ -642,7 +642,7 @@ TEST(Trajectory, FindFirstNearestIndexLollipopTrajectory)
     auto s_opt =
       find_first_nearest_index(traj, query, std::numeric_limits<double>::max(), M_PI / 3);
     ASSERT_TRUE(s_opt.has_value());
-    EXPECT_NEAR(*s_opt, 2.99733, k_points_minimum_dist_threshold);
+    EXPECT_NEAR(*s_opt, 2.99733, k_epsilon_distance);
     EXPECT_TRUE(is_within_yaw_and_distance_constraint(
       traj, *s_opt, query, std::numeric_limits<double>::max(), M_PI / 3));
   }
@@ -651,7 +651,7 @@ TEST(Trajectory, FindFirstNearestIndexLollipopTrajectory)
     auto s_opt =
       find_first_nearest_index(traj, query, std::numeric_limits<double>::max(), M_PI / 3);
     ASSERT_TRUE(s_opt.has_value());
-    EXPECT_NEAR(*s_opt, 9.14898, k_points_minimum_dist_threshold);
+    EXPECT_NEAR(*s_opt, 9.14898, k_epsilon_distance);
     EXPECT_TRUE(is_within_yaw_and_distance_constraint(
       traj, *s_opt, query, std::numeric_limits<double>::max(), M_PI / 3));
   }
@@ -660,7 +660,7 @@ TEST(Trajectory, FindFirstNearestIndexLollipopTrajectory)
     auto s_opt =
       find_first_nearest_index(traj, query, std::numeric_limits<double>::max(), M_PI / 3);
     ASSERT_TRUE(s_opt.has_value());
-    EXPECT_NEAR(*s_opt, 16.9315, k_points_minimum_dist_threshold);
+    EXPECT_NEAR(*s_opt, 16.9315, k_epsilon_distance);
     EXPECT_TRUE(is_within_yaw_and_distance_constraint(
       traj, *s_opt, query, std::numeric_limits<double>::max(), M_PI / 3));
   }

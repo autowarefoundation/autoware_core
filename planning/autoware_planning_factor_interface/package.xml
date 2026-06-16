@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>autoware_planning_factor_interface</name>
-  <version>1.7.0</version>
+  <version>1.8.0</version>
   <description>The autoware_planning_factor_interface package</description>
   <maintainer email="satoshi.ota@tier4.jp">Satoshi Ota</maintainer>
   <maintainer email="mamoru.sobue@tier4.jp">Mamoru Sobue</maintainer>
@@ -21,6 +21,7 @@
   <test_depend>ament_cmake_ros</test_depend>
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>autoware_lint_common</test_depend>
+  <test_depend>autoware_utils_geometry</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

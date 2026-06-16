@@ -173,6 +173,14 @@ double EKFModule::get_yaw_bias() const
 
 size_t EKFModule::find_closest_delay_time_index(double target_value) const
 {
+  // Additive safety guard: accumulated_delay_times_ is sized to params_.extend_state_step in the
+  // constructor. A misconfigured extend_state_step == 0 leaves the table empty, and the
+  // accumulated_delay_times_.back() dereference below would be undefined behaviour. Treat an empty
+  // table as "no delay slots", returning 0 (== size()) instead of crashing.
+  if (accumulated_delay_times_.empty()) {
+    return 0;
+  }
+
   // If target_value is too large, return last index + 1
   if (target_value > accumulated_delay_times_.back()) {
     return accumulated_delay_times_.size();
@@ -215,8 +223,7 @@ void EKFModule::accumulate_delay_time(const double dt)
 
 void EKFModule::predict_with_delay(const double dt)
 {
-  const Eigen::MatrixXd x_curr = kalman_filter_.getLatestX();
-  const Eigen::MatrixXd p_curr = kalman_filter_.getLatestP();
+  const Vector6d x_curr = kalman_filter_.getLatestX();
 
   const double proc_cov_vx_d = std::pow(params_.proc_stddev_vx_c * dt, 2.0);
   const double proc_cov_wz_d = std::pow(params_.proc_stddev_wz_c * dt, 2.0);
@@ -256,6 +263,8 @@ bool EKFModule::measurement_update_pose(
 
   pose_diag_info.delay_time = std::max(delay_time, pose_diag_info.delay_time);
   pose_diag_info.delay_time_threshold = accumulated_delay_times_.back();
+  // is_passed_delay_gate is initialized true before the first calling measurement_update_pose
+  // every ekf_localizer call.
   if (delay_step >= params_.extend_state_step) {
     pose_diag_info.is_passed_delay_gate = false;
     warning_->warn_throttle(
@@ -292,6 +301,8 @@ bool EKFModule::measurement_update_pose(
 
   const double distance = mahalanobis(y_ekf, y, p_y);
   pose_diag_info.mahalanobis_distance = std::max(distance, pose_diag_info.mahalanobis_distance);
+  // is_passed_mahalanobis_gate is initialized true before the first calling measurement_update_pose
+  // every ekf_localizer call.
   if (distance > params_.pose_gate_dist) {
     pose_diag_info.is_passed_mahalanobis_gate = false;
     warning_->warn_throttle(mahalanobis_warning_message(distance, params_.pose_gate_dist), 2000);
@@ -384,6 +395,8 @@ bool EKFModule::measurement_update_twist(
 
   twist_diag_info.delay_time = std::max(delay_time, twist_diag_info.delay_time);
   twist_diag_info.delay_time_threshold = accumulated_delay_times_.back();
+  // is_passed_delay_gate is initialized true before the first calling measurement_update_twist
+  // every ekf_localizer call.
   if (delay_step >= params_.extend_state_step) {
     twist_diag_info.is_passed_delay_gate = false;
     warning_->warn_throttle(
@@ -411,6 +424,8 @@ bool EKFModule::measurement_update_twist(
 
   const double distance = mahalanobis(y_ekf, y, p_y);
   twist_diag_info.mahalanobis_distance = std::max(distance, twist_diag_info.mahalanobis_distance);
+  // is_passed_mahalanobis_gate is initialized true before the first calling
+  // measurement_update_twist every ekf_localizer call.
   if (distance > params_.twist_gate_dist) {
     twist_diag_info.is_passed_mahalanobis_gate = false;
     warning_->warn_throttle(mahalanobis_warning_message(distance, params_.twist_gate_dist), 2000);

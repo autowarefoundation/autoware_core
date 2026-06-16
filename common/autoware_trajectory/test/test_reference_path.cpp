@@ -132,7 +132,7 @@ TEST_P(TestCase_Map_Waypoint_Straight_00, TestPathValidity)
              points, points | ranges::views::drop(1), points | ranges::views::drop(2))) {
         EXPECT_TRUE(
           autoware_utils_geometry::calc_distance3d(p1, p2) >=
-          autoware::experimental::trajectory::k_points_minimum_dist_threshold);
+          autoware::experimental::trajectory::k_epsilon_distance);
         EXPECT_TRUE(
           boost::geometry::within(
             lanelet::utils::to2D(lanelet2_utils::from_ros(p2.point.pose.position)),
@@ -274,7 +274,7 @@ TEST_P(TestCase_Map_Waypoint_Curve_00, TestPathValidity)
              points, points | ranges::views::drop(1), points | ranges::views::drop(2))) {
         EXPECT_TRUE(
           autoware_utils_geometry::calc_distance3d(p1, p2) >=
-          autoware::experimental::trajectory::k_points_minimum_dist_threshold);
+          autoware::experimental::trajectory::k_epsilon_distance);
 
         // use p2, because p1/p3 at the end may well be slightly outside of the Lanelets by error
         EXPECT_TRUE(
@@ -484,7 +484,7 @@ INSTANTIATE_TEST_SUITE_P(
 //              points, points | ranges::views::drop(1), points | ranges::views::drop(2))) {
 //         EXPECT_TRUE(
 //           autoware_utils_geometry::calc_distance3d(p1, p2) >=
-//           autoware::experimental::trajectory::k_points_minimum_dist_threshold);
+//           autoware::experimental::trajectory::k_epsilon_distance);
 
 //         // use p2, because p1/p3 at the end may well be slightly outside of the Lanelets by error
 //         EXPECT_TRUE(

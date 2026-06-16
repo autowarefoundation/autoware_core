@@ -23,6 +23,13 @@ if(BUILD_TESTING)
     ${PROJECT_NAME}_lib
     yaml-cpp
   )
+
+  ament_auto_add_gtest(test_node_utils
+    test/test_node_utils.cpp
+  )
+  target_link_libraries(test_node_utils
+    ${PROJECT_NAME}_lib
+  )
 endif()
 
 autoware_ament_auto_package(INSTALL_TO_SHARE

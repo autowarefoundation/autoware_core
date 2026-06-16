@@ -47,7 +47,7 @@ private:
   rclcpp::TimerBase::SharedPtr timer_;
 
   bool calling_service_ = false;
-  int request_timing_control_ = 0;
+  int elapsed_count_from_last_request_ = 0;
   SetRoutePoints::Service::Request::SharedPtr route_;
   RouteState::Message::_state_type state_;
 

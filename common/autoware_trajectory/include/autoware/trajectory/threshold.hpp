@@ -19,6 +19,7 @@
 #include <autoware_planning_msgs/msg/path_point.hpp>
 #include <autoware_planning_msgs/msg/trajectory_point.hpp>
 #include <geometry_msgs/msg/point.hpp>
+#include <geometry_msgs/msg/quaternion.hpp>
 
 #include <lanelet2_core/Forward.h>
 
@@ -26,10 +27,12 @@ namespace autoware::experimental::trajectory
 {
 
 // TODO(soblin): this should be defined as one of Autoware's interface/limitations
-static constexpr double k_points_minimum_dist_threshold = 0.005;
+static constexpr double k_epsilon_time = 1e-6;       // second
+static constexpr double k_epsilon_distance = 0.005;  // meter
+static constexpr double k_epsilon_velocity = 1e-6;   // m/s
+static constexpr double k_epsilon_angle = 1e-6;      // rad
 
-// zero velocity threshold [m/s]
-static constexpr double k_zero_velocity_threshold = 1e-6;
+static constexpr double k_points_minimum_dist_threshold = k_epsilon_distance;  // deprecated
 
 /**
  * @brief check if two base values are almost-same
@@ -40,6 +43,12 @@ bool is_almost_same(const double s1, const double s2);
  * @brief check if two points are almost-same
  */
 bool is_almost_same(const geometry_msgs::msg::Point & p1, const geometry_msgs::msg::Point & p2);
+
+/**
+ * @brief check if two quaternions represent almost the same rotation
+ */
+bool is_almost_same(
+  const geometry_msgs::msg::Quaternion & q1, const geometry_msgs::msg::Quaternion & q2);
 
 /**
  * @brief check if two points are almost-same
