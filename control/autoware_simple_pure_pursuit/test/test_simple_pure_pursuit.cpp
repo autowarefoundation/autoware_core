@@ -50,7 +50,7 @@ Odometry makeOdometry(const double x, const double y, const double yaw)
   return odom;
 }
 
-class SimplePurePursuitCorelogicTest : public ::testing::Test
+class SimplePurePursuitCoreLogicTest : public ::testing::Test
 {
 protected:
   void SetUp() override
@@ -81,7 +81,7 @@ protected:
 // Straight trajectory along x-axis, 10 points, 1m apart, target speed 5 m/s
 // Expects 5 m/s velocity, 0 steering angle
 // Acceleration = gain * (target - current) = 2.0 * (5.0 - 1.0) = 8.0 m/s^2
-TEST_F(SimplePurePursuitCorelogicTest, NormalCaseTracking)
+TEST_F(SimplePurePursuitCoreLogicTest, NormalCaseTracking)
 {
   params_.speed_proportional_gain = 2.0;
   core_logic_ = std::make_unique<SimplePurePursuit>(params_);
@@ -101,7 +101,7 @@ TEST_F(SimplePurePursuitCorelogicTest, NormalCaseTracking)
 // TEST 2. Goal reached case
 // Same odometry and trajectory as TEST 1, but car at trajectory's end
 // Expects 0 velocity, strong negative acceleration (braking), 0 steering angle
-TEST_F(SimplePurePursuitCorelogicTest, GoalReachedTerminalBrake)
+TEST_F(SimplePurePursuitCoreLogicTest, GoalReachedTerminalBrake)
 {
   const auto odom = makeOdometry(10.0, 0.0, 0.0);
   const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(10, 1.0, 1.0);
@@ -117,7 +117,7 @@ TEST_F(SimplePurePursuitCorelogicTest, GoalReachedTerminalBrake)
 // Straight trajectory along x-axis, only 5 points, 1m apart, 1m/s target speed
 // Expects 0 velocity, strong negative acceleration (braking), 0 steering angle (trajectory way too
 // short to look ahead)
-TEST_F(SimplePurePursuitCorelogicTest, TooShortTrajectoryTerminalBrake)
+TEST_F(SimplePurePursuitCoreLogicTest, TooShortTrajectoryTerminalBrake)
 {
   const auto odom = makeOdometry(0.0, 0.0, 0.0);
   const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(5, 1.0, 1.0);
@@ -134,7 +134,7 @@ TEST_F(SimplePurePursuitCorelogicTest, TooShortTrajectoryTerminalBrake)
 // External target velocity injected at 3.0 m/s, which should override 1.0 m/s
 // Expects 3.0 m/s velocity, 0 steering angle
 // Acceleration = gain * (target - current) = 2.0 * (3.0 - 1.0) = 4.0 m/s^2
-TEST_F(SimplePurePursuitCorelogicTest, ExternalTargetVelocity)
+TEST_F(SimplePurePursuitCoreLogicTest, ExternalTargetVelocity)
 {
   params_.speed_proportional_gain = 2.0;
   params_.use_external_target_vel = true;
@@ -156,7 +156,7 @@ TEST_F(SimplePurePursuitCorelogicTest, ExternalTargetVelocity)
 // Car at (0,1), facing long x-axis (1m lateral offset from trajectory along x-axis)
 // Same trajectory as STEP 1
 // Expects non-zero negative steering angle to correct leftward offset
-TEST_F(SimplePurePursuitCorelogicTest, GenerateNonZeroSteeringForLateralOffset)
+TEST_F(SimplePurePursuitCoreLogicTest, GenerateNonZeroSteeringForLateralOffset)
 {
   const auto odom = makeOdometry(0.0, 1.0, 0.0);
   const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(10, 1.0, 1.0);
@@ -171,7 +171,7 @@ TEST_F(SimplePurePursuitCorelogicTest, GenerateNonZeroSteeringForLateralOffset)
 // Car at (0, 0.5), facing long x-axis, crawling at 0.5 m/s
 // Lookahead gain 1.0, so calculated lookahead distance = 0.5 * 1.0  0.5m < min lookahead
 // distance 1.0m Expects clamping to min lookahead distance
-TEST_F(SimplePurePursuitCorelogicTest, ClampToLookaheadMinDistance)
+TEST_F(SimplePurePursuitCoreLogicTest, ClampToLookaheadMinDistance)
 {
   const auto odom = makeOdometry(0.0, 0.5, 0.0);
   const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(10, 1.0, 0.5);
@@ -190,7 +190,7 @@ TEST_F(SimplePurePursuitCorelogicTest, ClampToLookaheadMinDistance)
 // Car at origin, facing long x-axis, huge target speed 50 m/s (to push lookahead distance to 50m)
 // Same trajectory as STEP 1, which is shorter than lookahead distance
 // Expects fallback to bind lookahead point to trajectory's end nicely
-TEST_F(SimplePurePursuitCorelogicTest, FallbackWhenLookaheadExceedsTrajectoryLength)
+TEST_F(SimplePurePursuitCoreLogicTest, FallbackWhenLookaheadExceedsTrajectoryLength)
 {
   params_.use_external_target_vel = true;
   params_.external_target_vel = 50.0;
