@@ -252,6 +252,18 @@ TEST(object_classification, test_fromString)
     EXPECT_EQ(toLabel("PEDESTRIAN"), ObjectClassification::PEDESTRIAN);
     EXPECT_EQ(toLabel("ANIMAL"), ObjectClassification::ANIMAL);
     EXPECT_EQ(toLabel("HAZARD"), ObjectClassification::HAZARD);
+    // lowercases
+    EXPECT_EQ(toLabel("unknown"), ObjectClassification::UNKNOWN);
+    EXPECT_EQ(toLabel("car"), ObjectClassification::CAR);
+    EXPECT_EQ(toLabel("truck"), ObjectClassification::TRUCK);
+    EXPECT_EQ(toLabel("bus"), ObjectClassification::BUS);
+    EXPECT_EQ(toLabel("trailer"), ObjectClassification::TRAILER);
+    EXPECT_EQ(toLabel("motorcycle"), ObjectClassification::MOTORCYCLE);
+    EXPECT_EQ(toLabel("bicycle"), ObjectClassification::BICYCLE);
+    EXPECT_EQ(toLabel("pedestrian"), ObjectClassification::PEDESTRIAN);
+    EXPECT_EQ(toLabel("animal"), ObjectClassification::ANIMAL);
+    EXPECT_EQ(toLabel("hazard"), ObjectClassification::HAZARD);
+
     EXPECT_THROW(toLabel(""), std::runtime_error);
   }
 
