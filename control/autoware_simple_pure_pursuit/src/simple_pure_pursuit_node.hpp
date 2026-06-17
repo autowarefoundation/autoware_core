@@ -46,9 +46,6 @@ private:
   autoware_utils_rclcpp::InterProcessPollingSubscriber<Trajectory> traj_sub_{
     this, "~/input/trajectory"};
 
-  // vehicle info (now locked as const)
-  const SimplePurePursuitParameters params_;
-
   // publishers
   rclcpp::Publisher<autoware_control_msgs::msg::Control>::SharedPtr pub_control_command_;
 

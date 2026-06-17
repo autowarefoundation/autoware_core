@@ -70,8 +70,6 @@ protected:
     return core_logic_->create_control_command(odom, traj);
   }
 
-  [[nodiscard]] double speed_proportional_gain() const { return params_.speed_proportional_gain; }
-
   SimplePurePursuitParameters params_;
   std::unique_ptr<SimplePurePursuit> core_logic_;
 };
@@ -84,13 +82,19 @@ protected:
 // Expects 1m/s velocity, 0 steering angle, acceleration proportional to target-current speed diff
 TEST_F(SimplePurePursuitCorelogicTest, NormalCaseTracking)
 {
-  const auto odom = makeOdometry(0.0, 0.0, 0.0);
-  const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(10, 1.0, 1.0);
+  params_.speed_proportional_gain = 2.0;
+  core_logic_ = std::make_unique<SimplePurePursuit>(params_);
+
+  auto odom = makeOdometry(0.0, 0.0, 0.0);
+  odom.twist.twist.linear.x = 1.0;
+  const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(10, 1.0, 5.0);
 
   const auto result = create_control_command(odom, traj);
 
-  EXPECT_NEAR(result.longitudinal.velocity, 1.0, near_tol);
-  EXPECT_NEAR(result.longitudinal.acceleration, speed_proportional_gain() * 1.0, near_tol);
+  EXPECT_NEAR(result.longitudinal.velocity, 5.0, near_tol);
+  
+  // Acceleration = gain * (target - current) = 2.0 * (5.0 - 1.0) = 8.0
+  EXPECT_NEAR(result.longitudinal.acceleration, 8.0, near_tol);
   EXPECT_NEAR(result.lateral.steering_tire_angle, 0.0, near_tol);
 }
 
@@ -130,17 +134,20 @@ TEST_F(SimplePurePursuitCorelogicTest, TooShortTrajectoryTerminalBrake)
 // Expects 2.0 m/s velocity, 0 steering angle, acceleration proportional to 2.0
 TEST_F(SimplePurePursuitCorelogicTest, ExternalTargetVelocity)
 {
+  params_.speed_proportional_gain = 2.0;
   params_.use_external_target_vel = true;
-  params_.external_target_vel = 2.0;
+  params_.external_target_vel = 5.0;
   core_logic_ = std::make_unique<SimplePurePursuit>(params_);
 
-  const auto odom = makeOdometry(0.0, 0.0, 0.0);
+  auto odom = makeOdometry(0.0, 0.0, 0.0);
+  odom.twist.twist.linear.x = 1.0;
+
   const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(10, 1.0, 1.0);
 
   const auto result = create_control_command(odom, traj);
 
-  EXPECT_NEAR(result.longitudinal.velocity, 2.0, near_tol);
-  EXPECT_NEAR(result.longitudinal.acceleration, speed_proportional_gain() * 2.0, near_tol);
+  EXPECT_NEAR(result.longitudinal.velocity, 5.0, near_tol);
+  EXPECT_NEAR(result.longitudinal.acceleration, 8.0, near_tol);
 }
 
 // TEST 5. Lateral offset case

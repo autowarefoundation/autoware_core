@@ -64,7 +64,7 @@ public:
     const autoware_planning_msgs::msg::Trajectory & traj) const;
 
 private:
-  SimplePurePursuitParameters params_;
+  const SimplePurePursuitParameters params_;
 
   /**
    * @brief Calculate longitudinal control command
