@@ -28,7 +28,7 @@
 
 #include <memory>
 
-namespace autoware::control::simple_pure_pursuit_node
+namespace autoware::control::simple_pure_pursuit
 {
 using autoware_planning_msgs::msg::Trajectory;
 using autoware_planning_msgs::msg::TrajectoryPoint;
@@ -59,6 +59,6 @@ private:
   void on_timer();
 };
 
-}  // namespace autoware::control::simple_pure_pursuit_node
+}  // namespace autoware::control::simple_pure_pursuit
 
 #endif  // SIMPLE_PURE_PURSUIT_NODE_HPP_

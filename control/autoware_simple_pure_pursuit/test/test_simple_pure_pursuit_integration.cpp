@@ -29,7 +29,7 @@
 #include <memory>
 #include <string>
 #include <vector>
-namespace autoware::control::simple_pure_pursuit_node
+namespace autoware::control::simple_pure_pursuit
 {
 
 using autoware_control_msgs::msg::Control;
@@ -470,7 +470,7 @@ TEST(SimplePurePursuitIntegrationTest, PublishesNonZeroSteeringForLateralOffset)
 
 };  // namespace
 
-};  // namespace autoware::control::simple_pure_pursuit_node
+};  // namespace autoware::control::simple_pure_pursuit
 
 int main(int argc, char ** argv)
 {

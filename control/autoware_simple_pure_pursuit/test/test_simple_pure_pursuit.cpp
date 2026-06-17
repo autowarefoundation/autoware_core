@@ -21,7 +21,7 @@
 #include <cmath>
 #include <memory>
 
-namespace autoware::control::simple_pure_pursuit_node
+namespace autoware::control::simple_pure_pursuit
 {
 
 using autoware_planning_msgs::msg::Trajectory;
@@ -207,4 +207,4 @@ TEST_F(SimplePurePursuitCoreLogicTest, FallbackWhenLookaheadExceedsTrajectoryLen
   EXPECT_TRUE(std::isfinite(result.lateral.steering_tire_angle));
 }
 
-}  // namespace autoware::control::simple_pure_pursuit_node
+}  // namespace autoware::control::simple_pure_pursuit

@@ -19,7 +19,7 @@
 
 #include <algorithm>
 
-namespace autoware::control::simple_pure_pursuit_node
+namespace autoware::control::simple_pure_pursuit
 {
 
 using autoware::motion_utils::findNearestIndex;
@@ -134,4 +134,4 @@ autoware_control_msgs::msg::Lateral SimplePurePursuit::calc_lateral_control(
   return lateral_control_command;
 }
 
-};  // namespace autoware::control::simple_pure_pursuit_node
+};  // namespace autoware::control::simple_pure_pursuit

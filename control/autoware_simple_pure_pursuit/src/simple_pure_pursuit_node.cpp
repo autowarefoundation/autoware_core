@@ -18,7 +18,7 @@
 
 #include <memory>
 
-namespace autoware::control::simple_pure_pursuit_node
+namespace autoware::control::simple_pure_pursuit
 {
 
 SimplePurePursuitNode::SimplePurePursuitNode(const rclcpp::NodeOptions & node_options)
@@ -81,7 +81,7 @@ void SimplePurePursuitNode::on_timer()
   pub_control_command_->publish(control_command);
 }
 
-}  // namespace autoware::control::simple_pure_pursuit_node
+}  // namespace autoware::control::simple_pure_pursuit
 
 #include <rclcpp_components/register_node_macro.hpp>
-RCLCPP_COMPONENTS_REGISTER_NODE(autoware::control::simple_pure_pursuit_node::SimplePurePursuitNode)
+RCLCPP_COMPONENTS_REGISTER_NODE(autoware::control::simple_pure_pursuit::SimplePurePursuitNode)

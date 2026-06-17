@@ -19,7 +19,7 @@
 #include <autoware_planning_msgs/msg/trajectory.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 
-namespace autoware::control::simple_pure_pursuit_node
+namespace autoware::control::simple_pure_pursuit
 {
 
 /**
@@ -92,6 +92,6 @@ private:
     const double target_longitudinal_vel, const size_t closest_traj_point_idx) const;
 };
 
-};  // namespace autoware::control::simple_pure_pursuit_node
+};  // namespace autoware::control::simple_pure_pursuit
 
 #endif  // SIMPLE_PURE_PURSUIT_HPP_
