@@ -158,8 +158,7 @@ public:
     odom_pub_ = input_pub_node_->create_publisher<Odometry>(odom_topic, rclcpp::QoS{1});
     traj_pub_ = input_pub_node_->create_publisher<Trajectory>(traj_topic, rclcpp::QoS{1});
     control_sub_ = output_sub_node_->create_subscription<Control>(
-      control_topic, rclcpp::QoS{1}.transient_local(),
-      [this](const Control::SharedPtr msg) {
+      control_topic, rclcpp::QoS{1}.transient_local(), [this](const Control::SharedPtr msg) {
         {
           std::scoped_lock lock(received_control_mutex_);
           received_control_ = msg;

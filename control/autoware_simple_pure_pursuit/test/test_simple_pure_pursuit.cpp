@@ -92,7 +92,7 @@ TEST_F(SimplePurePursuitCorelogicTest, NormalCaseTracking)
   const auto result = create_control_command(odom, traj);
 
   EXPECT_NEAR(result.longitudinal.velocity, 5.0, near_tol);
-  
+
   // Acceleration = gain * (target - current) = 2.0 * (5.0 - 1.0) = 8.0
   EXPECT_NEAR(result.longitudinal.acceleration, 8.0, near_tol);
   EXPECT_NEAR(result.lateral.steering_tire_angle, 0.0, near_tol);
