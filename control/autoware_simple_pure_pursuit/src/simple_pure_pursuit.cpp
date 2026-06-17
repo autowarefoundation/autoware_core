@@ -39,6 +39,18 @@ void SimplePurePursuit::set_params(const SimplePurePursuitParameters & params)
 autoware_control_msgs::msg::Control SimplePurePursuit::create_control_command(
   const nav_msgs::msg::Odometry & odom, const autoware_planning_msgs::msg::Trajectory & traj) const
 {
+  // Trajectory fallback now at core logic too
+  if (traj.points.empty()) {
+
+    autoware_control_msgs::msg::Control cmd;
+    cmd.stamp = odom.header.stamp;
+    cmd.longitudinal.velocity = 0.0;
+    cmd.longitudinal.acceleration = 0.0;
+
+    return cmd;
+
+  }
+  
   const size_t closest_traj_point_idx = findNearestIndex(traj.points, odom.pose.pose.position);
 
   // When ego reaches goal or traj is too short, stop vehicle
