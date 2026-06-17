@@ -29,12 +29,6 @@ SimplePurePursuit::SimplePurePursuit(const SimplePurePursuitParameters & params)
 {
 }
 
-// Params setter
-void SimplePurePursuit::set_params(const SimplePurePursuitParameters & params)
-{
-  params_ = params;
-};
-
 // Core logic for creating control command based on current odom and traj
 autoware_control_msgs::msg::Control SimplePurePursuit::create_control_command(
   const nav_msgs::msg::Odometry & odom, const autoware_planning_msgs::msg::Trajectory & traj) const

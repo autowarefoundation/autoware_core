@@ -70,13 +70,6 @@ protected:
     return core_logic_->create_control_command(odom, traj);
   }
 
-  void set_external_target_velocity(const double external_target_vel)
-  {
-    params_.use_external_target_vel = true;
-    params_.external_target_vel = external_target_vel;
-    core_logic_->set_params(params_);
-  }
-
   [[nodiscard]] double speed_proportional_gain() const { return params_.speed_proportional_gain; }
 
   SimplePurePursuitParameters params_;
@@ -137,7 +130,10 @@ TEST_F(SimplePurePursuitCorelogicTest, TooShortTrajectoryTerminalBrake)
 // Expects 2.0 m/s velocity, 0 steering angle, acceleration proportional to 2.0
 TEST_F(SimplePurePursuitCorelogicTest, ExternalTargetVelocity)
 {
-  set_external_target_velocity(2.0);
+  params_.use_external_target_vel = true;
+  params_.external_target_vel = 2.0;
+  core_logic_ = std::make_unique<SimplePurePursuit>(params_);
+
   const auto odom = makeOdometry(0.0, 0.0, 0.0);
   const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(10, 1.0, 1.0);
 
@@ -187,7 +183,9 @@ TEST_F(SimplePurePursuitCorelogicTest, ClampToLookaheadMinDistance)
 // Expects fallback to bind lookahead point to trajectory's end nicely
 TEST_F(SimplePurePursuitCorelogicTest, FallbackWhenLookaheadExceedsTrajectoryLength)
 {
-  set_external_target_velocity(50.0);
+  params_.use_external_target_vel = true;
+  params_.external_target_vel = 50.0;
+  core_logic_ = std::make_unique<SimplePurePursuit>(params_);
 
   const auto odom = makeOdometry(0.0, 0.0, 0.0);
   const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(10, 1.0, 1.0);
