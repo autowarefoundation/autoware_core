@@ -77,9 +77,10 @@ protected:
 // ================== TESTING AREA HERE ==================
 
 // TEST 1. Normal case happy tracking
-// Car at origin, facing long x-axis
-// Straight trajectory along x-axis, 10 points, 1m apart, 1m/s target speed
-// Expects 1m/s velocity, 0 steering angle, acceleration proportional to target-current speed diff
+// Car at origin, facing long x-axis, current velocity 1 m/s, gain 2.0
+// Straight trajectory along x-axis, 10 points, 1m apart, target speed 5 m/s
+// Expects 5 m/s velocity, 0 steering angle
+// Acceleration = gain * (target - current) = 2.0 * (5.0 - 1.0) = 8.0 m/s^2
 TEST_F(SimplePurePursuitCorelogicTest, NormalCaseTracking)
 {
   params_.speed_proportional_gain = 2.0;
@@ -92,8 +93,7 @@ TEST_F(SimplePurePursuitCorelogicTest, NormalCaseTracking)
   const auto result = create_control_command(odom, traj);
 
   EXPECT_NEAR(result.longitudinal.velocity, 5.0, near_tol);
-
-  // Acceleration = gain * (target - current) = 2.0 * (5.0 - 1.0) = 8.0
+  
   EXPECT_NEAR(result.longitudinal.acceleration, 8.0, near_tol);
   EXPECT_NEAR(result.lateral.steering_tire_angle, 0.0, near_tol);
 }
@@ -129,14 +129,16 @@ TEST_F(SimplePurePursuitCorelogicTest, TooShortTrajectoryTerminalBrake)
 }
 
 // TEST 4. External target velocity override case
-// Same odometry and trajectory as TEST 1
-// Now with external target velocity set to 2.0 m/s
-// Expects 2.0 m/s velocity, 0 steering angle, acceleration proportional to 2.0
+// Car at origin, facing long x-axis, current velocity 1.0 m/s, gain 2.0
+// Straight trajectory along x-axis, 10 points, 1m apart, target speed 1 m/s
+// External target velocity injected at 3.0 m/s, which should override 1.0 m/s
+// Expects 3.0 m/s velocity, 0 steering angle
+// Acceleration = gain * (target - current) = 2.0 * (3.0 - 1.0) = 4.0 m/s^2
 TEST_F(SimplePurePursuitCorelogicTest, ExternalTargetVelocity)
 {
   params_.speed_proportional_gain = 2.0;
   params_.use_external_target_vel = true;
-  params_.external_target_vel = 5.0;
+  params_.external_target_vel = 3.0;
   core_logic_ = std::make_unique<SimplePurePursuit>(params_);
 
   auto odom = makeOdometry(0.0, 0.0, 0.0);
@@ -146,8 +148,8 @@ TEST_F(SimplePurePursuitCorelogicTest, ExternalTargetVelocity)
 
   const auto result = create_control_command(odom, traj);
 
-  EXPECT_NEAR(result.longitudinal.velocity, 5.0, near_tol);
-  EXPECT_NEAR(result.longitudinal.acceleration, 8.0, near_tol);
+  EXPECT_NEAR(result.longitudinal.velocity, 3.0, near_tol);
+  EXPECT_NEAR(result.longitudinal.acceleration, 4.0, near_tol);
 }
 
 // TEST 5. Lateral offset case
