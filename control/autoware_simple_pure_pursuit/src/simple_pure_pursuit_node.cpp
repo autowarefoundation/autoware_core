@@ -64,7 +64,7 @@ void SimplePurePursuitNode::on_timer()
   if (traj.points.empty()) {
     RCLCPP_WARN_THROTTLE(
       get_logger(), *get_clock(), 5000,
-      "Received empty trajectory, returning zero velocity command.");
+      "Received empty trajectory. Delegate handling to core logic.");
   }
 
   // 4. Delegate to core logic

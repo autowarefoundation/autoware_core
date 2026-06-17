@@ -40,6 +40,10 @@ using nav_msgs::msg::Odometry;
 namespace
 {
 
+constexpr auto odom_topic = "/simple_pure_pursuit_node/input/odometry";
+constexpr auto traj_topic = "/simple_pure_pursuit_node/input/trajectory";
+constexpr auto control_topic = "/simple_pure_pursuit_node/output/control_command";
+
 constexpr auto connection_timeout = std::chrono::seconds(3);
 constexpr auto output_timeout = std::chrono::seconds(5);
 constexpr auto no_output_timeout = std::chrono::milliseconds(250);
@@ -123,9 +127,8 @@ rclcpp::NodeOptions make_node_options(
 
   auto node_options = rclcpp::NodeOptions{};
   autoware::test_utils::updateNodeOptions(
-    node_options,
-    {autoware_test_utils_dir + "/config/test_vehicle_info.param.yaml",
-     autoware_simple_pure_pursuit_dir + "/config/simple_pure_pursuit_node.param.yaml"});
+    node_options, {autoware_test_utils_dir + "/config/test_vehicle_info.param.yaml",
+                   autoware_simple_pure_pursuit_dir + "/config/simple_pure_pursuit.param.yaml"});
 
   for (const auto & [name, value] : overrides) {
     node_options.append_parameter_override(name, value);
@@ -152,12 +155,10 @@ public:
     input_pub_node_ = rclcpp::Node::make_shared("simple_pure_pursuit_test_input_publisher");
     output_sub_node_ = rclcpp::Node::make_shared("simple_pure_pursuit_test_output_subscriber");
 
-    odom_pub_ = input_pub_node_->create_publisher<Odometry>(
-      "/simple_pure_pursuit_node/input/odometry", rclcpp::QoS{1});
-    traj_pub_ = input_pub_node_->create_publisher<Trajectory>(
-      "/simple_pure_pursuit_node/input/trajectory", rclcpp::QoS{1});
+    odom_pub_ = input_pub_node_->create_publisher<Odometry>(odom_topic, rclcpp::QoS{1});
+    traj_pub_ = input_pub_node_->create_publisher<Trajectory>(traj_topic, rclcpp::QoS{1});
     control_sub_ = output_sub_node_->create_subscription<Control>(
-      "/simple_pure_pursuit_node/output/control_command", rclcpp::QoS{1}.transient_local(),
+      control_topic, rclcpp::QoS{1}.transient_local(),
       [this](const Control::SharedPtr msg) {
         {
           std::scoped_lock lock(received_control_mutex_);
