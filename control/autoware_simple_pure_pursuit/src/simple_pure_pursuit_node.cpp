@@ -65,14 +65,6 @@ void SimplePurePursuitNode::on_timer()
     RCLCPP_WARN_THROTTLE(
       get_logger(), *get_clock(), 5000,
       "Received empty trajectory, returning zero velocity command.");
-
-    autoware_control_msgs::msg::Control cmd;
-    cmd.stamp = odom.header.stamp;
-    cmd.longitudinal.velocity = 0.0;
-    cmd.longitudinal.acceleration = 0.0;
-    pub_control_command_->publish(cmd);
-
-    return;
   }
 
   // 4. Delegate to core logic
