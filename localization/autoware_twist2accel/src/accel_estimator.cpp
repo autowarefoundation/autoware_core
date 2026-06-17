@@ -39,9 +39,6 @@ geometry_msgs::msg::AccelWithCovarianceStamped AccelEstimator::estimate(
   geometry_msgs::msg::AccelWithCovarianceStamped accel_msg;
   accel_msg.header = curr_twist.header;
 
-  // The first call has no previous sample to difference against: store the
-  // current sample as the baseline and report a zero acceleration (with zero
-  // covariance).
   if (!prev_twist_.has_value()) {
     prev_twist_ = curr_twist;
     return accel_msg;
@@ -62,9 +59,6 @@ geometry_msgs::msg::AccelWithCovarianceStamped AccelEstimator::estimate(
   accel.accel.angular.y = lpf_aay_.filter((curr.angular.y - prev.angular.y) / clamped_dt);
   accel.accel.angular.z = lpf_aaz_.filter((curr.angular.z - prev.angular.z) / clamped_dt);
 
-  // Ideally speaking, this covariance should be properly estimated. Until that
-  // is done, report constant diagonal variances; off-diagonal terms stay at the
-  // default zero.
   accel.covariance[XYZRPY_COV_IDX::X_X] = g_linear_accel_variance;
   accel.covariance[XYZRPY_COV_IDX::Y_Y] = g_linear_accel_variance;
   accel.covariance[XYZRPY_COV_IDX::Z_Z] = g_linear_accel_variance;
