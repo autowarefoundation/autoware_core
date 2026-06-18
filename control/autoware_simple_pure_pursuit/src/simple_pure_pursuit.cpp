@@ -78,16 +78,9 @@ autoware_control_msgs::msg::Longitudinal SimplePurePursuit::calc_longitudinal_co
   autoware_control_msgs::msg::Longitudinal longitudinal_control_command;
   const double current_velocity = odom.twist.twist.linear.x;
 
-  if (params_.use_external_target_vel) {
-    longitudinal_control_command.velocity = static_cast<float>(params_.external_target_vel);
-    longitudinal_control_command.acceleration = static_cast<float>(
-      (params_.external_target_vel - current_velocity) * params_.speed_proportional_gain);
-
-  } else {
-    longitudinal_control_command.velocity = static_cast<float>(target_longitudinal_vel);
-    longitudinal_control_command.acceleration = static_cast<float>(
-      (target_longitudinal_vel - current_velocity) * params_.speed_proportional_gain);
-  }
+  longitudinal_control_command.velocity = static_cast<float>(target_longitudinal_vel);
+  longitudinal_control_command.acceleration = static_cast<float>(
+    (target_longitudinal_vel - current_velocity) * params_.speed_proportional_gain);
 
   return longitudinal_control_command;
 };
