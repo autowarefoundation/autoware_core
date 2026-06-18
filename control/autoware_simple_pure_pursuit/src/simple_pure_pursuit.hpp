@@ -60,6 +60,9 @@ public:
     const nav_msgs::msg::Odometry & odom,
     const autoware_planning_msgs::msg::Trajectory & traj) const;
 
+  // Hard-coded acceleration for terminal brake
+  static constexpr double terminal_brake_accel = -10.0;
+
 private:
   const SimplePurePursuitParameters params_;
 

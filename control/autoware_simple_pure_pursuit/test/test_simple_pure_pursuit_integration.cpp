@@ -37,6 +37,8 @@ using autoware_planning_msgs::msg::Trajectory;
 using autoware_planning_msgs::msg::TrajectoryPoint;
 using nav_msgs::msg::Odometry;
 
+constexpr double terminal_brake_accel = SimplePurePursuit::terminal_brake_accel;
+
 namespace
 {
 
@@ -371,7 +373,7 @@ TEST(SimplePurePursuitIntegrationTest, PublishesGoalStopCommandAtTrajectoryEnd)
   // Expected strong deceleration
   // Here I already checked during development that terminal deceleration value is -10
   // Seems like this module hard-coded this value. I will freeze it here as characterization test
-  EXPECT_NEAR(control->longitudinal.acceleration, -10.0F, near_tol);
+  EXPECT_NEAR(control->longitudinal.acceleration, terminal_brake_accel, near_tol);
   EXPECT_TRUE(control->longitudinal.is_defined_acceleration);
 };
 

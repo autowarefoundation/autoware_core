@@ -27,6 +27,8 @@ namespace autoware::control::simple_pure_pursuit
 using autoware_planning_msgs::msg::Trajectory;
 using nav_msgs::msg::Odometry;
 
+constexpr double terminal_brake_accel = SimplePurePursuit::terminal_brake_accel;
+
 // Floating point tolerance at EXCEPT_NEAR checks
 constexpr float near_tol = 1e-4F;
 
@@ -109,7 +111,7 @@ TEST_F(SimplePurePursuitCoreLogicTest, GoalReachedTerminalBrake)
   const auto result = create_control_command(odom, traj);
 
   EXPECT_NEAR(result.longitudinal.velocity, 0.0, near_tol);
-  EXPECT_NEAR(result.longitudinal.acceleration, -10.0, near_tol);
+  EXPECT_NEAR(result.longitudinal.acceleration, terminal_brake_accel, near_tol);
 }
 
 // TEST 3. Too short trajectory case
@@ -125,7 +127,7 @@ TEST_F(SimplePurePursuitCoreLogicTest, TooShortTrajectoryTerminalBrake)
   const auto result = create_control_command(odom, traj);
 
   EXPECT_NEAR(result.longitudinal.velocity, 0.0, near_tol);
-  EXPECT_NEAR(result.longitudinal.acceleration, -10.0, near_tol);
+  EXPECT_NEAR(result.longitudinal.acceleration, terminal_brake_accel, near_tol);
 }
 
 // TEST 4. External target velocity override case

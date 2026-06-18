@@ -49,7 +49,7 @@ autoware_control_msgs::msg::Control SimplePurePursuit::create_control_command(
     autoware_control_msgs::msg::Control control_command;
     control_command.stamp = odom.header.stamp;
     control_command.longitudinal.velocity = 0.0;
-    control_command.longitudinal.acceleration = -10.0;
+    control_command.longitudinal.acceleration = terminal_brake_accel;
     control_command.longitudinal.is_defined_acceleration = true;
 
     return control_command;

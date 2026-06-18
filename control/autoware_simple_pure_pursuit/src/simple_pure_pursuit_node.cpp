@@ -21,6 +21,11 @@
 namespace autoware::control::simple_pure_pursuit
 {
 
+namespace
+{
+constexpr double terminal_brake_accel = SimplePurePursuit::terminal_brake_accel;
+}  // namespace
+
 SimplePurePursuitNode::SimplePurePursuitNode(const rclcpp::NodeOptions & node_options)
 : Node("simple_pure_pursuit_node", node_options),
   pub_control_command_(
@@ -73,7 +78,7 @@ void SimplePurePursuitNode::on_timer()
   // 5. Goal reached ROS check and notify
   if (
     (control_command.longitudinal.velocity == 0.0) &&
-    (control_command.longitudinal.acceleration == -10.0)) {
+    (control_command.longitudinal.acceleration == terminal_brake_accel)) {
     RCLCPP_DEBUG_THROTTLE(get_logger(), *get_clock(), 5000, "reached to the goal");
   }
 
