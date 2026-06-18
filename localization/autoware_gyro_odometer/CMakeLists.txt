@@ -28,7 +28,6 @@ if(BUILD_TESTING)
     target_include_directories(test_gyro_odometer PRIVATE
       src
     )
-    ament_target_dependencies(test_gyro_odometer autoware_agnocast_wrapper)
   endif()
 endif()
 
