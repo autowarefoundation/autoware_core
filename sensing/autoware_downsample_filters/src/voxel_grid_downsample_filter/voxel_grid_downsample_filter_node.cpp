@@ -64,8 +64,7 @@ void VoxelGridDownsampleFilterNode::input_callback(const PointCloud2ConstPtr clo
     return;
   }
 
-  auto output = std::make_unique<PointCloud2>(std::move(result.value()));
-  pub_output_->publish(std::move(output));
+  pub_output_->publish(std::make_unique<PointCloud2>(std::move(result.value())));
   published_time_publisher_->publish_if_subscribed(pub_output_, cloud->header.stamp);
 }
 }  // namespace autoware::downsample_filters
