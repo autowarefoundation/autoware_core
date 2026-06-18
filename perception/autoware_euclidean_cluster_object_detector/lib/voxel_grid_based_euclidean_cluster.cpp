@@ -110,6 +110,7 @@ bool VoxelGridBasedEuclideanCluster::cluster(
 
   // voxel is pressed 2d
   pcl::PointCloud<pcl::PointXYZ>::Ptr pointcloud_2d_ptr(new pcl::PointCloud<pcl::PointXYZ>);
+  pointcloud_2d_ptr->points.reserve(voxel_map_ptr->points.size());
   for (const auto & point : voxel_map_ptr->points) {
     pcl::PointXYZ point2d;
     point2d.x = point.x;
@@ -134,6 +135,7 @@ bool VoxelGridBasedEuclideanCluster::cluster(
 
   // create map to search cluster index from voxel grid index
   std::unordered_map</* voxel grid index */ int, /* cluster index */ int> map;
+  map.reserve(voxel_map_ptr->points.size());
   std::vector<sensor_msgs::msg::PointCloud2> temporary_clusters;  // no check about cluster size
   std::vector<size_t> clusters_data_size;
   temporary_clusters.resize(cluster_indices.size());
@@ -163,20 +165,22 @@ bool VoxelGridBasedEuclideanCluster::cluster(
     const int index =
       voxel_grid_.getCentroidIndexAt(voxel_grid_.getGridCoordinates(point.x, point.y, point.z));
 #pragma GCC diagnostic pop
-    if (map.find(index) != map.end()) {
-      auto & cluster_data_size = clusters_data_size.at(map[index]);
+    const auto map_itr = map.find(index);
+    if (map_itr != map.end()) {
+      const int cluster_idx = map_itr->second;
+      auto & cluster_data_size = clusters_data_size.at(cluster_idx);
       if (
         cluster_data_size >
         static_cast<std::size_t>(max_cluster_size_) * static_cast<std::size_t>(point_step)) {
         continue;
       }
+      auto & temporary_cluster_data = temporary_clusters.at(cluster_idx).data;
       std::memcpy(
-        &temporary_clusters.at(map[index]).data[cluster_data_size],
-        &pointcloud_msg->data[i * point_step], point_step);
+        &temporary_cluster_data[cluster_data_size], &pointcloud_msg->data[i * point_step],
+        point_step);
       cluster_data_size += point_step;
-      if (cluster_data_size == temporary_clusters.at(map[index]).data.size()) {
-        temporary_clusters.at(map[index])
-          .data.resize(temporary_clusters.at(map[index]).data.size() * 2);
+      if (cluster_data_size == temporary_cluster_data.size()) {
+        temporary_cluster_data.resize(temporary_cluster_data.size() * 2);
       }
     }
   }
@@ -219,7 +223,10 @@ bool VoxelGridBasedEuclideanCluster::cluster(
 
       objects.objects.push_back(object);
 
-      pcl::PointCloud<pcl::PointXYZ> cluster_point_cloud;
+      // Build the output cluster in place to avoid copying the whole point cloud into the
+      // output vector; reserve by the known point count to avoid repeated reallocation.
+      auto & cluster_point_cloud = clusters.emplace_back();
+      cluster_point_cloud.points.reserve(static_cast<size_t>(cluster_size));
 
       for (sensor_msgs::PointCloud2ConstIterator<float> iter_x(cluster, "x"), iter_y(cluster, "y"),
            iter_z(cluster, "z");
@@ -230,7 +237,6 @@ bool VoxelGridBasedEuclideanCluster::cluster(
         point.z = *iter_z;
         cluster_point_cloud.push_back(point);
       }
-      clusters.push_back(cluster_point_cloud);
     }
     objects.header = pointcloud_msg->header;
     // Publish the diagnostics summary.

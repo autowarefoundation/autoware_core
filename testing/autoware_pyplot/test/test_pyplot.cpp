@@ -12,8 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// cspell:ignore yerr
+
 #include <autoware/pyplot/patches.hpp>
 #include <autoware/pyplot/pyplot.hpp>
+#include <autoware/pyplot/text.hpp>
 
 #include <gtest/gtest.h>
 #include <pybind11/embed.h>
@@ -23,6 +26,7 @@
  */
 #include <pybind11/stl.h>
 
+#include <cstddef>
 #include <vector>
 
 TEST(PyPlot, single_plot)
@@ -42,6 +46,7 @@ TEST(PyPlot, single_plot)
   }
   {
     auto [fig, axes] = plt.subplots(1, 2);
+    EXPECT_EQ(axes.size(), 2);
     auto & ax1 = axes[0];
     auto & ax2 = axes[1];
 
@@ -60,5 +65,61 @@ TEST(PyPlot, single_plot)
     ax1.set_aspect(Args("equal"));
     ax2.set_aspect(Args("equal"));
     plt.savefig(Args("test_double_plot.svg"));
+  }
+  {
+    // subplots(r, c) NxM (r > 1 && c > 1) row-major flattening branch
+    const int rows = 2;
+    const int cols = 3;
+    auto [fig, axes] = plt.subplots(rows, cols);
+    EXPECT_EQ(axes.size(), static_cast<std::size_t>(rows * cols));
+    // every flattened cell must be a usable Axes wrapper
+    for (auto & ax : axes) {
+      ax.set_xlim(Args(0, 1));
+      const auto [xmin, xmax] = ax.get_xlim();
+      EXPECT_DOUBLE_EQ(xmin, 0.0);
+      EXPECT_DOUBLE_EQ(xmax, 1.0);
+    }
+  }
+  {
+    // subplots(1, 3) Nx1 / 1xN flattening branch
+    auto [fig, axes] = plt.subplots(1, 3);
+    EXPECT_EQ(axes.size(), 3);
+  }
+  {
+    // subplots(1, 1) single-Axes branch
+    auto [fig, axes] = plt.subplots(1, 1);
+    EXPECT_EQ(axes.size(), 1);
+  }
+  {
+    // newly wired Axes forwarders: errorbar / bar_label / contourf
+    auto [fig, axes] = plt.subplots(1, 1);
+    auto & ax = axes[0];
+
+    // errorbar returns an ErrorbarContainer
+    ax.errorbar(
+      Args(std::vector<double>({0.0, 1.0, 2.0}), std::vector<double>({0.0, 1.0, 4.0})),
+      Kwargs("yerr"_a = 0.5));
+
+    // bar() + bar_label() must round-trip without a link error
+    auto bars =
+      ax.unwrap().attr("bar")(std::vector<double>({0.0, 1.0}), std::vector<double>({1.0, 2.0}));
+    ax.bar_label(Args(bars));
+
+    // contourf uses the eagerly loaded contourf_attr
+    ax.contourf(Args(
+      std::vector<std::vector<double>>({{0.0, 1.0}, {1.0, 2.0}}),
+      std::vector<std::vector<double>>({{0.0, 1.0}, {1.0, 2.0}}),
+      std::vector<std::vector<double>>({{1.0, 2.0}, {3.0, 4.0}})));
+    plt.savefig(Args("test_axes_forwarders.png"));
+  }
+  {
+    // Text::set_rotation: load_attrs() is now wired into the constructor, so the
+    // forwarder resolves and applies the rotation to the underlying Text artist.
+    auto [fig, axes] = plt.subplots(1, 1);
+    auto & ax = axes[0];
+    auto text_obj = ax.text(Args(0.5, 0.5, "label"));
+    autoware::pyplot::Text txt(text_obj.unwrap());
+    txt.set_rotation(Args(45.0));
+    EXPECT_DOUBLE_EQ(txt.unwrap().attr("get_rotation")().cast<double>(), 45.0);
   }
 }

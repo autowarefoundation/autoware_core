@@ -16,8 +16,6 @@
 
 #include "accel_estimator.hpp"
 
-#include <rclcpp/logging.hpp>
-
 #include <functional>
 #include <memory>
 
@@ -45,38 +43,14 @@ void Twist2Accel::callback_odometry(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(nav_msgs::msg::Odometry) msg)
 {
   if (!use_odom_) return;
-
-  geometry_msgs::msg::TwistStamped twist;
-  twist.header = msg->header;
-  twist.twist = msg->twist.twist;
-  estimate_accel(twist);
+  pub_accel_->publish(accel_estimator_->estimate(*msg));
 }
 
 void Twist2Accel::callback_twist_with_covariance(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::TwistWithCovarianceStamped) msg)
 {
   if (use_odom_) return;
-
-  geometry_msgs::msg::TwistStamped twist;
-  twist.header = msg->header;
-  twist.twist = msg->twist.twist;
-  estimate_accel(twist);
-}
-
-void Twist2Accel::estimate_accel(const geometry_msgs::msg::TwistStamped & twist)
-{
-  auto accel_msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_accel_);
-  accel_msg->header = twist.header;
-
-  if (prev_twist_.has_value()) {
-    const double dt =
-      (rclcpp::Time(twist.header.stamp) - rclcpp::Time(prev_twist_->header.stamp)).seconds();
-
-    accel_msg->accel = accel_estimator_->estimate(prev_twist_->twist, twist.twist, dt);
-  }
-
-  pub_accel_->publish(std::move(accel_msg));
-  prev_twist_ = twist;
+  pub_accel_->publish(accel_estimator_->estimate(*msg));
 }
 }  // namespace autoware::twist2accel
 
