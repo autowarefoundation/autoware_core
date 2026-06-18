@@ -51,7 +51,7 @@ constexpr auto output_timeout = std::chrono::seconds(5);
 constexpr auto no_output_timeout = std::chrono::milliseconds(250);
 constexpr auto spin_sleep = std::chrono::milliseconds(10);
 
-// Floating point tolerance at EXCEPT_NEAR checks (thanks Ishikawa-san for the suggestion!)
+// Floating point tolerance at EXPECT_NEAR checks (thanks Ishikawa-san for the suggestion!)
 constexpr float near_tol = 1e-4F;
 
 /**

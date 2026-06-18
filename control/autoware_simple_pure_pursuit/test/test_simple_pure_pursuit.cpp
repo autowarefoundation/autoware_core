@@ -29,7 +29,7 @@ using nav_msgs::msg::Odometry;
 
 constexpr double terminal_brake_accel = SimplePurePursuit::terminal_brake_accel;
 
-// Floating point tolerance at EXCEPT_NEAR checks
+// Floating point tolerance at EXPECT_NEAR checks
 constexpr float near_tol = 1e-4F;
 
 /**
