@@ -24,8 +24,13 @@ autoware_agnocast_wrapper_register_node(${PROJECT_NAME}_ros
 )
 
 if(BUILD_TESTING)
-  ament_add_ros_isolated_gtest(test_stop_filter_node
+  ament_auto_add_gtest(test_stop_filter
     test/test_stop_filter.cpp
+  )
+  target_link_libraries(test_stop_filter ${PROJECT_NAME})
+  target_include_directories(test_stop_filter PRIVATE src)
+
+  ament_add_ros_isolated_gtest(test_stop_filter_node
     test/test_stop_filter_node.cpp
   )
   target_link_libraries(test_stop_filter_node ${PROJECT_NAME} ${PROJECT_NAME}_ros)
