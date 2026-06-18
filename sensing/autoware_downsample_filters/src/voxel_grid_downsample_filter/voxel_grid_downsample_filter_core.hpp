@@ -39,7 +39,7 @@ public:
 
   explicit VoxelGridDownsampleFilterCore(const Parameters & parameters);
 
-  ValidationResult validate_input(const PointCloud2 & cloud) const;
+  static ValidationResult validate_input(const PointCloud2 & cloud);
 
   ValidationResult filter(const PointCloud2ConstPtr & input, PointCloud2 & output);
 

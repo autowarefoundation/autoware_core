@@ -28,7 +28,7 @@ VoxelGridDownsampleFilterCore::VoxelGridDownsampleFilterCore(const Parameters & 
     parameters_.voxel_size_x, parameters_.voxel_size_y, parameters_.voxel_size_z);
 }
 
-ValidationResult VoxelGridDownsampleFilterCore::validate_input(const PointCloud2 & cloud) const
+ValidationResult VoxelGridDownsampleFilterCore::validate_input(const PointCloud2 & cloud)
 {
   if (
     static_cast<std::size_t>(cloud.width) * cloud.height * cloud.point_step != cloud.data.size()) {
