@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef VOXEL_GRID_DOWNSAMPLE_FILTER__VOXEL_GRID_DOWNSAMPLE_FILTER_CORE_HPP_
-#define VOXEL_GRID_DOWNSAMPLE_FILTER__VOXEL_GRID_DOWNSAMPLE_FILTER_CORE_HPP_
+#ifndef VOXEL_GRID_DOWNSAMPLE_FILTER__VOXEL_GRID_DOWNSAMPLE_FILTER_HPP_
+#define VOXEL_GRID_DOWNSAMPLE_FILTER__VOXEL_GRID_DOWNSAMPLE_FILTER_HPP_
 
 #include "faster_voxel_grid_downsample_filter.hpp"
 
@@ -50,4 +50,4 @@ private:
 };
 }  // namespace autoware::downsample_filters
 
-#endif  // VOXEL_GRID_DOWNSAMPLE_FILTER__VOXEL_GRID_DOWNSAMPLE_FILTER_CORE_HPP_
+#endif  // VOXEL_GRID_DOWNSAMPLE_FILTER__VOXEL_GRID_DOWNSAMPLE_FILTER_HPP_

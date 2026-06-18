@@ -15,7 +15,7 @@
 #ifndef VOXEL_GRID_DOWNSAMPLE_FILTER__VOXEL_GRID_DOWNSAMPLE_FILTER_NODE_HPP_  // NOLINT
 #define VOXEL_GRID_DOWNSAMPLE_FILTER__VOXEL_GRID_DOWNSAMPLE_FILTER_NODE_HPP_  // NOLINT
 
-#include "voxel_grid_downsample_filter_core.hpp"
+#include "voxel_grid_downsample_filter.hpp"
 
 #include <rclcpp/rclcpp.hpp>
 

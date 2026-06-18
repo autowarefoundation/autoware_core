@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "voxel_grid_downsample_filter_core.hpp"
+#include "voxel_grid_downsample_filter.hpp"
 
 #include "memory.hpp"
 #include "transform_info.hpp"
