@@ -23,11 +23,13 @@ if(BUILD_TESTING)
   target_link_libraries(test_accel_estimator ${PROJECT_NAME})
   target_include_directories(test_accel_estimator PRIVATE src)
 
-  ament_add_ros_isolated_gtest(test_twist2accel_node
-    test/test_twist2accel_node.cpp
-  )
-  target_link_libraries(test_twist2accel_node ${PROJECT_NAME})
-  target_include_directories(test_twist2accel_node PRIVATE src)
+  if(NOT (DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1"))
+    ament_add_ros_isolated_gtest(test_twist2accel_node
+      test/test_twist2accel_node.cpp
+    )
+    target_link_libraries(test_twist2accel_node ${PROJECT_NAME})
+    target_include_directories(test_twist2accel_node PRIVATE src)
+  endif()
 endif()
 
 autoware_ament_auto_package(
