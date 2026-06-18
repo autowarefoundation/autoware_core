@@ -16,9 +16,9 @@
 #define GYRO_ODOMETER_CORE_HPP_
 
 #include <autoware/agnocast_wrapper/node.hpp>
+#include <autoware/agnocast_wrapper/tf2.hpp>
 #include <autoware_utils_diagnostics/diagnostics_interface.hpp>
 #include <autoware_utils_geometry/msg/covariance.hpp>
-#include <autoware_utils_logging/logger_level_configure.hpp>
 #include <autoware_utils_tf/transform_listener.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <tf2/transform_datatypes.hpp>
@@ -65,11 +65,10 @@ private:
 
   AUTOWARE_TIMER_PTR timer_;
 
-  std::shared_ptr<autoware_utils_tf::TransformListenerImpl<autoware::agnocast_wrapper::Node>>
-    transform_listener_;
-  std::unique_ptr<
-    autoware_utils_logging::LoggerLevelConfigureImpl<autoware::agnocast_wrapper::Node>>
-    logger_configure_;
+  using TransformListener = autoware_utils_tf::TransformListenerT<
+    autoware::agnocast_wrapper::Node, autoware::agnocast_wrapper::Buffer,
+    autoware::agnocast_wrapper::TransformListener>;
+  std::shared_ptr<TransformListener> transform_listener_;
 
   std::string output_frame_;
   double message_timeout_sec_;
