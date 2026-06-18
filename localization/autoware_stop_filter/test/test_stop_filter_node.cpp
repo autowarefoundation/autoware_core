@@ -21,10 +21,7 @@
 #include <mutex>
 #include <thread>
 
-// Test for stop detection in StopFilterNode
-// This test is disabled by default due to its reliance on real-time execution
-// To run this test, you need to enable it manually by removing the DISABLED_ prefix
-TEST(StopFilterNodeTest, DISABLED_TestStopDetection)
+TEST(StopFilterNodeTest, TestStopDetection)
 {
   // Initialize ROS 2 context
   rclcpp::init(0, nullptr);
