@@ -42,8 +42,11 @@
 #include <nav_msgs/msg/odometry.hpp>
 #include <std_srvs/srv/set_bool.hpp>
 
+#include <atomic>
 #include <chrono>
 #include <memory>
+#include <mutex>
+#include <queue>
 #include <string>
 #include <vector>
 
@@ -97,6 +100,9 @@ private:
   rclcpp::TimerBase::SharedPtr timer_control_;
   //!< @brief calls publish_diagnostics() at diagnostics_publish_period
   rclcpp::TimerBase::SharedPtr diagnostics_publish_timer_;
+  //!< @brief callback groups for parallel execution
+  rclcpp::CallbackGroup::SharedPtr cb_group_pose_;
+  rclcpp::CallbackGroup::SharedPtr cb_group_twist_;
   //!< @brief last predict time
   std::shared_ptr<const rclcpp::Time> last_predict_time_;
   //!< @brief trigger_node service
@@ -127,16 +133,21 @@ private:
 
   AgedObjectQueue<geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr> pose_queue_;
   AgedObjectQueue<geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr> twist_queue_;
+  //!< @brief temporary queues written by subscription callbacks; drained into main queues by timer
+  std::queue<geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr> pose_queue_tmp_;
+  std::queue<geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr> twist_queue_tmp_;
+  std::mutex pose_mtx_;
+  std::mutex twist_mtx_;
 
   //!< @brief Merged diagnostic status from the latest EKF cycle (message/values refresh every tick)
   diagnostic_msgs::msg::DiagnosticStatus merged_diagnostic_status_;
   //!< @brief Wall time of the latest merged diagnostic level change vs. the previous EKF tick
   //!< (includes recovery to OK); published as last_level_transition_timestamp once non-zero
   rclcpp::Time merged_diagnostic_last_transition_time_;
-  //!< @brief last pose callback header stamp (for callback_pose diagnostic)
-  rclcpp::Time last_pose_callback_time_;
-  //!< @brief last twist callback header stamp (for callback_twist diagnostic)
-  rclcpp::Time last_twist_callback_time_;
+  //!< @brief last pose callback header stamp in nanoseconds (atomic for thread safety)
+  std::atomic<int64_t> last_pose_callback_time_ns_{0};
+  //!< @brief last twist callback header stamp in nanoseconds (atomic for thread safety)
+  std::atomic<int64_t> last_twist_callback_time_ns_{0};
 
   /**
    * @brief computes update & prediction of EKF for each ekf_dt_[s] time
