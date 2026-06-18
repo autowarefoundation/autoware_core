@@ -22,7 +22,7 @@ rclcpp_components_register_node(${PROJECT_NAME}
   EXECUTABLE ${RANDOM}_node)
 
 rclcpp_components_register_node(${PROJECT_NAME}
-  PLUGIN "autoware::downsample_filters::VoxelGridDownsampleFilter"
+  PLUGIN "autoware::downsample_filters::VoxelGridDownsampleFilterNode"
   EXECUTABLE ${VOXEL_GRID}_node)
 
 if(BUILD_TESTING)

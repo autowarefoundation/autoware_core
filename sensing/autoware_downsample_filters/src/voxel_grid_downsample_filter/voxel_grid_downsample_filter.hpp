@@ -26,7 +26,7 @@
 
 namespace autoware::downsample_filters
 {
-class VoxelGridDownsampleFilterCore
+class VoxelGridDownsampleFilter
 {
 public:
   using PointCloud2 = sensor_msgs::msg::PointCloud2;
@@ -39,7 +39,7 @@ public:
     float voxel_size_z;
   };
 
-  explicit VoxelGridDownsampleFilterCore(const Parameters & parameters);
+  explicit VoxelGridDownsampleFilter(const Parameters & parameters);
 
   tl::expected<PointCloud2, std::string> filter(const PointCloud2ConstPtr & input);
 

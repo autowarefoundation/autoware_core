@@ -25,14 +25,14 @@ using PointCloud2ConstPtr = sensor_msgs::msg::PointCloud2::ConstSharedPtr;
 
 namespace autoware::downsample_filters
 {
-VoxelGridDownsampleFilterCore::VoxelGridDownsampleFilterCore(const Parameters & parameters)
+VoxelGridDownsampleFilter::VoxelGridDownsampleFilter(const Parameters & parameters)
 : parameters_(parameters)
 {
   faster_voxel_filter_.set_voxel_size(
     parameters_.voxel_size_x, parameters_.voxel_size_y, parameters_.voxel_size_z);
 }
 
-tl::expected<PointCloud2, std::string> VoxelGridDownsampleFilterCore::filter(
+tl::expected<PointCloud2, std::string> VoxelGridDownsampleFilter::filter(
   const PointCloud2ConstPtr & input)
 {
   // Validate input

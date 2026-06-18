@@ -32,14 +32,14 @@
 
 namespace autoware::downsample_filters
 {
-class VoxelGridDownsampleFilter : public rclcpp::Node
+class VoxelGridDownsampleFilterNode : public rclcpp::Node
 {
 public:
   using PointCloud2 = sensor_msgs::msg::PointCloud2;
   using PointCloud2ConstPtr = sensor_msgs::msg::PointCloud2::ConstSharedPtr;
 
   PCL_MAKE_ALIGNED_OPERATOR_NEW
-  explicit VoxelGridDownsampleFilter(const rclcpp::NodeOptions & options);
+  explicit VoxelGridDownsampleFilterNode(const rclcpp::NodeOptions & options);
 
 private:
   /** \brief The input PointCloud2 subscriber. */
@@ -56,7 +56,7 @@ private:
   /** \brief PointCloud2 data callback. */
   void input_callback(const PointCloud2ConstPtr cloud);
 
-  VoxelGridDownsampleFilterCore filter_core_;
+  VoxelGridDownsampleFilter filter_core_;
 
   /** \brief The maximum queue size (default: 3). */
   size_t max_queue_size_ = 3;

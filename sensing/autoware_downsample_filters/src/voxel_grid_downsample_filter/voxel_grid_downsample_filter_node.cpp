@@ -20,10 +20,10 @@
 
 namespace autoware::downsample_filters
 {
-VoxelGridDownsampleFilter::VoxelGridDownsampleFilter(const rclcpp::NodeOptions & options)
+VoxelGridDownsampleFilterNode::VoxelGridDownsampleFilterNode(const rclcpp::NodeOptions & options)
 : rclcpp::Node("VoxelGridDownsampleFilter", options),
   filter_core_(
-    VoxelGridDownsampleFilterCore::Parameters{
+    VoxelGridDownsampleFilter::Parameters{
       static_cast<float>(declare_parameter<double>("voxel_size_x")),
       static_cast<float>(declare_parameter<double>("voxel_size_y")),
       static_cast<float>(declare_parameter<double>("voxel_size_z"))}),
@@ -44,13 +44,13 @@ VoxelGridDownsampleFilter::VoxelGridDownsampleFilter(const rclcpp::NodeOptions &
   {
     sub_input_ = create_subscription<PointCloud2>(
       "input", rclcpp::SensorDataQoS().keep_last(max_queue_size_),
-      std::bind(&VoxelGridDownsampleFilter::input_callback, this, std::placeholders::_1));
+      std::bind(&VoxelGridDownsampleFilterNode::input_callback, this, std::placeholders::_1));
   }
 
   RCLCPP_DEBUG(this->get_logger(), "[Filter Constructor] successfully created.");
 }
 
-void VoxelGridDownsampleFilter::input_callback(const PointCloud2ConstPtr cloud)
+void VoxelGridDownsampleFilterNode::input_callback(const PointCloud2ConstPtr cloud)
 {
   RCLCPP_DEBUG(
     this->get_logger(),
@@ -71,4 +71,4 @@ void VoxelGridDownsampleFilter::input_callback(const PointCloud2ConstPtr cloud)
 }  // namespace autoware::downsample_filters
 
 #include <rclcpp_components/register_node_macro.hpp>
-RCLCPP_COMPONENTS_REGISTER_NODE(autoware::downsample_filters::VoxelGridDownsampleFilter)
+RCLCPP_COMPONENTS_REGISTER_NODE(autoware::downsample_filters::VoxelGridDownsampleFilterNode)
