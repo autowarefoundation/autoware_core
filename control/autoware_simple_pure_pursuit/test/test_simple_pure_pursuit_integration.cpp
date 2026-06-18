@@ -42,9 +42,9 @@ constexpr double terminal_brake_accel = SimplePurePursuit::terminal_brake_accel;
 namespace
 {
 
-constexpr auto odom_topic = "/simple_pure_pursuit_node/input/odometry";
-constexpr auto traj_topic = "/simple_pure_pursuit_node/input/trajectory";
-constexpr auto control_topic = "/simple_pure_pursuit_node/output/control_command";
+constexpr auto odom_topic = "/simple_pure_pursuit/input/odometry";
+constexpr auto traj_topic = "/simple_pure_pursuit/input/trajectory";
+constexpr auto control_topic = "/simple_pure_pursuit/output/control_command";
 
 constexpr auto connection_timeout = std::chrono::seconds(3);
 constexpr auto output_timeout = std::chrono::seconds(5);

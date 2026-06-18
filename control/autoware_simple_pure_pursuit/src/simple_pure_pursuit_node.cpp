@@ -27,7 +27,7 @@ constexpr double terminal_brake_accel = SimplePurePursuit::terminal_brake_accel;
 }  // namespace
 
 SimplePurePursuitNode::SimplePurePursuitNode(const rclcpp::NodeOptions & node_options)
-: Node("simple_pure_pursuit_node", node_options),
+: Node("simple_pure_pursuit", node_options),
   pub_control_command_(
     create_publisher<autoware_control_msgs::msg::Control>(
       "~/output/control_command", rclcpp::QoS(1).transient_local()))
