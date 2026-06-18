@@ -12,27 +12,24 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
 target_link_libraries(${PROJECT_NAME} fmt)
 
 if(BUILD_TESTING)
-  set(test_sources
-    test/test_main.cpp
-    test/test_gyro_odometer_helper.cpp
-    test/test_gyro_odometer_fusion.cpp
-  )
-  if(NOT (DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1"))
-    list(APPEND test_sources test/test_gyro_odometer_pubsub.cpp)
+  if(NOT "$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
+    ament_add_ros_isolated_gtest(test_gyro_odometer
+      test/test_main.cpp
+      test/test_gyro_odometer_pubsub.cpp
+      test/test_gyro_odometer_helper.cpp
+      test/test_gyro_odometer_fusion.cpp
+    )
+    ament_target_dependencies(test_gyro_odometer
+      rclcpp
+    )
+    target_link_libraries(test_gyro_odometer
+      ${PROJECT_NAME}
+    )
+    target_include_directories(test_gyro_odometer PRIVATE
+      src
+    )
+    ament_target_dependencies(test_gyro_odometer autoware_agnocast_wrapper)
   endif()
-
-  ament_add_ros_isolated_gtest(test_gyro_odometer ${test_sources})
-  ament_target_dependencies(test_gyro_odometer
-    rclcpp
-  )
-  target_link_libraries(test_gyro_odometer
-    ${PROJECT_NAME}
-  )
-  target_include_directories(test_gyro_odometer PRIVATE
-    src
-  )
-  ament_target_dependencies(test_gyro_odometer autoware_agnocast_wrapper)
-  autoware_agnocast_wrapper_setup(test_gyro_odometer)
 endif()
 
 autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
