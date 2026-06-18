@@ -15,6 +15,9 @@ rclcpp_components_register_node(${PROJECT_NAME}_lib
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
+  find_package(autoware_testing REQUIRED)
+  find_package(autoware_test_utils REQUIRED)
+
   ament_add_ros_isolated_gtest(test_simple_pure_pursuit_integration
     test/test_simple_pure_pursuit_integration.cpp
   )
