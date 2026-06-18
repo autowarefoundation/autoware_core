@@ -48,8 +48,6 @@ public:
   // Constructor
   explicit SimplePurePursuit(const SimplePurePursuitParameters & params);
 
-  // Set param struct for algorithm
-
   /**
    * @brief Create control command based on current odom and traj
    *
