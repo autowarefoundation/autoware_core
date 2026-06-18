@@ -112,8 +112,8 @@ public:
   {
     executor_ = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
 
-    filter_node_ = std::make_shared<autoware::downsample_filters::VoxelGridDownsampleFilterNode>(
-      filter_options);
+    filter_node_ =
+      std::make_shared<autoware::downsample_filters::VoxelGridDownsampleFilterNode>(filter_options);
 
     input_pub_node_ = rclcpp::Node::make_shared("voxel_grid_test_input_publisher");
     input_pub_ = input_pub_node_->create_publisher<sensor_msgs::msg::PointCloud2>(
