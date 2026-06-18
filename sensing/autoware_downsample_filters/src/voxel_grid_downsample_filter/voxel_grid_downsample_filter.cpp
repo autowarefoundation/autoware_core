@@ -67,7 +67,8 @@ tl::expected<PointCloud2, std::string> VoxelGridDownsampleFilterCore::filter(
   if (
     pcl::getFieldIndex(*input, "x") < 0 || pcl::getFieldIndex(*input, "y") < 0 ||
     pcl::getFieldIndex(*input, "z") < 0) {
-    return tl::unexpected(std::string("The input point cloud does not have required x, y, z fields."));
+    return tl::unexpected(
+      std::string("The input point cloud does not have required x, y, z fields."));
   }
 
   const int intensity_index = pcl::getFieldIndex(*input, "intensity");
@@ -75,7 +76,8 @@ tl::expected<PointCloud2, std::string> VoxelGridDownsampleFilterCore::filter(
     return tl::unexpected(std::string("There is no intensity field in the input point cloud."));
   }
   if (input->fields[intensity_index].datatype != sensor_msgs::msg::PointField::UINT8) {
-    return tl::unexpected(std::string("The intensity field in the input point cloud is not of type UINT8."));
+    return tl::unexpected(
+      std::string("The intensity field in the input point cloud is not of type UINT8."));
   }
 
   // Apply filter
