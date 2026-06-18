@@ -23,7 +23,7 @@ namespace autoware::control::simple_pure_pursuit
 {
 
 /**
-@ brief Params for SimplePurePursuitNode class
+@ brief Params for SimplePurePursuit class
 *
 * @param lookahead_gain Gain for calculating lookahead distance
 * @param lookahead_min_distance Minimum lookahead distance
