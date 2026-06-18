@@ -25,13 +25,10 @@
 namespace autoware::ekf_localizer
 {
 
-// Node-type-templated so it accepts both rclcpp::Node and autoware::agnocast_wrapper::Node.
-// Only get_logger() / get_clock() are used, which both node types provide.
-template <typename NodeT>
-class WarningImpl
+class Warning
 {
 public:
-  explicit WarningImpl(NodeT * node) : node_(node) {}
+  explicit Warning(autoware::agnocast_wrapper::Node * node) : node_(node) {}
 
   // Additive seam: an explicitly-requested no-op logger constructed without a node, so EKFModule
   // can be unit-tested outside of a ROS runtime. When node_ is null, warn/warn_throttle silently
@@ -59,14 +56,8 @@ public:
   }
 
 private:
-  NodeT * node_;
+  autoware::agnocast_wrapper::Node * node_;
 };
-
-// Alias used throughout the package. Instantiated for autoware::agnocast_wrapper::Node, which
-// in the standard (Agnocast-disabled) build is itself an alias for rclcpp::Node, so this works
-// in both builds without any #ifdef. WarningImpl only uses get_logger()/get_clock(), both of
-// which the wrapper node provides.
-using Warning = WarningImpl<autoware::agnocast_wrapper::Node>;
 
 }  // namespace autoware::ekf_localizer
 

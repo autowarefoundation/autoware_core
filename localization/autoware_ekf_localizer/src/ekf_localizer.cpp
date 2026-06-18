@@ -93,8 +93,6 @@ EKFLocalizer::EKFLocalizer(const rclcpp::NodeOptions & node_options)
   sub_twist_with_cov_ = create_subscription<geometry_msgs::msg::TwistWithCovarianceStamped>(
     "in_twist_with_covariance", 1,
     std::bind(&EKFLocalizer::callback_twist_with_covariance, this, _1));
-  // AUTOWARE_CREATE_SERVICE takes an rclcpp::QoS and absorbs the Humble-only rmw_qos_profile
-  // signature inside the wrapper, so no per-distro / per-build branch is needed here.
   service_trigger_node_ = AUTOWARE_CREATE_SERVICE4(
     std_srvs::srv::SetBool, "trigger_node_srv",
     std::bind(

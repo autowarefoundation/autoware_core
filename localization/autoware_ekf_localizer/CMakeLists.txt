@@ -62,11 +62,6 @@ if(BUILD_TESTING)
 
   file(GLOB_RECURSE TEST_FILES test/*.cpp)
 
-  # test_diagnostics.cpp and test_diagnostics_topic.cpp construct EKFLocalizer and spin it with a
-  # rclcpp SingleThreadedExecutor (executor.add_node + spin_some) that relies on real pub/sub
-  # message flow. An autoware::agnocast_wrapper::Node neither plugs into that executor nor drives
-  # its callbacks under an AgnocastOnly executor, so build those two only in non-Agnocast builds.
-  # The remaining tests cover pure helper functions and always build.
   if(DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
     list(FILTER TEST_FILES EXCLUDE REGEX "test_diagnostics(_topic)?\\.cpp$")
   endif()
