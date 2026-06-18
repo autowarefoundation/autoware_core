@@ -20,8 +20,6 @@
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_components/register_node_macro.hpp>
 
-#include <autoware_adapi_v1_msgs/msg/response_status.hpp>
-#include <autoware_common_msgs/msg/response_status.hpp>
 #include <autoware_vehicle_msgs/msg/gear_command.hpp>
 
 #include <rmw/types.h>
@@ -77,32 +75,11 @@ public:
         const SystemChangeOperationMode::Service::Request::SharedPtr req,
         const SystemChangeOperationMode::Service::Response::SharedPtr res) {
         const builtin_interfaces::msg::Time stamp = now();
-        ModeOutputs outputs;
-
-        switch (req->mode) {
-          case SystemChangeOperationMode::Service::Request::STOP:
-            outputs = mode_builder_.make_stop(stamp);
-            break;
-          case SystemChangeOperationMode::Service::Request::AUTONOMOUS:
-            outputs = mode_builder_.make_autonomous(stamp);
-            break;
-          case SystemChangeOperationMode::Service::Request::LOCAL:
-            outputs = mode_builder_.make_local(stamp);
-            break;
-          case SystemChangeOperationMode::Service::Request::REMOTE:
-            outputs = mode_builder_.make_remote(stamp);
-            break;
-          default:
-            res->status.success = false;
-            res->status.code = autoware_common_msgs::msg::ResponseStatus::PARAMETER_ERROR;
-            res->status.message = "Unknown operation mode requested.";
-            return;
+        const auto outputs = CommandGateModeBuilder::create_mode_output(*req, stamp);
+        if (outputs) {
+          publish(*outputs);
         }
-
-        publish(outputs);
-        res->status.success = true;
-        res->status.code = 0;
-        res->status.message = outputs.status.message;
+        *res = CommandGateModeBuilder::create_response(*req, stamp);
       });
   }
 
@@ -121,7 +98,6 @@ private:
   rclcpp::Publisher<OperationModeSystemStateMsg>::SharedPtr system_state_pub_;
   rclcpp::Publisher<GearCommand>::SharedPtr gear_pub_;
   rclcpp::Service<SystemChangeOperationMode::Service>::SharedPtr srv_system_mode_;
-  CommandGateModeBuilder mode_builder_;
 };
 
 }  // namespace autoware::control::command_gate

@@ -164,9 +164,7 @@ OccupancyGrid makeCostMapMsg(size_t width, size_t height, double resolution)
 
   // create data
   const size_t n_elem = width * height;
-  for (size_t i = 0; i < n_elem; ++i) {
-    costmap_msg.data.push_back(0.0);
-  }
+  costmap_msg.data.assign(n_elem, 0);
   return costmap_msg;
 }
 
