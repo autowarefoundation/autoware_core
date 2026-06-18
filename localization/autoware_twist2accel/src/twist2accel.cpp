@@ -43,14 +43,18 @@ void Twist2Accel::callback_odometry(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(nav_msgs::msg::Odometry) msg)
 {
   if (!use_odom_) return;
-  pub_accel_->publish(accel_estimator_->estimate(*msg));
+  auto accel_msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_accel_);
+  *accel_msg = accel_estimator_->estimate(*msg);
+  pub_accel_->publish(std::move(accel_msg));
 }
 
 void Twist2Accel::callback_twist_with_covariance(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::TwistWithCovarianceStamped) msg)
 {
   if (use_odom_) return;
-  pub_accel_->publish(accel_estimator_->estimate(*msg));
+  auto accel_msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_accel_);
+  *accel_msg = accel_estimator_->estimate(*msg);
+  pub_accel_->publish(std::move(accel_msg));
 }
 }  // namespace autoware::twist2accel
 
