@@ -19,6 +19,8 @@
 
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
+#include <tl/expected.hpp>
+
 #include <mutex>
 #include <string>
 
@@ -39,9 +41,7 @@ public:
 
   explicit VoxelGridDownsampleFilterCore(const Parameters & parameters);
 
-  static ValidationResult validate_input(const PointCloud2 & cloud);
-
-  ValidationResult filter(const PointCloud2ConstPtr & input, PointCloud2 & output);
+  tl::expected<PointCloud2, std::string> filter(const PointCloud2ConstPtr & input);
 
 private:
   FasterVoxelGridDownsampleFilter faster_voxel_filter_;

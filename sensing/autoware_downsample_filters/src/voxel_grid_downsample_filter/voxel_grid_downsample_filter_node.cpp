@@ -52,27 +52,19 @@ VoxelGridDownsampleFilter::VoxelGridDownsampleFilter(const rclcpp::NodeOptions &
 
 void VoxelGridDownsampleFilter::input_callback(const PointCloud2ConstPtr cloud)
 {
-  const auto input_validation_result = filter_core_.validate_input(*cloud);
-  if (!input_validation_result.is_valid) {
-    RCLCPP_ERROR(
-      this->get_logger(), "[input_callback] Invalid input. %s",
-      input_validation_result.reason.c_str());
-    return;
-  }
-
   RCLCPP_DEBUG(
     this->get_logger(),
     "[input_callback] PointCloud with %d data points and frame %s on input topic "
     "received.",
     cloud->width * cloud->height, cloud->header.frame_id.c_str());
 
-  auto output = std::make_unique<PointCloud2>();
-
-  const auto filter_result = filter_core_.filter(cloud, *output);
-  if (!filter_result.is_valid) {
-    RCLCPP_ERROR(this->get_logger(), "%s", filter_result.reason.c_str());
+  auto result = filter_core_.filter(cloud);
+  if (!result) {
+    RCLCPP_ERROR(this->get_logger(), "[input_callback] %s", result.error().c_str());
+    return;
   }
 
+  auto output = std::make_unique<PointCloud2>(result.value());
   output->header.stamp = cloud->header.stamp;
   pub_output_->publish(std::move(output));
   published_time_publisher_->publish_if_subscribed(pub_output_, cloud->header.stamp);
