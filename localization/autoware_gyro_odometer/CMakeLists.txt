@@ -4,34 +4,24 @@ project(autoware_gyro_odometer)
 find_package(autoware_cmake REQUIRED)
 autoware_package()
 
-find_package(autoware_agnocast_wrapper REQUIRED)
-
 ament_auto_add_library(${PROJECT_NAME} SHARED
   src/gyro_odometer_core.cpp
   src/gyro_odometer_fusion.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} fmt)
-ament_target_dependencies(${PROJECT_NAME} autoware_agnocast_wrapper)
 
 if(BUILD_TESTING)
-  # The pub/sub integration test spins GyroOdometerNode with rclcpp::spin_some, which neither
-  # accepts an autoware::agnocast_wrapper::Node nor drives Agnocast callbacks. Build it only in
-  # non-Agnocast builds; the helper and fusion tests (pure functions) always build.
-  if(DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
-    ament_add_ros_isolated_gtest(test_gyro_odometer
-      test/test_main.cpp
-      test/test_gyro_odometer_helper.cpp
-      test/test_gyro_odometer_fusion.cpp
-    )
-  else()
-    ament_add_ros_isolated_gtest(test_gyro_odometer
-      test/test_main.cpp
-      test/test_gyro_odometer_pubsub.cpp
-      test/test_gyro_odometer_helper.cpp
-      test/test_gyro_odometer_fusion.cpp
-    )
+  set(test_sources
+    test/test_main.cpp
+    test/test_gyro_odometer_helper.cpp
+    test/test_gyro_odometer_fusion.cpp
+  )
+  if(NOT (DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1"))
+    list(APPEND test_sources test/test_gyro_odometer_pubsub.cpp)
   endif()
+
+  ament_add_ros_isolated_gtest(test_gyro_odometer ${test_sources})
   ament_target_dependencies(test_gyro_odometer
     rclcpp
   )

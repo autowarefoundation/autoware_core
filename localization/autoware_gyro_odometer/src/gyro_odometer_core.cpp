@@ -20,6 +20,7 @@
 
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
+#include <chrono>
 #include <cmath>
 #include <memory>
 #include <string>
@@ -60,7 +61,7 @@ GyroOdometerNode::GyroOdometerNode(const rclcpp::NodeOptions & node_options)
     this, "gyro_odometer_status");
 
   timer_ = autoware::agnocast_wrapper::create_timer(
-    this, this->get_clock(), rclcpp::Duration::from_seconds(0.1),
+    this, this->get_clock(), std::chrono::milliseconds(100),
     std::bind(&GyroOdometerNode::publish_diagnostics, this));
 }
 
