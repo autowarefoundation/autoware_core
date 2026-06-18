@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "simple_pure_pursuit.hpp"
+#include "simple_pure_pursuit_node.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <autoware_test_utils/autoware_test_utils.hpp>
@@ -37,15 +37,21 @@ using autoware_planning_msgs::msg::Trajectory;
 using autoware_planning_msgs::msg::TrajectoryPoint;
 using nav_msgs::msg::Odometry;
 
+constexpr double terminal_brake_accel = SimplePurePursuit::terminal_brake_accel;
+
 namespace
 {
+
+constexpr auto odom_topic = "/simple_pure_pursuit/input/odometry";
+constexpr auto traj_topic = "/simple_pure_pursuit/input/trajectory";
+constexpr auto control_topic = "/simple_pure_pursuit/output/control_command";
 
 constexpr auto connection_timeout = std::chrono::seconds(3);
 constexpr auto output_timeout = std::chrono::seconds(5);
 constexpr auto no_output_timeout = std::chrono::milliseconds(250);
 constexpr auto spin_sleep = std::chrono::milliseconds(10);
 
-// Floating point tolerance at EXCEPT_NEAR checks (thanks Ishikawa-san for the suggestion!)
+// Floating point tolerance at EXPECT_NEAR checks (thanks Ishikawa-san for the suggestion!)
 constexpr float near_tol = 1e-4F;
 
 /**
@@ -151,13 +157,10 @@ public:
     input_pub_node_ = rclcpp::Node::make_shared("simple_pure_pursuit_test_input_publisher");
     output_sub_node_ = rclcpp::Node::make_shared("simple_pure_pursuit_test_output_subscriber");
 
-    odom_pub_ = input_pub_node_->create_publisher<Odometry>(
-      "/simple_pure_pursuit/input/odometry", rclcpp::QoS{1});
-    traj_pub_ = input_pub_node_->create_publisher<Trajectory>(
-      "/simple_pure_pursuit/input/trajectory", rclcpp::QoS{1});
+    odom_pub_ = input_pub_node_->create_publisher<Odometry>(odom_topic, rclcpp::QoS{1});
+    traj_pub_ = input_pub_node_->create_publisher<Trajectory>(traj_topic, rclcpp::QoS{1});
     control_sub_ = output_sub_node_->create_subscription<Control>(
-      "/simple_pure_pursuit/output/control_command", rclcpp::QoS{1}.transient_local(),
-      [this](const Control::SharedPtr msg) {
+      control_topic, rclcpp::QoS{1}.transient_local(), [this](const Control::SharedPtr msg) {
         {
           std::scoped_lock lock(received_control_mutex_);
           received_control_ = msg;
@@ -370,7 +373,7 @@ TEST(SimplePurePursuitIntegrationTest, PublishesGoalStopCommandAtTrajectoryEnd)
   // Expected strong deceleration
   // Here I already checked during development that terminal deceleration value is -10
   // Seems like this module hard-coded this value. I will freeze it here as characterization test
-  EXPECT_NEAR(control->longitudinal.acceleration, -10.0F, near_tol);
+  EXPECT_NEAR(control->longitudinal.acceleration, terminal_brake_accel, near_tol);
   EXPECT_TRUE(control->longitudinal.is_defined_acceleration);
 };
 
