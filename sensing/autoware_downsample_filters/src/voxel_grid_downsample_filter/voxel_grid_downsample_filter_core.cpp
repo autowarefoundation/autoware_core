@@ -18,6 +18,7 @@
 #include "transform_info.hpp"
 
 #include <sstream>
+#include <string>
 
 namespace autoware::downsample_filters
 {
