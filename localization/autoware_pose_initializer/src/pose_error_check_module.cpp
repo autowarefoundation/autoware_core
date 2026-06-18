@@ -14,6 +14,8 @@
 
 #include "pose_error_check_module.hpp"
 
+#include "localization_util.hpp"
+
 namespace autoware::pose_initializer
 {
 PoseErrorCheckModule::PoseErrorCheckModule(rclcpp::Node * node) : node_(node)
@@ -25,16 +27,14 @@ bool PoseErrorCheckModule::check_pose_error(
   const geometry_msgs::msg::Pose & reference_pose, const geometry_msgs::msg::Pose & result_pose,
   double & error_2d)
 {
-  const double diff_pose_x = reference_pose.position.x - result_pose.position.x;
-  const double diff_pose_y = reference_pose.position.y - result_pose.position.y;
-  error_2d = std::sqrt(std::pow(diff_pose_x, 2) + std::pow(diff_pose_y, 2));
+  const bool is_error_small = autoware::pose_initializer::check_pose_error(
+    reference_pose, result_pose, pose_error_threshold_, error_2d);
 
-  if (pose_error_threshold_ <= error_2d) {
+  if (!is_error_small) {
     RCLCPP_INFO(node_->get_logger(), "Pose Error is Large. Error is %f", error_2d);
-    return false;
   }
 
-  return true;
+  return is_error_small;
 }
 
 }  // namespace autoware::pose_initializer

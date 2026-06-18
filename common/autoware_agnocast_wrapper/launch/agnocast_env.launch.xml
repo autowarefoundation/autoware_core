@@ -29,4 +29,13 @@
   <let name="container_executable" value="component_container_mt" if="$(eval &quot;'$(var use_agnocast)' != '1' and '$(var use_multithread)' == 'true'&quot;)"/>
   <let name="container_executable" value="agnocast_component_container" if="$(eval &quot;'$(var use_agnocast)' == '1' and '$(var use_multithread)' != 'true'&quot;)"/>
   <let name="container_executable" value="agnocast_component_container_cie" if="$(eval &quot;'$(var use_agnocast)' == '1' and '$(var use_multithread)' == 'true'&quot;)"/>
+
+  <!--
+    Spawn the per-IPC-namespace discovery agent (a singleton) when Agnocast is
+    enabled. This file is included once per agnocast-using node, so the spawn
+    and its tree-wide deduplication live in discovery_agent.launch.py, shared
+    with the Python wrapper. That file gates on ENABLE_AGNOCAST itself, so the
+    include is unconditional here.
+  -->
+  <include file="$(find-pkg-share autoware_agnocast_wrapper)/launch/discovery_agent.launch.py"/>
 </launch>

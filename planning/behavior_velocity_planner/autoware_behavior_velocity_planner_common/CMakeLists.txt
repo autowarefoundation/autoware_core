@@ -16,6 +16,10 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/experimental/scene_module_interface.cpp
 )
 
+# Allow internal (non-installed) headers under src/ to be included with a
+# directory-qualified path (e.g. "utilization/util_internal.hpp") from any TU.
+target_include_directories(${PROJECT_NAME} PRIVATE src)
+
 if(BUILD_TESTING)
   file(GLOB TEST_SOURCES test/src/*.cpp)
   ament_add_ros_isolated_gtest(test_${PROJECT_NAME} ${TEST_SOURCES})

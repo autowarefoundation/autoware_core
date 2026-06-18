@@ -14,6 +14,8 @@
 
 #include <autoware/pyplot/legend.hpp>
 
+#include <utility>
+
 namespace autoware::pyplot
 {
 inline namespace legend
@@ -21,7 +23,7 @@ inline namespace legend
 Legend::Legend(const pybind11::object & object) : PyObjectWrapper(object)
 {
 }
-Legend::Legend(pybind11::object && object) : PyObjectWrapper(object)
+Legend::Legend(pybind11::object && object) : PyObjectWrapper(std::move(object))
 {
 }
 }  // namespace legend
