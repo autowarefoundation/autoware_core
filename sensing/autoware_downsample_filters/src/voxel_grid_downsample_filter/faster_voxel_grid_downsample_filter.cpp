@@ -37,40 +37,19 @@ void FasterVoxelGridDownsampleFilter::set_voxel_size(
     Eigen::Array3f::Ones() / Eigen::Array3f(voxel_size_x, voxel_size_y, voxel_size_z);
 }
 
-ValidationResult FasterVoxelGridDownsampleFilter::set_field_offsets(
-  const PointCloud2ConstPtr & input)
+void FasterVoxelGridDownsampleFilter::set_field_offsets(const PointCloud2ConstPtr & input)
 {
   const int x_index = pcl::getFieldIndex(*input, "x");
   const int y_index = pcl::getFieldIndex(*input, "y");
   const int z_index = pcl::getFieldIndex(*input, "z");
 
-  if (x_index < 0 || y_index < 0 || z_index < 0) {
-    offset_initialized_ = false;
-    return {
-      false,
-      "The input point cloud does not have required x, y, z fields.",
-    };
-  }
-
   x_offset_ = static_cast<int>(input->fields[x_index].offset);
   y_offset_ = static_cast<int>(input->fields[y_index].offset);
   z_offset_ = static_cast<int>(input->fields[z_index].offset);
   intensity_index_ = pcl::getFieldIndex(*input, "intensity");
-
-  if (intensity_index_ < 0) {
-    intensity_offset_ = -1;
-    offset_initialized_ = false;
-    return {false, "There is no intensity field in the input point cloud."};
-  } else if (input->fields[intensity_index_].datatype != sensor_msgs::msg::PointField::UINT8) {
-    intensity_offset_ = -1;
-    offset_initialized_ = false;
-    return {false, "The intensity field in the input point cloud is not of type UINT8."};
-  } else {
-    intensity_offset_ = static_cast<int>(input->fields[intensity_index_].offset);
-  }
+  intensity_offset_ = static_cast<int>(input->fields[intensity_index_].offset);
 
   offset_initialized_ = true;
-  return {true, ""};
 }
 
 ValidationResult FasterVoxelGridDownsampleFilter::filter(
@@ -78,11 +57,7 @@ ValidationResult FasterVoxelGridDownsampleFilter::filter(
 {
   // Check if the field offset has been set
   if (!offset_initialized_) {
-    const auto field_offset_validation_result = set_field_offsets(input);
-    if (!field_offset_validation_result.is_valid) {
-      output = *input;
-      return field_offset_validation_result;
-    }
+    set_field_offsets(input);
   }
 
   // Compute the minimum and maximum voxel coordinates

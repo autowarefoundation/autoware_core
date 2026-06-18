@@ -57,6 +57,20 @@ ValidationResult VoxelGridDownsampleFilterCore::validate_input(const PointCloud2
     return {false, error_message};
   }
 
+  if (
+    pcl::getFieldIndex(cloud, "x") < 0 || pcl::getFieldIndex(cloud, "y") < 0 ||
+    pcl::getFieldIndex(cloud, "z") < 0) {
+    return {false, "The input point cloud does not have required x, y, z fields."};
+  }
+
+  const int intensity_index = pcl::getFieldIndex(cloud, "intensity");
+  if (intensity_index < 0) {
+    return {false, "There is no intensity field in the input point cloud."};
+  }
+  if (cloud.fields[intensity_index].datatype != sensor_msgs::msg::PointField::UINT8) {
+    return {false, "The intensity field in the input point cloud is not of type UINT8."};
+  }
+
   return {true, ""};
 }
 
