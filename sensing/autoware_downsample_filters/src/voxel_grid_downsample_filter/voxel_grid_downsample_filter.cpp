@@ -89,6 +89,8 @@ tl::expected<PointCloud2, std::string> VoxelGridDownsampleFilterCore::filter(
     return tl::unexpected(filter_result.reason);
   }
 
+  output.header.stamp = input->header.stamp;
+
   return output;
 }
 

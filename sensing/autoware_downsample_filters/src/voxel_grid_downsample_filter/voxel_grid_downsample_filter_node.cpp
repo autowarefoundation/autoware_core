@@ -65,7 +65,6 @@ void VoxelGridDownsampleFilter::input_callback(const PointCloud2ConstPtr cloud)
   }
 
   auto output = std::make_unique<PointCloud2>(result.value());
-  output->header.stamp = cloud->header.stamp;
   pub_output_->publish(std::move(output));
   published_time_publisher_->publish_if_subscribed(pub_output_, cloud->header.stamp);
 }
