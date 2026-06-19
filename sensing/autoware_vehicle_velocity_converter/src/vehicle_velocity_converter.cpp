@@ -16,8 +16,6 @@
 
 #include <autoware_utils_geometry/msg/covariance.hpp>
 
-#include <string>
-
 namespace autoware::vehicle_velocity_converter
 {
 geometry_msgs::msg::TwistWithCovarianceStamped convert(
@@ -40,33 +38,4 @@ geometry_msgs::msg::TwistWithCovarianceStamped convert(
 
   return twist_with_covariance_msg;
 }
-
-VehicleVelocityConverter::VehicleVelocityConverter(const rclcpp::NodeOptions & options)
-: rclcpp::Node("vehicle_velocity_converter", options),
-  frame_id_(declare_parameter<std::string>("frame_id")),
-  stddev_vx_(declare_parameter<double>("velocity_stddev_xx")),
-  stddev_wz_(declare_parameter<double>("angular_velocity_stddev_zz")),
-  speed_scale_factor_(declare_parameter<double>("speed_scale_factor"))
-{
-  vehicle_report_sub_ = create_subscription<autoware_vehicle_msgs::msg::VelocityReport>(
-    "velocity_status", rclcpp::QoS{10},
-    std::bind(&VehicleVelocityConverter::callback_velocity_report, this, std::placeholders::_1));
-
-  twist_with_covariance_pub_ = create_publisher<geometry_msgs::msg::TwistWithCovarianceStamped>(
-    "twist_with_covariance", rclcpp::QoS{10});
-}
-
-void VehicleVelocityConverter::callback_velocity_report(
-  const autoware_vehicle_msgs::msg::VelocityReport::SharedPtr msg)
-{
-  if (msg->header.frame_id != frame_id_) {
-    RCLCPP_WARN(get_logger(), "frame_id is not base_link.");
-  }
-
-  // set twist with covariance msg from vehicle report msg
-  twist_with_covariance_pub_->publish(convert(*msg, speed_scale_factor_, stddev_vx_, stddev_wz_));
-}
 }  // namespace autoware::vehicle_velocity_converter
-
-#include <rclcpp_components/register_node_macro.hpp>
-RCLCPP_COMPONENTS_REGISTER_NODE(autoware::vehicle_velocity_converter::VehicleVelocityConverter)

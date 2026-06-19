@@ -15,19 +15,16 @@
 #include "../src/vehicle_velocity_converter.hpp"
 
 #include <autoware_utils_geometry/msg/covariance.hpp>
-#include <rclcpp/rclcpp.hpp>
 
 #include <autoware_vehicle_msgs/msg/velocity_report.hpp>
 #include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
 
 #include <gtest/gtest.h>
 
-#include <memory>
 #include <set>
 #include <string>
 
 using autoware::vehicle_velocity_converter::convert;
-using autoware::vehicle_velocity_converter::VehicleVelocityConverter;
 using autoware_vehicle_msgs::msg::VelocityReport;
 using geometry_msgs::msg::TwistWithCovarianceStamped;
 using COV_IDX = autoware_utils_geometry::xyzrpy_covariance_index::XYZRPY_COV_IDX;
@@ -129,30 +126,4 @@ TEST(VehicleVelocityConverterConvert, NegativeVelocityAndScale)
   // Variances stay non-negative (stddev squared) regardless of velocity sign.
   EXPECT_DOUBLE_EQ(twist.twist.covariance[COV_IDX::X_X], 0.2 * 0.2);
   EXPECT_DOUBLE_EQ(twist.twist.covariance[COV_IDX::YAW_YAW], 0.1 * 0.1);
-}
-
-// Thin smoke test for the ROS wiring (construction with parameter overrides).
-TEST(VehicleVelocityConverterNode, NodeInstantiation)
-{
-  if (!rclcpp::ok()) {
-    rclcpp::init(0, nullptr);
-  }
-
-  rclcpp::NodeOptions options;
-  options.parameter_overrides().push_back(rclcpp::Parameter("frame_id", "base_link"));
-  options.parameter_overrides().push_back(rclcpp::Parameter("velocity_stddev_xx", 0.2));
-  options.parameter_overrides().push_back(rclcpp::Parameter("angular_velocity_stddev_zz", 0.1));
-  options.parameter_overrides().push_back(rclcpp::Parameter("speed_scale_factor", 1.0));
-
-  auto vehicle_velocity_converter = std::make_shared<VehicleVelocityConverter>(options);
-  EXPECT_NE(vehicle_velocity_converter, nullptr);
-}
-
-int main(int argc, char ** argv)
-{
-  testing::InitGoogleTest(&argc, argv);
-  rclcpp::init(argc, argv);
-  const int result = RUN_ALL_TESTS();
-  rclcpp::shutdown();
-  return result;
 }
