@@ -32,9 +32,11 @@ ament_auto_add_library(lanelet2_map_loader_node SHARED
   src/lanelet2_map_loader/lanelet2_map_loader_utils.cpp
 )
 
-rclcpp_components_register_node(lanelet2_map_loader_node
+autoware_agnocast_wrapper_register_node(lanelet2_map_loader_node
   PLUGIN "autoware::map_loader::Lanelet2MapLoaderNode"
   EXECUTABLE autoware_lanelet2_map_loader
+  ROS2_EXECUTOR SingleThreadedExecutor
+  AGNOCAST_EXECUTOR AgnocastOnlyCallbackIsolatedExecutor
 )
 
 if(BUILD_TESTING)

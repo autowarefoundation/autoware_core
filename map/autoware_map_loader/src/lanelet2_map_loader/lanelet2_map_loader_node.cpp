@@ -65,7 +65,9 @@ Lanelet2MapLoaderNode::Lanelet2MapLoaderNode(const rclcpp::NodeOptions & options
   // subscription
   sub_map_projector_info_ = this->create_subscription<MapProjectorInfo::Message>(
     MapProjectorInfo::name, autoware::component_interface_specs::get_qos<MapProjectorInfo>(),
-    [this](const MapProjectorInfo::Message::ConstSharedPtr msg) { on_map_projector_info(msg); });
+    [this](const AUTOWARE_MESSAGE_CONST_SHARED_PTR(MapProjectorInfo::Message) & msg) {
+      on_map_projector_info(msg);
+    });
 
   declare_parameter<bool>("allow_unsupported_version");
   declare_parameter<std::string>("lanelet2_map_path");
@@ -74,7 +76,7 @@ Lanelet2MapLoaderNode::Lanelet2MapLoaderNode(const rclcpp::NodeOptions & options
 }
 
 void Lanelet2MapLoaderNode::on_map_projector_info(
-  const MapProjectorInfo::Message::ConstSharedPtr msg)
+  const AUTOWARE_MESSAGE_CONST_SHARED_PTR(MapProjectorInfo::Message) & msg)
 {
   const auto allow_unsupported_version = get_parameter("allow_unsupported_version").as_bool();
   const auto lanelet2_map_path = get_parameter("lanelet2_map_path").as_string();
