@@ -156,7 +156,9 @@ void Lanelet2MapLoaderNode::on_map_projector_info(
   // create publisher and publish
   pub_map_bin_ =
     create_publisher<VectorMap::Message>(VectorMap::name, rclcpp::QoS{1}.transient_local());
-  pub_map_bin_->publish(map_bin_msg);
+  auto output = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_map_bin_);
+  *output = map_bin_msg;
+  pub_map_bin_->publish(std::move(output));
   RCLCPP_INFO(get_logger(), "Succeeded to load lanelet2_map. Map is published.");
 }
 
