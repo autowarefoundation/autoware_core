@@ -20,10 +20,10 @@
 
 namespace autoware::map_loader
 {
-void create_metadata(
-  const std::map<std::string, PCDFileMetadata> & pcd_file_metadata_dict,
-  autoware_map_msgs::msg::PointCloudMapMetaData & metadata_msg)
+autoware_map_msgs::msg::PointCloudMapMetaData create_metadata(
+  const std::map<std::string, PCDFileMetadata> & pcd_file_metadata_dict)
 {
+  autoware_map_msgs::msg::PointCloudMapMetaData metadata_msg;
   metadata_msg.header.frame_id = "map";
   metadata_msg.header.stamp = rclcpp::Clock().now();
 
@@ -42,6 +42,8 @@ void create_metadata(
 
     metadata_msg.metadata_list.push_back(cell_metadata_with_id);
   }
+
+  return metadata_msg;
 }
 
 SelectedMapLoaderModule::SelectedMapLoaderModule(
@@ -60,9 +62,9 @@ SelectedMapLoaderModule::SelectedMapLoaderModule(
   durable_qos.transient_local();
   pub_metadata_ = node->create_publisher<autoware_map_msgs::msg::PointCloudMapMetaData>(
     "output/pointcloud_map_metadata", durable_qos);
-  AUTOWARE_MESSAGE_SHARED_PTR(autoware_map_msgs::msg::PointCloudMapMetaData) metadata_msg =
-    ALLOCATE_OUTPUT_MESSAGE_SHARED(pub_metadata_);
-  create_metadata(all_pcd_file_metadata_dict_, *metadata_msg);
+  AUTOWARE_MESSAGE_UNIQUE_PTR(autoware_map_msgs::msg::PointCloudMapMetaData) metadata_msg =
+    ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_metadata_);
+  *metadata_msg = create_metadata(all_pcd_file_metadata_dict_);
   pub_metadata_->publish(std::move(metadata_msg));
 }
 

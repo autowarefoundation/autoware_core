@@ -50,8 +50,8 @@ PointcloudMapLoaderModule::PointcloudMapLoaderModule(
   pub_pointcloud_map_ =
     node->create_publisher<sensor_msgs::msg::PointCloud2>(publisher_name, durable_qos);
 
-  AUTOWARE_MESSAGE_SHARED_PTR(sensor_msgs::msg::PointCloud2) pcd =
-    ALLOCATE_OUTPUT_MESSAGE_SHARED(pub_pointcloud_map_);
+  AUTOWARE_MESSAGE_UNIQUE_PTR(sensor_msgs::msg::PointCloud2) pcd =
+    ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_pointcloud_map_);
   if (use_downsample) {
     const float leaf_size = static_cast<float>(node->declare_parameter<float>("leaf_size"));
     load_pcd_files(pcd_paths, leaf_size, *pcd);
