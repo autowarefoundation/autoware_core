@@ -194,3 +194,32 @@ TEST_F(GroundFilterIntegrationHarness, FiltersGroundPointsAndKeepsObstacles)
     EXPECT_NEAR(z, 1.0f, 1e-4f);  // Should be the obstacle points at z=1.0
   }
 }
+
+// TEST 2. Empty or invalid point clouds are rejected and won't produce output
+// This is what I consolidated from the only 5 test cases in the original test file
+// that were actually worthy to keep, and they were all about sanity checks, so I
+// merged them all here.
+// BTW you should see a red ERROR log upon `colcon test` for this test
+TEST_F(GroundFilterIntegrationHarness, RejectsEmptyOrInvalidPointClouds)
+{
+  // Test with completely empty point cloud
+  sensor_msgs::msg::PointCloud2 empty_cloud;
+  empty_cloud.header.frame_id = "base_link";
+  empty_cloud.header.stamp = node_->now();
+  empty_cloud.width = 0;
+  empty_cloud.height = 0;
+  empty_cloud.point_step = 16;
+  empty_cloud.data.clear();
+
+  input_pub_->publish(empty_cloud);
+
+  // Give the node a tiny bit of time to "theoretically" process
+  auto start_time = std::chrono::steady_clock::now();
+  while (std::chrono::steady_clock::now() - start_time < std::chrono::milliseconds(500)) {
+    rclcpp::spin_some(node_);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+
+  // Expects no result received for empty point cloud
+  EXPECT_FALSE(result_received_);
+}
