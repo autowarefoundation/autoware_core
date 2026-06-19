@@ -64,6 +64,7 @@ TEST(VehicleVelocityConverterConvert, AxisMappingAndScale)
 {
   const auto msg = make_report(2.0, 0.1, 0.3);
   const VehicleVelocityConverter converter(1.5, 0.2, 0.1);
+
   const auto twist = converter.convert(msg);
 
   // Longitudinal velocity is multiplied by the scale factor, lateral and yaw mapped directly.
@@ -71,7 +72,6 @@ TEST(VehicleVelocityConverterConvert, AxisMappingAndScale)
   EXPECT_FLOAT_EQ(twist.twist.twist.linear.x, 2.0 * 1.5);
   EXPECT_FLOAT_EQ(twist.twist.twist.linear.y, 0.1);
   EXPECT_FLOAT_EQ(twist.twist.twist.angular.z, 0.3);
-
   // Unused twist components must stay zero.
   EXPECT_EQ(twist.twist.twist.linear.z, 0.0);
   EXPECT_EQ(twist.twist.twist.angular.x, 0.0);
@@ -82,6 +82,7 @@ TEST(VehicleVelocityConverterConvert, FullCovarianceLayout)
 {
   const auto msg = make_report(2.0, 0.1, 0.3);
   const VehicleVelocityConverter converter(1.5, 0.2, 0.1);
+
   const auto twist = converter.convert(msg);
 
   // Diagonal entries: vx/wz variances from stddev^2, the rest large fixed values.
@@ -91,7 +92,6 @@ TEST(VehicleVelocityConverterConvert, FullCovarianceLayout)
   EXPECT_DOUBLE_EQ(twist.twist.covariance[COV_IDX::ROLL_ROLL], 10000.0);
   EXPECT_DOUBLE_EQ(twist.twist.covariance[COV_IDX::PITCH_PITCH], 10000.0);
   EXPECT_DOUBLE_EQ(twist.twist.covariance[COV_IDX::YAW_YAW], 0.1 * 0.1);
-
   // All 30 off-diagonal entries must be zero.
   expect_off_diagonal_zero(twist);
 }
@@ -100,6 +100,7 @@ TEST(VehicleVelocityConverterConvert, HeaderCopiedVerbatim)
 {
   const auto msg = make_report(2.0, 0.1, 0.3, "custom_frame");
   const VehicleVelocityConverter converter(1.0, 0.2, 0.1);
+
   const auto twist = converter.convert(msg);
 
   EXPECT_EQ(twist.header.frame_id, "custom_frame");
@@ -111,6 +112,7 @@ TEST(VehicleVelocityConverterConvert, ZeroScaleFactor)
 {
   const auto msg = make_report(2.0, 0.1, 0.3);
   const VehicleVelocityConverter converter(0.0, 0.2, 0.1);
+
   const auto twist = converter.convert(msg);
 
   EXPECT_EQ(twist.twist.twist.linear.x, 0.0);
@@ -123,12 +125,12 @@ TEST(VehicleVelocityConverterConvert, NegativeVelocityAndScale)
 {
   const auto msg = make_report(-2.0, -0.1, -0.3);
   const VehicleVelocityConverter converter(-1.5, 0.2, 0.1);
+
   const auto twist = converter.convert(msg);
 
   EXPECT_FLOAT_EQ(twist.twist.twist.linear.x, -2.0 * -1.5);
   EXPECT_FLOAT_EQ(twist.twist.twist.linear.y, -0.1);
   EXPECT_FLOAT_EQ(twist.twist.twist.angular.z, -0.3);
-
   // Variances stay non-negative (stddev squared) regardless of velocity sign.
   EXPECT_DOUBLE_EQ(twist.twist.covariance[COV_IDX::X_X], 0.2 * 0.2);
   EXPECT_DOUBLE_EQ(twist.twist.covariance[COV_IDX::YAW_YAW], 0.1 * 0.1);
