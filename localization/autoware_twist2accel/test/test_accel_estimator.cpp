@@ -15,12 +15,15 @@
 #include "../src/accel_estimator.hpp"
 
 #include <geometry_msgs/msg/accel_with_covariance.hpp>
-#include <geometry_msgs/msg/twist.hpp>
+#include <geometry_msgs/msg/twist_stamped.hpp>
+#include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
+#include <nav_msgs/msg/odometry.hpp>
 
 #include <gtest/gtest.h>
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 
 using autoware::twist2accel::AccelEstimator;
 using autoware::twist2accel::g_angular_accel_variance;
@@ -31,33 +34,38 @@ namespace
 {
 constexpr double kTol = 1e-9;
 
-// Build a geometry_msgs Twist from its six scalar components for concise tests.
-geometry_msgs::msg::Twist make_twist(
-  const double linear_x, const double linear_y, const double linear_z, const double angular_x,
-  const double angular_y, const double angular_z)
+// Build a stamped geometry_msgs Twist from a timestamp (seconds) and its six
+// scalar components. The estimator derives dt from successive header stamps, so
+// each sample carries its own timestamp.
+geometry_msgs::msg::TwistStamped make_twist(
+  const double stamp_sec, const double linear_x, const double linear_y, const double linear_z,
+  const double angular_x, const double angular_y, const double angular_z)
 {
-  geometry_msgs::msg::Twist twist;
-  twist.linear.x = linear_x;
-  twist.linear.y = linear_y;
-  twist.linear.z = linear_z;
-  twist.angular.x = angular_x;
-  twist.angular.y = angular_y;
-  twist.angular.z = angular_z;
+  geometry_msgs::msg::TwistStamped twist;
+  const auto whole_sec = static_cast<int32_t>(stamp_sec);
+  twist.header.stamp.sec = whole_sec;
+  twist.header.stamp.nanosec = static_cast<uint32_t>((stamp_sec - whole_sec) * 1e9);
+  twist.twist.linear.x = linear_x;
+  twist.twist.linear.y = linear_y;
+  twist.twist.linear.z = linear_z;
+  twist.twist.angular.x = angular_x;
+  twist.twist.angular.y = angular_y;
+  twist.twist.angular.z = angular_z;
   return twist;
 }
 }  // namespace
 
-// On the very first sample the per-component low-pass filters are uninitialized,
-// so filter(u) returns u unchanged. The estimator therefore reports the raw
-// finite difference (curr - prev) / dt on every channel.
+// On the first computed estimate the per-component low-pass filters are
+// uninitialized, so filter(u) returns u unchanged. The estimator therefore
+// reports the raw finite difference (curr - prev) / dt on every channel.
 TEST(AccelEstimatorTest, FiniteDifferenceNoSmoothingOnFirstSample)
 {
   AccelEstimator estimator(0.9);
-  const auto prev = make_twist(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
-  const auto curr = make_twist(2.0, 4.0, 6.0, 0.2, 0.4, 0.6);
-  const double dt = 0.5;
+  const auto prev = make_twist(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+  const auto curr = make_twist(0.5, 2.0, 4.0, 6.0, 0.2, 0.4, 0.6);
 
-  const geometry_msgs::msg::AccelWithCovariance accel = estimator.estimate(prev, curr, dt);
+  estimator.estimate(prev);
+  const geometry_msgs::msg::AccelWithCovariance accel = estimator.estimate(curr).accel;
 
   EXPECT_NEAR(accel.accel.linear.x, 4.0, kTol);   // (2.0 - 0.0) / 0.5
   EXPECT_NEAR(accel.accel.linear.y, 8.0, kTol);   // (4.0 - 0.0) / 0.5
@@ -72,9 +80,11 @@ TEST(AccelEstimatorTest, FiniteDifferenceNoSmoothingOnFirstSample)
 TEST(AccelEstimatorTest, ZeroVelocityChangeYieldsZeroAccel)
 {
   AccelEstimator estimator(0.5);
-  const auto twist = make_twist(1.0, -2.0, 3.0, 0.1, -0.2, 0.3);
+  const auto prev = make_twist(0.0, 1.0, -2.0, 3.0, 0.1, -0.2, 0.3);
+  const auto curr = make_twist(0.1, 1.0, -2.0, 3.0, 0.1, -0.2, 0.3);
 
-  const geometry_msgs::msg::AccelWithCovariance accel = estimator.estimate(twist, twist, 0.1);
+  estimator.estimate(prev);
+  const geometry_msgs::msg::AccelWithCovariance accel = estimator.estimate(curr).accel;
 
   EXPECT_NEAR(accel.accel.linear.x, 0.0, kTol);
   EXPECT_NEAR(accel.accel.linear.y, 0.0, kTol);
@@ -90,24 +100,26 @@ TEST(AccelEstimatorTest, LowPassSmoothingAcrossSamples)
 {
   const double gain = 0.9;
   AccelEstimator estimator(gain);
-  const double dt = 1.0;
+
+  // Establish the previous sample at t = 0; subsequent samples are 1 s apart.
+  estimator.estimate(make_twist(0.0, 0, 0, 0, 0, 0, 0));
 
   // First sample: linear_x ramps 0 -> 1, raw accel = 1.0, LPF returns it as-is.
   const geometry_msgs::msg::AccelWithCovariance first =
-    estimator.estimate(make_twist(0.0, 0, 0, 0, 0, 0), make_twist(1.0, 0, 0, 0, 0, 0), dt);
+    estimator.estimate(make_twist(1.0, 1.0, 0, 0, 0, 0, 0)).accel;
   EXPECT_NEAR(first.accel.linear.x, 1.0, kTol);
 
   // Second sample: linear_x ramps 1 -> 3, raw accel = 2.0.
   // Smoothed: 0.9 * 1.0 + 0.1 * 2.0 = 1.1.
   const geometry_msgs::msg::AccelWithCovariance second =
-    estimator.estimate(make_twist(1.0, 0, 0, 0, 0, 0), make_twist(3.0, 0, 0, 0, 0, 0), dt);
+    estimator.estimate(make_twist(2.0, 3.0, 0, 0, 0, 0, 0)).accel;
   EXPECT_NEAR(second.accel.linear.x, gain * 1.0 + (1.0 - gain) * 2.0, kTol);
   EXPECT_NEAR(second.accel.linear.x, 1.1, kTol);
 
   // Third sample: linear_x ramps 3 -> 3, raw accel = 0.0.
   // Smoothed: 0.9 * 1.1 + 0.1 * 0.0 = 0.99.
   const geometry_msgs::msg::AccelWithCovariance third =
-    estimator.estimate(make_twist(3.0, 0, 0, 0, 0, 0), make_twist(3.0, 0, 0, 0, 0, 0), dt);
+    estimator.estimate(make_twist(3.0, 3.0, 0, 0, 0, 0, 0)).accel;
   EXPECT_NEAR(third.accel.linear.x, gain * 1.1 + (1.0 - gain) * 0.0, kTol);
   EXPECT_NEAR(third.accel.linear.x, 0.99, kTol);
 }
@@ -117,25 +129,25 @@ TEST(AccelEstimatorTest, LowPassSmoothingAcrossSamples)
 // estimator never divides by zero or flips sign.
 TEST(AccelEstimatorTest, DtClampForNearSimultaneousStamps)
 {
-  const auto prev = make_twist(0.0, 0, 0, 0, 0, 0);
-  const auto curr = make_twist(1.0, 0, 0, 0, 0, 0);
-
-  // dt == 0 is clamped to g_min_dt: accel = 1.0 / g_min_dt.
+  // dt == 0 (equal stamps) is clamped to g_min_dt: accel = 1.0 / g_min_dt.
   AccelEstimator zero_dt_estimator(0.0);  // gain 0 -> filter passes raw value through
+  zero_dt_estimator.estimate(make_twist(1.0, 0, 0, 0, 0, 0, 0));
   const geometry_msgs::msg::AccelWithCovariance zero_dt =
-    zero_dt_estimator.estimate(prev, curr, 0.0);
+    zero_dt_estimator.estimate(make_twist(1.0, 1.0, 0, 0, 0, 0, 0)).accel;
   EXPECT_NEAR(zero_dt.accel.linear.x, 1.0 / g_min_dt, kTol);
 
-  // Negative dt is also clamped to g_min_dt, not used directly.
+  // Negative dt (out-of-order stamps) is also clamped to g_min_dt, not used directly.
   AccelEstimator negative_dt_estimator(0.0);
+  negative_dt_estimator.estimate(make_twist(5.0, 0, 0, 0, 0, 0, 0));
   const geometry_msgs::msg::AccelWithCovariance negative_dt =
-    negative_dt_estimator.estimate(prev, curr, -5.0);
+    negative_dt_estimator.estimate(make_twist(1.0, 1.0, 0, 0, 0, 0, 0)).accel;
   EXPECT_NEAR(negative_dt.accel.linear.x, 1.0 / g_min_dt, kTol);
 
   // dt above the threshold is used unchanged.
   AccelEstimator large_dt_estimator(0.0);
+  large_dt_estimator.estimate(make_twist(0.0, 0, 0, 0, 0, 0, 0));
   const geometry_msgs::msg::AccelWithCovariance large_dt =
-    large_dt_estimator.estimate(prev, curr, 2.0);
+    large_dt_estimator.estimate(make_twist(2.0, 1.0, 0, 0, 0, 0, 0)).accel;
   EXPECT_NEAR(large_dt.accel.linear.x, 1.0 / 2.0, kTol);
 }
 
@@ -144,14 +156,16 @@ TEST(AccelEstimatorTest, DtClampForNearSimultaneousStamps)
 TEST(AccelEstimatorTest, ChannelsAreIndependent)
 {
   AccelEstimator estimator(0.5);
-  const double dt = 1.0;
+
+  // Establish the previous sample at t = 0; subsequent samples are 1 s apart.
+  estimator.estimate(make_twist(0.0, 0, 0, 0, 0, 0, 0));
 
   // Prime only linear_x with a non-zero history.
-  estimator.estimate(make_twist(0, 0, 0, 0, 0, 0), make_twist(2.0, 0, 0, 0, 0, 0), dt);
+  estimator.estimate(make_twist(1.0, 2.0, 0, 0, 0, 0, 0));
 
   // Now move only angular_z; linear_x sees raw accel 0 but retains its history.
   const geometry_msgs::msg::AccelWithCovariance accel =
-    estimator.estimate(make_twist(2.0, 0, 0, 0, 0, 0), make_twist(2.0, 0, 0, 0, 0, 1.0), dt);
+    estimator.estimate(make_twist(2.0, 2.0, 0, 0, 0, 0, 1.0)).accel;
 
   // linear_x: 0.5 * 2.0 (history) + 0.5 * 0.0 (raw) = 1.0. Its history is
   // preserved independently of the other channels.
@@ -175,10 +189,11 @@ TEST(AccelEstimatorTest, ChannelsAreIndependent)
 TEST(AccelEstimatorTest, CovarianceIsConstantDiagonal)
 {
   AccelEstimator estimator(0.9);
-  const auto prev = make_twist(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
-  const auto curr = make_twist(2.0, 4.0, 6.0, 0.2, 0.4, 0.6);
+  const auto prev = make_twist(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+  const auto curr = make_twist(0.5, 2.0, 4.0, 6.0, 0.2, 0.4, 0.6);
 
-  const geometry_msgs::msg::AccelWithCovariance accel = estimator.estimate(prev, curr, 0.5);
+  estimator.estimate(prev);
+  const geometry_msgs::msg::AccelWithCovariance accel = estimator.estimate(curr).accel;
 
   // Expected: a 36-entry array that is zero everywhere except the six diagonal
   // variances, set to the named public constants. The diagonal of a row-major
@@ -194,4 +209,77 @@ TEST(AccelEstimatorTest, CovarianceIsConstantDiagonal)
   for (std::size_t i = 0; i < expected.size(); ++i) {
     EXPECT_NEAR(accel.covariance[i], expected[i], kTol) << "covariance index " << i;
   }
+}
+
+// The first call has no previous sample to difference against, so it primes the
+// internal state and reports a zero acceleration with a zero covariance.
+TEST(AccelEstimatorTest, FirstCallReturnsZeroAccel)
+{
+  AccelEstimator estimator(0.9);
+
+  const geometry_msgs::msg::AccelWithCovariance accel =
+    estimator.estimate(make_twist(0.0, 1.0, 2.0, 3.0, 0.1, 0.2, 0.3)).accel;
+
+  EXPECT_NEAR(accel.accel.linear.x, 0.0, kTol);
+  EXPECT_NEAR(accel.accel.linear.y, 0.0, kTol);
+  EXPECT_NEAR(accel.accel.linear.z, 0.0, kTol);
+  EXPECT_NEAR(accel.accel.angular.x, 0.0, kTol);
+  EXPECT_NEAR(accel.accel.angular.y, 0.0, kTol);
+  EXPECT_NEAR(accel.accel.angular.z, 0.0, kTol);
+  for (const auto & covariance_entry : accel.covariance) {
+    EXPECT_NEAR(covariance_entry, 0.0, kTol);
+  }
+}
+
+// The TwistWithCovarianceStamped overload uses only the header and the nested
+// twist (the input covariance is dropped) before delegating to the primary
+// estimate(). Two samples 1 s apart on linear_x must yield the same raw finite
+// difference as the TwistStamped path, with the output header forwarded.
+TEST(AccelEstimatorTest, EstimateFromTwistWithCovarianceUsesHeaderAndTwist)
+{
+  AccelEstimator estimator(0.9);
+
+  geometry_msgs::msg::TwistWithCovarianceStamped prev_twist;
+  prev_twist.header.stamp.sec = 0;
+  prev_twist.twist.twist.linear.x = 0.0;
+  estimator.estimate(prev_twist);
+
+  geometry_msgs::msg::TwistWithCovarianceStamped curr_twist;
+  curr_twist.header.frame_id = "base_link";
+  curr_twist.header.stamp.sec = 1;
+  curr_twist.twist.twist.linear.x = 2.0;
+
+  const auto accel_msg = estimator.estimate(curr_twist);
+
+  // dt = 1 s, raw accel = (2.0 - 0.0) / 1.0 = 2.0, first LPF passes it through.
+  EXPECT_NEAR(accel_msg.accel.accel.linear.x, 2.0, kTol);
+  // The header is forwarded from the input message.
+  EXPECT_EQ(accel_msg.header.frame_id, "base_link");
+  EXPECT_EQ(accel_msg.header.stamp.sec, 1);
+}
+
+// The Odometry overload uses only the header and the nested twist (the pose is
+// ignored) before delegating to the primary estimate().
+TEST(AccelEstimatorTest, EstimateFromOdometryUsesHeaderAndTwistIgnoringPose)
+{
+  AccelEstimator estimator(0.9);
+
+  nav_msgs::msg::Odometry prev_odom;
+  prev_odom.header.stamp.sec = 0;
+  prev_odom.twist.twist.linear.x = 0.0;
+  estimator.estimate(prev_odom);
+
+  nav_msgs::msg::Odometry curr_odom;
+  curr_odom.header.frame_id = "base_link";
+  curr_odom.header.stamp.sec = 1;
+  curr_odom.twist.twist.linear.x = 2.0;
+  curr_odom.pose.pose.position.x = 123.0;  // pose must not affect the estimate
+
+  const auto accel_msg = estimator.estimate(curr_odom);
+
+  // dt = 1 s, raw accel = (2.0 - 0.0) / 1.0 = 2.0, first LPF passes it through.
+  EXPECT_NEAR(accel_msg.accel.accel.linear.x, 2.0, kTol);
+  // The header is forwarded from the input message.
+  EXPECT_EQ(accel_msg.header.frame_id, "base_link");
+  EXPECT_EQ(accel_msg.header.stamp.sec, 1);
 }

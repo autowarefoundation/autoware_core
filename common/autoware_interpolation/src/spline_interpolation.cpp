@@ -15,6 +15,8 @@
 #include "autoware/interpolation/spline_interpolation.hpp"
 
 #include <cstdint>
+#include <stdexcept>
+#include <string>
 #include <vector>
 
 namespace autoware::interpolation
@@ -139,6 +141,17 @@ std::vector<double> splineByAkima(
 
 Eigen::Index SplineInterpolation::get_index(const double & key) const
 {
+  // Precondition: the spline must have been built (calcSplineCoefficients) so that base_keys_
+  // holds at least two knots. The vector getters guarantee this via validateKeys(); the scalar
+  // getters skip query-key range validation but still rely on a built spline, so guard here to
+  // avoid undefined behavior (std::clamp with lo > hi and out-of-bounds reads of base_keys_/a_/...)
+  // when invoked on a default-constructed or otherwise un-built SplineInterpolation.
+  if (base_keys_.size() < 2) {
+    throw std::runtime_error(
+      "SplineInterpolation::get_index called before the spline was built (base_keys_.size() = " +
+      std::to_string(base_keys_.size()) + ").");
+  }
+
   const auto it = std::lower_bound(base_keys_.begin(), base_keys_.end(), key);
   return std::clamp(
     static_cast<int>(std::distance(base_keys_.begin(), it)) - 1, 0,
@@ -193,19 +206,38 @@ void SplineInterpolation::calcSplineCoefficients(
   base_keys_ = base_keys;
 }
 
+double SplineInterpolation::getSplineInterpolatedValue(const double query_key) const
+{
+  const auto idx = get_index(query_key);
+  const auto dx = query_key - base_keys_[idx];
+  return a_[idx] * dx * dx * dx + b_[idx] * dx * dx + c_[idx] * dx + d_[idx];
+}
+
+double SplineInterpolation::getSplineInterpolatedDiffValue(const double query_key) const
+{
+  const auto idx = get_index(query_key);
+  const auto dx = query_key - base_keys_[idx];
+  return 3 * a_[idx] * dx * dx + 2 * b_[idx] * dx + c_[idx];
+}
+
+double SplineInterpolation::getSplineInterpolatedQuadDiffValue(const double query_key) const
+{
+  const auto idx = get_index(query_key);
+  const auto dx = query_key - base_keys_[idx];
+  return 6 * a_[idx] * dx + 2 * b_[idx];
+}
+
 std::vector<double> SplineInterpolation::getSplineInterpolatedValues(
   const std::vector<double> & query_keys) const
 {
-  // throw exceptions for invalid arguments
+  // throw exceptions for invalid arguments. validateKeys() also crops the end query keys that are
+  // slightly out of the base-key range due to floating-point error, so iterate the validated copy.
   const auto validated_query_keys = autoware::interpolation::validateKeys(base_keys_, query_keys);
   std::vector<double> interpolated_values;
-  interpolated_values.reserve(query_keys.size());
+  interpolated_values.reserve(validated_query_keys.size());
 
-  for (const auto & key : query_keys) {
-    const auto idx = get_index(key);
-    const auto dx = key - base_keys_[idx];
-    interpolated_values.emplace_back(
-      a_[idx] * dx * dx * dx + b_[idx] * dx * dx + c_[idx] * dx + d_[idx]);
+  for (const auto & key : validated_query_keys) {
+    interpolated_values.emplace_back(getSplineInterpolatedValue(key));
   }
 
   return interpolated_values;
@@ -214,15 +246,14 @@ std::vector<double> SplineInterpolation::getSplineInterpolatedValues(
 std::vector<double> SplineInterpolation::getSplineInterpolatedDiffValues(
   const std::vector<double> & query_keys) const
 {
-  // throw exceptions for invalid arguments
+  // throw exceptions for invalid arguments. validateKeys() also crops the end query keys that are
+  // slightly out of the base-key range due to floating-point error, so iterate the validated copy.
   const auto validated_query_keys = autoware::interpolation::validateKeys(base_keys_, query_keys);
   std::vector<double> interpolated_diff_values;
-  interpolated_diff_values.reserve(query_keys.size());
+  interpolated_diff_values.reserve(validated_query_keys.size());
 
-  for (const auto & key : query_keys) {
-    const auto idx = get_index(key);
-    const auto dx = key - base_keys_[idx];
-    interpolated_diff_values.emplace_back(3 * a_[idx] * dx * dx + 2 * b_[idx] * dx + c_[idx]);
+  for (const auto & key : validated_query_keys) {
+    interpolated_diff_values.emplace_back(getSplineInterpolatedDiffValue(key));
   }
 
   return interpolated_diff_values;
@@ -231,15 +262,14 @@ std::vector<double> SplineInterpolation::getSplineInterpolatedDiffValues(
 std::vector<double> SplineInterpolation::getSplineInterpolatedQuadDiffValues(
   const std::vector<double> & query_keys) const
 {
-  // throw exceptions for invalid arguments
+  // throw exceptions for invalid arguments. validateKeys() also crops the end query keys that are
+  // slightly out of the base-key range due to floating-point error, so iterate the validated copy.
   const auto validated_query_keys = autoware::interpolation::validateKeys(base_keys_, query_keys);
   std::vector<double> interpolated_quad_diff_values;
-  interpolated_quad_diff_values.reserve(query_keys.size());
+  interpolated_quad_diff_values.reserve(validated_query_keys.size());
 
-  for (const auto & key : query_keys) {
-    const auto idx = get_index(key);
-    const auto dx = key - base_keys_[idx];
-    interpolated_quad_diff_values.emplace_back(6 * a_[idx] * dx + 2 * b_[idx]);
+  for (const auto & key : validated_query_keys) {
+    interpolated_quad_diff_values.emplace_back(getSplineInterpolatedQuadDiffValue(key));
   }
 
   return interpolated_quad_diff_values;

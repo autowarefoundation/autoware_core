@@ -77,6 +77,24 @@ public:
   std::vector<double> getSplineInterpolatedQuadDiffValues(
     const std::vector<double> & query_keys) const;
 
+  //!< @brief get the value of spline interpolation at a single sampling point.
+  //!< @details Scalar counterpart of getSplineInterpolatedValues that evaluates a single
+  //            query key without allocating any intermediate std::vector. The query key is
+  //            not validated against the knot range; callers that need range checking should
+  //            clamp the key beforehand (this mirrors the per-key behavior of the vector
+  //            overload, whose get_index() clamps the segment index).
+  double getSplineInterpolatedValue(const double query_key) const;
+
+  //!< @brief get the 1st differential value of spline interpolation at a single sampling point.
+  //!< @details Scalar counterpart of getSplineInterpolatedDiffValues. See
+  //            getSplineInterpolatedValue for the validation/clamping contract.
+  double getSplineInterpolatedDiffValue(const double query_key) const;
+
+  //!< @brief get the 2nd differential value of spline interpolation at a single sampling point.
+  //!< @details Scalar counterpart of getSplineInterpolatedQuadDiffValues. See
+  //            getSplineInterpolatedValue for the validation/clamping contract.
+  double getSplineInterpolatedQuadDiffValue(const double query_key) const;
+
   size_t getSize() const { return base_keys_.size(); }
 
   //!< @brief Get the spline coefficients as a concatenated vector.
