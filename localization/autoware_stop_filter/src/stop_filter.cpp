@@ -44,8 +44,7 @@ autoware_internal_debug_msgs::msg::BoolStamped StopFilter::create_stop_flag_msg(
   return stop_flag_msg;
 }
 
-nav_msgs::msg::Odometry StopFilter::create_filtered_msg(
-  const nav_msgs::msg::Odometry & input) const
+nav_msgs::msg::Odometry StopFilter::create_filtered_msg(const nav_msgs::msg::Odometry & input) const
 {
   nav_msgs::msg::Odometry filtered_msg = input;
 
