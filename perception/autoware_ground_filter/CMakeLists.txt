@@ -34,6 +34,8 @@ rclcpp_components_register_node(${PROJECT_NAME}
   EXECUTABLE ground_filter_node)
 
 if(BUILD_TESTING)
+  find_package(autoware_test_utils REQUIRED)
+
   ament_add_ros_isolated_gtest(test_ground_filter
     test/test_ground_filter.cpp
   )
@@ -42,12 +44,15 @@ if(BUILD_TESTING)
     ${PROJECT_NAME}
   )
 
-  ament_add_ros_isolated_gtest(test_node
-    test/test_node.cpp
+  ament_add_ros_isolated_gtest(test_ground_filter_integration
+    test/test_ground_filter_integration.cpp
   )
-  target_include_directories(test_node PRIVATE src)
-  target_link_libraries(test_node
+  target_include_directories(test_ground_filter_integration PRIVATE src)
+  target_link_libraries(test_ground_filter_integration
     ${PROJECT_NAME}
+  )
+  ament_target_dependencies(test_ground_filter_integration
+    autoware_test_utils
   )
 
   ament_add_ros_isolated_gtest(test_sanity_check
