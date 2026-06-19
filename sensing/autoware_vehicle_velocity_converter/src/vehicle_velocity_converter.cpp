@@ -18,23 +18,28 @@
 
 namespace autoware::vehicle_velocity_converter
 {
-geometry_msgs::msg::TwistWithCovarianceStamped convert(
-  const autoware_vehicle_msgs::msg::VelocityReport & msg, const double speed_scale_factor,
-  const double stddev_vx, const double stddev_wz)
+VehicleVelocityConverter::VehicleVelocityConverter(
+  const double speed_scale_factor, const double stddev_vx, const double stddev_wz)
+: speed_scale_factor_(speed_scale_factor), stddev_vx_(stddev_vx), stddev_wz_(stddev_wz)
+{
+}
+
+geometry_msgs::msg::TwistWithCovarianceStamped VehicleVelocityConverter::convert(
+  const autoware_vehicle_msgs::msg::VelocityReport & msg) const
 {
   using COV_IDX = autoware_utils_geometry::xyzrpy_covariance_index::XYZRPY_COV_IDX;
 
   geometry_msgs::msg::TwistWithCovarianceStamped twist_with_covariance_msg;
   twist_with_covariance_msg.header = msg.header;
-  twist_with_covariance_msg.twist.twist.linear.x = msg.longitudinal_velocity * speed_scale_factor;
+  twist_with_covariance_msg.twist.twist.linear.x = msg.longitudinal_velocity * speed_scale_factor_;
   twist_with_covariance_msg.twist.twist.linear.y = msg.lateral_velocity;
   twist_with_covariance_msg.twist.twist.angular.z = msg.heading_rate;
-  twist_with_covariance_msg.twist.covariance[COV_IDX::X_X] = stddev_vx * stddev_vx;
+  twist_with_covariance_msg.twist.covariance[COV_IDX::X_X] = stddev_vx_ * stddev_vx_;
   twist_with_covariance_msg.twist.covariance[COV_IDX::Y_Y] = 10000.0;
   twist_with_covariance_msg.twist.covariance[COV_IDX::Z_Z] = 10000.0;
   twist_with_covariance_msg.twist.covariance[COV_IDX::ROLL_ROLL] = 10000.0;
   twist_with_covariance_msg.twist.covariance[COV_IDX::PITCH_PITCH] = 10000.0;
-  twist_with_covariance_msg.twist.covariance[COV_IDX::YAW_YAW] = stddev_wz * stddev_wz;
+  twist_with_covariance_msg.twist.covariance[COV_IDX::YAW_YAW] = stddev_wz_ * stddev_wz_;
 
   return twist_with_covariance_msg;
 }

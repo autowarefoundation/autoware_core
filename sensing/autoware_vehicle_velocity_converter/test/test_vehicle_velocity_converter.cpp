@@ -24,7 +24,7 @@
 #include <set>
 #include <string>
 
-using autoware::vehicle_velocity_converter::convert;
+using autoware::vehicle_velocity_converter::VehicleVelocityConverter;
 using autoware_vehicle_msgs::msg::VelocityReport;
 using geometry_msgs::msg::TwistWithCovarianceStamped;
 using COV_IDX = autoware_utils_geometry::xyzrpy_covariance_index::XYZRPY_COV_IDX;
@@ -63,7 +63,8 @@ void expect_off_diagonal_zero(const TwistWithCovarianceStamped & twist)
 TEST(VehicleVelocityConverterConvert, AxisMappingAndScale)
 {
   const auto msg = make_report(2.0, 0.1, 0.3);
-  const auto twist = convert(msg, 1.5, 0.2, 0.1);
+  const VehicleVelocityConverter converter(1.5, 0.2, 0.1);
+  const auto twist = converter.convert(msg);
 
   // Longitudinal velocity is multiplied by the scale factor, lateral and yaw mapped directly.
   EXPECT_DOUBLE_EQ(twist.twist.twist.linear.x, 2.0F * 1.5);
@@ -79,7 +80,8 @@ TEST(VehicleVelocityConverterConvert, AxisMappingAndScale)
 TEST(VehicleVelocityConverterConvert, FullCovarianceLayout)
 {
   const auto msg = make_report(2.0, 0.1, 0.3);
-  const auto twist = convert(msg, 1.5, 0.2, 0.1);
+  const VehicleVelocityConverter converter(1.5, 0.2, 0.1);
+  const auto twist = converter.convert(msg);
 
   // Diagonal entries: vx/wz variances from stddev^2, the rest large fixed values.
   EXPECT_DOUBLE_EQ(twist.twist.covariance[COV_IDX::X_X], 0.2 * 0.2);
@@ -96,7 +98,8 @@ TEST(VehicleVelocityConverterConvert, FullCovarianceLayout)
 TEST(VehicleVelocityConverterConvert, HeaderCopiedVerbatim)
 {
   const auto msg = make_report(2.0, 0.1, 0.3, "custom_frame");
-  const auto twist = convert(msg, 1.0, 0.2, 0.1);
+  const VehicleVelocityConverter converter(1.0, 0.2, 0.1);
+  const auto twist = converter.convert(msg);
 
   EXPECT_EQ(twist.header.frame_id, "custom_frame");
   EXPECT_EQ(twist.header.stamp.sec, msg.header.stamp.sec);
@@ -106,7 +109,8 @@ TEST(VehicleVelocityConverterConvert, HeaderCopiedVerbatim)
 TEST(VehicleVelocityConverterConvert, ZeroScaleFactor)
 {
   const auto msg = make_report(2.0, 0.1, 0.3);
-  const auto twist = convert(msg, 0.0, 0.2, 0.1);
+  const VehicleVelocityConverter converter(0.0, 0.2, 0.1);
+  const auto twist = converter.convert(msg);
 
   EXPECT_EQ(twist.twist.twist.linear.x, 0.0);
   // Lateral and yaw are unaffected by the scale factor.
@@ -117,7 +121,8 @@ TEST(VehicleVelocityConverterConvert, ZeroScaleFactor)
 TEST(VehicleVelocityConverterConvert, NegativeVelocityAndScale)
 {
   const auto msg = make_report(-2.0, -0.1, -0.3);
-  const auto twist = convert(msg, -1.5, 0.2, 0.1);
+  const VehicleVelocityConverter converter(-1.5, 0.2, 0.1);
+  const auto twist = converter.convert(msg);
 
   EXPECT_DOUBLE_EQ(twist.twist.twist.linear.x, -2.0F * -1.5);
   EXPECT_DOUBLE_EQ(twist.twist.twist.linear.y, static_cast<double>(-0.1F));

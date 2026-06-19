@@ -40,9 +40,7 @@ private:
     twist_with_covariance_pub_;
 
   std::string frame_id_;
-  double stddev_vx_;
-  double stddev_wz_;
-  double speed_scale_factor_;
+  VehicleVelocityConverter converter_;
 };
 }  // namespace autoware::vehicle_velocity_converter
 

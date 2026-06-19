@@ -21,9 +21,10 @@ namespace autoware::vehicle_velocity_converter
 VehicleVelocityConverterNode::VehicleVelocityConverterNode(const rclcpp::NodeOptions & options)
 : rclcpp::Node("vehicle_velocity_converter", options),
   frame_id_(declare_parameter<std::string>("frame_id")),
-  stddev_vx_(declare_parameter<double>("velocity_stddev_xx")),
-  stddev_wz_(declare_parameter<double>("angular_velocity_stddev_zz")),
-  speed_scale_factor_(declare_parameter<double>("speed_scale_factor"))
+  converter_(
+    declare_parameter<double>("speed_scale_factor"),
+    declare_parameter<double>("velocity_stddev_xx"),
+    declare_parameter<double>("angular_velocity_stddev_zz"))
 {
   vehicle_report_sub_ = create_subscription<autoware_vehicle_msgs::msg::VelocityReport>(
     "velocity_status", rclcpp::QoS{10},
@@ -42,7 +43,7 @@ void VehicleVelocityConverterNode::callback_velocity_report(
   }
 
   // set twist with covariance msg from vehicle report msg
-  twist_with_covariance_pub_->publish(convert(*msg, speed_scale_factor_, stddev_vx_, stddev_wz_));
+  twist_with_covariance_pub_->publish(converter_.convert(*msg));
 }
 }  // namespace autoware::vehicle_velocity_converter
 
