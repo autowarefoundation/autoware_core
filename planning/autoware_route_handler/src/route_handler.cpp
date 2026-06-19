@@ -1309,10 +1309,12 @@ std::optional<size_t> RouteHandler::findNextLaneSegmentIndex(const size_t from_i
   }
 
   size_t index = from_index + 1;
-  while (index < route_ptr_->segments.size() && is_area_route_segment(route_ptr_->segments.at(index))) {
+  while (index < route_ptr_->segments.size() &&
+         is_area_route_segment(route_ptr_->segments.at(index))) {
     ++index;
   }
-  if (index >= route_ptr_->segments.size() || is_area_route_segment(route_ptr_->segments.at(index))) {
+  if (
+    index >= route_ptr_->segments.size() || is_area_route_segment(route_ptr_->segments.at(index))) {
     return std::nullopt;
   }
   return index;
@@ -2487,8 +2489,7 @@ std::optional<lanelet::ConstLanelet> RouteHandler::getGoalRoadLaneletForCheckpoi
       candidates_at_goal.push_back(candidate);
     }
   }
-  const auto & selection_pool =
-    candidates_at_goal.empty() ? candidates : candidates_at_goal;
+  const auto & selection_pool = candidates_at_goal.empty() ? candidates : candidates_at_goal;
 
   if (
     const auto closest_lanelet =
