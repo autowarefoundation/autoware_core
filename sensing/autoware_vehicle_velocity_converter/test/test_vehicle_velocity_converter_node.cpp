@@ -29,13 +29,13 @@ using COV_IDX = autoware_utils_geometry::xyzrpy_covariance_index::XYZRPY_COV_IDX
 namespace
 {
 autoware_vehicle_msgs::msg::VelocityReport make_velocity_report(
-  const float longitudinal_velocity, const float lateral_velocity, const float heading_rate)
+  const double longitudinal_velocity, const double lateral_velocity, const double heading_rate)
 {
   autoware_vehicle_msgs::msg::VelocityReport report;
   report.header.frame_id = "base_link";
-  report.longitudinal_velocity = longitudinal_velocity;
-  report.lateral_velocity = lateral_velocity;
-  report.heading_rate = heading_rate;
+  report.longitudinal_velocity = static_cast<float>(longitudinal_velocity);
+  report.lateral_velocity = static_cast<float>(lateral_velocity);
+  report.heading_rate = static_cast<float>(heading_rate);
   return report;
 }
 }  // namespace
@@ -132,7 +132,7 @@ TEST_F(VehicleVelocityConverterNodeTest, ConvertsVelocityReportToTwist)
      {"velocity_stddev_xx", 0.2},
      {"angular_velocity_stddev_zz", 0.1},
      {"speed_scale_factor", 1.5}});
-  const auto report = make_velocity_report(2.0F, 0.1F, 0.3F);
+  const auto report = make_velocity_report(2.0, 0.1, 0.3);
 
   // Act
   const auto twist = publish_and_wait(report);
@@ -142,9 +142,9 @@ TEST_F(VehicleVelocityConverterNodeTest, ConvertsVelocityReportToTwist)
 
   // Longitudinal velocity scaled by speed_scale_factor; lateral and yaw mapped directly.
   // The report fields are float, so the converted values are compared at float precision.
-  EXPECT_FLOAT_EQ(twist->twist.twist.linear.x, 2.0F * 1.5);
-  EXPECT_FLOAT_EQ(twist->twist.twist.linear.y, 0.1F);
-  EXPECT_FLOAT_EQ(twist->twist.twist.angular.z, 0.3F);
+  EXPECT_FLOAT_EQ(twist->twist.twist.linear.x, 2.0 * 1.5);
+  EXPECT_FLOAT_EQ(twist->twist.twist.linear.y, 0.1);
+  EXPECT_FLOAT_EQ(twist->twist.twist.angular.z, 0.3);
 
   // Diagonal covariance entries come from the configured standard deviations.
   EXPECT_DOUBLE_EQ(twist->twist.covariance[COV_IDX::X_X], 0.2 * 0.2);
