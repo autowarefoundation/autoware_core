@@ -234,25 +234,32 @@ public:
   }
 
   // ===== Polling Subscriber =====
-  template <typename MessageT>
-  typename PollingSubscriber<MessageT>::SharedPtr create_polling_subscriber(
+  template <
+    typename MessageT,
+    template <typename> class PollingPolicy = autoware_utils_rclcpp::polling_policy::Latest>
+  typename PollingSubscriber<MessageT, PollingPolicy>::SharedPtr create_polling_subscriber(
     const std::string & topic_name, const rclcpp::QoS & qos)
   {
-    return visit_node([&](auto & n) -> typename PollingSubscriber<MessageT>::SharedPtr {
-      using NodeT = std::decay_t<decltype(*n)>;
-      if constexpr (std::is_same_v<NodeT, agnocast::Node>) {
-        return std::make_shared<AgnocastPollingSubscriber<MessageT>>(n.get(), topic_name, qos);
-      } else {
-        return std::make_shared<ROS2PollingSubscriber<MessageT>>(n.get(), topic_name, qos);
-      }
-    });
+    return visit_node(
+      [&](auto & n) -> typename PollingSubscriber<MessageT, PollingPolicy>::SharedPtr {
+        using NodeT = std::decay_t<decltype(*n)>;
+        if constexpr (std::is_same_v<NodeT, agnocast::Node>) {
+          return std::make_shared<AgnocastPollingSubscriber<MessageT, PollingPolicy>>(
+            n.get(), topic_name, qos);
+        } else {
+          return std::make_shared<ROS2PollingSubscriber<MessageT, PollingPolicy>>(
+            n.get(), topic_name, qos);
+        }
+      });
   }
 
-  template <typename MessageT>
-  typename PollingSubscriber<MessageT>::SharedPtr create_polling_subscriber(
+  template <
+    typename MessageT,
+    template <typename> class PollingPolicy = autoware_utils_rclcpp::polling_policy::Latest>
+  typename PollingSubscriber<MessageT, PollingPolicy>::SharedPtr create_polling_subscriber(
     const std::string & topic_name, size_t qos_history_depth)
   {
-    return create_polling_subscriber<MessageT>(
+    return create_polling_subscriber<MessageT, PollingPolicy>(
       topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)));
   }
 
@@ -349,6 +356,22 @@ Timer::SharedPtr create_timer(
     node->get_rclcpp_node().get(), clock, period, std::forward<CallbackT>(callback), group));
 }
 
+/// @brief Create a polling subscriber on a Method-2 node (one that inherits agnocast_wrapper::Node).
+///
+/// Provided as a free function so the same call site compiles in both builds: rclcpp::Node has no
+/// create_polling_subscriber member, so the non-Agnocast overload (see the #else section, where
+/// agnocast_wrapper::Node is rclcpp::Node) routes to autoware_utils' polling subscriber instead.
+/// This overload delegates to the Node member, which unwraps the underlying agnocast::Node /
+/// rclcpp::Node variant.
+template <
+  typename MessageT,
+  template <typename> class PollingPolicy = autoware_utils_rclcpp::polling_policy::Latest>
+typename PollingSubscriber<MessageT, PollingPolicy>::SharedPtr create_polling_subscriber(
+  Node * node, const std::string & topic_name, const rclcpp::QoS & qos)
+{
+  return node->template create_polling_subscriber<MessageT, PollingPolicy>(topic_name, qos);
+}
+
 }  // namespace autoware::agnocast_wrapper
 
 #else
@@ -376,6 +399,20 @@ rclcpp::TimerBase::SharedPtr create_timer(
   rclcpp::CallbackGroup::SharedPtr group = nullptr)
 {
   return rclcpp::create_timer(node, clock, period, std::forward<CallbackT>(callback), group);
+}
+
+/// @brief Create a polling subscriber on a Method-2 node (non-Agnocast build).
+///
+/// Mirrors the Agnocast-build overload so the same call site works in both builds. Here Node is
+/// rclcpp::Node, so route to autoware_utils' InterProcessPollingSubscriber.
+template <
+  typename MessageT,
+  template <typename> class PollingPolicy = autoware_utils_rclcpp::polling_policy::Latest>
+typename autoware_utils_rclcpp::InterProcessPollingSubscriber<MessageT, PollingPolicy>::SharedPtr
+create_polling_subscriber(Node * node, const std::string & topic_name, const rclcpp::QoS & qos)
+{
+  return autoware_utils_rclcpp::InterProcessPollingSubscriber<MessageT, PollingPolicy>::
+    create_subscription(node, topic_name, qos);
 }
 
 }  // namespace autoware::agnocast_wrapper

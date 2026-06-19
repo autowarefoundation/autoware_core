@@ -111,6 +111,17 @@ if(BUILD_TESTING)
   ament_add_pytest_test(test_discovery_agent_launch
     test/test_discovery_agent_launch.py
   )
+
+  find_package(ament_cmake_gtest REQUIRED)
+  ament_add_gtest(test_polling_subscriber
+    test/test_polling_subscriber.cpp
+  )
+  target_link_libraries(test_polling_subscriber ${PROJECT_NAME})
+  ament_target_dependencies(test_polling_subscriber rclcpp geometry_msgs autoware_utils_rclcpp)
+  if("$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
+    ament_target_dependencies(test_polling_subscriber agnocastlib)
+    target_compile_definitions(test_polling_subscriber PRIVATE USE_AGNOCAST_ENABLED)
+  endif()
 endif()
 
 autoware_ament_auto_package()
