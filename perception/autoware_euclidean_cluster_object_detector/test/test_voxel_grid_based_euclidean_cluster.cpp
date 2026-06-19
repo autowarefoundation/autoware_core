@@ -270,6 +270,91 @@ TEST(VoxelGridBasedEuclideanClusterTest, DiagnosticsInterface)
   EXPECT_TRUE(cluster->cluster(msg, objects, clusters));
 }
 
+// Characterization test: pin the exact relationship between the `objects` output and the
+// parallel `clusters` output so the map-lookup-caching and in-place cluster-building refactor
+// is proven behavior-preserving. The number of output clusters must stay in lockstep with the
+// number of detected objects (one cluster per object), and every extracted point must lie within
+// the originating voxel region (x,y in [0,0.3], z in [0,30]) along with the object centroid. The
+// per-cluster point count is governed by voxel grouping and is intentionally not asserted.
+TEST(VoxelGridBasedEuclideanClusterTest, ClusterOutputMatchesObjects)
+{
+  int nb_generated_points = 100;
+  sensor_msgs::msg::PointCloud2 pointcloud = generateClusterWithinVoxel(nb_generated_points);
+
+  const sensor_msgs::msg::PointCloud2::ConstSharedPtr pointcloud_msg =
+    std::make_shared<sensor_msgs::msg::PointCloud2>(pointcloud);
+  autoware_perception_msgs::msg::DetectedObjects output;
+  float tolerance = 0.7;
+  float voxel_leaf_size = 0.3;
+  int min_points_number_per_voxel = 1;
+  int min_cluster_size = 1;
+  int max_cluster_size = 100;
+  bool use_height = false;
+  auto cluster_ = std::make_shared<autoware::euclidean_cluster::VoxelGridBasedEuclideanCluster>(
+    use_height, min_cluster_size, max_cluster_size, tolerance, voxel_leaf_size,
+    min_points_number_per_voxel);
+
+  std::vector<pcl::PointCloud<pcl::PointXYZ>> clusters;
+  ASSERT_TRUE(cluster_->cluster(pointcloud_msg, output, clusters));
+
+  // Exactly one cluster, and the parallel outputs stay in lockstep.
+  ASSERT_EQ(output.objects.size(), 1u);
+  ASSERT_EQ(clusters.size(), output.objects.size());
+
+  // The single extracted cluster must be non-empty, and every point must lie inside the
+  // generated voxel region (x,y in [0,0.3], z in [0,30]). The exact count is governed by the
+  // voxel grouping rather than the raw point count, so it is not asserted here.
+  const auto & cluster_cloud = clusters.front();
+  EXPECT_GT(cluster_cloud.points.size(), 0u);
+  for (const auto & point : cluster_cloud.points) {
+    EXPECT_GE(point.x, 0.0f);
+    EXPECT_LE(point.x, 0.3f);
+    EXPECT_GE(point.y, 0.0f);
+    EXPECT_LE(point.y, 0.3f);
+    EXPECT_GE(point.z, 0.0f);
+    EXPECT_LE(point.z, 30.0f);
+  }
+
+  // The object centroid's x/y must fall within the same region as the input points.
+  const auto & position = output.objects.front().kinematics.pose_with_covariance.pose.position;
+  EXPECT_GE(position.x, 0.0);
+  EXPECT_LE(position.x, 0.3);
+  EXPECT_GE(position.y, 0.0);
+  EXPECT_LE(position.y, 0.3);
+}
+
+// Characterization test for the previously-untested empty-input path of the implemented
+// `cluster(pointcloud_msg, objects, clusters)` overload. An empty cloud (fields and point_step
+// set, no data, width 0) must flow through fromROSMsg -> voxel filter -> KdTree -> extraction
+// without crashing and pin the degenerate-input contract: the call returns true and produces no
+// objects and no clusters.
+TEST(VoxelGridBasedEuclideanClusterTest, ClusterEmptyInput)
+{
+  sensor_msgs::msg::PointCloud2 pointcloud;
+  setPointCloud2Fields(pointcloud);
+  pointcloud.data.clear();
+  pointcloud.width = 0;
+  pointcloud.row_step = 0;
+
+  const sensor_msgs::msg::PointCloud2::ConstSharedPtr pointcloud_msg =
+    std::make_shared<sensor_msgs::msg::PointCloud2>(pointcloud);
+  autoware_perception_msgs::msg::DetectedObjects objects;
+  float tolerance = 0.7;
+  float voxel_leaf_size = 0.3;
+  int min_points_number_per_voxel = 1;
+  int min_cluster_size = 1;
+  int max_cluster_size = 100;
+  bool use_height = false;
+  auto cluster_ = std::make_shared<autoware::euclidean_cluster::VoxelGridBasedEuclideanCluster>(
+    use_height, min_cluster_size, max_cluster_size, tolerance, voxel_leaf_size,
+    min_points_number_per_voxel);
+
+  std::vector<pcl::PointCloud<pcl::PointXYZ>> clusters;
+  EXPECT_TRUE(cluster_->cluster(pointcloud_msg, objects, clusters));
+  EXPECT_EQ(objects.objects.size(), 0u);
+  EXPECT_EQ(clusters.size(), 0u);
+}
+
 // Test exceeding max_cluster_size case
 TEST(VoxelGridBasedEuclideanClusterTest, ExceedMaxClusterSize)
 {

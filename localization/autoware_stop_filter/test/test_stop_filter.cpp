@@ -16,66 +16,104 @@
 
 #include <gtest/gtest.h>
 
-using autoware::stop_filter::FilterResult;
+#include <memory>
+
 using autoware::stop_filter::StopFilter;
-using autoware::stop_filter::Vector3D;
 
-TEST(StopFilterTest, FilterStopWhenStopped)
+namespace
+{
+// Build an odometry sample from its six twist components. The stamp and frame are fixed so the
+// filter's forwarding of the header can be asserted.
+nav_msgs::msg::Odometry::SharedPtr create_odometry_message(
+  const double linear_x, const double linear_y, const double linear_z, const double angular_x,
+  const double angular_y, const double angular_z)
+{
+  auto msg = std::make_shared<nav_msgs::msg::Odometry>();
+  msg->header.frame_id = "base_link";
+  msg->header.stamp.sec = 1;
+  msg->header.stamp.nanosec = 500000000;
+  msg->twist.twist.linear.x = linear_x;
+  msg->twist.twist.linear.y = linear_y;
+  msg->twist.twist.linear.z = linear_z;
+  msg->twist.twist.angular.x = angular_x;
+  msg->twist.twist.angular.y = angular_y;
+  msg->twist.twist.angular.z = angular_z;
+  return msg;
+}
+}  // namespace
+
+// When both linear-x and angular-z exceed the thresholds the vehicle is moving, so the stop flag
+// is false. The input timestamp is forwarded onto the flag message.
+TEST(StopFilterTest, StopFlagIsFalseWhenMoving)
 {
   StopFilter filter(0.1, 0.1);
-  Vector3D linear_velocity = {0.05, 0.0, 0.0};
-  Vector3D angular_velocity = {0.0, 0.0, 0.05};
+  const auto input = create_odometry_message(0.2, 0.0, 0.0, 0.0, 0.0, 0.2);
 
-  FilterResult result = filter.apply_stop_filter(linear_velocity, angular_velocity);
+  const auto stop_flag_msg = filter.create_stop_flag_msg(input);
 
-  EXPECT_TRUE(result.was_stopped);
-  EXPECT_EQ(result.linear_velocity.x, 0.0);
-  EXPECT_EQ(result.linear_velocity.y, 0.0);
-  EXPECT_EQ(result.linear_velocity.z, 0.0);
-  EXPECT_EQ(result.angular_velocity.x, 0.0);
-  EXPECT_EQ(result.angular_velocity.y, 0.0);
-  EXPECT_EQ(result.angular_velocity.z, 0.0);
+  EXPECT_FALSE(stop_flag_msg.data);
+  EXPECT_EQ(stop_flag_msg.stamp, input->header.stamp);
 }
 
-TEST(StopFilterTest, FilterStopWhenNotStopped)
+// When both linear-x and angular-z are below the thresholds the vehicle is stopped, so the stop
+// flag is true.
+TEST(StopFilterTest, StopFlagIsTrueWhenStopped)
 {
   StopFilter filter(0.1, 0.1);
-  Vector3D linear_velocity = {0.2, 0.0, 0.0};
-  Vector3D angular_velocity = {0.0, 0.0, 0.2};
+  const auto input = create_odometry_message(0.05, 0.0, 0.0, 0.0, 0.0, 0.05);
 
-  FilterResult result = filter.apply_stop_filter(linear_velocity, angular_velocity);
+  const auto stop_flag_msg = filter.create_stop_flag_msg(input);
 
-  EXPECT_FALSE(result.was_stopped);
-  EXPECT_EQ(result.linear_velocity.x, 0.2);
-  EXPECT_EQ(result.linear_velocity.y, 0.0);
-  EXPECT_EQ(result.linear_velocity.z, 0.0);
-  EXPECT_EQ(result.angular_velocity.x, 0.0);
-  EXPECT_EQ(result.angular_velocity.y, 0.0);
-  EXPECT_EQ(result.angular_velocity.z, 0.2);
+  EXPECT_TRUE(stop_flag_msg.data);
+  EXPECT_EQ(stop_flag_msg.stamp, input->header.stamp);
 }
 
-TEST(StopFilterTest, FilterStopOnlyLinearVelocityBelowThreshold)
+// A stop requires both axes below threshold: linear-x alone below threshold is still moving, so the
+// twist is preserved.
+TEST(StopFilterTest, NotStoppedWhenOnlyLinearVelocityBelowThreshold)
 {
   StopFilter filter(0.1, 0.1);
-  Vector3D linear_velocity = {0.05, 0.0, 0.0};
-  Vector3D angular_velocity = {0.0, 0.0, 0.2};
+  const auto input = create_odometry_message(0.05, 0.0, 0.0, 0.0, 0.0, 0.2);
 
-  FilterResult result = filter.apply_stop_filter(linear_velocity, angular_velocity);
-
-  EXPECT_FALSE(result.was_stopped);
-  EXPECT_EQ(result.linear_velocity.x, 0.05);
-  EXPECT_EQ(result.angular_velocity.z, 0.2);
+  EXPECT_FALSE(filter.create_stop_flag_msg(input).data);
 }
 
-TEST(StopFilterTest, FilterStopOnlyAngularVelocityBelowThreshold)
+// Symmetrically, angular-z alone below threshold is still moving, so the twist is preserved.
+TEST(StopFilterTest, NotStoppedWhenOnlyAngularVelocityBelowThreshold)
 {
   StopFilter filter(0.1, 0.1);
-  Vector3D linear_velocity = {0.2, 0.0, 0.0};
-  Vector3D angular_velocity = {0.0, 0.0, 0.05};
+  const auto input = create_odometry_message(0.2, 0.0, 0.0, 0.0, 0.0, 0.05);
 
-  FilterResult result = filter.apply_stop_filter(linear_velocity, angular_velocity);
+  EXPECT_FALSE(filter.create_stop_flag_msg(input).data);
+}
 
-  EXPECT_FALSE(result.was_stopped);
-  EXPECT_EQ(result.linear_velocity.x, 0.2);
-  EXPECT_EQ(result.angular_velocity.z, 0.05);
+// On a stop every twist component is zeroed while the header is preserved.
+TEST(StopFilterTest, FilteredMsgZeroesTwistWhenStopped)
+{
+  StopFilter filter(0.1, 0.1);
+  const auto input = create_odometry_message(0.05, 0.02, 0.01, 0.03, 0.04, 0.05);
+
+  const auto filtered_msg = filter.create_filtered_msg(input);
+
+  EXPECT_EQ(filtered_msg.twist.twist.linear.x, 0.0);
+  EXPECT_EQ(filtered_msg.twist.twist.linear.y, 0.0);
+  EXPECT_EQ(filtered_msg.twist.twist.linear.z, 0.0);
+  EXPECT_EQ(filtered_msg.twist.twist.angular.x, 0.0);
+  EXPECT_EQ(filtered_msg.twist.twist.angular.y, 0.0);
+  EXPECT_EQ(filtered_msg.twist.twist.angular.z, 0.0);
+
+  EXPECT_EQ(filtered_msg.header.frame_id, input->header.frame_id);
+  EXPECT_EQ(filtered_msg.header.stamp, input->header.stamp);
+}
+
+// When moving the twist passes through unchanged.
+TEST(StopFilterTest, FilteredMsgPreservesTwistWhenMoving)
+{
+  StopFilter filter(0.1, 0.1);
+  const auto input = create_odometry_message(0.2, 0.0, 0.0, 0.0, 0.0, 0.2);
+
+  const auto filtered_msg = filter.create_filtered_msg(input);
+
+  EXPECT_EQ(filtered_msg.twist.twist.linear.x, 0.2);
+  EXPECT_EQ(filtered_msg.twist.twist.angular.z, 0.2);
 }

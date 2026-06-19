@@ -19,6 +19,7 @@ Use this when you want the **entire node** to transparently switch between `rclc
 Currently supported APIs:
 
 - Publisher / Subscription / PollingSubscriber
+- Client / Service
 - Timer (`create_wall_timer`, free `create_timer()`, free `set_period()`)
 - Parameters
 - Logger, Clock
@@ -207,7 +208,7 @@ This package provides wrapper types for `message_filters` (`Subscriber`, `Synchr
 ### Current limitations
 
 - Only `ApproximateTime` and `ExactTime` synchronization policies are supported.
-- Maximum 2 message types per `Synchronizer`.
+- 2 to 8 message types per `Synchronizer`. Upstream `message_filters` supports up to 9, but the registration path this wrapper uses caps it at 8.
 - `connectInput()` is not supported; pass `Subscriber` references at construction time.
 
 ### Usage example

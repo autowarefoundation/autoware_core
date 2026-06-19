@@ -78,9 +78,9 @@ public:
   virtual ~Node() = default;
 
   // ===== Basic information =====
-  std::string get_name() const;
-  std::string get_namespace() const;
-  std::string get_fully_qualified_name() const;
+  const char * get_name() const;
+  const char * get_namespace() const;
+  const char * get_fully_qualified_name() const;
   rclcpp::Logger get_logger() const;
 
   // ===== Time =====
@@ -254,6 +254,42 @@ public:
   {
     return create_polling_subscriber<MessageT>(
       topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)));
+  }
+
+  // ===== Client / Service =====
+  template <typename ServiceT>
+  AUTOWARE_CLIENT_PTR(ServiceT)
+  create_client(
+    const std::string & service_name, const rclcpp::QoS & qos = rclcpp::ServicesQoS(),
+    rclcpp::CallbackGroup::SharedPtr group = nullptr)
+  {
+    return visit_node([&](auto & n) -> AUTOWARE_CLIENT_PTR(ServiceT) {
+      using NodeT = std::decay_t<decltype(*n)>;
+      if constexpr (std::is_same_v<NodeT, agnocast::Node>) {
+        return std::make_shared<AgnocastClient<ServiceT>>(n.get(), service_name, qos, group);
+      } else {
+        return std::make_shared<ROS2Client<ServiceT>>(n.get(), service_name, qos, group);
+      }
+    });
+  }
+
+  template <typename ServiceT, typename Func>
+  AUTOWARE_SERVICE_PTR(ServiceT)
+  create_service(
+    const std::string & service_name, Func && callback,
+    const rclcpp::QoS & qos = rclcpp::ServicesQoS(),
+    rclcpp::CallbackGroup::SharedPtr group = nullptr)
+  {
+    return visit_node([&](auto & n) -> AUTOWARE_SERVICE_PTR(ServiceT) {
+      using NodeT = std::decay_t<decltype(*n)>;
+      if constexpr (std::is_same_v<NodeT, agnocast::Node>) {
+        return std::make_shared<AgnocastService<ServiceT>>(
+          n.get(), service_name, std::forward<Func>(callback), qos, group);
+      } else {
+        return std::make_shared<ROS2Service<ServiceT>>(
+          n.get(), service_name, std::forward<Func>(callback), qos, group);
+      }
+    });
   }
 
   // ===== Timer =====
