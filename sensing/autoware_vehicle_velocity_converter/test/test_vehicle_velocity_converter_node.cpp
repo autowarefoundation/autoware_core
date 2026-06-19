@@ -141,9 +141,10 @@ TEST_F(VehicleVelocityConverterNodeTest, ConvertsVelocityReportToTwist)
   ASSERT_NE(twist, nullptr) << "Twist message was not received within timeout";
 
   // Longitudinal velocity scaled by speed_scale_factor; lateral and yaw mapped directly.
-  EXPECT_DOUBLE_EQ(twist->twist.twist.linear.x, 2.0F * 1.5);
-  EXPECT_DOUBLE_EQ(twist->twist.twist.linear.y, static_cast<double>(0.1F));
-  EXPECT_DOUBLE_EQ(twist->twist.twist.angular.z, static_cast<double>(0.3F));
+  // The report fields are float, so the converted values are compared at float precision.
+  EXPECT_FLOAT_EQ(twist->twist.twist.linear.x, 2.0F * 1.5);
+  EXPECT_FLOAT_EQ(twist->twist.twist.linear.y, 0.1F);
+  EXPECT_FLOAT_EQ(twist->twist.twist.angular.z, 0.3F);
 
   // Diagonal covariance entries come from the configured standard deviations.
   EXPECT_DOUBLE_EQ(twist->twist.covariance[COV_IDX::X_X], 0.2 * 0.2);

@@ -67,9 +67,10 @@ TEST(VehicleVelocityConverterConvert, AxisMappingAndScale)
   const auto twist = converter.convert(msg);
 
   // Longitudinal velocity is multiplied by the scale factor, lateral and yaw mapped directly.
-  EXPECT_DOUBLE_EQ(twist.twist.twist.linear.x, 2.0F * 1.5);
-  EXPECT_DOUBLE_EQ(twist.twist.twist.linear.y, static_cast<double>(0.1F));
-  EXPECT_DOUBLE_EQ(twist.twist.twist.angular.z, static_cast<double>(0.3F));
+  // The report fields are float, so the converted values are compared at float precision.
+  EXPECT_FLOAT_EQ(twist.twist.twist.linear.x, 2.0F * 1.5);
+  EXPECT_FLOAT_EQ(twist.twist.twist.linear.y, 0.1F);
+  EXPECT_FLOAT_EQ(twist.twist.twist.angular.z, 0.3F);
 
   // Unused twist components must stay zero.
   EXPECT_EQ(twist.twist.twist.linear.z, 0.0);
@@ -114,8 +115,8 @@ TEST(VehicleVelocityConverterConvert, ZeroScaleFactor)
 
   EXPECT_EQ(twist.twist.twist.linear.x, 0.0);
   // Lateral and yaw are unaffected by the scale factor.
-  EXPECT_DOUBLE_EQ(twist.twist.twist.linear.y, static_cast<double>(0.1F));
-  EXPECT_DOUBLE_EQ(twist.twist.twist.angular.z, static_cast<double>(0.3F));
+  EXPECT_FLOAT_EQ(twist.twist.twist.linear.y, 0.1F);
+  EXPECT_FLOAT_EQ(twist.twist.twist.angular.z, 0.3F);
 }
 
 TEST(VehicleVelocityConverterConvert, NegativeVelocityAndScale)
@@ -124,9 +125,9 @@ TEST(VehicleVelocityConverterConvert, NegativeVelocityAndScale)
   const VehicleVelocityConverter converter(-1.5, 0.2, 0.1);
   const auto twist = converter.convert(msg);
 
-  EXPECT_DOUBLE_EQ(twist.twist.twist.linear.x, -2.0F * -1.5);
-  EXPECT_DOUBLE_EQ(twist.twist.twist.linear.y, static_cast<double>(-0.1F));
-  EXPECT_DOUBLE_EQ(twist.twist.twist.angular.z, static_cast<double>(-0.3F));
+  EXPECT_FLOAT_EQ(twist.twist.twist.linear.x, -2.0F * -1.5);
+  EXPECT_FLOAT_EQ(twist.twist.twist.linear.y, -0.1F);
+  EXPECT_FLOAT_EQ(twist.twist.twist.angular.z, -0.3F);
 
   // Variances stay non-negative (stddev squared) regardless of velocity sign.
   EXPECT_DOUBLE_EQ(twist.twist.covariance[COV_IDX::X_X], 0.2 * 0.2);
