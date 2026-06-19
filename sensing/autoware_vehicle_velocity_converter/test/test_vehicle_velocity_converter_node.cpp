@@ -22,93 +22,133 @@
 #include <memory>
 #include <mutex>
 #include <thread>
+#include <vector>
 
 using COV_IDX = autoware_utils_geometry::xyzrpy_covariance_index::XYZRPY_COV_IDX;
 
-TEST(VehicleVelocityConverterNodeTest, TestConversion)
+namespace
 {
-  // Initialize ROS 2 context
-  rclcpp::init(0, nullptr);
+autoware_vehicle_msgs::msg::VelocityReport make_velocity_report(
+  const float longitudinal_velocity, const float lateral_velocity, const float heading_rate)
+{
+  autoware_vehicle_msgs::msg::VelocityReport report;
+  report.header.frame_id = "base_link";
+  report.longitudinal_velocity = longitudinal_velocity;
+  report.lateral_velocity = lateral_velocity;
+  report.heading_rate = heading_rate;
+  return report;
+}
+}  // namespace
 
-  // Variable to hold received messages
-  std::shared_ptr<geometry_msgs::msg::TwistWithCovarianceStamped> received_twist;
-  bool twist_received = false;
-  std::mutex msg_mutex;
+// Drives the node over real publish/subscribe so each test body stays a plain Arrange/Act/Assert:
+// the fixture owns the ROS context, the executor thread and the test-side pub/sub wiring.
+class VehicleVelocityConverterNodeTest : public ::testing::Test
+{
+protected:
+  void SetUp() override
+  {
+    rclcpp::init(0, nullptr);
 
-  // Subscription to receive output messages
-  std::shared_ptr<rclcpp::Node> test_control_node =
-    std::make_shared<rclcpp::Node>("test_control_node");
-  auto twist_subscription =
-    test_control_node->create_subscription<geometry_msgs::msg::TwistWithCovarianceStamped>(
-      "twist_with_covariance", 10,
-      [&](const geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr msg) {
-        std::lock_guard<std::mutex> lock(msg_mutex);
-        received_twist = msg;
-        twist_received = true;
-      });
+    executor_ = std::make_unique<rclcpp::executors::SingleThreadedExecutor>();
 
-  // Create vehicle velocity converter node and register subscriptions
-  rclcpp::NodeOptions options;
-  options.parameter_overrides(
+    test_control_node_ = std::make_shared<rclcpp::Node>("test_control_node");
+    twist_subscription_ =
+      test_control_node_->create_subscription<geometry_msgs::msg::TwistWithCovarianceStamped>(
+        "twist_with_covariance", 10,
+        [this](const geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr message) {
+          std::lock_guard<std::mutex> lock(message_mutex_);
+          received_twist_ = message;
+        });
+    report_publisher_ =
+      test_control_node_->create_publisher<autoware_vehicle_msgs::msg::VelocityReport>(
+        "velocity_status", 10);
+    executor_->add_node(test_control_node_);
+  }
+
+  void TearDown() override
+  {
+    if (executor_) {
+      executor_->cancel();
+    }
+    if (executor_thread_.joinable()) {
+      executor_thread_.join();
+    }
+    rclcpp::shutdown();
+  }
+
+  // Bring up the converter node with the given parameters and start spinning both nodes.
+  void start_converter_node(const std::vector<rclcpp::Parameter> & parameter_overrides)
+  {
+    rclcpp::NodeOptions options;
+    options.parameter_overrides(parameter_overrides);
+    converter_node_ =
+      std::make_shared<autoware::vehicle_velocity_converter::VehicleVelocityConverterNode>(options);
+    executor_->add_node(converter_node_);
+    executor_thread_ = std::thread([this]() { executor_->spin(); });
+
+    // Give the publishers and subscribers time to discover each other before publishing.
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+
+  // Publish a report and return the converted twist, or nullptr if none arrives within the timeout.
+  geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr publish_and_wait(
+    const autoware_vehicle_msgs::msg::VelocityReport & report)
+  {
+    report_publisher_->publish(report);
+
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(4);
+    while (std::chrono::steady_clock::now() < deadline) {
+      {
+        std::lock_guard<std::mutex> lock(message_mutex_);
+        if (received_twist_) {
+          return received_twist_;
+        }
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    std::lock_guard<std::mutex> lock(message_mutex_);
+    return received_twist_;
+  }
+
+  std::unique_ptr<rclcpp::executors::SingleThreadedExecutor> executor_;
+  std::thread executor_thread_;
+  rclcpp::Node::SharedPtr test_control_node_;
+  rclcpp::Subscription<geometry_msgs::msg::TwistWithCovarianceStamped>::SharedPtr
+    twist_subscription_;
+  rclcpp::Publisher<autoware_vehicle_msgs::msg::VelocityReport>::SharedPtr report_publisher_;
+  std::shared_ptr<autoware::vehicle_velocity_converter::VehicleVelocityConverterNode>
+    converter_node_;
+
+  std::mutex message_mutex_;
+  geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr received_twist_;
+};
+
+TEST_F(VehicleVelocityConverterNodeTest, ConvertsVelocityReportToTwist)
+{
+  // Arrange
+  start_converter_node(
     {{"frame_id", "base_link"},
      {"velocity_stddev_xx", 0.2},
      {"angular_velocity_stddev_zz", 0.1},
      {"speed_scale_factor", 1.5}});
-  std::shared_ptr<autoware::vehicle_velocity_converter::VehicleVelocityConverterNode>
-    vehicle_velocity_converter_node =
-      std::make_shared<autoware::vehicle_velocity_converter::VehicleVelocityConverterNode>(options);
+  const auto report = make_velocity_report(2.0F, 0.1F, 0.3F);
 
-  // Create executor and register nodes
-  rclcpp::executors::SingleThreadedExecutor executor;
-  executor.add_node(vehicle_velocity_converter_node);
-  executor.add_node(test_control_node);
+  // Act
+  const auto twist = publish_and_wait(report);
 
-  // Run executor in separate thread
-  std::thread executor_thread([&]() { executor.spin(); });
-
-  // Create publisher for input messages
-  auto publisher = test_control_node->create_publisher<autoware_vehicle_msgs::msg::VelocityReport>(
-    "velocity_status", 10);
-
-  // Wait for connection to be established
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-  // Create and publish a velocity report test message
-  auto report_msg = autoware_vehicle_msgs::msg::VelocityReport();
-  report_msg.header.frame_id = "base_link";
-  report_msg.header.stamp = rclcpp::Clock().now();
-  report_msg.longitudinal_velocity = 2.0F;
-  report_msg.lateral_velocity = 0.1F;
-  report_msg.heading_rate = 0.3F;
-  publisher->publish(report_msg);
-
-  // Wait for messages to be received
-  auto start_time = std::chrono::steady_clock::now();
-  while (!twist_received &&
-         std::chrono::steady_clock::now() - start_time < std::chrono::seconds(4)) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  }
-
-  // Stop executor
-  executor.cancel();
-  if (executor_thread.joinable()) {
-    executor_thread.join();
-  }
-  rclcpp::shutdown();
-
-  // Verify results
-  ASSERT_TRUE(twist_received) << "Twist message was not received within timeout";
-  ASSERT_NE(received_twist, nullptr);
+  // Assert
+  ASSERT_NE(twist, nullptr) << "Twist message was not received within timeout";
 
   // Longitudinal velocity scaled by speed_scale_factor; lateral and yaw mapped directly.
-  EXPECT_DOUBLE_EQ(received_twist->twist.twist.linear.x, 2.0F * 1.5);
-  EXPECT_DOUBLE_EQ(received_twist->twist.twist.linear.y, static_cast<double>(0.1F));
-  EXPECT_DOUBLE_EQ(received_twist->twist.twist.angular.z, static_cast<double>(0.3F));
+  EXPECT_DOUBLE_EQ(twist->twist.twist.linear.x, 2.0F * 1.5);
+  EXPECT_DOUBLE_EQ(twist->twist.twist.linear.y, static_cast<double>(0.1F));
+  EXPECT_DOUBLE_EQ(twist->twist.twist.angular.z, static_cast<double>(0.3F));
 
   // Diagonal covariance entries come from the configured standard deviations.
-  EXPECT_DOUBLE_EQ(received_twist->twist.covariance[COV_IDX::X_X], 0.2 * 0.2);
-  EXPECT_DOUBLE_EQ(received_twist->twist.covariance[COV_IDX::YAW_YAW], 0.1 * 0.1);
+  EXPECT_DOUBLE_EQ(twist->twist.covariance[COV_IDX::X_X], 0.2 * 0.2);
+  EXPECT_DOUBLE_EQ(twist->twist.covariance[COV_IDX::YAW_YAW], 0.1 * 0.1);
 
   // Header is copied verbatim from the input report.
-  EXPECT_EQ(received_twist->header.frame_id, "base_link");
+  EXPECT_EQ(twist->header.frame_id, "base_link");
 }
