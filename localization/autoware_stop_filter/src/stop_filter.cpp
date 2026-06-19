@@ -36,20 +36,20 @@ StopFilter::StopFilter(const double linear_x_threshold, const double angular_z_t
 }
 
 autoware_internal_debug_msgs::msg::BoolStamped StopFilter::create_stop_flag_msg(
-  const nav_msgs::msg::Odometry::SharedPtr input) const
+  const nav_msgs::msg::Odometry & input) const
 {
   autoware_internal_debug_msgs::msg::BoolStamped stop_flag_msg;
-  stop_flag_msg.stamp = input->header.stamp;
-  stop_flag_msg.data = is_stopped(*input, linear_x_threshold_, angular_z_threshold_);
+  stop_flag_msg.stamp = input.header.stamp;
+  stop_flag_msg.data = is_stopped(input, linear_x_threshold_, angular_z_threshold_);
   return stop_flag_msg;
 }
 
 nav_msgs::msg::Odometry StopFilter::create_filtered_msg(
-  const nav_msgs::msg::Odometry::SharedPtr input) const
+  const nav_msgs::msg::Odometry & input) const
 {
-  nav_msgs::msg::Odometry filtered_msg = *input;
+  nav_msgs::msg::Odometry filtered_msg = input;
 
-  if (is_stopped(*input, linear_x_threshold_, angular_z_threshold_)) {
+  if (is_stopped(input, linear_x_threshold_, angular_z_threshold_)) {
     filtered_msg.twist.twist.linear.x = 0.0;
     filtered_msg.twist.twist.linear.y = 0.0;
     filtered_msg.twist.twist.linear.z = 0.0;
