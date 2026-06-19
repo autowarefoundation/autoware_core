@@ -15,6 +15,7 @@
 #ifndef LANELET2_MAP_VISUALIZATION_NODE_HPP_
 #define LANELET2_MAP_VISUALIZATION_NODE_HPP_
 
+#include <autoware/agnocast_wrapper/node.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
@@ -25,18 +26,19 @@
 
 namespace autoware::lanelet2_map_visualizer
 {
-class Lanelet2MapVisualizationNode : public rclcpp::Node
+class Lanelet2MapVisualizationNode : public autoware::agnocast_wrapper::Node
 {
 public:
   explicit Lanelet2MapVisualizationNode(const rclcpp::NodeOptions & options);
 
 private:
-  rclcpp::Subscription<autoware_map_msgs::msg::LaneletMapBin>::SharedPtr sub_map_bin_;
-  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr pub_marker_;
+  AUTOWARE_SUBSCRIPTION_PTR(autoware_map_msgs::msg::LaneletMapBin) sub_map_bin_;
+  AUTOWARE_PUBLISHER_PTR(visualization_msgs::msg::MarkerArray) pub_marker_;
 
   bool viz_lanelets_centerline_;
 
-  void on_map_bin(const autoware_map_msgs::msg::LaneletMapBin::ConstSharedPtr msg);
+  void on_map_bin(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(autoware_map_msgs::msg::LaneletMapBin) &
+                    msg);
 };
 }  // namespace autoware::lanelet2_map_visualizer
 

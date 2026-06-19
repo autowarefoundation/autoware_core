@@ -2,8 +2,11 @@
   <arg name="lanelet2_map_topic" default="vector_map"/>
   <arg name="lanelet2_map_marker_topic" default="vector_map_marker"/>
 
+  <include file="$(find-pkg-share autoware_agnocast_wrapper)/launch/agnocast_env.launch.xml"/>
+
   <node pkg="autoware_lanelet2_map_visualizer" exec="lanelet2_map_visualization" name="lanelet2_map_visualization" output="both">
     <remap from="input/lanelet2_map" to="$(var lanelet2_map_topic)"/>
     <remap from="output/lanelet2_map_marker" to="$(var lanelet2_map_marker_topic)"/>
+    <env name="LD_PRELOAD" value="$(var ld_preload_value)"/>
   </node>
 </launch>
