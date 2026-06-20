@@ -36,6 +36,9 @@
 
 using autoware::ground_filter::GroundFilterComponent;
 
+// Floating point tolerance at EXPECT_NEAR and similar checks
+constexpr float near_tol = 1e-4F;
+
 class GroundFilterIntegrationHarness : public ::testing::Test
 {
 protected:
@@ -119,7 +122,9 @@ protected:
    *           - C1 (R = 2.0, Z = 0.2) : ground, start of slope
    *           - C2 (R = 4.0, Z = 0.6) : ground, slope continues after C1 (~11 deg)
    *           - C3 (R = 6.0, Z = 1.3) : obstacle, slope jump after C2 (~17 deg)
-   *       I hope this DPC could cover all characteristics of this ground filter algorithm.
+   *       With a hardcoded local/global slope threshold of 15 deg (same as previous test suites),
+   *       we gonna have 6 ground 4 obstacle. I hope this DPC could cover all characteristics of
+   *       this ground filter algorithm.
    *
    * @return sensor_msgs::msg::PointCloud2 A deterministic point cloud message.
    */
@@ -182,7 +187,7 @@ protected:
 // ================== TESTING AREA HERE ==================
 
 // TEST 1. Standard filtering test for above deterministic point cloud
-// Should filter out ground points (z=0.0) and retain obstacle points (z=1.0)
+// Should filter out ground points and retain only obstacles as our logic dictates
 TEST_F(GroundFilterIntegrationHarness, FiltersGroundPointsAndKeepsObstacles)
 {
   auto input_cloud = create_deterministic_point_cloud();
@@ -201,11 +206,27 @@ TEST_F(GroundFilterIntegrationHarness, FiltersGroundPointsAndKeepsObstacles)
     output_z_values.push_back(*iter_z);
   }
 
-  // Output should contain exactly those 2 obstacle points
-  EXPECT_EQ(output_z_values.size(), 2);
-  for (const float z : output_z_values) {
-    EXPECT_NEAR(z, 1.0f, 1e-4f);  // Should be the obstacle points at z=1.0
-  }
+  // 1. Output should contain exactly those 4 obstacle points
+  EXPECT_EQ(output_z_values.size(), 4);
+
+  // 2. Here checking exact Z values (heights) of those obstacles
+
+  // Helper func
+  auto contains_z = [&](float expected_z) {
+    return std::find_if(output_z_values.begin(), output_z_values.end(), [expected_z](float z) {
+             return std::abs(z - expected_z) < near_tol;
+           }) != output_z_values.end();
+  };
+
+  // Check ray A
+  EXPECT_TRUE(contains_z(0.6f));  // A3
+  EXPECT_TRUE(contains_z(2.0f));  // A4
+
+  // Check ray B
+  EXPECT_TRUE(contains_z(0.5f));  // B2
+
+  // Check ray C
+  EXPECT_TRUE(contains_z(1.3f));  // C3
 }
 
 // TEST 2. Empty or invalid point clouds are rejected and won't produce output
