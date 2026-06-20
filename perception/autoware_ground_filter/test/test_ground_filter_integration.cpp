@@ -102,13 +102,24 @@ protected:
    * @brief Create a deterministic point cloud, with known ground, obstacle,
    *        as groundtruth for testing this ground filter.
    *
-   * @note This point cloud includes:
-   *       - Ground points:
-   *         - P1: (2,0,0) (near)
-   *         - P2: (5,0,0) (far)
-   *       - Obstacle points:
-   *         - P3: (2,0,1) (floating above P1)
-   *         - P4: (5,0,1) (floating above P2)
+   * @note I wanna design this deterministic point cloud (DPC) in a way that
+   *       it could COMPREHENSIVELY test our ground filter algorithm to its
+   *       extent, cover as much scenarios/edges as possible.
+   *       Thus, this DPC includes 3 rays of points, each with 3-4 points:
+   *       - Ray A (front, Y = 0) : 4 points
+   *           - A1 (R = 2.0, Z = 0.0) : pure ground, baseline
+   *           - A2 (R = 3.0, Z = 0.0) : pure ground, test "point follow" logic from A1
+   *           - A3 (R = 4.0, Z = 0.6) : obstacle, test local slope threshold after A2
+   *           - A4 (R = 5.0, Z = 2.0) : obstacle, test global slope threshold
+   *       - Ray B (frontleft, X = Y) : 3 points
+   *           - B1 (R = 2.0, Z = 0.0) : pure ground, baseline
+   *           - B2 (R = 3.0, Z = 0.5) : obstacle, bump after B1
+   *           - B3 (R = 5.0, Z = 0.0) : pure ground, behind B2, test baseline reset logic
+   *       - Ray C (frontright, X = -Y) : 3 points
+   *           - C1 (R = 2.0, Z = 0.2) : ground, start of slope
+   *           - C2 (R = 4.0, Z = 0.6) : ground, slope continues after C1 (~11 deg)
+   *           - C3 (R = 6.0, Z = 1.3) : obstacle, slope jump after C2 (~17 deg)
+   *       I hope this DPC could cover all characteristics of this ground filter algorithm.
    *
    * @return sensor_msgs::msg::PointCloud2 A deterministic point cloud message.
    */
@@ -116,33 +127,35 @@ protected:
   {
     pcl::PointCloud<autoware::point_types::PointXYZIRC> pcl_cloud;
 
-    // P1
-    autoware::point_types::PointXYZIRC p1;
-    p1.x = 2.0f;
-    p1.y = 0.0f;
-    p1.z = 0.0f;
-    pcl_cloud.push_back(p1);
+    // Helper lambda func to add points
+    auto add_point = [&](float x, float y, float z) {
+      autoware::point_types::PointXYZIRC p;
 
-    // P2
-    autoware::point_types::PointXYZIRC p2;
-    p2.x = 5.0f;
-    p2.y = 0.0f;
-    p2.z = 0.0f;
-    pcl_cloud.push_back(p2);
+      p.x = x;
+      p.y = y;
+      p.z = z;
+      p.intensity = 100;
+      p.return_type = 1;
+      p.channel = 0;
 
-    // P3
-    autoware::point_types::PointXYZIRC p3;
-    p3.x = 2.0f;
-    p3.y = 0.0f;
-    p3.z = 1.0f;
-    pcl_cloud.push_back(p3);
+      pcl_cloud.push_back(p);
+    };
 
-    // P4
-    autoware::point_types::PointXYZIRC p4;
-    p4.x = 5.0f;
-    p4.y = 0.0f;
-    p4.z = 1.0f;
-    pcl_cloud.push_back(p4);
+    // Ray A (front, Y = 0) : 4 points
+    add_point(2.0f, 0.0f, 0.0f);
+    add_point(3.0f, 0.0f, 0.0f);
+    add_point(4.0f, 0.0f, 0.6f);
+    add_point(5.0f, 0.0f, 2.0f);
+
+    // Ray B (frontleft, X = Y) : 3 points
+    add_point(1.414f, 1.414f, 0.0f);
+    add_point(2.121f, 2.121f, 0.5f);
+    add_point(3.535f, 3.535f, 0.0f);
+
+    // Ray C (frontright, X = -Y) : 3 points
+    add_point(1.414f, -1.414f, 0.2f);
+    add_point(2.828f, -2.828f, 0.6f);
+    add_point(4.242f, -4.242f, 1.3f);
 
     sensor_msgs::msg::PointCloud2 cloud_msg;
     pcl::toROSMsg(pcl_cloud, cloud_msg);
