@@ -103,7 +103,7 @@ protected:
 
   /**
    * @brief Create a deterministic point cloud, with known ground, obstacle,
-   *        as groundtruth for testing this ground filter.
+   *        as ground truth for testing this ground filter.
    *
    * @note I wanna design this deterministic point cloud (DPC) in a way that
    *       it could COMPREHENSIVELY test our ground filter algorithm to its
@@ -199,7 +199,7 @@ TEST_F(GroundFilterIntegrationHarness, FiltersGroundPointsAndKeepsObstacles)
   ASSERT_TRUE(result_received_);
   ASSERT_NE(received_cloud_, nullptr);
 
-  // Extract points from output ROS2 message
+  // Extract points from output ROS message
   std::vector<float> output_z_values;
   sensor_msgs::PointCloud2ConstIterator<float> iter_z(*received_cloud_, "z");
   for (; iter_z != iter_z.end(); ++iter_z) {
