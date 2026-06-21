@@ -37,8 +37,8 @@ private:
 
   bool viz_lanelets_centerline_;
 
-  void on_map_bin(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(autoware_map_msgs::msg::LaneletMapBin) &
-                    msg);
+  void on_map_bin(
+    const AUTOWARE_MESSAGE_CONST_SHARED_PTR(autoware_map_msgs::msg::LaneletMapBin) & msg);
 };
 }  // namespace autoware::lanelet2_map_visualizer
 
