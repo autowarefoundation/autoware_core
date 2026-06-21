@@ -62,8 +62,8 @@ SelectedMapLoaderModule::SelectedMapLoaderModule(
   durable_qos.transient_local();
   pub_metadata_ = node->create_publisher<autoware_map_msgs::msg::PointCloudMapMetaData>(
     "output/pointcloud_map_metadata", durable_qos);
-  AUTOWARE_MESSAGE_UNIQUE_PTR(autoware_map_msgs::msg::PointCloudMapMetaData) metadata_msg =
-    ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_metadata_);
+  AUTOWARE_MESSAGE_UNIQUE_PTR(autoware_map_msgs::msg::PointCloudMapMetaData)
+  metadata_msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_metadata_);
   *metadata_msg = create_metadata(all_pcd_file_metadata_dict_);
   pub_metadata_->publish(std::move(metadata_msg));
 }
