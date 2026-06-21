@@ -215,6 +215,24 @@ private:
   void SegmentBreakCell(
     const Cell & cell, PointsCentroid & ground_bin, pcl::PointIndices & out_no_ground_indices);
   void classify(pcl::PointIndices & out_no_ground_indices);
+
+  enum class PointLabel : uint16_t {
+    INIT = 0,
+    GROUND,
+    NON_GROUND,
+    POINT_FOLLOW,
+    UNKNOWN,
+    VIRTUAL_GROUND,
+    OUT_OF_RANGE
+  };
+
+  struct PointData
+  {
+    float radius;
+    PointLabel point_state{PointLabel::INIT};
+    size_t data_index;
+  };
+  using PointCloudVector = std::vector<PointData>;
 };
 
 }  // namespace autoware::ground_filter
