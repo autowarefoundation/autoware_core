@@ -564,11 +564,11 @@ TEST_F(GroundFilterIntegrationHarness, RejectsEmptyOrInvalidPointClouds)
 
 // TEST 3. When indices input is enabled, node should still publish output
 // (but currently without subsetting by indices vector).
-// This is to verify that enabling indices input won't break the node's functionality, and also
+// This is to verify that enabling indices input won't break node functionality, and also
 // to keep a record of current behavior that we might want to change in the future.
-// Btw note that the current implementation of GroundFilterComponent does not actually subset
-// filtering by the supplied indices vector, but it still uses the indices subscription path if
-// enabled, so we just want to make sure it can still publish results as expected in this case.
+// Btw note that current implementation of GroundFilterComponent does not actually subset
+// filtering by supplied indices vector, but it still uses indices subscription path if
+// enabled, yeah just want to make sure it still publishes results as expected in this case.
 TEST_F(GroundFilterIntegrationHarness, PublishesWhenIndicesInputIsEnabled)
 {
   init_node(true, false);
@@ -585,6 +585,31 @@ TEST_F(GroundFilterIntegrationHarness, PublishesWhenIndicesInputIsEnabled)
   const auto output_z_values = collect_output_z_values();
   // Current implementation uses indices subscription path but does not subset filtering
   // by supplied indices vector.
+  EXPECT_EQ(output_z_values.size(), 4);
+  EXPECT_TRUE(contains_z(output_z_values, 0.6f));
+  EXPECT_TRUE(contains_z(output_z_values, 2.0f));
+  EXPECT_TRUE(contains_z(output_z_values, 0.5f));
+  EXPECT_TRUE(contains_z(output_z_values, 1.3f));
+}
+
+// TEST 4. When approximate sync is enabled, node should still publish correct output.
+// This is to verify that enabling approximate sync won't break node functionality.
+// Although this looks kinda tautological with TEST 3, I still wanna keep it as separate
+// test to explicitly verify this approximate sync functionality.
+TEST_F(GroundFilterIntegrationHarness, FiltersWithApproximateSync)
+{
+  init_node(true, true);
+
+  const auto input_cloud = create_deterministic_point_cloud();
+  const auto input_stamp = rclcpp::Time(input_cloud.header.stamp);
+  const auto indices = create_indices({0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, input_stamp);
+
+  publish_input(input_cloud, indices);
+
+  ASSERT_TRUE(wait_for_result());
+  ASSERT_NE(received_cloud_, nullptr);
+
+  const auto output_z_values = collect_output_z_values();
   EXPECT_EQ(output_z_values.size(), 4);
   EXPECT_TRUE(contains_z(output_z_values, 0.6f));
   EXPECT_TRUE(contains_z(output_z_values, 2.0f));
