@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "node.hpp"
+#include "ground_filter_node.hpp"
 
 #include "ground_filter.hpp"
 #include "sanity_check.hpp"
