@@ -430,11 +430,9 @@ TEST_F(GroundFilterIntegrationHarness, FiltersGroundPointsAndKeepsObstacles)
   EXPECT_TRUE(contains_z(output_z_values, 1.3f));  // C3
 }
 
-// TEST 2. Empty or invalid point clouds are rejected and won't produce output
-// This is what I consolidated from the only 5 test cases in the original test file
-// that were actually worthy to keep, and they were all about sanity checks, so I
-// merged them all here.
-// BTW you should see a red ERROR log upon `colcon test` for this test
+// TEST 2. Reject empty or incompatible point clouds.
+// Node should not publish any output in these cases.
+// Upon `colcon test` you should see 2 ERROR logs. This is expected.
 TEST_F(GroundFilterIntegrationHarness, RejectsEmptyOrInvalidPointClouds)
 {
   // Test with completely empty point cloud
