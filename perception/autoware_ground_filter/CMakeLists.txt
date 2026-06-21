@@ -18,7 +18,7 @@ include_directories(
 )
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
-  src/node.cpp
+  src/ground_filter_node.cpp
   src/ground_filter.cpp
   src/sanity_check.cpp
 )
