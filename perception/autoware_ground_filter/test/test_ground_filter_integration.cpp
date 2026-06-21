@@ -365,6 +365,37 @@ protected:
 
     return cloud_msg;
   }
+
+  /**
+   * @brief Create an incompatible point cloud that does not have required fields for filtering.
+   *        Used to test node's ability to reject invalid input.
+   *
+   * @note This point cloud only has "x", "y", "z" fields but lacks specific fields expected by
+   *       GroundFilterComponent (like intensity, return_type, channel). This should cause node
+   *       to reject it and not produce output.
+   *       I create this one for TEST 2, because previously I only tested empty point cloud, but
+   *       not a case of incompatible point clouds with wrong fields.
+   *
+   * @return sensor_msgs::msg::PointCloud2 An incompatible point cloud message.
+   */
+  sensor_msgs::msg::PointCloud2 create_incompatible_point_cloud()
+  {
+    sensor_msgs::msg::PointCloud2 cloud;
+    sensor_msgs::PointCloud2Modifier modifier(cloud);
+    modifier.setPointCloud2FieldsByString(1, "xyz");
+    modifier.resize(1);
+
+    sensor_msgs::PointCloud2Iterator<float> iter_x(cloud, "x");
+    sensor_msgs::PointCloud2Iterator<float> iter_y(cloud, "y");
+    sensor_msgs::PointCloud2Iterator<float> iter_z(cloud, "z");
+    *iter_x = 1.0f;
+    *iter_y = 0.0f;
+    *iter_z = 0.5f;
+
+    cloud.header.frame_id = "base_link";
+    cloud.header.stamp = node_->now();
+    return cloud;
+  };
 };
 
 // ================== TESTING AREA HERE ==================
@@ -415,17 +446,14 @@ TEST_F(GroundFilterIntegrationHarness, RejectsEmptyOrInvalidPointClouds)
   empty_cloud.point_step = 16;
   empty_cloud.data.clear();
 
-  input_pub_->publish(empty_cloud);
+  publish_input(empty_cloud);
+  EXPECT_FALSE(wait_for_result(std::chrono::milliseconds(500)));
 
-  // Give the node a tiny bit of time to "theoretically" process
-  auto start_time = std::chrono::steady_clock::now();
-  while (std::chrono::steady_clock::now() - start_time < std::chrono::milliseconds(500)) {
-    rclcpp::spin_some(node_);
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  }
+  // Test with incompatible point cloud (missing required fields)
+  auto invalid_cloud = create_incompatible_point_cloud();
 
-  // Expects no result received for empty point cloud
-  EXPECT_FALSE(result_received_);
+  publish_input(invalid_cloud);
+  EXPECT_FALSE(wait_for_result(std::chrono::milliseconds(500)));
 }
 
 // TEST 3. When indices input is enabled, node should still publish output
