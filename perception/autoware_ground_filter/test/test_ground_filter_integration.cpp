@@ -158,6 +158,18 @@ protected:
       std::chrono::milliseconds(2000));
   }
 
+  /**
+   * @brief Wait for result to be received, within timeout.
+   *
+   * @param timeout Maximum wait duration for result. Default 2000ms.
+   *
+   * @return true if result is received within timeout, false otherwise.
+   */
+  bool wait_for_result(std::chrono::milliseconds timeout = std::chrono::milliseconds(2000))
+  {
+    return spin_until([this]() { return result_received_; }, timeout);
+  }
+
   // Helper func to reset result flag and received cloud
   void reset_result()
   {
@@ -202,6 +214,37 @@ protected:
       ASSERT_NE(indices_pub_, nullptr);
       indices_pub_->publish(*indices);
     }
+  }
+
+  /**
+   * @brief Helper func to extract Z values from a point cloud. Used in test cases.
+   *
+   * @return Vector of Z values from received point cloud.
+   */
+  [[nodiscard]] std::vector<float> collect_output_z_values() const
+  {
+    std::vector<float> output_z_values;
+    sensor_msgs::PointCloud2ConstIterator<float> iter_z(*received_cloud_, "z");
+    for (; iter_z != iter_z.end(); ++iter_z) {
+      output_z_values.push_back(*iter_z);
+    }
+    return output_z_values;
+  }
+
+  /**
+   * @brief Helper func to check if a given Z value is approximately contained in output Z values.
+   * Used in test cases.
+   *
+   * @param output_z_values Vector of Z values to check against.
+   * @param expected_z Z value to check for approximate presence in output_z_values.
+   *
+   * @return true if expected_z is approximately contained in output_z_values, false otherwise.
+   */
+  static bool contains_z(const std::vector<float> & output_z_values, float expected_z)
+  {
+    return std::find_if(output_z_values.begin(), output_z_values.end(), [expected_z](float z) {
+             return std::abs(z - expected_z) < near_tol;
+           }) != output_z_values.end();
   }
 
   /**
@@ -332,31 +375,16 @@ TEST_F(GroundFilterIntegrationHarness, FiltersGroundPointsAndKeepsObstacles)
 {
   auto input_cloud = create_deterministic_point_cloud();
 
-  input_pub_->publish(input_cloud);
-  spin_to_process();
+  publish_input(input_cloud);
 
   // Result actually generated and received
-  ASSERT_TRUE(result_received_);
+  ASSERT_TRUE(wait_for_result());
   ASSERT_NE(received_cloud_, nullptr);
-
-  // Extract points from output ROS message
-  std::vector<float> output_z_values;
-  sensor_msgs::PointCloud2ConstIterator<float> iter_z(*received_cloud_, "z");
-  for (; iter_z != iter_z.end(); ++iter_z) {
-    output_z_values.push_back(*iter_z);
-  }
 
   // 1. Output should contain exactly those 4 obstacle points
   EXPECT_EQ(output_z_values.size(), 4);
 
   // 2. Here checking exact Z values (heights) of those obstacles
-
-  // Helper func
-  auto contains_z = [&](float expected_z) {
-    return std::find_if(output_z_values.begin(), output_z_values.end(), [expected_z](float z) {
-             return std::abs(z - expected_z) < near_tol;
-           }) != output_z_values.end();
-  };
 
   // Check ray A
   EXPECT_TRUE(contains_z(0.6f));  // A3
