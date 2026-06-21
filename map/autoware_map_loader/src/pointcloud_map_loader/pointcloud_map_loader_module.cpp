@@ -51,28 +51,33 @@ PointcloudMapLoaderModule::PointcloudMapLoaderModule(
   pub_pointcloud_map_ =
     node->create_publisher<sensor_msgs::msg::PointCloud2>(publisher_name, durable_qos);
 
-  AUTOWARE_MESSAGE_UNIQUE_PTR(sensor_msgs::msg::PointCloud2)
-  pcd = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_pointcloud_map_);
+  sensor_msgs::msg::PointCloud2 pcd;
   if (use_downsample) {
     const float leaf_size = static_cast<float>(node->declare_parameter<float>("leaf_size"));
-    load_pcd_files(pcd_paths, leaf_size, *pcd);
+    pcd = load_pcd_files(pcd_paths, leaf_size);
   } else {
-    load_pcd_files(pcd_paths, boost::none, *pcd);
+    pcd = load_pcd_files(pcd_paths, boost::none);
   }
 
-  if (pcd->width == 0) {
+  if (pcd.width == 0) {
     RCLCPP_ERROR(logger_, "No PCD was loaded: pcd_paths.size() = %zu", pcd_paths.size());
     return;
   }
 
-  pcd->header.frame_id = "map";
-  pub_pointcloud_map_->publish(std::move(pcd));
+  pcd.header.frame_id = "map";
+
+  // Borrow the loaned (shared-memory) buffer only at publish time so that the heaphook
+  // redirection window stays small and the SHM pool peak is just the final message size.
+  AUTOWARE_MESSAGE_UNIQUE_PTR(sensor_msgs::msg::PointCloud2)
+  out = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_pointcloud_map_);
+  *out = pcd;
+  pub_pointcloud_map_->publish(std::move(out));
 }
 
-void PointcloudMapLoaderModule::load_pcd_files(
-  const std::vector<std::string> & pcd_paths, const boost::optional<float> leaf_size,
-  sensor_msgs::msg::PointCloud2 & whole_pcd) const
+sensor_msgs::msg::PointCloud2 PointcloudMapLoaderModule::load_pcd_files(
+  const std::vector<std::string> & pcd_paths, const boost::optional<float> leaf_size) const
 {
+  sensor_msgs::msg::PointCloud2 whole_pcd;
   sensor_msgs::msg::PointCloud2 partial_pcd;
 
   for (size_t i = 0; i < pcd_paths.size(); ++i) {
@@ -100,5 +105,7 @@ void PointcloudMapLoaderModule::load_pcd_files(
   }
 
   whole_pcd.header.frame_id = "map";
+
+  return whole_pcd;
 }
 }  // namespace autoware::map_loader
