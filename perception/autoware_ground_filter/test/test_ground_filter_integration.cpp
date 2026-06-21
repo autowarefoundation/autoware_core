@@ -455,7 +455,7 @@ TEST_F(GroundFilterIntegrationHarness, RejectsEmptyOrInvalidPointClouds)
 }
 
 // TEST 3. When indices input is enabled, node should still publish output
-// (but currently without setting by indices vector).
+// (but currently without being subset by indices vector).
 // This is to verify that enabling indices input won't break node functionality, and also
 // to keep a record of current behavior that we might want to change in the future.
 // Btw note that current implementation of GroundFilterComponent does not actually subset
