@@ -381,20 +381,22 @@ TEST_F(GroundFilterIntegrationHarness, FiltersGroundPointsAndKeepsObstacles)
   ASSERT_TRUE(wait_for_result());
   ASSERT_NE(received_cloud_, nullptr);
 
+  const auto output_z_values = collect_output_z_values();
+
   // 1. Output should contain exactly those 4 obstacle points
   EXPECT_EQ(output_z_values.size(), 4);
 
   // 2. Here checking exact Z values (heights) of those obstacles
 
   // Check ray A
-  EXPECT_TRUE(contains_z(0.6f));  // A3
-  EXPECT_TRUE(contains_z(2.0f));  // A4
+  EXPECT_TRUE(contains_z(output_z_values, 0.6f));  // A3
+  EXPECT_TRUE(contains_z(output_z_values, 2.0f));  // A4
 
   // Check ray B
-  EXPECT_TRUE(contains_z(0.5f));  // B2
+  EXPECT_TRUE(contains_z(output_z_values, 0.5f));  // B2
 
   // Check ray C
-  EXPECT_TRUE(contains_z(1.3f));  // C3
+  EXPECT_TRUE(contains_z(output_z_values, 1.3f));  // C3
 }
 
 // TEST 2. Empty or invalid point clouds are rejected and won't produce output
