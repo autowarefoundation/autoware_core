@@ -45,11 +45,13 @@ if(BUILD_TESTING)
     lanelet2_map_visualization_node
   )
 
-  find_package(launch_testing_ament_cmake REQUIRED)
-  add_launch_test(
-    test/lanelet2_map_visualizer_launch.test.py
-    TIMEOUT "30"
-  )
+  if(NOT "$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
+    find_package(launch_testing_ament_cmake REQUIRED)
+    add_launch_test(
+      test/lanelet2_map_visualizer_launch.test.py
+      TIMEOUT "30"
+    )
+  endif()
 endif()
 
 autoware_ament_auto_package(INSTALL_TO_SHARE
