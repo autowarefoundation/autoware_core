@@ -40,10 +40,12 @@ autoware_agnocast_wrapper_register_node(lanelet2_map_loader_node
 )
 
 if(BUILD_TESTING)
-  add_launch_test(
-    test/lanelet2_map_loader_launch.test.py
-    TIMEOUT "30"
-  )
+  if(NOT (DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1"))
+    add_launch_test(
+      test/lanelet2_map_loader_launch.test.py
+      TIMEOUT "30"
+    )
+  endif()
   install(DIRECTORY
     test/data/
     DESTINATION share/${PROJECT_NAME}/test/data/
