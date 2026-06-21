@@ -53,6 +53,7 @@ if(BUILD_TESTING)
   )
   ament_target_dependencies(test_ground_filter_integration
     autoware_test_utils
+    ament_index_cpp
   )
 
   ament_add_ros_isolated_gtest(test_sanity_check
