@@ -19,6 +19,7 @@
 #include <fmt/format.h>
 
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace autoware::map_loader
