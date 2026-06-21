@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "node.hpp"
+#include "ground_filter_node.hpp"
 
 #include "ground_filter.hpp"
 #include "sanity_check.hpp"
@@ -57,7 +57,6 @@ using autoware::vehicle_info_utils::VehicleInfoUtils;
 using autoware_utils_debug::ScopedTimeTrack;
 using autoware_utils_geometry::calc_distance3d;
 using autoware_utils_math::deg2rad;
-using autoware_utils_math::normalize_degree;
 using autoware_utils_math::normalize_radian;
 
 GroundFilterComponent::GroundFilterComponent(const rclcpp::NodeOptions & options)

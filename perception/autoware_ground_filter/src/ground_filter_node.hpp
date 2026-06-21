@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef NODE_HPP_
-#define NODE_HPP_
+#ifndef GROUND_FILTER_NODE_HPP_
+#define GROUND_FILTER_NODE_HPP_
 
 #include "data.hpp"
 #include "ground_filter.hpp"
@@ -59,7 +59,6 @@
 #include <tf2_eigen/tf2_eigen.hpp>
 #include <tf2_ros/transform_listener.hpp>
 
-#include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
@@ -389,4 +388,4 @@ public:
 };
 }  // namespace autoware::ground_filter
 
-#endif  // NODE_HPP_
+#endif  // GROUND_FILTER_NODE_HPP_
