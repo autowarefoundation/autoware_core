@@ -109,7 +109,7 @@ private:
 
   //!< @brief logger configure module
   std::unique_ptr<
-    autoware_utils_logging::LoggerLevelConfigureImpl<autoware::agnocast_wrapper::Node>>
+    autoware_utils_logging::BasicLoggerLevelConfigure<autoware::agnocast_wrapper::Node>>
     logger_configure_;
 
   //!< @brief  extended kalman filter instance.
