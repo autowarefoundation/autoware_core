@@ -572,7 +572,7 @@ TEST_F(GroundFilterIntegrationHarness, PublishesWhenIndicesInputIsEnabled)
 
   const auto input_cloud = create_deterministic_point_cloud();
   const auto indices =
-    create_indices({0, 1, 2, 3, 4, 5, 6}, rclcpp::Time(input_cloud.header.stamp));
+    create_indices({0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, rclcpp::Time(input_cloud.header.stamp));
 
   publish_input(input_cloud, indices);
 
@@ -602,6 +602,30 @@ TEST_F(GroundFilterIntegrationHarness, FiltersWithApproximateSync)
   const auto indices = create_indices({0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, input_stamp);
 
   publish_input(input_cloud, indices);
+
+  ASSERT_TRUE(wait_for_result());
+  ASSERT_NE(received_cloud_, nullptr);
+
+  const auto output_z_values = collect_output_z_values();
+  EXPECT_EQ(output_z_values.size(), 4);
+  EXPECT_TRUE(contains_z(output_z_values, 0.6f));
+  EXPECT_TRUE(contains_z(output_z_values, 2.0f));
+  EXPECT_TRUE(contains_z(output_z_values, 0.5f));
+  EXPECT_TRUE(contains_z(output_z_values, 1.3f));
+}
+
+// TEST 5. Verify elevation grid mode wiring
+// Test is to verify that when elevation_grid_mode is enabled, the node still produces output
+// without crashing. I added this test to cover such branch, to ensure this still works fine in
+// future development.
+TEST_F(GroundFilterIntegrationHarness, FiltersWithElevationGridMode)
+{
+  init_node(false, false);  // Initialize base node
+
+  // Override the parameter dynamically for this specific test
+  node_->set_parameter(rclcpp::Parameter("elevation_grid_mode", true));
+
+  publish_input(create_deterministic_point_cloud());
 
   ASSERT_TRUE(wait_for_result());
   ASSERT_NE(received_cloud_, nullptr);
