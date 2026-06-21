@@ -20,12 +20,10 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include <geometry_msgs/msg/accel_with_covariance_stamped.hpp>
-#include <geometry_msgs/msg/twist_stamped.hpp>
 #include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 
 #include <memory>
-#include <optional>
 
 namespace autoware::twist2accel
 {
@@ -42,7 +40,6 @@ private:
   rclcpp::Subscription<geometry_msgs::msg::TwistWithCovarianceStamped>::SharedPtr
     sub_twist_;  //!< @brief measurement odometry subscriber
 
-  std::optional<geometry_msgs::msg::TwistStamped> prev_twist_;
   bool use_odom_;
   std::unique_ptr<AccelEstimator> accel_estimator_;
 
@@ -52,7 +49,6 @@ private:
   void callback_twist_with_covariance(
     const geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr msg);
   void callback_odometry(const nav_msgs::msg::Odometry::SharedPtr msg);
-  void estimate_accel(const geometry_msgs::msg::TwistStamped & twist);
 };
 }  // namespace autoware::twist2accel
 #endif  // TWIST2ACCEL_HPP_
