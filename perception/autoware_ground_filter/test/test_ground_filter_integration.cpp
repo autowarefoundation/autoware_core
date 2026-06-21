@@ -28,16 +28,22 @@
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
 
+#include <algorithm>
 #include <chrono>
+#include <cmath>
+#include <cstdint>
+#include <functional>
 #include <memory>
-#include <string>
 #include <thread>
 #include <vector>
 
 using autoware::ground_filter::GroundFilterComponent;
 
+namespace
+{
 // Floating point tolerance at EXPECT_NEAR and similar checks
 constexpr float near_tol = 1e-4F;
+}  // namespace
 
 class GroundFilterIntegrationHarness : public ::testing::Test
 {
@@ -45,11 +51,158 @@ protected:
   // Node, pub, sub for testing
   std::shared_ptr<GroundFilterComponent> node_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr input_pub_;
+  rclcpp::Publisher<pcl_msgs::msg::PointIndices>::SharedPtr indices_pub_;
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr result_sub_;
 
   // Sanity check flags and point cloud storage
   sensor_msgs::msg::PointCloud2::SharedPtr received_cloud_;
-  bool result_received_;
+  bool result_received_{false};
+
+  /**
+   * @brief Initialize GroundFilterComponent node with given params.
+   *
+   * @param use_indices Whether to enable indices input subscription.
+   * @param approximate_sync Whether to enable approximate synchronization for inputs.
+   */
+  void init_node(bool use_indices = false, bool approximate_sync = false)
+  {
+    // Reset all current pub, sub, node
+    result_sub_.reset();
+    input_pub_.reset();
+    indices_pub_.reset();
+    node_.reset();
+
+    // Prepare node options with params
+    const auto autoware_test_utils_dir =
+      ament_index_cpp::get_package_share_directory("autoware_test_utils");
+    const auto autoware_ground_filter_dir =
+      ament_index_cpp::get_package_share_directory("autoware_ground_filter");
+
+    rclcpp::NodeOptions options;
+    autoware::test_utils::updateNodeOptions(
+      options, {autoware_test_utils_dir + "/config/test_vehicle_info.param.yaml",
+                autoware_ground_filter_dir + "/config/ground_filter.param.yaml"});
+
+    options.append_parameter_override("elevation_grid_mode", false);
+    options.append_parameter_override("input_frame", "base_link");
+    options.append_parameter_override("output_frame", "base_link");
+    options.append_parameter_override("use_indices", use_indices);
+    options.append_parameter_override("approximate_sync", approximate_sync);
+
+    // Create node
+    node_ = std::make_shared<GroundFilterComponent>(options);
+
+    // Create result subscription
+    reset_result();
+    result_sub_ = rclcpp::create_subscription<sensor_msgs::msg::PointCloud2>(
+      node_, "output", rclcpp::SensorDataQoS().keep_last(1),
+      [this](const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
+        received_cloud_ = msg;
+        result_received_ = true;
+      });
+
+    // Create input pub
+    input_pub_ = node_->create_publisher<sensor_msgs::msg::PointCloud2>(
+      "input", rclcpp::SensorDataQoS().keep_last(1));
+
+    // Create indices pub if needed
+    if (use_indices) {
+      indices_pub_ = node_->create_publisher<pcl_msgs::msg::PointIndices>(
+        "indices", rclcpp::SensorDataQoS().keep_last(1));
+    }
+
+    ASSERT_TRUE(wait_for_connections()) << "Timed out waiting for test pub/sub discovery";
+  }
+
+  /**
+   * @brief Helper func to spin node until a condition is met or timeout occurs.
+   *
+   * @param condition Callable that returns a bool indicating if condition is met.
+   * @param timeout Maximum wait duration for condition. Default 2000ms.
+   *
+   * @return true if condition is met within timeout, false otherwise.
+   */
+  bool spin_until(
+    const std::function<bool()> & condition,
+    std::chrono::milliseconds timeout = std::chrono::milliseconds(2000))
+  {
+    const auto start_time = std::chrono::steady_clock::now();
+    while (std::chrono::steady_clock::now() - start_time < timeout) {
+      if (condition()) {
+        return true;
+      }
+
+      rclcpp::spin_some(node_);
+
+      // Refresh rate before next check (10ms)
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    return condition();
+  }
+
+  /**
+   * @brief Wait for all pubs and subs to be connected. Just a wrapper of spin_until().
+   *
+   * @return true if all connections are established within timeout, false otherwise.
+   */
+  bool wait_for_connections()
+  {
+    return spin_until(
+      [this]() {
+        const bool output_ready = result_sub_ && result_sub_->get_publisher_count() > 0;
+        const bool input_ready = input_pub_ && input_pub_->get_subscription_count() > 0;
+        const bool indices_ready = !indices_pub_ || indices_pub_->get_subscription_count() > 0;
+        return output_ready && input_ready && indices_ready;
+      },
+      std::chrono::milliseconds(2000));
+  }
+
+  // Helper func to reset result flag and received cloud
+  void reset_result()
+  {
+    received_cloud_.reset();
+    result_received_ = false;
+  }
+
+  /**
+   * @brief Helper func to create a PointIndices message with given indices and timestamp.
+   *
+   * @param indices Vector of point indices to include in message.
+   * @param stamp Timestamp to set in message header.
+   *
+   * @return Shared pointer to created PointIndices message.
+   */
+  static pcl_msgs::msg::PointIndices::SharedPtr create_indices(
+    const std::vector<int> & indices, const rclcpp::Time & stamp)
+  {
+    auto message = std::make_shared<pcl_msgs::msg::PointIndices>();
+    message->header.frame_id = "base_link";
+    const auto nanoseconds = stamp.nanoseconds();
+    message->header.stamp.sec = static_cast<int32_t>(nanoseconds / 1000000000LL);
+    message->header.stamp.nanosec = static_cast<uint32_t>(nanoseconds % 1000000000LL);
+    message->indices = indices;
+    return message;
+  }
+
+  /**
+   * @brief Helper func to publish input point cloud and optional indices, resetting result state
+   * before publishing.
+   *
+   * @param cloud PointCloud2 message to publish as input.
+   * @param indices Optional PointIndices message to publish if indices input is enabled.
+   */
+  void publish_input(
+    const sensor_msgs::msg::PointCloud2 & cloud,
+    const pcl_msgs::msg::PointIndices::SharedPtr & indices = nullptr)
+  {
+    reset_result();
+    input_pub_->publish(cloud);
+    if (indices) {
+      ASSERT_NE(indices_pub_, nullptr);
+      indices_pub_->publish(*indices);
+    }
+  }
 
   /**
    * @brief Construct a new GroundFilterIntegrationHarness object, which sets up
@@ -168,19 +321,6 @@ protected:
     cloud_msg.header.stamp = node_->now();
 
     return cloud_msg;
-  }
-
-  /**
-   * @brief Helper func to spin node until either result is there no timeout
-   */
-  void spin_to_process()
-  {
-    auto start_time = std::chrono::steady_clock::now();
-    while (!result_received_ &&
-           std::chrono::steady_clock::now() - start_time < std::chrono::seconds(2)) {
-      rclcpp::spin_some(node_);
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
   }
 };
 
