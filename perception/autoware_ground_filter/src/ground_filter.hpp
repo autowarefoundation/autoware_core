@@ -233,8 +233,33 @@ private:
     size_t data_index;
   };
   using PointCloudVector = std::vector<PointData>;
-};
 
-}  // namespace autoware::ground_filter
+  struct RayPointsCentroid
+  {
+    float radius_sum;
+    float height_sum;
+    float radius_avg;
+    float height_avg;
+    float height_max;
+    float height_min;
+    uint32_t point_num;
+    std::vector<size_t> pcl_indices;
+    std::vector<float> height_list;
+    std::vector<float> radius_list;
+
+    RayPointsCentroid()
+    : radius_sum(0.0f),
+      height_sum(0.0f),
+      radius_avg(0.0f),
+      height_avg(0.0f),
+      height_max(-10.0f),
+      height_min(10.0f),
+      point_num(0)
+    {
+    }
+  };
+};  // namespace autoware::ground_filter
 
 #endif  // GROUND_FILTER_HPP_
+
+};  // namespace autoware::ground_filter
