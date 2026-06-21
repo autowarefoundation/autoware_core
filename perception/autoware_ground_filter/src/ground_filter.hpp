@@ -123,12 +123,16 @@ struct PointsCentroid
 
 struct GroundFilterParameter
 {
-  // parameters
+  bool elevation_grid_mode;
+
+  // Common params
   float global_slope_max_angle_rad;
   float local_slope_max_angle_rad;
   float global_slope_max_ratio;
   float radial_divider_angle_rad;
+  size_t radial_dividers_num;
 
+  // Grid params
   bool use_recheck_ground_cluster;
   bool use_lowest_point;
   float detection_range_z_max;
@@ -141,6 +145,12 @@ struct GroundFilterParameter
   float virtual_lidar_x;
   float virtual_lidar_y;
   float virtual_lidar_z;
+
+  // Radial/ray algorithm params
+  bool use_virtual_ground_point;
+  float split_points_distance_tolerance;
+  float split_height_distance;
+  float wheel_base_m;
 };
 
 class GroundFilter
