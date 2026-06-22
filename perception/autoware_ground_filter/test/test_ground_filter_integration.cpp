@@ -118,8 +118,7 @@ protected:
    * @brief Helper func to spin node until a condition is met or timeout occurs.
    *
    * @param condition Callable that returns a bool indicating if condition is met.
-   * @param timeout Maximum wait duration for condition. Default 30 seconds (thanks Sasaki-san for
-   * the suggestion!).
+   * @param timeout Maximum wait duration for condition. Default 30 seconds.
    *
    * @return true if condition is met within timeout, false otherwise.
    */
