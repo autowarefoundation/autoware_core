@@ -186,6 +186,10 @@ public:
   }
   void process(const PointCloud2ConstPtr & in_cloud, pcl::PointIndices & out_no_ground_indices);
 
+  // Allow unit test suite to access private members for exhaustive math verification.
+  // I need to do this in order to keep those maths private while still be able to test.
+  friend class GroundFilterTest;
+
 private:
   // parameters
   GroundFilterParameter param_;
