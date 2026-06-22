@@ -465,33 +465,45 @@ void GroundFilter::classify(pcl::PointIndices & out_no_ground_indices)
   }
 }
 
-// process the point cloud to segment the ground points
+/**
+ * @brief Process input point cloud and output the indices of non-ground points.
+ *
+ * @param in_cloud Input point cloud message.
+ * @param out_no_ground_indices Output indices of non-ground points.
+ */
 void GroundFilter::process(
   const PointCloud2ConstPtr & in_cloud, pcl::PointIndices & out_no_ground_indices)
 {
   std::unique_ptr<ScopedTimeTrack> st_ptr;
   if (time_keeper_) st_ptr = std::make_unique<ScopedTimeTrack>(__func__, *time_keeper_);
 
-  // set input cloud
+  // Set input cloud
   in_cloud_ = in_cloud;
 
-  // clear the output indices
+  // Clear the output indices
   out_no_ground_indices.indices.clear();
 
-  // reset grid cells
-  grid_ptr_->resetCells();
+  if (param_.elevation_grid_mode) {
+    // Reset grid cells
+    grid_ptr_->resetCells();
 
-  // 1. assign points to grid cells
-  convert();
+    // 1. Assign points to grid cells
+    convert();
 
-  // 2. cell preprocess
-  preprocess();
+    // 2. Cell preprocess
+    preprocess();
 
-  // 3. initialize ground
-  initializeGround(out_no_ground_indices);
+    // 3. Initialize ground
+    initializeGround(out_no_ground_indices);
 
-  // 4. classify point cloud
-  classify(out_no_ground_indices);
+    // 4. Classify point cloud
+    classify(out_no_ground_indices);
+  } else {
+    // Just classify point cloud without grid
+    std::vector<PointCloudVector> radial_ordered_points;
+    convertPointcloud(in_cloud, radial_ordered_points);
+    classifyPointCloud(in_cloud, radial_ordered_points, out_no_ground_indices);
+  }
 }
 
 }  // namespace autoware::ground_filter
