@@ -517,6 +517,16 @@ void RouteHandler::clearRoute()
   is_handler_ready_ = false;
 }
 
+void RouteHandler::setAllowArea(const bool allow_area)
+{
+  allow_area_ = allow_area;
+}
+
+bool RouteHandler::allowArea() const
+{
+  return allow_area_;
+}
+
 void RouteHandler::setLaneletsFromRouteMsg()
 {
   if (!route_ptr_ || !is_map_msg_ready_) {
@@ -526,7 +536,8 @@ void RouteHandler::setLaneletsFromRouteMsg()
   route_areas_.clear();
   route_lanelets_rtree_.clear();
   preferred_lanelets_.clear();
-  const bool is_route_valid = lanelet::utils::route::isRouteValid(*route_ptr_, lanelet_map_ptr_);
+  const bool is_route_valid =
+    lanelet::utils::route::isRouteValid(*route_ptr_, lanelet_map_ptr_, allow_area_);
   if (!is_route_valid) {
     return;
   }
@@ -1243,10 +1254,179 @@ bool RouteHandler::getClosestRouteLaneletFromLanelet(
   return false;
 }
 
+namespace
+{
+using autoware_planning_msgs::msg::LaneletPrimitive;
+using autoware_planning_msgs::msg::LaneletSegment;
+
+bool is_area_route_segment(const LaneletSegment & segment)
+{
+  return segment.preferred_primitive.primitive_type == "area";
+}
+
+bool is_lane_route_primitive(const LaneletPrimitive & primitive)
+{
+  return primitive.primitive_type != "area";
+}
+}  // namespace
+
+std::optional<size_t> RouteHandler::findRouteSegmentIndexForLanelet(const int64_t lanelet_id) const
+{
+  if (!route_ptr_ || route_ptr_->segments.empty()) {
+    return std::nullopt;
+  }
+
+  std::optional<size_t> preferred_match;
+  std::optional<size_t> any_match;
+  for (size_t i = 0; i < route_ptr_->segments.size(); ++i) {
+    const auto & segment = route_ptr_->segments.at(i);
+    if (is_area_route_segment(segment)) {
+      continue;
+    }
+    if (
+      segment.preferred_primitive.id == lanelet_id &&
+      is_lane_route_primitive(segment.preferred_primitive)) {
+      preferred_match = i;
+    }
+    if (exists(segment.primitives, lanelet_id)) {
+      for (const auto & primitive : segment.primitives) {
+        if (primitive.id == lanelet_id && is_lane_route_primitive(primitive)) {
+          any_match = i;
+          break;
+        }
+      }
+    }
+  }
+  if (preferred_match.has_value()) {
+    return preferred_match;
+  }
+  return any_match;
+}
+
+std::optional<size_t> RouteHandler::findNextLaneSegmentIndex(const size_t from_index) const
+{
+  if (!route_ptr_ || from_index + 1 >= route_ptr_->segments.size()) {
+    return std::nullopt;
+  }
+
+  size_t index = from_index + 1;
+  while (index < route_ptr_->segments.size() &&
+         is_area_route_segment(route_ptr_->segments.at(index))) {
+    ++index;
+  }
+  if (
+    index >= route_ptr_->segments.size() || is_area_route_segment(route_ptr_->segments.at(index))) {
+    return std::nullopt;
+  }
+  return index;
+}
+
+std::optional<size_t> RouteHandler::findPreviousLaneSegmentIndex(const size_t from_index) const
+{
+  if (!route_ptr_ || from_index == 0) {
+    return std::nullopt;
+  }
+
+  size_t index = from_index;
+  while (index > 0) {
+    --index;
+    if (!is_area_route_segment(route_ptr_->segments.at(index))) {
+      return index;
+    }
+  }
+  return std::nullopt;
+}
+
+lanelet::ConstLanelets RouteHandler::laneletsFromRouteSegment(const size_t segment_index) const
+{
+  lanelet::ConstLanelets lanelets;
+  if (!route_ptr_ || segment_index >= route_ptr_->segments.size()) {
+    return lanelets;
+  }
+
+  const auto & segment = route_ptr_->segments.at(segment_index);
+  if (is_area_route_segment(segment)) {
+    return lanelets;
+  }
+
+  const auto & preferred = segment.preferred_primitive;
+  if (is_lane_route_primitive(preferred)) {
+    const auto preferred_lanelet = lanelet_map_ptr_->laneletLayer.get(preferred.id);
+    if (exists(route_lanelets_, preferred_lanelet)) {
+      lanelets.push_back(preferred_lanelet);
+    }
+  }
+
+  for (const auto & primitive : segment.primitives) {
+    if (!is_lane_route_primitive(primitive) || primitive.id == preferred.id) {
+      continue;
+    }
+    const auto candidate = lanelet_map_ptr_->laneletLayer.get(primitive.id);
+    if (exists(route_lanelets_, candidate)) {
+      lanelets.push_back(candidate);
+    }
+  }
+  return lanelets;
+}
+
+bool RouteHandler::getNextLaneletsFromRouteOrder(
+  const lanelet::ConstLanelet & lanelet, lanelet::ConstLanelets * next_lanelets) const
+{
+  next_lanelets->clear();
+  if (!allow_area_ || route_areas_.empty() || !route_ptr_ || route_ptr_->segments.empty()) {
+    return false;
+  }
+
+  const auto segment_index = findRouteSegmentIndexForLanelet(lanelet.id());
+  if (!segment_index.has_value()) {
+    return false;
+  }
+
+  const auto next_segment_index = findNextLaneSegmentIndex(segment_index.value());
+  if (!next_segment_index.has_value()) {
+    return false;
+  }
+
+  *next_lanelets = laneletsFromRouteSegment(next_segment_index.value());
+  const auto start_lane_id = route_ptr_->segments.front().preferred_primitive.id;
+  next_lanelets->erase(
+    std::remove_if(
+      next_lanelets->begin(), next_lanelets->end(),
+      [start_lane_id](const lanelet::ConstLanelet & llt) { return llt.id() == start_lane_id; }),
+    next_lanelets->end());
+  return !next_lanelets->empty();
+}
+
+bool RouteHandler::getPreviousLaneletsFromRouteOrder(
+  const lanelet::ConstLanelet & lanelet, lanelet::ConstLanelets * prev_lanelets) const
+{
+  prev_lanelets->clear();
+  if (!allow_area_ || route_areas_.empty() || !route_ptr_ || route_ptr_->segments.empty()) {
+    return false;
+  }
+
+  const auto segment_index = findRouteSegmentIndexForLanelet(lanelet.id());
+  if (!segment_index.has_value()) {
+    return false;
+  }
+
+  const auto previous_segment_index = findPreviousLaneSegmentIndex(segment_index.value());
+  if (!previous_segment_index.has_value()) {
+    return false;
+  }
+
+  *prev_lanelets = laneletsFromRouteSegment(previous_segment_index.value());
+  return !prev_lanelets->empty();
+}
+
 bool RouteHandler::getNextLaneletsWithinRoute(
   const lanelet::ConstLanelet & lanelet, lanelet::ConstLanelets * next_lanelets) const
 {
   if (exists(goal_lanelets_, lanelet)) {
+    return false;
+  }
+
+  if (!route_ptr_ || route_ptr_->segments.empty()) {
     return false;
   }
 
@@ -1259,6 +1439,12 @@ bool RouteHandler::getNextLaneletsWithinRoute(
       next_lanelets->push_back(llt);
     }
   }
+
+  // Experimental / debug for direction_change: graph following() stops at route-area boundaries.
+  if (next_lanelets->empty()) {
+    getNextLaneletsFromRouteOrder(lanelet, next_lanelets);
+  }
+
   return !(next_lanelets->empty());
 }
 
@@ -1291,6 +1477,12 @@ bool RouteHandler::getPreviousLaneletsWithinRoute(
       prev_lanelets->push_back(llt);
     }
   }
+
+  // Experimental / debug for direction_change: graph previous() stops at route-area boundaries.
+  if (prev_lanelets->empty()) {
+    getPreviousLaneletsFromRouteOrder(lanelet, prev_lanelets);
+  }
+
   return !(prev_lanelets->empty());
 }
 
@@ -2291,9 +2483,18 @@ std::optional<lanelet::ConstLanelet> RouteHandler::getGoalRoadLaneletForCheckpoi
   if (auto closest_lanelet = findGoalClosestPreferredLanelet()) {
     return closest_lanelet;
   }
+
+  lanelet::ConstLanelets candidates_at_goal;
+  for (const auto & candidate : candidates) {
+    if (lanelet::geometry::inside(candidate, p)) {
+      candidates_at_goal.push_back(candidate);
+    }
+  }
+  const auto & selection_pool = candidates_at_goal.empty() ? candidates : candidates_at_goal;
+
   if (
     const auto closest_lanelet =
-      experimental::lanelet2_utils::get_closest_lanelet(candidates, goal_checkpoint)) {
+      experimental::lanelet2_utils::get_closest_lanelet(selection_pool, goal_checkpoint)) {
     return closest_lanelet;
   }
   return std::nullopt;

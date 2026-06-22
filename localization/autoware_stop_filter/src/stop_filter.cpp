@@ -18,34 +18,47 @@
 
 namespace autoware::stop_filter
 {
-StopFilter::StopFilter(double linear_x_threshold, double angular_z_threshold)
+namespace
+{
+bool is_stopped(
+  const nav_msgs::msg::Odometry & input, const double linear_x_threshold,
+  const double angular_z_threshold)
+{
+  const bool linear_stopped = std::fabs(input.twist.twist.linear.x) < linear_x_threshold;
+  const bool angular_stopped = std::fabs(input.twist.twist.angular.z) < angular_z_threshold;
+  return linear_stopped && angular_stopped;
+}
+}  // namespace
+
+StopFilter::StopFilter(const double linear_x_threshold, const double angular_z_threshold)
 : linear_x_threshold_(linear_x_threshold), angular_z_threshold_(angular_z_threshold)
 {
 }
 
-bool StopFilter::is_stopped(
-  const Vector3D & linear_velocity, const Vector3D & angular_velocity) const
+autoware_internal_debug_msgs::msg::BoolStamped StopFilter::create_stop_flag_msg(
+  const nav_msgs::msg::Odometry::SharedPtr input) const
 {
-  const bool linear_stopped = std::fabs(linear_velocity.x) < linear_x_threshold_;
-  const bool angular_stopped = std::fabs(angular_velocity.z) < angular_z_threshold_;
-  return linear_stopped && angular_stopped;
+  autoware_internal_debug_msgs::msg::BoolStamped stop_flag_msg;
+  stop_flag_msg.stamp = input->header.stamp;
+  stop_flag_msg.data = is_stopped(*input, linear_x_threshold_, angular_z_threshold_);
+  return stop_flag_msg;
 }
 
-FilterResult StopFilter::apply_stop_filter(
-  const Vector3D & linear_velocity, const Vector3D & angular_velocity) const
+nav_msgs::msg::Odometry StopFilter::create_filtered_msg(
+  const nav_msgs::msg::Odometry::SharedPtr input) const
 {
-  FilterResult result;
-  result.was_stopped = is_stopped(linear_velocity, angular_velocity);
+  nav_msgs::msg::Odometry filtered_msg = *input;
 
-  if (result.was_stopped) {
-    result.linear_velocity = {0.0, 0.0, 0.0};
-    result.angular_velocity = {0.0, 0.0, 0.0};
-  } else {
-    result.linear_velocity = linear_velocity;
-    result.angular_velocity = angular_velocity;
+  if (is_stopped(*input, linear_x_threshold_, angular_z_threshold_)) {
+    filtered_msg.twist.twist.linear.x = 0.0;
+    filtered_msg.twist.twist.linear.y = 0.0;
+    filtered_msg.twist.twist.linear.z = 0.0;
+    filtered_msg.twist.twist.angular.x = 0.0;
+    filtered_msg.twist.twist.angular.y = 0.0;
+    filtered_msg.twist.twist.angular.z = 0.0;
   }
 
-  return result;
+  return filtered_msg;
 }
 
 }  // namespace autoware::stop_filter
