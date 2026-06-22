@@ -148,8 +148,9 @@ struct GroundFilterParameter
 
   // Radial/ray algorithm params
   bool use_virtual_ground_point;
-  float split_points_distance_tolerance;
-  float split_height_distance;
+  float split_points_distance_tolerance;  // Distance in meters between concentric divisions.
+  float split_height_distance;  // Minimum height threshold regardless the slope. Useful for close
+                                // points.
   float wheel_base_m;
 };
 

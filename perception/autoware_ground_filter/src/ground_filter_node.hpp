@@ -87,91 +87,6 @@ struct TransformInfo
 class GroundFilterComponent : public rclcpp::Node
 {
 private:
-  // classified point label
-  // (0: not classified, 1: ground, 2: not ground, 3: follow previous point,
-  //  4: unknown(currently not used), 5: virtual ground)
-  enum class PointLabel : uint16_t {
-    INIT = 0,
-    GROUND,
-    NON_GROUND,
-    POINT_FOLLOW,
-    UNKNOWN,
-    VIRTUAL_GROUND,
-    OUT_OF_RANGE
-  };
-
-  struct PointData
-  {
-    float radius;  // cylindrical coords on XY Plane
-    PointLabel point_state{PointLabel::INIT};
-    size_t data_index;  // index of this point data in the source pointcloud
-  };
-  using PointCloudVector = std::vector<PointData>;
-
-  struct PointsCentroid
-  {
-    float radius_sum;
-    float height_sum;
-    float radius_avg;
-    float height_avg;
-    float height_max;
-    float height_min;
-    uint32_t point_num;
-    std::vector<size_t> pcl_indices;
-    std::vector<float> height_list;
-    std::vector<float> radius_list;
-
-    PointsCentroid()
-    : radius_sum(0.0f),
-      height_sum(0.0f),
-      radius_avg(0.0f),
-      height_avg(0.0f),
-      height_max(-10.0f),
-      height_min(10.0f),
-      point_num(0)
-    {
-    }
-
-    void initialize()
-    {
-      radius_sum = 0.0f;
-      height_sum = 0.0f;
-      radius_avg = 0.0f;
-      height_avg = 0.0f;
-      height_max = -10.0f;
-      height_min = 10.0f;
-      point_num = 0;
-      pcl_indices.clear();
-      height_list.clear();
-    }
-
-    void addPoint(const float radius, const float height)
-    {
-      radius_sum += radius;
-      height_sum += height;
-      ++point_num;
-      radius_avg = radius_sum / point_num;
-      height_avg = height_sum / point_num;
-      height_max = height_max < height ? height : height_max;
-      height_min = height_min > height ? height : height_min;
-    }
-
-    void addPoint(const float radius, const float height, const size_t index)
-    {
-      pcl_indices.push_back(index);
-      height_list.push_back(height);
-      addPoint(radius, height);
-    }
-
-    float getAverageSlope() const { return std::atan2(height_avg, radius_avg); }
-    float getAverageHeight() const { return height_avg; }
-    float getAverageRadius() const { return radius_avg; }
-    float getMaxHeight() const { return height_max; }
-    float getMinHeight() const { return height_min; }
-    const std::vector<size_t> & getIndicesRef() const { return pcl_indices; }
-    const std::vector<float> & getHeightListRef() const { return height_list; }
-  };
-
   /** \brief Lazy transport subscribe routine. */
   void subscribe();
 
@@ -206,11 +121,6 @@ private:
   float global_slope_max_ratio_;
   float local_slope_max_ratio_;
   float split_points_distance_tolerance_;  // distance in meters between concentric divisions
-
-  // non-grid mode parameters
-  bool use_virtual_ground_point_;
-  float                      // minimum height threshold regardless the slope,
-    split_height_distance_;  // useful for close points
 
   // grid mode parameters
   bool use_recheck_ground_cluster_;  // to enable recheck ground cluster
@@ -249,33 +159,6 @@ private:
    * @retval false transform failed
    */
 
-  /*!
-   * Convert sensor_msgs::msg::PointCloud2 to sorted PointCloudVector
-   * @param[in] in_cloud Input Point Cloud to be organized in radial segments
-   * @param[out] out_radial_ordered_points Vector of Points Clouds,
-   *     each element will contain the points ordered
-   */
-  void convertPointcloud(
-    const sensor_msgs::msg::PointCloud2::ConstSharedPtr & in_cloud,
-    std::vector<PointCloudVector> & out_radial_ordered_points) const;
-
-  /*!
-   * Output ground center of front wheels as the virtual ground point
-   * @param[out] point Virtual ground origin point
-   */
-  void calcVirtualGroundOrigin(pcl::PointXYZ & point) const;
-
-  /*!
-   * Classifies Points in the PointCloud as Ground and Not Ground
-   * @param in_radial_ordered_clouds Vector of an Ordered PointsCloud
-   *     ordered by radial distance from the origin
-   * @param out_no_ground_indices Returns the indices of the points
-   *     classified as not ground in the original PointCloud
-   */
-  void classifyPointCloud(
-    const sensor_msgs::msg::PointCloud2::ConstSharedPtr & in_cloud,
-    const std::vector<PointCloudVector> & in_radial_ordered_clouds,
-    pcl::PointIndices & out_no_ground_indices) const;
   /*!
    * Returns the resulting complementary PointCloud, one with the points kept
    * and the other removed as indicated in the indices
