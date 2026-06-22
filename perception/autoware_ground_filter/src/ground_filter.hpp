@@ -318,7 +318,7 @@ private:
   };
 
   // Helper func to convert point cloud to radial ordered point cloud
-  void convertPointcloud(
+  void convertPointCloud(
     const PointCloud2ConstPtr & in_cloud,
     std::vector<PointCloudVector> & out_radial_ordered_points) const;
 

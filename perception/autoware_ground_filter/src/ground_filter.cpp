@@ -506,4 +506,58 @@ void GroundFilter::process(
   }
 }
 
+/**
+ * @brief Convert input point cloud into radial ordered points for ground segmentation.
+ *
+ * @param in_cloud Input point cloud message.
+ * @param out_radial_ordered_points Output vector of radial ordered points.
+ */
+void GroundFilter::convertPointCloud(
+  const sensor_msgs::msg::PointCloud2::ConstSharedPtr & in_cloud,
+  std::vector<PointCloudVector> & out_radial_ordered_points) const
+{
+  // Create a scoped time tracker for performance measurement
+  std::unique_ptr<autoware_utils_debug::ScopedTimeTrack> st_ptr;
+  if (time_keeper_)
+    st_ptr = std::make_unique<autoware_utils_debug::ScopedTimeTrack>(__func__, *time_keeper_);
+
+  // Resize output vector to hold points for each radial divider
+  out_radial_ordered_points.resize(param_.radial_dividers_num);
+  const auto inv_radial_divider_angle_rad = 1.0f / param_.radial_divider_angle_rad;
+
+  const size_t in_cloud_data_size = in_cloud->data.size();
+  const size_t in_cloud_point_step = in_cloud->point_step;
+
+  // Loop through each point in input cloud, assign it to appropriate radial divider
+  {
+    pcl::PointXYZ input_point;
+    for (size_t data_index = 0; data_index + in_cloud_point_step <= in_cloud_data_size;
+         data_index += in_cloud_point_step) {
+      data_accessor_.getPoint(in_cloud, data_index, input_point);
+
+      // Distance R in polar coords
+      auto radius{static_cast<float>(std::hypot(input_point.x, input_point.y))};
+
+      // Theta in polar coords, normalized to [0, 2*pi)
+      auto theta{
+        autoware_utils_math::normalize_radian(std::atan2(input_point.x, input_point.y), 0.0)};
+
+      // Radial divier index
+      auto radial_div{static_cast<size_t>(std::floor(theta * inv_radial_divider_angle_rad))};
+
+      out_radial_ordered_points[radial_div].emplace_back(
+        PointData{radius, PointLabel::INIT, data_index});
+    }
+  }
+
+  // Now sort each radial divier's point by distance R
+  {
+    for (size_t i = 0; i < param_.radial_dividers_num; ++i) {
+      std::sort(
+        out_radial_ordered_points[i].begin(), out_radial_ordered_points[i].end(),
+        [](const PointData & a, const PointData & b) { return a.radius < b.radius; });
+    }
+  }
+}
+
 }  // namespace autoware::ground_filter
