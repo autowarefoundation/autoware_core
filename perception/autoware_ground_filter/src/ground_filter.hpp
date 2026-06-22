@@ -216,6 +216,7 @@ private:
     const Cell & cell, PointsCentroid & ground_bin, pcl::PointIndices & out_no_ground_indices);
   void classify(pcl::PointIndices & out_no_ground_indices);
 
+  // Enum classes for each point to better characterize algorithm's behavior on each point
   enum class PointLabel : uint16_t {
     INIT = 0,
     GROUND,
@@ -226,6 +227,7 @@ private:
     OUT_OF_RANGE
   };
 
+  // Struct to hold point data and its label for radial ordered point cloud
   struct PointData
   {
     float radius;
@@ -234,6 +236,7 @@ private:
   };
   using PointCloudVector = std::vector<PointData>;
 
+  // Centroid struct for points in each ray for radial ordered point cloud
   struct RayPointsCentroid
   {
     float radius_sum;
@@ -257,6 +260,61 @@ private:
       point_num(0)
     {
     }
+
+    // Helper func to init all members to default values
+    void initialize()
+    {
+      radius_sum = 0.0f;
+      height_sum = 0.0f;
+      radius_avg = 0.0f;
+      height_avg = 0.0f;
+      height_max = -10.0f;
+      height_min = 10.0f;
+      point_num = 0;
+      pcl_indices.clear();
+      height_list.clear();
+    }
+
+    /**
+     * @brief Add a point to centroid calculation, updating sums, averages, and min/max heights.
+     *
+     * @param radius Radius of point in cylindrical coordinates.
+     * @param height Height of point.
+     */
+    void addPoint(const float radius, const float height)
+    {
+      radius_sum += radius;
+      height_sum += height;
+      ++point_num;
+      radius_avg = radius_sum / point_num;
+      height_avg = height_sum / point_num;
+      height_max = height_max < height ? height : height_max;
+      height_min = height_min > height ? height : height_min;
+    }
+
+    /**
+     * @brief Similar as the helper func right above, but also stores point index and height in
+     * lists for later use in ground/obstacle classification.
+     *
+     * @param radius Radius of point in cylindrical coordinates.
+     * @param height Height of point.
+     * @param index Index of point in original point cloud.
+     */
+    void addPoint(const float radius, const float height, const size_t index)
+    {
+      pcl_indices.push_back(index);
+      height_list.push_back(height);
+      addPoint(radius, height);
+    }
+
+    // Helper func to calculate average slope of points in ray
+    float getAverageSlope() const { return std::atan2(height_avg, radius_avg); }
+
+    // Helper func to get average height of points in ray
+    float getAverageHeight() const { return height_avg; }
+
+    // Helper func to get average radius of points in ray
+    float getAverageRadius() const { return radius_avg; }
   };
 };  // namespace autoware::ground_filter
 
