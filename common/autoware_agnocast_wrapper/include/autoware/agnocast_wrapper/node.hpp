@@ -295,8 +295,9 @@ public:
     });
   }
 
-  // Convenience overload for rclcpp-style std::shared_ptr callbacks (copies in/out of shared
-  // memory under Agnocast like publish(const MessageT &); prefer the message_ptr overload).
+  // Convenience overload for rclcpp-style std::shared_ptr callbacks. Gives the callback independent
+  // owning copies of the request/response (safe to retain, like rclcpp) and copies the filled
+  // response back, so prefer the message_ptr overload above to avoid the copies on hot paths.
   template <
     typename ServiceT, typename Func,
     std::enable_if_t<
@@ -320,6 +321,27 @@ public:
         *res = *response;
       },
       qos, group);
+  }
+
+  // Fallback overload: neither callback form matched. Exists only to turn the otherwise opaque
+  // "no matching function" error into the static_assert message below.
+  template <
+    typename ServiceT, typename Func,
+    std::enable_if_t<
+      !is_message_ptr_service_callback_v<Func, ServiceT> &&
+        !is_shared_ptr_service_callback_v<Func, ServiceT>,
+      int> = 0>
+  AUTOWARE_SERVICE_PTR(ServiceT)
+  create_service(
+    const std::string & service_name, Func && callback,
+    const rclcpp::QoS & qos = rclcpp::ServicesQoS(),
+    rclcpp::CallbackGroup::SharedPtr group = nullptr)
+  {
+    static_assert(
+      is_message_ptr_service_callback_v<Func, ServiceT> ||
+        is_shared_ptr_service_callback_v<Func, ServiceT>,
+      "Service callback must take AUTOWARE_SERVICE_REQUEST_PTR/RESPONSE_PTR (message_ptr) "
+      "or std::shared_ptr<Request>/Response.");
   }
 
   // ===== Timer =====
