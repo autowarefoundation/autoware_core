@@ -501,7 +501,7 @@ void GroundFilter::process(
   } else {
     // Just classify point cloud without grid
     std::vector<PointCloudVector> radial_ordered_points;
-    convertPointcloud(in_cloud, radial_ordered_points);
+    convertPointCloud(in_cloud, radial_ordered_points);
     classifyPointCloud(in_cloud, radial_ordered_points, out_no_ground_indices);
   }
 }
