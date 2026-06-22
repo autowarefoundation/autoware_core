@@ -337,7 +337,6 @@ void EKFLocalizer::callback_pose_with_covariance(
     return;
   }
 
-  // pose_queue_ stores rclcpp SharedPtr; copy out of the (read-only) agnocast message.
   auto pose_msg = std::make_shared<geometry_msgs::msg::PoseWithCovarianceStamped>(*msg);
   pose_queue_.push(pose_msg);
 
@@ -361,8 +360,6 @@ void EKFLocalizer::callback_pose_with_covariance(
 void EKFLocalizer::callback_twist_with_covariance(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::TwistWithCovarianceStamped) msg)
 {
-  // twist_queue_ stores rclcpp SharedPtr; copy out of the (read-only) agnocast message so we
-  // can also adjust the covariance below.
   auto twist_msg = std::make_shared<geometry_msgs::msg::TwistWithCovarianceStamped>(*msg);
 
   // Ignore twist if velocity is too small.
