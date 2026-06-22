@@ -331,8 +331,8 @@ private:
     const PointCloud2ConstPtr & in_cloud,
     const std::vector<PointCloudVector> & in_radial_ordered_clouds,
     pcl::PointIndices & out_no_ground_indices) const;
+};
+
 };  // namespace autoware::ground_filter
 
 #endif  // GROUND_FILTER_HPP_
-
-};  // namespace autoware::ground_filter
