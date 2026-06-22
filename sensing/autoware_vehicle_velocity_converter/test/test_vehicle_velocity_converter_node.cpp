@@ -86,8 +86,17 @@ protected:
     executor_->add_node(converter_node_);
     executor_thread_ = std::thread([this]() { executor_->spin(); });
 
-    // Give the publishers and subscribers time to discover each other before publishing.
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    // Poll until both endpoints have discovered each other instead of sleeping a fixed duration,
+    // because DDS discovery time varies across environments and CI machines.
+    const auto discovery_deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    while (std::chrono::steady_clock::now() < discovery_deadline) {
+      if (
+        report_publisher_->get_subscription_count() > 0 &&
+        twist_subscription_->get_publisher_count() > 0) {
+        break;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
   }
 
   // Publish a report and return the converted twist, or nullptr if none arrives within the timeout.
