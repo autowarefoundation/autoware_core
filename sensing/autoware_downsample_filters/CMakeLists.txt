@@ -24,9 +24,18 @@ rclcpp_components_register_node(${PROJECT_NAME}
   PLUGIN "autoware::downsample_filters::VoxelGridDownsampleFilter"
   EXECUTABLE ${VOXEL_GRID}_node)
 
+if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
+  ament_auto_add_gtest(test_voxel_grid_downsample_filter_integration
+    test/test_voxel_grid_downsample_filter_integration.cpp
+  )
+  target_include_directories(test_voxel_grid_downsample_filter_integration PRIVATE src)
+endif()
+
 autoware_ament_auto_package(
   USE_SCOPED_HEADER_INSTALL_DIR
   INSTALL_TO_SHARE
   launch
   config
+  test
 )

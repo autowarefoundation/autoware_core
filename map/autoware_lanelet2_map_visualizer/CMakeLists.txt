@@ -5,6 +5,7 @@ find_package(autoware_cmake REQUIRED)
 autoware_package()
 
 ament_auto_add_library(lanelet2_map_visualization_node SHARED
+  src/lanelet2_map_visualization.cpp
   src/lanelet2_map_visualization_node.cpp
 )
 
@@ -30,6 +31,13 @@ if(BUILD_TESTING)
     test/test_lanelet2_map_visualization_node.cpp
   )
   target_link_libraries(test_lanelet2_map_visualization_node
+    lanelet2_map_visualization_node
+  )
+
+  ament_add_gtest(test_lanelet2_map_visualization
+    test/test_lanelet2_map_visualization.cpp
+  )
+  target_link_libraries(test_lanelet2_map_visualization
     lanelet2_map_visualization_node
   )
 

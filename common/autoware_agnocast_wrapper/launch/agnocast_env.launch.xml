@@ -2,9 +2,11 @@
 <launch>
   <!--
     Configuration:
-    - Checks ENABLE_AGNOCAST environment variable (set to "1" to enable)
+    - use_agnocast arg overrides the ENABLE_AGNOCAST environment variable per include
+      (set to "1" to enable). When not passed by the including launch file, it defaults to the
+      ENABLE_AGNOCAST environment variable (which itself defaults to "0").
     - Heaphook path is configurable via the agnocast_heaphook_path arg
-      (default: /opt/ros/humble/lib/libagnocast_heaphook.so)
+      (default: /opt/ros/$ROS_DISTRO/lib/libagnocast_heaphook.so, falls back to humble)
 
     Provides the following variables:
     - ld_preload_value: LD_PRELOAD value with heaphook prepended when Agnocast is enabled
@@ -12,9 +14,9 @@
     - container_executable: resolved component container executable name
   -->
 
-  <arg name="agnocast_heaphook_path" default="/opt/ros/humble/lib/libagnocast_heaphook.so"/>
+  <arg name="agnocast_heaphook_path" default="/opt/ros/$(env ROS_DISTRO humble)/lib/libagnocast_heaphook.so"/>
   <arg name="use_multithread" default="false"/>
-  <let name="use_agnocast" value="$(env ENABLE_AGNOCAST 0)"/>
+  <arg name="use_agnocast" default="$(env ENABLE_AGNOCAST 0)"/>
 
   <!-- LD_PRELOAD -->
   <let name="ld_preload_value" value="$(var agnocast_heaphook_path):$(env LD_PRELOAD '')" if="$(eval &quot;'$(var use_agnocast)' == '1'&quot;)"/>
@@ -27,4 +29,13 @@
   <let name="container_executable" value="component_container_mt" if="$(eval &quot;'$(var use_agnocast)' != '1' and '$(var use_multithread)' == 'true'&quot;)"/>
   <let name="container_executable" value="agnocast_component_container" if="$(eval &quot;'$(var use_agnocast)' == '1' and '$(var use_multithread)' != 'true'&quot;)"/>
   <let name="container_executable" value="agnocast_component_container_cie" if="$(eval &quot;'$(var use_agnocast)' == '1' and '$(var use_multithread)' == 'true'&quot;)"/>
+
+  <!--
+    Spawn the per-IPC-namespace discovery agent (a singleton) when Agnocast is
+    enabled. This file is included once per agnocast-using node, so the spawn
+    and its tree-wide deduplication live in discovery_agent.launch.py, shared
+    with the Python wrapper. That file gates on ENABLE_AGNOCAST itself, so the
+    include is unconditional here.
+  -->
+  <include file="$(find-pkg-share autoware_agnocast_wrapper)/launch/discovery_agent.launch.py"/>
 </launch>

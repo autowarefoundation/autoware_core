@@ -14,27 +14,37 @@
 
 #include "autoware/vehicle_info_utils/vehicle_info.hpp"
 
+#include "autoware_utils_geometry/geometry.hpp"
+
 #include <autoware_utils_geometry/boost_geometry.hpp>
 #include <rclcpp/rclcpp.hpp>
 
+#include <algorithm>
 #include <limits>
+#include <utility>
 
 namespace autoware::vehicle_info_utils
 {
-autoware_utils_geometry::LinearRing2d VehicleInfo::createFootprint(const double margin) const
+autoware_utils_geometry::LinearRing2d VehicleInfo::createFootprint(
+  const double margin, const std::optional<geometry_msgs::msg::Pose> & base_pose) const
 {
-  return createFootprint(margin, margin);
+  return createFootprint(margin, margin, base_pose);
 }
 
 autoware_utils_geometry::LinearRing2d VehicleInfo::createFootprint(
-  const double lat_margin, const double lon_margin) const
+  const double lat_margin, const double lon_margin,
+  const std::optional<geometry_msgs::msg::Pose> & base_pose) const
 {
-  return createFootprint(lat_margin, lat_margin, lat_margin, lon_margin, lon_margin);
+  // set default value of center_base_link
+  const bool center_at_base_link = false;
+  return createFootprint(
+    lat_margin, lat_margin, lat_margin, lon_margin, lon_margin, center_at_base_link, base_pose);
 }
 
 autoware_utils_geometry::LinearRing2d VehicleInfo::createFootprint(
   const double front_lat_margin, const double center_lat_margin, const double rear_lat_margin,
-  const double front_lon_margin, const double rear_lon_margin, const bool center_at_base_link) const
+  const double front_lon_margin, const double rear_lon_margin, const bool center_at_base_link,
+  const std::optional<geometry_msgs::msg::Pose> & base_pose) const
 {
   using autoware_utils_geometry::LinearRing2d;
   using autoware_utils_geometry::Point2d;
@@ -62,6 +72,13 @@ autoware_utils_geometry::LinearRing2d VehicleInfo::createFootprint(
   footprint.emplace_back(x_rear, y_left_rear);
   footprint.emplace_back(x_center, y_left_center);
   footprint.emplace_back(x_front, y_left_front);
+
+  // only transform if input pose exist, if not return simple base footprint
+  if (base_pose.has_value()) {
+    auto transformed_footprint = autoware_utils_geometry::transform_vector(
+      footprint, autoware_utils_geometry::pose2transform(base_pose.value()));
+    return transformed_footprint;
+  }
 
   return footprint;
 }
@@ -136,6 +153,13 @@ VehicleInfo createVehicleInfo(
     max_height_offset_m_,
   };
 }
+VehicleInfo extendVehicleInfo(const VehicleInfo & input_vehicle_info, const double margin)
+{
+  return VehicleInfo::createVehicleInfoForVehicleShape(
+    input_vehicle_info.vehicle_length_m + margin, input_vehicle_info.vehicle_width_m + margin,
+    input_vehicle_info.wheel_base_m, input_vehicle_info.max_steer_angle_rad,
+    input_vehicle_info.rear_overhang_m + margin / 2.0);
+}
 
 double VehicleInfo::calcMaxCurvature() const
 {
@@ -168,5 +192,19 @@ double VehicleInfo::calcSteerAngleFromCurvature(const double curvature) const
 
   const double radius = 1.0 / curvature;
   return std::atan2(wheel_base_m, radius);
+}
+
+std::pair<double, double> VehicleInfo::calcMaxMinDimension() const
+{
+  const auto base2front = vehicle_length_m - rear_overhang_m;
+  double max_dimension, min_dimension;
+  if (rear_overhang_m <= base2front) {
+    min_dimension = std::min(0.5 * vehicle_width_m, rear_overhang_m);
+    max_dimension = std::hypot(base2front, 0.5 * vehicle_width_m);
+  } else {
+    min_dimension = std::min(0.5 * vehicle_width_m, base2front);
+    max_dimension = std::hypot(rear_overhang_m, 0.5 * vehicle_width_m);
+  }
+  return std::make_pair(max_dimension, min_dimension);
 }
 }  // namespace autoware::vehicle_info_utils

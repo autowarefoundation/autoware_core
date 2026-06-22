@@ -62,6 +62,10 @@ public:
 
   geometry_msgs::msg::Point getSplineInterpolatedPointAt(const double s) const
   {
+    // NOTE: the vector overload is kept here to preserve the validateKeys() out-of-range
+    //       precondition (this entry point receives an unclamped s, unlike the internal
+    //       per-knot loops which clamp before evaluating and therefore use the scalar
+    //       allocation-free overloads).
     geometry_msgs::msg::Point point;
     point.x = spline_x_.getSplineInterpolatedValues({s}).at(0);
     point.y = spline_y_.getSplineInterpolatedValues({s}).at(0);
