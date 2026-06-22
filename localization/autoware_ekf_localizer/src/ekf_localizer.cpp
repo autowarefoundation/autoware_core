@@ -97,7 +97,8 @@ EKFLocalizer::EKFLocalizer(const rclcpp::NodeOptions & node_options)
   service_trigger_node_ = this->create_service<std_srvs::srv::SetBool>(
     "trigger_node_srv",
     std::bind(
-      &EKFLocalizer::service_trigger_node, this, std::placeholders::_1, std::placeholders::_2));
+      &EKFLocalizer::service_trigger_node, this, std::placeholders::_1, std::placeholders::_2),
+    rclcpp::ServicesQoS());
 
   tf_br_ = std::make_shared<autoware::agnocast_wrapper::TransformBroadcaster>(*this);
 
