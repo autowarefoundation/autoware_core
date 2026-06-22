@@ -30,8 +30,6 @@ endfunction()
 
 if(BUILD_TESTING)
   # Test python scripts
-  # These launch tests start the node via launch_ros Node() without LD_PRELOAD, so the Agnocast
-  # heaphook is not preloaded and the node aborts on startup. Skip them when Agnocast is enabled.
   if(NOT "$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
     add_launch_test(
       test/test_node_load_mgrs_from_yaml.test.py
