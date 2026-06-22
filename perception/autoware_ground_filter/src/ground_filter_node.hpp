@@ -69,18 +69,15 @@ private:
   /** \brief Lazy transport subscribe routine. */
   void subscribe();
 
-  void filter(
+  static void filter(
     const sensor_msgs::msg::PointCloud2::ConstSharedPtr & input, const pcl::IndicesPtr & indices,
-    const sensor_msgs::msg::PointCloud2 & output) const;
+    const sensor_msgs::msg::PointCloud2 & output);
 
   // TODO(taisa1): Temporary Implementation: Remove this interface when all the filter nodes
   // conform to new API
   void faster_filter(
     const sensor_msgs::msg::PointCloud2::ConstSharedPtr & input,
     [[maybe_unused]] const pcl::IndicesPtr & indices, sensor_msgs::msg::PointCloud2 & output);
-
-  // data accessor
-  PclDataAccessor data_accessor_;
 
   const uint16_t ground_grid_continual_thresh_ = 3;
   bool elevation_grid_mode_;
@@ -92,6 +89,10 @@ private:
   float radial_divider_angle_rad_;  // distance in rads between dividers
   size_t radial_dividers_num_;
   autoware::vehicle_info_utils::VehicleInfo vehicle_info_;
+
+  // non-grid parameters
+  bool use_virtual_ground_point_;
+  float split_height_distance_;
 
   // common thresholds
   float global_slope_max_angle_rad_;  // radians
