@@ -14,13 +14,10 @@
 
 #include "vehicle_velocity_converter_node.hpp"
 
-#include <string>
-
 namespace autoware::vehicle_velocity_converter
 {
 VehicleVelocityConverterNode::VehicleVelocityConverterNode(const rclcpp::NodeOptions & options)
 : rclcpp::Node("vehicle_velocity_converter", options),
-  frame_id_(declare_parameter<std::string>("frame_id")),
   converter_(
     declare_parameter<double>("speed_scale_factor"),
     declare_parameter<double>("velocity_stddev_xx"),
@@ -38,11 +35,6 @@ VehicleVelocityConverterNode::VehicleVelocityConverterNode(const rclcpp::NodeOpt
 void VehicleVelocityConverterNode::callback_velocity_report(
   const autoware_vehicle_msgs::msg::VelocityReport::SharedPtr msg)
 {
-  if (msg->header.frame_id != frame_id_) {
-    RCLCPP_WARN(get_logger(), "frame_id is not base_link.");
-  }
-
-  // set twist with covariance msg from vehicle report msg
   twist_with_covariance_pub_->publish(converter_.convert(*msg));
 }
 }  // namespace autoware::vehicle_velocity_converter

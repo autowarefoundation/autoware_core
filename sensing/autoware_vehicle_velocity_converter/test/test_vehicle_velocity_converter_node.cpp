@@ -137,8 +137,7 @@ TEST_F(VehicleVelocityConverterNodeTest, ConvertsVelocityReportToTwist)
 {
   // Arrange
   start_converter_node(
-    {{"frame_id", "base_link"},
-     {"velocity_stddev_xx", 0.2},
+    {{"velocity_stddev_xx", 0.2},
      {"angular_velocity_stddev_zz", 0.1},
      {"speed_scale_factor", 1.5}});
   const auto report = make_velocity_report(2.0, 0.1, 0.3);
