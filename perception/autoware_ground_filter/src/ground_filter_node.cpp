@@ -55,9 +55,7 @@ using PointCloud2ConstPtr = sensor_msgs::msg::PointCloud2::ConstSharedPtr;
 
 using autoware::vehicle_info_utils::VehicleInfoUtils;
 using autoware_utils_debug::ScopedTimeTrack;
-using autoware_utils_geometry::calc_distance3d;
 using autoware_utils_math::deg2rad;
-using autoware_utils_math::normalize_radian;
 
 GroundFilterComponent::GroundFilterComponent(const rclcpp::NodeOptions & options)
 : rclcpp::Node("GroundFilter", options)
@@ -135,7 +133,7 @@ GroundFilterComponent::GroundFilterComponent(const rclcpp::NodeOptions & options
       param.split_points_distance_tolerance = split_points_distance_tolerance_;
       param.split_height_distance = split_height_distance_;
       param.use_virtual_ground_point = use_virtual_ground_point_;
-      param.wheel_base_m = vehicle_info_.wheel_base_m;
+      param.wheel_base_m = static_cast<float>(vehicle_info_.wheel_base_m);
 
       ground_filter_ptr_ = std::make_unique<GroundFilter>(param);
     }
@@ -433,10 +431,7 @@ void GroundFilterComponent::faster_filter(
 
   if (stop_watch_ptr_) stop_watch_ptr_->toc("processing_time", true);
 
-  if (!data_accessor_.isInitialized()) {
-    data_accessor_.setField(input);
-    ground_filter_ptr_->setDataAccessor(input);
-  }
+  ground_filter_ptr_->setDataAccessor(input);
 
   pcl::PointIndices no_ground_indices;
   ground_filter_ptr_->process(input, no_ground_indices);
@@ -467,8 +462,7 @@ void GroundFilterComponent::faster_filter(
 // nodes conform to new API.
 void GroundFilterComponent::filter(
   const sensor_msgs::msg::PointCloud2::ConstSharedPtr & input,
-  [[maybe_unused]] const pcl::IndicesPtr & indices,
-  const sensor_msgs::msg::PointCloud2 & output) const
+  [[maybe_unused]] const pcl::IndicesPtr & indices, const sensor_msgs::msg::PointCloud2 & output)
 {
   (void)input;
   (void)indices;
