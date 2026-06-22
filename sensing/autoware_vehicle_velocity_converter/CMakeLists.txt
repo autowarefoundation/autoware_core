@@ -8,24 +8,33 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/vehicle_velocity_converter.cpp
 )
 
-autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
-  PLUGIN "autoware::vehicle_velocity_converter::VehicleVelocityConverter"
+ament_auto_add_library(${PROJECT_NAME}_ros SHARED
+  src/vehicle_velocity_converter_node.cpp
+)
+
+target_link_libraries(${PROJECT_NAME}_ros
+  ${PROJECT_NAME}
+)
+
+autoware_agnocast_wrapper_register_node(${PROJECT_NAME}_ros
+  PLUGIN "autoware::vehicle_velocity_converter::VehicleVelocityConverterNode"
   EXECUTABLE ${PROJECT_NAME}_node
   AGNOCAST_EXECUTOR CallbackIsolatedAgnocastExecutor
   ROS2_EXECUTOR SingleThreadedExecutor
 )
 
 if(BUILD_TESTING)
-  find_package(ament_lint_auto REQUIRED)
-  ament_lint_auto_find_test_dependencies()
-
-  find_package(ament_cmake_gtest REQUIRED)
-  ament_add_gtest(test_${PROJECT_NAME}
+  ament_auto_add_gtest(test_${PROJECT_NAME}
     test/test_vehicle_velocity_converter.cpp
   )
-  target_link_libraries(test_${PROJECT_NAME}
-    ${PROJECT_NAME}
+  target_link_libraries(test_${PROJECT_NAME} ${PROJECT_NAME})
+  target_include_directories(test_${PROJECT_NAME} PRIVATE src)
+
+  ament_add_ros_isolated_gtest(test_${PROJECT_NAME}_node
+    test/test_vehicle_velocity_converter_node.cpp
   )
+  target_link_libraries(test_${PROJECT_NAME}_node ${PROJECT_NAME} ${PROJECT_NAME}_ros)
+  target_include_directories(test_${PROJECT_NAME}_node PRIVATE src)
 endif()
 
 autoware_ament_auto_package(
