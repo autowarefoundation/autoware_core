@@ -87,14 +87,9 @@ private:
     const autoware::adapi_specs::routing::SetRoute::Service::Request::SharedPtr req,
     const autoware::adapi_specs::routing::SetRoute::Service::Response::SharedPtr res);
 
-  bool is_autoware_control_;
   bool is_auto_mode_;
   State::Message state_;
   diagnostic_updater::Updater diagnostics_;
-
-  // Stop check for route clear.
-  autoware::motion_utils::VehicleStopChecker vehicle_stop_checker_;
-  double stop_check_duration_;
 };
 
 }  // namespace autoware::default_adapi
