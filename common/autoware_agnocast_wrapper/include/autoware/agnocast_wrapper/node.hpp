@@ -340,8 +340,9 @@ public:
     static_assert(
       is_message_ptr_service_callback_v<Func, ServiceT> ||
         is_shared_ptr_service_callback_v<Func, ServiceT>,
-      "Service callback must take AUTOWARE_SERVICE_REQUEST_PTR/RESPONSE_PTR (message_ptr) "
-      "or std::shared_ptr<Request>/Response.");
+      "Service callback must be invocable with "
+      "(AUTOWARE_SERVICE_REQUEST_PTR(ServiceT), AUTOWARE_SERVICE_RESPONSE_PTR(ServiceT)) or with "
+      "(std::shared_ptr<ServiceT::Request>, std::shared_ptr<ServiceT::Response>).");
   }
 
   // ===== Timer =====

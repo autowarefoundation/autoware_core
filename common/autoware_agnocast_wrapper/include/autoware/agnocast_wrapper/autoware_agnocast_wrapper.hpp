@@ -1054,8 +1054,8 @@ inline constexpr bool is_message_ptr_service_callback_v = std::is_invocable_v<
 // unchanged on the wrapper Node, at the cost noted on the convenience paths below.
 template <typename Func, typename ServiceT>
 inline constexpr bool is_shared_ptr_service_callback_v = std::is_invocable_v<
-  std::decay_t<Func>, std::shared_ptr<typename ServiceT::Request>,
-  std::shared_ptr<typename ServiceT::Response>>;
+  std::decay_t<Func>, std::shared_ptr<typename ServiceT::Request> &,
+  std::shared_ptr<typename ServiceT::Response> &>;
 
 template <typename ServiceT>
 class AgnocastService : public Service<ServiceT>
