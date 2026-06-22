@@ -130,6 +130,13 @@ GroundFilterComponent::GroundFilterComponent(const rclcpp::NodeOptions & options
       param.virtual_lidar_y = 0.0f;
       param.virtual_lidar_z = virtual_lidar_z_;
 
+      param.elevation_grid_mode = elevation_grid_mode_;
+      param.radial_dividers_num = std::ceil(2.0 * M_PI / param.radial_divider_angle_rad);
+      param.split_points_distance_tolerance = split_points_distance_tolerance_;
+      param.split_height_distance = split_height_distance_;
+      param.use_virtual_ground_point = use_virtual_ground_point_;
+      param.wheel_base_m = vehicle_info_.wheel_base_m;
+
       ground_filter_ptr_ = std::make_unique<GroundFilter>(param);
     }
   }
@@ -395,188 +402,6 @@ void GroundFilterComponent::faster_input_indices_callback(
   published_time_publisher_->publish_if_subscribed(pub_output_, cloud->header.stamp);
 }
 
-void GroundFilterComponent::convertPointcloud(
-  const sensor_msgs::msg::PointCloud2::ConstSharedPtr & in_cloud,
-  std::vector<PointCloudVector> & out_radial_ordered_points) const
-{
-  std::unique_ptr<autoware_utils_debug::ScopedTimeTrack> st_ptr;
-  if (time_keeper_)
-    st_ptr = std::make_unique<autoware_utils_debug::ScopedTimeTrack>(__func__, *time_keeper_);
-
-  out_radial_ordered_points.resize(radial_dividers_num_);
-
-  const auto inv_radial_divider_angle_rad = 1.0f / radial_divider_angle_rad_;
-
-  const size_t in_cloud_data_size = in_cloud->data.size();
-  const size_t in_cloud_point_step = in_cloud->point_step;
-
-  {  // grouping pointcloud by its azimuth angle
-    std::unique_ptr<autoware_utils_debug::ScopedTimeTrack> inner_st_ptr;
-    if (time_keeper_)
-      inner_st_ptr = std::make_unique<autoware_utils_debug::ScopedTimeTrack>(
-        "azimuth_angle_grouping", *time_keeper_);
-
-    pcl::PointXYZ input_point;
-    for (size_t data_index = 0; data_index + in_cloud_point_step <= in_cloud_data_size;
-         data_index += in_cloud_point_step) {
-      // Get Point
-      data_accessor_.getPoint(in_cloud, data_index, input_point);
-
-      // determine the azimuth angle group
-      auto radius{static_cast<float>(std::hypot(input_point.x, input_point.y))};
-      auto theta{normalize_radian(std::atan2(input_point.x, input_point.y), 0.0)};
-      auto radial_div{static_cast<size_t>(std::floor(theta * inv_radial_divider_angle_rad))};
-
-      // store the point in the corresponding radial division
-      out_radial_ordered_points[radial_div].emplace_back(
-        PointData{radius, PointLabel::INIT, data_index});
-    }
-  }
-
-  {  // sorting pointcloud by distance, on each azimuth angle group
-    std::unique_ptr<autoware_utils_debug::ScopedTimeTrack> inner_st_ptr;
-    if (time_keeper_)
-      inner_st_ptr = std::make_unique<autoware_utils_debug::ScopedTimeTrack>("sort", *time_keeper_);
-
-    for (size_t i = 0; i < radial_dividers_num_; ++i) {
-      std::sort(
-        out_radial_ordered_points[i].begin(), out_radial_ordered_points[i].end(),
-        [](const PointData & a, const PointData & b) { return a.radius < b.radius; });
-    }
-  }
-}
-
-void GroundFilterComponent::calcVirtualGroundOrigin(pcl::PointXYZ & point) const
-{
-  point.x = static_cast<float>(vehicle_info_.wheel_base_m);
-  point.y = 0;
-  point.z = 0;
-}
-
-void GroundFilterComponent::classifyPointCloud(
-  const sensor_msgs::msg::PointCloud2::ConstSharedPtr & in_cloud,
-  const std::vector<PointCloudVector> & in_radial_ordered_clouds,
-  pcl::PointIndices & out_no_ground_indices) const
-{
-  std::unique_ptr<autoware_utils_debug::ScopedTimeTrack> st_ptr;
-  if (time_keeper_)
-    st_ptr = std::make_unique<autoware_utils_debug::ScopedTimeTrack>(__func__, *time_keeper_);
-
-  out_no_ground_indices.indices.clear();
-
-  const pcl::PointXYZ init_ground_point(0, 0, 0);
-  pcl::PointXYZ virtual_ground_point(0, 0, 0);
-  calcVirtualGroundOrigin(virtual_ground_point);
-
-  // run the classification algorithm for each ray (azimuth division)
-  for (size_t i = 0; i < in_radial_ordered_clouds.size(); ++i) {
-    float prev_gnd_radius = 0.0f;
-    float prev_gnd_slope = 0.0f;
-    PointsCentroid ground_cluster, non_ground_cluster;
-    PointLabel point_label_curr = PointLabel::INIT;
-
-    pcl::PointXYZ prev_gnd_point(0, 0, 0), point_curr, point_prev;
-
-    // iterate over the points in the ray
-    for (size_t j = 0; j < in_radial_ordered_clouds[i].size(); ++j) {
-      float points_distance = 0.0f;
-      const float local_slope_max_angle = local_slope_max_angle_rad_;
-
-      // set the previous point
-      point_prev = point_curr;
-      PointLabel point_label_prev = point_label_curr;
-
-      // set the current point
-      const PointData & pd = in_radial_ordered_clouds[i][j];
-      point_label_curr = pd.point_state;
-
-      data_accessor_.getPoint(in_cloud, pd.data_index, point_curr);
-      if (j == 0) {
-        bool is_front_side = (point_curr.x > virtual_ground_point.x);
-        if (use_virtual_ground_point_ && is_front_side) {
-          prev_gnd_point = virtual_ground_point;
-        } else {
-          prev_gnd_point = init_ground_point;
-        }
-        prev_gnd_radius = std::hypot(prev_gnd_point.x, prev_gnd_point.y);
-        prev_gnd_slope = 0.0f;
-        ground_cluster.initialize();
-        non_ground_cluster.initialize();
-        points_distance = static_cast<float>(calc_distance3d(point_curr, prev_gnd_point));
-      } else {
-        points_distance = static_cast<float>(calc_distance3d(point_curr, point_prev));
-      }
-
-      float radius_distance_from_gnd = pd.radius - prev_gnd_radius;
-      float height_from_gnd = point_curr.z - prev_gnd_point.z;
-      float height_from_obj = point_curr.z - non_ground_cluster.getAverageHeight();
-      bool calculate_slope = true;
-      bool is_point_close_to_prev =
-        (points_distance <
-         (pd.radius * radial_divider_angle_rad_ + split_points_distance_tolerance_));
-
-      float global_slope_ratio = point_curr.z / pd.radius;
-      // check points which is far enough from previous point
-      if (global_slope_ratio > global_slope_max_ratio_) {
-        point_label_curr = PointLabel::NON_GROUND;
-        calculate_slope = false;
-      } else if (
-        (point_label_prev == PointLabel::NON_GROUND) &&
-        (std::abs(height_from_obj) >= split_height_distance_)) {
-        calculate_slope = true;
-      } else if (is_point_close_to_prev && std::abs(height_from_gnd) < split_height_distance_) {
-        // close to the previous point, set point follow label
-        point_label_curr = PointLabel::POINT_FOLLOW;
-        calculate_slope = false;
-      }
-      if (is_point_close_to_prev) {
-        height_from_gnd = point_curr.z - ground_cluster.getAverageHeight();
-        radius_distance_from_gnd = pd.radius - ground_cluster.getAverageRadius();
-      }
-      if (calculate_slope) {
-        // far from the previous point
-        auto local_slope = std::atan2(height_from_gnd, radius_distance_from_gnd);
-        if (local_slope - prev_gnd_slope > local_slope_max_angle) {
-          // the point is outside of the local slope threshold
-          point_label_curr = PointLabel::NON_GROUND;
-        } else {
-          point_label_curr = PointLabel::GROUND;
-        }
-      }
-
-      if (point_label_curr == PointLabel::GROUND) {
-        ground_cluster.initialize();
-        non_ground_cluster.initialize();
-      }
-      if (point_label_curr == PointLabel::NON_GROUND) {
-        out_no_ground_indices.indices.push_back(static_cast<int>(pd.data_index));
-      } else if (  // NOLINT
-        (point_label_prev == PointLabel::NON_GROUND) &&
-        (point_label_curr == PointLabel::POINT_FOLLOW)) {
-        point_label_curr = PointLabel::NON_GROUND;
-        out_no_ground_indices.indices.push_back(static_cast<int>(pd.data_index));
-      } else if (  // NOLINT
-        (point_label_prev == PointLabel::GROUND) &&
-        (point_label_curr == PointLabel::POINT_FOLLOW)) {
-        point_label_curr = PointLabel::GROUND;
-      } else {
-      }
-
-      // update the ground state
-      if (point_label_curr == PointLabel::GROUND) {
-        prev_gnd_radius = pd.radius;
-        prev_gnd_point = pcl::PointXYZ(point_curr.x, point_curr.y, point_curr.z);
-        ground_cluster.addPoint(pd.radius, point_curr.z);
-        prev_gnd_slope = ground_cluster.getAverageSlope();
-      }
-      // update the non ground state
-      if (point_label_curr == PointLabel::NON_GROUND) {
-        non_ground_cluster.addPoint(pd.radius, point_curr.z);
-      }
-    }
-  }
-}
-
 void GroundFilterComponent::extractObjectPoints(
   const sensor_msgs::msg::PointCloud2::ConstSharedPtr & in_cloud_ptr,
   const pcl::PointIndices & in_indices, sensor_msgs::msg::PointCloud2 & out_object_cloud) const
@@ -614,14 +439,9 @@ void GroundFilterComponent::faster_filter(
   }
 
   pcl::PointIndices no_ground_indices;
+  ground_filter_ptr_->process(input, no_ground_indices);
 
-  if (elevation_grid_mode_) {
-    ground_filter_ptr_->process(input, no_ground_indices);
-  } else {
-    std::vector<PointCloudVector> radial_ordered_points;
-    convertPointcloud(input, radial_ordered_points);
-    classifyPointCloud(input, radial_ordered_points, no_ground_indices);
-  }
+  // Package the output
   output.row_step = no_ground_indices.indices.size() * input->point_step;
   output.data.resize(output.row_step);
   output.width = no_ground_indices.indices.size();
