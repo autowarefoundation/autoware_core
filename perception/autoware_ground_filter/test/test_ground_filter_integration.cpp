@@ -118,13 +118,14 @@ protected:
    * @brief Helper func to spin node until a condition is met or timeout occurs.
    *
    * @param condition Callable that returns a bool indicating if condition is met.
-   * @param timeout Maximum wait duration for condition. Default 2000ms.
+   * @param timeout Maximum wait duration for condition. Default 30 seconds (thanks Sasaki-san for
+   * the suggestion!).
    *
    * @return true if condition is met within timeout, false otherwise.
    */
   bool spin_until(
     const std::function<bool()> & condition,
-    std::chrono::milliseconds timeout = std::chrono::milliseconds(2000))
+    std::chrono::milliseconds timeout = std::chrono::milliseconds(30000))
   {
     const auto start_time = std::chrono::steady_clock::now();
     while (std::chrono::steady_clock::now() - start_time < timeout) {
