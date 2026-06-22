@@ -316,6 +316,21 @@ private:
     // Helper func to get average radius of points in ray
     float getAverageRadius() const { return radius_avg; }
   };
+
+  // Helper func to convert point cloud to radial ordered point cloud
+  void convertPointcloud(
+    const PointCloud2ConstPtr & in_cloud,
+    std::vector<PointCloudVector> & out_radial_ordered_points) const;
+
+  // Helper func to calculate virtual ground point based on vehicle info
+  void calcVirtualGroundOrigin(pcl::PointXYZ & point) const;
+
+  // Helper func to classify points in radial ordered point cloud into ground & obstacle points.
+  // Also fills out_no_ground_indices with indices of points classified as obstacle.
+  void classifyPointCloud(
+    const PointCloud2ConstPtr & in_cloud,
+    const std::vector<PointCloudVector> & in_radial_ordered_clouds,
+    pcl::PointIndices & out_no_ground_indices) const;
 };  // namespace autoware::ground_filter
 
 #endif  // GROUND_FILTER_HPP_
