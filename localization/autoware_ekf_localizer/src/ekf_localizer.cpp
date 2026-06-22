@@ -94,11 +94,10 @@ EKFLocalizer::EKFLocalizer(const rclcpp::NodeOptions & node_options)
   sub_twist_with_cov_ = create_subscription<geometry_msgs::msg::TwistWithCovarianceStamped>(
     "in_twist_with_covariance", 1,
     std::bind(&EKFLocalizer::callback_twist_with_covariance, this, _1));
-  service_trigger_node_ = AUTOWARE_CREATE_SERVICE4(
-    std_srvs::srv::SetBool, "trigger_node_srv",
+  service_trigger_node_ = this->create_service<std_srvs::srv::SetBool>(
+    "trigger_node_srv",
     std::bind(
-      &EKFLocalizer::service_trigger_node, this, std::placeholders::_1, std::placeholders::_2),
-    rclcpp::ServicesQoS(), nullptr);
+      &EKFLocalizer::service_trigger_node, this, std::placeholders::_1, std::placeholders::_2));
 
   tf_br_ = std::make_shared<autoware::agnocast_wrapper::TransformBroadcaster>(*this);
 
