@@ -560,4 +560,16 @@ void GroundFilter::convertPointCloud(
   }
 }
 
+/**
+ * @brief Calculate virtual ground origin point coords based on wheel base parameter.
+ *
+ * @param point Output point representing virtual ground origin.
+ */
+void GroundFilter::calcVirtualGroundOrigin(pcl::PointXYZ & point) const
+{
+  point.x = param_.wheel_base_m;
+  point.y = 0;
+  point.z = 0;
+}
+
 }  // namespace autoware::ground_filter
