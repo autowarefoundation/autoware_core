@@ -369,7 +369,7 @@ protected:
 
     // Set slice size to 1 degree
     param_.radial_divider_angle_rad = 1.0f * M_PI / 180.0f;
-    param_.radial_dividers_num = std::floor(2.0 * M_PI / param_.radial_divider_angle_rad);
+    param_.radial_dividers_num = std::round(2.0 * M_PI / param_.radial_divider_angle_rad);
 
     // Gap and Virtual Origin parameters
     param_.use_virtual_ground_point = true;
