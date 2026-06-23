@@ -340,7 +340,16 @@ protected:
   using PointCloudVector = autoware::ground_filter::GroundFilter::PointCloudVector;
 
   // Bringing the private helper funcs from GroundFilter to here as proxies
-  void calcVirtualGroundOrigin(pcl::PointXYZ & point) { filter_->calcVirtualGroundOrigin(point); }
+  void calc_virtual_ground_origin(pcl::PointXYZ & point)
+  {
+    filter_->calcVirtualGroundOrigin(point);
+  }
+  void convert_point_cloud(
+    const sensor_msgs::msg::PointCloud2::ConstSharedPtr & in_cloud,
+    std::vector<PointCloudVector> & out_radial)
+  {
+    filter_->convertPointCloud(in_cloud, out_radial);
+  }
 
   // Set up test environment with radial mode params.
   void SetUp() override
@@ -354,7 +363,7 @@ protected:
 
     // Set slice size to 1 degree
     param_.radial_divider_angle_rad = 1.0f * M_PI / 180.0f;
-    param_.radial_dividers_num = std::ceil(2.0 * M_PI / param_.radial_divider_angle_rad);
+    param_.radial_dividers_num = std::floor(2.0 * M_PI / param_.radial_divider_angle_rad);
 
     // Gap and Virtual Origin parameters
     param_.use_virtual_ground_point = true;
@@ -418,17 +427,59 @@ TEST_F(GroundFilterRadialTest, RayPointsCentroidMath)
   EXPECT_NEAR(centroid.getAverageSlope(), std::atan2(1.0f, 3.0f), near_tol);
 }
 
-// TEST 2. Testing virtual origin logic.
+// TEST 2. Confirm virtual origin logic.
 // Checks that virtual ogini is calculated correctly based on vehicle wheelbase and lidar position.
 // Current wheelbase 2.8m, lidar at (1.4, 0, 1.9) should yield virtual origin at (2.8, 0, 0).
 TEST_F(GroundFilterRadialTest, CalcVirtualGroundOrigin)
 {
   pcl::PointXYZ virtual_origin;
-  calcVirtualGroundOrigin(virtual_origin);
+  calc_virtual_ground_origin(virtual_origin);
 
   EXPECT_NEAR(virtual_origin.x, 2.8f, near_tol);
   EXPECT_NEAR(virtual_origin.y, 0.0f, near_tol);
   EXPECT_NEAR(virtual_origin.z, 0.0f, near_tol);
+}
+
+// TEST 3. Confirm azimuth slicing & sorting
+// This test creates a point cloud with 3 points in different azimuths, then checks if
+// they are correctly grouped into radial slices and sorted by radius within those slices.
+// Adds 3 points: (5, 0, 0), (2, 0, 0), (0, 3, 0). Expects two slices:
+// - One for azimuth ~0 deg with points (0, 3)
+// - One for azimuth ~90 deg with point (5, 0) and (2, 0) sorted by radius.
+// Note: the math inside convertPointCloud is a lil bit tricky: azimuth angle is calculated
+//       as atan2(x, y) instead of normal convention atan2(y, x). Thus now:
+//          - 0   deg is along +Y axis
+//          - 90  deg is along +X axis
+//          - 180 deg is along -Y axis
+//          - 270 deg is along -X axis.
+TEST_F(GroundFilterRadialTest, RadialGroupingAndSorting)
+{
+  std::vector<pcl::PointXYZ> raw_points = {
+    pcl::PointXYZ(5.0f, 0.0f, 0.0f), pcl::PointXYZ(2.0f, 0.0f, 0.0f),
+    pcl::PointXYZ(0.0f, 3.0f, 0.0f)};
+
+  auto cloud = create_point_cloud(raw_points);
+  filter_->setDataAccessor(cloud);
+
+  std::vector<PointCloudVector> radial_ordered;
+  convert_point_cloud(cloud, radial_ordered);
+
+  // 1. Master array should have 360 slices (1 degree per slice)
+  EXPECT_EQ(radial_ordered.size(), 360U);
+
+  // 2. Here we check each ray/slice for expected points.
+
+  // 2.a. Checking slice 0 deg (front ray). Should contain 1 point with radius 3.0.
+  ASSERT_GE(radial_ordered.size(), 1U);
+  ASSERT_EQ(radial_ordered[0].size(), 1U);
+  EXPECT_NEAR(radial_ordered[0][0].radius, 3.0f, near_tol);
+
+  // 2.b. Checking slice 90 deg (left ray). Should contain 2 points with radii 2.0 and 5.0, sorted
+  // by radius.
+  ASSERT_GE(radial_ordered.size(), 91U);
+  ASSERT_EQ(radial_ordered[90].size(), 2U);
+  EXPECT_NEAR(radial_ordered[90][0].radius, 2.0f, near_tol);
+  EXPECT_NEAR(radial_ordered[90][1].radius, 5.0f, near_tol);
 }
 
 int main(int argc, char ** argv)
