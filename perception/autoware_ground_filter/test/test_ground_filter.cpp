@@ -322,6 +322,9 @@ TEST_F(GroundFilterTest, TestExtremeParameterValues)
   EXPECT_NO_THROW(extreme_filter->process(cloud_, no_ground_indices));
 }
 
+// This new section below is added during the June 2026 refactoring effort, to address comprehensive
+// testing of the radial mode of GroundFilter, currently not quite covered by above 11 tests.
+
 /**
  * @brief This class is to support unit testing of GroundFilter in radial mode (the above one is for
  * grid mode). Provides setting up GroundFilter instance with radial mode params and creating simple
@@ -335,6 +338,9 @@ protected:
 
   using RayPointsCentroid = autoware::ground_filter::GroundFilter::RayPointsCentroid;
   using PointCloudVector = autoware::ground_filter::GroundFilter::PointCloudVector;
+
+  // Bringing the private helper funcs from GroundFilter to here as proxies
+  void calcVirtualGroundOrigin(pcl::PointXYZ & point) { filter_->calcVirtualGroundOrigin(point); }
 
   // Set up test environment with radial mode params.
   void SetUp() override
@@ -410,6 +416,19 @@ TEST_F(GroundFilterRadialTest, RayPointsCentroidMath)
   EXPECT_NEAR(centroid.getAverageRadius(), 3.0f, near_tol);
   EXPECT_NEAR(centroid.getAverageHeight(), 1.0f, near_tol);
   EXPECT_NEAR(centroid.getAverageSlope(), std::atan2(1.0f, 3.0f), near_tol);
+}
+
+// TEST 2. Testing virtual origin logic.
+// Checks that virtual ogini is calculated correctly based on vehicle wheelbase and lidar position.
+// Current wheelbase 2.8m, lidar at (1.4, 0, 1.9) should yield virtual origin at (2.8, 0, 0).
+TEST_F(GroundFilterRadialTest, CalcVirtualGroundOrigin)
+{
+  pcl::PointXYZ virtual_origin;
+  calcVirtualGroundOrigin(virtual_origin);
+
+  EXPECT_NEAR(virtual_origin.x, 2.8f, near_tol);
+  EXPECT_NEAR(virtual_origin.y, 0.0f, near_tol);
+  EXPECT_NEAR(virtual_origin.z, 0.0f, near_tol);
 }
 
 int main(int argc, char ** argv)
