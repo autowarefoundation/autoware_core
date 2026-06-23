@@ -434,7 +434,7 @@ TEST_F(GroundFilterRadialTest, RayPointsCentroidMath)
 }
 
 // TEST 2. Confirm virtual origin logic.
-// Checks that virtual ogini is calculated correctly based on vehicle wheelbase and lidar position.
+// Checks that virtual origin is calculated correctly based on vehicle wheelbase and lidar position.
 // Current wheelbase 2.8m, lidar at (1.4, 0, 1.9) should yield virtual origin at (2.8, 0, 0).
 TEST_F(GroundFilterRadialTest, CalcVirtualGroundOrigin)
 {
