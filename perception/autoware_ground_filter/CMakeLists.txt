@@ -14,7 +14,6 @@ include_directories(
     ${Boost_INCLUDE_DIRS}
     ${PCL_INCLUDE_DIRS}
     ${EIGEN3_INCLUDE_DIRS}
-    ${GRID_MAP_INCLUDE_DIR}
 )
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
