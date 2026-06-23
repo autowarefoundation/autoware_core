@@ -31,6 +31,14 @@
 using PointXYZ = std::array<float, 3>;
 using PointXYZI = std::array<float, 4>;
 
+struct PointXYZIu8
+{
+  float x;
+  float y;
+  float z;
+  uint8_t intensity;
+};
+
 sensor_msgs::msg::PointCloud2 create_xyzirc_pointcloud2(const std::vector<PointXYZI> & points)
 {
   sensor_msgs::msg::PointCloud2 cloud;
@@ -102,48 +110,39 @@ sensor_msgs::msg::PointCloud2 create_xyzi_pointcloud2(const std::vector<PointXYZ
   return cloud;
 }
 
-std::vector<PointXYZ> extract_points_from_cloud(const sensor_msgs::msg::PointCloud2 & cloud)
+std::vector<PointXYZIu8> extract_points_with_intensity_from_cloud(
+  const sensor_msgs::msg::PointCloud2 & cloud)
 {
-  std::vector<PointXYZ> points;
+  std::vector<PointXYZIu8> points;
   sensor_msgs::PointCloud2ConstIterator<float> iter_x(cloud, "x");
   sensor_msgs::PointCloud2ConstIterator<float> iter_y(cloud, "y");
   sensor_msgs::PointCloud2ConstIterator<float> iter_z(cloud, "z");
+  sensor_msgs::PointCloud2ConstIterator<uint8_t> iter_intensity(cloud, "intensity");
 
-  for (; iter_x != iter_x.end(); ++iter_x, ++iter_y, ++iter_z) {
-    points.push_back({*iter_x, *iter_y, *iter_z});
+  for (; iter_x != iter_x.end(); ++iter_x, ++iter_y, ++iter_z, ++iter_intensity) {
+    points.push_back({*iter_x, *iter_y, *iter_z, *iter_intensity});
   }
 
   return points;
 }
 
-std::vector<uint8_t> extract_intensities_from_cloud(const sensor_msgs::msg::PointCloud2 & cloud)
-{
-  std::vector<uint8_t> intensities;
-  sensor_msgs::PointCloud2ConstIterator<uint8_t> iter_intensity(cloud, "intensity");
-
-  for (; iter_intensity != iter_intensity.end(); ++iter_intensity) {
-    intensities.push_back(*iter_intensity);
-  }
-
-  return intensities;
-}
-
-void expect_points_near(
-  std::vector<PointXYZ> actual, std::vector<PointXYZ> expected, const float tolerance)
+void expect_points_with_intensity_near(
+  std::vector<PointXYZIu8> actual, std::vector<PointXYZIu8> expected, const float tolerance)
 {
   ASSERT_EQ(actual.size(), expected.size());
 
-  const auto less = [](const PointXYZ & a, const PointXYZ & b) {
-    return std::tie(a[0], a[1], a[2]) < std::tie(b[0], b[1], b[2]);
+  const auto less = [](const PointXYZIu8 & a, const PointXYZIu8 & b) {
+    return std::tie(a.x, a.y, a.z, a.intensity) < std::tie(b.x, b.y, b.z, b.intensity);
   };
   std::sort(actual.begin(), actual.end(), less);
   std::sort(expected.begin(), expected.end(), less);
 
   for (size_t i = 0; i < expected.size(); ++i) {
     SCOPED_TRACE("point index " + std::to_string(i));
-    EXPECT_NEAR(actual[i][0], expected[i][0], tolerance);
-    EXPECT_NEAR(actual[i][1], expected[i][1], tolerance);
-    EXPECT_NEAR(actual[i][2], expected[i][2], tolerance);
+    EXPECT_NEAR(actual[i].x, expected[i].x, tolerance);
+    EXPECT_NEAR(actual[i].y, expected[i].y, tolerance);
+    EXPECT_NEAR(actual[i].z, expected[i].z, tolerance);
+    EXPECT_EQ(actual[i].intensity, expected[i].intensity);
   }
 }
 
@@ -182,12 +181,9 @@ TEST(VoxelGridDownsampleFilterCoreTest, DownsamplesPointsInSameVoxelToSingleCent
   EXPECT_EQ(output.header.frame_id, cloud.header.frame_id);
   EXPECT_EQ(output.header.stamp, cloud.header.stamp);
 
-  const std::vector<PointXYZ> expected_points = {{0.4f, 0.4f, 0.4f}};
-  expect_points_near(extract_points_from_cloud(output), expected_points, 1.0e-4f);
-
-  const auto intensities = extract_intensities_from_cloud(output);
-  ASSERT_EQ(intensities.size(), 1U);
-  EXPECT_EQ(intensities.front(), 100U);
+  const std::vector<PointXYZIu8> expected_points = {{0.4f, 0.4f, 0.4f, 100U}};
+  expect_points_with_intensity_near(
+    extract_points_with_intensity_from_cloud(output), expected_points, 1.0e-4f);
 }
 
 TEST(VoxelGridDownsampleFilterCoreTest, PreservesSeparateVoxelsAsMultipleCentroids)
@@ -201,14 +197,10 @@ TEST(VoxelGridDownsampleFilterCoreTest, PreservesSeparateVoxelsAsMultipleCentroi
   ASSERT_TRUE(result) << result.error();
 
   const auto & output = result.value();
-  const std::vector<PointXYZ> expected_points = {{0.5f, 0.5f, 0.5f}, {1.1f, 1.1f, 1.1f}};
-  expect_points_near(extract_points_from_cloud(output), expected_points, 1.0e-4f);
-
-  auto intensities = extract_intensities_from_cloud(output);
-  ASSERT_EQ(intensities.size(), 2U);
-  std::sort(intensities.begin(), intensities.end());
-  EXPECT_EQ(intensities[0], 30U);
-  EXPECT_EQ(intensities[1], 90U);
+  const std::vector<PointXYZIu8> expected_points = {
+    {0.5f, 0.5f, 0.5f, 30U}, {1.1f, 1.1f, 1.1f, 90U}};
+  expect_points_with_intensity_near(
+    extract_points_with_intensity_from_cloud(output), expected_points, 1.0e-4f);
 }
 
 TEST(VoxelGridDownsampleFilterCoreTest, IgnoresNonFinitePoints)
@@ -224,12 +216,9 @@ TEST(VoxelGridDownsampleFilterCoreTest, IgnoresNonFinitePoints)
   ASSERT_TRUE(result) << result.error();
 
   const auto & output = result.value();
-  const std::vector<PointXYZ> expected_points = {{0.5f, 0.5f, 0.5f}};
-  expect_points_near(extract_points_from_cloud(output), expected_points, 1.0e-4f);
-
-  const auto intensities = extract_intensities_from_cloud(output);
-  ASSERT_EQ(intensities.size(), 1U);
-  EXPECT_EQ(intensities.front(), 12U);
+  const std::vector<PointXYZIu8> expected_points = {{0.5f, 0.5f, 0.5f, 12U}};
+  expect_points_with_intensity_near(
+    extract_points_with_intensity_from_cloud(output), expected_points, 1.0e-4f);
 }
 
 TEST(VoxelGridDownsampleFilterCoreTest, FallsBackToInputWhenVoxelIndexWouldOverflow)
