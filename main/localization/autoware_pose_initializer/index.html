@@ -7995,11 +7995,11 @@ This node depends on the map height fitter library.
 <h2 id="initialize-pose-via-cli">Initialize pose via CLI<a class="headerlink" href="#initialize-pose-via-cli" title="Permanent link">#</a></h2>
 <h3 id="using-the-gnss-estimated-position">Using the GNSS estimated position<a class="headerlink" href="#using-the-gnss-estimated-position" title="Permanent link">#</a></h3>
 <p><code>bash
-ros2 service call /localization/initialize autoware_internal_localization_msgs/srv/InitializeLocalization</code></p>
+ros2 service call /localization/initialize autoware_localization_msgs/srv/InitializeLocalization</code></p>
 <p>The GNSS estimated position is used as the initial guess, and the localization algorithm automatically estimates a more accurate position.</p>
 <h3 id="using-the-input-position">Using the input position<a class="headerlink" href="#using-the-input-position" title="Permanent link">#</a></h3>
 <p><code>bash
-ros2 service call /localization/initialize autoware_internal_localization_msgs/srv/InitializeLocalization "
+ros2 service call /localization/initialize autoware_localization_msgs/srv/InitializeLocalization "
 pose_with_covariance:
   - header:
       frame_id: map
@@ -8020,7 +8020,7 @@ method: 0
 <p>The input position is used as the initial guess, and the localization algorithm automatically estimates a more accurate position.</p>
 <h3 id="direct-initial-position-set">Direct initial position set<a class="headerlink" href="#direct-initial-position-set" title="Permanent link">#</a></h3>
 <p><code>bash
-ros2 service call /localization/initialize autoware_internal_localization_msgs/srv/InitializeLocalization "
+ros2 service call /localization/initialize autoware_localization_msgs/srv/InitializeLocalization "
 pose_with_covariance:
   - header:
       frame_id: map
