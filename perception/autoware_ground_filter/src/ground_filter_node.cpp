@@ -25,6 +25,7 @@
 #include <pcl_ros/transforms.hpp>
 #include <rclcpp/rclcpp.hpp>
 
+#include <cstring>
 #include <memory>
 #include <string>
 #include <utility>
