@@ -22,7 +22,6 @@
 #include <pcl_conversions/pcl_conversions.h>
 
 #include <memory>
-#include <utility>
 #include <vector>
 
 class GroundFilterTest : public ::testing::Test
@@ -49,12 +48,12 @@ protected:
     ground_filter_ = std::make_unique<autoware::ground_filter::GroundFilter>(param_);
 
     // Create sample point cloud
-    createSamplePointCloud();
+    create_sample_point_cloud();
   }
 
   void TearDown() override { ground_filter_.reset(); }
 
-  void createSamplePointCloud()
+  void create_sample_point_cloud()
   {
     auto cloud = std::make_shared<sensor_msgs::msg::PointCloud2>();
 
@@ -82,7 +81,8 @@ protected:
 
     pcl::toROSMsg(pcl_cloud, *cloud);
     cloud->header.frame_id = "base_link";
-    cloud->header.stamp = rclcpp::Clock().now();
+    cloud->header.stamp.sec = 0;
+    cloud->header.stamp.nanosec = 0;
 
     // Convert to const shared pointer
     cloud_ = cloud;
@@ -289,7 +289,8 @@ TEST_F(GroundFilterTest, TestDifferentPointCloudLayouts)
 
   pcl::toROSMsg(pcl_cloud_xyzirc, *xyzirc_cloud);
   xyzirc_cloud->header.frame_id = "base_link";
-  xyzirc_cloud->header.stamp = rclcpp::Clock().now();
+  xyzirc_cloud->header.stamp.sec = 0;
+  xyzirc_cloud->header.stamp.nanosec = 0;
 
   pcl::PointIndices no_ground_indices;
   ground_filter_->setDataAccessor(xyzirc_cloud);
