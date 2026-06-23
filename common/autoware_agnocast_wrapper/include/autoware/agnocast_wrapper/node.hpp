@@ -315,7 +315,7 @@ public:
       [callback = std::forward<Func>(callback)](
         AUTOWARE_SERVER_REQUEST_PTR(ServiceT) && req,
         AUTOWARE_SERVER_RESPONSE_PTR(ServiceT) && res) {
-        auto request = std::make_shared<const typename ServiceT::Request>(*req);
+        auto request = std::make_shared<typename ServiceT::Request>(*req);
         auto response = std::make_shared<typename ServiceT::Response>();
         callback(request, response);
         *res = *response;
