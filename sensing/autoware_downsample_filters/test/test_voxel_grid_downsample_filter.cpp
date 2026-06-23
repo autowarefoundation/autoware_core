@@ -149,38 +149,36 @@ void expect_points_with_intensity_near(
 TEST(VoxelGridDownsampleFilterCoreTest, RejectsInvalidDataBufferSize)
 {
   autoware::downsample_filters::VoxelGridDownsampleFilter core({1.0f, 1.0f, 1.0f});
-
   auto cloud = create_xyzirc_pointcloud2({{0.1f, 0.1f, 0.1f, 100.0f}});
   cloud.data.pop_back();
 
   const auto result = core.filter(std::make_shared<const sensor_msgs::msg::PointCloud2>(cloud));
+
   EXPECT_FALSE(result);
 }
 
 TEST(VoxelGridDownsampleFilterCoreTest, RejectsUnsupportedPointLayout)
 {
   autoware::downsample_filters::VoxelGridDownsampleFilter core({1.0f, 1.0f, 1.0f});
-
   const auto cloud = create_xyzi_pointcloud2({{0.1f, 0.1f, 0.1f, 10.0f}});
 
   const auto result = core.filter(std::make_shared<const sensor_msgs::msg::PointCloud2>(cloud));
+
   EXPECT_FALSE(result);
 }
 
 TEST(VoxelGridDownsampleFilterCoreTest, DownsamplesPointsInSameVoxelToSingleCentroid)
 {
   autoware::downsample_filters::VoxelGridDownsampleFilter core({1.0f, 1.0f, 1.0f});
-
   const auto cloud = create_xyzirc_pointcloud2(
     {{0.1f, 0.1f, 0.1f, 100.0f}, {0.2f, 0.2f, 0.2f, 100.0f}, {0.9f, 0.9f, 0.9f, 100.0f}});
 
   const auto result = core.filter(std::make_shared<const sensor_msgs::msg::PointCloud2>(cloud));
-  ASSERT_TRUE(result) << result.error();
 
+  ASSERT_TRUE(result) << result.error();
   const auto & output = result.value();
   EXPECT_EQ(output.header.frame_id, cloud.header.frame_id);
   EXPECT_EQ(output.header.stamp, cloud.header.stamp);
-
   const std::vector<PointXYZIu8> expected_points = {{0.4f, 0.4f, 0.4f, 100U}};
   expect_points_with_intensity_near(
     extract_points_with_intensity_from_cloud(output), expected_points, 1.0e-4f);
@@ -189,13 +187,12 @@ TEST(VoxelGridDownsampleFilterCoreTest, DownsamplesPointsInSameVoxelToSingleCent
 TEST(VoxelGridDownsampleFilterCoreTest, PreservesSeparateVoxelsAsMultipleCentroids)
 {
   autoware::downsample_filters::VoxelGridDownsampleFilter core({1.0f, 1.0f, 1.0f});
-
   const auto cloud = create_xyzirc_pointcloud2(
     {{0.1f, 0.1f, 0.1f, 10.0f}, {0.9f, 0.9f, 0.9f, 50.0f}, {1.1f, 1.1f, 1.1f, 90.0f}});
 
   const auto result = core.filter(std::make_shared<const sensor_msgs::msg::PointCloud2>(cloud));
-  ASSERT_TRUE(result) << result.error();
 
+  ASSERT_TRUE(result) << result.error();
   const auto & output = result.value();
   const std::vector<PointXYZIu8> expected_points = {
     {0.5f, 0.5f, 0.5f, 30U}, {1.1f, 1.1f, 1.1f, 90U}};
@@ -206,15 +203,14 @@ TEST(VoxelGridDownsampleFilterCoreTest, PreservesSeparateVoxelsAsMultipleCentroi
 TEST(VoxelGridDownsampleFilterCoreTest, IgnoresNonFinitePoints)
 {
   autoware::downsample_filters::VoxelGridDownsampleFilter core({1.0f, 1.0f, 1.0f});
-
   const auto nan = std::numeric_limits<float>::quiet_NaN();
   const auto inf = std::numeric_limits<float>::infinity();
   const auto cloud = create_xyzirc_pointcloud2(
     {{0.5f, 0.5f, 0.5f, 12.0f}, {nan, 0.0f, 0.0f, 20.0f}, {0.0f, inf, 0.0f, 30.0f}});
 
   const auto result = core.filter(std::make_shared<const sensor_msgs::msg::PointCloud2>(cloud));
-  ASSERT_TRUE(result) << result.error();
 
+  ASSERT_TRUE(result) << result.error();
   const auto & output = result.value();
   const std::vector<PointXYZIu8> expected_points = {{0.5f, 0.5f, 0.5f, 12U}};
   expect_points_with_intensity_near(
@@ -224,10 +220,10 @@ TEST(VoxelGridDownsampleFilterCoreTest, IgnoresNonFinitePoints)
 TEST(VoxelGridDownsampleFilterCoreTest, FallsBackToInputWhenVoxelIndexWouldOverflow)
 {
   autoware::downsample_filters::VoxelGridDownsampleFilter core({1.0e-4f, 1.0e-4f, 1.0e-4f});
-
   const auto cloud =
     create_xyzirc_pointcloud2({{0.0f, 0.0f, 0.0f, 10.0f}, {500000.0f, 0.0f, 0.0f, 20.0f}});
 
   const auto result = core.filter(std::make_shared<const sensor_msgs::msg::PointCloud2>(cloud));
+
   ASSERT_FALSE(result);
 }
