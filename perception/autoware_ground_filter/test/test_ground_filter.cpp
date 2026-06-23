@@ -523,3 +523,32 @@ int main(int argc, char ** argv)
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
+
+// TEST 5. Testing point follow logic.
+// This test creates a simple point cloud with 3 points: (3, 0, 0), (3.05, 0, 0.02), (3.10, 0, 2.0).
+// I designed first 2 points to be kinda close so that the second one is considered "following" the
+// first one, while the third point is far away and should be classified as non-ground.
+// Expects:
+// - Point (3, 0, 0) : ground
+// - Point (3.05, 0, 0.02) : ground too, following above
+// - Point (3.10, 0, 2.0) : non-ground
+TEST_F(GroundFilterRadialTest, ClassifyPointFollowLogic)
+{
+  std::vector<pcl::PointXYZ> raw_points = {
+    pcl::PointXYZ(3.0f, 0.0f, 0.0f), pcl::PointXYZ(3.05f, 0.0f, 0.02f),
+    pcl::PointXYZ(3.10f, 0.0f, 2.0f)};
+
+  auto cloud = create_point_cloud(raw_points);
+  filter_->setDataAccessor(cloud);
+
+  std::vector<PointCloudVector> radial_ordered;
+  convert_point_cloud(cloud, radial_ordered);
+
+  pcl::PointIndices out_indices;
+  classify_point_cloud(cloud, radial_ordered, out_indices);
+
+  // Expect 1 non-ground point being index 2.
+  EXPECT_EQ(out_indices.indices.size(), 1U);
+  const uint32_t point_step = cloud->point_step;
+  EXPECT_EQ(out_indices.indices[0], 2U * point_step);
+}
