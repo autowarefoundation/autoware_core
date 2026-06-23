@@ -35,7 +35,7 @@ rclcpp_components_register_node(${PROJECT_NAME}
 if(BUILD_TESTING)
   find_package(autoware_test_utils REQUIRED)
 
-  ament_add_ros_isolated_gtest(test_ground_filter
+  ament_add_gtest(test_ground_filter
     test/test_ground_filter.cpp
   )
   target_include_directories(test_ground_filter PRIVATE src)
@@ -55,7 +55,7 @@ if(BUILD_TESTING)
     ament_index_cpp
   )
 
-  ament_add_ros_isolated_gtest(test_sanity_check
+  ament_add_gtest(test_sanity_check
     test/test_sanity_check.cpp
   )
   target_include_directories(test_sanity_check PRIVATE src)
