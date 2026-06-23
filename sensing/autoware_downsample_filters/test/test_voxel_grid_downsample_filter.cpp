@@ -36,10 +36,10 @@ sensor_msgs::msg::PointCloud2 create_xyzirc_pointcloud2(const std::vector<PointX
   sensor_msgs::msg::PointCloud2 cloud;
   sensor_msgs::PointCloud2Modifier modifier(cloud);
   modifier.setPointCloud2Fields(
-    6, "x", 1, sensor_msgs::msg::PointField::FLOAT32, "y", 1,
-    sensor_msgs::msg::PointField::FLOAT32, "z", 1, sensor_msgs::msg::PointField::FLOAT32,
-    "intensity", 1, sensor_msgs::msg::PointField::UINT8, "return_type", 1,
-    sensor_msgs::msg::PointField::UINT8, "channel", 1, sensor_msgs::msg::PointField::UINT16);
+    6, "x", 1, sensor_msgs::msg::PointField::FLOAT32, "y", 1, sensor_msgs::msg::PointField::FLOAT32,
+    "z", 1, sensor_msgs::msg::PointField::FLOAT32, "intensity", 1,
+    sensor_msgs::msg::PointField::UINT8, "return_type", 1, sensor_msgs::msg::PointField::UINT8,
+    "channel", 1, sensor_msgs::msg::PointField::UINT16);
   modifier.resize(points.size());
 
   sensor_msgs::PointCloud2Iterator<float> iter_x(cloud, "x");
@@ -75,9 +75,9 @@ sensor_msgs::msg::PointCloud2 create_xyzi_pointcloud2(const std::vector<PointXYZ
   sensor_msgs::msg::PointCloud2 cloud;
   sensor_msgs::PointCloud2Modifier modifier(cloud);
   modifier.setPointCloud2Fields(
-    4, "x", 1, sensor_msgs::msg::PointField::FLOAT32, "y", 1,
-    sensor_msgs::msg::PointField::FLOAT32, "z", 1, sensor_msgs::msg::PointField::FLOAT32,
-    "intensity", 1, sensor_msgs::msg::PointField::FLOAT32);
+    4, "x", 1, sensor_msgs::msg::PointField::FLOAT32, "y", 1, sensor_msgs::msg::PointField::FLOAT32,
+    "z", 1, sensor_msgs::msg::PointField::FLOAT32, "intensity", 1,
+    sensor_msgs::msg::PointField::FLOAT32);
   modifier.resize(points.size());
 
   sensor_msgs::PointCloud2Iterator<float> iter_x(cloud, "x");
@@ -236,9 +236,14 @@ TEST(VoxelGridDownsampleFilterCoreTest, FallsBackToInputWhenVoxelIndexWouldOverf
 {
   autoware::downsample_filters::VoxelGridDownsampleFilter core({1.0e-4f, 1.0e-4f, 1.0e-4f});
 
-  const auto cloud = create_xyzirc_pointcloud2(
-    {{0.0f, 0.0f, 0.0f, 10.0f}, {500000.0f, 0.0f, 0.0f, 20.0f}});
+  const auto cloud =
+    create_xyzirc_pointcloud2({{0.0f, 0.0f, 0.0f, 10.0f}, {500000.0f, 0.0f, 0.0f, 20.0f}});
 
   const auto result = core.filter(std::make_shared<const sensor_msgs::msg::PointCloud2>(cloud));
   ASSERT_FALSE(result);
+<<<<<<< HEAD
 }
+=======
+  EXPECT_NE(result.error().find("Voxel size is too small"), std::string::npos);
+}
+>>>>>>> a257d5738aab3a5e4435af37c6ba0fb293e91bb2
