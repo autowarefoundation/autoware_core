@@ -1042,6 +1042,21 @@ public:
   virtual ~Service() = default;
 };
 
+// True when Callback takes the preferred AUTOWARE_SERVICE_REQUEST_PTR/RESPONSE_PTR (message_ptr)
+// pair, i.e. it is written against the wrapper's zero-copy service API.
+template <typename Func, typename ServiceT>
+inline constexpr bool is_message_ptr_service_callback_v = std::is_invocable_v<
+  std::decay_t<Func>, AUTOWARE_SERVICE_REQUEST_PTR(ServiceT) &&,
+  AUTOWARE_SERVICE_RESPONSE_PTR(ServiceT) &&>;
+
+// True when Callback is an rclcpp-style handler taking std::shared_ptr request/response. This lets
+// utilities written for rclcpp::Node (e.g. autoware_utils_logging's LoggerLevelConfigure) be used
+// unchanged on the wrapper Node, at the cost noted on the convenience paths below.
+template <typename Func, typename ServiceT>
+inline constexpr bool is_shared_ptr_service_callback_v = std::is_invocable_v<
+  std::decay_t<Func>, std::shared_ptr<typename ServiceT::Request> &,
+  std::shared_ptr<typename ServiceT::Response> &>;
+
 template <typename ServiceT>
 class AgnocastService : public Service<ServiceT>
 {
@@ -1054,9 +1069,7 @@ public:
     rclcpp::CallbackGroup::SharedPtr group)
   {
     static_assert(
-      std::is_invocable_v<
-        std::decay_t<Func>, AUTOWARE_SERVICE_REQUEST_PTR(ServiceT) &&,
-        AUTOWARE_SERVICE_RESPONSE_PTR(ServiceT) &&>,
+      is_message_ptr_service_callback_v<Func, ServiceT>,
       "Callback should be invocable with AUTOWARE_SERVICE_REQUEST_PTR and "
       "AUTOWARE_SERVICE_RESPONSE_PTR (const&, &&, or by-value)");
 
@@ -1085,9 +1098,7 @@ public:
     const rclcpp::QoS & qos, rclcpp::CallbackGroup::SharedPtr group)
   {
     static_assert(
-      std::is_invocable_v<
-        std::decay_t<Func>, AUTOWARE_SERVICE_REQUEST_PTR(ServiceT) &&,
-        AUTOWARE_SERVICE_RESPONSE_PTR(ServiceT) &&>,
+      is_message_ptr_service_callback_v<Func, ServiceT>,
       "Callback should be invocable with AUTOWARE_SERVICE_REQUEST_PTR and "
       "AUTOWARE_SERVICE_RESPONSE_PTR (const&, &&, or by-value)");
 

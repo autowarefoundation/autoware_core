@@ -22,8 +22,6 @@
 #include <autoware_vehicle_msgs/msg/velocity_report.hpp>
 #include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
 
-#include <string>
-
 namespace autoware::vehicle_velocity_converter
 {
 class VehicleVelocityConverterNode : public rclcpp::Node
@@ -39,7 +37,6 @@ private:
   rclcpp::Publisher<geometry_msgs::msg::TwistWithCovarianceStamped>::SharedPtr
     twist_with_covariance_pub_;
 
-  std::string frame_id_;
   VehicleVelocityConverter converter_;
 };
 }  // namespace autoware::vehicle_velocity_converter
