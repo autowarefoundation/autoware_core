@@ -315,6 +315,72 @@ TEST_F(GroundFilterTest, TestExtremeParameterValues)
   EXPECT_NO_THROW(extreme_filter->process(cloud_, no_ground_indices));
 }
 
+/**
+ * @brief This class is to support unit testing of GroundFilter in radial mode (the above one is for
+ * grid mode). Provides setting up GroundFilter instance with radial mode params and creating simple
+ * point clouds for it.
+ */
+class GroundFilterRadialTest : public ::testing::Test
+{
+protected:
+  std::unique_ptr<autoware::ground_filter::GroundFilter> filter_;
+  autoware::ground_filter::GroundFilterParameter param_;
+
+  // Set up test environment with radial mode params.
+  void SetUp() override
+  {
+    // Setup predictable math parameters for Radial mode
+    param_.elevation_grid_mode = false;
+
+    // Set slopes to exactly 15 degrees
+    param_.global_slope_max_angle_rad = 15.0f * M_PI / 180.0f;
+    param_.local_slope_max_angle_rad = 15.0f * M_PI / 180.0f;
+
+    // Set slice size to 1 degree
+    param_.radial_divider_angle_rad = 1.0f * M_PI / 180.0f;
+    param_.radial_dividers_num = std::ceil(2.0 * M_PI / param_.radial_divider_angle_rad);
+
+    // Gap and Virtual Origin parameters
+    param_.use_virtual_ground_point = true;
+    param_.wheel_base_m = 2.8f;
+    param_.split_points_distance_tolerance = 0.2f;
+    param_.split_height_distance = 0.2f;
+
+    // Standard Grid params (needed for init, though unused in these tests)
+    param_.virtual_lidar_x = 1.4f;
+    param_.virtual_lidar_y = 0.0f;
+    param_.virtual_lidar_z = 1.9f;
+    param_.grid_size_m = 1.0f;
+    param_.grid_mode_switch_radius = 20.0f;
+
+    filter_ = std::make_unique<autoware::ground_filter::GroundFilter>(param_);
+  }
+
+  /**
+   * @brief Helper func to create a very simple point cloud for testing.
+   *
+   * @param points Vector of pcl::PointXYZ points to include in this point cloud.
+   *
+   * @return sensor_msgs::msg::PointCloud2::SharedPtr Point cloud message containing the points.
+   */
+  static sensor_msgs::msg::PointCloud2::SharedPtr create_point_cloud(
+    const std::vector<pcl::PointXYZ> & points)
+  {
+    pcl::PointCloud<autoware::point_types::PointXYZIRC> pcl_cloud;
+    for (const auto & p : points) {
+      autoware::point_types::PointXYZIRC pt;
+      pt.x = p.x;
+      pt.y = p.y;
+      pt.z = p.z;
+      pcl_cloud.push_back(pt);
+    }
+    auto cloud_msg = std::make_shared<sensor_msgs::msg::PointCloud2>();
+    pcl::toROSMsg(pcl_cloud, *cloud_msg);
+    cloud_msg->header.frame_id = "base_link";
+    return cloud_msg;
+  }
+};
+
 int main(int argc, char ** argv)
 {
   ::testing::InitGoogleTest(&argc, argv);
