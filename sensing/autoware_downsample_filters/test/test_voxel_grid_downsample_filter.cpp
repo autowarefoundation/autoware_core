@@ -241,9 +241,4 @@ TEST(VoxelGridDownsampleFilterCoreTest, FallsBackToInputWhenVoxelIndexWouldOverf
 
   const auto result = core.filter(std::make_shared<const sensor_msgs::msg::PointCloud2>(cloud));
   ASSERT_FALSE(result);
-<<<<<<< HEAD
 }
-=======
-  EXPECT_NE(result.error().find("Voxel size is too small"), std::string::npos);
-}
->>>>>>> a257d5738aab3a5e4435af37c6ba0fb293e91bb2
