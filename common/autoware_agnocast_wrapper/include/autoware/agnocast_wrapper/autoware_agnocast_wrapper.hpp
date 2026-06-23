@@ -982,7 +982,7 @@ public:
                           [promise_ptr = std::move(promise_ptr)](
                             typename rclcpp::Client<ServiceT>::SharedFuture ros2_shared_future) {
                             try {
-                              const typename ServiceT::Response::SharedPtr ros2_response =
+                              std::shared_ptr<const typename ServiceT::Response> ros2_response =
                                 ros2_shared_future.get();
                               promise_ptr->set_value(
                                 AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT){std::move(ros2_response)});
@@ -1011,7 +1011,8 @@ public:
           [callback = std::move(callback), promise_ptr = std::move(promise_ptr),
            shared_future](typename rclcpp::Client<ServiceT>::SharedFuture ros2_shared_future) {
             try {
-              const typename ServiceT::Response::SharedPtr ros2_response = ros2_shared_future.get();
+              std::shared_ptr<const typename ServiceT::Response> ros2_response =
+                ros2_shared_future.get();
               promise_ptr->set_value(
                 AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT){std::move(ros2_response)});
               callback(std::move(shared_future));
