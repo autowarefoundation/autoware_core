@@ -518,12 +518,6 @@ TEST_F(GroundFilterRadialTest, ClassifyLocalAndGlobalSlopes)
   EXPECT_EQ(out_indices.indices[1], 2U * point_step);
 }
 
-int main(int argc, char ** argv)
-{
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}
-
 // TEST 5. Testing point follow logic.
 // This test creates a simple point cloud with 3 points: (3, 0, 0), (3.05, 0, 0.02), (3.10, 0, 2.0).
 // I designed first 2 points to be kinda close so that the second one is considered "following" the
@@ -551,4 +545,10 @@ TEST_F(GroundFilterRadialTest, ClassifyPointFollowLogic)
   EXPECT_EQ(out_indices.indices.size(), 1U);
   const uint32_t point_step = cloud->point_step;
   EXPECT_EQ(out_indices.indices[0], 2U * point_step);
+}
+
+int main(int argc, char ** argv)
+{
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
 }
