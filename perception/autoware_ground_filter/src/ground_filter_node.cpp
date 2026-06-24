@@ -15,13 +15,10 @@
 #include "ground_filter_node.hpp"
 
 #include "ground_filter.hpp"
-#include "sanity_check.hpp"
 
-#include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_utils_math/normalization.hpp>
 #include <autoware_utils_math/unit_conversion.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
-#include <pcl_ros/transforms.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <memory>
@@ -50,10 +47,7 @@ namespace autoware::ground_filter
 {
 // For PointCloud2
 using PointCloud2 = sensor_msgs::msg::PointCloud2;
-using PointCloud2ConstPtr = sensor_msgs::msg::PointCloud2::ConstSharedPtr;
-
 using autoware::vehicle_info_utils::VehicleInfoUtils;
-using autoware_utils_debug::ScopedTimeTrack;
 using autoware_utils_math::deg2rad;
 
 GroundFilterComponent::GroundFilterComponent(const rclcpp::NodeOptions & options)
@@ -172,11 +166,10 @@ GroundFilterComponent::GroundFilterComponent(const rclcpp::NodeOptions & options
 
   RCLCPP_DEBUG_STREAM(
     this->get_logger(),
-    "Filter (as Component) successfully created with the following parameters:"
-      << std::endl
-      << " - approximate_sync : " << (approximate_sync_ ? "true" : "false") << std::endl
-      << " - use_indices      : " << (use_indices_ ? "true" : "false") << std::endl
-      << " - latched_indices  : " << (latched_indices_ ? "true" : "false") << std::endl
+    "Filter (as Component) successfully created with the following parameters:\n"
+      << " - approximate_sync : " << (approximate_sync_ ? "true" : "false") << "\n"
+      << " - use_indices      : " << (use_indices_ ? "true" : "false") << "\n"
+      << " - latched_indices  : " << (latched_indices_ ? "true" : "false") << "\n"
       << " - max_queue_size   : " << max_queue_size_);
 
   // Set publisher
@@ -234,39 +227,7 @@ void GroundFilterComponent::faster_input_indices_callback(
   const sensor_msgs::msg::PointCloud2::ConstSharedPtr cloud,
   const pcl_msgs::msg::PointIndices::ConstSharedPtr indices)
 {
-  if (
-    !is_data_layout_compatible_with_point_xyzircaedt(*cloud) &&
-    !is_data_layout_compatible_with_point_xyzirc(*cloud)) {
-    RCLCPP_ERROR(
-      get_logger(),
-      "The pointcloud layout is not compatible with PointXYZIRCAEDT or PointXYZIRC. Aborting");
-
-    if (is_data_layout_compatible_with_point_xyziradrt(*cloud)) {
-      RCLCPP_ERROR(
-        get_logger(),
-        "The pointcloud layout is compatible with PointXYZIRADRT. You may be using legacy "
-        "code/data");
-    }
-
-    if (is_data_layout_compatible_with_point_xyzi(*cloud)) {
-      RCLCPP_ERROR(
-        get_logger(),
-        "The pointcloud layout is compatible with PointXYZI. You may be using legacy "
-        "code/data");
-    }
-
-    return;
-  }
-
-  if (!isValid(cloud)) {
-    RCLCPP_ERROR(this->get_logger(), "[input_indices_callback] Invalid input!");
-    return;
-  }
-
-  if (!isValid(indices)) {
-    RCLCPP_ERROR(this->get_logger(), "[input_indices_callback] Invalid indices!");
-    return;
-  }
+  std::scoped_lock lock(mutex_);
 
   if (indices) {
     RCLCPP_DEBUG(
@@ -286,69 +247,21 @@ void GroundFilterComponent::faster_input_indices_callback(
       cloud->width * cloud->height, cloud->header.frame_id.c_str());
   }
 
-  // Need setInputCloud() here because we have to extract x/y/z
+  if (stop_watch_ptr_) stop_watch_ptr_->toc("processing_time", true);
+
   pcl::IndicesPtr vindices;
   if (indices) {
     vindices.reset(new std::vector<int>(indices->indices));
   }
 
-  auto output = std::make_unique<PointCloud2>();
+  // Call filter function for core logic
+  const auto result = ground_filter_ptr_->filter(cloud, vindices);
 
-  // TODO(sykwer): Change to `filter()` call after when the filter nodes conform to new API.
-  faster_filter(cloud, vindices, *output);
-
-  output->header.stamp = cloud->header.stamp;
-  pub_output_->publish(std::move(output));
-  published_time_publisher_->publish_if_subscribed(pub_output_, cloud->header.stamp);
-}
-
-void GroundFilterComponent::extractObjectPoints(
-  const sensor_msgs::msg::PointCloud2::ConstSharedPtr & in_cloud_ptr,
-  const pcl::PointIndices & in_indices, sensor_msgs::msg::PointCloud2 & out_object_cloud) const
-{
-  std::unique_ptr<autoware_utils_debug::ScopedTimeTrack> st_ptr;
-  if (time_keeper_)
-    st_ptr = std::make_unique<autoware_utils_debug::ScopedTimeTrack>(__func__, *time_keeper_);
-
-  size_t output_data_size = 0;
-
-  for (const auto & idx : in_indices.indices) {
-    std::memcpy(
-      &out_object_cloud.data[output_data_size], &in_cloud_ptr->data[idx],
-      in_cloud_ptr->point_step * sizeof(uint8_t));
-    output_data_size += in_cloud_ptr->point_step;
+  if (!result) {
+    RCLCPP_ERROR(this->get_logger(), "[input_callback] %s", result.error().c_str());
+    return;
   }
-}
 
-void GroundFilterComponent::faster_filter(
-  const sensor_msgs::msg::PointCloud2::ConstSharedPtr & input,
-  [[maybe_unused]] const pcl::IndicesPtr & indices, sensor_msgs::msg::PointCloud2 & output)
-{
-  std::unique_ptr<autoware_utils_debug::ScopedTimeTrack> st_ptr;
-  if (time_keeper_)
-    st_ptr = std::make_unique<autoware_utils_debug::ScopedTimeTrack>(__func__, *time_keeper_);
-
-  std::scoped_lock lock(mutex_);
-
-  if (stop_watch_ptr_) stop_watch_ptr_->toc("processing_time", true);
-
-  ground_filter_ptr_->setDataAccessor(input);
-
-  pcl::PointIndices no_ground_indices;
-  ground_filter_ptr_->process(input, no_ground_indices);
-
-  // Package the output
-  output.row_step = no_ground_indices.indices.size() * input->point_step;
-  output.data.resize(output.row_step);
-  output.width = no_ground_indices.indices.size();
-  output.fields = input->fields;
-  output.is_dense = true;
-  output.height = input->height;
-  output.is_bigendian = input->is_bigendian;
-  output.point_step = input->point_step;
-  output.header = input->header;
-
-  extractObjectPoints(input, no_ground_indices, output);
   if (debug_publisher_ptr_ && stop_watch_ptr_) {
     const double cyclic_time_ms = stop_watch_ptr_->toc("cyclic_time", true);
     const double processing_time_ms = stop_watch_ptr_->toc("processing_time", true);
@@ -357,28 +270,17 @@ void GroundFilterComponent::faster_filter(
     debug_publisher_ptr_->publish<autoware_internal_debug_msgs::msg::Float64Stamped>(
       "debug/processing_time_ms", processing_time_ms);
   }
-}
 
-// TODO(taisa1): Temporary Implementation: Delete this function definition when all the filter
-// nodes conform to new API.
-void GroundFilterComponent::filter(
-  const sensor_msgs::msg::PointCloud2::ConstSharedPtr & input,
-  [[maybe_unused]] const pcl::IndicesPtr & indices, const sensor_msgs::msg::PointCloud2 & output)
-{
-  (void)input;
-  (void)indices;
-  (void)output;
+  auto output = std::make_unique<PointCloud2>(std::move(result.cloud.value()));
+  output->header.stamp = cloud->header.stamp;
+
+  pub_output_->publish(std::move(output));
+  published_time_publisher_->publish_if_subscribed(pub_output_, cloud->header.stamp);
 }
 
 rcl_interfaces::msg::SetParametersResult GroundFilterComponent::onParameter(
   const std::vector<rclcpp::Parameter> & param)
 {
-  if (get_param(param, "grid_size_m", grid_size_m_)) {
-    // grid_ptr_->initialize(grid_size_m_, radial_divider_angle_rad_, grid_mode_switch_radius_);
-  }
-  if (get_param(param, "grid_mode_switch_radius", grid_mode_switch_radius_)) {
-    // grid_ptr_->initialize(grid_size_m_, radial_divider_angle_rad_, grid_mode_switch_radius_);
-  }
   double global_slope_max_angle_deg{get_parameter("global_slope_max_angle_deg").as_double()};
   if (get_param(param, "global_slope_max_angle_deg", global_slope_max_angle_deg)) {
     global_slope_max_angle_rad_ = static_cast<float>(deg2rad(global_slope_max_angle_deg));
@@ -402,7 +304,6 @@ rcl_interfaces::msg::SetParametersResult GroundFilterComponent::onParameter(
   if (get_param(param, "radial_divider_angle_deg", radial_divider_angle_deg)) {
     radial_divider_angle_rad_ = static_cast<float>(deg2rad(radial_divider_angle_deg));
     radial_dividers_num_ = std::ceil(2.0 * M_PI / radial_divider_angle_rad_);
-    // grid_ptr_->initialize(grid_size_m_, radial_divider_angle_rad_, grid_mode_switch_radius_);
     RCLCPP_DEBUG(
       this->get_logger(), "Setting radial_divider_angle_rad to: %f.", radial_divider_angle_rad_);
     RCLCPP_DEBUG(this->get_logger(), "Setting radial_dividers_num to: %zu.", radial_dividers_num_);
