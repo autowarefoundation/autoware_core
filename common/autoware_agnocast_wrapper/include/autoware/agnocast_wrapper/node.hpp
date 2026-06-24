@@ -273,7 +273,7 @@ public:
     });
   }
 
-  // Service with a callback taking AUTOWARE_SERVICE_REQUEST_PTR/RESPONSE_PTR (message_ptr).
+  // Service with a callback taking AUTOWARE_SERVER_REQUEST_PTR/RESPONSE_PTR (message_ptr).
   template <
     typename ServiceT, typename Func,
     std::enable_if_t<is_message_ptr_service_callback_v<Func, ServiceT>, int> = 0>
@@ -313,8 +313,8 @@ public:
     return create_service<ServiceT>(
       service_name,
       [callback = std::forward<Func>(callback)](
-        AUTOWARE_SERVICE_REQUEST_PTR(ServiceT) && req,
-        AUTOWARE_SERVICE_RESPONSE_PTR(ServiceT) && res) {
+        AUTOWARE_SERVER_REQUEST_PTR(ServiceT) && req,
+        AUTOWARE_SERVER_RESPONSE_PTR(ServiceT) && res) {
         auto request = std::make_shared<typename ServiceT::Request>(*req);
         auto response = std::make_shared<typename ServiceT::Response>();
         callback(request, response);
@@ -341,7 +341,7 @@ public:
       is_message_ptr_service_callback_v<Func, ServiceT> ||
         is_shared_ptr_service_callback_v<Func, ServiceT>,
       "Service callback must be invocable with "
-      "(AUTOWARE_SERVICE_REQUEST_PTR(ServiceT), AUTOWARE_SERVICE_RESPONSE_PTR(ServiceT)) or with "
+      "(AUTOWARE_SERVER_REQUEST_PTR(ServiceT), AUTOWARE_SERVER_RESPONSE_PTR(ServiceT)) or with "
       "(std::shared_ptr<ServiceT::Request>, std::shared_ptr<ServiceT::Response>).");
   }
 
