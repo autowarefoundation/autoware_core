@@ -17,6 +17,7 @@
 
 #include "accel_estimator.hpp"
 
+#include <autoware/agnocast_wrapper/node.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <geometry_msgs/msg/accel_with_covariance_stamped.hpp>
@@ -27,18 +28,18 @@
 
 namespace autoware::twist2accel
 {
-class Twist2Accel : public rclcpp::Node
+class Twist2Accel : public autoware::agnocast_wrapper::Node
 {
 public:
   explicit Twist2Accel(const rclcpp::NodeOptions & node_options);
 
 private:
-  rclcpp::Publisher<geometry_msgs::msg::AccelWithCovarianceStamped>::SharedPtr
-    pub_accel_;  //!< @brief stop flag publisher
-  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr
-    sub_odom_;  //!< @brief measurement odometry subscriber
-  rclcpp::Subscription<geometry_msgs::msg::TwistWithCovarianceStamped>::SharedPtr
-    sub_twist_;  //!< @brief measurement odometry subscriber
+  AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::AccelWithCovarianceStamped)
+  pub_accel_;  //!< @brief stop flag publisher
+  AUTOWARE_SUBSCRIPTION_PTR(nav_msgs::msg::Odometry)
+  sub_odom_;  //!< @brief measurement odometry subscriber
+  AUTOWARE_SUBSCRIPTION_PTR(geometry_msgs::msg::TwistWithCovarianceStamped)
+  sub_twist_;  //!< @brief measurement odometry subscriber
 
   bool use_odom_;
   std::unique_ptr<AccelEstimator> accel_estimator_;
@@ -47,8 +48,8 @@ private:
    * @brief set odometry measurement
    */
   void callback_twist_with_covariance(
-    const geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr msg);
-  void callback_odometry(const nav_msgs::msg::Odometry::SharedPtr msg);
+    const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::TwistWithCovarianceStamped) msg);
+  void callback_odometry(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(nav_msgs::msg::Odometry) msg);
 };
 }  // namespace autoware::twist2accel
 #endif  // TWIST2ACCEL_HPP_
