@@ -17,6 +17,7 @@
 
 #include "stop_filter.hpp"
 
+#include <autoware/agnocast_wrapper/node.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <autoware_internal_debug_msgs/msg/bool_stamped.hpp>
@@ -25,24 +26,24 @@
 namespace autoware::stop_filter
 {
 
-class StopFilterNode : public rclcpp::Node
+class StopFilterNode : public autoware::agnocast_wrapper::Node
 {
 public:
   explicit StopFilterNode(const rclcpp::NodeOptions & node_options);
 
 private:
-  rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr pub_odom_;  //!< @brief odom publisher
-  rclcpp::Publisher<autoware_internal_debug_msgs::msg::BoolStamped>::SharedPtr
-    pub_stop_flag_;  //!< @brief stop flag publisher
-  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr
-    sub_odom_;  //!< @brief measurement odometry subscriber
+  AUTOWARE_PUBLISHER_PTR(nav_msgs::msg::Odometry) pub_odom_;  //!< @brief odom publisher
+  AUTOWARE_PUBLISHER_PTR(autoware_internal_debug_msgs::msg::BoolStamped)
+  pub_stop_flag_;  //!< @brief stop flag publisher
+  AUTOWARE_SUBSCRIPTION_PTR(nav_msgs::msg::Odometry)
+  sub_odom_;  //!< @brief measurement odometry subscriber
 
   StopFilter stop_filter_;
 
   /**
    * @brief set odometry measurement
    */
-  void callback_odometry(const nav_msgs::msg::Odometry::SharedPtr msg);
+  void callback_odometry(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(nav_msgs::msg::Odometry) & msg);
 };
 }  // namespace autoware::stop_filter
 #endif  // STOP_FILTER_NODE_HPP_
