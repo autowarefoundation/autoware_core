@@ -546,7 +546,7 @@ void GroundFilter::convertPointCloud(
       auto theta{
         autoware_utils_math::normalize_radian(std::atan2(input_point.x, input_point.y), 0.0)};
 
-      // Radial divier index
+      // Radial divider index
       auto radial_div{static_cast<size_t>(std::floor(theta * inv_radial_divider_angle_rad))};
 
       out_radial_ordered_points[radial_div].emplace_back(
@@ -554,7 +554,7 @@ void GroundFilter::convertPointCloud(
     }
   }
 
-  // Now sort each radial divier's point by distance R
+  // Now sort each radial divider's point by distance R
   {
     for (size_t i = 0; i < param_.radial_dividers_num; ++i) {
       std::sort(
