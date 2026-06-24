@@ -24,10 +24,12 @@
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
 #include <pcl/PointIndices.h>
+#include <pcl/pcl_base.h>
 
 #include <algorithm>
 #include <cmath>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -198,7 +200,7 @@ public:
     sensor_msgs::msg::PointCloud2 & value() { return cloud.value(); }
   };
 
-  FilterResult filter(const PointCloud2ConstPtr & in_cloud, const pcl::Indices & indices);
+  FilterResult filter(const PointCloud2ConstPtr & in_cloud, const pcl::IndicesPtr & indices);
 
 private:
   // parameters

@@ -18,6 +18,7 @@
 #include "sanity_check.hpp"
 
 #include <pcl/PointIndices.h>
+#include <pcl/pcl_base.h>
 
 #include <cstring>
 #include <memory>
@@ -716,7 +717,7 @@ void GroundFilter::classifyPointCloud(
  * @return FilterResult containing filtered point cloud and any error messages.
  */
 GroundFilter::FilterResult GroundFilter::filter(
-  const PointCloud2ConstPtr & in_cloud, [[maybe_unused]] const pcl::Indices & indices)
+  const PointCloud2ConstPtr & in_cloud, [[maybe_unused]] const pcl::IndicesPtr & indices)
 {
   FilterResult result;
 
