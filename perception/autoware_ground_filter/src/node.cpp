@@ -296,7 +296,7 @@ void GroundFilterComponent::faster_input_indices_callback(
   auto output = std::make_unique<PointCloud2>();
 
   // TODO(sykwer): Change to `filter()` call after when the filter nodes conform to new API.
-  faster_filter(cloud, vindices, *output, transform_info);
+  faster_filter(cloud, vindices, *output);
 
   output->header.stamp = cloud->header.stamp;
   pub_output_->publish(std::move(output));
@@ -505,8 +505,7 @@ void GroundFilterComponent::extractObjectPoints(
 
 void GroundFilterComponent::faster_filter(
   const sensor_msgs::msg::PointCloud2::ConstSharedPtr & input,
-  [[maybe_unused]] const pcl::IndicesPtr & indices, sensor_msgs::msg::PointCloud2 & output,
-  [[maybe_unused]] const TransformInfo & transform_info)
+  [[maybe_unused]] const pcl::IndicesPtr & indices, sensor_msgs::msg::PointCloud2 & output)
 {
   std::unique_ptr<autoware_utils_debug::ScopedTimeTrack> st_ptr;
   if (time_keeper_)

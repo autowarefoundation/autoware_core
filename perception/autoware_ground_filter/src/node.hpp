@@ -66,22 +66,6 @@ class GroundFilterTest;
 
 namespace autoware::ground_filter
 {
-/**
- * This holds the coordinate transformation information of the point cloud.
- * Usage example:
- *   \code
- *   if (transform_info.need_transform) {
- *       point = transform_info.eigen_transform * point;
- *   }
- *   \endcode
- */
-struct TransformInfo
-{
-  TransformInfo() : eigen_transform(Eigen::Matrix4f::Identity(4, 4)), need_transform(false) {}
-
-  Eigen::Matrix4f eigen_transform;
-  bool need_transform;
-};
 
 class GroundFilterComponent : public rclcpp::Node
 {
@@ -182,8 +166,7 @@ private:
   // conform to new API
   void faster_filter(
     const sensor_msgs::msg::PointCloud2::ConstSharedPtr & input,
-    [[maybe_unused]] const pcl::IndicesPtr & indices, sensor_msgs::msg::PointCloud2 & output,
-    [[maybe_unused]] const TransformInfo & transform_info);
+    [[maybe_unused]] const pcl::IndicesPtr & indices, sensor_msgs::msg::PointCloud2 & output);
 
   // data accessor
   PclDataAccessor data_accessor_;
