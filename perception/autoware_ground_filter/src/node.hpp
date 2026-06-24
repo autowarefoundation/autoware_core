@@ -26,8 +26,6 @@
 #include <boost/thread/mutex.hpp>
 
 // PCL includes
-#include <tf2/transform_datatypes.hpp>
-
 #include <pcl_msgs/msg/point_indices.hpp>
 
 #include <pcl/filters/extract_indices.h>
@@ -55,9 +53,7 @@
 #include <autoware_utils_debug/debug_publisher.hpp>
 #include <autoware_utils_debug/published_time_publisher.hpp>
 #include <autoware_utils_system/stop_watch.hpp>
-#include <tf2_eigen/tf2_eigen.hpp>
 
-#include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
@@ -206,9 +202,6 @@ private:
   uint16_t ground_grid_buffer_size_;
   float virtual_lidar_z_;
 
-  // pointcloud parameters
-  std::string tf_input_frame_;
-  std::string tf_output_frame_;
   std::size_t max_queue_size_;
   bool use_indices_;
   bool latched_indices_;
@@ -297,9 +290,6 @@ private:
     const pcl_msgs::msg::PointIndices::ConstSharedPtr indices);
 
 protected:
-  /** \brief The original TF frame of the input pointcloud. */
-  std::string tf_input_orig_frame_;
-
   /** \brief Internal mutex for thread safe parameter setting */
   std::mutex mutex_;
 

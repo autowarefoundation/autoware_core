@@ -20,7 +20,6 @@
 #include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_utils_math/normalization.hpp>
 #include <autoware_utils_math/unit_conversion.hpp>
-#include <autoware_utils_tf/transform_listener.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
 #include <pcl_ros/transforms.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -57,7 +56,6 @@ using autoware::vehicle_info_utils::VehicleInfoUtils;
 using autoware_utils_debug::ScopedTimeTrack;
 using autoware_utils_geometry::calc_distance3d;
 using autoware_utils_math::deg2rad;
-using autoware_utils_math::normalize_degree;
 using autoware_utils_math::normalize_radian;
 
 GroundFilterComponent::GroundFilterComponent(const rclcpp::NodeOptions & options)
@@ -162,8 +160,6 @@ GroundFilterComponent::GroundFilterComponent(const rclcpp::NodeOptions & options
   }
 
   // pointcloud parameters
-  tf_input_frame_ = static_cast<std::string>(declare_parameter("input_frame", ""));
-  tf_output_frame_ = static_cast<std::string>(declare_parameter("output_frame", ""));
   max_queue_size_ = static_cast<std::size_t>(declare_parameter("max_queue_size", 5));
   use_indices_ = static_cast<bool>(declare_parameter("use_indices", false));
   latched_indices_ = static_cast<bool>(declare_parameter("latched_indices", false));
@@ -284,8 +280,6 @@ void GroundFilterComponent::faster_input_indices_callback(
       "received.",
       cloud->width * cloud->height, cloud->header.frame_id.c_str());
   }
-
-  tf_input_orig_frame_ = cloud->header.frame_id;
 
   // Need setInputCloud() here because we have to extract x/y/z
   pcl::IndicesPtr vindices;
@@ -621,14 +615,6 @@ rcl_interfaces::msg::SetParametersResult GroundFilterComponent::onParameter(
 
   // For pointcloud
   std::scoped_lock lock(mutex_);
-
-  if (get_param(param, "input_frame", tf_input_frame_)) {
-    RCLCPP_DEBUG(this->get_logger(), "Setting the input TF frame to: %s.", tf_input_frame_.c_str());
-  }
-  if (get_param(param, "output_frame", tf_output_frame_)) {
-    RCLCPP_DEBUG(
-      this->get_logger(), "Setting the output TF frame to: %s.", tf_output_frame_.c_str());
-  }
 
   // Finally return the result
   rcl_interfaces::msg::SetParametersResult result;
