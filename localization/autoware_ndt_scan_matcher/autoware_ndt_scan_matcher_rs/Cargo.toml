@@ -1,0 +1,11 @@
+[package]
+name = "autoware_ndt_scan_matcher_rs"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+# staticlib: linked into the C++ ament library over FFI.
+# rlib: keeps `cargo test` (and Rust-side consumers) working.
+crate-type = ["staticlib", "rlib"]
+
+[dependencies]
