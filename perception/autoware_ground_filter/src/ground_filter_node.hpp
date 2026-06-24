@@ -69,16 +69,6 @@ private:
   /** \brief Lazy transport subscribe routine. */
   void subscribe();
 
-  static void filter(
-    const sensor_msgs::msg::PointCloud2::ConstSharedPtr & input, const pcl::IndicesPtr & indices,
-    const sensor_msgs::msg::PointCloud2 & output);
-
-  // TODO(taisa1): Temporary Implementation: Remove this interface when all the filter nodes
-  // conform to new API
-  void faster_filter(
-    const sensor_msgs::msg::PointCloud2::ConstSharedPtr & input,
-    [[maybe_unused]] const pcl::IndicesPtr & indices, sensor_msgs::msg::PointCloud2 & output);
-
   const uint16_t ground_grid_continual_thresh_ = 3;
   bool elevation_grid_mode_;
   float non_ground_height_threshold_;
@@ -126,26 +116,6 @@ private:
     detailed_processing_time_publisher_;
   std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper_;
 
-  /*!
-   * Output transformed PointCloud from in_cloud_ptr->header.frame_id to in_target_frame
-   * @param[in] in_target_frame Coordinate system to perform transform
-   * @param[in] in_cloud_ptr PointCloud to perform transform
-   * @param[out] out_cloud_ptr Resulting transformed PointCloud
-   * @retval true transform succeeded
-   * @retval false transform failed
-   */
-
-  /*!
-   * Returns the resulting complementary PointCloud, one with the points kept
-   * and the other removed as indicated in the indices
-   * @param in_cloud_ptr Input PointCloud to which the extraction will be performed
-   * @param in_indices Indices of the points to be both removed and kept
-   * @param out_object_cloud Resulting PointCloud with the indices kept
-   */
-  void extractObjectPoints(
-    const sensor_msgs::msg::PointCloud2::ConstSharedPtr & in_cloud_ptr,
-    const pcl::PointIndices & in_indices, sensor_msgs::msg::PointCloud2 & out_object_cloud) const;
-
   /** \brief Parameter service callback result : needed to be hold */
   rclcpp::Node::OnSetParametersCallbackHandle::SharedPtr set_param_res_;
 
@@ -190,42 +160,6 @@ protected:
   message_filters::Subscriber<pcl_msgs::msg::PointIndices> sub_indices_filter_;
 
   std::unique_ptr<autoware_utils_debug::PublishedTimePublisher> published_time_publisher_;
-
-  // To validate if the pointcloud is valid
-  inline bool isValid(
-    const sensor_msgs::msg::PointCloud2::ConstSharedPtr & cloud,
-    const std::string & /*topic_name*/ = "input") const
-  {
-    // Ensure non-null
-    if (cloud == nullptr) {
-      RCLCPP_WARN(this->get_logger(), "Received null PointCloud");
-      return false;
-    }
-
-    // Check for empty point cloud
-    if (cloud->data.empty() || cloud->width * cloud->height == 0) {
-      RCLCPP_WARN(this->get_logger(), "Received empty PointCloud");
-      return false;
-    }
-
-    if (cloud->width * cloud->height * cloud->point_step != cloud->data.size()) {
-      RCLCPP_WARN(
-        this->get_logger(),
-        "Invalid PointCloud (data = %zu, width = %d, height = %d, step = %d) with stamp %f, "
-        "and frame %s received!",
-        cloud->data.size(), cloud->width, cloud->height, cloud->point_step,
-        rclcpp::Time(cloud->header.stamp).seconds(), cloud->header.frame_id.c_str());
-      return false;
-    }
-    return true;
-  }
-
-  inline bool isValid(
-    [[maybe_unused]] const pcl_msgs::msg::PointIndices::ConstSharedPtr & indices,
-    const std::string & /*topic_name*/ = "indices") const
-  {
-    return true;
-  }
 
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
