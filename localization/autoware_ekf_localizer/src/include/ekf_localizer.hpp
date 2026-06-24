@@ -197,8 +197,8 @@ private:
    * @brief trigger node
    */
   void service_trigger_node(
-    const AUTOWARE_SERVICE_REQUEST_PTR(std_srvs::srv::SetBool) req,
-    AUTOWARE_SERVICE_RESPONSE_PTR(std_srvs::srv::SetBool) res);
+    const AUTOWARE_SERVER_REQUEST_PTR(std_srvs::srv::SetBool) req,
+    AUTOWARE_SERVER_RESPONSE_PTR(std_srvs::srv::SetBool) res);
 
   autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_;
   autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_timer_cb_;
