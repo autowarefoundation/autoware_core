@@ -20,7 +20,6 @@
 #include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_utils_math/normalization.hpp>
 #include <autoware_utils_math/unit_conversion.hpp>
-#include <autoware_utils_tf/transform_listener.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
 #include <pcl_ros/transforms.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -57,7 +56,6 @@ using autoware::vehicle_info_utils::VehicleInfoUtils;
 using autoware_utils_debug::ScopedTimeTrack;
 using autoware_utils_geometry::calc_distance3d;
 using autoware_utils_math::deg2rad;
-using autoware_utils_math::normalize_degree;
 using autoware_utils_math::normalize_radian;
 
 GroundFilterComponent::GroundFilterComponent(const rclcpp::NodeOptions & options)
@@ -162,8 +160,6 @@ GroundFilterComponent::GroundFilterComponent(const rclcpp::NodeOptions & options
   }
 
   // pointcloud parameters
-  tf_input_frame_ = static_cast<std::string>(declare_parameter("input_frame", ""));
-  tf_output_frame_ = static_cast<std::string>(declare_parameter("output_frame", ""));
   max_queue_size_ = static_cast<std::size_t>(declare_parameter("max_queue_size", 5));
   use_indices_ = static_cast<bool>(declare_parameter("use_indices", false));
   latched_indices_ = static_cast<bool>(declare_parameter("latched_indices", false));
@@ -188,16 +184,8 @@ GroundFilterComponent::GroundFilterComponent(const rclcpp::NodeOptions & options
 
   subscribe();
 
-  // Set tf_listener, tf_buffer.
-  setupTF();
-
   published_time_publisher_ = std::make_unique<autoware_utils_debug::PublishedTimePublisher>(this);
   RCLCPP_DEBUG(this->get_logger(), "[Filter Constructor] successfully created.");
-}
-
-void GroundFilterComponent::setupTF()
-{
-  transform_listener_ = std::make_unique<autoware_utils_tf::TransformListener>(this);
 }
 
 void GroundFilterComponent::subscribe()
@@ -235,84 +223,6 @@ void GroundFilterComponent::subscribe()
     sub_input_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
       "input", rclcpp::SensorDataQoS().keep_last(max_queue_size_), cb);
   }
-}
-
-bool GroundFilterComponent::calculate_transform_matrix(
-  const std::string & target_frame, const sensor_msgs::msg::PointCloud2 & from,
-  TransformInfo & transform_info /*output*/)
-{
-  transform_info.need_transform = false;
-
-  if (target_frame.empty() || from.header.frame_id == target_frame) return true;
-
-  RCLCPP_DEBUG(
-    this->get_logger(), "[get_transform_matrix] Transforming input dataset from %s to %s.",
-    from.header.frame_id.c_str(), target_frame.c_str());
-
-  auto tf_ptr = transform_listener_->get_transform(
-    target_frame, from.header.frame_id, from.header.stamp, rclcpp::Duration::from_seconds(1.0));
-
-  if (!tf_ptr) {
-    return false;
-  }
-
-  auto eigen_tf = tf2::transformToEigen(*tf_ptr);
-  transform_info.eigen_transform = eigen_tf.matrix().cast<float>();
-  transform_info.need_transform = true;
-  return true;
-}
-
-bool GroundFilterComponent::convert_output_costly(
-  std::unique_ptr<sensor_msgs::msg::PointCloud2> & output)
-{
-  // In terms of performance, we should avoid using pcl_ros library function,
-  // but this code path isn't reached in the main use case of Autoware, so it's left as is for now.
-  if (!tf_output_frame_.empty() && output->header.frame_id != tf_output_frame_) {
-    RCLCPP_DEBUG(
-      this->get_logger(), "[convert_output_costly] Transforming output dataset from %s to %s.",
-      output->header.frame_id.c_str(), tf_output_frame_.c_str());
-
-    // Convert the cloud into the different frame
-    auto cloud_transformed = std::make_unique<sensor_msgs::msg::PointCloud2>();
-
-    auto tf_ptr = transform_listener_->get_transform(
-      tf_output_frame_, output->header.frame_id, output->header.stamp,
-      rclcpp::Duration::from_seconds(1.0));
-    if (!tf_ptr) {
-      RCLCPP_ERROR(
-        this->get_logger(),
-        "[convert_output_costly] Error converting output dataset from %s to %s.",
-        output->header.frame_id.c_str(), tf_output_frame_.c_str());
-      return false;
-    }
-
-    auto eigen_tf = tf2::transformToEigen(*tf_ptr);
-    pcl_ros::transformPointCloud(eigen_tf.matrix().cast<float>(), *output, *cloud_transformed);
-    output = std::move(cloud_transformed);
-  }
-
-  // Same as the comment above
-  if (tf_output_frame_.empty() && output->header.frame_id != tf_input_orig_frame_) {
-    // No tf_output_frame given, transform the dataset to its original frame
-    RCLCPP_DEBUG(
-      this->get_logger(), "[convert_output_costly] Transforming output dataset from %s back to %s.",
-      output->header.frame_id.c_str(), tf_input_orig_frame_.c_str());
-
-    auto cloud_transformed = std::make_unique<sensor_msgs::msg::PointCloud2>();
-
-    auto tf_ptr = transform_listener_->get_transform(
-      tf_input_orig_frame_, output->header.frame_id, output->header.stamp,
-      rclcpp::Duration::from_seconds(1.0));
-    if (!tf_ptr) {
-      return false;
-    }
-
-    auto eigen_tf = tf2::transformToEigen(*tf_ptr);
-    pcl_ros::transformPointCloud(eigen_tf.matrix().cast<float>(), *output, *cloud_transformed);
-    output = std::move(cloud_transformed);
-  }
-
-  return true;
 }
 
 void GroundFilterComponent::faster_input_indices_callback(
@@ -371,13 +281,6 @@ void GroundFilterComponent::faster_input_indices_callback(
       cloud->width * cloud->height, cloud->header.frame_id.c_str());
   }
 
-  tf_input_orig_frame_ = cloud->header.frame_id;
-
-  // For performance reason, defer the transform computation.
-  // Do not use pcl_ros::transformPointCloud(). It's too slow due to the unnecessary copy.
-  TransformInfo transform_info;
-  if (!calculate_transform_matrix(tf_input_frame_, *cloud, transform_info)) return;
-
   // Need setInputCloud() here because we have to extract x/y/z
   pcl::IndicesPtr vindices;
   if (indices) {
@@ -387,9 +290,7 @@ void GroundFilterComponent::faster_input_indices_callback(
   auto output = std::make_unique<PointCloud2>();
 
   // TODO(sykwer): Change to `filter()` call after when the filter nodes conform to new API.
-  faster_filter(cloud, vindices, *output, transform_info);
-
-  if (!convert_output_costly(output)) return;
+  faster_filter(cloud, vindices, *output);
 
   output->header.stamp = cloud->header.stamp;
   pub_output_->publish(std::move(output));
@@ -598,8 +499,7 @@ void GroundFilterComponent::extractObjectPoints(
 
 void GroundFilterComponent::faster_filter(
   const sensor_msgs::msg::PointCloud2::ConstSharedPtr & input,
-  [[maybe_unused]] const pcl::IndicesPtr & indices, sensor_msgs::msg::PointCloud2 & output,
-  [[maybe_unused]] const TransformInfo & transform_info)
+  [[maybe_unused]] const pcl::IndicesPtr & indices, sensor_msgs::msg::PointCloud2 & output)
 {
   std::unique_ptr<autoware_utils_debug::ScopedTimeTrack> st_ptr;
   if (time_keeper_)
@@ -715,14 +615,6 @@ rcl_interfaces::msg::SetParametersResult GroundFilterComponent::onParameter(
 
   // For pointcloud
   std::scoped_lock lock(mutex_);
-
-  if (get_param(param, "input_frame", tf_input_frame_)) {
-    RCLCPP_DEBUG(this->get_logger(), "Setting the input TF frame to: %s.", tf_input_frame_.c_str());
-  }
-  if (get_param(param, "output_frame", tf_output_frame_)) {
-    RCLCPP_DEBUG(
-      this->get_logger(), "Setting the output TF frame to: %s.", tf_output_frame_.c_str());
-  }
 
   // Finally return the result
   rcl_interfaces::msg::SetParametersResult result;
