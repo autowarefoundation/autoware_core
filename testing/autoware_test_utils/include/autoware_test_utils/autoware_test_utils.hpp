@@ -324,8 +324,16 @@ LaneletRoute makeBehaviorGoalOnLeftSideRoute();
  * @param repeat_count The number of times to spin the nodes.
  */
 void spinSomeNodes(
-  rclcpp::Node::SharedPtr test_node, rclcpp::Node::SharedPtr target_node,
-  const int repeat_count = 1);
+  rclcpp::node_interfaces::NodeBaseInterface::SharedPtr test_node,
+  rclcpp::node_interfaces::NodeBaseInterface::SharedPtr target_node, const int repeat_count = 1);
+
+inline void spinSomeNodes(
+  const rclcpp::Node::SharedPtr & test_node, const rclcpp::Node::SharedPtr & target_node,
+  const int repeat_count = 1)
+{
+  spinSomeNodes(
+    test_node->get_node_base_interface(), target_node->get_node_base_interface(), repeat_count);
+}
 
 /**
  * @brief Updates node options with parameter files.
@@ -568,7 +576,8 @@ void publishToTargetNode(
   if (target_node->count_subscribers(topic_name) == 0) {
     throw std::runtime_error("No subscriber for " + topic_name);
   }
-  autoware::test_utils::spinSomeNodes(test_node, target_node, repeat_count);
+  autoware::test_utils::spinSomeNodes(
+    test_node->get_node_base_interface(), target_node->get_node_base_interface(), repeat_count);
 }
 
 /**
@@ -588,17 +597,17 @@ public:
     pub_clock_ = test_node_->create_publisher<rosgraph_msgs::msg::Clock>("/clock", 1);
   }
 
-  template <typename MessageType>
+  template <typename MessageType, typename NodePtrT>
   void test_pub_msg(
-    rclcpp::Node::SharedPtr target_node, const std::string & topic_name, MessageType & msg)
+    const NodePtrT & target_node, const std::string & topic_name, MessageType & msg)
   {
     rclcpp::QoS qos(rclcpp::KeepLast(10));
     test_pub_msg(target_node, topic_name, msg, qos);
   }
 
-  template <typename MessageType>
+  template <typename MessageType, typename NodePtrT>
   void test_pub_msg(
-    rclcpp::Node::SharedPtr target_node, const std::string & topic_name, MessageType & msg,
+    const NodePtrT & target_node, const std::string & topic_name, MessageType & msg,
     rclcpp::QoS qos)
   {
     if (publishers_.find(topic_name) == publishers_.end()) {
@@ -611,7 +620,8 @@ public:
 
     publisher->publish(msg);
     const int repeat_count = 3;
-    autoware::test_utils::spinSomeNodes(test_node_, target_node, repeat_count);
+    autoware::test_utils::spinSomeNodes(
+      test_node_->get_node_base_interface(), target_node->get_node_base_interface(), repeat_count);
     RCLCPP_INFO(test_node_->get_logger(), "Published message on topic '%s'", topic_name.c_str());
   }
 
