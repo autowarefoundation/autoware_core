@@ -14,45 +14,69 @@
 
 #include "ndt_scan_matcher_helper.hpp"
 
-#include "autoware_ndt_scan_matcher_rs.h"
+#include <autoware/localization_util/util_func.hpp>
 
+#include <algorithm>
 #include <array>
+#include <cstddef>
 #include <vector>
 
-// These functions are thin adapters: the implementations live in the
-// `autoware_ndt_scan_matcher_rs` Rust crate and are called over the C ABI (Phase 1 of the Rust
-// port). The C++ signatures are unchanged so callers and the existing gtest are untouched.
 namespace autoware::ndt_scan_matcher
 {
+using autoware::localization_util::point_to_vector3d;
 
 std::array<double, 36> rotate_covariance(
   const std::array<double, 36> & src_covariance, const Eigen::Matrix3d & rotation)
 {
-  // Serialize the rotation row-major so the Rust side is unambiguous (Eigen defaults to
-  // column-major storage).
-  const std::array<double, 9> rotation_row_major = {
-    rotation(0, 0), rotation(0, 1), rotation(0, 2), rotation(1, 0), rotation(1, 1),
-    rotation(1, 2), rotation(2, 0), rotation(2, 1), rotation(2, 2)};
+  std::array<double, 36> ret_covariance = src_covariance;
 
-  std::array<double, 36> ret_covariance{};
-  autoware_ndt_scan_matcher_rs_rotate_covariance(
-    src_covariance.data(), rotation_row_major.data(), ret_covariance.data());
+  Eigen::Matrix3d src_cov;
+  src_cov << src_covariance[0], src_covariance[1], src_covariance[2], src_covariance[6],
+    src_covariance[7], src_covariance[8], src_covariance[12], src_covariance[13],
+    src_covariance[14];
+
+  Eigen::Matrix3d ret_cov;
+  ret_cov = rotation * src_cov * rotation.transpose();
+
+  for (Eigen::Index i = 0; i < 3; ++i) {
+    ret_covariance[i] = ret_cov(0, i);
+    ret_covariance[i + 6] = ret_cov(1, i);
+    ret_covariance[i + 12] = ret_cov(2, i);
+  }
+
   return ret_covariance;
 }
 
 int count_oscillation(const std::vector<geometry_msgs::msg::Pose> & result_pose_msg_array)
 {
-  // Flatten the positions (the algorithm only uses x, y, z) into a contiguous buffer.
-  std::vector<double> positions_xyz;
-  positions_xyz.reserve(result_pose_msg_array.size() * 3);
-  for (const auto & pose : result_pose_msg_array) {
-    positions_xyz.push_back(pose.position.x);
-    positions_xyz.push_back(pose.position.y);
-    positions_xyz.push_back(pose.position.z);
-  }
+  constexpr double inversion_vector_threshold = -0.9;
 
-  return autoware_ndt_scan_matcher_rs_count_oscillation(
-    positions_xyz.data(), result_pose_msg_array.size());
+  int oscillation_cnt = 0;
+  int max_oscillation_cnt = 0;
+
+  for (size_t i = 2; i < result_pose_msg_array.size(); ++i) {
+    const Eigen::Vector3d current_pose = point_to_vector3d(result_pose_msg_array.at(i).position);
+    const Eigen::Vector3d prev_pose = point_to_vector3d(result_pose_msg_array.at(i - 1).position);
+    const Eigen::Vector3d prev_prev_pose =
+      point_to_vector3d(result_pose_msg_array.at(i - 2).position);
+    const Eigen::Vector3d current_step = current_pose - prev_pose;
+    const Eigen::Vector3d prev_step = prev_pose - prev_prev_pose;
+    // A zero-length step (e.g. repeated poses) has no direction. normalized() on a zero vector
+    // yields NaNs, so guard against it and treat such steps as non-oscillations.
+    if (current_step.norm() == 0.0 || prev_step.norm() == 0.0) {
+      oscillation_cnt = 0;  // reset
+      continue;
+    }
+    const double cosine_value = current_step.normalized().dot(prev_step.normalized());
+    const bool oscillation = cosine_value < inversion_vector_threshold;
+    if (oscillation) {
+      oscillation_cnt++;  // count consecutive oscillation
+    } else {
+      oscillation_cnt = 0;  // reset
+    }
+    max_oscillation_cnt = std::max(max_oscillation_cnt, oscillation_cnt);
+  }
+  return max_oscillation_cnt;
 }
 
 }  // namespace autoware::ndt_scan_matcher

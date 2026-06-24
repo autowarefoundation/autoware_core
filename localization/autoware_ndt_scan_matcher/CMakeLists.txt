@@ -42,32 +42,49 @@ else()
   message(WARNING "OpenMP not found")
 endif()
 
-# Rust port scaffold: build the nested `autoware_ndt_scan_matcher_rs` crate via Corrosion
-# and link it into the C++ library so it can be called over the C ABI (see src/rs_ffi_mock.cpp).
-# Corrosion is fetched at configure time; for offline builds switch GIT_* to a local SOURCE_DIR.
-include(FetchContent)
-FetchContent_Declare(Corrosion
-  GIT_REPOSITORY https://github.com/corrosion-rs/corrosion.git
-  GIT_TAG v0.5
-)
-FetchContent_MakeAvailable(Corrosion)
-corrosion_import_crate(MANIFEST_PATH
-  ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/Cargo.toml
-)
+# Rust port build switch (see plan/ndt_in_rust.md). When OFF (default) the package builds the
+# original C++ unchanged and does not depend on Rust/Corrosion at all. When ON, the nested
+# `autoware_ndt_scan_matcher_rs` crate is built via Corrosion, linked over the C ABI, and the
+# `_rs.cpp` adapter twins replace their original C++ counterparts (never both -> duplicate symbols).
+option(NDT_USE_RUST "Build/use the Rust port (autoware_ndt_scan_matcher_rs) over FFI" OFF)
+
+# Default: original C++ sources, no Rust glue.
+set(NDT_HELPER_SRC src/ndt_scan_matcher_helper.cpp)
+set(NDT_RUST_GLUE "")
+
+if(NDT_USE_RUST)
+  # Corrosion is fetched at configure time; for offline builds switch GIT_* to a local SOURCE_DIR.
+  include(FetchContent)
+  FetchContent_Declare(Corrosion
+    GIT_REPOSITORY https://github.com/corrosion-rs/corrosion.git
+    GIT_TAG v0.5
+  )
+  FetchContent_MakeAvailable(Corrosion)
+  corrosion_import_crate(MANIFEST_PATH
+    ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/Cargo.toml
+  )
+  # Swap in the Rust-backed adapter twin and the FFI scaffold mock.
+  set(NDT_HELPER_SRC src/ndt_scan_matcher_helper_rs.cpp)
+  set(NDT_RUST_GLUE src/rs_ffi_mock.cpp)
+endif()
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
   src/map_update_module.cpp
   src/ndt_scan_matcher_core.cpp
-  src/ndt_scan_matcher_helper.cpp
+  ${NDT_HELPER_SRC}
   src/particle.cpp
-  src/rs_ffi_mock.cpp
+  ${NDT_RUST_GLUE}
 )
 
 link_directories(${PCL_LIBRARY_DIRS})
-target_link_libraries(${PROJECT_NAME} ${PCL_LIBRARIES} multigrid_ndt_omp autoware_ndt_scan_matcher_rs)
-target_include_directories(${PROJECT_NAME} PUBLIC
-  ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/include
-)
+target_link_libraries(${PROJECT_NAME} ${PCL_LIBRARIES} multigrid_ndt_omp)
+
+if(NDT_USE_RUST)
+  target_link_libraries(${PROJECT_NAME} autoware_ndt_scan_matcher_rs)
+  target_include_directories(${PROJECT_NAME} PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/include
+  )
+endif()
 
 autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
   PLUGIN "autoware::ndt_scan_matcher::NDTScanMatcher"
@@ -107,22 +124,24 @@ if(BUILD_TESTING)
   )
   target_link_libraries(test_ndt_scan_matcher_helper ${PROJECT_NAME})
 
-  # Rust port scaffold tests.
-  # 1. Run the Rust crate's own unit tests through CTest (so `colcon test` / `./test.sh`
-  #    pick them up). cargo's test artifacts go under the CMake build dir, not the source tree.
-  find_program(CARGO_EXECUTABLE cargo REQUIRED)
-  add_test(
-    NAME autoware_ndt_scan_matcher_rs_cargo_test
-    COMMAND ${CARGO_EXECUTABLE} test
-            --manifest-path ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/Cargo.toml
-            --target-dir ${CMAKE_CURRENT_BINARY_DIR}/rs_test_target
-  )
+  if(NDT_USE_RUST)
+    # Rust port tests (only relevant when the Rust crate is built).
+    # 1. Run the Rust crate's own unit tests through CTest (so `colcon test` / `./test.sh`
+    #    pick them up). cargo's test artifacts go under the CMake build dir, not the source tree.
+    find_program(CARGO_EXECUTABLE cargo REQUIRED)
+    add_test(
+      NAME autoware_ndt_scan_matcher_rs_cargo_test
+      COMMAND ${CARGO_EXECUTABLE} test
+              --manifest-path ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/Cargo.toml
+              --target-dir ${CMAKE_CURRENT_BINARY_DIR}/rs_test_target
+    )
 
-  # 2. Exercise the C++ -> Rust FFI link via the mock wrapper.
-  ament_auto_add_gtest(test_rs_ffi
-    test/test_rs_ffi.cpp
-  )
-  target_link_libraries(test_rs_ffi ${PROJECT_NAME})
+    # 2. Exercise the C++ -> Rust FFI link via the mock wrapper.
+    ament_auto_add_gtest(test_rs_ffi
+      test/test_rs_ffi.cpp
+    )
+    target_link_libraries(test_rs_ffi ${PROJECT_NAME})
+  endif()
 endif()
 
 autoware_ament_auto_package(
