@@ -598,8 +598,7 @@ public:
   }
 
   template <typename MessageType, typename NodePtrT>
-  void test_pub_msg(
-    const NodePtrT & target_node, const std::string & topic_name, MessageType & msg)
+  void test_pub_msg(const NodePtrT & target_node, const std::string & topic_name, MessageType & msg)
   {
     rclcpp::QoS qos(rclcpp::KeepLast(10));
     test_pub_msg(target_node, topic_name, msg, qos);
