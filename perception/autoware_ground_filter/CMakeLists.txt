@@ -14,7 +14,6 @@ include_directories(
     ${Boost_INCLUDE_DIRS}
     ${PCL_INCLUDE_DIRS}
     ${EIGEN3_INCLUDE_DIRS}
-    ${GRID_MAP_INCLUDE_DIR}
 )
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
@@ -36,11 +35,19 @@ rclcpp_components_register_node(${PROJECT_NAME}
 if(BUILD_TESTING)
   find_package(autoware_test_utils REQUIRED)
 
-  ament_add_ros_isolated_gtest(test_ground_filter
+  ament_add_gtest(test_ground_filter
     test/test_ground_filter.cpp
   )
   target_include_directories(test_ground_filter PRIVATE src)
   target_link_libraries(test_ground_filter
+    ${PROJECT_NAME}
+  )
+
+  ament_add_gtest(test_sanity_check
+    test/test_sanity_check.cpp
+  )
+  target_include_directories(test_sanity_check PRIVATE src)
+  target_link_libraries(test_sanity_check
     ${PROJECT_NAME}
   )
 
@@ -54,14 +61,6 @@ if(BUILD_TESTING)
   ament_target_dependencies(test_ground_filter_integration
     autoware_test_utils
     ament_index_cpp
-  )
-
-  ament_add_ros_isolated_gtest(test_sanity_check
-    test/test_sanity_check.cpp
-  )
-  target_include_directories(test_sanity_check PRIVATE src)
-  target_link_libraries(test_sanity_check
-    ${PROJECT_NAME}
   )
 endif()
 
