@@ -204,8 +204,6 @@ private:
 
   pcl::shared_ptr<pcl::PointCloud<PointSource>> sensor_points_in_baselink_frame_;
 
-  Eigen::Matrix4f base_to_sensor_matrix_;
-
   std::unique_ptr<autoware::localization_util::SmartPoseBuffer> initial_pose_buffer_;
 
   // Keep latest position for dynamic map loading

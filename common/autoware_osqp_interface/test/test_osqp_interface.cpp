@@ -18,6 +18,8 @@
 #include <Eigen/Core>
 
 #include <iostream>
+#include <stdexcept>
+#include <string>
 #include <tuple>
 #include <vector>
 
@@ -194,5 +196,85 @@ TEST(TestOsqpInterface, BasicQp)
     EXPECT_EQ(osqp.getStatus(), 1);
     EXPECT_EQ(osqp.getStatusMessage(), "solved");
   }
+}
+
+// Each of the five dimension-consistency checks in initializeProblem(Eigen, ...) must throw
+// std::invalid_argument with a descriptive message. The happy path is already covered by
+// TestOsqpInterface.BasicQp; here we pin the individual failure branches.
+TEST(TestOsqpInterface, InitializeProblemDimensionMismatch)
+{
+  using autoware::osqp_interface::OSQPInterface;
+
+  // Consistent baseline: P is 2x2, A is 2x2, q/l/u sized accordingly.
+  const Eigen::MatrixXd P = (Eigen::MatrixXd(2, 2) << 4, 1, 1, 2).finished();
+  const Eigen::MatrixXd A = (Eigen::MatrixXd(2, 2) << 1, 1, 1, 0).finished();
+  const std::vector<double> q = {1.0, 1.0};
+  const std::vector<double> l = {0.0, 0.0};
+  const std::vector<double> u = {1.0, 1.0};
+
+  OSQPInterface osqp;
+
+  // 1. P not square.
+  {
+    const Eigen::MatrixXd p_non_square = Eigen::MatrixXd::Zero(2, 3);
+    EXPECT_THROW(osqp.initializeProblem(p_non_square, A, q, l, u), std::invalid_argument);
+  }
+  // 2. P.rows() != q.size().
+  {
+    const std::vector<double> q_bad = {1.0, 1.0, 1.0};
+    EXPECT_THROW(osqp.initializeProblem(P, A, q_bad, l, u), std::invalid_argument);
+  }
+  // 3. P.rows() != A.cols().
+  {
+    const Eigen::MatrixXd a_bad = Eigen::MatrixXd::Zero(2, 3);
+    EXPECT_THROW(osqp.initializeProblem(P, a_bad, q, l, u), std::invalid_argument);
+  }
+  // 4. A.rows() != l.size().
+  {
+    const std::vector<double> l_bad = {0.0, 0.0, 0.0};
+    EXPECT_THROW(osqp.initializeProblem(P, A, q, l_bad, u), std::invalid_argument);
+  }
+  // 5. A.rows() != u.size().
+  {
+    const std::vector<double> u_bad = {1.0, 1.0, 1.0};
+    EXPECT_THROW(osqp.initializeProblem(P, A, q, l, u_bad), std::invalid_argument);
+  }
+
+  // Sanity: the baseline (all consistent) does not throw.
+  EXPECT_NO_THROW(osqp.initializeProblem(P, A, q, l, u));
+}
+
+// Warm-start setters must return false (and not crash) when called before the workspace has been
+// initialized, i.e. on a default-constructed interface.
+TEST(TestOsqpInterface, WarmStartBeforeInitializationFails)
+{
+  using autoware::osqp_interface::OSQPInterface;
+
+  OSQPInterface osqp;  // no problem set up yet -> m_work_initialized == false
+  const std::vector<double> primal = {0.0, 0.0};
+  const std::vector<double> dual = {0.0, 0.0};
+
+  EXPECT_FALSE(osqp.setPrimalVariables(primal));
+  EXPECT_FALSE(osqp.setDualVariables(dual));
+  EXPECT_FALSE(osqp.setWarmStart(primal, dual));
+}
+
+// logUnsolvedStatus after a solved problem must be a
+// no-op (status == 1) and must never throw.
+TEST(TestOsqpInterface, LogUnsolvedStatusSolvedIsNoThrow)
+{
+  using autoware::osqp_interface::OSQPInterface;
+
+  const Eigen::MatrixXd P = (Eigen::MatrixXd(2, 2) << 4, 1, 1, 2).finished();
+  const Eigen::MatrixXd A = (Eigen::MatrixXd(4, 2) << 1, 1, 1, 0, 0, 1, 0, 1).finished();
+  const std::vector<double> q = {1.0, 1.0};
+  const std::vector<double> l = {1.0, 0.0, 0.0, -autoware::osqp_interface::INF};
+  const std::vector<double> u = {1.0, 0.7, 0.7, autoware::osqp_interface::INF};
+
+  OSQPInterface osqp(P, A, q, l, u, 1e-6);
+  osqp.optimize();
+  ASSERT_EQ(osqp.getStatus(), 1);  // solved
+  EXPECT_NO_THROW(osqp.logUnsolvedStatus());
+  EXPECT_NO_THROW(osqp.logUnsolvedStatus("prefix"));
 }
 }  // namespace

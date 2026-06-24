@@ -37,6 +37,16 @@ TEST(StopObstacleClassificationTest, InitializesFromPerceptionObjectClassificati
   ASSERT_EQ(
     StopObstacleClassification(perception_obj_classification).label,
     StopObstacleClassification::Type::PEDESTRIAN);
+
+  perception_obj_classification.label = ObjectClassification::ANIMAL;
+  ASSERT_EQ(
+    StopObstacleClassification(perception_obj_classification).label,
+    StopObstacleClassification::Type::ANIMAL);
+
+  perception_obj_classification.label = ObjectClassification::HAZARD;
+  ASSERT_EQ(
+    StopObstacleClassification(perception_obj_classification).label,
+    StopObstacleClassification::Type::HAZARD);
 }
 
 TEST(StopObstacleClassificationTest, InitializesFromPredictedObjectClassification)
@@ -61,6 +71,16 @@ TEST(StopObstacleClassificationTest, InitializesFromPredictedObjectClassificatio
     ASSERT_EQ(
       StopObstacleClassification(predicted_obj.classification).label,
       StopObstacleClassification::Type::PEDESTRIAN);
+
+    predicted_obj.classification.at(0).label = ObjectClassification::ANIMAL;
+    ASSERT_EQ(
+      StopObstacleClassification(predicted_obj.classification).label,
+      StopObstacleClassification::Type::ANIMAL);
+
+    predicted_obj.classification.at(0).label = ObjectClassification::HAZARD;
+    ASSERT_EQ(
+      StopObstacleClassification(predicted_obj.classification).label,
+      StopObstacleClassification::Type::HAZARD);
   }
 }
 
@@ -75,6 +95,12 @@ TEST(StopObstacleClassificationTest, InitializesFromStopObstacleClassification)
   ASSERT_EQ(
     StopObstacleClassification{StopObstacleClassification::Type::PEDESTRIAN}.label,
     StopObstacleClassification::Type::PEDESTRIAN);
+  ASSERT_EQ(
+    StopObstacleClassification{StopObstacleClassification::Type::ANIMAL}.label,
+    StopObstacleClassification::Type::ANIMAL);
+  ASSERT_EQ(
+    StopObstacleClassification{StopObstacleClassification::Type::HAZARD}.label,
+    StopObstacleClassification::Type::HAZARD);
   ASSERT_EQ(
     StopObstacleClassification{StopObstacleClassification::Type::POINTCLOUD}.label,
     StopObstacleClassification::Type::POINTCLOUD);

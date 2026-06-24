@@ -16,6 +16,7 @@ rclcpp_components_register_node(goal_pose_visualizer_component
 ament_auto_add_library(${PROJECT_NAME}_component SHARED
   src/mission_planner/arrival_checker.cpp
   src/mission_planner/service_utils.cpp
+  src/mission_planner/reroute_safety.cpp
   src/mission_planner/mission_planner.cpp
 )
 
@@ -40,6 +41,13 @@ if(BUILD_TESTING)
   )
   ament_target_dependencies(test_${PROJECT_NAME}
     autoware_test_utils
+  )
+
+  ament_add_ros_isolated_gtest(test_${PROJECT_NAME}_reroute_safety
+  test/test_reroute_safety.cpp
+  )
+  target_link_libraries(test_${PROJECT_NAME}_reroute_safety
+    ${PROJECT_NAME}_component
   )
 endif()
 
