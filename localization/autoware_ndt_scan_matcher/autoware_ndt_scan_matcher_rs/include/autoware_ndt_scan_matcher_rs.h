@@ -18,6 +18,7 @@
 #ifndef AUTOWARE_NDT_SCAN_MATCHER_RS_H_
 #define AUTOWARE_NDT_SCAN_MATCHER_RS_H_
 
+#include <stddef.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -25,6 +26,18 @@ extern "C" {
 #endif
 
 uint64_t autoware_ndt_scan_matcher_rs_add(uint64_t left, uint64_t right);
+
+// Rotate the 3x3 position block of a 6x6 row-major pose covariance: out_cov = R * src_cov * R^T.
+// src_cov/out_cov point to 36 doubles (row-major 6x6); rot points to 9 doubles (row-major 3x3).
+// No-op if any pointer is null.
+void autoware_ndt_scan_matcher_rs_rotate_covariance(
+  const double * src_cov, const double * rot, double * out_cov);
+
+// Maximum number of consecutive direction inversions over a pose trajectory.
+// positions_xyz is a flat buffer of 3 * num_poses doubles (x, y, z per pose).
+// Returns 0 if positions_xyz is null or num_poses is 0.
+int32_t autoware_ndt_scan_matcher_rs_count_oscillation(
+  const double * positions_xyz, size_t num_poses);
 
 #ifdef __cplusplus
 }  // extern "C"
