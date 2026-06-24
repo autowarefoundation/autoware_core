@@ -738,6 +738,8 @@ GroundFilter::FilterResult GroundFilter::filter(
     return result;
   }
 
+  setDataAccessor(in_cloud);
+
   // Execute core math stuffs
   pcl::PointIndices no_ground_indices;
   process(in_cloud, no_ground_indices);

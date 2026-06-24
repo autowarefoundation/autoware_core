@@ -15,6 +15,7 @@
 #include "ground_filter.hpp"
 
 #include <autoware/point_types/types.hpp>
+#include <rclcpp/rclcpp.hpp>
 
 #include <gtest/gtest.h>
 #include <pcl/point_cloud.h>
@@ -22,7 +23,6 @@
 #include <pcl_conversions/pcl_conversions.h>
 
 #include <memory>
-#include <utility>
 #include <vector>
 
 class GroundFilterTest : public ::testing::Test
@@ -317,5 +317,10 @@ TEST_F(GroundFilterTest, TestExtremeParameterValues)
 int main(int argc, char ** argv)
 {
   ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
+
+  rclcpp::init(argc, argv);
+  int result = RUN_ALL_TESTS();
+  rclcpp::shutdown();
+
+  return result;
 }
