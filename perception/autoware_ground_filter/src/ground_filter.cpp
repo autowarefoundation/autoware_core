@@ -760,4 +760,29 @@ GroundFilter::FilterResult GroundFilter::filter(
   return result;
 }
 
+/**
+ * @brief Extracts points classified as obstacles from input point cloud based on provided indices.
+ *
+ * @param in_cloud_ptr Pointer to input point cloud message.
+ * @param in_indices Indices of points classified as obstacles.
+ * @param out_object_cloud Output point cloud message containing only obstacle points.
+ */
+void GroundFilter::extractObjectPoints(
+  const PointCloud2ConstPtr & in_cloud_ptr, const pcl::PointIndices & in_indices,
+  sensor_msgs::msg::PointCloud2 & out_object_cloud) const
+{
+  std::unique_ptr<ScopedTimeTrack> st_ptr;
+  if (time_keeper_) {
+    st_ptr = std::make_unique<ScopedTimeTrack>(__func__, *time_keeper_);
+  }
+
+  size_t output_data_size = 0;
+  for (const auto & idx : in_indices.indices) {
+    std::memcpy(
+      &out_object_cloud.data[output_data_size], &in_cloud_ptr->data[idx],
+      in_cloud_ptr->point_step * sizeof(uint8_t));
+    output_data_size += in_cloud_ptr->point_step;
+  }
+}
+
 }  // namespace autoware::ground_filter
