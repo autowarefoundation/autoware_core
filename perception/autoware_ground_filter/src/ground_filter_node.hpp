@@ -15,28 +15,20 @@
 #ifndef GROUND_FILTER_NODE_HPP_
 #define GROUND_FILTER_NODE_HPP_
 
-#include "data.hpp"
 #include "ground_filter.hpp"
 
+#include <autoware_utils_debug/debug_publisher.hpp>
+#include <autoware_utils_debug/published_time_publisher.hpp>
 #include <autoware_utils_debug/time_keeper.hpp>
+#include <autoware_utils_system/stop_watch.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info.hpp>
+#include <rclcpp/rclcpp.hpp>
 
+#include <pcl_msgs/msg/point_indices.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
 #include <boost/thread/mutex.hpp>
 
-// PCL includes
-#include <pcl_msgs/msg/point_indices.hpp>
-
-#include <pcl/filters/extract_indices.h>
-#include <pcl/filters/filter.h>
-#include <pcl/filters/voxel_grid.h>
-#include <pcl/pcl_base.h>
-#include <pcl/point_types.h>
-#include <pcl_conversions/pcl_conversions.h>
-
-// PCL includes
-// cppcheck-suppress preprocessorErrorDirective
 #if __has_include(<message_filters/subscriber.hpp>)
 #include <message_filters/subscriber.hpp>
 #include <message_filters/sync_policies/approximate_time.hpp>
@@ -49,12 +41,8 @@
 #include <message_filters/synchronizer.h>
 #endif
 
-// Include tier4 autoware utils
-#include <autoware_utils_debug/debug_publisher.hpp>
-#include <autoware_utils_debug/published_time_publisher.hpp>
-#include <autoware_utils_system/stop_watch.hpp>
-
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -65,43 +53,49 @@ namespace autoware::ground_filter
 
 class GroundFilterComponent : public rclcpp::Node
 {
+public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  explicit GroundFilterComponent(const rclcpp::NodeOptions & options);
+
+  // for test
+  friend class ::GroundFilterTest;
+
 private:
-  /** \brief Lazy transport subscribe routine. */
   void subscribe();
 
-  const uint16_t ground_grid_continual_thresh_ = 3;
-  bool elevation_grid_mode_;
-  float non_ground_height_threshold_;
-  float low_priority_region_x_;
-  float center_pcl_shift_;  // virtual center of pcl to center mass
+  void faster_input_indices_callback(
+    const sensor_msgs::msg::PointCloud2::ConstSharedPtr cloud,
+    const pcl_msgs::msg::PointIndices::ConstSharedPtr indices);
 
-  // common parameters
-  float radial_divider_angle_rad_;  // distance in rads between dividers
+  rcl_interfaces::msg::SetParametersResult onParameter(
+    const std::vector<rclcpp::Parameter> & param);
+
+  // parameters
+  bool elevation_grid_mode_;
+  float radial_divider_angle_rad_;
   size_t radial_dividers_num_;
   autoware::vehicle_info_utils::VehicleInfo vehicle_info_;
 
-  // non-grid parameters
   bool use_virtual_ground_point_;
   float split_height_distance_;
 
-  // common thresholds
-  float global_slope_max_angle_rad_;  // radians
-  float local_slope_max_angle_rad_;   // radians
+  float global_slope_max_angle_rad_;
+  float local_slope_max_angle_rad_;
   float global_slope_max_ratio_;
   float local_slope_max_ratio_;
-  float split_points_distance_tolerance_;  // distance in meters between concentric divisions
+  float split_points_distance_tolerance_;
 
-  // grid mode parameters
-  bool use_recheck_ground_cluster_;  // to enable recheck ground cluster
-  bool use_lowest_point_;  // to select lowest point for reference in recheck ground cluster,
-                           // otherwise select middle point
+  bool use_recheck_ground_cluster_;
+  bool use_lowest_point_;
   float detection_range_z_max_;
 
-  // grid parameters
   float grid_size_m_;
-  float grid_mode_switch_radius_;  // non linear grid size switching distance
+  float grid_mode_switch_radius_;
   uint16_t ground_grid_buffer_size_;
   float virtual_lidar_z_;
+  float low_priority_region_x_;
+  float center_pcl_shift_;
+  float non_ground_height_threshold_;
 
   std::size_t max_queue_size_;
   bool use_indices_;
@@ -116,22 +110,12 @@ private:
     detailed_processing_time_publisher_;
   std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper_;
 
-  /** \brief Parameter service callback result : needed to be hold */
   rclcpp::Node::OnSetParametersCallbackHandle::SharedPtr set_param_res_;
 
-  /** \brief Parameter service callback */
-  rcl_interfaces::msg::SetParametersResult onParameter(
-    const std::vector<rclcpp::Parameter> & param);
-
-  // debugger
   std::unique_ptr<autoware_utils_system::StopWatch<std::chrono::milliseconds>> stop_watch_ptr_{
     nullptr};
   std::unique_ptr<autoware_utils_debug::DebugPublisher> debug_publisher_ptr_{nullptr};
 
-  // For pointcloud
-
-  /** \brief Get a matrix for conversion from the original frame to the target frame */
-  /** \brief Synchronized input, and indices.*/
   std::shared_ptr<message_filters::Synchronizer<message_filters::sync_policies::ApproximateTime<
     sensor_msgs::msg::PointCloud2, pcl_msgs::msg::PointIndices>>>
     sync_input_indices_a_;
@@ -139,35 +123,14 @@ private:
     sensor_msgs::msg::PointCloud2, pcl_msgs::msg::PointIndices>>>
     sync_input_indices_e_;
 
-  void faster_input_indices_callback(
-    const sensor_msgs::msg::PointCloud2::ConstSharedPtr cloud,
-    const pcl_msgs::msg::PointIndices::ConstSharedPtr indices);
-
-protected:
-  /** \brief Internal mutex for thread safe parameter setting */
   std::mutex mutex_;
-
-  /** \brief The input PointCloud2 subscriber. */
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_input_;
-
-  /** \brief The output PointCloud2 publisher. */
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_output_;
-
-  /** \brief The message filter subscriber for PointCloud2. */
   message_filters::Subscriber<sensor_msgs::msg::PointCloud2> sub_input_filter_;
-
-  /** \brief The message filter subscriber for PointIndices. */
   message_filters::Subscriber<pcl_msgs::msg::PointIndices> sub_indices_filter_;
-
   std::unique_ptr<autoware_utils_debug::PublishedTimePublisher> published_time_publisher_;
-
-public:
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-  explicit GroundFilterComponent(const rclcpp::NodeOptions & options);
-
-  // for test
-  friend GroundFilterTest;
 };
+
 }  // namespace autoware::ground_filter
 
 #endif  // GROUND_FILTER_NODE_HPP_
