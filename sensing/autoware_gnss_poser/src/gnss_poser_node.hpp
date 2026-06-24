@@ -53,7 +53,7 @@ private:
     const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::NavSatFix) & nav_sat_fix_msg_ptr);
   void callback_gnss_ins_orientation_stamped(
     const AUTOWARE_MESSAGE_CONST_SHARED_PTR(autoware_sensing_msgs::msg::GnssInsOrientationStamped) &
-      msg);
+    msg);
 
   static bool is_fixed(const sensor_msgs::msg::NavSatStatus & nav_sat_status_msg);
   static bool can_get_covariance(const sensor_msgs::msg::NavSatFix & nav_sat_fix_msg);
@@ -79,7 +79,7 @@ private:
   AUTOWARE_SUBSCRIPTION_PTR(autoware_map_msgs::msg::MapProjectorInfo) sub_map_projector_info_;
   AUTOWARE_SUBSCRIPTION_PTR(sensor_msgs::msg::NavSatFix) nav_sat_fix_sub_;
   AUTOWARE_SUBSCRIPTION_PTR(autoware_sensing_msgs::msg::GnssInsOrientationStamped)
-    autoware_orientation_sub_;
+  autoware_orientation_sub_;
 
   AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::PoseStamped) pose_pub_;
   AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::PoseWithCovarianceStamped) pose_cov_pub_;
