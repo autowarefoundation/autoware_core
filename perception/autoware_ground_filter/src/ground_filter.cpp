@@ -15,10 +15,13 @@
 #include "ground_filter.hpp"
 
 #include "data.hpp"
+#include "sanity_check.hpp"
 
 #include <pcl/PointIndices.h>
 
+#include <cstring>
 #include <memory>
+#include <utility>
 #include <vector>
 
 namespace autoware::ground_filter
@@ -702,6 +705,59 @@ void GroundFilter::classifyPointCloud(
       }
     }
   }
+}
+
+/**
+ * @brief Filter input point cloud to separate ground and obstacle points.
+ *
+ * @param in_cloud Input point cloud message.
+ * @param indices Optional indices of points to consider within input cloud.
+ *
+ * @return FilterResult containing filtered point cloud and any error messages.
+ */
+GroundFilter::FilterResult GroundFilter::filter(
+  const PointCloud2ConstPtr & in_cloud, [[maybe_unused]] const pcl::Indices & indices)
+{
+  FilterResult result;
+
+  // Sanity checks
+  if (
+    !is_data_layout_compatible_with_point_xyzircaedt(*in_cloud) &&
+    !is_data_layout_compatible_with_point_xyzirc(*in_cloud)) {
+    result.error_message =
+      "The pointcloud layout is not compatible with PointXYZIRCAEDT or PointXYZIRC. Aborting";
+    return result;
+  }
+  if (in_cloud->data.empty() || in_cloud->width * in_cloud->height == 0) {
+    result.error_message = "Received empty PointCloud.";
+    return result;
+  }
+  if (in_cloud->width * in_cloud->height * in_cloud->point_step != in_cloud->data.size()) {
+    result.error_message = "Invalid PointCloud memory layout.";
+    return result;
+  }
+
+  // Execute core math stuffs
+  pcl::PointIndices no_ground_indices;
+  process(in_cloud, no_ground_indices);
+
+  // Package output memory
+  sensor_msgs::msg::PointCloud2 output;
+  output.row_step = no_ground_indices.indices.size() * in_cloud->point_step;
+  output.data.resize(output.row_step);
+  output.width = no_ground_indices.indices.size();
+  output.fields = in_cloud->fields;
+  output.is_dense = true;
+  output.height = in_cloud->height;
+  output.is_bigendian = in_cloud->is_bigendian;
+  output.point_step = in_cloud->point_step;
+  output.header = in_cloud->header;
+
+  // Extract bytes
+  extractObjectPoints(in_cloud, no_ground_indices, output);
+
+  result.cloud = std::move(output);
+  return result;
 }
 
 }  // namespace autoware::ground_filter
