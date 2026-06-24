@@ -229,31 +229,6 @@ void GroundFilterComponent::subscribe()
   }
 }
 
-bool GroundFilterComponent::calculate_transform_matrix(
-  const std::string & target_frame, const sensor_msgs::msg::PointCloud2 & from,
-  TransformInfo & transform_info /*output*/)
-{
-  transform_info.need_transform = false;
-
-  if (target_frame.empty() || from.header.frame_id == target_frame) return true;
-
-  RCLCPP_DEBUG(
-    this->get_logger(), "[get_transform_matrix] Transforming input dataset from %s to %s.",
-    from.header.frame_id.c_str(), target_frame.c_str());
-
-  auto tf_ptr = transform_listener_->get_transform(
-    target_frame, from.header.frame_id, from.header.stamp, rclcpp::Duration::from_seconds(1.0));
-
-  if (!tf_ptr) {
-    return false;
-  }
-
-  auto eigen_tf = tf2::transformToEigen(*tf_ptr);
-  transform_info.eigen_transform = eigen_tf.matrix().cast<float>();
-  transform_info.need_transform = true;
-  return true;
-}
-
 bool GroundFilterComponent::convert_output_costly(
   std::unique_ptr<sensor_msgs::msg::PointCloud2> & output)
 {
@@ -364,11 +339,6 @@ void GroundFilterComponent::faster_input_indices_callback(
   }
 
   tf_input_orig_frame_ = cloud->header.frame_id;
-
-  // For performance reason, defer the transform computation.
-  // Do not use pcl_ros::transformPointCloud(). It's too slow due to the unnecessary copy.
-  TransformInfo transform_info;
-  if (!calculate_transform_matrix(tf_input_frame_, *cloud, transform_info)) return;
 
   // Need setInputCloud() here because we have to extract x/y/z
   pcl::IndicesPtr vindices;

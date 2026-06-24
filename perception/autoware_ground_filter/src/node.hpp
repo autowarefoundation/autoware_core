@@ -309,9 +309,6 @@ private:
     sensor_msgs::msg::PointCloud2, pcl_msgs::msg::PointIndices>>>
     sync_input_indices_e_;
 
-  bool calculate_transform_matrix(
-    const std::string & target_frame, const sensor_msgs::msg::PointCloud2 & from,
-    TransformInfo & transform_info /*output*/);
   bool convert_output_costly(std::unique_ptr<sensor_msgs::msg::PointCloud2> & output);
   void faster_input_indices_callback(
     const sensor_msgs::msg::PointCloud2::ConstSharedPtr cloud,
