@@ -9,6 +9,28 @@ Changelog for package autoware_map_projection_loader
 * feat(map_projection_loader): add scale_factor and remove altitude (`#340 <https://github.com/autowarefoundation/autoware_core/issues/340>`_)
 * Contributors: Takagi, Isamu, Yamato Ando
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* test(autoware_map_projection_loader): add gtest for load_info_from_yaml and load_map_projector_info (`#1140 <https://github.com/autowarefoundation/autoware_core/issues/1140>`_)
+  Add a direct C++ gtest suite mirroring test_load_info_from_lanelet2_map.cpp
+  that writes temporary YAML files and asserts the full MapProjectorInfo
+  message contents per projector_type, closing the high-severity coverage
+  gap previously exercised only indirectly by the launch_test files.
+  Covered behaviors:
+  - MGRS, LocalCartesianUTM, LocalCartesian, Local, TransverseMercator full
+  message contents (vertical_datum, mgrs_grid, map_origin, scale_factor)
+  - altitude always forced to 0.0
+  - scale_factor defaulting matrix (TM default 0.9996 vs explicit override;
+  MGRS/LocalCartesianUTM -> 0.9996; Local/LocalCartesian -> 1.0)
+  - deprecated lowercase "local" -> Local remapping
+  - invalid projector_type and scale_factor <= 0.0 throwing std::runtime_error
+  - load_map_projector_info yaml-takes-precedence-over-lanelet2 selection and
+  the no-files-found throw
+  No public API changes; tests only.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+* Contributors: Yutaka Kondo, github-actions
+
 1.8.0 (2026-05-01)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
