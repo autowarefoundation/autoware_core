@@ -173,15 +173,20 @@ void GNSSPoser::callback_nav_sat_fix(
   tf2::Transform tf_map2base_link{};
   tf_map2base_link = tf_map2gnss_antenna * tf_gnss_antenna2base_link;
 
-  auto gnss_base_pose_msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pose_pub_);
-  gnss_base_pose_msg->header.stamp = nav_sat_fix_msg_ptr->header.stamp;
-  gnss_base_pose_msg->header.frame_id = map_frame_;
-  tf2::toMsg(tf_map2base_link, gnss_base_pose_msg->pose);
+  auto gnss_base_pose_unique = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pose_pub_);
+  gnss_base_pose_unique->header.stamp = nav_sat_fix_msg_ptr->header.stamp;
+  gnss_base_pose_unique->header.frame_id = map_frame_;
+  tf2::toMsg(tf_map2base_link, gnss_base_pose_unique->pose);
+
+  const geometry_msgs::msg::PoseStamped gnss_base_pose_msg = *gnss_base_pose_unique;
+
+  // publish gnss_base_link pose in map frame
+  pose_pub_->publish(std::move(gnss_base_pose_unique));
 
   // publish gnss_base_link pose_cov in map frame
   auto gnss_base_pose_cov_msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pose_cov_pub_);
-  gnss_base_pose_cov_msg->header = gnss_base_pose_msg->header;
-  gnss_base_pose_cov_msg->pose.pose = gnss_base_pose_msg->pose;
+  gnss_base_pose_cov_msg->header = gnss_base_pose_msg.header;
+  gnss_base_pose_cov_msg->pose.pose = gnss_base_pose_msg.pose;
   constexpr std::size_t diagonal_stride = 7;
   gnss_base_pose_cov_msg->pose.covariance[diagonal_stride * 0] =
     can_get_covariance(*nav_sat_fix_msg_ptr) ? nav_sat_fix_msg_ptr->position_covariance[0] : 10.0;
@@ -205,11 +210,8 @@ void GNSSPoser::callback_nav_sat_fix(
 
   pose_cov_pub_->publish(std::move(gnss_base_pose_cov_msg));
 
-  // broadcast map to gnss_base_link (pose message is still owned and published below)
-  publish_tf(map_frame_, gnss_base_frame_, *gnss_base_pose_msg);
-
-  // publish gnss_base_link pose in map frame
-  pose_pub_->publish(std::move(gnss_base_pose_msg));
+  // broadcast map to gnss_base_link
+  publish_tf(map_frame_, gnss_base_frame_, gnss_base_pose_msg);
 }
 
 void GNSSPoser::callback_gnss_ins_orientation_stamped(
