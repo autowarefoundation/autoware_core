@@ -188,16 +188,8 @@ GroundFilterComponent::GroundFilterComponent(const rclcpp::NodeOptions & options
 
   subscribe();
 
-  // Set tf_listener, tf_buffer.
-  setupTF();
-
   published_time_publisher_ = std::make_unique<autoware_utils_debug::PublishedTimePublisher>(this);
   RCLCPP_DEBUG(this->get_logger(), "[Filter Constructor] successfully created.");
-}
-
-void GroundFilterComponent::setupTF()
-{
-  transform_listener_ = std::make_unique<autoware_utils_tf::TransformListener>(this);
 }
 
 void GroundFilterComponent::subscribe()

@@ -55,9 +55,7 @@
 #include <autoware_utils_debug/debug_publisher.hpp>
 #include <autoware_utils_debug/published_time_publisher.hpp>
 #include <autoware_utils_system/stop_watch.hpp>
-#include <autoware_utils_tf/transform_listener.hpp>
 #include <tf2_eigen/tf2_eigen.hpp>
-#include <tf2_ros/transform_listener.hpp>
 
 #include <algorithm>
 #include <memory>
@@ -319,8 +317,6 @@ private:
     const sensor_msgs::msg::PointCloud2::ConstSharedPtr cloud,
     const pcl_msgs::msg::PointIndices::ConstSharedPtr indices);
 
-  void setupTF();
-
 protected:
   /** \brief The original TF frame of the input pointcloud. */
   std::string tf_input_orig_frame_;
@@ -339,8 +335,6 @@ protected:
 
   /** \brief The message filter subscriber for PointIndices. */
   message_filters::Subscriber<pcl_msgs::msg::PointIndices> sub_indices_filter_;
-
-  std::unique_ptr<autoware_utils_tf::TransformListener> transform_listener_{nullptr};
 
   std::unique_ptr<autoware_utils_debug::PublishedTimePublisher> published_time_publisher_;
 
