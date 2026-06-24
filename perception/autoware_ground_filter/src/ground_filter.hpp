@@ -28,6 +28,7 @@
 #include <algorithm>
 #include <cmath>
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -184,7 +185,20 @@ public:
       data_accessor_.setField(in_cloud);
     }
   }
+
   void process(const PointCloud2ConstPtr & in_cloud, pcl::PointIndices & out_no_ground_indices);
+
+  struct FilterResult
+  {
+    std::optional<sensor_msgs::msg::PointCloud2> cloud;
+    std::string error_message;
+
+    explicit operator bool() const { return cloud.has_value(); }
+    const std::string & error() const { return error_message; }
+    sensor_msgs::msg::PointCloud2 & value() { return cloud.value(); }
+  };
+
+  FilterResult filter(const PointCloud2ConstPtr & in_cloud, const pcl::Indices & indices);
 
 private:
   // parameters
