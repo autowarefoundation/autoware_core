@@ -346,6 +346,12 @@ private:
     const PointCloud2ConstPtr & in_cloud,
     const std::vector<PointCloudVector> & in_radial_ordered_clouds,
     pcl::PointIndices & out_no_ground_indices) const;
+
+  // Helper func to extract object points from input point cloud based on indices of points
+  // classified as obstacle.
+  void extractObjectPoints(
+    const PointCloud2ConstPtr & in_cloud_ptr, const pcl::PointIndices & in_indices,
+    sensor_msgs::msg::PointCloud2 & out_object_cloud) const;
 };
 
 };  // namespace autoware::ground_filter
