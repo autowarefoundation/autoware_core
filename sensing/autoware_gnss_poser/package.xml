@@ -17,6 +17,7 @@
 
   <build_depend>libboost-dev</build_depend>
 
+  <depend>autoware_agnocast_wrapper</depend>
   <depend>autoware_geography_utils</depend>
   <depend>autoware_internal_debug_msgs</depend>
   <depend>autoware_map_msgs</depend>
