@@ -26,8 +26,6 @@
 #include <boost/thread/mutex.hpp>
 
 // PCL includes
-#include <tf2/transform_datatypes.hpp>
-
 #include <pcl_msgs/msg/point_indices.hpp>
 
 #include <pcl/filters/extract_indices.h>
@@ -55,11 +53,7 @@
 #include <autoware_utils_debug/debug_publisher.hpp>
 #include <autoware_utils_debug/published_time_publisher.hpp>
 #include <autoware_utils_system/stop_watch.hpp>
-#include <autoware_utils_tf/transform_listener.hpp>
-#include <tf2_eigen/tf2_eigen.hpp>
-#include <tf2_ros/transform_listener.hpp>
 
-#include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
@@ -68,22 +62,6 @@ class GroundFilterTest;
 
 namespace autoware::ground_filter
 {
-/**
- * This holds the coordinate transformation information of the point cloud.
- * Usage example:
- *   \code
- *   if (transform_info.need_transform) {
- *       point = transform_info.eigen_transform * point;
- *   }
- *   \endcode
- */
-struct TransformInfo
-{
-  TransformInfo() : eigen_transform(Eigen::Matrix4f::Identity(4, 4)), need_transform(false) {}
-
-  Eigen::Matrix4f eigen_transform;
-  bool need_transform;
-};
 
 class GroundFilterComponent : public rclcpp::Node
 {
@@ -184,8 +162,7 @@ private:
   // conform to new API
   void faster_filter(
     const sensor_msgs::msg::PointCloud2::ConstSharedPtr & input,
-    [[maybe_unused]] const pcl::IndicesPtr & indices, sensor_msgs::msg::PointCloud2 & output,
-    [[maybe_unused]] const TransformInfo & transform_info);
+    [[maybe_unused]] const pcl::IndicesPtr & indices, sensor_msgs::msg::PointCloud2 & output);
 
   // data accessor
   PclDataAccessor data_accessor_;
@@ -225,9 +202,6 @@ private:
   uint16_t ground_grid_buffer_size_;
   float virtual_lidar_z_;
 
-  // pointcloud parameters
-  std::string tf_input_frame_;
-  std::string tf_output_frame_;
   std::size_t max_queue_size_;
   bool use_indices_;
   bool latched_indices_;
@@ -311,20 +285,11 @@ private:
     sensor_msgs::msg::PointCloud2, pcl_msgs::msg::PointIndices>>>
     sync_input_indices_e_;
 
-  bool calculate_transform_matrix(
-    const std::string & target_frame, const sensor_msgs::msg::PointCloud2 & from,
-    TransformInfo & transform_info /*output*/);
-  bool convert_output_costly(std::unique_ptr<sensor_msgs::msg::PointCloud2> & output);
   void faster_input_indices_callback(
     const sensor_msgs::msg::PointCloud2::ConstSharedPtr cloud,
     const pcl_msgs::msg::PointIndices::ConstSharedPtr indices);
 
-  void setupTF();
-
 protected:
-  /** \brief The original TF frame of the input pointcloud. */
-  std::string tf_input_orig_frame_;
-
   /** \brief Internal mutex for thread safe parameter setting */
   std::mutex mutex_;
 
@@ -339,8 +304,6 @@ protected:
 
   /** \brief The message filter subscriber for PointIndices. */
   message_filters::Subscriber<pcl_msgs::msg::PointIndices> sub_indices_filter_;
-
-  std::unique_ptr<autoware_utils_tf::TransformListener> transform_listener_{nullptr};
 
   std::unique_ptr<autoware_utils_debug::PublishedTimePublisher> published_time_publisher_;
 

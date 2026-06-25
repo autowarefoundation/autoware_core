@@ -63,6 +63,36 @@ Changelog for package autoware_path_generator
 * feat(autoware_path_generator): use autoware_trajectory for cropping bounds (`#349 <https://github.com/autowarefoundation/autoware_core/issues/349>`_)
 * Contributors: Kazunori-Nakajima, Mamoru Sobue, Mitsuhiro Sakamoto, Yukinari Hisaki
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* chore(autoware_path_generator): increase timeout for tests (`#1172 <https://github.com/autowarefoundation/autoware_core/issues/1172>`_)
+  * chore(autoware_path_generator): increase timeout for tests
+  * fix spell check error
+  ---------
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* perf(autoware_path_generator): make goal-connection closest-point fallback lazy and hoist path length (`#1118 <https://github.com/autowarefoundation/autoware_core/issues/1118>`_)
+  * perf(autoware_path_generator): make goal-connection closest-point fallback lazy and hoist path length
+  In connect_path_to_goal, the unconstrained trajectory::closest() search was
+  always evaluated as the value_or argument of the constrained search, so it ran
+  even on the common happy path where the constrained search already succeeded.
+  Replace value_or with an explicit branch so the unconstrained scan is only
+  performed when the constrained search fails.
+  In is_path_inside_lanelets, hoist path.length() out of the sampling loop so the
+  trajectory length is computed once instead of on every 0.1 m step. This
+  function is invoked repeatedly inside the per-cycle goal-connection retry loop,
+  so the redundant work compounds.
+  Both changes are behavior-preserving. Add a direct unit test for
+  get_first_self_intersection_arc_length that feeds a hand-built self-crossing
+  line string with a known expected arc length, covering the nested-loop
+  arc-length accumulation and the cross-iteration return that was previously
+  exercised only indirectly.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* Contributors: Ryohsuke Mitsudome, Yutaka Kondo, github-actions
+
 1.8.0 (2026-05-01)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
