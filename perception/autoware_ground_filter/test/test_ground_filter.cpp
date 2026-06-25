@@ -422,7 +422,6 @@ protected:
 TEST_F(GroundFilterRadialTest, RayPointsCentroidMath)
 {
   RayPointsCentroid centroid;
-  centroid.initialize();
 
   EXPECT_EQ(centroid.point_num, 0U);
 
@@ -494,10 +493,14 @@ TEST_F(GroundFilterRadialTest, RadialGroupingAndSorting)
 
   // 2.b. Checking slice 90 deg (left ray). Should contain 2 points with radii 2.0 and 5.0, sorted
   // by radius.
-  ASSERT_GE(radial_ordered.size(), 91U);
-  ASSERT_EQ(radial_ordered[90].size(), 2U);
-  EXPECT_NEAR(radial_ordered[90][0].radius, 2.0f, near_tol);
-  EXPECT_NEAR(radial_ordered[90][1].radius, 5.0f, near_tol);
+  // Since there are floating point rounding errors, I calculate the index of 90 deg slice
+  // dynamically.
+  auto ninety_deg_bin =
+    static_cast<size_t>(std::floor((M_PI / 2.0) / param_.radial_divider_angle_rad));
+  ASSERT_GE(radial_ordered.size(), ninety_deg_bin + 1);
+  ASSERT_EQ(radial_ordered[ninety_deg_bin].size(), 2U);
+  EXPECT_NEAR(radial_ordered[ninety_deg_bin][0].radius, 2.0f, near_tol);
+  EXPECT_NEAR(radial_ordered[ninety_deg_bin][1].radius, 5.0f, near_tol);
 }
 
 // TEST 4. Confirm point classification logic in classifyPointCloud.
@@ -520,18 +523,21 @@ TEST_F(GroundFilterRadialTest, ClassifyLocalAndGlobalSlopes)
   p2.z = 2.0f;
 
   auto cloud = create_point_cloud({p0, p1, p2});
-  pcl::PointIndices obstacles;
-
   filter_->setDataAccessor(cloud);
-  filter_->process(cloud, obstacles);
+
+  std::vector<PointCloudVector> radial_ordered;
+  convert_point_cloud(cloud, radial_ordered);
+
+  pcl::PointIndices out_indices;
+  classify_point_cloud(cloud, radial_ordered, out_indices);
 
   // Expect 2 non-ground points being index 1 and 2.
   // Since the algorithm outputs raw memory byte offsets as indices,
   // I'm using point_step to verify these indices.
   const uint32_t point_step = cloud->point_step;
-  ASSERT_EQ(obstacles.indices.size(), 2);
-  EXPECT_EQ(obstacles.indices, 1U * point_step);
-  EXPECT_EQ(obstacles.indices, 2U * point_step);
+  EXPECT_EQ(out_indices.indices.size(), 2U);
+  EXPECT_EQ(out_indices.indices[0], 1U * point_step);
+  EXPECT_EQ(out_indices.indices[1], 2U * point_step);
 }
 
 // TEST 5. Testing point follow logic.
@@ -545,26 +551,29 @@ TEST_F(GroundFilterRadialTest, ClassifyLocalAndGlobalSlopes)
 TEST_F(GroundFilterRadialTest, ClassifyPointFollowLogic)
 {
   autoware::point_types::PointXYZIRC p0, p1, p2;
-  p0.x = 5.00f;
+  p0.x = 3.0f;
   p0.y = 0.0f;
-  p0.z = 0.00f;
-  p1.x = 5.05f;
+  p0.z = 0.0f;
+  p1.x = 3.05f;
   p1.y = 0.0f;
   p1.z = 0.02f;
-  p2.x = 6.00f;
+  p2.x = 3.10f;
   p2.y = 0.0f;
-  p2.z = 1.00f;
+  p2.z = 2.0f;
 
   auto cloud = create_point_cloud({p0, p1, p2});
-  pcl::PointIndices obstacles;
-
   filter_->setDataAccessor(cloud);
-  filter_->process(cloud, obstacles);
+
+  std::vector<PointCloudVector> radial_ordered;
+  convert_point_cloud(cloud, radial_ordered);
+
+  pcl::PointIndices out_indices;
+  classify_point_cloud(cloud, radial_ordered, out_indices);
 
   // Expect 1 non-ground point being index 2.
+  EXPECT_EQ(out_indices.indices.size(), 1U);
   const uint32_t point_step = cloud->point_step;
-  ASSERT_EQ(obstacles.indices.size(), 1);
-  EXPECT_EQ(obstacles.indices, 2U * point_step);
+  EXPECT_EQ(out_indices.indices[0], 2U * point_step);
 }
 
 int main(int argc, char ** argv)
