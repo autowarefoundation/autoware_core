@@ -34,11 +34,11 @@ public:
   /// @brief Build a stop-flag message indicating whether the input odometry represents a stop.
   /// @return BoolStamped carrying the input timestamp and the stop judgement.
   autoware_internal_debug_msgs::msg::BoolStamped create_stop_flag_msg(
-    const nav_msgs::msg::Odometry::SharedPtr input) const;
+    const nav_msgs::msg::Odometry & input) const;
 
   /// @brief Build a filtered odometry whose twist is zeroed when the vehicle is judged stopped.
   /// @return Copy of the input odometry with a zeroed twist on a stop, otherwise unchanged.
-  nav_msgs::msg::Odometry create_filtered_msg(const nav_msgs::msg::Odometry::SharedPtr input) const;
+  nav_msgs::msg::Odometry create_filtered_msg(const nav_msgs::msg::Odometry & input) const;
 
 private:
   double linear_x_threshold_;

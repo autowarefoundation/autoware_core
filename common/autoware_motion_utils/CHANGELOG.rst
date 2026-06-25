@@ -13,6 +13,26 @@ Changelog for package autoware_motion_utils
 * refactor(autoware_motion_utils): rewrite using modern C++ without API breakage (`#348 <https://github.com/autowarefoundation/autoware_core/issues/348>`_)
 * Contributors: Arjun Jagdish Ram, Yutaka Kondo
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* perf(autoware_motion_utils): avoid per-call full-container copies in trajectory offset helpers (`#1099 <https://github.com/autowarefoundation/autoware_core/issues/1099>`_)
+  * perf(autoware_motion_utils): avoid per-call full-container copies in trajectory offset helpers
+  calcLongitudinalOffsetToSegment and calcLateralOffset previously called
+  removeOverlapPoints, which deep-copies the whole points container on every
+  invocation even though only two indexed points are read. Replace those copies
+  with allocation-free scans that reproduce the exact overlap-skipping semantics
+  of removeOverlapPoints and index the original container directly.
+  Also drop the dead copy-and-reverse in the reversed-range branch of
+  calcSignedArcLengthPartialSum; the recursion already handles the index swap.
+  Public function signatures are unchanged. Add characterization gtests pinning
+  the outputs for coincident/overlapping points and reversed index ranges so the
+  behavior stays identical across the refactor.
+  * style(autoware_motion_utils): use full word deduplicated in comment to satisfy cspell
+  ---------
+* test(autoware_motion_utils): add more tests for calculate_stop_distance (`#1183 <https://github.com/autowarefoundation/autoware_core/issues/1183>`_)
+* Contributors: Maxime CLEMENT, Yutaka Kondo, github-actions
+
 1.8.0 (2026-05-01)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
