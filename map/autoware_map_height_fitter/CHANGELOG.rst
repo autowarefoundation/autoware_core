@@ -2,6 +2,70 @@
 Changelog for package autoware_map_height_fitter
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* perf(autoware_map_height_fitter): extract testable ground-height kernel and use a cached KdTree (`#1107 <https://github.com/autowarefoundation/autoware_core/issues/1107>`_)
+  * perf(autoware_map_height_fitter): extract testable ground-height kernel and use a cached KdTree
+  Extract the pure ground-height search out of the Node/TF-bound pimpl Impl into
+  free functions in a new internal header so the core algorithm becomes unit-testable
+  without ROS:
+  - get_ground_height_from_pointcloud(cloud[, kdtree], x, y, fallback_z)
+  - get_ground_height_from_vector_map(map, x, y, fallback_z)
+  - build_pointcloud_xy_kdtree(cloud)
+  Impl::get_ground_height now delegates to these. The two full O(N) linear passes
+  over the point cloud per fit() request are replaced with a pcl::KdTreeFLANN built
+  once when the cloud is set (on_pcd_map / get_partial_point_cloud_map) and reused:
+  nearestKSearch finds the closest point and radiusSearch restricts the lowest-z scan
+  to a local candidate set, dropping per-call cost from O(N) to ~O(log N + k).
+  Behavior is preserved: the KdTree indexes the horizontal (z = 0) projection so the
+  2D distance metric is unchanged, and the membership test is recomputed in double
+  precision with the original strict '< (sqrt(min_dist2) + 1.0)^2' comparison over the
+  candidate set, so the selected point set (and thus the returned height) is identical
+  to the original two-pass scan. The vector-map nearest-point lookup and all
+  non-finite / empty / missing-map fallbacks are unchanged.
+  Also fold in two cheap, behavior-preserving micro-optimizations flagged in the audit:
+  radius2 is computed as r*r instead of std::pow(..., 2.0), and the partial-map merge
+  loop reserves the total data size before concatenating grids.
+  Add a gtest suite (test/test_map_height_fitter_kernel.cpp) covering the empty-cloud
+  and single-point fallbacks, lowest-z-within-radius selection, the horizontal-only
+  distance metric, the prebuilt-vs-convenience overload equivalence, the vector-map
+  nearest height and its non-finite/empty fallbacks, and a 300-trial randomized
+  characterization test asserting the new kernel matches the original two-pass scan
+  exactly. The package previously had zero tests.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  * perf(autoware_map_height_fitter): preserve double-precision nearest search
+  The KdTree path searched entirely in float: both the query and the indexed
+  coordinates were rounded to float, and min_dist2 was taken from the single
+  index returned by nearestKSearch. At large map coordinates (MGRS/UTM-derived)
+  or for near-tied points the float nearest can differ from the true
+  double-precision nearest, changing the radius and the selected height, so the
+  documented bit-for-bit behavior preservation did not hold (demonstrably ~1 in
+  2000 at coordinates up to 2e6).
+  Recompute min_dist2 in double precision over a margin-enlarged candidate set
+  that is a guaranteed superset of the double-nearest point, and size both the
+  nearest and the height radiusSearch margins from the coordinate magnitude
+  (2 * coord_max * 2^-23 + 1e-3) instead of a fixed 1e-3, so every point the
+  strict double-precision test accepts is in the candidate set regardless of
+  coordinate scale. The double-precision filter then reproduces the original
+  membership exactly.
+  Add a large-coordinate / near-tie characterization test (5000 trials, centers
+  up to 2e6) that asserts bit-equality against the original two-pass scan; it
+  fails on the previous float-only logic and passes now.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  * test(autoware_map_height_fitter): pin non-finite kernel inputs and guard NaN query (`#67 <https://github.com/autowarefoundation/autoware_core/issues/67>`_)
+  Add edge-case kernel tests for non-finite cloud coords, query, and z against the in-test double-precision oracle; guard a non-finite query so the KdTree path returns fallback_z instead of tripping a FLANN assert, preserving the pre-PR scan behavior.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  * ci(autoware_map_height_fitter): add cspell:ignore for distance var names
+  * refactor(autoware_map_height_fitter): move internal kernel header to src/
+  Address review: map_height_fitter_kernel.hpp is only used within this package
+  (nothing outside includes it), so move it out of the public include/ tree into
+  src/ as a non-installed internal header. Switch its include guard to the
+  bare-filename form required for src/ headers, point the three includers at the
+  relative path, and let the gtest reach it via target_include_directories(PRIVATE src).
+  ---------
+* Contributors: Yutaka Kondo, github-actions
+
 1.8.0 (2026-05-01)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
