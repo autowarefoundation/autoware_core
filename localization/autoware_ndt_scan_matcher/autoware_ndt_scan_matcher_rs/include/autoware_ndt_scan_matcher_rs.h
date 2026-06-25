@@ -18,6 +18,7 @@
 #ifndef AUTOWARE_NDT_SCAN_MATCHER_RS_H_
 #define AUTOWARE_NDT_SCAN_MATCHER_RS_H_
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -65,6 +66,25 @@ void autoware_ndt_scan_matcher_rs_rotate_covariance_to_map(
 // cov/rot = row-major 2x2 (4 doubles each); out = row-major 2x2. No-op if null.
 void autoware_ndt_scan_matcher_rs_adjust_diagonal_covariance(
   const double * cov, const double * rot, double fixed_cov00, double fixed_cov11, double * out);
+
+// --- voxel-grid covariance (NDT leaves); opaque handle owned by Rust ---
+
+// Opaque single voxel grid. Build with _voxel_grid_build, free with _voxel_grid_free.
+typedef struct AwNdtVoxelGrid AwNdtVoxelGrid;
+
+// Build a voxel grid from `n` xyz f32 triples (3*n floats at `points`). `leaf_size` = 3 doubles.
+// `min_points` (<=0 -> default 6) and `eig_mult` (e.g. 0.01) match MultiVoxelGridCovariance.
+// Returns an owned handle (free with _voxel_grid_free), or null if `points`/`leaf_size` is null.
+AwNdtVoxelGrid * autoware_ndt_scan_matcher_rs_voxel_grid_build(
+  const float * points, size_t n, const double * leaf_size, int32_t min_points, double eig_mult);
+
+// Look up the leaf whose voxel contains `point` (3 floats). On hit, writes mean (3 doubles) and
+// row-major inverse covariance (9 doubles) and returns true; otherwise returns false.
+bool autoware_ndt_scan_matcher_rs_voxel_grid_leaf_at(
+  const AwNdtVoxelGrid * grid, const float * point, double * mean_out, double * icov_out);
+
+// Free a grid handle returned by _voxel_grid_build (no-op if null).
+void autoware_ndt_scan_matcher_rs_voxel_grid_free(AwNdtVoxelGrid * grid);
 
 #ifdef __cplusplus
 }  // extern "C"

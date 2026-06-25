@@ -16,10 +16,15 @@
 // Test builds always use std (the test harness + `Vec`/etc. need it), regardless of features.
 #![cfg_attr(not(any(test, feature = "std")), no_std)]
 
+// Heap types (Vec/Box/BTreeMap) for the engine data structures. The allocator is provided by std
+// (host) or the kernel (awkernel); the no_std rlib defers it to the final binary.
+extern crate alloc;
+
 // Public API: the pure ports are reused by the Track B engine and exercised by unit tests,
 // independently of whether the `ros` FFI shims are built.
 pub mod covariance;
 pub mod helper;
+pub mod voxel_grid;
 
 // rosidl-generated geometry_msgs C structs (bindgen). ROS-node build only; the no_std/awkernel
 // build leaves `ros` off. bindgen output is allow-listed (its lint profile differs from ours).

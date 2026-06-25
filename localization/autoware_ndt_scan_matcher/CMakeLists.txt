@@ -162,6 +162,15 @@ if(BUILD_TESTING)
       test/test_rs_ffi.cpp
     )
     target_link_libraries(test_rs_ffi ${PROJECT_NAME})
+
+    # 3. Differential test: Rust voxel_grid vs the C++ MultiVoxelGridCovariance (engine port E2).
+    ament_auto_add_gtest(test_voxel_grid
+      test/test_voxel_grid.cpp
+    )
+    target_link_libraries(test_voxel_grid
+      multigrid_ndt_omp ${PCL_LIBRARIES} autoware_ndt_scan_matcher_rs)
+    target_include_directories(test_voxel_grid PRIVATE
+      ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/include)
   endif()
 endif()
 
