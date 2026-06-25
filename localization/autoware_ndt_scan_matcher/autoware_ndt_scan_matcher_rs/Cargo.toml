@@ -9,12 +9,19 @@ edition = "2024"
 crate-type = ["staticlib", "rlib"]
 
 [features]
-# `ros`: build the ROS-message bindings (bindgen over the rosidl C headers) and the
-# Pose-pointer FFI shims. Enabled only for the ROS-node build (CMake NDT_USE_RUST=ON);
-# stays OFF for the no_std / awkernel build, which has no ROS headers or libclang.
-ros = ["dep:bindgen"]
+# `std` is default-on so a plain `cargo build`/`test`/`clippy` has std (test harness + panic
+# handler). The no_std / awkernel build opts out with `--no-default-features`.
+default = ["std"]
+std = []
+# `ros`: build the ROS-message bindings (bindgen over the rosidl C headers) and the Pose-pointer
+# FFI shims. Enabled only for the ROS-node build (CMake NDT_USE_RUST=ON); implies `std` (the node
+# links into the std C++ world). Stays OFF for awkernel, which has no ROS headers or libclang.
+ros = ["dep:bindgen", "std"]
 
 [dependencies]
+# Pure-Rust libm: provides sqrt in no_std (and matches C++ std::sqrt — sqrt is IEEE
+# correctly-rounded — so the differential oracle stays exact).
+libm = "0.2"
 
 [build-dependencies]
 bindgen = { version = "0.69", optional = true }

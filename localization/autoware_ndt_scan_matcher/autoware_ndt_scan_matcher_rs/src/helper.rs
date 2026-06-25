@@ -73,7 +73,9 @@ const INVERSION_VECTOR_THRESHOLD: f64 = -0.9;
 
 fn norm3(v: &[f64; 3]) -> f64 {
     let &[x, y, z] = v;
-    (x * x + y * y + z * z).sqrt()
+    // libm (not f64::sqrt) so this compiles under no_std; sqrt is IEEE correctly-rounded so the
+    // result matches the C++ std::sqrt used as the differential oracle.
+    libm::sqrt(x * x + y * y + z * z)
 }
 
 enum StepKind {
