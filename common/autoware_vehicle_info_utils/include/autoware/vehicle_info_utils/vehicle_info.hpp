@@ -57,6 +57,14 @@ struct VehicleInfo
   static constexpr size_t RearRightIndex = 3;   //<! the point index of rear-right > front-right
   static constexpr size_t RearLeftIndex = 4;    //<! the point index of rear-left > rear-right
 
+  // Value for Polygon Index (excluding center)
+  static constexpr size_t PolygonFrontLeftIndex = 0;  //<! the point index of front-left edge == 0
+  static constexpr size_t PolygonFrontRightIndex =
+    1;  //<! the point index of front-right > front-left
+  static constexpr size_t PolygonRearRightIndex =
+    2;  //<! the point index of rear-right > front-right
+  static constexpr size_t PolygonRearLeftIndex = 3;  //<! the point index of rear-left > rear-right
+
   /**
    * @brief calculate the vehicle footprint in clockwise manner starting from the front-left edge,
    * through front-right edge, center-right point, to front-left edge again to form a enclosed
@@ -97,6 +105,51 @@ struct VehicleInfo
     const double front_lat_margin, const double center_lat_margin, const double rear_lat_margin,
     const double front_lon_margin, const double rear_lon_margin,
     const bool center_at_base_link = false,
+    const std::optional<geometry_msgs::msg::Pose> & base_pose = std::nullopt) const;
+
+  /**
+   * @brief Calculate the vehicle footprint (type Polygon2d) in a clockwise manner, starting from
+   * the front-left edge. The polygon is formed by tracing from front-left edge → front-right edge →
+   * rear-right edge → rear-left edge → front-left edge to form a closed shape.
+   * @param margin the longitudinal and lateral inflation margin
+   * @param base_pose optional pose used to transform footprint
+   */
+  [[nodiscard]]
+  autoware_utils_geometry::Polygon2d createFootprintPolygon(
+    const double margin = 0,
+    const std::optional<geometry_msgs::msg::Pose> & base_pose = std::nullopt) const;
+
+  /**
+   * @brief Calculate the vehicle footprint (type Polygon2d) in a clockwise manner, starting from
+   * the front-left edge. The polygon is formed by tracing from front-left edge → front-right edge →
+   * rear-right edge → rear-left edge → front-left edge to form a closed shape.
+   * @param left_margin lateral inflation margin on left side
+   * @param right_margin lateral inflation margin on right side
+   * @param front_lon_margin longitudinal inflation margin at the front section
+   * @param rear_lon_margin longitudinal inflation margin at the rear section
+   * @param base_pose optional pose used to transform footprint
+   */
+  [[nodiscard]]
+  autoware_utils_geometry::Polygon2d createFootprintPolygon(
+    const double left_margin, const double right_margin, const double front_lon_margin,
+    const double rear_lon_margin,
+    const std::optional<geometry_msgs::msg::Pose> & base_pose = std::nullopt) const;
+
+  /**
+   * @brief Calculate the vehicle footprint (type Polygon2d) in a clockwise manner, starting from
+   * the front-left edge. The polygon is formed by tracing from front-left edge → front-right edge →
+   * rear-right edge → rear-left edge → front-left edge to form a closed shape.
+   * @param front_left_margin lateral inflation margin at the front section on left side
+   * @param front_right_margin lateral inflation margin at the front section on right side
+   * @param rear_left_margin lateral inflation margin at the rear section on left side
+   * @param rear_right_margin lateral inflation margin at the rear section on right side
+   * @param front_lon_margin longitudinal inflation margin at the front section
+   * @param rear_lon_margin longitudinal inflation margin at the rear section
+   * @param base_pose optional pose used to transform footprint
+   */
+  [[nodiscard]] autoware_utils_geometry::Polygon2d createFootprintPolygon(
+    const double front_left_margin, const double front_right_margin, const double rear_left_margin,
+    const double rear_right_margin, const double front_lon_margin, const double rear_lon_margin,
     const std::optional<geometry_msgs::msg::Pose> & base_pose = std::nullopt) const;
 
   [[nodiscard]] double calcMaxCurvature() const;
