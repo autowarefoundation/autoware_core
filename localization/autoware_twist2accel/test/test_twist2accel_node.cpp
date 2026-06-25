@@ -82,7 +82,7 @@ TEST_F(Twist2AccelNodeTest, FirstMessagePublishesZeroAccelWithHeader)
   auto pub = helper->create_publisher<Odometry>("input/odom", 10);
 
   rclcpp::executors::SingleThreadedExecutor executor;
-  executor.add_node(node);
+  executor.add_node(node->get_node_base_interface());
   executor.add_node(helper);
 
   spin_until(executor, [&] { return pub->get_subscription_count() > 0; }, std::chrono::seconds(5));
@@ -131,7 +131,7 @@ TEST_F(Twist2AccelNodeTest, UseOdomTrueRoutesOdomAndIgnoresTwist)
   auto twist_pub = helper->create_publisher<TwistWithCovarianceStamped>("input/twist", 10);
 
   rclcpp::executors::SingleThreadedExecutor executor;
-  executor.add_node(node);
+  executor.add_node(node->get_node_base_interface());
   executor.add_node(helper);
 
   spin_until(
@@ -203,7 +203,7 @@ TEST_F(Twist2AccelNodeTest, UseOdomFalseRoutesTwistAndIgnoresOdom)
   auto twist_pub = helper->create_publisher<TwistWithCovarianceStamped>("input/twist", 10);
 
   rclcpp::executors::SingleThreadedExecutor executor;
-  executor.add_node(node);
+  executor.add_node(node->get_node_base_interface());
   executor.add_node(helper);
 
   spin_until(

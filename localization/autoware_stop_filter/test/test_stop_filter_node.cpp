@@ -60,7 +60,7 @@ TEST(StopFilterNodeTest, TestStopDetection)
 
   // Create executor and register nodes
   rclcpp::executors::SingleThreadedExecutor executor;
-  executor.add_node(stop_filter_node);
+  executor.add_node(stop_filter_node->get_node_base_interface());
   executor.add_node(test_control_node);
 
   // Run executor in separate thread
