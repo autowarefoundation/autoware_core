@@ -712,12 +712,11 @@ void GroundFilter::classifyPointCloud(
  * @brief Filter input point cloud to separate ground and obstacle points.
  *
  * @param in_cloud Input point cloud message.
- * @param indices Optional indices of points to consider within input cloud.
  *
  * @return FilterResult containing filtered point cloud and any error messages.
  */
 GroundFilter::FilterResult GroundFilter::filter(
-  const PointCloud2ConstPtr & in_cloud, [[maybe_unused]] const pcl::IndicesPtr & indices)
+  const PointCloud2ConstPtr & in_cloud)
 {
   FilterResult result;
 

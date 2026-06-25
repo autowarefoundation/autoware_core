@@ -255,7 +255,7 @@ void GroundFilterComponent::faster_input_indices_callback(
   }
 
   // Call filter function for core logic
-  const auto result = ground_filter_ptr_->filter(cloud, vindices);
+  const auto result = ground_filter_ptr_->filter(cloud);
 
   if (!result) {
     RCLCPP_ERROR(this->get_logger(), "[input_callback] %s", result.error().c_str());

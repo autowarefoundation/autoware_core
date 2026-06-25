@@ -200,7 +200,7 @@ public:
     sensor_msgs::msg::PointCloud2 & value() { return cloud.value(); }
   };
 
-  FilterResult filter(const PointCloud2ConstPtr & in_cloud, const pcl::IndicesPtr & indices);
+  FilterResult filter(const PointCloud2ConstPtr & in_cloud);
 
 private:
   // parameters
