@@ -454,6 +454,18 @@ Timer::SharedPtr create_timer(
 namespace autoware::agnocast_wrapper
 {
 
+// Service-callback traits (mirror of the Agnocast-build definitions; defined per-build because they
+// depend on the AUTOWARE_SERVER_*_PTR macros, which differ between builds).
+template <typename Func, typename ServiceT>
+inline constexpr bool is_message_ptr_service_callback_v = std::is_invocable_v<
+  std::decay_t<Func>, AUTOWARE_SERVER_REQUEST_PTR(ServiceT) &&,
+  AUTOWARE_SERVER_RESPONSE_PTR(ServiceT) &&>;
+
+template <typename Func, typename ServiceT>
+inline constexpr bool is_shared_ptr_service_callback_v = std::is_invocable_v<
+  std::decay_t<Func>, std::shared_ptr<typename ServiceT::Request> &,
+  std::shared_ptr<typename ServiceT::Response> &>;
+
 /// @brief Node class for the non-Agnocast build.
 ///
 /// Owns an internal rclcpp::Node and forwards a curated set of members to it; it does NOT derive
@@ -713,7 +725,14 @@ public:
   }
 
   // ===== Service (rclcpp::QoS overload; same rationale as create_client) =====
-  template <typename ServiceT, typename Func>
+  // Constrained to the same callback set as the Agnocast build, so the rclcpp-only forms
+  // (with-request-header / defer-response) are rejected here instead of silently accepted.
+  template <
+    typename ServiceT, typename Func,
+    std::enable_if_t<
+      is_message_ptr_service_callback_v<Func, ServiceT> ||
+        is_shared_ptr_service_callback_v<Func, ServiceT>,
+      int> = 0>
   typename rclcpp::Service<ServiceT>::SharedPtr create_service(
     const std::string & service_name, Func && callback,
     const rclcpp::QoS & qos = rclcpp::ServicesQoS(),
@@ -725,6 +744,27 @@ public:
     return node_->create_service<ServiceT>(
       service_name, std::forward<Func>(callback), qos.get_rmw_qos_profile(), group);
 #endif
+  }
+
+  // Fallback overload: neither callback form matched. Exists only to turn the otherwise opaque
+  // "no matching function" error into the static_assert message below (mirrors the Agnocast build).
+  template <
+    typename ServiceT, typename Func,
+    std::enable_if_t<
+      !is_message_ptr_service_callback_v<Func, ServiceT> &&
+        !is_shared_ptr_service_callback_v<Func, ServiceT>,
+      int> = 0>
+  typename rclcpp::Service<ServiceT>::SharedPtr create_service(
+    const std::string & service_name, Func && callback,
+    const rclcpp::QoS & qos = rclcpp::ServicesQoS(),
+    rclcpp::CallbackGroup::SharedPtr group = nullptr)
+  {
+    static_assert(
+      is_message_ptr_service_callback_v<Func, ServiceT> ||
+        is_shared_ptr_service_callback_v<Func, ServiceT>,
+      "Service callback must be invocable with "
+      "(AUTOWARE_SERVER_REQUEST_PTR(ServiceT), AUTOWARE_SERVER_RESPONSE_PTR(ServiceT)) or with "
+      "(std::shared_ptr<ServiceT::Request>, std::shared_ptr<ServiceT::Response>).");
   }
 
   // ===== Timer =====
