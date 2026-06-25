@@ -39,6 +39,25 @@ void expect_close(double a, double b, double rel = 1e-3, double abs_tol = 1e-4)
 {
   EXPECT_LE(std::abs(a - b), (rel * std::abs(a)) + abs_tol) << "a=" << a << " b=" << b;
 }
+
+// Build a dense isotropic cluster of `n` points around `center` into both a pcl cloud and a flat
+// xyz buffer (for the Rust FFI).
+void make_cluster(
+  const std::array<float, 3> & center, int n, std::mt19937 & rng,
+  pcl::PointCloud<pcl::PointXYZ> & cloud, std::vector<float> & flat)
+{
+  std::normal_distribution<float> j(0.0F, 0.1F);
+  for (int k = 0; k < n; ++k) {
+    pcl::PointXYZ p;
+    p.x = center[0] + j(rng);
+    p.y = center[1] + j(rng);
+    p.z = center[2] + j(rng);
+    cloud.push_back(p);
+    flat.push_back(p.x);
+    flat.push_back(p.y);
+    flat.push_back(p.z);
+  }
+}
 }  // namespace
 
 TEST(VoxelGrid, MatchesCppLeafMeanAndInverseCovariance)  // NOLINT
@@ -115,4 +134,73 @@ TEST(VoxelGrid, MatchesCppLeafMeanAndInverseCovariance)  // NOLINT
   }
 
   autoware_ndt_scan_matcher_rs_voxel_grid_free(rs_grid);
+}
+
+// Multi-grid map + kd-tree radiusSearch: add 3 clouds, remove one, then the Rust map must return
+// the same leaves as the C++ MultiVoxelGridCovariance for the same queries.
+TEST(VoxelGrid, MultiGridRadiusSearchMatchesCpp)  // NOLINT
+{
+  const std::array<std::array<float, 3>, 3> centers = {{{{1, 1, 1}}, {{21, 1, 1}}, {{1, 21, 1}}}};
+  std::mt19937 rng(7);
+
+  Grid cpp_grid;
+  cpp_grid.setLeafSize(2.0, 2.0, 2.0);
+  const std::array<double, 3> leaf_size = {2.0, 2.0, 2.0};
+  AwNdtVoxelGridMap * map = autoware_ndt_scan_matcher_rs_voxel_grid_map_new(leaf_size.data(), 6, 0.01);
+  ASSERT_NE(map, nullptr);
+
+  const std::array<const char *, 3> sids = {"a", "b", "c"};
+  for (size_t g = 0; g < centers.size(); ++g) {
+    auto cloud = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+    std::vector<float> flat;
+    make_cluster(centers[g], 40, rng, *cloud, flat);
+    cloud->is_dense = true;
+    cpp_grid.setInputCloudAndFilter(cloud, sids[g]);
+    autoware_ndt_scan_matcher_rs_voxel_grid_map_add_target(map, flat.data(), flat.size() / 3, g);
+  }
+
+  // Remove the middle grid ("b" / id 1) from both.
+  cpp_grid.removeCloud("b");
+  autoware_ndt_scan_matcher_rs_voxel_grid_map_remove_target(map, 1);
+  cpp_grid.createKdtree();
+  autoware_ndt_scan_matcher_rs_voxel_grid_map_create_kdtree(map);
+
+  for (size_t g = 0; g < centers.size(); ++g) {
+    pcl::PointXYZ q;
+    q.x = centers[g][0];
+    q.y = centers[g][1];
+    q.z = centers[g][2];
+
+    std::vector<Grid::LeafConstPtr> cpp_leaves;
+    const int cpp_n = cpp_grid.radiusSearch(q, 1.5, cpp_leaves, 0);
+
+    const std::array<float, 3> qp = {centers[g][0], centers[g][1], centers[g][2]};
+    std::array<uint32_t, 16> idx{};
+    const uint32_t rs_n = autoware_ndt_scan_matcher_rs_voxel_grid_map_radius_search(
+      map, qp.data(), 1.5, 0, idx.data(), idx.size());
+
+    // Removed grid "b" (g==1): no leaf near its center in either.
+    EXPECT_EQ(static_cast<uint32_t>(cpp_n), rs_n) << "grid " << g;
+    if (g == 1) {
+      EXPECT_EQ(rs_n, 0U);
+      continue;
+    }
+    ASSERT_EQ(rs_n, 1U);
+    ASSERT_EQ(cpp_n, 1);
+
+    std::array<double, 3> mean{};
+    std::array<double, 9> icov{};
+    ASSERT_TRUE(autoware_ndt_scan_matcher_rs_voxel_grid_map_leaf(map, idx[0], mean.data(), icov.data()));
+    for (int d = 0; d < 3; ++d) {
+      expect_close(cpp_leaves.front()->getMean()(d), mean[d]);
+    }
+    const Eigen::Matrix3d & cpp_icov = cpp_leaves.front()->getInverseCov();
+    for (int r = 0; r < 3; ++r) {
+      for (int col = 0; col < 3; ++col) {
+        expect_close(cpp_icov(r, col), icov[(r * 3) + col]);
+      }
+    }
+  }
+
+  autoware_ndt_scan_matcher_rs_voxel_grid_map_free(map);
 }

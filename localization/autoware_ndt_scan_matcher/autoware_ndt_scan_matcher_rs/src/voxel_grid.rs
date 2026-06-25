@@ -35,29 +35,38 @@ use alloc::vec::Vec;
 
 use nalgebra::{Matrix3, Vector3};
 
+use crate::kdtree::KdTree;
+
 const DEFAULT_MIN_POINTS_PER_VOXEL: i32 = 6;
 
-/// A finalized NDT leaf: point count, 3D mean, and row-major inverse covariance.
+/// A finalized NDT leaf: point count, 3D mean, row-major inverse covariance, and the f32 voxel
+/// centroid (used to build the kd-tree, matching the C++ `centroid_`).
+#[derive(Clone)]
 pub struct Leaf {
     pub n: i32,
     pub mean: [f64; 3],
     pub icov: [f64; 9],
+    pub centroid: [f32; 3],
 }
 
 struct Accumulator {
     n: i64,
     sum: Vector3<f64>,
     sum_outer: Matrix3<f64>,
+    centroid_sum: [f32; 3],
 }
 
 impl Accumulator {
     fn new() -> Self {
-        Self { n: 0, sum: Vector3::zeros(), sum_outer: Matrix3::zeros() }
+        Self { n: 0, sum: Vector3::zeros(), sum_outer: Matrix3::zeros(), centroid_sum: [0.0; 3] }
     }
-    fn add(&mut self, p: Vector3<f64>) {
+    fn add(&mut self, p: Vector3<f64>, raw: [f32; 3]) {
         self.n += 1;
         self.sum += p;
         self.sum_outer += p * p.transpose();
+        self.centroid_sum[0] += raw[0];
+        self.centroid_sum[1] += raw[1];
+        self.centroid_sum[2] += raw[2];
     }
 }
 
@@ -157,7 +166,7 @@ impl VoxelGrid {
             }
             let (x, y, z) = (f64::from(px), f64::from(py), f64::from(pz));
             if let Some(id) = grid.leaf_id(x, y, z) {
-                acc.entry(id).or_insert_with(Accumulator::new).add(Vector3::new(x, y, z));
+                acc.entry(id).or_insert_with(Accumulator::new).add(Vector3::new(x, y, z), [px, py, pz]);
             }
         }
 
@@ -175,11 +184,17 @@ impl VoxelGrid {
             // `+ I` for behavioral equivalence (see multi_voxel_grid_covariance_omp.h Leaf()).
             let cov = (a.sum_outer + Matrix3::identity() - a.sum * mean.transpose()) / (n_f - 1.0);
             if let Some(icov) = compute_icov(&cov, eig_mult) {
+                let n_f32 = a.n as f32;
                 let idx = grid.leaves.len();
                 grid.leaves.push(Leaf {
                     n: a.n.min(i64::from(i32::MAX)) as i32,
                     mean: [mean.x, mean.y, mean.z],
                     icov,
+                    centroid: [
+                        a.centroid_sum[0] / n_f32,
+                        a.centroid_sum[1] / n_f32,
+                        a.centroid_sum[2] / n_f32,
+                    ],
                 });
                 grid.index.insert(*id, idx);
             }
@@ -306,6 +321,211 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_free(grid: *mut
     }
     // SAFETY: `grid` came from `Box::into_raw` and is dropped exactly once.
     drop(unsafe { Box::from_raw(grid) });
+}
+
+// ---- multi-grid map + kd-tree (the MultiVoxelGridCovariance equivalent) ----
+
+/// Id-keyed collection of per-cloud voxel grids plus a kd-tree over all voxel centroids for radius
+/// search. Mirrors `MultiVoxelGridCovariance` (`sid_to_iid_`/`grid_list_` + `KdTreeFLANN`).
+pub struct VoxelGridMap {
+    leaf_size: [f64; 3],
+    min_points: i32,
+    eig_mult: f64,
+    grids: BTreeMap<u64, VoxelGrid>,
+    flat_leaves: Vec<Leaf>,
+    kdtree: Option<KdTree>,
+}
+
+impl VoxelGridMap {
+    #[must_use]
+    pub fn new(leaf_size: [f64; 3], min_points: i32, eig_mult: f64) -> Self {
+        Self {
+            leaf_size,
+            min_points,
+            eig_mult,
+            grids: BTreeMap::new(),
+            flat_leaves: Vec::new(),
+            kdtree: None,
+        }
+    }
+
+    /// Build a grid from `points` and register it under `id` (replacing any existing one).
+    pub fn add_target(&mut self, points: &[[f32; 3]], id: u64) {
+        let grid = VoxelGrid::build(points, self.leaf_size, self.min_points, self.eig_mult);
+        self.grids.insert(id, grid);
+        self.invalidate();
+    }
+
+    pub fn remove_target(&mut self, id: u64) {
+        self.grids.remove(&id);
+        self.invalidate();
+    }
+
+    fn invalidate(&mut self) {
+        self.kdtree = None;
+        self.flat_leaves.clear();
+    }
+
+    /// Flatten all grids' leaves (id order, ↔ C++ `std::map`) and build the kd-tree over centroids.
+    pub fn create_kdtree(&mut self) {
+        let mut centroids: Vec<[f32; 3]> = Vec::new();
+        let mut flat: Vec<Leaf> = Vec::new();
+        for grid in self.grids.values() {
+            for leaf in &grid.leaves {
+                centroids.push(leaf.centroid);
+                flat.push(leaf.clone());
+            }
+        }
+        self.kdtree = Some(KdTree::build(&centroids));
+        self.flat_leaves = flat;
+    }
+
+    /// Flat indices of leaves whose centroid is within `radius` of `point` (needs `create_kdtree`).
+    pub fn radius_search(&self, point: [f32; 3], radius: f64, max_nn: usize, out: &mut Vec<usize>) {
+        if let Some(kt) = &self.kdtree {
+            kt.radius_search(&point, radius, max_nn, out);
+        }
+    }
+
+    #[must_use]
+    pub fn leaf(&self, idx: usize) -> Option<&Leaf> {
+        self.flat_leaves.get(idx)
+    }
+}
+
+/// # Safety
+/// `leaf_size` points to 3 readable `f64` (or null -> returns null). Returns an owned handle
+/// (free with `..._voxel_grid_map_free`).
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_map_new(
+    leaf_size: *const f64,
+    min_points: i32,
+    eig_mult: f64,
+) -> *mut VoxelGridMap {
+    if leaf_size.is_null() {
+        return core::ptr::null_mut();
+    }
+    // SAFETY: caller guarantees 3 f64 at `leaf_size`.
+    let ls = unsafe { *leaf_size.cast::<[f64; 3]>() };
+    Box::into_raw(Box::new(VoxelGridMap::new(ls, min_points, eig_mult)))
+}
+
+/// # Safety
+/// `map` is a valid handle; `points` points to `3*n` `f32`. No-op if `map`/`points` is null.
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_map_add_target(
+    map: *mut VoxelGridMap,
+    points: *const f32,
+    n: usize,
+    id: u64,
+) {
+    if map.is_null() || points.is_null() {
+        return;
+    }
+    // SAFETY: valid handle + `n` xyz triples per the contract.
+    let (map, pts) = unsafe { (&mut *map, core::slice::from_raw_parts(points.cast::<[f32; 3]>(), n)) };
+    map.add_target(pts, id);
+}
+
+/// # Safety
+/// `map` is a valid handle (or null). Removes the grid registered under `id`.
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_map_remove_target(
+    map: *mut VoxelGridMap,
+    id: u64,
+) {
+    if map.is_null() {
+        return;
+    }
+    // SAFETY: valid handle per the contract.
+    unsafe { &mut *map }.remove_target(id);
+}
+
+/// # Safety
+/// `map` is a valid handle (or null). Builds the kd-tree over current grids' centroids.
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_map_create_kdtree(
+    map: *mut VoxelGridMap,
+) {
+    if map.is_null() {
+        return;
+    }
+    // SAFETY: valid handle per the contract.
+    unsafe { &mut *map }.create_kdtree();
+}
+
+/// # Safety
+/// `map` valid; `point` points to 3 `f32`; `out_idx` to `cap` writable `u32`. Writes up to `cap`
+/// leaf indices and returns the total number found (`max_nn == 0` = unlimited).
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_map_radius_search(
+    map: *const VoxelGridMap,
+    point: *const f32,
+    radius: f64,
+    max_nn: u32,
+    out_idx: *mut u32,
+    cap: u32,
+) -> u32 {
+    if map.is_null() || point.is_null() {
+        return 0;
+    }
+    // SAFETY: valid handle + 3 f32 at `point`.
+    let (map, p) = unsafe { (&*map, *point.cast::<[f32; 3]>()) };
+    let mut found: Vec<usize> = Vec::new();
+    map.radius_search(p, radius, max_nn as usize, &mut found);
+    if !out_idx.is_null() {
+        for (k, &leaf_idx) in found.iter().take(cap as usize).enumerate() {
+            // SAFETY: k < cap, so `out_idx.add(k)` is in bounds of the caller's buffer.
+            unsafe { *out_idx.add(k) = leaf_idx as u32 };
+        }
+    }
+    found.len() as u32
+}
+
+/// # Safety
+/// `map` valid; `mean_out`/`icov_out` to 3 / 9 writable `f64`. Writes them and returns true iff
+/// `idx` is a valid leaf index.
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_map_leaf(
+    map: *const VoxelGridMap,
+    idx: u32,
+    mean_out: *mut f64,
+    icov_out: *mut f64,
+) -> bool {
+    if map.is_null() || mean_out.is_null() || icov_out.is_null() {
+        return false;
+    }
+    // SAFETY: valid handle per the contract.
+    let map = unsafe { &*map };
+    match map.leaf(idx as usize) {
+        Some(leaf) => {
+            // SAFETY: `mean_out`/`icov_out` have 3 / 9 f64 per the contract.
+            unsafe {
+                *mean_out.cast::<[f64; 3]>() = leaf.mean;
+                *icov_out.cast::<[f64; 9]>() = leaf.icov;
+            }
+            true
+        }
+        None => false,
+    }
+}
+
+/// # Safety
+/// `map` must be a handle from `..._voxel_grid_map_new` (or null); not used afterwards.
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_map_free(map: *mut VoxelGridMap) {
+    if map.is_null() {
+        return;
+    }
+    // SAFETY: `map` came from `Box::into_raw` and is dropped exactly once.
+    drop(unsafe { Box::from_raw(map) });
 }
 
 #[cfg(test)]

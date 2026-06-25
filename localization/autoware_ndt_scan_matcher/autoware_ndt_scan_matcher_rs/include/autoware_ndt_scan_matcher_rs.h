@@ -86,6 +86,36 @@ bool autoware_ndt_scan_matcher_rs_voxel_grid_leaf_at(
 // Free a grid handle returned by _voxel_grid_build (no-op if null).
 void autoware_ndt_scan_matcher_rs_voxel_grid_free(AwNdtVoxelGrid * grid);
 
+// --- multi-grid map + kd-tree radius search (MultiVoxelGridCovariance equivalent) ---
+
+// Opaque id-keyed map of voxel grids + a kd-tree over centroids. Integer grid ids (the C++ side
+// maps its string ids to integers). Build with _map_new, free with _map_free.
+typedef struct AwNdtVoxelGridMap AwNdtVoxelGridMap;
+
+AwNdtVoxelGridMap * autoware_ndt_scan_matcher_rs_voxel_grid_map_new(
+  const double * leaf_size, int32_t min_points, double eig_mult);
+
+// Build a grid from `3*n` floats at `points` and register it under `id` (replaces existing).
+void autoware_ndt_scan_matcher_rs_voxel_grid_map_add_target(
+  AwNdtVoxelGridMap * map, const float * points, size_t n, uint64_t id);
+
+void autoware_ndt_scan_matcher_rs_voxel_grid_map_remove_target(AwNdtVoxelGridMap * map, uint64_t id);
+
+// Build the kd-tree over the current grids' centroids (call after add/remove, before searching).
+void autoware_ndt_scan_matcher_rs_voxel_grid_map_create_kdtree(AwNdtVoxelGridMap * map);
+
+// Leaf (flat) indices whose centroid is within `radius` of `point` (3 floats). `max_nn`=0 means
+// unlimited. Writes up to `cap` indices to `out_idx`; returns the total number found.
+uint32_t autoware_ndt_scan_matcher_rs_voxel_grid_map_radius_search(
+  const AwNdtVoxelGridMap * map, const float * point, double radius, uint32_t max_nn,
+  uint32_t * out_idx, uint32_t cap);
+
+// Fetch a leaf's mean (3 doubles) and row-major inverse covariance (9 doubles) by flat index.
+bool autoware_ndt_scan_matcher_rs_voxel_grid_map_leaf(
+  const AwNdtVoxelGridMap * map, uint32_t idx, double * mean_out, double * icov_out);
+
+void autoware_ndt_scan_matcher_rs_voxel_grid_map_free(AwNdtVoxelGridMap * map);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

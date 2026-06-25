@@ -24,6 +24,7 @@ extern crate alloc;
 // independently of whether the `ros` FFI shims are built.
 pub mod covariance;
 pub mod helper;
+mod kdtree;
 pub mod voxel_grid;
 
 // rosidl-generated geometry_msgs C structs (bindgen). ROS-node build only; the no_std/awkernel
