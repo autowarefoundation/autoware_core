@@ -88,8 +88,7 @@ TEST_F(TestPartialMapLoaderModule, LoadPartialPCDFiles)
 
   // Call the service
   auto result_future = client_->async_send_request(request);
-  ASSERT_EQ(
-    executor_.spin_until_future_complete(result_future), rclcpp::FutureReturnCode::SUCCESS);
+  ASSERT_EQ(executor_.spin_until_future_complete(result_future), rclcpp::FutureReturnCode::SUCCESS);
 
   // Check the result
   auto result = result_future.get();

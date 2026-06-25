@@ -87,8 +87,7 @@ TEST_F(TestSelectedMapLoaderModule, LoadSelectedPCDFiles)
 
   // Call the service
   auto result_future = client_->async_send_request(request);
-  ASSERT_EQ(
-    executor_.spin_until_future_complete(result_future), rclcpp::FutureReturnCode::SUCCESS);
+  ASSERT_EQ(executor_.spin_until_future_complete(result_future), rclcpp::FutureReturnCode::SUCCESS);
 
   // The requested cell is found and populated with its metadata bounds
   auto result = result_future.get();
@@ -113,8 +112,7 @@ TEST_F(TestSelectedMapLoaderModule, RequestedIdNotFound)
 
   // Call the service
   auto result_future = client_->async_send_request(request);
-  ASSERT_EQ(
-    executor_.spin_until_future_complete(result_future), rclcpp::FutureReturnCode::SUCCESS);
+  ASSERT_EQ(executor_.spin_until_future_complete(result_future), rclcpp::FutureReturnCode::SUCCESS);
 
   // The not-found branch is taken: nothing is returned but the call still succeeds
   auto result = result_future.get();

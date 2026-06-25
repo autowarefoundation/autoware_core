@@ -54,11 +54,12 @@ protected:
     dummy_metadata.max = pcl::PointXYZ(1.0, 1.0, 1.0);
     dummy_metadata_dict["/tmp/dummy.pcd"] = dummy_metadata;
 
-    module_node_ =
-      std::make_shared<autoware::agnocast_wrapper::Node>("test_differential_map_loader_module_node");
+    module_node_ = std::make_shared<autoware::agnocast_wrapper::Node>(
+      "test_differential_map_loader_module_node");
 
     // Initialize the DifferentialMapLoaderModule with the dummy metadata dictionary
-    module_ = std::make_shared<DifferentialMapLoaderModule>(module_node_.get(), dummy_metadata_dict);
+    module_ =
+      std::make_shared<DifferentialMapLoaderModule>(module_node_.get(), dummy_metadata_dict);
 
     // Create a client for the GetDifferentialPointCloudMap service
     client_ =
@@ -91,8 +92,7 @@ TEST_F(TestDifferentialMapLoaderModule, LoadDifferentialPCDFiles)
 
   // Call the service
   auto result_future = client_->async_send_request(request);
-  ASSERT_EQ(
-    executor_.spin_until_future_complete(result_future), rclcpp::FutureReturnCode::SUCCESS);
+  ASSERT_EQ(executor_.spin_until_future_complete(result_future), rclcpp::FutureReturnCode::SUCCESS);
 
   // Check the result
   auto result = result_future.get();
