@@ -132,9 +132,7 @@ struct GroundFilterParameter
   // Common params
   float global_slope_max_angle_rad;
   float local_slope_max_angle_rad;
-  float global_slope_max_ratio;
   float radial_divider_angle_rad;
-  size_t radial_dividers_num;
 
   // Grid params
   bool use_recheck_ground_cluster;
@@ -146,16 +144,15 @@ struct GroundFilterParameter
   float grid_size_m;
   float grid_mode_switch_radius;
   int ground_grid_buffer_size;
-  float virtual_lidar_x;
-  float virtual_lidar_y;
-  float virtual_lidar_z;
 
   // Radial/ray algorithm params
   bool use_virtual_ground_point;
   float split_points_distance_tolerance;  // Distance in meters between concentric divisions.
-  float split_height_distance;  // Minimum height threshold regardless the slope. Useful for close
-                                // points.
+  float split_height_distance;  // Minimum height threshold regardless the slope. Useful for close points.
+  
   float wheel_base_m;
+  float center_pcl_shift;
+  float vehicle_height_m;
 };
 
 class GroundFilter
@@ -196,6 +193,14 @@ public:
 private:
   // parameters
   GroundFilterParameter param_;
+
+  // pre-computed math variables
+  size_t radial_dividers_num_;
+  float global_slope_max_ratio_;
+  float local_slope_max_ratio_;
+  float virtual_lidar_x_;
+  float virtual_lidar_y_;
+  float virtual_lidar_z_;
 
   // data
   PointCloud2ConstPtr in_cloud_;
