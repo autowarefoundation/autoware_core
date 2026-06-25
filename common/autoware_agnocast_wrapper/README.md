@@ -53,18 +53,18 @@ Which of the two `Node` **class definitions** is compiled is a **build-time** ch
 only affects the backend and the underlying-node accessors below.
 
 This is a separate axis from the **runtime backend selection**: in the agnocast-enabled build, each
-node *instance* additionally picks `rclcpp::Node` vs `agnocast::Node` at construction from the
+node _instance_ additionally picks `rclcpp::Node` vs `agnocast::Node` at construction from the
 `ENABLE_AGNOCAST` environment variable read at runtime (`use_agnocast()`), fixed for the node's
-lifetime. The runtime value selects the backend; it does *not* change which `Node` definition was
+lifetime. The runtime value selects the backend; it does _not_ change which `Node` definition was
 compiled or which methods are declared — e.g. `get_agnocast_node()` is declared in every
 agnocast-enabled build and instead throws at runtime when the node is not in Agnocast mode.
 
-|                        | Agnocast-disabled build<br>(`USE_AGNOCAST_ENABLED` undefined) | Agnocast-enabled build<br>(`USE_AGNOCAST_ENABLED` defined)                                                                                |
-| ---------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Backend                | Always an owned `rclcpp::Node`.                               | `rclcpp::Node` or `agnocast::Node`, chosen at construction from the runtime `ENABLE_AGNOCAST` value and fixed for the node's lifetime.    |
-| `get_rclcpp_node()`    | Always returns the owned node.                               | Declared; returns the `rclcpp::Node`, but **throws** `std::runtime_error` if the node is in Agnocast mode.                                |
-| `get_agnocast_node()`  | **Not declared** — calling it is a compile error.            | Declared regardless of the runtime backend; returns the `agnocast::Node`, but **throws** if the node is not in Agnocast mode.            |
-| `to_rclcpp_node(node)` | Always succeeds.                                             | Forwards to `get_rclcpp_node()` (same throw condition).                                                                                   |
+|                        | Agnocast-disabled build<br>(`USE_AGNOCAST_ENABLED` undefined) | Agnocast-enabled build<br>(`USE_AGNOCAST_ENABLED` defined)                                                                             |
+| ---------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Backend                | Always an owned `rclcpp::Node`.                               | `rclcpp::Node` or `agnocast::Node`, chosen at construction from the runtime `ENABLE_AGNOCAST` value and fixed for the node's lifetime. |
+| `get_rclcpp_node()`    | Always returns the owned node.                                | Declared; returns the `rclcpp::Node`, but **throws** `std::runtime_error` if the node is in Agnocast mode.                             |
+| `get_agnocast_node()`  | **Not declared** — calling it is a compile error.             | Declared regardless of the runtime backend; returns the `agnocast::Node`, but **throws** if the node is not in Agnocast mode.          |
+| `to_rclcpp_node(node)` | Always succeeds.                                              | Forwards to `get_rclcpp_node()` (same throw condition).                                                                                |
 
 In both builds `agnocast_wrapper::Node` does not derive from `rclcpp::Node`, so hand it to an executor or
 utility via `get_node_base_interface()` (e.g. `executor.add_node(node->get_node_base_interface())`).
