@@ -8,7 +8,16 @@ edition = "2024"
 # rlib: keeps `cargo test` (and Rust-side consumers) working.
 crate-type = ["staticlib", "rlib"]
 
+[features]
+# `ros`: build the ROS-message bindings (bindgen over the rosidl C headers) and the
+# Pose-pointer FFI shims. Enabled only for the ROS-node build (CMake NDT_USE_RUST=ON);
+# stays OFF for the no_std / awkernel build, which has no ROS headers or libclang.
+ros = ["dep:bindgen"]
+
 [dependencies]
+
+[build-dependencies]
+bindgen = { version = "0.69", optional = true }
 
 # rust-hardening gates (see .claude/skills/rust-hardening).
 [lints.rust]

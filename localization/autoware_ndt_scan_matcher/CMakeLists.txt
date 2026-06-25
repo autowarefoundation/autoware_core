@@ -60,9 +60,16 @@ if(NDT_USE_RUST)
     GIT_TAG v0.5
   )
   FetchContent_MakeAvailable(Corrosion)
+  # `ros` feature builds the bindgen ROS-message bindings (geometry_msgs Pose) used by the
+  # zero-copy FFI shims. bindgen needs the rosidl C headers; pass geometry_msgs' include dir.
   corrosion_import_crate(MANIFEST_PATH
     ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/Cargo.toml
+    FEATURES ros
   )
+  find_package(geometry_msgs REQUIRED)
+  string(JOIN ":" NDT_ROS_INCLUDE_DIRS ${geometry_msgs_INCLUDE_DIRS})
+  corrosion_set_env_vars(autoware_ndt_scan_matcher_rs
+    "ROS_INCLUDE_DIRS=${NDT_ROS_INCLUDE_DIRS}")
   # Swap in the Rust-backed adapter twin and the FFI scaffold mock.
   set(NDT_HELPER_SRC src/ndt_scan_matcher_helper_rs.cpp)
   set(NDT_RUST_GLUE src/rs_ffi_mock.cpp)
@@ -131,10 +138,13 @@ if(BUILD_TESTING)
     find_program(CARGO_EXECUTABLE cargo REQUIRED)
     add_test(
       NAME autoware_ndt_scan_matcher_rs_cargo_test
-      COMMAND ${CARGO_EXECUTABLE} test
+      COMMAND ${CARGO_EXECUTABLE} test --features ros
               --manifest-path ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/Cargo.toml
               --target-dir ${CMAKE_CURRENT_BINARY_DIR}/rs_test_target
     )
+    # bindgen (run during the test build) needs the rosidl C headers.
+    set_tests_properties(autoware_ndt_scan_matcher_rs_cargo_test PROPERTIES
+      ENVIRONMENT "ROS_INCLUDE_DIRS=${NDT_ROS_INCLUDE_DIRS}")
 
     # 2. Exercise the C++ -> Rust FFI link via the mock wrapper.
     ament_auto_add_gtest(test_rs_ffi

@@ -33,11 +33,11 @@ uint64_t autoware_ndt_scan_matcher_rs_add(uint64_t left, uint64_t right);
 void autoware_ndt_scan_matcher_rs_rotate_covariance(
   const double * src_cov, const double * rot, double * out_cov);
 
-// Maximum number of consecutive direction inversions over a pose trajectory.
-// positions_xyz is a flat buffer of 3 * num_poses doubles (x, y, z per pose).
-// Returns 0 if positions_xyz is null or num_poses is 0.
-int32_t autoware_ndt_scan_matcher_rs_count_oscillation(
-  const double * positions_xyz, size_t num_poses);
+// Maximum number of consecutive direction inversions over a pose trajectory (zero-copy).
+// `poses` points to `num_poses` contiguous geometry_msgs::msg::Pose; only position.{x,y,z} is
+// read. The Pose memory layout is asserted on the C++ side (see ndt_scan_matcher_helper_rs.cpp).
+// Returns 0 if `poses` is null or `num_poses` is 0.
+int32_t autoware_ndt_scan_matcher_rs_count_oscillation(const void * poses, size_t num_poses);
 
 #ifdef __cplusplus
 }  // extern "C"

@@ -12,7 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod helper;
+// Public API: the pure ports are reused by the Track B engine and exercised by unit tests,
+// independently of whether the `ros` FFI shims are built.
+pub mod helper;
+
+// rosidl-generated geometry_msgs C structs (bindgen). ROS-node build only; the no_std/awkernel
+// build leaves `ros` off. bindgen output is allow-listed (its lint profile differs from ours).
+#[cfg(feature = "ros")]
+#[allow(
+    non_upper_case_globals,
+    non_camel_case_types,
+    non_snake_case,
+    dead_code,
+    unsafe_code,
+    clippy::all,
+    clippy::pedantic,
+    // bindgen's layout tests use `as` casts / indexing that our restriction lints would flag.
+    clippy::as_conversions,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::indexing_slicing,
+    clippy::arithmetic_side_effects
+)]
+mod ros_msgs {
+    include!(concat!(env!("OUT_DIR"), "/ros_msgs.rs"));
+}
 
 #[must_use]
 pub fn add(left: u64, right: u64) -> u64 {
@@ -55,32 +79,30 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_rotate_covariance(
     }
 }
 
-/// Count the maximum consecutive direction inversions over a sequence of positions.
+/// Count the maximum consecutive direction inversions over a pose trajectory (zero-copy).
 ///
-/// `positions_xyz` is a flat buffer of `3 * num_poses` `f64` laid out as `x, y, z` per pose.
+/// `poses` points to `num_poses` contiguous `geometry_msgs::msg::Pose`; the positions are read
+/// in place (no flattening). Only `position.{x,y,z}` is used.
 ///
 /// # Safety
-/// When `num_poses > 0`, `positions_xyz` must point to `3 * num_poses` readable, aligned `f64`.
-/// Returns 0 if the pointer is null, if `num_poses` is 0, or if `3 * num_poses` overflows.
+/// When `num_poses > 0`, `poses` must point to `num_poses` contiguous, aligned, initialized
+/// `geometry_msgs__msg__Pose` (the layout is asserted on the C++ side). Returns 0 if `poses` is
+/// null or `num_poses` is 0.
+#[cfg(feature = "ros")]
 #[allow(unsafe_code)]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_count_oscillation(
-    positions_xyz: *const f64,
+    poses: *const core::ffi::c_void,
     num_poses: usize,
 ) -> i32 {
-    let Some(len) = num_poses.checked_mul(3) else {
-        return 0;
-    };
-    if positions_xyz.is_null() || len == 0 {
+    if poses.is_null() || num_poses == 0 {
         return 0;
     }
-    // SAFETY: per the `# Safety` contract, `positions_xyz` points to `len` valid, aligned `f64`.
-    let flat: &[f64] = unsafe { core::slice::from_raw_parts(positions_xyz, len) };
-    let positions: Vec<[f64; 3]> = flat
-        .chunks_exact(3)
-        .filter_map(|chunk| <[f64; 3]>::try_from(chunk).ok())
-        .collect();
-    helper::count_oscillation(&positions)
+    // SAFETY: per the `# Safety` contract, `poses` points to `num_poses` valid, aligned Pose values.
+    let slice = unsafe {
+        core::slice::from_raw_parts(poses.cast::<ros_msgs::geometry_msgs__msg__Pose>(), num_poses)
+    };
+    helper::count_oscillation_poses(slice)
 }
 
 #[cfg(test)]

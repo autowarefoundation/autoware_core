@@ -22,6 +22,7 @@
 /// leaving the remaining entries untouched.
 ///
 /// `rot` is a row-major 3x3 matrix (`rot[3*r + c] = R(r, c)`).
+#[must_use]
 pub fn rotate_covariance(src: &[f64; 36], rot: &[f64; 9]) -> [f64; 36] {
     let &[r00, r01, r02, r10, r11, r12, r20, r21, r22] = rot;
 
@@ -75,47 +76,78 @@ fn norm3(v: &[f64; 3]) -> f64 {
     (x * x + y * y + z * z).sqrt()
 }
 
-/// Count the maximum number of consecutive direction inversions ("oscillations") in a
-/// sequence of positions. A step is an inversion when the cosine between consecutive motion
-/// vectors falls below [`INVERSION_VECTOR_THRESHOLD`]. Zero-length steps (repeated positions)
-/// have no direction and reset the running count, matching the C++ guard against `NaN`.
-pub fn count_oscillation(positions: &[[f64; 3]]) -> i32 {
+enum StepKind {
+    Inversion,
+    NotInversion,
+    /// A zero-length step (repeated positions) has no direction; treated as a reset, matching the
+    /// C++ guard against `NaN` from normalizing a zero vector.
+    Reset,
+}
+
+/// Classify one motion step (defined by three consecutive positions) as an inversion or not.
+fn classify_step(prev_prev: [f64; 3], prev: [f64; 3], current: [f64; 3]) -> StepKind {
+    let [ppx, ppy, ppz] = prev_prev;
+    let [px, py, pz] = prev;
+    let [cx, cy, cz] = current;
+    let current_step = [cx - px, cy - py, cz - pz];
+    let prev_step = [px - ppx, py - ppy, pz - ppz];
+
+    let cur_norm = norm3(&current_step);
+    let prev_norm = norm3(&prev_step);
+    // norm is non-negative, so `<= 0.0` is exactly the `== 0.0` guard from C++.
+    if cur_norm <= 0.0 || prev_norm <= 0.0 {
+        return StepKind::Reset;
+    }
+
+    let [csx, csy, csz] = current_step;
+    let [psx, psy, psz] = prev_step;
+    let cosine_value = (csx / cur_norm) * (psx / prev_norm)
+        + (csy / cur_norm) * (psy / prev_norm)
+        + (csz / cur_norm) * (psz / prev_norm);
+
+    if cosine_value < INVERSION_VECTOR_THRESHOLD {
+        StepKind::Inversion
+    } else {
+        StepKind::NotInversion
+    }
+}
+
+/// Run the consecutive-inversion counter over a stream of classified steps.
+fn run_oscillation(steps: impl Iterator<Item = StepKind>) -> i32 {
     let mut oscillation_cnt: i32 = 0;
     let mut max_oscillation_cnt: i32 = 0;
-
-    for window in positions.windows(3) {
-        let [prev_prev, prev, current] = window else {
-            continue;
-        };
-        let &[ppx, ppy, ppz] = prev_prev;
-        let &[px, py, pz] = prev;
-        let &[cx, cy, cz] = current;
-        let current_step = [cx - px, cy - py, cz - pz];
-        let prev_step = [px - ppx, py - ppy, pz - ppz];
-
-        let cur_norm = norm3(&current_step);
-        let prev_norm = norm3(&prev_step);
-        // norm is non-negative, so `<= 0.0` is exactly the `== 0.0` guard from C++.
-        if cur_norm <= 0.0 || prev_norm <= 0.0 {
-            oscillation_cnt = 0; // reset
-            continue;
-        }
-
-        let [csx, csy, csz] = current_step;
-        let [psx, psy, psz] = prev_step;
-        let cosine_value = (csx / cur_norm) * (psx / prev_norm)
-            + (csy / cur_norm) * (psy / prev_norm)
-            + (csz / cur_norm) * (psz / prev_norm);
-
-        if cosine_value < INVERSION_VECTOR_THRESHOLD {
-            oscillation_cnt = oscillation_cnt.saturating_add(1); // count consecutive oscillation
-        } else {
-            oscillation_cnt = 0; // reset
+    for kind in steps {
+        match kind {
+            StepKind::Inversion => oscillation_cnt = oscillation_cnt.saturating_add(1),
+            StepKind::NotInversion | StepKind::Reset => oscillation_cnt = 0,
         }
         max_oscillation_cnt = max_oscillation_cnt.max(oscillation_cnt);
     }
-
     max_oscillation_cnt
+}
+
+/// Count the maximum number of consecutive direction inversions ("oscillations") in a
+/// sequence of positions. Pure, `no_std`-friendly path (used by tests and the Track B engine).
+#[must_use]
+pub fn count_oscillation(positions: &[[f64; 3]]) -> i32 {
+    run_oscillation(positions.windows(3).filter_map(|w| match w {
+        [a, b, c] => Some(classify_step(*a, *b, *c)),
+        _ => None,
+    }))
+}
+
+/// Zero-copy ROS path: iterate `geometry_msgs::Pose` in place (no flattening / allocation),
+/// reading only `position.{x,y,z}`. `windows(3)` over `&[Pose]` is a view, not a copy.
+#[cfg(feature = "ros")]
+#[must_use]
+pub fn count_oscillation_poses(poses: &[crate::ros_msgs::geometry_msgs__msg__Pose]) -> i32 {
+    fn position(pose: &crate::ros_msgs::geometry_msgs__msg__Pose) -> [f64; 3] {
+        [pose.position.x, pose.position.y, pose.position.z]
+    }
+    run_oscillation(poses.windows(3).filter_map(|w| match w {
+        [a, b, c] => Some(classify_step(position(a), position(b), position(c))),
+        _ => None,
+    }))
 }
 
 #[cfg(test)]

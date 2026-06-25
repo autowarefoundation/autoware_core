@@ -16,12 +16,25 @@
 
 #include "autoware_ndt_scan_matcher_rs.h"
 
+#include <geometry_msgs/msg/pose.hpp>
+
 #include <array>
+#include <cstddef>
 #include <vector>
 
 // These functions are thin adapters: the implementations live in the
 // `autoware_ndt_scan_matcher_rs` Rust crate and are called over the C ABI (Phase 1 of the Rust
 // port). The C++ signatures are unchanged so callers and the existing gtest are untouched.
+
+// Verify the geometry_msgs::msg::Pose memory layout the Rust side relies on for the zero-copy
+// count_oscillation path (the Rust binding is independently checked by bindgen's layout tests).
+static_assert(sizeof(geometry_msgs::msg::Pose) == 7 * sizeof(double));
+static_assert(alignof(geometry_msgs::msg::Pose) == alignof(double));
+static_assert(offsetof(geometry_msgs::msg::Pose, position) == 0);
+static_assert(offsetof(geometry_msgs::msg::Pose, orientation) == 3 * sizeof(double));
+static_assert(offsetof(geometry_msgs::msg::Point, x) == 0);
+static_assert(offsetof(geometry_msgs::msg::Point, z) == 2 * sizeof(double));
+
 namespace autoware::ndt_scan_matcher
 {
 
@@ -42,17 +55,9 @@ std::array<double, 36> rotate_covariance(
 
 int count_oscillation(const std::vector<geometry_msgs::msg::Pose> & result_pose_msg_array)
 {
-  // Flatten the positions (the algorithm only uses x, y, z) into a contiguous buffer.
-  std::vector<double> positions_xyz;
-  positions_xyz.reserve(result_pose_msg_array.size() * 3);
-  for (const auto & pose : result_pose_msg_array) {
-    positions_xyz.push_back(pose.position.x);
-    positions_xyz.push_back(pose.position.y);
-    positions_xyz.push_back(pose.position.z);
-  }
-
+  // Zero-copy: pass the contiguous Pose array straight to Rust, which reads positions in place.
   return autoware_ndt_scan_matcher_rs_count_oscillation(
-    positions_xyz.data(), result_pose_msg_array.size());
+    result_pose_msg_array.data(), result_pose_msg_array.size());
 }
 
 }  // namespace autoware::ndt_scan_matcher
