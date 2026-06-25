@@ -20,12 +20,12 @@
 
 #include <autoware_utils_debug/time_keeper.hpp>
 #include <pcl/impl/point_types.hpp>
+#include <rcpputils/tl_expected/expected.hpp>
 
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
 #include <pcl/PointIndices.h>
 #include <pcl/pcl_base.h>
-#include <rcpputils/tl_expected/expected.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -148,8 +148,9 @@ struct GroundFilterParameter
   // Radial/ray algorithm params
   bool use_virtual_ground_point;
   float split_points_distance_tolerance;  // Distance in meters between concentric divisions.
-  float split_height_distance;  // Minimum height threshold regardless the slope. Useful for close points.
-  
+  float split_height_distance;  // Minimum height threshold regardless the slope. Useful for close
+                                // points.
+
   float wheel_base_m;
   float center_pcl_shift;
   float vehicle_height_m;
@@ -188,7 +189,8 @@ public:
 
   void process(const PointCloud2ConstPtr & in_cloud, pcl::PointIndices & out_no_ground_indices);
 
-  tl::expected<sensor_msgs::msg::PointCloud2, std::string> filter(const PointCloud2ConstPtr & in_cloud);
+  tl::expected<sensor_msgs::msg::PointCloud2, std::string> filter(
+    const PointCloud2ConstPtr & in_cloud);
 
 private:
   // parameters

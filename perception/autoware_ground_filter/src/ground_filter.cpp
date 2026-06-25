@@ -29,19 +29,18 @@ namespace autoware::ground_filter
 {
 
 /**
-* @brief Constructor for GroundFilter class. Initializes filter instance with provided params.
-*
-* @param param GroundFilterParameter struct containing configuration params.
-*/
-GroundFilter::GroundFilter(const GroundFilterParameter & param)
-: param_(param)
+ * @brief Constructor for GroundFilter class. Initializes filter instance with provided params.
+ *
+ * @param param GroundFilterParameter struct containing configuration params.
+ */
+GroundFilter::GroundFilter(const GroundFilterParameter & param) : param_(param)
 {
   // Calculate polar slices
   radial_dividers_num_ = std::ceil(2.0 * M_PI / param_.radial_divider_angle_rad);
-  
+
   // Calculate slope ratios using trigonometry
   global_slope_max_ratio_ = std::tan(param_.global_slope_max_angle_rad);
-  
+
   // Calculate virtual lidar origin based on vehicle dimensions
   virtual_lidar_x_ = param_.wheel_base_m / 2.0f + param_.center_pcl_shift;
   virtual_lidar_y_ = 0.0f;
@@ -210,8 +209,7 @@ void GroundFilter::initializeGround(pcl::PointIndices & out_no_ground_indices)
       cell.max_height_ = ground_bin.getMaxHeight();
       cell.min_height_ = ground_bin.getMinHeight();
       cell.gradient_ = std::clamp(
-        cell.avg_height_ / cell.avg_radius_, -global_slope_max_ratio_,
-        global_slope_max_ratio_);
+        cell.avg_height_ / cell.avg_radius_, -global_slope_max_ratio_, global_slope_max_ratio_);
       cell.intercept_ = 0.0f;
     } else {
       cell.is_ground_initialized_ = false;
