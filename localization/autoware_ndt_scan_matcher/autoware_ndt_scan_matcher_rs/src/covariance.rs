@@ -415,19 +415,27 @@ mod tests {
         assert_eq!(map, e_map);
         assert_eq!(base, e_base);
 
-        let mut sentinel = [5.0_f64; 4];
+        // Both shims must leave their output untouched on a null input (each has its own branch).
+        let mut s_map = [5.0_f64; 4];
+        let mut s_base = [6.0_f64; 4];
         unsafe {
             autoware_ndt_scan_matcher_rs_rotate_covariance_to_map(
                 core::ptr::null(),
                 rot.as_ptr(),
-                sentinel.as_mut_ptr(),
+                s_map.as_mut_ptr(),
+            );
+            autoware_ndt_scan_matcher_rs_rotate_covariance_to_base_link(
+                core::ptr::null(),
+                rot.as_ptr(),
+                s_base.as_mut_ptr(),
             );
         }
-        assert_eq!(sentinel, [5.0_f64; 4]);
+        assert_eq!(s_map, [5.0_f64; 4]);
+        assert_eq!(s_base, [6.0_f64; 4]);
     }
 
     #[test]
-    fn ffi_adjust_diagonal_matches_pure() {
+    fn ffi_adjust_diagonal_matches_pure_and_null_is_noop() {
         let cov = [1.0, 0.0, 0.0, 1.0];
         let identity = [1.0, 0.0, 0.0, 1.0];
         let expected = adjust_diagonal_covariance(&cov, &identity, 4.0, 9.0);
@@ -442,5 +450,34 @@ mod tests {
             );
         }
         assert_eq!(got, expected);
+
+        let mut sentinel = [3.0_f64; 4];
+        unsafe {
+            autoware_ndt_scan_matcher_rs_adjust_diagonal_covariance(
+                core::ptr::null(),
+                identity.as_ptr(),
+                4.0,
+                9.0,
+                sentinel.as_mut_ptr(),
+            );
+        }
+        assert_eq!(sentinel, [3.0_f64; 4]);
+    }
+
+    // Error path: a singular top-left 2x2 Hessian block has no inverse, so the Laplace covariance
+    // is NaN-filled (the documented contract). Oracle: every entry is NaN.
+    #[test]
+    fn laplace_singular_hessian_is_nan() {
+        let mut h = [0.0_f64; 36];
+        // top-left block [[1,1],[1,1]] is rank-1 (det 0) -> not invertible.
+        h[0] = 1.0;
+        h[1] = 1.0;
+        h[6] = 1.0;
+        h[7] = 1.0;
+        let cov = laplace_xy_covariance(&h);
+        assert!(
+            cov.iter().all(|v| v.is_nan()),
+            "singular Hessian -> all NaN"
+        );
     }
 }

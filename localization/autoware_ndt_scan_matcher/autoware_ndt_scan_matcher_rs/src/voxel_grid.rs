@@ -603,6 +603,42 @@ mod tests {
         assert!(grid.leaf_at([0.0, 0.0, 0.0]).is_none());
     }
 
+    // Robustness against malformed sensor input: non-finite points (NaN/inf, common LiDAR
+    // dropouts) must be excluded from the bbox and accumulation, `min_points <= 0` must fall
+    // back to the default threshold, and a non-finite query must return None (never index a leaf).
+    #[test]
+    fn non_finite_points_filtered_and_min_points_defaults() {
+        let mut pts: alloc::vec::Vec<[f32; 3]> = (0..6)
+            .map(|i| {
+                let f = i as f32 * 0.01;
+                [0.4 + f, 0.4 + f, 0.4 + f]
+            })
+            .collect();
+        pts.push([f32::NAN, 0.0, 0.0]); // skipped in both the bbox and accumulation passes
+        pts.push([f32::INFINITY, 0.0, 0.0]);
+
+        // min_points = 0 -> default (6); the voxel has exactly 6 finite points -> kept.
+        let grid = VoxelGrid::build(&pts, [1.0, 1.0, 1.0], 0, 0.01);
+        let leaf = grid
+            .leaf_at([0.4, 0.4, 0.4])
+            .expect("finite cluster kept at default min_points");
+        assert_eq!(leaf.n, 6, "non-finite points must not be counted");
+
+        // Brute-force mean over the 6 finite points only.
+        let mut m = 0.0_f64;
+        for i in 0..6 {
+            m += f64::from(0.4 + i as f32 * 0.01);
+        }
+        m /= 6.0;
+        assert!(
+            (leaf.mean[0] - m).abs() < 1e-6,
+            "mean corrupted by non-finite points"
+        );
+
+        // A non-finite query must be rejected, not turned into a garbage voxel index.
+        assert!(grid.leaf_at([f32::NAN, 0.4, 0.4]).is_none());
+    }
+
     // Well-conditioned voxel: leaf icov must equal the brute-force sample-covariance inverse.
     // Heavy (50-point eigen + matrix inverse) — skipped under Miri to keep the unsafe-UB run fast.
     #[cfg_attr(miri, ignore)]
@@ -920,5 +956,152 @@ mod tests {
         });
         unsafe { autoware_ndt_scan_matcher_rs_voxel_grid_map_free(map) };
         unsafe { autoware_ndt_scan_matcher_rs_voxel_grid_map_free(core::ptr::null_mut()) }; // no-op
+    }
+
+    // NDT eigenvalue regularization (compute_icov clamp branch): for a strongly anisotropic
+    // (near-planar) voxel the smallest covariance eigenvalue is clamped UP to eig_mult*largest.
+    // Oracle is the *invariant* this enforces, not a re-implementation of the clamp: after
+    // regularization the largest icov eigenvalue == 1 / (eig_mult * largest_cov_eigenvalue).
+    // A bug that skipped clamping would leave a far larger (1/tiny) eigenvalue -> test fails.
+    #[cfg_attr(miri, ignore)] // eigendecomposition is heavy under Miri
+    #[test]
+    fn icov_eigenvalue_regularization_clamps_smallest() {
+        // Near-planar cluster inside one voxel: wide spread in x, less in y, zero in z.
+        let mut pts: alloc::vec::Vec<[f32; 3]> = alloc::vec::Vec::new();
+        for i in 0..60_i32 {
+            let f = i as f32;
+            pts.push([
+                50.0 + 4.0 * (f * 0.7).sin(),
+                50.0 + 1.0 * (f * 1.3).cos(),
+                50.0,
+            ]);
+        }
+        let eig_mult = 0.01_f64;
+        let grid = VoxelGrid::build(&pts, [100.0, 100.0, 100.0], 6, eig_mult);
+        let leaf = grid.leaf_at([50.0, 50.0, 50.0]).expect("leaf");
+
+        // Independent brute-force covariance (Identity-init like C++: +I then /(n-1)).
+        let n = pts.len() as f64;
+        let mut mean = Vector3::<f64>::zeros();
+        for p in &pts {
+            mean += Vector3::new(f64::from(p[0]), f64::from(p[1]), f64::from(p[2]));
+        }
+        mean /= n;
+        let mut cov = Matrix3::<f64>::zeros();
+        for p in &pts {
+            let d = Vector3::new(f64::from(p[0]), f64::from(p[1]), f64::from(p[2])) - mean;
+            cov += d * d.transpose();
+        }
+        cov += Matrix3::identity();
+        cov /= n - 1.0;
+
+        let mut evals: alloc::vec::Vec<f64> =
+            cov.symmetric_eigen().eigenvalues.iter().copied().collect();
+        evals.sort_by(f64::total_cmp);
+        let (smallest, largest) = (evals[0], evals[2]);
+        // Precondition: clamping must actually fire (else the test is vacuous).
+        assert!(
+            smallest < eig_mult * largest,
+            "cluster must trigger clamping: {smallest} !< {}",
+            eig_mult * largest
+        );
+
+        let icov = Matrix3::new(
+            leaf.icov[0],
+            leaf.icov[1],
+            leaf.icov[2],
+            leaf.icov[3],
+            leaf.icov[4],
+            leaf.icov[5],
+            leaf.icov[6],
+            leaf.icov[7],
+            leaf.icov[8],
+        );
+        let max_icov_eig = icov
+            .symmetric_eigen()
+            .eigenvalues
+            .iter()
+            .copied()
+            .fold(f64::NEG_INFINITY, f64::max);
+
+        let expected = 1.0 / (eig_mult * largest);
+        assert!(
+            (max_icov_eig - expected).abs() <= 1e-6 * expected,
+            "regularized icov max eigenvalue {max_icov_eig} != 1/(eig_mult*largest) {expected}"
+        );
+        // And it is far below the un-regularized 1/smallest, proving the clamp happened.
+        assert!(
+            max_icov_eig < 0.5 / smallest,
+            "icov eigenvalue was not clamped down"
+        );
+    }
+
+    // FFI map: null handles are no-ops (must not deref); remove_target via the shim drops a grid;
+    // a small cap truncates the written indices while the return value stays the true total.
+    #[test]
+    fn ffi_map_null_remove_and_cap_contracts() {
+        let ls = [1.0_f64, 1.0, 1.0];
+
+        // null-handle contracts: must not crash, and `new(null)` reports null.
+        assert!(
+            unsafe { autoware_ndt_scan_matcher_rs_voxel_grid_map_new(core::ptr::null(), 6, 0.01) }
+                .is_null()
+        );
+        unsafe {
+            autoware_ndt_scan_matcher_rs_voxel_grid_map_add_target(
+                core::ptr::null_mut(),
+                core::ptr::null(),
+                0,
+                0,
+            );
+            autoware_ndt_scan_matcher_rs_voxel_grid_map_remove_target(core::ptr::null_mut(), 0);
+            autoware_ndt_scan_matcher_rs_voxel_grid_map_create_kdtree(core::ptr::null_mut());
+        }
+
+        // Four clusters in four adjacent voxels (leaf_size 1.0), all within the query radius.
+        let centers = [(0.4_f32, 0.4_f32), (1.4, 0.4), (2.4, 0.4), (3.4, 0.4)];
+        let map = unsafe { autoware_ndt_scan_matcher_rs_voxel_grid_map_new(ls.as_ptr(), 6, 0.01) };
+        assert!(!map.is_null());
+        for (id, &(cx, cy)) in centers.iter().enumerate() {
+            let c = dense_cluster(cx, cy, 0.4);
+            let flat: alloc::vec::Vec<f32> = c.iter().flat_map(|p| p.iter().copied()).collect();
+            unsafe {
+                autoware_ndt_scan_matcher_rs_voxel_grid_map_add_target(
+                    map,
+                    flat.as_ptr(),
+                    c.len(),
+                    id as u64,
+                );
+            }
+        }
+        // Remove the first cluster via the FFI shim (the dispatch path under test).
+        unsafe { autoware_ndt_scan_matcher_rs_voxel_grid_map_remove_target(map, 0) };
+        unsafe { autoware_ndt_scan_matcher_rs_voxel_grid_map_create_kdtree(map) };
+
+        let q = [1.9_f32, 0.4, 0.4];
+        // cap smaller than the number found: only `cap` indices written, rest stay sentinel,
+        // but the return is the true total (3 remaining clusters within radius).
+        let mut idx = [u32::MAX; 8];
+        let total = unsafe {
+            autoware_ndt_scan_matcher_rs_voxel_grid_map_radius_search(
+                map,
+                q.as_ptr(),
+                3.0,
+                0,
+                idx.as_mut_ptr(),
+                2,
+            )
+        };
+        assert_eq!(
+            total, 3,
+            "cluster 0 removed via FFI; 3 remain within radius"
+        );
+        assert!(
+            idx[0] != u32::MAX && idx[1] != u32::MAX,
+            "cap entries written"
+        );
+        assert_eq!(idx[2], u32::MAX, "entries beyond cap left untouched");
+
+        unsafe { autoware_ndt_scan_matcher_rs_voxel_grid_map_free(map) };
     }
 }
