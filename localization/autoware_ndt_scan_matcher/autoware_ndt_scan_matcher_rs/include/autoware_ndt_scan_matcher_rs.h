@@ -39,6 +39,33 @@ void autoware_ndt_scan_matcher_rs_rotate_covariance(
 // Returns 0 if `poses` is null or `num_poses` is 0.
 int32_t autoware_ndt_scan_matcher_rs_count_oscillation(const void * poses, size_t num_poses);
 
+// --- estimate_covariance pure helpers (matrices are row-major) ---
+
+// Temperature-scaled softmax: out[0..n] = softmax(scores[0..n] / temperature). No-op if null.
+void autoware_ndt_scan_matcher_rs_calc_weight_vec(
+  const double * scores, size_t n, double temperature, double * out);
+
+// Weighted mean and covariance of n 2D points. poses2d = [x0,y0, x1,y1, ...] (2*n doubles),
+// weights = n doubles; mean_out = 2 doubles, cov_out = 4 doubles (row-major 2x2). No-op if null.
+void autoware_ndt_scan_matcher_rs_calculate_weighted_mean_and_cov(
+  const double * poses2d, const double * weights, size_t n, double * mean_out, double * cov_out);
+
+// Laplace approximation: cov_out (row-major 2x2) = -inverse of the top-left 2x2 of the row-major
+// 6x6 hessian (36 doubles). cov_out filled with NaN if singular. No-op if null.
+void autoware_ndt_scan_matcher_rs_laplace_xy_covariance(const double * hessian, double * cov_out);
+
+// Rotate a 2x2 covariance (row-major) by the row-major 2x2 yaw block `rot`. *_to_base_link computes
+// R^T*C*R; *_to_map computes R*C*R^T. out = 4 doubles (row-major 2x2). No-op if null.
+void autoware_ndt_scan_matcher_rs_rotate_covariance_to_base_link(
+  const double * cov, const double * rot, double * out);
+void autoware_ndt_scan_matcher_rs_rotate_covariance_to_map(
+  const double * cov, const double * rot, double * out);
+
+// Clamp the base_link-frame diagonal to (fixed_cov00, fixed_cov11), then rotate back to map.
+// cov/rot = row-major 2x2 (4 doubles each); out = row-major 2x2. No-op if null.
+void autoware_ndt_scan_matcher_rs_adjust_diagonal_covariance(
+  const double * cov, const double * rot, double fixed_cov00, double fixed_cov11, double * out);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

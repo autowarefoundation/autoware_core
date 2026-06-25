@@ -1,0 +1,303 @@
+// Copyright 2024 Autoware Foundation
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+//! Pure ports of the `pclomp` covariance helpers from `src/ndt_omp/estimate_covariance.cpp`.
+//!
+//! All public fns take/return plain arrays/slices (row-major for matrices) so the FFI boundary is
+//! unambiguous; nalgebra is used internally. `no_std`-clean (fixed-size matrices, `libm`).
+//! `test_estimate_covariance` is the differential oracle.
+
+// nalgebra's fixed-size f64 matrix operators (+, *, unary -) are the float-math domain the
+// integer-overflow lint targets; they cannot integer-overflow.
+#![allow(clippy::arithmetic_side_effects)]
+// doc comments use domain terms (base_link, etc.) that look like code to doc_markdown.
+#![allow(clippy::doc_markdown)]
+
+use nalgebra::{Matrix2, Vector2};
+
+fn mat2(row_major: &[f64; 4]) -> Matrix2<f64> {
+    let &[m00, m01, m10, m11] = row_major;
+    Matrix2::new(m00, m01, m10, m11)
+}
+
+fn to_row_major(m: &Matrix2<f64>) -> [f64; 4] {
+    [m.m11, m.m12, m.m21, m.m22]
+}
+
+/// Temperature-scaled softmax of `scores` written into `out` (must be the same length).
+pub fn calc_weight_vec(scores: &[f64], temperature: f64, out: &mut [f64]) {
+    let max_score = scores.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+    let mut sum = 0.0;
+    for (slot, &s) in out.iter_mut().zip(scores.iter()) {
+        let e = libm::exp((s - max_score) / temperature);
+        *slot = e;
+        sum += e;
+    }
+    for slot in out.iter_mut() {
+        *slot /= sum;
+    }
+}
+
+/// Weighted mean and covariance of 2D points. `poses2d_flat` is `[x0,y0, x1,y1, ...]`
+/// (`2 * weights.len()` long). Returns `(mean[x,y], cov row-major 2x2)`.
+#[must_use]
+pub fn calculate_weighted_mean_and_cov(poses2d_flat: &[f64], weights: &[f64]) -> ([f64; 2], [f64; 4]) {
+    let mut mean = Vector2::zeros();
+    for (chunk, &w) in poses2d_flat.chunks_exact(2).zip(weights.iter()) {
+        let [px, py] = chunk else { continue };
+        mean += w * Vector2::new(*px, *py);
+    }
+    let mut cov = Matrix2::zeros();
+    for (chunk, &w) in poses2d_flat.chunks_exact(2).zip(weights.iter()) {
+        let [px, py] = chunk else { continue };
+        let diff = Vector2::new(*px, *py) - mean;
+        cov += w * (diff * diff.transpose());
+    }
+    ([mean.x, mean.y], to_row_major(&cov))
+}
+
+/// `-inverse` of the top-left 2x2 block of a row-major 6x6 Hessian. NaN-filled if singular.
+#[must_use]
+pub fn laplace_xy_covariance(hessian_row_major: &[f64; 36]) -> [f64; 4] {
+    // top-left 2x2 of the row-major 6x6: indices 0,1 (row 0) and 6,7 (row 1).
+    let &[h00, h01, _, _, _, _, h10, h11, ..] = hessian_row_major;
+    let hessian_xy = Matrix2::new(h00, h01, h10, h11);
+    match hessian_xy.try_inverse() {
+        Some(inv) => to_row_major(&(-inv)),
+        None => [f64::NAN; 4],
+    }
+}
+
+/// `R^T * C * R` — rotate a map-frame covariance into base_link. `rot` is the row-major 2x2 yaw block.
+#[must_use]
+pub fn rotate_covariance_to_base_link(cov: &[f64; 4], rot: &[f64; 4]) -> [f64; 4] {
+    let r = mat2(rot);
+    to_row_major(&(r.transpose() * mat2(cov) * r))
+}
+
+/// `R * C * R^T` — rotate a base_link-frame covariance into map.
+#[must_use]
+pub fn rotate_covariance_to_map(cov: &[f64; 4], rot: &[f64; 4]) -> [f64; 4] {
+    let r = mat2(rot);
+    to_row_major(&(r * mat2(cov) * r.transpose()))
+}
+
+/// Clamp the base_link-frame diagonal to floors, then rotate back to map.
+#[must_use]
+pub fn adjust_diagonal_covariance(
+    cov: &[f64; 4],
+    rot: &[f64; 4],
+    fixed_cov00: f64,
+    fixed_cov11: f64,
+) -> [f64; 4] {
+    let base = mat2(&rotate_covariance_to_base_link(cov, rot));
+    let clamped = Matrix2::new(base.m11.max(fixed_cov00), base.m12, base.m21, base.m22.max(fixed_cov11));
+    let r = mat2(rot);
+    to_row_major(&(r * clamped * r.transpose()))
+}
+
+// ---- C ABI shims (no_std; pointers validated per rust-c-ffi-safety) ----
+
+/// # Safety
+/// `scores`/`out` point to `n` readable/writable `f64`. No-op if either is null.
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_calc_weight_vec(
+    scores: *const f64,
+    n: usize,
+    temperature: f64,
+    out: *mut f64,
+) {
+    if scores.is_null() || out.is_null() {
+        return;
+    }
+    // SAFETY: caller guarantees `n` valid f64 at each pointer (see contract).
+    let (scores, out) =
+        unsafe { (core::slice::from_raw_parts(scores, n), core::slice::from_raw_parts_mut(out, n)) };
+    calc_weight_vec(scores, temperature, out);
+}
+
+/// # Safety
+/// `poses2d` points to `2*n` `f64`, `weights` to `n` `f64`, `mean_out` to 2, `cov_out` to 4.
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_calculate_weighted_mean_and_cov(
+    poses2d: *const f64,
+    weights: *const f64,
+    n: usize,
+    mean_out: *mut f64,
+    cov_out: *mut f64,
+) {
+    if poses2d.is_null() || weights.is_null() || mean_out.is_null() || cov_out.is_null() {
+        return;
+    }
+    let Some(poses_len) = n.checked_mul(2) else { return };
+    // SAFETY: caller guarantees the documented lengths.
+    let (poses, weights) = unsafe {
+        (core::slice::from_raw_parts(poses2d, poses_len), core::slice::from_raw_parts(weights, n))
+    };
+    let (mean, cov) = calculate_weighted_mean_and_cov(poses, weights);
+    // SAFETY: mean_out has 2, cov_out has 4 f64.
+    unsafe {
+        *mean_out.cast::<[f64; 2]>() = mean;
+        *cov_out.cast::<[f64; 4]>() = cov;
+    }
+}
+
+/// # Safety
+/// `hessian` points to 36 `f64` (row-major 6x6); `cov_out` to 4.
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_laplace_xy_covariance(
+    hessian: *const f64,
+    cov_out: *mut f64,
+) {
+    if hessian.is_null() || cov_out.is_null() {
+        return;
+    }
+    // SAFETY: caller guarantees 36 f64 in / 4 f64 out.
+    let hessian = unsafe { &*hessian.cast::<[f64; 36]>() };
+    let result = laplace_xy_covariance(hessian);
+    unsafe { *cov_out.cast::<[f64; 4]>() = result };
+}
+
+/// # Safety
+/// `cov`/`rot` point to 4 `f64` (row-major 2x2), `out` to 4. No-op if any is null.
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_rotate_covariance_to_base_link(
+    cov: *const f64,
+    rot: *const f64,
+    out: *mut f64,
+) {
+    if cov.is_null() || rot.is_null() || out.is_null() {
+        return;
+    }
+    // SAFETY: 4 f64 at each pointer per the contract.
+    let (cov, rot) = unsafe { (&*cov.cast::<[f64; 4]>(), &*rot.cast::<[f64; 4]>()) };
+    let result = rotate_covariance_to_base_link(cov, rot);
+    unsafe { *out.cast::<[f64; 4]>() = result };
+}
+
+/// # Safety
+/// `cov`/`rot` point to 4 `f64` (row-major 2x2), `out` to 4. No-op if any is null.
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_rotate_covariance_to_map(
+    cov: *const f64,
+    rot: *const f64,
+    out: *mut f64,
+) {
+    if cov.is_null() || rot.is_null() || out.is_null() {
+        return;
+    }
+    // SAFETY: 4 f64 at each pointer per the contract.
+    let (cov, rot) = unsafe { (&*cov.cast::<[f64; 4]>(), &*rot.cast::<[f64; 4]>()) };
+    let result = rotate_covariance_to_map(cov, rot);
+    unsafe { *out.cast::<[f64; 4]>() = result };
+}
+
+/// # Safety
+/// `cov`/`rot` point to 4 `f64` (row-major 2x2), `out` to 4. No-op if any is null.
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_adjust_diagonal_covariance(
+    cov: *const f64,
+    rot: *const f64,
+    fixed_cov00: f64,
+    fixed_cov11: f64,
+    out: *mut f64,
+) {
+    if cov.is_null() || rot.is_null() || out.is_null() {
+        return;
+    }
+    // SAFETY: 4 f64 at each pointer per the contract.
+    let (cov, rot) = unsafe { (&*cov.cast::<[f64; 4]>(), &*rot.cast::<[f64; 4]>()) };
+    let result = adjust_diagonal_covariance(cov, rot, fixed_cov00, fixed_cov11);
+    unsafe { *out.cast::<[f64; 4]>() = result };
+}
+
+#[cfg(test)]
+#[allow(clippy::float_cmp, clippy::indexing_slicing)]
+mod tests {
+    use super::*;
+
+    fn close(a: f64, b: f64) -> bool {
+        (a - b).abs() < 1e-9
+    }
+
+    #[test]
+    fn calc_weight_vec_uniform_for_equal_scores() {
+        let scores = [1.5_f64; 4];
+        let mut out = [0.0_f64; 4];
+        calc_weight_vec(&scores, 1.0, &mut out);
+        for w in out {
+            assert!(close(w, 0.25));
+        }
+    }
+
+    #[test]
+    fn calc_weight_vec_known_softmax() {
+        let scores = [0.0, libm::log(3.0)];
+        let mut out = [0.0_f64; 2];
+        calc_weight_vec(&scores, 1.0, &mut out);
+        assert!(close(out[0], 0.25));
+        assert!(close(out[1], 0.75));
+    }
+
+    #[test]
+    fn weighted_mean_and_cov_known_values() {
+        let poses = [0.0, 0.0, 2.0, 0.0];
+        let weights = [0.5, 0.5];
+        let (mean, cov) = calculate_weighted_mean_and_cov(&poses, &weights);
+        assert!(close(mean[0], 1.0) && close(mean[1], 0.0));
+        assert!(close(cov[0], 1.0) && close(cov[1], 0.0) && close(cov[2], 0.0) && close(cov[3], 0.0));
+    }
+
+    #[test]
+    fn laplace_negative_inverse_hessian() {
+        let mut h = [0.0_f64; 36];
+        h[0] = -2.0; // (0,0)
+        h[7] = -4.0; // (1,1)
+        h[14] = -100.0; // (2,2)
+        h[21] = 7.0; // (3,3)
+        let cov = laplace_xy_covariance(&h);
+        assert!(close(cov[0], 0.5) && close(cov[3], 0.25) && close(cov[1], 0.0) && close(cov[2], 0.0));
+    }
+
+    #[test]
+    fn rotate_map_and_base_link_are_inverses() {
+        let theta = 0.3_f64;
+        let (c, s) = (libm::cos(theta), libm::sin(theta));
+        let rot = [c, -s, s, c];
+        let cov = [4.0, 1.0, 1.0, 9.0];
+        let map = rotate_covariance_to_map(&cov, &rot);
+        let exp00 = c * c * 4.0 - 2.0 * c * s + s * s * 9.0;
+        let exp11 = s * s * 4.0 + 2.0 * c * s + c * c * 9.0;
+        assert!(close(map[0], exp00) && close(map[3], exp11));
+        let round_trip = rotate_covariance_to_base_link(&map, &rot);
+        for (a, b) in round_trip.iter().zip(cov.iter()) {
+            assert!(close(*a, *b));
+        }
+    }
+
+    #[test]
+    fn adjust_diagonal_clamps_and_keeps() {
+        let identity = [1.0, 0.0, 0.0, 1.0];
+        let clamped = adjust_diagonal_covariance(&[1.0, 0.0, 0.0, 1.0], &identity, 4.0, 9.0);
+        assert!(close(clamped[0], 4.0) && close(clamped[3], 9.0));
+        let kept = adjust_diagonal_covariance(&[10.0, 0.0, 0.0, 20.0], &identity, 4.0, 9.0);
+        assert!(close(kept[0], 10.0) && close(kept[3], 20.0));
+    }
+}

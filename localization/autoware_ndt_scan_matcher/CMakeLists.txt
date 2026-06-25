@@ -29,27 +29,16 @@ find_package(OpenMP)
 find_package(PCL REQUIRED COMPONENTS common io registration)
 include_directories(${PCL_INCLUDE_DIRS})
 
-ament_auto_add_library(multigrid_ndt_omp SHARED
-  src/ndt_omp/multi_voxel_grid_covariance_omp.cpp
-  src/ndt_omp/multigrid_ndt_omp.cpp
-  src/ndt_omp/estimate_covariance.cpp
-)
-target_link_libraries(multigrid_ndt_omp ${PCL_LIBRARIES})
-
-if(OpenMP_CXX_FOUND)
-  target_link_libraries(multigrid_ndt_omp OpenMP::OpenMP_CXX)
-else()
-  message(WARNING "OpenMP not found")
-endif()
-
 # Rust port build switch (see plan/ndt_in_rust.md). When OFF (default) the package builds the
 # original C++ unchanged and does not depend on Rust/Corrosion at all. When ON, the nested
 # `autoware_ndt_scan_matcher_rs` crate is built via Corrosion, linked over the C ABI, and the
 # `_rs.cpp` adapter twins replace their original C++ counterparts (never both -> duplicate symbols).
+# Defined before the libraries so both `multigrid_ndt_omp` and ${PROJECT_NAME} can use it.
 option(NDT_USE_RUST "Build/use the Rust port (autoware_ndt_scan_matcher_rs) over FFI" OFF)
 
 # Default: original C++ sources, no Rust glue.
 set(NDT_HELPER_SRC src/ndt_scan_matcher_helper.cpp)
+set(NDT_COV_MATH_SRC src/ndt_omp/estimate_covariance_math.cpp)
 set(NDT_RUST_GLUE "")
 
 if(NDT_USE_RUST)
@@ -70,9 +59,31 @@ if(NDT_USE_RUST)
   string(JOIN ":" NDT_ROS_INCLUDE_DIRS ${geometry_msgs_INCLUDE_DIRS})
   corrosion_set_env_vars(autoware_ndt_scan_matcher_rs
     "ROS_INCLUDE_DIRS=${NDT_ROS_INCLUDE_DIRS}")
-  # Swap in the Rust-backed adapter twin and the FFI scaffold mock.
+  # Swap in the Rust-backed adapter twins and the FFI scaffold mock.
   set(NDT_HELPER_SRC src/ndt_scan_matcher_helper_rs.cpp)
+  set(NDT_COV_MATH_SRC src/ndt_omp/estimate_covariance_math_rs.cpp)
   set(NDT_RUST_GLUE src/rs_ffi_mock.cpp)
+endif()
+
+ament_auto_add_library(multigrid_ndt_omp SHARED
+  src/ndt_omp/multi_voxel_grid_covariance_omp.cpp
+  src/ndt_omp/multigrid_ndt_omp.cpp
+  src/ndt_omp/estimate_covariance.cpp
+  ${NDT_COV_MATH_SRC}
+)
+target_link_libraries(multigrid_ndt_omp ${PCL_LIBRARIES})
+
+if(OpenMP_CXX_FOUND)
+  target_link_libraries(multigrid_ndt_omp OpenMP::OpenMP_CXX)
+else()
+  message(WARNING "OpenMP not found")
+endif()
+
+if(NDT_USE_RUST)
+  target_link_libraries(multigrid_ndt_omp autoware_ndt_scan_matcher_rs)
+  target_include_directories(multigrid_ndt_omp PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/include
+  )
 endif()
 
 ament_auto_add_library(${PROJECT_NAME} SHARED

@@ -23,6 +23,8 @@ ros = ["dep:bindgen"]
 # Pure-Rust libm: provides sqrt in no_std (and matches C++ std::sqrt — sqrt is IEEE
 # correctly-rounded — so the differential oracle stays exact).
 libm = "0.2"
+# Linear algebra for the engine port. no_std + libm; fixed-size matrices need no alloc.
+nalgebra = { version = "0.33", default-features = false, features = ["libm"] }
 
 [build-dependencies]
 bindgen = { version = "0.69", optional = true }
