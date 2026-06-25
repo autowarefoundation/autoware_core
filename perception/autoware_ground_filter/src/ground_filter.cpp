@@ -22,6 +22,7 @@
 
 #include <cstring>
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -48,6 +49,8 @@ GroundFilter::GroundFilter(const GroundFilterParameter & param) : param_(param)
 
   // Init grid if elevation mode is enabled
   if (param_.elevation_grid_mode) {
+    grid_ptr_ = std::make_unique<Grid>(virtual_lidar_x_, virtual_lidar_y_, virtual_lidar_z_);
+
     grid_ptr_ = std::make_unique<Grid>(
       param_.grid_size_m, param_.radial_divider_angle_rad, param_.grid_mode_switch_radius);
   }
@@ -747,13 +750,14 @@ tl::expected<sensor_msgs::msg::PointCloud2, std::string> GroundFilter::filter(
     !is_data_layout_compatible_with_point_xyzircaedt(*in_cloud) &&
     !is_data_layout_compatible_with_point_xyzirc(*in_cloud)) {
     return tl::unexpected(
-      "The pointcloud layout is not compatible with PointXYZIRCAEDT or PointXYZIRC. Aborting");
+      std::string(
+        "The pointcloud layout is not compatible with PointXYZIRCAEDT or PointXYZIRC. Aborting"));
   }
   if (in_cloud->data.empty() || in_cloud->width * in_cloud->height == 0) {
-    return tl::unexpected("Received empty PointCloud.");
+    return tl::unexpected(std::string("Received empty PointCloud."));
   }
   if (in_cloud->width * in_cloud->height * in_cloud->point_step != in_cloud->data.size()) {
-    return tl::unexpected("Invalid PointCloud memory layout.");
+    return tl::unexpected(std::string("Invalid PointCloud memory layout."));
   }
 
   setDataAccessor(in_cloud);

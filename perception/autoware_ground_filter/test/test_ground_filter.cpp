@@ -30,6 +30,8 @@ class GroundFilterTest : public ::testing::Test
 protected:
   void SetUp() override
   {
+    param_.elevation_grid_mode = true;
+
     // Initialize parameter structure
     param_.global_slope_max_angle_rad = 0.26f;  // ~15 degrees
     param_.local_slope_max_angle_rad = 0.26f;   // ~15 degrees
@@ -41,9 +43,15 @@ protected:
     param_.grid_size_m = 0.5f;
     param_.grid_mode_switch_radius = 20.0f;
     param_.ground_grid_buffer_size = 3;
-    param_.virtual_lidar_x = 1.4f;
-    param_.virtual_lidar_y = 0.0f;
-    param_.virtual_lidar_z = 1.9f;
+
+    // So here previously we had virtual lidar origin params:
+    // - param_.virtual_lidar_x = 1.4f;
+    // - param_.virtual_lidar_y = 0.0f;
+    // - param_.virtual_lidar_z = 1.9f;
+    // But now we gonna use vehicle's intuitive info to set these values:
+    param_.wheel_base_m = 2.8f;  // 2.8 / 2 = 1.4 for the X origin
+    param_.center_pcl_shift = 0.0f;
+    param_.vehicle_height_m = 1.9f;  // Directly maps to the Z origin
 
     // Create filter
     ground_filter_ = std::make_unique<autoware::ground_filter::GroundFilter>(param_);

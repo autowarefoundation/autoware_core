@@ -159,17 +159,8 @@ struct GroundFilterParameter
 class GroundFilter
 {
 public:
-  explicit GroundFilter(GroundFilterParameter & param) : param_(param)
-  {
-    // calculate derived parameters
-    param_.global_slope_max_ratio = std::tan(param_.global_slope_max_angle_rad);
+  explicit GroundFilter(const GroundFilterParameter & param);
 
-    // initialize grid pointer
-    grid_ptr_ = std::make_unique<Grid>(
-      param_.virtual_lidar_x, param_.virtual_lidar_y, param_.virtual_lidar_z);
-    grid_ptr_->initialize(
-      param_.grid_size_m, param_.radial_divider_angle_rad, param_.grid_mode_switch_radius);
-  }
   ~GroundFilter() = default;
 
   void setTimeKeeper(std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper_ptr)
