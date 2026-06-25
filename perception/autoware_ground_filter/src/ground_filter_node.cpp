@@ -348,14 +348,14 @@ rcl_interfaces::msg::SetParametersResult GroundFilterComponent::onParameter(
   new_param.split_points_distance_tolerance = split_points_distance_tolerance_;
   new_param.split_height_distance = split_height_distance_;
   new_param.use_virtual_ground_point = use_virtual_ground_point_;
-  
+
   new_param.wheel_base_m = static_cast<float>(vehicle_info_.wheel_base_m);
   new_param.vehicle_height_m = static_cast<float>(vehicle_info_.vehicle_height_m);
   new_param.center_pcl_shift = center_pcl_shift_;
 
   // Instantly swap out old brain for the new one
   ground_filter_ptr_ = std::make_unique<GroundFilter>(new_param);
-  
+
   // Re-attach time keeper if it exists
   if (time_keeper_) {
     ground_filter_ptr_->setTimeKeeper(time_keeper_);
