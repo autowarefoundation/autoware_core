@@ -351,6 +351,12 @@ protected:
 
   using RayPointsCentroid = autoware::ground_filter::GroundFilter::RayPointsCentroid;
 
+  // Bringing the private helper funcs from GroundFilter to here as proxies
+  void calc_virtual_ground_origin(pcl::PointXYZ & point)
+  {
+    filter_->calcVirtualGroundOrigin(point);
+  }
+
   // Set up test environment with radial mode params.
   void SetUp() override
   {
@@ -416,6 +422,19 @@ TEST_F(GroundFilterRadialTest, RayPointsCentroidMath)
   EXPECT_NEAR(centroid.getAverageRadius(), 3.0f, near_tol);
   EXPECT_NEAR(centroid.getAverageHeight(), 1.0f, near_tol);
   EXPECT_NEAR(centroid.getAverageSlope(), std::atan2(1.0f, 3.0f), near_tol);
+}
+
+// TEST 2. Confirm virtual origin logic.
+// Checks that virtual origin is calculated correctly based on vehicle wheelbase and lidar position.
+// Current wheelbase 2.8m, lidar at (1.4, 0, 1.9) should yield virtual origin at (2.8, 0, 0).
+TEST_F(GroundFilterRadialTest, CalcVirtualGroundOrigin)
+{
+  pcl::PointXYZ virtual_origin;
+  calc_virtual_ground_origin(virtual_origin);
+
+  EXPECT_NEAR(virtual_origin.x, 2.8f, near_tol);
+  EXPECT_NEAR(virtual_origin.y, 0.0f, near_tol);
+  EXPECT_NEAR(virtual_origin.z, 0.0f, near_tol);
 }
 
 int main(int argc, char ** argv)
