@@ -28,6 +28,32 @@
 namespace autoware::ground_filter
 {
 
+/**
+* @brief Constructor for GroundFilter class. Initializes filter instance with provided params.
+*
+* @param param GroundFilterParameter struct containing configuration params.
+*/
+GroundFilter::GroundFilter(const GroundFilterParameter & param)
+: param_(param)
+{
+  // Calculate polar slices
+  radial_dividers_num_ = std::ceil(2.0 * M_PI / param_.radial_divider_angle_rad);
+  
+  // Calculate slope ratios using trigonometry
+  global_slope_max_ratio_ = std::tan(param_.global_slope_max_angle_rad);
+  
+  // Calculate virtual lidar origin based on vehicle dimensions
+  virtual_lidar_x_ = param_.wheel_base_m / 2.0f + param_.center_pcl_shift;
+  virtual_lidar_y_ = 0.0f;
+  virtual_lidar_z_ = param_.vehicle_height_m;
+
+  // Init grid if elevation mode is enabled
+  if (param_.elevation_grid_mode) {
+    grid_ptr_ = std::make_unique<Grid>(
+      param_.grid_size_m, param_.radial_divider_angle_rad, param_.grid_mode_switch_radius);
+  }
+}
+
 // assign the pointcloud data to the grid
 void GroundFilter::convert()
 {
@@ -121,7 +147,7 @@ void GroundFilter::fitLineFromGndGrid(const std::vector<int> & idx, float & a, f
   const float denominator = n * sum_x2 - sum_x * sum_x;
   if (denominator != 0.0f) {
     a = (n * sum_xy - sum_x * sum_y) / denominator;
-    a = std::clamp(a, -param_.global_slope_max_ratio, param_.global_slope_max_ratio);
+    a = std::clamp(a, -global_slope_max_ratio_, global_slope_max_ratio_);
     b = (sum_y - a * sum_x) / n;
   } else {
     const auto & cell = grid_ptr_->getCell(idx.front());
@@ -162,7 +188,7 @@ void GroundFilter::initializeGround(pcl::PointIndices & out_no_ground_indices)
       const float & radius = pt.distance;
       const float & height = pt.height;
 
-      const float global_slope_threshold = param_.global_slope_max_ratio * radius;
+      const float global_slope_threshold = global_slope_max_ratio_ * radius;
       if (height >= global_slope_threshold && height > param_.non_ground_height_threshold) {
         // this point is obstacle
         out_no_ground_indices.indices.push_back(static_cast<int>(pt_idx));
@@ -184,8 +210,8 @@ void GroundFilter::initializeGround(pcl::PointIndices & out_no_ground_indices)
       cell.max_height_ = ground_bin.getMaxHeight();
       cell.min_height_ = ground_bin.getMinHeight();
       cell.gradient_ = std::clamp(
-        cell.avg_height_ / cell.avg_radius_, -param_.global_slope_max_ratio,
-        param_.global_slope_max_ratio);
+        cell.avg_height_ / cell.avg_radius_, -global_slope_max_ratio_,
+        global_slope_max_ratio_);
       cell.intercept_ = 0.0f;
     } else {
       cell.is_ground_initialized_ = false;
@@ -214,7 +240,7 @@ void GroundFilter::SegmentContinuousCell(
     }
 
     // 2. the angle is exceed the global slope threshold
-    if (height > param_.global_slope_max_ratio * radius) {
+    if (height > global_slope_max_ratio_ * radius) {
       // this point is obstacle
       out_no_ground_indices.indices.push_back(static_cast<int>(pt_idx));
       // go to the next point
@@ -223,7 +249,7 @@ void GroundFilter::SegmentContinuousCell(
 
     // 3. local slope
     const float delta_radius = radius - prev_cell.avg_radius_;
-    if (abs(delta_z) < param_.global_slope_max_ratio * delta_radius) {
+    if (abs(delta_z) < global_slope_max_ratio_ * delta_radius) {
       // this point is ground
       ground_bin.addPoint(radius, height, pt_idx);
       // go to the next point
@@ -271,7 +297,7 @@ void GroundFilter::SegmentDiscontinuousCell(
     }
 
     // 2. the angle is exceed the global slope threshold
-    if (height > param_.global_slope_max_ratio * radius) {
+    if (height > global_slope_max_ratio_ * radius) {
       // this point is obstacle
       out_no_ground_indices.indices.push_back(static_cast<int>(pt_idx));
       // go to the next point
@@ -279,7 +305,7 @@ void GroundFilter::SegmentDiscontinuousCell(
     }
     // 3. local slope
     const float delta_radius = radius - prev_cell.avg_radius_;
-    const float global_slope_threshold = param_.global_slope_max_ratio * delta_radius;
+    const float global_slope_threshold = global_slope_max_ratio_ * delta_radius;
     if (abs(delta_avg_z) < global_slope_threshold) {
       // this point is ground
       ground_bin.addPoint(radius, height, pt_idx);
@@ -331,7 +357,7 @@ void GroundFilter::SegmentBreakCell(
     }
 
     // 2. the angle is exceed the global slope threshold
-    if (height > param_.global_slope_max_ratio * radius) {
+    if (height > global_slope_max_ratio_ * radius) {
       // this point is obstacle
       out_no_ground_indices.indices.push_back(static_cast<int>(pt_idx));
       // go to the next point
@@ -340,7 +366,7 @@ void GroundFilter::SegmentBreakCell(
 
     // 3. the point is over discontinuous grid
     const float delta_radius = radius - prev_cell.avg_radius_;
-    const float global_slope_threshold = param_.global_slope_max_ratio * delta_radius;
+    const float global_slope_threshold = global_slope_max_ratio_ * delta_radius;
     if (abs(delta_z) < global_slope_threshold) {
       // this point is ground
       ground_bin.addPoint(radius, height, pt_idx);
@@ -526,7 +552,7 @@ void GroundFilter::convertPointCloud(
     st_ptr = std::make_unique<autoware_utils_debug::ScopedTimeTrack>(__func__, *time_keeper_);
 
   // Resize output vector to hold points for each radial divider
-  out_radial_ordered_points.resize(param_.radial_dividers_num);
+  out_radial_ordered_points.resize(radial_dividers_num_);
   const auto inv_radial_divider_angle_rad = 1.0f / param_.radial_divider_angle_rad;
 
   const size_t in_cloud_data_size = in_cloud->data.size();
@@ -556,7 +582,7 @@ void GroundFilter::convertPointCloud(
 
   // Now sort each radial divider's point by distance R
   {
-    for (size_t i = 0; i < param_.radial_dividers_num; ++i) {
+    for (size_t i = 0; i < radial_dividers_num_; ++i) {
       std::sort(
         out_radial_ordered_points[i].begin(), out_radial_ordered_points[i].end(),
         [](const PointData & a, const PointData & b) { return a.radius < b.radius; });
@@ -648,7 +674,7 @@ void GroundFilter::classifyPointCloud(
 
       // Determine point label based on height differences and slope calculations
       float global_slope_ratio = point_curr.z / pd.radius;
-      if (global_slope_ratio > param_.global_slope_max_ratio) {
+      if (global_slope_ratio > global_slope_max_ratio_) {
         point_label_curr = PointLabel::NON_GROUND;
         calculate_slope = false;
       } else if (

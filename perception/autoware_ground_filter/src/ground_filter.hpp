@@ -197,7 +197,6 @@ private:
   // pre-computed math variables
   size_t radial_dividers_num_;
   float global_slope_max_ratio_;
-  float local_slope_max_ratio_;
   float virtual_lidar_x_;
   float virtual_lidar_y_;
   float virtual_lidar_z_;
