@@ -29,12 +29,42 @@ pub fn rotate_covariance(src: &[f64; 36], rot: &[f64; 9]) -> [f64; 36] {
     // 3x3 position block lives at row-major indices {0,1,2 / 6,7,8 / 12,13,14}; the `a*`
     // bindings are the untouched entries we pass straight through.
     let &[
-        s00, s01, s02, a3, a4, a5,
-        s10, s11, s12, a9, a10, a11,
-        s20, s21, s22, a15, a16, a17,
-        a18, a19, a20, a21, a22, a23,
-        a24, a25, a26, a27, a28, a29,
-        a30, a31, a32, a33, a34, a35,
+        s00,
+        s01,
+        s02,
+        a3,
+        a4,
+        a5,
+        s10,
+        s11,
+        s12,
+        a9,
+        a10,
+        a11,
+        s20,
+        s21,
+        s22,
+        a15,
+        a16,
+        a17,
+        a18,
+        a19,
+        a20,
+        a21,
+        a22,
+        a23,
+        a24,
+        a25,
+        a26,
+        a27,
+        a28,
+        a29,
+        a30,
+        a31,
+        a32,
+        a33,
+        a34,
+        a35,
     ] = src;
 
     // M = R * C
@@ -60,12 +90,8 @@ pub fn rotate_covariance(src: &[f64; 36], rot: &[f64; 9]) -> [f64; 36] {
     let o22 = m20 * r20 + m21 * r21 + m22 * r22;
 
     [
-        o00, o01, o02, a3, a4, a5,
-        o10, o11, o12, a9, a10, a11,
-        o20, o21, o22, a15, a16, a17,
-        a18, a19, a20, a21, a22, a23,
-        a24, a25, a26, a27, a28, a29,
-        a30, a31, a32, a33, a34, a35,
+        o00, o01, o02, a3, a4, a5, o10, o11, o12, a9, a10, a11, o20, o21, o22, a15, a16, a17, a18,
+        a19, a20, a21, a22, a23, a24, a25, a26, a27, a28, a29, a30, a31, a32, a33, a34, a35,
     ]
 }
 
@@ -215,7 +241,10 @@ mod tests {
 
     #[test]
     fn count_oscillation_resets_after_non_inversion() {
-        let poses: Vec<[f64; 3]> = [0.0, 1.0, 0.0, 1.0, 2.0, 1.0].iter().map(|&x| xyz(x)).collect();
+        let poses: Vec<[f64; 3]> = [0.0, 1.0, 0.0, 1.0, 2.0, 1.0]
+            .iter()
+            .map(|&x| xyz(x))
+            .collect();
         assert_eq!(count_oscillation(&poses), 2);
     }
 
@@ -253,7 +282,10 @@ mod tests {
         ] {
             let positions: Vec<[f64; 3]> = xs.iter().map(|&x| xyz(x)).collect();
             let poses: Vec<_> = xs.iter().map(|&x| pose(x)).collect();
-            assert_eq!(count_oscillation_poses(&poses), count_oscillation(&positions));
+            assert_eq!(
+                count_oscillation_poses(&poses),
+                count_oscillation(&positions)
+            );
         }
     }
 }

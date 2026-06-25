@@ -50,7 +50,9 @@ fn main() {
         builder = builder.clang_arg(format!("--target={host}"));
     }
 
-    let bindings = builder.generate().expect("bindgen failed to generate ROS bindings");
+    let bindings = builder
+        .generate()
+        .expect("bindgen failed to generate ROS bindings");
     let out_path = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR not set"));
     bindings
         .write_to_file(out_path.join("ros_msgs.rs"))

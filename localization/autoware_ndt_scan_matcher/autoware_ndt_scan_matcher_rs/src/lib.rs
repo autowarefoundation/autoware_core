@@ -111,7 +111,10 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_count_oscillation(
     }
     // SAFETY: per the `# Safety` contract, `poses` points to `num_poses` valid, aligned Pose values.
     let slice = unsafe {
-        core::slice::from_raw_parts(poses.cast::<ros_msgs::geometry_msgs__msg__Pose>(), num_poses)
+        core::slice::from_raw_parts(
+            poses.cast::<ros_msgs::geometry_msgs__msg__Pose>(),
+            num_poses,
+        )
     };
     helper::count_oscillation_poses(slice)
 }
@@ -186,6 +189,9 @@ mod tests {
         assert_eq!(via_ffi, 3);
 
         // SAFETY: null pointer must yield 0.
-        assert_eq!(unsafe { autoware_ndt_scan_matcher_rs_count_oscillation(core::ptr::null(), 0) }, 0);
+        assert_eq!(
+            unsafe { autoware_ndt_scan_matcher_rs_count_oscillation(core::ptr::null(), 0) },
+            0
+        );
     }
 }

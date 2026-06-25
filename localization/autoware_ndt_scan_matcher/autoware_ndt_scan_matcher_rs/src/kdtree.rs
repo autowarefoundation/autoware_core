@@ -50,12 +50,22 @@ impl KdTree {
         let mut idx: Vec<usize> = (0..pts.len()).collect();
         let mut nodes: Vec<Node> = Vec::with_capacity(pts.len());
         let root = build_rec(&pts, &mut idx, 0, &mut nodes);
-        Self { points: pts, nodes, root }
+        Self {
+            points: pts,
+            nodes,
+            root,
+        }
     }
 
     /// Indices of all points within Euclidean `radius` of `query`, appended to `out`.
     /// `max_nn == 0` means unlimited; otherwise the search stops once `max_nn` are collected.
-    pub fn radius_search(&self, query: &[f32; 3], radius: f64, max_nn: usize, out: &mut Vec<usize>) {
+    pub fn radius_search(
+        &self,
+        query: &[f32; 3],
+        radius: f64,
+        max_nn: usize,
+        out: &mut Vec<usize>,
+    ) {
         let r2 = radius * radius;
         self.search_rec(self.root, query, r2, max_nn, out);
     }
@@ -73,14 +83,20 @@ impl KdTree {
             return;
         }
         let Some(n) = self.nodes.get(ni) else { return };
-        let Some(p) = self.points.get(n.point_idx) else { return };
+        let Some(p) = self.points.get(n.point_idx) else {
+            return;
+        };
 
         if dist_sq(p, query) <= r2 {
             out.push(n.point_idx);
         }
 
         let diff = f64::from(query[n.axis]) - f64::from(p[n.axis]);
-        let (near, far) = if diff < 0.0 { (n.left, n.right) } else { (n.right, n.left) };
+        let (near, far) = if diff < 0.0 {
+            (n.left, n.right)
+        } else {
+            (n.right, n.left)
+        };
 
         self.search_rec(near, query, r2, max_nn, out);
         // Only descend the far side if the splitting plane is within the radius.
@@ -111,7 +127,12 @@ fn build_rec(
     let right = build_rec(pts, right_slice, depth + 1, nodes);
 
     let id = nodes.len();
-    nodes.push(Node { point_idx, axis, left, right });
+    nodes.push(Node {
+        point_idx,
+        axis,
+        left,
+        right,
+    });
     Some(id)
 }
 
@@ -131,7 +152,10 @@ mod tests {
     struct Lcg(u64);
     impl Lcg {
         fn next_f32(&mut self) -> f32 {
-            self.0 = self.0.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            self.0 = self
+                .0
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
             // top 24 bits -> [0,1), then scale to [-5, 5)
             let bits = (self.0 >> 40) as u32;
             ((bits as f32 / (1u32 << 24) as f32) * 10.0) - 5.0
@@ -140,16 +164,21 @@ mod tests {
 
     fn brute(points: &[[f32; 3]], q: &[f32; 3], radius: f64) -> Vec<usize> {
         let r2 = radius * radius;
-        let mut v: Vec<usize> = (0..points.len()).filter(|&i| dist_sq(&points[i], q) <= r2).collect();
+        let mut v: Vec<usize> = (0..points.len())
+            .filter(|&i| dist_sq(&points[i], q) <= r2)
+            .collect();
         v.sort_unstable();
         v
     }
 
+    // Heavy LCG property test (500 points) — skipped under Miri to keep the unsafe-UB run fast.
+    #[cfg_attr(miri, ignore)]
     #[test]
     fn radius_search_matches_brute_force() {
         let mut rng = Lcg(0x1234_5678);
-        let pts: Vec<[f32; 3]> =
-            (0..500).map(|_| [rng.next_f32(), rng.next_f32(), rng.next_f32()]).collect();
+        let pts: Vec<[f32; 3]> = (0..500)
+            .map(|_| [rng.next_f32(), rng.next_f32(), rng.next_f32()])
+            .collect();
         let tree = KdTree::build(&pts);
 
         for _ in 0..50 {

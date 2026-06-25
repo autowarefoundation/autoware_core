@@ -24,7 +24,11 @@
 #![allow(clippy::arithmetic_side_effects)]
 // f32<->f64<->i64 conversions are inherent to voxelization/accumulation; the int32 voxel-count guard
 // bounds the indices so the floor->i64 narrowing cannot truncate meaningfully.
-#![allow(clippy::as_conversions, clippy::cast_possible_truncation, clippy::cast_precision_loss)]
+#![allow(
+    clippy::as_conversions,
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss
+)]
 // Numeric kernel: indexing into fixed `[_; 3]` arrays with constant / `0..3` indices is statically
 // in-bounds, and x/y/z single-char names are the natural geometry notation.
 #![allow(clippy::indexing_slicing, clippy::many_single_char_names)]
@@ -58,7 +62,12 @@ struct Accumulator {
 
 impl Accumulator {
     fn new() -> Self {
-        Self { n: 0, sum: Vector3::zeros(), sum_outer: Matrix3::zeros(), centroid_sum: [0.0; 3] }
+        Self {
+            n: 0,
+            sum: Vector3::zeros(),
+            sum_outer: Matrix3::zeros(),
+            centroid_sum: [0.0; 3],
+        }
     }
     fn add(&mut self, p: Vector3<f64>, raw: [f32; 3]) {
         self.n += 1;
@@ -101,8 +110,7 @@ impl VoxelGrid {
     /// Build a voxel grid from `points`, mirroring `MultiVoxelGridCovariance::apply_filter`.
     #[must_use]
     pub fn build(points: &[[f32; 3]], leaf_size: [f64; 3], min_points: i32, eig_mult: f64) -> Self {
-        let inverse_leaf_size =
-            [1.0 / leaf_size[0], 1.0 / leaf_size[1], 1.0 / leaf_size[2]];
+        let inverse_leaf_size = [1.0 / leaf_size[0], 1.0 / leaf_size[1], 1.0 / leaf_size[2]];
 
         let empty = Self {
             leaves: Vec::new(),
@@ -156,7 +164,13 @@ impl VoxelGrid {
         ];
         let div_mul = [1, div_b[0], div_b[0] * div_b[1]];
 
-        let mut grid = Self { leaves: Vec::new(), index: BTreeMap::new(), inverse_leaf_size, bbox_min, div_mul };
+        let mut grid = Self {
+            leaves: Vec::new(),
+            index: BTreeMap::new(),
+            inverse_leaf_size,
+            bbox_min,
+            div_mul,
+        };
 
         // First pass: accumulate per leaf (ordered map mirrors std::map<int64, Leaf>).
         let mut acc: BTreeMap<i64, Accumulator> = BTreeMap::new();
@@ -166,11 +180,17 @@ impl VoxelGrid {
             }
             let (x, y, z) = (f64::from(px), f64::from(py), f64::from(pz));
             if let Some(id) = grid.leaf_id(x, y, z) {
-                acc.entry(id).or_insert_with(Accumulator::new).add(Vector3::new(x, y, z), [px, py, pz]);
+                acc.entry(id)
+                    .or_insert_with(Accumulator::new)
+                    .add(Vector3::new(x, y, z), [px, py, pz]);
             }
         }
 
-        let min_points = if min_points <= 0 { DEFAULT_MIN_POINTS_PER_VOXEL } else { min_points };
+        let min_points = if min_points <= 0 {
+            DEFAULT_MIN_POINTS_PER_VOXEL
+        } else {
+            min_points
+        };
 
         // Second pass: finalize leaf params.
         for (id, a) in &acc {
@@ -221,7 +241,11 @@ fn compute_icov(cov: &Matrix3<f64>, eig_mult: f64) -> Option<[f64; 9]> {
     // nalgebra does not guarantee ordering; sort ascending to match Eigen's SelfAdjointEigenSolver.
     let mut order = [0_usize, 1, 2];
     order.sort_by(|&i, &j| se.eigenvalues[i].total_cmp(&se.eigenvalues[j]));
-    let mut evals = [se.eigenvalues[order[0]], se.eigenvalues[order[1]], se.eigenvalues[order[2]]];
+    let mut evals = [
+        se.eigenvalues[order[0]],
+        se.eigenvalues[order[1]],
+        se.eigenvalues[order[2]],
+    ];
     let c0: Vector3<f64> = se.eigenvectors.column(order[0]).into_owned();
     let c1: Vector3<f64> = se.eigenvectors.column(order[1]).into_owned();
     let c2: Vector3<f64> = se.eigenvectors.column(order[2]).into_owned();
@@ -270,7 +294,9 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_build(
     if points.is_null() || leaf_size.is_null() {
         return core::ptr::null_mut();
     }
-    let Some(flat_len) = n.checked_mul(3) else { return core::ptr::null_mut() };
+    let Some(flat_len) = n.checked_mul(3) else {
+        return core::ptr::null_mut();
+    };
     // SAFETY: caller guarantees `3*n` f32 at `points` and 3 f64 at `leaf_size`.
     let (pts, ls) = unsafe {
         (
@@ -425,7 +451,12 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_map_add_target(
         return;
     }
     // SAFETY: valid handle + `n` xyz triples per the contract.
-    let (map, pts) = unsafe { (&mut *map, core::slice::from_raw_parts(points.cast::<[f32; 3]>(), n)) };
+    let (map, pts) = unsafe {
+        (
+            &mut *map,
+            core::slice::from_raw_parts(points.cast::<[f32; 3]>(), n),
+        )
+    };
     map.add_target(pts, id);
 }
 
@@ -529,7 +560,13 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_map_free(map: *
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp, clippy::expect_used, clippy::needless_range_loop)]
+#[allow(
+    clippy::float_cmp,
+    clippy::expect_used,
+    clippy::needless_range_loop,
+    clippy::unreadable_literal,
+    unsafe_code
+)]
 mod tests {
     use super::*;
 
@@ -567,13 +604,19 @@ mod tests {
     }
 
     // Well-conditioned voxel: leaf icov must equal the brute-force sample-covariance inverse.
+    // Heavy (50-point eigen + matrix inverse) — skipped under Miri to keep the unsafe-UB run fast.
+    #[cfg_attr(miri, ignore)]
     #[test]
     fn icov_matches_brute_force_inverse() {
         let mut pts: alloc::vec::Vec<[f32; 3]> = alloc::vec::Vec::new();
         // deterministic spread around (5,5,5), all inside voxel [0,10) for leaf_size 10.
         for i in 0..50_i32 {
             let f = i as f32;
-            pts.push([5.0 + 0.2 * (f * 0.7).sin(), 5.0 + 0.15 * (f * 1.3).cos(), 5.0 + 0.1 * (f * 0.31).sin()]);
+            pts.push([
+                5.0 + 0.2 * (f * 0.7).sin(),
+                5.0 + 0.15 * (f * 1.3).cos(),
+                5.0 + 0.1 * (f * 0.31).sin(),
+            ]);
         }
         let grid = VoxelGrid::build(&pts, [10.0, 10.0, 10.0], 6, 0.01);
         let leaf = grid.leaf_at([5.0, 5.0, 5.0]).expect("leaf");
@@ -595,11 +638,23 @@ mod tests {
         cov /= n - 1.0;
         let bf_icov = cov.try_inverse().expect("inverse");
         let bf = [
-            bf_icov.m11, bf_icov.m12, bf_icov.m13, bf_icov.m21, bf_icov.m22, bf_icov.m23, bf_icov.m31,
-            bf_icov.m32, bf_icov.m33,
+            bf_icov.m11,
+            bf_icov.m12,
+            bf_icov.m13,
+            bf_icov.m21,
+            bf_icov.m22,
+            bf_icov.m23,
+            bf_icov.m31,
+            bf_icov.m32,
+            bf_icov.m33,
         ];
         for k in 0..9 {
-            assert!((leaf.icov[k] - bf[k]).abs() <= 1e-6 * bf[k].abs() + 1e-9, "k={k} {} vs {}", leaf.icov[k], bf[k]);
+            assert!(
+                (leaf.icov[k] - bf[k]).abs() <= 1e-6 * bf[k].abs() + 1e-9,
+                "k={k} {} vs {}",
+                leaf.icov[k],
+                bf[k]
+            );
         }
     }
 
@@ -607,5 +662,263 @@ mod tests {
     fn empty_cloud_builds_empty_grid() {
         let grid = VoxelGrid::build(&[], [1.0, 1.0, 1.0], 6, 0.01);
         assert!(grid.leaf_at([0.0, 0.0, 0.0]).is_none());
+    }
+
+    // 8 points packed inside the single voxel containing (cx,cy,cz) for leaf_size 2.0.
+    fn dense_cluster(cx: f32, cy: f32, cz: f32) -> alloc::vec::Vec<[f32; 3]> {
+        (0..8)
+            .map(|i| {
+                let f = i as f32 * 0.02;
+                [cx + f, cy - f, cz + 0.5 * f]
+            })
+            .collect()
+    }
+
+    // ---- VoxelGridMap: public API + state transitions ----
+
+    #[test]
+    fn map_add_create_then_radius_search_finds_cluster() {
+        let mut map = VoxelGridMap::new([2.0, 2.0, 2.0], 6, 0.01);
+        map.add_target(&dense_cluster(1.0, 1.0, 1.0), 0);
+        map.add_target(&dense_cluster(21.0, 1.0, 1.0), 1);
+        map.create_kdtree();
+
+        let mut hits = alloc::vec::Vec::new();
+        map.radius_search([1.0, 1.0, 1.0], 1.5, 0, &mut hits);
+        assert_eq!(hits.len(), 1, "exactly one leaf near cluster A");
+        let leaf = map.leaf(hits[0]).expect("leaf");
+        assert!((leaf.mean[0] - 1.07).abs() < 0.2 && (leaf.mean[1] - 0.93).abs() < 0.2);
+
+        // A query far from every centroid finds nothing.
+        let mut none = alloc::vec::Vec::new();
+        map.radius_search([100.0, 100.0, 100.0], 1.5, 0, &mut none);
+        assert!(none.is_empty());
+    }
+
+    #[test]
+    fn map_remove_target_drops_its_leaves() {
+        let mut map = VoxelGridMap::new([2.0, 2.0, 2.0], 6, 0.01);
+        map.add_target(&dense_cluster(1.0, 1.0, 1.0), 0);
+        map.add_target(&dense_cluster(21.0, 1.0, 1.0), 1);
+        map.remove_target(0);
+        map.create_kdtree();
+
+        let mut a = alloc::vec::Vec::new();
+        map.radius_search([1.0, 1.0, 1.0], 1.5, 0, &mut a);
+        assert!(a.is_empty(), "removed grid's leaf must be gone");
+        let mut b = alloc::vec::Vec::new();
+        map.radius_search([21.0, 1.0, 1.0], 1.5, 0, &mut b);
+        assert_eq!(b.len(), 1, "remaining grid still searchable");
+    }
+
+    #[test]
+    fn map_search_before_create_kdtree_is_empty() {
+        let mut map = VoxelGridMap::new([2.0, 2.0, 2.0], 6, 0.01);
+        map.add_target(&dense_cluster(1.0, 1.0, 1.0), 0);
+        // No create_kdtree() yet.
+        let mut hits = alloc::vec::Vec::new();
+        map.radius_search([1.0, 1.0, 1.0], 1.5, 0, &mut hits);
+        assert!(hits.is_empty());
+        assert!(map.leaf(0).is_none(), "no flat leaves before create_kdtree");
+    }
+
+    // Reference-model property: kd-tree radius search over the map == brute force over flat leaves.
+    // Heavy (9 clusters of eigen + 40 queries) — skipped under Miri to keep the unsafe-UB run fast.
+    #[cfg_attr(miri, ignore)]
+    #[test]
+    fn map_radius_search_matches_brute_force() {
+        let mut map = VoxelGridMap::new([2.0, 2.0, 2.0], 6, 0.01);
+        let mut id = 0_u64;
+        for i in 0..3 {
+            for j in 0..3 {
+                let (cx, cy) = ((3 * i + 1) as f32, (3 * j + 1) as f32);
+                map.add_target(&dense_cluster(cx, cy, 1.0), id);
+                id += 1;
+            }
+        }
+        map.create_kdtree();
+
+        // Deterministic queries spanning the populated region.
+        let mut state = 0x9E37_79B9_u64;
+        for _ in 0..40 {
+            state = state.wrapping_mul(6364136223846793005).wrapping_add(1);
+            let qx = ((state >> 33) % 1000) as f32 / 100.0; // [0,10)
+            state = state.wrapping_mul(6364136223846793005).wrapping_add(1);
+            let qy = ((state >> 33) % 1000) as f32 / 100.0;
+            let radius = 2.5_f64;
+
+            let mut got = alloc::vec::Vec::new();
+            map.radius_search([qx, qy, 1.0], radius, 0, &mut got);
+            got.sort_unstable();
+
+            let r2 = radius * radius;
+            let mut expected: alloc::vec::Vec<usize> = (0..map.flat_leaves.len())
+                .filter(|&k| {
+                    let c = map.flat_leaves[k].centroid;
+                    let (dx, dy, dz) = (
+                        f64::from(c[0]) - f64::from(qx),
+                        f64::from(c[1]) - f64::from(qy),
+                        f64::from(c[2]) - 1.0,
+                    );
+                    (dx * dx) + (dy * dy) + (dz * dz) <= r2
+                })
+                .collect();
+            expected.sort_unstable();
+            assert_eq!(got, expected);
+        }
+    }
+
+    // ---- FFI shims: round-trip equals the pure path; null/cap contracts ----
+
+    #[test]
+    fn ffi_voxel_grid_build_leaf_at_matches_pure() {
+        let pts = dense_cluster(1.0, 1.0, 1.0);
+        let flat: alloc::vec::Vec<f32> = pts.iter().flat_map(|p| p.iter().copied()).collect();
+        let leaf_size = [2.0_f64, 2.0, 2.0];
+
+        let pure = VoxelGrid::build(&pts, leaf_size, 6, 0.01);
+        let pure_leaf = pure.leaf_at([1.0, 1.0, 1.0]).expect("pure leaf");
+
+        let grid = unsafe {
+            autoware_ndt_scan_matcher_rs_voxel_grid_build(
+                flat.as_ptr(),
+                pts.len(),
+                leaf_size.as_ptr(),
+                6,
+                0.01,
+            )
+        };
+        assert!(!grid.is_null());
+        let q = [1.0_f32, 1.0, 1.0];
+        let (mut mean, mut icov) = ([0.0_f64; 3], [0.0_f64; 9]);
+        let hit = unsafe {
+            autoware_ndt_scan_matcher_rs_voxel_grid_leaf_at(
+                grid,
+                q.as_ptr(),
+                mean.as_mut_ptr(),
+                icov.as_mut_ptr(),
+            )
+        };
+        assert!(hit);
+        assert_eq!(mean, pure_leaf.mean);
+        assert_eq!(icov, pure_leaf.icov);
+        unsafe { autoware_ndt_scan_matcher_rs_voxel_grid_free(grid) };
+
+        // null contracts.
+        assert!(
+            unsafe {
+                autoware_ndt_scan_matcher_rs_voxel_grid_build(
+                    core::ptr::null(),
+                    0,
+                    leaf_size.as_ptr(),
+                    6,
+                    0.01,
+                )
+            }
+            .is_null()
+        );
+        assert!(!unsafe {
+            autoware_ndt_scan_matcher_rs_voxel_grid_leaf_at(
+                core::ptr::null(),
+                q.as_ptr(),
+                mean.as_mut_ptr(),
+                icov.as_mut_ptr(),
+            )
+        });
+        unsafe { autoware_ndt_scan_matcher_rs_voxel_grid_free(core::ptr::null_mut()) }; // no-op, must not crash
+    }
+
+    #[test]
+    fn ffi_map_radius_search_and_leaf_match_pure_with_cap() {
+        let a = dense_cluster(1.0, 1.0, 1.0);
+        let b = dense_cluster(21.0, 1.0, 1.0);
+        let leaf_size = [2.0_f64, 2.0, 2.0];
+
+        // Pure reference map.
+        let mut pure = VoxelGridMap::new(leaf_size, 6, 0.01);
+        pure.add_target(&a, 0);
+        pure.add_target(&b, 1);
+        pure.create_kdtree();
+
+        // FFI map, same inputs.
+        let fa: alloc::vec::Vec<f32> = a.iter().flat_map(|p| p.iter().copied()).collect();
+        let fb: alloc::vec::Vec<f32> = b.iter().flat_map(|p| p.iter().copied()).collect();
+        let map =
+            unsafe { autoware_ndt_scan_matcher_rs_voxel_grid_map_new(leaf_size.as_ptr(), 6, 0.01) };
+        assert!(!map.is_null());
+        unsafe {
+            autoware_ndt_scan_matcher_rs_voxel_grid_map_add_target(map, fa.as_ptr(), a.len(), 0);
+            autoware_ndt_scan_matcher_rs_voxel_grid_map_add_target(map, fb.as_ptr(), b.len(), 1);
+            autoware_ndt_scan_matcher_rs_voxel_grid_map_create_kdtree(map);
+        }
+
+        // Query near A: FFI count == pure count, and the returned leaf mean/icov match pure.
+        let q = [1.0_f32, 1.0, 1.0];
+        let mut idx = [u32::MAX; 8];
+        let n = unsafe {
+            autoware_ndt_scan_matcher_rs_voxel_grid_map_radius_search(
+                map,
+                q.as_ptr(),
+                1.5,
+                0,
+                idx.as_mut_ptr(),
+                idx.len() as u32,
+            )
+        };
+        let mut pure_hits = alloc::vec::Vec::new();
+        pure.radius_search([1.0, 1.0, 1.0], 1.5, 0, &mut pure_hits);
+        assert_eq!(n as usize, pure_hits.len());
+        assert_eq!(n, 1);
+
+        let (mut mean, mut icov) = ([0.0_f64; 3], [0.0_f64; 9]);
+        assert!(unsafe {
+            autoware_ndt_scan_matcher_rs_voxel_grid_map_leaf(
+                map,
+                idx[0],
+                mean.as_mut_ptr(),
+                icov.as_mut_ptr(),
+            )
+        });
+        let pure_leaf = pure.leaf(pure_hits[0]).expect("pure leaf");
+        assert_eq!(mean, pure_leaf.mean);
+        assert_eq!(icov, pure_leaf.icov);
+
+        // cap == 0: nothing written, but the true total is still returned.
+        let total = unsafe {
+            autoware_ndt_scan_matcher_rs_voxel_grid_map_radius_search(
+                map,
+                q.as_ptr(),
+                1.5,
+                0,
+                idx.as_mut_ptr(),
+                0,
+            )
+        };
+        assert_eq!(total, 1, "returns total found even when cap is 0");
+
+        // null contracts.
+        assert_eq!(
+            unsafe {
+                autoware_ndt_scan_matcher_rs_voxel_grid_map_radius_search(
+                    core::ptr::null(),
+                    q.as_ptr(),
+                    1.5,
+                    0,
+                    idx.as_mut_ptr(),
+                    idx.len() as u32,
+                )
+            },
+            0
+        );
+        assert!(!unsafe {
+            autoware_ndt_scan_matcher_rs_voxel_grid_map_leaf(
+                map,
+                9999,
+                mean.as_mut_ptr(),
+                icov.as_mut_ptr(),
+            )
+        });
+        unsafe { autoware_ndt_scan_matcher_rs_voxel_grid_map_free(map) };
+        unsafe { autoware_ndt_scan_matcher_rs_voxel_grid_map_free(core::ptr::null_mut()) }; // no-op
     }
 }

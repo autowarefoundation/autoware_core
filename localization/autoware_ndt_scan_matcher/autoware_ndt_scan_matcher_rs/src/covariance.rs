@@ -52,7 +52,10 @@ pub fn calc_weight_vec(scores: &[f64], temperature: f64, out: &mut [f64]) {
 /// Weighted mean and covariance of 2D points. `poses2d_flat` is `[x0,y0, x1,y1, ...]`
 /// (`2 * weights.len()` long). Returns `(mean[x,y], cov row-major 2x2)`.
 #[must_use]
-pub fn calculate_weighted_mean_and_cov(poses2d_flat: &[f64], weights: &[f64]) -> ([f64; 2], [f64; 4]) {
+pub fn calculate_weighted_mean_and_cov(
+    poses2d_flat: &[f64],
+    weights: &[f64],
+) -> ([f64; 2], [f64; 4]) {
     let mut mean = Vector2::zeros();
     for (chunk, &w) in poses2d_flat.chunks_exact(2).zip(weights.iter()) {
         let [px, py] = chunk else { continue };
@@ -102,7 +105,12 @@ pub fn adjust_diagonal_covariance(
     fixed_cov11: f64,
 ) -> [f64; 4] {
     let base = mat2(&rotate_covariance_to_base_link(cov, rot));
-    let clamped = Matrix2::new(base.m11.max(fixed_cov00), base.m12, base.m21, base.m22.max(fixed_cov11));
+    let clamped = Matrix2::new(
+        base.m11.max(fixed_cov00),
+        base.m12,
+        base.m21,
+        base.m22.max(fixed_cov11),
+    );
     let r = mat2(rot);
     to_row_major(&(r * clamped * r.transpose()))
 }
@@ -123,8 +131,12 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_calc_weight_vec(
         return;
     }
     // SAFETY: caller guarantees `n` valid f64 at each pointer (see contract).
-    let (scores, out) =
-        unsafe { (core::slice::from_raw_parts(scores, n), core::slice::from_raw_parts_mut(out, n)) };
+    let (scores, out) = unsafe {
+        (
+            core::slice::from_raw_parts(scores, n),
+            core::slice::from_raw_parts_mut(out, n),
+        )
+    };
     calc_weight_vec(scores, temperature, out);
 }
 
@@ -142,10 +154,15 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_calculate_weighted_mean_an
     if poses2d.is_null() || weights.is_null() || mean_out.is_null() || cov_out.is_null() {
         return;
     }
-    let Some(poses_len) = n.checked_mul(2) else { return };
+    let Some(poses_len) = n.checked_mul(2) else {
+        return;
+    };
     // SAFETY: caller guarantees the documented lengths.
     let (poses, weights) = unsafe {
-        (core::slice::from_raw_parts(poses2d, poses_len), core::slice::from_raw_parts(weights, n))
+        (
+            core::slice::from_raw_parts(poses2d, poses_len),
+            core::slice::from_raw_parts(weights, n),
+        )
     };
     let (mean, cov) = calculate_weighted_mean_and_cov(poses, weights);
     // SAFETY: mean_out has 2, cov_out has 4 f64.
@@ -229,7 +246,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_adjust_diagonal_covariance
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp, clippy::indexing_slicing)]
+#[allow(clippy::float_cmp, clippy::indexing_slicing, unsafe_code)]
 mod tests {
     use super::*;
 
@@ -262,7 +279,9 @@ mod tests {
         let weights = [0.5, 0.5];
         let (mean, cov) = calculate_weighted_mean_and_cov(&poses, &weights);
         assert!(close(mean[0], 1.0) && close(mean[1], 0.0));
-        assert!(close(cov[0], 1.0) && close(cov[1], 0.0) && close(cov[2], 0.0) && close(cov[3], 0.0));
+        assert!(
+            close(cov[0], 1.0) && close(cov[1], 0.0) && close(cov[2], 0.0) && close(cov[3], 0.0)
+        );
     }
 
     #[test]
@@ -273,7 +292,9 @@ mod tests {
         h[14] = -100.0; // (2,2)
         h[21] = 7.0; // (3,3)
         let cov = laplace_xy_covariance(&h);
-        assert!(close(cov[0], 0.5) && close(cov[3], 0.25) && close(cov[1], 0.0) && close(cov[2], 0.0));
+        assert!(
+            close(cov[0], 0.5) && close(cov[3], 0.25) && close(cov[1], 0.0) && close(cov[2], 0.0)
+        );
     }
 
     #[test]
@@ -299,5 +320,127 @@ mod tests {
         assert!(close(clamped[0], 4.0) && close(clamped[3], 9.0));
         let kept = adjust_diagonal_covariance(&[10.0, 0.0, 0.0, 20.0], &identity, 4.0, 9.0);
         assert!(close(kept[0], 10.0) && close(kept[3], 20.0));
+    }
+
+    // ---- FFI shims: marshaling must equal the pure fn; null pointers must be a no-op. ----
+    // The pure fns are checked above; these tests would fail if a shim mis-marshaled length /
+    // row-col order / which buffer, so the equivalence assertion is load-bearing.
+
+    #[test]
+    fn ffi_calc_weight_vec_matches_pure_and_null_is_noop() {
+        let scores = [0.0, libm::log(3.0), 0.5];
+        let mut expected = [0.0_f64; 3];
+        calc_weight_vec(&scores, 1.0, &mut expected);
+        let mut got = [0.0_f64; 3];
+        unsafe {
+            autoware_ndt_scan_matcher_rs_calc_weight_vec(scores.as_ptr(), 3, 1.0, got.as_mut_ptr());
+        }
+        assert_eq!(got, expected);
+
+        let mut sentinel = [42.0_f64; 3];
+        unsafe {
+            autoware_ndt_scan_matcher_rs_calc_weight_vec(
+                core::ptr::null(),
+                3,
+                1.0,
+                sentinel.as_mut_ptr(),
+            );
+        }
+        assert_eq!(
+            sentinel, [42.0_f64; 3],
+            "null scores must leave output untouched"
+        );
+    }
+
+    #[test]
+    fn ffi_weighted_mean_and_cov_matches_pure() {
+        let poses = [0.0, 0.0, 2.0, 0.0, 1.0, 1.0];
+        let weights = [0.25, 0.5, 0.25];
+        let (e_mean, e_cov) = calculate_weighted_mean_and_cov(&poses, &weights);
+        let (mut mean, mut cov) = ([0.0_f64; 2], [0.0_f64; 4]);
+        unsafe {
+            autoware_ndt_scan_matcher_rs_calculate_weighted_mean_and_cov(
+                poses.as_ptr(),
+                weights.as_ptr(),
+                3,
+                mean.as_mut_ptr(),
+                cov.as_mut_ptr(),
+            );
+        }
+        assert_eq!(mean, e_mean);
+        assert_eq!(cov, e_cov);
+    }
+
+    #[test]
+    fn ffi_laplace_matches_pure_and_null_is_noop() {
+        let mut h = [0.0_f64; 36];
+        h[0] = -2.0;
+        h[7] = -4.0;
+        let expected = laplace_xy_covariance(&h);
+        let mut got = [0.0_f64; 4];
+        unsafe { autoware_ndt_scan_matcher_rs_laplace_xy_covariance(h.as_ptr(), got.as_mut_ptr()) };
+        assert_eq!(got, expected);
+
+        let mut sentinel = [7.0_f64; 4];
+        unsafe {
+            autoware_ndt_scan_matcher_rs_laplace_xy_covariance(
+                core::ptr::null(),
+                sentinel.as_mut_ptr(),
+            );
+        };
+        assert_eq!(sentinel, [7.0_f64; 4]);
+    }
+
+    #[test]
+    fn ffi_rotate_matches_pure_and_null_is_noop() {
+        let cov = [4.0, 1.0, 1.0, 9.0];
+        let (c, s) = (libm::cos(0.3), libm::sin(0.3));
+        let rot = [c, -s, s, c];
+
+        let e_map = rotate_covariance_to_map(&cov, &rot);
+        let e_base = rotate_covariance_to_base_link(&cov, &rot);
+        let (mut map, mut base) = ([0.0_f64; 4], [0.0_f64; 4]);
+        unsafe {
+            autoware_ndt_scan_matcher_rs_rotate_covariance_to_map(
+                cov.as_ptr(),
+                rot.as_ptr(),
+                map.as_mut_ptr(),
+            );
+            autoware_ndt_scan_matcher_rs_rotate_covariance_to_base_link(
+                cov.as_ptr(),
+                rot.as_ptr(),
+                base.as_mut_ptr(),
+            );
+        }
+        assert_eq!(map, e_map);
+        assert_eq!(base, e_base);
+
+        let mut sentinel = [5.0_f64; 4];
+        unsafe {
+            autoware_ndt_scan_matcher_rs_rotate_covariance_to_map(
+                core::ptr::null(),
+                rot.as_ptr(),
+                sentinel.as_mut_ptr(),
+            );
+        }
+        assert_eq!(sentinel, [5.0_f64; 4]);
+    }
+
+    #[test]
+    fn ffi_adjust_diagonal_matches_pure() {
+        let cov = [1.0, 0.0, 0.0, 1.0];
+        let identity = [1.0, 0.0, 0.0, 1.0];
+        let expected = adjust_diagonal_covariance(&cov, &identity, 4.0, 9.0);
+        let mut got = [0.0_f64; 4];
+        unsafe {
+            autoware_ndt_scan_matcher_rs_adjust_diagonal_covariance(
+                cov.as_ptr(),
+                identity.as_ptr(),
+                4.0,
+                9.0,
+                got.as_mut_ptr(),
+            );
+        }
+        assert_eq!(got, expected);
     }
 }
