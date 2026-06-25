@@ -216,7 +216,7 @@ void GNSSPoser::callback_nav_sat_fix(
 
 void GNSSPoser::callback_gnss_ins_orientation_stamped(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(autoware_sensing_msgs::msg::GnssInsOrientationStamped) &
-    msg)
+  msg)
 {
   *msg_gnss_ins_orientation_stamped_ = *msg;
 }
