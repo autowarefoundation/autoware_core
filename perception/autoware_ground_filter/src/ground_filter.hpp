@@ -30,10 +30,12 @@
 #include <algorithm>
 #include <cmath>
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
+
+class GroundFilterTest;
+class GroundFilterRadialTest;
 
 namespace autoware::ground_filter
 {
@@ -186,6 +188,7 @@ public:
   // Allow unit test suite to access private members for exhaustive math verification.
   // I need to do this in order to keep those maths private while still be able to test.
   friend class GroundFilterTest;
+  friend class GroundFilterRadialTest;
 
 private:
   // parameters
