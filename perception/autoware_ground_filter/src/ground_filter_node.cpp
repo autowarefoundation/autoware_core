@@ -116,17 +116,15 @@ GroundFilterComponent::GroundFilterComponent(const rclcpp::NodeOptions & options
       param.grid_size_m = grid_size_m_;
       param.grid_mode_switch_radius = grid_mode_switch_radius_;
       param.ground_grid_buffer_size = ground_grid_buffer_size_;
-      param.virtual_lidar_x =
-        static_cast<float>(vehicle_info_.wheel_base_m) / 2.0f + center_pcl_shift_;
-      param.virtual_lidar_y = 0.0f;
-      param.virtual_lidar_z = virtual_lidar_z_;
 
       param.elevation_grid_mode = elevation_grid_mode_;
-      param.radial_dividers_num = std::ceil(2.0 * M_PI / param.radial_divider_angle_rad);
       param.split_points_distance_tolerance = split_points_distance_tolerance_;
       param.split_height_distance = split_height_distance_;
       param.use_virtual_ground_point = use_virtual_ground_point_;
+
       param.wheel_base_m = static_cast<float>(vehicle_info_.wheel_base_m);
+      param.center_pcl_shift = center_pcl_shift_;
+      param.vehicle_height_m = static_cast<float>(vehicle_info_.vehicle_height_m);
 
       ground_filter_ptr_ = std::make_unique<GroundFilter>(param);
     }
