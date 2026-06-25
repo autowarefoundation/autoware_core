@@ -168,13 +168,7 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
     this->create_publisher<visualization_msgs::msg::MarkerArray>(
       "monte_carlo_initial_pose_marker", 10);
 
-  // The wrapper Node::create_service (=1) takes rclcpp::QoS, while rclcpp::Node::create_service
-  // (=0, Humble) takes rmw_qos_profile_t; bridge the two with a build-mode-specific qos type.
-#ifdef USE_AGNOCAST_ENABLED
   const rclcpp::QoS service_qos = rclcpp::ServicesQoS();
-#else
-  const rmw_qos_profile_t service_qos = rclcpp::ServicesQoS().get_rmw_qos_profile();
-#endif
   service_ =
     this->create_service<autoware_internal_localization_msgs::srv::PoseWithCovarianceStamped>(
       "ndt_align_srv",
@@ -204,8 +198,9 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
   diagnostics_trigger_node_ =
     std::make_unique<DiagnosticsInterface>(this, "trigger_node_service_status");
 
-  logger_configure_ = std::make_unique<
-    autoware_utils_logging::BasicLoggerLevelConfigure<autoware::agnocast_wrapper::Node>>(this);
+  logger_configure_ =
+    std::make_unique<autoware_utils_logging::BasicLoggerLevelConfigure<autoware::agnocast_wrapper::Node>>(
+      this);
 }
 
 void NDTScanMatcher::callback_timer()
@@ -224,7 +219,7 @@ void NDTScanMatcher::callback_timer()
 
 void NDTScanMatcher::callback_initial_pose(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::PoseWithCovarianceStamped) &
-  initial_pose_msg_ptr)
+    initial_pose_msg_ptr)
 {
   diagnostics_initial_pose_->clear();
 
@@ -235,7 +230,7 @@ void NDTScanMatcher::callback_initial_pose(
 
 void NDTScanMatcher::callback_initial_pose_main(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::PoseWithCovarianceStamped) &
-  initial_pose_msg_ptr)
+    initial_pose_msg_ptr)
 {
   diagnostics_initial_pose_->add_key_value(
     "topic_time_stamp",
@@ -274,7 +269,7 @@ void NDTScanMatcher::callback_initial_pose_main(
 
 void NDTScanMatcher::callback_regularization_pose(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::PoseWithCovarianceStamped) &
-  pose_conv_msg_ptr)
+    pose_conv_msg_ptr)
 {
   diagnostics_regularization_pose_->clear();
 
@@ -290,7 +285,7 @@ void NDTScanMatcher::callback_regularization_pose(
 
 void NDTScanMatcher::callback_sensor_points(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::PointCloud2) &
-  sensor_points_msg_in_sensor_frame)
+    sensor_points_msg_in_sensor_frame)
 {
   // clear diagnostics
   diagnostics_scan_points_->clear();
@@ -316,7 +311,7 @@ void NDTScanMatcher::callback_sensor_points(
 
 bool NDTScanMatcher::callback_sensor_points_main(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::PointCloud2) &
-  sensor_points_msg_in_sensor_frame)
+    sensor_points_msg_in_sensor_frame)
 {
   const auto exe_start_time = std::chrono::system_clock::now();
 
@@ -646,8 +641,7 @@ bool NDTScanMatcher::callback_sensor_points_main(
     }
     {
       auto msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(nearest_voxel_transformation_likelihood_pub_);
-      *msg =
-        make_float32_stamped(sensor_ros_time, ndt_result.nearest_voxel_transformation_likelihood);
+      *msg = make_float32_stamped(sensor_ros_time, ndt_result.nearest_voxel_transformation_likelihood);
       nearest_voxel_transformation_likelihood_pub_->publish(std::move(msg));
     }
     {
@@ -848,8 +842,7 @@ void NDTScanMatcher::publish_initial_to_result(
     initial_pose_cov_msg.pose.pose.position, result_pose_msg.position));
   auto initial_to_result_distance_msg =
     ALLOCATE_OUTPUT_MESSAGE_UNIQUE(initial_to_result_distance_pub_);
-  *initial_to_result_distance_msg =
-    make_float32_stamped(sensor_ros_time, initial_to_result_distance);
+  *initial_to_result_distance_msg = make_float32_stamped(sensor_ros_time, initial_to_result_distance);
   initial_to_result_distance_pub_->publish(std::move(initial_to_result_distance_msg));
 
   const auto initial_to_result_distance_old = static_cast<float>(autoware::localization_util::norm(
