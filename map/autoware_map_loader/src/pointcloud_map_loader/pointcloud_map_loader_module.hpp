@@ -43,9 +43,8 @@ private:
   rclcpp::Logger logger_;
   AUTOWARE_PUBLISHER_PTR(sensor_msgs::msg::PointCloud2) pub_pointcloud_map_;
 
-  void load_pcd_files(
-    const std::vector<std::string> & pcd_paths, const boost::optional<float> leaf_size,
-    sensor_msgs::msg::PointCloud2 & whole_pcd) const;
+  [[nodiscard]] sensor_msgs::msg::PointCloud2 load_pcd_files(
+    const std::vector<std::string> & pcd_paths, const boost::optional<float> leaf_size) const;
 };
 }  // namespace autoware::map_loader
 
