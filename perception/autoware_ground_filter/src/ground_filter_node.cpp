@@ -271,7 +271,7 @@ void GroundFilterComponent::faster_input_indices_callback(
       "debug/processing_time_ms", processing_time_ms);
   }
 
-  auto output = std::make_unique<PointCloud2>(std::move(result.cloud.value()));
+  auto output = std::make_unique<PointCloud2>(std::move(result.value()));
 
   pub_output_->publish(std::move(output));
   published_time_publisher_->publish_if_subscribed(pub_output_, cloud->header.stamp);

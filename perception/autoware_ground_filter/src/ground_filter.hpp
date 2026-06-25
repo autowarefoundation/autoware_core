@@ -25,6 +25,7 @@
 
 #include <pcl/PointIndices.h>
 #include <pcl/pcl_base.h>
+#include <rcpputils/tl_expected/expected.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -190,17 +191,7 @@ public:
 
   void process(const PointCloud2ConstPtr & in_cloud, pcl::PointIndices & out_no_ground_indices);
 
-  struct FilterResult
-  {
-    std::optional<sensor_msgs::msg::PointCloud2> cloud;
-    std::string error_message;
-
-    explicit operator bool() const { return cloud.has_value(); }
-    const std::string & error() const { return error_message; }
-    sensor_msgs::msg::PointCloud2 & value() { return cloud.value(); }
-  };
-
-  FilterResult filter(const PointCloud2ConstPtr & in_cloud);
+  tl::expected<sensor_msgs::msg::PointCloud2, std::string> filter(const PointCloud2ConstPtr & in_cloud);
 
 private:
   // parameters
