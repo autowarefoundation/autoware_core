@@ -41,6 +41,15 @@ fn main() {
         builder = builder.clang_arg(format!("-I{dir}"));
     }
 
+    // Parse the rosidl C headers with the *host* triple, not the crate's compile target. The
+    // structs are target-agnostic POD (f64 fields), but when cross-building for a bare-metal target
+    // (e.g. x86_64-unknown-none) cargo passes that triple to clang, which then has no libc sysroot
+    // and fails on <stdint.h>. HOST is always set for build scripts and has the rosidl + glibc
+    // headers we need to parse.
+    if let Ok(host) = env::var("HOST") {
+        builder = builder.clang_arg(format!("--target={host}"));
+    }
+
     let bindings = builder.generate().expect("bindgen failed to generate ROS bindings");
     let out_path = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR not set"));
     bindings

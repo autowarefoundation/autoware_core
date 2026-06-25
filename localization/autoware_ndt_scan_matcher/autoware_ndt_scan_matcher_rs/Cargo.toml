@@ -14,9 +14,10 @@ crate-type = ["staticlib", "rlib"]
 default = ["std"]
 std = []
 # `ros`: build the ROS-message bindings (bindgen over the rosidl C headers) and the Pose-pointer
-# FFI shims. Enabled only for the ROS-node build (CMake NDT_USE_RUST=ON); implies `std` (the node
-# links into the std C++ world). Stays OFF for awkernel, which has no ROS headers or libclang.
-ros = ["dep:bindgen", "std"]
+# FFI shims. Independent of `std` — the bindgen output is `use_core()` POD, so these work in no_std
+# too. The ROS-node build enables it alongside the default `std`; awkernel could enable it in a
+# no_std build (it would need the generated bindings vendored, since bindgen needs ROS headers).
+ros = ["dep:bindgen"]
 
 [dependencies]
 # Pure-Rust libm: provides sqrt in no_std (and matches C++ std::sqrt — sqrt is IEEE
