@@ -106,12 +106,75 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_count_oscillation(
 }
 
 #[cfg(test)]
+// tests call the `extern "C"` shims via raw pointers (unsafe) and assert exact equality between a
+// shim and the pure fn it delegates to (identical ops → bit-identical, so float_cmp is intended).
+#[allow(unsafe_code, clippy::float_cmp)]
 mod tests {
     use super::*;
 
     #[test]
     fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+        assert_eq!(add(2, 2), 4);
+        assert_eq!(autoware_ndt_scan_matcher_rs_add(2, 2), 4);
+    }
+
+    #[test]
+    fn rotate_covariance_ffi_matches_pure() {
+        let mut src = [0.0_f64; 36];
+        src[0] = 4.0;
+        src[7] = 9.0;
+        src[14] = 16.0;
+        let rot = [0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0];
+
+        let mut out = [0.0_f64; 36];
+        // SAFETY: all three pointers are valid, aligned arrays of the documented length.
+        unsafe {
+            autoware_ndt_scan_matcher_rs_rotate_covariance(
+                src.as_ptr(),
+                rot.as_ptr(),
+                out.as_mut_ptr(),
+            );
+        }
+        assert_eq!(out, helper::rotate_covariance(&src, &rot));
+    }
+
+    #[test]
+    fn rotate_covariance_ffi_null_is_noop() {
+        let mut out = [1.0_f64; 36];
+        let rot = [0.0_f64; 9];
+        // SAFETY: a null `src_cov` must make the shim return without touching `out`.
+        unsafe {
+            autoware_ndt_scan_matcher_rs_rotate_covariance(
+                core::ptr::null(),
+                rot.as_ptr(),
+                out.as_mut_ptr(),
+            );
+        }
+        assert_eq!(out, [1.0_f64; 36]);
+    }
+
+    #[cfg(feature = "ros")]
+    #[test]
+    fn count_oscillation_ffi_matches_pure() {
+        let xs = [0.0_f64, 1.0, 0.0, 1.0, 0.0];
+        let positions: Vec<[f64; 3]> = xs.iter().map(|&x| [x, 0.0, 0.0]).collect();
+        let poses: Vec<ros_msgs::geometry_msgs__msg__Pose> = xs
+            .iter()
+            .map(|&x| {
+                let mut p = ros_msgs::geometry_msgs__msg__Pose::default();
+                p.position.x = x;
+                p
+            })
+            .collect();
+
+        // SAFETY: `poses` is a valid contiguous array of `poses.len()` Pose values.
+        let via_ffi = unsafe {
+            autoware_ndt_scan_matcher_rs_count_oscillation(poses.as_ptr().cast(), poses.len())
+        };
+        assert_eq!(via_ffi, helper::count_oscillation(&positions));
+        assert_eq!(via_ffi, 3);
+
+        // SAFETY: null pointer must yield 0.
+        assert_eq!(unsafe { autoware_ndt_scan_matcher_rs_count_oscillation(core::ptr::null(), 0) }, 0);
     }
 }
