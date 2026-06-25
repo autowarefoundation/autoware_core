@@ -89,21 +89,21 @@ private:
 
   void callback_initial_pose(
     const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::PoseWithCovarianceStamped) &
-      initial_pose_msg_ptr);
+    initial_pose_msg_ptr);
   void callback_initial_pose_main(
     const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::PoseWithCovarianceStamped) &
-      initial_pose_msg_ptr);
+    initial_pose_msg_ptr);
 
   void callback_regularization_pose(
     const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::PoseWithCovarianceStamped) &
-      pose_conv_msg_ptr);
+    pose_conv_msg_ptr);
 
   void callback_sensor_points(
     const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::PointCloud2) &
-      sensor_points_msg_in_sensor_frame);
+    sensor_points_msg_in_sensor_frame);
   bool callback_sensor_points_main(
     const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::PointCloud2) &
-      sensor_points_msg_in_sensor_frame);
+    sensor_points_msg_in_sensor_frame);
 
   void service_trigger_node(
     const std_srvs::srv::SetBool::Request::SharedPtr req,
@@ -165,33 +165,36 @@ private:
   AUTOWARE_PUBLISHER_PTR(sensor_msgs::msg::PointCloud2) sensor_aligned_pose_pub_;
   AUTOWARE_PUBLISHER_PTR(sensor_msgs::msg::PointCloud2) no_ground_points_aligned_pose_pub_;
   AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::PoseStamped) ndt_pose_pub_;
-  AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::PoseWithCovarianceStamped) ndt_pose_with_covariance_pub_;
   AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::PoseWithCovarianceStamped)
-    initial_pose_with_covariance_pub_;
+  ndt_pose_with_covariance_pub_;
+  AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::PoseWithCovarianceStamped)
+  initial_pose_with_covariance_pub_;
   AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::PoseArray) multi_ndt_pose_pub_;
   AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::PoseArray) multi_initial_pose_pub_;
   AUTOWARE_PUBLISHER_PTR(autoware_internal_debug_msgs::msg::Float32Stamped) exe_time_pub_;
-  AUTOWARE_PUBLISHER_PTR(autoware_internal_debug_msgs::msg::Float32Stamped) transform_probability_pub_;
   AUTOWARE_PUBLISHER_PTR(autoware_internal_debug_msgs::msg::Float32Stamped)
-    nearest_voxel_transformation_likelihood_pub_;
+  transform_probability_pub_;
+  AUTOWARE_PUBLISHER_PTR(autoware_internal_debug_msgs::msg::Float32Stamped)
+  nearest_voxel_transformation_likelihood_pub_;
   AUTOWARE_PUBLISHER_PTR(sensor_msgs::msg::PointCloud2) voxel_score_points_pub_;
   AUTOWARE_PUBLISHER_PTR(autoware_internal_debug_msgs::msg::Float32Stamped)
-    no_ground_transform_probability_pub_;
+  no_ground_transform_probability_pub_;
   AUTOWARE_PUBLISHER_PTR(autoware_internal_debug_msgs::msg::Float32Stamped)
-    no_ground_nearest_voxel_transformation_likelihood_pub_;
+  no_ground_nearest_voxel_transformation_likelihood_pub_;
   AUTOWARE_PUBLISHER_PTR(autoware_internal_debug_msgs::msg::Int32Stamped) iteration_num_pub_;
   AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::PoseStamped) initial_to_result_relative_pose_pub_;
   AUTOWARE_PUBLISHER_PTR(autoware_internal_debug_msgs::msg::Float32Stamped)
-    initial_to_result_distance_pub_;
+  initial_to_result_distance_pub_;
   AUTOWARE_PUBLISHER_PTR(autoware_internal_debug_msgs::msg::Float32Stamped)
-    initial_to_result_distance_old_pub_;
+  initial_to_result_distance_old_pub_;
   AUTOWARE_PUBLISHER_PTR(autoware_internal_debug_msgs::msg::Float32Stamped)
-    initial_to_result_distance_new_pub_;
+  initial_to_result_distance_new_pub_;
   AUTOWARE_PUBLISHER_PTR(visualization_msgs::msg::MarkerArray) ndt_marker_pub_;
   AUTOWARE_PUBLISHER_PTR(visualization_msgs::msg::MarkerArray)
-    ndt_monte_carlo_initial_pose_marker_pub_;
+  ndt_monte_carlo_initial_pose_marker_pub_;
 
-  AUTOWARE_SERVICE_PTR(autoware_internal_localization_msgs::srv::PoseWithCovarianceStamped) service_;
+  AUTOWARE_SERVICE_PTR(autoware_internal_localization_msgs::srv::PoseWithCovarianceStamped)
+  service_;
   AUTOWARE_SERVICE_PTR(std_srvs::srv::SetBool) service_trigger_node_;
 
   tf2_ros::TransformBroadcaster tf2_broadcaster_;
@@ -220,7 +223,8 @@ private:
   std::unique_ptr<DiagnosticsInterface> diagnostics_ndt_align_;
   std::unique_ptr<DiagnosticsInterface> diagnostics_trigger_node_;
   std::unique_ptr<MapUpdateModule> map_update_module_;
-  std::unique_ptr<autoware_utils_logging::BasicLoggerLevelConfigure<autoware::agnocast_wrapper::Node>>
+  std::unique_ptr<
+    autoware_utils_logging::BasicLoggerLevelConfigure<autoware::agnocast_wrapper::Node>>
     logger_configure_;
 
   HyperParameters param_;
