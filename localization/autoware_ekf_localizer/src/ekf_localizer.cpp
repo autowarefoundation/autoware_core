@@ -559,8 +559,8 @@ void EKFLocalizer::update_diagnostics(
  * @brief trigger node
  */
 void EKFLocalizer::service_trigger_node(
-  const AUTOWARE_SERVICE_REQUEST_PTR(std_srvs::srv::SetBool) req,
-  AUTOWARE_SERVICE_RESPONSE_PTR(std_srvs::srv::SetBool) res)
+  const AUTOWARE_SERVER_REQUEST_PTR(std_srvs::srv::SetBool) req,
+  AUTOWARE_SERVER_RESPONSE_PTR(std_srvs::srv::SetBool) res)
 {
   if (req->data) {
     pose_queue_.clear();
