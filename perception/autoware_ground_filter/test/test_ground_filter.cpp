@@ -363,6 +363,12 @@ protected:
   {
     filter_->convertPointCloud(in_cloud, out_radial);
   }
+  void classify_point_cloud(
+    const sensor_msgs::msg::PointCloud2::ConstSharedPtr & in_cloud,
+    const std::vector<PointCloudVector> & in_radial, pcl::PointIndices & out_indices)
+  {
+    filter_->classifyPointCloud(in_cloud, in_radial, out_indices);
+  }
 
   // Set up test environment with radial mode params.
   void SetUp() override
@@ -491,6 +497,43 @@ TEST_F(GroundFilterRadialTest, RadialGroupingAndSorting)
   ASSERT_EQ(radial_ordered[90].size(), 2U);
   EXPECT_NEAR(radial_ordered[90][0].radius, 2.0f, near_tol);
   EXPECT_NEAR(radial_ordered[90][1].radius, 5.0f, near_tol);
+}
+
+// TEST 4. Confirm point classification logic in classifyPointCloud.
+// This test creates a simple point cloud with 3 points: (3, 0, 0), (4, 0, 0.6), (5, 0, 2.0).
+// With given slope threshold 15 deg and height threshold 0.2, we expect:
+// - Point (3, 0, 0) : ground (slope 0, height 0)
+// - Point (4, 0, 0.6) : non-ground (slope 30 deg, height 0.6 > 0.2)
+// - Point (5, 0, 2.0) : non-ground (slope ~21.8 deg, height 2.0 > 0.2)
+TEST_F(GroundFilterRadialTest, ClassifyLocalAndGlobalSlopes)
+{
+  autoware::point_types::PointXYZIRC p0, p1, p2;
+  p0.x = 3.0f;
+  p0.y = 0.0f;
+  p0.z = 0.0f;
+  p1.x = 4.0f;
+  p1.y = 0.0f;
+  p1.z = 0.6f;
+  p2.x = 5.0f;
+  p2.y = 0.0f;
+  p2.z = 2.0f;
+
+  auto cloud = create_point_cloud({p0, p1, p2});
+  filter_->setDataAccessor(cloud);
+
+  std::vector<PointCloudVector> radial_ordered;
+  convert_point_cloud(cloud, radial_ordered);
+
+  pcl::PointIndices out_indices;
+  classify_point_cloud(cloud, radial_ordered, out_indices);
+
+  // Expect 2 non-ground points being index 1 and 2.
+  // Since the algorithm outputs raw memory byte offsets as indices,
+  // I'm using point_step to verify these indices.
+  EXPECT_EQ(out_indices.indices.size(), 2U);
+  const uint32_t point_step = cloud->point_step;
+  EXPECT_EQ(out_indices.indices[0], 1U * point_step);
+  EXPECT_EQ(out_indices.indices[1], 2U * point_step);
 }
 
 int main(int argc, char ** argv)
