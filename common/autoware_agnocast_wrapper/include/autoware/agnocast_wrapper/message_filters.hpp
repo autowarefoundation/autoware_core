@@ -400,8 +400,9 @@ namespace agnocast_wrapper
 namespace message_filters
 {
 
-/// @brief message_filters Subscriber (non-Agnocast build). Takes the wrapper Node and forwards to its
-///        underlying rclcpp::Node, so the public API matches the Agnocast build.
+/// @brief message_filters Subscriber (non-Agnocast build); forwards the wrapper Node to the
+///        underlying rclcpp::Node. Inherited upstream members (connectInput, registerCallback, ...)
+///        are non-portable — they do not exist on the Agnocast-build Subscriber.
 template <class M>
 class Subscriber : public ::message_filters::Subscriber<M, rclcpp::Node>
 {
