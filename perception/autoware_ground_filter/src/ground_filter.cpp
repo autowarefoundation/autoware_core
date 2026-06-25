@@ -756,7 +756,9 @@ tl::expected<sensor_msgs::msg::PointCloud2, std::string> GroundFilter::filter(
   if (in_cloud->data.empty() || in_cloud->width * in_cloud->height == 0) {
     return tl::unexpected(std::string("Received empty PointCloud."));
   }
-  if (in_cloud->width * in_cloud->height * in_cloud->point_step != in_cloud->data.size()) {
+  if (
+    static_cast<std::size_t>(in_cloud->width) * in_cloud->height * in_cloud->point_step !=
+    in_cloud->data.size()) {
     return tl::unexpected(std::string("Invalid PointCloud memory layout."));
   }
 
