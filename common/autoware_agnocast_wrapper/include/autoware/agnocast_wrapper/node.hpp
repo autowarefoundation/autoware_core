@@ -420,7 +420,7 @@ private:
   }
 };
 
-/// @brief Get the underlying rclcpp::Node from a node that inherits agnocast_wrapper::Node.
+/// @brief Get the underlying rclcpp::Node from an agnocast_wrapper::Node.
 /// @throws std::runtime_error if the node is in agnocast mode (check !use_agnocast() first)
 template <typename T>
 std::shared_ptr<rclcpp::Node> to_rclcpp_node(const std::shared_ptr<T> & node)
@@ -588,7 +588,7 @@ public:
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr add_on_set_parameters_callback(
     OnSetParametersCallbackType callback)
   {
-    return node_->add_on_set_parameters_callback(callback);
+    return node_->add_on_set_parameters_callback(std::move(callback));
   }
   void remove_on_set_parameters_callback(
     const rclcpp::node_interfaces::OnSetParametersCallbackHandle * const handler)
@@ -745,7 +745,7 @@ private:
   std::shared_ptr<rclcpp::Node> node_;
 };
 
-/// @brief Get the underlying rclcpp::Node from a node that inherits agnocast_wrapper::Node.
+/// @brief Get the underlying rclcpp::Node from an agnocast_wrapper::Node.
 template <typename T>
 std::shared_ptr<rclcpp::Node> to_rclcpp_node(const std::shared_ptr<T> & node)
 {

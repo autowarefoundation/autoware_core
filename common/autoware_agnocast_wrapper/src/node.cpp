@@ -182,7 +182,7 @@ rcl_interfaces::msg::ListParametersResult Node::list_parameters(
 rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr
 Node::add_on_set_parameters_callback(OnSetParametersCallbackType callback)
 {
-  return visit_node([&](auto & n) { return n->add_on_set_parameters_callback(callback); });
+  return visit_node([&](auto & n) { return n->add_on_set_parameters_callback(std::move(callback)); });
 }
 
 void Node::remove_on_set_parameters_callback(
