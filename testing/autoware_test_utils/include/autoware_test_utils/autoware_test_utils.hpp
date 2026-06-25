@@ -36,12 +36,14 @@
 
 #include <lanelet2_io/Io.h>
 
+#include <chrono>
 #include <filesystem>
 #include <limits>
 #include <memory>
 #include <optional>
 #include <regex>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <vector>
 
@@ -563,11 +565,25 @@ void publishToTargetNode(
   }
 
   autoware::test_utils::setPublisher<T>(test_node, topic_name, publisher);
-  publisher->publish(data);
+
+  constexpr auto kTimeout = std::chrono::seconds(5);
+  constexpr auto kWaitInterval = std::chrono::milliseconds(100);
+  const auto start = std::chrono::steady_clock::now();
+
+  while (rclcpp::ok() && (std::chrono::steady_clock::now() - start) < kTimeout) {
+    if (target_node->count_subscribers(topic_name) > 0) {
+      break;
+    }
+    rclcpp::spin_some(test_node);
+    rclcpp::spin_some(target_node);
+    std::this_thread::sleep_for(kWaitInterval);
+  }
 
   if (target_node->count_subscribers(topic_name) == 0) {
     throw std::runtime_error("No subscriber for " + topic_name);
   }
+
+  publisher->publish(data);
   autoware::test_utils::spinSomeNodes(test_node, target_node, repeat_count);
 }
 
