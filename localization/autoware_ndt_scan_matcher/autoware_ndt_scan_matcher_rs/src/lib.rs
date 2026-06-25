@@ -23,8 +23,10 @@ extern crate alloc;
 // Public API: the pure ports are reused by the Track B engine and exercised by unit tests,
 // independently of whether the `ros` FFI shims are built.
 pub mod covariance;
+pub mod derivatives;
 pub mod helper;
 mod kdtree;
+pub mod transform;
 pub mod voxel_grid;
 
 // rosidl-generated geometry_msgs C structs (bindgen). ROS-node build only; the no_std/awkernel
