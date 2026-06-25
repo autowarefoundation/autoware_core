@@ -328,7 +328,40 @@ rcl_interfaces::msg::SetParametersResult GroundFilterComponent::onParameter(
   // For pointcloud
   std::scoped_lock lock(mutex_);
 
-  // Finally return the result
+  // Build a new param struct with newly updated node variables
+  GroundFilterParameter new_param;
+
+  new_param.elevation_grid_mode = elevation_grid_mode_;
+
+  new_param.global_slope_max_angle_rad = global_slope_max_angle_rad_;
+  new_param.local_slope_max_angle_rad = local_slope_max_angle_rad_;
+  new_param.radial_divider_angle_rad = radial_divider_angle_rad_;
+
+  new_param.use_recheck_ground_cluster = use_recheck_ground_cluster_;
+  new_param.use_lowest_point = use_lowest_point_;
+  new_param.detection_range_z_max = detection_range_z_max_;
+
+  new_param.non_ground_height_threshold = non_ground_height_threshold_;
+  new_param.grid_size_m = grid_size_m_;
+  new_param.grid_mode_switch_radius = grid_mode_switch_radius_;
+  new_param.ground_grid_buffer_size = ground_grid_buffer_size_;
+  new_param.split_points_distance_tolerance = split_points_distance_tolerance_;
+  new_param.split_height_distance = split_height_distance_;
+  new_param.use_virtual_ground_point = use_virtual_ground_point_;
+  
+  new_param.wheel_base_m = static_cast<float>(vehicle_info_.wheel_base_m);
+  new_param.vehicle_height_m = static_cast<float>(vehicle_info_.vehicle_height_m);
+  new_param.center_pcl_shift = center_pcl_shift_;
+
+  // Instantly swap out old brain for the new one
+  ground_filter_ptr_ = std::make_unique<GroundFilter>(new_param);
+  
+  // Re-attach time keeper if it exists
+  if (time_keeper_) {
+    ground_filter_ptr_->setTimeKeeper(time_keeper_);
+  }
+
+  // Finally return result
   rcl_interfaces::msg::SetParametersResult result;
   result.successful = true;
   result.reason = "success";
