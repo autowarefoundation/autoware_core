@@ -5,6 +5,27 @@ Changelog for package autoware_velocity_smoother
 1.1.0 (2025-05-01)
 ------------------
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* test(autoware_velocity_smoother): cover trajectory_utils pure functions and dedup getTransVector3 (`#1115 <https://github.com/autowarefoundation/autoware_core/issues/1115>`_)
+  Add a focused gtest suite for the previously untested pure functions in
+  trajectory_utils: the jerk-constrained stop-distance state machine
+  (calcStopDistWithJerkConstraints across its TRAPEZOID/TRIANGLE/LINEAR
+  branches and the LINEAR negative-time failure path), updateStateWithJerkConstraint
+  (single/multi-segment integration and the invalid-profile nullopt path),
+  isValidStopDist (in-range, out-of-range, and absolute-margin behavior),
+  the constant-jerk velocity profile helper, extractPathAroundIndex,
+  calcArclengthArray, calcTrajectoryIntervalDistance, applyMaximumVelocityLimit,
+  and calcStopDistance. Assertions pin exact numerical values derived from the
+  closed-form kinematics.
+  Also replace the local getTransVector3 helper with the equivalent
+  autoware_utils_geometry::point_2_tf_vector, removing a byte-for-byte duplicate.
+  autoware_utils_geometry is already a dependency, so no package.xml change is
+  needed. Behavior-preserving: the node interface launch test still passes.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+* Contributors: Yutaka Kondo, github-actions
+
 1.8.0 (2026-05-01)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
