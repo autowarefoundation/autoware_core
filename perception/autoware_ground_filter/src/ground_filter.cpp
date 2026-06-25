@@ -51,7 +51,7 @@ GroundFilter::GroundFilter(const GroundFilterParameter & param) : param_(param)
   if (param_.elevation_grid_mode) {
     grid_ptr_ = std::make_unique<Grid>(virtual_lidar_x_, virtual_lidar_y_, virtual_lidar_z_);
 
-    grid_ptr_ = std::make_unique<Grid>(
+    grid_ptr_->initialize(
       param_.grid_size_m, param_.radial_divider_angle_rad, param_.grid_mode_switch_radius);
   }
 }
