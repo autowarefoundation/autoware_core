@@ -25,6 +25,8 @@
 #include <memory>
 #include <vector>
 
+// ======================= LEGACY 11 TESTS (FOCUSING ON GRID MODE) ======================= //
+
 class GroundFilterTest : public ::testing::Test
 {
 protected:
@@ -43,6 +45,9 @@ protected:
     param_.grid_size_m = 0.5f;
     param_.grid_mode_switch_radius = 20.0f;
     param_.ground_grid_buffer_size = 3;
+    param_.split_points_distance_tolerance = 0.2f;
+    param_.split_height_distance = 0.2f;
+    param_.use_virtual_ground_point = true;
 
     // So here previously we had virtual lidar origin params:
     // - param_.virtual_lidar_x = 1.4f;
@@ -66,25 +71,31 @@ protected:
   {
     auto cloud = std::make_shared<sensor_msgs::msg::PointCloud2>();
 
-    // Create simple XYZ point cloud for testing
-    pcl::PointCloud<pcl::PointXYZ> pcl_cloud;
+    // Create simple XYZIRC point cloud for testing
+    pcl::PointCloud<autoware::point_types::PointXYZIRC> pcl_cloud;
 
     // Add ground points
     for (int i = 0; i < 50; ++i) {
-      pcl::PointXYZ point;
+      autoware::point_types::PointXYZIRC point;
       point.x = static_cast<float>(i % 10) - 5.0f;
       point.y = static_cast<float>(i / 10.0f) - 2.5f;
       point.z =
         0.0f + (static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX) - 0.5f) * 0.1f;
+      point.intensity = 100;
+      point.return_type = 1;
+      point.channel = 0;
       pcl_cloud.push_back(point);
     }
 
     // Add non-ground points
     for (int i = 0; i < 25; ++i) {
-      pcl::PointXYZ point;
+      autoware::point_types::PointXYZIRC point;
       point.x = static_cast<float>(i % 5) - 2.5f;
       point.y = static_cast<float>(i / 5.0f) - 2.5f;
       point.z = 0.5f + (static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX)) * 0.5f;
+      point.intensity = 100;
+      point.return_type = 1;
+      point.channel = 0;
       pcl_cloud.push_back(point);
     }
 
@@ -321,6 +332,62 @@ TEST_F(GroundFilterTest, TestExtremeParameterValues)
   extreme_filter->setDataAccessor(cloud_);
   EXPECT_NO_THROW(extreme_filter->process(cloud_, no_ground_indices));
 }
+
+// ======================================================================================= //
+
+// ======================== NEW 5 TESTS (FOCUSING ON RADIAL MODE) ======================== //
+
+class GroundFilterRadialTest : public ::testing::Test
+{
+protected:
+  autoware::ground_filter::GroundFilterParameter param_;
+  std::unique_ptr<autoware::ground_filter::GroundFilter> filter_;
+
+  // Set up test environment with radial mode params.
+  void SetUp() override
+  {
+    // Lock to radial mode
+    param_.elevation_grid_mode = false;
+
+    // Set slopes to exactly 15 deg
+    param_.global_slope_max_angle_rad = 0.26f;
+    param_.local_slope_max_angle_rad = 0.26f;
+
+    // Set slice size to 1 deg
+    param_.radial_divider_angle_rad = 0.0175f;
+
+    // Other params
+    param_.split_points_distance_tolerance = 0.2f;
+    param_.split_height_distance = 0.2f;
+    param_.use_virtual_ground_point = true;
+    param_.wheel_base_m = 2.8f;
+    param_.center_pcl_shift = 0.0f;
+    param_.vehicle_height_m = 1.9f;
+
+    filter_ = std::make_unique<autoware::ground_filter::GroundFilter>(param_);
+  }
+
+  /**
+   * @brief Helper function to create a point cloud from a vector of PointXYZIRC points.
+   *
+   * @param points Vector of PointXYZIRC points to include in the point cloud.
+   *
+   * @return Shared pointer to the created PointCloud2 message.
+   */
+  sensor_msgs::msg::PointCloud2::SharedPtr create_point_cloud(
+    const std::vector<autoware::point_types::PointXYZIRC> & points)
+  {
+    auto cloud = std::make_shared<sensor_msgs::msg::PointCloud2>();
+    pcl::PointCloud<autoware::point_types::PointXYZIRC> pcl_cloud;
+    for (const auto & p : points) {
+      pcl_cloud.push_back(p);
+    }
+    pcl::toROSMsg(pcl_cloud, *cloud);
+    cloud->header.frame_id = "base_link";
+    cloud->header.stamp = rclcpp::Clock().now();
+    return cloud;
+  }
+};
 
 int main(int argc, char ** argv)
 {
