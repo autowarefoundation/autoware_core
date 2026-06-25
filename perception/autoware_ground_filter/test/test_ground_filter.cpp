@@ -25,6 +25,14 @@
 #include <memory>
 #include <vector>
 
+namespace
+{
+// Floating point tolerance at EXPECT_NEAR and similar checks
+constexpr float near_tol = 1e-4F;
+}  // namespace
+
+// ======================= LEGACY 11 TESTS (FOCUSING ON GRID MODE) ======================= //
+
 class GroundFilterTest : public ::testing::Test
 {
 protected:
@@ -43,6 +51,9 @@ protected:
     param_.grid_size_m = 0.5f;
     param_.grid_mode_switch_radius = 20.0f;
     param_.ground_grid_buffer_size = 3;
+    param_.split_points_distance_tolerance = 0.2f;
+    param_.split_height_distance = 0.2f;
+    param_.use_virtual_ground_point = true;
 
     // So here previously we had virtual lidar origin params:
     // - param_.virtual_lidar_x = 1.4f;
@@ -66,25 +77,31 @@ protected:
   {
     auto cloud = std::make_shared<sensor_msgs::msg::PointCloud2>();
 
-    // Create simple XYZ point cloud for testing
-    pcl::PointCloud<pcl::PointXYZ> pcl_cloud;
+    // Create simple XYZIRC point cloud for testing
+    pcl::PointCloud<autoware::point_types::PointXYZIRC> pcl_cloud;
 
     // Add ground points
     for (int i = 0; i < 50; ++i) {
-      pcl::PointXYZ point;
+      autoware::point_types::PointXYZIRC point;
       point.x = static_cast<float>(i % 10) - 5.0f;
       point.y = static_cast<float>(i / 10.0f) - 2.5f;
       point.z =
         0.0f + (static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX) - 0.5f) * 0.1f;
+      point.intensity = 100;
+      point.return_type = 1;
+      point.channel = 0;
       pcl_cloud.push_back(point);
     }
 
     // Add non-ground points
     for (int i = 0; i < 25; ++i) {
-      pcl::PointXYZ point;
+      autoware::point_types::PointXYZIRC point;
       point.x = static_cast<float>(i % 5) - 2.5f;
       point.y = static_cast<float>(i / 5.0f) - 2.5f;
       point.z = 0.5f + (static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX)) * 0.5f;
+      point.intensity = 100;
+      point.return_type = 1;
+      point.channel = 0;
       pcl_cloud.push_back(point);
     }
 
@@ -320,6 +337,243 @@ TEST_F(GroundFilterTest, TestExtremeParameterValues)
   pcl::PointIndices no_ground_indices;
   extreme_filter->setDataAccessor(cloud_);
   EXPECT_NO_THROW(extreme_filter->process(cloud_, no_ground_indices));
+}
+
+// ======================================================================================= //
+
+// ======================== NEW 5 TESTS (FOCUSING ON RADIAL MODE) ======================== //
+
+class GroundFilterRadialTest : public ::testing::Test
+{
+protected:
+  autoware::ground_filter::GroundFilterParameter param_;
+  std::unique_ptr<autoware::ground_filter::GroundFilter> filter_;
+
+  using RayPointsCentroid = autoware::ground_filter::GroundFilter::RayPointsCentroid;
+  using PointCloudVector = autoware::ground_filter::GroundFilter::PointCloudVector;
+
+  // Bringing the private helper funcs from GroundFilter to here as proxies
+  void calc_virtual_ground_origin(pcl::PointXYZ & point)
+  {
+    filter_->calcVirtualGroundOrigin(point);
+  }
+  void convert_point_cloud(
+    const sensor_msgs::msg::PointCloud2::ConstSharedPtr & in_cloud,
+    std::vector<PointCloudVector> & out_radial)
+  {
+    filter_->convertPointCloud(in_cloud, out_radial);
+  }
+  void classify_point_cloud(
+    const sensor_msgs::msg::PointCloud2::ConstSharedPtr & in_cloud,
+    const std::vector<PointCloudVector> & in_radial, pcl::PointIndices & out_indices)
+  {
+    filter_->classifyPointCloud(in_cloud, in_radial, out_indices);
+  }
+
+  // Set up test environment with radial mode params.
+  void SetUp() override
+  {
+    // Lock to radial mode
+    param_.elevation_grid_mode = false;
+
+    // Set slopes to exactly 15 deg
+    param_.global_slope_max_angle_rad = 0.26f;
+    param_.local_slope_max_angle_rad = 0.26f;
+
+    // Set slice size to 1 deg
+    param_.radial_divider_angle_rad = 0.0175f;
+
+    // Other params
+    param_.split_points_distance_tolerance = 0.2f;
+    param_.split_height_distance = 0.2f;
+    param_.use_virtual_ground_point = true;
+    param_.wheel_base_m = 2.8f;
+    param_.center_pcl_shift = 0.0f;
+    param_.vehicle_height_m = 1.9f;
+
+    filter_ = std::make_unique<autoware::ground_filter::GroundFilter>(param_);
+  }
+
+  /**
+   * @brief Helper function to create a point cloud from a vector of PointXYZIRC points.
+   *
+   * @param points Vector of PointXYZIRC points to include in the point cloud.
+   *
+   * @return Shared pointer to the created PointCloud2 message.
+   */
+  sensor_msgs::msg::PointCloud2::SharedPtr create_point_cloud(
+    const std::vector<autoware::point_types::PointXYZIRC> & points)
+  {
+    auto cloud = std::make_shared<sensor_msgs::msg::PointCloud2>();
+    pcl::PointCloud<autoware::point_types::PointXYZIRC> pcl_cloud;
+    for (const auto & p : points) {
+      pcl_cloud.push_back(p);
+    }
+    pcl::toROSMsg(pcl_cloud, *cloud);
+    cloud->header.frame_id = "base_link";
+    cloud->header.stamp = rclcpp::Clock().now();
+    return cloud;
+  }
+};
+
+// TEST 1. Confirm the maths of RayPointsCentroid works as expected.
+// Provides a single ray of 2 (R, Z) points (2.0, 0.0) and (4.0, 2.0).
+// Expects correct calculation of average radius, height, and slope.
+TEST_F(GroundFilterRadialTest, RayPointsCentroidMath)
+{
+  RayPointsCentroid centroid;
+
+  EXPECT_EQ(centroid.point_num, 0U);
+
+  centroid.addPoint(2.0f, 0.0f, 0);
+  EXPECT_EQ(centroid.point_num, 1U);
+  EXPECT_NEAR(centroid.getAverageRadius(), 2.0f, near_tol);
+  EXPECT_NEAR(centroid.getAverageHeight(), 0.0f, near_tol);
+
+  centroid.addPoint(4.0f, 2.0f, 1);
+  EXPECT_EQ(centroid.point_num, 2U);
+  EXPECT_NEAR(centroid.getAverageRadius(), 3.0f, near_tol);
+  EXPECT_NEAR(centroid.getAverageHeight(), 1.0f, near_tol);
+  EXPECT_NEAR(centroid.getAverageSlope(), std::atan2(1.0f, 3.0f), near_tol);
+}
+
+// TEST 2. Confirm virtual origin logic.
+// Checks that virtual origin is calculated correctly based on vehicle wheelbase and lidar position.
+// Current wheelbase 2.8m, lidar at (1.4, 0, 1.9) should yield virtual origin at (2.8, 0, 0).
+TEST_F(GroundFilterRadialTest, CalcVirtualGroundOrigin)
+{
+  pcl::PointXYZ virtual_origin;
+  calc_virtual_ground_origin(virtual_origin);
+
+  EXPECT_NEAR(virtual_origin.x, 2.8f, near_tol);
+  EXPECT_NEAR(virtual_origin.y, 0.0f, near_tol);
+  EXPECT_NEAR(virtual_origin.z, 0.0f, near_tol);
+}
+
+// TEST 3. Confirm azimuth slicing & sorting
+// This test creates a point cloud with 3 points in different azimuths, then checks if
+// they are correctly grouped into radial slices and sorted by radius within those slices.
+// Adds 3 points: (5, 0, 0), (2, 0, 0), (0, 3, 0). Expects two slices:
+// - One for azimuth ~0 deg with points (0, 3)
+// - One for azimuth ~90 deg with point (5, 0) and (2, 0) sorted by radius.
+// Note: the math inside convertPointCloud is a lil bit tricky: azimuth angle is calculated
+//       as atan2(x, y) instead of normal convention atan2(y, x). Thus now:
+//          - 0   deg is along +Y axis
+//          - 90  deg is along +X axis
+//          - 180 deg is along -Y axis
+//          - 270 deg is along -X axis.
+TEST_F(GroundFilterRadialTest, RadialGroupingAndSorting)
+{
+  autoware::point_types::PointXYZIRC p1, p2, p3;
+  p1.x = 5.0f;
+  p1.y = 0.0f;
+  p1.z = 0.0f;
+  p2.x = 2.0f;
+  p2.y = 0.0f;
+  p2.z = 0.0f;
+  p3.x = 0.0f;
+  p3.y = 3.0f;
+  p3.z = 0.0f;
+
+  auto cloud = create_point_cloud({p1, p2, p3});
+  filter_->setDataAccessor(cloud);
+
+  std::vector<PointCloudVector> radial_ordered;
+  convert_point_cloud(cloud, radial_ordered);
+
+  // 1. Master array should have 360 slices (1 degree per slice)
+  EXPECT_EQ(radial_ordered.size(), 360U);
+
+  // 2. Here we check each ray/slice for expected points.
+
+  // 2.a. Checking slice 0 deg (front ray). Should contain 1 point with radius 3.0.
+  ASSERT_GE(radial_ordered.size(), 1U);
+  ASSERT_EQ(radial_ordered[0].size(), 1U);
+  EXPECT_NEAR(radial_ordered[0][0].radius, 3.0f, near_tol);
+
+  // 2.b. Checking slice 90 deg (left ray). Should contain 2 points with radii 2.0 and 5.0, sorted
+  // by radius.
+  // Since there are floating point rounding errors, I calculate the index of 90 deg slice
+  // dynamically.
+  auto ninety_deg_bin =
+    static_cast<size_t>(std::floor((M_PI / 2.0) / param_.radial_divider_angle_rad));
+  ASSERT_GE(radial_ordered.size(), ninety_deg_bin + 1);
+  ASSERT_EQ(radial_ordered[ninety_deg_bin].size(), 2U);
+  EXPECT_NEAR(radial_ordered[ninety_deg_bin][0].radius, 2.0f, near_tol);
+  EXPECT_NEAR(radial_ordered[ninety_deg_bin][1].radius, 5.0f, near_tol);
+}
+
+// TEST 4. Confirm point classification logic in classifyPointCloud.
+// This test creates a simple point cloud with 3 points: (3, 0, 0), (4, 0, 0.6), (5, 0, 2.0).
+// With given slope threshold 15 deg and height threshold 0.2, we expect:
+// - Point (3, 0, 0) : ground (slope 0, height 0)
+// - Point (4, 0, 0.6) : non-ground (slope 30 deg, height 0.6 > 0.2)
+// - Point (5, 0, 2.0) : non-ground (slope ~21.8 deg, height 2.0 > 0.2)
+TEST_F(GroundFilterRadialTest, ClassifyLocalAndGlobalSlopes)
+{
+  autoware::point_types::PointXYZIRC p0, p1, p2;
+  p0.x = 3.0f;
+  p0.y = 0.0f;
+  p0.z = 0.0f;
+  p1.x = 4.0f;
+  p1.y = 0.0f;
+  p1.z = 0.6f;
+  p2.x = 5.0f;
+  p2.y = 0.0f;
+  p2.z = 2.0f;
+
+  auto cloud = create_point_cloud({p0, p1, p2});
+  filter_->setDataAccessor(cloud);
+
+  std::vector<PointCloudVector> radial_ordered;
+  convert_point_cloud(cloud, radial_ordered);
+
+  pcl::PointIndices out_indices;
+  classify_point_cloud(cloud, radial_ordered, out_indices);
+
+  // Expect 2 non-ground points being index 1 and 2.
+  // Since the algorithm outputs raw memory byte offsets as indices,
+  // I'm using point_step to verify these indices.
+  const uint32_t point_step = cloud->point_step;
+  EXPECT_EQ(out_indices.indices.size(), 2U);
+  EXPECT_EQ(out_indices.indices[0], 1U * point_step);
+  EXPECT_EQ(out_indices.indices[1], 2U * point_step);
+}
+
+// TEST 5. Testing point follow logic.
+// This test creates a simple point cloud with 3 points: (3, 0, 0), (3.05, 0, 0.02), (3.10, 0, 2.0).
+// I designed first 2 points to be kinda close so that the second one is considered "following" the
+// first one, while the third point is far away and should be classified as non-ground.
+// Expects:
+// - Point (3, 0, 0) : ground
+// - Point (3.05, 0, 0.02) : ground too, following above
+// - Point (3.10, 0, 2.0) : non-ground
+TEST_F(GroundFilterRadialTest, ClassifyPointFollowLogic)
+{
+  autoware::point_types::PointXYZIRC p0, p1, p2;
+  p0.x = 3.0f;
+  p0.y = 0.0f;
+  p0.z = 0.0f;
+  p1.x = 3.05f;
+  p1.y = 0.0f;
+  p1.z = 0.02f;
+  p2.x = 3.10f;
+  p2.y = 0.0f;
+  p2.z = 2.0f;
+
+  auto cloud = create_point_cloud({p0, p1, p2});
+  filter_->setDataAccessor(cloud);
+
+  std::vector<PointCloudVector> radial_ordered;
+  convert_point_cloud(cloud, radial_ordered);
+
+  pcl::PointIndices out_indices;
+  classify_point_cloud(cloud, radial_ordered, out_indices);
+
+  // Expect 1 non-ground point being index 2.
+  EXPECT_EQ(out_indices.indices.size(), 1U);
+  const uint32_t point_step = cloud->point_step;
+  EXPECT_EQ(out_indices.indices[0], 2U * point_step);
 }
 
 int main(int argc, char ** argv)
