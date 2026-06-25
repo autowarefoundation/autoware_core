@@ -25,6 +25,12 @@
 #include <memory>
 #include <vector>
 
+namespace
+{
+// Floating point tolerance at EXPECT_NEAR and similar checks
+constexpr float near_tol = 1e-4F;
+}  // namespace
+
 // ======================= LEGACY 11 TESTS (FOCUSING ON GRID MODE) ======================= //
 
 class GroundFilterTest : public ::testing::Test
@@ -343,6 +349,8 @@ protected:
   autoware::ground_filter::GroundFilterParameter param_;
   std::unique_ptr<autoware::ground_filter::GroundFilter> filter_;
 
+  using RayPointsCentroid = autoware::ground_filter::GroundFilter::RayPointsCentroid;
+
   // Set up test environment with radial mode params.
   void SetUp() override
   {
@@ -388,6 +396,27 @@ protected:
     return cloud;
   }
 };
+
+// TEST 1. Confirm the maths of RayPointsCentroid works as expected.
+// Provides a single ray of 2 (R, Z) points (2.0, 0.0) and (4.0, 2.0).
+// Expects correct calculation of average radius, height, and slope.
+TEST_F(GroundFilterRadialTest, RayPointsCentroidMath)
+{
+  RayPointsCentroid centroid;
+
+  EXPECT_EQ(centroid.point_num, 0U);
+
+  centroid.addPoint(2.0f, 0.0f, 0);
+  EXPECT_EQ(centroid.point_num, 1U);
+  EXPECT_NEAR(centroid.getAverageRadius(), 2.0f, near_tol);
+  EXPECT_NEAR(centroid.getAverageHeight(), 0.0f, near_tol);
+
+  centroid.addPoint(4.0f, 2.0f, 1);
+  EXPECT_EQ(centroid.point_num, 2U);
+  EXPECT_NEAR(centroid.getAverageRadius(), 3.0f, near_tol);
+  EXPECT_NEAR(centroid.getAverageHeight(), 1.0f, near_tol);
+  EXPECT_NEAR(centroid.getAverageSlope(), std::atan2(1.0f, 3.0f), near_tol);
+}
 
 int main(int argc, char ** argv)
 {

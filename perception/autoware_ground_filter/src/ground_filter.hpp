@@ -161,6 +161,11 @@ struct GroundFilterParameter
 class GroundFilter
 {
 public:
+  // Allow unit test suite to access private members for exhaustive math verification.
+  // I need to do this in order to keep those maths private while still be able to test.
+  friend class ::GroundFilterTest;
+  friend class ::GroundFilterRadialTest;
+
   explicit GroundFilter(const GroundFilterParameter & param);
 
   ~GroundFilter() = default;
@@ -184,11 +189,6 @@ public:
 
   tl::expected<sensor_msgs::msg::PointCloud2, std::string> filter(
     const PointCloud2ConstPtr & in_cloud);
-
-  // Allow unit test suite to access private members for exhaustive math verification.
-  // I need to do this in order to keep those maths private while still be able to test.
-  friend class ::GroundFilterTest;
-  friend class ::GroundFilterRadialTest;
 
 private:
   // parameters
