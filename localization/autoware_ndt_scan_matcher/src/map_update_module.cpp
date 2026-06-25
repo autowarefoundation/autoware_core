@@ -22,7 +22,8 @@ namespace autoware::ndt_scan_matcher
 {
 
 MapUpdateModule::MapUpdateModule(
-  rclcpp::Node * node, Guarded<NdtPtrType> & ndt_ptr, HyperParameters::DynamicMapLoading param)
+  autoware::agnocast_wrapper::Node * node, Guarded<NdtPtrType> & ndt_ptr,
+  HyperParameters::DynamicMapLoading param)
 : ndt_ptr_(ndt_ptr), logger_(node->get_logger()), clock_(node->get_clock()), param_(param)
 {
   loaded_pcd_pub_ = node->create_publisher<sensor_msgs::msg::PointCloud2>(
@@ -240,7 +241,7 @@ bool MapUpdateModule::update_ndt(
 {
   diagnostics_ptr->add_key_value("maps_size_before", ndt.getCurrentMapIDs().size());
 
-  auto request = std::make_shared<autoware_map_msgs::srv::GetDifferentialPointCloudMap::Request>();
+  auto request = ALLOCATE_OUTPUT_SERVICE_REQUEST(pcd_loader_client_);
 
   request->area.center_x = static_cast<float>(position.x);
   request->area.center_y = static_cast<float>(position.y);
@@ -258,9 +259,7 @@ bool MapUpdateModule::update_ndt(
   }
 
   // send a request to map_loader
-  auto result{pcd_loader_client_->async_send_request(
-    request,
-    [](rclcpp::Client<autoware_map_msgs::srv::GetDifferentialPointCloudMap>::SharedFuture) {})};
+  auto result = pcd_loader_client_->async_send_request(std::move(request));
 
   std::future_status status = result.wait_for(std::chrono::seconds(0));
   while (status != std::future_status::ready) {
@@ -278,8 +277,9 @@ bool MapUpdateModule::update_ndt(
   }
   diagnostics_ptr->add_key_value("is_succeed_call_pcd_loader", true);
 
-  auto & maps_to_add = result.get()->new_pointcloud_with_ids;
-  auto & map_ids_to_remove = result.get()->ids_to_remove;
+  const auto response = result.get();
+  const auto & maps_to_add = response->new_pointcloud_with_ids;
+  const auto & map_ids_to_remove = response->ids_to_remove;
 
   diagnostics_ptr->add_key_value("maps_to_add_size", maps_to_add.size());
   diagnostics_ptr->add_key_value("maps_to_remove_size", map_ids_to_remove.size());
@@ -292,7 +292,7 @@ bool MapUpdateModule::update_ndt(
   // Perform heavy processing outside of the lock scope
 
   // Add pcd
-  for (auto & map : maps_to_add) {
+  for (const auto & map : maps_to_add) {
     auto cloud = pcl::make_shared<pcl::PointCloud<PointTarget>>();
 
     pcl::fromROSMsg(map.pointcloud, *cloud);
@@ -325,7 +325,6 @@ bool MapUpdateModule::update_ndt(
 void MapUpdateModule::publish_partial_pcd_map()
 {
   pcl::PointCloud<PointTarget> map_pcl;
-  sensor_msgs::msg::PointCloud2 map_msg;
   size_t total_points = 0;
   for (const auto & map : loaded_map_) {
     total_points += map.second->size();
@@ -334,10 +333,11 @@ void MapUpdateModule::publish_partial_pcd_map()
   for (const auto & map : loaded_map_) {
     map_pcl += *(map.second);
   }
-  pcl::toROSMsg(map_pcl, map_msg);
-  map_msg.header.frame_id = "map";
-  map_msg.header.stamp = clock_->now();
-  loaded_pcd_pub_->publish(map_msg);
+  auto map_msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(loaded_pcd_pub_);
+  pcl::toROSMsg(map_pcl, *map_msg);
+  map_msg->header.frame_id = "map";
+  map_msg->header.stamp = clock_->now();
+  loaded_pcd_pub_->publish(std::move(map_msg));
 }
 
 }  // namespace autoware::ndt_scan_matcher
