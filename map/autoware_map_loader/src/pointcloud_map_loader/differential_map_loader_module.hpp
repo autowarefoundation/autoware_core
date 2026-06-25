@@ -52,11 +52,11 @@ private:
   AUTOWARE_SERVICE_PTR(GetDifferentialPointCloudMap) get_differential_pcd_maps_service_;
 
   [[nodiscard]] bool on_service_get_differential_point_cloud_map(
-    AUTOWARE_SERVICE_REQUEST_PTR(GetDifferentialPointCloudMap) req,
-    AUTOWARE_SERVICE_RESPONSE_PTR(GetDifferentialPointCloudMap) res) const;
+    AUTOWARE_SERVER_REQUEST_PTR(GetDifferentialPointCloudMap) req,
+    AUTOWARE_SERVER_RESPONSE_PTR(GetDifferentialPointCloudMap) res) const;
   void differential_area_load(
     const autoware_map_msgs::msg::AreaInfo & area_info, const std::vector<std::string> & cached_ids,
-    const AUTOWARE_SERVICE_RESPONSE_PTR(GetDifferentialPointCloudMap) & response) const;
+    const AUTOWARE_SERVER_RESPONSE_PTR(GetDifferentialPointCloudMap) & response) const;
 };
 }  // namespace autoware::map_loader
 

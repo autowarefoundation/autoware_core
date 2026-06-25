@@ -35,7 +35,7 @@ DifferentialMapLoaderModule::DifferentialMapLoaderModule(
 
 void DifferentialMapLoaderModule::differential_area_load(
   const autoware_map_msgs::msg::AreaInfo & area_info, const std::vector<std::string> & cached_ids,
-  const AUTOWARE_SERVICE_RESPONSE_PTR(GetDifferentialPointCloudMap) & response) const
+  const AUTOWARE_SERVER_RESPONSE_PTR(GetDifferentialPointCloudMap) & response) const
 {
   // iterate over all the available pcd map grids
   std::vector<bool> should_remove(static_cast<int>(cached_ids.size()), true);
@@ -67,8 +67,8 @@ void DifferentialMapLoaderModule::differential_area_load(
 }
 
 bool DifferentialMapLoaderModule::on_service_get_differential_point_cloud_map(
-  AUTOWARE_SERVICE_REQUEST_PTR(GetDifferentialPointCloudMap) req,
-  AUTOWARE_SERVICE_RESPONSE_PTR(GetDifferentialPointCloudMap) res) const
+  AUTOWARE_SERVER_REQUEST_PTR(GetDifferentialPointCloudMap) req,
+  AUTOWARE_SERVER_RESPONSE_PTR(GetDifferentialPointCloudMap) res) const
 {
   auto area = req->area;
   std::vector<std::string> cached_ids = req->cached_ids;

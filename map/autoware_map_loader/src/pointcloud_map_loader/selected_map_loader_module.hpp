@@ -60,8 +60,8 @@ private:
   AUTOWARE_PUBLISHER_PTR(autoware_map_msgs::msg::PointCloudMapMetaData) pub_metadata_;
 
   [[nodiscard]] bool on_service_get_selected_point_cloud_map(
-    AUTOWARE_SERVICE_REQUEST_PTR(GetSelectedPointCloudMap) req,
-    AUTOWARE_SERVICE_RESPONSE_PTR(GetSelectedPointCloudMap) res) const;
+    AUTOWARE_SERVER_REQUEST_PTR(GetSelectedPointCloudMap) req,
+    AUTOWARE_SERVER_RESPONSE_PTR(GetSelectedPointCloudMap) res) const;
 };
 }  // namespace autoware::map_loader
 

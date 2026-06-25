@@ -53,16 +53,24 @@ protected:
     dummy_metadata.max = pcl::PointXYZ(1.0, 2.0, 3.0);
     dummy_metadata_dict_["/tmp/dummy.pcd"] = dummy_metadata;
 
+    module_node_ =
+      std::make_shared<autoware::agnocast_wrapper::Node>("test_selected_map_loader_module_node");
+
     // Initialize the SelectedMapLoaderModule with the dummy metadata dictionary
-    module_ = std::make_shared<SelectedMapLoaderModule>(node_.get(), dummy_metadata_dict_);
+    module_ = std::make_shared<SelectedMapLoaderModule>(module_node_.get(), dummy_metadata_dict_);
 
     // Create a client for the GetSelectedPointCloudMap service
     client_ = node_->create_client<GetSelectedPointCloudMap>("service/get_selected_pcd_map");
+
+    executor_.add_node(node_);
+    executor_.add_node(module_node_->get_node_base_interface());
   }
 
   void TearDown() override { rclcpp::shutdown(); }
 
   rclcpp::Node::SharedPtr node_;
+  autoware::agnocast_wrapper::Node::SharedPtr module_node_;
+  rclcpp::executors::SingleThreadedExecutor executor_;
   std::shared_ptr<SelectedMapLoaderModule> module_;
   rclcpp::Client<GetSelectedPointCloudMap>::SharedPtr client_;
   std::map<std::string, autoware::map_loader::PCDFileMetadata> dummy_metadata_dict_;
@@ -80,7 +88,7 @@ TEST_F(TestSelectedMapLoaderModule, LoadSelectedPCDFiles)
   // Call the service
   auto result_future = client_->async_send_request(request);
   ASSERT_EQ(
-    rclcpp::spin_until_future_complete(node_, result_future), rclcpp::FutureReturnCode::SUCCESS);
+    executor_.spin_until_future_complete(result_future), rclcpp::FutureReturnCode::SUCCESS);
 
   // The requested cell is found and populated with its metadata bounds
   auto result = result_future.get();
@@ -106,7 +114,7 @@ TEST_F(TestSelectedMapLoaderModule, RequestedIdNotFound)
   // Call the service
   auto result_future = client_->async_send_request(request);
   ASSERT_EQ(
-    rclcpp::spin_until_future_complete(node_, result_future), rclcpp::FutureReturnCode::SUCCESS);
+    executor_.spin_until_future_complete(result_future), rclcpp::FutureReturnCode::SUCCESS);
 
   // The not-found branch is taken: nothing is returned but the call still succeeds
   auto result = result_future.get();

@@ -52,11 +52,11 @@ private:
   AUTOWARE_SERVICE_PTR(GetPartialPointCloudMap) get_partial_pcd_maps_service_;
 
   [[nodiscard]] bool on_service_get_partial_point_cloud_map(
-    AUTOWARE_SERVICE_REQUEST_PTR(GetPartialPointCloudMap) req,
-    AUTOWARE_SERVICE_RESPONSE_PTR(GetPartialPointCloudMap) res) const;
+    AUTOWARE_SERVER_REQUEST_PTR(GetPartialPointCloudMap) req,
+    AUTOWARE_SERVER_RESPONSE_PTR(GetPartialPointCloudMap) res) const;
   void partial_area_load(
     const autoware_map_msgs::msg::AreaInfo & area,
-    const AUTOWARE_SERVICE_RESPONSE_PTR(GetPartialPointCloudMap) & response) const;
+    const AUTOWARE_SERVER_RESPONSE_PTR(GetPartialPointCloudMap) & response) const;
 };
 }  // namespace autoware::map_loader
 
