@@ -350,11 +350,18 @@ protected:
   std::unique_ptr<autoware::ground_filter::GroundFilter> filter_;
 
   using RayPointsCentroid = autoware::ground_filter::GroundFilter::RayPointsCentroid;
+  using PointCloudVector = autoware::ground_filter::GroundFilter::PointCloudVector;
 
   // Bringing the private helper funcs from GroundFilter to here as proxies
   void calc_virtual_ground_origin(pcl::PointXYZ & point)
   {
     filter_->calcVirtualGroundOrigin(point);
+  }
+  void convert_point_cloud(
+    const sensor_msgs::msg::PointCloud2::ConstSharedPtr & in_cloud,
+    std::vector<PointCloudVector> & out_radial)
+  {
+    filter_->convertPointCloud(in_cloud, out_radial);
   }
 
   // Set up test environment with radial mode params.
@@ -435,6 +442,55 @@ TEST_F(GroundFilterRadialTest, CalcVirtualGroundOrigin)
   EXPECT_NEAR(virtual_origin.x, 2.8f, near_tol);
   EXPECT_NEAR(virtual_origin.y, 0.0f, near_tol);
   EXPECT_NEAR(virtual_origin.z, 0.0f, near_tol);
+}
+
+// TEST 3. Confirm azimuth slicing & sorting
+// This test creates a point cloud with 3 points in different azimuths, then checks if
+// they are correctly grouped into radial slices and sorted by radius within those slices.
+// Adds 3 points: (5, 0, 0), (2, 0, 0), (0, 3, 0). Expects two slices:
+// - One for azimuth ~0 deg with points (0, 3)
+// - One for azimuth ~90 deg with point (5, 0) and (2, 0) sorted by radius.
+// Note: the math inside convertPointCloud is a lil bit tricky: azimuth angle is calculated
+//       as atan2(x, y) instead of normal convention atan2(y, x). Thus now:
+//          - 0   deg is along +Y axis
+//          - 90  deg is along +X axis
+//          - 180 deg is along -Y axis
+//          - 270 deg is along -X axis.
+TEST_F(GroundFilterRadialTest, RadialGroupingAndSorting)
+{
+  autoware::point_types::PointXYZIRC p1, p2, p3;
+  p1.x = 5.0f;
+  p1.y = 0.0f;
+  p1.z = 0.0f;
+  p2.x = 2.0f;
+  p2.y = 0.0f;
+  p2.z = 0.0f;
+  p3.x = 0.0f;
+  p3.y = 3.0f;
+  p3.z = 0.0f;
+
+  auto cloud = create_point_cloud({p1, p2, p3});
+  filter_->setDataAccessor(cloud);
+
+  std::vector<PointCloudVector> radial_ordered;
+  convert_point_cloud(cloud, radial_ordered);
+
+  // 1. Master array should have 360 slices (1 degree per slice)
+  EXPECT_EQ(radial_ordered.size(), 360U);
+
+  // 2. Here we check each ray/slice for expected points.
+
+  // 2.a. Checking slice 0 deg (front ray). Should contain 1 point with radius 3.0.
+  ASSERT_GE(radial_ordered.size(), 1U);
+  ASSERT_EQ(radial_ordered[0].size(), 1U);
+  EXPECT_NEAR(radial_ordered[0][0].radius, 3.0f, near_tol);
+
+  // 2.b. Checking slice 90 deg (left ray). Should contain 2 points with radii 2.0 and 5.0, sorted
+  // by radius.
+  ASSERT_GE(radial_ordered.size(), 91U);
+  ASSERT_EQ(radial_ordered[90].size(), 2U);
+  EXPECT_NEAR(radial_ordered[90][0].radius, 2.0f, near_tol);
+  EXPECT_NEAR(radial_ordered[90][1].radius, 5.0f, near_tol);
 }
 
 int main(int argc, char ** argv)
