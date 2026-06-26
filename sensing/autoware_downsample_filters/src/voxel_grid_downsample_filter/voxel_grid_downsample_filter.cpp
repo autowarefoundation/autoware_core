@@ -15,7 +15,6 @@
 #include "voxel_grid_downsample_filter.hpp"
 
 #include "memory.hpp"
-#include "transform_info.hpp"
 
 #include <sstream>
 #include <string>
@@ -99,7 +98,7 @@ tl::expected<PointCloud2, std::string> VoxelGridDownsampleFilter::filter(
   PointCloud2 output;
   faster_voxel_filter_.set_voxel_size(
     parameters_.voxel_size_x, parameters_.voxel_size_y, parameters_.voxel_size_z);
-  const auto filter_result = faster_voxel_filter_.filter(input, output, TransformInfo{});
+  const auto filter_result = faster_voxel_filter_.filter(input, output);
 
   if (!filter_result.is_valid) {
     return tl::unexpected(filter_result.reason);
