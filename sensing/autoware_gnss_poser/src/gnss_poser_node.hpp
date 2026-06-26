@@ -14,6 +14,7 @@
 #ifndef GNSS_POSER_NODE_HPP_
 #define GNSS_POSER_NODE_HPP_
 
+#include <autoware/agnocast_wrapper/node.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <tf2/transform_datatypes.hpp>
 #include <tf2_ros/transform_broadcaster.hpp>
@@ -37,7 +38,7 @@ class GNSSPoserHelpersTest;
 
 namespace autoware::gnss_poser
 {
-class GNSSPoser : public rclcpp::Node
+class GNSSPoser : public autoware::agnocast_wrapper::Node
 {
 public:
   explicit GNSSPoser(const rclcpp::NodeOptions & node_options);
@@ -47,10 +48,12 @@ private:
   friend class ::GNSSPoserHelpersTest;
 
   void callback_map_projector_info(
-    const autoware_map_msgs::msg::MapProjectorInfo::ConstSharedPtr msg);
-  void callback_nav_sat_fix(const sensor_msgs::msg::NavSatFix::ConstSharedPtr nav_sat_fix_msg_ptr);
+    const AUTOWARE_MESSAGE_CONST_SHARED_PTR(autoware_map_msgs::msg::MapProjectorInfo) & msg);
+  void callback_nav_sat_fix(
+    const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::NavSatFix) & nav_sat_fix_msg_ptr);
   void callback_gnss_ins_orientation_stamped(
-    const autoware_sensing_msgs::msg::GnssInsOrientationStamped::ConstSharedPtr msg);
+    const AUTOWARE_MESSAGE_CONST_SHARED_PTR(autoware_sensing_msgs::msg::GnssInsOrientationStamped) &
+    msg);
 
   static bool is_fixed(const sensor_msgs::msg::NavSatStatus & nav_sat_status_msg);
   static bool can_get_covariance(const sensor_msgs::msg::NavSatFix & nav_sat_fix_msg);
@@ -73,14 +76,14 @@ private:
   tf2_ros::TransformListener tf2_listener_;
   tf2_ros::TransformBroadcaster tf2_broadcaster_;
 
-  rclcpp::Subscription<autoware_map_msgs::msg::MapProjectorInfo>::SharedPtr sub_map_projector_info_;
-  rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr nav_sat_fix_sub_;
-  rclcpp::Subscription<autoware_sensing_msgs::msg::GnssInsOrientationStamped>::SharedPtr
-    autoware_orientation_sub_;
+  AUTOWARE_SUBSCRIPTION_PTR(autoware_map_msgs::msg::MapProjectorInfo) sub_map_projector_info_;
+  AUTOWARE_SUBSCRIPTION_PTR(sensor_msgs::msg::NavSatFix) nav_sat_fix_sub_;
+  AUTOWARE_SUBSCRIPTION_PTR(autoware_sensing_msgs::msg::GnssInsOrientationStamped)
+  autoware_orientation_sub_;
 
-  rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pose_pub_;
-  rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr pose_cov_pub_;
-  rclcpp::Publisher<autoware_internal_debug_msgs::msg::BoolStamped>::SharedPtr fixed_pub_;
+  AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::PoseStamped) pose_pub_;
+  AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::PoseWithCovarianceStamped) pose_cov_pub_;
+  AUTOWARE_PUBLISHER_PTR(autoware_internal_debug_msgs::msg::BoolStamped) fixed_pub_;
 
   autoware_map_msgs::msg::MapProjectorInfo projector_info_;
   const std::string base_frame_;
