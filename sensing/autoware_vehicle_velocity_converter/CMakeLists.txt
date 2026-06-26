@@ -19,7 +19,7 @@ target_link_libraries(${PROJECT_NAME}_ros
 autoware_agnocast_wrapper_register_node(${PROJECT_NAME}_ros
   PLUGIN "autoware::vehicle_velocity_converter::VehicleVelocityConverterNode"
   EXECUTABLE ${PROJECT_NAME}_node
-  AGNOCAST_EXECUTOR CallbackIsolatedAgnocastExecutor
+  AGNOCAST_EXECUTOR AgnocastOnlyCallbackIsolatedExecutor
   ROS2_EXECUTOR SingleThreadedExecutor
 )
 
