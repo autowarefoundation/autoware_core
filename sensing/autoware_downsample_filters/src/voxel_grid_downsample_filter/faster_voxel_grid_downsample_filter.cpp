@@ -53,7 +53,7 @@ void FasterVoxelGridDownsampleFilter::set_field_offsets(const PointCloud2ConstPt
 }
 
 ValidationResult FasterVoxelGridDownsampleFilter::filter(
-  const PointCloud2ConstPtr & input, PointCloud2 & output, const TransformInfo & transform_info)
+  const PointCloud2ConstPtr & input, PointCloud2 & output)
 {
   // Check if the field offset has been set
   if (!offset_initialized_) {
@@ -85,7 +85,7 @@ ValidationResult FasterVoxelGridDownsampleFilter::filter(
   output.header = input->header;
 
   // Copy the centroids to the output
-  copy_centroids_to_output(voxel_centroid_map, output, transform_info);
+  copy_centroids_to_output(voxel_centroid_map, output);
   return {true, ""};
 }
 
@@ -177,15 +177,11 @@ FasterVoxelGridDownsampleFilter::calc_centroids_each_voxel(
 }
 
 void FasterVoxelGridDownsampleFilter::copy_centroids_to_output(
-  const std::unordered_map<uint32_t, Centroid> & voxel_centroid_map, PointCloud2 & output,
-  const TransformInfo & transform_info) const
+  const std::unordered_map<uint32_t, Centroid> & voxel_centroid_map, PointCloud2 & output) const
 {
   size_t output_data_size = 0;
   for (const auto & pair : voxel_centroid_map) {
     Eigen::Vector4f centroid = pair.second.calc_centroid();
-    if (transform_info.need_transform) {
-      centroid = transform_info.eigen_transform * centroid;
-    }
     *reinterpret_cast<float *>(&output.data[output_data_size + x_offset_]) = centroid[0];
     *reinterpret_cast<float *>(&output.data[output_data_size + y_offset_]) = centroid[1];
     *reinterpret_cast<float *>(&output.data[output_data_size + z_offset_]) = centroid[2];
