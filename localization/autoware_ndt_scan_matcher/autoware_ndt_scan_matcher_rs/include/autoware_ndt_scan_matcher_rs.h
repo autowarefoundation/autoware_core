@@ -116,6 +116,48 @@ bool autoware_ndt_scan_matcher_rs_voxel_grid_map_leaf(
 
 void autoware_ndt_scan_matcher_rs_voxel_grid_map_free(AwNdtVoxelGridMap * map);
 
+// --- full NDT align (test-scope; start of the engine FFI) ---
+
+// Inputs to the align entry. Clouds are `len + *const float` xyz triples; `guess` is 16 floats
+// (row-major 4x4). `regularization_scale == 0` disables regularization. Field order/layout must
+// match the Rust `#[repr(C)] AwNdtAlignInput`.
+typedef struct
+{
+  const float * target_xyz;
+  size_t n_target;
+  const float * source_xyz;
+  size_t n_source;
+  double resolution;
+  double step_size;
+  double trans_epsilon;
+  int32_t max_iterations;
+  double outlier_ratio;
+  float regularization_scale;
+  float regularization_pose_x;
+  float regularization_pose_y;
+  const float * guess;
+} AwNdtAlignInput;
+
+// Output buffers (each optional / null-skippable). `pose` 16 floats (row-major 4x4); `hessian` 36
+// doubles (row-major 6x6); `transformation_array` holds up to `transforms_cap` poses (16 floats
+// each), with the true count written to `transforms_count`. Layout must match the Rust struct.
+typedef struct
+{
+  float * pose;
+  int32_t * iteration_num;
+  float * transform_probability;
+  float * nearest_voxel_likelihood;
+  double * hessian;
+  float * transformation_array;
+  uint32_t transforms_cap;
+  uint32_t * transforms_count;
+} AwNdtAlignOutput;
+
+// Run NDT align from flat inputs (builds the target map with min_points=6, eig_mult=0.01,
+// leaf_size=resolution). No-op if `input`/`output` or target/source/guess pointers are null.
+void autoware_ndt_scan_matcher_rs_ndt_align(
+  const AwNdtAlignInput * input, const AwNdtAlignOutput * output);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

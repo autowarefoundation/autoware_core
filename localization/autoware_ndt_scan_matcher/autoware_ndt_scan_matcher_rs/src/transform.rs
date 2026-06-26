@@ -20,8 +20,17 @@
 
 // Numeric kernel: nalgebra f64 matrix/scalar operators are the float-math domain the
 // integer-overflow lint targets; they cannot integer-overflow. Indexing is into fixed-size
-// vectors/matrices with constant indices (statically in bounds).
-#![allow(clippy::arithmetic_side_effects, clippy::indexing_slicing)]
+// vectors/matrices with constant indices (statically in bounds). The f32 cloud transform mirrors the
+// C++ `Matrix4f` pipeline, so the f64->f32 narrowing is intentional.
+#![allow(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::as_conversions,
+    clippy::cast_possible_truncation,
+    clippy::many_single_char_names
+)]
+
+use alloc::vec::Vec;
 
 use nalgebra::{Matrix3, Matrix4, Vector3, Vector6};
 
@@ -92,6 +101,40 @@ pub fn matrix_to_euler(m: &Matrix4<f64>) -> Vector6<f64> {
 pub fn transform_point(p: &Vector6<f64>, x: &Vector3<f64>) -> Vector3<f64> {
     let r = rotation(p[3], p[4], p[5]);
     (r * x) + Vector3::new(p[0], p[1], p[2])
+}
+
+/// The 4x4 affine of `p` built in **f32** — the C++ `final_transformation_` (`Matrix4f`):
+/// `Translation(f32) * AngleAxis<float>` for roll/pitch/yaw. The angles are narrowed to f32 and the
+/// trig is f32, matching the C++ float pipeline so the transformed cloud agrees bit-closely.
+#[must_use]
+pub fn se3_matrix_f32(p: &Vector6<f64>) -> Matrix4<f32> {
+    let (sx, cx) = (libm::sinf(p[3] as f32), libm::cosf(p[3] as f32));
+    let (sy, cy) = (libm::sinf(p[4] as f32), libm::cosf(p[4] as f32));
+    let (sz, cz) = (libm::sinf(p[5] as f32), libm::cosf(p[5] as f32));
+    let rx = Matrix3::<f32>::new(1.0, 0.0, 0.0, 0.0, cx, -sx, 0.0, sx, cx);
+    let ry = Matrix3::<f32>::new(cy, 0.0, sy, 0.0, 1.0, 0.0, -sy, 0.0, cy);
+    let rz = Matrix3::<f32>::new(cz, -sz, 0.0, sz, cz, 0.0, 0.0, 0.0, 1.0);
+    let r = rx * ry * rz;
+    let mut m = Matrix4::<f32>::identity();
+    m.fixed_view_mut::<3, 3>(0, 0).copy_from(&r);
+    m[(0, 3)] = p[0] as f32;
+    m[(1, 3)] = p[1] as f32;
+    m[(2, 3)] = p[2] as f32;
+    m
+}
+
+/// Transform `source` by the pose of `p` into the reused buffer `out`, in **f32** — mirrors the C++
+/// `pcl::transformPointCloud(source, trans_cloud, final_transformation_)`. `out.clear()` keeps
+/// capacity, so after warmup this performs no allocation.
+pub fn transform_cloud_f32(p: &Vector6<f64>, source: &[[f32; 3]], out: &mut Vec<[f32; 3]>) {
+    let m = se3_matrix_f32(p);
+    let r = m.fixed_view::<3, 3>(0, 0).into_owned();
+    let t = Vector3::new(m[(0, 3)], m[(1, 3)], m[(2, 3)]);
+    out.clear();
+    for &s in source {
+        let v = r * Vector3::new(s[0], s[1], s[2]) + t;
+        out.push([v[0], v[1], v[2]]);
+    }
 }
 
 #[cfg(test)]

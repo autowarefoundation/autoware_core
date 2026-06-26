@@ -39,20 +39,23 @@
 
 use alloc::vec::Vec;
 
-use nalgebra::{Matrix3, Matrix6, Vector3, Vector6};
+use nalgebra::{Matrix3, Matrix4, Matrix6, SVD, Vector3, Vector6};
 
 use crate::derivatives::{
     compute_angle_derivatives, compute_point_derivatives, update_derivatives,
 };
-use crate::transform::GaussConstants;
+use crate::transform::{
+    GaussConstants, gauss_constants, matrix_to_euler, se3_matrix_f32, transform_cloud_f32,
+};
 use crate::voxel_grid::VoxelGridMap;
 
-/// Reusable scratch buffers for the per-frame derivative pass. Hold one per engine and reuse across
-/// frames; `compute_derivatives` `clear()`s (keeps capacity) per point, so after warmup the hot loop
-/// performs no heap allocation. See `plan/ndt_in_rust.md` → "Runtime allocation policy".
+/// Reusable scratch buffers for the per-frame derivative pass and the align loop. Hold one per engine
+/// and reuse across frames; the buffers `clear()` (keep capacity) per call, so after warmup the hot
+/// loop performs no heap allocation. See `plan/ndt_in_rust.md` → "Bounded WCET hot path".
 #[derive(Debug, Default)]
 pub struct AlignWorkspace {
     neighbor_idx: Vec<usize>,
+    trans_cloud: Vec<[f32; 3]>,
 }
 
 impl AlignWorkspace {
@@ -60,6 +63,7 @@ impl AlignWorkspace {
     pub const fn new() -> Self {
         Self {
             neighbor_idx: Vec::new(),
+            trans_cloud: Vec::new(),
         }
     }
 }
@@ -282,12 +286,308 @@ pub fn nearest_voxel_transformation_likelihood(
     }
 }
 
+/// NDT parameters (`NdtParams` + the `outlier_ratio_` member, default 0.55).
+#[derive(Clone, Copy, Debug)]
+pub struct NdtParams {
+    pub trans_epsilon: f64,
+    pub step_size: f64,
+    pub resolution: f64,
+    pub max_iterations: i32,
+    pub outlier_ratio: f64,
+    pub regularization: Option<Regularization>,
+}
+
+impl Default for NdtParams {
+    fn default() -> Self {
+        Self {
+            trans_epsilon: 0.1,
+            step_size: 0.1,
+            resolution: 1.0,
+            max_iterations: 35,
+            outlier_ratio: 0.55,
+            regularization: None,
+        }
+    }
+}
+
+/// Result of `align` (`NdtResult`). The `Vec`s are reused across calls (`align` clears them).
+#[derive(Clone, Debug, Default)]
+pub struct AlignResult {
+    pub pose: Matrix4<f32>,
+    pub transform_probability: f32,
+    pub nearest_voxel_likelihood: f32,
+    pub iteration_num: i32,
+    pub hessian: Matrix6<f64>,
+    pub transformation_array: Vec<Matrix4<f32>>,
+    pub transform_probability_array: Vec<f32>,
+    pub nearest_voxel_likelihood_array: Vec<f32>,
+}
+
+/// Solve `H · delta = -gradient` via SVD (mirrors the C++ `JacobiSVD(ComputeFullU|ComputeFullV)`).
+/// Returns `None` if the solve fails (singular / non-finite).
+fn svd_solve(hessian: &Matrix6<f64>, neg_gradient: &Vector6<f64>) -> Option<Vector6<f64>> {
+    SVD::new(*hessian, true, true)
+        .solve(neg_gradient, 1e-9)
+        .ok()
+}
+
+/// Transform the cloud by `p` and compute the derivatives there. Moves `ws.trans_cloud` out for the
+/// `compute_derivatives` call (so `ws.neighbor_idx` can be borrowed mutably without aliasing) and
+/// puts it back — a buffer move, no allocation.
+fn derivatives_at(
+    map: &VoxelGridMap,
+    source: &[[f32; 3]],
+    p: &Vector6<f64>,
+    resolution: f64,
+    gauss: &GaussConstants,
+    reg: Option<&Regularization>,
+    ws: &mut AlignWorkspace,
+) -> Derivatives {
+    let mut trans = core::mem::take(&mut ws.trans_cloud);
+    transform_cloud_f32(p, source, &mut trans);
+    let d = compute_derivatives(map, source, &trans, p, resolution, gauss, reg, ws);
+    ws.trans_cloud = trans;
+    d
+}
+
+/// NDT alignment (`align` / `computeTransformation` + the default-path `computeStepLengthMT`,
+/// `use_line_search = false`). `guess` is the initial pose (the C++ `Matrix4f` guess); `source` is
+/// the original cloud. Fills `out` (its `Vec`s are reused). Serial; `compute_derivatives` is the work
+/// unit. The per-iteration cloud transform is f32 (C++ `Matrix4f` pipeline).
+pub fn align(
+    map: &VoxelGridMap,
+    source: &[[f32; 3]],
+    guess: &Matrix4<f32>,
+    params: &NdtParams,
+    ws: &mut AlignWorkspace,
+    out: &mut AlignResult,
+) {
+    let gauss = gauss_constants(params.outlier_ratio, params.resolution);
+    let reg = params.regularization.as_ref();
+    let len = source.len();
+
+    out.transformation_array.clear();
+    out.transform_probability_array.clear();
+    out.nearest_voxel_likelihood_array.clear();
+
+    // Initial guess -> 6-vector (matches the C++ eulerAngles(0,1,2) extraction for non-gimbal angles).
+    let guess_f64 = guess.map(f64::from);
+    let mut p = matrix_to_euler(&guess_f64);
+
+    out.transformation_array.push(se3_matrix_f32(&p));
+
+    // Derivatives at the initial guess.
+    let mut d = derivatives_at(map, source, &p, params.resolution, &gauss, reg, ws);
+    out.transform_probability_array
+        .push(d.transform_probability as f32);
+    out.nearest_voxel_likelihood_array
+        .push(d.nearest_voxel_likelihood as f32);
+    let mut score = d.score;
+
+    let mut iter: i32 = 0;
+    let mut nvl = d.nearest_voxel_likelihood;
+    // Newton descent direction (negative for maximization), C++ line 307-310; exits if the SVD solve
+    // fails (singular / non-finite).
+    while let Some(delta_full) = svd_solve(&d.hessian, &(-d.gradient)) {
+        let delta_norm = delta_full.norm();
+
+        if delta_norm == 0.0 || delta_norm.is_nan() {
+            break;
+        }
+
+        // Default-path step length (computeStepLengthMT, use_line_search = false).
+        let mut dir = delta_full / delta_norm; // normalize
+        let d_phi_0 = -(d.gradient.dot(&dir));
+        if d_phi_0 >= 0.0 {
+            if d_phi_0 == 0.0 {
+                break;
+            }
+            dir = -dir;
+        }
+        let step_min = params.trans_epsilon / 2.0;
+        let a_t = delta_norm.clamp(step_min, params.step_size);
+
+        let x_t = p + dir * a_t;
+        d = derivatives_at(map, source, &x_t, params.resolution, &gauss, reg, ws);
+        out.transform_probability_array
+            .push(d.transform_probability as f32);
+        out.nearest_voxel_likelihood_array
+            .push(d.nearest_voxel_likelihood as f32);
+        score = d.score;
+        nvl = d.nearest_voxel_likelihood;
+
+        out.transformation_array.push(se3_matrix_f32(&x_t));
+        p = x_t;
+        iter += 1;
+
+        if iter >= params.max_iterations || a_t.abs() < params.trans_epsilon {
+            break;
+        }
+    }
+
+    out.pose = se3_matrix_f32(&p);
+    out.iteration_num = iter;
+    out.hessian = d.hessian;
+    out.nearest_voxel_likelihood = nvl as f32;
+    out.transform_probability = if len == 0 {
+        0.0
+    } else {
+        (score / len as f64) as f32
+    };
+}
+
+// ---- C ABI: full align entry (test-scope; the start of the E6 engine FFI) ----
+
+/// Inputs to the align FFI. Point clouds are `len + *const f32` (xyz triples); `guess` is 16 `f32`
+/// (row-major 4x4). `regularization_scale == 0` disables regularization.
+#[repr(C)]
+pub struct AwNdtAlignInput {
+    pub target_xyz: *const f32,
+    pub n_target: usize,
+    pub source_xyz: *const f32,
+    pub n_source: usize,
+    pub resolution: f64,
+    pub step_size: f64,
+    pub trans_epsilon: f64,
+    pub max_iterations: i32,
+    pub outlier_ratio: f64,
+    pub regularization_scale: f32,
+    pub regularization_pose_x: f32,
+    pub regularization_pose_y: f32,
+    pub guess: *const f32,
+}
+
+/// Output buffers for the align FFI (all optional / null-skippable). `pose` 16, `hessian` 36 (row-
+/// major), `transformation_array` holds up to `transforms_cap` poses (16 `f32` each); the true count
+/// is written to `transforms_count`.
+#[repr(C)]
+pub struct AwNdtAlignOutput {
+    pub pose: *mut f32,
+    pub iteration_num: *mut i32,
+    pub transform_probability: *mut f32,
+    pub nearest_voxel_likelihood: *mut f32,
+    pub hessian: *mut f64,
+    pub transformation_array: *mut f32,
+    pub transforms_cap: u32,
+    pub transforms_count: *mut u32,
+}
+
+/// Run NDT `align` from flat C inputs (builds the target `VoxelGridMap` with the C++ defaults
+/// `min_points = 6`, `eig_mult = 0.01`, `leaf_size = resolution`).
+///
+/// # Safety
+/// `input`/`output` must be valid pointers (or null → no-op). Each non-null pointer must address the
+/// documented length: `target_xyz` `3*n_target` f32, `source_xyz` `3*n_source` f32, `guess` 16,
+/// `pose` 16, `hessian` 36, `transformation_array` `transforms_cap*16`. No-op if `target_xyz`,
+/// `source_xyz`, or `guess` is null.
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_align(
+    input: *const AwNdtAlignInput,
+    output: *const AwNdtAlignOutput,
+) {
+    if input.is_null() || output.is_null() {
+        return;
+    }
+    // SAFETY: both are non-null per the check; the caller guarantees they point to valid structs.
+    let (inp, outp) = unsafe { (&*input, &*output) };
+    if inp.target_xyz.is_null() || inp.source_xyz.is_null() || inp.guess.is_null() {
+        return;
+    }
+
+    // SAFETY: caller guarantees the documented cloud / guess lengths.
+    let (target, source, guess_arr) = unsafe {
+        (
+            core::slice::from_raw_parts(inp.target_xyz.cast::<[f32; 3]>(), inp.n_target),
+            core::slice::from_raw_parts(inp.source_xyz.cast::<[f32; 3]>(), inp.n_source),
+            core::slice::from_raw_parts(inp.guess, 16),
+        )
+    };
+
+    let mut guess = Matrix4::<f32>::zeros();
+    for r in 0..4 {
+        for c in 0..4 {
+            guess[(r, c)] = guess_arr[(r * 4) + c];
+        }
+    }
+
+    let mut map = VoxelGridMap::new([inp.resolution; 3], 6, 0.01);
+    map.add_target(target, 0);
+    map.create_kdtree();
+
+    let reg = if inp.regularization_scale == 0.0 {
+        None
+    } else {
+        Some(Regularization {
+            pose_xy: [inp.regularization_pose_x, inp.regularization_pose_y],
+            scale_factor: inp.regularization_scale,
+        })
+    };
+    let params = NdtParams {
+        trans_epsilon: inp.trans_epsilon,
+        step_size: inp.step_size,
+        resolution: inp.resolution,
+        max_iterations: inp.max_iterations,
+        outlier_ratio: inp.outlier_ratio,
+        regularization: reg,
+    };
+
+    let mut ws = AlignWorkspace::new();
+    let mut result = AlignResult::default();
+    align(&map, source, &guess, &params, &mut ws, &mut result);
+
+    // SAFETY: each output pointer is either null (skipped) or valid for its documented length.
+    unsafe {
+        if !outp.pose.is_null() {
+            let pose = core::slice::from_raw_parts_mut(outp.pose, 16);
+            for r in 0..4 {
+                for c in 0..4 {
+                    pose[(r * 4) + c] = result.pose[(r, c)];
+                }
+            }
+        }
+        if !outp.iteration_num.is_null() {
+            *outp.iteration_num = result.iteration_num;
+        }
+        if !outp.transform_probability.is_null() {
+            *outp.transform_probability = result.transform_probability;
+        }
+        if !outp.nearest_voxel_likelihood.is_null() {
+            *outp.nearest_voxel_likelihood = result.nearest_voxel_likelihood;
+        }
+        if !outp.hessian.is_null() {
+            let h = core::slice::from_raw_parts_mut(outp.hessian, 36);
+            for r in 0..6 {
+                for c in 0..6 {
+                    h[(r * 6) + c] = result.hessian[(r, c)];
+                }
+            }
+        }
+        if !outp.transformation_array.is_null() && !outp.transforms_count.is_null() {
+            let cap = outp.transforms_cap as usize;
+            let buf = core::slice::from_raw_parts_mut(outp.transformation_array, cap * 16);
+            for (k, m) in result.transformation_array.iter().take(cap).enumerate() {
+                for r in 0..4 {
+                    for c in 0..4 {
+                        buf[(k * 16) + (r * 4) + c] = m[(r, c)];
+                    }
+                }
+            }
+            *outp.transforms_count = result.transformation_array.len() as u32;
+        }
+    }
+}
+
 #[cfg(test)]
 #[allow(
     clippy::float_cmp,
     clippy::expect_used,
+    clippy::unwrap_used,
     clippy::unreadable_literal,
-    clippy::needless_range_loop
+    clippy::needless_range_loop,
+    clippy::cast_sign_loss,
+    clippy::borrow_as_ptr,
+    unsafe_code
 )]
 mod tests {
     use super::*;
@@ -502,5 +802,224 @@ mod tests {
         assert_eq!(d_none.score, d_zero.score);
         assert_eq!(d_none.gradient, d_zero.gradient);
         assert_eq!(d_none.hessian, d_zero.hessian);
+    }
+
+    // ---- align (E4d) ----
+
+    // Target points spread in 3D (constrains translation), built into a map; the originals are
+    // returned so tests can synthesize a source by transforming them.
+    fn spread_target() -> (VoxelGridMap, alloc::vec::Vec<[f32; 3]>) {
+        let mut pts: alloc::vec::Vec<[f32; 3]> = alloc::vec::Vec::new();
+        for &(cx, cy, cz) in &[
+            (0.5_f32, 0.5_f32, 0.5_f32),
+            (4.5, 0.5, 0.5),
+            (0.5, 4.5, 0.5),
+            (0.5, 0.5, 4.5),
+            (4.5, 4.5, 4.5),
+        ] {
+            pts.extend(dense_cluster(cx, cy, cz));
+        }
+        let mut map = VoxelGridMap::new([1.0, 1.0, 1.0], 6, 0.01);
+        map.add_target(&pts, 0);
+        map.create_kdtree();
+        (map, pts)
+    }
+
+    fn tight_params() -> NdtParams {
+        NdtParams {
+            trans_epsilon: 1e-3,
+            step_size: 0.2,
+            resolution: 1.0,
+            max_iterations: 50,
+            outlier_ratio: 0.55,
+            regularization: None,
+        }
+    }
+
+    // Recover-known-transform oracle: source = target + t; align maps source back, so the recovered
+    // pose's translation ≈ -t (and rotation ≈ identity). Strong independent oracle.
+    #[test]
+    fn align_recovers_known_translation() {
+        let (map, target) = spread_target();
+        let t = [0.15_f32, -0.10, 0.05];
+        let source: alloc::vec::Vec<[f32; 3]> = target
+            .iter()
+            .map(|p| [p[0] + t[0], p[1] + t[1], p[2] + t[2]])
+            .collect();
+
+        let mut ws = AlignWorkspace::new();
+        let mut out = AlignResult::default();
+        align(
+            &map,
+            &source,
+            &Matrix4::identity(),
+            &tight_params(),
+            &mut ws,
+            &mut out,
+        );
+
+        assert!(
+            out.iteration_num <= 50,
+            "did not stop within max_iterations"
+        );
+        // Final translation ≈ -t.
+        assert!(
+            (out.pose[(0, 3)] - (-t[0])).abs() < 3e-2,
+            "tx {}",
+            out.pose[(0, 3)]
+        );
+        assert!(
+            (out.pose[(1, 3)] - (-t[1])).abs() < 3e-2,
+            "ty {}",
+            out.pose[(1, 3)]
+        );
+        assert!(
+            (out.pose[(2, 3)] - (-t[2])).abs() < 3e-2,
+            "tz {}",
+            out.pose[(2, 3)]
+        );
+        // Rotation block ≈ identity.
+        for i in 0..3 {
+            for j in 0..3 {
+                let want = if i == j { 1.0 } else { 0.0 };
+                assert!((out.pose[(i, j)] - want).abs() < 2e-2, "R[{i}][{j}]");
+            }
+        }
+        // Score improved from the (misaligned) guess to convergence.
+        let tpa = &out.transform_probability_array;
+        assert!(
+            tpa.len() == out.iteration_num as usize + 1,
+            "array length == iter+1"
+        );
+        assert!(
+            *tpa.last().unwrap() >= *tpa.first().unwrap(),
+            "transform_probability did not improve: {tpa:?}"
+        );
+    }
+
+    // Already aligned (source == target): align stays at identity and converges immediately.
+    #[test]
+    fn align_identity_when_already_aligned() {
+        let (map, target) = spread_target();
+        let mut ws = AlignWorkspace::new();
+        let mut out = AlignResult::default();
+        align(
+            &map,
+            &target,
+            &Matrix4::identity(),
+            &tight_params(),
+            &mut ws,
+            &mut out,
+        );
+        for i in 0..3 {
+            assert!(
+                out.pose[(i, 3)].abs() < 2e-2,
+                "translation drifted: {}",
+                out.pose[(i, 3)]
+            );
+        }
+        assert!(out.transform_probability > 0.0);
+    }
+
+    // FFI shim must equal the pure `align` on identical inputs (catches struct-layout / flat-buffer /
+    // row-major marshaling bugs); null input/output must be a no-op. llvm-cov only sees Rust tests,
+    // so this covers the FFI shim that the C++ differential test exercises out-of-process.
+    #[test]
+    fn ffi_ndt_align_matches_pure() {
+        let (_, target) = spread_target();
+        let t = [0.2_f32, -0.15, 0.1];
+        let source: alloc::vec::Vec<[f32; 3]> = target
+            .iter()
+            .map(|p| [p[0] + t[0], p[1] + t[1], p[2] + t[2]])
+            .collect();
+        let params = NdtParams {
+            trans_epsilon: 0.01,
+            step_size: 0.1,
+            resolution: 2.0,
+            max_iterations: 30,
+            outlier_ratio: 0.55,
+            regularization: None,
+        };
+
+        // Pure reference: same map the FFI builds internally (leaf = resolution, min 6, eig 0.01).
+        let mut map = VoxelGridMap::new([2.0, 2.0, 2.0], 6, 0.01);
+        map.add_target(&target, 0);
+        map.create_kdtree();
+        let mut ws = AlignWorkspace::new();
+        let mut pure = AlignResult::default();
+        align(
+            &map,
+            &source,
+            &Matrix4::identity(),
+            &params,
+            &mut ws,
+            &mut pure,
+        );
+
+        // FFI call.
+        let target_flat: alloc::vec::Vec<f32> =
+            target.iter().flat_map(|p| p.iter().copied()).collect();
+        let source_flat: alloc::vec::Vec<f32> =
+            source.iter().flat_map(|p| p.iter().copied()).collect();
+        let guess16: [f32; 16] = [
+            1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+        ];
+        let input = AwNdtAlignInput {
+            target_xyz: target_flat.as_ptr(),
+            n_target: target.len(),
+            source_xyz: source_flat.as_ptr(),
+            n_source: source.len(),
+            resolution: 2.0,
+            step_size: 0.1,
+            trans_epsilon: 0.01,
+            max_iterations: 30,
+            outlier_ratio: 0.55,
+            regularization_scale: 0.0,
+            regularization_pose_x: 0.0,
+            regularization_pose_y: 0.0,
+            guess: guess16.as_ptr(),
+        };
+        let mut pose = [0.0_f32; 16];
+        let mut iter = 0_i32;
+        let mut tp = 0.0_f32;
+        let mut nvl = 0.0_f32;
+        let mut hess = [0.0_f64; 36];
+        let mut transforms = [0.0_f32; 64 * 16];
+        let mut count = 0_u32;
+        let output = AwNdtAlignOutput {
+            pose: pose.as_mut_ptr(),
+            iteration_num: &mut iter,
+            transform_probability: &mut tp,
+            nearest_voxel_likelihood: &mut nvl,
+            hessian: hess.as_mut_ptr(),
+            transformation_array: transforms.as_mut_ptr(),
+            transforms_cap: 64,
+            transforms_count: &mut count,
+        };
+        // SAFETY: all pointers are valid for their documented lengths.
+        unsafe { autoware_ndt_scan_matcher_rs_ndt_align(&input, &output) };
+
+        // Same code path -> exact equality.
+        assert_eq!(iter, pure.iteration_num);
+        assert_eq!(tp, pure.transform_probability);
+        assert_eq!(nvl, pure.nearest_voxel_likelihood);
+        assert_eq!(count as usize, pure.transformation_array.len());
+        for r in 0..4 {
+            for c in 0..4 {
+                assert_eq!(pose[(r * 4) + c], pure.pose[(r, c)]);
+            }
+        }
+        for r in 0..6 {
+            for c in 0..6 {
+                assert_eq!(hess[(r * 6) + c], pure.hessian[(r, c)]);
+            }
+        }
+
+        // Null input / output must be a no-op (no crash, no write).
+        // SAFETY: null pointers exercise the documented no-op contract.
+        unsafe {
+            autoware_ndt_scan_matcher_rs_ndt_align(core::ptr::null(), &output);
+            autoware_ndt_scan_matcher_rs_ndt_align(&input, core::ptr::null());
+        }
     }
 }

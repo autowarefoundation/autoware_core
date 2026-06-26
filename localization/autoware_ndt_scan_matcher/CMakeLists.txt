@@ -171,6 +171,15 @@ if(BUILD_TESTING)
       multigrid_ndt_omp ${PCL_LIBRARIES} autoware_ndt_scan_matcher_rs)
     target_include_directories(test_voxel_grid PRIVATE
       ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/include)
+
+    # 4. Differential test: Rust align (FFI) vs the C++ NDT engine (engine port E4d).
+    ament_auto_add_gtest(test_align
+      test/test_align.cpp
+    )
+    target_link_libraries(test_align
+      multigrid_ndt_omp ${PCL_LIBRARIES} autoware_ndt_scan_matcher_rs)
+    target_include_directories(test_align PRIVATE
+      ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/include)
   endif()
 endif()
 
