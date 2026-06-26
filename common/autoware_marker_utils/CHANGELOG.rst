@@ -2,6 +2,23 @@
 Changelog for package autoware_marker_utils
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* perf(autoware_marker_utils): hoist arc-length recompute and bundle internal cleanups (`#1130 <https://github.com/autowarefoundation/autoware_core/issues/1130>`_)
+  Hoist the per-iteration calc_path_arc_length_array() out of the points loop
+  in create_path_with_lane_id_marker_array, computing it once up front (only
+  when with_text is true) to remove the O(N^2/10) behavior.
+  Bundle the low-risk internal-only cleanups noted in the audit:
+  - rename the file-static helper bitShift -> bit_shift (lower_case convention)
+  - extract the duplicated rclcpp logger into a single file-static get_logger()
+  - add reserve() to the marker.points builders that lacked it
+  - add the missing <sstream>/<iomanip> includes and drop the unused <limits>
+  No public API change. Add a characterization test pinning the text-marker
+  arc-length string and a test for the gray-color (lane id absent) branch.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+* Contributors: Yutaka Kondo, github-actions
+
 1.8.0 (2026-05-01)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

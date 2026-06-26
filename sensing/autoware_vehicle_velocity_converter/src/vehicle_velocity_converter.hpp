@@ -15,51 +15,40 @@
 #ifndef VEHICLE_VELOCITY_CONVERTER_HPP_
 #define VEHICLE_VELOCITY_CONVERTER_HPP_
 
-#include <rclcpp/rclcpp.hpp>
-
 #include <autoware_vehicle_msgs/msg/velocity_report.hpp>
-#include <geometry_msgs/msg/twist_stamped.hpp>
 #include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
-
-#include <array>
-#include <string>
-#include <vector>
 
 namespace autoware::vehicle_velocity_converter
 {
-/// \brief Convert a VelocityReport into a TwistWithCovarianceStamped.
+/// \brief Converts a VelocityReport into a TwistWithCovarianceStamped using fixed conversion
+/// settings.
 ///
-/// Pure conversion logic shared by the node callback: applies the longitudinal
-/// speed scale factor, maps the report axes onto the twist, and fills the fixed
-/// diagonal covariance (large values on the unobserved axes). The header is
-/// copied verbatim from the input message.
-///
-/// \param msg input velocity report
-/// \param speed_scale_factor multiplier applied to the longitudinal velocity
-/// \param stddev_vx longitudinal velocity standard deviation (variance = stddev_vx^2)
-/// \param stddev_wz yaw rate standard deviation (variance = stddev_wz^2)
-/// \return converted twist with covariance
-geometry_msgs::msg::TwistWithCovarianceStamped convert(
-  const autoware_vehicle_msgs::msg::VelocityReport & msg, double speed_scale_factor,
-  double stddev_vx, double stddev_wz);
-
-class VehicleVelocityConverter : public rclcpp::Node
+/// The settings (scale factor and standard deviations) do not change frame to frame, so they are
+/// supplied once at construction.
+class VehicleVelocityConverter
 {
 public:
-  explicit VehicleVelocityConverter(const rclcpp::NodeOptions & options);
+  /// \brief Construct the converter.
+  /// \param speed_scale_factor multiplier applied to the longitudinal velocity
+  /// \param stddev_vx longitudinal velocity standard deviation (variance = stddev_vx^2)
+  /// \param stddev_wz yaw rate standard deviation (variance = stddev_wz^2)
+  VehicleVelocityConverter(double speed_scale_factor, double stddev_vx, double stddev_wz);
+
+  /// \brief Convert a VelocityReport into a TwistWithCovarianceStamped.
+  ///
+  /// Applies the longitudinal speed scale factor, maps the report axes onto the twist, and fills
+  /// the fixed diagonal covariance (large values on the unobserved axes). The header is copied
+  /// verbatim from the input message.
+  ///
+  /// \param msg input velocity report
+  /// \return converted twist with covariance
+  geometry_msgs::msg::TwistWithCovarianceStamped convert(
+    const autoware_vehicle_msgs::msg::VelocityReport & msg) const;
 
 private:
-  void callback_velocity_report(const autoware_vehicle_msgs::msg::VelocityReport::SharedPtr msg);
-
-  rclcpp::Subscription<autoware_vehicle_msgs::msg::VelocityReport>::SharedPtr vehicle_report_sub_;
-
-  rclcpp::Publisher<geometry_msgs::msg::TwistWithCovarianceStamped>::SharedPtr
-    twist_with_covariance_pub_;
-
-  std::string frame_id_;
+  double speed_scale_factor_;
   double stddev_vx_;
   double stddev_wz_;
-  double speed_scale_factor_;
 };
 }  // namespace autoware::vehicle_velocity_converter
 

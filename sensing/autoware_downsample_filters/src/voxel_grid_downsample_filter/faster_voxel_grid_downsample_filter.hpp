@@ -15,17 +15,22 @@
 #ifndef VOXEL_GRID_DOWNSAMPLE_FILTER__FASTER_VOXEL_GRID_DOWNSAMPLE_FILTER_HPP_
 #define VOXEL_GRID_DOWNSAMPLE_FILTER__FASTER_VOXEL_GRID_DOWNSAMPLE_FILTER_HPP_
 
-#include "transform_info.hpp"
-
 #include <pcl/filters/voxel_grid.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <sensor_msgs/msg/point_cloud2.h>
 
+#include <string>
 #include <unordered_map>
 #include <vector>
 
 namespace autoware::downsample_filters
 {
+
+struct ValidationResult
+{
+  bool is_valid;
+  std::string reason;
+};
 
 class FasterVoxelGridDownsampleFilter
 {
@@ -35,12 +40,11 @@ class FasterVoxelGridDownsampleFilter
 public:
   FasterVoxelGridDownsampleFilter();
   void set_voxel_size(float voxel_size_x, float voxel_size_y, float voxel_size_z);
-  void set_field_offsets(const PointCloud2ConstPtr & input, const rclcpp::Logger & logger);
-  void filter(
-    const PointCloud2ConstPtr & input, PointCloud2 & output, const TransformInfo & transform_info,
-    const rclcpp::Logger & logger);
+  ValidationResult filter(const PointCloud2ConstPtr & input, PointCloud2 & output);
 
 private:
+  void set_field_offsets(const PointCloud2ConstPtr & input);
+
   struct Centroid
   {
     float x;
@@ -93,8 +97,7 @@ private:
     const Eigen::Vector3i & min_voxel);
 
   void copy_centroids_to_output(
-    const std::unordered_map<uint32_t, Centroid> & voxel_centroid_map, PointCloud2 & output,
-    const TransformInfo & transform_info) const;
+    const std::unordered_map<uint32_t, Centroid> & voxel_centroid_map, PointCloud2 & output) const;
 };
 
 }  // namespace autoware::downsample_filters
