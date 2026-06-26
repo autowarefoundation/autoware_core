@@ -26,6 +26,7 @@ pub mod covariance;
 pub mod derivatives;
 pub mod helper;
 mod kdtree;
+pub mod ndt;
 pub mod transform;
 pub mod voxel_grid;
 
