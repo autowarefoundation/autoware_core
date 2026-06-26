@@ -17,7 +17,7 @@
 namespace autoware::vehicle_velocity_converter
 {
 VehicleVelocityConverterNode::VehicleVelocityConverterNode(const rclcpp::NodeOptions & options)
-: rclcpp::Node("vehicle_velocity_converter", options),
+: autoware::agnocast_wrapper::Node("vehicle_velocity_converter", options),
   converter_(
     declare_parameter<double>("speed_scale_factor"),
     declare_parameter<double>("velocity_stddev_xx"),
@@ -33,9 +33,11 @@ VehicleVelocityConverterNode::VehicleVelocityConverterNode(const rclcpp::NodeOpt
 }
 
 void VehicleVelocityConverterNode::callback_velocity_report(
-  const autoware_vehicle_msgs::msg::VelocityReport::SharedPtr msg)
+  const AUTOWARE_MESSAGE_CONST_SHARED_PTR(autoware_vehicle_msgs::msg::VelocityReport) & msg)
 {
-  twist_with_covariance_pub_->publish(converter_.convert(*msg));
+  auto twist_with_covariance_msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(twist_with_covariance_pub_);
+  *twist_with_covariance_msg = converter_.convert(*msg);
+  twist_with_covariance_pub_->publish(std::move(twist_with_covariance_msg));
 }
 }  // namespace autoware::vehicle_velocity_converter
 
