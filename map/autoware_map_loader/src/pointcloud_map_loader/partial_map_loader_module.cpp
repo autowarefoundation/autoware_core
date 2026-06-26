@@ -21,7 +21,8 @@
 namespace autoware::map_loader
 {
 PartialMapLoaderModule::PartialMapLoaderModule(
-  rclcpp::Node * node, std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict)
+  autoware::agnocast_wrapper::Node * node,
+  std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict)
 : logger_(node->get_logger()), all_pcd_file_metadata_dict_(std::move(pcd_file_metadata_dict))
 {
   get_partial_pcd_maps_service_ = node->create_service<GetPartialPointCloudMap>(
@@ -33,7 +34,7 @@ PartialMapLoaderModule::PartialMapLoaderModule(
 
 void PartialMapLoaderModule::partial_area_load(
   const autoware_map_msgs::msg::AreaInfo & area,
-  const GetPartialPointCloudMap::Response::SharedPtr & response) const
+  const AUTOWARE_SERVER_RESPONSE_PTR(GetPartialPointCloudMap) & response) const
 {
   // iterate over all the available pcd map grids
   for (const auto & ele : all_pcd_file_metadata_dict_) {
@@ -52,8 +53,8 @@ void PartialMapLoaderModule::partial_area_load(
 }
 
 bool PartialMapLoaderModule::on_service_get_partial_point_cloud_map(
-  GetPartialPointCloudMap::Request::SharedPtr req,
-  GetPartialPointCloudMap::Response::SharedPtr res) const
+  AUTOWARE_SERVER_REQUEST_PTR(GetPartialPointCloudMap) req,
+  AUTOWARE_SERVER_RESPONSE_PTR(GetPartialPointCloudMap) res) const
 {
   auto area = req->area;
   partial_area_load(area, res);

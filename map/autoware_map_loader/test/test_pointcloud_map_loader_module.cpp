@@ -67,8 +67,10 @@ TEST_F(TestPointcloudMapLoaderModule, LoadPCDFilesNoDownsampleTest)
   std::vector<std::string> pcd_paths = {temp_pcd_path};
 
   // Create PointcloudMapLoaderModule instance
+  auto module_node =
+    std::make_shared<autoware::agnocast_wrapper::Node>("test_pointcloud_map_loader_module_node");
   autoware::map_loader::PointcloudMapLoaderModule loader(
-    node.get(), pcd_paths, "pointcloud_map_no_downsample", false);
+    module_node.get(), pcd_paths, "pointcloud_map_no_downsample", false);
 
   // Create a subscriber to the published pointcloud topic
   auto pointcloud_received = std::make_shared<bool>(false);
@@ -87,6 +89,7 @@ TEST_F(TestPointcloudMapLoaderModule, LoadPCDFilesNoDownsampleTest)
   // Spin until pointcloud is received or timeout occurs
   rclcpp::executors::SingleThreadedExecutor executor;
   executor.add_node(node);
+  executor.add_node(module_node->get_node_base_interface());
   auto start_time = node->now();
   while (!*pointcloud_received && (node->now() - start_time).seconds() < 3) {
     executor.spin_some(50ms);
