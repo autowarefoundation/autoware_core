@@ -52,6 +52,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace autoware::map_loader
@@ -65,7 +66,9 @@ Lanelet2MapLoaderNode::Lanelet2MapLoaderNode(const rclcpp::NodeOptions & options
   // subscription
   sub_map_projector_info_ = this->create_subscription<MapProjectorInfo::Message>(
     MapProjectorInfo::name, autoware::component_interface_specs::get_qos<MapProjectorInfo>(),
-    [this](const MapProjectorInfo::Message::ConstSharedPtr msg) { on_map_projector_info(msg); });
+    [this](const AUTOWARE_MESSAGE_CONST_SHARED_PTR(MapProjectorInfo::Message) & msg) {
+      on_map_projector_info(msg);
+    });
 
   declare_parameter<bool>("allow_unsupported_version");
   declare_parameter<std::string>("lanelet2_map_path");
@@ -74,7 +77,7 @@ Lanelet2MapLoaderNode::Lanelet2MapLoaderNode(const rclcpp::NodeOptions & options
 }
 
 void Lanelet2MapLoaderNode::on_map_projector_info(
-  const MapProjectorInfo::Message::ConstSharedPtr msg)
+  const AUTOWARE_MESSAGE_CONST_SHARED_PTR(MapProjectorInfo::Message) & msg)
 {
   const auto allow_unsupported_version = get_parameter("allow_unsupported_version").as_bool();
   const auto lanelet2_map_path = get_parameter("lanelet2_map_path").as_string();
@@ -154,7 +157,9 @@ void Lanelet2MapLoaderNode::on_map_projector_info(
   // create publisher and publish
   pub_map_bin_ =
     create_publisher<VectorMap::Message>(VectorMap::name, rclcpp::QoS{1}.transient_local());
-  pub_map_bin_->publish(map_bin_msg);
+  auto output = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_map_bin_);
+  *output = map_bin_msg;
+  pub_map_bin_->publish(std::move(output));
   RCLCPP_INFO(get_logger(), "Succeeded to load lanelet2_map. Map is published.");
 }
 
