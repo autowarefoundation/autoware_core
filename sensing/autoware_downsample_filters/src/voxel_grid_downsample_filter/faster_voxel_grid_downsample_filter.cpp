@@ -62,8 +62,9 @@ ValidationResult FasterVoxelGridDownsampleFilter::filter(
   if (intensity_index < 0) {
     return {false, "There is no intensity field in the input point cloud."};
   }
-  if (input->fields[static_cast<size_t>(intensity_index)].datatype !=
-      sensor_msgs::msg::PointField::UINT8) {
+  if (
+    input->fields[static_cast<size_t>(intensity_index)].datatype !=
+    sensor_msgs::msg::PointField::UINT8) {
     return {false, "The intensity field in the input point cloud is not of type UINT8."};
   }
 
@@ -108,8 +109,7 @@ bool FasterVoxelGridDownsampleFilter::get_min_max_voxel(
   sensor_msgs::PointCloud2ConstIterator<float> input_z(*input, "z");
   sensor_msgs::PointCloud2ConstIterator<uint8_t> input_intensity(*input, "intensity");
   for (; input_x != input_x.end(); ++input_x, ++input_y, ++input_z, ++input_intensity) {
-    const Eigen::Vector4f point(
-      *input_x, *input_y, *input_z, static_cast<float>(*input_intensity));
+    const Eigen::Vector4f point(*input_x, *input_y, *input_z, static_cast<float>(*input_intensity));
     if (std::isfinite(point[0]) && std::isfinite(point[1]) && std::isfinite(point[2])) {
       min_point = min_point.cwiseMin(point.head<3>());
       max_point = max_point.cwiseMax(point.head<3>());
@@ -153,8 +153,7 @@ FasterVoxelGridDownsampleFilter::calc_centroids_each_voxel(
   sensor_msgs::PointCloud2ConstIterator<float> input_z(*input, "z");
   sensor_msgs::PointCloud2ConstIterator<uint8_t> input_intensity(*input, "intensity");
   for (; input_x != input_x.end(); ++input_x, ++input_y, ++input_z, ++input_intensity) {
-    const Eigen::Vector4f point(
-      *input_x, *input_y, *input_z, static_cast<float>(*input_intensity));
+    const Eigen::Vector4f point(*input_x, *input_y, *input_z, static_cast<float>(*input_intensity));
     if (std::isfinite(point[0]) && std::isfinite(point[1]) && std::isfinite(point[2])) {
       // Compute voxel coordinates relative to the minimum voxel corner.
       int ijk0 = static_cast<int>(
