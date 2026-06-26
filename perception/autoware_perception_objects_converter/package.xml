@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>autoware_perception_objects_converter</name>
-  <version>1.8.0</version>
+  <version>1.9.0</version>
   <description>ROS 2 node for converting between different perception object message types</description>
   <maintainer email="yoshi.ri@tier4.jp">Yoshi Ri</maintainer>
   <maintainer email="ryohsuke.mitsudome@tier4.jp">Ryohsuke Mitsudome</maintainer>
@@ -14,7 +14,7 @@
   <buildtool_depend>autoware_cmake</buildtool_depend>
 
   <depend>autoware_perception_msgs</depend>
-  <depend>boost</depend>
+  <depend>autoware_utils_uuid</depend>
   <depend>geometry_msgs</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>

@@ -797,6 +797,72 @@ TEST_F(MarkerConversionTest, CreateLineStringMarker)
   expect_point_eq(marker.points[2], 1, 1, z);
 }
 
+// Test 28: create_path_with_lane_id_marker_array - text-marker emission structure.
+// Characterizes the loop-hoist of calc_path_arc_length_array(): for 12 points one TEXT marker
+// is emitted when the running counter reaches a multiple of 10 (after the 10th point), so the
+// array holds exactly 12 ARROW markers plus a single TEXT marker. We assert only on this
+// structure, not on the human-facing label text.
+TEST_F(MarkerConversionTest, CreatePathWithLaneIdMarkerArrayTextContent)
+{
+  autoware_internal_planning_msgs::msg::PathWithLaneId path;
+  for (int i = 0; i < 12; ++i) {
+    autoware_internal_planning_msgs::msg::PathPointWithLaneId pp;
+    pp.point.pose.position.x = static_cast<double>(i);
+    pp.point.pose.position.y = static_cast<double>(i);
+    pp.lane_ids.push_back(1);
+    path.points.push_back(pp);
+  }
+
+  auto arr = autoware::experimental::marker_utils::create_path_with_lane_id_marker_array(
+    path, "ns_", 1, now, geometry_msgs::msg::Vector3(), color_, true);
+
+  // 12 ARROW markers + exactly 1 TEXT marker.
+  ASSERT_EQ(arr.markers.size(), 13u);
+
+  int text_count = 0;
+  for (const auto & m : arr.markers) {
+    if (m.type == visualization_msgs::msg::Marker::TEXT_VIEW_FACING) {
+      ++text_count;
+    }
+  }
+  ASSERT_EQ(text_count, 1);
+}
+
+// Test 29: create_path_with_lane_id_marker_array - the gray-color branch.
+// When with_text is false and a point's lane_ids does not contain the queried id, the arrow
+// marker is recolored gray (0.5, 0.5, 0.5, 0.999). A point whose lane_ids does contain the id
+// keeps the requested color.
+TEST_F(MarkerConversionTest, CreatePathWithLaneIdMarkerArrayGrayBranch)
+{
+  autoware_internal_planning_msgs::msg::PathWithLaneId path;
+
+  autoware_internal_planning_msgs::msg::PathPointWithLaneId matched;
+  matched.point.pose.position.x = 0.0;
+  matched.lane_ids.push_back(7);  // contains the queried id -> keeps requested color
+  path.points.push_back(matched);
+
+  autoware_internal_planning_msgs::msg::PathPointWithLaneId unmatched;
+  unmatched.point.pose.position.x = 1.0;
+  unmatched.lane_ids.push_back(99);  // does not contain the queried id -> gray
+  path.points.push_back(unmatched);
+
+  auto arr = autoware::experimental::marker_utils::create_path_with_lane_id_marker_array(
+    path, "ns", 7, now, geometry_msgs::msg::Vector3(), color_, false);
+
+  ASSERT_EQ(arr.markers.size(), 2u);
+
+  // First point keeps the requested color (red, from color_).
+  EXPECT_FLOAT_EQ(arr.markers[0].color.r, 1.0f);
+  EXPECT_FLOAT_EQ(arr.markers[0].color.g, 0.0f);
+  EXPECT_FLOAT_EQ(arr.markers[0].color.b, 0.0f);
+
+  // Second point is recolored gray.
+  EXPECT_FLOAT_EQ(arr.markers[1].color.r, 0.5f);
+  EXPECT_FLOAT_EQ(arr.markers[1].color.g, 0.5f);
+  EXPECT_FLOAT_EQ(arr.markers[1].color.b, 0.5f);
+  EXPECT_FLOAT_EQ(arr.markers[1].color.a, 0.999f);
+}
+
 }  // namespace
 
 int main(int argc, char ** argv)

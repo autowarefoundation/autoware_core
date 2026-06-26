@@ -19,17 +19,24 @@ target_link_libraries(${PROJECT_NAME}_ros
 autoware_agnocast_wrapper_register_node(${PROJECT_NAME}_ros
   PLUGIN "autoware::stop_filter::StopFilterNode"
   EXECUTABLE ${PROJECT_NAME}_node
-  AGNOCAST_EXECUTOR CallbackIsolatedAgnocastExecutor
+  AGNOCAST_EXECUTOR AgnocastOnlyCallbackIsolatedExecutor
   ROS2_EXECUTOR SingleThreadedExecutor
 )
 
 if(BUILD_TESTING)
-  ament_add_ros_isolated_gtest(test_stop_filter_node
+  ament_auto_add_gtest(test_stop_filter
     test/test_stop_filter.cpp
-    test/test_stop_filter_node.cpp
   )
-  target_link_libraries(test_stop_filter_node ${PROJECT_NAME} ${PROJECT_NAME}_ros)
-  target_include_directories(test_stop_filter_node PRIVATE src)
+  target_link_libraries(test_stop_filter ${PROJECT_NAME})
+  target_include_directories(test_stop_filter PRIVATE src)
+
+  if(NOT (DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1"))
+    ament_add_ros_isolated_gtest(test_stop_filter_node
+      test/test_stop_filter_node.cpp
+    )
+    target_link_libraries(test_stop_filter_node ${PROJECT_NAME} ${PROJECT_NAME}_ros)
+    target_include_directories(test_stop_filter_node PRIVATE src)
+  endif()
 endif()
 
 autoware_ament_auto_package(
