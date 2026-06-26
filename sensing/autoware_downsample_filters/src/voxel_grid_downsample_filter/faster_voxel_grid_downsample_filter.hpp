@@ -97,8 +97,7 @@ private:
     const Eigen::Vector3i & min_voxel);
 
   void copy_centroids_to_output(
-    const std::unordered_map<uint32_t, Centroid> & voxel_centroid_map, PointCloud2 & output)
-    const;
+    const std::unordered_map<uint32_t, Centroid> & voxel_centroid_map, PointCloud2 & output) const;
 };
 
 }  // namespace autoware::downsample_filters
