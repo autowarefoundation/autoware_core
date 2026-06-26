@@ -2,6 +2,169 @@
 Changelog for package autoware_agnocast_wrapper
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* refactor(autoware_agnocast_wrapper): split service ptr macros into server/client variants (`#1205 <https://github.com/autowarefoundation/autoware_core/issues/1205>`_)
+  * refactor(autoware_agnocast_wrapper): split service ptr macros into
+  server/client variants
+  * Apply feedback review
+  * Remove const from is_shared_ptr_service_callback_v
+  ---------
+* feat(autoware_agnocast_wrapper): add overload for service (`#1203 <https://github.com/autowarefoundation/autoware_core/issues/1203>`_)
+  * add create_service overload
+  * add assert
+  * fix copilot review
+  ---------
+* feat(autoware_agnocast_wrapper): add service and client support (`#1074 <https://github.com/autowarefoundation/autoware_core/issues/1074>`_)
+  * Add service and client support to agnocast wrapper
+  * Mark service and client support as experimental in README
+  * Add missing macros
+  * Fix colcon flag typo in README
+  * fix
+  * style(pre-commit): autofix
+  * fix
+  * style(pre-commit): autofix
+  * Add a comment
+  * Adjust create_service/create_client calls depending on rclcpp version
+  * fix cpplint errors
+  * style(pre-commit): autofix
+  * Fix type deduction in create_client and create_service
+  * Add functional header
+  * Fix cpplint errors
+  * Remove experimental tag
+  * Add RCLCPP version check for client and service macros
+  * Propagate exception in client async callbacks
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Koichi Imai <koichi.imai.2@tier4.jp>
+  Co-authored-by: Koichi Imai <45482193+Koichi98@users.noreply.github.com>
+* feat(autoware_agnocast_wrapper): support more args for synchronizer (`#1104 <https://github.com/autowarefoundation/autoware_core/issues/1104>`_)
+  support 8 args
+* feat(autoware_agnocast_wrapper): adopt glog to agnocast main templete (`#1180 <https://github.com/autowarefoundation/autoware_core/issues/1180>`_)
+  feat(autoware_agnocast_wrapper): use glog (`#88 <https://github.com/autowarefoundation/autoware_core/issues/88>`_)
+  * feat: use glog
+  * fix: tag name
+  * feat: link glog
+  * fix
+  * fix: add ament auto library
+  ---------
+* fix(autoware_agnocast_wrapper): get_name,namespace,get_fully_qualified_name (`#1178 <https://github.com/autowarefoundation/autoware_core/issues/1178>`_)
+  fix get_name,namespace,get_fully_qualified_name
+* feat(autoware_agnocast_wrapper): spawn agnocast_discovery_agent from launch wrapper (`#1084 <https://github.com/autowarefoundation/autoware_core/issues/1084>`_)
+  Spawn exactly one agnocast_discovery_agent per ros2 launch tree from
+  agnocast_env.launch.{py,xml} when ENABLE_AGNOCAST=1, deduplicated tree-wide via
+  the LaunchContext globals and pinned to namespace="/".
+* feat(autoware_agnocast_wrapper): add ON_NODE macros (`#1170 <https://github.com/autowarefoundation/autoware_core/issues/1170>`_)
+* feat(autoware_agnocast_wrapper): update `agnocast_env.launch` to enable override `use_agnocast` (`#1123 <https://github.com/autowarefoundation/autoware_core/issues/1123>`_)
+  * update agnocast_env.launch to override use_agnocast
+  * style(pre-commit): autofix
+  * more description in README
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Takumi Jin <87105992+ruth561@users.noreply.github.com>
+* docs(autoware_agnocast_wrapper): update `autoware_agnocast_wrapper` review_guide.md (`#1121 <https://github.com/autowarefoundation/autoware_core/issues/1121>`_)
+  * update agnocast_wrapper review guide
+  * add callback arguments migration check
+  * fix example code
+  ---------
+  Co-authored-by: atsushi yano <55824710+atsushi421@users.noreply.github.com>
+* feat(autoware_agnocast_wrapper): align message_filters `registerCallback` with upstream API (`#1091 <https://github.com/autowarefoundation/autoware_core/issues/1091>`_)
+  * fix to align with upstream API
+  * fix
+  * fix
+  * style(pre-commit): autofix
+  * add comments
+  * move when capture
+  * style(pre-commit): autofix
+  * delete redundant comments
+  * use unique_ptr
+  * fix to use copy-capture for upstream-conn, and add try-catch
+  * fix to use rvalue
+  * add Note for return value conn
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* feat(autoware_agnocast_wrapper): introduce diagnostic_updater API (`#1087 <https://github.com/autowarefoundation/autoware_core/issues/1087>`_)
+  * introduce diagnostic_updater
+  * fix to use in_place_type
+  * update comments and README
+  * style(pre-commit): autofix
+  * add documentation comments
+  * add documentation comment for starting_up_status
+  * fix cpplint
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Takumi Jin <87105992+ruth561@users.noreply.github.com>
+* feat(autoware_agnocast_wrapper): introduce Timer API (`#1076 <https://github.com/autowarefoundation/autoware_core/issues/1076>`_)
+  * introduce timer api
+  * added comments about exposing unsupported API through rclcpp Timer
+  * add comments for Timer
+  * add comments for create_timer and set_period
+  * set_period check and add comments for Exception
+  * delete const from time_until_trigger and is_canceled
+  * unuse is_using_agnocast
+  * add README and comments for set_period
+  ---------
+  Co-authored-by: atsushi yano <55824710+atsushi421@users.noreply.github.com>
+  Co-authored-by: Takumi Jin <87105992+ruth561@users.noreply.github.com>
+* feat(autoware_agnocast_wrapper): introduce `ExactTime` for message_filter (`#1077 <https://github.com/autowarefoundation/autoware_core/issues/1077>`_)
+  * support ExactTime
+  * delete duplication
+  * update README
+  * delete detail namespace
+  * fix doxygen
+  * add documentatino comments
+  * add noexcept
+  * add const& for policy
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* feat(autoware_agnocast_wrapper): introduce tf2 API (`#1085 <https://github.com/autowarefoundation/autoware_core/issues/1085>`_)
+  * introduce tf2
+  * style(pre-commit): autofix
+  * use AGNOCAST\_*_OPTIONS
+  * fix cpplint
+  * use in_place_type
+  * style(pre-commit): autofix
+  * add ignore_local_publication
+  * style(pre-commit): autofix
+  * add documentation comments
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* fix(autoware_agnocast_wrapper): refer to ROS_DISTRO for heaphook_path (`#1037 <https://github.com/autowarefoundation/autoware_core/issues/1037>`_)
+  refer to ROS_DISTRO for heaphook_path
+* refactor(autoware_agnocast_wrapper): to use `std::variant` in message_filter (`#1086 <https://github.com/autowarefoundation/autoware_core/issues/1086>`_)
+  * refactor to use std::variant
+  * style(pre-commit): autofix
+  * fix
+  * fix for default constructor
+  * unuse unique_ptr
+  * style(pre-commit): autofix
+  * unallow move for ApproximateTimeSynchronizer
+  * delete is_using_agnocast
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* fix(autoware_agnocast_wrapper): fix message_filter subscriber to take agnocast_wrapper::Node (`#1078 <https://github.com/autowarefoundation/autoware_core/issues/1078>`_)
+  * fix to take agnocast_wrapper::Node
+  * fix copilot review
+  * fix half-initialized and add comments
+  * add node-side invariant docs
+  * add documentation comment
+  ---------
+  Co-authored-by: atsushi yano <55824710+atsushi421@users.noreply.github.com>
+* chore: update `autoware_agnocast_wrapper` maintiners (`#1081 <https://github.com/autowarefoundation/autoware_core/issues/1081>`_)
+  * update autoware_agnocast_wrapper maintiners
+  * fix email
+  ---------
+* fix(autoware_agnocast_wrapper): fix message_ptr to respect unique semantics (`#1001 <https://github.com/autowarefoundation/autoware_core/issues/1001>`_)
+  * fix(autoware_agnocast_wrapper): fix message_ptr to respect unique semantics
+  * Apply feedback review
+  * Apply feedback review
+  * Partial specialization of agnocast_message/ros2_message by ownership
+  ---------
+  Co-authored-by: Koichi Imai <45482193+Koichi98@users.noreply.github.com>
+* Contributors: Guojun Wu, Keita Morisaki, Koichi Imai, Tetsuhiro Kawaguchi, github-actions
+
 1.8.0 (2026-05-01)
 ------------------
 * chore: align package versions to 1.7.0 and reset changelogs

@@ -18,10 +18,12 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cstdio>
 #include <iostream>
 #include <random>
+#include <vector>
 
 using autoware::motion_velocity_planner::CollisionChecker;
 using autoware_utils_geometry::Line2d;
@@ -181,4 +183,88 @@ TEST(TestCollisionChecker, DISABLED_Benchmark)
   check_obstacles(line_obstacles);
   std::printf("%d Points:\n", nb_obstacles);
   check_obstacles(point_obstacles);
+}
+
+namespace
+{
+// Build an axis-aligned unit square footprint with the given lower-left corner.
+Polygon2d make_square(const double x, const double y, const double size = 1.0)
+{
+  Polygon2d polygon;
+  polygon.outer() = {
+    Point2d{x, y}, Point2d{x, y + size}, Point2d{x + size, y + size}, Point2d{x + size, y},
+    Point2d{x, y}};
+  return polygon;
+}
+}  // namespace
+
+TEST(TestCollisionChecker, TrajectorySizeAndRtreePopulatedFromFootprints)
+{
+  MultiPolygon2d footprints;
+  footprints.push_back(make_square(0.0, 0.0));
+  footprints.push_back(make_square(10.0, 0.0));
+  CollisionChecker collision_checker(footprints);
+
+  EXPECT_EQ(collision_checker.trajectory_size(), 2u);
+  ASSERT_NE(collision_checker.get_rtree(), nullptr);
+  EXPECT_EQ(collision_checker.get_rtree()->size(), 2u);
+}
+
+TEST(TestCollisionChecker, EmptyFootprintsReportsNoCollision)
+{
+  const MultiPolygon2d empty_footprints;
+  CollisionChecker collision_checker(empty_footprints);
+
+  EXPECT_EQ(collision_checker.trajectory_size(), 0u);
+  const Point2d obstacle{0.5, 0.5};
+  EXPECT_TRUE(collision_checker.get_collisions(obstacle).empty());
+}
+
+TEST(TestCollisionChecker, PointInsideSingleFootprint)
+{
+  MultiPolygon2d footprints;
+  footprints.push_back(make_square(0.0, 0.0));   // index 0: [0,1]x[0,1]
+  footprints.push_back(make_square(10.0, 0.0));  // index 1: far away
+  CollisionChecker collision_checker(footprints);
+
+  const Point2d inside{0.5, 0.5};
+  const auto collisions = collision_checker.get_collisions(inside);
+  ASSERT_EQ(collisions.size(), 1u);
+  EXPECT_EQ(collisions.front().trajectory_index, 0u);
+  ASSERT_EQ(collisions.front().collision_points.size(), 1u);
+  EXPECT_NEAR(collisions.front().collision_points.front().x(), 0.5, 1e-9);
+  EXPECT_NEAR(collisions.front().collision_points.front().y(), 0.5, 1e-9);
+}
+
+TEST(TestCollisionChecker, PointOutsideAllFootprints)
+{
+  MultiPolygon2d footprints;
+  footprints.push_back(make_square(0.0, 0.0));
+  footprints.push_back(make_square(10.0, 0.0));
+  CollisionChecker collision_checker(footprints);
+
+  const Point2d outside{5.0, 5.0};
+  EXPECT_TRUE(collision_checker.get_collisions(outside).empty());
+}
+
+TEST(TestCollisionChecker, LineCrossingMultipleFootprints)
+{
+  MultiPolygon2d footprints;
+  footprints.push_back(make_square(0.0, 0.0));   // index 0: [0,1]x[0,1]
+  footprints.push_back(make_square(2.0, 0.0));   // index 1: [2,3]x[0,1]
+  footprints.push_back(make_square(10.0, 0.0));  // index 2: far away
+  CollisionChecker collision_checker(footprints);
+
+  // Horizontal line at y = 0.5 from x = -1 to x = 4 crosses footprints 0 and 1 only.
+  const Line2d line{Point2d{-1.0, 0.5}, Point2d{4.0, 0.5}};
+  const auto collisions = collision_checker.get_collisions(line);
+  ASSERT_EQ(collisions.size(), 2u);
+
+  std::vector<size_t> hit_indices;
+  for (const auto & c : collisions) {
+    hit_indices.push_back(c.trajectory_index);
+    EXPECT_FALSE(c.collision_points.empty());
+  }
+  std::sort(hit_indices.begin(), hit_indices.end());
+  EXPECT_EQ(hit_indices, (std::vector<size_t>{0u, 1u}));
 }

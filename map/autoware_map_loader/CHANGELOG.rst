@@ -9,6 +9,37 @@ Changelog for package autoware_map_loader
 * feat(map_loader): add the explanation of handling use_waypoints (`#342 <https://github.com/autowarefoundation/autoware_core/issues/342>`_)
 * Contributors: Takagi, Isamu, Takayuki Murooka
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* refactor(autoware_map_loader): dedup PCD cell loader and cover selected module (`#1139 <https://github.com/autowarefoundation/autoware_core/issues/1139>`_)
+  Consolidate the byte-identical load_point_cloud_map_cell_with_id plus the
+  repeated metadata.min/max copy block from the partial, differential and
+  selected loader modules into a single free function in utils, and route all
+  three modules through it.
+  Add test/test_selected_map_loader_module.cpp covering the previously untested
+  SelectedMapLoaderModule service handler (found and not-found branches with the
+  metadata bounds populated) plus a direct unit test of the create_metadata free
+  function, which is now declared in the module header so it can be tested without
+  instantiating the module.
+  Behavior-preserving and internal-only; the public module constructor signatures
+  are unchanged.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+* feat(autoware_map_loader): enable loading of multiple lanelet2 map files (`#888 <https://github.com/autowarefoundation/autoware_core/issues/888>`_)
+  * feat(autoware_map_loader): enable loading of multiple lanelet map files
+  * chore: update comments for arguments
+  * add: test codes
+  * style(pre-commit): autofix
+  * docs: update README
+  * fix build failure for jazzy
+  * Update map/autoware_map_loader/src/lanelet2_map_loader/lanelet2_map_loader_node.cpp
+  Co-authored-by: Yamato Ando <yamato.ando@gmail.com>
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Yamato Ando <yamato.ando@gmail.com>
+* Contributors: Ryohsuke Mitsudome, Yutaka Kondo, github-actions
+
 1.8.0 (2026-05-01)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

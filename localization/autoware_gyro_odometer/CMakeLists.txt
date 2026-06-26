@@ -6,6 +6,7 @@ autoware_package()
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
   src/gyro_odometer_core.cpp
+  src/gyro_odometer_fusion.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} fmt)
@@ -15,6 +16,7 @@ if(BUILD_TESTING)
     test/test_main.cpp
     test/test_gyro_odometer_pubsub.cpp
     test/test_gyro_odometer_helper.cpp
+    test/test_gyro_odometer_fusion.cpp
   )
   ament_target_dependencies(test_gyro_odometer
     rclcpp

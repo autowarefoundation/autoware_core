@@ -45,6 +45,7 @@ endif()
 ament_auto_add_library(${PROJECT_NAME} SHARED
   src/map_update_module.cpp
   src/ndt_scan_matcher_core.cpp
+  src/ndt_scan_matcher_helper.cpp
   src/particle.cpp
 )
 
@@ -73,6 +74,21 @@ if(BUILD_TESTING)
     test/test_cases/once_initialize_at_out_of_map_then_initialize_correctly.cpp
     TIMEOUT "300"
   )
+  ament_auto_add_gtest(particles_num_less_than_publish_num
+    test/test_cases/particles_num_less_than_publish_num.cpp
+    TIMEOUT "300"
+  )
+
+  # Fast, dependency-light unit tests for the pure covariance / oscillation math.
+  ament_auto_add_gtest(test_estimate_covariance
+    test/test_estimate_covariance.cpp
+  )
+  target_link_libraries(test_estimate_covariance multigrid_ndt_omp ${PCL_LIBRARIES})
+
+  ament_auto_add_gtest(test_ndt_scan_matcher_helper
+    test/test_ndt_scan_matcher_helper.cpp
+  )
+  target_link_libraries(test_ndt_scan_matcher_helper ${PROJECT_NAME})
 endif()
 
 autoware_ament_auto_package(

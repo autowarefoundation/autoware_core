@@ -14,6 +14,9 @@
 
 #include "routing_adaptor.hpp"
 
+#include "request_state_machine.hpp"
+#include "route_builder.hpp"
+
 #include <autoware/qos_utils/qos_compatibility.hpp>
 
 #include <memory>
@@ -59,60 +62,51 @@ RoutingAdaptor::RoutingAdaptor(const rclcpp::NodeOptions & options)
 
 void RoutingAdaptor::on_timer()
 {
-  // Wait a moment to combine consecutive goals and checkpoints into a single request.
-  // This value is rate dependent and set the wait time for merging.
-  constexpr int delay_count = 3;  // 0.4 seconds (rate * (value - 1))
-  if (0 < request_timing_control_ && request_timing_control_ < delay_count) {
-    ++request_timing_control_;
-  }
-  if (request_timing_control_ != delay_count) {
-    return;
-  }
+  const auto decision = decide_routing_action(
+    elapsed_count_from_last_request_, calling_service_, state_ == RouteState::Message::UNSET);
+  elapsed_count_from_last_request_ = decision.elapsed_count_from_last_request;
 
-  if (!calling_service_) {
-    if (state_ != RouteState::Message::UNSET) {
+  switch (decision.action) {
+    case RoutingAction::None:
+      break;
+    case RoutingAction::CallClear: {
       const auto request = std::make_shared<ClearRoute::Service::Request>();
       calling_service_ = true;
       cli_clear_->async_send_request(
         request,
         [this](rclcpp::Client<ClearRoute::Service>::SharedFuture) { calling_service_ = false; });
-    } else {
-      request_timing_control_ = 0;
+      break;
+    }
+    case RoutingAction::CallRoute: {
       calling_service_ = true;
       cli_route_->async_send_request(
         route_, [this](rclcpp::Client<SetRoutePoints::Service>::SharedFuture) {
           calling_service_ = false;
         });
+      break;
     }
   }
 }
 
 void RoutingAdaptor::on_fixed_goal(const PoseStamped::ConstSharedPtr pose)
 {
-  request_timing_control_ = 1;
-  route_->header = pose->header;
-  route_->goal = pose->pose;
-  route_->waypoints.clear();
-  route_->option.allow_goal_modification = false;
+  elapsed_count_from_last_request_ = 1;
+  set_goal(*route_, *pose, false);
 }
 
 void RoutingAdaptor::on_rough_goal(const PoseStamped::ConstSharedPtr pose)
 {
-  request_timing_control_ = 1;
-  route_->header = pose->header;
-  route_->goal = pose->pose;
-  route_->waypoints.clear();
-  route_->option.allow_goal_modification = true;
+  elapsed_count_from_last_request_ = 1;
+  set_goal(*route_, *pose, true);
 }
 
 void RoutingAdaptor::on_waypoint(const PoseStamped::ConstSharedPtr pose)
 {
-  if (route_->header.frame_id != pose->header.frame_id) {
+  if (!append_waypoint(*route_, *pose)) {
     RCLCPP_ERROR_STREAM(get_logger(), "The waypoint frame does not match the goal.");
     return;
   }
-  request_timing_control_ = 1;
-  route_->waypoints.push_back(pose->pose);
+  elapsed_count_from_last_request_ = 1;
 }
 
 void RoutingAdaptor::on_reroute(const PoseStamped::ConstSharedPtr pose)

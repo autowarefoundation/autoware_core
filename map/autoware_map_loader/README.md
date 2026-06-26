@@ -130,9 +130,12 @@ Please see [the description of `GetSelectedPointCloudMap.srv`](https://github.co
 
 ### Feature
 
-lanelet2_map_loader loads Lanelet2 file and publishes the map data as autoware_map_msgs/LaneletMapBin message.
-The node projects lan/lon coordinates into arbitrary coordinates defined in `/map/map_projector_info` from `map_projection_loader`.
+`lanelet2_map_loader` loads one or more Lanelet2 `.osm` files and publishes the merged map as an `autoware_map_msgs/LaneletMapBin` message.
+The node projects lat/lon coordinates into the frame defined in `/map/map_projector_info` from `map_projection_loader`.
 Please see [autoware_map_msgs/msg/MapProjectorInfo.msg](https://github.com/autowarefoundation/autoware_msgs/blob/main/autoware_map_msgs/msg/MapProjectorInfo.msg) for supported projector types.
+
+`lanelet2_map_path` can point to either a single `.osm` file or a directory.
+When a directory is given, all `.osm` files inside are loaded and merged into a single map before publishing.
 
 ### How to run
 
