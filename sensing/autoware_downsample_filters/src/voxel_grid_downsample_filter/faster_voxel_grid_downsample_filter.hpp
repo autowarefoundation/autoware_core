@@ -46,8 +46,6 @@ public:
     const PointCloud2ConstPtr & input, PointCloud2 & output, const TransformInfo & transform_info);
 
 private:
-  void set_field_offsets(const PointCloud2ConstPtr & input);
-
   struct Centroid
   {
     float x;
@@ -82,15 +80,6 @@ private:
   };
 
   Eigen::Vector3f inverse_voxel_size_;
-  int x_offset_;
-  int y_offset_;
-  int z_offset_;
-  int intensity_index_;
-  int intensity_offset_;
-  bool offset_initialized_;
-
-  Eigen::Vector4f get_point_from_global_offset(
-    const PointCloud2ConstPtr & input, size_t global_offset) const;
 
   bool get_min_max_voxel(
     const PointCloud2ConstPtr & input, Eigen::Vector3i & min_voxel, Eigen::Vector3i & max_voxel);

@@ -25,6 +25,20 @@ using PointCloud2ConstPtr = sensor_msgs::msg::PointCloud2::ConstSharedPtr;
 
 namespace autoware::downsample_filters
 {
+
+namespace
+{
+int find_field_index(const sensor_msgs::msg::PointCloud2 & cloud, const std::string & field_name)
+{
+  for (size_t i = 0; i < cloud.fields.size(); ++i) {
+    if (cloud.fields[i].name == field_name) {
+      return static_cast<int>(i);
+    }
+  }
+  return -1;
+}
+}  // namespace
+
 VoxelGridDownsampleFilter::VoxelGridDownsampleFilter(const Parameters & parameters)
 : parameters_(parameters)
 {
@@ -65,13 +79,13 @@ tl::expected<PointCloud2, std::string> VoxelGridDownsampleFilter::filter(
   }
 
   if (
-    pcl::getFieldIndex(*input, "x") < 0 || pcl::getFieldIndex(*input, "y") < 0 ||
-    pcl::getFieldIndex(*input, "z") < 0) {
+    find_field_index(*input, "x") < 0 || find_field_index(*input, "y") < 0 ||
+    find_field_index(*input, "z") < 0) {
     return tl::unexpected(
       std::string("The input point cloud does not have required x, y, z fields."));
   }
 
-  const int intensity_index = pcl::getFieldIndex(*input, "intensity");
+  const int intensity_index = find_field_index(*input, "intensity");
   if (intensity_index < 0) {
     return tl::unexpected(std::string("There is no intensity field in the input point cloud."));
   }
