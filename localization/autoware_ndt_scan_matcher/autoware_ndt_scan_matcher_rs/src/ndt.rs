@@ -34,7 +34,8 @@
     clippy::many_single_char_names,
     clippy::as_conversions,
     clippy::cast_possible_truncation,
-    clippy::cast_precision_loss
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss
 )]
 
 use alloc::vec::Vec;
@@ -111,6 +112,12 @@ fn score_increment(x_trans: &Vector3<f64>, c_inv: &Matrix3<f64>, g: &GaussConsta
 /// original points (for the transform derivatives); `trans_cloud` are the same points already
 /// transformed by the current pose (for the neighbor search and `x_trans`); `p` is the 6-vector of
 /// that pose (for the angular derivatives). `resolution` is the neighbor radius.
+///
+/// WCET contract (RT-critical; see `porting_notes/ndt_wcet_audit.md`): `O(P · K)` where `P` = source
+/// points (caller-bounded by downsampling) and `K` = neighbors/point (**unbounded** until the
+/// `max_nn = N` hardening); reuses `ws.neighbor_idx` → **no allocation** (measured); no panic/block/
+/// logging; per-cell math is fixed-size `O(1)`. The map is read-only (kd-tree + flat `Vec`; no
+/// `BTreeMap`).
 // These are the distinct inputs of the C++ `computeDerivatives`; the E4d engine struct will own the
 // map / params / workspace and expose a narrower method, so the arg count is wrapped away there.
 #[allow(clippy::too_many_arguments)]
@@ -352,8 +359,21 @@ fn derivatives_at(
 
 /// NDT alignment (`align` / `computeTransformation` + the default-path `computeStepLengthMT`,
 /// `use_line_search = false`). `guess` is the initial pose (the C++ `Matrix4f` guess); `source` is
-/// the original cloud. Fills `out` (its `Vec`s are reused). Serial; `compute_derivatives` is the work
-/// unit. The per-iteration cloud transform is f32 (C++ `Matrix4f` pipeline).
+/// the original cloud. Fills `out` (its `Vec`s are reused). The per-iteration cloud transform is f32
+/// (C++ `Matrix4f` pipeline).
+///
+/// WCET contract (RT-critical; serial; see `porting_notes/ndt_wcet_audit.md`):
+/// - Outer loop runs at most `params.max_iterations` times (static cap).
+/// - Each iteration does one `compute_derivatives` pass (`O(P · K)`: `P` = source points,
+///   `K` = neighbors/point) + one 6×6 SVD solve + one f32 cloud transform (`O(P)`).
+/// - **`K` (neighbors/point) is currently unbounded** (`radius_search(max_nn = 0)`) and the kd-tree
+///   traversal is worst-case `O(N_leaves)` — residual risks pending the hardening slice
+///   (`max_nn = N` + direct voxel-neighbor lookup). `P` must be bounded by the caller (downsample).
+/// - No panic (the crate's deny-`unwrap`/`expect`/`panic`/`indexing_slicing` lints); no blocking; no
+///   logging/formatting; no user callbacks. Only fixed-width float math.
+/// - Allocation: after warmup with pre-reserved buffers, the only possible per-frame allocation is
+///   inside nalgebra's fixed-size SVD (measured by `tests/zero_alloc.rs`; see the audit).
+/// - rt-core (this runtime path) vs control-plane (map build/update) — the map is read-only here.
 pub fn align(
     map: &VoxelGridMap,
     source: &[[f32; 3]],
@@ -366,9 +386,17 @@ pub fn align(
     let reg = params.regularization.as_ref();
     let len = source.len();
 
+    // Pre-reserve the bounded buffers so no growth occurs after warmup (the per-iteration arrays are
+    // at most max_iterations+1; trans_cloud is exactly source.len()). `reserve` is a no-op once big
+    // enough. neighbor_idx stays amortized (its cap is unknown until the max_nn=N hardening).
+    let cap = (params.max_iterations.max(0) as usize).saturating_add(1);
     out.transformation_array.clear();
     out.transform_probability_array.clear();
     out.nearest_voxel_likelihood_array.clear();
+    out.transformation_array.reserve(cap);
+    out.transform_probability_array.reserve(cap);
+    out.nearest_voxel_likelihood_array.reserve(cap);
+    ws.trans_cloud.reserve(len);
 
     // Initial guess -> 6-vector (matches the C++ eulerAngles(0,1,2) extraction for non-gimbal angles).
     let guess_f64 = guess.map(f64::from);

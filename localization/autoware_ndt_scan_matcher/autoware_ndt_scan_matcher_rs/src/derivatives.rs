@@ -60,6 +60,8 @@ pub struct PointDerivatives {
 /// Precompute the angular Jacobian/Hessian for transform vector `p = [tx,ty,tz,roll,pitch,yaw]`
 /// (`computeAngleDerivatives`, lines 537-611). Angles within `10e-5` of zero are snapped to the
 /// `(c, s) = (1, 0)` simplification, matching C++.
+///
+/// WCET: fixed-size `f64` matrix math (once per iteration) — `O(1)`, no allocation, no panic.
 #[must_use]
 pub fn compute_angle_derivatives(p: &Vector6<f64>) -> AngleDerivatives {
     let (cx, sx) = if libm::fabs(p[3]) < 10e-5 {
@@ -179,6 +181,8 @@ pub fn compute_angle_derivatives(p: &Vector6<f64>) -> AngleDerivatives {
 /// Per-source-point transform derivatives for the (untransformed) point `x`
 /// (`computePointDerivatives`, lines 615-659). The `gradient` translation block (rows 0-2,
 /// cols 0-2 = identity) is set here, where C++ sets it once in `computeDerivatives`.
+///
+/// WCET: fixed-size `f64` matrix math — `O(1)`, no allocation, no panic, no blocking.
 #[must_use]
 pub fn compute_point_derivatives(
     x: &nalgebra::Vector3<f64>,
@@ -234,6 +238,8 @@ pub fn compute_point_derivatives(
 /// cell.mean`, `c_inv` is the cell's 3x3 inverse covariance. Returns the score increment and, when
 /// the point is valid, accumulates into `score_gradient` (6) and `hessian` (6x6). On an invalid
 /// `e_x_cov_x` (outside `[0,1]` or NaN) returns `0.0` and leaves the accumulators untouched.
+///
+/// WCET: fixed-size `f64` matrix math — `O(1)`, no allocation, no panic, no blocking.
 pub fn update_derivatives(
     x_trans: &nalgebra::Vector3<f64>,
     c_inv: &Matrix3<f64>,
