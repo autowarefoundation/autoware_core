@@ -37,7 +37,7 @@ use std::alloc::{GlobalAlloc, Layout, System};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use autoware_ndt_scan_matcher_rs::ndt::{
-    AlignResult, AlignWorkspace, NdtParams, align, compute_derivatives,
+    AlignResult, AlignWorkspace, NdtParams, ScoreConfig, align, compute_derivatives,
 };
 use autoware_ndt_scan_matcher_rs::transform::{gauss_constants, transform_point};
 use autoware_ndt_scan_matcher_rs::voxel_grid::VoxelGridMap;
@@ -118,14 +118,36 @@ fn engine_allocations_after_warmup() {
         let gauss = gauss_constants(0.55, 1.0);
         let mut ws = AlignWorkspace::new();
 
-        let warm = compute_derivatives(&map, &source, &trans, &p, 1.0, &gauss, None, &mut ws);
+        let warm = compute_derivatives(
+            &map,
+            &source,
+            &trans,
+            &p,
+            &ScoreConfig {
+                resolution: 1.0,
+                gauss: &gauss,
+                reg: None,
+            },
+            &mut ws,
+        );
         assert!(
             warm.score > 0.0,
             "fixture should produce a non-trivial score"
         );
 
         let allocs = count_allocs(|| {
-            compute_derivatives(&map, &source, &trans, &p, 1.0, &gauss, None, &mut ws)
+            compute_derivatives(
+                &map,
+                &source,
+                &trans,
+                &p,
+                &ScoreConfig {
+                    resolution: 1.0,
+                    gauss: &gauss,
+                    reg: None,
+                },
+                &mut ws,
+            )
         });
         assert_eq!(
             allocs, 0,

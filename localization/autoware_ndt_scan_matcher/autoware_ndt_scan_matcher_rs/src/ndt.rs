@@ -87,6 +87,16 @@ pub struct Derivatives {
     pub transform_probability: f64,
 }
 
+/// Per-align scoring configuration, fixed across the iteration loop (the C++ NDT object holds these
+/// as members): the neighbor-search `resolution`, the Gaussian fitting `gauss` constants, and the
+/// optional `reg`ularization.
+#[derive(Clone, Copy, Debug)]
+pub struct ScoreConfig<'a> {
+    pub resolution: f64,
+    pub gauss: &'a GaussConstants,
+    pub reg: Option<&'a Regularization>,
+}
+
 /// Row-major `[f64; 9]` (a `Leaf.icov`) → `Matrix3`.
 fn mat3(icov: &[f64; 9]) -> Matrix3<f64> {
     Matrix3::new(
@@ -116,15 +126,14 @@ fn score_increment(x_trans: &Vector3<f64>, c_inv: &Matrix3<f64>, g: &GaussConsta
 /// Score + gradient + Hessian over the source cloud (`computeDerivatives`). `source` are the
 /// original points (for the transform derivatives); `trans_cloud` are the same points already
 /// transformed by the current pose (for the neighbor search and `x_trans`); `p` is the 6-vector of
-/// that pose (for the angular derivatives). `resolution` is the neighbor radius.
+/// that pose (for the angular derivatives). `cfg` carries the neighbor radius, Gaussian constants,
+/// and optional regularization (fixed across the align loop).
 ///
 /// WCET contract (RT-critical; see `porting_notes/ndt_wcet_audit.md`): `O(P · K)` where `P` = source
 /// points (caller-bounded by downsampling) and `K` = neighbors/point ≤ `MAX_NEIGHBORS` (the
 /// `radius_search` cap); reuses `ws.neighbor_idx` → **no allocation** (measured); no panic/block/
 /// logging; per-cell math is fixed-size `O(1)`. The map is read-only (kd-tree + flat `Vec`; no
 /// `BTreeMap`).
-// These are the distinct inputs of the C++ `computeDerivatives`; the E4d engine struct will own the
-// map / params / workspace and expose a narrower method, so the arg count is wrapped away there.
 #[allow(
     clippy::arithmetic_side_effects,
     clippy::indexing_slicing,
@@ -134,19 +143,13 @@ fn score_increment(x_trans: &Vector3<f64>, c_inv: &Matrix3<f64>, g: &GaussConsta
     clippy::allow_attributes,
     reason = "numeric kernel: nalgebra fixed-size math + deliberate C++-parity f32 regularization casts"
 )]
-#[expect(
-    clippy::too_many_arguments,
-    reason = "distinct inputs of C++ computeDerivatives; the E4d/E6 engine struct will wrap them"
-)]
 #[must_use]
 pub fn compute_derivatives(
     map: &VoxelGridMap,
     source: &[[f32; 3]],
     trans_cloud: &[[f32; 3]],
     p: &Vector6<f64>,
-    resolution: f64,
-    gauss: &GaussConstants,
-    reg: Option<&Regularization>,
+    cfg: &ScoreConfig,
     ws: &mut AlignWorkspace,
 ) -> Derivatives {
     let mut gradient = Vector6::zeros();
@@ -162,7 +165,7 @@ pub fn compute_derivatives(
     // so the per-point access is bounds-checked by construction — no dynamic indexing in the RT loop.
     for (&tp, &sp) in trans_cloud.iter().zip(source.iter()) {
         ws.neighbor_idx.clear();
-        map.radius_search(tp, resolution, MAX_NEIGHBORS, &mut ws.neighbor_idx);
+        map.radius_search(tp, cfg.resolution, MAX_NEIGHBORS, &mut ws.neighbor_idx);
         if ws.neighbor_idx.is_empty() {
             continue;
         }
@@ -181,7 +184,7 @@ pub fn compute_derivatives(
                     &(x_trans - mean),
                     &c_inv,
                     &pd,
-                    gauss,
+                    cfg.gauss,
                     &mut gradient,
                     &mut hessian,
                 );
@@ -198,7 +201,7 @@ pub fn compute_derivatives(
         total_neighborhood = total_neighborhood.saturating_add(ws.neighbor_idx.len());
     }
 
-    if let Some(r) = reg {
+    if let Some(r) = cfg.reg {
         // Mirrors C++ 486-519: float arithmetic, with sin/cos computed in f64 then cast to f32
         // (C++ `static_cast<float>(sin(p(5,0)))`). No-op when scale_factor == 0.
         let dx = r.pose_xy[0] - p[0] as f32;
@@ -376,14 +379,12 @@ fn derivatives_at(
     map: &VoxelGridMap,
     source: &[[f32; 3]],
     p: &Vector6<f64>,
-    resolution: f64,
-    gauss: &GaussConstants,
-    reg: Option<&Regularization>,
+    cfg: &ScoreConfig,
     ws: &mut AlignWorkspace,
 ) -> Derivatives {
     let mut trans = core::mem::take(&mut ws.trans_cloud);
     transform_cloud_f32(p, source, &mut trans);
-    let d = compute_derivatives(map, source, &trans, p, resolution, gauss, reg, ws);
+    let d = compute_derivatives(map, source, &trans, p, cfg, ws);
     ws.trans_cloud = trans;
     d
 }
@@ -426,6 +427,11 @@ pub fn align(
 ) {
     let gauss = gauss_constants(params.outlier_ratio, params.resolution);
     let reg = params.regularization.as_ref();
+    let cfg = ScoreConfig {
+        resolution: params.resolution,
+        gauss: &gauss,
+        reg,
+    };
     let len = source.len();
 
     // Pre-reserve the per-iteration result buffers so no growth occurs after warmup (at most
@@ -449,7 +455,7 @@ pub fn align(
     out.transformation_array.push(se3_matrix_f32(&p));
 
     // Derivatives at the initial guess.
-    let mut d = derivatives_at(map, source, &p, params.resolution, &gauss, reg, ws);
+    let mut d = derivatives_at(map, source, &p, &cfg, ws);
     out.transform_probability_array
         .push(d.transform_probability as f32);
     out.nearest_voxel_likelihood_array
@@ -480,7 +486,7 @@ pub fn align(
         let a_t = delta_norm.clamp(step_min, params.step_size);
 
         let x_t = p + dir * a_t;
-        d = derivatives_at(map, source, &x_t, params.resolution, &gauss, reg, ws);
+        d = derivatives_at(map, source, &x_t, &cfg, ws);
         out.transform_probability_array
             .push(d.transform_probability as f32);
         out.nearest_voxel_likelihood_array
@@ -754,7 +760,18 @@ mod tests {
 
         let trans = transform_cloud(&source, &p);
         let mut ws = AlignWorkspace::new();
-        let d = compute_derivatives(&map, &source, &trans, &p, 1.0, &g, None, &mut ws);
+        let d = compute_derivatives(
+            &map,
+            &source,
+            &trans,
+            &p,
+            &ScoreConfig {
+                resolution: 1.0,
+                gauss: &g,
+                reg: None,
+            },
+            &mut ws,
+        );
         assert!(d.score > 0.0, "score should be positive for a near match");
 
         // gradient vs central FD of the score.
@@ -819,7 +836,18 @@ mod tests {
         let trans = transform_cloud(&source, &p);
 
         let mut ws = AlignWorkspace::new();
-        let d = compute_derivatives(&map, &source, &trans, &p, 1.0, &g, None, &mut ws);
+        let d = compute_derivatives(
+            &map,
+            &source,
+            &trans,
+            &p,
+            &ScoreConfig {
+                resolution: 1.0,
+                gauss: &g,
+                reg: None,
+            },
+            &mut ws,
+        );
 
         let tp = transformation_probability(&map, &trans, 1.0, &g, &mut ws);
         assert!(
@@ -844,7 +872,18 @@ mod tests {
         let mut ws = AlignWorkspace::new();
 
         // Empty cloud.
-        let d = compute_derivatives(&map, &[], &[], &p, 1.0, &g, None, &mut ws);
+        let d = compute_derivatives(
+            &map,
+            &[],
+            &[],
+            &p,
+            &ScoreConfig {
+                resolution: 1.0,
+                gauss: &g,
+                reg: None,
+            },
+            &mut ws,
+        );
         assert_eq!(d.score, 0.0);
         assert_eq!(d.transform_probability, 0.0);
         assert_eq!(d.nearest_voxel_likelihood, 0.0);
@@ -852,7 +891,18 @@ mod tests {
         // A point far from any voxel contributes nothing and is not counted.
         let source = alloc::vec![[100.0_f32, 100.0, 100.0]];
         let trans = source.clone();
-        let d2 = compute_derivatives(&map, &source, &trans, &p, 1.0, &g, None, &mut ws);
+        let d2 = compute_derivatives(
+            &map,
+            &source,
+            &trans,
+            &p,
+            &ScoreConfig {
+                resolution: 1.0,
+                gauss: &g,
+                reg: None,
+            },
+            &mut ws,
+        );
         assert_eq!(d2.score, 0.0);
         assert_eq!(d2.gradient, Vector6::zeros());
         assert_eq!(d2.nearest_voxel_likelihood, 0.0);
@@ -883,12 +933,34 @@ mod tests {
         let trans = transform_cloud(&source, &p);
         let mut ws = AlignWorkspace::new();
 
-        let d_none = compute_derivatives(&map, &source, &trans, &p, 1.0, &g, None, &mut ws);
+        let d_none = compute_derivatives(
+            &map,
+            &source,
+            &trans,
+            &p,
+            &ScoreConfig {
+                resolution: 1.0,
+                gauss: &g,
+                reg: None,
+            },
+            &mut ws,
+        );
         let reg = Regularization {
             pose_xy: [0.0, 0.0],
             scale_factor: 0.0,
         };
-        let d_zero = compute_derivatives(&map, &source, &trans, &p, 1.0, &g, Some(&reg), &mut ws);
+        let d_zero = compute_derivatives(
+            &map,
+            &source,
+            &trans,
+            &p,
+            &ScoreConfig {
+                resolution: 1.0,
+                gauss: &g,
+                reg: Some(&reg),
+            },
+            &mut ws,
+        );
         assert_eq!(d_none.score, d_zero.score);
         assert_eq!(d_none.gradient, d_zero.gradient);
         assert_eq!(d_none.hessian, d_zero.hessian);
