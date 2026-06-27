@@ -74,6 +74,7 @@ fn main() {
         max_iterations: 30,
         outlier_ratio: 0.55,
         regularization: None,
+        num_threads: 1,
     };
     let guess = Matrix4::identity();
     let mut ws = AlignWorkspace::new();

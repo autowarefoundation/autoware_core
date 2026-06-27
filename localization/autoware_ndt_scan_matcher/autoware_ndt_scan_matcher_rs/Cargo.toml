@@ -11,8 +11,13 @@ crate-type = ["staticlib", "rlib"]
 [features]
 # `std` is default-on so a plain `cargo build`/`test`/`clippy` has std (test harness + panic
 # handler). The no_std / awkernel build opts out with `--no-default-features`.
-default = ["std"]
+default = ["std", "parallel"]
 std = []
+# `parallel`: the rayon-backed `compute_derivatives` reduction. std-only (rayon needs std), so the
+# no_std rlib (`--no-default-features`) excludes it and uses the serial backend. Bit-for-bit
+# identical to serial (per-point-local contributions reduced in point-index order), so it is a pure
+# performance option — the serial backend stays the predictable WCET baseline.
+parallel = ["std", "dep:rayon"]
 # `ros`: build the ROS-message bindings (bindgen over the rosidl C headers) and the Pose-pointer
 # FFI shims. Independent of `std` — the bindgen output is `use_core()` POD, so these work in no_std
 # too. The ROS-node build enables it alongside the default `std`; awkernel could enable it in a
@@ -25,6 +30,9 @@ ros = ["dep:bindgen"]
 libm = "0.2"
 # Linear algebra for the engine port. no_std + libm; fixed-size matrices need no alloc.
 nalgebra = { version = "0.33", default-features = false, features = ["libm"] }
+# Data-parallel reduction backend (the `parallel` feature; std-only). Order-preserving
+# `collect_into_vec` keeps the parallel reduce bit-identical to serial.
+rayon = { version = "1", optional = true }
 
 [build-dependencies]
 bindgen = { version = "0.69", optional = true }

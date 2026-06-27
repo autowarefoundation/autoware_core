@@ -35,7 +35,7 @@ use alloc::vec::Vec;
 use nalgebra::{Matrix3, Matrix4, Matrix6, SVD, Vector3, Vector6};
 
 use crate::derivatives::{
-    compute_angle_derivatives, compute_point_derivatives, update_derivatives,
+    AngleDerivatives, compute_angle_derivatives, compute_point_derivatives, update_derivatives,
 };
 use crate::transform::{
     GaussConstants, gauss_constants, matrix_to_euler, se3_matrix_f32, transform_cloud_f32,
@@ -56,6 +56,11 @@ const MAX_NEIGHBORS: usize = 64;
 pub struct AlignWorkspace {
     neighbor_idx: Vec<usize>,
     trans_cloud: Vec<[f32; 3]>,
+    /// Per-point contributions for the parallel backend (reused across frames; order-preserving
+    /// `collect_into_vec` fills it). Only the `parallel` feature touches it — the serial backend
+    /// stays allocation-free.
+    #[cfg(feature = "parallel")]
+    contribs: Vec<PointContribution>,
 }
 
 impl AlignWorkspace {
@@ -64,6 +69,8 @@ impl AlignWorkspace {
         Self {
             neighbor_idx: Vec::new(),
             trans_cloud: Vec::new(),
+            #[cfg(feature = "parallel")]
+            contribs: Vec::new(),
         }
     }
 }
@@ -123,17 +130,126 @@ fn score_increment(x_trans: &Vector3<f64>, c_inv: &Matrix3<f64>, g: &GaussConsta
     -g.d1 * libm::exp(-g.d2 * quad * 0.5)
 }
 
-/// Score + gradient + Hessian over the source cloud (`computeDerivatives`). `source` are the
-/// original points (for the transform derivatives); `trans_cloud` are the same points already
-/// transformed by the current pose (for the neighbor search and `x_trans`); `p` is the 6-vector of
-/// that pose (for the angular derivatives). `cfg` carries the neighbor radius, Gaussian constants,
-/// and optional regularization (fixed across the align loop).
-///
-/// WCET contract (RT-critical; see `porting_notes/ndt_wcet_audit.md`): `O(P · K)` where `P` = source
-/// points (caller-bounded by downsampling) and `K` = neighbors/point ≤ `MAX_NEIGHBORS` (the
-/// `radius_search` cap); reuses `ws.neighbor_idx` → **no allocation** (measured); no panic/block/
-/// logging; per-cell math is fixed-size `O(1)`. The map is read-only (kd-tree + flat `Vec`; no
-/// `BTreeMap`).
+/// One source point's independent contribution to the derivative reduction: the score, the local
+/// 6-gradient and 6x6 Hessian (folded over the point's neighbor cells from zero), the per-point max
+/// cell score (`nearest`), and the neighbor count. Computed independently of every other point, so
+/// the serial and parallel backends fold these in identical point-index order and agree
+/// **bit-for-bit** — parallel is a pure performance option, never a numeric change.
+#[derive(Clone, Copy, Debug)]
+struct PointContribution {
+    score: f64,
+    gradient: Vector6<f64>,
+    hessian: Matrix6<f64>,
+    nearest: f64,
+    neighborhood: usize,
+    found: bool,
+}
+
+/// Compute one source point's [`PointContribution`]. `nbr` is caller-owned neighbor-search scratch
+/// (the serial backend reuses one buffer; the parallel backend gives each rayon worker its own).
+/// Reads the map and writes only `nbr` + the return value, so it is safe to run concurrently for
+/// distinct points.
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::allow_attributes,
+    reason = "nalgebra fixed-size f64 matrix math"
+)]
+fn point_contribution(
+    map: &VoxelGridMap,
+    sp: [f32; 3],
+    tp: [f32; 3],
+    ad: &AngleDerivatives,
+    cfg: &ScoreConfig,
+    nbr: &mut Vec<usize>,
+) -> PointContribution {
+    nbr.clear();
+    map.radius_search(tp, cfg.resolution, MAX_NEIGHBORS, nbr);
+    if nbr.is_empty() {
+        return PointContribution {
+            score: 0.0,
+            gradient: Vector6::zeros(),
+            hessian: Matrix6::zeros(),
+            nearest: 0.0,
+            neighborhood: 0,
+            found: false,
+        };
+    }
+    let pd = compute_point_derivatives(&vec3(sp), ad);
+    let x_trans = vec3(tp);
+    let mut gradient = Vector6::zeros();
+    let mut hessian = Matrix6::zeros();
+    let mut score = 0.0_f64;
+    let mut nearest = 0.0_f64;
+    for &li in nbr.iter() {
+        if let Some(leaf) = map.leaf(li) {
+            let mean = Vector3::new(leaf.mean[0], leaf.mean[1], leaf.mean[2]);
+            let c_inv = mat3(&leaf.icov);
+            let s = update_derivatives(
+                &(x_trans - mean),
+                &c_inv,
+                &pd,
+                cfg.gauss,
+                &mut gradient,
+                &mut hessian,
+            );
+            score += s;
+            if s > nearest {
+                nearest = s;
+            }
+        }
+    }
+    PointContribution {
+        score,
+        gradient,
+        hessian,
+        nearest,
+        neighborhood: nbr.len(),
+        found: true,
+    }
+}
+
+/// Running reduction of per-point contributions (the C++ thread accumulators). Both backends fold
+/// into this in point-index order, so the assembled result is independent of the backend.
+struct Reduction {
+    score: f64,
+    gradient: Vector6<f64>,
+    hessian: Matrix6<f64>,
+    nearest_voxel_score: f64,
+    found: usize,
+    total_neighborhood: usize,
+}
+
+impl Reduction {
+    fn new() -> Self {
+        Self {
+            score: 0.0,
+            gradient: Vector6::zeros(),
+            hessian: Matrix6::zeros(),
+            nearest_voxel_score: 0.0,
+            found: 0,
+            total_neighborhood: 0,
+        }
+    }
+
+    #[allow(
+        clippy::arithmetic_side_effects,
+        clippy::allow_attributes,
+        reason = "nalgebra fixed-size f64 matrix sums; integer counters use saturating_add"
+    )]
+    fn add(&mut self, c: &PointContribution) {
+        self.score += c.score;
+        self.gradient += c.gradient;
+        self.hessian += c.hessian;
+        self.nearest_voxel_score += c.nearest;
+        if c.found {
+            self.found = self.found.saturating_add(1);
+        }
+        self.total_neighborhood = self.total_neighborhood.saturating_add(c.neighborhood);
+    }
+}
+
+/// Apply the optional regularization and assemble [`Derivatives`] from a completed reduction. Shared
+/// by both backends; runs after the reduce, so it is backend-independent.
 #[allow(
     clippy::arithmetic_side_effects,
     clippy::indexing_slicing,
@@ -143,6 +259,62 @@ fn score_increment(x_trans: &Vector3<f64>, c_inv: &Matrix3<f64>, g: &GaussConsta
     clippy::allow_attributes,
     reason = "numeric kernel: nalgebra fixed-size math + deliberate C++-parity f32 regularization casts"
 )]
+fn finalize(
+    mut red: Reduction,
+    p: &Vector6<f64>,
+    cfg: &ScoreConfig,
+    source_len: usize,
+) -> Derivatives {
+    if let Some(r) = cfg.reg {
+        // Mirrors C++ 486-519: float arithmetic, with sin/cos computed in f64 then cast to f32
+        // (C++ `static_cast<float>(sin(p(5,0)))`). No-op when scale_factor == 0.
+        let dx = r.pose_xy[0] - p[0] as f32;
+        let dy = r.pose_xy[1] - p[1] as f32;
+        let sin_yaw = libm::sin(p[5]) as f32;
+        let cos_yaw = libm::cos(p[5]) as f32;
+        let longitudinal = dy * sin_yaw + dx * cos_yaw;
+        let w = red.total_neighborhood as f32;
+        let sf = r.scale_factor;
+
+        red.score += f64::from(-sf * w * longitudinal * longitudinal);
+        red.gradient[0] += f64::from(sf * w * 2.0 * cos_yaw * longitudinal);
+        red.gradient[1] += f64::from(sf * w * 2.0 * sin_yaw * longitudinal);
+        let h01 = f64::from(-sf * w * 2.0 * cos_yaw * sin_yaw);
+        red.hessian[(0, 0)] += f64::from(-sf * w * 2.0 * cos_yaw * cos_yaw);
+        red.hessian[(0, 1)] += h01;
+        red.hessian[(1, 1)] += f64::from(-sf * w * 2.0 * sin_yaw * sin_yaw);
+        red.hessian[(1, 0)] += h01;
+    }
+
+    let nearest_voxel_likelihood = if red.found != 0 {
+        red.nearest_voxel_score / red.found as f64
+    } else {
+        0.0
+    };
+    let transform_probability = if source_len == 0 {
+        0.0
+    } else {
+        red.score / source_len as f64
+    };
+
+    Derivatives {
+        score: red.score,
+        gradient: red.gradient,
+        hessian: red.hessian,
+        nearest_voxel_likelihood,
+        transform_probability,
+    }
+}
+
+/// Score + gradient + Hessian over the source cloud (`computeDerivatives`), **serial** backend.
+/// `source` are the original points (transform derivatives); `trans_cloud` the same points already
+/// transformed by the current pose (neighbor search + `x_trans`); `p` the 6-vector of that pose;
+/// `cfg` the neighbor radius / Gaussian constants / optional regularization (fixed across the loop).
+///
+/// WCET contract (RT-critical; the predictable baseline; see `porting_notes/ndt_wcet_audit.md`):
+/// `O(P · K)` where `P` = source points (caller-bounded by downsampling) and `K` = neighbors/point ≤
+/// `MAX_NEIGHBORS` (the `radius_search` cap); reuses `ws.neighbor_idx` → **no allocation** (measured);
+/// no panic/block/logging; per-point math is fixed-size `O(1)`. The map is read-only.
 #[must_use]
 pub fn compute_derivatives(
     map: &VoxelGridMap,
@@ -152,94 +324,49 @@ pub fn compute_derivatives(
     cfg: &ScoreConfig,
     ws: &mut AlignWorkspace,
 ) -> Derivatives {
-    let mut gradient = Vector6::zeros();
-    let mut hessian = Matrix6::zeros();
-    let mut score = 0.0_f64;
-    let mut nearest_voxel_score = 0.0_f64;
-    let mut found: usize = 0;
-    let mut total_neighborhood: usize = 0;
+    let ad = compute_angle_derivatives(p);
+    let mut red = Reduction::new();
+    // Per-point-local contributions, folded in point-index order (zip stops at the shorter cloud).
+    for (&tp, &sp) in trans_cloud.iter().zip(source.iter()) {
+        let c = point_contribution(map, sp, tp, &ad, cfg, &mut ws.neighbor_idx);
+        red.add(&c);
+    }
+    finalize(red, p, cfg, source.len())
+}
+
+/// **Parallel** (rayon) backend for [`compute_derivatives`] — bit-identical to the serial version
+/// (per-point contributions collected in point-index order, then folded in the same order). NOT the
+/// WCET baseline: it allocates `ws.contribs` + per-worker neighbor buffers and adds scheduling
+/// jitter, so it is a throughput option only. `align` selects it when `params.num_threads > 1`.
+#[cfg(feature = "parallel")]
+#[must_use]
+pub fn compute_derivatives_parallel(
+    map: &VoxelGridMap,
+    source: &[[f32; 3]],
+    trans_cloud: &[[f32; 3]],
+    p: &Vector6<f64>,
+    cfg: &ScoreConfig,
+    ws: &mut AlignWorkspace,
+) -> Derivatives {
+    use rayon::prelude::*;
 
     let ad = compute_angle_derivatives(p);
+    // `IndexedParallelIterator` preserves order, so `contribs` is in point-index order and the fold
+    // below matches the serial backend bit-for-bit. `map_init` gives each worker a reusable buffer.
+    trans_cloud
+        .par_iter()
+        .zip(source.par_iter())
+        .map_init(
+            || Vec::<usize>::with_capacity(MAX_NEIGHBORS),
+            |nbr, (&tp, &sp)| point_contribution(map, sp, tp, &ad, cfg, nbr),
+        )
+        .collect_into_vec(&mut ws.contribs);
 
-    // Zip stops at the shorter of the two (the former `0..source.len().min(trans_cloud.len())`),
-    // so the per-point access is bounds-checked by construction — no dynamic indexing in the RT loop.
-    for (&tp, &sp) in trans_cloud.iter().zip(source.iter()) {
-        ws.neighbor_idx.clear();
-        map.radius_search(tp, cfg.resolution, MAX_NEIGHBORS, &mut ws.neighbor_idx);
-        if ws.neighbor_idx.is_empty() {
-            continue;
-        }
-
-        let x = vec3(sp);
-        let pd = compute_point_derivatives(&x, &ad);
-        let x_trans = vec3(tp);
-
-        let mut sum_pt = 0.0_f64;
-        let mut nearest_pt = 0.0_f64;
-        for &li in &ws.neighbor_idx {
-            if let Some(leaf) = map.leaf(li) {
-                let mean = Vector3::new(leaf.mean[0], leaf.mean[1], leaf.mean[2]);
-                let c_inv = mat3(&leaf.icov);
-                let s = update_derivatives(
-                    &(x_trans - mean),
-                    &c_inv,
-                    &pd,
-                    cfg.gauss,
-                    &mut gradient,
-                    &mut hessian,
-                );
-                sum_pt += s;
-                if s > nearest_pt {
-                    nearest_pt = s;
-                }
-            }
-        }
-
-        found = found.saturating_add(1);
-        score += sum_pt;
-        nearest_voxel_score += nearest_pt;
-        total_neighborhood = total_neighborhood.saturating_add(ws.neighbor_idx.len());
+    let mut red = Reduction::new();
+    for c in &ws.contribs {
+        red.add(c);
     }
-
-    if let Some(r) = cfg.reg {
-        // Mirrors C++ 486-519: float arithmetic, with sin/cos computed in f64 then cast to f32
-        // (C++ `static_cast<float>(sin(p(5,0)))`). No-op when scale_factor == 0.
-        let dx = r.pose_xy[0] - p[0] as f32;
-        let dy = r.pose_xy[1] - p[1] as f32;
-        let sin_yaw = libm::sin(p[5]) as f32;
-        let cos_yaw = libm::cos(p[5]) as f32;
-        let longitudinal = dy * sin_yaw + dx * cos_yaw;
-        let w = total_neighborhood as f32;
-        let sf = r.scale_factor;
-
-        score += f64::from(-sf * w * longitudinal * longitudinal);
-        gradient[0] += f64::from(sf * w * 2.0 * cos_yaw * longitudinal);
-        gradient[1] += f64::from(sf * w * 2.0 * sin_yaw * longitudinal);
-        let h01 = f64::from(-sf * w * 2.0 * cos_yaw * sin_yaw);
-        hessian[(0, 0)] += f64::from(-sf * w * 2.0 * cos_yaw * cos_yaw);
-        hessian[(0, 1)] += h01;
-        hessian[(1, 1)] += f64::from(-sf * w * 2.0 * sin_yaw * sin_yaw);
-        hessian[(1, 0)] += h01;
-    }
-
-    let nearest_voxel_likelihood = if found != 0 {
-        nearest_voxel_score / found as f64
-    } else {
-        0.0
-    };
-    let transform_probability = if source.is_empty() {
-        0.0
-    } else {
-        score / source.len() as f64
-    };
-
-    Derivatives {
-        score,
-        gradient,
-        hessian,
-        nearest_voxel_likelihood,
-        transform_probability,
-    }
+    finalize(red, p, cfg, source.len())
 }
 
 /// Score-only transformation probability: sum over all neighbor cells of the per-cell score,
@@ -267,12 +394,16 @@ pub fn transformation_probability(
             continue;
         }
         let x_trans = vec3(tp);
+        // Per-point-local sum, then add to the running score — matches `compute_derivatives`'
+        // grouping so the two agree (and so serial == parallel stays bit-for-bit).
+        let mut pt = 0.0_f64;
         for &li in &ws.neighbor_idx {
             if let Some(leaf) = map.leaf(li) {
                 let mean = Vector3::new(leaf.mean[0], leaf.mean[1], leaf.mean[2]);
-                score += score_increment(&(x_trans - mean), &mat3(&leaf.icov), gauss);
+                pt += score_increment(&(x_trans - mean), &mat3(&leaf.icov), gauss);
             }
         }
+        score += pt;
     }
     if trans_cloud.is_empty() {
         0.0
@@ -336,6 +467,10 @@ pub struct NdtParams {
     pub max_iterations: i32,
     pub outlier_ratio: f64,
     pub regularization: Option<Regularization>,
+    /// Worker count for the derivative reduction (mirrors C++ `NdtParams.num_threads`). `> 1` uses
+    /// the rayon backend when the `parallel` feature is on; otherwise the serial backend runs. The
+    /// result is bit-identical either way, so this only trades WCET predictability for throughput.
+    pub num_threads: usize,
 }
 
 impl Default for NdtParams {
@@ -347,6 +482,7 @@ impl Default for NdtParams {
             max_iterations: 35,
             outlier_ratio: 0.55,
             regularization: None,
+            num_threads: 1,
         }
     }
 }
@@ -381,10 +517,22 @@ fn derivatives_at(
     p: &Vector6<f64>,
     cfg: &ScoreConfig,
     ws: &mut AlignWorkspace,
+    parallel: bool,
 ) -> Derivatives {
     let mut trans = core::mem::take(&mut ws.trans_cloud);
     transform_cloud_f32(p, source, &mut trans);
-    let d = compute_derivatives(map, source, &trans, p, cfg, ws);
+    // `parallel` selects the rayon backend (bit-identical to serial) when the feature is built.
+    #[cfg(feature = "parallel")]
+    let d = if parallel {
+        compute_derivatives_parallel(map, source, &trans, p, cfg, ws)
+    } else {
+        compute_derivatives(map, source, &trans, p, cfg, ws)
+    };
+    #[cfg(not(feature = "parallel"))]
+    let d = {
+        let _ = parallel; // no rayon backend in this build; always serial
+        compute_derivatives(map, source, &trans, p, cfg, ws)
+    };
     ws.trans_cloud = trans;
     d
 }
@@ -432,6 +580,9 @@ pub fn align(
         gauss: &gauss,
         reg,
     };
+    // Use the rayon backend when the caller asks for >1 thread (bit-identical to serial; ignored
+    // when the `parallel` feature is off).
+    let parallel = params.num_threads > 1;
     let len = source.len();
 
     // Pre-reserve the per-iteration result buffers so no growth occurs after warmup (at most
@@ -455,7 +606,7 @@ pub fn align(
     out.transformation_array.push(se3_matrix_f32(&p));
 
     // Derivatives at the initial guess.
-    let mut d = derivatives_at(map, source, &p, &cfg, ws);
+    let mut d = derivatives_at(map, source, &p, &cfg, ws, parallel);
     out.transform_probability_array
         .push(d.transform_probability as f32);
     out.nearest_voxel_likelihood_array
@@ -486,7 +637,7 @@ pub fn align(
         let a_t = delta_norm.clamp(step_min, params.step_size);
 
         let x_t = p + dir * a_t;
-        d = derivatives_at(map, source, &x_t, &cfg, ws);
+        d = derivatives_at(map, source, &x_t, &cfg, ws, parallel);
         out.transform_probability_array
             .push(d.transform_probability as f32);
         out.nearest_voxel_likelihood_array
@@ -619,6 +770,9 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_align(
         max_iterations: inp.max_iterations,
         outlier_ratio: inp.outlier_ratio,
         regularization: reg,
+        // FFI defaults to the serial backend; wiring a num_threads field through the C ABI is a
+        // separate follow-up (bit-for-bit serial==parallel is covered by the Rust-side test).
+        num_threads: 1,
     };
 
     let mut ws = AlignWorkspace::new();
@@ -995,7 +1149,79 @@ mod tests {
             max_iterations: 50,
             outlier_ratio: 0.55,
             regularization: None,
+            num_threads: 1,
         }
+    }
+
+    // ParReduce (E4e): the rayon backend must equal the serial backend BIT-FOR-BIT — enabling
+    // parallelism is a pure performance change. Exact `==` on every field (not approx).
+    #[cfg(feature = "parallel")]
+    #[test]
+    fn serial_and_parallel_compute_derivatives_are_bit_identical() {
+        let (map, source) = spread_target(); // 40 points across 5 clusters -> rayon splits the work
+        let g = gauss_constants(0.55, 1.0);
+        let p = Vector6::new(0.1, -0.05, 0.03, 0.02, -0.01, 0.04);
+        let trans = transform_cloud(&source, &p);
+        let cfg = ScoreConfig {
+            resolution: 1.0,
+            gauss: &g,
+            reg: None,
+        };
+        let mut ws = AlignWorkspace::new();
+        let s = compute_derivatives(&map, &source, &trans, &p, &cfg, &mut ws);
+        let par = compute_derivatives_parallel(&map, &source, &trans, &p, &cfg, &mut ws);
+
+        assert_eq!(s.score, par.score, "score");
+        assert_eq!(s.transform_probability, par.transform_probability, "tp");
+        assert_eq!(
+            s.nearest_voxel_likelihood, par.nearest_voxel_likelihood,
+            "nvl"
+        );
+        for i in 0..6 {
+            assert_eq!(s.gradient[i], par.gradient[i], "gradient[{i}]");
+        }
+        for i in 0..6 {
+            for j in 0..6 {
+                assert_eq!(s.hessian[(i, j)], par.hessian[(i, j)], "hessian[{i}][{j}]");
+            }
+        }
+    }
+
+    // The same property at the `align` level: num_threads = 1 (serial) vs 8 (rayon) must produce an
+    // identical AlignResult (pose / iterations / Hessian / per-iteration arrays).
+    #[cfg(feature = "parallel")]
+    #[test]
+    fn align_serial_equals_parallel_bit_identical() {
+        let (map, target) = spread_target();
+        let t = [0.2_f32, -0.15, 0.1];
+        let source: alloc::vec::Vec<[f32; 3]> = target
+            .iter()
+            .map(|p| [p[0] + t[0], p[1] + t[1], p[2] + t[2]])
+            .collect();
+        let guess = Matrix4::identity();
+
+        let run = |num_threads: usize| {
+            let mut params = tight_params();
+            params.num_threads = num_threads;
+            let mut ws = AlignWorkspace::new();
+            let mut out = AlignResult::default();
+            align(&map, &source, &guess, &params, &mut ws, &mut out);
+            out
+        };
+        let serial = run(1);
+        let parallel = run(8);
+
+        assert_eq!(serial.iteration_num, parallel.iteration_num, "iterations");
+        assert_eq!(serial.pose, parallel.pose, "pose");
+        assert_eq!(serial.hessian, parallel.hessian, "hessian");
+        assert_eq!(
+            serial.transform_probability_array, parallel.transform_probability_array,
+            "tp array"
+        );
+        assert_eq!(
+            serial.nearest_voxel_likelihood_array, parallel.nearest_voxel_likelihood_array,
+            "nvl array"
+        );
     }
 
     // Recover-known-transform oracle: source = target + t; align maps source back, so the recovered
@@ -1101,6 +1327,7 @@ mod tests {
             max_iterations: 30,
             outlier_ratio: 0.55,
             regularization: None,
+            num_threads: 1,
         };
 
         // Pure reference: same map the FFI builds internally (leaf = resolution, min 6, eig 0.01).
