@@ -185,14 +185,15 @@ fn engine_allocations_after_warmup() {
         source.len(),
         out.iteration_num
     );
-    // Buffers are pre-reserved and reused, so any residual allocation is SVD-internal and constant
-    // per frame. With ~40 points and multiple iterations it is a small O(1) count — NOT O(P) and NOT
-    // O(iterations). The exact value (1) and its source are recorded in
-    // porting_notes/ndt_wcet_audit.md; the hardening slice's fixed solve drives it to 0.
-    assert!(
-        allocs <= 4,
-        "align allocated {allocs} times after warmup with {} points / {} iterations — expected a \
-         small constant (O(1), SVD-internal), so this looks like an O(P) or O(iterations) regression",
+    // The hot path is zero-alloc after warmup: all buffers (result Vecs, trans_cloud via
+    // transform_cloud_f32, neighbor_idx bounded by MAX_NEIGHBORS) are pre-reserved + reused, and the
+    // fixed-size 6x6 SVD is stack-only. (The earlier 1 alloc/frame was a trans_cloud over-reserve,
+    // now fixed — see porting_notes/ndt_wcet_audit.md.)
+    assert_eq!(
+        allocs,
+        0,
+        "align allocated {allocs} times after warmup with {} points / {} iterations — the hot path \
+         must be zero-alloc",
         source.len(),
         out.iteration_num
     );

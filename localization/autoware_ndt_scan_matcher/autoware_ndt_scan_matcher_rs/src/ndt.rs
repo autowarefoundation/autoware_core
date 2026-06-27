@@ -50,6 +50,13 @@ use crate::transform::{
 };
 use crate::voxel_grid::VoxelGridMap;
 
+/// Per-point neighbor cap for the RT-critical `radius_search` (WCET bound on `K`). The kd-tree stops
+/// collecting once `MAX_NEIGHBORS` are found, bounding both the result size and the traversal. Chosen
+/// well above the physical worst case (a radius == `leaf_size` voxel neighborhood is ≤ 27 voxels), so
+/// it does not truncate for real maps — if it ever does, the result deviates from the unbounded C++
+/// `radiusSearch` (first-N in traversal order), which should be treated as a misconfiguration.
+const MAX_NEIGHBORS: usize = 64;
+
 /// Reusable scratch buffers for the per-frame derivative pass and the align loop. Hold one per engine
 /// and reuse across frames; the buffers `clear()` (keep capacity) per call, so after warmup the hot
 /// loop performs no heap allocation. See `plan/ndt_in_rust.md` → "Bounded WCET hot path".
@@ -114,8 +121,8 @@ fn score_increment(x_trans: &Vector3<f64>, c_inv: &Matrix3<f64>, g: &GaussConsta
 /// that pose (for the angular derivatives). `resolution` is the neighbor radius.
 ///
 /// WCET contract (RT-critical; see `porting_notes/ndt_wcet_audit.md`): `O(P · K)` where `P` = source
-/// points (caller-bounded by downsampling) and `K` = neighbors/point (**unbounded** until the
-/// `max_nn = N` hardening); reuses `ws.neighbor_idx` → **no allocation** (measured); no panic/block/
+/// points (caller-bounded by downsampling) and `K` = neighbors/point ≤ `MAX_NEIGHBORS` (the
+/// `radius_search` cap); reuses `ws.neighbor_idx` → **no allocation** (measured); no panic/block/
 /// logging; per-cell math is fixed-size `O(1)`. The map is read-only (kd-tree + flat `Vec`; no
 /// `BTreeMap`).
 // These are the distinct inputs of the C++ `computeDerivatives`; the E4d engine struct will own the
@@ -145,7 +152,7 @@ pub fn compute_derivatives(
     for idx in 0..n {
         let tp = trans_cloud[idx];
         ws.neighbor_idx.clear();
-        map.radius_search(tp, resolution, 0, &mut ws.neighbor_idx);
+        map.radius_search(tp, resolution, MAX_NEIGHBORS, &mut ws.neighbor_idx);
         if ws.neighbor_idx.is_empty() {
             continue;
         }
@@ -235,7 +242,7 @@ pub fn transformation_probability(
     let mut score = 0.0_f64;
     for &tp in trans_cloud {
         ws.neighbor_idx.clear();
-        map.radius_search(tp, resolution, 0, &mut ws.neighbor_idx);
+        map.radius_search(tp, resolution, MAX_NEIGHBORS, &mut ws.neighbor_idx);
         if ws.neighbor_idx.is_empty() {
             continue;
         }
@@ -268,7 +275,7 @@ pub fn nearest_voxel_transformation_likelihood(
     let mut found: usize = 0;
     for &tp in trans_cloud {
         ws.neighbor_idx.clear();
-        map.radius_search(tp, resolution, 0, &mut ws.neighbor_idx);
+        map.radius_search(tp, resolution, MAX_NEIGHBORS, &mut ws.neighbor_idx);
         if ws.neighbor_idx.is_empty() {
             continue;
         }
@@ -366,13 +373,14 @@ fn derivatives_at(
 /// - Outer loop runs at most `params.max_iterations` times (static cap).
 /// - Each iteration does one `compute_derivatives` pass (`O(P · K)`: `P` = source points,
 ///   `K` = neighbors/point) + one 6×6 SVD solve + one f32 cloud transform (`O(P)`).
-/// - **`K` (neighbors/point) is currently unbounded** (`radius_search(max_nn = 0)`) and the kd-tree
-///   traversal is worst-case `O(N_leaves)` — residual risks pending the hardening slice
-///   (`max_nn = N` + direct voxel-neighbor lookup). `P` must be bounded by the caller (downsample).
+/// - `K` (neighbors/point) ≤ `MAX_NEIGHBORS` (the `radius_search` cap); `P` must be bounded by the
+///   caller (downsample). The kd-tree traversal is worst-case `O(N_leaves)` for adversarial point
+///   distributions — an **accepted residual** (benign for physical, roughly-uniform voxel maps).
 /// - No panic (the crate's deny-`unwrap`/`expect`/`panic`/`indexing_slicing` lints); no blocking; no
 ///   logging/formatting; no user callbacks. Only fixed-width float math.
-/// - Allocation: after warmup with pre-reserved buffers, the only possible per-frame allocation is
-///   inside nalgebra's fixed-size SVD (measured by `tests/zero_alloc.rs`; see the audit).
+/// - **Zero allocation** per frame after warmup — all buffers (result `Vec`s, `trans_cloud`,
+///   `neighbor_idx` bounded by `MAX_NEIGHBORS`) are pre-reserved + reused, and the fixed-size 6×6 SVD
+///   is stack-only (measured: `tests/zero_alloc.rs`).
 /// - rt-core (this runtime path) vs control-plane (map build/update) — the map is read-only here.
 pub fn align(
     map: &VoxelGridMap,
@@ -386,9 +394,12 @@ pub fn align(
     let reg = params.regularization.as_ref();
     let len = source.len();
 
-    // Pre-reserve the bounded buffers so no growth occurs after warmup (the per-iteration arrays are
-    // at most max_iterations+1; trans_cloud is exactly source.len()). `reserve` is a no-op once big
-    // enough. neighbor_idx stays amortized (its cap is unknown until the max_nn=N hardening).
+    // Pre-reserve the per-iteration result buffers so no growth occurs after warmup (at most
+    // max_iterations+1 entries). These `reserve`s follow `clear()` (len == 0), so they reserve the
+    // full capacity and are no-ops once warm. (`ws.trans_cloud` is reserved inside
+    // `transform_cloud_f32` after its own clear; `ws.neighbor_idx` is bounded by MAX_NEIGHBORS via
+    // `radius_search` and warms on the first frame — reserving here would over-reserve a non-empty
+    // buffer.)
     let cap = (params.max_iterations.max(0) as usize).saturating_add(1);
     out.transformation_array.clear();
     out.transform_probability_array.clear();
@@ -396,7 +407,6 @@ pub fn align(
     out.transformation_array.reserve(cap);
     out.transform_probability_array.reserve(cap);
     out.nearest_voxel_likelihood_array.reserve(cap);
-    ws.trans_cloud.reserve(len);
 
     // Initial guess -> 6-vector (matches the C++ eulerAngles(0,1,2) extraction for non-gimbal angles).
     let guess_f64 = guess.map(f64::from);

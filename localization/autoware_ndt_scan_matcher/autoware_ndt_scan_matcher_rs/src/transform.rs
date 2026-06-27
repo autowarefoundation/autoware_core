@@ -124,13 +124,14 @@ pub fn se3_matrix_f32(p: &Vector6<f64>) -> Matrix4<f32> {
 }
 
 /// Transform `source` by the pose of `p` into the reused buffer `out`, in **f32** — mirrors the C++
-/// `pcl::transformPointCloud(source, trans_cloud, final_transformation_)`. `out.clear()` keeps
-/// capacity, so after warmup this performs no allocation.
+/// `pcl::transformPointCloud(source, trans_cloud, final_transformation_)`. Clears + reserves `out`
+/// (capacity is retained across calls), so after the first call this performs no allocation.
 pub fn transform_cloud_f32(p: &Vector6<f64>, source: &[[f32; 3]], out: &mut Vec<[f32; 3]>) {
     let m = se3_matrix_f32(p);
     let r = m.fixed_view::<3, 3>(0, 0).into_owned();
     let t = Vector3::new(m[(0, 3)], m[(1, 3)], m[(2, 3)]);
     out.clear();
+    out.reserve(source.len()); // len == 0 after clear, so this reserves the full size (no-op once warm)
     for &s in source {
         let v = r * Vector3::new(s[0], s[1], s[2]) + t;
         out.push([v[0], v[1], v[2]]);
