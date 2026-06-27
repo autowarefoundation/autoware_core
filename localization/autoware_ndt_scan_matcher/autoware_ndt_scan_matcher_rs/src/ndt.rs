@@ -28,15 +28,7 @@
 // Numeric kernel: f64 matrix/scalar operators (overflow lint), fixed-array / 0..6 indexing, f32<->f64
 // casts inherent to point-cloud math + the regularization (mirrors C++ float arithmetic), and x/y/z
 // single-char geometry names.
-#![allow(
-    clippy::arithmetic_side_effects,
-    clippy::indexing_slicing,
-    clippy::many_single_char_names,
-    clippy::as_conversions,
-    clippy::cast_possible_truncation,
-    clippy::cast_precision_loss,
-    clippy::cast_sign_loss
-)]
+// Suppressions are scoped per-function (no module-wide `#![allow]`); rationale per the comment above.
 
 use alloc::vec::Vec;
 
@@ -110,8 +102,14 @@ fn vec3(p: [f32; 3]) -> Vector3<f64> {
 /// Per-cell NDT score `-d1 · exp(-d2/2 · x_transᵀ Σ⁻¹ x_trans)` (eq. 6.9). `x_trans` is already
 /// `transformed_point − cell.mean`. Shared by the score-only loops; matches the score
 /// `update_derivatives` computes internally.
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::allow_attributes,
+    reason = "nalgebra f64 matrix product (quadratic form)"
+)]
 fn score_increment(x_trans: &Vector3<f64>, c_inv: &Matrix3<f64>, g: &GaussConstants) -> f64 {
-    let quad = (x_trans.transpose() * c_inv * x_trans)[(0, 0)];
+    // x_transᵀ Σ⁻¹ x_trans as a scalar (avoids indexing the 1x1 product matrix).
+    let quad = x_trans.dot(&(c_inv * x_trans));
     -g.d1 * libm::exp(-g.d2 * quad * 0.5)
 }
 
@@ -127,7 +125,19 @@ fn score_increment(x_trans: &Vector3<f64>, c_inv: &Matrix3<f64>, g: &GaussConsta
 /// `BTreeMap`).
 // These are the distinct inputs of the C++ `computeDerivatives`; the E4d engine struct will own the
 // map / params / workspace and expose a narrower method, so the arg count is wrapped away there.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::as_conversions,
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    clippy::allow_attributes,
+    reason = "numeric kernel: nalgebra fixed-size math + deliberate C++-parity f32 regularization casts"
+)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "distinct inputs of C++ computeDerivatives; the E4d/E6 engine struct will wrap them"
+)]
 #[must_use]
 pub fn compute_derivatives(
     map: &VoxelGridMap,
@@ -148,16 +158,16 @@ pub fn compute_derivatives(
 
     let ad = compute_angle_derivatives(p);
 
-    let n = source.len().min(trans_cloud.len());
-    for idx in 0..n {
-        let tp = trans_cloud[idx];
+    // Zip stops at the shorter of the two (the former `0..source.len().min(trans_cloud.len())`),
+    // so the per-point access is bounds-checked by construction — no dynamic indexing in the RT loop.
+    for (&tp, &sp) in trans_cloud.iter().zip(source.iter()) {
         ws.neighbor_idx.clear();
         map.radius_search(tp, resolution, MAX_NEIGHBORS, &mut ws.neighbor_idx);
         if ws.neighbor_idx.is_empty() {
             continue;
         }
 
-        let x = vec3(source[idx]);
+        let x = vec3(sp);
         let pd = compute_point_derivatives(&x, &ad);
         let x_trans = vec3(tp);
 
@@ -182,10 +192,10 @@ pub fn compute_derivatives(
             }
         }
 
-        found += 1;
+        found = found.saturating_add(1);
         score += sum_pt;
         nearest_voxel_score += nearest_pt;
-        total_neighborhood += ws.neighbor_idx.len();
+        total_neighborhood = total_neighborhood.saturating_add(ws.neighbor_idx.len());
     }
 
     if let Some(r) = reg {
@@ -231,6 +241,13 @@ pub fn compute_derivatives(
 
 /// Score-only transformation probability: sum over all neighbor cells of the per-cell score,
 /// divided by the cloud size (`calculateTransformationProbability`).
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::as_conversions,
+    clippy::cast_precision_loss,
+    clippy::allow_attributes,
+    reason = "nalgebra f64 vector math; the score/len average is a deliberate usize->f64 cast"
+)]
 #[must_use]
 pub fn transformation_probability(
     map: &VoxelGridMap,
@@ -263,6 +280,13 @@ pub fn transformation_probability(
 
 /// Per-point maximum cell score, averaged over points that found a neighbor
 /// (`calculateNearestVoxelTransformationLikelihood`).
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::as_conversions,
+    clippy::cast_precision_loss,
+    clippy::allow_attributes,
+    reason = "nalgebra f64 vector math; the score/found average is a deliberate usize->f64 cast"
+)]
 #[must_use]
 pub fn nearest_voxel_transformation_likelihood(
     map: &VoxelGridMap,
@@ -291,7 +315,7 @@ pub fn nearest_voxel_transformation_likelihood(
             }
         }
         nearest_voxel_score += nearest_pt;
-        found += 1;
+        found = found.saturating_add(1);
     }
     if found != 0 {
         nearest_voxel_score / found as f64
@@ -382,6 +406,16 @@ fn derivatives_at(
 ///   `neighbor_idx` bounded by `MAX_NEIGHBORS`) are pre-reserved + reused, and the fixed-size 6×6 SVD
 ///   is stack-only (measured: `tests/zero_alloc.rs`).
 /// - rt-core (this runtime path) vs control-plane (map build/update) — the map is read-only here.
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::as_conversions,
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::allow_attributes,
+    reason = "numeric kernel: nalgebra fixed-size math + deliberate C++-parity f32/usize<->int casts"
+)]
 pub fn align(
     map: &VoxelGridMap,
     source: &[[f32; 3]],
@@ -456,7 +490,7 @@ pub fn align(
 
         out.transformation_array.push(se3_matrix_f32(&x_t));
         p = x_t;
-        iter += 1;
+        iter = iter.saturating_add(1);
 
         if iter >= params.max_iterations || a_t.abs() < params.trans_epsilon {
             break;
@@ -518,7 +552,18 @@ pub struct AwNdtAlignOutput {
 /// documented length: `target_xyz` `3*n_target` f32, `source_xyz` `3*n_source` f32, `guess` 16,
 /// `pose` 16, `hessian` 36, `transformation_array` `transforms_cap*16`. No-op if `target_xyz`,
 /// `source_xyz`, or `guess` is null.
-#[allow(unsafe_code)]
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointers validated per rust-c-ffi-safety"
+)]
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::as_conversions,
+    clippy::cast_possible_truncation,
+    clippy::allow_attributes,
+    reason = "marshaling fixed-size pose/hessian/transform arrays across the C ABI: nalgebra matrix indexing, bounded counts"
+)]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_align(
     input: *const AwNdtAlignInput,
@@ -624,8 +669,15 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_align(
     clippy::unreadable_literal,
     clippy::needless_range_loop,
     clippy::cast_sign_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    clippy::as_conversions,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
     clippy::borrow_as_ptr,
-    unsafe_code
+    unsafe_code,
+    clippy::allow_attributes,
+    reason = "test code"
 )]
 mod tests {
     use super::*;

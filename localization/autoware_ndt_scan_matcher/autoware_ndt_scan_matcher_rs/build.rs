@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // In a build script, panicking (expect) is the idiomatic way to fail the build.
-#![allow(clippy::expect_used)]
+#![allow(clippy::expect_used, clippy::allow_attributes, reason = "build script")]
 
 // ROS-message bindings are only generated under the `ros` feature (the ROS-node build).
 // The no_std / awkernel build leaves `ros` off, so bindgen / libclang / ROS headers are not needed.

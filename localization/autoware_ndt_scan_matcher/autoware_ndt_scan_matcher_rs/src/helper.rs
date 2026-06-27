@@ -179,7 +179,12 @@ pub fn count_oscillation_poses(poses: &[crate::ros_msgs::geometry_msgs__msg__Pos
 }
 
 #[cfg(test)]
-#[allow(clippy::indexing_slicing, clippy::arithmetic_side_effects)]
+#[allow(
+    clippy::indexing_slicing,
+    clippy::arithmetic_side_effects,
+    clippy::allow_attributes,
+    reason = "test code"
+)]
 mod tests {
     use super::*;
 

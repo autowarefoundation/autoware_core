@@ -54,6 +54,9 @@ cast_sign_loss = "deny"
 cast_lossless = "warn"
 float_cmp = "deny"
 lossy_float_literal = "deny"
+# Suppression hygiene — prefer self-cleaning #[expect]; every allow/expect needs a reason.
+allow_attributes = "warn"
+allow_attributes_without_reason = "deny"
 pedantic = { level = "warn", priority = -1 }
 
 [profile.release]

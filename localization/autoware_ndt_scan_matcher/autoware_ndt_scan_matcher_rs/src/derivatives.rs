@@ -29,14 +29,7 @@
 // `compute_angle_derivatives` is one long verbatim transcription of the 23 j_ang/h_ang rows
 // (too_many_lines); `x_j_ang`/`x_h_ang` are the C++ variable names (similar_names); the validity
 // guard mirrors C++'s explicit `> 1 || < 0` with an added NaN check (manual_range_contains).
-#![allow(
-    clippy::arithmetic_side_effects,
-    clippy::indexing_slicing,
-    clippy::many_single_char_names,
-    clippy::too_many_lines,
-    clippy::similar_names,
-    clippy::manual_range_contains
-)]
+// Suppressions are scoped per-function (no module-wide `#![allow]`); rationale per the comment above.
 
 use nalgebra::{Matrix3, Matrix4, Matrix6, RowVector4, SMatrix, Vector4, Vector6};
 
@@ -63,6 +56,11 @@ pub struct PointDerivatives {
 ///
 /// WCET: fixed-size `f64` matrix math (once per iteration) — `O(1)`, no allocation, no panic.
 #[must_use]
+#[allow(
+    clippy::too_many_lines,
+    clippy::allow_attributes,
+    reason = "verbatim transcription of the 23 j_ang/h_ang rows (Magnusson eq. 6.19-6.21)"
+)]
 pub fn compute_angle_derivatives(p: &Vector6<f64>) -> AngleDerivatives {
     let (cx, sx) = if libm::fabs(p[3]) < 10e-5 {
         (1.0, 0.0)
@@ -183,6 +181,14 @@ pub fn compute_angle_derivatives(p: &Vector6<f64>) -> AngleDerivatives {
 /// cols 0-2 = identity) is set here, where C++ sets it once in `computeDerivatives`.
 ///
 /// WCET: fixed-size `f64` matrix math — `O(1)`, no allocation, no panic, no blocking.
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::many_single_char_names,
+    clippy::similar_names,
+    clippy::allow_attributes,
+    reason = "fixed-size nalgebra matrix math: constant indices, float ops, eq.6.21 a..f names"
+)]
 #[must_use]
 pub fn compute_point_derivatives(
     x: &nalgebra::Vector3<f64>,
@@ -240,6 +246,13 @@ pub fn compute_point_derivatives(
 /// `e_x_cov_x` (outside `[0,1]` or NaN) returns `0.0` and leaves the accumulators untouched.
 ///
 /// WCET: fixed-size `f64` matrix math — `O(1)`, no allocation, no panic, no blocking.
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::manual_range_contains,
+    clippy::allow_attributes,
+    reason = "fixed-size nalgebra matrix math; the [0,1] guard mirrors C++'s explicit < 0 || > 1"
+)]
 pub fn update_derivatives(
     x_trans: &nalgebra::Vector3<f64>,
     c_inv: &Matrix3<f64>,
@@ -292,8 +305,11 @@ pub fn update_derivatives(
 #[allow(
     clippy::float_cmp,
     clippy::indexing_slicing,
+    clippy::arithmetic_side_effects,
     clippy::unreadable_literal,
-    clippy::needless_range_loop
+    clippy::needless_range_loop,
+    clippy::allow_attributes,
+    reason = "test code"
 )]
 mod tests {
     use super::*;

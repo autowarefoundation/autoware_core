@@ -46,7 +46,9 @@ pub mod voxel_grid;
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
     clippy::indexing_slicing,
-    clippy::arithmetic_side_effects
+    clippy::arithmetic_side_effects,
+    clippy::allow_attributes,
+    reason = "bindgen-generated"
 )]
 mod ros_msgs {
     include!(concat!(env!("OUT_DIR"), "/ros_msgs.rs"));
@@ -61,7 +63,10 @@ pub fn add(left: u64, right: u64) -> u64 {
 ///
 /// Both arguments are passed by value and the return is a plain `u64`, so there
 /// are no pointers or lifetimes crossing the boundary to validate.
-#[allow(unsafe_code)]
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointers validated per rust-c-ffi-safety"
+)]
 #[unsafe(no_mangle)]
 pub extern "C" fn autoware_ndt_scan_matcher_rs_add(left: u64, right: u64) -> u64 {
     add(left, right)
@@ -73,7 +78,10 @@ pub extern "C" fn autoware_ndt_scan_matcher_rs_add(left: u64, right: u64) -> u64
 /// `src_cov` and `out_cov` must each point to a readable/writable array of 36 `f64`, and
 /// `rot` to a readable array of 9 `f64` (row-major 3x3). All pointers must be non-null and
 /// suitably aligned for `f64`. Does nothing if any pointer is null.
-#[allow(unsafe_code)]
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointers validated per rust-c-ffi-safety"
+)]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_rotate_covariance(
     src_cov: *const f64,
@@ -103,7 +111,10 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_rotate_covariance(
 /// `geometry_msgs__msg__Pose` (the layout is asserted on the C++ side). Returns 0 if `poses` is
 /// null or `num_poses` is 0.
 #[cfg(feature = "ros")]
-#[allow(unsafe_code)]
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointers validated per rust-c-ffi-safety"
+)]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_count_oscillation(
     poses: *const core::ffi::c_void,
@@ -125,7 +136,12 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_count_oscillation(
 #[cfg(test)]
 // tests call the `extern "C"` shims via raw pointers (unsafe) and assert exact equality between a
 // shim and the pure fn it delegates to (identical ops → bit-identical, so float_cmp is intended).
-#[allow(unsafe_code, clippy::float_cmp)]
+#[allow(
+    unsafe_code,
+    clippy::float_cmp,
+    clippy::allow_attributes,
+    reason = "test code"
+)]
 mod tests {
     use super::*;
 

@@ -28,7 +28,9 @@
     clippy::cast_sign_loss,
     clippy::indexing_slicing,
     clippy::print_stdout,
-    clippy::arithmetic_side_effects
+    clippy::arithmetic_side_effects,
+    clippy::allow_attributes,
+    reason = "benchmark example (diagnostic, not a gate)"
 )]
 
 use std::time::Instant;

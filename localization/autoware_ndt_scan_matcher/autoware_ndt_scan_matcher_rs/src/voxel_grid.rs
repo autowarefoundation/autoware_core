@@ -21,17 +21,11 @@
 
 // Numeric kernel: nalgebra f64 matrix operators are the float-math domain the integer-overflow lint
 // targets; the voxel-index integer math below uses explicit checked ops where overflow could occur.
-#![allow(clippy::arithmetic_side_effects)]
-// f32<->f64<->i64 conversions are inherent to voxelization/accumulation; the int32 voxel-count guard
-// bounds the indices so the floor->i64 narrowing cannot truncate meaningfully.
-#![allow(
-    clippy::as_conversions,
-    clippy::cast_possible_truncation,
-    clippy::cast_precision_loss
-)]
-// Numeric kernel: indexing into fixed `[_; 3]` arrays with constant / `0..3` indices is statically
-// in-bounds, and x/y/z single-char names are the natural geometry notation.
-#![allow(clippy::indexing_slicing, clippy::many_single_char_names)]
+// Numeric kernel. Suppressions are scoped per-function (no module-wide `#![allow]`):
+// arithmetic_side_effects = nalgebra f64 float math + checked integer voxel-index math;
+// as_conversions/cast_* = deliberate f32<->f64<->i64 voxelization conversions (the int32 voxel-count
+// guard bounds the floor->i64 narrowing); indexing_slicing = constant indices into fixed `[_; 3]`;
+// many_single_char_names = x/y/z geometry notation.
 
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
@@ -69,8 +63,13 @@ impl Accumulator {
             centroid_sum: [0.0; 3],
         }
     }
+    #[allow(
+        clippy::arithmetic_side_effects,
+        clippy::allow_attributes,
+        reason = "nalgebra f64 vector/matrix accumulation"
+    )]
     fn add(&mut self, p: Vector3<f64>, raw: [f32; 3]) {
-        self.n += 1;
+        self.n = self.n.saturating_add(1);
         self.sum += p;
         self.sum_outer += p * p.transpose();
         self.centroid_sum[0] += raw[0];
@@ -89,26 +88,44 @@ pub struct VoxelGrid {
 }
 
 /// floor(x) as i64. The caller bounds x via the bounding-box / int32 voxel-count guard.
+#[allow(
+    clippy::as_conversions,
+    clippy::cast_possible_truncation,
+    clippy::allow_attributes,
+    reason = "deliberate floor->i64; the caller's int32 voxel-count guard bounds the magnitude"
+)]
 fn floor_i64(x: f64) -> i64 {
     libm::floor(x) as i64
 }
 
 impl VoxelGrid {
     /// Voxel id for a point under this grid's bbox/leaf layout, or `None` on index overflow.
+    #[allow(
+        clippy::many_single_char_names,
+        clippy::allow_attributes,
+        reason = "x/y/z coordinates and a/b/c voxel-index lattice terms"
+    )]
     fn leaf_id(&self, x: f64, y: f64, z: f64) -> Option<i64> {
-        let ijk = [
-            floor_i64(x * self.inverse_leaf_size[0]) - self.bbox_min[0],
-            floor_i64(y * self.inverse_leaf_size[1]) - self.bbox_min[1],
-            floor_i64(z * self.inverse_leaf_size[2]) - self.bbox_min[2],
-        ];
-        let a = ijk[0].checked_mul(self.div_mul[0])?;
-        let b = ijk[1].checked_mul(self.div_mul[1])?;
-        let c = ijk[2].checked_mul(self.div_mul[2])?;
+        let i = floor_i64(x * self.inverse_leaf_size[0]).checked_sub(self.bbox_min[0])?;
+        let j = floor_i64(y * self.inverse_leaf_size[1]).checked_sub(self.bbox_min[1])?;
+        let k = floor_i64(z * self.inverse_leaf_size[2]).checked_sub(self.bbox_min[2])?;
+        let a = i.checked_mul(self.div_mul[0])?;
+        let b = j.checked_mul(self.div_mul[1])?;
+        let c = k.checked_mul(self.div_mul[2])?;
         a.checked_add(b)?.checked_add(c)
     }
 
     /// Build a voxel grid from `points`, mirroring `MultiVoxelGridCovariance::apply_filter`.
     #[must_use]
+    #[allow(
+        clippy::arithmetic_side_effects,
+        clippy::indexing_slicing,
+        clippy::as_conversions,
+        clippy::cast_possible_truncation,
+        clippy::cast_precision_loss,
+        clippy::allow_attributes,
+        reason = "control-plane map build: nalgebra f64 math; i64 voxel-index arithmetic bounded by the int32 voxel-count guard; deliberate count casts; d ∈ 0..3 indexing of fixed [_; 3]"
+    )]
     pub fn build(points: &[[f32; 3]], leaf_size: [f64; 3], min_points: i32, eig_mult: f64) -> Self {
         let inverse_leaf_size = [1.0 / leaf_size[0], 1.0 / leaf_size[1], 1.0 / leaf_size[2]];
 
@@ -236,6 +253,12 @@ impl VoxelGrid {
 
 /// Eigenvalue-regularized inverse covariance (Magnusson eq 6.11), or `None` if the voxel is
 /// degenerate (negative/zero eigenvalue or non-finite inverse). Mirrors `computeLeafParams`.
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::allow_attributes,
+    reason = "nalgebra f64 eigen/matrix math; order[..] ∈ 0..3 indexes the 3-element eigen results"
+)]
 fn compute_icov(cov: &Matrix3<f64>, eig_mult: f64) -> Option<[f64; 9]> {
     let se = cov.symmetric_eigen();
     // nalgebra does not guarantee ordering; sort ascending to match Eigen's SelfAdjointEigenSolver.
@@ -282,7 +305,10 @@ fn compute_icov(cov: &Matrix3<f64>, eig_mult: f64) -> Option<[f64; 9]> {
 /// # Safety
 /// `points` points to `n` `[f32;3]` triples, `leaf_size` to 3 `f64`. Returns an owned grid handle
 /// (free with `..._voxel_grid_free`), or null if `points`/`leaf_size` is null.
-#[allow(unsafe_code)]
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointers validated per rust-c-ffi-safety"
+)]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_build(
     points: *const f32,
@@ -311,7 +337,10 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_build(
 /// # Safety
 /// `grid` is a handle from `..._voxel_grid_build`; `point` points to 3 `f32`; `mean_out`/`icov_out`
 /// to 3 / 9 writable `f64`. Returns true and writes outputs iff a leaf covers `point`.
-#[allow(unsafe_code)]
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointers validated per rust-c-ffi-safety"
+)]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_leaf_at(
     grid: *const VoxelGrid,
@@ -339,7 +368,10 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_leaf_at(
 
 /// # Safety
 /// `grid` must be a handle from `..._voxel_grid_build` (or null); it must not be used afterwards.
-#[allow(unsafe_code)]
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointers validated per rust-c-ffi-safety"
+)]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_free(grid: *mut VoxelGrid) {
     if grid.is_null() {
@@ -422,7 +454,10 @@ impl VoxelGridMap {
 /// # Safety
 /// `leaf_size` points to 3 readable `f64` (or null -> returns null). Returns an owned handle
 /// (free with `..._voxel_grid_map_free`).
-#[allow(unsafe_code)]
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointers validated per rust-c-ffi-safety"
+)]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_map_new(
     leaf_size: *const f64,
@@ -439,7 +474,10 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_map_new(
 
 /// # Safety
 /// `map` is a valid handle; `points` points to `3*n` `f32`. No-op if `map`/`points` is null.
-#[allow(unsafe_code)]
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointers validated per rust-c-ffi-safety"
+)]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_map_add_target(
     map: *mut VoxelGridMap,
@@ -462,7 +500,10 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_map_add_target(
 
 /// # Safety
 /// `map` is a valid handle (or null). Removes the grid registered under `id`.
-#[allow(unsafe_code)]
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointers validated per rust-c-ffi-safety"
+)]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_map_remove_target(
     map: *mut VoxelGridMap,
@@ -477,7 +518,10 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_map_remove_targ
 
 /// # Safety
 /// `map` is a valid handle (or null). Builds the kd-tree over current grids' centroids.
-#[allow(unsafe_code)]
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointers validated per rust-c-ffi-safety"
+)]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_map_create_kdtree(
     map: *mut VoxelGridMap,
@@ -492,7 +536,16 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_map_create_kdtr
 /// # Safety
 /// `map` valid; `point` points to 3 `f32`; `out_idx` to `cap` writable `u32`. Writes up to `cap`
 /// leaf indices and returns the total number found (`max_nn == 0` = unlimited).
-#[allow(unsafe_code)]
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointers validated per rust-c-ffi-safety"
+)]
+#[allow(
+    clippy::as_conversions,
+    clippy::cast_possible_truncation,
+    clippy::allow_attributes,
+    reason = "C ABI count marshaling: u32<->usize at the boundary (writes bounded by cap)"
+)]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_map_radius_search(
     map: *const VoxelGridMap,
@@ -521,7 +574,15 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_map_radius_sear
 /// # Safety
 /// `map` valid; `mean_out`/`icov_out` to 3 / 9 writable `f64`. Writes them and returns true iff
 /// `idx` is a valid leaf index.
-#[allow(unsafe_code)]
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointers validated per rust-c-ffi-safety"
+)]
+#[allow(
+    clippy::as_conversions,
+    clippy::allow_attributes,
+    reason = "C ABI: idx u32->usize"
+)]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_map_leaf(
     map: *const VoxelGridMap,
@@ -549,7 +610,10 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_map_leaf(
 
 /// # Safety
 /// `map` must be a handle from `..._voxel_grid_map_new` (or null); not used afterwards.
-#[allow(unsafe_code)]
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointers validated per rust-c-ffi-safety"
+)]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_map_free(map: *mut VoxelGridMap) {
     if map.is_null() {
@@ -565,7 +629,14 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_map_free(map: *
     clippy::expect_used,
     clippy::needless_range_loop,
     clippy::unreadable_literal,
-    unsafe_code
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::as_conversions,
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    unsafe_code,
+    clippy::allow_attributes,
+    reason = "test code"
 )]
 mod tests {
     use super::*;

@@ -28,7 +28,9 @@
     clippy::cast_possible_truncation,
     clippy::cast_precision_loss,
     clippy::indexing_slicing,
-    clippy::float_cmp
+    clippy::float_cmp,
+    clippy::allow_attributes,
+    reason = "test code"
 )]
 
 use std::alloc::{GlobalAlloc, Layout, System};

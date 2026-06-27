@@ -18,17 +18,11 @@
 //! `computeTransformation` lines 332-339; the same intrinsic XYZ order Eigen's
 //! `eulerAngles(0, 1, 2)` produces at line 283). All math is `f64`; `no_std` via `libm`.
 
-// Numeric kernel: nalgebra f64 matrix/scalar operators are the float-math domain the
-// integer-overflow lint targets; they cannot integer-overflow. Indexing is into fixed-size
-// vectors/matrices with constant indices (statically in bounds). The f32 cloud transform mirrors the
-// C++ `Matrix4f` pipeline, so the f64->f32 narrowing is intentional.
-#![allow(
-    clippy::arithmetic_side_effects,
-    clippy::indexing_slicing,
-    clippy::as_conversions,
-    clippy::cast_possible_truncation,
-    clippy::many_single_char_names
-)]
+// Numeric kernel. Suppressions are scoped per-function (no module-wide `#![allow]`): nalgebra f64
+// matrix/scalar operators are float math that cannot integer-overflow (arithmetic_side_effects);
+// indexing is into fixed-size vectors/matrices with constant indices (indexing_slicing); the f32
+// cloud transform mirrors the C++ `Matrix4f` pipeline, so the f64->f32 narrowing is intentional
+// (as_conversions/cast_*); x/y/z are geometry names (many_single_char_names).
 
 use alloc::vec::Vec;
 
@@ -56,6 +50,11 @@ pub fn gauss_constants(outlier_ratio: f64, resolution: f64) -> GaussConstants {
 }
 
 /// `Rx(roll) * Ry(pitch) * Rz(yaw)` — the 3x3 rotation for the angle triple `(roll, pitch, yaw)`.
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::allow_attributes,
+    reason = "nalgebra f64 matrix product"
+)]
 fn rotation(roll: f64, pitch: f64, yaw: f64) -> Matrix3<f64> {
     let (sx, cx) = (libm::sin(roll), libm::cos(roll));
     let (sy, cy) = (libm::sin(pitch), libm::cos(pitch));
@@ -69,6 +68,11 @@ fn rotation(roll: f64, pitch: f64, yaw: f64) -> Matrix3<f64> {
 
 /// Build the 4x4 affine transform `Translation(tx,ty,tz) * Rx(roll) * Ry(pitch) * Rz(yaw)` from the
 /// 6-vector `p` (matches `computeTransformation` lines 332-339).
+#[allow(
+    clippy::indexing_slicing,
+    clippy::allow_attributes,
+    reason = "constant indices into fixed-size nalgebra Vector6/Matrix4"
+)]
 #[must_use]
 pub fn euler_to_matrix(p: &Vector6<f64>) -> Matrix4<f64> {
     let r = rotation(p[3], p[4], p[5]);
@@ -86,6 +90,11 @@ pub fn euler_to_matrix(p: &Vector6<f64>) -> Matrix4<f64> {
 /// NOTE: this is *a* valid inverse (the intrinsic-XYZ extraction), sufficient for round-trip tests.
 /// E4d (initial-guess extraction) must reconcile the range convention with Eigen's
 /// `eulerAngles(0, 1, 2)` (line 283), which folds angles differently for large rotations.
+#[allow(
+    clippy::indexing_slicing,
+    clippy::allow_attributes,
+    reason = "constant indices into a fixed-size nalgebra Matrix4"
+)]
 #[must_use]
 pub fn matrix_to_euler(m: &Matrix4<f64>) -> Vector6<f64> {
     // For R = Rx(a)*Ry(b)*Rz(c): R[0][2] = sin(b); R[1][2] = -sin(a)cos(b); R[2][2] = cos(a)cos(b);
@@ -97,6 +106,12 @@ pub fn matrix_to_euler(m: &Matrix4<f64>) -> Vector6<f64> {
 }
 
 /// Apply the transform of `p` to a point: `R(p) * x + t(p)`.
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::allow_attributes,
+    reason = "nalgebra f64 matrix math; constant indices into fixed-size Vector6"
+)]
 #[must_use]
 pub fn transform_point(p: &Vector6<f64>, x: &Vector3<f64>) -> Vector3<f64> {
     let r = rotation(p[3], p[4], p[5]);
@@ -106,6 +121,15 @@ pub fn transform_point(p: &Vector6<f64>, x: &Vector3<f64>) -> Vector3<f64> {
 /// The 4x4 affine of `p` built in **f32** — the C++ `final_transformation_` (`Matrix4f`):
 /// `Translation(f32) * AngleAxis<float>` for roll/pitch/yaw. The angles are narrowed to f32 and the
 /// trig is f32, matching the C++ float pipeline so the transformed cloud agrees bit-closely.
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::as_conversions,
+    clippy::cast_possible_truncation,
+    clippy::many_single_char_names,
+    clippy::allow_attributes,
+    reason = "C++ Matrix4f parity: deliberate f64->f32 narrowing; nalgebra math; fixed-size indexing"
+)]
 #[must_use]
 pub fn se3_matrix_f32(p: &Vector6<f64>) -> Matrix4<f32> {
     let (sx, cx) = (libm::sinf(p[3] as f32), libm::cosf(p[3] as f32));
@@ -126,15 +150,22 @@ pub fn se3_matrix_f32(p: &Vector6<f64>) -> Matrix4<f32> {
 /// Transform `source` by the pose of `p` into the reused buffer `out`, in **f32** — mirrors the C++
 /// `pcl::transformPointCloud(source, trans_cloud, final_transformation_)`. Clears + reserves `out`
 /// (capacity is retained across calls), so after the first call this performs no allocation.
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::many_single_char_names,
+    clippy::allow_attributes,
+    reason = "nalgebra f64/f32 matrix math; constant indices into a fixed-size Matrix4; m/r/t/v locals"
+)]
 pub fn transform_cloud_f32(p: &Vector6<f64>, source: &[[f32; 3]], out: &mut Vec<[f32; 3]>) {
     let m = se3_matrix_f32(p);
     let r = m.fixed_view::<3, 3>(0, 0).into_owned();
     let t = Vector3::new(m[(0, 3)], m[(1, 3)], m[(2, 3)]);
     out.clear();
     out.reserve(source.len()); // len == 0 after clear, so this reserves the full size (no-op once warm)
-    for &s in source {
-        let v = r * Vector3::new(s[0], s[1], s[2]) + t;
-        out.push([v[0], v[1], v[2]]);
+    for &[sx, sy, sz] in source {
+        let v = r * Vector3::new(sx, sy, sz) + t;
+        out.push([v.x, v.y, v.z]);
     }
 }
 
@@ -142,7 +173,9 @@ pub fn transform_cloud_f32(p: &Vector6<f64>, source: &[[f32; 3]], out: &mut Vec<
 #[allow(
     clippy::float_cmp,
     clippy::indexing_slicing,
-    clippy::unreadable_literal
+    clippy::unreadable_literal,
+    clippy::allow_attributes,
+    reason = "test code"
 )]
 mod tests {
     use super::*;

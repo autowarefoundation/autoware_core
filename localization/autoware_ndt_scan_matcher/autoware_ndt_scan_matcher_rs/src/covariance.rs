@@ -20,9 +20,9 @@
 
 // nalgebra's fixed-size f64 matrix operators (+, *, unary -) are the float-math domain the
 // integer-overflow lint targets; they cannot integer-overflow.
-#![allow(clippy::arithmetic_side_effects)]
-// doc comments use domain terms (base_link, etc.) that look like code to doc_markdown.
-#![allow(clippy::doc_markdown)]
+// Numeric kernel. Suppressions are scoped per-function (no module-wide `#![allow]`):
+// arithmetic_side_effects = nalgebra f64 float math (cannot integer-overflow); doc_markdown =
+// domain terms (base_link, etc.) that are not code.
 
 use nalgebra::{Matrix2, Vector2};
 
@@ -51,6 +51,11 @@ pub fn calc_weight_vec(scores: &[f64], temperature: f64, out: &mut [f64]) {
 
 /// Weighted mean and covariance of 2D points. `poses2d_flat` is `[x0,y0, x1,y1, ...]`
 /// (`2 * weights.len()` long). Returns `(mean[x,y], cov row-major 2x2)`.
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::allow_attributes,
+    reason = "nalgebra f64 matrix math"
+)]
 #[must_use]
 pub fn calculate_weighted_mean_and_cov(
     poses2d_flat: &[f64],
@@ -71,6 +76,11 @@ pub fn calculate_weighted_mean_and_cov(
 }
 
 /// `-inverse` of the top-left 2x2 block of a row-major 6x6 Hessian. NaN-filled if singular.
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::allow_attributes,
+    reason = "nalgebra f64 matrix math"
+)]
 #[must_use]
 pub fn laplace_xy_covariance(hessian_row_major: &[f64; 36]) -> [f64; 4] {
     // top-left 2x2 of the row-major 6x6: indices 0,1 (row 0) and 6,7 (row 1).
@@ -83,6 +93,12 @@ pub fn laplace_xy_covariance(hessian_row_major: &[f64; 36]) -> [f64; 4] {
 }
 
 /// `R^T * C * R` — rotate a map-frame covariance into base_link. `rot` is the row-major 2x2 yaw block.
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::doc_markdown,
+    clippy::allow_attributes,
+    reason = "nalgebra f64 matrix math; base_link is a domain term, not code"
+)]
 #[must_use]
 pub fn rotate_covariance_to_base_link(cov: &[f64; 4], rot: &[f64; 4]) -> [f64; 4] {
     let r = mat2(rot);
@@ -90,6 +106,11 @@ pub fn rotate_covariance_to_base_link(cov: &[f64; 4], rot: &[f64; 4]) -> [f64; 4
 }
 
 /// `R * C * R^T` — rotate a base_link-frame covariance into map.
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::allow_attributes,
+    reason = "nalgebra f64 matrix math"
+)]
 #[must_use]
 pub fn rotate_covariance_to_map(cov: &[f64; 4], rot: &[f64; 4]) -> [f64; 4] {
     let r = mat2(rot);
@@ -97,6 +118,11 @@ pub fn rotate_covariance_to_map(cov: &[f64; 4], rot: &[f64; 4]) -> [f64; 4] {
 }
 
 /// Clamp the base_link-frame diagonal to floors, then rotate back to map.
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::allow_attributes,
+    reason = "nalgebra f64 matrix math"
+)]
 #[must_use]
 pub fn adjust_diagonal_covariance(
     cov: &[f64; 4],
@@ -119,7 +145,10 @@ pub fn adjust_diagonal_covariance(
 
 /// # Safety
 /// `scores`/`out` point to `n` readable/writable `f64`. No-op if either is null.
-#[allow(unsafe_code)]
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointers validated per rust-c-ffi-safety"
+)]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_calc_weight_vec(
     scores: *const f64,
@@ -142,7 +171,10 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_calc_weight_vec(
 
 /// # Safety
 /// `poses2d` points to `2*n` `f64`, `weights` to `n` `f64`, `mean_out` to 2, `cov_out` to 4.
-#[allow(unsafe_code)]
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointers validated per rust-c-ffi-safety"
+)]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_calculate_weighted_mean_and_cov(
     poses2d: *const f64,
@@ -174,7 +206,10 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_calculate_weighted_mean_an
 
 /// # Safety
 /// `hessian` points to 36 `f64` (row-major 6x6); `cov_out` to 4.
-#[allow(unsafe_code)]
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointers validated per rust-c-ffi-safety"
+)]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_laplace_xy_covariance(
     hessian: *const f64,
@@ -191,7 +226,10 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_laplace_xy_covariance(
 
 /// # Safety
 /// `cov`/`rot` point to 4 `f64` (row-major 2x2), `out` to 4. No-op if any is null.
-#[allow(unsafe_code)]
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointers validated per rust-c-ffi-safety"
+)]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_rotate_covariance_to_base_link(
     cov: *const f64,
@@ -209,7 +247,10 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_rotate_covariance_to_base_
 
 /// # Safety
 /// `cov`/`rot` point to 4 `f64` (row-major 2x2), `out` to 4. No-op if any is null.
-#[allow(unsafe_code)]
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointers validated per rust-c-ffi-safety"
+)]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_rotate_covariance_to_map(
     cov: *const f64,
@@ -227,7 +268,10 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_rotate_covariance_to_map(
 
 /// # Safety
 /// `cov`/`rot` point to 4 `f64` (row-major 2x2), `out` to 4. No-op if any is null.
-#[allow(unsafe_code)]
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointers validated per rust-c-ffi-safety"
+)]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_adjust_diagonal_covariance(
     cov: *const f64,
@@ -246,7 +290,13 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_adjust_diagonal_covariance
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp, clippy::indexing_slicing, unsafe_code)]
+#[allow(
+    clippy::float_cmp,
+    clippy::indexing_slicing,
+    unsafe_code,
+    clippy::allow_attributes,
+    reason = "test code"
+)]
 mod tests {
     use super::*;
 

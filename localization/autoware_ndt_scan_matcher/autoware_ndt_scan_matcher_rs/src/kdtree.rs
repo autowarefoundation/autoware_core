@@ -17,7 +17,7 @@
 
 // Numeric/index kernel: bounded recursion depth (~log2 N) and indexing into fixed `[f32; 3]` /
 // the internal node array; distances are computed in f64 via `f64::from` (no lossy casts).
-#![allow(clippy::arithmetic_side_effects, clippy::indexing_slicing)]
+// Suppressions are scoped per-function (no module-wide `#![allow]`); rationale per the comment above.
 
 use alloc::vec::Vec;
 
@@ -70,6 +70,11 @@ impl KdTree {
         self.search_rec(self.root, query, r2, max_nn, out);
     }
 
+    #[allow(
+        clippy::indexing_slicing,
+        clippy::allow_attributes,
+        reason = "axis is depth % 3 ∈ 0..3; indexes a fixed-size [f32; 3]"
+    )]
     fn search_rec(
         &self,
         node: Option<usize>,
@@ -106,6 +111,11 @@ impl KdTree {
     }
 }
 
+#[allow(
+    clippy::indexing_slicing,
+    clippy::allow_attributes,
+    reason = "axis ∈ 0..3; idx holds valid point indices and mid < idx.len()"
+)]
 fn build_rec(
     pts: &[[f32; 3]],
     idx: &mut [usize],
@@ -123,8 +133,8 @@ fn build_rec(
     let (left_slice, rest) = idx.split_at_mut(mid);
     // `rest[0]` is the median; recurse on the elements after it.
     let right_slice = &mut rest[1..];
-    let left = build_rec(pts, left_slice, depth + 1, nodes);
-    let right = build_rec(pts, right_slice, depth + 1, nodes);
+    let left = build_rec(pts, left_slice, depth.saturating_add(1), nodes);
+    let right = build_rec(pts, right_slice, depth.saturating_add(1), nodes);
 
     let id = nodes.len();
     nodes.push(Node {
@@ -143,7 +153,9 @@ fn build_rec(
     clippy::as_conversions,
     clippy::cast_precision_loss,
     clippy::cast_possible_truncation,
-    clippy::unreadable_literal
+    clippy::unreadable_literal,
+    clippy::allow_attributes,
+    reason = "test code"
 )]
 mod tests {
     use super::*;
