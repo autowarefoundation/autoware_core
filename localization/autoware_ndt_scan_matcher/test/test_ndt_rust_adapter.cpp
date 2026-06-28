@@ -61,7 +61,10 @@ pclomp::NdtParams make_params()
 }
 }  // namespace
 
-TEST(NdtRustAdapter, MatchesCppEngine)  // NOLINT
+// The adapter is now a thin engine handle (N4c/N4e slimmed the pclomp-shaped compute methods — those
+// engine FFIs are differential-tested vs the C++ engine by test_ndt_engine / test_align /
+// test_estimate_covariance_multi). This covers the remaining surface: map management + clone.
+TEST(NdtRustAdapter, ThinHandleMapManagement)  // NOLINT
 {
   std::mt19937 rng(13);
   auto tile0 = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
@@ -69,79 +72,26 @@ TEST(NdtRustAdapter, MatchesCppEngine)  // NOLINT
   make_tile(0.0F, 0.0F, 0.0F, rng, *tile0);
   make_tile(8.0F, 4.0F, 0.0F, rng, *tile1);
 
-  const std::array<float, 3> t_true = {0.2F, -0.15F, 0.1F};
-  auto source = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-  for (const auto & tile : {tile0, tile1}) {
-    for (const auto & p : *tile) {
-      source->push_back(pcl::PointXYZ(p.x + t_true[0], p.y + t_true[1], p.z + t_true[2]));
-    }
-  }
-  const Eigen::Matrix4f guess = Eigen::Matrix4f::Identity();
-
   auto drive = [&](auto & ndt) {
     ndt.setParams(make_params());
     ndt.addTarget(tile0, "0");
     ndt.addTarget(tile1, "1");
     ndt.createVoxelKdtree();
-    auto out = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-    ndt.align(*out, guess, source);
   };
-
   Cpp cpp;
   drive(cpp);
-  const pclomp::NdtResult cpp_r = cpp.getResult();
-
   Adapter rs;
   drive(rs);
-  const pclomp::NdtResult rs_r = rs.getResult();
 
-  // Map management (the cell-id map now lives in the Rust engine; ids come back sorted).
   EXPECT_TRUE(rs.hasTarget());
-  EXPECT_EQ(rs.getCurrentMapIDs(), (std::vector<std::string>{"0", "1"}));
+  EXPECT_EQ(rs.getCurrentMapIDs(), (std::vector<std::string>{"0", "1"}));  // engine-owned, sorted
   EXPECT_EQ(rs.getMaximumIterations(), cpp.getMaximumIterations());
 
-  // align result
-  for (int r = 0; r < 4; ++r) {
-    for (int c = 0; c < 4; ++c) {
-      EXPECT_NEAR(cpp_r.pose(r, c), rs_r.pose(r, c), 2e-2) << "pose(" << r << "," << c << ")";
-    }
-  }
-  EXPECT_NEAR(cpp_r.iteration_num, rs_r.iteration_num, 2);
-  EXPECT_NEAR(cpp_r.transform_probability, rs_r.transform_probability, 2e-2);
-  EXPECT_NEAR(
-    cpp_r.nearest_voxel_transformation_likelihood, rs_r.nearest_voxel_transformation_likelihood,
-    2e-2);
-  for (int r = 0; r < 6; ++r) {
-    for (int c = 0; c < 6; ++c) {
-      const double a = cpp_r.hessian(r, c);
-      EXPECT_LE(std::abs(a - rs_r.hessian(r, c)), (5e-2 * std::abs(a)) + 1e-1)
-        << "H(" << r << "," << c << ")";
-    }
-  }
-  // per-iteration score traces are populated and sized like the node expects
-  EXPECT_EQ(
-    rs_r.transform_probability_array.size(), static_cast<size_t>(rs_r.iteration_num) + 1);
-  EXPECT_EQ(
-    rs_r.nearest_voxel_transformation_likelihood_array.size(),
-    static_cast<size_t>(rs_r.iteration_num) + 1);
-
-  // standalone scoring
-  EXPECT_NEAR(
-    cpp.calculateNearestVoxelTransformationLikelihood(*source),
-    rs.calculateNearestVoxelTransformationLikelihood(*source), 2e-2);
-
-  // per-point score cloud: same included points (those with a neighbor) + matching intensities
-  const auto cpp_scores = cpp.calculateNearestVoxelScoreEachPoint(*source);
-  const auto rs_scores = rs.calculateNearestVoxelScoreEachPoint(*source);
-  ASSERT_EQ(cpp_scores.size(), rs_scores.size());
-  for (size_t i = 0; i < cpp_scores.size(); ++i) {
-    EXPECT_NEAR(cpp_scores.points[i].intensity, rs_scores.points[i].intensity, 2e-2)
-      << "score point " << i;
-  }
-
-  // copy (the node's map-update double-buffer): the copy aligns to the same pose.
+  // Clone (the node's map-update double-buffer) carries the engine + the cell-id map, independently.
   Adapter rs_copy = rs;
-  auto out2 = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-  rs_copy.align(*out2, guess, source);
-  EXPECT_TRUE(rs_copy.getResult().pose.isApprox(rs_r.pose, 1e-5F));
+  EXPECT_TRUE(rs_copy.hasTarget());
+  EXPECT_EQ(rs_copy.getCurrentMapIDs(), (std::vector<std::string>{"0", "1"}));
+  rs.removeTarget("0");
+  EXPECT_EQ(rs.getCurrentMapIDs(), (std::vector<std::string>{"1"}));
+  EXPECT_EQ(rs_copy.getCurrentMapIDs(), (std::vector<std::string>{"0", "1"}));
 }

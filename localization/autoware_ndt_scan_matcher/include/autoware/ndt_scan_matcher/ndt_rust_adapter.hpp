@@ -39,9 +39,13 @@
 namespace autoware::ndt_scan_matcher
 {
 
-/// Drop-in replacement for `pclomp::MultiGridNormalDistributionsTransform<PointXYZ, PointXYZ>` that
-/// forwards to the Rust engine handle. Owns the handle (Rule-of-Five: copy = engine clone) and the
-/// string `cell_id` -> `u64` mapping the node-facing API needs.
+/// Thin owning handle to the Rust NDT engine (the node's `NormalDistributionsTransform`/`NdtType`
+/// under `NDT_USE_RUST`). Owns the engine handle (Rule-of-Five: copy = engine clone) and exposes the
+/// lifecycle + params + map-management surface the node + `map_update` still call on the typedef
+/// (`addTarget`/`removeTarget`/`createVoxelKdtree`/`hasTarget`/`getCurrentMapIDs`/`getParams`/
+/// `setParams`/`getMaximumIterations`) plus `raw_handle()`. The compute (align / scoring / covariance /
+/// regularization) is driven by the node directly through the engine FFIs on `raw_handle()` — this is
+/// **not** a pclomp drop-in (N4c/N4e). The cell-id mapping now lives in the engine (N4d).
 class NdtRustAdapter
 {
 public:
@@ -138,122 +142,11 @@ public:
     return ids;
   }
 
-  void align(
-    PointCloudSource & output, const Eigen::Matrix4f & guess,
-    const PointCloudSourceConstPtr & source)
-  {
-    const std::vector<float> src = to_flat(*source);
-    std::array<float, 16> g{};
-    for (int r = 0; r < 4; ++r) {
-      for (int c = 0; c < 4; ++c) {
-        g[(r * 4) + c] = guess(r, c);
-      }
-    }
-    autoware_ndt_scan_matcher_rs_ndt_engine_align(handle_, g.data(), src.data(), source->size());
-    // C++ align fills `output` with the source transformed by the final pose.
-    pcl::transformPointCloud(*source, output, getResult().pose);
-  }
-
-  pclomp::NdtResult getResult() const
-  {
-    pclomp::NdtResult r;
-    std::array<float, 16> pose{};
-    std::int32_t iter = 0;
-    float tp = 0.0F;
-    float nvl = 0.0F;
-    std::array<double, 36> hess{};
-    constexpr std::uint32_t kCap = 256;
-    std::vector<float> ta(static_cast<size_t>(kCap) * 16);
-    std::uint32_t count = 0;
-    AwNdtAlignOutput out{};
-    out.pose = pose.data();
-    out.iteration_num = &iter;
-    out.transform_probability = &tp;
-    out.nearest_voxel_likelihood = &nvl;
-    out.hessian = hess.data();
-    out.transformation_array = ta.data();
-    out.transforms_cap = kCap;
-    out.transforms_count = &count;
-    autoware_ndt_scan_matcher_rs_ndt_engine_get_result(handle_, &out);
-
-    for (int rr = 0; rr < 4; ++rr) {
-      for (int cc = 0; cc < 4; ++cc) {
-        r.pose(rr, cc) = pose[(rr * 4) + cc];
-      }
-    }
-    r.iteration_num = iter;
-    r.transform_probability = tp;
-    r.nearest_voxel_transformation_likelihood = nvl;
-    for (int rr = 0; rr < 6; ++rr) {
-      for (int cc = 0; cc < 6; ++cc) {
-        r.hessian(rr, cc) = hess[(rr * 6) + cc];
-      }
-    }
-    const std::uint32_t n = std::min(count, kCap);
-    r.transformation_array.resize(n);
-    for (std::uint32_t k = 0; k < n; ++k) {
-      Eigen::Matrix4f m;
-      for (int rr = 0; rr < 4; ++rr) {
-        for (int cc = 0; cc < 4; ++cc) {
-          m(rr, cc) = ta[(static_cast<size_t>(k) * 16) + (rr * 4) + cc];
-        }
-      }
-      r.transformation_array[k] = m;
-    }
-
-    std::vector<float> tps(kCap);
-    std::vector<float> nvls(kCap);
-    std::uint32_t scount = 0;
-    autoware_ndt_scan_matcher_rs_ndt_engine_get_score_arrays(
-      handle_, tps.data(), nvls.data(), kCap, &scount);
-    const std::uint32_t sn = std::min(scount, kCap);
-    r.transform_probability_array.assign(tps.begin(), tps.begin() + sn);
-    r.nearest_voxel_transformation_likelihood_array.assign(nvls.begin(), nvls.begin() + sn);
-    return r;
-  }
-
-  double calculateTransformationProbability(const PointCloudSource & cloud) const
-  {
-    const std::vector<float> c = to_flat(cloud);
-    return autoware_ndt_scan_matcher_rs_ndt_engine_calc_transformation_probability(
-      handle_, c.data(), cloud.size());
-  }
-  double calculateNearestVoxelTransformationLikelihood(const PointCloudSource & cloud) const
-  {
-    const std::vector<float> c = to_flat(cloud);
-    return autoware_ndt_scan_matcher_rs_ndt_engine_calc_nearest_voxel_likelihood(
-      handle_, c.data(), cloud.size());
-  }
-  pcl::PointCloud<pcl::PointXYZI> calculateNearestVoxelScoreEachPoint(
-    const PointCloudSource & cloud) const
-  {
-    const std::vector<float> c = to_flat(cloud);
-    std::vector<float> scores(cloud.size(), 0.0F);
-    autoware_ndt_scan_matcher_rs_ndt_engine_calc_nearest_voxel_score_each_point(
-      handle_, c.data(), cloud.size(), scores.data());
-    pcl::PointCloud<pcl::PointXYZI> out;
-    for (size_t i = 0; i < cloud.size(); ++i) {
-      if (scores[i] > 0.0F) {  // > 0 iff the point found a neighbor (matches the C++ output set)
-        pcl::PointXYZI p;
-        p.x = cloud.points[i].x;
-        p.y = cloud.points[i].y;
-        p.z = cloud.points[i].z;
-        p.intensity = scores[i];
-        out.points.push_back(p);
-      }
-    }
-    return out;
-  }
-
-  void setRegularizationPose(const Eigen::Matrix4f & pose)
-  {
-    autoware_ndt_scan_matcher_rs_ndt_engine_set_regularization(
-      handle_, pose(0, 3), pose(1, 3), params_.regularization_scale_factor);
-  }
-  void unsetRegularizationPose()
-  {
-    autoware_ndt_scan_matcher_rs_ndt_engine_set_regularization(handle_, 0.0F, 0.0F, 0.0F);
-  }
+  // N4c/N4e: the pclomp-shaped compute methods (align / getResult / calculate* /
+  // set[/unset]RegularizationPose) were removed — the node drives align/scoring/covariance/
+  // regularization directly through the engine FFIs on `raw_handle()`. This adapter is now a thin
+  // engine handle: lifecycle + `raw_handle` + map management + params. (The engine FFIs are
+  // differential-tested directly by test_ndt_engine / test_align / test_estimate_covariance_multi.)
 
 private:
   static std::vector<float> to_flat(const PointCloudSource & cloud)

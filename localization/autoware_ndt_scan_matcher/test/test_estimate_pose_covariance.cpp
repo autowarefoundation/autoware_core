@@ -39,6 +39,7 @@
 namespace
 {
 using Adapter = autoware::ndt_scan_matcher::NdtRustAdapter;
+using Cpp = pclomp::MultiGridNormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ>;
 
 void make_tile(float cx, float cy, float cz, std::mt19937 & rng, pcl::PointCloud<pcl::PointXYZ> & c)
 {
@@ -63,8 +64,10 @@ pclomp::NdtParams make_params()
   return p;
 }
 
-// Build a driven 2-tile adapter + the source cloud (shifted by a small known translation).
-Adapter make_driven_adapter(pcl::PointCloud<pcl::PointXYZ>::Ptr & source_out)
+// Build a driven 2-tile Rust engine (the adapter, for the FFI under test via raw_handle) + an
+// identically-built C++ pclomp engine (for the main align result + the templated reference, since the
+// slimmed adapter no longer has align/getResult) + the source cloud (shifted by a known translation).
+Adapter make_driven(pcl::PointCloud<pcl::PointXYZ>::Ptr & source_out, Cpp & cpp_out)
 {
   std::mt19937 rng(13);
   auto tile0 = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
@@ -78,6 +81,10 @@ Adapter make_driven_adapter(pcl::PointCloud<pcl::PointXYZ>::Ptr & source_out)
       source_out->push_back(pcl::PointXYZ(p.x + t_true[0], p.y + t_true[1], p.z + t_true[2]));
     }
   }
+  cpp_out.setParams(make_params());
+  cpp_out.addTarget(tile0, "0");
+  cpp_out.addTarget(tile1, "1");
+  cpp_out.createVoxelKdtree();
   Adapter rs;
   rs.setParams(make_params());
   rs.addTarget(tile0, "0");
@@ -171,10 +178,11 @@ std::array<double, 36> run_ffi(
 TEST(EstimatePoseCovariance, FixedValueJustRotates)  // NOLINT
 {
   pcl::PointCloud<pcl::PointXYZ>::Ptr source;
-  Adapter rs = make_driven_adapter(source);
+  Cpp cpp;
+  Adapter rs = make_driven(source, cpp);
   auto out_cloud = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-  rs.align(*out_cloud, Eigen::Matrix4f::Identity(), source);
-  const pclomp::NdtResult ndt_result = rs.getResult();
+  cpp.align(*out_cloud, Eigen::Matrix4f::Identity(), source);
+  const pclomp::NdtResult ndt_result = cpp.getResult();
 
   const auto output_cov = make_output_cov();
   const auto in = make_input(ndt_result, flatten(*source), 0, output_cov, 1.0);
@@ -195,10 +203,11 @@ TEST(EstimatePoseCovariance, FixedValueJustRotates)  // NOLINT
 TEST(EstimatePoseCovariance, MultiNdtMatchesComposition)  // NOLINT
 {
   pcl::PointCloud<pcl::PointXYZ>::Ptr source;
-  Adapter rs = make_driven_adapter(source);
+  Cpp cpp;
+  Adapter rs = make_driven(source, cpp);
   auto out_cloud = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-  rs.align(*out_cloud, Eigen::Matrix4f::Identity(), source);
-  const pclomp::NdtResult ndt_result = rs.getResult();
+  cpp.align(*out_cloud, Eigen::Matrix4f::Identity(), source);
+  const pclomp::NdtResult ndt_result = cpp.getResult();
   const auto output_cov = make_output_cov();
   const double scale = 2.0;
 
@@ -209,12 +218,12 @@ TEST(EstimatePoseCovariance, MultiNdtMatchesComposition)  // NOLINT
   uint32_t ic = 0;
   const auto cov = run_ffi(rs, in, kind, rc, ic);
 
-  // Reference 2x2 via the still-compiled templated estimator on the same adapter (mutates rs, but the
-  // FFI result above is already captured).
+  // Reference 2x2 via the templated estimator on the C++ pclomp engine (the slimmed adapter no longer
+  // has align/getResult). This is the engine-vs-engine multi-NDT differential (Rust FFI vs C++).
   const std::vector<Eigen::Matrix4f> poses =
     pclomp::propose_poses_to_search(ndt_result, kOffsetX, kOffsetY);
   const pclomp::ResultOfMultiNdtCovarianceEstimation ref =
-    pclomp::estimate_xy_covariance_by_multi_ndt(ndt_result, rs, poses, source);
+    pclomp::estimate_xy_covariance_by_multi_ndt(ndt_result, cpp, poses, source);
   const Eigen::Matrix2d adj =
     pclomp::adjust_diagonal_covariance(ref.covariance * scale, ndt_result.pose, output_cov[0], output_cov[7]);
   std::array<double, 36> expected{};
@@ -244,10 +253,11 @@ TEST(EstimatePoseCovariance, MultiNdtMatchesComposition)  // NOLINT
 TEST(EstimatePoseCovariance, MultiNdtScorePublishesInitialOnly)  // NOLINT
 {
   pcl::PointCloud<pcl::PointXYZ>::Ptr source;
-  Adapter rs = make_driven_adapter(source);
+  Cpp cpp;
+  Adapter rs = make_driven(source, cpp);
   auto out_cloud = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-  rs.align(*out_cloud, Eigen::Matrix4f::Identity(), source);
-  const pclomp::NdtResult ndt_result = rs.getResult();
+  cpp.align(*out_cloud, Eigen::Matrix4f::Identity(), source);
+  const pclomp::NdtResult ndt_result = cpp.getResult();
 
   const auto in = make_input(ndt_result, flatten(*source), 3, make_output_cov(), 1.0);
   int32_t kind = -1;

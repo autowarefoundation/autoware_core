@@ -98,35 +98,43 @@ std::vector<float> flatten(const pcl::PointCloud<pcl::PointXYZ> & cloud)
 }
 }  // namespace
 
-// run_align via raw_handle == the adapter's own align (same engine, same guess) + a self-consistent
-// verdict. Exact equality (deterministic Rust engine), no tolerance.
-TEST(NodeRunAlign, MatchesAdapterAlignAndVerdictIsConsistent)  // NOLINT
+// run_align via raw_handle == the bare engine align FFI on the same engine + same guess + a
+// self-consistent verdict. Exact equality (deterministic Rust engine), no tolerance.
+TEST(NodeRunAlign, MatchesEngineAlignAndVerdictIsConsistent)  // NOLINT
 {
   pcl::PointCloud<pcl::PointXYZ>::Ptr source;
   Adapter rs = make_driven_adapter(source);
-  const Eigen::Matrix4f guess = Eigen::Matrix4f::Identity();
-
-  // Reference: the adapter's own align result (deterministic).
-  auto out_cloud = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-  rs.align(*out_cloud, guess, source);
-  const pclomp::NdtResult ref = rs.getResult();
-
-  // Orchestrator: re-align the same engine from the same guess via the raw handle.
   const std::array<float, 16> guess16 = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
   const std::vector<float> src = flatten(*source);
+
+  // Reference: align the same Rust engine via the bare engine FFI + read its result (the slimmed
+  // adapter has no align/getResult). run_align below re-aligns the same engine from the same guess,
+  // so the align outputs match exactly (deterministic).
+  autoware_ndt_scan_matcher_rs_ndt_engine_align(
+    rs.raw_handle(), guess16.data(), src.data(), source->size());
+  std::array<float, 16> ref_pose{};
+  std::int32_t ref_iter = 0;
+  float ref_tp = 0.0F;
+  float ref_nvl = 0.0F;
+  AwNdtAlignOutput ref_out{};
+  ref_out.pose = ref_pose.data();
+  ref_out.iteration_num = &ref_iter;
+  ref_out.transform_probability = &ref_tp;
+  ref_out.nearest_voxel_likelihood = &ref_nvl;
+  autoware_ndt_scan_matcher_rs_ndt_engine_get_result(rs.raw_handle(), &ref_out);
+
+  // Orchestrator: re-align the same engine from the same guess via run_align.
   const AwAlignParams params{kTp, 0.0, 0.0};
   AwAlignOutcome outcome{};
   autoware_ndt_scan_matcher_rs_node_run_align(
     rs.raw_handle(), guess16.data(), src.data(), source->size(), &params, &outcome);
 
-  EXPECT_EQ(outcome.iteration_num, ref.iteration_num);
+  EXPECT_EQ(outcome.iteration_num, ref_iter);
   EXPECT_EQ(outcome.max_iterations, rs.getMaximumIterations());
-  EXPECT_FLOAT_EQ(outcome.transform_probability, ref.transform_probability);
-  EXPECT_FLOAT_EQ(outcome.nearest_voxel_likelihood, ref.nearest_voxel_transformation_likelihood);
-  for (int r = 0; r < 4; ++r) {
-    for (int c = 0; c < 4; ++c) {
-      EXPECT_FLOAT_EQ(outcome.pose[(r * 4) + c], ref.pose(r, c)) << "pose(" << r << "," << c << ")";
-    }
+  EXPECT_FLOAT_EQ(outcome.transform_probability, ref_tp);
+  EXPECT_FLOAT_EQ(outcome.nearest_voxel_likelihood, ref_nvl);
+  for (int i = 0; i < 16; ++i) {
+    EXPECT_FLOAT_EQ(outcome.pose[i], ref_pose[i]) << "pose[" << i << "]";
   }
 
   // Verdict self-consistency (the formula is differential-tested against C++ in test_convergence_verdict).

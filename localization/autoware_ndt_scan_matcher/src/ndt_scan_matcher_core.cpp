@@ -1375,7 +1375,12 @@ void NDTScanMatcher::service_ndt_align_main(
 
   ndt_ptr_.with([&](auto & ndt_ptr) {
     // check is_set_map_points
+#ifdef NDT_USE_RUST
+    bool is_set_map_points =
+      autoware_ndt_scan_matcher_rs_ndt_engine_has_target(ndt_ptr->raw_handle());
+#else
     bool is_set_map_points = ndt_ptr->hasTarget();
+#endif
     diagnostics_ndt_align_->add_key_value("is_set_map_points", is_set_map_points);
     if (!is_set_map_points) {
       std::stringstream message;
@@ -1449,6 +1454,11 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
 
   std::vector<Particle> particle_array;
   auto output_cloud = std::make_shared<pcl::PointCloud<PointSource>>();
+#ifdef NDT_USE_RUST
+  // N4e: the TPE loop aligns the (constant) source from each candidate via the engine handle; flatten
+  // once. `output_cloud` is only used by the #else pclomp align below.
+  const std::vector<float> source_flat = cloud_to_flat(*sensor_points_in_baselink_frame_);
+#endif
 
   // publish the estimated poses in 20 times to see the progress and to avoid dropping data
   visualization_msgs::msg::MarkerArray marker_array;
@@ -1472,8 +1482,21 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
     initial_pose.orientation = tf2::toMsg(tf_quaternion);
 
     const Eigen::Matrix4f initial_pose_matrix = pose_to_matrix4f(initial_pose);
+#ifdef NDT_USE_RUST
+    std::array<float, 16> guess16{};
+    for (int r = 0; r < 4; ++r) {
+      for (int c = 0; c < 4; ++c) {
+        guess16[(r * 4) + c] = initial_pose_matrix(r, c);
+      }
+    }
+    autoware_ndt_scan_matcher_rs_ndt_engine_align(
+      ndt_ref.raw_handle(), guess16.data(), source_flat.data(),
+      sensor_points_in_baselink_frame_->size());
+    const pclomp::NdtResult ndt_result = ndt_result_from_engine(ndt_ref.raw_handle());
+#else
     ndt_ref.align(*output_cloud, initial_pose_matrix, sensor_points_in_baselink_frame_);
     const pclomp::NdtResult ndt_result = ndt_ref.getResult();
+#endif
 
     Particle particle(
       initial_pose, matrix4f_to_pose(ndt_result.pose),
