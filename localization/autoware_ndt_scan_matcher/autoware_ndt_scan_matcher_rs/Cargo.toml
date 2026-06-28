@@ -12,7 +12,9 @@ crate-type = ["staticlib", "rlib"]
 # `std` is default-on so a plain `cargo build`/`test`/`clippy` has std (test harness + panic
 # handler). The no_std / awkernel build opts out with `--no-default-features`.
 default = ["std", "parallel"]
-std = []
+# `std` also pulls in `arc-swap` (the lock-free engine-state double-buffer). The no_std build
+# (`--no-default-features`, single-threaded) uses a `RefCell` cell instead, so arc-swap stays off.
+std = ["dep:arc-swap"]
 # `parallel`: the rayon-backed `compute_derivatives` reduction. std-only (rayon needs std), so the
 # no_std rlib (`--no-default-features`) excludes it and uses the serial backend. Bit-for-bit
 # identical to serial (per-point-local contributions reduced in point-index order), so it is a pure
@@ -33,6 +35,10 @@ nalgebra = { version = "0.33", default-features = false, features = ["libm"] }
 # Data-parallel reduction backend (the `parallel` feature; std-only). Order-preserving
 # `collect_into_vec` keeps the parallel reduce bit-identical to serial.
 rayon = { version = "1", optional = true }
+# Lock-free engine-state double-buffer (the `std` feature). `load()` is lock-free — the read
+# (align) path takes no lock; map-update publishes a fresh state with an atomic store. Replaces
+# the C++ giant `ndt_ptr_` mutex on the ON path. no_std uses a `RefCell` cell instead (single core).
+arc-swap = { version = "1", optional = true }
 
 [build-dependencies]
 bindgen = { version = "0.69", optional = true }

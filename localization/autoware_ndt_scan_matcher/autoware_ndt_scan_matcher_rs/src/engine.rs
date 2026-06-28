@@ -12,13 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Persistent NDT engine handle (E6a). Wraps the target map + params + scratch workspace + last
-//! align result so the C++ node adapter can drive incremental map updates, alignment, and scoring
-//! over a stable C ABI (an opaque `AwNdtEngine*`), instead of the one-shot `ndt_align` FFI. The
-//! handle is clone-able (the node's map-update double-buffers by copying the whole NDT object).
+//! Persistent NDT engine handle (E6a). Wraps the target map + params over a stable C ABI (an opaque
+//! `AwNdtEngine*`), so the C++ node adapter can drive incremental map updates, alignment, and scoring.
+//!
+//! Concurrency (engine concurrency refactor): the engine exposes **`&self`-only** methods and is
+//! `Sync` (std). The mutable state lives behind lock-free interior mutability — the target map +
+//! params in an `ArcSwap<EngineState>` (the read/align path loads an immutable snapshot lock-free;
+//! map-update publishes a fresh state with an atomic store), the optional regularization in a tiny
+//! `ArcSwap<Option<Regularization>>`, and the per-align scratch (workspace + last result) in a
+//! **thread-local** (reused across frames; at most one align per thread, no shared mutable scratch).
+//! So a shared `&NdtEngine` is sound across concurrent ROS callbacks **without** an external mutex,
+//! and every FFI forms only `&*engine` (never `&mut *engine`). `no_std` (single-core) uses `RefCell`
+//! cells instead of `ArcSwap` and keeps the scratch in the engine.
 //! Control-plane: the WCET-bounded path is the inner [`crate::ndt::align`], not this wrapper.
 
 use alloc::boxed::Box;
+use alloc::sync::Arc;
 
 use nalgebra::Matrix4;
 
@@ -30,35 +39,120 @@ use crate::ndt::{
 use crate::transform::gauss_constants;
 use crate::voxel_grid::VoxelGridMap;
 
-/// Persistent NDT engine: the target map, the active params (incl. optional regularization), a
-/// reused align workspace, and the most recent align result. Mirrors the stateful C++
-/// `MultiGridNormalDistributionsTransform` object the node holds across frames.
-pub struct NdtEngine {
+// ---- lock-free interior-mutability cell (std: arc-swap; no_std single-core: RefCell<Arc<…>>) ----
+// `Swap<T>` aliases the backing cell; the `swap_*` free fns give a uniform load/store/rcu API. `load`
+// returns an owned `Arc<T>` snapshot (lock-free under std), so callers hold a stable view while a
+// concurrent `store`/`rcu` publishes a new version (the old `Arc` lives until its last reader drops).
+
+#[cfg(feature = "std")]
+type Swap<T> = arc_swap::ArcSwap<T>;
+#[cfg(not(feature = "std"))]
+type Swap<T> = core::cell::RefCell<Arc<T>>;
+
+#[cfg(feature = "std")]
+fn swap_new<T>(v: T) -> Swap<T> {
+    arc_swap::ArcSwap::from_pointee(v)
+}
+#[cfg(not(feature = "std"))]
+fn swap_new<T>(v: T) -> Swap<T> {
+    core::cell::RefCell::new(Arc::new(v))
+}
+
+#[cfg(feature = "std")]
+fn swap_load<T>(c: &Swap<T>) -> Arc<T> {
+    c.load_full()
+}
+#[cfg(not(feature = "std"))]
+fn swap_load<T>(c: &Swap<T>) -> Arc<T> {
+    c.borrow().clone()
+}
+
+#[cfg(feature = "std")]
+fn swap_store<T>(c: &Swap<T>, v: T) {
+    c.store(Arc::new(v));
+}
+#[cfg(not(feature = "std"))]
+fn swap_store<T>(c: &Swap<T>, v: T) {
+    *c.borrow_mut() = Arc::new(v);
+}
+
+/// Read-copy-update: build the next value from the current one and publish it atomically. The
+/// closure may run more than once under contention (std/arc-swap), so it must be pure.
+#[cfg(feature = "std")]
+fn swap_rcu<T>(c: &Swap<T>, f: impl Fn(&T) -> T) {
+    c.rcu(|cur| Arc::new(f(cur)));
+}
+#[cfg(not(feature = "std"))]
+fn swap_rcu<T>(c: &Swap<T>, f: impl Fn(&T) -> T) {
+    let next = {
+        let cur = c.borrow();
+        Arc::new(f(&cur))
+    };
+    *c.borrow_mut() = next;
+}
+
+/// The atomically-swappable engine state: the target map, the active params, and the cell-id → tile
+/// mapping. Immutable once published — map-update builds a fresh `EngineState` and stores it.
+#[derive(Clone)]
+struct EngineState {
     map: VoxelGridMap,
     params: NdtParams,
-    min_points: i32,
-    eig_mult: f64,
-    workspace: AlignWorkspace,
-    last: AlignResult,
     /// Cell-id bytes → tile `u64` (the engine owns the mapping the C++ adapter's `id_map_` used to
     /// hold; keys are the raw `std::string` cell-id bytes — not validated UTF-8). N4d.
     id_map: alloc::collections::BTreeMap<alloc::vec::Vec<u8>, u64>,
     next_id: u64,
 }
 
+/// Per-align scratch: the reused workspace + the last align result. Lives in a thread-local (std) or
+/// in the engine (`no_std`, single-core) — never shared mutable state across threads.
+struct AlignScratch {
+    workspace: AlignWorkspace,
+    last: AlignResult,
+}
+
+impl AlignScratch {
+    fn new() -> Self {
+        Self {
+            workspace: AlignWorkspace::new(),
+            last: AlignResult::default(),
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+std::thread_local! {
+    /// One reused scratch per executor thread. At most one align runs per thread at a time, so this
+    /// is exclusive without a lock; reused buffers keep the align frame allocation-free after warmup.
+    static SCRATCH: core::cell::RefCell<AlignScratch> = core::cell::RefCell::new(AlignScratch::new());
+}
+
+/// Persistent NDT engine: an `ArcSwap` of the target map + params (+ id mapping), the optional
+/// regularization, and the per-align scratch. `&self`-only + `Sync` (std) — see the module docs.
+pub struct NdtEngine {
+    state: Swap<EngineState>,
+    /// Optional longitudinal regularization, swapped lock-free (set per sensor frame before align,
+    /// read at align time on the same thread). A dedicated tiny cell so setting it never clones the
+    /// map (it is not part of `EngineState`).
+    reg: Swap<Option<Regularization>>,
+    min_points: i32,
+    eig_mult: f64,
+    /// `no_std` (single-core) keeps the scratch here; std uses the thread-local `SCRATCH`.
+    #[cfg(not(feature = "std"))]
+    scratch: core::cell::RefCell<AlignScratch>,
+}
+
 impl Clone for NdtEngine {
     fn clone(&self) -> Self {
-        // The scratch workspace is not state — a clone starts fresh (it re-warms on first align).
-        // The id-map IS state (the map-update double-buffer clones it with the tiles).
+        // Deep-copy the published state + regularization (the map-update double-buffer clones the
+        // whole engine). The scratch is not state — a clone starts fresh (re-warms on first align).
+        let st = swap_load(&self.state);
         Self {
-            map: self.map.clone(),
-            params: self.params,
+            state: swap_new((*st).clone()),
+            reg: swap_new(*swap_load(&self.reg)),
             min_points: self.min_points,
             eig_mult: self.eig_mult,
-            workspace: AlignWorkspace::new(),
-            last: self.last.clone(),
-            id_map: self.id_map.clone(),
-            next_id: self.next_id,
+            #[cfg(not(feature = "std"))]
+            scratch: core::cell::RefCell::new(AlignScratch::new()),
         }
     }
 }
@@ -69,18 +163,40 @@ impl NdtEngine {
     #[must_use]
     pub fn new(resolution: f64, min_points: i32, eig_mult: f64) -> Self {
         Self {
-            map: VoxelGridMap::new([resolution; 3], min_points, eig_mult),
-            params: NdtParams {
-                resolution,
-                ..NdtParams::default()
-            },
+            state: swap_new(EngineState {
+                map: VoxelGridMap::new([resolution; 3], min_points, eig_mult),
+                params: NdtParams {
+                    resolution,
+                    ..NdtParams::default()
+                },
+                id_map: alloc::collections::BTreeMap::new(),
+                next_id: 0,
+            }),
+            reg: swap_new(None),
             min_points,
             eig_mult,
-            workspace: AlignWorkspace::new(),
-            last: AlignResult::default(),
-            id_map: alloc::collections::BTreeMap::new(),
-            next_id: 0,
+            #[cfg(not(feature = "std"))]
+            scratch: core::cell::RefCell::new(AlignScratch::new()),
         }
+    }
+
+    /// The current published state snapshot (lock-free under std).
+    fn load_state(&self) -> Arc<EngineState> {
+        swap_load(&self.state)
+    }
+
+    /// Run `f` with the per-align scratch (thread-local under std; engine-owned under `no_std`).
+    #[cfg(feature = "std")]
+    #[expect(
+        clippy::unused_self,
+        reason = "the std scratch is a thread-local; &self is unused here but keeps a uniform API with the no_std variant (which borrows self.scratch)"
+    )]
+    fn with_scratch<R>(&self, f: impl FnOnce(&mut AlignScratch) -> R) -> R {
+        SCRATCH.with(|s| f(&mut s.borrow_mut()))
+    }
+    #[cfg(not(feature = "std"))]
+    fn with_scratch<R>(&self, f: impl FnOnce(&mut AlignScratch) -> R) -> R {
+        f(&mut self.scratch.borrow_mut())
     }
 
     /// Update the alignment params (the C++ `setParams`). The regularization is preserved — it is
@@ -88,7 +204,7 @@ impl NdtEngine {
     /// the C++ (which applies `resolution` as the leaf size at `addTarget`), the empty map is rebuilt
     /// at the new resolution — the node always calls `set_params` before `add_target`.
     pub fn set_params(
-        &mut self,
+        &self,
         trans_epsilon: f64,
         step_size: f64,
         resolution: f64,
@@ -96,15 +212,19 @@ impl NdtEngine {
         outlier_ratio: f64,
         num_threads: usize,
     ) {
-        self.params.trans_epsilon = trans_epsilon;
-        self.params.step_size = step_size;
-        self.params.resolution = resolution;
-        self.params.max_iterations = max_iterations;
-        self.params.outlier_ratio = outlier_ratio;
-        self.params.num_threads = num_threads;
-        if self.map.is_empty() {
-            self.map = VoxelGridMap::new([resolution; 3], self.min_points, self.eig_mult);
-        }
+        swap_rcu(&self.state, |s| {
+            let mut n = s.clone();
+            n.params.trans_epsilon = trans_epsilon;
+            n.params.step_size = step_size;
+            n.params.resolution = resolution;
+            n.params.max_iterations = max_iterations;
+            n.params.outlier_ratio = outlier_ratio;
+            n.params.num_threads = num_threads;
+            if n.map.is_empty() {
+                n.map = VoxelGridMap::new([resolution; 3], self.min_points, self.eig_mult);
+            }
+            n
+        });
     }
 
     /// Set (or, when `scale == 0`, clear) the longitudinal regularization toward `(x, y)`.
@@ -113,8 +233,8 @@ impl NdtEngine {
         clippy::allow_attributes,
         reason = "exact == 0 is the C++ disable sentinel (setRegularizationPose vs unset)"
     )]
-    pub fn set_regularization(&mut self, x: f32, y: f32, scale: f32) {
-        self.params.regularization = if scale == 0.0 {
+    pub fn set_regularization(&self, x: f32, y: f32, scale: f32) {
+        let reg = if scale == 0.0 {
             None
         } else {
             Some(Regularization {
@@ -122,143 +242,179 @@ impl NdtEngine {
                 scale_factor: scale,
             })
         };
+        swap_store(&self.reg, reg);
     }
 
     /// Add a target map tile keyed by `id` (the C++ `addTarget(cloud, cell_id)`; the adapter maps the
     /// node's string `cell_id` to a `u64`). Needs a following [`Self::create_kdtree`].
-    pub fn add_target(&mut self, points: &[[f32; 3]], id: u64) {
-        self.map.add_target(points, id);
+    pub fn add_target(&self, points: &[[f32; 3]], id: u64) {
+        swap_rcu(&self.state, |s| {
+            let mut n = s.clone();
+            n.map.add_target(points, id);
+            n
+        });
     }
 
     /// Remove the map tile registered under `id` (the C++ `removeTarget`).
-    pub fn remove_target(&mut self, id: u64) {
-        self.map.remove_target(id);
-    }
-
-    /// The `u64` tile id for a cell-id byte string, assigning a fresh one on first use (the C++
-    /// adapter's `id_for`).
-    fn id_for(&mut self, id: &[u8]) -> u64 {
-        if let Some(&u) = self.id_map.get(id) {
-            return u;
-        }
-        let u = self.next_id;
-        self.next_id = self.next_id.saturating_add(1);
-        self.id_map.insert(id.to_vec(), u);
-        u
+    pub fn remove_target(&self, id: u64) {
+        swap_rcu(&self.state, |s| {
+            let mut n = s.clone();
+            n.map.remove_target(id);
+            n
+        });
     }
 
     /// Add a target tile keyed by the cell-id bytes (the C++ `addTarget(cloud, cell_id)`); the engine
-    /// owns the cell-id → `u64` mapping. Needs a following [`Self::create_kdtree`].
-    pub fn add_target_bytes(&mut self, points: &[[f32; 3]], id: &[u8]) {
-        let u = self.id_for(id);
-        self.map.add_target(points, u);
+    /// owns the cell-id → `u64` mapping, assigning a fresh id on first use. Needs a following
+    /// [`Self::create_kdtree`].
+    pub fn add_target_bytes(&self, points: &[[f32; 3]], id: &[u8]) {
+        swap_rcu(&self.state, |s| {
+            let mut n = s.clone();
+            let u = if let Some(&u) = n.id_map.get(id) {
+                u
+            } else {
+                let u = n.next_id;
+                n.next_id = n.next_id.saturating_add(1);
+                n.id_map.insert(id.to_vec(), u);
+                u
+            };
+            n.map.add_target(points, u);
+            n
+        });
     }
 
     /// Remove the tile registered under the cell-id bytes (the C++ `removeTarget(cell_id)`); no-op if
     /// the id is unknown.
-    pub fn remove_target_bytes(&mut self, id: &[u8]) {
-        if let Some(u) = self.id_map.remove(id) {
-            self.map.remove_target(u);
-        }
-    }
-
-    /// The current tile cell-ids (the C++ `getCurrentMapIDs`), `BTreeMap`-sorted (deterministic,
-    /// matching the adapter's old `std::map` order).
-    pub fn current_map_ids(&self) -> impl Iterator<Item = &[u8]> {
-        self.id_map.keys().map(alloc::vec::Vec::as_slice)
+    pub fn remove_target_bytes(&self, id: &[u8]) {
+        swap_rcu(&self.state, |s| {
+            let mut n = s.clone();
+            if let Some(u) = n.id_map.remove(id) {
+                n.map.remove_target(u);
+            }
+            n
+        });
     }
 
     /// Rebuild the kd-tree over the current tiles' centroids (the C++ `createVoxelKdtree`).
-    pub fn create_kdtree(&mut self) {
-        self.map.create_kdtree();
+    pub fn create_kdtree(&self) {
+        swap_rcu(&self.state, |s| {
+            let mut n = s.clone();
+            n.map.create_kdtree();
+            n
+        });
     }
 
     /// Whether any target tile is loaded (the C++ `hasTarget`).
     #[must_use]
     pub fn has_target(&self) -> bool {
-        !self.map.is_empty()
+        !self.load_state().map.is_empty()
     }
 
-    /// Align `source` from `guess`, storing the result (the C++ `align(out, guess, source)`).
-    pub fn align(&mut self, guess: &Matrix4<f32>, source: &[[f32; 3]]) {
-        align(
-            &self.map,
-            source,
-            guess,
-            &self.params,
-            &mut self.workspace,
-            &mut self.last,
-        );
+    /// Align `source` from `guess`, storing the result in the thread-local scratch (the C++
+    /// `align(out, guess, source)`; retrieve via [`Self::result`]).
+    pub fn align(&self, guess: &Matrix4<f32>, source: &[[f32; 3]]) {
+        let st = self.load_state();
+        // Fold the per-call regularization into a local params copy (the free `align` reads
+        // `params.regularization`); the engine's stored params keep `regularization: None`.
+        let params = NdtParams {
+            regularization: *swap_load(&self.reg),
+            ..st.params
+        };
+        self.with_scratch(|scr| {
+            align(
+                &st.map,
+                source,
+                guess,
+                &params,
+                &mut scr.workspace,
+                &mut scr.last,
+            );
+        });
     }
 
-    /// The most recent align result (the C++ `getResult`).
+    /// The most recent align result (the C++ `getResult`); an owned copy of the thread-local scratch.
     #[must_use]
-    pub fn result(&self) -> &AlignResult {
-        &self.last
+    pub fn result(&self) -> AlignResult {
+        self.with_scratch(|scr| scr.last.clone())
     }
 
     /// Score `cloud` (already in the target frame) without aligning — the C++
     /// `calculateTransformationProbability`.
-    pub fn calc_transformation_probability(&mut self, cloud: &[[f32; 3]]) -> f64 {
-        let gauss = gauss_constants(self.params.outlier_ratio, self.params.resolution);
-        transformation_probability(
-            &self.map,
-            cloud,
-            self.params.resolution,
-            &gauss,
-            &mut self.workspace,
-        )
+    pub fn calc_transformation_probability(&self, cloud: &[[f32; 3]]) -> f64 {
+        let st = self.load_state();
+        let gauss = gauss_constants(st.params.outlier_ratio, st.params.resolution);
+        self.with_scratch(|scr| {
+            transformation_probability(
+                &st.map,
+                cloud,
+                st.params.resolution,
+                &gauss,
+                &mut scr.workspace,
+            )
+        })
     }
 
     /// Nearest-voxel likelihood of `cloud` without aligning — the C++
     /// `calculateNearestVoxelTransformationLikelihood`.
-    pub fn calc_nearest_voxel_likelihood(&mut self, cloud: &[[f32; 3]]) -> f64 {
-        let gauss = gauss_constants(self.params.outlier_ratio, self.params.resolution);
-        nearest_voxel_transformation_likelihood(
-            &self.map,
-            cloud,
-            self.params.resolution,
-            &gauss,
-            &mut self.workspace,
-        )
+    pub fn calc_nearest_voxel_likelihood(&self, cloud: &[[f32; 3]]) -> f64 {
+        let st = self.load_state();
+        let gauss = gauss_constants(st.params.outlier_ratio, st.params.resolution);
+        self.with_scratch(|scr| {
+            nearest_voxel_transformation_likelihood(
+                &st.map,
+                cloud,
+                st.params.resolution,
+                &gauss,
+                &mut scr.workspace,
+            )
+        })
     }
 
     /// Per-point nearest-voxel score (the C++ `calculateNearestVoxelScoreEachPoint`); `out[i] > 0`
     /// iff point `i` found a neighbor. `out` is filled to `cloud.len()`.
     pub fn nearest_voxel_score_each_point(
-        &mut self,
+        &self,
         cloud: &[[f32; 3]],
         out: &mut alloc::vec::Vec<f32>,
     ) {
-        let gauss = gauss_constants(self.params.outlier_ratio, self.params.resolution);
-        nearest_voxel_score_each_point(
-            &self.map,
-            cloud,
-            self.params.resolution,
-            &gauss,
-            &mut self.workspace,
-            out,
-        );
+        let st = self.load_state();
+        let gauss = gauss_constants(st.params.outlier_ratio, st.params.resolution);
+        self.with_scratch(|scr| {
+            nearest_voxel_score_each_point(
+                &st.map,
+                cloud,
+                st.params.resolution,
+                &gauss,
+                &mut scr.workspace,
+                out,
+            );
+        });
     }
 
     /// The configured iteration cap (the C++ `getMaximumIterations`).
     #[must_use]
     pub fn max_iterations(&self) -> i32 {
-        self.params.max_iterations
+        self.load_state().params.max_iterations
     }
 
     /// The per-iteration score traces from the last align (`transform_probability_array` /
-    /// `nearest_voxel_likelihood_array` of the C++ `NdtResult`).
+    /// `nearest_voxel_likelihood_array` of the C++ `NdtResult`); owned copies of the thread-local
+    /// scratch.
     #[must_use]
-    pub fn score_arrays(&self) -> (&[f32], &[f32]) {
-        (
-            &self.last.transform_probability_array,
-            &self.last.nearest_voxel_likelihood_array,
-        )
+    pub fn score_arrays(&self) -> (alloc::vec::Vec<f32>, alloc::vec::Vec<f32>) {
+        self.with_scratch(|scr| {
+            (
+                scr.last.transform_probability_array.clone(),
+                scr.last.nearest_voxel_likelihood_array.clone(),
+            )
+        })
     }
 }
 
-// ---- C ABI shims (opaque `*mut NdtEngine` handle; pointers validated per rust-c-ffi-safety) ----
+// ---- C ABI shims (opaque `*const NdtEngine` handle; pointers validated per rust-c-ffi-safety) ----
+// The engine is `Sync` and exposes `&self`-only methods, so every shim forms only `&*engine` (never
+// `&mut *engine`): concurrent calls on a shared `const AwNdtEngine*` are sound without an external
+// lock. The lifecycle shims (`new`/`free`/`clone`) own/reclaim the `Box`.
 
 #[allow(
     clippy::arithmetic_side_effects,
@@ -317,7 +473,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_clone(
 
 /// # Safety
 /// `engine` is a valid handle (or null → no-op).
-#[expect(unsafe_code, reason = "C ABI boundary; dereferences a handle")]
+#[expect(unsafe_code, reason = "C ABI boundary; dereferences a shared handle")]
 #[allow(
     clippy::cast_sign_loss,
     clippy::as_conversions,
@@ -326,7 +482,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_clone(
 )]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_set_params(
-    engine: *mut NdtEngine,
+    engine: *const NdtEngine,
     trans_epsilon: f64,
     step_size: f64,
     resolution: f64,
@@ -338,7 +494,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_set_params(
         return;
     }
     // SAFETY: non-null per the check; caller guarantees a valid handle.
-    let e = unsafe { &mut *engine };
+    let e = unsafe { &*engine };
     e.set_params(
         trans_epsilon,
         step_size,
@@ -351,10 +507,10 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_set_params(
 
 /// # Safety
 /// `engine` is a valid handle (or null → no-op).
-#[expect(unsafe_code, reason = "C ABI boundary; dereferences a handle")]
+#[expect(unsafe_code, reason = "C ABI boundary; dereferences a shared handle")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_set_regularization(
-    engine: *mut NdtEngine,
+    engine: *const NdtEngine,
     pose_x: f32,
     pose_y: f32,
     scale: f32,
@@ -363,7 +519,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_set_regularizat
         return;
     }
     // SAFETY: non-null per the check; caller guarantees a valid handle.
-    let e = unsafe { &mut *engine };
+    let e = unsafe { &*engine };
     e.set_regularization(pose_x, pose_y, scale);
 }
 
@@ -373,7 +529,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_set_regularizat
 #[expect(unsafe_code, reason = "C ABI boundary; reads a caller-owned cloud")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_add_target(
-    engine: *mut NdtEngine,
+    engine: *const NdtEngine,
     points: *const f32,
     n: usize,
     id: u64,
@@ -384,7 +540,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_add_target(
     // SAFETY: non-null per the check; caller guarantees `3 * n` f32 at `points`.
     let (e, pts) = unsafe {
         (
-            &mut *engine,
+            &*engine,
             core::slice::from_raw_parts(points.cast::<[f32; 3]>(), n),
         )
     };
@@ -393,17 +549,17 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_add_target(
 
 /// # Safety
 /// `engine` is a valid handle (or null → no-op).
-#[expect(unsafe_code, reason = "C ABI boundary; dereferences a handle")]
+#[expect(unsafe_code, reason = "C ABI boundary; dereferences a shared handle")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_remove_target(
-    engine: *mut NdtEngine,
+    engine: *const NdtEngine,
     id: u64,
 ) {
     if engine.is_null() {
         return;
     }
     // SAFETY: non-null per the check; caller guarantees a valid handle.
-    unsafe { &mut *engine }.remove_target(id);
+    unsafe { &*engine }.remove_target(id);
 }
 
 /// Add a target tile keyed by the cell-id bytes (`points` is `3 * n` f32; `id` is `id_len` bytes).
@@ -417,7 +573,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_remove_target(
 )]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_add_target_str(
-    engine: *mut NdtEngine,
+    engine: *const NdtEngine,
     points: *const f32,
     n: usize,
     id: *const u8,
@@ -429,7 +585,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_add_target_str(
     // SAFETY: non-null per the check; caller guarantees `3 * n` f32 + `id_len` bytes.
     let (e, pts, id_bytes) = unsafe {
         (
-            &mut *engine,
+            &*engine,
             core::slice::from_raw_parts(points.cast::<[f32; 3]>(), n),
             if id.is_null() || id_len == 0 {
                 &[][..]
@@ -448,7 +604,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_add_target_str(
 #[expect(unsafe_code, reason = "C ABI boundary; reads caller-owned id bytes")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_remove_target_str(
-    engine: *mut NdtEngine,
+    engine: *const NdtEngine,
     id: *const u8,
     id_len: usize,
 ) {
@@ -458,7 +614,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_remove_target_s
     // SAFETY: non-null per the check; caller guarantees `id_len` readable bytes.
     let (e, id_bytes) = unsafe {
         (
-            &mut *engine,
+            &*engine,
             if id.is_null() || id_len == 0 {
                 &[][..]
             } else {
@@ -505,7 +661,8 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_get_current_map
     }
     // SAFETY: non-null per the check; caller guarantees valid handle + writable count/total.
     let e = unsafe { &*engine };
-    let ids: alloc::vec::Vec<&[u8]> = e.current_map_ids().collect();
+    let st = e.load_state();
+    let ids: alloc::vec::Vec<&[u8]> = st.id_map.keys().map(alloc::vec::Vec::as_slice).collect();
     let total: usize = ids.iter().map(|s| s.len()).sum();
     // SAFETY: non-null per the check.
     unsafe {
@@ -534,21 +691,21 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_get_current_map
 
 /// # Safety
 /// `engine` is a valid handle (or null → no-op).
-#[expect(unsafe_code, reason = "C ABI boundary; dereferences a handle")]
+#[expect(unsafe_code, reason = "C ABI boundary; dereferences a shared handle")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_create_kdtree(
-    engine: *mut NdtEngine,
+    engine: *const NdtEngine,
 ) {
     if engine.is_null() {
         return;
     }
     // SAFETY: non-null per the check; caller guarantees a valid handle.
-    unsafe { &mut *engine }.create_kdtree();
+    unsafe { &*engine }.create_kdtree();
 }
 
 /// # Safety
 /// `engine` is a valid handle (or null → returns false).
-#[expect(unsafe_code, reason = "C ABI boundary; dereferences a handle")]
+#[expect(unsafe_code, reason = "C ABI boundary; dereferences a shared handle")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_has_target(
     engine: *const NdtEngine,
@@ -562,7 +719,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_has_target(
 
 /// # Safety
 /// `engine` is a valid handle (or null → returns 0).
-#[expect(unsafe_code, reason = "C ABI boundary; dereferences a handle")]
+#[expect(unsafe_code, reason = "C ABI boundary; dereferences a shared handle")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_max_iterations(
     engine: *const NdtEngine,
@@ -574,8 +731,8 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_max_iterations(
     unsafe { &*engine }.max_iterations()
 }
 
-/// Align `source` (`3 * n` `f32`) from `guess` (16 row-major `f32`), storing the result internally
-/// (retrieve with `..._get_result`).
+/// Align `source` (`3 * n` `f32`) from `guess` (16 row-major `f32`), storing the result in the
+/// thread-local scratch (retrieve with `..._get_result`).
 /// # Safety
 /// `engine` is a valid handle (or null → no-op); `guess` addresses 16 `f32`, `source` `3 * n` `f32`.
 #[expect(
@@ -584,7 +741,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_max_iterations(
 )]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_align(
-    engine: *mut NdtEngine,
+    engine: *const NdtEngine,
     guess: *const f32,
     source: *const f32,
     n: usize,
@@ -595,7 +752,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_align(
     // SAFETY: non-null per the check; caller guarantees the documented lengths.
     let (e, guess_buf, src) = unsafe {
         (
-            &mut *engine,
+            &*engine,
             core::slice::from_raw_parts(guess, 16),
             core::slice::from_raw_parts(source.cast::<[f32; 3]>(), n),
         )
@@ -609,7 +766,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_align(
 #[expect(unsafe_code, reason = "C ABI boundary; reads a caller-owned cloud")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_calc_transformation_probability(
-    engine: *mut NdtEngine,
+    engine: *const NdtEngine,
     cloud: *const f32,
     n: usize,
 ) -> f64 {
@@ -619,7 +776,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_calc_transforma
     // SAFETY: non-null per the check; caller guarantees `3 * n` f32 at `cloud`.
     let (e, c) = unsafe {
         (
-            &mut *engine,
+            &*engine,
             core::slice::from_raw_parts(cloud.cast::<[f32; 3]>(), n),
         )
     };
@@ -632,7 +789,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_calc_transforma
 #[expect(unsafe_code, reason = "C ABI boundary; reads a caller-owned cloud")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_calc_nearest_voxel_likelihood(
-    engine: *mut NdtEngine,
+    engine: *const NdtEngine,
     cloud: *const f32,
     n: usize,
 ) -> f64 {
@@ -642,7 +799,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_calc_nearest_vo
     // SAFETY: non-null per the check; caller guarantees `3 * n` f32 at `cloud`.
     let (e, c) = unsafe {
         (
-            &mut *engine,
+            &*engine,
             core::slice::from_raw_parts(cloud.cast::<[f32; 3]>(), n),
         )
     };
@@ -729,7 +886,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_get_result(
 )]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_calc_nearest_voxel_score_each_point(
-    engine: *mut NdtEngine,
+    engine: *const NdtEngine,
     cloud: *const f32,
     n: usize,
     out_scores: *mut f32,
@@ -740,7 +897,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_calc_nearest_vo
     // SAFETY: non-null per the check; caller guarantees `3 * n` f32 at `cloud`, `n` at `out_scores`.
     let (e, c, out) = unsafe {
         (
-            &mut *engine,
+            &*engine,
             core::slice::from_raw_parts(cloud.cast::<[f32; 3]>(), n),
             core::slice::from_raw_parts_mut(out_scores, n),
         )
@@ -829,7 +986,7 @@ pub struct AlignOutcome {
 #[cfg(feature = "std")]
 #[must_use]
 pub fn run_align(
-    engine: &mut NdtEngine,
+    engine: &NdtEngine,
     guess: &Matrix4<f32>,
     source: &[[f32; 3]],
     conv: &ConvergenceParams,
@@ -900,13 +1057,10 @@ pub struct AwAlignOutcome {
 /// pointer is null.
 ///
 /// # Safety
-/// `engine` is a valid live handle (or null → no-op). It is reborrowed as `&mut NdtEngine` for the
-/// duration of this call, so the caller MUST guarantee **exclusive, non-concurrent** access to that
-/// engine for the call: no other thread may touch the same engine (ROS 2 callbacks can run
-/// concurrently across callback groups). The node satisfies this by only ever reaching the handle
-/// inside its `Guarded<…>` engine mutex (`ndt_ptr_.with`). Rust does not retain the pointer past the
-/// call. `guess` addresses 16 `f32`, `source` `3 * n` `f32`, `params` a valid [`AwAlignParams`],
-/// `out` a writable [`AwAlignOutcome`].
+/// `engine` is a valid live handle (or null → no-op). It is reborrowed as `&NdtEngine` (the engine is
+/// `Sync`, so concurrent `&self` calls on a shared `const AwNdtEngine*` are sound — no external lock
+/// required). Rust does not retain the pointer past the call. `guess` addresses 16 `f32`, `source`
+/// `3 * n` `f32`, `params` a valid [`AwAlignParams`], `out` a writable [`AwAlignOutcome`].
 #[cfg(feature = "std")]
 #[expect(
     unsafe_code,
@@ -914,7 +1068,7 @@ pub struct AwAlignOutcome {
 )]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_run_align(
-    engine: *mut NdtEngine,
+    engine: *const NdtEngine,
     guess: *const f32,
     source: *const f32,
     n: usize,
@@ -928,7 +1082,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_run_align(
     // SAFETY: non-null per the check; caller guarantees the documented lengths + valid structs.
     let (eng, guess_buf, src, prm) = unsafe {
         (
-            &mut *engine,
+            &*engine,
             core::slice::from_raw_parts(guess, 16),
             core::slice::from_raw_parts(source.cast::<[f32; 3]>(), n),
             &*params,
@@ -1024,7 +1178,7 @@ pub struct CovEstimationResult {
 
 /// Pure covariance orchestrator, ported verbatim from `callback_sensor_points_main`'s covariance block
 /// and the `estimate_covariance` method. Runs the `MULTI_NDT`/`MULTI_NDT_SCORE` re-align/score against
-/// the live engine map (`&engine.map`) — never a rebuilt one-tile map. No new math (wires the ports).
+/// the live engine map (a loaded snapshot) — never a rebuilt one-tile map. No new math (wires ports).
 #[cfg(feature = "std")]
 #[expect(
     clippy::too_many_arguments,
@@ -1032,7 +1186,7 @@ pub struct CovEstimationResult {
 )]
 #[must_use]
 pub fn estimate_pose_covariance(
-    engine: &mut NdtEngine,
+    engine: &NdtEngine,
     result_pose: &Matrix4<f32>,
     hessian: &[f64; 36],
     initial_pose: &Matrix4<f32>,
@@ -1058,6 +1212,7 @@ pub fn estimate_pose_covariance(
         };
     }
 
+    let st = engine.load_state();
     let main_ndt = AlignResult {
         pose: *result_pose,
         nearest_voxel_likelihood: params.main_nvtl,
@@ -1074,14 +1229,16 @@ pub fn estimate_pose_covariance(
         2 => {
             let poses =
                 crate::cov_estimate::propose_poses_to_search(result_pose, offset_x, offset_y);
-            let r = crate::cov_estimate::estimate_xy_covariance_by_multi_ndt(
-                &main_ndt,
-                &poses,
-                &engine.map,
-                source,
-                &engine.params,
-                &mut engine.workspace,
-            );
+            let r = engine.with_scratch(|scr| {
+                crate::cov_estimate::estimate_xy_covariance_by_multi_ndt(
+                    &main_ndt,
+                    &poses,
+                    &st.map,
+                    source,
+                    &st.params,
+                    &mut scr.workspace,
+                )
+            });
             publish_kind = 1;
             multi_ndt_result_poses.push(*result_pose);
             multi_ndt_result_poses.extend_from_slice(&r.candidate_result_poses);
@@ -1093,15 +1250,17 @@ pub fn estimate_pose_covariance(
         3 => {
             let poses =
                 crate::cov_estimate::propose_poses_to_search(result_pose, offset_x, offset_y);
-            let r = crate::cov_estimate::estimate_xy_covariance_by_multi_ndt_score(
-                &main_ndt,
-                &poses,
-                &engine.map,
-                source,
-                &engine.params,
-                params.temperature,
-                &mut engine.workspace,
-            );
+            let r = engine.with_scratch(|scr| {
+                crate::cov_estimate::estimate_xy_covariance_by_multi_ndt_score(
+                    &main_ndt,
+                    &poses,
+                    &st.map,
+                    source,
+                    &st.params,
+                    params.temperature,
+                    &mut scr.workspace,
+                )
+            });
             publish_kind = 2;
             multi_initial_poses.push(*initial_pose);
             multi_initial_poses.extend_from_slice(&poses);
@@ -1189,15 +1348,15 @@ pub struct AwCovEstimationOutput {
 /// null.
 ///
 /// # Safety
-/// `engine` is a valid live handle (or null → no-op), reborrowed `&mut` for the call — the caller MUST
-/// guarantee exclusive, non-concurrent access (the node's `ndt_ptr_` mutex; ROS callbacks are
-/// concurrent). `input` is a valid [`AwCovEstimationInput`] whose `source` (`3*n_source` f32) and
-/// `offset_x`/`offset_y` (`n_offsets` f64) are readable. `output` is a writable [`AwCovEstimationOutput`]
-/// whose pose buffers each address `pose_cap * 16` writable f32 (or are null to skip). Nothing retained.
+/// `engine` is a valid live handle (or null → no-op), reborrowed `&NdtEngine` for the call (the engine
+/// is `Sync`; concurrent `&self` calls are sound — no external lock required). `input` is a valid
+/// [`AwCovEstimationInput`] whose `source` (`3*n_source` f32) and `offset_x`/`offset_y` (`n_offsets`
+/// f64) are readable. `output` is a writable [`AwCovEstimationOutput`] whose pose buffers each address
+/// `pose_cap * 16` writable f32 (or are null to skip). Nothing retained.
 #[cfg(feature = "std")]
 #[expect(
     unsafe_code,
-    reason = "C ABI boundary; reborrows the engine (exclusive per the node lock), reads caller-owned cloud/offsets, writes caller-owned buffers"
+    reason = "C ABI boundary; reads caller-owned cloud/offsets, writes caller-owned buffers"
 )]
 #[allow(
     clippy::arithmetic_side_effects,
@@ -1209,7 +1368,7 @@ pub struct AwCovEstimationOutput {
 )]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_estimate_pose_covariance(
-    engine: *mut NdtEngine,
+    engine: *const NdtEngine,
     input: *const AwCovEstimationInput,
     output: *mut AwCovEstimationOutput,
 ) {
@@ -1217,7 +1376,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_estimate_pose_covaria
         return;
     }
     // SAFETY: non-null per the check; caller guarantees a valid live handle + input struct.
-    let (eng, inp) = unsafe { (&mut *engine, &*input) };
+    let (eng, inp) = unsafe { (&*engine, &*input) };
     if inp.source.is_null() || inp.offset_x.is_null() || inp.offset_y.is_null() {
         return;
     }
@@ -1401,12 +1560,12 @@ mod tests {
     // by hand (the orchestrator adds no new math, just folds the existing ports).
     #[test]
     fn run_align_matches_manual_composition() {
-        let (mut engine, source) = two_tile_engine();
+        let (engine, source) = two_tile_engine();
         let guess = Matrix4::<f32>::identity();
-        let outcome = run_align(&mut engine, &guess, &source, &TP_PARAMS);
+        let outcome = run_align(&engine, &guess, &source, &TP_PARAMS);
 
         // Manual reference on a fresh, identically-built engine.
-        let (mut ref_engine, ref_source) = two_tile_engine();
+        let (ref_engine, ref_source) = two_tile_engine();
         ref_engine.align(&guess, &ref_source);
         let max_it = ref_engine.max_iterations();
         let r = ref_engine.result();
@@ -1445,11 +1604,11 @@ mod tests {
     // The FFI shim writes exactly what the pure run_align computes.
     #[test]
     fn ffi_run_align_matches_pure() {
-        let (mut engine, source) = two_tile_engine();
+        let (engine, source) = two_tile_engine();
         let guess = Matrix4::<f32>::identity();
-        let pure = run_align(&mut engine, &guess, &source, &TP_PARAMS);
+        let pure = run_align(&engine, &guess, &source, &TP_PARAMS);
 
-        let (mut ffi_engine, ffi_source) = two_tile_engine();
+        let (ffi_engine, ffi_source) = two_tile_engine();
         let guess16 = [
             1.0f32, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0,
         ];
@@ -1463,7 +1622,7 @@ mod tests {
         // SAFETY: engine valid; guess 16 f32; flat 3*n f32; params/out valid.
         unsafe {
             autoware_ndt_scan_matcher_rs_node_run_align(
-                &mut ffi_engine,
+                &ffi_engine,
                 guess16.as_ptr(),
                 flat.as_ptr(),
                 ffi_source.len(),
@@ -1539,7 +1698,7 @@ mod tests {
 
     // Align an engine once and return (engine, source, result_pose) for the cov tests.
     fn aligned_engine() -> (NdtEngine, Vec<[f32; 3]>, Matrix4<f32>) {
-        let (mut engine, source) = two_tile_engine();
+        let (engine, source) = two_tile_engine();
         engine.align(&Matrix4::<f32>::identity(), &source);
         let pose = engine.result().pose;
         (engine, source, pose)
@@ -1556,9 +1715,9 @@ mod tests {
 
     #[test]
     fn estimate_pose_covariance_fixed_just_rotates() {
-        let (mut engine, source, result_pose) = aligned_engine();
+        let (engine, source, result_pose) = aligned_engine();
         let r = estimate_pose_covariance(
-            &mut engine,
+            &engine,
             &result_pose,
             &[0.0; 36],
             &Matrix4::identity(),
@@ -1578,9 +1737,9 @@ mod tests {
 
     #[test]
     fn estimate_pose_covariance_multi_ndt_matches_composition() {
-        let (mut engine, source, result_pose) = aligned_engine();
+        let (engine, source, result_pose) = aligned_engine();
         let r = estimate_pose_covariance(
-            &mut engine,
+            &engine,
             &result_pose,
             &[0.0; 36],
             &Matrix4::identity(),
@@ -1592,6 +1751,7 @@ mod tests {
 
         // Manual reference on a fresh identical engine.
         let (ref_engine, ref_source) = two_tile_engine();
+        let ref_state = ref_engine.load_state();
         let poses = crate::cov_estimate::propose_poses_to_search(&result_pose, &COV_OX, &COV_OY);
         let main_ndt = AlignResult {
             pose: result_pose,
@@ -1601,9 +1761,9 @@ mod tests {
         let mr = crate::cov_estimate::estimate_xy_covariance_by_multi_ndt(
             &main_ndt,
             &poses,
-            &ref_engine.map,
+            &ref_state.map,
             &ref_source,
-            &ref_engine.params,
+            &ref_state.params,
             &mut ws,
         );
         let scaled = [
@@ -1635,9 +1795,9 @@ mod tests {
 
     #[test]
     fn estimate_pose_covariance_score_publishes_initial_only() {
-        let (mut engine, source, result_pose) = aligned_engine();
+        let (engine, source, result_pose) = aligned_engine();
         let r = estimate_pose_covariance(
-            &mut engine,
+            &engine,
             &result_pose,
             &[0.0; 36],
             &Matrix4::identity(),
@@ -1653,9 +1813,9 @@ mod tests {
 
     #[test]
     fn ffi_estimate_cov_matches_pure() {
-        let (mut engine, source, result_pose) = aligned_engine();
+        let (engine, source, result_pose) = aligned_engine();
         let pure = estimate_pose_covariance(
-            &mut engine,
+            &engine,
             &result_pose,
             &[0.0; 36],
             &Matrix4::identity(),
@@ -1665,7 +1825,7 @@ mod tests {
             &cov_params(2, 2.0),
         );
 
-        let (mut ffi_engine, ffi_source) = two_tile_engine();
+        let (ffi_engine, ffi_source) = two_tile_engine();
         let mut pose16 = [0.0_f32; 16];
         for r in 0..4 {
             for c in 0..4 {
@@ -1707,7 +1867,7 @@ mod tests {
         // SAFETY: engine valid; input pointers valid for their lengths; out buffers sized cap*16.
         unsafe {
             autoware_ndt_scan_matcher_rs_node_estimate_pose_covariance(
-                &mut ffi_engine,
+                &ffi_engine,
                 &input,
                 &mut out,
             );
@@ -1764,7 +1924,7 @@ mod tests {
         original.add_target(&tile_b, 1);
         original.create_kdtree();
 
-        let mut clone = original.clone();
+        let clone = original.clone();
         clone.align(&guess, &source);
         let clone_before = clone.result().pose;
 
@@ -1783,7 +1943,7 @@ mod tests {
 
     #[test]
     fn engine_remove_target_and_has_target() {
-        let mut engine = NdtEngine::new(1.0, 6, 0.01);
+        let engine = NdtEngine::new(1.0, 6, 0.01);
         assert!(!engine.has_target());
         engine.add_target(&dense_cluster(0.5, 0.5, 0.5), 0);
         engine.add_target(&dense_cluster(4.5, 0.5, 0.5), 1);
@@ -1818,7 +1978,7 @@ mod tests {
         pure.nearest_voxel_score_each_point(&source, &mut want_scores);
         let (want_tp_arr, want_nvl_arr) = {
             let (a, b) = pure.score_arrays();
-            (a.to_vec(), b.to_vec())
+            (a.clone(), b.clone())
         };
 
         // FFI
@@ -1924,7 +2084,7 @@ mod tests {
     // --- N4d: engine-owned cell-id map ---
 
     fn ids_of(engine: &NdtEngine) -> Vec<Vec<u8>> {
-        engine.current_map_ids().map(<[u8]>::to_vec).collect()
+        engine.load_state().id_map.keys().cloned().collect()
     }
 
     #[test]
@@ -1978,14 +2138,14 @@ mod tests {
         // SAFETY: valid engine; flat is 3*n f32; ids are valid byte slices.
         unsafe {
             autoware_ndt_scan_matcher_rs_ndt_engine_add_target_str(
-                &mut engine,
+                &engine,
                 flat.as_ptr(),
                 tile.len(),
                 b"aa".as_ptr(),
                 2,
             );
             autoware_ndt_scan_matcher_rs_ndt_engine_add_target_str(
-                &mut engine,
+                &engine,
                 flat.as_ptr(),
                 tile.len(),
                 b"bbb".as_ptr(),
