@@ -178,15 +178,6 @@ public:
     grid_ptr_->setTimeKeeper(time_keeper_);
   }
 
-  void setDataAccessor(const PointCloud2ConstPtr & in_cloud)
-  {
-    if (!data_accessor_.isInitialized()) {
-      data_accessor_.setField(in_cloud);
-    }
-  }
-
-  void process(const PointCloud2ConstPtr & in_cloud, pcl::PointIndices & out_no_ground_indices);
-
   tl::expected<sensor_msgs::msg::PointCloud2, std::string> filter(
     const PointCloud2ConstPtr & in_cloud);
 
@@ -210,6 +201,15 @@ private:
 
   // debug information
   std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper_;
+
+  void setDataAccessor(const PointCloud2ConstPtr & in_cloud)
+  {
+    if (!data_accessor_.isInitialized()) {
+      data_accessor_.setField(in_cloud);
+    }
+  }
+
+  void process(const PointCloud2ConstPtr & in_cloud, pcl::PointIndices & out_no_ground_indices);
 
   bool recursiveSearch(const int check_idx, const int search_cnt, std::vector<int> & idx) const;
   bool recursiveSearch(
