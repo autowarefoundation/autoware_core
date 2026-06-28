@@ -29,17 +29,14 @@ find_package(OpenMP)
 find_package(PCL REQUIRED COMPONENTS common io registration)
 include_directories(${PCL_INCLUDE_DIRS})
 
-# Rust port build switch (see plan/ndt_in_rust.md). When OFF (default) the package builds the
+# Rust port build switch (see plan/ndt_in_rust.md, 案B). When OFF (default) the package builds the
 # original C++ unchanged and does not depend on Rust/Corrosion at all. When ON, the nested
-# `autoware_ndt_scan_matcher_rs` crate is built via Corrosion, linked over the C ABI, and the
-# `_rs.cpp` adapter twins replace their original C++ counterparts (never both -> duplicate symbols).
-# Defined before the libraries so both `multigrid_ndt_omp` and ${PROJECT_NAME} can use it.
+# `autoware_ndt_scan_matcher_rs` crate is built via Corrosion, linked over the C ABI, and the node's
+# callbacks dispatch their compute to the Rust engine (the per-callback `#ifdef NDT_USE_RUST` in the
+# .cpp). The C++ sources are the same in both configs — the only engine-type switch is the typedef
+# in ndt_backend.hpp. Defined before the libraries so both `multigrid_ndt_omp` and ${PROJECT_NAME}
+# can use it.
 option(NDT_USE_RUST "Build/use the Rust port (autoware_ndt_scan_matcher_rs) over FFI" OFF)
-
-# Default: original C++ sources, no Rust glue.
-set(NDT_HELPER_SRC src/ndt_scan_matcher_helper.cpp)
-set(NDT_COV_MATH_SRC src/ndt_omp/estimate_covariance_math.cpp)
-set(NDT_RUST_GLUE "")
 
 if(NDT_USE_RUST)
   # Corrosion is fetched at configure time; for offline builds switch GIT_* to a local SOURCE_DIR.
@@ -59,17 +56,13 @@ if(NDT_USE_RUST)
   string(JOIN ":" NDT_ROS_INCLUDE_DIRS ${geometry_msgs_INCLUDE_DIRS})
   corrosion_set_env_vars(autoware_ndt_scan_matcher_rs
     "ROS_INCLUDE_DIRS=${NDT_ROS_INCLUDE_DIRS}")
-  # Swap in the Rust-backed adapter twins and the FFI scaffold mock.
-  set(NDT_HELPER_SRC src/ndt_scan_matcher_helper_rs.cpp)
-  set(NDT_COV_MATH_SRC src/ndt_omp/estimate_covariance_math_rs.cpp)
-  set(NDT_RUST_GLUE src/rs_ffi_mock.cpp)
 endif()
 
 ament_auto_add_library(multigrid_ndt_omp SHARED
   src/ndt_omp/multi_voxel_grid_covariance_omp.cpp
   src/ndt_omp/multigrid_ndt_omp.cpp
   src/ndt_omp/estimate_covariance.cpp
-  ${NDT_COV_MATH_SRC}
+  src/ndt_omp/estimate_covariance_math.cpp
 )
 target_link_libraries(multigrid_ndt_omp ${PCL_LIBRARIES})
 
@@ -89,9 +82,8 @@ endif()
 ament_auto_add_library(${PROJECT_NAME} SHARED
   src/map_update_module.cpp
   src/ndt_scan_matcher_core.cpp
-  ${NDT_HELPER_SRC}
+  src/ndt_scan_matcher_helper.cpp
   src/particle.cpp
-  ${NDT_RUST_GLUE}
 )
 
 link_directories(${PCL_LIBRARY_DIRS})
@@ -161,13 +153,7 @@ if(BUILD_TESTING)
     set_tests_properties(autoware_ndt_scan_matcher_rs_cargo_test PROPERTIES
       ENVIRONMENT "ROS_INCLUDE_DIRS=${NDT_ROS_INCLUDE_DIRS}")
 
-    # 2. Exercise the C++ -> Rust FFI link via the mock wrapper.
-    ament_auto_add_gtest(test_rs_ffi
-      test/test_rs_ffi.cpp
-    )
-    target_link_libraries(test_rs_ffi ${PROJECT_NAME})
-
-    # 3. Differential test: Rust voxel_grid vs the C++ MultiVoxelGridCovariance (engine port E2).
+    # 2. Differential test: Rust voxel_grid vs the C++ MultiVoxelGridCovariance (engine port E2).
     ament_auto_add_gtest(test_voxel_grid
       test/test_voxel_grid.cpp
     )
@@ -176,7 +162,7 @@ if(BUILD_TESTING)
     target_include_directories(test_voxel_grid PRIVATE
       ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/include)
 
-    # 4. Differential test: Rust align (FFI) vs the C++ NDT engine (engine port E4d).
+    # 3. Differential test: Rust align (FFI) vs the C++ NDT engine (engine port E4d).
     ament_auto_add_gtest(test_align
       test/test_align.cpp
     )
@@ -185,7 +171,7 @@ if(BUILD_TESTING)
     target_include_directories(test_align PRIVATE
       ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/include)
 
-    # 5. Differential test: Rust multi-NDT covariance estimation (FFI) vs C++ pclomp (engine port E5).
+    # 4. Differential test: Rust multi-NDT covariance estimation (FFI) vs C++ pclomp (engine port E5).
     ament_auto_add_gtest(test_estimate_covariance_multi
       test/test_estimate_covariance_multi.cpp
     )
@@ -194,7 +180,7 @@ if(BUILD_TESTING)
     target_include_directories(test_estimate_covariance_multi PRIVATE
       ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/include)
 
-    # 6. Differential test: Rust persistent engine handle (FFI) vs the C++ NDT engine (E6a).
+    # 5. Differential test: Rust persistent engine handle (FFI) vs the C++ NDT engine (E6a).
     ament_auto_add_gtest(test_ndt_engine
       test/test_ndt_engine.cpp
     )
@@ -203,7 +189,7 @@ if(BUILD_TESTING)
     target_include_directories(test_ndt_engine PRIVATE
       ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/include)
 
-    # 7. Differential test: the drop-in NdtRustAdapter vs the C++ NDT engine (engine port E6b).
+    # 6. Differential test: the drop-in NdtRustAdapter vs the C++ NDT engine (engine port E6b).
     ament_auto_add_gtest(test_ndt_rust_adapter
       test/test_ndt_rust_adapter.cpp
     )
@@ -212,7 +198,7 @@ if(BUILD_TESTING)
     target_include_directories(test_ndt_rust_adapter PRIVATE
       ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/include)
 
-    # 8. Differential test: the convergence decision migrated to Rust (FFI) vs the C++ gate logic
+    # 7. Differential test: the convergence decision migrated to Rust (FFI) vs the C++ gate logic
     #    from callback_sensor_points_main (node port N1).
     ament_auto_add_gtest(test_convergence_verdict
       test/test_convergence_verdict.cpp
@@ -221,7 +207,7 @@ if(BUILD_TESTING)
     target_include_directories(test_convergence_verdict PRIVATE
       ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/include)
 
-    # 9. Test: the thin pose callbacks migrated to Rust (FFI) drive a mock host vtable (node port N2).
+    # 8. Test: the thin pose callbacks migrated to Rust (FFI) drive a mock host vtable (node port N2).
     ament_auto_add_gtest(test_node_pose_callbacks
       test/test_node_pose_callbacks.cpp
     )
@@ -229,8 +215,8 @@ if(BUILD_TESTING)
     target_include_directories(test_node_pose_callbacks PRIVATE
       ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/include)
 
-    # 10. Differential test: the map-update distance decision migrated to Rust (FFI) vs the C++
-    #     MapUpdateModule should_update_map / out_of_map_range math (node port N3).
+    # 9. Differential test: the map-update distance decision migrated to Rust (FFI) vs the C++
+    #    MapUpdateModule should_update_map / out_of_map_range math (node port N3).
     ament_auto_add_gtest(test_map_update_verdict
       test/test_map_update_verdict.cpp
     )
@@ -238,7 +224,7 @@ if(BUILD_TESTING)
     target_include_directories(test_map_update_verdict PRIVATE
       ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/include)
 
-    # 11. Test: the sensor-callback align orchestrator (run_align, FFI) drives the live engine handle
+    # 10. Test: the sensor-callback align orchestrator (run_align, FFI) drives the live engine handle
     #     and matches the adapter's own align (node port N4a).
     ament_auto_add_gtest(test_node_run_align
       test/test_node_run_align.cpp
@@ -248,7 +234,7 @@ if(BUILD_TESTING)
     target_include_directories(test_node_run_align PRIVATE
       ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/include)
 
-    # 12. Test: the covariance orchestrator (FFI) vs a hand-composition on the same adapter (N4b).
+    # 11. Test: the covariance orchestrator (FFI) vs a hand-composition on the same adapter (N4b).
     ament_auto_add_gtest(test_estimate_pose_covariance
       test/test_estimate_pose_covariance.cpp
     )

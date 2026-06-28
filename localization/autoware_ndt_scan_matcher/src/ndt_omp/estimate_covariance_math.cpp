@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Pure covariance helpers, extracted verbatim from estimate_covariance.cpp so they can be swapped
-// for the Rust port via the NDT_USE_RUST build switch (this is the OFF / reference C++ path; the ON
-// path is estimate_covariance_math_rs.cpp). No logic changes.
+// Pure covariance helpers, split out from estimate_covariance.cpp. Under NDT_USE_RUST the node
+// computes the covariance in the Rust orchestrator, but these C++ helpers are still built (for the
+// OFF baseline and the differential tests); the equivalent Rust math is differential-tested via the
+// engine FFIs. No logic changes.
 
 #include <autoware/ndt_scan_matcher/ndt_omp/estimate_covariance.hpp>
 
