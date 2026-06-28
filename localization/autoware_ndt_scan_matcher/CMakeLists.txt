@@ -247,6 +247,15 @@ if(BUILD_TESTING)
       multigrid_ndt_omp ${PCL_LIBRARIES} autoware_ndt_scan_matcher_rs)
     target_include_directories(test_node_run_align PRIVATE
       ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/include)
+
+    # 12. Test: the covariance orchestrator (FFI) vs a hand-composition on the same adapter (N4b).
+    ament_auto_add_gtest(test_estimate_pose_covariance
+      test/test_estimate_pose_covariance.cpp
+    )
+    target_link_libraries(test_estimate_pose_covariance
+      multigrid_ndt_omp ${PCL_LIBRARIES} autoware_ndt_scan_matcher_rs)
+    target_include_directories(test_estimate_pose_covariance PRIVATE
+      ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/include)
   endif()
 endif()
 

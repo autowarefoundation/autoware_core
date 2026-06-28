@@ -30,12 +30,15 @@ use crate::transform::{gauss_constants, transform_cloud_by_matrix};
 use crate::voxel_grid::VoxelGridMap;
 
 /// Result of a multi-NDT covariance estimation: the weighted XY `mean` and the row-major 2x2
-/// `covariance`, both in the map frame (the C++ `ResultOfMultiNdtCovarianceEstimation`, minus the
-/// diagnostic pose/result lists which the node assembles separately).
-#[derive(Clone, Copy, Debug)]
+/// `covariance`, both in the map frame (the C++ `ResultOfMultiNdtCovarianceEstimation`). For the
+/// `MULTI_NDT` variant, `candidate_result_poses` holds each candidate's RE-ALIGNED result pose (in
+/// search order) — the node publishes these as `multi_ndt_pose`. The `_score` variant does not
+/// re-align, so it leaves `candidate_result_poses` empty (its publish uses the proposed poses).
+#[derive(Clone, Debug)]
 pub struct MultiNdtCovResult {
     pub mean: [f64; 2],
     pub covariance: [f64; 4],
+    pub candidate_result_poses: Vec<Matrix4<f32>>,
 }
 
 /// Candidate poses around `center` for the covariance search (`propose_poses_to_search`): each 2D
@@ -97,11 +100,13 @@ pub fn estimate_xy_covariance_by_multi_ndt(
     poses2d.push(f64::from(main_ndt.pose[(0, 3)]));
     poses2d.push(f64::from(main_ndt.pose[(1, 3)]));
 
+    let mut candidate_result_poses: Vec<Matrix4<f32>> = Vec::with_capacity(poses_to_search.len());
     let mut out = AlignResult::default();
     for cand in poses_to_search {
         align(map, source, cand, params, ws, &mut out);
         poses2d.push(f64::from(out.pose[(0, 3)]));
         poses2d.push(f64::from(out.pose[(1, 3)]));
+        candidate_result_poses.push(out.pose);
     }
 
     let weights = vec![1.0_f64 / n as f64; n];
@@ -114,7 +119,11 @@ pub fn estimate_xy_covariance_by_multi_ndt(
         cov[2] * factor,
         cov[3] * factor,
     ];
-    MultiNdtCovResult { mean, covariance }
+    MultiNdtCovResult {
+        mean,
+        covariance,
+        candidate_result_poses,
+    }
 }
 
 /// `MULTI_NDT_SCORE` covariance: for each candidate pose, transform the source by it and score it
@@ -165,7 +174,12 @@ pub fn estimate_xy_covariance_by_multi_ndt_score(
     let mut weights = vec![0.0_f64; n];
     calc_weight_vec(&scores, temperature, &mut weights);
     let (mean, covariance) = calculate_weighted_mean_and_cov(&poses2d, &weights);
-    MultiNdtCovResult { mean, covariance }
+    // The score variant does not re-align, so it has no per-candidate result poses.
+    MultiNdtCovResult {
+        mean,
+        covariance,
+        candidate_result_poses: Vec::new(),
+    }
 }
 
 // ---- C ABI shims (no_std; pointers validated per rust-c-ffi-safety) ----
@@ -532,6 +546,8 @@ mod tests {
         assert!(det >= -1e-12, "det = {det}");
         // mean near the origin (the aligned poses cluster around the main pose)
         assert!(r.mean[0].abs() < 1.0 && r.mean[1].abs() < 1.0);
+        // multi_ndt re-aligns each candidate, so one result pose per candidate.
+        assert_eq!(r.candidate_result_poses.len(), poses.len());
     }
 
     // multi_ndt_score: symmetric PSD covariance; with a peaked softmax the mean stays near center.
@@ -560,6 +576,8 @@ mod tests {
         assert!(r.covariance[0] >= 0.0 && r.covariance[3] >= 0.0);
         let det = r.covariance[0] * r.covariance[3] - r.covariance[1] * r.covariance[2];
         assert!(det >= -1e-12, "det = {det}");
+        // the score variant does not re-align → no per-candidate result poses.
+        assert!(r.candidate_result_poses.is_empty());
     }
 
     // FFI == pure: the C-ABI shims marshal flat buffers into the same result as the Rust functions

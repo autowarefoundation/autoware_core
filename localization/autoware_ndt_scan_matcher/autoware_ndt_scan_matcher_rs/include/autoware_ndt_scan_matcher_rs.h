@@ -383,6 +383,52 @@ void autoware_ndt_scan_matcher_rs_node_run_align(
   AwNdtEngine * engine, const float * guess, const float * source, size_t n,
   const AwAlignParams * params, AwAlignOutcome * out);
 
+// Inputs to the sensor-callback covariance orchestrator (Phase N4b). `result_pose`/`initial_pose` are
+// row-major 4x4; `hessian` + `output_pose_covariance` row-major 6x6; `map_to_base_link_rot3x3`
+// row-major 3x3 (built C++-side from the result-pose quaternion). `source` is `3*n_source` floats;
+// `offset_x`/`offset_y` are `n_offsets` doubles. `estimation_type`: 0 FIXED / 1 LAPLACE / 2 MULTI_NDT
+// / 3 MULTI_NDT_SCORE. Field order/layout must match the Rust `#[repr(C)] AwCovEstimationInput`.
+typedef struct
+{
+  float result_pose[16];
+  double hessian[36];
+  float initial_pose[16];
+  const float * source;
+  size_t n_source;
+  int32_t estimation_type;
+  const double * offset_x;
+  const double * offset_y;
+  size_t n_offsets;
+  double scale_factor;
+  double temperature;
+  float main_nvtl;
+  double output_pose_covariance[36];
+  double map_to_base_link_rot3x3[9];
+} AwCovEstimationInput;
+
+// Outputs of the covariance orchestrator: `ndt_covariance` (row-major 6x6, written) + `publish_kind`
+// (0 none / 1 MULTI_NDT publishes both arrays / 2 MULTI_NDT_SCORE publishes only the initial poses).
+// The caller provides `multi_ndt_result_poses` / `multi_initial_poses` buffers (each `pose_cap` poses
+// of 16 row-major floats); Rust fills up to `pose_cap` and writes the true counts back (cap+count
+// contract). Field order/layout must match the Rust `#[repr(C)] AwCovEstimationOutput`.
+typedef struct
+{
+  double ndt_covariance[36];
+  int32_t publish_kind;
+  float * multi_ndt_result_poses;
+  float * multi_initial_poses;
+  uint32_t pose_cap;
+  uint32_t multi_ndt_result_count;
+  uint32_t multi_initial_count;
+} AwCovEstimationOutput;
+
+// Covariance orchestrator (Phase N4b): rotate the configured covariance, dispatch on
+// `estimation_type` against the live engine map, scale + adjust, and return the full 6x6
+// `ndt_covariance` + the debug pose arrays for C++ to publish. No-op if any pointer is null. `engine`
+// is valid only for the duration of the call (the caller holds the engine lock); Rust does not retain it.
+void autoware_ndt_scan_matcher_rs_node_estimate_pose_covariance(
+  AwNdtEngine * engine, const AwCovEstimationInput * input, AwCovEstimationOutput * output);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

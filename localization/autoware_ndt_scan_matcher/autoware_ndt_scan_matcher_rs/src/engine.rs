@@ -820,6 +820,314 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_run_align(
     }
 }
 
+// --- Phase N4b: sensor-callback covariance orchestrator (std-gated node glue) ---
+// Folds the whole covariance block of callback_sensor_points_main (rotate the configured 6x6 cov,
+// dispatch on the estimation type against the LIVE engine map, scale, and adjust) into one Rust call,
+// so the C++ node no longer calls the templated estimate_xy_covariance_by_multi_ndt[_score],
+// adjust_diagonal_covariance, propose_poses_to_search, or the rotate_covariance helper twin. Reuses
+// crate::{helper,covariance,cov_estimate}. std-gated (uses Vec) — excluded from the no_std rlib.
+
+/// Params for [`estimate_pose_covariance`] (the `covariance` hyper-params + the result-pose rotation).
+#[cfg(feature = "std")]
+#[derive(Clone, Copy, Debug)]
+pub struct CovEstimationParams {
+    /// `0` = `FIXED_VALUE`, `1` = `LAPLACE_APPROXIMATION`, `2` = `MULTI_NDT`, `3` = `MULTI_NDT_SCORE`.
+    pub estimation_type: i32,
+    pub scale_factor: f64,
+    pub temperature: f64,
+    /// The main result's nearest-voxel likelihood (used by the `MULTI_NDT_SCORE` softmax).
+    pub main_nvtl: f32,
+    pub output_pose_covariance: [f64; 36],
+    /// Row-major 3x3 map-from-`base_link` rotation, built C++-side from the result-pose quaternion.
+    pub map_to_base_link_rot3x3: [f64; 9],
+}
+
+/// Result of [`estimate_pose_covariance`]: the full 6x6 output covariance + the debug pose arrays the
+/// node publishes (`publish_kind`: `0` none, `1` `MULTI_NDT` publishes both, `2` `MULTI_NDT_SCORE`
+/// publishes only the initial poses). Each pose vec is `[main, then per-candidate]`.
+#[cfg(feature = "std")]
+#[derive(Clone, Debug)]
+pub struct CovEstimationResult {
+    pub ndt_covariance: [f64; 36],
+    pub publish_kind: i32,
+    pub multi_ndt_result_poses: alloc::vec::Vec<Matrix4<f32>>,
+    pub multi_initial_poses: alloc::vec::Vec<Matrix4<f32>>,
+}
+
+/// Pure covariance orchestrator, ported verbatim from `callback_sensor_points_main`'s covariance block
+/// and the `estimate_covariance` method. Runs the `MULTI_NDT`/`MULTI_NDT_SCORE` re-align/score against
+/// the live engine map (`&engine.map`) — never a rebuilt one-tile map. No new math (wires the ports).
+#[cfg(feature = "std")]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "covariance orchestrator wires the engine + result/initial poses + hessian + source + offsets + params; grouping would only relocate the same inputs"
+)]
+#[must_use]
+pub fn estimate_pose_covariance(
+    engine: &mut NdtEngine,
+    result_pose: &Matrix4<f32>,
+    hessian: &[f64; 36],
+    initial_pose: &Matrix4<f32>,
+    source: &[[f32; 3]],
+    offset_x: &[f64],
+    offset_y: &[f64],
+    params: &CovEstimationParams,
+) -> CovEstimationResult {
+    use alloc::vec::Vec;
+
+    let mut ndt_covariance = crate::helper::rotate_covariance(
+        &params.output_pose_covariance,
+        &params.map_to_base_link_rot3x3,
+    );
+
+    // FIXED_VALUE: the rotated configured covariance only (no 2x2 estimate/adjust — C++ short-circuit).
+    if params.estimation_type == 0 {
+        return CovEstimationResult {
+            ndt_covariance,
+            publish_kind: 0,
+            multi_ndt_result_poses: Vec::new(),
+            multi_initial_poses: Vec::new(),
+        };
+    }
+
+    let main_ndt = AlignResult {
+        pose: *result_pose,
+        nearest_voxel_likelihood: params.main_nvtl,
+        ..AlignResult::default()
+    };
+    let mut publish_kind = 0_i32;
+    let mut multi_ndt_result_poses: Vec<Matrix4<f32>> = Vec::new();
+    let mut multi_initial_poses: Vec<Matrix4<f32>> = Vec::new();
+
+    let est: [f64; 4] = match params.estimation_type {
+        // LAPLACE_APPROXIMATION
+        1 => crate::covariance::laplace_xy_covariance(hessian),
+        // MULTI_NDT: re-align each candidate against the live map; publish result + initial poses.
+        2 => {
+            let poses =
+                crate::cov_estimate::propose_poses_to_search(result_pose, offset_x, offset_y);
+            let r = crate::cov_estimate::estimate_xy_covariance_by_multi_ndt(
+                &main_ndt,
+                &poses,
+                &engine.map,
+                source,
+                &engine.params,
+                &mut engine.workspace,
+            );
+            publish_kind = 1;
+            multi_ndt_result_poses.push(*result_pose);
+            multi_ndt_result_poses.extend_from_slice(&r.candidate_result_poses);
+            multi_initial_poses.push(*initial_pose);
+            multi_initial_poses.extend_from_slice(&poses);
+            r.covariance
+        }
+        // MULTI_NDT_SCORE: score each candidate (no re-align); publish only the initial poses.
+        3 => {
+            let poses =
+                crate::cov_estimate::propose_poses_to_search(result_pose, offset_x, offset_y);
+            let r = crate::cov_estimate::estimate_xy_covariance_by_multi_ndt_score(
+                &main_ndt,
+                &poses,
+                &engine.map,
+                source,
+                &engine.params,
+                params.temperature,
+                &mut engine.workspace,
+            );
+            publish_kind = 2;
+            multi_initial_poses.push(*initial_pose);
+            multi_initial_poses.extend_from_slice(&poses);
+            r.covariance
+        }
+        // Unknown type: C++ returns Identity * output_pose_covariance[0] (still scaled+adjusted below).
+        _ => {
+            let c0 = params.output_pose_covariance[0];
+            [c0, 0.0, 0.0, c0]
+        }
+    };
+
+    // scale (C++ `* scale_factor`) then adjust_diagonal_covariance with the result-pose 2x2 rotation.
+    let scaled = [
+        est[0] * params.scale_factor,
+        est[1] * params.scale_factor,
+        est[2] * params.scale_factor,
+        est[3] * params.scale_factor,
+    ];
+    let rot2 = [
+        f64::from(result_pose[(0, 0)]),
+        f64::from(result_pose[(0, 1)]),
+        f64::from(result_pose[(1, 0)]),
+        f64::from(result_pose[(1, 1)]),
+    ];
+    let adj = crate::covariance::adjust_diagonal_covariance(
+        &scaled,
+        &rot2,
+        params.output_pose_covariance[0],
+        params.output_pose_covariance[7],
+    );
+    // C++: ndt_covariance[0+6*0]=adj(0,0), [1+6*1]=adj(1,1), [1+6*0]=adj(1,0), [0+6*1]=adj(0,1).
+    ndt_covariance[0] = adj[0];
+    ndt_covariance[7] = adj[3];
+    ndt_covariance[1] = adj[2];
+    ndt_covariance[6] = adj[1];
+
+    CovEstimationResult {
+        ndt_covariance,
+        publish_kind,
+        multi_ndt_result_poses,
+        multi_initial_poses,
+    }
+}
+
+/// C ABI mirror of [`CovEstimationParams`] + the align inputs. `result_pose`/`initial_pose` are
+/// row-major 4x4; `hessian` row-major 6x6; `output_pose_covariance` row-major 6x6; `rot3x3` row-major.
+#[cfg(feature = "std")]
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct AwCovEstimationInput {
+    pub result_pose: [f32; 16],
+    pub hessian: [f64; 36],
+    pub initial_pose: [f32; 16],
+    pub source: *const f32,
+    pub n_source: usize,
+    pub estimation_type: i32,
+    pub offset_x: *const f64,
+    pub offset_y: *const f64,
+    pub n_offsets: usize,
+    pub scale_factor: f64,
+    pub temperature: f64,
+    pub main_nvtl: f32,
+    pub output_pose_covariance: [f64; 36],
+    pub map_to_base_link_rot3x3: [f64; 9],
+}
+
+/// C ABI output: `ndt_covariance` (36, written) + `publish_kind` (written) + two caller-owned pose
+/// buffers (`pose_cap` poses of 16 row-major floats each) filled up to cap, with the true counts
+/// written back (cap+count contract, like `get_score_arrays`).
+#[cfg(feature = "std")]
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct AwCovEstimationOutput {
+    pub ndt_covariance: [f64; 36],
+    pub publish_kind: i32,
+    pub multi_ndt_result_poses: *mut f32,
+    pub multi_initial_poses: *mut f32,
+    pub pose_cap: u32,
+    pub multi_ndt_result_count: u32,
+    pub multi_initial_count: u32,
+}
+
+/// FFI entry for the covariance orchestrator ([`estimate_pose_covariance`]). No-op if any pointer is
+/// null.
+///
+/// # Safety
+/// `engine` is a valid live handle (or null → no-op), reborrowed `&mut` for the call — the caller MUST
+/// guarantee exclusive, non-concurrent access (the node's `ndt_ptr_` mutex; ROS callbacks are
+/// concurrent). `input` is a valid [`AwCovEstimationInput`] whose `source` (`3*n_source` f32) and
+/// `offset_x`/`offset_y` (`n_offsets` f64) are readable. `output` is a writable [`AwCovEstimationOutput`]
+/// whose pose buffers each address `pose_cap * 16` writable f32 (or are null to skip). Nothing retained.
+#[cfg(feature = "std")]
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; reborrows the engine (exclusive per the node lock), reads caller-owned cloud/offsets, writes caller-owned buffers"
+)]
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::as_conversions,
+    clippy::cast_possible_truncation,
+    clippy::allow_attributes,
+    reason = "fixed-size 4x4 pose marshaling into the caller's bounded pose buffers"
+)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_estimate_pose_covariance(
+    engine: *mut NdtEngine,
+    input: *const AwCovEstimationInput,
+    output: *mut AwCovEstimationOutput,
+) {
+    if engine.is_null() || input.is_null() || output.is_null() {
+        return;
+    }
+    // SAFETY: non-null per the check; caller guarantees a valid live handle + input struct.
+    let (eng, inp) = unsafe { (&mut *engine, &*input) };
+    if inp.source.is_null() || inp.offset_x.is_null() || inp.offset_y.is_null() {
+        return;
+    }
+    // SAFETY: caller guarantees the documented lengths.
+    let (source, ox, oy) = unsafe {
+        (
+            core::slice::from_raw_parts(inp.source.cast::<[f32; 3]>(), inp.n_source),
+            core::slice::from_raw_parts(inp.offset_x, inp.n_offsets),
+            core::slice::from_raw_parts(inp.offset_y, inp.n_offsets),
+        )
+    };
+    let result = estimate_pose_covariance(
+        eng,
+        &matrix4_from_row_major(&inp.result_pose),
+        &inp.hessian,
+        &matrix4_from_row_major(&inp.initial_pose),
+        source,
+        ox,
+        oy,
+        &CovEstimationParams {
+            estimation_type: inp.estimation_type,
+            scale_factor: inp.scale_factor,
+            temperature: inp.temperature,
+            main_nvtl: inp.main_nvtl,
+            output_pose_covariance: inp.output_pose_covariance,
+            map_to_base_link_rot3x3: inp.map_to_base_link_rot3x3,
+        },
+    );
+    // SAFETY: `output` is non-null per the check and a writable AwCovEstimationOutput per the contract.
+    let out = unsafe { &mut *output };
+    out.ndt_covariance = result.ndt_covariance;
+    out.publish_kind = result.publish_kind;
+    let cap = out.pose_cap as usize;
+    // SAFETY: each non-null pose buffer addresses `pose_cap * 16` writable f32 per the contract.
+    unsafe {
+        out.multi_ndt_result_count = fill_pose_buffer(
+            out.multi_ndt_result_poses,
+            cap,
+            &result.multi_ndt_result_poses,
+        );
+        out.multi_initial_count =
+            fill_pose_buffer(out.multi_initial_poses, cap, &result.multi_initial_poses);
+    }
+}
+
+/// Write up to `cap` poses (16 row-major f32 each) into `buf`; return the TRUE pose count.
+///
+/// # Safety
+/// `buf` is null (→ no write) or addresses `cap * 16` writable f32.
+#[cfg(feature = "std")]
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; writes a caller-owned bounded f32 buffer"
+)]
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::as_conversions,
+    clippy::cast_possible_truncation,
+    clippy::allow_attributes,
+    reason = "fixed-size 4x4 pose marshaling into a bounded buffer"
+)]
+unsafe fn fill_pose_buffer(buf: *mut f32, cap: usize, poses: &[Matrix4<f32>]) -> u32 {
+    let count = poses.len() as u32;
+    if !buf.is_null() && cap > 0 {
+        // SAFETY: per the contract, `buf` addresses `cap * 16` writable f32.
+        let slice = unsafe { core::slice::from_raw_parts_mut(buf, cap * 16) };
+        for (k, m) in poses.iter().take(cap).enumerate() {
+            for r in 0..4 {
+                for c in 0..4 {
+                    slice[(k * 16) + (r * 4) + c] = m[(r, c)];
+                }
+            }
+        }
+    }
+    count
+}
+
 #[cfg(test)]
 #[allow(
     unsafe_code,
@@ -1031,6 +1339,246 @@ mod tests {
             );
         }
         assert_eq!(out.iteration_num, 123);
+    }
+
+    // --- N4b: covariance orchestrator tests ---
+
+    const ROT3X3_ID: [f64; 9] = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
+    const COV_OX: [f64; 4] = [0.3, -0.3, 0.0, 0.0];
+    const COV_OY: [f64; 4] = [0.0, 0.0, 0.3, -0.3];
+
+    fn out_cov() -> [f64; 36] {
+        let mut c = [0.0_f64; 36];
+        c[0] = 0.25;
+        c[7] = 0.36;
+        c[14] = 0.01;
+        c[21] = 0.01;
+        c[28] = 0.01;
+        c[35] = 0.01;
+        c
+    }
+
+    fn cov_params(estimation_type: i32, scale_factor: f64) -> CovEstimationParams {
+        CovEstimationParams {
+            estimation_type,
+            scale_factor,
+            temperature: 0.1,
+            main_nvtl: 1.0,
+            output_pose_covariance: out_cov(),
+            map_to_base_link_rot3x3: ROT3X3_ID,
+        }
+    }
+
+    // Align an engine once and return (engine, source, result_pose) for the cov tests.
+    fn aligned_engine() -> (NdtEngine, Vec<[f32; 3]>, Matrix4<f32>) {
+        let (mut engine, source) = two_tile_engine();
+        engine.align(&Matrix4::<f32>::identity(), &source);
+        let pose = engine.result().pose;
+        (engine, source, pose)
+    }
+
+    fn rot2_of(pose: &Matrix4<f32>) -> [f64; 4] {
+        [
+            f64::from(pose[(0, 0)]),
+            f64::from(pose[(0, 1)]),
+            f64::from(pose[(1, 0)]),
+            f64::from(pose[(1, 1)]),
+        ]
+    }
+
+    #[test]
+    fn estimate_pose_covariance_fixed_just_rotates() {
+        let (mut engine, source, result_pose) = aligned_engine();
+        let r = estimate_pose_covariance(
+            &mut engine,
+            &result_pose,
+            &[0.0; 36],
+            &Matrix4::identity(),
+            &source,
+            &COV_OX,
+            &COV_OY,
+            &cov_params(0, 1.0),
+        );
+        assert_eq!(r.publish_kind, 0);
+        assert!(r.multi_ndt_result_poses.is_empty() && r.multi_initial_poses.is_empty());
+        // FIXED → just the rotated configured covariance (identity rotation → unchanged).
+        assert_eq!(
+            r.ndt_covariance,
+            crate::helper::rotate_covariance(&out_cov(), &ROT3X3_ID)
+        );
+    }
+
+    #[test]
+    fn estimate_pose_covariance_multi_ndt_matches_composition() {
+        let (mut engine, source, result_pose) = aligned_engine();
+        let r = estimate_pose_covariance(
+            &mut engine,
+            &result_pose,
+            &[0.0; 36],
+            &Matrix4::identity(),
+            &source,
+            &COV_OX,
+            &COV_OY,
+            &cov_params(2, 2.0),
+        );
+
+        // Manual reference on a fresh identical engine.
+        let (ref_engine, ref_source) = two_tile_engine();
+        let poses = crate::cov_estimate::propose_poses_to_search(&result_pose, &COV_OX, &COV_OY);
+        let main_ndt = AlignResult {
+            pose: result_pose,
+            ..AlignResult::default()
+        };
+        let mut ws = AlignWorkspace::new();
+        let mr = crate::cov_estimate::estimate_xy_covariance_by_multi_ndt(
+            &main_ndt,
+            &poses,
+            &ref_engine.map,
+            &ref_source,
+            &ref_engine.params,
+            &mut ws,
+        );
+        let scaled = [
+            mr.covariance[0] * 2.0,
+            mr.covariance[1] * 2.0,
+            mr.covariance[2] * 2.0,
+            mr.covariance[3] * 2.0,
+        ];
+        let adj = crate::covariance::adjust_diagonal_covariance(
+            &scaled,
+            &rot2_of(&result_pose),
+            out_cov()[0],
+            out_cov()[7],
+        );
+        let mut expected = crate::helper::rotate_covariance(&out_cov(), &ROT3X3_ID);
+        expected[0] = adj[0];
+        expected[7] = adj[3];
+        expected[1] = adj[2];
+        expected[6] = adj[1];
+
+        assert_eq!(r.ndt_covariance, expected);
+        assert_eq!(r.publish_kind, 1);
+        assert_eq!(r.multi_ndt_result_poses.len(), poses.len() + 1);
+        assert_eq!(r.multi_initial_poses.len(), poses.len() + 1);
+        // The first published pose is the main result / initial pose.
+        assert_eq!(r.multi_ndt_result_poses[0], result_pose);
+        assert_eq!(r.multi_initial_poses[0], Matrix4::<f32>::identity());
+    }
+
+    #[test]
+    fn estimate_pose_covariance_score_publishes_initial_only() {
+        let (mut engine, source, result_pose) = aligned_engine();
+        let r = estimate_pose_covariance(
+            &mut engine,
+            &result_pose,
+            &[0.0; 36],
+            &Matrix4::identity(),
+            &source,
+            &COV_OX,
+            &COV_OY,
+            &cov_params(3, 1.0),
+        );
+        assert_eq!(r.publish_kind, 2);
+        assert!(r.multi_ndt_result_poses.is_empty());
+        assert_eq!(r.multi_initial_poses.len(), COV_OX.len() + 1);
+    }
+
+    #[test]
+    fn ffi_estimate_cov_matches_pure() {
+        let (mut engine, source, result_pose) = aligned_engine();
+        let pure = estimate_pose_covariance(
+            &mut engine,
+            &result_pose,
+            &[0.0; 36],
+            &Matrix4::identity(),
+            &source,
+            &COV_OX,
+            &COV_OY,
+            &cov_params(2, 2.0),
+        );
+
+        let (mut ffi_engine, ffi_source) = two_tile_engine();
+        let mut pose16 = [0.0_f32; 16];
+        for r in 0..4 {
+            for c in 0..4 {
+                pose16[(r * 4) + c] = result_pose[(r, c)];
+            }
+        }
+        let id16 = [
+            1.0f32, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+        ];
+        let flat: Vec<f32> = ffi_source.iter().flat_map(|p| *p).collect();
+        let input = AwCovEstimationInput {
+            result_pose: pose16,
+            hessian: [0.0; 36],
+            initial_pose: id16,
+            source: flat.as_ptr(),
+            n_source: ffi_source.len(),
+            estimation_type: 2,
+            offset_x: COV_OX.as_ptr(),
+            offset_y: COV_OY.as_ptr(),
+            n_offsets: COV_OX.len(),
+            scale_factor: 2.0,
+            temperature: 0.1,
+            main_nvtl: 1.0,
+            output_pose_covariance: out_cov(),
+            map_to_base_link_rot3x3: ROT3X3_ID,
+        };
+        let cap = (COV_OX.len() + 1) as u32;
+        let mut res_buf = vec![0.0_f32; (cap as usize) * 16];
+        let mut init_buf = vec![0.0_f32; (cap as usize) * 16];
+        let mut out = AwCovEstimationOutput {
+            ndt_covariance: [0.0; 36],
+            publish_kind: -1,
+            multi_ndt_result_poses: res_buf.as_mut_ptr(),
+            multi_initial_poses: init_buf.as_mut_ptr(),
+            pose_cap: cap,
+            multi_ndt_result_count: 0,
+            multi_initial_count: 0,
+        };
+        // SAFETY: engine valid; input pointers valid for their lengths; out buffers sized cap*16.
+        unsafe {
+            autoware_ndt_scan_matcher_rs_node_estimate_pose_covariance(
+                &mut ffi_engine,
+                &input,
+                &mut out,
+            );
+        }
+        assert_eq!(out.ndt_covariance, pure.ndt_covariance);
+        assert_eq!(out.publish_kind, pure.publish_kind);
+        assert_eq!(
+            out.multi_ndt_result_count as usize,
+            pure.multi_ndt_result_poses.len()
+        );
+        assert_eq!(
+            out.multi_initial_count as usize,
+            pure.multi_initial_poses.len()
+        );
+        // First marshaled result pose == pure's first result pose (row-major).
+        assert_eq!(res_buf[0], pure.multi_ndt_result_poses[0][(0, 0)]);
+        assert_eq!(res_buf[3], pure.multi_ndt_result_poses[0][(0, 3)]);
+    }
+
+    #[test]
+    fn ffi_estimate_cov_null_is_noop() {
+        let mut out = AwCovEstimationOutput {
+            ndt_covariance: [0.0; 36],
+            publish_kind: 42,
+            multi_ndt_result_poses: core::ptr::null_mut(),
+            multi_initial_poses: core::ptr::null_mut(),
+            pose_cap: 0,
+            multi_ndt_result_count: 0,
+            multi_initial_count: 0,
+        };
+        // SAFETY: a null engine must leave `out` untouched.
+        unsafe {
+            autoware_ndt_scan_matcher_rs_node_estimate_pose_covariance(
+                core::ptr::null_mut(),
+                core::ptr::null(),
+                &mut out,
+            );
+        }
+        assert_eq!(out.publish_kind, 42);
     }
 
     // clone() is an independent deep copy: mutating the original's map after cloning must not affect

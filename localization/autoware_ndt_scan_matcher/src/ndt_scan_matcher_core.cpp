@@ -668,6 +668,82 @@ bool NDTScanMatcher::callback_sensor_points_main(
     const Eigen::Matrix3d map_to_base_link_rotation =
       map_to_base_link_quat.normalized().toRotationMatrix();
 
+#ifdef NDT_USE_RUST
+    // Phase N4b: rotate + dispatch + scale + adjust run in Rust against the live engine map; C++ only
+    // copies out the 6x6 covariance and publishes the returned debug pose arrays. Replaces the
+    // rotate_covariance / estimate_covariance / adjust_diagonal_covariance calls.
+    AwCovEstimationInput cov_in{};
+    for (int r = 0; r < 4; ++r) {
+      for (int c = 0; c < 4; ++c) {
+        cov_in.result_pose[(r * 4) + c] = ndt_result.pose(r, c);
+        cov_in.initial_pose[(r * 4) + c] = initial_pose_matrix(r, c);
+      }
+    }
+    for (int r = 0; r < 6; ++r) {
+      for (int c = 0; c < 6; ++c) {
+        cov_in.hessian[(r * 6) + c] = ndt_result.hessian(r, c);
+      }
+    }
+    for (int r = 0; r < 3; ++r) {
+      for (int c = 0; c < 3; ++c) {
+        cov_in.map_to_base_link_rot3x3[(r * 3) + c] = map_to_base_link_rotation(r, c);
+      }
+    }
+    cov_in.source = source_flat.data();
+    cov_in.n_source = sensor_points_in_baselink_frame_->size();
+    cov_in.estimation_type =
+      static_cast<int32_t>(param_.covariance.covariance_estimation.covariance_estimation_type);
+    cov_in.offset_x = param_.covariance.covariance_estimation.initial_pose_offset_model_x.data();
+    cov_in.offset_y = param_.covariance.covariance_estimation.initial_pose_offset_model_y.data();
+    cov_in.n_offsets = param_.covariance.covariance_estimation.initial_pose_offset_model_x.size();
+    cov_in.scale_factor = param_.covariance.covariance_estimation.scale_factor;
+    cov_in.temperature = param_.covariance.covariance_estimation.temperature;
+    cov_in.main_nvtl = ndt_result.nearest_voxel_transformation_likelihood;
+    std::copy_n(
+      param_.covariance.output_pose_covariance.data(), 36, cov_in.output_pose_covariance);
+
+    const auto pose_cap = static_cast<uint32_t>(cov_in.n_offsets + 1);
+    std::vector<float> cov_result_poses(static_cast<size_t>(pose_cap) * 16);
+    std::vector<float> cov_initial_poses(static_cast<size_t>(pose_cap) * 16);
+    AwCovEstimationOutput cov_out{};
+    cov_out.multi_ndt_result_poses = cov_result_poses.data();
+    cov_out.multi_initial_poses = cov_initial_poses.data();
+    cov_out.pose_cap = pose_cap;
+    autoware_ndt_scan_matcher_rs_node_estimate_pose_covariance(
+      ndt_ptr->raw_handle(), &cov_in, &cov_out);
+
+    std::array<double, 36> ndt_covariance{};
+    std::copy_n(cov_out.ndt_covariance, 36, ndt_covariance.begin());
+
+    // Publish the debug pose arrays, preserving the MULTI_NDT (both) vs MULTI_NDT_SCORE (initial only)
+    // asymmetry; LAPLACE/FIXED (kind 0) publish neither.
+    const auto pose_from_flat = [](const float * p) {
+      Eigen::Matrix4f m;
+      for (int r = 0; r < 4; ++r) {
+        for (int c = 0; c < 4; ++c) {
+          m(r, c) = p[(r * 4) + c];
+        }
+      }
+      return matrix4f_to_pose(m);
+    };
+    const auto build_pose_array = [&](const std::vector<float> & buf, uint32_t count) {
+      geometry_msgs::msg::PoseArray msg;
+      msg.header.stamp = sensor_ros_time;
+      msg.header.frame_id = param_.frame.map_frame;
+      for (uint32_t i = 0; i < count; ++i) {
+        msg.poses.push_back(pose_from_flat(&buf[static_cast<size_t>(i) * 16]));
+      }
+      return msg;
+    };
+    if (cov_out.publish_kind == 1) {
+      multi_ndt_pose_pub_->publish(build_pose_array(cov_result_poses, cov_out.multi_ndt_result_count));
+      multi_initial_pose_pub_->publish(
+        build_pose_array(cov_initial_poses, cov_out.multi_initial_count));
+    } else if (cov_out.publish_kind == 2) {
+      multi_initial_pose_pub_->publish(
+        build_pose_array(cov_initial_poses, cov_out.multi_initial_count));
+    }
+#else
     std::array<double, 36> ndt_covariance =
       rotate_covariance(param_.covariance.output_pose_covariance, map_to_base_link_rotation);
     if (
@@ -686,6 +762,7 @@ bool NDTScanMatcher::callback_sensor_points_main(
       ndt_covariance[1 + 6 * 0] = estimated_covariance_2d_adj(1, 0);
       ndt_covariance[0 + 6 * 1] = estimated_covariance_2d_adj(0, 1);
     }
+#endif
 
     // check distance_initial_to_result
     const auto distance_initial_to_result = static_cast<double>(autoware::localization_util::norm(
@@ -923,6 +1000,11 @@ int NDTScanMatcher::count_oscillation(
   return autoware::ndt_scan_matcher::count_oscillation(result_pose_msg_array);
 }
 
+#ifndef NDT_USE_RUST
+// Phase N4b: under NDT_USE_RUST the covariance is computed by the Rust orchestrator
+// (autoware_ndt_scan_matcher_rs_node_estimate_pose_covariance), so this method — and its references
+// to the templated estimate_xy_covariance_by_multi_ndt[_score] / propose_poses_to_search /
+// adjust_diagonal_covariance — is compiled only for the pure-C++ (OFF) baseline.
 Eigen::Matrix2d NDTScanMatcher::estimate_covariance(
   const pclomp::NdtResult & ndt_result, const Eigen::Matrix4f & initial_pose_matrix,
   const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform & ndt_ref)
@@ -978,6 +1060,7 @@ Eigen::Matrix2d NDTScanMatcher::estimate_covariance(
     return Eigen::Matrix2d::Identity() * param_.covariance.output_pose_covariance[0 + 6 * 0];
   }
 }
+#endif  // NDT_USE_RUST
 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr NDTScanMatcher::visualize_point_score(
   const pcl::shared_ptr<pcl::PointCloud<PointSource>> & sensor_points_in_map_ptr,

@@ -160,9 +160,12 @@ private:
 
   static int count_oscillation(const std::vector<geometry_msgs::msg::Pose> & result_pose_msg_array);
 
+#ifndef NDT_USE_RUST
+  // Phase N4b: replaced by the Rust covariance orchestrator under NDT_USE_RUST (see the .cpp).
   Eigen::Matrix2d estimate_covariance(
     const pclomp::NdtResult & ndt_result, const Eigen::Matrix4f & initial_pose_matrix,
     const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform & ndt_ref);
+#endif
 
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr visualize_point_score(
     const pcl::shared_ptr<pcl::PointCloud<PointSource>> & sensor_points_in_map_ptr,
