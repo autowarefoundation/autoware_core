@@ -102,6 +102,10 @@ if(NDT_USE_RUST)
   target_include_directories(${PROJECT_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/include
   )
+  # Drive the conditional NDT typedef in the node headers (core / map_update) to the Rust adapter.
+  # PUBLIC so the generated node executable and the launch/sequence tests that link this lib also
+  # compile against the adapter.
+  target_compile_definitions(${PROJECT_NAME} PUBLIC NDT_USE_RUST)
 endif()
 
 autoware_agnocast_wrapper_register_node(${PROJECT_NAME}

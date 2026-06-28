@@ -21,6 +21,9 @@
 #include "hyper_parameters.hpp"
 #include "map_update_module.hpp"
 #include "ndt_omp/multigrid_ndt_omp.h"
+#ifdef NDT_USE_RUST
+#include "ndt_rust_adapter.hpp"
+#endif
 
 #include <autoware/localization_util/smart_pose_buffer.hpp>
 #include <autoware_utils_diagnostics/diagnostics_interface.hpp>
@@ -71,8 +74,12 @@ class NDTScanMatcher : public rclcpp::Node
 {
   using PointSource = pcl::PointXYZ;
   using PointTarget = pcl::PointXYZ;
+#ifdef NDT_USE_RUST
+  using NormalDistributionsTransform = autoware::ndt_scan_matcher::NdtRustAdapter;
+#else
   using NormalDistributionsTransform =
     pclomp::MultiGridNormalDistributionsTransform<PointSource, PointTarget>;
+#endif
 
 public:
   explicit NDTScanMatcher(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());

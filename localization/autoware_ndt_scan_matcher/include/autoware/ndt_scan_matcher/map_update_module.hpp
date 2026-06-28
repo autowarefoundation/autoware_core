@@ -18,6 +18,9 @@
 #include "guarded.hpp"
 #include "hyper_parameters.hpp"
 #include "ndt_omp/multigrid_ndt_omp.h"
+#ifdef NDT_USE_RUST
+#include "ndt_rust_adapter.hpp"
+#endif
 #include "particle.hpp"
 
 #include <autoware/localization_util/util_func.hpp>
@@ -49,7 +52,11 @@ class MapUpdateModule
 {
   using PointSource = pcl::PointXYZ;
   using PointTarget = pcl::PointXYZ;
+#ifdef NDT_USE_RUST
+  using NdtType = autoware::ndt_scan_matcher::NdtRustAdapter;
+#else
   using NdtType = pclomp::MultiGridNormalDistributionsTransform<PointSource, PointTarget>;
+#endif
   using NdtPtrType = std::shared_ptr<NdtType>;
 
   struct BuilderState
