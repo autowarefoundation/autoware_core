@@ -125,16 +125,13 @@ TEST_F(GroundFilterTest, TestInitialization)
 
 TEST_F(GroundFilterTest, TestBasicFiltering)
 {
-  pcl::PointIndices no_ground_indices;
+  auto result = ground_filter_->filter(cloud_);
 
-  // Set data accessor
-  ground_filter_->setDataAccessor(cloud_);
+  // Expect filter to succeed
+  ASSERT_TRUE(result.has_value()) << result.error();
 
-  // Process the point cloud
-  ground_filter_->process(cloud_, no_ground_indices);
-
-  // Should have some non-ground points
-  EXPECT_GT(no_ground_indices.indices.size(), 0);
+  // Expect output cloud to have some points (ground points should be filtered out)
+  EXPECT_GT(result.value().width * result.value().height, 0U);
 }
 
 TEST_F(GroundFilterTest, TestNonGroundHeightThreshold)
@@ -143,12 +140,13 @@ TEST_F(GroundFilterTest, TestNonGroundHeightThreshold)
   param_.non_ground_height_threshold = 0.1f;
   auto test_filter = std::make_unique<autoware::ground_filter::GroundFilter>(param_);
 
-  pcl::PointIndices no_ground_indices;
-  test_filter->setDataAccessor(cloud_);
-  test_filter->process(cloud_, no_ground_indices);
+  auto result = test_filter->filter(cloud_);
 
-  // Should detect non-ground points
-  EXPECT_GE(no_ground_indices.indices.size(), 0);
+  // Expect filter to succeed
+  ASSERT_TRUE(result.has_value()) << result.error();
+
+  // Expect some points
+  EXPECT_GT(result.value().width * result.value().height, 0U);
 }
 
 TEST_F(GroundFilterTest, TestTimeKeeper)
@@ -157,9 +155,7 @@ TEST_F(GroundFilterTest, TestTimeKeeper)
   auto time_keeper = std::make_shared<autoware_utils_debug::TimeKeeper>();
   ground_filter_->setTimeKeeper(time_keeper);
 
-  pcl::PointIndices no_ground_indices;
-  ground_filter_->setDataAccessor(cloud_);
-  EXPECT_NO_THROW(ground_filter_->process(cloud_, no_ground_indices));
+  EXPECT_NO_THROW({ auto result = ground_filter_->filter(cloud_); });
 }
 
 TEST_F(GroundFilterTest, TestPointsCentroidFunctionality)
@@ -272,27 +268,18 @@ TEST_F(GroundFilterTest, TestVariousParameterConfigurations)
   // Test with different parameter configurations to cover more code paths
   param_.use_recheck_ground_cluster = false;
   auto test_filter1 = std::make_unique<autoware::ground_filter::GroundFilter>(param_);
-
-  pcl::PointIndices no_ground_indices1;
-  test_filter1->setDataAccessor(cloud_);
-  test_filter1->process(cloud_, no_ground_indices1);
+  EXPECT_TRUE(test_filter1->filter(cloud_).has_value());
 
   param_.use_recheck_ground_cluster = true;
   param_.use_lowest_point = false;
   auto test_filter2 = std::make_unique<autoware::ground_filter::GroundFilter>(param_);
-
-  pcl::PointIndices no_ground_indices2;
-  test_filter2->setDataAccessor(cloud_);
-  test_filter2->process(cloud_, no_ground_indices2);
+  EXPECT_TRUE(test_filter2->filter(cloud_).has_value());
 
   param_.grid_size_m = 1.0f;
   param_.grid_mode_switch_radius = 10.0f;
   param_.ground_grid_buffer_size = 1;
   auto test_filter3 = std::make_unique<autoware::ground_filter::GroundFilter>(param_);
-
-  pcl::PointIndices no_ground_indices3;
-  test_filter3->setDataAccessor(cloud_);
-  EXPECT_NO_THROW(test_filter3->process(cloud_, no_ground_indices3));
+  EXPECT_TRUE(test_filter3->filter(cloud_).has_value());
 }
 
 TEST_F(GroundFilterTest, TestDifferentPointCloudLayouts)
@@ -316,11 +303,9 @@ TEST_F(GroundFilterTest, TestDifferentPointCloudLayouts)
   xyzirc_cloud->header.frame_id = "base_link";
   xyzirc_cloud->header.stamp = rclcpp::Clock().now();
 
-  pcl::PointIndices no_ground_indices;
-  ground_filter_->setDataAccessor(xyzirc_cloud);
-  ground_filter_->process(xyzirc_cloud, no_ground_indices);
-
-  EXPECT_GE(no_ground_indices.indices.size(), 0);
+  auto result = ground_filter_->filter(xyzirc_cloud);
+  ASSERT_TRUE(result.has_value()) << result.error();
+  EXPECT_GE(result.value().width * result.value().height, 0U);
 }
 
 TEST_F(GroundFilterTest, TestExtremeParameterValues)
@@ -334,9 +319,7 @@ TEST_F(GroundFilterTest, TestExtremeParameterValues)
 
   auto extreme_filter = std::make_unique<autoware::ground_filter::GroundFilter>(param_);
 
-  pcl::PointIndices no_ground_indices;
-  extreme_filter->setDataAccessor(cloud_);
-  EXPECT_NO_THROW(extreme_filter->process(cloud_, no_ground_indices));
+  EXPECT_NO_THROW({ auto result = extreme_filter->filter(cloud_); });
 }
 
 // ======================================================================================= //
@@ -395,7 +378,7 @@ protected:
   }
 };
 
-// TEST 3. Confirm points in different azimuths are correctly classified as non-ground
+// TEST 1. Confirm points in different azimuths are correctly classified as non-ground
 // when they are towering above ground.
 // This test creates a simple point cloud with 3 points:
 // - Point A (5, 0, 5)
@@ -429,7 +412,7 @@ TEST_F(GroundFilterRadialTest, RadialDifferentAzimuths)
   EXPECT_EQ(out_cloud.size(), 3U);
 }
 
-// TEST 4. Confirm point classification logic in classifyPointCloud.
+// TEST 2. Confirm point classification logic in classifyPointCloud.
 // This test creates a simple point cloud with 3 points: (3, 0, 0), (4, 0, 0.6), (5, 0, 2.0).
 // With given slope threshold 15 deg and height threshold 0.2, we expect:
 // - Point A (3, 0, 0) : ground (slope 0, height 0)
@@ -467,7 +450,7 @@ TEST_F(GroundFilterRadialTest, ClassifyLocalAndGlobalSlopes)
   EXPECT_NEAR(out_cloud.points[2].z, 2.0f, near_tol);
 }
 
-// TEST 5. Testing point follow logic.
+// TEST 3. Testing point follow logic.
 // This test creates a simple point cloud with 3 points: (3, 0, 0), (3.05, 0, 0.02), (3.10, 0, 2.0).
 // I designed first 2 points to be kinda close so that the second one is considered "following" the
 // first one, while the third point is far away and should be classified as non-ground.
