@@ -31,6 +31,14 @@ pub struct NdtHost {
     set_activated: extern "C" fn(*mut c_void, bool),
     /// Clear the initial-pose interpolation buffer (`initial_pose_buffer_`).
     clear_initial_pose_buffer: extern "C" fn(*mut c_void),
+    /// Read the node's activation flag (`is_activated_`).
+    is_activated: extern "C" fn(*mut c_void) -> bool,
+    /// Push the opaque message token into `initial_pose_buffer_` (`SmartPoseBuffer::push_back`).
+    push_initial_pose: extern "C" fn(*mut c_void, *const c_void),
+    /// Push the opaque message token into `regularization_pose_buffer_`.
+    push_regularization_pose: extern "C" fn(*mut c_void, *const c_void),
+    /// Set `latest_ekf_position_` to the given `(x, y, z)`.
+    set_latest_ekf_position: extern "C" fn(*mut c_void, f64, f64, f64),
 }
 
 /// Migrated body of `service_trigger_node`: set the activation flag, and on enable clear the
@@ -57,6 +65,102 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_on_trigger(
     if activate {
         (h.clear_initial_pose_buffer)(h.ctx);
     }
+}
+
+/// Outcome of [`autoware_ndt_scan_matcher_rs_node_on_initial_pose`]; the C++ wrapper maps it to the
+/// callback's diagnostics. `i32` so it crosses the C ABI as a plain return code.
+pub const INITIAL_POSE_ACCEPTED: i32 = 0;
+/// The node is not activated — the pose is dropped (C++ emits a WARN).
+pub const INITIAL_POSE_NOT_ACTIVATED: i32 = 1;
+/// The message `frame_id` did not match the configured map frame (C++ emits an ERROR).
+pub const INITIAL_POSE_WRONG_FRAME: i32 = 2;
+
+/// Migrated body of `callback_initial_pose_main`: gate on activation, then on the message frame
+/// matching the map frame; on acceptance push the (opaque) message into the initial-pose buffer and
+/// record its position as the latest EKF position. Returns one of the `INITIAL_POSE_*` codes; the
+/// C++ wrapper emits the diagnostics for each outcome. State stays C++ (driven via `host`).
+///
+/// # Safety
+/// `host` is a valid [`NdtHost`] (or null → treated as not-activated) whose fn pointers + `ctx`
+/// outlive the call. `frame_id`/`map_frame` point to `*_len` readable bytes (or null with len 0).
+/// `position` points to 3 readable `f64` (`[x, y, z]`). `msg` is an opaque token, only forwarded to
+/// the host push (never dereferenced here); it must stay valid for the duration of the call.
+#[expect(
+    unsafe_code,
+    reason = "C ABI host-interface boundary; validated per rust-c-ffi-safety"
+)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_on_initial_pose(
+    host: *const NdtHost,
+    frame_id: *const u8,
+    frame_id_len: usize,
+    map_frame: *const u8,
+    map_frame_len: usize,
+    position: *const f64,
+    msg: *const c_void,
+) -> i32 {
+    if host.is_null() || position.is_null() {
+        return INITIAL_POSE_NOT_ACTIVATED;
+    }
+    // SAFETY: non-null per the check; caller guarantees a valid host whose ctx/fn-pointers are live.
+    let h = unsafe { &*host };
+    if !(h.is_activated)(h.ctx) {
+        return INITIAL_POSE_NOT_ACTIVATED;
+    }
+    // Empty byte slice for a null/zero-length string (`from_raw_parts` requires a non-null base).
+    // SAFETY: caller guarantees each pointer is readable for its stated length.
+    let frame = unsafe { str_bytes(frame_id, frame_id_len) };
+    let map = unsafe { str_bytes(map_frame, map_frame_len) };
+    if frame != map {
+        return INITIAL_POSE_WRONG_FRAME;
+    }
+    (h.push_initial_pose)(h.ctx, msg);
+    // SAFETY: `position` is non-null per the check and points to 3 readable, aligned f64 (`[x,y,z]`)
+    // per the contract; read the three components directly to avoid slice indexing.
+    let (x, y, z) = unsafe { (*position, *position.add(1), *position.add(2)) };
+    (h.set_latest_ekf_position)(h.ctx, x, y, z);
+    INITIAL_POSE_ACCEPTED
+}
+
+/// Migrated body of `callback_regularization_pose`: unconditionally push the (opaque) message into
+/// the regularization-pose buffer. No-op if `host`/`msg` is null. The C++ wrapper keeps the
+/// surrounding diagnostics.
+///
+/// # Safety
+/// `host` is a valid [`NdtHost`] (or null → no-op) whose fn pointers + `ctx` outlive the call. `msg`
+/// is an opaque token, only forwarded to the host push (never dereferenced); valid for the call.
+#[expect(
+    unsafe_code,
+    reason = "C ABI host-interface boundary; validated per rust-c-ffi-safety"
+)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_on_regularization_pose(
+    host: *const NdtHost,
+    msg: *const c_void,
+) {
+    if host.is_null() || msg.is_null() {
+        return;
+    }
+    // SAFETY: non-null per the check; caller guarantees a valid, live host.
+    let h = unsafe { &*host };
+    (h.push_regularization_pose)(h.ctx, msg);
+}
+
+/// View `[ptr, ptr+len)` as a byte slice, treating a null/zero-length pointer as empty (so the
+/// frame-id comparison never builds a slice from a null base).
+///
+/// # Safety
+/// When `len > 0`, `ptr` must point to `len` readable, initialized bytes that outlive the borrow.
+#[expect(
+    unsafe_code,
+    reason = "C ABI host-interface boundary; validated per rust-c-ffi-safety"
+)]
+unsafe fn str_bytes<'a>(ptr: *const u8, len: usize) -> &'a [u8] {
+    if ptr.is_null() || len == 0 {
+        return &[];
+    }
+    // SAFETY: non-null with len > 0 per the check; caller guarantees `len` readable bytes.
+    unsafe { core::slice::from_raw_parts(ptr, len) }
 }
 
 /// Inputs to the NDT convergence decision: one alignment result's relevant scalars plus the
@@ -232,12 +336,12 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_evaluate_convergence(
     unsafe_code,
     clippy::borrow_as_ptr,
     clippy::float_cmp,
+    clippy::arithmetic_side_effects,
     clippy::allow_attributes,
-    reason = "test code: invoking the C ABI entry with a mock host; exact-equal float asserts on deterministic passthrough"
+    reason = "test code: mock-host C ABI calls; exact-equal float asserts on deterministic passthrough; counter increments"
 )]
 mod tests {
     use super::*;
-    use core::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
     // ConvergedParamType discriminants (mirrors hyper_parameters.hpp).
     const TP: i32 = 0;
@@ -435,41 +539,189 @@ mod tests {
         }
     }
 
-    // The mock host records calls in process-global state, so the two trigger sequences below run in
-    // ONE sequential test (parallel tests would race the flags).
-    static ACTIVATED: AtomicBool = AtomicBool::new(false);
-    static CLEARS: AtomicU32 = AtomicU32::new(0);
-
-    extern "C" fn rec_set_activated(_ctx: *mut c_void, activate: bool) {
-        ACTIVATED.store(activate, Ordering::SeqCst);
+    // Mock host: the trampolines cast `ctx` back to a per-test `Recorder` (no process-global state,
+    // so tests run in parallel), mirroring how the real C++ trampolines cast ctx -> NDTScanMatcher*.
+    #[derive(Default)]
+    struct Recorder {
+        activated: bool,
+        clears: u32,
+        is_activated_ret: bool,
+        initial_pushes: u32,
+        reg_pushes: u32,
+        last_msg: Option<*const c_void>,
+        position: Option<(f64, f64, f64)>,
     }
-    extern "C" fn rec_clear(_ctx: *mut c_void) {
-        CLEARS.fetch_add(1, Ordering::SeqCst);
+
+    fn rec<'a>(ctx: *mut c_void) -> &'a mut Recorder {
+        // SAFETY: in these tests `ctx` always points to a live `Recorder` (set via `host`).
+        unsafe { &mut *ctx.cast::<Recorder>() }
+    }
+
+    extern "C" fn t_set_activated(ctx: *mut c_void, activate: bool) {
+        rec(ctx).activated = activate;
+    }
+    extern "C" fn t_clear(ctx: *mut c_void) {
+        rec(ctx).clears += 1;
+    }
+    extern "C" fn t_is_activated(ctx: *mut c_void) -> bool {
+        rec(ctx).is_activated_ret
+    }
+    extern "C" fn t_push_initial(ctx: *mut c_void, msg: *const c_void) {
+        let r = rec(ctx);
+        r.initial_pushes += 1;
+        r.last_msg = Some(msg);
+    }
+    extern "C" fn t_push_reg(ctx: *mut c_void, msg: *const c_void) {
+        let r = rec(ctx);
+        r.reg_pushes += 1;
+        r.last_msg = Some(msg);
+    }
+    extern "C" fn t_set_pos(ctx: *mut c_void, x: f64, y: f64, z: f64) {
+        rec(ctx).position = Some((x, y, z));
+    }
+
+    fn host(r: &mut Recorder) -> NdtHost {
+        NdtHost {
+            ctx: core::ptr::from_mut(r).cast::<c_void>(),
+            set_activated: t_set_activated,
+            clear_initial_pose_buffer: t_clear,
+            is_activated: t_is_activated,
+            push_initial_pose: t_push_initial,
+            push_regularization_pose: t_push_reg,
+            set_latest_ekf_position: t_set_pos,
+        }
+    }
+
+    // A throwaway address used as the opaque message token (never dereferenced by Rust).
+    fn token() -> *const c_void {
+        static MARKER: u8 = 0;
+        core::ptr::addr_of!(MARKER).cast::<c_void>()
     }
 
     #[test]
     fn on_trigger_sets_flag_and_clears_only_on_activate() {
-        let host = NdtHost {
-            ctx: core::ptr::null_mut(),
-            set_activated: rec_set_activated,
-            clear_initial_pose_buffer: rec_clear,
-        };
+        let mut r = Recorder::default();
+        let h = host(&mut r);
 
         // activate: flag set true, buffer cleared once.
-        // SAFETY: `host` is a valid NdtHost living for the call.
-        unsafe { autoware_ndt_scan_matcher_rs_node_on_trigger(&host, true) };
-        assert!(ACTIVATED.load(Ordering::SeqCst));
-        assert_eq!(CLEARS.load(Ordering::SeqCst), 1);
+        // SAFETY: `h` is a valid NdtHost living for the call.
+        unsafe { autoware_ndt_scan_matcher_rs_node_on_trigger(&h, true) };
+        assert!(r.activated);
+        assert_eq!(r.clears, 1);
 
         // deactivate: flag set false, buffer NOT cleared again.
         // SAFETY: as above.
-        unsafe { autoware_ndt_scan_matcher_rs_node_on_trigger(&host, false) };
-        assert!(!ACTIVATED.load(Ordering::SeqCst));
-        assert_eq!(CLEARS.load(Ordering::SeqCst), 1);
+        unsafe { autoware_ndt_scan_matcher_rs_node_on_trigger(&h, false) };
+        assert!(!r.activated);
+        assert_eq!(r.clears, 1);
 
         // null host is a no-op (no panic).
         // SAFETY: passing null is explicitly handled.
         unsafe { autoware_ndt_scan_matcher_rs_node_on_trigger(core::ptr::null(), true) };
-        assert_eq!(CLEARS.load(Ordering::SeqCst), 1);
+        assert_eq!(r.clears, 1);
+    }
+
+    // Drive on_initial_pose with the given activation/frames/position and the shared token.
+    fn call_initial(h: &NdtHost, frame_id: &[u8], map_frame: &[u8], pos: [f64; 3]) -> i32 {
+        // SAFETY: the byte slices and `pos` are valid for their lengths; `token()` is opaque.
+        unsafe {
+            autoware_ndt_scan_matcher_rs_node_on_initial_pose(
+                h,
+                frame_id.as_ptr(),
+                frame_id.len(),
+                map_frame.as_ptr(),
+                map_frame.len(),
+                pos.as_ptr(),
+                token(),
+            )
+        }
+    }
+
+    #[test]
+    fn initial_pose_rejected_when_not_activated() {
+        let mut r = Recorder {
+            is_activated_ret: false,
+            ..Default::default()
+        };
+        let h = host(&mut r);
+        let status = call_initial(&h, b"map", b"map", [1.0, 2.0, 3.0]);
+        assert_eq!(status, INITIAL_POSE_NOT_ACTIVATED);
+        assert_eq!(r.initial_pushes, 0);
+        assert!(r.position.is_none());
+    }
+
+    #[test]
+    fn initial_pose_rejected_when_frame_mismatch() {
+        let mut r = Recorder {
+            is_activated_ret: true,
+            ..Default::default()
+        };
+        let h = host(&mut r);
+        let status = call_initial(&h, b"lidar", b"map", [1.0, 2.0, 3.0]);
+        assert_eq!(status, INITIAL_POSE_WRONG_FRAME);
+        assert_eq!(r.initial_pushes, 0);
+        assert!(r.position.is_none());
+    }
+
+    #[test]
+    fn initial_pose_accepted_pushes_and_sets_position() {
+        let mut r = Recorder {
+            is_activated_ret: true,
+            ..Default::default()
+        };
+        let h = host(&mut r);
+        let status = call_initial(&h, b"map", b"map", [1.5, -2.5, 0.25]);
+        assert_eq!(status, INITIAL_POSE_ACCEPTED);
+        assert_eq!(r.initial_pushes, 1);
+        assert_eq!(r.last_msg, Some(token()));
+        assert_eq!(r.position, Some((1.5, -2.5, 0.25)));
+    }
+
+    #[test]
+    fn initial_pose_accepts_empty_matching_frames() {
+        // Degenerate frame ids: both empty -> equal -> accepted (exercises the zero-length path).
+        let mut r = Recorder {
+            is_activated_ret: true,
+            ..Default::default()
+        };
+        let h = host(&mut r);
+        let status = call_initial(&h, b"", b"", [0.0, 0.0, 0.0]);
+        assert_eq!(status, INITIAL_POSE_ACCEPTED);
+        assert_eq!(r.initial_pushes, 1);
+    }
+
+    #[test]
+    fn initial_pose_null_host_is_not_activated() {
+        let pos = [0.0_f64; 3];
+        // SAFETY: null host is explicitly handled; the other pointers are valid.
+        let status = unsafe {
+            autoware_ndt_scan_matcher_rs_node_on_initial_pose(
+                core::ptr::null(),
+                b"map".as_ptr(),
+                3,
+                b"map".as_ptr(),
+                3,
+                pos.as_ptr(),
+                token(),
+            )
+        };
+        assert_eq!(status, INITIAL_POSE_NOT_ACTIVATED);
+    }
+
+    #[test]
+    fn regularization_pose_pushes_msg_and_null_is_noop() {
+        let mut r = Recorder::default();
+        let h = host(&mut r);
+        // SAFETY: `h` is valid; `token()` is an opaque, valid-for-the-call token.
+        unsafe { autoware_ndt_scan_matcher_rs_node_on_regularization_pose(&h, token()) };
+        assert_eq!(r.reg_pushes, 1);
+        assert_eq!(r.last_msg, Some(token()));
+
+        // null msg → no-op (no extra push).
+        // SAFETY: null msg is explicitly handled.
+        unsafe {
+            autoware_ndt_scan_matcher_rs_node_on_regularization_pose(&h, core::ptr::null());
+        }
+        assert_eq!(r.reg_pushes, 1);
     }
 }

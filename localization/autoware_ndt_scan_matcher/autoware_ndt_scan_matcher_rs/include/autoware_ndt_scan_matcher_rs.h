@@ -261,11 +261,31 @@ typedef struct
   void * ctx;
   void (*set_activated)(void * ctx, bool activate);
   void (*clear_initial_pose_buffer)(void * ctx);
+  // N2 data-path ops:
+  bool (*is_activated)(void * ctx);
+  void (*push_initial_pose)(void * ctx, const void * msg);         // msg = opaque C++ msg token
+  void (*push_regularization_pose)(void * ctx, const void * msg);  // msg = opaque C++ msg token
+  void (*set_latest_ekf_position)(void * ctx, double x, double y, double z);
 } AwNdtHost;
 
 // Migrated body of service_trigger_node: set the activation flag; clear the initial-pose buffer on
 // enable. No-op if `host` is null. The C++ wrapper keeps the diagnostics around this call.
 void autoware_ndt_scan_matcher_rs_node_on_trigger(const AwNdtHost * host, bool activate);
+
+// Migrated body of callback_initial_pose_main: gate on activation, then on the message frame_id
+// matching the map frame; on acceptance push `msg` (an opaque token forwarded to push_initial_pose,
+// never dereferenced by Rust) into the initial-pose buffer and record `position` (3 doubles, xyz) as
+// the latest EKF position. `frame_id`/`map_frame` are `*_len`-byte strings (need not be NUL-terminated).
+// Returns 0 = ACCEPTED, 1 = NOT_ACTIVATED, 2 = WRONG_FRAME; the C++ wrapper maps the code to the
+// callback's diagnostics. All pointers must stay valid for the duration of the call.
+int32_t autoware_ndt_scan_matcher_rs_node_on_initial_pose(
+  const AwNdtHost * host, const uint8_t * frame_id, size_t frame_id_len, const uint8_t * map_frame,
+  size_t map_frame_len, const double * position, const void * msg);
+
+// Migrated body of callback_regularization_pose: push `msg` (opaque token) into the
+// regularization-pose buffer. No-op if `host`/`msg` is null. The C++ wrapper keeps the diagnostics.
+void autoware_ndt_scan_matcher_rs_node_on_regularization_pose(
+  const AwNdtHost * host, const void * msg);
 
 // Inputs to the NDT convergence decision (the relevant scalars of one align result + the
 // `score_estimation` params). `oscillation_num` is precomputed by the caller (the count_oscillation

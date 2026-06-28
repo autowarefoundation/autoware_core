@@ -26,6 +26,8 @@
 
 #include <pcl_conversions/pcl_conversions.h>
 
+#include <array>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <tuple>
@@ -232,6 +234,44 @@ void NDTScanMatcher::callback_initial_pose_main(
     "topic_time_stamp",
     static_cast<rclcpp::Time>(initial_pose_msg_ptr->header.stamp).nanoseconds());
 
+#ifdef NDT_USE_RUST
+  // Migrated to Rust (Phase N2): the activation/frame gates + buffer push + latest-EKF-position
+  // update run in Rust via the host interface; the C++ wrapper maps the returned status code
+  // (0 = accepted, 1 = not activated, 2 = wrong frame) to the original diagnostics.
+  const AwNdtHost host = make_host();
+  const std::string & frame_id = initial_pose_msg_ptr->header.frame_id;
+  const std::string & map_frame = param_.frame.map_frame;
+  const auto & ekf_position = initial_pose_msg_ptr->pose.pose.position;
+  const std::array<double, 3> position{ekf_position.x, ekf_position.y, ekf_position.z};
+  const int32_t status = autoware_ndt_scan_matcher_rs_node_on_initial_pose(
+    &host, reinterpret_cast<const uint8_t *>(frame_id.data()), frame_id.size(),
+    reinterpret_cast<const uint8_t *>(map_frame.data()), map_frame.size(), position.data(),
+    &initial_pose_msg_ptr);
+
+  // check is_activated
+  diagnostics_initial_pose_->add_key_value("is_activated", status != 1);
+  if (status == 1) {
+    std::stringstream message;
+    message << "Node is not activated.";
+    diagnostics_initial_pose_->update_level_and_message(
+      diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
+    return;
+  }
+
+  // check is_expected_frame_id
+  const bool is_expected_frame_id = (status != 2);
+  diagnostics_initial_pose_->add_key_value("is_expected_frame_id", is_expected_frame_id);
+  if (!is_expected_frame_id) {
+    std::stringstream message;
+    message << "Received initial pose message with frame_id "
+            << initial_pose_msg_ptr->header.frame_id << ", but expected " << param_.frame.map_frame
+            << ". Please check the frame_id in the input topic and ensure it is correct.";
+    diagnostics_initial_pose_->update_level_and_message(
+      diagnostic_msgs::msg::DiagnosticStatus::ERROR, message.str());
+    return;
+  }
+  // status == 0 (accepted): the buffer push + latest-EKF-position update happened in Rust.
+#else
   // check is_activated
   diagnostics_initial_pose_->add_key_value("is_activated", static_cast<bool>(is_activated_));
   if (!is_activated_) {
@@ -259,6 +299,7 @@ void NDTScanMatcher::callback_initial_pose_main(
   initial_pose_buffer_->push_back(initial_pose_msg_ptr);
 
   latest_ekf_position_.with([&](auto & pos) { pos = initial_pose_msg_ptr->pose.pose.position; });
+#endif
 }
 
 void NDTScanMatcher::callback_regularization_pose(
@@ -269,7 +310,13 @@ void NDTScanMatcher::callback_regularization_pose(
   diagnostics_regularization_pose_->add_key_value(
     "topic_time_stamp", static_cast<rclcpp::Time>(pose_conv_msg_ptr->header.stamp).nanoseconds());
 
+#ifdef NDT_USE_RUST
+  // Migrated to Rust (Phase N2): push via the host interface (the C++ msg is passed opaquely).
+  const AwNdtHost host = make_host();
+  autoware_ndt_scan_matcher_rs_node_on_regularization_pose(&host, &pose_conv_msg_ptr);
+#else
   regularization_pose_buffer_->push_back(pose_conv_msg_ptr);
+#endif
 
   diagnostics_regularization_pose_->publish(pose_conv_msg_ptr->header.stamp);
 }
@@ -955,8 +1002,9 @@ void NDTScanMatcher::add_regularization_pose(
 }
 
 #ifdef NDT_USE_RUST
-// Phase N0 host-interface trampolines (ctx == this); the migrated Rust callback drives node state
-// through these.
+// Phase N host-interface trampolines (ctx == this); the migrated Rust callbacks drive node state
+// through these. The `msg` argument of the push trampolines is the address of the C++
+// PoseWithCovarianceStamped::ConstSharedPtr passed opaquely through Rust (valid for the call only).
 void NDTScanMatcher::host_set_activated(void * ctx, bool activate)
 {
   static_cast<NDTScanMatcher *>(ctx)->is_activated_ = activate;
@@ -964,6 +1012,48 @@ void NDTScanMatcher::host_set_activated(void * ctx, bool activate)
 void NDTScanMatcher::host_clear_initial_pose_buffer(void * ctx)
 {
   static_cast<NDTScanMatcher *>(ctx)->initial_pose_buffer_->clear();
+}
+bool NDTScanMatcher::host_is_activated(void * ctx)
+{
+  return static_cast<NDTScanMatcher *>(ctx)->is_activated_;
+}
+void NDTScanMatcher::host_push_initial_pose(void * ctx, const void * msg)
+{
+  const auto & pose_msg_ptr =
+    *static_cast<const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr *>(msg);
+  static_cast<NDTScanMatcher *>(ctx)->initial_pose_buffer_->push_back(pose_msg_ptr);
+}
+void NDTScanMatcher::host_push_regularization_pose(void * ctx, const void * msg)
+{
+  auto * self = static_cast<NDTScanMatcher *>(ctx);
+  if (!self->regularization_pose_buffer_) {
+    return;
+  }
+  const auto & pose_msg_ptr =
+    *static_cast<const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr *>(msg);
+  self->regularization_pose_buffer_->push_back(pose_msg_ptr);
+}
+void NDTScanMatcher::host_set_latest_ekf_position(void * ctx, double x, double y, double z)
+{
+  static_cast<NDTScanMatcher *>(ctx)->latest_ekf_position_.with([&](auto & pos) {
+    geometry_msgs::msg::Point point;
+    point.x = x;
+    point.y = y;
+    point.z = z;
+    pos = point;
+  });
+}
+// Build the host-interface vtable for the migrated Rust callbacks (ctx == this).
+AwNdtHost NDTScanMatcher::make_host()
+{
+  return AwNdtHost{
+    this,
+    &NDTScanMatcher::host_set_activated,
+    &NDTScanMatcher::host_clear_initial_pose_buffer,
+    &NDTScanMatcher::host_is_activated,
+    &NDTScanMatcher::host_push_initial_pose,
+    &NDTScanMatcher::host_push_regularization_pose,
+    &NDTScanMatcher::host_set_latest_ekf_position};
 }
 #endif
 
@@ -978,8 +1068,7 @@ void NDTScanMatcher::service_trigger_node(
 
 #ifdef NDT_USE_RUST
   // Migrated to Rust (Phase N0): set the flag + clear the buffer via the host interface.
-  const AwNdtHost host{
-    this, &NDTScanMatcher::host_set_activated, &NDTScanMatcher::host_clear_initial_pose_buffer};
+  const AwNdtHost host = make_host();
   autoware_ndt_scan_matcher_rs_node_on_trigger(&host, req->data);
 #else
   is_activated_ = req->data;

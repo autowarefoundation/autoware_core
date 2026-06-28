@@ -220,6 +220,14 @@ if(BUILD_TESTING)
     target_link_libraries(test_convergence_verdict autoware_ndt_scan_matcher_rs)
     target_include_directories(test_convergence_verdict PRIVATE
       ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/include)
+
+    # 9. Test: the thin pose callbacks migrated to Rust (FFI) drive a mock host vtable (node port N2).
+    ament_auto_add_gtest(test_node_pose_callbacks
+      test/test_node_pose_callbacks.cpp
+    )
+    target_link_libraries(test_node_pose_callbacks autoware_ndt_scan_matcher_rs)
+    target_include_directories(test_node_pose_callbacks PRIVATE
+      ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/include)
   endif()
 endif()
 

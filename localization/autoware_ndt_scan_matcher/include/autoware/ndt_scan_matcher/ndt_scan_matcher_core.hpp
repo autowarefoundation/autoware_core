@@ -124,10 +124,16 @@ private:
     NormalDistributionsTransform & ndt_ref);
 
 #ifdef NDT_USE_RUST
-  // Phase N0 host-interface trampolines: the Rust callback bodies drive node state through these
+  // Phase N host-interface trampolines: the Rust callback bodies drive node state through these
   // (ctx is `this`). Static so the function pointers are plain C-ABI pointers for the vtable.
+  // `make_host` assembles them into the AwNdtHost vtable handed to the migrated Rust callbacks.
   static void host_set_activated(void * ctx, bool activate);
   static void host_clear_initial_pose_buffer(void * ctx);
+  static bool host_is_activated(void * ctx);
+  static void host_push_initial_pose(void * ctx, const void * msg);
+  static void host_push_regularization_pose(void * ctx, const void * msg);
+  static void host_set_latest_ekf_position(void * ctx, double x, double y, double z);
+  AwNdtHost make_host();
 #endif
 
   void transform_sensor_measurement(
