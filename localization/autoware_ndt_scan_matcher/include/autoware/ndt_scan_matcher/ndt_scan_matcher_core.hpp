@@ -123,6 +123,13 @@ private:
     const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_with_cov,
     NormalDistributionsTransform & ndt_ref);
 
+#ifdef NDT_USE_RUST
+  // Phase N0 host-interface trampolines: the Rust callback bodies drive node state through these
+  // (ctx is `this`). Static so the function pointers are plain C-ABI pointers for the vtable.
+  static void host_set_activated(void * ctx, bool activate);
+  static void host_clear_initial_pose_buffer(void * ctx);
+#endif
+
   void transform_sensor_measurement(
     const std::string & source_frame, const std::string & target_frame,
     const pcl::shared_ptr<pcl::PointCloud<PointSource>> & sensor_points_input_ptr,

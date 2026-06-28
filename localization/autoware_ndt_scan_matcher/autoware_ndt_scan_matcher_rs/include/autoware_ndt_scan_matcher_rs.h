@@ -252,6 +252,21 @@ void autoware_ndt_scan_matcher_rs_ndt_engine_calc_nearest_voxel_score_each_point
 void autoware_ndt_scan_matcher_rs_ndt_engine_get_score_arrays(
   const AwNdtEngine * engine, float * out_tp, float * out_nvl, uint32_t cap, uint32_t * out_count);
 
+// --- node callback glue (Phase N): host interface (C++ provides the ROS I/O) ---
+
+// The ROS I/O / node-state ops a migrated Rust callback drives, as C function pointers over an opaque
+// context (the NDTScanMatcher*, set by the C++ side). Field order must match the Rust `NdtHost`.
+typedef struct
+{
+  void * ctx;
+  void (*set_activated)(void * ctx, bool activate);
+  void (*clear_initial_pose_buffer)(void * ctx);
+} AwNdtHost;
+
+// Migrated body of service_trigger_node: set the activation flag; clear the initial-pose buffer on
+// enable. No-op if `host` is null. The C++ wrapper keeps the diagnostics around this call.
+void autoware_ndt_scan_matcher_rs_node_on_trigger(const AwNdtHost * host, bool activate);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

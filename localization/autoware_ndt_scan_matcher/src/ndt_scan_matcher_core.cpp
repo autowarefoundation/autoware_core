@@ -919,6 +919,19 @@ void NDTScanMatcher::add_regularization_pose(
   ndt_ref.setRegularizationPose(pose);
 }
 
+#ifdef NDT_USE_RUST
+// Phase N0 host-interface trampolines (ctx == this); the migrated Rust callback drives node state
+// through these.
+void NDTScanMatcher::host_set_activated(void * ctx, bool activate)
+{
+  static_cast<NDTScanMatcher *>(ctx)->is_activated_ = activate;
+}
+void NDTScanMatcher::host_clear_initial_pose_buffer(void * ctx)
+{
+  static_cast<NDTScanMatcher *>(ctx)->initial_pose_buffer_->clear();
+}
+#endif
+
 void NDTScanMatcher::service_trigger_node(
   const std_srvs::srv::SetBool::Request::SharedPtr req,
   std_srvs::srv::SetBool::Response::SharedPtr res)
@@ -928,10 +941,17 @@ void NDTScanMatcher::service_trigger_node(
   diagnostics_trigger_node_->clear();
   diagnostics_trigger_node_->add_key_value("service_call_time_stamp", ros_time_now.nanoseconds());
 
+#ifdef NDT_USE_RUST
+  // Migrated to Rust (Phase N0): set the flag + clear the buffer via the host interface.
+  const AwNdtHost host{
+    this, &NDTScanMatcher::host_set_activated, &NDTScanMatcher::host_clear_initial_pose_buffer};
+  autoware_ndt_scan_matcher_rs_node_on_trigger(&host, req->data);
+#else
   is_activated_ = req->data;
   if (is_activated_) {
     initial_pose_buffer_->clear();
   }
+#endif
   res->success = true;
 
   diagnostics_trigger_node_->add_key_value("is_activated", static_cast<bool>(is_activated_));

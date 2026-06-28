@@ -29,6 +29,9 @@ pub mod engine;
 pub mod helper;
 mod kdtree;
 pub mod ndt;
+// ROS-node callback glue (Phase N); std-only (not part of the no_std engine path).
+#[cfg(feature = "std")]
+pub mod node;
 pub mod transform;
 pub mod voxel_grid;
 
