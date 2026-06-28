@@ -228,6 +228,15 @@ if(BUILD_TESTING)
     target_link_libraries(test_node_pose_callbacks autoware_ndt_scan_matcher_rs)
     target_include_directories(test_node_pose_callbacks PRIVATE
       ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/include)
+
+    # 10. Differential test: the map-update distance decision migrated to Rust (FFI) vs the C++
+    #     MapUpdateModule should_update_map / out_of_map_range math (node port N3).
+    ament_auto_add_gtest(test_map_update_verdict
+      test/test_map_update_verdict.cpp
+    )
+    target_link_libraries(test_map_update_verdict autoware_ndt_scan_matcher_rs)
+    target_include_directories(test_map_update_verdict PRIVATE
+      ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/include)
   endif()
 endif()
 

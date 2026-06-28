@@ -103,6 +103,31 @@ bool MapUpdateModule::should_update_map(
     return true;
   }
 
+#ifdef NDT_USE_RUST
+  // Migrated to Rust (Phase N3): the distance math + threshold decisions. The C++ side keeps the
+  // diagnostics and the need_rebuild mutation.
+  const AwMapUpdateInput input{position.x,        position.y,         last_update_position->x,
+                               last_update_position->y, param_.lidar_radius, param_.map_radius,
+                               param_.update_distance};
+  AwMapUpdateVerdict verdict{};
+  autoware_ndt_scan_matcher_rs_node_evaluate_map_update(&input, &verdict);
+
+  // check distance_last_update_position_to_current_position
+  diagnostics_ptr->add_key_value(
+    "distance_last_update_position_to_current_position", verdict.distance);
+  if (verdict.out_of_keep_up) {
+    std::stringstream message;
+    message << "Dynamic map loading is not keeping up.";
+    diagnostics_ptr->update_level_and_message(
+      diagnostic_msgs::msg::DiagnosticStatus::ERROR, message.str());
+
+    // If the map does not keep up with the current position,
+    // lock ndt_ptr_ entirely until it is fully rebuilt.
+    builder_state.need_rebuild = true;
+  }
+
+  return verdict.should_update;
+#else
   const double dx = position.x - last_update_position->x;
   const double dy = position.y - last_update_position->y;
   const double distance = std::hypot(dx, dy);
@@ -121,6 +146,7 @@ bool MapUpdateModule::should_update_map(
   }
 
   return distance > param_.update_distance;
+#endif
 }
 
 bool MapUpdateModule::out_of_map_range(const geometry_msgs::msg::Point & position)
@@ -132,12 +158,22 @@ bool MapUpdateModule::out_of_map_range(const geometry_msgs::msg::Point & positio
     return true;
   }
 
+#ifdef NDT_USE_RUST
+  // Migrated to Rust (Phase N3): the keep-up distance check (update_distance is unused here).
+  const AwMapUpdateInput input{position.x,        position.y,         last_update_position->x,
+                               last_update_position->y, param_.lidar_radius, param_.map_radius,
+                               param_.update_distance};
+  AwMapUpdateVerdict verdict{};
+  autoware_ndt_scan_matcher_rs_node_evaluate_map_update(&input, &verdict);
+  return verdict.out_of_keep_up;
+#else
   const double dx = position.x - last_update_position->x;
   const double dy = position.y - last_update_position->y;
   const double distance = std::hypot(dx, dy);
 
   // check distance_last_update_position_to_current_position
   return (distance + param_.lidar_radius > param_.map_radius);
+#endif
 }
 
 void MapUpdateModule::update_map_internal(

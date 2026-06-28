@@ -331,6 +331,113 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_evaluate_convergence(
     }
 }
 
+/// Inputs to the dynamic-map-update distance decision: the current position, the position at the
+/// last map update, and the `dynamic_map_loading` radii/thresholds. The "no last update yet" case is
+/// handled C++-side (it is trivial control flow), so this fn always has a real last position.
+#[derive(Clone, Copy, Debug)]
+pub struct MapUpdateInput {
+    pub current_x: f64,
+    pub current_y: f64,
+    pub last_update_x: f64,
+    pub last_update_y: f64,
+    /// `dynamic_map_loading.lidar_radius`.
+    pub lidar_radius: f64,
+    /// `dynamic_map_loading.map_radius`.
+    pub map_radius: f64,
+    /// `dynamic_map_loading.update_distance`.
+    pub update_distance: f64,
+}
+
+/// The map-update decision: how far we have moved since the last update, whether the loaded map can
+/// still keep up, and whether a (incremental) update should be triggered.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct MapUpdateVerdict {
+    /// `hypot(dx, dy)` from the last update position.
+    pub distance: f64,
+    /// `distance + lidar_radius > map_radius`: the loaded map no longer covers the lidar range
+    /// (drives both `out_of_map_range` and `should_update_map`'s critical-rebuild path).
+    pub out_of_keep_up: bool,
+    /// `distance > update_distance`: far enough to trigger a map update.
+    pub should_update: bool,
+}
+
+/// Pure dynamic-map-update distance decision, ported verbatim from `MapUpdateModule`'s
+/// `should_update_map` / `out_of_map_range`. `f64::hypot` resolves to libm `hypot`, matching the C++
+/// `std::hypot`. No allocation; O(1) — RT-clean.
+#[must_use]
+pub fn evaluate_map_update(input: &MapUpdateInput) -> MapUpdateVerdict {
+    // Primitive-f64 arithmetic (not nalgebra operators), so `arithmetic_side_effects` does not fire.
+    let dx = input.current_x - input.last_update_x;
+    let dy = input.current_y - input.last_update_y;
+    let distance = dx.hypot(dy);
+    MapUpdateVerdict {
+        distance,
+        out_of_keep_up: distance + input.lidar_radius > input.map_radius,
+        should_update: distance > input.update_distance,
+    }
+}
+
+/// C ABI mirror of [`MapUpdateInput`] (same field order/types). Plain scalars — no pointers.
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct AwMapUpdateInput {
+    pub current_x: f64,
+    pub current_y: f64,
+    pub last_update_x: f64,
+    pub last_update_y: f64,
+    pub lidar_radius: f64,
+    pub map_radius: f64,
+    pub update_distance: f64,
+}
+
+/// C ABI mirror of [`MapUpdateVerdict`] (same field order). `bool` is a 1-byte, C-ABI-stable type.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct AwMapUpdateVerdict {
+    pub distance: f64,
+    pub out_of_keep_up: bool,
+    pub should_update: bool,
+}
+
+/// FFI entry for the dynamic-map-update decision: reads `*input`, runs [`evaluate_map_update`],
+/// writes `*out`. No-op if either pointer is null.
+///
+/// # Safety
+/// `input` must point to a valid, aligned [`AwMapUpdateInput`] and `out` to a valid, aligned,
+/// writable [`AwMapUpdateVerdict`] (or either may be null → no-op). Read/written once.
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointers validated per rust-c-ffi-safety"
+)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_evaluate_map_update(
+    input: *const AwMapUpdateInput,
+    out: *mut AwMapUpdateVerdict,
+) {
+    if input.is_null() || out.is_null() {
+        return;
+    }
+    // SAFETY: non-null per the check; caller guarantees a valid, aligned struct (read once).
+    let i = unsafe { &*input };
+    let verdict = evaluate_map_update(&MapUpdateInput {
+        current_x: i.current_x,
+        current_y: i.current_y,
+        last_update_x: i.last_update_x,
+        last_update_y: i.last_update_y,
+        lidar_radius: i.lidar_radius,
+        map_radius: i.map_radius,
+        update_distance: i.update_distance,
+    });
+    // SAFETY: `out` is non-null per the check and a valid, aligned, writable verdict per the contract.
+    unsafe {
+        *out = AwMapUpdateVerdict {
+            distance: verdict.distance,
+            out_of_keep_up: verdict.out_of_keep_up,
+            should_update: verdict.should_update,
+        };
+    }
+}
+
 #[cfg(test)]
 #[allow(
     unsafe_code,
@@ -723,5 +830,108 @@ mod tests {
             autoware_ndt_scan_matcher_rs_node_on_regularization_pose(&h, core::ptr::null());
         }
         assert_eq!(r.reg_pushes, 1);
+    }
+
+    // A map-update input centered at the origin's last-update position; tests tweak fields.
+    fn map_base() -> MapUpdateInput {
+        MapUpdateInput {
+            current_x: 0.0,
+            current_y: 0.0,
+            last_update_x: 0.0,
+            last_update_y: 0.0,
+            lidar_radius: 50.0,
+            map_radius: 150.0,
+            update_distance: 20.0,
+        }
+    }
+
+    #[test]
+    fn map_update_distance_is_euclidean() {
+        // 3-4-5 triangle from the last update position.
+        let v = evaluate_map_update(&MapUpdateInput {
+            current_x: 3.0,
+            current_y: 4.0,
+            ..map_base()
+        });
+        assert_eq!(v.distance, 5.0);
+    }
+
+    #[test]
+    fn map_update_should_update_boundary_is_strict() {
+        // distance == update_distance (20) is NOT > 20 → no update...
+        let at = evaluate_map_update(&MapUpdateInput {
+            current_x: 20.0,
+            ..map_base()
+        });
+        assert!(!at.should_update);
+        // ...just past it does.
+        let over = evaluate_map_update(&MapUpdateInput {
+            current_x: 20.0001,
+            ..map_base()
+        });
+        assert!(over.should_update);
+    }
+
+    #[test]
+    fn map_update_out_of_keep_up_boundary_is_strict() {
+        // distance + lidar_radius (50) == map_radius (150) at distance 100 → NOT out of keep-up...
+        let at = evaluate_map_update(&MapUpdateInput {
+            current_x: 100.0,
+            ..map_base()
+        });
+        assert!(!at.out_of_keep_up);
+        // ...just past 100 the map can no longer keep up.
+        let over = evaluate_map_update(&MapUpdateInput {
+            current_x: 100.0001,
+            ..map_base()
+        });
+        assert!(over.out_of_keep_up);
+    }
+
+    #[test]
+    fn ffi_map_update_matches_pure() {
+        let cases = [
+            map_base(),
+            MapUpdateInput {
+                current_x: 3.0,
+                current_y: 4.0,
+                ..map_base()
+            },
+            MapUpdateInput {
+                current_x: 200.0,
+                ..map_base()
+            },
+        ];
+        for c in cases {
+            let pure = evaluate_map_update(&c);
+            let inp = AwMapUpdateInput {
+                current_x: c.current_x,
+                current_y: c.current_y,
+                last_update_x: c.last_update_x,
+                last_update_y: c.last_update_y,
+                lidar_radius: c.lidar_radius,
+                map_radius: c.map_radius,
+                update_distance: c.update_distance,
+            };
+            let mut out = AwMapUpdateVerdict::default();
+            // SAFETY: `inp` is valid; `out` is a valid, writable verdict.
+            unsafe { autoware_ndt_scan_matcher_rs_node_evaluate_map_update(&inp, &mut out) };
+            assert_eq!(out.distance, pure.distance);
+            assert_eq!(out.out_of_keep_up, pure.out_of_keep_up);
+            assert_eq!(out.should_update, pure.should_update);
+        }
+    }
+
+    #[test]
+    fn ffi_map_update_null_is_noop() {
+        let mut out = AwMapUpdateVerdict {
+            should_update: true,
+            ..AwMapUpdateVerdict::default()
+        };
+        // SAFETY: a null input must leave `out` untouched.
+        unsafe {
+            autoware_ndt_scan_matcher_rs_node_evaluate_map_update(core::ptr::null(), &mut out);
+        }
+        assert!(out.should_update);
     }
 }

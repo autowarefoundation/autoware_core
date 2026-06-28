@@ -287,6 +287,36 @@ int32_t autoware_ndt_scan_matcher_rs_node_on_initial_pose(
 void autoware_ndt_scan_matcher_rs_node_on_regularization_pose(
   const AwNdtHost * host, const void * msg);
 
+// Inputs to the dynamic-map-update distance decision: the current + last-update positions and the
+// `dynamic_map_loading` radii/thresholds. The "no last update yet" case is handled C++-side. Field
+// order/layout must match the Rust `#[repr(C)] AwMapUpdateInput`.
+typedef struct
+{
+  double current_x;
+  double current_y;
+  double last_update_x;
+  double last_update_y;
+  double lidar_radius;
+  double map_radius;
+  double update_distance;
+} AwMapUpdateInput;
+
+// Map-update decision: distance moved since the last update, whether the loaded map can still keep
+// up (`distance + lidar_radius > map_radius`), and whether to trigger an update
+// (`distance > update_distance`). Field order must match the Rust `#[repr(C)] AwMapUpdateVerdict`.
+typedef struct
+{
+  double distance;
+  bool out_of_keep_up;
+  bool should_update;
+} AwMapUpdateVerdict;
+
+// Migrated distance decision from MapUpdateModule (should_update_map / out_of_map_range): reads
+// `*input`, writes `*out`. No-op if either pointer is null. Pure scalar logic (no node state) —
+// bit-exact vs the C++ std::hypot + threshold checks.
+void autoware_ndt_scan_matcher_rs_node_evaluate_map_update(
+  const AwMapUpdateInput * input, AwMapUpdateVerdict * out);
+
 // Inputs to the NDT convergence decision (the relevant scalars of one align result + the
 // `score_estimation` params). `oscillation_num` is precomputed by the caller (the count_oscillation
 // port). `converged_param_type`: 0 = TRANSFORM_PROBABILITY, 1 = NEAREST_VOXEL_..._LIKELIHOOD. Field
