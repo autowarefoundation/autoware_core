@@ -95,9 +95,9 @@ TEST(NdtRustAdapter, MatchesCppEngine)  // NOLINT
   drive(rs);
   const pclomp::NdtResult rs_r = rs.getResult();
 
-  // Map management
+  // Map management (the cell-id map now lives in the Rust engine; ids come back sorted).
   EXPECT_TRUE(rs.hasTarget());
-  EXPECT_EQ(rs.getCurrentMapIDs().size(), 2u);
+  EXPECT_EQ(rs.getCurrentMapIDs(), (std::vector<std::string>{"0", "1"}));
   EXPECT_EQ(rs.getMaximumIterations(), cpp.getMaximumIterations());
 
   // align result

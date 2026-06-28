@@ -228,6 +228,21 @@ void autoware_ndt_scan_matcher_rs_ndt_engine_create_kdtree(AwNdtEngine * engine)
 bool autoware_ndt_scan_matcher_rs_ndt_engine_has_target(const AwNdtEngine * engine);
 int32_t autoware_ndt_scan_matcher_rs_ndt_engine_max_iterations(const AwNdtEngine * engine);
 
+// Cell-id-keyed map management (N4d): the engine owns the cell-id -> tile mapping. `id` is `id_len`
+// raw bytes (the PCD cell_id string, not assumed NUL-terminated or UTF-8). add/remove mirror the u64
+// variants above but key by the cell-id bytes.
+void autoware_ndt_scan_matcher_rs_ndt_engine_add_target_str(
+  AwNdtEngine * engine, const float * points, size_t n, const uint8_t * id, size_t id_len);
+void autoware_ndt_scan_matcher_rs_ndt_engine_remove_target_str(
+  AwNdtEngine * engine, const uint8_t * id, size_t id_len);
+// Current tile cell-ids (sorted). Always writes `*out_count` (number of ids) + `*out_total_len` (sum
+// of id byte lengths). If `out_lengths`/`out_bytes` are non-null and the caps suffice, fills
+// `out_lengths[0..count]` (per-id byte lengths) + `out_bytes[0..total_len]` (ids concatenated, no
+// separators). Two-pass: call with caps 0 to size, allocate, call again.
+void autoware_ndt_scan_matcher_rs_ndt_engine_get_current_map_ids(
+  const AwNdtEngine * engine, uint32_t * out_lengths, uint32_t lengths_cap, uint8_t * out_bytes,
+  uint32_t bytes_cap, uint32_t * out_count, uint32_t * out_total_len);
+
 // align(out, guess, source): `guess` 16 floats (row-major 4x4), `source` `3 * n` floats. Stores the
 // result internally; retrieve with _get_result (same AwNdtAlignOutput contract as _ndt_align).
 void autoware_ndt_scan_matcher_rs_ndt_engine_align(

@@ -32,7 +32,6 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
-#include <map>
 #include <string>
 #include <utility>
 #include <vector>
@@ -56,11 +55,10 @@ public:
   NdtRustAdapter() : handle_(autoware_ndt_scan_matcher_rs_ndt_engine_new(1.0, 6, 0.01)) {}
   ~NdtRustAdapter() { autoware_ndt_scan_matcher_rs_ndt_engine_free(handle_); }
 
+  // The cell-id -> tile mapping now lives in the Rust engine (N4d), so the clone carries it; the
+  // adapter holds no id state of its own.
   NdtRustAdapter(const NdtRustAdapter & o)
-  : handle_(autoware_ndt_scan_matcher_rs_ndt_engine_clone(o.handle_)),
-    params_(o.params_),
-    id_map_(o.id_map_),
-    next_id_(o.next_id_)
+  : handle_(autoware_ndt_scan_matcher_rs_ndt_engine_clone(o.handle_)), params_(o.params_)
   {
   }
   NdtRustAdapter & operator=(const NdtRustAdapter & o)
@@ -69,13 +67,10 @@ public:
       autoware_ndt_scan_matcher_rs_ndt_engine_free(handle_);
       handle_ = autoware_ndt_scan_matcher_rs_ndt_engine_clone(o.handle_);
       params_ = o.params_;
-      id_map_ = o.id_map_;
-      next_id_ = o.next_id_;
     }
     return *this;
   }
-  NdtRustAdapter(NdtRustAdapter && o) noexcept
-  : handle_(o.handle_), params_(o.params_), id_map_(std::move(o.id_map_)), next_id_(o.next_id_)
+  NdtRustAdapter(NdtRustAdapter && o) noexcept : handle_(o.handle_), params_(o.params_)
   {
     o.handle_ = nullptr;
   }
@@ -86,8 +81,6 @@ public:
       handle_ = o.handle_;
       o.handle_ = nullptr;
       params_ = o.params_;
-      id_map_ = std::move(o.id_map_);
-      next_id_ = o.next_id_;
     }
     return *this;
   }
@@ -113,26 +106,34 @@ public:
   void addTarget(const PointCloudTargetConstPtr & cloud, const std::string & id)
   {
     const std::vector<float> flat = to_flat(*cloud);
-    autoware_ndt_scan_matcher_rs_ndt_engine_add_target(handle_, flat.data(), cloud->size(),
-                                                        id_for(id));
+    autoware_ndt_scan_matcher_rs_ndt_engine_add_target_str(
+      handle_, flat.data(), cloud->size(), reinterpret_cast<const std::uint8_t *>(id.data()),
+      id.size());
   }
   void removeTarget(const std::string & id)
   {
-    const auto it = id_map_.find(id);
-    if (it == id_map_.end()) {
-      return;
-    }
-    autoware_ndt_scan_matcher_rs_ndt_engine_remove_target(handle_, it->second);
-    id_map_.erase(it);
+    autoware_ndt_scan_matcher_rs_ndt_engine_remove_target_str(
+      handle_, reinterpret_cast<const std::uint8_t *>(id.data()), id.size());
   }
   void createVoxelKdtree() { autoware_ndt_scan_matcher_rs_ndt_engine_create_kdtree(handle_); }
   bool hasTarget() const { return autoware_ndt_scan_matcher_rs_ndt_engine_has_target(handle_); }
   std::vector<std::string> getCurrentMapIDs() const
   {
+    // Two-pass: size, then fill (the engine owns the cell-id set; ids come back sorted).
+    std::uint32_t count = 0;
+    std::uint32_t total = 0;
+    autoware_ndt_scan_matcher_rs_ndt_engine_get_current_map_ids(
+      handle_, nullptr, 0, nullptr, 0, &count, &total);
+    std::vector<std::uint32_t> lengths(count);
+    std::vector<std::uint8_t> bytes(total);
+    autoware_ndt_scan_matcher_rs_ndt_engine_get_current_map_ids(
+      handle_, lengths.data(), count, bytes.data(), total, &count, &total);
     std::vector<std::string> ids;
-    ids.reserve(id_map_.size());
-    for (const auto & kv : id_map_) {
-      ids.push_back(kv.first);
+    ids.reserve(count);
+    std::size_t off = 0;
+    for (std::uint32_t i = 0; i < count; ++i) {
+      ids.emplace_back(reinterpret_cast<const char *>(bytes.data()) + off, lengths[i]);
+      off += lengths[i];
     }
     return ids;
   }
@@ -266,21 +267,9 @@ private:
     }
     return f;
   }
-  std::uint64_t id_for(const std::string & id)
-  {
-    const auto it = id_map_.find(id);
-    if (it != id_map_.end()) {
-      return it->second;
-    }
-    const std::uint64_t v = next_id_++;
-    id_map_[id] = v;
-    return v;
-  }
 
   AwNdtEngine * handle_;
   pclomp::NdtParams params_{};
-  std::map<std::string, std::uint64_t> id_map_;
-  std::uint64_t next_id_{0};
 };
 
 }  // namespace autoware::ndt_scan_matcher

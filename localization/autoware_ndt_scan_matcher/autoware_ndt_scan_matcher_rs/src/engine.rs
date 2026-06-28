@@ -40,11 +40,16 @@ pub struct NdtEngine {
     eig_mult: f64,
     workspace: AlignWorkspace,
     last: AlignResult,
+    /// Cell-id bytes → tile `u64` (the engine owns the mapping the C++ adapter's `id_map_` used to
+    /// hold; keys are the raw `std::string` cell-id bytes — not validated UTF-8). N4d.
+    id_map: alloc::collections::BTreeMap<alloc::vec::Vec<u8>, u64>,
+    next_id: u64,
 }
 
 impl Clone for NdtEngine {
     fn clone(&self) -> Self {
         // The scratch workspace is not state — a clone starts fresh (it re-warms on first align).
+        // The id-map IS state (the map-update double-buffer clones it with the tiles).
         Self {
             map: self.map.clone(),
             params: self.params,
@@ -52,6 +57,8 @@ impl Clone for NdtEngine {
             eig_mult: self.eig_mult,
             workspace: AlignWorkspace::new(),
             last: self.last.clone(),
+            id_map: self.id_map.clone(),
+            next_id: self.next_id,
         }
     }
 }
@@ -71,6 +78,8 @@ impl NdtEngine {
             eig_mult,
             workspace: AlignWorkspace::new(),
             last: AlignResult::default(),
+            id_map: alloc::collections::BTreeMap::new(),
+            next_id: 0,
         }
     }
 
@@ -124,6 +133,39 @@ impl NdtEngine {
     /// Remove the map tile registered under `id` (the C++ `removeTarget`).
     pub fn remove_target(&mut self, id: u64) {
         self.map.remove_target(id);
+    }
+
+    /// The `u64` tile id for a cell-id byte string, assigning a fresh one on first use (the C++
+    /// adapter's `id_for`).
+    fn id_for(&mut self, id: &[u8]) -> u64 {
+        if let Some(&u) = self.id_map.get(id) {
+            return u;
+        }
+        let u = self.next_id;
+        self.next_id = self.next_id.saturating_add(1);
+        self.id_map.insert(id.to_vec(), u);
+        u
+    }
+
+    /// Add a target tile keyed by the cell-id bytes (the C++ `addTarget(cloud, cell_id)`); the engine
+    /// owns the cell-id → `u64` mapping. Needs a following [`Self::create_kdtree`].
+    pub fn add_target_bytes(&mut self, points: &[[f32; 3]], id: &[u8]) {
+        let u = self.id_for(id);
+        self.map.add_target(points, u);
+    }
+
+    /// Remove the tile registered under the cell-id bytes (the C++ `removeTarget(cell_id)`); no-op if
+    /// the id is unknown.
+    pub fn remove_target_bytes(&mut self, id: &[u8]) {
+        if let Some(u) = self.id_map.remove(id) {
+            self.map.remove_target(u);
+        }
+    }
+
+    /// The current tile cell-ids (the C++ `getCurrentMapIDs`), `BTreeMap`-sorted (deterministic,
+    /// matching the adapter's old `std::map` order).
+    pub fn current_map_ids(&self) -> impl Iterator<Item = &[u8]> {
+        self.id_map.keys().map(alloc::vec::Vec::as_slice)
     }
 
     /// Rebuild the kd-tree over the current tiles' centroids (the C++ `createVoxelKdtree`).
@@ -362,6 +404,132 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_remove_target(
     }
     // SAFETY: non-null per the check; caller guarantees a valid handle.
     unsafe { &mut *engine }.remove_target(id);
+}
+
+/// Add a target tile keyed by the cell-id bytes (`points` is `3 * n` f32; `id` is `id_len` bytes).
+/// The engine owns the cell-id → tile mapping (N4d). No-op if `engine`/`points` is null.
+/// # Safety
+/// `engine` is a valid handle (or null → no-op); `points` addresses `3 * n` f32; `id` addresses
+/// `id_len` readable bytes (or null with `id_len` 0).
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; reads a caller-owned cloud + id bytes"
+)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_add_target_str(
+    engine: *mut NdtEngine,
+    points: *const f32,
+    n: usize,
+    id: *const u8,
+    id_len: usize,
+) {
+    if engine.is_null() || points.is_null() {
+        return;
+    }
+    // SAFETY: non-null per the check; caller guarantees `3 * n` f32 + `id_len` bytes.
+    let (e, pts, id_bytes) = unsafe {
+        (
+            &mut *engine,
+            core::slice::from_raw_parts(points.cast::<[f32; 3]>(), n),
+            if id.is_null() || id_len == 0 {
+                &[][..]
+            } else {
+                core::slice::from_raw_parts(id, id_len)
+            },
+        )
+    };
+    e.add_target_bytes(pts, id_bytes);
+}
+
+/// Remove the tile registered under the cell-id bytes (`id` is `id_len` bytes). No-op if `engine` is
+/// null or the id is unknown.
+/// # Safety
+/// `engine` is a valid handle (or null → no-op); `id` addresses `id_len` readable bytes (or null/0).
+#[expect(unsafe_code, reason = "C ABI boundary; reads caller-owned id bytes")]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_remove_target_str(
+    engine: *mut NdtEngine,
+    id: *const u8,
+    id_len: usize,
+) {
+    if engine.is_null() {
+        return;
+    }
+    // SAFETY: non-null per the check; caller guarantees `id_len` readable bytes.
+    let (e, id_bytes) = unsafe {
+        (
+            &mut *engine,
+            if id.is_null() || id_len == 0 {
+                &[][..]
+            } else {
+                core::slice::from_raw_parts(id, id_len)
+            },
+        )
+    };
+    e.remove_target_bytes(id_bytes);
+}
+
+/// Write the current tile cell-ids (`BTreeMap`-sorted). Always writes `*out_count` (number of ids)
+/// and `*out_total_len` (sum of id byte lengths). If `out_lengths`/`out_bytes` are non-null and
+/// `lengths_cap`/`bytes_cap` are large enough, fills `out_lengths[0..count]` (per-id byte lengths) and
+/// `out_bytes[0..total_len]` (the ids concatenated, no separators). Two-pass: call with caps 0 to
+/// size, allocate, call again. No-op if `engine`/`out_count`/`out_total_len` is null.
+/// # Safety
+/// `engine` is a valid handle (or null → no-op). `out_count`/`out_total_len` are writable `u32` (or
+/// null → no-op). `out_lengths` addresses `lengths_cap` `u32` and `out_bytes` `bytes_cap` bytes (or
+/// either null → that buffer is skipped).
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; writes caller-owned bounded buffers"
+)]
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::as_conversions,
+    clippy::cast_possible_truncation,
+    clippy::indexing_slicing,
+    clippy::allow_attributes,
+    reason = "bounded id-buffer marshaling: offsets sum to total_len, writes capped"
+)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_get_current_map_ids(
+    engine: *const NdtEngine,
+    out_lengths: *mut u32,
+    lengths_cap: u32,
+    out_bytes: *mut u8,
+    bytes_cap: u32,
+    out_count: *mut u32,
+    out_total_len: *mut u32,
+) {
+    if engine.is_null() || out_count.is_null() || out_total_len.is_null() {
+        return;
+    }
+    // SAFETY: non-null per the check; caller guarantees valid handle + writable count/total.
+    let e = unsafe { &*engine };
+    let ids: alloc::vec::Vec<&[u8]> = e.current_map_ids().collect();
+    let total: usize = ids.iter().map(|s| s.len()).sum();
+    // SAFETY: non-null per the check.
+    unsafe {
+        *out_count = ids.len() as u32;
+        *out_total_len = total as u32;
+    }
+    let fill_lengths = !out_lengths.is_null() && lengths_cap as usize >= ids.len();
+    let fill_bytes = !out_bytes.is_null() && bytes_cap as usize >= total;
+    if !fill_lengths || !fill_bytes {
+        return;
+    }
+    // SAFETY: caps verified ≥ the required sizes above; both buffers non-null.
+    let (lens, bytes) = unsafe {
+        (
+            core::slice::from_raw_parts_mut(out_lengths, ids.len()),
+            core::slice::from_raw_parts_mut(out_bytes, total),
+        )
+    };
+    let mut off = 0usize;
+    for (k, id) in ids.iter().enumerate() {
+        lens[k] = id.len() as u32;
+        bytes[off..off + id.len()].copy_from_slice(id);
+        off += id.len();
+    }
 }
 
 /// # Safety
@@ -1751,5 +1919,130 @@ mod tests {
             assert!(!autoware_ndt_scan_matcher_rs_ndt_engine_has_target(e));
             autoware_ndt_scan_matcher_rs_ndt_engine_free(e);
         }
+    }
+
+    // --- N4d: engine-owned cell-id map ---
+
+    fn ids_of(engine: &NdtEngine) -> Vec<Vec<u8>> {
+        engine.current_map_ids().map(<[u8]>::to_vec).collect()
+    }
+
+    #[test]
+    fn id_map_add_remove_and_sorted_ids() {
+        let tile = dense_cluster(0.5, 0.5, 0.5);
+        let mut engine = NdtEngine::new(1.0, 6, 0.01);
+        configured(&mut engine);
+        engine.add_target_bytes(&tile, b"beta");
+        engine.add_target_bytes(&tile, b"alpha");
+        // BTreeMap-sorted, deterministic.
+        assert_eq!(ids_of(&engine), vec![b"alpha".to_vec(), b"beta".to_vec()]);
+        assert!(engine.has_target());
+
+        engine.remove_target_bytes(b"alpha");
+        assert_eq!(ids_of(&engine), vec![b"beta".to_vec()]);
+        // Removing an unknown id is a no-op.
+        engine.remove_target_bytes(b"missing");
+        assert_eq!(ids_of(&engine), vec![b"beta".to_vec()]);
+    }
+
+    #[test]
+    fn id_map_reuses_u64_for_existing_cell_id() {
+        let tile = dense_cluster(0.5, 0.5, 0.5);
+        let mut engine = NdtEngine::new(1.0, 6, 0.01);
+        configured(&mut engine);
+        engine.add_target_bytes(&tile, b"0");
+        engine.add_target_bytes(&tile, b"0"); // same cell-id → same tile, no new id
+        assert_eq!(ids_of(&engine), vec![b"0".to_vec()]);
+    }
+
+    #[test]
+    fn clone_carries_id_map() {
+        let tile = dense_cluster(0.5, 0.5, 0.5);
+        let mut engine = NdtEngine::new(1.0, 6, 0.01);
+        configured(&mut engine);
+        engine.add_target_bytes(&tile, b"0");
+        engine.add_target_bytes(&tile, b"1");
+        let clone = engine.clone();
+        // Mutating the original must not affect the clone's id-map.
+        engine.remove_target_bytes(b"0");
+        assert_eq!(ids_of(&engine), vec![b"1".to_vec()]);
+        assert_eq!(ids_of(&clone), vec![b"0".to_vec(), b"1".to_vec()]);
+    }
+
+    #[test]
+    fn ffi_string_id_map_roundtrip() {
+        let tile = dense_cluster(0.5, 0.5, 0.5);
+        let flat: Vec<f32> = tile.iter().flat_map(|p| *p).collect();
+        let mut engine = NdtEngine::new(1.0, 6, 0.01);
+        configured(&mut engine);
+        // SAFETY: valid engine; flat is 3*n f32; ids are valid byte slices.
+        unsafe {
+            autoware_ndt_scan_matcher_rs_ndt_engine_add_target_str(
+                &mut engine,
+                flat.as_ptr(),
+                tile.len(),
+                b"aa".as_ptr(),
+                2,
+            );
+            autoware_ndt_scan_matcher_rs_ndt_engine_add_target_str(
+                &mut engine,
+                flat.as_ptr(),
+                tile.len(),
+                b"bbb".as_ptr(),
+                3,
+            );
+        }
+        // Pass 1: sizes.
+        let mut count = 0u32;
+        let mut total = 0u32;
+        // SAFETY: count/total are writable; the buffers are null (size-only pass).
+        unsafe {
+            autoware_ndt_scan_matcher_rs_ndt_engine_get_current_map_ids(
+                &engine,
+                core::ptr::null_mut(),
+                0,
+                core::ptr::null_mut(),
+                0,
+                &mut count,
+                &mut total,
+            );
+        }
+        assert_eq!(count, 2);
+        assert_eq!(total, 5); // "aa" + "bbb"
+
+        // Pass 2: fill.
+        let mut lengths = vec![0u32; count as usize];
+        let mut bytes = vec![0u8; total as usize];
+        // SAFETY: buffers sized to count/total per pass 1.
+        unsafe {
+            autoware_ndt_scan_matcher_rs_ndt_engine_get_current_map_ids(
+                &engine,
+                lengths.as_mut_ptr(),
+                count,
+                bytes.as_mut_ptr(),
+                total,
+                &mut count,
+                &mut total,
+            );
+        }
+        assert_eq!(lengths, vec![2, 3]); // sorted: "aa", "bbb"
+        assert_eq!(&bytes[0..2], b"aa");
+        assert_eq!(&bytes[2..5], b"bbb");
+
+        // SAFETY: null engine is a no-op (count untouched).
+        let mut c2 = 99u32;
+        let mut t2 = 99u32;
+        unsafe {
+            autoware_ndt_scan_matcher_rs_ndt_engine_get_current_map_ids(
+                core::ptr::null(),
+                core::ptr::null_mut(),
+                0,
+                core::ptr::null_mut(),
+                0,
+                &mut c2,
+                &mut t2,
+            );
+        }
+        assert_eq!(c2, 99);
     }
 }
