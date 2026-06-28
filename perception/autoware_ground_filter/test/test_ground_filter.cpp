@@ -349,27 +349,6 @@ protected:
   autoware::ground_filter::GroundFilterParameter param_;
   std::unique_ptr<autoware::ground_filter::GroundFilter> filter_;
 
-  using RayPointsCentroid = autoware::ground_filter::GroundFilter::RayPointsCentroid;
-  using PointCloudVector = autoware::ground_filter::GroundFilter::PointCloudVector;
-
-  // Bringing the private helper funcs from GroundFilter to here as proxies
-  void calc_virtual_ground_origin(pcl::PointXYZ & point)
-  {
-    filter_->calcVirtualGroundOrigin(point);
-  }
-  void convert_point_cloud(
-    const sensor_msgs::msg::PointCloud2::ConstSharedPtr & in_cloud,
-    std::vector<PointCloudVector> & out_radial)
-  {
-    filter_->convertPointCloud(in_cloud, out_radial);
-  }
-  void classify_point_cloud(
-    const sensor_msgs::msg::PointCloud2::ConstSharedPtr & in_cloud,
-    const std::vector<PointCloudVector> & in_radial, pcl::PointIndices & out_indices)
-  {
-    filter_->classifyPointCloud(in_cloud, in_radial, out_indices);
-  }
-
   // Set up test environment with radial mode params.
   void SetUp() override
   {
