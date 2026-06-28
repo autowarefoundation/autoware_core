@@ -211,20 +211,31 @@ void autoware_ndt_scan_matcher_rs_ndt_engine_free(AwNdtEngine * engine);
 // Deep-copy (the node's map-update double-buffer); null -> null.
 AwNdtEngine * autoware_ndt_scan_matcher_rs_ndt_engine_clone(const AwNdtEngine * engine);
 
+// The engine is Sync and exposes &self-only operations, so every handle below is a `const
+// AwNdtEngine *` (matching the Rust `*const NdtEngine`): mutation lives behind lock-free interior
+// mutability (an ArcSwap of the map/params), so concurrent calls on a shared const handle are sound
+// without an external lock.
+
 // setParams (regularization is preserved; set it separately).
 void autoware_ndt_scan_matcher_rs_ndt_engine_set_params(
-  AwNdtEngine * engine, double trans_epsilon, double step_size, double resolution,
+  const AwNdtEngine * engine, double trans_epsilon, double step_size, double resolution,
   int32_t max_iterations, double outlier_ratio, int32_t num_threads);
 // setRegularizationPose / unset: scale == 0 disables.
 void autoware_ndt_scan_matcher_rs_ndt_engine_set_regularization(
-  AwNdtEngine * engine, float pose_x, float pose_y, float scale);
+  const AwNdtEngine * engine, float pose_x, float pose_y, float scale);
 
 // Map management (addTarget by id / removeTarget / createVoxelKdtree / hasTarget). `points` is
 // `3 * n` floats (xyz triples). Call _create_kdtree after add/remove, before aligning/searching.
+// These publish intermediate states atomically (one per call) — for a concurrent map update use a
+// private staging engine + _commit_from (a single atomic publish), not these on a live shared engine.
 void autoware_ndt_scan_matcher_rs_ndt_engine_add_target(
-  AwNdtEngine * engine, const float * points, size_t n, uint64_t id);
-void autoware_ndt_scan_matcher_rs_ndt_engine_remove_target(AwNdtEngine * engine, uint64_t id);
-void autoware_ndt_scan_matcher_rs_ndt_engine_create_kdtree(AwNdtEngine * engine);
+  const AwNdtEngine * engine, const float * points, size_t n, uint64_t id);
+void autoware_ndt_scan_matcher_rs_ndt_engine_remove_target(const AwNdtEngine * engine, uint64_t id);
+void autoware_ndt_scan_matcher_rs_ndt_engine_create_kdtree(const AwNdtEngine * engine);
+// Atomically publish `src`'s map state into `dst` (the map-update commit): one store, so a concurrent
+// align sees the complete new map or the old one, never a partial. No-op if either is null.
+void autoware_ndt_scan_matcher_rs_ndt_engine_commit_from(
+  const AwNdtEngine * dst, const AwNdtEngine * src);
 bool autoware_ndt_scan_matcher_rs_ndt_engine_has_target(const AwNdtEngine * engine);
 int32_t autoware_ndt_scan_matcher_rs_ndt_engine_max_iterations(const AwNdtEngine * engine);
 
@@ -232,9 +243,9 @@ int32_t autoware_ndt_scan_matcher_rs_ndt_engine_max_iterations(const AwNdtEngine
 // raw bytes (the PCD cell_id string, not assumed NUL-terminated or UTF-8). add/remove mirror the u64
 // variants above but key by the cell-id bytes.
 void autoware_ndt_scan_matcher_rs_ndt_engine_add_target_str(
-  AwNdtEngine * engine, const float * points, size_t n, const uint8_t * id, size_t id_len);
+  const AwNdtEngine * engine, const float * points, size_t n, const uint8_t * id, size_t id_len);
 void autoware_ndt_scan_matcher_rs_ndt_engine_remove_target_str(
-  AwNdtEngine * engine, const uint8_t * id, size_t id_len);
+  const AwNdtEngine * engine, const uint8_t * id, size_t id_len);
 // Current tile cell-ids (sorted). Always writes `*out_count` (number of ids) + `*out_total_len` (sum
 // of id byte lengths). If `out_lengths`/`out_bytes` are non-null and the caps suffice, fills
 // `out_lengths[0..count]` (per-id byte lengths) + `out_bytes[0..total_len]` (ids concatenated, no
@@ -246,21 +257,21 @@ void autoware_ndt_scan_matcher_rs_ndt_engine_get_current_map_ids(
 // align(out, guess, source): `guess` 16 floats (row-major 4x4), `source` `3 * n` floats. Stores the
 // result internally; retrieve with _get_result (same AwNdtAlignOutput contract as _ndt_align).
 void autoware_ndt_scan_matcher_rs_ndt_engine_align(
-  AwNdtEngine * engine, const float * guess, const float * source, size_t n);
+  const AwNdtEngine * engine, const float * guess, const float * source, size_t n);
 void autoware_ndt_scan_matcher_rs_ndt_engine_get_result(
   const AwNdtEngine * engine, const AwNdtAlignOutput * output);
 
 // Score a cloud (`3 * n` floats) at its current pose without aligning.
 double autoware_ndt_scan_matcher_rs_ndt_engine_calc_transformation_probability(
-  AwNdtEngine * engine, const float * cloud, size_t n);
+  const AwNdtEngine * engine, const float * cloud, size_t n);
 double autoware_ndt_scan_matcher_rs_ndt_engine_calc_nearest_voxel_likelihood(
-  AwNdtEngine * engine, const float * cloud, size_t n);
+  const AwNdtEngine * engine, const float * cloud, size_t n);
 
 // Per-point nearest-voxel score for `cloud` (`3 * n` floats): writes `n` scores to `out_scores`
 // (out_scores[i] > 0 iff point i found a neighbor; the C++ calculateNearestVoxelScoreEachPoint
 // includes exactly those points).
 void autoware_ndt_scan_matcher_rs_ndt_engine_calc_nearest_voxel_score_each_point(
-  AwNdtEngine * engine, const float * cloud, size_t n, float * out_scores);
+  const AwNdtEngine * engine, const float * cloud, size_t n, float * out_scores);
 
 // Last align's per-iteration score traces: up to `cap` floats into `out_tp`/`out_nvl` each; the true
 // length (iteration_num + 1) is written to `out_count`.
@@ -392,10 +403,10 @@ typedef struct
 
 // Sensor-callback align orchestrator: align the live engine from `guess` (16 row-major floats) over
 // `source` (`3 * n` floats), then compute the oscillation count + convergence verdict in Rust, all
-// against the engine handle directly. Writes `*out`. No-op if any pointer is null. `engine` is valid
-// only for the duration of the call (the caller holds the engine lock); Rust does not retain it.
+// against the engine handle directly. Writes `*out`. No-op if any pointer is null. The engine is Sync
+// (a const handle); Rust does not retain the pointer past the call.
 void autoware_ndt_scan_matcher_rs_node_run_align(
-  AwNdtEngine * engine, const float * guess, const float * source, size_t n,
+  const AwNdtEngine * engine, const float * guess, const float * source, size_t n,
   const AwAlignParams * params, AwAlignOutcome * out);
 
 // Inputs to the sensor-callback covariance orchestrator (Phase N4b). `result_pose`/`initial_pose` are
@@ -439,10 +450,10 @@ typedef struct
 
 // Covariance orchestrator (Phase N4b): rotate the configured covariance, dispatch on
 // `estimation_type` against the live engine map, scale + adjust, and return the full 6x6
-// `ndt_covariance` + the debug pose arrays for C++ to publish. No-op if any pointer is null. `engine`
-// is valid only for the duration of the call (the caller holds the engine lock); Rust does not retain it.
+// `ndt_covariance` + the debug pose arrays for C++ to publish. No-op if any pointer is null. The
+// engine is Sync (a const handle); Rust does not retain the pointer past the call.
 void autoware_ndt_scan_matcher_rs_node_estimate_pose_covariance(
-  AwNdtEngine * engine, const AwCovEstimationInput * input, AwCovEstimationOutput * output);
+  const AwNdtEngine * engine, const AwCovEstimationInput * input, AwCovEstimationOutput * output);
 
 #ifdef __cplusplus
 }  // extern "C"

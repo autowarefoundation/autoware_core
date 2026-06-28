@@ -21,6 +21,7 @@
 #ifndef AUTOWARE__NDT_SCAN_MATCHER__NDT_BACKEND_HPP_
 #define AUTOWARE__NDT_SCAN_MATCHER__NDT_BACKEND_HPP_
 
+#include "guarded.hpp"
 #include "ndt_omp/multigrid_ndt_omp.h"
 #ifdef NDT_USE_RUST
 #include "ndt_rust_adapter.hpp"
@@ -28,12 +29,27 @@
 
 #include <pcl/point_types.h>
 
+#include <memory>
+
 namespace autoware::ndt_scan_matcher
 {
 #ifdef NDT_USE_RUST
 using NdtBackend = NdtRustAdapter;
 #else
 using NdtBackend = pclomp::MultiGridNormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ>;
+#endif
+
+// The node's live engine-handle holder. OFF: a `Guarded<>` — the giant mutex serializes all pclomp
+// engine access and the map-update pointer swap. ON: a lock-free `Unguarded<>` — the Rust engine is
+// `Sync` (its `ArcSwap` map is the lock-free double-buffer), so the giant lock is unnecessary; the
+// handle is stable (map updates commit a freshly-built map into the engine via `_commit_from` rather
+// than swapping the pointer). Both expose the same `.with(...)` API, so the node's call sites are
+// identical across configs. (See plan/ndt_in_rust.md "engine concurrency refactor".)
+using NdtBackendPtr = std::shared_ptr<NdtBackend>;
+#ifdef NDT_USE_RUST
+using EngineHolder = Unguarded<NdtBackendPtr>;
+#else
+using EngineHolder = Guarded<NdtBackendPtr>;
 #endif
 }  // namespace autoware::ndt_scan_matcher
 

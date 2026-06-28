@@ -62,7 +62,7 @@ class MapUpdateModule
 
 public:
   MapUpdateModule(
-    rclcpp::Node * node, Guarded<NdtPtrType> & ndt_ptr, HyperParameters::DynamicMapLoading param);
+    rclcpp::Node * node, EngineHolder & ndt_ptr, HyperParameters::DynamicMapLoading param);
 
   bool out_of_map_range(const geometry_msgs::msg::Point & position);
 
@@ -96,10 +96,10 @@ private:
   rclcpp::Client<autoware_map_msgs::srv::GetDifferentialPointCloudMap>::SharedPtr
     pcd_loader_client_;
 
-  // To prevent deadlocks, acquire locks in the following order:
-  // 1. builder_state_ -> ndt_ptr_
-  // 2. builder_state_ -> last_update_position_
-  Guarded<NdtPtrType> & ndt_ptr_;
+  // Lock ordering (OFF, where these are real mutexes): builder_state_ -> ndt_ptr_ and
+  // builder_state_ -> last_update_position_. Under NDT_USE_RUST `ndt_ptr_` is a lock-free Unguarded
+  // handle, so only builder_state_/last_update_position_ are real locks (no engine lock to order).
+  EngineHolder & ndt_ptr_;
   Guarded<BuilderState> builder_state_;
   Guarded<std::optional<geometry_msgs::msg::Point>> last_update_position_{std::nullopt};
 

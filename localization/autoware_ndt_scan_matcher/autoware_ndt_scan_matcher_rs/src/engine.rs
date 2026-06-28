@@ -91,6 +91,17 @@ fn swap_rcu<T>(c: &Swap<T>, f: impl Fn(&T) -> T) {
     *c.borrow_mut() = next;
 }
 
+/// Publish an already-built `Arc<T>` snapshot (no deep copy) — the map-update commit shares the
+/// staging engine's final state `Arc` into the live engine in one atomic store.
+#[cfg(feature = "std")]
+fn swap_store_arc<T>(c: &Swap<T>, v: Arc<T>) {
+    c.store(v);
+}
+#[cfg(not(feature = "std"))]
+fn swap_store_arc<T>(c: &Swap<T>, v: Arc<T>) {
+    *c.borrow_mut() = v;
+}
+
 /// The atomically-swappable engine state: the target map, the active params, and the cell-id → tile
 /// mapping. Immutable once published — map-update builds a fresh `EngineState` and stores it.
 #[derive(Clone)]
@@ -302,6 +313,15 @@ impl NdtEngine {
             n.map.create_kdtree();
             n
         });
+    }
+
+    /// Atomically publish `src`'s map/params/id state into this engine in **one** store — the
+    /// map-update commit. The node's timer builds a fresh, fully-finalized map (tiles added/removed +
+    /// kd-tree built) on a private staging engine, then commits it here so concurrent aligns switch to
+    /// the complete new map in a single atomic step (never a partially-built / kd-tree-less map). The
+    /// state `Arc` is shared, not deep-copied; the old snapshot lives until its last reader drops it.
+    pub fn commit_from(&self, src: &NdtEngine) {
+        swap_store_arc(&self.state, swap_load(&src.state));
     }
 
     /// Whether any target tile is loaded (the C++ `hasTarget`).
@@ -701,6 +721,26 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_create_kdtree(
     }
     // SAFETY: non-null per the check; caller guarantees a valid handle.
     unsafe { &*engine }.create_kdtree();
+}
+
+/// Atomically publish `src`'s map state into `dst` (the map-update commit). No-op if either is null.
+/// # Safety
+/// `dst`/`src` are valid handles (or either null → no-op); both reborrowed as `&*ptr` only.
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; dereferences two shared handles"
+)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_commit_from(
+    dst: *const NdtEngine,
+    src: *const NdtEngine,
+) {
+    if dst.is_null() || src.is_null() {
+        return;
+    }
+    // SAFETY: non-null per the check; caller guarantees both are valid handles.
+    let (d, s) = unsafe { (&*dst, &*src) };
+    d.commit_from(s);
 }
 
 /// # Safety

@@ -102,10 +102,17 @@ public:
     return autoware_ndt_scan_matcher_rs_ndt_engine_max_iterations(handle_);
   }
 
-  // The live Rust engine handle, for the Phase N4 sensor-callback orchestrator (run_align) to drive
-  // the engine directly. Valid only while the caller holds the engine; the orchestrator must not
-  // retain it past the call.
-  AwNdtEngine * raw_handle() const { return handle_; }
+  // The live Rust engine handle, as a `const` pointer (the engine is Sync and exposes &self-only ops
+  // over the C ABI; mutation is interior). The node drives align/scoring/covariance/commit through
+  // this. Rust does not retain it past a call.
+  const AwNdtEngine * raw_handle() const { return handle_; }
+
+  // Atomically publish `src`'s freshly-built map into this engine (the map-update commit): one store,
+  // so a concurrent align observes the complete new map or the old one, never a partially-built one.
+  void commitFrom(const NdtRustAdapter & src)
+  {
+    autoware_ndt_scan_matcher_rs_ndt_engine_commit_from(handle_, src.handle_);
+  }
 
   void addTarget(const PointCloudTargetConstPtr & cloud, const std::string & id)
   {

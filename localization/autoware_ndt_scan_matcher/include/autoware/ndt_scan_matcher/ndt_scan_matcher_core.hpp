@@ -216,8 +216,9 @@ private:
 
   rclcpp::CallbackGroup::SharedPtr timer_callback_group_;
 
-  Guarded<std::shared_ptr<NormalDistributionsTransform>> ndt_ptr_{
-    std::make_shared<NormalDistributionsTransform>()};
+  // Engine-handle holder: a giant mutex (OFF) or a lock-free Unguarded handle (ON); see
+  // ndt_backend.hpp. `NormalDistributionsTransform` == `NdtBackend`, so this is `EngineHolder`.
+  EngineHolder ndt_ptr_{std::make_shared<NormalDistributionsTransform>()};
 
   pcl::shared_ptr<pcl::PointCloud<PointSource>> sensor_points_in_baselink_frame_;
 

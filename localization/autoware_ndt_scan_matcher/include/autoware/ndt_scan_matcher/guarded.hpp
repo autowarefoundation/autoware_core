@@ -79,6 +79,38 @@ private:
   T value_;
 };
 
+// A drop-in, lock-free counterpart to Guarded<T> with the same `.with(f)` interface but NO mutex —
+// it just forwards the value to the callback. Used (under NDT_USE_RUST) for the engine handle, which
+// is a stable `const` pointer to a `Sync` Rust engine whose own interior mutability (a lock-free
+// ArcSwap of the map/params) makes external locking unnecessary. The same call sites
+// (`ndt_ptr_.with([&](const auto & p){ ... })`) then compile unchanged against either holder; only
+// the typedef (see ndt_backend.hpp) differs by build config.
+template <typename T>
+class Unguarded
+{
+public:
+  Unguarded() = default;
+
+  template <typename... Args>
+  explicit Unguarded(Args &&... args) : value_(std::forward<Args>(args)...)
+  {
+  }
+
+  template <typename F>
+  auto with(F && f)
+  {
+    return f(value_);
+  }
+  template <typename F>
+  auto with(F && f) const
+  {
+    return f(value_);
+  }
+
+private:
+  T value_;
+};
+
 }  // namespace autoware::ndt_scan_matcher
 
 #endif  // AUTOWARE__NDT_SCAN_MATCHER__GUARDED_HPP_

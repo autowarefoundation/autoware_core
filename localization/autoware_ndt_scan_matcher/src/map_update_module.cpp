@@ -22,7 +22,7 @@ namespace autoware::ndt_scan_matcher
 {
 
 MapUpdateModule::MapUpdateModule(
-  rclcpp::Node * node, Guarded<NdtPtrType> & ndt_ptr, HyperParameters::DynamicMapLoading param)
+  rclcpp::Node * node, EngineHolder & ndt_ptr, HyperParameters::DynamicMapLoading param)
 : ndt_ptr_(ndt_ptr), logger_(node->get_logger()), clock_(node->get_clock()), param_(param)
 {
   loaded_pcd_pub_ = node->create_publisher<sensor_msgs::msg::PointCloud2>(
@@ -182,6 +182,45 @@ void MapUpdateModule::update_map_internal(
 {
   diagnostics_ptr->add_key_value("is_need_rebuild", builder_state.need_rebuild);
 
+#ifdef NDT_USE_RUST
+  // Rust engine: build the new map on a PRIVATE staging engine (secondary_ndt_ptr), then publish it
+  // into the live engine in ONE atomic step (commit_from). The live engine is never mutated
+  // tile-by-tile, so a concurrent align always observes a complete map — no giant lock needed (the
+  // engine's internal ArcSwap is the lock-free double-buffer). `need_rebuild` starts the staging
+  // engine fresh (dropping stale tiles); otherwise the kept staging map gets the incremental delta.
+  if (builder_state.need_rebuild) {
+    const auto param = ndt_ptr_.with([](const auto & ndt_ptr) { return ndt_ptr->getParams(); });
+    builder_state.secondary_ndt_ptr.reset(new NdtType);
+    builder_state.secondary_ndt_ptr->setParams(param);
+    loaded_map_.clear();
+  }
+
+  const bool updated = update_ndt(position, *builder_state.secondary_ndt_ptr, diagnostics_ptr);
+
+  // check is_updated_map
+  diagnostics_ptr->add_key_value("is_updated_map", updated);
+  if (!updated) {
+    if (builder_state.need_rebuild) {
+      std::stringstream message;
+      message
+        << "update_ndt failed. If this happens with initial position estimation, make sure that"
+        << "(1) the initial position matches the pcd map and (2) the map_loader is working "
+           "properly.";
+      diagnostics_ptr->update_level_and_message(
+        diagnostic_msgs::msg::DiagnosticStatus::ERROR, message.str());
+      RCLCPP_ERROR_STREAM_THROTTLE(logger_, *clock_, 1000, message.str());
+    }
+    last_update_position_.with([&](auto & pos) { pos = position; });
+    return;
+  }
+
+  builder_state.need_rebuild = false;
+
+  // Atomically publish the freshly-built staging map into the live engine (one store; no pointer
+  // swap). A concurrent align sees the complete new map or the old one, never a partial.
+  ndt_ptr_.with(
+    [&](const auto & ndt_ptr) { ndt_ptr->commitFrom(*builder_state.secondary_ndt_ptr); });
+#else
   // If the current position is super far from the previous loading position,
   // lock and rebuild ndt_ptr_
   if (builder_state.need_rebuild) {
@@ -252,6 +291,7 @@ void MapUpdateModule::update_map_internal(
     //   is triggered when this block ends, it happens safely outside the lock.
     new_ndt_ptr.reset();
   }
+#endif
 
   // Memorize the position of the last update
   last_update_position_.with([&](auto & pos) { pos = position; });
