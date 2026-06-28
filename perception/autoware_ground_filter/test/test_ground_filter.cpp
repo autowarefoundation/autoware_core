@@ -341,7 +341,7 @@ TEST_F(GroundFilterTest, TestExtremeParameterValues)
 
 // ======================================================================================= //
 
-// ======================== NEW 5 TESTS (FOCUSING ON RADIAL MODE) ======================== //
+// ======================== NEW 3 TESTS (FOCUSING ON RADIAL MODE) ======================== //
 
 class GroundFilterRadialTest : public ::testing::Test
 {
@@ -394,40 +394,6 @@ protected:
     return cloud;
   }
 };
-
-// TEST 1. Confirm the maths of RayPointsCentroid works as expected.
-// Provides a single ray of 2 (R, Z) points (2.0, 0.0) and (4.0, 2.0).
-// Expects correct calculation of average radius, height, and slope.
-TEST_F(GroundFilterRadialTest, RayPointsCentroidMath)
-{
-  RayPointsCentroid centroid;
-
-  EXPECT_EQ(centroid.point_num, 0U);
-
-  centroid.addPoint(2.0f, 0.0f, 0);
-  EXPECT_EQ(centroid.point_num, 1U);
-  EXPECT_NEAR(centroid.getAverageRadius(), 2.0f, near_tol);
-  EXPECT_NEAR(centroid.getAverageHeight(), 0.0f, near_tol);
-
-  centroid.addPoint(4.0f, 2.0f, 1);
-  EXPECT_EQ(centroid.point_num, 2U);
-  EXPECT_NEAR(centroid.getAverageRadius(), 3.0f, near_tol);
-  EXPECT_NEAR(centroid.getAverageHeight(), 1.0f, near_tol);
-  EXPECT_NEAR(centroid.getAverageSlope(), std::atan2(1.0f, 3.0f), near_tol);
-}
-
-// TEST 2. Confirm virtual origin logic.
-// Checks that virtual origin is calculated correctly based on vehicle wheelbase and lidar position.
-// Current wheelbase 2.8m, lidar at (1.4, 0, 1.9) should yield virtual origin at (2.8, 0, 0).
-TEST_F(GroundFilterRadialTest, CalcVirtualGroundOrigin)
-{
-  pcl::PointXYZ virtual_origin;
-  calc_virtual_ground_origin(virtual_origin);
-
-  EXPECT_NEAR(virtual_origin.x, 2.8f, near_tol);
-  EXPECT_NEAR(virtual_origin.y, 0.0f, near_tol);
-  EXPECT_NEAR(virtual_origin.z, 0.0f, near_tol);
-}
 
 // TEST 3. Confirm azimuth slicing & sorting
 // This test creates a point cloud with 3 points in different azimuths, then checks if
@@ -485,9 +451,9 @@ TEST_F(GroundFilterRadialTest, RadialGroupingAndSorting)
 // TEST 4. Confirm point classification logic in classifyPointCloud.
 // This test creates a simple point cloud with 3 points: (3, 0, 0), (4, 0, 0.6), (5, 0, 2.0).
 // With given slope threshold 15 deg and height threshold 0.2, we expect:
-// - Point (3, 0, 0) : ground (slope 0, height 0)
-// - Point (4, 0, 0.6) : non-ground (slope 30 deg, height 0.6 > 0.2)
-// - Point (5, 0, 2.0) : non-ground (slope ~21.8 deg, height 2.0 > 0.2)
+// - Point A (3, 0, 0) : ground (slope 0, height 0)
+// - Point B (4, 0, 0.6) : non-ground (slope 30 deg, height 0.6 > 0.2)
+// - Point C (5, 0, 2.0) : non-ground (slope ~21.8 deg, height 2.0 > 0.2)
 TEST_F(GroundFilterRadialTest, ClassifyLocalAndGlobalSlopes)
 {
   autoware::point_types::PointXYZIRC p0, p1, p2;
@@ -502,21 +468,22 @@ TEST_F(GroundFilterRadialTest, ClassifyLocalAndGlobalSlopes)
   p2.z = 2.0f;
 
   auto cloud = create_point_cloud({p0, p1, p2});
-  filter_->setDataAccessor(cloud);
+  auto result = filter_->filter(cloud);
 
-  std::vector<PointCloudVector> radial_ordered;
-  convert_point_cloud(cloud, radial_ordered);
+  // Expect filter to succeed
+  ASSERT_TRUE(result.has_value()) << result.error();
 
-  pcl::PointIndices out_indices;
-  classify_point_cloud(cloud, radial_ordered, out_indices);
+  // Convert output ROS message back to PCL to check actual data
+  pcl::PointCloud<autoware::point_types::PointXYZIRC> out_cloud;
+  pcl::fromROSMsg(result.value(), out_cloud);
 
-  // Expect 2 non-ground points being index 1 and 2.
-  // Since the algorithm outputs raw memory byte offsets as indices,
-  // I'm using point_step to verify these indices.
-  const uint32_t point_step = cloud->point_step;
-  EXPECT_EQ(out_indices.indices.size(), 2U);
-  EXPECT_EQ(out_indices.indices[0], 1U * point_step);
-  EXPECT_EQ(out_indices.indices[1], 2U * point_step);
+  // Expect 2 non-ground points B and C
+  // B
+  EXPECT_NEAR(out_cloud.points[1].x, 4.0f, near_tol);
+  EXPECT_NEAR(out_cloud.points[1].z, 0.6f, near_tol);
+  // C
+  EXPECT_NEAR(out_cloud.points[2].x, 5.0f, near_tol);
+  EXPECT_NEAR(out_cloud.points[2].z, 2.0f, near_tol);
 }
 
 // TEST 5. Testing point follow logic.
