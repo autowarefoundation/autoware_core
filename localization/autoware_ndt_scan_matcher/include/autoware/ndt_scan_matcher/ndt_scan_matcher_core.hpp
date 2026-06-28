@@ -89,8 +89,11 @@ private:
 
   void callback_initial_pose(
     geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr initial_pose_msg_ptr);
+#ifndef NDT_USE_RUST
+  // The C++ baseline body (OFF only); under NDT_USE_RUST the whole callback runs in Rust.
   void callback_initial_pose_main(
     const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr initial_pose_msg_ptr);
+#endif
 
   void callback_regularization_pose(
     geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr pose_conv_msg_ptr);

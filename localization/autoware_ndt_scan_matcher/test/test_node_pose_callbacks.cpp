@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Test (node port N2): the thin pose callbacks migrated to Rust drive node state through the host
-// vtable. We supply a MOCK AwNdtHost whose trampolines record side effects into a local Recorder
-// (mirroring the real ctx == NDTScanMatcher* pattern), then assert that the FFI entry points return
-// the right status and produce the right buffer-push / latest-position effects for each gate
-// combination. The opaque `msg` token is passed straight through and never dereferenced by Rust.
+// Test (node port N2 → callback-level slice 2): the pose callbacks run entirely in Rust, driving node
+// state through the host vtable AND the node's /diagnostics through the AwDiagnostics vtable. We supply
+// MOCK AwNdtHost + AwDiagnostics whose trampolines record side effects + the ordered diagnostics events
+// into local recorders (mirroring the real ctx == NDTScanMatcher* / diag == DiagnosticsInterface*
+// pattern), then assert each gate produces the right status, buffer-push/latest-position effects, AND
+// the exact diagnostics sequence (key order + values + WARN/ERROR text). The opaque `msg` token is
+// passed straight through and never dereferenced by Rust.
 
 #include "autoware_ndt_scan_matcher_rs.h"
 
@@ -26,6 +28,7 @@
 #include <optional>
 #include <string>
 #include <tuple>
+#include <vector>
 
 namespace
 {
@@ -67,13 +70,56 @@ AwNdtHost mock_host(Recorder & r)
     rec_push_initial, rec_push_reg, rec_set_position};
 }
 
+// Mock diagnostics: each vtable op appends a human-readable event so the callback's full diagnostics
+// sequence (order + keys + values) can be asserted.
+struct DiagRec
+{
+  std::vector<std::string> events;
+};
+std::string key_str(const std::uint8_t * p, std::size_t len)
+{
+  return std::string(reinterpret_cast<const char *>(p), len);
+}
+extern "C" void d_clear(void * d) { static_cast<DiagRec *>(d)->events.emplace_back("clear"); }
+extern "C" void d_bool(void * d, const std::uint8_t * k, std::size_t kl, bool v)
+{
+  static_cast<DiagRec *>(d)->events.push_back("bool " + key_str(k, kl) + "=" + (v ? "true" : "false"));
+}
+extern "C" void d_i64(void * d, const std::uint8_t * k, std::size_t kl, std::int64_t v)
+{
+  static_cast<DiagRec *>(d)->events.push_back("i64 " + key_str(k, kl) + "=" + std::to_string(v));
+}
+extern "C" void d_f64(void * d, const std::uint8_t * k, std::size_t kl, double v)
+{
+  static_cast<DiagRec *>(d)->events.push_back("f64 " + key_str(k, kl) + "=" + std::to_string(v));
+}
+extern "C" void d_str(
+  void * d, const std::uint8_t * k, std::size_t kl, const std::uint8_t * val, std::size_t vl)
+{
+  static_cast<DiagRec *>(d)->events.push_back("str " + key_str(k, kl) + "=" + key_str(val, vl));
+}
+extern "C" void d_level(void * d, std::int8_t level, const std::uint8_t * msg, std::size_t ml)
+{
+  static_cast<DiagRec *>(d)->events.push_back(
+    "level " + std::to_string(static_cast<int>(level)) + " " + key_str(msg, ml));
+}
+extern "C" void d_publish(void * d, std::int64_t stamp)
+{
+  static_cast<DiagRec *>(d)->events.push_back("publish " + std::to_string(stamp));
+}
+
+AwDiagnostics mock_diag(DiagRec & d)
+{
+  return AwDiagnostics{&d, d_clear, d_bool, d_i64, d_f64, d_str, d_level, d_publish};
+}
+
 int call_initial(
-  const AwNdtHost & host, const std::string & frame_id, const std::string & map_frame,
-  const double (&pos)[3], const void * msg)
+  const AwNdtHost & host, const AwDiagnostics & diag, const std::string & frame_id,
+  const std::string & map_frame, const double (&pos)[3], const void * msg)
 {
   return autoware_ndt_scan_matcher_rs_node_on_initial_pose(
-    &host, reinterpret_cast<const uint8_t *>(frame_id.data()), frame_id.size(),
-    reinterpret_cast<const uint8_t *>(map_frame.data()), map_frame.size(), pos, msg);
+    &host, &diag, reinterpret_cast<const uint8_t *>(frame_id.data()), frame_id.size(),
+    reinterpret_cast<const uint8_t *>(map_frame.data()), map_frame.size(), pos, msg, 100);
 }
 
 // Discriminants mirrored from the Rust INITIAL_POSE_* codes (also documented in the header).
@@ -86,62 +132,94 @@ TEST(NodePoseCallbacks, InitialPoseRejectedWhenNotActivated)  // NOLINT
 {
   Recorder r;
   r.is_activated_ret = false;
+  DiagRec dr;
   const AwNdtHost host = mock_host(r);
+  const AwDiagnostics diag = mock_diag(dr);
   const double pos[3] = {1.0, 2.0, 3.0};
   int dummy = 0;
-  EXPECT_EQ(call_initial(host, "map", "map", pos, &dummy), kNotActivated);
+  EXPECT_EQ(call_initial(host, diag, "map", "map", pos, &dummy), kNotActivated);
   EXPECT_EQ(r.initial_pushes, 0);
   EXPECT_FALSE(r.position.has_value());
+  EXPECT_EQ(
+    dr.events, (std::vector<std::string>{
+                 "clear", "i64 topic_time_stamp=100", "bool is_activated=false",
+                 "level 1 Node is not activated.", "publish 100"}));
 }
 
 TEST(NodePoseCallbacks, InitialPoseRejectedWhenFrameMismatch)  // NOLINT
 {
   Recorder r;
   r.is_activated_ret = true;
+  DiagRec dr;
   const AwNdtHost host = mock_host(r);
+  const AwDiagnostics diag = mock_diag(dr);
   const double pos[3] = {1.0, 2.0, 3.0};
   int dummy = 0;
-  EXPECT_EQ(call_initial(host, "lidar", "map", pos, &dummy), kWrongFrame);
+  EXPECT_EQ(call_initial(host, diag, "lidar", "map", pos, &dummy), kWrongFrame);
   EXPECT_EQ(r.initial_pushes, 0);
   EXPECT_FALSE(r.position.has_value());
+  EXPECT_EQ(
+    dr.events,
+    (std::vector<std::string>{
+      "clear", "i64 topic_time_stamp=100", "bool is_activated=true",
+      "bool is_expected_frame_id=false",
+      "level 2 Received initial pose message with frame_id lidar, but expected map. Please check "
+      "the frame_id in the input topic and ensure it is correct.",
+      "publish 100"}));
 }
 
 TEST(NodePoseCallbacks, InitialPoseAcceptedPushesAndSetsPosition)  // NOLINT
 {
   Recorder r;
   r.is_activated_ret = true;
+  DiagRec dr;
   const AwNdtHost host = mock_host(r);
+  const AwDiagnostics diag = mock_diag(dr);
   const double pos[3] = {1.5, -2.5, 0.25};
   int dummy = 0;
-  EXPECT_EQ(call_initial(host, "map", "map", pos, &dummy), kAccepted);
+  EXPECT_EQ(call_initial(host, diag, "map", "map", pos, &dummy), kAccepted);
   EXPECT_EQ(r.initial_pushes, 1);
   EXPECT_EQ(r.last_msg, &dummy);  // the opaque token was forwarded unchanged
   ASSERT_TRUE(r.position.has_value());
   EXPECT_EQ(*r.position, std::make_tuple(1.5, -2.5, 0.25));
+  EXPECT_EQ(
+    dr.events, (std::vector<std::string>{
+                 "clear", "i64 topic_time_stamp=100", "bool is_activated=true",
+                 "bool is_expected_frame_id=true", "publish 100"}));
 }
 
 TEST(NodePoseCallbacks, InitialPoseNullHostIsNotActivated)  // NOLINT
 {
+  DiagRec dr;
+  const AwDiagnostics diag = mock_diag(dr);
   const double pos[3] = {0.0, 0.0, 0.0};
   const std::string frame = "map";
   int dummy = 0;
   EXPECT_EQ(
     autoware_ndt_scan_matcher_rs_node_on_initial_pose(
-      nullptr, reinterpret_cast<const uint8_t *>(frame.data()), frame.size(),
-      reinterpret_cast<const uint8_t *>(frame.data()), frame.size(), pos, &dummy),
+      nullptr, &diag, reinterpret_cast<const uint8_t *>(frame.data()), frame.size(),
+      reinterpret_cast<const uint8_t *>(frame.data()), frame.size(), pos, &dummy, 0),
     kNotActivated);
+  EXPECT_TRUE(dr.events.empty());  // null host → no diagnostics emitted
 }
 
 TEST(NodePoseCallbacks, RegularizationPushesMsgAndNullIsNoop)  // NOLINT
 {
   Recorder r;
+  DiagRec dr;
   const AwNdtHost host = mock_host(r);
+  const AwDiagnostics diag = mock_diag(dr);
   int dummy = 0;
-  autoware_ndt_scan_matcher_rs_node_on_regularization_pose(&host, &dummy);
+  autoware_ndt_scan_matcher_rs_node_on_regularization_pose(&host, &diag, &dummy, 100);
   EXPECT_EQ(r.reg_pushes, 1);
   EXPECT_EQ(r.last_msg, &dummy);
+  EXPECT_EQ(
+    dr.events,
+    (std::vector<std::string>{"clear", "i64 topic_time_stamp=100", "publish 100"}));
 
-  // null msg → no extra push.
-  autoware_ndt_scan_matcher_rs_node_on_regularization_pose(&host, nullptr);
+  // null msg → no extra push, no diagnostics.
+  dr.events.clear();
+  autoware_ndt_scan_matcher_rs_node_on_regularization_pose(&host, &diag, nullptr, 100);
   EXPECT_EQ(r.reg_pushes, 1);
+  EXPECT_TRUE(dr.events.empty());
 }

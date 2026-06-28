@@ -136,24 +136,28 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_on_trigger(
     true
 }
 
-/// Outcome of [`autoware_ndt_scan_matcher_rs_node_on_initial_pose`]; the C++ wrapper maps it to the
-/// callback's diagnostics. `i32` so it crosses the C ABI as a plain return code.
+/// Outcome of [`autoware_ndt_scan_matcher_rs_node_on_initial_pose`] (a summary code for tests; the
+/// callback also emits the corresponding diagnostics itself). `i32` so it crosses the C ABI plainly.
 pub const INITIAL_POSE_ACCEPTED: i32 = 0;
-/// The node is not activated — the pose is dropped (C++ emits a WARN).
+/// The node is not activated — the pose is dropped (emits a WARN).
 pub const INITIAL_POSE_NOT_ACTIVATED: i32 = 1;
-/// The message `frame_id` did not match the configured map frame (C++ emits an ERROR).
+/// The message `frame_id` did not match the configured map frame (emits an ERROR).
 pub const INITIAL_POSE_WRONG_FRAME: i32 = 2;
 
-/// Migrated body of `callback_initial_pose_main`: gate on activation, then on the message frame
-/// matching the map frame; on acceptance push the (opaque) message into the initial-pose buffer and
-/// record its position as the latest EKF position. Returns one of the `INITIAL_POSE_*` codes; the
-/// C++ wrapper emits the diagnostics for each outcome. State stays C++ (driven via `host`).
+/// The whole body of `callback_initial_pose` (callback-level): build the diagnostics (clear +
+/// `topic_time_stamp`), gate on activation then on the message frame matching the map frame (emitting
+/// `is_activated` / `is_expected_frame_id` + a WARN/ERROR on failure), on acceptance push the (opaque)
+/// message into the initial-pose buffer and record its position as the latest EKF position, and always
+/// publish — all via the host + diagnostics vtables. Mirrors the C++ body's key order/values + the
+/// exact WARN/ERROR messages. Returns the `INITIAL_POSE_*` summary code (the C++ wrapper ignores it; it
+/// keeps the existing tests precise). `stamp_ns` is the message header stamp (the `topic_time_stamp` +
+/// publish stamp).
 ///
 /// # Safety
-/// `host` is a valid [`NdtHost`] (or null → treated as not-activated) whose fn pointers + `ctx`
-/// outlive the call. `frame_id`/`map_frame` point to `*_len` readable bytes (or null with len 0).
-/// `position` points to 3 readable `f64` (`[x, y, z]`). `msg` is an opaque token, only forwarded to
-/// the host push (never dereferenced here); it must stay valid for the duration of the call.
+/// `host`/`diag` are valid (or either null → returns `NOT_ACTIVATED` with no effect); their fn
+/// pointers and `ctx`/`diag` handles outlive the call. `frame_id`/`map_frame` address `*_len` readable
+/// bytes (or null with len 0). `position` addresses 3 readable `f64` (`[x, y, z]`). `msg` is an opaque
+/// token, only forwarded to the host push (never dereferenced here), valid for the call.
 #[expect(
     unsafe_code,
     reason = "C ABI host-interface boundary; validated per rust-c-ffi-safety"
@@ -161,43 +165,70 @@ pub const INITIAL_POSE_WRONG_FRAME: i32 = 2;
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_on_initial_pose(
     host: *const NdtHost,
+    diag: *const Diagnostics,
     frame_id: *const u8,
     frame_id_len: usize,
     map_frame: *const u8,
     map_frame_len: usize,
     position: *const f64,
     msg: *const c_void,
+    stamp_ns: i64,
 ) -> i32 {
-    if host.is_null() || position.is_null() {
+    if host.is_null() || diag.is_null() || position.is_null() {
         return INITIAL_POSE_NOT_ACTIVATED;
     }
-    // SAFETY: non-null per the check; caller guarantees a valid host whose ctx/fn-pointers are live.
-    let h = unsafe { &*host };
-    if !(h.is_activated)(h.ctx) {
+    // SAFETY: non-null per the check; caller guarantees valid, live host + diagnostics handles.
+    let (h, d) = unsafe { (&*host, &*diag) };
+    d.reset();
+    d.add_i64("topic_time_stamp", stamp_ns);
+
+    // check is_activated
+    let is_activated = (h.is_activated)(h.ctx);
+    d.add_bool("is_activated", is_activated);
+    if !is_activated {
+        d.update_level(DIAGNOSTIC_WARN, "Node is not activated.");
+        d.publish_at(stamp_ns);
         return INITIAL_POSE_NOT_ACTIVATED;
     }
+
+    // check is_expected_frame_id
     // Empty byte slice for a null/zero-length string (`from_raw_parts` requires a non-null base).
     // SAFETY: caller guarantees each pointer is readable for its stated length.
     let frame = unsafe { str_bytes(frame_id, frame_id_len) };
     let map = unsafe { str_bytes(map_frame, map_frame_len) };
-    if frame != map {
+    let is_expected_frame_id = frame == map;
+    d.add_bool("is_expected_frame_id", is_expected_frame_id);
+    if !is_expected_frame_id {
+        let frame_str = alloc::string::String::from_utf8_lossy(frame);
+        let map_str = alloc::string::String::from_utf8_lossy(map);
+        let message = alloc::format!(
+            "Received initial pose message with frame_id {frame_str}, but expected {map_str}. \
+             Please check the frame_id in the input topic and ensure it is correct."
+        );
+        d.update_level(DIAGNOSTIC_ERROR, &message);
+        d.publish_at(stamp_ns);
         return INITIAL_POSE_WRONG_FRAME;
     }
+
     (h.push_initial_pose)(h.ctx, msg);
     // SAFETY: `position` is non-null per the check and points to 3 readable, aligned f64 (`[x,y,z]`)
-    // per the contract; read the three components directly to avoid slice indexing.
-    let (x, y, z) = unsafe { (*position, *position.add(1), *position.add(2)) };
-    (h.set_latest_ekf_position)(h.ctx, x, y, z);
+    // per the contract; read the three components directly (inline) to avoid slice indexing.
+    unsafe {
+        (h.set_latest_ekf_position)(h.ctx, *position, *position.add(1), *position.add(2));
+    }
+    d.publish_at(stamp_ns);
     INITIAL_POSE_ACCEPTED
 }
 
-/// Migrated body of `callback_regularization_pose`: unconditionally push the (opaque) message into
-/// the regularization-pose buffer. No-op if `host`/`msg` is null. The C++ wrapper keeps the
-/// surrounding diagnostics.
+/// The whole body of `callback_regularization_pose` (callback-level): build the diagnostics (clear +
+/// `topic_time_stamp`), push the (opaque) message into the regularization-pose buffer, and publish —
+/// via the host + diagnostics vtables. No-op if `host`/`diag`/`msg` is null. `stamp_ns` is the message
+/// header stamp.
 ///
 /// # Safety
-/// `host` is a valid [`NdtHost`] (or null → no-op) whose fn pointers + `ctx` outlive the call. `msg`
-/// is an opaque token, only forwarded to the host push (never dereferenced); valid for the call.
+/// `host`/`diag` are valid (or either null → no-op) and their fn pointers + `ctx`/`diag` handle outlive
+/// the call. `msg` is an opaque token, only forwarded to the host push (never dereferenced); valid for
+/// the call.
 #[expect(
     unsafe_code,
     reason = "C ABI host-interface boundary; validated per rust-c-ffi-safety"
@@ -205,14 +236,19 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_on_initial_pose(
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_on_regularization_pose(
     host: *const NdtHost,
+    diag: *const Diagnostics,
     msg: *const c_void,
+    stamp_ns: i64,
 ) {
-    if host.is_null() || msg.is_null() {
+    if host.is_null() || diag.is_null() || msg.is_null() {
         return;
     }
-    // SAFETY: non-null per the check; caller guarantees a valid, live host.
-    let h = unsafe { &*host };
+    // SAFETY: non-null per the check; caller guarantees valid, live host + diagnostics handles.
+    let (h, d) = unsafe { (&*host, &*diag) };
+    d.reset();
+    d.add_i64("topic_time_stamp", stamp_ns);
     (h.push_regularization_pose)(h.ctx, msg);
+    d.publish_at(stamp_ns);
 }
 
 /// View `[ptr, ptr+len)` as a byte slice, treating a null/zero-length pointer as empty (so the
@@ -894,18 +930,27 @@ mod tests {
         assert_eq!(r.clears, 1);
     }
 
-    // Drive on_initial_pose with the given activation/frames/position and the shared token.
-    fn call_initial(h: &NdtHost, frame_id: &[u8], map_frame: &[u8], pos: [f64; 3]) -> i32 {
+    // Drive on_initial_pose with the given activation/frames/position + a fixed stamp (100); the
+    // status is returned and the diagnostics land in `d`'s recorder.
+    fn call_initial(
+        h: &NdtHost,
+        d: &Diagnostics,
+        frame_id: &[u8],
+        map_frame: &[u8],
+        pos: [f64; 3],
+    ) -> i32 {
         // SAFETY: the byte slices and `pos` are valid for their lengths; `token()` is opaque.
         unsafe {
             autoware_ndt_scan_matcher_rs_node_on_initial_pose(
                 h,
+                d,
                 frame_id.as_ptr(),
                 frame_id.len(),
                 map_frame.as_ptr(),
                 map_frame.len(),
                 pos.as_ptr(),
                 token(),
+                100,
             )
         }
     }
@@ -916,11 +961,23 @@ mod tests {
             is_activated_ret: false,
             ..Default::default()
         };
+        let mut dr = DiagRecorder::default();
         let h = host(&mut r);
-        let status = call_initial(&h, b"map", b"map", [1.0, 2.0, 3.0]);
+        let d = diagnostics(&mut dr);
+        let status = call_initial(&h, &d, b"map", b"map", [1.0, 2.0, 3.0]);
         assert_eq!(status, INITIAL_POSE_NOT_ACTIVATED);
         assert_eq!(r.initial_pushes, 0);
         assert!(r.position.is_none());
+        assert_eq!(
+            dr.events,
+            alloc::vec![
+                "clear".to_string(),
+                "i64 topic_time_stamp=100".to_string(),
+                "bool is_activated=false".to_string(),
+                "level 1 Node is not activated.".to_string(),
+                "publish 100".to_string(),
+            ]
+        );
     }
 
     #[test]
@@ -929,11 +986,26 @@ mod tests {
             is_activated_ret: true,
             ..Default::default()
         };
+        let mut dr = DiagRecorder::default();
         let h = host(&mut r);
-        let status = call_initial(&h, b"lidar", b"map", [1.0, 2.0, 3.0]);
+        let d = diagnostics(&mut dr);
+        let status = call_initial(&h, &d, b"lidar", b"map", [1.0, 2.0, 3.0]);
         assert_eq!(status, INITIAL_POSE_WRONG_FRAME);
         assert_eq!(r.initial_pushes, 0);
         assert!(r.position.is_none());
+        assert_eq!(
+            dr.events,
+            alloc::vec![
+                "clear".to_string(),
+                "i64 topic_time_stamp=100".to_string(),
+                "bool is_activated=true".to_string(),
+                "bool is_expected_frame_id=false".to_string(),
+                "level 2 Received initial pose message with frame_id lidar, but expected map. \
+                 Please check the frame_id in the input topic and ensure it is correct."
+                    .to_string(),
+                "publish 100".to_string(),
+            ]
+        );
     }
 
     #[test]
@@ -942,12 +1014,24 @@ mod tests {
             is_activated_ret: true,
             ..Default::default()
         };
+        let mut dr = DiagRecorder::default();
         let h = host(&mut r);
-        let status = call_initial(&h, b"map", b"map", [1.5, -2.5, 0.25]);
+        let d = diagnostics(&mut dr);
+        let status = call_initial(&h, &d, b"map", b"map", [1.5, -2.5, 0.25]);
         assert_eq!(status, INITIAL_POSE_ACCEPTED);
         assert_eq!(r.initial_pushes, 1);
         assert_eq!(r.last_msg, Some(token()));
         assert_eq!(r.position, Some((1.5, -2.5, 0.25)));
+        assert_eq!(
+            dr.events,
+            alloc::vec![
+                "clear".to_string(),
+                "i64 topic_time_stamp=100".to_string(),
+                "bool is_activated=true".to_string(),
+                "bool is_expected_frame_id=true".to_string(),
+                "publish 100".to_string(),
+            ]
+        );
     }
 
     #[test]
@@ -957,45 +1041,64 @@ mod tests {
             is_activated_ret: true,
             ..Default::default()
         };
+        let mut dr = DiagRecorder::default();
         let h = host(&mut r);
-        let status = call_initial(&h, b"", b"", [0.0, 0.0, 0.0]);
+        let d = diagnostics(&mut dr);
+        let status = call_initial(&h, &d, b"", b"", [0.0, 0.0, 0.0]);
         assert_eq!(status, INITIAL_POSE_ACCEPTED);
         assert_eq!(r.initial_pushes, 1);
     }
 
     #[test]
     fn initial_pose_null_host_is_not_activated() {
+        let mut dr = DiagRecorder::default();
+        let d = diagnostics(&mut dr);
         let pos = [0.0_f64; 3];
         // SAFETY: null host is explicitly handled; the other pointers are valid.
         let status = unsafe {
             autoware_ndt_scan_matcher_rs_node_on_initial_pose(
                 core::ptr::null(),
+                &d,
                 b"map".as_ptr(),
                 3,
                 b"map".as_ptr(),
                 3,
                 pos.as_ptr(),
                 token(),
+                0,
             )
         };
         assert_eq!(status, INITIAL_POSE_NOT_ACTIVATED);
+        assert!(dr.events.is_empty()); // null host → no diagnostics emitted
     }
 
     #[test]
     fn regularization_pose_pushes_msg_and_null_is_noop() {
         let mut r = Recorder::default();
+        let mut dr = DiagRecorder::default();
         let h = host(&mut r);
-        // SAFETY: `h` is valid; `token()` is an opaque, valid-for-the-call token.
-        unsafe { autoware_ndt_scan_matcher_rs_node_on_regularization_pose(&h, token()) };
+        let d = diagnostics(&mut dr);
+        // SAFETY: `h`/`d` are valid; `token()` is an opaque, valid-for-the-call token.
+        unsafe { autoware_ndt_scan_matcher_rs_node_on_regularization_pose(&h, &d, token(), 77) };
         assert_eq!(r.reg_pushes, 1);
         assert_eq!(r.last_msg, Some(token()));
+        assert_eq!(
+            dr.events,
+            alloc::vec![
+                "clear".to_string(),
+                "i64 topic_time_stamp=77".to_string(),
+                "publish 77".to_string(),
+            ]
+        );
 
-        // null msg → no-op (no extra push).
+        // null msg → no-op (no extra push, no diagnostics).
+        dr.events.clear();
         // SAFETY: null msg is explicitly handled.
         unsafe {
-            autoware_ndt_scan_matcher_rs_node_on_regularization_pose(&h, core::ptr::null());
+            autoware_ndt_scan_matcher_rs_node_on_regularization_pose(&h, &d, core::ptr::null(), 77);
         }
         assert_eq!(r.reg_pushes, 1);
+        assert!(dr.events.is_empty());
     }
 
     // A map-update input centered at the origin's last-update position; tests tweak fields.

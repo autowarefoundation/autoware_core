@@ -320,20 +320,25 @@ typedef struct
 bool autoware_ndt_scan_matcher_rs_node_on_trigger(
   const AwNdtHost * host, const AwDiagnostics * diag, bool activate, int64_t now_ns);
 
-// Migrated body of callback_initial_pose_main: gate on activation, then on the message frame_id
-// matching the map frame; on acceptance push `msg` (an opaque token forwarded to push_initial_pose,
-// never dereferenced by Rust) into the initial-pose buffer and record `position` (3 doubles, xyz) as
-// the latest EKF position. `frame_id`/`map_frame` are `*_len`-byte strings (need not be NUL-terminated).
-// Returns 0 = ACCEPTED, 1 = NOT_ACTIVATED, 2 = WRONG_FRAME; the C++ wrapper maps the code to the
-// callback's diagnostics. All pointers must stay valid for the duration of the call.
+// The whole body of callback_initial_pose (callback-level): builds the diagnostics (clear +
+// topic_time_stamp), gates on activation then on the message frame_id matching the map frame (emitting
+// is_activated / is_expected_frame_id + a WARN/ERROR on failure), on acceptance pushes `msg` (an
+// opaque token forwarded to push_initial_pose, never dereferenced by Rust) and records `position`
+// (3 doubles, xyz) as the latest EKF position, and always publishes — via the host + diagnostics
+// vtables. `frame_id`/`map_frame` are `*_len`-byte strings (need not be NUL-terminated). `stamp_ns`
+// is the message header stamp. Returns 0 = ACCEPTED, 1 = NOT_ACTIVATED, 2 = WRONG_FRAME (a summary
+// the C++ wrapper ignores). No effect if `host`/`diag`/`position` is null. Pointers valid for the call.
 int32_t autoware_ndt_scan_matcher_rs_node_on_initial_pose(
-  const AwNdtHost * host, const uint8_t * frame_id, size_t frame_id_len, const uint8_t * map_frame,
-  size_t map_frame_len, const double * position, const void * msg);
+  const AwNdtHost * host, const AwDiagnostics * diag, const uint8_t * frame_id, size_t frame_id_len,
+  const uint8_t * map_frame, size_t map_frame_len, const double * position, const void * msg,
+  int64_t stamp_ns);
 
-// Migrated body of callback_regularization_pose: push `msg` (opaque token) into the
-// regularization-pose buffer. No-op if `host`/`msg` is null. The C++ wrapper keeps the diagnostics.
+// The whole body of callback_regularization_pose (callback-level): builds the diagnostics (clear +
+// topic_time_stamp), pushes `msg` (opaque token) into the regularization-pose buffer, and publishes —
+// via the host + diagnostics vtables. `stamp_ns` is the message header stamp. No-op if
+// `host`/`diag`/`msg` is null.
 void autoware_ndt_scan_matcher_rs_node_on_regularization_pose(
-  const AwNdtHost * host, const void * msg);
+  const AwNdtHost * host, const AwDiagnostics * diag, const void * msg, int64_t stamp_ns);
 
 // Inputs to the dynamic-map-update distance decision: the current + last-update positions and the
 // `dynamic_map_loading` radii/thresholds. The "no last update yet" case is handled C++-side. Field
