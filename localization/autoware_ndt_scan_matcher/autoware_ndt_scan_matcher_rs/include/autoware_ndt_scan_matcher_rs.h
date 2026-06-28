@@ -197,6 +197,50 @@ void autoware_ndt_scan_matcher_rs_propose_poses_to_search(
   const float * main_pose, const double * offset_x, const double * offset_y, size_t n,
   float * out_poses);
 
+// --- persistent NDT engine handle (E6a; the node-facing stateful interface) ---
+
+// Opaque persistent engine: target map + params + last align result, held across frames. Mirrors
+// the stateful C++ MultiGridNormalDistributionsTransform. Create with _ndt_engine_new, free with
+// _ndt_engine_free. All accessors no-op (or return 0/false) on a null handle.
+typedef struct AwNdtEngine AwNdtEngine;
+
+// New engine with an empty map (`min_points`/`eig_mult` = the C++ defaults 6 / 0.01).
+AwNdtEngine * autoware_ndt_scan_matcher_rs_ndt_engine_new(
+  double resolution, int32_t min_points, double eig_mult);
+void autoware_ndt_scan_matcher_rs_ndt_engine_free(AwNdtEngine * engine);
+// Deep-copy (the node's map-update double-buffer); null -> null.
+AwNdtEngine * autoware_ndt_scan_matcher_rs_ndt_engine_clone(const AwNdtEngine * engine);
+
+// setParams (regularization is preserved; set it separately).
+void autoware_ndt_scan_matcher_rs_ndt_engine_set_params(
+  AwNdtEngine * engine, double trans_epsilon, double step_size, double resolution,
+  int32_t max_iterations, double outlier_ratio, int32_t num_threads);
+// setRegularizationPose / unset: scale == 0 disables.
+void autoware_ndt_scan_matcher_rs_ndt_engine_set_regularization(
+  AwNdtEngine * engine, float pose_x, float pose_y, float scale);
+
+// Map management (addTarget by id / removeTarget / createVoxelKdtree / hasTarget). `points` is
+// `3 * n` floats (xyz triples). Call _create_kdtree after add/remove, before aligning/searching.
+void autoware_ndt_scan_matcher_rs_ndt_engine_add_target(
+  AwNdtEngine * engine, const float * points, size_t n, uint64_t id);
+void autoware_ndt_scan_matcher_rs_ndt_engine_remove_target(AwNdtEngine * engine, uint64_t id);
+void autoware_ndt_scan_matcher_rs_ndt_engine_create_kdtree(AwNdtEngine * engine);
+bool autoware_ndt_scan_matcher_rs_ndt_engine_has_target(const AwNdtEngine * engine);
+int32_t autoware_ndt_scan_matcher_rs_ndt_engine_max_iterations(const AwNdtEngine * engine);
+
+// align(out, guess, source): `guess` 16 floats (row-major 4x4), `source` `3 * n` floats. Stores the
+// result internally; retrieve with _get_result (same AwNdtAlignOutput contract as _ndt_align).
+void autoware_ndt_scan_matcher_rs_ndt_engine_align(
+  AwNdtEngine * engine, const float * guess, const float * source, size_t n);
+void autoware_ndt_scan_matcher_rs_ndt_engine_get_result(
+  const AwNdtEngine * engine, const AwNdtAlignOutput * output);
+
+// Score a cloud (`3 * n` floats) at its current pose without aligning.
+double autoware_ndt_scan_matcher_rs_ndt_engine_calc_transformation_probability(
+  AwNdtEngine * engine, const float * cloud, size_t n);
+double autoware_ndt_scan_matcher_rs_ndt_engine_calc_nearest_voxel_likelihood(
+  AwNdtEngine * engine, const float * cloud, size_t n);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

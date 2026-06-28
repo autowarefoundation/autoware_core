@@ -189,6 +189,15 @@ if(BUILD_TESTING)
       multigrid_ndt_omp ${PCL_LIBRARIES} autoware_ndt_scan_matcher_rs)
     target_include_directories(test_estimate_covariance_multi PRIVATE
       ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/include)
+
+    # 6. Differential test: Rust persistent engine handle (FFI) vs the C++ NDT engine (E6a).
+    ament_auto_add_gtest(test_ndt_engine
+      test/test_ndt_engine.cpp
+    )
+    target_link_libraries(test_ndt_engine
+      multigrid_ndt_omp ${PCL_LIBRARIES} autoware_ndt_scan_matcher_rs)
+    target_include_directories(test_ndt_engine PRIVATE
+      ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/include)
   endif()
 endif()
 

@@ -25,6 +25,7 @@ extern crate alloc;
 pub mod cov_estimate;
 pub mod covariance;
 pub mod derivatives;
+pub mod engine;
 pub mod helper;
 mod kdtree;
 pub mod ndt;

@@ -21,6 +21,7 @@
 
 use alloc::vec::Vec;
 
+#[derive(Clone)]
 struct Node {
     point_idx: usize,
     axis: usize,
@@ -29,6 +30,7 @@ struct Node {
 }
 
 /// Immutable 3-D kd-tree built once from a set of points.
+#[derive(Clone)]
 pub struct KdTree {
     points: Vec<[f32; 3]>,
     nodes: Vec<Node>,

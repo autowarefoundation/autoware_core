@@ -79,6 +79,7 @@ impl Accumulator {
 }
 
 /// A built single voxel grid with point->leaf lookup by voxel id.
+#[derive(Clone)]
 pub struct VoxelGrid {
     leaves: Vec<Leaf>,
     index: BTreeMap<i64, usize>,
@@ -385,6 +386,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_free(grid: *mut
 
 /// Id-keyed collection of per-cloud voxel grids plus a kd-tree over all voxel centroids for radius
 /// search. Mirrors `MultiVoxelGridCovariance` (`sid_to_iid_`/`grid_list_` + `KdTreeFLANN`).
+#[derive(Clone)]
 pub struct VoxelGridMap {
     leaf_size: [f64; 3],
     min_points: i32,
@@ -417,6 +419,12 @@ impl VoxelGridMap {
     pub fn remove_target(&mut self, id: u64) {
         self.grids.remove(&id);
         self.invalidate();
+    }
+
+    /// Whether any target grid is registered (the C++ `hasTarget`).
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.grids.is_empty()
     }
 
     fn invalidate(&mut self) {
