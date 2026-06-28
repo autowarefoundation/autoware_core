@@ -55,6 +55,81 @@ using autoware::localization_util::SmartPoseBuffer;
 using autoware::localization_util::TreeStructuredParzenEstimator;
 using autoware_utils_diagnostics::DiagnosticsInterface;
 
+#ifdef NDT_USE_RUST
+// Phase N4c: engine-result + cloud marshaling lifted from NdtRustAdapter (deleted in N4e) so the
+// sensor callback drives the engine handle (`ndt_ptr_->raw_handle()`) directly via the C ABI instead
+// of the adapter's pclomp-shaped methods. These are the adapter's `to_flat` / `getResult` bodies.
+static std::vector<float> cloud_to_flat(const pcl::PointCloud<pcl::PointXYZ> & cloud)
+{
+  std::vector<float> f;
+  f.reserve(cloud.size() * 3);
+  for (const auto & p : cloud) {
+    f.push_back(p.x);
+    f.push_back(p.y);
+    f.push_back(p.z);
+  }
+  return f;
+}
+
+static pclomp::NdtResult ndt_result_from_engine(const AwNdtEngine * handle)
+{
+  pclomp::NdtResult r;
+  std::array<float, 16> pose{};
+  std::int32_t iter = 0;
+  float tp = 0.0F;
+  float nvl = 0.0F;
+  std::array<double, 36> hess{};
+  constexpr std::uint32_t kCap = 256;
+  std::vector<float> ta(static_cast<size_t>(kCap) * 16);
+  std::uint32_t count = 0;
+  AwNdtAlignOutput out{};
+  out.pose = pose.data();
+  out.iteration_num = &iter;
+  out.transform_probability = &tp;
+  out.nearest_voxel_likelihood = &nvl;
+  out.hessian = hess.data();
+  out.transformation_array = ta.data();
+  out.transforms_cap = kCap;
+  out.transforms_count = &count;
+  autoware_ndt_scan_matcher_rs_ndt_engine_get_result(handle, &out);
+
+  for (int rr = 0; rr < 4; ++rr) {
+    for (int cc = 0; cc < 4; ++cc) {
+      r.pose(rr, cc) = pose[(rr * 4) + cc];
+    }
+  }
+  r.iteration_num = iter;
+  r.transform_probability = tp;
+  r.nearest_voxel_transformation_likelihood = nvl;
+  for (int rr = 0; rr < 6; ++rr) {
+    for (int cc = 0; cc < 6; ++cc) {
+      r.hessian(rr, cc) = hess[(rr * 6) + cc];
+    }
+  }
+  const std::uint32_t n = std::min(count, kCap);
+  r.transformation_array.resize(n);
+  for (std::uint32_t k = 0; k < n; ++k) {
+    Eigen::Matrix4f m;
+    for (int rr = 0; rr < 4; ++rr) {
+      for (int cc = 0; cc < 4; ++cc) {
+        m(rr, cc) = ta[(static_cast<size_t>(k) * 16) + (rr * 4) + cc];
+      }
+    }
+    r.transformation_array[k] = m;
+  }
+
+  std::vector<float> tps(kCap);
+  std::vector<float> nvls(kCap);
+  std::uint32_t scount = 0;
+  autoware_ndt_scan_matcher_rs_ndt_engine_get_score_arrays(
+    handle, tps.data(), nvls.data(), kCap, &scount);
+  const std::uint32_t sn = std::min(scount, kCap);
+  r.transform_probability_array.assign(tps.begin(), tps.begin() + sn);
+  r.nearest_voxel_transformation_likelihood_array.assign(nvls.begin(), nvls.begin() + sn);
+  return r;
+}
+#endif
+
 autoware_internal_debug_msgs::msg::Float32Stamped make_float32_stamped(
   const builtin_interfaces::msg::Time & stamp, const float data)
 {
@@ -485,7 +560,12 @@ bool NDTScanMatcher::callback_sensor_points_main(
     }
 
     // check is_set_map_points
+#ifdef NDT_USE_RUST
+    const bool is_set_map_points =
+      autoware_ndt_scan_matcher_rs_ndt_engine_has_target(ndt_ptr->raw_handle());
+#else
     const bool is_set_map_points = ndt_ptr->hasTarget();
+#endif
     diagnostics_scan_points_->add_key_value("is_set_map_points", is_set_map_points);
     if (!is_set_map_points) {
       std::stringstream message;
@@ -527,10 +607,14 @@ bool NDTScanMatcher::callback_sensor_points_main(
     auto output_cloud = std::make_shared<pcl::PointCloud<PointSource>>();
     ndt_ptr->align(*output_cloud, initial_pose_matrix, sensor_points_in_baselink_frame_);
 #endif
-    // getResult() still supplies the marker pose array, the tp/nvtl score arrays (diagnostics), and
-    // ndt_result for the still-C++ covariance estimation. Same engine + stored last result as the
-    // align above, so it is consistent ON/OFF.
+    // The result (marker pose array, tp/nvtl score arrays, hessian for covariance) comes from the
+    // engine's stored last align — read directly via the FFI under NDT_USE_RUST (N4c), or the adapter
+    // OFF. Same engine + stored result as the align above, so it is consistent ON/OFF.
+#ifdef NDT_USE_RUST
+    const pclomp::NdtResult ndt_result = ndt_result_from_engine(ndt_ptr->raw_handle());
+#else
     const pclomp::NdtResult ndt_result = ndt_ptr->getResult();
+#endif
 
     const geometry_msgs::msg::Pose result_pose_msg = matrix4f_to_pose(ndt_result.pose);
     std::vector<geometry_msgs::msg::Pose> transformation_msg_array;
@@ -543,6 +627,7 @@ bool NDTScanMatcher::callback_sensor_points_main(
     // The flags are computed up front; the diagnostics below read them, preserving the original
     // /diagnostics key order.
     int oscillation_num = 0;
+    int max_iterations = 0;
     bool is_ok_iteration_num = false;
     bool is_local_optimal_solution_oscillation = false;
     bool valid_param_type = false;
@@ -551,6 +636,7 @@ bool NDTScanMatcher::callback_sensor_points_main(
     double score = 0.0;
     double score_threshold = 0.0;
 #ifdef NDT_USE_RUST
+    max_iterations = outcome.max_iterations;
     oscillation_num = outcome.oscillation_num;
     is_ok_iteration_num = outcome.verdict.is_ok_iteration_num;
     is_local_optimal_solution_oscillation = outcome.verdict.is_local_optimal_solution_oscillation;
@@ -561,8 +647,9 @@ bool NDTScanMatcher::callback_sensor_points_main(
     score_threshold = outcome.verdict.score_threshold;
 #else
     constexpr int oscillation_num_threshold = 10;
+    max_iterations = ndt_ptr->getMaximumIterations();
     oscillation_num = count_oscillation(transformation_msg_array);
-    is_ok_iteration_num = (ndt_result.iteration_num < ndt_ptr->getMaximumIterations());
+    is_ok_iteration_num = (ndt_result.iteration_num < max_iterations);
     is_local_optimal_solution_oscillation = (oscillation_num > oscillation_num_threshold);
     if (param_.score_estimation.converged_param_type == ConvergedParamType::TRANSFORM_PROBABILITY) {
       valid_param_type = true;
@@ -587,7 +674,7 @@ bool NDTScanMatcher::callback_sensor_points_main(
     if (!is_ok_iteration_num) {
       std::stringstream message;
       message << "The number of iterations has reached its upper limit. The number of iterations: "
-              << ndt_result.iteration_num << ", Limit: " << ndt_ptr->getMaximumIterations() << ".";
+              << ndt_result.iteration_num << ", Limit: " << max_iterations << ".";
       diagnostics_scan_points_->update_level_and_message(
         diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
     }
@@ -851,10 +938,20 @@ bool NDTScanMatcher::callback_sensor_points_main(
       no_ground_points_msg_in_map.header.frame_id = param_.frame.map_frame;
       no_ground_points_aligned_pose_pub_->publish(no_ground_points_msg_in_map);
       // calculate score
+#ifdef NDT_USE_RUST
+      const std::vector<float> no_ground_flat = cloud_to_flat(*no_ground_points_in_map_ptr);
+      const auto no_ground_transform_probability =
+        static_cast<float>(autoware_ndt_scan_matcher_rs_ndt_engine_calc_transformation_probability(
+          ndt_ptr->raw_handle(), no_ground_flat.data(), no_ground_points_in_map_ptr->size()));
+      const auto no_ground_nearest_voxel_transformation_likelihood =
+        static_cast<float>(autoware_ndt_scan_matcher_rs_ndt_engine_calc_nearest_voxel_likelihood(
+          ndt_ptr->raw_handle(), no_ground_flat.data(), no_ground_points_in_map_ptr->size()));
+#else
       const auto no_ground_transform_probability = static_cast<float>(
         ndt_ptr->calculateTransformationProbability(*no_ground_points_in_map_ptr));
       const auto no_ground_nearest_voxel_transformation_likelihood = static_cast<float>(
         ndt_ptr->calculateNearestVoxelTransformationLikelihood(*no_ground_points_in_map_ptr));
+#endif
       // pub score
       no_ground_transform_probability_pub_->publish(
         make_float32_stamped(sensor_ros_time, no_ground_transform_probability));
@@ -1067,7 +1164,28 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr NDTScanMatcher::visualize_point_score(
   const float & lower_nvs, const float & upper_nvs, NormalDistributionsTransform & ndt_ref)
 {
   pcl::PointCloud<pcl::PointXYZI> nvs_points_in_map_ptr_i;
+#ifdef NDT_USE_RUST
+  // N4c: per-point nearest-voxel score via the engine FFI (the adapter's calculateNearestVoxelScore-
+  // EachPoint body); include only points that found a neighbor (score > 0), as the C++ output does.
+  {
+    const std::vector<float> flat = cloud_to_flat(*sensor_points_in_map_ptr);
+    std::vector<float> scores(sensor_points_in_map_ptr->size(), 0.0F);
+    autoware_ndt_scan_matcher_rs_ndt_engine_calc_nearest_voxel_score_each_point(
+      ndt_ref.raw_handle(), flat.data(), sensor_points_in_map_ptr->size(), scores.data());
+    for (std::size_t i = 0; i < sensor_points_in_map_ptr->size(); ++i) {
+      if (scores[i] > 0.0F) {
+        pcl::PointXYZI p;
+        p.x = sensor_points_in_map_ptr->points[i].x;  // NOLINT
+        p.y = sensor_points_in_map_ptr->points[i].y;  // NOLINT
+        p.z = sensor_points_in_map_ptr->points[i].z;  // NOLINT
+        p.intensity = scores[i];
+        nvs_points_in_map_ptr_i.points.push_back(p);
+      }
+    }
+  }
+#else
   nvs_points_in_map_ptr_i = ndt_ref.calculateNearestVoxelScoreEachPoint(*sensor_points_in_map_ptr);
+#endif
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr nvs_points_in_map_ptr_rgb{
     new pcl::PointCloud<pcl::PointXYZRGB>};
 
@@ -1090,7 +1208,12 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr NDTScanMatcher::visualize_point_score(
 void NDTScanMatcher::add_regularization_pose(
   const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform & ndt_ref)
 {
+#ifdef NDT_USE_RUST
+  // N4c: regularization set/unset via the engine FFI (scale == 0 disables), driving the handle.
+  autoware_ndt_scan_matcher_rs_ndt_engine_set_regularization(ndt_ref.raw_handle(), 0.0F, 0.0F, 0.0F);
+#else
   ndt_ref.unsetRegularizationPose();
+#endif
   std::optional<SmartPoseBuffer::InterpolateResult> interpolation_result_opt =
     regularization_pose_buffer_->interpolate(sensor_ros_time);
   if (!interpolation_result_opt) {
@@ -1100,7 +1223,12 @@ void NDTScanMatcher::add_regularization_pose(
   const SmartPoseBuffer::InterpolateResult & interpolation_result =
     interpolation_result_opt.value();
   const Eigen::Matrix4f pose = pose_to_matrix4f(interpolation_result.interpolated_pose.pose.pose);
+#ifdef NDT_USE_RUST
+  autoware_ndt_scan_matcher_rs_ndt_engine_set_regularization(
+    ndt_ref.raw_handle(), pose(0, 3), pose(1, 3), param_.ndt.regularization_scale_factor);
+#else
   ndt_ref.setRegularizationPose(pose);
+#endif
 }
 
 #ifdef NDT_USE_RUST
