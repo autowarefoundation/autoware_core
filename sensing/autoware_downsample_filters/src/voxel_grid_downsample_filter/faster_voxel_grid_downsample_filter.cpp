@@ -24,19 +24,6 @@
 namespace autoware::downsample_filters
 {
 
-namespace
-{
-int find_field_index(const sensor_msgs::msg::PointCloud2 & cloud, const std::string & field_name)
-{
-  for (size_t i = 0; i < cloud.fields.size(); ++i) {
-    if (cloud.fields[i].name == field_name) {
-      return static_cast<int>(i);
-    }
-  }
-  return -1;
-}
-}  // namespace
-
 FasterVoxelGridDownsampleFilter::FasterVoxelGridDownsampleFilter()
 {
 }
@@ -51,22 +38,6 @@ void FasterVoxelGridDownsampleFilter::set_voxel_size(
 ValidationResult FasterVoxelGridDownsampleFilter::filter(
   const PointCloud2ConstPtr & input, PointCloud2 & output)
 {
-  const int x_index = find_field_index(*input, "x");
-  const int y_index = find_field_index(*input, "y");
-  const int z_index = find_field_index(*input, "z");
-  const int intensity_index = find_field_index(*input, "intensity");
-
-  if (x_index < 0 || y_index < 0 || z_index < 0) {
-    return {false, "The input point cloud does not have required x, y, z fields."};
-  }
-  if (intensity_index < 0) {
-    return {false, "There is no intensity field in the input point cloud."};
-  }
-  if (
-    input->fields[static_cast<size_t>(intensity_index)].datatype !=
-    sensor_msgs::msg::PointField::UINT8) {
-    return {false, "The intensity field in the input point cloud is not of type UINT8."};
-  }
 
   // Compute the voxel-space bounds of all valid points.
   Eigen::Vector3i min_voxel, max_voxel;
@@ -177,7 +148,7 @@ FasterVoxelGridDownsampleFilter::calc_centroids_each_voxel(
 }
 
 void FasterVoxelGridDownsampleFilter::copy_centroids_to_output(
-  const std::unordered_map<uint32_t, Centroid> & voxel_centroid_map, PointCloud2 & output) const
+  const std::unordered_map<uint32_t, Centroid> & voxel_centroid_map, PointCloud2 & output)
 {
   sensor_msgs::PointCloud2Iterator<float> output_x(output, "x");
   sensor_msgs::PointCloud2Iterator<float> output_y(output, "y");
