@@ -38,7 +38,6 @@ void FasterVoxelGridDownsampleFilter::set_voxel_size(
 ValidationResult FasterVoxelGridDownsampleFilter::filter(
   const PointCloud2ConstPtr & input, PointCloud2 & output)
 {
-
   // Compute the voxel-space bounds of all valid points.
   Eigen::Vector3i min_voxel, max_voxel;
   if (!get_min_max_voxel(input, min_voxel, max_voxel)) {
