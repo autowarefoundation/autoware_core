@@ -158,6 +158,45 @@ typedef struct
 void autoware_ndt_scan_matcher_rs_ndt_align(
   const AwNdtAlignInput * input, const AwNdtAlignOutput * output);
 
+// --- multi-NDT covariance estimation (E5) ---
+
+// Flat inputs for the multi-NDT covariance estimators. Clouds are xyz f32 triples; `main_pose` is
+// 16 floats (row-major 4x4); `offset_x`/`offset_y` are `n_offsets` doubles each. `main_nvtl` /
+// `temperature` are only read by the _score variant. Field order/layout must match the Rust
+// `#[repr(C)] AwMultiNdtCovInput`.
+typedef struct
+{
+  const float * target_xyz;
+  size_t n_target;
+  const float * source_xyz;
+  size_t n_source;
+  const float * main_pose;
+  const double * offset_x;
+  const double * offset_y;
+  size_t n_offsets;
+  double resolution;
+  double step_size;
+  double trans_epsilon;
+  int32_t max_iterations;
+  double outlier_ratio;
+  double main_nvtl;
+  double temperature;
+} AwMultiNdtCovInput;
+
+// MULTI_NDT: re-align from each candidate pose; uniform weights; unbiased (n-1)/n covariance.
+// MULTI_NDT_SCORE: score (no re-align) each candidate; temperature softmax weights.
+// Both write `out_mean` (2 doubles) and `out_cov` (4 doubles, row-major 2x2). No-op if null.
+void autoware_ndt_scan_matcher_rs_estimate_cov_multi_ndt(
+  const AwMultiNdtCovInput * input, double * out_mean, double * out_cov);
+void autoware_ndt_scan_matcher_rs_estimate_cov_multi_ndt_score(
+  const AwMultiNdtCovInput * input, double * out_mean, double * out_cov);
+
+// Candidate poses around `main_pose` (16 floats): `out_poses` receives `n * 16` floats (row-major
+// 4x4 each). `offset_x`/`offset_y` are `n` doubles. No-op if any pointer is null.
+void autoware_ndt_scan_matcher_rs_propose_poses_to_search(
+  const float * main_pose, const double * offset_x, const double * offset_y, size_t n,
+  float * out_poses);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

@@ -147,18 +147,17 @@ pub fn se3_matrix_f32(p: &Vector6<f64>) -> Matrix4<f32> {
     m
 }
 
-/// Transform `source` by the pose of `p` into the reused buffer `out`, in **f32** — mirrors the C++
-/// `pcl::transformPointCloud(source, trans_cloud, final_transformation_)`. Clears + reserves `out`
-/// (capacity is retained across calls), so after the first call this performs no allocation.
+/// Transform `source` by a 4x4 affine `m` into the reused buffer `out`, in **f32** — mirrors the C++
+/// `pcl::transformPointCloud(source, out, m)` (`R·x + t` from the matrix directly). Clears + reserves
+/// `out` (capacity is retained across calls), so after the first call this performs no allocation.
 #[allow(
     clippy::arithmetic_side_effects,
     clippy::indexing_slicing,
     clippy::many_single_char_names,
     clippy::allow_attributes,
-    reason = "nalgebra f64/f32 matrix math; constant indices into a fixed-size Matrix4; m/r/t/v locals"
+    reason = "nalgebra f32 matrix math; constant indices into a fixed-size Matrix4; m/r/t/v locals"
 )]
-pub fn transform_cloud_f32(p: &Vector6<f64>, source: &[[f32; 3]], out: &mut Vec<[f32; 3]>) {
-    let m = se3_matrix_f32(p);
+pub fn transform_cloud_by_matrix(m: &Matrix4<f32>, source: &[[f32; 3]], out: &mut Vec<[f32; 3]>) {
     let r = m.fixed_view::<3, 3>(0, 0).into_owned();
     let t = Vector3::new(m[(0, 3)], m[(1, 3)], m[(2, 3)]);
     out.clear();
@@ -167,6 +166,13 @@ pub fn transform_cloud_f32(p: &Vector6<f64>, source: &[[f32; 3]], out: &mut Vec<
         let v = r * Vector3::new(sx, sy, sz) + t;
         out.push([v.x, v.y, v.z]);
     }
+}
+
+/// Transform `source` by the pose of `p` into the reused buffer `out`, in **f32** — mirrors the C++
+/// `pcl::transformPointCloud(source, trans_cloud, final_transformation_)`. Builds the `Matrix4f`
+/// (C++ parity) and delegates to [`transform_cloud_by_matrix`].
+pub fn transform_cloud_f32(p: &Vector6<f64>, source: &[[f32; 3]], out: &mut Vec<[f32; 3]>) {
+    transform_cloud_by_matrix(&se3_matrix_f32(p), source, out);
 }
 
 #[cfg(test)]

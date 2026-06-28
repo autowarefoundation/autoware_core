@@ -22,6 +22,7 @@ extern crate alloc;
 
 // Public API: the pure ports are reused by the Track B engine and exercised by unit tests,
 // independently of whether the `ros` FFI shims are built.
+pub mod cov_estimate;
 pub mod covariance;
 pub mod derivatives;
 pub mod helper;

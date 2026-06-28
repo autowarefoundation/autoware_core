@@ -180,6 +180,15 @@ if(BUILD_TESTING)
       multigrid_ndt_omp ${PCL_LIBRARIES} autoware_ndt_scan_matcher_rs)
     target_include_directories(test_align PRIVATE
       ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/include)
+
+    # 5. Differential test: Rust multi-NDT covariance estimation (FFI) vs C++ pclomp (engine port E5).
+    ament_auto_add_gtest(test_estimate_covariance_multi
+      test/test_estimate_covariance_multi.cpp
+    )
+    target_link_libraries(test_estimate_covariance_multi
+      multigrid_ndt_omp ${PCL_LIBRARIES} autoware_ndt_scan_matcher_rs)
+    target_include_directories(test_estimate_covariance_multi PRIVATE
+      ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/include)
   endif()
 endif()
 
