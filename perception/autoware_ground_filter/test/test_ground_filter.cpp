@@ -456,18 +456,18 @@ TEST_F(GroundFilterRadialTest, RadialGroupingAndSorting)
 // - Point C (5, 0, 2.0) : non-ground (slope ~21.8 deg, height 2.0 > 0.2)
 TEST_F(GroundFilterRadialTest, ClassifyLocalAndGlobalSlopes)
 {
-  autoware::point_types::PointXYZIRC p0, p1, p2;
-  p0.x = 3.0f;
-  p0.y = 0.0f;
-  p0.z = 0.0f;
-  p1.x = 4.0f;
-  p1.y = 0.0f;
-  p1.z = 0.6f;
-  p2.x = 5.0f;
-  p2.y = 0.0f;
-  p2.z = 2.0f;
+  autoware::point_types::PointXYZIRC pA, pB, pC;
+  pA.x = 3.0f;
+  pA.y = 0.0f;
+  pA.z = 0.0f;
+  pB.x = 4.0f;
+  pB.y = 0.0f;
+  pB.z = 0.6f;
+  pC.x = 5.0f;
+  pC.y = 0.0f;
+  pC.z = 2.0f;
 
-  auto cloud = create_point_cloud({p0, p1, p2});
+  auto cloud = create_point_cloud({pA, pB, pC});
   auto result = filter_->filter(cloud);
 
   // Expect filter to succeed
@@ -491,35 +491,36 @@ TEST_F(GroundFilterRadialTest, ClassifyLocalAndGlobalSlopes)
 // I designed first 2 points to be kinda close so that the second one is considered "following" the
 // first one, while the third point is far away and should be classified as non-ground.
 // Expects:
-// - Point (3, 0, 0) : ground
-// - Point (3.05, 0, 0.02) : ground too, following above
-// - Point (3.10, 0, 2.0) : non-ground
+// - Point A (3, 0, 0) : ground
+// - Point B (3.05, 0, 0.02) : ground too, following above
+// - Point C (3.10, 0, 2.0) : non-ground
 TEST_F(GroundFilterRadialTest, ClassifyPointFollowLogic)
 {
-  autoware::point_types::PointXYZIRC p0, p1, p2;
-  p0.x = 3.0f;
-  p0.y = 0.0f;
-  p0.z = 0.0f;
-  p1.x = 3.05f;
-  p1.y = 0.0f;
-  p1.z = 0.02f;
-  p2.x = 3.10f;
-  p2.y = 0.0f;
-  p2.z = 2.0f;
+  autoware::point_types::PointXYZIRC pA, pB, pC;
+  pA.x = 3.0f;
+  pA.y = 0.0f;
+  pA.z = 0.0f;
+  pB.x = 3.05f;
+  pB.y = 0.0f;
+  pB.z = 0.02f;
+  pC.x = 3.10f;
+  pC.y = 0.0f;
+  pC.z = 2.0f;
 
-  auto cloud = create_point_cloud({p0, p1, p2});
-  filter_->setDataAccessor(cloud);
+  auto cloud = create_point_cloud({pA, pB, pC});
+  auto result = filter_->filter(cloud);
 
-  std::vector<PointCloudVector> radial_ordered;
-  convert_point_cloud(cloud, radial_ordered);
+  // Expect filter to succeed
+  ASSERT_TRUE(result.has_value()) << result.error();
 
-  pcl::PointIndices out_indices;
-  classify_point_cloud(cloud, radial_ordered, out_indices);
+  // Convert output ROS message back to PCL to check actual data
+  pcl::PointCloud<autoware::point_types::PointXYZIRC> out_cloud;
+  pcl::fromROSMsg(result.value(), out_cloud);
 
-  // Expect 1 non-ground point being index 2.
-  EXPECT_EQ(out_indices.indices.size(), 1U);
-  const uint32_t point_step = cloud->point_step;
-  EXPECT_EQ(out_indices.indices[0], 2U * point_step);
+  // Expect 1 non-ground point being C
+  ASSERT_EQ(out_cloud.points.size(), 1U);
+  EXPECT_NEAR(out_cloud.points[0].x, 3.10f, near_tol);
+  EXPECT_NEAR(out_cloud.points[0].z, 2.0f, near_tol);
 }
 
 int main(int argc, char ** argv)
