@@ -41,12 +41,73 @@ pub struct NdtHost {
     set_latest_ekf_position: extern "C" fn(*mut c_void, f64, f64, f64),
 }
 
-/// Migrated body of `service_trigger_node`: set the activation flag, and on enable clear the
-/// initial-pose buffer (so stale poses don't survive a re-activation). The C++ wrapper keeps the
-/// diagnostics around this core.
+/// A node callback's `DiagnosticsInterface` (the `/diagnostics` status it builds + publishes), as a
+/// C-ABI vtable over an opaque handle (the `DiagnosticsInterface*`). Built C++-side via
+/// `make_diagnostics`; lets a Rust-owned callback emit the exact same diagnostics the C++ body did
+/// (key order + values preserved). Keys/messages cross as `(ptr, len)` (UTF-8, not NUL-terminated).
+/// Field order must match the C `AwDiagnostics` struct. The full vtable mirrors the C++
+/// `DiagnosticsInterface` (all 7 ops); the safe wrapper methods below are the diagnostics surface for
+/// every migrated callback — `on_trigger` (slice 1) uses 4; the rest (`add_f64`/`add_str`/
+/// `update_level`) are the public API later callback slices build on.
+#[repr(C)]
+pub struct Diagnostics {
+    diag: *mut c_void,
+    /// `clear()` — reset the status to OK with no key-values.
+    clear: extern "C" fn(*mut c_void),
+    /// `add_key_value(key, bool)`.
+    add_key_value_bool: extern "C" fn(*mut c_void, *const u8, usize, bool),
+    /// `add_key_value(key, int64)`.
+    add_key_value_i64: extern "C" fn(*mut c_void, *const u8, usize, i64),
+    /// `add_key_value(key, double)`.
+    add_key_value_f64: extern "C" fn(*mut c_void, *const u8, usize, f64),
+    /// `add_key_value(key, std::string)`.
+    add_key_value_str: extern "C" fn(*mut c_void, *const u8, usize, *const u8, usize),
+    /// `update_level_and_message(level, msg)` (`level` = `DiagnosticStatus` byte: 1 WARN, 2 ERROR).
+    update_level_and_message: extern "C" fn(*mut c_void, i8, *const u8, usize),
+    /// `publish(rclcpp::Time(stamp_nanoseconds))`.
+    publish: extern "C" fn(*mut c_void, i64),
+}
+
+/// `DiagnosticStatus` severity bytes (mirrors `diagnostic_msgs::msg::DiagnosticStatus`).
+pub const DIAGNOSTIC_WARN: i8 = 1;
+pub const DIAGNOSTIC_ERROR: i8 = 2;
+
+impl Diagnostics {
+    /// `clear()`. (Methods just forward to the vtable fn-pointers, which are safe to call; the raw
+    /// `diag` handle is dereferenced only inside the C++ trampolines.)
+    pub fn reset(&self) {
+        (self.clear)(self.diag);
+    }
+    pub fn add_bool(&self, key: &str, v: bool) {
+        (self.add_key_value_bool)(self.diag, key.as_ptr(), key.len(), v);
+    }
+    pub fn add_i64(&self, key: &str, v: i64) {
+        (self.add_key_value_i64)(self.diag, key.as_ptr(), key.len(), v);
+    }
+    pub fn add_f64(&self, key: &str, v: f64) {
+        (self.add_key_value_f64)(self.diag, key.as_ptr(), key.len(), v);
+    }
+    pub fn add_str(&self, key: &str, v: &str) {
+        (self.add_key_value_str)(self.diag, key.as_ptr(), key.len(), v.as_ptr(), v.len());
+    }
+    pub fn update_level(&self, level: i8, msg: &str) {
+        (self.update_level_and_message)(self.diag, level, msg.as_ptr(), msg.len());
+    }
+    pub fn publish_at(&self, stamp_ns: i64) {
+        (self.publish)(self.diag, stamp_ns);
+    }
+}
+
+/// The whole body of `service_trigger_node` (callback-level): build the diagnostics (clear +
+/// `service_call_time_stamp`), set the activation flag (and on enable clear the initial-pose buffer so
+/// stale poses don't survive a re-activation), emit the `is_activated` / `is_succeed_service`
+/// key-values, and publish — all through the host + diagnostics vtables. Returns `res->success` (the
+/// C++ wrapper just assigns it). `now_ns` is `this->now().nanoseconds()` (the call timestamp + publish
+/// stamp). Mirrors the C++ body's key order/values exactly.
 ///
 /// # Safety
-/// `host` is a valid [`NdtHost`] (or null → no-op) whose function pointers and `ctx` outlive the call.
+/// `host`/`diag` are valid (or either null → returns `false`, no effect) and their fn-pointers + `ctx`/
+/// `diag` handle outlive the call.
 #[expect(
     unsafe_code,
     reason = "C ABI host-interface boundary; validated per rust-c-ffi-safety"
@@ -54,17 +115,25 @@ pub struct NdtHost {
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_on_trigger(
     host: *const NdtHost,
+    diag: *const Diagnostics,
     activate: bool,
-) {
-    if host.is_null() {
-        return;
+    now_ns: i64,
+) -> bool {
+    if host.is_null() || diag.is_null() {
+        return false;
     }
-    // SAFETY: non-null per the check; caller guarantees a valid host whose ctx/fn-pointers are live.
-    let h = unsafe { &*host };
+    // SAFETY: non-null per the check; caller guarantees valid, live host + diagnostics handles.
+    let (h, d) = unsafe { (&*host, &*diag) };
+    d.reset();
+    d.add_i64("service_call_time_stamp", now_ns);
     (h.set_activated)(h.ctx, activate);
     if activate {
         (h.clear_initial_pose_buffer)(h.ctx);
     }
+    d.add_bool("is_activated", activate);
+    d.add_bool("is_succeed_service", true);
+    d.publish_at(now_ns);
+    true
 }
 
 /// Outcome of [`autoware_ndt_scan_matcher_rs_node_on_initial_pose`]; the C++ wrapper maps it to the
@@ -441,11 +510,12 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_evaluate_map_update(
 #[cfg(test)]
 #[allow(
     unsafe_code,
+    dead_code,
     clippy::borrow_as_ptr,
     clippy::float_cmp,
     clippy::arithmetic_side_effects,
     clippy::allow_attributes,
-    reason = "test code: mock-host C ABI calls; exact-equal float asserts on deterministic passthrough; counter increments"
+    reason = "test code: mock-host C ABI calls; the diagnostics mock provides all 7 vtable ops (some unused per test); exact-equal float asserts on deterministic passthrough; counter increments"
 )]
 mod tests {
     use super::*;
@@ -705,26 +775,122 @@ mod tests {
         core::ptr::addr_of!(MARKER).cast::<c_void>()
     }
 
-    #[test]
-    fn on_trigger_sets_flag_and_clears_only_on_activate() {
-        let mut r = Recorder::default();
-        let h = host(&mut r);
+    // Mock diagnostics: each vtable op appends a human-readable event so a callback's full diagnostics
+    // sequence (order + keys + values) can be asserted. `diag` points at a per-test `DiagRecorder`.
+    #[derive(Default)]
+    struct DiagRecorder {
+        events: alloc::vec::Vec<alloc::string::String>,
+    }
+    fn drec<'a>(diag: *mut c_void) -> &'a mut DiagRecorder {
+        // SAFETY: in these tests `diag` always points to a live `DiagRecorder` (set via `diagnostics`).
+        unsafe { &mut *diag.cast::<DiagRecorder>() }
+    }
+    fn key_of(ptr: *const u8, len: usize) -> alloc::string::String {
+        // SAFETY: the mock is always called with a valid (ptr, len) UTF-8 key/message from Rust.
+        let bytes = unsafe { core::slice::from_raw_parts(ptr, len) };
+        alloc::string::String::from_utf8_lossy(bytes).into_owned()
+    }
+    extern "C" fn t_diag_clear(diag: *mut c_void) {
+        drec(diag).events.push("clear".into());
+    }
+    extern "C" fn t_diag_add_bool(diag: *mut c_void, k: *const u8, klen: usize, v: bool) {
+        drec(diag)
+            .events
+            .push(format!("bool {}={}", key_of(k, klen), v));
+    }
+    extern "C" fn t_diag_add_i64(diag: *mut c_void, k: *const u8, klen: usize, v: i64) {
+        drec(diag)
+            .events
+            .push(format!("i64 {}={}", key_of(k, klen), v));
+    }
+    extern "C" fn t_diag_add_f64(diag: *mut c_void, k: *const u8, klen: usize, v: f64) {
+        drec(diag)
+            .events
+            .push(format!("f64 {}={}", key_of(k, klen), v));
+    }
+    extern "C" fn t_diag_add_str(
+        diag: *mut c_void,
+        k: *const u8,
+        klen: usize,
+        v: *const u8,
+        vlen: usize,
+    ) {
+        drec(diag)
+            .events
+            .push(format!("str {}={}", key_of(k, klen), key_of(v, vlen)));
+    }
+    extern "C" fn t_diag_update_level(diag: *mut c_void, level: i8, msg: *const u8, mlen: usize) {
+        drec(diag)
+            .events
+            .push(format!("level {} {}", level, key_of(msg, mlen)));
+    }
+    extern "C" fn t_diag_publish(diag: *mut c_void, stamp_ns: i64) {
+        drec(diag).events.push(format!("publish {stamp_ns}"));
+    }
+    fn diagnostics(d: &mut DiagRecorder) -> Diagnostics {
+        Diagnostics {
+            diag: core::ptr::from_mut(d).cast::<c_void>(),
+            clear: t_diag_clear,
+            add_key_value_bool: t_diag_add_bool,
+            add_key_value_i64: t_diag_add_i64,
+            add_key_value_f64: t_diag_add_f64,
+            add_key_value_str: t_diag_add_str,
+            update_level_and_message: t_diag_update_level,
+            publish: t_diag_publish,
+        }
+    }
 
-        // activate: flag set true, buffer cleared once.
-        // SAFETY: `h` is a valid NdtHost living for the call.
-        unsafe { autoware_ndt_scan_matcher_rs_node_on_trigger(&h, true) };
+    #[test]
+    fn on_trigger_runs_full_body_and_emits_diagnostics() {
+        let mut r = Recorder::default();
+        let mut dr = DiagRecorder::default();
+        let h = host(&mut r);
+        let d = diagnostics(&mut dr);
+
+        // activate: flag true, buffer cleared once, full diagnostics sequence in order.
+        // SAFETY: `h`/`d` are valid for the call.
+        let ok = unsafe { autoware_ndt_scan_matcher_rs_node_on_trigger(&h, &d, true, 123) };
+        assert!(ok);
         assert!(r.activated);
         assert_eq!(r.clears, 1);
+        assert_eq!(
+            dr.events,
+            alloc::vec![
+                "clear".to_string(),
+                "i64 service_call_time_stamp=123".to_string(),
+                "bool is_activated=true".to_string(),
+                "bool is_succeed_service=true".to_string(),
+                "publish 123".to_string(),
+            ]
+        );
 
-        // deactivate: flag set false, buffer NOT cleared again.
+        // deactivate: flag false, buffer NOT cleared again; same diagnostics shape with is_activated=false.
+        dr.events.clear();
         // SAFETY: as above.
-        unsafe { autoware_ndt_scan_matcher_rs_node_on_trigger(&h, false) };
+        let ok2 = unsafe { autoware_ndt_scan_matcher_rs_node_on_trigger(&h, &d, false, 456) };
+        assert!(ok2);
         assert!(!r.activated);
         assert_eq!(r.clears, 1);
+        assert_eq!(
+            dr.events,
+            alloc::vec![
+                "clear".to_string(),
+                "i64 service_call_time_stamp=456".to_string(),
+                "bool is_activated=false".to_string(),
+                "bool is_succeed_service=true".to_string(),
+                "publish 456".to_string(),
+            ]
+        );
 
-        // null host is a no-op (no panic).
+        // null host or null diagnostics → returns false, no effect.
         // SAFETY: passing null is explicitly handled.
-        unsafe { autoware_ndt_scan_matcher_rs_node_on_trigger(core::ptr::null(), true) };
+        assert!(!unsafe {
+            autoware_ndt_scan_matcher_rs_node_on_trigger(core::ptr::null(), &d, true, 0)
+        });
+        // SAFETY: as above.
+        assert!(!unsafe {
+            autoware_ndt_scan_matcher_rs_node_on_trigger(&h, core::ptr::null(), true, 0)
+        });
         assert_eq!(r.clears, 1);
     }
 

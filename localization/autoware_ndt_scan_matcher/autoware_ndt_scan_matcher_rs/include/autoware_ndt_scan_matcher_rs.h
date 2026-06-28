@@ -294,9 +294,31 @@ typedef struct
   void (*set_latest_ekf_position)(void * ctx, double x, double y, double z);
 } AwNdtHost;
 
-// Migrated body of service_trigger_node: set the activation flag; clear the initial-pose buffer on
-// enable. No-op if `host` is null. The C++ wrapper keeps the diagnostics around this call.
-void autoware_ndt_scan_matcher_rs_node_on_trigger(const AwNdtHost * host, bool activate);
+// A node callback's DiagnosticsInterface, as C function pointers over an opaque handle (the
+// DiagnosticsInterface*, set by the C++ side via make_diagnostics). Lets a Rust-owned callback emit
+// the exact same /diagnostics the C++ body did. Keys/messages are `(ptr, len)` UTF-8 (not
+// NUL-terminated). Field order must match the Rust `Diagnostics`.
+typedef struct
+{
+  void * diag;
+  void (*clear)(void * diag);
+  void (*add_key_value_bool)(void * diag, const uint8_t * key, size_t key_len, bool v);
+  void (*add_key_value_i64)(void * diag, const uint8_t * key, size_t key_len, int64_t v);
+  void (*add_key_value_f64)(void * diag, const uint8_t * key, size_t key_len, double v);
+  void (*add_key_value_str)(
+    void * diag, const uint8_t * key, size_t key_len, const uint8_t * val, size_t val_len);
+  void (*update_level_and_message)(
+    void * diag, int8_t level, const uint8_t * msg, size_t msg_len);
+  void (*publish)(void * diag, int64_t stamp_nanoseconds);
+} AwDiagnostics;
+
+// The whole body of service_trigger_node (callback-level): builds the diagnostics (clear +
+// service_call_time_stamp), sets the activation flag (+ clears the initial-pose buffer on enable),
+// emits is_activated / is_succeed_service, and publishes — all via the host + diagnostics vtables.
+// Returns res->success (the C++ wrapper just assigns it). `now_ns` is this->now().nanoseconds().
+// Returns false (no effect) if `host`/`diag` is null.
+bool autoware_ndt_scan_matcher_rs_node_on_trigger(
+  const AwNdtHost * host, const AwDiagnostics * diag, bool activate, int64_t now_ns);
 
 // Migrated body of callback_initial_pose_main: gate on activation, then on the message frame_id
 // matching the map frame; on acceptance push `msg` (an opaque token forwarded to push_initial_pose,

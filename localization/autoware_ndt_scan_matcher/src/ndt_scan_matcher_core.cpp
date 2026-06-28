@@ -1286,6 +1286,64 @@ AwNdtHost NDTScanMatcher::make_host()
     &NDTScanMatcher::host_push_regularization_pose,
     &NDTScanMatcher::host_set_latest_ekf_position};
 }
+
+namespace
+{
+// Diagnostics host-interface trampolines: cast the opaque handle back to DiagnosticsInterface* and
+// forward. Keys/messages arrive as (ptr, len) UTF-8 (not NUL-terminated). A migrated Rust callback
+// emits its /diagnostics through these, preserving the C++ key order/values.
+DiagnosticsInterface * as_diag(void * d)
+{
+  return static_cast<DiagnosticsInterface *>(d);
+}
+std::string as_str(const std::uint8_t * p, std::size_t len)
+{
+  return std::string(reinterpret_cast<const char *>(p), len);
+}
+void diag_clear(void * d)
+{
+  as_diag(d)->clear();
+}
+void diag_add_key_value_bool(void * d, const std::uint8_t * key, std::size_t key_len, bool v)
+{
+  as_diag(d)->add_key_value(as_str(key, key_len), v);
+}
+void diag_add_key_value_i64(void * d, const std::uint8_t * key, std::size_t key_len, std::int64_t v)
+{
+  as_diag(d)->add_key_value(as_str(key, key_len), v);
+}
+void diag_add_key_value_f64(void * d, const std::uint8_t * key, std::size_t key_len, double v)
+{
+  as_diag(d)->add_key_value(as_str(key, key_len), v);
+}
+void diag_add_key_value_str(
+  void * d, const std::uint8_t * key, std::size_t key_len, const std::uint8_t * val,
+  std::size_t val_len)
+{
+  as_diag(d)->add_key_value(as_str(key, key_len), as_str(val, val_len));
+}
+void diag_update_level_and_message(
+  void * d, std::int8_t level, const std::uint8_t * msg, std::size_t msg_len)
+{
+  as_diag(d)->update_level_and_message(level, as_str(msg, msg_len));
+}
+void diag_publish(void * d, std::int64_t stamp_ns)
+{
+  as_diag(d)->publish(rclcpp::Time(stamp_ns));
+}
+AwDiagnostics make_diagnostics(DiagnosticsInterface * d)
+{
+  return AwDiagnostics{
+    d,
+    diag_clear,
+    diag_add_key_value_bool,
+    diag_add_key_value_i64,
+    diag_add_key_value_f64,
+    diag_add_key_value_str,
+    diag_update_level_and_message,
+    diag_publish};
+}
+}  // namespace
 #endif
 
 void NDTScanMatcher::service_trigger_node(
@@ -1294,24 +1352,27 @@ void NDTScanMatcher::service_trigger_node(
 {
   const rclcpp::Time ros_time_now = this->now();
 
+#ifdef NDT_USE_RUST
+  // Callback-level (slice 1): the whole body — diagnostics + activation + buffer clear — runs in Rust
+  // via the host + diagnostics vtables. The C++ shell only builds the handles and assigns res->success.
+  const AwNdtHost host = make_host();
+  const AwDiagnostics diag = make_diagnostics(diagnostics_trigger_node_.get());
+  res->success = autoware_ndt_scan_matcher_rs_node_on_trigger(
+    &host, &diag, req->data, ros_time_now.nanoseconds());
+#else
   diagnostics_trigger_node_->clear();
   diagnostics_trigger_node_->add_key_value("service_call_time_stamp", ros_time_now.nanoseconds());
 
-#ifdef NDT_USE_RUST
-  // Migrated to Rust (Phase N0): set the flag + clear the buffer via the host interface.
-  const AwNdtHost host = make_host();
-  autoware_ndt_scan_matcher_rs_node_on_trigger(&host, req->data);
-#else
   is_activated_ = req->data;
   if (is_activated_) {
     initial_pose_buffer_->clear();
   }
-#endif
   res->success = true;
 
   diagnostics_trigger_node_->add_key_value("is_activated", static_cast<bool>(is_activated_));
   diagnostics_trigger_node_->add_key_value("is_succeed_service", res->success);
   diagnostics_trigger_node_->publish(ros_time_now);
+#endif
 }
 
 void NDTScanMatcher::service_ndt_align(
