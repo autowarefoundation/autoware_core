@@ -267,6 +267,41 @@ typedef struct
 // enable. No-op if `host` is null. The C++ wrapper keeps the diagnostics around this call.
 void autoware_ndt_scan_matcher_rs_node_on_trigger(const AwNdtHost * host, bool activate);
 
+// Inputs to the NDT convergence decision (the relevant scalars of one align result + the
+// `score_estimation` params). `oscillation_num` is precomputed by the caller (the count_oscillation
+// port). `converged_param_type`: 0 = TRANSFORM_PROBABILITY, 1 = NEAREST_VOXEL_..._LIKELIHOOD. Field
+// order/layout must match the Rust `#[repr(C)] AwConvergenceInput`.
+typedef struct
+{
+  int32_t iteration_num;
+  int32_t max_iterations;
+  int32_t oscillation_num;
+  double transform_probability;
+  double nearest_voxel_transformation_likelihood;
+  int32_t converged_param_type;
+  double converged_param_transform_probability;
+  double converged_param_nearest_voxel_transformation_likelihood;
+} AwConvergenceInput;
+
+// Convergence verdict + the sub-flags the C++ side uses to drive its diagnostics. `valid_param_type`
+// is false on an unknown `converged_param_type` (the caller then emits an ERROR diagnostic + aborts
+// the callback; other fields unset). Field order must match the Rust `#[repr(C)] AwConvergenceVerdict`.
+typedef struct
+{
+  bool valid_param_type;
+  bool is_ok_iteration_num;
+  bool is_local_optimal_solution_oscillation;
+  bool is_ok_score;
+  bool is_converged;
+  double score;
+  double score_threshold;
+} AwConvergenceVerdict;
+
+// Migrated convergence decision from callback_sensor_points_main: reads `*input`, writes `*out`.
+// No-op if either pointer is null. Pure scalar logic (no node state) — bit-exact vs the C++ checks.
+void autoware_ndt_scan_matcher_rs_node_evaluate_convergence(
+  const AwConvergenceInput * input, AwConvergenceVerdict * out);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

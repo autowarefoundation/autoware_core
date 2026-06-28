@@ -462,9 +462,62 @@ bool NDTScanMatcher::callback_sensor_points_main(
       transformation_msg_array.push_back(pose_ros);
     }
 
+    // --- convergence decision: gate flags (Phase N1: computed in Rust under NDT_USE_RUST) ---
+    // The flags are computed up front; the diagnostics below read them, preserving the original
+    // /diagnostics key order. `oscillation_num` feeds the verdict, so it is computed first.
+    const int oscillation_num = count_oscillation(transformation_msg_array);
+    bool is_ok_iteration_num = false;
+    bool is_local_optimal_solution_oscillation = false;
+    bool valid_param_type = false;
+    bool is_ok_score = false;
+    bool is_converged = false;
+    double score = 0.0;
+    double score_threshold = 0.0;
+#ifdef NDT_USE_RUST
+    {
+      const AwConvergenceInput conv_in{
+        ndt_result.iteration_num,
+        ndt_ptr->getMaximumIterations(),
+        oscillation_num,
+        static_cast<double>(ndt_result.transform_probability),
+        static_cast<double>(ndt_result.nearest_voxel_transformation_likelihood),
+        static_cast<int32_t>(param_.score_estimation.converged_param_type),
+        param_.score_estimation.converged_param_transform_probability,
+        param_.score_estimation.converged_param_nearest_voxel_transformation_likelihood};
+      AwConvergenceVerdict conv{};
+      autoware_ndt_scan_matcher_rs_node_evaluate_convergence(&conv_in, &conv);
+      is_ok_iteration_num = conv.is_ok_iteration_num;
+      is_local_optimal_solution_oscillation = conv.is_local_optimal_solution_oscillation;
+      valid_param_type = conv.valid_param_type;
+      is_ok_score = conv.is_ok_score;
+      is_converged = conv.is_converged;
+      score = conv.score;
+      score_threshold = conv.score_threshold;
+    }
+#else
+    constexpr int oscillation_num_threshold = 10;
+    is_ok_iteration_num = (ndt_result.iteration_num < ndt_ptr->getMaximumIterations());
+    is_local_optimal_solution_oscillation = (oscillation_num > oscillation_num_threshold);
+    if (param_.score_estimation.converged_param_type == ConvergedParamType::TRANSFORM_PROBABILITY) {
+      valid_param_type = true;
+      score = ndt_result.transform_probability;
+      score_threshold = param_.score_estimation.converged_param_transform_probability;
+    } else if (
+      param_.score_estimation.converged_param_type ==
+      ConvergedParamType::NEAREST_VOXEL_TRANSFORMATION_LIKELIHOOD) {
+      valid_param_type = true;
+      score = ndt_result.nearest_voxel_transformation_likelihood;
+      score_threshold =
+        param_.score_estimation.converged_param_nearest_voxel_transformation_likelihood;
+    }
+    if (valid_param_type) {
+      is_ok_score = (score > score_threshold);
+      is_converged = (is_ok_iteration_num || is_local_optimal_solution_oscillation) && is_ok_score;
+    }
+#endif
+
     // check iteration_num
     diagnostics_scan_points_->add_key_value("iteration_num", ndt_result.iteration_num);
-    const bool is_ok_iteration_num = (ndt_result.iteration_num < ndt_ptr->getMaximumIterations());
     if (!is_ok_iteration_num) {
       std::stringstream message;
       message << "The number of iterations has reached its upper limit. The number of iterations: "
@@ -474,12 +527,8 @@ bool NDTScanMatcher::callback_sensor_points_main(
     }
 
     // check local_optimal_solution_oscillation_num
-    constexpr int oscillation_num_threshold = 10;
-    const int oscillation_num = count_oscillation(transformation_msg_array);
     diagnostics_scan_points_->add_key_value(
       "local_optimal_solution_oscillation_num", oscillation_num);
-    const bool is_local_optimal_solution_oscillation =
-      (oscillation_num > oscillation_num_threshold);
     if (is_local_optimal_solution_oscillation) {
       std::stringstream message;
       message << "There is a possibility of oscillation in a local minimum";
@@ -493,18 +542,7 @@ bool NDTScanMatcher::callback_sensor_points_main(
     diagnostics_scan_points_->add_key_value(
       "nearest_voxel_transformation_likelihood",
       ndt_result.nearest_voxel_transformation_likelihood);
-    double score = 0.0;
-    double score_threshold = 0.0;
-    if (param_.score_estimation.converged_param_type == ConvergedParamType::TRANSFORM_PROBABILITY) {
-      score = ndt_result.transform_probability;
-      score_threshold = param_.score_estimation.converged_param_transform_probability;
-    } else if (
-      param_.score_estimation.converged_param_type ==
-      ConvergedParamType::NEAREST_VOXEL_TRANSFORMATION_LIKELIHOOD) {
-      score = ndt_result.nearest_voxel_transformation_likelihood;
-      score_threshold =
-        param_.score_estimation.converged_param_nearest_voxel_transformation_likelihood;
-    } else {
+    if (!valid_param_type) {
       std::stringstream message;
       message
         << "Unknown converged param type. Please check `score_estimation.converged_param_type`";
@@ -546,7 +584,6 @@ bool NDTScanMatcher::callback_sensor_points_main(
         "nearest_voxel_transformation_likelihood_before", nvtl_array.front());
     }
 
-    bool is_ok_score = (score > score_threshold);
     if (!is_ok_score) {
       std::stringstream message;
       message << "Score is below the threshold. Score: " << score
@@ -556,9 +593,7 @@ bool NDTScanMatcher::callback_sensor_points_main(
       RCLCPP_WARN_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 1000, message.str());
     }
 
-    // check is_converged
-    bool is_converged =
-      (is_ok_iteration_num || is_local_optimal_solution_oscillation) && is_ok_score;
+    // (is_converged was computed with the gate flags above.)
 
     // covariance estimation
     const Eigen::Quaterniond map_to_base_link_quat = Eigen::Quaterniond(
