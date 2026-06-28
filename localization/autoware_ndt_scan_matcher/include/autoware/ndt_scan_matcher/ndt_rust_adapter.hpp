@@ -105,6 +105,11 @@ public:
     return autoware_ndt_scan_matcher_rs_ndt_engine_max_iterations(handle_);
   }
 
+  // The live Rust engine handle, for the Phase N4 sensor-callback orchestrator (run_align) to drive
+  // the engine directly. Valid only while the caller holds the engine; the orchestrator must not
+  // retain it past the call.
+  AwNdtEngine * raw_handle() const { return handle_; }
+
   void addTarget(const PointCloudTargetConstPtr & cloud, const std::string & id)
   {
     const std::vector<float> flat = to_flat(*cloud);

@@ -625,6 +625,201 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_get_score_array
     *count = tp.len() as u32;
 }
 
+// --- Phase N4a: sensor-callback align orchestrator (std-gated node glue) ---
+// Folds align + oscillation count + the convergence verdict into one Rust call against the live
+// engine, so the C++ sensor callback no longer drives align via the adapter + the C++
+// `count_oscillation` + the separate `evaluate_convergence` FFI. Reuses the existing engine align,
+// `helper::count_oscillation`, and `node::evaluate_convergence`. Uses `crate::node` (std-only), so
+// the whole orchestrator is `std`-gated and excluded from the no_std rlib.
+
+/// The `score_estimation` scalars that gate convergence (mirrors `AwConvergenceInput`'s param fields).
+#[cfg(feature = "std")]
+#[derive(Clone, Copy, Debug)]
+pub struct ConvergenceParams {
+    pub converged_param_type: i32,
+    pub converged_param_transform_probability: f64,
+    pub converged_param_nearest_voxel_transformation_likelihood: f64,
+}
+
+/// Result of [`run_align`]: the scalars + convergence verdict the C++ sensor callback needs (the
+/// variable-length arrays/marker are still read via `get_result` in N4a).
+#[cfg(feature = "std")]
+#[derive(Clone, Copy, Debug)]
+pub struct AlignOutcome {
+    pub pose: Matrix4<f32>,
+    pub transform_probability: f32,
+    pub nearest_voxel_likelihood: f32,
+    pub iteration_num: i32,
+    pub max_iterations: i32,
+    pub oscillation_num: i32,
+    pub verdict: crate::node::ConvergenceVerdict,
+}
+
+/// Align the live engine from `guess`, then derive the oscillation count (from the iteration
+/// trajectory translations, matching the C++ `count_oscillation(transformation_msg_array)`) and the
+/// convergence verdict. Pure orchestration over existing ports — no new math.
+#[cfg(feature = "std")]
+#[must_use]
+pub fn run_align(
+    engine: &mut NdtEngine,
+    guess: &Matrix4<f32>,
+    source: &[[f32; 3]],
+    conv: &ConvergenceParams,
+) -> AlignOutcome {
+    engine.align(guess, source);
+    let max_iterations = engine.max_iterations();
+    let result = engine.result();
+    let positions: alloc::vec::Vec<[f64; 3]> = result
+        .transformation_array
+        .iter()
+        .map(|m| {
+            [
+                f64::from(m[(0, 3)]),
+                f64::from(m[(1, 3)]),
+                f64::from(m[(2, 3)]),
+            ]
+        })
+        .collect();
+    let oscillation_num = crate::helper::count_oscillation(&positions);
+    let verdict = crate::node::evaluate_convergence(&crate::node::ConvergenceInput {
+        iteration_num: result.iteration_num,
+        max_iterations,
+        oscillation_num,
+        transform_probability: f64::from(result.transform_probability),
+        nearest_voxel_transformation_likelihood: f64::from(result.nearest_voxel_likelihood),
+        converged_param_type: conv.converged_param_type,
+        converged_param_transform_probability: conv.converged_param_transform_probability,
+        converged_param_nearest_voxel_transformation_likelihood: conv
+            .converged_param_nearest_voxel_transformation_likelihood,
+    });
+    AlignOutcome {
+        pose: result.pose,
+        transform_probability: result.transform_probability,
+        nearest_voxel_likelihood: result.nearest_voxel_likelihood,
+        iteration_num: result.iteration_num,
+        max_iterations,
+        oscillation_num,
+        verdict,
+    }
+}
+
+/// C ABI mirror of [`ConvergenceParams`] (same field order/types). Plain scalars.
+#[cfg(feature = "std")]
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct AwAlignParams {
+    pub converged_param_type: i32,
+    pub converged_param_transform_probability: f64,
+    pub converged_param_nearest_voxel_transformation_likelihood: f64,
+}
+
+/// C ABI result of [`autoware_ndt_scan_matcher_rs_node_run_align`]. `pose` is row-major 4x4; the
+/// embedded verdict is the existing [`crate::node::AwConvergenceVerdict`].
+#[cfg(feature = "std")]
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct AwAlignOutcome {
+    pub pose: [f32; 16],
+    pub transform_probability: f32,
+    pub nearest_voxel_likelihood: f32,
+    pub iteration_num: i32,
+    pub max_iterations: i32,
+    pub oscillation_num: i32,
+    pub verdict: crate::node::AwConvergenceVerdict,
+}
+
+/// FFI entry: align the live engine + return the scalars/verdict ([`run_align`]). No-op if any
+/// pointer is null.
+///
+/// # Safety
+/// `engine` is a valid live handle (or null → no-op). It is reborrowed as `&mut NdtEngine` for the
+/// duration of this call, so the caller MUST guarantee **exclusive, non-concurrent** access to that
+/// engine for the call: no other thread may touch the same engine (ROS 2 callbacks can run
+/// concurrently across callback groups). The node satisfies this by only ever reaching the handle
+/// inside its `Guarded<…>` engine mutex (`ndt_ptr_.with`). Rust does not retain the pointer past the
+/// call. `guess` addresses 16 `f32`, `source` `3 * n` `f32`, `params` a valid [`AwAlignParams`],
+/// `out` a writable [`AwAlignOutcome`].
+#[cfg(feature = "std")]
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; reads caller-owned guess/cloud/params, validated per rust-c-ffi-safety"
+)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_run_align(
+    engine: *mut NdtEngine,
+    guess: *const f32,
+    source: *const f32,
+    n: usize,
+    params: *const AwAlignParams,
+    out: *mut AwAlignOutcome,
+) {
+    if engine.is_null() || guess.is_null() || source.is_null() || params.is_null() || out.is_null()
+    {
+        return;
+    }
+    // SAFETY: non-null per the check; caller guarantees the documented lengths + valid structs.
+    let (eng, guess_buf, src, prm) = unsafe {
+        (
+            &mut *engine,
+            core::slice::from_raw_parts(guess, 16),
+            core::slice::from_raw_parts(source.cast::<[f32; 3]>(), n),
+            &*params,
+        )
+    };
+    let outcome = run_align(
+        eng,
+        &matrix4_from_row_major(guess_buf),
+        src,
+        &ConvergenceParams {
+            converged_param_type: prm.converged_param_type,
+            converged_param_transform_probability: prm.converged_param_transform_probability,
+            converged_param_nearest_voxel_transformation_likelihood: prm
+                .converged_param_nearest_voxel_transformation_likelihood,
+        },
+    );
+    let mat = &outcome.pose;
+    // Row-major 4x4 as an explicit literal (nalgebra `(r,c)` indexing; no array computed-index).
+    let pose = [
+        mat[(0, 0)],
+        mat[(0, 1)],
+        mat[(0, 2)],
+        mat[(0, 3)],
+        mat[(1, 0)],
+        mat[(1, 1)],
+        mat[(1, 2)],
+        mat[(1, 3)],
+        mat[(2, 0)],
+        mat[(2, 1)],
+        mat[(2, 2)],
+        mat[(2, 3)],
+        mat[(3, 0)],
+        mat[(3, 1)],
+        mat[(3, 2)],
+        mat[(3, 3)],
+    ];
+    let vd = &outcome.verdict;
+    // SAFETY: `out` is non-null per the check and a valid, writable AwAlignOutcome per the contract.
+    unsafe {
+        *out = AwAlignOutcome {
+            pose,
+            transform_probability: outcome.transform_probability,
+            nearest_voxel_likelihood: outcome.nearest_voxel_likelihood,
+            iteration_num: outcome.iteration_num,
+            max_iterations: outcome.max_iterations,
+            oscillation_num: outcome.oscillation_num,
+            verdict: crate::node::AwConvergenceVerdict {
+                valid_param_type: vd.valid_param_type,
+                is_ok_iteration_num: vd.is_ok_iteration_num,
+                is_local_optimal_solution_oscillation: vd.is_local_optimal_solution_oscillation,
+                is_ok_score: vd.is_ok_score,
+                is_converged: vd.is_converged,
+                score: vd.score,
+                score_threshold: vd.score_threshold,
+            },
+        };
+    }
+}
+
 #[cfg(test)]
 #[allow(
     unsafe_code,
@@ -702,6 +897,140 @@ mod tests {
         assert_eq!(got.hessian, want.hessian);
         assert_eq!(got.transform_probability, want.transform_probability);
         assert_eq!(got.nearest_voxel_likelihood, want.nearest_voxel_likelihood);
+    }
+
+    fn two_tile_engine() -> (NdtEngine, Vec<[f32; 3]>) {
+        let tile_a = dense_cluster(0.5, 0.5, 0.5);
+        let tile_b = dense_cluster(4.5, 0.5, 0.5);
+        let source: Vec<[f32; 3]> = tile_a
+            .iter()
+            .chain(tile_b.iter())
+            .map(|p| [p[0] + 0.1, p[1] - 0.05, p[2]])
+            .collect();
+        let mut engine = NdtEngine::new(1.0, 6, 0.01);
+        configured(&mut engine);
+        engine.add_target(&tile_a, 0);
+        engine.add_target(&tile_b, 1);
+        engine.create_kdtree();
+        (engine, source)
+    }
+
+    const TP_PARAMS: ConvergenceParams = ConvergenceParams {
+        converged_param_type: 0, // TRANSFORM_PROBABILITY
+        converged_param_transform_probability: 0.0,
+        converged_param_nearest_voxel_transformation_likelihood: 0.0,
+    };
+
+    // run_align == composing engine.align + result + helper::count_oscillation + evaluate_convergence
+    // by hand (the orchestrator adds no new math, just folds the existing ports).
+    #[test]
+    fn run_align_matches_manual_composition() {
+        let (mut engine, source) = two_tile_engine();
+        let guess = Matrix4::<f32>::identity();
+        let outcome = run_align(&mut engine, &guess, &source, &TP_PARAMS);
+
+        // Manual reference on a fresh, identically-built engine.
+        let (mut ref_engine, ref_source) = two_tile_engine();
+        ref_engine.align(&guess, &ref_source);
+        let max_it = ref_engine.max_iterations();
+        let r = ref_engine.result();
+        let positions: Vec<[f64; 3]> = r
+            .transformation_array
+            .iter()
+            .map(|m| {
+                [
+                    f64::from(m[(0, 3)]),
+                    f64::from(m[(1, 3)]),
+                    f64::from(m[(2, 3)]),
+                ]
+            })
+            .collect();
+        let osc = crate::helper::count_oscillation(&positions);
+        let verdict = crate::node::evaluate_convergence(&crate::node::ConvergenceInput {
+            iteration_num: r.iteration_num,
+            max_iterations: max_it,
+            oscillation_num: osc,
+            transform_probability: f64::from(r.transform_probability),
+            nearest_voxel_transformation_likelihood: f64::from(r.nearest_voxel_likelihood),
+            converged_param_type: 0,
+            converged_param_transform_probability: 0.0,
+            converged_param_nearest_voxel_transformation_likelihood: 0.0,
+        });
+
+        assert_eq!(outcome.pose, r.pose);
+        assert_eq!(outcome.transform_probability, r.transform_probability);
+        assert_eq!(outcome.nearest_voxel_likelihood, r.nearest_voxel_likelihood);
+        assert_eq!(outcome.iteration_num, r.iteration_num);
+        assert_eq!(outcome.max_iterations, max_it);
+        assert_eq!(outcome.oscillation_num, osc);
+        assert_eq!(outcome.verdict, verdict);
+    }
+
+    // The FFI shim writes exactly what the pure run_align computes.
+    #[test]
+    fn ffi_run_align_matches_pure() {
+        let (mut engine, source) = two_tile_engine();
+        let guess = Matrix4::<f32>::identity();
+        let pure = run_align(&mut engine, &guess, &source, &TP_PARAMS);
+
+        let (mut ffi_engine, ffi_source) = two_tile_engine();
+        let guess16 = [
+            1.0f32, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+        ];
+        let flat: Vec<f32> = ffi_source.iter().flat_map(|p| *p).collect();
+        let params = AwAlignParams {
+            converged_param_type: 0,
+            converged_param_transform_probability: 0.0,
+            converged_param_nearest_voxel_transformation_likelihood: 0.0,
+        };
+        let mut out = AwAlignOutcome::default();
+        // SAFETY: engine valid; guess 16 f32; flat 3*n f32; params/out valid.
+        unsafe {
+            autoware_ndt_scan_matcher_rs_node_run_align(
+                &mut ffi_engine,
+                guess16.as_ptr(),
+                flat.as_ptr(),
+                ffi_source.len(),
+                &params,
+                &mut out,
+            );
+        }
+        assert_eq!(out.transform_probability, pure.transform_probability);
+        assert_eq!(out.nearest_voxel_likelihood, pure.nearest_voxel_likelihood);
+        assert_eq!(out.iteration_num, pure.iteration_num);
+        assert_eq!(out.max_iterations, pure.max_iterations);
+        assert_eq!(out.oscillation_num, pure.oscillation_num);
+        assert_eq!(out.verdict.is_converged, pure.verdict.is_converged);
+        assert_eq!(out.pose[0], pure.pose[(0, 0)]);
+        assert_eq!(out.pose[3], pure.pose[(0, 3)]);
+        assert_eq!(out.pose[15], pure.pose[(3, 3)]);
+    }
+
+    // Null pointers are a no-op (no write, no panic).
+    #[test]
+    fn ffi_run_align_null_is_noop() {
+        let mut out = AwAlignOutcome {
+            iteration_num: 123,
+            ..AwAlignOutcome::default()
+        };
+        let params = AwAlignParams {
+            converged_param_type: 0,
+            converged_param_transform_probability: 0.0,
+            converged_param_nearest_voxel_transformation_likelihood: 0.0,
+        };
+        let guess16 = [0.0f32; 16];
+        // SAFETY: a null engine must leave `out` untouched.
+        unsafe {
+            autoware_ndt_scan_matcher_rs_node_run_align(
+                core::ptr::null_mut(),
+                guess16.as_ptr(),
+                guess16.as_ptr(),
+                0,
+                &params,
+                &mut out,
+            );
+        }
+        assert_eq!(out.iteration_num, 123);
     }
 
     // clone() is an independent deep copy: mutating the original's map after cloning must not affect

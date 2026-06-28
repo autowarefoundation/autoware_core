@@ -237,6 +237,16 @@ if(BUILD_TESTING)
     target_link_libraries(test_map_update_verdict autoware_ndt_scan_matcher_rs)
     target_include_directories(test_map_update_verdict PRIVATE
       ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/include)
+
+    # 11. Test: the sensor-callback align orchestrator (run_align, FFI) drives the live engine handle
+    #     and matches the adapter's own align (node port N4a).
+    ament_auto_add_gtest(test_node_run_align
+      test/test_node_run_align.cpp
+    )
+    target_link_libraries(test_node_run_align
+      multigrid_ndt_omp ${PCL_LIBRARIES} autoware_ndt_scan_matcher_rs)
+    target_include_directories(test_node_run_align PRIVATE
+      ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/include)
   endif()
 endif()
 

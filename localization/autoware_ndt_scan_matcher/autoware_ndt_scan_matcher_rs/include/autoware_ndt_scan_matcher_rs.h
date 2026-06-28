@@ -352,6 +352,37 @@ typedef struct
 void autoware_ndt_scan_matcher_rs_node_evaluate_convergence(
   const AwConvergenceInput * input, AwConvergenceVerdict * out);
 
+// `score_estimation` scalars that gate convergence (mirrors the param fields of AwConvergenceInput).
+// Field order/layout must match the Rust `#[repr(C)] AwAlignParams`.
+typedef struct
+{
+  int32_t converged_param_type;
+  double converged_param_transform_probability;
+  double converged_param_nearest_voxel_transformation_likelihood;
+} AwAlignParams;
+
+// Result of the sensor-callback align orchestrator (Phase N4a): the scalars + convergence verdict.
+// `pose` is row-major 4x4. The variable-length arrays/marker are still read via _ndt_engine_get_result.
+// Field order/layout must match the Rust `#[repr(C)] AwAlignOutcome`.
+typedef struct
+{
+  float pose[16];
+  float transform_probability;
+  float nearest_voxel_likelihood;
+  int32_t iteration_num;
+  int32_t max_iterations;
+  int32_t oscillation_num;
+  AwConvergenceVerdict verdict;
+} AwAlignOutcome;
+
+// Sensor-callback align orchestrator: align the live engine from `guess` (16 row-major floats) over
+// `source` (`3 * n` floats), then compute the oscillation count + convergence verdict in Rust, all
+// against the engine handle directly. Writes `*out`. No-op if any pointer is null. `engine` is valid
+// only for the duration of the call (the caller holds the engine lock); Rust does not retain it.
+void autoware_ndt_scan_matcher_rs_node_run_align(
+  AwNdtEngine * engine, const float * guess, const float * source, size_t n,
+  const AwAlignParams * params, AwAlignOutcome * out);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

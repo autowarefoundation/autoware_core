@@ -498,8 +498,38 @@ bool NDTScanMatcher::callback_sensor_points_main(
     // perform ndt scan matching
     const Eigen::Matrix4f initial_pose_matrix =
       pose_to_matrix4f(interpolation_result.interpolated_pose.pose.pose);
+#ifdef NDT_USE_RUST
+    // Phase N4a: align + oscillation + convergence run in Rust against the live engine handle
+    // (run_align), replacing the adapter align + the C++ count_oscillation + the separate
+    // evaluate_convergence FFI. The handle is valid only inside this `ndt_ptr_.with` lock.
+    std::vector<float> source_flat;
+    source_flat.reserve(sensor_points_in_baselink_frame_->size() * 3);
+    for (const auto & point : sensor_points_in_baselink_frame_->points) {
+      source_flat.push_back(point.x);
+      source_flat.push_back(point.y);
+      source_flat.push_back(point.z);
+    }
+    std::array<float, 16> guess16{};
+    for (int r = 0; r < 4; ++r) {
+      for (int c = 0; c < 4; ++c) {
+        guess16[(r * 4) + c] = initial_pose_matrix(r, c);
+      }
+    }
+    const AwAlignParams align_params{
+      static_cast<int32_t>(param_.score_estimation.converged_param_type),
+      param_.score_estimation.converged_param_transform_probability,
+      param_.score_estimation.converged_param_nearest_voxel_transformation_likelihood};
+    AwAlignOutcome outcome{};
+    autoware_ndt_scan_matcher_rs_node_run_align(
+      ndt_ptr->raw_handle(), guess16.data(), source_flat.data(),
+      sensor_points_in_baselink_frame_->size(), &align_params, &outcome);
+#else
     auto output_cloud = std::make_shared<pcl::PointCloud<PointSource>>();
     ndt_ptr->align(*output_cloud, initial_pose_matrix, sensor_points_in_baselink_frame_);
+#endif
+    // getResult() still supplies the marker pose array, the tp/nvtl score arrays (diagnostics), and
+    // ndt_result for the still-C++ covariance estimation. Same engine + stored last result as the
+    // align above, so it is consistent ON/OFF.
     const pclomp::NdtResult ndt_result = ndt_ptr->getResult();
 
     const geometry_msgs::msg::Pose result_pose_msg = matrix4f_to_pose(ndt_result.pose);
@@ -509,10 +539,10 @@ bool NDTScanMatcher::callback_sensor_points_main(
       transformation_msg_array.push_back(pose_ros);
     }
 
-    // --- convergence decision: gate flags (Phase N1: computed in Rust under NDT_USE_RUST) ---
+    // --- convergence decision: gate flags (Phase N1/N4a: computed in Rust under NDT_USE_RUST) ---
     // The flags are computed up front; the diagnostics below read them, preserving the original
-    // /diagnostics key order. `oscillation_num` feeds the verdict, so it is computed first.
-    const int oscillation_num = count_oscillation(transformation_msg_array);
+    // /diagnostics key order.
+    int oscillation_num = 0;
     bool is_ok_iteration_num = false;
     bool is_local_optimal_solution_oscillation = false;
     bool valid_param_type = false;
@@ -521,28 +551,17 @@ bool NDTScanMatcher::callback_sensor_points_main(
     double score = 0.0;
     double score_threshold = 0.0;
 #ifdef NDT_USE_RUST
-    {
-      const AwConvergenceInput conv_in{
-        ndt_result.iteration_num,
-        ndt_ptr->getMaximumIterations(),
-        oscillation_num,
-        static_cast<double>(ndt_result.transform_probability),
-        static_cast<double>(ndt_result.nearest_voxel_transformation_likelihood),
-        static_cast<int32_t>(param_.score_estimation.converged_param_type),
-        param_.score_estimation.converged_param_transform_probability,
-        param_.score_estimation.converged_param_nearest_voxel_transformation_likelihood};
-      AwConvergenceVerdict conv{};
-      autoware_ndt_scan_matcher_rs_node_evaluate_convergence(&conv_in, &conv);
-      is_ok_iteration_num = conv.is_ok_iteration_num;
-      is_local_optimal_solution_oscillation = conv.is_local_optimal_solution_oscillation;
-      valid_param_type = conv.valid_param_type;
-      is_ok_score = conv.is_ok_score;
-      is_converged = conv.is_converged;
-      score = conv.score;
-      score_threshold = conv.score_threshold;
-    }
+    oscillation_num = outcome.oscillation_num;
+    is_ok_iteration_num = outcome.verdict.is_ok_iteration_num;
+    is_local_optimal_solution_oscillation = outcome.verdict.is_local_optimal_solution_oscillation;
+    valid_param_type = outcome.verdict.valid_param_type;
+    is_ok_score = outcome.verdict.is_ok_score;
+    is_converged = outcome.verdict.is_converged;
+    score = outcome.verdict.score;
+    score_threshold = outcome.verdict.score_threshold;
 #else
     constexpr int oscillation_num_threshold = 10;
+    oscillation_num = count_oscillation(transformation_msg_array);
     is_ok_iteration_num = (ndt_result.iteration_num < ndt_ptr->getMaximumIterations());
     is_local_optimal_solution_oscillation = (oscillation_num > oscillation_num_threshold);
     if (param_.score_estimation.converged_param_type == ConvergedParamType::TRANSFORM_PROBABILITY) {

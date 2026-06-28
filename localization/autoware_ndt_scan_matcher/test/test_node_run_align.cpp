@@ -1,0 +1,169 @@
+// Copyright 2024 Autoware Foundation
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Test (node port N4a): the sensor-callback align orchestrator
+// (autoware_ndt_scan_matcher_rs_node_run_align) drives the live Rust engine via the adapter's
+// raw_handle. It must align EXACTLY like the adapter's own align(...) (same deterministic Rust
+// engine, same guess) and return a self-consistent convergence verdict. This pins the raw_handle +
+// orchestrator wiring; engine-vs-pclomp accuracy is already covered by test_ndt_rust_adapter, and
+// the convergence-formula vs C++ by test_convergence_verdict.
+
+#include <autoware/ndt_scan_matcher/ndt_rust_adapter.hpp>
+
+#include "autoware_ndt_scan_matcher_rs.h"
+
+#include <Eigen/Core>
+
+#include <gtest/gtest.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+
+#include <array>
+#include <random>
+#include <vector>
+
+namespace
+{
+using Adapter = autoware::ndt_scan_matcher::NdtRustAdapter;
+
+void make_tile(float cx, float cy, float cz, std::mt19937 & rng, pcl::PointCloud<pcl::PointXYZ> & c)
+{
+  std::normal_distribution<float> jitter(0.0F, 0.3F);
+  for (int k = 0; k < 60; ++k) {
+    c.push_back(pcl::PointXYZ(cx + jitter(rng), cy + jitter(rng), cz + jitter(rng)));
+  }
+  c.is_dense = true;
+}
+
+pclomp::NdtParams make_params()
+{
+  pclomp::NdtParams p{};
+  p.trans_epsilon = 0.01;
+  p.step_size = 0.1;
+  p.resolution = 2.0F;
+  p.max_iterations = 30;
+  p.search_method = pclomp::KDTREE;
+  p.num_threads = 1;
+  p.regularization_scale_factor = 0.0F;
+  p.use_line_search = false;
+  return p;
+}
+
+constexpr int kTp = 0;  // ConvergedParamType::TRANSFORM_PROBABILITY
+
+// Build a 2-tile adapter + a source cloud shifted by a small known translation.
+Adapter make_driven_adapter(pcl::PointCloud<pcl::PointXYZ>::Ptr & source_out)
+{
+  std::mt19937 rng(13);
+  auto tile0 = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+  auto tile1 = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+  make_tile(0.0F, 0.0F, 0.0F, rng, *tile0);
+  make_tile(8.0F, 4.0F, 0.0F, rng, *tile1);
+  const std::array<float, 3> t_true = {0.2F, -0.15F, 0.1F};
+  source_out = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+  for (const auto & tile : {tile0, tile1}) {
+    for (const auto & p : *tile) {
+      source_out->push_back(pcl::PointXYZ(p.x + t_true[0], p.y + t_true[1], p.z + t_true[2]));
+    }
+  }
+  Adapter rs;
+  rs.setParams(make_params());
+  rs.addTarget(tile0, "0");
+  rs.addTarget(tile1, "1");
+  rs.createVoxelKdtree();
+  return rs;
+}
+
+std::vector<float> flatten(const pcl::PointCloud<pcl::PointXYZ> & cloud)
+{
+  std::vector<float> flat;
+  flat.reserve(cloud.size() * 3);
+  for (const auto & p : cloud.points) {
+    flat.push_back(p.x);
+    flat.push_back(p.y);
+    flat.push_back(p.z);
+  }
+  return flat;
+}
+}  // namespace
+
+// run_align via raw_handle == the adapter's own align (same engine, same guess) + a self-consistent
+// verdict. Exact equality (deterministic Rust engine), no tolerance.
+TEST(NodeRunAlign, MatchesAdapterAlignAndVerdictIsConsistent)  // NOLINT
+{
+  pcl::PointCloud<pcl::PointXYZ>::Ptr source;
+  Adapter rs = make_driven_adapter(source);
+  const Eigen::Matrix4f guess = Eigen::Matrix4f::Identity();
+
+  // Reference: the adapter's own align result (deterministic).
+  auto out_cloud = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+  rs.align(*out_cloud, guess, source);
+  const pclomp::NdtResult ref = rs.getResult();
+
+  // Orchestrator: re-align the same engine from the same guess via the raw handle.
+  const std::array<float, 16> guess16 = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+  const std::vector<float> src = flatten(*source);
+  const AwAlignParams params{kTp, 0.0, 0.0};
+  AwAlignOutcome outcome{};
+  autoware_ndt_scan_matcher_rs_node_run_align(
+    rs.raw_handle(), guess16.data(), src.data(), source->size(), &params, &outcome);
+
+  EXPECT_EQ(outcome.iteration_num, ref.iteration_num);
+  EXPECT_EQ(outcome.max_iterations, rs.getMaximumIterations());
+  EXPECT_FLOAT_EQ(outcome.transform_probability, ref.transform_probability);
+  EXPECT_FLOAT_EQ(outcome.nearest_voxel_likelihood, ref.nearest_voxel_transformation_likelihood);
+  for (int r = 0; r < 4; ++r) {
+    for (int c = 0; c < 4; ++c) {
+      EXPECT_FLOAT_EQ(outcome.pose[(r * 4) + c], ref.pose(r, c)) << "pose(" << r << "," << c << ")";
+    }
+  }
+
+  // Verdict self-consistency (the formula is differential-tested against C++ in test_convergence_verdict).
+  EXPECT_TRUE(outcome.verdict.valid_param_type);
+  EXPECT_GE(outcome.oscillation_num, 0);
+  const bool expect_converged =
+    (outcome.verdict.is_ok_iteration_num || outcome.verdict.is_local_optimal_solution_oscillation) &&
+    outcome.verdict.is_ok_score;
+  EXPECT_EQ(outcome.verdict.is_converged, expect_converged);
+  // With zero thresholds and a good alignment, the score gate passes and it converges.
+  EXPECT_TRUE(outcome.verdict.is_ok_score);
+  EXPECT_TRUE(outcome.verdict.is_converged);
+}
+
+// An unknown converged_param_type yields valid_param_type == false (C++ would emit ERROR + abort).
+TEST(NodeRunAlign, UnknownParamTypeIsInvalid)  // NOLINT
+{
+  pcl::PointCloud<pcl::PointXYZ>::Ptr source;
+  Adapter rs = make_driven_adapter(source);
+  const std::array<float, 16> guess16 = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+  const std::vector<float> src = flatten(*source);
+  const AwAlignParams params{2 /* unknown */, 0.0, 0.0};
+  AwAlignOutcome outcome{};
+  autoware_ndt_scan_matcher_rs_node_run_align(
+    rs.raw_handle(), guess16.data(), src.data(), source->size(), &params, &outcome);
+  EXPECT_FALSE(outcome.verdict.valid_param_type);
+}
+
+// A null engine is a no-op (no crash, no write).
+TEST(NodeRunAlign, NullEngineIsNoop)  // NOLINT
+{
+  const std::array<float, 16> guess16 = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+  const std::array<float, 3> pt = {0.0F, 0.0F, 0.0F};
+  const AwAlignParams params{kTp, 0.0, 0.0};
+  AwAlignOutcome outcome{};
+  outcome.iteration_num = 123;
+  autoware_ndt_scan_matcher_rs_node_run_align(
+    nullptr, guess16.data(), pt.data(), 1, &params, &outcome);
+  EXPECT_EQ(outcome.iteration_num, 123);
+}
