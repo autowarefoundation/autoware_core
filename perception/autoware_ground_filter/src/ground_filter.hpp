@@ -34,9 +34,6 @@
 #include <utility>
 #include <vector>
 
-class GroundFilterTest;
-class GroundFilterRadialTest;
-
 namespace autoware::ground_filter
 {
 using PointCloud2ConstPtr = sensor_msgs::msg::PointCloud2::ConstSharedPtr;
@@ -161,11 +158,6 @@ struct GroundFilterParameter
 class GroundFilter
 {
 public:
-  // Allow unit test suite to access private members for exhaustive math verification.
-  // I need to do this in order to keep those maths private while still be able to test.
-  friend class ::GroundFilterTest;
-  friend class ::GroundFilterRadialTest;
-
   explicit GroundFilter(const GroundFilterParameter & param);
 
   ~GroundFilter() = default;
