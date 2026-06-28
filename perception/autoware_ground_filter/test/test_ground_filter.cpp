@@ -441,13 +441,14 @@ TEST_F(GroundFilterRadialTest, ClassifyLocalAndGlobalSlopes)
   pcl::PointCloud<autoware::point_types::PointXYZIRC> out_cloud;
   pcl::fromROSMsg(result.value(), out_cloud);
 
-  // Expect 2 non-ground points B and C
+  // Expect 2 non-ground points B and C in that order
+  ASSERT_EQ(out_cloud.points.size(), 2U);
   // B
-  EXPECT_NEAR(out_cloud.points[1].x, 4.0f, near_tol);
-  EXPECT_NEAR(out_cloud.points[1].z, 0.6f, near_tol);
+  EXPECT_NEAR(out_cloud.points[0].x, 4.0f, near_tol);
+  EXPECT_NEAR(out_cloud.points[0].z, 0.6f, near_tol);
   // C
-  EXPECT_NEAR(out_cloud.points[2].x, 5.0f, near_tol);
-  EXPECT_NEAR(out_cloud.points[2].z, 2.0f, near_tol);
+  EXPECT_NEAR(out_cloud.points[1].x, 5.0f, near_tol);
+  EXPECT_NEAR(out_cloud.points[1].z, 2.0f, near_tol);
 }
 
 // TEST 3. Testing point follow logic.
