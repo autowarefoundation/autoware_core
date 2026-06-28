@@ -395,6 +395,40 @@ protected:
   }
 };
 
+// TEST 3. Confirm points in different azimuths are correctly classified as non-ground
+// when they are towering above ground.
+// This test creates a simple point cloud with 3 points:
+// - Point A (5, 0, 5)
+// - Point B (0, 5, 5)
+// - Point C (-5, 0, 5).
+// All points have height z = 5.0 and should be classified as non-ground.
+TEST_F(GroundFilterRadialTest, RadialDifferentAzimuths)
+{
+  autoware::point_types::PointXYZIRC pA, pB, pC;
+  pA.x = 5.0f;
+  pA.y = 0.0f;
+  pA.z = 5.0f;
+  pB.x = 0.0f;
+  pB.y = 5.0f;
+  pB.z = 5.0f;
+  pC.x = -5.0f;
+  pC.y = 0.0f;
+  pC.z = 5.0f;
+
+  auto cloud = create_point_cloud({pA, pB, pC});
+  auto result = filter_->filter(cloud);
+
+  // Expect filter to succeed
+  ASSERT_TRUE(result.has_value()) << result.error();
+
+  // Convert output ROS message back to PCL to check actual data
+  pcl::PointCloud<autoware::point_types::PointXYZIRC> out_cloud;
+  pcl::fromROSMsg(result.value(), out_cloud);
+
+  // All 3 should be ground
+  EXPECT_EQ(out_cloud.size(), 3U);
+}
+
 // TEST 4. Confirm point classification logic in classifyPointCloud.
 // This test creates a simple point cloud with 3 points: (3, 0, 0), (4, 0, 0.6), (5, 0, 2.0).
 // With given slope threshold 15 deg and height threshold 0.2, we expect:
