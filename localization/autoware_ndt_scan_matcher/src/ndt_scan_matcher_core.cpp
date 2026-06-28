@@ -581,7 +581,8 @@ bool NDTScanMatcher::callback_sensor_points_main(
 #ifdef NDT_USE_RUST
     // Phase N4a: align + oscillation + convergence run in Rust against the live engine handle
     // (run_align), replacing the adapter align + the C++ count_oscillation + the separate
-    // evaluate_convergence FFI. The handle is valid only inside this `ndt_ptr_.with` lock.
+    // evaluate_convergence FFI. The engine is Sync (the handle is a stable const pointer; no lock —
+    // the `.with` here forwards it without locking under NDT_USE_RUST); align is concurrency-safe.
     std::vector<float> source_flat;
     source_flat.reserve(sensor_points_in_baselink_frame_->size() * 3);
     for (const auto & point : sensor_points_in_baselink_frame_->points) {
