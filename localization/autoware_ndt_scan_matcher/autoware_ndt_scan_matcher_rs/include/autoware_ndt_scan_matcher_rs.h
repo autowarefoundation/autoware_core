@@ -241,6 +241,17 @@ double autoware_ndt_scan_matcher_rs_ndt_engine_calc_transformation_probability(
 double autoware_ndt_scan_matcher_rs_ndt_engine_calc_nearest_voxel_likelihood(
   AwNdtEngine * engine, const float * cloud, size_t n);
 
+// Per-point nearest-voxel score for `cloud` (`3 * n` floats): writes `n` scores to `out_scores`
+// (out_scores[i] > 0 iff point i found a neighbor; the C++ calculateNearestVoxelScoreEachPoint
+// includes exactly those points).
+void autoware_ndt_scan_matcher_rs_ndt_engine_calc_nearest_voxel_score_each_point(
+  AwNdtEngine * engine, const float * cloud, size_t n, float * out_scores);
+
+// Last align's per-iteration score traces: up to `cap` floats into `out_tp`/`out_nvl` each; the true
+// length (iteration_num + 1) is written to `out_count`.
+void autoware_ndt_scan_matcher_rs_ndt_engine_get_score_arrays(
+  const AwNdtEngine * engine, float * out_tp, float * out_nvl, uint32_t cap, uint32_t * out_count);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

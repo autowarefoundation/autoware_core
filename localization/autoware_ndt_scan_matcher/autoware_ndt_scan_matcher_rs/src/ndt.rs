@@ -458,6 +458,48 @@ pub fn nearest_voxel_transformation_likelihood(
     }
 }
 
+/// Per-point nearest-voxel score (the C++ `calculateNearestVoxelScoreEachPoint` intensity): for each
+/// point in `trans_cloud`, the max cell score over its neighbors, or `0.0` if it has no neighbor.
+/// `out` is cleared and filled to `trans_cloud.len()`. The per-cell score is strictly positive
+/// (`-d1 > 0`), so `out[i] > 0.0` iff point `i` found a neighbor — the C++ includes exactly those
+/// points in its output cloud (with this value as the `PointXYZI` intensity).
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::as_conversions,
+    clippy::cast_possible_truncation,
+    clippy::allow_attributes,
+    reason = "nalgebra f64 vector math; the per-point score is narrowed f64->f32 for the output"
+)]
+pub fn nearest_voxel_score_each_point(
+    map: &VoxelGridMap,
+    trans_cloud: &[[f32; 3]],
+    resolution: f64,
+    gauss: &GaussConstants,
+    ws: &mut AlignWorkspace,
+    out: &mut Vec<f32>,
+) {
+    out.clear();
+    out.reserve(trans_cloud.len());
+    for &tp in trans_cloud {
+        ws.neighbor_idx.clear();
+        map.radius_search(tp, resolution, MAX_NEIGHBORS, &mut ws.neighbor_idx);
+        let mut nearest_pt = 0.0_f64;
+        if !ws.neighbor_idx.is_empty() {
+            let x_trans = vec3(tp);
+            for &li in &ws.neighbor_idx {
+                if let Some(leaf) = map.leaf(li) {
+                    let mean = Vector3::new(leaf.mean[0], leaf.mean[1], leaf.mean[2]);
+                    let s = score_increment(&(x_trans - mean), &mat3(&leaf.icov), gauss);
+                    if s > nearest_pt {
+                        nearest_pt = s;
+                    }
+                }
+            }
+        }
+        out.push(nearest_pt as f32);
+    }
+}
+
 /// NDT parameters (`NdtParams` + the `outlier_ratio_` member, default 0.55).
 #[derive(Clone, Copy, Debug)]
 pub struct NdtParams {

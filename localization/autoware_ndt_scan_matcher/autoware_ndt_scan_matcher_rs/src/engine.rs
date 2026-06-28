@@ -24,7 +24,8 @@ use nalgebra::Matrix4;
 
 use crate::ndt::{
     AlignResult, AlignWorkspace, AwNdtAlignOutput, NdtParams, Regularization, align,
-    nearest_voxel_transformation_likelihood, transformation_probability,
+    nearest_voxel_score_each_point, nearest_voxel_transformation_likelihood,
+    transformation_probability,
 };
 use crate::transform::gauss_constants;
 use crate::voxel_grid::VoxelGridMap;
@@ -35,6 +36,8 @@ use crate::voxel_grid::VoxelGridMap;
 pub struct NdtEngine {
     map: VoxelGridMap,
     params: NdtParams,
+    min_points: i32,
+    eig_mult: f64,
     workspace: AlignWorkspace,
     last: AlignResult,
 }
@@ -45,6 +48,8 @@ impl Clone for NdtEngine {
         Self {
             map: self.map.clone(),
             params: self.params,
+            min_points: self.min_points,
+            eig_mult: self.eig_mult,
             workspace: AlignWorkspace::new(),
             last: self.last.clone(),
         }
@@ -62,13 +67,17 @@ impl NdtEngine {
                 resolution,
                 ..NdtParams::default()
             },
+            min_points,
+            eig_mult,
             workspace: AlignWorkspace::new(),
             last: AlignResult::default(),
         }
     }
 
     /// Update the alignment params (the C++ `setParams`). The regularization is preserved — it is
-    /// set separately via [`Self::set_regularization`], mirroring `setRegularizationPose`.
+    /// set separately via [`Self::set_regularization`], mirroring `setRegularizationPose`. Mirroring
+    /// the C++ (which applies `resolution` as the leaf size at `addTarget`), the empty map is rebuilt
+    /// at the new resolution — the node always calls `set_params` before `add_target`.
     pub fn set_params(
         &mut self,
         trans_epsilon: f64,
@@ -84,6 +93,9 @@ impl NdtEngine {
         self.params.max_iterations = max_iterations;
         self.params.outlier_ratio = outlier_ratio;
         self.params.num_threads = num_threads;
+        if self.map.is_empty() {
+            self.map = VoxelGridMap::new([resolution; 3], self.min_points, self.eig_mult);
+        }
     }
 
     /// Set (or, when `scale == 0`, clear) the longitudinal regularization toward `(x, y)`.
@@ -169,10 +181,38 @@ impl NdtEngine {
         )
     }
 
+    /// Per-point nearest-voxel score (the C++ `calculateNearestVoxelScoreEachPoint`); `out[i] > 0`
+    /// iff point `i` found a neighbor. `out` is filled to `cloud.len()`.
+    pub fn nearest_voxel_score_each_point(
+        &mut self,
+        cloud: &[[f32; 3]],
+        out: &mut alloc::vec::Vec<f32>,
+    ) {
+        let gauss = gauss_constants(self.params.outlier_ratio, self.params.resolution);
+        nearest_voxel_score_each_point(
+            &self.map,
+            cloud,
+            self.params.resolution,
+            &gauss,
+            &mut self.workspace,
+            out,
+        );
+    }
+
     /// The configured iteration cap (the C++ `getMaximumIterations`).
     #[must_use]
     pub fn max_iterations(&self) -> i32 {
         self.params.max_iterations
+    }
+
+    /// The per-iteration score traces from the last align (`transform_probability_array` /
+    /// `nearest_voxel_likelihood_array` of the C++ `NdtResult`).
+    #[must_use]
+    pub fn score_arrays(&self) -> (&[f32], &[f32]) {
+        (
+            &self.last.transform_probability_array,
+            &self.last.nearest_voxel_likelihood_array,
+        )
     }
 }
 
@@ -511,6 +551,80 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_get_result(
     }
 }
 
+/// Per-point nearest-voxel score for `cloud` (`3 * n` `f32`): writes `n` scores to `out_scores`
+/// (`out_scores[i] > 0` iff point `i` found a neighbor).
+/// # Safety
+/// `engine` is a valid handle (or null → no-op); `cloud` addresses `3 * n` `f32`, `out_scores` `n`.
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; reads a cloud, writes per-point scores"
+)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_calc_nearest_voxel_score_each_point(
+    engine: *mut NdtEngine,
+    cloud: *const f32,
+    n: usize,
+    out_scores: *mut f32,
+) {
+    if engine.is_null() || cloud.is_null() || out_scores.is_null() {
+        return;
+    }
+    // SAFETY: non-null per the check; caller guarantees `3 * n` f32 at `cloud`, `n` at `out_scores`.
+    let (e, c, out) = unsafe {
+        (
+            &mut *engine,
+            core::slice::from_raw_parts(cloud.cast::<[f32; 3]>(), n),
+            core::slice::from_raw_parts_mut(out_scores, n),
+        )
+    };
+    let mut scores = alloc::vec::Vec::new();
+    e.nearest_voxel_score_each_point(c, &mut scores);
+    out.copy_from_slice(&scores);
+}
+
+/// Write the last align's per-iteration score traces. `out_tp`/`out_nvl` receive up to `cap` `f32`
+/// each; `*out_count` gets the true length (== `iteration_num + 1`).
+/// # Safety
+/// `engine` is a valid handle (or null → no-op); `out_tp`/`out_nvl` address `cap` `f32`, `out_count`
+/// one `u32`.
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; writes caller-owned score-trace buffers"
+)]
+#[allow(
+    clippy::as_conversions,
+    clippy::cast_possible_truncation,
+    clippy::indexing_slicing,
+    clippy::allow_attributes,
+    reason = "trace length crosses the C ABI as u32; k = min(len, cap) bounds the slicing"
+)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_get_score_arrays(
+    engine: *const NdtEngine,
+    out_tp: *mut f32,
+    out_nvl: *mut f32,
+    cap: u32,
+    out_count: *mut u32,
+) {
+    if engine.is_null() || out_tp.is_null() || out_nvl.is_null() || out_count.is_null() {
+        return;
+    }
+    // SAFETY: non-null per the check; caller guarantees `cap` f32 at each array + one u32.
+    let (e, tp_out, nvl_out, count) = unsafe {
+        (
+            &*engine,
+            core::slice::from_raw_parts_mut(out_tp, cap as usize),
+            core::slice::from_raw_parts_mut(out_nvl, cap as usize),
+            &mut *out_count,
+        )
+    };
+    let (tp, nvl) = e.score_arrays();
+    let k = tp.len().min(cap as usize);
+    tp_out[..k].copy_from_slice(&tp[..k]);
+    nvl_out[..k].copy_from_slice(&nvl[..k]);
+    *count = tp.len() as u32;
+}
+
 #[cfg(test)]
 #[allow(
     unsafe_code,
@@ -522,6 +636,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_get_result(
     clippy::cast_precision_loss,
     clippy::unreadable_literal,
     clippy::borrow_as_ptr,
+    clippy::too_many_lines,
     clippy::allow_attributes,
     reason = "test code"
 )]
@@ -654,6 +769,12 @@ mod tests {
         let want_tp_score = pure.calc_transformation_probability(&source);
         let want_nvl_score = pure.calc_nearest_voxel_likelihood(&source);
         let want_maxit = pure.max_iterations();
+        let mut want_scores = Vec::new();
+        pure.nearest_voxel_score_each_point(&source, &mut want_scores);
+        let (want_tp_arr, want_nvl_arr) = {
+            let (a, b) = pure.score_arrays();
+            (a.to_vec(), b.to_vec())
+        };
 
         // FFI
         // SAFETY: every pointer below addresses its documented length.
@@ -724,6 +845,31 @@ mod tests {
             assert!(autoware_ndt_scan_matcher_rs_ndt_engine_has_target(e2));
             autoware_ndt_scan_matcher_rs_ndt_engine_free(e2);
             // remove the only tile -> no target left.
+            // per-point score + per-iteration score arrays marshal to the pure values.
+            let mut ffi_scores = vec![0.0_f32; source.len()];
+            autoware_ndt_scan_matcher_rs_ndt_engine_calc_nearest_voxel_score_each_point(
+                e,
+                src_flat.as_ptr(),
+                source.len(),
+                ffi_scores.as_mut_ptr(),
+            );
+            assert_eq!(ffi_scores, want_scores);
+
+            let cap = (want_tp_arr.len() as u32) + 4;
+            let mut tp_arr = vec![0.0_f32; cap as usize];
+            let mut nvl_arr = vec![0.0_f32; cap as usize];
+            let mut scount = 0_u32;
+            autoware_ndt_scan_matcher_rs_ndt_engine_get_score_arrays(
+                e,
+                tp_arr.as_mut_ptr(),
+                nvl_arr.as_mut_ptr(),
+                cap,
+                &mut scount,
+            );
+            assert_eq!(scount as usize, want_tp_arr.len());
+            assert_eq!(&tp_arr[..scount as usize], want_tp_arr.as_slice());
+            assert_eq!(&nvl_arr[..scount as usize], want_nvl_arr.as_slice());
+
             autoware_ndt_scan_matcher_rs_ndt_engine_remove_target(e, 0);
             assert!(!autoware_ndt_scan_matcher_rs_ndt_engine_has_target(e));
             autoware_ndt_scan_matcher_rs_ndt_engine_free(e);

@@ -198,6 +198,15 @@ if(BUILD_TESTING)
       multigrid_ndt_omp ${PCL_LIBRARIES} autoware_ndt_scan_matcher_rs)
     target_include_directories(test_ndt_engine PRIVATE
       ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/include)
+
+    # 7. Differential test: the drop-in NdtRustAdapter vs the C++ NDT engine (engine port E6b).
+    ament_auto_add_gtest(test_ndt_rust_adapter
+      test/test_ndt_rust_adapter.cpp
+    )
+    target_link_libraries(test_ndt_rust_adapter
+      multigrid_ndt_omp ${PCL_LIBRARIES} autoware_ndt_scan_matcher_rs)
+    target_include_directories(test_ndt_rust_adapter PRIVATE
+      ${CMAKE_CURRENT_SOURCE_DIR}/autoware_ndt_scan_matcher_rs/include)
   endif()
 endif()
 
