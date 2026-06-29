@@ -20,30 +20,18 @@
 #include <autoware_utils_rclcpp/parameter.hpp>
 #include <rclcpp/node.hpp>
 
-#include <type_traits>
-
 namespace autoware::vehicle_info_utils
 {
 /// This is a convenience class for saving you from declaring all parameters
 /// manually and calculating derived parameters.
 /// This class supposes that necessary parameters are set when the node is launched.
-///
 class VehicleInfoUtils
 {
 public:
   /// Constructor
   // NOTE(soblin): this throws which should be replaced with a factory
   template <typename NodeT>
-  explicit VehicleInfoUtils(NodeT & node) : vehicle_info_(create_from_node(node))
-  {
-  }
-
-  /// Get vehicle info
-  [[nodiscard]] VehicleInfo getVehicleInfo() const;
-
-private:
-  template <typename NodeT>
-  static VehicleInfo create_from_node(NodeT & node)
+  explicit VehicleInfoUtils(NodeT & node)
   {
     static constexpr const char * WHEEL_RADIUS = "wheel_radius";
     static constexpr const char * WHEEL_WIDTH = "wheel_width";
@@ -68,11 +56,15 @@ private:
     const auto vehicle_height_m = get_or_declare_parameter<double>(node, VEHICLE_HEIGHT);
     const auto max_steer_angle_rad = get_or_declare_parameter<double>(node, MAX_STEER_ANGLE);
 
-    return createVehicleInfo(
+    vehicle_info_ = createVehicleInfo(
       wheel_radius_m, wheel_width_m, wheel_base_m, wheel_tread_m, front_overhang_m, rear_overhang_m,
       left_overhang_m, right_overhang_m, vehicle_height_m, max_steer_angle_rad);
   }
 
+  /// Get vehicle info
+  [[nodiscard]] VehicleInfo getVehicleInfo() const;
+
+private:
   /// Buffer for base parameters
   VehicleInfo vehicle_info_;
 };
