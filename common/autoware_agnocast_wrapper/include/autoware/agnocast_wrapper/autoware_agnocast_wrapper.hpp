@@ -546,8 +546,8 @@ public:
 
   virtual ~PollingSubscriber() = default;
 
-  virtual AUTOWARE_MESSAGE_SHARED_PTR(const MessageT) takeData() = 0;
-  virtual AUTOWARE_MESSAGE_SHARED_PTR(const MessageT) take_data() = 0;
+  virtual AUTOWARE_MESSAGE_SHARED_PTR(const MessageT) takeData(bool allow_same_message = true) = 0;
+  virtual AUTOWARE_MESSAGE_SHARED_PTR(const MessageT) take_data(bool allow_same_message = true) = 0;
 };
 
 template <typename MessageT>
@@ -563,15 +563,15 @@ public:
   {
   }
 
-  AUTOWARE_MESSAGE_SHARED_PTR(const MessageT) takeData() override
+  AUTOWARE_MESSAGE_SHARED_PTR(const MessageT) takeData(bool allow_same_message = true) override
   {
-    auto data = subscriber_->take_data();
+    auto data = subscriber_->take_data(allow_same_message);
     return AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)(std::move(data));
   }
 
-  AUTOWARE_MESSAGE_SHARED_PTR(const MessageT) take_data() override
+  AUTOWARE_MESSAGE_SHARED_PTR(const MessageT) take_data(bool allow_same_message = true) override
   {
-    auto data = subscriber_->take_data();
+    auto data = subscriber_->take_data(allow_same_message);
     return AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)(std::move(data));
   }
 };
@@ -590,14 +590,16 @@ public:
   {
   }
 
-  AUTOWARE_MESSAGE_SHARED_PTR(const MessageT) takeData() override
+  AUTOWARE_MESSAGE_SHARED_PTR(const MessageT) takeData(bool allow_same_message = true) override
   {
-    return AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)(std::move(subscriber_->take_data()));
+    return AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)(
+      std::move(subscriber_->take_data(allow_same_message)));
   }
 
-  AUTOWARE_MESSAGE_SHARED_PTR(const MessageT) take_data() override
+  AUTOWARE_MESSAGE_SHARED_PTR(const MessageT) take_data(bool allow_same_message = true) override
   {
-    return AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)(std::move(subscriber_->take_data()));
+    return AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)(
+      std::move(subscriber_->take_data(allow_same_message)));
   }
 };
 
