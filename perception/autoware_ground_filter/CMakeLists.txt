@@ -42,6 +42,10 @@ if(BUILD_TESTING)
   target_link_libraries(test_ground_filter
     ${PROJECT_NAME}
   )
+  ament_target_dependencies(test_ground_filter
+    autoware_test_utils
+    ament_index_cpp
+  )
 
   ament_add_ros_isolated_gtest(test_sanity_check
     test/test_sanity_check.cpp
@@ -49,6 +53,10 @@ if(BUILD_TESTING)
   target_include_directories(test_sanity_check PRIVATE src)
   target_link_libraries(test_sanity_check
     ${PROJECT_NAME}
+  )
+  ament_target_dependencies(test_sanity_check
+    autoware_test_utils
+    ament_index_cpp
   )
 
   ament_add_ros_isolated_gtest(test_ground_filter_integration
