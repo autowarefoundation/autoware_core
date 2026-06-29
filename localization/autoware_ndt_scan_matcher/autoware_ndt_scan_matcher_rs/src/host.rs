@@ -58,6 +58,14 @@ pub struct MatchResult {
     pub oscillation_num: i32,
 }
 
+/// The estimated pose covariance (the row-major 6x6 the node publishes). Produced alongside a
+/// [`MatchResult`] by `ScanMatcher::match_scan_with_covariance`.
+#[derive(Clone, Debug)]
+pub struct CovarianceResult {
+    /// Row-major 6x6 pose covariance (`map` frame), after the configured estimation mode + scaling.
+    pub covariance: [f64; 36],
+}
+
 /// Source of map tiles around a position. ROS: the `pcd_loader` service; kernel: flash/DMA; example:
 /// synthetic. Async because the load is inherently I/O.
 pub trait MapSource {

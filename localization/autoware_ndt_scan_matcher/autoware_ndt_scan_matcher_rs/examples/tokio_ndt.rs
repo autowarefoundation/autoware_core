@@ -110,6 +110,19 @@ async fn main() {
     // Gate convergence on the transform-probability score (type 0). A 0.0 threshold is the defensive
     // lower bound for this synthetic fit — a good recovery yields a clearly positive score.
     matcher.set_convergence_params(0, 0.0, 0.0);
+    // Estimate covariance by MULTI_NDT (type 2): re-align a small XY candidate grid against the live map
+    // and take the spread. `output_pose_covariance` is the configured 6x6 diagonal (its [0]/[7] act as
+    // the x/y floors in adjust_diagonal_covariance).
+    let mut output_cov = [0.0_f64; 36];
+    output_cov[0] = 0.0225; // x floor (0.15^2)
+    output_cov[7] = 0.0225; // y floor
+    output_cov[14] = 0.01;
+    output_cov[21] = 0.01;
+    output_cov[28] = 0.01;
+    output_cov[35] = 0.01;
+    let offset_x = [0.5, -0.5, 0.0, 0.0];
+    let offset_y = [0.0, 0.0, 0.5, -0.5];
+    matcher.set_covariance_config(2, 1.0, 1.0, output_cov, &offset_x, &offset_y);
 
     // Load the map from the host (async), then confirm it landed.
     matcher.update_map(&host, [0.0, 0.0], 50.0).await;
@@ -127,8 +140,12 @@ async fn main() {
         }
     }
 
-    let result = matcher.match_scan(&Matrix4::<f32>::identity(), &scan);
+    let (result, cov) = matcher.match_scan_with_covariance(&Matrix4::<f32>::identity(), &scan);
     host.publish_result(&result);
+    println!(
+        "covariance xy block: [{:.5}, {:.5}; {:.5}, {:.5}]",
+        cov.covariance[0], cov.covariance[1], cov.covariance[6], cov.covariance[7],
+    );
 
     // Smoke checks: a finite, bounded pose (correctness vs the C++ engine is covered by the
     // differential gtests; here we only prove the pipeline runs end-to-end without ROS).
@@ -145,6 +162,14 @@ async fn main() {
     assert!(
         result.converged,
         "the synthetic recovery should report converged (iters < cap, score > 0)"
+    );
+    assert!(
+        cov.covariance[0].is_finite() && cov.covariance[7].is_finite(),
+        "covariance must be finite"
+    );
+    assert!(
+        cov.covariance[0] > 0.0 && cov.covariance[7] > 0.0,
+        "the xy covariance diagonal must be positive"
     );
 
     println!("OK: NDT scan matcher ran standalone in async Rust (Tokio), no ROS.");

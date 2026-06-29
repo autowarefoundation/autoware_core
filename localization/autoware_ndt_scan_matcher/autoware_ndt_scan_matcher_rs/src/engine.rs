@@ -29,7 +29,7 @@
 use alloc::boxed::Box;
 use alloc::sync::Arc;
 
-use nalgebra::Matrix4;
+use nalgebra::{Matrix4, Matrix6};
 
 use crate::ndt::{
     AlignResult, AlignWorkspace, AwNdtAlignOutput, NdtParams, Regularization, align,
@@ -102,6 +102,34 @@ fn swap_store_arc<T>(c: &Swap<T>, v: Arc<T>) {
     *c.borrow_mut() = v;
 }
 
+/// The `covariance` hyper-params that drive [`NdtEngine::estimate_covariance`]: the estimation mode +
+/// scaling + the configured 6x6 + the candidate search offsets. Holds owned `Vec` offsets (so it is
+/// `Clone`, not `Copy`); set off the hot path via [`NdtEngine::set_covariance_config`].
+#[derive(Clone, Debug)]
+struct CovarianceConfig {
+    estimation_type: i32,
+    scale_factor: f64,
+    temperature: f64,
+    output_pose_covariance: [f64; 36],
+    offset_x: alloc::vec::Vec<f64>,
+    offset_y: alloc::vec::Vec<f64>,
+}
+
+impl CovarianceConfig {
+    /// Default: `FIXED_VALUE` (the configured 6x6 only), unit scale, no candidates — the node/example
+    /// always sets the real config before estimating.
+    fn new() -> Self {
+        Self {
+            estimation_type: 0,
+            scale_factor: 1.0,
+            temperature: 1.0,
+            output_pose_covariance: [0.0; 36],
+            offset_x: alloc::vec::Vec::new(),
+            offset_y: alloc::vec::Vec::new(),
+        }
+    }
+}
+
 /// The atomically-swappable engine state: the target map, the active params, and the cell-id → tile
 /// mapping. Immutable once published — map-update builds a fresh `EngineState` and stores it.
 #[derive(Clone)]
@@ -111,6 +139,8 @@ struct EngineState {
     /// The `score_estimation` scalars that gate the convergence verdict (read on `align_outcome`).
     /// Part of the swapped state so `set_convergence_params` is lock-free like `set_params`.
     conv: ConvergenceParams,
+    /// The `covariance` hyper-params read on `estimate_covariance` (swapped like `conv`).
+    cov_config: CovarianceConfig,
     /// Cell-id bytes → tile `u64` (the engine owns the mapping the C++ adapter's `id_map_` used to
     /// hold; keys are the raw `std::string` cell-id bytes — not validated UTF-8). N4d.
     id_map: alloc::collections::BTreeMap<alloc::vec::Vec<u8>, u64>,
@@ -184,6 +214,7 @@ impl NdtEngine {
                     ..NdtParams::default()
                 },
                 conv: ConvergenceParams::default(),
+                cov_config: CovarianceConfig::new(),
                 id_map: alloc::collections::BTreeMap::new(),
                 next_id: 0,
             }),
@@ -268,6 +299,84 @@ impl NdtEngine {
     pub fn align_outcome(&self, guess: &Matrix4<f32>, source: &[[f32; 3]]) -> AlignOutcome {
         let conv = self.load_state().conv;
         run_align(self, guess, source, &conv)
+    }
+
+    /// Set the `covariance` hyper-params read on [`Self::estimate_covariance`] (estimation mode +
+    /// scaling + the configured 6x6 + the candidate search offsets). Lock-free (swapped into the
+    /// published state like [`Self::set_params`]).
+    pub fn set_covariance_config(
+        &self,
+        estimation_type: i32,
+        scale_factor: f64,
+        temperature: f64,
+        output_pose_covariance: [f64; 36],
+        offset_x: &[f64],
+        offset_y: &[f64],
+    ) {
+        swap_rcu(&self.state, |s| {
+            let mut n = s.clone();
+            n.cov_config = CovarianceConfig {
+                estimation_type,
+                scale_factor,
+                temperature,
+                output_pose_covariance,
+                offset_x: offset_x.to_vec(),
+                offset_y: offset_y.to_vec(),
+            };
+            n
+        });
+    }
+
+    /// Estimate the 6x6 pose covariance from an align result, reading the engine's own
+    /// [`CovarianceConfig`]. The self-contained counterpart of [`estimate_pose_covariance`] (which takes
+    /// the params explicitly for the C++ FFI) — what the portable `ScanMatcher` calls after a match.
+    /// `map_to_base_link_rot3x3` is derived from `result_pose`'s rotation block (the C++ builds the same
+    /// from the result quaternion).
+    #[must_use]
+    pub fn estimate_covariance(
+        &self,
+        result_pose: &Matrix4<f32>,
+        hessian: &Matrix6<f64>,
+        initial_pose: &Matrix4<f32>,
+        source: &[[f32; 3]],
+        main_nvtl: f32,
+    ) -> CovEstimationResult {
+        let cfg = self.load_state().cov_config.clone();
+        // Hessian → row-major [f64; 36]. nalgebra stores column-major, so the transpose's slice is the
+        // row-major layout (lengths are both 36 — `copy_from_slice` cannot mismatch here).
+        let mut hess = [0.0_f64; 36];
+        hess.copy_from_slice(hessian.transpose().as_slice());
+        // map→base_link 3x3 rotation (row-major) from the result pose's rotation block (explicit literal
+        // — fixed nalgebra indices, no computed index/arithmetic).
+        let rot3x3 = [
+            f64::from(result_pose[(0, 0)]),
+            f64::from(result_pose[(0, 1)]),
+            f64::from(result_pose[(0, 2)]),
+            f64::from(result_pose[(1, 0)]),
+            f64::from(result_pose[(1, 1)]),
+            f64::from(result_pose[(1, 2)]),
+            f64::from(result_pose[(2, 0)]),
+            f64::from(result_pose[(2, 1)]),
+            f64::from(result_pose[(2, 2)]),
+        ];
+        let params = CovEstimationParams {
+            estimation_type: cfg.estimation_type,
+            scale_factor: cfg.scale_factor,
+            temperature: cfg.temperature,
+            main_nvtl,
+            output_pose_covariance: cfg.output_pose_covariance,
+            map_to_base_link_rot3x3: rot3x3,
+        };
+        estimate_pose_covariance(
+            self,
+            result_pose,
+            &hess,
+            initial_pose,
+            source,
+            &cfg.offset_x,
+            &cfg.offset_y,
+            &params,
+        )
     }
 
     /// Set (or, when `scale == 0`, clear) the longitudinal regularization toward `(x, y)`.
@@ -1211,15 +1320,15 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_run_align(
     }
 }
 
-// --- Phase N4b: sensor-callback covariance orchestrator (std-gated node glue) ---
+// --- Phase N4b: sensor-callback covariance orchestrator ---
 // Folds the whole covariance block of callback_sensor_points_main (rotate the configured 6x6 cov,
 // dispatch on the estimation type against the LIVE engine map, scale, and adjust) into one Rust call,
 // so the C++ node no longer calls the templated estimate_xy_covariance_by_multi_ndt[_score],
 // adjust_diagonal_covariance, propose_poses_to_search, or the rotate_covariance helper twin. Reuses
-// crate::{helper,covariance,cov_estimate}. std-gated (uses Vec) — excluded from the no_std rlib.
+// crate::{helper,covariance,cov_estimate} — all no_std, so this orchestrator is part of the no_std rlib
+// (only the C-ABI `Aw*` structs + the `extern "C"` wrapper below stay `std`-gated).
 
 /// Params for [`estimate_pose_covariance`] (the `covariance` hyper-params + the result-pose rotation).
-#[cfg(feature = "std")]
 #[derive(Clone, Copy, Debug)]
 pub struct CovEstimationParams {
     /// `0` = `FIXED_VALUE`, `1` = `LAPLACE_APPROXIMATION`, `2` = `MULTI_NDT`, `3` = `MULTI_NDT_SCORE`.
@@ -1236,7 +1345,6 @@ pub struct CovEstimationParams {
 /// Result of [`estimate_pose_covariance`]: the full 6x6 output covariance + the debug pose arrays the
 /// node publishes (`publish_kind`: `0` none, `1` `MULTI_NDT` publishes both, `2` `MULTI_NDT_SCORE`
 /// publishes only the initial poses). Each pose vec is `[main, then per-candidate]`.
-#[cfg(feature = "std")]
 #[derive(Clone, Debug)]
 pub struct CovEstimationResult {
     pub ndt_covariance: [f64; 36],
@@ -1248,7 +1356,6 @@ pub struct CovEstimationResult {
 /// Pure covariance orchestrator, ported verbatim from `callback_sensor_points_main`'s covariance block
 /// and the `estimate_covariance` method. Runs the `MULTI_NDT`/`MULTI_NDT_SCORE` re-align/score against
 /// the live engine map (a loaded snapshot) — never a rebuilt one-tile map. No new math (wires ports).
-#[cfg(feature = "std")]
 #[expect(
     clippy::too_many_arguments,
     reason = "covariance orchestrator wires the engine + result/initial poses + hessian + source + offsets + params; grouping would only relocate the same inputs"

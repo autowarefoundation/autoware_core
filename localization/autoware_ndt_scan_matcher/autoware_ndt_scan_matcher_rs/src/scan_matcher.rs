@@ -22,7 +22,7 @@
 use nalgebra::Matrix4;
 
 use crate::engine::NdtEngine;
-use crate::host::{MapSource, MatchResult};
+use crate::host::{CovarianceResult, MapSource, MatchResult};
 
 /// A scan matcher: the persistent NDT engine + the portable orchestration over it.
 pub struct ScanMatcher {
@@ -71,6 +71,28 @@ impl ScanMatcher {
             .set_convergence_params(converged_param_type, tp_threshold, nvtl_threshold);
     }
 
+    /// Set the `covariance` hyper-params read by [`Self::match_scan_with_covariance`]: the estimation
+    /// mode (`0` `FIXED_VALUE`, `1` `LAPLACE`, `2` `MULTI_NDT`, `3` `MULTI_NDT_SCORE`), the scale +
+    /// softmax temperature, the configured 6x6, and the candidate XY search offsets.
+    pub fn set_covariance_config(
+        &self,
+        estimation_type: i32,
+        scale_factor: f64,
+        temperature: f64,
+        output_pose_covariance: [f64; 36],
+        offset_x: &[f64],
+        offset_y: &[f64],
+    ) {
+        self.engine.set_covariance_config(
+            estimation_type,
+            scale_factor,
+            temperature,
+            output_pose_covariance,
+            offset_x,
+            offset_y,
+        );
+    }
+
     /// Whether any map tile is loaded.
     #[must_use]
     pub fn has_target(&self) -> bool {
@@ -107,5 +129,42 @@ impl ScanMatcher {
             converged: o.verdict.is_converged,
             oscillation_num: o.oscillation_num,
         }
+    }
+
+    /// Align like [`Self::match_scan`], then estimate the pose covariance from that align result using
+    /// the configured covariance mode (see [`Self::set_covariance_config`]). Returns both. Mirrors the
+    /// ROS sensor callback's align→covariance order; self-contained (uses the fresh align hessian/pose,
+    /// no hidden ordering dependency). Allocates (candidate poses + the result-trace clone) — use the
+    /// plain [`Self::match_scan`] on the allocation-free hot path when covariance is not needed.
+    #[must_use]
+    pub fn match_scan_with_covariance(
+        &self,
+        guess: &Matrix4<f32>,
+        source: &[[f32; 3]],
+    ) -> (MatchResult, CovarianceResult) {
+        let o = self.engine.align_outcome(guess, source);
+        // The full align result (carries the hessian the covariance estimate needs).
+        let r = self.engine.result();
+        let cov = self.engine.estimate_covariance(
+            &r.pose,
+            &r.hessian,
+            guess,
+            source,
+            r.nearest_voxel_likelihood,
+        );
+        let match_result = MatchResult {
+            pose: o.pose,
+            transform_probability: o.transform_probability,
+            nearest_voxel_likelihood: o.nearest_voxel_likelihood,
+            iteration_num: o.iteration_num,
+            converged: o.verdict.is_converged,
+            oscillation_num: o.oscillation_num,
+        };
+        (
+            match_result,
+            CovarianceResult {
+                covariance: cov.ndt_covariance,
+            },
+        )
     }
 }
