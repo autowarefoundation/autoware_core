@@ -7667,16 +7667,123 @@
 <p>This package provides two approaches for integrating Agnocast. Both will coexist for the foreseeable future.</p>
 <h3 id="1-node-wrapper-agnocast_wrappernode">1. Node Wrapper (<code>agnocast_wrapper::Node</code>)<a class="headerlink" href="#1-node-wrapper-agnocast_wrappernode" title="Permanent link">#</a></h3>
 <p>Use this when you want the <strong>entire node</strong> to transparently switch between <code>rclcpp::Node</code> and <code>agnocast::Node</code> at runtime. The node wrapper automatically selects the correct underlying implementation based on the <code>ENABLE_AGNOCAST</code> environment variable.</p>
-<p>Currently supported APIs:</p>
-<ul>
-<li>Publisher / Subscription / PollingSubscriber</li>
-<li>Client / Service</li>
-<li>Timer (<code>create_wall_timer</code>, free <code>create_timer()</code>, free <code>set_period()</code>)</li>
-<li>Parameters</li>
-<li>Logger, Clock</li>
-<li>Callback groups</li>
-<li>Node interfaces (partial: <code>get_node_base_interface()</code>, <code>get_node_topics_interface()</code>, <code>get_node_parameters_interface()</code>)</li>
-</ul>
+<p><code>agnocast_wrapper::Node</code> does <strong>not</strong> publicly derive from <code>rclcpp::Node</code>. It exposes a curated subset
+of the <code>rclcpp::Node</code> surface and forwards each member to the underlying implementation (<code>rclcpp::Node</code>
+or <code>agnocast::Node</code>). This subset is <strong>identical in both builds</strong> (<code>ENABLE_AGNOCAST=0</code> and <code>=1</code>), so a
+node written against it compiles unchanged either way. If you need an API that is not listed below,
+reach the underlying node via <code>get_rclcpp_node()</code> (always available) or extend the wrapper.</p>
+<h4 id="supported-api-surface">Supported API surface<a class="headerlink" href="#supported-api-surface" title="Permanent link">#</a></h4>
+<p>The following members / free functions are provided. Unless noted, signatures mirror their
+<code>rclcpp::Node</code> counterparts.</p>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Members</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Construction</td>
+<td><code>Node(name, options)</code>, <code>Node(name, namespace, options)</code>, virtual destructor, <code>SharedPtr</code></td>
+</tr>
+<tr>
+<td>Basic info</td>
+<td><code>get_name()</code>, <code>get_namespace()</code>, <code>get_fully_qualified_name()</code>, <code>get_logger()</code></td>
+</tr>
+<tr>
+<td>Time</td>
+<td><code>get_clock()</code>, <code>now()</code></td>
+</tr>
+<tr>
+<td>Node interfaces</td>
+<td><code>get_node_base_interface()</code>, <code>get_node_topics_interface()</code>, <code>get_node_parameters_interface()</code> (partial — only these three)</td>
+</tr>
+<tr>
+<td>Callback groups</td>
+<td><code>create_callback_group()</code></td>
+</tr>
+<tr>
+<td>Parameters</td>
+<td><code>declare_parameter()</code> (typed + <code>ParameterValue</code>/<code>ParameterType</code> overloads), <code>has_parameter()</code>, <code>undeclare_parameter()</code>, <code>get_parameter()</code> / <code>get_parameters()</code> (typed + prefix overloads), <code>set_parameter()</code> / <code>set_parameters()</code> / <code>set_parameters_atomically()</code>, <code>describe_parameter(s)()</code>, <code>get_parameter_types()</code>, <code>list_parameters()</code>, <code>add_on_set_parameters_callback()</code>, <code>remove_on_set_parameters_callback()</code></td>
+</tr>
+<tr>
+<td>Publisher</td>
+<td><code>create_publisher&lt;MessageT&gt;()</code> (<code>QoS</code> and depth overloads)</td>
+</tr>
+<tr>
+<td>Subscription</td>
+<td><code>create_subscription&lt;MessageT&gt;()</code> (<code>QoS</code> and depth overloads)</td>
+</tr>
+<tr>
+<td>Polling subscriber</td>
+<td><code>create_polling_subscriber&lt;MessageT&gt;()</code> (<code>QoS</code> and depth overloads)</td>
+</tr>
+<tr>
+<td>Client</td>
+<td><code>create_client&lt;ServiceT&gt;()</code> — takes <code>rclcpp::QoS</code> (the wrapper normalizes the Humble vs. Jazzy QoS-argument difference)</td>
+</tr>
+<tr>
+<td>Service</td>
+<td><code>create_service&lt;ServiceT&gt;()</code> — <code>message_ptr</code> callback form and an rclcpp-style <code>shared_ptr</code> callback form</td>
+</tr>
+<tr>
+<td>Timer</td>
+<td><code>create_wall_timer()</code>; free <code>create_timer(node, clock, period, cb, group)</code> and free <code>set_period(timer, period)</code> (see <a href="#timer-notes">Timer notes</a>)</td>
+</tr>
+<tr>
+<td>Underlying node</td>
+<td><code>get_rclcpp_node()</code>; <code>get_agnocast_node()</code> (agnocast-enabled build only — not declared in an agnocast-disabled build, so calling it there is a compile error); free <code>to_rclcpp_node(node)</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><code>OnSetParametersCallbackType</code> is aliased in this namespace and resolves to the correct rclcpp type
+for both Humble (rclcpp 16.x) and Jazzy (rclcpp 28+).</p>
+</blockquote>
+<h4 id="build-modes-agnocast-disabled-vs-agnocast-enabled">Build modes: agnocast-disabled vs agnocast-enabled<a class="headerlink" href="#build-modes-agnocast-disabled-vs-agnocast-enabled" title="Permanent link">#</a></h4>
+<p>Which of the two <code>Node</code> <strong>class definitions</strong> is compiled is a <strong>build-time</strong> choice, selected by the
+<code>USE_AGNOCAST_ENABLED</code> preprocessor macro. The API surface above is identical in both, so this choice
+only affects the backend and the underlying-node accessors below.</p>
+<p>This is a separate axis from the <strong>runtime backend selection</strong>: in the agnocast-enabled build, each
+node <em>instance</em> additionally picks <code>rclcpp::Node</code> vs <code>agnocast::Node</code> at construction from the
+<code>ENABLE_AGNOCAST</code> environment variable read at runtime (<code>use_agnocast()</code>), fixed for the node's
+lifetime. The runtime value selects the backend; it does <em>not</em> change which <code>Node</code> definition was
+compiled or which methods are declared — e.g. <code>get_agnocast_node()</code> is declared in every
+agnocast-enabled build and instead throws at runtime when the node is not in Agnocast mode.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Agnocast-disabled build<br>(<code>USE_AGNOCAST_ENABLED</code> undefined)</th>
+<th>Agnocast-enabled build<br>(<code>USE_AGNOCAST_ENABLED</code> defined)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Backend</td>
+<td>Always an owned <code>rclcpp::Node</code>.</td>
+<td><code>rclcpp::Node</code> or <code>agnocast::Node</code>, chosen at construction from the runtime <code>ENABLE_AGNOCAST</code> value and fixed for the node's lifetime.</td>
+</tr>
+<tr>
+<td><code>get_rclcpp_node()</code></td>
+<td>Always returns the owned node.</td>
+<td>Declared; returns the <code>rclcpp::Node</code>, but <strong>throws</strong> <code>std::runtime_error</code> if the node is in Agnocast mode.</td>
+</tr>
+<tr>
+<td><code>get_agnocast_node()</code></td>
+<td><strong>Not declared</strong> — calling it is a compile error.</td>
+<td>Declared regardless of the runtime backend; returns the <code>agnocast::Node</code>, but <strong>throws</strong> if the node is not in Agnocast mode.</td>
+</tr>
+<tr>
+<td><code>to_rclcpp_node(node)</code></td>
+<td>Always succeeds.</td>
+<td>Forwards to <code>get_rclcpp_node()</code> (same throw condition).</td>
+</tr>
+</tbody>
+</table>
+<p>In both builds <code>agnocast_wrapper::Node</code> does not derive from <code>rclcpp::Node</code>, so hand it to an executor or
+utility via <code>get_node_base_interface()</code> (e.g. <code>executor.add_node(node-&gt;get_node_base_interface())</code>).</p>
 <p>```cpp</p>
 <h1 id="include">include <autoware agnocast_wrapper node.hpp><a class="headerlink" href="#include" title="Permanent link">#</a></autoware></h1>
 <p>class MyNode : public autoware::agnocast_wrapper::Node
