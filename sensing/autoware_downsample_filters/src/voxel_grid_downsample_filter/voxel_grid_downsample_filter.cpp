@@ -14,8 +14,7 @@
 
 #include "voxel_grid_downsample_filter.hpp"
 
-#include "memory.hpp"
-
+#include <optional>
 #include <sstream>
 #include <string>
 
@@ -24,6 +23,21 @@ using PointCloud2ConstPtr = sensor_msgs::msg::PointCloud2::ConstSharedPtr;
 
 namespace autoware::downsample_filters
 {
+
+namespace
+{
+std::optional<int> find_field_index(
+  const sensor_msgs::msg::PointCloud2 & cloud, const std::string & field_name)
+{
+  for (size_t i = 0; i < cloud.fields.size(); ++i) {
+    if (cloud.fields[i].name == field_name) {
+      return static_cast<int>(i);
+    }
+  }
+  return std::nullopt;
+}
+}  // namespace
+
 VoxelGridDownsampleFilter::VoxelGridDownsampleFilter(const Parameters & parameters)
 : parameters_(parameters)
 {
@@ -44,39 +58,21 @@ tl::expected<PointCloud2, std::string> VoxelGridDownsampleFilter::filter(
     return tl::unexpected(oss.str());
   }
 
+  const auto x_index = find_field_index(*input, "x");
+  const auto y_index = find_field_index(*input, "y");
+  const auto z_index = find_field_index(*input, "z");
+  const auto intensity_index = find_field_index(*input, "intensity");
+
+  if (!x_index.has_value() || !y_index.has_value() || !z_index.has_value()) {
+    return tl::unexpected("The input point cloud does not have required x, y, z fields.");
+  }
+  if (!intensity_index.has_value()) {
+    return tl::unexpected("There is no intensity field in the input point cloud.");
+  }
   if (
-    !utils::is_data_layout_compatible_with_point_xyzircaedt(*input) &&
-    !utils::is_data_layout_compatible_with_point_xyzirc(*input)) {
-    std::string error_message =
-      "The pointcloud layout is not compatible with PointXYZIRCAEDT or PointXYZIRC.";
-
-    if (utils::is_data_layout_compatible_with_point_xyziradrt(*input)) {
-      error_message +=
-        " Layout is compatible with PointXYZIRADRT. You may be using legacy "
-        "code/data.";
-    }
-
-    if (utils::is_data_layout_compatible_with_point_xyzi(*input)) {
-      error_message += " Layout is compatible with PointXYZI. You may be using legacy code/data.";
-    }
-
-    return tl::unexpected(error_message);
-  }
-
-  if (
-    pcl::getFieldIndex(*input, "x") < 0 || pcl::getFieldIndex(*input, "y") < 0 ||
-    pcl::getFieldIndex(*input, "z") < 0) {
-    return tl::unexpected(
-      std::string("The input point cloud does not have required x, y, z fields."));
-  }
-
-  const int intensity_index = pcl::getFieldIndex(*input, "intensity");
-  if (intensity_index < 0) {
-    return tl::unexpected(std::string("There is no intensity field in the input point cloud."));
-  }
-  if (input->fields[intensity_index].datatype != sensor_msgs::msg::PointField::UINT8) {
-    return tl::unexpected(
-      std::string("The intensity field in the input point cloud is not of type UINT8."));
+    input->fields[static_cast<size_t>(intensity_index.value())].datatype !=
+    sensor_msgs::msg::PointField::UINT8) {
+    return tl::unexpected("The intensity field in the input point cloud is not of type UINT8.");
   }
 
   // Apply filter
