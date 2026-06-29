@@ -342,9 +342,8 @@ public:
       int> = 0>
   AUTOWARE_SERVICE_PTR(ServiceT)
   create_service(
-    const std::string & service_name, Func && callback,
-    const rclcpp::QoS & qos = rclcpp::ServicesQoS(),
-    rclcpp::CallbackGroup::SharedPtr group = nullptr)
+    const std::string & /*service_name*/, Func && /*callback*/,
+    const rclcpp::QoS & = rclcpp::ServicesQoS(), rclcpp::CallbackGroup::SharedPtr = nullptr)
   {
     static_assert(
       is_message_ptr_service_callback_v<Func, ServiceT> ||
@@ -755,9 +754,8 @@ public:
         !is_shared_ptr_service_callback_v<Func, ServiceT>,
       int> = 0>
   typename rclcpp::Service<ServiceT>::SharedPtr create_service(
-    const std::string & service_name, Func && callback,
-    const rclcpp::QoS & qos = rclcpp::ServicesQoS(),
-    rclcpp::CallbackGroup::SharedPtr group = nullptr)
+    const std::string & /*service_name*/, Func && /*callback*/,
+    const rclcpp::QoS & = rclcpp::ServicesQoS(), rclcpp::CallbackGroup::SharedPtr = nullptr)
   {
     static_assert(
       is_message_ptr_service_callback_v<Func, ServiceT> ||
