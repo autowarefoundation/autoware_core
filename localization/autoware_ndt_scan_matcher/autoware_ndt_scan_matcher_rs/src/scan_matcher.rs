@@ -59,6 +59,18 @@ impl ScanMatcher {
         );
     }
 
+    /// Set the `score_estimation` scalars that gate the convergence verdict (the C++
+    /// `converged_param_type` + the two `converged_param_*` thresholds). `match_scan` reads them.
+    pub fn set_convergence_params(
+        &self,
+        converged_param_type: i32,
+        tp_threshold: f64,
+        nvtl_threshold: f64,
+    ) {
+        self.engine
+            .set_convergence_params(converged_param_type, tp_threshold, nvtl_threshold);
+    }
+
     /// Whether any map tile is loaded.
     #[must_use]
     pub fn has_target(&self) -> bool {
@@ -81,17 +93,19 @@ impl ScanMatcher {
         self.engine.commit_from(&staging);
     }
 
-    /// Align `source` (base_link-frame points) from `guess` and return the result. Synchronous — this
-    /// is the WCET hot path; no allocation/await.
+    /// Align `source` (base_link-frame points) from `guess` and return the result + convergence
+    /// verdict. Synchronous — this is the WCET hot path (one bounded `Vec` of ≤ `max_iterations + 1`
+    /// iteration positions for the oscillation count; no await).
     #[must_use]
     pub fn match_scan(&self, guess: &Matrix4<f32>, source: &[[f32; 3]]) -> MatchResult {
-        self.engine.align(guess, source);
-        let r = self.engine.result();
+        let o = self.engine.align_outcome(guess, source);
         MatchResult {
-            pose: r.pose,
-            transform_probability: r.transform_probability,
-            nearest_voxel_likelihood: r.nearest_voxel_likelihood,
-            iteration_num: r.iteration_num,
+            pose: o.pose,
+            transform_probability: o.transform_probability,
+            nearest_voxel_likelihood: o.nearest_voxel_likelihood,
+            iteration_num: o.iteration_num,
+            converged: o.verdict.is_converged,
+            oscillation_num: o.oscillation_num,
         }
     }
 }

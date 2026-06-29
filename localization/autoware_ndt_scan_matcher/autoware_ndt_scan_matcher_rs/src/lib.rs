@@ -22,6 +22,9 @@ extern crate alloc;
 
 // Public API: the pure ports are reused by the Track B engine and exercised by unit tests,
 // independently of whether the `ros` FFI shims are built.
+// The NDT convergence decision — pure, no_std, reused by the std-gated `node` FFI and the portable
+// `scan_matcher`. See plan/ndt_in_rust.md "full Rust port".
+pub mod convergence;
 pub mod cov_estimate;
 pub mod covariance;
 pub mod derivatives;

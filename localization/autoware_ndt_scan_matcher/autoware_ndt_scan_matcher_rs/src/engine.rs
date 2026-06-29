@@ -108,6 +108,9 @@ fn swap_store_arc<T>(c: &Swap<T>, v: Arc<T>) {
 struct EngineState {
     map: VoxelGridMap,
     params: NdtParams,
+    /// The `score_estimation` scalars that gate the convergence verdict (read on `align_outcome`).
+    /// Part of the swapped state so `set_convergence_params` is lock-free like `set_params`.
+    conv: ConvergenceParams,
     /// Cell-id bytes → tile `u64` (the engine owns the mapping the C++ adapter's `id_map_` used to
     /// hold; keys are the raw `std::string` cell-id bytes — not validated UTF-8). N4d.
     id_map: alloc::collections::BTreeMap<alloc::vec::Vec<u8>, u64>,
@@ -180,6 +183,7 @@ impl NdtEngine {
                     resolution,
                     ..NdtParams::default()
                 },
+                conv: ConvergenceParams::default(),
                 id_map: alloc::collections::BTreeMap::new(),
                 next_id: 0,
             }),
@@ -236,6 +240,34 @@ impl NdtEngine {
             }
             n
         });
+    }
+
+    /// Set the `score_estimation` scalars that gate the convergence verdict (the C++
+    /// `converged_param_*`). Lock-free (swapped into the published state like [`Self::set_params`]).
+    pub fn set_convergence_params(
+        &self,
+        converged_param_type: i32,
+        converged_param_transform_probability: f64,
+        converged_param_nearest_voxel_transformation_likelihood: f64,
+    ) {
+        swap_rcu(&self.state, |s| {
+            let mut n = s.clone();
+            n.conv = ConvergenceParams {
+                converged_param_type,
+                converged_param_transform_probability,
+                converged_param_nearest_voxel_transformation_likelihood,
+            };
+            n
+        });
+    }
+
+    /// Align from `guess` and derive the full [`AlignOutcome`] (oscillation + convergence verdict),
+    /// reading the engine's own [`ConvergenceParams`]. The self-contained counterpart of [`run_align`]
+    /// (which takes the params explicitly for the C++ FFI) — what the portable `ScanMatcher` calls.
+    #[must_use]
+    pub fn align_outcome(&self, guess: &Matrix4<f32>, source: &[[f32; 3]]) -> AlignOutcome {
+        let conv = self.load_state().conv;
+        run_align(self, guess, source, &conv)
     }
 
     /// Set (or, when `scale == 0`, clear) the longitudinal regularization toward `(x, y)`.
@@ -994,12 +1026,11 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_get_score_array
 // Folds align + oscillation count + the convergence verdict into one Rust call against the live
 // engine, so the C++ sensor callback no longer drives align via the adapter + the C++
 // `count_oscillation` + the separate `evaluate_convergence` FFI. Reuses the existing engine align,
-// `helper::count_oscillation`, and `node::evaluate_convergence`. Uses `crate::node` (std-only), so
-// the whole orchestrator is `std`-gated and excluded from the no_std rlib.
+// `helper::count_oscillation`, and `convergence::evaluate_convergence` — all no_std, so this is part
+// of the no_std rlib (the C-ABI `extern "C"` wrapper below stays `std`-gated).
 
 /// The `score_estimation` scalars that gate convergence (mirrors `AwConvergenceInput`'s param fields).
-#[cfg(feature = "std")]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct ConvergenceParams {
     pub converged_param_type: i32,
     pub converged_param_transform_probability: f64,
@@ -1008,7 +1039,6 @@ pub struct ConvergenceParams {
 
 /// Result of [`run_align`]: the scalars + convergence verdict the C++ sensor callback needs (the
 /// variable-length arrays/marker are still read via `get_result` in N4a).
-#[cfg(feature = "std")]
 #[derive(Clone, Copy, Debug)]
 pub struct AlignOutcome {
     pub pose: Matrix4<f32>,
@@ -1017,13 +1047,12 @@ pub struct AlignOutcome {
     pub iteration_num: i32,
     pub max_iterations: i32,
     pub oscillation_num: i32,
-    pub verdict: crate::node::ConvergenceVerdict,
+    pub verdict: crate::convergence::ConvergenceVerdict,
 }
 
 /// Align the live engine from `guess`, then derive the oscillation count (from the iteration
 /// trajectory translations, matching the C++ `count_oscillation(transformation_msg_array)`) and the
 /// convergence verdict. Pure orchestration over existing ports — no new math.
-#[cfg(feature = "std")]
 #[must_use]
 pub fn run_align(
     engine: &NdtEngine,
@@ -1046,7 +1075,7 @@ pub fn run_align(
         })
         .collect();
     let oscillation_num = crate::helper::count_oscillation(&positions);
-    let verdict = crate::node::evaluate_convergence(&crate::node::ConvergenceInput {
+    let verdict = crate::convergence::evaluate_convergence(&crate::convergence::ConvergenceInput {
         iteration_num: result.iteration_num,
         max_iterations,
         oscillation_num,
@@ -1621,16 +1650,17 @@ mod tests {
             })
             .collect();
         let osc = crate::helper::count_oscillation(&positions);
-        let verdict = crate::node::evaluate_convergence(&crate::node::ConvergenceInput {
-            iteration_num: r.iteration_num,
-            max_iterations: max_it,
-            oscillation_num: osc,
-            transform_probability: f64::from(r.transform_probability),
-            nearest_voxel_transformation_likelihood: f64::from(r.nearest_voxel_likelihood),
-            converged_param_type: 0,
-            converged_param_transform_probability: 0.0,
-            converged_param_nearest_voxel_transformation_likelihood: 0.0,
-        });
+        let verdict =
+            crate::convergence::evaluate_convergence(&crate::convergence::ConvergenceInput {
+                iteration_num: r.iteration_num,
+                max_iterations: max_it,
+                oscillation_num: osc,
+                transform_probability: f64::from(r.transform_probability),
+                nearest_voxel_transformation_likelihood: f64::from(r.nearest_voxel_likelihood),
+                converged_param_type: 0,
+                converged_param_transform_probability: 0.0,
+                converged_param_nearest_voxel_transformation_likelihood: 0.0,
+            });
 
         assert_eq!(outcome.pose, r.pose);
         assert_eq!(outcome.transform_probability, r.transform_probability);

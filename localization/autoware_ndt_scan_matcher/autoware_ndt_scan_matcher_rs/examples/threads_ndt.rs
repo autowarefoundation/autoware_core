@@ -140,6 +140,8 @@ fn main() {
 
     let matcher = Arc::new(ScanMatcher::new(2.0, 6, 0.01));
     matcher.set_params(0.01, 0.1, 2.0, 30, 0.55, 1);
+    // Gate convergence on the transform-probability score (type 0); 0.0 is the defensive threshold.
+    matcher.set_convergence_params(0, 0.0, 0.0);
     // Initial map (drive the async port with the hand-rolled block_on — no runtime).
     block_on(matcher.update_map(&ThreadHost { extra: true }, [0.0, 0.0], 50.0));
     assert!(matcher.has_target(), "map should be loaded");
@@ -179,11 +181,18 @@ fn main() {
     // Final deterministic check on the quiesced matcher.
     let r = matcher.match_scan(&guess, &scan);
     assert!(matcher.has_target() && r.pose[(0, 3)].is_finite());
+    assert!(
+        r.converged,
+        "the quiesced synthetic match should report converged"
+    );
     println!(
         "OK: {ALIGN_WORKERS} threads x {ALIGNS_PER_WORKER} aligns concurrent with {MAP_UPDATES} map \
-         updates, no async runtime (hand-rolled block_on). final translation=({:.4}, {:.4}, {:.4})",
+         updates, no async runtime (hand-rolled block_on). final translation=({:.4}, {:.4}, {:.4})  \
+         converged={}  oscillation={}",
         r.pose[(0, 3)],
         r.pose[(1, 3)],
         r.pose[(2, 3)],
+        r.converged,
+        r.oscillation_num,
     );
 }

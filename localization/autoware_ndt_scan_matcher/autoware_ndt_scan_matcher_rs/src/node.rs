@@ -20,6 +20,10 @@
 
 use core::ffi::c_void;
 
+// The pure convergence decision now lives in the no_std `convergence` module (so the portable
+// `scan_matcher` can reuse it); this module keeps the `Aw*` C-ABI mirrors + the `extern "C"` shim.
+use crate::convergence::{ConvergenceInput, evaluate_convergence};
+
 /// The ROS I/O / node-state operations a migrated Rust callback needs, as C function pointers over an
 /// opaque context. Built and owned C++-side (the trampolines cast `ctx` back to `NDTScanMatcher*`);
 /// every pointer + `ctx` must stay valid for the duration of the call. Field order must match the C
@@ -268,101 +272,6 @@ unsafe fn str_bytes<'a>(ptr: *const u8, len: usize) -> &'a [u8] {
     unsafe { core::slice::from_raw_parts(ptr, len) }
 }
 
-/// Inputs to the NDT convergence decision: one alignment result's relevant scalars plus the
-/// `score_estimation` params. `oscillation_num` is precomputed by the caller (it is already the
-/// `count_oscillation` port, so this fn stays focused on the convergence decision).
-#[derive(Clone, Copy, Debug)]
-pub struct ConvergenceInput {
-    /// Iterations the NDT optimizer actually ran.
-    pub iteration_num: i32,
-    /// The optimizer's iteration cap (`getMaximumIterations`).
-    pub max_iterations: i32,
-    /// Consecutive direction-inversion count over the iteration trajectory.
-    pub oscillation_num: i32,
-    /// Transform-probability score of the final pose.
-    pub transform_probability: f64,
-    /// Nearest-voxel transformation likelihood of the final pose.
-    pub nearest_voxel_transformation_likelihood: f64,
-    /// Which score gates convergence: `0` = transform probability, `1` = nearest-voxel likelihood.
-    pub converged_param_type: i32,
-    /// Convergence threshold for the transform-probability score.
-    pub converged_param_transform_probability: f64,
-    /// Convergence threshold for the nearest-voxel-likelihood score.
-    pub converged_param_nearest_voxel_transformation_likelihood: f64,
-}
-
-/// The convergence verdict plus the sub-flags the C++ side needs to drive its diagnostics.
-#[expect(
-    clippy::struct_excessive_bools,
-    reason = "1:1 mirror of the C++ callback's independent diagnostic sub-flags (each reported \
-              separately to /diagnostics); an enum/state-machine would break that mapping"
-)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct ConvergenceVerdict {
-    /// `false` when `converged_param_type` is unknown — the C++ caller then emits an ERROR
-    /// diagnostic and aborts the callback (the other fields are unset/`false`).
-    pub valid_param_type: bool,
-    /// The optimizer stopped before hitting its iteration cap.
-    pub is_ok_iteration_num: bool,
-    /// Oscillation count exceeded the threshold (a local-minimum stop still counts as converged).
-    pub is_local_optimal_solution_oscillation: bool,
-    /// The selected score cleared its threshold.
-    pub is_ok_score: bool,
-    /// Final verdict: `(is_ok_iteration_num || is_local_optimal_solution_oscillation) && is_ok_score`.
-    pub is_converged: bool,
-    /// The score that was compared against the threshold (selected by `converged_param_type`).
-    pub score: f64,
-    /// The threshold the score was compared against.
-    pub score_threshold: f64,
-}
-
-/// Threshold above which the iteration trajectory is treated as oscillating in a local minimum.
-/// Mirrors the `constexpr int oscillation_num_threshold = 10` in `callback_sensor_points_main`.
-const OSCILLATION_NUM_THRESHOLD: i32 = 10;
-
-/// Pure NDT convergence decision, ported verbatim from `callback_sensor_points_main`. No allocation,
-/// no panic (matches on the `i32` discriminant, no indexing/slicing) and O(1) — RT-clean.
-#[must_use]
-pub fn evaluate_convergence(input: &ConvergenceInput) -> ConvergenceVerdict {
-    let is_ok_iteration_num = input.iteration_num < input.max_iterations;
-    let is_local_optimal_solution_oscillation = input.oscillation_num > OSCILLATION_NUM_THRESHOLD;
-    let (valid_param_type, score, score_threshold) = match input.converged_param_type {
-        // ConvergedParamType::TRANSFORM_PROBABILITY
-        0 => (
-            true,
-            input.transform_probability,
-            input.converged_param_transform_probability,
-        ),
-        // ConvergedParamType::NEAREST_VOXEL_TRANSFORMATION_LIKELIHOOD
-        1 => (
-            true,
-            input.nearest_voxel_transformation_likelihood,
-            input.converged_param_nearest_voxel_transformation_likelihood,
-        ),
-        // Unknown type: C++ emits an ERROR diagnostic and returns false from the callback.
-        _ => {
-            return ConvergenceVerdict {
-                valid_param_type: false,
-                is_ok_iteration_num,
-                is_local_optimal_solution_oscillation,
-                ..ConvergenceVerdict::default()
-            };
-        }
-    };
-    let is_ok_score = score > score_threshold;
-    let is_converged =
-        (is_ok_iteration_num || is_local_optimal_solution_oscillation) && is_ok_score;
-    ConvergenceVerdict {
-        valid_param_type,
-        is_ok_iteration_num,
-        is_local_optimal_solution_oscillation,
-        is_ok_score,
-        is_converged,
-        score,
-        score_threshold,
-    }
-}
-
 /// C ABI mirror of [`ConvergenceInput`] (same field order/types). Plain scalars — no pointers.
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
@@ -377,7 +286,8 @@ pub struct AwConvergenceInput {
     pub converged_param_nearest_voxel_transformation_likelihood: f64,
 }
 
-/// C ABI mirror of [`ConvergenceVerdict`] (same field order). `bool` is a 1-byte, C-ABI-stable type.
+/// C ABI mirror of [`crate::convergence::ConvergenceVerdict`] (same field order). `bool` is a 1-byte,
+/// C-ABI-stable type.
 /// (`#[repr(C)]` exempts this from `struct_excessive_bools` — the FFI layout is fixed by the ABI.)
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default)]
@@ -573,109 +483,6 @@ mod tests {
             converged_param_transform_probability: 2.0,
             converged_param_nearest_voxel_transformation_likelihood: 4.0,
         }
-    }
-
-    #[test]
-    fn converges_when_iterations_ok_and_score_ok() {
-        let v = evaluate_convergence(&base());
-        assert!(v.valid_param_type);
-        assert!(v.is_ok_iteration_num);
-        assert!(!v.is_local_optimal_solution_oscillation);
-        assert!(v.is_ok_score);
-        assert!(v.is_converged);
-        assert_eq!(v.score, 3.0);
-        assert_eq!(v.score_threshold, 2.0);
-    }
-
-    #[test]
-    fn not_converged_when_score_below_threshold() {
-        // iterations fine, but TP=1.0 is NOT > 2.0 → fails the score gate.
-        let v = evaluate_convergence(&ConvergenceInput {
-            transform_probability: 1.0,
-            ..base()
-        });
-        assert!(v.is_ok_iteration_num);
-        assert!(!v.is_ok_score);
-        assert!(!v.is_converged);
-    }
-
-    #[test]
-    fn iteration_limit_alone_blocks_convergence() {
-        // Hit the iteration cap (30 == 30, not <), no oscillation override → not converged
-        // even though the score is fine.
-        let v = evaluate_convergence(&ConvergenceInput {
-            iteration_num: 30,
-            ..base()
-        });
-        assert!(!v.is_ok_iteration_num);
-        assert!(!v.is_local_optimal_solution_oscillation);
-        assert!(v.is_ok_score);
-        assert!(!v.is_converged);
-    }
-
-    #[test]
-    fn oscillation_overrides_iteration_limit() {
-        // Iteration cap reached, but oscillation_num 11 > 10 lets a good score still converge.
-        let v = evaluate_convergence(&ConvergenceInput {
-            iteration_num: 30,
-            oscillation_num: 11,
-            ..base()
-        });
-        assert!(!v.is_ok_iteration_num);
-        assert!(v.is_local_optimal_solution_oscillation);
-        assert!(v.is_ok_score);
-        assert!(v.is_converged);
-    }
-
-    #[test]
-    fn oscillation_boundary_is_strictly_greater_than_ten() {
-        // 10 is NOT > 10 (so with the iteration cap hit, no convergence)...
-        let at = evaluate_convergence(&ConvergenceInput {
-            iteration_num: 30,
-            oscillation_num: 10,
-            ..base()
-        });
-        assert!(!at.is_local_optimal_solution_oscillation);
-        assert!(!at.is_converged);
-        // ...11 IS > 10.
-        let over = evaluate_convergence(&ConvergenceInput {
-            iteration_num: 30,
-            oscillation_num: 11,
-            ..base()
-        });
-        assert!(over.is_local_optimal_solution_oscillation);
-        assert!(over.is_converged);
-    }
-
-    #[test]
-    fn nvtl_param_type_selects_nvtl_score_and_threshold() {
-        // converged_param_type = NVTL → score is the nvtl field, gated by the nvtl threshold;
-        // the TP fields are ignored. nvtl=5.0 > 4.0 converges; the TP value would be irrelevant.
-        let v = evaluate_convergence(&ConvergenceInput {
-            converged_param_type: NVTL,
-            transform_probability: 0.0,
-            converged_param_transform_probability: 100.0,
-            ..base()
-        });
-        assert!(v.valid_param_type);
-        assert_eq!(v.score, 5.0);
-        assert_eq!(v.score_threshold, 4.0);
-        assert!(v.is_ok_score);
-        assert!(v.is_converged);
-    }
-
-    #[test]
-    fn unknown_param_type_is_invalid() {
-        let v = evaluate_convergence(&ConvergenceInput {
-            converged_param_type: 2,
-            ..base()
-        });
-        assert!(!v.valid_param_type);
-        // The two flags computed before the dispatch are still populated; the rest stay false.
-        assert!(v.is_ok_iteration_num);
-        assert!(!v.is_local_optimal_solution_oscillation);
-        assert!(!v.is_ok_score);
-        assert!(!v.is_converged);
     }
 
     #[test]

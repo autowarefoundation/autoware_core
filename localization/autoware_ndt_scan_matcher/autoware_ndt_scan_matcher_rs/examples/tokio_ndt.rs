@@ -81,13 +81,16 @@ impl MapSource for TokioHost {
 impl OutputSink for TokioHost {
     fn publish_result(&self, r: &MatchResult) {
         println!(
-            "ndt result: translation=({:.4}, {:.4}, {:.4})  tp={:.4}  nvl={:.4}  iters={}",
+            "ndt result: translation=({:.4}, {:.4}, {:.4})  tp={:.4}  nvl={:.4}  iters={}  \
+             converged={}  oscillation={}",
             r.pose[(0, 3)],
             r.pose[(1, 3)],
             r.pose[(2, 3)],
             r.transform_probability,
             r.nearest_voxel_likelihood,
             r.iteration_num,
+            r.converged,
+            r.oscillation_num,
         );
     }
 }
@@ -104,6 +107,9 @@ async fn main() {
 
     let matcher = ScanMatcher::new(2.0, 6, 0.01);
     matcher.set_params(0.01, 0.1, 2.0, 30, 0.55, 1);
+    // Gate convergence on the transform-probability score (type 0). A 0.0 threshold is the defensive
+    // lower bound for this synthetic fit — a good recovery yields a clearly positive score.
+    matcher.set_convergence_params(0, 0.0, 0.0);
 
     // Load the map from the host (async), then confirm it landed.
     matcher.update_map(&host, [0.0, 0.0], 50.0).await;
@@ -135,6 +141,10 @@ async fn main() {
     assert!(
         result.pose[(0, 3)].abs() < 1.0 && result.pose[(1, 3)].abs() < 1.0,
         "recovered translation is implausibly large"
+    );
+    assert!(
+        result.converged,
+        "the synthetic recovery should report converged (iters < cap, score > 0)"
     );
 
     println!("OK: NDT scan matcher ran standalone in async Rust (Tokio), no ROS.");

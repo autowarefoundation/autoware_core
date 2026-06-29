@@ -50,6 +50,12 @@ pub struct MatchResult {
     pub transform_probability: f32,
     pub nearest_voxel_likelihood: f32,
     pub iteration_num: i32,
+    /// The convergence verdict (`is_converged`) the node gates on — see
+    /// [`crate::convergence::evaluate_convergence`].
+    pub converged: bool,
+    /// Consecutive direction-inversion count over the iteration trajectory (the C++
+    /// `count_oscillation`); `> 10` lets a local-minimum stop still count as converged.
+    pub oscillation_num: i32,
 }
 
 /// Source of map tiles around a position. ROS: the `pcd_loader` service; kernel: flash/DMA; example:
