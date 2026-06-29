@@ -202,6 +202,30 @@ impl Clone for NdtEngine {
 }
 
 impl NdtEngine {
+    /// Clone the engine's configuration (params, convergence + covariance config, regularization) but
+    /// with an **empty** map (no tiles, fresh id mapping). Used by the map-update rebuild path to start
+    /// a staging engine from scratch (mirrors the C++ `need_rebuild`: fresh `NdtType` + `setParams`),
+    /// as opposed to [`Clone`] which deep-copies the current map.
+    #[must_use]
+    pub fn clone_empty(&self) -> Self {
+        let st = self.load_state();
+        Self {
+            state: swap_new(EngineState {
+                map: VoxelGridMap::new([st.params.resolution; 3], self.min_points, self.eig_mult),
+                params: st.params,
+                conv: st.conv,
+                cov_config: st.cov_config.clone(),
+                id_map: alloc::collections::BTreeMap::new(),
+                next_id: 0,
+            }),
+            reg: swap_new(*swap_load(&self.reg)),
+            min_points: self.min_points,
+            eig_mult: self.eig_mult,
+            #[cfg(not(feature = "std"))]
+            scratch: core::cell::RefCell::new(AlignScratch::new()),
+        }
+    }
+
     /// New engine with an empty map. `resolution` is the voxel/leaf size and the neighbor radius;
     /// `min_points`/`eig_mult` match the C++ `MultiVoxelGridCovariance` defaults (6, 0.01).
     #[must_use]

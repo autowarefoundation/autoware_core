@@ -89,6 +89,26 @@ private:
   bool update_ndt(
     const geometry_msgs::msg::Point & position, NdtType & ndt,
     std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr);
+
+#ifdef NDT_USE_RUST
+  // Map-update via the portable Rust `apply_map_update` (the `MapSource` Host port). The Rust FFI owns
+  // the staging + atomic commit double-buffer; we only supply the tiles. `build_map_delta` runs the
+  // pcd-loader fetch and pushes the add/remove delta into the Rust-owned `builder` (returns whether
+  // anything changed); `map_source_fill` is the C-ABI trampoline the FFI calls back (ctx ==
+  // MapSourceContext*), mirroring the make_host/make_diagnostics vtable pattern.
+  struct MapSourceContext
+  {
+    MapUpdateModule * self;
+    bool rebuild;
+    DiagnosticsInterface * diagnostics;
+    bool updated;
+  };
+  static void map_source_fill(void * ctx, double cx, double cy, double radius, void * builder);
+  bool build_map_delta(
+    void * builder, double cx, double cy, double radius, bool rebuild,
+    DiagnosticsInterface & diagnostics);
+#endif
+
   void publish_partial_pcd_map();
 
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr loaded_pcd_pub_;

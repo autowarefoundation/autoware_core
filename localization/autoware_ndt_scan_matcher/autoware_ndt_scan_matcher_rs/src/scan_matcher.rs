@@ -99,20 +99,10 @@ impl ScanMatcher {
         self.engine.has_target()
     }
 
-    /// Load the map delta around `center` (within `radius`) from the host and publish it atomically:
-    /// build it on a private staging engine, then `commit_from` (the lock-free double-buffer). Mirrors
-    /// the ROS map-update path; portable because the tiles come from the [`MapSource`] port.
+    /// Load the map delta around `center` (within `radius`) from the host and publish it atomically.
+    /// Incremental (keeps the current map); see [`apply_map_update`] for the shared logic.
     pub async fn update_map<S: MapSource>(&self, source: &S, center: [f64; 2], radius: f64) {
-        let delta = source.load(center, radius).await;
-        let staging = self.engine.clone();
-        for tile in &delta.add {
-            staging.add_target_bytes(&tile.points, &tile.id);
-        }
-        for id in &delta.remove {
-            staging.remove_target_bytes(id);
-        }
-        staging.create_kdtree();
-        self.engine.commit_from(&staging);
+        apply_map_update(&self.engine, source, center, radius, false).await;
     }
 
     /// Align `source` (base_link-frame points) from `guess` and return the result + convergence
@@ -167,4 +157,38 @@ impl ScanMatcher {
             },
         )
     }
+}
+
+/// Load a map delta from `source` around `center` (within `radius`) and publish it into `engine`
+/// atomically: build the new map on a **private staging engine**, then `commit_from` (the lock-free
+/// double-buffer), so a concurrent align never observes a partial map. `rebuild` starts the staging
+/// engine empty (dropping the current tiles — the C++ `need_rebuild`); otherwise it clones the current
+/// map and applies the incremental delta. Shared by [`ScanMatcher::update_map`] and the ROS map-update
+/// FFI. `async` only at the `source.load` boundary; the staging build is synchronous.
+pub async fn apply_map_update<S: MapSource>(
+    engine: &NdtEngine,
+    source: &S,
+    center: [f64; 2],
+    radius: f64,
+    rebuild: bool,
+) {
+    let delta = source.load(center, radius).await;
+    // Empty delta → no-op (don't republish): mirrors the C++ "no maps to add/remove → no commit", and
+    // avoids a wasteful kdtree rebuild on idle map-update cycles.
+    if delta.add.is_empty() && delta.remove.is_empty() {
+        return;
+    }
+    let staging = if rebuild {
+        engine.clone_empty()
+    } else {
+        engine.clone()
+    };
+    for tile in &delta.add {
+        staging.add_target_bytes(&tile.points, &tile.id);
+    }
+    for id in &delta.remove {
+        staging.remove_target_bytes(id);
+    }
+    staging.create_kdtree();
+    engine.commit_from(&staging);
 }

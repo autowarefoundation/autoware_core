@@ -38,6 +38,9 @@ pub mod ndt;
 // ROS-node callback glue (Phase N); std-only (not part of the no_std engine path).
 #[cfg(feature = "std")]
 pub mod node;
+// ROS map-update glue: drives the portable `apply_map_update` (the `MapSource` port) from C++; std-only.
+#[cfg(feature = "std")]
+pub mod node_map_update;
 pub mod scan_matcher;
 pub mod transform;
 pub mod voxel_grid;

@@ -14,9 +14,11 @@
 
 #include <autoware/ndt_scan_matcher/map_update_module.hpp>
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace autoware::ndt_scan_matcher
 {
@@ -183,19 +185,24 @@ void MapUpdateModule::update_map_internal(
   diagnostics_ptr->add_key_value("is_need_rebuild", builder_state.need_rebuild);
 
 #ifdef NDT_USE_RUST
-  // Rust engine: build the new map on a PRIVATE staging engine (secondary_ndt_ptr), then publish it
-  // into the live engine in ONE atomic step (commit_from). The live engine is never mutated
-  // tile-by-tile, so a concurrent align always observes a complete map — no giant lock needed (the
-  // engine's internal ArcSwap is the lock-free double-buffer). `need_rebuild` starts the staging
-  // engine fresh (dropping stale tiles); otherwise the kept staging map gets the incremental delta.
+  // Rust engine: the portable `apply_map_update` (the `MapSource` Host port) owns the staging engine +
+  // atomic `commit_from` double-buffer. We only supply the tiles: `map_source_fill` runs the pcd-loader
+  // and pushes the add/remove delta into the Rust-owned builder, which Rust applies to a private
+  // staging engine (a clone of the live map, or empty when `need_rebuild`) and publishes in one atomic
+  // store — a concurrent align always sees a complete map (the engine's ArcSwap is the lock-free
+  // buffer). An empty delta is a no-op on the Rust side (no republish).
   if (builder_state.need_rebuild) {
-    const auto param = ndt_ptr_.with([](const auto & ndt_ptr) { return ndt_ptr->getParams(); });
-    builder_state.secondary_ndt_ptr.reset(new NdtType);
-    builder_state.secondary_ndt_ptr->setParams(param);
-    loaded_map_.clear();
+    loaded_map_.clear();  // staging starts empty in Rust (rebuild); keep the publish map in sync.
   }
 
-  const bool updated = update_ndt(position, *builder_state.secondary_ndt_ptr, diagnostics_ptr);
+  MapSourceContext source_ctx{this, builder_state.need_rebuild, diagnostics_ptr.get(), false};
+  const AwMapSource source{&source_ctx, &MapUpdateModule::map_source_fill};
+  ndt_ptr_.with([&](const auto & ndt_ptr) {
+    autoware_ndt_scan_matcher_rs_ndt_engine_update_map(
+      ndt_ptr->raw_handle(), &source, position.x, position.y, param_.map_radius,
+      builder_state.need_rebuild);
+  });
+  const bool updated = source_ctx.updated;
 
   // check is_updated_map
   diagnostics_ptr->add_key_value("is_updated_map", updated);
@@ -215,11 +222,6 @@ void MapUpdateModule::update_map_internal(
   }
 
   builder_state.need_rebuild = false;
-
-  // Atomically publish the freshly-built staging map into the live engine (one store; no pointer
-  // swap). A concurrent align sees the complete new map or the old one, never a partial.
-  ndt_ptr_.with(
-    [&](const auto & ndt_ptr) { ndt_ptr->commitFrom(*builder_state.secondary_ndt_ptr); });
 #else
   // If the current position is super far from the previous loading position,
   // lock and rebuild ndt_ptr_
@@ -397,6 +399,106 @@ bool MapUpdateModule::update_ndt(
   diagnostics_ptr->add_key_value("is_succeed_call_pcd_loader", true);
   return true;  // Updated
 }
+
+#ifdef NDT_USE_RUST
+void MapUpdateModule::map_source_fill(
+  void * ctx, double cx, double cy, double radius, void * builder)
+{
+  auto * c = static_cast<MapSourceContext *>(ctx);
+  c->updated = c->self->build_map_delta(builder, cx, cy, radius, c->rebuild, *c->diagnostics);
+}
+
+bool MapUpdateModule::build_map_delta(
+  void * builder, double cx, double cy, double radius, bool rebuild,
+  DiagnosticsInterface & diagnostics)
+{
+  // The Rust staging engine starts empty on rebuild (cached_ids empty → the loader returns every tile)
+  // and otherwise clones the live map (cached_ids = its current tiles → the loader returns the delta).
+  const std::vector<std::string> cached_ids =
+    rebuild ? std::vector<std::string>{}
+            : ndt_ptr_.with([](const auto & ndt_ptr) { return ndt_ptr->getCurrentMapIDs(); });
+  diagnostics.add_key_value("maps_size_before", cached_ids.size());
+
+  auto request = std::make_shared<autoware_map_msgs::srv::GetDifferentialPointCloudMap::Request>();
+  request->area.center_x = static_cast<float>(cx);
+  request->area.center_y = static_cast<float>(cy);
+  request->area.radius = static_cast<float>(radius);
+  request->cached_ids = cached_ids;
+
+  while (!pcd_loader_client_->wait_for_service(std::chrono::seconds(1)) && rclcpp::ok()) {
+    diagnostics.add_key_value("is_succeed_call_pcd_loader", false);
+    std::stringstream message;
+    message << "Waiting for pcd loader service. Check the pointcloud_map_loader.";
+    diagnostics.update_level_and_message(
+      diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
+    return false;
+  }
+
+  auto result{pcd_loader_client_->async_send_request(
+    request,
+    [](rclcpp::Client<autoware_map_msgs::srv::GetDifferentialPointCloudMap>::SharedFuture) {})};
+
+  std::future_status status = result.wait_for(std::chrono::seconds(0));
+  while (status != std::future_status::ready) {
+    if (!rclcpp::ok()) {
+      diagnostics.add_key_value("is_succeed_call_pcd_loader", false);
+      std::stringstream message;
+      message << "pcd_loader service is not working.";
+      diagnostics.update_level_and_message(
+        diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
+      return false;
+    }
+    status = result.wait_for(std::chrono::seconds(1));
+  }
+  diagnostics.add_key_value("is_succeed_call_pcd_loader", true);
+
+  auto & maps_to_add = result.get()->new_pointcloud_with_ids;
+  auto & map_ids_to_remove = result.get()->ids_to_remove;
+  diagnostics.add_key_value("maps_to_add_size", maps_to_add.size());
+  diagnostics.add_key_value("maps_to_remove_size", map_ids_to_remove.size());
+
+  if (maps_to_add.empty() && map_ids_to_remove.empty()) {
+    return false;  // No update (Rust skips the commit for an empty delta).
+  }
+
+  const auto exe_start_time = std::chrono::system_clock::now();
+  for (auto & map : maps_to_add) {
+    auto cloud = pcl::make_shared<pcl::PointCloud<PointTarget>>();
+    pcl::fromROSMsg(map.pointcloud, *cloud);
+    std::vector<float> flat;
+    flat.reserve(cloud->size() * 3);
+    for (const auto & p : *cloud) {
+      flat.push_back(p.x);
+      flat.push_back(p.y);
+      flat.push_back(p.z);
+    }
+    autoware_ndt_scan_matcher_rs_map_delta_add(
+      builder, reinterpret_cast<const std::uint8_t *>(map.cell_id.data()), map.cell_id.size(),
+      flat.data(), cloud->size());
+    if (param_.publish_loaded_map) {
+      loaded_map_[map.cell_id] = cloud;
+    }
+  }
+  for (const std::string & map_id_to_remove : map_ids_to_remove) {
+    autoware_ndt_scan_matcher_rs_map_delta_remove(
+      builder, reinterpret_cast<const std::uint8_t *>(map_id_to_remove.data()),
+      map_id_to_remove.size());
+    if (param_.publish_loaded_map) {
+      loaded_map_.erase(map_id_to_remove);
+    }
+  }
+
+  const auto exe_end_time = std::chrono::system_clock::now();
+  const auto duration_micro_sec =
+    std::chrono::duration_cast<std::chrono::microseconds>(exe_end_time - exe_start_time).count();
+  const auto exe_time = static_cast<double>(duration_micro_sec) / 1000.0;
+  diagnostics.add_key_value("map_update_execution_time", exe_time);
+  diagnostics.add_key_value(
+    "maps_size_after", cached_ids.size() + maps_to_add.size() - map_ids_to_remove.size());
+  diagnostics.add_key_value("is_succeed_call_pcd_loader", true);
+  return true;  // Updated
+}
+#endif
 
 void MapUpdateModule::publish_partial_pcd_map()
 {
