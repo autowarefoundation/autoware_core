@@ -27,11 +27,15 @@ pub mod covariance;
 pub mod derivatives;
 pub mod engine;
 pub mod helper;
+// Portable node orchestration: the `Host` port traits + the `no_std` scan matcher over the engine
+// (reusable on ROS / bare-metal / the Tokio example). See plan/ndt_in_rust.md "full Rust port".
+pub mod host;
 mod kdtree;
 pub mod ndt;
 // ROS-node callback glue (Phase N); std-only (not part of the no_std engine path).
 #[cfg(feature = "std")]
 pub mod node;
+pub mod scan_matcher;
 pub mod transform;
 pub mod voxel_grid;
 

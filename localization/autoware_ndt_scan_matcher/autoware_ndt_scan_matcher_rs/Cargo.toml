@@ -43,6 +43,11 @@ arc-swap = { version = "1", optional = true }
 [build-dependencies]
 bindgen = { version = "0.69", optional = true }
 
+# Example-only (examples/tokio_ndt.rs): the async reference Host impl. std; not linked into the
+# staticlib or the no_std rlib (dev-deps are excluded from --lib builds).
+[dev-dependencies]
+tokio = { version = "1", features = ["rt", "macros"] }
+
 # rust-hardening gates (see .claude/skills/rust-hardening).
 [lints.rust]
 warnings = "deny"
