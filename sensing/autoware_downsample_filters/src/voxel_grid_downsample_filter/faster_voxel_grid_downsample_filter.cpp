@@ -14,7 +14,12 @@
 
 #include "faster_voxel_grid_downsample_filter.hpp"
 
+#include <sensor_msgs/point_cloud2_iterator.hpp>
+
 #include <cfloat>
+#include <cstdint>
+#include <limits>
+#include <string>
 #include <unordered_map>
 
 namespace autoware::downsample_filters
@@ -22,12 +27,6 @@ namespace autoware::downsample_filters
 
 FasterVoxelGridDownsampleFilter::FasterVoxelGridDownsampleFilter()
 {
-  x_offset_ = 0;
-  y_offset_ = 0;
-  z_offset_ = 0;
-  intensity_index_ = 0;
-  intensity_offset_ = 0;
-  offset_initialized_ = false;
 }
 
 void FasterVoxelGridDownsampleFilter::set_voxel_size(
@@ -37,29 +36,9 @@ void FasterVoxelGridDownsampleFilter::set_voxel_size(
     Eigen::Array3f::Ones() / Eigen::Array3f(voxel_size_x, voxel_size_y, voxel_size_z);
 }
 
-void FasterVoxelGridDownsampleFilter::set_field_offsets(const PointCloud2ConstPtr & input)
-{
-  const int x_index = pcl::getFieldIndex(*input, "x");
-  const int y_index = pcl::getFieldIndex(*input, "y");
-  const int z_index = pcl::getFieldIndex(*input, "z");
-
-  x_offset_ = static_cast<int>(input->fields[x_index].offset);
-  y_offset_ = static_cast<int>(input->fields[y_index].offset);
-  z_offset_ = static_cast<int>(input->fields[z_index].offset);
-  intensity_index_ = pcl::getFieldIndex(*input, "intensity");
-  intensity_offset_ = static_cast<int>(input->fields[intensity_index_].offset);
-
-  offset_initialized_ = true;
-}
-
 ValidationResult FasterVoxelGridDownsampleFilter::filter(
   const PointCloud2ConstPtr & input, PointCloud2 & output)
 {
-  // Initialize point-field byte offsets on first use.
-  if (!offset_initialized_) {
-    set_field_offsets(input);
-  }
-
   // Compute the voxel-space bounds of all valid points.
   Eigen::Vector3i min_voxel, max_voxel;
   if (!get_min_max_voxel(input, min_voxel, max_voxel)) {
@@ -71,7 +50,13 @@ ValidationResult FasterVoxelGridDownsampleFilter::filter(
   }
 
   // Accumulate one centroid per voxel.
-  auto voxel_centroid_map = calc_centroids_each_voxel(input, max_voxel, min_voxel);
+  std::unordered_map<uint32_t, FasterVoxelGridDownsampleFilter::Centroid> voxel_centroid_map;
+  try {
+    voxel_centroid_map = calc_centroids_each_voxel(input, max_voxel, min_voxel);
+  } catch (const std::exception & e) {
+    output = *input;
+    return {false, std::string("Failed to calculate centroids. Exception: ") + e.what()};
+  }
 
   // Prepare output metadata and storage.
   output.row_step = voxel_centroid_map.size() * input->point_step;
@@ -85,23 +70,13 @@ ValidationResult FasterVoxelGridDownsampleFilter::filter(
   output.header = input->header;
 
   // Serialize centroids into the output PointCloud2 buffer.
-  copy_centroids_to_output(voxel_centroid_map, output);
-  return {true, ""};
-}
-
-Eigen::Vector4f FasterVoxelGridDownsampleFilter::get_point_from_global_offset(
-  const PointCloud2ConstPtr & input, size_t global_offset) const
-{
-  float intensity = 0.0;
-  if (intensity_offset_ >= 0) {
-    intensity = static_cast<float>(
-      *reinterpret_cast<const uint8_t *>(&input->data[global_offset + intensity_offset_]));
+  try {
+    copy_centroids_to_output(voxel_centroid_map, output);
+    return {true, ""};
+  } catch (const std::exception & e) {
+    output = *input;
+    return {false, std::string("Failed to copy centroids to output. Exception: ") + e.what()};
   }
-  Eigen::Vector4f point(
-    *reinterpret_cast<const float *>(&input->data[global_offset + x_offset_]),
-    *reinterpret_cast<const float *>(&input->data[global_offset + y_offset_]),
-    *reinterpret_cast<const float *>(&input->data[global_offset + z_offset_]), intensity);
-  return point;
 }
 
 bool FasterVoxelGridDownsampleFilter::get_min_max_voxel(
@@ -111,9 +86,12 @@ bool FasterVoxelGridDownsampleFilter::get_min_max_voxel(
   Eigen::Vector3f min_point, max_point;
   min_point.setConstant(FLT_MAX);
   max_point.setConstant(-FLT_MAX);
-  for (size_t global_offset = 0; global_offset + input->point_step <= input->data.size();
-       global_offset += input->point_step) {
-    Eigen::Vector4f point = get_point_from_global_offset(input, global_offset);
+  sensor_msgs::PointCloud2ConstIterator<float> input_x(*input, "x");
+  sensor_msgs::PointCloud2ConstIterator<float> input_y(*input, "y");
+  sensor_msgs::PointCloud2ConstIterator<float> input_z(*input, "z");
+  sensor_msgs::PointCloud2ConstIterator<uint8_t> input_intensity(*input, "intensity");
+  for (; input_x != input_x.end(); ++input_x, ++input_y, ++input_z, ++input_intensity) {
+    const Eigen::Vector4f point(*input_x, *input_y, *input_z, static_cast<float>(*input_intensity));
     if (std::isfinite(point[0]) && std::isfinite(point[1]) && std::isfinite(point[2])) {
       min_point = min_point.cwiseMin(point.head<3>());
       max_point = max_point.cwiseMax(point.head<3>());
@@ -152,9 +130,12 @@ FasterVoxelGridDownsampleFilter::calc_centroids_each_voxel(
   // id = i * 1 + j * div_b[0] + k * (div_b[0] * div_b[1]).
   Eigen::Vector3i div_b_mul(1, div_b[0], div_b[0] * div_b[1]);
 
-  for (size_t global_offset = 0; global_offset + input->point_step <= input->data.size();
-       global_offset += input->point_step) {
-    Eigen::Vector4f point = get_point_from_global_offset(input, global_offset);
+  sensor_msgs::PointCloud2ConstIterator<float> input_x(*input, "x");
+  sensor_msgs::PointCloud2ConstIterator<float> input_y(*input, "y");
+  sensor_msgs::PointCloud2ConstIterator<float> input_z(*input, "z");
+  sensor_msgs::PointCloud2ConstIterator<uint8_t> input_intensity(*input, "intensity");
+  for (; input_x != input_x.end(); ++input_x, ++input_y, ++input_z, ++input_intensity) {
+    const Eigen::Vector4f point(*input_x, *input_y, *input_z, static_cast<float>(*input_intensity));
     if (std::isfinite(point[0]) && std::isfinite(point[1]) && std::isfinite(point[2])) {
       // Compute voxel coordinates relative to the minimum voxel corner.
       int ijk0 = static_cast<int>(
@@ -178,19 +159,25 @@ FasterVoxelGridDownsampleFilter::calc_centroids_each_voxel(
 }
 
 void FasterVoxelGridDownsampleFilter::copy_centroids_to_output(
-  const std::unordered_map<uint32_t, Centroid> & voxel_centroid_map, PointCloud2 & output) const
+  const std::unordered_map<uint32_t, Centroid> & voxel_centroid_map, PointCloud2 & output)
 {
-  size_t output_data_size = 0;
+  sensor_msgs::PointCloud2Iterator<float> output_x(output, "x");
+  sensor_msgs::PointCloud2Iterator<float> output_y(output, "y");
+  sensor_msgs::PointCloud2Iterator<float> output_z(output, "z");
+  sensor_msgs::PointCloud2Iterator<uint8_t> output_intensity(output, "intensity");
+
   for (const auto & pair : voxel_centroid_map) {
     Eigen::Vector4f centroid = pair.second.calc_centroid();
-    *reinterpret_cast<float *>(&output.data[output_data_size + x_offset_]) = centroid[0];
-    *reinterpret_cast<float *>(&output.data[output_data_size + y_offset_]) = centroid[1];
-    *reinterpret_cast<float *>(&output.data[output_data_size + z_offset_]) = centroid[2];
-    if (intensity_offset_ >= 0) {
-      *reinterpret_cast<uint8_t *>(&output.data[output_data_size + intensity_offset_]) =
-        static_cast<uint8_t>(centroid[3]);
-    }
-    output_data_size += output.point_step;
+
+    *output_x = centroid[0];
+    *output_y = centroid[1];
+    *output_z = centroid[2];
+    *output_intensity = static_cast<uint8_t>(centroid[3]);
+
+    ++output_x;
+    ++output_y;
+    ++output_z;
+    ++output_intensity;
   }
 }
 
