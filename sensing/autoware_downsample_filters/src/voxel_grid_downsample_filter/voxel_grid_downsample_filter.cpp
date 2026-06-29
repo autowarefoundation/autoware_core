@@ -16,6 +16,7 @@
 
 #include <sstream>
 #include <string>
+#include <optional>
 
 using PointCloud2 = sensor_msgs::msg::PointCloud2;
 using PointCloud2ConstPtr = sensor_msgs::msg::PointCloud2::ConstSharedPtr;
@@ -25,14 +26,14 @@ namespace autoware::downsample_filters
 
 namespace
 {
-int find_field_index(const sensor_msgs::msg::PointCloud2 & cloud, const std::string & field_name)
+std::optional<int> find_field_index(const sensor_msgs::msg::PointCloud2 & cloud, const std::string & field_name)
 {
   for (size_t i = 0; i < cloud.fields.size(); ++i) {
     if (cloud.fields[i].name == field_name) {
       return static_cast<int>(i);
     }
   }
-  return -1;
+  return std::nullopt;
 }
 }  // namespace
 
@@ -56,19 +57,19 @@ tl::expected<PointCloud2, std::string> VoxelGridDownsampleFilter::filter(
     return tl::unexpected(oss.str());
   }
 
-  const int x_index = find_field_index(*input, "x");
-  const int y_index = find_field_index(*input, "y");
-  const int z_index = find_field_index(*input, "z");
-  const int intensity_index = find_field_index(*input, "intensity");
+  const auto x_index = find_field_index(*input, "x");
+  const auto y_index = find_field_index(*input, "y");
+  const auto z_index = find_field_index(*input, "z");
+  const auto intensity_index = find_field_index(*input, "intensity");
 
-  if (x_index < 0 || y_index < 0 || z_index < 0) {
+  if (!x_index.has_value() || !y_index.has_value() || !z_index.has_value()) {
     return tl::unexpected("The input point cloud does not have required x, y, z fields.");
   }
-  if (intensity_index < 0) {
+  if (!intensity_index.has_value()) {
     return tl::unexpected("There is no intensity field in the input point cloud.");
   }
   if (
-    input->fields[static_cast<size_t>(intensity_index)].datatype !=
+    input->fields[static_cast<size_t>(intensity_index.value())].datatype !=
     sensor_msgs::msg::PointField::UINT8) {
     return tl::unexpected("The intensity field in the input point cloud is not of type UINT8.");
   }
