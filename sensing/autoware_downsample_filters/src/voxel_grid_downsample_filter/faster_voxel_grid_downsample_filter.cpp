@@ -19,6 +19,7 @@
 #include <cfloat>
 #include <cstdint>
 #include <limits>
+#include <string>
 #include <unordered_map>
 
 namespace autoware::downsample_filters
@@ -49,7 +50,13 @@ ValidationResult FasterVoxelGridDownsampleFilter::filter(
   }
 
   // Accumulate one centroid per voxel.
-  auto voxel_centroid_map = calc_centroids_each_voxel(input, max_voxel, min_voxel);
+  std::unordered_map<uint32_t, FasterVoxelGridDownsampleFilter::Centroid> voxel_centroid_map;
+  try {
+    voxel_centroid_map = calc_centroids_each_voxel(input, max_voxel, min_voxel);
+  } catch (const std::exception & e) {
+    output = *input;
+    return {false, std::string("Failed to calculate centroids. Exception: ") + e.what()};
+  }
 
   // Prepare output metadata and storage.
   output.row_step = voxel_centroid_map.size() * input->point_step;
@@ -63,8 +70,13 @@ ValidationResult FasterVoxelGridDownsampleFilter::filter(
   output.header = input->header;
 
   // Serialize centroids into the output PointCloud2 buffer.
-  copy_centroids_to_output(voxel_centroid_map, output);
-  return {true, ""};
+  try {
+    copy_centroids_to_output(voxel_centroid_map, output);
+    return {true, ""};
+  } catch (const std::exception & e) {
+    output = *input;
+    return {false, std::string("Failed to copy centroids to output. Exception: ") + e.what()};
+  }
 }
 
 bool FasterVoxelGridDownsampleFilter::get_min_max_voxel(

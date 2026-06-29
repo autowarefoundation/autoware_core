@@ -14,9 +14,9 @@
 
 #include "voxel_grid_downsample_filter.hpp"
 
+#include <optional>
 #include <sstream>
 #include <string>
-#include <optional>
 
 using PointCloud2 = sensor_msgs::msg::PointCloud2;
 using PointCloud2ConstPtr = sensor_msgs::msg::PointCloud2::ConstSharedPtr;
@@ -26,7 +26,8 @@ namespace autoware::downsample_filters
 
 namespace
 {
-std::optional<int> find_field_index(const sensor_msgs::msg::PointCloud2 & cloud, const std::string & field_name)
+std::optional<int> find_field_index(
+  const sensor_msgs::msg::PointCloud2 & cloud, const std::string & field_name)
 {
   for (size_t i = 0; i < cloud.fields.size(); ++i) {
     if (cloud.fields[i].name == field_name) {
