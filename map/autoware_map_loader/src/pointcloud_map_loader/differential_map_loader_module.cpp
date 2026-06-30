@@ -211,7 +211,7 @@ void DifferentialMapLoaderModule::on_kinematic_state(
   latest_pose_ = msg->pose.pose.position;
 }
 
-void DifferentialMapLoaderModule::rebuild_merged_cloud_for_visualization()
+void DifferentialMapLoaderModule::rebuild_merged_pointcloud_for_visualization()
 {
   std::vector<sensor_msgs::msg::PointCloud2::ConstSharedPtr> snapshot;
   std::vector<uint8_t> reusable_data;
