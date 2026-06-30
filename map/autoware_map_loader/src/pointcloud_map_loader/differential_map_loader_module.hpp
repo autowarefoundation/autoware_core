@@ -67,7 +67,7 @@ private:
     loaded_cells_for_visualization_;
   std::unordered_set<std::string> active_cell_ids_for_visualization_;
   sensor_msgs::msg::PointCloud2 reusable_merged_cloud_;
-  bool has_merged_cloud_for_visualization_{false};
+  bool has_merged_pointcloud_for_visualization_{false};
   mutable std::mutex visualization_mutex_;
 
   [[nodiscard]] bool on_service_get_differential_point_cloud_map(
