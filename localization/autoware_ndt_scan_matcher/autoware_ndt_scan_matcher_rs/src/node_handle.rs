@@ -25,6 +25,7 @@
 //! callback. std-only: it is the ROS-node shell, excluded from the `no_std` kernel build.
 
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::ffi::{Error, ffi_boundary_ptr};
 use crate::pose_buffer::{InterpolateResult, PoseBuffer, TimedPoseWithCov};
@@ -60,17 +61,11 @@ pub struct Params {
     pub regularization_enable: bool,
     pub regularization_pose_timeout_sec: f64,
     pub regularization_pose_distance_tolerance_m: f64,
-}
-
-/// Node-level state the algorithm core does not own — the migration target of Phases 1–4. Defaulted
-/// (inactive, no pose, no skips) at construction; later slices move the C++ `is_activated_` /
-/// `latest_ekf_position_` / `skipping_publish_num_` into here.
-#[derive(Clone, Debug, Default)]
-pub struct NodeState {
-    pub is_activated: bool,
-    /// `latest_ekf_position_` (x, y, z), for dynamic map loading. Full timed pose lands in Phase 2.
-    pub latest_ekf_position: Option<[f64; 3]>,
-    pub skipping_publish_num: i64,
+    // Initial pose: the expected frame (`frame.map_frame`, owned bytes) + the SmartPoseBuffer
+    // tolerances (`validation.initial_pose_*`).
+    pub map_frame: Vec<u8>,
+    pub initial_pose_timeout_sec: f64,
+    pub initial_pose_distance_tolerance_m: f64,
 }
 
 /// Map-update bookkeeping — the migration target of Phase 6. Defaulted at construction.
@@ -90,10 +85,15 @@ pub struct MapUpdateState {
 /// than, the lock-free engine.
 pub struct NdtScanMatcherRs {
     pub params: Params,
-    pub state: NodeState,
-    pub map_update_state: MapUpdateState,
+    /// `is_activated_` (the C++ `std::atomic<bool>`): read by every callback gate, set by the trigger.
+    is_activated: AtomicBool,
+    /// `latest_ekf_position_` (x, y, z), set by `on_initial_pose`, read by the map-update timer.
+    latest_ekf_position: Mutex<Option<[f64; 3]>>,
+    /// The initial-pose interpolation buffer (always present).
+    initial_pose_buffer: Mutex<PoseBuffer>,
     /// `Some` iff `params.regularization_enable` (mirrors the C++ conditional buffer creation).
     regularization_buffer: Option<Mutex<PoseBuffer>>,
+    pub map_update_state: MapUpdateState,
 }
 
 impl NdtScanMatcherRs {
@@ -106,12 +106,60 @@ impl NdtScanMatcherRs {
         } else {
             None
         };
+        let initial_pose_buffer = Mutex::new(PoseBuffer::new(
+            params.initial_pose_timeout_sec,
+            params.initial_pose_distance_tolerance_m,
+        ));
         Self {
             params,
-            state: NodeState::default(),
-            map_update_state: MapUpdateState::default(),
+            is_activated: AtomicBool::new(false),
+            latest_ekf_position: Mutex::new(None),
+            initial_pose_buffer,
             regularization_buffer,
+            map_update_state: MapUpdateState::default(),
         }
+    }
+
+    /// Read the activation flag (the C++ `is_activated_`). Relaxed: each callback reads/writes it
+    /// independently; no ordering relative to other state is relied upon.
+    #[must_use]
+    pub(crate) fn is_activated(&self) -> bool {
+        self.is_activated.load(Ordering::Relaxed)
+    }
+
+    /// Set the activation flag (`service_trigger_node`). On activation, clear the initial-pose buffer
+    /// so stale poses don't survive a re-activation (mirrors the C++ trigger).
+    pub(crate) fn set_activated(&self, activate: bool) {
+        self.is_activated.store(activate, Ordering::Relaxed);
+        if activate && let Ok(mut b) = self.initial_pose_buffer.lock() {
+            b.clear();
+        }
+    }
+
+    /// Push an initial pose into the buffer + record its position as the latest EKF position
+    /// (`on_initial_pose`'s accepted path). No-op on a poisoned lock.
+    pub(crate) fn push_initial_pose(&self, pose: &TimedPoseWithCov) {
+        if let Ok(mut b) = self.initial_pose_buffer.lock() {
+            b.push_back(*pose);
+        }
+        if let Ok(mut p) = self.latest_ekf_position.lock() {
+            *p = Some(pose.position);
+        }
+    }
+
+    /// The latest EKF position, for the map-update timer (the C++ `latest_ekf_position_`).
+    #[must_use]
+    pub(crate) fn latest_ekf_position(&self) -> Option<[f64; 3]> {
+        self.latest_ekf_position.lock().ok().and_then(|p| *p)
+    }
+
+    /// Interpolate the initial pose at `target_ns`, then `pop_old` (mirrors the sensor callback).
+    /// `None` on a poisoned lock or when the buffer cannot interpolate.
+    pub(crate) fn interpolate_initial_pose(&self, target_ns: i64) -> Option<InterpolateResult> {
+        let mut b = self.initial_pose_buffer.lock().ok()?;
+        let result = b.interpolate(target_ns)?;
+        b.pop_old(target_ns);
+        Some(result)
     }
 
     /// Push a regularization pose into the Rust-owned buffer (no-op if regularization is disabled or
@@ -162,17 +210,24 @@ pub struct AwNdtParams {
     pub regularization_enable: bool,
     pub regularization_pose_timeout_sec: f64,
     pub regularization_pose_distance_tolerance_m: f64,
+    pub map_frame: *const u8,
+    pub map_frame_len: usize,
+    pub initial_pose_timeout_sec: f64,
+    pub initial_pose_distance_tolerance_m: f64,
 }
 
 /// C-ABI view of a `geometry_msgs::PoseWithCovarianceStamped`, borrowed for the call only (Rust copies
-/// what it keeps). `orientation` is `[x, y, z, w]`; `covariance` is the row-major 6x6. No `frame_id`
-/// yet — the regularization path does no frame check; it is added when the initial-pose slice needs it.
+/// what it keeps). `orientation` is `[x, y, z, w]`; `covariance` is the row-major 6x6. `frame_id`
+/// crosses as `(ptr, len)` UTF-8 bytes (the initial-pose frame check; the regularization path ignores
+/// it).
 #[repr(C)]
 pub struct AwPoseWithCovarianceStampedView {
     pub stamp_ns: i64,
     pub position: [f64; 3],
     pub orientation: [f64; 4],
     pub covariance: [f64; 36],
+    pub frame_id: *const u8,
+    pub frame_id_len: usize,
 }
 
 impl AwPoseWithCovarianceStampedView {
@@ -194,6 +249,20 @@ pub struct AwInterpolatedPose {
     pub orientation: [f64; 4],
 }
 
+/// C-ABI out-struct for the initial-pose interpolation the sensor callback needs: the interpolated
+/// pose (position + orientation + the row-major 6x6 covariance carried from the older bracket entry,
+/// republished on `initial_pose_with_covariance`) plus the **positions** of the two bracket entries
+/// (`publish_initial_to_result` reads only their positions).
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct AwInitialPoseInterpolation {
+    pub interpolated_position: [f64; 3],
+    pub interpolated_orientation: [f64; 4],
+    pub interpolated_covariance: [f64; 36],
+    pub old_position: [f64; 3],
+    pub new_position: [f64; 3],
+}
+
 /// View `[ptr, ptr+len)` as an `f64` slice, treating a null/zero-length pointer as empty.
 ///
 /// # Safety
@@ -208,6 +277,22 @@ unsafe fn f64_slice<'a>(ptr: *const f64, len: usize) -> &'a [f64] {
         return &[];
     }
     // SAFETY: non-null with len > 0 per the check; caller guarantees `len` readable f64 values.
+    unsafe { core::slice::from_raw_parts(ptr, len) }
+}
+
+/// View `[ptr, ptr+len)` as a byte slice, treating a null/zero-length pointer as empty.
+///
+/// # Safety
+/// When `len > 0`, `ptr` must point to `len` readable, initialized bytes that outlive the borrow.
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointer validated per rust-c-ffi-safety"
+)]
+unsafe fn byte_slice<'a>(ptr: *const u8, len: usize) -> &'a [u8] {
+    if ptr.is_null() || len == 0 {
+        return &[];
+    }
+    // SAFETY: non-null with len > 0 per the check; caller guarantees `len` readable bytes.
     unsafe { core::slice::from_raw_parts(ptr, len) }
 }
 
@@ -233,6 +318,8 @@ impl Params {
         // SAFETY: same contract as above for the y model.
         let offset_y =
             unsafe { f64_slice(p.initial_pose_offset_model_y, p.initial_pose_offset_model_y_len) };
+        // SAFETY: caller guarantees `map_frame` is valid for `map_frame_len` (or null/0).
+        let map_frame = unsafe { byte_slice(p.map_frame, p.map_frame_len) };
         Ok(Self {
             resolution: p.resolution,
             min_points: p.min_points,
@@ -255,6 +342,9 @@ impl Params {
             regularization_enable: p.regularization_enable,
             regularization_pose_timeout_sec: p.regularization_pose_timeout_sec,
             regularization_pose_distance_tolerance_m: p.regularization_pose_distance_tolerance_m,
+            map_frame: map_frame.to_vec(),
+            initial_pose_timeout_sec: p.initial_pose_timeout_sec,
+            initial_pose_distance_tolerance_m: p.initial_pose_distance_tolerance_m,
         })
     }
 }
@@ -335,6 +425,95 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_regularization_interpolate
     true
 }
 
+/// Read the node activation flag from the handle (the C++ `is_activated_`). `false` if `handle` is
+/// null. Transitional read for the still-C++ sensor/timer gates (removed in Phase 5).
+///
+/// # Safety
+/// `handle` must be a valid, live `NdtScanMatcherRs` from `_new`, or null → `false`.
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointer validated per rust-c-ffi-safety"
+)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_is_activated(
+    handle: *const NdtScanMatcherRs,
+) -> bool {
+    if handle.is_null() {
+        return false;
+    }
+    // SAFETY: non-null per the check; caller guarantees a valid, live handle.
+    unsafe { &*handle }.is_activated()
+}
+
+/// Write the latest EKF position `[x, y, z]` into `*out_xyz` and return `true`; `false` (leaving
+/// `*out_xyz` untouched) if none is recorded yet or `handle`/`out_xyz` is null. Transitional read for
+/// the still-C++ map-update timer (removed when map update moves to Rust, Phase 6).
+///
+/// # Safety
+/// `handle` must be a valid, live `NdtScanMatcherRs` from `_new` (or null → `false`), and `out_xyz`
+/// must point to 3 writable, aligned `f64` (or null → `false`).
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointers validated per rust-c-ffi-safety"
+)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_latest_ekf_position(
+    handle: *const NdtScanMatcherRs,
+    out_xyz: *mut f64,
+) -> bool {
+    if handle.is_null() || out_xyz.is_null() {
+        return false;
+    }
+    // SAFETY: non-null per the check; caller guarantees a valid, live handle.
+    let Some(p) = unsafe { &*handle }.latest_ekf_position() else {
+        return false;
+    };
+    // SAFETY: `out_xyz` points to 3 writable, aligned f64 per the contract.
+    unsafe {
+        core::slice::from_raw_parts_mut(out_xyz, 3).copy_from_slice(&p);
+    }
+    true
+}
+
+/// Interpolate the initial pose at `stamp_ns` from the handle's buffer (then `pop_old`), writing the
+/// interpolated pose + the two bracket positions into `*out` and returning `true`; `false` (leaving
+/// `*out` untouched) if the buffer cannot interpolate or a pointer is null (the C++ sensor callback's
+/// `if (!opt) return false;`). Transitional: removed when the sensor callback moves to Rust (Phase 5).
+///
+/// # Safety
+/// `handle` must be a valid, live `NdtScanMatcherRs` from `_new` (or null → `false`), and `out` a
+/// valid, aligned, writable [`AwInitialPoseInterpolation`] (or null → `false`).
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointers validated per rust-c-ffi-safety"
+)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_initial_pose_interpolate(
+    handle: *const NdtScanMatcherRs,
+    stamp_ns: i64,
+    out: *mut AwInitialPoseInterpolation,
+) -> bool {
+    if handle.is_null() || out.is_null() {
+        return false;
+    }
+    // SAFETY: non-null per the check; caller guarantees a valid, live handle.
+    let h = unsafe { &*handle };
+    let Some(result) = h.interpolate_initial_pose(stamp_ns) else {
+        return false;
+    };
+    // SAFETY: `out` is non-null per the check and a valid, aligned, writable struct per the contract.
+    unsafe {
+        *out = AwInitialPoseInterpolation {
+            interpolated_position: result.position,
+            interpolated_orientation: result.orientation,
+            interpolated_covariance: result.covariance,
+            old_position: result.old.position,
+            new_position: result.new_entry.position,
+        };
+    }
+    true
+}
+
 #[cfg(test)]
 #[allow(
     unsafe_code,
@@ -374,6 +553,10 @@ mod tests {
             regularization_enable: true,
             regularization_pose_timeout_sec: 1000.0,
             regularization_pose_distance_tolerance_m: 1000.0,
+            map_frame: core::ptr::null(),
+            map_frame_len: 0,
+            initial_pose_timeout_sec: 1000.0,
+            initial_pose_distance_tolerance_m: 1000.0,
         }
     }
 
@@ -383,6 +566,8 @@ mod tests {
             position: [x, y, 0.0],
             orientation: [0.0, 0.0, 0.0, 1.0],
             covariance: [0.0; 36],
+            frame_id: core::ptr::null(),
+            frame_id_len: 0,
         }
     }
 
@@ -401,9 +586,9 @@ mod tests {
         assert_eq!(m.params.output_pose_covariance[35], 2.0);
         assert_eq!(m.params.initial_pose_offset_model_x, vec![0.0, 0.5, -0.5]);
         assert_eq!(m.params.initial_pose_offset_model_y, vec![0.0, 0.5, 0.5]);
-        // Node-state scaffolding starts empty.
-        assert!(!m.state.is_activated);
-        assert!(m.state.latest_ekf_position.is_none());
+        // Node state starts empty (inactive, no EKF position yet).
+        assert!(!m.is_activated());
+        assert!(m.latest_ekf_position().is_none());
         assert!(m.map_update_state.last_update_position.is_none());
         // SAFETY: `handle` is a live pointer from `_new`, freed exactly once here.
         unsafe { autoware_ndt_scan_matcher_rs_free(handle) };

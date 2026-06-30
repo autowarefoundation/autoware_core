@@ -12,55 +12,59 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Test (node port N2 → callback-level slice 2): the pose callbacks run entirely in Rust, driving node
-// state through the host vtable AND the node's /diagnostics through the AwDiagnostics vtable. We supply
-// MOCK AwNdtHost + AwDiagnostics whose trampolines record side effects + the ordered diagnostics events
-// into local recorders (mirroring the real ctx == NDTScanMatcher* / diag == DiagnosticsInterface*
-// pattern), then assert each gate produces the right status, buffer-push/latest-position effects, AND
-// the exact diagnostics sequence (key order + values + WARN/ERROR text). The opaque `msg` token is
-// passed straight through and never dereferenced by Rust.
+// Test (Phase 1 slice B): the trigger + initial-pose callbacks run entirely in Rust, driving the
+// node's Rust-owned state on the opaque handle (activation, the initial-pose buffer, latest-EKF
+// position) and emitting /diagnostics through the AwDiagnostics vtable. We build a real handle via the
+// FFI + a MOCK AwDiagnostics that records the ordered events, then assert each gate's status, the
+// observable state (via the is_activated / latest_ekf_position read-FFIs), and the exact diagnostics
+// sequence (key order + values + WARN/ERROR text). The host vtable is gone (state is Rust-owned now).
 
 #include "autoware_ndt_scan_matcher_rs.h"
 
 #include <gtest/gtest.h>
 
 #include <cstdint>
-#include <optional>
 #include <string>
-#include <tuple>
 #include <vector>
 
 namespace
 {
-// Records what the migrated Rust callbacks ask the host to do.
-struct Recorder
+// A live handle with the given expected initial-pose frame. Regularization off; 1000/1000 initial-pose
+// tolerances (validation effectively off, as for the regularization buffer). `map_frame` must outlive
+// the `_new` call (Rust copies it).
+AwNdtScanMatcher * make_handle(const std::string & map_frame)
 {
-  bool activated = false;
-  bool is_activated_ret = false;
-  int initial_pushes = 0;
-  const void * last_msg = nullptr;
-  std::optional<std::tuple<double, double, double>> position;
-};
-
-extern "C" void rec_set_activated(void * ctx, bool a) { static_cast<Recorder *>(ctx)->activated = a; }
-extern "C" void rec_clear(void * /*ctx*/) {}
-extern "C" bool rec_is_activated(void * ctx) { return static_cast<Recorder *>(ctx)->is_activated_ret; }
-extern "C" void rec_push_initial(void * ctx, const void * msg)
-{
-  auto * r = static_cast<Recorder *>(ctx);
-  ++r->initial_pushes;
-  r->last_msg = msg;
+  AwNdtParams p{};
+  p.resolution = 1.0;
+  p.min_points = 6;
+  p.eig_mult = 0.01;
+  p.max_iterations = 1;
+  p.outlier_ratio = 0.55;
+  p.num_threads = 1;
+  p.covariance_scale_factor = 1.0;
+  p.covariance_temperature = 1.0;
+  p.regularization_enable = false;
+  p.regularization_pose_timeout_sec = 1000.0;
+  p.regularization_pose_distance_tolerance_m = 1000.0;
+  p.map_frame = reinterpret_cast<const std::uint8_t *>(map_frame.data());
+  p.map_frame_len = map_frame.size();
+  p.initial_pose_timeout_sec = 1000.0;
+  p.initial_pose_distance_tolerance_m = 1000.0;
+  return autoware_ndt_scan_matcher_rs_new(&p);
 }
-extern "C" void rec_set_position(void * ctx, double x, double y, double z)
-{
-  static_cast<Recorder *>(ctx)->position = std::make_tuple(x, y, z);
-}
 
-AwNdtHost mock_host(Recorder & r)
+AwPoseWithCovarianceStampedView make_view(
+  std::int64_t stamp_ns, const std::string & frame_id, const double (&pos)[3])
 {
-  return AwNdtHost{
-    &r,           rec_set_activated, rec_clear, rec_is_activated,
-    rec_push_initial, rec_set_position};
+  AwPoseWithCovarianceStampedView v{};
+  v.stamp_ns = stamp_ns;
+  v.position[0] = pos[0];
+  v.position[1] = pos[1];
+  v.position[2] = pos[2];
+  v.orientation[3] = 1.0;
+  v.frame_id = reinterpret_cast<const std::uint8_t *>(frame_id.data());
+  v.frame_id_len = frame_id.size();
+  return v;
 }
 
 // Mock diagnostics: each vtable op appends a human-readable event so the callback's full diagnostics
@@ -100,19 +104,17 @@ extern "C" void d_publish(void * d, std::int64_t stamp)
 {
   static_cast<DiagRec *>(d)->events.push_back("publish " + std::to_string(stamp));
 }
-
 AwDiagnostics mock_diag(DiagRec & d)
 {
   return AwDiagnostics{&d, d_clear, d_bool, d_i64, d_f64, d_str, d_level, d_publish};
 }
 
-int call_initial(
-  const AwNdtHost & host, const AwDiagnostics & diag, const std::string & frame_id,
-  const std::string & map_frame, const double (&pos)[3], const void * msg)
+// Activate the handle via the trigger callback (discarding its diagnostics).
+void activate(AwNdtScanMatcher * h)
 {
-  return autoware_ndt_scan_matcher_rs_node_on_initial_pose(
-    &host, &diag, reinterpret_cast<const uint8_t *>(frame_id.data()), frame_id.size(),
-    reinterpret_cast<const uint8_t *>(map_frame.data()), map_frame.size(), pos, msg, 100);
+  DiagRec dr;
+  const AwDiagnostics diag = mock_diag(dr);
+  autoware_ndt_scan_matcher_rs_node_on_trigger(h, &diag, true, 0);
 }
 
 // Discriminants mirrored from the Rust INITIAL_POSE_* codes (also documented in the header).
@@ -121,36 +123,59 @@ constexpr int kNotActivated = 1;
 constexpr int kWrongFrame = 2;
 }  // namespace
 
+TEST(NodePoseCallbacks, TriggerSetsActivationAndEmitsDiagnostics)  // NOLINT
+{
+  AwNdtScanMatcher * h = make_handle("map");
+  ASSERT_NE(h, nullptr);
+  DiagRec dr;
+  const AwDiagnostics diag = mock_diag(dr);
+
+  EXPECT_TRUE(autoware_ndt_scan_matcher_rs_node_on_trigger(h, &diag, true, 123));
+  EXPECT_TRUE(autoware_ndt_scan_matcher_rs_is_activated(h));
+  EXPECT_EQ(
+    dr.events, (std::vector<std::string>{
+                 "clear", "i64 service_call_time_stamp=123", "bool is_activated=true",
+                 "bool is_succeed_service=true", "publish 123"}));
+
+  dr.events.clear();
+  EXPECT_TRUE(autoware_ndt_scan_matcher_rs_node_on_trigger(h, &diag, false, 456));
+  EXPECT_FALSE(autoware_ndt_scan_matcher_rs_is_activated(h));
+  autoware_ndt_scan_matcher_rs_free(h);
+}
+
 TEST(NodePoseCallbacks, InitialPoseRejectedWhenNotActivated)  // NOLINT
 {
-  Recorder r;
-  r.is_activated_ret = false;
+  AwNdtScanMatcher * h = make_handle("map");  // not activated
+  ASSERT_NE(h, nullptr);
   DiagRec dr;
-  const AwNdtHost host = mock_host(r);
   const AwDiagnostics diag = mock_diag(dr);
   const double pos[3] = {1.0, 2.0, 3.0};
-  int dummy = 0;
-  EXPECT_EQ(call_initial(host, diag, "map", "map", pos, &dummy), kNotActivated);
-  EXPECT_EQ(r.initial_pushes, 0);
-  EXPECT_FALSE(r.position.has_value());
+  const std::string frame_id = "map";  // must outlive the call (the view borrows its bytes)
+  const AwPoseWithCovarianceStampedView view = make_view(100, frame_id, pos);
+  EXPECT_EQ(
+    autoware_ndt_scan_matcher_rs_node_on_initial_pose(h, &diag, &view), kNotActivated);
+  double xyz[3] = {0.0, 0.0, 0.0};
+  EXPECT_FALSE(autoware_ndt_scan_matcher_rs_latest_ekf_position(h, xyz));
   EXPECT_EQ(
     dr.events, (std::vector<std::string>{
                  "clear", "i64 topic_time_stamp=100", "bool is_activated=false",
                  "level 1 Node is not activated.", "publish 100"}));
+  autoware_ndt_scan_matcher_rs_free(h);
 }
 
 TEST(NodePoseCallbacks, InitialPoseRejectedWhenFrameMismatch)  // NOLINT
 {
-  Recorder r;
-  r.is_activated_ret = true;
+  AwNdtScanMatcher * h = make_handle("map");
+  ASSERT_NE(h, nullptr);
+  activate(h);
   DiagRec dr;
-  const AwNdtHost host = mock_host(r);
   const AwDiagnostics diag = mock_diag(dr);
   const double pos[3] = {1.0, 2.0, 3.0};
-  int dummy = 0;
-  EXPECT_EQ(call_initial(host, diag, "lidar", "map", pos, &dummy), kWrongFrame);
-  EXPECT_EQ(r.initial_pushes, 0);
-  EXPECT_FALSE(r.position.has_value());
+  const std::string frame_id = "lidar";  // must outlive the call (the view borrows its bytes)
+  const AwPoseWithCovarianceStampedView view = make_view(100, frame_id, pos);
+  EXPECT_EQ(autoware_ndt_scan_matcher_rs_node_on_initial_pose(h, &diag, &view), kWrongFrame);
+  double xyz[3] = {0.0, 0.0, 0.0};
+  EXPECT_FALSE(autoware_ndt_scan_matcher_rs_latest_ekf_position(h, xyz));
   EXPECT_EQ(
     dr.events,
     (std::vector<std::string>{
@@ -159,43 +184,40 @@ TEST(NodePoseCallbacks, InitialPoseRejectedWhenFrameMismatch)  // NOLINT
       "level 2 Received initial pose message with frame_id lidar, but expected map. Please check "
       "the frame_id in the input topic and ensure it is correct.",
       "publish 100"}));
+  autoware_ndt_scan_matcher_rs_free(h);
 }
 
-TEST(NodePoseCallbacks, InitialPoseAcceptedPushesAndSetsPosition)  // NOLINT
+TEST(NodePoseCallbacks, InitialPoseAcceptedSetsLatestEkfPosition)  // NOLINT
 {
-  Recorder r;
-  r.is_activated_ret = true;
+  AwNdtScanMatcher * h = make_handle("map");
+  ASSERT_NE(h, nullptr);
+  activate(h);
   DiagRec dr;
-  const AwNdtHost host = mock_host(r);
   const AwDiagnostics diag = mock_diag(dr);
   const double pos[3] = {1.5, -2.5, 0.25};
-  int dummy = 0;
-  EXPECT_EQ(call_initial(host, diag, "map", "map", pos, &dummy), kAccepted);
-  EXPECT_EQ(r.initial_pushes, 1);
-  EXPECT_EQ(r.last_msg, &dummy);  // the opaque token was forwarded unchanged
-  ASSERT_TRUE(r.position.has_value());
-  EXPECT_EQ(*r.position, std::make_tuple(1.5, -2.5, 0.25));
+  const std::string frame_id = "map";  // must outlive the call (the view borrows its bytes)
+  const AwPoseWithCovarianceStampedView view = make_view(100, frame_id, pos);
+  EXPECT_EQ(autoware_ndt_scan_matcher_rs_node_on_initial_pose(h, &diag, &view), kAccepted);
+  double xyz[3] = {0.0, 0.0, 0.0};
+  ASSERT_TRUE(autoware_ndt_scan_matcher_rs_latest_ekf_position(h, xyz));
+  EXPECT_DOUBLE_EQ(xyz[0], 1.5);
+  EXPECT_DOUBLE_EQ(xyz[1], -2.5);
+  EXPECT_DOUBLE_EQ(xyz[2], 0.25);
   EXPECT_EQ(
     dr.events, (std::vector<std::string>{
                  "clear", "i64 topic_time_stamp=100", "bool is_activated=true",
                  "bool is_expected_frame_id=true", "publish 100"}));
+  autoware_ndt_scan_matcher_rs_free(h);
 }
 
-TEST(NodePoseCallbacks, InitialPoseNullHostIsNotActivated)  // NOLINT
+TEST(NodePoseCallbacks, InitialPoseNullHandleIsNotActivated)  // NOLINT
 {
   DiagRec dr;
   const AwDiagnostics diag = mock_diag(dr);
   const double pos[3] = {0.0, 0.0, 0.0};
-  const std::string frame = "map";
-  int dummy = 0;
+  const std::string frame_id = "map";  // must outlive the call (the view borrows its bytes)
+  const AwPoseWithCovarianceStampedView view = make_view(0, frame_id, pos);
   EXPECT_EQ(
-    autoware_ndt_scan_matcher_rs_node_on_initial_pose(
-      nullptr, &diag, reinterpret_cast<const uint8_t *>(frame.data()), frame.size(),
-      reinterpret_cast<const uint8_t *>(frame.data()), frame.size(), pos, &dummy, 0),
-    kNotActivated);
-  EXPECT_TRUE(dr.events.empty());  // null host → no diagnostics emitted
+    autoware_ndt_scan_matcher_rs_node_on_initial_pose(nullptr, &diag, &view), kNotActivated);
+  EXPECT_TRUE(dr.events.empty());  // null handle → no diagnostics emitted
 }
-
-// The regularization callback moved to the Rust-owned buffer on the node handle (Phase 1 slice A);
-// it no longer uses the host vtable. Its diagnostics + buffer behavior is covered by the Rust unit
-// tests and the differential test (test_regularization_buffer.cpp).

@@ -149,7 +149,9 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
   tf2_broadcaster_(*this),
   tf2_buffer_(this->get_clock()),
   tf2_listener_(tf2_buffer_),
+#ifndef NDT_USE_RUST
   is_activated_(false),
+#endif
   param_(this)
 #ifdef NDT_USE_RUST
   ,
@@ -266,9 +268,13 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
 
   ndt_ptr_.with([&](const auto & ndt_ptr) { ndt_ptr->setParams(param_.ndt); });
 
+#ifndef NDT_USE_RUST
+  // Under NDT_USE_RUST the initial-pose buffer lives on the Rust handle (constructed from params in
+  // `rs_`); only the non-Rust path builds the C++ buffer here.
   initial_pose_buffer_ = std::make_unique<SmartPoseBuffer>(
     this->get_logger(), param_.validation.initial_pose_timeout_sec,
     param_.validation.initial_pose_distance_tolerance_m);
+#endif
 
   map_update_module_ =
     std::make_unique<MapUpdateModule>(this, ndt_ptr_, param_.dynamic_map_loading);
@@ -301,8 +307,23 @@ void NDTScanMatcher::callback_timer()
 
   diagnostics_map_update_->add_key_value("timer_callback_time_stamp", ros_time_now.nanoseconds());
 
+#ifdef NDT_USE_RUST
+  // Activation + latest-EKF-position are Rust-owned (Phase 1 slice B); read them over the FFI.
+  const bool node_is_activated = autoware_ndt_scan_matcher_rs_is_activated(rs_.raw());
+  std::optional<geometry_msgs::msg::Point> latest_ekf_position;
+  std::array<double, 3> ekf_xyz{};
+  if (autoware_ndt_scan_matcher_rs_latest_ekf_position(rs_.raw(), ekf_xyz.data())) {
+    geometry_msgs::msg::Point point;
+    point.x = ekf_xyz[0];
+    point.y = ekf_xyz[1];
+    point.z = ekf_xyz[2];
+    latest_ekf_position = point;
+  }
+#else
+  const bool node_is_activated = is_activated_;
   const auto latest_ekf_position = latest_ekf_position_.with([](const auto & pos) { return pos; });
-  map_update_module_->callback_timer(is_activated_, latest_ekf_position, diagnostics_map_update_);
+#endif
+  map_update_module_->callback_timer(node_is_activated, latest_ekf_position, diagnostics_map_update_);
 
   diagnostics_map_update_->publish(ros_time_now);
 }
@@ -311,21 +332,12 @@ void NDTScanMatcher::callback_initial_pose(
   const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr initial_pose_msg_ptr)
 {
 #ifdef NDT_USE_RUST
-  // Callback-level (slice 2): the whole body — diagnostics + activation/frame gates + buffer push +
-  // latest-EKF-position — runs in Rust via the host + diagnostics vtables. The C++ shell only marshals
-  // the inputs (frame strings, position, stamp) and the opaque message token.
-  const AwNdtHost host = make_host();
+  // Callback-level: the whole body — diagnostics + activation/frame gates + buffer push +
+  // latest-EKF-position — runs in Rust, driving the Rust-owned state on the handle (Phase 1 slice B).
+  // The C++ shell only builds the diagnostics vtable + the pose view.
   const AwDiagnostics diag = make_diagnostics(diagnostics_initial_pose_.get());
-  const std::string & frame_id = initial_pose_msg_ptr->header.frame_id;
-  const std::string & map_frame = param_.frame.map_frame;
-  const auto & ekf_position = initial_pose_msg_ptr->pose.pose.position;
-  const std::array<double, 3> position{ekf_position.x, ekf_position.y, ekf_position.z};
-  const int64_t stamp_ns =
-    static_cast<rclcpp::Time>(initial_pose_msg_ptr->header.stamp).nanoseconds();
-  autoware_ndt_scan_matcher_rs_node_on_initial_pose(
-    &host, &diag, reinterpret_cast<const uint8_t *>(frame_id.data()), frame_id.size(),
-    reinterpret_cast<const uint8_t *>(map_frame.data()), map_frame.size(), position.data(),
-    &initial_pose_msg_ptr, stamp_ns);
+  const AwPoseWithCovarianceStampedView view = make_pose_with_cov_view(*initial_pose_msg_ptr);
+  autoware_ndt_scan_matcher_rs_node_on_initial_pose(rs_.raw(), &diag, &view);
 #else
   diagnostics_initial_pose_->clear();
 
@@ -408,9 +420,14 @@ void NDTScanMatcher::callback_sensor_points(
     callback_sensor_points_main(sensor_points_msg_in_sensor_frame);
 
   // check skipping_publish_num
+#ifdef NDT_USE_RUST
+  const bool node_is_activated = autoware_ndt_scan_matcher_rs_is_activated(rs_.raw());
+#else
+  const bool node_is_activated = is_activated_;
+#endif
   static int64_t skipping_publish_num = 0;
   skipping_publish_num =
-    ((is_succeed_scan_matching || !is_activated_) ? 0 : (skipping_publish_num + 1));
+    ((is_succeed_scan_matching || !node_is_activated) ? 0 : (skipping_publish_num + 1));
   diagnostics_scan_points_->add_key_value("skipping_publish_num", skipping_publish_num);
   if (skipping_publish_num >= param_.validation.skipping_publish_num) {
     std::stringstream message;
@@ -511,8 +528,13 @@ bool NDTScanMatcher::callback_sensor_points_main(
     sensor_points_in_baselink_frame_ = sensor_points_in_baselink_frame;
 
     // check is_activated
-    diagnostics_scan_points_->add_key_value("is_activated", static_cast<bool>(is_activated_));
-    if (!is_activated_) {
+#ifdef NDT_USE_RUST
+    const bool node_is_activated = autoware_ndt_scan_matcher_rs_is_activated(rs_.raw());
+#else
+    const bool node_is_activated = is_activated_;
+#endif
+    diagnostics_scan_points_->add_key_value("is_activated", node_is_activated);
+    if (!node_is_activated) {
       std::stringstream message;
       message << "Node is not activated.";
       diagnostics_scan_points_->update_level_and_message(
@@ -521,6 +543,50 @@ bool NDTScanMatcher::callback_sensor_points_main(
     }
 
     // calculate initial pose
+#ifdef NDT_USE_RUST
+    // The initial-pose buffer is Rust-owned (Phase 1 slice B): interpolate (+ pop_old) over the FFI,
+    // then rebuild a SmartPoseBuffer::InterpolateResult so the downstream (guess / out-of-range /
+    // distance / publish) stays byte-identical. The interpolated pose carries the older bracket's
+    // covariance (SmartPoseBuffer semantics); old/new need only their position downstream.
+    SmartPoseBuffer::InterpolateResult interpolation_result;
+    {
+      AwInitialPoseInterpolation interp{};
+      const bool is_succeed_interpolate_initial_pose =
+        autoware_ndt_scan_matcher_rs_initial_pose_interpolate(
+          rs_.raw(), sensor_ros_time.nanoseconds(), &interp);
+      diagnostics_scan_points_->add_key_value(
+        "is_succeed_interpolate_initial_pose", is_succeed_interpolate_initial_pose);
+      if (!is_succeed_interpolate_initial_pose) {
+        std::stringstream message;
+        message << "Couldn't interpolate pose. Please verify that "
+                   "(1) the initial pose topic (primarily come from the EKF) is being published, and "
+                   "(2) the timestamps of the sensor PCD messages and pose messages are synchronized "
+                   "correctly.";
+        diagnostics_scan_points_->update_level_and_message(
+          diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
+        return false;
+      }
+      auto & interp_pose = interpolation_result.interpolated_pose;
+      interp_pose.header.frame_id = param_.frame.map_frame;
+      interp_pose.header.stamp = sensor_ros_time;
+      interp_pose.pose.pose.position.x = interp.interpolated_position[0];
+      interp_pose.pose.pose.position.y = interp.interpolated_position[1];
+      interp_pose.pose.pose.position.z = interp.interpolated_position[2];
+      interp_pose.pose.pose.orientation.x = interp.interpolated_orientation[0];
+      interp_pose.pose.pose.orientation.y = interp.interpolated_orientation[1];
+      interp_pose.pose.pose.orientation.z = interp.interpolated_orientation[2];
+      interp_pose.pose.pose.orientation.w = interp.interpolated_orientation[3];
+      std::copy(
+        std::begin(interp.interpolated_covariance), std::end(interp.interpolated_covariance),
+        interp_pose.pose.covariance.begin());
+      interpolation_result.old_pose.pose.pose.position.x = interp.old_position[0];
+      interpolation_result.old_pose.pose.pose.position.y = interp.old_position[1];
+      interpolation_result.old_pose.pose.pose.position.z = interp.old_position[2];
+      interpolation_result.new_pose.pose.pose.position.x = interp.new_position[0];
+      interpolation_result.new_pose.pose.pose.position.y = interp.new_position[1];
+      interpolation_result.new_pose.pose.pose.position.z = interp.new_position[2];
+    }
+#else
     std::optional<SmartPoseBuffer::InterpolateResult> interpolation_result_opt =
       initial_pose_buffer_->interpolate(sensor_ros_time);
 
@@ -542,6 +608,7 @@ bool NDTScanMatcher::callback_sensor_points_main(
     initial_pose_buffer_->pop_old(sensor_ros_time);
     const SmartPoseBuffer::InterpolateResult & interpolation_result =
       interpolation_result_opt.value();
+#endif
 
     // if regularization is enabled and available, set pose to NDT for regularization
     if (param_.ndt_regularization_enable) {
@@ -1238,49 +1305,6 @@ void NDTScanMatcher::add_regularization_pose(
 }
 
 #ifdef NDT_USE_RUST
-// Phase N host-interface trampolines (ctx == this); the migrated Rust callbacks drive node state
-// through these. The `msg` argument of the push trampolines is the address of the C++
-// PoseWithCovarianceStamped::ConstSharedPtr passed opaquely through Rust (valid for the call only).
-void NDTScanMatcher::host_set_activated(void * ctx, bool activate)
-{
-  static_cast<NDTScanMatcher *>(ctx)->is_activated_ = activate;
-}
-void NDTScanMatcher::host_clear_initial_pose_buffer(void * ctx)
-{
-  static_cast<NDTScanMatcher *>(ctx)->initial_pose_buffer_->clear();
-}
-bool NDTScanMatcher::host_is_activated(void * ctx)
-{
-  return static_cast<NDTScanMatcher *>(ctx)->is_activated_;
-}
-void NDTScanMatcher::host_push_initial_pose(void * ctx, const void * msg)
-{
-  const auto & pose_msg_ptr =
-    *static_cast<const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr *>(msg);
-  static_cast<NDTScanMatcher *>(ctx)->initial_pose_buffer_->push_back(pose_msg_ptr);
-}
-void NDTScanMatcher::host_set_latest_ekf_position(void * ctx, double x, double y, double z)
-{
-  static_cast<NDTScanMatcher *>(ctx)->latest_ekf_position_.with([&](auto & pos) {
-    geometry_msgs::msg::Point point;
-    point.x = x;
-    point.y = y;
-    point.z = z;
-    pos = point;
-  });
-}
-// Build the host-interface vtable for the migrated Rust callbacks (ctx == this).
-AwNdtHost NDTScanMatcher::make_host()
-{
-  return AwNdtHost{
-    this,
-    &NDTScanMatcher::host_set_activated,
-    &NDTScanMatcher::host_clear_initial_pose_buffer,
-    &NDTScanMatcher::host_is_activated,
-    &NDTScanMatcher::host_push_initial_pose,
-    &NDTScanMatcher::host_set_latest_ekf_position};
-}
-
 namespace
 {
 // Diagnostics host-interface trampolines: cast the opaque handle back to DiagnosticsInterface* and
@@ -1347,12 +1371,12 @@ void NDTScanMatcher::service_trigger_node(
   const rclcpp::Time ros_time_now = this->now();
 
 #ifdef NDT_USE_RUST
-  // Callback-level (slice 1): the whole body — diagnostics + activation + buffer clear — runs in Rust
-  // via the host + diagnostics vtables. The C++ shell only builds the handles and assigns res->success.
-  const AwNdtHost host = make_host();
+  // Callback-level: the whole body — diagnostics + activation + buffer clear — runs in Rust, driving
+  // the handle's Rust-owned state (Phase 1 slice B). The C++ shell only builds the diagnostics vtable
+  // and assigns res->success.
   const AwDiagnostics diag = make_diagnostics(diagnostics_trigger_node_.get());
   res->success = autoware_ndt_scan_matcher_rs_node_on_trigger(
-    &host, &diag, req->data, ros_time_now.nanoseconds());
+    rs_.raw(), &diag, req->data, ros_time_now.nanoseconds());
 #else
   diagnostics_trigger_node_->clear();
   diagnostics_trigger_node_->add_key_value("service_call_time_stamp", ros_time_now.nanoseconds());

@@ -239,6 +239,14 @@ if(BUILD_TESTING)
     )
     target_link_libraries(test_regularization_buffer
       ${PROJECT_NAME} autoware_ndt_scan_matcher_rs)
+
+    # 14. Differential test: the Rust-owned initial-pose buffer (FFI) vs the C++ SmartPoseBuffer +
+    #     activation gating (node port: Phase 1 slice B).
+    ament_auto_add_gtest(test_initial_pose_buffer
+      test/test_initial_pose_buffer.cpp
+    )
+    target_link_libraries(test_initial_pose_buffer
+      ${PROJECT_NAME} autoware_ndt_scan_matcher_rs)
   endif()
 endif()
 

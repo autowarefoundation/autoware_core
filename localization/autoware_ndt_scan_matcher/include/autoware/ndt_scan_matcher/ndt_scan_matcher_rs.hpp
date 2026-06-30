@@ -76,6 +76,12 @@ inline AwNdtParams make_aw_ndt_params(const HyperParameters & p)
   out.regularization_enable = p.ndt_regularization_enable;
   out.regularization_pose_timeout_sec = 1000.0;
   out.regularization_pose_distance_tolerance_m = 1000.0;
+  // Initial pose buffer: the expected frame + the SmartPoseBuffer tolerances. `map_frame` is borrowed
+  // for the `_new` call only (Rust copies it), so `p` must outlive the call.
+  out.map_frame = reinterpret_cast<const std::uint8_t *>(p.frame.map_frame.data());
+  out.map_frame_len = p.frame.map_frame.size();
+  out.initial_pose_timeout_sec = p.validation.initial_pose_timeout_sec;
+  out.initial_pose_distance_tolerance_m = p.validation.initial_pose_distance_tolerance_m;
   return out;
 }
 
@@ -96,6 +102,8 @@ inline AwPoseWithCovarianceStampedView make_pose_with_cov_view(
   v.orientation[2] = orientation.z;
   v.orientation[3] = orientation.w;
   std::copy(msg.pose.covariance.begin(), msg.pose.covariance.end(), v.covariance);
+  v.frame_id = reinterpret_cast<const std::uint8_t *>(msg.header.frame_id.data());
+  v.frame_id_len = msg.header.frame_id.size();
   return v;
 }
 

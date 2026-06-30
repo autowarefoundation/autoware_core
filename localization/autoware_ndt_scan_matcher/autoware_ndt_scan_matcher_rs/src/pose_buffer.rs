@@ -41,13 +41,17 @@ pub struct TimedPoseWithCov {
     pub covariance: [f64; 36],
 }
 
-/// The interpolation output: the pose at the query time + the covariance carried from the older
-/// bracket entry (the C++ does not interpolate covariance).
+/// The interpolation output: the pose at the query time (covariance carried from the older bracket
+/// entry — the C++ does not interpolate covariance), plus the two bracket entries themselves (`old`
+/// = last entry ≤ target, `new_entry` = first entry > target), which the C++ `InterpolateResult`
+/// exposes as `old_pose`/`new_pose` and the sensor callback publishes.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct InterpolateResult {
     pub position: [f64; 3],
     pub orientation: [f64; 4],
     pub covariance: [f64; 36],
+    pub old: TimedPoseWithCov,
+    pub new_entry: TimedPoseWithCov,
 }
 
 /// A time-ordered pose buffer with the two `SmartPoseBuffer` validation tolerances.
@@ -194,6 +198,8 @@ fn interpolate_pose(old: &TimedPoseWithCov, new: &TimedPoseWithCov, target_ns: i
             position: [0.0; 3],
             orientation: [0.0; 4],
             covariance: old.covariance,
+            old: *old,
+            new_entry: *new,
         };
     }
     let (roll_a, pitch_a, yaw_a) = quat_to_rpy(old.orientation);
@@ -226,6 +232,8 @@ fn interpolate_pose(old: &TimedPoseWithCov, new: &TimedPoseWithCov, target_ns: i
         position,
         orientation,
         covariance: old.covariance,
+        old: *old,
+        new_entry: *new,
     }
 }
 
@@ -281,6 +289,11 @@ mod tests {
         assert!((r.position[1] - 2.0).abs() < 1e-9);
         let (_, _, yaw) = quat_to_rpy(r.orientation);
         assert!((yaw - 0.5).abs() < 1e-9);
+        // The bracket entries are exposed (old <= target < new) for the sensor callback's publish.
+        assert_eq!(r.old.stamp_ns, 1);
+        assert_eq!(r.new_entry.stamp_ns, 2_000_000_001);
+        assert_eq!(r.old.position[0], 0.0);
+        assert_eq!(r.new_entry.position[0], 2.0);
     }
 
     #[test]

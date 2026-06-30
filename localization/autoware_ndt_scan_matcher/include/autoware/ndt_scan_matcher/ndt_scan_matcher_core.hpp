@@ -121,17 +121,6 @@ private:
     const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_with_cov,
     NormalDistributionsTransform & ndt_ref);
 
-#ifdef NDT_USE_RUST
-  // Phase N host-interface trampolines: the Rust callback bodies drive node state through these
-  // (ctx is `this`). Static so the function pointers are plain C-ABI pointers for the vtable.
-  // `make_host` assembles them into the AwNdtHost vtable handed to the migrated Rust callbacks.
-  static void host_set_activated(void * ctx, bool activate);
-  static void host_clear_initial_pose_buffer(void * ctx);
-  static bool host_is_activated(void * ctx);
-  static void host_push_initial_pose(void * ctx, const void * msg);
-  static void host_set_latest_ekf_position(void * ctx, double x, double y, double z);
-  AwNdtHost make_host();
-#endif
 
   void transform_sensor_measurement(
     const std::string & source_frame, const std::string & target_frame,
@@ -225,18 +214,16 @@ private:
 
   pcl::shared_ptr<pcl::PointCloud<PointSource>> sensor_points_in_baselink_frame_;
 
-  std::unique_ptr<autoware::localization_util::SmartPoseBuffer> initial_pose_buffer_;
-
-  // Keep latest position for dynamic map loading
-  Guarded<std::optional<geometry_msgs::msg::Point>> latest_ekf_position_{std::nullopt};
-
 #ifndef NDT_USE_RUST
-  // Under NDT_USE_RUST the regularization buffer is owned Rust-side (Phase 1 slice A); the C++ buffer
-  // remains only on the non-Rust path.
+  // Under NDT_USE_RUST the initial-pose buffer, latest-EKF position, regularization buffer, and
+  // activation flag are all owned Rust-side on the `rs_` handle (Phase 1 slices A+B); these C++
+  // members remain only on the non-Rust path.
+  std::unique_ptr<autoware::localization_util::SmartPoseBuffer> initial_pose_buffer_;
+  Guarded<std::optional<geometry_msgs::msg::Point>> latest_ekf_position_{std::nullopt};
   std::unique_ptr<autoware::localization_util::SmartPoseBuffer> regularization_pose_buffer_;
+  std::atomic<bool> is_activated_;
 #endif
 
-  std::atomic<bool> is_activated_;
   std::unique_ptr<DiagnosticsInterface> diagnostics_scan_points_;
   std::unique_ptr<DiagnosticsInterface> diagnostics_initial_pose_;
   std::unique_ptr<DiagnosticsInterface> diagnostics_regularization_pose_;
