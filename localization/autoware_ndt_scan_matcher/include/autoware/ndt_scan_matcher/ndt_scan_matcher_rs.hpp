@@ -26,6 +26,8 @@
 
 #include "autoware_ndt_scan_matcher_rs.h"
 
+#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
+
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
@@ -69,7 +71,32 @@ inline AwNdtParams make_aw_ndt_params(const HyperParameters & p)
     p.covariance.covariance_estimation.initial_pose_offset_model_y.data();
   out.initial_pose_offset_model_y_len =
     p.covariance.covariance_estimation.initial_pose_offset_model_y.size();
+  // Regularization pose buffer: enabled flag + the SmartPoseBuffer tolerances the C++ node uses
+  // (`value_as_unlimited = 1000.0` for both — validation effectively off).
+  out.regularization_enable = p.ndt_regularization_enable;
+  out.regularization_pose_timeout_sec = 1000.0;
+  out.regularization_pose_distance_tolerance_m = 1000.0;
   return out;
+}
+
+/// Build the borrowed FFI view of a `PoseWithCovarianceStamped` (stamp + pose + row-major 6x6 cov).
+/// Valid only for the duration of the FFI call (Rust copies what it retains).
+inline AwPoseWithCovarianceStampedView make_pose_with_cov_view(
+  const geometry_msgs::msg::PoseWithCovarianceStamped & msg)
+{
+  AwPoseWithCovarianceStampedView v{};
+  v.stamp_ns = static_cast<rclcpp::Time>(msg.header.stamp).nanoseconds();
+  const auto & position = msg.pose.pose.position;
+  const auto & orientation = msg.pose.pose.orientation;
+  v.position[0] = position.x;
+  v.position[1] = position.y;
+  v.position[2] = position.z;
+  v.orientation[0] = orientation.x;
+  v.orientation[1] = orientation.y;
+  v.orientation[2] = orientation.z;
+  v.orientation[3] = orientation.w;
+  std::copy(msg.pose.covariance.begin(), msg.pose.covariance.end(), v.covariance);
+  return v;
 }
 
 /// RAII owner of the opaque Rust node handle (`AwNdtScanMatcher *`). Constructs via `_new` (throwing

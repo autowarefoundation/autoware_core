@@ -38,7 +38,6 @@ struct Recorder
   bool activated = false;
   bool is_activated_ret = false;
   int initial_pushes = 0;
-  int reg_pushes = 0;
   const void * last_msg = nullptr;
   std::optional<std::tuple<double, double, double>> position;
 };
@@ -52,12 +51,6 @@ extern "C" void rec_push_initial(void * ctx, const void * msg)
   ++r->initial_pushes;
   r->last_msg = msg;
 }
-extern "C" void rec_push_reg(void * ctx, const void * msg)
-{
-  auto * r = static_cast<Recorder *>(ctx);
-  ++r->reg_pushes;
-  r->last_msg = msg;
-}
 extern "C" void rec_set_position(void * ctx, double x, double y, double z)
 {
   static_cast<Recorder *>(ctx)->position = std::make_tuple(x, y, z);
@@ -66,8 +59,8 @@ extern "C" void rec_set_position(void * ctx, double x, double y, double z)
 AwNdtHost mock_host(Recorder & r)
 {
   return AwNdtHost{
-    &r,          rec_set_activated, rec_clear,       rec_is_activated,
-    rec_push_initial, rec_push_reg, rec_set_position};
+    &r,           rec_set_activated, rec_clear, rec_is_activated,
+    rec_push_initial, rec_set_position};
 }
 
 // Mock diagnostics: each vtable op appends a human-readable event so the callback's full diagnostics
@@ -203,23 +196,6 @@ TEST(NodePoseCallbacks, InitialPoseNullHostIsNotActivated)  // NOLINT
   EXPECT_TRUE(dr.events.empty());  // null host → no diagnostics emitted
 }
 
-TEST(NodePoseCallbacks, RegularizationPushesMsgAndNullIsNoop)  // NOLINT
-{
-  Recorder r;
-  DiagRec dr;
-  const AwNdtHost host = mock_host(r);
-  const AwDiagnostics diag = mock_diag(dr);
-  int dummy = 0;
-  autoware_ndt_scan_matcher_rs_node_on_regularization_pose(&host, &diag, &dummy, 100);
-  EXPECT_EQ(r.reg_pushes, 1);
-  EXPECT_EQ(r.last_msg, &dummy);
-  EXPECT_EQ(
-    dr.events,
-    (std::vector<std::string>{"clear", "i64 topic_time_stamp=100", "publish 100"}));
-
-  // null msg → no extra push, no diagnostics.
-  dr.events.clear();
-  autoware_ndt_scan_matcher_rs_node_on_regularization_pose(&host, &diag, nullptr, 100);
-  EXPECT_EQ(r.reg_pushes, 1);
-  EXPECT_TRUE(dr.events.empty());
-}
+// The regularization callback moved to the Rust-owned buffer on the node handle (Phase 1 slice A);
+// it no longer uses the host vtable. Its diagnostics + buffer behavior is covered by the Rust unit
+// tests and the differential test (test_regularization_buffer.cpp).

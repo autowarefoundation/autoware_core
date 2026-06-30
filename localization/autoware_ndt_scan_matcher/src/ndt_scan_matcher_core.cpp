@@ -194,9 +194,11 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
         "regularization_pose_with_covariance", 10,
         std::bind(&NDTScanMatcher::callback_regularization_pose, this, std::placeholders::_1),
         initial_pose_sub_opt);
+#ifndef NDT_USE_RUST
     const double value_as_unlimited = 1000.0;
     regularization_pose_buffer_ =
       std::make_unique<SmartPoseBuffer>(this->get_logger(), value_as_unlimited, value_as_unlimited);
+#endif
 
     diagnostics_regularization_pose_ =
       std::make_unique<DiagnosticsInterface>(this, "regularization_pose_subscriber_status");
@@ -377,14 +379,12 @@ void NDTScanMatcher::callback_regularization_pose(
   geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr pose_conv_msg_ptr)
 {
 #ifdef NDT_USE_RUST
-  // Callback-level (slice 2): the whole body (diagnostics + push) runs in Rust via the host +
-  // diagnostics vtables; the C++ msg is passed opaquely.
-  const AwNdtHost host = make_host();
+  // Callback-level: the whole body (diagnostics + buffer push) runs in Rust. The pose now crosses as
+  // a value view and is pushed into the Rust-owned regularization buffer on the handle (Phase 1
+  // slice A) — no host vtable needed here.
   const AwDiagnostics diag = make_diagnostics(diagnostics_regularization_pose_.get());
-  const int64_t stamp_ns =
-    static_cast<rclcpp::Time>(pose_conv_msg_ptr->header.stamp).nanoseconds();
-  autoware_ndt_scan_matcher_rs_node_on_regularization_pose(
-    &host, &diag, &pose_conv_msg_ptr, stamp_ns);
+  const AwPoseWithCovarianceStampedView view = make_pose_with_cov_view(*pose_conv_msg_ptr);
+  autoware_ndt_scan_matcher_rs_node_on_regularization_pose(rs_.raw(), &diag, &view);
 #else
   diagnostics_regularization_pose_->clear();
 
@@ -1213,9 +1213,17 @@ void NDTScanMatcher::add_regularization_pose(
 #ifdef NDT_USE_RUST
   // N4c: regularization set/unset via the engine FFI (scale == 0 disables), driving the handle.
   autoware_ndt_scan_matcher_rs_ndt_engine_set_regularization(ndt_ref.raw_handle(), 0.0F, 0.0F, 0.0F);
+  // The regularization buffer is Rust-owned (Phase 1 slice A): interpolate (+ pop_old) over the FFI.
+  AwInterpolatedPose interpolated{};
+  const int64_t stamp_ns = static_cast<rclcpp::Time>(sensor_ros_time).nanoseconds();
+  if (!autoware_ndt_scan_matcher_rs_regularization_interpolate(rs_.raw(), stamp_ns, &interpolated)) {
+    return;
+  }
+  autoware_ndt_scan_matcher_rs_ndt_engine_set_regularization(
+    ndt_ref.raw_handle(), static_cast<float>(interpolated.position[0]),
+    static_cast<float>(interpolated.position[1]), param_.ndt.regularization_scale_factor);
 #else
   ndt_ref.unsetRegularizationPose();
-#endif
   std::optional<SmartPoseBuffer::InterpolateResult> interpolation_result_opt =
     regularization_pose_buffer_->interpolate(sensor_ros_time);
   if (!interpolation_result_opt) {
@@ -1225,10 +1233,6 @@ void NDTScanMatcher::add_regularization_pose(
   const SmartPoseBuffer::InterpolateResult & interpolation_result =
     interpolation_result_opt.value();
   const Eigen::Matrix4f pose = pose_to_matrix4f(interpolation_result.interpolated_pose.pose.pose);
-#ifdef NDT_USE_RUST
-  autoware_ndt_scan_matcher_rs_ndt_engine_set_regularization(
-    ndt_ref.raw_handle(), pose(0, 3), pose(1, 3), param_.ndt.regularization_scale_factor);
-#else
   ndt_ref.setRegularizationPose(pose);
 #endif
 }
@@ -1255,16 +1259,6 @@ void NDTScanMatcher::host_push_initial_pose(void * ctx, const void * msg)
     *static_cast<const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr *>(msg);
   static_cast<NDTScanMatcher *>(ctx)->initial_pose_buffer_->push_back(pose_msg_ptr);
 }
-void NDTScanMatcher::host_push_regularization_pose(void * ctx, const void * msg)
-{
-  auto * self = static_cast<NDTScanMatcher *>(ctx);
-  if (!self->regularization_pose_buffer_) {
-    return;
-  }
-  const auto & pose_msg_ptr =
-    *static_cast<const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr *>(msg);
-  self->regularization_pose_buffer_->push_back(pose_msg_ptr);
-}
 void NDTScanMatcher::host_set_latest_ekf_position(void * ctx, double x, double y, double z)
 {
   static_cast<NDTScanMatcher *>(ctx)->latest_ekf_position_.with([&](auto & pos) {
@@ -1284,7 +1278,6 @@ AwNdtHost NDTScanMatcher::make_host()
     &NDTScanMatcher::host_clear_initial_pose_buffer,
     &NDTScanMatcher::host_is_activated,
     &NDTScanMatcher::host_push_initial_pose,
-    &NDTScanMatcher::host_push_regularization_pose,
     &NDTScanMatcher::host_set_latest_ekf_position};
 }
 

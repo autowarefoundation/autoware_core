@@ -129,7 +129,6 @@ private:
   static void host_clear_initial_pose_buffer(void * ctx);
   static bool host_is_activated(void * ctx);
   static void host_push_initial_pose(void * ctx, const void * msg);
-  static void host_push_regularization_pose(void * ctx, const void * msg);
   static void host_set_latest_ekf_position(void * ctx, double x, double y, double z);
   AwNdtHost make_host();
 #endif
@@ -231,7 +230,11 @@ private:
   // Keep latest position for dynamic map loading
   Guarded<std::optional<geometry_msgs::msg::Point>> latest_ekf_position_{std::nullopt};
 
+#ifndef NDT_USE_RUST
+  // Under NDT_USE_RUST the regularization buffer is owned Rust-side (Phase 1 slice A); the C++ buffer
+  // remains only on the non-Rust path.
   std::unique_ptr<autoware::localization_util::SmartPoseBuffer> regularization_pose_buffer_;
+#endif
 
   std::atomic<bool> is_activated_;
   std::unique_ptr<DiagnosticsInterface> diagnostics_scan_points_;

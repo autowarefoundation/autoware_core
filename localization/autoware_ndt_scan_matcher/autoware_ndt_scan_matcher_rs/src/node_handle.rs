@@ -24,7 +24,10 @@
 //! therefore inert this slice: constructed/destroyed and exercised by tests, not yet driving a
 //! callback. std-only: it is the ROS-node shell, excluded from the `no_std` kernel build.
 
+use std::sync::Mutex;
+
 use crate::ffi::{Error, ffi_boundary_ptr};
+use crate::pose_buffer::{InterpolateResult, PoseBuffer, TimedPoseWithCov};
 
 /// The validated, Rust-owned parameters the node needs (the union of the engine's `set_params` /
 /// `set_convergence_params` / `set_covariance_config` inputs). Converted once from [`AwNdtParams`]
@@ -53,6 +56,10 @@ pub struct Params {
     pub output_pose_covariance: [f64; 36],
     pub initial_pose_offset_model_x: Vec<f64>,
     pub initial_pose_offset_model_y: Vec<f64>,
+    // Regularization pose buffer (`ndt.regularization.*` + the SmartPoseBuffer tolerances).
+    pub regularization_enable: bool,
+    pub regularization_pose_timeout_sec: f64,
+    pub regularization_pose_distance_tolerance_m: f64,
 }
 
 /// Node-level state the algorithm core does not own — the migration target of Phases 1–4. Defaulted
@@ -76,21 +83,55 @@ pub struct MapUpdateState {
     pub need_rebuild: bool,
 }
 
-/// The opaque node object C++ holds (as `AwNdtScanMatcher *`). Owns the validated params + node-state
-/// scaffolding; the engine is still owned by the C++ `NdtRustAdapter` this slice.
+/// The opaque node object C++ holds (as `AwNdtScanMatcher *`). Owns the validated params, node-state
+/// scaffolding, and (Phase 1 slice A) the Rust-owned regularization pose buffer; the engine is still
+/// owned by the C++ `NdtRustAdapter` this slice. Accessed through a shared `*const` from concurrent
+/// ROS callbacks, so mutable node state uses interior locking (`Mutex`) — separate from, and finer
+/// than, the lock-free engine.
 pub struct NdtScanMatcherRs {
     pub params: Params,
     pub state: NodeState,
     pub map_update_state: MapUpdateState,
+    /// `Some` iff `params.regularization_enable` (mirrors the C++ conditional buffer creation).
+    regularization_buffer: Option<Mutex<PoseBuffer>>,
 }
 
 impl NdtScanMatcherRs {
     fn new(params: Params) -> Self {
+        let regularization_buffer = if params.regularization_enable {
+            Some(Mutex::new(PoseBuffer::new(
+                params.regularization_pose_timeout_sec,
+                params.regularization_pose_distance_tolerance_m,
+            )))
+        } else {
+            None
+        };
         Self {
             params,
             state: NodeState::default(),
             map_update_state: MapUpdateState::default(),
+            regularization_buffer,
         }
+    }
+
+    /// Push a regularization pose into the Rust-owned buffer (no-op if regularization is disabled or
+    /// the lock is poisoned). Called by `on_regularization_pose`.
+    pub(crate) fn push_regularization(&self, pose: &TimedPoseWithCov) {
+        if let Some(buf) = &self.regularization_buffer
+            && let Ok(mut b) = buf.lock()
+        {
+            b.push_back(*pose);
+        }
+    }
+
+    /// Interpolate the regularization pose at `target_ns`, then drop entries older than it (mirrors
+    /// the C++ `add_regularization_pose`: `interpolate` then `pop_old`). `None` if disabled, locked-
+    /// poisoned, or the buffer cannot interpolate.
+    pub(crate) fn interpolate_regularization(&self, target_ns: i64) -> Option<InterpolateResult> {
+        let mut b = self.regularization_buffer.as_ref()?.lock().ok()?;
+        let result = b.interpolate(target_ns)?;
+        b.pop_old(target_ns);
+        Some(result)
     }
 }
 
@@ -118,6 +159,39 @@ pub struct AwNdtParams {
     pub initial_pose_offset_model_x_len: usize,
     pub initial_pose_offset_model_y: *const f64,
     pub initial_pose_offset_model_y_len: usize,
+    pub regularization_enable: bool,
+    pub regularization_pose_timeout_sec: f64,
+    pub regularization_pose_distance_tolerance_m: f64,
+}
+
+/// C-ABI view of a `geometry_msgs::PoseWithCovarianceStamped`, borrowed for the call only (Rust copies
+/// what it keeps). `orientation` is `[x, y, z, w]`; `covariance` is the row-major 6x6. No `frame_id`
+/// yet — the regularization path does no frame check; it is added when the initial-pose slice needs it.
+#[repr(C)]
+pub struct AwPoseWithCovarianceStampedView {
+    pub stamp_ns: i64,
+    pub position: [f64; 3],
+    pub orientation: [f64; 4],
+    pub covariance: [f64; 36],
+}
+
+impl AwPoseWithCovarianceStampedView {
+    pub(crate) fn to_timed(&self) -> TimedPoseWithCov {
+        TimedPoseWithCov {
+            stamp_ns: self.stamp_ns,
+            position: self.position,
+            orientation: self.orientation,
+            covariance: self.covariance,
+        }
+    }
+}
+
+/// C-ABI out-struct for an interpolated pose (`orientation` = `[x, y, z, w]`).
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct AwInterpolatedPose {
+    pub position: [f64; 3],
+    pub orientation: [f64; 4],
 }
 
 /// View `[ptr, ptr+len)` as an `f64` slice, treating a null/zero-length pointer as empty.
@@ -178,6 +252,9 @@ impl Params {
             output_pose_covariance: p.output_pose_covariance,
             initial_pose_offset_model_x: offset_x.to_vec(),
             initial_pose_offset_model_y: offset_y.to_vec(),
+            regularization_enable: p.regularization_enable,
+            regularization_pose_timeout_sec: p.regularization_pose_timeout_sec,
+            regularization_pose_distance_tolerance_m: p.regularization_pose_distance_tolerance_m,
         })
     }
 }
@@ -221,6 +298,43 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_free(ptr: *mut NdtScanMatc
     }
 }
 
+/// Interpolate the regularization pose at `stamp_ns` from the handle's Rust-owned buffer, writing the
+/// result into `*out` and returning `true`; returns `false` (leaving `*out` untouched) if
+/// regularization is disabled or the buffer cannot interpolate (the C++ `if (!opt) return;`). Also
+/// drops buffer entries older than `stamp_ns` (the C++ `pop_old`). Transitional: the still-C++ sensor
+/// callback calls this; it is removed when the sensor callback itself moves to Rust (Phase 5).
+///
+/// # Safety
+/// `handle` must be a valid, live `NdtScanMatcherRs` from `_new` (or null → `false`), and `out` a
+/// valid, aligned, writable [`AwInterpolatedPose`] (or null → `false`).
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointers validated per rust-c-ffi-safety"
+)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_regularization_interpolate(
+    handle: *const NdtScanMatcherRs,
+    stamp_ns: i64,
+    out: *mut AwInterpolatedPose,
+) -> bool {
+    if handle.is_null() || out.is_null() {
+        return false;
+    }
+    // SAFETY: non-null per the check; caller guarantees a valid, live handle.
+    let h = unsafe { &*handle };
+    let Some(result) = h.interpolate_regularization(stamp_ns) else {
+        return false;
+    };
+    // SAFETY: `out` is non-null per the check and a valid, aligned, writable struct per the contract.
+    unsafe {
+        *out = AwInterpolatedPose {
+            position: result.position,
+            orientation: result.orientation,
+        };
+    }
+    true
+}
+
 #[cfg(test)]
 #[allow(
     unsafe_code,
@@ -257,6 +371,18 @@ mod tests {
             initial_pose_offset_model_x_len: ox.len(),
             initial_pose_offset_model_y: oy.as_ptr(),
             initial_pose_offset_model_y_len: oy.len(),
+            regularization_enable: true,
+            regularization_pose_timeout_sec: 1000.0,
+            regularization_pose_distance_tolerance_m: 1000.0,
+        }
+    }
+
+    fn pose_view(stamp_ns: i64, x: f64, y: f64) -> AwPoseWithCovarianceStampedView {
+        AwPoseWithCovarianceStampedView {
+            stamp_ns,
+            position: [x, y, 0.0],
+            orientation: [0.0, 0.0, 0.0, 1.0],
+            covariance: [0.0; 36],
         }
     }
 
@@ -315,5 +441,63 @@ mod tests {
     fn free_null_is_noop() {
         // SAFETY: null is explicitly handled as a no-op.
         unsafe { autoware_ndt_scan_matcher_rs_free(core::ptr::null_mut()) };
+    }
+
+    #[test]
+    fn regularization_push_then_interpolate_via_ffi() {
+        let ox: [f64; 0] = [];
+        let oy: [f64; 0] = [];
+        let p = sample_params(&ox, &oy); // regularization_enable = true
+        // SAFETY: valid params.
+        let handle = unsafe { autoware_ndt_scan_matcher_rs_new(&raw const p) };
+        assert!(!handle.is_null());
+        // SAFETY: live handle from `_new`.
+        let h = unsafe { &*handle };
+        h.push_regularization(&pose_view(1, 0.0, 0.0).to_timed());
+        h.push_regularization(&pose_view(2_000_000_001, 2.0, 4.0).to_timed());
+
+        let mut out = AwInterpolatedPose::default();
+        // SAFETY: live handle + writable out.
+        let ok = unsafe {
+            autoware_ndt_scan_matcher_rs_regularization_interpolate(handle, 1_000_000_001, &raw mut out)
+        };
+        assert!(ok);
+        assert!((out.position[0] - 1.0).abs() < 1e-9);
+        assert!((out.position[1] - 2.0).abs() < 1e-9);
+        // SAFETY: freed once.
+        unsafe { autoware_ndt_scan_matcher_rs_free(handle) };
+    }
+
+    #[test]
+    fn regularization_interpolate_false_when_disabled() {
+        let ox: [f64; 0] = [];
+        let oy: [f64; 0] = [];
+        let mut p = sample_params(&ox, &oy);
+        p.regularization_enable = false;
+        // SAFETY: valid params.
+        let handle = unsafe { autoware_ndt_scan_matcher_rs_new(&raw const p) };
+        assert!(!handle.is_null());
+        let mut out = AwInterpolatedPose::default();
+        // SAFETY: live handle + writable out; disabled buffer → false.
+        let ok = unsafe {
+            autoware_ndt_scan_matcher_rs_regularization_interpolate(handle, 1_000_000_001, &raw mut out)
+        };
+        assert!(!ok);
+        // SAFETY: freed once.
+        unsafe { autoware_ndt_scan_matcher_rs_free(handle) };
+    }
+
+    #[test]
+    fn regularization_interpolate_null_handle_is_false() {
+        let mut out = AwInterpolatedPose::default();
+        // SAFETY: null handle is explicitly handled → false.
+        let ok = unsafe {
+            autoware_ndt_scan_matcher_rs_regularization_interpolate(
+                core::ptr::null(),
+                1,
+                &raw mut out,
+            )
+        };
+        assert!(!ok);
     }
 }

@@ -23,6 +23,7 @@ use core::ffi::c_void;
 // The pure convergence decision now lives in the no_std `convergence` module (so the portable
 // `scan_matcher` can reuse it); this module keeps the `Aw*` C-ABI mirrors + the `extern "C"` shim.
 use crate::convergence::{ConvergenceInput, evaluate_convergence};
+use crate::node_handle::{AwPoseWithCovarianceStampedView, NdtScanMatcherRs};
 
 /// The ROS I/O / node-state operations a migrated Rust callback needs, as C function pointers over an
 /// opaque context. Built and owned C++-side (the trampolines cast `ctx` back to `NDTScanMatcher*`);
@@ -39,8 +40,6 @@ pub struct NdtHost {
     is_activated: extern "C" fn(*mut c_void) -> bool,
     /// Push the opaque message token into `initial_pose_buffer_` (`SmartPoseBuffer::push_back`).
     push_initial_pose: extern "C" fn(*mut c_void, *const c_void),
-    /// Push the opaque message token into `regularization_pose_buffer_`.
-    push_regularization_pose: extern "C" fn(*mut c_void, *const c_void),
     /// Set `latest_ekf_position_` to the given `(x, y, z)`.
     set_latest_ekf_position: extern "C" fn(*mut c_void, f64, f64, f64),
 }
@@ -225,34 +224,34 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_on_initial_pose(
 }
 
 /// The whole body of `callback_regularization_pose` (callback-level): build the diagnostics (clear +
-/// `topic_time_stamp`), push the (opaque) message into the regularization-pose buffer, and publish —
-/// via the host + diagnostics vtables. No-op if `host`/`diag`/`msg` is null. `stamp_ns` is the message
-/// header stamp.
+/// `topic_time_stamp`), push the pose into the **Rust-owned** regularization buffer on the handle, and
+/// publish. No-op if any pointer is null (or regularization is disabled — the handle push is a no-op).
+/// The stamp + pose come from `view` (the buffer push replaces the old host `push_regularization_pose`
+/// vtable call; Phase 1 slice A).
 ///
 /// # Safety
-/// `host`/`diag` are valid (or either null → no-op) and their fn pointers + `ctx`/`diag` handle outlive
-/// the call. `msg` is an opaque token, only forwarded to the host push (never dereferenced); valid for
-/// the call.
+/// `handle` is a valid, live `NdtScanMatcherRs` from `_new` (or null → no-op); `diag` is a valid
+/// diagnostics vtable (or null → no-op) whose fn pointers + handle outlive the call; `view` is a valid,
+/// aligned [`AwPoseWithCovarianceStampedView`] (or null → no-op), read once.
 #[expect(
     unsafe_code,
     reason = "C ABI host-interface boundary; validated per rust-c-ffi-safety"
 )]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_on_regularization_pose(
-    host: *const NdtHost,
+    handle: *const NdtScanMatcherRs,
     diag: *const Diagnostics,
-    msg: *const c_void,
-    stamp_ns: i64,
+    view: *const AwPoseWithCovarianceStampedView,
 ) {
-    if host.is_null() || diag.is_null() || msg.is_null() {
+    if handle.is_null() || diag.is_null() || view.is_null() {
         return;
     }
-    // SAFETY: non-null per the check; caller guarantees valid, live host + diagnostics handles.
-    let (h, d) = unsafe { (&*host, &*diag) };
+    // SAFETY: non-null per the check; caller guarantees valid, live handle + diagnostics + view.
+    let (h, d, v) = unsafe { (&*handle, &*diag, &*view) };
     d.reset();
-    d.add_i64("topic_time_stamp", stamp_ns);
-    (h.push_regularization_pose)(h.ctx, msg);
-    d.publish_at(stamp_ns);
+    d.add_i64("topic_time_stamp", v.stamp_ns);
+    h.push_regularization(&v.to_timed());
+    d.publish_at(v.stamp_ns);
 }
 
 /// View `[ptr, ptr+len)` as a byte slice, treating a null/zero-length pointer as empty (so the
@@ -567,7 +566,6 @@ mod tests {
         clears: u32,
         is_activated_ret: bool,
         initial_pushes: u32,
-        reg_pushes: u32,
         last_msg: Option<*const c_void>,
         position: Option<(f64, f64, f64)>,
     }
@@ -591,11 +589,6 @@ mod tests {
         r.initial_pushes += 1;
         r.last_msg = Some(msg);
     }
-    extern "C" fn t_push_reg(ctx: *mut c_void, msg: *const c_void) {
-        let r = rec(ctx);
-        r.reg_pushes += 1;
-        r.last_msg = Some(msg);
-    }
     extern "C" fn t_set_pos(ctx: *mut c_void, x: f64, y: f64, z: f64) {
         rec(ctx).position = Some((x, y, z));
     }
@@ -607,9 +600,39 @@ mod tests {
             clear_initial_pose_buffer: t_clear,
             is_activated: t_is_activated,
             push_initial_pose: t_push_initial,
-            push_regularization_pose: t_push_reg,
             set_latest_ekf_position: t_set_pos,
         }
+    }
+
+    // A handle with the regularization buffer enabled (1000/1000 tolerances, matching the C++ node),
+    // for the regularization-callback test. Offset models are empty.
+    fn reg_handle() -> *mut NdtScanMatcherRs {
+        let p = crate::node_handle::AwNdtParams {
+            resolution: 1.0,
+            min_points: 6,
+            eig_mult: 0.01,
+            trans_epsilon: 0.0,
+            step_size: 0.0,
+            max_iterations: 1,
+            outlier_ratio: 0.55,
+            num_threads: 1,
+            converged_param_type: 0,
+            converged_param_transform_probability: 0.0,
+            converged_param_nearest_voxel_transformation_likelihood: 0.0,
+            covariance_estimation_type: 0,
+            covariance_scale_factor: 1.0,
+            covariance_temperature: 1.0,
+            output_pose_covariance: [0.0; 36],
+            initial_pose_offset_model_x: core::ptr::null(),
+            initial_pose_offset_model_x_len: 0,
+            initial_pose_offset_model_y: core::ptr::null(),
+            initial_pose_offset_model_y_len: 0,
+            regularization_enable: true,
+            regularization_pose_timeout_sec: 1000.0,
+            regularization_pose_distance_tolerance_m: 1000.0,
+        };
+        // SAFETY: valid params with null/zero-length offset models.
+        unsafe { crate::node_handle::autoware_ndt_scan_matcher_rs_new(&raw const p) }
     }
 
     // A throwaway address used as the opaque message token (never dereferenced by Rust).
@@ -880,15 +903,19 @@ mod tests {
     }
 
     #[test]
-    fn regularization_pose_pushes_msg_and_null_is_noop() {
-        let mut r = Recorder::default();
+    fn regularization_pose_emits_diagnostics_and_null_is_noop() {
         let mut dr = DiagRecorder::default();
-        let h = host(&mut r);
         let d = diagnostics(&mut dr);
-        // SAFETY: `h`/`d` are valid; `token()` is an opaque, valid-for-the-call token.
-        unsafe { autoware_ndt_scan_matcher_rs_node_on_regularization_pose(&h, &d, token(), 77) };
-        assert_eq!(r.reg_pushes, 1);
-        assert_eq!(r.last_msg, Some(token()));
+        let handle = reg_handle();
+        assert!(!handle.is_null());
+        let v = AwPoseWithCovarianceStampedView {
+            stamp_ns: 77,
+            position: [1.0, 2.0, 0.0],
+            orientation: [0.0, 0.0, 0.0, 1.0],
+            covariance: [0.0; 36],
+        };
+        // SAFETY: live handle, valid diagnostics, valid view.
+        unsafe { autoware_ndt_scan_matcher_rs_node_on_regularization_pose(handle, &d, &raw const v) };
         assert_eq!(
             dr.events,
             alloc::vec![
@@ -898,14 +925,16 @@ mod tests {
             ]
         );
 
-        // null msg → no-op (no extra push, no diagnostics).
+        // null view → no-op (no diagnostics).
         dr.events.clear();
-        // SAFETY: null msg is explicitly handled.
+        // SAFETY: null view is explicitly handled.
         unsafe {
-            autoware_ndt_scan_matcher_rs_node_on_regularization_pose(&h, &d, core::ptr::null(), 77);
+            autoware_ndt_scan_matcher_rs_node_on_regularization_pose(handle, &d, core::ptr::null());
         }
-        assert_eq!(r.reg_pushes, 1);
         assert!(dr.events.is_empty());
+
+        // SAFETY: live handle from `_new`, freed exactly once.
+        unsafe { crate::node_handle::autoware_ndt_scan_matcher_rs_free(handle) };
     }
 
     // A map-update input centered at the origin's last-update position; tests tweak fields.

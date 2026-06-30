@@ -38,6 +38,9 @@ pub mod helper;
 pub mod host;
 mod kdtree;
 pub mod ndt;
+// no_std port of autoware_localization_util::SmartPoseBuffer (time-ordered pose interpolation buffer);
+// reused by the node handle's Rust-owned pose buffers. See plan/ndt_in_rust_next.md Phase 1.
+pub mod pose_buffer;
 // ROS-node callback glue (Phase N); std-only (not part of the no_std engine path).
 #[cfg(feature = "std")]
 pub mod node;

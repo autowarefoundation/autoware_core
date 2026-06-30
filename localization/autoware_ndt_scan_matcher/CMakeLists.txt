@@ -231,6 +231,14 @@ if(BUILD_TESTING)
     )
     target_link_libraries(test_ndt_scan_matcher_rs_handle
       ${PROJECT_NAME} autoware_ndt_scan_matcher_rs)
+
+    # 13. Differential test: the Rust-owned regularization pose buffer (FFI) vs the C++ SmartPoseBuffer
+    #     interpolation (node port: Phase 1 slice A).
+    ament_auto_add_gtest(test_regularization_buffer
+      test/test_regularization_buffer.cpp
+    )
+    target_link_libraries(test_regularization_buffer
+      ${PROJECT_NAME} autoware_ndt_scan_matcher_rs)
   endif()
 endif()
 
