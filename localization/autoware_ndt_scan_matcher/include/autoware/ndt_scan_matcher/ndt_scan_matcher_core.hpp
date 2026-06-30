@@ -21,6 +21,7 @@
 #include "hyper_parameters.hpp"
 #include "map_update_module.hpp"
 #include "ndt_backend.hpp"
+#include "ndt_scan_matcher_rs.hpp"
 #include "ndt_omp/multigrid_ndt_omp.h"
 
 #include <autoware/localization_util/smart_pose_buffer.hpp>
@@ -243,6 +244,13 @@ private:
   std::unique_ptr<autoware_utils_logging::LoggerLevelConfigure> logger_configure_;
 
   HyperParameters param_;
+
+#ifdef NDT_USE_RUST
+  // Roadmap foundation: the opaque Rust node handle (owns the validated params + node-state
+  // scaffolding the later phases migrate out of C++). Declared last so it is constructed after
+  // `param_` (its ctor reads `param_`). Inert this slice — held, not yet driving callbacks.
+  NDTScanMatcherRS rs_;
+#endif
 };
 
 }  // namespace autoware::ndt_scan_matcher

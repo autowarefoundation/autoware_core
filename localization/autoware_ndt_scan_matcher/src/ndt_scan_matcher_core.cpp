@@ -151,6 +151,10 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
   tf2_listener_(tf2_buffer_),
   is_activated_(false),
   param_(this)
+#ifdef NDT_USE_RUST
+  ,
+  rs_(make_aw_ndt_params(param_))
+#endif
 {
   timer_callback_group_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
   rclcpp::CallbackGroup::SharedPtr initial_pose_callback_group =

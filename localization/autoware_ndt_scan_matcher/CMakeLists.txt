@@ -224,6 +224,13 @@ if(BUILD_TESTING)
     )
     target_link_libraries(test_estimate_pose_covariance
       multigrid_ndt_omp ${PCL_LIBRARIES} autoware_ndt_scan_matcher_rs)
+
+    # 12. Test: the opaque NdtScanMatcherRs node handle + C++ RAII wrapper (roadmap foundation).
+    ament_auto_add_gtest(test_ndt_scan_matcher_rs_handle
+      test/test_ndt_scan_matcher_rs_handle.cpp
+    )
+    target_link_libraries(test_ndt_scan_matcher_rs_handle
+      ${PROJECT_NAME} autoware_ndt_scan_matcher_rs)
   endif()
 endif()
 

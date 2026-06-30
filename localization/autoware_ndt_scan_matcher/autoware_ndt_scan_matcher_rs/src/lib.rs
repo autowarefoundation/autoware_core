@@ -29,6 +29,9 @@ pub mod cov_estimate;
 pub mod covariance;
 pub mod derivatives;
 pub mod engine;
+// Panic-safe C ABI boundary helpers (catch_unwind) + AwStatus/Error for the object-level FFI; std-only.
+#[cfg(feature = "std")]
+pub mod ffi;
 pub mod helper;
 // Portable node orchestration: the `Host` port traits + the `no_std` scan matcher over the engine
 // (reusable on ROS / bare-metal / the Tokio example). See plan/ndt_in_rust.md "full Rust port".
@@ -38,6 +41,9 @@ pub mod ndt;
 // ROS-node callback glue (Phase N); std-only (not part of the no_std engine path).
 #[cfg(feature = "std")]
 pub mod node;
+// Opaque object-level node handle (NdtScanMatcherRs) + AwNdtParams; the roadmap foundation. std-only.
+#[cfg(feature = "std")]
+pub mod node_handle;
 // ROS map-update glue: drives the portable `apply_map_update` (the `MapSource` port) from C++; std-only.
 #[cfg(feature = "std")]
 pub mod node_map_update;
