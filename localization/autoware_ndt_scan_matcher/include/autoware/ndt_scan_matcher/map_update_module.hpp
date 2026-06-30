@@ -21,6 +21,10 @@
 #include "ndt_omp/multigrid_ndt_omp.h"
 #include "particle.hpp"
 
+#ifdef NDT_USE_RUST
+#include "autoware_ndt_scan_matcher_rs.h"  // AwNdtScanMatcher + the map-update decision FFIs
+#endif
+
 #include <autoware/localization_util/util_func.hpp>
 #include <autoware_utils_diagnostics/diagnostics_interface.hpp>
 #include <autoware_utils_pcl/transforms.hpp>
@@ -62,7 +66,12 @@ class MapUpdateModule
 
 public:
   MapUpdateModule(
-    rclcpp::Node * node, EngineHolder & ndt_ptr, HyperParameters::DynamicMapLoading param);
+    rclcpp::Node * node, EngineHolder & ndt_ptr, HyperParameters::DynamicMapLoading param
+#ifdef NDT_USE_RUST
+    ,
+    AwNdtScanMatcher * rs_handle
+#endif
+  );
 
   bool out_of_map_range(const geometry_msgs::msg::Point & position);
 
@@ -121,7 +130,13 @@ private:
   // handle, so only builder_state_/last_update_position_ are real locks (no engine lock to order).
   EngineHolder & ndt_ptr_;
   Guarded<BuilderState> builder_state_;
+#ifdef NDT_USE_RUST
+  // Phase 6: the map-update decision state (last-update position + need-rebuild) lives Rust-side on
+  // the node handle; this module reads/updates it through the `..._map_update_*` FFIs.
+  AwNdtScanMatcher * rs_handle_;
+#else
   Guarded<std::optional<geometry_msgs::msg::Point>> last_update_position_{std::nullopt};
+#endif
 
   rclcpp::Logger logger_;
   rclcpp::Clock::SharedPtr clock_;

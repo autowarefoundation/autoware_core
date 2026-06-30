@@ -247,6 +247,13 @@ if(BUILD_TESTING)
     )
     target_link_libraries(test_initial_pose_buffer
       ${PROJECT_NAME} autoware_ndt_scan_matcher_rs)
+
+    # 15. Test: the Rust-owned map-update decision state machine (FFI) — node port Phase 6.
+    ament_auto_add_gtest(test_map_update_state
+      test/test_map_update_state.cpp
+    )
+    target_link_libraries(test_map_update_state
+      ${PROJECT_NAME} autoware_ndt_scan_matcher_rs)
   endif()
 endif()
 

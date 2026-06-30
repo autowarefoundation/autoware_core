@@ -24,8 +24,19 @@ namespace autoware::ndt_scan_matcher
 {
 
 MapUpdateModule::MapUpdateModule(
-  rclcpp::Node * node, EngineHolder & ndt_ptr, HyperParameters::DynamicMapLoading param)
-: ndt_ptr_(ndt_ptr), logger_(node->get_logger()), clock_(node->get_clock()), param_(param)
+  rclcpp::Node * node, EngineHolder & ndt_ptr, HyperParameters::DynamicMapLoading param
+#ifdef NDT_USE_RUST
+  ,
+  AwNdtScanMatcher * rs_handle
+#endif
+  )
+: ndt_ptr_(ndt_ptr),
+#ifdef NDT_USE_RUST
+  rs_handle_(rs_handle),
+#endif
+  logger_(node->get_logger()),
+  clock_(node->get_clock()),
+  param_(param)
 {
   loaded_pcd_pub_ = node->create_publisher<sensor_msgs::msg::PointCloud2>(
     "debug/loaded_pointcloud_map", rclcpp::QoS{1}.transient_local());
@@ -97,6 +108,30 @@ bool MapUpdateModule::should_update_map(
   BuilderState & builder_state, const geometry_msgs::msg::Point & position,
   std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr)
 {
+#ifdef NDT_USE_RUST
+  // Phase 6: the whole decision — last-update-position check, distance math, and the need_rebuild
+  // policy — is Rust-owned on the handle. The C++ side keeps only the diagnostics (emitted from the
+  // returned verdict, preserving the original keys/levels). `is_first_update` is the no-prior-update
+  // case (force rebuild + update; no distance diagnostic, matching the old early return).
+  (void)builder_state;
+  AwMapUpdateDecision decision{};
+  autoware_ndt_scan_matcher_rs_map_update_evaluate(
+    rs_handle_, position.x, position.y, param_.lidar_radius, param_.map_radius,
+    param_.update_distance, &decision);
+  if (decision.is_first_update) {
+    return true;
+  }
+  // check distance_last_update_position_to_current_position
+  diagnostics_ptr->add_key_value(
+    "distance_last_update_position_to_current_position", decision.distance);
+  if (decision.out_of_keep_up) {
+    std::stringstream message;
+    message << "Dynamic map loading is not keeping up.";
+    diagnostics_ptr->update_level_and_message(
+      diagnostic_msgs::msg::DiagnosticStatus::ERROR, message.str());
+  }
+  return decision.should_update;
+#else
   const auto last_update_position =
     last_update_position_.with([](const auto & pos) { return pos; });
 
@@ -105,31 +140,6 @@ bool MapUpdateModule::should_update_map(
     return true;
   }
 
-#ifdef NDT_USE_RUST
-  // Migrated to Rust (Phase N3): the distance math + threshold decisions. The C++ side keeps the
-  // diagnostics and the need_rebuild mutation.
-  const AwMapUpdateInput input{position.x,        position.y,         last_update_position->x,
-                               last_update_position->y, param_.lidar_radius, param_.map_radius,
-                               param_.update_distance};
-  AwMapUpdateVerdict verdict{};
-  autoware_ndt_scan_matcher_rs_node_evaluate_map_update(&input, &verdict);
-
-  // check distance_last_update_position_to_current_position
-  diagnostics_ptr->add_key_value(
-    "distance_last_update_position_to_current_position", verdict.distance);
-  if (verdict.out_of_keep_up) {
-    std::stringstream message;
-    message << "Dynamic map loading is not keeping up.";
-    diagnostics_ptr->update_level_and_message(
-      diagnostic_msgs::msg::DiagnosticStatus::ERROR, message.str());
-
-    // If the map does not keep up with the current position,
-    // lock ndt_ptr_ entirely until it is fully rebuilt.
-    builder_state.need_rebuild = true;
-  }
-
-  return verdict.should_update;
-#else
   const double dx = position.x - last_update_position->x;
   const double dy = position.y - last_update_position->y;
   const double distance = std::hypot(dx, dy);
@@ -153,6 +163,12 @@ bool MapUpdateModule::should_update_map(
 
 bool MapUpdateModule::out_of_map_range(const geometry_msgs::msg::Point & position)
 {
+#ifdef NDT_USE_RUST
+  // Phase 6: the keep-up check (incl. the "no update yet → out of range" case) is Rust-owned on the
+  // handle's map-update state.
+  return autoware_ndt_scan_matcher_rs_map_update_out_of_range(
+    rs_handle_, position.x, position.y, param_.lidar_radius, param_.map_radius);
+#else
   const auto last_update_position =
     last_update_position_.with([](const auto & pos) { return pos; });
 
@@ -160,15 +176,6 @@ bool MapUpdateModule::out_of_map_range(const geometry_msgs::msg::Point & positio
     return true;
   }
 
-#ifdef NDT_USE_RUST
-  // Migrated to Rust (Phase N3): the keep-up distance check (update_distance is unused here).
-  const AwMapUpdateInput input{position.x,        position.y,         last_update_position->x,
-                               last_update_position->y, param_.lidar_radius, param_.map_radius,
-                               param_.update_distance};
-  AwMapUpdateVerdict verdict{};
-  autoware_ndt_scan_matcher_rs_node_evaluate_map_update(&input, &verdict);
-  return verdict.out_of_keep_up;
-#else
   const double dx = position.x - last_update_position->x;
   const double dy = position.y - last_update_position->y;
   const double distance = std::hypot(dx, dy);
@@ -182,32 +189,33 @@ void MapUpdateModule::update_map_internal(
   BuilderState & builder_state, const geometry_msgs::msg::Point & position,
   std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr)
 {
-  diagnostics_ptr->add_key_value("is_need_rebuild", builder_state.need_rebuild);
-
 #ifdef NDT_USE_RUST
   // Rust engine: the portable `apply_map_update` (the `MapSource` Host port) owns the staging engine +
   // atomic `commit_from` double-buffer. We only supply the tiles: `map_source_fill` runs the pcd-loader
   // and pushes the add/remove delta into the Rust-owned builder, which Rust applies to a private
   // staging engine (a clone of the live map, or empty when `need_rebuild`) and publishes in one atomic
   // store — a concurrent align always sees a complete map (the engine's ArcSwap is the lock-free
-  // buffer). An empty delta is a no-op on the Rust side (no republish).
-  if (builder_state.need_rebuild) {
+  // buffer). An empty delta is a no-op on the Rust side (no republish). `need_rebuild` + the
+  // last-update position are Rust-owned (Phase 6).
+  (void)builder_state;
+  const bool need_rebuild = autoware_ndt_scan_matcher_rs_map_update_need_rebuild(rs_handle_);
+  diagnostics_ptr->add_key_value("is_need_rebuild", need_rebuild);
+  if (need_rebuild) {
     loaded_map_.clear();  // staging starts empty in Rust (rebuild); keep the publish map in sync.
   }
 
-  MapSourceContext source_ctx{this, builder_state.need_rebuild, diagnostics_ptr.get(), false};
+  MapSourceContext source_ctx{this, need_rebuild, diagnostics_ptr.get(), false};
   const AwMapSource source{&source_ctx, &MapUpdateModule::map_source_fill};
   ndt_ptr_.with([&](const auto & ndt_ptr) {
     autoware_ndt_scan_matcher_rs_ndt_engine_update_map(
-      ndt_ptr->raw_handle(), &source, position.x, position.y, param_.map_radius,
-      builder_state.need_rebuild);
+      ndt_ptr->raw_handle(), &source, position.x, position.y, param_.map_radius, need_rebuild);
   });
   const bool updated = source_ctx.updated;
 
   // check is_updated_map
   diagnostics_ptr->add_key_value("is_updated_map", updated);
   if (!updated) {
-    if (builder_state.need_rebuild) {
+    if (need_rebuild) {
       std::stringstream message;
       message
         << "update_ndt failed. If this happens with initial position estimation, make sure that"
@@ -217,12 +225,17 @@ void MapUpdateModule::update_map_internal(
         diagnostic_msgs::msg::DiagnosticStatus::ERROR, message.str());
       RCLCPP_ERROR_STREAM_THROTTLE(logger_, *clock_, 1000, message.str());
     }
-    last_update_position_.with([&](auto & pos) { pos = position; });
+    // Failed update: advance the last position, leave need_rebuild latched.
+    autoware_ndt_scan_matcher_rs_map_update_record(rs_handle_, position.x, position.y, false);
     return;
   }
 
-  builder_state.need_rebuild = false;
+  // Successful update: advance the last position + clear need_rebuild (the shared tail's C++
+  // last_update_position_ write is OFF-only now).
+  autoware_ndt_scan_matcher_rs_map_update_record(rs_handle_, position.x, position.y, true);
 #else
+  diagnostics_ptr->add_key_value("is_need_rebuild", builder_state.need_rebuild);
+
   // If the current position is super far from the previous loading position,
   // lock and rebuild ndt_ptr_
   if (builder_state.need_rebuild) {
@@ -295,8 +308,10 @@ void MapUpdateModule::update_map_internal(
   }
 #endif
 
-  // Memorize the position of the last update
+#ifndef NDT_USE_RUST
+  // Memorize the position of the last update (ON: done Rust-side via `..._map_update_record`).
   last_update_position_.with([&](auto & pos) { pos = position; });
+#endif
 
   // Publish the new ndt maps
   if (param_.publish_loaded_map) {

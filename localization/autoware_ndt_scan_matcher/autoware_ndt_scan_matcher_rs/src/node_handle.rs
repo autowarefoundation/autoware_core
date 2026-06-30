@@ -28,6 +28,7 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::ffi::{Error, ffi_boundary_ptr};
+use crate::node::{MapUpdateInput, evaluate_map_update};
 use crate::pose_buffer::{InterpolateResult, PoseBuffer, TimedPoseWithCov};
 
 /// The validated, Rust-owned parameters the node needs (the union of the engine's `set_params` /
@@ -68,13 +69,15 @@ pub struct Params {
     pub initial_pose_distance_tolerance_m: f64,
 }
 
-/// Map-update bookkeeping — the migration target of Phase 6. Defaulted at construction.
+/// Map-update decision state (Phase 6): the position of the last attempted map update, and whether
+/// the next update must rebuild from scratch (set on the first update + whenever the loaded map can
+/// no longer keep up with the lidar range; cleared on a successful update). The C++
+/// `MapUpdateModule::last_update_position_` + `BuilderState::need_rebuild`. The loaded cell ids live
+/// in the engine, not here.
 #[derive(Clone, Debug, Default)]
 pub struct MapUpdateState {
-    /// Position (x, y) at the last successful map update.
+    /// Position (x, y) at the last attempted map update.
     pub last_update_position: Option<[f64; 2]>,
-    /// Cell ids currently loaded (raw PCD `cell_id` bytes — not assumed UTF-8).
-    pub loaded_map_ids: Vec<Vec<u8>>,
     pub need_rebuild: bool,
 }
 
@@ -93,7 +96,8 @@ pub struct NdtScanMatcherRs {
     initial_pose_buffer: Mutex<PoseBuffer>,
     /// `Some` iff `params.regularization_enable` (mirrors the C++ conditional buffer creation).
     regularization_buffer: Option<Mutex<PoseBuffer>>,
-    pub map_update_state: MapUpdateState,
+    /// Map-update decision state (Phase 6): last-update position + need-rebuild policy.
+    map_update_state: Mutex<MapUpdateState>,
 }
 
 impl NdtScanMatcherRs {
@@ -116,7 +120,7 @@ impl NdtScanMatcherRs {
             latest_ekf_position: Mutex::new(None),
             initial_pose_buffer,
             regularization_buffer,
-            map_update_state: MapUpdateState::default(),
+            map_update_state: Mutex::new(MapUpdateState::default()),
         }
     }
 
@@ -151,6 +155,96 @@ impl NdtScanMatcherRs {
     #[must_use]
     pub(crate) fn latest_ekf_position(&self) -> Option<[f64; 3]> {
         self.latest_ekf_position.lock().ok().and_then(|p| *p)
+    }
+
+    /// The stateful map-update decision (the C++ `should_update_map`). With no last-update position
+    /// yet → force a rebuild and update. Otherwise run the pure distance verdict and, if the loaded
+    /// map can no longer keep up (`out_of_keep_up`), latch `need_rebuild`. The C++ shell emits the
+    /// diagnostics from the returned struct.
+    #[must_use]
+    pub(crate) fn map_update_evaluate(
+        &self,
+        cur: [f64; 2],
+        lidar_radius: f64,
+        map_radius: f64,
+        update_distance: f64,
+    ) -> AwMapUpdateDecision {
+        let Ok(mut st) = self.map_update_state.lock() else {
+            return AwMapUpdateDecision::default();
+        };
+        let Some(last) = st.last_update_position else {
+            st.need_rebuild = true;
+            return AwMapUpdateDecision {
+                distance: 0.0,
+                should_update: true,
+                out_of_keep_up: false,
+                need_rebuild: true,
+                is_first_update: true,
+            };
+        };
+        let verdict = evaluate_map_update(&MapUpdateInput {
+            current_x: cur[0],
+            current_y: cur[1],
+            last_update_x: last[0],
+            last_update_y: last[1],
+            lidar_radius,
+            map_radius,
+            update_distance,
+        });
+        if verdict.out_of_keep_up {
+            st.need_rebuild = true;
+        }
+        AwMapUpdateDecision {
+            distance: verdict.distance,
+            should_update: verdict.should_update,
+            out_of_keep_up: verdict.out_of_keep_up,
+            need_rebuild: st.need_rebuild,
+            is_first_update: false,
+        }
+    }
+
+    /// Whether the next map update must rebuild from scratch (the C++ `builder_state.need_rebuild`).
+    #[must_use]
+    pub(crate) fn map_update_need_rebuild(&self) -> bool {
+        self.map_update_state.lock().is_ok_and(|st| st.need_rebuild)
+    }
+
+    /// Record an attempted map update at `pos` (the C++ `update_map_internal` tail / failure path):
+    /// the last-update position always advances; `need_rebuild` clears only on success.
+    pub(crate) fn map_update_record(&self, pos: [f64; 2], success: bool) {
+        if let Ok(mut st) = self.map_update_state.lock() {
+            st.last_update_position = Some(pos);
+            if success {
+                st.need_rebuild = false;
+            }
+        }
+    }
+
+    /// Whether `cur` is outside the loaded map's keep-up range (the C++ `out_of_map_range`); `true`
+    /// when no update has happened yet.
+    #[must_use]
+    pub(crate) fn map_update_out_of_range(
+        &self,
+        cur: [f64; 2],
+        lidar_radius: f64,
+        map_radius: f64,
+    ) -> bool {
+        let Ok(st) = self.map_update_state.lock() else {
+            return true;
+        };
+        let Some(last) = st.last_update_position else {
+            return true;
+        };
+        evaluate_map_update(&MapUpdateInput {
+            current_x: cur[0],
+            current_y: cur[1],
+            last_update_x: last[0],
+            last_update_y: last[1],
+            lidar_radius,
+            map_radius,
+            update_distance: 0.0,
+        })
+        .out_of_keep_up
     }
 
     /// Interpolate the initial pose at `target_ns`, then `pop_old` (mirrors the sensor callback).
@@ -253,6 +347,19 @@ pub struct AwInterpolatedPose {
 /// pose (position + orientation + the row-major 6x6 covariance carried from the older bracket entry,
 /// republished on `initial_pose_with_covariance`) plus the **positions** of the two bracket entries
 /// (`publish_initial_to_result` reads only their positions).
+/// C-ABI out-struct for the map-update decision (`..._map_update_evaluate`). `distance` is the move
+/// since the last update; `should_update`/`out_of_keep_up`/`need_rebuild` drive the C++ diagnostics +
+/// the rebuild flag; `is_first_update` marks the no-prior-update case.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct AwMapUpdateDecision {
+    pub distance: f64,
+    pub should_update: bool,
+    pub out_of_keep_up: bool,
+    pub need_rebuild: bool,
+    pub is_first_update: bool,
+}
+
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct AwInitialPoseInterpolation {
@@ -514,6 +621,112 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_initial_pose_interpolate(
     true
 }
 
+/// The stateful map-update decision (the C++ `should_update_map`): writes the verdict into `*out` and
+/// returns `true`; `false` (leaving `*out` untouched) only on a null pointer. Mutates the handle's
+/// `need_rebuild` (first update / out-of-keep-up). Phase 6.
+///
+/// # Safety
+/// `handle` must be a valid, live `NdtScanMatcherRs` from `_new` (or null → `false`); `out` a valid,
+/// aligned, writable [`AwMapUpdateDecision`] (or null → `false`).
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointers validated per rust-c-ffi-safety"
+)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_map_update_evaluate(
+    handle: *const NdtScanMatcherRs,
+    cur_x: f64,
+    cur_y: f64,
+    lidar_radius: f64,
+    map_radius: f64,
+    update_distance: f64,
+    out: *mut AwMapUpdateDecision,
+) -> bool {
+    if handle.is_null() || out.is_null() {
+        return false;
+    }
+    // SAFETY: non-null per the check; caller guarantees a valid, live handle.
+    let decision = unsafe { &*handle }.map_update_evaluate(
+        [cur_x, cur_y],
+        lidar_radius,
+        map_radius,
+        update_distance,
+    );
+    // SAFETY: `out` is non-null per the check and a valid, aligned, writable struct per the contract.
+    unsafe {
+        *out = decision;
+    }
+    true
+}
+
+/// Whether the next map update must rebuild from scratch (the C++ `builder_state.need_rebuild`).
+/// `false` if `handle` is null. Phase 6.
+///
+/// # Safety
+/// `handle` must be a valid, live `NdtScanMatcherRs` from `_new`, or null → `false`.
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointer validated per rust-c-ffi-safety"
+)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_map_update_need_rebuild(
+    handle: *const NdtScanMatcherRs,
+) -> bool {
+    if handle.is_null() {
+        return false;
+    }
+    // SAFETY: non-null per the check; caller guarantees a valid, live handle.
+    unsafe { &*handle }.map_update_need_rebuild()
+}
+
+/// Record an attempted map update at `(x, y)` (the C++ `update_map_internal`): the last-update
+/// position always advances; `need_rebuild` clears only when `success`. No-op if `handle` is null.
+/// Phase 6.
+///
+/// # Safety
+/// `handle` must be a valid, live `NdtScanMatcherRs` from `_new`, or null → no-op.
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointer validated per rust-c-ffi-safety"
+)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_map_update_record(
+    handle: *const NdtScanMatcherRs,
+    x: f64,
+    y: f64,
+    success: bool,
+) {
+    if handle.is_null() {
+        return;
+    }
+    // SAFETY: non-null per the check; caller guarantees a valid, live handle.
+    unsafe { &*handle }.map_update_record([x, y], success);
+}
+
+/// Whether `(cur_x, cur_y)` is outside the loaded map's keep-up range (the C++ `out_of_map_range`);
+/// `true` when no update has happened yet or `handle` is null. Phase 6.
+///
+/// # Safety
+/// `handle` must be a valid, live `NdtScanMatcherRs` from `_new`, or null → `true`.
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointer validated per rust-c-ffi-safety"
+)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_map_update_out_of_range(
+    handle: *const NdtScanMatcherRs,
+    cur_x: f64,
+    cur_y: f64,
+    lidar_radius: f64,
+    map_radius: f64,
+) -> bool {
+    if handle.is_null() {
+        return true;
+    }
+    // SAFETY: non-null per the check; caller guarantees a valid, live handle.
+    unsafe { &*handle }.map_update_out_of_range([cur_x, cur_y], lidar_radius, map_radius)
+}
+
 #[cfg(test)]
 #[allow(
     unsafe_code,
@@ -589,7 +802,7 @@ mod tests {
         // Node state starts empty (inactive, no EKF position yet).
         assert!(!m.is_activated());
         assert!(m.latest_ekf_position().is_none());
-        assert!(m.map_update_state.last_update_position.is_none());
+        assert!(m.map_update_state.lock().unwrap().last_update_position.is_none());
         // SAFETY: `handle` is a live pointer from `_new`, freed exactly once here.
         unsafe { autoware_ndt_scan_matcher_rs_free(handle) };
     }
@@ -626,6 +839,75 @@ mod tests {
     fn free_null_is_noop() {
         // SAFETY: null is explicitly handled as a no-op.
         unsafe { autoware_ndt_scan_matcher_rs_free(core::ptr::null_mut()) };
+    }
+
+    #[test]
+    fn map_update_first_then_record_then_in_range() {
+        let ox: [f64; 0] = [];
+        let oy: [f64; 0] = [];
+        let p = sample_params(&ox, &oy);
+        // SAFETY: valid params.
+        let handle = unsafe { autoware_ndt_scan_matcher_rs_new(&raw const p) };
+        // SAFETY: live handle.
+        let h = unsafe { &*handle };
+        // lidar_radius=50, map_radius=150, update_distance=20.
+        // First evaluate: no last position → rebuild + should_update.
+        let d0 = h.map_update_evaluate([0.0, 0.0], 50.0, 150.0, 20.0);
+        assert!(d0.is_first_update);
+        assert!(d0.should_update);
+        assert!(d0.need_rebuild);
+        assert!(h.map_update_need_rebuild());
+        // Record a successful update at the origin → clears need_rebuild, sets last position.
+        h.map_update_record([0.0, 0.0], true);
+        assert!(!h.map_update_need_rebuild());
+        // A small move (5 m < 20 m) → no update, still keeping up.
+        let d1 = h.map_update_evaluate([3.0, 4.0], 50.0, 150.0, 20.0);
+        assert!(!d1.is_first_update);
+        assert!(!d1.should_update);
+        assert!(!d1.out_of_keep_up);
+        assert!((d1.distance - 5.0).abs() < 1e-9);
+        assert!(!h.map_update_out_of_range([3.0, 4.0], 50.0, 150.0));
+        // SAFETY: freed once.
+        unsafe { autoware_ndt_scan_matcher_rs_free(handle) };
+    }
+
+    #[test]
+    fn map_update_out_of_keep_up_latches_rebuild() {
+        let ox: [f64; 0] = [];
+        let oy: [f64; 0] = [];
+        let p = sample_params(&ox, &oy);
+        // SAFETY: valid params.
+        let handle = unsafe { autoware_ndt_scan_matcher_rs_new(&raw const p) };
+        // SAFETY: live handle.
+        let h = unsafe { &*handle };
+        h.map_update_record([0.0, 0.0], true); // last=origin, need_rebuild=false
+        // distance 120; 120 + lidar(50) = 170 > map(150) → out_of_keep_up → latch rebuild; and
+        // 120 > update_distance(20) → should_update.
+        let d = h.map_update_evaluate([120.0, 0.0], 50.0, 150.0, 20.0);
+        assert!(d.out_of_keep_up);
+        assert!(d.should_update);
+        assert!(d.need_rebuild);
+        assert!(h.map_update_need_rebuild()); // latched
+        assert!(h.map_update_out_of_range([120.0, 0.0], 50.0, 150.0));
+        // A failed update advances the position but does NOT clear the rebuild latch.
+        h.map_update_record([120.0, 0.0], false);
+        assert!(h.map_update_need_rebuild());
+        // SAFETY: freed once.
+        unsafe { autoware_ndt_scan_matcher_rs_free(handle) };
+    }
+
+    #[test]
+    fn map_update_out_of_range_true_before_first_update() {
+        let ox: [f64; 0] = [];
+        let oy: [f64; 0] = [];
+        let p = sample_params(&ox, &oy);
+        // SAFETY: valid params.
+        let handle = unsafe { autoware_ndt_scan_matcher_rs_new(&raw const p) };
+        // SAFETY: live handle.
+        let h = unsafe { &*handle };
+        assert!(h.map_update_out_of_range([0.0, 0.0], 50.0, 150.0)); // no last position yet
+        // SAFETY: freed once.
+        unsafe { autoware_ndt_scan_matcher_rs_free(handle) };
     }
 
     #[test]

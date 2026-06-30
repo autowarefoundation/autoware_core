@@ -276,8 +276,13 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
     param_.validation.initial_pose_distance_tolerance_m);
 #endif
 
-  map_update_module_ =
-    std::make_unique<MapUpdateModule>(this, ndt_ptr_, param_.dynamic_map_loading);
+  map_update_module_ = std::make_unique<MapUpdateModule>(
+    this, ndt_ptr_, param_.dynamic_map_loading
+#ifdef NDT_USE_RUST
+    ,
+    rs_.raw()
+#endif
+  );
 
   diagnostics_scan_points_ = std::make_unique<DiagnosticsInterface>(this, "scan_matching_status");
   diagnostics_initial_pose_ =
