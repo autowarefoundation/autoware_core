@@ -7700,6 +7700,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#services" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Services
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#parameters_1" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -7893,6 +7904,43 @@ The node projects lat/lon coordinates into the frame defined in <code>/map/map_p
 Please see <a href="https://github.com/autowarefoundation/autoware_msgs/blob/main/autoware_map_msgs/msg/MapProjectorInfo.msg">autoware_map_msgs/msg/MapProjectorInfo.msg</a> for supported projector types.</p>
 <p><code>lanelet2_map_path</code> can point to either a single <code>.osm</code> file or a directory.
 When a directory is given, all <code>.osm</code> files inside are loaded and merged into a single map before publishing.</p>
+<h4 id="cell-metadata">Cell metadata<a class="headerlink" href="#cell-metadata" title="Permanent link">#</a></h4>
+<p>The node always builds a per-cell bounding-box dictionary at startup so that
+downstream loaders (such as selected map loading, and future differential
+map loading) can share the same information.</p>
+<p>The bounding boxes are determined in one of two ways:</p>
+<ol>
+<li>
+<p><strong>From a metadata YAML file</strong> — when <code>lanelet2_map_metadata_path</code> points to an
+   existing file. The expected format is:</p>
+<p><code>yaml
+ x_resolution: 100.0
+ y_resolution: 100.0
+ 1.osm: [58700.0, 42500.0] # [min_x, min_y] of this cell
+ 2.osm: [58800.0, 42500.0]</code></p>
+<p>Relative filenames are resolved against the directory that contains the
+ YAML file. The bounding box of each cell is
+ <code>[min_x, min_y, min_x + x_resolution, min_y + y_resolution]</code>.</p>
+</li>
+<li>
+<p><strong>Computed from the loaded map (single-file only)</strong> — when
+   <code>lanelet2_map_metadata_path</code> is empty or the file does not exist <strong>and only a
+   single <code>.osm</code> file is loaded</strong>, the axis-aligned bounding box is derived
+   from all points in that map. This is an exception so that users do not
+   have to provide a metadata file for single-file maps.</p>
+<p>When multiple <code>.osm</code> files are loaded and the metadata file is missing,
+ the node throws and exits. Provide a metadata YAML in that case.</p>
+</li>
+</ol>
+<p>Cell IDs equal the absolute file path of the corresponding <code>.osm</code> file.</p>
+<h4 id="selected-map-loading-enable_selected_map_loading">Selected map loading (<code>enable_selected_map_loading</code>)<a class="headerlink" href="#selected-map-loading-enable_selected_map_loading" title="Permanent link">#</a></h4>
+<p>When <code>enable_selected_map_loading</code> is <code>true</code>, the node additionally:</p>
+<ul>
+<li>Publishes per-cell bounding-box metadata on <code>output/lanelet2_map_metadata</code>.</li>
+<li>Exposes the <code>service/get_selected_lanelet2_map</code> service
+  (<code>autoware_map_msgs/srv/GetSelectedLanelet2Map</code>), which returns the binary
+  map for the requested set of cell IDs.</li>
+</ul>
 <h3 id="how-to-run">How to run<a class="headerlink" href="#how-to-run" title="Permanent link">#</a></h3>
 <p><code>ros2 run autoware_map_loader lanelet2_map_loader --ros-args -p lanelet2_map_path:=path/to/map.osm</code></p>
 <h3 id="subscribed-topics">Subscribed Topics<a class="headerlink" href="#subscribed-topics" title="Permanent link">#</a></h3>
@@ -7901,7 +7949,12 @@ When a directory is given, all <code>.osm</code> files inside are loaded and mer
 </ul>
 <h3 id="published-topics">Published Topics<a class="headerlink" href="#published-topics" title="Permanent link">#</a></h3>
 <ul>
-<li>~output/lanelet2_map (autoware_map_msgs/LaneletMapBin) : Binary data of loaded Lanelet2 Map</li>
+<li><code>/map/vector_map</code> (autoware_map_msgs/LaneletMapBin) : Merged binary Lanelet2 map</li>
+<li><code>output/lanelet2_map_metadata</code> (autoware_map_msgs/LaneletMapMetaData) : Per-cell bounding-box metadata (only available when <code>enable_selected_map_loading</code> is <code>true</code>)</li>
+</ul>
+<h3 id="services">Services<a class="headerlink" href="#services" title="Permanent link">#</a></h3>
+<ul>
+<li><code>service/get_selected_lanelet2_map</code> (autoware_map_msgs/srv/GetSelectedLanelet2Map) : Returns the binary map for a requested set of cell IDs (only available when <code>enable_selected_map_loading</code> is <code>true</code>)</li>
 </ul>
 <h3 id="parameters_1">Parameters<a class="headerlink" href="#parameters_1" title="Permanent link">#</a></h3>
 <table>
@@ -7940,6 +7993,20 @@ When a directory is given, all <code>.osm</code> files inside are loaded and mer
 <td>lanelet2_map_path</td>
 <td>string</td>
 <td>Path to a lanelet2 .osm map file, or a directory containing .osm files</td>
+<td></td>
+<td>N/A</td>
+</tr>
+<tr>
+<td>enable_selected_map_loading</td>
+<td>boolean</td>
+<td>Expose service/get_selected_lanelet2_map and publish per-cell metadata.</td>
+<td>False</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td>lanelet2_map_metadata_path</td>
+<td>string</td>
+<td>Path to lanelet2_map_metadata.yaml. If empty or missing, bounding boxes are computed from the loaded map points.</td>
 <td></td>
 <td>N/A</td>
 </tr>
