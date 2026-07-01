@@ -223,9 +223,9 @@ TEST_F(EuclideanClusterObjectDetectorIntegrationHarness, AsyncParameterUpdateLeg
 {
   // Scenario including a single object consisting of exactly 4 points
   std::vector<std::array<float, 3>> physical_points;
-  physical_points.reserve(4);
   for (int i = 0; i < 4; ++i) {
-    physical_points.push_back({1.0f, 1.0f, 1.0f});
+    float offset = 0.05f * static_cast<float>(i);
+    physical_points.push_back({1.0f + offset, 1.0f + offset, 1.0f + offset});
   }
   auto input_cloud = create_mock_cloud(physical_points);
 
