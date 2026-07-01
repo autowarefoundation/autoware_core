@@ -50,14 +50,16 @@ function(add_testcase filepath)
 endfunction()
 
 if(BUILD_TESTING)
-  add_launch_test(
-    test/test_ekf_localizer_launch.py
-    TIMEOUT "30"
-  )
-  add_launch_test(
-    test/test_ekf_localizer_mahalanobis.py
-    TIMEOUT "30"
-  )
+  if(NOT (DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1"))
+    add_launch_test(
+      test/test_ekf_localizer_launch.py
+      TIMEOUT "30"
+    )
+    add_launch_test(
+      test/test_ekf_localizer_mahalanobis.py
+      TIMEOUT "30"
+    )
+  endif()
   find_package(ament_cmake_gtest REQUIRED)
 
   file(GLOB_RECURSE TEST_FILES test/*.cpp)
