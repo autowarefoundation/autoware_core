@@ -112,6 +112,39 @@ protected:
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
   }
+
+  /**
+   * @brief Helper func to create a mock point cloud message from a vector of points.
+   *
+   * @param points Vector of points, each point is an array of 3 floats (x, y, z).
+   *
+   * @return sensor_msgs::msg::PointCloud2 A point cloud message containing above points.
+   */
+  sensor_msgs::msg::PointCloud2 create_mock_cloud(const std::vector<std::array<float, 3>> & points)
+  {
+    sensor_msgs::msg::PointCloud2 cloud;
+    cloud.header.frame_id = "base_link";
+    cloud.header.stamp = interceptor_node_->now();
+
+    sensor_msgs::PointCloud2Modifier modifier(cloud);
+    modifier.setPointCloud2FieldsByString(1, "xyz");
+    modifier.resize(points.size());
+
+    sensor_msgs::PointCloud2Iterator<float> iter_x(cloud, "x");
+    sensor_msgs::PointCloud2Iterator<float> iter_y(cloud, "y");
+    sensor_msgs::PointCloud2Iterator<float> iter_z(cloud, "z");
+
+    for (const auto & p : points) {
+      *iter_x = p[0];
+      *iter_y = p[1];
+      *iter_z = p[2];
+      ++iter_x;
+      ++iter_y;
+      ++iter_z;
+    }
+
+    return cloud;
+  }
 };
 
 };  // namespace autoware::euclidean_cluster
