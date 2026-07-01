@@ -83,6 +83,35 @@ protected:
     interceptor_node_.reset();
     rclcpp::shutdown();
   }
+
+  /**
+   * @brief Helper func to publish a point cloud and wait for output message from target node.
+   *
+   * @param input_msg Point cloud message to publish.
+   *
+   * @note Current timeout is 30 seconds. Pub/sub handshake checked every 10 ms.
+   */
+  void publish_and_wait(const sensor_msgs::msg::PointCloud2 & input_msg)
+  {
+    message_received_ = false;
+    last_output_.reset();
+
+    pub_input_->publish(input_msg);
+
+    rclcpp::executors::SingleThreadedExecutor executor;
+    executor.add_node(interceptor_node_);
+    executor.add_node(target_node_);
+
+    const auto start = std::chrono::steady_clock::now();
+    const auto timeout = std::chrono::seconds(30);
+    while (!message_received_) {
+      executor.spin_some();
+      if (std::chrono::steady_clock::now() - start > timeout) {
+        break;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+  }
 };
 
 };  // namespace autoware::euclidean_cluster
