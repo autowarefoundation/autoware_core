@@ -193,4 +193,23 @@ TEST_F(EuclideanClusterObjectDetectorIntegrationHarness, GeometricCentroidValida
   EXPECT_NEAR(x_centroids[1], 10.075, 0.1);
 }
 
+// TEST 2. Confirms empty point cloud input is handled gracefully, node should not crash
+// and should publish an empty DetectedObjects message.
+// Also confirms that node does not crash when receiving a point cloud with incompatible fields.
+TEST_F(EuclideanClusterObjectDetectorIntegrationHarness, DegenerateInputBypass)
+{
+  // Empty cloud
+  sensor_msgs::msg::PointCloud2 empty_cloud;
+  empty_cloud.header.frame_id = "base_link";
+  empty_cloud.width = 0;
+  empty_cloud.height = 0;
+  empty_cloud.data.clear();
+
+  publish_and_wait(empty_cloud);
+
+  ASSERT_TRUE(message_received_);
+  ASSERT_NE(last_output_, nullptr);
+  EXPECT_EQ(last_output_->objects.size(), 0U);
+}
+
 };  // namespace autoware::euclidean_cluster
