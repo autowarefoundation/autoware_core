@@ -33,11 +33,22 @@ namespace autoware::euclidean_cluster
 class EuclideanClusterObjectDetectorIntegrationHarness : public ::testing::Test
 {
 protected:
+  std::shared_ptr<VoxelGridBasedEuclideanClusterNode> target_node_;
+  std::shared_ptr<rclcpp::Node> interceptor_node_;
+
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_input_;
+  rclcpp::Subscription<autoware_perception_msgs::msg::DetectedObjects>::SharedPtr sub_output_;
+
+  bool message_received_{false};
+  autoware_perception_msgs::msg::DetectedObjects::SharedPtr last_output_{nullptr};
+
+  // Test env setup
   void SetUp() override
   {
     rclcpp::init(0, nullptr);
 
-    // 1. Initialize Default Parameters matching the legacy node's exact expectations
+    // Initialize default parameters
+    // (for now matching legacy node, should be changed later after refactoring)
     rclcpp::NodeOptions options;
     options.append_parameter_override("use_height", true);
     options.append_parameter_override("min_cluster_size", 3);
@@ -46,10 +57,8 @@ protected:
     options.append_parameter_override("voxel_leaf_size", 0.1);
     options.append_parameter_override("min_points_number_per_voxel", 1);
 
-    // 2. Instantiate the Legacy Target Node
     target_node_ = std::make_shared<VoxelGridBasedEuclideanClusterNode>(options);
 
-    // 3. Setup Test I/O Interceptors
     interceptor_node_ = std::make_shared<rclcpp::Node>("test_interceptor_node");
 
     pub_input_ = interceptor_node_->create_publisher<sensor_msgs::msg::PointCloud2>(
@@ -63,10 +72,11 @@ protected:
           message_received_ = true;
         });
 
-    // Wait for pub/sub connections to stabilize in the ROS graph
+    // Wait for pub/sub handshake
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
 
+  // Test env teardown & cleanup
   void TearDown() override
   {
     target_node_.reset();
