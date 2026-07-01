@@ -70,6 +70,9 @@ private:
     autoware::agnocast_wrapper::Node, autoware::agnocast_wrapper::Buffer,
     autoware::agnocast_wrapper::TransformListener>;
   std::shared_ptr<TransformListener> transform_listener_;
+  std::unique_ptr<
+    autoware_utils_logging::BasicLoggerLevelConfigure<autoware::agnocast_wrapper::Node>>
+    logger_configure_;
 
   std::string output_frame_;
   double message_timeout_sec_;
@@ -89,10 +92,6 @@ private:
   std::unique_ptr<
     autoware_utils_diagnostics::BasicDiagnosticsInterface<autoware::agnocast_wrapper::Node>>
     diagnostics_;
-
-  std::unique_ptr<
-    autoware_utils_logging::BasicLoggerLevelConfigure<autoware::agnocast_wrapper::Node>>
-    logger_configure_;
 };
 
 }  // namespace autoware::gyro_odometer
