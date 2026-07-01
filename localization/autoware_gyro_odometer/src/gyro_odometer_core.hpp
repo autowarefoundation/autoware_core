@@ -19,6 +19,7 @@
 #include <autoware/agnocast_wrapper/tf2.hpp>
 #include <autoware_utils_diagnostics/diagnostics_interface.hpp>
 #include <autoware_utils_geometry/msg/covariance.hpp>
+#include <autoware_utils_logging/logger_level_configure.hpp>
 #include <autoware_utils_tf/transform_listener.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <tf2/transform_datatypes.hpp>
@@ -88,6 +89,10 @@ private:
   std::unique_ptr<
     autoware_utils_diagnostics::BasicDiagnosticsInterface<autoware::agnocast_wrapper::Node>>
     diagnostics_;
+
+  std::unique_ptr<
+    autoware_utils_logging::BasicLoggerLevelConfigure<autoware::agnocast_wrapper::Node>>
+    logger_configure_;
 };
 
 }  // namespace autoware::gyro_odometer

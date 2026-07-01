@@ -24,6 +24,7 @@
 #include <cmath>
 #include <memory>
 #include <string>
+#include <utility>
 
 namespace autoware::gyro_odometer
 {
@@ -36,6 +37,8 @@ GyroOdometerNode::GyroOdometerNode(const rclcpp::NodeOptions & node_options)
   imu_arrived_(false)
 {
   transform_listener_ = std::make_shared<TransformListener>(this);
+  logger_configure_ = std::make_unique<
+    autoware_utils_logging::BasicLoggerLevelConfigure<autoware::agnocast_wrapper::Node>>(this);
 
   vehicle_twist_sub_ = create_subscription<geometry_msgs::msg::TwistWithCovarianceStamped>(
     "vehicle/twist_with_covariance", rclcpp::QoS{10},
