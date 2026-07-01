@@ -14,6 +14,8 @@
 
 #include "vehicle_velocity_converter_node.hpp"
 
+#include <utility>
+
 namespace autoware::vehicle_velocity_converter
 {
 VehicleVelocityConverterNode::VehicleVelocityConverterNode(const rclcpp::NodeOptions & options)
