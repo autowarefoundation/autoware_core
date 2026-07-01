@@ -23,7 +23,7 @@ autoware_agnocast_wrapper_register_node(gnss_poser_node
   ROS2_EXECUTOR SingleThreadedExecutor
 )
 
-if(BUILD_TESTING)
+if(BUILD_TESTING AND NOT (DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1"))
   set(TEST_SOURCES
     test/test_gnss_poser_node.cpp
   )
