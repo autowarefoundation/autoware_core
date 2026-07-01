@@ -183,7 +183,7 @@ TEST_F(EuclideanClusterObjectDetectorIntegrationHarness, GeometricCentroidValida
   ASSERT_NE(last_output_, nullptr);
   ASSERT_EQ(last_output_->objects.size(), 2U);
 
-  // Extract observed centroies and verify their Xs
+  // Extract observed centroids and verify their Xs
   std::vector<double> x_centroids;
   x_centroids.push_back(last_output_->objects[0].kinematics.pose_with_covariance.pose.position.x);
   x_centroids.push_back(last_output_->objects[1].kinematics.pose_with_covariance.pose.position.x);
