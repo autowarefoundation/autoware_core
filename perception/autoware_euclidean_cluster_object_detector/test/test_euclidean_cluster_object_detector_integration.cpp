@@ -153,4 +153,44 @@ protected:
   }
 };
 
+// ================== TESTING AREA HERE ==================
+
+// TEST 1. Confirms that node correctly identifies 2 distinct clusters and computes their geometric
+// centroids accurately. I know we should not really test internal maths, but these are very
+// straightforward geometric maths so should be fine. Mock point cloud includes:
+// - Object A: 4 points clustered around (1.0, 1.0, 1.0)
+// - Object B: 4 points clustered around (10.0, 10.0, 10.0)
+// - Each above cluster has slight offsets to avoid perfect overlap, but still within clustering
+// tolerance (0.5m). Expected centroids are approximately:
+// - A_centroid (1.075, 1.075, 1.075)
+// - B_centroid (10.075, 10.075, 10.075)
+TEST_F(EuclideanClusterObjectDetectorIntegrationHarness, GeometricCentroidValidation)
+{
+  // Build mock cloud with those 2 clusters
+  std::vector<std::array<float, 3>> physical_points;
+  for (int i = 0; i < 4; ++i) {
+    float offset = 0.05f * static_cast<float>(i);
+    physical_points.push_back({1.0f + offset, 1.0f + offset, 1.0f + offset});
+    physical_points.push_back({10.0f + offset, 10.0f + offset, 10.0f + offset});
+  }
+
+  auto input_cloud = create_mock_cloud(physical_points);
+
+  publish_and_wait(input_cloud);
+
+  // Check if message received
+  ASSERT_TRUE(message_received_);
+  ASSERT_NE(last_output_, nullptr);
+  ASSERT_EQ(last_output_->objects.size(), 2U);
+
+  // Extract observed centroies and verify their Xs
+  std::vector<double> x_centroids;
+  x_centroids.push_back(last_output_->objects[0].kinematics.pose_with_covariance.pose.position.x);
+  x_centroids.push_back(last_output_->objects[1].kinematics.pose_with_covariance.pose.position.x);
+  std::sort(x_centroids.begin(), x_centroids.end());
+
+  EXPECT_NEAR(x_centroids[0], 1.075, 0.1);
+  EXPECT_NEAR(x_centroids[1], 10.075, 0.1);
+}
+
 };  // namespace autoware::euclidean_cluster
