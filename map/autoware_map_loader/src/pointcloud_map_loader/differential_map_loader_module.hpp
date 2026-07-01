@@ -51,9 +51,6 @@ private:
   [[nodiscard]] bool on_service_get_differential_point_cloud_map(
     GetDifferentialPointCloudMap::Request::SharedPtr req,
     GetDifferentialPointCloudMap::Response::SharedPtr res) const;
-  void differential_area_load(
-    const autoware_map_msgs::msg::AreaInfo & area_info, const std::vector<std::string> & cached_ids,
-    const GetDifferentialPointCloudMap::Response::SharedPtr & response) const;
 };
 }  // namespace autoware::map_loader
 

@@ -15,6 +15,7 @@
 #ifndef POINTCLOUD_MAP_LOADER__SELECTED_MAP_LOADER_MODULE_HPP_
 #define POINTCLOUD_MAP_LOADER__SELECTED_MAP_LOADER_MODULE_HPP_
 
+#include "selected_map_loader.hpp"
 #include "utils.hpp"
 
 #include <rclcpp/rclcpp.hpp>
@@ -35,11 +36,6 @@
 
 namespace autoware::map_loader
 {
-// Build the durable map-metadata message published on construction from the PCD metadata dict.
-// Declared here so it can be unit-tested directly without instantiating the module.
-autoware_map_msgs::msg::PointCloudMapMetaData create_metadata(
-  const std::map<std::string, PCDFileMetadata> & pcd_file_metadata_dict);
-
 class SelectedMapLoaderModule
 {
   using GetSelectedPointCloudMap = autoware_map_msgs::srv::GetSelectedPointCloudMap;

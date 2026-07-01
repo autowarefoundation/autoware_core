@@ -20,32 +20,6 @@
 
 namespace autoware::map_loader
 {
-autoware_map_msgs::msg::PointCloudMapMetaData create_metadata(
-  const std::map<std::string, PCDFileMetadata> & pcd_file_metadata_dict)
-{
-  autoware_map_msgs::msg::PointCloudMapMetaData metadata_msg;
-  metadata_msg.header.frame_id = "map";
-  metadata_msg.header.stamp = rclcpp::Clock().now();
-
-  for (const auto & ele : pcd_file_metadata_dict) {
-    PCDFileMetadata metadata = ele.second;
-
-    // assume that the map ID = map path (for now)
-    const std::string & map_id = ele.first;
-
-    autoware_map_msgs::msg::PointCloudMapCellMetaDataWithID cell_metadata_with_id;
-    cell_metadata_with_id.cell_id = map_id;
-    cell_metadata_with_id.metadata.min_x = metadata.min.x;
-    cell_metadata_with_id.metadata.min_y = metadata.min.y;
-    cell_metadata_with_id.metadata.max_x = metadata.max.x;
-    cell_metadata_with_id.metadata.max_y = metadata.max.y;
-
-    metadata_msg.metadata_list.push_back(cell_metadata_with_id);
-  }
-
-  return metadata_msg;
-}
-
 SelectedMapLoaderModule::SelectedMapLoaderModule(
   rclcpp::Node * node, std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict)
 : logger_(node->get_logger()), all_pcd_file_metadata_dict_(std::move(pcd_file_metadata_dict))
@@ -68,24 +42,24 @@ bool SelectedMapLoaderModule::on_service_get_selected_point_cloud_map(
   GetSelectedPointCloudMap::Request::SharedPtr req,
   GetSelectedPointCloudMap::Response::SharedPtr res) const
 {
-  const auto request_ids = req->cell_ids;
-  for (const auto & request_id : request_ids) {
-    const auto requested_selected_map_iterator = all_pcd_file_metadata_dict_.find(request_id);
+  const auto load_plan = create_selected_map_load_plan(req->cell_ids, all_pcd_file_metadata_dict_);
 
-    // skip if the requested ID is not found
-    if (requested_selected_map_iterator == all_pcd_file_metadata_dict_.end()) {
-      RCLCPP_WARN(logger_, "ID %s not found", request_id.c_str());
+  for (const auto & missing_id : load_plan.missing_ids) {
+    RCLCPP_WARN(logger_, "ID %s not found", missing_id.c_str());
+  }
+
+  for (const auto & map_id : load_plan.map_ids_to_load) {
+    const auto metadata_it = all_pcd_file_metadata_dict_.find(map_id);
+    if (metadata_it == all_pcd_file_metadata_dict_.end()) {
       continue;
     }
 
-    const std::string path = requested_selected_map_iterator->first;
-    // assume that the map ID = map path (for now)
-    const std::string & map_id = path;
-    const PCDFileMetadata & metadata = requested_selected_map_iterator->second;
-
+    const auto & path = metadata_it->first;
+    const auto & metadata = metadata_it->second;
     res->new_pointcloud_with_ids.push_back(
       load_point_cloud_map_cell_with_id(logger_, path, map_id, metadata));
   }
+
   res->header.frame_id = "map";
   return true;
 }
