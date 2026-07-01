@@ -30,6 +30,12 @@
 namespace autoware::euclidean_cluster
 {
 
+namespace
+{
+// Floating point tolerance at EXPECT_NEAR and similar checks
+constexpr float near_tol = 1e-4F;
+}  // namespace
+
 class EuclideanClusterObjectDetectorIntegrationHarness : public ::testing::Test
 {
 protected:
