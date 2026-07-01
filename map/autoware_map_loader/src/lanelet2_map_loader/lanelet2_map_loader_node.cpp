@@ -34,7 +34,9 @@
 #include "autoware/map_loader/lanelet2_map_loader_node.hpp"
 
 #include "lanelet2_local_projector.hpp"
+#include "lanelet2_map_cell_metadata.hpp"
 #include "lanelet2_map_loader_utils.hpp"
+#include "lanelet2_selected_map_loader_module.hpp"
 
 #include <autoware/geography_utils/lanelet2_projector.hpp>
 #include <autoware/lanelet2_utils/conversion.hpp>
@@ -49,13 +51,18 @@
 #include <lanelet2_io/Io.h>
 #include <lanelet2_projection/UTM.h>
 
+#include <filesystem>
+#include <map>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace autoware::map_loader
 {
+
 using autoware_map_msgs::msg::LaneletMapBin;
 using autoware_map_msgs::msg::MapProjectorInfo;
 
@@ -71,7 +78,13 @@ Lanelet2MapLoaderNode::Lanelet2MapLoaderNode(const rclcpp::NodeOptions & options
   declare_parameter<std::string>("lanelet2_map_path");
   declare_parameter<double>("center_line_resolution");
   declare_parameter<bool>("use_waypoints");
+  declare_parameter<bool>("enable_selected_map_loading");
+  declare_parameter<std::string>("lanelet2_map_metadata_path");
 }
+
+// Defined here so the compiler sees the full type of Lanelet2SelectedMapLoaderModule
+// when generating the unique_ptr destructor.
+Lanelet2MapLoaderNode::~Lanelet2MapLoaderNode() = default;
 
 void Lanelet2MapLoaderNode::on_map_projector_info(
   const MapProjectorInfo::Message::ConstSharedPtr msg)
@@ -80,6 +93,8 @@ void Lanelet2MapLoaderNode::on_map_projector_info(
   const auto lanelet2_map_path = get_parameter("lanelet2_map_path").as_string();
   const auto center_line_resolution = get_parameter("center_line_resolution").as_double();
   const auto use_waypoints = get_parameter("use_waypoints").as_bool();
+  const auto enable_selected_map_loading = get_parameter("enable_selected_map_loading").as_bool();
+  const auto lanelet2_map_metadata_path = get_parameter("lanelet2_map_metadata_path").as_string();
 
   // get lanelet2 file paths (handles both a single .osm file and a directory)
   const std::vector<std::string> lanelet2_paths = utils::get_lanelet2_paths(lanelet2_map_path);
@@ -99,6 +114,33 @@ void Lanelet2MapLoaderNode::on_map_projector_info(
       return;
     }
     maps.push_back(map_tmp);
+  }
+
+  // Load cell metadata unconditionally so that all downstream loaders
+  // (selected / future differential / etc.) can share the same dictionary.
+  std::map<std::string, Lanelet2FileMetaData> cell_metadata_dict;
+  const auto yaml_metadata = utils::load_cell_metadata_from_yaml(lanelet2_map_metadata_path);
+  if (yaml_metadata) {
+    cell_metadata_dict = *yaml_metadata;
+    RCLCPP_INFO(get_logger(), "Loaded cell metadata from %s.", lanelet2_map_metadata_path.c_str());
+  } else if (lanelet2_paths.size() == 1) {
+    // An exception when using a single lanelet2 map so that the users do not have to provide
+    // a metadata file.
+    // Note that this should ideally be avoided and thus eventually be removed by someone, until
+    // Autoware users get used to handling the lanelet2 file(s) with metadata.
+    RCLCPP_DEBUG_STREAM(
+      get_logger(), "Create lanelet2 cell metadata, as the map is a single file.");
+    cell_metadata_dict[lanelet2_paths[0]] =
+      utils::compute_cell_metadata(lanelet2_paths[0], *maps[0]);
+  } else {
+    throw std::runtime_error("Lanelet2 metadata file not found: " + lanelet2_map_metadata_path);
+  }
+
+  if (enable_selected_map_loading) {
+    selected_map_loader_module_ = std::make_unique<Lanelet2SelectedMapLoaderModule>(
+      this, std::move(cell_metadata_dict), *msg, center_line_resolution, use_waypoints);
+
+    RCLCPP_INFO(get_logger(), "Selected lanelet2 map loading is enabled.");
   }
 
   // merge all loaded maps into a new empty map
