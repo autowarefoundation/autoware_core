@@ -212,4 +212,50 @@ TEST_F(EuclideanClusterObjectDetectorIntegrationHarness, DegenerateInputBypass)
   EXPECT_EQ(last_output_->objects.size(), 0U);
 }
 
+// TEST 3. This test does not confirm. It shows a currently not-really-good behavior (I think?).
+// Right now this node fetches params on init, but ignores asynchronous param updates.
+// This test confirms that if we change a param like min_cluster_size param after node init, node
+// will not actually update its behavior. This is a known limitation of legacy code, and we
+// will lock this behavior in as our baseline for now.
+// In future refactoring, we will implement an  on_parameter_event callback or something like that
+// to handle async param updates, and this test will be updated accordingly.
+TEST_F(EuclideanClusterObjectDetectorIntegrationHarness, AsyncParameterUpdateLegacyBehavior)
+{
+  // Scenario including a single object consisting of exactly 4 points
+  std::vector<std::array<float, 3>> physical_points;
+  physical_points.reserve(4);
+  for (int i = 0; i < 4; ++i) {
+    physical_points.push_back({1.0f, 1.0f, 1.0f});
+  }
+  auto input_cloud = create_mock_cloud(physical_points);
+
+  // 1. Force node into a state where it filters out small clusters (min = 10)
+  rclcpp::NodeOptions new_options;
+  new_options.append_parameter_override("min_cluster_size", 10);
+  new_options.append_parameter_override("use_height", true);
+  new_options.append_parameter_override("max_cluster_size", 200);
+  new_options.append_parameter_override("tolerance", 0.5);
+  new_options.append_parameter_override("voxel_leaf_size", 0.1);
+  new_options.append_parameter_override("min_points_number_per_voxel", 1);
+
+  target_node_ = std::make_shared<VoxelGridBasedEuclideanClusterNode>(new_options);
+
+  publish_and_wait(input_cloud);
+
+  ASSERT_TRUE(message_received_);
+  ASSERT_NE(last_output_, nullptr);
+  EXPECT_EQ(last_output_->objects.size(), 0U);
+
+  // 2 Trigger async param update - let's say drop minimum size requirement to 3
+  target_node_->set_parameter(rclcpp::Parameter("min_cluster_size", 3));
+  publish_and_wait(input_cloud);
+
+  ASSERT_TRUE(message_received_);
+  ASSERT_NE(last_output_, nullptr);
+
+  // Current code does NOT implement an on_parameter_event callback. Thus output remains 0.
+  // We lock this behavior in as our baseline for now.
+  EXPECT_EQ(last_output_->objects.size(), 0U);
+}
+
 };  // namespace autoware::euclidean_cluster
