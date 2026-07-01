@@ -15,10 +15,9 @@
 #define GNSS_POSER_NODE_HPP_
 
 #include <autoware/agnocast_wrapper/node.hpp>
+#include <autoware/agnocast_wrapper/tf2.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <tf2/transform_datatypes.hpp>
-#include <tf2_ros/transform_broadcaster.hpp>
-#include <tf2_ros/transform_listener.hpp>
 
 #include <autoware_internal_debug_msgs/msg/bool_stamped.hpp>
 #include <autoware_map_msgs/msg/map_projector_info.hpp>
@@ -73,8 +72,8 @@ private:
     const geometry_msgs::msg::PoseStamped & pose_msg);
 
   tf2::BufferCore tf2_buffer_;
-  tf2_ros::TransformListener tf2_listener_;
-  tf2_ros::TransformBroadcaster tf2_broadcaster_;
+  autoware::agnocast_wrapper::TransformListener tf2_listener_;
+  autoware::agnocast_wrapper::TransformBroadcaster tf2_broadcaster_;
 
   AUTOWARE_SUBSCRIPTION_PTR(autoware_map_msgs::msg::MapProjectorInfo) sub_map_projector_info_;
   AUTOWARE_SUBSCRIPTION_PTR(sensor_msgs::msg::NavSatFix) nav_sat_fix_sub_;

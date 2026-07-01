@@ -28,7 +28,7 @@ namespace autoware::gnss_poser
 {
 GNSSPoser::GNSSPoser(const rclcpp::NodeOptions & node_options)
 : autoware::agnocast_wrapper::Node("gnss_poser", node_options),
-  tf2_listener_(tf2_buffer_),
+  tf2_listener_(tf2_buffer_, *this),
   tf2_broadcaster_(*this),
   base_frame_(declare_parameter<std::string>("base_frame")),
   gnss_base_frame_(declare_parameter<std::string>("gnss_base_frame")),
