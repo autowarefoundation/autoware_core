@@ -137,6 +137,48 @@ Please see [autoware_map_msgs/msg/MapProjectorInfo.msg](https://github.com/autow
 `lanelet2_map_path` can point to either a single `.osm` file or a directory.
 When a directory is given, all `.osm` files inside are loaded and merged into a single map before publishing.
 
+#### Cell metadata
+
+The node always builds a per-cell bounding-box dictionary at startup so that
+downstream loaders (such as selected map loading, and future differential
+map loading) can share the same information.
+
+The bounding boxes are determined in one of two ways:
+
+1. **From a metadata YAML file** — when `lanelet2_map_metadata_path` points to an
+   existing file. The expected format is:
+
+   ```yaml
+   x_resolution: 100.0
+   y_resolution: 100.0
+   1.osm: [58700.0, 42500.0] # [min_x, min_y] of this cell
+   2.osm: [58800.0, 42500.0]
+   ```
+
+   Relative filenames are resolved against the directory that contains the
+   YAML file. The bounding box of each cell is
+   `[min_x, min_y, min_x + x_resolution, min_y + y_resolution]`.
+
+2. **Computed from the loaded map (single-file only)** — when
+   `lanelet2_map_metadata_path` is empty or the file does not exist **and only a
+   single `.osm` file is loaded**, the axis-aligned bounding box is derived
+   from all points in that map. This is an exception so that users do not
+   have to provide a metadata file for single-file maps.
+
+   When multiple `.osm` files are loaded and the metadata file is missing,
+   the node throws and exits. Provide a metadata YAML in that case.
+
+Cell IDs equal the absolute file path of the corresponding `.osm` file.
+
+#### Selected map loading (`enable_selected_map_loading`)
+
+When `enable_selected_map_loading` is `true`, the node additionally:
+
+- Publishes per-cell bounding-box metadata on `output/lanelet2_map_metadata`.
+- Exposes the `service/get_selected_lanelet2_map` service
+  (`autoware_map_msgs/srv/GetSelectedLanelet2Map`), which returns the binary
+  map for the requested set of cell IDs.
+
 ### How to run
 
 `ros2 run autoware_map_loader lanelet2_map_loader --ros-args -p lanelet2_map_path:=path/to/map.osm`
@@ -147,7 +189,12 @@ When a directory is given, all `.osm` files inside are loaded and merged into a 
 
 ### Published Topics
 
-- ~output/lanelet2_map (autoware_map_msgs/LaneletMapBin) : Binary data of loaded Lanelet2 Map
+- `/map/vector_map` (autoware_map_msgs/LaneletMapBin) : Merged binary Lanelet2 map
+- `output/lanelet2_map_metadata` (autoware_map_msgs/LaneletMapMetaData) : Per-cell bounding-box metadata (only available when `enable_selected_map_loading` is `true`)
+
+### Services
+
+- `service/get_selected_lanelet2_map` (autoware_map_msgs/srv/GetSelectedLanelet2Map) : Returns the binary map for a requested set of cell IDs (only available when `enable_selected_map_loading` is `true`)
 
 ### Parameters
 
