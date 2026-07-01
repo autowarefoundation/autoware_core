@@ -43,8 +43,7 @@ sensor_msgs::msg::PointCloud2 downsample_pointcloud(
 /// @return Merged pointcloud message in map frame.
 sensor_msgs::msg::PointCloud2 load_pointcloud_map(
   const std::vector<std::string> & pcd_paths, boost::optional<float> leaf_size,
-  const PointcloudLoaderLogFunction & debug_log,
-  const PointcloudLoaderLogFunction & error_log);
+  const PointcloudLoaderLogFunction & debug_log, const PointcloudLoaderLogFunction & error_log);
 }  // namespace autoware::map_loader
 
 #endif  // POINTCLOUD_MAP_LOADER__POINTCLOUD_MAP_LOADER_HPP_
