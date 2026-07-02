@@ -137,7 +137,7 @@ private:
     const pcl::shared_ptr<pcl::PointCloud<PointSource>> & sensor_points_in_map_ptr);
   void publish_marker(
     const rclcpp::Time & sensor_ros_time, const std::vector<geometry_msgs::msg::Pose> & pose_array,
-    NormalDistributionsTransform & ndt_ref);
+    int max_iterations);
   void publish_initial_to_result(
     const rclcpp::Time & sensor_ros_time, const geometry_msgs::msg::Pose & result_pose_msg,
     const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_cov_msg,
@@ -153,6 +153,20 @@ private:
   static void host_log(void * ctx, int32_t level, const std::uint8_t * msg, std::size_t msg_len);
   static bool host_lookup_transform(
     void * ctx, AwStr target, AwStr source, float * out_matrix4x4_row_major);
+  // Phase 5 sub-slice 3: publish trampolines (build the ROS message + fan out by topic; catch(...)
+  // so a publish exception never unwinds across the FFI). Frame ids come from `param_`.
+  static void host_publish_pose(
+    void * ctx, AwPoseTopic topic, int64_t stamp_ns, const AwPose * pose, const double * cov);
+  static void host_publish_pose_array(
+    void * ctx, AwPoseArrayTopic topic, int64_t stamp_ns, const AwPose * poses, std::size_t n);
+  static void host_publish_marker(
+    void * ctx, int64_t stamp_ns, const AwPose * poses, std::size_t n, int32_t max_iterations);
+  static void host_publish_float32(void * ctx, AwFloat32Topic topic, int64_t stamp_ns, float value);
+  static void host_publish_int32(void * ctx, AwInt32Topic topic, int64_t stamp_ns, int32_t value);
+  static void host_publish_tf(void * ctx, int64_t stamp_ns, const AwPose * pose);
+  static void host_publish_initial_to_result(
+    void * ctx, int64_t stamp_ns, const AwPose * result, const AwPose * initial,
+    const double * old_pos, const double * new_pos);
   AwHost make_host();
 #endif
 

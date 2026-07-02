@@ -58,7 +58,12 @@ extern "C" bool h_lookup(void * ctx, AwStr /*target*/, AwStr /*source*/, float *
   }
   return true;
 }
-AwHost mock_host(HostCtx & c) { return AwHost{&c, h_now, h_log, h_lookup}; }
+// The prologue (`on_sensor_points_prepare`) never invokes the publish ops, so they are left null.
+AwHost mock_host(HostCtx & c)
+{
+  return AwHost{&c,      h_now,   h_log,   h_lookup, nullptr, nullptr,
+                nullptr, nullptr, nullptr, nullptr,  nullptr};
+}
 
 // A no-op diagnostics vtable.
 extern "C" void d_clear(void *) {}

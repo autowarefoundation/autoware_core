@@ -561,29 +561,26 @@ bool NDTScanMatcher::callback_sensor_points_main(
     // store sensor points for ndt alignment
     sensor_points_in_baselink_frame_ = sensor_points_in_baselink_frame;
 
-    // Shared outputs the publisher block below consumes; each branch fills them.
-    SmartPoseBuffer::InterpolateResult interpolation_result;
+    // The still-C++ cloud publishers read the aligned pose; the return feeds `skipping_publish_num`.
     pclomp::NdtResult ndt_result;
+    bool is_converged = false;
+#ifndef NDT_USE_RUST
+    // OFF-only: in the ON build these are published through the AwHost publish ops inside
+    // `on_sensor_points_match` (Phase 5 sub-slice 3), so C++ only declares them for the legacy path.
+    SmartPoseBuffer::InterpolateResult interpolation_result;
     geometry_msgs::msg::Pose result_pose_msg;
     std::vector<geometry_msgs::msg::Pose> transformation_msg_array;
     std::array<double, 36> ndt_covariance{};
-    bool is_converged = false;
+#endif
 
 #ifdef NDT_USE_RUST
-    // Phase 5 sub-slice 2: the whole middle — activation / interpolate / map gates, regularization,
-    // align + convergence, and the covariance block, plus their /diagnostics keys — runs in one Rust
-    // call (`on_sensor_points_match`) against the live engine handle. C++ reconstructs the local
-    // messages from the result struct and publishes below (the publish vtable is a later sub-slice).
+    // Phase 5 sub-slice 3: the whole middle AND the POD publishers run in Rust — `on_sensor_points_match`
+    // requests each publish through the AwHost publish ops (built C++-side below). C++ keeps only the
+    // result pose (to transform the base_link cloud → map for the still-C++ cloud publishers) +
+    // `is_converged` (the wrapper's `skipping_publish_num`); `exe_time` + the cloud publishers stay C++.
     const AwHost host = make_host();
     const AwDiagnostics diag = make_diagnostics(diagnostics_scan_points_.get());
     const std::vector<float> source_flat = cloud_to_flat(*sensor_points_in_baselink_frame_);
-
-    constexpr uint32_t kTransformCap = 256;
-    std::vector<float> transformation_buf(static_cast<size_t>(kTransformCap) * 16);
-    const auto pose_cap = static_cast<uint32_t>(
-      param_.covariance.covariance_estimation.initial_pose_offset_model_x.size() + 1);
-    std::vector<float> cov_result_poses(static_cast<size_t>(pose_cap) * 16);
-    std::vector<float> cov_initial_poses(static_cast<size_t>(pose_cap) * 16);
 
     const AwSensorPointsMatchParams match_params{
       param_.dynamic_map_loading.lidar_radius, param_.dynamic_map_loading.map_radius,
@@ -591,12 +588,6 @@ bool NDTScanMatcher::callback_sensor_points_main(
       param_.ndt.regularization_scale_factor};
 
     AwSensorPointsMatchOutput out{};
-    out.transformation_array = transformation_buf.data();
-    out.transformation_cap = kTransformCap;
-    out.multi_ndt_result_poses = cov_result_poses.data();
-    out.multi_initial_poses = cov_initial_poses.data();
-    out.pose_cap = pose_cap;
-
     const int32_t match_status = autoware_ndt_scan_matcher_rs_node_on_sensor_points_match(
       rs_.raw(), ndt_ptr->raw_handle(), &host, &diag, &match_params,
       sensor_ros_time.nanoseconds(), source_flat.data(),
@@ -606,85 +597,13 @@ bool NDTScanMatcher::callback_sensor_points_main(
       return false;
     }
 
-    // Rebuild the result the publishers read (pose 4x4 + scalars + marker trajectory).
+    // Only the aligned pose (→ map cloud) + convergence; the publishers already fired via the host.
     for (int r = 0; r < 4; ++r) {
       for (int c = 0; c < 4; ++c) {
         ndt_result.pose(r, c) = out.result_pose[(r * 4) + c];
       }
     }
-    ndt_result.iteration_num = out.iteration_num;
-    ndt_result.transform_probability = out.transform_probability;
-    ndt_result.nearest_voxel_transformation_likelihood =
-      out.nearest_voxel_transformation_likelihood;
-    ndt_result.transformation_array.resize(out.transformation_count);
-    for (uint32_t k = 0; k < out.transformation_count; ++k) {
-      Eigen::Matrix4f m;
-      for (int r = 0; r < 4; ++r) {
-        for (int c = 0; c < 4; ++c) {
-          m(r, c) = transformation_buf[(static_cast<size_t>(k) * 16) + (r * 4) + c];
-        }
-      }
-      ndt_result.transformation_array[k] = m;
-    }
-
     is_converged = out.is_converged;
-    std::copy_n(out.ndt_covariance, 36, ndt_covariance.begin());
-    result_pose_msg = matrix4f_to_pose(ndt_result.pose);
-    for (const auto & pose_matrix : ndt_result.transformation_array) {
-      transformation_msg_array.push_back(matrix4f_to_pose(pose_matrix));
-    }
-
-    // Rebuild the interpolated initial pose for initial_pose_with_covariance / publish_initial_to_result.
-    {
-      auto & interp_pose = interpolation_result.interpolated_pose;
-      interp_pose.header.frame_id = param_.frame.map_frame;
-      interp_pose.header.stamp = sensor_ros_time;
-      interp_pose.pose.pose.position.x = out.initial_position[0];
-      interp_pose.pose.pose.position.y = out.initial_position[1];
-      interp_pose.pose.pose.position.z = out.initial_position[2];
-      interp_pose.pose.pose.orientation.x = out.initial_orientation[0];
-      interp_pose.pose.pose.orientation.y = out.initial_orientation[1];
-      interp_pose.pose.pose.orientation.z = out.initial_orientation[2];
-      interp_pose.pose.pose.orientation.w = out.initial_orientation[3];
-      std::copy(
-        std::begin(out.initial_covariance), std::end(out.initial_covariance),
-        interp_pose.pose.covariance.begin());
-      interpolation_result.old_pose.pose.pose.position.x = out.initial_old_position[0];
-      interpolation_result.old_pose.pose.pose.position.y = out.initial_old_position[1];
-      interpolation_result.old_pose.pose.pose.position.z = out.initial_old_position[2];
-      interpolation_result.new_pose.pose.pose.position.x = out.initial_new_position[0];
-      interpolation_result.new_pose.pose.pose.position.y = out.initial_new_position[1];
-      interpolation_result.new_pose.pose.pose.position.z = out.initial_new_position[2];
-    }
-
-    // Publish the covariance debug pose arrays (moved out of the middle; C++ still publishes).
-    // Preserves the MULTI_NDT (both) vs MULTI_NDT_SCORE (initial only) asymmetry; kind 0 publishes none.
-    const auto pose_from_flat = [](const float * p) {
-      Eigen::Matrix4f m;
-      for (int r = 0; r < 4; ++r) {
-        for (int c = 0; c < 4; ++c) {
-          m(r, c) = p[(r * 4) + c];
-        }
-      }
-      return matrix4f_to_pose(m);
-    };
-    const auto build_pose_array = [&](const std::vector<float> & buf, uint32_t count) {
-      geometry_msgs::msg::PoseArray msg;
-      msg.header.stamp = sensor_ros_time;
-      msg.header.frame_id = param_.frame.map_frame;
-      for (uint32_t i = 0; i < count; ++i) {
-        msg.poses.push_back(pose_from_flat(&buf[static_cast<size_t>(i) * 16]));
-      }
-      return msg;
-    };
-    if (out.publish_kind == 1) {
-      multi_ndt_pose_pub_->publish(build_pose_array(cov_result_poses, out.multi_ndt_result_count));
-      multi_initial_pose_pub_->publish(
-        build_pose_array(cov_initial_poses, out.multi_initial_count));
-    } else if (out.publish_kind == 2) {
-      multi_initial_pose_pub_->publish(
-        build_pose_array(cov_initial_poses, out.multi_initial_count));
-    }
 #else
     // check is_activated
     const bool node_is_activated = is_activated_;
@@ -919,9 +838,12 @@ bool NDTScanMatcher::callback_sensor_points_main(
         diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
     }
 
-    // publish
-    initial_pose_with_covariance_pub_->publish(interpolation_result.interpolated_pose);
+    // publish. exe_time is measured C++-side (it wraps prologue + middle) in both builds.
     exe_time_pub_->publish(make_float32_stamped(sensor_ros_time, exe_time));
+#ifndef NDT_USE_RUST
+    // POD publishers — in the ON build these fired through the AwHost publish ops inside
+    // `on_sensor_points_match` (Phase 5 sub-slice 3); the legacy C++ path publishes them here.
+    initial_pose_with_covariance_pub_->publish(interpolation_result.interpolated_pose);
     transform_probability_pub_->publish(
       make_float32_stamped(sensor_ros_time, ndt_result.transform_probability));
     nearest_voxel_transformation_likelihood_pub_->publish(
@@ -929,10 +851,11 @@ bool NDTScanMatcher::callback_sensor_points_main(
     iteration_num_pub_->publish(make_int32_stamped(sensor_ros_time, ndt_result.iteration_num));
     publish_tf(sensor_ros_time, result_pose_msg);
     publish_pose(sensor_ros_time, result_pose_msg, ndt_covariance, is_converged);
-    publish_marker(sensor_ros_time, transformation_msg_array, *ndt_ptr);
+    publish_marker(sensor_ros_time, transformation_msg_array, ndt_ptr->getMaximumIterations());
     publish_initial_to_result(
       sensor_ros_time, result_pose_msg, interpolation_result.interpolated_pose,
       interpolation_result.old_pose, interpolation_result.new_pose);
+#endif
 
     pcl::shared_ptr<pcl::PointCloud<PointSource>> sensor_points_in_map_ptr(
       new pcl::PointCloud<PointSource>);
@@ -1075,7 +998,7 @@ void NDTScanMatcher::publish_point_cloud(
 
 void NDTScanMatcher::publish_marker(
   const rclcpp::Time & sensor_ros_time, const std::vector<geometry_msgs::msg::Pose> & pose_array,
-  NormalDistributionsTransform & ndt_ref)
+  int max_iterations)
 {
   visualization_msgs::msg::MarkerArray marker_array;
   visualization_msgs::msg::Marker marker;
@@ -1095,7 +1018,7 @@ void NDTScanMatcher::publish_marker(
   }
 
   // TODO(Tier IV): delete old marker
-  for (; i < ndt_ref.getMaximumIterations() + 2;) {
+  for (; i < max_iterations + 2;) {
     marker.id = i++;
     marker.pose = geometry_msgs::msg::Pose();
     marker.color = exchange_color_crc(0);
@@ -1375,11 +1298,162 @@ bool NDTScanMatcher::host_lookup_transform(
     return false;
   }
 }
+// AwPose (position + [x,y,z,w] quaternion) → geometry_msgs::Pose, for the publish trampolines.
+static geometry_msgs::msg::Pose aw_pose_to_msg(const AwPose & p)
+{
+  geometry_msgs::msg::Pose pose;
+  pose.position.x = p.position[0];
+  pose.position.y = p.position[1];
+  pose.position.z = p.position[2];
+  pose.orientation.x = p.orientation[0];
+  pose.orientation.y = p.orientation[1];
+  pose.orientation.z = p.orientation[2];
+  pose.orientation.w = p.orientation[3];
+  return pose;
+}
+void NDTScanMatcher::host_publish_pose(
+  void * ctx, AwPoseTopic topic, int64_t stamp_ns, const AwPose * pose, const double * cov)
+{
+  auto * self = static_cast<NDTScanMatcher *>(ctx);
+  try {
+    const rclcpp::Time stamp(stamp_ns);
+    const geometry_msgs::msg::Pose pose_msg = aw_pose_to_msg(*pose);
+    if (topic == AwPoseTopic::NdtPose) {
+      geometry_msgs::msg::PoseStamped msg;
+      msg.header.stamp = stamp;
+      msg.header.frame_id = self->param_.frame.map_frame;
+      msg.pose = pose_msg;
+      self->ndt_pose_pub_->publish(msg);
+    } else {
+      geometry_msgs::msg::PoseWithCovarianceStamped msg;
+      msg.header.stamp = stamp;
+      msg.header.frame_id = self->param_.frame.map_frame;
+      msg.pose.pose = pose_msg;
+      if (cov != nullptr) {
+        std::copy_n(cov, 36, msg.pose.covariance.begin());
+      }
+      if (topic == AwPoseTopic::NdtPoseWithCovariance) {
+        self->ndt_pose_with_covariance_pub_->publish(msg);
+      } else {
+        self->initial_pose_with_covariance_pub_->publish(msg);
+      }
+    }
+  } catch (...) {
+    RCLCPP_ERROR_STREAM_THROTTLE(
+      self->get_logger(), *self->get_clock(), 1000, "publish_pose failed");
+  }
+}
+void NDTScanMatcher::host_publish_pose_array(
+  void * ctx, AwPoseArrayTopic topic, int64_t stamp_ns, const AwPose * poses, std::size_t n)
+{
+  auto * self = static_cast<NDTScanMatcher *>(ctx);
+  try {
+    geometry_msgs::msg::PoseArray msg;
+    msg.header.stamp = rclcpp::Time(stamp_ns);
+    msg.header.frame_id = self->param_.frame.map_frame;
+    for (std::size_t i = 0; i < n; ++i) {
+      msg.poses.push_back(aw_pose_to_msg(poses[i]));  // NOLINT
+    }
+    if (topic == AwPoseArrayTopic::MultiNdtPose) {
+      self->multi_ndt_pose_pub_->publish(msg);
+    } else {
+      self->multi_initial_pose_pub_->publish(msg);
+    }
+  } catch (...) {
+    RCLCPP_ERROR_STREAM_THROTTLE(
+      self->get_logger(), *self->get_clock(), 1000, "publish_pose_array failed");
+  }
+}
+void NDTScanMatcher::host_publish_marker(
+  void * ctx, int64_t stamp_ns, const AwPose * poses, std::size_t n, int32_t max_iterations)
+{
+  auto * self = static_cast<NDTScanMatcher *>(ctx);
+  try {
+    std::vector<geometry_msgs::msg::Pose> pose_array;
+    pose_array.reserve(n);
+    for (std::size_t i = 0; i < n; ++i) {
+      pose_array.push_back(aw_pose_to_msg(poses[i]));  // NOLINT
+    }
+    self->publish_marker(rclcpp::Time(stamp_ns), pose_array, max_iterations);
+  } catch (...) {
+    RCLCPP_ERROR_STREAM_THROTTLE(
+      self->get_logger(), *self->get_clock(), 1000, "publish_marker failed");
+  }
+}
+void NDTScanMatcher::host_publish_float32(
+  void * ctx, AwFloat32Topic topic, int64_t stamp_ns, float value)
+{
+  auto * self = static_cast<NDTScanMatcher *>(ctx);
+  try {
+    const auto msg = make_float32_stamped(rclcpp::Time(stamp_ns), value);
+    if (topic == AwFloat32Topic::TransformProbability) {
+      self->transform_probability_pub_->publish(msg);
+    } else {
+      self->nearest_voxel_transformation_likelihood_pub_->publish(msg);
+    }
+  } catch (...) {
+    RCLCPP_ERROR_STREAM_THROTTLE(
+      self->get_logger(), *self->get_clock(), 1000, "publish_float32 failed");
+  }
+}
+void NDTScanMatcher::host_publish_int32(
+  void * ctx, AwInt32Topic /*topic*/, int64_t stamp_ns, int32_t value)
+{
+  auto * self = static_cast<NDTScanMatcher *>(ctx);
+  try {
+    self->iteration_num_pub_->publish(make_int32_stamped(rclcpp::Time(stamp_ns), value));
+  } catch (...) {
+    RCLCPP_ERROR_STREAM_THROTTLE(
+      self->get_logger(), *self->get_clock(), 1000, "publish_int32 failed");
+  }
+}
+void NDTScanMatcher::host_publish_tf(void * ctx, int64_t stamp_ns, const AwPose * pose)
+{
+  auto * self = static_cast<NDTScanMatcher *>(ctx);
+  try {
+    self->publish_tf(rclcpp::Time(stamp_ns), aw_pose_to_msg(*pose));
+  } catch (...) {
+    RCLCPP_ERROR_STREAM_THROTTLE(
+      self->get_logger(), *self->get_clock(), 1000, "publish_tf failed");
+  }
+}
+void NDTScanMatcher::host_publish_initial_to_result(
+  void * ctx, int64_t stamp_ns, const AwPose * result, const AwPose * initial,
+  const double * old_pos, const double * new_pos)
+{
+  auto * self = static_cast<NDTScanMatcher *>(ctx);
+  try {
+    geometry_msgs::msg::PoseWithCovarianceStamped initial_msg;
+    initial_msg.pose.pose = aw_pose_to_msg(*initial);
+    geometry_msgs::msg::PoseWithCovarianceStamped old_msg;
+    old_msg.pose.pose.position.x = old_pos[0];
+    old_msg.pose.pose.position.y = old_pos[1];
+    old_msg.pose.pose.position.z = old_pos[2];
+    geometry_msgs::msg::PoseWithCovarianceStamped new_msg;
+    new_msg.pose.pose.position.x = new_pos[0];
+    new_msg.pose.pose.position.y = new_pos[1];
+    new_msg.pose.pose.position.z = new_pos[2];
+    self->publish_initial_to_result(
+      rclcpp::Time(stamp_ns), aw_pose_to_msg(*result), initial_msg, old_msg, new_msg);
+  } catch (...) {
+    RCLCPP_ERROR_STREAM_THROTTLE(
+      self->get_logger(), *self->get_clock(), 1000, "publish_initial_to_result failed");
+  }
+}
 AwHost NDTScanMatcher::make_host()
 {
   return AwHost{
-    this, &NDTScanMatcher::host_now_ns, &NDTScanMatcher::host_log,
-    &NDTScanMatcher::host_lookup_transform};
+    this,
+    &NDTScanMatcher::host_now_ns,
+    &NDTScanMatcher::host_log,
+    &NDTScanMatcher::host_lookup_transform,
+    &NDTScanMatcher::host_publish_pose,
+    &NDTScanMatcher::host_publish_pose_array,
+    &NDTScanMatcher::host_publish_marker,
+    &NDTScanMatcher::host_publish_float32,
+    &NDTScanMatcher::host_publish_int32,
+    &NDTScanMatcher::host_publish_tf,
+    &NDTScanMatcher::host_publish_initial_to_result};
 }
 #endif
 

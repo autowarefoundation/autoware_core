@@ -12,14 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Differential test (Phase 5 sub-slice 2): the sensor-callback *middle* orchestrator
-// (on_sensor_points_match) fuses the activation / interpolate / map gates, align + convergence, and
-// the covariance block into one Rust call. It must reproduce the decomposed FFI path it replaces —
-// on the SAME engine, from a guess built from the SAME interpolated initial pose — bit-for-bit for
-// the align outputs (deterministic engine + identity-orientation guess ⇒ identical guess) and within
-// tolerance for the covariance (whose base-cov rotation is derived from the result pose). It also
-// pins the gate status codes. The engine-vs-pclomp accuracy, the convergence formula, and the
-// covariance math are each already differential-tested elsewhere; this pins the orchestration wiring.
+// Differential test (Phase 5 sub-slices 2 + 3): the sensor-callback *middle* orchestrator
+// (on_sensor_points_match) fuses the gates → align → convergence → covariance into one Rust call and
+// (sub-slice 3) requests the POD publishers through the AwHost publish ops. This test drives it on a
+// synthetic engine + seeded handle with a **recording mock AwHost** that captures every publish op,
+// and asserts: the align values it publishes match the decomposed run_align on the same engine (exact,
+// identity-orientation guess); the FIXED covariance == rotate_covariance(output_cov, rot(result_pose))
+// (tolerance); ndt_pose / ndt_pose_with_covariance fire only on convergence; and the gate status codes.
 
 #include "../src/ndt_scan_matcher_helper.hpp"
 
@@ -35,10 +34,12 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <random>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace autoware::ndt_scan_matcher
@@ -54,7 +55,7 @@ constexpr std::array<double, 36> kOutputCov = {
   0.0, 0.0, 16.0, 0.0, 0.0, 0.0,  0.0, 0.0, 0.0, 0.1, 0.0, 0.0,
   0.0, 0.0, 0.0, 0.0, 0.2, 0.0,   0.0, 0.0, 0.0, 0.0, 0.0, 0.3};
 
-// --- engine (adapter) + source, mirroring test_node_run_align -------------------------------------
+// --- engine (adapter) + source, mirroring test_node_run_align ------------------------------------
 void make_tile(float cx, float cy, float cz, std::mt19937 & rng, pcl::PointCloud<pcl::PointXYZ> & c)
 {
   std::normal_distribution<float> jitter(0.0F, 0.3F);
@@ -112,12 +113,89 @@ std::vector<float> flatten(const pcl::PointCloud<pcl::PointXYZ> & cloud)
   return flat;
 }
 
-// --- mock host + no-op diagnostics ----------------------------------------------------------------
+// --- recording mock AwHost: capture every publish op ---------------------------------------------
+struct PoseCall
+{
+  int topic;
+  AwPose pose;
+  bool has_cov;
+  std::array<double, 36> cov;
+};
+struct Captured
+{
+  std::vector<PoseCall> poses;                 // publish_pose
+  std::vector<std::pair<int, float>> float32s;  // publish_float32 (topic, value)
+  std::vector<int32_t> iterations;              // publish_int32 (IterationNum only)
+  std::vector<std::pair<int, std::size_t>> pose_arrays;  // publish_pose_array (topic, count)
+  bool marker_called = false;
+  std::size_t marker_count = 0;
+  int32_t marker_max_iterations = 0;
+  bool tf_called = false;
+  bool itr_called = false;
+
+  int count_pose_topic(int topic) const
+  {
+    int n = 0;
+    for (const auto & p : poses) {
+      if (p.topic == topic) {
+        ++n;
+      }
+    }
+    return n;
+  }
+};
+
 extern "C" std::int64_t h_now(void *) { return 0; }
 extern "C" void h_log(void *, std::int32_t, const std::uint8_t *, std::size_t) {}
 extern "C" bool h_lookup(void *, AwStr, AwStr, float *) { return false; }
-AwHost mock_host() { return AwHost{nullptr, h_now, h_log, h_lookup}; }
+extern "C" void h_pub_pose(
+  void * ctx, AwPoseTopic topic, std::int64_t, const AwPose * pose, const double * cov)
+{
+  auto * c = static_cast<Captured *>(ctx);
+  PoseCall call{static_cast<int>(topic), *pose, cov != nullptr, {}};
+  if (cov != nullptr) {
+    std::copy_n(cov, 36, call.cov.begin());
+  }
+  c->poses.push_back(call);
+}
+extern "C" void h_pub_pose_array(
+  void * ctx, AwPoseArrayTopic topic, std::int64_t, const AwPose *, std::size_t n)
+{
+  static_cast<Captured *>(ctx)->pose_arrays.emplace_back(static_cast<int>(topic), n);
+}
+extern "C" void h_pub_marker(
+  void * ctx, std::int64_t, const AwPose *, std::size_t n, std::int32_t max_iterations)
+{
+  auto * c = static_cast<Captured *>(ctx);
+  c->marker_called = true;
+  c->marker_count = n;
+  c->marker_max_iterations = max_iterations;
+}
+extern "C" void h_pub_float32(void * ctx, AwFloat32Topic topic, std::int64_t, float value)
+{
+  static_cast<Captured *>(ctx)->float32s.emplace_back(static_cast<int>(topic), value);
+}
+extern "C" void h_pub_int32(void * ctx, AwInt32Topic, std::int64_t, std::int32_t value)
+{
+  static_cast<Captured *>(ctx)->iterations.push_back(value);
+}
+extern "C" void h_pub_tf(void * ctx, std::int64_t, const AwPose *)
+{
+  static_cast<Captured *>(ctx)->tf_called = true;
+}
+extern "C" void h_pub_itr(
+  void * ctx, std::int64_t, const AwPose *, const AwPose *, const double *, const double *)
+{
+  static_cast<Captured *>(ctx)->itr_called = true;
+}
+AwHost recording_host(Captured & c)
+{
+  return AwHost{
+    &c,           h_now,        h_log,         h_lookup,   h_pub_pose, h_pub_pose_array,
+    h_pub_marker, h_pub_float32, h_pub_int32, h_pub_tf, h_pub_itr};
+}
 
+// --- no-op diagnostics ---------------------------------------------------------------------------
 extern "C" void d_clear(void *) {}
 extern "C" void d_bool(void *, const std::uint8_t *, std::size_t, bool) {}
 extern "C" void d_i64(void *, const std::uint8_t *, std::size_t, std::int64_t) {}
@@ -130,17 +208,16 @@ AwDiagnostics noop_diag()
   return AwDiagnostics{nullptr, d_clear, d_bool, d_i64, d_f64, d_str, d_level, d_publish};
 }
 
-// --- node handle ----------------------------------------------------------------------------------
-// FIXED-value covariance keeps the covariance path deterministic (rotate the configured 6x6 only) and
-// avoids needing offset models; regularization off keeps the align free of the reg buffer.
-AwNdtScanMatcher * make_handle(const std::string & map_frame, const std::string & base_frame)
+// --- node handle (FIXED covariance, regularization off) ------------------------------------------
+AwNdtScanMatcher * make_handle(
+  const std::string & map_frame, const std::string & base_frame, double converged_tp)
 {
   AwNdtParams p{};
   p.resolution = 2.0;
   p.min_points = 6;
   p.num_threads = 1;
   p.converged_param_type = kTp;
-  p.converged_param_transform_probability = 0.0;
+  p.converged_param_transform_probability = converged_tp;
   p.converged_param_nearest_voxel_transformation_likelihood = 0.0;
   p.covariance_estimation_type = 0;  // FIXED_VALUE
   p.covariance_scale_factor = 1.0;
@@ -155,11 +232,10 @@ AwNdtScanMatcher * make_handle(const std::string & map_frame, const std::string 
   p.base_frame_len = base_frame.size();
   p.sensor_points_timeout_sec = 1e9;
   p.sensor_points_required_distance = 0.0;
-  return autoware_ndt_scan_matcher_rs_new(&p);  // `map_frame`/`base_frame` outlive this call
+  return autoware_ndt_scan_matcher_rs_new(&p);
 }
 
-// Activate + push two identity-orientation, origin-position initial poses bracketing `stamp`, so the
-// interpolation at `stamp` yields an identity guess (bit-identical across nalgebra/Eigen).
+// Activate + push two identity-orientation, origin-position initial poses bracketing `stamp`.
 void activate_and_seed(AwNdtScanMatcher * h, std::int64_t stamp, const std::string & map_frame)
 {
   const AwDiagnostics d = noop_diag();
@@ -167,12 +243,6 @@ void activate_and_seed(AwNdtScanMatcher * h, std::int64_t stamp, const std::stri
   const auto push = [&](std::int64_t t) {
     AwPoseWithCovarianceStampedView v{};
     v.stamp_ns = t;
-    v.position[0] = 0.0;
-    v.position[1] = 0.0;
-    v.position[2] = 0.0;
-    v.orientation[0] = 0.0;
-    v.orientation[1] = 0.0;
-    v.orientation[2] = 0.0;
     v.orientation[3] = 1.0;
     v.frame_id = reinterpret_cast<const std::uint8_t *>(map_frame.data());
     v.frame_id_len = map_frame.size();
@@ -192,24 +262,11 @@ Eigen::Matrix4f to_eigen(const float * m)
   }
   return e;
 }
-
-AwSensorPointsMatchOutput make_out(
-  std::vector<float> & tbuf, std::vector<float> & crp, std::vector<float> & cip, uint32_t pose_cap)
-{
-  AwSensorPointsMatchOutput out{};
-  out.transformation_array = tbuf.data();
-  out.transformation_cap = static_cast<uint32_t>(tbuf.size() / 16);
-  out.multi_ndt_result_poses = crp.data();
-  out.multi_initial_poses = cip.data();
-  out.pose_cap = pose_cap;
-  return out;
-}
 }  // namespace
 
-// The orchestrator's align outputs == the decomposed run_align on the same engine + identity guess
-// (exact), and its FIXED covariance == rotate_covariance(output_cov, rot(result_pose)) (tolerance,
-// the rotation is nalgebra-derived here vs Eigen-derived in the reference).
-TEST(SensorPointsMatch, MatchesDecomposedAlignAndCovariance)  // NOLINT
+// The orchestrator publishes the align values the decomposed run_align yields (exact), the FIXED
+// covariance rotated from the result pose (tolerance), and fires ndt_pose only on convergence.
+TEST(SensorPointsMatch, PublishesDecomposedAlignAndCovariance)  // NOLINT
 {
   pcl::PointCloud<pcl::PointXYZ>::Ptr source;
   Adapter rs = make_driven_adapter(source);
@@ -217,22 +274,20 @@ TEST(SensorPointsMatch, MatchesDecomposedAlignAndCovariance)  // NOLINT
   const std::int64_t stamp = 1'000'000'000;
   const std::string map_frame = "map";
 
-  AwNdtScanMatcher * h = make_handle(map_frame, "base_link");
+  AwNdtScanMatcher * h = make_handle(map_frame, "base_link", 0.0);
   ASSERT_NE(h, nullptr);
   activate_and_seed(h, stamp, map_frame);
 
-  const AwHost host = mock_host();
+  Captured cap;
+  const AwHost host = recording_host(cap);
   const AwDiagnostics diag = noop_diag();
   const AwSensorPointsMatchParams mp{50.0, 1e9, 1e9, 0.0};
-
-  std::vector<float> tbuf(static_cast<std::size_t>(256) * 16);
-  std::vector<float> crp(16);
-  std::vector<float> cip(16);
-  AwSensorPointsMatchOutput out = make_out(tbuf, crp, cip, 1);
+  AwSensorPointsMatchOutput out{};
 
   const std::int32_t status = autoware_ndt_scan_matcher_rs_node_on_sensor_points_match(
     h, rs.raw_handle(), &host, &diag, &mp, stamp, src.data(), source->size(), &out);
   ASSERT_EQ(status, 0);  // SM_MATCHED
+  ASSERT_TRUE(out.is_converged);
 
   // Reference: align the same engine from the identity guess (== the interpolated identity pose).
   const std::array<float, 16> guess16 = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
@@ -241,58 +296,106 @@ TEST(SensorPointsMatch, MatchesDecomposedAlignAndCovariance)  // NOLINT
   autoware_ndt_scan_matcher_rs_node_run_align(
     rs.raw_handle(), guess16.data(), src.data(), source->size(), &align_params, &ref);
 
-  EXPECT_EQ(out.iteration_num, ref.iteration_num);
-  EXPECT_FLOAT_EQ(out.transform_probability, ref.transform_probability);
-  EXPECT_FLOAT_EQ(out.nearest_voxel_transformation_likelihood, ref.nearest_voxel_likelihood);
-  EXPECT_EQ(out.is_converged, ref.verdict.is_converged);
-  for (int i = 0; i < 16; ++i) {
-    EXPECT_FLOAT_EQ(out.result_pose[i], ref.pose[i]) << "result_pose[" << i << "]";
+  // scalars published (exact vs the decomposed align).
+  ASSERT_EQ(cap.float32s.size(), 2U);
+  ASSERT_EQ(cap.iterations.size(), 1U);
+  EXPECT_EQ(cap.iterations[0], ref.iteration_num);
+  for (const auto & [topic, value] : cap.float32s) {
+    if (topic == 0) {  // TransformProbability
+      EXPECT_FLOAT_EQ(value, ref.transform_probability);
+    } else {  // NearestVoxelTransformationLikelihood
+      EXPECT_FLOAT_EQ(value, ref.nearest_voxel_likelihood);
+    }
   }
-  // marker trajectory: one pose per iteration, same as the reference align.
-  EXPECT_GT(out.transformation_count, 0U);
 
-  // interpolated initial pose == the seeded identity pose at the origin.
-  EXPECT_NEAR(out.initial_position[0], 0.0, 1e-9);
-  EXPECT_NEAR(out.initial_position[1], 0.0, 1e-9);
-  EXPECT_NEAR(out.initial_position[2], 0.0, 1e-9);
-  EXPECT_NEAR(out.initial_orientation[3], 1.0, 1e-9);
+  // tf + initial_to_result + marker each fire once; marker got one pose per iteration.
+  EXPECT_TRUE(cap.tf_called);
+  EXPECT_TRUE(cap.itr_called);
+  EXPECT_TRUE(cap.marker_called);
+  EXPECT_GT(cap.marker_count, 0U);
+  EXPECT_EQ(cap.marker_max_iterations, rs.getMaximumIterations());
 
-  // FIXED covariance: the configured 6x6 rotated into the map frame by the result pose's rotation.
-  const geometry_msgs::msg::Pose result_pose_msg =
-    autoware::localization_util::matrix4f_to_pose(to_eigen(out.result_pose));
+  // pose publishes: InitialPoseWithCovariance always; NdtPose + NdtPoseWithCovariance on convergence.
+  EXPECT_EQ(cap.count_pose_topic(2), 1);  // InitialPoseWithCovariance
+  EXPECT_EQ(cap.count_pose_topic(0), 1);  // NdtPose (converged)
+  EXPECT_EQ(cap.count_pose_topic(1), 1);  // NdtPoseWithCovariance (converged)
+
+  // ndt_pose pose == the decomposed result; ndt_pose_with_covariance carries the FIXED rotated cov.
+  const geometry_msgs::msg::Pose ref_pose_msg =
+    autoware::localization_util::matrix4f_to_pose(to_eigen(ref.pose));
   const Eigen::Quaterniond q(
-    result_pose_msg.orientation.w, result_pose_msg.orientation.x, result_pose_msg.orientation.y,
-    result_pose_msg.orientation.z);
-  const std::array<double, 36> expected =
+    ref_pose_msg.orientation.w, ref_pose_msg.orientation.x, ref_pose_msg.orientation.y,
+    ref_pose_msg.orientation.z);
+  const std::array<double, 36> expected_cov =
     rotate_covariance(kOutputCov, q.normalized().toRotationMatrix());
-  for (int i = 0; i < 36; ++i) {
-    EXPECT_NEAR(out.ndt_covariance[i], expected[i], 1e-5) << "ndt_covariance[" << i << "]";
+  for (const auto & call : cap.poses) {
+    if (call.topic == 1) {  // NdtPoseWithCovariance
+      EXPECT_NEAR(call.pose.position[0], ref_pose_msg.position.x, 1e-5);
+      EXPECT_NEAR(call.pose.position[1], ref_pose_msg.position.y, 1e-5);
+      EXPECT_NEAR(call.pose.position[2], ref_pose_msg.position.z, 1e-5);
+      ASSERT_TRUE(call.has_cov);
+      for (int i = 0; i < 36; ++i) {
+        EXPECT_NEAR(call.cov[static_cast<std::size_t>(i)], expected_cov[static_cast<std::size_t>(i)], 1e-5)
+          << "cov[" << i << "]";
+      }
+    } else if (call.topic == 2) {  // InitialPoseWithCovariance == the seeded identity/origin pose
+      EXPECT_NEAR(call.pose.position[0], 0.0, 1e-9);
+      EXPECT_NEAR(call.pose.orientation[3], 1.0, 1e-9);
+    }
   }
-  EXPECT_EQ(out.publish_kind, 0);  // FIXED publishes no debug pose arrays
-  EXPECT_EQ(out.multi_ndt_result_count, 0U);
-  EXPECT_EQ(out.multi_initial_count, 0U);
+
+  // FIXED estimation publishes no covariance debug pose arrays.
+  EXPECT_TRUE(cap.pose_arrays.empty());
 
   autoware_ndt_scan_matcher_rs_free(h);
 }
 
-// Gate: an inactive node returns SM_NOT_ACTIVATED (no align).
+// A below-threshold score → not converged → ndt_pose / ndt_pose_with_covariance are NOT published.
+TEST(SensorPointsMatch, NotConvergedSkipsNdtPose)  // NOLINT
+{
+  pcl::PointCloud<pcl::PointXYZ>::Ptr source;
+  Adapter rs = make_driven_adapter(source);
+  const std::vector<float> src = flatten(*source);
+  const std::int64_t stamp = 1'000'000'000;
+  const std::string map_frame = "map";
+
+  AwNdtScanMatcher * h = make_handle(map_frame, "base_link", 1e9);  // impossible TP threshold
+  activate_and_seed(h, stamp, map_frame);
+  Captured cap;
+  const AwHost host = recording_host(cap);
+  const AwDiagnostics diag = noop_diag();
+  const AwSensorPointsMatchParams mp{50.0, 1e9, 1e9, 0.0};
+  AwSensorPointsMatchOutput out{};
+
+  ASSERT_EQ(
+    autoware_ndt_scan_matcher_rs_node_on_sensor_points_match(
+      h, rs.raw_handle(), &host, &diag, &mp, stamp, src.data(), source->size(), &out),
+    0);  // SM_MATCHED (a below-threshold score still matches; it just isn't converged)
+  EXPECT_FALSE(out.is_converged);
+  EXPECT_EQ(cap.count_pose_topic(0), 0);  // no NdtPose
+  EXPECT_EQ(cap.count_pose_topic(1), 0);  // no NdtPoseWithCovariance
+  EXPECT_EQ(cap.count_pose_topic(2), 1);  // InitialPoseWithCovariance still published
+  autoware_ndt_scan_matcher_rs_free(h);
+}
+
+// Gate: an inactive node returns SM_NOT_ACTIVATED and publishes nothing.
 TEST(SensorPointsMatch, NotActivatedGate)  // NOLINT
 {
   pcl::PointCloud<pcl::PointXYZ>::Ptr source;
   Adapter rs = make_driven_adapter(source);
   const std::vector<float> src = flatten(*source);
-  AwNdtScanMatcher * h = make_handle("map", "base_link");  // never activated
-  const AwHost host = mock_host();
+  AwNdtScanMatcher * h = make_handle("map", "base_link", 0.0);  // never activated
+  Captured cap;
+  const AwHost host = recording_host(cap);
   const AwDiagnostics diag = noop_diag();
   const AwSensorPointsMatchParams mp{50.0, 1e9, 1e9, 0.0};
-  std::vector<float> tbuf(16);
-  std::vector<float> crp(16);
-  std::vector<float> cip(16);
-  AwSensorPointsMatchOutput out = make_out(tbuf, crp, cip, 1);
+  AwSensorPointsMatchOutput out{};
   EXPECT_EQ(
     autoware_ndt_scan_matcher_rs_node_on_sensor_points_match(
       h, rs.raw_handle(), &host, &diag, &mp, 1'000'000'000, src.data(), source->size(), &out),
     1);  // SM_NOT_ACTIVATED
+  EXPECT_TRUE(cap.poses.empty());
+  EXPECT_TRUE(cap.float32s.empty());
   autoware_ndt_scan_matcher_rs_free(h);
 }
 
@@ -302,15 +405,13 @@ TEST(SensorPointsMatch, InterpolateFailedGate)  // NOLINT
   pcl::PointCloud<pcl::PointXYZ>::Ptr source;
   Adapter rs = make_driven_adapter(source);
   const std::vector<float> src = flatten(*source);
-  AwNdtScanMatcher * h = make_handle("map", "base_link");
+  AwNdtScanMatcher * h = make_handle("map", "base_link", 0.0);
   const AwDiagnostics d = noop_diag();
-  autoware_ndt_scan_matcher_rs_node_on_trigger(h, &d, true, 0);  // activate, but seed nothing
-  const AwHost host = mock_host();
+  autoware_ndt_scan_matcher_rs_node_on_trigger(h, &d, true, 0);  // activate, seed nothing
+  Captured cap;
+  const AwHost host = recording_host(cap);
   const AwSensorPointsMatchParams mp{50.0, 1e9, 1e9, 0.0};
-  std::vector<float> tbuf(16);
-  std::vector<float> crp(16);
-  std::vector<float> cip(16);
-  AwSensorPointsMatchOutput out = make_out(tbuf, crp, cip, 1);
+  AwSensorPointsMatchOutput out{};
   EXPECT_EQ(
     autoware_ndt_scan_matcher_rs_node_on_sensor_points_match(
       h, rs.raw_handle(), &host, &d, &mp, 1'000'000'000, src.data(), source->size(), &out),
@@ -322,22 +423,20 @@ TEST(SensorPointsMatch, InterpolateFailedGate)  // NOLINT
 TEST(SensorPointsMatch, MapNotSetGate)  // NOLINT
 {
   pcl::PointCloud<pcl::PointXYZ>::Ptr source;
-  Adapter driven = make_driven_adapter(source);  // only used for a non-empty source cloud
+  Adapter driven = make_driven_adapter(source);  // only for a non-empty source cloud
   const std::vector<float> src = flatten(*source);
   Adapter empty;
   empty.setParams(make_ndt_params());  // no addTarget → hasTarget() == false
 
   const std::int64_t stamp = 1'000'000'000;
   const std::string map_frame = "map";
-  AwNdtScanMatcher * h = make_handle(map_frame, "base_link");
+  AwNdtScanMatcher * h = make_handle(map_frame, "base_link", 0.0);
   activate_and_seed(h, stamp, map_frame);
-  const AwHost host = mock_host();
+  Captured cap;
+  const AwHost host = recording_host(cap);
   const AwDiagnostics diag = noop_diag();
   const AwSensorPointsMatchParams mp{50.0, 1e9, 1e9, 0.0};
-  std::vector<float> tbuf(16);
-  std::vector<float> crp(16);
-  std::vector<float> cip(16);
-  AwSensorPointsMatchOutput out = make_out(tbuf, crp, cip, 1);
+  AwSensorPointsMatchOutput out{};
   EXPECT_EQ(
     autoware_ndt_scan_matcher_rs_node_on_sensor_points_match(
       h, empty.raw_handle(), &host, &diag, &mp, stamp, src.data(), source->size(), &out),

@@ -56,6 +56,48 @@ impl AwStr {
 pub const LOG_WARN: i32 = 1;
 pub const LOG_ERROR: i32 = 2;
 
+/// A pose crossing the C ABI: position + `[x, y, z, w]` quaternion (Phase 5 sub-slice 3 publish ops).
+/// The C++ trampolines build the concrete ROS message; Rust only passes this POD.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct AwPose {
+    pub position: [f64; 3],
+    pub orientation: [f64; 4],
+}
+
+/// Which pose publisher [`AwHost::publish_pose`] targets (the C++ side maps it to the concrete
+/// publisher + message type; `NdtPose` is a `PoseStamped`, the others `PoseWithCovarianceStamped`).
+#[repr(i32)]
+#[derive(Clone, Copy)]
+pub enum AwPoseTopic {
+    NdtPose = 0,
+    NdtPoseWithCovariance = 1,
+    InitialPoseWithCovariance = 2,
+}
+
+/// Which `PoseArray` publisher [`AwHost::publish_pose_array`] targets (covariance debug arrays).
+#[repr(i32)]
+#[derive(Clone, Copy)]
+pub enum AwPoseArrayTopic {
+    MultiNdtPose = 0,
+    MultiInitialPose = 1,
+}
+
+/// Which `Float32Stamped` publisher [`AwHost::publish_float32`] targets.
+#[repr(i32)]
+#[derive(Clone, Copy)]
+pub enum AwFloat32Topic {
+    TransformProbability = 0,
+    NearestVoxelTransformationLikelihood = 1,
+}
+
+/// Which `Int32Stamped` publisher [`AwHost::publish_int32`] targets.
+#[repr(i32)]
+#[derive(Clone, Copy)]
+pub enum AwInt32Topic {
+    IterationNum = 0,
+}
+
 /// The ROS side-effects vtable. Built + owned C++-side (`make_host`); the trampolines cast `ctx` back
 /// to `NDTScanMatcher *`. Every fn-pointer + `ctx` must stay valid for the duration of the call.
 #[repr(C)]
@@ -70,6 +112,41 @@ pub struct AwHost {
     lookup_transform:
         extern "C" fn(*mut c_void, target: AwStr, source: AwStr, out_matrix4x4_row_major: *mut f32)
             -> bool,
+
+    // --- publish ops (Phase 5 sub-slice 3). POD in; the C++ trampolines build the ROS message +
+    // fan out by topic, and know the frame_ids (static node config). Each is catch(...)-guarded C++
+    // side so a publish exception never unwinds across the FFI. ---
+    /// Publish a pose; `cov6x6_row_major` null ⇒ `PoseStamped`-family, else `PoseWithCovarianceStamped`.
+    publish_pose: extern "C" fn(
+        *mut c_void,
+        topic: AwPoseTopic,
+        stamp_ns: i64,
+        pose: *const AwPose,
+        cov6x6_row_major: *const f64,
+    ),
+    /// Publish a `PoseArray` of `n` poses (covariance debug).
+    publish_pose_array:
+        extern "C" fn(*mut c_void, topic: AwPoseArrayTopic, stamp_ns: i64, poses: *const AwPose, n: usize),
+    /// Publish the NDT iteration-trajectory `MarkerArray` (C++ builds the ARROW markers, padded to
+    /// `max_iterations + 2`).
+    publish_marker:
+        extern "C" fn(*mut c_void, stamp_ns: i64, poses: *const AwPose, n: usize, max_iterations: i32),
+    /// Publish a `Float32Stamped` scalar.
+    publish_float32: extern "C" fn(*mut c_void, topic: AwFloat32Topic, stamp_ns: i64, value: f32),
+    /// Publish an `Int32Stamped` scalar.
+    publish_int32: extern "C" fn(*mut c_void, topic: AwInt32Topic, stamp_ns: i64, value: i32),
+    /// Broadcast the `map → ndt_base_frame` TF for the result pose.
+    publish_tf: extern "C" fn(*mut c_void, stamp_ns: i64, pose: *const AwPose),
+    /// Publish the initial-to-result debug quadruple (relative pose + 3 distances); the C++ side does
+    /// the `inverse_transform_pose` + `norm` geometry. `old_pos`/`new_pos` are the bracket positions.
+    publish_initial_to_result: extern "C" fn(
+        *mut c_void,
+        stamp_ns: i64,
+        result: *const AwPose,
+        initial: *const AwPose,
+        old_pos: *const f64,
+        new_pos: *const f64,
+    ),
 }
 
 impl AwHost {
@@ -101,5 +178,55 @@ impl AwHost {
             out.as_mut_ptr(),
         );
         ok.then_some(out)
+    }
+
+    /// Publish `pose` (with `cov` ⇒ `PoseWithCovarianceStamped`, else `PoseStamped`) on `topic`.
+    pub fn publish_pose(&self, topic: AwPoseTopic, stamp_ns: i64, pose: &AwPose, cov: Option<&[f64; 36]>) {
+        let cov_ptr = cov.map_or(core::ptr::null(), |c| c.as_ptr());
+        (self.publish_pose)(self.ctx, topic, stamp_ns, pose, cov_ptr);
+    }
+
+    /// Publish `poses` as a `PoseArray` on `topic`.
+    pub fn publish_pose_array(&self, topic: AwPoseArrayTopic, stamp_ns: i64, poses: &[AwPose]) {
+        (self.publish_pose_array)(self.ctx, topic, stamp_ns, poses.as_ptr(), poses.len());
+    }
+
+    /// Publish the NDT iteration-trajectory markers (`max_iterations` sets the C++ padding length).
+    pub fn publish_marker(&self, stamp_ns: i64, poses: &[AwPose], max_iterations: i32) {
+        (self.publish_marker)(self.ctx, stamp_ns, poses.as_ptr(), poses.len(), max_iterations);
+    }
+
+    /// Publish a `Float32Stamped` scalar on `topic`.
+    pub fn publish_float32(&self, topic: AwFloat32Topic, stamp_ns: i64, value: f32) {
+        (self.publish_float32)(self.ctx, topic, stamp_ns, value);
+    }
+
+    /// Publish an `Int32Stamped` scalar on `topic`.
+    pub fn publish_int32(&self, topic: AwInt32Topic, stamp_ns: i64, value: i32) {
+        (self.publish_int32)(self.ctx, topic, stamp_ns, value);
+    }
+
+    /// Broadcast the result-pose TF.
+    pub fn publish_tf(&self, stamp_ns: i64, pose: &AwPose) {
+        (self.publish_tf)(self.ctx, stamp_ns, pose);
+    }
+
+    /// Publish the initial-to-result debug quadruple (C++ does the relative-pose + distance geometry).
+    pub fn publish_initial_to_result(
+        &self,
+        stamp_ns: i64,
+        result: &AwPose,
+        initial: &AwPose,
+        old_pos: &[f64; 3],
+        new_pos: &[f64; 3],
+    ) {
+        (self.publish_initial_to_result)(
+            self.ctx,
+            stamp_ns,
+            result,
+            initial,
+            old_pos.as_ptr(),
+            new_pos.as_ptr(),
+        );
     }
 }

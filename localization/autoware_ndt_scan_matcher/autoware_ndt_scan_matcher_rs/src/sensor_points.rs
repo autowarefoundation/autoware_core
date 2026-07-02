@@ -24,10 +24,11 @@ use nalgebra::{
 };
 
 use crate::engine::{
-    ConvergenceParams, CovEstimationParams, NdtEngine, estimate_pose_covariance, fill_pose_buffer,
-    run_align,
+    ConvergenceParams, CovEstimationParams, NdtEngine, estimate_pose_covariance, run_align,
 };
-use crate::ffi_host::{AwHost, LOG_ERROR, LOG_WARN};
+use crate::ffi_host::{
+    AwFloat32Topic, AwHost, AwInt32Topic, AwPose, AwPoseArrayTopic, AwPoseTopic, LOG_ERROR, LOG_WARN,
+};
 use crate::node::{DIAGNOSTIC_ERROR, DIAGNOSTIC_WARN, Diagnostics};
 use crate::node_handle::NdtScanMatcherRs;
 
@@ -257,33 +258,14 @@ pub struct AwSensorPointsMatchParams {
     pub regularization_scale_factor: f64,
 }
 
-/// C-ABI result of the middle. Scalars are written by Rust; the variable-length pose arrays cross
-/// through caller-owned out-buffers (`*_poses` pointers + caps set C++-side, true counts written back
-/// — the cap+count contract shared with `AwCovEstimationOutput`). `result_pose` is row-major 4x4;
-/// `initial_*` reproduce the interpolated pose the node republishes / feeds to `publish_initial_to_result`.
+/// C-ABI result of the middle (Phase 5 sub-slice 3: the publishers now go through the `AwHost` publish
+/// ops, so this shrank to what the C++ shell still needs). `result_pose` (row-major 4x4) lets C++
+/// transform the `base_link` cloud → map for the still-C++ cloud publishers; `is_converged` feeds the
+/// wrapper's `skipping_publish_num`.
 #[repr(C)]
 pub struct AwSensorPointsMatchOutput {
     pub result_pose: [f32; 16],
-    pub ndt_covariance: [f64; 36],
-    pub transform_probability: f32,
-    pub nearest_voxel_transformation_likelihood: f32,
-    pub iteration_num: i32,
     pub is_converged: bool,
-    pub initial_position: [f64; 3],
-    pub initial_orientation: [f64; 4],
-    pub initial_covariance: [f64; 36],
-    pub initial_old_position: [f64; 3],
-    pub initial_new_position: [f64; 3],
-    /// `0` none, `1` `MULTI_NDT` (both arrays), `2` `MULTI_NDT_SCORE` (initial only).
-    pub publish_kind: i32,
-    pub transformation_array: *mut f32,
-    pub transformation_cap: u32,
-    pub transformation_count: u32,
-    pub multi_ndt_result_poses: *mut f32,
-    pub multi_initial_poses: *mut f32,
-    pub pose_cap: u32,
-    pub multi_ndt_result_count: u32,
-    pub multi_initial_count: u32,
 }
 
 /// Build a 4x4 `f32` transform from a position + `[x, y, z, w]` quaternion (mirrors the C++
@@ -333,14 +315,35 @@ fn map_to_base_link_rot3x3(result_pose: &Matrix4<f32>) -> [f64; 9] {
     out
 }
 
-/// The sensor-callback middle: gates → align → convergence → covariance, emitting the same diagnostics
-/// and filling `out` for the C++ publishers. Returns an `SM_*` status. Mirrors
-/// `callback_sensor_points_main` lines ~560–981 in order.
+/// Convert a 4x4 `f32` transform to an [`AwPose`] (translation from column 3; rotation → unit
+/// quaternion `[x, y, z, w]`), mirroring the C++ `matrix4f_to_pose` used by the publishers.
+fn matrix4_to_aw_pose(m: &Matrix4<f32>) -> AwPose {
+    let rot: Matrix3<f64> = m.fixed_view::<3, 3>(0, 0).into_owned().map(f64::from);
+    let q = UnitQuaternion::from_rotation_matrix(&Rotation3::from_matrix_unchecked(rot)).into_inner();
+    AwPose {
+        position: [
+            f64::from(m[(0, 3)]),
+            f64::from(m[(1, 3)]),
+            f64::from(m[(2, 3)]),
+        ],
+        orientation: [q.i, q.j, q.k, q.w],
+    }
+}
+
+/// Collect a slice of 4x4 poses into `AwPose`s (for the marker trajectory + covariance debug arrays).
+fn aw_poses(poses: &[Matrix4<f32>]) -> alloc::vec::Vec<AwPose> {
+    poses.iter().map(matrix4_to_aw_pose).collect()
+}
+
+/// The sensor-callback middle: gates → align → convergence → covariance, emitting the diagnostics and
+/// **publishing the POD results through the `AwHost` publish ops** (Phase 5 sub-slice 3); `out` carries
+/// only the result pose + convergence for the still-C++ cloud publishers + `skipping_publish_num`.
+/// Returns an `SM_*` status. Mirrors `callback_sensor_points_main` lines ~560–981 in order.
 ///
 /// # Safety
 /// All pointers must be valid/live for the call (or null → `SM_INVALID`). `source_xyz` addresses
-/// `3 * source_count` readable `f32`; the `out.*_poses` buffers each address their `*_cap * 16`
-/// writable `f32` (or are null to skip). The `host`/`diag` vtables + `engine`/`handle` outlive the call.
+/// `3 * source_count` readable `f32`; `out` is a writable [`AwSensorPointsMatchOutput`]. The
+/// `host`/`diag` vtables + `engine`/`handle` outlive the call.
 #[expect(
     unsafe_code,
     reason = "C ABI boundary; pointers validated per rust-c-ffi-safety"
@@ -588,37 +591,80 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_on_sensor_points_matc
         );
     }
 
-    // fill the result struct for the C++ publishers.
-    o.result_pose = matrix4_to_row_major(&outcome.pose);
-    o.ndt_covariance = cov.ndt_covariance;
-    o.transform_probability = result.transform_probability;
-    o.nearest_voxel_transformation_likelihood = result.nearest_voxel_likelihood;
-    o.iteration_num = result.iteration_num;
-    o.is_converged = verdict.is_converged;
-    o.initial_position = interp.position;
-    o.initial_orientation = interp.orientation;
-    o.initial_covariance = interp.covariance;
-    o.initial_old_position = interp.old.position;
-    o.initial_new_position = interp.new_entry.position;
-    o.publish_kind = cov.publish_kind;
-    // SAFETY: each non-null out buffer addresses its `*_cap * 16` writable f32 per the contract.
-    unsafe {
-        o.transformation_count = fill_pose_buffer(
-            o.transformation_array,
-            o.transformation_cap as usize,
-            &result.transformation_array,
-        );
-        o.multi_ndt_result_count = fill_pose_buffer(
-            o.multi_ndt_result_poses,
-            o.pose_cap as usize,
-            &cov.multi_ndt_result_poses,
-        );
-        o.multi_initial_count = fill_pose_buffer(
-            o.multi_initial_poses,
-            o.pose_cap as usize,
-            &cov.multi_initial_poses,
+    // Publish results through the host (Phase 5 sub-slice 3): the C++ trampolines build the ROS
+    // messages + markers and know the frame_ids. `exe_time` + the cloud publishers stay C++ (sub-slice 4).
+    let result_pose_aw = matrix4_to_aw_pose(&outcome.pose);
+    let initial_pose_aw = AwPose {
+        position: interp.position,
+        orientation: interp.orientation,
+    };
+    ho.publish_pose(
+        AwPoseTopic::InitialPoseWithCovariance,
+        sensor_stamp_ns,
+        &initial_pose_aw,
+        Some(&interp.covariance),
+    );
+    ho.publish_float32(
+        AwFloat32Topic::TransformProbability,
+        sensor_stamp_ns,
+        result.transform_probability,
+    );
+    ho.publish_float32(
+        AwFloat32Topic::NearestVoxelTransformationLikelihood,
+        sensor_stamp_ns,
+        result.nearest_voxel_likelihood,
+    );
+    ho.publish_int32(
+        AwInt32Topic::IterationNum,
+        sensor_stamp_ns,
+        result.iteration_num,
+    );
+    ho.publish_tf(sensor_stamp_ns, &result_pose_aw);
+    // ndt_pose / ndt_pose_with_covariance publish only on convergence (the C++ `publish_pose` gate).
+    if verdict.is_converged {
+        ho.publish_pose(AwPoseTopic::NdtPose, sensor_stamp_ns, &result_pose_aw, None);
+        ho.publish_pose(
+            AwPoseTopic::NdtPoseWithCovariance,
+            sensor_stamp_ns,
+            &result_pose_aw,
+            Some(&cov.ndt_covariance),
         );
     }
+    ho.publish_marker(
+        sensor_stamp_ns,
+        &aw_poses(&result.transformation_array),
+        outcome.max_iterations,
+    );
+    ho.publish_initial_to_result(
+        sensor_stamp_ns,
+        &result_pose_aw,
+        &initial_pose_aw,
+        &interp.old.position,
+        &interp.new_entry.position,
+    );
+    // covariance debug pose arrays (kind 1 ⇒ both, 2 ⇒ initial only; 0 ⇒ none).
+    if cov.publish_kind == 1 {
+        ho.publish_pose_array(
+            AwPoseArrayTopic::MultiNdtPose,
+            sensor_stamp_ns,
+            &aw_poses(&cov.multi_ndt_result_poses),
+        );
+        ho.publish_pose_array(
+            AwPoseArrayTopic::MultiInitialPose,
+            sensor_stamp_ns,
+            &aw_poses(&cov.multi_initial_poses),
+        );
+    } else if cov.publish_kind == 2 {
+        ho.publish_pose_array(
+            AwPoseArrayTopic::MultiInitialPose,
+            sensor_stamp_ns,
+            &aw_poses(&cov.multi_initial_poses),
+        );
+    }
+
+    // Return the minimal state the C++ shell still needs (map-cloud transform + skipping_publish_num).
+    o.result_pose = matrix4_to_row_major(&outcome.pose);
+    o.is_converged = verdict.is_converged;
     SM_MATCHED
 }
 
@@ -675,6 +721,25 @@ mod tests {
     fn ns_to_sec_matches() {
         assert_eq!(ns_to_sec(1_500_000_000), 1.5);
         assert_eq!(ns_to_sec(0), 0.0);
+    }
+
+    #[test]
+    fn matrix4_to_aw_pose_identity_and_quarter_turn() {
+        // Identity → origin position + identity quaternion [0,0,0,1].
+        let p0 = matrix4_to_aw_pose(&Matrix4::<f32>::identity());
+        assert!((p0.position[0]).abs() < 1e-9);
+        assert!((p0.orientation[3] - 1.0).abs() < 1e-9);
+        // Round-trip a translation + 90° yaw through pose_to_matrix4 → matrix4_to_aw_pose.
+        let m = pose_to_matrix4(&[1.0, 2.0, 3.0], &[0.0, 0.0, 0.707_106_77, 0.707_106_77]);
+        let p = matrix4_to_aw_pose(&m);
+        assert!((p.position[0] - 1.0).abs() < 1e-5);
+        assert!((p.position[1] - 2.0).abs() < 1e-5);
+        assert!((p.position[2] - 3.0).abs() < 1e-5);
+        // 90° about z: quaternion z ≈ w ≈ sin/cos(45°); x, y ≈ 0.
+        assert!((p.orientation[0]).abs() < 1e-5);
+        assert!((p.orientation[1]).abs() < 1e-5);
+        assert!((p.orientation[2] - 0.707_106_77).abs() < 1e-5);
+        assert!((p.orientation[3] - 0.707_106_77).abs() < 1e-5);
     }
 
     #[test]
