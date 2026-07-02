@@ -21,6 +21,8 @@
 #include <pcl/segmentation/extract_clusters.h>
 
 #include <string>
+#include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace autoware::euclidean_cluster
@@ -114,6 +116,122 @@ EuclideanClusterObjectDetector::cluster_standard(
   }
 
   return clusters;
+}
+
+/**
+ * @brief Helper func to perform voxel grid downsampling on a point cloud, then perform Euclidean
+ * clustering. This is a faster but less accurate approach, as downsampling may remove points
+ * important for clustering. Still, it's useful for large point clouds where speed is more
+ * important than accuracy.
+ *
+ * @param input_cloud Input point cloud to cluster.
+ *
+ * @return tl::expected<std::vector<pcl::PointCloud<pcl::PointXYZ>>, std::string> A vector of
+ * point clouds, each representing a cluster.
+ */
+tl::expected<std::vector<pcl::PointCloud<pcl::PointXYZ>>, std::string>
+EuclideanClusterObjectDetector::cluster_voxel_grid(
+  const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & input_cloud) const
+{
+  // 1. Downsample with voxel grid
+  pcl::PointCloud<pcl::PointXYZ>::Ptr voxel_centroids(new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::VoxelGrid<pcl::PointXYZ> voxel_grid;
+  voxel_grid.setLeafSize(param_.voxel_leaf_size, param_.voxel_leaf_size, 100000.0f);
+  voxel_grid.setMinimumPointsNumberPerVoxel(param_.min_points_number_per_voxel);
+  voxel_grid.setInputCloud(input_cloud);
+  voxel_grid.setSaveLeafLayout(true);
+  voxel_grid.filter(*voxel_centroids);
+
+  if (voxel_centroids->empty()) {
+    return std::vector<pcl::PointCloud<pcl::PointXYZ>>{};
+  }
+
+  // 2. Clustering preparation (2D projection if height not used)
+  pcl::PointCloud<pcl::PointXYZ>::Ptr search_cloud = voxel_centroids;
+  if (!param_.use_height) {
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_2d(new pcl::PointCloud<pcl::PointXYZ>);
+    cloud_2d->points.reserve(voxel_centroids->points.size());
+    for (const auto & point : voxel_centroids->points) {
+      cloud_2d->push_back(pcl::PointXYZ(point.x, point.y, 0.0f));
+    }
+    search_cloud = cloud_2d;
+  }
+
+  // 3. Create KD-Tree
+  pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
+  tree->setInputCloud(search_cloud);
+
+  // 4. Euclidean clustering on voxel centroids
+  std::vector<pcl::PointIndices> cluster_indices;
+  pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
+  ec.setClusterTolerance(param_.tolerance);
+  ec.setMinClusterSize(1);
+  ec.setMaxClusterSize(param_.max_cluster_size);
+  ec.setSearchMethod(tree);
+  ec.setInputCloud(search_cloud);
+  ec.extract(cluster_indices);
+
+  // 5. Create map to search cluster index from voxel grid index
+  std::unordered_map<int, size_t> voxel_to_cluster_map;
+  voxel_to_cluster_map.reserve(voxel_centroids->points.size());
+
+  for (size_t cluster_id = 0; cluster_id < cluster_indices.size(); ++cluster_id) {
+    for (const auto & centroid_idx : cluster_indices[cluster_id].indices) {
+      const auto & p = voxel_centroids->points[centroid_idx];
+
+// Temporarily disable array-bounds warning for this specific PCL function call
+// This is a known issue with PCL 1.14 and GCC 13 due to Eigen alignment
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
+      int voxel_1d_idx =
+        voxel_grid.getCentroidIndexAt(voxel_grid.getGridCoordinates(p.x, p.y, p.z));
+#pragma GCC diagnostic pop
+
+      voxel_to_cluster_map[voxel_1d_idx] = cluster_id;
+    }
+  }
+
+  // 5. Stream the raw input cloud and bucket points into their respective clusters
+  std::vector<pcl::PointCloud<pcl::PointXYZ>> temp_clusters(cluster_indices.size());
+
+  for (const auto & point : input_cloud->points) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
+    int voxel_1d_idx =
+      voxel_grid.getCentroidIndexAt(voxel_grid.getGridCoordinates(point.x, point.y, point.z));
+#pragma GCC diagnostic pop
+
+    auto map_it = voxel_to_cluster_map.find(voxel_1d_idx);
+    if (map_it != voxel_to_cluster_map.end()) {
+      size_t target_cluster_id = map_it->second;
+
+      // Proactive Trap Defense: Avoid massive memory consumption from oversized clusters
+      if (
+        temp_clusters[target_cluster_id].points.size() <
+        static_cast<size_t>(param_.max_cluster_size)) {
+        temp_clusters[target_cluster_id].points.push_back(point);
+      }
+    }
+  }
+
+  // 6. Filter final clusters by size constraints
+  std::vector<pcl::PointCloud<pcl::PointXYZ>> valid_clusters;
+  valid_clusters.reserve(temp_clusters.size());
+
+  // 7. Build final output
+  for (auto & cluster : temp_clusters) {
+    size_t cluster_size = cluster.points.size();
+    if (
+      cluster_size >= static_cast<size_t>(param_.min_cluster_size) &&
+      cluster_size <= static_cast<size_t>(param_.max_cluster_size)) {
+      cluster.width = cluster_size;
+      cluster.height = 1;
+      cluster.is_dense = false;
+      valid_clusters.push_back(std::move(cluster));
+    }
+  }
+
+  return valid_clusters;
 }
 
 }  // namespace autoware::euclidean_cluster
