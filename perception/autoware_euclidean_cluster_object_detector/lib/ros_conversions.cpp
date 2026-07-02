@@ -14,6 +14,7 @@
 
 #include "ros_conversions.hpp"
 
+#include <geometry_msgs/msg/point.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
 
 #include <vector>

@@ -21,6 +21,7 @@
 
 #include <pcl_conversions/pcl_conversions.h>
 
+#include <functional>
 #include <memory>
 
 namespace autoware::euclidean_cluster
