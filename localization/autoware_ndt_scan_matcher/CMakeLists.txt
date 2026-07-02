@@ -31,11 +31,9 @@ include_directories(${PCL_INCLUDE_DIRS})
 
 # Rust port build switch (see plan/ndt_in_rust.md, 案B). When OFF (default) the package builds the
 # original C++ unchanged and does not depend on Rust/Corrosion at all. When ON, the nested
-# `autoware_ndt_scan_matcher_rs` crate is built via Corrosion, linked over the C ABI, and the node's
-# callbacks dispatch their compute to the Rust engine (the per-callback `#ifdef NDT_USE_RUST` in the
-# .cpp). The C++ sources are the same in both configs — the only engine-type switch is the typedef
-# in ndt_backend.hpp. Defined before the libraries so both `multigrid_ndt_omp` and ${PROJECT_NAME}
-# can use it.
+# `autoware_ndt_scan_matcher_rs` crate is built via Corrosion, linked over the C ABI, and selected
+# node/map-update shells dispatch their compute to the Rust engine. Defined before the libraries so
+# both `multigrid_ndt_omp` and ${PROJECT_NAME} can use it.
 option(NDT_USE_RUST "Build/use the Rust port (autoware_ndt_scan_matcher_rs) over FFI" OFF)
 
 if(NDT_USE_RUST)
@@ -98,9 +96,23 @@ else()
   )
 endif()
 
+set(NDT_SCAN_MATCHER_NODE_SHELL_SOURCES
+  src/ndt_scan_matcher_core.cpp
+)
+
+if(NDT_USE_RUST)
+  list(APPEND NDT_SCAN_MATCHER_NODE_SHELL_SOURCES
+    src/ndt_scan_matcher_rust_shell.cpp
+  )
+else()
+  list(APPEND NDT_SCAN_MATCHER_NODE_SHELL_SOURCES
+    src/ndt_scan_matcher_legacy_shell.cpp
+  )
+endif()
+
 ament_auto_add_library(${PROJECT_NAME} SHARED
   ${NDT_SCAN_MATCHER_MAP_UPDATE_SOURCES}
-  src/ndt_scan_matcher_core.cpp
+  ${NDT_SCAN_MATCHER_NODE_SHELL_SOURCES}
   src/ndt_scan_matcher_helper.cpp
   src/particle.cpp
 )

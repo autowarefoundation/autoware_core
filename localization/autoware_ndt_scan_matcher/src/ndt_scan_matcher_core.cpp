@@ -296,123 +296,11 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
 }
 
 #ifdef NDT_USE_RUST
-// Forward declaration: the pose callbacks below build an AwDiagnostics via this helper, whose
-// definition (with the diag_* trampolines) lives next to make_host further down the file.
 namespace
 {
 AwDiagnostics make_diagnostics(DiagnosticsInterface * d);
 }  // namespace
 #endif
-
-void NDTScanMatcher::callback_timer()
-{
-  const rclcpp::Time ros_time_now = this->now();
-
-  diagnostics_map_update_->clear();
-
-  diagnostics_map_update_->add_key_value("timer_callback_time_stamp", ros_time_now.nanoseconds());
-
-#ifdef NDT_USE_RUST
-  // Activation + latest-EKF-position are Rust-owned (Phase 1 slice B); read them over the FFI.
-  const bool node_is_activated = autoware_ndt_scan_matcher_rs_is_activated(rs_.raw());
-  std::optional<geometry_msgs::msg::Point> latest_ekf_position;
-  std::array<double, 3> ekf_xyz{};
-  if (autoware_ndt_scan_matcher_rs_latest_ekf_position(rs_.raw(), ekf_xyz.data())) {
-    geometry_msgs::msg::Point point;
-    point.x = ekf_xyz[0];
-    point.y = ekf_xyz[1];
-    point.z = ekf_xyz[2];
-    latest_ekf_position = point;
-  }
-#else
-  const bool node_is_activated = is_activated_;
-  const auto latest_ekf_position = latest_ekf_position_.with([](const auto & pos) { return pos; });
-#endif
-  map_update_module_->callback_timer(node_is_activated, latest_ekf_position, diagnostics_map_update_);
-
-  diagnostics_map_update_->publish(ros_time_now);
-}
-
-void NDTScanMatcher::callback_initial_pose(
-  const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr initial_pose_msg_ptr)
-{
-#ifdef NDT_USE_RUST
-  // Callback-level: the whole body — diagnostics + activation/frame gates + buffer push +
-  // latest-EKF-position — runs in Rust, driving the Rust-owned state on the handle (Phase 1 slice B).
-  // The C++ shell only builds the diagnostics vtable + the pose view.
-  const AwDiagnostics diag = make_diagnostics(diagnostics_initial_pose_.get());
-  const AwPoseWithCovarianceStampedView view = make_pose_with_cov_view(*initial_pose_msg_ptr);
-  autoware_ndt_scan_matcher_rs_node_on_initial_pose(rs_.raw(), &diag, &view);
-#else
-  diagnostics_initial_pose_->clear();
-
-  callback_initial_pose_main(initial_pose_msg_ptr);
-
-  diagnostics_initial_pose_->publish(initial_pose_msg_ptr->header.stamp);
-#endif
-}
-
-#ifndef NDT_USE_RUST
-// The C++ baseline body (OFF only). Under NDT_USE_RUST the whole callback runs in Rust (see the
-// forwarder above), so this is not compiled.
-void NDTScanMatcher::callback_initial_pose_main(
-  const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr initial_pose_msg_ptr)
-{
-  diagnostics_initial_pose_->add_key_value(
-    "topic_time_stamp",
-    static_cast<rclcpp::Time>(initial_pose_msg_ptr->header.stamp).nanoseconds());
-
-  // check is_activated
-  diagnostics_initial_pose_->add_key_value("is_activated", static_cast<bool>(is_activated_));
-  if (!is_activated_) {
-    std::stringstream message;
-    message << "Node is not activated.";
-    diagnostics_initial_pose_->update_level_and_message(
-      diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
-    return;
-  }
-
-  // check is_expected_frame_id
-  const bool is_expected_frame_id =
-    (initial_pose_msg_ptr->header.frame_id == param_.frame.map_frame);
-  diagnostics_initial_pose_->add_key_value("is_expected_frame_id", is_expected_frame_id);
-  if (!is_expected_frame_id) {
-    std::stringstream message;
-    message << "Received initial pose message with frame_id "
-            << initial_pose_msg_ptr->header.frame_id << ", but expected " << param_.frame.map_frame
-            << ". Please check the frame_id in the input topic and ensure it is correct.";
-    diagnostics_initial_pose_->update_level_and_message(
-      diagnostic_msgs::msg::DiagnosticStatus::ERROR, message.str());
-    return;
-  }
-
-  initial_pose_buffer_->push_back(initial_pose_msg_ptr);
-
-  latest_ekf_position_.with([&](auto & pos) { pos = initial_pose_msg_ptr->pose.pose.position; });
-}
-#endif
-
-void NDTScanMatcher::callback_regularization_pose(
-  geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr pose_conv_msg_ptr)
-{
-#ifdef NDT_USE_RUST
-  // Callback-level: the whole body (diagnostics + buffer push) runs in Rust. The pose now crosses as
-  // a value view and is pushed into the Rust-owned regularization buffer on the handle (Phase 1
-  // slice A) — no host vtable needed here.
-  const AwDiagnostics diag = make_diagnostics(diagnostics_regularization_pose_.get());
-  const AwPoseWithCovarianceStampedView view = make_pose_with_cov_view(*pose_conv_msg_ptr);
-  autoware_ndt_scan_matcher_rs_node_on_regularization_pose(rs_.raw(), &diag, &view);
-#else
-  diagnostics_regularization_pose_->clear();
-
-  diagnostics_regularization_pose_->add_key_value(
-    "topic_time_stamp", static_cast<rclcpp::Time>(pose_conv_msg_ptr->header.stamp).nanoseconds());
-
-  regularization_pose_buffer_->push_back(pose_conv_msg_ptr);
-
-  diagnostics_regularization_pose_->publish(pose_conv_msg_ptr->header.stamp);
-#endif
-}
 
 void NDTScanMatcher::callback_sensor_points(
   sensor_msgs::msg::PointCloud2::ConstSharedPtr sensor_points_msg_in_sensor_frame)
@@ -1523,35 +1411,6 @@ AwHost NDTScanMatcher::make_host()
     &NDTScanMatcher::host_publish_voxel_score_points};
 }
 #endif
-
-void NDTScanMatcher::service_trigger_node(
-  const std_srvs::srv::SetBool::Request::SharedPtr req,
-  std_srvs::srv::SetBool::Response::SharedPtr res)
-{
-  const rclcpp::Time ros_time_now = this->now();
-
-#ifdef NDT_USE_RUST
-  // Callback-level: the whole body — diagnostics + activation + buffer clear — runs in Rust, driving
-  // the handle's Rust-owned state (Phase 1 slice B). The C++ shell only builds the diagnostics vtable
-  // and assigns res->success.
-  const AwDiagnostics diag = make_diagnostics(diagnostics_trigger_node_.get());
-  res->success = autoware_ndt_scan_matcher_rs_node_on_trigger(
-    rs_.raw(), &diag, req->data, ros_time_now.nanoseconds());
-#else
-  diagnostics_trigger_node_->clear();
-  diagnostics_trigger_node_->add_key_value("service_call_time_stamp", ros_time_now.nanoseconds());
-
-  is_activated_ = req->data;
-  if (is_activated_) {
-    initial_pose_buffer_->clear();
-  }
-  res->success = true;
-
-  diagnostics_trigger_node_->add_key_value("is_activated", static_cast<bool>(is_activated_));
-  diagnostics_trigger_node_->add_key_value("is_succeed_service", res->success);
-  diagnostics_trigger_node_->publish(ros_time_now);
-#endif
-}
 
 void NDTScanMatcher::service_ndt_align(
   const autoware_internal_localization_msgs::srv::PoseWithCovarianceStamped::Request::SharedPtr req,
