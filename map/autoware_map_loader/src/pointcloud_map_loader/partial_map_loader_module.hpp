@@ -51,9 +51,6 @@ private:
   [[nodiscard]] bool on_service_get_partial_point_cloud_map(
     GetPartialPointCloudMap::Request::SharedPtr req,
     GetPartialPointCloudMap::Response::SharedPtr res) const;
-  void partial_area_load(
-    const autoware_map_msgs::msg::AreaInfo & area,
-    const GetPartialPointCloudMap::Response::SharedPtr & response) const;
 };
 }  // namespace autoware::map_loader
 

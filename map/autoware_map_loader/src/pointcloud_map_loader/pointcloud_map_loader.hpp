@@ -1,0 +1,49 @@
+// Copyright 2022 The Autoware Contributors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#ifndef POINTCLOUD_MAP_LOADER__POINTCLOUD_MAP_LOADER_HPP_
+#define POINTCLOUD_MAP_LOADER__POINTCLOUD_MAP_LOADER_HPP_
+
+#include <sensor_msgs/msg/point_cloud2.hpp>
+
+#include <boost/optional.hpp>
+
+#include <functional>
+#include <string>
+#include <vector>
+
+namespace autoware::map_loader
+{
+/// @brief Logging callback type used by pointcloud map loading core logic.
+using PointcloudLoaderLogFunction = std::function<void(const std::string &)>;
+
+/// @brief Downsample a pointcloud message with a voxel-grid filter.
+/// @param msg_input Input pointcloud message.
+/// @param leaf_size Voxel leaf size in meters.
+/// @return Downsampled pointcloud message.
+sensor_msgs::msg::PointCloud2 downsample_pointcloud(
+  const sensor_msgs::msg::PointCloud2 & msg_input, float leaf_size);
+
+/// @brief Load and merge multiple PCD files into a single pointcloud message.
+/// @param pcd_paths Absolute paths to source PCD files.
+/// @param leaf_size Optional downsample leaf size. If not set, downsampling is skipped.
+/// @param debug_log Callback for debug-level progress logs.
+/// @param error_log Callback for error-level load failure logs.
+/// @return Merged pointcloud message in map frame.
+sensor_msgs::msg::PointCloud2 load_pointcloud_map(
+  const std::vector<std::string> & pcd_paths, boost::optional<float> leaf_size,
+  const PointcloudLoaderLogFunction & debug_log, const PointcloudLoaderLogFunction & error_log);
+}  // namespace autoware::map_loader
+
+#endif  // POINTCLOUD_MAP_LOADER__POINTCLOUD_MAP_LOADER_HPP_

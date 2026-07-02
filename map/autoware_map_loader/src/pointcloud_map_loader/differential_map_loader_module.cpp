@@ -14,6 +14,8 @@
 
 #include "differential_map_loader_module.hpp"
 
+#include "differential_map_loader.hpp"
+
 #include <map>
 #include <string>
 #include <utility>
@@ -32,46 +34,26 @@ DifferentialMapLoaderModule::DifferentialMapLoaderModule(
       std::placeholders::_1, std::placeholders::_2));
 }
 
-void DifferentialMapLoaderModule::differential_area_load(
-  const autoware_map_msgs::msg::AreaInfo & area_info, const std::vector<std::string> & cached_ids,
-  const GetDifferentialPointCloudMap::Response::SharedPtr & response) const
-{
-  // iterate over all the available pcd map grids
-  std::vector<bool> should_remove(static_cast<int>(cached_ids.size()), true);
-  for (const auto & ele : all_pcd_file_metadata_dict_) {
-    std::string path = ele.first;
-    PCDFileMetadata metadata = ele.second;
-
-    // assume that the map ID = map path (for now)
-    const std::string & map_id = path;
-
-    // skip if the pcd file is not within the queried area
-    if (!is_grid_within_queried_area(area_info, metadata)) continue;
-
-    auto id_in_cached_list = std::find(cached_ids.begin(), cached_ids.end(), map_id);
-    if (id_in_cached_list != cached_ids.end()) {
-      int index = static_cast<int>(id_in_cached_list - cached_ids.begin());
-      should_remove[index] = false;
-    } else {
-      response->new_pointcloud_with_ids.push_back(
-        load_point_cloud_map_cell_with_id(logger_, path, map_id, metadata));
-    }
-  }
-
-  for (size_t i = 0; i < cached_ids.size(); ++i) {
-    if (should_remove[i]) {
-      response->ids_to_remove.push_back(cached_ids[i]);
-    }
-  }
-}
-
 bool DifferentialMapLoaderModule::on_service_get_differential_point_cloud_map(
   GetDifferentialPointCloudMap::Request::SharedPtr req,
   GetDifferentialPointCloudMap::Response::SharedPtr res) const
 {
-  auto area = req->area;
-  std::vector<std::string> cached_ids = req->cached_ids;
-  differential_area_load(area, cached_ids, res);
+  const auto plan =
+    create_differential_map_load_plan(req->area, req->cached_ids, all_pcd_file_metadata_dict_);
+
+  for (const auto & map_id : plan.map_ids_to_load) {
+    const auto metadata_it = all_pcd_file_metadata_dict_.find(map_id);
+    if (metadata_it == all_pcd_file_metadata_dict_.end()) {
+      continue;
+    }
+
+    const auto & path = metadata_it->first;
+    const auto & metadata = metadata_it->second;
+    res->new_pointcloud_with_ids.push_back(
+      load_point_cloud_map_cell_with_id(logger_, path, map_id, metadata));
+  }
+
+  res->ids_to_remove = plan.ids_to_remove;
   res->header.frame_id = "map";
   return true;
 }

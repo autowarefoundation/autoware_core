@@ -46,11 +46,6 @@ private:
   std::unique_ptr<PartialMapLoaderModule> partial_map_loader_;
   std::unique_ptr<DifferentialMapLoaderModule> differential_map_loader_;
   std::unique_ptr<SelectedMapLoaderModule> selected_map_loader_;
-
-  std::vector<std::string> get_pcd_paths(
-    const std::vector<std::string> & pcd_paths_or_directory) const;
-  std::map<std::string, PCDFileMetadata> get_pcd_metadata(
-    const std::string & pcd_metadata_path, const std::vector<std::string> & pcd_paths) const;
 };
 }  // namespace autoware::map_loader
 

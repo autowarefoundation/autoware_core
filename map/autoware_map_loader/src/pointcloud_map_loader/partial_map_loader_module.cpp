@@ -14,6 +14,8 @@
 
 #include "partial_map_loader_module.hpp"
 
+#include "partial_map_loader.hpp"
+
 #include <map>
 #include <string>
 #include <utility>
@@ -31,32 +33,23 @@ PartialMapLoaderModule::PartialMapLoaderModule(
       std::placeholders::_2));
 }
 
-void PartialMapLoaderModule::partial_area_load(
-  const autoware_map_msgs::msg::AreaInfo & area,
-  const GetPartialPointCloudMap::Response::SharedPtr & response) const
-{
-  // iterate over all the available pcd map grids
-  for (const auto & ele : all_pcd_file_metadata_dict_) {
-    std::string path = ele.first;
-    PCDFileMetadata metadata = ele.second;
-
-    // assume that the map ID = map path (for now)
-    const std::string & map_id = path;
-
-    // skip if the pcd file is not within the queried area
-    if (!is_grid_within_queried_area(area, metadata)) continue;
-
-    response->new_pointcloud_with_ids.push_back(
-      load_point_cloud_map_cell_with_id(logger_, path, map_id, metadata));
-  }
-}
-
 bool PartialMapLoaderModule::on_service_get_partial_point_cloud_map(
   GetPartialPointCloudMap::Request::SharedPtr req,
   GetPartialPointCloudMap::Response::SharedPtr res) const
 {
-  auto area = req->area;
-  partial_area_load(area, res);
+  const auto map_ids_to_load = collect_partial_map_ids(req->area, all_pcd_file_metadata_dict_);
+  for (const auto & map_id : map_ids_to_load) {
+    const auto metadata_it = all_pcd_file_metadata_dict_.find(map_id);
+    if (metadata_it == all_pcd_file_metadata_dict_.end()) {
+      continue;
+    }
+
+    const auto & path = metadata_it->first;
+    const auto & metadata = metadata_it->second;
+    res->new_pointcloud_with_ids.push_back(
+      load_point_cloud_map_cell_with_id(logger_, path, map_id, metadata));
+  }
+
   res->header.frame_id = "map";
   return true;
 }
