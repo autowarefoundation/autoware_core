@@ -36,8 +36,7 @@ PointcloudMapLoaderModule::PointcloudMapLoaderModule(
     const auto leaf_size =
       boost::make_optional(static_cast<float>(node->declare_parameter<float>("leaf_size")));
     pcd = load_pointcloud_map(
-      pcd_paths, leaf_size,
-      [this](const std::string & msg) { RCLCPP_DEBUG_STREAM(logger_, msg); },
+      pcd_paths, leaf_size, [this](const std::string & msg) { RCLCPP_DEBUG_STREAM(logger_, msg); },
       [this](const std::string & msg) { RCLCPP_ERROR_STREAM(logger_, msg); });
   } else {
     pcd = load_pointcloud_map(
