@@ -15,4 +15,42 @@
 #ifndef PERCEPTION__AUTOWARE_EUCLIDEAN_CLUSTER_OBJECT_DETECTOR__LIB__ROS_CONVERSIONS_HPP_
 #define PERCEPTION__AUTOWARE_EUCLIDEAN_CLUSTER_OBJECT_DETECTOR__LIB__ROS_CONVERSIONS_HPP_
 
+#include <autoware_perception_msgs/msg/detected_objects.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <std_msgs/msg/header.hpp>
+
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+
+#include <vector>
+
+namespace autoware::euclidean_cluster
+{
+
+/**
+ * @brief Helper func to convert clusters this node to autoware_msgs detected_objects
+ *
+ * @param header Header for output message.
+ * @param clusters Vector of point clouds, each representing a cluster.
+ * @param output_msg Output message to populate with detected objects.
+ */
+void convert_clusters_to_detected_objects(
+  const std_msgs::msg::Header & header,
+  const std::vector<pcl::PointCloud<pcl::PointXYZ>> & clusters,
+  autoware_perception_msgs::msg::DetectedObjects & output_msg);
+
+/**
+ * @brief Helper func to convert clusters this node to a single point cloud for debugging.
+ *
+ * @param header Header for output message.
+ * @param clusters Vector of point clouds, each representing a cluster.
+ * @param output_msg Output message to populate with a single point cloud for debugging.
+ */
+void convert_clusters_to_debug_point_cloud(
+  const std_msgs::msg::Header & header,
+  const std::vector<pcl::PointCloud<pcl::PointXYZ>> & clusters,
+  sensor_msgs::msg::PointCloud2 & output_msg);
+
+}  // namespace autoware::euclidean_cluster
+
 #endif  // PERCEPTION__AUTOWARE_EUCLIDEAN_CLUSTER_OBJECT_DETECTOR__LIB__ROS_CONVERSIONS_HPP_
