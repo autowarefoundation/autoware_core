@@ -5,7 +5,6 @@ find_package(autoware_cmake REQUIRED)
 autoware_package()
 
 find_package(PCL REQUIRED)
-find_package(tl_expected REQUIRED)
 
 include_directories(
   src
@@ -22,10 +21,6 @@ ament_auto_add_library(${PROJECT_NAME}_lib SHARED
 
 target_link_libraries(${PROJECT_NAME}_lib
   ${PCL_LIBRARIES}
-)
-
-ament_target_dependencies(${PROJECT_NAME}_lib
-  tl_expected
 )
 
 target_include_directories(${PROJECT_NAME}_lib

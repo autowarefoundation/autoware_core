@@ -191,7 +191,7 @@ EuclideanClusterObjectDetector::cluster_voxel_grid(
     }
   }
 
-  // 5. Stream the raw input cloud and bucket points into their respective clusters
+  // 5. Stream raw input cloud & bucket points into their clusters
   std::vector<pcl::PointCloud<pcl::PointXYZ>> temp_clusters(cluster_indices.size());
 
   for (const auto & point : input_cloud->points) {
