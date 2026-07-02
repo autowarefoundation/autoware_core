@@ -15,11 +15,14 @@
 #ifndef POINTCLOUD_MAP_LOADER__POINTCLOUD_MAP_LOADER_HPP_
 #define POINTCLOUD_MAP_LOADER__POINTCLOUD_MAP_LOADER_HPP_
 
+#include "utils.hpp"
+
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
 #include <boost/optional.hpp>
 
 #include <functional>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -45,6 +48,22 @@ sensor_msgs::msg::PointCloud2 load_pointcloud_map(
   const std::vector<std::string> & pcd_paths, boost::optional<float> leaf_size,
   const PointcloudLoaderLogFunction & debug_log,
   const PointcloudLoaderLogFunction & error_log);
+
+/// @brief Resolve input paths to concrete PCD file paths.
+/// @param pcd_paths_or_directory Input entries, each being a PCD file path or directory.
+/// @param error_log Callback for invalid-path warnings.
+/// @return Resolved PCD file paths.
+std::vector<std::string> resolve_pcd_paths(
+  const std::vector<std::string> & pcd_paths_or_directory,
+  const PointcloudLoaderLogFunction & error_log);
+
+/// @brief Build metadata dictionary keyed by absolute PCD path.
+/// @param pcd_metadata_path Path to metadata YAML file.
+/// @param pcd_paths Resolved PCD file paths.
+/// @return Metadata dictionary used by map loader modules.
+/// @throws std::runtime_error on missing segments, missing metadata file, or PCD load failure.
+std::map<std::string, PCDFileMetadata> build_pcd_metadata_dict(
+  const std::string & pcd_metadata_path, const std::vector<std::string> & pcd_paths);
 }  // namespace autoware::map_loader
 
 #endif  // POINTCLOUD_MAP_LOADER__POINTCLOUD_MAP_LOADER_HPP_

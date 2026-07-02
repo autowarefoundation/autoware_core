@@ -14,7 +14,7 @@
 
 #include "pointcloud_map_loader_node.hpp"
 
-#include "pointcloud_map_loader_node_core.hpp"
+#include "pointcloud_map_loader.hpp"
 
 #include <map>
 #include <memory>
