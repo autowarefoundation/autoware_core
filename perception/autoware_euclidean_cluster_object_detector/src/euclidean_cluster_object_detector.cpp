@@ -205,9 +205,21 @@ EuclideanClusterObjectDetector::cluster_voxel_grid(
     if (map_it != voxel_to_cluster_map.end()) {
       size_t target_cluster_id = map_it->second;
 
-      // Proactive Trap Defense: Avoid massive memory consumption from oversized clusters
+      // Here I try to follow EXACTLY the legacy code's logic, although it's a bit funny:
+      // In legacy code it was like this:
+      // if (
+      //     cluster_data_size >
+      //     static_cast<std::size_t>(max_cluster_size_) * static_cast<std::size_t>(point_step)
+      // ) { continue; }
+      // Seems like authors intentionally allowed this cluster to exceed max size by 1 point so
+      // later it could trigger the skip with this:
+      // if (cluster_size > max_cluster_size_) {
+      //     skipped_cluster_count++;
+      //     continue;
+      // }
+      // I'm gonna do the same logic, but cleaner.
       if (
-        temp_clusters[target_cluster_id].points.size() <
+        temp_clusters[target_cluster_id].points.size() <=
         static_cast<size_t>(param_.max_cluster_size)) {
         temp_clusters[target_cluster_id].points.push_back(point);
       }
