@@ -17,6 +17,8 @@
 
 #include "utils.hpp"
 
+#include <autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp>
+#include <autoware/agnocast_wrapper/node.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include "autoware_map_msgs/srv/get_differential_point_cloud_map.hpp"
@@ -40,20 +42,21 @@ class DifferentialMapLoaderModule
 
 public:
   explicit DifferentialMapLoaderModule(
-    rclcpp::Node * node, std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict);
+    autoware::agnocast_wrapper::Node * node,
+    std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict);
 
 private:
   rclcpp::Logger logger_;
 
   std::map<std::string, PCDFileMetadata> all_pcd_file_metadata_dict_;
-  rclcpp::Service<GetDifferentialPointCloudMap>::SharedPtr get_differential_pcd_maps_service_;
+  AUTOWARE_SERVICE_PTR(GetDifferentialPointCloudMap) get_differential_pcd_maps_service_;
 
   [[nodiscard]] bool on_service_get_differential_point_cloud_map(
-    GetDifferentialPointCloudMap::Request::SharedPtr req,
-    GetDifferentialPointCloudMap::Response::SharedPtr res) const;
+    AUTOWARE_SERVER_REQUEST_PTR(GetDifferentialPointCloudMap) req,
+    AUTOWARE_SERVER_RESPONSE_PTR(GetDifferentialPointCloudMap) res) const;
   void differential_area_load(
     const autoware_map_msgs::msg::AreaInfo & area_info, const std::vector<std::string> & cached_ids,
-    const GetDifferentialPointCloudMap::Response::SharedPtr & response) const;
+    const AUTOWARE_SERVER_RESPONSE_PTR(GetDifferentialPointCloudMap) & response) const;
 };
 }  // namespace autoware::map_loader
 

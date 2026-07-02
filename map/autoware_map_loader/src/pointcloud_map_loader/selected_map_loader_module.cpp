@@ -47,7 +47,8 @@ autoware_map_msgs::msg::PointCloudMapMetaData create_metadata(
 }
 
 SelectedMapLoaderModule::SelectedMapLoaderModule(
-  rclcpp::Node * node, std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict)
+  autoware::agnocast_wrapper::Node * node,
+  std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict)
 : logger_(node->get_logger()), all_pcd_file_metadata_dict_(std::move(pcd_file_metadata_dict))
 {
   get_selected_pcd_maps_service_ = node->create_service<GetSelectedPointCloudMap>(
@@ -61,12 +62,15 @@ SelectedMapLoaderModule::SelectedMapLoaderModule(
   durable_qos.transient_local();
   pub_metadata_ = node->create_publisher<autoware_map_msgs::msg::PointCloudMapMetaData>(
     "output/pointcloud_map_metadata", durable_qos);
-  pub_metadata_->publish(create_metadata(all_pcd_file_metadata_dict_));
+  AUTOWARE_MESSAGE_UNIQUE_PTR(autoware_map_msgs::msg::PointCloudMapMetaData)
+  metadata_msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_metadata_);
+  *metadata_msg = create_metadata(all_pcd_file_metadata_dict_);
+  pub_metadata_->publish(std::move(metadata_msg));
 }
 
 bool SelectedMapLoaderModule::on_service_get_selected_point_cloud_map(
-  GetSelectedPointCloudMap::Request::SharedPtr req,
-  GetSelectedPointCloudMap::Response::SharedPtr res) const
+  AUTOWARE_SERVER_REQUEST_PTR(GetSelectedPointCloudMap) req,
+  AUTOWARE_SERVER_RESPONSE_PTR(GetSelectedPointCloudMap) res) const
 {
   const auto request_ids = req->cell_ids;
   for (const auto & request_id : request_ids) {

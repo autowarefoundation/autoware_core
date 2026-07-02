@@ -22,9 +22,11 @@ target_include_directories(pointcloud_map_loader_node
   ${PCL_INCLUDE_DIRS}
 )
 
-rclcpp_components_register_node(pointcloud_map_loader_node
+autoware_agnocast_wrapper_register_node(pointcloud_map_loader_node
   PLUGIN "autoware::map_loader::PointCloudMapLoaderNode"
   EXECUTABLE autoware_pointcloud_map_loader
+  ROS2_EXECUTOR SingleThreadedExecutor
+  AGNOCAST_EXECUTOR AgnocastOnlyCallbackIsolatedExecutor
 )
 
 ament_auto_add_library(lanelet2_map_loader_node SHARED
@@ -65,10 +67,12 @@ if(BUILD_TESTING)
   add_testcase(test/test_cylinder_box_overlap.cpp)
   add_testcase(test/test_replace_with_absolute_path.cpp)
   add_testcase(test/test_load_pcd_metadata.cpp)
-  add_testcase(test/test_pointcloud_map_loader_module.cpp)
-  add_testcase(test/test_partial_map_loader_module.cpp)
-  add_testcase(test/test_differential_map_loader_module.cpp)
-  add_testcase(test/test_selected_map_loader_module.cpp)
+  if(NOT "$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
+    add_testcase(test/test_pointcloud_map_loader_module.cpp)
+    add_testcase(test/test_partial_map_loader_module.cpp)
+    add_testcase(test/test_differential_map_loader_module.cpp)
+    add_testcase(test/test_selected_map_loader_module.cpp)
+  endif()
   add_testcase(test/test_lanelet2_map_loader_utils.cpp)
   add_testcase(test/test_lanelet2_map_cell_metadata.cpp)
   add_testcase(test/test_lanelet2_selected_map_loader_module.cpp)

@@ -53,16 +53,24 @@ protected:
     dummy_metadata.max = pcl::PointXYZ(1.0, 1.0, 1.0);
     dummy_metadata_dict["/tmp/dummy.pcd"] = dummy_metadata;
 
+    module_node_ =
+      std::make_shared<autoware::agnocast_wrapper::Node>("test_partial_map_loader_module_node");
+
     // Initialize the PartialMapLoaderModule with the dummy metadata dictionary
-    module_ = std::make_shared<PartialMapLoaderModule>(node_.get(), dummy_metadata_dict);
+    module_ = std::make_shared<PartialMapLoaderModule>(module_node_.get(), dummy_metadata_dict);
 
     // Create a client for the GetPartialPointCloudMap service
     client_ = node_->create_client<GetPartialPointCloudMap>("service/get_partial_pcd_map");
+
+    executor_.add_node(node_);
+    executor_.add_node(module_node_->get_node_base_interface());
   }
 
   void TearDown() override { rclcpp::shutdown(); }
 
   rclcpp::Node::SharedPtr node_;
+  autoware::agnocast_wrapper::Node::SharedPtr module_node_;
+  rclcpp::executors::SingleThreadedExecutor executor_;
   std::shared_ptr<PartialMapLoaderModule> module_;
   rclcpp::Client<GetPartialPointCloudMap>::SharedPtr client_;
 };
@@ -80,8 +88,7 @@ TEST_F(TestPartialMapLoaderModule, LoadPartialPCDFiles)
 
   // Call the service
   auto result_future = client_->async_send_request(request);
-  ASSERT_EQ(
-    rclcpp::spin_until_future_complete(node_, result_future), rclcpp::FutureReturnCode::SUCCESS);
+  ASSERT_EQ(executor_.spin_until_future_complete(result_future), rclcpp::FutureReturnCode::SUCCESS);
 
   // Check the result
   auto result = result_future.get();

@@ -17,6 +17,8 @@
 
 #include "utils.hpp"
 
+#include <autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp>
+#include <autoware/agnocast_wrapper/node.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <autoware_map_msgs/srv/get_partial_point_cloud_map.hpp>
@@ -40,20 +42,21 @@ class PartialMapLoaderModule
 
 public:
   explicit PartialMapLoaderModule(
-    rclcpp::Node * node, std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict);
+    autoware::agnocast_wrapper::Node * node,
+    std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict);
 
 private:
   rclcpp::Logger logger_;
 
   std::map<std::string, PCDFileMetadata> all_pcd_file_metadata_dict_;
-  rclcpp::Service<GetPartialPointCloudMap>::SharedPtr get_partial_pcd_maps_service_;
+  AUTOWARE_SERVICE_PTR(GetPartialPointCloudMap) get_partial_pcd_maps_service_;
 
   [[nodiscard]] bool on_service_get_partial_point_cloud_map(
-    GetPartialPointCloudMap::Request::SharedPtr req,
-    GetPartialPointCloudMap::Response::SharedPtr res) const;
+    AUTOWARE_SERVER_REQUEST_PTR(GetPartialPointCloudMap) req,
+    AUTOWARE_SERVER_RESPONSE_PTR(GetPartialPointCloudMap) res) const;
   void partial_area_load(
     const autoware_map_msgs::msg::AreaInfo & area,
-    const GetPartialPointCloudMap::Response::SharedPtr & response) const;
+    const AUTOWARE_SERVER_RESPONSE_PTR(GetPartialPointCloudMap) & response) const;
 };
 }  // namespace autoware::map_loader
 

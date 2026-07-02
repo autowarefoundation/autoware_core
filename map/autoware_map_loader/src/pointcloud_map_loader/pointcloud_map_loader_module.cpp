@@ -19,6 +19,7 @@
 #include <fmt/format.h>
 
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace autoware::map_loader
@@ -41,7 +42,7 @@ sensor_msgs::msg::PointCloud2 downsample(
 }
 
 PointcloudMapLoaderModule::PointcloudMapLoaderModule(
-  rclcpp::Node * node, const std::vector<std::string> & pcd_paths,
+  autoware::agnocast_wrapper::Node * node, const std::vector<std::string> & pcd_paths,
   const std::string & publisher_name, const bool use_downsample)
 : logger_(node->get_logger())
 {
@@ -64,7 +65,13 @@ PointcloudMapLoaderModule::PointcloudMapLoaderModule(
   }
 
   pcd.header.frame_id = "map";
-  pub_pointcloud_map_->publish(pcd);
+
+  // Borrow the loaned (shared-memory) buffer only at publish time so that the heaphook
+  // redirection window stays small and the SHM pool peak is just the final message size.
+  AUTOWARE_MESSAGE_UNIQUE_PTR(sensor_msgs::msg::PointCloud2)
+  out = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_pointcloud_map_);
+  *out = pcd;
+  pub_pointcloud_map_->publish(std::move(out));
 }
 
 sensor_msgs::msg::PointCloud2 PointcloudMapLoaderModule::load_pcd_files(
