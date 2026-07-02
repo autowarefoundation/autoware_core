@@ -555,6 +555,10 @@ mod tests {
             map_frame_len: map_frame.len(),
             initial_pose_timeout_sec: 1000.0,
             initial_pose_distance_tolerance_m: 1000.0,
+            base_frame: core::ptr::null(),
+            base_frame_len: 0,
+            sensor_points_timeout_sec: 1.0,
+            sensor_points_required_distance: 0.0,
         };
         // SAFETY: valid params; `map_frame` is valid for its length for the duration of the call.
         unsafe { crate::node_handle::autoware_ndt_scan_matcher_rs_new(&raw const p) }

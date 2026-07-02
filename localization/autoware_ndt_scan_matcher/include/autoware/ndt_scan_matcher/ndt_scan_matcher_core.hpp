@@ -146,6 +146,16 @@ private:
 
   static int count_oscillation(const std::vector<geometry_msgs::msg::Pose> & result_pose_msg_array);
 
+#ifdef NDT_USE_RUST
+  // Phase 5: the ROS side-effects host vtable (AwHost) the migrated sensor-callback body drives.
+  // Static trampolines cast `ctx` back to `this`; `make_host` assembles the vtable. Side-effects only.
+  static int64_t host_now_ns(void * ctx);
+  static void host_log(void * ctx, int32_t level, const std::uint8_t * msg, std::size_t msg_len);
+  static bool host_lookup_transform(
+    void * ctx, AwStr target, AwStr source, float * out_matrix4x4_row_major);
+  AwHost make_host();
+#endif
+
 #ifndef NDT_USE_RUST
   // Phase N4b: replaced by the Rust covariance orchestrator under NDT_USE_RUST (see the .cpp).
   Eigen::Matrix2d estimate_covariance(

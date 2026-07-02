@@ -32,6 +32,9 @@ pub mod engine;
 // Panic-safe C ABI boundary helpers (catch_unwind) + AwStatus/Error for the object-level FFI; std-only.
 #[cfg(feature = "std")]
 pub mod ffi;
+// ROS side-effects host vtable (AwHost: clock/log/TF) — the C-ABI adapter for the portable Host seam.
+#[cfg(feature = "std")]
+pub mod ffi_host;
 pub mod helper;
 // Portable node orchestration: the `Host` port traits + the `no_std` scan matcher over the engine
 // (reusable on ROS / bare-metal / the Tokio example). See plan/ndt_in_rust.md "full Rust port".
@@ -51,6 +54,9 @@ pub mod node_handle;
 #[cfg(feature = "std")]
 pub mod node_map_update;
 pub mod scan_matcher;
+// ROS sensor-callback prologue (decode/TF/transform/validation → base_link cloud); std-only.
+#[cfg(feature = "std")]
+pub mod sensor_points;
 pub mod transform;
 pub mod voxel_grid;
 

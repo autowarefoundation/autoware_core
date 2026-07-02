@@ -254,6 +254,14 @@ if(BUILD_TESTING)
     )
     target_link_libraries(test_map_update_state
       ${PROJECT_NAME} autoware_ndt_scan_matcher_rs)
+
+    # 16. Differential test: the Rust sensor-callback prologue (decode/TF/transform via AwHost) vs the
+    #     C++ pcl path + the validation gates (node port: Phase 5 sub-slice 1).
+    ament_auto_add_gtest(test_sensor_points_prepare
+      test/test_sensor_points_prepare.cpp
+    )
+    target_link_libraries(test_sensor_points_prepare
+      ${PROJECT_NAME} ${PCL_LIBRARIES} autoware_ndt_scan_matcher_rs)
   endif()
 endif()
 

@@ -67,6 +67,10 @@ pub struct Params {
     pub map_frame: Vec<u8>,
     pub initial_pose_timeout_sec: f64,
     pub initial_pose_distance_tolerance_m: f64,
+    // Sensor-points prologue (`frame.base_frame` + `sensor_points.*`).
+    pub base_frame: Vec<u8>,
+    pub sensor_points_timeout_sec: f64,
+    pub sensor_points_required_distance: f64,
 }
 
 /// Map-update decision state (Phase 6): the position of the last attempted map update, and whether
@@ -308,6 +312,10 @@ pub struct AwNdtParams {
     pub map_frame_len: usize,
     pub initial_pose_timeout_sec: f64,
     pub initial_pose_distance_tolerance_m: f64,
+    pub base_frame: *const u8,
+    pub base_frame_len: usize,
+    pub sensor_points_timeout_sec: f64,
+    pub sensor_points_required_distance: f64,
 }
 
 /// C-ABI view of a `geometry_msgs::PoseWithCovarianceStamped`, borrowed for the call only (Rust copies
@@ -427,6 +435,8 @@ impl Params {
             unsafe { f64_slice(p.initial_pose_offset_model_y, p.initial_pose_offset_model_y_len) };
         // SAFETY: caller guarantees `map_frame` is valid for `map_frame_len` (or null/0).
         let map_frame = unsafe { byte_slice(p.map_frame, p.map_frame_len) };
+        // SAFETY: caller guarantees `base_frame` is valid for `base_frame_len` (or null/0).
+        let base_frame = unsafe { byte_slice(p.base_frame, p.base_frame_len) };
         Ok(Self {
             resolution: p.resolution,
             min_points: p.min_points,
@@ -452,6 +462,9 @@ impl Params {
             map_frame: map_frame.to_vec(),
             initial_pose_timeout_sec: p.initial_pose_timeout_sec,
             initial_pose_distance_tolerance_m: p.initial_pose_distance_tolerance_m,
+            base_frame: base_frame.to_vec(),
+            sensor_points_timeout_sec: p.sensor_points_timeout_sec,
+            sensor_points_required_distance: p.sensor_points_required_distance,
         })
     }
 }
@@ -770,6 +783,10 @@ mod tests {
             map_frame_len: 0,
             initial_pose_timeout_sec: 1000.0,
             initial_pose_distance_tolerance_m: 1000.0,
+            base_frame: core::ptr::null(),
+            base_frame_len: 0,
+            sensor_points_timeout_sec: 1.0,
+            sensor_points_required_distance: 0.0,
         }
     }
 

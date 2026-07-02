@@ -449,8 +449,38 @@ bool NDTScanMatcher::callback_sensor_points_main(
 {
   const auto exe_start_time = std::chrono::system_clock::now();
 
-  // check topic_time_stamp
   const rclcpp::Time sensor_ros_time = sensor_points_msg_in_sensor_frame->header.stamp;
+
+  pcl::shared_ptr<pcl::PointCloud<PointSource>> sensor_points_in_baselink_frame(
+    new pcl::PointCloud<PointSource>);
+
+#ifdef NDT_USE_RUST
+  // Phase 5 sub-slice 1: the prologue — topic-stamp/size/delay/decode/TF/transform/max-distance
+  // diagnostics + gates — runs in Rust via `on_sensor_points_prepare`, driving the AwHost vtable
+  // (now/log/TF). It writes the base_link xyz into a flat buffer we rebuild into the pcl cloud the
+  // (still-C++) tail consumes. Status maps to the same early returns (empty/tf-fail/too-close).
+  {
+    const AwHost host = make_host();
+    const AwDiagnostics diag = make_diagnostics(diagnostics_scan_points_.get());
+    const AwPointCloud2View view = make_pointcloud2_view(*sensor_points_msg_in_sensor_frame);
+    const size_t max_points =
+      static_cast<size_t>(view.width) * static_cast<size_t>(view.height);
+    std::vector<float> baselink_xyz(max_points * 3);
+    size_t count = 0;
+    const int32_t status = autoware_ndt_scan_matcher_rs_node_on_sensor_points_prepare(
+      rs_.raw(), &host, &diag, &view, baselink_xyz.data(), baselink_xyz.size(), &count);
+    if (status != 0) {
+      return false;
+    }
+    sensor_points_in_baselink_frame->resize(count);
+    for (size_t i = 0; i < count; ++i) {
+      sensor_points_in_baselink_frame->points[i].x = baselink_xyz[(i * 3) + 0];
+      sensor_points_in_baselink_frame->points[i].y = baselink_xyz[(i * 3) + 1];
+      sensor_points_in_baselink_frame->points[i].z = baselink_xyz[(i * 3) + 2];
+    }
+  }
+#else
+  // check topic_time_stamp
   diagnostics_scan_points_->add_key_value("topic_time_stamp", sensor_ros_time.nanoseconds());
 
   // check sensor_points_size
@@ -487,8 +517,6 @@ bool NDTScanMatcher::callback_sensor_points_main(
 
   // preprocess input pointcloud
   pcl::shared_ptr<pcl::PointCloud<PointSource>> sensor_points_in_sensor_frame(
-    new pcl::PointCloud<PointSource>);
-  pcl::shared_ptr<pcl::PointCloud<PointSource>> sensor_points_in_baselink_frame(
     new pcl::PointCloud<PointSource>);
   const std::string & sensor_frame = sensor_points_msg_in_sensor_frame->header.frame_id;
 
@@ -527,6 +555,7 @@ bool NDTScanMatcher::callback_sensor_points_main(
       diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
     return false;
   }
+#endif
 
   return ndt_ptr_.with([&](const auto & ndt_ptr) {
     // store sensor points for ndt alignment
@@ -1367,6 +1396,52 @@ AwDiagnostics make_diagnostics(DiagnosticsInterface * d)
     diag_publish};
 }
 }  // namespace
+
+// Phase 5: the AwHost side-effects vtable trampolines (ctx == this) + make_host. Side-effects only
+// (clock / logging / TF); node state stays Rust-owned on the handle.
+int64_t NDTScanMatcher::host_now_ns(void * ctx)
+{
+  return static_cast<NDTScanMatcher *>(ctx)->now().nanoseconds();
+}
+void NDTScanMatcher::host_log(
+  void * ctx, int32_t level, const std::uint8_t * msg, std::size_t msg_len)
+{
+  auto * self = static_cast<NDTScanMatcher *>(ctx);
+  const std::string text(reinterpret_cast<const char *>(msg), msg_len);
+  if (level >= 2) {
+    RCLCPP_ERROR_STREAM_THROTTLE(self->get_logger(), *self->get_clock(), 1000, text);
+  } else {
+    RCLCPP_WARN_STREAM_THROTTLE(self->get_logger(), *self->get_clock(), 1000, text);
+  }
+}
+bool NDTScanMatcher::host_lookup_transform(
+  void * ctx, AwStr target, AwStr source, float * out_matrix4x4_row_major)
+{
+  auto * self = static_cast<NDTScanMatcher *>(ctx);
+  const std::string target_frame(reinterpret_cast<const char *>(target.ptr), target.len);
+  const std::string source_frame(reinterpret_cast<const char *>(source.ptr), source.len);
+  try {
+    const geometry_msgs::msg::TransformStamped transform =
+      self->tf2_buffer_.lookupTransform(target_frame, source_frame, tf2::TimePointZero);
+    const geometry_msgs::msg::PoseStamped pose_stamped =
+      autoware_utils_geometry::transform2pose(transform);
+    const Eigen::Matrix4f matrix = pose_to_matrix4f(pose_stamped.pose);
+    for (int row = 0; row < 4; ++row) {
+      for (int col = 0; col < 4; ++col) {
+        out_matrix4x4_row_major[(row * 4) + col] = matrix(row, col);
+      }
+    }
+    return true;
+  } catch (const tf2::TransformException &) {
+    return false;
+  }
+}
+AwHost NDTScanMatcher::make_host()
+{
+  return AwHost{
+    this, &NDTScanMatcher::host_now_ns, &NDTScanMatcher::host_log,
+    &NDTScanMatcher::host_lookup_transform};
+}
 #endif
 
 void NDTScanMatcher::service_trigger_node(

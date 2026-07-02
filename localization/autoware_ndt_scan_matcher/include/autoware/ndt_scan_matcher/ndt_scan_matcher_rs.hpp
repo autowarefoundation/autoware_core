@@ -27,6 +27,7 @@
 #include "autoware_ndt_scan_matcher_rs.h"
 
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
 
 #include <algorithm>
 #include <cstddef>
@@ -82,7 +83,40 @@ inline AwNdtParams make_aw_ndt_params(const HyperParameters & p)
   out.map_frame_len = p.frame.map_frame.size();
   out.initial_pose_timeout_sec = p.validation.initial_pose_timeout_sec;
   out.initial_pose_distance_tolerance_m = p.validation.initial_pose_distance_tolerance_m;
+  // Sensor-points prologue: base frame + delay/distance thresholds (borrowed `base_frame` bytes).
+  out.base_frame = reinterpret_cast<const std::uint8_t *>(p.frame.base_frame.data());
+  out.base_frame_len = p.frame.base_frame.size();
+  out.sensor_points_timeout_sec = p.sensor_points.timeout_sec;
+  out.sensor_points_required_distance = p.sensor_points.required_distance;
   return out;
+}
+
+/// Build the borrowed FFI view of a `PointCloud2` (stamp + frame + layout + data + xyz field offsets).
+/// Valid only for the duration of the FFI call. The xyz datatype is taken from the `x` field.
+inline AwPointCloud2View make_pointcloud2_view(const sensor_msgs::msg::PointCloud2 & msg)
+{
+  AwPointCloud2View v{};
+  v.stamp_ns = static_cast<rclcpp::Time>(msg.header.stamp).nanoseconds();
+  v.frame_id.ptr = reinterpret_cast<const std::uint8_t *>(msg.header.frame_id.data());
+  v.frame_id.len = msg.header.frame_id.size();
+  v.width = msg.width;
+  v.height = msg.height;
+  v.point_step = msg.point_step;
+  v.row_step = msg.row_step;
+  v.data = msg.data.data();
+  v.data_len = msg.data.size();
+  for (const auto & field : msg.fields) {
+    if (field.name == "x") {
+      v.x_offset = field.offset;
+      v.datatype = field.datatype;
+    } else if (field.name == "y") {
+      v.y_offset = field.offset;
+    } else if (field.name == "z") {
+      v.z_offset = field.offset;
+    }
+  }
+  v.is_bigendian = msg.is_bigendian;
+  return v;
 }
 
 /// Build the borrowed FFI view of a `PoseWithCovarianceStamped` (stamp + pose + row-major 6x6 cov).
