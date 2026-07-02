@@ -16,12 +16,14 @@ ament_auto_add_library(gnss_poser_node SHARED
   ${GNSS_POSER_HEADERS}
 )
 
-rclcpp_components_register_node(gnss_poser_node
+autoware_agnocast_wrapper_register_node(gnss_poser_node
   PLUGIN "autoware::gnss_poser::GNSSPoser"
   EXECUTABLE gnss_poser
+  AGNOCAST_EXECUTOR AgnocastOnlyCallbackIsolatedExecutor
+  ROS2_EXECUTOR SingleThreadedExecutor
 )
 
-if(BUILD_TESTING)
+if(BUILD_TESTING AND NOT (DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1"))
   set(TEST_SOURCES
     test/test_gnss_poser_node.cpp
   )
