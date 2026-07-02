@@ -13,3 +13,46 @@
 // limitations under the License.
 
 #include "euclidean_cluster_object_detector.hpp"
+
+#include "parameters.hpp"
+
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/kdtree/kdtree.h>
+#include <pcl/segmentation/extract_clusters.h>
+
+#include <string>
+#include <vector>
+
+namespace autoware::euclidean_cluster
+{
+
+EuclideanClusterObjectDetector::EuclideanClusterObjectDetector(const EuclideanClusterParams & param)
+: param_(param)
+{
+}
+
+/**
+ * @brief Public interface to perform Euclidean clustering on a point cloud. This function decides
+ * whether to use standard clustering or voxel grid downsampling based on given params.
+ *
+ * @param input_cloud Input point cloud to cluster.
+ *
+ * @return tl::expected<std::vector<pcl::PointCloud<pcl::PointXYZ>>, std::string> A vector of point
+ * clouds, each representing a cluster.
+ */
+tl::expected<std::vector<pcl::PointCloud<pcl::PointXYZ>>, std::string>
+EuclideanClusterObjectDetector::cluster(
+  const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & input_cloud) const
+{
+  if (!input_cloud || input_cloud->empty()) {
+    return std::vector<pcl::PointCloud<pcl::PointXYZ>>{};
+  }
+
+  if (param_.voxel_leaf_size > 0.0f) {
+    return cluster_voxel_grid(input_cloud);
+  }
+
+  return cluster_standard(input_cloud);
+}
+
+}  // namespace autoware::euclidean_cluster
