@@ -91,6 +91,8 @@ public:
   void setRoute(const LaneletRoute & route_msg);
   void setRouteLanelets(const lanelet::ConstLanelets & path_lanelets);
   void clearRoute();
+  void setAllowArea(const bool allow_area);
+  bool allowArea() const;
 
   // const methods
 
@@ -382,6 +384,7 @@ private:
 
   bool is_map_msg_ready_{false};
   bool is_handler_ready_{false};
+  bool allow_area_{false};
 
   // save original(not modified) route start pose for start planer execution
   Pose original_start_pose_;
@@ -416,6 +419,17 @@ private:
   lanelet::ConstLanelets getPreviousLaneletSequence(
     const lanelet::ConstLanelets & lanelet_sequence) const;
   lanelet::ConstLanelets getNeighborsWithinRoute(const lanelet::ConstLanelet & lanelet) const;
+
+  // Experimental / debug for direction_change: walk mission route segment order when
+  // RoutingGraph::following() cannot cross route areas (allow_area routes).
+  std::optional<size_t> findRouteSegmentIndexForLanelet(int64_t lanelet_id) const;
+  std::optional<size_t> findNextLaneSegmentIndex(size_t from_index) const;
+  std::optional<size_t> findPreviousLaneSegmentIndex(size_t from_index) const;
+  lanelet::ConstLanelets laneletsFromRouteSegment(size_t segment_index) const;
+  bool getNextLaneletsFromRouteOrder(
+    const lanelet::ConstLanelet & lanelet, lanelet::ConstLanelets * next_lanelets) const;
+  bool getPreviousLaneletsFromRouteOrder(
+    const lanelet::ConstLanelet & lanelet, lanelet::ConstLanelets * prev_lanelets) const;
 
   // for path
 

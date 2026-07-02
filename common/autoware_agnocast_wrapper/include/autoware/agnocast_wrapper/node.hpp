@@ -30,13 +30,8 @@
 #include <variant>
 #include <vector>
 
-#ifdef USE_AGNOCAST_ENABLED
-
-#include <agnocast/node/agnocast_node.hpp>
-
 namespace autoware::agnocast_wrapper
 {
-
 // rclcpp 28+ (Jazzy) renamed OnParametersSetCallbackType to OnSetParametersCallbackType
 // and removed the old name from NodeParametersInterface. Humble uses rclcpp 16.x with the old name.
 #if RCLCPP_VERSION_MAJOR >= 28
@@ -46,6 +41,14 @@ using OnSetParametersCallbackType =
 using OnSetParametersCallbackType =
   rclcpp::node_interfaces::NodeParametersInterface::OnParametersSetCallbackType;
 #endif
+}  // namespace autoware::agnocast_wrapper
+
+#ifdef USE_AGNOCAST_ENABLED
+
+#include <agnocast/node/agnocast_node.hpp>
+
+namespace autoware::agnocast_wrapper
+{
 
 /// @brief Node wrapper class that can switch between rclcpp::Node and agnocast::Node at runtime
 /// based on the ENABLE_AGNOCAST environment variable.
@@ -77,6 +80,12 @@ public:
 
   virtual ~Node() = default;
 
+  // Non-copyable, non-movable: copying would alias the same backend behind two wrappers.
+  Node(const Node &) = delete;
+  Node & operator=(const Node &) = delete;
+  Node(Node &&) = delete;
+  Node & operator=(Node &&) = delete;
+
   // ===== Basic information =====
   const char * get_name() const;
   const char * get_namespace() const;
@@ -88,8 +97,8 @@ public:
   rclcpp::Time now() const;
 
   // ===== Node interfaces =====
-  rclcpp::node_interfaces::NodeBaseInterface::SharedPtr get_node_base_interface();
-  rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr get_node_topics_interface();
+  rclcpp::node_interfaces::NodeBaseInterface::SharedPtr get_node_base_interface() const;
+  rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr get_node_topics_interface() const;
   rclcpp::node_interfaces::NodeParametersInterface::SharedPtr get_node_parameters_interface() const;
 
   // ===== Callback groups =====
@@ -256,6 +265,94 @@ public:
       topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)));
   }
 
+  // ===== Client / Service =====
+  template <typename ServiceT>
+  AUTOWARE_CLIENT_PTR(ServiceT)
+  create_client(
+    const std::string & service_name, const rclcpp::QoS & qos = rclcpp::ServicesQoS(),
+    rclcpp::CallbackGroup::SharedPtr group = nullptr)
+  {
+    return visit_node([&](auto & n) -> AUTOWARE_CLIENT_PTR(ServiceT) {
+      using NodeT = std::decay_t<decltype(*n)>;
+      if constexpr (std::is_same_v<NodeT, agnocast::Node>) {
+        return std::make_shared<AgnocastClient<ServiceT>>(n.get(), service_name, qos, group);
+      } else {
+        return std::make_shared<ROS2Client<ServiceT>>(n.get(), service_name, qos, group);
+      }
+    });
+  }
+
+  // Service with a callback taking AUTOWARE_SERVER_REQUEST_PTR/RESPONSE_PTR (message_ptr).
+  template <
+    typename ServiceT, typename Func,
+    std::enable_if_t<is_message_ptr_service_callback_v<Func, ServiceT>, int> = 0>
+  AUTOWARE_SERVICE_PTR(ServiceT)
+  create_service(
+    const std::string & service_name, Func && callback,
+    const rclcpp::QoS & qos = rclcpp::ServicesQoS(),
+    rclcpp::CallbackGroup::SharedPtr group = nullptr)
+  {
+    return visit_node([&](auto & n) -> AUTOWARE_SERVICE_PTR(ServiceT) {
+      using NodeT = std::decay_t<decltype(*n)>;
+      if constexpr (std::is_same_v<NodeT, agnocast::Node>) {
+        return std::make_shared<AgnocastService<ServiceT>>(
+          n.get(), service_name, std::forward<Func>(callback), qos, group);
+      } else {
+        return std::make_shared<ROS2Service<ServiceT>>(
+          n.get(), service_name, std::forward<Func>(callback), qos, group);
+      }
+    });
+  }
+
+  // Convenience overload for rclcpp-style std::shared_ptr callbacks. Gives the callback independent
+  // owning copies of the request/response (safe to retain, like rclcpp) and copies the filled
+  // response back, so prefer the message_ptr overload above to avoid the copies on hot paths.
+  template <
+    typename ServiceT, typename Func,
+    std::enable_if_t<
+      !is_message_ptr_service_callback_v<Func, ServiceT> &&
+        is_shared_ptr_service_callback_v<Func, ServiceT>,
+      int> = 0>
+  AUTOWARE_SERVICE_PTR(ServiceT)
+  create_service(
+    const std::string & service_name, Func && callback,
+    const rclcpp::QoS & qos = rclcpp::ServicesQoS(),
+    rclcpp::CallbackGroup::SharedPtr group = nullptr)
+  {
+    return create_service<ServiceT>(
+      service_name,
+      [callback = std::forward<Func>(callback)](
+        AUTOWARE_SERVER_REQUEST_PTR(ServiceT) && req,
+        AUTOWARE_SERVER_RESPONSE_PTR(ServiceT) && res) {
+        auto request = std::make_shared<typename ServiceT::Request>(*req);
+        auto response = std::make_shared<typename ServiceT::Response>();
+        callback(request, response);
+        *res = *response;
+      },
+      qos, group);
+  }
+
+  // Fallback overload: neither callback form matched. Exists only to turn the otherwise opaque
+  // "no matching function" error into the static_assert message below.
+  template <
+    typename ServiceT, typename Func,
+    std::enable_if_t<
+      !is_message_ptr_service_callback_v<Func, ServiceT> &&
+        !is_shared_ptr_service_callback_v<Func, ServiceT>,
+      int> = 0>
+  AUTOWARE_SERVICE_PTR(ServiceT)
+  create_service(
+    const std::string & /*service_name*/, Func && /*callback*/,
+    const rclcpp::QoS & = rclcpp::ServicesQoS(), rclcpp::CallbackGroup::SharedPtr = nullptr)
+  {
+    static_assert(
+      is_message_ptr_service_callback_v<Func, ServiceT> ||
+        is_shared_ptr_service_callback_v<Func, ServiceT>,
+      "Service callback must be invocable with "
+      "(AUTOWARE_SERVER_REQUEST_PTR(ServiceT), AUTOWARE_SERVER_RESPONSE_PTR(ServiceT)) or with "
+      "(std::shared_ptr<ServiceT::Request>, std::shared_ptr<ServiceT::Response>).");
+  }
+
   // ===== Timer =====
   template <typename DurationRepT = int64_t, typename DurationT = std::milli, typename CallbackT>
   Timer::SharedPtr create_wall_timer(
@@ -322,7 +419,7 @@ private:
   }
 };
 
-/// @brief Get the underlying rclcpp::Node from a node that inherits agnocast_wrapper::Node.
+/// @brief Get the underlying rclcpp::Node from an agnocast_wrapper::Node.
 /// @throws std::runtime_error if the node is in agnocast mode (check !use_agnocast() first)
 template <typename T>
 std::shared_ptr<rclcpp::Node> to_rclcpp_node(const std::shared_ptr<T> & node)
@@ -356,13 +453,341 @@ Timer::SharedPtr create_timer(
 namespace autoware::agnocast_wrapper
 {
 
-using Node = rclcpp::Node;
+// Service-callback traits (mirror of the Agnocast-build definitions; defined per-build because they
+// depend on the AUTOWARE_SERVER_*_PTR macros, which differ between builds).
+template <typename Func, typename ServiceT>
+inline constexpr bool is_message_ptr_service_callback_v = std::is_invocable_v<
+  std::decay_t<Func>, AUTOWARE_SERVER_REQUEST_PTR(ServiceT) &&,
+  AUTOWARE_SERVER_RESPONSE_PTR(ServiceT) &&>;
 
-/// @brief Get the underlying rclcpp::Node from a node that inherits rclcpp::Node.
+template <typename Func, typename ServiceT>
+inline constexpr bool is_shared_ptr_service_callback_v = std::is_invocable_v<
+  std::decay_t<Func>, std::shared_ptr<typename ServiceT::Request> &,
+  std::shared_ptr<typename ServiceT::Response> &>;
+
+/// @brief Node class for the non-Agnocast build.
+///
+/// Owns an internal rclcpp::Node and forwards a curated set of members to it; it does NOT derive
+/// from rclcpp::Node. This keeps the public surface identical to the Agnocast-build Node, so code
+/// compiles under both ENABLE_AGNOCAST=0 and =1. Deriving from rclcpp::Node would instead leak its
+/// full API into the =0 build, allowing =0-only code that breaks under =1.
+class Node
+{
+public:
+  using SharedPtr = std::shared_ptr<Node>;
+
+  explicit Node(
+    const std::string & node_name, const rclcpp::NodeOptions & options = rclcpp::NodeOptions())
+  : node_(std::make_shared<rclcpp::Node>(node_name, options))
+  {
+  }
+
+  explicit Node(
+    const std::string & node_name, const std::string & namespace_,
+    const rclcpp::NodeOptions & options = rclcpp::NodeOptions())
+  : node_(std::make_shared<rclcpp::Node>(node_name, namespace_, options))
+  {
+  }
+
+  virtual ~Node() = default;
+
+  // Non-copyable, non-movable: copying would alias the same backend behind two wrappers.
+  Node(const Node &) = delete;
+  Node & operator=(const Node &) = delete;
+  Node(Node &&) = delete;
+  Node & operator=(Node &&) = delete;
+
+  // ===== Basic information =====
+  const char * get_name() const { return node_->get_name(); }
+  const char * get_namespace() const { return node_->get_namespace(); }
+  const char * get_fully_qualified_name() const { return node_->get_fully_qualified_name(); }
+  rclcpp::Logger get_logger() const { return node_->get_logger(); }
+
+  // ===== Time =====
+  rclcpp::Clock::SharedPtr get_clock() { return node_->get_clock(); }
+  rclcpp::Time now() const { return node_->now(); }
+
+  // ===== Node interfaces =====
+  rclcpp::node_interfaces::NodeBaseInterface::SharedPtr get_node_base_interface() const
+  {
+    return node_->get_node_base_interface();
+  }
+  rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr get_node_topics_interface() const
+  {
+    return node_->get_node_topics_interface();
+  }
+  rclcpp::node_interfaces::NodeParametersInterface::SharedPtr get_node_parameters_interface() const
+  {
+    return node_->get_node_parameters_interface();
+  }
+
+  // ===== Callback groups =====
+  rclcpp::CallbackGroup::SharedPtr create_callback_group(
+    rclcpp::CallbackGroupType group_type, bool automatically_add_to_executor_with_node = true)
+  {
+    return node_->create_callback_group(group_type, automatically_add_to_executor_with_node);
+  }
+
+  // ===== Parameters (non-template) =====
+  const rclcpp::ParameterValue & declare_parameter(
+    const std::string & name, const rclcpp::ParameterValue & default_value,
+    const rcl_interfaces::msg::ParameterDescriptor & descriptor =
+      rcl_interfaces::msg::ParameterDescriptor{},
+    bool ignore_override = false)
+  {
+    return node_->declare_parameter(name, default_value, descriptor, ignore_override);
+  }
+
+  const rclcpp::ParameterValue & declare_parameter(
+    const std::string & name, rclcpp::ParameterType type,
+    const rcl_interfaces::msg::ParameterDescriptor & descriptor =
+      rcl_interfaces::msg::ParameterDescriptor{},
+    bool ignore_override = false)
+  {
+    return node_->declare_parameter(name, type, descriptor, ignore_override);
+  }
+
+  bool has_parameter(const std::string & name) const { return node_->has_parameter(name); }
+  void undeclare_parameter(const std::string & name) { node_->undeclare_parameter(name); }
+  rclcpp::Parameter get_parameter(const std::string & name) const
+  {
+    return node_->get_parameter(name);
+  }
+  bool get_parameter(const std::string & name, rclcpp::Parameter & parameter) const
+  {
+    return node_->get_parameter(name, parameter);
+  }
+  std::vector<rclcpp::Parameter> get_parameters(const std::vector<std::string> & names) const
+  {
+    return node_->get_parameters(names);
+  }
+
+  rcl_interfaces::msg::SetParametersResult set_parameter(const rclcpp::Parameter & parameter)
+  {
+    return node_->set_parameter(parameter);
+  }
+  std::vector<rcl_interfaces::msg::SetParametersResult> set_parameters(
+    const std::vector<rclcpp::Parameter> & parameters)
+  {
+    return node_->set_parameters(parameters);
+  }
+  rcl_interfaces::msg::SetParametersResult set_parameters_atomically(
+    const std::vector<rclcpp::Parameter> & parameters)
+  {
+    return node_->set_parameters_atomically(parameters);
+  }
+
+  rcl_interfaces::msg::ParameterDescriptor describe_parameter(const std::string & name) const
+  {
+    return node_->describe_parameter(name);
+  }
+  std::vector<rcl_interfaces::msg::ParameterDescriptor> describe_parameters(
+    const std::vector<std::string> & names) const
+  {
+    return node_->describe_parameters(names);
+  }
+  std::vector<uint8_t> get_parameter_types(const std::vector<std::string> & names) const
+  {
+    return node_->get_parameter_types(names);
+  }
+  rcl_interfaces::msg::ListParametersResult list_parameters(
+    const std::vector<std::string> & prefixes, uint64_t depth) const
+  {
+    return node_->list_parameters(prefixes, depth);
+  }
+
+  rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr add_on_set_parameters_callback(
+    OnSetParametersCallbackType callback)
+  {
+    return node_->add_on_set_parameters_callback(std::move(callback));
+  }
+  void remove_on_set_parameters_callback(
+    const rclcpp::node_interfaces::OnSetParametersCallbackHandle * const handler)
+  {
+    node_->remove_on_set_parameters_callback(handler);
+  }
+
+  // ===== Parameters (template) =====
+  template <typename ParameterT>
+  ParameterT declare_parameter(
+    const std::string & name, const ParameterT & default_value,
+    const rcl_interfaces::msg::ParameterDescriptor & descriptor =
+      rcl_interfaces::msg::ParameterDescriptor{},
+    bool ignore_override = false)
+  {
+    return declare_parameter(
+             name, rclcpp::ParameterValue(default_value), descriptor, ignore_override)
+      .get<ParameterT>();
+  }
+
+  template <typename ParameterT>
+  ParameterT declare_parameter(
+    const std::string & name,
+    const rcl_interfaces::msg::ParameterDescriptor & descriptor =
+      rcl_interfaces::msg::ParameterDescriptor{},
+    bool ignore_override = false)
+  {
+    rclcpp::ParameterValue value{ParameterT{}};
+    return declare_parameter(name, value.get_type(), descriptor, ignore_override).get<ParameterT>();
+  }
+
+  template <typename ParameterT>
+  bool get_parameter(const std::string & name, ParameterT & parameter) const
+  {
+    rclcpp::Parameter param;
+    if (get_parameter(name, param)) {
+      parameter = param.get_value<ParameterT>();
+      return true;
+    }
+    return false;
+  }
+
+  template <typename ParameterT>
+  bool get_parameters(const std::string & prefix, std::map<std::string, ParameterT> & values) const
+  {
+    std::map<std::string, rclcpp::Parameter> params;
+    auto params_interface = get_node_parameters_interface();
+    bool result = params_interface->get_parameters_by_prefix(prefix, params);
+    if (result) {
+      for (const auto & param : params) {
+        values[param.first] = param.second.get_value<ParameterT>();
+      }
+    }
+    return result;
+  }
+
+  // ===== Publisher =====
+  template <typename MessageT>
+  typename rclcpp::Publisher<MessageT>::SharedPtr create_publisher(
+    const std::string & topic_name, const rclcpp::QoS & qos,
+    const rclcpp::PublisherOptions & options = rclcpp::PublisherOptions{})
+  {
+    return node_->create_publisher<MessageT>(topic_name, qos, options);
+  }
+
+  template <typename MessageT>
+  typename rclcpp::Publisher<MessageT>::SharedPtr create_publisher(
+    const std::string & topic_name, size_t qos_history_depth)
+  {
+    return node_->create_publisher<MessageT>(
+      topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)));
+  }
+
+  // ===== Subscription =====
+  template <typename MessageT, typename Func>
+  typename rclcpp::Subscription<MessageT>::SharedPtr create_subscription(
+    const std::string & topic_name, const rclcpp::QoS & qos, Func && callback,
+    const rclcpp::SubscriptionOptions & options = rclcpp::SubscriptionOptions{})
+  {
+    return node_->create_subscription<MessageT>(
+      topic_name, qos, std::forward<Func>(callback), options);
+  }
+
+  template <typename MessageT, typename Func>
+  typename rclcpp::Subscription<MessageT>::SharedPtr create_subscription(
+    const std::string & topic_name, size_t qos_history_depth, Func && callback,
+    const rclcpp::SubscriptionOptions & options = rclcpp::SubscriptionOptions{})
+  {
+    return node_->create_subscription<MessageT>(
+      topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)), std::forward<Func>(callback),
+      options);
+  }
+
+  // ===== Polling Subscriber =====
+  template <typename MessageT>
+  typename autoware_utils_rclcpp::InterProcessPollingSubscriber<MessageT>::SharedPtr
+  create_polling_subscriber(const std::string & topic_name, const rclcpp::QoS & qos)
+  {
+    return autoware_utils_rclcpp::InterProcessPollingSubscriber<MessageT>::create_subscription(
+      node_.get(), topic_name, qos);
+  }
+
+  template <typename MessageT>
+  typename autoware_utils_rclcpp::InterProcessPollingSubscriber<MessageT>::SharedPtr
+  create_polling_subscriber(const std::string & topic_name, size_t qos_history_depth)
+  {
+    return create_polling_subscriber<MessageT>(
+      topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)));
+  }
+
+  // ===== Client (rclcpp::QoS overload; Humble's rclcpp::Node::create_client takes rmw) =====
+  template <typename ServiceT>
+  typename rclcpp::Client<ServiceT>::SharedPtr create_client(
+    const std::string & service_name, const rclcpp::QoS & qos = rclcpp::ServicesQoS(),
+    rclcpp::CallbackGroup::SharedPtr group = nullptr)
+  {
+#if RCLCPP_VERSION_MAJOR >= 28
+    return node_->create_client<ServiceT>(service_name, qos, group);
+#else
+    return node_->create_client<ServiceT>(service_name, qos.get_rmw_qos_profile(), group);
+#endif
+  }
+
+  // ===== Service (rclcpp::QoS overload; same rationale as create_client) =====
+  // Constrained to the same callback set as the Agnocast build, so the rclcpp-only forms
+  // (with-request-header / defer-response) are rejected here instead of silently accepted.
+  template <
+    typename ServiceT, typename Func,
+    std::enable_if_t<
+      is_message_ptr_service_callback_v<Func, ServiceT> ||
+        is_shared_ptr_service_callback_v<Func, ServiceT>,
+      int> = 0>
+  typename rclcpp::Service<ServiceT>::SharedPtr create_service(
+    const std::string & service_name, Func && callback,
+    const rclcpp::QoS & qos = rclcpp::ServicesQoS(),
+    rclcpp::CallbackGroup::SharedPtr group = nullptr)
+  {
+#if RCLCPP_VERSION_MAJOR >= 28
+    return node_->create_service<ServiceT>(service_name, std::forward<Func>(callback), qos, group);
+#else
+    return node_->create_service<ServiceT>(
+      service_name, std::forward<Func>(callback), qos.get_rmw_qos_profile(), group);
+#endif
+  }
+
+  // Fallback overload: neither callback form matched. Exists only to turn the otherwise opaque
+  // "no matching function" error into the static_assert message below (mirrors the Agnocast build).
+  template <
+    typename ServiceT, typename Func,
+    std::enable_if_t<
+      !is_message_ptr_service_callback_v<Func, ServiceT> &&
+        !is_shared_ptr_service_callback_v<Func, ServiceT>,
+      int> = 0>
+  typename rclcpp::Service<ServiceT>::SharedPtr create_service(
+    const std::string & /*service_name*/, Func && /*callback*/,
+    const rclcpp::QoS & = rclcpp::ServicesQoS(), rclcpp::CallbackGroup::SharedPtr = nullptr)
+  {
+    static_assert(
+      is_message_ptr_service_callback_v<Func, ServiceT> ||
+        is_shared_ptr_service_callback_v<Func, ServiceT>,
+      "Service callback must be invocable with "
+      "(AUTOWARE_SERVER_REQUEST_PTR(ServiceT), AUTOWARE_SERVER_RESPONSE_PTR(ServiceT)) or with "
+      "(std::shared_ptr<ServiceT::Request>, std::shared_ptr<ServiceT::Response>).");
+  }
+
+  // ===== Timer =====
+  template <typename DurationRepT = int64_t, typename DurationT = std::milli, typename CallbackT>
+  rclcpp::TimerBase::SharedPtr create_wall_timer(
+    std::chrono::duration<DurationRepT, DurationT> period, CallbackT && callback,
+    rclcpp::CallbackGroup::SharedPtr group = nullptr)
+  {
+    return node_->create_wall_timer(period, std::forward<CallbackT>(callback), group);
+  }
+
+  // ===== Internal node access =====
+  // No get_agnocast_node() here: that backend does not exist in this build, matching the
+  // curated surface (calling it under ENABLE_AGNOCAST=0 is a compile error, by design).
+  std::shared_ptr<rclcpp::Node> get_rclcpp_node() const { return node_; }
+
+private:
+  std::shared_ptr<rclcpp::Node> node_;
+};
+
+/// @brief Get the underlying rclcpp::Node from an agnocast_wrapper::Node.
 template <typename T>
 std::shared_ptr<rclcpp::Node> to_rclcpp_node(const std::shared_ptr<T> & node)
 {
-  return node;
+  return node->get_rclcpp_node();
 }
 
 /// @brief Create a timer driven by an explicit clock (non-Agnocast build).
@@ -375,7 +800,8 @@ rclcpp::TimerBase::SharedPtr create_timer(
   Node * node, rclcpp::Clock::SharedPtr clock, rclcpp::Duration period, CallbackT && callback,
   rclcpp::CallbackGroup::SharedPtr group = nullptr)
 {
-  return rclcpp::create_timer(node, clock, period, std::forward<CallbackT>(callback), group);
+  return rclcpp::create_timer(
+    node->get_rclcpp_node().get(), clock, period, std::forward<CallbackT>(callback), group);
 }
 
 }  // namespace autoware::agnocast_wrapper

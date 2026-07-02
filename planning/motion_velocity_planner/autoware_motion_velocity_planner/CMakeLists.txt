@@ -10,9 +10,11 @@ ament_auto_add_library(${PROJECT_NAME}_lib SHARED
   DIRECTORY src
 )
 
-rclcpp_components_register_node(${PROJECT_NAME}_lib
+autoware_agnocast_wrapper_register_node(${PROJECT_NAME}_lib
   PLUGIN "autoware::motion_velocity_planner::MotionVelocityPlannerNode"
   EXECUTABLE ${PROJECT_NAME}_node
+  ROS2_EXECUTOR SingleThreadedExecutor
+  AGNOCAST_EXECUTOR CallbackIsolatedAgnocastExecutor
 )
 
 if(BUILD_TESTING)

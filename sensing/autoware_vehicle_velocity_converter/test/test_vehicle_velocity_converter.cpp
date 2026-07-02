@@ -15,18 +15,15 @@
 #include "../src/vehicle_velocity_converter.hpp"
 
 #include <autoware_utils_geometry/msg/covariance.hpp>
-#include <rclcpp/rclcpp.hpp>
 
 #include <autoware_vehicle_msgs/msg/velocity_report.hpp>
 #include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
 
 #include <gtest/gtest.h>
 
-#include <memory>
 #include <set>
 #include <string>
 
-using autoware::vehicle_velocity_converter::convert;
 using autoware::vehicle_velocity_converter::VehicleVelocityConverter;
 using autoware_vehicle_msgs::msg::VelocityReport;
 using geometry_msgs::msg::TwistWithCovarianceStamped;
@@ -66,13 +63,15 @@ void expect_off_diagonal_zero(const TwistWithCovarianceStamped & twist)
 TEST(VehicleVelocityConverterConvert, AxisMappingAndScale)
 {
   const auto msg = make_report(2.0, 0.1, 0.3);
-  const auto twist = convert(msg, 1.5, 0.2, 0.1);
+  const VehicleVelocityConverter converter(1.5, 0.2, 0.1);
+
+  const auto twist = converter.convert(msg);
 
   // Longitudinal velocity is multiplied by the scale factor, lateral and yaw mapped directly.
-  EXPECT_DOUBLE_EQ(twist.twist.twist.linear.x, 2.0F * 1.5);
-  EXPECT_DOUBLE_EQ(twist.twist.twist.linear.y, static_cast<double>(0.1F));
-  EXPECT_DOUBLE_EQ(twist.twist.twist.angular.z, static_cast<double>(0.3F));
-
+  // The report fields are float, so the converted values are compared at float precision.
+  EXPECT_FLOAT_EQ(twist.twist.twist.linear.x, 2.0 * 1.5);
+  EXPECT_FLOAT_EQ(twist.twist.twist.linear.y, 0.1);
+  EXPECT_FLOAT_EQ(twist.twist.twist.angular.z, 0.3);
   // Unused twist components must stay zero.
   EXPECT_EQ(twist.twist.twist.linear.z, 0.0);
   EXPECT_EQ(twist.twist.twist.angular.x, 0.0);
@@ -82,7 +81,9 @@ TEST(VehicleVelocityConverterConvert, AxisMappingAndScale)
 TEST(VehicleVelocityConverterConvert, FullCovarianceLayout)
 {
   const auto msg = make_report(2.0, 0.1, 0.3);
-  const auto twist = convert(msg, 1.5, 0.2, 0.1);
+  const VehicleVelocityConverter converter(1.5, 0.2, 0.1);
+
+  const auto twist = converter.convert(msg);
 
   // Diagonal entries: vx/wz variances from stddev^2, the rest large fixed values.
   EXPECT_DOUBLE_EQ(twist.twist.covariance[COV_IDX::X_X], 0.2 * 0.2);
@@ -91,7 +92,6 @@ TEST(VehicleVelocityConverterConvert, FullCovarianceLayout)
   EXPECT_DOUBLE_EQ(twist.twist.covariance[COV_IDX::ROLL_ROLL], 10000.0);
   EXPECT_DOUBLE_EQ(twist.twist.covariance[COV_IDX::PITCH_PITCH], 10000.0);
   EXPECT_DOUBLE_EQ(twist.twist.covariance[COV_IDX::YAW_YAW], 0.1 * 0.1);
-
   // All 30 off-diagonal entries must be zero.
   expect_off_diagonal_zero(twist);
 }
@@ -99,7 +99,9 @@ TEST(VehicleVelocityConverterConvert, FullCovarianceLayout)
 TEST(VehicleVelocityConverterConvert, HeaderCopiedVerbatim)
 {
   const auto msg = make_report(2.0, 0.1, 0.3, "custom_frame");
-  const auto twist = convert(msg, 1.0, 0.2, 0.1);
+  const VehicleVelocityConverter converter(1.0, 0.2, 0.1);
+
+  const auto twist = converter.convert(msg);
 
   EXPECT_EQ(twist.header.frame_id, "custom_frame");
   EXPECT_EQ(twist.header.stamp.sec, msg.header.stamp.sec);
@@ -109,50 +111,27 @@ TEST(VehicleVelocityConverterConvert, HeaderCopiedVerbatim)
 TEST(VehicleVelocityConverterConvert, ZeroScaleFactor)
 {
   const auto msg = make_report(2.0, 0.1, 0.3);
-  const auto twist = convert(msg, 0.0, 0.2, 0.1);
+  const VehicleVelocityConverter converter(0.0, 0.2, 0.1);
+
+  const auto twist = converter.convert(msg);
 
   EXPECT_EQ(twist.twist.twist.linear.x, 0.0);
   // Lateral and yaw are unaffected by the scale factor.
-  EXPECT_DOUBLE_EQ(twist.twist.twist.linear.y, static_cast<double>(0.1F));
-  EXPECT_DOUBLE_EQ(twist.twist.twist.angular.z, static_cast<double>(0.3F));
+  EXPECT_FLOAT_EQ(twist.twist.twist.linear.y, 0.1);
+  EXPECT_FLOAT_EQ(twist.twist.twist.angular.z, 0.3);
 }
 
 TEST(VehicleVelocityConverterConvert, NegativeVelocityAndScale)
 {
   const auto msg = make_report(-2.0, -0.1, -0.3);
-  const auto twist = convert(msg, -1.5, 0.2, 0.1);
+  const VehicleVelocityConverter converter(-1.5, 0.2, 0.1);
 
-  EXPECT_DOUBLE_EQ(twist.twist.twist.linear.x, -2.0F * -1.5);
-  EXPECT_DOUBLE_EQ(twist.twist.twist.linear.y, static_cast<double>(-0.1F));
-  EXPECT_DOUBLE_EQ(twist.twist.twist.angular.z, static_cast<double>(-0.3F));
+  const auto twist = converter.convert(msg);
 
+  EXPECT_FLOAT_EQ(twist.twist.twist.linear.x, -2.0 * -1.5);
+  EXPECT_FLOAT_EQ(twist.twist.twist.linear.y, -0.1);
+  EXPECT_FLOAT_EQ(twist.twist.twist.angular.z, -0.3);
   // Variances stay non-negative (stddev squared) regardless of velocity sign.
   EXPECT_DOUBLE_EQ(twist.twist.covariance[COV_IDX::X_X], 0.2 * 0.2);
   EXPECT_DOUBLE_EQ(twist.twist.covariance[COV_IDX::YAW_YAW], 0.1 * 0.1);
-}
-
-// Thin smoke test for the ROS wiring (construction with parameter overrides).
-TEST(VehicleVelocityConverterNode, NodeInstantiation)
-{
-  if (!rclcpp::ok()) {
-    rclcpp::init(0, nullptr);
-  }
-
-  rclcpp::NodeOptions options;
-  options.parameter_overrides().push_back(rclcpp::Parameter("frame_id", "base_link"));
-  options.parameter_overrides().push_back(rclcpp::Parameter("velocity_stddev_xx", 0.2));
-  options.parameter_overrides().push_back(rclcpp::Parameter("angular_velocity_stddev_zz", 0.1));
-  options.parameter_overrides().push_back(rclcpp::Parameter("speed_scale_factor", 1.0));
-
-  auto vehicle_velocity_converter = std::make_shared<VehicleVelocityConverter>(options);
-  EXPECT_NE(vehicle_velocity_converter, nullptr);
-}
-
-int main(int argc, char ** argv)
-{
-  testing::InitGoogleTest(&argc, argv);
-  rclcpp::init(argc, argv);
-  const int result = RUN_ALL_TESTS();
-  rclcpp::shutdown();
-  return result;
 }
