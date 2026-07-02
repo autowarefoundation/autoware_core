@@ -14,8 +14,8 @@
 
 // Roadmap foundation (plan/ndt_in_rust_next.md → Phase 0/1): the opaque Rust node handle
 // (`AwNdtScanMatcher`) + its RAII C++ owner, plus the param conversion that crosses the FFI once at
-// construction. Built only under NDT_USE_RUST. The handle is inert this slice (held as a node member,
-// exercised by tests); later phases move node state into it and thin the callbacks to forwarders.
+// construction. Built only under NDT_USE_RUST. The handle now owns migrated node state and drives the
+// Rust callback bodies; C++ keeps ROS runtime objects and side-effect publication.
 
 #ifndef AUTOWARE__NDT_SCAN_MATCHER__NDT_SCAN_MATCHER_RS_HPP_
 #define AUTOWARE__NDT_SCAN_MATCHER__NDT_SCAN_MATCHER_RS_HPP_

@@ -15,14 +15,12 @@
 //! The opaque object-level node handle (`NdtScanMatcherRs`) + its C ABI lifecycle, and the
 //! `AwNdtParams` struct that crosses the boundary once at construction.
 //!
-//! Foundation slice (roadmap `plan/ndt_in_rust_next.md` → Phase 0/1): this introduces the opaque
-//! handle the later phases hang off, plus a single validated [`Params`] conversion replacing the
-//! piecemeal scalar-by-scalar engine configuration. The handle owns [`Params`] + the node-state
-//! scaffolding (`NodeState`/`MapUpdateState`) that later slices migrate out of C++. It does **not**
-//! own the engine yet — that stays in the C++ `NdtRustAdapter` during the transition (touching it now
-//! would collide with the map-update double-buffer copy semantics; see Phase 8). The handle is
-//! therefore inert this slice: constructed/destroyed and exercised by tests, not yet driving a
-//! callback. std-only: it is the ROS-node shell, excluded from the `no_std` kernel build.
+//! Foundation slice (roadmap `plan/ndt_in_rust_next.md` → Phase 0/1): this introduced the opaque
+//! handle plus a single validated [`Params`] conversion replacing piecemeal scalar-by-scalar engine
+//! configuration. The handle now owns the migrated node state (activation, pose buffers, latest EKF,
+//! and map-update policy state) and drives the Rust callback bodies. It still does **not** own the
+//! engine; that remains in the C++ `NdtRustAdapter` until the Phase 8/align-service transition is
+//! complete. std-only: it is the ROS-node shell, excluded from the `no_std` kernel build.
 
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};

@@ -490,32 +490,6 @@ bool NDTScanMatcher::callback_sensor_points_main(
   pcl::shared_ptr<pcl::PointCloud<PointSource>> sensor_points_in_baselink_frame(
     new pcl::PointCloud<PointSource>);
 
-#ifdef NDT_USE_RUST
-  // Phase 5 sub-slice 1: the prologue — topic-stamp/size/delay/decode/TF/transform/max-distance
-  // diagnostics + gates — runs in Rust via `on_sensor_points_prepare`, driving the AwHost vtable
-  // (now/log/TF). It writes the base_link xyz into a flat buffer we rebuild into the pcl cloud the
-  // (still-C++) tail consumes. Status maps to the same early returns (empty/tf-fail/too-close).
-  {
-    const AwHost host = make_host();
-    const AwDiagnostics diag = make_diagnostics(diagnostics_scan_points_.get());
-    const AwPointCloud2View view = make_pointcloud2_view(*sensor_points_msg_in_sensor_frame);
-    const size_t max_points =
-      static_cast<size_t>(view.width) * static_cast<size_t>(view.height);
-    std::vector<float> baselink_xyz(max_points * 3);
-    size_t count = 0;
-    const int32_t status = autoware_ndt_scan_matcher_rs_node_on_sensor_points_prepare(
-      rs_.raw(), &host, &diag, &view, baselink_xyz.data(), baselink_xyz.size(), &count);
-    if (status != 0) {
-      return false;
-    }
-    sensor_points_in_baselink_frame->resize(count);
-    for (size_t i = 0; i < count; ++i) {
-      sensor_points_in_baselink_frame->points[i].x = baselink_xyz[(i * 3) + 0];
-      sensor_points_in_baselink_frame->points[i].y = baselink_xyz[(i * 3) + 1];
-      sensor_points_in_baselink_frame->points[i].z = baselink_xyz[(i * 3) + 2];
-    }
-  }
-#else
   // check topic_time_stamp
   diagnostics_scan_points_->add_key_value("topic_time_stamp", sensor_ros_time.nanoseconds());
 
@@ -591,7 +565,6 @@ bool NDTScanMatcher::callback_sensor_points_main(
       diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
     return false;
   }
-#endif
 
   return ndt_ptr_.with([&](const auto & ndt_ptr) {
     // store sensor points for ndt alignment
@@ -600,47 +573,11 @@ bool NDTScanMatcher::callback_sensor_points_main(
     // The still-C++ cloud publishers read the aligned pose; the return feeds `skipping_publish_num`.
     pclomp::NdtResult ndt_result;
     bool is_converged = false;
-#ifndef NDT_USE_RUST
-    // OFF-only: in the ON build these are published through the AwHost publish ops inside
-    // `on_sensor_points_match` (Phase 5 sub-slice 3), so C++ only declares them for the legacy path.
     SmartPoseBuffer::InterpolateResult interpolation_result;
     geometry_msgs::msg::Pose result_pose_msg;
     std::vector<geometry_msgs::msg::Pose> transformation_msg_array;
     std::array<double, 36> ndt_covariance{};
-#endif
 
-#ifdef NDT_USE_RUST
-    // Phase 5 sub-slice 3: the whole middle AND the POD publishers run in Rust — `on_sensor_points_match`
-    // requests each publish through the AwHost publish ops (built C++-side below). C++ keeps only the
-    // result pose (to transform the base_link cloud → map for the still-C++ cloud publishers) +
-    // `is_converged` (the wrapper's `skipping_publish_num`); `exe_time` + the cloud publishers stay C++.
-    const AwHost host = make_host();
-    const AwDiagnostics diag = make_diagnostics(diagnostics_scan_points_.get());
-    const std::vector<float> source_flat = cloud_to_flat(*sensor_points_in_baselink_frame_);
-
-    const AwSensorPointsMatchParams match_params{
-      param_.dynamic_map_loading.lidar_radius, param_.dynamic_map_loading.map_radius,
-      param_.validation.initial_to_result_distance_tolerance_m,
-      param_.ndt.regularization_scale_factor};
-
-    AwSensorPointsMatchOutput out{};
-    const int32_t match_status = autoware_ndt_scan_matcher_rs_node_on_sensor_points_match(
-      rs_.raw(), ndt_ptr->raw_handle(), &host, &diag, &match_params,
-      sensor_ros_time.nanoseconds(), source_flat.data(),
-      sensor_points_in_baselink_frame_->size(), &out);
-    // Non-MATCHED == a gate early-return (no publish), matching the C++ callback's `return false`.
-    if (match_status != 0) {
-      return false;
-    }
-
-    // Only the aligned pose (→ map cloud) + convergence; the publishers already fired via the host.
-    for (int r = 0; r < 4; ++r) {
-      for (int c = 0; c < 4; ++c) {
-        ndt_result.pose(r, c) = out.result_pose[(r * 4) + c];
-      }
-    }
-    is_converged = out.is_converged;
-#else
     // check is_activated
     const bool node_is_activated = is_activated_;
     diagnostics_scan_points_->add_key_value("is_activated", node_is_activated);
@@ -859,7 +796,6 @@ bool NDTScanMatcher::callback_sensor_points_main(
       diagnostics_scan_points_->update_level_and_message(
         diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
     }
-#endif
 
     // check execution_time
     const auto exe_end_time = std::chrono::system_clock::now();
@@ -874,11 +810,8 @@ bool NDTScanMatcher::callback_sensor_points_main(
         diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
     }
 
-    // publish. exe_time is measured C++-side (it wraps prologue + middle) in both builds.
+    // publish legacy C++ outputs. exe_time wraps the prologue + middle.
     exe_time_pub_->publish(make_float32_stamped(sensor_ros_time, exe_time));
-#ifndef NDT_USE_RUST
-    // POD publishers — in the ON build these fired through the AwHost publish ops inside
-    // `on_sensor_points_match` (Phase 5 sub-slice 3); the legacy C++ path publishes them here.
     initial_pose_with_covariance_pub_->publish(interpolation_result.interpolated_pose);
     transform_probability_pub_->publish(
       make_float32_stamped(sensor_ros_time, ndt_result.transform_probability));
@@ -891,7 +824,6 @@ bool NDTScanMatcher::callback_sensor_points_main(
     publish_initial_to_result(
       sensor_ros_time, result_pose_msg, interpolation_result.interpolated_pose,
       interpolation_result.old_pose, interpolation_result.new_pose);
-#endif
 
     pcl::shared_ptr<pcl::PointCloud<PointSource>> sensor_points_in_map_ptr(
       new pcl::PointCloud<PointSource>);
@@ -939,20 +871,10 @@ bool NDTScanMatcher::callback_sensor_points_main(
       no_ground_points_msg_in_map.header.frame_id = param_.frame.map_frame;
       no_ground_points_aligned_pose_pub_->publish(no_ground_points_msg_in_map);
       // calculate score
-#ifdef NDT_USE_RUST
-      const std::vector<float> no_ground_flat = cloud_to_flat(*no_ground_points_in_map_ptr);
-      const auto no_ground_transform_probability =
-        static_cast<float>(autoware_ndt_scan_matcher_rs_ndt_engine_calc_transformation_probability(
-          ndt_ptr->raw_handle(), no_ground_flat.data(), no_ground_points_in_map_ptr->size()));
-      const auto no_ground_nearest_voxel_transformation_likelihood =
-        static_cast<float>(autoware_ndt_scan_matcher_rs_ndt_engine_calc_nearest_voxel_likelihood(
-          ndt_ptr->raw_handle(), no_ground_flat.data(), no_ground_points_in_map_ptr->size()));
-#else
       const auto no_ground_transform_probability = static_cast<float>(
         ndt_ptr->calculateTransformationProbability(*no_ground_points_in_map_ptr));
       const auto no_ground_nearest_voxel_transformation_likelihood = static_cast<float>(
         ndt_ptr->calculateNearestVoxelTransformationLikelihood(*no_ground_points_in_map_ptr));
-#endif
       // pub score
       no_ground_transform_probability_pub_->publish(
         make_float32_stamped(sensor_ros_time, no_ground_transform_probability));

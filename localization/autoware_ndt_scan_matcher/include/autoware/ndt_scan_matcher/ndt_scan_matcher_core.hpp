@@ -266,9 +266,8 @@ private:
   HyperParameters param_;
 
 #ifdef NDT_USE_RUST
-  // Roadmap foundation: the opaque Rust node handle (owns the validated params + node-state
-  // scaffolding the later phases migrate out of C++). Declared last so it is constructed after
-  // `param_` (its ctor reads `param_`). Inert this slice — held, not yet driving callbacks.
+  // Opaque Rust node handle. It owns migrated node state and drives Rust callback bodies; declared
+  // last so it is constructed after `param_` (its ctor reads `param_`).
   NDTScanMatcherRS rs_;
 #endif
 };
