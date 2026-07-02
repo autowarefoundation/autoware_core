@@ -84,8 +84,22 @@ if(NDT_USE_RUST)
   target_link_libraries(multigrid_ndt_omp autoware_ndt_scan_matcher_rs)
 endif()
 
-ament_auto_add_library(${PROJECT_NAME} SHARED
+set(NDT_SCAN_MATCHER_MAP_UPDATE_SOURCES
   src/map_update_module.cpp
+)
+
+if(NDT_USE_RUST)
+  list(APPEND NDT_SCAN_MATCHER_MAP_UPDATE_SOURCES
+    src/map_update_module_rust.cpp
+  )
+else()
+  list(APPEND NDT_SCAN_MATCHER_MAP_UPDATE_SOURCES
+    src/map_update_module_legacy.cpp
+  )
+endif()
+
+ament_auto_add_library(${PROJECT_NAME} SHARED
+  ${NDT_SCAN_MATCHER_MAP_UPDATE_SOURCES}
   src/ndt_scan_matcher_core.cpp
   src/ndt_scan_matcher_helper.cpp
   src/particle.cpp
