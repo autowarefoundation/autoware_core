@@ -100,9 +100,6 @@ private:
   rclcpp::TimerBase::SharedPtr timer_control_;
   //!< @brief calls publish_diagnostics() at diagnostics_publish_period
   rclcpp::TimerBase::SharedPtr diagnostics_publish_timer_;
-  //!< @brief callback groups for parallel execution
-  rclcpp::CallbackGroup::SharedPtr cb_group_pose_;
-  rclcpp::CallbackGroup::SharedPtr cb_group_twist_;
   //!< @brief last predict time
   std::shared_ptr<const rclcpp::Time> last_predict_time_;
   //!< @brief trigger_node service
@@ -138,6 +135,10 @@ private:
   std::queue<geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr> twist_queue_tmp_;
   std::mutex pose_mtx_;
   std::mutex twist_mtx_;
+
+  //!< @brief callback groups for parallel execution
+  rclcpp::CallbackGroup::SharedPtr cb_group_pose_;
+  rclcpp::CallbackGroup::SharedPtr cb_group_twist_;
 
   //!< @brief Merged diagnostic status from the latest EKF cycle (message/values refresh every tick)
   diagnostic_msgs::msg::DiagnosticStatus merged_diagnostic_status_;

@@ -53,15 +53,14 @@ EKFLocalizer::EKFLocalizer(const rclcpp::NodeOptions & node_options)
   ekf_dt_(params_.ekf_dt),
   pose_queue_(params_.pose_smoothing_steps, params_.max_pose_queue_size),
   twist_queue_(params_.twist_smoothing_steps, params_.max_twist_queue_size),
+  cb_group_pose_(create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive)),
+  cb_group_twist_(create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive)),
   merged_diagnostic_last_transition_time_(0, 0, RCL_ROS_TIME)
 {
   is_activated_ = false;
   is_set_initialpose_ = false;
   merged_diagnostic_status_.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
   merged_diagnostic_status_.message = "OK";
-
-  cb_group_pose_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
-  cb_group_twist_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
 
   /* initialize ros system */
   timer_control_ = rclcpp::create_timer(
