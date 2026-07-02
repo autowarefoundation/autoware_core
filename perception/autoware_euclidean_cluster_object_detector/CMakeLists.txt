@@ -5,6 +5,7 @@ find_package(autoware_cmake REQUIRED)
 autoware_package()
 
 find_package(PCL REQUIRED)
+find_package(tl_expected REQUIRED)
 
 include_directories(
   src
@@ -14,13 +15,16 @@ include_directories(
 )
 
 ament_auto_add_library(${PROJECT_NAME}_lib SHARED
-  lib/euclidean_cluster.cpp
-  lib/voxel_grid_based_euclidean_cluster.cpp
-  lib/utils.cpp
+  lib/euclidean_cluster_object_detector.cpp
+  lib/ros_conversions.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}_lib
   ${PCL_LIBRARIES}
+)
+
+ament_target_dependencies(${PROJECT_NAME}_lib
+  tl_expected
 )
 
 target_include_directories(${PROJECT_NAME}_lib
@@ -29,7 +33,7 @@ target_include_directories(${PROJECT_NAME}_lib
 )
 
 ament_auto_add_library(${PROJECT_NAME}_node_core SHARED
-  src/euclidean_cluster_node.cpp
+  src/euclidean_cluster_object_detector_node.cpp
 )
 target_link_libraries(${PROJECT_NAME}_node_core
   ${PCL_LIBRARIES}
@@ -37,46 +41,18 @@ target_link_libraries(${PROJECT_NAME}_node_core
 )
 
 rclcpp_components_register_node(${PROJECT_NAME}_node_core
-  PLUGIN "autoware::euclidean_cluster::EuclideanClusterNode"
-  EXECUTABLE euclidean_cluster_node
-)
-
-ament_auto_add_library(${PROJECT_NAME}_voxel_grid_node_core SHARED
-  src/voxel_grid_based_euclidean_cluster_node.cpp
-)
-target_link_libraries(${PROJECT_NAME}_voxel_grid_node_core
-  ${PCL_LIBRARIES}
-  ${PROJECT_NAME}_lib
-)
-
-rclcpp_components_register_node(${PROJECT_NAME}_voxel_grid_node_core
-  PLUGIN "autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterNode"
-  EXECUTABLE voxel_grid_based_euclidean_cluster_node
+  PLUGIN "autoware::euclidean_cluster::EuclideanClusterObjectDetectorNode"
+  EXECUTABLE euclidean_cluster_object_detector_node
 )
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
-  ament_auto_add_gtest(test_voxel_grid_based_euclidean_cluster_fusion
-    test/test_voxel_grid_based_euclidean_cluster.cpp
-  )
-
-  ament_auto_add_gtest(test_euclidean_cluster
-    test/test_euclidean_cluster.cpp
-  )
-
-  ament_auto_add_gtest(test_utils
-    test/test_utils.cpp
-  )
-
-  ament_auto_add_gtest(test_nodes
-    test/test_nodes.cpp
-  )
 
   ament_auto_add_gtest(test_euclidean_cluster_object_detector_integration
     test/test_euclidean_cluster_object_detector_integration.cpp
   )
   target_link_libraries(test_euclidean_cluster_object_detector_integration
-    ${PROJECT_NAME}_voxel_grid_node_core
+    ${PROJECT_NAME}_node_core
   )
 endif()
 
