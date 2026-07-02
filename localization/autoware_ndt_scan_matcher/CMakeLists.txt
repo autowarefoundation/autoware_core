@@ -262,6 +262,14 @@ if(BUILD_TESTING)
     )
     target_link_libraries(test_sensor_points_prepare
       ${PROJECT_NAME} ${PCL_LIBRARIES} autoware_ndt_scan_matcher_rs)
+
+    # 17. Differential test: the Rust sensor-callback middle orchestrator (gates → align → convergence
+    #     → covariance) vs the decomposed FFI path it replaces (node port: Phase 5 sub-slice 2).
+    ament_auto_add_gtest(test_sensor_points_match
+      test/test_sensor_points_match.cpp
+    )
+    target_link_libraries(test_sensor_points_match
+      ${PROJECT_NAME} ${PCL_LIBRARIES} autoware_ndt_scan_matcher_rs)
   endif()
 endif()
 

@@ -1639,7 +1639,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_estimate_pose_covaria
     clippy::allow_attributes,
     reason = "fixed-size 4x4 pose marshaling into a bounded buffer"
 )]
-unsafe fn fill_pose_buffer(buf: *mut f32, cap: usize, poses: &[Matrix4<f32>]) -> u32 {
+pub(crate) unsafe fn fill_pose_buffer(buf: *mut f32, cap: usize, poses: &[Matrix4<f32>]) -> u32 {
     let count = poses.len() as u32;
     if !buf.is_null() && cap > 0 {
         // SAFETY: per the contract, `buf` addresses `cap * 16` writable f32.

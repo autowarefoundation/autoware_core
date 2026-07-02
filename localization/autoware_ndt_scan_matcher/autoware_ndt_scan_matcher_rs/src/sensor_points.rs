@@ -19,8 +19,16 @@
 //! into a caller-provided buffer (the C++ tail rebuilds its pcl cloud from them); diagnostics are
 //! emitted through the diagnostics vtable with the same keys/levels as the C++ body. std-only.
 
-use crate::ffi_host::{AwHost, LOG_ERROR};
-use crate::node::{DIAGNOSTIC_WARN, Diagnostics};
+use nalgebra::{
+    Isometry3, Matrix3, Matrix4, Matrix6, Quaternion, Rotation3, Translation3, UnitQuaternion,
+};
+
+use crate::engine::{
+    ConvergenceParams, CovEstimationParams, NdtEngine, estimate_pose_covariance, fill_pose_buffer,
+    run_align,
+};
+use crate::ffi_host::{AwHost, LOG_ERROR, LOG_WARN};
+use crate::node::{DIAGNOSTIC_ERROR, DIAGNOSTIC_WARN, Diagnostics};
 use crate::node_handle::NdtScanMatcherRs;
 
 /// `sensor_msgs::msg::PointField::FLOAT32` — the only xyz datatype the fast path decodes.
@@ -215,6 +223,405 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_on_sensor_points_prep
     SP_PREPARED
 }
 
+// --- Phase 5 sub-slice 2: the sensor-callback *middle* orchestrator ---
+// One Rust call replaces the C++ glue between the prologue and the publishers: the activation /
+// interpolate / map gates, regularization, `run_align` + convergence, and the covariance block —
+// emitting the same `/diagnostics` keys (in order) through the `Diagnostics` vtable. The C++ shell
+// still publishes, reading the returned [`AwSensorPointsMatchOutput`]; the publish vtable + collapsing
+// the base_link round-trip are later sub-slices. std-only node glue.
+
+/// Outcome of [`autoware_ndt_scan_matcher_rs_node_on_sensor_points_match`]. `MATCHED` = the align ran
+/// and `out` is filled (C++ publishes from it — pose publication is still gated on `out.is_converged`).
+/// The others mirror the C++ callback's early `return false` gates (no publish).
+pub const SM_MATCHED: i32 = 0;
+/// The node is not activated (the C++ WARN + `return false`).
+pub const SM_NOT_ACTIVATED: i32 = 1;
+/// The initial pose could not be interpolated (the C++ WARN + `return false`).
+pub const SM_INTERPOLATE_FAILED: i32 = 2;
+/// No map tile is loaded yet (the C++ WARN + `return false`).
+pub const SM_MAP_NOT_SET: i32 = 3;
+/// `converged_param_type` is unknown (the C++ ERROR + `return false`, after align).
+pub const SM_INVALID_PARAM_TYPE: i32 = 4;
+/// A pointer was null / bad args.
+pub const SM_INVALID: i32 = 5;
+
+/// The few scalars the middle needs that are not on the node handle's [`crate::node_handle::Params`]:
+/// the map-update `out_of_map_range` radii, the `initial_to_result` distance tolerance, and the
+/// regularization scale factor (C++ `param_.ndt.regularization_scale_factor`).
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct AwSensorPointsMatchParams {
+    pub lidar_radius: f64,
+    pub map_radius: f64,
+    pub initial_to_result_distance_tolerance_m: f64,
+    pub regularization_scale_factor: f64,
+}
+
+/// C-ABI result of the middle. Scalars are written by Rust; the variable-length pose arrays cross
+/// through caller-owned out-buffers (`*_poses` pointers + caps set C++-side, true counts written back
+/// — the cap+count contract shared with `AwCovEstimationOutput`). `result_pose` is row-major 4x4;
+/// `initial_*` reproduce the interpolated pose the node republishes / feeds to `publish_initial_to_result`.
+#[repr(C)]
+pub struct AwSensorPointsMatchOutput {
+    pub result_pose: [f32; 16],
+    pub ndt_covariance: [f64; 36],
+    pub transform_probability: f32,
+    pub nearest_voxel_transformation_likelihood: f32,
+    pub iteration_num: i32,
+    pub is_converged: bool,
+    pub initial_position: [f64; 3],
+    pub initial_orientation: [f64; 4],
+    pub initial_covariance: [f64; 36],
+    pub initial_old_position: [f64; 3],
+    pub initial_new_position: [f64; 3],
+    /// `0` none, `1` `MULTI_NDT` (both arrays), `2` `MULTI_NDT_SCORE` (initial only).
+    pub publish_kind: i32,
+    pub transformation_array: *mut f32,
+    pub transformation_cap: u32,
+    pub transformation_count: u32,
+    pub multi_ndt_result_poses: *mut f32,
+    pub multi_initial_poses: *mut f32,
+    pub pose_cap: u32,
+    pub multi_ndt_result_count: u32,
+    pub multi_initial_count: u32,
+}
+
+/// Build a 4x4 `f32` transform from a position + `[x, y, z, w]` quaternion (mirrors the C++
+/// `pose_to_matrix4f`: Affine3d from the pose, `cast<float>`).
+#[expect(
+    clippy::as_conversions,
+    clippy::cast_possible_truncation,
+    reason = "deliberate f64->f32 of the interpolated guess pose, mirroring pose_to_matrix4f's cast<float>"
+)]
+fn pose_to_matrix4(position: &[f64; 3], orientation: &[f64; 4]) -> Matrix4<f32> {
+    let q = UnitQuaternion::from_quaternion(Quaternion::new(
+        orientation[3],
+        orientation[0],
+        orientation[1],
+        orientation[2],
+    ));
+    let iso = Isometry3::from_parts(
+        Translation3::new(position[0], position[1], position[2]),
+        q,
+    );
+    iso.to_homogeneous().map(|v| v as f32)
+}
+
+/// Row-major flatten of a 4x4 (nalgebra is column-major, so the transpose's column-major storage IS
+/// the original's row-major order).
+fn matrix4_to_row_major(m: &Matrix4<f32>) -> [f32; 16] {
+    let mut out = [0.0_f32; 16];
+    out.copy_from_slice(m.transpose().as_slice());
+    out
+}
+
+/// Row-major flatten of a 6x6 (see [`matrix4_to_row_major`]).
+fn matrix6_to_row_major(m: &Matrix6<f64>) -> [f64; 36] {
+    let mut out = [0.0_f64; 36];
+    out.copy_from_slice(m.transpose().as_slice());
+    out
+}
+
+/// The `map`←`base_link` rotation the covariance block rotates the configured 6x6 by: the C++ takes
+/// the result-pose quaternion (`matrix4f_to_pose`), normalizes it, and back to a 3x3. Reproduced via
+/// nalgebra (matrix → unit quaternion → matrix), row-major.
+fn map_to_base_link_rot3x3(result_pose: &Matrix4<f32>) -> [f64; 9] {
+    let rot_f64: Matrix3<f64> = result_pose.fixed_view::<3, 3>(0, 0).into_owned().map(f64::from);
+    let uq = UnitQuaternion::from_rotation_matrix(&Rotation3::from_matrix_unchecked(rot_f64));
+    let mut out = [0.0_f64; 9];
+    out.copy_from_slice(uq.to_rotation_matrix().matrix().transpose().as_slice());
+    out
+}
+
+/// The sensor-callback middle: gates → align → convergence → covariance, emitting the same diagnostics
+/// and filling `out` for the C++ publishers. Returns an `SM_*` status. Mirrors
+/// `callback_sensor_points_main` lines ~560–981 in order.
+///
+/// # Safety
+/// All pointers must be valid/live for the call (or null → `SM_INVALID`). `source_xyz` addresses
+/// `3 * source_count` readable `f32`; the `out.*_poses` buffers each address their `*_cap * 16`
+/// writable `f32` (or are null to skip). The `host`/`diag` vtables + `engine`/`handle` outlive the call.
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointers validated per rust-c-ffi-safety"
+)]
+#[expect(
+    clippy::too_many_lines,
+    reason = "faithful line-by-line port of the C++ sensor-callback middle, kept as one orchestrator so the gate/diagnostic order is obvious"
+)]
+#[allow(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::as_conversions,
+    clippy::cast_possible_truncation,
+    clippy::allow_attributes,
+    reason = "f64 geometry math + fixed-size nalgebra/array indexing + the documented f64->f32 regularization/pose casts of the ported middle"
+)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_on_sensor_points_match(
+    handle: *const NdtScanMatcherRs,
+    engine: *const NdtEngine,
+    host: *const AwHost,
+    diag: *const Diagnostics,
+    params: *const AwSensorPointsMatchParams,
+    sensor_stamp_ns: i64,
+    source_xyz: *const f32,
+    source_count: usize,
+    out: *mut AwSensorPointsMatchOutput,
+) -> i32 {
+    if handle.is_null()
+        || engine.is_null()
+        || host.is_null()
+        || diag.is_null()
+        || params.is_null()
+        || out.is_null()
+        || (source_count > 0 && source_xyz.is_null())
+    {
+        return SM_INVALID;
+    }
+    // SAFETY: non-null per the check; caller guarantees valid, live handle/engine/host/diag/params/out.
+    let (h, eng, ho, d, prm, o) = unsafe {
+        (
+            &*handle,
+            &*engine,
+            &*host,
+            &*diag,
+            &*params,
+            &mut *out,
+        )
+    };
+    // SAFETY: `source_xyz` addresses `3 * source_count` readable f32 per the contract (empty if null/0).
+    let source: &[[f32; 3]] = if source_count == 0 {
+        &[]
+    } else {
+        unsafe { core::slice::from_raw_parts(source_xyz.cast::<[f32; 3]>(), source_count) }
+    };
+
+    // check is_activated
+    let is_activated = h.is_activated();
+    d.add_bool("is_activated", is_activated);
+    if !is_activated {
+        d.update_level(DIAGNOSTIC_WARN, "Node is not activated.");
+        return SM_NOT_ACTIVATED;
+    }
+
+    // calculate initial pose (interpolate + pop_old, Rust-owned buffer)
+    let Some(interp) = h.interpolate_initial_pose(sensor_stamp_ns) else {
+        d.add_bool("is_succeed_interpolate_initial_pose", false);
+        d.update_level(
+            DIAGNOSTIC_WARN,
+            "Couldn't interpolate pose. Please verify that (1) the initial pose topic (primarily \
+             come from the EKF) is being published, and (2) the timestamps of the sensor PCD \
+             messages and pose messages are synchronized correctly.",
+        );
+        return SM_INTERPOLATE_FAILED;
+    };
+    d.add_bool("is_succeed_interpolate_initial_pose", true);
+    let initial_pose_matrix = pose_to_matrix4(&interp.position, &interp.orientation);
+
+    // regularization: interpolate the Rust-owned buffer and set it on the engine (else disable).
+    if h.params.regularization_enable {
+        eng.set_regularization(0.0, 0.0, 0.0);
+        if let Some(reg) = h.interpolate_regularization(sensor_stamp_ns) {
+            eng.set_regularization(
+                reg.position[0] as f32,
+                reg.position[1] as f32,
+                prm.regularization_scale_factor as f32,
+            );
+        }
+    }
+
+    // Warn if the lidar has gone out of the map range (soft; no gate).
+    if h.map_update_out_of_range(
+        [interp.position[0], interp.position[1]],
+        prm.lidar_radius,
+        prm.map_radius,
+    ) {
+        d.update_level(DIAGNOSTIC_WARN, "Lidar has gone out of the map range");
+        ho.log(LOG_WARN, "Lidar has gone out of the map range");
+    }
+
+    // check is_set_map_points
+    let is_set_map_points = eng.has_target();
+    d.add_bool("is_set_map_points", is_set_map_points);
+    if !is_set_map_points {
+        d.update_level(DIAGNOSTIC_WARN, "Map points is not set.");
+        return SM_MAP_NOT_SET;
+    }
+
+    // perform ndt scan matching (align + oscillation + convergence verdict)
+    let convergence_params = ConvergenceParams {
+        converged_param_type: h.params.converged_param_type,
+        converged_param_transform_probability: h.params.converged_param_transform_probability,
+        converged_param_nearest_voxel_transformation_likelihood: h
+            .params
+            .converged_param_nearest_voxel_transformation_likelihood,
+    };
+    let outcome = run_align(eng, &initial_pose_matrix, source, &convergence_params);
+    let result = eng.result();
+    let (tp_array, nvtl_array) = eng.score_arrays();
+    let verdict = outcome.verdict;
+
+    // check iteration_num
+    d.add_i64("iteration_num", i64::from(result.iteration_num));
+    if !verdict.is_ok_iteration_num {
+        d.update_level(
+            DIAGNOSTIC_WARN,
+            &alloc::format!(
+                "The number of iterations has reached its upper limit. The number of iterations: \
+                 {}, Limit: {}.",
+                result.iteration_num,
+                outcome.max_iterations
+            ),
+        );
+    }
+
+    // check local_optimal_solution_oscillation_num
+    d.add_i64(
+        "local_optimal_solution_oscillation_num",
+        i64::from(outcome.oscillation_num),
+    );
+    if verdict.is_local_optimal_solution_oscillation {
+        d.update_level(
+            DIAGNOSTIC_WARN,
+            "There is a possibility of oscillation in a local minimum",
+        );
+    }
+
+    // check score
+    d.add_f64(
+        "transform_probability",
+        f64::from(result.transform_probability),
+    );
+    d.add_f64(
+        "nearest_voxel_transformation_likelihood",
+        f64::from(result.nearest_voxel_likelihood),
+    );
+    if !verdict.valid_param_type {
+        d.update_level(
+            DIAGNOSTIC_ERROR,
+            "Unknown converged param type. Please check `score_estimation.converged_param_type`",
+        );
+        return SM_INVALID_PARAM_TYPE;
+    }
+
+    // check score diff (diagnostic only; the arrays stay Rust-internal)
+    let want_len = i32::try_from(tp_array.len()).unwrap_or(i32::MAX);
+    if want_len != result.iteration_num.saturating_add(1) {
+        d.update_level(
+            DIAGNOSTIC_WARN,
+            &alloc::format!(
+                "transform_probability_array size is not equal to iteration_num + 1. \
+                 transform_probability_array size: {}, iteration_num: {}",
+                tp_array.len(),
+                result.iteration_num
+            ),
+        );
+    } else if let (Some(&front), Some(&back)) = (tp_array.first(), tp_array.last()) {
+        d.add_f64("transform_probability_diff", f64::from(back - front));
+        d.add_f64("transform_probability_before", f64::from(front));
+    }
+    let nvtl_len = i32::try_from(nvtl_array.len()).unwrap_or(i32::MAX);
+    if nvtl_len != result.iteration_num.saturating_add(1) {
+        d.update_level(
+            DIAGNOSTIC_WARN,
+            &alloc::format!(
+                "nearest_voxel_transformation_likelihood_array size is not equal to \
+                 iteration_num + 1. nearest_voxel_transformation_likelihood_array size: {}, \
+                 iteration_num: {}",
+                nvtl_array.len(),
+                result.iteration_num
+            ),
+        );
+    } else if let (Some(&front), Some(&back)) = (nvtl_array.first(), nvtl_array.last()) {
+        d.add_f64(
+            "nearest_voxel_transformation_likelihood_diff",
+            f64::from(back - front),
+        );
+        d.add_f64(
+            "nearest_voxel_transformation_likelihood_before",
+            f64::from(front),
+        );
+    }
+
+    if !verdict.is_ok_score {
+        let msg = alloc::format!(
+            "Score is below the threshold. Score: {}, Threshold: {}",
+            verdict.score,
+            verdict.score_threshold
+        );
+        d.update_level(DIAGNOSTIC_WARN, &msg);
+        ho.log(LOG_WARN, &msg);
+    }
+
+    // covariance estimation (rotate + dispatch + scale + adjust, against the live map)
+    let cov = estimate_pose_covariance(
+        eng,
+        &outcome.pose,
+        &matrix6_to_row_major(&result.hessian),
+        &initial_pose_matrix,
+        source,
+        &h.params.initial_pose_offset_model_x,
+        &h.params.initial_pose_offset_model_y,
+        &CovEstimationParams {
+            estimation_type: h.params.covariance_estimation_type,
+            scale_factor: h.params.covariance_scale_factor,
+            temperature: h.params.covariance_temperature,
+            main_nvtl: result.nearest_voxel_likelihood,
+            output_pose_covariance: h.params.output_pose_covariance,
+            map_to_base_link_rot3x3: map_to_base_link_rot3x3(&outcome.pose),
+        },
+    );
+
+    // check distance_initial_to_result (diagnostic only)
+    let dx = interp.position[0] - f64::from(outcome.pose[(0, 3)]);
+    let dy = interp.position[1] - f64::from(outcome.pose[(1, 3)]);
+    let dz = interp.position[2] - f64::from(outcome.pose[(2, 3)]);
+    let distance_initial_to_result = libm::sqrt(dx * dx + dy * dy + dz * dz);
+    d.add_f64("distance_initial_to_result", distance_initial_to_result);
+    if distance_initial_to_result > prm.initial_to_result_distance_tolerance_m {
+        d.update_level(
+            DIAGNOSTIC_WARN,
+            &alloc::format!(
+                "distance_initial_to_result is too large ({distance_initial_to_result} [m])."
+            ),
+        );
+    }
+
+    // fill the result struct for the C++ publishers.
+    o.result_pose = matrix4_to_row_major(&outcome.pose);
+    o.ndt_covariance = cov.ndt_covariance;
+    o.transform_probability = result.transform_probability;
+    o.nearest_voxel_transformation_likelihood = result.nearest_voxel_likelihood;
+    o.iteration_num = result.iteration_num;
+    o.is_converged = verdict.is_converged;
+    o.initial_position = interp.position;
+    o.initial_orientation = interp.orientation;
+    o.initial_covariance = interp.covariance;
+    o.initial_old_position = interp.old.position;
+    o.initial_new_position = interp.new_entry.position;
+    o.publish_kind = cov.publish_kind;
+    // SAFETY: each non-null out buffer addresses its `*_cap * 16` writable f32 per the contract.
+    unsafe {
+        o.transformation_count = fill_pose_buffer(
+            o.transformation_array,
+            o.transformation_cap as usize,
+            &result.transformation_array,
+        );
+        o.multi_ndt_result_count = fill_pose_buffer(
+            o.multi_ndt_result_poses,
+            o.pose_cap as usize,
+            &cov.multi_ndt_result_poses,
+        );
+        o.multi_initial_count = fill_pose_buffer(
+            o.multi_initial_poses,
+            o.pose_cap as usize,
+            &cov.multi_initial_poses,
+        );
+    }
+    SM_MATCHED
+}
+
 /// ns → seconds (see the equivalent in `pose_buffer`; magnitudes are within f64's exact-int range).
 #[expect(
     clippy::as_conversions,
@@ -229,6 +636,9 @@ fn ns_to_sec(ns: i64) -> f64 {
 #[allow(
     clippy::float_cmp,
     clippy::indexing_slicing,
+    clippy::arithmetic_side_effects,
+    clippy::as_conversions,
+    clippy::cast_precision_loss,
     clippy::allow_attributes,
     reason = "test code: exact-equal asserts on deterministic math + fixed-size index reads"
 )]
@@ -265,5 +675,75 @@ mod tests {
     fn ns_to_sec_matches() {
         assert_eq!(ns_to_sec(1_500_000_000), 1.5);
         assert_eq!(ns_to_sec(0), 0.0);
+    }
+
+    #[test]
+    fn pose_to_matrix4_identity_rotation_places_translation() {
+        // Identity quaternion [x,y,z,w] = [0,0,0,1] + translation (1,2,3).
+        let m = pose_to_matrix4(&[1.0, 2.0, 3.0], &[0.0, 0.0, 0.0, 1.0]);
+        assert!((m[(0, 3)] - 1.0).abs() < 1e-6);
+        assert!((m[(1, 3)] - 2.0).abs() < 1e-6);
+        assert!((m[(2, 3)] - 3.0).abs() < 1e-6);
+        // Upper-left 3x3 is identity; bottom row is [0,0,0,1].
+        for r in 0..3 {
+            for c in 0..3 {
+                let want = if r == c { 1.0 } else { 0.0 };
+                assert!((m[(r, c)] - want).abs() < 1e-6, "({r},{c})");
+            }
+        }
+        assert!((m[(3, 3)] - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn matrix4_to_row_major_flattens_row_major() {
+        // Distinct entries so any transpose bug is visible: m[(r,c)] = 4r + c.
+        let mut m = Matrix4::<f32>::zeros();
+        for r in 0..4 {
+            for c in 0..4 {
+                m[(r, c)] = ((r * 4) + c) as f32;
+            }
+        }
+        let flat = matrix4_to_row_major(&m);
+        for (i, &v) in flat.iter().enumerate() {
+            assert_eq!(v, i as f32, "index {i}");
+        }
+    }
+
+    #[test]
+    fn matrix6_to_row_major_flattens_row_major() {
+        let mut m = Matrix6::<f64>::zeros();
+        for r in 0..6 {
+            for c in 0..6 {
+                m[(r, c)] = ((r * 6) + c) as f64;
+            }
+        }
+        let flat = matrix6_to_row_major(&m);
+        for (i, &v) in flat.iter().enumerate() {
+            assert_eq!(v, i as f64, "index {i}");
+        }
+    }
+
+    #[test]
+    fn map_to_base_link_rot3x3_of_identity_is_identity() {
+        let rot = map_to_base_link_rot3x3(&Matrix4::<f32>::identity());
+        let want = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
+        for (i, (&g, &w)) in rot.iter().zip(want.iter()).enumerate() {
+            assert!((g - w).abs() < 1e-12, "index {i}: {g} vs {w}");
+        }
+    }
+
+    #[test]
+    fn map_to_base_link_rot3x3_quarter_turn_about_z() {
+        // 90 deg CCW about z: R = [[0,-1,0],[1,0,0],[0,0,1]] (row-major).
+        let mut m = Matrix4::<f32>::identity();
+        m[(0, 0)] = 0.0;
+        m[(0, 1)] = -1.0;
+        m[(1, 0)] = 1.0;
+        m[(1, 1)] = 0.0;
+        let rot = map_to_base_link_rot3x3(&m);
+        let want = [0.0, -1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0];
+        for (i, (&g, &w)) in rot.iter().zip(want.iter()).enumerate() {
+            assert!((g - w).abs() < 1e-9, "index {i}: {g} vs {w}");
+        }
     }
 }
