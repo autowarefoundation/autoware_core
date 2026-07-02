@@ -95,7 +95,7 @@ protected:
    *
    * @param input_msg Point cloud message to publish.
    *
-   * @note Current timeout is 30 seconds. Pub/sub handshake checked every 10 ms.
+   * @note Current timeout is 500 ms. Pub/sub handshake checked every 10 ms.
    */
   void publish_and_wait(const sensor_msgs::msg::PointCloud2 & input_msg)
   {
@@ -109,7 +109,7 @@ protected:
     executor.add_node(target_node_);
 
     const auto start = std::chrono::steady_clock::now();
-    const auto timeout = std::chrono::seconds(30);
+    const auto timeout = std::chrono::milliseconds(500);
     while (!message_received_) {
       executor.spin_some();
       if (std::chrono::steady_clock::now() - start > timeout) {
@@ -126,11 +126,14 @@ protected:
    *
    * @return sensor_msgs::msg::PointCloud2 A point cloud message containing above points.
    */
-  sensor_msgs::msg::PointCloud2 create_mock_cloud(const std::vector<std::array<float, 3>> & points)
+  static sensor_msgs::msg::PointCloud2 create_mock_cloud(
+    const std::vector<std::array<float, 3>> & points)
   {
     sensor_msgs::msg::PointCloud2 cloud;
     cloud.header.frame_id = "base_link";
-    cloud.header.stamp = interceptor_node_->now();
+    constexpr uint32_t base_time = 0;
+    cloud.header.stamp.sec = base_time;
+    cloud.header.stamp.nanosec = 0;
 
     sensor_msgs::PointCloud2Modifier modifier(cloud);
     modifier.setPointCloud2FieldsByString(1, "xyz");
