@@ -9,13 +9,15 @@ find_package(tl_expected REQUIRED)
 
 include_directories(
   src
+  lib
   SYSTEM
   ${PCL_COMMON_INCLUDE_DIRS}
   ${PCL_INCLUDE_DIRS}
 )
 
+# --- THE DEEP MODULE & CONVERSIONS ---
 ament_auto_add_library(${PROJECT_NAME}_lib SHARED
-  lib/euclidean_cluster_object_detector.cpp
+  src/euclidean_cluster_object_detector.cpp
   lib/ros_conversions.cpp
 )
 
@@ -30,8 +32,10 @@ ament_target_dependencies(${PROJECT_NAME}_lib
 target_include_directories(${PROJECT_NAME}_lib
   PRIVATE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/lib>
 )
 
+# --- THE THIN NODE WRAPPER ---
 ament_auto_add_library(${PROJECT_NAME}_node_core SHARED
   src/euclidean_cluster_object_detector_node.cpp
 )
@@ -45,9 +49,11 @@ rclcpp_components_register_node(${PROJECT_NAME}_node_core
   EXECUTABLE euclidean_cluster_object_detector_node
 )
 
+# --- TESTING ---
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
 
+  # Only our new integration harness survives Phase 2
   ament_auto_add_gtest(test_euclidean_cluster_object_detector_integration
     test/test_euclidean_cluster_object_detector_integration.cpp
   )
