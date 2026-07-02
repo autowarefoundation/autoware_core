@@ -24,7 +24,6 @@
 #include <cmath>
 #include <memory>
 #include <string>
-#include <utility>
 
 namespace autoware::gyro_odometer
 {
@@ -166,16 +165,8 @@ void GyroOdometerNode::publish_data(
   twist_raw.header = twist_with_cov_raw.header;
   twist_raw.twist = twist_with_cov_raw.twist.twist;
 
-  {
-    auto msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(twist_raw_pub_);
-    *msg = twist_raw;
-    twist_raw_pub_->publish(std::move(msg));
-  }
-  {
-    auto msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(twist_with_covariance_raw_pub_);
-    *msg = twist_with_cov_raw;
-    twist_with_covariance_raw_pub_->publish(std::move(msg));
-  }
+  twist_raw_pub_->publish(twist_raw);
+  twist_with_covariance_raw_pub_->publish(twist_with_cov_raw);
 
   // clear imu yaw bias if vehicle is stopped
   const geometry_msgs::msg::TwistWithCovarianceStamped twist_with_covariance =
@@ -185,16 +176,8 @@ void GyroOdometerNode::publish_data(
   twist.header = twist_with_covariance.header;
   twist.twist = twist_with_covariance.twist.twist;
 
-  {
-    auto msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(twist_pub_);
-    *msg = twist;
-    twist_pub_->publish(std::move(msg));
-  }
-  {
-    auto msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(twist_with_covariance_pub_);
-    *msg = twist_with_covariance;
-    twist_with_covariance_pub_->publish(std::move(msg));
-  }
+  twist_pub_->publish(twist);
+  twist_with_covariance_pub_->publish(twist_with_covariance);
 }
 
 void GyroOdometerNode::publish_diagnostics()
