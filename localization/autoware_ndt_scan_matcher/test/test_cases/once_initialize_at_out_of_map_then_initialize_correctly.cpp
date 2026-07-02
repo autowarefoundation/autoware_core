@@ -34,7 +34,7 @@ TEST_F(TestNDTScanMatcher, once_initialize_at_out_of_map_then_initialize_correct
   //---------//
   std::thread t1([&]() {
     rclcpp::executors::MultiThreadedExecutor exec;
-    exec.add_node(node_);
+    exec.add_node(node_->get_node_base_interface());
     exec.spin();
   });
   std::thread t2([&]() { rclcpp::spin(pcd_loader_); });
