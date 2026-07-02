@@ -46,8 +46,7 @@ sensor_msgs::msg::PointCloud2 downsample_pointcloud(
 /// @return Merged pointcloud message in map frame.
 sensor_msgs::msg::PointCloud2 load_pointcloud_map(
   const std::vector<std::string> & pcd_paths, boost::optional<float> leaf_size,
-  const PointcloudLoaderLogFunction & debug_log,
-  const PointcloudLoaderLogFunction & error_log);
+  const PointcloudLoaderLogFunction & debug_log, const PointcloudLoaderLogFunction & error_log);
 
 /// @brief Resolve input paths to concrete PCD file paths.
 /// @param pcd_paths_or_directory Input entries, each being a PCD file path or directory.
