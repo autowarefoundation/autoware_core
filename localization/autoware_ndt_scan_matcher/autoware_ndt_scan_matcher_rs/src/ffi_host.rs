@@ -89,6 +89,8 @@ pub enum AwPoseArrayTopic {
 pub enum AwFloat32Topic {
     TransformProbability = 0,
     NearestVoxelTransformationLikelihood = 1,
+    NoGroundTransformProbability = 2,
+    NoGroundNearestVoxelTransformationLikelihood = 3,
 }
 
 /// Which `Int32Stamped` publisher [`AwHost::publish_int32`] targets.
@@ -96,6 +98,23 @@ pub enum AwFloat32Topic {
 #[derive(Clone, Copy)]
 pub enum AwInt32Topic {
     IterationNum = 0,
+}
+
+/// Which point-cloud publisher [`AwHost::publish_pointcloud_xyz`] targets.
+#[repr(i32)]
+#[derive(Clone, Copy)]
+pub enum AwPointCloudTopic {
+    PointsAligned = 0,
+    PointsAlignedNoGround = 1,
+    VoxelScorePoints = 2,
+}
+
+/// Borrowed `[[f32; 3]]` point slice crossing the C ABI.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct AwPoint3fSlice {
+    pub ptr: *const f32,
+    pub len: usize,
 }
 
 /// The ROS side-effects vtable. Built + owned C++-side (`make_host`); the trampolines cast `ctx` back
@@ -109,9 +128,12 @@ pub struct AwHost {
     log: extern "C" fn(*mut c_void, level: i32, msg: *const u8, msg_len: usize),
     /// Look up the `target←source` transform and write it as a row-major 4x4 `f32` into
     /// `out_matrix4x4_row_major` (16 floats). Returns `false` on a TF failure (out left untouched).
-    lookup_transform:
-        extern "C" fn(*mut c_void, target: AwStr, source: AwStr, out_matrix4x4_row_major: *mut f32)
-            -> bool,
+    lookup_transform: extern "C" fn(
+        *mut c_void,
+        target: AwStr,
+        source: AwStr,
+        out_matrix4x4_row_major: *mut f32,
+    ) -> bool,
 
     // --- publish ops (Phase 5 sub-slice 3). POD in; the C++ trampolines build the ROS message +
     // fan out by topic, and know the frame_ids (static node config). Each is catch(...)-guarded C++
@@ -125,12 +147,22 @@ pub struct AwHost {
         cov6x6_row_major: *const f64,
     ),
     /// Publish a `PoseArray` of `n` poses (covariance debug).
-    publish_pose_array:
-        extern "C" fn(*mut c_void, topic: AwPoseArrayTopic, stamp_ns: i64, poses: *const AwPose, n: usize),
+    publish_pose_array: extern "C" fn(
+        *mut c_void,
+        topic: AwPoseArrayTopic,
+        stamp_ns: i64,
+        poses: *const AwPose,
+        n: usize,
+    ),
     /// Publish the NDT iteration-trajectory `MarkerArray` (C++ builds the ARROW markers, padded to
     /// `max_iterations + 2`).
-    publish_marker:
-        extern "C" fn(*mut c_void, stamp_ns: i64, poses: *const AwPose, n: usize, max_iterations: i32),
+    publish_marker: extern "C" fn(
+        *mut c_void,
+        stamp_ns: i64,
+        poses: *const AwPose,
+        n: usize,
+        max_iterations: i32,
+    ),
     /// Publish a `Float32Stamped` scalar.
     publish_float32: extern "C" fn(*mut c_void, topic: AwFloat32Topic, stamp_ns: i64, value: f32),
     /// Publish an `Int32Stamped` scalar.
@@ -146,6 +178,24 @@ pub struct AwHost {
         initial: *const AwPose,
         old_pos: *const f64,
         new_pos: *const f64,
+    ),
+    /// Transitional until the align service moves to Rust: store the prepared `base_link` cloud in the
+    /// C++ shell for `service_ndt_align`'s legacy `sensor_points_in_baselink_frame_` dependency.
+    store_sensor_points_base_link: extern "C" fn(*mut c_void, points: AwPoint3fSlice),
+    /// Whether a point-cloud publisher currently has subscribers. Used to avoid expensive optional
+    /// score-cloud generation.
+    pointcloud_has_subscribers: extern "C" fn(*mut c_void, topic: AwPointCloudTopic) -> bool,
+    /// Publish an XYZ point cloud in map frame.
+    publish_pointcloud_xyz:
+        extern "C" fn(*mut c_void, topic: AwPointCloudTopic, stamp_ns: i64, points: AwPoint3fSlice),
+    /// Publish voxel-score points. `points` and `scores` have the same length; C++ applies the
+    /// existing score-to-RGB color map and publishes `voxel_score_points`.
+    publish_voxel_score_points: extern "C" fn(
+        *mut c_void,
+        stamp_ns: i64,
+        points: AwPoint3fSlice,
+        scores: *const f32,
+        scores_len: usize,
     ),
 }
 
@@ -181,7 +231,13 @@ impl AwHost {
     }
 
     /// Publish `pose` (with `cov` ⇒ `PoseWithCovarianceStamped`, else `PoseStamped`) on `topic`.
-    pub fn publish_pose(&self, topic: AwPoseTopic, stamp_ns: i64, pose: &AwPose, cov: Option<&[f64; 36]>) {
+    pub fn publish_pose(
+        &self,
+        topic: AwPoseTopic,
+        stamp_ns: i64,
+        pose: &AwPose,
+        cov: Option<&[f64; 36]>,
+    ) {
         let cov_ptr = cov.map_or(core::ptr::null(), |c| c.as_ptr());
         (self.publish_pose)(self.ctx, topic, stamp_ns, pose, cov_ptr);
     }
@@ -193,7 +249,13 @@ impl AwHost {
 
     /// Publish the NDT iteration-trajectory markers (`max_iterations` sets the C++ padding length).
     pub fn publish_marker(&self, stamp_ns: i64, poses: &[AwPose], max_iterations: i32) {
-        (self.publish_marker)(self.ctx, stamp_ns, poses.as_ptr(), poses.len(), max_iterations);
+        (self.publish_marker)(
+            self.ctx,
+            stamp_ns,
+            poses.as_ptr(),
+            poses.len(),
+            max_iterations,
+        );
     }
 
     /// Publish a `Float32Stamped` scalar on `topic`.
@@ -227,6 +289,55 @@ impl AwHost {
             initial,
             old_pos.as_ptr(),
             new_pos.as_ptr(),
+        );
+    }
+
+    /// Store the prepared `base_link` cloud in the C++ shell for the deferred align-service path.
+    pub fn store_sensor_points_base_link(&self, points: &[[f32; 3]]) {
+        (self.store_sensor_points_base_link)(
+            self.ctx,
+            AwPoint3fSlice {
+                ptr: points.as_ptr().cast::<f32>(),
+                len: points.len(),
+            },
+        );
+    }
+
+    /// Whether a point-cloud topic currently has subscribers.
+    #[must_use]
+    pub fn pointcloud_has_subscribers(&self, topic: AwPointCloudTopic) -> bool {
+        (self.pointcloud_has_subscribers)(self.ctx, topic)
+    }
+
+    /// Publish an XYZ point cloud in map frame.
+    pub fn publish_pointcloud_xyz(
+        &self,
+        topic: AwPointCloudTopic,
+        stamp_ns: i64,
+        points: &[[f32; 3]],
+    ) {
+        (self.publish_pointcloud_xyz)(
+            self.ctx,
+            topic,
+            stamp_ns,
+            AwPoint3fSlice {
+                ptr: points.as_ptr().cast::<f32>(),
+                len: points.len(),
+            },
+        );
+    }
+
+    /// Publish voxel-score points with their nearest-voxel score intensities.
+    pub fn publish_voxel_score_points(&self, stamp_ns: i64, points: &[[f32; 3]], scores: &[f32]) {
+        (self.publish_voxel_score_points)(
+            self.ctx,
+            stamp_ns,
+            AwPoint3fSlice {
+                ptr: points.as_ptr().cast::<f32>(),
+                len: points.len(),
+            },
+            scores.as_ptr(),
+            scores.len(),
         );
     }
 }

@@ -58,11 +58,29 @@ extern "C" bool h_lookup(void * ctx, AwStr /*target*/, AwStr /*source*/, float *
   }
   return true;
 }
-// The prologue (`on_sensor_points_prepare`) never invokes the publish ops, so they are left null.
+extern "C" void h_pub_pose(void *, AwPoseTopic, std::int64_t, const AwPose *, const double *) {}
+extern "C" void h_pub_pose_array(void *, AwPoseArrayTopic, std::int64_t, const AwPose *, std::size_t) {}
+extern "C" void h_pub_marker(void *, std::int64_t, const AwPose *, std::size_t, std::int32_t) {}
+extern "C" void h_pub_float32(void *, AwFloat32Topic, std::int64_t, float) {}
+extern "C" void h_pub_int32(void *, AwInt32Topic, std::int64_t, std::int32_t) {}
+extern "C" void h_pub_tf(void *, std::int64_t, const AwPose *) {}
+extern "C" void h_pub_itr(
+  void *, std::int64_t, const AwPose *, const AwPose *, const double *, const double *)
+{
+}
+extern "C" void h_store_base_link(void *, AwPoint3fSlice) {}
+extern "C" bool h_pc_has(void *, AwPointCloudTopic) { return false; }
+extern "C" void h_pub_cloud(void *, AwPointCloudTopic, std::int64_t, AwPoint3fSlice) {}
+extern "C" void h_pub_score_cloud(
+  void *, std::int64_t, AwPoint3fSlice, const float *, std::size_t)
+{
+}
 AwHost mock_host(HostCtx & c)
 {
-  return AwHost{&c,      h_now,   h_log,   h_lookup, nullptr, nullptr,
-                nullptr, nullptr, nullptr, nullptr,  nullptr};
+  return AwHost{
+    &c,           h_now,        h_log,         h_lookup,   h_pub_pose, h_pub_pose_array,
+    h_pub_marker, h_pub_float32, h_pub_int32, h_pub_tf,    h_pub_itr,  h_store_base_link, h_pc_has,
+    h_pub_cloud,  h_pub_score_cloud};
 }
 
 // A no-op diagnostics vtable.

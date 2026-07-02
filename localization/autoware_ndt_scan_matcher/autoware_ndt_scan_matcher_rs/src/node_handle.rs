@@ -428,11 +428,19 @@ impl Params {
         }
         let num_threads = usize::try_from(p.num_threads).map_err(|_| Error::InvalidParam)?;
         // SAFETY: caller guarantees each offset pointer is valid for its stated length (or null/0).
-        let offset_x =
-            unsafe { f64_slice(p.initial_pose_offset_model_x, p.initial_pose_offset_model_x_len) };
+        let offset_x = unsafe {
+            f64_slice(
+                p.initial_pose_offset_model_x,
+                p.initial_pose_offset_model_x_len,
+            )
+        };
         // SAFETY: same contract as above for the y model.
-        let offset_y =
-            unsafe { f64_slice(p.initial_pose_offset_model_y, p.initial_pose_offset_model_y_len) };
+        let offset_y = unsafe {
+            f64_slice(
+                p.initial_pose_offset_model_y,
+                p.initial_pose_offset_model_y_len,
+            )
+        };
         // SAFETY: caller guarantees `map_frame` is valid for `map_frame_len` (or null/0).
         let map_frame = unsafe { byte_slice(p.map_frame, p.map_frame_len) };
         // SAFETY: caller guarantees `base_frame` is valid for `base_frame_len` (or null/0).
@@ -819,7 +827,13 @@ mod tests {
         // Node state starts empty (inactive, no EKF position yet).
         assert!(!m.is_activated());
         assert!(m.latest_ekf_position().is_none());
-        assert!(m.map_update_state.lock().unwrap().last_update_position.is_none());
+        assert!(
+            m.map_update_state
+                .lock()
+                .unwrap()
+                .last_update_position
+                .is_none()
+        );
         // SAFETY: `handle` is a live pointer from `_new`, freed exactly once here.
         unsafe { autoware_ndt_scan_matcher_rs_free(handle) };
     }
@@ -943,7 +957,11 @@ mod tests {
         let mut out = AwInterpolatedPose::default();
         // SAFETY: live handle + writable out.
         let ok = unsafe {
-            autoware_ndt_scan_matcher_rs_regularization_interpolate(handle, 1_000_000_001, &raw mut out)
+            autoware_ndt_scan_matcher_rs_regularization_interpolate(
+                handle,
+                1_000_000_001,
+                &raw mut out,
+            )
         };
         assert!(ok);
         assert!((out.position[0] - 1.0).abs() < 1e-9);
@@ -964,7 +982,11 @@ mod tests {
         let mut out = AwInterpolatedPose::default();
         // SAFETY: live handle + writable out; disabled buffer → false.
         let ok = unsafe {
-            autoware_ndt_scan_matcher_rs_regularization_interpolate(handle, 1_000_000_001, &raw mut out)
+            autoware_ndt_scan_matcher_rs_regularization_interpolate(
+                handle,
+                1_000_000_001,
+                &raw mut out,
+            )
         };
         assert!(!ok);
         // SAFETY: freed once.

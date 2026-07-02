@@ -167,6 +167,12 @@ private:
   static void host_publish_initial_to_result(
     void * ctx, int64_t stamp_ns, const AwPose * result, const AwPose * initial,
     const double * old_pos, const double * new_pos);
+  static void host_store_sensor_points_base_link(void * ctx, AwPoint3fSlice points);
+  static bool host_pointcloud_has_subscribers(void * ctx, AwPointCloudTopic topic);
+  static void host_publish_pointcloud_xyz(
+    void * ctx, AwPointCloudTopic topic, int64_t stamp_ns, AwPoint3fSlice points);
+  static void host_publish_voxel_score_points(
+    void * ctx, int64_t stamp_ns, AwPoint3fSlice points, const float * scores, std::size_t scores_len);
   AwHost make_host();
 #endif
 

@@ -27,7 +27,8 @@ use crate::engine::{
     ConvergenceParams, CovEstimationParams, NdtEngine, estimate_pose_covariance, run_align,
 };
 use crate::ffi_host::{
-    AwFloat32Topic, AwHost, AwInt32Topic, AwPose, AwPoseArrayTopic, AwPoseTopic, LOG_ERROR, LOG_WARN,
+    AwFloat32Topic, AwHost, AwInt32Topic, AwPointCloudTopic, AwPose, AwPoseArrayTopic, AwPoseTopic,
+    LOG_ERROR, LOG_WARN,
 };
 use crate::node::{DIAGNOSTIC_ERROR, DIAGNOSTIC_WARN, Diagnostics};
 use crate::node_handle::NdtScanMatcherRs;
@@ -163,7 +164,10 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_on_sensor_points_prep
     let sensor_frame = unsafe { v.frame_id.as_bytes() };
     let Some(matrix) = ho.lookup_transform(&h.params.base_frame, sensor_frame) else {
         d.add_bool("is_succeed_transform_sensor_points", false);
-        ho.log(LOG_ERROR, "Failed to look up the sensor→base_link transform.");
+        ho.log(
+            LOG_ERROR,
+            "Failed to look up the sensor→base_link transform.",
+        );
         return SP_TF_FAILED;
     };
     d.add_bool("is_succeed_transform_sensor_points", true);
@@ -221,6 +225,13 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_on_sensor_points_prep
     unsafe {
         *out_count = count;
     }
+    let prepared = if count == 0 {
+        &[]
+    } else {
+        // SAFETY: `out` contains at least `3 * count` initialized f32 values written above.
+        unsafe { core::slice::from_raw_parts(out.as_ptr().cast::<[f32; 3]>(), count) }
+    };
+    ho.store_sensor_points_base_link(prepared);
     SP_PREPARED
 }
 
@@ -256,6 +267,8 @@ pub struct AwSensorPointsMatchParams {
     pub map_radius: f64,
     pub initial_to_result_distance_tolerance_m: f64,
     pub regularization_scale_factor: f64,
+    pub no_ground_points_enable: bool,
+    pub no_ground_points_z_margin_for_ground_removal: f64,
 }
 
 /// C-ABI result of the middle (Phase 5 sub-slice 3: the publishers now go through the `AwHost` publish
@@ -282,10 +295,7 @@ fn pose_to_matrix4(position: &[f64; 3], orientation: &[f64; 4]) -> Matrix4<f32> 
         orientation[1],
         orientation[2],
     ));
-    let iso = Isometry3::from_parts(
-        Translation3::new(position[0], position[1], position[2]),
-        q,
-    );
+    let iso = Isometry3::from_parts(Translation3::new(position[0], position[1], position[2]), q);
     iso.to_homogeneous().map(|v| v as f32)
 }
 
@@ -308,7 +318,10 @@ fn matrix6_to_row_major(m: &Matrix6<f64>) -> [f64; 36] {
 /// the result-pose quaternion (`matrix4f_to_pose`), normalizes it, and back to a 3x3. Reproduced via
 /// nalgebra (matrix → unit quaternion → matrix), row-major.
 fn map_to_base_link_rot3x3(result_pose: &Matrix4<f32>) -> [f64; 9] {
-    let rot_f64: Matrix3<f64> = result_pose.fixed_view::<3, 3>(0, 0).into_owned().map(f64::from);
+    let rot_f64: Matrix3<f64> = result_pose
+        .fixed_view::<3, 3>(0, 0)
+        .into_owned()
+        .map(f64::from);
     let uq = UnitQuaternion::from_rotation_matrix(&Rotation3::from_matrix_unchecked(rot_f64));
     let mut out = [0.0_f64; 9];
     out.copy_from_slice(uq.to_rotation_matrix().matrix().transpose().as_slice());
@@ -319,7 +332,8 @@ fn map_to_base_link_rot3x3(result_pose: &Matrix4<f32>) -> [f64; 9] {
 /// quaternion `[x, y, z, w]`), mirroring the C++ `matrix4f_to_pose` used by the publishers.
 fn matrix4_to_aw_pose(m: &Matrix4<f32>) -> AwPose {
     let rot: Matrix3<f64> = m.fixed_view::<3, 3>(0, 0).into_owned().map(f64::from);
-    let q = UnitQuaternion::from_rotation_matrix(&Rotation3::from_matrix_unchecked(rot)).into_inner();
+    let q =
+        UnitQuaternion::from_rotation_matrix(&Rotation3::from_matrix_unchecked(rot)).into_inner();
     AwPose {
         position: [
             f64::from(m[(0, 3)]),
@@ -327,6 +341,101 @@ fn matrix4_to_aw_pose(m: &Matrix4<f32>) -> AwPose {
             f64::from(m[(2, 3)]),
         ],
         orientation: [q.i, q.j, q.k, q.w],
+    }
+}
+
+/// Transform a base_link-frame cloud into map frame with the row-major result pose.
+fn transform_cloud_to_map(source: &[[f32; 3]], pose: &Matrix4<f32>) -> alloc::vec::Vec<[f32; 3]> {
+    source
+        .iter()
+        .map(|p| {
+            [
+                pose[(0, 0)] * p[0] + pose[(0, 1)] * p[1] + pose[(0, 2)] * p[2] + pose[(0, 3)],
+                pose[(1, 0)] * p[0] + pose[(1, 1)] * p[1] + pose[(1, 2)] * p[2] + pose[(1, 3)],
+                pose[(2, 0)] * p[0] + pose[(2, 1)] * p[1] + pose[(2, 2)] * p[2] + pose[(2, 3)],
+            ]
+        })
+        .collect()
+}
+
+/// Keep only points above the result-pose ground-removal plane, matching the C++ no-ground filter.
+#[expect(
+    clippy::as_conversions,
+    clippy::cast_possible_truncation,
+    reason = "ported f64->f32 no-ground threshold math mirrors the C++ callback"
+)]
+fn no_ground_points(
+    points_map: &[[f32; 3]],
+    result_pose_z: f32,
+    margin: f64,
+) -> alloc::vec::Vec<[f32; 3]> {
+    let threshold = result_pose_z + margin as f32;
+    points_map
+        .iter()
+        .copied()
+        .filter(|p| p[2] > threshold)
+        .collect()
+}
+
+/// Compute and publish the optional score/no-ground clouds that used to live in the C++ epilogue.
+fn publish_cloud_outputs(
+    eng: &NdtEngine,
+    ho: &AwHost,
+    prm: &AwSensorPointsMatchParams,
+    sensor_stamp_ns: i64,
+    result_pose: &Matrix4<f32>,
+    points_map: &[[f32; 3]],
+) {
+    ho.publish_pointcloud_xyz(
+        AwPointCloudTopic::PointsAligned,
+        sensor_stamp_ns,
+        points_map,
+    );
+
+    if ho.pointcloud_has_subscribers(AwPointCloudTopic::VoxelScorePoints) {
+        let mut scores_all = alloc::vec::Vec::new();
+        eng.nearest_voxel_score_each_point(points_map, &mut scores_all);
+        let mut scored_points = alloc::vec::Vec::new();
+        let mut scored_values = alloc::vec::Vec::new();
+        for (point, score) in points_map.iter().copied().zip(scores_all) {
+            if score > 0.0 {
+                scored_points.push(point);
+                scored_values.push(score);
+            }
+        }
+        ho.publish_voxel_score_points(sensor_stamp_ns, &scored_points, &scored_values);
+    }
+
+    if prm.no_ground_points_enable {
+        let no_ground = no_ground_points(
+            points_map,
+            result_pose[(2, 3)],
+            prm.no_ground_points_z_margin_for_ground_removal,
+        );
+        ho.publish_pointcloud_xyz(
+            AwPointCloudTopic::PointsAlignedNoGround,
+            sensor_stamp_ns,
+            &no_ground,
+        );
+        let tp = eng.calc_transformation_probability(&no_ground);
+        let nvtl = eng.calc_nearest_voxel_likelihood(&no_ground);
+        #[expect(
+            clippy::as_conversions,
+            clippy::cast_possible_truncation,
+            reason = "C++ publishes these score scalars as float32"
+        )]
+        {
+            ho.publish_float32(
+                AwFloat32Topic::NoGroundTransformProbability,
+                sensor_stamp_ns,
+                tp as f32,
+            );
+            ho.publish_float32(
+                AwFloat32Topic::NoGroundNearestVoxelTransformationLikelihood,
+                sensor_stamp_ns,
+                nvtl as f32,
+            );
+        }
     }
 }
 
@@ -383,16 +492,8 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_on_sensor_points_matc
         return SM_INVALID;
     }
     // SAFETY: non-null per the check; caller guarantees valid, live handle/engine/host/diag/params/out.
-    let (h, eng, ho, d, prm, o) = unsafe {
-        (
-            &*handle,
-            &*engine,
-            &*host,
-            &*diag,
-            &*params,
-            &mut *out,
-        )
-    };
+    let (h, eng, ho, d, prm, o) =
+        unsafe { (&*handle, &*engine, &*host, &*diag, &*params, &mut *out) };
     // SAFETY: `source_xyz` addresses `3 * source_count` readable f32 per the contract (empty if null/0).
     let source: &[[f32; 3]] = if source_count == 0 {
         &[]
@@ -662,10 +763,88 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_on_sensor_points_matc
         );
     }
 
-    // Return the minimal state the C++ shell still needs (map-cloud transform + skipping_publish_num).
+    // Cloud publishers (Phase 5 sub-slice 4): transform base_link cloud to map, publish aligned
+    // clouds, score-color input, and optional no-ground score scalars through the host.
+    let points_map = transform_cloud_to_map(source, &outcome.pose);
+    publish_cloud_outputs(eng, ho, prm, sensor_stamp_ns, &outcome.pose, &points_map);
+
+    // Return the minimal state the C++ shell still needs for `skipping_publish_num`.
     o.result_pose = matrix4_to_row_major(&outcome.pose);
     o.is_converged = verdict.is_converged;
     SM_MATCHED
+}
+
+/// The full Rust sensor callback for the `NDT_USE_RUST` C++ shell: prepare the borrowed
+/// `PointCloud2View`, run the scan-match middle, publish all Rust-owned outputs through `host`, and
+/// return whether the match converged via `*out_is_converged`.
+///
+/// # Safety
+/// All pointers must be valid/live for the call (or null → `SM_INVALID`). `view.data` addresses
+/// `view.data_len` readable bytes; all host/diagnostics function pointers remain valid for the call.
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointers validated per rust-c-ffi-safety"
+)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_on_sensor_points(
+    handle: *const NdtScanMatcherRs,
+    engine: *const NdtEngine,
+    host: *const AwHost,
+    diag: *const Diagnostics,
+    params: *const AwSensorPointsMatchParams,
+    view: *const AwPointCloud2View,
+    out_is_converged: *mut bool,
+) -> i32 {
+    if view.is_null() || out_is_converged.is_null() {
+        return SM_INVALID;
+    }
+    // SAFETY: `view` is non-null per the check; caller guarantees a valid borrowed view.
+    let v = unsafe { &*view };
+    let width = usize::try_from(v.width).unwrap_or(0);
+    let height = usize::try_from(v.height).unwrap_or(0);
+    let max_points = width.saturating_mul(height);
+    let mut baselink_xyz = alloc::vec![0.0_f32; max_points.saturating_mul(3)];
+    let mut count = 0usize;
+    // SAFETY: all pointers and out buffers are valid for this call per this function's contract.
+    let prep = unsafe {
+        autoware_ndt_scan_matcher_rs_node_on_sensor_points_prepare(
+            handle,
+            host,
+            diag,
+            view,
+            baselink_xyz.as_mut_ptr(),
+            baselink_xyz.len(),
+            &raw mut count,
+        )
+    };
+    if prep != SP_PREPARED {
+        return prep;
+    }
+    let mut out = AwSensorPointsMatchOutput {
+        result_pose: [0.0; 16],
+        is_converged: false,
+    };
+    // SAFETY: `baselink_xyz` owns `3 * count` initialized f32 values written by the prepare step.
+    let status = unsafe {
+        autoware_ndt_scan_matcher_rs_node_on_sensor_points_match(
+            handle,
+            engine,
+            host,
+            diag,
+            params,
+            v.stamp_ns,
+            baselink_xyz.as_ptr(),
+            count,
+            &raw mut out,
+        )
+    };
+    if status == SM_MATCHED {
+        // SAFETY: out pointer is non-null per the check and points to writable bool.
+        unsafe {
+            *out_is_converged = out.is_converged;
+        }
+    }
+    status
 }
 
 /// ns → seconds (see the equivalent in `pose_buffer`; magnitudes are within f64's exact-int range).

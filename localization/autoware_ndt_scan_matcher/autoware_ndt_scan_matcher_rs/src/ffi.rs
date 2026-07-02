@@ -105,7 +105,10 @@ mod tests {
     fn boundary_maps_ok_err_and_panic() {
         assert_eq!(ffi_boundary(|| Ok(())), AwStatus::Ok);
         assert_eq!(ffi_boundary(|| Err(Error::NullPtr)), AwStatus::NullPtr);
-        assert_eq!(ffi_boundary(|| Err(Error::InvalidParam)), AwStatus::InvalidParam);
+        assert_eq!(
+            ffi_boundary(|| Err(Error::InvalidParam)),
+            AwStatus::InvalidParam
+        );
         assert_eq!(ffi_boundary(|| panic!("boom")), AwStatus::Panic);
     }
 

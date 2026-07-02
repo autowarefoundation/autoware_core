@@ -724,7 +724,12 @@ mod tests {
     }
 
     // Drive on_initial_pose with the given frame/position at a fixed stamp (100).
-    fn call_initial(handle: *const NdtScanMatcherRs, d: &Diagnostics, frame_id: &[u8], pos: [f64; 3]) -> i32 {
+    fn call_initial(
+        handle: *const NdtScanMatcherRs,
+        d: &Diagnostics,
+        frame_id: &[u8],
+        pos: [f64; 3],
+    ) -> i32 {
         let v = make_view(100, frame_id, pos);
         // SAFETY: `handle`/`d` valid; `v` is a valid view valid for the call.
         unsafe { autoware_ndt_scan_matcher_rs_node_on_initial_pose(handle, d, &raw const v) }
@@ -844,7 +849,9 @@ mod tests {
         assert!(!handle.is_null());
         let v = make_view(77, b"map", [1.0, 2.0, 0.0]);
         // SAFETY: live handle, valid diagnostics, valid view.
-        unsafe { autoware_ndt_scan_matcher_rs_node_on_regularization_pose(handle, &d, &raw const v) };
+        unsafe {
+            autoware_ndt_scan_matcher_rs_node_on_regularization_pose(handle, &d, &raw const v);
+        };
         assert_eq!(
             dr.events,
             alloc::vec![

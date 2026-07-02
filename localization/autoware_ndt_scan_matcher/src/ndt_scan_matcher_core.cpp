@@ -451,6 +451,42 @@ bool NDTScanMatcher::callback_sensor_points_main(
 
   const rclcpp::Time sensor_ros_time = sensor_points_msg_in_sensor_frame->header.stamp;
 
+#ifdef NDT_USE_RUST
+  return ndt_ptr_.with([&](const auto & ndt_ptr) {
+    const AwHost host = make_host();
+    const AwDiagnostics diag = make_diagnostics(diagnostics_scan_points_.get());
+    const AwPointCloud2View view = make_pointcloud2_view(*sensor_points_msg_in_sensor_frame);
+    const AwSensorPointsMatchParams match_params{
+      param_.dynamic_map_loading.lidar_radius,
+      param_.dynamic_map_loading.map_radius,
+      param_.validation.initial_to_result_distance_tolerance_m,
+      param_.ndt.regularization_scale_factor,
+      param_.score_estimation.no_ground_points.enable,
+      param_.score_estimation.no_ground_points.z_margin_for_ground_removal};
+
+    bool is_converged = false;
+    const int32_t status = autoware_ndt_scan_matcher_rs_node_on_sensor_points(
+      rs_.raw(), ndt_ptr->raw_handle(), &host, &diag, &match_params, &view, &is_converged);
+    if (status != 0) {
+      return false;
+    }
+
+    const auto exe_end_time = std::chrono::system_clock::now();
+    const auto duration_micro_sec =
+      std::chrono::duration_cast<std::chrono::microseconds>(exe_end_time - exe_start_time).count();
+    const auto exe_time = static_cast<float>(duration_micro_sec) / 1000.0f;
+    diagnostics_scan_points_->add_key_value("execution_time", exe_time);
+    if (exe_time > param_.validation.critical_upper_bound_exe_time_ms) {
+      std::stringstream message;
+      message << "NDT exe time is too long (took " << exe_time << " [ms]).";
+      diagnostics_scan_points_->update_level_and_message(
+        diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
+    }
+    exe_time_pub_->publish(make_float32_stamped(sensor_ros_time, exe_time));
+    return is_converged;
+  });
+#else
+
   pcl::shared_ptr<pcl::PointCloud<PointSource>> sensor_points_in_baselink_frame(
     new pcl::PointCloud<PointSource>);
 
@@ -926,6 +962,7 @@ bool NDTScanMatcher::callback_sensor_points_main(
 
     return is_converged;
   });
+#endif
 }
 
 void NDTScanMatcher::transform_sensor_measurement(
@@ -1388,8 +1425,12 @@ void NDTScanMatcher::host_publish_float32(
     const auto msg = make_float32_stamped(rclcpp::Time(stamp_ns), value);
     if (topic == AwFloat32Topic::TransformProbability) {
       self->transform_probability_pub_->publish(msg);
-    } else {
+    } else if (topic == AwFloat32Topic::NearestVoxelTransformationLikelihood) {
       self->nearest_voxel_transformation_likelihood_pub_->publish(msg);
+    } else if (topic == AwFloat32Topic::NoGroundTransformProbability) {
+      self->no_ground_transform_probability_pub_->publish(msg);
+    } else {
+      self->no_ground_nearest_voxel_transformation_likelihood_pub_->publish(msg);
     }
   } catch (...) {
     RCLCPP_ERROR_STREAM_THROTTLE(
@@ -1440,6 +1481,106 @@ void NDTScanMatcher::host_publish_initial_to_result(
       self->get_logger(), *self->get_clock(), 1000, "publish_initial_to_result failed");
   }
 }
+
+static pcl::PointCloud<pcl::PointXYZ> aw_xyz_slice_to_cloud(AwPoint3fSlice points);
+
+void NDTScanMatcher::host_store_sensor_points_base_link(void * ctx, AwPoint3fSlice points)
+{
+  auto * self = static_cast<NDTScanMatcher *>(ctx);
+  try {
+    auto cloud = pcl::make_shared<pcl::PointCloud<PointSource>>(aw_xyz_slice_to_cloud(points));
+    self->sensor_points_in_baselink_frame_ = cloud;
+  } catch (...) {
+    RCLCPP_ERROR_STREAM_THROTTLE(
+      self->get_logger(), *self->get_clock(), 1000, "store_sensor_points_base_link failed");
+  }
+}
+
+bool NDTScanMatcher::host_pointcloud_has_subscribers(void * ctx, AwPointCloudTopic topic)
+{
+  auto * self = static_cast<NDTScanMatcher *>(ctx);
+  if (topic == AwPointCloudTopic::VoxelScorePoints) {
+    return self->voxel_score_points_pub_->get_subscription_count() > 0;
+  }
+  return true;
+}
+
+static pcl::PointCloud<pcl::PointXYZ> aw_xyz_slice_to_cloud(AwPoint3fSlice points)
+{
+  pcl::PointCloud<pcl::PointXYZ> cloud;
+  if (points.ptr == nullptr && points.len > 0) {
+    return cloud;
+  }
+  cloud.points.reserve(points.len);
+  for (std::size_t i = 0; i < points.len; ++i) {
+    const std::size_t base = i * 3;
+    cloud.points.emplace_back(points.ptr[base], points.ptr[base + 1], points.ptr[base + 2]);
+  }
+  cloud.width = static_cast<std::uint32_t>(cloud.points.size());
+  cloud.height = 1;
+  cloud.is_dense = true;
+  return cloud;
+}
+
+void NDTScanMatcher::host_publish_pointcloud_xyz(
+  void * ctx, AwPointCloudTopic topic, int64_t stamp_ns, AwPoint3fSlice points)
+{
+  auto * self = static_cast<NDTScanMatcher *>(ctx);
+  try {
+    const pcl::PointCloud<pcl::PointXYZ> cloud = aw_xyz_slice_to_cloud(points);
+    sensor_msgs::msg::PointCloud2 msg;
+    pcl::toROSMsg(cloud, msg);
+    msg.header.stamp = rclcpp::Time(stamp_ns);
+    msg.header.frame_id = self->param_.frame.map_frame;
+    if (topic == AwPointCloudTopic::PointsAlignedNoGround) {
+      self->no_ground_points_aligned_pose_pub_->publish(msg);
+    } else {
+      self->sensor_aligned_pose_pub_->publish(msg);
+    }
+  } catch (...) {
+    RCLCPP_ERROR_STREAM_THROTTLE(
+      self->get_logger(), *self->get_clock(), 1000, "publish_pointcloud_xyz failed");
+  }
+}
+
+void NDTScanMatcher::host_publish_voxel_score_points(
+  void * ctx, int64_t stamp_ns, AwPoint3fSlice points, const float * scores, std::size_t scores_len)
+{
+  auto * self = static_cast<NDTScanMatcher *>(ctx);
+  try {
+    if ((points.ptr == nullptr && points.len > 0) || scores == nullptr || scores_len != points.len) {
+      return;
+    }
+    constexpr float lower_nvs = 1.0f;
+    constexpr float upper_nvs = 3.5f;
+    constexpr float range = upper_nvs - lower_nvs;
+    pcl::PointCloud<pcl::PointXYZRGB> cloud;
+    cloud.points.reserve(points.len);
+    for (std::size_t i = 0; i < points.len; ++i) {
+      const std::size_t base = i * 3;
+      pcl::PointXYZRGB point;
+      point.x = points.ptr[base];
+      point.y = points.ptr[base + 1];
+      point.z = points.ptr[base + 2];
+      const std_msgs::msg::ColorRGBA color = exchange_color_crc((scores[i] - lower_nvs) / range);
+      point.r = static_cast<std::uint8_t>(color.r * 255);
+      point.g = static_cast<std::uint8_t>(color.g * 255);
+      point.b = static_cast<std::uint8_t>(color.b * 255);
+      cloud.points.push_back(point);
+    }
+    cloud.width = static_cast<std::uint32_t>(cloud.points.size());
+    cloud.height = 1;
+    cloud.is_dense = true;
+    sensor_msgs::msg::PointCloud2 msg;
+    pcl::toROSMsg(cloud, msg);
+    msg.header.stamp = rclcpp::Time(stamp_ns);
+    msg.header.frame_id = self->param_.frame.map_frame;
+    self->voxel_score_points_pub_->publish(msg);
+  } catch (...) {
+    RCLCPP_ERROR_STREAM_THROTTLE(
+      self->get_logger(), *self->get_clock(), 1000, "publish_voxel_score_points failed");
+  }
+}
 AwHost NDTScanMatcher::make_host()
 {
   return AwHost{
@@ -1453,7 +1594,11 @@ AwHost NDTScanMatcher::make_host()
     &NDTScanMatcher::host_publish_float32,
     &NDTScanMatcher::host_publish_int32,
     &NDTScanMatcher::host_publish_tf,
-    &NDTScanMatcher::host_publish_initial_to_result};
+    &NDTScanMatcher::host_publish_initial_to_result,
+    &NDTScanMatcher::host_store_sensor_points_base_link,
+    &NDTScanMatcher::host_pointcloud_has_subscribers,
+    &NDTScanMatcher::host_publish_pointcloud_xyz,
+    &NDTScanMatcher::host_publish_voxel_score_points};
 }
 #endif
 

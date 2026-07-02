@@ -192,7 +192,11 @@ fn normalize_radian(rad: f64) -> f64 {
 /// `dt = target - old`. Position linear; orientation linear in RPY (radian-normalized diffs);
 /// covariance carried from `old`. Zero twist when the bracket stamps coincide; a zero stamp anywhere
 /// yields a zero pose (mirrors the C++ empty-`PoseStamped` guard).
-fn interpolate_pose(old: &TimedPoseWithCov, new: &TimedPoseWithCov, target_ns: i64) -> InterpolateResult {
+fn interpolate_pose(
+    old: &TimedPoseWithCov,
+    new: &TimedPoseWithCov,
+    target_ns: i64,
+) -> InterpolateResult {
     if old.stamp_ns == 0 || new.stamp_ns == 0 || target_ns == 0 {
         return InterpolateResult {
             position: [0.0; 3],

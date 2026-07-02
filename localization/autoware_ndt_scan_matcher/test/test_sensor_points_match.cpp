@@ -127,6 +127,10 @@ struct Captured
   std::vector<std::pair<int, float>> float32s;  // publish_float32 (topic, value)
   std::vector<int32_t> iterations;              // publish_int32 (IterationNum only)
   std::vector<std::pair<int, std::size_t>> pose_arrays;  // publish_pose_array (topic, count)
+  std::vector<std::pair<int, std::vector<std::array<float, 3>>>> xyz_clouds;
+  std::vector<std::array<float, 3>> voxel_score_points;
+  std::vector<float> voxel_scores;
+  bool voxel_score_has_subscribers = true;
   bool marker_called = false;
   std::size_t marker_count = 0;
   int32_t marker_max_iterations = 0;
@@ -188,11 +192,43 @@ extern "C" void h_pub_itr(
 {
   static_cast<Captured *>(ctx)->itr_called = true;
 }
+extern "C" void h_store_base_link(void *, AwPoint3fSlice) {}
+extern "C" bool h_pc_has(void * ctx, AwPointCloudTopic topic)
+{
+  const auto * c = static_cast<Captured *>(ctx);
+  if (topic == AwPointCloudTopic::VoxelScorePoints) {
+    return c->voxel_score_has_subscribers;
+  }
+  return true;
+}
+std::vector<std::array<float, 3>> copy_points(AwPoint3fSlice points)
+{
+  std::vector<std::array<float, 3>> out;
+  out.reserve(points.len);
+  for (std::size_t i = 0; i < points.len; ++i) {
+    const std::size_t base = i * 3;
+    out.push_back({points.ptr[base], points.ptr[base + 1], points.ptr[base + 2]});
+  }
+  return out;
+}
+extern "C" void h_pub_cloud(
+  void * ctx, AwPointCloudTopic topic, std::int64_t, AwPoint3fSlice points)
+{
+  static_cast<Captured *>(ctx)->xyz_clouds.emplace_back(static_cast<int>(topic), copy_points(points));
+}
+extern "C" void h_pub_score_cloud(
+  void * ctx, std::int64_t, AwPoint3fSlice points, const float * scores, std::size_t scores_len)
+{
+  auto * c = static_cast<Captured *>(ctx);
+  c->voxel_score_points = copy_points(points);
+  c->voxel_scores.assign(scores, scores + scores_len);
+}
 AwHost recording_host(Captured & c)
 {
   return AwHost{
     &c,           h_now,        h_log,         h_lookup,   h_pub_pose, h_pub_pose_array,
-    h_pub_marker, h_pub_float32, h_pub_int32, h_pub_tf, h_pub_itr};
+    h_pub_marker, h_pub_float32, h_pub_int32, h_pub_tf,    h_pub_itr,  h_store_base_link, h_pc_has,
+    h_pub_cloud,  h_pub_score_cloud};
 }
 
 // --- no-op diagnostics ---------------------------------------------------------------------------
@@ -281,7 +317,7 @@ TEST(SensorPointsMatch, PublishesDecomposedAlignAndCovariance)  // NOLINT
   Captured cap;
   const AwHost host = recording_host(cap);
   const AwDiagnostics diag = noop_diag();
-  const AwSensorPointsMatchParams mp{50.0, 1e9, 1e9, 0.0};
+  const AwSensorPointsMatchParams mp{50.0, 1e9, 1e9, 0.0, false, 0.0};
   AwSensorPointsMatchOutput out{};
 
   const std::int32_t status = autoware_ndt_scan_matcher_rs_node_on_sensor_points_match(
@@ -307,6 +343,20 @@ TEST(SensorPointsMatch, PublishesDecomposedAlignAndCovariance)  // NOLINT
       EXPECT_FLOAT_EQ(value, ref.nearest_voxel_likelihood);
     }
   }
+
+  ASSERT_EQ(cap.xyz_clouds.size(), 1U);
+  EXPECT_EQ(cap.xyz_clouds[0].first, 0);  // PointsAligned
+  ASSERT_EQ(cap.xyz_clouds[0].second.size(), source->size());
+  const Eigen::Matrix4f ref_pose = to_eigen(ref.pose);
+  for (std::size_t i = 0; i < source->size(); ++i) {
+    const Eigen::Vector4f p_src(source->points[i].x, source->points[i].y, source->points[i].z, 1.0F);
+    const Eigen::Vector4f p_map = ref_pose * p_src;
+    EXPECT_NEAR(cap.xyz_clouds[0].second[i][0], p_map.x(), 1e-5) << i;
+    EXPECT_NEAR(cap.xyz_clouds[0].second[i][1], p_map.y(), 1e-5) << i;
+    EXPECT_NEAR(cap.xyz_clouds[0].second[i][2], p_map.z(), 1e-5) << i;
+  }
+  EXPECT_EQ(cap.voxel_score_points.size(), cap.voxel_scores.size());
+  EXPECT_GT(cap.voxel_scores.size(), 0U);
 
   // tf + initial_to_result + marker each fire once; marker got one pose per iteration.
   EXPECT_TRUE(cap.tf_called);
@@ -364,7 +414,7 @@ TEST(SensorPointsMatch, NotConvergedSkipsNdtPose)  // NOLINT
   Captured cap;
   const AwHost host = recording_host(cap);
   const AwDiagnostics diag = noop_diag();
-  const AwSensorPointsMatchParams mp{50.0, 1e9, 1e9, 0.0};
+  const AwSensorPointsMatchParams mp{50.0, 1e9, 1e9, 0.0, false, 0.0};
   AwSensorPointsMatchOutput out{};
 
   ASSERT_EQ(
@@ -388,7 +438,7 @@ TEST(SensorPointsMatch, NotActivatedGate)  // NOLINT
   Captured cap;
   const AwHost host = recording_host(cap);
   const AwDiagnostics diag = noop_diag();
-  const AwSensorPointsMatchParams mp{50.0, 1e9, 1e9, 0.0};
+  const AwSensorPointsMatchParams mp{50.0, 1e9, 1e9, 0.0, false, 0.0};
   AwSensorPointsMatchOutput out{};
   EXPECT_EQ(
     autoware_ndt_scan_matcher_rs_node_on_sensor_points_match(
@@ -410,7 +460,7 @@ TEST(SensorPointsMatch, InterpolateFailedGate)  // NOLINT
   autoware_ndt_scan_matcher_rs_node_on_trigger(h, &d, true, 0);  // activate, seed nothing
   Captured cap;
   const AwHost host = recording_host(cap);
-  const AwSensorPointsMatchParams mp{50.0, 1e9, 1e9, 0.0};
+  const AwSensorPointsMatchParams mp{50.0, 1e9, 1e9, 0.0, false, 0.0};
   AwSensorPointsMatchOutput out{};
   EXPECT_EQ(
     autoware_ndt_scan_matcher_rs_node_on_sensor_points_match(
@@ -435,12 +485,56 @@ TEST(SensorPointsMatch, MapNotSetGate)  // NOLINT
   Captured cap;
   const AwHost host = recording_host(cap);
   const AwDiagnostics diag = noop_diag();
-  const AwSensorPointsMatchParams mp{50.0, 1e9, 1e9, 0.0};
+  const AwSensorPointsMatchParams mp{50.0, 1e9, 1e9, 0.0, false, 0.0};
   AwSensorPointsMatchOutput out{};
   EXPECT_EQ(
     autoware_ndt_scan_matcher_rs_node_on_sensor_points_match(
       h, empty.raw_handle(), &host, &diag, &mp, stamp, src.data(), source->size(), &out),
     3);  // SM_MAP_NOT_SET
+  autoware_ndt_scan_matcher_rs_free(h);
+}
+
+
+TEST(SensorPointsMatch, NoGroundPublishesCloudAndScores)  // NOLINT
+{
+  pcl::PointCloud<pcl::PointXYZ>::Ptr source;
+  Adapter rs = make_driven_adapter(source);
+  const std::vector<float> src = flatten(*source);
+  const std::int64_t stamp = 1'000'000'000;
+  const std::string map_frame = "map";
+
+  AwNdtScanMatcher * h = make_handle(map_frame, "base_link", 0.0);
+  activate_and_seed(h, stamp, map_frame);
+  Captured cap;
+  cap.voxel_score_has_subscribers = false;
+  const AwHost host = recording_host(cap);
+  const AwDiagnostics diag = noop_diag();
+  const AwSensorPointsMatchParams mp{50.0, 1e9, 1e9, 0.0, true, -1.0e9};
+  AwSensorPointsMatchOutput out{};
+
+  ASSERT_EQ(
+    autoware_ndt_scan_matcher_rs_node_on_sensor_points_match(
+      h, rs.raw_handle(), &host, &diag, &mp, stamp, src.data(), source->size(), &out),
+    0);
+
+  ASSERT_EQ(cap.xyz_clouds.size(), 2U);
+  EXPECT_EQ(cap.xyz_clouds[0].first, 0);  // PointsAligned
+  EXPECT_EQ(cap.xyz_clouds[1].first, 1);  // PointsAlignedNoGround
+  EXPECT_EQ(cap.xyz_clouds[1].second.size(), cap.xyz_clouds[0].second.size());
+  EXPECT_EQ(cap.voxel_scores.size(), 0U);
+
+  bool saw_tp = false;
+  bool saw_nvtl = false;
+  for (const auto & [topic, value] : cap.float32s) {
+    if (topic == 2) {
+      saw_tp = true;
+    } else if (topic == 3) {
+      saw_nvtl = true;
+    }
+    (void)value;
+  }
+  EXPECT_TRUE(saw_tp);
+  EXPECT_TRUE(saw_nvtl);
   autoware_ndt_scan_matcher_rs_free(h);
 }
 
