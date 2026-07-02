@@ -170,8 +170,9 @@ protected:
 TEST_F(EuclideanClusterObjectDetectorIntegrationHarness, GeometricCentroidValidation)
 {
   // Build mock cloud with those 2 clusters
+  int num_points_per_cluster = 4;
   std::vector<std::array<float, 3>> physical_points;
-  for (int i = 0; i < 4; ++i) {
+  for (int i = 0; i < num_points_per_cluster; ++i) {
     float offset = 0.05f * static_cast<float>(i);
     physical_points.push_back({1.0f + offset, 1.0f + offset, 1.0f + offset});
     physical_points.push_back({10.0f + offset, 10.0f + offset, 10.0f + offset});
@@ -225,8 +226,9 @@ TEST_F(EuclideanClusterObjectDetectorIntegrationHarness, DegenerateInputBypass)
 TEST_F(EuclideanClusterObjectDetectorIntegrationHarness, AsyncParameterUpdateLegacyBehavior)
 {
   // Scenario including a single object consisting of exactly 4 points
+  int num_points = 4;
   std::vector<std::array<float, 3>> physical_points;
-  for (int i = 0; i < 4; ++i) {
+  for (int i = 0; i < num_points; ++i) {
     float offset = 0.05f * static_cast<float>(i);
     physical_points.push_back({1.0f + offset, 1.0f + offset, 1.0f + offset});
   }
