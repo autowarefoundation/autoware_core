@@ -17,10 +17,11 @@
 
 #include "utils.hpp"
 
+#include <tl/expected.hpp>
+
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
 #include <boost/optional.hpp>
-#include <tl/expected.hpp>
 
 #include <functional>
 #include <map>

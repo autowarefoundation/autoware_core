@@ -35,10 +35,10 @@ PointcloudMapLoaderModule::PointcloudMapLoaderModule(
   pub_pointcloud_map_ =
     node->create_publisher<sensor_msgs::msg::PointCloud2>(publisher_name, durable_qos);
 
-  const auto leaf_size = use_downsample
-                           ? boost::make_optional(
-                               static_cast<float>(node->declare_parameter<float>("leaf_size")))
-                           : boost::none;
+  const auto leaf_size =
+    use_downsample
+      ? boost::make_optional(static_cast<float>(node->declare_parameter<float>("leaf_size")))
+      : boost::none;
   const auto load_result = create_map_message(pcd_paths, leaf_size);
   if (!load_result) {
     for (const auto & msg : load_result.error().debug_messages) {
@@ -113,8 +113,8 @@ PointCloudMapLoaderNode::PointCloudMapLoaderNode(const rclcpp::NodeOptions & opt
 
     rclcpp::QoS durable_qos{1};
     durable_qos.transient_local();
-    pub_pointcloud_map_ = create_publisher<sensor_msgs::msg::PointCloud2>(
-      "output/pointcloud_map", durable_qos);
+    pub_pointcloud_map_ =
+      create_publisher<sensor_msgs::msg::PointCloud2>("output/pointcloud_map", durable_qos);
 
     const auto load_result = pcd_map_loader_->create_map_message(pcd_paths, boost::none);
     if (!load_result) {
@@ -168,28 +168,27 @@ PointCloudMapLoaderNode::PointCloudMapLoaderNode(const rclcpp::NodeOptions & opt
   if (enable_partial_load) {
     partial_map_loader_ = std::make_unique<PartialMapLoaderModule>(pcd_metadata_dict);
     get_partial_pcd_maps_service_ = create_service<GetPartialPointCloudMap>(
-      "service/get_partial_pcd_map",
-      [this](GetPartialPointCloudMap::Request::SharedPtr req,
-        GetPartialPointCloudMap::Response::SharedPtr res) {
+      "service/get_partial_pcd_map", [this](
+                                       GetPartialPointCloudMap::Request::SharedPtr req,
+                                       GetPartialPointCloudMap::Response::SharedPtr res) {
         return partial_map_loader_->create_response(req, res);
       });
   }
 
-  differential_map_loader_ =
-    std::make_unique<DifferentialMapLoaderModule>(pcd_metadata_dict);
+  differential_map_loader_ = std::make_unique<DifferentialMapLoaderModule>(pcd_metadata_dict);
   get_differential_pcd_maps_service_ = create_service<GetDifferentialPointCloudMap>(
-    "service/get_differential_pcd_map",
-    [this](GetDifferentialPointCloudMap::Request::SharedPtr req,
-      GetDifferentialPointCloudMap::Response::SharedPtr res) {
+    "service/get_differential_pcd_map", [this](
+                                          GetDifferentialPointCloudMap::Request::SharedPtr req,
+                                          GetDifferentialPointCloudMap::Response::SharedPtr res) {
       return differential_map_loader_->create_response(req, res);
     });
 
   if (enable_selected_load) {
     selected_map_loader_ = std::make_unique<SelectedMapLoaderModule>(pcd_metadata_dict);
     get_selected_pcd_maps_service_ = create_service<GetSelectedPointCloudMap>(
-      "service/get_selected_pcd_map",
-      [this](GetSelectedPointCloudMap::Request::SharedPtr req,
-        GetSelectedPointCloudMap::Response::SharedPtr res) {
+      "service/get_selected_pcd_map", [this](
+                                        GetSelectedPointCloudMap::Request::SharedPtr req,
+                                        GetSelectedPointCloudMap::Response::SharedPtr res) {
         return selected_map_loader_->create_response(req, res);
       });
 

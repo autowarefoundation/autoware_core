@@ -76,7 +76,8 @@ LoadPointcloudMapResult load_pointcloud_map(
     }
 
     if (pcl::io::loadPCDFile(path, partial_pcd) == -1) {
-      return tl::unexpected(LoadPointcloudMapError{"PCD load failed: " + path, result.debug_messages});
+      return tl::unexpected(
+        LoadPointcloudMapError{"PCD load failed: " + path, result.debug_messages});
     }
 
     if (leaf_size) {

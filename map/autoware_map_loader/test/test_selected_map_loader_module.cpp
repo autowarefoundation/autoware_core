@@ -56,9 +56,9 @@ protected:
     module_ = std::make_unique<SelectedMapLoaderModule>(dummy_metadata_dict_);
 
     service_ = node_->create_service<GetSelectedPointCloudMap>(
-      "service/get_selected_pcd_map",
-      [this](GetSelectedPointCloudMap::Request::SharedPtr req,
-        GetSelectedPointCloudMap::Response::SharedPtr res) {
+      "service/get_selected_pcd_map", [this](
+                                        GetSelectedPointCloudMap::Request::SharedPtr req,
+                                        GetSelectedPointCloudMap::Response::SharedPtr res) {
         return module_->create_response(req, res);
       });
 

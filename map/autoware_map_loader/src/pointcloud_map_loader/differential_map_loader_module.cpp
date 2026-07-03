@@ -26,7 +26,8 @@ namespace autoware::map_loader
 DifferentialMapLoaderModule::DifferentialMapLoaderModule(
   std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict)
 : all_pcd_file_metadata_dict_(std::move(pcd_file_metadata_dict))
-{}
+{
+}
 
 bool DifferentialMapLoaderModule::create_response(
   GetDifferentialPointCloudMap::Request::SharedPtr req,

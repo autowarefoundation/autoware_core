@@ -57,9 +57,9 @@ protected:
     module_ = std::make_unique<DifferentialMapLoaderModule>(dummy_metadata_dict);
 
     service_ = node_->create_service<GetDifferentialPointCloudMap>(
-      "service/get_differential_pcd_map",
-      [this](GetDifferentialPointCloudMap::Request::SharedPtr req,
-        GetDifferentialPointCloudMap::Response::SharedPtr res) {
+      "service/get_differential_pcd_map", [this](
+                                            GetDifferentialPointCloudMap::Request::SharedPtr req,
+                                            GetDifferentialPointCloudMap::Response::SharedPtr res) {
         return module_->create_response(req, res);
       });
 

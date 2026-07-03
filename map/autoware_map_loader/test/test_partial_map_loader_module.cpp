@@ -56,9 +56,9 @@ protected:
     module_ = std::make_unique<PartialMapLoaderModule>(dummy_metadata_dict);
 
     service_ = node_->create_service<GetPartialPointCloudMap>(
-      "service/get_partial_pcd_map",
-      [this](GetPartialPointCloudMap::Request::SharedPtr req,
-        GetPartialPointCloudMap::Response::SharedPtr res) {
+      "service/get_partial_pcd_map", [this](
+                                       GetPartialPointCloudMap::Request::SharedPtr req,
+                                       GetPartialPointCloudMap::Response::SharedPtr res) {
         return module_->create_response(req, res);
       });
 

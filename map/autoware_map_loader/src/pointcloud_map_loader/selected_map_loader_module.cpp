@@ -23,7 +23,8 @@ namespace autoware::map_loader
 SelectedMapLoaderModule::SelectedMapLoaderModule(
   std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict)
 : all_pcd_file_metadata_dict_(std::move(pcd_file_metadata_dict))
-{}
+{
+}
 
 bool SelectedMapLoaderModule::create_response(
   GetSelectedPointCloudMap::Request::SharedPtr req,
@@ -32,7 +33,7 @@ bool SelectedMapLoaderModule::create_response(
   const auto load_plan = create_selected_map_load_plan(req->cell_ids, all_pcd_file_metadata_dict_);
 
   // TODO(sasakisasaki): Handle this debug message at node level
-  //for (const auto & missing_id : load_plan.missing_ids) {
+  // for (const auto & missing_id : load_plan.missing_ids) {
   //  RCLCPP_WARN(logger_, "ID %s not found", missing_id.c_str());
   //}
 

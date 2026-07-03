@@ -15,12 +15,13 @@
 #ifndef POINTCLOUD_MAP_LOADER__UTILS_HPP_
 #define POINTCLOUD_MAP_LOADER__UTILS_HPP_
 
+#include <tl/expected.hpp>
+
 #include <autoware_map_msgs/msg/area_info.hpp>
 #include <autoware_map_msgs/msg/point_cloud_map_cell_with_id.hpp>
 #include <geometry_msgs/msg/point.hpp>
 
 #include <pcl/common/common.h>
-#include <tl/expected.hpp>
 #include <yaml-cpp/yaml.h>
 
 #include <map>

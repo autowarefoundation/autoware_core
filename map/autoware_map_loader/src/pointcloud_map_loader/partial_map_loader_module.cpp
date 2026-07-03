@@ -25,7 +25,8 @@ namespace autoware::map_loader
 PartialMapLoaderModule::PartialMapLoaderModule(
   std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict)
 : all_pcd_file_metadata_dict_(std::move(pcd_file_metadata_dict))
-{}
+{
+}
 
 bool PartialMapLoaderModule::create_response(
   GetPartialPointCloudMap::Request::SharedPtr req,
