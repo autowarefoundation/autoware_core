@@ -57,23 +57,6 @@ PointcloudMapLoaderModule::PointcloudMapLoaderModule(
   pub_pointcloud_map_->publish(load_result->loaded_pcd);
 }
 
-SelectedMapLoaderModule::SelectedMapLoaderModule(
-  rclcpp::Node * node, std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict)
-: SelectedMapLoaderModule(std::move(pcd_file_metadata_dict))
-{
-  get_selected_pcd_maps_service_ = node->create_service<GetSelectedPointCloudMap>(
-    "service/get_selected_pcd_map",
-    std::bind(
-      &SelectedMapLoaderModule::on_service_get_selected_point_cloud_map, this,
-      std::placeholders::_1, std::placeholders::_2));
-
-  rclcpp::QoS durable_qos{1};
-  durable_qos.transient_local();
-  pub_metadata_ = node->create_publisher<autoware_map_msgs::msg::PointCloudMapMetaData>(
-    "output/pointcloud_map_metadata", durable_qos);
-  pub_metadata_->publish(create_metadata(all_pcd_file_metadata_dict_));
-}
-
 PointCloudMapLoaderNode::PointCloudMapLoaderNode(const rclcpp::NodeOptions & options)
 : Node("pointcloud_map_loader", options)
 {

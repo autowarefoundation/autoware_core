@@ -16,12 +16,37 @@
 
 #include <rclcpp/clock.hpp>
 
+#include <functional>
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace autoware::map_loader
 {
+SelectedMapLoaderModule::SelectedMapLoaderModule(
+  std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict)
+: all_pcd_file_metadata_dict_(std::move(pcd_file_metadata_dict))
+{
+}
+
+SelectedMapLoaderModule::SelectedMapLoaderModule(
+  rclcpp::Node * node, std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict)
+: SelectedMapLoaderModule(std::move(pcd_file_metadata_dict))
+{
+  get_selected_pcd_maps_service_ = node->create_service<GetSelectedPointCloudMap>(
+    "service/get_selected_pcd_map",
+    std::bind(
+      &SelectedMapLoaderModule::on_service_get_selected_point_cloud_map, this,
+      std::placeholders::_1, std::placeholders::_2));
+
+  rclcpp::QoS durable_qos{1};
+  durable_qos.transient_local();
+  pub_metadata_ = node->create_publisher<autoware_map_msgs::msg::PointCloudMapMetaData>(
+    "output/pointcloud_map_metadata", durable_qos);
+  pub_metadata_->publish(create_metadata(all_pcd_file_metadata_dict_));
+}
+
 autoware_map_msgs::msg::PointCloudMapMetaData create_metadata(
   const std::map<std::string, PCDFileMetadata> & pcd_file_metadata_dict)
 {
@@ -66,5 +91,42 @@ SelectedMapLoadPlan create_selected_map_load_plan(
   }
 
   return plan;
+}
+
+bool SelectedMapLoaderModule::create_response(
+  GetSelectedPointCloudMap::Request::SharedPtr req,
+  GetSelectedPointCloudMap::Response::SharedPtr res) const
+{
+  const auto load_plan = create_selected_map_load_plan(req->cell_ids, all_pcd_file_metadata_dict_);
+
+  // TODO(sasakisasaki): Handle this debug message at node level
+  // for (const auto & missing_id : load_plan.missing_ids) {
+  //  RCLCPP_WARN(logger_, "ID %s not found", missing_id.c_str());
+  //}
+
+  for (const auto & map_id : load_plan.map_ids_to_load) {
+    const auto metadata_it = all_pcd_file_metadata_dict_.find(map_id);
+    if (metadata_it == all_pcd_file_metadata_dict_.end()) {
+      continue;
+    }
+
+    const auto & path = metadata_it->first;
+    const auto & metadata = metadata_it->second;
+    const auto loaded_cell = load_point_cloud_map_cell_with_id(path, map_id, metadata);
+    if (!loaded_cell) {
+      return false;
+    }
+    res->new_pointcloud_with_ids.push_back(loaded_cell.value());
+  }
+
+  res->header.frame_id = "map";
+  return true;
+}
+
+bool SelectedMapLoaderModule::on_service_get_selected_point_cloud_map(
+  GetSelectedPointCloudMap::Request::SharedPtr req,
+  GetSelectedPointCloudMap::Response::SharedPtr res) const
+{
+  return create_response(req, res);
 }
 }  // namespace autoware::map_loader
