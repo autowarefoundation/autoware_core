@@ -25,6 +25,25 @@ bool NDTScanMatcher::is_node_activated()
   return is_activated_;
 }
 
+void NDTScanMatcher::initialize_mode_specific_state()
+{
+  if (param_.ndt_regularization_enable) {
+    const double value_as_unlimited = 1000.0;
+    regularization_pose_buffer_ =
+      std::make_unique<autoware::localization_util::SmartPoseBuffer>(this->get_logger(), value_as_unlimited, value_as_unlimited);
+  }
+
+  initial_pose_buffer_ = std::make_unique<autoware::localization_util::SmartPoseBuffer>(
+    this->get_logger(), param_.validation.initial_pose_timeout_sec,
+    param_.validation.initial_pose_distance_tolerance_m);
+}
+
+void NDTScanMatcher::create_map_update_module()
+{
+  map_update_module_ =
+    std::make_unique<MapUpdateModule>(this, ndt_ptr_, param_.dynamic_map_loading);
+}
+
 void NDTScanMatcher::callback_timer()
 {
   const rclcpp::Time ros_time_now = this->now();

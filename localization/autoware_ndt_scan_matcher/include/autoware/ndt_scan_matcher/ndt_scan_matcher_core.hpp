@@ -104,6 +104,8 @@ private:
   bool callback_sensor_points_main(
     sensor_msgs::msg::PointCloud2::ConstSharedPtr sensor_points_msg_in_sensor_frame);
   bool is_node_activated();
+  void initialize_mode_specific_state();
+  void create_map_update_module();
 
   void service_trigger_node(
     const std_srvs::srv::SetBool::Request::SharedPtr req,

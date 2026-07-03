@@ -90,6 +90,16 @@ bool NDTScanMatcher::is_node_activated()
   return autoware_ndt_scan_matcher_rs_is_activated(rs_.raw());
 }
 
+void NDTScanMatcher::initialize_mode_specific_state()
+{
+}
+
+void NDTScanMatcher::create_map_update_module()
+{
+  map_update_module_ =
+    std::make_unique<MapUpdateModule>(this, ndt_ptr_, param_.dynamic_map_loading, rs_.raw());
+}
+
 void NDTScanMatcher::callback_timer()
 {
   const rclcpp::Time ros_time_now = this->now();

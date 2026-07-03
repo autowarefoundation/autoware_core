@@ -118,12 +118,6 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
         "regularization_pose_with_covariance", 10,
         std::bind(&NDTScanMatcher::callback_regularization_pose, this, std::placeholders::_1),
         initial_pose_sub_opt);
-#ifndef NDT_USE_RUST
-    const double value_as_unlimited = 1000.0;
-    regularization_pose_buffer_ =
-      std::make_unique<SmartPoseBuffer>(this->get_logger(), value_as_unlimited, value_as_unlimited);
-#endif
-
     diagnostics_regularization_pose_ =
       std::make_unique<DiagnosticsInterface>(this, "regularization_pose_subscriber_status");
   }
@@ -190,21 +184,8 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
 
   ndt_ptr_.with([&](const auto & ndt_ptr) { ndt_ptr->setParams(param_.ndt); });
 
-#ifndef NDT_USE_RUST
-  // Under NDT_USE_RUST the initial-pose buffer lives on the Rust handle (constructed from params in
-  // `rs_`); only the non-Rust path builds the C++ buffer here.
-  initial_pose_buffer_ = std::make_unique<SmartPoseBuffer>(
-    this->get_logger(), param_.validation.initial_pose_timeout_sec,
-    param_.validation.initial_pose_distance_tolerance_m);
-#endif
-
-  map_update_module_ = std::make_unique<MapUpdateModule>(
-    this, ndt_ptr_, param_.dynamic_map_loading
-#ifdef NDT_USE_RUST
-    ,
-    rs_.raw()
-#endif
-  );
+  initialize_mode_specific_state();
+  create_map_update_module();
 
   diagnostics_scan_points_ = std::make_unique<DiagnosticsInterface>(this, "scan_matching_status");
   diagnostics_initial_pose_ =
