@@ -40,7 +40,15 @@ class DifferentialMapLoaderModule
 
 public:
   explicit DifferentialMapLoaderModule(
+    std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict, rclcpp::Logger logger);
+
+  // Backward-compatible constructor used by existing tests.
+  explicit DifferentialMapLoaderModule(
     rclcpp::Node * node, std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict);
+
+  [[nodiscard]] bool create_response(
+    GetDifferentialPointCloudMap::Request::SharedPtr req,
+    GetDifferentialPointCloudMap::Response::SharedPtr res) const;
 
 private:
   rclcpp::Logger logger_;

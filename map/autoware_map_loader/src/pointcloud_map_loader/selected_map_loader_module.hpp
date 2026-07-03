@@ -42,7 +42,15 @@ class SelectedMapLoaderModule
 
 public:
   explicit SelectedMapLoaderModule(
+    std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict, rclcpp::Logger logger);
+
+  // Backward-compatible constructor used by existing tests.
+  explicit SelectedMapLoaderModule(
     rclcpp::Node * node, std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict);
+
+  [[nodiscard]] bool create_response(
+    GetSelectedPointCloudMap::Request::SharedPtr req,
+    GetSelectedPointCloudMap::Response::SharedPtr res) const;
 
 private:
   rclcpp::Logger logger_;

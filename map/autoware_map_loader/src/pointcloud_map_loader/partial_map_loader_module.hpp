@@ -40,7 +40,15 @@ class PartialMapLoaderModule
 
 public:
   explicit PartialMapLoaderModule(
+    std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict, rclcpp::Logger logger);
+
+  // Backward-compatible constructor used by existing tests.
+  explicit PartialMapLoaderModule(
     rclcpp::Node * node, std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict);
+
+  [[nodiscard]] bool create_response(
+    GetPartialPointCloudMap::Request::SharedPtr req,
+    GetPartialPointCloudMap::Response::SharedPtr res) const;
 
 private:
   rclcpp::Logger logger_;

@@ -23,17 +23,11 @@
 namespace autoware::map_loader
 {
 PartialMapLoaderModule::PartialMapLoaderModule(
-  rclcpp::Node * node, std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict)
-: logger_(node->get_logger()), all_pcd_file_metadata_dict_(std::move(pcd_file_metadata_dict))
-{
-  get_partial_pcd_maps_service_ = node->create_service<GetPartialPointCloudMap>(
-    "service/get_partial_pcd_map",
-    std::bind(
-      &PartialMapLoaderModule::on_service_get_partial_point_cloud_map, this, std::placeholders::_1,
-      std::placeholders::_2));
-}
+  std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict, rclcpp::Logger logger)
+: logger_(std::move(logger)), all_pcd_file_metadata_dict_(std::move(pcd_file_metadata_dict))
+{}
 
-bool PartialMapLoaderModule::on_service_get_partial_point_cloud_map(
+bool PartialMapLoaderModule::create_response(
   GetPartialPointCloudMap::Request::SharedPtr req,
   GetPartialPointCloudMap::Response::SharedPtr res) const
 {
@@ -52,5 +46,12 @@ bool PartialMapLoaderModule::on_service_get_partial_point_cloud_map(
 
   res->header.frame_id = "map";
   return true;
+}
+
+bool PartialMapLoaderModule::on_service_get_partial_point_cloud_map(
+  GetPartialPointCloudMap::Request::SharedPtr req,
+  GetPartialPointCloudMap::Response::SharedPtr res) const
+{
+  return create_response(req, res);
 }
 }  // namespace autoware::map_loader

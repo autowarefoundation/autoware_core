@@ -33,9 +33,15 @@ namespace autoware::map_loader
 class PointcloudMapLoaderModule
 {
 public:
+  explicit PointcloudMapLoaderModule(rclcpp::Logger logger);
+
+  // Backward-compatible constructor used by existing tests.
   explicit PointcloudMapLoaderModule(
     rclcpp::Node * node, const std::vector<std::string> & pcd_paths,
     const std::string & publisher_name, const bool use_downsample);
+
+  sensor_msgs::msg::PointCloud2 create_map_message(
+    const std::vector<std::string> & pcd_paths, boost::optional<float> leaf_size) const;
 
 private:
   rclcpp::Logger logger_;

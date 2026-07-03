@@ -21,35 +21,15 @@
 
 namespace autoware::map_loader
 {
-PointcloudMapLoaderModule::PointcloudMapLoaderModule(
-  rclcpp::Node * node, const std::vector<std::string> & pcd_paths,
-  const std::string & publisher_name, const bool use_downsample)
-: logger_(node->get_logger())
+PointcloudMapLoaderModule::PointcloudMapLoaderModule(rclcpp::Logger logger)
+: logger_(std::move(logger))
+{}
+
+sensor_msgs::msg::PointCloud2 PointcloudMapLoaderModule::create_map_message(
+  const std::vector<std::string> & pcd_paths, boost::optional<float> leaf_size) const
 {
-  rclcpp::QoS durable_qos{1};
-  durable_qos.transient_local();
-  pub_pointcloud_map_ =
-    node->create_publisher<sensor_msgs::msg::PointCloud2>(publisher_name, durable_qos);
-
-  sensor_msgs::msg::PointCloud2 pcd;
-  if (use_downsample) {
-    const auto leaf_size =
-      boost::make_optional(static_cast<float>(node->declare_parameter<float>("leaf_size")));
-    pcd = load_pointcloud_map(
-      pcd_paths, leaf_size, [this](const std::string & msg) { RCLCPP_DEBUG_STREAM(logger_, msg); },
-      [this](const std::string & msg) { RCLCPP_ERROR_STREAM(logger_, msg); });
-  } else {
-    pcd = load_pointcloud_map(
-      pcd_paths, boost::none,
-      [this](const std::string & msg) { RCLCPP_DEBUG_STREAM(logger_, msg); },
-      [this](const std::string & msg) { RCLCPP_ERROR_STREAM(logger_, msg); });
-  }
-
-  if (pcd.width == 0) {
-    RCLCPP_ERROR(logger_, "No PCD was loaded: pcd_paths.size() = %zu", pcd_paths.size());
-    return;
-  }
-
-  pub_pointcloud_map_->publish(pcd);
+  return load_pointcloud_map(
+    pcd_paths, leaf_size, [this](const std::string & msg) { RCLCPP_DEBUG_STREAM(logger_, msg); },
+    [this](const std::string & msg) { RCLCPP_ERROR_STREAM(logger_, msg); });
 }
 }  // namespace autoware::map_loader
