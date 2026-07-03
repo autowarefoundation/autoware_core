@@ -20,6 +20,11 @@
 namespace autoware::ndt_scan_matcher
 {
 
+bool NDTScanMatcher::is_node_activated()
+{
+  return is_activated_;
+}
+
 void NDTScanMatcher::callback_timer()
 {
   const rclcpp::Time ros_time_now = this->now();

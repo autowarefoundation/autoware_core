@@ -85,6 +85,11 @@ AwDiagnostics make_diagnostics(DiagnosticsInterface * d)
 }
 }  // namespace
 
+bool NDTScanMatcher::is_node_activated()
+{
+  return autoware_ndt_scan_matcher_rs_is_activated(rs_.raw());
+}
+
 void NDTScanMatcher::callback_timer()
 {
   const rclcpp::Time ros_time_now = this->now();

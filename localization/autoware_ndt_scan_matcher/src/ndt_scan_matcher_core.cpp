@@ -228,11 +228,7 @@ void NDTScanMatcher::callback_sensor_points(
     callback_sensor_points_main(sensor_points_msg_in_sensor_frame);
 
   // check skipping_publish_num
-#ifdef NDT_USE_RUST
-  const bool node_is_activated = autoware_ndt_scan_matcher_rs_is_activated(rs_.raw());
-#else
-  const bool node_is_activated = is_activated_;
-#endif
+  const bool node_is_activated = is_node_activated();
   static int64_t skipping_publish_num = 0;
   skipping_publish_num =
     ((is_succeed_scan_matching || !node_is_activated) ? 0 : (skipping_publish_num + 1));
