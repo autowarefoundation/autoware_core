@@ -68,21 +68,15 @@ TEST_F(TestPointcloudMapLoaderModule, LoadPCDFilesNoDownsampleTest)
   std::vector<std::string> pcd_paths = {temp_pcd_path};
 
   // Create PointcloudMapLoaderModule instance
-  autoware::map_loader::PointcloudMapLoaderModule loader;
-
-  const auto load_result = loader.create_map_message(pcd_paths, boost::none);
-  ASSERT_TRUE(load_result);
-  const auto & generated_msg = load_result->loaded_pcd;
-
-  rclcpp::QoS durable_qos{10};
-  durable_qos.transient_local();
-  auto pub = node->create_publisher<sensor_msgs::msg::PointCloud2>(
-    "pointcloud_map_no_downsample", durable_qos);
-  pub->publish(generated_msg);
+  autoware::map_loader::PointcloudMapLoaderModule loader(
+    node.get(), pcd_paths, "pointcloud_map_no_downsample", false);
 
   // Create a subscriber to the published pointcloud topic
   auto pointcloud_received = std::make_shared<bool>(false);
   auto pointcloud_msg = std::make_shared<sensor_msgs::msg::PointCloud2>();
+
+  rclcpp::QoS durable_qos{10};
+  durable_qos.transient_local();  // Match publisher's Durability setting
 
   auto pointcloud_sub = node->create_subscription<sensor_msgs::msg::PointCloud2>(
     "pointcloud_map_no_downsample", durable_qos,
