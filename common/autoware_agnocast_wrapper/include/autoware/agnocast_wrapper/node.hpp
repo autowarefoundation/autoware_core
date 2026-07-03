@@ -701,7 +701,8 @@ public:
     typename MessageT,
     template <typename> class PollingPolicy = autoware_utils_rclcpp::polling_policy::Latest>
   typename autoware_utils_rclcpp::InterProcessPollingSubscriber<MessageT, PollingPolicy>::SharedPtr
-  create_polling_subscriber(const std::string & topic_name, const rclcpp::QoS & qos = rclcpp::QoS{1})
+  create_polling_subscriber(
+    const std::string & topic_name, const rclcpp::QoS & qos = rclcpp::QoS{1})
   {
     static_assert(
       !std::is_same_v<
