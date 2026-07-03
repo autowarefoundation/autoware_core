@@ -35,13 +35,40 @@ autoware_internal_debug_msgs::msg::Float32Stamped make_float32_stamped(
 autoware_internal_debug_msgs::msg::Int32Stamped make_int32_stamped(
   const builtin_interfaces::msg::Time & stamp, int32_t data);
 
+struct NdtRustHostAccess
+{
+  static int64_t host_now_ns(void * ctx);
+  static void host_log(void * ctx, int32_t level, const std::uint8_t * msg, std::size_t msg_len);
+  static bool host_lookup_transform(
+    void * ctx, AwStr target, AwStr source, float * out_matrix4x4_row_major);
+  static void host_publish_pose(
+    void * ctx, AwPoseTopic topic, int64_t stamp_ns, const AwPose * pose, const double * cov);
+  static void host_publish_pose_array(
+    void * ctx, AwPoseArrayTopic topic, int64_t stamp_ns, const AwPose * poses, std::size_t n);
+  static void host_publish_marker(
+    void * ctx, int64_t stamp_ns, const AwPose * poses, std::size_t n, int32_t max_iterations);
+  static void host_publish_float32(void * ctx, AwFloat32Topic topic, int64_t stamp_ns, float value);
+  static void host_publish_int32(void * ctx, AwInt32Topic topic, int64_t stamp_ns, int32_t value);
+  static void host_publish_tf(void * ctx, int64_t stamp_ns, const AwPose * pose);
+  static void host_publish_initial_to_result(
+    void * ctx, int64_t stamp_ns, const AwPose * result, const AwPose * initial,
+    const double * old_pos, const double * new_pos);
+  static void host_store_sensor_points_base_link(void * ctx, AwPoint3fSlice points);
+  static bool host_pointcloud_has_subscribers(void * ctx, AwPointCloudTopic topic);
+  static void host_publish_pointcloud_xyz(
+    void * ctx, AwPointCloudTopic topic, int64_t stamp_ns, AwPoint3fSlice points);
+  static void host_publish_voxel_score_points(
+    void * ctx, int64_t stamp_ns, AwPoint3fSlice points, const float * scores,
+    std::size_t scores_len);
+};
+
 // Phase 5: the AwHost side-effects vtable trampolines (ctx == this) + make_host. Side-effects only
 // (clock / logging / TF); node state stays Rust-owned on the handle.
-int64_t NDTScanMatcher::host_now_ns(void * ctx)
+int64_t NdtRustHostAccess::host_now_ns(void * ctx)
 {
   return static_cast<NDTScanMatcher *>(ctx)->now().nanoseconds();
 }
-void NDTScanMatcher::host_log(
+void NdtRustHostAccess::host_log(
   void * ctx, int32_t level, const std::uint8_t * msg, std::size_t msg_len)
 {
   auto * self = static_cast<NDTScanMatcher *>(ctx);
@@ -52,7 +79,7 @@ void NDTScanMatcher::host_log(
     RCLCPP_WARN_STREAM_THROTTLE(self->get_logger(), *self->get_clock(), 1000, text);
   }
 }
-bool NDTScanMatcher::host_lookup_transform(
+bool NdtRustHostAccess::host_lookup_transform(
   void * ctx, AwStr target, AwStr source, float * out_matrix4x4_row_major)
 {
   auto * self = static_cast<NDTScanMatcher *>(ctx);
@@ -87,7 +114,7 @@ static geometry_msgs::msg::Pose aw_pose_to_msg(const AwPose & p)
   pose.orientation.w = p.orientation[3];
   return pose;
 }
-void NDTScanMatcher::host_publish_pose(
+void NdtRustHostAccess::host_publish_pose(
   void * ctx, AwPoseTopic topic, int64_t stamp_ns, const AwPose * pose, const double * cov)
 {
   auto * self = static_cast<NDTScanMatcher *>(ctx);
@@ -119,7 +146,7 @@ void NDTScanMatcher::host_publish_pose(
       self->get_logger(), *self->get_clock(), 1000, "publish_pose failed");
   }
 }
-void NDTScanMatcher::host_publish_pose_array(
+void NdtRustHostAccess::host_publish_pose_array(
   void * ctx, AwPoseArrayTopic topic, int64_t stamp_ns, const AwPose * poses, std::size_t n)
 {
   auto * self = static_cast<NDTScanMatcher *>(ctx);
@@ -140,7 +167,7 @@ void NDTScanMatcher::host_publish_pose_array(
       self->get_logger(), *self->get_clock(), 1000, "publish_pose_array failed");
   }
 }
-void NDTScanMatcher::host_publish_marker(
+void NdtRustHostAccess::host_publish_marker(
   void * ctx, int64_t stamp_ns, const AwPose * poses, std::size_t n, int32_t max_iterations)
 {
   auto * self = static_cast<NDTScanMatcher *>(ctx);
@@ -156,7 +183,7 @@ void NDTScanMatcher::host_publish_marker(
       self->get_logger(), *self->get_clock(), 1000, "publish_marker failed");
   }
 }
-void NDTScanMatcher::host_publish_float32(
+void NdtRustHostAccess::host_publish_float32(
   void * ctx, AwFloat32Topic topic, int64_t stamp_ns, float value)
 {
   auto * self = static_cast<NDTScanMatcher *>(ctx);
@@ -176,7 +203,7 @@ void NDTScanMatcher::host_publish_float32(
       self->get_logger(), *self->get_clock(), 1000, "publish_float32 failed");
   }
 }
-void NDTScanMatcher::host_publish_int32(
+void NdtRustHostAccess::host_publish_int32(
   void * ctx, AwInt32Topic /*topic*/, int64_t stamp_ns, int32_t value)
 {
   auto * self = static_cast<NDTScanMatcher *>(ctx);
@@ -187,7 +214,7 @@ void NDTScanMatcher::host_publish_int32(
       self->get_logger(), *self->get_clock(), 1000, "publish_int32 failed");
   }
 }
-void NDTScanMatcher::host_publish_tf(void * ctx, int64_t stamp_ns, const AwPose * pose)
+void NdtRustHostAccess::host_publish_tf(void * ctx, int64_t stamp_ns, const AwPose * pose)
 {
   auto * self = static_cast<NDTScanMatcher *>(ctx);
   try {
@@ -197,7 +224,7 @@ void NDTScanMatcher::host_publish_tf(void * ctx, int64_t stamp_ns, const AwPose 
       self->get_logger(), *self->get_clock(), 1000, "publish_tf failed");
   }
 }
-void NDTScanMatcher::host_publish_initial_to_result(
+void NdtRustHostAccess::host_publish_initial_to_result(
   void * ctx, int64_t stamp_ns, const AwPose * result, const AwPose * initial,
   const double * old_pos, const double * new_pos)
 {
@@ -223,11 +250,12 @@ void NDTScanMatcher::host_publish_initial_to_result(
 
 static pcl::PointCloud<pcl::PointXYZ> aw_xyz_slice_to_cloud(AwPoint3fSlice points);
 
-void NDTScanMatcher::host_store_sensor_points_base_link(void * ctx, AwPoint3fSlice points)
+void NdtRustHostAccess::host_store_sensor_points_base_link(void * ctx, AwPoint3fSlice points)
 {
   auto * self = static_cast<NDTScanMatcher *>(ctx);
   try {
-    auto cloud = pcl::make_shared<pcl::PointCloud<PointSource>>(aw_xyz_slice_to_cloud(points));
+    auto cloud = pcl::make_shared<pcl::PointCloud<NDTScanMatcher::PointSource>>(
+      aw_xyz_slice_to_cloud(points));
     self->sensor_points_in_baselink_frame_ = cloud;
   } catch (...) {
     RCLCPP_ERROR_STREAM_THROTTLE(
@@ -235,7 +263,7 @@ void NDTScanMatcher::host_store_sensor_points_base_link(void * ctx, AwPoint3fSli
   }
 }
 
-bool NDTScanMatcher::host_pointcloud_has_subscribers(void * ctx, AwPointCloudTopic topic)
+bool NdtRustHostAccess::host_pointcloud_has_subscribers(void * ctx, AwPointCloudTopic topic)
 {
   auto * self = static_cast<NDTScanMatcher *>(ctx);
   if (topic == AwPointCloudTopic::VoxelScorePoints) {
@@ -261,7 +289,7 @@ static pcl::PointCloud<pcl::PointXYZ> aw_xyz_slice_to_cloud(AwPoint3fSlice point
   return cloud;
 }
 
-void NDTScanMatcher::host_publish_pointcloud_xyz(
+void NdtRustHostAccess::host_publish_pointcloud_xyz(
   void * ctx, AwPointCloudTopic topic, int64_t stamp_ns, AwPoint3fSlice points)
 {
   auto * self = static_cast<NDTScanMatcher *>(ctx);
@@ -282,7 +310,7 @@ void NDTScanMatcher::host_publish_pointcloud_xyz(
   }
 }
 
-void NDTScanMatcher::host_publish_voxel_score_points(
+void NdtRustHostAccess::host_publish_voxel_score_points(
   void * ctx, int64_t stamp_ns, AwPoint3fSlice points, const float * scores, std::size_t scores_len)
 {
   auto * self = static_cast<NDTScanMatcher *>(ctx);
@@ -324,20 +352,20 @@ AwHost NDTScanMatcher::make_host()
 {
   return AwHost{
     this,
-    &NDTScanMatcher::host_now_ns,
-    &NDTScanMatcher::host_log,
-    &NDTScanMatcher::host_lookup_transform,
-    &NDTScanMatcher::host_publish_pose,
-    &NDTScanMatcher::host_publish_pose_array,
-    &NDTScanMatcher::host_publish_marker,
-    &NDTScanMatcher::host_publish_float32,
-    &NDTScanMatcher::host_publish_int32,
-    &NDTScanMatcher::host_publish_tf,
-    &NDTScanMatcher::host_publish_initial_to_result,
-    &NDTScanMatcher::host_store_sensor_points_base_link,
-    &NDTScanMatcher::host_pointcloud_has_subscribers,
-    &NDTScanMatcher::host_publish_pointcloud_xyz,
-    &NDTScanMatcher::host_publish_voxel_score_points};
+    &NdtRustHostAccess::host_now_ns,
+    &NdtRustHostAccess::host_log,
+    &NdtRustHostAccess::host_lookup_transform,
+    &NdtRustHostAccess::host_publish_pose,
+    &NdtRustHostAccess::host_publish_pose_array,
+    &NdtRustHostAccess::host_publish_marker,
+    &NdtRustHostAccess::host_publish_float32,
+    &NdtRustHostAccess::host_publish_int32,
+    &NdtRustHostAccess::host_publish_tf,
+    &NdtRustHostAccess::host_publish_initial_to_result,
+    &NdtRustHostAccess::host_store_sensor_points_base_link,
+    &NdtRustHostAccess::host_pointcloud_has_subscribers,
+    &NdtRustHostAccess::host_publish_pointcloud_xyz,
+    &NdtRustHostAccess::host_publish_voxel_score_points};
 }
 
 }  // namespace autoware::ndt_scan_matcher
