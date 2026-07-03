@@ -618,7 +618,7 @@ typename PollingSubscriber<MessageT>::SharedPtr create_polling_subscriber(
 
 template <typename MessageT>
 typename PollingSubscriber<MessageT>::SharedPtr create_polling_subscriber(
-  rclcpp::Node * node, const std::string & topic_name, const rclcpp::QoS & qos)
+  rclcpp::Node * node, const std::string & topic_name, const rclcpp::QoS & qos = rclcpp::QoS{1})
 {
   if (use_agnocast()) {
     return std::make_shared<AgnocastPollingSubscriber<MessageT>>(node, topic_name, qos);
