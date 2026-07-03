@@ -56,10 +56,12 @@
 #endif
 
 #include <array>
+#include <atomic>
 #include <deque>
 #include <map>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -90,11 +92,9 @@ private:
 
   void callback_initial_pose(
     geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr initial_pose_msg_ptr);
-#ifndef NDT_USE_RUST
-  // The C++ baseline body (OFF only); under NDT_USE_RUST the whole callback runs in Rust.
+  // The C++ baseline body is defined only in the legacy shell and called only by that path.
   void callback_initial_pose_main(
     const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr initial_pose_msg_ptr);
-#endif
 
   void callback_regularization_pose(
     geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr pose_conv_msg_ptr);
@@ -240,15 +240,12 @@ private:
 
   pcl::shared_ptr<pcl::PointCloud<PointSource>> sensor_points_in_baselink_frame_;
 
-#ifndef NDT_USE_RUST
-  // Under NDT_USE_RUST the initial-pose buffer, latest-EKF position, regularization buffer, and
-  // activation flag are all owned Rust-side on the `rs_` handle (Phase 1 slices A+B); these C++
-  // members remain only on the non-Rust path.
+  // Legacy C++ path state. Under NDT_USE_RUST the equivalent state is Rust-owned on `rs_`;
+  // these members are intentionally unused by the Rust-selected translation units.
   std::unique_ptr<autoware::localization_util::SmartPoseBuffer> initial_pose_buffer_;
   Guarded<std::optional<geometry_msgs::msg::Point>> latest_ekf_position_{std::nullopt};
   std::unique_ptr<autoware::localization_util::SmartPoseBuffer> regularization_pose_buffer_;
   std::atomic<bool> is_activated_;
-#endif
 
   std::unique_ptr<DiagnosticsInterface> diagnostics_scan_points_;
   std::unique_ptr<DiagnosticsInterface> diagnostics_initial_pose_;

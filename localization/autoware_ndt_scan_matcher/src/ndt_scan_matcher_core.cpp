@@ -70,9 +70,7 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
   tf2_broadcaster_(*this),
   tf2_buffer_(this->get_clock()),
   tf2_listener_(tf2_buffer_),
-#ifndef NDT_USE_RUST
   is_activated_(false),
-#endif
   param_(this)
 #ifdef NDT_USE_RUST
   ,
