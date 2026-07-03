@@ -548,10 +548,23 @@ template <typename MessageT, template <typename> class PollingPolicy>
 inline constexpr bool polling_default_allow_same_message_v =
   !std::is_same_v<PollingPolicy<MessageT>, polling_policy::Newest<MessageT>>;
 
+// The wrapper's PollingSubscriber interface returns a single message from take_data(), so the
+// All policy (which yields a std::vector in InterProcessPollingSubscriber, and has no equivalent
+// in agnocast's native polling subscriber) cannot be represented. Reject it at compile time.
+template <typename MessageT, template <typename> class PollingPolicy>
+inline constexpr bool polling_policy_supported_v =
+  !std::is_same_v<PollingPolicy<MessageT>, polling_policy::All<MessageT>>;
+
 template <typename MessageT, template <typename> class PollingPolicy = polling_policy::Latest>
 class PollingSubscriber
 {
 public:
+  static_assert(
+    polling_policy_supported_v<MessageT, PollingPolicy>,
+    "polling_policy::All is not supported by autoware::agnocast_wrapper::create_polling_subscriber "
+    "(take_data() returns a single message, not a vector). Use polling_policy::Latest or "
+    "polling_policy::Newest.");
+
   using SharedPtr = std::shared_ptr<PollingSubscriber<MessageT, PollingPolicy>>;
 
   static constexpr bool default_allow_same_message =
@@ -655,7 +668,7 @@ typename PollingSubscriber<MessageT, PollingPolicy>::SharedPtr create_polling_su
 
 template <typename MessageT, template <typename> class PollingPolicy = polling_policy::Latest>
 typename PollingSubscriber<MessageT, PollingPolicy>::SharedPtr create_polling_subscriber(
-  rclcpp::Node * node, const std::string & topic_name, const rclcpp::QoS & qos)
+  rclcpp::Node * node, const std::string & topic_name, const rclcpp::QoS & qos = rclcpp::QoS{1})
 {
   if (use_agnocast()) {
     return std::make_shared<AgnocastPollingSubscriber<MessageT, PollingPolicy>>(
