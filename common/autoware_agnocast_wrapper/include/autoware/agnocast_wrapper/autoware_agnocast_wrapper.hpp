@@ -467,8 +467,7 @@ public:
       "AUTOWARE_MESSAGE_UNIQUE_PTR or AUTOWARE_MESSAGE_CONST_SHARED_PTR, or with a "
       "const reference to the message type");
 
-    constexpr bool is_message_ptr_callback =
-      is_message_ptr_subscription_callback_v<Func, MessageT>;
+    constexpr bool is_message_ptr_callback = is_message_ptr_subscription_callback_v<Func, MessageT>;
     constexpr auto ownership = is_unique_ptr_subscription_callback_v<Func, MessageT>
                                  ? OwnershipType::Unique
                                  : OwnershipType::Shared;
@@ -514,8 +513,7 @@ public:
       "AUTOWARE_MESSAGE_UNIQUE_PTR or AUTOWARE_MESSAGE_CONST_SHARED_PTR, or with a "
       "const reference to the message type");
 
-    constexpr bool is_message_ptr_callback =
-      is_message_ptr_subscription_callback_v<Func, MessageT>;
+    constexpr bool is_message_ptr_callback = is_message_ptr_subscription_callback_v<Func, MessageT>;
     constexpr auto ownership = is_unique_ptr_subscription_callback_v<Func, MessageT>
                                  ? OwnershipType::Unique
                                  : OwnershipType::Shared;
