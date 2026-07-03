@@ -60,12 +60,6 @@ autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
 )
 
 if(BUILD_TESTING)
-  # The node-level integration tests drive the node through an rclcpp executor
-  # (exec.add_node(node_)) and a tf2_ros::StaticTransformBroadcaster(node_); under
-  # ENABLE_AGNOCAST=1 the node is an autoware::agnocast_wrapper::Node (not an
-  # rclcpp::Node), so those constructs no longer compile. Build them only for the
-  # =0 path (the runtime backend is env-gated anyway). The pure-math unit tests
-  # below do not touch the node and stay enabled in both modes.
   if(NOT (DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1"))
     add_launch_test(
       test/test_ndt_scan_matcher_launch.py
