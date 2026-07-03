@@ -696,7 +696,8 @@ public:
   // ===== Polling Subscriber =====
   template <typename MessageT>
   typename autoware_utils_rclcpp::InterProcessPollingSubscriber<MessageT>::SharedPtr
-  create_polling_subscriber(const std::string & topic_name, const rclcpp::QoS & qos = rclcpp::QoS{1})
+  create_polling_subscriber(
+    const std::string & topic_name, const rclcpp::QoS & qos = rclcpp::QoS{1})
   {
     return autoware_utils_rclcpp::InterProcessPollingSubscriber<MessageT>::create_subscription(
       node_.get(), topic_name, qos);
