@@ -20,12 +20,6 @@
 
 namespace autoware::motion_utils
 {
-VehicleStopCheckerBase::VehicleStopCheckerBase(rclcpp::Node * node, double buffer_duration)
-: clock_(node->get_clock()), logger_(node->get_logger())
-{
-  buffer_duration_ = buffer_duration;
-}
-
 void VehicleStopCheckerBase::addTwist(const TwistStamped & twist)
 {
   twist_buffer_.push_front(twist);

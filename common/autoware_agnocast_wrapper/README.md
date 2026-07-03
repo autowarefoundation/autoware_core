@@ -235,6 +235,16 @@ void onPointCloud(AUTOWARE_MESSAGE_UNIQUE_PTR(const PointCloud2) && input_msg) {
 }
 ```
 
+Subscription callbacks that only read the message inside the callback can also keep the plain rclcpp `const MessageT &` signature:
+
+```cpp
+void onPointCloud(const PointCloud2 & input_msg) {
+  ...
+}
+```
+
+Zero-copy is preserved on the Agnocast path: the subscription dereferences the received pointer before invoking the callback, so the reference points directly into shared memory. The referenced entry is kept alive only while the callback runs: the reference is valid for the duration of the callback and must not be stored or used after the callback returns. Use `AUTOWARE_MESSAGE_CONST_SHARED_PTR` instead when the callback needs to keep the message alive beyond the callback without a copy.
+
 To use the macros provided by this package in your own package, include the following lines in your `CMakeLists.txt`:
 
 ```cmake
