@@ -419,6 +419,16 @@ inline bool use_agnocast()
   return sv == 1;
 }
 
+/// @brief Mode-agnostic replacement for rclcpp::ok().
+///
+/// An AgnocastOnly executable initializes only the agnocast context, while mixed-mode and
+/// non-Agnocast executables initialize only the rclcpp context. Exactly one is alive in any
+/// mode, so the disjunction answers "is this process still running" everywhere.
+inline bool ok()
+{
+  return rclcpp::ok() || agnocast::ok();
+}
+
 template <typename MessageT>
 class Subscription
 {
@@ -1256,6 +1266,12 @@ inline void set_period(const Timer::SharedPtr & timer, std::chrono::nanoseconds 
 
 namespace autoware::agnocast_wrapper
 {
+
+/// @brief Mode-agnostic replacement for rclcpp::ok() (non-Agnocast build).
+inline bool ok()
+{
+  return rclcpp::ok();
+}
 
 /// @brief Set the timer period (non-Agnocast build).
 ///
