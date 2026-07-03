@@ -54,14 +54,7 @@ protected:
     dummy_metadata.max = pcl::PointXYZ(1.0, 1.0, 1.0);
     dummy_metadata_dict["/tmp/dummy.pcd"] = dummy_metadata;
 
-    module_ = std::make_unique<DifferentialMapLoaderModule>(dummy_metadata_dict);
-
-    service_ = node_->create_service<GetDifferentialPointCloudMap>(
-      "service/get_differential_pcd_map", [this](
-                                            GetDifferentialPointCloudMap::Request::SharedPtr req,
-                                            GetDifferentialPointCloudMap::Response::SharedPtr res) {
-        return module_->create_response(req, res);
-      });
+    module_ = std::make_unique<DifferentialMapLoaderModule>(node_.get(), dummy_metadata_dict);
 
     client_ =
       node_->create_client<GetDifferentialPointCloudMap>("service/get_differential_pcd_map");
@@ -71,7 +64,6 @@ protected:
 
   rclcpp::Node::SharedPtr node_;
   std::unique_ptr<DifferentialMapLoaderModule> module_;
-  rclcpp::Service<GetDifferentialPointCloudMap>::SharedPtr service_;
   rclcpp::Client<GetDifferentialPointCloudMap>::SharedPtr client_;
 };
 
