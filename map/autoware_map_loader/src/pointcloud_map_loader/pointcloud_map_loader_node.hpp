@@ -16,7 +16,7 @@
 #define POINTCLOUD_MAP_LOADER__POINTCLOUD_MAP_LOADER_NODE_HPP_
 
 #include "differential_map_loader.hpp"
-#include "partial_map_loader_module.hpp"
+#include "partial_map_loader.hpp"
 #include "pointcloud_map_loader.hpp"
 #include "selected_map_loader_module.hpp"
 

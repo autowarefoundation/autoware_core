@@ -12,13 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "../src/pointcloud_map_loader/partial_map_loader_module.hpp"
+#include "../src/pointcloud_map_loader/partial_map_loader.hpp"
 
 #include <rclcpp/rclcpp.hpp>
 
 #include <autoware_map_msgs/srv/get_partial_point_cloud_map.hpp>
 
 #include <gtest/gtest.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
 
 #include <map>
 #include <memory>

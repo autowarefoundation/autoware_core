@@ -14,12 +14,31 @@
 
 #include "partial_map_loader.hpp"
 
+#include <functional>
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace autoware::map_loader
 {
+PartialMapLoaderModule::PartialMapLoaderModule(
+  std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict)
+: all_pcd_file_metadata_dict_(std::move(pcd_file_metadata_dict))
+{
+}
+
+PartialMapLoaderModule::PartialMapLoaderModule(
+  rclcpp::Node * node, std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict)
+: PartialMapLoaderModule(std::move(pcd_file_metadata_dict))
+{
+  get_partial_pcd_maps_service_ = node->create_service<GetPartialPointCloudMap>(
+    "service/get_partial_pcd_map",
+    std::bind(
+      &PartialMapLoaderModule::on_service_get_partial_point_cloud_map, this, std::placeholders::_1,
+      std::placeholders::_2));
+}
+
 std::vector<std::string> collect_partial_map_ids(
   const autoware_map_msgs::msg::AreaInfo & area,
   const std::map<std::string, PCDFileMetadata> & pcd_file_metadata_dict)
@@ -36,5 +55,36 @@ std::vector<std::string> collect_partial_map_ids(
   }
 
   return map_ids_to_load;
+}
+
+bool PartialMapLoaderModule::create_response(
+  GetPartialPointCloudMap::Request::SharedPtr req,
+  GetPartialPointCloudMap::Response::SharedPtr res) const
+{
+  const auto map_ids_to_load = collect_partial_map_ids(req->area, all_pcd_file_metadata_dict_);
+  for (const auto & map_id : map_ids_to_load) {
+    const auto metadata_it = all_pcd_file_metadata_dict_.find(map_id);
+    if (metadata_it == all_pcd_file_metadata_dict_.end()) {
+      continue;
+    }
+
+    const auto & path = metadata_it->first;
+    const auto & metadata = metadata_it->second;
+    const auto loaded_cell = load_point_cloud_map_cell_with_id(path, map_id, metadata);
+    if (!loaded_cell) {
+      return false;
+    }
+    res->new_pointcloud_with_ids.push_back(loaded_cell.value());
+  }
+
+  res->header.frame_id = "map";
+  return true;
+}
+
+bool PartialMapLoaderModule::on_service_get_partial_point_cloud_map(
+  GetPartialPointCloudMap::Request::SharedPtr req,
+  GetPartialPointCloudMap::Response::SharedPtr res) const
+{
+  return create_response(req, res);
 }
 }  // namespace autoware::map_loader
