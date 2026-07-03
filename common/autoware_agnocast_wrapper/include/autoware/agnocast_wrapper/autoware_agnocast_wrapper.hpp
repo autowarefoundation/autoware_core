@@ -428,23 +428,6 @@ public:
   virtual ~Subscription() = default;
 };
 
-template <typename Func, typename MessageT>
-inline constexpr bool is_unique_ptr_subscription_callback_v =
-  std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&>;
-
-// True when Callback takes one of the wrapper's message_ptr types (AUTOWARE_MESSAGE_UNIQUE_PTR /
-// AUTOWARE_MESSAGE_CONST_SHARED_PTR), i.e. it is written against the wrapper's zero-copy
-// subscription API.
-template <typename Func, typename MessageT>
-inline constexpr bool is_message_ptr_subscription_callback_v =
-  is_unique_ptr_subscription_callback_v<Func, MessageT> ||
-  std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&>;
-
-// True when Callback is an rclcpp-style read-only handler taking const MessageT &.
-template <typename Func, typename MessageT>
-inline constexpr bool is_const_ref_subscription_callback_v =
-  std::is_invocable_v<std::decay_t<Func>, const MessageT &>;
-
 template <typename MessageT>
 class AgnocastSubscription : public Subscription<MessageT>
 {
@@ -461,16 +444,20 @@ public:
     // risks corrupting data read by other subscribers. Currently kept for compatibility with
     // CudaPointcloudPreprocessorNode which uses UNIQUE_PTR callbacks.
     static_assert(
-      is_message_ptr_subscription_callback_v<Func, MessageT> ||
-        is_const_ref_subscription_callback_v<Func, MessageT>,
+      std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
+        std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&> ||
+        std::is_invocable_v<std::decay_t<Func>, const MessageT &>,
       "callback should be invocable with an rvalue reference to either "
       "AUTOWARE_MESSAGE_UNIQUE_PTR or AUTOWARE_MESSAGE_CONST_SHARED_PTR, or with a "
       "const reference to the message type");
 
-    constexpr bool is_message_ptr_callback = is_message_ptr_subscription_callback_v<Func, MessageT>;
-    constexpr auto ownership = is_unique_ptr_subscription_callback_v<Func, MessageT>
-                                 ? OwnershipType::Unique
-                                 : OwnershipType::Shared;
+    constexpr bool is_message_ptr_callback =
+      std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
+      std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&>;
+    constexpr auto ownership =
+      std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&>
+        ? OwnershipType::Unique
+        : OwnershipType::Shared;
 
     subscription_ = agnocast::create_subscription<MessageT>(
       node, topic_name, qos,
@@ -507,16 +494,20 @@ public:
     const agnocast::SubscriptionOptions & options)
   {
     static_assert(
-      is_message_ptr_subscription_callback_v<Func, MessageT> ||
-        is_const_ref_subscription_callback_v<Func, MessageT>,
+      std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
+        std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&> ||
+        std::is_invocable_v<std::decay_t<Func>, const MessageT &>,
       "callback should be invocable with an rvalue reference to either "
       "AUTOWARE_MESSAGE_UNIQUE_PTR or AUTOWARE_MESSAGE_CONST_SHARED_PTR, or with a "
       "const reference to the message type");
 
-    constexpr bool is_message_ptr_callback = is_message_ptr_subscription_callback_v<Func, MessageT>;
-    constexpr auto ownership = is_unique_ptr_subscription_callback_v<Func, MessageT>
-                                 ? OwnershipType::Unique
-                                 : OwnershipType::Shared;
+    constexpr bool is_message_ptr_callback =
+      std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
+      std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&>;
+    constexpr auto ownership =
+      std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&>
+        ? OwnershipType::Unique
+        : OwnershipType::Shared;
 
     rclcpp::SubscriptionOptions ros2_options;
     ros2_options.callback_group = options.callback_group;
