@@ -16,7 +16,6 @@
 
 #include <autoware/localization_util/matrix_type.hpp>
 #include <autoware/localization_util/util_func.hpp>
-#include <autoware/ndt_scan_matcher/ndt_omp/estimate_covariance.hpp>
 #include <autoware/ndt_scan_matcher/ndt_scan_matcher_core.hpp>
 #include <autoware/qos_utils/qos_compatibility.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
@@ -357,68 +356,6 @@ int NDTScanMatcher::count_oscillation(
 {
   return autoware::ndt_scan_matcher::count_oscillation(result_pose_msg_array);
 }
-
-#ifndef NDT_USE_RUST
-// Phase N4b: under NDT_USE_RUST the covariance is computed by the Rust orchestrator
-// (autoware_ndt_scan_matcher_rs_node_estimate_pose_covariance), so this method — and its references
-// to the templated estimate_xy_covariance_by_multi_ndt[_score] / propose_poses_to_search /
-// adjust_diagonal_covariance — is compiled only for the pure-C++ (OFF) baseline.
-Eigen::Matrix2d NDTScanMatcher::estimate_covariance(
-  const pclomp::NdtResult & ndt_result, const Eigen::Matrix4f & initial_pose_matrix,
-  const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform & ndt_ref)
-{
-  geometry_msgs::msg::PoseArray multi_ndt_result_msg;
-  geometry_msgs::msg::PoseArray multi_initial_pose_msg;
-  multi_ndt_result_msg.header.stamp = sensor_ros_time;
-  multi_ndt_result_msg.header.frame_id = param_.frame.map_frame;
-  multi_initial_pose_msg.header.stamp = sensor_ros_time;
-  multi_initial_pose_msg.header.frame_id = param_.frame.map_frame;
-  multi_ndt_result_msg.poses.push_back(matrix4f_to_pose(ndt_result.pose));
-  multi_initial_pose_msg.poses.push_back(matrix4f_to_pose(initial_pose_matrix));
-
-  if (
-    param_.covariance.covariance_estimation.covariance_estimation_type ==
-    CovarianceEstimationType::LAPLACE_APPROXIMATION) {
-    return pclomp::estimate_xy_covariance_by_laplace_approximation(ndt_result.hessian);
-  } else if (
-    param_.covariance.covariance_estimation.covariance_estimation_type ==
-    CovarianceEstimationType::MULTI_NDT) {
-    const std::vector<Eigen::Matrix4f> poses_to_search = pclomp::propose_poses_to_search(
-      ndt_result, param_.covariance.covariance_estimation.initial_pose_offset_model_x,
-      param_.covariance.covariance_estimation.initial_pose_offset_model_y);
-    const pclomp::ResultOfMultiNdtCovarianceEstimation result_of_multi_ndt_covariance_estimation =
-      estimate_xy_covariance_by_multi_ndt(
-        ndt_result, ndt_ref, poses_to_search, sensor_points_in_baselink_frame_);
-    for (size_t i = 0; i < result_of_multi_ndt_covariance_estimation.ndt_initial_poses.size();
-         i++) {
-      multi_ndt_result_msg.poses.push_back(
-        matrix4f_to_pose(result_of_multi_ndt_covariance_estimation.ndt_results[i].pose));
-      multi_initial_pose_msg.poses.push_back(
-        matrix4f_to_pose(result_of_multi_ndt_covariance_estimation.ndt_initial_poses[i]));
-    }
-    multi_ndt_pose_pub_->publish(multi_ndt_result_msg);
-    multi_initial_pose_pub_->publish(multi_initial_pose_msg);
-    return result_of_multi_ndt_covariance_estimation.covariance;
-  } else if (
-    param_.covariance.covariance_estimation.covariance_estimation_type ==
-    CovarianceEstimationType::MULTI_NDT_SCORE) {
-    const std::vector<Eigen::Matrix4f> poses_to_search = pclomp::propose_poses_to_search(
-      ndt_result, param_.covariance.covariance_estimation.initial_pose_offset_model_x,
-      param_.covariance.covariance_estimation.initial_pose_offset_model_y);
-    const pclomp::ResultOfMultiNdtCovarianceEstimation
-      result_of_multi_ndt_score_covariance_estimation = estimate_xy_covariance_by_multi_ndt_score(
-        ndt_result, ndt_ref, poses_to_search, sensor_points_in_baselink_frame_,
-        param_.covariance.covariance_estimation.temperature);
-    for (const auto & sub_initial_pose_matrix : poses_to_search) {
-      multi_initial_pose_msg.poses.push_back(matrix4f_to_pose(sub_initial_pose_matrix));
-    }
-    multi_initial_pose_pub_->publish(multi_initial_pose_msg);
-    return result_of_multi_ndt_score_covariance_estimation.covariance;
-  } else {
-    return Eigen::Matrix2d::Identity() * param_.covariance.output_pose_covariance[0 + 6 * 0];
-  }
-}
-#endif  // NDT_USE_RUST
 
 void NDTScanMatcher::service_ndt_align(
   const autoware_internal_localization_msgs::srv::PoseWithCovarianceStamped::Request::SharedPtr req,
