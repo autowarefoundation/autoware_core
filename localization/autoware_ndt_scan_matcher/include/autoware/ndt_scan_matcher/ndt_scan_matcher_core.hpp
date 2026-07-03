@@ -23,6 +23,7 @@
 #include "ndt_omp/multigrid_ndt_omp.h"
 
 #include <autoware/agnocast_wrapper/node.hpp>
+#include <autoware/agnocast_wrapper/tf2.hpp>
 #include <autoware/localization_util/smart_pose_buffer.hpp>
 #include <autoware_utils_diagnostics/diagnostics_interface.hpp>
 #include <autoware_utils_logging/logger_level_configure.hpp>
@@ -194,9 +195,9 @@ private:
   AUTOWARE_SERVICE_PTR(autoware_internal_localization_msgs::srv::PoseWithCovarianceStamped) service_;
   AUTOWARE_SERVICE_PTR(std_srvs::srv::SetBool) service_trigger_node_;
 
-  tf2_ros::TransformBroadcaster tf2_broadcaster_;
-  tf2_ros::Buffer tf2_buffer_;
-  tf2_ros::TransformListener tf2_listener_;
+  autoware::agnocast_wrapper::TransformBroadcaster tf2_broadcaster_;
+  autoware::agnocast_wrapper::Buffer tf2_buffer_;
+  autoware::agnocast_wrapper::TransformListener tf2_listener_;
 
   rclcpp::CallbackGroup::SharedPtr timer_callback_group_;
 

@@ -56,7 +56,7 @@ autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
   PLUGIN "autoware::ndt_scan_matcher::NDTScanMatcher"
   EXECUTABLE ${PROJECT_NAME}_node
   ROS2_EXECUTOR MultiThreadedExecutor
-  AGNOCAST_EXECUTOR CallbackIsolatedAgnocastExecutor
+  AGNOCAST_EXECUTOR AgnocastOnlyCallbackIsolatedExecutor
 )
 
 if(BUILD_TESTING)

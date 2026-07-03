@@ -248,7 +248,8 @@ bool MapUpdateModule::update_ndt(
   request->area.radius = static_cast<float>(param_.map_radius);
   request->cached_ids = ndt.getCurrentMapIDs();
 
-  while (!pcd_loader_client_->wait_for_service(std::chrono::seconds(1)) && rclcpp::ok()) {
+  while (!pcd_loader_client_->wait_for_service(std::chrono::seconds(1)) &&
+         autoware::agnocast_wrapper::ok()) {
     diagnostics_ptr->add_key_value("is_succeed_call_pcd_loader", false);
 
     std::stringstream message;
@@ -264,7 +265,7 @@ bool MapUpdateModule::update_ndt(
   std::future_status status = result.wait_for(std::chrono::seconds(0));
   while (status != std::future_status::ready) {
     // check is_succeed_call_pcd_loader
-    if (!rclcpp::ok()) {
+    if (!autoware::agnocast_wrapper::ok()) {
       diagnostics_ptr->add_key_value("is_succeed_call_pcd_loader", false);
 
       std::stringstream message;

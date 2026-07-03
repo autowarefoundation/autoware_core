@@ -70,7 +70,7 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
 : autoware::agnocast_wrapper::Node("ndt_scan_matcher", options),
   tf2_broadcaster_(*this),
   tf2_buffer_(this->get_clock()),
-  tf2_listener_(tf2_buffer_),
+  tf2_listener_(tf2_buffer_, *this),
   is_activated_(false),
   param_(this)
 {
