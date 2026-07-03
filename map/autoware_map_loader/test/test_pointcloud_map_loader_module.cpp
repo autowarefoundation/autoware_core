@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "../src/pointcloud_map_loader/pointcloud_map_loader_module.hpp"
+#include "../src/pointcloud_map_loader/pointcloud_map_loader.hpp"
 #include "../src/pointcloud_map_loader/utils.hpp"
 
 #include <rclcpp/rclcpp.hpp>
@@ -22,6 +22,7 @@
 #include <gtest/gtest.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
+#include <pcl_conversions/pcl_conversions.h>
 
 #include <chrono>
 #include <memory>

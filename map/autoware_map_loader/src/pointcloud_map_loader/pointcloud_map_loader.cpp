@@ -166,4 +166,10 @@ std::map<std::string, PCDFileMetadata> build_pcd_metadata_dict(
 
   throw std::runtime_error("PCD metadata file not found: " + pcd_metadata_path);
 }
+
+LoadPointcloudMapResult PointcloudMapLoaderModule::create_map_message(
+  const std::vector<std::string> & pcd_paths, boost::optional<float> leaf_size)
+{
+  return load_pointcloud_map(pcd_paths, leaf_size);
+}
 }  // namespace autoware::map_loader

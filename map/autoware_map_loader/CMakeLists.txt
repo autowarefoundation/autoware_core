@@ -9,7 +9,6 @@ find_package(PCL REQUIRED COMPONENTS common io filters)
 ament_auto_add_library(pointcloud_map_loader_node SHARED
   src/pointcloud_map_loader/pointcloud_map_loader_node.cpp
   src/pointcloud_map_loader/pointcloud_map_loader.cpp
-  src/pointcloud_map_loader/pointcloud_map_loader_module.cpp
   src/pointcloud_map_loader/partial_map_loader.cpp
   src/pointcloud_map_loader/partial_map_loader_module.cpp
   src/pointcloud_map_loader/differential_map_loader.cpp

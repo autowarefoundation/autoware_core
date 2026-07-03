@@ -17,6 +17,7 @@
 
 #include "utils.hpp"
 
+#include <rclcpp/rclcpp.hpp>
 #include <tl/expected.hpp>
 
 #include <sensor_msgs/msg/point_cloud2.hpp>
@@ -25,6 +26,7 @@
 
 #include <functional>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -77,6 +79,23 @@ std::vector<std::string> resolve_pcd_paths(
 /// @throws std::runtime_error on missing segments, missing metadata file, or PCD load failure.
 std::map<std::string, PCDFileMetadata> build_pcd_metadata_dict(
   const std::string & pcd_metadata_path, const std::vector<std::string> & pcd_paths);
+
+class PointcloudMapLoaderModule
+{
+public:
+  PointcloudMapLoaderModule() = default;
+
+  // Backward-compatible constructor used by existing tests.
+  explicit PointcloudMapLoaderModule(
+    rclcpp::Node * node, const std::vector<std::string> & pcd_paths,
+    const std::string & publisher_name, bool use_downsample);
+
+  static LoadPointcloudMapResult create_map_message(
+    const std::vector<std::string> & pcd_paths, boost::optional<float> leaf_size);
+
+private:
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_pointcloud_map_;
+};
 }  // namespace autoware::map_loader
 
 #endif  // POINTCLOUD_MAP_LOADER__POINTCLOUD_MAP_LOADER_HPP_

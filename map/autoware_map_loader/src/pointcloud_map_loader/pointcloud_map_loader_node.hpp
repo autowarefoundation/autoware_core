@@ -17,7 +17,7 @@
 
 #include "differential_map_loader_module.hpp"
 #include "partial_map_loader_module.hpp"
-#include "pointcloud_map_loader_module.hpp"
+#include "pointcloud_map_loader.hpp"
 #include "selected_map_loader_module.hpp"
 
 #include <rclcpp/rclcpp.hpp>
