@@ -68,17 +68,6 @@ PartialMapLoaderModule::PartialMapLoaderModule(
       std::placeholders::_2));
 }
 
-DifferentialMapLoaderModule::DifferentialMapLoaderModule(
-  rclcpp::Node * node, std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict)
-: DifferentialMapLoaderModule(std::move(pcd_file_metadata_dict))
-{
-  get_differential_pcd_maps_service_ = node->create_service<GetDifferentialPointCloudMap>(
-    "service/get_differential_pcd_map",
-    std::bind(
-      &DifferentialMapLoaderModule::on_service_get_differential_point_cloud_map, this,
-      std::placeholders::_1, std::placeholders::_2));
-}
-
 SelectedMapLoaderModule::SelectedMapLoaderModule(
   rclcpp::Node * node, std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict)
 : SelectedMapLoaderModule(std::move(pcd_file_metadata_dict))

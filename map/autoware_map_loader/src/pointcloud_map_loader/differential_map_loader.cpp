@@ -15,12 +15,31 @@
 #include "differential_map_loader.hpp"
 
 #include <algorithm>
+#include <functional>
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace autoware::map_loader
 {
+DifferentialMapLoaderModule::DifferentialMapLoaderModule(
+  std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict)
+: all_pcd_file_metadata_dict_(std::move(pcd_file_metadata_dict))
+{
+}
+
+DifferentialMapLoaderModule::DifferentialMapLoaderModule(
+  rclcpp::Node * node, std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict)
+: DifferentialMapLoaderModule(std::move(pcd_file_metadata_dict))
+{
+  get_differential_pcd_maps_service_ = node->create_service<GetDifferentialPointCloudMap>(
+    "service/get_differential_pcd_map",
+    std::bind(
+      &DifferentialMapLoaderModule::on_service_get_differential_point_cloud_map, this,
+      std::placeholders::_1, std::placeholders::_2));
+}
+
 DifferentialMapLoadPlan create_differential_map_load_plan(
   const autoware_map_msgs::msg::AreaInfo & area_info, const std::vector<std::string> & cached_ids,
   const std::map<std::string, PCDFileMetadata> & pcd_file_metadata_dict)
@@ -55,5 +74,39 @@ DifferentialMapLoadPlan create_differential_map_load_plan(
   }
 
   return plan;
+}
+
+bool DifferentialMapLoaderModule::create_response(
+  GetDifferentialPointCloudMap::Request::SharedPtr req,
+  GetDifferentialPointCloudMap::Response::SharedPtr res) const
+{
+  const auto plan =
+    create_differential_map_load_plan(req->area, req->cached_ids, all_pcd_file_metadata_dict_);
+
+  for (const auto & map_id : plan.map_ids_to_load) {
+    const auto metadata_it = all_pcd_file_metadata_dict_.find(map_id);
+    if (metadata_it == all_pcd_file_metadata_dict_.end()) {
+      continue;
+    }
+
+    const auto & path = metadata_it->first;
+    const auto & metadata = metadata_it->second;
+    const auto loaded_cell = load_point_cloud_map_cell_with_id(path, map_id, metadata);
+    if (!loaded_cell) {
+      return false;
+    }
+    res->new_pointcloud_with_ids.push_back(loaded_cell.value());
+  }
+
+  res->ids_to_remove = plan.ids_to_remove;
+  res->header.frame_id = "map";
+  return true;
+}
+
+bool DifferentialMapLoaderModule::on_service_get_differential_point_cloud_map(
+  GetDifferentialPointCloudMap::Request::SharedPtr req,
+  GetDifferentialPointCloudMap::Response::SharedPtr res) const
+{
+  return create_response(req, res);
 }
 }  // namespace autoware::map_loader
