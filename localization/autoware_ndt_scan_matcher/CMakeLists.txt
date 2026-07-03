@@ -103,10 +103,12 @@ set(NDT_SCAN_MATCHER_NODE_SHELL_SOURCES
 if(NDT_USE_RUST)
   list(APPEND NDT_SCAN_MATCHER_NODE_SHELL_SOURCES
     src/ndt_scan_matcher_rust_shell.cpp
+    src/ndt_scan_matcher_sensor_rust.cpp
   )
 else()
   list(APPEND NDT_SCAN_MATCHER_NODE_SHELL_SOURCES
     src/ndt_scan_matcher_legacy_shell.cpp
+    src/ndt_scan_matcher_sensor_legacy.cpp
   )
 endif()
 
