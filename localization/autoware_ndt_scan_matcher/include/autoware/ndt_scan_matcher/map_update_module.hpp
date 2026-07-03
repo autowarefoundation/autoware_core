@@ -21,10 +21,6 @@
 #include "ndt_omp/multigrid_ndt_omp.h"
 #include "particle.hpp"
 
-#ifdef NDT_USE_RUST
-#include "autoware_ndt_scan_matcher_rs.h"  // AwNdtScanMatcher + the map-update decision FFIs
-#endif
-
 #include <autoware/localization_util/util_func.hpp>
 #include <autoware_utils_diagnostics/diagnostics_interface.hpp>
 #include <autoware_utils_pcl/transforms.hpp>
@@ -46,6 +42,8 @@
 #include <thread>
 #include <vector>
 
+struct AwNdtScanMatcher;
+
 namespace autoware::ndt_scan_matcher
 {
 using DiagnosticsInterface = autoware_utils_diagnostics::DiagnosticsInterface;
@@ -66,12 +64,8 @@ class MapUpdateModule
 
 public:
   MapUpdateModule(
-    rclcpp::Node * node, EngineHolder & ndt_ptr, HyperParameters::DynamicMapLoading param
-#ifdef NDT_USE_RUST
-    ,
-    AwNdtScanMatcher * rs_handle
-#endif
-  );
+    rclcpp::Node * node, EngineHolder & ndt_ptr, HyperParameters::DynamicMapLoading param,
+    AwNdtScanMatcher * rs_handle = nullptr);
 
   bool out_of_map_range(const geometry_msgs::msg::Point & position);
 
@@ -99,7 +93,6 @@ private:
     const geometry_msgs::msg::Point & position, NdtType & ndt,
     std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr);
 
-#ifdef NDT_USE_RUST
   // Map-update via the portable Rust `apply_map_update` (the `MapSource` Host port). The Rust FFI owns
   // the staging + atomic commit double-buffer; we only supply the tiles. `build_map_delta` runs the
   // pcd-loader fetch and pushes the add/remove delta into the Rust-owned `builder` (returns whether
@@ -116,7 +109,6 @@ private:
   bool build_map_delta(
     void * builder, double cx, double cy, double radius, bool rebuild,
     DiagnosticsInterface & diagnostics);
-#endif
 
   void publish_partial_pcd_map();
 
@@ -130,13 +122,10 @@ private:
   // handle, so only builder_state_/last_update_position_ are real locks (no engine lock to order).
   EngineHolder & ndt_ptr_;
   Guarded<BuilderState> builder_state_;
-#ifdef NDT_USE_RUST
   // Phase 6: the map-update decision state (last-update position + need-rebuild) lives Rust-side on
   // the node handle; this module reads/updates it through the `..._map_update_*` FFIs.
   AwNdtScanMatcher * rs_handle_;
-#else
   Guarded<std::optional<geometry_msgs::msg::Point>> last_update_position_{std::nullopt};
-#endif
 
   rclcpp::Logger logger_;
   rclcpp::Clock::SharedPtr clock_;

@@ -14,6 +14,8 @@
 
 #include <autoware/ndt_scan_matcher/map_update_module.hpp>
 
+#include "autoware_ndt_scan_matcher_rs.h"
+
 #include <chrono>
 #include <cstdint>
 #include <future>

@@ -24,8 +24,10 @@ namespace autoware::ndt_scan_matcher
 {
 
 MapUpdateModule::MapUpdateModule(
-  rclcpp::Node * node, EngineHolder & ndt_ptr, HyperParameters::DynamicMapLoading param)
-: ndt_ptr_(ndt_ptr), logger_(node->get_logger()), clock_(node->get_clock()), param_(param)
+  rclcpp::Node * node, EngineHolder & ndt_ptr, HyperParameters::DynamicMapLoading param,
+  AwNdtScanMatcher * rs_handle)
+: ndt_ptr_(ndt_ptr), rs_handle_(rs_handle), logger_(node->get_logger()), clock_(node->get_clock()),
+  param_(param)
 {
   loaded_pcd_pub_ = node->create_publisher<sensor_msgs::msg::PointCloud2>(
     "debug/loaded_pointcloud_map", rclcpp::QoS{1}.transient_local());
