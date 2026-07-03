@@ -15,6 +15,8 @@
 #ifndef POINTCLOUD_MAP_LOADER__POINTCLOUD_MAP_LOADER_MODULE_HPP_
 #define POINTCLOUD_MAP_LOADER__POINTCLOUD_MAP_LOADER_MODULE_HPP_
 
+#include "pointcloud_map_loader.hpp"
+
 #include <rclcpp/rclcpp.hpp>
 
 #include <sensor_msgs/msg/point_cloud2.hpp>
@@ -33,18 +35,17 @@ namespace autoware::map_loader
 class PointcloudMapLoaderModule
 {
 public:
-  explicit PointcloudMapLoaderModule(rclcpp::Logger logger);
+  PointcloudMapLoaderModule() = default;
 
   // Backward-compatible constructor used by existing tests.
   explicit PointcloudMapLoaderModule(
     rclcpp::Node * node, const std::vector<std::string> & pcd_paths,
     const std::string & publisher_name, const bool use_downsample);
 
-  sensor_msgs::msg::PointCloud2 create_map_message(
+  LoadPointcloudMapResult create_map_message(
     const std::vector<std::string> & pcd_paths, boost::optional<float> leaf_size) const;
 
 private:
-  rclcpp::Logger logger_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_pointcloud_map_;
 };
 }  // namespace autoware::map_loader

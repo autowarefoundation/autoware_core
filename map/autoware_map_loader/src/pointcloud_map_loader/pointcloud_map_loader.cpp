@@ -61,21 +61,22 @@ sensor_msgs::msg::PointCloud2 downsample_pointcloud(
   return msg_output;
 }
 
-sensor_msgs::msg::PointCloud2 load_pointcloud_map(
-  const std::vector<std::string> & pcd_paths, const boost::optional<float> leaf_size,
-  const PointcloudLoaderLogFunction & debug_log, const PointcloudLoaderLogFunction & error_log)
+LoadPointcloudMapResult load_pointcloud_map(
+  const std::vector<std::string> & pcd_paths, const boost::optional<float> leaf_size)
 {
+  LoadPointcloudMapSuccess result;
   sensor_msgs::msg::PointCloud2 whole_pcd;
   sensor_msgs::msg::PointCloud2 partial_pcd;
 
   for (size_t i = 0; i < pcd_paths.size(); ++i) {
     const auto & path = pcd_paths[i];
     if (i % 50 == 0) {
-      debug_log(fmt::format("Load {} ({} out of {})", path, i + 1, pcd_paths.size()));
+      result.debug_messages.push_back(
+        fmt::format("Load {} ({} out of {})", path, i + 1, pcd_paths.size()));
     }
 
     if (pcl::io::loadPCDFile(path, partial_pcd) == -1) {
-      error_log("PCD load failed: " + path);
+      return tl::unexpected(LoadPointcloudMapError{"PCD load failed: " + path, result.debug_messages});
     }
 
     if (leaf_size) {
@@ -92,7 +93,8 @@ sensor_msgs::msg::PointCloud2 load_pointcloud_map(
   }
 
   whole_pcd.header.frame_id = "map";
-  return whole_pcd;
+  result.loaded_pcd = std::move(whole_pcd);
+  return result;
 }
 
 std::vector<std::string> resolve_pcd_paths(

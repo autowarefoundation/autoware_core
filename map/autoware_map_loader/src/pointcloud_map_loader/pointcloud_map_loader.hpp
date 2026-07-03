@@ -20,6 +20,7 @@
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
 #include <boost/optional.hpp>
+#include <tl/expected.hpp>
 
 #include <functional>
 #include <map>
@@ -31,6 +32,20 @@ namespace autoware::map_loader
 /// @brief Logging callback type used by pointcloud map loading core logic.
 using PointcloudLoaderLogFunction = std::function<void(const std::string &)>;
 
+struct LoadPointcloudMapSuccess
+{
+  sensor_msgs::msg::PointCloud2 loaded_pcd;
+  std::vector<std::string> debug_messages;
+};
+
+struct LoadPointcloudMapError
+{
+  std::string error_message;
+  std::vector<std::string> debug_messages;
+};
+
+using LoadPointcloudMapResult = tl::expected<LoadPointcloudMapSuccess, LoadPointcloudMapError>;
+
 /// @brief Downsample a pointcloud message with a voxel-grid filter.
 /// @param msg_input Input pointcloud message.
 /// @param leaf_size Voxel leaf size in meters.
@@ -41,12 +56,10 @@ sensor_msgs::msg::PointCloud2 downsample_pointcloud(
 /// @brief Load and merge multiple PCD files into a single pointcloud message.
 /// @param pcd_paths Absolute paths to source PCD files.
 /// @param leaf_size Optional downsample leaf size. If not set, downsampling is skipped.
-/// @param debug_log Callback for debug-level progress logs.
-/// @param error_log Callback for error-level load failure logs.
-/// @return Merged pointcloud message in map frame.
-sensor_msgs::msg::PointCloud2 load_pointcloud_map(
-  const std::vector<std::string> & pcd_paths, boost::optional<float> leaf_size,
-  const PointcloudLoaderLogFunction & debug_log, const PointcloudLoaderLogFunction & error_log);
+/// @return Merged pointcloud message and collected debug logs on success,
+///         or an error message on failure.
+LoadPointcloudMapResult load_pointcloud_map(
+  const std::vector<std::string> & pcd_paths, boost::optional<float> leaf_size);
 
 /// @brief Resolve input paths to concrete PCD file paths.
 /// @param pcd_paths_or_directory Input entries, each being a PCD file path or directory.

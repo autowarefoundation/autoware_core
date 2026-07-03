@@ -24,8 +24,8 @@
 namespace autoware::map_loader
 {
 DifferentialMapLoaderModule::DifferentialMapLoaderModule(
-  std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict, rclcpp::Logger logger)
-: logger_(std::move(logger)), all_pcd_file_metadata_dict_(std::move(pcd_file_metadata_dict))
+  std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict)
+: all_pcd_file_metadata_dict_(std::move(pcd_file_metadata_dict))
 {}
 
 bool DifferentialMapLoaderModule::create_response(
@@ -43,8 +43,11 @@ bool DifferentialMapLoaderModule::create_response(
 
     const auto & path = metadata_it->first;
     const auto & metadata = metadata_it->second;
-    res->new_pointcloud_with_ids.push_back(
-      load_point_cloud_map_cell_with_id(logger_, path, map_id, metadata));
+    const auto loaded_cell = load_point_cloud_map_cell_with_id(path, map_id, metadata);
+    if (!loaded_cell) {
+      return false;
+    }
+    res->new_pointcloud_with_ids.push_back(loaded_cell.value());
   }
 
   res->ids_to_remove = plan.ids_to_remove;

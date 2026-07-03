@@ -53,17 +53,23 @@ protected:
     dummy_metadata.max = pcl::PointXYZ(1.0, 1.0, 1.0);
     dummy_metadata_dict["/tmp/dummy.pcd"] = dummy_metadata;
 
-    // Initialize the PartialMapLoaderModule with the dummy metadata dictionary
-    module_ = std::make_shared<PartialMapLoaderModule>(node_.get(), dummy_metadata_dict);
+    module_ = std::make_unique<PartialMapLoaderModule>(dummy_metadata_dict);
 
-    // Create a client for the GetPartialPointCloudMap service
+    service_ = node_->create_service<GetPartialPointCloudMap>(
+      "service/get_partial_pcd_map",
+      [this](GetPartialPointCloudMap::Request::SharedPtr req,
+        GetPartialPointCloudMap::Response::SharedPtr res) {
+        return module_->create_response(req, res);
+      });
+
     client_ = node_->create_client<GetPartialPointCloudMap>("service/get_partial_pcd_map");
   }
 
   void TearDown() override { rclcpp::shutdown(); }
 
   rclcpp::Node::SharedPtr node_;
-  std::shared_ptr<PartialMapLoaderModule> module_;
+  std::unique_ptr<PartialMapLoaderModule> module_;
+  rclcpp::Service<GetPartialPointCloudMap>::SharedPtr service_;
   rclcpp::Client<GetPartialPointCloudMap>::SharedPtr client_;
 };
 

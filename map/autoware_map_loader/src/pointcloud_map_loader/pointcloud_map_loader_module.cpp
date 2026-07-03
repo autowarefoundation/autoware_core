@@ -21,15 +21,9 @@
 
 namespace autoware::map_loader
 {
-PointcloudMapLoaderModule::PointcloudMapLoaderModule(rclcpp::Logger logger)
-: logger_(std::move(logger))
-{}
-
-sensor_msgs::msg::PointCloud2 PointcloudMapLoaderModule::create_map_message(
+LoadPointcloudMapResult PointcloudMapLoaderModule::create_map_message(
   const std::vector<std::string> & pcd_paths, boost::optional<float> leaf_size) const
 {
-  return load_pointcloud_map(
-    pcd_paths, leaf_size, [this](const std::string & msg) { RCLCPP_DEBUG_STREAM(logger_, msg); },
-    [this](const std::string & msg) { RCLCPP_ERROR_STREAM(logger_, msg); });
+  return load_pointcloud_map(pcd_paths, leaf_size);
 }
 }  // namespace autoware::map_loader

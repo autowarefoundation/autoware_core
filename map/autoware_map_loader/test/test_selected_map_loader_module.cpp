@@ -53,17 +53,23 @@ protected:
     dummy_metadata.max = pcl::PointXYZ(1.0, 2.0, 3.0);
     dummy_metadata_dict_["/tmp/dummy.pcd"] = dummy_metadata;
 
-    // Initialize the SelectedMapLoaderModule with the dummy metadata dictionary
-    module_ = std::make_shared<SelectedMapLoaderModule>(node_.get(), dummy_metadata_dict_);
+    module_ = std::make_unique<SelectedMapLoaderModule>(dummy_metadata_dict_);
 
-    // Create a client for the GetSelectedPointCloudMap service
+    service_ = node_->create_service<GetSelectedPointCloudMap>(
+      "service/get_selected_pcd_map",
+      [this](GetSelectedPointCloudMap::Request::SharedPtr req,
+        GetSelectedPointCloudMap::Response::SharedPtr res) {
+        return module_->create_response(req, res);
+      });
+
     client_ = node_->create_client<GetSelectedPointCloudMap>("service/get_selected_pcd_map");
   }
 
   void TearDown() override { rclcpp::shutdown(); }
 
   rclcpp::Node::SharedPtr node_;
-  std::shared_ptr<SelectedMapLoaderModule> module_;
+  std::unique_ptr<SelectedMapLoaderModule> module_;
+  rclcpp::Service<GetSelectedPointCloudMap>::SharedPtr service_;
   rclcpp::Client<GetSelectedPointCloudMap>::SharedPtr client_;
   std::map<std::string, autoware::map_loader::PCDFileMetadata> dummy_metadata_dict_;
 };

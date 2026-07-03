@@ -21,8 +21,8 @@
 namespace autoware::map_loader
 {
 SelectedMapLoaderModule::SelectedMapLoaderModule(
-  std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict, rclcpp::Logger logger)
-: logger_(std::move(logger)), all_pcd_file_metadata_dict_(std::move(pcd_file_metadata_dict))
+  std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict)
+: all_pcd_file_metadata_dict_(std::move(pcd_file_metadata_dict))
 {}
 
 bool SelectedMapLoaderModule::create_response(
@@ -31,9 +31,10 @@ bool SelectedMapLoaderModule::create_response(
 {
   const auto load_plan = create_selected_map_load_plan(req->cell_ids, all_pcd_file_metadata_dict_);
 
-  for (const auto & missing_id : load_plan.missing_ids) {
-    RCLCPP_WARN(logger_, "ID %s not found", missing_id.c_str());
-  }
+  // TODO(sasakisasaki): Handle this debug message at node level
+  //for (const auto & missing_id : load_plan.missing_ids) {
+  //  RCLCPP_WARN(logger_, "ID %s not found", missing_id.c_str());
+  //}
 
   for (const auto & map_id : load_plan.map_ids_to_load) {
     const auto metadata_it = all_pcd_file_metadata_dict_.find(map_id);
@@ -43,8 +44,11 @@ bool SelectedMapLoaderModule::create_response(
 
     const auto & path = metadata_it->first;
     const auto & metadata = metadata_it->second;
-    res->new_pointcloud_with_ids.push_back(
-      load_point_cloud_map_cell_with_id(logger_, path, map_id, metadata));
+    const auto loaded_cell = load_point_cloud_map_cell_with_id(path, map_id, metadata);
+    if (!loaded_cell) {
+      return false;
+    }
+    res->new_pointcloud_with_ids.push_back(loaded_cell.value());
   }
 
   res->header.frame_id = "map";

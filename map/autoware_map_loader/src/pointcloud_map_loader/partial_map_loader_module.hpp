@@ -39,8 +39,7 @@ class PartialMapLoaderModule
   using GetPartialPointCloudMap = autoware_map_msgs::srv::GetPartialPointCloudMap;
 
 public:
-  explicit PartialMapLoaderModule(
-    std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict, rclcpp::Logger logger);
+  explicit PartialMapLoaderModule(std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict);
 
   // Backward-compatible constructor used by existing tests.
   explicit PartialMapLoaderModule(
@@ -51,8 +50,6 @@ public:
     GetPartialPointCloudMap::Response::SharedPtr res) const;
 
 private:
-  rclcpp::Logger logger_;
-
   std::map<std::string, PCDFileMetadata> all_pcd_file_metadata_dict_;
   rclcpp::Service<GetPartialPointCloudMap>::SharedPtr get_partial_pcd_maps_service_;
 

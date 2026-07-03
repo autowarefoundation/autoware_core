@@ -41,8 +41,7 @@ class SelectedMapLoaderModule
   using GetSelectedPointCloudMap = autoware_map_msgs::srv::GetSelectedPointCloudMap;
 
 public:
-  explicit SelectedMapLoaderModule(
-    std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict, rclcpp::Logger logger);
+  explicit SelectedMapLoaderModule(std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict);
 
   // Backward-compatible constructor used by existing tests.
   explicit SelectedMapLoaderModule(
@@ -53,8 +52,6 @@ public:
     GetSelectedPointCloudMap::Response::SharedPtr res) const;
 
 private:
-  rclcpp::Logger logger_;
-
   std::map<std::string, PCDFileMetadata> all_pcd_file_metadata_dict_;
   rclcpp::Service<GetSelectedPointCloudMap>::SharedPtr get_selected_pcd_maps_service_;
 
