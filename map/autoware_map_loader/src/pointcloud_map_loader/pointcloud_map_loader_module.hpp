@@ -42,8 +42,8 @@ public:
     rclcpp::Node * node, const std::vector<std::string> & pcd_paths,
     const std::string & publisher_name, const bool use_downsample);
 
-  LoadPointcloudMapResult create_map_message(
-    const std::vector<std::string> & pcd_paths, boost::optional<float> leaf_size) const;
+  static LoadPointcloudMapResult create_map_message(
+    const std::vector<std::string> & pcd_paths, boost::optional<float> leaf_size);
 
 private:
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_pointcloud_map_;

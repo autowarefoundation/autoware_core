@@ -22,7 +22,7 @@
 namespace autoware::map_loader
 {
 LoadPointcloudMapResult PointcloudMapLoaderModule::create_map_message(
-  const std::vector<std::string> & pcd_paths, boost::optional<float> leaf_size) const
+  const std::vector<std::string> & pcd_paths, boost::optional<float> leaf_size)
 {
   return load_pointcloud_map(pcd_paths, leaf_size);
 }
