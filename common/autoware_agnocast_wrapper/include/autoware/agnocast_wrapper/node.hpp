@@ -247,17 +247,17 @@ public:
   typename PollingSubscriber<MessageT, PollingPolicy>::SharedPtr create_polling_subscriber(
     const std::string & topic_name, const rclcpp::QoS & qos)
   {
-    return visit_node([&](auto & n) ->
-                      typename PollingSubscriber<MessageT, PollingPolicy>::SharedPtr {
-      using NodeT = std::decay_t<decltype(*n)>;
-      if constexpr (std::is_same_v<NodeT, agnocast::Node>) {
-        return std::make_shared<AgnocastPollingSubscriber<MessageT, PollingPolicy>>(
-          n.get(), topic_name, qos);
-      } else {
-        return std::make_shared<ROS2PollingSubscriber<MessageT, PollingPolicy>>(
-          n.get(), topic_name, qos);
-      }
-    });
+    return visit_node(
+      [&](auto & n) -> typename PollingSubscriber<MessageT, PollingPolicy>::SharedPtr {
+        using NodeT = std::decay_t<decltype(*n)>;
+        if constexpr (std::is_same_v<NodeT, agnocast::Node>) {
+          return std::make_shared<AgnocastPollingSubscriber<MessageT, PollingPolicy>>(
+            n.get(), topic_name, qos);
+        } else {
+          return std::make_shared<ROS2PollingSubscriber<MessageT, PollingPolicy>>(
+            n.get(), topic_name, qos);
+        }
+      });
   }
 
   template <typename MessageT, template <typename> class PollingPolicy = polling_policy::Latest>

@@ -539,7 +539,8 @@ typename Subscription<MessageT>::SharedPtr create_subscription(
 }
 
 // Reuse the polling policy tag types (Latest / Newest / All) from autoware_utils_rclcpp so that
-// node code can specify the policy by type, exactly as with the original InterProcessPollingSubscriber.
+// node code can specify the policy by type, exactly as with the original
+// InterProcessPollingSubscriber.
 namespace polling_policy = autoware_utils_rclcpp::polling_policy;
 
 // Default value for take_data(allow_same_message): Latest re-delivers the cached message (true),
@@ -582,14 +583,14 @@ public:
   }
 
   AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)
-    takeData(bool allow_same_message = default_allow_same_message) override
+  takeData(bool allow_same_message = default_allow_same_message) override
   {
     auto data = subscriber_->take_data(allow_same_message);
     return AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)(std::move(data));
   }
 
   AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)
-    take_data(bool allow_same_message = default_allow_same_message) override
+  take_data(bool allow_same_message = default_allow_same_message) override
   {
     auto data = subscriber_->take_data(allow_same_message);
     return AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)(std::move(data));
@@ -622,19 +623,19 @@ public:
   explicit ROS2PollingSubscriber(
     rclcpp::Node * node, const std::string & topic_name, const rclcpp::QoS & qos)
   : subscriber_(
-      autoware_utils_rclcpp::InterProcessPollingSubscriber<MessageT, PollingPolicy>::
-        create_subscription(node, topic_name, qos))
+      autoware_utils_rclcpp::InterProcessPollingSubscriber<
+        MessageT, PollingPolicy>::create_subscription(node, topic_name, qos))
   {
   }
 
   AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)
-    takeData(bool allow_same_message = default_allow_same_message) override
+  takeData(bool allow_same_message = default_allow_same_message) override
   {
     return take_data_impl(allow_same_message);
   }
 
   AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)
-    take_data(bool allow_same_message = default_allow_same_message) override
+  take_data(bool allow_same_message = default_allow_same_message) override
   {
     return take_data_impl(allow_same_message);
   }
