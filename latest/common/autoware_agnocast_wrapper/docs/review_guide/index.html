@@ -9190,7 +9190,7 @@ class MyNode : public autoware::agnocast_wrapper::Node
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Creation: <code>this-&gt;create_publisher</code> → <code>AUTOWARE_CREATE_PUBLISHER2</code> / <code>AUTOWARE_CREATE_PUBLISHER3</code> etc.</li>
 </ul>
 <ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Callback arguments: <code>const SharedPtr</code> / <code>UniquePtr</code> → <code>AUTOWARE_MESSAGE_CONST_SHARED_PTR</code> / <code>AUTOWARE_MESSAGE_UNIQUE_PTR</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Callback arguments: <code>const SharedPtr</code> / <code>UniquePtr</code> → <code>AUTOWARE_MESSAGE_CONST_SHARED_PTR</code> / <code>AUTOWARE_MESSAGE_UNIQUE_PTR</code> (callbacks taking <code>const MessageT &amp;</code> can keep their signature unchanged)</li>
 </ul>
 <ul class="task-list">
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Message allocation (if publisher exists): <code>std::make_unique&lt;M&gt;()</code> → <code>ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_)</code></li>
@@ -9311,7 +9311,7 @@ sudo apt install agnocast-heaphook-v2.3  # Match the version in autoware.repos</
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Creation: Use <code>agnocast_wrapper::Node</code> member functions <code>create_publisher</code> / <code>create_subscription</code> directly (<strong><code>AUTOWARE_CREATE_*</code> macros are not needed</strong>)</li>
 </ul>
 <ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Callback arguments: <code>const SharedPtr</code> / <code>UniquePtr</code> → <code>AUTOWARE_MESSAGE_CONST_SHARED_PTR</code> / <code>AUTOWARE_MESSAGE_UNIQUE_PTR</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Callback arguments: <code>const SharedPtr</code> / <code>UniquePtr</code> → <code>AUTOWARE_MESSAGE_CONST_SHARED_PTR</code> / <code>AUTOWARE_MESSAGE_UNIQUE_PTR</code> (callbacks taking <code>const MessageT &amp;</code> can keep their signature unchanged)</li>
 </ul>
 <ul class="task-list">
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Message allocation (if publisher exists): <code>std::make_unique&lt;M&gt;()</code> → <code>ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_)</code></li>

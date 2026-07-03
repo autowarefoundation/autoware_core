@@ -8036,6 +8036,12 @@ autoware_agnocast_wrapper_register_node(my_node_component
   pub_output_-&gt;publish(std::move(output));
 }
 ```</p>
+<p>Subscription callbacks that only read the message inside the callback can also keep the plain rclcpp <code>const MessageT &amp;</code> signature:</p>
+<p><code>cpp
+void onPointCloud(const PointCloud2 &amp; input_msg) {
+  ...
+}</code></p>
+<p>Zero-copy is preserved on the Agnocast path: the subscription dereferences the received pointer before invoking the callback, so the reference points directly into shared memory. The referenced entry is kept alive only while the callback runs: the reference is valid for the duration of the callback and must not be stored or used after the callback returns. Use <code>AUTOWARE_MESSAGE_CONST_SHARED_PTR</code> instead when the callback needs to keep the message alive beyond the callback without a copy.</p>
 <p>To use the macros provided by this package in your own package, include the following lines in your <code>CMakeLists.txt</code>:</p>
 <p><code>cmake
 find_package(autoware_agnocast_wrapper REQUIRED)
