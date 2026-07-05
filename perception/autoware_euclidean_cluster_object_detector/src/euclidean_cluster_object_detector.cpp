@@ -206,8 +206,8 @@ ClusterFeatureResult EuclideanClusterObjectDetector::cluster_voxel_grid(
   size_t skipped_cluster_count = 0;
 
   // 7. Build final output
-  for (auto & cluster : temp_clusters) {
-    size_t cluster_size = cluster.points.size();
+  for (auto & cloud_cluster : temp_clusters) {
+    size_t cluster_size = cloud_cluster.points.size();
 
     // Ignore small noises, log skipped big cluster
     if (cluster_size < static_cast<size_t>(param_.min_cluster_size)) {
@@ -218,10 +218,10 @@ ClusterFeatureResult EuclideanClusterObjectDetector::cluster_voxel_grid(
       continue;
     }
 
-    cluster.width = cluster_size;
-    cluster.height = 1;
-    cluster.is_dense = false;
-    valid_clusters.push_back(std::move(cluster));
+    cloud_cluster.width = cluster_size;
+    cloud_cluster.height = 1;
+    cloud_cluster.is_dense = false;
+    valid_clusters.push_back(std::move(cloud_cluster));
   }
 
   return ClusterFeatureResult{std::move(valid_clusters), skipped_cluster_count};
