@@ -36,11 +36,12 @@ EuclideanClusterObjectDetectorNode::EuclideanClusterObjectDetectorNode(
   // Fetch params once
   EuclideanClusterParams param;
   param.use_height = declare_parameter<bool>("use_height", false);
-  param.min_cluster_size = declare_parameter<int>("min_cluster_size", 3);
-  param.max_cluster_size = declare_parameter<int>("max_cluster_size", 200);
-  param.tolerance = declare_parameter<float>("tolerance", 1.0f);
-  param.voxel_leaf_size = declare_parameter<float>("voxel_leaf_size", 0.0f);
-  param.min_points_number_per_voxel = declare_parameter<int>("min_points_number_per_voxel", 1);
+  param.min_cluster_size = static_cast<int>(declare_parameter<int64_t>("min_cluster_size", 3));
+  param.max_cluster_size = static_cast<int>(declare_parameter<int64_t>("max_cluster_size", 200));
+  param.tolerance = static_cast<float>(declare_parameter<double>("tolerance", 1.0));
+  param.voxel_leaf_size = static_cast<float>(declare_parameter<double>("voxel_leaf_size", 0.0));
+  param.min_points_number_per_voxel =
+    static_cast<int>(declare_parameter<int64_t>("min_points_number_per_voxel", 1));
 
   detector_ = std::make_unique<EuclideanClusterObjectDetector>(param);
 
