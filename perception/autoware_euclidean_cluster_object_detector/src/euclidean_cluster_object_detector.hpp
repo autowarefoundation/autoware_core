@@ -1,4 +1,4 @@
-// Copyright 2026 TIER IV, Inc.
+// Copyright 2020 TIER IV, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,31 +44,11 @@ public:
 private:
   EuclideanClusterParams param_;
 
-  /**
-   * @brief Helper func to perform standard Euclidean clustering on a point cloud.
-   * Basically this is the brute-force approach without downsampling, a.k.a slower but accurate (I
-   * guess?). This algorithm loads point cloud into 3D KD-Tree for O(logN) nearest neighbor search,
-   * then performs clustering based on distance tolerance and min/max cluster size.
-   *
-   * @param input_cloud Input point cloud to cluster.
-   *
-   * @return tl::expected<std::vector<pcl::PointCloud<pcl::PointXYZ>>, std::string> A vector of
-   * point clouds, each representing a cluster.
-   */
+  // Helper func to perform standard Euclidean clustering on a point cloud
   [[nodiscard]] ClusterFeatureResult cluster_standard(
     const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & input_cloud) const;
 
-  /**
-   * @brief Helper func to perform voxel grid downsampling on a point cloud, then perform Euclidean
-   * clustering. This is a faster but less accurate approach, as downsampling may remove points
-   * important for clustering. Still, it's useful for large point clouds where speed is more
-   * important than accuracy.
-   *
-   * @param input_cloud Input point cloud to cluster.
-   *
-   * @return tl::expected<std::vector<pcl::PointCloud<pcl::PointXYZ>>, std::string> A vector of
-   * point clouds, each representing a cluster.
-   */
+  // Helper func to perform voxel grid downsampling on a point cloud, then perform Euclidean
   [[nodiscard]] ClusterFeatureResult cluster_voxel_grid(
     const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & input_cloud) const;
 };

@@ -1,4 +1,4 @@
-// Copyright 2026 TIER IV, Inc.
+// Copyright 2020 TIER IV, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,25 +27,13 @@
 namespace autoware::euclidean_cluster
 {
 
-/**
- * @brief Helper func to convert clusters this node to autoware_msgs detected_objects
- *
- * @param header Header for output message.
- * @param clusters Vector of point clouds, each representing a cluster.
- * @param output_msg Output message to populate with detected objects.
- */
+// Helper func to convert clusters this node to autoware_msgs detected_objects
 void convert_clusters_to_detected_objects(
   const std_msgs::msg::Header & header,
   const std::vector<pcl::PointCloud<pcl::PointXYZ>> & clusters,
   autoware_perception_msgs::msg::DetectedObjects & output_msg);
 
-/**
- * @brief Helper func to convert clusters this node to a single point cloud for debugging.
- *
- * @param header Header for output message.
- * @param clusters Vector of point clouds, each representing a cluster.
- * @param output_msg Output message to populate with a single point cloud for debugging.
- */
+// Helper func to convert clusters this node to a single point cloud for debugging
 void convert_clusters_to_debug_point_cloud(
   const std_msgs::msg::Header & header,
   const std::vector<pcl::PointCloud<pcl::PointXYZ>> & clusters,

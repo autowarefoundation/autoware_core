@@ -1,4 +1,4 @@
-// Copyright 2026 TIER IV, Inc.
+// Copyright 2020 TIER IV, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -36,10 +36,7 @@ public:
   explicit EuclideanClusterObjectDetectorNode(const rclcpp::NodeOptions & options);
 
 private:
-  /**
-   * @brief Callback func for point cloud subscription
-   * @param input_msg Point cloud message
-   */
+  // Callback func for point cloud subscription
   void on_point_cloud(const sensor_msgs::msg::PointCloud2::ConstSharedPtr input_msg);
 
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_pointcloud_;
