@@ -43,6 +43,7 @@ EuclideanClusterObjectDetectorNode::EuclideanClusterObjectDetectorNode(
   param.min_points_number_per_voxel =
     static_cast<int>(declare_parameter<int64_t>("min_points_number_per_voxel", 1));
 
+  // cppcheck-suppress useInitializationList
   detector_ = std::make_unique<EuclideanClusterObjectDetector>(param);
 
   // Setup pub/sub
