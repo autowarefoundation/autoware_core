@@ -17,6 +17,8 @@
 
 #include <rclcpp/rclcpp.hpp>
 
+#include <chrono>
+#include <cstddef>
 #include <string>
 
 namespace autoware::ekf_localizer
@@ -27,13 +29,26 @@ class Warning
 public:
   explicit Warning(rclcpp::Node * node) : node_(node) {}
 
+  // Additive seam: an explicitly-requested no-op logger constructed without a node, so EKFModule
+  // can be unit-tested outside of a ROS runtime. When node_ is null, warn/warn_throttle silently
+  // do nothing. The std::nullptr_t parameter forces callers to opt in deliberately
+  // (e.g. Warning(nullptr)); production code cannot accidentally default-construct a Warning and
+  // silently drop safety-relevant logs, because there is no default constructor.
+  explicit Warning(std::nullptr_t) : node_(nullptr) {}
+
   void warn(const std::string & message) const
   {
+    if (node_ == nullptr) {
+      return;
+    }
     RCLCPP_WARN(node_->get_logger(), "%s", message.c_str());
   }
 
   void warn_throttle(const std::string & message, const int duration_milliseconds) const
   {
+    if (node_ == nullptr) {
+      return;
+    }
     RCLCPP_WARN_THROTTLE(
       node_->get_logger(), *(node_->get_clock()),
       std::chrono::milliseconds(duration_milliseconds).count(), "%s", message.c_str());

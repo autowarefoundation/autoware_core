@@ -29,6 +29,7 @@
 
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace autoware::planning_factor_interface
@@ -139,15 +140,15 @@ public:
                                  .shift_length(shift_length)
                                  .distance(distance);
 
-    const auto factor = autoware_internal_planning_msgs::build<PlanningFactor>()
-                          .module(name_)
-                          .is_driving_forward(is_driving_forward)
-                          .control_points({control_point})
-                          .behavior(behavior)
-                          .detail(detail)
-                          .safety_factors(safety_factors);
+    auto factor = autoware_internal_planning_msgs::build<PlanningFactor>()
+                    .module(name_)
+                    .is_driving_forward(is_driving_forward)
+                    .control_points({control_point})
+                    .behavior(behavior)
+                    .detail(detail)
+                    .safety_factors(safety_factors);
 
-    factors_.push_back(factor);
+    factors_.push_back(std::move(factor));
   }
 
   /**
@@ -185,15 +186,15 @@ public:
                                      .shift_length(end_shift_length)
                                      .distance(end_distance);
 
-    const auto factor = autoware_internal_planning_msgs::build<PlanningFactor>()
-                          .module(name_)
-                          .is_driving_forward(is_driving_forward)
-                          .control_points({control_start_point, control_end_point})
-                          .behavior(behavior)
-                          .detail(detail)
-                          .safety_factors(safety_factors);
+    auto factor = autoware_internal_planning_msgs::build<PlanningFactor>()
+                    .module(name_)
+                    .is_driving_forward(is_driving_forward)
+                    .control_points({control_start_point, control_end_point})
+                    .behavior(behavior)
+                    .detail(detail)
+                    .safety_factors(safety_factors);
 
-    factors_.push_back(factor);
+    factors_.push_back(std::move(factor));
   }
 
   /**
@@ -204,11 +205,11 @@ public:
     PlanningFactorArray msg;
     msg.header.frame_id = "map";
     msg.header.stamp = clock_->now();
-    msg.factors = factors_;
+    msg.factors = std::move(factors_);
 
     pub_factors_->publish(msg);
 
-    if (enable_console_output_ && !factors_.empty()) {
+    if (enable_console_output_ && !msg.factors.empty()) {
       print_factors_to_console(msg);
     }
 
@@ -218,7 +219,7 @@ public:
   /**
    * @brief get the current factors (for test purpose).
    */
-  std::vector<PlanningFactor> get_factors() const { return factors_; }
+  const std::vector<PlanningFactor> & get_factors() const { return factors_; }
 
 private:
   /**

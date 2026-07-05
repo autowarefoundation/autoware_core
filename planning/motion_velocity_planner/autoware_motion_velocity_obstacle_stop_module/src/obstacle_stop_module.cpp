@@ -14,6 +14,8 @@
 
 #include "obstacle_stop_module.hpp"
 
+#include "decision_helpers.hpp"
+
 #include <autoware/motion_utils/distance/distance.hpp>
 #include <autoware/motion_utils/marker/virtual_wall_marker_creator.hpp>
 #include <autoware/motion_utils/trajectory/conversion.hpp>
@@ -41,40 +43,6 @@ using autoware_utils_rclcpp::get_or_declare_parameter;
 
 namespace
 {
-
-double calc_minimum_distance_to_stop(
-  const double initial_vel, const double max_acc, const double min_acc)
-{
-  if (initial_vel < 0.0) {
-    return -std::pow(initial_vel, 2) / 2.0 / max_acc;
-  }
-
-  return -std::pow(initial_vel, 2) / 2.0 / min_acc;
-}
-
-double calc_estimation_time(
-  const PredictedObject & predicted_object, const ObstacleFilteringParam & obstacle_filtering_param)
-{
-  // convert constant deceleration to constant velocity
-  // In this feature, we are assuming the pedestrians will decelerate by specified value,
-  // hence the travel distance is derived as v^2/2a.
-  // However, to maintain the compatibility with the other objects,
-  // we have to capsulize this distance information as time with constant velocity assumption.
-  // Therefore here we return a value (v^2/2a) / v = v/2a as the equivalent estimation time.
-  const auto equivalent_estimation_time = [&]() {
-    if (
-      obstacle_filtering_param.outside_obstacle.deceleration <=
-      std::numeric_limits<double>::epsilon()) {
-      return std::numeric_limits<double>::infinity();
-    }
-    const auto & twist = predicted_object.kinematics.initial_twist_with_covariance.twist;
-    return std::hypot(twist.linear.x, twist.linear.y) * 0.5 /
-           obstacle_filtering_param.outside_obstacle.deceleration;
-  };
-  return std::clamp(
-    equivalent_estimation_time(), 0.0,
-    obstacle_filtering_param.outside_obstacle.estimation_time_horizon);
-}
 
 autoware_utils_geometry::Point2d convert_point(const geometry_msgs::msg::Point & p)
 {
@@ -124,76 +92,14 @@ std::vector<PredictedPath> resample_highest_confidence_predicted_paths(
   return resampled_paths;
 }
 
-double calc_x_offset_to_bumper(const bool is_driving_forward, const VehicleInfo & vehicle_info)
-{
-  if (is_driving_forward) {
-    return vehicle_info.max_longitudinal_offset_m;
-  }
-  return vehicle_info.min_longitudinal_offset_m;
-}
-
-double calc_time_to_reach_collision_point(
-  const Odometry & odometry, const geometry_msgs::msg::Point & collision_point,
-  const std::vector<TrajectoryPoint> & traj_points, const double x_offset_to_bumper,
-  const double margin_distance, const double min_velocity_to_reach_collision_point)
-{
-  const double dist_from_ego_to_obstacle =
-    std::abs(
-      autoware::motion_utils::calcSignedArcLength(
-        traj_points, odometry.pose.pose.position, collision_point) -
-      x_offset_to_bumper) -
-    margin_distance;
-  return dist_from_ego_to_obstacle /
-         std::max(min_velocity_to_reach_collision_point, std::abs(odometry.twist.twist.linear.x));
-}
-
-// TODO(takagi): refactor this function as same as obstacle_filtering_param
-double calc_braking_dist_along_trajectory(
-  const StopObstacleClassification::Type label, const double lon_vel, const RSSParam & rss_params)
-{
-  const double braking_acc = [&]() {
-    if (label == StopObstacleClassification::Type::POINTCLOUD) {
-      return rss_params.pointcloud_deceleration;
-    }
-    if (
-      label == StopObstacleClassification::Type::UNKNOWN ||
-      label == StopObstacleClassification::Type::PEDESTRIAN) {
-      return rss_params.no_wheel_objects_deceleration;
-    }
-    if (
-      label == StopObstacleClassification::Type::BICYCLE ||
-      label == StopObstacleClassification::Type::MOTORCYCLE) {
-      return rss_params.two_wheel_objects_deceleration;
-    }
-    return rss_params.vehicle_objects_deceleration;
-  }();
-  const double error_considered_vel = std::max(lon_vel + rss_params.velocity_offset, 0.0);
-  return error_considered_vel * error_considered_vel * 0.5 / -braking_acc;
-}
-
-PolygonParam create_polygon_param(
-  const ObstacleFilteringParam::TrimTrajectoryParam & trim_trajectory_param,
-  const std::optional<double> ego_braking_distance,
-  const ObstacleFilteringParam::LateralMarginParam & lateral_margin_param,
-  const std::optional<double> object_velocity)
-{
-  PolygonParam p;
-  if (!trim_trajectory_param.enable_trimming || !ego_braking_distance.has_value()) {
-    p.trimming_length = std::nullopt;
-  } else {
-    p.trimming_length =
-      trim_trajectory_param.min_trajectory_length +
-      trim_trajectory_param.braking_distance_scale_factor * ego_braking_distance.value();
-  }
-  p.lateral_margin = lateral_margin_param.nominal_margin +
-                     (object_velocity > lateral_margin_param.is_moving_threshold_velocity
-                        ? lateral_margin_param.additional_is_moving_margin
-                        : lateral_margin_param.additional_is_stop_margin);
-  p.off_track_scale = lateral_margin_param.additional_wheel_off_track_scale;
-  return p;
-}
-
 }  // namespace
+
+using obstacle_stop_internal::calc_braking_dist_along_trajectory;
+using obstacle_stop_internal::calc_estimation_time;
+using obstacle_stop_internal::calc_minimum_distance_to_stop;
+using obstacle_stop_internal::calc_time_to_reach_collision_point;
+using obstacle_stop_internal::calc_x_offset_to_bumper;
+using obstacle_stop_internal::create_polygon_param;
 
 void ObstacleStopModule::init(rclcpp::Node & node, const std::string & module_name)
 {

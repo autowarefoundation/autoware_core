@@ -256,7 +256,49 @@ TEST(TestOsqpInterface, UpdateSettingsAfterInitialization)
   const auto solution = osqp.optimize(P_csc_new, A_csc_new, q, l, u);
   const auto status = osqp.getStatus();
 
-  EXPECT_EQ(status, "OSQP_SOLVED");
+  // The redefined problem (P = ones(2, 2), A = ones(4, 2) with the original
+  // bounds) is primal infeasible: the first constraint forces x0 + x1 == 1
+  // while the second and third force x0 + x1 <= 0.7. Now that getStatus()
+  // reports the real solver status (instead of the previously hardcoded
+  // "OSQP_SOLVED"), assert the true outcome.
+  EXPECT_EQ(status, "OSQP_PRIMAL_INFEASIBLE");
+  EXPECT_FALSE(osqp.isSolved());
+}
+
+// A primal-infeasible problem must NOT report solved. With the old hardcoded getStatus() this would
+// fail because it always returned "OSQP_SOLVED".
+TEST(TestOsqpInterface, InfeasibleProblemReportsNotSolved)
+{
+  using autoware::qp_interface::calCSCMatrix;
+  using autoware::qp_interface::calCSCMatrixTrapezoidal;
+  using autoware::qp_interface::CSC_Matrix;
+
+  // min 1/2 x'Px + q'x  s.t.  l <= A x <= u, with contradictory bounds:
+  //   x >= 1  and  x <= 0  ->  primal infeasible.
+  const Eigen::MatrixXd P = (Eigen::MatrixXd(1, 1) << 1.0).finished();
+  const Eigen::MatrixXd A = (Eigen::MatrixXd(2, 1) << 1.0, 1.0).finished();
+  const std::vector<double> q = {0.0};
+  const std::vector<double> l = {1.0, -autoware::qp_interface::OSQP_INF};
+  const std::vector<double> u = {autoware::qp_interface::OSQP_INF, 0.0};
+
+  autoware::qp_interface::OSQPInterface osqp(false, 4000, 1e-6);
+  osqp.optimize(calCSCMatrixTrapezoidal(P), calCSCMatrix(A), q, l, u);
+
+  EXPECT_FALSE(osqp.isSolved());
+  const auto status = osqp.getStatus();
+  EXPECT_NE(status, "OSQP_SOLVED");
+}
+
+// A freshly-constructed interface (no optimize() call yet) must report a deterministic "not solved"
+// state. latest_work_info_ is value-initialized and its status_val is set to OSQP_UNSOLVED in the
+// constructor, so this does not read uninitialized memory.
+TEST(TestOsqpInterface, FreshlyConstructedIsNotSolved)
+{
+  // This constructor only sets up settings; it does not run the solver.
+  autoware::qp_interface::OSQPInterface osqp(false, 4000, 1e-6);
+
+  EXPECT_FALSE(osqp.isSolved());
+  EXPECT_EQ(osqp.getStatus(), "OSQP_UNSOLVED");
 }
 
 }  // namespace

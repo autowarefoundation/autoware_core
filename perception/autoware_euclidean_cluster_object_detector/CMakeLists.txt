@@ -71,6 +71,13 @@ if(BUILD_TESTING)
   ament_auto_add_gtest(test_nodes
     test/test_nodes.cpp
   )
+
+  ament_auto_add_gtest(test_euclidean_cluster_object_detector_integration
+    test/test_euclidean_cluster_object_detector_integration.cpp
+  )
+  target_link_libraries(test_euclidean_cluster_object_detector_integration
+    ${PROJECT_NAME}_voxel_grid_node_core
+  )
 endif()
 
 autoware_ament_auto_package(INSTALL_TO_SHARE

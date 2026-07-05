@@ -33,7 +33,11 @@ using nav_msgs::msg::Odometry;
 class VehicleStopCheckerBase
 {
 public:
-  VehicleStopCheckerBase(rclcpp::Node * node, double buffer_duration);
+  template <class NodeT>
+  VehicleStopCheckerBase(NodeT * node, double buffer_duration)
+  : clock_(node->get_clock()), logger_(node->get_logger()), buffer_duration_(buffer_duration)
+  {
+  }
   rclcpp::Logger getLogger() { return logger_; }
   void addTwist(const TwistStamped & twist);
   [[nodiscard]] bool isVehicleStopped(const double stop_duration = 0.0) const;

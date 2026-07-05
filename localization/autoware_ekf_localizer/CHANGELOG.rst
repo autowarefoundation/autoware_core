@@ -5,6 +5,50 @@ Changelog for package autoware_ekf_localizer
 1.1.0 (2025-05-01)
 ------------------
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* test(autoware_ekf_localizer): add EKFModule unit tests via non-ROS seam (`#1098 <https://github.com/autowarefoundation/autoware_core/issues/1098>`_)
+  * test(autoware_ekf_localizer): add EKFModule unit tests via non-ROS seam
+  Add a non-ROS test seam so EKFModule can be constructed in a gtest
+  without a live rclcpp::Node:
+  - HyperParameters gains an additive default constructor and its members
+  are made settable so a test can populate them by hand. The existing
+  node-based constructor still initializes every field unchanged.
+  - Warning gains an additive no-op constructor (null node); warn and
+  warn_throttle become null-guarded, so behavior is byte-identical when
+  a real node is present.
+  Add test/test_ekf_module.cpp covering the previously-untested core
+  algorithm branches: find_closest_delay_time_index (begin/end bounds,
+  target-beyond-last, closest-of-two), accumulate_delay_time shift and
+  accumulation, Simple1DFilter init and update, compensate_rph_with_delay
+  zero vs non-zero angular-velocity branches, and the safety-critical
+  rejection paths of measurement_update_pose/twist (delay gate, NaN/Inf
+  ignore, Mahalanobis gate), asserting both the boolean return and the
+  EKFDiagnosticInfo flags.
+  Also drop the unused full-covariance copy in predict_with_delay and
+  declare x_curr as Vector6d to avoid a dynamic-to-fixed Eigen copy.
+  * fix(autoware_ekf_localizer): guard empty delay-time table in find_closest_delay_time_index (`#65 <https://github.com/autowarefoundation/autoware_core/issues/65>`_)
+  Reject the extend_state_step==0 degenerate by returning a safe index from the empty accumulated_delay_times\_ table instead of dereferencing .back() (UB). Add a RED test for the empty-table case and pin the accept-path update postconditions via the pose/twist getters.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  * refactor(autoware_ekf_localizer): split parameter parsing from HyperParameters data (`#87 <https://github.com/autowarefoundation/autoware_core/issues/87>`_)
+  Revert the unit-test-only default-value seam on HyperParameters. The struct
+  is now plain data with no rclcpp dependency and no production-looking default
+  member values that could silently diverge from the YAML source of truth.
+  All declare_parameter calls are mechanically moved into a free function
+  load_hyper_parameters(rclcpp::Node * node) that returns a fully-populated
+  instance. Production keeps a single construction path
+  (params\_(load_hyper_parameters(this))) and params\_ stays const HyperParameters,
+  so the production instance remains immutable. The EKFModule unit test builds the
+  struct directly by hand-setting fields, with no special default constructor.
+  Behavior is identical: same parameter names and defaults as the YAML.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  * test(autoware_ekf_localizer): cover Warning nullptr no-op construction
+  Add a direct Warning{nullptr} test asserting warn() and warn_throttle() are no-ops when constructed without a node, covering the warning.hpp partial branch flagged by Codecov, per review.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  ---------
+* Contributors: Yutaka Kondo, github-actions
+
 1.8.0 (2026-05-01)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

@@ -2,6 +2,98 @@
 Changelog for package autoware_ndt_scan_matcher
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* test(autoware_ndt_scan_matcher): unit-test covariance/oscillation math and fix no-ground hot loop (`#1108 <https://github.com/autowarefoundation/autoware_core/issues/1108>`_)
+  * test(autoware_ndt_scan_matcher): unit-test covariance/oscillation math and fix no-ground hot loop
+  Extract the translation-unit-local rotate_covariance free function and the
+  count_oscillation logic into a testable internal seam
+  (ndt_scan_matcher_helper.{hpp,cpp}) and add two fast, dependency-light
+  ament_auto_add_gtest targets:
+  - test_estimate_covariance covers the pure Eigen math in
+  ndt_omp/estimate_covariance.cpp (calc_weight_vec, calculate_weighted_mean_and_cov,
+  propose_poses_to_search, estimate_xy_covariance_by_laplace_approximation,
+  rotate_covariance_to_map/base_link round-trip, adjust_diagonal_covariance) with
+  hand-computed expected values.
+  - test_ndt_scan_matcher_helper covers rotate_covariance (36-element covariance
+  block rotation) and count_oscillation (consecutive-inversion counting).
+  These functions previously had zero unit tests and were only exercised by the
+  heavyweight 300s launch/integration tests.
+  Behavior-preserving cleanups:
+  - Hoist the constant matrix4f_to_pose(ndt_result.pose).position.z out of the
+  per-point no-ground-points removal loop (it equals ndt_result.pose(2,3)),
+  avoiding a full Pose + quaternion extraction per LiDAR point, and reserve()
+  the output cloud. The NDTScanMatcher::count_oscillation private static member
+  is retained and now delegates to the free function, so no public API changes.
+  - Remove the dead, never-read Eigen::Matrix4f base_to_sensor_matrix\_ member
+  (transform_sensor_measurement uses a local of the same name).
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  * fix(autoware_ndt_scan_matcher): guard count_oscillation against zero-length steps and make helper header internal
+  count_oscillation normalized motion vectors without guarding against
+  zero-length steps (e.g. repeated/identical poses). Eigen normalized() on
+  a zero vector yields NaNs, making cosine_value NaN and the oscillation
+  logic unreliable. Skip zero-length steps and treat them as
+  non-oscillations, resetting the consecutive-inversion count. Add unit
+  tests pinning the all-identical and interleaved zero-length cases.
+  Move ndt_scan_matcher_helper.hpp out of include/autoware/... into src/ so
+  the helper stays an internal seam rather than part of the installed
+  public header/ABI surface (USE_SCOPED_HEADER_INSTALL_DIR no longer
+  installs it). Includes now use the project-local quoted form and the unit
+  test includes it via ../src, matching the existing private-header
+  convention in this repo.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  * test(autoware_ndt_scan_matcher): assert rotation covariance against independent oracle (`#81 <https://github.com/autowarefoundation/autoware_core/issues/81>`_)
+  Replace the mirrored rot * cov * rot.transpose() expected value with an explicit stdlib scalar expansion of R * cov * R^T, asserted per-entry via EXPECT_NEAR, so a transpose/sign error in rotate_covariance_to_map is caught instead of mirrored. Retain the round-trip equality as a secondary property check.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  ---------
+* fix(ndt_scan_matcher): explicitly include omp.h (`#1166 <https://github.com/autowarefoundation/autoware_core/issues/1166>`_)
+  * fix(ndt_scan_matcher): explicitly include omp.h
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* feat(autoware_ndt_scan_matcher): publish all map points if publisher has subscribers (`#995 <https://github.com/autowarefoundation/autoware_core/issues/995>`_)
+  * publish all map points if publisher has subscribers
+  * style(pre-commit): autofix
+  * fix error
+  * add parameter
+  * fix param name and add json
+  * add loaded map clear on ndt ptr reset
+  * reserve before adding points
+  * add new param to autoware_core_lozalization
+  * Update localization/autoware_ndt_scan_matcher/include/autoware/ndt_scan_matcher/map_update_module.hpp
+  Co-authored-by: Mete Fatih Cırıt <mfc@autoware.org>
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Mete Fatih Cırıt <mfc@autoware.org>
+* fix(autoware_ndt_scan_matcher): zero div if particles_num < 20 (`#996 <https://github.com/autowarefoundation/autoware_core/issues/996>`_)
+  * fix zero div if particles_num < 20
+  * fix zero div if particles_num < 20
+  * style(pre-commit): autofix
+  * clamp publish interval
+  * style(pre-commit): autofix
+  * add test
+  * style(pre-commit): autofix
+  * Update localization/autoware_ndt_scan_matcher/test/test_fixture.hpp
+  Co-authored-by: Mete Fatih Cırıt <mfc@autoware.org>
+  * fix license year
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Anh Nguyen <vietanhng17@gmail.com>
+  Co-authored-by: Mete Fatih Cırıt <mfc@autoware.org>
+* fix(ndt_scan_matcher): don't include removed PCL headers (`#1070 <https://github.com/autowarefoundation/autoware_core/issues/1070>`_)
+  * fix(ndt_scan_matcher): don't include removed PCL headers
+  pcl/filters/boost.h was removed in the PCL 1.15.0 release[1]. None of
+  the Boost headers it previously included are needed for compilation,
+  so the include is simply be removed from multi_voxel_grid_covariance_omp_impl.hpp.
+  multi_voxel_grid_covariance_omp.h uses boost::shared_ptr so we include
+  just the header for it.
+  [1]: https://github.com/PointCloudLibrary/pcl/commit/3ae4df5ede96d08408b500ee83d551151dd2a3da#diff-cb7d245fd1697b5c4a72cbb9807284c28f4166cd23c267211b85a7d4dee7f507L49-L54
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* Contributors: Kazusa Hashimoto, Michal Sojka, Yutaka Kondo, github-actions, iwatake
+
 1.8.0 (2026-05-01)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
