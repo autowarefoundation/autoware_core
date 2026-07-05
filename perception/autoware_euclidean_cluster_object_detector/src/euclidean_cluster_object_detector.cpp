@@ -42,8 +42,7 @@ EuclideanClusterObjectDetector::EuclideanClusterObjectDetector(const EuclideanCl
  * @return tl::expected<std::vector<pcl::PointCloud<pcl::PointXYZ>>, std::string> A vector of point
  * clouds, each representing a cluster.
  */
-tl::expected<std::vector<pcl::PointCloud<pcl::PointXYZ>>, std::string>
-EuclideanClusterObjectDetector::cluster(
+ClusterFeatureResult EuclideanClusterObjectDetector::cluster(
   const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & input_cloud) const
 {
   if (!input_cloud || input_cloud->empty()) {
@@ -68,8 +67,7 @@ EuclideanClusterObjectDetector::cluster(
  * @return tl::expected<std::vector<pcl::PointCloud<pcl::PointXYZ>>, std::string> A vector of
  * point clouds, each representing a cluster.
  */
-tl::expected<std::vector<pcl::PointCloud<pcl::PointXYZ>>, std::string>
-EuclideanClusterObjectDetector::cluster_standard(
+ClusterFeatureResult EuclideanClusterObjectDetector::cluster_standard(
   const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & input_cloud) const
 {
   pcl::PointCloud<pcl::PointXYZ>::ConstPtr search_cloud = input_cloud;
@@ -129,8 +127,7 @@ EuclideanClusterObjectDetector::cluster_standard(
  * @return tl::expected<std::vector<pcl::PointCloud<pcl::PointXYZ>>, std::string> A vector of
  * point clouds, each representing a cluster.
  */
-tl::expected<std::vector<pcl::PointCloud<pcl::PointXYZ>>, std::string>
-EuclideanClusterObjectDetector::cluster_voxel_grid(
+ClusterFeatureResult EuclideanClusterObjectDetector::cluster_voxel_grid(
   const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & input_cloud) const
 {
   // 1. Downsample with voxel grid
@@ -146,22 +143,11 @@ EuclideanClusterObjectDetector::cluster_voxel_grid(
     return std::vector<pcl::PointCloud<pcl::PointXYZ>>{};
   }
 
-  // 2. Clustering preparation (2D projection if height not used)
-  pcl::PointCloud<pcl::PointXYZ>::Ptr search_cloud = voxel_centroids;
-  if (!param_.use_height) {
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_2d(new pcl::PointCloud<pcl::PointXYZ>);
-    cloud_2d->points.reserve(voxel_centroids->points.size());
-    for (const auto & point : voxel_centroids->points) {
-      cloud_2d->push_back(pcl::PointXYZ(point.x, point.y, 0.0f));
-    }
-    search_cloud = cloud_2d;
-  }
-
-  // 3. Create KD-Tree
+  // 2. Create KD-Tree
   pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
-  tree->setInputCloud(search_cloud);
+  tree->setInputCloud(voxel_centroids);
 
-  // 4. Euclidean clustering on voxel centroids
+  // 3. Euclidean clustering on voxel centroids
   std::vector<pcl::PointIndices> cluster_indices;
   pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
   ec.setClusterTolerance(param_.tolerance);
@@ -171,7 +157,7 @@ EuclideanClusterObjectDetector::cluster_voxel_grid(
   ec.setInputCloud(search_cloud);
   ec.extract(cluster_indices);
 
-  // 5. Create map to search cluster index from voxel grid index
+  // 4. Create map to search cluster index from voxel grid index
   std::unordered_map<int, size_t> voxel_to_cluster_map;
   voxel_to_cluster_map.reserve(voxel_centroids->points.size());
 
@@ -229,21 +215,28 @@ EuclideanClusterObjectDetector::cluster_voxel_grid(
   // 6. Filter final clusters by size constraints
   std::vector<pcl::PointCloud<pcl::PointXYZ>> valid_clusters;
   valid_clusters.reserve(temp_clusters.size());
+  size_t skipped_cluster_count = 0;
 
   // 7. Build final output
   for (auto & cluster : temp_clusters) {
     size_t cluster_size = cluster.points.size();
-    if (
-      cluster_size >= static_cast<size_t>(param_.min_cluster_size) &&
-      cluster_size <= static_cast<size_t>(param_.max_cluster_size)) {
-      cluster.width = cluster_size;
-      cluster.height = 1;
-      cluster.is_dense = false;
-      valid_clusters.push_back(std::move(cluster));
+
+    // Ignore small noises, log skipped big cluster
+    if (cluster_size < static_cast<size_t>(param_.min_cluster_size)) {
+      continue;
     }
+    if (cluster_size > static_cast<size_t>(param_.max_cluster_size)) {
+      skipped_cluster_count++;
+      continue;
+    }
+
+    cluster.width = cluster_size;
+    cluster.height = 1;
+    cluster.is_dense = false;
+    valid_clusters.push_back(std::move(cluster));
   }
 
-  return valid_clusters;
+  return ClusterFeatureResult{std::move(valid_clusters), skipped_cluster_count};
 }
 
 }  // namespace autoware::euclidean_cluster

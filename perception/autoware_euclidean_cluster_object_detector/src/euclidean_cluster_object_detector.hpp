@@ -17,8 +17,6 @@
 
 #include "parameters.hpp"
 
-#include <tl_expected/expected.hpp>
-
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
@@ -28,14 +26,20 @@
 namespace autoware::euclidean_cluster
 {
 
+// Struct to bubble up diagnostic telemetry without ROS dependency
+struct ClusterFeatureResult
+{
+  std::vector<pcl::PointCloud<pcl::PointXYZ>> clusters;
+  size_t skipped_cluster_count{0};
+};
+
 class EuclideanClusterObjectDetector
 {
 public:
   explicit EuclideanClusterObjectDetector(const EuclideanClusterParams & param);
 
   // Single public interface for everything
-  tl::expected<std::vector<pcl::PointCloud<pcl::PointXYZ>>, std::string> cluster(
-    const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & input_cloud) const;
+  ClusterFeatureResult cluster(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & input_cloud) const;
 
 private:
   EuclideanClusterParams param_;
@@ -51,8 +55,8 @@ private:
    * @return tl::expected<std::vector<pcl::PointCloud<pcl::PointXYZ>>, std::string> A vector of
    * point clouds, each representing a cluster.
    */
-  [[nodiscard]] tl::expected<std::vector<pcl::PointCloud<pcl::PointXYZ>>, std::string>
-  cluster_standard(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & input_cloud) const;
+  [[nodiscard]] ClusterFeatureResult cluster_standard(
+    const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & input_cloud) const;
 
   /**
    * @brief Helper func to perform voxel grid downsampling on a point cloud, then perform Euclidean
@@ -65,8 +69,8 @@ private:
    * @return tl::expected<std::vector<pcl::PointCloud<pcl::PointXYZ>>, std::string> A vector of
    * point clouds, each representing a cluster.
    */
-  [[nodiscard]] tl::expected<std::vector<pcl::PointCloud<pcl::PointXYZ>>, std::string>
-  cluster_voxel_grid(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & input_cloud) const;
+  [[nodiscard]] ClusterFeatureResult cluster_voxel_grid(
+    const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & input_cloud) const;
 };
 
 }  // namespace autoware::euclidean_cluster
