@@ -113,13 +113,13 @@ void EuclideanClusterObjectDetectorNode::on_point_cloud(
 
   // Publish to ROS
   autoware_perception_msgs::msg::DetectedObjects output_msg;
-  convertClustersToDetectedObjects(input_msg->header, result.clusters, output_msg);
+  convert_clusters_to_detected_objects(input_msg->header, result.clusters, output_msg);
   pub_clusters_->publish(output_msg);
 
   // Publish visualization if RViz is on
   if (pub_debug_->get_subscription_count() > 0) {
     sensor_msgs::msg::PointCloud2 debug_msg;
-    convertClustersToDebugPointCloud(input_msg->header, result.clusters, debug_msg);
+    convert_clusters_to_debug_point_cloud(input_msg->header, result.clusters, debug_msg);
     pub_debug_->publish(debug_msg);
   }
 

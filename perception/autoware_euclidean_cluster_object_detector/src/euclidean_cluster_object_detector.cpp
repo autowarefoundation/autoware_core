@@ -46,7 +46,7 @@ ClusterFeatureResult EuclideanClusterObjectDetector::cluster(
   const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & input_cloud) const
 {
   if (!input_cloud || input_cloud->empty()) {
-    return std::vector<pcl::PointCloud<pcl::PointXYZ>>{};
+    return ClusterFeatureResult{};
   }
 
   if (param_.voxel_leaf_size > 0.0f) {
@@ -70,21 +70,9 @@ ClusterFeatureResult EuclideanClusterObjectDetector::cluster(
 ClusterFeatureResult EuclideanClusterObjectDetector::cluster_standard(
   const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & input_cloud) const
 {
-  pcl::PointCloud<pcl::PointXYZ>::ConstPtr search_cloud = input_cloud;
-
-  // 2D (BEV) flatten/projection to XY plan if height is not used for clustering
-  if (!param_.use_height) {
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_2d(new pcl::PointCloud<pcl::PointXYZ>);
-    cloud_2d->points.reserve(input_cloud->points.size());
-    for (const auto & point : input_cloud->points) {
-      cloud_2d->push_back(pcl::PointXYZ(point.x, point.y, 0.0f));
-    }
-    search_cloud = cloud_2d;
-  }
-
   // Build KD-Tree for nearest neighbor search
   pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
-  tree->setInputCloud(search_cloud);
+  tree->setInputCloud(input_cloud);
 
   // Perform Euclidean clustering
   std::vector<pcl::PointIndices> cluster_indices;
@@ -93,7 +81,7 @@ ClusterFeatureResult EuclideanClusterObjectDetector::cluster_standard(
   ec.setMinClusterSize(param_.min_cluster_size);
   ec.setMaxClusterSize(param_.max_cluster_size);
   ec.setSearchMethod(tree);
-  ec.setInputCloud(search_cloud);
+  ec.setInputCloud(input_cloud);
   ec.extract(cluster_indices);
 
   // Build pure C++ output structures
@@ -113,7 +101,7 @@ ClusterFeatureResult EuclideanClusterObjectDetector::cluster_standard(
     cloud_cluster.is_dense = false;
   }
 
-  return clusters;
+  return ClusterFeatureResult{std::move(clusters), 0};
 }
 
 /**
@@ -140,7 +128,7 @@ ClusterFeatureResult EuclideanClusterObjectDetector::cluster_voxel_grid(
   voxel_grid.filter(*voxel_centroids);
 
   if (voxel_centroids->empty()) {
-    return std::vector<pcl::PointCloud<pcl::PointXYZ>>{};
+    return ClusterFeatureResult{};
   }
 
   // 2. Create KD-Tree
@@ -154,7 +142,7 @@ ClusterFeatureResult EuclideanClusterObjectDetector::cluster_voxel_grid(
   ec.setMinClusterSize(1);
   ec.setMaxClusterSize(param_.max_cluster_size);
   ec.setSearchMethod(tree);
-  ec.setInputCloud(search_cloud);
+  ec.setInputCloud(voxel_centroids);
   ec.extract(cluster_indices);
 
   // 4. Create map to search cluster index from voxel grid index
