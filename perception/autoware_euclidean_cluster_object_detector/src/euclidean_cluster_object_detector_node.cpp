@@ -97,7 +97,7 @@ void EuclideanClusterObjectDetectorNode::on_point_cloud(
   // (similar to what used to be publishDiagnosticSummary in legacy code)
   diagnostics_interface_ptr_->clear();
   if (result.skipped_cluster_count > 0) {
-    const int max_size = this->get_parameter("max_cluster_size").as_int();
+    const int64_t max_size = this->get_parameter("max_cluster_size").as_int();
     std::string summary =
       std::to_string(result.skipped_cluster_count) +
       " clusters skipped because cluster point size exceeds the maximum allowed " +
