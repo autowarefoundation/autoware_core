@@ -53,6 +53,9 @@ pub mod node_handle;
 // ROS map-update glue: drives the portable `apply_map_update` (the `MapSource` port) from C++; std-only.
 #[cfg(feature = "std")]
 pub mod node_map_update;
+// ROS align-service deterministic gate/response decisions; std-only node glue.
+#[cfg(feature = "std")]
+pub mod node_align_service;
 pub mod scan_matcher;
 // ROS sensor-callback prologue (decode/TF/transform/validation → base_link cloud); std-only.
 #[cfg(feature = "std")]

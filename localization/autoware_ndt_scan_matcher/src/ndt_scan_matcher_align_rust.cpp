@@ -57,6 +57,23 @@ std::vector<float> cloud_to_flat(const pcl::PointCloud<pcl::PointXYZ> & cloud)
   return f;
 }
 
+AwNdtAlignServiceDecision decide_align_service(
+  const bool transform_initial_pose_ok, const bool map_points_ok, const bool sensor_points_ok,
+  const bool align_score_available, const double align_score,
+  const double reliable_score_threshold)
+{
+  AwNdtAlignServiceInput input{};
+  input.transform_initial_pose_ok = transform_initial_pose_ok ? 1U : 0U;
+  input.map_points_ok = map_points_ok ? 1U : 0U;
+  input.sensor_points_ok = sensor_points_ok ? 1U : 0U;
+  input.align_score_available = align_score_available ? 1U : 0U;
+  input.align_score = align_score;
+  input.reliable_score_threshold = reliable_score_threshold;
+  AwNdtAlignServiceDecision decision{};
+  autoware_ndt_scan_matcher_rs_node_decide_align_service(&input, &decision);
+  return decision;
+}
+
 pclomp::NdtResult ndt_result_from_engine(const AwNdtEngine * handle)
 {
   pclomp::NdtResult r;
@@ -134,7 +151,9 @@ void NDTScanMatcher::service_ndt_align_main(
     diagnostics_ndt_align_->update_level_and_message(
       diagnostic_msgs::msg::DiagnosticStatus::ERROR, message.str());
     RCLCPP_ERROR_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 1000, message.str());
-    res->success = false;
+    const AwNdtAlignServiceDecision decision =
+      decide_align_service(false, false, false, false, 0.0, 0.0);
+    res->success = (decision.success != 0U);
     return;
   }
   diagnostics_ndt_align_->add_key_value("is_succeed_transform_initial_pose", true);
@@ -155,7 +174,9 @@ void NDTScanMatcher::service_ndt_align_main(
       diagnostics_ndt_align_->update_level_and_message(
         diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
       RCLCPP_WARN_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 1000, message.str());
-      res->success = false;
+      const AwNdtAlignServiceDecision decision =
+        decide_align_service(true, false, false, false, 0.0, 0.0);
+      res->success = (decision.success != 0U);
       return;
     }
 
@@ -167,19 +188,31 @@ void NDTScanMatcher::service_ndt_align_main(
       diagnostics_ndt_align_->update_level_and_message(
         diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
       RCLCPP_WARN_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 1000, message.str());
+      const AwNdtAlignServiceDecision decision =
+        decide_align_service(true, true, false, false, 0.0, 0.0);
+      res->success = (decision.success != 0U);
+      return;
+    }
+
+    const AwNdtAlignServiceDecision ready_decision =
+      decide_align_service(true, true, true, false, 0.0, 0.0);
+    if (ready_decision.should_align == 0U) {
       res->success = false;
       return;
     }
 
-    const auto [pose_with_covariance, score] = align_pose(initial_pose_msg_in_map_frame, *ndt_ptr);
+    const auto [pose_with_covariance, score] =
+      align_pose(initial_pose_msg_in_map_frame, *ndt_ptr);
 
-    res->reliable =
-      (param_.score_estimation.converged_param_nearest_voxel_transformation_likelihood < score);
+    const AwNdtAlignServiceDecision aligned_decision = decide_align_service(
+      true, true, true, true, score,
+      param_.score_estimation.converged_param_nearest_voxel_transformation_likelihood);
+    res->reliable = (aligned_decision.reliable != 0U);
     if (!res->reliable) {
       RCLCPP_WARN_STREAM(
         this->get_logger(), "Initial Pose Estimation is Unstable. Score is " << score);
     }
-    res->success = true;
+    res->success = (aligned_decision.success != 0U);
     res->pose_with_covariance = pose_with_covariance;
     res->pose_with_covariance.pose.covariance = req->pose_with_covariance.pose.covariance;
   });
