@@ -31,7 +31,7 @@ namespace autoware::euclidean_cluster
 */
 geometry_msgs::msg::Point get_centroid(const pcl::PointCloud<pcl::PointXYZ> & cluster)
 {
-  geometry_msgs::msg::Point centroid;
+  geometry_msgs::msg::Point centroid{};
   centroid.x = 0.0;
   centroid.y = 0.0;
   centroid.z = 0.0;

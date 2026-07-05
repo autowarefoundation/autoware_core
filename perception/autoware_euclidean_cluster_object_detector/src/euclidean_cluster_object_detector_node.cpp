@@ -79,7 +79,7 @@ void EuclideanClusterObjectDetectorNode::on_point_cloud(
   if (input_msg->data.empty() || input_msg->width * input_msg->height == 0) {
     RCLCPP_WARN_THROTTLE(
       get_logger(), *get_clock(), 5000, "Received empty point cloud, bypassing detector.");
-    autoware_perception_msgs::msg::DetectedObjects empty_output;
+    autoware_perception_msgs::msg::DetectedObjects empty_output{};
     empty_output.header = input_msg->header;
     pub_clusters_->publish(empty_output);
     return;
@@ -112,13 +112,13 @@ void EuclideanClusterObjectDetectorNode::on_point_cloud(
   diagnostics_interface_ptr_->publish(input_msg->header.stamp);
 
   // Publish to ROS
-  autoware_perception_msgs::msg::DetectedObjects output_msg;
+  autoware_perception_msgs::msg::DetectedObjects output_msg{};
   convert_clusters_to_detected_objects(input_msg->header, result.clusters, output_msg);
   pub_clusters_->publish(output_msg);
 
   // Publish visualization if RViz is on
   if (pub_debug_->get_subscription_count() > 0) {
-    sensor_msgs::msg::PointCloud2 debug_msg;
+    sensor_msgs::msg::PointCloud2 debug_msg{};
     convert_clusters_to_debug_point_cloud(input_msg->header, result.clusters, debug_msg);
     pub_debug_->publish(debug_msg);
   }

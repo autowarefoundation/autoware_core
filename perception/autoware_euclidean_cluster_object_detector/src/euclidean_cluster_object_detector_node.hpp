@@ -39,14 +39,16 @@ private:
   // Callback func for point cloud subscription
   void on_point_cloud(const sensor_msgs::msg::PointCloud2::ConstSharedPtr input_msg);
 
-  rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_pointcloud_;
-  rclcpp::Publisher<autoware_perception_msgs::msg::DetectedObjects>::SharedPtr pub_clusters_;
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_debug_;
+  rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_pointcloud_{nullptr};
+  rclcpp::Publisher<autoware_perception_msgs::msg::DetectedObjects>::SharedPtr pub_clusters_{
+    nullptr};
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_debug_{nullptr};
 
-  std::unique_ptr<EuclideanClusterObjectDetector> detector_;
-  std::unique_ptr<autoware_utils_system::StopWatch<std::chrono::milliseconds>> stop_watch_;
-  std::unique_ptr<autoware_utils_diagnostics::DiagnosticsInterface> diagnostics_interface_ptr_;
-  std::unique_ptr<autoware_utils_debug::DebugPublisher> debug_publisher_;
+  std::unique_ptr<EuclideanClusterObjectDetector> detector_{nullptr};
+  std::unique_ptr<autoware_utils_system::StopWatch<std::chrono::milliseconds>> stop_watch_{nullptr};
+  std::unique_ptr<autoware_utils_diagnostics::DiagnosticsInterface> diagnostics_interface_ptr_{
+    nullptr};
+  std::unique_ptr<autoware_utils_debug::DebugPublisher> debug_publisher_{nullptr};
 };
 
 }  // namespace autoware::euclidean_cluster

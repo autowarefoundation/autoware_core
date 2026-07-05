@@ -45,8 +45,6 @@ rclcpp_components_register_node(${PROJECT_NAME}_node_core
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
 
-  ament_lint_auto_find_test_dependencies()
-
   ament_auto_add_gtest(test_euclidean_cluster_object_detector_integration
     test/test_euclidean_cluster_object_detector_integration.cpp
   )
