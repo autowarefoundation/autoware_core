@@ -74,6 +74,51 @@ AwNdtAlignServiceDecision decide_align_service(
   return decision;
 }
 
+AwNdtAlignServiceResponse assemble_align_service_response(
+  const geometry_msgs::msg::PoseWithCovarianceStamped & aligned_pose,
+  const geometry_msgs::msg::PoseWithCovarianceStamped & request_pose, const double align_score,
+  const double reliable_score_threshold)
+{
+  AwNdtAlignServiceAlignedInput input{};
+  input.stamp_ns = static_cast<rclcpp::Time>(aligned_pose.header.stamp).nanoseconds();
+  input.position[0] = aligned_pose.pose.pose.position.x;
+  input.position[1] = aligned_pose.pose.pose.position.y;
+  input.position[2] = aligned_pose.pose.pose.position.z;
+  input.orientation[0] = aligned_pose.pose.pose.orientation.x;
+  input.orientation[1] = aligned_pose.pose.pose.orientation.y;
+  input.orientation[2] = aligned_pose.pose.pose.orientation.z;
+  input.orientation[3] = aligned_pose.pose.pose.orientation.w;
+  std::copy(
+    request_pose.pose.covariance.begin(), request_pose.pose.covariance.end(),
+    input.request_covariance);
+  input.align_score = align_score;
+  input.reliable_score_threshold = reliable_score_threshold;
+
+  AwNdtAlignServiceResponse response{};
+  autoware_ndt_scan_matcher_rs_node_assemble_align_service_response(&input, &response);
+  return response;
+}
+
+void apply_align_service_response(
+  const AwNdtAlignServiceResponse & align_response, const std::string & frame_id,
+  autoware_internal_localization_msgs::srv::PoseWithCovarianceStamped::Response & res)
+{
+  res.success = (align_response.success != 0U);
+  res.reliable = (align_response.reliable != 0U);
+  res.pose_with_covariance.header.stamp = rclcpp::Time(align_response.stamp_ns);
+  res.pose_with_covariance.header.frame_id = frame_id;
+  res.pose_with_covariance.pose.pose.position.x = align_response.position[0];
+  res.pose_with_covariance.pose.pose.position.y = align_response.position[1];
+  res.pose_with_covariance.pose.pose.position.z = align_response.position[2];
+  res.pose_with_covariance.pose.pose.orientation.x = align_response.orientation[0];
+  res.pose_with_covariance.pose.pose.orientation.y = align_response.orientation[1];
+  res.pose_with_covariance.pose.pose.orientation.z = align_response.orientation[2];
+  res.pose_with_covariance.pose.pose.orientation.w = align_response.orientation[3];
+  std::copy(
+    std::begin(align_response.covariance), std::end(align_response.covariance),
+    res.pose_with_covariance.pose.covariance.begin());
+}
+
 pclomp::NdtResult ndt_result_from_engine(const AwNdtEngine * handle)
 {
   pclomp::NdtResult r;
@@ -204,17 +249,14 @@ void NDTScanMatcher::service_ndt_align_main(
     const auto [pose_with_covariance, score] =
       align_pose(initial_pose_msg_in_map_frame, *ndt_ptr);
 
-    const AwNdtAlignServiceDecision aligned_decision = decide_align_service(
-      true, true, true, true, score,
+    const AwNdtAlignServiceResponse align_response = assemble_align_service_response(
+      pose_with_covariance, req->pose_with_covariance, score,
       param_.score_estimation.converged_param_nearest_voxel_transformation_likelihood);
-    res->reliable = (aligned_decision.reliable != 0U);
+    apply_align_service_response(align_response, pose_with_covariance.header.frame_id, *res);
     if (!res->reliable) {
       RCLCPP_WARN_STREAM(
         this->get_logger(), "Initial Pose Estimation is Unstable. Score is " << score);
     }
-    res->success = (aligned_decision.success != 0U);
-    res->pose_with_covariance = pose_with_covariance;
-    res->pose_with_covariance.pose.covariance = req->pose_with_covariance.pose.covariance;
   });
 }
 

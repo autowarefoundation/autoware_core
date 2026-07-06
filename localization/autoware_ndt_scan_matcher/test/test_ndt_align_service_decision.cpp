@@ -22,6 +22,7 @@
 
 #include <array>
 #include <cstdint>
+#include <cstddef>
 
 namespace
 {
@@ -69,6 +70,35 @@ AwNdtAlignServiceDecision decide_like_cpp_helper(
   AwNdtAlignServiceDecision decision{};
   autoware_ndt_scan_matcher_rs_node_decide_align_service_traced(&input, trace, &decision);
   return decision;
+}
+
+AwNdtAlignServiceAlignedInput make_aligned_input(const double score, const double threshold)
+{
+  AwNdtAlignServiceAlignedInput input{};
+  input.stamp_ns = 123;
+  input.position[0] = 1.0;
+  input.position[1] = 2.0;
+  input.position[2] = 3.0;
+  input.orientation[0] = 0.1;
+  input.orientation[1] = 0.2;
+  input.orientation[2] = 0.3;
+  input.orientation[3] = 0.9;
+  input.request_covariance[0] = 1.0;
+  input.request_covariance[7] = 2.0;
+  input.request_covariance[14] = 3.0;
+  input.request_covariance[21] = 4.0;
+  input.request_covariance[28] = 5.0;
+  input.request_covariance[35] = 6.0;
+  input.align_score = score;
+  input.reliable_score_threshold = threshold;
+  return input;
+}
+
+AwNdtAlignServiceResponse assemble_response(const AwNdtAlignServiceAlignedInput & input)
+{
+  AwNdtAlignServiceResponse response{};
+  autoware_ndt_scan_matcher_rs_node_assemble_align_service_response(&input, &response);
+  return response;
 }
 
 uint8_t score_available_byte(const AwNdtAlignServiceInput & input)
@@ -254,6 +284,57 @@ TEST(NdtAlignServiceDecision, ProductionShapedHelperCanAppendDecisionTrace)  // 
   EXPECT_EQ(aligned_trace.overflowed, 0U);
   expect_decision(aligned_decision, NDT_ALIGN_SERVICE_STATUS_ALIGNED, 1U, 1U, 0U, 1U);
   expect_event(aligned_events[0], reference_event(aligned_input, aligned_decision));
+}
+
+TEST(NdtAlignServiceDecision, ResponseAssemblyCopiesPoseCovarianceAndReliability)  // NOLINT
+{
+  const AwNdtAlignServiceAlignedInput input = make_aligned_input(4.5, 4.0);
+
+  const AwNdtAlignServiceResponse response = assemble_response(input);
+
+  EXPECT_EQ(response.status, NDT_ALIGN_SERVICE_STATUS_ALIGNED);
+  EXPECT_EQ(response.success, 1U);
+  EXPECT_EQ(response.reliable, 1U);
+  EXPECT_EQ(response.valid, 1U);
+  EXPECT_EQ(response.stamp_ns, input.stamp_ns);
+  for (std::size_t i = 0; i < 3U; ++i) {
+    EXPECT_EQ(response.position[i], input.position[i]);
+  }
+  for (std::size_t i = 0; i < 4U; ++i) {
+    EXPECT_EQ(response.orientation[i], input.orientation[i]);
+  }
+  for (std::size_t i = 0; i < 36U; ++i) {
+    EXPECT_EQ(response.covariance[i], input.request_covariance[i]);
+  }
+}
+
+TEST(NdtAlignServiceDecision, ResponseAssemblyMatchesDecisionWrapper)  // NOLINT
+{
+  AwNdtAlignServiceInput decision_input = make_input(true, true, true, true, 4.0);
+  decision_input.reliable_score_threshold = 4.0;
+  const AwNdtAlignServiceDecision decision = decide(decision_input);
+
+  const AwNdtAlignServiceResponse response = assemble_response(make_aligned_input(4.0, 4.0));
+
+  EXPECT_EQ(response.status, decision.status);
+  EXPECT_EQ(response.success, decision.success);
+  EXPECT_EQ(response.reliable, decision.reliable);
+  EXPECT_EQ(response.valid, decision.valid);
+}
+
+TEST(NdtAlignServiceDecision, ResponseAssemblyNullPointersAreSafe)  // NOLINT
+{
+  const AwNdtAlignServiceAlignedInput input = make_aligned_input(4.5, 4.0);
+  AwNdtAlignServiceResponse unchanged{};
+  unchanged.status = 99;
+  unchanged.success = 1U;
+  unchanged.reliable = 1U;
+  unchanged.valid = 1U;
+
+  autoware_ndt_scan_matcher_rs_node_assemble_align_service_response(nullptr, &unchanged);
+  EXPECT_EQ(unchanged.status, 99);
+
+  autoware_ndt_scan_matcher_rs_node_assemble_align_service_response(&input, nullptr);
 }
 
 TEST(NdtAlignServiceDecision, TracedInvalidInputAndOverflowAreExplicit)  // NOLINT

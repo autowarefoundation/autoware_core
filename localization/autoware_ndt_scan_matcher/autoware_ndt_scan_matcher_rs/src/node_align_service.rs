@@ -92,6 +92,52 @@ pub struct AwNdtAlignServiceDecision {
     pub valid: u8,
 }
 
+/// Inputs needed to assemble the successful align-service response after C++ TPE/search completes.
+///
+/// `position` and `orientation` describe the aligned pose selected by the search. `request_covariance`
+/// is the original service request covariance that the historical C++ response copied unchanged.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct AwNdtAlignServiceAlignedInput {
+    pub stamp_ns: i64,
+    pub position: [f64; 3],
+    pub orientation: [f64; 4],
+    pub request_covariance: [f64; 36],
+    pub align_score: f64,
+    pub reliable_score_threshold: f64,
+}
+
+/// Deterministic response payload for the align service.
+///
+/// C++ remains responsible for ROS header frame assignment and message publication/logging.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct AwNdtAlignServiceResponse {
+    pub status: i32,
+    pub success: u8,
+    pub reliable: u8,
+    pub valid: u8,
+    pub stamp_ns: i64,
+    pub position: [f64; 3],
+    pub orientation: [f64; 4],
+    pub covariance: [f64; 36],
+}
+
+impl Default for AwNdtAlignServiceResponse {
+    fn default() -> Self {
+        Self {
+            status: NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT,
+            success: 0,
+            reliable: 0,
+            valid: 0,
+            stamp_ns: 0,
+            position: [0.0; 3],
+            orientation: [0.0; 4],
+            covariance: [0.0; 36],
+        }
+    }
+}
+
 fn flag(v: u8) -> Option<bool> {
     match v {
         0 => Some(false),
@@ -242,6 +288,31 @@ pub fn decide_align_service(input: &AwNdtAlignServiceInput) -> AwNdtAlignService
     )
 }
 
+#[must_use]
+pub fn assemble_aligned_response(
+    input: &AwNdtAlignServiceAlignedInput,
+) -> AwNdtAlignServiceResponse {
+    let decision_input = AwNdtAlignServiceInput {
+        transform_initial_pose_ok: 1,
+        map_points_ok: 1,
+        sensor_points_ok: 1,
+        align_score_available: 1,
+        align_score: input.align_score,
+        reliable_score_threshold: input.reliable_score_threshold,
+    };
+    let result = decide_align_service(&decision_input);
+    AwNdtAlignServiceResponse {
+        status: result.status,
+        success: result.success,
+        reliable: result.reliable,
+        valid: result.valid,
+        stamp_ns: input.stamp_ns,
+        position: input.position,
+        orientation: input.orientation,
+        covariance: input.request_covariance,
+    }
+}
+
 /// Decide the deterministic align-service branch/response state and optionally append one semantic
 /// trace event.
 ///
@@ -298,6 +369,33 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_decide_align_service(
     }
 }
 
+/// Assemble the successful align-service response payload after the align search has completed.
+///
+/// # Safety
+/// `input` must point to a valid, aligned [`AwNdtAlignServiceAlignedInput`] and `out` to a valid,
+/// aligned, writable [`AwNdtAlignServiceResponse`]. If either pointer is null, this function is a
+/// no-op.
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointers validated before reading/writing POD response structs"
+)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_assemble_align_service_response(
+    input: *const AwNdtAlignServiceAlignedInput,
+    out: *mut AwNdtAlignServiceResponse,
+) {
+    if input.is_null() || out.is_null() {
+        return;
+    }
+    // SAFETY: non-null per the check; caller guarantees a valid, aligned input struct, read once.
+    let input_ref = unsafe { &*input };
+    let result = assemble_aligned_response(input_ref);
+    // SAFETY: `out` is non-null per the check and points to writable response storage.
+    unsafe {
+        *out = result;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -351,6 +449,12 @@ mod tests {
             got.reliable_score_threshold.to_bits(),
             input.reliable_score_threshold.to_bits()
         );
+    }
+
+    fn expect_f64_array_bits_eq<const N: usize>(got: &[f64; N], expected: &[f64; N]) {
+        for (got_value, expected_value) in got.iter().zip(expected.iter()) {
+            assert_eq!(got_value.to_bits(), expected_value.to_bits());
+        }
     }
 
     #[expect(unsafe_code, reason = "test exercises the C ABI entry point directly")]
@@ -567,5 +671,93 @@ mod tests {
         ffi_decide_traced(&raw const input_ok, &raw mut full_trace, &raw mut out);
         assert_eq!(full_trace.len, events.len());
         assert_eq!(full_trace.overflowed, 1);
+    }
+
+    fn aligned_input(score: f64, threshold: f64) -> AwNdtAlignServiceAlignedInput {
+        let mut covariance = [0.0; 36];
+        covariance[0] = 1.0;
+        covariance[7] = 2.0;
+        covariance[14] = 3.0;
+        covariance[21] = 4.0;
+        covariance[28] = 5.0;
+        covariance[35] = 6.0;
+        AwNdtAlignServiceAlignedInput {
+            stamp_ns: 123,
+            position: [1.0, 2.0, 3.0],
+            orientation: [0.1, 0.2, 0.3, 0.9],
+            request_covariance: covariance,
+            align_score: score,
+            reliable_score_threshold: threshold,
+        }
+    }
+
+    #[expect(
+        unsafe_code,
+        reason = "test exercises the response assembly C ABI entry point directly"
+    )]
+    fn ffi_assemble_response(
+        input: *const AwNdtAlignServiceAlignedInput,
+        out: *mut AwNdtAlignServiceResponse,
+    ) {
+        // SAFETY: tests pass either null pointers to verify the no-op contract or valid local POD
+        // structs that live for the duration of the call.
+        unsafe {
+            autoware_ndt_scan_matcher_rs_node_assemble_align_service_response(input, out);
+        }
+    }
+
+    #[test]
+    fn aligned_response_copies_pose_covariance_and_reliability() {
+        let input_ok = aligned_input(4.5, 4.0);
+        let response = assemble_aligned_response(&input_ok);
+
+        assert_eq!(response.status, NDT_ALIGN_SERVICE_STATUS_ALIGNED);
+        assert_eq!(response.success, 1);
+        assert_eq!(response.reliable, 1);
+        assert_eq!(response.valid, 1);
+        assert_eq!(response.stamp_ns, input_ok.stamp_ns);
+        expect_f64_array_bits_eq(&response.position, &input_ok.position);
+        expect_f64_array_bits_eq(&response.orientation, &input_ok.orientation);
+        expect_f64_array_bits_eq(&response.covariance, &input_ok.request_covariance);
+    }
+
+    #[test]
+    fn aligned_response_threshold_equality_and_nan_are_unreliable() {
+        let equal_response = assemble_aligned_response(&aligned_input(4.0, 4.0));
+        assert_eq!(equal_response.status, NDT_ALIGN_SERVICE_STATUS_ALIGNED);
+        assert_eq!(equal_response.success, 1);
+        assert_eq!(equal_response.reliable, 0);
+        assert_eq!(equal_response.valid, 1);
+
+        let nan_response = assemble_aligned_response(&aligned_input(f64::NAN, 4.0));
+        assert_eq!(nan_response.status, NDT_ALIGN_SERVICE_STATUS_ALIGNED);
+        assert_eq!(nan_response.success, 1);
+        assert_eq!(nan_response.reliable, 0);
+        assert_eq!(nan_response.valid, 1);
+    }
+
+    #[test]
+    fn aligned_response_ffi_null_is_noop() {
+        let input_ok = aligned_input(4.5, 4.0);
+        let mut out = AwNdtAlignServiceResponse {
+            status: 99,
+            success: 1,
+            reliable: 1,
+            valid: 1,
+            stamp_ns: 9,
+            position: [9.0, 8.0, 7.0],
+            orientation: [0.0, 0.0, 0.0, 1.0],
+            covariance: [1.0; 36],
+        };
+
+        ffi_assemble_response(core::ptr::null(), &raw mut out);
+        assert_eq!(out.status, 99);
+        ffi_assemble_response(&raw const input_ok, core::ptr::null_mut());
+
+        ffi_assemble_response(&raw const input_ok, &raw mut out);
+        assert_eq!(out.status, NDT_ALIGN_SERVICE_STATUS_ALIGNED);
+        assert_eq!(out.success, 1);
+        assert_eq!(out.reliable, 1);
+        expect_f64_array_bits_eq(&out.covariance, &input_ok.request_covariance);
     }
 }
