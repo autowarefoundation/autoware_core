@@ -72,6 +72,23 @@ AwNdtAlignServiceDecision decide_like_cpp_helper(
   return decision;
 }
 
+AwNdtAlignServiceGateAction evaluate_gate_like_cpp_helper(
+  const bool transform_ok, const bool map_ok, const bool sensor_ok,
+  const bool score_available, const double score, const double threshold,
+  AwNdtAlignServiceTrace * trace = nullptr)
+{
+  AwNdtAlignServiceInput input{};
+  input.transform_initial_pose_ok = transform_ok ? 1U : 0U;
+  input.map_points_ok = map_ok ? 1U : 0U;
+  input.sensor_points_ok = sensor_ok ? 1U : 0U;
+  input.align_score_available = score_available ? 1U : 0U;
+  input.align_score = score;
+  input.reliable_score_threshold = threshold;
+  AwNdtAlignServiceGateAction action{};
+  autoware_ndt_scan_matcher_rs_node_evaluate_align_service_gate(&input, trace, &action);
+  return action;
+}
+
 AwNdtAlignServiceAlignedInput make_aligned_input(const double score, const double threshold)
 {
   AwNdtAlignServiceAlignedInput input{};
@@ -131,6 +148,20 @@ void expect_decision(
   EXPECT_EQ(got.reliable, reliable);
   EXPECT_EQ(got.should_align, should_align);
   EXPECT_EQ(got.valid, valid);
+}
+
+void expect_gate_action(
+  const AwNdtAlignServiceGateAction & got, const int32_t status, const uint8_t success,
+  const uint8_t reliable, const uint8_t should_align, const uint8_t valid,
+  const int32_t diagnostic_level, const int32_t message_kind)
+{
+  EXPECT_EQ(got.status, status);
+  EXPECT_EQ(got.success, success);
+  EXPECT_EQ(got.reliable, reliable);
+  EXPECT_EQ(got.should_align, should_align);
+  EXPECT_EQ(got.valid, valid);
+  EXPECT_EQ(got.diagnostic_level, diagnostic_level);
+  EXPECT_EQ(got.message_kind, message_kind);
 }
 
 void expect_event(
@@ -247,6 +278,83 @@ TEST(NdtAlignServiceDecision, ProductionShapedHelperUsesTracedFfiWithNullTrace) 
   EXPECT_EQ(aligned_helper.reliable, aligned_reference.reliable);
   EXPECT_EQ(aligned_helper.should_align, aligned_reference.should_align);
   EXPECT_EQ(aligned_helper.valid, aligned_reference.valid);
+}
+
+TEST(NdtAlignServiceDecision, GateActionMapsMessagesAndDiagnosticLevels)  // NOLINT
+{
+  expect_gate_action(
+    evaluate_gate_like_cpp_helper(false, true, true, false, 0.0, 4.0),
+    NDT_ALIGN_SERVICE_STATUS_TRANSFORM_UNAVAILABLE, 0U, 0U, 0U, 1U,
+    NDT_ALIGN_SERVICE_DIAGNOSTIC_ERROR, NDT_ALIGN_SERVICE_MESSAGE_TRANSFORM_UNAVAILABLE);
+  expect_gate_action(
+    evaluate_gate_like_cpp_helper(true, false, true, false, 0.0, 4.0),
+    NDT_ALIGN_SERVICE_STATUS_MAP_UNAVAILABLE, 0U, 0U, 0U, 1U,
+    NDT_ALIGN_SERVICE_DIAGNOSTIC_WARN, NDT_ALIGN_SERVICE_MESSAGE_MAP_UNAVAILABLE);
+  expect_gate_action(
+    evaluate_gate_like_cpp_helper(true, true, false, false, 0.0, 4.0),
+    NDT_ALIGN_SERVICE_STATUS_SENSOR_UNAVAILABLE, 0U, 0U, 0U, 1U,
+    NDT_ALIGN_SERVICE_DIAGNOSTIC_WARN, NDT_ALIGN_SERVICE_MESSAGE_SENSOR_UNAVAILABLE);
+}
+
+TEST(NdtAlignServiceDecision, GateActionReadyAlignedAndInvalidHaveNoMessage)  // NOLINT
+{
+  expect_gate_action(
+    evaluate_gate_like_cpp_helper(true, true, true, false, 0.0, 4.0),
+    NDT_ALIGN_SERVICE_STATUS_READY_TO_ALIGN, 0U, 0U, 1U, 1U,
+    NDT_ALIGN_SERVICE_DIAGNOSTIC_OK, NDT_ALIGN_SERVICE_MESSAGE_NONE);
+  expect_gate_action(
+    evaluate_gate_like_cpp_helper(true, true, true, true, 4.5, 4.0),
+    NDT_ALIGN_SERVICE_STATUS_ALIGNED, 1U, 1U, 0U, 1U, NDT_ALIGN_SERVICE_DIAGNOSTIC_OK,
+    NDT_ALIGN_SERVICE_MESSAGE_NONE);
+
+  AwNdtAlignServiceInput invalid = make_input(true, true, true, false, 0.0);
+  invalid.transform_initial_pose_ok = 7U;
+  AwNdtAlignServiceGateAction action{};
+  autoware_ndt_scan_matcher_rs_node_evaluate_align_service_gate(&invalid, nullptr, &action);
+  expect_gate_action(
+    action, NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT, 0U, 0U, 0U, 0U,
+    NDT_ALIGN_SERVICE_DIAGNOSTIC_OK, NDT_ALIGN_SERVICE_MESSAGE_NONE);
+}
+
+TEST(NdtAlignServiceDecision, ProductionShapedGateHelperMatchesDecisionAndTrace)  // NOLINT
+{
+  AwNdtAlignServiceInput input = make_input(true, false, true, false, 0.0);
+  input.reliable_score_threshold = 2.5;
+  const AwNdtAlignServiceDecision decision = decide(input);
+  std::array<AwNdtAlignServiceTraceEvent, 1> events{};
+  AwNdtAlignServiceTrace trace{};
+  trace.events = events.data();
+  trace.capacity = events.size();
+  trace.len = 0U;
+  trace.overflowed = 0U;
+
+  const AwNdtAlignServiceGateAction action =
+    evaluate_gate_like_cpp_helper(true, false, true, false, 0.0, 2.5, &trace);
+
+  EXPECT_EQ(action.status, decision.status);
+  EXPECT_EQ(action.success, decision.success);
+  EXPECT_EQ(action.reliable, decision.reliable);
+  EXPECT_EQ(action.should_align, decision.should_align);
+  EXPECT_EQ(action.valid, decision.valid);
+  ASSERT_EQ(trace.len, 1U);
+  EXPECT_EQ(trace.overflowed, 0U);
+  expect_event(events[0], reference_event(input, decision));
+}
+
+TEST(NdtAlignServiceDecision, GateActionNullPointersAreSafe)  // NOLINT
+{
+  const AwNdtAlignServiceInput input = make_input(true, true, true, false, 0.0);
+  AwNdtAlignServiceGateAction unchanged{};
+  unchanged.status = 99;
+  unchanged.success = 1U;
+  unchanged.reliable = 1U;
+  unchanged.should_align = 1U;
+  unchanged.valid = 1U;
+
+  autoware_ndt_scan_matcher_rs_node_evaluate_align_service_gate(nullptr, nullptr, &unchanged);
+  EXPECT_EQ(unchanged.status, 99);
+
+  autoware_ndt_scan_matcher_rs_node_evaluate_align_service_gate(&input, nullptr, nullptr);
 }
 
 TEST(NdtAlignServiceDecision, ProductionShapedHelperCanAppendDecisionTrace)  // NOLINT

@@ -34,6 +34,20 @@ pub const NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT: i32 = 5;
 /// A deterministic align-service decision event.
 pub const NDT_ALIGN_TRACE_EVENT_DECISION: i32 = 0;
 
+/// No align-service gate diagnostic/log message is required.
+pub const NDT_ALIGN_SERVICE_MESSAGE_NONE: i32 = 0;
+/// TF lookup failed; C++ formats the target/source frame names.
+pub const NDT_ALIGN_SERVICE_MESSAGE_TRANSFORM_UNAVAILABLE: i32 = 1;
+/// Target map is missing.
+pub const NDT_ALIGN_SERVICE_MESSAGE_MAP_UNAVAILABLE: i32 = 2;
+/// Sensor source cloud is missing.
+pub const NDT_ALIGN_SERVICE_MESSAGE_SENSOR_UNAVAILABLE: i32 = 3;
+
+/// Diagnostic status level constants mirrored as plain ABI integers.
+pub const NDT_ALIGN_SERVICE_DIAGNOSTIC_OK: i32 = 0;
+pub const NDT_ALIGN_SERVICE_DIAGNOSTIC_WARN: i32 = 1;
+pub const NDT_ALIGN_SERVICE_DIAGNOSTIC_ERROR: i32 = 2;
+
 /// One semantic trace event emitted by the align-service decision FFI.
 ///
 /// This intentionally records semantic decision fields only, not ROS message bytes, wall-clock time,
@@ -136,6 +150,19 @@ impl Default for AwNdtAlignServiceResponse {
             covariance: [0.0; 36],
         }
     }
+}
+
+/// Deterministic action C++ should take for an align-service gate decision.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct AwNdtAlignServiceGateAction {
+    pub status: i32,
+    pub success: u8,
+    pub reliable: u8,
+    pub should_align: u8,
+    pub valid: u8,
+    pub diagnostic_level: i32,
+    pub message_kind: i32,
 }
 
 fn flag(v: u8) -> Option<bool> {
@@ -313,6 +340,44 @@ pub fn assemble_aligned_response(
     }
 }
 
+#[must_use]
+pub fn gate_action_from_decision(
+    decision: AwNdtAlignServiceDecision,
+) -> AwNdtAlignServiceGateAction {
+    let (diagnostic_level, message_kind) = match decision.status {
+        NDT_ALIGN_SERVICE_STATUS_TRANSFORM_UNAVAILABLE => (
+            NDT_ALIGN_SERVICE_DIAGNOSTIC_ERROR,
+            NDT_ALIGN_SERVICE_MESSAGE_TRANSFORM_UNAVAILABLE,
+        ),
+        NDT_ALIGN_SERVICE_STATUS_MAP_UNAVAILABLE => (
+            NDT_ALIGN_SERVICE_DIAGNOSTIC_WARN,
+            NDT_ALIGN_SERVICE_MESSAGE_MAP_UNAVAILABLE,
+        ),
+        NDT_ALIGN_SERVICE_STATUS_SENSOR_UNAVAILABLE => (
+            NDT_ALIGN_SERVICE_DIAGNOSTIC_WARN,
+            NDT_ALIGN_SERVICE_MESSAGE_SENSOR_UNAVAILABLE,
+        ),
+        _ => (
+            NDT_ALIGN_SERVICE_DIAGNOSTIC_OK,
+            NDT_ALIGN_SERVICE_MESSAGE_NONE,
+        ),
+    };
+    AwNdtAlignServiceGateAction {
+        status: decision.status,
+        success: decision.success,
+        reliable: decision.reliable,
+        should_align: decision.should_align,
+        valid: decision.valid,
+        diagnostic_level,
+        message_kind,
+    }
+}
+
+#[must_use]
+pub fn evaluate_align_service_gate(input: &AwNdtAlignServiceInput) -> AwNdtAlignServiceGateAction {
+    gate_action_from_decision(decide_align_service(input))
+}
+
 /// Decide the deterministic align-service branch/response state and optionally append one semantic
 /// trace event.
 ///
@@ -393,6 +458,38 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_assemble_align_servic
     // SAFETY: `out` is non-null per the check and points to writable response storage.
     unsafe {
         *out = result;
+    }
+}
+
+/// Evaluate the deterministic align-service gate action and optionally append one semantic decision
+/// trace event.
+///
+/// # Safety
+/// `input` must point to a valid, aligned [`AwNdtAlignServiceInput`] and `out` to a valid, aligned,
+/// writable [`AwNdtAlignServiceGateAction`]. `trace` follows the same caller-owned buffer contract as
+/// [`autoware_ndt_scan_matcher_rs_node_decide_align_service_traced`]. If `input` or `out` is null,
+/// this function is a no-op and no trace event is written.
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointers and u8 boolean bit patterns validated per rust-c-ffi-safety"
+)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_evaluate_align_service_gate(
+    input: *const AwNdtAlignServiceInput,
+    trace: *mut AwNdtAlignServiceTrace,
+    out: *mut AwNdtAlignServiceGateAction,
+) {
+    if input.is_null() || out.is_null() {
+        return;
+    }
+    // SAFETY: non-null per the check; caller guarantees a valid, aligned input struct, read once.
+    let input_ref = unsafe { &*input };
+    let decision = decide_align_service(input_ref);
+    append_trace_event(trace, input_ref, decision);
+    let action = gate_action_from_decision(decision);
+    // SAFETY: `out` is non-null per the check and points to writable action storage.
+    unsafe {
+        *out = action;
     }
 }
 
@@ -480,6 +577,180 @@ mod tests {
         unsafe {
             autoware_ndt_scan_matcher_rs_node_decide_align_service_traced(input, trace, out);
         }
+    }
+
+    #[expect(
+        unsafe_code,
+        reason = "test exercises the gate action C ABI entry point directly"
+    )]
+    fn ffi_evaluate_gate(
+        input: *const AwNdtAlignServiceInput,
+        trace: *mut AwNdtAlignServiceTrace,
+        out: *mut AwNdtAlignServiceGateAction,
+    ) {
+        // SAFETY: tests pass null pointers to verify no-op contracts or local valid, aligned structs
+        // and buffers that live for the duration of the call.
+        unsafe {
+            autoware_ndt_scan_matcher_rs_node_evaluate_align_service_gate(input, trace, out);
+        }
+    }
+
+    fn gate_action(
+        status: i32,
+        success: u8,
+        reliable: u8,
+        should_align: u8,
+        valid: u8,
+        diagnostic_level: i32,
+        message_kind: i32,
+    ) -> AwNdtAlignServiceGateAction {
+        AwNdtAlignServiceGateAction {
+            status,
+            success,
+            reliable,
+            should_align,
+            valid,
+            diagnostic_level,
+            message_kind,
+        }
+    }
+
+    fn expect_gate_action(got: AwNdtAlignServiceGateAction, expected: AwNdtAlignServiceGateAction) {
+        assert_eq!(got, expected);
+    }
+
+    #[test]
+    fn gate_action_maps_failure_messages_and_levels() {
+        expect_gate_action(
+            evaluate_align_service_gate(&input(0, 1, 1, 0, 0.0)),
+            gate_action(
+                NDT_ALIGN_SERVICE_STATUS_TRANSFORM_UNAVAILABLE,
+                0,
+                0,
+                0,
+                1,
+                NDT_ALIGN_SERVICE_DIAGNOSTIC_ERROR,
+                NDT_ALIGN_SERVICE_MESSAGE_TRANSFORM_UNAVAILABLE,
+            ),
+        );
+        expect_gate_action(
+            evaluate_align_service_gate(&input(1, 0, 1, 0, 0.0)),
+            gate_action(
+                NDT_ALIGN_SERVICE_STATUS_MAP_UNAVAILABLE,
+                0,
+                0,
+                0,
+                1,
+                NDT_ALIGN_SERVICE_DIAGNOSTIC_WARN,
+                NDT_ALIGN_SERVICE_MESSAGE_MAP_UNAVAILABLE,
+            ),
+        );
+        expect_gate_action(
+            evaluate_align_service_gate(&input(1, 1, 0, 0, 0.0)),
+            gate_action(
+                NDT_ALIGN_SERVICE_STATUS_SENSOR_UNAVAILABLE,
+                0,
+                0,
+                0,
+                1,
+                NDT_ALIGN_SERVICE_DIAGNOSTIC_WARN,
+                NDT_ALIGN_SERVICE_MESSAGE_SENSOR_UNAVAILABLE,
+            ),
+        );
+    }
+
+    #[test]
+    fn gate_action_ready_aligned_and_invalid_have_no_message() {
+        expect_gate_action(
+            evaluate_align_service_gate(&input(1, 1, 1, 0, 0.0)),
+            gate_action(
+                NDT_ALIGN_SERVICE_STATUS_READY_TO_ALIGN,
+                0,
+                0,
+                1,
+                1,
+                NDT_ALIGN_SERVICE_DIAGNOSTIC_OK,
+                NDT_ALIGN_SERVICE_MESSAGE_NONE,
+            ),
+        );
+        expect_gate_action(
+            evaluate_align_service_gate(&input(1, 1, 1, 1, 4.5)),
+            gate_action(
+                NDT_ALIGN_SERVICE_STATUS_ALIGNED,
+                1,
+                1,
+                0,
+                1,
+                NDT_ALIGN_SERVICE_DIAGNOSTIC_OK,
+                NDT_ALIGN_SERVICE_MESSAGE_NONE,
+            ),
+        );
+        expect_gate_action(
+            evaluate_align_service_gate(&input(9, 1, 1, 0, 0.0)),
+            gate_action(
+                NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT,
+                0,
+                0,
+                0,
+                0,
+                NDT_ALIGN_SERVICE_DIAGNOSTIC_OK,
+                NDT_ALIGN_SERVICE_MESSAGE_NONE,
+            ),
+        );
+    }
+
+    #[test]
+    fn traced_gate_action_appends_existing_decision_event() {
+        let input_ok = input(1, 0, 1, 0, 0.0);
+        let mut out = AwNdtAlignServiceGateAction::default();
+        let mut events = [AwNdtAlignServiceTraceEvent::default(); 1];
+        let mut trace = AwNdtAlignServiceTrace {
+            events: events.as_mut_ptr(),
+            capacity: events.len(),
+            len: 0,
+            overflowed: 0,
+        };
+
+        ffi_evaluate_gate(&raw const input_ok, &raw mut trace, &raw mut out);
+
+        assert_eq!(trace.len, 1);
+        assert_eq!(trace.overflowed, 0);
+        expect_gate_action(
+            out,
+            gate_action(
+                NDT_ALIGN_SERVICE_STATUS_MAP_UNAVAILABLE,
+                0,
+                0,
+                0,
+                1,
+                NDT_ALIGN_SERVICE_DIAGNOSTIC_WARN,
+                NDT_ALIGN_SERVICE_MESSAGE_MAP_UNAVAILABLE,
+            ),
+        );
+        let decision = decide_align_service(&input_ok);
+        expect_event(events[0], &input_ok, decision);
+    }
+
+    #[test]
+    fn gate_action_ffi_null_is_noop() {
+        let input_ok = input(1, 1, 1, 0, 0.0);
+        let mut out = AwNdtAlignServiceGateAction {
+            status: 99,
+            success: 1,
+            reliable: 1,
+            should_align: 1,
+            valid: 1,
+            diagnostic_level: 2,
+            message_kind: 3,
+        };
+
+        ffi_evaluate_gate(core::ptr::null(), core::ptr::null_mut(), &raw mut out);
+        assert_eq!(out.status, 99);
+        ffi_evaluate_gate(
+            &raw const input_ok,
+            core::ptr::null_mut(),
+            core::ptr::null_mut(),
+        );
     }
 
     #[test]

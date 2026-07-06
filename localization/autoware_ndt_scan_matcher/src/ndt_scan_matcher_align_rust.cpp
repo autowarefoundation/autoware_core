@@ -57,10 +57,10 @@ std::vector<float> cloud_to_flat(const pcl::PointCloud<pcl::PointXYZ> & cloud)
   return f;
 }
 
-AwNdtAlignServiceDecision decide_align_service(
+AwNdtAlignServiceInput make_align_service_input(
   const bool transform_initial_pose_ok, const bool map_points_ok, const bool sensor_points_ok,
   const bool align_score_available, const double align_score,
-  const double reliable_score_threshold, AwNdtAlignServiceTrace * trace = nullptr)
+  const double reliable_score_threshold)
 {
   AwNdtAlignServiceInput input{};
   input.transform_initial_pose_ok = transform_initial_pose_ok ? 1U : 0U;
@@ -69,9 +69,36 @@ AwNdtAlignServiceDecision decide_align_service(
   input.align_score_available = align_score_available ? 1U : 0U;
   input.align_score = align_score;
   input.reliable_score_threshold = reliable_score_threshold;
-  AwNdtAlignServiceDecision decision{};
-  autoware_ndt_scan_matcher_rs_node_decide_align_service_traced(&input, trace, &decision);
-  return decision;
+  return input;
+}
+
+AwNdtAlignServiceGateAction evaluate_align_service_gate(
+  const bool transform_initial_pose_ok, const bool map_points_ok, const bool sensor_points_ok,
+  const bool align_score_available, const double align_score,
+  const double reliable_score_threshold, AwNdtAlignServiceTrace * trace = nullptr)
+{
+  const AwNdtAlignServiceInput input = make_align_service_input(
+    transform_initial_pose_ok, map_points_ok, sensor_points_ok, align_score_available, align_score,
+    reliable_score_threshold);
+  AwNdtAlignServiceGateAction action{};
+  autoware_ndt_scan_matcher_rs_node_evaluate_align_service_gate(&input, trace, &action);
+  return action;
+}
+
+std::string align_service_gate_message(
+  const std::int32_t message_kind, const std::string & target_frame,
+  const std::string & source_frame)
+{
+  if (message_kind == NDT_ALIGN_SERVICE_MESSAGE_TRANSFORM_UNAVAILABLE) {
+    return "Please publish TF " + target_frame + " to " + source_frame;
+  }
+  if (message_kind == NDT_ALIGN_SERVICE_MESSAGE_MAP_UNAVAILABLE) {
+    return "No InputTarget. Please check the map file and the map_loader service";
+  }
+  if (message_kind == NDT_ALIGN_SERVICE_MESSAGE_SENSOR_UNAVAILABLE) {
+    return "No InputSource. Please check the input lidar topic";
+  }
+  return {};
 }
 
 AwNdtAlignServiceResponse assemble_align_service_response(
@@ -191,14 +218,15 @@ void NDTScanMatcher::service_ndt_align_main(
   } catch (tf2::TransformException & ex) {
     diagnostics_ndt_align_->add_key_value("is_succeed_transform_initial_pose", false);
 
-    std::stringstream message;
-    message << "Please publish TF " << target_frame.c_str() << " to " << source_frame.c_str();
+    const AwNdtAlignServiceGateAction action =
+      evaluate_align_service_gate(false, false, false, false, 0.0, 0.0);
+    const std::string message =
+      align_service_gate_message(action.message_kind, target_frame, source_frame);
     diagnostics_ndt_align_->update_level_and_message(
-      diagnostic_msgs::msg::DiagnosticStatus::ERROR, message.str());
-    RCLCPP_ERROR_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 1000, message.str());
-    const AwNdtAlignServiceDecision decision =
-      decide_align_service(false, false, false, false, 0.0, 0.0);
-    res->success = (decision.success != 0U);
+      static_cast<diagnostic_msgs::msg::DiagnosticStatus::_level_type>(action.diagnostic_level),
+      message);
+    RCLCPP_ERROR_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 1000, message);
+    res->success = (action.success != 0U);
     return;
   }
   diagnostics_ndt_align_->add_key_value("is_succeed_transform_initial_pose", true);
@@ -214,34 +242,36 @@ void NDTScanMatcher::service_ndt_align_main(
       autoware_ndt_scan_matcher_rs_ndt_engine_has_target(ndt_ptr->raw_handle());
     diagnostics_ndt_align_->add_key_value("is_set_map_points", is_set_map_points);
     if (!is_set_map_points) {
-      std::stringstream message;
-      message << "No InputTarget. Please check the map file and the map_loader service";
+      const AwNdtAlignServiceGateAction action =
+        evaluate_align_service_gate(true, false, false, false, 0.0, 0.0);
+      const std::string message =
+        align_service_gate_message(action.message_kind, target_frame, source_frame);
       diagnostics_ndt_align_->update_level_and_message(
-        diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
-      RCLCPP_WARN_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 1000, message.str());
-      const AwNdtAlignServiceDecision decision =
-        decide_align_service(true, false, false, false, 0.0, 0.0);
-      res->success = (decision.success != 0U);
+        static_cast<diagnostic_msgs::msg::DiagnosticStatus::_level_type>(action.diagnostic_level),
+        message);
+      RCLCPP_WARN_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 1000, message);
+      res->success = (action.success != 0U);
       return;
     }
 
     bool is_set_sensor_points = (sensor_points_in_baselink_frame_ != nullptr);
     diagnostics_ndt_align_->add_key_value("is_set_sensor_points", is_set_sensor_points);
     if (!is_set_sensor_points) {
-      std::stringstream message;
-      message << "No InputSource. Please check the input lidar topic";
+      const AwNdtAlignServiceGateAction action =
+        evaluate_align_service_gate(true, true, false, false, 0.0, 0.0);
+      const std::string message =
+        align_service_gate_message(action.message_kind, target_frame, source_frame);
       diagnostics_ndt_align_->update_level_and_message(
-        diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
-      RCLCPP_WARN_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 1000, message.str());
-      const AwNdtAlignServiceDecision decision =
-        decide_align_service(true, true, false, false, 0.0, 0.0);
-      res->success = (decision.success != 0U);
+        static_cast<diagnostic_msgs::msg::DiagnosticStatus::_level_type>(action.diagnostic_level),
+        message);
+      RCLCPP_WARN_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 1000, message);
+      res->success = (action.success != 0U);
       return;
     }
 
-    const AwNdtAlignServiceDecision ready_decision =
-      decide_align_service(true, true, true, false, 0.0, 0.0);
-    if (ready_decision.should_align == 0U) {
+    const AwNdtAlignServiceGateAction ready_action =
+      evaluate_align_service_gate(true, true, true, false, 0.0, 0.0);
+    if (ready_action.should_align == 0U) {
       res->success = false;
       return;
     }
