@@ -60,6 +60,7 @@ pub mod scan_matcher;
 // ROS sensor-callback prologue (decode/TF/transform/validation → base_link cloud); std-only.
 #[cfg(feature = "std")]
 pub mod sensor_points;
+pub mod tpe;
 pub mod transform;
 pub mod voxel_grid;
 
