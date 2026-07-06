@@ -93,10 +93,10 @@
 #define AUTOWARE_CREATE_PUBLISHER3_ON_NODE(message_type, node, arg1, arg2, arg3) \
   autoware::agnocast_wrapper::create_publisher<message_type>(node, arg1, arg2, arg3)
 
-#define AUTOWARE_CREATE_POLLING_SUBSCRIBER(message_type, topic, qos) \
-  autoware::agnocast_wrapper::create_polling_subscriber<message_type>(this, topic, qos)
-#define AUTOWARE_CREATE_POLLING_SUBSCRIBER_ON_NODE(message_type, node, topic, qos) \
-  autoware::agnocast_wrapper::create_polling_subscriber<message_type>(node, topic, qos)
+#define AUTOWARE_CREATE_POLLING_SUBSCRIBER(message_type, policy, topic, qos) \
+  autoware::agnocast_wrapper::create_polling_subscriber<message_type, policy>(this, topic, qos)
+#define AUTOWARE_CREATE_POLLING_SUBSCRIBER_ON_NODE(message_type, policy, node, topic, qos) \
+  autoware::agnocast_wrapper::create_polling_subscriber<message_type, policy>(node, topic, qos)
 
 #define AUTOWARE_CREATE_CLIENT1(service_type, service_name) \
   autoware::agnocast_wrapper::create_client<service_type>(this, service_name)
@@ -1400,11 +1400,11 @@ inline void set_period(const rclcpp::TimerBase::SharedPtr & timer, std::chrono::
 #define AUTOWARE_CREATE_PUBLISHER3_ON_NODE(message_type, node, arg1, arg2, arg3) \
   node->create_publisher<message_type>(arg1, arg2, arg3)
 
-#define AUTOWARE_CREATE_POLLING_SUBSCRIBER(message_type, topic, qos)                       \
-  autoware_utils_rclcpp::InterProcessPollingSubscriber<message_type>::create_subscription( \
+#define AUTOWARE_CREATE_POLLING_SUBSCRIBER(message_type, policy, topic, qos)                       \
+  autoware_utils_rclcpp::InterProcessPollingSubscriber<message_type, policy>::create_subscription( \
     this, topic, qos)
-#define AUTOWARE_CREATE_POLLING_SUBSCRIBER_ON_NODE(message_type, node, topic, qos)         \
-  autoware_utils_rclcpp::InterProcessPollingSubscriber<message_type>::create_subscription( \
+#define AUTOWARE_CREATE_POLLING_SUBSCRIBER_ON_NODE(message_type, policy, node, topic, qos)         \
+  autoware_utils_rclcpp::InterProcessPollingSubscriber<message_type, policy>::create_subscription( \
     node, topic, qos)
 
 #if RCLCPP_VERSION_MAJOR >= 28
