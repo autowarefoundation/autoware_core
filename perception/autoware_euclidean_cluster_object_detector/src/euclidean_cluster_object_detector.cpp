@@ -70,9 +70,21 @@ ClusterFeatureResult EuclideanClusterObjectDetector::cluster(
 ClusterFeatureResult EuclideanClusterObjectDetector::cluster_standard(
   const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & input_cloud) const
 {
+  pcl::PointCloud<pcl::PointXYZ>::ConstPtr search_cloud = input_cloud;
+
+  // If not use_height, flatten to 2D BEV (adhering to legacy logic)
+  if (!param_.use_height) {
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_2d(new pcl::PointCloud<pcl::PointXYZ>);
+    cloud_2d->points.reserve(input_cloud->points.size());
+    for (const auto & point : input_cloud->points) {
+      cloud_2d->push_back(pcl::PointXYZ(point.x, point.y, 0.0f));
+    }
+    search_cloud = cloud_2d;
+  }
+
   // Build KD-Tree for nearest neighbor search
   pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
-  tree->setInputCloud(input_cloud);
+  tree->setInputCloud(search_cloud);
 
   // Perform Euclidean clustering
   std::vector<pcl::PointIndices> cluster_indices;
@@ -81,7 +93,7 @@ ClusterFeatureResult EuclideanClusterObjectDetector::cluster_standard(
   ec.setMinClusterSize(param_.min_cluster_size);
   ec.setMaxClusterSize(param_.max_cluster_size);
   ec.setSearchMethod(tree);
-  ec.setInputCloud(input_cloud);
+  ec.setInputCloud(search_cloud);
   ec.extract(cluster_indices);
 
   // Build pure C++ output structures
