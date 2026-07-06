@@ -158,6 +158,20 @@ AwNdtAlignServiceTraceEvent reference_event(
   event.cloud_publish_count = 0;
   event.best_iteration = 0;
   event.best_score = 0.0;
+  if (decision.status == NDT_ALIGN_SERVICE_STATUS_TRANSFORM_UNAVAILABLE) {
+    event.diagnostic_level = NDT_ALIGN_SERVICE_DIAGNOSTIC_ERROR;
+    event.message_kind = NDT_ALIGN_SERVICE_MESSAGE_TRANSFORM_UNAVAILABLE;
+  } else if (decision.status == NDT_ALIGN_SERVICE_STATUS_MAP_UNAVAILABLE) {
+    event.diagnostic_level = NDT_ALIGN_SERVICE_DIAGNOSTIC_WARN;
+    event.message_kind = NDT_ALIGN_SERVICE_MESSAGE_MAP_UNAVAILABLE;
+  } else if (decision.status == NDT_ALIGN_SERVICE_STATUS_SENSOR_UNAVAILABLE) {
+    event.diagnostic_level = NDT_ALIGN_SERVICE_DIAGNOSTIC_WARN;
+    event.message_kind = NDT_ALIGN_SERVICE_MESSAGE_SENSOR_UNAVAILABLE;
+  } else {
+    event.diagnostic_level = NDT_ALIGN_SERVICE_DIAGNOSTIC_OK;
+    event.message_kind = NDT_ALIGN_SERVICE_MESSAGE_NONE;
+  }
+  event.response_stamp_ns = 0;
   return event;
 }
 
@@ -204,6 +218,18 @@ void expect_event(
   EXPECT_EQ(got.cloud_publish_count, expected.cloud_publish_count);
   EXPECT_EQ(got.best_iteration, expected.best_iteration);
   EXPECT_EQ(got.best_score, expected.best_score);
+  EXPECT_EQ(got.diagnostic_level, expected.diagnostic_level);
+  EXPECT_EQ(got.message_kind, expected.message_kind);
+  EXPECT_EQ(got.response_stamp_ns, expected.response_stamp_ns);
+  for (std::size_t i = 0; i < 3U; ++i) {
+    EXPECT_EQ(got.response_position[i], expected.response_position[i]);
+  }
+  for (std::size_t i = 0; i < 4U; ++i) {
+    EXPECT_EQ(got.response_orientation[i], expected.response_orientation[i]);
+  }
+  for (std::size_t i = 0; i < 36U; ++i) {
+    EXPECT_EQ(got.response_covariance[i], expected.response_covariance[i]);
+  }
 }
 
 void expect_search_summary_event(
@@ -226,6 +252,41 @@ void expect_search_summary_event(
   EXPECT_EQ(got.cloud_publish_count, expected.cloud_publish_count);
   EXPECT_EQ(got.best_iteration, expected.best_iteration);
   EXPECT_EQ(got.best_score, expected.best_score);
+  EXPECT_EQ(got.diagnostic_level, NDT_ALIGN_SERVICE_DIAGNOSTIC_OK);
+  EXPECT_EQ(got.message_kind, NDT_ALIGN_SERVICE_MESSAGE_NONE);
+  EXPECT_EQ(got.response_stamp_ns, 0);
+}
+
+void expect_response_event(
+  const AwNdtAlignServiceTraceEvent & got, const AwNdtAlignServiceResponse & expected)
+{
+  EXPECT_EQ(got.kind, NDT_ALIGN_TRACE_EVENT_RESPONSE);
+  EXPECT_EQ(got.status, expected.status);
+  EXPECT_EQ(got.success, expected.success);
+  EXPECT_EQ(got.reliable, expected.reliable);
+  EXPECT_EQ(got.should_align, 0U);
+  EXPECT_EQ(got.valid, expected.valid);
+  EXPECT_EQ(got.score_available, 0U);
+  EXPECT_EQ(got.score, 0.0);
+  EXPECT_EQ(got.reliable_score_threshold, 0.0);
+  EXPECT_EQ(got.particles_requested, 0);
+  EXPECT_EQ(got.particles_evaluated, 0);
+  EXPECT_EQ(got.marker_publish_count, 0);
+  EXPECT_EQ(got.cloud_publish_count, 0);
+  EXPECT_EQ(got.best_iteration, 0);
+  EXPECT_EQ(got.best_score, 0.0);
+  EXPECT_EQ(got.diagnostic_level, NDT_ALIGN_SERVICE_DIAGNOSTIC_OK);
+  EXPECT_EQ(got.message_kind, NDT_ALIGN_SERVICE_MESSAGE_NONE);
+  EXPECT_EQ(got.response_stamp_ns, expected.stamp_ns);
+  for (std::size_t i = 0; i < 3U; ++i) {
+    EXPECT_EQ(got.response_position[i], expected.position[i]);
+  }
+  for (std::size_t i = 0; i < 4U; ++i) {
+    EXPECT_EQ(got.response_orientation[i], expected.orientation[i]);
+  }
+  for (std::size_t i = 0; i < 36U; ++i) {
+    EXPECT_EQ(got.response_covariance[i], expected.covariance[i]);
+  }
 }
 }  // namespace
 
@@ -506,6 +567,50 @@ TEST(NdtAlignServiceDecision, SearchSummaryTraceNullAndFullBuffersAreSafe)  // N
   null_events.len = 0U;
   null_events.overflowed = 0U;
   autoware_ndt_scan_matcher_rs_node_append_align_service_search_summary_trace(&input, &null_events);
+  EXPECT_EQ(null_events.len, 0U);
+  EXPECT_EQ(null_events.overflowed, 1U);
+}
+
+
+TEST(NdtAlignServiceDecision, ResponseTraceAppendsResponsePayloadEvent)  // NOLINT
+{
+  const AwNdtAlignServiceResponse response = assemble_response(make_aligned_input(4.5, 4.0));
+  std::array<AwNdtAlignServiceTraceEvent, 1> events{};
+  AwNdtAlignServiceTrace trace{};
+  trace.events = events.data();
+  trace.capacity = events.size();
+  trace.len = 0U;
+  trace.overflowed = 0U;
+
+  autoware_ndt_scan_matcher_rs_node_append_align_service_response_trace(&response, &trace);
+
+  ASSERT_EQ(trace.len, 1U);
+  EXPECT_EQ(trace.overflowed, 0U);
+  expect_response_event(events[0], response);
+}
+
+TEST(NdtAlignServiceDecision, ResponseTraceNullAndFullBuffersAreSafe)  // NOLINT
+{
+  const AwNdtAlignServiceResponse response = assemble_response(make_aligned_input(4.5, 4.0));
+  autoware_ndt_scan_matcher_rs_node_append_align_service_response_trace(nullptr, nullptr);
+  autoware_ndt_scan_matcher_rs_node_append_align_service_response_trace(&response, nullptr);
+
+  std::array<AwNdtAlignServiceTraceEvent, 1> events{};
+  AwNdtAlignServiceTrace full_trace{};
+  full_trace.events = events.data();
+  full_trace.capacity = events.size();
+  full_trace.len = events.size();
+  full_trace.overflowed = 0U;
+  autoware_ndt_scan_matcher_rs_node_append_align_service_response_trace(&response, &full_trace);
+  EXPECT_EQ(full_trace.len, events.size());
+  EXPECT_EQ(full_trace.overflowed, 1U);
+
+  AwNdtAlignServiceTrace null_events{};
+  null_events.events = nullptr;
+  null_events.capacity = 1U;
+  null_events.len = 0U;
+  null_events.overflowed = 0U;
+  autoware_ndt_scan_matcher_rs_node_append_align_service_response_trace(&response, &null_events);
   EXPECT_EQ(null_events.len, 0U);
   EXPECT_EQ(null_events.overflowed, 1U);
 }

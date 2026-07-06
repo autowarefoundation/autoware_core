@@ -35,6 +35,8 @@ pub const NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT: i32 = 5;
 pub const NDT_ALIGN_TRACE_EVENT_DECISION: i32 = 0;
 /// A semantic summary of the C++ TPE/search loop used before the search is ported to Rust.
 pub const NDT_ALIGN_TRACE_EVENT_SEARCH_SUMMARY: i32 = 1;
+/// A deterministic summary of the align-service response payload returned to ROS.
+pub const NDT_ALIGN_TRACE_EVENT_RESPONSE: i32 = 2;
 
 /// No align-service gate diagnostic/log message is required.
 pub const NDT_ALIGN_SERVICE_MESSAGE_NONE: i32 = 0;
@@ -55,7 +57,7 @@ pub const NDT_ALIGN_SERVICE_DIAGNOSTIC_ERROR: i32 = 2;
 /// This intentionally records semantic decision fields only, not ROS message bytes, wall-clock time,
 /// memory addresses, or raw logs.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct AwNdtAlignServiceTraceEvent {
     pub kind: i32,
     pub status: i32,
@@ -72,6 +74,40 @@ pub struct AwNdtAlignServiceTraceEvent {
     pub cloud_publish_count: i64,
     pub best_iteration: i32,
     pub best_score: f64,
+    pub diagnostic_level: i32,
+    pub message_kind: i32,
+    pub response_stamp_ns: i64,
+    pub response_position: [f64; 3],
+    pub response_orientation: [f64; 4],
+    pub response_covariance: [f64; 36],
+}
+
+impl Default for AwNdtAlignServiceTraceEvent {
+    fn default() -> Self {
+        Self {
+            kind: 0,
+            status: 0,
+            success: 0,
+            reliable: 0,
+            should_align: 0,
+            valid: 0,
+            score_available: 0,
+            score: 0.0,
+            reliable_score_threshold: 0.0,
+            particles_requested: 0,
+            particles_evaluated: 0,
+            marker_publish_count: 0,
+            cloud_publish_count: 0,
+            best_iteration: 0,
+            best_score: 0.0,
+            diagnostic_level: NDT_ALIGN_SERVICE_DIAGNOSTIC_OK,
+            message_kind: NDT_ALIGN_SERVICE_MESSAGE_NONE,
+            response_stamp_ns: 0,
+            response_position: [0.0; 3],
+            response_orientation: [0.0; 4],
+            response_covariance: [0.0; 36],
+        }
+    }
 }
 
 /// Caller-owned trace buffer for align-service semantic events.
@@ -249,6 +285,7 @@ fn make_trace_event(
     input: &AwNdtAlignServiceInput,
     decision: AwNdtAlignServiceDecision,
 ) -> AwNdtAlignServiceTraceEvent {
+    let action = gate_action_from_decision(decision);
     AwNdtAlignServiceTraceEvent {
         kind: NDT_ALIGN_TRACE_EVENT_DECISION,
         status: decision.status,
@@ -265,6 +302,12 @@ fn make_trace_event(
         cloud_publish_count: 0,
         best_iteration: 0,
         best_score: 0.0,
+        diagnostic_level: action.diagnostic_level,
+        message_kind: action.message_kind,
+        response_stamp_ns: 0,
+        response_position: [0.0; 3],
+        response_orientation: [0.0; 4],
+        response_covariance: [0.0; 36],
     }
 }
 
@@ -300,6 +343,38 @@ fn make_search_summary_trace_event(
         cloud_publish_count: input.cloud_publish_count,
         best_iteration: input.best_iteration,
         best_score: input.best_score,
+        diagnostic_level: NDT_ALIGN_SERVICE_DIAGNOSTIC_OK,
+        message_kind: NDT_ALIGN_SERVICE_MESSAGE_NONE,
+        response_stamp_ns: 0,
+        response_position: [0.0; 3],
+        response_orientation: [0.0; 4],
+        response_covariance: [0.0; 36],
+    }
+}
+
+fn make_response_trace_event(input: &AwNdtAlignServiceResponse) -> AwNdtAlignServiceTraceEvent {
+    AwNdtAlignServiceTraceEvent {
+        kind: NDT_ALIGN_TRACE_EVENT_RESPONSE,
+        status: input.status,
+        success: input.success,
+        reliable: input.reliable,
+        should_align: 0,
+        valid: input.valid,
+        score_available: 0,
+        score: 0.0,
+        reliable_score_threshold: 0.0,
+        particles_requested: 0,
+        particles_evaluated: 0,
+        marker_publish_count: 0,
+        cloud_publish_count: 0,
+        best_iteration: 0,
+        best_score: 0.0,
+        diagnostic_level: NDT_ALIGN_SERVICE_DIAGNOSTIC_OK,
+        message_kind: NDT_ALIGN_SERVICE_MESSAGE_NONE,
+        response_stamp_ns: input.stamp_ns,
+        response_position: input.position,
+        response_orientation: input.orientation,
+        response_covariance: input.covariance,
     }
 }
 
@@ -307,7 +382,7 @@ fn make_search_summary_trace_event(
     unsafe_code,
     reason = "C ABI trace buffer boundary; pointer validity and capacity are caller contract, bounds checked before write"
 )]
-fn write_trace_event(trace: *mut AwNdtAlignServiceTrace, event: AwNdtAlignServiceTraceEvent) {
+fn write_trace_event(trace: *mut AwNdtAlignServiceTrace, event: &AwNdtAlignServiceTraceEvent) {
     if trace.is_null() {
         return;
     }
@@ -332,7 +407,7 @@ fn write_trace_event(trace: *mut AwNdtAlignServiceTrace, event: AwNdtAlignServic
     // SAFETY: events is non-null and len < capacity, so writing one event at events + len is in-bounds
     // for the caller-provided buffer. The trace owns the mutable buffer for the duration of the call.
     unsafe {
-        trace_ref.events.add(trace_ref.len).write(event);
+        trace_ref.events.add(trace_ref.len).write(*event);
     }
     trace_ref.len = next_len;
 }
@@ -342,7 +417,7 @@ fn append_trace_event(
     input: &AwNdtAlignServiceInput,
     decision: AwNdtAlignServiceDecision,
 ) {
-    write_trace_event(trace, make_trace_event(input, decision));
+    write_trace_event(trace, &make_trace_event(input, decision));
 }
 
 #[must_use]
@@ -463,7 +538,14 @@ pub fn append_search_summary_trace(
     input: &AwNdtAlignServiceSearchSummaryInput,
     trace: *mut AwNdtAlignServiceTrace,
 ) {
-    write_trace_event(trace, make_search_summary_trace_event(input));
+    write_trace_event(trace, &make_search_summary_trace_event(input));
+}
+
+pub fn append_response_trace(
+    input: &AwNdtAlignServiceResponse,
+    trace: *mut AwNdtAlignServiceTrace,
+) {
+    write_trace_event(trace, &make_response_trace_event(input));
 }
 
 /// Decide the deterministic align-service branch/response state and optionally append one semantic
@@ -605,6 +687,29 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_append_align_service_
     append_search_summary_trace(input_ref, trace);
 }
 
+/// Append one semantic response-summary event for the align-service response payload.
+///
+/// # Safety
+/// `input` must point to a valid, aligned [`AwNdtAlignServiceResponse`]. `trace` follows the same
+/// caller-owned buffer contract as [`autoware_ndt_scan_matcher_rs_node_decide_align_service_traced`].
+/// If `input` is null, this function is a no-op.
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; response pointer is checked before trace append"
+)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_append_align_service_response_trace(
+    input: *const AwNdtAlignServiceResponse,
+    trace: *mut AwNdtAlignServiceTrace,
+) {
+    if input.is_null() {
+        return;
+    }
+    // SAFETY: non-null per the check; caller guarantees a valid, aligned response struct, read once.
+    let input_ref = unsafe { &*input };
+    append_response_trace(input_ref, trace);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -642,7 +747,7 @@ mod tests {
     }
 
     fn expect_event(
-        got: AwNdtAlignServiceTraceEvent,
+        got: &AwNdtAlignServiceTraceEvent,
         input: &AwNdtAlignServiceInput,
         decision: AwNdtAlignServiceDecision,
     ) {
@@ -664,6 +769,13 @@ mod tests {
         assert_eq!(got.cloud_publish_count, 0);
         assert_eq!(got.best_iteration, 0);
         assert_eq!(got.best_score.to_bits(), 0.0_f64.to_bits());
+        let action = gate_action_from_decision(decision);
+        assert_eq!(got.diagnostic_level, action.diagnostic_level);
+        assert_eq!(got.message_kind, action.message_kind);
+        assert_eq!(got.response_stamp_ns, 0);
+        expect_f64_array_bits_eq(&got.response_position, &[0.0; 3]);
+        expect_f64_array_bits_eq(&got.response_orientation, &[0.0; 4]);
+        expect_f64_array_bits_eq(&got.response_covariance, &[0.0; 36]);
     }
 
     fn search_summary(
@@ -687,7 +799,7 @@ mod tests {
     }
 
     fn expect_search_summary_event(
-        got: AwNdtAlignServiceTraceEvent,
+        got: &AwNdtAlignServiceTraceEvent,
         input: &AwNdtAlignServiceSearchSummaryInput,
         status: i32,
         success: u8,
@@ -713,6 +825,36 @@ mod tests {
         assert_eq!(got.cloud_publish_count, input.cloud_publish_count);
         assert_eq!(got.best_iteration, input.best_iteration);
         assert_eq!(got.best_score.to_bits(), input.best_score.to_bits());
+        assert_eq!(got.diagnostic_level, NDT_ALIGN_SERVICE_DIAGNOSTIC_OK);
+        assert_eq!(got.message_kind, NDT_ALIGN_SERVICE_MESSAGE_NONE);
+        assert_eq!(got.response_stamp_ns, 0);
+        expect_f64_array_bits_eq(&got.response_position, &[0.0; 3]);
+        expect_f64_array_bits_eq(&got.response_orientation, &[0.0; 4]);
+        expect_f64_array_bits_eq(&got.response_covariance, &[0.0; 36]);
+    }
+
+    fn expect_response_event(got: &AwNdtAlignServiceTraceEvent, input: &AwNdtAlignServiceResponse) {
+        assert_eq!(got.kind, NDT_ALIGN_TRACE_EVENT_RESPONSE);
+        assert_eq!(got.status, input.status);
+        assert_eq!(got.success, input.success);
+        assert_eq!(got.reliable, input.reliable);
+        assert_eq!(got.should_align, 0);
+        assert_eq!(got.valid, input.valid);
+        assert_eq!(got.score_available, 0);
+        assert_eq!(got.score.to_bits(), 0.0_f64.to_bits());
+        assert_eq!(got.reliable_score_threshold.to_bits(), 0.0_f64.to_bits());
+        assert_eq!(got.particles_requested, 0);
+        assert_eq!(got.particles_evaluated, 0);
+        assert_eq!(got.marker_publish_count, 0);
+        assert_eq!(got.cloud_publish_count, 0);
+        assert_eq!(got.best_iteration, 0);
+        assert_eq!(got.best_score.to_bits(), 0.0_f64.to_bits());
+        assert_eq!(got.diagnostic_level, NDT_ALIGN_SERVICE_DIAGNOSTIC_OK);
+        assert_eq!(got.message_kind, NDT_ALIGN_SERVICE_MESSAGE_NONE);
+        assert_eq!(got.response_stamp_ns, input.stamp_ns);
+        expect_f64_array_bits_eq(&got.response_position, &input.position);
+        expect_f64_array_bits_eq(&got.response_orientation, &input.orientation);
+        expect_f64_array_bits_eq(&got.response_covariance, &input.covariance);
     }
 
     fn expect_f64_array_bits_eq<const N: usize>(got: &[f64; N], expected: &[f64; N]) {
@@ -776,6 +918,21 @@ mod tests {
             autoware_ndt_scan_matcher_rs_node_append_align_service_search_summary_trace(
                 input, trace,
             );
+        }
+    }
+
+    #[expect(
+        unsafe_code,
+        reason = "test exercises the response trace C ABI entry point directly"
+    )]
+    fn ffi_append_response_trace(
+        input: *const AwNdtAlignServiceResponse,
+        trace: *mut AwNdtAlignServiceTrace,
+    ) {
+        // SAFETY: tests pass null pointers to verify no-op contracts or local valid, aligned structs
+        // and buffers that live for the duration of the call.
+        unsafe {
+            autoware_ndt_scan_matcher_rs_node_append_align_service_response_trace(input, trace);
         }
     }
 
@@ -912,7 +1069,56 @@ mod tests {
             ),
         );
         let decision = decide_align_service(&input_ok);
-        expect_event(events[0], &input_ok, decision);
+        expect_event(&events[0], &input_ok, decision);
+        assert_eq!(
+            events[0].diagnostic_level,
+            NDT_ALIGN_SERVICE_DIAGNOSTIC_WARN
+        );
+        assert_eq!(
+            events[0].message_kind,
+            NDT_ALIGN_SERVICE_MESSAGE_MAP_UNAVAILABLE
+        );
+    }
+
+    #[test]
+    fn traced_gate_action_failure_events_include_diagnostic_metadata() {
+        let cases = [
+            (
+                input(0, 1, 1, 0, 0.0),
+                NDT_ALIGN_SERVICE_DIAGNOSTIC_ERROR,
+                NDT_ALIGN_SERVICE_MESSAGE_TRANSFORM_UNAVAILABLE,
+            ),
+            (
+                input(1, 0, 1, 0, 0.0),
+                NDT_ALIGN_SERVICE_DIAGNOSTIC_WARN,
+                NDT_ALIGN_SERVICE_MESSAGE_MAP_UNAVAILABLE,
+            ),
+            (
+                input(1, 1, 0, 0, 0.0),
+                NDT_ALIGN_SERVICE_DIAGNOSTIC_WARN,
+                NDT_ALIGN_SERVICE_MESSAGE_SENSOR_UNAVAILABLE,
+            ),
+        ];
+
+        for (input_case, diagnostic_level, message_kind) in cases {
+            let mut out = AwNdtAlignServiceGateAction::default();
+            let mut events = [AwNdtAlignServiceTraceEvent::default(); 1];
+            let mut trace = AwNdtAlignServiceTrace {
+                events: events.as_mut_ptr(),
+                capacity: events.len(),
+                len: 0,
+                overflowed: 0,
+            };
+
+            ffi_evaluate_gate(&raw const input_case, &raw mut trace, &raw mut out);
+
+            assert_eq!(trace.len, 1);
+            assert_eq!(trace.overflowed, 0);
+            assert_eq!(events[0].diagnostic_level, diagnostic_level);
+            assert_eq!(events[0].message_kind, message_kind);
+            assert_eq!(out.diagnostic_level, diagnostic_level);
+            assert_eq!(out.message_kind, message_kind);
+        }
     }
 
     #[test]
@@ -1079,7 +1285,7 @@ mod tests {
         assert_eq!(trace.len, 1);
         assert_eq!(trace.overflowed, 0);
         expect_decision(out, NDT_ALIGN_SERVICE_STATUS_ALIGNED, 1, 1, 0, 1);
-        expect_event(events[0], &input_ok, out);
+        expect_event(&events[0], &input_ok, out);
     }
 
     #[test]
@@ -1099,7 +1305,7 @@ mod tests {
         assert_eq!(trace.len, 1);
         assert_eq!(trace.overflowed, 0);
         expect_decision(out, NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT, 0, 0, 0, 0);
-        expect_event(events[0], &bad, out);
+        expect_event(&events[0], &bad, out);
     }
 
     #[test]
@@ -1177,7 +1383,7 @@ mod tests {
         assert_eq!(trace.len, 1);
         assert_eq!(trace.overflowed, 0);
         expect_search_summary_event(
-            events[0],
+            &events[0],
             &summary,
             NDT_ALIGN_SERVICE_STATUS_ALIGNED,
             1,
@@ -1203,7 +1409,7 @@ mod tests {
         assert_eq!(trace.len, 1);
         assert_eq!(trace.overflowed, 0);
         expect_search_summary_event(
-            events[0],
+            &events[0],
             &summary,
             NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT,
             0,
@@ -1238,6 +1444,53 @@ mod tests {
             overflowed: 0,
         };
         ffi_append_search_summary_trace(&raw const summary, &raw mut null_events);
+        assert_eq!(null_events.len, 0);
+        assert_eq!(null_events.overflowed, 1);
+    }
+
+    #[test]
+    fn response_trace_appends_response_payload_event() {
+        let response = assemble_aligned_response(&aligned_input(4.5, 4.0));
+        let mut events = [AwNdtAlignServiceTraceEvent::default(); 1];
+        let mut trace = AwNdtAlignServiceTrace {
+            events: events.as_mut_ptr(),
+            capacity: events.len(),
+            len: 0,
+            overflowed: 0,
+        };
+
+        append_response_trace(&response, &raw mut trace);
+
+        assert_eq!(trace.len, 1);
+        assert_eq!(trace.overflowed, 0);
+        expect_response_event(&events[0], &response);
+    }
+
+    #[test]
+    fn response_trace_null_and_full_buffers_are_safe() {
+        let response = assemble_aligned_response(&aligned_input(4.5, 4.0));
+
+        ffi_append_response_trace(core::ptr::null(), core::ptr::null_mut());
+        ffi_append_response_trace(&raw const response, core::ptr::null_mut());
+
+        let mut events = [AwNdtAlignServiceTraceEvent::default(); 1];
+        let mut full_trace = AwNdtAlignServiceTrace {
+            events: events.as_mut_ptr(),
+            capacity: events.len(),
+            len: events.len(),
+            overflowed: 0,
+        };
+        ffi_append_response_trace(&raw const response, &raw mut full_trace);
+        assert_eq!(full_trace.len, events.len());
+        assert_eq!(full_trace.overflowed, 1);
+
+        let mut null_events = AwNdtAlignServiceTrace {
+            events: core::ptr::null_mut(),
+            capacity: 1,
+            len: 0,
+            overflowed: 0,
+        };
+        ffi_append_response_trace(&raw const response, &raw mut null_events);
         assert_eq!(null_events.len, 0);
         assert_eq!(null_events.overflowed, 1);
     }

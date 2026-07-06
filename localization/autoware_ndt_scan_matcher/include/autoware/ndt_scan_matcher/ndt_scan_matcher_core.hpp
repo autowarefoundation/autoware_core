@@ -89,6 +89,8 @@ public:
     return map_update_timer_->time_until_trigger();
   }
 
+  void set_align_service_trace(AwNdtAlignServiceTrace * trace) { align_service_trace_ = trace; }
+
 private:
   void callback_timer();
 
@@ -235,6 +237,7 @@ private:
   std::unique_ptr<autoware_utils_logging::LoggerLevelConfigure> logger_configure_;
 
   HyperParameters param_;
+  AwNdtAlignServiceTrace * align_service_trace_{nullptr};
 
 #ifdef NDT_USE_RUST
   // Opaque Rust node handle. It owns migrated node state and drives Rust callback bodies; declared

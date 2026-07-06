@@ -161,6 +161,10 @@ if(BUILD_TESTING)
     test/test_cases/particles_num_less_than_publish_num.cpp
     TIMEOUT "300"
   )
+  ament_auto_add_gtest(missing_sensor_for_initial_pose_estimation
+    test/test_cases/missing_sensor_for_initial_pose_estimation.cpp
+    TIMEOUT "300"
+  )
 
   # Fast, dependency-light unit tests for the pure covariance / oscillation math.
   ament_auto_add_gtest(test_estimate_covariance
