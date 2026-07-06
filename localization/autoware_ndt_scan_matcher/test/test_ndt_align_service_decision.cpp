@@ -12,13 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Phase 7A: the align-service deterministic gate/response decision lives in Rust. These tests pin
-// the C ABI from the C++ side before the later TPE/search migration changes the align body.
+// Phase 7A/7B: the align-service deterministic gate/response decision and its abstract semantic
+// trace live in Rust. These tests pin the C ABI from the C++ side before the later TPE/search
+// migration changes the align body.
 
 #include "autoware_ndt_scan_matcher_rs.h"
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <cstdint>
 
 namespace
@@ -44,6 +46,35 @@ AwNdtAlignServiceDecision decide(const AwNdtAlignServiceInput & input)
   return decision;
 }
 
+AwNdtAlignServiceDecision decide_traced(
+  const AwNdtAlignServiceInput & input, AwNdtAlignServiceTrace * trace)
+{
+  AwNdtAlignServiceDecision decision{};
+  autoware_ndt_scan_matcher_rs_node_decide_align_service_traced(&input, trace, &decision);
+  return decision;
+}
+
+uint8_t score_available_byte(const AwNdtAlignServiceInput & input)
+{
+  return input.align_score_available == 1U ? 1U : 0U;
+}
+
+AwNdtAlignServiceTraceEvent reference_event(
+  const AwNdtAlignServiceInput & input, const AwNdtAlignServiceDecision & decision)
+{
+  AwNdtAlignServiceTraceEvent event{};
+  event.kind = NDT_ALIGN_TRACE_EVENT_DECISION;
+  event.status = decision.status;
+  event.success = decision.success;
+  event.reliable = decision.reliable;
+  event.should_align = decision.should_align;
+  event.valid = decision.valid;
+  event.score_available = score_available_byte(input);
+  event.score = input.align_score;
+  event.reliable_score_threshold = input.reliable_score_threshold;
+  return event;
+}
+
 void expect_decision(
   const AwNdtAlignServiceDecision & got, const int32_t status, const uint8_t success,
   const uint8_t reliable, const uint8_t should_align, const uint8_t valid)
@@ -53,6 +84,20 @@ void expect_decision(
   EXPECT_EQ(got.reliable, reliable);
   EXPECT_EQ(got.should_align, should_align);
   EXPECT_EQ(got.valid, valid);
+}
+
+void expect_event(
+  const AwNdtAlignServiceTraceEvent & got, const AwNdtAlignServiceTraceEvent & expected)
+{
+  EXPECT_EQ(got.kind, expected.kind);
+  EXPECT_EQ(got.status, expected.status);
+  EXPECT_EQ(got.success, expected.success);
+  EXPECT_EQ(got.reliable, expected.reliable);
+  EXPECT_EQ(got.should_align, expected.should_align);
+  EXPECT_EQ(got.valid, expected.valid);
+  EXPECT_EQ(got.score_available, expected.score_available);
+  EXPECT_EQ(got.score, expected.score);
+  EXPECT_EQ(got.reliable_score_threshold, expected.reliable_score_threshold);
 }
 }  // namespace
 
@@ -100,4 +145,71 @@ TEST(NdtAlignServiceDecision, InvalidFlagAndNullPointersAreSafe)  // NOLINT
 
   const AwNdtAlignServiceInput valid = make_input(true, true, true, false, 0.0);
   autoware_ndt_scan_matcher_rs_node_decide_align_service(&valid, nullptr);
+}
+
+TEST(NdtAlignServiceDecision, TracedAndCompatibilityWrappersMatch)  // NOLINT
+{
+  const AwNdtAlignServiceInput input = make_input(true, true, true, true, 4.5);
+  const AwNdtAlignServiceDecision untraced = decide(input);
+  const AwNdtAlignServiceDecision traced = decide_traced(input, nullptr);
+  EXPECT_EQ(traced.status, untraced.status);
+  EXPECT_EQ(traced.success, untraced.success);
+  EXPECT_EQ(traced.reliable, untraced.reliable);
+  EXPECT_EQ(traced.should_align, untraced.should_align);
+  EXPECT_EQ(traced.valid, untraced.valid);
+}
+
+TEST(NdtAlignServiceDecision, TracedDecisionAppendsSemanticEvent)  // NOLINT
+{
+  const AwNdtAlignServiceInput input = make_input(true, true, true, true, 4.5);
+  std::array<AwNdtAlignServiceTraceEvent, 2> events{};
+  AwNdtAlignServiceTrace trace{};
+  trace.events = events.data();
+  trace.capacity = events.size();
+  trace.len = 0;
+  trace.overflowed = 0U;
+
+  const AwNdtAlignServiceDecision decision = decide_traced(input, &trace);
+
+  ASSERT_EQ(trace.len, 1U);
+  EXPECT_EQ(trace.overflowed, 0U);
+  expect_decision(decision, NDT_ALIGN_SERVICE_STATUS_ALIGNED, 1U, 1U, 0U, 1U);
+  expect_event(events[0], reference_event(input, decision));
+}
+
+TEST(NdtAlignServiceDecision, TracedInvalidInputAndOverflowAreExplicit)  // NOLINT
+{
+  AwNdtAlignServiceInput invalid = make_input(true, false, true, false, 7.0);
+  invalid.map_points_ok = 3U;
+  std::array<AwNdtAlignServiceTraceEvent, 1> events{};
+  AwNdtAlignServiceTrace trace{};
+  trace.events = events.data();
+  trace.capacity = events.size();
+  trace.len = 0;
+  trace.overflowed = 0U;
+
+  const AwNdtAlignServiceDecision decision = decide_traced(invalid, &trace);
+
+  ASSERT_EQ(trace.len, 1U);
+  EXPECT_EQ(trace.overflowed, 0U);
+  expect_decision(decision, NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT, 0U, 0U, 0U, 0U);
+  expect_event(events[0], reference_event(invalid, decision));
+
+  AwNdtAlignServiceTrace full_trace{};
+  full_trace.events = events.data();
+  full_trace.capacity = events.size();
+  full_trace.len = events.size();
+  full_trace.overflowed = 0U;
+  static_cast<void>(decide_traced(make_input(true, true, true, false, 0.0), &full_trace));
+  EXPECT_EQ(full_trace.len, events.size());
+  EXPECT_EQ(full_trace.overflowed, 1U);
+
+  AwNdtAlignServiceTrace null_events{};
+  null_events.events = nullptr;
+  null_events.capacity = 1U;
+  null_events.len = 0U;
+  null_events.overflowed = 0U;
+  static_cast<void>(decide_traced(make_input(true, true, true, false, 0.0), &null_events));
+  EXPECT_EQ(null_events.len, 0U);
+  EXPECT_EQ(null_events.overflowed, 1U);
 }

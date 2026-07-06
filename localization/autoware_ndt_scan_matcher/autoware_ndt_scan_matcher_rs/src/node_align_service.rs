@@ -31,6 +31,40 @@ pub const NDT_ALIGN_SERVICE_STATUS_ALIGNED: i32 = 4;
 /// FFI input contained an invalid flag bit pattern.
 pub const NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT: i32 = 5;
 
+/// A deterministic align-service decision event.
+pub const NDT_ALIGN_TRACE_EVENT_DECISION: i32 = 0;
+
+/// One semantic trace event emitted by the align-service decision FFI.
+///
+/// This intentionally records semantic decision fields only, not ROS message bytes, wall-clock time,
+/// memory addresses, or raw logs.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct AwNdtAlignServiceTraceEvent {
+    pub kind: i32,
+    pub status: i32,
+    pub success: u8,
+    pub reliable: u8,
+    pub should_align: u8,
+    pub valid: u8,
+    pub score_available: u8,
+    pub score: f64,
+    pub reliable_score_threshold: f64,
+}
+
+/// Caller-owned trace buffer for align-service semantic events.
+///
+/// `events` points to `capacity` writable [`AwNdtAlignServiceTraceEvent`] slots. Rust appends by
+/// writing at `events[len]` and incrementing `len`. If the event cannot be written, `overflowed` is
+/// set to `1` and `len` is left unchanged.
+#[repr(C)]
+pub struct AwNdtAlignServiceTrace {
+    pub events: *mut AwNdtAlignServiceTraceEvent,
+    pub capacity: usize,
+    pub len: usize,
+    pub overflowed: u8,
+}
+
 /// Deterministic inputs to the align-service decision.
 ///
 /// Boolean-like fields are `u8` instead of Rust `bool` so the FFI boundary can reject invalid C bit
@@ -95,6 +129,68 @@ fn invalid_decision() -> AwNdtAlignServiceDecision {
     }
 }
 
+fn score_available_byte(input: &AwNdtAlignServiceInput) -> u8 {
+    byte(flag(input.align_score_available).unwrap_or(false))
+}
+
+fn make_trace_event(
+    input: &AwNdtAlignServiceInput,
+    decision: AwNdtAlignServiceDecision,
+) -> AwNdtAlignServiceTraceEvent {
+    AwNdtAlignServiceTraceEvent {
+        kind: NDT_ALIGN_TRACE_EVENT_DECISION,
+        status: decision.status,
+        success: decision.success,
+        reliable: decision.reliable,
+        should_align: decision.should_align,
+        valid: decision.valid,
+        score_available: score_available_byte(input),
+        score: input.align_score,
+        reliable_score_threshold: input.reliable_score_threshold,
+    }
+}
+
+#[expect(
+    unsafe_code,
+    reason = "C ABI trace buffer boundary; pointer validity and capacity are caller contract, bounds checked before write"
+)]
+fn append_trace_event(
+    trace: *mut AwNdtAlignServiceTrace,
+    input: &AwNdtAlignServiceInput,
+    decision: AwNdtAlignServiceDecision,
+) {
+    if trace.is_null() {
+        return;
+    }
+    // SAFETY: non-null per the check; caller guarantees a valid, aligned trace header.
+    let trace_ref = unsafe { &mut *trace };
+    if trace_ref.events.is_null() || trace_ref.capacity == 0 {
+        trace_ref.overflowed = 1;
+        return;
+    }
+    if trace_ref.len >= trace_ref.capacity {
+        trace_ref.overflowed = 1;
+        return;
+    }
+    let Some(next_len) = trace_ref.len.checked_add(1_usize) else {
+        trace_ref.overflowed = 1;
+        return;
+    };
+    if next_len > trace_ref.capacity {
+        trace_ref.overflowed = 1;
+        return;
+    }
+    // SAFETY: events is non-null and len < capacity, so writing one event at events + len is in-bounds
+    // for the caller-provided buffer. The trace owns the mutable buffer for the duration of the call.
+    unsafe {
+        trace_ref
+            .events
+            .add(trace_ref.len)
+            .write(make_trace_event(input, decision));
+    }
+    trace_ref.len = next_len;
+}
+
 #[must_use]
 pub fn decide_align_service(input: &AwNdtAlignServiceInput) -> AwNdtAlignServiceDecision {
     let Some(transform_ok) = flag(input.transform_initial_pose_ok) else {
@@ -146,18 +242,23 @@ pub fn decide_align_service(input: &AwNdtAlignServiceInput) -> AwNdtAlignService
     )
 }
 
-/// Decide the deterministic align-service branch/response state.
+/// Decide the deterministic align-service branch/response state and optionally append one semantic
+/// trace event.
 ///
 /// # Safety
 /// `input` must point to a valid, aligned [`AwNdtAlignServiceInput`] and `out` to a valid, aligned,
-/// writable [`AwNdtAlignServiceDecision`]. If either pointer is null, this function is a no-op.
+/// writable [`AwNdtAlignServiceDecision`]. `trace` may be null; otherwise it must point to a valid,
+/// aligned [`AwNdtAlignServiceTrace`] whose `events` field is either null or points to `capacity`
+/// writable [`AwNdtAlignServiceTraceEvent`] slots. If `input` or `out` is null, this function is a
+/// no-op and no trace event is written.
 #[expect(
     unsafe_code,
     reason = "C ABI boundary; pointers and u8 boolean bit patterns validated per rust-c-ffi-safety"
 )]
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_decide_align_service(
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_decide_align_service_traced(
     input: *const AwNdtAlignServiceInput,
+    trace: *mut AwNdtAlignServiceTrace,
     out: *mut AwNdtAlignServiceDecision,
 ) {
     if input.is_null() || out.is_null() {
@@ -166,9 +267,34 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_decide_align_service(
     // SAFETY: non-null per the check; caller guarantees a valid, aligned input struct, read once.
     let input_ref = unsafe { &*input };
     let result = decide_align_service(input_ref);
+    append_trace_event(trace, input_ref, result);
     // SAFETY: `out` is non-null per the check and points to a writable decision per the contract.
     unsafe {
         *out = result;
+    }
+}
+
+/// Decide the deterministic align-service branch/response state.
+///
+/// # Safety
+/// `input` must point to a valid, aligned [`AwNdtAlignServiceInput`] and `out` to a valid, aligned,
+/// writable [`AwNdtAlignServiceDecision`]. If either pointer is null, this function is a no-op.
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; compatibility wrapper over the traced FFI"
+)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_decide_align_service(
+    input: *const AwNdtAlignServiceInput,
+    out: *mut AwNdtAlignServiceDecision,
+) {
+    // SAFETY: this wrapper preserves the same pointer contract and passes a null trace pointer.
+    unsafe {
+        autoware_ndt_scan_matcher_rs_node_decide_align_service_traced(
+            input,
+            core::ptr::null_mut(),
+            out,
+        );
     }
 }
 
@@ -206,6 +332,50 @@ mod tests {
         assert_eq!(got.reliable, reliable);
         assert_eq!(got.should_align, should_align);
         assert_eq!(got.valid, valid);
+    }
+
+    fn expect_event(
+        got: AwNdtAlignServiceTraceEvent,
+        input: &AwNdtAlignServiceInput,
+        decision: AwNdtAlignServiceDecision,
+    ) {
+        assert_eq!(got.kind, NDT_ALIGN_TRACE_EVENT_DECISION);
+        assert_eq!(got.status, decision.status);
+        assert_eq!(got.success, decision.success);
+        assert_eq!(got.reliable, decision.reliable);
+        assert_eq!(got.should_align, decision.should_align);
+        assert_eq!(got.valid, decision.valid);
+        assert_eq!(got.score_available, score_available_byte(input));
+        assert_eq!(got.score.to_bits(), input.align_score.to_bits());
+        assert_eq!(
+            got.reliable_score_threshold.to_bits(),
+            input.reliable_score_threshold.to_bits()
+        );
+    }
+
+    #[expect(unsafe_code, reason = "test exercises the C ABI entry point directly")]
+    fn ffi_decide(input: *const AwNdtAlignServiceInput, out: *mut AwNdtAlignServiceDecision) {
+        // SAFETY: tests pass either null pointers to verify the no-op contract or pointers to local
+        // valid, aligned structs that live for the duration of the call.
+        unsafe {
+            autoware_ndt_scan_matcher_rs_node_decide_align_service(input, out);
+        }
+    }
+
+    #[expect(
+        unsafe_code,
+        reason = "test exercises the traced C ABI entry point directly"
+    )]
+    fn ffi_decide_traced(
+        input: *const AwNdtAlignServiceInput,
+        trace: *mut AwNdtAlignServiceTrace,
+        out: *mut AwNdtAlignServiceDecision,
+    ) {
+        // SAFETY: tests pass null pointers to verify no-op contracts or local valid, aligned structs
+        // and buffers that live for the duration of the call.
+        unsafe {
+            autoware_ndt_scan_matcher_rs_node_decide_align_service_traced(input, trace, out);
+        }
     }
 
     #[test]
@@ -304,15 +474,6 @@ mod tests {
         );
     }
 
-    #[expect(unsafe_code, reason = "test exercises the C ABI entry point directly")]
-    fn ffi_decide(input: *const AwNdtAlignServiceInput, out: *mut AwNdtAlignServiceDecision) {
-        // SAFETY: tests pass either null pointers to verify the no-op contract or pointers to local
-        // valid, aligned structs that live for the duration of the call.
-        unsafe {
-            autoware_ndt_scan_matcher_rs_node_decide_align_service(input, out);
-        }
-    }
-
     #[test]
     fn ffi_null_is_noop_and_invalid_flag_writes_invalid() {
         let input_ok = input(1, 1, 1, 0, 0.0);
@@ -330,5 +491,81 @@ mod tests {
         let bad = input(1, 1, 3, 0, 0.0);
         ffi_decide(&raw const bad, &raw mut out);
         expect_decision(out, NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn traced_and_untraced_decisions_match() {
+        let input_ok = input(1, 1, 1, 1, 4.5);
+        let mut traced = AwNdtAlignServiceDecision::default();
+        let mut untraced = AwNdtAlignServiceDecision::default();
+        ffi_decide(&raw const input_ok, &raw mut untraced);
+        ffi_decide_traced(&raw const input_ok, core::ptr::null_mut(), &raw mut traced);
+        assert_eq!(traced, untraced);
+    }
+
+    #[test]
+    fn traced_decision_appends_one_semantic_event() {
+        let input_ok = input(1, 1, 1, 1, 4.5);
+        let mut out = AwNdtAlignServiceDecision::default();
+        let mut events = [AwNdtAlignServiceTraceEvent::default(); 2];
+        let mut trace = AwNdtAlignServiceTrace {
+            events: events.as_mut_ptr(),
+            capacity: events.len(),
+            len: 0,
+            overflowed: 0,
+        };
+
+        ffi_decide_traced(&raw const input_ok, &raw mut trace, &raw mut out);
+
+        assert_eq!(trace.len, 1);
+        assert_eq!(trace.overflowed, 0);
+        expect_decision(out, NDT_ALIGN_SERVICE_STATUS_ALIGNED, 1, 1, 0, 1);
+        expect_event(events[0], &input_ok, out);
+    }
+
+    #[test]
+    fn traced_invalid_input_appends_invalid_event() {
+        let bad = input(1, 2, 1, 0, 7.0);
+        let mut out = AwNdtAlignServiceDecision::default();
+        let mut events = [AwNdtAlignServiceTraceEvent::default(); 1];
+        let mut trace = AwNdtAlignServiceTrace {
+            events: events.as_mut_ptr(),
+            capacity: events.len(),
+            len: 0,
+            overflowed: 0,
+        };
+
+        ffi_decide_traced(&raw const bad, &raw mut trace, &raw mut out);
+
+        assert_eq!(trace.len, 1);
+        assert_eq!(trace.overflowed, 0);
+        expect_decision(out, NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT, 0, 0, 0, 0);
+        expect_event(events[0], &bad, out);
+    }
+
+    #[test]
+    fn trace_null_event_buffer_or_full_buffer_sets_overflow() {
+        let input_ok = input(1, 1, 1, 0, 0.0);
+        let mut out = AwNdtAlignServiceDecision::default();
+        let mut null_trace = AwNdtAlignServiceTrace {
+            events: core::ptr::null_mut(),
+            capacity: 1,
+            len: 0,
+            overflowed: 0,
+        };
+        ffi_decide_traced(&raw const input_ok, &raw mut null_trace, &raw mut out);
+        assert_eq!(null_trace.len, 0);
+        assert_eq!(null_trace.overflowed, 1);
+
+        let mut events = [AwNdtAlignServiceTraceEvent::default(); 1];
+        let mut full_trace = AwNdtAlignServiceTrace {
+            events: events.as_mut_ptr(),
+            capacity: events.len(),
+            len: events.len(),
+            overflowed: 0,
+        };
+        ffi_decide_traced(&raw const input_ok, &raw mut full_trace, &raw mut out);
+        assert_eq!(full_trace.len, events.len());
+        assert_eq!(full_trace.overflowed, 1);
     }
 }
