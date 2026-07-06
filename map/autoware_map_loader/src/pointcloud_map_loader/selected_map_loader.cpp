@@ -16,7 +16,6 @@
 
 #include <rclcpp/clock.hpp>
 
-#include <functional>
 #include <map>
 #include <string>
 #include <utility>
@@ -28,23 +27,6 @@ SelectedMapLoaderModule::SelectedMapLoaderModule(
   std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict)
 : all_pcd_file_metadata_dict_(std::move(pcd_file_metadata_dict))
 {
-}
-
-SelectedMapLoaderModule::SelectedMapLoaderModule(
-  rclcpp::Node * node, std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict)
-: SelectedMapLoaderModule(std::move(pcd_file_metadata_dict))
-{
-  get_selected_pcd_maps_service_ = node->create_service<GetSelectedPointCloudMap>(
-    "service/get_selected_pcd_map",
-    std::bind(
-      &SelectedMapLoaderModule::on_service_get_selected_point_cloud_map, this,
-      std::placeholders::_1, std::placeholders::_2));
-
-  rclcpp::QoS durable_qos{1};
-  durable_qos.transient_local();
-  pub_metadata_ = node->create_publisher<autoware_map_msgs::msg::PointCloudMapMetaData>(
-    "output/pointcloud_map_metadata", durable_qos);
-  pub_metadata_->publish(create_metadata(all_pcd_file_metadata_dict_));
 }
 
 autoware_map_msgs::msg::PointCloudMapMetaData create_metadata(
@@ -121,12 +103,5 @@ bool SelectedMapLoaderModule::create_response(
 
   res->header.frame_id = "map";
   return true;
-}
-
-bool SelectedMapLoaderModule::on_service_get_selected_point_cloud_map(
-  GetSelectedPointCloudMap::Request::SharedPtr req,
-  GetSelectedPointCloudMap::Response::SharedPtr res) const
-{
-  return create_response(req, res);
 }
 }  // namespace autoware::map_loader

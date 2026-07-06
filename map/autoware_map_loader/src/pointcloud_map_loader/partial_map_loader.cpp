@@ -14,7 +14,6 @@
 
 #include "partial_map_loader.hpp"
 
-#include <functional>
 #include <map>
 #include <string>
 #include <utility>
@@ -26,17 +25,6 @@ PartialMapLoaderModule::PartialMapLoaderModule(
   std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict)
 : all_pcd_file_metadata_dict_(std::move(pcd_file_metadata_dict))
 {
-}
-
-PartialMapLoaderModule::PartialMapLoaderModule(
-  rclcpp::Node * node, std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict)
-: PartialMapLoaderModule(std::move(pcd_file_metadata_dict))
-{
-  get_partial_pcd_maps_service_ = node->create_service<GetPartialPointCloudMap>(
-    "service/get_partial_pcd_map",
-    std::bind(
-      &PartialMapLoaderModule::on_service_get_partial_point_cloud_map, this, std::placeholders::_1,
-      std::placeholders::_2));
 }
 
 std::vector<std::string> collect_partial_map_ids(
@@ -79,12 +67,5 @@ bool PartialMapLoaderModule::create_response(
 
   res->header.frame_id = "map";
   return true;
-}
-
-bool PartialMapLoaderModule::on_service_get_partial_point_cloud_map(
-  GetPartialPointCloudMap::Request::SharedPtr req,
-  GetPartialPointCloudMap::Response::SharedPtr res) const
-{
-  return create_response(req, res);
 }
 }  // namespace autoware::map_loader

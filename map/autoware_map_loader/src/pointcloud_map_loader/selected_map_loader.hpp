@@ -17,13 +17,10 @@
 
 #include "utils.hpp"
 
-#include <rclcpp/rclcpp.hpp>
-
 #include <autoware_map_msgs/msg/point_cloud_map_meta_data.hpp>
 #include <autoware_map_msgs/srv/get_selected_point_cloud_map.hpp>
 
 #include <map>
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -59,23 +56,12 @@ class SelectedMapLoaderModule
 public:
   explicit SelectedMapLoaderModule(std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict);
 
-  // Backward-compatible constructor used by existing tests.
-  explicit SelectedMapLoaderModule(
-    rclcpp::Node * node, std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict);
-
   [[nodiscard]] bool create_response(
     GetSelectedPointCloudMap::Request::SharedPtr req,
     GetSelectedPointCloudMap::Response::SharedPtr res) const;
 
 private:
   std::map<std::string, PCDFileMetadata> all_pcd_file_metadata_dict_;
-  rclcpp::Service<GetSelectedPointCloudMap>::SharedPtr get_selected_pcd_maps_service_;
-
-  rclcpp::Publisher<autoware_map_msgs::msg::PointCloudMapMetaData>::SharedPtr pub_metadata_;
-
-  [[nodiscard]] bool on_service_get_selected_point_cloud_map(
-    GetSelectedPointCloudMap::Request::SharedPtr req,
-    GetSelectedPointCloudMap::Response::SharedPtr res) const;
 };
 }  // namespace autoware::map_loader
 
