@@ -26,8 +26,8 @@
 #include <memory>
 #include <string>
 
-using autoware::map_loader::SelectedMapLoaderModule;
 using autoware::map_loader::PointCloudMapLoaderNode;
+using autoware::map_loader::SelectedMapLoaderModule;
 using autoware_map_msgs::srv::GetSelectedPointCloudMap;
 
 class TestSelectedMapLoaderModule : public ::testing::Test
