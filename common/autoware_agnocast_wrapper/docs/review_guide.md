@@ -415,11 +415,11 @@ All macros below are defined in [`autoware_agnocast_wrapper.hpp`](https://github
 
 ### Publisher/Subscriber Creation
 
-| Macro                                                                   | ENABLE_AGNOCAST=1 (Agnocast)                                 | ENABLE_AGNOCAST=0 (ROS 2)                                 |
-| ----------------------------------------------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------- |
-| `AUTOWARE_CREATE_SUBSCRIPTION(msg_type, topic, qos, callback, options)` | `agnocast_wrapper::create_subscription<msg_type>(...)`       | `this->create_subscription<msg_type>(...)`                |
-| `AUTOWARE_CREATE_PUBLISHER2(msg_type, topic, qos)`                      | `agnocast_wrapper::create_publisher<msg_type>(...)`          | `this->create_publisher<msg_type>(...)`                   |
-| `AUTOWARE_CREATE_PUBLISHER3(msg_type, topic, qos, options)`             | `agnocast_wrapper::create_publisher<msg_type>(...)`          | `this->create_publisher<msg_type>(...)`                   |
+| Macro                                                                   | ENABLE_AGNOCAST=1 (Agnocast)                                         | ENABLE_AGNOCAST=0 (ROS 2)                                                   |
+| ----------------------------------------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `AUTOWARE_CREATE_SUBSCRIPTION(msg_type, topic, qos, callback, options)` | `agnocast_wrapper::create_subscription<msg_type>(...)`               | `this->create_subscription<msg_type>(...)`                                  |
+| `AUTOWARE_CREATE_PUBLISHER2(msg_type, topic, qos)`                      | `agnocast_wrapper::create_publisher<msg_type>(...)`                  | `this->create_publisher<msg_type>(...)`                                     |
+| `AUTOWARE_CREATE_PUBLISHER3(msg_type, topic, qos, options)`             | `agnocast_wrapper::create_publisher<msg_type>(...)`                  | `this->create_publisher<msg_type>(...)`                                     |
 | `AUTOWARE_CREATE_POLLING_SUBSCRIBER(msg_type, policy, topic, qos)`      | `agnocast_wrapper::create_polling_subscriber<msg_type, policy>(...)` | `InterProcessPollingSubscriber<msg_type, policy>::create_subscription(...)` |
 
 &nbsp;
