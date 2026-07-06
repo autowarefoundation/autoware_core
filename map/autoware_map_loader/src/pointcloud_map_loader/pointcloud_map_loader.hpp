@@ -32,8 +32,8 @@
 namespace autoware::map_loader
 {
 /// @brief Progress callback invoked periodically while loading multiple PCD files.
-using PointcloudLoaderProgressFunction =
-  std::function<void(size_t processed_pcd_file_num, size_t pcd_path_size, const std::string & path)>;
+using PointcloudLoaderProgressFunction = std::function<void(
+  size_t processed_pcd_file_num, size_t pcd_path_size, const std::string & path)>;
 
 /// @brief Downsample a pointcloud message with a voxel-grid filter.
 /// @param msg_input Input pointcloud message.

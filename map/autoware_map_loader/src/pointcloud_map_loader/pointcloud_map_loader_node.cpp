@@ -41,8 +41,9 @@ PointCloudMapLoaderNode::PointCloudMapLoaderNode(const rclcpp::NodeOptions & opt
     RCLCPP_DEBUG_STREAM(
       get_logger(), "Load " << path << " (" << processed << " out of " << total << ")");
   };
-  const auto on_whole_load_error =
-    [this](const std::string & msg) { RCLCPP_ERROR_STREAM(get_logger(), msg); };
+  const auto on_whole_load_error = [this](const std::string & msg) {
+    RCLCPP_ERROR_STREAM(get_logger(), msg);
+  };
 
   if (enable_whole_load) {
     pcd_map_loader_ = std::make_unique<PointcloudMapLoaderModule>();
@@ -71,9 +72,8 @@ PointCloudMapLoaderNode::PointCloudMapLoaderNode(const rclcpp::NodeOptions & opt
 
     const auto leaf_size =
       boost::make_optional(static_cast<float>(declare_parameter<float>("leaf_size")));
-    const auto loaded_pcd =
-      downsampled_pcd_map_loader_->create_map_message(
-        pcd_paths, leaf_size, on_progress, on_whole_load_error);
+    const auto loaded_pcd = downsampled_pcd_map_loader_->create_map_message(
+      pcd_paths, leaf_size, on_progress, on_whole_load_error);
     if (loaded_pcd.width == 0) {
       RCLCPP_ERROR(get_logger(), "No PCD was loaded: pcd_paths.size() = %zu", pcd_paths.size());
     } else {
