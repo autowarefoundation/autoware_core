@@ -15,7 +15,6 @@
 #include "differential_map_loader.hpp"
 
 #include <algorithm>
-#include <functional>
 #include <map>
 #include <string>
 #include <utility>
@@ -27,17 +26,6 @@ DifferentialMapLoaderModule::DifferentialMapLoaderModule(
   std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict)
 : all_pcd_file_metadata_dict_(std::move(pcd_file_metadata_dict))
 {
-}
-
-DifferentialMapLoaderModule::DifferentialMapLoaderModule(
-  rclcpp::Node * node, std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict)
-: DifferentialMapLoaderModule(std::move(pcd_file_metadata_dict))
-{
-  get_differential_pcd_maps_service_ = node->create_service<GetDifferentialPointCloudMap>(
-    "service/get_differential_pcd_map",
-    std::bind(
-      &DifferentialMapLoaderModule::on_service_get_differential_point_cloud_map, this,
-      std::placeholders::_1, std::placeholders::_2));
 }
 
 DifferentialMapLoadPlan create_differential_map_load_plan(
@@ -101,12 +89,5 @@ bool DifferentialMapLoaderModule::create_response(
   res->ids_to_remove = plan.ids_to_remove;
   res->header.frame_id = "map";
   return true;
-}
-
-bool DifferentialMapLoaderModule::on_service_get_differential_point_cloud_map(
-  GetDifferentialPointCloudMap::Request::SharedPtr req,
-  GetDifferentialPointCloudMap::Response::SharedPtr res) const
-{
-  return create_response(req, res);
 }
 }  // namespace autoware::map_loader
