@@ -113,46 +113,49 @@ interpolator::InterpolationResult Trajectory<PointType>::build(
     return tl::unexpected(
       interpolator::InterpolationFailure{"failed to interpolate PathPoint::pose"} + result.error());
   }
-  if (const auto result = detail::build_with_fallback(
-        longitudinal_velocity_mps_, bases_, longitudinal_velocity_mps_values,
-        [] {
-          return std::make_shared<detail::InterpolatedArray<double>>(
-            std::make_shared<interpolator::Linear>());
-        },
-        [] {
-          return std::make_shared<detail::InterpolatedArray<double>>(
-            std::make_shared<interpolator::NearestNeighbor<double>>());
-        });
-      !result) {
+  if (
+    const auto result = detail::build_with_fallback(
+      longitudinal_velocity_mps_, bases_, longitudinal_velocity_mps_values,
+      [] {
+        return std::make_shared<detail::InterpolatedArray<double>>(
+          std::make_shared<interpolator::Linear>());
+      },
+      [] {
+        return std::make_shared<detail::InterpolatedArray<double>>(
+          std::make_shared<interpolator::NearestNeighbor<double>>());
+      });
+    !result) {
     return tl::unexpected(
       interpolator::InterpolationFailure{
         "failed to interpolate PathPoint::longitudinal_velocity_mps"});
   }
-  if (const auto result = detail::build_with_fallback(
-        lateral_velocity_mps_, bases_, lateral_velocity_mps_values,
-        [] {
-          return std::make_shared<detail::InterpolatedArray<double>>(
-            std::make_shared<interpolator::Linear>());
-        },
-        [] {
-          return std::make_shared<detail::InterpolatedArray<double>>(
-            std::make_shared<interpolator::NearestNeighbor<double>>());
-        });
-      !result) {
+  if (
+    const auto result = detail::build_with_fallback(
+      lateral_velocity_mps_, bases_, lateral_velocity_mps_values,
+      [] {
+        return std::make_shared<detail::InterpolatedArray<double>>(
+          std::make_shared<interpolator::Linear>());
+      },
+      [] {
+        return std::make_shared<detail::InterpolatedArray<double>>(
+          std::make_shared<interpolator::NearestNeighbor<double>>());
+      });
+    !result) {
     return tl::unexpected(
       interpolator::InterpolationFailure{"failed to interpolate PathPoint::lateral_velocity_mps"});
   }
-  if (const auto result = detail::build_with_fallback(
-        heading_rate_rps_, bases_, heading_rate_rps_values,
-        [] {
-          return std::make_shared<detail::InterpolatedArray<double>>(
-            std::make_shared<interpolator::Linear>());
-        },
-        [] {
-          return std::make_shared<detail::InterpolatedArray<double>>(
-            std::make_shared<interpolator::NearestNeighbor<double>>());
-        });
-      !result) {
+  if (
+    const auto result = detail::build_with_fallback(
+      heading_rate_rps_, bases_, heading_rate_rps_values,
+      [] {
+        return std::make_shared<detail::InterpolatedArray<double>>(
+          std::make_shared<interpolator::Linear>());
+      },
+      [] {
+        return std::make_shared<detail::InterpolatedArray<double>>(
+          std::make_shared<interpolator::NearestNeighbor<double>>());
+      });
+    !result) {
     return tl::unexpected(
       interpolator::InterpolationFailure{"failed to interpolate PathPoint::heading_rate_rps"});
   }
