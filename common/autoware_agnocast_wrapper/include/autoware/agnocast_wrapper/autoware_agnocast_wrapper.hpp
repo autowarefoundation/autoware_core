@@ -604,7 +604,7 @@ public:
 template <typename MessageT, template <typename> class PollingPolicy = polling_policy::Latest>
 class AgnocastPollingSubscriber : public PollingSubscriber<MessageT, PollingPolicy>
 {
-  typename agnocast::PollingSubscriber<MessageT>::SharedPtr subscriber_;
+  typename agnocast::TakeSubscription<MessageT>::SharedPtr subscriber_;
 
   static constexpr bool default_allow_same_message =
     polling_default_allow_same_message_v<MessageT, PollingPolicy>;
@@ -613,21 +613,21 @@ public:
   template <typename NodeT>
   explicit AgnocastPollingSubscriber(
     NodeT * node, const std::string & topic_name, const rclcpp::QoS & qos)
-  : subscriber_(agnocast::create_subscription<MessageT>(node, topic_name, qos))
+  : subscriber_(std::make_shared<agnocast::TakeSubscription<MessageT>>(node, topic_name, qos))
   {
   }
 
   AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)
   takeData(bool allow_same_message = default_allow_same_message) override
   {
-    auto data = subscriber_->take_data(allow_same_message);
+    auto data = subscriber_->take(allow_same_message);
     return AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)(std::move(data));
   }
 
   AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)
   take_data(bool allow_same_message = default_allow_same_message) override
   {
-    auto data = subscriber_->take_data(allow_same_message);
+    auto data = subscriber_->take(allow_same_message);
     return AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)(std::move(data));
   }
 };
