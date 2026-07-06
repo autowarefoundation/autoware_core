@@ -60,7 +60,7 @@ std::vector<float> cloud_to_flat(const pcl::PointCloud<pcl::PointXYZ> & cloud)
 AwNdtAlignServiceDecision decide_align_service(
   const bool transform_initial_pose_ok, const bool map_points_ok, const bool sensor_points_ok,
   const bool align_score_available, const double align_score,
-  const double reliable_score_threshold)
+  const double reliable_score_threshold, AwNdtAlignServiceTrace * trace = nullptr)
 {
   AwNdtAlignServiceInput input{};
   input.transform_initial_pose_ok = transform_initial_pose_ok ? 1U : 0U;
@@ -70,7 +70,7 @@ AwNdtAlignServiceDecision decide_align_service(
   input.align_score = align_score;
   input.reliable_score_threshold = reliable_score_threshold;
   AwNdtAlignServiceDecision decision{};
-  autoware_ndt_scan_matcher_rs_node_decide_align_service(&input, &decision);
+  autoware_ndt_scan_matcher_rs_node_decide_align_service_traced(&input, trace, &decision);
   return decision;
 }
 

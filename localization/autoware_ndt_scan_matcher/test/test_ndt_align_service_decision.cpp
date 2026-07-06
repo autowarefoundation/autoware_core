@@ -54,6 +54,23 @@ AwNdtAlignServiceDecision decide_traced(
   return decision;
 }
 
+AwNdtAlignServiceDecision decide_like_cpp_helper(
+  const bool transform_ok, const bool map_ok, const bool sensor_ok,
+  const bool score_available, const double score, const double threshold,
+  AwNdtAlignServiceTrace * trace = nullptr)
+{
+  AwNdtAlignServiceInput input{};
+  input.transform_initial_pose_ok = transform_ok ? 1U : 0U;
+  input.map_points_ok = map_ok ? 1U : 0U;
+  input.sensor_points_ok = sensor_ok ? 1U : 0U;
+  input.align_score_available = score_available ? 1U : 0U;
+  input.align_score = score;
+  input.reliable_score_threshold = threshold;
+  AwNdtAlignServiceDecision decision{};
+  autoware_ndt_scan_matcher_rs_node_decide_align_service_traced(&input, trace, &decision);
+  return decision;
+}
+
 uint8_t score_available_byte(const AwNdtAlignServiceInput & input)
 {
   return input.align_score_available == 1U ? 1U : 0U;
@@ -175,6 +192,68 @@ TEST(NdtAlignServiceDecision, TracedDecisionAppendsSemanticEvent)  // NOLINT
   EXPECT_EQ(trace.overflowed, 0U);
   expect_decision(decision, NDT_ALIGN_SERVICE_STATUS_ALIGNED, 1U, 1U, 0U, 1U);
   expect_event(events[0], reference_event(input, decision));
+}
+
+TEST(NdtAlignServiceDecision, ProductionShapedHelperUsesTracedFfiWithNullTrace)  // NOLINT
+{
+  AwNdtAlignServiceInput ready_input = make_input(true, true, true, false, 0.0);
+  ready_input.reliable_score_threshold = 2.5;
+  const AwNdtAlignServiceDecision ready_reference = decide(ready_input);
+  const AwNdtAlignServiceDecision ready_helper =
+    decide_like_cpp_helper(true, true, true, false, 0.0, 2.5);
+  EXPECT_EQ(ready_helper.status, ready_reference.status);
+  EXPECT_EQ(ready_helper.success, ready_reference.success);
+  EXPECT_EQ(ready_helper.reliable, ready_reference.reliable);
+  EXPECT_EQ(ready_helper.should_align, ready_reference.should_align);
+  EXPECT_EQ(ready_helper.valid, ready_reference.valid);
+
+  AwNdtAlignServiceInput aligned_input = make_input(true, true, true, true, 3.0);
+  aligned_input.reliable_score_threshold = 2.5;
+  const AwNdtAlignServiceDecision aligned_reference = decide(aligned_input);
+  const AwNdtAlignServiceDecision aligned_helper =
+    decide_like_cpp_helper(true, true, true, true, 3.0, 2.5);
+  EXPECT_EQ(aligned_helper.status, aligned_reference.status);
+  EXPECT_EQ(aligned_helper.success, aligned_reference.success);
+  EXPECT_EQ(aligned_helper.reliable, aligned_reference.reliable);
+  EXPECT_EQ(aligned_helper.should_align, aligned_reference.should_align);
+  EXPECT_EQ(aligned_helper.valid, aligned_reference.valid);
+}
+
+TEST(NdtAlignServiceDecision, ProductionShapedHelperCanAppendDecisionTrace)  // NOLINT
+{
+  std::array<AwNdtAlignServiceTraceEvent, 2> ready_events{};
+  AwNdtAlignServiceTrace ready_trace{};
+  ready_trace.events = ready_events.data();
+  ready_trace.capacity = ready_events.size();
+  ready_trace.len = 0U;
+  ready_trace.overflowed = 0U;
+  AwNdtAlignServiceInput ready_input = make_input(true, true, true, false, 0.0);
+  ready_input.reliable_score_threshold = 2.5;
+
+  const AwNdtAlignServiceDecision ready_decision =
+    decide_like_cpp_helper(true, true, true, false, 0.0, 2.5, &ready_trace);
+
+  ASSERT_EQ(ready_trace.len, 1U);
+  EXPECT_EQ(ready_trace.overflowed, 0U);
+  expect_decision(ready_decision, NDT_ALIGN_SERVICE_STATUS_READY_TO_ALIGN, 0U, 0U, 1U, 1U);
+  expect_event(ready_events[0], reference_event(ready_input, ready_decision));
+
+  std::array<AwNdtAlignServiceTraceEvent, 2> aligned_events{};
+  AwNdtAlignServiceTrace aligned_trace{};
+  aligned_trace.events = aligned_events.data();
+  aligned_trace.capacity = aligned_events.size();
+  aligned_trace.len = 0U;
+  aligned_trace.overflowed = 0U;
+  AwNdtAlignServiceInput aligned_input = make_input(true, true, true, true, 3.0);
+  aligned_input.reliable_score_threshold = 2.5;
+
+  const AwNdtAlignServiceDecision aligned_decision =
+    decide_like_cpp_helper(true, true, true, true, 3.0, 2.5, &aligned_trace);
+
+  ASSERT_EQ(aligned_trace.len, 1U);
+  EXPECT_EQ(aligned_trace.overflowed, 0U);
+  expect_decision(aligned_decision, NDT_ALIGN_SERVICE_STATUS_ALIGNED, 1U, 1U, 0U, 1U);
+  expect_event(aligned_events[0], reference_event(aligned_input, aligned_decision));
 }
 
 TEST(NdtAlignServiceDecision, TracedInvalidInputAndOverflowAreExplicit)  // NOLINT
