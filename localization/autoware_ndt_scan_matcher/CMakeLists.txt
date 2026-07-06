@@ -165,6 +165,10 @@ if(BUILD_TESTING)
     test/test_cases/missing_sensor_for_initial_pose_estimation.cpp
     TIMEOUT "300"
   )
+  ament_auto_add_gtest(align_service_tpe_baseline
+    test/test_cases/align_service_tpe_baseline.cpp
+    TIMEOUT "300"
+  )
 
   # Fast, dependency-light unit tests for the pure covariance / oscillation math.
   ament_auto_add_gtest(test_estimate_covariance
