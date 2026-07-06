@@ -14,7 +14,6 @@
 
 #include "pointcloud_map_loader.hpp"
 
-#include <fmt/format.h>
 #include <pcl/common/common.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/io/pcd_io.h>
@@ -61,23 +60,25 @@ sensor_msgs::msg::PointCloud2 downsample_pointcloud(
   return msg_output;
 }
 
-LoadPointcloudMapResult load_pointcloud_map(
-  const std::vector<std::string> & pcd_paths, const boost::optional<float> leaf_size)
+sensor_msgs::msg::PointCloud2 load_pointcloud_map(
+  const std::vector<std::string> & pcd_paths, const boost::optional<float> leaf_size,
+  const PointcloudLoaderProgressFunction & on_progress,
+  const PointcloudLoaderLogFunction & on_error)
 {
-  LoadPointcloudMapSuccess result;
   sensor_msgs::msg::PointCloud2 whole_pcd;
-  sensor_msgs::msg::PointCloud2 partial_pcd;
 
   for (size_t i = 0; i < pcd_paths.size(); ++i) {
     const auto & path = pcd_paths[i];
-    if (i % 50 == 0) {
-      result.debug_messages.push_back(
-        fmt::format("Load {} ({} out of {})", path, i + 1, pcd_paths.size()));
+    sensor_msgs::msg::PointCloud2 partial_pcd;
+    if (on_progress && i % 50 == 0) {
+      on_progress(i + 1, pcd_paths.size(), path);
     }
 
     if (pcl::io::loadPCDFile(path, partial_pcd) == -1) {
-      return tl::unexpected(
-        LoadPointcloudMapError{"PCD load failed: " + path, result.debug_messages});
+      const std::string msg = "PCD load failed: " + path;
+      if (on_error) {
+        on_error(msg);
+      }
     }
 
     if (leaf_size) {
@@ -94,8 +95,7 @@ LoadPointcloudMapResult load_pointcloud_map(
   }
 
   whole_pcd.header.frame_id = "map";
-  result.loaded_pcd = std::move(whole_pcd);
-  return result;
+  return whole_pcd;
 }
 
 std::vector<std::string> resolve_pcd_paths(
@@ -167,9 +167,11 @@ std::map<std::string, PCDFileMetadata> build_pcd_metadata_dict(
   throw std::runtime_error("PCD metadata file not found: " + pcd_metadata_path);
 }
 
-LoadPointcloudMapResult PointcloudMapLoaderModule::create_map_message(
-  const std::vector<std::string> & pcd_paths, boost::optional<float> leaf_size)
+sensor_msgs::msg::PointCloud2 PointcloudMapLoaderModule::create_map_message(
+  const std::vector<std::string> & pcd_paths, boost::optional<float> leaf_size,
+  const PointcloudLoaderProgressFunction & on_progress,
+  const PointcloudLoaderLogFunction & on_error)
 {
-  return load_pointcloud_map(pcd_paths, leaf_size);
+  return load_pointcloud_map(pcd_paths, leaf_size, on_progress, on_error);
 }
 }  // namespace autoware::map_loader

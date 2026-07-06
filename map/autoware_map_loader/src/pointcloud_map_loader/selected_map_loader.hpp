@@ -54,7 +54,9 @@ class SelectedMapLoaderModule
   using GetSelectedPointCloudMap = autoware_map_msgs::srv::GetSelectedPointCloudMap;
 
 public:
-  explicit SelectedMapLoaderModule(std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict);
+  explicit SelectedMapLoaderModule(
+    std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict,
+    PointcloudLoaderLogFunction on_error = PointcloudLoaderLogFunction{});
 
   [[nodiscard]] bool create_response(
     GetSelectedPointCloudMap::Request::SharedPtr req,
@@ -62,6 +64,7 @@ public:
 
 private:
   std::map<std::string, PCDFileMetadata> all_pcd_file_metadata_dict_;
+  PointcloudLoaderLogFunction on_error_;
 };
 }  // namespace autoware::map_loader
 

@@ -18,7 +18,6 @@
 #include "utils.hpp"
 
 #include <rclcpp/rclcpp.hpp>
-#include <tl/expected.hpp>
 
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
@@ -32,22 +31,9 @@
 
 namespace autoware::map_loader
 {
-/// @brief Logging callback type used by pointcloud map loading core logic.
-using PointcloudLoaderLogFunction = std::function<void(const std::string &)>;
-
-struct LoadPointcloudMapSuccess
-{
-  sensor_msgs::msg::PointCloud2 loaded_pcd;
-  std::vector<std::string> debug_messages;
-};
-
-struct LoadPointcloudMapError
-{
-  std::string error_message;
-  std::vector<std::string> debug_messages;
-};
-
-using LoadPointcloudMapResult = tl::expected<LoadPointcloudMapSuccess, LoadPointcloudMapError>;
+/// @brief Progress callback invoked periodically while loading multiple PCD files.
+using PointcloudLoaderProgressFunction =
+  std::function<void(size_t processed_pcd_file_num, size_t pcd_path_size, const std::string & path)>;
 
 /// @brief Downsample a pointcloud message with a voxel-grid filter.
 /// @param msg_input Input pointcloud message.
@@ -59,10 +45,13 @@ sensor_msgs::msg::PointCloud2 downsample_pointcloud(
 /// @brief Load and merge multiple PCD files into a single pointcloud message.
 /// @param pcd_paths Absolute paths to source PCD files.
 /// @param leaf_size Optional downsample leaf size. If not set, downsampling is skipped.
-/// @return Merged pointcloud message and collected debug logs on success,
-///         or an error message on failure.
-LoadPointcloudMapResult load_pointcloud_map(
-  const std::vector<std::string> & pcd_paths, boost::optional<float> leaf_size);
+/// @param on_progress Callback invoked during loading progress.
+/// @param on_error Callback invoked when a PCD load failure occurs.
+/// @return Merged pointcloud message. Failed files are reported through @on_error and skipped.
+sensor_msgs::msg::PointCloud2 load_pointcloud_map(
+  const std::vector<std::string> & pcd_paths, boost::optional<float> leaf_size,
+  const PointcloudLoaderProgressFunction & on_progress = PointcloudLoaderProgressFunction{},
+  const PointcloudLoaderLogFunction & on_error = PointcloudLoaderLogFunction{});
 
 /// @brief Resolve input paths to concrete PCD file paths.
 /// @param pcd_paths_or_directory Input entries, each being a PCD file path or directory.
@@ -85,16 +74,10 @@ class PointcloudMapLoaderModule
 public:
   PointcloudMapLoaderModule() = default;
 
-  // Backward-compatible constructor used by existing tests.
-  explicit PointcloudMapLoaderModule(
-    rclcpp::Node * node, const std::vector<std::string> & pcd_paths,
-    const std::string & publisher_name, bool use_downsample);
-
-  static LoadPointcloudMapResult create_map_message(
-    const std::vector<std::string> & pcd_paths, boost::optional<float> leaf_size);
-
-private:
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_pointcloud_map_;
+  static sensor_msgs::msg::PointCloud2 create_map_message(
+    const std::vector<std::string> & pcd_paths, boost::optional<float> leaf_size,
+    const PointcloudLoaderProgressFunction & on_progress = PointcloudLoaderProgressFunction{},
+    const PointcloudLoaderLogFunction & on_error = PointcloudLoaderLogFunction{});
 };
 }  // namespace autoware::map_loader
 

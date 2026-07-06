@@ -51,7 +51,8 @@ class DifferentialMapLoaderModule
 
 public:
   explicit DifferentialMapLoaderModule(
-    std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict);
+    std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict,
+    PointcloudLoaderLogFunction on_error = PointcloudLoaderLogFunction{});
 
   [[nodiscard]] bool create_response(
     GetDifferentialPointCloudMap::Request::SharedPtr req,
@@ -59,6 +60,7 @@ public:
 
 private:
   std::map<std::string, PCDFileMetadata> all_pcd_file_metadata_dict_;
+  PointcloudLoaderLogFunction on_error_;
 };
 }  // namespace autoware::map_loader
 

@@ -22,8 +22,9 @@
 namespace autoware::map_loader
 {
 PartialMapLoaderModule::PartialMapLoaderModule(
-  std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict)
-: all_pcd_file_metadata_dict_(std::move(pcd_file_metadata_dict))
+  std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict,
+  PointcloudLoaderLogFunction on_error)
+: all_pcd_file_metadata_dict_(std::move(pcd_file_metadata_dict)), on_error_(std::move(on_error))
 {
 }
 
@@ -58,11 +59,8 @@ bool PartialMapLoaderModule::create_response(
 
     const auto & path = metadata_it->first;
     const auto & metadata = metadata_it->second;
-    const auto loaded_cell = load_point_cloud_map_cell_with_id(path, map_id, metadata);
-    if (!loaded_cell) {
-      return false;
-    }
-    res->new_pointcloud_with_ids.push_back(loaded_cell.value());
+    res->new_pointcloud_with_ids.push_back(
+      load_point_cloud_map_cell_with_id(path, map_id, metadata, on_error_));
   }
 
   res->header.frame_id = "map";

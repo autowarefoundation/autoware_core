@@ -16,7 +16,6 @@
 
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
-#include <fmt/format.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl_conversions/pcl_conversions.h>
 
@@ -116,12 +115,13 @@ bool is_grid_within_queried_area(
   return res;
 }
 
-LoadPointcloudMapCellResult load_point_cloud_map_cell_with_id(
-  const std::string & path, const std::string & map_id, const PCDFileMetadata & metadata)
+autoware_map_msgs::msg::PointCloudMapCellWithID load_point_cloud_map_cell_with_id(
+  const std::string & path, const std::string & map_id, const PCDFileMetadata & metadata,
+  const PointcloudLoaderLogFunction & on_error)
 {
   sensor_msgs::msg::PointCloud2 pcd;
-  if (pcl::io::loadPCDFile(path, pcd) == -1) {
-    return tl::unexpected(fmt::format("PCD load failed: {}", path));
+  if (pcl::io::loadPCDFile(path, pcd) == -1 && on_error) {
+    on_error("PCD load failed: " + path);
   }
   autoware_map_msgs::msg::PointCloudMapCellWithID pointcloud_map_cell_with_id;
   pointcloud_map_cell_with_id.pointcloud = pcd;

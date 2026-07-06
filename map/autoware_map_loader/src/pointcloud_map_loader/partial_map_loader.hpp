@@ -39,7 +39,9 @@ class PartialMapLoaderModule
   using GetPartialPointCloudMap = autoware_map_msgs::srv::GetPartialPointCloudMap;
 
 public:
-  explicit PartialMapLoaderModule(std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict);
+  explicit PartialMapLoaderModule(
+    std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict,
+    PointcloudLoaderLogFunction on_error = PointcloudLoaderLogFunction{});
 
   [[nodiscard]] bool create_response(
     GetPartialPointCloudMap::Request::SharedPtr req,
@@ -47,6 +49,7 @@ public:
 
 private:
   std::map<std::string, PCDFileMetadata> all_pcd_file_metadata_dict_;
+  PointcloudLoaderLogFunction on_error_;
 };
 }  // namespace autoware::map_loader
 
