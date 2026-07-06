@@ -68,6 +68,8 @@
 #include <tuple>
 #include <vector>
 
+struct AwNdtAlignServiceTrace;
+
 namespace autoware::ndt_scan_matcher
 {
 
@@ -122,7 +124,7 @@ private:
 
   std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> align_pose(
     const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_with_cov,
-    NormalDistributionsTransform & ndt_ref);
+    NormalDistributionsTransform & ndt_ref, AwNdtAlignServiceTrace * trace = nullptr);
 
 
   void transform_sensor_measurement(

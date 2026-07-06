@@ -118,6 +118,22 @@ AwNdtAlignServiceResponse assemble_response(const AwNdtAlignServiceAlignedInput 
   return response;
 }
 
+AwNdtAlignServiceSearchSummaryInput make_search_summary(
+  const int64_t particles_requested, const int64_t particles_evaluated,
+  const int64_t marker_publish_count, const int64_t cloud_publish_count,
+  const int32_t best_iteration, const double best_score, const double threshold)
+{
+  AwNdtAlignServiceSearchSummaryInput input{};
+  input.particles_requested = particles_requested;
+  input.particles_evaluated = particles_evaluated;
+  input.marker_publish_count = marker_publish_count;
+  input.cloud_publish_count = cloud_publish_count;
+  input.best_iteration = best_iteration;
+  input.best_score = best_score;
+  input.reliable_score_threshold = threshold;
+  return input;
+}
+
 uint8_t score_available_byte(const AwNdtAlignServiceInput & input)
 {
   return input.align_score_available == 1U ? 1U : 0U;
@@ -136,6 +152,12 @@ AwNdtAlignServiceTraceEvent reference_event(
   event.score_available = score_available_byte(input);
   event.score = input.align_score;
   event.reliable_score_threshold = input.reliable_score_threshold;
+  event.particles_requested = 0;
+  event.particles_evaluated = 0;
+  event.marker_publish_count = 0;
+  event.cloud_publish_count = 0;
+  event.best_iteration = 0;
+  event.best_score = 0.0;
   return event;
 }
 
@@ -176,6 +198,34 @@ void expect_event(
   EXPECT_EQ(got.score_available, expected.score_available);
   EXPECT_EQ(got.score, expected.score);
   EXPECT_EQ(got.reliable_score_threshold, expected.reliable_score_threshold);
+  EXPECT_EQ(got.particles_requested, expected.particles_requested);
+  EXPECT_EQ(got.particles_evaluated, expected.particles_evaluated);
+  EXPECT_EQ(got.marker_publish_count, expected.marker_publish_count);
+  EXPECT_EQ(got.cloud_publish_count, expected.cloud_publish_count);
+  EXPECT_EQ(got.best_iteration, expected.best_iteration);
+  EXPECT_EQ(got.best_score, expected.best_score);
+}
+
+void expect_search_summary_event(
+  const AwNdtAlignServiceTraceEvent & got, const AwNdtAlignServiceSearchSummaryInput & expected,
+  const int32_t status, const uint8_t success, const uint8_t reliable, const uint8_t valid,
+  const uint8_t score_available)
+{
+  EXPECT_EQ(got.kind, NDT_ALIGN_TRACE_EVENT_SEARCH_SUMMARY);
+  EXPECT_EQ(got.status, status);
+  EXPECT_EQ(got.success, success);
+  EXPECT_EQ(got.reliable, reliable);
+  EXPECT_EQ(got.should_align, 0U);
+  EXPECT_EQ(got.valid, valid);
+  EXPECT_EQ(got.score_available, score_available);
+  EXPECT_EQ(got.score, expected.best_score);
+  EXPECT_EQ(got.reliable_score_threshold, expected.reliable_score_threshold);
+  EXPECT_EQ(got.particles_requested, expected.particles_requested);
+  EXPECT_EQ(got.particles_evaluated, expected.particles_evaluated);
+  EXPECT_EQ(got.marker_publish_count, expected.marker_publish_count);
+  EXPECT_EQ(got.cloud_publish_count, expected.cloud_publish_count);
+  EXPECT_EQ(got.best_iteration, expected.best_iteration);
+  EXPECT_EQ(got.best_score, expected.best_score);
 }
 }  // namespace
 
@@ -392,6 +442,72 @@ TEST(NdtAlignServiceDecision, ProductionShapedHelperCanAppendDecisionTrace)  // 
   EXPECT_EQ(aligned_trace.overflowed, 0U);
   expect_decision(aligned_decision, NDT_ALIGN_SERVICE_STATUS_ALIGNED, 1U, 1U, 0U, 1U);
   expect_event(aligned_events[0], reference_event(aligned_input, aligned_decision));
+}
+
+
+TEST(NdtAlignServiceDecision, SearchSummaryTraceAppendsSemanticEvent)  // NOLINT
+{
+  const AwNdtAlignServiceSearchSummaryInput input =
+    make_search_summary(64, 64, 4, 64, 12, 5.5, 4.0);
+  std::array<AwNdtAlignServiceTraceEvent, 1> events{};
+  AwNdtAlignServiceTrace trace{};
+  trace.events = events.data();
+  trace.capacity = events.size();
+  trace.len = 0U;
+  trace.overflowed = 0U;
+
+  autoware_ndt_scan_matcher_rs_node_append_align_service_search_summary_trace(&input, &trace);
+
+  ASSERT_EQ(trace.len, 1U);
+  EXPECT_EQ(trace.overflowed, 0U);
+  expect_search_summary_event(
+    events[0], input, NDT_ALIGN_SERVICE_STATUS_ALIGNED, 1U, 1U, 1U, 1U);
+}
+
+TEST(NdtAlignServiceDecision, SearchSummaryTraceInvalidCountsAreExplicit)  // NOLINT
+{
+  const AwNdtAlignServiceSearchSummaryInput input =
+    make_search_summary(64, -1, 4, 64, 12, 5.5, 4.0);
+  std::array<AwNdtAlignServiceTraceEvent, 1> events{};
+  AwNdtAlignServiceTrace trace{};
+  trace.events = events.data();
+  trace.capacity = events.size();
+  trace.len = 0U;
+  trace.overflowed = 0U;
+
+  autoware_ndt_scan_matcher_rs_node_append_align_service_search_summary_trace(&input, &trace);
+
+  ASSERT_EQ(trace.len, 1U);
+  EXPECT_EQ(trace.overflowed, 0U);
+  expect_search_summary_event(
+    events[0], input, NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT, 0U, 0U, 0U, 0U);
+}
+
+TEST(NdtAlignServiceDecision, SearchSummaryTraceNullAndFullBuffersAreSafe)  // NOLINT
+{
+  const AwNdtAlignServiceSearchSummaryInput input =
+    make_search_summary(64, 64, 4, 64, 12, 5.5, 4.0);
+  autoware_ndt_scan_matcher_rs_node_append_align_service_search_summary_trace(nullptr, nullptr);
+  autoware_ndt_scan_matcher_rs_node_append_align_service_search_summary_trace(&input, nullptr);
+
+  std::array<AwNdtAlignServiceTraceEvent, 1> events{};
+  AwNdtAlignServiceTrace full_trace{};
+  full_trace.events = events.data();
+  full_trace.capacity = events.size();
+  full_trace.len = events.size();
+  full_trace.overflowed = 0U;
+  autoware_ndt_scan_matcher_rs_node_append_align_service_search_summary_trace(&input, &full_trace);
+  EXPECT_EQ(full_trace.len, events.size());
+  EXPECT_EQ(full_trace.overflowed, 1U);
+
+  AwNdtAlignServiceTrace null_events{};
+  null_events.events = nullptr;
+  null_events.capacity = 1U;
+  null_events.len = 0U;
+  null_events.overflowed = 0U;
+  autoware_ndt_scan_matcher_rs_node_append_align_service_search_summary_trace(&input, &null_events);
+  EXPECT_EQ(null_events.len, 0U);
+  EXPECT_EQ(null_events.overflowed, 1U);
 }
 
 TEST(NdtAlignServiceDecision, ResponseAssemblyCopiesPoseCovarianceAndReliability)  // NOLINT

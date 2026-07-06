@@ -126,6 +126,27 @@ AwNdtAlignServiceResponse assemble_align_service_response(
   return response;
 }
 
+void append_align_search_summary_trace(
+  const std::int64_t particles_requested, const std::int64_t particles_evaluated,
+  const std::int64_t marker_publish_count, const std::int64_t cloud_publish_count,
+  const std::int32_t best_iteration, const double best_score,
+  const double reliable_score_threshold, AwNdtAlignServiceTrace * trace)
+{
+  if (trace == nullptr) {
+    return;
+  }
+
+  AwNdtAlignServiceSearchSummaryInput input{};
+  input.particles_requested = particles_requested;
+  input.particles_evaluated = particles_evaluated;
+  input.marker_publish_count = marker_publish_count;
+  input.cloud_publish_count = cloud_publish_count;
+  input.best_iteration = best_iteration;
+  input.best_score = best_score;
+  input.reliable_score_threshold = reliable_score_threshold;
+  autoware_ndt_scan_matcher_rs_node_append_align_service_search_summary_trace(&input, trace);
+}
+
 void apply_align_service_response(
   const AwNdtAlignServiceResponse & align_response, const std::string & frame_id,
   autoware_internal_localization_msgs::srv::PoseWithCovarianceStamped::Response & res)
@@ -292,7 +313,7 @@ void NDTScanMatcher::service_ndt_align_main(
 
 std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher::align_pose(
   const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_with_cov,
-  NormalDistributionsTransform & ndt_ref)
+  NormalDistributionsTransform & ndt_ref, AwNdtAlignServiceTrace * trace)
 {
   autoware::localization_util::output_pose_with_cov_to_log(
     get_logger(), "align_pose_input", initial_pose_with_cov);
@@ -323,6 +344,8 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
   const std::vector<float> source_flat = cloud_to_flat(*sensor_points_in_baselink_frame_);
 
   visualization_msgs::msg::MarkerArray marker_array;
+  std::int64_t marker_publish_count = 0;
+  std::int64_t cloud_publish_count = 0;
   constexpr int64_t publish_num = 20;
   const int64_t publish_interval =
     std::max<int64_t>(param_.initial_pose_estimation.particles_num / publish_num, 1);
@@ -363,6 +386,7 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
     if (
       (i + 1) % publish_interval == 0 || (i + 1) == param_.initial_pose_estimation.particles_num) {
       ndt_monte_carlo_initial_pose_marker_pub_->publish(marker_array);
+      ++marker_publish_count;
       marker_array.markers.clear();
     }
 
@@ -383,6 +407,7 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
       *sensor_points_in_baselink_frame_, *sensor_points_in_map_ptr, ndt_result.pose);
     publish_point_cloud(
       initial_pose_with_cov.header.stamp, param_.frame.map_frame, sensor_points_in_map_ptr);
+    ++cloud_publish_count;
   }
 
   auto best_particle_ptr = std::max_element(
@@ -397,6 +422,11 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
   autoware::localization_util::output_pose_with_cov_to_log(
     get_logger(), "align_pose_output", result_pose_with_cov_msg);
   diagnostics_ndt_align_->add_key_value("best_particle_score", best_particle_ptr->score);
+  append_align_search_summary_trace(
+    param_.initial_pose_estimation.particles_num, static_cast<std::int64_t>(particle_array.size()),
+    marker_publish_count, cloud_publish_count,
+    static_cast<std::int32_t>(best_particle_ptr->iteration), best_particle_ptr->score,
+    param_.score_estimation.converged_param_nearest_voxel_transformation_likelihood, trace);
 
   return std::make_tuple(result_pose_with_cov_msg, best_particle_ptr->score);
 }
