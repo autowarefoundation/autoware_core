@@ -14,12 +14,9 @@
 
 #include "euclidean_cluster_object_detector_node.hpp"
 
-#include "../lib/ros_conversions.hpp"
 #include "parameters.hpp"
 
 #include <rclcpp_components/register_node_macro.hpp>
-
-#include <pcl_conversions/pcl_conversions.h>
 
 #include <functional>
 #include <memory>
@@ -86,12 +83,8 @@ void EuclideanClusterObjectDetectorNode::on_point_cloud(
     return;
   }
 
-  // Receive point cloud and PCL conversion
-  pcl::PointCloud<pcl::PointXYZ>::Ptr raw_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-  pcl::fromROSMsg(*input_msg, *raw_cloud);
-
-  // Core logic called
-  auto result = detector_->cluster(raw_cloud);
+  // Pass ROS message directly to brain
+  const auto result = detector_->cluster(*input_msg);
 
   // Legacy diagnostic logic
   // (similar to what used to be publishDiagnosticSummary in legacy code)
@@ -113,15 +106,11 @@ void EuclideanClusterObjectDetectorNode::on_point_cloud(
   diagnostics_interface_ptr_->publish(input_msg->header.stamp);
 
   // Publish to ROS
-  autoware_perception_msgs::msg::DetectedObjects output_msg{};
-  convert_clusters_to_detected_objects(input_msg->header, result.clusters, output_msg);
-  pub_clusters_->publish(output_msg);
+  pub_clusters_->publish(result.cluster_message);
 
   // Publish visualization if RViz is on
   if (pub_debug_->get_subscription_count() > 0) {
-    sensor_msgs::msg::PointCloud2 debug_msg{};
-    convert_clusters_to_debug_point_cloud(input_msg->header, result.clusters, debug_msg);
-    pub_debug_->publish(debug_msg);
+    pub_debug_->publish(result.debug_message);
   }
 
   // Publish diagnostic latencies if required
@@ -130,7 +119,8 @@ void EuclideanClusterObjectDetectorNode::on_point_cloud(
     const double processing_time_ms = stop_watch_->toc("processing_time", true);
     const double pipeline_latency_ms =
       std::chrono::duration<double, std::milli>(
-        std::chrono::nanoseconds((get_clock()->now() - output_msg.header.stamp).nanoseconds()))
+        std::chrono::nanoseconds(
+          (get_clock()->now() - result.cluster_message.header.stamp).nanoseconds()))
         .count();
 
     debug_publisher_->publish<autoware_internal_debug_msgs::msg::Float64Stamped>(

@@ -17,10 +17,14 @@
 
 #include "parameters.hpp"
 
+#include <autoware_perception_msgs/msg/detected_objects.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace autoware::euclidean_cluster
@@ -29,7 +33,8 @@ namespace autoware::euclidean_cluster
 // Struct to bubble up diagnostic telemetry without ROS dependency
 struct ClusterFeatureResult
 {
-  std::vector<pcl::PointCloud<pcl::PointXYZ>> clusters;
+  autoware_perception_msgs::msg::DetectedObjects cluster_message;
+  sensor_msgs::msg::PointCloud2 debug_message;
   size_t skipped_cluster_count{0};
 };
 
@@ -38,18 +43,18 @@ class EuclideanClusterObjectDetector
 public:
   explicit EuclideanClusterObjectDetector(const EuclideanClusterParams & param);
 
-  // Single public interface for everything
-  ClusterFeatureResult cluster(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & input_cloud) const;
+  // Single public interface for everything, taking ROS message directly
+  ClusterFeatureResult cluster(const sensor_msgs::msg::PointCloud2 & input_msg) const;
 
 private:
   EuclideanClusterParams param_;
 
   // Helper func to perform standard Euclidean clustering on a point cloud
-  [[nodiscard]] ClusterFeatureResult cluster_standard(
+  [[nodiscard]] std::pair<std::vector<pcl::PointCloud<pcl::PointXYZ>>, size_t> cluster_standard(
     const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & input_cloud) const;
 
   // Helper func to perform voxel grid downsampling on a point cloud, then perform Euclidean
-  [[nodiscard]] ClusterFeatureResult cluster_voxel_grid(
+  [[nodiscard]] std::pair<std::vector<pcl::PointCloud<pcl::PointXYZ>>, size_t> cluster_voxel_grid(
     const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & input_cloud) const;
 };
 

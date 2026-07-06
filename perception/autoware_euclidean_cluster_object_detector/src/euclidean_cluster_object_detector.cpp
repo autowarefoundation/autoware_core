@@ -14,11 +14,13 @@
 
 #include "euclidean_cluster_object_detector.hpp"
 
+#include "../lib/ros_conversions.hpp"
 #include "parameters.hpp"
 
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/kdtree/kdtree.h>
 #include <pcl/segmentation/extract_clusters.h>
+#include <pcl_conversions/pcl_conversions.h>
 
 #include <string>
 #include <unordered_map>
@@ -43,17 +45,32 @@ EuclideanClusterObjectDetector::EuclideanClusterObjectDetector(const EuclideanCl
  * clouds, each representing a cluster.
  */
 ClusterFeatureResult EuclideanClusterObjectDetector::cluster(
-  const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & input_cloud) const
+  const sensor_msgs::msg::PointCloud2 & input_msg) const
 {
-  if (!input_cloud || input_cloud->empty()) {
-    return ClusterFeatureResult{};
+  ClusterFeatureResult result;
+
+  pcl::PointCloud<pcl::PointXYZ>::Ptr raw_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::fromROSMsg(input_msg, *raw_cloud);
+
+  if (raw_cloud->empty()) {
+    result.cluster_message.header = input_msg.header;
+    return result;
   }
+
+  std::vector<pcl::PointCloud<pcl::PointXYZ>> valid_clusters;
+  size_t skipped_cluster_count = 0;
 
   if (param_.voxel_leaf_size > 0.0f) {
-    return cluster_voxel_grid(input_cloud);
+    std::tie(valid_clusters, skipped_cluster_count) = cluster_voxel_grid(raw_cloud);
+  } else {
+    std::tie(valid_clusters, skipped_cluster_count) = cluster_standard(raw_cloud);
   }
 
-  return cluster_standard(input_cloud);
+  result.skipped_cluster_count = skipped_cluster_count;
+  convert_clusters_to_detected_objects(input_msg.header, valid_clusters, result.cluster_message);
+  convert_clusters_to_debug_point_cloud(input_msg.header, valid_clusters, result.debug_message);
+
+  return result;
 }
 
 /**
@@ -67,7 +84,8 @@ ClusterFeatureResult EuclideanClusterObjectDetector::cluster(
  * @return tl::expected<std::vector<pcl::PointCloud<pcl::PointXYZ>>, std::string> A vector of
  * point clouds, each representing a cluster.
  */
-ClusterFeatureResult EuclideanClusterObjectDetector::cluster_standard(
+std::pair<std::vector<pcl::PointCloud<pcl::PointXYZ>>, size_t>
+EuclideanClusterObjectDetector::cluster_standard(
   const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & input_cloud) const
 {
   pcl::PointCloud<pcl::PointXYZ>::ConstPtr search_cloud = input_cloud;
@@ -113,7 +131,7 @@ ClusterFeatureResult EuclideanClusterObjectDetector::cluster_standard(
     cloud_cluster.is_dense = false;
   }
 
-  return ClusterFeatureResult{std::move(clusters), 0};
+  return std::make_pair(std::move(clusters), 0);
 }
 
 /**
@@ -127,7 +145,8 @@ ClusterFeatureResult EuclideanClusterObjectDetector::cluster_standard(
  * @return tl::expected<std::vector<pcl::PointCloud<pcl::PointXYZ>>, std::string> A vector of
  * point clouds, each representing a cluster.
  */
-ClusterFeatureResult EuclideanClusterObjectDetector::cluster_voxel_grid(
+std::pair<std::vector<pcl::PointCloud<pcl::PointXYZ>>, size_t>
+EuclideanClusterObjectDetector::cluster_voxel_grid(
   const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & input_cloud) const
 {
   // 1. Downsample with voxel grid
@@ -140,7 +159,7 @@ ClusterFeatureResult EuclideanClusterObjectDetector::cluster_voxel_grid(
   voxel_grid.filter(*voxel_centroids);
 
   if (voxel_centroids->empty()) {
-    return ClusterFeatureResult{};
+    return std::pair<std::vector<pcl::PointCloud<pcl::PointXYZ>>, size_t>{};
   }
 
   // 2. Create KD-Tree
@@ -236,7 +255,7 @@ ClusterFeatureResult EuclideanClusterObjectDetector::cluster_voxel_grid(
     valid_clusters.push_back(std::move(cloud_cluster));
   }
 
-  return ClusterFeatureResult{std::move(valid_clusters), skipped_cluster_count};
+  return std::make_pair(std::move(valid_clusters), skipped_cluster_count);
 }
 
 }  // namespace autoware::euclidean_cluster
