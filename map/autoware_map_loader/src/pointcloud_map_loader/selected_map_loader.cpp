@@ -82,10 +82,11 @@ bool SelectedMapLoaderModule::create_response(
 {
   const auto load_plan = create_selected_map_load_plan(req->cell_ids, all_pcd_file_metadata_dict_);
 
-  // TODO(sasakisasaki): Handle this debug message at node level
-  // for (const auto & missing_id : load_plan.missing_ids) {
-  //  RCLCPP_WARN(logger_, "ID %s not found", missing_id.c_str());
-  //}
+  if (on_error_) {
+    for (const auto & missing_id : load_plan.missing_ids) {
+      on_error_("ID not found: " + missing_id);
+    }
+  }
 
   for (const auto & map_id : load_plan.map_ids_to_load) {
     const auto metadata_it = all_pcd_file_metadata_dict_.find(map_id);
