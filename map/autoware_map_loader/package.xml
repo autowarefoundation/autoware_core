@@ -27,6 +27,7 @@
   <depend>pcl_conversions</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
+  <depend>tl_expected</depend>
   <depend>visualization_msgs</depend>
   <depend>yaml-cpp</depend>
 
