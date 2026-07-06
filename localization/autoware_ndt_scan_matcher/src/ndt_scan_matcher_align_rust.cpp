@@ -15,7 +15,6 @@
 #include "ndt_scan_matcher_helper.hpp"
 
 #include <autoware/localization_util/matrix_type.hpp>
-#include <autoware/localization_util/tree_structured_parzen_estimator.hpp>
 #include <autoware/localization_util/util_func.hpp>
 #include <autoware/ndt_scan_matcher/ndt_scan_matcher_core.hpp>
 #include <autoware/ndt_scan_matcher/particle.hpp>
@@ -25,6 +24,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <limits>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -41,10 +41,39 @@ namespace autoware::ndt_scan_matcher
 {
 using autoware::localization_util::matrix4f_to_pose;
 using autoware::localization_util::pose_to_matrix4f;
-using autoware::localization_util::TreeStructuredParzenEstimator;
-
 namespace
 {
+constexpr std::size_t kTpePriorDimension = 5U;
+constexpr std::size_t kTpeInputDimension = 6U;
+constexpr std::uint64_t kAlignServiceTpeSeed = 0U;
+
+class TpeHandle
+{
+public:
+  explicit TpeHandle(AwTpe * ptr) : ptr_(ptr) {}
+  ~TpeHandle() { autoware_ndt_scan_matcher_rs_tpe_free(ptr_); }
+
+  TpeHandle(const TpeHandle &) = delete;
+  TpeHandle & operator=(const TpeHandle &) = delete;
+
+  TpeHandle(TpeHandle && other) noexcept : ptr_(other.ptr_) { other.ptr_ = nullptr; }
+  TpeHandle & operator=(TpeHandle && other) noexcept
+  {
+    if (this != &other) {
+      autoware_ndt_scan_matcher_rs_tpe_free(ptr_);
+      ptr_ = other.ptr_;
+      other.ptr_ = nullptr;
+    }
+    return *this;
+  }
+
+  [[nodiscard]] AwTpe * get() const { return ptr_; }
+  [[nodiscard]] bool valid() const { return ptr_ != nullptr; }
+
+private:
+  AwTpe * ptr_{nullptr};
+};
+
 std::vector<float> cloud_to_flat(const pcl::PointCloud<pcl::PointXYZ> & cloud)
 {
   std::vector<float> f;
@@ -342,20 +371,20 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
   const double stddev_roll = std::sqrt(covariance(3, 3));
   const double stddev_pitch = std::sqrt(covariance(4, 4));
 
-  const std::vector<double> sample_mean{
+  const std::array<double, kTpePriorDimension> sample_mean{
     initial_pose_with_cov.pose.pose.position.x,
     initial_pose_with_cov.pose.pose.position.y,
     initial_pose_with_cov.pose.pose.position.z,
     base_rpy.x,
     base_rpy.y};
-  const std::vector<double> sample_stddev{stddev_x, stddev_y, stddev_z, stddev_roll, stddev_pitch};
+  const std::array<double, kTpePriorDimension> sample_stddev{
+    stddev_x, stddev_y, stddev_z, stddev_roll, stddev_pitch};
 
-  TreeStructuredParzenEstimator tpe(
-    TreeStructuredParzenEstimator::Direction::MAXIMIZE,
-    param_.initial_pose_estimation.n_startup_trials, sample_mean, sample_stddev);
+  TpeHandle tpe{autoware_ndt_scan_matcher_rs_tpe_new(
+    AW_TPE_DIRECTION_MAXIMIZE, param_.initial_pose_estimation.n_startup_trials, sample_mean.data(),
+    sample_mean.size(), sample_stddev.data(), sample_stddev.size(), kAlignServiceTpeSeed)};
 
   std::vector<Particle> particle_array;
-  auto output_cloud = std::make_shared<pcl::PointCloud<PointSource>>();
   const std::vector<float> source_flat = cloud_to_flat(*sensor_points_in_baselink_frame_);
 
   visualization_msgs::msg::MarkerArray marker_array;
@@ -365,8 +394,30 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
   const int64_t publish_interval =
     std::max<int64_t>(param_.initial_pose_estimation.particles_num / publish_num, 1);
 
+  auto return_tpe_failure = [&](const std::string & message) {
+    RCLCPP_ERROR_STREAM(get_logger(), message);
+    geometry_msgs::msg::PoseWithCovarianceStamped failure_pose = initial_pose_with_cov;
+    failure_pose.header.frame_id = param_.frame.map_frame;
+    append_align_search_summary_trace(
+      param_.initial_pose_estimation.particles_num, static_cast<std::int64_t>(particle_array.size()),
+      marker_publish_count, cloud_publish_count, -1, -std::numeric_limits<double>::infinity(),
+      param_.score_estimation.converged_param_nearest_voxel_transformation_likelihood, trace);
+    return std::make_tuple(failure_pose, -std::numeric_limits<double>::infinity());
+  };
+
+  if (!tpe.valid()) {
+    return return_tpe_failure("Rust TPE construction failed in align service");
+  }
+
   for (int64_t i = 0; i < param_.initial_pose_estimation.particles_num; i++) {
-    const TreeStructuredParzenEstimator::Input input = tpe.get_next_input();
+    std::array<double, kTpeInputDimension> input{};
+    const std::int32_t input_status = autoware_ndt_scan_matcher_rs_tpe_get_next_input(
+      tpe.get(), input.data(), input.size());
+    if (input_status != AW_TPE_STATUS_OK) {
+      return return_tpe_failure(
+        "Rust TPE candidate generation failed in align service with status " +
+        std::to_string(input_status));
+    }
 
     geometry_msgs::msg::Pose initial_pose;
     initial_pose.position.x = input[0];
@@ -408,14 +459,15 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
     const geometry_msgs::msg::Pose pose = matrix4f_to_pose(ndt_result.pose);
     const geometry_msgs::msg::Vector3 rpy = autoware::localization_util::get_rpy(pose);
 
-    TreeStructuredParzenEstimator::Input result(6);
-    result[0] = pose.position.x;
-    result[1] = pose.position.y;
-    result[2] = pose.position.z;
-    result[3] = rpy.x;
-    result[4] = rpy.y;
-    result[5] = rpy.z;
-    tpe.add_trial(TreeStructuredParzenEstimator::Trial{result, ndt_result.transform_probability});
+    const std::array<double, kTpeInputDimension> result{
+      pose.position.x, pose.position.y, pose.position.z, rpy.x, rpy.y, rpy.z};
+    const std::int32_t add_trial_status = autoware_ndt_scan_matcher_rs_tpe_add_trial(
+      tpe.get(), result.data(), result.size(), ndt_result.transform_probability);
+    if (add_trial_status != AW_TPE_STATUS_OK) {
+      return return_tpe_failure(
+        "Rust TPE trial update failed in align service with status " +
+        std::to_string(add_trial_status));
+    }
 
     auto sensor_points_in_map_ptr = std::make_shared<pcl::PointCloud<PointSource>>();
     autoware_utils_pcl::transform_pointcloud(
