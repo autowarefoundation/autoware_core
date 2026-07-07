@@ -17,36 +17,10 @@
 
 #include <autoware_common_msgs/msg/response_status.hpp>
 
-#include <stdexcept>
-#include <string>
-
 namespace service_utils
 {
 
 using ResponseStatus = autoware_common_msgs::msg::ResponseStatus;
-using ResponseStatusCode = ResponseStatus::_code_type;
-
-class ServiceException : public std::exception
-{
-public:
-  ServiceException(ResponseStatusCode code, const std::string & message, bool success = false)
-  : success_(success), code_(code), message_(message)
-  {
-  }
-
-  template <class StatusT>
-  void set(StatusT & status) const
-  {
-    status.success = success_;
-    status.code = code_;
-    status.message = message_;
-  }
-
-private:
-  bool success_;
-  ResponseStatusCode code_;
-  std::string message_;
-};
 
 }  // namespace service_utils
 

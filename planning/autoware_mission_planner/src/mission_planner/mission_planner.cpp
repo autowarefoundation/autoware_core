@@ -196,62 +196,82 @@ void MissionPlanner::on_set_lanelet_route(
   const SetLaneletRoute::Request::SharedPtr req, const SetLaneletRoute::Response::SharedPtr res)
 {
   autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch;
-  try {
-    using ResponseCode = autoware_adapi_v1_msgs::srv::SetRoute::Response;
-    const auto is_reroute = state_.state == RouteState::SET;
+  using ResponseCode = autoware_adapi_v1_msgs::srv::SetRoute::Response;
+  const auto is_reroute = state_.state == RouteState::SET;
 
-    if (state_.state != RouteState::UNSET && state_.state != RouteState::SET) {
-      throw service_utils::ServiceException(
-        ResponseCode::ERROR_INVALID_STATE, "The route cannot be set in the current state.");
-    }
-    if (!is_mission_planner_ready_) {
-      throw service_utils::ServiceException(
-        ResponseCode::ERROR_PLANNER_UNREADY, "The mission planner is not ready.");
-    }
-    if (is_reroute && !operation_mode_state_) {
-      throw service_utils::ServiceException(
-        ResponseCode::ERROR_PLANNER_UNREADY, "Operation mode state is not received.");
-    }
-
-    const bool is_autonomous_driving =
-      operation_mode_state_ ? operation_mode_state_->mode == OperationModeState::AUTONOMOUS &&
-                                operation_mode_state_->is_autoware_control_enabled
-                            : false;
-
-    if (is_reroute && !allow_reroute_in_autonomous_mode_ && is_autonomous_driving) {
-      throw service_utils::ServiceException(
-        ResponseCode::ERROR_INVALID_STATE, "Reroute is not allowed in autonomous mode.");
-    }
-
-    change_state(is_reroute ? RouteState::REROUTING : RouteState::ROUTING);
-    const auto route = create_route(*req);
-
-    if (route.segments.empty()) {
-      cancel_route();
-      change_state(is_reroute ? RouteState::SET : RouteState::UNSET);
-      throw service_utils::ServiceException(
-        ResponseCode::ERROR_PLANNER_FAILED, "The planned route is empty.");
-    }
-
-    if (is_reroute && is_autonomous_driving && !check_reroute_safety(*current_route_, route)) {
-      cancel_route();
-      change_state(RouteState::SET);
-      throw service_utils::ServiceException(
-        ResponseCode::ERROR_REROUTE_FAILED, "New route is not safe. Reroute failed.");
-    }
-
-    change_route(route);
-    change_state(RouteState::SET);
-    res->status.success = true;
-
-    publish_pose_log(odometry_->pose.pose, "initial");
-    publish_pose_log(req->goal_pose, "goal");
-  } catch (const service_utils::ServiceException & error) {
-    error.set(res->status);
-  } catch (const tf2::TransformException & error) {
-    service_utils::ServiceException(service_utils::ResponseStatus::TRANSFORM_ERROR, error.what())
-      .set(res->status);
+  if (state_.state != RouteState::UNSET && state_.state != RouteState::SET) {
+    res->status.success = false;
+    res->status.code = ResponseCode::ERROR_INVALID_STATE;
+    res->status.message = "The route cannot be set in the current state.";
+    publish_processing_time(stop_watch);
+    return;
   }
+  if (!is_mission_planner_ready_) {
+    res->status.success = false;
+    res->status.code = ResponseCode::ERROR_PLANNER_UNREADY;
+    res->status.message = "The mission planner is not ready.";
+    publish_processing_time(stop_watch);
+    return;
+  }
+  if (is_reroute && !operation_mode_state_) {
+    res->status.success = false;
+    res->status.code = ResponseCode::ERROR_PLANNER_UNREADY;
+    res->status.message = "Operation mode state is not received.";
+    publish_processing_time(stop_watch);
+    return;
+  }
+
+  const bool is_autonomous_driving =
+    operation_mode_state_ ? operation_mode_state_->mode == OperationModeState::AUTONOMOUS &&
+                              operation_mode_state_->is_autoware_control_enabled
+                          : false;
+
+  if (is_reroute && !allow_reroute_in_autonomous_mode_ && is_autonomous_driving) {
+    res->status.success = false;
+    res->status.code = ResponseCode::ERROR_INVALID_STATE;
+    res->status.message = "Reroute is not allowed in autonomous mode.";
+    publish_processing_time(stop_watch);
+    return;
+  }
+
+  change_state(is_reroute ? RouteState::REROUTING : RouteState::ROUTING);
+  LaneletRoute route;
+  try {
+    route = create_route(*req);
+  } catch (const tf2::TransformException & error) {
+    res->status.success = false;
+    res->status.code = service_utils::ResponseStatus::TRANSFORM_ERROR;
+    res->status.message = error.what();
+    publish_processing_time(stop_watch);
+    return;
+  }
+
+  if (route.segments.empty()) {
+    cancel_route();
+    change_state(is_reroute ? RouteState::SET : RouteState::UNSET);
+    res->status.success = false;
+    res->status.code = ResponseCode::ERROR_PLANNER_FAILED;
+    res->status.message = "The planned route is empty.";
+    publish_processing_time(stop_watch);
+    return;
+  }
+
+  if (is_reroute && is_autonomous_driving && !check_reroute_safety(*current_route_, route)) {
+    cancel_route();
+    change_state(RouteState::SET);
+    res->status.success = false;
+    res->status.code = ResponseCode::ERROR_REROUTE_FAILED;
+    res->status.message = "New route is not safe. Reroute failed.";
+    publish_processing_time(stop_watch);
+    return;
+  }
+
+  change_route(route);
+  change_state(RouteState::SET);
+  res->status.success = true;
+
+  publish_pose_log(odometry_->pose.pose, "initial");
+  publish_pose_log(req->goal_pose, "goal");
   publish_processing_time(stop_watch);
 }
 
@@ -259,57 +279,74 @@ void MissionPlanner::on_set_waypoint_route(
   const SetWaypointRoute::Request::SharedPtr req, const SetWaypointRoute::Response::SharedPtr res)
 {
   autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch;
-  try {
-    using ResponseCode = autoware_adapi_v1_msgs::srv::SetRoutePoints::Response;
-    const auto is_reroute = state_.state == RouteState::SET;
+  using ResponseCode = autoware_adapi_v1_msgs::srv::SetRoutePoints::Response;
+  const auto is_reroute = state_.state == RouteState::SET;
 
-    if (state_.state != RouteState::UNSET && state_.state != RouteState::SET) {
-      throw service_utils::ServiceException(
-        ResponseCode::ERROR_INVALID_STATE, "The route cannot be set in the current state.");
-    }
-    if (!is_mission_planner_ready_) {
-      throw service_utils::ServiceException(
-        ResponseCode::ERROR_PLANNER_UNREADY, "The mission planner is not ready.");
-    }
-    if (is_reroute && !operation_mode_state_) {
-      throw service_utils::ServiceException(
-        ResponseCode::ERROR_PLANNER_UNREADY, "Operation mode state is not received.");
-    }
-
-    const bool is_autonomous_driving =
-      operation_mode_state_ ? operation_mode_state_->mode == OperationModeState::AUTONOMOUS &&
-                                operation_mode_state_->is_autoware_control_enabled
-                            : false;
-
-    change_state(is_reroute ? RouteState::REROUTING : RouteState::ROUTING);
-    const auto route = create_route(*req);
-
-    if (route.segments.empty()) {
-      cancel_route();
-      change_state(is_reroute ? RouteState::SET : RouteState::UNSET);
-      throw service_utils::ServiceException(
-        ResponseCode::ERROR_PLANNER_FAILED, "The planned route is empty.");
-    }
-
-    if (is_reroute && is_autonomous_driving && !check_reroute_safety(*current_route_, route)) {
-      cancel_route();
-      change_state(RouteState::SET);
-      throw service_utils::ServiceException(
-        ResponseCode::ERROR_REROUTE_FAILED, "New route is not safe. Reroute failed.");
-    }
-
-    change_route(route);
-    change_state(RouteState::SET);
-    res->status.success = true;
-
-    publish_pose_log(odometry_->pose.pose, "initial");
-    publish_pose_log(req->goal_pose, "goal");
-  } catch (const service_utils::ServiceException & error) {
-    error.set(res->status);
-  } catch (const tf2::TransformException & error) {
-    service_utils::ServiceException(service_utils::ResponseStatus::TRANSFORM_ERROR, error.what())
-      .set(res->status);
+  if (state_.state != RouteState::UNSET && state_.state != RouteState::SET) {
+    res->status.success = false;
+    res->status.code = ResponseCode::ERROR_INVALID_STATE;
+    res->status.message = "The route cannot be set in the current state.";
+    publish_processing_time(stop_watch);
+    return;
   }
+  if (!is_mission_planner_ready_) {
+    res->status.success = false;
+    res->status.code = ResponseCode::ERROR_PLANNER_UNREADY;
+    res->status.message = "The mission planner is not ready.";
+    publish_processing_time(stop_watch);
+    return;
+  }
+  if (is_reroute && !operation_mode_state_) {
+    res->status.success = false;
+    res->status.code = ResponseCode::ERROR_PLANNER_UNREADY;
+    res->status.message = "Operation mode state is not received.";
+    publish_processing_time(stop_watch);
+    return;
+  }
+
+  const bool is_autonomous_driving =
+    operation_mode_state_ ? operation_mode_state_->mode == OperationModeState::AUTONOMOUS &&
+                              operation_mode_state_->is_autoware_control_enabled
+                          : false;
+
+  change_state(is_reroute ? RouteState::REROUTING : RouteState::ROUTING);
+  LaneletRoute route;
+  try {
+    route = create_route(*req);
+  } catch (const tf2::TransformException & error) {
+    res->status.success = false;
+    res->status.code = service_utils::ResponseStatus::TRANSFORM_ERROR;
+    res->status.message = error.what();
+    publish_processing_time(stop_watch);
+    return;
+  }
+
+  if (route.segments.empty()) {
+    cancel_route();
+    change_state(is_reroute ? RouteState::SET : RouteState::UNSET);
+    res->status.success = false;
+    res->status.code = ResponseCode::ERROR_PLANNER_FAILED;
+    res->status.message = "The planned route is empty.";
+    publish_processing_time(stop_watch);
+    return;
+  }
+
+  if (is_reroute && is_autonomous_driving && !check_reroute_safety(*current_route_, route)) {
+    cancel_route();
+    change_state(RouteState::SET);
+    res->status.success = false;
+    res->status.code = ResponseCode::ERROR_REROUTE_FAILED;
+    res->status.message = "New route is not safe. Reroute failed.";
+    publish_processing_time(stop_watch);
+    return;
+  }
+
+  change_route(route);
+  change_state(RouteState::SET);
+  res->status.success = true;
+
+  publish_pose_log(odometry_->pose.pose, "initial");
+  publish_pose_log(req->goal_pose, "goal");
   publish_processing_time(stop_watch);
 }
 
