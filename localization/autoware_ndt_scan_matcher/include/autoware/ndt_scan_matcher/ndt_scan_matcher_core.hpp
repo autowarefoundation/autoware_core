@@ -77,8 +77,10 @@ class NDTScanMatcher : public rclcpp::Node
 {
   using PointSource = pcl::PointXYZ;
   using PointTarget = pcl::PointXYZ;
+#ifndef NDT_USE_RUST
   // The engine type is selected in one place (ndt_backend.hpp); see plan/ndt_in_rust.md (案B).
   using NormalDistributionsTransform = NdtBackend;
+#endif
 
 public:
   explicit NDTScanMatcher(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
@@ -164,12 +166,20 @@ private:
   AwHost make_host();
 #endif
 
+#ifdef NDT_USE_RUST
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr visualize_point_score(
+    const pcl::shared_ptr<pcl::PointCloud<PointSource>> & sensor_points_in_map_ptr,
+    const float & lower_nvs, const float & upper_nvs);
+
+  void add_regularization_pose(const rclcpp::Time & sensor_ros_time);
+#else
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr visualize_point_score(
     const pcl::shared_ptr<pcl::PointCloud<PointSource>> & sensor_points_in_map_ptr,
     const float & lower_nvs, const float & upper_nvs, NormalDistributionsTransform & ndt_ref);
 
   void add_regularization_pose(
     const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform & ndt_ref);
+#endif
 
   rclcpp::TimerBase::SharedPtr map_update_timer_;
   rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr initial_pose_sub_;
@@ -219,11 +229,12 @@ private:
 
   rclcpp::CallbackGroup::SharedPtr timer_callback_group_;
 
-  // Engine-handle holder: a giant mutex (OFF) or a lock-free Unguarded handle (ON); see
-  // ndt_backend.hpp. `NormalDistributionsTransform` == `NdtBackend`, so this is `EngineHolder`.
+#ifndef NDT_USE_RUST
+  // Legacy C++ engine holder. Under NDT_USE_RUST the live engine is owned by `rs_`.
   EngineHolder ndt_ptr_{std::make_shared<NormalDistributionsTransform>()};
 
   pcl::shared_ptr<pcl::PointCloud<PointSource>> sensor_points_in_baselink_frame_;
+#endif
 
   // Legacy C++ path state. Under NDT_USE_RUST the equivalent state is Rust-owned on `rs_`;
   // these members are intentionally unused by the Rust-selected translation units.

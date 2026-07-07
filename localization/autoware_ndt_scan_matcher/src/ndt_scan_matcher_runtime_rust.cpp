@@ -39,12 +39,11 @@ std::vector<float> cloud_to_flat(const pcl::PointCloud<pcl::PointXYZ> & cloud)
 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr NDTScanMatcher::visualize_point_score(
   const pcl::shared_ptr<pcl::PointCloud<PointSource>> & sensor_points_in_map_ptr,
-  const float & lower_nvs, const float & upper_nvs, NormalDistributionsTransform & ndt_ref)
+  const float & lower_nvs, const float & upper_nvs)
 {
   pcl::PointCloud<pcl::PointXYZI> nvs_points_in_map_ptr_i;
   const std::vector<float> flat = cloud_to_flat(*sensor_points_in_map_ptr);
   std::vector<float> scores(sensor_points_in_map_ptr->size(), 0.0F);
-  (void)ndt_ref;
   autoware_ndt_scan_matcher_rs_ndt_engine_calc_nearest_voxel_score_each_point(
     rs_.engine_raw(), flat.data(), sensor_points_in_map_ptr->size(), scores.data());
   for (std::size_t i = 0; i < sensor_points_in_map_ptr->size(); ++i) {
@@ -77,10 +76,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr NDTScanMatcher::visualize_point_score(
   return nvs_points_in_map_ptr_rgb;
 }
 
-void NDTScanMatcher::add_regularization_pose(
-  const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform & ndt_ref)
+void NDTScanMatcher::add_regularization_pose(const rclcpp::Time & sensor_ros_time)
 {
-  (void)ndt_ref;
   autoware_ndt_scan_matcher_rs_ndt_engine_set_regularization(
     rs_.engine_raw(), 0.0F, 0.0F, 0.0F);
   AwInterpolatedPose interpolated{};
