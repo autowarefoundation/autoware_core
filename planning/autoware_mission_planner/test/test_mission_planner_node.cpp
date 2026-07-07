@@ -173,29 +173,6 @@ SetWaypointRoute::Request::SharedPtr make_set_waypoint_route_request(const Pose 
   return request;
 }
 
-// Start pose and the two goal poses below all sit on the centerline (y = 0.0) of create_map()'s
-// straight lanelets, with identity orientation matching the lanelets' +x heading, so
-// DefaultPlanner::plan() finds a real, non-empty path through them via on_set_waypoint_route
-// (unlike on_set_lanelet_route, which builds the route directly from given segments).
-
-// In FIRST_LANELET_ID (x: 0-50).
-Pose waypoint_route_start_pose()
-{
-  return make_pose(10.0, 0.0);
-}
-
-// In THIRD_LANELET_ID (x: 100-150). Full path: {FIRST, SECOND, THIRD}.
-Pose waypoint_route_goal_pose()
-{
-  return make_pose(140.0, 0.0);
-}
-
-// In SECOND_LANELET_ID (x: 50-100). Shorter path from the same start pose: {FIRST, SECOND}.
-Pose waypoint_reroute_goal_pose()
-{
-  return make_pose(60.0, 0.0);
-}
-
 }  // namespace
 
 class MissionPlannerIntegrationTest : public ::testing::Test
@@ -415,7 +392,7 @@ TEST_F(MissionPlannerIntegrationTest, SetWaypointRouteBeforeInitializationReturn
 {
   // Arrange
   initialize_mission_planner_node();
-  const auto request = make_set_waypoint_route_request(waypoint_route_goal_pose());
+  const auto request = make_set_waypoint_route_request(make_pose(140.0, 0.0));
 
   // Act
   const auto response = call_set_waypoint_route(request);
@@ -429,9 +406,9 @@ TEST_F(MissionPlannerIntegrationTest, FirstSetWaypointRouteRequestSucceeds)
   // Arrange
   initialize_mission_planner_node();
   publish_map(create_map());
-  publish_odometry(make_odometry(waypoint_route_start_pose(), 0.0));
+  publish_odometry(make_odometry(make_pose(10.0, 0.0), 0.0));
   spin_for(std::chrono::milliseconds(300));
-  const auto request = make_set_waypoint_route_request(waypoint_route_goal_pose());
+  const auto request = make_set_waypoint_route_request(make_pose(140.0, 0.0));
 
   // Act
   const auto response = call_set_waypoint_route(request);
@@ -447,12 +424,12 @@ TEST_F(MissionPlannerIntegrationTest, SecondWaypointRequestAsSafeRerouteWhileSto
   // Arrange
   initialize_mission_planner_node();
   publish_map(create_map());
-  publish_odometry(make_odometry(waypoint_route_start_pose(), 0.0));
+  publish_odometry(make_odometry(make_pose(10.0, 0.0), 0.0));
   publish_operation_mode_state(make_operation_mode_state(
     OperationModeState::AUTONOMOUS, /*is_autoware_control_enabled=*/true));
   spin_for(std::chrono::milliseconds(300));
-  const auto first_request = make_set_waypoint_route_request(waypoint_route_goal_pose());
-  const auto reroute_request = make_set_waypoint_route_request(waypoint_reroute_goal_pose());
+  const auto first_request = make_set_waypoint_route_request(make_pose(140.0, 0.0));
+  const auto reroute_request = make_set_waypoint_route_request(make_pose(60.0, 0.0));
 
   // Act
   call_set_waypoint_route(first_request);
