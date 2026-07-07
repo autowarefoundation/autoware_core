@@ -79,12 +79,9 @@ private:
   T value_;
 };
 
-// A drop-in, lock-free counterpart to Guarded<T> with the same `.with(f)` interface but NO mutex —
-// it just forwards the value to the callback. Used (under NDT_USE_RUST) for the engine handle, which
-// is a stable `const` pointer to a `Sync` Rust engine whose own interior mutability (a lock-free
-// ArcSwap of the map/params) makes external locking unnecessary. The same call sites
-// (`ndt_ptr_.with([&](const auto & p){ ... })`) then compile unchanged against either holder; only
-// the typedef (see ndt_backend.hpp) differs by build config.
+// A drop-in, lock-free counterpart to Guarded<T> with the same `.with(f)` interface but NO mutex.
+// Kept as a small utility for compatibility scaffolding; the production Rust-enabled node no longer
+// uses this as an external engine holder because its live engine is owned by NdtScanMatcherRs.
 template <typename T>
 class Unguarded
 {

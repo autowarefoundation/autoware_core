@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// E6b: a drop-in C++ adapter for pclomp::MultiGridNormalDistributionsTransform that forwards to the
-// Rust NDT engine over the C ABI (an opaque AwNdtEngine*). Built only under NDT_USE_RUST; E6c swaps
-// the node's NormalDistributionsTransform typedef to this. The node copies the NDT (map-update
-// double-buffer), so the adapter is copy-constructible/assignable via the engine clone.
+// Test/compatibility adapter for driving a Rust NDT engine through a pclomp-shaped C++ surface.
+// Production Rust-enabled code now uses the NdtScanMatcherRs-owned engine directly; this adapter
+// remains for differential tests and compatibility cleanup slices.
 
 #ifndef AUTOWARE__NDT_SCAN_MATCHER__NDT_RUST_ADAPTER_HPP_
 #define AUTOWARE__NDT_SCAN_MATCHER__NDT_RUST_ADAPTER_HPP_
@@ -39,13 +38,10 @@
 namespace autoware::ndt_scan_matcher
 {
 
-/// Thin owning handle to the Rust NDT engine (the node's `NormalDistributionsTransform`/`NdtType`
-/// under `NDT_USE_RUST`). Owns the engine handle (Rule-of-Five: copy = engine clone) and exposes the
-/// lifecycle + params + map-management surface the node + `map_update` still call on the typedef
-/// (`addTarget`/`removeTarget`/`createVoxelKdtree`/`hasTarget`/`getCurrentMapIDs`/`getParams`/
-/// `setParams`/`getMaximumIterations`) plus `raw_handle()`. The compute (align / scoring / covariance /
-/// regularization) is driven by the node directly through the engine FFIs on `raw_handle()` — this is
-/// **not** a pclomp drop-in (N4c/N4e). The cell-id mapping now lives in the engine (N4d).
+/// Thin owning handle to a Rust NDT engine for differential tests and compatibility shims. Owns the
+/// engine handle (Rule-of-Five: copy = engine clone) and exposes lifecycle, params, map-management,
+/// and `raw_handle()`. Production Rust-enabled node code uses the NdtScanMatcherRs-owned engine
+/// instead of this adapter. The cell-id mapping now lives in the engine (N4d).
 class NdtRustAdapter
 {
 public:
