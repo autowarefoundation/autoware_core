@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Differential test (Phase 5 sub-slices 2 + 3): the sensor-callback *middle* orchestrator
+// Differential test: the sensor-callback *middle* orchestrator
 // (on_sensor_points_match) fuses the gates → align → convergence → covariance into one Rust call and
-// (sub-slice 3) requests the POD publishers through the AwHost publish ops. This test drives it on a
+// requests the POD publishers through the AwHost publish ops. This test drives it on a
 // synthetic engine + seeded handle with a **recording mock AwHost** that captures every publish op,
 // and asserts: the align values it publishes match the decomposed run_align on the same engine (exact,
 // identity-orientation guess); the FIXED covariance == rotate_covariance(output_cov, rot(result_pose))

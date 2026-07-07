@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Roadmap foundation (plan/ndt_in_rust_next.md → Phase 0/1): the opaque Rust node handle
+// The opaque Rust node handle
 // (`AwNdtScanMatcher`) + its RAII C++ owner, plus the param conversion that crosses the FFI once at
 // construction. In legacy builds this header provides an empty owner so the core node layout can
 // name the Rust handle unconditionally without linking to FFI symbols.

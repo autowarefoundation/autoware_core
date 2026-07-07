@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Differential test (node port N3): the dynamic-map-update distance decision migrated to Rust
+// Differential test: the dynamic-map-update distance decision migrated to Rust
 // (autoware_ndt_scan_matcher_rs_node_evaluate_map_update) must match the original C++ logic from
 // MapUpdateModule::should_update_map / out_of_map_range. Both call libm hypot and then do threshold
 // comparisons, so the verdict (distance + the two flags) is bit-exact. The C++ reference below is a

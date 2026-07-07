@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Test (Phase 6): the map-update decision state (last-update position + need-rebuild) is Rust-owned
+// Test: the map-update decision state (last-update position + need-rebuild) is Rust-owned
 // on the node handle. Drive the `..._map_update_*` FFIs through a handle and assert the state machine:
 // first update forces a rebuild, a successful record clears it, an in-range move triggers no update,
 // and an out-of-keep-up move latches the rebuild. (The pure distance math is also covered by

@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Test (node port N4b): the covariance orchestrator FFI
+// Test: the covariance orchestrator FFI
 // (autoware_ndt_scan_matcher_rs_node_estimate_pose_covariance) assembles rotate + dispatch +
 // scale + adjust against the live engine map. It is checked against a hand-composition built from
 // the same map/source setup: pclomp::estimate_xy_covariance_by_multi_ndt +
 // adjust_diagonal_covariance + the
 // Rust rotate_covariance FFI. This pins the C++ marshaling
 // (pose/hessian/offsets/output_cov -> FFI) and the publish-kind asymmetry. The cov math itself is
-// differential-tested vs pure C++ in test_estimate_covariance_multi (E5).
+// differential-tested vs pure C++ in test_estimate_covariance_multi.
 
 #include <autoware/ndt_scan_matcher/ndt_omp/estimate_covariance.hpp>
 #include "autoware_ndt_scan_matcher_rs.h"
@@ -280,7 +280,7 @@ TEST(EstimatePoseCovariance, MultiNdtMatchesComposition)  // NOLINT
   EXPECT_EQ(ic, kOffsetX.size() + 1);  // main + per-candidate initial poses
   // The non-2x2 entries are the rotated configured covariance (identity rotation → exact). The
   // 2x2 block matches within the established multi-NDT cov tolerance
-  // (test_estimate_covariance_multi, E5): abs(diff) <= 5e-2 + 0.2*abs(expected). The two
+  // (test_estimate_covariance_multi): abs(diff) <= 5e-2 + 0.2*abs(expected). The two
   // estimators are not bit-identical.
   for (int i = 0; i < 36; ++i) {
     const bool in_xy_block = (i == 0 || i == 1 || i == 6 || i == 7);

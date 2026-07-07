@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Persistent NDT engine handle (E6a). Wraps the target map + params over a stable C ABI (an opaque
+//! Persistent NDT engine handle. Wraps the target map + params over a stable C ABI (an opaque
 //! `AwNdtEngine*`), so C++ callers can drive incremental map updates, alignment, and scoring.
 //!
 //! Concurrency (engine concurrency refactor): the engine exposes **`&self`-only** methods, and its
@@ -213,7 +213,7 @@ struct EngineState {
     /// The `covariance` hyper-params read on `estimate_covariance` (swapped like `conv`).
     cov_config: CovarianceConfig,
     /// Cell-id bytes → tile `u64` (the engine owns the legacy string-id mapping; keys are the
-    /// raw `std::string` cell-id bytes — not validated UTF-8). N4d.
+    /// raw `std::string` cell-id bytes — not validated UTF-8).
     id_map: alloc::collections::BTreeMap<alloc::vec::Vec<u8>, u64>,
     next_id: u64,
 }
@@ -910,7 +910,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_remove_target(
 }
 
 /// Add a target tile keyed by the cell-id bytes (`points` is `3 * n` f32; `id` is `id_len` bytes).
-/// The engine owns the cell-id → tile mapping (N4d). No-op if `engine`/`points` is null.
+/// The engine owns the cell-id → tile mapping. No-op if `engine`/`points` is null.
 /// # Safety
 /// `engine` is a valid handle (or null → no-op); `points` addresses `3 * n` f32; `id` addresses
 /// `id_len` readable bytes (or null with `id_len` 0).
@@ -1323,7 +1323,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_get_score_array
     *count = tp.len() as u32;
 }
 
-// --- Phase N4a: sensor-callback align orchestrator (std-gated node glue) ---
+// --- sensor-callback align orchestrator (std-gated node glue) ---
 // Folds align + oscillation count + the convergence verdict into one Rust call against the live
 // engine, so the C++ sensor callback no longer drives align through separate C++ glue plus the
 // C++ `count_oscillation` and `evaluate_convergence` FFI. Reuses the existing engine align,
@@ -1339,7 +1339,7 @@ pub struct ConvergenceParams {
 }
 
 /// Result of [`run_align`]: the scalars + convergence verdict the C++ sensor callback needs (the
-/// variable-length arrays/marker are still read via `get_result` in N4a).
+/// variable-length arrays/marker are still read via `get_result`).
 #[derive(Clone, Copy, Debug)]
 pub struct AlignOutcome {
     pub pose: Matrix4<f32>,
@@ -1530,7 +1530,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_run_align(
     }
 }
 
-// --- Phase N4b: sensor-callback covariance orchestrator ---
+// --- sensor-callback covariance orchestrator ---
 // Folds the whole covariance block of callback_sensor_points_main (rotate the configured 6x6 cov,
 // dispatch on the estimation type against the LIVE engine map, scale, and adjust) into one Rust call,
 // so the C++ node no longer calls the templated estimate_xy_covariance_by_multi_ndt[_score],
@@ -2068,7 +2068,7 @@ mod tests {
         assert_eq!(out.iteration_num, 123);
     }
 
-    // --- N4b: covariance orchestrator tests ---
+    // --- covariance orchestrator tests ---
 
     const ROT3X3_ID: [f64; 9] = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
     const COV_OX: [f64; 4] = [0.3, -0.3, 0.0, 0.0];
@@ -2490,7 +2490,7 @@ mod tests {
         }
     }
 
-    // --- N4d: engine-owned cell-id map ---
+    // --- engine-owned cell-id map ---
 
     fn ids_of(engine: &NdtEngine) -> Vec<Vec<u8>> {
         engine.load_state().id_map.keys().cloned().collect()

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Differential test (engine port E4d): the Rust `align` (via FFI) must match the C++
+// Differential test: the Rust `align` (via FFI) must match the C++
 // MultiGridNormalDistributionsTransform engine on the same target/source/guess/params, within
 // tolerance (Eigen JacobiSVD + float transform vs nalgebra SVD + f32 transform). This validates the
 // full optimization loop and the (pcl-form) angle-angle Hessian against the real engine.

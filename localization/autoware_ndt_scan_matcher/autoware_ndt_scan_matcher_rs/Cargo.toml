@@ -10,7 +10,7 @@ crate-type = ["staticlib", "rlib"]
 
 [features]
 # `std` is default-on so a plain `cargo build`/`test`/`clippy` has std (test harness + panic
-# handler). The no_std / awkernel build opts out with `--no-default-features`.
+# handler). The no_std build opts out with `--no-default-features`.
 #
 # Engine interior-mutability matrix (see src/engine.rs):
 #   std (default)          -> arc-swap cells + thread_local scratch (stateful align/result API)
@@ -35,8 +35,8 @@ mt = ["dep:awkernel_sync"]
 parallel = ["std", "dep:rayon"]
 # `ros`: build the ROS-message bindings (bindgen over the rosidl C headers) and the Pose-pointer
 # FFI shims. Independent of `std` — the bindgen output is `use_core()` POD, so these work in no_std
-# too. The ROS-node build enables it alongside the default `std`; awkernel could enable it in a
-# no_std build (it would need the generated bindings vendored, since bindgen needs ROS headers).
+# too. The ROS-node build enables it alongside the default `std`; a no_std build could enable it
+# (it would need the generated bindings vendored, since bindgen needs ROS headers).
 ros = ["dep:bindgen"]
 
 [dependencies]

@@ -15,7 +15,7 @@
 //! The opaque object-level node handle (`NdtScanMatcherRs`) + its C ABI lifecycle, and the
 //! `AwNdtParams` struct that crosses the boundary once at construction.
 //!
-//! Foundation slice (roadmap `plan/ndt_in_rust_next.md` → Phase 0/1): this introduced the opaque
+//! Foundation slice: this introduced the opaque
 //! handle plus a single validated [`Params`] conversion replacing piecemeal scalar-by-scalar engine
 //! configuration. The handle now owns the migrated node state (activation, pose buffers, latest EKF,
 //! and map-update policy state) and drives the Rust callback bodies. It also owns the live Rust
@@ -100,7 +100,7 @@ impl Params {
     }
 }
 
-/// Map-update decision state (Phase 6): the position of the last attempted map update, and whether
+/// Map-update decision state: the position of the last attempted map update, and whether
 /// the next update must rebuild from scratch (set on the first update + whenever the loaded map can
 /// no longer keep up with the lidar range; cleared on a successful update). The C++
 /// `MapUpdateModule::last_update_position_` + `BuilderState::need_rebuild`. The loaded cell ids live
@@ -128,7 +128,7 @@ pub struct NdtScanMatcherRs {
     regularization_buffer: Option<Mutex<PoseBuffer>>,
     /// The live NDT engine used by Rust-enabled callbacks and map updates.
     engine: NdtEngine,
-    /// Map-update decision state (Phase 6): last-update position + need-rebuild policy.
+    /// Map-update decision state: last-update position + need-rebuild policy.
     map_update_state: Mutex<MapUpdateState>,
     /// Latest sensor cloud transformed into `base_link` by the Rust sensor callback. The align service
     /// snapshots this without holding the lock across NDT alignment or C++ host calls.
@@ -667,7 +667,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_engine(
 /// result into `*out` and returning `true`; returns `false` (leaving `*out` untouched) if
 /// regularization is disabled or the buffer cannot interpolate (the C++ `if (!opt) return;`). Also
 /// drops buffer entries older than `stamp_ns` (the C++ `pop_old`). Transitional: the still-C++ sensor
-/// callback calls this; it is removed when the sensor callback itself moves to Rust (Phase 5).
+/// callback calls this; it is removed when the sensor callback itself moves to Rust.
 ///
 /// # Safety
 /// `handle` must be a valid, live `NdtScanMatcherRs` from `_new` (or null → `false`), and `out` a
@@ -701,7 +701,8 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_regularization_interpolate
 }
 
 /// Read the node activation flag from the handle (the C++ `is_activated_`). `false` if `handle` is
-/// null. Transitional read for the still-C++ sensor/timer gates (removed in Phase 5).
+/// null. Transitional read for the still-C++ sensor/timer gates (removed when the sensor callback
+/// moves to Rust).
 ///
 /// # Safety
 /// `handle` must be a valid, live `NdtScanMatcherRs` from `_new`, or null → `false`.
@@ -722,7 +723,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_is_activated(
 
 /// Write the latest EKF position `[x, y, z]` into `*out_xyz` and return `true`; `false` (leaving
 /// `*out_xyz` untouched) if none is recorded yet or `handle`/`out_xyz` is null. Transitional read for
-/// the still-C++ map-update timer (removed when map update moves to Rust, Phase 6).
+/// the still-C++ map-update timer (removed when map update moves to Rust).
 ///
 /// # Safety
 /// `handle` must be a valid, live `NdtScanMatcherRs` from `_new` (or null → `false`), and `out_xyz`
@@ -753,7 +754,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_latest_ekf_position(
 /// Interpolate the initial pose at `stamp_ns` from the handle's buffer (then `pop_old`), writing the
 /// interpolated pose + the two bracket positions into `*out` and returning `true`; `false` (leaving
 /// `*out` untouched) if the buffer cannot interpolate or a pointer is null (the C++ sensor callback's
-/// `if (!opt) return false;`). Transitional: removed when the sensor callback moves to Rust (Phase 5).
+/// `if (!opt) return false;`). Transitional: removed when the sensor callback moves to Rust.
 ///
 /// # Safety
 /// `handle` must be a valid, live `NdtScanMatcherRs` from `_new` (or null → `false`), and `out` a
@@ -791,7 +792,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_initial_pose_interpolate(
 
 /// The stateful map-update decision (the C++ `should_update_map`): writes the verdict into `*out` and
 /// returns `true`; `false` (leaving `*out` untouched) only on a null pointer. Mutates the handle's
-/// `need_rebuild` (first update / out-of-keep-up). Phase 6.
+/// `need_rebuild` (first update / out-of-keep-up).
 ///
 /// # Safety
 /// `handle` must be a valid, live `NdtScanMatcherRs` from `_new` (or null → `false`); `out` a valid,
@@ -828,7 +829,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_map_update_evaluate(
 }
 
 /// Whether the next map update must rebuild from scratch (the C++ `builder_state.need_rebuild`).
-/// `false` if `handle` is null. Phase 6.
+/// `false` if `handle` is null.
 ///
 /// # Safety
 /// `handle` must be a valid, live `NdtScanMatcherRs` from `_new`, or null → `false`.
@@ -849,7 +850,6 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_map_update_need_rebuild(
 
 /// Record an attempted map update at `(x, y)` (the C++ `update_map_internal`): the last-update
 /// position always advances; `need_rebuild` clears only when `success`. No-op if `handle` is null.
-/// Phase 6.
 ///
 /// # Safety
 /// `handle` must be a valid, live `NdtScanMatcherRs` from `_new`, or null → no-op.
@@ -872,7 +872,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_map_update_record(
 }
 
 /// Whether `(cur_x, cur_y)` is outside the loaded map's keep-up range (the C++ `out_of_map_range`);
-/// `true` when no update has happened yet or `handle` is null. Phase 6.
+/// `true` when no update has happened yet or `handle` is null.
 ///
 /// # Safety
 /// `handle` must be a valid, live `NdtScanMatcherRs` from `_new`, or null → `true`.

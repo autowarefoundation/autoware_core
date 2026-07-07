@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Test (node port N4a): the sensor-callback align orchestrator
+// Test: the sensor-callback align orchestrator
 // (autoware_ndt_scan_matcher_rs_node_run_align) drives a live Rust engine directly through the C
 // ABI. It must align EXACTLY like the bare engine align FFI on the same deterministic Rust engine +
 // guess and return a self-consistent convergence verdict. This pins the engine-handle + orchestrator

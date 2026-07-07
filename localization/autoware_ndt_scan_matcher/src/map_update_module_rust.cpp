@@ -82,7 +82,7 @@ bool MapUpdateModule::should_update_map(
   BuilderState & builder_state, const geometry_msgs::msg::Point & position,
   std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr)
 {
-  // Phase 6: the whole decision — last-update-position check, distance math, and the need_rebuild
+  // The whole decision — last-update-position check, distance math, and the need_rebuild
   // policy — is Rust-owned on the handle. The C++ side keeps only the diagnostics (emitted from the
   // returned verdict, preserving the original keys/levels). `is_first_update` is the no-prior-update
   // case (force rebuild + update; no distance diagnostic, matching the old early return).
@@ -108,7 +108,7 @@ bool MapUpdateModule::should_update_map(
 
 bool MapUpdateModule::out_of_map_range(const geometry_msgs::msg::Point & position)
 {
-  // Phase 6: the keep-up check (incl. the "no update yet → out of range" case) is Rust-owned on the
+  // The keep-up check (incl. the "no update yet → out of range" case) is Rust-owned on the
   // handle's map-update state.
   return autoware_ndt_scan_matcher_rs_map_update_out_of_range(
     rs_handle_, position.x, position.y, param_.lidar_radius, param_.map_radius);
@@ -124,7 +124,7 @@ void MapUpdateModule::update_map_internal(
   // staging engine (a clone of the live map, or empty when `need_rebuild`) and publishes in one atomic
   // store — a concurrent align always sees a complete map (the engine's ArcSwap is the lock-free
   // buffer). An empty delta is a no-op on the Rust side (no republish). `need_rebuild` + the
-  // last-update position are Rust-owned (Phase 6).
+  // last-update position are Rust-owned.
   (void)builder_state;
   const bool need_rebuild = autoware_ndt_scan_matcher_rs_map_update_need_rebuild(rs_handle_);
   diagnostics_ptr->add_key_value("is_need_rebuild", need_rebuild);

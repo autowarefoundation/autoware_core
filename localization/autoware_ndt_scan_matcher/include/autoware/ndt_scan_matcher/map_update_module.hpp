@@ -52,7 +52,7 @@ class MapUpdateModule
 {
   using PointSource = pcl::PointXYZ;
   using PointTarget = pcl::PointXYZ;
-  // The engine type is selected in one place (ndt_backend.hpp); see plan/ndt_in_rust.md (案B).
+  // The engine type is selected in one place (ndt_backend.hpp).
   using NdtType = NdtBackend;
   using NdtPtrType = std::shared_ptr<NdtType>;
 
@@ -123,7 +123,7 @@ private:
   // node handle, so only builder_state_/last_update_position_ are real locks here.
   std::unique_ptr<LegacyState> legacy_;
   Guarded<BuilderState> builder_state_;
-  // Phase 6: the map-update decision state (last-update position + need-rebuild) lives Rust-side on
+  // The map-update decision state (last-update position + need-rebuild) lives Rust-side on
   // the node handle; this module reads/updates it through the `..._map_update_*` FFIs.
   AwNdtScanMatcher * rs_handle_;
   Guarded<std::optional<geometry_msgs::msg::Point>> last_update_position_{std::nullopt};

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Differential test (engine port E6a): the persistent Rust engine handle, driven through the C ABI
+// Differential test: the persistent Rust engine handle, driven through the C ABI
 // with an INCREMENTAL map (addTarget by id x2 + createVoxelKdtree), must match the C++
 // MultiGridNormalDistributionsTransform built the same way, on the same guess/source/params. This
 // validates the node-facing handle + the per-id add/createVoxelKdtree path (the one-shot align is

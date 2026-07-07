@@ -61,7 +61,7 @@ struct NdtRustHostAccess
     std::size_t scores_len);
 };
 
-// Phase 5: the AwHost side-effects vtable trampolines (ctx == this) + make_host. Side-effects only
+// The AwHost side-effects vtable trampolines (ctx == this) + make_host. Side-effects only
 // (clock / logging / TF); node state stays Rust-owned on the handle.
 int64_t NdtRustHostAccess::host_now_ns(void * ctx)
 {

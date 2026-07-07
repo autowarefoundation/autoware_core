@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Differential test (engine port E5): the Rust multi-NDT covariance estimators (via FFI) must match
+// Differential test: the Rust multi-NDT covariance estimators (via FFI) must match
 // the C++ pclomp implementation on the same target/source/main-pose/offsets/params. propose +
 // multi_ndt (re-align per candidate) + multi_ndt_score (score per candidate) are all checked. The
 // per-candidate align/score parity is already covered by test_align; this validates the orchestration

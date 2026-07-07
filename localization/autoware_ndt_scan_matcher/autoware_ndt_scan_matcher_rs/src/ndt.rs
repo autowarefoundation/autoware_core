@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! NDT derivative assembly (E4c), ported from `multigrid_ndt_omp_impl.hpp`:
+//! NDT derivative assembly, ported from `multigrid_ndt_omp_impl.hpp`:
 //! - [`compute_derivatives`] — the source-point loop that queries the target map and accumulates the
 //!   score, 6-gradient, and 6x6 Hessian (`computeDerivatives`, lines 378-533, incl. the
 //!   regularization term 486-519).
@@ -20,10 +20,10 @@
 //! - [`nearest_voxel_transformation_likelihood`] — per-point max-cell-score loop
 //!   (`calculateNearestVoxelTransformationLikelihood`, 1153).
 //!
-//! Serial (the `ParReduce` parallel backends come at E4e). Per the zero-alloc policy, the per-point
-//! loop reuses an [`AlignWorkspace`] buffer (`clear()` keeps capacity) so steady state allocates
-//! nothing. `no_std` + `alloc`; the per-point math is `f64`, point clouds are `f32` (matching the
-//! C++ `PointXYZ` → `Vector3d` promotion).
+//! Serial (the `ParReduce` parallel backends are added separately as a pure performance change).
+//! Per the zero-alloc policy, the per-point loop reuses an [`AlignWorkspace`] buffer (`clear()` keeps
+//! capacity) so steady state allocates nothing. `no_std` + `alloc`; the per-point math is `f64`,
+//! point clouds are `f32` (matching the C++ `PointXYZ` → `Vector3d` promotion).
 
 // Numeric kernel: f64 matrix/scalar operators (overflow lint), fixed-array / 0..6 indexing, f32<->f64
 // casts inherent to point-cloud math + the regularization (mirrors C++ float arithmetic), and x/y/z
@@ -51,7 +51,7 @@ const MAX_NEIGHBORS: usize = 64;
 
 /// Reusable scratch buffers for the per-frame derivative pass and the align loop. Hold one per engine
 /// and reuse across frames; the buffers `clear()` (keep capacity) per call, so after warmup the hot
-/// loop performs no heap allocation. See `plan/ndt_in_rust.md` → "Bounded WCET hot path".
+/// loop performs no heap allocation.
 #[derive(Debug, Default)]
 pub struct AlignWorkspace {
     neighbor_idx: Vec<usize>,
@@ -707,7 +707,7 @@ pub fn align(
     };
 }
 
-// ---- C ABI: full align entry (test-scope; the start of the E6 engine FFI) ----
+// ---- C ABI: full align entry (test-scope; the start of the engine FFI) ----
 
 /// Inputs to the align FFI. Point clouds are `len + *const f32` (xyz triples); `guess` is 16 `f32`
 /// (row-major 4x4). `regularization_scale == 0` disables regularization.
@@ -946,7 +946,7 @@ mod tests {
 
     // Headline oracle: the assembled gradient equals the central finite difference of the full
     // multi-point score; the translation Hessian rows equal the second FD (the angle-angle block is
-    // the pcl form, validated vs C++ at E4d). Also asserts Hessian symmetry.
+    // the pcl form, validated vs C++). Also asserts Hessian symmetry.
     #[test]
     fn compute_derivatives_matches_finite_difference() {
         let map = test_map();
@@ -1162,7 +1162,7 @@ mod tests {
         assert_eq!(d_none.hessian, d_zero.hessian);
     }
 
-    // ---- align (E4d) ----
+    // ---- align ----
 
     // Target points spread in 3D (constrains translation), built into a map; the originals are
     // returned so tests can synthesize a source by transforming them.
@@ -1195,7 +1195,7 @@ mod tests {
         }
     }
 
-    // ParReduce (E4e): the rayon backend must equal the serial backend BIT-FOR-BIT — enabling
+    // ParReduce: the rayon backend must equal the serial backend BIT-FOR-BIT — enabling
     // parallelism is a pure performance change. Exact `==` on every field (not approx).
     #[cfg(feature = "parallel")]
     #[test]

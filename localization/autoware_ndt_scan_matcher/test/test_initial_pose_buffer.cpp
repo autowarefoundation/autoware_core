@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Differential test (Phase 1 slice B): the Rust-owned initial-pose buffer (pushed through
+// Differential test: the Rust-owned initial-pose buffer (pushed through
 // on_initial_pose after activation, queried through initial_pose_interpolate) must reproduce the C++
 // SmartPoseBuffer's interpolation bit-close over many random sequences — with the real (finite)
 // initial-pose tolerances. Also pins activation gating: a pose pushed while deactivated is dropped.

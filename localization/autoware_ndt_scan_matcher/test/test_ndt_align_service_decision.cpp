@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Phase 7A/7B: the align-service deterministic gate/response decision and its abstract semantic
+// The align-service deterministic gate/response decision and its abstract semantic
 // trace live in Rust. These tests pin the C ABI from the C++ side before the later TPE/search
 // migration changes the align body.
 

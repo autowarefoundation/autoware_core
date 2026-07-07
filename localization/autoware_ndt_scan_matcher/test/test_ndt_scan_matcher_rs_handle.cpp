@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Roadmap foundation (plan/ndt_in_rust_next.md → Phase 0/1): the C++ RAII owner of the opaque Rust
+// The C++ RAII owner of the opaque Rust
 // node handle. Builds an AwNdtParams directly (no live node needed) and exercises the construct/throw
 // lifecycle across the FFI boundary.
 

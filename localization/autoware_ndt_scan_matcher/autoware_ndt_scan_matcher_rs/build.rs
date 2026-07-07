@@ -16,7 +16,7 @@
 #![allow(clippy::expect_used, clippy::allow_attributes, reason = "build script")]
 
 // ROS-message bindings are only generated under the `ros` feature (the ROS-node build).
-// The no_std / awkernel build leaves `ros` off, so bindgen / libclang / ROS headers are not needed.
+// The no_std build leaves `ros` off, so bindgen / libclang / ROS headers are not needed.
 #[cfg(feature = "ros")]
 fn main() {
     use std::env;

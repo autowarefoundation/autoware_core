@@ -18,7 +18,7 @@
 //! the rust-hardening lint gates (no `unwrap`/`expect`/`panic`/indexing in production), but a
 //! defective dependency or an `overflow-checks` integer overflow could still panic. These helpers
 //! *contain* it: a caught unwind becomes [`AwStatus::Panic`] / a null pointer instead of crossing the
-//! boundary. The roadmap (`plan/ndt_in_rust_next.md` → "Error Handling Requirements") mandates this.
+//! boundary.
 //!
 //! std-only: `catch_unwind` needs `std`, and these wrap the ROS-node C ABI — the `no_std` kernel
 //! build drives the engine directly and crosses no C ABI here.

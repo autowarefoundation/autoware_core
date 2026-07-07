@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Phase N0 — node callback logic in Rust (proof of pattern). The C++ rclcpp shell owns the node
+//! Node callback logic in Rust (proof of pattern). The C++ rclcpp shell owns the node
 //! state + ROS I/O and exposes them to Rust via a **host interface**: a `#[repr(C)]` vtable of C
 //! function pointers + an opaque context (the `NDTScanMatcher*`). A migrated callback's body lives
 //! here and drives the node purely through that vtable. ROS-node glue only (not the `no_std` engine
@@ -193,7 +193,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_on_initial_pose(
 /// `topic_time_stamp`), push the pose into the **Rust-owned** regularization buffer on the handle, and
 /// publish. No-op if any pointer is null (or regularization is disabled — the handle push is a no-op).
 /// The stamp + pose come from `view` (the buffer push replaces the old host `push_regularization_pose`
-/// vtable call; Phase 1 slice A).
+/// vtable call).
 ///
 /// # Safety
 /// `handle` is a valid, live `NdtScanMatcherRs` from `_new` (or null → no-op); `diag` is a valid

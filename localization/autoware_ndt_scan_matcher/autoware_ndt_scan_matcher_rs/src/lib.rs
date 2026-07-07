@@ -12,20 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// no_std for the awkernel/Track B build; `std` (default) for dev and the ROS-node build. The
+// no_std for the Track B build; `std` (default) for dev and the ROS-node build. The
 // `mt` feature makes the no_std engine multi-core-safe (awkernel_sync cells + caller-owned
 // `MatchScratch`); without it the no_std build is single-core (`RefCell`, `!Sync`).
 // Test builds always use std (the test harness + `Vec`/etc. need it), regardless of features.
 #![cfg_attr(not(any(test, feature = "std")), no_std)]
 
 // Heap types (Vec/Box/BTreeMap) for the engine data structures. The allocator is provided by std
-// (host) or the kernel (awkernel); the no_std rlib defers it to the final binary.
+// (host) or the kernel; the no_std rlib defers it to the final binary.
 extern crate alloc;
 
 // Public API: the pure ports are reused by the Track B engine and exercised by unit tests,
 // independently of whether the `ros` FFI shims are built.
 // The NDT convergence decision — pure, no_std, reused by the std-gated `node` FFI and the portable
-// `scan_matcher`. See plan/ndt_in_rust.md "full Rust port".
+// `scan_matcher`.
 pub mod convergence;
 pub mod cov_estimate;
 pub mod covariance;
@@ -39,14 +39,14 @@ pub mod ffi;
 pub mod ffi_host;
 pub mod helper;
 // Portable node orchestration: the `Host` port traits + the `no_std` scan matcher over the engine
-// (reusable on ROS / bare-metal / the Tokio example). See plan/ndt_in_rust.md "full Rust port".
+// (reusable on ROS / bare-metal / the Tokio example).
 pub mod host;
 mod kdtree;
 pub mod ndt;
 // no_std port of autoware_localization_util::SmartPoseBuffer (time-ordered pose interpolation buffer);
-// reused by the node handle's Rust-owned pose buffers. See plan/ndt_in_rust_next.md Phase 1.
+// reused by the node handle's Rust-owned pose buffers.
 pub mod pose_buffer;
-// ROS-node callback glue (Phase N); std-only (not part of the no_std engine path).
+// ROS-node callback glue; std-only (not part of the no_std engine path).
 #[cfg(feature = "std")]
 pub mod node;
 // Opaque object-level node handle (NdtScanMatcherRs) + AwNdtParams; the roadmap foundation. std-only.
@@ -66,7 +66,7 @@ pub mod tpe;
 pub mod transform;
 pub mod voxel_grid;
 
-// rosidl-generated geometry_msgs C structs (bindgen). ROS-node build only; the no_std/awkernel
+// rosidl-generated geometry_msgs C structs (bindgen). ROS-node build only; the no_std
 // build leaves `ros` off. bindgen output is allow-listed (its lint profile differs from ours).
 #[cfg(feature = "ros")]
 #[allow(

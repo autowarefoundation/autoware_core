@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Multi-NDT covariance estimation (E5), ported from `src/ndt_omp/estimate_covariance.cpp`. These
+//! Multi-NDT covariance estimation, ported from `src/ndt_omp/estimate_covariance.cpp`. These
 //! are the engine-driving estimators the node uses to produce the output XY pose covariance; the
 //! pure helpers they build on live in [`crate::covariance`]. Control-plane (runs once per
 //! localization frame, not the RT align hot loop), so `Vec` allocation is fine. `no_std` + `alloc`.

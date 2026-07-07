@@ -13,7 +13,7 @@
 // limitations under the License.
 
 //! Static 3-D kd-tree with radius search, over voxel centroids. Replaces `pcl::KdTreeFLANN` for the
-//! NDT voxel-grid map (E3). `no_std` + `alloc`; no external dependency.
+//! NDT voxel-grid map. `no_std` + `alloc`; no external dependency.
 
 // Numeric/index kernel: bounded recursion depth (~log2 N) and indexing into fixed `[f32; 3]` /
 // the internal node array; distances are computed in f64 via `f64::from` (no lossy casts).

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! SE3 transforms and the NDT Gaussian fitting constants (E4a), ported from
+//! SE3 transforms and the NDT Gaussian fitting constants, ported from
 //! `multigrid_ndt_omp_impl.hpp`. The 6-vector parameterization is `p = [tx, ty, tz, roll, pitch,
 //! yaw]` and the rotation is `Rx(roll) * Ry(pitch) * Rz(yaw)` (the C++ `AngleAxis` order at
 //! `computeTransformation` lines 332-339; the same intrinsic XYZ order Eigen's
@@ -88,7 +88,7 @@ pub fn euler_to_matrix(p: &Vector6<f64>) -> Matrix4<f64> {
 /// [`euler_to_matrix`] for `pitch` in `(-pi/2, pi/2)`.
 ///
 /// NOTE: this is *a* valid inverse (the intrinsic-XYZ extraction), sufficient for round-trip tests.
-/// E4d (initial-guess extraction) must reconcile the range convention with Eigen's
+/// Initial-guess extraction must reconcile the range convention with Eigen's
 /// `eulerAngles(0, 1, 2)` (line 283), which folds angles differently for large rotations.
 #[allow(
     clippy::indexing_slicing,

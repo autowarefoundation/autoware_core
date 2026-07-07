@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// L3 offline replay benchmark (see plan/ndt_bench.md). A single executable drives BOTH NDT engines
+// L3 offline replay benchmark. A single executable drives BOTH NDT engines
 // on identical inputs: the C++ `MultiGridNormalDistributionsTransform` and the Rust port over the C
 // ABI. The target map + kd-tree is built ONCE per engine; only the repeated `align` loop is timed
 // (steady_clock), so this measures the align kernel, not map construction. Both engines see the same

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Differential test (Phase 1 slice A): the Rust-owned regularization pose buffer (driven through the
+// Differential test: the Rust-owned regularization pose buffer (driven through the
 // FFI — push via on_regularization_pose, query via regularization_interpolate) must reproduce the C++
 // SmartPoseBuffer's interpolation bit-close, over many random pose sequences. This pins the ported
 // twist/linear-RPY interpolation math against the original.

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 //! Reference implementation of the NDT scan matcher running **standalone in async Rust (Tokio), with
-//! no ROS** — the portability + async-boundary proof for `plan/ndt_in_rust.md` ("full Rust port").
+//! no ROS** — the portability + async-boundary proof for the full Rust port.
 //!
 //! It implements the [`Host`] ports (`MapSource`/`OutputSink`/`Clock`) with **synthetic, deterministic**
 //! data (PCD/recorded-scan input comes later), runs `ScanMatcher::update_map(...).await` then a

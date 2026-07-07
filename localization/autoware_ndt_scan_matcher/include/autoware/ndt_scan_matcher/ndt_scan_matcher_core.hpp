@@ -79,7 +79,7 @@ class NDTScanMatcher : public rclcpp::Node
 {
   using PointSource = pcl::PointXYZ;
   using PointTarget = pcl::PointXYZ;
-  // The engine type is selected in one place (ndt_backend.hpp); see plan/ndt_in_rust.md (案B).
+  // The engine type is selected in one place (ndt_backend.hpp).
   using NormalDistributionsTransform = NdtBackend;
 
 public:

@@ -109,7 +109,7 @@ void NDTScanMatcher::callback_timer()
 
   diagnostics_map_update_->add_key_value("timer_callback_time_stamp", ros_time_now.nanoseconds());
 
-  // Activation + latest-EKF-position are Rust-owned (Phase 1 slice B); read them over the FFI.
+  // Activation + latest-EKF-position are Rust-owned; read them over the FFI.
   const bool node_is_activated = autoware_ndt_scan_matcher_rs_is_activated(rs_.raw());
   std::optional<geometry_msgs::msg::Point> latest_ekf_position;
   std::array<double, 3> ekf_xyz{};
@@ -129,7 +129,7 @@ void NDTScanMatcher::callback_initial_pose(
   const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr initial_pose_msg_ptr)
 {
   // Callback-level: the whole body — diagnostics + activation/frame gates + buffer push +
-  // latest-EKF-position — runs in Rust, driving the Rust-owned state on the handle (Phase 1 slice B).
+  // latest-EKF-position — runs in Rust, driving the Rust-owned state on the handle.
   // The C++ shell only builds the diagnostics vtable + the pose view.
   const AwDiagnostics diag = make_diagnostics(diagnostics_initial_pose_.get());
   const AwPoseWithCovarianceStampedView view = make_pose_with_cov_view(*initial_pose_msg_ptr);
@@ -140,8 +140,8 @@ void NDTScanMatcher::callback_regularization_pose(
   geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr pose_conv_msg_ptr)
 {
   // Callback-level: the whole body (diagnostics + buffer push) runs in Rust. The pose now crosses as
-  // a value view and is pushed into the Rust-owned regularization buffer on the handle (Phase 1
-  // slice A) — no host vtable needed here.
+  // a value view and is pushed into the Rust-owned regularization buffer on the handle — no host
+  // vtable needed here.
   const AwDiagnostics diag = make_diagnostics(diagnostics_regularization_pose_.get());
   const AwPoseWithCovarianceStampedView view = make_pose_with_cov_view(*pose_conv_msg_ptr);
   autoware_ndt_scan_matcher_rs_node_on_regularization_pose(rs_.raw(), &diag, &view);
@@ -154,7 +154,7 @@ void NDTScanMatcher::service_trigger_node(
   const rclcpp::Time ros_time_now = this->now();
 
   // Callback-level: the whole body — diagnostics + activation + buffer clear — runs in Rust, driving
-  // the handle's Rust-owned state (Phase 1 slice B). The C++ shell only builds the diagnostics vtable
+  // the handle's Rust-owned state. The C++ shell only builds the diagnostics vtable
   // and assigns res->success.
   const AwDiagnostics diag = make_diagnostics(diagnostics_trigger_node_.get());
   res->success = autoware_ndt_scan_matcher_rs_node_on_trigger(

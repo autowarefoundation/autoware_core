@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Differential test (node port N1): the NDT convergence decision migrated to Rust
+// Differential test: the NDT convergence decision migrated to Rust
 // (autoware_ndt_scan_matcher_rs_node_evaluate_convergence) must match the original C++ logic from
 // callback_sensor_points_main bit-for-bit. The logic is pure integer/double comparisons, so the
 // verdict (flags + selected score/threshold) is exactly equal -- compared with EXPECT_EQ, not a

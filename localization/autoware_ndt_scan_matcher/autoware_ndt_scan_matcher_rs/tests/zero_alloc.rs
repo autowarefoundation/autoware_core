@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Zero-allocation gate for the per-frame derivative pass (`plan/ndt_in_rust.md` → "Runtime
-//! allocation policy"). A counting global allocator asserts that `compute_derivatives` performs
+//! Zero-allocation gate for the per-frame derivative pass (the runtime allocation policy).
+//! A counting global allocator asserts that `compute_derivatives` performs
 //! **no heap allocation after warmup**: the first call may grow the workspace's neighbor buffer,
 //! but a second call with the same inputs must reuse it (`clear()` keeps capacity).
 //!

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Differential test (Phase 5 sub-slice 1): the Rust sensor-callback prologue
+// Differential test: the Rust sensor-callback prologue
 // (on_sensor_points_prepare — decode + transform-to-base_link via the AwHost TF) must reproduce the
 // C++ pcl path (pcl::fromROSMsg + pcl::transformPointCloud) bit-close, and its validation gates
 // (empty / TF-fail / too-close) must return the matching status. The TF is supplied by a mock AwHost

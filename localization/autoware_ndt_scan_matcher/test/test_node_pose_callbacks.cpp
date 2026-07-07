@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Test (Phase 1 slice B): the trigger + initial-pose callbacks run entirely in Rust, driving the
+// Test: the trigger + initial-pose callbacks run entirely in Rust, driving the
 // node's Rust-owned state on the opaque handle (activation, the initial-pose buffer, latest-EKF
 // position) and emitting /diagnostics through the AwDiagnostics vtable. We build a real handle via the
 // FFI + a MOCK AwDiagnostics that records the ordered events, then assert each gate's status, the

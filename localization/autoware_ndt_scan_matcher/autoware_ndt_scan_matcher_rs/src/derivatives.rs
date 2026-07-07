@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! NDT score/gradient/Hessian derivative kernels (E4a/E4b), ported verbatim from
+//! NDT score/gradient/Hessian derivative kernels, ported verbatim from
 //! `multigrid_ndt_omp_impl.hpp` (Magnusson 2009, eq. 6.9-6.21):
 //! - [`compute_angle_derivatives`] — the per-iteration angular Jacobian/Hessian (`j_ang`/`h_ang`,
 //!   lines 537-611).
@@ -20,7 +20,7 @@
 //! - [`update_derivatives`] — the per-point/per-cell score + gradient + Hessian accumulation
 //!   (lines 663-717).
 //!
-//! All `f64`; `no_std` via `libm`. These are internal building blocks for the E4c/E4d assembly +
+//! All `f64`; `no_std` via `libm`. These are internal building blocks for the derivative-assembly +
 //! optimization loop (no FFI here — the C++ counterparts are private methods).
 
 // Numeric kernel: nalgebra f64 matrix operators are the float-math domain the integer-overflow lint
@@ -419,8 +419,8 @@ mod tests {
         // The angle-angle 3x3 block (i,j in 3..6) is intentionally NOT FD-tested: pcl/Autoware's
         // NDT Hessian is the *approximate* pcl form (its `h_ang` second-derivative terms differ
         // from the exact d^2T/dp^2 — e.g. row 6 `d1` uses +sy where the exact value is -sy), so FD
-        // is the wrong oracle there. That block is verified against the C++ `NdtResult.hessian`
-        // at E4d. The translation rows below + the gradient above pin down everything FD can judge.
+        // is the wrong oracle there. That block is verified against the C++ `NdtResult.hessian`.
+        // The translation rows below + the gradient above pin down everything FD can judge.
         let h = 1e-4;
         let second_fd = |i: usize, j: usize| {
             let (mut ppp, mut ppm, mut pmp, mut pmm) = (p, p, p, p);

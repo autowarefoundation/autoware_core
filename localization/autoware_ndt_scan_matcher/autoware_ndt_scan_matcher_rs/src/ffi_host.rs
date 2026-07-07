@@ -19,7 +19,7 @@
 //! directly. Side-effects only; no node state (that lives Rust-side on the handle). Field order must
 //! match the C `AwHost` struct.
 //!
-//! This is deliberately minimal for Phase 5 sub-slice 1 (the sensor-callback prologue needs only
+//! This is deliberately minimal for now (the sensor-callback prologue needs only
 //! `now_ns` / `log` / `lookup_transform`); publish ops are added with the sub-slices that move the
 //! align + publish tail.
 
@@ -56,7 +56,7 @@ impl AwStr {
 pub const LOG_WARN: i32 = 1;
 pub const LOG_ERROR: i32 = 2;
 
-/// A pose crossing the C ABI: position + `[x, y, z, w]` quaternion (Phase 5 sub-slice 3 publish ops).
+/// A pose crossing the C ABI: position + `[x, y, z, w]` quaternion (used by the publish ops).
 /// The C++ trampolines build the concrete ROS message; Rust only passes this POD.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -135,7 +135,7 @@ pub struct AwHost {
         out_matrix4x4_row_major: *mut f32,
     ) -> bool,
 
-    // --- publish ops (Phase 5 sub-slice 3). POD in; the C++ trampolines build the ROS message +
+    // --- publish ops. POD in; the C++ trampolines build the ROS message +
     // fan out by topic, and know the frame_ids (static node config). Each is catch(...)-guarded C++
     // side so a publish exception never unwinds across the FFI. ---
     /// Publish a pose; `cov6x6_row_major` null ⇒ `PoseStamped`-family, else `PoseWithCovarianceStamped`.

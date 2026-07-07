@@ -17,7 +17,7 @@
 //! eigenvalue-regularized inverse covariance. `no_std` + `alloc`; nalgebra internal.
 //!
 //! Multi-grid id-keyed add/remove and the kdtree/radiusSearch are intentionally out of scope here
-//! (E2b / E3); the C++ engine keeps using its own grid until the full engine swap.
+//! the C++ engine keeps using its own grid until the full engine swap.
 
 // Numeric kernel: nalgebra f64 matrix operators are the float-math domain the integer-overflow lint
 // targets; the voxel-index integer math below uses explicit checked ops where overflow could occur.
