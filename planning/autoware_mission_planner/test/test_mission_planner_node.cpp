@@ -249,11 +249,15 @@ protected:
 
   void publish_map(const LaneletMapBin & map_bin) { map_publisher_->publish(map_bin); }
 
-  void publish_odometry(const Odometry & odometry) { odometry_publisher_->publish(odometry); }
-
-  void publish_operation_mode_state(const OperationModeState & state)
+  void publish_odometry(const Pose & pose)
   {
-    operation_mode_state_publisher_->publish(state);
+    odometry_publisher_->publish(make_odometry(pose, /*velocity=*/0.0));
+  }
+
+  void publish_autonomous_operation_mode_state()
+  {
+    operation_mode_state_publisher_->publish(make_operation_mode_state(
+      OperationModeState::AUTONOMOUS, /*is_autoware_control_enabled=*/true));
   }
 
   // Spins the executor so that subscription callbacks and the node's 10 Hz readiness timer run.
@@ -271,8 +275,9 @@ protected:
   // fire: the response future can be satisfied before the executor has drained those other
   // already-ready callbacks in the same spin pass.
   SetLaneletRoute::Response::SharedPtr call_set_lanelet_route(
-    const SetLaneletRoute::Request::SharedPtr & request)
+    const lanelet::Id lanelet_id, const Pose & goal_pose)
   {
+    const auto request = make_set_lanelet_route_request(lanelet_id, goal_pose);
     auto future = set_lanelet_route_client_->async_send_request(request);
     EXPECT_EQ(
       executor_->spin_until_future_complete(future, std::chrono::seconds(5)),
@@ -281,9 +286,9 @@ protected:
     return future.get();
   }
 
-  SetWaypointRoute::Response::SharedPtr call_set_waypoint_route(
-    const SetWaypointRoute::Request::SharedPtr & request)
+  SetWaypointRoute::Response::SharedPtr call_set_waypoint_route(const Pose & goal_pose)
   {
+    const auto request = make_set_waypoint_route_request(goal_pose);
     auto future = set_waypoint_route_client_->async_send_request(request);
     EXPECT_EQ(
       executor_->spin_until_future_complete(future, std::chrono::seconds(5)),
@@ -332,10 +337,9 @@ TEST_F(MissionPlannerIntegrationTest, SetLaneletRouteBeforeInitializationReturns
 {
   // Arrange
   initialize_mission_planner_node();
-  const auto request = make_set_lanelet_route_request(FIRST_LANELET_ID, make_pose(40.0, 0.0));
 
   // Act
-  const auto response = call_set_lanelet_route(request);
+  const auto response = call_set_lanelet_route(FIRST_LANELET_ID, make_pose(40.0, 0.0));
 
   // Assert
   EXPECT_FALSE(response->status.success);
@@ -346,12 +350,11 @@ TEST_F(MissionPlannerIntegrationTest, FirstSetLaneletRouteRequestSucceeds)
   // Arrange
   initialize_mission_planner_node();
   publish_map(create_map());
-  publish_odometry(make_odometry(make_pose(10.0, 0.0), 0.0));
+  publish_odometry(make_pose(10.0, 0.0));
   spin_for(std::chrono::milliseconds(300));
-  const auto request = make_set_lanelet_route_request(FIRST_LANELET_ID, make_pose(40.0, 0.0));
 
   // Act
-  const auto response = call_set_lanelet_route(request);
+  const auto response = call_set_lanelet_route(FIRST_LANELET_ID, make_pose(40.0, 0.0));
 
   // Assert
   EXPECT_TRUE(response->status.success);
@@ -364,17 +367,13 @@ TEST_F(MissionPlannerIntegrationTest, SecondRequestAsSafeRerouteWhileStoppedSucc
   // Arrange
   initialize_mission_planner_node();
   publish_map(create_map());
-  publish_odometry(make_odometry(make_pose(10.0, 0.0), 0.0));
-  publish_operation_mode_state(make_operation_mode_state(
-    OperationModeState::AUTONOMOUS, /*is_autoware_control_enabled=*/true));
+  publish_odometry(make_pose(10.0, 0.0));
+  publish_autonomous_operation_mode_state();
   spin_for(std::chrono::milliseconds(300));
-  const auto first_request = make_set_lanelet_route_request(FIRST_LANELET_ID, make_pose(40.0, 0.0));
-  const auto reroute_request =
-    make_set_lanelet_route_request(SECOND_LANELET_ID, make_pose(90.0, 0.0));
 
   // Act
-  call_set_lanelet_route(first_request);
-  const auto response = call_set_lanelet_route(reroute_request);
+  call_set_lanelet_route(FIRST_LANELET_ID, make_pose(40.0, 0.0));
+  const auto response = call_set_lanelet_route(SECOND_LANELET_ID, make_pose(90.0, 0.0));
 
   // Assert
   EXPECT_TRUE(response->status.success);
@@ -386,10 +385,9 @@ TEST_F(MissionPlannerIntegrationTest, SetWaypointRouteBeforeInitializationReturn
 {
   // Arrange
   initialize_mission_planner_node();
-  const auto request = make_set_waypoint_route_request(make_pose(140.0, 0.0));
 
   // Act
-  const auto response = call_set_waypoint_route(request);
+  const auto response = call_set_waypoint_route(make_pose(140.0, 0.0));
 
   // Assert
   EXPECT_FALSE(response->status.success);
@@ -400,12 +398,11 @@ TEST_F(MissionPlannerIntegrationTest, FirstSetWaypointRouteRequestSucceeds)
   // Arrange
   initialize_mission_planner_node();
   publish_map(create_map());
-  publish_odometry(make_odometry(make_pose(10.0, 0.0), 0.0));
+  publish_odometry(make_pose(10.0, 0.0));
   spin_for(std::chrono::milliseconds(300));
-  const auto request = make_set_waypoint_route_request(make_pose(90.0, 0.0));
 
   // Act
-  const auto response = call_set_waypoint_route(request);
+  const auto response = call_set_waypoint_route(make_pose(90.0, 0.0));
 
   // Assert
   EXPECT_TRUE(response->status.success);
@@ -418,16 +415,13 @@ TEST_F(MissionPlannerIntegrationTest, SecondWaypointRequestAsSafeRerouteWhileSto
   // Arrange
   initialize_mission_planner_node();
   publish_map(create_map());
-  publish_odometry(make_odometry(make_pose(10.0, 0.0), 0.0));
-  publish_operation_mode_state(make_operation_mode_state(
-    OperationModeState::AUTONOMOUS, /*is_autoware_control_enabled=*/true));
+  publish_odometry(make_pose(10.0, 0.0));
+  publish_autonomous_operation_mode_state();
   spin_for(std::chrono::milliseconds(300));
-  const auto first_request = make_set_waypoint_route_request(make_pose(140.0, 0.0));
-  const auto reroute_request = make_set_waypoint_route_request(make_pose(60.0, 0.0));
 
   // Act
-  call_set_waypoint_route(first_request);
-  const auto response = call_set_waypoint_route(reroute_request);
+  call_set_waypoint_route(make_pose(140.0, 0.0));
+  const auto response = call_set_waypoint_route(make_pose(60.0, 0.0));
 
   // Assert
   EXPECT_TRUE(response->status.success);
