@@ -472,7 +472,8 @@ bool JerkFilteredSmoother::apply(
   auto merged_resampled = opt_merged_resampled.value();
 
   // For jerk filtering on continuous trajectory, use the arc-length information
-  const auto [merged_bases, merged_vels] = merged_resampled.longitudinal_velocity_mps().get_data();
+  const auto [merged_bases, merged_velocities] =
+    merged_resampled.longitudinal_velocity_mps().get_data();
 
   std::vector<double> interval_dist_arr;
   for (size_t i = 0; i < N - 1; ++i) {
@@ -482,7 +483,7 @@ bool JerkFilteredSmoother::apply(
     interval_dist_arr.push_back(0.0);
   }
 
-  std::vector<double> v_max_arr = merged_vels;
+  std::vector<double> v_max_arr = merged_velocities;
 
   const uint32_t IDX_B0 = 0;
   const uint32_t IDX_A0 = N;
@@ -955,19 +956,19 @@ TrajectoryExperimental JerkFilteredSmoother::mergeFilteredTrajectory(
   autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
 
   auto merged = forward_filtered;
-  const auto [fwd_bases_data, fwd_vels_data] =
+  const auto [fwd_bases_data, fwd_velocities_data] =
     forward_filtered.longitudinal_velocity_mps().get_data();
-  const auto [bwd_bases_data, bwd_vels_data] =
+  const auto [bwd_bases_data, bwd_velocities_data] =
     backward_filtered.longitudinal_velocity_mps().get_data();
 
   size_t i = 0;
 
-  if (bwd_vels_data[0] < v0) {
+  if (bwd_velocities_data[0] < v0) {
     double current_vel = v0;
     double current_acc = a0;
 
-    while (i + 1 < bwd_vels_data.size() && bwd_vels_data[i] < current_vel &&
-           i + 1 < fwd_vels_data.size()) {
+    while (i + 1 < bwd_velocities_data.size() && bwd_velocities_data[i] < current_vel &&
+           i + 1 < fwd_velocities_data.size()) {
       // Set velocity and acceleration at this base point
       merged.longitudinal_velocity_mps()
         .range(fwd_bases_data[i], fwd_bases_data[i])
@@ -987,29 +988,29 @@ TrajectoryExperimental JerkFilteredSmoother::mergeFilteredTrajectory(
         current_acc = current_acc + j_min * dt;
       }
 
-      if (current_vel > fwd_vels_data[i]) {
-        current_vel = fwd_vels_data[i];
+      if (current_vel > fwd_velocities_data[i]) {
+        current_vel = fwd_velocities_data[i];
       }
       ++i;
     }
   }
 
   // Take smaller velocity point for remaining indices
-  for (; i < fwd_vels_data.size(); ++i) {
+  for (; i < fwd_velocities_data.size(); ++i) {
     const double base = fwd_bases_data[i];
-    const double fwd_vel = fwd_vels_data[i];
-    // Guard: ensure we don't access bwd_vels_data out of bounds
-    const double bwd_vel = (i < bwd_vels_data.size()) ? bwd_vels_data[i] : 0.0;
+    const double fwd_velocity = fwd_velocities_data[i];
+    // Guard: ensure we don't access bwd_velocities_data out of bounds
+    const double bwd_velocity = (i < bwd_velocities_data.size()) ? bwd_velocities_data[i] : 0.0;
 
-    if (fwd_vel < bwd_vel) {
+    if (fwd_velocity < bwd_velocity) {
       // Use forward filtered values
       const double fwd_acc = forward_filtered.acceleration_mps2().compute(base);
-      merged.longitudinal_velocity_mps().range(base, base).set(fwd_vel);
+      merged.longitudinal_velocity_mps().range(base, base).set(fwd_velocity);
       merged.acceleration_mps2().range(base, base).set(fwd_acc);
     } else {
       // Use backward filtered values
       const double bwd_acc = backward_filtered.acceleration_mps2().compute(base);
-      merged.longitudinal_velocity_mps().range(base, base).set(bwd_vel);
+      merged.longitudinal_velocity_mps().range(base, base).set(bwd_velocity);
       merged.acceleration_mps2().range(base, base).set(bwd_acc);
     }
   }
