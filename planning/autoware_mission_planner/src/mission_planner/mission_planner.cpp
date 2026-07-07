@@ -39,6 +39,7 @@ MissionPlanner::MissionPlanner(const rclcpp::NodeOptions & options)
   map_ptr_(nullptr)
 {
   using std::placeholders::_1;
+  using std::placeholders::_2;
 
   // cppcheck-suppress useInitializationList
   map_frame_ = declare_parameter<std::string>("map_frame");
@@ -62,13 +63,11 @@ MissionPlanner::MissionPlanner(const rclcpp::NodeOptions & options)
 
   // NOTE: The route interface should be mutually exclusive by callback group.
   srv_clear_route = create_service<ClearRouteSpecs::Service>(
-    "~/clear_route", service_utils::handle_exception(&MissionPlanner::on_clear_route, this));
+    "~/clear_route", std::bind(&MissionPlanner::on_clear_route, this, _1, _2));
   srv_set_lanelet_route = create_service<SetLaneletRouteSpecs::Service>(
-    "~/set_lanelet_route",
-    service_utils::handle_exception(&MissionPlanner::on_set_lanelet_route, this));
+    "~/set_lanelet_route", std::bind(&MissionPlanner::on_set_lanelet_route, this, _1, _2));
   srv_set_waypoint_route = create_service<SetWaypointRouteSpecs::Service>(
-    "~/set_waypoint_route",
-    service_utils::handle_exception(&MissionPlanner::on_set_waypoint_route, this));
+    "~/set_waypoint_route", std::bind(&MissionPlanner::on_set_waypoint_route, this, _1, _2));
   pub_route_ = create_publisher<LaneletRouteSpecs::Message>(
     "~/route", autoware::component_interface_specs::get_qos<LaneletRouteSpecs>());
   pub_state_ = create_publisher<RouteStateSpecs::Message>(
@@ -179,118 +178,137 @@ void MissionPlanner::change_state(RouteState::_state_type state)
 void MissionPlanner::on_clear_route(
   const ClearRoute::Request::SharedPtr, const ClearRoute::Response::SharedPtr res)
 {
+  autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch;
+
   if (!is_mission_planner_ready_) {
     using ResponseCode = autoware_adapi_v1_msgs::msg::ResponseStatus;
-    throw service_utils::ServiceException(
-      ResponseCode::NO_EFFECT, "The mission planner is not ready.", true);
+    res->status.success = true;
+    res->status.code = ResponseCode::NO_EFFECT;
+    res->status.message = "The mission planner is not ready.";
+    publish_processing_time(stop_watch);
+    return;
   }
 
   change_route();
   change_state(RouteState::UNSET);
   res->status.success = true;
+
+  publish_processing_time(stop_watch);
 }
 
 void MissionPlanner::on_set_lanelet_route(
   const SetLaneletRoute::Request::SharedPtr req, const SetLaneletRoute::Response::SharedPtr res)
 {
-  using ResponseCode = autoware_adapi_v1_msgs::srv::SetRoute::Response;
-  const auto is_reroute = state_.state == RouteState::SET;
+  autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch;
+  try {
+    using ResponseCode = autoware_adapi_v1_msgs::srv::SetRoute::Response;
+    const auto is_reroute = state_.state == RouteState::SET;
 
-  if (state_.state != RouteState::UNSET && state_.state != RouteState::SET) {
-    throw service_utils::ServiceException(
-      ResponseCode::ERROR_INVALID_STATE, "The route cannot be set in the current state.");
-  }
-  if (!is_mission_planner_ready_) {
-    throw service_utils::ServiceException(
-      ResponseCode::ERROR_PLANNER_UNREADY, "The mission planner is not ready.");
-  }
-  if (is_reroute && !operation_mode_state_) {
-    throw service_utils::ServiceException(
-      ResponseCode::ERROR_PLANNER_UNREADY, "Operation mode state is not received.");
-  }
+    if (state_.state != RouteState::UNSET && state_.state != RouteState::SET) {
+      throw service_utils::ServiceException(
+        ResponseCode::ERROR_INVALID_STATE, "The route cannot be set in the current state.");
+    }
+    if (!is_mission_planner_ready_) {
+      throw service_utils::ServiceException(
+        ResponseCode::ERROR_PLANNER_UNREADY, "The mission planner is not ready.");
+    }
+    if (is_reroute && !operation_mode_state_) {
+      throw service_utils::ServiceException(
+        ResponseCode::ERROR_PLANNER_UNREADY, "Operation mode state is not received.");
+    }
 
-  const bool is_autonomous_driving =
-    operation_mode_state_ ? operation_mode_state_->mode == OperationModeState::AUTONOMOUS &&
-                              operation_mode_state_->is_autoware_control_enabled
-                          : false;
+    const bool is_autonomous_driving =
+      operation_mode_state_ ? operation_mode_state_->mode == OperationModeState::AUTONOMOUS &&
+                                operation_mode_state_->is_autoware_control_enabled
+                            : false;
 
-  if (is_reroute && !allow_reroute_in_autonomous_mode_ && is_autonomous_driving) {
-    throw service_utils::ServiceException(
-      ResponseCode::ERROR_INVALID_STATE, "Reroute is not allowed in autonomous mode.");
-  }
+    if (is_reroute && !allow_reroute_in_autonomous_mode_ && is_autonomous_driving) {
+      throw service_utils::ServiceException(
+        ResponseCode::ERROR_INVALID_STATE, "Reroute is not allowed in autonomous mode.");
+    }
 
-  change_state(is_reroute ? RouteState::REROUTING : RouteState::ROUTING);
-  const auto route = create_route(*req);
+    change_state(is_reroute ? RouteState::REROUTING : RouteState::ROUTING);
+    const auto route = create_route(*req);
 
-  if (route.segments.empty()) {
-    cancel_route();
-    change_state(is_reroute ? RouteState::SET : RouteState::UNSET);
-    throw service_utils::ServiceException(
-      ResponseCode::ERROR_PLANNER_FAILED, "The planned route is empty.");
-  }
+    if (route.segments.empty()) {
+      cancel_route();
+      change_state(is_reroute ? RouteState::SET : RouteState::UNSET);
+      throw service_utils::ServiceException(
+        ResponseCode::ERROR_PLANNER_FAILED, "The planned route is empty.");
+    }
 
-  if (is_reroute && is_autonomous_driving && !check_reroute_safety(*current_route_, route)) {
-    cancel_route();
+    if (is_reroute && is_autonomous_driving && !check_reroute_safety(*current_route_, route)) {
+      cancel_route();
+      change_state(RouteState::SET);
+      throw service_utils::ServiceException(
+        ResponseCode::ERROR_REROUTE_FAILED, "New route is not safe. Reroute failed.");
+    }
+
+    change_route(route);
     change_state(RouteState::SET);
-    throw service_utils::ServiceException(
-      ResponseCode::ERROR_REROUTE_FAILED, "New route is not safe. Reroute failed.");
+    res->status.success = true;
+
+    publish_pose_log(odometry_->pose.pose, "initial");
+    publish_pose_log(req->goal_pose, "goal");
+  } catch (const service_utils::ServiceException & error) {
+    error.set(res->status);
   }
-
-  change_route(route);
-  change_state(RouteState::SET);
-  res->status.success = true;
-
-  publish_pose_log(odometry_->pose.pose, "initial");
-  publish_pose_log(req->goal_pose, "goal");
+  publish_processing_time(stop_watch);
 }
 
 void MissionPlanner::on_set_waypoint_route(
   const SetWaypointRoute::Request::SharedPtr req, const SetWaypointRoute::Response::SharedPtr res)
 {
-  using ResponseCode = autoware_adapi_v1_msgs::srv::SetRoutePoints::Response;
-  const auto is_reroute = state_.state == RouteState::SET;
+  autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch;
+  try {
+    using ResponseCode = autoware_adapi_v1_msgs::srv::SetRoutePoints::Response;
+    const auto is_reroute = state_.state == RouteState::SET;
 
-  if (state_.state != RouteState::UNSET && state_.state != RouteState::SET) {
-    throw service_utils::ServiceException(
-      ResponseCode::ERROR_INVALID_STATE, "The route cannot be set in the current state.");
-  }
-  if (!is_mission_planner_ready_) {
-    throw service_utils::ServiceException(
-      ResponseCode::ERROR_PLANNER_UNREADY, "The mission planner is not ready.");
-  }
-  if (is_reroute && !operation_mode_state_) {
-    throw service_utils::ServiceException(
-      ResponseCode::ERROR_PLANNER_UNREADY, "Operation mode state is not received.");
-  }
+    if (state_.state != RouteState::UNSET && state_.state != RouteState::SET) {
+      throw service_utils::ServiceException(
+        ResponseCode::ERROR_INVALID_STATE, "The route cannot be set in the current state.");
+    }
+    if (!is_mission_planner_ready_) {
+      throw service_utils::ServiceException(
+        ResponseCode::ERROR_PLANNER_UNREADY, "The mission planner is not ready.");
+    }
+    if (is_reroute && !operation_mode_state_) {
+      throw service_utils::ServiceException(
+        ResponseCode::ERROR_PLANNER_UNREADY, "Operation mode state is not received.");
+    }
 
-  const bool is_autonomous_driving =
-    operation_mode_state_ ? operation_mode_state_->mode == OperationModeState::AUTONOMOUS &&
-                              operation_mode_state_->is_autoware_control_enabled
-                          : false;
+    const bool is_autonomous_driving =
+      operation_mode_state_ ? operation_mode_state_->mode == OperationModeState::AUTONOMOUS &&
+                                operation_mode_state_->is_autoware_control_enabled
+                            : false;
 
-  change_state(is_reroute ? RouteState::REROUTING : RouteState::ROUTING);
-  const auto route = create_route(*req);
+    change_state(is_reroute ? RouteState::REROUTING : RouteState::ROUTING);
+    const auto route = create_route(*req);
 
-  if (route.segments.empty()) {
-    cancel_route();
-    change_state(is_reroute ? RouteState::SET : RouteState::UNSET);
-    throw service_utils::ServiceException(
-      ResponseCode::ERROR_PLANNER_FAILED, "The planned route is empty.");
-  }
+    if (route.segments.empty()) {
+      cancel_route();
+      change_state(is_reroute ? RouteState::SET : RouteState::UNSET);
+      throw service_utils::ServiceException(
+        ResponseCode::ERROR_PLANNER_FAILED, "The planned route is empty.");
+    }
 
-  if (is_reroute && is_autonomous_driving && !check_reroute_safety(*current_route_, route)) {
-    cancel_route();
+    if (is_reroute && is_autonomous_driving && !check_reroute_safety(*current_route_, route)) {
+      cancel_route();
+      change_state(RouteState::SET);
+      throw service_utils::ServiceException(
+        ResponseCode::ERROR_REROUTE_FAILED, "New route is not safe. Reroute failed.");
+    }
+
+    change_route(route);
     change_state(RouteState::SET);
-    throw service_utils::ServiceException(
-      ResponseCode::ERROR_REROUTE_FAILED, "New route is not safe. Reroute failed.");
+    res->status.success = true;
+
+    publish_pose_log(odometry_->pose.pose, "initial");
+    publish_pose_log(req->goal_pose, "goal");
+  } catch (const service_utils::ServiceException & error) {
+    error.set(res->status);
   }
-
-  change_route(route);
-  change_state(RouteState::SET);
-  res->status.success = true;
-
-  publish_pose_log(odometry_->pose.pose, "initial");
-  publish_pose_log(req->goal_pose, "goal");
+  publish_processing_time(stop_watch);
 }
 
 void MissionPlanner::change_route()
